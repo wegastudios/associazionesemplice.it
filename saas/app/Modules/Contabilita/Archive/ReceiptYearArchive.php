@@ -121,6 +121,10 @@ final readonly class ReceiptYearArchive implements YearArchives
             @unlink($zipPath);
             @unlink($checkPath);
             @unlink($work);
+            // I PDF in chiaro delle singole ricevute («<lavoro>-N») restano se la preparazione si interrompe: si tolgono sempre.
+            foreach (glob($work.'-*') ?: [] as $leftover) {
+                @unlink($leftover);
+            }
         }
 
         // L'archivio è controllato e registrato: ora si tolgono i file singoli.

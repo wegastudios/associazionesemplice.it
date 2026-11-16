@@ -26,6 +26,8 @@ if [ "$bad" = 1 ]; then
 fi
 mkdir -p ~/portale && cp -r ~/portale-next/. ~/portale/ && rm -rf ~/portale-next
 cd ~/portale && mkdir -p data
+# Struttura del database con l'utente proprietario (data/pg-migrate.php, non tracciato); se non riesce lo dice ma il sito resta com'è.
+/usr/local/bin/php ~/portale/bin/migrate.php || echo "ATTENZIONE: la migrazione del database non è riuscita (vedi sopra): controlla prima di usare le funzioni nuove." >&2
 cd ~/public_html
 printf '<?php\n// Punto d'"'"'ingresso del portale: il codice sta fuori dalla cartella pubblica (~/portale).\nrequire __DIR__ . "/../portale/public/index.php";\n' > index.php
 mkdir -p assets && cp -r ../portale/public/assets/* assets/

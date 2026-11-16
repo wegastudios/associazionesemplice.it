@@ -170,6 +170,12 @@ final class Backup {
 					$files[] = basename( $f );
 				}
 			}
+			foreach ( PrivateFolder::left_behind() as $f ) { // file rimasti nella vecchia cartella a spostamento non finito: vanno nella copia anche loro
+				if ( ! in_array( basename( $f ), $files, true ) ) {
+					$zip->addFile( $f, 'allegati/' . basename( $f ) );
+					$files[] = basename( $f );
+				}
+			}
 		}
 		$docs = self::documents( $zip ); // documenti definitivi di un'estensione (PDF già emessi): vanno sempre nella copia, con l'indice delle impronte
 		$bundle = FileKey::bundle();

@@ -17,7 +17,9 @@ function asem_uninstall_site() {
 		return;
 	}
 
-	foreach ( array( 'asem_send_reminders', 'asem_release_holds', 'asem_event_requests', 'asem_broadcast_batch', 'asem_check_pending_payments', 'asem_purge_backups', 'asem_private_folder_check', 'asem_file_crypt_migrate', 'asem_purge_audit', 'asem_purge_member_sessions' ) as $hook ) {
+	$private_site = (string) get_option( 'asem_private_site', '' ); // identificativo di questo sito nel segnaposto della cartella indicata in wp-config.php (le opzioni si cancellano più sotto)
+
+	foreach ( array( 'asem_send_reminders', 'asem_release_holds', 'asem_event_requests', 'asem_broadcast_batch', 'asem_check_pending_payments', 'asem_purge_backups', 'asem_private_folder_check', 'asem_file_crypt_migrate', 'asem_file_crypt_migrate_certs', 'asem_file_crypt_certs_check', 'asem_receipt_pdfs_batch', 'asem_purge_audit', 'asem_purge_member_sessions' ) as $hook ) {
 		wp_clear_scheduled_hook( $hook );
 	}
 
@@ -61,16 +63,20 @@ function asem_uninstall_site() {
 			if ( is_multisite() ) {
 				$custom .= '/sito-' . get_current_blog_id();
 			}
-			if ( is_dir( $custom ) && '' !== $custom ) {
+			// Solo se la cartella porta il segnaposto di questo sito: una cartella senza segnaposto, o di un altro sito, non si tocca.
+			$placeholder = $custom . '/.asem-segnaposto';
+			$mine        = '' !== $private_site && is_file( $placeholder ) && 1 === preg_match( '/^asem-sito:' . preg_quote( $private_site, '/' ) . '\s*$/m', (string) file_get_contents( $placeholder ) );
+			if ( $mine && is_dir( $custom ) && '' !== $custom ) {
 				foreach ( (array) glob( $custom . '/*' ) as $item ) {
 					$name = basename( $item );
 					if ( is_dir( $item ) && in_array( $name, array( 'backups', 'receipts', 'controllo' ), true ) ) {
 						$wp_filesystem->delete( $item, true );
-					} elseif ( is_file( $item ) && ( 'index.php' === $name || preg_match( '/^[0-9a-f]{32}$/', $name ) ) ) {
+					} elseif ( is_file( $item ) && ( 'index.php' === $name || preg_match( '/^[0-9a-f]{32}(\.part-[0-9a-f]+)?$/', $name ) ) ) {
 						wp_delete_file( $item );
 					}
 				}
 				wp_delete_file( $custom . '/.htaccess' );
+				wp_delete_file( $placeholder );
 				if ( is_multisite() && ! glob( $custom . '/*' ) ) { // la sottocartella del sito, se è rimasta vuota
 					$wp_filesystem->rmdir( $custom );
 				}

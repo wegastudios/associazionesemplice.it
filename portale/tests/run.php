@@ -110,6 +110,7 @@ Mailer::$sender = function ( $to, $subject, $body ) use ( &$mails ) {
 
 $db = testDb();
 $db->migrate();
+check( 'migrazione: l\'utente che può creare tabelle migra all\'avvio, e rilanciarla non rompe nulla', true === $db->mayMigrate() && null === $db->migrateOnStart() && null === $db->migrateOnStart() );
 $billing = new Billing( $db, new WegaClient( 'https://license.test/api/v1', 'wic_x.y' ) );
 
 // --- Licenza free -----------------------------------------------------------

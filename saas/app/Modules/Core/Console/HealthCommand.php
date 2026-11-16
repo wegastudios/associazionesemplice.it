@@ -72,6 +72,10 @@ final class HealthCommand extends Command
             }
         }
 
+        // File di lavoro rimasti in storage/app/tmp (non è un errore: li toglie il lavoro pianificato).
+        [$tmpFiles, $tmpBytes, $tmpOld] = array_slice(PurgeTmpCommand::scan(storage_path('app/tmp'), 120), 0, 3);
+        $this->line("nota  file temporanei: {$tmpFiles} ({$tmpBytes} byte), di cui {$tmpOld} più vecchi di 2 ore");
+
         // I ripieghi in uso (posta nel log, cache sul database, chiave locale…) non sono errori, ma vanno visti.
         $warnings = config('saas.platform_warnings');
         foreach (is_array($warnings) ? $warnings : [] as $warning) {

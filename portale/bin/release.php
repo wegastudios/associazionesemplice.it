@@ -9,7 +9,7 @@ if ( 'cli' !== PHP_SAPI ) {
 require __DIR__ . '/../src/bootstrap.php';
 Portale\Config::load( require __DIR__ . '/../config.php' );
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
-$db->migrate();
+$db->migrateOnStart();
 Portale\Settings::load( $db );
 if ( $argc < 3 ) {
 	fwrite( STDERR, "Uso: php bin/release.php free|pro file.zip [nota] [firma kid] | php bin/release.php sign free|pro versione firma kid\n" );

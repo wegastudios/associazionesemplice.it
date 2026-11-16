@@ -7060,6 +7060,46 @@ $RS::cancel( $cr_b, true );
 asem_ok( $cr_b0 === $CR::balance( $cr_m ) && 0 === (int) $RS::reservation( $cr_b )['credits_paid'], 'crediti: annullando la prenotazione i crediti tornano al socio' );
 $cr_b2 = $RS::book_slot( $cr_res, $cr_m2, $cr_day, '12:00', 1 );
 asem_ok( null !== asem_throws( function () use ( $RS, $cr_b2, $cr_m2 ) { $RS::pay_with_credits( $cr_b2, $cr_m2 ); } ) && 0 === (int) $RS::reservation( $cr_b2 )['credits_paid'], 'crediti: senza crediti sufficienti la prenotazione non risulta pagata' );
+// annullo che arriva insieme a un altro: i crediti tornano una volta sola
+$cr_b3   = $RS::book_slot( $cr_res, $cr_m, $cr_day, '14:00', 1 );
+$cr_bal0 = $CR::balance( $cr_m );
+$RS::pay_with_credits( $cr_b3, $cr_m );
+$cr_stale = $RS::reservation( $cr_b3 ); // la riga come l'ha letta chi arriva secondo
+asem_ok( (int) $cr_stale['credits_paid'] > 0 && $CR::balance( $cr_m ) < $cr_bal0, 'crediti: la prenotazione di prova è pagata in crediti' );
+$cr_raced = false;
+$cr_race  = function ( $q ) use ( &$cr_raced, $RS, $cr_b3 ) {
+	if ( ! $cr_raced && 0 === stripos( ltrim( (string) $q ), 'UPDATE' ) && false !== strpos( $q, 'reservations' ) && false !== strpos( $q, "'cancelled'" ) ) {
+		$cr_raced = true;
+		$RS::cancel( $cr_b3, true ); // l'altra richiesta conclude l'annullo proprio prima della nostra scrittura
+	}
+	return $q;
+};
+add_filter( 'query', $cr_race );
+$cr_msg2 = asem_throws( function () use ( $RS, $cr_b3 ) { $RS::cancel( $cr_b3, true ); } );
+remove_filter( 'query', $cr_race );
+asem_ok( $cr_raced && null !== $cr_msg2, 'crediti: il secondo annullo della stessa prenotazione è rifiutato' );
+asem_ok( $cr_bal0 === $CR::balance( $cr_m ), 'crediti: con due annulli insieme i crediti tornano una volta sola' );
+asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'credit_entries' ) . " WHERE person_id = %d AND kind = 'refund' AND ref_type = 'reservation' AND ref_id = %d", $cr_m, $cr_b3 ) ), 'crediti: un solo movimento di rimborso per la prenotazione' );
+$cr_refund = new ReflectionMethod( $RS, 'refund_credits' );
+$cr_refund->setAccessible( true );
+$cr_refund->invoke( null, $cr_stale ); // una copia vecchia della riga non riaccredita di nuovo
+asem_ok( $cr_bal0 === $CR::balance( $cr_m ) && 0 === (int) $RS::reservation( $cr_b3 )['credits_paid'], 'crediti: nemmeno rieseguendo il rimborso con la riga letta prima' );
+// riaccredito che fallisce: la prenotazione resta prenotata, i crediti come prima, e si può riprovare
+$cr_b4   = $RS::book_slot( $cr_res, $cr_m, $cr_day, '16:00', 1 );
+$RS::pay_with_credits( $cr_b4, $cr_m );
+$cr_bal4 = $CR::balance( $cr_m ); // dopo la spesa
+$cr_paid4 = (int) $RS::reservation( $cr_b4 )['credits_paid'];
+$cr_fail = function ( $q ) {
+	return 0 === stripos( ltrim( (string) $q ), 'INSERT' ) && false !== strpos( $q, 'credit_entries' ) ? '' : $q; // la scrittura del rimborso non riesce
+};
+add_filter( 'query', $cr_fail );
+$cr_msg4 = asem_throws( function () use ( $RS, $cr_b4 ) { $RS::cancel( $cr_b4, true ); } );
+remove_filter( 'query', $cr_fail );
+$cr_row4 = $RS::reservation( $cr_b4 );
+asem_ok( null !== $cr_msg4, 'crediti: se il riaccredito non riesce l\'annullo è rifiutato' );
+asem_ok( 'booked' === $cr_row4['status'] && $cr_paid4 === (int) $cr_row4['credits_paid'] && $cr_bal4 === $CR::balance( $cr_m ), 'crediti: riaccredito fallito, la prenotazione resta prenotata e pagata in crediti' );
+$RS::cancel( $cr_b4, true );
+asem_ok( 'cancelled' === $RS::reservation( $cr_b4 )['status'] && $cr_bal4 + $cr_paid4 === $CR::balance( $cr_m ), 'crediti: dopo il fallimento un nuovo annullo funziona e i crediti tornano' );
 // addebito dal vivo con il QR
 $cr_ch = $CR::create_charge( $cr_m2, 5, 'Ingresso serata', null );
 asem_ok( 24 === strlen( $cr_ch['code'] ) && 'ok' === $CR::charge_status( $cr_ch['id'], 1 )['state'] && $CR::can_charge( 1 ), 'crediti: lo staff crea un addebito valido con un codice casuale' );
@@ -9644,6 +9684,49 @@ MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
 asem_ok( wp_next_scheduled( 'asem_purge_member_sessions' ) > 0, 'accesso proprio: pulizia giornaliera programmata' );
 
+// ---------- Cache di pagina: pagine con sessione socio valida e contenuti riservati ----------
+$nc_hits  = 0;
+$nc_cb    = function () use ( &$nc_hits ) {
+	++$nc_hits;
+};
+add_action( 'litespeed_control_set_nocache', $nc_cb );
+$nc_count = function ( callable $f ) use ( &$nc_hits ): int {
+	$nc_hits = 0;
+	$f();
+	return $nc_hits;
+};
+$nc_early = function ( int $post_id ) {
+	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'p' => $post_id, 'post_type' => 'any', 'post_status' => 'publish' ) );
+	\AssociazioneSemplice\Frontend\Restrict::early_no_cache();
+};
+wp_set_current_user( 0 );
+unset( $_COOKIE[ MemberSession::COOKIE ] );
+$ms_fake->setValue( null, null );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: una pagina pubblica vista da un anonimo resta salvabile in cache' );
+asem_ok( 0 === $nc_count( function () use ( $show, $p_pub ) { $show( $p_pub, 0 ); } ), 'cache: il contenuto pubblico non segnala «non in cache»' );
+asem_ok( $nc_count( function () use ( $nc_early, $p_mem ) { $nc_early( $p_mem ); } ) > 0, 'cache: una pagina riservata non si salva nemmeno per un anonimo (prima di disegnarla)' );
+asem_ok( $nc_count( function () use ( $show, $p_mem ) { $show( $p_mem, 0 ); } ) > 0, 'cache: il riquadro «contenuto riservato» mostrato a un anonimo non si salva' );
+asem_ok( $nc_count( function () use ( $show, $p_mem, $u_f ) { $show( $p_mem, $u_f ); } ) > 0, 'cache: il contenuto riservato mostrato a chi può leggerlo non si salva' );
+asem_ok( $nc_count( function () use ( $show, $p_yoga, $u_ord ) { $show( $p_yoga, $u_ord ); } ) > 0, 'cache: nemmeno il contenuto riservato a una attività' );
+asem_ok( $nc_count( function () use ( $p_mem ) { get_the_excerpt( $p_mem ); } ) > 0 && 0 === $nc_count( function () use ( $p_pub ) { get_the_excerpt( $p_pub ); } ), 'cache: il riassunto di un contenuto riservato non si salva, quello pubblico sì' );
+wp_set_current_user( 0 );
+asem_ok( $nc_count( function () { do_shortcode( '[associazionesemplice_riservato accesso="soci"]x[/associazionesemplice_riservato]' ); } ) > 0, 'cache: una parte riservata di pagina non si salva' );
+$nc_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Cache', 'last_name' => 'Prova' ) );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $nc_p, 'login_email' => 'cache.prova@example.org', 'pass_hash' => MemberPassword::make( 'una password lunga' ), 'created_at' => gmdate( 'Y-m-d H:i:s' ) ) );
+$_COOKIE[ MemberSession::COOKIE ] = SessionToken::generate(); // cookie ben formato ma di nessuna sessione
+$ms_fake->setValue( null, null );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: un cookie senza sessione dietro non toglie la pagina dalla cache' );
+MemberSession::start( $nc_p );
+asem_ok( $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ) > 0, 'cache: con una sessione socio valida la pagina, anche pubblica, non si salva' );
+MemberSession::destroy_all( $nc_p );
+$ms_fake->setValue( null, null );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: chiusa la sessione la pagina pubblica torna salvabile' );
+remove_action( 'litespeed_control_set_nocache', $nc_cb );
+MemberSession::forget_person( $nc_p );
+unset( $_COOKIE[ MemberSession::COOKIE ] );
+$ms_fake->setValue( null, null );
+wp_reset_query();
+
 // ---------- Accesso proprio: link, codice e password ----------
 use AssociazioneSemplice\MemberLogin;
 $ml_mail = array();
@@ -10507,7 +10590,18 @@ $v4_july = function () {
 	return 7;
 };
 add_filter( 'asem_fiscal_start_month', $v4_july );
+$v4_lq = array();
+$v4_lf = function ( $q ) use ( &$v4_lq ) {
+	if ( false !== strpos( (string) $q, '_LOCK(' ) ) {
+		$v4_lq[] = (string) $q;
+	}
+	return $q;
+};
+add_filter( 'query', $v4_lf );
 $v4_fy = \AssociazioneSemplice\Receipts::number_for( 'tx990000001', ( $v4_z + 1 ) . '-02-01' );
+remove_filter( 'query', $v4_lf );
+$v4_ln = \AssociazioneSemplice\Db::lock_name( 'asem_receipt_number' );
+asem_ok( 2 === count( $v4_lq ) && false !== strpos( $v4_lq[0], "GET_LOCK('" . $v4_ln . "'" ) && false !== strpos( $v4_lq[1], "RELEASE_LOCK('" . $v4_ln . "')" ) && $v4_ln !== 'asem_receipt_number' && strlen( $v4_ln ) <= 64, 'ricevute: il numero si assegna con il blocco dal nome unico per sito, preso e rilasciato con lo stesso nome' );
 $v4_mf = $v4_mk( 'board', ( $v4_z + 1 ) . '-02-10', 'Verbale fiscale' );
 asem_ok( $v4_z === $v4_fy['year'] && 4 === $v4_fy['number'], 'ricevute: con esercizio da luglio, febbraio dell\'anno dopo appartiene all\'esercizio che è iniziato a luglio' );
 asem_ok( '2/' . $v4_z === $v4_lbl( $v4_mf ), 'verbali: nuovi verbali seguono anche loro l\'anno fiscale' );
@@ -10783,6 +10877,65 @@ $wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET pdf_path = NULL, pdf_sha25
 asem_ok( has_action( 'asem_year_closed', array( \AssociazioneSemplice\ReceiptFiles::class, 'on_year_closed' ) ) && 1 <= \AssociazioneSemplice\ReceiptFiles::pending_count( $pf_fy ), 'ricevute PDF: alla chiusura dell\'anno si fissano i PDF mancanti (azione agganciata)' );
 do_action( 'asem_year_closed', $pf_fy );
 asem_ok( 0 === \AssociazioneSemplice\ReceiptFiles::pending_count( $pf_fy ), 'ricevute PDF: la chiusura fissa i PDF ancora mancanti dell\'anno' );
+// primo lotto dopo l'aggiornamento: solo programmato (mai dentro la richiesta), la presa del lavoro è una sola, con la chiave chiusa non si disegna nulla
+$bf_RF    = \AssociazioneSemplice\ReceiptFiles::class;
+$bf_id    = (int) $pf_old[5400]['id'];
+$bf_drop  = function () use ( $wpdb, $bf_id ): void { // una ricevuta con i dati ma senza PDF fissato
+	$wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET pdf_path = NULL, pdf_sha256 = NULL, pdf_at = NULL, pdf_enc_ver = NULL WHERE id = ' . $bf_id );
+};
+$bf_fixed = function () use ( $wpdb ): int {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'receipt.pdfs_fixed'" );
+};
+$bf_flush = function () use ( $bf_RF ): void {
+	wp_cache_delete( $bf_RF::FLAG, 'options' );
+	wp_cache_delete( 'notoptions', 'options' );
+	wp_cache_delete( 'alloptions', 'options' );
+};
+$bf_raw   = function ( ?string $v ) use ( $wpdb, $bf_RF, $bf_flush ): void { // come scriverebbe un'altra richiesta: nel database, la cache di questa non lo sa
+	if ( null === $v ) {
+		$wpdb->delete( $wpdb->options, array( 'option_name' => $bf_RF::FLAG ) );
+	} else {
+		$wpdb->replace( $wpdb->options, array( 'option_name' => $bf_RF::FLAG, 'option_value' => $v, 'autoload' => 'yes' ) );
+	}
+};
+$bf_clean = function () use ( $bf_raw, $bf_flush, $bf_RF ): void {
+	wp_unschedule_hook( $bf_RF::CRON );
+	$bf_raw( null );
+	$bf_flush();
+};
+$bf_drop();
+$bf_clean();
+$bf_p0 = $bf_RF::pending_count( null );
+$bf_RF::maybe_backfill();
+$bf_al = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT autoload FROM ' . $wpdb->options . ' WHERE option_name = %s', $bf_RF::FLAG ) );
+asem_ok( $bf_p0 >= 1 && $bf_p0 === $bf_RF::pending_count( null ) && 'started' === get_option( $bf_RF::FLAG ) && false !== wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) ), 'ricevute PDF: dopo l\'aggiornamento il primo lotto è solo programmato, non gira dentro la richiesta di chi capita' );
+asem_ok( in_array( $bf_al, array( 'yes', 'on', 'auto', 'auto-on' ), true ), 'ricevute PDF: l\'opzione del lavoro si legge insieme alle altre, senza una domanda in più al database a ogni richiesta' );
+$bf_clean();
+get_option( $bf_RF::FLAG ); // questa richiesta legge «lavoro non ancora preso»…
+$bf_raw( 'started' );       // …ma un'altra richiesta l'ha appena preso
+$bf_RF::maybe_backfill();
+asem_ok( $bf_p0 === $bf_RF::pending_count( null ) && false === wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) ), 'ricevute PDF: due richieste insieme non rifanno lo stesso lavoro, lo prende una sola' );
+$bf_clean();
+$bf_raw( 'started' );
+$bf_flush();
+$bf_salt = function ( $s, $scheme ) {
+	return 'auth' === $scheme ? 'altri-codici-' . $s : $s;
+};
+\AssociazioneSemplice\FileKey::$auto_reopen = false;
+add_filter( 'salt', $bf_salt, 10, 2 );
+\AssociazioneSemplice\FileKey::reset();
+$bf_a0 = $bf_fixed();
+$bf_RF::maybe_backfill();
+$bf_sc = wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) );
+$bf_RF::cron_batch( 0, 0 );
+asem_ok( 'mismatch' === \AssociazioneSemplice\FileKey::state() && false === $bf_sc && $bf_a0 === $bf_fixed() && $bf_p0 === $bf_RF::pending_count( null ), 'ricevute PDF: con la chiave che non si apre non si programma né si disegna nessun lotto' );
+remove_filter( 'salt', $bf_salt, 10 );
+\AssociazioneSemplice\FileKey::$auto_reopen = true;
+\AssociazioneSemplice\FileKey::reset();
+$bf_clean();
+update_option( $bf_RF::FLAG, 'done', true );
+$bf_RF::complete( $pf_fy, 0, 500 );
+asem_ok( 'ok' === \AssociazioneSemplice\FileKey::state() && 0 === $bf_RF::pending_count( $pf_fy ), 'ricevute PDF: aperta la chiave il lavoro riprende e i PDF mancanti si fissano' );
 // verifica e archivio ZIP dell'anno
 $pf_v   = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 $pf_num = (int) \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['number'];

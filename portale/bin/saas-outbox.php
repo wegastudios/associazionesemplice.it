@@ -7,7 +7,7 @@ if ( 'cli' !== PHP_SAPI ) {
 require __DIR__ . '/../src/bootstrap.php';
 Portale\Config::load( require __DIR__ . '/../config.php' );
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
-$db->migrate();
+$db->migrateOnStart();
 list( $sent, $left ) = Portale\Outbox::run( $db );
 if ( $sent || $left ) {
 	echo date( 'c' ), ' abbonamenti inviati al SaaS: ', $sent, ', da ritentare: ', $left, "\n";

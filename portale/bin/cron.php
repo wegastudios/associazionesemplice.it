@@ -7,7 +7,7 @@ if ( 'cli' !== PHP_SAPI ) {
 require __DIR__ . '/../src/bootstrap.php';
 Portale\Config::load( require __DIR__ . '/../config.php' );
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
-$db->migrate();
+$db->migrateOnStart();
 Portale\Settings::load( $db );
 $billing = new Portale\Billing( $db, new Portale\WegaClient( (string) Portale\Config::get( 'wega.base_url' ), (string) Portale\Config::get( 'wega.token' ) ) );
 // Ogni lavoro è a sé: se uno fallisce l'errore finisce nel registro e gli altri partono lo stesso (prima un errore fermava tutto lo script).

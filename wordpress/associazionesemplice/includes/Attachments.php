@@ -31,8 +31,13 @@ final class Attachments {
 		return self::ensure_dir();
 	}
 
-	private static function ensure_dir(): string {
-		$dir = self::dir();
+	/** Come prepare_dir(), ma per una cartella qualunque (la nuova cartella riservata, prima che entri in uso). */
+	public static function prepare_dir_at( string $dir ): string {
+		return self::ensure_dir( $dir );
+	}
+
+	private static function ensure_dir( string $dir = '' ): string {
+		$dir = '' !== $dir ? $dir : self::dir();
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
 			throw new \InvalidArgumentException( 'Impossibile creare la cartella per gli allegati: controlla i permessi di wp-content/uploads.' );
 		}
@@ -40,7 +45,7 @@ final class Attachments {
 		if ( ! file_exists( $dir . '/.htaccess' ) && false === @file_put_contents( $dir . '/.htaccess', "Options -Indexes\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n" ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 			error_log( 'Associazione Semplice: impossibile creare .htaccess nella cartella privata degli allegati (permessi).' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
-		PrivateFolder::protect( $dir ); // index.php vuoto: niente elenco dei file (anche nelle sottocartelle, che lo ricevono quando nascono)
+		PrivateFolder::protect( $dir, $dir ); // index.php vuoto: niente elenco dei file (anche nelle sottocartelle, che lo ricevono quando nascono)
 		return $dir;
 	}
 
