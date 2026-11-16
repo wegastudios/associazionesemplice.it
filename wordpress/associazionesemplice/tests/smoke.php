@@ -6967,6 +6967,11 @@ asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { 
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '17:00', 2 ); } ), 'risorse: nemmeno con una prenotazione di 2 fasce che la sfiora' );
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '19:00', 1 ) > 0, 'risorse: la fascia subito dopo è libera' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } ), 'risorse: il limite di prenotazioni per socio vale per i soci' );
+// Il massimo per persona si conta sotto lo stesso blocco della prenotazione: con il blocco occupato il conteggio non è nemmeno raggiunto
+Db::$lock_fake = '0';
+$rs_lk = asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } );
+Db::$lock_fake = 'x';
+asem_ok( null !== $rs_lk && false !== strpos( $rs_lk, 'Un\'altra operazione è in corso' ) && false === strpos( $rs_lk, 'Hai già' ), 'risorse: il massimo per persona si controlla dentro il blocco della risorsa (con il blocco occupato la richiesta è rifiutata prima del conteggio)' );
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1, array(), true ) > 0, 'risorse: la segreteria può superare il limite' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_gst, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_gst, $rs_day, '10:00', 1, array(), true ); } ), 'risorse: un non socio non può avere una risorsa, nemmeno dalla segreteria' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '10:00', 1, array( 'A', 'B' ), true ); } ), 'risorse: gli ospiti oltre il massimo sono rifiutati' );
