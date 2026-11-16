@@ -10,7 +10,7 @@
 # controllo di salute, ritorno automatico alla versione precedente se il controllo fallisce.
 set -euo pipefail
 PACKAGE="${1:?pacchetto}"; EXPECTED="${2:?sha256}"
-BASE="${SAAS_BASE:-$HOME/saas}"
+BASE="${SAAS_BASE:?SAAS_BASE obbligatoria: indica la cartella da rilasciare (~/saas o ~/saas-demo)}"
 PHP="${SAAS_PHP:-/usr/local/bin/php}"   # da cron e da SSH: php da solo è la versione CGI
 KEEP=5
 
