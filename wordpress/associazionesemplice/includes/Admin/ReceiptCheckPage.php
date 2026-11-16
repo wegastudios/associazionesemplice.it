@@ -199,6 +199,9 @@ final class ReceiptCheckPage {
 
 	/** Azione «Rifai dai dati salvati» di una ricevuta con il file mancante o alterato. */
 	public static function regenerate( array $p ): array {
+		if ( \AssociazioneSemplice\PrivateFolder::move_incomplete() ) { // file da spostare in un'altra cartella: i PDF non si rifanno finché non sono stati spostati tutti
+			throw new \InvalidArgumentException( Texts::t( 'Ci sono ancora file da spostare nella cartella indicata in wp-config.php: rifai le ricevute quando lo spostamento è finito.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		Receipts::regenerate_pdf( (string) ( $p['key'] ?? '' ), (string) ( $p['kind'] ?? '' ) );
 		return array( Ui::url( 'asem-receipt-check', array( 'year' => (int) ( $p['year'] ?? 0 ) ) ), Texts::t( 'PDF rifatto dai dati salvati all\'emissione. L\'operazione è scritta nel registro azioni.' ) );
 	}

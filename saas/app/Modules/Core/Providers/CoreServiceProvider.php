@@ -10,6 +10,7 @@ use App\Modules\Core\Console\DemoResetCommand;
 use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
+use App\Modules\Core\Console\PurgeTmpCommand;
 use App\Modules\Core\Console\SelfTestPurgeCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
@@ -77,7 +78,7 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobFailed::class, $reset);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class]);
+            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class]);
 
             // Code su Postgres: un lavoratore a giro di cron, che si ferma quando la coda è vuota o dopo 50 secondi
             // (sul server non ci sono processi sempre attivi).
@@ -85,6 +86,8 @@ final class CoreServiceProvider extends ServiceProvider
                 $schedule->command('queue:work --stop-when-empty --max-time=50 --tries=3')
                     ->everyMinute()->withoutOverlapping(5)->runInBackground();
                 $schedule->command('queue:prune-failed --hours=720')->dailyAt('05:47');
+                // File di lavoro rimasti da richieste interrotte (copie, archivi, ricevute): via quelli di più di un'ora.
+                $schedule->command('saas:tmp:purge --minutes=60')->everyFifteenMinutes()->withoutOverlapping(10);
                 if (config('saas.demo.enabled') && ! app()->environment('production')) {
                     $schedule->command('saas:demo:reset')->dailyAt('03:30')->withoutOverlapping(30);
                 }

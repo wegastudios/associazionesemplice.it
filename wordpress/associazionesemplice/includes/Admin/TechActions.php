@@ -78,15 +78,30 @@ final class TechActions {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Nessuna nuova cartella in uso: indica prima il percorso in wp-config.php.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$r = \AssociazioneSemplice\PrivateFolder::move_batch();
-		Audit::log( 'private_folder.moved', 'folder', 0, array( 'moved' => $r['moved'], 'failed' => $r['failed'], 'conflict' => $r['conflict'] ) );
+		if ( $r['busy'] ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Un altro spostamento è già in corso: attendi qualche secondo e riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		Audit::log( 'private_folder.moved', 'folder', 0, array( 'moved' => $r['moved'], 'copied' => $r['copied'], 'failed' => $r['failed'], 'conflict' => $r['conflict'] ) );
+		if ( $r['same_dir'] ) {
+			return array( $back, \AssociazioneSemplice\Texts::t( 'La cartella indicata in wp-config.php è la stessa cartella predefinita, vista da un altro percorso: non è stato spostato né cancellato nulla. Indica una cartella diversa.' ) );
+		}
 		$msg = \AssociazioneSemplice\Texts::t( 'Spostati {n} file.', array( 'n' => $r['moved'] ) );
+		if ( $r['copied'] ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Copiati {n} file nella nuova cartella: la vecchia resta in uso finché non sono stati copiati tutti.', array( 'n' => $r['copied'] ) );
+		}
+		if ( $r['switched'] ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Tutti i file sono stati copiati: da ora è in uso la nuova cartella.' );
+		}
+		if ( $r['same'] ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} file sono lo stesso file nella nuova cartella (una sottocartella collegata): non sono stati cancellati.', array( 'n' => $r['same'] ) );
+		}
 		if ( $r['failed'] ) {
 			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} non si sono potuti spostare (controlla i permessi): sono rimasti dove stavano.', array( 'n' => $r['failed'] ) );
 		}
 		if ( $r['conflict'] ) {
 			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} esistono già nella nuova cartella con un contenuto diverso: sono rimasti dove stavano e vanno controllati a mano.', array( 'n' => $r['conflict'] ) );
 		}
-		if ( $r['left'] > $r['conflict'] + $r['failed'] ) {
+		if ( $r['left'] > $r['conflict'] + $r['failed'] + $r['same'] ) {
 			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Ne restano ancora {n}: premi di nuovo.', array( 'n' => $r['left'] ) );
 		}
 		return array( $back, $msg );
@@ -94,6 +109,9 @@ final class TechActions {
 
 	/** Frase con l'esito di un lotto di cifratura dei file già caricati. */
 	private static function enc_message( array $r ): string {
+		if ( ! empty( $r['moving'] ) ) {
+			return \AssociazioneSemplice\Texts::t( 'Ci sono ancora file da spostare nella cartella indicata in wp-config.php: la cifratura riparte da sola quando lo spostamento è finito.' );
+		}
 		if ( ! empty( $r['busy'] ) ) {
 			return \AssociazioneSemplice\Texts::t( 'Un altro lotto è già in corso: attendi qualche secondo e riprova.' );
 		}
@@ -150,14 +168,14 @@ final class TechActions {
 	public static function enc_setrecovery( array $p ): array {
 		\AssociazioneSemplice\FileKey::set_custom_phrase( (string) ( $p['rphrase'] ?? '' ), (string) ( $p['rphrase2'] ?? '' ) );
 		Audit::log( 'file_crypt.phrase_changed', 'folder', 0 );
-		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Frase cambiata. Conservala fuori dal sito. Fai subito una copia nuova: quelle fatte prima si aprono con la frase di allora.' ) );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Frase cambiata. Conservala fuori dal sito.' ) . ' ' . \AssociazioneSemplice\Admin\FileCryptPanel::phrase_changed_text() );
 	}
 
 	/** «Torna alla frase automatica». */
 	public static function enc_autophrase( array $p ): array {
 		\AssociazioneSemplice\FileKey::use_auto_phrase();
 		Audit::log( 'file_crypt.phrase_auto', 'folder', 0 );
-		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Tornata alla frase automatica. Fai subito una copia nuova: quelle fatte prima si aprono con la frase di allora.' ) );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Tornata alla frase automatica.' ) . ' ' . \AssociazioneSemplice\Admin\FileCryptPanel::phrase_changed_text() );
 	}
 
 	/** Chiave che non si apre più: con la frase di recupero si riapre, senza ricifrare i file. */

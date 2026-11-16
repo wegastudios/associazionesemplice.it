@@ -16,7 +16,7 @@ if ( '' === $keep || false === strpos( $keep, '@' ) ) {
 	exit( 2 );
 }
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
-$db->migrate();
+$db->migrateOnStart();
 if ( Portale\Plugin\Staff::ADMIN !== Portale\Plugin\Staff::role( $db, $keep ) ) {
 	fwrite( STDERR, "L'indirizzo indicato non è oggi un amministratore della gestione del plugin: non tolgo nessuno per non restare senza accesso.\n" );
 	exit( 1 );

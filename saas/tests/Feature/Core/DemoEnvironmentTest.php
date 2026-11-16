@@ -25,7 +25,7 @@ it('non parte mai in produzione, nemmeno con il comando acceso', function (): vo
 });
 
 it('crea l\'associazione di fantasia, gli utenti pubblici per ruolo e i soci finti', function (): void {
-    config(['saas.demo.enabled' => true]);
+    config(['saas.demo.enabled' => true, 'saas.demo.people' => DemoMembers::COUNT]);
 
     $org = app(DemoEnvironment::class)->seed();
 
@@ -50,14 +50,33 @@ it('crea l\'associazione di fantasia, gli utenti pubblici per ruolo e i soci fin
     expect($people)->toBe(DemoMembers::COUNT + DemoMembers::ENTITIES)
         ->and($foreign)->toBe(0)
         ->and($memberships)->toBeGreaterThan(10);
+
+    // I dati di contorno: partita IVA d'esempio, attività e risorse con IVA, anni chiusi e archiviato, un anno in disavanzo, cassa mai negativa.
+    app(OrgContext::class)->run($org->id, function (): void {
+        $year = App\Modules\Core\Contracts\DemoScale::currentYear();
+        $status = DB::table('app.fiscal_years')->pluck('status', 'year')->all();
+        $result = static fn (int $y): int => (int) DB::table('app.transactions')->where('fiscal_year', $y)->whereNull('voided_at')->where('type', 'income')->sum('amount_cents')
+            - (int) DB::table('app.transactions')->where('fiscal_year', $y)->whereNull('voided_at')->where('type', 'expense')->sum('amount_cents');
+
+        expect(app(App\Modules\Core\Contracts\OrgFiscal::class)->hasVat())->toBeTrue()
+            ->and($status[$year - 3])->toBe('closed')->and($status[$year - 2])->toBe('closed')->and($status[$year - 1])->toBe('open')
+            ->and(DB::table('app.year_archives')->count())->toBe(1)
+            ->and($result($year - 3))->toBeGreaterThan(0)->and($result($year - 2))->toBeGreaterThan(0)
+            ->and($result($year - 1))->toBeLessThan(-250000)->and($result($year - 1))->toBeGreaterThan(-350000)
+            ->and(min(app(App\Modules\Contabilita\Contracts\Ledger::class)->balances()))->toBeGreaterThanOrEqual(0)
+            ->and(DB::table('app.activities')->whereNotNull('vat_rate')->count())->toBeGreaterThan(3)
+            ->and(DB::table('app.resources')->whereNotNull('vat_rate')->count())->toBe(7)
+            ->and(DB::table('app.reservations')->where('kind', 'booking')->count())->toBeGreaterThan(20)
+            ->and(DB::table('app.receipts')->count())->toBeGreaterThan(50);
+    });
 });
 
 it('mostra il banner della demo solo dove è accesa', function (): void {
     config(['saas.demo.enabled' => true]);
-    $this->get('/accesso')->assertSee('i dati sono inventati', false);
+    $this->get('/accesso')->assertSee('demo con dati inventati', false);
 
     config(['saas.demo.enabled' => false]);
-    $this->get('/accesso')->assertDontSee('i dati sono inventati', false);
+    $this->get('/accesso')->assertDontSee('demo con dati inventati', false);
 });
 
 it('mostra gli accessi di prova con la password solo sulla demo', function (): void {

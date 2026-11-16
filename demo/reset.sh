@@ -37,6 +37,11 @@ if [ "$(date +%H)" != "04" ] && [ "${1:-}" != "--forza" ]; then
 	echo "Rifiuto: il reset cancella tutti i dati della demo e parte da solo alle 4. Per forzarlo (solo su richiesta esplicita dell'utente): bash reset.sh --forza" >&2
 	exit 3
 fi
+# Un solo azzeramento (o aggiornamento della demo) alla volta, da qualunque parte parta (cron delle 4, tasto del portale, a mano): chi arriva secondo esce senza toccare niente.
+# Il blocco sta su un file e lo tiene il processo: se lo script muore o viene fermato, il blocco cade da solo.
+exec 9>"$HOME/demo-provision/.demo.lock"
+flock -n 9 || { echo "Un altro azzeramento o aggiornamento della demo è in corso: esco senza fare niente." >&2; exit 5; }
+export ASEM_DEMO_LOCKED=1 # update.sh, lanciato da qui sotto, non deve aspettare un blocco che ha già questo script
 cd "$DEMO"
 wp db reset --yes >/dev/null
 svuota_file # prima dei dati di prova: le locandine create da extra-data.php devono restare
@@ -50,6 +55,7 @@ bash "$HOME/demo-provision/update.sh"
 wp plugin activate associazionesemplice associazionesemplice-pro
 wp eval-file "$HOME/demo-provision/provision.php" --user=setup_tmp # come amministratore d'installazione: il plugin lascia collegare a un socio un utente con ruolo solo a un amministratore
 wp eval-file "$HOME/demo-provision/extra-data.php" --user=setup_tmp # dati di prova in più (soci in vari stati, certificati, prestiti, domande, assemblea): servono a valutare l'aspetto su ogni area
+wp eval-file "$HOME/demo-provision/molti-dati.php" --user=setup_tmp # molti dati inventati (soci, prima nota su due anni fiscali, corsi, eventi, risorse): esempio per chi valuta e prova di carico
 # Le pagine create dall'utente d'installazione passano all'amministratore del plugin prima di toglierlo (senza questo si cancellerebbero con lui).
 wp user delete setup_tmp --yes --reassign="$(wp user get amministratore --field=ID)" >/dev/null
 wp cache flush >/dev/null 2>&1 || true

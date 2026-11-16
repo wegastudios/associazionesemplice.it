@@ -45,7 +45,7 @@ final class ReceiptFiles {
 		add_action( self::CRON, array( __CLASS__, 'cron_batch' ), 10, 2 );
 		add_filter( 'asem_file_sources', array( __CLASS__, 'file_sources' ) ); // i PDF si cifrano come gli altri file riservati
 		add_filter( 'asem_backup_documents', array( __CLASS__, 'backup_documents' ) );
-		add_filter( 'asem_backup_restore_documents', array( __CLASS__, 'restore_documents' ), 10, 3 );
+		add_filter( 'asem_backup_restore_documents', array( __CLASS__, 'restore_documents' ), 10, 4 );
 		add_action( 'asem_reset_private_files', array( __CLASS__, 'delete_all' ) );
 	}
 
@@ -447,24 +447,50 @@ final class ReceiptFiles {
 	 * Il primo lotto parte all'aggiornamento, gli altri con un lavoro programmato (anno 0 = tutti gli anni) fino a esaurimento.
 	 */
 	public static function maybe_backfill(): void {
-		$flag = get_option( self::FLAG );
+		$flag = get_option( self::FLAG ); // l'opzione si carica con le altre: nessuna domanda in più al database a ogni richiesta
 		if ( 'done' === $flag || ! Edition::has( 'receipts' ) ) {
 			return;
 		}
 		try {
 			if ( false === $flag ) {
 				if ( 0 === self::pending_count( null ) ) {
-					update_option( self::FLAG, 'done', false );
+					update_option( self::FLAG, 'done', true );
 					return;
 				}
-				update_option( self::FLAG, 'started', false );
-				self::run_batch( 0, 0 );
-			} elseif ( ! self::has_scheduled_batch() ) {
+				if ( ! self::claim_backfill() ) {
+					return; // un'altra richiesta ha già preso il lavoro
+				}
+				// Il primo lotto non gira dentro questa richiesta (di un visitatore o di chi ha appena aggiornato): lo fa il lavoro programmato.
+				if ( self::key_ready() && ! self::has_scheduled_batch() ) {
+					wp_schedule_single_event( time() + 20, self::CRON, array( 0, 0 ) );
+				}
+			} elseif ( ! self::has_scheduled_batch() && self::key_ready() ) {
 				wp_schedule_single_event( time() + 20, self::CRON, array( 0, 0 ) );
 			}
 		} catch ( \Throwable $e ) {
 			error_log( 'Associazione Semplice: PDF delle ricevute non fissati all\'aggiornamento: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
+	}
+
+	/**
+	 * Prende il lavoro dei PDF in modo atomico: lo scrive «started» solo se l'opzione non esiste ancora. Vero solo per la richiesta che l'ha scritta.
+	 * (add_option() non basta: se questa richiesta ha già letto l'opzione come assente, WordPress scrive comunque, anche sopra quella di un'altra.)
+	 */
+	private static function claim_backfill(): bool {
+		$db = self::db();
+		$n  = $db->query( $db->prepare( 'INSERT IGNORE INTO ' . $db->options . ' ( option_name, option_value, autoload ) VALUES ( %s, %s, %s )', self::FLAG, 'started', 'yes' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery,PluginCheck.Security.DirectDB.UnescapedDBParameter -- tabella delle opzioni di WordPress: serve una scrittura che non sovrascrive
+		wp_cache_delete( self::FLAG, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		return 1 === (int) $n;
+	}
+
+	/** La chiave dei file si apre (o non c'è ancora, e si crea al primo PDF), oppure manca sodium e i PDF si fissano in chiaro come sempre. */
+	private static function key_ready(): bool {
+		if ( ! FileCrypt::available() ) {
+			return true;
+		}
+		return in_array( FileKey::state(), array( 'ok', 'none' ), true );
 	}
 
 	/** C'è già un lotto in coda (con qualunque cursore)? */
@@ -491,12 +517,19 @@ final class ReceiptFiles {
 	}
 
 	private static function run_batch( int $year, int $after ): void {
+		if ( ! self::key_ready() ) {
+			// Con la chiave chiusa ogni lotto disegnerebbe i PDF per poi scartarli: si aspetta, e si riprova più tardi.
+			if ( ! wp_next_scheduled( self::CRON, array( $year, $after ) ) ) {
+				wp_schedule_single_event( time() + HOUR_IN_SECONDS, self::CRON, array( $year, $after ) );
+			}
+			return;
+		}
 		$r = self::complete( $year > 0 ? $year : null, $after );
 		if ( $r['done'] || $r['failed'] ) {
 			Audit::log( 'receipt.pdfs_fixed', 'year', $year, array( 'done' => $r['done'], 'failed' => $r['failed'] ) );
 		}
 		if ( 0 === $year && ! $r['more'] ) {
-			update_option( self::FLAG, 'done', false );
+			update_option( self::FLAG, 'done', true );
 		}
 		if ( $r['more'] && ! wp_next_scheduled( self::CRON, array( $year, $r['last_id'] ) ) ) {
 			wp_schedule_single_event( time() + 20, self::CRON, array( $year, $r['last_id'] ) );
@@ -565,13 +598,29 @@ final class ReceiptFiles {
 		}
 		$db   = self::db();
 		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND ( pdf_path IS NOT NULL OR void_pdf_path IS NOT NULL ) ORDER BY number', $year ), ARRAY_A ) ?: array();
-		$path = wp_tempnam( 'asem-ricevute' );
-		$zip  = new \ZipArchive();
-		if ( true !== $zip->open( $path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
-			throw new \RuntimeException( Texts::t( 'Impossibile creare il file ZIP.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		if ( function_exists( 'set_time_limit' ) ) {
+			@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- con migliaia di PDF da decifrare il tempo di serie non basta
+		}
+		$path = PrivateFolder::temp_file( 'ricevute' ); // lo ZIP e i PDF decifrati stanno nella cartella riservata (già protetta), non in quella temporanea del server
+		if ( '' === $path ) {
+			throw new \RuntimeException( Texts::t( 'Impossibile creare il file ZIP: la cartella riservata non è scrivibile.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$n    = 0;
-		$temp = array(); // PDF decifrati per l'archivio: file temporanei, cancellati appena lo ZIP è scritto
+		$temp = array(); // PDF decifrati per l'archivio: file temporanei, cancellati appena lo ZIP è scritto (e comunque a fine richiesta, anche se questa si interrompe)
+		register_shutdown_function(
+			function () use ( &$temp ) {
+				foreach ( $temp as $t ) {
+					if ( is_file( $t ) ) {
+						wp_delete_file( $t );
+					}
+				}
+			}
+		);
+		$zip = new \ZipArchive();
+		if ( true !== $zip->open( $path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
+			wp_delete_file( $path );
+			throw new \RuntimeException( Texts::t( 'Impossibile creare il file ZIP.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		foreach ( $rows as $r ) {
 			foreach ( self::kinds() as $kind ) {
 				if ( 'ok' !== self::state( $r, $kind ) ) {
@@ -586,12 +635,15 @@ final class ReceiptFiles {
 					} catch ( \InvalidArgumentException $e ) {
 						continue;
 					}
-					$tmp = wp_tempnam( 'asem-ricevuta' );
-					if ( '' === (string) $tmp || false === file_put_contents( $tmp, $plain ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- file temporaneo dello scarico, cancellato appena lo ZIP è scritto
+					$tmp = PrivateFolder::temp_file( 'ricevuta' );
+					if ( '' === $tmp ) {
 						continue;
 					}
-					$temp[] = $tmp;
-					$src    = $tmp;
+					$temp[] = $tmp; // registrato prima di scriverci: se la richiesta si interrompe, il PDF in chiaro lo toglie la chiusura
+					if ( false === file_put_contents( $tmp, $plain ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- file temporaneo dello scarico, cancellato appena lo ZIP è scritto
+						continue;
+					}
+					$src = $tmp;
 				}
 				$zip->addFile( $src, $name );
 				$n++;
@@ -603,6 +655,7 @@ final class ReceiptFiles {
 			wp_delete_file( $t );
 		}
 		if ( ! $ok || ! is_file( $path ) ) {
+			wp_delete_file( $path );
 			throw new \RuntimeException( Texts::t( 'Creazione del file ZIP non riuscita.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return array( 'path' => $path, 'count' => $n );
@@ -642,19 +695,26 @@ final class ReceiptFiles {
 	 * Filtro `asem_backup_restore_documents`: dopo il ripristino delle tabelle, rimette sul disco i PDF fissati. I percorsi si leggono dal DATABASE
 	 * appena ripristinato (mai dai nomi dentro lo ZIP) e un file si accetta solo se la sua impronta coincide con quella registrata.
 	 *
-	 * @param array $res counters: restored, present, missing, bad
+	 * @param array      $res    counters: restored, present, missing, bad, closed (rimessi ma chiusi: la chiave per aprirli non c'è ancora)
+	 * @param mixed      $zip    la copia aperta
+	 * @param array      $manifest il manifest della copia
+	 * @param array|null $index  l'indice dei PDF già letto e controllato dal ripristino prima di toccare i dati (se manca si legge dallo ZIP)
 	 * @return array
 	 */
-	public static function restore_documents( $res, $zip, $manifest = array() ): array {
-		$res = array_merge( array( 'restored' => 0, 'present' => 0, 'missing' => 0, 'bad' => 0 ), (array) $res );
+	public static function restore_documents( $res, $zip, $manifest = array(), $index = null ): array {
+		$res = array_merge( array( 'restored' => 0, 'present' => 0, 'missing' => 0, 'bad' => 0, 'closed' => 0 ), (array) $res );
 		if ( ! $zip instanceof \ZipArchive ) {
 			return $res;
 		}
 		$db    = self::db();
 		$last  = 0;
 		$files = array(); // nome nello ZIP => impronta del file com'è nello ZIP (cifrato), dall'indice
-		$raw   = $zip->getFromName( 'documenti/indice.json' );
-		$idx0  = $raw ? json_decode( $raw, true ) : null;
+		if ( is_array( $index ) ) {
+			$idx0 = $index;
+		} else {
+			$raw  = $zip->getFromName( 'documenti/indice.json' );
+			$idx0 = $raw ? json_decode( $raw, true ) : null;
+		}
 		foreach ( is_array( $idx0 ) && isset( $idx0['files'] ) && is_array( $idx0['files'] ) ? $idx0['files'] : array() as $f ) {
 			if ( is_array( $f ) && ! empty( $f['name'] ) && ! empty( $f['file_sha256'] ) ) {
 				$files[ (string) $f['name'] ] = strtolower( (string) $f['file_sha256'] );
@@ -717,7 +777,8 @@ final class ReceiptFiles {
 					}
 					$wrote = strlen( $bytes ) === fwrite( $h, $bytes ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- file privato
 					fclose( $h ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- file privato
-					$good = false;
+					$good   = false;
+					$closed = false;
 					if ( $wrote ) {
 						try {
 							if ( self::is_stored_encrypted( $tmp, $r[ self::enc_col( $kind ) ] ?? null ) ) {
@@ -727,7 +788,12 @@ final class ReceiptFiles {
 								$good = strlen( $bytes ) <= self::MAX_SIZE && hash_equals( (string) $r[ $c[1] ], hash( 'sha256', $bytes ) );
 							}
 						} catch ( FileCryptError $e ) {
-							$good = false;
+							// La chiave per aprirlo non c'è (copia fatta altrove e rimessa senza frase, o server senza sodium): se il file nello ZIP è quello
+							// dell'indice (stessa impronta del file com'è) si rimette chiuso; si aprirà quando la chiave sarà riaperta.
+							if ( in_array( $e->reason, array( FileCryptError::NO_KEY, FileCryptError::NO_SODIUM ), true ) && '' !== $want ) {
+								$good   = true;
+								$closed = true;
+							}
 						}
 					}
 					if ( ! $good ) {
@@ -743,6 +809,9 @@ final class ReceiptFiles {
 					}
 					if ( @rename( $tmp, $abs ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename -- sostituzione atomica sullo stesso disco
 						$res['restored']++;
+						if ( $closed ) {
+							$res['closed']++;
+						}
 					} else {
 						wp_delete_file( $tmp );
 						$res['bad']++;

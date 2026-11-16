@@ -737,7 +737,19 @@
 		if (bad) { e.preventDefault(); window.alert('Aggiungi almeno una voce e inserisci un importo valido per ognuna.'); return; }
 		if (D.accountTypes[$('#asem-account').value] === 'cash') {
 			var t = parseMoney($('#asem-tendered').value);
-			if (t != null && t < total()) { e.preventDefault(); window.alert('I contanti ricevuti non bastano.'); }
+			if (t != null && t < total()) { e.preventDefault(); window.alert('I contanti ricevuti non bastano.'); return; }
+		}
+		// Un solo invio: il secondo clic (o il doppio clic) non manda una seconda richiesta; il tasto si disattiva subito dopo.
+		if (form.dataset.asemSent) { e.preventDefault(); return; }
+		form.dataset.asemSent = '1';
+		window.setTimeout(function () {
+			Array.prototype.forEach.call(form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]'), function (b) { b.disabled = true; });
+		}, 0);
+	});
+	window.addEventListener('pageshow', function (ev) { // tornando indietro con il tasto del browser il modulo torna usabile
+		if (ev.persisted && form.dataset.asemSent) {
+			delete form.dataset.asemSent;
+			Array.prototype.forEach.call(form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]'), function (b) { b.disabled = false; });
 		}
 	});
 

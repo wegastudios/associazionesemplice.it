@@ -56,6 +56,8 @@ function asem_set_fiscal_month( int $m ): void {
 	\AssociazioneSemplice\FiscalYears::seed();
 }
 
+require_once __DIR__ . '/backup_helpers.php'; // aiuti per le prove della copia di sicurezza (copie rifirmate, «all'antica», altro sito)
+
 function asem_throws( callable $f ): ?string {
 	try {
 		$f();
@@ -5534,6 +5536,34 @@ asem_ok( $rc_ok && ! $rc_no && false !== strpos( $front_rc, 'Ricevuta PDF' ) && 
 $rm = array();
 \AssociazioneSemplice\Receipts::email( $rc_list[0]['key'] );
 asem_ok( 1 === count( $rm ) && in_array( 'rosa.ricevuta@example.com', (array) $rm[0]['to'], true ) && ! empty( $rm[0]['_exists'][0] ) && 0 === strpos( $rm[0]['_exists'][0], 'ricevuta-' ), 'ricevute: invio per email con il PDF allegato' );
+// l'allegato dell'email: nasce nella cartella riservata (non in quella temporanea del server) e non resta se l'invio lancia un errore
+$rc_att = (string) ( $rm[0]['attachments'][0] ?? '' );
+asem_ok( 0 === strpos( $rc_att, \AssociazioneSemplice\PrivateFolder::dir() . '/' ), 'ricevute: l\'allegato dell\'email nasce nella cartella riservata, non in quella temporanea del server' );
+$rc_sys_before = glob( trailingslashit( get_temp_dir() ) . 'asem-*' ) ?: array();
+$rc_boom       = function () {
+	throw new \RuntimeException( 'invio interrotto' );
+};
+add_filter( 'pre_wp_mail', $rc_boom, 1, 0 );
+$rc_caught = false;
+try {
+	\AssociazioneSemplice\Receipts::email( $rc_list[0]['key'] );
+} catch ( \RuntimeException $e ) {
+	$rc_caught = true;
+}
+remove_filter( 'pre_wp_mail', $rc_boom, 1 );
+$rc_priv_tmp = \AssociazioneSemplice\PrivateFolder::dir() . '/' . \AssociazioneSemplice\PrivateFolder::TEMP_DIR;
+asem_ok( $rc_caught && array() === array_diff( glob( trailingslashit( get_temp_dir() ) . 'asem-*' ) ?: array(), $rc_sys_before ) && array() === array_diff( is_dir( $rc_priv_tmp ) ? scandir( $rc_priv_tmp ) : array(), array( '.', '..', 'index.php' ) ), 'ricevute: se l\'invio dell\'email lancia un errore, il PDF in chiaro dell\'allegato non resta sul disco' );
+// se il PDF non si può scrivere l'email non parte e nel registro non compare «inviata»
+if ( is_dir( $rc_priv_tmp ) ) {
+	wp_delete_file( $rc_priv_tmp . '/index.php' );
+	rmdir( $rc_priv_tmp );
+}
+file_put_contents( $rc_priv_tmp, 'x' ); // un file al posto della cartella dei temporanei: la scrittura non può riuscire
+$rm            = array();
+$rc_sent_n     = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'receipt.emailed'" );
+$rc_nowrite    = asem_throws( function () use ( $rc_list ) { \AssociazioneSemplice\Receipts::email( $rc_list[0]['key'] ); } );
+wp_delete_file( $rc_priv_tmp );
+asem_ok( null !== $rc_nowrite && 0 === count( $rm ) && $rc_sent_n === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'receipt.emailed'" ), 'ricevute: se il PDF dell\'allegato non si può scrivere l\'email non parte e il registro non scrive «inviata»' );
 $wpdb->update( Db::t( 'transactions' ), array( 'voided_at' => Db::now(), 'void_reason' => 'prova' ), array( 'receipt_id' => $wpdb->get_var( 'SELECT receipt_id FROM ' . Db::t( 'transactions' ) . " WHERE person_id = $rc_p AND amount_cents = 2000" ) ) );
 $rc_void = \AssociazioneSemplice\Receipts::build( $don_key );
 asem_ok( true === $rc_void['voided'] && false !== strpos( $rc_void['pdf'], 'ANNULLATA' ) && null !== asem_throws( function () use ( $don_key ) { \AssociazioneSemplice\Receipts::email( $don_key ); } ), 'ricevute: un incasso annullato ha la ricevuta marcata ANNULLATA, che non si manda per email' );
@@ -7060,6 +7090,46 @@ $RS::cancel( $cr_b, true );
 asem_ok( $cr_b0 === $CR::balance( $cr_m ) && 0 === (int) $RS::reservation( $cr_b )['credits_paid'], 'crediti: annullando la prenotazione i crediti tornano al socio' );
 $cr_b2 = $RS::book_slot( $cr_res, $cr_m2, $cr_day, '12:00', 1 );
 asem_ok( null !== asem_throws( function () use ( $RS, $cr_b2, $cr_m2 ) { $RS::pay_with_credits( $cr_b2, $cr_m2 ); } ) && 0 === (int) $RS::reservation( $cr_b2 )['credits_paid'], 'crediti: senza crediti sufficienti la prenotazione non risulta pagata' );
+// annullo che arriva insieme a un altro: i crediti tornano una volta sola
+$cr_b3   = $RS::book_slot( $cr_res, $cr_m, $cr_day, '14:00', 1 );
+$cr_bal0 = $CR::balance( $cr_m );
+$RS::pay_with_credits( $cr_b3, $cr_m );
+$cr_stale = $RS::reservation( $cr_b3 ); // la riga come l'ha letta chi arriva secondo
+asem_ok( (int) $cr_stale['credits_paid'] > 0 && $CR::balance( $cr_m ) < $cr_bal0, 'crediti: la prenotazione di prova è pagata in crediti' );
+$cr_raced = false;
+$cr_race  = function ( $q ) use ( &$cr_raced, $RS, $cr_b3 ) {
+	if ( ! $cr_raced && 0 === stripos( ltrim( (string) $q ), 'UPDATE' ) && false !== strpos( $q, 'reservations' ) && false !== strpos( $q, "'cancelled'" ) ) {
+		$cr_raced = true;
+		$RS::cancel( $cr_b3, true ); // l'altra richiesta conclude l'annullo proprio prima della nostra scrittura
+	}
+	return $q;
+};
+add_filter( 'query', $cr_race );
+$cr_msg2 = asem_throws( function () use ( $RS, $cr_b3 ) { $RS::cancel( $cr_b3, true ); } );
+remove_filter( 'query', $cr_race );
+asem_ok( $cr_raced && null !== $cr_msg2, 'crediti: il secondo annullo della stessa prenotazione è rifiutato' );
+asem_ok( $cr_bal0 === $CR::balance( $cr_m ), 'crediti: con due annulli insieme i crediti tornano una volta sola' );
+asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'credit_entries' ) . " WHERE person_id = %d AND kind = 'refund' AND ref_type = 'reservation' AND ref_id = %d", $cr_m, $cr_b3 ) ), 'crediti: un solo movimento di rimborso per la prenotazione' );
+$cr_refund = new ReflectionMethod( $RS, 'refund_credits' );
+$cr_refund->setAccessible( true );
+$cr_refund->invoke( null, $cr_stale ); // una copia vecchia della riga non riaccredita di nuovo
+asem_ok( $cr_bal0 === $CR::balance( $cr_m ) && 0 === (int) $RS::reservation( $cr_b3 )['credits_paid'], 'crediti: nemmeno rieseguendo il rimborso con la riga letta prima' );
+// riaccredito che fallisce: la prenotazione resta prenotata, i crediti come prima, e si può riprovare
+$cr_b4   = $RS::book_slot( $cr_res, $cr_m, $cr_day, '16:00', 1 );
+$RS::pay_with_credits( $cr_b4, $cr_m );
+$cr_bal4 = $CR::balance( $cr_m ); // dopo la spesa
+$cr_paid4 = (int) $RS::reservation( $cr_b4 )['credits_paid'];
+$cr_fail = function ( $q ) {
+	return 0 === stripos( ltrim( (string) $q ), 'INSERT' ) && false !== strpos( $q, 'credit_entries' ) ? '' : $q; // la scrittura del rimborso non riesce
+};
+add_filter( 'query', $cr_fail );
+$cr_msg4 = asem_throws( function () use ( $RS, $cr_b4 ) { $RS::cancel( $cr_b4, true ); } );
+remove_filter( 'query', $cr_fail );
+$cr_row4 = $RS::reservation( $cr_b4 );
+asem_ok( null !== $cr_msg4, 'crediti: se il riaccredito non riesce l\'annullo è rifiutato' );
+asem_ok( 'booked' === $cr_row4['status'] && $cr_paid4 === (int) $cr_row4['credits_paid'] && $cr_bal4 === $CR::balance( $cr_m ), 'crediti: riaccredito fallito, la prenotazione resta prenotata e pagata in crediti' );
+$RS::cancel( $cr_b4, true );
+asem_ok( 'cancelled' === $RS::reservation( $cr_b4 )['status'] && $cr_bal4 + $cr_paid4 === $CR::balance( $cr_m ), 'crediti: dopo il fallimento un nuovo annullo funziona e i crediti tornano' );
 // addebito dal vivo con il QR
 $cr_ch = $CR::create_charge( $cr_m2, 5, 'Ingresso serata', null );
 asem_ok( 24 === strlen( $cr_ch['code'] ) && 'ok' === $CR::charge_status( $cr_ch['id'], 1 )['state'] && $CR::can_charge( 1 ), 'crediti: lo staff crea un addebito valido con un codice casuale' );
@@ -7677,6 +7747,8 @@ asem_ok( in_array( 'asem_people', $bk_tables, true ) && in_array( 'asem_transact
 Attachments::prepare_dir();
 $bk_file = Attachments::dir() . '/' . str_repeat( 'a', 32 );
 file_put_contents( $bk_file, 'contenuto allegato' );
+$wpdb->insert( Db::t( 'attachments' ), array( 'transaction_id' => 0, 'original_name' => 'prova-copia.txt', 'stored_name' => str_repeat( 'a', 32 ), 'mime' => 'text/plain', 'size_bytes' => 18, 'sha256' => hash( 'sha256', 'contenuto allegato' ), 'created_at' => Db::now() ) ); // l'allegato si rimette solo se una riga dei dati lo cita
+$bk_att_row = (int) $wpdb->insert_id;
 Settings::update( array( 'association_name' => 'Associazione di prova' ) );
 $bk_zip = \AssociazioneSemplice\Backup::export( true );
 $za     = new ZipArchive();
@@ -7690,7 +7762,16 @@ $has_att = false !== $za->locateName( 'allegati/' . str_repeat( 'a', 32 ) );
 $za->close();
 asem_ok( 'associazionesemplice' === $man['plugin'] && (int) $man['tables']['asem_people'] === $ppl && count( $p_lines ) === $ppl && $has_att && 'Associazione di prova' === $settings_json['settings']['association_name'] && ! isset( $settings_json['settings']['stripe_secret_key'] ) && \AssociazioneSemplice\Backup::last() > 0, 'copia: il file contiene tabelle, impostazioni (senza chiavi segrete), allegati e indice' );
 asem_ok( ! isset( $settings_json['settings']['license_key'] ) && ! isset( $settings_json['options']['asem_card_salt'] ) && ! isset( $settings_json['options']['asem_ical_salt'] ), 'copia: chiave di licenza e sali dei QR/calendario restano sul sito, non finiscono nel file' );
-asem_ok( $man === \AssociazioneSemplice\Backup::inspect( $bk_zip ), 'copia: il file si riconosce come copia valida' );
+$bk_origin = '';
+asem_ok( $man === \AssociazioneSemplice\Backup::inspect( $bk_zip, $bk_origin ) && 'same' === $bk_origin, 'copia: il file si riconosce come copia valida, fatta da questo sito' );
+$bk_key = \AssociazioneSemplice\BackupSeal::key( wp_salt( 'auth' ) );
+$zh     = new ZipArchive();
+$zh->open( $bk_zip );
+$bk_sz = \AssociazioneSemplice\BackupSeal::sizes( $zh );
+$bk_hs = \AssociazioneSemplice\BackupSeal::hashes( $zh, $bk_sz['sizes'] );
+$zh->close();
+asem_ok( is_array( $man['entries'] ?? null ) && $man['entries'] == $bk_hs && isset( $man['entries']['impostazioni.json'], $man['entries']['tabelle/asem_people.jsonl'], $man['entries'][ 'allegati/' . str_repeat( 'a', 32 ) ] ) && ! isset( $man['entries']['manifest.json'] ), 'copia: il manifest porta l\'impronta di ogni voce (sempre, anche allegati e impostazioni)' );
+asem_ok( ( $man['sig'] ?? '' ) === \AssociazioneSemplice\BackupSeal::signature( $man, $bk_key ) && ( $man['kfp'] ?? '' ) === \AssociazioneSemplice\BackupSeal::fingerprint( $bk_key ), 'copia: il manifest è firmato (HMAC-SHA256) con una chiave ricavata dai codici di sicurezza del sito' );
 // PDF definitivi delle ricevute: stanno nella copia, con l'indice delle impronte
 $bk_rc = $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE pdf_path IS NOT NULL ORDER BY ( voided_at IS NULL ) DESC, id', ARRAY_A ); // prima le ricevute non annullate
 $zq    = new ZipArchive();
@@ -7748,13 +7829,14 @@ $res = \AssociazioneSemplice\Backup::restore( $bk_zip );
 $back_row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE id = $victim", ARRAY_A );
 asem_ok( $ppl === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $txn === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && $back_row === $victim_row && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE description = 'riga di prova da cancellare'" ), 'ripristino: i dati tornano esattamente come nella copia (anche i record cancellati e identici campo per campo)' );
 asem_ok( 'Associazione di prova' === Settings::get( 'association_name' ) && array() === \AssociazioneSemplice\TextsEngine::overrides() && Settings::has_secret( 'stripe_secret_key' ), 'ripristino: impostazioni e testi tornano come nella copia; le chiavi segrete del sito restano' );
-asem_ok( is_file( $bk_file ) && 'contenuto allegato' === file_get_contents( $bk_file ) && $res['files'] >= 1 && $res['rows'] > 0 && $res['tables'] === count( $man['tables'] ), 'ripristino: gli allegati tornano al loro posto' );
+asem_ok( is_file( $bk_file ) && 'contenuto allegato' === file_get_contents( $bk_file ) && $res['files'] >= 1 && $res['rows'] > 0 && $res['tables'] === count( array_diff( array_keys( $man['tables'] ), \AssociazioneSemplice\Backup::NOT_RESTORED ) ), 'ripristino: gli allegati tornano al loro posto (le tabelle del registro azioni e degli accessi dei soci non si ripristinano)' );
 $bk_ra = \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[0]['receipt_key'] ), 'issued' );
 $bk_rb = \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[1]['receipt_key'] ), 'issued' );
 asem_ok( $res['documents']['restored'] >= 2 && 'ok' === $bk_ra && 'ok' === $bk_rb && hash( 'sha256', asem_rf_content( $bk_rc[0]['pdf_path'] ) ) === $bk_rc[0]['pdf_sha256'] && hash( 'sha256', asem_rf_content( $bk_rc[1]['pdf_path'] ) ) === $bk_rc[1]['pdf_sha256'] && 1 === count( glob( $bk_pb . '.alterato-*' ) ?: array() ), 'ripristino: i PDF delle ricevute tornano al loro posto (perso e alterato), controllati con le impronte; l\'alterato resta da parte' );
-$saved = \AssociazioneSemplice\Backup::saved();
-asem_ok( count( $saved ) >= 1 && 0 === strpos( $saved[0]['name'], 'prima-del-ripristino-' ) && $res['safety'] === $saved[0]['name'], 'ripristino: prima viene salvata una copia dello stato precedente' );
-asem_ok( 1 === preg_match( '/^prima-del-ripristino-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', $saved[0]['name'] ), 'sicurezza: il nome della copia salvata non è indovinabile' );
+$bk_left = function (): array {
+	return glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-ripristino-*.zip' ) ?: array();
+};
+asem_ok( 1 === preg_match( '/^prima-del-ripristino-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', $res['safety'] ) && ! is_file( \AssociazioneSemplice\Backup::dir() . '/' . $res['safety'] ) && array() === $bk_left(), 'ripristino: la copia dello stato precedente (con le tabelle in chiaro) serve solo durante il ripristino, ha un nome non indovinabile e si cancella appena il ripristino è riuscito' );
 // le copie salvate sul sito scadono da sole
 $bk_old = \AssociazioneSemplice\Backup::dir() . '/prima-del-ripristino-20200102-000000-0123456789abcdef.zip';
 file_put_contents( $bk_old, 'x' );
@@ -7767,19 +7849,20 @@ $bk_legacy = \AssociazioneSemplice\Backup::dir() . '/prima-del-ripristino-202001
 copy( $bk_zip, $bk_legacy );
 $bk_names = array_column( \AssociazioneSemplice\Backup::saved(), 'name' );
 asem_ok( ! file_exists( $bk_legacy ) && ! in_array( 'prima-del-ripristino-20200101-000000.zip', $bk_names, true ) && 1 === count( preg_grep( '/^prima-del-ripristino-20200101-000000-[0-9a-f]{16}\.zip$/', $bk_names ) ), 'sicurezza: le copie con il vecchio nome prevedibile vengono rinominate' );
-$zs = new ZipArchive();
-$zs->open( \AssociazioneSemplice\Backup::dir() . '/' . $saved[0]['name'] );
-$safety_man = json_decode( (string) $zs->getFromName( 'manifest.json' ), true );
-$zs->close();
-asem_ok( 'associazionesemplice' === $safety_man['plugin'], 'ripristino: la copia di sicurezza è a sua volta un file valido' );
 Settings::clear_secret( 'stripe_secret_key' );
 // una copia con un PDF manomesso: quel PDF non si rimette (l'impronta non coincide), il resto sì, e la ricevuta dà un errore chiaro
 $bk_tz = wp_tempnam( 'asem-bad' );
 copy( $bk_zip, $bk_tz );
+$bk_tz_plain = wp_tempnam( 'asem-bad' );
+copy( $bk_zip, $bk_tz_plain );
 $zt = new ZipArchive();
-$zt->open( $bk_tz );
-$zt->addFromString( 'documenti/' . $bk_rc[0]['pdf_path'], '%PDF-1.4 manomesso' );
+$zt->open( $bk_tz_plain );
+$zt->addFromString( 'documenti/' . $bk_rc[0]['pdf_path'], '%PDF-1.4 manomesso' ); // manomesso senza rifare la firma: la copia si ferma prima
 $zt->close();
+$bk_e_tz = asem_throws( function () use ( $bk_tz_plain ) { \AssociazioneSemplice\Backup::restore( $bk_tz_plain ); } );
+asem_ok( null !== $bk_e_tz && false !== strpos( $bk_e_tz, 'è stata modificata dopo essere stata fatta' ), 'ripristino: un PDF cambiato dopo la firma ferma tutta la copia, prima di toccare i dati' );
+wp_delete_file( $bk_tz_plain );
+asem_bk_reseal( $bk_tz, function ( $z ) use ( $bk_rc ) { $z->addFromString( 'documenti/' . $bk_rc[0]['pdf_path'], '%PDF-1.4 manomesso' ); } ); // rifirmata: il controllo delle impronte nel database lo fa la ricevuta
 wp_delete_file( $bk_pa );
 $res_t = \AssociazioneSemplice\Backup::restore( $bk_tz );
 wp_delete_file( $bk_tz );
@@ -7797,12 +7880,160 @@ $zbk->close();
 $before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
 $err = '';
 try {
-	\AssociazioneSemplice\Backup::restore( $broken );
+	\AssociazioneSemplice\Backup::restore( $broken, '', true ); // senza firma: è una copia di origine ignota, serve la conferma esplicita
 } catch ( \Throwable $e ) {
 	$err = $e->getMessage();
 }
 unlink( $broken );
 asem_ok( false !== strpos( $err, 'Nessun dato è stato cambiato' ) && $before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'ripristino: se qualcosa non va non cambia nulla' );
+
+// ---------- Firma, altro sito, tetti, ripristini insieme ----------
+$bk_cnt  = function () use ( $wpdb ): int {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+};
+$bk_people0 = $bk_cnt();
+$bk_audit_n = function ( string $action ) use ( $wpdb ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s', $action ) );
+};
+$bk_fresh = function () use ( $bk_zip ): string { // una copia nuova di zecca da rovinare
+	$f = wp_tempnam( 'asem-bad' );
+	copy( $bk_zip, $f );
+	return $f;
+};
+$bk_refused0 = $bk_audit_n( 'backup.restore_refused' );
+// 1. una riga cambiata dentro un file della copia (stesso sito): la copia è rifiutata e nulla cambia
+$bk_t1 = $bk_fresh();
+$zt1   = new ZipArchive();
+$zt1->open( $bk_t1 );
+$zt1->addFromString( 'tabelle/asem_people.jsonl', (string) $zt1->getFromName( 'tabelle/asem_people.jsonl' ) . "{\"id\":999999,\"type\":\"member\"}\n" );
+$zt1->close();
+$bk_e1 = asem_throws( function () use ( $bk_t1 ) { \AssociazioneSemplice\Backup::restore( $bk_t1 ); } );
+asem_ok( null !== $bk_e1 && false !== strpos( $bk_e1, 'è stata modificata dopo essere stata fatta' ) && false !== strpos( $bk_e1, 'Non è stato cambiato nulla' ) && $bk_cnt() === $bk_people0, 'firma: una riga cambiata in un file della copia (stesso sito) la fa rifiutare e non cambia nulla' );
+// 2. una voce che l'elenco non cita (un allegato aggiunto)
+$bk_t2 = $bk_fresh();
+$zt2   = new ZipArchive();
+$zt2->open( $bk_t2 );
+$zt2->addFromString( 'allegati/' . str_repeat( 'b', 32 ), 'contenuto in più' );
+$zt2->close();
+$bk_e2 = asem_throws( function () use ( $bk_t2 ) { \AssociazioneSemplice\Backup::restore( $bk_t2 ); } );
+asem_ok( null !== $bk_e2 && false !== strpos( $bk_e2, 'è stata modificata dopo essere stata fatta' ) && ! is_file( Attachments::dir() . '/' . str_repeat( 'b', 32 ) ), 'firma: una voce che l\'elenco non cita (stesso sito) fa rifiutare la copia' );
+// 3. firma sbagliata con i codici del sito: il manifest cambiato dopo la firma
+$bk_t3 = $bk_fresh();
+asem_bk_edit_manifest( $bk_t3, function ( $m ) { $m['created_at'] = '2000-01-01 00:00:00'; return $m; } );
+$bk_e3 = asem_throws( function () use ( $bk_t3 ) { \AssociazioneSemplice\Backup::restore( $bk_t3 ); } );
+$bk_t3b = $bk_fresh();
+asem_bk_edit_manifest( $bk_t3b, function ( $m ) { $m['sig'] = str_repeat( '0', 64 ); return $m; } );
+$bk_e3b = asem_throws( function () use ( $bk_t3b ) { \AssociazioneSemplice\Backup::restore( $bk_t3b ); } );
+asem_ok( null !== $bk_e3 && false !== strpos( $bk_e3, 'La firma di questa copia non è valida' ) && null !== $bk_e3b && false !== strpos( $bk_e3b, 'La firma di questa copia non è valida' ) && $bk_cnt() === $bk_people0, 'firma: un manifest cambiato o una firma sbagliata (stesso sito) fanno rifiutare la copia' );
+// anche con i codici dell'altro sito, l'impronta dei codici cambiata a mano non basta: senza conferma non si ripristina
+asem_ok( $bk_audit_n( 'backup.restore_refused' ) >= $bk_refused0 + 4, 'firma: ogni copia rifiutata lascia una riga nel registro azioni' );
+foreach ( array( $bk_t1, $bk_t2, $bk_t3, $bk_t3b ) as $bk_f ) {
+	wp_delete_file( $bk_f );
+}
+
+// 4. un altro sito (codici di sicurezza diversi): serve una conferma esplicita scritta; poi si ripristina e resta scritto nel registro
+$bk_act0 = $bk_audit_n( 'backup.restored' );
+asem_bk_other_site( true );
+$bk_o2 = '';
+\AssociazioneSemplice\Backup::inspect( $bk_zip, $bk_o2 );
+$bk_e4 = asem_throws( function () use ( $bk_zip ) { \AssociazioneSemplice\Backup::restore( $bk_zip ); } );
+asem_ok( 'other' === $bk_o2 && null !== $bk_e4 && 0 === strpos( $bk_e4, 'Questa copia non è stata fatta su questo sito. Ripristinala solo se è tua e sai da dove viene: sostituirà i dati attuali.' ) && false !== strpos( $bk_e4, 'RIPRISTINA DA ALTRO SITO' ) && false !== strpos( $bk_e4, 'Verranno sostituiti' ) && false !== strpos( $bk_e4, 'Non verranno toccati' ) && $bk_cnt() === $bk_people0 && $bk_audit_n( 'backup.restored' ) === $bk_act0, 'altro sito: la copia senza conferma si ferma con le parole semplici, l\'elenco di ciò che si sostituisce e quello che resta' );
+$wpdb->delete( Db::t( 'people' ), array( 'id' => $victim ) );
+$bk_r4 = \AssociazioneSemplice\Backup::restore( $bk_zip, '', true );
+asem_bk_other_site( false );
+$bk_row = $wpdb->get_row( $wpdb->prepare( 'SELECT details FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s ORDER BY id DESC LIMIT 1', 'backup.restored' ), ARRAY_A );
+asem_ok( 'other' === $bk_r4['origin'] && $bk_cnt() === $bk_people0 && $bk_audit_n( 'backup.restored' ) === $bk_act0 + 1 && false !== strpos( (string) ( $bk_row['details'] ?? '' ), '"origin":"other"' ), 'altro sito: con la conferma il ripristino riesce e il registro azioni dice che la copia veniva da un altro sito' );
+// una copia senza firma (fatta a mano o da una versione senza firma) si tratta allo stesso modo
+$bk_t5 = $bk_fresh();
+asem_bk_legacy( $bk_t5 );
+$bk_o5 = '';
+\AssociazioneSemplice\Backup::inspect( $bk_t5, $bk_o5 );
+$bk_e5 = asem_throws( function () use ( $bk_t5 ) { \AssociazioneSemplice\Backup::restore( $bk_t5 ); } );
+asem_ok( 'other' === $bk_o5 && null !== $bk_e5 && 0 === strpos( $bk_e5, 'Questa copia non è stata fatta su questo sito.' ), 'altro sito: una copia senza firma né impronte è di origine ignota e vuole la stessa conferma' );
+// un file della copia cambiato anche quando la copia viene da un altro sito: l'impronta nel manifest non coincide, la copia è rifiutata
+$bk_t6 = $bk_fresh();
+asem_bk_edit_manifest( $bk_t6, function ( $m ) { $m['kfp'] = '0123456789abcdef'; return $m; } ); // codici diversi: firma non verificabile
+$zt6 = new ZipArchive();
+$zt6->open( $bk_t6 );
+$zt6->addFromString( 'tabelle/asem_people.jsonl', (string) $zt6->getFromName( 'tabelle/asem_people.jsonl' ) . "{\"id\":999998}\n" );
+$zt6->close();
+$bk_e6 = asem_throws( function () use ( $bk_t6 ) { \AssociazioneSemplice\Backup::restore( $bk_t6, '', true ); } );
+asem_ok( null !== $bk_e6 && false !== strpos( $bk_e6, 'è stata modificata dopo essere stata fatta' ) && $bk_cnt() === $bk_people0, 'altro sito: anche con la conferma, un contenuto che non coincide con l\'elenco delle impronte fa rifiutare la copia' );
+wp_delete_file( $bk_t5 );
+wp_delete_file( $bk_t6 );
+
+// 5. registro azioni, accessi dei soci e notifiche push non fanno parte del ripristino
+Audit::log( 'prova.dopo_la_copia', 'settings', 0 );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $victim, 'login_email' => 'prova-ripristino@example.com', 'pass_hash' => 'x', 'created_at' => Db::now() ) );
+$bk_people_t = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Db::t( 'push_subs' ) ) );
+$bk_audit_total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) );
+$bk_r5 = \AssociazioneSemplice\Backup::restore( $bk_zip );
+asem_ok( 1 === $bk_audit_n( 'prova.dopo_la_copia' ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) > $bk_audit_total, 'ripristino: il registro azioni non viene sostituito (le righe fatte dopo la copia restano, e si aggiunge quella del ripristino)' );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) ) && ( ! $bk_people_t || 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) ) ) && ! empty( $bk_r5['members_reset'] ), 'ripristino: password dei soci e notifiche push non si ripristinano (e non restano legate a persone diverse): i soci rientrano con il link' );
+
+// 6. un ripristino alla volta
+Db::$lock_fake = '0';
+$bk_e7 = asem_throws( function () use ( $bk_zip ) { \AssociazioneSemplice\Backup::restore( $bk_zip ); } );
+Db::$lock_fake = 'x';
+asem_ok( null !== $bk_e7 && false !== strpos( $bk_e7, 'Un\'altra operazione è in corso' ), 'ripristino: mentre un altro è in corso il secondo viene rifiutato' );
+asem_ok( Db::lock_name( 'asem_backup_restore' ) !== Db::lock_name( 'asem_file_key' ) && Db::lock_name( 'asem_backup_restore', 'db1|wp_' ) !== Db::lock_name( 'asem_backup_restore', 'db1|wp2_' ), 'ripristino: il blocco ha un nome suo e per sito (Db::lock_name)' );
+
+// 7. tetti: dimensione di una voce, dimensione totale, numero di allegati (controllati sulle dimensioni dichiarate, prima di leggere)
+$bk_limits = array(
+	array( array( 'entry' => 20 ), 'troppo grande' ),
+	array( array( 'total' => 20 ), 'troppo grande' ),
+	array( array( 'attachments' => 0 ), 'troppi allegati' ),
+	array( array( 'small' => 5 ), 'troppo grande' ),
+);
+$bk_lim_ok = 0;
+foreach ( $bk_limits as $bk_l ) {
+	\AssociazioneSemplice\Backup::$test_limits = $bk_l[0];
+	$bk_el = asem_throws( function () use ( $bk_zip ) { \AssociazioneSemplice\Backup::restore( $bk_zip ); } );
+	$bk_lim_ok += ( null !== $bk_el && false !== strpos( $bk_el, $bk_l[1] ) ) ? 1 : 0;
+}
+\AssociazioneSemplice\Backup::$test_limits = array();
+asem_ok( 4 === $bk_lim_ok && $bk_cnt() === $bk_people0, 'ripristino: tetto per voce, tetto totale, numero di allegati e file piccoli oltre misura fanno rifiutare la copia prima di leggerla' );
+
+// 8. solo gli allegati che i dati citano; l'indice dei PDF si legge prima di toccare i dati
+$bk_t8 = $bk_fresh();
+asem_bk_legacy( $bk_t8, function ( $z ) { $z->addFromString( 'allegati/' . str_repeat( 'c', 32 ), 'nessuna riga lo cita' ); } );
+$bk_r8 = \AssociazioneSemplice\Backup::restore( $bk_t8, '', true );
+asem_ok( ! is_file( Attachments::dir() . '/' . str_repeat( 'c', 32 ) ) && (int) $bk_r8['skipped'] >= 1, 'ripristino: un file che nessuna riga cita non viene rimesso sul disco (e si conta)' );
+wp_delete_file( $bk_t8 );
+$bk_t9 = $bk_fresh();
+asem_bk_reseal( $bk_t9, function ( $z ) { $z->addFromString( 'documenti/indice.json', '{ non json' ); } );
+$wpdb->insert( Db::t( 'transactions' ), array( 'tx_date' => $today, 'type' => 'income', 'amount_cents' => 555, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => (int) $ledger->category_id_of_kind( 'other_income' ), 'description' => 'riga che deve restare', 'created_at' => Db::now() ) );
+$bk_e9 = asem_throws( function () use ( $bk_t9 ) { \AssociazioneSemplice\Backup::restore( $bk_t9 ); } );
+asem_ok( null !== $bk_e9 && false !== strpos( $bk_e9, 'indice dei documenti' ) && 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE description = 'riga che deve restare'" ), 'ripristino: l\'indice dei PDF rovinato ferma la copia prima di toccare i dati (nulla è cambiato)' );
+wp_delete_file( $bk_t9 );
+$bk_ta = $bk_fresh();
+asem_bk_reseal( $bk_ta, function ( $z ) { $z->addFromString( 'chiavi.json', '{ non json' ); } );
+$bk_ea = asem_throws( function () use ( $bk_ta ) { \AssociazioneSemplice\Backup::restore( $bk_ta ); } );
+asem_ok( null !== $bk_ea && false !== strpos( $bk_ea, 'Le chiavi contenute nella copia non sono valide' ) && 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE description = 'riga che deve restare'" ), 'ripristino: le chiavi rovinate fermano la copia prima di toccare i dati' );
+wp_delete_file( $bk_ta );
+
+// 9. password e frase scritta come per l'azzeramento, prima di guardare il file
+$bk_admin = wp_insert_user( array( 'user_login' => 'ripristinatore', 'user_pass' => 'Ripristina-Pass-1', 'user_email' => 'ripristinatore@example.com', 'role' => 'administrator' ) );
+wp_set_current_user( (int) $bk_admin );
+$bk_act = new ReflectionMethod( Admin\Actions::class, 'backup_restore' );
+$bk_act->setAccessible( true );
+$bk_call = function ( array $p ) use ( $bk_act ): string {
+	try {
+		$bk_act->invoke( null, $p );
+	} catch ( \InvalidArgumentException $e ) {
+		return $e->getMessage();
+	}
+	return '';
+};
+$bk_m1 = $bk_call( array( 'confirm_text' => 'RIPRISTINA', 'password' => 'Ripristina-Pass-1' ) );
+$bk_m2 = $bk_call( array( 'confirm' => 1, 'confirm_text' => 'ripristino', 'password' => 'Ripristina-Pass-1' ) );
+$bk_m3 = $bk_call( array( 'confirm' => 1, 'confirm_text' => 'RIPRISTINA', 'password' => 'sbagliata' ) );
+$bk_m4 = $bk_call( array( 'confirm' => 1, 'confirm_text' => 'RIPRISTINA', 'password' => '' ) );
+$bk_m5 = $bk_call( array( 'confirm' => 1, 'confirm_text' => 'RIPRISTINA', 'password' => 'Ripristina-Pass-1' ) );
+asem_ok( false !== strpos( $bk_m1, 'Spunta' ) && false !== strpos( $bk_m2, 'frase scritta' ) && false !== strpos( $bk_m3, 'password non è corretta' ) && false !== strpos( $bk_m4, 'password non è corretta' ) && false !== strpos( $bk_m5, 'Scegli il file della copia' ), 'ripristino: servono la spunta, la frase scritta «RIPRISTINA» e la password dell\'amministratore, controllate prima del file' );
+wp_set_current_user( 1 );
+$wpdb->delete( Db::t( 'transactions' ), array( 'description' => 'riga che deve restare' ) );
+$wpdb->delete( Db::t( 'attachments' ), array( 'id' => $bk_att_row ) );
 unlink( $bk_zip );
 if ( is_file( $bk_file ) ) {
 	unlink( $bk_file );
@@ -8440,7 +8671,8 @@ Settings::update( array( 'payment_provider' => 'stripe_paypal', 'paypal_mode' =>
 $rf_calls = array();
 $rf_seen  = array();
 $rf_mode  = 'ok';
-$rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_seen, &$rf_mode, $fake_gateway ) {
+$rf_hook  = null; // se impostata, gira mentre la richiesta è dal gestore (per simulare un'altra richiesta nello stesso istante)
+$rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_seen, &$rf_mode, &$rf_hook, $fake_gateway ) {
 	$stripe = false !== strpos( $url, 'api.stripe.com/v1/refunds' );
 	$paypal = false !== strpos( $url, '/v2/payments/captures/' ) && '/refund' === substr( $url, -7 );
 	if ( ! $stripe && ! $paypal ) {
@@ -8457,6 +8689,8 @@ $rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_s
 			'already'  => array( 400, array( 'error' => array( 'code' => 'charge_already_refunded', 'message' => 'Charge ch_1 has already been refunded.' ) ) ),
 			'balance'  => array( 400, array( 'error' => array( 'code' => 'balance_insufficient', 'message' => 'Insufficient funds in your Stripe account.' ) ) ),
 			'notfound' => array( 404, array( 'error' => array( 'code' => 'resource_missing', 'message' => 'No such payment_intent' ) ) ),
+			'e503'     => array( 503, array( 'error' => array( 'message' => 'Service Unavailable' ) ) ),
+			'e429'     => array( 429, array( 'error' => array( 'type' => 'rate_limit_error', 'message' => 'Too many requests' ) ) ),
 			'weird'    => array( 500, array( 'error' => array( 'message' => 'Boh interno' ) ) ),
 		);
 	} else {
@@ -8465,11 +8699,22 @@ $rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_s
 			'already'  => array( 422, array( 'name' => 'UNPROCESSABLE_ENTITY', 'details' => array( array( 'issue' => 'CAPTURE_FULLY_REFUNDED' ) ) ) ),
 			'balance'  => array( 422, array( 'name' => 'UNPROCESSABLE_ENTITY', 'details' => array( array( 'issue' => 'INSUFFICIENT_FUNDS' ) ) ) ),
 			'notfound' => array( 404, array( 'name' => 'RESOURCE_NOT_FOUND', 'details' => array( array( 'issue' => 'INVALID_RESOURCE_ID' ) ) ) ),
+			'e503'     => array( 503, array( 'message' => 'Service Unavailable' ) ),
+			'e429'     => array( 429, array( 'name' => 'RATE_LIMIT_REACHED' ) ),
 			'weird'    => array( 500, array( 'message' => 'Boh interno' ) ),
 		);
 	}
+	if ( 'garbage' === $rf_mode ) { // risposta illeggibile: né un rimborso né un errore riconoscibile
+		return array( 'code' => 200, 'body' => '<html>gateway</html>' );
+	}
+	if ( 'empty' === $rf_mode ) {
+		return array( 'code' => 502, 'body' => '' );
+	}
 	if ( isset( $errs[ $rf_mode ] ) ) {
 		return array( 'code' => $errs[ $rf_mode ][0], 'body' => wp_json_encode( $errs[ $rf_mode ][1] ) );
+	}
+	if ( null !== $rf_hook ) {
+		( $rf_hook )();
 	}
 	if ( ! isset( $rf_seen[ $key ] ) ) { // lo stesso invio con la stessa chiave dà lo stesso rimborso, senza rimborsare di nuovo
 		$rf_seen[ $key ] = ( $stripe ? 're_' : 'RF' ) . ( count( $rf_seen ) + 1 );
@@ -8659,6 +8904,79 @@ $rf_rv = $rf_pay( 'stripe', 1000, array( 'review' => 1, 'payer_user_id' => 4242 
 $rf_ok = $rf_pay( 'stripe', 1000, array( 'payer_user_id' => 4242 ) );
 asem_ok( 'Pagamento ricevuto: la segreteria lo sta controllando.' === $ap_ps->handle_return( $rf_row( $rf_rv )['public_id'], 'ok', 4242 ) && 'Pagamento ricevuto: grazie!' === $ap_ps->handle_return( $rf_row( $rf_ok )['public_id'], 'ok', 4242 ), 'socio dopo il pagamento: «la segreteria lo sta controllando» solo se il pagamento resta da controllare' );
 asem_ok( false !== strpos( (string) $rf_try( $rf_ct, 700 ), 'Importo non valido: si può restituire da 0,50 € a 6,00 €' ), 'rimborso: un secondo rimborso oltre il pagato è rifiutato con la cifra massima' );
+
+// presa atomica e tentativi non confermati: due richieste insieme o un nuovo tentativo dopo un timeout non restituiscono più del dovuto
+$rf_k1 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_n0 = count( $rf_calls );
+$rf_inner = null;
+$rf_hook  = function () use ( &$rf_inner, &$rf_hook, $rf_try, $rf_k1 ) { // un'altra persona prova a restituire 4,00 € mentre i 3,00 € sono dal gestore
+	$rf_h     = $rf_hook;
+	$rf_hook  = null;
+	$rf_inner = $rf_try( $rf_k1, 400, 0 );
+	$rf_hook  = $rf_h;
+};
+$ap_ps->refund( $rf_k1, 300, 0, 'Motivo di prova' );
+$rf_hook = null;
+asem_ok( is_string( $rf_inner ) && false !== strpos( $rf_inner, 'un rimborso di 3,00 € in corso o non confermato' ) && $rf_n0 + 1 === count( $rf_calls ) && 300 === (int) $rf_row( $rf_k1 )['refunded_cents'] && 0 === (int) $rf_row( $rf_k1 )['refund_pending_cents'], 'rimborso: due richieste insieme con importi diversi, la seconda non arriva al gestore e resta restituito solo il primo importo' );
+
+$rf_k2 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_n0 = count( $rf_calls );
+$rf_mode = 'down';
+$rf_msg  = (string) $rf_try( $rf_k2, 500 );
+$rf_mode = 'ok';
+$rf_p    = $rf_row( $rf_k2 );
+asem_ok( false !== strpos( $rf_msg, 'non risponde' ) && false !== strpos( $rf_msg, 'con lo stesso importo' ) && 500 === (int) $rf_p['refund_pending_cents'] && 1 === (int) $rf_p['review'] && false !== strpos( (string) $rf_p['error'], 'non confermato' ) && 0 === (int) $rf_p['refunded_cents'], 'rimborso: se il gestore non risponde il pagamento resta «da controllare» con il tentativo salvato' );
+asem_ok( false !== strpos( asem_render( array( Admin\PaymentsPage::class, 'render' ), 'asem_payment_refund' ), 'Rimborso di 5,00 € non confermato dal gestore: per ripeterlo usa lo stesso importo.' ), 'rimborso: la pagina dice che c\'è un rimborso non confermato e quale importo ripetere' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_k2, 600 ), 'solo lo stesso importo' ) && $rf_n0 === count( $rf_calls ) && 500 === (int) $rf_row( $rf_k2 )['refund_pending_cents'], 'rimborso: dopo un timeout un importo diverso non parte, nemmeno verso il gestore' );
+$rf_seen[ 'refund-' . $rf_p['public_id'] . '-0-500' ] = 're_prima'; // il gestore aveva in realtà ricevuto il primo invio
+$ap_ps->refund( $rf_k2, 500, 0, 'Motivo di prova' );
+$rf_p = $rf_row( $rf_k2 );
+asem_ok( $rf_n0 + 1 === count( $rf_calls ) && 'refund-' . $rf_p['public_id'] . '-0-500' === $rf_calls[ $rf_n0 ]['key'] && 're_prima' === $rf_p['refund_id'] && 500 === (int) $rf_p['refunded_cents'] && 0 === (int) $rf_p['refund_pending_cents'], 'rimborso: il nuovo tentativo con lo stesso importo usa la stessa chiave e non rimborsa due volte' );
+
+$rf_k3 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$wpdb->update( Db::t( 'payments' ), array( 'refund_pending_cents' => 500, 'refund_pending_at' => gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - 30 * 3600 ) ), array( 'id' => $rf_k3 ) );
+$rf_n0 = count( $rf_calls );
+asem_ok( false !== strpos( (string) $rf_try( $rf_k3, 500 ), 'più di 24 ore' ) && $rf_n0 === count( $rf_calls ), 'rimborso: un tentativo non confermato di più di 24 ore fa non si ripete in automatico' );
+$ap_ps->mark_reviewed( $rf_k3 );
+asem_ok( 0 === (int) $rf_row( $rf_k3 )['refund_pending_cents'] && 500 === $ap_ps->refund( $rf_k3, 500, 0, 'Motivo di prova' )['cents'], 'rimborso: dopo il controllo di chi ha guardato il pannello del gestore si può ripartire' );
+
+$rf_k4 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_hook = function () use ( $wpdb, $rf_k4 ) { // mentre il gestore risponde la riga cambia: la scrittura condizionata non passa
+	$wpdb->update( Db::t( 'payments' ), array( 'refunded_cents' => 100 ), array( 'id' => $rf_k4 ) );
+};
+$rf_r4   = $ap_ps->refund( $rf_k4, 300, 0, 'Motivo di prova' );
+$rf_hook = null;
+$rf_p    = $rf_row( $rf_k4 );
+asem_ok( 400 === (int) $rf_p['refunded_cents'] && 400 === $rf_r4['total'] && 1 === (int) $rf_p['review'] && 0 === (int) $rf_p['refund_pending_cents'] && false !== strpos( (string) $rf_p['error'], 'da controllare' ), 'rimborso: se il gestore conferma ma la scrittura non passa, l\'importo si somma comunque e il pagamento è «da controllare»' );
+
+$rf_k5 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_mode = 'balance';
+$rf_try( $rf_k5, 500 );
+$rf_mode = 'ok';
+asem_ok( 0 === (int) $rf_row( $rf_k5 )['refund_pending_cents'] && 500 === $ap_ps->refund( $rf_k5, 500, 0, 'Motivo di prova' )['cents'], 'rimborso: se il gestore rifiuta con certezza non resta nessun tentativo in sospeso' );
+
+// risposte del gestore senza esito certo (errore del server, troppe richieste, risposta illeggibile): il rimborso può essere partito, il tentativo non si libera
+foreach ( array( 'stripe' => array( 'e503', 'e429', 'garbage', 'empty' ), 'paypal' => array( 'e503', 'e429' ) ) as $rf_prov => $rf_modes ) {
+	foreach ( $rf_modes as $rf_m ) {
+		$rf_u1  = $rf_pay( $rf_prov, 1000, array( 'refund_due' => 1 ) );
+		$rf_n0  = count( $rf_calls );
+		$rf_mode = $rf_m;
+		$rf_msg = (string) $rf_try( $rf_u1, 500 );
+		$rf_mode = 'ok';
+		$rf_p   = $rf_row( $rf_u1 );
+		asem_ok( 500 === (int) $rf_p['refund_pending_cents'] && 1 === (int) $rf_p['review'] && 0 === (int) $rf_p['refunded_cents'] && false !== strpos( $rf_msg, 'lo stesso importo' ), 'rimborso ' . $rf_prov . ' «' . $rf_m . '»: il tentativo resta salvato e il pagamento «da controllare»' );
+		$rf_n1 = count( $rf_calls );
+		asem_ok( false !== strpos( (string) $rf_try( $rf_u1, 600 ), 'solo lo stesso importo' ) && $rf_n1 === count( $rf_calls ), 'rimborso ' . $rf_prov . ' «' . $rf_m . '»: un importo diverso non parte' );
+		$ap_ps->refund( $rf_u1, 500, 0, 'Motivo di prova' );
+		asem_ok( 500 === (int) $rf_row( $rf_u1 )['refunded_cents'] && 0 === (int) $rf_row( $rf_u1 )['refund_pending_cents'] && 'refund-' . $rf_p['public_id'] . '-0-500' === substr( $rf_calls[ count( $rf_calls ) - 1 ]['key'], 0, strlen( 'refund-' . $rf_p['public_id'] . '-0-500' ) ), 'rimborso ' . $rf_prov . ' «' . $rf_m . '»: lo stesso importo si ripete con la stessa chiave' );
+	}
+}
+// rifiuto certo con errore riconosciuto (4xx): il tentativo si libera e un altro importo può partire
+$rf_u2   = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_mode = 'perm';
+$rf_try( $rf_u2, 500 );
+$rf_mode = 'ok';
+asem_ok( 0 === (int) $rf_row( $rf_u2 )['refund_pending_cents'] && 600 === $ap_ps->refund( $rf_u2, 600, 0, 'Motivo di prova' )['cents'], 'rimborso: un 4xx riconosciuto (chiave senza permesso) libera il tentativo e un altro importo può partire' );
 
 // anno fiscale chiuso: il rimborso non scrive nella prima nota (nemmeno nei suoi anni chiusi)
 $rf_fy = \AssociazioneSemplice\FiscalYears::get( $fy_far );
@@ -9644,6 +9962,49 @@ MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
 asem_ok( wp_next_scheduled( 'asem_purge_member_sessions' ) > 0, 'accesso proprio: pulizia giornaliera programmata' );
 
+// ---------- Cache di pagina: pagine con sessione socio valida e contenuti riservati ----------
+$nc_hits  = 0;
+$nc_cb    = function () use ( &$nc_hits ) {
+	++$nc_hits;
+};
+add_action( 'litespeed_control_set_nocache', $nc_cb );
+$nc_count = function ( callable $f ) use ( &$nc_hits ): int {
+	$nc_hits = 0;
+	$f();
+	return $nc_hits;
+};
+$nc_early = function ( int $post_id ) {
+	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'p' => $post_id, 'post_type' => 'any', 'post_status' => 'publish' ) );
+	\AssociazioneSemplice\Frontend\Restrict::early_no_cache();
+};
+wp_set_current_user( 0 );
+unset( $_COOKIE[ MemberSession::COOKIE ] );
+$ms_fake->setValue( null, null );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: una pagina pubblica vista da un anonimo resta salvabile in cache' );
+asem_ok( 0 === $nc_count( function () use ( $show, $p_pub ) { $show( $p_pub, 0 ); } ), 'cache: il contenuto pubblico non segnala «non in cache»' );
+asem_ok( $nc_count( function () use ( $nc_early, $p_mem ) { $nc_early( $p_mem ); } ) > 0, 'cache: una pagina riservata non si salva nemmeno per un anonimo (prima di disegnarla)' );
+asem_ok( $nc_count( function () use ( $show, $p_mem ) { $show( $p_mem, 0 ); } ) > 0, 'cache: il riquadro «contenuto riservato» mostrato a un anonimo non si salva' );
+asem_ok( $nc_count( function () use ( $show, $p_mem, $u_f ) { $show( $p_mem, $u_f ); } ) > 0, 'cache: il contenuto riservato mostrato a chi può leggerlo non si salva' );
+asem_ok( $nc_count( function () use ( $show, $p_yoga, $u_ord ) { $show( $p_yoga, $u_ord ); } ) > 0, 'cache: nemmeno il contenuto riservato a una attività' );
+asem_ok( $nc_count( function () use ( $p_mem ) { get_the_excerpt( $p_mem ); } ) > 0 && 0 === $nc_count( function () use ( $p_pub ) { get_the_excerpt( $p_pub ); } ), 'cache: il riassunto di un contenuto riservato non si salva, quello pubblico sì' );
+wp_set_current_user( 0 );
+asem_ok( $nc_count( function () { do_shortcode( '[associazionesemplice_riservato accesso="soci"]x[/associazionesemplice_riservato]' ); } ) > 0, 'cache: una parte riservata di pagina non si salva' );
+$nc_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Cache', 'last_name' => 'Prova' ) );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $nc_p, 'login_email' => 'cache.prova@example.org', 'pass_hash' => MemberPassword::make( 'una password lunga' ), 'created_at' => gmdate( 'Y-m-d H:i:s' ) ) );
+$_COOKIE[ MemberSession::COOKIE ] = SessionToken::generate(); // cookie ben formato ma di nessuna sessione
+$ms_fake->setValue( null, null );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: un cookie senza sessione dietro non toglie la pagina dalla cache' );
+MemberSession::start( $nc_p );
+asem_ok( $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ) > 0, 'cache: con una sessione socio valida la pagina, anche pubblica, non si salva' );
+MemberSession::destroy_all( $nc_p );
+$ms_fake->setValue( null, null );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: chiusa la sessione la pagina pubblica torna salvabile' );
+remove_action( 'litespeed_control_set_nocache', $nc_cb );
+MemberSession::forget_person( $nc_p );
+unset( $_COOKIE[ MemberSession::COOKIE ] );
+$ms_fake->setValue( null, null );
+wp_reset_query();
+
 // ---------- Accesso proprio: link, codice e password ----------
 use AssociazioneSemplice\MemberLogin;
 $ml_mail = array();
@@ -10507,7 +10868,18 @@ $v4_july = function () {
 	return 7;
 };
 add_filter( 'asem_fiscal_start_month', $v4_july );
+$v4_lq = array();
+$v4_lf = function ( $q ) use ( &$v4_lq ) {
+	if ( false !== strpos( (string) $q, '_LOCK(' ) ) {
+		$v4_lq[] = (string) $q;
+	}
+	return $q;
+};
+add_filter( 'query', $v4_lf );
 $v4_fy = \AssociazioneSemplice\Receipts::number_for( 'tx990000001', ( $v4_z + 1 ) . '-02-01' );
+remove_filter( 'query', $v4_lf );
+$v4_ln = \AssociazioneSemplice\Db::lock_name( 'asem_receipt_number' );
+asem_ok( 2 === count( $v4_lq ) && false !== strpos( $v4_lq[0], "GET_LOCK('" . $v4_ln . "'" ) && false !== strpos( $v4_lq[1], "RELEASE_LOCK('" . $v4_ln . "')" ) && $v4_ln !== 'asem_receipt_number' && strlen( $v4_ln ) <= 64, 'ricevute: il numero si assegna con il blocco dal nome unico per sito, preso e rilasciato con lo stesso nome' );
 $v4_mf = $v4_mk( 'board', ( $v4_z + 1 ) . '-02-10', 'Verbale fiscale' );
 asem_ok( $v4_z === $v4_fy['year'] && 4 === $v4_fy['number'], 'ricevute: con esercizio da luglio, febbraio dell\'anno dopo appartiene all\'esercizio che è iniziato a luglio' );
 asem_ok( '2/' . $v4_z === $v4_lbl( $v4_mf ), 'verbali: nuovi verbali seguono anche loro l\'anno fiscale' );
@@ -10783,6 +11155,65 @@ $wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET pdf_path = NULL, pdf_sha25
 asem_ok( has_action( 'asem_year_closed', array( \AssociazioneSemplice\ReceiptFiles::class, 'on_year_closed' ) ) && 1 <= \AssociazioneSemplice\ReceiptFiles::pending_count( $pf_fy ), 'ricevute PDF: alla chiusura dell\'anno si fissano i PDF mancanti (azione agganciata)' );
 do_action( 'asem_year_closed', $pf_fy );
 asem_ok( 0 === \AssociazioneSemplice\ReceiptFiles::pending_count( $pf_fy ), 'ricevute PDF: la chiusura fissa i PDF ancora mancanti dell\'anno' );
+// primo lotto dopo l'aggiornamento: solo programmato (mai dentro la richiesta), la presa del lavoro è una sola, con la chiave chiusa non si disegna nulla
+$bf_RF    = \AssociazioneSemplice\ReceiptFiles::class;
+$bf_id    = (int) $pf_old[5400]['id'];
+$bf_drop  = function () use ( $wpdb, $bf_id ): void { // una ricevuta con i dati ma senza PDF fissato
+	$wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET pdf_path = NULL, pdf_sha256 = NULL, pdf_at = NULL, pdf_enc_ver = NULL WHERE id = ' . $bf_id );
+};
+$bf_fixed = function () use ( $wpdb ): int {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'receipt.pdfs_fixed'" );
+};
+$bf_flush = function () use ( $bf_RF ): void {
+	wp_cache_delete( $bf_RF::FLAG, 'options' );
+	wp_cache_delete( 'notoptions', 'options' );
+	wp_cache_delete( 'alloptions', 'options' );
+};
+$bf_raw   = function ( ?string $v ) use ( $wpdb, $bf_RF, $bf_flush ): void { // come scriverebbe un'altra richiesta: nel database, la cache di questa non lo sa
+	if ( null === $v ) {
+		$wpdb->delete( $wpdb->options, array( 'option_name' => $bf_RF::FLAG ) );
+	} else {
+		$wpdb->replace( $wpdb->options, array( 'option_name' => $bf_RF::FLAG, 'option_value' => $v, 'autoload' => 'yes' ) );
+	}
+};
+$bf_clean = function () use ( $bf_raw, $bf_flush, $bf_RF ): void {
+	wp_unschedule_hook( $bf_RF::CRON );
+	$bf_raw( null );
+	$bf_flush();
+};
+$bf_drop();
+$bf_clean();
+$bf_p0 = $bf_RF::pending_count( null );
+$bf_RF::maybe_backfill();
+$bf_al = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT autoload FROM ' . $wpdb->options . ' WHERE option_name = %s', $bf_RF::FLAG ) );
+asem_ok( $bf_p0 >= 1 && $bf_p0 === $bf_RF::pending_count( null ) && 'started' === get_option( $bf_RF::FLAG ) && false !== wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) ), 'ricevute PDF: dopo l\'aggiornamento il primo lotto è solo programmato, non gira dentro la richiesta di chi capita' );
+asem_ok( in_array( $bf_al, array( 'yes', 'on', 'auto', 'auto-on' ), true ), 'ricevute PDF: l\'opzione del lavoro si legge insieme alle altre, senza una domanda in più al database a ogni richiesta' );
+$bf_clean();
+get_option( $bf_RF::FLAG ); // questa richiesta legge «lavoro non ancora preso»…
+$bf_raw( 'started' );       // …ma un'altra richiesta l'ha appena preso
+$bf_RF::maybe_backfill();
+asem_ok( $bf_p0 === $bf_RF::pending_count( null ) && false === wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) ), 'ricevute PDF: due richieste insieme non rifanno lo stesso lavoro, lo prende una sola' );
+$bf_clean();
+$bf_raw( 'started' );
+$bf_flush();
+$bf_salt = function ( $s, $scheme ) {
+	return 'auth' === $scheme ? 'altri-codici-' . $s : $s;
+};
+\AssociazioneSemplice\FileKey::$auto_reopen = false;
+add_filter( 'salt', $bf_salt, 10, 2 );
+\AssociazioneSemplice\FileKey::reset();
+$bf_a0 = $bf_fixed();
+$bf_RF::maybe_backfill();
+$bf_sc = wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) );
+$bf_RF::cron_batch( 0, 0 );
+asem_ok( 'mismatch' === \AssociazioneSemplice\FileKey::state() && false === $bf_sc && $bf_a0 === $bf_fixed() && $bf_p0 === $bf_RF::pending_count( null ), 'ricevute PDF: con la chiave che non si apre non si programma né si disegna nessun lotto' );
+remove_filter( 'salt', $bf_salt, 10 );
+\AssociazioneSemplice\FileKey::$auto_reopen = true;
+\AssociazioneSemplice\FileKey::reset();
+$bf_clean();
+update_option( $bf_RF::FLAG, 'done', true );
+$bf_RF::complete( $pf_fy, 0, 500 );
+asem_ok( 'ok' === \AssociazioneSemplice\FileKey::state() && 0 === $bf_RF::pending_count( $pf_fy ), 'ricevute PDF: aperta la chiave il lavoro riprende e i PDF mancanti si fissano' );
 // verifica e archivio ZIP dell'anno
 $pf_v   = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 $pf_num = (int) \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['number'];
@@ -10794,6 +11225,8 @@ $pf_zc  = (string) $pf_zz->getFromName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf
 $pf_zl  = (string) $pf_zz->getFromName( 'LEGGIMI.txt' );
 $pf_zz->close();
 wp_delete_file( $pf_zip['path'] );
+$pf_tmpd = \AssociazioneSemplice\PrivateFolder::dir() . '/' . \AssociazioneSemplice\PrivateFolder::TEMP_DIR;
+asem_ok( 0 === strpos( $pf_zip['path'], $pf_tmpd . '/' ) && array() === array_diff( is_dir( $pf_tmpd ) ? scandir( $pf_tmpd ) : array( 'x' ), array( '.', '..', 'index.php' ) ), 'ricevute PDF: lo ZIP e i PDF decifrati per comporlo stanno nella cartella riservata e, tolto lo ZIP, non resta nessun PDF in chiaro' );
 asem_ok( 0 === strpos( $pf_zc, '%PDF-' ) && hash( 'sha256', $pf_zc ) === \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['pdf_sha256'] && false !== strpos( $pf_zl, 'dati personali' ), 'ricevute PDF: lo ZIP contiene i PDF DECIFRATI (con l\'impronta del database) e dice che contiene dati personali' );
 asem_ok( 0 === $pf_v['summary']['pending'] && 0 === $pf_v['summary']['altered'] && 0 === $pf_v['summary']['locked'] && $pf_zv && $pf_zip['count'] >= 5 && false !== strpos( \AssociazioneSemplice\Receipts::zip_url( $pf_fy ), 'action=asem_receipt_zip' ), 'ricevute PDF: la verifica dell\'anno è pulita e lo ZIP contiene i PDF emessi e quelli annullati' );
 $pf_okp = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Ricevute emesse', array( 'year' => $pf_fy ) );
@@ -10936,6 +11369,24 @@ asem_ok( 'Voce 3: il socio ha già la tessera ' . $qd_y2 . '.' === $qd_msg2 && 0
 asem_ok( 1 === $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $qd_p, 'lines' => array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000, 'social_year' => $qd_y2 ) ) ) ) && 1 === $qd_count(), 'una sola quota per anno nell\'incasso: registrata' );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qd_p );
 $wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qd_p ) );
+// due richieste insieme: l'altra registra la tessera tra il controllo e la scrittura (simulato con il filtro «query» all'avvio della transazione)
+$qd_year3     = (string) $people->membership_plan( $qd_p, $today )['year'];
+$qd_race_done = false;
+$qd_race      = function ( $sql ) use ( &$qd_race_done, $people, $qd_p, $qd_year3 ) {
+	if ( ! $qd_race_done && 'START TRANSACTION' === $sql ) {
+		$qd_race_done = true;
+		$people->set_membership( $qd_p, $qd_year3, true, 'manual' );
+	}
+	return $sql;
+};
+add_filter( 'query', $qd_race );
+$qd_msg3 = (string) asem_throws( $qd_rec );
+remove_filter( 'query', $qd_race );
+asem_ok( $qd_race_done && 'Voce 1: il socio ha già la tessera ' . $qd_year3 . '.' === $qd_msg3 && 0 === $qd_count() && 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qd_p . ' AND social_year = \'' . esc_sql( $qd_year3 ) . '\' AND deleted_at IS NULL' ), 'quota doppia: se la tessera nasce tra il controllo e la scrittura, la seconda quota è rifiutata dentro la transazione e non nasce alcun movimento' );
+$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qd_p ) );
+// il pulsante «Registra incasso» si disattiva dopo il primo invio (un doppio clic non manda due richieste)
+asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'assets/admin.js' ), "form.dataset.asemSent" ), 'quota doppia: il modulo dell\'incasso ricorda l\'invio e disattiva il pulsante' );
+
 // anno in omaggio: nuovo socio negli ultimi giorni della tessera (paga l'anno dopo, ha l'anno in corso in omaggio)
 $qo_sm = (int) Settings::get( 'social_year_start_month' );
 $qo_o  = Settings::all();

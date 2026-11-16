@@ -14,7 +14,7 @@ manca e le scelte prese**; si aggiorna a ogni PR del modulo.
 | 5 | `/saas/admin`: staff, 2FA, editor con bozza e «Pubblica», registro. **Solo la vendita** (decisione 10/11/2026): niente elenco associazioni, utenti o disattivazioni, che stanno nell'app | accesso, riepilogo, registro ed editor del catalogo **fatti**; gestione staff e `admin_hop` da fare |
 | 6 | Ricezione di `subscription`, `409 unknown_plan`, limiti dal piano | **fatto** (PR 2) |
 | 7 | `admin_hop` | da fare, dopo il passo 5 |
-| 9 | Demo `demosaas.associazionesemplice.it` | comando, utenti e soci finti nella PR; altri dati e messa online da fare (§6) |
+| 9 | Demo `app-demo.associazionesemplice.it` | comando, utenti e soci finti nella PR; altri dati e messa online da fare (§6) |
 
 ## 2. Catalogo (fatto)
 
@@ -87,7 +87,7 @@ test l'amministrazione sta su `/saas/admin` e il prefisso è una sola costante (
 - **Pagine** (sola lettura, Blade senza JavaScript): riepilogo, catalogo (bozza e «Pubblica»), registro. Seguono: gestione dello
   staff, `admin_hop`. L'admin non mostra né modifica associazioni, operatori, soci o utenti: è solo la parte di vendita.
 
-## 6. Demo `demosaas.associazionesemplice.it` (in corso)
+## 6. Demo del gestionale: `app-demo.associazionesemplice.it` (in corso)
 
 Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e solo dati finti.
 
@@ -101,11 +101,12 @@ Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e so
   Fatto anche: due soci ente e tipo di ente APS (per «Dati per il RUNTS»). Da fare: attività, risorse, prima nota, domande aperte, avvisi, socio di prova con area soci.
 - **Banner** in testa (`app.blade.php`) e `noindex` su tutte le pagine; nessuna statistica.
 - **Sul server demo**: `SAAS_REQUIRE_TWO_FACTOR=false` (solo lì, documentato), `MAIL_MAILER=log` (posta simulata: nessuna mail
-  esce), pagamenti simulati quando ci saranno, `SAAS_MEMBERS_DOMAIN=demosaas.associazionesemplice.it` (area soci demo: `polisportiva-demo.demosaas.associazionesemplice.it`)` e DNS jolly a parte.
+  esce), pagamenti simulati quando ci saranno, `SAAS_MEMBERS_DOMAIN=associazionesemplice.it` (area soci demo: `demosaas.associazionesemplice.it/area`, dove «demosaas» è il nome dell'associazione dimostrativa, `SAAS_DEMO_SLUG`). Il file di esempio è `deploy/env.demo.example`.
 - **Accessi visibili**: la pagina di accesso della demo elenca i cinque ruoli con email e password (`DemoEnvironment::credentials()`, vuoto fuori dalla demo) e un pulsante «Usa» che compila i campi. Su questo server l'accesso unico degli operatori (`SAAS_UNIFIED_OPERATORS`) resta spento, altrimenti la pagina di accesso rimanda al portale.
 - **Rilascio**: il workflow «SaaS · rilascio» ha l'ambiente `demo` (segreti SSH propri). Il primo reset si lancia a mano dopo il primo rilascio: `php artisan saas:demo:reset`; poi lo fa lo scheduler alle 03:30.
-- **Online**: serve il sottodominio `demosaas.associazionesemplice.it`, un sub-account con database PostgreSQL propri e il cron, dalla titolare. Link in home dal portale (sessione Portale). Non fatto.
-- **Per ora nello stesso account della produzione** (decisione di Luca, 15/11/2026; poi un'utenza dedicata alle due demo, plugin e SaaS, e si migra): il rilascio `demo` usa la cartella `~/saas-demo` (mai `~/saas`), quindi `.env`, versioni, storage e cron propri. Sul server servono: sottodominio `demosaas.associazionesemplice.it` con cartella pubblica `~/saas-demo/current/public`, DNS jolly `*.demosaas…` per l'area soci, un database PostgreSQL con tre utenti propri (diversi da quelli di produzione), `~/saas-demo/shared/.env` con `APP_ENV=demo` e `SAAS_DEMO=true`, e i segreti SSH dell'ambiente `demo` di GitHub (gli stessi valori della produzione).
+- **Indirizzi (decisi dal titolare il 15/11/2026)**: gestione `https://app-demo.associazionesemplice.it` (installazione separata, cartella `~/saas-demo`); area soci `https://demosaas.associazionesemplice.it/area`. La produzione resta su `app.associazionesemplice.it`. «demosaas» (come app, app-demo, demo, www…) è un nome riservato: in produzione nessuna associazione vera può averlo (`saas.reserved_slugs`).
+- **Dati**: 400 persone (`SAAS_DEMO_PEOPLE`), quote per anno, corsi ed eventi con IVA diverse, risorse e prenotazioni, anni chiusi e uno archiviato, un anno in disavanzo. Il caricamento dei file è spento («Nella demo il caricamento dei file è spento.»). L'associazione «grande» per le prove di carico sarà un comando a parte, solo a mano.
+- **Per ora nello stesso account della produzione** (decisione di Luca, 15/11/2026; poi un'utenza dedicata alle due demo, plugin e SaaS, e si migra): il rilascio `demo` usa la cartella `~/saas-demo` (mai `~/saas`), quindi `.env`, versioni, storage e cron propri. Sul server servono: sottodomini `app-demo.associazionesemplice.it` e `demosaas.associazionesemplice.it`, entrambi con cartella pubblica `~/saas-demo/current/public`, un database PostgreSQL con tre utenti propri (diversi da quelli di produzione), `~/saas-demo/shared/.env` con `APP_ENV=demo` e `SAAS_DEMO=true`, e i segreti SSH dell'ambiente `demo` di GitHub (gli stessi valori della produzione).
 
 ## 7. Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md; formato in docs/STAFF_SSO.md)
 

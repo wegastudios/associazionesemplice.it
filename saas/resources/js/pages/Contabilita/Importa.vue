@@ -36,7 +36,8 @@ const field = 'field';
             <p class="mb-4 text-sm text-muted">I movimenti già presenti (stessa data, conto, importo, descrizione e riferimento) si saltano; i conti che non esistono si creano; i giroconti si riconoscono dalle due righe con la stessa data e lo stesso importo. Non si emettono ricevute. Prima vedi l'anteprima: nulla si salva finché non confermi.</p>
             <form class="grid gap-4 text-sm sm:grid-cols-2" @submit.prevent="send(false)">
                 <label class="space-y-1"><span class="block font-semibold">File (.xlsx o .csv, al massimo 5 MB)</span>
-                    <input type="file" accept=".xlsx,.csv,.txt" @change="(e) => { form.file = e.target.files[0] ?? null; }" />
+                    <input type="file" accept=".xlsx,.csv,.txt" :disabled="$page.props.demo_uploads_off" @change="(e) => { form.file = e.target.files[0] ?? null; }" />
+                    <p v-if="$page.props.demo_uploads_off" class="mt-1 text-sm font-semibold text-amber-800">Nella demo il caricamento dei file è spento.</p>
                     <span v-if="form.errors.file" class="block text-danger" role="alert">{{ form.errors.file }}</span>
                 </label>
                 <label class="space-y-1"><span class="block font-semibold">Conto per le righe senza conto</span>

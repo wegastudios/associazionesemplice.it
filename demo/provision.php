@@ -26,7 +26,7 @@ function demo_step( string $what, callable $fn ) {
 
 // 1. Impostazioni dell'ente e delle funzioni
 demo_step( 'ente e funzioni', function () {
-	Wizard::apply( array(
+	$set = array(
 		'association_name' => 'Associazione Demo APS',
 		'legal_address'    => 'Via della Prova 1',
 		'legal_zip'        => '00100',
@@ -37,8 +37,22 @@ demo_step( 'ente e funzioni', function () {
 		'membership_fee'   => '20,00',
 		'social_year_start_month' => 8, // anno sociale (tessere e attività) da agosto, scelto in modo esplicito
 		'fiscal_start_month'      => 9, // anno fiscale (bilancio e rendiconto) da settembre: l'anno scorso (set–ago) esiste, è aperto e si può chiudere in prova
-	) );
-	Wizard::mark( Wizard::DONE );
+	);
+	// Dalla 1.3.24 la procedura guidata pretende i dati fiscali e i contatti dell'ente: nella demo restano vuoti per scelta (si vede la «banda» che li chiede) e la procedura
+	// rifiuterebbe TUTTO, mesi compresi (il reset notturno ripartirebbe da gennaio e senza l'anno fiscale scorso). Se la procedura rifiuta, le stesse impostazioni si salvano direttamente.
+	try {
+		Wizard::apply( $set );
+		Wizard::mark( Wizard::DONE );
+	} catch ( \Throwable $e ) {
+		WP_CLI::log( '  (procedura guidata rifiutata: ' . wp_trim_words( $e->getMessage(), 8 ) . ' — salvo le impostazioni direttamente)' );
+		Settings::update( $set );
+		Wizard::mark( Wizard::DONE ); // senza questo la procedura guidata si riapre a chi entra come amministratore
+	}
+} );
+
+// 1a. L'anno fiscale scorso esiste ed è aperto (set–ago): ci servono i movimenti dell'estate e il disavanzo di esempio
+demo_step( 'anno fiscale scorso', function () {
+	\AssociazioneSemplice\FiscalYears::ensure( \AssociazioneSemplice\FiscalYears::current() - 1 );
 } );
 
 // 1b. Pagine del sito e pagina iniziale
@@ -72,7 +86,7 @@ demo_step( 'pagine', function () {
 			. $card( 'Senza entrare', 'Guarda cosa vede chi visita il sito dell\'associazione: l\'elenco di corsi ed eventi e la domanda di adesione online.', '', $btn( 'Attività ed eventi', $url( 'attivita' ) ) . $btn( 'Diventa socio', $url( 'adesione' ), true ) )
 			. $card( 'Come socio', 'La tessera con QR, le prenotazioni, i pagamenti e i propri dati: l\'area riservata che ogni socio ha sul sito.', $cred( 'socio@demo.invalid', 'Socio-Demo-2026', 'Email' ), $btn( 'Area soci', $url( 'area' ) ) )
 			. $card( 'Come segreteria', 'Soci, incassi, spese, attività e registri: il lavoro di ogni giorno, dal pannello o dal sito.', $cred( 'segreteria@demo.invalid', 'Segreteria-Demo-2026', 'Email' ), $btn( 'Bacheca', admin_url( 'admin.php?page=asem' ) ) . $btn( 'Area segreteria', $url( 'segreteria' ), true ) )
-			. $card( 'Come amministratore del plugin', 'Tutte le impostazioni di Associazione Semplice. Qui puoi scaricare una copia dei tuoi dati e ricaricarla il giorno dopo, per provare a lungo.', $cred( 'amministratore@demo.invalid', 'Amministratore-Demo-2026', 'Email' ), $btn( 'Copia di sicurezza', admin_url( 'admin.php?page=asem-backup' ) ) . $btn( 'Impostazioni', admin_url( 'admin.php?page=asem-settings' ), true ) )
+			. $card( 'Come amministratore del plugin', 'Tutte le impostazioni di Associazione Semplice, tranne pagamenti, conti, contatti pubblici e file, che nella demo sono bloccati. Qui puoi anche scaricare una copia dei tuoi dati (ricaricarla è bloccato nella demo).', $cred( 'amministratore@demo.invalid', 'Amministratore-Demo-2026', 'Email' ), $btn( 'Copia di sicurezza', admin_url( 'admin.php?page=asem-backup' ) ) . $btn( 'Impostazioni', admin_url( 'admin.php?page=asem-settings' ), true ) )
 			. '</div><!-- /wp:columns -->'
 			. '<!-- wp:shortcode -->[asem_demo_confronto]<!-- /wp:shortcode -->'
 			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Per i ruoli del plugin, i collegamenti e il confronto con le versioni: <a href="https://associazionesemplice.it/prova">associazionesemplice.it/prova</a></p><!-- /wp:paragraph -->'

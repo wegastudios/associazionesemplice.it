@@ -186,6 +186,9 @@ final class PaymentsPage {
 				$rf_html = '<br><strong class="asem-warn">↩ ' . esc_html( $refunded >= (int) $r['amount_cents'] ? Texts::t( 'Rimborsato' ) : Texts::t( 'Rimborsato in parte' ) ) . '</strong> <span class="description">'
 					. esc_html( Texts::t( 'restituiti {importo}', array( 'importo' => Money::format( $refunded ) ) ) ) . ( ! empty( $r['refunded_at'] ) ? ' — ' . esc_html( mysql2date( 'd/m/Y', $r['refunded_at'] ) ) : '' ) . '</span>';
 			}
+			if ( (int) ( $r['refund_pending_cents'] ?? 0 ) > 0 ) { // un tentativo senza esito certo: si ripete solo con lo stesso importo
+				$rf_html .= '<br><strong class="asem-warn">↩ ' . esc_html( Texts::t( 'Rimborso di {importo} non confermato dal gestore: per ripeterlo usa lo stesso importo.', array( 'importo' => Money::format( (int) $r['refund_pending_cents'] ) ) ) ) . '</strong>';
+			}
 			$info = PaymentService::engine()->refund_info( $r );
 			echo '<tr><td>' . esc_html( mysql2date( 'd/m/Y H:i', $r['created_at'] ) ) . '</td><td>' . esc_html( (string) $r['payer_name'] ) . '</td>'
 				. '<td>' . esc_html( array( 'paypal' => 'PayPal', 'sumup' => 'SumUp', 'satispay' => 'Satispay', 'woocommerce' => 'WooCommerce' )[ $r['provider'] ] ?? 'Stripe' ) . '</td><td>' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td><td>' . $state // phpcs:ignore WordPress.Security.EscapeOutput

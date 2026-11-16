@@ -12,6 +12,8 @@ final class Db {
 
 	/** @var bool */
 	private $pg = false;
+	/** true = le ALTER non riuscite non si scrivono nel registro (migrazione all'avvio di ogni pagina: ripeterebbe le stesse righe a ogni richiesta); le scrive bin/migrate.php. */
+	private $quiet = false;
 
 	public function __construct( \PDO $pdo ) {
 		$this->pdo = $pdo;
@@ -83,6 +85,33 @@ final class Db {
 
 	public static function now(): string {
 		return gmdate( 'Y-m-d H:i:s' );
+	}
+
+	/**
+	 * Può questo utente cambiare la struttura (creare tabelle nello schema)? Su SQLite sì; su PostgreSQL dipende dal permesso CREATE sullo schema.
+	 * Quando l'utente del portale viene ristretto a soli dati, le migrazioni girano solo da bin/migrate.php con il proprietario.
+	 */
+	public function mayMigrate(): bool {
+		if ( ! $this->pg ) {
+			return true;
+		}
+		try {
+			return (bool) $this->one( "SELECT has_schema_privilege(current_user, current_schema(), 'CREATE') AS ok" )['ok'];
+		} catch ( \Throwable $e ) {
+			return true; // nel dubbio si comporta come prima
+		}
+	}
+
+	/** Migrazione all'avvio di pagine e cron: si salta se l'utente non ha il permesso di cambiare la struttura (lo fa bin/migrate.php). */
+	public function migrateOnStart(): void {
+		if ( $this->mayMigrate() ) {
+			$this->quiet = true;
+			try {
+				$this->migrate();
+			} finally {
+				$this->quiet = false;
+			}
+		}
 	}
 
 	public function migrate(): void {
@@ -193,6 +222,10 @@ final class Db {
 				// CREATE INDEX e ADD COLUMN non hanno "IF NOT EXISTS" ovunque: se esistono già va bene.
 				if ( 0 !== strpos( $sql, 'CREATE INDEX' ) && 0 !== strpos( $sql, 'ALTER TABLE' ) ) {
 					throw $e;
+				}
+				// «Esiste già» è normale; ogni altro motivo (permessi, tipo) finisce nel registro invece di sparire: una colonna mancante rompe i lavori più avanti.
+				if ( ! $this->quiet && false === stripos( $e->getMessage(), 'already exists' ) && false === stripos( $e->getMessage(), 'duplicate column' ) ) {
+					error_log( '[portale] migrazione non riuscita: ' . substr( preg_replace( '/\s+/', ' ', $sql ), 0, 90 ) . ' → ' . $e->getMessage() );
 				}
 			}
 		}

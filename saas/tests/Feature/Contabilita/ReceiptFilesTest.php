@@ -70,7 +70,8 @@ it('l\'amministratore rifà il PDF dai dati dell\'emissione, anche se i dati viv
     Storage::disk('org_files')->delete($row->path);
     $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")->assertSessionHasNoErrors();
     $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk();
-    expect(receiptRow($this->org->id, $this->receipt)->source)->toBe('rifatta');
+    expect(receiptRow($this->org->id, $this->receipt)->source)->toBe('rifatta')
+        ->and($this->orgContext()->run($this->org->id, fn () => DB::table('audit.log')->where('action', 'receipt.rebuilt')->exists()))->toBeTrue();
 
     // Dati cambiati dall'emissione: il PDF si rifà lo stesso, con i dati di allora.
     $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->person)->firstOrFail()->update(['first_name' => 'Marco']));

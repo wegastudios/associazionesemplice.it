@@ -7,11 +7,15 @@ use App\Modules\AreaSoci\Mail\PaymentRefunded;
 use App\Modules\AreaSoci\Payments\OnlinePayments;
 use App\Modules\AreaSoci\Payments\StripeWebhook;
 use App\Modules\Attivita\Services\ActivityService;
+use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\OrgEntitlements;
+use App\Modules\Risorse\Contracts\ResourceError;
+use App\Modules\Risorse\Payments\ReservationDues;
+use App\Modules\Risorse\Services\ReservationService;
 use App\Modules\Risorse\Services\ResourceService;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
@@ -284,4 +288,41 @@ it('rimborsa e avvisa il socio anche senza i contatti della segreteria, senza in
 
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '10,00', 'reason' => 'Quota già pagata'])->assertSessionHas('status');
     Mail::assertSent(PaymentRefunded::class, fn (PaymentRefunded $m): bool => $m->contactEmail === null && ! $m->hasReplyTo('segreteria@beta.example'));
+});
+
+it('dopo «rimborsa e storna» una prenotazione resta valida, occupa ancora la fascia e torna da pagare, e lo dicono schermo ed email', function (): void {
+    Mail::fake();
+    saveStripe($this);
+    $day = now('Europe/Rome')->addDays(3)->format('Y-m-d');
+    [$id, $reservation] = $this->orgContext()->run($this->org->id, function () use ($day): array {
+        $court = app(ResourceService::class)->save(null, [
+            'name' => 'Campo 1', 'category' => 'court', 'typology' => 'hourly', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60,
+            'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000,
+        ]);
+        $reservations = app(ReservationService::class);
+        $r = $reservations->book($court->id, ['person_id' => $this->anna->id, 'date' => $day, 'start' => '10:00', 'units' => 1], null)[0];
+        $label = (string) $reservations->collect($r, $this->cash, now()->toDateString(), null, PaymentMethod::Cash);
+        $id = (string) Illuminate\Support\Str::uuid7();
+        DB::table('app.online_payments')->insert([
+            'org_id' => $this->org->id, 'id' => $id, 'person_id' => $this->anna->id, 'provider' => 'stripe', 'status' => 'settled', 'amount_cents' => 1000, 'paid_cents' => 1000,
+            'items' => json_encode([['key' => 'r:'.$r, 'person_id' => $this->anna->id, 'group' => 'Risorse', 'label' => 'Campo 1', 'amount_cents' => 1000]]),
+            'receipts' => json_encode([$label]), 'provider_ref' => 'cs_test_9',
+        ]);
+
+        return [$id, ['id' => $r, 'court' => $court->id]];
+    });
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::response(['id' => 're_9'])]);
+
+    $this->get('/gestionale/pagamenti-online')->assertInertia(fn (Assert $page) => $page->where('payments.0.stays_note', OnlinePayments::STAYS_RESERVATION));
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Prenotazione pagata due volte'])->assertSessionHas('status');
+    expect(session('status'))->toContain(OnlinePayments::STAYS_RESERVATION);
+
+    $this->orgContext()->run($this->org->id, function () use ($reservation, $day): void {
+        expect(DB::table('app.reservations')->where('id', $reservation['id'])->value('status'))->toBe('booked')
+            ->and(array_column(app(ReservationDues::class)->dues([$this->anna->id]), 'key'))->toContain('r:'.$reservation['id'])
+            ->and(fn () => app(ReservationService::class)->book($reservation['court'], ['holder_name' => 'Altri', 'date' => $day, 'start' => '10:00', 'units' => 1], null))
+            ->toThrow(ResourceError::class);
+    });
+    Mail::assertSent(PaymentRefunded::class, fn (PaymentRefunded $m): bool => $m->stays === [OnlinePayments::MAIL_RESERVATION]);
 });

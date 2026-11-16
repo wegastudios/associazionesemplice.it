@@ -7,6 +7,7 @@ namespace App\Modules\Contabilita\Http\Controllers;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Import\LedgerExport;
 use App\Modules\Contabilita\Import\LedgerImportService;
+use App\Modules\Core\Contracts\DemoScale;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Http\UploadedFile;
@@ -30,6 +31,9 @@ final readonly class LedgerTransferController
 
     public function import(Request $request): Response
     {
+        if (DemoScale::uploadsOff()) {
+            throw ValidationException::withMessages(['file' => DemoScale::UPLOADS_OFF]);
+        }
         $request->validate([
             'file' => ['required', 'file', 'max:5120', 'extensions:csv,txt,xlsx'],
             'default_account_id' => ['nullable', 'uuid'],

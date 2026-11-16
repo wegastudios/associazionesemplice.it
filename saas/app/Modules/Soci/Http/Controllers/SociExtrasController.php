@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Soci\Http\Controllers;
 
 use App\Modules\Contabilita\Contracts\Money;
+use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\Input;
 use App\Modules\Soci\Contracts\CertificateKind;
 use App\Modules\Soci\Contracts\MemberType;
@@ -51,6 +52,9 @@ final readonly class SociExtrasController
 
     public function addCertificate(Request $request, string $person): RedirectResponse
     {
+        if (DemoScale::uploadsOff() && $request->hasFile('file')) {
+            throw ValidationException::withMessages(['file' => DemoScale::UPLOADS_OFF]);
+        }
         $data = Input::of($request->validate([
             'kind' => ['required', Rule::enum(CertificateKind::class)],
             'issued_on' => ['required', 'date_format:Y-m-d'],

@@ -148,6 +148,8 @@ Ti chiede la **password** e il **motivo del rimborso**, che il socio leggerà ne
 
 Se l'**anno fiscale dell'incasso è chiuso**, l'operazione non parte: né rimborso né storno. Se il rimborso non riesce, non cambia nulla: ricevute e tessere restano come prima. Serve lo stesso permesso **«Emettere rimborsi»**. Il rimborso **parziale** c'è solo per i soldi non registrati, con «rimborsa».
 
+**Se il pagamento comprendeva una prenotazione di una risorsa o l'iscrizione a un'attività o a un evento**, quella voce **resta valida e torna da pagare**: il gestionale non la annulla. Lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» oppure «L'iscrizione resta e il contributo torna da pagare: se non serve più, togli l'iscrizione dalla scheda dell'attività.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.» (o «La tua iscrizione resta attiva e il contributo risulta da pagare: …»). Per le quote associative non c'è questa riga, perché la tessera si annulla.
+
 ## Se l'importo pagato è diverso
 
 Se l'importo incassato è diverso da quello atteso, il motivo è «Incassati X invece di Y: da controllare» e in quel caso **nessuna voce** viene registrata: leggi il motivo nella stessa pagina e premi «controllato» quando hai sistemato.
@@ -271,9 +273,22 @@ Il gestionale ti avvisa se qualcosa non torna:
 - se nei Dati dell'ente spunti «L'associazione non ha la partita IVA» e ci sono attività con l'IVA: «Hai N attività con l'IVA: senza partita IVA l'IVA non si applica più a nessuna. I movimenti già registrati non cambiano.»;
 - in scheda, un avviso rosso: «L'aliquota di questa attività non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa attività si registrano senza IVA.»
 
-## Cosa non c'è ancora
+## IVA su risorse e prenotazioni di spazi
 
-Non si può ancora impostare l'IVA sulle risorse e sulle prenotazioni di spazi.
+Come funzionano le risorse è spiegato in [Risorse e prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni). Con la partita IVA, anche nella **scheda di una risorsa** (un salone, un campo, un'aula…) trovi la casella **«Con IVA»**, che funziona come quella delle attività:
+
+- **senza la spunta**: «Senza la spunta, gli incassi di questa risorsa si registrano come «Fuori campo IVA».»;
+- **con la spunta**, scegli **«IVA esente»** oppure una delle aliquote che hai indicato in Aspetto fiscale («IVA 22%», «IVA 10%»…).
+
+Sotto il menu vedi come leggere gli importi: con i prezzi **senza IVA**, «Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.»; con i prezzi **finali**, «Gli importi che scrivi sono finali, con l'IVA compresa.»
+
+Con i **prezzi senza IVA**, chi prenota vede e paga **il prezzo con l'IVA aggiunta**, in elenco, nella griglia, nell'anteprima e nell'area dei soci. Per esempio, una sala da **50,00 € l'ora** con **IVA 22%**: chi prenota vede **61,00 €**. Una prenotazione già fatta si incassa **con l'aliquota e l'importo di quando è stata creata**, anche se poi cambi l'IVA della risorsa. Le risorse che esistevano già restano **senza IVA** finché non le cambi tu. Se non sai quale voce scegliere, **chiedi al tuo commercialista**.
+
+Il gestionale ti avvisa se qualcosa non torna:
+
+- se provi a togliere da Aspetto fiscale un'aliquota usata da qualche risorsa: «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.»; se sono usate anche da qualche attività, il messaggio dice «Alcune attività o risorse usano l'aliquota X%: prima cambia l'IVA di quelle attività o risorse, poi toglila dall'elenco.»;
+- se l'aliquota è usata da prenotazioni non ancora finite: «Alcune prenotazioni non ancora finite usano l'aliquota X%: togli l'aliquota dall'elenco quando saranno finite o annullate.»;
+- in scheda, un avviso rosso: «L'aliquota di questa risorsa non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa risorsa si registrano senza IVA.»
 MD,
     ],
     [
@@ -308,6 +323,92 @@ Prima della chiusura il rendiconto è una **bozza**: i numeri sono quelli di ogg
 Nella stessa pagina vedi **inizio e fine dell'anno fiscale**. Quando il rendiconto è approvato premi **«Emetti il rendiconto definitivo»** (con l'anno): da quel momento non si registrano né si stornano movimenti con date di quell'anno. Se serve correggere qualcosa, **«Riapri l'anno fiscale»**: scrivi il **motivo della riapertura** e l'anno per confermare, e il motivo resta in traccia. Se lo riapri e lo richiudi nasce una nuova versione del rendiconto; le precedenti restano elencate.
 
 > Chiudi l'anno fiscale solo dopo aver controllato la prima nota e il rendiconto.
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Attività', 'slug' => 'gestionale-risorse-e-prenotazioni',
+        'title' => 'Risorse e prenotazioni di spazi',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Le risorse sono un **pacchetto in più** (**«Risorse»**) rispetto al piano: si aggiungono da **Abbonamento e pacchetti**.
+
+Le **risorse** sono ciò che l'associazione mette a disposizione e si prenota: un campo, una sala, un posto barca, una postazione. Le trovi in **Risorse**.
+
+## I tre modi di prenotare
+
+Quando crei una risorsa scegli **«Si prenota»**:
+
+- **A ore**: la giornata è divisa in **fasce** (**«Minuti per fascia»**) tra **«Apre alle»** e **«Chiude alle»**. Puoi dare tariffe diverse per giorni e orari, ammettere **ospiti** con un supplemento e proporre **servizi aggiuntivi**.
+- **A giornata**: si prenota il giorno intero.
+- **A stagione**: una persona dell'anagrafica ha la risorsa **per un periodo**, con una **lista d'attesa**. Le stagionali le assegna **solo la segreteria**.
+
+Nell'elenco vedi, per ogni risorsa, come si prenota, la tariffa e lo stato di oggi. Ogni tipo ha un **massimo di risorse attive** (lo vedi nelle tre caselle in alto: «… su …»). Se un tipo non è nel tuo pacchetto, il gestionale lo dice: «Il pacchetto Risorse dell'associazione non comprende risorse …: puoi aggiungerle dal portale.»
+
+## Creare una risorsa
+
+1. In **Risorse** premi **«Nuova risorsa»**.
+2. Scrivi il **nome** (per esempio «Campo 1», «Sala feste», «Posto barca 12») e scegli **«Si prenota»**.
+3. Imposta le **tariffe**: **«Tariffa soci»** (0 = gratuita) e **«Tariffa non soci»** (se la lasci vuota vale come quella dei soci). **Chi ha la tessera valida paga la tariffa soci.**
+4. Per le risorse a ore, scegli gli orari e i minuti per fascia, quante fasce di seguito si possono prenotare e l'**anticipo massimo** in giorni (0 = nessun limite; vale per le prenotazioni dei soci).
+5. Scegli la **«Voce di entrata»** in cui finiranno gli incassi (di partenza «Altre entrate») e, se hai la partita IVA, la casella **«Con IVA»** (vedi [IVA: la pagina «Aspetto fiscale»](guida:gestionale-iva-e-aspetto-fiscale)).
+6. Salva.
+
+**Tariffe a fasce**: una per riga, con giorni (tutti, feriali, weekend), orario e prezzo per fascia; per esempio «feriali 18:00-22:00 15,00». Fuori dalle fasce vale la tariffa soci. **Servizi aggiuntivi**: uno per riga, nome e prezzo («Aperitivo 5,00»): si scelgono quando si prenota.
+
+## Prenotare dalla segreteria
+
+Nella scheda della risorsa scegli **«Chi prenota»**: una persona dell'anagrafica oppure, per un **esterno**, scrivi il **«Nome di chi prenota»** (per esempio «Torneo» o «azienda»); non serve la scheda. L'esterno paga la tariffa non soci, se l'hai impostata. Per le prenotazioni a ore puoi ripetere **«Ogni settimana per»** fino a **52 settimane**; per ogni prenotazione puoi aggiungere **ospiti**, **servizi** e **note**.
+
+Il **«Calendario»** (in alto nella pagina Risorse) mostra le fasce di oggi, i giorni liberi dei prossimi 14 e le stagioni.
+
+## Incassare una prenotazione
+
+Ogni prenotazione mostra **«dovuto … · pagato …»**. Premi **«Incassa»**, controlla importo, data, conto e modalità e premi **«Registra l'incasso»**: va in **prima nota, con ricevuta** se chi paga è in anagrafica. Serve il permesso di **modificare le entrate in prima nota**, oltre a quello sulle risorse.
+
+## I soci prenotano dall'area soci
+
+Nell'**area soci**, sotto **Risorse**, un socio con accesso sceglie il giorno e **tocca una fascia libera**, oppure prenota il giorno intero. Il prezzo è quello dei soci con la tessera valida. Vede **«Le tue prenotazioni»**, con **«da pagare»** e il pulsante **«Annulla»**. Il dovuto si paga con i **pagamenti online** dell'area soci (menu **«Pagamenti online»**, con Stripe o PayPal **attivi**) (vedi [Pagamenti online dei soci](guida:gestionale-pagamenti-online-dei-soci)): l'incasso entra in prima nota con la ricevuta e la prenotazione risulta pagata.
+
+- Dal web prenotano **solo i soci con accesso**, e solo risorse **a ore e a giornata**: mai le stagionali. I non soci non prenotano dal web: li prenota la segreteria.
+- Per ogni tipo, l'opzione **«web»** del pacchetto accende la prenotazione dall'area soci.
+- Il socio **annulla da solo** solo una prenotazione **futura e non pagata**; se è pagata o già iniziata vede «scrivi alla segreteria».
+
+## Annullare una prenotazione e restituire i soldi
+
+Sono **due gesti distinti**: annullando una prenotazione già pagata **i soldi non tornano da soli al socio** e l'incasso **resta in prima nota**.
+
+**Dopo «rimborsa e storna» la prenotazione c'è ancora e risulta da pagare: se il socio non userà la risorsa, annullala.** Il gestionale lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.»
+
+- **Se la prenotazione è stata pagata online** dall'area soci, apri **Pagamenti online** (la voce si chiama **«Risorse»**) e usa **«rimborsa e storna»**: i soldi tornano sul metodo di pagamento del socio, l'incasso in prima nota viene **stornato** e la prenotazione, che **resta valida**, torna **«da pagare»**; se non vuoi più la prenotazione, annullala tu. Chiede il **motivo**, che il socio legge. Serve il permesso **«Emettere rimborsi»**. Se l'**anno fiscale è chiuso**, lo storno non si può fare e non si rimborsa nulla. Come funziona è spiegato in [Rinnovare una tessera](guida:gestionale-rinnovare-una-tessera), sezione «Restituire un pagamento già registrato».
+- **Se è stata pagata in un altro modo** (contanti, bonifico…): storni l'incasso in prima nota e **restituisci i soldi fuori dal programma**.
+
+## Bloccare una risorsa
+
+Con **«Blocca la risorsa»** indichi il periodo (**«Dal»**, **«Al»**) e il **motivo** (manutenzione, torneo, chiusura). **Non si blocca un periodo con prenotazioni**: annullale prima.
+
+## Stagionali e lista d'attesa
+
+Per una risorsa a stagione, la segreteria assegna una **persona** per un periodo. Chi è in **«Lista d'attesa»** si aggiunge con **«Aggiungi in lista»**; quando la risorsa viene assegnata a chi è in lista, esce dalla lista da sola.
+
+## Permessi
+
+Sono caselle a spunta in **Operatori e ruoli** (ogni permesso richiama quello minore: modificare richiede vedere). Oggi le risorse usano gli stessi permessi dell'anagrafica:
+
+- **«Vedere l'anagrafica»**: vedi **Risorse** e il calendario;
+- **«Modificare l'anagrafica, tesseramento, attività»**: crei e modifichi le risorse, prenoti, blocchi;
+- per **incassare** una prenotazione servono anche **«Registrare in prima nota»** e **«Registrare gli incassi»**;
+- per i **rimborsi**: **«Emettere rimborsi»**.
+
+## Archiviare una risorsa
+
+Una risorsa che non usi più si **archivia**; le archiviate si vedono con **«Vedi le archiviate»**.
+
+## Cosa non si può fare
+
+- **annullando una prenotazione pagata i soldi non tornano da soli** al socio: il rimborso è un gesto a parte;
+- la **prenotazione online dei non soci**;
+- la **prenotazione delle stagionali dal web**;
+- **pacchetti o crediti prepagati** per le risorse;
+- le **ripetizioni settimanali dall'area soci** (le fa solo la segreteria);
 MD,
     ],
     [
