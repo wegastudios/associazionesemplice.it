@@ -10507,7 +10507,18 @@ $v4_july = function () {
 	return 7;
 };
 add_filter( 'asem_fiscal_start_month', $v4_july );
+$v4_lq = array();
+$v4_lf = function ( $q ) use ( &$v4_lq ) {
+	if ( false !== strpos( (string) $q, '_LOCK(' ) ) {
+		$v4_lq[] = (string) $q;
+	}
+	return $q;
+};
+add_filter( 'query', $v4_lf );
 $v4_fy = \AssociazioneSemplice\Receipts::number_for( 'tx990000001', ( $v4_z + 1 ) . '-02-01' );
+remove_filter( 'query', $v4_lf );
+$v4_ln = \AssociazioneSemplice\Db::lock_name( 'asem_receipt_number' );
+asem_ok( 2 === count( $v4_lq ) && false !== strpos( $v4_lq[0], "GET_LOCK('" . $v4_ln . "'" ) && false !== strpos( $v4_lq[1], "RELEASE_LOCK('" . $v4_ln . "')" ) && $v4_ln !== 'asem_receipt_number' && strlen( $v4_ln ) <= 64, 'ricevute: il numero si assegna con il blocco dal nome unico per sito, preso e rilasciato con lo stesso nome' );
 $v4_mf = $v4_mk( 'board', ( $v4_z + 1 ) . '-02-10', 'Verbale fiscale' );
 asem_ok( $v4_z === $v4_fy['year'] && 4 === $v4_fy['number'], 'ricevute: con esercizio da luglio, febbraio dell\'anno dopo appartiene all\'esercizio che è iniziato a luglio' );
 asem_ok( '2/' . $v4_z === $v4_lbl( $v4_mf ), 'verbali: nuovi verbali seguono anche loro l\'anno fiscale' );

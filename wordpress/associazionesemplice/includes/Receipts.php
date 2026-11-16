@@ -487,7 +487,8 @@ final class Receipts {
 		}
 		YearLock::assert_date_open( $date );
 		$year = FiscalYears::year_of( $date );
-		$lock = (int) $db->get_var( "SELECT GET_LOCK('asem_receipt_number', 5)" );
+		$lname = Db::lock_name( 'asem_receipt_number' ); // nome unico per sito: il blocco vale per tutto il server MySQL
+		$lock  = (int) $db->get_var( $db->prepare( 'SELECT GET_LOCK(%s, 5)', $lname ) );
 		try {
 			$have = $db->get_row( $db->prepare( "SELECT number, year FROM $tbl WHERE receipt_key = %s", $key ), ARRAY_A );
 			if ( $have ) {
@@ -507,7 +508,7 @@ final class Receipts {
 			return array( 'number' => $next, 'year' => $year );
 		} finally {
 			if ( $lock ) {
-				$db->get_var( "SELECT RELEASE_LOCK('asem_receipt_number')" );
+				$db->get_var( $db->prepare( 'SELECT RELEASE_LOCK(%s)', $lname ) );
 			}
 		}
 	}
