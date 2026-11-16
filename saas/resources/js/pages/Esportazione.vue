@@ -39,7 +39,7 @@ const day = (d) => (d ? d.split('-').reverse().join('/') : '');
                     <label class="flex items-center gap-2 font-semibold"><input v-model="withCertificates" type="checkbox" name="certificati" value="1">Includi i certificati medici (dati sulla salute) in chiaro</label>
                     <p class="mt-1 text-muted">Sono dati sulla salute, in chiaro, senza protezione: conservali con cura e consegnali solo a chi ne ha titolo.</p>
                 </div>
-                <p class="text-muted">Ti chiediamo la password prima di scaricare. Dopo il clic la copia viene preparata: può richiedere qualche minuto. Il download parte da solo: non chiudere la pagina.</p>
+                <p class="text-muted">Prima di scaricare ti viene chiesta la password; dopo averla scritta, premi di nuovo «Scarica copia di sicurezza». La copia viene preparata: può richiedere qualche minuto. Il download parte da solo: non chiudere la pagina.</p>
                 <button type="submit" class="btn btn-primary">Scarica copia di sicurezza</button>
             </form>
         </section>
