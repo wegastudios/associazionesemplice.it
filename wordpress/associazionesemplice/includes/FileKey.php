@@ -55,7 +55,7 @@ final class FileKey {
 		}
 		++self::$depth;
 		try {
-			return Db::with_lock( self::LOCK, $fn, 10 );
+			return Db::with_lock( self::LOCK, $fn, 10, true ); // anche un errore del server vale «blocco non preso»
 		} finally {
 			--self::$depth;
 		}
@@ -553,7 +553,10 @@ final class FileKey {
 			try {
 				self::ensure_site();
 			} catch ( \InvalidArgumentException $e ) {
-				return true; // le chiavi si aprono: l'identificativo si completerà alla prossima richiesta
+				return false; // senza identificativo non si cifra: i file e i campi resterebbero legati a un identificativo vuoto
+			}
+			if ( '' === self::site_id() ) {
+				return false;
 			}
 		}
 		return 'ok' === $l['state'];
@@ -578,13 +581,13 @@ final class FileKey {
 	/** @return array{id:int,key:string}|null chiave per cifrare i nuovi file */
 	public static function current(): ?array {
 		$l = self::load();
-		return 'ok' === $l['state'] ? array( 'id' => $l['current'], 'key' => $l['deks'][ $l['current'] ] ) : null;
+		return 'ok' === $l['state'] && '' !== self::site_id() ? array( 'id' => $l['current'], 'key' => $l['deks'][ $l['current'] ] ) : null;
 	}
 
-	/** Chiave dei dati con questo identificativo, se si apre su questo sito. */
+	/** Chiave dei dati con questo identificativo, se si apre su questo sito (e se l'identificativo del sito c'è: mai con un identificativo vuoto). */
 	public static function key_for( int $id ): ?string {
 		$l = self::load();
-		return $l['deks'][ $id ] ?? null;
+		return isset( $l['deks'][ $id ] ) && '' !== self::site_id() ? $l['deks'][ $id ] : null;
 	}
 
 	/**

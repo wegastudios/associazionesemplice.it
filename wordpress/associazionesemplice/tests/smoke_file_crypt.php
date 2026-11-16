@@ -325,6 +325,14 @@ Db::with_lock( 'asem_prova_blocco', function () use ( &$fk_l ) { $fk_l = 'si'; }
 Db::$lock_fake = 'x';
 $fc_ok( null !== $fk_s && 'si' === $fk_l, 'blocco: un errore del server vale «blocco non preso» per le chiavi e gli altri usi procedono come sempre' );
 
+// Nome del blocco: unico per sito (database e prefisso), sempre entro i 64 caratteri di MySQL
+$fk_long = str_repeat( 'operazione-molto-lunga-', 6 );
+$fk_n1   = Db::lock_name( 'asem_file_key', 'db1|wp_' );
+$fk_n2   = Db::lock_name( 'asem_file_key', 'db1|wp2_' );
+$fc_ok( $fk_n1 !== $fk_n2 && Db::lock_name( 'asem_file_key', 'db2|wp_' ) !== $fk_n1, 'blocco: due siti con prefisso o database diversi non si bloccano a vicenda' );
+$fc_ok( Db::lock_name( 'asem_file_key', 'db1|wp_' ) === $fk_n1 && Db::lock_name( 'asem_file_key' ) === Db::lock_name( 'asem_file_key' ) && Db::lock_name( 'asem_file_key' ) !== Db::lock_name( 'asem_private_move' ), 'blocco: lo stesso sito e la stessa operazione hanno sempre lo stesso nome, operazioni diverse nomi diversi' );
+$fc_ok( strlen( $fk_n1 ) <= 64 && strlen( Db::lock_name( $fk_long ) ) <= 64 && Db::lock_name( $fk_long ) !== Db::lock_name( $fk_long . 'x' ), 'blocco: il nome sta nei 64 caratteri di MySQL anche con un nome di operazione lunghissimo, e resta distinto' );
+
 // Blocco occupato al primo avvio: nessun file né campo si cifra con un identificativo vuoto, e dopo lo sblocco tutto funziona
 $fk_cnt = function () use ( $fc_dir ): int {
 	return count( glob( $fc_dir . '/*' ) ?: array() );
