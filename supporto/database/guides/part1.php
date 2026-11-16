@@ -116,7 +116,9 @@ Associazione Semplice Pro è un plugin a parte, che si aggiunge a quello gratuit
 
 Dopo il controllo compaiono nel menu le funzioni incluse nel tuo piano.
 
-$1Quando esce una nuova versione compare in Bacheca l'avviso «È disponibile la versione …». Se gli **aggiornamenti diretti** sono attivi, l'avviso dice **«Installalo da Bacheca → Aggiornamenti: i dati restano.»** e ha il pulsante **«Vai agli aggiornamenti»**: l'aggiornamento si installa da lì, come per gli altri plugin. Altrimenti l'avviso ti porta a scaricare il pacchetto dall'area clienti, da caricare in **Plugin → Aggiungi nuovo**: i dati restano.
+## Aggiornare
+
+Quando esce una nuova versione compare in Bacheca l'avviso «È disponibile la versione …». Se gli **aggiornamenti diretti** sono attivi, l'avviso dice **«Installalo da Bacheca → Aggiornamenti: i dati restano.»** e ha il pulsante **«Vai agli aggiornamenti»**: l'aggiornamento si installa da lì, come per gli altri plugin. Altrimenti l'avviso ti porta a scaricare il pacchetto dall'area clienti, da caricare in **Plugin → Aggiungi nuovo**: i dati restano.
 
 Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro; se il sito segnala che i due non sono compatibili, aggiorna entrambi all'ultima versione.
 
@@ -129,7 +131,8 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-$1
+La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attività, prima nota, registri e impostazioni (senza le chiavi segrete dei pagamenti e senza la chiave di licenza). Puoi aggiungere anche gli allegati. Solo gli amministratori possono farla.
+
 **Dopo un ripristino su un altro sito** le chiavi dei pagamenti e la chiave di licenza vanno **reinserite**, perché non sono nella copia.
 
 ## Fare la copia
@@ -229,7 +232,8 @@ MD,
 
 1. In WordPress vai in **Impostazioni → Licenza**.
 2. Incolla la chiave che trovi nell'area riservata di associazionesemplice.it.
-$1
+3. Salva. Il plugin verifica subito la chiave.
+
 La chiave viene **salvata cifrata**. Quando riapri la pagina nel campo vedi solo le **ultime cifre** e la scritta «(salvata): lascia vuoto per non cambiarla»: se non scrivi nulla, la chiave resta quella. Per **toglierla** spunta **«rimuovi»**.
 
 **Se compare l'avviso «La chiave di licenza salvata non si legge più su questo sito…»** in Bacheca: succede se cambiano i **codici di sicurezza di WordPress**, se il sito è stato **spostato** o se hai **ripristinato una copia su un altro sito**. Basta **reinserire la chiave** in **Impostazioni → Licenza** (il pulsante dell'avviso, «Apri il pannello Licenza», ti ci porta). Intanto il **Pro non si spegne**.

@@ -288,7 +288,7 @@ Il socio **prenota con un clic**, entrando con il suo accesso: il modulo e le re
 
 ## Chi non è socio
 
-Chi non è socio compila un **modulo breve** e riceve una email con un collegamento da aprire **entro 24 ore** per confermare l'indirizzo. Il collegamento **mostra la richiesta** con il pulsante **«Conferma»**: **aprirlo non basta**, la richiesta è confermata solo premendo il pulsante (così un'anteprima della posta non conferma da sola). $1
+Chi non è socio compila un **modulo breve** e riceve una email con un collegamento da aprire **entro 24 ore** per confermare l'indirizzo. Il collegamento **mostra la richiesta** con il pulsante **«Conferma»**: **aprirlo non basta**, la richiesta è confermata solo premendo il pulsante (così un'anteprima della posta non conferma da sola). Prenota sempre un adulto, che risponde dei minori indicati come accompagnati.
 **Dopo la conferma** il non socio vede «Email confermata. La segreteria esamina la richiesta e ti scrive appena è approvata.» (per i corsi: «Email confermata. La segreteria esamina la richiesta di iscrizione e ti scrive appena è approvata, spiegandoti come pagare.»). Gli arriva anche un'email, **«Richiesta ricevuta: …»**: «Abbiamo confermato la tua richiesta per «…». La segreteria la esamina e ti scrive appena è approvata. Per qualsiasi dubbio scrivi alla segreteria.»
 
 **Richieste non confermate:** se il non socio non conferma l'email **entro 24 ore**, la richiesta **si cancella da sola**.
@@ -301,13 +301,15 @@ Per non riempire il sito di richieste inutili ci sono tre limiti, che cambi in *
 
 - **«Richieste di evento o corso in attesa, al massimo»**: di partenza **100** (da 10 a 5000);
 - **«Posti chiedibili con lo stesso indirizzo email, in 24 ore»**: di partenza **20** (da 10 a 200);
-$1
+- **«Posti chiedibili dalla stessa connessione, in 24 ore»**: di partenza **40** (da 10 a 500).
+
 **Quando il tetto è raggiunto**, chi scrive vede «In questo momento non possiamo ricevere altre richieste per questa attività: riprova più tardi o scrivi alla segreteria (indirizzo).» (l'indirizzo compare solo se la segreteria ne ha uno). Tu trovi in **Bacheca** l'avviso **«Le richieste di evento e di corso sono al limite»**, con quante richieste ci sono in attesa, il limite e, se ce ne sono, quante nuove sono state scartate negli ultimi giorni. Per far posto **approva o rifiuta** le richieste in attesa dalla scheda delle attività, oppure **alza il limite** da **Limiti e soglie**.
 
 **Se il limite è per email o per connessione**, chi scrive vede, per l'email, «Con questo indirizzo email sono già stati chiesti molti posti nelle ultime 24 ore: per altri posti scrivi alla segreteria (indirizzo).» e, per la connessione, «Da questa connessione sono già stati chiesti molti posti nelle ultime 24 ore: riprova più tardi o scrivi alla segreteria (indirizzo).» (l'indirizzo compare solo se la segreteria ne ha uno). Vale per eventi e corsi. La richiesta **non viene registrata** e **non parte nessuna email**. Se nell'ultima settimana ce ne sono state di respinte, nell'avviso in Bacheca trovi una riga in più: «N richieste sono state respinte perché una email o una connessione aveva già chiesto molti posti (il limite si cambia da Limiti e soglie).»
 
 **La segreteria non ha questi limiti** quando prenota.
-$2 il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
+
+Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
 
 ## Le scelte per ogni evento
 

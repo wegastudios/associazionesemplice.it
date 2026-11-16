@@ -17,6 +17,7 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 - Per i **soci che sono enti** ci sono colonne in più (*Tipo soggetto*, *Denominazione*…): vedi [Soci che sono enti](guida:soci-che-sono-enti).
 - Se il file Excel ha più fogli (per esempio «Soci», «Ospiti», «Prima nota»), il plugin li legge tutti e capisce da solo a cosa serve ciascuno. I fogli non riconosciuti vengono ignorati.
 - I vecchi file `.xls` vanno salvati prima come `.xlsx` o CSV.
+- Un foglio Excel con **più di 16.384 colonne** (oltre la colonna XFD) viene rifiutato subito con «Il foglio ha più di 16384 colonne: controlla che sia il file giusto.»
 
 ## Importa
 
@@ -291,6 +292,8 @@ I nuovi soci **non hanno un utente WordPress**. Entrano nell'area soci con **ema
 La pagina di accesso è **una sola schermata**: il socio sceglie se entrare con la **password** o con un **link** che riceve per email. Con la casella **«Ricordami»** resta collegato per **30 giorni** su quel dispositivo.
 
 Il **link** o il **codice** ricevuto per email restano come opzione, per entrare senza password. Valgono **12 ore**; il tempo si cambia da **Impostazioni → Limiti e soglie**. Per questo **la posta del sito deve funzionare**: link, codici e recupero password arrivano per email. Prova l'invio prima di aprire l'area ai soci.
+
+I moduli di accesso (entrare con la password, con il codice, il recupero della password) e quelli di attivazione e di «Primo accesso» **valgono solo dal browser che ha aperto la pagina**. Se il socio ha lasciato la pagina aperta troppo a lungo, o il modulo non arriva dalla pagina giusta, legge «Il modulo deve partire dalla pagina di accesso, oppure è scaduto: ricarica la pagina e riprova.» (nell'attivazione e nel primo accesso: «Il modulo deve partire dalla sua pagina, oppure è scaduto: ricarica la pagina e riprova.»). Basta **ricaricare la pagina** e riprovare.
 
 ## Password dimenticata
 

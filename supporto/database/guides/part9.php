@@ -125,7 +125,7 @@ L'**Archivio documenti** raccoglie in un posto solo statuto, regolamenti, verbal
 3. Scegli il **file**.
 4. Scegli **chi lo vede** (vedi sotto) e salva.
 
-**File ammessi**: PDF, foto (JPG, PNG, WebP), Word, Excel, LibreOffice e testo, fino al limite **«Peso massimo di un allegato»** (10 MB di norma).
+**File ammessi**: PDF, foto (JPG, PNG, WebP), Word, Excel, LibreOffice e testo, fino al limite **«Peso massimo di un allegato»** (10 MB di norma). Word, Excel e LibreOffice si accettano **solo se il contenuto del file corrisponde al formato**: un file rinominato non passa. I documenti già caricati restano apribili.
 
 ## Chi lo vede
 
@@ -136,6 +136,8 @@ L'**Archivio documenti** raccoglie in un posto solo statuto, regolamenti, verbal
 ## Sicurezza
 
 I file stanno in una **cartella protetta** e non hanno un indirizzo diretto: ogni apertura passa da un controllo dei permessi. Chi non ne ha diritto vede un errore; chi non ha fatto l'accesso viene mandato al login, tranne per i documenti pubblici.
+
+Se limiti **un contenuto del sito** (pagina o articolo) ai soci, chi non può leggerlo **non lo trova nemmeno cercando una parola del suo testo** e non vede i **commenti**, gli **allegati collegati** né le **descrizioni** che i plugin SEO mostrano nei motori di ricerca e nelle anteprime social. **Attenzione:** l'indirizzo diretto di un file messo nella Libreria media di WordPress resta raggiungibile da chi lo conosce. Per i file riservati usa questo **Archivio documenti**, che controlla i permessi a ogni apertura.
 
 ## Sostituire o eliminare
 

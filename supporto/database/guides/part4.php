@@ -147,7 +147,7 @@ Il modulo donazioni porta chi dona sulla pagina di donazione di PayPal. Dal tuo 
 
 ## Dopo una donazione
 
-$1 **Il conto PayPal lo cambiano solo gli amministratori**: ogni modifica, da qualunque strada arrivi (anche un ripristino di copia), è scritta nel **registro azioni** (con il conto mascherato) e **avvisata per email a tutti gli amministratori**. Se non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni. Il plugin non le vede: le registri tu in prima nota, con un incasso. Se vuoi, per ogni versamento puoi emettere una ricevuta.
+Le donazioni vanno **direttamente sul tuo account PayPal**. **Il conto PayPal lo cambiano solo gli amministratori**: ogni modifica, da qualunque strada arrivi (anche un ripristino di copia), è scritta nel **registro azioni** (con il conto mascherato) e **avvisata per email a tutti gli amministratori**. Se non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni. Il plugin non le vede: le registri tu in prima nota, con un incasso. Se vuoi, per ogni versamento puoi emettere una ricevuta.
 
 > Il titolo «Ricevuta di erogazione liberale» compare in automatico sulle ricevute che contengono solo donazioni (funzione Pro).
 MD,
@@ -280,7 +280,7 @@ Premi il pulsante di controllo nella pagina **Pagamenti online**: il plugin inte
 
 ## Con WooCommerce
 
-Se usi WooCommerce, l'incasso entra in prima nota una sola volta. Con **carta e PayPal** entra quando l'ordine passa a «in lavorazione» o «completato». Con **bonifico, assegno o contrassegno** la quota risulta pagata solo quando metti l'ordine su **«Completato»**: finché l'ordine non è «Completato» la quota resta da pagare, quindi controlla di averla ricevuta e poi completa l'ordine; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
+Se usi WooCommerce, l'incasso entra in prima nota una sola volta. Se un passo successivo all'incasso non riesce, il plugin lo dice: «Incasso registrato, ma un passo successivo non è riuscito (…): controlla il pagamento.» L'incasso è già in prima nota: controlla soltanto il resto. Con **carta e PayPal** entra quando l'ordine passa a «in lavorazione» o «completato». Con **bonifico, assegno o contrassegno** la quota risulta pagata solo quando metti l'ordine su **«Completato»**: finché l'ordine non è «Completato» la quota resta da pagare, quindi controlla di averla ricevuta e poi completa l'ordine; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
 MD,
     ],
     [

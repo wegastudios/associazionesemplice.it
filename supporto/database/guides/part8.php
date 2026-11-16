@@ -22,6 +22,8 @@ Nome, cognome, data di nascita, **luogo di nascita e residenza**, codice fiscale
 
 Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del genitore o tutore (vedi [Minori con genitori o tutori](guida:minori-con-genitori-o-tutori)).
 
+**Nome e cognome** (anche del genitore o tutore) vanno da **1 a 60 caratteri**, con solo **lettere, spazi, apostrofi e trattini**. Altrimenti compare «Nome non valido: usa solo lettere, spazi, apostrofi e trattini.»
+
 ## Cosa succede dopo l'invio
 
 - La domanda entra con stato **«richiesta»**: non compare in rubrica, libro soci, esportazioni, tessere né nei conti, non ha tessera né utente WordPress e non può usare il «Primo accesso».
