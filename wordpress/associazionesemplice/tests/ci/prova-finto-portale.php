@@ -26,9 +26,9 @@ $dir  = __DIR__;
 $keys = json_decode( (string) file_get_contents( $dir . '/keys.json' ), true );
 prova_ok( is_array( $keys ) && ! empty( $keys['pkg']['pub'] ) && ! empty( $keys['portal']['pub'] ), 'chiavi di prova lette' );
 $scenario = sys_get_temp_dir() . '/asem-scenario.json';
+define( 'PROVA_SCENARIO', $scenario ); // lo script gira dentro una funzione di WP-CLI: le variabili non sono globali
 function prova_scenario( array $s ): void {
-	global $scenario;
-	file_put_contents( $scenario, json_encode( $s ) );
+	file_put_contents( PROVA_SCENARIO, json_encode( $s ) );
 }
 prova_scenario( array() );
 
