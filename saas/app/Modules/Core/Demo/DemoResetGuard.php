@@ -43,7 +43,11 @@ final class DemoResetGuard
         $slugs = [];
         // Schema non ancora creato (primo avvio): non c'è niente da proteggere.
         if (DB::scalar("SELECT to_regclass('core.orgs')") !== null) {
-            $slugs = array_values(array_map('strval', DB::table('core.orgs')->pluck('slug')->all()));
+            foreach (DB::table('core.orgs')->pluck('slug')->all() as $found) {
+                if (is_string($found)) {
+                    $slugs[] = $found;
+                }
+            }
         }
         $expected = config('saas.demo.database');
         $slug = config('saas.demo.org_slug');
@@ -65,8 +69,10 @@ final class DemoResetGuard
         }
         $removed = 0;
         foreach (File::directories($root) as $dir) {
-            File::deleteDirectory($dir);
-            $removed++;
+            if (is_string($dir)) {
+                File::deleteDirectory($dir);
+                $removed++;
+            }
         }
         foreach (File::files($root, true) as $file) {
             File::delete($file->getPathname());
