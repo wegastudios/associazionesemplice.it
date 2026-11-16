@@ -269,6 +269,20 @@ class LedgerService {
 	/** Profondità della transazione in corso: una transazione dentro un'altra si unisce alla prima (altrimenti MySQL conferma subito la prima). */
 	private $tx_depth = 0;
 
+	/**
+	 * Dentro la transazione: blocca la riga della persona (chi arriva insieme aspetta) e rilegge dal database, senza copie in memoria, se ha già la tessera di quell'anno.
+	 *
+	 * @throws \InvalidArgumentException se la tessera c'è già
+	 */
+	private function lock_membership_year( int $person_id, string $social_year, int $n ): void {
+		$db = $this->db();
+		$db->get_var( $db->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE id = %d FOR UPDATE', $person_id ) );
+		$has = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL FOR UPDATE', $person_id, $social_year ) );
+		if ( $has > 0 ) {
+			throw new \InvalidArgumentException( Texts::t( 'Voce {n}: il socio ha già la tessera {anno}.', array( 'n' => $n, 'anno' => $social_year ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+	}
+
 	private function in_transaction( callable $fn ) {
 		if ( $this->tx_depth > 0 ) {
 			return $fn();
@@ -419,6 +433,11 @@ class LedgerService {
 		$receipt_id = wp_generate_uuid4();
 		return $this->in_transaction(
 			function () use ( $prepared, $d, $date, $payer, $receipt_id ) {
+				foreach ( $prepared as $i => $p ) { // la tessera si ricontrolla qui, con la persona bloccata: due richieste insieme non incassano la quota due volte
+					if ( 'membership' === $p['cat']['kind'] && $p['person'] ) {
+						$this->lock_membership_year( (int) $p['person']['id'], (string) $p['social_year'], (int) $i + 1 );
+					}
+				}
 				foreach ( $prepared as $p ) {
 					$tx_id = $this->insert_tx(
 						array(
