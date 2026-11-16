@@ -462,7 +462,7 @@ In **Operatori e ruoli** decidi **chi entra nel gestionale e cosa può fare**.
 
 ## Invitare un operatore
 
-Nella sezione **Operatori** scrivi **nome** ed **email**, scegli il **ruolo** e premi **«Invita»**: la persona riceve un'email. Accedono con il loro account Associazione Semplice: un solo accesso per tutte le aree.
+Nella sezione **Operatori** scrivi **nome** ed **email**, scegli il **ruolo** e premi **«Invita»**: la persona riceve un'email. Accedono con il loro account Associazione Semplice: un solo accesso per tutte le aree. Se la persona ha **già un accesso a questa associazione**, l'invito **non ne cambia il ruolo**: il gestionale dice «Questa persona ha già un accesso a questa associazione: il ruolo si cambia dall'elenco degli operatori.»
 
 ## I ruoli
 
