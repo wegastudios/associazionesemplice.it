@@ -111,7 +111,7 @@ it('rifiuta una password nuova troppo corta', function (): void {
     ])->assertSessionHasErrors('password');
 });
 
-it('un invito non cambia il ruolo di chi è già nell\'associazione: il titolare non si retrocede invitandolo', function (): void {
+it('un invito non cambia il ruolo di chi è già nell\'associazione', function (): void {
     $org = $this->createOrg('Polisportiva Alfa');
     $owner = members()->invite($org, 'titolare@example.com', 'Titolare', OrgRole::Owner, null);
     $byOwner = app(Memberships::class)->find($owner->id, $org->id);
