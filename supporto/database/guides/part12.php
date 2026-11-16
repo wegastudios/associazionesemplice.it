@@ -772,6 +772,86 @@ Cambi il ruolo di un operatore dalla tendina accanto al suo nome.
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Gestione', 'slug' => 'gestionale-il-registro-delle-azioni',
+        'title' => 'Il registro delle azioni: cosa si scrive e come leggerlo',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Il gestionale tiene un **registro delle azioni**: un diario in cui si scrive **cosa è successo, quando e chi l'ha fatto**. Serve a **ritrovare chi ha toccato un dato** e a dimostrare, per esempio a un revisore, che le cose sono andate come dici.
+
+**Non c'è una pagina per leggerlo dentro il gestionale**: il registro si ottiene con l'**esportazione dei dati**, come tabella da aprire con Excel.
+
+## Cosa si registra
+
+Ogni riga è un'azione. Tra le più comuni:
+
+- **Accessi**: entrata e uscita di operatori e soci, tentativi falliti, password reimpostata, verifica in due passaggi (attivata, codice sbagliato, codice di recupero usato, nuovi codici generati);
+- **Soci**: modifica di una scheda, importazione dell'elenco, tutori collegati o scollegati, tessere assegnate o revocate a mano, domande di adesione;
+- **Prima nota**: incassi, spese, giroconti, **movimenti stornati**, importazioni;
+- **Ricevute**: emesse, inviate, rifatte o fissate;
+- **Pagamenti online**: creati, falliti, rimborsati, controllati;
+- **Attività**: date aggiunte, cambiate o annullate, prenotazioni, liste d'attesa, **presenze registrate**;
+- **Anni fiscali**: creati, chiusi, riaperti, cambio del mese di inizio;
+- **Dati riservati**: ogni **lettura di un file sulla salute** (per esempio il download di un certificato medico), le esportazioni, i download della copia di sicurezza, l'archivio degli anni chiusi;
+- **Configurazione guidata**: completata o rimandata.
+
+Di solito **non si copia il contenuto** dei dati: si scrive che l'azione c'è stata, con i pochi dettagli utili (per esempio quali campi di una scheda sono cambiati).
+
+## Chi può averlo
+
+Il registro è nell'esportazione per chi ha il permesso **«Vedere il registro delle azioni»**: **titolare e amministratori**. Gli altri operatori non lo ricevono. Per scaricarlo apri la pagina **Esportazione** (vedi [Esportare i dati](guida:gestionale-esportare-i-dati)): nell'archivio ZIP, nella parte **«Dati per il programma»**, trovi il file **`registro-delle-azioni.csv`**.
+
+## Come si legge
+
+Il file si apre con Excel o con un foglio di calcolo. Ogni riga ha queste colonne:
+
+| Colonna | Cosa contiene |
+|---|---|
+| **N.** | il numero progressivo dell'azione |
+| **Quando** | data e ora |
+| **Azione** | il **codice** dell'azione (vedi sotto) |
+| **Oggetto** e **Id** | su cosa è stata fatta (il tipo di dato e il suo identificativo) |
+| **Chi** e **Id di chi** | chi l'ha fatta: **operatore**, **socio** oppure **sistema** (per le azioni automatiche), e il suo identificativo |
+| **Dettagli** | pochi dati utili sull'azione |
+| **Sigillo** | il sigillo della riga (vedi sotto) |
+
+I **codici** sono scritti in inglese, con un punto in mezzo. I più frequenti:
+
+| Codice | Cosa significa |
+|---|---|
+| `auth.login` / `auth.logout` | un operatore è entrato / uscito |
+| `auth.failed` | accesso non riuscito |
+| `two_factor.recovery_code_used` | è stato usato un codice di recupero |
+| `person.updated` | è stata modificata una scheda |
+| `people.imported` | è stato importato un elenco di soci |
+| `ledger.income` / `ledger.expense` | incasso / spesa registrati |
+| `ledger.transfer` | giroconto |
+| `ledger.voided` | movimento **stornato** |
+| `ledger.imported` | prima nota importata da un file |
+| `receipt.sent` | ricevuta inviata |
+| `payment.refunded` | pagamento online rimborsato |
+| `fiscal_year.closed` / `fiscal_year.reopened` | anno fiscale chiuso / riaperto |
+| `attendance.saved` | presenze registrate |
+| `health.read` | è stato aperto un file sulla salute |
+| `export.done` | è stata fatta un'esportazione |
+| `backup.downloaded` | è stata scaricata una copia di sicurezza |
+
+Se trovi un codice che non è in elenco, scrivi al supporto: te lo spieghiamo.
+
+**Per trovare chi ha toccato un dato**: nel foglio filtra la colonna **Azione** (per esempio `ledger.voided`) o ordina per **Quando**.
+
+## Per quanto tempo si conserva
+
+Il registro conserva le azioni **dell'anno in corso e di tutto l'anno precedente**. Si conta l'**anno solare** (da gennaio a dicembre), non l'anno fiscale. **Il 1° gennaio** si cancellano le azioni più vecchie: per esempio il 1° gennaio 2028 si cancellano quelle del 2026. Quindi le azioni restano **da uno a due anni**. **Se ti servono per più tempo**, scarica prima l'esportazione e conservala tu.
+
+## Il sigillo
+
+Ogni riga ha un **sigillo** (una sequenza di lettere e numeri) che dipende anche dalla riga precedente: sono **legate a catena**. Se qualcuno cancellasse o cambiasse una riga, la catena **non tornerebbe più** e il controllo se ne accorge. **Ogni notte** il gestionale controlla da solo che la catena sia intatta. Per te significa che **il registro non si può correggere di nascosto**, nemmeno da chi lavora nel gestionale.
+
+Le azioni vengono scritte **in automatico**: nessuno può aggiungere, togliere o modificare righe a mano. Anche quando le righe più vecchie vengono cancellate il 1° gennaio, il controllo della catena continua a funzionare sulle righe rimaste.
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Gestione', 'slug' => 'gestionale-esportare-i-dati',
         'title' => 'Copie di sicurezza e documenti da consegnare',
         'body' => <<<'MD'
