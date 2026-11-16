@@ -24,8 +24,7 @@ final class Text {
 		if ( false === strpos( $s, '<' ) ) {
 			return trim( $s );
 		}
-		$s = (string) ( preg_replace( '@<(script|style)\b[^>]*>.*?</\1\s*>@isu', '', $s ) ?? $s );
-		return trim( strip_tags( $s ) );
+		return trim( wp_strip_all_tags( $s ) ); // toglie anche il contenuto di script e stili
 	}
 
 	/** Minuscolo con supporto UTF-8, per confronti senza maiuscole/minuscole. */
