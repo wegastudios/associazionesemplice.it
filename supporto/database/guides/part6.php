@@ -81,7 +81,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'cosa-succede-se-la-licenza-pro-scade',
         'title' => 'Cosa succede se la licenza Pro scade?',
         'body' => <<<'MD'
-Il plugin torna alle **funzioni di base**. Le funzioni Pro spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata. In cima alle pagine compare un avviso.
+Il plugin torna alle **funzioni di base**. Se la licenza non risulta più valida (scaduta, sospesa, revocata o usata su un altro sito), le funzioni Pro si fermano **solo dopo due controlli in due giorni diversi**: un problema momentaneo di rete o del portale non spegne niente. Le funzioni Pro spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata. In cima alle pagine compare un avviso.
 
 - **I dati non vengono toccati**: soci, prima nota, registri restano al loro posto.
 - Le quote diverse dei soci non si applicano più (vale la quota unica).
