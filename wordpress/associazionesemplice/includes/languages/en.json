@@ -2634,6 +2634,7 @@
   "Scegli la tariffa: per questa attività bisogna sceglierne una." : "Choose a rate: this activity requires you to pick one.",
   "Listino non trovato per questa attività." : "Price list not found for this activity.",
   "manca la tariffa scelta: non entra da solo, prenotalo a mano scegliendo il listino" : "no rate chosen: this person will not be booked automatically, book them by hand and choose the price list",
-  "Evento su richiesta: la lista d'attesa non avanza da sola. Prenota tu chi vuoi far entrare." : "By-request event: the waiting list does not move on its own. Book the people you want to let in."
+  "Evento su richiesta: la lista d'attesa non avanza da sola. Prenota tu chi vuoi far entrare." : "By-request event: the waiting list does not move on its own. Book the people you want to let in.",
+  "Errore imprevisto (codice {codice}). Riprova; se si ripete scrivi al supporto indicando il codice." : "Unexpected error (code {codice}). Try again; if it happens again, contact support and quote the code."
  }
 }
