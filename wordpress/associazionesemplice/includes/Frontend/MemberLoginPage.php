@@ -71,6 +71,7 @@ final class MemberLoginPage {
 		if ( headers_sent() ) {
 			return false;
 		}
+		Views::no_cache(); // la pagina che dà il cookie non finisce nella cache di pagina
 		$value = PreSession::make( time() );
 		setcookie(
 			PreSession::COOKIE,
@@ -186,6 +187,7 @@ final class MemberLoginPage {
 			}
 		}
 
+		Views::no_cache(); // pagina di accesso: mai in cache, con o senza cookie
 		if ( ! MemberSession::current() ) {
 			self::ensure_pre_session(); // il cookie si dà qui: dopo aver controllato l'invio ricevuto e prima di scrivere la pagina
 		}
@@ -238,6 +240,7 @@ final class MemberLoginPage {
 
 	/** Modulo email e password per l'area riservata (quando non si è entrati): quello predefinito dei soci senza utente WordPress. */
 	public static function inline_login( string $back ): string {
+		Views::no_cache(); // il modulo porta il cookie e il segno di chi lo apre: la pagina non va conservata
 		if ( ! self::ensure_pre_session() ) { // niente cookie di pre-sessione (la pagina è già partita): si passa dalla pagina di accesso, che lo dà
 			return '<p><a class="asemf-btn wp-element-button" href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), self::url() ) ) . '">Accedi</a></p>';
 		}
