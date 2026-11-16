@@ -7,6 +7,7 @@ namespace App\Modules\Contabilita\Providers;
 use App\Modules\Contabilita\Archive\ArchivedReceipts;
 use App\Modules\Contabilita\Archive\ReceiptYearArchive;
 use App\Modules\Contabilita\Console\FixReceiptsCommand;
+use App\Modules\Contabilita\Console\VerifyArchivesCommand;
 use App\Modules\Contabilita\Contracts\FiscalYearClosed;
 use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Contabilita\Contracts\Ledger;
@@ -58,10 +59,11 @@ final class ContabilitaServiceProvider extends ServiceProvider
         Event::listen(FiscalYearClosed::class, [StatementSnapshots::class, 'take']);
         Event::listen(FiscalYearReopened::class, [StatementSnapshots::class, 'supersede']);
         if ($this->app->runningInConsole()) {
-            $this->commands([FixReceiptsCommand::class]);
+            $this->commands([FixReceiptsCommand::class, VerifyArchivesCommand::class]);
             // Le ricevute emesse prima delle ricevute definitive si fissano a lotti, un lotto per associazione a ogni giro.
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('saas:receipts:fix')->hourlyAt(23)->withoutOverlapping(50);
+                $schedule->command('saas:archive:verify')->weeklyOn(0, '04:07')->withoutOverlapping();
             });
         }
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');

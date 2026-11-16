@@ -30,4 +30,15 @@ interface YearArchives
      * @throws ArchiveError
      */
     public function restore(int $year): int;
+
+    /**
+     * Ricostruisce le ricevute di un anno dalle fotografie dei dati quando l'archivio non si apre più: rimette i file
+     * singoli e toglie l'archivio rovinato. Ritorna quante ricevute ha ricostruito.
+     *
+     * @throws ArchiveError
+     */
+    public function rebuild(int $year): int;
+
+    /** L'archivio dell'anno si apre e le impronte coincidono (controllo periodico). */
+    public function check(int $year): bool;
 }

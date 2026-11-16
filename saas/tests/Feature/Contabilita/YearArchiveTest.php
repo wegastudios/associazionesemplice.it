@@ -10,6 +10,7 @@ use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Core\Contracts\YearArchives;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
 use Illuminate\Support\Facades\Cache;
@@ -216,4 +217,40 @@ it('«Rifai» su un PDF sano non fa niente e lo dice', function (): void {
     $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")
         ->assertSessionHasErrors(['ledger' => 'Il PDF di questa ricevuta è a posto: non serve rifarlo.']);
     expect(archiveRow($this->org->id, $this->receipt)->sha256)->toBe($before->sha256);
+});
+
+it('con l\'archivio rovinato ricostruisce le ricevute dai dati dell\'emissione', function (): void {
+    $before = (string) $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk()->getContent();
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
+    $archive = $this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->sole());
+
+    // Archivio sano: la ricostruzione non serve e non cambia niente.
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/ricostruisci")
+        ->assertSessionHasErrors(['archive' => "L'archivio dell'anno fiscale {$this->year} si apre: usa «Rimetti i file»."]);
+    expect($this->orgContext()->run($this->org->id, fn () => app(YearArchives::class)->check($this->year)))->toBeTrue();
+
+    Storage::disk('org_files')->put($archive->path, 'archivio rovinato');
+    expect($this->orgContext()->run($this->org->id, fn () => app(YearArchives::class)->check($this->year)))->toBeFalse();
+    $this->artisan('saas:archive:verify', ['org' => $this->org->id])->assertFailed();
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/rimetti")->assertSessionHasErrors(['archive_recover' => (string) $this->year]);
+
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/ricostruisci")->assertSessionHasNoErrors();
+
+    $row = archiveRow($this->org->id, $this->receipt);
+    expect($row->archived_year)->toBeNull()->and($row->source)->toBe('rifatta')
+        ->and($this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->count()))->toBe(0)
+        ->and($this->orgContext()->run($this->org->id, fn () => DB::table('audit.log')->where('action', 'archive.rebuilt_from_snapshots')->exists()))->toBeTrue();
+    expect((string) $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk()->getContent())->toBe($before);
+});
+
+it('senza i dati salvati all\'emissione la ricostruzione non cambia niente e lo dice', function (): void {
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
+    $archive = $this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->sole());
+    Storage::disk('org_files')->put($archive->path, 'archivio rovinato');
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.receipt_files')->update(['snapshot' => null]));
+
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/ricostruisci")
+        ->assertSessionHasErrors(['archive' => 'Per 1 ricevute mancano i dati salvati all\'emissione: non è cambiato nulla. Scrivi all\'assistenza di Associazione Semplice.']);
+    expect((int) archiveRow($this->org->id, $this->receipt)->archived_year)->toBe($this->year)
+        ->and($this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->count()))->toBe(1);
 });

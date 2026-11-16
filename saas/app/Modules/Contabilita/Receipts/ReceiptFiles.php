@@ -267,6 +267,24 @@ final readonly class ReceiptFiles
      */
     private function snapshotOf(object $row): ?array
     {
+        return $this->decodeSnapshot($row);
+    }
+
+    /**
+     * Il PDF rifatto dalla fotografia dei dati dell'emissione, senza toccare niente (serve a ricostruire un archivio che
+     * non si apre). Null se la ricevuta non ha la fotografia.
+     */
+    public function pdfFromSnapshot(string $receiptId): ?string
+    {
+        $row = $this->row($receiptId);
+        $snapshot = $row === null ? null : $this->decodeSnapshot($row);
+
+        return $snapshot === null ? null : $this->pdf->render($snapshot);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function decodeSnapshot(object $row): ?array
+    {
         if (($row->snapshot ?? null) === null) {
             return null;
         }

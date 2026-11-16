@@ -177,20 +177,29 @@ final readonly class ReceiptYearArchive implements YearArchives
             try {
                 $this->files->readToFile($orgId, $archive, $zipPath);
             } catch (UnableToReadFile|DecryptionFailed $e) {
-                throw new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 0, $e);
+                throw new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 1, $e);
             }
             $zip = new ZipArchive;
             if ($zip->open($zipPath) !== true) {
-                throw new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.');
+                throw new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 1);
             }
             foreach ($rows as $r) {
                 $id = is_string($r->receipt_id ?? null) ? $r->receipt_id : '';
                 $pdf = $zip->getFromName($id.'.pdf');
                 if (! is_string($pdf) || ! hash_equals(is_string($r->sha256 ?? null) ? $r->sha256 : '', hash('sha256', $pdf))) {
-                    throw new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.');
+                    throw new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 1);
                 }
                 file_put_contents($work, $pdf);
                 $new[$id] = $this->files->store($orgId, $work, is_string($r->original_name ?? null) ? $r->original_name : 'ricevuta.pdf', 'application/pdf');
+                // Il file appena scritto si rilegge e si controlla, prima di togliere l'archivio.
+                try {
+                    $back = $this->files->read($orgId, $new[$id]);
+                } catch (UnableToReadFile|DecryptionFailed $e) {
+                    throw new ArchiveError('I file rimessi non si rileggono: non è cambiato nulla e l\'archivio resta.', 0, $e);
+                }
+                if (! hash_equals(hash('sha256', $pdf), hash('sha256', $back))) {
+                    throw new ArchiveError('I file rimessi non si rileggono: non è cambiato nulla e l\'archivio resta.');
+                }
             }
             $zip->close();
 
@@ -205,7 +214,7 @@ final readonly class ReceiptYearArchive implements YearArchives
             foreach ($new as $s) {
                 $this->safeDelete($s);
             }
-            throw $e instanceof ArchiveError ? $e : new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 0, $e);
+            throw $e instanceof ArchiveError ? $e : new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 1, $e);
         } finally {
             @unlink($zipPath);
             @unlink($work);
@@ -295,6 +304,123 @@ final readonly class ReceiptYearArchive implements YearArchives
             $this->files->delete($this->context->require()->id, $file);
         } catch (Throwable) {
             // File già assente: niente da togliere.
+        }
+    }
+
+    public function check(int $year): bool
+    {
+        $arc = $this->connection()->table('app.year_archives')->where('fiscal_year', $year)->first();
+        if ($arc === null) {
+            return false;
+        }
+        $rows = $this->connection()->table('app.receipt_files')->where('archived_year', $year)->get(['receipt_id', 'sha256'])->all();
+
+        return $this->opens($this->storedArchive($arc), $rows);
+    }
+
+    public function rebuild(int $year): int
+    {
+        return $this->locked(fn (): int => $this->rebuildLocked($year));
+    }
+
+    private function rebuildLocked(int $year): int
+    {
+        $arc = $this->connection()->table('app.year_archives')->where('fiscal_year', $year)->first();
+        if ($arc === null) {
+            throw new ArchiveError('L\'anno fiscale '.$year.' non è archiviato.');
+        }
+        $archive = $this->storedArchive($arc);
+        $rows = $this->connection()->table('app.receipt_files')->where('archived_year', $year)->get(['receipt_id', 'original_name', 'sha256'])->all();
+        if ($this->opens($archive, $rows)) {
+            throw new ArchiveError('L\'archivio dell\'anno fiscale '.$year.' si apre: usa «Rimetti i file».');
+        }
+
+        $orgId = $this->context->require()->id;
+        $pdfs = [];
+        $missing = 0;
+        foreach ($rows as $r) {
+            $id = is_string($r->receipt_id ?? null) ? $r->receipt_id : '';
+            $pdf = $this->receipts->pdfFromSnapshot($id);
+            if ($pdf === null) {
+                $missing++;
+            } else {
+                $pdfs[$id] = $pdf;
+            }
+        }
+        if ($missing > 0) {
+            throw new ArchiveError('Per '.$missing.' ricevute mancano i dati salvati all\'emissione: non è cambiato nulla. Scrivi all\'assistenza di Associazione Semplice.');
+        }
+
+        $work = ArchivedReceipts::tmpPath();
+        $new = [];
+        $identical = 0;
+        try {
+            foreach ($rows as $r) {
+                $id = is_string($r->receipt_id ?? null) ? $r->receipt_id : '';
+                file_put_contents($work, $pdfs[$id]);
+                $new[$id] = $this->files->store($orgId, $work, is_string($r->original_name ?? null) ? $r->original_name : 'ricevuta.pdf', 'application/pdf');
+                $identical += hash_equals(is_string($r->sha256 ?? null) ? $r->sha256 : '', $new[$id]->sha256) ? 1 : 0;
+            }
+            $this->connection()->transaction(function () use ($new, $year, $identical): void {
+                foreach ($new as $id => $s) {
+                    $this->connection()->table('app.receipt_files')->where('receipt_id', $id)->update([
+                        'path' => $s->path, 'size_bytes' => $s->size, 'sha256' => $s->sha256, 'source' => 'rifatta', 'fixed_at' => now(), 'archived_year' => null,
+                    ]);
+                }
+                $this->connection()->table('app.year_archives')->where('fiscal_year', $year)->delete();
+                $this->audit->record('archive.rebuilt_from_snapshots', 'app.year_archives', null, ['year' => $year, 'receipts' => count($new), 'identical' => $identical]);
+            });
+        } catch (Throwable $e) {
+            foreach ($new as $s) {
+                $this->safeDelete($s);
+            }
+            throw $e instanceof ArchiveError ? $e : new ArchiveError('Le ricevute non si sono potute ricostruire: non è cambiato nulla.', 0, $e);
+        } finally {
+            @unlink($work);
+        }
+        $this->archived->flush();
+        $this->safeDelete($archive);
+
+        return count($new);
+    }
+
+    private function storedArchive(object $arc): StoredFile
+    {
+        return new StoredFile(
+            is_string($arc->path ?? null) ? $arc->path : '', 'archivio.zip', 'application/zip',
+            is_numeric($arc->size_bytes ?? null) ? (int) $arc->size_bytes : 0, is_string($arc->sha256 ?? null) ? $arc->sha256 : '',
+        );
+    }
+
+    /**
+     * L'archivio si decifra, si apre e ogni ricevuta ha la sua impronta.
+     *
+     * @param  array<int, object>  $rows
+     */
+    private function opens(StoredFile $archive, array $rows): bool
+    {
+        $path = ArchivedReceipts::tmpPath().'.zip';
+        try {
+            $this->files->readToFile($this->context->require()->id, $archive, $path);
+            $zip = new ZipArchive;
+            if ($zip->open($path) !== true) {
+                return false;
+            }
+            foreach ($rows as $r) {
+                $pdf = $zip->getFromName((is_string($r->receipt_id ?? null) ? $r->receipt_id : '').'.pdf');
+                if (! is_string($pdf) || ! hash_equals(is_string($r->sha256 ?? null) ? $r->sha256 : '', hash('sha256', $pdf))) {
+                    $zip->close();
+
+                    return false;
+                }
+            }
+            $zip->close();
+
+            return true;
+        } catch (UnableToReadFile|DecryptionFailed) {
+            return false;
+        } finally {
+            @unlink($path);
         }
     }
 
