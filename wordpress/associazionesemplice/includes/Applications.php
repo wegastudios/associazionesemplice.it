@@ -160,7 +160,7 @@ final class Applications {
 	 */
 	private static function decoy_submit(): void {
 		$db = self::db();
-		for ( $i = 0; $i < 3; $i++ ) {
+		for ( $i = 0; $i < 8; $i++ ) { // quante ne fa una domanda vera tra riga, consenso, regolamento e registro
 			$db->update( Db::t( 'people' ), array( 'updated_at' => Db::now() ), array( 'id' => 0 ) );
 		}
 	}

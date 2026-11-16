@@ -8752,7 +8752,7 @@ $tr_dup = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array
 $tr_dd  = $wpdb->num_queries - $tr_q;
 asem_ok( $tr_dup === $tr_new && 0 === \AssociazioneSemplice\ResponseMail::pending() && count( $ap_mails ) === $tr_n + 2, 'tempi di risposta: la domanda già presente ha la stessa risposta, nessuna email e nessuna riga in più' );
 WP_CLI::log( 'tempi di risposta: richieste al database per la domanda, nuova ' . $tr_dn . ', doppione ' . $tr_dd );
-asem_ok( $tr_dd >= 6, 'tempi di risposta: anche il doppione fa lavoro sul database (controlli e scritture finte)' );
+asem_ok( abs( $tr_dn - $tr_dd ) <= 2, 'tempi di risposta: il doppione fa sul database lo stesso lavoro (controlli e scritture finte) di una domanda nuova' );
 \AssociazioneSemplice\ResponseMail::defer( false );
 $tr_id = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE tax_code = %s', 'RSSMRA79A07H501S' ) );
 \AssociazioneSemplice\Applications::reject( $tr_id ); // la prova non lascia domande in coda
@@ -8835,6 +8835,8 @@ $ap_post = function ( array $data ) use ( $AP ) {
 	$_SERVER['REQUEST_METHOD'] = 'POST';
 	$_POST                     = wp_slash( $data );
 	$html                      = $AP::form_html();
+	\AssociazioneSemplice\ResponseMail::flush(); // fine della richiesta: le email in coda partono e la coda torna spenta come nella richiesta successiva
+	\AssociazioneSemplice\ResponseMail::defer( false );
 	$_SERVER                   = $old_s;
 	$_POST                     = $old_p;
 	return $html;
