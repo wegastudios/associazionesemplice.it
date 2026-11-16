@@ -100,6 +100,10 @@ it('fotografa il libro alla chiusura dell\'esercizio e non lo cambia più, nemme
         $years->close($year);
         Person::query()->where('first_name', 'Anna')->sole()->delete();
 
+        // La fotografia è cifrata: nella tabella non c'è nulla di leggibile (né codice fiscale, né residenza, né nomi).
+        $stored = (string) DB::table('app.member_book_snapshots')->where('fiscal_year', $year)->selectRaw("convert_from(rows_enc, 'LATIN1') as raw")->value('raw');
+        expect($stored)->not->toContain('RSSMRA80A01H501U')->and($stored)->not->toContain('Via Roma')->and($stored)->not->toContain('Fondatore');
+
         $closed = $snapshots->forYear($year);
         expect($closed['source'])->toBe('snapshot')
             ->and(array_column($closed['rows'], 'name'))->toBe(['Fondatore Franco', 'Rossi Anna'])
