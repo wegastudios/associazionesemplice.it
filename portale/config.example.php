@@ -75,10 +75,10 @@ return array(
 	'saas_demo_url'  => '', // es. 'https://demosaas.associazionesemplice.it'
 	'saas_demo_password' => '',
 	// Tasti «Reset demo» della gestione (amministratori e supporto): il portale lancia direttamente questo comando sul server, in background, uno alla volta.
-	// Lista di argomenti con percorso assoluto, mai una riga libera. Vuoto = nessun tasto. Il reset cancella i dati della demo: parte solo da un clic con conferma.
+	// Lista di argomenti con percorso assoluto, mai una riga libera. Vuoto = nessun tasto. Il reset cancella i dati della demo: parte solo da un clic con conferma. HOME va passato nel comando (il PHP del sito può non averlo) e «timeout» ferma uno script appeso; lo script stesso tiene un blocco (flock) contro due azzeramenti insieme.
 	'demo_reset' => array(
-		// 'plugin' => array( 'cmd' => array( '/bin/bash', '/home/UTENTE/demo-provision/reset.sh', '--forza' ), 'note' => 'Azzera WordPress, database e file della demo del plugin.' ),
-		// 'saas'   => array( 'cmd' => array( '/bin/bash', '/home/UTENTE/saas-demo/reset.sh' ), 'requires' => '/home/UTENTE/saas-demo/current', 'note' => 'Azzera il database della demo del gestionale.' ), // «requires»: finché il percorso non esiste il tasto dice «non ancora installata»
+		// 'plugin' => array( 'cmd' => array( '/usr/bin/env', 'HOME=/home/UTENTE', '/usr/bin/timeout', '--kill-after=30', '1800', '/bin/bash', '/home/UTENTE/demo-provision/reset.sh', '--forza' ), 'note' => 'Azzera WordPress, database e file della demo del plugin.' ),
+		// 'saas'   => array( 'cmd' => array( '/usr/bin/env', 'HOME=/home/UTENTE', '/usr/bin/timeout', '--kill-after=30', '1800', '/bin/bash', '/home/UTENTE/saas-demo/reset.sh' ), 'requires' => '/home/UTENTE/saas-demo/current', 'note' => 'Azzera il database della demo del gestionale.' ), // «requires»: finché il percorso non esiste il tasto dice «non ancora installata»
 	),
 	// Proxy verso il SaaS: /saas/admin, /saas/staff, /saas/api e /saas/vai si servono dal gestionale restando su questo dominio. Spento = come prima (rinvio di /saas/admin a saas_admin_url).
 	'saas_proxy' => array( 'enabled' => false, 'upstream' => 'https://app.associazionesemplice.it' ),
