@@ -13,7 +13,7 @@ Portale\Config::load( require __DIR__ . '/../config.php' );
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
 $db->migrateOnStart();
 Portale\Settings::load( $db );
-if ( $argc < 3 ) {
+if ( $argc < 3 && ( $argc < 2 || 'checkcolumns' !== $argv[1] ) ) {
 	fwrite( STDERR, "Uso: php bin/release.php free|pro file.zip [nota] [firma kid ...] | php bin/release.php sign free|pro versione firma kid [...] | php bin/release.php minver free|pro\n" );
 	exit( 2 );
 }
