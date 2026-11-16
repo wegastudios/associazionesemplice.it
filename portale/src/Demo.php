@@ -48,7 +48,6 @@ final class Demo {
 			'Come amministratore del plugin' => array(
 				array( 'Copia di sicurezza', '/wp-admin/admin.php?page=asem-backup', 'Scarichi una copia dei tuoi dati e la ricarichi quando vuoi (la demo si azzera ogni notte alle 4).' ),
 				array( 'Impostazioni', '/wp-admin/admin.php?page=asem-settings', 'Funzioni accese, pagine del sito, privacy.' ),
-				array( 'Ruoli', '/wp-admin/admin.php?page=asem-roles', 'Chi può fare cosa: carica e assegna i permessi.' ),
 				array( 'Registro delle azioni', '/wp-admin/admin.php?page=asem-audit', 'Chi ha fatto cosa, con spazio occupato e pulizia.' ),
 			),
 			'Come segreteria' => array(
