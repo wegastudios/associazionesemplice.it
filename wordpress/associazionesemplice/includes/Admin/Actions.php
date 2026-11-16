@@ -952,9 +952,20 @@ final class Actions {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La frase scritta non corrisponde: non è stato cambiato nulla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 		}
 		$user = wp_get_current_user();
+		$keys = \AssociazioneSemplice\AttemptLimit::keys( $user && $user->exists() ? (int) $user->ID : 0, \AssociazioneSemplice\ClientIp::get() );
+		$lim  = \AssociazioneSemplice\AttemptLimit::standard();
+		$busy = \AssociazioneSemplice\Texts::t( 'Troppi tentativi: riprova tra qualche minuto.' );
+		if ( $lim->is_locked( $keys ) ) { // durante il blocco la password non viene nemmeno controllata
+			throw new \InvalidArgumentException( $busy ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
+		}
 		if ( ! $user || ! $user->exists() || '' === (string) ( $p['password'] ?? '' ) || ! wp_check_password( (string) $p['password'], $user->user_pass, $user->ID ) ) {
+			if ( $lim->fail( $keys ) ) {
+				\AssociazioneSemplice\Audit::log( 'backup.restore_locked', 'settings', 0, array( 'minutes' => (int) ( \AssociazioneSemplice\AttemptLimit::WINDOW / 60 ) ) );
+				throw new \InvalidArgumentException( $busy ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
+			}
 			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La password non è corretta: non è stato cambiato nulla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 		}
+		$lim->clear( $keys );
 		$f = self::uploaded_file( 'backup_file' );
 		if ( ! $f || UPLOAD_ERR_OK !== $f['error'] ) {
 			throw new \InvalidArgumentException( 'Scegli il file della copia da ripristinare.' );
