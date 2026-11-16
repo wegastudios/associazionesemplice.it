@@ -43,6 +43,18 @@ final class DemoScale
     /** La frase a schermo e nell'errore, dove un visitatore si aspetta di poter caricare un file. */
     public const UPLOADS_OFF = 'Nella demo il caricamento dei file è spento.';
 
+    /** La frase a schermo quando nella demo si prova una modifica che toccherebbe tutti i visitatori. */
+    public const CHANGE_OFF = 'Nella demo questa modifica è spenta: nell\'associazione vera funziona.';
+
+    /** La frase a schermo quando nella demo si prova a scaricare la copia di sicurezza. */
+    public const BACKUP_OFF = 'Nella demo lo scarico della copia è spento: nell\'associazione vera funziona.';
+
+    /** Nella demo (mai in produzione) gli accessi sono pubblici: le modifiche che restano per tutti sono spente. */
+    public static function restricted(): bool
+    {
+        return self::uploadsOff();
+    }
+
     /** Nella demo (mai in produzione) i visitatori non caricano file: è pubblica e i file finirebbero sul disco del server. */
     public static function uploadsOff(): bool
     {
