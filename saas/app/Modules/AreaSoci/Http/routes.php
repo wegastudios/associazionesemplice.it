@@ -16,33 +16,33 @@ $domain = config('saas.members_domain');
 // Le stesse pagine rispondono anche sul dominio personalizzato dell'associazione (solo se verificato: lo decide
 // `member-org`), con gli stessi indirizzi e i nomi preceduti da «custom.»: link e codice arrivano sullo stesso dominio.
 $memberArea = function (): void {
-        Route::get('/accesso', [AccessController::class, 'show'])->name('member.login');
-        Route::post('/accesso', [AccessController::class, 'request'])->name('member.login.request');
-        Route::post('/accesso/codice', [AccessController::class, 'code'])->name('member.login.code');
-        Route::get('/entra/{token}', [AccessController::class, 'link'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.login.link');
-        Route::get('/verifica/{person}', [MemberAreaController::class, 'verify'])->whereUuid('person')->middleware('signed')->name('member.verify');
+    Route::get('/accesso', [AccessController::class, 'show'])->name('member.login');
+    Route::post('/accesso', [AccessController::class, 'request'])->name('member.login.request');
+    Route::post('/accesso/codice', [AccessController::class, 'code'])->name('member.login.code');
+    Route::get('/entra/{token}', [AccessController::class, 'link'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.login.link');
+    Route::get('/verifica/{person}', [MemberAreaController::class, 'verify'])->whereUuid('person')->middleware('signed')->name('member.verify');
 
-        Route::middleware('member')->group(function (): void {
-            Route::get('/', [MemberAreaController::class, 'card'])->name('member.home');
-            Route::get('/profilo', [MemberAreaController::class, 'profile'])->name('member.profile');
-            Route::put('/profilo', [MemberAreaController::class, 'updateProfile'])->name('member.profile.update');
-            Route::get('/quote', [MemberAreaController::class, 'payments'])->name('member.payments');
-            Route::get('/ricevute/{receipt}.pdf', [MemberAreaController::class, 'receipt'])->whereUuid('receipt')->name('member.receipt');
-            Route::get('/eventi', [MemberAreaController::class, 'events'])->name('member.events');
-            Route::post('/eventi/{session}/prenota', [MemberAreaController::class, 'book'])->whereUuid('session')->name('member.events.book');
-            Route::post('/eventi/{session}/attesa', [MemberAreaController::class, 'waitlist'])->whereUuid('session')->name('member.events.waitlist');
-            Route::post('/prenotazioni/{booking}/annulla', [MemberAreaController::class, 'cancel'])->whereUuid('booking')->name('member.events.cancel');
-            Route::post('/scheda/{person}', [AccessController::class, 'switch'])->whereUuid('person')->name('member.switch');
-            Route::post('/esci', [AccessController::class, 'logout'])->name('member.logout');
-            Route::post('/esci-ovunque', [AccessController::class, 'logoutAll'])->name('member.logout.all');
-            Route::get('/risorse', [MemberResourcesController::class, 'index'])->name('member.resources');
-            Route::post('/risorse/{resource}/prenota', [MemberResourcesController::class, 'book'])->whereUuid('resource')->middleware('throttle:30,10')->name('member.resources.book');
-            Route::post('/risorse/prenotazioni/{reservation}/annulla', [MemberResourcesController::class, 'cancel'])->whereUuid('reservation')->name('member.resources.cancel');
-            Route::get('/paga', [MemberPaymentsController::class, 'index'])->name('member.pay');
-            Route::post('/paga', [MemberPaymentsController::class, 'checkout'])->middleware('throttle:20,10')->name('member.pay.checkout');
-            Route::get('/pagamenti/{payment}/esito', [MemberPaymentsController::class, 'result'])->whereUuid('payment')->name('member.pay.result');
-            Route::get('/pagamenti/{payment}/annullato', [MemberPaymentsController::class, 'cancelled'])->whereUuid('payment')->name('member.pay.cancelled');
-        });
+    Route::middleware('member')->group(function (): void {
+        Route::get('/', [MemberAreaController::class, 'card'])->name('member.home');
+        Route::get('/profilo', [MemberAreaController::class, 'profile'])->name('member.profile');
+        Route::put('/profilo', [MemberAreaController::class, 'updateProfile'])->name('member.profile.update');
+        Route::get('/quote', [MemberAreaController::class, 'payments'])->name('member.payments');
+        Route::get('/ricevute/{receipt}.pdf', [MemberAreaController::class, 'receipt'])->whereUuid('receipt')->name('member.receipt');
+        Route::get('/eventi', [MemberAreaController::class, 'events'])->name('member.events');
+        Route::post('/eventi/{session}/prenota', [MemberAreaController::class, 'book'])->whereUuid('session')->name('member.events.book');
+        Route::post('/eventi/{session}/attesa', [MemberAreaController::class, 'waitlist'])->whereUuid('session')->name('member.events.waitlist');
+        Route::post('/prenotazioni/{booking}/annulla', [MemberAreaController::class, 'cancel'])->whereUuid('booking')->name('member.events.cancel');
+        Route::post('/scheda/{person}', [AccessController::class, 'switch'])->whereUuid('person')->name('member.switch');
+        Route::post('/esci', [AccessController::class, 'logout'])->name('member.logout');
+        Route::post('/esci-ovunque', [AccessController::class, 'logoutAll'])->name('member.logout.all');
+        Route::get('/risorse', [MemberResourcesController::class, 'index'])->name('member.resources');
+        Route::post('/risorse/{resource}/prenota', [MemberResourcesController::class, 'book'])->whereUuid('resource')->middleware('throttle:30,10')->name('member.resources.book');
+        Route::post('/risorse/prenotazioni/{reservation}/annulla', [MemberResourcesController::class, 'cancel'])->whereUuid('reservation')->name('member.resources.cancel');
+        Route::get('/paga', [MemberPaymentsController::class, 'index'])->name('member.pay');
+        Route::post('/paga', [MemberPaymentsController::class, 'checkout'])->middleware('throttle:20,10')->name('member.pay.checkout');
+        Route::get('/pagamenti/{payment}/esito', [MemberPaymentsController::class, 'result'])->whereUuid('payment')->name('member.pay.result');
+        Route::get('/pagamenti/{payment}/annullato', [MemberPaymentsController::class, 'cancelled'])->whereUuid('payment')->name('member.pay.cancelled');
+    });
 };
 
 Route::domain('{org}.'.(is_string($domain) ? $domain : 'associazionesemplice.it'))->where(['org' => '[a-z0-9-]{3,40}'])
