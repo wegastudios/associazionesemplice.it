@@ -6,6 +6,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Numero limitato di password errate in pochi minuti, per chi opera e per la connessione.
  * Raggiunto il numero, per il resto del periodo la password non viene nemmeno controllata. Un esito corretto azzera il conteggio.
+ * Lettura e scrittura dei transient non sono atomiche: richieste in parallelo possono superare di poco il numero di tentativi. Per azioni che
+ * richiedono già una sessione da amministratore va bene così, senza un lock.
  * Il contatore sta in una memoria passata dal chiamante (di norma i transient), così si prova senza WordPress.
  */
 final class AttemptLimit {
