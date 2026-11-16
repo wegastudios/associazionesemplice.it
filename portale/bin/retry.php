@@ -7,6 +7,6 @@ if ( 'cli' !== PHP_SAPI ) {
 require __DIR__ . '/../src/bootstrap.php';
 Portale\Config::load( require __DIR__ . '/../config.php' );
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
-$db->migrate();
+$db->migrateOnStart();
 Portale\Settings::load( $db );
 echo date( 'c' ), ' nuovi tentativi di pagamento del gestionale: ', Portale\SaasCheckout::retryPayments( $db ), "\n";

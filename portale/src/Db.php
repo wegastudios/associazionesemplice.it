@@ -85,6 +85,28 @@ final class Db {
 		return gmdate( 'Y-m-d H:i:s' );
 	}
 
+	/**
+	 * Può questo utente cambiare la struttura (creare tabelle nello schema)? Su SQLite sì; su PostgreSQL dipende dal permesso CREATE sullo schema.
+	 * Quando l'utente del portale viene ristretto a soli dati, le migrazioni girano solo da bin/migrate.php con il proprietario.
+	 */
+	public function mayMigrate(): bool {
+		if ( ! $this->pg ) {
+			return true;
+		}
+		try {
+			return (bool) $this->one( "SELECT has_schema_privilege(current_user, current_schema(), 'CREATE') AS ok" )['ok'];
+		} catch ( \Throwable $e ) {
+			return true; // nel dubbio si comporta come prima
+		}
+	}
+
+	/** Migrazione all'avvio di pagine e cron: si salta se l'utente non ha il permesso di cambiare la struttura (lo fa bin/migrate.php). */
+	public function migrateOnStart(): void {
+		if ( $this->mayMigrate() ) {
+			$this->migrate();
+		}
+	}
+
 	public function migrate(): void {
 		$stmts = array(
 			'CREATE TABLE IF NOT EXISTS customers (
