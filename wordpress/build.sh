@@ -30,6 +30,11 @@ if [ "${ASEM_WPORG:-}" != "1" ]; then
 		{ print }
 	' "$rd" > "$rd.tmp"
 	mv "$rd.tmp" "$rd"
+	# Solo il pacchetto del portale dichiara «Update URI» (così WordPress non propone aggiornamenti con lo stesso nome da WordPress.org); quello di WordPress.org no.
+	mf="$out/free/associazionesemplice/associazionesemplice.php"
+	awk '{ sub(/\r$/, "") } { print } /^ \* Plugin URI:/ { print " * Update URI:        https://associazionesemplice.it/" }' "$mf" > "$mf.tmp"
+	mv "$mf.tmp" "$mf"
+	grep -q '^ \* Update URI: *https://associazionesemplice.it/$' "$mf" || { echo "Update URI del pacchetto del portale non inserito" >&2; exit 1; }
 	grep -q '^= Updates from the associazionesemplice.it website' "$rd" || { echo "readme del portale: sezione aggiornamenti non inserita" >&2; exit 1; }
 fi
 rm -rf "$out/free/associazionesemplice/tests" "$out/free/associazionesemplice/vendor" "$out/free/associazionesemplice/composer.json" "$out/free/associazionesemplice/composer.lock" "$out/free/associazionesemplice/phpunit.xml.dist"
