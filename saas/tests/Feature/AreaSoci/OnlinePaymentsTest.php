@@ -253,7 +253,7 @@ it('rimborsa e storna in un gesto solo un pagamento già registrato, e se il rim
     });
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
 
-    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::sequence()->push(['error' => ['message' => 'no']], 500)->push(['id' => 're_9'])]);
+    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::sequence()->push(['error' => ['message' => 'no']], 422)->push(['id' => 're_9'])]);
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
     expect(session('errors')->first('ledger'))->toContain('Nulla è stato stornato');
     $this->orgContext()->run($this->org->id, function () use ($tessera): void {
@@ -357,7 +357,7 @@ it('se il gestore non risponde non annulla in silenzio il rimborso: non storna n
     ]);
 
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
-    expect(session('errors')->first('ledger'))->toContain('non so se il rimborso')->toContain('Non è stato stornato nulla');
+    expect(session('errors')->first('ledger'))->toContain('non è possibile sapere se il rimborso')->toContain('Non è stato stornato nulla');
     $this->orgContext()->run($this->org->id, function () use ($id): void {
         $row = DB::table('app.online_payments')->where('id', $id)->first();
         expect((int) $row->refund_pending_cents)->toBe(2500)
@@ -391,4 +391,51 @@ it('un rimborso che il gestore segna come fallito non viene registrato come fatt
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '10,00', 'reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
     $this->orgContext()->run($this->org->id, fn () => expect((int) DB::table('app.online_payments')->where('id', $id)->value('refunded_cents'))->toBe(0));
     Mail::assertNothingSent();
+});
+
+it('un errore 5xx del gestore vale come mancata risposta: esito da verificare, promemoria che resta, nulla stornato', function (): void {
+    Mail::fake();
+    saveStripe($this);
+    $id = $this->orgContext()->run($this->org->id, function (): string {
+        $r = app(MembershipService::class)->renewWithPayment($this->anna->id, $this->cash, 2500);
+        $id = (string) Illuminate\Support\Str::uuid7();
+        DB::table('app.online_payments')->insert([
+            'org_id' => $this->org->id, 'id' => $id, 'person_id' => $this->anna->id, 'provider' => 'stripe', 'status' => 'settled', 'amount_cents' => 2500, 'paid_cents' => 2500,
+            'items' => '[]', 'receipts' => json_encode([$r['receipt']]), 'provider_ref' => 'cs_test_9',
+        ]);
+
+        return $id;
+    });
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::response(['error' => ['message' => 'boom']], 502)]);
+
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+    expect(session('errors')->first('ledger'))->toContain('non è possibile sapere se il rimborso')->not->toContain('Rimborso non riuscito');
+    $this->orgContext()->run($this->org->id, function () use ($id): void {
+        expect((int) DB::table('app.online_payments')->where('id', $id)->value('refund_pending_cents'))->toBe(2500)
+            ->and(DB::table('app.transactions')->whereNull('voided_at')->count())->toBe(1);
+    });
+});
+
+it('se lo storno non è possibile (anno fiscale chiuso) rifiuta prima di chiamare il gestore', function (): void {
+    Mail::fake();
+    saveStripe($this);
+    $id = $this->orgContext()->run($this->org->id, function (): string {
+        $r = app(MembershipService::class)->renewWithPayment($this->anna->id, $this->cash, 2500);
+        $id = (string) Illuminate\Support\Str::uuid7();
+        DB::table('app.online_payments')->insert([
+            'org_id' => $this->org->id, 'id' => $id, 'person_id' => $this->anna->id, 'provider' => 'stripe', 'status' => 'settled', 'amount_cents' => 2500, 'paid_cents' => 2500,
+            'items' => '[]', 'receipts' => json_encode([$r['receipt']]), 'provider_ref' => 'cs_test_9',
+        ]);
+        app(FiscalYearService::class)->close((int) DB::table('app.transactions')->value('fiscal_year'));
+
+        return $id;
+    });
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+    Http::fake();
+
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+    expect(session('errors')->first('ledger'))->toContain('è chiuso')->toContain('Il rimborso non è stato fatto');
+    Http::assertNothingSent();
+    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('app.online_payments')->where('id', $id)->value('refund_pending_cents'))->toBeNull());
 });

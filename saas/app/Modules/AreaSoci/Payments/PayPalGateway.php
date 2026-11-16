@@ -174,6 +174,8 @@ final readonly class PayPalGateway
     {
         $msg = $res->json('message') ?? $res->json('error_description');
 
-        return new RuntimeException('PayPal ('.$what.'): '.(is_string($msg) && $msg !== '' ? $msg : 'risposta '.$res->status()));
+        $text = 'PayPal ('.$what.'): '.(is_string($msg) && $msg !== '' ? $msg : 'risposta '.$res->status());
+
+        return $res->status() >= 500 ? new GatewayUnknown($text) : new RuntimeException($text);
     }
 }
