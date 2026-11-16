@@ -76,14 +76,16 @@ $asem_demo_blocked = array(
 	'Nella demo questa impostazione è bloccata.' => array(
 		'asem_save_payment_settings', 'asem_satispay_connect', 'asem_save_bank', 'asem_save_donate', 'asem_save_campaign', 'asem_save_woo',
 		'asem_save_sms', 'asem_save_newsletter', 'asem_save_places', 'asem_save_wallet_apple', 'asem_save_wallet_google', 'asem_save_app', 'asem_save_wpai', 'asem_push_test',
-		'asem_save_roles', 'asem_save_limits', 'asem_audit_free',
+		'asem_save_roles', 'asem_save_limits', 'asem_audit_free', 'asem_save_license', 'asem_set_staff', 'asem_set_secretary', 'asem_set_treasurer', 'asem_reset_limits',
 	),
 	'Nella demo questa operazione è bloccata.' => array(
 		'asem_enc_start', 'asem_enc_step', 'asem_enc_recover', 'asem_enc_recoverphrase', 'asem_enc_newkey', 'asem_enc_setrecovery', 'asem_enc_autophrase',
 		'asem_private_move', 'asem_receipt_pdf_regen', 'asem_receipt_nodata_fix', 'asem_receipt_pdf_complete', 'asem_receipt_zip', 'asem_payment_refund',
+		'asem_test_gateway', 'asem_test_sms', 'asem_test_newsletter', 'asem_mail_test', 'asem_send_notice', 'asem_send_reminders', 'asem_sms_retry', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear',
+		'asem_reset_private_files', 'asem_reset_texts', 'asem_update_account', 'asem_update_api', 'asem_update_check', 'asem_update_hash', 'asem_update_session',
 	),
 	'Nella demo il ripristino di una copia è bloccato.' => array( 'asem_backup_restore' ),
-	'Nella demo l\'importazione da file è bloccata: i dati che vedi sono di esempio.' => array( 'asem_import_preview', 'asem_import_person', 'asem_import_tx', 'asem_import_texts' ),
+	'Nella demo l\'importazione da file è bloccata: i dati che vedi sono di esempio.' => array( 'asem_import_preview', 'asem_import_apply', 'asem_import_person', 'asem_import_tx', 'asem_import_undo', 'asem_import_language', 'asem_import_texts', 'asem_tec_import' ),
 	'Nella demo i dati non si azzerano da qui: si azzerano da soli ogni notte.' => array( 'asem_reset_all' ),
 );
 // Elenco delle azioni PERMESSE (non solo di quelle vietate): ogni azione con prefisso asem_ che arriva da admin-post.php o admin-ajax.php e non è qui sotto si ferma, quindi un'azione
@@ -213,6 +215,18 @@ add_action( 'admin_init', function () use ( $asem_demo_blocked, $asem_demo_allow
 		wp_die( 'Nella demo questa azione non è disponibile.', '', array( 'response' => 403, 'back_link' => true ) );
 	}
 }, 0 );
+// Posta in uscita già spenta (pre_wp_mail in cima). Seconda barriera: dal web nessuna richiesta esce verso altri siti (SMS, pagamenti, notifiche), salvo questo sito e il portale. I comandi da terminale (aggiornamenti) passano.
+add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
+	if ( ( defined( 'WP_CLI' ) && WP_CLI ) || false !== $pre ) {
+		return $pre;
+	}
+	$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+	$own  = strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+	if ( '' === $host || $host === $own || 'associazionesemplice.it' === $host || 'localhost' === $host || '127.0.0.1' === $host ) {
+		return $pre;
+	}
+	return new WP_Error( 'asem_demo_http', 'Nella demo le richieste verso altri siti sono bloccate.' );
+}, 1, 3 );
 // Contatti e dati di pagamento che il pubblico vede sul sito: dalle impostazioni generali (via web) restano quelli della demo. I comandi da terminale (provisioning) passano.
 add_filter( 'pre_update_option_asem_settings', function ( $new, $old ) {
 	if ( ( defined( 'WP_CLI' ) && WP_CLI ) || ! is_array( $new ) || ! is_array( $old ) ) {
