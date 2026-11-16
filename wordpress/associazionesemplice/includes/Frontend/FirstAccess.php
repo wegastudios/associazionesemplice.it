@@ -164,7 +164,7 @@ final class FirstAccess {
 		$body = ( '' !== $message ? '<div class="w" style="color:#1a7f37">' . esc_html( $message ) . '</div>' : '' )
 			. ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
 			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'ti mandiamo il link per entrare e scegliere la tua password. ' : 'ti mandiamo il link per scegliere la password. ' ) . ( 'invite' === Settings::get( 'join_mode' ) ? 'L\'accesso è riservato a chi è già iscritto: l\'iscrizione si fa su presentazione, rivolgendosi alla segreteria.' : 'Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti scrive su WhatsApp.' ) . '</p>'
-			. '<form method="post" action="' . esc_url( self::url() ) . '">' . wp_nonce_field( 'asem_first_access', '_asem_nonce', false, false ) . '<input type="hidden" name="asem_first_go" value="1">'
+			. '<form method="post" action="' . esc_url( self::url() ) . '">' . MemberLoginPage::sign_field( 'first_access' ) . '<input type="hidden" name="asem_first_go" value="1">'
 			. $field( 'Nome e cognome', 'name', 'text', 'name' ) . $field( 'La tua email', 'email', 'email', 'email' ) . $field( 'Il tuo cellulare', 'phone', 'tel', 'tel' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . esc_attr( $accent ) . ';color:#fff">Mandami il link</button></form>'
 			. '<p style="margin-top:14px"><a href="' . esc_url( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? MemberLoginPage::url() : wp_login_url() ) . '">← Torna all\'accesso</a></p>';
@@ -184,8 +184,8 @@ final class FirstAccess {
 			$tries  = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'first_access_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';
-			} elseif ( ! wp_verify_nonce( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'asem_first_access' ) ) {
-				$error = 'Sessione scaduta: riprova.';
+			} elseif ( ! MemberLoginPage::from_page( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'first_access' ) ) {
+				$error = Activation::NOT_FROM_PAGE;
 			} else {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );
 				if ( 'invalid' === self::submit( (string) ( $post['name'] ?? '' ), (string) ( $post['email'] ?? '' ), (string) ( $post['phone'] ?? '' ) ) ) {
@@ -196,7 +196,10 @@ final class FirstAccess {
 				}
 			}
 		}
+		Views::no_cache(); // la pagina porta il segno di chi la apre: mai in cache
+		MemberLoginPage::ensure_pre_session();
 		CardVerify::send_headers();
+		header( 'Cache-Control: no-store, max-age=0' );
 		CardVerify::output( self::page( $message, $post, $error ) );
 		exit;
 	}

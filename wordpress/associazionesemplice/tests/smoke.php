@@ -10142,6 +10142,30 @@ preg_match( '/function inline_login\( string \$back \): string \{\s*Views::no_ca
 preg_match( '/headers_sent\(\) \) \{\s*return false;\s*\}\s*Views::no_cache\(\);[^\r\n]*\s*\$value = PreSession::make/', $ps_src, $ps_m2 );
 asem_ok( defined( 'DONOTCACHEPAGE' ) && $ps_m1 && $ps_m2, 'accesso soci: le pagine con il modulo di accesso non finiscono nella cache di pagina (inline_login ed emissione del cookie chiamano no_cache)' );
 asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' ), 'from_login_page( self::post( \'_asem_nonce\' ) )' ) && false === strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' ), 'wp_verify_nonce' ), 'accesso soci: l\'invio dei moduli di accesso passa dal controllo del cookie' );
+// Attivazione e primo accesso: il modulo vale solo dal browser che ha aperto la sua pagina (stesso cookie di pre-sessione, azione distinta per modulo)
+$fa_cls  = \AssociazioneSemplice\Frontend\FirstAccess::class;
+$fa_name = \AssociazioneSemplice\PreSession::COOKIE;
+$fa_sign = function ( string $html ): string {
+	return 1 === preg_match( '/name="_asem_nonce" value="([a-f0-9]*)"/', $html, $m ) ? $m[1] : 'MANCA';
+};
+unset( $_COOKIE[ $fa_name ] );
+asem_ok( '' === $fa_sign( $fa_cls::page() ) && ! $ps_cls::from_page( '', 'first_access' ) && ! $ps_cls::from_page( 'x', 'activation' ), 'primo accesso e attivazione: senza cookie di pre-sessione il modulo non ha il segno e l\'invio è rifiutato' );
+$_COOKIE[ $fa_name ] = \AssociazioneSemplice\PreSession::make( time() );
+$fa_tok = $fa_sign( $fa_cls::page() );
+asem_ok( 64 === strlen( $fa_tok ) && $ps_cls::from_page( $fa_tok, 'first_access' ), 'primo accesso: con il cookie giusto l\'invio dalla sua pagina è accettato' );
+asem_ok( $ps_cls::from_page( $ps_cls::pre_sign( 'activation' ), 'activation' ) && $ps_cls::pre_sign( 'activation' ) !== $fa_tok, 'attivazione: con il cookie giusto l\'invio è accettato, con un segno diverso da quello del primo accesso' );
+asem_ok( ! $ps_cls::from_page( $fa_tok, 'activation' ) && ! $ps_cls::from_page( $ps_cls::pre_sign( 'activation' ), 'first_access' ) && ! $ps_cls::from_page( $fa_tok, 'member_login' ), 'moduli di accesso: il segno di un modulo non vale per un altro' );
+$_COOKIE[ $fa_name ] = \AssociazioneSemplice\PreSession::make( time() ); // un altro browser
+asem_ok( ! $ps_cls::from_page( $fa_tok, 'first_access' ), 'primo accesso: l\'invio col segno di un altro cookie è rifiutato' );
+$_COOKIE[ $fa_name ] = ( time() - 3 * HOUR_IN_SECONDS ) . '.' . SessionToken::generate();
+asem_ok( ! $ps_cls::from_page( \AssociazioneSemplice\PreSession::token( $_COOKIE[ $fa_name ], 'activation', MemberSession::secret() ), 'activation' ), 'attivazione: un cookie scaduto non vale' );
+unset( $_COOKIE[ $fa_name ] );
+$fa_src = (string) file_get_contents( ASEM_DIR . 'includes/Frontend/FirstAccess.php' );
+$ac_src = (string) file_get_contents( ASEM_DIR . 'includes/Frontend/Activation.php' );
+$fa_end = '/Views::no_cache\(\);[^\r\n]*\s*MemberLoginPage::ensure_pre_session\(\);\s*CardVerify::send_headers\(\);\s*header\( \'Cache-Control: no-store, max-age=0\' \);\s*CardVerify::output\( self::page\(/';
+asem_ok( 1 === preg_match( $fa_end, $fa_src ) && 1 === preg_match( $fa_end, $ac_src ), 'primo accesso e attivazione: le pagine non finiscono nella cache e danno il cookie prima di scrivere la pagina' );
+asem_ok( false !== strpos( $fa_src, "'first_access' )" ) && false !== strpos( $ac_src, "'activation' ) ) {" ) && false !== strpos( $ac_src, "sign_field( 'activation' )" ) && false === strpos( $fa_src . $ac_src, 'wp_verify_nonce' ) && false === strpos( $fa_src . $ac_src, 'wp_nonce_field' ), 'primo accesso e attivazione: l\'invio passa dal controllo del cookie e non dal nonce' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Activation::NOT_FROM_PAGE, 'dalla sua pagina' ) && false === stripos( \AssociazioneSemplice\Frontend\Activation::NOT_FROM_PAGE, 'nonce' ), 'attivazione e primo accesso: il messaggio di rifiuto è chiaro e neutro' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'name="password"' ) && false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'Password dimenticata' ), 'password: il modulo dell\'area soci è email e password, con il recupero' );
 unset( $_COOKIE[ $pw_cookie ] );
 $ms_fake->setValue( null, null );
