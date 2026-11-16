@@ -11,11 +11,15 @@ $db->migrate();
 Portale\Settings::load( $db );
 $billing = new Portale\Billing( $db, new Portale\WegaClient( (string) Portale\Config::get( 'wega.base_url' ), (string) Portale\Config::get( 'wega.token' ) ) );
 // Ogni lavoro è a sé: se uno fallisce l'errore finisce nel registro e gli altri partono lo stesso (prima un errore fermava tutto lo script).
-$step = function ( string $label, callable $job ): string {
+// Un fallimento si vede: codice d'uscita 1 e una email all'indirizzo di contatto del portale (Pagine legali) con i lavori falliti.
+$failed = array();
+$step   = function ( string $label, callable $job ) use ( &$failed ): string {
 	try {
 		return date( 'c' ) . ' ' . $label . ': ' . (string) $job() . "\n";
 	} catch ( \Throwable $e ) {
-		return date( 'c' ) . ' ERRORE in «' . $label . '»: ' . get_class( $e ) . ': ' . $e->getMessage() . ' (' . basename( $e->getFile() ) . ':' . $e->getLine() . ")\n";
+		$line     = date( 'c' ) . ' ERRORE in «' . $label . '»: ' . get_class( $e ) . ': ' . $e->getMessage() . ' (' . basename( $e->getFile() ) . ':' . $e->getLine() . ")\n";
+		$failed[] = $line;
+		return $line;
 	}
 };
 echo $step( 'avvisi di scadenza inviati', function () use ( $billing ) {
@@ -31,3 +35,11 @@ echo $step( 'licenze gratuite rinnovate / lasciate scadere per inattività', fun
 	list( $renewed, $lapsed ) = $billing->autoRenewFree();
 	return $renewed . ' / ' . $lapsed;
 } );
+if ( $failed ) {
+	try {
+		Portale\Mailer::send( Portale\Legal::vars()['email'], 'Portale: lavori giornalieri non riusciti', "Il lavoro giornaliero del portale (bin/cron.php) ha avuto errori. Gli altri lavori sono partiti.\n\n" . implode( '', $failed ) . "\nIl registro completo è ~/logs/portale-cron.log sul server.\n" );
+	} catch ( \Throwable $e ) {
+		echo date( 'c' ), ' avviso non inviato: ', $e->getMessage(), "\n";
+	}
+	exit( 1 );
+}

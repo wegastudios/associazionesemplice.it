@@ -194,6 +194,10 @@ final class Db {
 				if ( 0 !== strpos( $sql, 'CREATE INDEX' ) && 0 !== strpos( $sql, 'ALTER TABLE' ) ) {
 					throw $e;
 				}
+				// «Esiste già» è normale; ogni altro motivo (permessi, tipo) finisce nel registro invece di sparire: una colonna mancante rompe i lavori più avanti.
+				if ( false === stripos( $e->getMessage(), 'already exists' ) && false === stripos( $e->getMessage(), 'duplicate column' ) ) {
+					error_log( '[portale] migrazione non riuscita: ' . substr( preg_replace( '/\s+/', ' ', $sql ), 0, 90 ) . ' → ' . $e->getMessage() );
+				}
 			}
 		}
 		// Staff: copia (ripetibile) degli accessi di oggi nell'elenco centrale; le tabelle vecchie non si toccano.

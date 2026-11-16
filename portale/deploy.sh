@@ -4,8 +4,11 @@
 # tutti i file PHP: se c'è un errore il sito in funzione non viene toccato. Uso: bash portale/deploy.sh
 set -euo pipefail
 cd "$(dirname "$0")"
-HOST="${PORTALE_HOST:-65.108.75.89}"; PORT="${PORTALE_PORT:-2299}"; USER_="${PORTALE_USER:-associazionesemp}"
 KEY="${PORTALE_KEY:-../deploy_key}"
+# Indirizzo, porta e utente del server stanno in un file non tracciato accanto alla chiave (deploy_key.env, vedi deploy-server.env.example): il repository è pubblico.
+ENVF="${PORTALE_ENV:-$(dirname "$KEY")/deploy_key.env}"
+[ -f "$ENVF" ] && . "$ENVF"
+HOST="${PORTALE_HOST:?manca PORTALE_HOST: copia deploy-server.env.example in deploy_key.env accanto alla chiave}"; PORT="${PORTALE_PORT:?manca PORTALE_PORT}"; USER_="${PORTALE_USER:?manca PORTALE_USER}"
 S=(ssh -i "$KEY" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes "$USER_@$HOST")
 
 tar --exclude=tests --exclude=config.php --exclude=data --exclude=.gitignore -cf - . | "${S[@]}" 'rm -rf ~/portale-next && mkdir -p ~/portale-next && tar -xf - -C ~/portale-next'
