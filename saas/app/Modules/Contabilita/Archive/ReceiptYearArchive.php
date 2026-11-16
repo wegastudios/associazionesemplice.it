@@ -307,7 +307,6 @@ final readonly class ReceiptYearArchive implements YearArchives
         }
     }
 
-<<<<<<< HEAD
     public function check(int $year): bool
     {
         $arc = $this->connection()->table('app.year_archives')->where('fiscal_year', $year)->first();
@@ -425,8 +424,6 @@ final readonly class ReceiptYearArchive implements YearArchives
         }
     }
 
-=======
->>>>>>> origin/main
     /**
      * Un solo lavoro alla volta per associazione (archivia, rimetti, rifai). Se un altro è in corso si dice chiaro, senza
      * toccare niente: prima la seconda archiviazione dello stesso anno falliva sulla chiave primaria e lasciava un archivio orfano.
