@@ -682,7 +682,54 @@ In **Attività** trovi i corsi e gli eventi dell'anno sociale: ognuno raccoglie 
 
 Se l'associazione ha la partita IVA, nella scheda trovi anche la casella **«Con IVA»**: vedi [IVA: la pagina «Aspetto fiscale»](guida:gestionale-iva-e-aspetto-fiscale).
 
-Nella scheda vedi gli **iscritti**, il **registro presenze** e i **carnet** con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date.
+Nella scheda vedi gli **iscritti**, il **registro presenze** e i **carnet** con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date: vedi [Il calendario e le presenze delle attività](guida:gestionale-calendario-e-presenze).
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Attività', 'slug' => 'gestionale-calendario-e-presenze',
+        'title' => 'Il calendario e le presenze delle attività',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Due strumenti ti dicono **cosa c'è in programma** e **chi c'era**: il **Calendario** delle attività e il **Registro presenze** di ogni attività.
+
+## Il calendario
+
+Lo apri dal menu, in **Attività e risorse → Calendario**. Mostra le **lezioni dei corsi**, gli **eventi** e le **date con prenotazione**, **tranne quelle delle attività archiviate**.
+
+- In alto scegli la vista: **Giorno**, **Settimana** (parte dal giorno scelto e va avanti di sette giorni) o **Mese**. Di partenza vedi la settimana.
+- Le frecce **←** e **→** spostano di un giorno, di sette giorni o di un mese, secondo la vista. Con il **campo data** salti a un giorno preciso.
+- Ogni riga riporta l'**orario** (per le date con prenotazione), il **nome dell'attività** (cliccandolo la apri), il **tipo**, il **luogo** e, per le date con prenotazione, quanti sono **prenotati** su quanti posti.
+- Il collegamento **«presenze»** ti porta al registro di quel giorno.
+
+Il calendario dà una **vista d'insieme**; se in **Risorse** usi le **prenotazioni di spazi**, quel calendario è un altro: vedi [Risorse e prenotazioni](guida:gestionale-risorse-e-prenotazioni).
+
+## Il registro presenze
+
+Si apre dalla **scheda dell'attività** (**«Registro presenze»**), dal **calendario** (**«presenze»**) o dalla pagina di una data.
+
+1. Scegli il **mese** con le frecce **←** e **→**.
+2. Tocca il **giorno** della lezione: i giorni già registrati hanno una **spunta ✓**. Se in quel mese l'attività non ha lezioni, la pagina te lo dice.
+3. Vedi l'**elenco di chi è atteso**. Togli la spunta a chi è **assente**: di partenza sono tutti presenti. Con **«tutti presenti»** e **«nessuno»** cambi tutto in un colpo.
+4. Premi **«Registra le presenze»**. Compare il riepilogo, per esempio «Presenze registrate: 8 su 10.»
+
+Chi è atteso dipende dal tipo di attività:
+
+- **Corsi**: gli **iscritti** nel mese di quella lezione (dal mese di inizio a quello di fine dell'iscrizione);
+- **Eventi**: gli **iscritti**;
+- **Eventi con prenotazioni**: chi ha la **prenotazione confermata** per quella data. Chi è in lista d'attesa non compare.
+
+Cose da sapere:
+
+- **Le presenze si registrano a lezione fatta, non in anticipo.** Per le date future l'elenco c'è, ma i pulsanti sono spenti: «Si registrano a lezione fatta.»
+- Si possono registrare **solo le date in cui l'attività ha una lezione**.
+- Se **registri di nuovo** lo stesso giorno, le presenze **sostituiscono** quelle di prima: puoi correggere un errore riaprendo il giorno.
+- In fondo alla pagina c'è il **«Riepilogo del mese»**: per ogni persona un pallino pieno (presente) o vuoto (assente) per ogni lezione e il totale, per esempio «7/9».
+- Ogni registrazione resta scritta nel **registro azioni**.
+
+Chi può registrare le presenze: titolare, amministratori e operatori **che gestiscono i corsi**. Chi può solo vedere i soci vede l'elenco e il riepilogo, ma **non può modificare** nulla.
+
+Per creare le attività e iscrivere le persone vedi [Creare un corso o un evento](guida:gestionale-creare-un-corso-o-un-evento).
 MD,
     ],
     [
