@@ -39,6 +39,25 @@ final class MemberPassword {
 		return '';
 	}
 
+	/** Segno «cambio obbligatorio» di una password arrivata da una copia ripristinata (nella colonna must_reset: 1 è il recupero, 2 il ripristino). */
+	const RESTORED = 2;
+
+	/** Stato della password dato quello che c'è nel database: «none» (nessuna), «ok», «reset» (recupero chiesto), «restored» (arriva da una copia ripristinata). */
+	public static function state( string $hash, int $must_reset ): string {
+		if ( '' === $hash ) {
+			return 'none';
+		}
+		if ( self::RESTORED === $must_reset ) {
+			return 'restored';
+		}
+		return $must_reset ? 'reset' : 'ok';
+	}
+
+	/** Cosa resta nel segno dopo un accesso con la password giusta: il recupero lasciato a metà si azzera, il cambio dopo il ripristino no (si toglie solo cambiando la password). */
+	public static function marker_after_login( int $must_reset ): int {
+		return self::RESTORED === $must_reset ? self::RESTORED : 0;
+	}
+
 	const MAX_FAILED = 5; // errori di fila prima del blocco
 
 	/** Secondi di blocco dopo tanti errori di fila: nessuno fino a 4, poi un minuto che raddoppia a ogni errore, al massimo un'ora. */

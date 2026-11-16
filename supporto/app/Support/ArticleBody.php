@@ -105,7 +105,8 @@ class ArticleBody
         return preg_replace_callback('/\[([^\]]+)\]\(((?:https?:\/\/|\/|guida:)[^\s)]+)\)/u', function (array $m): string {
             // [testo](guida:slug) rimanda a un'altra guida del centro assistenza; se non esiste resta solo il testo
             if (str_starts_with($m[2], 'guida:')) {
-                $id = Article::query()->where('slug', substr($m[2], 6))->where('is_published', true)->value('id');
+                $id = Article::query()->where('slug', substr($m[2], 6))->where('is_published', true)
+                    ->whereHas('section.topic', fn ($t) => $t->forPublic())->value('id');
 
                 return $id === null ? $m[1] : '<a href="'.route('help.article', $id).'">'.$m[1].'</a>';
             }

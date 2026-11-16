@@ -54,8 +54,7 @@ $names = array(
 		</div>
 		<div class="card2">
 			<h2>Sito e posta</h2>
-			<label class="check" style="margin-top:0"><input type="checkbox" name="indexable" value="1"<?php echo $g['indexable'] ? ' checked' : ''; ?>> Consenti ai motori di ricerca di indicizzare il sito</label>
-			<div class="risk">Spento: robots.txt, intestazione e meta vietano l'indicizzazione (il sito non compare su Google). Accendilo solo al lancio.</div>
+			<p class="hint" style="margin-top:0">Il portale compare nei motori di ricerca: <b><?php echo $g['indexable'] ? 'sì' : 'no'; ?></b>. Si cambia in «Impostazioni del portale» (/account/impostazioni), insieme alla modalità manutenzione.</p>
 			<label for="mail_from">Mittente delle email</label><input id="mail_from" type="email" name="mail_from" value="<?php echo e( $g['mail_from'] ); ?>" placeholder="info@associazionesemplice.it">
 			<p class="hint">Deve essere un indirizzo del tuo dominio, altrimenti le email finiscono in spam.</p>
 		</div>

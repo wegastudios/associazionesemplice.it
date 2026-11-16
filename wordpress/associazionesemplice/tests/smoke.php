@@ -8098,6 +8098,9 @@ file_put_contents( $bk_file, 'contenuto allegato' );
 $wpdb->insert( Db::t( 'attachments' ), array( 'transaction_id' => 0, 'original_name' => 'prova-copia.txt', 'stored_name' => str_repeat( 'a', 32 ), 'mime' => 'text/plain', 'size_bytes' => 18, 'sha256' => hash( 'sha256', 'contenuto allegato' ), 'created_at' => Db::now() ) ); // l'allegato si rimette solo se una riga dei dati lo cita
 $bk_att_row = (int) $wpdb->insert_id;
 Settings::update( array( 'association_name' => 'Associazione di prova' ) );
+$bk_pw_hash = \AssociazioneSemplice\MemberPassword::make( 'vecchia password dei soci' ); // una password di un socio già dentro la copia: dopo il ripristino torna, con il cambio obbligatorio
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => 999001, 'login_email' => 'copia-password@example.com', 'pass_hash' => $bk_pw_hash, 'must_reset' => 0, 'created_at' => Db::now() ) );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => 999002, 'login_email' => 'solo-link@example.com', 'pass_hash' => null, 'must_reset' => 0, 'created_at' => Db::now() ) ); // un socio che entra solo con il link, senza password: dopo il ripristino non riceve nessun segno
 $bk_zip = \AssociazioneSemplice\Backup::export( true );
 $za     = new ZipArchive();
 $za->open( $bk_zip );
@@ -8312,12 +8315,20 @@ wp_delete_file( $bk_t6 );
 
 // 5. registro azioni, accessi dei soci e notifiche push non fanno parte del ripristino
 Audit::log( 'prova.dopo_la_copia', 'settings', 0 );
-$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $victim, 'login_email' => 'prova-ripristino@example.com', 'pass_hash' => 'x', 'created_at' => Db::now() ) );
+$wpdb->update( Db::t( 'member_auth' ), array( 'pass_hash' => 'x', 'must_reset' => 0 ), array( 'person_id' => 999001 ) ); // dopo la copia la password è cambiata e il segno tolto: il ripristino rimette quella della copia
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $victim, 'login_email' => 'prova-ripristino@example.com', 'pass_hash' => 'x', 'created_at' => Db::now() ) ); // una password nata dopo la copia: non c'è nella copia, sparisce
+$wpdb->insert( Db::t( 'member_sessions' ), array( 'token_hash' => str_repeat( 'b', 64 ), 'person_id' => 999001, 'created_at' => Db::now(), 'last_seen' => Db::now(), 'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 3600 ) ) );
 $bk_people_t = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Db::t( 'push_subs' ) ) );
 $bk_audit_total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) );
 $bk_r5 = \AssociazioneSemplice\Backup::restore( $bk_zip );
 asem_ok( 1 === $bk_audit_n( 'prova.dopo_la_copia' ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) > $bk_audit_total, 'ripristino: il registro azioni non viene sostituito (le righe fatte dopo la copia restano, e si aggiunge quella del ripristino)' );
-asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) ) && ( ! $bk_people_t || 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) ) ) && ! empty( $bk_r5['members_reset'] ), 'ripristino: password dei soci e notifiche push non si ripristinano (e non restano legate a persone diverse): i soci rientrano con il link' );
+$bk_auth = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = 999001', ARRAY_A );
+asem_ok( is_array( $bk_auth ) && $bk_auth['pass_hash'] === $bk_pw_hash && 2 === (int) $bk_auth['must_reset'] && \AssociazioneSemplice\MemberPassword::verify( 'vecchia password dei soci', (string) $bk_auth['pass_hash'] ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . " WHERE person_id = $victim" ) && ! empty( $bk_r5['passwords'] ), 'ripristino: le password dei soci tornano come nella copia, con il segno «cambio obbligatorio» (e quelle nate dopo la copia spariscono)' );
+asem_ok( 'restored' === \AssociazioneSemplice\MemberLogin::password_state( 999001 ), 'ripristino: lo stato della password del socio è «da cambiare dopo il ripristino»' );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT must_reset FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = 999002' ) && 'none' === \AssociazioneSemplice\MemberLogin::password_state( 999002 ), 'ripristino: il segno «cambio obbligatorio» va solo a chi ha una password ripristinata, non a chi entrava solo con il link' );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) ) && ( ! $bk_people_t || 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) ) ) && ! empty( $bk_r5['members_reset'] ), 'ripristino: sessioni e notifiche push dei soci non si ripristinano (sono cancellate)' );
+$bk_audit_row = (string) $wpdb->get_var( 'SELECT details FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'backup.restored' ORDER BY id DESC LIMIT 1" );
+asem_ok( false === stripos( $bk_audit_row, 'pass_hash' ) && false === strpos( $bk_audit_row, $bk_pw_hash ), 'ripristino: il registro azioni non contiene nessuna impronta di password' );
 
 // 6. un ripristino alla volta
 Db::$lock_fake = '0';
@@ -11017,6 +11028,7 @@ $er_cnt    = static function ( string $e ) use ( $wpdb, $er_tbl ): int {
 $er_reset  = static function () use ( $er_keyip ) {
 	delete_transient( $er_keyip );
 	delete_transient( 'asem_evq_dropped' );
+	delete_transient( 'asem_evq_dropped_seats' );
 };
 $er_r      = array_merge( $er_in, array( 'tax_code' => 'NRIMRC92D15F205P', 'first_name' => 'Nora', 'last_name' => 'Pagamenti', 'birth_date' => '1992-04-15' ) );
 $er_reset();
@@ -11024,12 +11036,18 @@ Settings::update( array( 'limits' => array( 'event_seats_per_email' => 10, 'even
 set_transient( $er_keyem( 'tetto.email@example.com' ), 9, DAY_IN_SECONDS );
 $er_t1 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
 $er_t2 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
-asem_ok( 'ok' === $er_t1['status'] && 'ok' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore, e la risposta è sempre la stessa' );
+$er_mn1 = count( $er_mails );
+asem_ok( 'ok' === $er_t1['status'] && 'invalid' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ) && 0 === strpos( $er_t2['errors'][0], 'Con questo indirizzo email sono già stati chiesti molti posti nelle ultime 24 ore: per altri posti scrivi alla segreteria' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore e legge un messaggio onesto, senza richiesta registrata' );
+asem_ok( 1 === (int) get_transient( 'asem_evq_dropped_seats' ) && false !== strpos( $er::queue_alert(), '1 richiesta è stata respinta perché una email o una connessione aveva già chiesto molti posti' ), 'tetto posti: il rifiuto è contato e l\'avviso in Bacheca lo riporta (anche con la coda non piena)' );
+$er_c1 = $er::course_create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $er_ca );
+asem_ok( 'invalid' === $er_c1['status'] && 0 === strpos( $er_c1['errors'][0], 'Con questo indirizzo email' ) && 1 === $er_cnt( 'tetto.email@example.com' ) && 2 === (int) get_transient( 'asem_evq_dropped_seats' ), 'tetto posti: stesso messaggio e stesso conteggio per le iscrizioni ai corsi' );
 $er_reset();
 Settings::update( array( 'limits' => array( 'event_seats_per_email' => 200, 'event_seats_per_ip' => 10, 'event_requests_max' => 5000 ) ) );
 set_transient( $er_keyip, 10, DAY_IN_SECONDS );
 $er_t3 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.ip1@example.com' ) ), $acts->get( $er_a ), $er_o );
-asem_ok( 'ok' === $er_t3['status'] && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse' );
+asem_ok( 'invalid' === $er_t3['status'] && 0 === strpos( $er_t3['errors'][0], 'Da questa connessione sono già stati chiesti molti posti nelle ultime 24 ore: riprova più tardi o scrivi alla segreteria' ) && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse, e legge un messaggio onesto' );
+$er_c2 = $er::course_create( array_merge( $er_r, array( 'email' => 'tetto.ip2@example.com' ) ), $er_ca );
+asem_ok( 'invalid' === $er_c2['status'] && 0 === strpos( $er_c2['errors'][0], 'Da questa connessione' ) && 0 === $er_cnt( 'tetto.ip2@example.com' ) && count( $er_mails ) === $er_mn1, 'tetto posti: stesso messaggio per le iscrizioni ai corsi e nessuna email' );
 wp_set_current_user( 1 );
 $er::create( array_merge( $er_r, array( 'email' => 'tetto.segreteria@example.com' ) ), $acts->get( $er_a ), $er_o );
 asem_ok( 1 === $er_cnt( 'tetto.segreteria@example.com' ), 'tetto posti: la segreteria non è mai limitata' );

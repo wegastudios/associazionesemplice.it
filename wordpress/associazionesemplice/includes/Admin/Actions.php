@@ -991,8 +991,11 @@ final class Actions {
 		if ( ! empty( $r['keys_failed'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: le chiavi dei documenti riservati non si sono potute rimettere sul sito (un\'altra operazione era in corso): rifai il ripristino della stessa copia.' );
 		}
+		if ( ! empty( $r['passwords'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le password dei soci sono tornate come nella copia: al primo accesso ogni socio dovrà scegliere una nuova password.' );
+		}
 		if ( ! empty( $r['members_reset'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le password dei soci e le notifiche non fanno parte del ripristino: i soci rientrano con il link che ricevono.' );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le sessioni aperte e le notifiche dei soci non fanno parte del ripristino: i soci dovranno entrare di nuovo.' );
 		}
 		if ( ! empty( $r['bad'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non coincidono con la loro impronta (o non si aprono con la chiave) e non sono stati rimessi sul sito.', array( 'n' => (int) $r['bad'] ) );

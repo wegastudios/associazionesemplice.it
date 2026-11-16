@@ -10,6 +10,21 @@ final class Switches {
 
 	/** chiave => [percorso in Config, nome, spiegazione]. */
 	const ALL = array(
+		'saas_sale'      => array(
+			'saas_sale.enabled', 'Vendita del gestionale online',
+			'Se è acceso, il sito mostra il gestionale online: prezzi, piani, prova gratuita, iscrizione, menu e la colonna nella tabella di confronto. Se è spento (com\'è ora), tutto questo sparisce e chi apre una vecchia pagina del gestionale viene rimandato alla home. Il gestionale in sé, la sua demo e i clienti già attivi non cambiano.',
+			'Si accende quando decidi di lanciare il gestionale; spento non cancella né modifica nulla.',
+		),
+		'indexable'      => array(
+			'indexable', 'Il portale compare nei motori di ricerca',
+			'Se è acceso, Google e gli altri motori possono indicizzare le pagine pubbliche: il file robots.txt le consente (e indica la sitemap) e il meta noindex non c\'è. Se è spento (com\'è ora), il robots.txt vieta tutto e ogni pagina porta il segnale noindex: il sito non compare nei risultati.',
+			'Accendilo solo al lancio, quando i dati della ditta e le pagine legali sono completi. Spegnerlo non toglie subito le pagine già indicizzate: i motori le tolgono alla prossima visita.',
+		),
+		'maintenance'    => array(
+			'maintenance.enabled', 'Modalità manutenzione',
+			'Se è acceso, i visitatori vedono una pagina «Il sito è in manutenzione: torna tra poco» (stato 503, con noindex). Tu e lo staff, una volta entrati, vedete il sito normale con una banda «Manutenzione attiva». Le API usate dai siti dei clienti (licenze, aggiornamenti, scarico dei pacchetti), i pagamenti (Stripe e PayPal) e il collegamento con il gestionale NON si fermano mai. Restano aperti anche l\'accesso e la verifica in due passaggi, per poterla spegnere.',
+			'Da accendere solo per un intervento; spenta, il sito è come sempre. L\'accensione e lo spegnimento si leggono nel registro delle azioni.',
+		),
 		'saas_v2'        => array(
 			'saas_v2.enabled', 'Pagina «Gestisci» per i clienti del gestionale',
 			'Se è acceso, chi ha comprato il gestionale vede nel suo account il pulsante «Gestisci»: lì controlla lo stato dell\'abbonamento (soci, operatori, spazio usato) e può verificare in anticipo se un cambio di piano è possibile. Se è spento, il pulsante non c\'è e i clienti usano solo «Apri il gestionale».',

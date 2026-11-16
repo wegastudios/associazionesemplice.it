@@ -300,6 +300,21 @@ add_action( 'admin_init', function () {
 	} );
 }, 1 );
 
+// La demo resta fuori dai motori di ricerca: WordPress emette noindex e un robots.txt che vieta tutto, e ogni risposta porta l'intestazione.
+add_filter( 'pre_option_blog_public', '__return_zero' );
+add_action( 'send_headers', function () {
+	header( 'X-Robots-Tag: noindex, nofollow' );
+}, 0 );
+add_action( 'login_init', function () {
+	if ( ! headers_sent() ) {
+		header( 'X-Robots-Tag: noindex, nofollow' );
+	}
+} );
+add_action( 'admin_init', function () {
+	if ( ! headers_sent() ) {
+		header( 'X-Robots-Tag: noindex, nofollow' );
+	}
+} );
 // Niente indicizzazione e un avviso ben visibile.
 add_filter( 'wp_robots', function ( $robots ) {
 	return array( 'noindex' => true, 'nofollow' => true );
