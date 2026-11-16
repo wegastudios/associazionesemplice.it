@@ -1012,23 +1012,29 @@ final class Receipts {
 		if ( '' === $to || ! is_email( $to ) ) {
 			throw new \InvalidArgumentException( 'Chi ha pagato non ha un indirizzo email (né il socio che lo ospita).' );
 		}
-		$dir = trailingslashit( get_temp_dir() ) . 'asem-' . bin2hex( random_bytes( 12 ) ); // cartella con nome casuale: il PDF (nome e cognome, codice fiscale) non è indovinabile né sostituibile da altri
-		if ( ! wp_mkdir_p( $dir ) ) {
-			throw new \InvalidArgumentException( 'Impossibile preparare la ricevuta: controlla i permessi della cartella temporanea.' );
+		$base = PrivateFolder::temp_dir(); // il PDF in chiaro (nome e cognome, codice fiscale) sta dentro la cartella riservata, mai in quella temporanea del server
+		$dir  = '' !== $base ? $base . '/asem-' . bin2hex( random_bytes( 12 ) ) : ''; // cartella con nome casuale: non indovinabile né sostituibile da altri
+		if ( '' === $dir || ! wp_mkdir_p( $dir ) ) {
+			throw new \InvalidArgumentException( Texts::t( 'Impossibile preparare la ricevuta: controlla i permessi della cartella riservata. L\'email non è stata inviata.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		chmod( $dir, 0700 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod
 		$dst = $dir . '/' . $r['filename'];
-		file_put_contents( $dst, $r['pdf'] );
-		$assoc = (string) Settings::get( 'association_name' );
-		$ok    = \AssociazioneSemplice\Texts::mail(
-			$to,
-			'Ricevuta n. ' . $r['number'] . ( '' !== $assoc ? ' — ' . $assoc : '' ),
-			'Ciao ' . ( $payer ? $payer['first_name'] : '' ) . ",\n\nin allegato la ricevuta n. " . $r['number'] . " del tuo pagamento.\n\nGrazie!",
-			array(),
-			array( $dst )
-		);
-		wp_delete_file( $dst ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
-		@rmdir( $dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
+		try {
+			chmod( $dir, 0700 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod
+			if ( false === file_put_contents( $dst, $r['pdf'] ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- allegato temporaneo, tolto subito dopo
+				throw new \InvalidArgumentException( Texts::t( 'Impossibile preparare la ricevuta: il PDF non si può scrivere (controlla lo spazio e i permessi della cartella riservata). L\'email non è stata inviata.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+			$assoc = (string) Settings::get( 'association_name' );
+			$ok    = \AssociazioneSemplice\Texts::mail(
+				$to,
+				'Ricevuta n. ' . $r['number'] . ( '' !== $assoc ? ' — ' . $assoc : '' ),
+				'Ciao ' . ( $payer ? $payer['first_name'] : '' ) . ",\n\nin allegato la ricevuta n. " . $r['number'] . " del tuo pagamento.\n\nGrazie!",
+				array(),
+				array( $dst )
+			);
+		} finally { // anche se l'invio lancia un errore il PDF in chiaro non resta sul disco
+			wp_delete_file( $dst );
+			@rmdir( $dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
+		}
 		if ( ! $ok ) {
 			throw new \InvalidArgumentException( 'Invio non riuscito: controlla la posta in uscita del sito.' );
 		}

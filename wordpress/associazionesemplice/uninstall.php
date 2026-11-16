@@ -69,7 +69,7 @@ function asem_uninstall_site() {
 			if ( $mine && is_dir( $custom ) && '' !== $custom ) {
 				foreach ( (array) glob( $custom . '/*' ) as $item ) {
 					$name = basename( $item );
-					if ( is_dir( $item ) && in_array( $name, array( 'backups', 'receipts', 'controllo' ), true ) ) {
+					if ( is_dir( $item ) && in_array( $name, array( 'backups', 'receipts', 'controllo', 'tmp' ), true ) ) {
 						$wp_filesystem->delete( $item, true );
 					} elseif ( is_file( $item ) && ( 'index.php' === $name || preg_match( '/^[0-9a-f]{32}(\.part-[0-9a-f]+)?$/', $name ) ) ) {
 						wp_delete_file( $item );

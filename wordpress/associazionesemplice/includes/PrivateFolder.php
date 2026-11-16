@@ -487,8 +487,73 @@ final class PrivateFolder {
 		return array( is_wp_error( $resp ) ? 0 : (int) wp_remote_retrieve_response_code( $resp ), is_wp_error( $resp ) ? '' : substr( (string) wp_remote_retrieve_body( $resp ), 0, 4096 ) );
 	}
 
+	// ---------- File temporanei ----------
+
+	/** Sottocartella (dentro la cartella riservata) dei file temporanei che contengono dati in chiaro: PDF decifrati per un allegato o per l'archivio ZIP. */
+	const TEMP_DIR = 'tmp';
+
+	/** Dopo quanti secondi un temporaneo rimasto sul disco si considera un resto da togliere. */
+	const TEMP_MAX_AGE = 3600;
+
+	/** La cartella dei temporanei, creata e protetta; stringa vuota se non si può (mai la cartella temporanea del server, che può stare nella parte pubblica). */
+	public static function temp_dir(): string {
+		$dir = self::dir() . '/' . self::TEMP_DIR;
+		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
+			return '';
+		}
+		self::protect( $dir );
+		return is_dir( $dir ) ? $dir : '';
+	}
+
+	/** Crea un file temporaneo vuoto, leggibile solo dal server, nella cartella dei temporanei. Stringa vuota se non si può. */
+	public static function temp_file( string $prefix ): string {
+		$dir = self::temp_dir();
+		if ( '' === $dir ) {
+			return '';
+		}
+		$path = $dir . '/' . preg_replace( '/[^a-z0-9-]/i', '', $prefix ) . '-' . bin2hex( random_bytes( 8 ) );
+		if ( false === @file_put_contents( $path, '' ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- file temporaneo riservato
+			return '';
+		}
+		@chmod( $path, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_chmod
+		return $path;
+	}
+
+	/** Toglie i temporanei (file o cartelle) più vecchi di $age secondi: resti di una richiesta interrotta. @return int quanti ne ha tolti */
+	public static function temp_clean( int $age = self::TEMP_MAX_AGE ): int {
+		$dir = self::dir() . '/' . self::TEMP_DIR;
+		if ( ! is_dir( $dir ) ) {
+			return 0;
+		}
+		$n = 0;
+		foreach ( (array) scandir( $dir ) as $name ) {
+			if ( '.' === $name || '..' === $name || 'index.php' === $name ) {
+				continue;
+			}
+			$path = $dir . '/' . $name;
+			if ( time() - (int) filemtime( $path ) <= $age ) {
+				continue;
+			}
+			if ( is_dir( $path ) && ! is_link( $path ) ) {
+				foreach ( (array) scandir( $path ) as $in ) {
+					if ( '.' !== $in && '..' !== $in && is_file( $path . '/' . $in ) ) {
+						wp_delete_file( $path . '/' . $in );
+					}
+				}
+				@rmdir( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
+			} else {
+				wp_delete_file( $path );
+			}
+			if ( ! file_exists( $path ) ) {
+				++$n;
+			}
+		}
+		return $n;
+	}
+
 	/** Lavoro periodico (una volta al giorno): protegge le sottocartelle e rifà il controllo se l'ultimo è vecchio. */
 	public static function cron(): void {
+		self::temp_clean();
 		self::protect_all();
 		$r = self::last();
 		if ( null === $r || time() - $r['at'] >= ( PrivateFolderRules::UNKNOWN === $r['state'] ? self::RETRY : self::RECHECK ) ) {
