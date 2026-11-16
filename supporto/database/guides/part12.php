@@ -426,7 +426,9 @@ Se una riga viene rifiutata durante l'importazione, le altre si registrano comun
 
 ## Prima di importare anni passati
 
-Se il file tocca un **anno fiscale già chiuso**, quell'anno non accetta nuovi movimenti: [riaprilo](guida:aprire-e-chiudere-gli-anni-solari) prima di importare. Controlla anche i **saldi iniziali** dei conti: l'importazione registra i movimenti ma non cambia il saldo di partenza, quindi se importi anni passati verifica che i saldi attuali tornino con la tua banca e la tua cassa.
+Se il file contiene movimenti di un **anno fiscale già chiuso**, quell'anno non accetta nuovi movimenti. Le righe di quell'anno **non si importano** e compaiono sotto **«Righe non importate»** con il messaggio «L'anno fiscale … è chiuso: per modificarlo va riaperto.». **Le righe degli altri anni, invece, si importano lo stesso.** Se vuoi importare anche quelle, [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) e **ricarica lo stesso file**: i movimenti già entrati vengono saltati come doppioni e si aggiunge solo il resto.
+
+Controlla anche i **saldi iniziali** dei conti. L'importazione registra solo movimenti: il **saldo iniziale** lo imposta solo per i conti nuovi, a zero, e non cambia quello dei conti già esistenti. Il **saldo attuale** invece cambia, perché i movimenti importati contano: se importi anni passati verifica che torni con la tua banca e la tua cassa.
 
 ## Correggere un'importazione sbagliata
 
