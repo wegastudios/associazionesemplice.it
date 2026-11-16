@@ -209,6 +209,13 @@ final class EmployeeRulesTest extends TestCase {
 		}
 	}
 
+	public function test_minimal_person_search_is_open_while_any_area_that_picks_people_is_open(): void {
+		$need = EmployeeRules::action_need( 'asem_person_search' );
+		$this->assertNull( EmployeeRules::blocked_by( array( 'people' ), $need ) );
+		$this->assertNull( EmployeeRules::blocked_by( array( 'people', 'collect', 'courses', 'events', 'expenses' ), $need ) );
+		$this->assertSame( 'collect', EmployeeRules::blocked_by( array( 'people', 'collect', 'courses', 'events', 'expenses', 'refunds' ), $need ) );
+	}
+
 	public function test_limited_certificate_view_follows_the_instructor_rule(): void {
 		$this->assertTrue( EmployeeRules::instructor_in_scope( 0, 0 ), 'senza istruttore: si vede' );
 		$this->assertTrue( EmployeeRules::instructor_in_scope( 0, 7 ), 'senza istruttore: si vede' );

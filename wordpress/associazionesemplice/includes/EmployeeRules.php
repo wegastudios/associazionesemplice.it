@@ -170,6 +170,7 @@ final class EmployeeRules {
 			$add( array( 'asem_cert_add', 'asem_cert_delete', 'asem_cert_csv' ), array( 'all' => array( self::HEALTH ) ) );
 			$add( array( 'asem_cert_file' ), array( 'any' => array( self::HEALTH, self::COURSES, self::EVENTS ) ) ); // senza «Certificati medici» solo il file di un iscritto alle proprie attività (lo decide il modulo dei certificati)
 			$add( array( 'asem_person_context', 'asem_quick_person' ), array( 'any' => array( self::COLLECT, self::COURSES, self::EVENTS ) ) );
+			$add( array( 'asem_person_search' ), array( 'any' => array( self::COLLECT, self::COURSES, self::EVENTS, self::EXPENSES, self::REFUNDS ) ) ); // la ricerca minima (3 lettere, 10 risultati) per scegliere chi paga o chi iscrivere
 			$add( array( 'asem_save_expense', 'asem_expense_fund_attach', 'asem_expense_fund_undo' ), array( 'all' => array( self::EXPENSES ) ) );
 			$add( array( 'asem_refund_request', 'asem_refund_approve', 'asem_refund_reject', 'asem_refund_cancel', 'asem_refund_pay', 'asem_refunds_csv', 'asem_refund_file', 'asem_payment_refund', 'asem_payment_refunded' ), array( 'all' => array( self::REFUNDS ) ) );
 			$add(

@@ -43,7 +43,8 @@ final class GroupCashPage {
 			}
 		}
 		$people = array();
-		foreach ( Plugin::people()->search() as $p ) {
+		$limited = ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::PEOPLE ); // senza «Anagrafica soci» l'elenco non si porta in pagina: si cerca con la ricerca minima
+		foreach ( $limited ? array() : Plugin::people()->search() as $p ) {
 			$people[] = array( 'id' => (int) $p['id'], 'label' => Ui::person_label( $p ), 'type' => $p['type'] );
 		}
 		$data = array(
@@ -63,7 +64,7 @@ final class GroupCashPage {
 		echo '<tr><th>Chi paga *</th><td>' . Ui::person_select( 'payer_id', Plugin::people()->search(), null, '— scegli chi paga —', 'asem-g-payer' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table>';
 		echo '<h2>Per chi</h2><div id="asem-g-people"></div>';
-		echo '<p><select id="asem-g-add-person"><option value="">+ Aggiungi una persona dell\'anagrafica…</option></select> <button type="button" class="button" id="asem-g-add-guest">+ Nuovo ospite</button></p>';
+		echo '<p>' . ( $limited ? PersonSearch::input( 'asem-g-add-person' ) : '' ) . '<select id="asem-g-add-person"><option value="">+ Aggiungi una persona dell\'anagrafica…</option></select> <button type="button" class="button" id="asem-g-add-guest">+ Nuovo ospite</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput -- campo di ricerca già protetto
 		echo '<p class="asem-total">Totale: <strong id="asem-g-total">0,00 €</strong></p>';
 		echo '<div id="asem-g-cash" class="asem-card" style="display:none"><h3>Contanti</h3><p><label>Contanti ricevuti <input type="text" id="asem-g-tendered" inputmode="decimal" placeholder="importo esatto"> €</label></p><p id="asem-g-quick"></p><p id="asem-g-change"></p></div>';
 		echo '<p><label>N. ricevuta (facoltativo) <input type="text" name="document_ref" maxlength="80"></label></p>';
