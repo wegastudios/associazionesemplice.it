@@ -8729,12 +8729,12 @@ $ap_claim_id = (int) $wpdb->insert_id;
 asem_ok( true === $ap_ps->application_claim( $ap_claim_id ) && false === $ap_ps->application_claim( $ap_claim_id ) && 1000 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT allocated_cents FROM ' . Db::t( 'payments' ) . ' WHERE id = %d', $ap_claim_id ) ), 'quota online: la presa della quota riesce una volta sola, la seconda è rifiutata' );
 // pagamento già incassato: se un passo dopo la ricevuta non riesce, l'incasso resta uno solo e il pagamento va «da controllare»
 $ap_cr_pub = 'ccr-' . substr( md5( 'credits' ), 0, 30 );
-$ap_cr_item = array( 'type' => 'credits', 'person_id' => $pm, 'person_name' => 'Pia Pagante', 'credits' => 5, 'amount_cents' => 500, 'label' => '5 crediti' );
+$ap_cr_item = array( 'type' => 'credits', 'person_id' => $ap_paolo, 'person_name' => 'Paolo Paga', 'credits' => 5, 'amount_cents' => 500, 'label' => '5 crediti' );
 $ap_cr_item['key'] = \AssociazioneSemplice\PaymentItems::key( $ap_cr_item );
 $wpdb->insert(
 	Db::t( 'payments' ),
 	array(
-		'public_id' => $ap_cr_pub, 'provider' => 'stripe', 'status' => 'pending', 'amount_cents' => 500, 'currency' => 'EUR', 'payer_person_id' => $pm, 'payer_user_id' => $u_pm,
+		'public_id' => $ap_cr_pub, 'provider' => 'stripe', 'status' => 'pending', 'amount_cents' => 500, 'currency' => 'EUR', 'payer_person_id' => $ap_paolo, 'payer_user_id' => 0,
 		'items' => wp_json_encode( array( $ap_cr_item ) ), 'provider_ref' => 'cs_ccr_1', 'created_at' => Db::now(), 'updated_at' => Db::now(),
 	)
 );
