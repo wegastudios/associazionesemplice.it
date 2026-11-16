@@ -803,7 +803,26 @@ A ogni accesso, oltre alla password, serve un **codice di 6 cifre** generato da 
 - **«Genera nuovi codici di recupero»**: i vecchi **non valgono più**;
 - Per chi lavora nel gestionale **non c'è nessun pulsante per disattivarla**: è obbligatoria.
 
-**Conserva i codici di recupero in un posto sicuro: se perdi il telefono e anche i codici, non puoi più entrare.**
+**Conserva i codici di recupero in un posto sicuro**: ti evitano di dover fare quello che segue.
+
+### Ho perso il telefono e i codici di recupero
+
+Puoi **togliere la verifica da solo, con un link che ti arriva per email**:
+
+1. Entra con **email e password**. Arrivi alla schermata del codice a 6 cifre.
+2. Premi **«Ho perso il telefono e i codici di recupero»**. Parte subito, senza altre conferme.
+3. Compare il messaggio «Se serve, ti abbiamo scritto all'indirizzo del tuo account: apri il link entro 15 minuti.» **È sempre uguale**, anche se non è partita nessuna email.
+4. Apri l'email **«Togli la verifica in due passaggi»** e premi **«Togli la verifica»**.
+5. Torni alla schermata di accesso con il messaggio «La verifica in due passaggi è stata tolta. Accedi con la password e riattivala subito con il telefono nuovo.»
+6. Entra con la sola password: **sei portato alla pagina della verifica in due passaggi e non puoi andare oltre finché non la riattivi**, con un **nuovo QR** da inquadrare con il telefono nuovo. Il gestionale ti dà **nuovi codici di recupero**: **quelli vecchi non valgono più**. Salvali subito.
+
+Cose da sapere:
+
+- **Il link vale 15 minuti e una volta sola.** Se è già stato usato, è scaduto o non è valido, torni alla schermata di accesso con «Il link non è valido o è scaduto: dalla schermata del codice chiedine uno nuovo.»
+- **Se non ricevi l'email**, controlla la posta indesiderata. L'email parte **solo se la password è giusta** e va **all'indirizzo del tuo account** (se l'hai cambiato, quello nuovo).
+- **I link si possono chiedere al massimo 2 al giorno e 6 al mese.** Oltre il limite compare «Hai già chiesto troppi link: scrivi al supporto di Associazione Semplice per sbloccare l'accesso.»: ti sblocchiamo noi, su tua richiesta.
+- Appena la verifica è tolta ti arriva **una seconda email**, «La verifica in due passaggi è stata tolta». **Se non l'hai tolta tu**, cambia subito la password dal profilo. Se l'ha tolta il supporto su tua richiesta, l'email lo dice.
+- Se **non sei stato tu** a chiedere il link, ignora l'email: non succede nulla e il tuo accesso resta protetto.
 
 ## I dispositivi collegati
 
