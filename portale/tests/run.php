@@ -1398,6 +1398,20 @@ check( 'prova del portale: levelOf rilegge il livello dalla prova e rifiuta il r
 $tamper = explode( '.', (string) $jwt );
 $tamper[1] = rtrim( strtr( base64_encode( str_replace( 'fiscal', 'free', (string) base64_decode( strtr( $tamper[1], '-_', '+/' ) ) ) ), '+/', '-_' ), '=' );
 check( 'prova del portale: se si cambia il livello la firma non torna più', null === $verifyJwt( implode( '.', $tamper ) ) );
+// Esito negativo firmato
+$den = function ( string $rc, array $extra = array() ) use ( $wega ) { return array( 'valid' => false, 'reason_code' => $rc, 'product_code' => 'prodotto-wega-x1' ) + $extra; };
+$dj  = Portale\PortalAttestation::forDenial( $den( 'EXPIRED' ), 'CHIAVE-DI-PROVA-123', 'esempio.it', 1700000000 );
+$dv  = $dj ? $verifyJwt( $dj ) : null;
+check( 'esito negativo firmato: firma valida, res=deny, rc, aud, bid, kh, 3 giorni, nessun piano', $dv && 'deny' === $dv[1]['res'] && 'EXPIRED' === $dv[1]['rc'] && 'prodotto-wega-x1' === $dv[1]['aud'] && 'esempio.it' === $dv[1]['bid'] && substr( hash( 'sha256', 'CHIAVE-DI-PROVA-123' ), 0, 16 ) === $dv[1]['kh'] && 1700000000 + 259200 === $dv[1]['exp'] && ! isset( $dv[1]['plan'] ) && ! isset( $dv[1]['sub'] ) );
+check( 'esito negativo firmato: la chiave di licenza non compare nel messaggio', $dj && false === strpos( (string) base64_decode( strtr( explode( '.', $dj )[1], '-_', '+/' ) ), 'CHIAVE-DI-PROVA' ) );
+check( 'esito negativo firmato: levelOf non lo scambia per un livello', null === Portale\PortalAttestation::levelOf( (string) $dj ) );
+$all = true;
+foreach ( Portale\PortalAttestation::DENY_CODES as $c ) { $all = $all && null !== Portale\PortalAttestation::forDenial( $den( $c ), 'K-123456789', 'esempio.it' ); }
+check( 'esito negativo firmato: tutti i motivi noti di Wega si firmano', $all );
+check( 'esito negativo firmato: licenza valida, motivo ignoto o mancante, prodotto mancante o chiave vuota → niente', null === Portale\PortalAttestation::forDenial( array( 'valid' => true, 'reason_code' => 'EXPIRED', 'product_code' => 'x' ), 'K-123456789', 'esempio.it' ) && null === Portale\PortalAttestation::forDenial( $den( 'STRANO' ), 'K-123456789', 'esempio.it' ) && null === Portale\PortalAttestation::forDenial( array( 'valid' => false ), 'K-123456789', 'esempio.it' ) && null === Portale\PortalAttestation::forDenial( array( 'valid' => false, 'reason_code' => 'REVOKED' ), 'K-123456789', 'esempio.it' ) && null === Portale\PortalAttestation::forDenial( $den( 'REVOKED' ), '', 'esempio.it' ) );
+$dt = explode( '.', (string) $dj );
+$dt[1] = rtrim( strtr( base64_encode( str_replace( 'EXPIRED', 'REVOKED', (string) base64_decode( strtr( $dt[1], '-_', '+/' ) ) ) ), '+/', '-_' ), '=' );
+check( 'esito negativo firmato: se si cambia il motivo la firma non torna più', null === $verifyJwt( implode( '.', $dt ) ) );
 Config::set( 'plan_levels', array( 'lite' => 'lite' ) );
 check( 'prova del portale: la corrispondenza piano → livello si cambia da config.php', 'lite' === Portale\PortalAttestation::level( 'lite' ) && 'fiscal' === Portale\PortalAttestation::level( 'full' ) && null === Portale\PortalAttestation::level( 'altro' ) );
 Config::set( 'plan_levels', array() );
