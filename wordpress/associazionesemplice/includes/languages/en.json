@@ -2656,6 +2656,7 @@
   "(in arrivo)" : "(coming soon)",
   "Vedi lo stato e apri il certificato solo di chi è iscritto alle tue attività. Ogni apertura del file resta scritta nel registro azioni." : "You see the status and can open the certificate only of people enrolled in your activities. Every time a file is opened it is written in the action log.",
   "Apri il certificato" : "Open the certificate",
-  "Nome non valido: usa solo lettere, spazi, apostrofi e trattini." : "Invalid name: use only letters, spaces, apostrophes and hyphens."
+  "Nome non valido: usa solo lettere, spazi, apostrofi e trattini." : "Invalid name: use only letters, spaces, apostrophes and hyphens.",
+  "Cerca per nome o tessera (almeno 3 lettere)" : "Search by name or card number (at least 3 letters)"
  }
 }

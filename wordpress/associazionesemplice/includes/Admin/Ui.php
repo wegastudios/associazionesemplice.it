@@ -224,6 +224,15 @@ final class Ui {
 
 	/** Campo di scelta con filtro di testo, per elenchi lunghi di persone. */
 	public static function person_select( string $name, array $people, $selected = null, ?string $empty = null, string $id = '' ): string {
+		if ( ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::PEOPLE ) ) { // senza «Anagrafica soci» non si porta in pagina l'elenco: ricerca minima (3 lettere, 10 risultati)
+			$id    = $id ?: 'asem-sel-' . sanitize_key( $name );
+			$cur   = $selected ? \AssociazioneSemplice\Plugin::people()->get( (int) $selected ) : null;
+			$opts  = array( '' => (string) $empty );
+			if ( $cur ) {
+				$opts[ (int) $cur['id'] ] = self::person_label( $cur );
+			}
+			return '<span class="asem-filter-select">' . PersonSearch::input( $id ) . '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '">' . self::options( $opts, $cur ? (int) $cur['id'] : null, null ) . '</select></span>';
+		}
 		$map = array();
 		foreach ( $people as $p ) {
 			$map[ $p['id'] ] = self::person_label( $p );

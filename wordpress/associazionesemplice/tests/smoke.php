@@ -11520,6 +11520,25 @@ asem_ok( false === strpos( $em_dash, 'Disponibilità reale' ), 'dipendente senza
 wp_set_current_user( 1 );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità reale' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
+// ricerca minima: senza «Anagrafica soci» l'elenco delle persone non si porta in pagina; si cerca con almeno 3 lettere, al più 10 risultati, solo nome, tessera e quota
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people' ) );
+\AssociazioneSemplice\Employees::reset_cache();
+$em_full = Admin\Ui::person_select( 'person_id', $people->search(), null, '— scegli —', 'asem-test-sel' );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+$em_min = Admin\Ui::person_select( 'person_id', $people->search(), null, '— scegli —', 'asem-test-sel' );
+asem_ok( false !== strpos( $em_full, 'Cecilia' ) && false === strpos( $em_min, 'Cecilia' ) && false !== strpos( $em_min, 'asem-minsearch' ), 'ricerca minima: senza Anagrafica soci nel campo non c\'è l\'elenco dei soci, solo la ricerca' );
+asem_ok( array() === Admin\PersonSearch::find( 'Ce' ) && array() === Admin\PersonSearch::find( '  ' ), 'ricerca minima: sotto le 3 lettere non risponde' );
+$em_hit = Admin\PersonSearch::find( 'Cecilia Certa' );
+asem_ok( 1 === count( $em_hit ) && (int) $bc_a === (int) $em_hit[0]['id'] && array( 'id', 'label', 'quota', 'type' ) === ( function ( $a ) { sort( $a ); return $a; } )( array_keys( $em_hit[0] ) ), 'ricerca minima: di ogni persona solo id, nome con tessera, tipo e quota' );
+asem_ok( array() === Admin\PersonSearch::find( 'cecilia.certa@example.com' ) && array() === Admin\PersonSearch::find( 'RSSMRA85T50A562W' ), 'ricerca minima: non si cerca per email né codice fiscale' );
+asem_ok( null === $em_blocked( 'admin-post.php', array( 'action' => 'asem_person_search' ) ), 'ricerca minima: la porta è aperta a chi ha incassi, corsi o eventi' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people', 'collect', 'courses', 'events', 'expenses', 'refunds' ) );
+asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_person_search' ) ), 'ricerca minima: chiusa a chi non ha nessuna area che sceglie le persone' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
 remove_filter( 'wp_die_handler', $em_die );
 
 // si tolgono solo le 15 aree dell'elenco; solo chi ha titolo le toglie
