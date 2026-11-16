@@ -216,8 +216,8 @@ In **«Livelli e quote»** crei i **livelli** dei soci: per esempio un **«Socio
 - **Nome**;
 - **Base**: il tipo di socio da cui parte (**Socio fondatore**, **Socio ordinario** o **Socio e volontario**);
 - **Quota**: facoltativa. **Senza una quota propria vale quella dell'associazione.**
-- **«attivo»**: la spunta dice se il livello è in uso;
-- **«vota»**: dice se chi ha quel livello ha **diritto di voto in assemblea**. **I minorenni non votano mai.** Un livello nuovo vota.
+- **«attivo»**: decide solo se il livello **si può dare** a un socio. Se togli la spunta, il livello non compare più tra quelli che scegli nella scheda; i soci che **lo hanno già lo conservano**, il suo nome resta nel libro soci e, se il livello ha una quota, quella vale ancora al loro rinnovo;
+- **«vota»**: dice se chi ha quel livello ha **diritto di voto in assemblea** (è una scelta a parte, non dipende da «attivo»). **I minorenni non votano mai.** Un livello nuovo vota.
 
 Per ogni livello vedi quanti soci lo hanno. Per creare un livello compili **Nome**, **Base** e, se vuoi, **Quota**, poi **«Crea»**; per cambiarne uno premi **«Salva»** sulla sua riga. Può farlo chi può cambiare le impostazioni dell'associazione. Il livello di un socio si sceglie nella sua scheda e appare nel libro soci accanto alla tessera.
 
