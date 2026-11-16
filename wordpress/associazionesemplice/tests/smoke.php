@@ -10582,6 +10582,8 @@ update_post_meta( \AssociazioneSemplice\PublicEvents::post_of( $er_d ), '_asem_e
 list( $ap_p, $ap_u ) = $mkmem( 'Rita', 'Richiesta' );
 list( $ap_q, $ap_qu ) = $mkmem( 'Sara', 'Richiesta' );
 $ap_s = $er_sid( $er_d );
+$ap_rules = Settings::get( 'rules_enabled' ); // il regolamento da accettare non c'entra con questa prova
+Settings::update( array( 'rules_enabled' => 0 ) );
 wp_set_current_user( $ap_u );
 $ap_msg = (string) asem_throws( function () use ( $front, $ap_s, $ap_p ) { $front::do_book( array( 'session_id' => $ap_s, 'person_id' => $ap_p ) ); } );
 asem_ok( false !== strpos( $ap_msg, 'su richiesta' ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: il socio non si prenota direttamente dall\'area soci [' . $ap_msg . ']' );
@@ -10598,6 +10600,7 @@ list( $ap_r ) = $mkmem( 'Tina', 'Richiesta' );
 wp_set_current_user( $sec_u );
 asem_ok( $acts->book( $ap_s, $ap_r ) > 0 && $acts->has_active_booking( $ap_s, $ap_r ), 'evento su richiesta: anche l\'utente di segreteria (non amministratore) prenota direttamente' );
 wp_set_current_user( 1 );
+Settings::update( array( 'rules_enabled' => $ap_rules ) );
 $er_aw2 = $er::awaiting( $er_c );
 asem_ok( 1 === count( $er_aw2 ) && false !== strpos( $er_aw2[0]['names'][0], '(socio)' ), 'richiesta socio: compare alla segreteria' );
 $er::approve( (int) $er_aw2[0]['id'] );
