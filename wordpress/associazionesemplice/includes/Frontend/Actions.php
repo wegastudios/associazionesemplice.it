@@ -259,7 +259,7 @@ final class Actions {
 			throw new \InvalidArgumentException( self::card_invalid( $subject, $actor, 'prenotare' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$sid = (int) ( $post['session_id'] ?? 0 );
-		\AssociazioneSemplice\Waitlist::join( $sid, $person_id, (int) $actor['id'] );
+		\AssociazioneSemplice\Waitlist::join( $sid, $person_id, (int) $actor['id'], sanitize_key( (string) ( $post['price_list'] ?? '' ) ) );
 		return 'Sei in lista d\'attesa (posizione ' . (int) \AssociazioneSemplice\Waitlist::position( $sid, $person_id ) . '): se si libera un posto vieni prenotato automaticamente e ricevi un\'email.';
 	}
 

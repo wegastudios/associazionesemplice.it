@@ -1426,6 +1426,14 @@ final class Views {
 					} else {
 						$wf .= self::hidden( 'person_id', $queue[0]['id'] );
 					}
+					$wl_lists = \AssociazioneSemplice\PriceLists::for_activity( $activity );
+					if ( $wl_lists ) { // con i listini si sceglie la tariffa anche per la lista d'attesa
+						$wf .= '<select name="price_list" aria-label="Tariffa">';
+						foreach ( $wl_lists as $l ) {
+							$wf .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' — ' . Money::format( $l['cents'] ) ) . '</option>';
+						}
+						$wf .= '</select>';
+					}
 					$html .= self::form( 'asem_front_waitlist_join', self::hidden( 'session_id', $s['id'] ) . $wf, 'Lista d\'attesa', false, 'asemf-inline' );
 				}
 			}

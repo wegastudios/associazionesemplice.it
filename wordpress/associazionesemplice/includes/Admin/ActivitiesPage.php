@@ -955,7 +955,7 @@ final class ActivitiesPage {
 			if ( $queue ) {
 				echo '<p><strong>Lista d\'attesa (' . count( $queue ) . ')</strong> <span class="description">entrano da soli, nell\'ordine, se si libera un posto.</span></p><ol>';
 				foreach ( $queue as $w ) {
-					echo '<li>' . esc_html( trim( $w['first_name'] . ' ' . $w['last_name'] ) ) . ' <span class="description">dal ' . esc_html( mysql2date( 'd/m H:i', $w['since'] ) ) . '</span> ';
+					echo '<li>' . esc_html( trim( $w['first_name'] . ' ' . $w['last_name'] ) ) . ' <span class="description">dal ' . esc_html( mysql2date( 'd/m H:i', $w['since'] ) ) . '</span> ' . ( \AssociazioneSemplice\Waitlist::needs_list_choice( $activity, $w ) ? '<span class="asem-warn">manca la tariffa scelta: non entra da solo, prenotalo a mano scegliendo il listino</span> ' : '' );
 					Ui::form_open( 'asem_waitlist_remove', $back, false, 'asem-inline' );
 					echo wp_kses( Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $w['person_id'] ) . Ui::hidden( 'activity_id', $id ) . '<button class="button-link">togli</button>', Html::allowed() );
 					Ui::form_close();
