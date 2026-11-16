@@ -8715,6 +8715,41 @@ asem_ok( 1 === (int) $ap_rrow['refund_due'] && $ap_stripe_before + $ap_fee === $
 $ap_pp = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'da rimborsare' );
 asem_ok( false !== strpos( $ap_pp, 'asem_payment_refunded' ), 'pagamenti online: la quota da rimborsare si vede e si segna come restituita' );
 $ap_ps->mark_refunded( (int) $ap_rrow['id'] );
+// quota della domanda: la presa della riga è atomica, la seconda chiamata è rifiutata e l'incasso non si scrive due volte
+$ap_before_again = $balance_of( 'Stripe' );
+asem_ok( false === $ap_ps->application_settle( $ap_paolo, Settings::membership_year()->label() ) && $ap_before_again === $balance_of( 'Stripe' ), 'quota online: una seconda approvazione non registra di nuovo l\'incasso' );
+$wpdb->insert(
+	Db::t( 'payments' ),
+	array(
+		'public_id' => 'cl-' . substr( md5( 'claim' ), 0, 30 ), 'provider' => 'stripe', 'status' => 'paid', 'amount_cents' => 1000, 'currency' => 'EUR', 'payer_person_id' => $ap_paolo, 'payer_user_id' => 0,
+		'items' => wp_json_encode( array( array( 'type' => 'application', 'person_id' => $ap_paolo, 'amount_cents' => 1000 ) ) ), 'provider_ref' => 'cs_claim_1', 'created_at' => Db::now(), 'updated_at' => Db::now(), 'paid_at' => Db::now(),
+	)
+);
+$ap_claim_id = (int) $wpdb->insert_id;
+asem_ok( true === $ap_ps->application_claim( $ap_claim_id ) && false === $ap_ps->application_claim( $ap_claim_id ) && 1000 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT allocated_cents FROM ' . Db::t( 'payments' ) . ' WHERE id = %d', $ap_claim_id ) ), 'quota online: la presa della quota riesce una volta sola, la seconda è rifiutata' );
+// pagamento già incassato: se un passo dopo la ricevuta non riesce, l'incasso resta uno solo e il pagamento va «da controllare»
+$ap_cr_pub = 'ccr-' . substr( md5( 'credits' ), 0, 30 );
+$ap_cr_item = array( 'type' => 'credits', 'person_id' => $pm, 'person_name' => 'Pia Pagante', 'credits' => 5, 'amount_cents' => 500, 'label' => '5 crediti' );
+$ap_cr_item['key'] = \AssociazioneSemplice\PaymentItems::key( $ap_cr_item );
+$wpdb->insert(
+	Db::t( 'payments' ),
+	array(
+		'public_id' => $ap_cr_pub, 'provider' => 'stripe', 'status' => 'pending', 'amount_cents' => 500, 'currency' => 'EUR', 'payer_person_id' => $pm, 'payer_user_id' => $u_pm,
+		'items' => wp_json_encode( array( $ap_cr_item ) ), 'provider_ref' => 'cs_ccr_1', 'created_at' => Db::now(), 'updated_at' => Db::now(),
+	)
+);
+$ap_cr_fail = function ( $q ) {
+	return 0 === stripos( ltrim( (string) $q ), 'INSERT' ) && false !== strpos( $q, 'credit_entries' ) ? '' : $q; // l'accredito dei crediti non riesce
+};
+$ap_cr_ev = array( 'id' => 'evt_ccr', 'type' => 'checkout.session.completed', 'data' => array( 'object' => array( 'id' => 'cs_ccr_1', 'client_reference_id' => $ap_cr_pub, 'payment_status' => 'paid', 'amount_total' => 500, 'payment_intent' => 'pi_ccr_1' ) ) );
+add_filter( 'query', $ap_cr_fail );
+$ap_ps->handle_stripe_event( $ap_cr_ev );
+remove_filter( 'query', $ap_cr_fail );
+$ap_cr_row = $ap_ps->get_by_public( $ap_cr_pub );
+asem_ok( 'paid' === $ap_cr_row['status'] && 1 === (int) $ap_cr_row['review'] && 500 === (int) $ap_cr_row['allocated_cents'] && false !== strpos( (string) $ap_cr_row['error'], 'passo successivo' ), 'pagamento online: passo dopo la ricevuta fallito, pagamento «da controllare»' );
+asem_ok( 500 === $sum_tx( "method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: passo dopo la ricevuta fallito, l\'incasso è scritto una sola volta (non anche «non abbinato»)' );
+$ap_ps->handle_stripe_event( $ap_cr_ev );
+asem_ok( 500 === $sum_tx( "method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: lo stesso evento ripetuto non scrive un secondo incasso' );
 asem_ok( 0 === (int) $ap_ps->get_by_public( $ap_rrow['public_id'] )['refund_due'], 'pagamenti online: rimborso segnato come fatto' );
 
 // ---------- Rimborso dei pagamenti online dal gateway (Stripe e PayPal) ----------
