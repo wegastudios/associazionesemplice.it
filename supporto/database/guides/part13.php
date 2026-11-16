@@ -72,9 +72,9 @@ Un dipendente nuovo ha **tutti i permessi**.
 
 ## Togliere dei permessi, area per area
 
-Per ogni dipendente puoi **togliere la spunta** a una o più delle **15 aree** qui sotto. Togliendola, le pagine e le azioni di quell'area si chiudono: nel menu e nelle schede compaiono solo le pagine che il dipendente può aprire, e chi prova a fare ciò che non può legge «Non puoi farlo con il tuo accesso: ti è stato tolto il permesso «…». Se ti serve, chiedi al presidente, al vicepresidente o a un amministratore del sito di ridartelo.» Un'area ancora senza i suoi controlli compare disattivata con l'indicazione «(in arrivo)».
+Per ogni dipendente puoi **togliere la spunta** a una o più delle **15 aree** qui sotto. Togliendola, le pagine e le azioni di quell'area si chiudono: nel menu e nelle schede compaiono solo le pagine che il dipendente può aprire, e chi prova a fare ciò che non può legge «Non puoi farlo con il tuo accesso: ti è stato tolto il permesso «…». Se ti serve, chiedi al presidente, al vicepresidente o a un amministratore del sito di ridartelo.»
 
-Possono farlo **solo gli amministratori, il presidente e il vicepresidente**: la segreteria, il dipendente stesso e i soci non vedono nemmeno la pagina. Ogni cambio resta scritto nel registro azioni, e dalla pagina puoi vedere chi ha tolto o dato permessi, e quando.
+Possono farlo **solo gli amministratori del sito e il presidente e il vicepresidente con la tessera in regola** (soci attivi, con la carica indicata nella scheda e collegati al loro utente del sito): la segreteria, il dipendente stesso e i soci non vedono nemmeno la pagina. Ogni cambio resta scritto nel registro azioni, e dalla pagina puoi vedere chi ha tolto o dato permessi, e quando.
 
 | Area | Che cosa apre | Chiede anche |
 |---|---|---|
@@ -124,7 +124,7 @@ Senza date il dipendente è sempre in servizio. **Fuori dal periodo** non può u
 
 ## Se prima aveva dei permessi tolti
 
-Quando i permessi sono passati all'assegnazione per area, in Bacheca compare agli amministratori, al presidente e al vicepresidente l'avviso **«Rivedi i permessi dei dipendenti: ora si danno per area.»** (solo se esiste almeno un dipendente). Non si chiude da solo: sparisce quando apri la pagina **Dipendenti**. Serve a controllare chi aveva dei permessi tolti prima.
+Quando i permessi sono passati all'assegnazione per area, in Bacheca compare a chi può gestire i dipendenti l'avviso **«Rivedi i permessi dei dipendenti: ora si danno per area.»** (solo se esiste almeno un dipendente). Non si chiude da solo: sparisce quando apri la pagina **Dipendenti**. Serve a controllare chi aveva dei permessi tolti prima.
 
 ## Se è anche socio
 
