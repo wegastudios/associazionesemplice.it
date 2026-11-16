@@ -109,6 +109,22 @@ final class BlockBRulesTest extends TestCase {
 		$this->assertNotNull( LoanRules::check_quantity( 0, 1, 'good' ) );
 	}
 
+	public function test_documents_reject_generic_types_and_wrong_signature(): void {
+		$max = DocumentRules::MAX_BYTES;
+		foreach ( array( 'a.doc', 'a.docx', 'a.odt', 'a.xls', 'a.xlsx', 'a.ods' ) as $name ) {
+			$this->assertNotNull( DocumentRules::check( $name, 1000, 'application/octet-stream', $max ), $name . ': tipo generico' );
+			$this->assertNotNull( DocumentRules::check( $name, 1000, '', $max ), $name . ': tipo non riconosciuto' );
+		}
+		$zip = "PK\x03\x04abcd";
+		$ole = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
+		$this->assertNull( DocumentRules::check( 'a.docx', 1000, 'application/zip', $max, $zip ) );
+		$this->assertNull( DocumentRules::check( 'a.doc', 1000, 'application/CDFV2', $max, $ole ) );
+		$this->assertNotNull( DocumentRules::check( 'a.docx', 1000, 'application/zip', $max, $ole ), 'OLE dietro un .docx' );
+		$this->assertNotNull( DocumentRules::check( 'a.doc', 1000, 'application/msword', $max, $zip ), 'ZIP dietro un .doc' );
+		$this->assertNotNull( DocumentRules::check( 'a.xlsx', 1000, 'application/zip', $max, '<html>' ), 'testo dietro un .xlsx' );
+		$this->assertNull( DocumentRules::check( 'a.pdf', 1000, 'application/pdf', $max, '%PDF-1.7' ) );
+	}
+
 	public function test_documents(): void {
 		$this->assertTrue( DocumentRules::can_read( 'public', false, false ) );
 		$this->assertTrue( DocumentRules::can_read( 'members', false, true ) );
