@@ -82,6 +82,13 @@ final readonly class DatabaseOrgDirectory implements OrgDirectory
 
     public function setStatus(string $orgId, string $status): void
     {
-        $this->db->connection('pgsql')->table('core.orgs')->where('id', $orgId)->update(['status' => $status, 'updated_at' => now()]);
+        $orgs = $this->db->connection('pgsql')->table('core.orgs')->where('id', $orgId);
+        $orgs->update(['status' => $status, 'updated_at' => now()]);
+        // Il momento della sospensione lo scrive il SaaS, una volta sola; riattivata, l'orologio si azzera.
+        if ($status === 'active') {
+            $orgs->update(['suspended_at' => null]);
+        } else {
+            $orgs->whereNull('suspended_at')->update(['suspended_at' => now()]);
+        }
     }
 }

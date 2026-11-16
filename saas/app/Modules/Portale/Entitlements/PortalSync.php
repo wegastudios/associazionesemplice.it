@@ -120,14 +120,24 @@ final readonly class PortalSync
      * @param  array<string, mixed>  $raw  ciò che si conserva
      * @param  array<string, int|string>  $auditExtra
      */
+    /** Giorni oltre i quali una scadenza che arretra finisce nel registro con «until_back_days». */
+    private const UNTIL_BACK_FLAG_DAYS = 30;
+
     private function store(array $claims, array $raw, string $token, array $auditExtra): void
     {
         $connection = $this->db->connection('pgsql');
         $connection->transaction(function () use ($connection, $claims, $raw, $token, $auditExtra): void {
-            $current = $connection->table('core.org_entitlements')->where('org_id', $claims['sub'])->lockForUpdate()->value('rev');
-            $current = is_numeric($current) ? (int) $current : 0;
+            $existing = $connection->table('core.org_entitlements')->where('org_id', $claims['sub'])->lockForUpdate()->first(['rev', 'until']);
+            $current = $existing !== null && is_numeric($existing->rev ?? null) ? (int) $existing->rev : 0;
             if ($claims['rev'] <= $current) {
                 throw new StaleEntitlements($current);
+            }
+            // Una scadenza che arretra di molto si segnala nel registro: da sola non basta mai a far cancellare i dati.
+            if ($existing !== null && is_string($existing->until ?? null) && $existing->until !== '') {
+                $back = (int) CarbonImmutable::parse($claims['until'])->diffInDays(CarbonImmutable::parse($existing->until), false);
+                if ($back > self::UNTIL_BACK_FLAG_DAYS) {
+                    $auditExtra += ['until_back_days' => $back];
+                }
             }
 
             $connection->table('core.org_entitlements')->upsert([[
