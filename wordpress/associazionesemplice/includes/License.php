@@ -77,8 +77,26 @@ final class License {
 		return '' !== $name ? $name : 'Associazione Semplice Pro';
 	}
 
+	/** La chiave di licenza in chiaro (nel database è cifrata). Vuota se manca o se non si legge su questo sito (salt cambiati, database copiato). */
 	public static function key(): string {
-		return (string) Settings::get( 'license_key' );
+		$raw = (string) Settings::get( 'license_key' );
+		if ( '' === $raw || ! Secrets::is_encrypted( $raw ) ) {
+			return $raw; // salvata in chiaro da una versione precedente: vale ancora, si cifra alla prima visita dell'amministrazione
+		}
+		return Settings::secret( 'license_key' );
+	}
+
+	/** C'è una chiave salvata, anche se qui non si legge? */
+	public static function has_key(): bool {
+		return '' !== (string) Settings::get( 'license_key' );
+	}
+
+	/** Una chiave rimasta in chiaro nel database (salvata da una versione precedente) si cifra. */
+	public static function encrypt_legacy_key(): void {
+		$raw = (string) Settings::get( 'license_key' );
+		if ( '' !== $raw && ! Secrets::is_encrypted( $raw ) ) {
+			Settings::update( array( 'license_key' => $raw ) );
+		}
 	}
 
 	/** La verifica con il server è attiva su questo sito? */

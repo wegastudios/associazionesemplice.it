@@ -417,7 +417,7 @@ $lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp, &$lic
 \AssociazioneSemplice\LicenseClient::set_local_override( false );
 add_filter( 'home_url', $lic_home );
 add_filter( 'pre_http_request', $lic_http, 10, 3 );
-Settings::update( array( 'license_key' => '' ) );
+Settings::clear_secret( 'license_key' );
 License::sync();
 asem_ok( \AssociazioneSemplice\LicensePolicy::STATUS_NOKEY === License::state()['status'] && 'free' === License::plan() && ! $lic_calls && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica attiva senza chiave: livello gratuito e nessuna chiamata al server' );
 wp_set_current_user( 1 ); // l'invito lo vede solo l'amministratore
@@ -590,7 +590,7 @@ delete_option( License::OPT_STATE );
 remove_filter( 'pre_http_request', $lic_http, 10 );
 remove_filter( 'home_url', $lic_home );
 \AssociazioneSemplice\LicenseClient::set_local_override( null );
-Settings::update( array( 'license_key' => '' ) );
+Settings::clear_secret( 'license_key' );
 delete_option( License::OPT_STATE );
 asem_ok( ! License::enabled() && '' === Admin\LicenseNotice::html(), 'sito locale: la verifica torna in standby' );
 $lic_save = \AssociazioneSemplice\ProBoot::save_license( array( 'license_key' => '' ) );
@@ -3084,7 +3084,7 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	Settings::update( array( 'limits' => array( 'portal_updates' => 0 ) ) );
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	asem_ok( empty( $up_tr->response ), 'aggiornamento diretto: spento dai limiti, niente aggiornamenti' );
-	Settings::update( array( 'limits' => array(), 'license_key' => '' ) );
+	Settings::update( array( 'limits' => array() ) ); Settings::clear_secret( 'license_key' );
 	remove_filter( 'pre_http_request', $up_http, 10 );
 	remove_filter( 'home_url', $up_home );
 	\AssociazioneSemplice\LicenseClient::set_local_override( null );
@@ -5070,7 +5070,7 @@ if ( class_exists( '\AssociazioneSemplice\Updater' ) ) { // pacchetto del portal
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => ASEM_PRO_VERSION, 'url' => '' ) ), false );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: nessun avviso se la versione è l\'ultima' );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
-Settings::update( array( 'license_key' => '' ) );
+Settings::clear_secret( 'license_key' );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: senza chiave di licenza nessun avviso' );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY', 'limits' => array( 'update_notice' => 0 ) ) );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: spento dai limiti' );
@@ -5082,7 +5082,7 @@ asem_ok( false !== strpos( \AssociazioneSemplice\UpdateCheck::summary(), 'non ri
 ob_start();
 Admin\LicensePanel::render();
 asem_ok( false !== strpos( (string) ob_get_clean(), 'cerca nuove versioni' ), 'pannello licenza: «Controlla adesso» cerca anche le nuove versioni' );
-Settings::update( array( 'license_key' => '', 'limits' => array() ) );
+Settings::update( array( 'limits' => array() ) ); Settings::clear_secret( 'license_key' );
 \AssociazioneSemplice\LicenseClient::set_local_override( null );
 delete_option( \AssociazioneSemplice\UpdateCheck::OPT );
 }

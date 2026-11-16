@@ -116,6 +116,7 @@ final class Backup {
 			unset( $s[ $k ] ); // le chiavi dei gateway restano sul sito
 		}
 		unset( $s['license_key'] ); // la chiave di licenza è di questo sito: una copia vecchia non la sovrascrive
+		$s = Secrets::strip_encrypted( $s ); // anche con il Pro spento (le sue chiavi non sono più elencate) nella copia non finisce nessun valore cifrato
 		$opts = array();
 		foreach ( self::OPT_NAMES as $n ) {
 			$opts[ $n ] = get_option( $n, null );
@@ -584,6 +585,7 @@ final class Backup {
 				unset( $new[ $k ] ); // le chiavi segrete restano quelle del sito (e Settings::update le lascia com'è)
 			}
 			unset( $new['license_key'] ); // la chiave di licenza resta quella del sito
+			$new = Secrets::strip_encrypted( $new ); // una copia fatta da una versione precedente può contenere chiavi cifrate: non si rimettono
 			$fiscal_month = max( 1, min( 12, (int) ( $new['fiscal_start_month'] ?? 1 ) ) ); // il mese dell'anno fiscale torna quello della copia, insieme agli anni fiscali: non passa dal blocco «anni fiscali chiusi»
 			unset( $new['fiscal_start_month'] );
 			Settings::update( $new ); // passa dai controlli delle impostazioni: una copia modificata non può inserire valori fuori regola

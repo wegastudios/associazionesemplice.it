@@ -13,6 +13,15 @@ defined( 'ABSPATH' ) || exit;
  */
 final class LicensePanel {
 
+	/** Testo del campo: la chiave non si mostra mai, solo le ultime cifre. */
+	private static function key_placeholder(): string {
+		if ( ! License::has_key() ) {
+			return 'Incolla qui la chiave di licenza';
+		}
+		$plain = License::key();
+		return '' !== $plain ? \AssociazioneSemplice\Secrets::mask( $plain ) . ' (salvata): lascia vuoto per non cambiarla' : 'Salvata ma non leggibile su questo sito: reinseriscila';
+	}
+
 	public static function render(): void {
 		$lic = License::status();
 		echo '<h2 id="asem-license">Licenza</h2><div class="asem-card">';
@@ -31,7 +40,7 @@ final class LicensePanel {
 		}
 		echo '<p>Dominio della licenza: <code>' . esc_html( $lic['domain'] ) . '</code>. La chiave vale per questo dominio; si cambia dall\'area riservata del portale.</p>';
 		Ui::form_open( 'asem_save_license', Ui::url( 'asem-settings' ) );
-		echo '<p><label for="asem_license_key"><strong>Chiave di licenza</strong></label><br><input type="text" id="asem_license_key" name="license_key" value="' . esc_attr( License::key() ) . '" class="regular-text" autocomplete="off" placeholder="Incolla qui la chiave di licenza"> ';
+		echo '<p><label for="asem_license_key"><strong>Chiave di licenza</strong></label><br><input type="password" id="asem_license_key" name="license_key" value="" class="regular-text" autocomplete="new-password" placeholder="' . esc_attr( self::key_placeholder() ) . '"> ' . ( License::has_key() ? '<label><input type="checkbox" name="clear_license_key" value="1"> rimuovi</label> ' : '' );
 		submit_button( 'Salva e verifica', 'primary', 'submit', false );
 		echo '</p><p class="description">La chiave gratuita si richiede su associazionesemplice.it/free. Con un piano Pro la chiave del piano acquistato sostituisce quella gratuita.</p>';
 		Ui::form_close();
