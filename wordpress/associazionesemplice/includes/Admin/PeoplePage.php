@@ -536,6 +536,14 @@ final class PeoplePage {
 	private static function panel_privacy( array $p ): void {
 		$id = (int) $p['id'];
 		echo '<div class="asem-card"><h2>Privacy</h2>';
+		$gc = \AssociazioneSemplice\GuardianConsent::pending( $p );
+		if ( $gc ) { // genitore già in anagrafica: i consensi dati a nome del minore non sono ancora attribuiti a lui
+			$gp = Plugin::people()->get( (int) $gc['guardian'] );
+			echo wp_kses( '<p class="asem-warn"><strong>In attesa della conferma del genitore</strong>' . ( $gp ? ' (<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $gp['id'] ) ) ) . '">' . esc_html( $gp['first_name'] . ' ' . $gp['last_name'] ) . '</a>)' : '' ) . ': Il genitore non ha ancora confermato: il collegamento si crea quando conferma; regolamento, privacy e immagini non sono ancora attribuiti a lui. Email inviata il ' . esc_html( mysql2date( 'd/m/Y', $gc['sent'] ) ) . ( $gc['expired'] ? '; il link è scaduto' : '' ) . '.</p>', Html::allowed() );
+			Ui::form_open( 'asem_guardian_consent_resend', Ui::url( 'asem-person', array( 'id' => $id ) ), false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'id', $id ) . '<button class="button">Rimanda l\'email di conferma</button>', Html::allowed() );
+			Ui::form_close();
+		}
 		if ( \AssociazioneSemplice\Privacy::has_consent( $p ) ) {
 			echo wp_kses( '<p><strong class="asem-ok">Consenso registrato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['privacy_consent_at'] ) ) . ' (' . esc_html( \AssociazioneSemplice\Privacy::SOURCES[ $p['privacy_consent_source'] ] ?? '—' ) . ')' . self::accepted_by( $p['privacy_consent_by'] ?? null ) . '</p>', Html::allowed() );
 			Ui::form_open( 'asem_privacy_consent', Ui::url( 'asem-person', array( 'id' => $id ) ), false, 'asem-inline' );

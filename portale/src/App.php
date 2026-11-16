@@ -135,6 +135,13 @@ final class App {
 			header( 'X-Robots-Tag: noindex' );
 			header( 'Cache-Control: public, max-age=300' );
 			echo json_encode( Site::publicPlans(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+		} elseif ( $get && '/api/stato' === $path ) {
+			// Stato pubblico degli interruttori che il sito di supporto segue (oggi solo la vendita del gestionale): niente dati personali né riservati.
+			header( 'Content-Type: application/json; charset=utf-8' );
+			View::security();
+			header( 'X-Robots-Tag: noindex' );
+			header( 'Cache-Control: public, max-age=60' );
+			echo json_encode( SaasSale::publicState(), JSON_UNESCAPED_SLASHES );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
 			echo Seo::robots();

@@ -19,7 +19,13 @@ class Topic extends Model
     {
         $query->where('is_public', true);
 
-        return \App\Support\SaasGuides::visible() ? $query : $query->where(fn ($q) => $q->whereNull('product')->orWhere('product', '!=', 'saas'));
+        foreach (['saas', 'plugin'] as $product) {
+            if (! \App\Support\SaasGuides::visible($product)) {
+                $query->where(fn ($q) => $q->whereNull('product')->orWhere('product', '!=', $product));
+            }
+        }
+
+        return $query;
     }
 
     public function sections(): HasMany

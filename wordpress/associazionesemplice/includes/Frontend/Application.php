@@ -30,6 +30,7 @@ final class Application {
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle_pay' ), 1 );
+		add_action( 'template_redirect', array( \AssociazioneSemplice\GuardianConsent::class, 'handle' ), 1 ); // conferma del genitore di un minore già in anagrafica
 	}
 
 	// ---------- Gettone del modulo ----------
