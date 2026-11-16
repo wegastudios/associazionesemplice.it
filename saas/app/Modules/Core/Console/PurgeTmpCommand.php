@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
@@ -33,6 +34,9 @@ final class PurgeTmpCommand extends Command
         }
         $removed = self::purge($dir, $minutes);
         $this->line("Tolti {$removed} file.");
+        if ($removed > 0) {
+            Log::info("saas:tmp:purge: tolti {$removed} file temporanei più vecchi di {$minutes} minuti ({$oldBytes} byte)");
+        }
 
         return self::SUCCESS;
     }
