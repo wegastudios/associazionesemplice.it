@@ -38,6 +38,7 @@ cd "$RELEASE"
 "$PHP" artisan saas:health --skip-migrations
 "$PHP" artisan saas:migrate --force
 "$PHP" artisan saas:audit:partitions
+"$PHP" artisan saas:tmp:purge --minutes=60 || true
 "$PHP" artisan optimize
 
 PREVIOUS="$(readlink "$BASE/current" 2>/dev/null || true)"
