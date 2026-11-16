@@ -191,13 +191,13 @@ MD,
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
-Nella pagina **Soci**, il pulsante degli strumenti ti porta a tre pagine che servono all'associazione per tenere in regola l'anagrafica: **«Libro soci»**, **«Livelli e quote»** e **«Dati per il RUNTS»**.
+Nella pagina **Soci**, il pulsante con i **tre puntini** (**«Altri strumenti»**), accanto alla ricerca, apre un elenco con tre pagine che servono all'associazione per tenere in regola l'anagrafica: **«Libro soci»**, **«Livelli e quote»** e **«Dati per il RUNTS»**.
 
 ## Il libro soci
 
 Il **«Libro soci»** elenca **tutti i soci in ordine di ingresso**, con la data della domanda, l'ammissione, l'eventuale cessazione e l'ultima quota. **Ospiti e genitori non soci non ci sono.** Ogni riga ha un **numero** e, se c'è, la **matricola** del socio; i minorenni mostrano il nome del **tutore**.
 
-Le colonne sono: **N. e matricola**, **Socio** (con il codice fiscale), **Nascita**, **Residenza**, **Tessera** (con il livello), **Ammissione**, **Cessazione** (con il motivo) e **Ultima quota**. In alto scegli **«Tutti»**, **«In carica»** o **«Cessati»**. Chi può esportare vede anche **«Stampa (PDF)»** e **«CSV»**.
+Le colonne sono: **N. e matricola**, **Socio** (con il codice fiscale), **Nascita**, **Residenza**, **Tessera** (con il livello), **Ammissione**, **Cessazione** (con il motivo) e **Ultima quota**. In alto scegli **«Tutti»**, **«In carica»** o **«Cessati»**. Chi ha il permesso **«Esportare l'anagrafica»** (si assegna in **Operatori e ruoli**) vede anche **«Stampa (PDF)»** e **«CSV»**. Libro soci e CSV contengono **codice fiscale e residenza** dei soci: dai questo permesso solo a chi deve davvero averli.
 
 ### Il libro di un anno fiscale
 
