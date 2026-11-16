@@ -252,7 +252,7 @@ it('mostra a chi ha solo associazioni sospese la pagina del pagamento, senza dat
 
     $this->actingAs($user)->get('/gestionale')->assertRedirect('/associazione-sospesa');
     $this->get('/gestionale/esportazione')->assertRedirect('/associazione-sospesa');
-    $this->get('/gestionale/esportazione.zip')->assertRedirect('/associazione-sospesa');
+    $this->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')->assertRedirect('/associazione-sospesa');
     $this->get('/associazioni')->assertRedirect('/associazione-sospesa');
     $this->get('/associazione-sospesa')->assertOk()->assertSee('Polisportiva Alfa');
 });
