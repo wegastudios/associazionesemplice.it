@@ -116,6 +116,9 @@ final readonly class PayPalGateway
         }
         $res = $this->http->withToken($token)->withHeaders(['PayPal-Request-Id' => $requestId])->acceptJson()->timeout(15)
             ->post(self::base($live).'/v2/payments/captures/'.rawurlencode($capture).'/refund', ['amount' => ['value' => self::decimal($cents), 'currency_code' => 'EUR']]);
+        if (in_array($res->json('status'), ['FAILED', 'CANCELLED'], true)) {
+            throw new RuntimeException('PayPal: il rimborso non è andato a buon fine.');
+        }
         $id = $res->json('id');
         if (! in_array($res->status(), [200, 201], true) || ! is_string($id)) {
             throw self::fail($res, 'rimborso');

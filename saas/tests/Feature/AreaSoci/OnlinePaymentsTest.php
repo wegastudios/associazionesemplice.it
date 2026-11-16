@@ -326,3 +326,69 @@ it('dopo «rimborsa e storna» una prenotazione resta valida, occupa ancora la f
     });
     Mail::assertSent(PaymentRefunded::class, fn (PaymentRefunded $m): bool => $m->stays === [OnlinePayments::MAIL_RESERVATION]);
 });
+
+it('se il gestore non risponde non annulla in silenzio il rimborso: non storna nulla, tiene il promemoria e ripetuto non lo fa due volte', function (): void {
+    Mail::fake();
+    saveStripe($this);
+    $id = $this->orgContext()->run($this->org->id, function (): string {
+        $r = app(MembershipService::class)->renewWithPayment($this->anna->id, $this->cash, 2500);
+        $id = (string) Illuminate\Support\Str::uuid7();
+        DB::table('app.online_payments')->insert([
+            'org_id' => $this->org->id, 'id' => $id, 'person_id' => $this->anna->id, 'provider' => 'stripe', 'status' => 'settled', 'amount_cents' => 2500, 'paid_cents' => 2500,
+            'items' => '[]', 'receipts' => json_encode([$r['receipt']]), 'provider_ref' => 'cs_test_9',
+        ]);
+
+        return $id;
+    });
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+
+    $calls = 0;
+    $keys = [];
+    Http::fake([
+        'api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']),
+        'api.stripe.com/v1/refunds' => function (HttpRequest $r) use (&$calls, &$keys) {
+            $keys[] = $r->header('Idempotency-Key')[0] ?? '';
+            if (++$calls === 1) {
+                throw new Illuminate\Http\Client\ConnectionException('timeout');
+            }
+
+            return Http::response(['id' => 're_9', 'status' => 'succeeded']);
+        },
+    ]);
+
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+    expect(session('errors')->first('ledger'))->toContain('non so se il rimborso')->toContain('Non è stato stornato nulla');
+    $this->orgContext()->run($this->org->id, function () use ($id): void {
+        $row = DB::table('app.online_payments')->where('id', $id)->first();
+        expect((int) $row->refund_pending_cents)->toBe(2500)
+            ->and((int) $row->refunded_cents)->toBe(0)
+            ->and(DB::table('app.transactions')->whereNull('voided_at')->count())->toBe(1)
+            ->and(DB::table('audit.log')->where('action', 'payment.refund_unknown')->exists())->toBeTrue();
+    });
+    Mail::assertNothingSent();
+
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHas('status');
+    expect($keys)->toHaveCount(2)->and($keys[0])->not->toBe('')->and($keys[1])->toBe($keys[0]);
+    $this->orgContext()->run($this->org->id, function () use ($id): void {
+        $row = DB::table('app.online_payments')->where('id', $id)->first();
+        expect((int) $row->refunded_cents)->toBe(2500)
+            ->and($row->refund_pending_cents)->toBeNull()
+            ->and(DB::table('app.transactions')->whereNull('voided_at')->count())->toBe(0);
+    });
+    Mail::assertSent(PaymentRefunded::class, 1);
+});
+
+it('un rimborso che il gestore segna come fallito non viene registrato come fatto', function (): void {
+    Mail::fake();
+    saveStripe($this);
+    $id = reviewPayment($this);
+    Http::fake([
+        'api.stripe.com/v1/checkout/sessions/*' => Http::response(['id' => 'cs_test_9', 'payment_intent' => 'pi_9']),
+        'api.stripe.com/v1/refunds' => Http::response(['id' => 're_9', 'status' => 'failed']),
+    ]);
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '10,00', 'reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+    $this->orgContext()->run($this->org->id, fn () => expect((int) DB::table('app.online_payments')->where('id', $id)->value('refunded_cents'))->toBe(0));
+    Mail::assertNothingSent();
+});
