@@ -124,7 +124,7 @@ final readonly class StripeGateway
         $data = $res->json();
         if (! $res->successful() || ! is_array($data)) {
             $msg = is_array($data) && is_array($data['error'] ?? null) && is_string($data['error']['message'] ?? null) ? $data['error']['message'] : 'risposta '.$res->status();
-            throw $res->status() >= 500 ? new GatewayUnknown('Stripe: '.$msg) : new RuntimeException('Stripe: '.$msg);
+            throw GatewayUnknown::applies($res) ? new GatewayUnknown('Stripe: '.$msg) : new RuntimeException('Stripe: '.$msg);
         }
 
         /** @var array<string, mixed> $data */

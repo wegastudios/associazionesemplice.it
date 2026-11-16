@@ -408,10 +408,13 @@ it('un errore 5xx del gestore vale come mancata risposta: esito da verificare, p
         return $id;
     });
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
-    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::response(['error' => ['message' => 'boom']], 502)]);
+    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::sequence()->push(['error' => ['message' => 'boom']], 502)->push(['error' => ['message' => 'slow']], 429)->push('<html>', 200)]);
 
-    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
-    expect(session('errors')->first('ledger'))->toContain('non è possibile sapere se il rimborso')->not->toContain('Rimborso non riuscito');
+    // 502, 429 e risposta «bene» ma illeggibile: tre esiti incerti, mai un rifiuto.
+    foreach ([1, 2, 3] as $_) {
+        $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+        expect(session('errors')->first('ledger'))->toContain('non è possibile sapere se il rimborso')->not->toContain('Rimborso non riuscito');
+    }
     $this->orgContext()->run($this->org->id, function () use ($id): void {
         expect((int) DB::table('app.online_payments')->where('id', $id)->value('refund_pending_cents'))->toBe(2500)
             ->and(DB::table('app.transactions')->whereNull('voided_at')->count())->toBe(1);

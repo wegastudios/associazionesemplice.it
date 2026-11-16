@@ -176,6 +176,6 @@ final readonly class PayPalGateway
 
         $text = 'PayPal ('.$what.'): '.(is_string($msg) && $msg !== '' ? $msg : 'risposta '.$res->status());
 
-        return $res->status() >= 500 ? new GatewayUnknown($text) : new RuntimeException($text);
+        return GatewayUnknown::applies($res) ? new GatewayUnknown($text) : new RuntimeException($text);
     }
 }
