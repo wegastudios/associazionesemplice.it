@@ -2247,7 +2247,31 @@ asem_ok( 200 === $r->get_status() && 'registrato' === $r->get_data()['result'] &
 $before = $balance_of( 'Stripe' );
 $webhook( $mk_event( $row, 800 ) );
 asem_ok( $before === $balance_of( 'Stripe' ) && 3300 === $before, 'webhook ripetuto da Stripe: nessun doppio incasso' );
-asem_ok( 'ignorato' === $webhook( array( 'id' => 'e', 'type' => 'charge.refunded', 'data' => array( 'object' => array() ) ) )->get_data()['result'], 'webhook di altro tipo: ignorato' );
+asem_ok( 'ignorato' === $webhook( array( 'id' => 'e', 'type' => 'customer.created', 'data' => array( 'object' => array() ) ) )->get_data()['result'], 'webhook di altro tipo: ignorato' );
+
+// rimborsi e contestazioni segnalati da Stripe: il pagamento va «da controllare», senza toccare la prima nota né rimborsare da soli
+$wpdb->update( Db::t( 'payments' ), array( 'provider_payment_id' => 'pi_chg_1' ), array( 'id' => (int) $ps->get_by_public( $row['public_id'] )['id'] ) );
+$chg_ev  = function ( string $type, array $obj ) {
+	return array( 'id' => 'evt_' . wp_generate_password( 6, false ), 'type' => $type, 'data' => array( 'object' => $obj ) );
+};
+$chg_snap = $balance_of( 'Stripe' );
+asem_ok( 'pagamento sconosciuto' === $webhook( $chg_ev( 'charge.refunded', array( 'payment_intent' => 'pi_non_nostro', 'amount_refunded' => 300 ) ) )->get_data()['result'] && 'pagamento sconosciuto' === $webhook( $chg_ev( 'charge.refunded', array( 'amount_refunded' => 300 ) ) )->get_data()['result'], 'rimborso segnalato da Stripe per un pagamento che non conosciamo: nessun effetto' );
+$chg_ref = $chg_ev( 'charge.refunded', array( 'payment_intent' => 'pi_chg_1', 'amount_refunded' => 300 ) );
+asem_ok( 'da controllare' === $webhook( $chg_ref )->get_data()['result'], 'rimborso fatto fuori dal sito: il pagamento va «da controllare»' );
+$chg_p = $ps->get_by_public( $row['public_id'] );
+asem_ok( 'paid' === $chg_p['status'] && 1 === (int) $chg_p['review'] && 0 === (int) $chg_p['refunded_cents'] && false !== strpos( (string) $chg_p['error'], 'rimborso di 3,00' ) && $chg_snap === $balance_of( 'Stripe' ), 'rimborso segnalato da Stripe: pagamento da controllare, nulla rimborsato né annullato, prima nota invariata' );
+asem_ok( 'payment.refund_reported' === $wpdb->get_var( 'SELECT action FROM ' . Db::t( 'audit_log' ) . ' ORDER BY id DESC LIMIT 1' ), 'rimborso segnalato da Stripe: riga nel registro azioni' );
+asem_ok( 'già segnalato' === $webhook( $chg_ref )->get_data()['result'], 'rimborso segnalato da Stripe: lo stesso evento ripetuto non segnala di nuovo' );
+asem_ok( $ps->review_count() >= 1, 'rimborso segnalato da Stripe: il pagamento conta tra quelli da controllare (avviso in Bacheca)' );
+$ps->mark_reviewed( (int) $chg_p['id'] );
+$wpdb->update( Db::t( 'payments' ), array( 'refunded_cents' => 300 ), array( 'id' => (int) $chg_p['id'] ) );
+asem_ok( 'già registrato' === $webhook( $chg_ref )->get_data()['result'] && 0 === (int) $ps->get_by_public( $row['public_id'] )['review'], 'rimborso fatto da qui e riconfermato da Stripe: nulla da segnalare' );
+$wpdb->update( Db::t( 'payments' ), array( 'refunded_cents' => 0 ), array( 'id' => (int) $chg_p['id'] ) );
+asem_ok( 'da controllare' === $webhook( $chg_ev( 'charge.dispute.created', array( 'payment_intent' => 'pi_chg_1', 'amount' => 800, 'reason' => 'fraudulent' ) ) )->get_data()['result'], 'contestazione aperta su Stripe: il pagamento va «da controllare»' );
+$chg_p = $ps->get_by_public( $row['public_id'] );
+asem_ok( 'paid' === $chg_p['status'] && 1 === (int) $chg_p['review'] && false !== strpos( (string) $chg_p['error'], 'contestazione' ) && 'payment.dispute_reported' === $wpdb->get_var( 'SELECT action FROM ' . Db::t( 'audit_log' ) . ' ORDER BY id DESC LIMIT 1' ) && $chg_snap === $balance_of( 'Stripe' ), 'contestazione: pagamento da controllare, riga nel registro, prima nota invariata' );
+$ps->mark_reviewed( (int) $chg_p['id'] );
+$wpdb->update( Db::t( 'payments' ), array( 'error' => null ), array( 'id' => (int) $chg_p['id'] ) );
 
 // importo pagato diverso da quello atteso
 wp_set_current_user( $u_pm );
@@ -2345,6 +2369,21 @@ $wpdb->update( Db::t( 'payments' ), array( 'status' => 'processing', 'updated_at
 $ps->check_pending();
 $p5 = $ps->get_by_public( $late5['public_id'] );
 asem_ok( 'paid' === $p5['status'] && 1 === (int) $p5['review'] && false !== strpos( (string) $p5['error'], 'interrotta' ), 'pagamento rimasto "in registrazione": segnato da controllare, non registrato due volte' );
+// 6. pagamento scaduto sul sito ma incassato dopo dal gestore: si ricontrolla una volta al giorno per 30 giorni
+list( $lt6, $u_lt6, $late6 ) = $mk_pending( 'Scaduta' );
+$wpdb->update( Db::t( 'payments' ), array( 'status' => 'expired', 'created_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-10 days' ) ), 'updated_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-2 days' ) ) ), array( 'id' => (int) $late6['id'] ) );
+list( $lt7, $u_lt7, $late7 ) = $mk_pending( 'Vecchissima' );
+$wpdb->update( Db::t( 'payments' ), array( 'status' => 'expired', 'created_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-40 days' ) ), 'updated_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-39 days' ) ) ), array( 'id' => (int) $late7['id'] ) );
+$stripe_sessions[ $late7['provider_ref'] ]['paid'] = true; // scaduta da più di 30 giorni: non si ricontrolla più
+$res6 = $ps->check_pending();
+asem_ok( $res6['rechecked'] >= 1 && 'expired' === $ps->get_by_public( $late6['public_id'] )['status'], 'scaduti: un pagamento scaduto da 2 giorni viene ricontrollato (il gestore non lo ha incassato)' );
+$stripe_sessions[ $late6['provider_ref'] ]['paid'] = true;
+$res6 = $ps->check_pending();
+asem_ok( 'expired' === $ps->get_by_public( $late6['public_id'] )['status'] && 0 === $res6['rechecked'], 'scaduti: un solo ricontrollo al giorno per pagamento (la seconda chiamata è rifiutata)' );
+$wpdb->update( Db::t( 'payments' ), array( 'updated_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-2 days' ) ) ), array( 'id' => (int) $late6['id'] ) );
+$res6 = $ps->check_pending();
+asem_ok( 'paid' === $ps->get_by_public( $late6['public_id'] )['status'] && $res6['registered'] >= 1 && $people->is_active_member( $lt6 ), 'scaduti: il giorno dopo il gestore lo risulta incassato, viene registrato' );
+asem_ok( 'expired' === $ps->get_by_public( $late7['public_id'] )['status'], 'scaduti: dopo 30 giorni non si ricontrolla più' );
 wp_set_current_user( 1 );
 
 // PayPal: ordine, approvazione, cattura
