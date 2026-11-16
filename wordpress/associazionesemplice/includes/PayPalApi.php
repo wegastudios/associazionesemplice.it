@@ -156,11 +156,11 @@ final class PayPalApi {
 		$d    = $res['data'];
 		if ( in_array( $res['code'], array( 200, 201 ), true ) && is_array( $d ) && ! empty( $d['id'] ) ) {
 			if ( in_array( (string) ( $d['status'] ?? '' ), array( 'FAILED', 'CANCELLED' ), true ) ) {
-				return array( 'ok' => false, 'id' => (string) $d['id'], 'reason' => 'other', 'message' => 'rimborso ' . (string) $d['status'] );
+				return array( 'ok' => false, 'id' => (string) $d['id'], 'reason' => 'other', 'certain' => true, 'message' => 'rimborso ' . (string) $d['status'] );
 			}
 			return array( 'ok' => true, 'id' => (string) $d['id'], 'reason' => '', 'message' => '' );
 		}
-		return array( 'ok' => false, 'id' => '', 'reason' => self::refund_reason( $res['code'], $d ), 'message' => is_array( $d ) ? (string) ( $d['message'] ?? ( $d['name'] ?? '' ) ) : '' );
+		return array( 'ok' => false, 'id' => '', 'reason' => self::refund_reason( $res['code'], $d ), 'certain' => $res['code'] >= 400 && $res['code'] < 500 && 429 !== $res['code'] && 'other' !== self::refund_reason( $res['code'], $d ), 'message' => is_array( $d ) ? (string) ( $d['message'] ?? ( $d['name'] ?? '' ) ) : '' );
 	}
 
 	/** Perché PayPal ha rifiutato il rimborso. @param mixed $data risposta già decodificata */
