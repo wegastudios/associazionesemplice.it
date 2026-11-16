@@ -392,7 +392,7 @@ La trovi in **Altro**, ed è **solo per gli amministratori**. Scegli l'**«Anno 
 
 - **«A posto»**: il file è quello emesso;
 - **«Da fissare»**: ricevuta emessa prima dell'aggiornamento, non ancora fissata; il pulsante **«Fissa i prossimi PDF»** le fissa a gruppi (se ne restano, premilo ancora);
-- **«Mancante»** e **«Alterato»**: il file non c'è più o non coincide con quello emesso; il pulsante **«Rifai il PDF»** lo rifà. Prima ti chiede conferma: «Rifare questo PDF? Si rifà dai dati salvati al momento dell'emissione, anche se nel frattempo il socio o l'associazione sono cambiati. Per le ricevute emesse prima di questo aggiornamento si rifà solo se risulta identico a quello emesso; altrimenti non cambia nulla. L'operazione viene scritta nel registro azioni.»
+- **«Mancante»** e **«Alterato»**: il file non c'è più o non coincide con quello emesso; il pulsante **«Rifai il PDF»** lo rifà (**compare solo per i PDF mancanti o alterati**: se provi su un PDF sano, il gestionale risponde «Il PDF di questa ricevuta è a posto: non serve rifarlo.»). Prima ti chiede conferma: «Rifare questo PDF? Si rifà dai dati salvati al momento dell'emissione, anche se nel frattempo il socio o l'associazione sono cambiati. Per le ricevute emesse prima di questo aggiornamento si rifà solo se risulta identico a quello emesso; altrimenti non cambia nulla. L'operazione viene scritta nel registro azioni.»
   - **Ricevute nuove**: il file si rifà dai dati salvati al momento dell'emissione, anche se nel frattempo il socio o l'associazione sono cambiati. Gli esiti possibili sono due: «PDF rifatto: risulta identico a quello emesso.» oppure «PDF rifatto con i dati dell'emissione. Non è identico al file emesso perché nel frattempo sono cambiati i testi o la grafica del programma.»
   - **Ricevute vecchie**: si rifà **solo se risulta identico a quello emesso**; altrimenti non cambia nulla e compare un messaggio che ti dice di scrivere all'assistenza di Associazione Semplice.
   - In ogni caso l'operazione resta scritta nel registro azioni;
@@ -576,7 +576,7 @@ Prima della chiusura il rendiconto è una **bozza**: i numeri sono quelli di ogg
 
 ## Chiudere l'anno fiscale
 
-Nella stessa pagina vedi **inizio e fine dell'anno fiscale**. Quando il rendiconto è approvato premi **«Emetti il rendiconto definitivo»** (con l'anno): da quel momento non si registrano né si stornano movimenti con date di quell'anno. Se serve correggere qualcosa, **«Riapri l'anno fiscale»**: scrivi il **motivo della riapertura** e l'anno per confermare, e il motivo resta in traccia. Se lo riapri e lo richiudi nasce una nuova versione del rendiconto; le precedenti restano elencate.
+Nella stessa pagina vedi **inizio e fine dell'anno fiscale**. Quando il rendiconto è approvato premi **«Emetti il rendiconto definitivo»** (con l'anno): da quel momento non si registrano né si stornano movimenti con date di quell'anno. Se serve correggere qualcosa, **«Riapri l'anno fiscale»**: scrivi il **motivo della riapertura** e l'anno per confermare, e il motivo resta in traccia. **Se le ricevute di quell'anno sono nell'archivio**, la riapertura viene rifiutata con «L'anno fiscale (anno) ha le ricevute nell'archivio: prima rimettile con «Rimetti i file» in «Copie di sicurezza», poi riapri l'anno.» Se lo riapri e lo richiudi nasce una nuova versione del rendiconto; le precedenti restano elencate.
 
 > Chiudi l'anno fiscale solo dopo aver controllato la prima nota e il rendiconto.
 MD,
@@ -996,9 +996,12 @@ I file singoli vengono tolti **solo dopo che l'archivio è stato controllato**: 
 
 In **Altro → Verifica delle ricevute** le ricevute di un anno archiviato hanno lo stato **«In archivio»**. Per rifare il PDF di una ricevuta di un anno archiviato, devi prima **rimettere i file** di quell'anno.
 
-Se l'archiviazione non parte, il gestionale te ne dice il motivo. I due casi:
+**Una sola operazione alla volta sulle ricevute**: se ne è già in corso un'altra (archiviare, «Rimetti i file» o «Rifai»), compare «Un'altra operazione sulle ricevute è in corso: riprova tra qualche minuto. Non è cambiato nulla.»
+
+Se l'archiviazione non parte, il gestionale te ne dice il motivo. I casi:
 
 - **Una ricevuta senza PDF valido** ferma l'archiviazione: il messaggio indica il numero della ricevuta, da controllare in **Altro → Verifica delle ricevute**.
+- **Una ricevuta cambiata mentre si archiviava**: compare «Una ricevuta è cambiata mentre si archiviava: non è cambiato nulla, riprova.»
 - **Un anno con oltre 2.500 ricevute** non si archivia: non cambia nulla e il programma ti dice di scrivere all'assistenza.
 
 ## Se cambi programma o chiudi l'abbonamento
