@@ -177,7 +177,7 @@ it('mostra profilo, quote, ricevute ed eventi, e la scheda dei figli', function 
 });
 
 it('verifica la tessera dal QR solo con la firma', function (): void {
-    $url = Illuminate\Support\Facades\URL::signedRoute('member.verify', ['org' => $this->org->slug, 'person' => $this->mario->id]);
+    $url = URL::signedRoute('member.verify', ['org' => $this->org->slug, 'person' => $this->mario->id]);
     $this->get($url)->assertOk()->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Verifica')->where('card.name', 'Mario R.')->where('card.active', true));
     $this->get($this->base.'/verifica/'.$this->mario->id)->assertForbidden();
 });
