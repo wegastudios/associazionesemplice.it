@@ -288,9 +288,23 @@ Il socio **prenota con un clic**, entrando con il suo accesso: il modulo e le re
 
 ## Chi non è socio
 
-Chi non è socio compila un **modulo breve** e riceve una email con un collegamento da aprire **entro 24 ore** per confermare l'indirizzo. Il collegamento **mostra la richiesta** con il pulsante **«Conferma»**: **aprirlo non basta**, la richiesta è confermata solo premendo il pulsante (così un'anteprima della posta non conferma da sola). Prenota sempre un adulto, che risponde dei minori indicati come accompagnati.
+Chi non è socio compila un **modulo breve** e riceve una email con un collegamento da aprire **entro 24 ore** per confermare l'indirizzo. Il collegamento **mostra la richiesta** con il pulsante **«Conferma»**: **aprirlo non basta**, la richiesta è confermata solo premendo il pulsante (così un'anteprima della posta non conferma da sola). $1
+**Dopo la conferma** il non socio vede «Email confermata. La segreteria esamina la richiesta e ti scrive appena è approvata.» (per i corsi: «Email confermata. La segreteria esamina la richiesta di iscrizione e ti scrive appena è approvata, spiegandoti come pagare.»). Gli arriva anche un'email, **«Richiesta ricevuta: …»**: «Abbiamo confermato la tua richiesta per «…». La segreteria la esamina e ti scrive appena è approvata. Per qualsiasi dubbio scrivi alla segreteria.» **Il testo è lo stesso anche se il codice fiscale è di un socio**: chi chiede non scopre chi è iscritto.
 
-Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
+**Richieste non confermate:** se il non socio non conferma l'email **entro 24 ore**, la richiesta **si cancella da sola**.
+
+**Se il codice fiscale è già in anagrafica con dati diversi**, la segreteria riceve un'email **«Richiesta di partecipazione da verificare: …»**. Se i dati sono della **stessa persona**, la approva e si usa la scheda che c'è già; altrimenti la **rifiuta**.
+
+## I tetti alle richieste
+
+Per non riempire il sito di richieste inutili ci sono tre limiti, che cambi in **Impostazioni → Limiti e soglie**, gruppo **«Accessi e sicurezza»**:
+
+- **«Richieste di evento o corso in attesa, al massimo»**: di partenza **100** (da 10 a 5000);
+- **«Posti chiedibili con lo stesso indirizzo email, in 24 ore»**: di partenza **20** (da 10 a 200);
+- **«Posti chiedibili dalla stessa connessione, in 24 ore»**: di partenza **40** (da 10 a 500).
+
+**La segreteria non ha questi limiti** quando prenota.
+$2 il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
 
 ## Le scelte per ogni evento
 
