@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Modules\Core\Http\Middleware\EnsureTwoFactorConfirmed;
 use App\Modules\Core\Http\Middleware\DemoRestrictions;
+use App\Modules\Core\Http\Middleware\EnsureTwoFactorConfirmed;
 use App\Modules\Core\Http\Middleware\EnsureUserActive;
 use App\Modules\Core\Http\Middleware\HandleInertiaRequests;
 use App\Modules\Core\Http\Middleware\IdentifyOperatorOrg;
