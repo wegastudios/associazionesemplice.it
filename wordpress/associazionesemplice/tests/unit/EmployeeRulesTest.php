@@ -85,9 +85,9 @@ final class EmployeeRulesTest extends TestCase {
 		$this->assertNull( EmployeeRules::doc_need( 'minute' ), 'gli altri documenti restano fissi' );
 		$this->assertNull( EmployeeRules::doc_need( 'book' ) );
 		$by = array(
-			'collect' => array( 'asem_res_pay' ),
+			'collect' => array( 'asem_res_pay', 'asem_check_payments', 'asem_payment_reviewed' ),
 			'refunds' => array( 'asem_payment_refund', 'asem_payment_refunded' ),
-			'funds'   => array( 'asem_void_tx', 'asem_credit_adjust', 'asem_fivepm_add', 'asem_fivepm_settings', 'asem_fivepm_report', 'asem_fivepm_delete', 'asem_statement_notes', 'asem_statement_backfill' ),
+			'funds'   => array( 'asem_void_tx', 'asem_credit_adjust', 'asem_fivepm_add', 'asem_fivepm_settings', 'asem_fivepm_report', 'asem_fivepm_delete', 'asem_statement_notes', 'asem_statement_backfill', 'asem_import_apply', 'asem_import_preview', 'asem_import_undo', 'asem_budget_save', 'asem_budget_lines', 'asem_budget_copy', 'asem_budget_approve', 'asem_budget_reopen', 'asem_budget_delete', 'asem_budget_csv' ),
 		);
 		foreach ( $by as $key => $actions ) {
 			foreach ( $actions as $action ) {
@@ -98,6 +98,7 @@ final class EmployeeRulesTest extends TestCase {
 			}
 		}
 		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::page_need( 'asem-fivepm' ) ) );
+		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::page_need( 'asem-budget' ) ) );
 	}
 
 	public function test_attachments_need_any_money_permission(): void {

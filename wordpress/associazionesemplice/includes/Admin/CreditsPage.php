@@ -38,12 +38,20 @@ final class CreditsPage {
 			. 'La vendita di un pacchetto è l\'entrata in prima nota; la spesa dei crediti non registra niente in prima nota (vedi <code>docs/CREDITI.md</code>).</p>';
 
 		echo '<div class="asem-card"><h2>Pacchetti in vendita</h2>';
+		if ( ! current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) { // il listino lo cambia solo l'amministratore
+			echo '<p class="description">Il listino dei pacchetti lo modifica un amministratore.</p></div>';
+			$packs_form = false;
+		} else {
+			$packs_form = true;
+		}
+		if ( $packs_form ) {
 		Ui::form_open( 'asem_credit_packs', $back );
 		echo '<p><textarea name="packs" rows="5" cols="30" placeholder="10 = 10,00&#10;50 = 45,00">' . esc_textarea( CreditRules::packs_text( $packs ) ) . '</textarea></p>'
 			. '<p class="description">Una riga per pacchetto: crediti = prezzo in euro (al massimo 12). Il socio li compra online dalla sua area; in segreteria si vendono qui sotto.</p>'
 			. '<p><button class="button button-primary">Salva i pacchetti</button></p>';
 		Ui::form_close();
 		echo '</div>';
+		}
 
 		$accounts = array();
 		foreach ( Plugin::ledger()->accounts() as $a ) {
