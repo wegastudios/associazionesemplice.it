@@ -140,7 +140,7 @@ final class ApplicationRulesTest extends TestCase {
 	}
 
 	public function test_name_is_normalised(): void {
-		$this->assertSame( 'Maria Grazia', ApplicationRules::clean_name( "  Maria \t Grazia  " ) );
+		$this->assertSame( 'Maria Grazia', ApplicationRules::clean_name( "  Maria   Grazia  " ) );
 		if ( class_exists( 'Normalizer' ) ) {
 			$this->assertSame( "Zo\u{00EB}", ApplicationRules::clean_name( "Zoe\u{0308}" ), 'forma composta' );
 		}
@@ -157,7 +157,7 @@ final class ApplicationRulesTest extends TestCase {
 			'parentesi'          => array( 'Mario (ufficio)' ),
 			'a capo'             => array( "Mario\nBcc: x@example.com" ),
 			'ritorno'            => array( "Mario\rRossi" ),
-			'tabulazione e nul'  => array( "Mario\0" ),
+			'tabulazione e nul'  => array( "Ma\t\0rio" ),
 			'invisibile'         => array( "Ma\u{200B}rio" ),
 			'troppo lungo'       => array( str_repeat( 'a', 61 ) ),
 			'frase lunga'        => array( 'Gentile cliente il suo ordine e stato sospeso richiami subito' ),
