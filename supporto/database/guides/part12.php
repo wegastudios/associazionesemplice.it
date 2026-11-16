@@ -787,7 +787,7 @@ Cose da sapere:
 
 ## La verifica in due passaggi
 
-A ogni accesso, oltre alla password, serve un **codice di 6 cifre** generato da un'app sul telefono (per esempio Google Authenticator, Microsoft Authenticator o 1Password). Protegge i dati dei soci anche se qualcuno scopre la tua password. **Per chi lavora nel gestionale è obbligatoria**: se il gestionale ti chiede di attivarla, **non puoi continuare finché non l'hai attivata**, e poi **non puoi più disattivarla**.
+A ogni accesso, oltre alla password, serve un **codice di 6 cifre** generato da un'app sul telefono (per esempio Google Authenticator, Microsoft Authenticator o 1Password). Protegge i dati dei soci anche se qualcuno scopre la tua password. **Per chi lavora nel gestionale può essere obbligatoria**: se il gestionale ti chiede di attivarla, **non puoi continuare finché non l'hai attivata**, e poi **non puoi più disattivarla**.
 
 **Attivarla:**
 
@@ -801,7 +801,7 @@ A ogni accesso, oltre alla password, serve un **codice di 6 cifre** generato da 
 **Gestirla** (dal profilo, **«Gestisci»**):
 
 - **«Genera nuovi codici di recupero»**: i vecchi **non valgono più**;
-- Per chi lavora nel gestionale **non c'è nessun pulsante per disattivarla**: è obbligatoria.
+- **«Disattiva la verifica»**: per entrare basterà la password. Se il gestionale la richiede, questo pulsante non c'è.
 
 **Conserva i codici di recupero in un posto sicuro**: ti evitano di dover fare quello che segue.
 
@@ -812,9 +812,9 @@ Puoi **togliere la verifica da solo, con un link che ti arriva per email**:
 1. Entra con **email e password**. Arrivi alla schermata del codice a 6 cifre.
 2. Premi **«Ho perso il telefono e i codici di recupero»**. Parte subito, senza altre conferme.
 3. Compare il messaggio «Se serve, ti abbiamo scritto all'indirizzo del tuo account: apri il link entro 15 minuti.» **È sempre uguale**, anche se non è partita nessuna email.
-4. Apri l'email **«Togli la verifica in due passaggi»** e premi **«Togli la verifica»**.
+4. Apri l'email **«Togli la verifica in due passaggi»** e premi **«Togli la verifica»**: si apre la pagina **«Togli la verifica in due passaggi»** con la frase «Se confermi, la verifica in due passaggi del tuo accesso viene tolta. Al prossimo accesso riattivala subito, con il telefono nuovo.». **Premi di nuovo «Togli la verifica»**: solo allora viene tolta (aprire il link non basta). Con **«Torna all'accesso»** rinunci.
 5. Torni alla schermata di accesso con il messaggio «La verifica in due passaggi è stata tolta. Accedi con la password e riattivala subito con il telefono nuovo.»
-6. Entra con la sola password: **sei portato alla pagina della verifica in due passaggi e non puoi andare oltre finché non la riattivi**, con un **nuovo QR** da inquadrare con il telefono nuovo. Il gestionale ti dà **nuovi codici di recupero**: **quelli vecchi non valgono più**. Salvali subito.
+6. Entra con la password e **riattiva subito la verifica** dalla pagina della verifica in due passaggi (se il gestionale la richiede, non puoi andare oltre finché non lo fai), con un **nuovo QR** da inquadrare con il telefono nuovo. Il gestionale ti dà **nuovi codici di recupero**: **quelli vecchi non valgono più**. Salvali subito.
 
 Cose da sapere:
 
