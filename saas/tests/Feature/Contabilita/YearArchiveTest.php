@@ -150,11 +150,17 @@ it('comprime i PDF nell\'archivio e annota quanto spazio libera', function (): v
 it('se il registro delle azioni non si scrive non cambia niente: l\'archivio non si registra e i file singoli restano', function (): void {
     $single = archiveRow($this->org->id, $this->receipt)->path;
     $filesBefore = Storage::disk('org_files')->allFiles();
-    $this->app->instance(AuditLog::class, new class implements AuditLog
+    // Si rompe solo la scrittura dell'archivio; il resto (accesso, associazione) scrive come sempre.
+    $this->app->instance(AuditLog::class, new class($this->app->make(AuditLog::class)) implements AuditLog
     {
+        public function __construct(private readonly AuditLog $real) {}
+
         public function record(string $action, ?string $subjectType = null, ?string $subjectId = null, array $details = []): void
         {
-            throw new RuntimeException('registro non disponibile');
+            if (str_starts_with($action, 'archive.')) {
+                throw new RuntimeException('registro non disponibile');
+            }
+            $this->real->record($action, $subjectType, $subjectId, $details);
         }
     });
 
