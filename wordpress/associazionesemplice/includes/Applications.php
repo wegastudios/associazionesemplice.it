@@ -105,13 +105,13 @@ final class Applications {
 		}
 		$d      = $chk['data'];
 		$people = Plugin::people();
-		if ( '' !== $d['email'] && $people->find_by_email( $d['email'] ) ) {
-			return array( 'status' => 'ok', 'errors' => array() ); // già nell'anagrafica o già in coda: nessuna differenza per chi scrive
-		}
-		if ( (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s', $d['tax_code'] ) ) > 0 ) {
-			return array( 'status' => 'ok', 'errors' => array() ); // stesso codice fiscale già in anagrafica o già in coda
-		}
-		if ( self::pending_count() >= Limits::get( 'applications_max' ) ) {
+		// Tre controlli, tutti eseguiti sempre (nessuno salta gli altri): già nell'anagrafica o in coda per email o codice fiscale, oppure coda piena.
+		// Per chi scrive l'esito è lo stesso, e anche il lavoro fatto lo è (vedi decoy_submit).
+		$known_mail = '' !== $d['email'] && (bool) $people->find_by_email( $d['email'] );
+		$known_tax  = (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s', $d['tax_code'] ) ) > 0;
+		$queue_full = self::pending_count() >= Limits::get( 'applications_max' );
+		if ( $known_mail || $known_tax || $queue_full ) {
+			self::decoy_submit();
 			return array( 'status' => 'ok', 'errors' => array() );
 		}
 		$now = Db::now();
@@ -154,6 +154,17 @@ final class Applications {
 		return array( 'status' => 'ok', 'errors' => array() );
 	}
 
+	/**
+	 * Per una domanda che non si registra (doppione, coda piena): le stesse scritture di una domanda vera (la riga, il consenso, il registro), senza
+	 * che nessuna riga corrisponda. Il tempo di risposta non dipende dall'esito (non è uno sleep) e le email partono comunque dopo la risposta.
+	 */
+	private static function decoy_submit(): void {
+		$db = self::db();
+		for ( $i = 0; $i < 8; $i++ ) { // quante ne fa una domanda vera tra riga, consenso, regolamento e registro
+			$db->update( Db::t( 'people' ), array( 'updated_at' => Db::now() ), array( 'id' => 0 ) );
+		}
+	}
+
 	private static function assoc_suffix(): string {
 		$assoc = (string) Settings::get( 'association_name' );
 		return '' !== $assoc ? ' — ' . $assoc : '';
@@ -163,7 +174,7 @@ final class Applications {
 		$who  = ApplicationRules::mail_name( $d['first_name'] ) . ' ' . ApplicationRules::mail_name( $d['last_name'] );
 		$text = "È arrivata una nuova domanda di adesione.\n\n" . $who . ' (' . ( $minor ? 'minorenne, con un genitore indicato' : MemberType::label( $d['type'] ) ) . ")\n\n"
 			. 'Approvala o rifiutala dalla Bacheca: ' . admin_url( 'admin.php?page=asem' );
-		Texts::mail( self::notify_email(), 'Nuova domanda di adesione' . self::assoc_suffix(), $text );
+		ResponseMail::send( self::notify_email(), 'Nuova domanda di adesione' . self::assoc_suffix(), $text );
 	}
 
 	/** Conferma a chi ha chiesto di iscriversi (per un minore, al genitore): cosa succede adesso e come pagare la quota. */
@@ -180,7 +191,7 @@ final class Applications {
 			}
 		}
 		$text .= 'Se non sei stato tu a chiederlo, ignora questo messaggio.';
-		Texts::mail( $to, 'Domanda di adesione ricevuta' . self::assoc_suffix(), $text );
+		ResponseMail::send( $to, 'Domanda di adesione ricevuta' . self::assoc_suffix(), $text );
 	}
 
 	// ---------- Pagamento della quota ----------
@@ -232,6 +243,7 @@ final class Applications {
 		$gd       = self::guardian_data( $row );
 		$guardian = null;
 		$created  = false;
+		$confirm  = false;
 		if ( $gd ) {
 			$guardian = $people->find_by_email( strtolower( (string) $gd['email'] ), $id );
 			if ( $guardian && ! empty( $guardian['application_status'] ) ) {
@@ -262,14 +274,25 @@ final class Applications {
 			}
 		}
 		if ( $guardian ) {
-			Guardians::link( $id, (int) $guardian['id'] );
-			self::db()->update( Db::t( 'people' ), array( 'image_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) ); // la liberatoria immagini del minore la risponde il genitore
-			// A nome del minore hanno accettato regolamento e privacy il genitore: resta registrato chi.
-			self::db()->update( Db::t( 'people' ), array( 'rules_accepted_by' => Regulation::enabled() ? (int) $guardian['id'] : null, 'privacy_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) );
+			// Un genitore già in anagrafica (non creato ora da questa domanda) deve prima confermare: finché non lo fa non gli si attribuiscono i consensi e non si crea il collegamento con il minore (nasce alla conferma).
+			if ( ! $created ) {
+				$confirm = true;
+			} else {
+				Guardians::link( $id, (int) $guardian['id'] );
+				self::db()->update( Db::t( 'people' ), array( 'image_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) ); // la liberatoria immagini del minore la risponde il genitore
+				// A nome del minore hanno accettato regolamento e privacy il genitore: resta registrato chi.
+				self::db()->update( Db::t( 'people' ), array( 'rules_accepted_by' => Regulation::enabled() ? (int) $guardian['id'] : null, 'privacy_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) );
+			}
 		}
 		Audit::log( 'application.approved', 'person', $id, array( 'guardian' => $guardian ? (int) $guardian['id'] : 0 ) );
-		self::mail_approved( $people->get( $id ), $guardian, $due );
+		self::mail_approved( $people->get( $id ), $guardian, $due, ! $confirm );
+		if ( $confirm ) {
+			GuardianConsent::begin( $id, (int) $guardian['id'] ); // all'indirizzo già registrato per il genitore
+		}
 		$msg = 'Domanda approvata: tessera n. ' . $card . '. ' . ( $guardian ? 'È arrivata l\'email al genitore.' : 'Al nuovo socio è arrivato il link per scegliere la password.' );
+		if ( $confirm ) {
+			$msg .= ' Il genitore è già in anagrafica: gli è arrivata un\'email per confermare di aver accettato lui, a nome del minore, regolamento, privacy e immagini. Il genitore non ha ancora confermato: il collegamento si crea quando conferma, e finché non lo fa queste accettazioni non gli vengono attribuite (lo vedi nella scheda del minore).';
+		}
 		if ( $due > 0 ) {
 			$msg .= ' Quota da incassare: ' . Money::format( $due ) . ' (in sede o dall\'area riservata); la tessera diventa valida all\'incasso.';
 		}
@@ -308,7 +331,7 @@ final class Applications {
 		return $id;
 	}
 
-	private static function mail_approved( ?array $person, ?array $guardian, int $due = 0 ): void {
+	private static function mail_approved( ?array $person, ?array $guardian, int $due = 0, bool $linked = true ): void {
 		if ( ! $person ) {
 			return;
 		}
@@ -321,7 +344,9 @@ final class Applications {
 		}
 		if ( $guardian ) {
 			$text = 'Ciao ' . ApplicationRules::mail_name( (string) $guardian['first_name'] ) . ",\n\nla domanda di adesione di " . ApplicationRules::mail_name( (string) $person['first_name'] ) . ' ' . ApplicationRules::mail_name( (string) $person['last_name'] ) . ' è stata approvata: la tessera è la n. ' . $person['card_number'] . ".\n\n";
-			if ( empty( $guardian['wp_user_id'] ) ) {
+			if ( ! $linked ) { // genitore già in anagrafica: il collegamento nasce quando conferma dal link dell'altra email
+				$text .= ApplicationRules::mail_name( (string) $person["first_name"] ) . " compare nella tua area riservata dopo che hai confermato dal link che ti abbiamo mandato con un\'altra email.' . "\n";
+			} elseif ( empty( $guardian['wp_user_id'] ) ) {
 				$text .= 'Da genitore o tutore segui ' . $person['first_name'] . ' dalla tua area riservata (tessera, prenotazioni, pagamenti). Scegli la tua password da questo link (vale ' . $days . "):\n" . Frontend\Activation::url( (int) $guardian['id'] ) . "\n";
 			} else {
 				$text .= $person['first_name'] . ' compare ora nella tua area riservata: ' . Gatekeeper::area_url() . "\n";

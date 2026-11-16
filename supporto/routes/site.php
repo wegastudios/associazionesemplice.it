@@ -63,6 +63,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
 
         Route::get('/argomenti', [TopicController::class, 'index'])->name('topics.index');
         Route::post('/argomenti', [TopicController::class, 'store'])->name('topics.store');
+        Route::post('/argomenti/guide-gestionale', [TopicController::class, 'saasGuides'])->name('topics.saas-guides');
         Route::post('/argomenti/{topic}', [TopicController::class, 'update'])->name('topics.update');
         Route::post('/argomenti/{topic}/elimina', [TopicController::class, 'destroy'])->name('topics.destroy');
         Route::post('/argomenti/{topic}/sezioni', [SectionController::class, 'store'])->name('sections.store');

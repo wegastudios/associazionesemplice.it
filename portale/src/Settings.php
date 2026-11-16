@@ -108,7 +108,7 @@ final class Settings {
 		foreach ( array_keys( self::LIMITS ) as $k ) {
 			$g[ $k ] = self::clamp( $k, $in[ $k ] ?? self::LIMITS[ $k ][0] );
 		}
-		$g['indexable']     = ! empty( $in['indexable'] );
+		$g['indexable']     = (bool) Config::get( 'indexable', false ); // si cambia da «Impostazioni del portale» (Switches)
 		$g['trial_enabled'] = ! empty( $in['trial_enabled'] );
 		$plan               = (string) ( $in['trial_plan'] ?? '' );
 		$g['trial_plan']    = ( 'free' !== $plan && null !== Config::get( 'plans.' . $plan ) ) ? $plan : 'full';

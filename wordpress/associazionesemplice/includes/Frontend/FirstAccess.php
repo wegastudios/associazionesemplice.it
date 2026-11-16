@@ -50,16 +50,21 @@ final class FirstAccess {
 		$user  = '' !== $email && is_email( $email ) ? get_user_by( 'email', $email ) : false;
 		$employee = $user && \AssociazioneSemplice\Employees::is_employee( $user ); // l'utente del dipendente non è mai quello del socio: i due accessi restano separati
 		if ( ! $user || $employee ) {
+			if ( ! $user && \AssociazioneSemplice\MemberSession::wp_users_wanted() ) {
+				self::decoy( $email ); // nessun utente e nessun accesso proprio: stesso lavoro di una richiesta vera
+			}
 			return ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() || ( $employee && \AssociazioneSemplice\MemberSession::enabled() ) ) && \AssociazioneSemplice\MemberLogin::request( $email ); // senza utente WordPress: link e codice per l'accesso proprio
 		}
 		// Non più di qualche email all'ora allo stesso indirizzo: nessuno può inondare di messaggi la casella di un socio (la risposta del sito resta uguale).
 		$mail_key = 'asem_fa_m_' . md5( strtolower( $user->user_email ) );
 		$sent     = (int) get_transient( $mail_key );
 		if ( $sent >= Limits::get( 'first_access_per_email' ) ) {
+			self::decoy( $email );
 			return false;
 		}
 		$person = \AssociazioneSemplice\Access::person_for_user( (int) $user->ID );
 		if ( ! $person || ! MemberType::can_login( $person['type'] ) || user_can( $user, Plugin::CAP_OPS ) ) {
+			self::decoy( $email );
 			return false; // solo i soci (mai gli amministratori)
 		}
 		$key = get_password_reset_key( $user );
@@ -74,11 +79,27 @@ final class FirstAccess {
 		$link  = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ), 'login' );
 		$text  = 'Ciao ' . $person['first_name'] . ",\n\necco il link per il tuo primo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ":\n\n" . $link
 			. "\n\nApri il link, scegli la tua password e poi entra con questa email. Il link vale 24 ore: se scade, ripeti il \"Primo accesso\" dal sito.\n\nSe non hai chiesto tu questo messaggio, ignoralo.";
-		$ok = (bool) \AssociazioneSemplice\Texts::mail( $user->user_email, 'Primo accesso' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		$subject = 'Primo accesso' . ( '' !== $assoc ? ' — ' . $assoc : '' );
+		if ( \AssociazioneSemplice\ResponseMail::deferring() ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
+			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
+			return \AssociazioneSemplice\ResponseMail::send( $user->user_email, $subject, $text );
+		}
+		$ok = (bool) \AssociazioneSemplice\Texts::mail( $user->user_email, $subject, $text );
 		if ( $ok ) { // il limite conta i messaggi partiti davvero: se la posta del sito non funziona il socio può riprovare senza restare bloccato
 			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 		}
 		return $ok;
+	}
+
+	/**
+	 * Lavoro di una richiesta per un indirizzo senza utente (o già al limite, o non ammesso): la stessa chiave di reimpostazione e la stessa
+	 * scrittura di una richiesta vera, senza lasciare traccia né spedire niente. Così il tempo di risposta non dipende dall'esito (non è uno sleep).
+	 */
+	private static function decoy( string $email ): void {
+		global $wpdb;
+		get_transient( 'asem_fa_m_' . md5( strtolower( trim( $email ) ) ) );
+		wp_hash_password( wp_generate_password( 24, false ) ); // l'impronta della chiave di reimpostazione
+		$wpdb->update( $wpdb->users, array( 'user_activation_key' => '' ), array( 'ID' => 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- al posto della scrittura vera: nessuna riga corrisponde
 	}
 
 	/**
@@ -188,6 +209,7 @@ final class FirstAccess {
 				$error = Activation::NOT_FROM_PAGE;
 			} else {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );
+				\AssociazioneSemplice\ResponseMail::defer( true ); // l'email parte a risposta consegnata: il tempo di risposta non rivela chi è socio
 				if ( 'invalid' === self::submit( (string) ( $post['name'] ?? '' ), (string) ( $post['email'] ?? '' ), (string) ( $post['phone'] ?? '' ) ) ) {
 					$error = 'Controlla i dati: servono nome e cognome, un\'email valida e il numero di cellulare.';
 				} else {

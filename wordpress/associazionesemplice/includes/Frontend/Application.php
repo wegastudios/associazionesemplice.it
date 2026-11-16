@@ -10,6 +10,7 @@ use AssociazioneSemplice\Pages;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\PrivacyNotice;
 use AssociazioneSemplice\Regulation;
+use AssociazioneSemplice\ResponseMail;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\Texts;
 
@@ -29,6 +30,7 @@ final class Application {
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle_pay' ), 1 );
+		add_action( 'template_redirect', array( \AssociazioneSemplice\GuardianConsent::class, 'handle' ), 1 ); // conferma del genitore di un minore già in anagrafica
 	}
 
 	// ---------- Gettone del modulo ----------
@@ -83,6 +85,7 @@ final class Application {
 					if ( 'early' === $token ) {
 						$sent = true;
 					} else {
+						ResponseMail::defer( true ); // le email partono a risposta consegnata: il tempo di risposta non dice se l'indirizzo è già registrato
 						$res = Applications::submit( $post );
 						if ( 'invalid' === $res['status'] ) {
 							$errors = $res['errors'];

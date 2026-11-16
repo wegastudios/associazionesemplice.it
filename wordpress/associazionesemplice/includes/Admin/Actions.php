@@ -65,6 +65,7 @@ final class Actions {
 			'asem_set_secretary'      => 'set_secretary',
 			'asem_privacy_consent'    => 'privacy_consent',
 			'asem_rules_record'       => 'rules_record',
+			'asem_guardian_consent_resend' => 'guardian_consent_resend',
 			'asem_privacy_anonymize'  => 'privacy_anonymize',
 			'asem_save_comms'         => 'save_comms',
 			'asem_create_privacy_page' => 'create_privacy_page',
@@ -257,6 +258,11 @@ final class Actions {
 		}
 		\AssociazioneSemplice\Privacy::set_consent( $id, $mode );
 		return array( Ui::url( 'asem-person', array( 'id' => $id ) ), 'Consenso registrato.' );
+	}
+
+	private static function guardian_consent_resend( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		return array( Ui::url( 'asem-person', array( 'id' => $id ) ), \AssociazioneSemplice\GuardianConsent::resend( $id ) );
 	}
 
 	private static function rules_record( array $p ): array {
@@ -985,8 +991,11 @@ final class Actions {
 		if ( ! empty( $r['keys_failed'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: le chiavi dei documenti riservati non si sono potute rimettere sul sito (un\'altra operazione era in corso): rifai il ripristino della stessa copia.' );
 		}
+		if ( ! empty( $r['passwords'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le password dei soci sono tornate come nella copia: al primo accesso ogni socio dovrà scegliere una nuova password.' );
+		}
 		if ( ! empty( $r['members_reset'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le password dei soci e le notifiche non fanno parte del ripristino: i soci rientrano con il link che ricevono.' );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le sessioni aperte e le notifiche dei soci non fanno parte del ripristino: i soci dovranno entrare di nuovo.' );
 		}
 		if ( ! empty( $r['bad'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non coincidono con la loro impronta (o non si aprono con la chiave) e non sono stati rimessi sul sito.', array( 'n' => (int) $r['bad'] ) );

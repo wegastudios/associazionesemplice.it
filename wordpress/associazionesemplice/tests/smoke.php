@@ -417,7 +417,7 @@ $lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp, &$lic
 \AssociazioneSemplice\LicenseClient::set_local_override( false );
 add_filter( 'home_url', $lic_home );
 add_filter( 'pre_http_request', $lic_http, 10, 3 );
-Settings::update( array( 'license_key' => '' ) );
+Settings::clear_secret( 'license_key' );
 License::sync();
 asem_ok( \AssociazioneSemplice\LicensePolicy::STATUS_NOKEY === License::state()['status'] && 'free' === License::plan() && ! $lic_calls && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica attiva senza chiave: livello gratuito e nessuna chiamata al server' );
 wp_set_current_user( 1 ); // l'invito lo vede solo l'amministratore
@@ -534,7 +534,7 @@ asem_ok( false !== strpos( License::free_url(), 'https://associazionesemplice.it
 ob_start();
 Admin\LicensePanel::render();
 $lic_panel = (string) ob_get_clean();
-asem_ok( false !== strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $lic_panel, 'prova-sito.it' ) && false !== strpos( $lic_panel, 'Controlla adesso' ), 'pannello licenza: chiave, dominio e controllo immediato' );
+asem_ok( false === strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $lic_panel, '••••DDDD' ) && false !== strpos( $lic_panel, 'prova-sito.it' ) && false !== strpos( $lic_panel, 'Controlla adesso' ), 'pannello licenza: chiave non in chiaro (solo le ultime cifre), dominio e controllo immediato' );
 // firma obbligatoria, livello dalla parte firmata, prova scaduta o manomessa
 $lic_sign_on = false;
 $lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
@@ -590,9 +590,42 @@ delete_option( License::OPT_STATE );
 remove_filter( 'pre_http_request', $lic_http, 10 );
 remove_filter( 'home_url', $lic_home );
 \AssociazioneSemplice\LicenseClient::set_local_override( null );
-Settings::update( array( 'license_key' => '' ) );
+Settings::clear_secret( 'license_key' );
 delete_option( License::OPT_STATE );
 asem_ok( ! License::enabled() && '' === Admin\LicenseNotice::html(), 'sito locale: la verifica torna in standby' );
+// chiave cifrata che non si apre più (codici di sicurezza cambiati, sito spostato): avviso fisso, nessuna chiamata al portale, stato di licenza intatto
+$ur_calls = 0;
+$ur_http  = function ( $pre, $args, $url ) use ( &$ur_calls ) {
+	if ( false !== strpos( $url, 'associazionesemplice.it' ) ) {
+		$ur_calls++;
+		return new WP_Error( 'http_request_failed', 'non si doveva chiamare' );
+	}
+	return $pre;
+};
+\AssociazioneSemplice\LicenseClient::set_local_override( false );
+add_filter( 'home_url', $lic_home );
+add_filter( 'pre_http_request', $ur_http, 10, 3 );
+update_option( License::OPT_STATE, array( 'status' => 'active', 'plan' => 'lite', 'checked_at' => Db::now() ) );
+$ur_all                = (array) get_option( Settings::OPTION, array() );
+$ur_all['license_key'] = 'enc1:' . base64_encode( random_bytes( 60 ) ); // prefisso giusto, contenuto che non si apre
+update_option( Settings::OPTION, $ur_all );
+asem_ok( License::has_key() && '' === License::key() && License::key_unreadable(), 'chiave illeggibile: riconosciuta (salvata ma non si apre)' );
+$ur_r     = License::sync();
+$ur_state = (array) get_option( License::OPT_STATE, array() );
+asem_ok( false === $ur_r['ok'] && 0 === $ur_calls && false !== strpos( (string) $ur_r['message'], 'non si legge più' ), 'chiave illeggibile: il controllo si ferma con un errore chiaro e non chiama il portale' );
+asem_ok( 'active' === ( $ur_state['status'] ?? '' ) && 'lite' === ( $ur_state['plan'] ?? '' ), 'chiave illeggibile: lo stato di licenza resta com\'era (non diventa «nessuna chiave»)' );
+wp_set_current_user( 1 );
+$ur_notice_admin = Admin\LicenseNotice::html();
+wp_set_current_user( 0 );
+$ur_notice_none = Admin\LicenseNotice::html();
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( $ur_notice_admin, 'La chiave di licenza salvata non si legge più su questo sito' ) && false !== strpos( $ur_notice_admin, 'asem-license' ) && false === strpos( $ur_notice_admin, 'dismiss' ), 'chiave illeggibile: avviso fisso in Bacheca per chi amministra, con il collegamento al pannello Licenza' );
+asem_ok( false === strpos( $ur_notice_none, 'non si legge più' ), 'chiave illeggibile: nessun avviso per chi non ha il permesso' );
+Settings::clear_secret( 'license_key' );
+delete_option( License::OPT_STATE );
+remove_filter( 'pre_http_request', $ur_http, 10 );
+remove_filter( 'home_url', $lic_home );
+\AssociazioneSemplice\LicenseClient::set_local_override( null );
 $lic_save = \AssociazioneSemplice\ProBoot::save_license( array( 'license_key' => '' ) );
 asem_ok( false !== strpos( (string) $lic_save[0], 'asem-settings' ), 'licenza: salvando la chiave si torna alle impostazioni (non un errore fatale)' );
 // quote diverse: spariscono, resta la quota sola
@@ -3141,7 +3174,7 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	Settings::update( array( 'limits' => array( 'portal_updates' => 0 ) ) );
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	asem_ok( empty( $up_tr->response ), 'aggiornamento diretto: spento dai limiti, niente aggiornamenti' );
-	Settings::update( array( 'limits' => array(), 'license_key' => '' ) );
+	Settings::update( array( 'limits' => array() ) ); Settings::clear_secret( 'license_key' );
 	remove_filter( 'pre_http_request', $up_http, 10 );
 	remove_filter( 'home_url', $up_home );
 	\AssociazioneSemplice\LicenseClient::set_local_override( null );
@@ -5127,7 +5160,7 @@ if ( class_exists( '\AssociazioneSemplice\Updater' ) ) { // pacchetto del portal
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => ASEM_PRO_VERSION, 'url' => '' ) ), false );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: nessun avviso se la versione è l\'ultima' );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
-Settings::update( array( 'license_key' => '' ) );
+Settings::clear_secret( 'license_key' );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: senza chiave di licenza nessun avviso' );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY', 'limits' => array( 'update_notice' => 0 ) ) );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: spento dai limiti' );
@@ -5139,7 +5172,7 @@ asem_ok( false !== strpos( \AssociazioneSemplice\UpdateCheck::summary(), 'non ri
 ob_start();
 Admin\LicensePanel::render();
 asem_ok( false !== strpos( (string) ob_get_clean(), 'cerca nuove versioni' ), 'pannello licenza: «Controlla adesso» cerca anche le nuove versioni' );
-Settings::update( array( 'license_key' => '', 'limits' => array() ) );
+Settings::update( array( 'limits' => array() ) ); Settings::clear_secret( 'license_key' );
 \AssociazioneSemplice\LicenseClient::set_local_override( null );
 delete_option( \AssociazioneSemplice\UpdateCheck::OPT );
 }
@@ -6912,7 +6945,9 @@ $ro_err = asem_throws( function () { Admin\TechActions::save_roles( array() ); }
 wp_set_current_user( 1 );
 asem_ok( null !== $ro_err && get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: non si toglie l\'accesso al ruolo con cui si sta operando' );
 get_role( 'editor' )->add_cap( Plugin::CAP );
-asem_ok( null !== asem_throws( function () { Admin\TechPage::set_role_access( 'editor', false ); } ) && get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: non si toglie l\'accesso a un ruolo che amministra il plugin' );
+Admin\TechPage::set_role_access( 'editor', false );
+asem_ok( ! get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: un amministratore dell\'associazione (ruolo che non è «administrator») si può limitare da un altro amministratore' );
+asem_ok( null !== asem_throws( function () { Admin\TechPage::assert_can_remove( 'administrator' ); } ), 'ruoli: un amministratore di WordPress non si toglie mai' );
 get_role( 'editor' )->remove_cap( Plugin::CAP );
 wp_delete_user( $ro_u );
 Admin\TechActions::save_roles( array() );
@@ -8065,6 +8100,9 @@ file_put_contents( $bk_file, 'contenuto allegato' );
 $wpdb->insert( Db::t( 'attachments' ), array( 'transaction_id' => 0, 'original_name' => 'prova-copia.txt', 'stored_name' => str_repeat( 'a', 32 ), 'mime' => 'text/plain', 'size_bytes' => 18, 'sha256' => hash( 'sha256', 'contenuto allegato' ), 'created_at' => Db::now() ) ); // l'allegato si rimette solo se una riga dei dati lo cita
 $bk_att_row = (int) $wpdb->insert_id;
 Settings::update( array( 'association_name' => 'Associazione di prova' ) );
+$bk_pw_hash = \AssociazioneSemplice\MemberPassword::make( 'vecchia password dei soci' ); // una password di un socio già dentro la copia: dopo il ripristino torna, con il cambio obbligatorio
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => 999001, 'login_email' => 'copia-password@example.com', 'pass_hash' => $bk_pw_hash, 'must_reset' => 0, 'created_at' => Db::now() ) );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => 999002, 'login_email' => 'solo-link@example.com', 'pass_hash' => null, 'must_reset' => 0, 'created_at' => Db::now() ) ); // un socio che entra solo con il link, senza password: dopo il ripristino non riceve nessun segno
 $bk_zip = \AssociazioneSemplice\Backup::export( true );
 $za     = new ZipArchive();
 $za->open( $bk_zip );
@@ -8279,12 +8317,20 @@ wp_delete_file( $bk_t6 );
 
 // 5. registro azioni, accessi dei soci e notifiche push non fanno parte del ripristino
 Audit::log( 'prova.dopo_la_copia', 'settings', 0 );
-$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $victim, 'login_email' => 'prova-ripristino@example.com', 'pass_hash' => 'x', 'created_at' => Db::now() ) );
+$wpdb->update( Db::t( 'member_auth' ), array( 'pass_hash' => 'x', 'must_reset' => 0 ), array( 'person_id' => 999001 ) ); // dopo la copia la password è cambiata e il segno tolto: il ripristino rimette quella della copia
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $victim, 'login_email' => 'prova-ripristino@example.com', 'pass_hash' => 'x', 'created_at' => Db::now() ) ); // una password nata dopo la copia: non c'è nella copia, sparisce
+$wpdb->insert( Db::t( 'member_sessions' ), array( 'token_hash' => str_repeat( 'b', 64 ), 'person_id' => 999001, 'created_at' => Db::now(), 'last_seen' => Db::now(), 'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 3600 ) ) );
 $bk_people_t = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Db::t( 'push_subs' ) ) );
 $bk_audit_total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) );
 $bk_r5 = \AssociazioneSemplice\Backup::restore( $bk_zip );
 asem_ok( 1 === $bk_audit_n( 'prova.dopo_la_copia' ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) > $bk_audit_total, 'ripristino: il registro azioni non viene sostituito (le righe fatte dopo la copia restano, e si aggiunge quella del ripristino)' );
-asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) ) && ( ! $bk_people_t || 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) ) ) && ! empty( $bk_r5['members_reset'] ), 'ripristino: password dei soci e notifiche push non si ripristinano (e non restano legate a persone diverse): i soci rientrano con il link' );
+$bk_auth = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = 999001', ARRAY_A );
+asem_ok( is_array( $bk_auth ) && $bk_auth['pass_hash'] === $bk_pw_hash && 2 === (int) $bk_auth['must_reset'] && \AssociazioneSemplice\MemberPassword::verify( 'vecchia password dei soci', (string) $bk_auth['pass_hash'] ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . " WHERE person_id = $victim" ) && ! empty( $bk_r5['passwords'] ), 'ripristino: le password dei soci tornano come nella copia, con il segno «cambio obbligatorio» (e quelle nate dopo la copia spariscono)' );
+asem_ok( 'restored' === \AssociazioneSemplice\MemberLogin::password_state( 999001 ), 'ripristino: lo stato della password del socio è «da cambiare dopo il ripristino»' );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT must_reset FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = 999002' ) && 'none' === \AssociazioneSemplice\MemberLogin::password_state( 999002 ), 'ripristino: il segno «cambio obbligatorio» va solo a chi ha una password ripristinata, non a chi entrava solo con il link' );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) ) && ( ! $bk_people_t || 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) ) ) && ! empty( $bk_r5['members_reset'] ), 'ripristino: sessioni e notifiche push dei soci non si ripristinano (sono cancellate)' );
+$bk_audit_row = (string) $wpdb->get_var( 'SELECT details FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'backup.restored' ORDER BY id DESC LIMIT 1" );
+asem_ok( false === stripos( $bk_audit_row, 'pass_hash' ) && false === strpos( $bk_audit_row, $bk_pw_hash ), 'ripristino: il registro azioni non contiene nessuna impronta di password' );
 
 // 6. un ripristino alla volta
 Db::$lock_fake = '0';
@@ -8851,6 +8897,25 @@ $ap_dup2 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, arra
 $ap_dup3 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'email' => 'altra.email@example.com' ) ) );
 asem_ok( 'ok' === $ap_dup3['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: lo stesso codice fiscale già in coda ha la stessa risposta e non crea nulla' );
 asem_ok( 'ok' === $ap_dup1['status'] && 'ok' === $ap_dup2['status'] && 1 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) === $ap_n, 'domanda: doppioni e email di soci esistenti hanno la stessa risposta e non creano nulla' );
+// tempi di risposta uguali: dal modulo pubblico le email sono in coda; doppione e domanda nuova hanno la stessa risposta e lavoro simile
+\AssociazioneSemplice\ResponseMail::defer( true );
+$tr_n   = count( $ap_mails );
+$tr_q   = $wpdb->num_queries;
+$tr_new = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Tina', 'last_name' => 'Tempi', 'email' => 'tina.tempi@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
+$tr_dn  = $wpdb->num_queries - $tr_q;
+asem_ok( 'ok' === $tr_new['status'] && count( $ap_mails ) === $tr_n && 2 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: la domanda nuova mette in coda le due email e non le manda nella richiesta' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( count( $ap_mails ) === $tr_n + 2 && 0 === \AssociazioneSemplice\ResponseMail::pending() && null !== $ap_mail_to( 'tina.tempi@example.com' ), 'tempi di risposta: a risposta consegnata le due email partono' );
+$tr_q   = $wpdb->num_queries;
+$tr_dup = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Tina', 'last_name' => 'Tempi', 'email' => 'tina.tempi@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
+$tr_dd  = $wpdb->num_queries - $tr_q;
+asem_ok( $tr_dup === $tr_new && 0 === \AssociazioneSemplice\ResponseMail::pending() && count( $ap_mails ) === $tr_n + 2, 'tempi di risposta: la domanda già presente ha la stessa risposta, nessuna email e nessuna riga in più' );
+WP_CLI::log( 'tempi di risposta: richieste al database per la domanda, nuova ' . $tr_dn . ', doppione ' . $tr_dd );
+asem_ok( abs( $tr_dn - $tr_dd ) <= 2, 'tempi di risposta: il doppione fa sul database lo stesso lavoro (controlli e scritture finte) di una domanda nuova' );
+\AssociazioneSemplice\ResponseMail::defer( false );
+$tr_id = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE tax_code = %s', 'RSSMRA79A07H501S' ) );
+\AssociazioneSemplice\Applications::reject( $tr_id ); // la prova non lascia domande in coda
+asem_ok( 1 === \AssociazioneSemplice\Applications::pending_count(), 'tempi di risposta: tolta la domanda di prova resta quella di prima' );
 asem_ok( 'emailed' !== \AssociazioneSemplice\Frontend\FirstAccess::submit( 'Aldo Adesioni', 'aldo.adesioni@example.com', '333 1010101' ) && ! get_user_by( 'email', 'aldo.adesioni@example.com' ), 'domanda: con il «Primo accesso» chi non è ancora approvato non entra' );
 $ap_html = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Domande di adesione' );
 asem_ok( false !== strpos( $ap_html, 'Aldo Adesioni' ) && false !== strpos( $ap_html, 'asem_application_approve' ) && false !== strpos( $ap_html, 'asem_application_reject' ), 'dashboard: la domanda con Approva e Rifiuta' );
@@ -8918,7 +8983,49 @@ asem_ok( null !== asem_throws( function () use ( $ap_g ) { Plugin::people()->set
 $ap_mia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
 $ap_ppl = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
 \AssociazioneSemplice\Applications::approve( $ap_mia, 'ap201' );
-asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) === $ap_ppl && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE email = %s', 'marta.madre@example.com' ) ), 'minorenne con genitore già socio: collegato a lui, nessun doppione' );
+asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) === $ap_ppl && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE email = %s', 'marta.madre@example.com' ) ), 'minorenne con genitore già socio: nessun collegamento prima della conferma, nessun doppione' );
+// ... ma i consensi non gli si attribuiscono finché non conferma via email
+$GC = '\AssociazioneSemplice\GuardianConsent';
+$ap_mia_row = $people->get( $ap_mia );
+asem_ok( empty( $ap_mia_row['privacy_consent_by'] ) && empty( $ap_mia_row['image_consent_by'] ) && empty( $ap_mia_row['rules_accepted_by'] ), 'genitore già socio: regolamento, privacy e immagini non gli sono attribuiti prima della conferma' );
+$ap_gc = $GC::pending( $ap_mia_row );
+asem_ok( $ap_gc && (int) $ap_gc['guardian'] === $mn_mum && ! $ap_gc['expired'], 'genitore già socio: la conferma risulta in attesa (la segreteria la vede nella scheda)' );
+$ap_gm = $ap_mail_to( 'marta.madre@example.com' );
+asem_ok( $ap_gm && 1 === preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_gm['message'], $ap_gp ) && false !== strpos( (string) $ap_gm['subject'], 'Conferma del genitore' ), 'genitore già socio: l\'email di conferma parte all\'indirizzo registrato, con un link' );
+$ap_gparam = $ap_gp[1];
+$ap_gtoken = substr( $ap_gparam, (int) strpos( $ap_gparam, '.' ) + 1 );
+asem_ok( false === strpos( (string) $people->get( $ap_mia )['application_data'], $ap_gtoken ) && false !== strpos( (string) $people->get( $ap_mia )['application_data'], hash( 'sha256', $ap_gtoken ) ), 'conferma del genitore: nel database c\'è solo l\'impronta del token' );
+asem_ok( false !== strpos( $GC::confirm_page( $ap_gparam ), 'Confermo' ) && $GC::pending( $people->get( $ap_mia ) ) && empty( $people->get( $ap_mia )['privacy_consent_by'] ), 'conferma del genitore: aprire il link mostra il pulsante e non conferma nulla' );
+asem_ok( ! $GC::submit( $ap_gparam, 'nonce-sbagliato' )['ok'] && empty( $people->get( $ap_mia )['privacy_consent_by'] ), 'conferma del genitore: senza il nonce della pagina non si conferma' );
+$ap_gnonce = wp_create_nonce( 'asem_gcf_' . $ap_mia );
+asem_ok( ! $GC::submit( substr( $ap_gparam, 0, -1 ) . ( 'a' === substr( $ap_gparam, -1 ) ? 'b' : 'a' ), $ap_gnonce )['ok'] && empty( $people->get( $ap_mia )['privacy_consent_by'] ), 'conferma del genitore: un token sbagliato non conferma' );
+asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ), 'conferma del genitore: finché non conferma non ha accesso ai dati del minore' );
+asem_ok( $GC::submit( $ap_gparam, $ap_gnonce )['ok'], 'conferma del genitore: con il pulsante la conferma va a buon fine' );
+asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ) && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s AND object_id = %d', 'guardian.linked', $ap_mia ) ), 'conferma del genitore: il collegamento con il minore nasce alla conferma, con una riga nel registro' );
+$ap_mia_row = $people->get( $ap_mia );
+asem_ok( (int) $ap_mia_row['privacy_consent_by'] === $mn_mum && (int) $ap_mia_row['image_consent_by'] === $mn_mum && (int) $ap_mia_row['rules_accepted_by'] === $mn_mum && null === $GC::pending( $ap_mia_row ) && '' === (string) $ap_mia_row['application_data'], 'conferma del genitore: dopo la conferma i consensi sono attribuiti a lui e l\'attesa sparisce' );
+asem_ok( ! $GC::submit( $ap_gparam, $ap_gnonce )['ok'] && false !== strpos( $GC::confirm_page( $ap_gparam ), 'non è valido' ), 'conferma del genitore: il link si usa una volta sola' );
+// link scaduto, nuovo invio dalla segreteria (il vecchio link non vale più), limite di invii
+\AssociazioneSemplice\Applications::submit( array_merge( $ap_kid_in, array( 'first_name' => 'Nia', 'last_name' => 'Madre', 'tax_code' => 'BNCGNN12B04F205N', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
+$ap_nia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
+\AssociazioneSemplice\Applications::approve( $ap_nia, 'ap202' );
+preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np );
+$ap_nrow = $people->get( $ap_nia );
+$ap_nd   = json_decode( (string) $ap_nrow['application_data'], true );
+$ap_nd['guardian_confirm']['expires'] = time() - 10;
+$wpdb->update( Db::t( 'people' ), array( 'application_data' => wp_json_encode( $ap_nd ) ), array( 'id' => $ap_nia ) );
+asem_ok( $GC::pending( $people->get( $ap_nia ) )['expired'] && ! $GC::submit( $ap_np[1], wp_create_nonce( 'asem_gcf_' . $ap_nia ) )['ok'] && false !== strpos( $GC::confirm_page( $ap_np[1] ), 'scaduto' ), 'conferma del genitore: un link scaduto non conferma' );
+$ap_gn = count( $ap_mails );
+$GC::resend( $ap_nia );
+asem_ok( count( $ap_mails ) === $ap_gn + 1 && 1 === preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np2 ) && $ap_np2[1] !== $ap_np[1] && ! $GC::pending( $people->get( $ap_nia ) )['expired'], 'conferma del genitore: la segreteria rimanda l\'email con un link nuovo' );
+asem_ok( ! $GC::submit( $ap_np[1], wp_create_nonce( 'asem_gcf_' . $ap_nia ) )['ok'] && empty( $people->get( $ap_nia )['privacy_consent_by'] ), 'conferma del genitore: il link vecchio non vale più dopo il nuovo invio' );
+$GC::resend( $ap_nia );
+$GC::resend( $ap_nia );
+asem_ok( null !== asem_throws( function () use ( $GC, $ap_nia ) { $GC::resend( $ap_nia ); } ), 'conferma del genitore: i nuovi invii sono limitati all\'ora' );
+asem_ok( null !== asem_throws( function () use ( $GC, $ap_mia ) { $GC::resend( $ap_mia ); } ) && null !== asem_throws( function () use ( $GC, $mn_mum ) { $GC::resend( $mn_mum ); } ), 'conferma del genitore: se non c\'è nulla in attesa non c\'è niente da rimandare' );
+asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_nia ) && empty( $people->get( $ap_nia )['privacy_consent_by'] ), 'conferma del genitore: con link scaduto o non usato il genitore non è collegato al minore' );
+preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np3 );
+asem_ok( $GC::submit( $ap_np3[1], wp_create_nonce( 'asem_gcf_' . $ap_nia ) )['ok'] && ( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_nia ) || in_array( $mn_mum, array_map( 'intval', array_column( \AssociazioneSemplice\Guardians::of( $ap_nia ), 'id' ) ), true ) ), 'conferma del genitore: l\'ultimo link vale e crea il collegamento anche per la domanda già approvata' );
 
 // modulo: invio, esca, tempo minimo, gettone, limite
 $AP = '\AssociazioneSemplice\Frontend\Application';
@@ -8929,6 +9036,8 @@ $ap_post = function ( array $data ) use ( $AP ) {
 	$_SERVER['REQUEST_METHOD'] = 'POST';
 	$_POST                     = wp_slash( $data );
 	$html                      = $AP::form_html();
+	\AssociazioneSemplice\ResponseMail::flush(); // fine della richiesta: le email in coda partono e la coda torna spenta come nella richiesta successiva
+	\AssociazioneSemplice\ResponseMail::defer( false );
 	$_SERVER                   = $old_s;
 	$_POST                     = $old_p;
 	return $html;
@@ -10602,6 +10711,35 @@ asem_ok( MemberLogin::request( $pw_addr ) && count( $ml_mail ) === $df_n, 'sicur
 MemberLogin::send_queued();
 MemberLogin::defer( false );
 asem_ok( count( $ml_mail ) === $df_n + 1, 'sicurezza: a risposta consegnata l\'email parte' );
+// tempi di risposta uguali: stessa coda per il «Primo accesso», limite per indirizzo ancora valido, indirizzo noto e ignoto fanno lo stesso lavoro
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\ResponseMail::defer( true );
+$tr_n = count( $ml_mail );
+asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $pw_addr ) && count( $ml_mail ) === $tr_n && 1 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: il «Primo accesso» mette l\'email in coda e non la manda nella richiesta' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( 1 === count( $ml_mail ) - $tr_n && 0 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: a risposta consegnata l\'email del «Primo accesso» parte' );
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+$tr_lim = (int) \AssociazioneSemplice\Limits::get( 'first_access_per_email' );
+for ( $tr_i = 0; $tr_i < $tr_lim + 3; $tr_i++ ) {
+	MemberLogin::request( $pw_addr );
+}
+asem_ok( $tr_lim === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: il limite di email per indirizzo vale anche con la coda (' . $tr_lim . ')' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( $tr_lim === count( $ml_mail ) - $tr_n - 1, 'tempi di risposta: partono solo le email entro il limite' );
+$tr_known = null;
+$tr_other = null;
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+$tr_q = $wpdb->num_queries;
+MemberLogin::request( $pw_addr );
+$tr_known = $wpdb->num_queries - $tr_q;
+$tr_q = $wpdb->num_queries;
+MemberLogin::request( 'sconosciuto.tempi@example.org' );
+$tr_other = $wpdb->num_queries - $tr_q;
+\AssociazioneSemplice\ResponseMail::flush();
+WP_CLI::log( 'tempi di risposta: richieste al database, indirizzo noto ' . $tr_known . ', ignoto ' . $tr_other );
+asem_ok( abs( $tr_known - $tr_other ) <= 1, 'tempi di risposta: indirizzo di un socio e indirizzo ignoto fanno lo stesso lavoro sul database' );
+\AssociazioneSemplice\ResponseMail::defer( false );
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
 // chi riceve più email non perde il primo link, ma le richieste valide sono al massimo 3
 $cf_addr = 'codici.prova@example.org';
 $cf_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Codici', 'last_name' => 'Prova', 'email' => $cf_addr ) );
@@ -10959,6 +11097,7 @@ $er_cnt    = static function ( string $e ) use ( $wpdb, $er_tbl ): int {
 $er_reset  = static function () use ( $er_keyip ) {
 	delete_transient( $er_keyip );
 	delete_transient( 'asem_evq_dropped' );
+	delete_transient( 'asem_evq_dropped_seats' );
 };
 $er_r      = array_merge( $er_in, array( 'tax_code' => 'NRIMRC92D15F205P', 'first_name' => 'Nora', 'last_name' => 'Pagamenti', 'birth_date' => '1992-04-15' ) );
 $er_reset();
@@ -10966,12 +11105,18 @@ Settings::update( array( 'limits' => array( 'event_seats_per_email' => 10, 'even
 set_transient( $er_keyem( 'tetto.email@example.com' ), 9, DAY_IN_SECONDS );
 $er_t1 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
 $er_t2 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
-asem_ok( 'ok' === $er_t1['status'] && 'ok' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore, e la risposta è sempre la stessa' );
+$er_mn1 = count( $er_mails );
+asem_ok( 'ok' === $er_t1['status'] && 'invalid' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ) && 0 === strpos( $er_t2['errors'][0], 'Con questo indirizzo email sono già stati chiesti molti posti nelle ultime 24 ore: per altri posti scrivi alla segreteria' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore e legge un messaggio onesto, senza richiesta registrata' );
+asem_ok( 1 === (int) get_transient( 'asem_evq_dropped_seats' ) && false !== strpos( $er::queue_alert(), '1 richiesta è stata respinta perché una email o una connessione aveva già chiesto molti posti' ), 'tetto posti: il rifiuto è contato e l\'avviso in Bacheca lo riporta (anche con la coda non piena)' );
+$er_c1 = $er::course_create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $er_ca );
+asem_ok( 'invalid' === $er_c1['status'] && 0 === strpos( $er_c1['errors'][0], 'Con questo indirizzo email' ) && 1 === $er_cnt( 'tetto.email@example.com' ) && 2 === (int) get_transient( 'asem_evq_dropped_seats' ), 'tetto posti: stesso messaggio e stesso conteggio per le iscrizioni ai corsi' );
 $er_reset();
 Settings::update( array( 'limits' => array( 'event_seats_per_email' => 200, 'event_seats_per_ip' => 10, 'event_requests_max' => 5000 ) ) );
 set_transient( $er_keyip, 10, DAY_IN_SECONDS );
 $er_t3 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.ip1@example.com' ) ), $acts->get( $er_a ), $er_o );
-asem_ok( 'ok' === $er_t3['status'] && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse' );
+asem_ok( 'invalid' === $er_t3['status'] && 0 === strpos( $er_t3['errors'][0], 'Da questa connessione sono già stati chiesti molti posti nelle ultime 24 ore: riprova più tardi o scrivi alla segreteria' ) && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse, e legge un messaggio onesto' );
+$er_c2 = $er::course_create( array_merge( $er_r, array( 'email' => 'tetto.ip2@example.com' ) ), $er_ca );
+asem_ok( 'invalid' === $er_c2['status'] && 0 === strpos( $er_c2['errors'][0], 'Da questa connessione' ) && 0 === $er_cnt( 'tetto.ip2@example.com' ) && count( $er_mails ) === $er_mn1, 'tetto posti: stesso messaggio per le iscrizioni ai corsi e nessuna email' );
 wp_set_current_user( 1 );
 $er::create( array_merge( $er_r, array( 'email' => 'tetto.segreteria@example.com' ) ), $acts->get( $er_a ), $er_o );
 asem_ok( 1 === $er_cnt( 'tetto.segreteria@example.com' ), 'tetto posti: la segreteria non è mai limitata' );
@@ -11242,7 +11387,7 @@ foreach ( array_merge( $ru_ids, array( $ru_adult, $ru_minor, $ru_volun ) ) as $r
 // ---------- Dipendenti ----------
 wp_set_current_user( 1 );
 add_filter( 'pre_wp_mail', '__return_true' ); // nessuna email vera: l'invito parte «a vuoto»
-$em_keys = \AssociazioneSemplice\EmployeeRules::keys();
+$em_keys = \AssociazioneSemplice\EmployeeRules::enforced_keys(); // le aree con già le porte; le altre nove sono solo memorizzate
 asem_ok( null !== get_role( Plugin::ROLE_EMPLOYEE ) && 'Dipendente' === wp_roles()->role_names[ Plugin::ROLE_EMPLOYEE ], 'dipendente: il ruolo esiste e si chiama «Dipendente»' );
 asem_ok( get_role( Plugin::ROLE_EMPLOYEE )->capabilities === get_role( Plugin::ROLE_SECRETARY )->capabilities, 'dipendente: il ruolo parte con le stesse capability della segreteria' );
 $em_sy     = Settings::social_year()->label();
@@ -11370,9 +11515,25 @@ asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità real
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
 remove_filter( 'wp_die_handler', $em_die );
 
-// solo i sei permessi si tolgono; solo chi ha titolo li toglie
+// si tolgono solo le 15 aree dell'elenco; solo chi ha titolo le toglie
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'asem_manage', 'people', 'asem_operate', 'members' ) );
-asem_ok( array( 'courses' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 6 === count( $em_keys ), 'dipendente: dei permessi solo i sei dell\'elenco si possono togliere, gli altri nomi si ignorano' );
+asem_ok( array( 'people', 'courses' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 15 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 6 === count( $em_keys ), 'dipendente: si tolgono solo le 15 aree dell\'elenco, gli altri nomi si ignorano' );
+asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-people' ) ) && null === $em_blocked( 'admin-post.php', array( 'action' => 'asem_save_person' ) ), 'dipendente: le nove aree nuove sono per ora solo memorizzate, non chiudono nessuna porta' );
+asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipendente: togliere un\'area nuova resta nel registro azioni' );
+// avviso in Bacheca: fisso, solo a chi ha titolo, solo se esistono dipendenti, finché la pagina dei dipendenti non è stata aperta
+delete_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN );
+asem_ok( ! \AssociazioneSemplice\Employees::areas_review_pending( 1 ) && ( array() !== \AssociazioneSemplice\EmployeeRules::pending_keys() ), 'permessi per area: finché le porte di tutte le aree non sono attive l\'avviso non compare' );
+\AssociazioneSemplice\Employees::mark_areas_seen( 1 );
+asem_ok( ! get_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN ), 'permessi per area: aprire la pagina prima delle porte non segna l\'avviso come visto' );
+// salvataggio dalla pagina: le aree «in arrivo» non cambiano, quelle attive seguono le spunte
+Admin\EmployeesPage::save( array( 'user_id' => $em_uid, 'perm' => array( 'courses' ) ) );
+asem_ok( array( 'people', 'events', 'collect', 'expenses', 'refunds', 'funds' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'permessi per area: il modulo toglie le aree attive non spuntate e lascia com\'erano quelle «in arrivo»' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people', 'courses' ) );
+asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( 0, true ), 'permessi per area: l\'avviso in Bacheca è solo per chi ha titolo' );
+\AssociazioneSemplice\Employees::mark_areas_seen( $em_uid, true );
+asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ), 'permessi per area: aprire la pagina senza titolo non toglie l\'avviso' );
+\AssociazioneSemplice\Employees::mark_areas_seen( 1, true );
+asem_ok( ! \AssociazioneSemplice\Employees::areas_review_pending( 1, true ), 'permessi per area: aperta la pagina dei dipendenti, l\'avviso sparisce' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
 $em_try = function ( int $who ) use ( $em_uid ) {
 	wp_set_current_user( $who );

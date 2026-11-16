@@ -82,6 +82,17 @@ final class HealthCommand extends Command
             $this->warn('nota  '.(is_string($warning) ? $warning : ''));
         }
 
+        // APCu: senza, ogni richiesta che cifra chiede la chiave al servizio chiavi (con il servizio remoto costa 50–150 ms).
+        if (! (extension_loaded('apcu') && filter_var(ini_get('apc.enabled'), FILTER_VALIDATE_BOOLEAN))) {
+            $remote = config('saas.crypto.vault') !== 'local';
+            $this->warn('nota  APCu non attivo'.($remote ? ': le chiavi si chiedono al servizio chiavi a ogni richiesta (più lento)' : '').'.');
+        }
+        // OPcache: senza, ogni richiesta rilegge e ricompila il codice.
+        $opcache = function_exists('opcache_get_status') ? @opcache_get_status(false) : false;
+        if (! is_array($opcache) || ($opcache['opcache_enabled'] ?? false) !== true) {
+            $this->warn('nota  OPcache non attivo: il codice si ricompila a ogni richiesta (più lento).');
+        }
+
         if (config('saas.auth.require_two_factor') === false) {
             $this->warn('nota  Verifica in due passaggi SPENTA (SAAS_REQUIRE_TWO_FACTOR=false): solo sviluppo, dati inventati.');
         }
