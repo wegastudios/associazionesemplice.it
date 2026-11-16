@@ -16,7 +16,9 @@ use AssociazioneSemplice\FileMigration;
 use AssociazioneSemplice\Inventory;
 use AssociazioneSemplice\PrivateFiles;
 
-$fc_ok = function_exists( 'free_ok' ) ? 'free_ok' : 'asem_ok';
+require_once __DIR__ . '/backup_helpers.php'; // copie rifirmate, copie «all'antica», finzione «un altro sito»
+
+$fc_ok =function_exists( 'free_ok' ) ? 'free_ok' : 'asem_ok';
 global $wpdb;
 
 if ( ! FileCrypt::available() ) {
@@ -694,6 +696,40 @@ if ( isset( $fc_cid ) ) {
 	$wpdb->delete( Db::t( 'medical_certs' ), array( 'id' => $fc_cid ) );
 }
 $fc_za->close();
+// Campi che nel database non sono ancora cifrati e che sul sito non si possono cifrare (senza sodium, o con la chiave che non si apre): escono com'sono, dichiarati nel manifest
+$fc_pid4 = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'people' ) . ' ORDER BY id LIMIT 1' );
+if ( $fc_pid4 > 0 ) {
+	$fc_note4 = 'Nota-riservata-' . bin2hex( random_bytes( 4 ) );
+	$fc_old4  = (string) $wpdb->get_var( 'SELECT notes FROM ' . Db::t( 'people' ) . ' WHERE id = ' . $fc_pid4 );
+	$wpdb->update( Db::t( 'people' ), array( 'notes' => $fc_note4 ), array( 'id' => $fc_pid4 ) );
+	$fc_src4 = function ( $s ) {
+		$s[] = array( 'key' => 'prova_campi', 'table' => 'people', 'stored' => 'card_number', 'sha' => 'tax_code', 'enc' => 'phone', 'prio' => 99, 'fields' => array( 'notes' ) );
+		return $s;
+	};
+	add_filter( 'asem_file_sources', $fc_src4 );
+	$fc_f4 = function ( string $zip ) use ( $fc_pid4 ): array {
+		$z   = new ZipArchive();
+		$z->open( $zip );
+		$out = array( 'man' => json_decode( (string) $z->getFromName( 'manifest.json' ), true ), 'jsonl' => (string) $z->getFromName( 'tabelle/asem_people.jsonl' ) );
+		$z->close();
+		wp_delete_file( $zip );
+		return $out;
+	};
+	$fc_a4 = $fc_f4( Backup::export( false ) ); // con la cifratura attiva il campo esce cifrato
+	FileCrypt::$disabled = true;
+	$fc_b4               = $fc_f4( Backup::export( false ) ); // senza sodium non si può cifrare
+	FileCrypt::$disabled = false;
+	asem_bk_other_site( true );
+	$fc_c4 = $fc_f4( Backup::export( false ) ); // la chiave non si apre su questo sito
+	asem_bk_other_site( false );
+	remove_filter( 'asem_file_sources', $fc_src4 );
+	$wpdb->update( Db::t( 'people' ), array( 'notes' => $fc_old4 ), array( 'id' => $fc_pid4 ) );
+	$fc_ok( false === strpos( $fc_a4['jsonl'], $fc_note4 ) && empty( $fc_a4['man']['plain_fields'] ), 'campi non cifrati: con la cifratura attiva escono cifrati e il manifest non dichiara campi in chiaro' );
+	$fc_ok( false !== strpos( $fc_b4['jsonl'], $fc_note4 ) && (int) ( $fc_b4['man']['plain_fields']['asem_people.notes'] ?? 0 ) >= 1, 'campi non cifrati: senza sodium il valore NON sparisce dalla copia (esce com\'è) e il manifest conta i campi in chiaro' );
+	$fc_ok( false !== strpos( $fc_c4['jsonl'], $fc_note4 ) && (int) ( $fc_c4['man']['plain_fields']['asem_people.notes'] ?? 0 ) >= 1 && (int) get_option( Backup::OPT_PLAIN, 0 ) >= 1, 'campi non cifrati: con la chiave che non si apre il valore esce com\'è, dichiarato nel manifest, e il numero resta per la pagina «Copia di sicurezza»' );
+	FileKey::reset();
+}
+
 $fc_ok( 'La frase deve avere almeno 12 caratteri.' === FileKey::recovery_error( 'corta', 'corta' ) && 'Le due frasi non coincidono.' === FileKey::recovery_error( 'una frase abbastanza lunga', 'un\'altra frase lunga' ) && '' === FileKey::recovery_error( 'una frase abbastanza lunga', 'una frase abbastanza lunga' ), 'frase: lunghezza minima e ripetizione uguale' );
 
 // ripristino sullo stesso sito: la chiave del sito apre la copia, senza frase
@@ -705,12 +741,18 @@ $fc_ok( 1 === (int) Documents::get( $fc_doc )['enc_ver'], 'ripristino: la versio
 // ripristino con un file della copia manomesso: non viene rimesso
 $fc_tz = wp_tempnam( 'asem-fc-zip' );
 copy( $fc_zip, $fc_tz );
-$fc_zt = new ZipArchive();
-$fc_zt->open( $fc_tz );
 $fc_bad = $fc_blob;
 $fc_bad[ 100 ] = chr( ord( $fc_bad[100] ) ^ 1 );
-$fc_zt->addFromString( 'allegati/' . $fc_row['file_stored'], $fc_bad );
-$fc_zt->close();
+$fc_tz0 = wp_tempnam( 'asem-fc-zip' );
+copy( $fc_zip, $fc_tz0 );
+$fc_zt0 = new ZipArchive();
+$fc_zt0->open( $fc_tz0 );
+$fc_zt0->addFromString( 'allegati/' . $fc_row['file_stored'], $fc_bad ); // cambiato senza rifare la firma: la copia si ferma prima di toccare qualcosa
+$fc_zt0->close();
+$fc_e0 = (string) asem_or_free_throws( function () use ( $fc_tz0 ) { Backup::restore( $fc_tz0 ); } );
+$fc_ok( false !== strpos( $fc_e0, 'è stata modificata dopo essere stata fatta' ) && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'ripristino: un file della copia cambiato dopo la firma ferma la copia, e il file sul sito resta intatto' );
+wp_delete_file( $fc_tz0 );
+asem_bk_reseal( $fc_tz, function ( $z ) use ( $fc_row, $fc_bad ) { $z->addFromString( 'allegati/' . $fc_row['file_stored'], $fc_bad ); } ); // rifirmata: resta il controllo del file con la sua chiave
 $fc_r2 = Backup::restore( $fc_tz );
 $fc_ok( $fc_r2['bad'] >= 1 && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'ripristino: un file della copia che non coincide con la sua impronta non viene rimesso e si segnala; quello sul sito resta intatto' );
 wp_delete_file( $fc_tz );
@@ -727,16 +769,76 @@ delete_option( FileKey::OPT_KEYS );
 delete_option( FileKey::OPT_SITE );
 FileKey::reset();
 $fc_ok( 'none' === FileKey::state() && FileKey::site_id() !== $fc_site, 'altro sito: nessuna chiave salvata e un altro identificativo' );
-$fc_e1 = (string) asem_or_free_throws( function () use ( $fc_zip ) { Backup::restore( $fc_zip ); } );
-$fc_ok( false !== strpos( $fc_e1, 'Scrivi la frase' ) && false !== strpos( $fc_e1, 'codice di licenza' ), 'altro sito: senza la frase il ripristino dice quale frase scrivere e non cambia nulla' );
-$fc_e2 = (string) asem_or_free_throws( function () use ( $fc_zip ) { Backup::restore( $fc_zip, 'frase sbagliata ma lunga' ); } );
+$fc_e0 = (string) asem_or_free_throws( function () use ( $fc_zip ) { Backup::restore( $fc_zip ); } );
+$fc_ok( 0 === strpos( $fc_e0, 'Questa copia non è stata fatta su questo sito.' ) && 'none' === FileKey::state(), 'altro sito: senza la conferma scritta il ripristino si ferma, spiega che cosa verrebbe sostituito e non cambia nulla' );
+// senza la frase i dati in chiaro tornano lo stesso: le chiavi si adottano «chiuse» (con le loro frasi) e si dice quanti documenti restano chiusi
+$fc_pn0 = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'people' ) . ' WHERE 1=1' );
+$fc_rc = Backup::restore( $fc_zip, '', true );
+$fc_ok( (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) === $fc_pn0 && $fc_rc['rows'] > 0 && 0 === $fc_rc['bad'], 'altro sito: senza la frase soci e prima nota (in chiaro) tornano lo stesso' );
+$fc_ok( $fc_rc['closed'] >= 1 && is_file( $fc_path ) && 'mismatch' === FileKey::state() && FileKey::site_id() === $fc_site && FileKey::has_keys(), 'altro sito: senza la frase i documenti cifrati si rimettono ma restano chiusi (e si contano), con la chiave adottata chiusa e l\'identificativo della copia' );
+$fc_ok( (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s', 'backup.keys_adopted' ) ) >= 1, 'altro sito: le chiavi e l\'identificativo adottati lasciano una riga nel registro azioni' );
+$fc_ok( FileKey::recover_with_phrase( $fc_phrase ) >= 1 && 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'altro sito: la chiave adottata chiusa si riapre dopo con la frase («Riapri la chiave con la frase») e il documento si legge' );
+delete_option( FileKey::OPT_KEYS );
+delete_option( FileKey::OPT_SITE );
+FileKey::reset();
+$fc_e2 = (string) asem_or_free_throws( function () use ( $fc_zip ) { Backup::restore( $fc_zip, 'frase sbagliata ma lunga', true ); } );
 $fc_ok( false !== strpos( $fc_e2, 'non è quella giusta' ), 'altro sito: con la frase sbagliata il ripristino si ferma con un errore chiaro' );
-$fc_r4 = Backup::restore( $fc_zip, $fc_phrase );
+$fc_r4 = Backup::restore( $fc_zip, $fc_phrase, true );
 $fc_ok( 0 === $fc_r4['bad'] && FileKey::site_id() === $fc_site && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ) && 'ok' === FileKey::state(), 'altro sito: con la frase giusta il ripristino riesce, il sito prende l\'identificativo della copia e i file si aprono' );
 remove_filter( 'salt', $fc_salt, 10 );
 FileKey::reset();
 FileKey::recover( '', $fc_new, '' ); // si torna ai codici di prima
 $fc_ok( 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'altro sito: rimessi i codici di prima tutto resta leggibile' );
+// senza la libreria sodium: i dati in chiaro tornano, i documenti cifrati si rimettono chiusi (non si possono né aprire né controllare qui)
+$fc_pn1 = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'people' ) . ' WHERE 1=1' );
+FileCrypt::$disabled = true;
+FileKey::reset();
+$fc_rn = Backup::restore( $fc_zip );
+FileCrypt::$disabled = false;
+FileKey::reset();
+$fc_ok( (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) === $fc_pn1 && $fc_rn['rows'] > 0 && 0 === $fc_rn['bad'] && $fc_rn['closed'] >= 1, 'senza sodium: il ripristino non rifiuta la copia: i dati in chiaro tornano e i documenti cifrati restano chiusi (e si contano)' );
+$fc_ok( 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'senza sodium: tornata la libreria i documenti si aprono come prima' );
+// una copia con troppe chiavi, o con un profilo di derivazione che il plugin non produce, non si accetta
+$fc_zk = wp_tempnam( 'asem-fc-zip' );
+copy( $fc_zip, $fc_zk );
+asem_bk_reseal(
+	$fc_zk,
+	function ( $z ) {
+		$b    = json_decode( (string) $z->getFromName( 'chiavi.json' ), true );
+		$k    = reset( $b['keys'] );
+		$base = (int) array_key_first( $b['keys'] );
+		for ( $i = 1; $i <= 8; $i++ ) {
+			$b['keys'][ $base + $i ] = $k;
+		}
+		$z->addFromString( 'chiavi.json', wp_json_encode( $b ) );
+	}
+);
+$fc_ek = (string) asem_or_free_throws( function () use ( $fc_zk ) { Backup::restore( $fc_zk ); } );
+$fc_ok( false !== strpos( $fc_ek, 'troppe chiavi' ), 'ripristino: una copia con troppe chiavi viene rifiutata prima di fare derivazioni' );
+wp_delete_file( $fc_zk );
+$fc_zp = wp_tempnam( 'asem-fc-zip' );
+copy( $fc_zip, $fc_zp );
+asem_bk_reseal(
+	$fc_zp,
+	function ( $z ) {
+		$b = json_decode( (string) $z->getFromName( 'chiavi.json' ), true );
+		foreach ( $b['keys'] as $id => $k ) {
+			foreach ( array( 'r', 'l' ) as $n ) {
+				if ( isset( $k[ $n ]['k'] ) ) {
+					$b['keys'][ $id ][ $n ]['k'] = array( 'alg' => 'argon2id13', 'salt' => base64_encode( str_repeat( 's', 16 ) ), 'ops' => 12, 'mem' => 1024 * 1048576 );
+				}
+			}
+		}
+		$z->addFromString( 'chiavi.json', wp_json_encode( $b ) );
+	}
+);
+asem_bk_other_site( true ); // qui la chiave del sito non apre quella della copia: resterebbe solo la frase, ma il suo profilo non è tra quelli che il plugin produce
+$fc_ep = (string) asem_or_free_throws( function () use ( $fc_zp, $fc_phrase ) { Backup::restore( $fc_zp, $fc_phrase, true ); } );
+asem_bk_other_site( false );
+$fc_ok( false !== strpos( $fc_ep, 'non è quella giusta' ) && 'ok' === FileKey::state(), 'ripristino: un profilo di derivazione che il plugin non produce (1 GiB, 12 giri) non viene mai eseguito, nemmeno con la frase giusta, e nulla cambia' );
+wp_delete_file( $fc_zp );
 wp_delete_file( $fc_zip );
 
 // copia fatta su un server con poca memoria: la frase funziona lo stesso, il metodo è scritto nella copia e il ripristino lo legge da lì
@@ -755,8 +857,8 @@ delete_option( FileKey::OPT_KEYS );
 delete_option( FileKey::OPT_SITE );
 FileKey::reset();
 $fc_ok( 'none' === FileKey::state(), 'altro sito: senza chiavi salvate si parte da zero' );
-$fc_e3 = (string) asem_or_free_throws( function () use ( $fc_zip2 ) { Backup::restore( $fc_zip2, 'frase sbagliata ma lunga' ); } );
-$fc_r5 = Backup::restore( $fc_zip2, $fc_phrase );
+$fc_e3 = (string) asem_or_free_throws( function () use ( $fc_zip2 ) { Backup::restore( $fc_zip2, 'frase sbagliata ma lunga', true ); } );
+$fc_r5 = Backup::restore( $fc_zip2, $fc_phrase, true );
 $fc_ok( false !== strpos( $fc_e3, 'non è quella giusta' ) && 0 === $fc_r5['bad'] && 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'copia con poca memoria: su un altro sito il ripristino con la frase riesce (e con quella sbagliata si ferma)' );
 $fc_ok( 'encrypt' === FileKey::mode() && FileKey::check()['valid'], 'ripristino: dopo il ripristino la cifratura resta attiva e la chiave è valida' );
 remove_filter( 'salt', $fc_salt, 10 );

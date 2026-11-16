@@ -56,6 +56,8 @@ function asem_set_fiscal_month( int $m ): void {
 	\AssociazioneSemplice\FiscalYears::seed();
 }
 
+require_once __DIR__ . '/backup_helpers.php'; // aiuti per le prove della copia di sicurezza (copie rifirmate, «all'antica», altro sito)
+
 function asem_throws( callable $f ): ?string {
 	try {
 		$f();
@@ -7717,6 +7719,8 @@ asem_ok( in_array( 'asem_people', $bk_tables, true ) && in_array( 'asem_transact
 Attachments::prepare_dir();
 $bk_file = Attachments::dir() . '/' . str_repeat( 'a', 32 );
 file_put_contents( $bk_file, 'contenuto allegato' );
+$wpdb->insert( Db::t( 'attachments' ), array( 'transaction_id' => 0, 'original_name' => 'prova-copia.txt', 'stored_name' => str_repeat( 'a', 32 ), 'mime' => 'text/plain', 'size_bytes' => 18, 'sha256' => hash( 'sha256', 'contenuto allegato' ), 'created_at' => Db::now() ) ); // l'allegato si rimette solo se una riga dei dati lo cita
+$bk_att_row = (int) $wpdb->insert_id;
 Settings::update( array( 'association_name' => 'Associazione di prova' ) );
 $bk_zip = \AssociazioneSemplice\Backup::export( true );
 $za     = new ZipArchive();
@@ -7730,7 +7734,16 @@ $has_att = false !== $za->locateName( 'allegati/' . str_repeat( 'a', 32 ) );
 $za->close();
 asem_ok( 'associazionesemplice' === $man['plugin'] && (int) $man['tables']['asem_people'] === $ppl && count( $p_lines ) === $ppl && $has_att && 'Associazione di prova' === $settings_json['settings']['association_name'] && ! isset( $settings_json['settings']['stripe_secret_key'] ) && \AssociazioneSemplice\Backup::last() > 0, 'copia: il file contiene tabelle, impostazioni (senza chiavi segrete), allegati e indice' );
 asem_ok( ! isset( $settings_json['settings']['license_key'] ) && ! isset( $settings_json['options']['asem_card_salt'] ) && ! isset( $settings_json['options']['asem_ical_salt'] ), 'copia: chiave di licenza e sali dei QR/calendario restano sul sito, non finiscono nel file' );
-asem_ok( $man === \AssociazioneSemplice\Backup::inspect( $bk_zip ), 'copia: il file si riconosce come copia valida' );
+$bk_origin = '';
+asem_ok( $man === \AssociazioneSemplice\Backup::inspect( $bk_zip, $bk_origin ) && 'same' === $bk_origin, 'copia: il file si riconosce come copia valida, fatta da questo sito' );
+$bk_key = \AssociazioneSemplice\BackupSeal::key( wp_salt( 'auth' ) );
+$zh     = new ZipArchive();
+$zh->open( $bk_zip );
+$bk_sz = \AssociazioneSemplice\BackupSeal::sizes( $zh );
+$bk_hs = \AssociazioneSemplice\BackupSeal::hashes( $zh, $bk_sz['sizes'] );
+$zh->close();
+asem_ok( is_array( $man['entries'] ?? null ) && $man['entries'] == $bk_hs && isset( $man['entries']['impostazioni.json'], $man['entries']['tabelle/asem_people.jsonl'], $man['entries'][ 'allegati/' . str_repeat( 'a', 32 ) ] ) && ! isset( $man['entries']['manifest.json'] ), 'copia: il manifest porta l\'impronta di ogni voce (sempre, anche allegati e impostazioni)' );
+asem_ok( ( $man['sig'] ?? '' ) === \AssociazioneSemplice\BackupSeal::signature( $man, $bk_key ) && ( $man['kfp'] ?? '' ) === \AssociazioneSemplice\BackupSeal::fingerprint( $bk_key ), 'copia: il manifest è firmato (HMAC-SHA256) con una chiave ricavata dai codici di sicurezza del sito' );
 // PDF definitivi delle ricevute: stanno nella copia, con l'indice delle impronte
 $bk_rc = $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE pdf_path IS NOT NULL ORDER BY ( voided_at IS NULL ) DESC, id', ARRAY_A ); // prima le ricevute non annullate
 $zq    = new ZipArchive();
@@ -7816,10 +7829,16 @@ Settings::clear_secret( 'stripe_secret_key' );
 // una copia con un PDF manomesso: quel PDF non si rimette (l'impronta non coincide), il resto sì, e la ricevuta dà un errore chiaro
 $bk_tz = wp_tempnam( 'asem-bad' );
 copy( $bk_zip, $bk_tz );
+$bk_tz_plain = wp_tempnam( 'asem-bad' );
+copy( $bk_zip, $bk_tz_plain );
 $zt = new ZipArchive();
-$zt->open( $bk_tz );
-$zt->addFromString( 'documenti/' . $bk_rc[0]['pdf_path'], '%PDF-1.4 manomesso' );
+$zt->open( $bk_tz_plain );
+$zt->addFromString( 'documenti/' . $bk_rc[0]['pdf_path'], '%PDF-1.4 manomesso' ); // manomesso senza rifare la firma: la copia si ferma prima
 $zt->close();
+$bk_e_tz = asem_throws( function () use ( $bk_tz_plain ) { \AssociazioneSemplice\Backup::restore( $bk_tz_plain ); } );
+asem_ok( null !== $bk_e_tz && false !== strpos( $bk_e_tz, 'è stata modificata dopo essere stata fatta' ), 'ripristino: un PDF cambiato dopo la firma ferma tutta la copia, prima di toccare i dati' );
+wp_delete_file( $bk_tz_plain );
+asem_bk_reseal( $bk_tz, function ( $z ) use ( $bk_rc ) { $z->addFromString( 'documenti/' . $bk_rc[0]['pdf_path'], '%PDF-1.4 manomesso' ); } ); // rifirmata: il controllo delle impronte nel database lo fa la ricevuta
 wp_delete_file( $bk_pa );
 $res_t = \AssociazioneSemplice\Backup::restore( $bk_tz );
 wp_delete_file( $bk_tz );
@@ -7837,12 +7856,160 @@ $zbk->close();
 $before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
 $err = '';
 try {
-	\AssociazioneSemplice\Backup::restore( $broken );
+	\AssociazioneSemplice\Backup::restore( $broken, '', true ); // senza firma: è una copia di origine ignota, serve la conferma esplicita
 } catch ( \Throwable $e ) {
 	$err = $e->getMessage();
 }
 unlink( $broken );
 asem_ok( false !== strpos( $err, 'Nessun dato è stato cambiato' ) && $before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'ripristino: se qualcosa non va non cambia nulla' );
+
+// ---------- Firma, altro sito, tetti, ripristini insieme ----------
+$bk_cnt  = function () use ( $wpdb ): int {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+};
+$bk_people0 = $bk_cnt();
+$bk_audit_n = function ( string $action ) use ( $wpdb ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s', $action ) );
+};
+$bk_fresh = function () use ( $bk_zip ): string { // una copia nuova di zecca da rovinare
+	$f = wp_tempnam( 'asem-bad' );
+	copy( $bk_zip, $f );
+	return $f;
+};
+$bk_refused0 = $bk_audit_n( 'backup.restore_refused' );
+// 1. una riga cambiata dentro un file della copia (stesso sito): la copia è rifiutata e nulla cambia
+$bk_t1 = $bk_fresh();
+$zt1   = new ZipArchive();
+$zt1->open( $bk_t1 );
+$zt1->addFromString( 'tabelle/asem_people.jsonl', (string) $zt1->getFromName( 'tabelle/asem_people.jsonl' ) . "{\"id\":999999,\"type\":\"member\"}\n" );
+$zt1->close();
+$bk_e1 = asem_throws( function () use ( $bk_t1 ) { \AssociazioneSemplice\Backup::restore( $bk_t1 ); } );
+asem_ok( null !== $bk_e1 && false !== strpos( $bk_e1, 'è stata modificata dopo essere stata fatta' ) && false !== strpos( $bk_e1, 'Non è stato cambiato nulla' ) && $bk_cnt() === $bk_people0, 'firma: una riga cambiata in un file della copia (stesso sito) la fa rifiutare e non cambia nulla' );
+// 2. una voce che l'elenco non cita (un allegato aggiunto)
+$bk_t2 = $bk_fresh();
+$zt2   = new ZipArchive();
+$zt2->open( $bk_t2 );
+$zt2->addFromString( 'allegati/' . str_repeat( 'b', 32 ), 'contenuto in più' );
+$zt2->close();
+$bk_e2 = asem_throws( function () use ( $bk_t2 ) { \AssociazioneSemplice\Backup::restore( $bk_t2 ); } );
+asem_ok( null !== $bk_e2 && false !== strpos( $bk_e2, 'è stata modificata dopo essere stata fatta' ) && ! is_file( Attachments::dir() . '/' . str_repeat( 'b', 32 ) ), 'firma: una voce che l\'elenco non cita (stesso sito) fa rifiutare la copia' );
+// 3. firma sbagliata con i codici del sito: il manifest cambiato dopo la firma
+$bk_t3 = $bk_fresh();
+asem_bk_edit_manifest( $bk_t3, function ( $m ) { $m['created_at'] = '2000-01-01 00:00:00'; return $m; } );
+$bk_e3 = asem_throws( function () use ( $bk_t3 ) { \AssociazioneSemplice\Backup::restore( $bk_t3 ); } );
+$bk_t3b = $bk_fresh();
+asem_bk_edit_manifest( $bk_t3b, function ( $m ) { $m['sig'] = str_repeat( '0', 64 ); return $m; } );
+$bk_e3b = asem_throws( function () use ( $bk_t3b ) { \AssociazioneSemplice\Backup::restore( $bk_t3b ); } );
+asem_ok( null !== $bk_e3 && false !== strpos( $bk_e3, 'La firma di questa copia non è valida' ) && null !== $bk_e3b && false !== strpos( $bk_e3b, 'La firma di questa copia non è valida' ) && $bk_cnt() === $bk_people0, 'firma: un manifest cambiato o una firma sbagliata (stesso sito) fanno rifiutare la copia' );
+// anche con i codici dell'altro sito, l'impronta dei codici cambiata a mano non basta: senza conferma non si ripristina
+asem_ok( $bk_audit_n( 'backup.restore_refused' ) >= $bk_refused0 + 4, 'firma: ogni copia rifiutata lascia una riga nel registro azioni' );
+foreach ( array( $bk_t1, $bk_t2, $bk_t3, $bk_t3b ) as $bk_f ) {
+	wp_delete_file( $bk_f );
+}
+
+// 4. un altro sito (codici di sicurezza diversi): serve una conferma esplicita scritta; poi si ripristina e resta scritto nel registro
+$bk_act0 = $bk_audit_n( 'backup.restored' );
+asem_bk_other_site( true );
+$bk_o2 = '';
+\AssociazioneSemplice\Backup::inspect( $bk_zip, $bk_o2 );
+$bk_e4 = asem_throws( function () use ( $bk_zip ) { \AssociazioneSemplice\Backup::restore( $bk_zip ); } );
+asem_ok( 'other' === $bk_o2 && null !== $bk_e4 && 0 === strpos( $bk_e4, 'Questa copia non è stata fatta su questo sito. Ripristinala solo se è tua e sai da dove viene: sostituirà i dati attuali.' ) && false !== strpos( $bk_e4, 'RIPRISTINA DA ALTRO SITO' ) && false !== strpos( $bk_e4, 'Verranno sostituiti' ) && false !== strpos( $bk_e4, 'Non verranno toccati' ) && $bk_cnt() === $bk_people0 && $bk_audit_n( 'backup.restored' ) === $bk_act0, 'altro sito: la copia senza conferma si ferma con le parole semplici, l\'elenco di ciò che si sostituisce e quello che resta' );
+$wpdb->delete( Db::t( 'people' ), array( 'id' => $victim ) );
+$bk_r4 = \AssociazioneSemplice\Backup::restore( $bk_zip, '', true );
+asem_bk_other_site( false );
+$bk_row = $wpdb->get_row( $wpdb->prepare( 'SELECT details FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s ORDER BY id DESC LIMIT 1', 'backup.restored' ), ARRAY_A );
+asem_ok( 'other' === $bk_r4['origin'] && $bk_cnt() === $bk_people0 && $bk_audit_n( 'backup.restored' ) === $bk_act0 + 1 && false !== strpos( (string) ( $bk_row['details'] ?? '' ), '"origin":"other"' ), 'altro sito: con la conferma il ripristino riesce e il registro azioni dice che la copia veniva da un altro sito' );
+// una copia senza firma (fatta a mano o da una versione senza firma) si tratta allo stesso modo
+$bk_t5 = $bk_fresh();
+asem_bk_legacy( $bk_t5 );
+$bk_o5 = '';
+\AssociazioneSemplice\Backup::inspect( $bk_t5, $bk_o5 );
+$bk_e5 = asem_throws( function () use ( $bk_t5 ) { \AssociazioneSemplice\Backup::restore( $bk_t5 ); } );
+asem_ok( 'other' === $bk_o5 && null !== $bk_e5 && 0 === strpos( $bk_e5, 'Questa copia non è stata fatta su questo sito.' ), 'altro sito: una copia senza firma né impronte è di origine ignota e vuole la stessa conferma' );
+// un file della copia cambiato anche quando la copia viene da un altro sito: l'impronta nel manifest non coincide, la copia è rifiutata
+$bk_t6 = $bk_fresh();
+asem_bk_edit_manifest( $bk_t6, function ( $m ) { $m['kfp'] = '0123456789abcdef'; return $m; } ); // codici diversi: firma non verificabile
+$zt6 = new ZipArchive();
+$zt6->open( $bk_t6 );
+$zt6->addFromString( 'tabelle/asem_people.jsonl', (string) $zt6->getFromName( 'tabelle/asem_people.jsonl' ) . "{\"id\":999998}\n" );
+$zt6->close();
+$bk_e6 = asem_throws( function () use ( $bk_t6 ) { \AssociazioneSemplice\Backup::restore( $bk_t6, '', true ); } );
+asem_ok( null !== $bk_e6 && false !== strpos( $bk_e6, 'è stata modificata dopo essere stata fatta' ) && $bk_cnt() === $bk_people0, 'altro sito: anche con la conferma, un contenuto che non coincide con l\'elenco delle impronte fa rifiutare la copia' );
+wp_delete_file( $bk_t5 );
+wp_delete_file( $bk_t6 );
+
+// 5. registro azioni, accessi dei soci e notifiche push non fanno parte del ripristino
+Audit::log( 'prova.dopo_la_copia', 'settings', 0 );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $victim, 'login_email' => 'prova-ripristino@example.com', 'pass_hash' => 'x', 'created_at' => Db::now() ) );
+$bk_people_t = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Db::t( 'push_subs' ) ) );
+$bk_audit_total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) );
+$bk_r5 = \AssociazioneSemplice\Backup::restore( $bk_zip );
+asem_ok( 1 === $bk_audit_n( 'prova.dopo_la_copia' ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) > $bk_audit_total, 'ripristino: il registro azioni non viene sostituito (le righe fatte dopo la copia restano, e si aggiunge quella del ripristino)' );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) ) && ( ! $bk_people_t || 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) ) ) && ! empty( $bk_r5['members_reset'] ), 'ripristino: password dei soci e notifiche push non si ripristinano (e non restano legate a persone diverse): i soci rientrano con il link' );
+
+// 6. un ripristino alla volta
+Db::$lock_fake = '0';
+$bk_e7 = asem_throws( function () use ( $bk_zip ) { \AssociazioneSemplice\Backup::restore( $bk_zip ); } );
+Db::$lock_fake = 'x';
+asem_ok( null !== $bk_e7 && false !== strpos( $bk_e7, 'Un\'altra operazione è in corso' ), 'ripristino: mentre un altro è in corso il secondo viene rifiutato' );
+asem_ok( Db::lock_name( 'asem_backup_restore' ) !== Db::lock_name( 'asem_file_key' ) && Db::lock_name( 'asem_backup_restore', 'db1|wp_' ) !== Db::lock_name( 'asem_backup_restore', 'db1|wp2_' ), 'ripristino: il blocco ha un nome suo e per sito (Db::lock_name)' );
+
+// 7. tetti: dimensione di una voce, dimensione totale, numero di allegati (controllati sulle dimensioni dichiarate, prima di leggere)
+$bk_limits = array(
+	array( array( 'entry' => 20 ), 'troppo grande' ),
+	array( array( 'total' => 20 ), 'troppo grande' ),
+	array( array( 'attachments' => 0 ), 'troppi allegati' ),
+	array( array( 'small' => 5 ), 'troppo grande' ),
+);
+$bk_lim_ok = 0;
+foreach ( $bk_limits as $bk_l ) {
+	\AssociazioneSemplice\Backup::$test_limits = $bk_l[0];
+	$bk_el = asem_throws( function () use ( $bk_zip ) { \AssociazioneSemplice\Backup::restore( $bk_zip ); } );
+	$bk_lim_ok += ( null !== $bk_el && false !== strpos( $bk_el, $bk_l[1] ) ) ? 1 : 0;
+}
+\AssociazioneSemplice\Backup::$test_limits = array();
+asem_ok( 4 === $bk_lim_ok && $bk_cnt() === $bk_people0, 'ripristino: tetto per voce, tetto totale, numero di allegati e file piccoli oltre misura fanno rifiutare la copia prima di leggerla' );
+
+// 8. solo gli allegati che i dati citano; l'indice dei PDF si legge prima di toccare i dati
+$bk_t8 = $bk_fresh();
+asem_bk_legacy( $bk_t8, function ( $z ) { $z->addFromString( 'allegati/' . str_repeat( 'c', 32 ), 'nessuna riga lo cita' ); } );
+$bk_r8 = \AssociazioneSemplice\Backup::restore( $bk_t8, '', true );
+asem_ok( ! is_file( Attachments::dir() . '/' . str_repeat( 'c', 32 ) ) && (int) $bk_r8['skipped'] >= 1, 'ripristino: un file che nessuna riga cita non viene rimesso sul disco (e si conta)' );
+wp_delete_file( $bk_t8 );
+$bk_t9 = $bk_fresh();
+asem_bk_reseal( $bk_t9, function ( $z ) { $z->addFromString( 'documenti/indice.json', '{ non json' ); } );
+$wpdb->insert( Db::t( 'transactions' ), array( 'tx_date' => $today, 'type' => 'income', 'amount_cents' => 555, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => (int) $ledger->category_id_of_kind( 'other_income' ), 'description' => 'riga che deve restare', 'created_at' => Db::now() ) );
+$bk_e9 = asem_throws( function () use ( $bk_t9 ) { \AssociazioneSemplice\Backup::restore( $bk_t9 ); } );
+asem_ok( null !== $bk_e9 && false !== strpos( $bk_e9, 'indice dei documenti' ) && 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE description = 'riga che deve restare'" ), 'ripristino: l\'indice dei PDF rovinato ferma la copia prima di toccare i dati (nulla è cambiato)' );
+wp_delete_file( $bk_t9 );
+$bk_ta = $bk_fresh();
+asem_bk_reseal( $bk_ta, function ( $z ) { $z->addFromString( 'chiavi.json', '{ non json' ); } );
+$bk_ea = asem_throws( function () use ( $bk_ta ) { \AssociazioneSemplice\Backup::restore( $bk_ta ); } );
+asem_ok( null !== $bk_ea && false !== strpos( $bk_ea, 'Le chiavi contenute nella copia non sono valide' ) && 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE description = 'riga che deve restare'" ), 'ripristino: le chiavi rovinate fermano la copia prima di toccare i dati' );
+wp_delete_file( $bk_ta );
+
+// 9. password e frase scritta come per l'azzeramento, prima di guardare il file
+$bk_admin = wp_insert_user( array( 'user_login' => 'ripristinatore', 'user_pass' => 'Ripristina-Pass-1', 'user_email' => 'ripristinatore@example.com', 'role' => 'administrator' ) );
+wp_set_current_user( (int) $bk_admin );
+$bk_act = new ReflectionMethod( Admin\Actions::class, 'backup_restore' );
+$bk_act->setAccessible( true );
+$bk_call = function ( array $p ) use ( $bk_act ): string {
+	try {
+		$bk_act->invoke( null, $p );
+	} catch ( \InvalidArgumentException $e ) {
+		return $e->getMessage();
+	}
+	return '';
+};
+$bk_m1 = $bk_call( array( 'confirm_text' => 'RIPRISTINA', 'password' => 'Ripristina-Pass-1' ) );
+$bk_m2 = $bk_call( array( 'confirm' => 1, 'confirm_text' => 'ripristino', 'password' => 'Ripristina-Pass-1' ) );
+$bk_m3 = $bk_call( array( 'confirm' => 1, 'confirm_text' => 'RIPRISTINA', 'password' => 'sbagliata' ) );
+$bk_m4 = $bk_call( array( 'confirm' => 1, 'confirm_text' => 'RIPRISTINA', 'password' => '' ) );
+$bk_m5 = $bk_call( array( 'confirm' => 1, 'confirm_text' => 'RIPRISTINA', 'password' => 'Ripristina-Pass-1' ) );
+asem_ok( false !== strpos( $bk_m1, 'Spunta' ) && false !== strpos( $bk_m2, 'frase scritta' ) && false !== strpos( $bk_m3, 'password non è corretta' ) && false !== strpos( $bk_m4, 'password non è corretta' ) && false !== strpos( $bk_m5, 'Scegli il file della copia' ), 'ripristino: servono la spunta, la frase scritta «RIPRISTINA» e la password dell\'amministratore, controllate prima del file' );
+wp_set_current_user( 1 );
+$wpdb->delete( Db::t( 'transactions' ), array( 'description' => 'riga che deve restare' ) );
+$wpdb->delete( Db::t( 'attachments' ), array( 'id' => $bk_att_row ) );
 unlink( $bk_zip );
 if ( is_file( $bk_file ) ) {
 	unlink( $bk_file );
