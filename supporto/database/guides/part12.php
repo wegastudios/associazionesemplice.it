@@ -186,6 +186,60 @@ Entri con la tua email. In alto trovi **«Io»** e il nome dei tuoi figli: un cl
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-libro-soci-livelli-e-runts',
+        'title' => 'Libro soci, livelli di quota e dati per il RUNTS',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Nella pagina **Soci**, il pulsante degli strumenti ti porta a tre pagine che servono all'associazione per tenere in regola l'anagrafica: **«Libro soci»**, **«Livelli e quote»** e **«Dati per il RUNTS»**.
+
+## Il libro soci
+
+Il **«Libro soci»** elenca **tutti i soci in ordine di ingresso**, con la data della domanda, l'ammissione, l'eventuale cessazione e l'ultima quota. **Ospiti e genitori non soci non ci sono.** Ogni riga ha un **numero** e, se c'è, la **matricola** del socio; i minorenni mostrano il nome del **tutore**.
+
+Le colonne sono: **N. e matricola**, **Socio** (con il codice fiscale), **Nascita**, **Residenza**, **Tessera** (con il livello), **Ammissione**, **Cessazione** (con il motivo) e **Ultima quota**. In alto scegli **«Tutti»**, **«In carica»** o **«Cessati»**. Chi può esportare vede anche **«Stampa (PDF)»** e **«CSV»**.
+
+### Il libro di un anno fiscale
+
+Con **«Anno fiscale»** scegli un anno: vedi chi ha avuto una **tessera valida per almeno un giorno** di quell'anno.
+
+- **Anno ancora aperto: è una bozza.** La pagina dice che i numeri sono quelli di oggi e possono cambiare.
+- **Anno chiuso: è definitivo.** Alla chiusura il libro viene **emesso e bloccato** e **non cambia più**: la pagina lo dice («Libro soci definitivo: emesso e bloccato alla chiusura dell'anno fiscale …, non cambia più»).
+- **Se riapri l'ultimo anno chiuso**, il libro di quell'anno si rifà alla chiusura successiva: in cima trovi le **versioni** del libro definitivo, con la data e se la versione è **«in uso»** o **«superata dopo una riapertura»**.
+
+Per la chiusura e la riapertura degli anni fiscali vedi [Chiudere l'anno fiscale e leggere il rendiconto](guida:gestionale-chiudere-l-esercizio-e-leggere-il-rendiconto).
+
+## I livelli di socio
+
+In **«Livelli e quote»** crei i **livelli** dei soci: per esempio un **«Socio junior»** con una quota ridotta. Ogni livello ha:
+
+- **Nome**;
+- **Base**: il tipo di socio da cui parte (**Socio fondatore**, **Socio ordinario** o **Socio e volontario**);
+- **Quota**: facoltativa. **Senza una quota propria vale quella dell'associazione.**
+- **«attivo»**: la spunta dice se il livello è in uso;
+- **«vota»**: dice se chi ha quel livello ha **diritto di voto in assemblea**. **I minorenni non votano mai.** Un livello nuovo vota.
+
+Per ogni livello vedi quanti soci lo hanno. Per creare un livello compili **Nome**, **Base** e, se vuoi, **Quota**, poi **«Crea»**; per cambiarne uno premi **«Salva»** sulla sua riga. Può farlo chi può cambiare le impostazioni dell'associazione. Il livello di un socio si sceglie nella sua scheda e appare nel libro soci accanto alla tessera.
+
+## I dati per il RUNTS
+
+La pagina **«Dati per il RUNTS»** raccoglie i **numeri da comunicare al Registro unico del Terzo settore**, calcolati da soli dall'anagrafica **al 31 dicembre** dell'anno che scegli (con **«Anno»**). Il programma indica la **scadenza** per la comunicazione; se è passata, te lo ricorda: «La scadenza del … è passata: se non hai ancora comunicato questi dati, fallo appena puoi.»
+
+Vedi quattro numeri:
+
+- **Soci persone fisiche con diritto di voto**: i maggiorenni alla data, con un tipo di socio che vota;
+- **Enti soci con diritto di voto**, con quanti sono della stessa sezione del Registro;
+- **Volontari iscritti**: i soci con tipo **«Socio e volontario»**;
+- **Lavoratori**: gli utenti con il ruolo **Dipendente**; il programma ti invita a controllare che sia il numero giusto.
+
+Sotto trovi l'elenco degli **«Enti soci»**, con **«Stessa sezione»**, **«Altra sezione»** o **«Sezione non indicata»**.
+
+**L'avviso sul numero minimo di soci.** Se oggi i soci con diritto di voto sono sotto il minimo previsto per un'APS o un'ODV, la pagina te lo segnala con il numero di persone e di enti di oggi, e ti ricorda che in quel caso va comunicato al Registro. Se qualcuno ha la **tessera scaduta da poco**, vedi il suo nome: se rinnova, torna socio. L'avviso guarda i soci **di oggi**; i numeri nei riquadri sono quelli **al 31 dicembre**, da copiare nel portale del RUNTS.
+
+Se non sai quale numero comunicare, **chiedi al tuo commercialista**: il gestionale calcola dai dati che ha, non decide per te. Per i soci che sono enti vedi anche [Aggiungere e importare i soci](guida:gestionale-aggiungere-e-importare-i-soci).
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-rinnovare-una-tessera',
         'title' => 'Rinnovare una tessera e incassare la quota',
         'body' => <<<'MD'
