@@ -501,7 +501,22 @@ asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito
 $lic_resp = $lic_deny_resp( $pl_deny() );
 License::sync();
 asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'dopo l\'azzeramento un nuovo esito negativo vale di nuovo come il primo' );
-update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED' ), false );
+// motivi che non contano (PENDING, LICENSE_NOT_FOUND), prodotto diverso da quello salvato, primo esito troppo vecchio
+delete_option( License::OPT_DENIAL );
+foreach ( array( 'PENDING', 'LICENSE_NOT_FOUND' ) as $lic_rc ) {
+	$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => $lic_rc ) ), $lic_rc );
+	License::sync();
+	asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo ' . $lic_rc . ': non conta, non si memorizza e il Pro resta acceso' );
+}
+$lic_resp                 = $lic_deny_resp( $pl_deny( array( 'aud' => 'altro-prodotto' ) ) );
+$lic_resp['product_code'] = 'altro-prodotto';
+License::sync();
+asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo per un prodotto diverso da quello salvato sul sito: non conta, anche se la risposta e la prova concordano' );
+update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 8 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 8 * DAY_IN_SECONDS ), false );
+$lic_resp = $lic_deny_resp( $pl_deny() );
+License::sync();
+asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'esito negativo a più di 7 giorni dal primo: non si applica e diventa il nuovo primo' );
+update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 2 * DAY_IN_SECONDS ), false );
 $lic_resp = array( 'valid' => false, 'reason_code' => 'REVOKED', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'portal_attestation' => $pl_deny(), 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ) );
 $lic_r    = License::sync();
 asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta (due esiti firmati in giorni diversi), funzioni Pro sospese; il motivo è quello firmato' );

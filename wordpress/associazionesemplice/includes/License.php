@@ -242,8 +242,13 @@ final class License {
 		if ( empty( $r['valid'] ) ) {
 			// Un «non valida» conta solo con la prova negativa firmata dal portale, e si applica al secondo esito in un giorno UTC diverso:
 			// altrimenti è come un errore transitorio e lo stato resta com'era.
-			$audience = (string) ( $r['product_code'] ?? '' );
-			$audience = '' !== $audience ? $audience : (string) ( self::state()['product'] ?? '' );
+			// Il prodotto atteso è quello già salvato sul sito, non quello della risposta che si sta verificando (solo se manca, si usa questo).
+			$known    = (string) ( self::state()['product'] ?? '' );
+			$given    = (string) ( $r['product_code'] ?? '' );
+			if ( '' !== $known && '' !== $given && $known !== $given ) {
+				return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );
+			}
+			$audience = '' !== $known ? $known : $given;
 			$denial   = LicenseClient::verify_denial( (string) ( $r['portal_attestation'] ?? '' ), $key, $audience, $domain );
 			if ( null === $denial ) {
 				return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );

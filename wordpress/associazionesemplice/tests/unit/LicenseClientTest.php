@@ -267,6 +267,36 @@ final class LicenseClientTest extends TestCase {
 		$this->assertSame( $s1['stored'], $s2['stored'] );
 	}
 
+	public function test_only_four_reasons_count_as_a_denial(): void {
+		$this->assertSame( array( 'EXPIRED', 'SUSPENDED', 'REVOKED', 'DOMAIN_MISMATCH' ), C::DENY_CODES );
+		$this->assertNull( $this->deny( array( 'rc' => 'PENDING' ) ) );
+		$this->assertNull( $this->deny( array( 'rc' => 'LICENSE_NOT_FOUND' ) ) );
+	}
+
+	public function test_denial_with_an_expired_exp_is_refused(): void {
+		$this->assertNull( $this->deny( array( 'exp' => self::NOW ) ), 'exp uguale a adesso' );
+		$this->assertNull( $this->deny( array( 'exp' => self::NOW - 1 ) ), 'exp passato' );
+		$this->assertIsArray( $this->deny( array( 'exp' => self::NOW + 1 ) ), 'exp ancora nel futuro' );
+		list( $jwt, $jwks ) = $this->make( $this->claims( array( 'exp' => self::NOW ) ) );
+		$this->assertNull( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', 'esempio.it', self::NOW ), 'verify_attestation: exp uguale a adesso' );
+		$this->assertNull( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', 'esempio.it', self::NOW + 1 ), 'verify_attestation: exp passato' );
+	}
+
+	public function test_second_denial_must_come_within_seven_days(): void {
+		$first = strtotime( '2026-11-01 10:00:00 UTC' );
+		$s1    = C::denial_step( array(), array( 'rc' => 'EXPIRED', 'iat' => $first ) );
+		$this->assertSame( $first, $s1['stored']['iat'] );
+		$in = C::denial_step( $s1['stored'], array( 'rc' => 'EXPIRED', 'iat' => $first + 7 * 86400 - 3600 ) ); // 6 giorni e 23 ore
+		$this->assertTrue( $in['apply'] );
+		$this->assertSame( $s1['stored'], $in['stored'] );
+		$this->assertTrue( C::denial_step( $s1['stored'], array( 'rc' => 'EXPIRED', 'iat' => $first + 7 * 86400 ) )['apply'], 'esattamente 7 giorni' );
+		$late = $first + 7 * 86400 + 1;
+		$out  = C::denial_step( $s1['stored'], array( 'rc' => 'REVOKED', 'iat' => $late ) );
+		$this->assertFalse( $out['apply'] );
+		$this->assertSame( array( 'day' => gmdate( 'Y-m-d', $late ), 'rc' => 'REVOKED', 'iat' => $late ), $out['stored'], 'il nuovo diventa il primo' );
+		$this->assertTrue( C::denial_step( $out['stored'], array( 'rc' => 'REVOKED', 'iat' => $late + 86400 ) )['apply'], 'e un terzo il giorno dopo lo applica' );
+	}
+
 	public function test_denial_step_ignores_a_corrupt_stored_value(): void {
 		foreach ( array( array( 'day' => 'ieri', 'rc' => 'X' ), array( 'day' => array() ), array( 'rc' => 'EXPIRED' ), array( 'day' => '2026-11-1' ) ) as $bad ) {
 			$s = C::denial_step( $bad, array( 'rc' => 'EXPIRED', 'iat' => strtotime( '2026-11-16 10:00:00 UTC' ) ) );

@@ -228,7 +228,10 @@ final class LicenseClient {
 	}
 
 	/** Motivi con cui il portale firma un esito negativo. */
-	const DENY_CODES = array( 'EXPIRED', 'SUSPENDED', 'REVOKED', 'PENDING', 'DOMAIN_MISMATCH', 'LICENSE_NOT_FOUND' );
+	const DENY_CODES = array( 'EXPIRED', 'SUSPENDED', 'REVOKED', 'DOMAIN_MISMATCH' );
+
+	/** Entro quanto dal primo esito negativo deve arrivare il secondo perché si applichi: 7 giorni (secondi tra i due `iat`). */
+	const DENY_WINDOW = 604800;
 
 	/**
 	 * L'esito negativo firmato dal portale («licenza non valida»), se regge: firma, emittente, prodotto, dominio, scadenza, `res` = deny, motivo noto,
@@ -272,12 +275,18 @@ final class LicenseClient {
 	 * @return array ['apply' => bool, 'stored' => array da salvare]
 	 */
 	public static function denial_step( array $stored, array $denial ): array {
-		$day = gmdate( 'Y-m-d', (int) $denial['iat'] );
-		$old = isset( $stored['day'] ) && is_string( $stored['day'] ) && 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $stored['day'] ) ? $stored['day'] : '';
-		if ( '' === $old ) {
-			return array( 'apply' => false, 'stored' => array( 'day' => $day, 'rc' => (string) $denial['rc'] ) );
+		$iat   = (int) $denial['iat'];
+		$day   = gmdate( 'Y-m-d', $iat );
+		$fresh = array( 'day' => $day, 'rc' => (string) $denial['rc'], 'iat' => $iat );
+		$old   = isset( $stored['day'] ) && is_string( $stored['day'] ) && 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $stored['day'] ) ? $stored['day'] : '';
+		$oiat  = isset( $stored['iat'] ) && is_int( $stored['iat'] ) && $stored['iat'] > 0 ? $stored['iat'] : 0;
+		if ( '' === $old || 0 === $oiat ) {
+			return array( 'apply' => false, 'stored' => $fresh );
 		}
-		return array( 'apply' => $day > $old, 'stored' => array( 'day' => $old, 'rc' => (string) ( $stored['rc'] ?? '' ) ) );
+		if ( $iat - $oiat > self::DENY_WINDOW ) { // il primo è troppo vecchio: questo diventa il nuovo primo
+			return array( 'apply' => false, 'stored' => $fresh );
+		}
+		return array( 'apply' => $day > $old, 'stored' => array( 'day' => $old, 'rc' => (string) ( $stored['rc'] ?? '' ), 'iat' => $oiat ) );
 	}
 
 	private static function b64d( string $s ): string {
