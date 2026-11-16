@@ -1584,6 +1584,7 @@
   "Servizio temporaneamente sospeso. Contatta l'associazione." : "Service temporarily suspended. Please contact the association.",
   "Servono almeno l'email, il cellulare o il numero di tessera" : "At least the email, the mobile number or the card number is needed",
   "Sessione scaduta: riprova." : "Session expired: please try again.",
+  "Il modulo deve partire dalla pagina di accesso, oppure è scaduto: ricarica la pagina e riprova." : "The form must be sent from the login page, or it has expired: reload the page and try again.",
   "Settembre" : "September",
   "Si attesta che" : "This is to certify that",
   "Si conservano le ultime" : "The latest ones are kept:",
