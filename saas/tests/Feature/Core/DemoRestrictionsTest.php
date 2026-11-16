@@ -34,8 +34,7 @@ it('nella demo il resto del profilo e la lettura delle stesse pagine restano lib
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
     $this->actingAs($user)->put('/gestionale/profilo/nome', ['name' => 'Anna Rossi'])->assertSessionHasNoErrors();
-    $this->get('/gestionale/operatori')->assertOk();
-    $this->get('/gestionale/pagamenti-online')->assertOk();
+    $this->get('/gestionale/profilo')->assertOk();
     expect($user->refresh()->name)->toBe('Anna Rossi');
 });
 
