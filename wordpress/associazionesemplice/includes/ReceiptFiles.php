@@ -598,13 +598,29 @@ final class ReceiptFiles {
 		}
 		$db   = self::db();
 		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND ( pdf_path IS NOT NULL OR void_pdf_path IS NOT NULL ) ORDER BY number', $year ), ARRAY_A ) ?: array();
-		$path = wp_tempnam( 'asem-ricevute' );
-		$zip  = new \ZipArchive();
-		if ( true !== $zip->open( $path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
-			throw new \RuntimeException( Texts::t( 'Impossibile creare il file ZIP.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		if ( function_exists( 'set_time_limit' ) ) {
+			@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- con migliaia di PDF da decifrare il tempo di serie non basta
+		}
+		$path = PrivateFolder::temp_file( 'ricevute' ); // lo ZIP e i PDF decifrati stanno nella cartella riservata (già protetta), non in quella temporanea del server
+		if ( '' === $path ) {
+			throw new \RuntimeException( Texts::t( 'Impossibile creare il file ZIP: la cartella riservata non è scrivibile.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$n    = 0;
-		$temp = array(); // PDF decifrati per l'archivio: file temporanei, cancellati appena lo ZIP è scritto
+		$temp = array(); // PDF decifrati per l'archivio: file temporanei, cancellati appena lo ZIP è scritto (e comunque a fine richiesta, anche se questa si interrompe)
+		register_shutdown_function(
+			function () use ( &$temp ) {
+				foreach ( $temp as $t ) {
+					if ( is_file( $t ) ) {
+						wp_delete_file( $t );
+					}
+				}
+			}
+		);
+		$zip = new \ZipArchive();
+		if ( true !== $zip->open( $path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
+			wp_delete_file( $path );
+			throw new \RuntimeException( Texts::t( 'Impossibile creare il file ZIP.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		foreach ( $rows as $r ) {
 			foreach ( self::kinds() as $kind ) {
 				if ( 'ok' !== self::state( $r, $kind ) ) {
@@ -619,12 +635,15 @@ final class ReceiptFiles {
 					} catch ( \InvalidArgumentException $e ) {
 						continue;
 					}
-					$tmp = wp_tempnam( 'asem-ricevuta' );
-					if ( '' === (string) $tmp || false === file_put_contents( $tmp, $plain ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- file temporaneo dello scarico, cancellato appena lo ZIP è scritto
+					$tmp = PrivateFolder::temp_file( 'ricevuta' );
+					if ( '' === $tmp ) {
 						continue;
 					}
-					$temp[] = $tmp;
-					$src    = $tmp;
+					$temp[] = $tmp; // registrato prima di scriverci: se la richiesta si interrompe, il PDF in chiaro lo toglie la chiusura
+					if ( false === file_put_contents( $tmp, $plain ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- file temporaneo dello scarico, cancellato appena lo ZIP è scritto
+						continue;
+					}
+					$src = $tmp;
 				}
 				$zip->addFile( $src, $name );
 				$n++;
@@ -636,6 +655,7 @@ final class ReceiptFiles {
 			wp_delete_file( $t );
 		}
 		if ( ! $ok || ! is_file( $path ) ) {
+			wp_delete_file( $path );
 			throw new \RuntimeException( Texts::t( 'Creazione del file ZIP non riuscita.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return array( 'path' => $path, 'count' => $n );
