@@ -26,7 +26,9 @@ foreach ( array( array( 'Anna', 'Rossi' ), array( 'Bruno', 'Bianchi' ), array( '
 dati_ok( 3 === count( array_filter( $ids ) ), 'tre soci con iscrizione creati' );
 $aid = $acts->create( array( 'name' => 'Cena di prova', 'social_year' => $sy, 'kind' => 'event', 'fee_cents' => 1500, 'session' => array( 'session_date' => current_time( 'Y-m-d' ), 'capacity' => 10 ) ) );
 $sid = (int) $acts->sessions( $aid )[0]['id'];
-$acts->book( $sid, $ids[0] );
+foreach ( $ids as $pid ) {
+	$acts->book( $sid, $pid );
+}
 foreach ( array( 1500, 2500 ) as $i => $cents ) {
 	$tx = $ledger->record_receipt( array( 'date' => current_time( 'Y-m-d' ), 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $ids[ $i ], 'lines' => array( array( 'category_id' => $cat, 'amount_cents' => $cents, 'activity_id' => $aid, 'session_id' => $sid ) ) ) );
 	dati_ok( $tx > 0, "incasso da $cents centesimi registrato" );

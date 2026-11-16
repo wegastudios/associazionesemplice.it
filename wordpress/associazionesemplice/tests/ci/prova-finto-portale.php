@@ -35,7 +35,7 @@ prova_scenario( array() );
 // ---------- Avvio del finto portale (processo figlio, solo su 127.0.0.1) ----------
 $port = 18099;
 $proc = proc_open(
-	array( PHP_BINARY, '-S', '127.0.0.1:' . $port, '-t', $dir . '/fake-portal', $dir . '/fake-portal/router.php' ),
+	array( PHP_BINARY ?: 'php', '-S', '127.0.0.1:' . $port, '-t', $dir . '/fake-portal', $dir . '/fake-portal/router.php' ),
 	array( 1 => array( 'file', '/tmp/fake-portal.log', 'w' ), 2 => array( 'file', '/tmp/fake-portal.log', 'a' ) ),
 	$pipes,
 	$dir,
