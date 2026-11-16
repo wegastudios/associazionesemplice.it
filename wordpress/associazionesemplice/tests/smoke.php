@@ -10139,7 +10139,7 @@ unset( $_COOKIE[ $pw_cookie ] );
 asem_ok( false !== strpos( $ps_cls::inline_login( 'https://example.org/area/' ), 'name="password"' ) && 64 === strlen( $ps_guard( $ps_cls::inline_login( 'https://example.org/area/' ) ) ), 'accesso soci: il modulo email e password dell\'area soci porta il segno del cookie' );
 $ps_src = (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' );
 preg_match( '/function inline_login\( string \$back \): string \{\s*Views::no_cache\(\);/', $ps_src, $ps_m1 );
-preg_match( '/headers_sent\(\) \) \{\s*return false;\s*\}\s*Views::no_cache\(\);\s*\$value = PreSession::make/', $ps_src, $ps_m2 );
+preg_match( '/headers_sent\(\) \) \{\s*return false;\s*\}\s*Views::no_cache\(\);[^\r\n]*\s*\$value = PreSession::make/', $ps_src, $ps_m2 );
 asem_ok( defined( 'DONOTCACHEPAGE' ) && $ps_m1 && $ps_m2, 'accesso soci: le pagine con il modulo di accesso non finiscono nella cache di pagina (inline_login ed emissione del cookie chiamano no_cache)' );
 asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' ), 'from_login_page( self::post( \'_asem_nonce\' ) )' ) && false === strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' ), 'wp_verify_nonce' ), 'accesso soci: l\'invio dei moduli di accesso passa dal controllo del cookie' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'name="password"' ) && false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'Password dimenticata' ), 'password: il modulo dell\'area soci è email e password, con il recupero' );
