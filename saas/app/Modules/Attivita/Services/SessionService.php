@@ -463,20 +463,23 @@ final readonly class SessionService
 
         $activity = $this->activities->find($s->activity_id);
         $when = $s->session_date->format('d/m/Y').(is_string($s->start_time) && $s->start_time !== '' ? ', alle ore '.substr($s->start_time, 0, 5) : '');
-        $body = $minor
-            ? "Si è liberato un posto: ora {$about} ha un posto per {$activity->name} del {$when}. Se non può venire, annulla dall'area soci o scrivi alla segreteria."
-            : "Si è liberato un posto: ora hai un posto per {$activity->name} del {$when}. Se non puoi venire, annulla dall'area soci o scrivi alla segreteria.";
         $org = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->first(['id', 'name', 'slug']);
         if ($org === null || ! is_string($org->id ?? null)) {
             return 'failed';
         }
+        $area = $this->areaUrl($org->id, is_string($org->slug ?? null) ? $org->slug : '');
+        $cancel = $area === null ? 'scrivi alla segreteria' : "annulla dall'area soci o scrivi alla segreteria";
+        $body = $minor
+            ? "Si è liberato un posto: ora {$about} ha un posto per {$activity->name} del {$when}. Se non può venire, {$cancel}."
+            : "Si è liberato un posto: ora hai un posto per {$activity->name} del {$when}. Se non puoi venire, {$cancel}.";
+        $payLine = $area === null ? 'Per la quota da versare scrivi alla segreteria.' : 'La quota da versare la trovi in Quote, nell\'area soci.';
 
         try {
             Notification::route('mail', $email)->notify(new WaitlistPromotedNotification(
                 'Ciao '.(is_string($to->first_name ?? null) ? $to->first_name : '').',',
                 $body,
-                $toPay ? 'La quota da versare la trovi in Quote, nell\'area soci.' : null,
-                $this->areaUrl($org->id, is_string($org->slug ?? null) ? $org->slug : ''),
+                $toPay ? $payLine : null,
+                $area,
                 is_string($org->name ?? null) ? $org->name : '',
             ));
         } catch (Throwable $e) {
