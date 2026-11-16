@@ -148,6 +148,8 @@ Ti chiede la **password** e il **motivo del rimborso**, che il socio leggerà ne
 
 Se l'**anno fiscale dell'incasso è chiuso**, l'operazione non parte: né rimborso né storno. Se il rimborso non riesce, non cambia nulla: ricevute e tessere restano come prima. Serve lo stesso permesso **«Emettere rimborsi»**. Il rimborso **parziale** c'è solo per i soldi non registrati, con «rimborsa».
 
+**Se il pagamento comprendeva una prenotazione di una risorsa o l'iscrizione a un'attività o a un evento**, quella voce **resta valida e torna da pagare**: il gestionale non la annulla. Lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» oppure «L'iscrizione resta e il contributo torna da pagare: se non serve più, togli l'iscrizione dalla scheda dell'attività.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.» (o «La tua iscrizione resta attiva e il contributo risulta da pagare: …»). Per le quote associative non c'è questa riga, perché la tessera si annulla.
+
 ## Se l'importo pagato è diverso
 
 Se l'importo incassato è diverso da quello atteso, il motivo è «Incassati X invece di Y: da controllare» e in quel caso **nessuna voce** viene registrata: leggi il motivo nella stessa pagina e premi «controllato» quando hai sistemato.
@@ -374,9 +376,9 @@ Nell'**area soci**, sotto **Risorse**, un socio con accesso sceglie il giorno e 
 
 Sono **due gesti distinti**: annullando una prenotazione già pagata **i soldi non tornano da soli al socio** e l'incasso **resta in prima nota**.
 
-**Dopo «rimborsa e storna» la prenotazione c'è ancora e risulta da pagare: se il socio non userà la risorsa, annullala.**
+**Dopo «rimborsa e storna» la prenotazione c'è ancora e risulta da pagare: se il socio non userà la risorsa, annullala.** Il gestionale lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.»
 
-- **Se la prenotazione è stata pagata online** dall'area soci, apri **Pagamenti online** (la voce si chiama **«Risorse»**) e usa **«rimborsa e storna»**: i soldi tornano sul metodo di pagamento del socio, l'incasso in prima nota viene **stornato** e la prenotazione, che **resta valida**, torna **«da pagare»**; se non vuoi più la prenotazione, annullala tu. Chiede il **motivo**, che il socio legge. Serve il permesso **«Emettere rimborsi»**. Se l'**anno fiscale è chiuso**, lo storno non si può fare e non si rimborsa nulla. Come funziona è spiegato in [Rinnovare una tessera](guida:gestionale-rinnovare-una-tessera), sezione sul pagamento «da controllare».
+- **Se la prenotazione è stata pagata online** dall'area soci, apri **Pagamenti online** (la voce si chiama **«Risorse»**) e usa **«rimborsa e storna»**: i soldi tornano sul metodo di pagamento del socio, l'incasso in prima nota viene **stornato** e la prenotazione, che **resta valida**, torna **«da pagare»**; se non vuoi più la prenotazione, annullala tu. Chiede il **motivo**, che il socio legge. Serve il permesso **«Emettere rimborsi»**. Se l'**anno fiscale è chiuso**, lo storno non si può fare e non si rimborsa nulla. Come funziona è spiegato in [Rinnovare una tessera](guida:gestionale-rinnovare-una-tessera), sezione «Restituire un pagamento già registrato».
 - **Se è stata pagata in un altro modo** (contanti, bonifico…): storni l'incasso in prima nota e **restituisci i soldi fuori dal programma**.
 
 ## Bloccare una risorsa
