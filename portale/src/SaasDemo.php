@@ -2,7 +2,7 @@
 namespace Portale;
 
 /**
- * Demo pubblica del gestionale online (sottodominio a parte, si azzera ogni notte). Il portale la mostra solo se in config c'è l'indirizzo
+ * Demo pubblica del gestionale SaaS (sottodominio a parte, si azzera ogni notte). Il portale la mostra solo se in config c'è l'indirizzo
  * `saas_demo_url`: finché è vuoto non compare nessun collegamento. Gli accessi sono ruolo@dominio-della-demo con la password `saas_demo_password`
  * (la demo è pubblica e con dati inventati, come quella del plugin).
  */

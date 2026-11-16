@@ -125,7 +125,7 @@ final class App {
 		} elseif ( $get && Sections::view( $path ) ) {
 			// Sezioni di contenuti /saas e /wordpress (l'amministrazione di ciascun prodotto vive sotto /admin).
 			$view = (string) Sections::view( $path );
-			View::render( $view, array( 'title' => 'wordpress_changelog' === $view ? 'Novità del plugin' : ( 'saas_section' === $view ? 'Il gestionale online' : 'Il plugin per WordPress' ), 'releases' => 'wordpress_changelog' === $view ? Sections::releases( $this->db ) : array(), 'catalog' => 'saas_section' === $view ? $this->saasCatalog() : null ) );
+			View::render( $view, array( 'title' => 'wordpress_changelog' === $view ? 'Novità del plugin' : ( 'saas_section' === $view ? 'Il gestionale SaaS' : 'Il plugin per WordPress' ), 'releases' => 'wordpress_changelog' === $view ? Sections::releases( $this->db ) : array(), 'catalog' => 'saas_section' === $view ? $this->saasCatalog() : null ) );
 		} elseif ( $get && '/' === $path ) {
 			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
 		} elseif ( $get && '/api/piani' === $path ) {
@@ -321,7 +321,7 @@ final class App {
 				Switches::save( $this->db, $_POST );
 				$now = Switches::current();
 				Audit::log( $this->db, $actor, 'switches', 'Interruttori: ' . json_encode( $now ) );
-				foreach ( array( 'maintenance' => 'Modalità manutenzione', 'indexable' => 'Portale nei motori di ricerca', 'saas_sale' => 'Vendita del gestionale online' ) as $k => $label ) {
+				foreach ( array( 'maintenance' => 'Modalità manutenzione', 'indexable' => 'Portale nei motori di ricerca', 'saas_sale' => 'Vendita del gestionale SaaS' ) as $k => $label ) {
 					if ( $was[ $k ] !== $now[ $k ] ) {
 						Audit::log( $this->db, $actor, $k, $label . ': ' . ( $now[ $k ] ? 'acceso' : 'spento' ) );
 					}

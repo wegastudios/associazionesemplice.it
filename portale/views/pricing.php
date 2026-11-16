@@ -36,7 +36,7 @@ $copy = array(
 	) ),
 );
 ?>
-<?php if ( Portale\SaasSale::on() ) : ?><nav class="product-nav" aria-label="Prodotti"><a href="#prezzi">Plugin per WordPress</a><a href="#prezzi-saas">Gestionale online</a></nav><?php endif; ?>
+<?php if ( Portale\SaasSale::on() ) : ?><nav class="product-nav" aria-label="Prodotti"><a href="#prezzi">Plugin per WordPress</a><a href="#prezzi-saas">Gestionale SaaS</a></nav><?php endif; ?>
 <section class="section pricing" id="prezzi" data-period="year"><div class="wrap">
 	<span class="eyebrow">Plugin per WordPress</span>
 	<div class="section-head"><h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prezzi chiari, disdici quando vuoi</h1><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli, ogni mese o ogni anno, e si disdicono quando vuoi dall'area riservata.</p></div>
