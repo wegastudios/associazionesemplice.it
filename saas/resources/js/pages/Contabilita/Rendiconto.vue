@@ -65,7 +65,7 @@ const field = 'field';
 
         <section v-if="versions.length" class="mt-6 card p-4 sm:p-5 print:hidden">
             <h2 class="mb-2 text-lg font-bold">Rendiconti pubblicati alla chiusura</h2>
-            <p class="mb-3 text-sm text-muted">Un esercizio chiuso si legge sempre dal rendiconto pubblicato e bloccato alla chiusura, anche se voci e conti cambiano dopo. Se lo riapri e lo richiudi nasce una nuova versione; le precedenti restano.</p>
+            <p class="mb-3 text-sm text-muted">Un anno fiscale chiuso si legge sempre dal rendiconto pubblicato e bloccato alla chiusura, anche se voci e conti cambiano dopo. Se lo riapri e lo richiudi nasce una nuova versione; le precedenti restano.</p>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="v in versions" :key="v.version" class="flex justify-between gap-3 py-2">
                     <span>Versione {{ v.version }} · {{ v.date }}</span>
