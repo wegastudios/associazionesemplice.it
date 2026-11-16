@@ -105,6 +105,87 @@ Apri la domanda dall'elenco **«Da esaminare»**, controlla i dati e decidi. Una
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-area-soci-per-la-segreteria',
+        'title' => 'L\'area soci: cosa vede il socio e come fargli avere l\'accesso',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_media}, {piano_grande}
+
+L'**area soci** è la parte del gestionale che il socio apre dal telefono o dal computer, **senza chiedere nulla alla segreteria**: vede la sua tessera, le quote e le ricevute, gli eventi, il suo profilo e, se l'associazione lo offre, può prenotare gli spazi.
+
+## L'indirizzo
+
+L'area soci sta all'indirizzo **https://nome-breve.associazionesemplice.it/area**, dove «nome-breve» è il nome breve della tua associazione. Il gestionale non mostra un indirizzo generale da copiare, e **non è lo stesso indirizzo con cui apri il gestionale**: il nome breve lo ritrovi in due punti. Nella pagina delle **domande di adesione** vedi l'indirizzo del modulo pubblico, che finisce con /adesione/nome-breve; e nel link personale che prepari dalla scheda di un socio (vedi sotto) compare all'inizio dell'indirizzo, prima di .associazionesemplice.it. Una volta composto l'indirizzo, **dallo ai soci tu** (sul sito, in una email, in un messaggio). Per spiegare ai soci come entrare puoi mandare la pagina [Come entro nell'area soci](guida:gestionale-come-entro-nell-area-soci).
+
+## Come entra un socio
+
+- **Se ha un'email registrata**, entra da solo: scrive la sua email, riceve un **link e un codice di 6 cifre** nella stessa email e usa l'uno o l'altro. Non c'è nessuna password da ricordare. Link e codice valgono **15 minuti** e **una volta sola**; il codice si può sbagliare al massimo 5 volte. Se qualcuno scrive un'email che non è di un socio, il gestionale risponde allo stesso modo e non parte nulla.
+- **Se non ha un'email**, apri la sua scheda, scheda **«Altro»**, sezione **«Area soci»**, e premi **«Prepara il link d'accesso»**, poi **«Copia»**. Il link vale **7 giorni**, **una volta sola**: mandalo per esempio su WhatsApp. Il pulsante non c'è per gli ospiti.
+
+Una volta dentro, il socio resta collegato fino a **30 giorni senza usare** l'area, e comunque al massimo **90 giorni**.
+
+Se il socio sbaglia o chiede troppi link, vede «Troppi tentativi: riprova tra qualche minuto.»: si può chiedere un link al minuto e cinque all'ora.
+
+## Cosa trova il socio
+
+Il menu in basso (o in alto sul computer) ha queste voci:
+
+- **Tessera**: il nome e un **codice** da mostrare all'ingresso; chi lo legge vede se la tessera è valida. Se la persona non è socia, il gestionale dice «Non è una tessera da socio: qui trovi eventi, quote e ricevute.»; se è uscita dall'associazione, «Risulti uscito dall'associazione.».
+- **Eventi**: gli eventi dei **prossimi due mesi**, con **«Prenota»**. Se l'evento è pieno compare «posti esauriti» e **«Lista d'attesa»**; il socio legge «Sei in lista d'attesa: se si libera un posto entri da solo.» Il passaggio è automatico (quando qualcuno annulla o si aggiungono posti entra il primo in lista), ma **il socio non riceve nessun avviso**: se ne accorge guardando **Eventi**, dove trova la prenotazione. Ricordagli di controllare. Il socio **annulla da solo fino al giorno prima**, se la prenotazione non fa parte di un pacchetto o di un listino e non è già pagata; negli altri casi legge «per annullare scrivi alla segreteria».
+- **Prenota** (solo se la tua associazione ha il pacchetto **Risorse in versione Web** e almeno una risorsa a ore o a giornata): il socio sceglie il giorno e tocca una fascia libera. Le risorse stagionali non compaiono: le assegna la segreteria. Vedi [Risorse e prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni).
+- **Quote**: corsi e attività con **«Dovuto finora … · versato …»** e **«in regola»** oppure **«da versare …»**, il pulsante **«Paga online»** (se l'associazione ha attivato i pagamenti online: vedi [Pagamenti online dei soci](guida:gestionale-pagamenti-online-dei-soci)) e le **ricevute** da scaricare in PDF. Le ricevute annullate non compaiono.
+- **Profilo**: i suoi dati (nome, email e codice fiscale **non si cambiano da qui**: «Per correggere nome, email o codice fiscale scrivi alla segreteria.»), telefono e indirizzo che può correggere da solo, le tessere degli anni e il pulsante **«Esci da tutti i dispositivi»**.
+
+## I minori
+
+Per un minore **entra il genitore o il tutore** (anche se non è socio), con la propria email. Vede la sua scheda e quelle dei figli: in alto compaiono dei pulsanti, **«Io»** e il nome di ogni figlio, per cambiare scheda con un clic. Tessera, Profilo, Quote ed Eventi lavorano sulla scheda scelta. In **Quote** il genitore può **pagare online e scaricare le ricevute anche dei figli**, tutto da un'unica pagina. A ogni nuovo ingresso si riparte dalla propria. **Ogni email apre una sola scheda**: se due persone hanno la stessa email, entra solo una delle due (prima il socio). Per i maggiorenni usa un'email diversa per ciascuno; i figli minori si vedono dalla scheda del genitore. Per collegare un genitore, vedi la scheda del minore: **«Genitori o tutori»**.
+
+## Se un socio ha perso il telefono
+
+Dalla sua scheda, **«Altro» → «Area soci» → «Chiudi i suoi accessi»** (serve il permesso di modificare i soci): chiude **tutte le sessioni aperte** di quella persona e il gestionale dice «Accessi chiusi: N.». **Non annulla** i link o i codici già mandati e non ancora usati: valgono fino alla scadenza. Non tocca le schede dei figli. Il socio può fare lo stesso da solo, dal suo profilo, con **«Esci da tutti i dispositivi»**: esce subito e torna all'accesso con «Sei uscito da tutti i dispositivi.». Il semplice **«Esci»** chiude solo la sessione di quel dispositivo.
+
+## Se l'indirizzo non si apre
+
+Se il socio vede una pagina «non trovata», controlla che l'associazione sia attiva e che l'indirizzo sia quello giusto. Se il problema continua, scrivi all'assistenza di Associazione Semplice.
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-come-entro-nell-area-soci',
+        'title' => 'Come entro nell\'area soci',
+        'body' => <<<'MD'
+> L'indirizzo dell'area soci te lo dà la segreteria della tua associazione.
+
+L'**area soci** è la tua pagina personale: la tessera, gli eventi, le quote e le ricevute, il tuo profilo. **Non serve nessuna password.**
+
+## Per entrare
+
+1. Apri l'indirizzo che ti ha dato la segreteria.
+2. Scrivi la **tua email**, quella che hai dato all'associazione, e premi **«Mandami il link»**.
+3. Ti arriva un'email con un **link** e un **codice di 6 cifre**: apri il link, oppure scrivi il codice nella pagina e premi **«Entra»**.
+
+Link e codice valgono **15 minuti** e si usano **una volta sola**. Se sono scaduti, premi **«Mandami un altro codice»**. Non hai ricevuto niente? Controlla la posta indesiderata e che l'email sia quella giusta.
+
+**Non hai un'email registrata?** Chiedi alla segreteria un **link d'accesso**: te lo manda per esempio su WhatsApp, vale 7 giorni e si usa una volta sola.
+
+Dopo il primo ingresso resti collegato su quel telefono o computer: devi rifarlo solo dopo molto tempo senza usarlo.
+
+## Cosa trovi
+
+- **Tessera**: mostra il codice all'ingresso.
+- **Eventi**: prenoti un posto; se è pieno puoi metterti in lista d'attesa: se si libera un posto entri da solo, ma non ricevi un avviso, quindi ricordati di guardare in Eventi. Puoi annullare da solo fino al giorno prima, se non hai già pagato; altrimenti scrivi alla segreteria.
+- **Prenota**: se la tua associazione lo offre, prenoti campi o sale.
+- **Quote**: quanto devi e quanto hai versato, **«Paga online»** (se l'associazione lo ha attivato) e le **ricevute** da scaricare.
+- **Profilo**: puoi correggere telefono e indirizzo. Per nome, email o codice fiscale scrivi alla segreteria.
+
+## Se perdi il telefono
+
+Entra da un altro telefono o computer, apri **Profilo** e premi **«Esci da tutti i dispositivi»**: nessuno potrà più usare il tuo accesso già aperto. Se non riesci, chiedi alla segreteria di chiudere i tuoi accessi. Per entrare di nuovo ti basta chiedere un nuovo link.
+
+## Se sei un genitore
+
+Entri con la tua email. In alto trovi **«Io»** e il nome dei tuoi figli: un clic per passare dall'una all'altra scheda.
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-rinnovare-una-tessera',
         'title' => 'Rinnovare una tessera e incassare la quota',
         'body' => <<<'MD'
