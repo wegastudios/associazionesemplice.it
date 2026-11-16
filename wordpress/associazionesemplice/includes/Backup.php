@@ -402,7 +402,9 @@ final class Backup {
 	private static function insert_rows( string $tbl, array $cols, array $rows ): void {
 		$db     = Db::db();
 		$values = array();
+		$short = substr( $tbl, strlen( $db->prefix ) );
 		foreach ( $rows as $r ) {
+			$r    = RowClean::row( $short, $r ); // i testi semplici rientrano senza tag, come da modulo
 			$vals = array();
 			foreach ( $cols as $c ) {
 				$v      = $r[ $c ] ?? null;
