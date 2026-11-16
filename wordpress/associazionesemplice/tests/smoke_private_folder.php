@@ -335,7 +335,7 @@ PrivateFolder::reset();
 
 // i blocchi dello spostamento passano da Db::with_lock: nome per sito, mai un GET_LOCK scritto a mano
 $pf_src = (string) file_get_contents( dirname( __DIR__ ) . '/includes/PrivateFolder.php' );
-$pf_ok( false === strpos( $pf_src, 'GET_LOCK' ) && false !== strpos( $pf_src, "'asem_private_move'" ) && 1 === preg_match( "/Db::with_lock\(\s*'asem_private_move'/", $pf_src ), 'spostamento: il blocco passa da Db::with_lock, senza GET_LOCK scritto a mano' );
+$pf_ok( false === strpos( $pf_src, 'GET_LOCK' ) && false !== strpos( $pf_src, "'asem_private_move'" ) && 1 === preg_match( "/Db::with_lock\(\s*'asem_private_move'/", $pf_src ) && 1 === preg_match( "/Db::with_lock\(\s*'asem_private_site'/", $pf_src ), 'spostamento: il blocco passa da Db::with_lock, senza GET_LOCK scritto a mano' );
 $pf_ok( \AssociazioneSemplice\Db::lock_name( 'asem_private_move', 'db1|wp_' ) !== \AssociazioneSemplice\Db::lock_name( 'asem_private_move', 'db1|wp2_' ) && \AssociazioneSemplice\Db::lock_name( 'asem_private_move' ) !== 'asem_private_move' && \AssociazioneSemplice\Db::lock_name( 'asem_private_move' ) !== \AssociazioneSemplice\Db::lock_name( 'asem_private_site' ), 'spostamento: i nomi dei blocchi (spostamento, segnaposto) sono per sito e diversi fra loro' );
 
 // pulizia
