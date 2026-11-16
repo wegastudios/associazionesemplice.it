@@ -219,10 +219,22 @@ final class Updater {
 	 * @param array                                      $r    risposta di parse()
 	 * @param array<string,string>                       $keys kid => chiave pubblica
 	 * @param array{version?:string,min_version?:string} $seen cosa si è già visto per questo prodotto
-	 * @return string '' se va bene, altrimenti il motivo: invalid (firma v2 non valida), min (sotto la soglia), rollback (sotto la versione più alta già vista), future (firma datata nel futuro)
+	 * @return string '' se va bene, altrimenti il motivo: invalid (firma v2 non valida), min (sotto la soglia), rollback (sotto la versione più alta già vista), future (firma datata nel futuro), missing_v2 (pacchetto senza v2 dopo che ne è già stato visto uno)
 	 */
 	public static function v2_verdict( string $product, array $r, array $keys, array $seen, int $now ): string {
+		$seen_min = (string) ( $seen['min_version'] ?? '' );
+		$seen_v   = (string) ( $seen['version'] ?? '' );
 		if ( empty( $r['v2'] ) ) {
+			if ( ! empty( $seen['v2'] ) ) { // già visto un pacchetto v2 per questo prodotto: da qui in poi la v2 è obbligatoria
+				return 'missing_v2';
+			}
+			$v1 = (string) ( $r['version'] ?? '' ); // la v1 è ancora ammessa, ma senza passi indietro rispetto a quanto già visto
+			if ( '' !== $seen_min && self::valid_min_version( $seen_min ) && version_compare( $v1, $seen_min, '<' ) ) {
+				return 'min';
+			}
+			if ( '' !== $seen_v && self::valid_version( $seen_v ) && version_compare( $v1, $seen_v, '<' ) ) { // la stessa versione resta ammessa
+				return 'rollback';
+			}
 			return '';
 		}
 		$version = (string) ( $r['version'] ?? '' );
@@ -234,11 +246,9 @@ final class Updater {
 		if ( version_compare( $version, $min, '<' ) ) {
 			return 'min';
 		}
-		$seen_min = (string) ( $seen['min_version'] ?? '' );
 		if ( '' !== $seen_min && self::valid_min_version( $seen_min ) && version_compare( $version, $seen_min, '<' ) ) {
 			return 'min';
 		}
-		$seen_v = (string) ( $seen['version'] ?? '' );
 		if ( '' !== $seen_v && self::valid_version( $seen_v ) && version_compare( $version, $seen_v, '<' ) ) { // la stessa versione ripubblicata resta ammessa
 			return 'rollback';
 		}
@@ -249,25 +259,31 @@ final class Updater {
 	}
 
 	/** Versione e soglia più alte tra quelle già viste e quelle del pacchetto verificato: non scendono mai. */
-	public static function seen_after( array $seen, string $version, string $min_version ): array {
+	public static function seen_after( array $seen, string $version, string $min_version, bool $v2 = true ): array {
 		$v = (string) ( $seen['version'] ?? '' );
 		$m = (string) ( $seen['min_version'] ?? '' );
+		if ( '' === $m || ! self::valid_min_version( $m ) ) {
+			$m = $min_version; // un pacchetto v1 non ha soglia: resta quella già vista (se c'è)
+		} elseif ( '' !== $min_version && version_compare( $min_version, $m, '>' ) ) {
+			$m = $min_version;
+		}
 		return array(
 			'version'     => '' === $v || ! self::valid_version( $v ) || version_compare( $version, $v, '>' ) ? $version : $v,
-			'min_version' => '' === $m || ! self::valid_min_version( $m ) || version_compare( $min_version, $m, '>' ) ? $min_version : $m,
+			'min_version' => $m,
+			'v2'          => $v2 || ! empty( $seen['v2'] ), // dal primo pacchetto v2 in poi, senza v2 non si accetta più niente
 		);
 	}
 
-	/** @return array{version?:string,min_version?:string} */
+	/** @return array{version?:string,min_version?:string,v2?:bool} */
 	private static function seen( string $product ): array {
 		$all = get_option( self::SEEN_OPT, array() );
 		return is_array( $all ) && isset( $all[ $product ] ) && is_array( $all[ $product ] ) ? $all[ $product ] : array();
 	}
 
-	private static function remember( string $product, array $r ): void {
+	private static function remember( string $product, array $r, bool $v2 = true ): void {
 		$all             = get_option( self::SEEN_OPT, array() );
 		$all             = is_array( $all ) ? $all : array();
-		$all[ $product ] = self::seen_after( self::seen( $product ), (string) $r['version'], (string) $r['min_version'] );
+		$all[ $product ] = self::seen_after( self::seen( $product ), (string) $r['version'], $v2 ? (string) $r['min_version'] : '', $v2 );
 		update_option( self::SEEN_OPT, $all, false );
 	}
 
@@ -440,12 +456,16 @@ final class Updater {
 				'invalid'  => 'Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall\'area clienti e scrivici.',
 				'min'      => 'La versione offerta dal portale è sotto la soglia minima ammessa: non è stata installata.',
 				'rollback' => 'La versione offerta dal portale è più vecchia di una già vista: non è stata installata.',
+				'missing_v2' => 'Il pacchetto offerto dal portale non ha la firma del nuovo formato, richiesta dopo il primo pacchetto così firmato: non è stato installato. Scaricalo dall\'area clienti e scrivici.',
 				'future'   => 'La firma del pacchetto ha una data nel futuro: non è stato installato. Controlla data e ora del server.',
 			);
 			return new \WP_Error( 'asem_update_unsigned', Texts::t( $msg[ $why ] ?? $msg['invalid'] ) );
 		}
 		if ( empty( $r['v2'] ) && ! self::verify_signature( $p, $r['version'], $r['sha256'], $r['kid'], $r['signature'], self::PACKAGE_KEYS ) ) {
 			return new \WP_Error( 'asem_update_unsigned', 'Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall\'area clienti e scrivici.' );
+		}
+		if ( empty( $r['v2'] ) ) {
+			self::remember( $p, $r, false ); // firma v1 verificata: si ricorda la versione, così non si torna indietro
 		}
 		if ( ! function_exists( 'download_url' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';

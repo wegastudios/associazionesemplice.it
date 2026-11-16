@@ -152,19 +152,42 @@ final class UpdaterTest extends TestCase {
 	public function test_package_without_v2_fields_behaves_as_before(): void {
 		$r = U::parse( '{"version":"1.2","update":true,"sha256":"' . hash( 'sha256', 'zip' ) . '","signature":"s","kid":"k"}' );
 		$this->assertFalse( $r['v2'] );
-		$this->assertSame( '', U::v2_verdict( 'pro', $r, array(), array( 'version' => '9.9', 'min_version' => '9.0' ), self::NOW ), 'nessuna regola nuova' );
+		$this->assertSame( '', U::v2_verdict( 'pro', $r, array(), array(), self::NOW ), 'prima di qualsiasi v2 la v1 passa come oggi' );
+		$this->assertSame( '', U::v2_verdict( 'pro', $r, array(), array( 'version' => '1.2', 'min_version' => '' ), self::NOW ), 'stessa versione ammessa' );
+		$this->assertSame( 'rollback', U::v2_verdict( 'pro', $r, array(), array( 'version' => '1.3' ), self::NOW ), 'v1 sotto la versione più alta vista' );
+		$this->assertSame( 'min', U::v2_verdict( 'pro', $r, array(), array( 'min_version' => '1.3' ), self::NOW ), 'v1 sotto la soglia vista' );
+		$this->assertSame( '', U::v2_verdict( 'pro', $r, array(), array( 'version' => '1.1', 'min_version' => '1.2' ), self::NOW ), 'v1 alla soglia' );
+		$this->assertSame( 'missing_v2', U::v2_verdict( 'pro', $r, array(), array( 'version' => '1.0', 'v2' => true ), self::NOW ), 'dopo un v2 visto la v1 non passa più' );
+	}
+
+	public function test_after_an_accepted_v2_a_package_without_v2_is_rejected(): void {
+		list( $keys, $r ) = $this->v2();
+		$this->assertSame( '', $this->verdict( $keys, $r ) );
+		$seen = U::seen_after( array(), $r['version'], $r['min_version'] );
+		$old  = U::parse( '{"version":"1.5.0","update":true,"sha256":"' . $r['sha256'] . '","signature":"s","kid":"k"}' );
+		$this->assertSame( 'missing_v2', U::v2_verdict( 'pro', $old, $keys, $seen, self::NOW ) );
+		$this->assertSame( 'missing_v2', U::v2_verdict( 'pro', U::parse( '{"version":"2.0","update":true}' ), $keys, $seen, self::NOW ), 'anche una versione più alta' );
+		$this->assertSame( '', U::v2_verdict( 'pro', $r, $keys, $seen, self::NOW ), 'il v2 continua a passare' );
+	}
+
+	public function test_a_v1_package_is_remembered_without_turning_v2_on(): void {
+		$a = U::seen_after( array(), '1.3', '', false );
+		$this->assertSame( array( 'version' => '1.3', 'min_version' => '', 'v2' => false ), $a );
+		$this->assertSame( array( 'version' => '1.3', 'min_version' => '', 'v2' => false ), U::seen_after( $a, '1.2', '', false ), 'non scende' );
+		$b = U::seen_after( array( 'version' => '1.3', 'min_version' => '1.1', 'v2' => true ), '1.4', '', false );
+		$this->assertSame( array( 'version' => '1.4', 'min_version' => '1.1', 'v2' => true ), $b, 'soglia e v2 restano' );
 	}
 
 	public function test_stored_thresholds_never_go_down(): void {
 		$a = U::seen_after( array(), '1.5.0', '1.4' );
-		$this->assertSame( array( 'version' => '1.5.0', 'min_version' => '1.4' ), $a );
+		$this->assertSame( array( 'version' => '1.5.0', 'min_version' => '1.4', 'v2' => true ), $a );
 		$b = U::seen_after( $a, '1.5.0', '1.4' );
 		$this->assertSame( $a, $b, 'stessa versione' );
 		$c = U::seen_after( $a, '1.4.2', '1.2' );
 		$this->assertSame( $a, $c, 'non scendono' );
 		$d = U::seen_after( $a, '1.6', '1.5' );
-		$this->assertSame( array( 'version' => '1.6', 'min_version' => '1.5' ), $d );
-		$this->assertSame( array( 'version' => '1.6', 'min_version' => '1.5' ), U::seen_after( $d, '1.5.5', '1.0' ) );
+		$this->assertSame( array( 'version' => '1.6', 'min_version' => '1.5', 'v2' => true ), $d );
+		$this->assertSame( array( 'version' => '1.6', 'min_version' => '1.5', 'v2' => true ), U::seen_after( $d, '1.5.5', '1.0' ) );
 	}
 
 	public function test_changelog_becomes_safe_html_and_ignores_other_lines(): void {
