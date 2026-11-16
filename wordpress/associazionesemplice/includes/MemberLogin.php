@@ -35,6 +35,7 @@ final class MemberLogin {
 		$tbl = Db::t( 'member_challenges' );
 		$db->query( $db->prepare( "DELETE FROM $tbl WHERE person_id = %d AND (used_at IS NOT NULL OR expires_at <= %s)", 0, self::now() ) );
 		$db->get_col( $db->prepare( "SELECT id FROM $tbl WHERE person_id = %d ORDER BY id DESC", 0 ) );
+		$db->query( $db->prepare( "DELETE FROM $tbl WHERE id = %d", 0 ) ); // al posto della pulizia delle richieste più vecchie
 		SessionToken::hash( SessionToken::generate() );
 		SessionToken::hash_code( SessionToken::code(), 0, MemberSession::secret() );
 		$db->query( $db->prepare( "UPDATE $tbl SET attempts = attempts WHERE id = %d", 0 ) ); // al posto dell'inserimento: nessuna riga corrisponde
