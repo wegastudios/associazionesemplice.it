@@ -240,6 +240,62 @@ Se non sai quale numero comunicare, **chiedi al tuo commercialista**: il gestion
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-certificati-medici-dei-soci',
+        'title' => 'I certificati medici dei soci',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Per le attività sportive puoi tenere traccia del **certificato medico** di ogni socio: quando scade, chi lo ha, chi no. Il gestionale ti mostra le scadenze e, se vuoi, **avvisa il socio per email**.
+
+**È un dato sulla salute, quindi riservato.** Lo vedono **titolare, amministratori e operatori**; **il commercialista no**. Ogni volta che qualcuno **scarica un file** di certificato, resta scritto nel **registro azioni**. I file sono **conservati cifrati**.
+
+## Registrare un certificato
+
+1. In **Soci** apri la **scheda del socio** e vai alla scheda **«Certificato»**.
+2. Compila il modulo:
+   - **Tipo**: non agonistico, agonistico oppure altro;
+   - **Rilascio** e **Scadenza**: la scadenza viene proposta **a un anno** dal rilascio, correggila con quella scritta sul certificato. Il certificato **non può scadere prima di essere stato rilasciato**;
+   - **Medico**: facoltativo;
+   - **File (PDF o foto)**: facoltativo, **PDF, JPG o PNG**, fino a **10 MB**.
+3. Premi **«Registra il certificato»**.
+
+Nella scheda vedi l'**elenco dei certificati** del socio, con il tipo, il medico e le date. Quello **che conta oggi** è scritto in grassetto: tra quelli già rilasciati, **quello che scade più tardi**. Per aprire il file premi **«Scarica»**.
+
+**Se ti sei sbagliato**, premi **«Togli»**: il gestionale chiede «Cancellare questo certificato medico? Il file allegato viene eliminato.» e, se confermi, il certificato e il suo file **spariscono**. Per rinnovare un certificato non serve toglierlo: registra il nuovo, e il vecchio resta nell'elenco.
+
+Registrare, togliere e scaricare è permesso a **titolare, amministratori e operatori** (chi può modificare i soci e vedere i dati sulla salute).
+
+## Chi è in regola: l'elenco dei certificati
+
+In **Soci**, dal pulsante con i **tre puntini** (**«Altri strumenti»**), scegli **«Certificati medici»**. Vedi i soci con la **tessera**, la **scadenza** e lo **stato**:
+
+- **Valido**: in regola;
+- **In scadenza**: scade entro il numero di giorni di preavviso (di partenza **30**);
+- **Scaduto**;
+- **Mancante**: nessun certificato già rilasciato.
+
+In alto i pulsanti **«Tutti»**, **«In scadenza»**, **«Scaduti»**, **«Mancanti»** e **«Validi»** filtrano l'elenco. Cliccando sul nome apri la scheda. Questa pagina mostra solo **nomi e date**: i dati del certificato si aprono dalla scheda.
+
+L'elenco comprende i **soci in corso** (fondatori, ordinari e volontari): i soci usciti non compaiono.
+
+## Il preavviso
+
+Il numero di giorni dopo i quali un certificato risulta «in scadenza» si cambia nelle **«Impostazioni del tesseramento»** (campo **«Preavviso certificati (giorni)»**, da 1 a 365), in fondo alla pagina **Nuova scheda socio**. Solo il titolare e gli amministratori possono modificarlo.
+
+## I promemoria per email
+
+Se li hai attivati, il gestionale manda **un'email** quando il certificato sta per scadere e **un'altra** quando è scaduto, **una sola volta per ogni scadenza**. Riceve l'email il **socio** (se ha un indirizzo); per un **minorenne** va al **genitore o tutore operativo**. I soci usciti non ricevono nulla.
+
+I promemoria valgono anche per le **tessere in scadenza** e si accendono o spengono in **Domande di adesione → «Domande online e promemoria»** (vedi [Le domande di adesione online](guida:gestionale-domande-di-adesione-online)).
+
+Chi **non ha mai avuto** un certificato registrato **non riceve** nessun promemoria: compare solo come **«Mancante»** nell'elenco.
+
+## Portare i certificati fuori dal gestionale
+
+Se esporti i tuoi dati puoi includere anche i certificati medici (solo se hai il permesso sui dati sulla salute): vedi [Esportare i dati](guida:gestionale-esportare-i-dati). **Nella demo il caricamento dei file è spento.**
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-rinnovare-una-tessera',
         'title' => 'Rinnovare una tessera e incassare la quota',
         'body' => <<<'MD'
