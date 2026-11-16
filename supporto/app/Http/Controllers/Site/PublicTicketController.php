@@ -29,6 +29,7 @@ class PublicTicketController extends Controller
 
         return view('site.ticket-new', [
             'formToken' => $human->issue(),
+            'products' => ProductPlans::selectable((array) ($request->session()->get('customer.plans') ?? [])),
             'privacyUrl' => config('support.privacy.url'),
             'topics' => Topic::query()->forPublic()->orderBy('sort')->orderBy('name')->get(),
             'plans' => Plan::query()->where('is_active', true)->orderBy('sort')->orderBy('name')->get(),
@@ -81,6 +82,11 @@ class PublicTicketController extends Controller
                 $data['customer_name'] = $customer['name'];
             }
             $data['plan_id'] = $customer['plan_id'] ?? null;
+        }
+
+        // Il prodotto «Gestionale» si sceglie solo se le guide sono accese o si è clienti del gestionale
+        if (! array_key_exists($data['product'], ProductPlans::selectable((array) ($request->session()->get('customer.plans') ?? [])))) {
+            return back()->withInput($request->except(HumanCheck::TOKEN_FIELD))->withErrors(['product' => "Scegli il prodotto dall'elenco."]);
         }
 
         // L'argomento deve essere del prodotto scelto o «Per tutti»

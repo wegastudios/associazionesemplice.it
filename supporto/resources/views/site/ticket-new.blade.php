@@ -15,7 +15,7 @@
         </div>
         <div class="row">
             <div><label for="product">Quale prodotto usi?</label>
-                <select id="product" name="product" required><option value="">—</option>@foreach (\App\Support\ProductPlans::PRODUCTS as $key => $label)<option value="{{ $key }}" @selected(old('product') === $key)>{{ $label }}</option>@endforeach</select></div>
+                <select id="product" name="product" required><option value="">—</option>@foreach ($products as $key => $label)<option value="{{ $key }}" @selected(old('product') === $key)>{{ $label }}</option>@endforeach</select></div>
             @if ($topics->isNotEmpty())
                 <div><label for="topic_id">Argomento</label>
                     <select id="topic_id" name="topic_id"><option value="">—</option>@foreach (['plugin' => 'Plugin WordPress', 'saas' => 'Gestionale', '' => 'Per tutti'] as $key => $label)@if ($topics->where('product', $key === '' ? null : $key)->isNotEmpty())<optgroup label="{{ $label }}">@foreach ($topics->where('product', $key === '' ? null : $key) as $t)<option value="{{ $t->id }}" @selected(old('topic_id') == $t->id)>{{ $t->name }}</option>@endforeach</optgroup>@endif @endforeach</select></div>
