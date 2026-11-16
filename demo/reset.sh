@@ -59,4 +59,5 @@ wp eval-file "$HOME/demo-provision/molti-dati.php" --user=setup_tmp # molti dati
 # Le pagine create dall'utente d'installazione passano all'amministratore del plugin prima di toglierlo (senza questo si cancellerebbero con lui).
 wp user delete setup_tmp --yes --reassign="$(wp user get amministratore --field=ID)" >/dev/null
 wp cache flush >/dev/null 2>&1 || true
+wp litespeed-purge all >/dev/null 2>&1 || true # la cache di LiteSpeed riparte vuota dopo i dati nuovi
 echo "$(date -Is) demo azzerata: $(wp user list --format=count) utenti"

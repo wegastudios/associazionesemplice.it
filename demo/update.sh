@@ -22,3 +22,4 @@ for p in free:associazionesemplice pro:associazionesemplice-pro; do
 	fi
 done
 echo "Demo aggiornata: gratuito $(wp plugin get associazionesemplice --field=version), Pro $(wp plugin get associazionesemplice-pro --field=version)"
+bash "$HOME/demo-provision/litespeed.sh" || echo "Attenzione: LiteSpeed Cache non è a posto (la demo è stata aggiornata comunque)." >&2
