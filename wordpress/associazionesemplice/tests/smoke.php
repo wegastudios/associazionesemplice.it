@@ -10992,9 +10992,12 @@ for ( $i = 0; $i < 10; $i++ ) {
 	$er_fake( 'approval', 1, "attesa$i@example.com" );
 }
 asem_ok( $er::queue_full() && false !== strpos( $er::queue_alert(), 'al limite' ), 'coda: al tetto compare l\'avviso per la segreteria' );
-$er::create( array_merge( $er_r, array( 'email' => 'coda.piena@example.com' ) ), $acts->get( $er_a ), $er_o );
-asem_ok( 0 === $er_cnt( 'coda.piena@example.com' ) && (int) get_transient( 'asem_evq_dropped' ) >= 1 && false !== strpos( $er::queue_alert(), 'scartat' ), 'coda: al tetto la nuova richiesta è scartata (la risposta resta quella di sempre) e l\'avviso lo dice' );
-asem_ok( 'ok' === $er::course_create( array_merge( $er_r, array( 'email' => 'coda.corso@example.com' ) ), $er_ca )['status'] && 0 === $er_cnt( 'coda.corso@example.com' ), 'coda: lo stesso tetto vale per le richieste di iscrizione a un corso' );
+$er_mn   = count( $er_mails );
+$er_full = $er::create( array_merge( $er_r, array( 'email' => 'coda.piena@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 'invalid' === $er_full['status'] && false !== strpos( $er_full['errors'][0], 'riprova più tardi o scrivi alla segreteria' ) && 0 === $er_cnt( 'coda.piena@example.com' ) && count( $er_mails ) === $er_mn && (int) get_transient( 'asem_evq_dropped' ) >= 1, 'coda: al tetto chi scrive legge un messaggio onesto (riprova più tardi o scrivi alla segreteria), la richiesta non è registrata e non parte nessuna email' );
+asem_ok( false !== strpos( $er::queue_alert(), 'scartat' ) && false !== strpos( $er::queue_alert(), 'riprovare più tardi' ) && false === strpos( $er::queue_alert(), 'Richiesta ricevuta' ), 'coda: l\'avviso in Bacheca dice quante richieste sono state scartate e cosa legge chi scrive' );
+$er_cfull = $er::course_create( array_merge( $er_r, array( 'email' => 'coda.corso@example.com' ) ), $er_ca );
+asem_ok( 'invalid' === $er_cfull['status'] && 0 === $er_cnt( 'coda.corso@example.com' ) && count( $er_mails ) === $er_mn, 'coda: lo stesso tetto e lo stesso messaggio valgono per le richieste di iscrizione a un corso' );
 wp_set_current_user( 1 );
 $er::create( array_merge( $er_r, array( 'email' => 'coda.segreteria@example.com' ) ), $acts->get( $er_a ), $er_o );
 asem_ok( 1 === $er_cnt( 'coda.segreteria@example.com' ), 'coda: la segreteria non è limitata nemmeno a coda piena' );
