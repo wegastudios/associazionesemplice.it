@@ -23,10 +23,48 @@ final class Install {
 		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
 	}
 
-	/** Esegue gli aggiornamenti dello schema se il plugin è stato aggiornato senza riattivarlo. */
+	/** Nome (logico) del blocco che tiene un solo aggiornamento dello schema alla volta; {@see Db::lock_name()} lo rende unico per sito. */
+	const UPGRADE_LOCK = 'schema_upgrade';
+
+	/**
+	 * Esegue gli aggiornamenti dello schema se il plugin è stato aggiornato senza riattivarlo.
+	 * Due richieste insieme non lo eseguono due volte: la prima prende un blocco, l'altra aspetta (al più 10 secondi), poi rilegge la versione e,
+	 * se l'aggiornamento è già stato fatto, non fa nulla. Se il blocco non si ottiene, la richiesta prosegue com'era e riprova alla successiva;
+	 * il blocco cade da solo a fine richiesta, quindi un aggiornamento interrotto non blocca il sito.
+	 */
 	public static function maybe_upgrade(): void {
-		$old = (string) get_option( self::DB_VERSION_OPTION, '' );
-		if ( $old !== self::DB_VERSION ) {
+		if ( (string) get_option( self::DB_VERSION_OPTION, '' ) === self::DB_VERSION ) {
+			return;
+		}
+		$started = false;
+		try {
+			Db::with_lock(
+				self::UPGRADE_LOCK,
+				function () use ( &$started ) {
+					$db    = Db::db();
+					$fresh = (string) $db->get_var( $db->prepare( "SELECT option_value FROM {$db->options} WHERE option_name = %s", self::DB_VERSION_OPTION ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- serve il valore appena scritto da un'altra richiesta, non quello in cache
+					if ( self::upgrade_needed( $fresh ) ) {
+						$started = true;
+						self::run_upgrade( $fresh );
+					}
+				},
+				10
+			);
+		} catch ( \InvalidArgumentException $e ) {
+			if ( $started ) {
+				throw $e; // l'errore viene dall'aggiornamento stesso, non dal blocco
+			}
+			// blocco occupato oltre l'attesa: lo sta facendo un'altra richiesta, qui si prosegue e si riprova alla prossima
+		}
+	}
+
+	/** Lo schema va aggiornato? (la versione salvata è diversa da quella del codice) */
+	public static function upgrade_needed( string $stored ): bool {
+		return $stored !== self::DB_VERSION;
+	}
+
+	private static function run_upgrade( string $old ): void {
+		if ( self::upgrade_needed( $old ) ) {
 			self::activate();
 			if ( '' !== $old && version_compare( $old, '21', '<' ) ) {
 				self::migrate_reimbursements();
