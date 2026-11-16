@@ -26,7 +26,7 @@ final class TwoFactorResetNoticeNotification extends Notification
             ->line($this->bySupport
                 ? 'la verifica in due passaggi del tuo accesso è stata tolta dal supporto di Associazione Semplice, su tua richiesta.'
                 : 'la verifica in due passaggi del tuo accesso è stata tolta tramite un link ricevuto per email.')
-            ->line('Al prossimo accesso dovrai riattivarla subito, con il telefono nuovo.')
+            ->line('Al prossimo accesso riattivala subito, con il telefono nuovo.')
             ->line('Se non sei stato tu, cambia subito la password.');
     }
 }

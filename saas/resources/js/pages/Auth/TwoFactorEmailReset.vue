@@ -13,7 +13,7 @@ const submit = () => form.post(props.action);
     <Head title="Togli la verifica in due passaggi" />
     <GuestLayout title="Togli la verifica in due passaggi">
         <p class="mb-5 text-muted">
-            Se confermi, la verifica in due passaggi del tuo accesso viene tolta. Al prossimo accesso dovrai riattivarla subito, con il telefono nuovo.
+            Se confermi, la verifica in due passaggi del tuo accesso viene tolta. Al prossimo accesso riattivala subito, con il telefono nuovo.
         </p>
         <form @submit.prevent="submit">
             <PrimaryButton :disabled="form.processing">Togli la verifica</PrimaryButton>
