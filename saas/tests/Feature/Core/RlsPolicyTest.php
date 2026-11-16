@@ -22,7 +22,7 @@ it('la policy delle associazioni legge app.org_id con un sottoselect e non nomin
 
     expect(count($isolation))->toBeGreaterThan(10);
     foreach ($isolation as $p) {
-        expect($p->qual)->toContain('SELECT NULLIF(current_setting(')->not->toContain('current_user', "{$p->table}: nome di ruolo nella policy")
+        expect($p->qual)->toContain('( SELECT (NULLIF(current_setting(')->not->toContain('current_user', "{$p->table}: nome di ruolo nella policy")
             ->and($p->check)->toBe($p->qual, "{$p->table}: scrittura diversa dalla lettura")
             ->and($p->cmd)->toBe('ALL')
             ->and($p->roles)->toBe('{public}');
