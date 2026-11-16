@@ -5534,6 +5534,34 @@ asem_ok( $rc_ok && ! $rc_no && false !== strpos( $front_rc, 'Ricevuta PDF' ) && 
 $rm = array();
 \AssociazioneSemplice\Receipts::email( $rc_list[0]['key'] );
 asem_ok( 1 === count( $rm ) && in_array( 'rosa.ricevuta@example.com', (array) $rm[0]['to'], true ) && ! empty( $rm[0]['_exists'][0] ) && 0 === strpos( $rm[0]['_exists'][0], 'ricevuta-' ), 'ricevute: invio per email con il PDF allegato' );
+// l'allegato dell'email: nasce nella cartella riservata (non in quella temporanea del server) e non resta se l'invio lancia un errore
+$rc_att = (string) ( $rm[0]['attachments'][0] ?? '' );
+asem_ok( 0 === strpos( $rc_att, \AssociazioneSemplice\PrivateFolder::dir() . '/' ), 'ricevute: l\'allegato dell\'email nasce nella cartella riservata, non in quella temporanea del server' );
+$rc_sys_before = glob( trailingslashit( get_temp_dir() ) . 'asem-*' ) ?: array();
+$rc_boom       = function () {
+	throw new \RuntimeException( 'invio interrotto' );
+};
+add_filter( 'pre_wp_mail', $rc_boom, 1, 0 );
+$rc_caught = false;
+try {
+	\AssociazioneSemplice\Receipts::email( $rc_list[0]['key'] );
+} catch ( \RuntimeException $e ) {
+	$rc_caught = true;
+}
+remove_filter( 'pre_wp_mail', $rc_boom, 1 );
+$rc_priv_tmp = \AssociazioneSemplice\PrivateFolder::dir() . '/' . \AssociazioneSemplice\PrivateFolder::TEMP_DIR;
+asem_ok( $rc_caught && array() === array_diff( glob( trailingslashit( get_temp_dir() ) . 'asem-*' ) ?: array(), $rc_sys_before ) && array() === array_diff( is_dir( $rc_priv_tmp ) ? scandir( $rc_priv_tmp ) : array(), array( '.', '..', 'index.php' ) ), 'ricevute: se l\'invio dell\'email lancia un errore, il PDF in chiaro dell\'allegato non resta sul disco' );
+// se il PDF non si può scrivere l'email non parte e nel registro non compare «inviata»
+if ( is_dir( $rc_priv_tmp ) ) {
+	wp_delete_file( $rc_priv_tmp . '/index.php' );
+	rmdir( $rc_priv_tmp );
+}
+file_put_contents( $rc_priv_tmp, 'x' ); // un file al posto della cartella dei temporanei: la scrittura non può riuscire
+$rm            = array();
+$rc_sent_n     = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'receipt.emailed'" );
+$rc_nowrite    = asem_throws( function () use ( $rc_list ) { \AssociazioneSemplice\Receipts::email( $rc_list[0]['key'] ); } );
+wp_delete_file( $rc_priv_tmp );
+asem_ok( null !== $rc_nowrite && 0 === count( $rm ) && $rc_sent_n === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'receipt.emailed'" ), 'ricevute: se il PDF dell\'allegato non si può scrivere l\'email non parte e il registro non scrive «inviata»' );
 $wpdb->update( Db::t( 'transactions' ), array( 'voided_at' => Db::now(), 'void_reason' => 'prova' ), array( 'receipt_id' => $wpdb->get_var( 'SELECT receipt_id FROM ' . Db::t( 'transactions' ) . " WHERE person_id = $rc_p AND amount_cents = 2000" ) ) );
 $rc_void = \AssociazioneSemplice\Receipts::build( $don_key );
 asem_ok( true === $rc_void['voided'] && false !== strpos( $rc_void['pdf'], 'ANNULLATA' ) && null !== asem_throws( function () use ( $don_key ) { \AssociazioneSemplice\Receipts::email( $don_key ); } ), 'ricevute: un incasso annullato ha la ricevuta marcata ANNULLATA, che non si manda per email' );
@@ -10947,6 +10975,8 @@ $pf_zc  = (string) $pf_zz->getFromName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf
 $pf_zl  = (string) $pf_zz->getFromName( 'LEGGIMI.txt' );
 $pf_zz->close();
 wp_delete_file( $pf_zip['path'] );
+$pf_tmpd = \AssociazioneSemplice\PrivateFolder::dir() . '/' . \AssociazioneSemplice\PrivateFolder::TEMP_DIR;
+asem_ok( 0 === strpos( $pf_zip['path'], $pf_tmpd . '/' ) && array() === array_diff( is_dir( $pf_tmpd ) ? scandir( $pf_tmpd ) : array( 'x' ), array( '.', '..', 'index.php' ) ), 'ricevute PDF: lo ZIP e i PDF decifrati per comporlo stanno nella cartella riservata e, tolto lo ZIP, non resta nessun PDF in chiaro' );
 asem_ok( 0 === strpos( $pf_zc, '%PDF-' ) && hash( 'sha256', $pf_zc ) === \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['pdf_sha256'] && false !== strpos( $pf_zl, 'dati personali' ), 'ricevute PDF: lo ZIP contiene i PDF DECIFRATI (con l\'impronta del database) e dice che contiene dati personali' );
 asem_ok( 0 === $pf_v['summary']['pending'] && 0 === $pf_v['summary']['altered'] && 0 === $pf_v['summary']['locked'] && $pf_zv && $pf_zip['count'] >= 5 && false !== strpos( \AssociazioneSemplice\Receipts::zip_url( $pf_fy ), 'action=asem_receipt_zip' ), 'ricevute PDF: la verifica dell\'anno è pulita e lo ZIP contiene i PDF emessi e quelli annullati' );
 $pf_okp = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Ricevute emesse', array( 'year' => $pf_fy ) );
