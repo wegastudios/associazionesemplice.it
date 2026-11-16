@@ -225,7 +225,7 @@ final class LedgerImport {
 
 	/** Chiave per riconoscere i doppioni (stessa data, conto, tipo, importo, descrizione e riferimento). */
 	public static function key( string $date, string $account, string $type, int $cents, string $desc, string $ref ): string {
-		return $date . '|' . $account . '|' . $type . '|' . $cents . '|' . Text::normalize( $desc ) . '|' . Text::normalize( $ref );
+		return $date . '|' . $account . '|' . $type . '|' . $cents . '|' . Text::normalize( Text::plain( $desc ) ) . '|' . Text::normalize( Text::plain( $ref ) ); // come vengono salvati: senza tag, così una reimportazione riconosce i doppioni
 	}
 
 	/**
