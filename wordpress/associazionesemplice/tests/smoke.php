@@ -448,11 +448,80 @@ asem_ok( 'Associazione Semplice Pro' === License::plan_label( 'lite' ) && 'Assoc
 update_option( License::OPT_STATE, array_merge( (array) $lic_keep, array( 'plan_name' => 'Nome dal portale' ) ) );
 asem_ok( 'Nome dal portale' === License::plan_label( 'fiscal' ), 'nomi dei piani: si usa il nome che arriva dalla licenza' );
 update_option( License::OPT_STATE, $lic_keep );
-$lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ), 'product_code' => 'associazionesemplice' );
+// esito negativo: conta solo se firmato dal portale e dopo due esiti in giorni UTC diversi (confronto sull'iat)
+$lic_keyv = 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD';
+$pl_deny  = function ( array $over = array(), array $drop = array(), ?string $pair = null, string $kid = 'kportal' ) use ( $pl_pair, $lic_b64, $lic_keyv ) {
+	$iat    = (int) ( $over['iat'] ?? time() );
+	$claims = $over + array( 'iss' => \AssociazioneSemplice\LicenseClient::PORTAL_ISSUER, 'aud' => 'associazionesemplice', 'bid' => 'prova-sito.it', 'res' => 'deny', 'rc' => 'EXPIRED', 'kh' => substr( hash( 'sha256', $lic_keyv ), 0, 16 ), 'iat' => $iat, 'exp' => $iat + 259200 );
+	$claims = array_diff_key( $claims, array_flip( $drop ) );
+	$pair   = $pair ?? $pl_pair;
+	$head   = $lic_b64( wp_json_encode( array( 'alg' => 'EdDSA', 'typ' => 'JWT', 'kid' => $kid ) ) );
+	$body   = $lic_b64( wp_json_encode( $claims ) );
+	return $head . '.' . $body . '.' . $lic_b64( sodium_crypto_sign_detached( $head . '.' . $body, sodium_crypto_sign_secretkey( $pair ) ) );
+};
+$lic_deny_resp = function ( string $jwt, string $rc = 'EXPIRED' ) {
+	return array( 'valid' => false, 'reason_code' => $rc, 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'portal_attestation' => $jwt );
+};
+$lic_still_pro = function () {
+	return 'active' === License::state()['status'] && 'lite' === License::plan() && ! \AssociazioneSemplice\Edition::degraded();
+};
+delete_option( License::OPT_DENIAL );
+$lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
 $lic_r    = License::sync();
-asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta, funzioni Pro sospese' );
+asem_ok( ! $lic_r['ok'] && $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo non firmato: non spegne il Pro, come un errore transitorio' );
+$lic_bad = array(
+	'firma di un\'altra chiave'            => $pl_deny( array(), array(), sodium_crypto_sign_keypair() ),
+	'chiave di Wega, non del portale'      => $pl_deny( array(), array(), $lic_pair, 'ktest' ),
+	'prodotto sbagliato'                   => $pl_deny( array( 'aud' => 'altro-prodotto' ) ),
+	'dominio sbagliato'                    => $pl_deny( array( 'bid' => 'altro-sito.it' ) ),
+	'impronta della chiave diversa'        => $pl_deny( array( 'kh' => '0000000000000000' ) ),
+	'scaduto'                              => $pl_deny( array( 'iat' => time() - 4 * DAY_IN_SECONDS ) ),
+	'emesso nel futuro'                    => $pl_deny( array( 'iat' => time() + HOUR_IN_SECONDS ) ),
+	'senza res'                            => $pl_deny( array(), array( 'res' ) ),
+	'motivo ignoto'                        => $pl_deny( array( 'rc' => 'INVENTATO' ) ),
+	'prova positiva al posto del negativo' => $pl_att( array( 'plan' => 'lite' ) ),
+	'con il livello'                       => $pl_deny( array( 'plan' => 'lite' ) ),
+);
+foreach ( $lic_bad as $lic_why => $lic_jwt ) {
+	$lic_resp = $lic_deny_resp( $lic_jwt );
+	License::sync();
+	asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo non valido (' . $lic_why . '): non spegne il Pro e non conta' );
+}
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS ) ) );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && $lic_still_pro() && gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ) === get_option( License::OPT_DENIAL )['day'], 'esito negativo firmato, il primo: si ricorda ma il Pro resta acceso' );
+License::sync(); // la stessa risposta ancora (il portale la tiene in cache qualche minuto)
+asem_ok( $lic_still_pro(), 'esito negativo firmato con lo stesso iat: conta come uno solo' );
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS + 60 ) ) );
+License::sync();
+asem_ok( $lic_still_pro(), 'due esiti negativi nello stesso giorno UTC: il Pro resta acceso' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'expires_at' => '2027-01-01T00:00:00Z', 'product_code' => 'associazionesemplice' );
+License::sync();
+asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito positivo valido: azzera il conteggio dei negativi' );
+$lic_resp = $lic_deny_resp( $pl_deny() );
+License::sync();
+asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'dopo l\'azzeramento un nuovo esito negativo vale di nuovo come il primo' );
+// motivi che non contano (PENDING, LICENSE_NOT_FOUND), prodotto diverso da quello salvato, primo esito troppo vecchio
+delete_option( License::OPT_DENIAL );
+foreach ( array( 'PENDING', 'LICENSE_NOT_FOUND' ) as $lic_rc ) {
+	$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => $lic_rc ) ), $lic_rc );
+	License::sync();
+	asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo ' . $lic_rc . ': non conta, non si memorizza e il Pro resta acceso' );
+}
+$lic_resp                 = $lic_deny_resp( $pl_deny( array( 'aud' => 'altro-prodotto' ) ) );
+$lic_resp['product_code'] = 'altro-prodotto';
+License::sync();
+asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo per un prodotto diverso da quello salvato sul sito: non conta, anche se la risposta e la prova concordano' );
+update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 8 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 8 * DAY_IN_SECONDS ), false );
+$lic_resp = $lic_deny_resp( $pl_deny() );
+License::sync();
+asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'esito negativo a più di 7 giorni dal primo: non si applica e diventa il nuovo primo' );
+update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 2 * DAY_IN_SECONDS ), false );
+$lic_resp = array( 'valid' => false, 'reason_code' => 'REVOKED', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'portal_attestation' => $pl_deny(), 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ) );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta (due esiti firmati in giorni diversi), funzioni Pro sospese; il motivo è quello firmato' );
 asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'notice-warning' ) && \AssociazioneSemplice\Edition::allows( 'export' ), 'verifica: licenza scaduta, avviso e nessuna funzione di base toccata' );
-$lic_resp = array( 'valid' => false, 'reason_code' => 'DOMAIN_MISMATCH', 'plan_name' => 'Pro Full' );
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => 'DOMAIN_MISMATCH' ) ), 'DOMAIN_MISMATCH' );
 License::sync();
 asem_ok( 'unlicensed' === License::state()['status'] && false !== strpos( License::status()['reason'], 'dominio' ), 'verifica: dominio diverso, spiegazione in italiano' );
 $lic_resp = null;
@@ -4981,8 +5050,23 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) { // l'avviso riguarda solo il Pro (il grat
 \AssociazioneSemplice\LicenseClient::set_local_override( false );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => 'https://associazionesemplice.it/scarica/pro/99.0.0' ) ), false );
+$upd_local0 = function () { return true; }; // qui si prova il ripiego a mano: l'aggiornamento diretto non è disponibile
+add_filter( 'asem_portal_is_local', $upd_local0 );
 $upd_html = Admin\UpdateNotice::html();
+remove_filter( 'asem_portal_is_local', $upd_local0 );
 asem_ok( false !== strpos( $upd_html, '99.0.0' ) && false !== strpos( $upd_html, 'asem-dismissible' ) && false !== strpos( $upd_html, 'https://associazionesemplice.it/scarica/pro/99.0.0' ), 'aggiornamenti: avviso chiudibile con la nuova versione e il link di scarico' );
+if ( class_exists( '\AssociazioneSemplice\Updater' ) ) { // pacchetto del portale: con l'aggiornamento diretto attivo l'avviso porta a Bacheca → Aggiornamenti
+	$upd_local = function () { return false; };
+	add_filter( 'asem_portal_is_local', $upd_local );
+	$upd_core = Admin\UpdateNotice::html();
+	asem_ok( false !== strpos( $upd_core, 'update-core.php' ) && false === strpos( $upd_core, 'scarica/pro/99.0.0' ) && false === strpos( $upd_core, 'Plugin → Aggiungi nuovo' ), 'aggiornamenti: con l\'aggiornamento diretto attivo l\'avviso porta a Bacheca → Aggiornamenti' );
+	remove_filter( 'asem_portal_is_local', $upd_local );
+	$upd_local = function () { return true; };
+	add_filter( 'asem_portal_is_local', $upd_local );
+	$upd_manual = Admin\UpdateNotice::html();
+	asem_ok( false === strpos( $upd_manual, 'update-core.php' ) && false !== strpos( $upd_manual, 'Plugin → Aggiungi nuovo' ), 'aggiornamenti: sito locale, il caricamento manuale resta il ripiego' );
+	remove_filter( 'asem_portal_is_local', $upd_local );
+}
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => ASEM_PRO_VERSION, 'url' => '' ) ), false );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: nessun avviso se la versione è l\'ultima' );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );

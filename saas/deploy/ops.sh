@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -162,6 +162,14 @@ case "$ACTION" in
       }
       echo "fine", PHP_EOL;
     '
+    ;;
+  sblocca-utente)
+    # Sblocco dal supporto (decisione scritta del titolare, 16/11/2026): toglie la verifica in due passaggi a chi lavora
+    # nel gestionale e ha finito le richieste per email; azzera i conteggi, annota l'evento e avvisa la persona. L'email è il terzo argomento.
+    EMAIL="${3:-}"
+    [[ "$EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "Email non valida." >&2; exit 1; }
+    cd "$BASE/current"
+    "$PHP" artisan saas:user:reset-2fa "$EMAIL"
     ;;
   spegni-avvisi)
     # Spegne gli avvisi email del gestionale (restano solo le email del portale) e dice se ne sono già partiti.
