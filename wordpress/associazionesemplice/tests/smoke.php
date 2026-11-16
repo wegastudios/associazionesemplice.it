@@ -11591,7 +11591,7 @@ asem_ok( null === $em_with( array( 'tools' ), 'admin.php', array( 'page' => 'ase
 wp_set_current_user( $em_uid );
 \AssociazioneSemplice\Employees::reset_cache();
 $em_book_html = asem_render( array( Admin\RegistersPage::class, 'render_book' ), 'Libro soci' );
-asem_ok( false !== strpos( $em_book_html, 'Il libro soci è dell\'area «Anagrafica soci», che non hai.' ) && false === strpos( $em_book_html, 'matricola' ), 'Registri: senza Anagrafica il libro soci non mostra i soci, solo il messaggio' );
+asem_ok( false !== strpos( $em_book_html, esc_html( 'Il libro soci è dell\'area «Anagrafica soci», che non hai.' ) ) && false === strpos( $em_book_html, 'matricola' ), 'Registri: senza Anagrafica il libro soci non mostra i soci, solo il messaggio' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'tools' ) );
 $em_tools_html = asem_render( array( Admin\ToolsPage::class, 'render' ), 'Strumenti' );
 asem_ok( false === strpos( $em_tools_html, 'page=asem-import' ) && false === strpos( $em_tools_html, 'page=asem-exports' ) && false !== strpos( $em_tools_html, 'page=asem-calendar' ), 'Strumenti: senza Importa ed esporta dati la panoramica non offre import ed esportazioni, resta il calendario' );
