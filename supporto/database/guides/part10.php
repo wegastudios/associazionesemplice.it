@@ -30,7 +30,7 @@ I soci con la **tessera in regola**, non sospesi e non usciti. Tutori e ospiti n
 - Il socio sceglie un altro socio dalla sua **area soci**, sezione **«Assemblee»** (anche con lo shortcode `[associazionesemplice_assemblee]`).
 - Oppure la segreteria registra una **delega scritta** ricevuta.
 
-Le regole: ogni socio può dare **una sola delega** per assemblea e riceverne **al massimo 3** (5 se i soci sono almeno 500). Chi riceve una delega non può delegare, e chi ha delegato non può riceverne. Non si delega a chi non è socio in regola.
+Le regole: ogni socio può dare **una sola delega** per assemblea e riceverne **al massimo 3** (5 se i soci sono almeno 500). Chi riceve una delega non può delegare, e chi ha delegato non può riceverne. Non si delega a chi non è socio in regola. **Dall'area soci**, se il socio scelto non può ricevere la delega, il socio vede sempre lo stesso messaggio, «Non puoi scegliere questo socio come delegato: scegline un altro.»: non gli si dice come sta l'altro socio (se è iscritto, se ha già delegato, se ha già troppe deleghe). La **segreteria**, invece, vede il motivo preciso.
 
 ## Presenze e numero legale
 
@@ -103,7 +103,7 @@ Il **volontario** lo chiede dall'**area soci**, sezione **«Rimborsi spese»** (
 ## I tre tipi
 
 - **Spesa documentata**: serve lo scontrino o la fattura, in PDF o foto. **Non ha un tetto**: i limiti qui sotto riguardano solo l'autocertificazione.
-- **Autocertificazione**: fino a **10 € al giorno** e **150 € al mese** per volontario (sono i limiti di legge, fissi nel plugin). Vale solo se l'**assemblea ha deliberato** i tipi di spesa.
+- **Autocertificazione**: fino a **10 € al giorno** e **150 € al mese** per volontario (sono i limiti di legge, fissi nel plugin). I limiti valgono **anche se più richieste arrivano nello stesso momento**. Se in quel momento ne sta arrivando un'altra, compare «Un'altra operazione è in corso: riprova tra qualche secondo.»: basta riprovare. Vale solo se l'**assemblea ha deliberato** i tipi di spesa.
 - **Chilometrico**: compare solo se in **Cassa → Rimborsi → Impostazioni** hai indicato la **tariffa al chilometro**. L'importo si calcola da solo.
 
 ## Approvare, rifiutare, pagare

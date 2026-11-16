@@ -118,6 +118,8 @@ Dopo il controllo compaiono nel menu le funzioni incluse nel tuo piano.
 
 ## Aggiornare
 
+Quando esce una nuova versione compare in Bacheca l'avviso «È disponibile la versione …». Se gli **aggiornamenti diretti** sono attivi, l'avviso dice **«Installalo da Bacheca → Aggiornamenti: i dati restano.»** e ha il pulsante **«Vai agli aggiornamenti»**: l'aggiornamento si installa da lì, come per gli altri plugin. Altrimenti l'avviso ti porta a scaricare il pacchetto dall'area clienti, da caricare in **Plugin → Aggiungi nuovo**: i dati restano.
+
 Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro; se il sito segnala che i due non sono compatibili, aggiorna entrambi all'ultima versione.
 
 > Se cambi piano (per esempio da {piano_contabile} a {piano_fiscale}) non devi reinstallare nulla: dopo il controllo della licenza compaiono le funzioni in più.
@@ -129,14 +131,20 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attività, prima nota, registri e impostazioni (senza le chiavi segrete dei pagamenti). Puoi aggiungere anche gli allegati. Solo gli amministratori possono farla.
+La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attività, prima nota, registri e impostazioni (senza le chiavi segrete dei pagamenti e senza la chiave di licenza). Puoi aggiungere anche gli allegati. Solo gli amministratori possono farla.
+
+**Dopo un ripristino su un altro sito** le chiavi dei pagamenti e la chiave di licenza vanno **reinserite**, perché non sono nella copia.
 
 ## Fare la copia
 
 1. Vai in **Strumenti → Copia di sicurezza**.
-2. Scegli se includere gli allegati.
-3. Premi il pulsante per creare la copia e scarica il file.
+2. Scegli se includere gli allegati: il pulsante è **«Scarica la copia con gli allegati (scontrini, fatture e altri documenti)»**.
+3. Scrivi la **tua password di amministratore** e premi il pulsante per creare la copia: **senza password non si scarica nulla**. Se è sbagliata compare «La password non è corretta: non è stato scaricato nulla.»
 4. Conservalo in un posto sicuro, fuori dal sito.
+
+La password serve **anche per scaricare le copie salvate prima dei ripristini** (le trovi sotto «Copie di sicurezza fatte prima dei ripristini»): scrivi la password e premi il nome della copia. Un vecchio indirizzo diretto di scarico non scarica più nulla: ti riporta alla pagina, dove scrivi la password.
+
+**Dopo 5 password sbagliate in 15 minuti** il plugin si ferma per qualche minuto e non controlla nemmeno più la password: compare «Troppi tentativi: riprova tra qualche minuto.» Il blocco vale **insieme per scarico, ripristino e azzeramento dei dati**; con la password giusta il conteggio riparte da zero.
 
 Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 
@@ -156,7 +164,8 @@ Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 ## Da sapere
 
 - Gli utenti di WordPress non fanno parte della copia.
-- **Non si ripristinano**: le password dei soci, le loro sessioni e le notifiche (i soci rientrano con il link che ricevono) e il registro delle azioni.
+- **Non si ripristinano**: le **sessioni aperte** dei soci, le **notifiche push**, il **registro delle azioni** e gli **utenti WordPress**. I soci dovranno **entrare di nuovo** (e riattivare le notifiche).
+- **Le password dei soci tornano.** La copia contiene le **impronte** delle password (**mai le password in chiaro**) e il ripristino le rimette: ogni socio entra con la **password di prima** e deve **scegliere subito una nuova password**, anche se entra con il link ricevuto per email. Vale solo per chi aveva una password.
 - La copia contiene dati personali: tienila protetta e non condividerla.
 MD,
     ],
@@ -170,7 +179,7 @@ Serve, per esempio, dopo le prove prima di iniziare davvero. Solo gli amministra
 
 ## Prima di cominciare
 
-Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (vale poco tempo): senza lo scarico l'azzeramento non parte. Conservala tu.
+Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (file di scontrini, fatture e altri documenti; vale poco tempo), scrivendo la tua password di amministratore: senza lo scarico l'azzeramento non parte. Conservala tu.
 
 ## Cosa fare
 
@@ -182,6 +191,8 @@ Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prim
 4. Nel riepilogo conferma con la spunta, scrivi la frase **AZZERA TUTTO** e inserisci la tua password.
 
 La numerazione riparte da 1. L'operazione resta nel registro azioni.
+
+Anche qui, **dopo 5 password sbagliate in 15 minuti** compare «Troppi tentativi: riprova tra qualche minuto.» e per un po' la password non si controlla (il blocco è lo stesso del ripristino e dello scarico della copia).
 MD,
     ],
     [
@@ -222,6 +233,10 @@ MD,
 1. In WordPress vai in **Impostazioni → Licenza**.
 2. Incolla la chiave che trovi nell'area riservata di associazionesemplice.it.
 3. Salva. Il plugin verifica subito la chiave.
+
+La chiave viene **salvata cifrata**. Quando riapri la pagina nel campo vedi solo le **ultime cifre** e la scritta «(salvata): lascia vuoto per non cambiarla»: se non scrivi nulla, la chiave resta quella. Per **toglierla** spunta **«rimuovi»**.
+
+**Se compare l'avviso «La chiave di licenza salvata non si legge più su questo sito…»** in Bacheca: succede se cambiano i **codici di sicurezza di WordPress**, se il sito è stato **spostato** o se hai **ripristinato una copia su un altro sito**. Basta **reinserire la chiave** in **Impostazioni → Licenza** (il pulsante dell'avviso, «Apri il pannello Licenza», ti ci porta). Intanto il **Pro non si spegne**.
 
 ## Controllare lo stato
 

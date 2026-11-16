@@ -22,6 +22,8 @@ Nome, cognome, data di nascita, **luogo di nascita e residenza**, codice fiscale
 
 Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del genitore o tutore (vedi [Minori con genitori o tutori](guida:minori-con-genitori-o-tutori)).
 
+**Nome e cognome** (anche del genitore o tutore) vanno da **1 a 60 caratteri**, con solo **lettere, spazi, apostrofi e trattini**. Altrimenti compare «Nome non valido: usa solo lettere, spazi, apostrofi e trattini.»
+
 ## Cosa succede dopo l'invio
 
 - La domanda entra con stato **«richiesta»**: non compare in rubrica, libro soci, esportazioni, tessere né nei conti, non ha tessera né utente WordPress e non può usare il «Primo accesso».
@@ -67,6 +69,18 @@ Il genitore o tutore di tipo **«Genitore o tutore (non socio)»** **non è soci
 ## Da una domanda di adesione online
 
 Se chi compila la domanda risulta minorenne dalla data di nascita, il modulo chiede anche nome, cognome, email e cellulare del genitore o tutore (il codice fiscale è facoltativo), e lo fa dichiarare come tale. Email e cellulare del minore diventano facoltativi. Vedi [Ricevere le domande di adesione online](guida:domanda-di-adesione-online).
+
+### Se il genitore è già in anagrafica
+
+Se l'email del genitore o tutore è già quella di una **persona in anagrafica**, quando **approvi la domanda** il collegamento con il minore e le accettazioni (regolamento, informativa privacy e scelta sulle immagini, date **a nome del minore**) **non vengono attribuiti a lui da soli**: deve prima **confermare**. Se il genitore è **nuovo**, invece, **tutto va come prima**.
+
+1. All'approvazione il genitore riceve, **all'indirizzo già registrato**, l'email **«Conferma del genitore o tutore»** con un link che vale **7 giorni**.
+2. Il link apre la pagina **«Conferma del genitore o tutore»** con il pulsante **«Confermo»**: **aprire il link non basta**, la conferma c'è solo premendo il pulsante. Poi compare **«Grazie, confermato.»**
+3. **Il collegamento tra genitore e minore nasce solo dopo la conferma.** Finché non conferma, queste accettazioni non gli vengono attribuite.
+
+**In segreteria**, nella scheda del minore (riquadro **Privacy**) vedi **«In attesa della conferma del genitore»**, con il nome del genitore, la data dell'email e la scritta «Il genitore non ha ancora confermato: il collegamento si crea quando conferma». Puoi **approvare la domanda anche prima** della conferma. Con **«Rimanda l'email di conferma»** il messaggio riparte (**al massimo 3 volte all'ora**: dopo compare «Hai già rimandato il messaggio più volte: riprova tra un'ora.»).
+
+Se il genitore apre il link dopo i 7 giorni vede **«Il link è scaduto: scrivi alla segreteria, che ti manda un nuovo messaggio.»**: basta rimandare l'email dalla scheda del minore.
 
 ## Cosa fa il genitore dall'area soci
 

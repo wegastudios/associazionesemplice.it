@@ -81,7 +81,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'cosa-succede-se-la-licenza-pro-scade',
         'title' => 'Cosa succede se la licenza Pro scade?',
         'body' => <<<'MD'
-Il plugin torna alle **funzioni di base**. Le funzioni Pro spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata. In cima alle pagine compare un avviso.
+Il plugin torna alle **funzioni di base**. Se la licenza non risulta più valida (scaduta, sospesa, revocata o usata su un altro sito), le funzioni Pro si fermano **solo dopo due controlli in due giorni diversi**: un problema momentaneo di rete o del portale non spegne niente. Le funzioni Pro spariscono da menu e schede e, a chi prova a usarle, un messaggio spiega che la licenza va regolarizzata. In cima alle pagine compare un avviso.
 
 - **I dati non vengono toccati**: soci, prima nota, registri restano al loro posto.
 - Le quote diverse dei soci non si applicano più (vale la quota unica).
@@ -176,7 +176,7 @@ MD,
         'body' => <<<'MD'
 Sì, con **Pro** (Contabile o Fiscale): i pagamenti online funzionano con **Stripe**, **PayPal**, **SumUp** (anche insieme) o, in alternativa, con **WooCommerce**. Il socio paga dall'area soci e l'incasso entra da solo in prima nota, con la ricevuta.
 
-Nel **plugin gratuito** puoi comunque indicare le coordinate del bonifico, registrare a mano contanti e bonifici e ricevere **donazioni** con un modulo che porta alla pagina di PayPal. Vedi [Attivare i pagamenti online](guida:attivare-stripe-o-paypal).
+Nel **plugin gratuito** puoi comunque indicare le coordinate del bonifico, che le modificano solo gli amministratori: ogni modifica, anche con un ripristino di copia, è scritta nel registro azioni (con l'IBAN mascherato) e avvisata per email a tutti gli amministratori; registrare a mano contanti e bonifici e ricevere **donazioni** con un modulo che porta alla pagina di PayPal. Vedi [Attivare i pagamenti online](guida:attivare-stripe-o-paypal).
 MD,
     ],
     [
@@ -203,7 +203,7 @@ MD,
         'body' => <<<'MD'
 - **Elementor**: sì, in tutte le versioni. Le schermate dei soci sono disponibili come **widget Elementor**, oltre che come blocchi e shortcode; i colori si prendono dal tema impostato in Elementor.
 - **WP All Import**: sì, per importare soci e prima nota con le stesse regole dell'importazione da file.
-- **WooCommerce**: con **Pro**, in alternativa a Stripe e PayPal. Ogni quota o attività si collega a un prodotto del negozio e il pagamento entra in prima nota una sola volta quando l'ordine è «in lavorazione» o «completato».
+- **WooCommerce**: con **Pro**, in alternativa a Stripe e PayPal. Ogni quota o attività si collega a un prodotto del negozio e il pagamento entra in prima nota una sola volta. Con carta e PayPal succede quando l'ordine è «in lavorazione» o «completato»; con bonifico, assegno o contrassegno solo quando la segreteria mette l'ordine su **«Completato»**.
 MD,
     ],
     [

@@ -177,7 +177,8 @@ MD,
 
 Quando i posti sono finiti, l'evento mostra **«Posti esauriti · lista d'attesa»**. Il socio (o chi ospita) può mettere sé stesso o un ospite in coda dall'elenco eventi, vede la posizione e può uscire dalla lista.
 
-- Se qualcuno annulla, o se aumenti i posti, entra automaticamente il primo della lista e riceve una email.
+- Se qualcuno annulla, o se aumenti i posti, entra automaticamente il primo della lista e riceve una email. **Non vale per gli eventi su richiesta**: lì non c'è lista d'attesa e prenota la segreteria.
+- Se l'attività ha dei **listini**, chi si mette in lista **sceglie la tariffa**: il plugin la ricorda e, quando il posto si libera, prenota con quella. Una persona in coda **senza tariffa valida** (per esempio perché si è messa in lista prima) **non entra da sola**: nella scheda dell'evento compare «manca la tariffa scelta: non entra da solo, prenotalo a mano scegliendo il listino».
 - Chi nel frattempo ha la tessera scaduta, è sospeso o non ha accettato il regolamento viene saltato.
 - La coda è visibile e modificabile nella scheda dell'evento.
 
@@ -287,7 +288,26 @@ Il socio **prenota con un clic**, entrando con il suo accesso: il modulo e le re
 
 ## Chi non è socio
 
-Chi non è socio compila un **modulo breve** e riceve una email con un collegamento da aprire **entro 24 ore** per confermare l'indirizzo. Prenota sempre un adulto, che risponde dei minori indicati come accompagnati.
+Chi non è socio compila un **modulo breve** e riceve una email con un collegamento da aprire **entro 24 ore** per confermare l'indirizzo. Il collegamento **mostra la richiesta** con il pulsante **«Conferma»**: **aprirlo non basta**, la richiesta è confermata solo premendo il pulsante (così un'anteprima della posta non conferma da sola). Prenota sempre un adulto, che risponde dei minori indicati come accompagnati.
+**Dopo la conferma** il non socio vede «Email confermata. La segreteria esamina la richiesta e ti scrive appena è approvata.» (per i corsi: «Email confermata. La segreteria esamina la richiesta di iscrizione e ti scrive appena è approvata, spiegandoti come pagare.»). Gli arriva anche un'email, **«Richiesta ricevuta: …»**: «Abbiamo confermato la tua richiesta per «…». La segreteria la esamina e ti scrive appena è approvata. Per qualsiasi dubbio scrivi alla segreteria.»
+
+**Richieste non confermate:** se il non socio non conferma l'email **entro 24 ore**, la richiesta **si cancella da sola**.
+
+**Se il codice fiscale è già in anagrafica**, chi chiede **non vede né il nome né lo stato della persona**: la richiesta passa alla segreteria. **Se il codice fiscale è già in anagrafica con dati diversi**, la segreteria riceve un'email **«Richiesta di partecipazione da verificare: …»**. Se i dati sono della **stessa persona**, la approva e si usa la scheda che c'è già; altrimenti la **rifiuta**.
+
+## I tetti alle richieste
+
+Per non riempire il sito di richieste inutili ci sono tre limiti, che cambi in **Impostazioni → Limiti e soglie**, gruppo **«Accessi e sicurezza»**:
+
+- **«Richieste di evento o corso in attesa, al massimo»**: di partenza **100** (da 10 a 5000);
+- **«Posti chiedibili con lo stesso indirizzo email, in 24 ore»**: di partenza **20** (da 10 a 200);
+- **«Posti chiedibili dalla stessa connessione, in 24 ore»**: di partenza **40** (da 10 a 500).
+
+**Quando il tetto è raggiunto**, chi scrive vede «In questo momento non possiamo ricevere altre richieste per questa attività: riprova più tardi o scrivi alla segreteria (indirizzo).» (l'indirizzo compare solo se la segreteria ne ha uno). Tu trovi in **Bacheca** l'avviso **«Le richieste di evento e di corso sono al limite»**, con quante richieste ci sono in attesa, il limite e, se ce ne sono, quante nuove sono state scartate negli ultimi giorni. Per far posto **approva o rifiuta** le richieste in attesa dalla scheda delle attività, oppure **alza il limite** da **Limiti e soglie**.
+
+**Se il limite è per email o per connessione**, chi scrive vede, per l'email, «Con questo indirizzo email sono già stati chiesti molti posti nelle ultime 24 ore: per altri posti scrivi alla segreteria (indirizzo).» e, per la connessione, «Da questa connessione sono già stati chiesti molti posti nelle ultime 24 ore: riprova più tardi o scrivi alla segreteria (indirizzo).» (l'indirizzo compare solo se la segreteria ne ha uno). Vale per eventi e corsi. La richiesta **non viene registrata** e **non parte nessuna email**. Se nell'ultima settimana ce ne sono state di respinte, nell'avviso in Bacheca trovi una riga in più: «N richieste sono state respinte perché una email o una connessione aveva già chiesto molti posti (il limite si cambia da Limiti e soglie).»
+
+**La segreteria non ha questi limiti** quando prenota.
 
 Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
 
@@ -296,7 +316,7 @@ Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico ist
 Nella pagina dell'evento, nel riquadro **«Prenotazione online»**, scegli:
 
 - se **anche chi non è socio** può chiedere un posto dalla pagina;
-- se la prenotazione è **automatica** o **su richiesta** (la segreteria approva ogni richiesta, in ordine di arrivo);
+- se la prenotazione è **automatica** o **su richiesta** (la segreteria approva ogni richiesta, in ordine di arrivo). **In un evento su richiesta si prenota dalla segreteria**: chi vuole partecipare chiede dalla pagina dell'evento. Se cerca di prenotare in altro modo vede «Questo evento è su richiesta: chiedi di partecipare dalla pagina dell'evento e la segreteria ti risponde.» Non c'è la **lista d'attesa**: se prova a iscriversi vede «Questo evento è su richiesta: la lista d'attesa non c'è, la segreteria decide chi partecipa.» Chi era già in coda **resta dov'è, ma non entra da solo**: nella scheda dell'evento la coda dice «Evento su richiesta: la lista d'attesa non avanza da sola. Prenota tu chi vuoi far entrare.»;
 - quanti **posti al massimo** si possono chiedere per volta (0 = nessun limite);
 - cosa fare se l'evento viene **annullato**: nascondere la pagina oppure lasciarla con l'avviso «annullato».
 
@@ -332,7 +352,7 @@ Un listino con un solo ingresso è una prenotazione normale; un listino con più
 ## Prenotare con un listino
 
 - **Dall'amministrazione**: in **Cassa → Prenota** (o dalla scheda dell'evento) scegli la persona e il listino.
-- **Dall'area soci**: il socio vede e sceglie solo il listino, senza altre opzioni.
+- **Dall'area soci**: il socio vede e sceglie solo il listino, senza altre opzioni. **Se l'attività ha dei listini, la tariffa è obbligatoria**: senza sceglierne una compare «Scegli la tariffa: per questa attività bisogna sceglierne una.» Vale anche per la lista d'attesa.
 
 ## Come funzionano i pacchetti
 

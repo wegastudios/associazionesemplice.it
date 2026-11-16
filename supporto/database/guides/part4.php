@@ -147,7 +147,7 @@ Il modulo donazioni porta chi dona sulla pagina di donazione di PayPal. Dal tuo 
 
 ## Dopo una donazione
 
-Le donazioni vanno **direttamente sul tuo account PayPal**. Il plugin non le vede: le registri tu in prima nota, con un incasso. Se vuoi, per ogni versamento puoi emettere una ricevuta.
+Le donazioni vanno **direttamente sul tuo account PayPal**. **Il conto PayPal lo cambiano solo gli amministratori**: ogni modifica, da qualunque strada arrivi (anche un ripristino di copia), è scritta nel **registro azioni** (con il conto mascherato) e **avvisata per email a tutti gli amministratori**. Se non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni. Il plugin non le vede: le registri tu in prima nota, con un incasso. Se vuoi, per ogni versamento puoi emettere una ricevuta.
 
 > Il titolo «Ricevuta di erogazione liberale» compare in automatico sulle ricevute che contengono solo donazioni (funzione Pro).
 MD,
@@ -171,7 +171,7 @@ Se in **Impostazioni → Cassa → Pagamenti online** compare un avviso sulle **
 1. Vai in **Impostazioni → Cassa → Pagamenti online**.
 2. Scegli il gateway: Stripe, PayPal, SumUp (anche combinati), WooCommerce (in alternativa) oppure solo bonifico. Per SumUp vedi [Attivare i pagamenti online con SumUp](guida:attivare-sumup).
 3. Incolla le chiavi. Vengono salvate **cifrate** e legate al sito: se lo copi su un altro dominio vanno reinserite.
-4. Per Stripe, crea nel pannello Stripe un **webhook** verso l'indirizzo mostrato nella pagina del plugin.
+4. Per Stripe, crea nel pannello Stripe (**Sviluppatori → Webhook**) un **webhook** verso l'indirizzo mostrato nella pagina del plugin e aggiungi questi **cinque eventi**: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`, `charge.refunded` e `charge.dispute.created`. **Se il webhook c'è già**, aggiungi solo gli ultimi due (`charge.refunded` e `charge.dispute.created`): servono per gli avvisi sui rimborsi e sulle contestazioni fatti dal pannello di Stripe.
 5. Salva e fai un **pagamento di prova** con un importo minimo.
 
 ## Come funziona
@@ -181,6 +181,8 @@ Se in **Impostazioni → Cassa → Pagamenti online** compare un avviso sulle **
 3. La conferma torna al sito per tre strade (ritorno del socio, webhook e controllo orario), tutte senza rischio di doppio conteggio.
 4. L'incasso entra in prima nota sul conto **Stripe** o **PayPal** (creato in automatico) e il socio riceve la ricevuta via email.
 
+> **Rimborsi e contestazioni su Stripe.** Con i due eventi `charge.refunded` e `charge.dispute.created` nel webhook, un rimborso o una contestazione fatti dal **pannello di Stripe** mettono il pagamento **«da controllare»** e compare in Bacheca l'avviso **«Pagamenti online da controllare»**. Il plugin **non rimborsa e non annulla nulla da solo**, e la prima nota **non cambia**: controlla dal pannello di Stripe e, se serve, **storna** il movimento in prima nota. Per **PayPal** questi avvisi non arrivano.
+>
 > Commissioni, trasferimenti sul conto corrente e rimborsi si registrano a mano (una spesa e un giroconto). I rimborsi si fanno dal pannello del fornitore.
 MD,
     ],
@@ -269,7 +271,8 @@ A volte un pagamento online non coincide con quello che il sistema si aspettava,
 2. Trova i pagamenti con lo stato **da controllare**.
 3. Confronta importo e riferimento con quello che trovi nel pannello del fornitore.
 4. Se la persona ha pagato più o meno del dovuto, correggi a mano: annulla il movimento e registra l'incasso corretto, oppure registra la differenza.
-5. Se il pagamento era per una prenotazione annullata, decidi se **rimborsare**: con Stripe o PayPal si fa dal programma (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)), con gli altri metodi dal pannello del fornitore.
+5. Se il pagamento è «da controllare» perché **rimborsato o contestato da Stripe** (compare l'avviso «Pagamenti online da controllare» in Bacheca), il plugin non ha cambiato nulla: guarda nel pannello di Stripe com'è andata e, se serve, **storna** il movimento in prima nota. Questo avviso arriva solo se nel webhook ci sono `charge.refunded` e `charge.dispute.created`, e solo per Stripe.
+6. Se il pagamento era per una prenotazione annullata, decidi se **rimborsare**: con Stripe o PayPal si fa dal programma (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)), con gli altri metodi dal pannello del fornitore.
 
 ## Se un pagamento non compare
 
@@ -277,7 +280,7 @@ Premi il pulsante di controllo nella pagina **Pagamenti online**: il plugin inte
 
 ## Con WooCommerce
 
-Se usi WooCommerce, quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota una sola volta; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
+Se usi WooCommerce, l'incasso entra in prima nota una sola volta. Se un passo successivo all'incasso non riesce, il plugin lo dice: «Incasso registrato, ma un passo successivo non è riuscito (…): controlla il pagamento.» L'incasso è già in prima nota: controlla soltanto il resto. Con **carta e PayPal** entra quando l'ordine passa a «in lavorazione» o «completato». Con **bonifico, assegno o contrassegno** la quota risulta pagata solo quando metti l'ordine su **«Completato»**: finché l'ordine non è «Completato» la quota resta da pagare, quindi controlla di averla ricevuta e poi completa l'ordine; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
 MD,
     ],
     [

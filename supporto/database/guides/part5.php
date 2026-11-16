@@ -163,7 +163,7 @@ Con il plugin gratuito c'è una sola quota (con l'opzione socio fondatore). Con 
    - il **diritto di voto** («sì» o «no»): conta nelle votazioni, nel numero legale delle assemblee e nei [Dati per il RUNTS](guida:dati-per-il-runts). I minorenni non votano mai;
 3. Salva.
 
-Chi non ha un livello assegnato usa il nome della base e la quota predefinita: nessuna migrazione dei soci esistenti. Un livello con dei soci non si cancella: resta disattivato.
+Chi non ha un livello assegnato usa il nome della base e la quota predefinita: nessuna migrazione dei soci esistenti. Un livello con dei soci non si cancella: resta disattivato. Nella **scheda del socio**, se il livello assegnato è stato disattivato, compare come **«Nome (non attivo)»** e resta valido per quel socio; agli altri soci si propongono solo i livelli attivi.
 
 ## Nucleo familiare
 
