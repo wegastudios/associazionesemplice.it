@@ -30,9 +30,7 @@ $fc_dir = Attachments::prepare_dir();
 // La chiave chiusa si riapre da sola con la frase automatica o il codice di licenza: le prove che vogliono la chiave chiusa spengono questa riapertura
 // (la accende di nuovo il blocco «Chiave: richieste insieme…» e alla fine del file).
 $fk_auto = function ( bool $on ): void {
-	if ( property_exists( FileKey::class, 'auto_reopen' ) ) {
-		FileKey::$auto_reopen = $on;
-	}
+	FileKey::$auto_reopen = $on;
 };
 $fk_auto( false );
 

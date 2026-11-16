@@ -2544,6 +2544,7 @@
   "La cifratura dei certificati medici è ferma: la chiave non si apre su questo sito." : "Encryption of the medical certificates is stopped: the key does not open on this site.",
   "I certificati già caricati restano in chiaro e non viene toccato nulla. Va sistemata la chiave (Impostazioni → Copia di sicurezza → «Cifratura dei file riservati» → «Sistemare la chiave»): poi la cifratura riparte da sola." : "The certificates already uploaded stay in plain form and nothing is touched. The key must be fixed (Settings → Backup → «Encryption of private files» → «Fixing the key»): then encryption restarts by itself.",
   "Apri lo stato" : "Open the status",
-  "Buongiorno, sul nostro sito serve attivare l'estensione sodium di PHP (cifratura dei documenti riservati e dei certificati medici). Grazie." : "Hello, on our site the PHP sodium extension needs to be enabled (encryption of private documents and medical certificates). Thank you."
+  "Buongiorno, sul nostro sito serve attivare l'estensione sodium di PHP (cifratura dei documenti riservati e dei certificati medici). Grazie." : "Hello, on our site the PHP sodium extension needs to be enabled (encryption of private documents and medical certificates). Thank you.",
+  "Se non l'hai cambiata, la frase è la data e ora di attivazione: {when}. Va scritta esattamente così, spazi e trattini compresi." : "If you have not changed it, the phrase is the activation date and time: {when}. It must be typed exactly like this, spaces and hyphens included."
  }
 }

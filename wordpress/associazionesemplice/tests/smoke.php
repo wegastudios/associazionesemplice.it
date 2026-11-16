@@ -10827,9 +10827,7 @@ $bf_flush();
 $bf_salt = function ( $s, $scheme ) {
 	return 'auth' === $scheme ? 'altri-codici-' . $s : $s;
 };
-if ( property_exists( \AssociazioneSemplice\FileKey::class, 'auto_reopen' ) ) {
-	\AssociazioneSemplice\FileKey::$auto_reopen = false;
-}
+\AssociazioneSemplice\FileKey::$auto_reopen = false;
 add_filter( 'salt', $bf_salt, 10, 2 );
 \AssociazioneSemplice\FileKey::reset();
 $bf_a0 = $bf_fixed();
@@ -10838,9 +10836,7 @@ $bf_sc = wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) );
 $bf_RF::cron_batch( 0, 0 );
 asem_ok( 'mismatch' === \AssociazioneSemplice\FileKey::state() && false === $bf_sc && $bf_a0 === $bf_fixed() && $bf_p0 === $bf_RF::pending_count( null ), 'ricevute PDF: con la chiave che non si apre non si programma né si disegna nessun lotto' );
 remove_filter( 'salt', $bf_salt, 10 );
-if ( property_exists( \AssociazioneSemplice\FileKey::class, 'auto_reopen' ) ) {
-	\AssociazioneSemplice\FileKey::$auto_reopen = true;
-}
+\AssociazioneSemplice\FileKey::$auto_reopen = true;
 \AssociazioneSemplice\FileKey::reset();
 $bf_clean();
 update_option( $bf_RF::FLAG, 'done', true );
