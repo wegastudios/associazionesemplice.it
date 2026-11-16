@@ -114,6 +114,10 @@ class PaymentService extends OfflinePayments {
 
 	public function mark_reviewed( int $id ): void {
 		$this->update( $id, array( 'review' => 0 ) );
+		$p = $this->get( $id );
+		if ( $p && self::refund_pending_stale( $p ) ) { // chi ha controllato il pannello del gestore: un tentativo non confermato di oltre 23 ore fa non blocca più
+			$this->update( $id, array( 'refund_pending_cents' => 0 ) );
+		}
 		Audit::log( 'payment.reviewed', 'payment', $id );
 	}
 
@@ -543,6 +547,20 @@ class PaymentService extends OfflinePayments {
 		}
 		$provider = (string) $p['provider'];
 		$name     = self::REFUND_GATEWAYS[ $provider ];
+		$tbl      = Db::t( 'payments' );
+		$pending  = (int) ( $p['refund_pending_cents'] ?? 0 );
+		if ( $pending > 0 ) { // un tentativo precedente è ancora in corso o il gestore non ha mai confermato: si può solo ripeterlo, con la stessa chiave e lo stesso importo
+			$this->refund_check_pending( $p, $cents, $name );
+		} else { // presa atomica prima di chiamare il gestore: chi arriva insieme a un altro con un importo diverso si ferma qui
+			$took = $this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'payments' ) . ' SET refund_pending_cents = %d, refund_pending_at = %s, updated_at = %s WHERE id = %d AND refunded_cents = %d AND refund_pending_cents = 0', $cents, Db::now(), Db::now(), $id, $before ) );
+			if ( 1 !== (int) $took ) {
+				$q = $this->get( $id );
+				if ( $q && (int) $q['refund_pending_cents'] > 0 ) {
+					$this->refund_check_pending( $q, $cents, $name );
+				}
+				throw new \InvalidArgumentException( Texts::t( 'Il pagamento è cambiato dopo che hai aperto la pagina (già restituiti {importo}): ricarica la pagina e controlla prima di restituire altro.', array( 'importo' => Money::format( (int) ( $q['refunded_cents'] ?? $before ) ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+		}
 		$cfg      = ProSettings::payment_config();
 		$key      = 'refund-' . $p['public_id'] . '-' . $before . '-' . $cents;
 		try {
@@ -561,30 +579,71 @@ class PaymentService extends OfflinePayments {
 				} catch ( \RuntimeException $e ) {
 					throw new \InvalidArgumentException( $this->refund_error( $provider, 'key', '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
-				$res = PayPalApi::refund( $this->http(), $live, $token, (string) $p['provider_payment_id'], $cents, mb_substr( 'refund-' . $p['public_id'] . '-' . $before . '-' . $cents, 0, 100 ), (string) $p['public_id'] );
+				$res = PayPalApi::refund( $this->http(), $live, $token, (string) $p['provider_payment_id'], $cents, mb_substr( $key, 0, 100 ), (string) $p['public_id'] );
 			}
-		} catch ( \RuntimeException $e ) { // rete: non si sa se il gestore ha ricevuto la richiesta; rifarla con gli stessi dati non rimborsa due volte
+		} catch ( \InvalidArgumentException $e ) { // nulla è partito verso il gestore: il tentativo si libera
+			$this->refund_release( $id, $cents );
+			throw $e;
+		} catch ( \RuntimeException $e ) { // rete: non si sa se il gestore ha ricevuto la richiesta. Il tentativo resta salvato e il pagamento «da controllare»: si ripete solo con lo stesso importo (stessa chiave)
+			$this->update( $id, array( 'review' => 1, 'error' => mb_substr( Texts::t( 'Rimborso di {importo} non confermato dal gestore: da controllare.', array( 'importo' => Money::format( $cents ) ) ), 0, 250 ) ) );
 			Audit::log( 'payment.refund_unreachable', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents ) );
-			throw new \InvalidArgumentException( Texts::t( 'Il servizio di {metodo} non risponde: il rimborso non è stato confermato. Riprova tra poco: ripetere lo stesso invio non rimborsa due volte.', array( 'metodo' => $name ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il servizio di {metodo} non risponde: il rimborso di {importo} non è stato confermato. Riprova tra poco con lo stesso importo: ripetere lo stesso invio non rimborsa due volte. Con un importo diverso non si riparte finché questo non è chiarito.', array( 'metodo' => $name, 'importo' => Money::format( $cents ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( empty( $res['ok'] ) ) {
+			$this->refund_release( $id, $cents ); // rifiuto certo del gestore: nulla è stato restituito
 			Audit::log( 'payment.refund_refused', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'reason' => $res['reason'] ) );
 			throw new \InvalidArgumentException( $this->refund_error( $provider, (string) $res['reason'], (string) $res['message'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$total = $before + $cents;
 		$full  = $total >= (int) $p['amount_cents'];
-		$tbl   = Db::t( 'payments' );
-		$data  = array( 'refunded_cents' => $total, 'refund_id' => mb_substr( (string) $res['id'], 0, 120 ), 'refunded_at' => Db::now(), 'updated_at' => Db::now(), 'error' => mb_substr( Texts::t( 'Restituiti {importo} al socio.', array( 'importo' => Money::format( $total ) ) ), 0, 250 ) );
+		$data  = array( 'refunded_cents' => $total, 'refund_pending_cents' => 0, 'refund_id' => mb_substr( (string) $res['id'], 0, 120 ), 'refunded_at' => Db::now(), 'updated_at' => Db::now(), 'error' => mb_substr( Texts::t( 'Restituiti {importo} al socio.', array( 'importo' => Money::format( $total ) ) ), 0, 250 ) );
 		if ( $full ) {
 			$data['refund_due'] = 0;
 			$data['review']     = 0; // tutto restituito: nulla più da controllare
 		}
-		$done = $this->db()->update( $tbl, $data, array( 'id' => $id, 'refunded_cents' => $before ) ); // solo se nessun altro ha registrato un rimborso nel frattempo
-		Audit::log( 'payment.refunded', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'total' => $total, 'refund' => (string) $res['id'], 'case' => $info['case'], 'reason' => mb_substr( $reason, 0, 200 ), 'recorded' => 1 === (int) $done ) );
-		if ( 1 !== (int) $done ) {
-			throw new \InvalidArgumentException( Texts::t( 'Questo rimborso risulta già registrato: ricarica la pagina per vedere quanto è stato restituito.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		$done = $this->db()->update( $tbl, $data, array( 'id' => $id, 'refunded_cents' => $before, 'refund_pending_cents' => $cents ) ); // solo se la riga è ancora quella di prima
+		if ( 1 !== (int) $done ) { // il gestore ha confermato ma la scrittura non è passata: l'importo si somma comunque e il pagamento resta «da controllare»
+			$this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'payments' ) . ' SET refunded_cents = refunded_cents + %d, refund_pending_cents = 0, review = 1, refund_id = %s, refunded_at = %s, updated_at = %s, error = %s WHERE id = %d', $cents, mb_substr( (string) $res['id'], 0, 120 ), Db::now(), Db::now(), mb_substr( Texts::t( 'Rimborso di {importo} confermato dal gestore ma registrato in modo anomalo: da controllare.', array( 'importo' => Money::format( $cents ) ) ), 0, 250 ), $id ) );
+			$row   = $this->get( $id );
+			$total = (int) ( $row['refunded_cents'] ?? $total );
+			$full  = $total >= (int) $p['amount_cents'];
+			if ( $full ) {
+				$this->update( $id, array( 'refund_due' => 0 ) );
+			}
 		}
+		Audit::log( 'payment.refunded', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'total' => $total, 'refund' => (string) $res['id'], 'case' => $info['case'], 'reason' => mb_substr( $reason, 0, 200 ), 'recorded' => 1 === (int) $done ) );
 		return array( 'cents' => $cents, 'total' => $total, 'full' => $full, 'mailed' => $this->send_refund_email( $this->get( $id ), $cents, $reason ) );
+	}
+
+	/** Dopo quanto il gestore non riconosce più lo stesso invio come uno già fatto (Stripe conserva la chiave 24 ore): un po' meno, per sicurezza. */
+	const REFUND_KEY_SECONDS = 82800;
+
+	/** Il tentativo non confermato è più vecchio di {@see REFUND_KEY_SECONDS}? */
+	private static function refund_pending_stale( array $p ): bool {
+		$at = (string) ( $p['refund_pending_at'] ?? '' );
+		return (int) ( $p['refund_pending_cents'] ?? 0 ) > 0 && '' !== $at && strtotime( $at ) < strtotime( Db::now() ) - self::REFUND_KEY_SECONDS;
+	}
+
+	/** Libera il tentativo di rimborso preso da {@see refund()} (solo se è proprio questo importo). */
+	private function refund_release( int $id, int $cents ): void {
+		$this->db()->update( Db::t( 'payments' ), array( 'refund_pending_cents' => 0 ), array( 'id' => $id, 'refund_pending_cents' => $cents ) );
+	}
+
+	/**
+	 * Su questo pagamento c'è un rimborso in corso o non confermato: si può ripetere solo lo stesso importo, e non oltre {@see REFUND_KEY_SECONDS}.
+	 * Se va bene torna senza fare nulla.
+	 *
+	 * @throws \InvalidArgumentException con la frase da mostrare
+	 */
+	private function refund_check_pending( array $p, int $cents, string $name ): void {
+		// (il controllo dell'età sta in refund_pending_stale)
+		$pending = (int) $p['refund_pending_cents'];
+		if ( $pending !== $cents ) {
+			throw new \InvalidArgumentException( Texts::t( 'Su questo pagamento c\'è un rimborso di {importo} in corso o non confermato dal gestore: si può ripetere solo lo stesso importo, così non si restituisce due volte.', array( 'importo' => Money::format( $pending ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( self::refund_pending_stale( $p ) ) {
+			throw new \InvalidArgumentException( Texts::t( 'Il rimborso di {importo} non è stato confermato da più di 24 ore: il gestore non lo riconosce più come lo stesso invio. Controlla dal pannello di {metodo} se è partito; se non è partito, premi «Controllato» e riprova.', array( 'importo' => Money::format( $pending ), 'metodo' => $name ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 	}
 
 	/** Email al socio che ha pagato: gli diciamo quanto gli è stato restituito. Senza email non si manda nulla (il rimborso è già partito). */

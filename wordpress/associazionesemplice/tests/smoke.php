@@ -8716,7 +8716,7 @@ $rf_hook  = function () use ( &$rf_inner, &$rf_hook, $rf_try, $rf_k1 ) { // un'a
 };
 $ap_ps->refund( $rf_k1, 300, 0, 'Motivo di prova' );
 $rf_hook = null;
-asem_ok( is_string( $rf_inner ) && false !== strpos( $rf_inner, 'rimborso in corso' ) && $rf_n0 + 1 === count( $rf_calls ) && 300 === (int) $rf_row( $rf_k1 )['refunded_cents'] && 0 === (int) $rf_row( $rf_k1 )['refund_pending_cents'], 'rimborso: due richieste insieme con importi diversi, la seconda non arriva al gestore e resta restituito solo il primo importo' );
+asem_ok( is_string( $rf_inner ) && false !== strpos( $rf_inner, 'un rimborso di 3,00 € in corso o non confermato' ) && $rf_n0 + 1 === count( $rf_calls ) && 300 === (int) $rf_row( $rf_k1 )['refunded_cents'] && 0 === (int) $rf_row( $rf_k1 )['refund_pending_cents'], 'rimborso: due richieste insieme con importi diversi, la seconda non arriva al gestore e resta restituito solo il primo importo' );
 
 $rf_k2 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
 $rf_n0 = count( $rf_calls );
