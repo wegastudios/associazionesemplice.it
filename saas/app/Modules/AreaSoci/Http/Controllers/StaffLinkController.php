@@ -25,7 +25,8 @@ final readonly class StaffLinkController
         $slug = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->value('slug');
         $user = $request->user()?->getAuthIdentifier();
         try {
-            $link = $this->access->staffLink($person, is_string($user) ? $user : null, self::baseUrl(is_string($slug) ? $slug : ''));
+            $custom = $this->db->connection('pgsql')->table('core.org_domains')->where('org_id', $this->context->require()->id)->where('state', 'active')->value('domain');
+            $link = $this->access->staffLink($person, is_string($user) ? $user : null, self::baseUrl(is_string($slug) ? $slug : '', is_string($custom) ? $custom : null));
         } catch (MemberAccessError $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
@@ -38,14 +39,16 @@ final readonly class StaffLinkController
         return response()->json(['closed' => $this->access->closeAll($person)]);
     }
 
-    /** https://<slug>.<dominio dei soci>, con lo schema dell'applicazione (http in locale). */
-    public static function baseUrl(string $slug): string
+    /** https://<slug>.<dominio dei soci>, o il dominio personalizzato se verificato, con lo schema dell'applicazione (http in locale). */
+    public static function baseUrl(string $slug, ?string $customDomain = null): string
     {
         $url = config('app.url');
         $scheme = is_string($url) ? parse_url($url, PHP_URL_SCHEME) : null;
         $port = is_string($url) ? parse_url($url, PHP_URL_PORT) : null;
         $domain = config('saas.members_domain');
 
-        return (is_string($scheme) ? $scheme : 'https').'://'.$slug.'.'.(is_string($domain) ? $domain : 'associazionesemplice.it').(is_int($port) ? ':'.$port : '');
+        $host = $customDomain !== null && $customDomain !== '' ? $customDomain : $slug.'.'.(is_string($domain) ? $domain : 'associazionesemplice.it');
+
+        return (is_string($scheme) ? $scheme : 'https').'://'.$host.(is_int($port) ? ':'.$port : '');
     }
 }
