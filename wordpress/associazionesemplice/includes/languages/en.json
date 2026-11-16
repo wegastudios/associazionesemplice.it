@@ -2613,6 +2613,10 @@
   "Conferma" : "Confirm",
   "Troppi tentativi: riprova tra qualche minuto." : "Too many attempts: try again in a few minutes.",
   "La password non è corretta: non è stato scaricato nulla." : "The password is not correct: nothing has been downloaded.",
-  "Per scaricare la copia scrivi la tua password." : "To download the copy, enter your password."
+  "Per scaricare la copia scrivi la tua password." : "To download the copy, enter your password.",
+  "Stripe segnala un rimborso di {importo} non fatto da qui: controlla dal pannello di Stripe e dalla prima nota." : "Stripe reports a refund of {importo} that was not made from here: check it in the Stripe dashboard and in the cash book.",
+  "Stripe segnala una contestazione sul pagamento ({motivo}): controlla dal pannello di Stripe." : "Stripe reports a dispute on the payment ({motivo}): check it in the Stripe dashboard.",
+  "Pagamenti online da controllare:" : "Online payments to check:",
+  "Apri i pagamenti" : "Open the payments"
  }
 }
