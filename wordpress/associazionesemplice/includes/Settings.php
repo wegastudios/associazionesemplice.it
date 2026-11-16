@@ -273,7 +273,7 @@ final class Settings {
 		if ( function_exists( 'apply_filters' ) ) {
 			$clean = (array) apply_filters( 'asem_settings_clean', $clean, $values ); // un'estensione controlla le sue impostazioni
 		}
-		Audit::log( 'settings.updated', 'settings' ); // senza i valori: nel registro non finiscono chiavi
+		Audit::log( 'settings.updated', 'settings', null, array( 'keys' => array_slice( Audit::changed_keys( $before, $clean ), 0, 60 ) ) ); // solo i nomi delle voci cambiate, mai i valori: nel registro non finiscono chiavi
 		update_option( self::OPTION, $clean );
 		if ( $clean['fiscal_start_month'] !== $old_fiscal ) { // gli anni si ridisegnano: devono esistere quelli che contengono i movimenti
 			FiscalYears::seed();
