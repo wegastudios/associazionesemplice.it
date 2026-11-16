@@ -132,7 +132,10 @@ final class App {
 			echo json_encode( Site::publicPlans(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
-			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /wordpress/admin\nDisallow: /saas/admin\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
+			echo Seo::robots();
+		} elseif ( $get && '/sitemap.xml' === $path ) {
+			View::headers( 'application/xml; charset=utf-8' );
+			echo Seo::sitemap();
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );

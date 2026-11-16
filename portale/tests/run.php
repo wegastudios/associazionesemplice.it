@@ -405,6 +405,31 @@ check( 'admin: riconosciuto senza badare alle maiuscole', Portale\Plugin\Admin::
 Portale\Audit::log( $db, 'io@esempio.it', 'prova', 'dettaglio' );
 check( 'registro: azione salvata', 'prova' === Portale\Audit::recent( $db, 5 )[0]['action'] );
 check( 'robots: segnali di non indicizzazione di default', false === Config::get( 'indexable', false ) );
+// Motori di ricerca: sitemap, canonical, Open Graph, robots, verifica Search Console
+$seoPrevBase = Config::get( 'base_url', '' );
+Config::set( 'base_url', 'https://esempio.test' );
+Config::set( 'saas_sale.enabled', false );
+Config::set( 'indexable', false );
+check( 'seo: chiuso di default: robots vieta tutto e non cita la sitemap', "User-agent: *\nDisallow: /\n" === Seo::robots() );
+Config::set( 'indexable', true );
+$robots = Seo::robots();
+check( 'seo: aperto: robots esclude accesso, account, grazie, paypal, admin, API e demo e indica la sitemap', 0 === strpos( $robots, "User-agent: *\nAllow: /\n" ) && false !== strpos( $robots, "Disallow: /accedi\n" ) && false !== strpos( $robots, "Disallow: /twofactor\n" ) && false !== strpos( $robots, "Disallow: /grazie\n" ) && false !== strpos( $robots, "Disallow: /paypal\n" ) && false !== strpos( $robots, "Disallow: /demo/\n" ) && false !== strpos( $robots, "Disallow: /account\n" ) && "Sitemap: https://esempio.test/sitemap.xml\n" === substr( $robots, -42 ) );
+$sm = Seo::sitemap();
+check( 'seo: sitemap valida e senza gestionale né pagine private', false !== simplexml_load_string( $sm ) && false !== strpos( $sm, '<loc>https://esempio.test/</loc>' ) && false !== strpos( $sm, '<loc>https://esempio.test/prezzi</loc>' ) && false !== strpos( $sm, '<loc>https://esempio.test/privacy</loc>' ) && false !== strpos( $sm, '<loc>https://esempio.test/wordpress/changelog</loc>' ) && false === strpos( $sm, '/saas' ) && false === strpos( $sm, '/accedi' ) && false === strpos( $sm, '/account' ) );
+Config::set( 'saas_sale.enabled', true );
+check( 'seo: con la vendita del gestionale accesa la sitemap include /saas', false !== strpos( Seo::sitemap(), '<loc>https://esempio.test/saas</loc>' ) );
+Config::set( 'saas_sale.enabled', false );
+$tags = Seo::tags( '/prezzi', 'Prezzi', 'Descrizione "di prova"' );
+check( 'seo: canonical, Open Graph e Twitter card con testi protetti', false !== strpos( $tags, '<link rel="canonical" href="https://esempio.test/prezzi">' ) && false !== strpos( $tags, 'og:image" content="https://esempio.test/assets/brand/og-1200x630.png"' ) && false !== strpos( $tags, 'twitter:card" content="summary_large_image"' ) && false !== strpos( $tags, 'Descrizione &quot;di prova&quot;' ) );
+check( 'seo: pagine private senza canonical né Open Graph', '' === Seo::tags( '/account', 'Account', 'x' ) && '' === Seo::tags( '/accedi', 'Accedi', 'x' ) && '' === Seo::tags( '/saas', 'Gestionale', 'x' ) );
+Config::set( 'seo', array( 'google_verification' => 'abc123_DEF-456xyz' ) );
+check( 'seo: il codice di Search Console, se valido, diventa il meta tag (anche nelle pagine private)', false !== strpos( Seo::tags( '/account', 'A', 'x' ), '<meta name="google-site-verification" content="abc123_DEF-456xyz">' ) );
+Config::set( 'seo', array( 'google_verification' => '"><script>' ) );
+check( 'seo: un codice non valido viene ignorato', '' === Seo::googleVerification() && '' === Seo::tags( '/account', 'A', 'x' ) );
+Config::set( 'seo', array() );
+check( 'seo: dati strutturati solo in home (organizzazione) e /wordpress (plugin), senza prezzi', false !== strpos( Seo::jsonLd( '/' ), '"@type":"Organization"' ) && false !== strpos( Seo::jsonLd( '/wordpress' ), '"@type":"SoftwareApplication"' ) && false === strpos( Seo::jsonLd( '/wordpress' ), 'offers' ) && '' === Seo::jsonLd( '/prezzi' ) );
+Config::set( 'base_url', $seoPrevBase );
+Config::set( 'indexable', false );
 
 // --- Chiavi dal pannello ----------------------------------------------------------------------------------------------------------
 $tokenOk = 'wic_3c6d8003fdd2b68f.d5S6nSoypyWsa5RmmMPApIHcrhCf5d_rB1Pr_6ftmO13bJlM';
