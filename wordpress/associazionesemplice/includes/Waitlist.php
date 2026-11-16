@@ -23,6 +23,9 @@ final class Waitlist {
 		if ( $session['session_date'] < current_time( 'Y-m-d' ) ) {
 			throw new \InvalidArgumentException( 'Questo evento è già passato.' );
 		}
+		if ( PublicEvents::options( (int) $session['activity_id'] )['approval'] ) {
+			throw new \InvalidArgumentException( 'Questo evento è su richiesta: la lista d\'attesa non c\'è, la segreteria decide chi partecipa.' );
+		}
 		if ( null === $session['capacity'] || (int) $acts->seats( $session_id )['free'] > 0 ) {
 			throw new \InvalidArgumentException( 'Ci sono ancora posti liberi: puoi prenotare direttamente.' );
 		}
@@ -90,6 +93,9 @@ final class Waitlist {
 		}
 		$n   = 0;
 		$tbl = Db::t( 'waitlist' );
+		if ( PublicEvents::options( (int) $session['activity_id'] )['approval'] ) {
+			return 0; // evento su richiesta: nessuno entra da solo, la segreteria prenota chi approva (chi era già in coda resta dov'è)
+		}
 		foreach ( self::waiting( $session_id ) as $w ) {
 			$seats = $acts->seats( $session_id );
 			if ( null !== $seats['free'] && $seats['free'] <= 0 ) {

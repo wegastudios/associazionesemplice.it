@@ -2628,6 +2628,8 @@
   "Vai agli aggiornamenti" : "Go to updates",
   "Questo numero di tessera non si può usare: scrivi alla segreteria." : "This card number cannot be used: write to the office.",
   "Questa email non si può usare: scrivi alla segreteria." : "This email cannot be used: write to the office.",
-  "Non puoi scegliere questo socio come delegato: scegline un altro." : "You cannot choose this member as your proxy: choose another."
+  "Non puoi scegliere questo socio come delegato: scegline un altro." : "You cannot choose this member as your proxy: choose another.",
+  "Questo evento è su richiesta: chiedi di partecipare dalla pagina dell'evento e la segreteria ti risponde." : "This event is by request: ask to take part from the event page and the office will reply.",
+  "Questo evento è su richiesta: la lista d'attesa non c'è, la segreteria decide chi partecipa." : "This event is by request: there is no waiting list, the office decides who takes part."
  }
 }

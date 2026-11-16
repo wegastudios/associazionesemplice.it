@@ -521,7 +521,7 @@ final class EventRequests {
 			return self::fail( $row, 'rejected', 'La data richiesta non è più disponibile. Scusaci: controlla il calendario degli eventi sul sito.' );
 		}
 		try {
-			$svc->book( (int) $s['id'], (int) $row['person_id'] );
+			$svc->book( (int) $s['id'], (int) $row['person_id'], array( 'approved' => true ) );
 		} catch ( \InvalidArgumentException $e ) {
 			return array( 'ok' => false, 'message' => 'Non è stato possibile prenotare: ' . $e->getMessage() ); // la richiesta resta in attesa
 		}
@@ -588,7 +588,7 @@ final class EventRequests {
 		try {
 			foreach ( $list as $i => $p ) {
 				$pid = $existing[ $i ] ? (int) $existing[ $i ]['id'] : self::new_guest( $p, ! empty( $data['image_ok'] ), 0 === $i ? (string) $row['email'] : '' );
-				$svc->book( (int) $s['id'], $pid );
+				$svc->book( (int) $s['id'], $pid, array( 'approved' => true ) ); // richiesta confermata (o approvata dalla segreteria)
 				$booked[] = array( 'person_id' => $pid, 'session_id' => (int) $s['id'] );
 				$fee     += self::guest_fee( $a );
 			}

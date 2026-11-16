@@ -98,7 +98,7 @@ final class GroupCash {
 							}
 						}
 						if ( ! $acts->has_active_booking( $sid, $pid ) ) {
-							$acts->book( $sid, $pid ); // eccezione: vale anche per un socio sospeso o con la tessera non in regola (non per lo staff, controllato sopra)
+							$acts->book( $sid, $pid, array( 'approved' => true ) ); // incasso dello staff: eccezione: vale anche per un socio sospeso o con la tessera non in regola (non per lo staff, controllato sopra)
 						}
 						if ( $staff ) { // importo calcolato dal sito: quanto resta da versare
 							$cents = 0;
