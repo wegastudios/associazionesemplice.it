@@ -570,7 +570,7 @@ final class PublicEvents {
 		if ( self::has_custom_layout( $post ) ) { // chi ha composto la pagina con i pezzi (blocchi, widget, shortcode) decide da solo l'impaginazione
 			return $content;
 		}
-		Frontend\Views::no_cache();
+		Frontend\Views::no_cache_if_personal();
 		$all     = self::list_page_url();
 		$html    = '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
 		$html   .= self::poster_html( $post ) . self::facts_html( $a ) . '</div>';
@@ -658,7 +658,7 @@ final class PublicEvents {
 		if ( ! $a ) {
 			return '';
 		}
-		Frontend\Views::no_cache();
+		Frontend\Views::no_cache_if_personal();
 		switch ( $part ) {
 			case 'locandina':
 				$h = self::poster_html( $post );
@@ -816,7 +816,7 @@ final class PublicEvents {
 	 * @param array $atts modo (elenco|mese), categoria (indirizzo), limite (date, 1–100), mesi (quanti mesi, 1–24), filtri (si|no).
 	 */
 	public static function list_html( array $atts = array() ): string {
-		Frontend\Views::no_cache();
+		Frontend\Views::no_cache_if_personal();
 		$view = 'mese' === strtolower( (string) ( $atts['modo'] ?? '' ) ) ? 'mese' : 'elenco';
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- filtri di sola lettura sull'indirizzo della pagina
 		$cat = isset( $_GET['asem_cat'] ) ? sanitize_title( wp_unslash( (string) $_GET['asem_cat'] ) ) : sanitize_title( (string) ( $atts['categoria'] ?? '' ) );

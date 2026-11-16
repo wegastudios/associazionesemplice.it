@@ -21,6 +21,7 @@ final class Audit {
 				'details'     => $details ? wp_json_encode( $details ) : null,
 			)
 		);
+		do_action( 'asem_audit_logged', $action );
 	}
 
 	/** Cancella le righe prima della data indicata, a gruppi per non bloccare il database. @return int righe eliminate */
