@@ -18,6 +18,7 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -422,7 +423,7 @@ final readonly class OnlinePayments
                 continue;
             }
             $closed = $this->connection()->table('app.transactions as t')
-                ->join('app.fiscal_years as f', static fn ($j) => $j->on('f.org_id', '=', 't.org_id')->on('f.year', '=', 't.fiscal_year'))
+                ->join('app.fiscal_years as f', static fn (JoinClause $j) => $j->on('f.org_id', '=', 't.org_id')->on('f.year', '=', 't.fiscal_year'))
                 ->where('t.receipt_id', $receipt->id)->whereNull('t.voided_at')->where('f.status', 'closed')->value('f.year');
             if ($closed !== null) {
                 throw new MemberAccessError('Non si può stornare la ricevuta '.$label.': l\'anno fiscale '.(is_numeric($closed) ? (int) $closed : '').' è chiuso, va riaperto. Il rimborso non è stato fatto.');
