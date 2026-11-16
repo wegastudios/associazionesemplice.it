@@ -51,6 +51,39 @@ final class Donations {
 		return self::clean_account( (string) Settings::get( 'donate_paypal' ) );
 	}
 
+	/** Il conto PayPal delle donazioni senza mostrarlo per intero: «ma••••@dominio.it» o «••••1234». */
+	public static function mask_account( string $account ): string {
+		$account = trim( $account );
+		if ( '' === $account ) {
+			return '';
+		}
+		$at = strrpos( $account, '@' );
+		if ( false !== $at && $at > 0 ) {
+			return substr( $account, 0, min( 2, $at ) ) . '••••' . substr( $account, $at );
+		}
+		return '••••' . substr( $account, -4 );
+	}
+
+	/** Il conto che riceve le donazioni è cambiato? (Dopo la pulizia, senza distinguere maiuscole.) */
+	public static function account_changed( string $old, string $new ): bool {
+		return strtolower( self::clean_account( $old ) ) !== strtolower( self::clean_account( $new ) );
+	}
+
+	/** Registra il cambio del conto delle donazioni e avvisa per email gli amministratori. */
+	public static function notify_change( string $old, string $new ): void {
+		if ( ! self::account_changed( $old, $new ) ) {
+			return;
+		}
+		$was = self::mask_account( self::clean_account( $old ) );
+		$now = self::mask_account( self::clean_account( $new ) );
+		Audit::log( 'donate.account_changed', 'settings', 0, array( 'prima' => $was, 'dopo' => $now ) );
+		$text = 'Il conto PayPal che riceve le donazioni è stato modificato da ' . Bank::acting_user() . ".\n\nPrima: " . ( '' !== $was ? $was : 'nessuno' ) . "\nDopo: " . ( '' !== $now ? $now : 'nessuno' )
+			. "\n\nSe non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni.";
+		foreach ( Bank::admin_recipients() as $addr ) {
+			Texts::mail( $addr, 'Modificato il conto PayPal delle donazioni', $text );
+		}
+	}
+
 	public static function enabled(): bool {
 		return ! empty( Settings::get( 'donate_enabled' ) ) && '' !== self::account();
 	}
