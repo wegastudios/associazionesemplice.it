@@ -45,6 +45,13 @@ final class DatabaseOrgContext implements OrgContext
         $database = is_string($row->database ?? null) ? $row->database : null;
         $connection = $this->registry->appConnection($database);
 
+        // Nei comandi che girano su tutte le associazioni non restano aperte le connessioni ai database dedicati già visti.
+        foreach (array_keys($this->db->getConnections()) as $name) {
+            if ($name !== $connection && $this->registry->isDedicatedApp((string) $name) && $this->db->connection($name)->transactionLevel() === 0) {
+                $this->db->purge($name);
+            }
+        }
+
         $this->db->connection($connection)->select("SELECT set_config('app.org_id', ?, false)", [$orgId]);
 
         return $this->current = new CurrentOrg($orgId, $connection);

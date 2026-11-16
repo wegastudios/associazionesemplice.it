@@ -18,6 +18,7 @@ use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgPurger;
+use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Contracts\PlatformSettingsStore;
 use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Core\Database\DatabaseRegistry;
@@ -51,6 +52,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(OrgPurger::class, DatabaseOrgPurger::class);
         $this->app->singleton(PlatformSettingsStore::class, PlatformSettings::class);
         $this->app->singleton(OrgContext::class, DatabaseOrgContext::class);
+        $this->app->scoped(OrgSettings::class);
         $this->app->bind(StaffCount::class, EmployeeCounter::class);
     }
 
