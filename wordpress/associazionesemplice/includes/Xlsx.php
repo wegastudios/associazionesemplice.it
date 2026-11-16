@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 final class Xlsx {
 
 	const MAX_ROWS       = 20000;
+	const MAX_COLS       = 16384; // come Excel: l'ultima colonna è XFD
 	const MAX_ENTRY_SIZE = 52428800; // 50 MB di XML decompresso per ogni parte (difesa dai file "bomba")
 	const NS_MAIN        = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 	const NS_REL         = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
@@ -212,6 +213,9 @@ final class Xlsx {
 			$pos   = 0;
 			foreach ( $row->c as $c ) {
 				$idx = isset( $c['r'] ) ? self::column_index( (string) $c['r'] ) : $pos;
+				if ( $idx >= self::MAX_COLS ) {
+					throw new \InvalidArgumentException( 'Il foglio ha più di ' . self::MAX_COLS . ' colonne: controlla che sia il file giusto.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
 				$pos = $idx + 1;
 				$t   = (string) $c['t'];
 				$v   = isset( $c->v ) ? (string) $c->v : '';
