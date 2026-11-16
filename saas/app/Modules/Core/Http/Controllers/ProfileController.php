@@ -70,13 +70,13 @@ final readonly class ProfileController
             }
             // Stessa risposta se l'indirizzo è libero o già usato: chi scrive non scopre chi ha un accesso.
             if (! DB::table('core.users')->whereRaw('lower(email) = ?', [$new])->exists()) {
-                $url = URL::temporarySignedRoute('profile.email.confirm', now()->addMinutes(self::EMAIL_LINK_MINUTES), ['email' => $new]);
+                $url = URL::temporarySignedRoute('profile.email.confirm', now()->addMinutes(self::EMAIL_LINK_MINUTES), ['email' => $new, 'uid' => $user->id]);
                 Notification::route('mail', $new)->notify(new EmailChangeNotification($user->name, $url));
                 $user->notify(new EmailChangeNoticeNotification(EmailChangeNoticeNotification::mask($new)));
             }
         }
 
-        return back()->with('status', 'Ti abbiamo scritto un link al nuovo indirizzo: l\'email cambia solo quando lo apri. Il link vale 60 minuti.');
+        return back()->with('status', 'È stato mandato un link al nuovo indirizzo: l\'email cambia solo quando lo apri. Il link vale 60 minuti.');
     }
 
     /** Apre il link ricevuto al nuovo indirizzo: solo la stessa persona che l'ha chiesto, solo se il link è valido e l'indirizzo è libero. */
@@ -84,7 +84,7 @@ final readonly class ProfileController
     {
         $user = $request->user();
         $new = mb_strtolower($request->string('email')->trim()->toString());
-        if (! $user instanceof User || ! $request->hasValidSignature() || filter_var($new, FILTER_VALIDATE_EMAIL) === false) {
+        if (! $user instanceof User || ! $request->hasValidSignature() || filter_var($new, FILTER_VALIDATE_EMAIL) === false || $request->query('uid') !== (string) $user->id) {
             return redirect()->route('profile')->withErrors(['ledger' => 'Il link non è valido o è scaduto: chiedi un nuovo cambio email dal tuo profilo.']);
         }
         if ($new !== mb_strtolower($user->email)) {

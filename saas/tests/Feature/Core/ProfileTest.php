@@ -65,6 +65,25 @@ it('cambia l\'email solo dopo il link aperto dal nuovo indirizzo, con la passwor
     expect($user->refresh()->email)->toBe('nuova@example.com')->and($user->email_verified_at)->not->toBeNull();
 });
 
+it('il link del cambio email vale solo per chi l\'ha chiesto: aperto da un altro utente non cambia nulla', function (): void {
+    Notification::fake();
+    $anna = $this->createUser('anna@example.com', twoFactor: true);
+    $bruno = $this->createUser('bruno@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $anna);
+    $this->addOperator($this->createOrg('Polisportiva Beta'), $bruno);
+
+    $this->actingAs($anna)->put('/gestionale/profilo/email', ['email' => 'altro@example.com', 'password' => $this::PASSWORD])->assertSessionHasNoErrors();
+    $url = null;
+    Notification::assertSentOnDemand(EmailChangeNotification::class, function (EmailChangeNotification $n) use (&$url): bool {
+        $url = $n->url;
+
+        return true;
+    });
+
+    $this->actingAs($bruno)->get($url)->assertSessionHasErrors('ledger');
+    expect($bruno->refresh()->email)->toBe('bruno@example.com')->and($anna->refresh()->email)->toBe('anna@example.com');
+});
+
 it('l\'email di un altro non si prende: stessa risposta, nessun link, e il link manomesso non vale', function (): void {
     Notification::fake();
     $user = $this->createUser('anna@example.com', twoFactor: true);
