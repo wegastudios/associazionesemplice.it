@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Modules\Cifratura\Contracts\EncryptedFiles;
+use App\Modules\Cifratura\Contracts\StoredFile;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
@@ -121,4 +123,25 @@ it('l\'archivio è solo per titolare e amministratore', function (): void {
     $this->addOperator($this->org, $op, OrgRole::Operator);
     $this->actingAs($op)->post("/gestionale/archivio/{$this->year}")->assertForbidden();
     $this->actingAs($op)->post("/gestionale/archivio/{$this->year}/rimetti")->assertForbidden();
+});
+
+it('comprime i PDF nell\'archivio e annota quanto spazio libera', function (): void {
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
+
+    [$archive, $details] = $this->orgContext()->run($this->org->id, fn () => [
+        DB::table('app.year_archives')->sole(),
+        json_decode((string) DB::table('audit.log')->where('action', 'archive.created')->value('details'), true),
+    ]);
+    $tmp = tempnam(sys_get_temp_dir(), 'arc');
+    $this->orgContext()->run($this->org->id, fn () => app(EncryptedFiles::class)->readToFile($this->org->id, new StoredFile($archive->path, 'archivio.zip', 'application/zip', (int) $archive->size_bytes, (string) $archive->sha256), (string) $tmp));
+    $zip = new ZipArchive;
+    expect($zip->open((string) $tmp))->toBeTrue();
+    $entry = $zip->statName($this->receipt.'.pdf');
+    $zip->close();
+    @unlink((string) $tmp);
+
+    expect($entry['comp_method'])->toBe(ZipArchive::CM_DEFLATE)
+        ->and($entry['comp_size'])->toBeLessThan($entry['size'])
+        ->and($details['bytes_before'])->toBeGreaterThan(0)
+        ->and($details['bytes_after'])->toBe((int) $archive->size_bytes);
 });

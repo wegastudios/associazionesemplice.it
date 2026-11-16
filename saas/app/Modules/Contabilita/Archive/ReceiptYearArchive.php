@@ -98,6 +98,7 @@ final readonly class ReceiptYearArchive implements YearArchives
         $zipPath = $work.'.zip';
         $checkPath = $work.'.check';
         $stored = null;
+        $before = (int) array_sum(array_map(static fn (object $r): int => is_numeric($r->size_bytes ?? null) ? (int) $r->size_bytes : 0, $rows));
         try {
             $this->collect($rows, $year, $zipPath, $work);
             $stored = $this->files->store($orgId, $zipPath, 'archivio-ricevute-'.$year.'.zip', 'application/zip');
@@ -132,7 +133,7 @@ final readonly class ReceiptYearArchive implements YearArchives
             $this->safeDelete(new StoredFile(is_string($r->path ?? null) ? $r->path : '', 'ricevuta.pdf', 'application/pdf', 0, ''));
         }
         $this->archived->flush();
-        $this->audit->record('archive.created', 'app.year_archives', null, ['year' => $year, 'receipts' => count($rows), 'checksum' => $stored->sha256]);
+        $this->audit->record('archive.created', 'app.year_archives', null, ['year' => $year, 'receipts' => count($rows), 'checksum' => $stored->sha256, 'bytes_before' => $before, 'bytes_after' => $stored->size]);
 
         return count($rows);
     }
@@ -198,7 +199,8 @@ final readonly class ReceiptYearArchive implements YearArchives
     }
 
     /**
-     * Raccoglie i PDF singoli in uno ZIP (senza compressione: sono già PDF), con l'indice.
+     * Raccoglie i PDF singoli in uno ZIP, con l'indice. Le voci si comprimono (deflate): i PDF del generatore interno sono
+     * testo non compresso, e l'archivio deve liberare spazio, non solo numero di file.
      *
      * @param  array<int, object>  $rows
      */
@@ -229,7 +231,7 @@ final readonly class ReceiptYearArchive implements YearArchives
             }
             $files[] = $file;
             $zip->addFile($file, $id.'.pdf');
-            $zip->setCompressionName($id.'.pdf', ZipArchive::CM_STORE);
+            $zip->setCompressionName($id.'.pdf', ZipArchive::CM_DEFLATE, 9);
             $index[] = ['receipt_id' => $id, 'number' => $number, 'file' => $r->original_name ?? '', 'sha256' => $r->sha256 ?? ''];
         }
         $zip->addFromString('indice.json', json_encode(['fiscal_year' => $year, 'receipts' => $index], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}');
