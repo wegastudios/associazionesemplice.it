@@ -7,6 +7,7 @@ namespace App\Modules\Core\Console;
 use Illuminate\Console\Command;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use SplFileInfo;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
@@ -72,6 +73,9 @@ final class PurgeTmpCommand extends Command
         }
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
         foreach ($iterator as $entry) {
+            if (! $entry instanceof SplFileInfo) {
+                continue;
+            }
             if ($entry->isDir() && ! $entry->isLink()) {
                 @rmdir($entry->getPathname()); // solo se vuota
             }
@@ -85,6 +89,9 @@ final class PurgeTmpCommand extends Command
     {
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS));
         foreach ($iterator as $entry) {
+            if (! $entry instanceof SplFileInfo) {
+                continue;
+            }
             if ($entry->isFile() || $entry->isLink()) {
                 yield $entry->getPathname();
             }
