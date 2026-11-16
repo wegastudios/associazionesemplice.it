@@ -29,11 +29,9 @@ if ( ! function_exists( 'wp_delete_file' ) ) {
 	}
 }
 
-if ( ! function_exists( 'wp_strip_all_tags' ) ) {
-	/** Sostituto minimo di quello di WordPress (stessa logica essenziale) per i test senza WordPress. */
-	function wp_strip_all_tags( $text, $remove_breaks = false ) {
-		$text = preg_replace( '@<(script|style)[^>]*?>.*?</\\1>@si', '', (string) $text );
-		$text = strip_tags( (string) $text );
-		return trim( $text );
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	/** Sostituto minimo di quello di WordPress per i test senza WordPress. */
+	function wp_parse_url( $url, $component = -1 ) {
+		return parse_url( $url, $component );
 	}
 }

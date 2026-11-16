@@ -24,7 +24,11 @@ final class Text {
 		if ( false === strpos( $s, '<' ) ) {
 			return trim( $s );
 		}
-		return trim( wp_strip_all_tags( $s ) ); // toglie anche il contenuto di script e stili
+		// Solo i tag veri: «<» seguito da lettera, «/» o «!» e chiuso da «>» (più il contenuto di script e stili). Un «<» qualunque («<10 anni», «<3», «a<b», «x <= y») resta com'è.
+		$s = (string) ( preg_replace( '@<(script|style)\b[^>]*>.*?</\1\s*>@isu', '', $s ) ?? $s );
+		$s = (string) ( preg_replace( '@<!--.*?-->@su', '', $s ) ?? $s );
+		$s = (string) ( preg_replace( '@</?[A-Za-z][^<>]*>|<![^<>]*>@u', '', $s ) ?? $s );
+		return trim( $s );
 	}
 
 	/** Minuscolo con supporto UTF-8, per confronti senza maiuscole/minuscole. */

@@ -273,8 +273,11 @@ final class Settings {
 		if ( function_exists( 'apply_filters' ) ) {
 			$clean = (array) apply_filters( 'asem_settings_clean', $clean, $values ); // un'estensione controlla le sue impostazioni
 		}
-		Audit::log( 'settings.updated', 'settings' ); // senza i valori: nel registro non finiscono chiavi
+		Audit::log( 'settings.updated', 'settings', null, array( 'keys' => array_slice( Audit::changed_keys( $before, $clean ), 0, 60 ) ) ); // solo i nomi delle voci cambiate, mai i valori: nel registro non finiscono chiavi
 		update_option( self::OPTION, $clean );
+		// Chi riceve i soldi non cambia in silenzio, da qualunque strada arrivi la modifica (pannello, ripristino di una copia): registro e email agli amministratori.
+		Bank::notify_change( is_array( $before['bank_accounts'] ?? null ) ? $before['bank_accounts'] : array(), is_array( $clean['bank_accounts'] ?? null ) ? $clean['bank_accounts'] : array() );
+		Donations::notify_change( (string) ( $before['donate_paypal'] ?? '' ), (string) ( $clean['donate_paypal'] ?? '' ) );
 		if ( $clean['fiscal_start_month'] !== $old_fiscal ) { // gli anni si ridisegnano: devono esistere quelli che contengono i movimenti
 			FiscalYears::seed();
 		}

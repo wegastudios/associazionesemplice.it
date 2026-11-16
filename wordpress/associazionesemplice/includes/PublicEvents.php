@@ -793,7 +793,7 @@ final class PublicEvents {
 		if ( ! $post instanceof \WP_Post ) {
 			return;
 		}
-		$desc = wp_trim_words( wp_strip_all_tags( has_excerpt( $post ) ? get_the_excerpt( $post ) : (string) $post->post_content ), 30 );
+		$desc = Frontend\Restrict::can_view_post( (int) $post->ID ) ? wp_trim_words( wp_strip_all_tags( has_excerpt( $post ) ? get_the_excerpt( $post ) : (string) $post->post_content ), 30 ) : ''; // un evento riservato non anticipa nulla nell'anteprima
 		echo '<meta property="og:type" content="website" />' . "\n";
 		echo '<meta property="og:title" content="' . esc_attr( get_the_title( $post ) ) . '" />' . "\n";
 		echo '<meta property="og:url" content="' . esc_url( (string) get_permalink( $post ) ) . '" />' . "\n";
@@ -895,6 +895,9 @@ final class PublicEvents {
 		}
 		$posts = array();
 		foreach ( get_posts( $query ) as $p ) {
+			if ( ! Frontend\Restrict::can_view_post( (int) $p->ID ) ) {
+				continue; // un evento riservato non compare (con data, luogo e contributo) a chi non può leggerlo
+			}
 			$aid = self::activity_of( (int) $p->ID );
 			if ( $aid && ! isset( $posts[ $aid ] ) ) {
 				$posts[ $aid ] = $p;
@@ -1144,10 +1147,29 @@ final class PublicEvents {
 			return;
 		}
 		$post = get_queried_object();
-		$aid  = $post ? self::activity_of( (int) $post->ID ) : 0;
-		$a    = $aid ? Plugin::activities()->get( $aid ) : null;
-		if ( ! $a || ! ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
+		if ( ! $post instanceof \WP_Post ) {
 			return;
+		}
+		$ics = self::ics_for( $post );
+		if ( '' === $ics ) {
+			return;
+		}
+		nocache_headers();
+		header( 'Content-Type: text/calendar; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . sanitize_file_name( $post->post_name ?: 'evento' ) . '.ics"' );
+		echo $ics; // phpcs:ignore WordPress.Security.EscapeOutput
+		exit;
+	}
+
+	/** Calendario delle date dell'evento; vuoto se non ce ne sono o se chi guarda non può leggere la pagina (contenuto riservato). */
+	public static function ics_for( \WP_Post $post ): string {
+		if ( ! Frontend\Restrict::can_view_post( (int) $post->ID ) ) {
+			return '';
+		}
+		$aid = self::activity_of( (int) $post->ID );
+		$a   = $aid ? Plugin::activities()->get( $aid ) : null;
+		if ( ! $a || ! ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
+			return '';
 		}
 		$events = array();
 		foreach ( self::upcoming_sessions( $aid ) as $s ) {
@@ -1163,13 +1185,9 @@ final class PublicEvents {
 			);
 		}
 		if ( ! $events ) {
-			return;
+			return '';
 		}
-		nocache_headers();
-		header( 'Content-Type: text/calendar; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="' . sanitize_file_name( $post->post_name ?: 'evento' ) . '.ics"' );
-		echo Ics::calendar( (string) $post->post_title, $events, wp_timezone_string(), gmdate( 'Ymd\THis\Z' ) ); // phpcs:ignore WordPress.Security.EscapeOutput
-		exit;
+		return Ics::calendar( (string) $post->post_title, $events, wp_timezone_string(), gmdate( 'Ymd\THis\Z' ) );
 	}
 
 	/** Dati strutturati schema.org/Event per i motori di ricerca. */
@@ -1178,10 +1196,21 @@ final class PublicEvents {
 			return;
 		}
 		$post = get_queried_object();
-		$aid  = $post ? self::activity_of( (int) $post->ID ) : 0;
-		$a    = $aid ? Plugin::activities()->get( $aid ) : null;
+		$json = $post instanceof \WP_Post ? self::structured_json( $post ) : '';
+		if ( '' !== $json ) {
+			wp_print_inline_script_tag( $json, array( 'type' => 'application/ld+json' ) );
+		}
+	}
+
+	/** JSON-LD dell'evento; vuoto se non c'è nulla da dire o se chi guarda non può leggere la pagina (contenuto riservato). */
+	public static function structured_json( \WP_Post $post ): string {
+		if ( ! Frontend\Restrict::can_view_post( (int) $post->ID ) ) {
+			return '';
+		}
+		$aid = self::activity_of( (int) $post->ID );
+		$a   = $aid ? Plugin::activities()->get( $aid ) : null;
 		if ( ! $a || ! ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
-			return;
+			return '';
 		}
 		$rows      = self::upcoming_sessions( $aid );
 		$cancelled = false;
@@ -1190,7 +1219,7 @@ final class PublicEvents {
 			$cancelled = (bool) $rows;
 		}
 		if ( ! $rows ) {
-			return;
+			return '';
 		}
 		$s   = $rows[0];
 		$tz  = wp_timezone();
@@ -1231,8 +1260,7 @@ final class PublicEvents {
 		$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
 		$full  = null !== $cap && (int) ( $s['booked_count'] ?? 0 ) >= $cap;
 		if ( $cancelled ) {
-			wp_print_inline_script_tag( (string) wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP ), array( 'type' => 'application/ld+json' ) );
-			return;
+			return (string) wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP );
 		}
 		$data['offers'] = array(
 			'@type'         => 'Offer',
@@ -1241,6 +1269,6 @@ final class PublicEvents {
 			'availability'  => $full ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
 			'url'           => (string) get_permalink( $post ),
 		);
-		wp_print_inline_script_tag( (string) wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP ), array( 'type' => 'application/ld+json' ) );
+		return (string) wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP );
 	}
 }

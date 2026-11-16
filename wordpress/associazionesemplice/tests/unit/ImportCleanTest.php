@@ -10,6 +10,16 @@ final class ImportCleanTest extends TestCase {
 		$this->assertSame( 'Ciao', Text::plain( 'Ciao<script>alert(1)</script>' ) );
 		$this->assertSame( 'x', Text::plain( '<style>p{}</style>x' ) );
 		$this->assertSame( 'a < b', Text::plain( 'a < b' ), 'un minore non è un tag' );
+		foreach ( array( 'bambini <10 anni', 'ti amo <3', 'a<b', 'x <= y', 'sconto <5€', 'cena <20 euro, poi <30' ) as $keep ) {
+			$this->assertSame( $keep, Text::plain( $keep ), 'non si perde testo: ' . $keep );
+		}
+		$this->assertSame( 'bambini <10 anni e adulti', Text::plain( 'bambini <10 anni <b>e</b> adulti' ) );
+		$this->assertSame( 'ok', Text::plain( 'o<!-- x -->k' ) );
+		$this->assertSame(
+			\AssociazioneSemplice\LedgerImport::key( '2026-01-02', '1', 'income', 1000, 'Quota', 'R1' ),
+			\AssociazioneSemplice\LedgerImport::key( '2026-01-02', '1', 'income', 1000, '<b>Quota</b>', '<i>R1</i>' ),
+			'la chiave dei doppioni ignora i tag'
+		);
 		$this->assertSame( "riga 1\nriga 2", Text::plain( "riga 1\nriga 2" ) );
 		$this->assertSame( 'Rossi & figli', Text::plain( 'Rossi & figli' ) );
 	}
