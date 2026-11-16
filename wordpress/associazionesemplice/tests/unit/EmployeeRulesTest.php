@@ -85,9 +85,9 @@ final class EmployeeRulesTest extends TestCase {
 		$this->assertNull( EmployeeRules::doc_need( 'minute' ), 'gli altri documenti restano fissi' );
 		$this->assertNull( EmployeeRules::doc_need( 'book' ) );
 		$by = array(
-			'collect' => array( 'asem_res_pay', 'asem_credit_adjust' ),
+			'collect' => array( 'asem_res_pay' ),
 			'refunds' => array( 'asem_payment_refund', 'asem_payment_refunded' ),
-			'funds'   => array( 'asem_void_tx', 'asem_fivepm_add', 'asem_fivepm_report', 'asem_fivepm_delete', 'asem_statement_notes', 'asem_statement_backfill' ),
+			'funds'   => array( 'asem_void_tx', 'asem_credit_adjust', 'asem_fivepm_add', 'asem_fivepm_report', 'asem_fivepm_delete', 'asem_statement_notes', 'asem_statement_backfill' ),
 		);
 		foreach ( $by as $key => $actions ) {
 			foreach ( $actions as $action ) {
