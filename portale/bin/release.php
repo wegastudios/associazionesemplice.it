@@ -33,6 +33,23 @@ try {
 		echo Portale\Releases::latestMinVersion( $db, $argv[2] ), "\n";
 		exit( 0 );
 	}
+	if ( 'checkcolumns' === $argv[1] ) {
+		// Sola lettura: le colonne della firma v2 devono esistere nel database prima di pubblicare (release.sh si ferma se mancano).
+		$missing = array();
+		foreach ( array( 'signature_v2', 'kid_v2', 'signed_at', 'min_version' ) as $col ) {
+			try {
+				$db->all( 'SELECT ' . $col . ' FROM releases WHERE 1 = 0' );
+			} catch ( \Throwable $e ) {
+				$missing[] = $col;
+			}
+		}
+		if ( $missing ) {
+			fwrite( STDERR, 'Mancano nella tabella releases del database: ' . implode( ', ', $missing ) . ". Vanno create come proprietario (vedi il documento del rimedio) prima di pubblicare.\n" );
+			exit( 3 );
+		}
+		echo "ok\n";
+		exit( 0 );
+	}
 	if ( 'sign' === $argv[1] ) {
 		if ( $argc < 6 ) {
 			fwrite( STDERR, "Uso: php bin/release.php sign free|pro versione firma kid [firma_v2 kid_v2 signed_at min_version]\n" );

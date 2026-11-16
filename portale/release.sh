@@ -37,6 +37,8 @@ SIGN_KID_V2="$(cat "${SIGN_KEY_V2%.pem}.kid" 2>/dev/null || true)"
 S=(ssh -i "$KEY" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes "$USER_@$HOST")
 [ -f "$SIGN_KEY" ] && [ -n "$SIGN_KID" ] || { echo "Manca la chiave di firma dei pacchetti ($SIGN_KEY) o il suo identificativo." >&2; exit 1; }
 [ -f "$SIGN_KEY_V2" ] && [ -n "$SIGN_KID_V2" ] || { echo "Manca la chiave di firma v2 ($SIGN_KEY_V2) o il suo identificativo." >&2; exit 1; }
+# Prima di caricare qualsiasi zip: le colonne della firma v2 devono esistere nel database (si creano come proprietario, non dal portale).
+"${S[@]}" "cd ~/portale && php bin/release.php checkcolumns" || { echo "Pubblicazione ferma: mancano le colonne della firma v2 nel database. Nulla è stato caricato." >&2; exit 1; }
 
 signmsg() { # chiave messaggio → firma Ed25519 base64url
 	local msg; msg="$(mktemp)"; printf '%s' "$2" > "$msg"
