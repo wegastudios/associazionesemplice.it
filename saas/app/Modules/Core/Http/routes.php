@@ -58,6 +58,7 @@ Route::middleware('web')->group(function (): void {
                 Route::post('/esportazione.zip', [ExportController::class, 'download'])->middleware(['exports.allowed', 'password.confirm', 'throttle:3,1'])->name('export.download');
                 Route::post('/archivio/{year}', [ArchiveController::class, 'archive'])->whereNumber('year')->middleware(['exports.allowed', 'throttle:6,1'])->name('archive.create');
                 Route::post('/archivio/{year}/rimetti', [ArchiveController::class, 'restore'])->whereNumber('year')->middleware(['exports.allowed', 'throttle:6,1'])->name('archive.restore');
+                Route::post('/archivio/{year}/ricostruisci', [ArchiveController::class, 'rebuild'])->whereNumber('year')->middleware(['exports.allowed', 'throttle:6,1'])->name('archive.rebuild');
             });
 
             // Operatori e ruoli personalizzati: titolare e amministratore.
