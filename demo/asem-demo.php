@@ -70,6 +70,92 @@ add_filter( 'wp_check_filetype_and_ext', function ( $data ) {
 	return array( 'ext' => false, 'type' => false, 'proper_filename' => false );
 }, 99 );
 
+// Protezioni più strette: nella demo (accessi pubblici) non si salvano chiavi, conti o contatti propri, non si tocca la chiave dei file né si ripristinano o azzerano i dati,
+// e nessun file arriva sul server. Valgono solo qui: il plugin dei clienti non cambia. Le azioni si fermano per nome, prima del gestore del plugin (priorità 0).
+$asem_demo_blocked = array(
+	'Nella demo questa impostazione è bloccata.' => array(
+		'asem_save_payment_settings', 'asem_satispay_connect', 'asem_save_bank', 'asem_save_donate', 'asem_save_campaign', 'asem_save_woo',
+		'asem_save_sms', 'asem_save_newsletter', 'asem_save_places', 'asem_save_wallet_apple', 'asem_save_wallet_google', 'asem_save_app', 'asem_save_wpai', 'asem_push_test',
+		'asem_save_roles', 'asem_save_limits', 'asem_audit_free',
+	),
+	'Nella demo questa operazione è bloccata.' => array(
+		'asem_enc_start', 'asem_enc_step', 'asem_enc_recover', 'asem_enc_recoverphrase', 'asem_enc_newkey', 'asem_enc_setrecovery', 'asem_enc_autophrase',
+		'asem_private_move', 'asem_receipt_pdf_regen', 'asem_receipt_nodata_fix', 'asem_receipt_pdf_complete', 'asem_receipt_zip', 'asem_payment_refund',
+	),
+	'Nella demo il ripristino di una copia è bloccato.' => array( 'asem_backup_restore' ),
+	'Nella demo i dati non si azzerano da qui: si azzerano da soli ogni notte.' => array( 'asem_reset_all' ),
+);
+foreach ( $asem_demo_blocked as $asem_demo_msg => $asem_demo_names ) {
+	foreach ( $asem_demo_names as $asem_demo_name ) {
+		$asem_demo_stop = function () use ( $asem_demo_msg ) {
+			wp_die( esc_html( $asem_demo_msg ), '', array( 'response' => 403, 'back_link' => true ) );
+		};
+		add_action( 'admin_post_' . $asem_demo_name, $asem_demo_stop, 0 );
+		add_action( 'wp_ajax_' . $asem_demo_name, $asem_demo_stop, 0 );
+	}
+}
+// Contatti e dati di pagamento che il pubblico vede sul sito: dalle impostazioni generali (via web) restano quelli della demo. I comandi da terminale (provisioning) passano.
+add_filter( 'pre_update_option_asem_settings', function ( $new, $old ) {
+	if ( ( defined( 'WP_CLI' ) && WP_CLI ) || ! is_array( $new ) || ! is_array( $old ) ) {
+		return $new;
+	}
+	foreach ( array( 'secretary_phone', 'secretary_email', 'whatsapp_button', 'privacy_url', 'privacy_email', 'rules_url', 'apply_email', 'donate_enabled', 'donate_paypal', 'donate_amounts', 'donate_purpose', 'places_key', 'bank_enabled', 'bank_title', 'bank_note', 'bank_in_reminders', 'bank_accounts' ) as $k ) {
+		if ( array_key_exists( $k, $old ) ) {
+			$new[ $k ] = $old[ $k ];
+		} else {
+			unset( $new[ $k ] );
+		}
+	}
+	return $new;
+}, 10, 2 );
+// Nessun file caricato: ogni invio con un file si ferma presto, prima dei gestori (anche quelli che leggono il file senza passare da WordPress). Fa eccezione l'importazione di soci e
+// prima nota da file: il file si legge e basta, non resta sul server.
+add_action( 'init', function () {
+	if ( 'POST' !== ( isset( $_SERVER['REQUEST_METHOD'] ) ? $_SERVER['REQUEST_METHOD'] : '' ) || empty( $_FILES ) || ! is_array( $_FILES ) ) {
+		return;
+	}
+	$any = false;
+	foreach ( $_FILES as $f ) {
+		if ( is_array( $f ) && isset( $f['name'] ) ) {
+			if ( is_array( $f['name'] ) ) {
+				array_walk_recursive( $f['name'], function ( $v ) use ( &$any ) { // un campo può essere un elenco di file
+					$any = $any || '' !== (string) $v;
+				} );
+			} elseif ( '' !== (string) $f['name'] ) {
+				$any = true;
+			}
+		}
+	}
+	$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+	if ( $any && 'asem_import_preview' !== $action ) {
+		wp_die( 'Nella demo non si possono caricare file.', '', array( 'response' => 403, 'back_link' => true ) );
+	}
+}, 0 );
+// Seconda barriera: nessun caricamento passa dalle funzioni di WordPress.
+add_filter( 'wp_handle_upload_prefilter', function ( $file ) {
+	$file['error'] = 'Nella demo non si possono caricare file.';
+	return $file;
+} );
+add_filter( 'wp_handle_sideload_prefilter', function ( $file ) {
+	$file['error'] = 'Nella demo non si possono caricare file.';
+	return $file;
+} );
+// La procedura guidata ha una seconda strada per cambiare la frase dei file: i suoi campi vengono ignorati.
+add_action( 'init', function () {
+	if ( isset( $_POST['action'] ) && 'asem_wizard_save' === sanitize_key( wp_unslash( $_POST['action'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		unset( $_POST['file_phrase'], $_POST['file_phrase2'], $_REQUEST['file_phrase'], $_REQUEST['file_phrase2'] );
+	}
+}, 0 );
+// Il server della demo è lo stesso del portale: nelle pagine del plugin i percorsi assoluti del server si nascondono.
+add_action( 'admin_init', function () {
+	if ( ! isset( $_GET['page'] ) || 0 !== strpos( sanitize_key( wp_unslash( $_GET['page'] ) ), 'asem' ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		return;
+	}
+	ob_start( function ( $html ) {
+		return preg_replace( '#/(?:home|home2|var/www|srv|opt)/[A-Za-z0-9_.-]+#', '/…', (string) $html );
+	} );
+}, 1 );
+
 // Niente indicizzazione e un avviso ben visibile.
 add_filter( 'wp_robots', function ( $robots ) {
 	return array( 'noindex' => true, 'nofollow' => true );
