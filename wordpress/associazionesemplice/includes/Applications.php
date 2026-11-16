@@ -345,7 +345,7 @@ final class Applications {
 		if ( $guardian ) {
 			$text = 'Ciao ' . ApplicationRules::mail_name( (string) $guardian['first_name'] ) . ",\n\nla domanda di adesione di " . ApplicationRules::mail_name( (string) $person['first_name'] ) . ' ' . ApplicationRules::mail_name( (string) $person['last_name'] ) . ' è stata approvata: la tessera è la n. ' . $person['card_number'] . ".\n\n";
 			if ( ! $linked ) { // genitore già in anagrafica: il collegamento nasce quando conferma dal link dell'altra email
-				$text .= ApplicationRules::mail_name( (string) $person["first_name"] ) . " compare nella tua area riservata dopo che hai confermato dal link che ti abbiamo mandato con un\'altra email.' . "\n";
+				$text .= ApplicationRules::mail_name( (string) $person['first_name'] ) . ' compare nella tua area riservata dopo che hai confermato dal link che ti abbiamo mandato con un\'altra email.' . "\n";
 			} elseif ( empty( $guardian['wp_user_id'] ) ) {
 				$text .= 'Da genitore o tutore segui ' . $person['first_name'] . ' dalla tua area riservata (tessera, prenotazioni, pagamenti). Scegli la tua password da questo link (vale ' . $days . "):\n" . Frontend\Activation::url( (int) $guardian['id'] ) . "\n";
 			} else {
