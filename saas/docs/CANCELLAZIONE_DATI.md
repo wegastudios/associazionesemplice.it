@@ -12,7 +12,7 @@ cancellazione parte: questo documento dice cosa costruire.
    **finché è attiva**, anche dopo aver dato disdetta e fino alla scadenza. Durante la prova non si esporta
    (`terms.trial.exports`).
 3. **Dopo 180 giorni la cancellazione è automatica**, senza conferma di una persona dello staff.
-4. **Registro delle azioni**: si tengono l'anno corrente e quello precedente. Dopo 180 giorni dalla scadenza si cancella
+4. **Registro delle azioni**: si tengono l'anno solare corrente e quello precedente (taglio al 1° gennaio, in UTC, non all'anno fiscale: il registro resta da uno a due anni). Il comando gira il 1° di ogni mese; la prima cancellazione reale in produzione è il 1° gennaio 2028, per il 2026 e prima. Dopo 180 giorni dalla scadenza si cancella
    anche quello dell'associazione.
 
 ## 2. Le date
