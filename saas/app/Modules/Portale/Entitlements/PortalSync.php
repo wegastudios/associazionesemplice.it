@@ -115,14 +115,14 @@ final readonly class PortalSync
         }
     }
 
+    /** Giorni oltre i quali una scadenza che arretra finisce nel registro con «until_back_days». */
+    private const UNTIL_BACK_FLAG_DAYS = 30;
+
     /**
      * @param  array{sub: string, ref: string, rev: int, status: string, until: string, trial_ends: string|null, members: int, operators: int, storage_gb: int, packages: array<string, array<string, mixed>>, partner: string|null}  $claims
      * @param  array<string, mixed>  $raw  ciò che si conserva
      * @param  array<string, int|string>  $auditExtra
      */
-    /** Giorni oltre i quali una scadenza che arretra finisce nel registro con «until_back_days». */
-    private const UNTIL_BACK_FLAG_DAYS = 30;
-
     private function store(array $claims, array $raw, string $token, array $auditExtra): void
     {
         $connection = $this->db->connection('pgsql');
