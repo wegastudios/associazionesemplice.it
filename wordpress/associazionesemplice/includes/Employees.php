@@ -305,7 +305,7 @@ final class Employees {
 		if ( ! self::denied_for( get_current_user_id() ) ) {
 			return;
 		}
-		foreach ( array( 'asem-people', 'asem-activities', 'asem-money' ) as $slug ) {
+		foreach ( array( 'asem-people', 'asem-activities', 'asem-money', 'asem-book', 'asem-tools', 'asem-resources' ) as $slug ) {
 			if ( ! self::page_allowed( $slug ) ) {
 				remove_submenu_page( 'asem', $slug );
 			}

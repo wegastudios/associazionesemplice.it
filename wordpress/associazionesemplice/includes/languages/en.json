@@ -2658,6 +2658,7 @@
   "Apri il certificato" : "Open the certificate",
   "Nome non valido: usa solo lettere, spazi, apostrofi e trattini." : "Invalid name: use only letters, spaces, apostrophes and hyphens.",
   "Cerca per nome o tessera (almeno 3 lettere)" : "Search by name or card number (at least 3 letters)",
-  "Chi ha l'area Corsi o Eventi vede i certificati degli iscritti alle attività di cui è istruttore e di quelle senza istruttore." : "Whoever has the Courses or Events area sees the certificates of people enrolled in activities they are the instructor of and in activities with no instructor."
+  "Chi ha l'area Corsi o Eventi vede i certificati degli iscritti alle attività di cui è istruttore e di quelle senza istruttore." : "Whoever has the Courses or Events area sees the certificates of people enrolled in activities they are the instructor of and in activities with no instructor.",
+  "Il libro soci è dell'area «Anagrafica soci», che non hai. Gli altri registri sono nelle schede qui sopra." : "The members' register belongs to the “Members registry” area, which you do not have. The other registers are in the tabs above."
  }
 }
