@@ -11,8 +11,8 @@ final class Switches {
 	/** chiave => [percorso in Config, nome, spiegazione]. */
 	const ALL = array(
 		'saas_sale'      => array(
-			'saas_sale.enabled', 'Vendita del gestionale online',
-			'Se è acceso, il sito mostra il gestionale online: prezzi, piani, prova gratuita, iscrizione, menu e la colonna nella tabella di confronto. Se è spento (com\'è ora), tutto questo sparisce e chi apre una vecchia pagina del gestionale viene rimandato alla home. Il gestionale in sé, la sua demo e i clienti già attivi non cambiano.',
+			'saas_sale.enabled', 'Vendita del gestionale SaaS',
+			'Se è acceso, il sito mostra il gestionale SaaS: prezzi, piani, prova gratuita, iscrizione, menu e la colonna nella tabella di confronto. Se è spento (com\'è ora), tutto questo sparisce e chi apre una vecchia pagina del gestionale viene rimandato alla home. Il gestionale in sé, la sua demo e i clienti già attivi non cambiano.',
 			'Si accende quando decidi di lanciare il gestionale; spento non cancella né modifica nulla.',
 		),
 		'indexable'      => array(

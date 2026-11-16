@@ -1,6 +1,6 @@
 <?php /** Listino e confronto del SaaS, generati dal catalogo letto dal portale (mai prezzi scritti a mano). @var array|null $catalog */
 if ( empty( $catalog ) ) : ?>
-<div class="panel" id="prezzi-saas"><h2>Gestionale online</h2><p>I piani del gestionale online saranno qui a breve.</p></div>
+<div class="panel" id="prezzi-saas"><h2>Gestionale SaaS</h2><p>I piani del gestionale SaaS saranno qui a breve.</p></div>
 <?php return; endif;
 $doc    = $catalog['doc'];
 $plans  = Portale\Catalog::plans( $doc );
@@ -14,7 +14,7 @@ $vatTxt = $exempt ? '' : ' + IVA';
 $trialOn = true === Portale\Config::get( 'saas_trial_enabled', false );
 ?>
 <section class="section product-saas" id="prezzi-saas"><div class="wrap">
-	<div class="section-head"><span class="eyebrow">Gestionale online</span><h2>Piani e prezzi</h2><p><?php echo $exempt ? 'Importi in euro, senza IVA.' : 'Importi IVA esclusa.'; ?> Il prezzo cresce con i soci: nessun limite blocca la segreteria.</p></div>
+	<div class="section-head"><span class="eyebrow">Gestionale SaaS</span><h2>Piani e prezzi</h2><p><?php echo $exempt ? 'Importi in euro, senza IVA.' : 'Importi IVA esclusa.'; ?> Il prezzo cresce con i soci: nessun limite blocca la segreteria.</p></div>
 	<?php if ( $show_cards ) : ?><div class="plans">
 	<?php foreach ( $plans as $p ) :
 		$m = Portale\Catalog::from( $p, 'month' );

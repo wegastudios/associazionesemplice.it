@@ -19,7 +19,7 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 ?>
 <section class="page"><div class="wrap page-grid">
 	<div class="panel">
-		<span class="eyebrow">Gestionale online</span>
+		<span class="eyebrow">Gestionale SaaS</span>
 		<h1><?php echo ! empty( $convert ) ? "Scegli il piano per " . e( $v["org_name"] ) : "Prendi il gestionale"; ?></h1>
 		<?php if ( ! $doc || ! $plans ) : ?>
 			<p class="muted">Il listino non è disponibile in questo momento: riprova tra poco o <a href="mailto:info@associazionesemplice.it">scrivici</a>.</p>

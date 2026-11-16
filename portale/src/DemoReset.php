@@ -13,7 +13,7 @@ final class DemoReset {
 	/** Demo che si possono azzerare e come si chiamano a schermo. */
 	const TARGETS = array(
 		'plugin' => 'Demo del plugin',
-		'saas'   => 'Demo del gestionale online',
+		'saas'   => 'Demo del gestionale SaaS',
 	);
 
 	/** Oltre questo tempo un blocco rimasto si considera orfano (il reset non dura così). */

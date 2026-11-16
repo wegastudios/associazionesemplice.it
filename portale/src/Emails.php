@@ -85,10 +85,10 @@ final class Emails {
 				'subject' => 'Dominio aggiornato: {dominio}',
 				'body' => "Il dominio della licenza {piano} è passato da {vecchio_dominio} a {dominio}.\nIl vecchio dominio smette di funzionare al prossimo controllo.\n\nSe non hai fatto tu questa richiesta, scrivici subito.\n{account_url}",
 			),
-			// Gestionale online (acquisto dal portale). Testi dell'audit del 13/11/2026. Regole della titolare (13/11/2026): nuovi tentativi per 7 giorni (3 al giorno
+			// Gestionale SaaS (acquisto dal portale). Testi dell'audit del 13/11/2026. Regole della titolare (13/11/2026): nuovi tentativi per 7 giorni (3 al giorno
 			// nei primi 2, poi 1), sospensione il giorno dopo la scadenza, dati conservati 180 giorni.
 			'saas_welcome' => array(
-				'label' => 'Gestionale: benvenuto', 'when' => 'Subito dopo il pagamento dell\'ordine del gestionale online.', 'vars' => array( 'nome', 'associazione', 'piano', 'periodo', 'gestionale_url', 'link_password', 'account_url', 'supporto_url', 'email' ),
+				'label' => 'Gestionale: benvenuto', 'when' => 'Subito dopo il pagamento dell\'ordine del gestionale SaaS.', 'vars' => array( 'nome', 'associazione', 'piano', 'periodo', 'gestionale_url', 'link_password', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Benvenuto: scegli la password per il gestionale di {associazione}',
 				'body' => "Ciao {nome},\ngrazie per aver scelto Associazione Semplice. Stiamo preparando il gestionale di {associazione}: ci vogliono pochi minuti.\n\nIntanto scegli la tua password da qui (scrivi questa email e ti arriva il link per sceglierla):\n{link_password}\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nHai scelto il piano {piano}, con pagamento {periodo}. Fatture e pagamenti sono in {account_url}.",
 			),
