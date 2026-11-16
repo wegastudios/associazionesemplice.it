@@ -590,9 +590,15 @@ class PaymentService extends OfflinePayments {
 			throw new \InvalidArgumentException( Texts::t( 'Il servizio di {metodo} non risponde: il rimborso di {importo} non è stato confermato. Riprova tra poco con lo stesso importo: ripetere lo stesso invio non rimborsa due volte. Con un importo diverso non si riparte finché questo non è chiarito.', array( 'metodo' => $name, 'importo' => Money::format( $cents ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( empty( $res['ok'] ) ) {
+			$msg = $this->refund_error( $provider, (string) $res['reason'], (string) $res['message'] );
+			if ( empty( $res['certain'] ) ) { // errore del server, troppe richieste, risposta illeggibile o errore non riconosciuto: il rimborso può essere partito
+				$this->update( $id, array( 'review' => 1, 'error' => mb_substr( Texts::t( 'Rimborso di {importo} non confermato dal gestore: da controllare.', array( 'importo' => Money::format( $cents ) ) ), 0, 250 ) ) );
+				Audit::log( 'payment.refund_unconfirmed', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'reason' => $res['reason'] ) );
+				throw new \InvalidArgumentException( $msg . ' ' . Texts::t( 'Non è certo che il rimborso non sia partito: il pagamento resta «da controllare» e si può ripetere solo lo stesso importo ({importo}).', array( 'importo' => Money::format( $cents ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
 			$this->refund_release( $id, $cents ); // rifiuto certo del gestore: nulla è stato restituito
 			Audit::log( 'payment.refund_refused', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'reason' => $res['reason'] ) );
-			throw new \InvalidArgumentException( $this->refund_error( $provider, (string) $res['reason'], (string) $res['message'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$total = $before + $cents;
 		$full  = $total >= (int) $p['amount_cents'];

@@ -78,7 +78,7 @@ final class StripeApi {
 	 * Rimborso (anche parziale) di un pagamento: i soldi tornano sul metodo usato dal socio. L'Idempotency-Key fa sì che lo stesso invio ripetuto
 	 * (doppio clic, richiesta rifatta dopo un timeout) non rimborsi due volte. Non lancia eccezioni per le risposte di Stripe: le classifica.
 	 *
-	 * @return array ['ok' => bool, 'id' => re_…, 'reason' => permission|key|already|not_found|balance|amount|other (se non ok), 'message' => testo del gestore]
+	 * @return array ['ok' => bool, 'id' => re_…, 'reason' => permission|key|already|not_found|balance|amount|other (se non ok), 'certain' => true se il rifiuto è certo (4xx riconosciuto o rimborso fallito/annullato: nulla è stato restituito), false per 5xx, 429, risposta illeggibile o errore non riconosciuto (il rimborso può essere partito), 'message' => testo del gestore]
 	 */
 	public static function refund( callable $http, string $secret, string $payment_intent, int $cents, string $idempotency_key, string $public_id ): array {
 		$form = array(
@@ -97,11 +97,11 @@ final class StripeApi {
 		$data = json_decode( (string) $r['body'], true );
 		if ( $code >= 200 && $code < 300 && is_array( $data ) && ! empty( $data['id'] ) ) {
 			if ( in_array( (string) ( $data['status'] ?? '' ), array( 'failed', 'canceled' ), true ) ) {
-				return array( 'ok' => false, 'id' => (string) $data['id'], 'reason' => 'other', 'message' => 'rimborso ' . (string) $data['status'] );
+				return array( 'ok' => false, 'id' => (string) $data['id'], 'reason' => 'other', 'certain' => true, 'message' => 'rimborso ' . (string) $data['status'] );
 			}
 			return array( 'ok' => true, 'id' => (string) $data['id'], 'reason' => '', 'message' => '' );
 		}
-		return array( 'ok' => false, 'id' => '', 'reason' => self::refund_reason( $code, $data ), 'message' => is_array( $data ) && isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'risposta ' . $code );
+		return array( 'ok' => false, 'id' => '', 'reason' => self::refund_reason( $code, $data ), 'certain' => $code >= 400 && $code < 500 && 429 !== $code && 'other' !== self::refund_reason( $code, $data ), 'message' => is_array( $data ) && isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'risposta ' . $code );
 	}
 
 	/** Perché Stripe ha rifiutato il rimborso. @param mixed $data risposta già decodificata */
