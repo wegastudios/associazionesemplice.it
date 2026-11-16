@@ -10159,7 +10159,7 @@ $_COOKIE[ $fa_name ] = \AssociazioneSemplice\PreSession::make( time() ); // un a
 asem_ok( ! $ps_cls::from_page( $fa_tok, 'first_access' ), 'primo accesso: l\'invio col segno di un altro cookie è rifiutato' );
 $_COOKIE[ $fa_name ] = ( time() - 3 * HOUR_IN_SECONDS ) . '.' . SessionToken::generate();
 asem_ok( ! $ps_cls::from_page( \AssociazioneSemplice\PreSession::token( $_COOKIE[ $fa_name ], 'activation', MemberSession::secret() ), 'activation' ), 'attivazione: un cookie scaduto non vale' );
-unset( $_COOKIE[ $fa_name ] );
+$_COOKIE[ $fa_name ] = \AssociazioneSemplice\PreSession::make( time() ); // come prima di questa serie di prove: il visitatore ha il cookie
 $fa_src = (string) file_get_contents( ASEM_DIR . 'includes/Frontend/FirstAccess.php' );
 $ac_src = (string) file_get_contents( ASEM_DIR . 'includes/Frontend/Activation.php' );
 $fa_end = '/Views::no_cache\(\);[^\r\n]*\s*MemberLoginPage::ensure_pre_session\(\);\s*CardVerify::send_headers\(\);\s*header\( \'Cache-Control: no-store, max-age=0\' \);\s*CardVerify::output\( self::page\(/';
