@@ -161,7 +161,8 @@ Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 ## Da sapere
 
 - Gli utenti di WordPress non fanno parte della copia.
-- **Non si ripristinano**: le password dei soci, le loro sessioni e le notifiche (i soci rientrano con il link che ricevono) e il registro delle azioni.
+- **Non si ripristinano**: le **sessioni aperte** dei soci, le **notifiche push**, il **registro delle azioni** e gli **utenti WordPress**. I soci dovranno **entrare di nuovo** (e riattivare le notifiche).
+- **Le password dei soci tornano.** La copia contiene le **impronte** delle password (**mai le password in chiaro**) e il ripristino le rimette: ogni socio entra con la **password di prima** e deve **scegliere subito una nuova password**, anche se entra con il link ricevuto per email. Vale solo per chi aveva una password.
 - La copia contiene dati personali: tienila protetta e non condividerla.
 MD,
     ],

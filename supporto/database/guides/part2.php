@@ -298,6 +298,10 @@ Il **link** o il **codice** ricevuto per email restano come opzione, per entrare
 
 Per **cambiare** la password dall'area soci serve **quella attuale**; anche in questo caso gli altri dispositivi vengono chiusi.
 
+## Dopo un ripristino di una copia di sicurezza
+
+Le password dei soci **tornano come erano nella copia**. Al primo accesso il socio entra con la password di prima e trova la pagina **«Scegli una nuova password»**, con il testo «Il sito è stato ripristinato da una copia di sicurezza: per la tua sicurezza scegli una nuova password prima di continuare.» Deve sceglierla **prima di fare altro**, **anche se entra con il link ricevuto per email**. Vale solo per chi aveva una password. Le **sessioni aperte** e le **notifiche push** non si ripristinano: i soci devono **entrare di nuovo** e riattivare le notifiche.
+
 ## Quando nasce un utente WordPress
 
 L'utente WordPress nasce **solo quando si dà un potere** al socio: segreteria, tesoriere, staff. Chi ha già un utente WordPress continua a entrare da WordPress, come prima.
