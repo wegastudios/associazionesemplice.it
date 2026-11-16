@@ -87,6 +87,7 @@ return array(
 	// Pagina «Gestisci» nell'area clienti (stato, dominio, controllo cambio piano): accendere solo quando il SaaS ha in produzione gli endpoint v2 (promo, plan-change, domain, status).
 	'saas_retry' => false, // lasciare false: con Stripe riprova Stripe (Smart Retries, al massimo 8 in una settimana: in Stripe → Fatturazione → Recupero ricavi impostarli sulla durata più vicina ai 7 giorni). Il portale sa rifare i tentativi (3 al giorno per 2 giorni, poi 1 al giorno per 5; bin/retry.php ogni ora) ma oggi solo per Stripe: servirebbe per altri metodi che non riprovano da soli
 	'saas_sale' => array( 'enabled' => false ), // vendita del gestionale online sul sito (prezzi, piani, prova, confronto, menu): spenta dal 16/11/2026 finché non si lancia; si accende anche da /account/impostazioni
+	'seo' => array( 'google_verification' => '' ), // codice del meta tag di verifica di Google Search Console (solo il valore di content=), vuoto finché non serve
 	'saas_v2' => array( 'enabled' => false, 'domain' => false ), // 'domain': dominio personalizzato ai clienti, solo quando i certificati sono decisi
 
 	// Catalogo del SaaS (piani, prezzi, promo): chiave pubblica con cui il SaaS firma, come «kid => x» (si legge con `php artisan saas:keys:generate` / dal SaaS).

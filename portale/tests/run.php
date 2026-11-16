@@ -405,6 +405,56 @@ check( 'admin: riconosciuto senza badare alle maiuscole', Portale\Plugin\Admin::
 Portale\Audit::log( $db, 'io@esempio.it', 'prova', 'dettaglio' );
 check( 'registro: azione salvata', 'prova' === Portale\Audit::recent( $db, 5 )[0]['action'] );
 check( 'robots: segnali di non indicizzazione di default', false === Config::get( 'indexable', false ) );
+// Motori di ricerca: sitemap, canonical, Open Graph, robots, verifica Search Console
+$seoPrevBase = Config::get( 'base_url', '' );
+Config::set( 'base_url', 'https://esempio.test' );
+Config::set( 'saas_sale.enabled', false );
+Config::set( 'indexable', false );
+check( 'seo: chiuso di default: robots vieta tutto e non cita la sitemap', "User-agent: *\nDisallow: /\n" === Portale\Seo::robots() );
+Config::set( 'indexable', true );
+$robots = Portale\Seo::robots();
+check( 'seo: aperto: robots esclude accesso, account, grazie, paypal, admin, API e demo e indica la sitemap', 0 === strpos( $robots, "User-agent: *\nAllow: /\n" ) && false !== strpos( $robots, "Disallow: /accedi\n" ) && false !== strpos( $robots, "Disallow: /twofactor\n" ) && false !== strpos( $robots, "Disallow: /grazie\n" ) && false !== strpos( $robots, "Disallow: /paypal\n" ) && false !== strpos( $robots, "Disallow: /demo/\n" ) && false !== strpos( $robots, "Disallow: /account\n" ) && "Sitemap: https://esempio.test/sitemap.xml\n" === substr( $robots, -42 ) );
+$sm = Portale\Seo::sitemap();
+check( 'seo: sitemap valida e senza gestionale né pagine private', false !== simplexml_load_string( $sm ) && false !== strpos( $sm, '<loc>https://esempio.test/</loc>' ) && false !== strpos( $sm, '<loc>https://esempio.test/prezzi</loc>' ) && false !== strpos( $sm, '<loc>https://esempio.test/privacy</loc>' ) && false !== strpos( $sm, '<loc>https://esempio.test/wordpress/changelog</loc>' ) && false === strpos( $sm, '/saas' ) && false === strpos( $sm, '/accedi' ) && false === strpos( $sm, '/account' ) );
+Config::set( 'saas_sale.enabled', true );
+check( 'seo: con la vendita del gestionale accesa la sitemap include /saas', false !== strpos( Portale\Seo::sitemap(), '<loc>https://esempio.test/saas</loc>' ) );
+Config::set( 'saas_sale.enabled', false );
+$tags = Portale\Seo::tags( '/prezzi', 'Prezzi', 'Descrizione "di prova"' );
+check( 'seo: canonical, Open Graph e Twitter card con testi protetti', false !== strpos( $tags, '<link rel="canonical" href="https://esempio.test/prezzi">' ) && false !== strpos( $tags, 'og:image" content="https://esempio.test/assets/brand/og-1200x630.png"' ) && false !== strpos( $tags, 'twitter:card" content="summary_large_image"' ) && false !== strpos( $tags, 'Descrizione &quot;di prova&quot;' ) );
+check( 'seo: pagine private senza canonical né Open Graph', '' === Portale\Seo::tags( '/account', 'Account', 'x' ) && '' === Portale\Seo::tags( '/accedi', 'Accedi', 'x' ) && '' === Portale\Seo::tags( '/saas', 'Gestionale', 'x' ) );
+Config::set( 'seo', array( 'google_verification' => 'abc123_DEF-456xyz' ) );
+check( 'seo: il codice di Search Console, se valido, diventa il meta tag (anche nelle pagine private)', false !== strpos( Portale\Seo::tags( '/account', 'A', 'x' ), '<meta name="google-site-verification" content="abc123_DEF-456xyz">' ) );
+Config::set( 'seo', array( 'google_verification' => '"><script>' ) );
+check( 'seo: un codice non valido viene ignorato', '' === Portale\Seo::googleVerification() && '' === Portale\Seo::tags( '/account', 'A', 'x' ) );
+Config::set( 'seo', array() );
+check( 'seo: dati strutturati solo in home (organizzazione) e /wordpress (plugin), senza prezzi', false !== strpos( Portale\Seo::jsonLd( '/' ), '"@type":"Organization"' ) && false !== strpos( Portale\Seo::jsonLd( '/wordpress' ), '"@type":"SoftwareApplication"' ) && false === strpos( Portale\Seo::jsonLd( '/wordpress' ), 'offers' ) && '' === Portale\Seo::jsonLd( '/prezzi' ) );
+Config::set( 'base_url', $seoPrevBase );
+Config::set( 'indexable', false );
+// Modalità manutenzione: i visitatori vedono la pagina 503, le API per i siti dei clienti, i webhook e il SaaS non si fermano mai
+$_SESSION = array();
+Config::set( 'maintenance.enabled', false );
+check( 'manutenzione: spenta di default non ferma niente', false === Portale\Maintenance::on() && false === Portale\Maintenance::blocks( '/prezzi', false ) && false === Portale\Maintenance::blocks( '/account', false ) );
+Config::set( 'maintenance.enabled', true );
+$visitor = array( '/', '/prezzi', '/funzioni', '/domande', '/account', '/account/impostazioni', '/acquista', '/free', '/grazie', '/scarica/x', '/saas', '/confronto', '/privacy' );
+$blockedAll = true;
+foreach ( $visitor as $p ) {
+	$blockedAll = $blockedAll && true === Portale\Maintenance::blocks( $p, false );
+}
+check( 'manutenzione: i visitatori sono fermati sulle pagine del sito', $blockedAll && true === Portale\Maintenance::on() );
+$services = array( '/api/license/validate', '/api/license/activate', '/api/plugin/latest', '/api/plugin/update', '/api/plugin/package', '/api/saas/v1/catalog-changed', '/api/piani', '/webhook/stripe', '/webhook/paypal', '/.well-known/jwks.json', Portale\Plugin\CatalogApi::PATH, Portale\Plugin\DownloadLink::PATH, '/saas/admin', '/saas/admin/utenti', '/saas/api/v1/x', '/saas/vai', '/saas/staff' );
+$openAll = true;
+$whichOpen = '';
+foreach ( $services as $p ) {
+	if ( false !== Portale\Maintenance::blocks( $p, false ) ) {
+		$openAll   = false;
+		$whichOpen = $p;
+	}
+}
+check( 'manutenzione: licenze, aggiornamenti, pacchetti, catalogo, chiavi, webhook di Stripe e PayPal e proxy del SaaS rispondono come prima (' . $whichOpen . ')', $openAll );
+check( 'manutenzione: restano aperti accesso, verifica in due passaggi, ritorno da PayPal e amministrazione per poterla spegnere', false === Portale\Maintenance::blocks( '/accedi', false ) && false === Portale\Maintenance::blocks( '/accedi/reimposta/abc', false ) && false === Portale\Maintenance::blocks( '/twofactor', false ) && false === Portale\Maintenance::blocks( '/paypal/ritorno', false ) && false === Portale\Maintenance::blocks( '/entra/wordpress', false ) && false === Portale\Maintenance::blocks( '/wordpress/admin', false ) && false === Portale\Maintenance::blocks( '/wordpress/admin/settings', false ) );
+check( 'manutenzione: lo staff vede il sito normale', false === Portale\Maintenance::blocks( '/prezzi', true ) && false === Portale\Maintenance::bypass() && ( $_SESSION['admin'] = true ) && true === Portale\Maintenance::bypass() && ( $_SESSION = array() ) === array() && ( $_SESSION['staff'] = 'x@y.it' ) && true === Portale\Maintenance::bypass() );
+$_SESSION = array();
+Config::set( 'maintenance.enabled', false );
 
 // --- Chiavi dal pannello ----------------------------------------------------------------------------------------------------------
 $tokenOk = 'wic_3c6d8003fdd2b68f.d5S6nSoypyWsa5RmmMPApIHcrhCf5d_rB1Pr_6ftmO13bJlM';
@@ -2595,9 +2645,9 @@ Config::set( 'saas_sign_key', '' );
 $swdb = testDb();
 $swdb->migrate();
 Config::set( 'saas_v2', array( 'enabled' => true, 'domain' => false ) );
-check( 'interruttori: lo stato parte da config.php (la vendita del gestionale è spenta se non c\'è scritto)', array( 'saas_sale' => false, 'saas_v2' => true, 'saas_v2_domain' => false ) === Portale\Switches::current() && false === Portale\SaasSale::on() );
+check( 'interruttori: lo stato parte da config.php (la vendita del gestionale è spenta se non c\'è scritto)', array( 'saas_sale' => false, 'indexable' => false, 'maintenance' => false, 'saas_v2' => true, 'saas_v2_domain' => false ) === Portale\Switches::current() && false === Portale\SaasSale::on() );
 Portale\Switches::save( $swdb, array( 'saas_v2_domain' => '1', 'sconosciuta' => '1' ) );
-check( 'interruttori: salvando, ciò che non è spuntato si spegne e il resto si accende', array( 'saas_sale' => false, 'saas_v2' => false, 'saas_v2_domain' => true ) === Portale\Switches::current() );
+check( 'interruttori: salvando, ciò che non è spuntato si spegne e il resto si accende', array( 'saas_sale' => false, 'indexable' => false, 'maintenance' => false, 'saas_v2' => false, 'saas_v2_domain' => true ) === Portale\Switches::current() );
 Portale\Switches::save( $swdb, array( 'saas_sale' => '1' ) );
 check( 'vendita gestionale: l\'interruttore la accende e la spegne; /saas e /saas/acquista sono pagine di vendita, /saas/admin no',
 	true === Portale\SaasSale::on() && ( Portale\Switches::save( $swdb, array() ) || true ) && false === Portale\SaasSale::on()

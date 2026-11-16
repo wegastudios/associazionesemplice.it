@@ -19,12 +19,14 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <title><?php echo ! empty( $title ) && is_string( $title ) ? e( $title ) . ' · Associazione Semplice' : 'Associazione Semplice · Il gestionale per le associazioni'; ?></title>
 <meta name="description" content="<?php echo e( \Portale\Site::description( $path ) ); ?>">
 <?php if ( $robots ) : ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
+<?php echo \Portale\Seo::tags( $path, ! empty( $title ) && is_string( $title ) ? $title : '', \Portale\Site::description( $path ) ), \Portale\Seo::jsonLd( $path ); ?>
 <meta name="theme-color" content="#1f218c">
 <link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg?v=<?php echo e( $v ); ?>"><link rel="icon" type="image/png" sizes="32x32" href="/assets/brand/favicon-32.png?v=<?php echo e( $v ); ?>"><link rel="alternate icon" href="/assets/brand/favicon.ico?v=<?php echo e( $v ); ?>"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png?v=<?php echo e( $v ); ?>">
 <link rel="stylesheet" href="/assets/portale.css?v=<?php echo e( $v ); ?>">
 <?php echo \Portale\Tracking::slot( 'head' ); ?></head>
 <body<?php echo $bar ? ' class="has-bar"' : ''; ?>>
 <a class="skip" href="#main">Vai al contenuto</a>
+<?php if ( \Portale\Maintenance::on() && \Portale\Maintenance::bypass() ) : ?><div role="status" style="background:#efca5c;color:#1f218c;text-align:center;padding:.5rem 1rem;font-weight:700">Manutenzione attiva: i visitatori vedono la pagina di manutenzione. Si spegne da «Impostazioni del portale».</div><?php endif; ?>
 <header class="site-header"><div class="wrap">
 	<a class="logo" href="<?php echo e( $home ); ?>" aria-label="Associazione Semplice"><picture class="logo-full"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/logo-orizzontale-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/logo-orizzontale-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="143" height="52"></picture><picture class="logo-sym"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/simbolo-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/simbolo-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="40" height="40"></picture></a>
 	<nav class="nav" aria-label="Principale">
