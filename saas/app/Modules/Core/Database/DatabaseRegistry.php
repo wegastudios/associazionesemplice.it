@@ -97,6 +97,18 @@ final class DatabaseRegistry implements DatabaseNames
         }
     }
 
+    /** Vero se la connessione è quella dell'applicazione verso un database dedicato (non il condiviso). */
+    public function isDedicatedApp(string $connection): bool
+    {
+        foreach (array_keys($this->dedicated()) as $name) {
+            if ($this->connectionName((string) $name, 'app') === $connection) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function sharedAppConnection(): string
     {
         return $this->configString('saas.db.app_connection');
