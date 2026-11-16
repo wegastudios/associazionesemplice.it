@@ -105,16 +105,12 @@ final class Db {
 	/** Migrazione all'avvio di pagine e cron: si salta se l'utente non ha il permesso di cambiare la struttura (lo fa bin/migrate.php). */
 	public function migrateOnStart(): void {
 		if ( $this->mayMigrate() ) {
-			$this->quiet = true;
-			try {
-				$this->migrate();
-			} finally {
-				$this->quiet = false;
-			}
+			$this->migrateReport();
 		}
 	}
 
-	public function migrate(): void {
+	/** Crea o aggiorna la struttura. Restituisce le ALTER/INDEX non riuscite per un motivo diverso da «esiste già» (vuoto = tutto a posto). */
+	public function migrate(): array {
 		$stmts = array(
 			'CREATE TABLE IF NOT EXISTS customers (
 				id VARCHAR(32) PRIMARY KEY, email VARCHAR(190) NOT NULL UNIQUE, created_at VARCHAR(19) NOT NULL)',
@@ -215,6 +211,7 @@ final class Db {
 				id VARCHAR(32) PRIMARY KEY, at VARCHAR(19) NOT NULL, actor VARCHAR(190) NOT NULL, target VARCHAR(190) NOT NULL DEFAULT \'\',
 				action VARCHAR(40) NOT NULL, detail VARCHAR(500) NOT NULL DEFAULT \'\', ip VARCHAR(45) NOT NULL DEFAULT \'\')',
 		);
+		$failed = array();
 		foreach ( $stmts as $sql ) {
 			try {
 				$this->pdo->exec( $sql );
@@ -224,8 +221,15 @@ final class Db {
 					throw $e;
 				}
 				// «Esiste già» è normale; ogni altro motivo (permessi, tipo) finisce nel registro invece di sparire: una colonna mancante rompe i lavori più avanti.
-				if ( ! $this->quiet && false === stripos( $e->getMessage(), 'already exists' ) && false === stripos( $e->getMessage(), 'duplicate column' ) ) {
-					error_log( '[portale] migrazione non riuscita: ' . substr( preg_replace( '/\s+/', ' ', $sql ), 0, 90 ) . ' → ' . $e->getMessage() );
+				if ( ! self::alreadyThere( $e ) ) {
+					$failed[] = array(
+						'sql'   => $sql,
+						'error' => $e->getMessage(),
+						'owner' => '42501' === (string) $e->getCode(), // «must be owner»: riprovabile con l'utente proprietario di quella tabella
+					);
+					if ( ! $this->quiet ) {
+						error_log( '[portale] migrazione non riuscita: ' . substr( preg_replace( '/\s+/', ' ', $sql ), 0, 90 ) . ' → ' . $e->getMessage() );
+					}
 				}
 			}
 		}
@@ -235,6 +239,46 @@ final class Db {
 		} catch ( \Throwable $e ) {
 			error_log( '[portale] elenco staff: copia non riuscita (' . $e->getMessage() . ')' );
 		}
+		return $failed;
+	}
+
+	private static function alreadyThere( \PDOException $e ): bool {
+		return false !== stripos( $e->getMessage(), 'already exists' ) || false !== stripos( $e->getMessage(), 'duplicate column' );
+	}
+
+	/**
+	 * Come migrate(), ma senza scrivere nel registro: la lista di ciò che non è riuscito la dà bin/migrate.php.
+	 *
+	 * @return array<int,array{sql:string,error:string,owner:bool}>
+	 */
+	public function migrateReport(): array {
+		$this->quiet = true;
+		try {
+			return $this->migrate();
+		} finally {
+			$this->quiet = false;
+		}
+	}
+
+	/**
+	 * Riprova le istruzioni indicate (le ALTER rifiutate a un altro utente) e restituisce quelle che non riescono ancora.
+	 * «La colonna esiste già» conta come riuscita.
+	 *
+	 * @param array<int,array{sql:string,error:string,owner:bool}> $failed
+	 * @return array<int,array{sql:string,error:string,owner:bool}>
+	 */
+	public function retry( array $failed ): array {
+		$still = array();
+		foreach ( $failed as $f ) {
+			try {
+				$this->pdo->exec( $f['sql'] );
+			} catch ( \PDOException $e ) {
+				if ( ! self::alreadyThere( $e ) ) {
+					$still[] = array( 'sql' => $f['sql'], 'error' => $e->getMessage(), 'owner' => '42501' === (string) $e->getCode() );
+				}
+			}
+		}
+		return $still;
 	}
 
 	/** Segna un evento dei provider come elaborato; false se lo era già (i provider ripetono le consegne). */

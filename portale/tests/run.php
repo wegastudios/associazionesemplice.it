@@ -111,6 +111,14 @@ Mailer::$sender = function ( $to, $subject, $body ) use ( &$mails ) {
 $db = testDb();
 $db->migrate();
 check( 'migrazione: l\'utente che può creare tabelle migra all\'avvio, e rilanciarla non rompe nulla', true === $db->mayMigrate() && null === $db->migrateOnStart() && null === $db->migrateOnStart() );
+$retryDb = testDb();
+check( 'migrazione: a struttura completa non segnala istruzioni fallite', array() === $retryDb->migrateReport() && array() === $retryDb->migrateReport() );
+$still = $retryDb->retry( array(
+	array( 'sql' => 'ALTER TABLE customers ADD COLUMN prova_riprova INTEGER NULL', 'error' => '', 'owner' => true ),
+	array( 'sql' => 'ALTER TABLE customers ADD COLUMN prova_riprova INTEGER NULL', 'error' => '', 'owner' => true ),
+	array( 'sql' => 'ALTER TABLE tabella_che_non_esiste ADD COLUMN x INTEGER NULL', 'error' => '', 'owner' => true ),
+) );
+check( 'migrazione: il riprovo riesce (anche se la colonna c\'è già) e restituisce solo ciò che non riesce con nessun utente', 1 === count( $still ) && false !== strpos( $still[0]['sql'], 'tabella_che_non_esiste' ) && false === $still[0]['owner'] );
 $billing = new Billing( $db, new WegaClient( 'https://license.test/api/v1', 'wic_x.y' ) );
 
 // --- Licenza free -----------------------------------------------------------

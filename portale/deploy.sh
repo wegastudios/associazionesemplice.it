@@ -26,8 +26,10 @@ if [ "$bad" = 1 ]; then
 fi
 mkdir -p ~/portale && cp -r ~/portale-next/. ~/portale/ && rm -rf ~/portale-next
 cd ~/portale && mkdir -p data
-# Struttura del database con l'utente proprietario (data/pg-migrate.php, non tracciato); se non riesce lo dice ma il sito resta com'è.
-/usr/local/bin/php ~/portale/bin/migrate.php || echo "ATTENZIONE: la migrazione del database non è riuscita (vedi sopra): controlla prima di usare le funzioni nuove." >&2
+# Struttura del database con l'utente proprietario (data/pg-migrate.php, non tracciato). Se non riesce lo dice e la pubblicazione, finita
+# comunque (il sito non resta a metà), termina con errore: così non passa inosservata una colonna mancante.
+migr=0
+/usr/local/bin/php ~/portale/bin/migrate.php || migr=1
 cd ~/public_html
 printf '<?php\n// Punto d'"'"'ingresso del portale: il codice sta fuori dalla cartella pubblica (~/portale).\nrequire __DIR__ . "/../portale/public/index.php";\n' > index.php
 mkdir -p assets && cp -r ../portale/public/assets/* assets/
@@ -39,4 +41,8 @@ rm -f robots.txt
 ( crontab -l 2>/dev/null | grep -q "portale/bin/cron.php" ) || ( crontab -l 2>/dev/null; echo "0 8 * * * /usr/local/bin/php $HOME/portale/bin/cron.php >> $HOME/logs/portale-cron.log 2>&1" ) | crontab -
 ( crontab -l 2>/dev/null | grep -q "portale/bin/saas-outbox.php" ) || ( crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/php $HOME/portale/bin/saas-outbox.php >> $HOME/logs/portale-saas-outbox.log 2>&1" ) | crontab -
 echo "Pubblicato."
+if [ "$migr" = 1 ]; then
+	echo "ATTENZIONE: il codice è online ma la migrazione del database non è completa (elenco sopra): crea le colonne mancanti prima di usare le funzioni nuove." >&2
+	exit 1
+fi
 REMOTE
