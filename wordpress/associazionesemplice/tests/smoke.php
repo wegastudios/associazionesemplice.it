@@ -11089,6 +11089,24 @@ asem_ok( 'Voce 3: il socio ha già la tessera ' . $qd_y2 . '.' === $qd_msg2 && 0
 asem_ok( 1 === $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $qd_p, 'lines' => array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000, 'social_year' => $qd_y2 ) ) ) ) && 1 === $qd_count(), 'una sola quota per anno nell\'incasso: registrata' );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qd_p );
 $wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qd_p ) );
+// due richieste insieme: l'altra registra la tessera tra il controllo e la scrittura (simulato con il filtro «query» all'avvio della transazione)
+$qd_year3     = (string) $people->membership_plan( $qd_p, $today )['year'];
+$qd_race_done = false;
+$qd_race      = function ( $sql ) use ( &$qd_race_done, $people, $qd_p, $qd_year3 ) {
+	if ( ! $qd_race_done && 'START TRANSACTION' === $sql ) {
+		$qd_race_done = true;
+		$people->set_membership( $qd_p, $qd_year3, true, 'manual' );
+	}
+	return $sql;
+};
+add_filter( 'query', $qd_race );
+$qd_msg3 = (string) asem_throws( $qd_rec );
+remove_filter( 'query', $qd_race );
+asem_ok( $qd_race_done && 'Voce 1: il socio ha già la tessera ' . $qd_year3 . '.' === $qd_msg3 && 0 === $qd_count() && 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qd_p . ' AND social_year = \'' . esc_sql( $qd_year3 ) . '\' AND deleted_at IS NULL' ), 'quota doppia: se la tessera nasce tra il controllo e la scrittura, la seconda quota è rifiutata dentro la transazione e non nasce alcun movimento' );
+$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qd_p ) );
+// il pulsante «Registra incasso» si disattiva dopo il primo invio (un doppio clic non manda due richieste)
+asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'assets/admin.js' ), "form.dataset.asemSent" ), 'quota doppia: il modulo dell\'incasso ricorda l\'invio e disattiva il pulsante' );
+
 // anno in omaggio: nuovo socio negli ultimi giorni della tessera (paga l'anno dopo, ha l'anno in corso in omaggio)
 $qo_sm = (int) Settings::get( 'social_year_start_month' );
 $qo_o  = Settings::all();
