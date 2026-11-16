@@ -949,11 +949,11 @@ final class Actions {
 		}
 		$written = trim( (string) ( $p['confirm_text'] ?? '' ) );
 		if ( ! in_array( $written, array( \AssociazioneSemplice\Backup::RESTORE_PHRASE, \AssociazioneSemplice\Backup::RESTORE_PHRASE_OTHER ), true ) ) {
-			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La frase scritta non corrisponde: non è stato cambiato nulla.' ) );
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La frase scritta non corrisponde: non è stato cambiato nulla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 		}
 		$user = wp_get_current_user();
 		if ( ! $user || ! $user->exists() || '' === (string) ( $p['password'] ?? '' ) || ! wp_check_password( (string) $p['password'], $user->user_pass, $user->ID ) ) {
-			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La password non è corretta: non è stato cambiato nulla.' ) );
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La password non è corretta: non è stato cambiato nulla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 		}
 		$f = self::uploaded_file( 'backup_file' );
 		if ( ! $f || UPLOAD_ERR_OK !== $f['error'] ) {

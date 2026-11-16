@@ -338,7 +338,7 @@ final class Backup {
 		$limits = BackupSeal::limits( self::$test_limits );
 		$st     = $zip->statName( 'manifest.json' );
 		if ( $st && (int) $st['size'] > $limits['small'] ) {
-			throw self::refusal( 'size', self::limit_message( 'entry' ) );
+			throw self::refusal( 'size', self::limit_message( 'entry' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 		}
 		$raw = $st ? $zip->getFromName( 'manifest.json' ) : false;
 		$m   = $raw ? json_decode( $raw, true ) : null;
@@ -356,7 +356,7 @@ final class Backup {
 		}
 		$sz = BackupSeal::sizes( $zip, self::$test_limits ); // dimensioni dichiarate: i tetti si controllano prima di leggere una sola voce
 		if ( '' !== $sz['problem'] ) {
-			throw self::refusal( $sz['problem'], self::limit_message( $sz['problem'] ) );
+			throw self::refusal( $sz['problem'], self::limit_message( $sz['problem'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 		}
 		foreach ( array_keys( $m['tables'] ) as $t ) {
 			if ( ! isset( $sz['sizes'][ 'tabelle/' . $t . '.jsonl' ] ) ) {
@@ -375,16 +375,16 @@ final class Backup {
 		$modified = Texts::t( 'La copia è stata modificata dopo essere stata fatta, oppure è danneggiata: il suo contenuto non coincide con l\'elenco con cui è stata firmata. Non è stato cambiato nulla.' );
 		if ( is_string( $m['kfp'] ?? null ) && hash_equals( BackupSeal::fingerprint( $mine ), $m['kfp'] ) ) { // stessi codici di sicurezza: è una copia di questo sito
 			if ( null === $listed || '' !== $int ) {
-				throw self::refusal( 'modified', $modified );
+				throw self::refusal( 'modified', $modified ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 			}
 			if ( ! is_string( $m['sig'] ?? null ) || ! hash_equals( BackupSeal::signature( $m, $mine ), $m['sig'] ) ) {
-				throw self::refusal( 'signature', Texts::t( 'La firma di questa copia non è valida: la copia è stata modificata, oppure non è stata firmata da questo sito. Non è stato cambiato nulla.' ) );
+				throw self::refusal( 'signature', Texts::t( 'La firma di questa copia non è valida: la copia è stata modificata, oppure non è stata firmata da questo sito. Non è stato cambiato nulla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 			}
 			$origin = 'same';
 			return $m;
 		}
 		if ( null !== $listed && '' !== $int ) {
-			throw self::refusal( 'modified', $modified );
+			throw self::refusal( 'modified', $modified ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 		}
 		$origin = 'other';
 		return $m;
@@ -420,13 +420,13 @@ final class Backup {
 			return null;
 		}
 		if ( (int) $st['size'] > BackupSeal::limits( self::$test_limits )['small'] ) {
-			throw self::refusal( 'size', self::limit_message( 'entry' ) );
+			throw self::refusal( 'size', self::limit_message( 'entry' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 		}
 		$raw = $zip->getFromName( $name );
 		$v   = false === $raw ? null : json_decode( $raw, true );
 		if ( ! is_array( $v ) ) {
 			$msg = 'keys' === $what ? Texts::t( 'Le chiavi contenute nella copia non sono valide.' ) : ( 'index' === $what ? Texts::t( 'La copia è danneggiata: l\'indice dei documenti non si legge. Non è stato cambiato nulla.' ) : Texts::t( 'La copia è danneggiata: le impostazioni non si leggono. Non è stato cambiato nulla.' ) );
-			throw self::refusal( 'unreadable_' . $what, $msg );
+			throw self::refusal( 'unreadable_' . $what, $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 		}
 		return $v;
 	}
@@ -467,7 +467,7 @@ final class Backup {
 			$origin = '';
 			$m      = self::check( $zip, $origin );
 			if ( 'other' === $origin && ! $other_site_ok ) {
-				throw self::refusal( 'other_site', self::other_site_text() );
+				throw self::refusal( 'other_site', self::other_site_text() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 			}
 			return self::restore_open( $zip, $m, $origin, $phrase );
 		} finally {
@@ -487,11 +487,11 @@ final class Backup {
 		if ( null !== $index ) {
 			$list = $index['files'] ?? array();
 			if ( ! is_array( $list ) || count( $list ) > BackupSeal::limits( self::$test_limits )['attachments'] ) {
-				throw self::refusal( 'unreadable_index', Texts::t( 'La copia è danneggiata: l\'indice dei documenti non si legge. Non è stato cambiato nulla.' ) );
+				throw self::refusal( 'unreadable_index', Texts::t( 'La copia è danneggiata: l\'indice dei documenti non si legge. Non è stato cambiato nulla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 			}
 			foreach ( $list as $f ) {
 				if ( ! is_array( $f ) ) {
-					throw self::refusal( 'unreadable_index', Texts::t( 'La copia è danneggiata: l\'indice dei documenti non si legge. Non è stato cambiato nulla.' ) );
+					throw self::refusal( 'unreadable_index', Texts::t( 'La copia è danneggiata: l\'indice dei documenti non si legge. Non è stato cambiato nulla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
 				}
 			}
 		}

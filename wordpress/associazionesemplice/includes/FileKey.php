@@ -886,12 +886,14 @@ final class FileKey {
 		if ( count( $b['keys'] ) > self::MAX_BUNDLE_KEYS ) {
 			throw new \InvalidArgumentException( Texts::t( 'La copia contiene troppe chiavi per essere ripristinata da qui.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$clean = array();
+		$clean  = array();
+		$phrased = array(); // chiavi che nella copia hanno un avvolgimento con una frase (anche se il suo profilo non è tra quelli accettati)
 		foreach ( $b['keys'] as $id => $k ) {
 			$id = (int) $id;
 			if ( $id < 1 || $id > 268435455 || ! is_array( $k ) ) {
 				throw new \InvalidArgumentException( Texts::t( 'Le chiavi contenute nella copia non sono valide.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
+			$phrased[ $id ] = is_array( $k['r'] ?? null ) || is_array( $k['l'] ?? null );
 			$e = array( 'm' => self::valid_wrap( $k['m'] ?? null ) ? (string) $k['m'] : '', 'mb' => 'const' === ( $k['mb'] ?? '' ) ? 'const' : 'salt' );
 			foreach ( array( 'r', 'l' ) as $name ) {
 				$w = $k[ $name ] ?? null;
@@ -903,7 +905,7 @@ final class FileKey {
 		}
 		$trim = trim( $phrase );
 		return (array) self::locked(
-			function () use ( $b, $clean, $phrase, $trim ): array {
+			function () use ( $b, $clean, $phrased, $phrase, $trim ): array {
 				self::$cache = null;
 				$l       = self::load();
 				$masters = self::masters();
@@ -926,11 +928,13 @@ final class FileKey {
 								}
 							}
 						}
-						if ( null === $dek && '' !== $trim && ( isset( $k['r'] ) || isset( $k['l'] ) ) ) {
-							$v   = null;
-							$dek = self::open_by_phrase( $k, $id, $phrase, $v ); // la frase si prova com'è scritta e ripulita dagli spazi ai bordi
+						if ( null === $dek && '' !== $trim && ! empty( $phrased[ $id ] ) ) {
+							$v = null;
+							if ( isset( $k['r'] ) || isset( $k['l'] ) ) {
+								$dek = self::open_by_phrase( $k, $id, $phrase, $v ); // la frase si prova com'è scritta e ripulita dagli spazi ai bordi
+							}
 							if ( null === $dek ) {
-								$wrong = true;
+								$wrong = true; // una frase scritta che non apre la chiave (o il cui profilo non si accetta): un errore di battitura non passa inosservato
 							} else {
 								$via[ $id ] = (string) $v;
 							}
