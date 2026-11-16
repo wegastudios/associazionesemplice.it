@@ -6099,6 +6099,36 @@ foreach ( $wl_mail as $m ) {
 }
 asem_ok( $acts->has_active_booking( $wl_s4, $wl_g ) && 1 === count( $wl_guest_to ) && 0 === strpos( $wl_guest_to[0], 'carla.attesa@example.com|' ) && false !== strpos( $wl_guest_to[0], 'per Gigi Inattesa' ), 'lista d\'attesa: un ospite in coda entra e la email va al socio che lo ospita' );
 remove_all_filters( 'pre_wp_mail' );
+// Lista d'attesa e listini: si sceglie la tariffa, la promozione prenota con quella; senza una tariffa valida non entra da sola.
+$wp_ev = $mkev( 'Serata a listino in coda', 0, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ), 'price_lists' => array( array( 'label' => 'Individuale', 'cents' => 4000, 'entries' => 1 ), array( 'label' => 'Di gruppo', 'cents' => 2500, 'entries' => 1 ) ) ) );
+$wp_s  = $first_session( $wp_ev );
+list( $wp_h ) = $mkmem( 'Hugo', 'Titolare' );
+list( $wp_o ) = $mkmem( 'Olga', 'Vecchiariga' );
+list( $wp_x ) = $mkmem( 'Xenia', 'Sparita' );
+list( $wp_p, $wp_pu ) = $mkmem( 'Piero', 'Promosso' );
+$acts->book( $wp_s, $wp_h, array( 'price_list' => 'individuale' ) );
+$wp_wl = \AssociazioneSemplice\Db::t( 'waitlist' );
+$wpdb->insert( $wp_wl, array( 'session_id' => $wp_s, 'person_id' => $wp_o, 'status' => 'waiting', 'created_at' => \AssociazioneSemplice\Db::now() ) ); // riga già in coda prima della scelta della tariffa
+$wpdb->insert( $wp_wl, array( 'session_id' => $wp_s, 'person_id' => $wp_x, 'price_list' => 'sparito', 'status' => 'waiting', 'created_at' => \AssociazioneSemplice\Db::now() ) ); // tariffa poi tolta dall'attività
+wp_set_current_user( $wp_pu );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $wp_s, $wp_p ) { $front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p ) ); } ), 'tariffa' ) && null === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ), 'lista d\'attesa: con i listini senza tariffa non ci si mette in coda' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $wp_s, $wp_p ) { $front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p, 'price_list' => 'inesistente' ) ); } ), 'non trovato' ) && null === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ), 'lista d\'attesa: una tariffa inesistente è rifiutata' );
+$front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p, 'price_list' => 'di_gruppo' ) );
+asem_ok( 3 === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ) && 'di_gruppo' === $wpdb->get_var( $wpdb->prepare( "SELECT price_list FROM $wp_wl WHERE session_id = %d AND person_id = %d", $wp_s, $wp_p ) ), 'lista d\'attesa: la tariffa scelta resta salvata' );
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'manca la tariffa scelta', array( 'id' => (string) $wp_ev ) ), 'manca la tariffa scelta' ), 'lista d\'attesa: la segreteria vede le righe senza tariffa valida' );
+$acts->cancel_booking( $wp_s, $wp_h );
+asem_ok( $acts->has_active_booking( $wp_s, $wp_p ) && 2500 === (int) $acts->booking( $wp_s, $wp_p )['fee_due_cents'] && 'di_gruppo' === $acts->booking( $wp_s, $wp_p )['price_list'], 'lista d\'attesa: la promozione prenota con la tariffa memorizzata, al suo prezzo' );
+asem_ok( ! $acts->has_active_booking( $wp_s, $wp_o ) && ! $acts->has_active_booking( $wp_s, $wp_x ) && null !== \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_o ) && null !== \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_x ), 'lista d\'attesa: senza tariffa valida (riga vecchia o tariffa sparita) non entra da sola e resta in coda' );
+$acts->cancel_booking( $wp_s, $wp_p );
+asem_ok( 0 === \AssociazioneSemplice\Waitlist::promote( $wp_s ) && ! $acts->has_active_booking( $wp_s, $wp_o ) && ! $acts->has_active_booking( $wp_s, $wp_x ), 'lista d\'attesa: nemmeno quando i posti liberi restano, nessuna prenotazione al contributo base' );
+$wp_ev2 = $mkev( 'Serata senza listini in coda', 300, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ) ) );
+$wp_s2  = $first_session( $wp_ev2 );
+$acts->book( $wp_s2, $wp_h );
+\AssociazioneSemplice\Waitlist::join( $wp_s2, $wp_o, 0, 'qualsiasi' );
+asem_ok( null === $wpdb->get_var( $wpdb->prepare( "SELECT price_list FROM $wp_wl WHERE session_id = %d AND person_id = %d", $wp_s2, $wp_o ) ), 'lista d\'attesa: senza listini non si salva nessuna tariffa' );
+$acts->cancel_booking( $wp_s2, $wp_h );
+asem_ok( $acts->has_active_booking( $wp_s2, $wp_o ), 'lista d\'attesa: senza listini la promozione è quella di prima' );
 
 // ---------- Comunicazioni a gruppi ----------
 wp_set_current_user( 1 );
