@@ -208,6 +208,17 @@ final class EmployeeRules {
 		return 'statement' === $what ? array( 'all' => array( self::FUNDS ) ) : null;
 	}
 
+	/**
+	 * Vista limitata dei certificati medici: l'attività è tra quelle di cui il dipendente è istruttore, oppure non ha nessun istruttore.
+	 * Un'attività con un altro istruttore non si vede.
+	 *
+	 * @param int $instructor_person_id istruttore dell'attività (0 = nessuno)
+	 * @param int $my_person_id         la persona collegata all'utente (0 = nessuna)
+	 */
+	public static function instructor_in_scope( int $instructor_person_id, int $my_person_id ): bool {
+		return $instructor_person_id <= 0 || ( $my_person_id > 0 && $instructor_person_id === $my_person_id );
+	}
+
 	/** Un'attività di questo tipo (course, event, recurring) dipende da quale permesso? */
 	public static function activity_key( string $kind ): string {
 		return ActivityKind::COURSE === $kind ? self::COURSES : self::EVENTS;
