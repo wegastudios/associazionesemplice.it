@@ -320,32 +320,94 @@ final class EventRequests {
 			return;
 		}
 		$param = sanitize_text_field( wp_unslash( $_GET[ self::PARAM ] ) ); // phpcs:ignore WordPress.Security.NonceVerification
-		$key   = 'asem_evq_cf_' . md5( ClientIp::get() );
-		$n     = (int) get_transient( $key );
+		$post  = 'POST' === ( isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '' ) && isset( $_POST['asem_evq_cf_go'] ); // phpcs:ignore WordPress.Security.NonceVerification -- il nonce si controlla in submit_confirm
+		if ( ! $post ) {
+			// Aprire il link (anche in un'anteprima dell'email) mostra soltanto la richiesta: non conferma nulla.
+			CardVerify::send_headers();
+			CardVerify::output( self::confirm_page( $param ) );
+			exit;
+		}
+		$key = 'asem_evq_cf_' . md5( ClientIp::get() );
+		$n   = (int) get_transient( $key );
 		if ( $n >= Limits::get( 'apply_per_ip' ) * 2 ) {
 			self::stop( 'Conferma della richiesta', 'Troppi tentativi: riprova tra qualche minuto.', '#b32d2e' );
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
-		$r = self::confirm( $param );
+		$r = self::submit_confirm( $param, sanitize_text_field( wp_unslash( $_POST['_asem_nonce'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification -- verificato in submit_confirm
 		self::stop( 'Conferma della richiesta', $r['message'], $r['ok'] ? '#1a7f37' : '#b32d2e' );
+	}
+
+	/**
+	 * Conferma dal pulsante della pagina: vale solo con il nonce emesso dalla pagina stessa.
+	 *
+	 * @return array{ok:bool,message:string}
+	 */
+	public static function submit_confirm( string $param, string $nonce ): array {
+		if ( ! preg_match( '/^(\d{1,12})\.[A-Za-z0-9]{32}$/', $param, $m ) || ! wp_verify_nonce( $nonce, 'asem_evq_confirm_' . (int) $m[1] ) ) {
+			return array( 'ok' => false, 'message' => 'La pagina è scaduta: riapri il link che hai ricevuto per email.' );
+		}
+		return self::confirm( $param );
+	}
+
+	/** La pagina del link: i dati essenziali della richiesta e il pulsante «Conferma». Non modifica nulla e non consuma il link. */
+	public static function confirm_page( string $param ): string {
+		$title = 'Conferma della richiesta';
+		$msg   = static function ( string $text, bool $ok ) use ( $title ): string {
+			return CardVerify::layout( $title, $ok ? '#1a7f37' : '#b32d2e', '<p>' . esc_html( $text ) . '</p><p><a href="' . esc_url( home_url( '/' ) ) . '">← Torna al sito</a></p>' );
+		};
+		$row = self::lookup( $param );
+		if ( isset( $row['error'] ) ) {
+			return $msg( $row['error'], $row['ok'] );
+		}
+		$a = Plugin::activities()->get( (int) $row['activity_id'] );
+		if ( ! $a ) {
+			return $msg( 'L\'evento non esiste più.', false );
+		}
+		$s    = (int) $row['session_id'] > 0 ? Plugin::activities()->session( (int) $row['session_id'] ) : null;
+		$info = '<div class="n">' . esc_html( (string) $a['name'] ) . '</div>';
+		if ( $s ) {
+			$info .= '<p>' . esc_html( Frontend\Views::date_words( (string) $s['session_date'] ) ) . '</p>';
+		}
+		if ( ActivityKind::COURSE !== $a['kind'] ) {
+			$info .= '<p>' . esc_html( 1 === (int) $row['seats'] ? '1 posto' : (int) $row['seats'] . ' posti' ) . '</p>';
+		}
+		$accent = Assets::accent( '#2271b1' );
+		$body   = $info . '<p>Per confermare la richiesta tocca il pulsante.</p>'
+			. '<form method="post" action="' . esc_url( self::confirm_url( (int) $row['id'], substr( $param, (int) strpos( $param, '.' ) + 1 ) ) ) . '">'
+			. '<input type="hidden" name="asem_evq_cf_go" value="1">' . wp_nonce_field( 'asem_evq_confirm_' . (int) $row['id'], '_asem_nonce', false, false )
+			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . esc_attr( $accent ) . ';color:#fff">Conferma</button></form>';
+		return CardVerify::layout( $title, $accent, $body );
+	}
+
+	/**
+	 * Controlli di sola lettura sul link (formato, token, stato, scadenza).
+	 *
+	 * @return array la riga della richiesta, oppure array{error:string,ok:bool} con il messaggio da mostrare
+	 */
+	private static function lookup( string $param ): array {
+		if ( ! preg_match( '/^(\d{1,12})\.([A-Za-z0-9]{32})$/', $param, $m ) ) {
+			return array( 'error' => 'Il link non è valido.', 'ok' => false );
+		}
+		$row = self::row( (int) $m[1] );
+		if ( ! $row || ! hash_equals( (string) $row['token_hash'], hash( 'sha256', $m[2] ) ) ) {
+			return array( 'error' => 'Il link non è valido o la richiesta è stata annullata.', 'ok' => false );
+		}
+		if ( 'new' !== $row['status'] ) {
+			return array( 'error' => 'Hai già confermato questa richiesta: ti abbiamo scritto un\'email con le informazioni.', 'ok' => true );
+		}
+		if ( ( new \DateTimeImmutable( (string) $row['created_at'], wp_timezone() ) )->getTimestamp() < time() - self::CONFIRM_H * HOUR_IN_SECONDS ) {
+			return array( 'error' => 'Il link è scaduto: invia di nuovo la richiesta dalla pagina dell\'evento.', 'ok' => false );
+		}
+		return $row;
 	}
 
 	/** @return array{ok:bool,message:string} */
 	public static function confirm( string $param ): array {
-		if ( ! preg_match( '/^(\d{1,12})\.([A-Za-z0-9]{32})$/', $param, $m ) ) {
-			return array( 'ok' => false, 'message' => 'Il link non è valido.' );
+		$row = self::lookup( $param );
+		if ( isset( $row['error'] ) ) {
+			return array( 'ok' => $row['ok'], 'message' => $row['error'] );
 		}
-		$row = self::row( (int) $m[1] );
-		if ( ! $row || ! hash_equals( (string) $row['token_hash'], hash( 'sha256', $m[2] ) ) ) {
-			return array( 'ok' => false, 'message' => 'Il link non è valido o la richiesta è stata annullata.' );
-		}
-		if ( 'new' !== $row['status'] ) {
-			return array( 'ok' => true, 'message' => 'Hai già confermato questa richiesta: ti abbiamo scritto un\'email con le informazioni.' );
-		}
-		if ( ( new \DateTimeImmutable( (string) $row['created_at'], wp_timezone() ) )->getTimestamp() < time() - self::CONFIRM_H * HOUR_IN_SECONDS ) {
-			return array( 'ok' => false, 'message' => 'Il link è scaduto: invia di nuovo la richiesta dalla pagina dell\'evento.' );
-		}
-		$a = Plugin::activities()->get( (int) $row['activity_id'] );
+		$a =Plugin::activities()->get( (int) $row['activity_id'] );
 		if ( ! $a ) {
 			return array( 'ok' => false, 'message' => 'L\'evento non esiste più.' );
 		}
