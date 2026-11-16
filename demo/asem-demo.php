@@ -83,6 +83,7 @@ $asem_demo_blocked = array(
 		'asem_private_move', 'asem_receipt_pdf_regen', 'asem_receipt_nodata_fix', 'asem_receipt_pdf_complete', 'asem_receipt_zip', 'asem_payment_refund',
 	),
 	'Nella demo il ripristino di una copia è bloccato.' => array( 'asem_backup_restore' ),
+	'Nella demo l\'importazione da file è bloccata: i dati che vedi sono di esempio.' => array( 'asem_import_preview', 'asem_import_person', 'asem_import_tx', 'asem_import_texts' ),
 	'Nella demo i dati non si azzerano da qui: si azzerano da soli ogni notte.' => array( 'asem_reset_all' ),
 );
 // Elenco delle azioni PERMESSE (non solo di quelle vietate): ogni azione con prefisso asem_ che arriva da admin-post.php o admin-ajax.php e non è qui sotto si ferma, quindi un'azione
@@ -138,7 +139,7 @@ $asem_demo_allowed = array_flip( array(
 		'asem_front_vote', 'asem_front_waitlist_join', 'asem_front_waitlist_leave', 'asem_fund_create', 'asem_fund_deposit', 'asem_fund_release',
 		'asem_fund_settle', 'asem_fund_settle_', 'asem_fy_auto', 'asem_gate_html', 'asem_generate_sessions', 'asem_guide_dismiss', 'asem_guide_dismissed',
 		'asem_guide_options', 'asem_host', 'asem_ical', 'asem_ical_salt', 'asem_ics', 'asem_import_', 'asem_import_1_', 'asem_import_apply',
-		'asem_import_language', 'asem_import_person', 'asem_import_preview', 'asem_import_texts', 'asem_import_tx', 'asem_import_undo', 'asem_income',
+		'asem_import_language', 'asem_import_undo', 'asem_income',
 		'asem_incomplete_card_items', 'asem_install_id', 'asem_install_url', 'asem_insurance_add', 'asem_insurance_delete', 'asem_integrations_list',
 		'asem_integrations_top', 'asem_item_', 'asem_item_delete', 'asem_item_file', 'asem_item_file_', 'asem_item_save', 'asem_key', 'asem_label',
 		'asem_lang_packs', 'asem_last_name', 'asem_ledger_row_actions', 'asem_lesson_exception', 'asem_lesson_restore', 'asem_levels_saved',
@@ -226,8 +227,7 @@ add_filter( 'pre_update_option_asem_settings', function ( $new, $old ) {
 	}
 	return $new;
 }, 10, 2 );
-// Nessun file caricato: ogni invio con un file si ferma presto, prima dei gestori (anche quelli che leggono il file senza passare da WordPress). Fa eccezione l'importazione di soci e
-// prima nota da file: il file si legge e basta, non resta sul server.
+// Nessun file caricato: ogni invio con un file si ferma presto, prima dei gestori (anche quelli che leggono il file senza passare da WordPress); anche l'importazione da file è bloccata.
 add_action( 'init', function () {
 	if ( 'POST' !== ( isset( $_SERVER['REQUEST_METHOD'] ) ? $_SERVER['REQUEST_METHOD'] : '' ) || empty( $_FILES ) || ! is_array( $_FILES ) ) {
 		return;
@@ -245,7 +245,10 @@ add_action( 'init', function () {
 		}
 	}
 	$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-	if ( $any && 'asem_import_preview' !== $action ) {
+	if ( $any && 0 === strpos( $action, 'asem_import_' ) ) {
+		wp_die( 'Nella demo l\'importazione da file è bloccata: i dati che vedi sono di esempio.', '', array( 'response' => 403, 'back_link' => true ) );
+	}
+	if ( $any ) {
 		wp_die( 'Nella demo non si possono caricare file.', '', array( 'response' => 403, 'back_link' => true ) );
 	}
 }, 0 );
