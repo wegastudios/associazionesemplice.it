@@ -10663,6 +10663,31 @@ asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_a, $er_gid ) 
 $er::member_request( $er_sid( $er_c ), $er_gid );
 asem_ok( $er::pending_for( $er_sid( $er_c ), $er_gid ) && ! $acts->has_active_booking( $er_sid( $er_c ), $er_gid ), 'richiesta socio: registrata, il posto non è ancora occupato' );
 asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_c, $er_gid ) { $er::member_request( $er_sid( $er_c ), $er_gid ); } ), 'richiesta socio: una sola richiesta per data' );
+// Evento su richiesta: nessun percorso lo prenota direttamente (area soci, servizio, lista d'attesa), salvo segreteria o richiesta approvata.
+$er_d = $er_mk( 'Cena su richiesta D', null );
+update_post_meta( \AssociazioneSemplice\PublicEvents::post_of( $er_d ), '_asem_ev_approval', '1' );
+list( $ap_p, $ap_u ) = $mkmem( 'Rita', 'Richiesta' );
+list( $ap_q, $ap_qu ) = $mkmem( 'Sara', 'Richiesta' );
+$ap_s = $er_sid( $er_d );
+$ap_rules = Settings::get( 'rules_enabled' ); // il regolamento da accettare non c'entra con questa prova
+Settings::update( array( 'rules_enabled' => 0 ) );
+wp_set_current_user( $ap_u );
+$ap_msg = (string) asem_throws( function () use ( $front, $ap_s, $ap_p ) { $front::do_book( array( 'session_id' => $ap_s, 'person_id' => $ap_p ) ); } );
+asem_ok( false !== strpos( $ap_msg, 'su richiesta' ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: il socio non si prenota direttamente dall\'area soci [' . $ap_msg . ']' );
+asem_ok( null !== asem_throws( function () use ( $acts, $ap_s, $ap_p ) { $acts->book( $ap_s, $ap_p ); } ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: nemmeno chiamando direttamente la prenotazione senza essere segreteria' );
+wp_set_current_user( 0 );
+asem_ok( null !== asem_throws( function () use ( $acts, $ap_s, $ap_p ) { $acts->book( $ap_s, $ap_p ); } ), 'evento su richiesta: né senza alcun utente' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $ap_s, $ap_p ) { \AssociazioneSemplice\Waitlist::join( $ap_s, $ap_p ); } ), 'su richiesta' ), 'evento su richiesta: la lista d\'attesa non si apre' );
+$wpdb->insert( \AssociazioneSemplice\Db::t( 'waitlist' ), array( 'session_id' => $ap_s, 'person_id' => $ap_p, 'status' => 'waiting', 'created_at' => \AssociazioneSemplice\Db::now() ) ); // già in coda prima che l'evento diventasse su richiesta
+asem_ok( 0 === \AssociazioneSemplice\Waitlist::promote( $ap_s ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: la lista d\'attesa non prenota nessuno da sola' );
+asem_ok( $acts->book( $ap_s, $ap_p, array( 'approved' => true ) ) > 0 && $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: con la richiesta approvata si prenota' );
+wp_set_current_user( 1 );
+asem_ok( $acts->book( $ap_s, $ap_q ) > 0 && $acts->has_active_booking( $ap_s, $ap_q ), 'evento su richiesta: la segreteria prenota direttamente' );
+list( $ap_r ) = $mkmem( 'Tina', 'Richiesta' );
+wp_set_current_user( $sec_u );
+asem_ok( $acts->book( $ap_s, $ap_r ) > 0 && $acts->has_active_booking( $ap_s, $ap_r ), 'evento su richiesta: anche l\'utente di segreteria (non amministratore) prenota direttamente' );
+wp_set_current_user( 1 );
+Settings::update( array( 'rules_enabled' => $ap_rules ) );
 $er_aw2 = $er::awaiting( $er_c );
 asem_ok( 1 === count( $er_aw2 ) && false !== strpos( $er_aw2[0]['names'][0], '(socio)' ), 'richiesta socio: compare alla segreteria' );
 $er::approve( (int) $er_aw2[0]['id'] );

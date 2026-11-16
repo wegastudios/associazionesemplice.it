@@ -62,7 +62,7 @@ final class DoorSales {
 					}
 				}
 				if ( ! $svc->has_active_booking( $sid, $pid ) ) {
-					$svc->book( $sid, $pid ); // se i posti sono finiti lancia "Posti esauriti"
+					$svc->book( $sid, $pid, array( 'approved' => true ) ); // incasso dello staff sul posto: se i posti sono finiti lancia "Posti esauriti"
 				}
 				$row = null;
 				foreach ( $svc->bookings_for_session( $sid ) as $b ) {
