@@ -134,7 +134,7 @@ La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attivit�
 ## Fare la copia
 
 1. Vai in **Strumenti → Copia di sicurezza**.
-2. Scegli se includere gli allegati.
+2. Scegli se includere gli allegati: il pulsante è **«Scarica la copia con gli allegati (scontrini, fatture e altri documenti)»**.
 3. Scrivi la **tua password di amministratore** e premi il pulsante per creare la copia: **senza password non si scarica nulla**. Se è sbagliata compare «La password non è corretta: non è stato scaricato nulla.»
 4. Conservalo in un posto sicuro, fuori dal sito.
 
@@ -174,7 +174,7 @@ Serve, per esempio, dopo le prove prima di iniziare davvero. Solo gli amministra
 
 ## Prima di cominciare
 
-Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (vale poco tempo), scrivendo la tua password di amministratore: senza lo scarico l'azzeramento non parte. Conservala tu.
+Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (file di scontrini, fatture e altri documenti; vale poco tempo), scrivendo la tua password di amministratore: senza lo scarico l'azzeramento non parte. Conservala tu.
 
 ## Cosa fare
 
