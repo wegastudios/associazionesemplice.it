@@ -378,6 +378,7 @@ final class Restrict {
 	public static function filter_rest_attachment_query( $args ) {
 		$hidden = self::hidden_post_ids();
 		if ( $hidden && is_array( $args ) ) {
+			// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- pochi elementi: i contenuti riservati che chi guarda non può leggere
 			$args['post__not_in'] = array_values( array_unique( array_merge( array_map( 'intval', (array) ( $args['post__not_in'] ?? array() ) ), $hidden ) ) );
 		}
 		return $args;
