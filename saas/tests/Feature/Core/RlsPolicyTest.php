@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\DatabaseNames;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -43,4 +44,22 @@ it('ogni tabella ha la policy di sola lettura per il ruolo dei backup, e nessun\
             ->and($list['backup_read']->roles)->toBe('{'.$backup.'}')
             ->and($list['backup_read']->qual)->toBe('true');
     }
+});
+
+it('il ruolo dei backup non ha nessun permesso di scrittura su nessuna tabella', function (): void {
+    $backup = (string) DB::connection(app(DatabaseNames::class)->ownerConnection(null))->getConfig('backup_role');
+    expect($backup)->not->toBe('');
+
+    $rows = DB::connection(app(DatabaseNames::class)->ownerConnection(null))->select(
+        "SELECT n.nspname || '.' || c.relname AS t, p.priv
+         FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+         CROSS JOIN (VALUES ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) AS p(priv)
+         WHERE c.relkind IN ('r', 'p') AND n.nspname IN ('app', 'audit', 'sites', 'core', 'public')
+           AND has_table_privilege(?, c.oid, p.priv)
+         ORDER BY 1, 2",
+        [$backup],
+    );
+
+    expect($rows)->toBe([]);
 });
