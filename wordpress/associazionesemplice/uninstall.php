@@ -30,6 +30,21 @@ function asem_uninstall_secrets() {
 		}
 	}
 	delete_option( 'asem_vapid' );
+	// Permessi del plugin rimasti sui ruoli di WordPress altrui (Editore, Autore, ruoli di altri plugin): si tolgono sempre, anche se i dati restano.
+	// Il ruolo Amministratore e i tre ruoli del plugin non si toccano qui: se i dati restano, alla reinstallazione devono ritrovarsi com'erano.
+	foreach ( array_keys( wp_roles()->roles ) as $role_name ) {
+		if ( in_array( $role_name, array( 'administrator', 'asem_member', 'asem_secretary', 'asem_employee' ), true ) ) {
+			continue;
+		}
+		$role = get_role( $role_name );
+		if ( $role ) {
+			foreach ( array_keys( (array) $role->capabilities ) as $cap ) {
+				if ( 0 === strpos( $cap, 'asem_' ) ) {
+					$role->remove_cap( $cap );
+				}
+			}
+		}
+	}
 }
 
 /** Cancella i dati del plugin del sito corrente. */

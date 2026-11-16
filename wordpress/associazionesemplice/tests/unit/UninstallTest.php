@@ -58,6 +58,22 @@ final class UninstallTest extends TestCase {
 		}
 	}
 
+	public function test_other_wordpress_roles_lose_plugin_caps_even_when_data_is_kept(): void {
+		$src  = self::source( 'uninstall.php' );
+		$from = (int) strpos( $src, 'function asem_uninstall_secrets()' );
+		$body = substr( $src, $from, (int) strpos( $src, 'function asem_uninstall_site()' ) - $from );
+		$this->assertStringContainsString( 'wp_roles()->roles', $body );
+		$this->assertStringContainsString( "0 === strpos( \$cap, 'asem_' )", $body );
+		$this->assertStringContainsString( 'remove_cap( $cap )', $body );
+		// i quattro ruoli del plugin e dell'amministratore restano com'erano se i dati si conservano
+		foreach ( array( 'administrator', 'asem_member', 'asem_secretary', 'asem_employee' ) as $own ) {
+			$this->assertStringContainsString( "'" . $own . "'", $body, $own );
+		}
+		$this->assertStringNotContainsString( 'remove_role(', $body );
+		// la pulizia dei segreti, e quindi anche questa, viene prima del controllo «cancella i dati»
+		$this->assertLessThan( (int) strpos( $src, "delete_on_uninstall'] )" ), (int) strpos( $src, 'asem_uninstall_secrets();' ) );
+	}
+
 	public function test_kept_data_keeps_qr_secret_and_file_keys(): void {
 		$src  = self::source( 'uninstall.php' );
 		$from = (int) strpos( $src, 'function asem_uninstall_secrets()' );
