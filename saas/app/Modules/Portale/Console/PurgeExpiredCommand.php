@@ -94,20 +94,32 @@ final class PurgeExpiredCommand extends Command
             ->join('core.orgs as o', 'o.id', '=', 'e.org_id')
             ->whereNull('o.deleted_at')
             ->whereIn('o.status', ['suspended', 'closed'])
-            ->whereNotNull('e.until')
-            ->get(['e.org_id', 'e.status', 'e.until']);
+            ->whereNotNull('e.until')->whereNotNull('o.suspended_at')
+            ->get(['e.org_id', 'e.status', 'e.until', 'o.suspended_at']);
 
         $ids = [];
         foreach ($rows as $row) {
-            if (! is_string($row->org_id) || ! is_string($row->until)) {
+            if (! is_string($row->org_id) || ! is_string($row->until) || ! is_string($row->suspended_at)) {
                 continue;
             }
-            $days = $row->status === 'trial' ? $config->trialPurgeDays() : $config->retentionDays();
-            if (CarbonImmutable::parse($row->until)->addDays($days)->lt($today)) {
+            $trial = $row->status === 'trial';
+            $days = $trial ? $config->trialPurgeDays() : $config->retentionDays();
+            // I giorni si contano dalla scadenza E da quando il SaaS stesso ha sospeso l'associazione: una data sbagliata
+            // in arrivo dal portale non basta. E solo dopo l'ultimo avviso («purge_1», per la prova «trial_6») partito da almeno 24 ore.
+            if (CarbonImmutable::parse($row->until)->addDays($days)->lt($today)
+                && CarbonImmutable::parse($row->suspended_at)->addDays($days)->lt($today)
+                && $this->finalNoticeSent($db, $row->org_id, $row->until, $trial ? 'trial_6' : 'purge_1')) {
                 $ids[] = $row->org_id;
             }
         }
 
         return $ids;
+    }
+
+    private function finalNoticeSent(DatabaseManager $db, string $orgId, string $until, string $kind): bool
+    {
+        return $db->connection('pgsql')->table('core.org_notices')
+            ->where('org_id', $orgId)->where('kind', $kind)->where('until', CarbonImmutable::parse($until)->toDateString())
+            ->where('sent_at', '<=', now()->subDay())->exists();
     }
 }
