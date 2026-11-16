@@ -10512,18 +10512,18 @@ MemberLogin::defer( false );
 asem_ok( count( $ml_mail ) === $df_n + 1, 'sicurezza: a risposta consegnata l\'email parte' );
 // tempi di risposta uguali: stessa coda per il «Primo accesso», limite per indirizzo ancora valido, indirizzo noto e ignoto fanno lo stesso lavoro
 delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
-ResponseMail::defer( true );
+\AssociazioneSemplice\ResponseMail::defer( true );
 $tr_n = count( $ml_mail );
-asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $pw_addr ) && count( $ml_mail ) === $tr_n && 1 === ResponseMail::pending(), 'tempi di risposta: il «Primo accesso» mette l\'email in coda e non la manda nella richiesta' );
-ResponseMail::flush();
-asem_ok( 1 === count( $ml_mail ) - $tr_n && 0 === ResponseMail::pending(), 'tempi di risposta: a risposta consegnata l\'email del «Primo accesso» parte' );
+asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $pw_addr ) && count( $ml_mail ) === $tr_n && 1 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: il «Primo accesso» mette l\'email in coda e non la manda nella richiesta' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( 1 === count( $ml_mail ) - $tr_n && 0 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: a risposta consegnata l\'email del «Primo accesso» parte' );
 delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
 $tr_lim = (int) \AssociazioneSemplice\Limits::get( 'first_access_per_email' );
 for ( $tr_i = 0; $tr_i < $tr_lim + 3; $tr_i++ ) {
 	MemberLogin::request( $pw_addr );
 }
-asem_ok( $tr_lim === ResponseMail::pending(), 'tempi di risposta: il limite di email per indirizzo vale anche con la coda (' . $tr_lim . ')' );
-ResponseMail::flush();
+asem_ok( $tr_lim === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: il limite di email per indirizzo vale anche con la coda (' . $tr_lim . ')' );
+\AssociazioneSemplice\ResponseMail::flush();
 asem_ok( $tr_lim === count( $ml_mail ) - $tr_n - 1, 'tempi di risposta: partono solo le email entro il limite' );
 $tr_known = null;
 $tr_other = null;
@@ -10534,10 +10534,10 @@ $tr_known = $wpdb->num_queries - $tr_q;
 $tr_q = $wpdb->num_queries;
 MemberLogin::request( 'sconosciuto.tempi@example.org' );
 $tr_other = $wpdb->num_queries - $tr_q;
-ResponseMail::flush();
+\AssociazioneSemplice\ResponseMail::flush();
 WP_CLI::log( 'tempi di risposta: richieste al database, indirizzo noto ' . $tr_known . ', ignoto ' . $tr_other );
 asem_ok( abs( $tr_known - $tr_other ) <= 1, 'tempi di risposta: indirizzo di un socio e indirizzo ignoto fanno lo stesso lavoro sul database' );
-ResponseMail::defer( false );
+\AssociazioneSemplice\ResponseMail::defer( false );
 delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
 // chi riceve più email non perde il primo link, ma le richieste valide sono al massimo 3
 $cf_addr = 'codici.prova@example.org';
