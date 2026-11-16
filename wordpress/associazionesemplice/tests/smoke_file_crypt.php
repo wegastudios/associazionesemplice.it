@@ -317,6 +317,56 @@ $fk_ko2 = maybe_unserialize( (string) $fk_row( FileKey::OPT_KEYS ) );
 $fc_ok( 'encrypt' === $fk_m && 1 === preg_match( '/^[0-9a-f]{16}$/', $fk_s1 ) && ( $fk_ko2['site'] ?? '' ) === $fk_s1 && $fk_s1 === FileKey::site_id(), 'identificativo: chiavi di prima senza identificativo, al primo uso se ne dà uno e si scrive anche accanto alle chiavi' );
 $fk_back();
 
+// Errore del server sul blocco (GET_LOCK dà NULL): per le chiavi vale «blocco non preso», per gli altri usi si procede come sempre
+Db::$lock_fake = 'null';
+$fk_s = asem_or_free_throws( function () { Db::with_lock( 'asem_prova_blocco', function () {}, 1, true ); } );
+$fk_l = 'no';
+Db::with_lock( 'asem_prova_blocco', function () use ( &$fk_l ) { $fk_l = 'si'; } );
+Db::$lock_fake = 'x';
+$fc_ok( null !== $fk_s && 'si' === $fk_l, 'blocco: un errore del server vale «blocco non preso» per le chiavi e gli altri usi procedono come sempre' );
+
+// Blocco occupato al primo avvio: nessun file né campo si cifra con un identificativo vuoto, e dopo lo sblocco tutto funziona
+$fk_cnt = function () use ( $fc_dir ): int {
+	return count( glob( $fc_dir . '/*' ) ?: array() );
+};
+$fk_save = function () use ( $fc_file, $fc_tmp, $fc_text ): array {
+	return Attachments::save_file( $fc_file( 'blocco.pdf', $fc_tmp( $fc_text ) ) );
+};
+$fk_wipe();
+$fk_n0 = $fk_cnt();
+Db::$lock_fake = '0';
+$fk_m1 = FileKey::mode();
+$fk_t1 = asem_or_free_throws( function () use ( $fk_save ) { $fk_save(); } );
+$fk_f1 = PrivateFiles::field_encrypt( 'prova', 'col', 1, 'testo da cifrare' );
+Db::$lock_fake = 'x';
+$fc_ok( 'blocked' === $fk_m1 && null !== $fk_t1 && 'testo da cifrare' === $fk_f1 && null === $fk_row( FileKey::OPT_KEYS ) && null === $fk_row( FileKey::OPT_SITE ) && $fk_n0 === $fk_cnt(), 'blocco occupato al primo avvio: nessuna chiave, nessun identificativo e nessun file o campo cifrato' );
+FileKey::reset();
+$fk_a1 = $fk_save();
+$fk_e1 = PrivateFiles::field_encrypt( 'prova', 'col', 1, 'testo da cifrare' );
+$fc_ok( 'encrypt' === FileKey::mode() && 1 === (int) $fk_a1['enc_ver'] && FileCrypt::is_field( $fk_e1 ) && 'testo da cifrare' === PrivateFiles::field_decrypt( 'prova', 'col', 1, $fk_e1 ), 'blocco occupato al primo avvio: sbloccato, file e campi si cifrano e si riaprono' );
+wp_delete_file( $fc_dir . '/' . $fk_a1['stored'] );
+$fk_back();
+// chiavi già salvate ma identificativo non ritrovabile, con il blocco occupato: stesso rifiuto, nessun uso dell'identificativo vuoto
+$fk_ko = maybe_unserialize( (string) $fk_keep[ FileKey::OPT_KEYS ] );
+unset( $fk_ko['site'] );
+$fk_raw( FileKey::OPT_KEYS, maybe_serialize( $fk_ko ) );
+$fk_raw( FileKey::OPT_SITE, null );
+$fk_flush();
+$fk_n0 = $fk_cnt();
+Db::$lock_fake = '0';
+$fk_m2 = FileKey::mode();
+$fk_c2 = FileKey::current();
+$fk_k2 = FileKey::key_for( (int) array_key_first( $fk_ko['keys'] ) );
+$fk_t2 = asem_or_free_throws( function () use ( $fk_save ) { $fk_save(); } );
+Db::$lock_fake = 'x';
+$fc_ok( 'blocked' === $fk_m2 && null === $fk_c2 && null === $fk_k2 && null !== $fk_t2 && null === $fk_row( FileKey::OPT_SITE ) && $fk_n0 === $fk_cnt(), 'blocco occupato con chiavi senza identificativo: niente cifratura né decifratura con un identificativo vuoto' );
+FileKey::reset();
+$fk_a2 = $fk_save();
+$fc_ok( 'encrypt' === FileKey::mode() && 1 === (int) $fk_a2['enc_ver'] && 1 === preg_match( '/^[0-9a-f]{16}$/', (string) $fk_row( FileKey::OPT_SITE ) ), 'blocco occupato con chiavi senza identificativo: sbloccato, tutto torna a funzionare' );
+wp_delete_file( $fc_dir . '/' . $fk_a2['stored'] );
+$wpdb->delete( Db::t( 'attachments' ), array( 'stored_name' => $fk_a2['stored'] ) );
+$fk_back();
+
 // Ogni modifica delle chiavi parte da quanto c'è nel database in quel momento: ciò che un'altra richiesta ha aggiunto non va perso
 FileKey::state();
 $fk_ko = maybe_unserialize( (string) $fk_keep[ FileKey::OPT_KEYS ] );
