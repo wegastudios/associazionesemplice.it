@@ -9,8 +9,8 @@
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
 /**
- * Toglie sempre, anche se i dati restano: i lavori programmati, le chiavi segrete (cifrate), la chiave di licenza, le chiavi delle notifiche
- * e il segreto dei QR delle tessere. Servono solo a questo sito: chi reinstalla il plugin le reinserisce o si rigenerano da sole.
+ * Toglie sempre, anche se i dati restano: i lavori programmati, le chiavi segrete (cifrate), la chiave di licenza, le chiavi delle notifiche.
+ * Servono solo a questo sito: chi reinstalla il plugin le reinserisce o si rigenerano da sole. Il segreto dei QR (asem_card_salt) e le chiavi dei file (asem_file_keys) restano: i QR già consegnati e i file cifrati devono restare validi; spariscono solo con «Cancella tutti i dati».
  */
 function asem_uninstall_secrets() {
 	foreach ( \AssociazioneSemplice\Install::JOB_HOOKS as $hook ) {
@@ -30,7 +30,6 @@ function asem_uninstall_secrets() {
 		}
 	}
 	delete_option( 'asem_vapid' );
-	delete_option( 'asem_card_salt' );
 }
 
 /** Cancella i dati del plugin del sito corrente. */

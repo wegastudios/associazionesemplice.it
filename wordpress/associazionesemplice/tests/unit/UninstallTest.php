@@ -53,9 +53,18 @@ final class UninstallTest extends TestCase {
 		$this->assertNotFalse( $pos );
 		// la pulizia dei segreti viene prima del controllo «cancella i dati»
 		$this->assertLessThan( (int) strpos( $src, "delete_on_uninstall'] )" ), $pos );
-		foreach ( array( 'Install::JOB_HOOKS', "'license_key'", "'enc1:'", "'asem_vapid'", "'asem_card_salt'" ) as $needle ) {
+		foreach ( array( 'Install::JOB_HOOKS', "'license_key'", "'enc1:'", "'asem_vapid'" ) as $needle ) {
 			$this->assertStringContainsString( $needle, $src, $needle );
 		}
+	}
+
+	public function test_kept_data_keeps_qr_secret_and_file_keys(): void {
+		$src  = self::source( 'uninstall.php' );
+		$from = (int) strpos( $src, 'function asem_uninstall_secrets()' );
+		$body = substr( $src, $from, (int) strpos( $src, 'function asem_uninstall_site()' ) - $from );
+		$this->assertStringNotContainsString( 'delete_option( \'asem_card_salt\' )', $body );
+		$this->assertStringNotContainsString( 'delete_option( \'asem_file_keys\' )', $body );
+		$this->assertStringNotContainsString( 'FileKey', $body );
 	}
 
 	public function test_enc1_prefix_matches_the_secrets_class(): void {
