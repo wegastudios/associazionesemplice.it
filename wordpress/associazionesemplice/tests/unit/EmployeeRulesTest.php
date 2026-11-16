@@ -78,6 +78,28 @@ final class EmployeeRulesTest extends TestCase {
 		$this->assertContains( 'asem_save_activity', EmployeeRules::activity_actions() );
 	}
 
+	public function test_alternative_routes_to_the_same_data_follow_the_same_permission(): void {
+		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::export_need( 'social' ) ), 'report per attività' );
+		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::doc_need( 'statement' ) ), 'rendiconto' );
+		$this->assertNull( EmployeeRules::blocked_by( array( 'collect', 'expenses', 'refunds' ), EmployeeRules::doc_need( 'statement' ) ) );
+		$this->assertNull( EmployeeRules::doc_need( 'minute' ), 'gli altri documenti restano fissi' );
+		$this->assertNull( EmployeeRules::doc_need( 'book' ) );
+		$by = array(
+			'collect' => array( 'asem_res_pay', 'asem_credit_adjust' ),
+			'refunds' => array( 'asem_payment_refund', 'asem_payment_refunded' ),
+			'funds'   => array( 'asem_void_tx', 'asem_fivepm_add', 'asem_fivepm_report', 'asem_fivepm_delete', 'asem_statement_notes', 'asem_statement_backfill' ),
+		);
+		foreach ( $by as $key => $actions ) {
+			foreach ( $actions as $action ) {
+				$this->assertSame( $key, EmployeeRules::blocked_by( array( $key ), EmployeeRules::action_need( $action ) ), $action );
+				foreach ( array_diff( EmployeeRules::keys(), array( $key ) ) as $other ) {
+					$this->assertNull( EmployeeRules::blocked_by( array( $other ), EmployeeRules::action_need( $action ) ), "$other / $action" );
+				}
+			}
+		}
+		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::page_need( 'asem-fivepm' ) ) );
+	}
+
 	public function test_attachments_need_any_money_permission(): void {
 		$need = EmployeeRules::action_need( 'asem_add_attachment' );
 		$this->assertNull( EmployeeRules::blocked_by( array( 'collect', 'expenses' ), $need ) );
