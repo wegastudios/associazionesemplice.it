@@ -105,13 +105,13 @@ final class Applications {
 		}
 		$d      = $chk['data'];
 		$people = Plugin::people();
-		if ( '' !== $d['email'] && $people->find_by_email( $d['email'] ) ) {
-			return array( 'status' => 'ok', 'errors' => array() ); // già nell'anagrafica o già in coda: nessuna differenza per chi scrive
-		}
-		if ( (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s', $d['tax_code'] ) ) > 0 ) {
-			return array( 'status' => 'ok', 'errors' => array() ); // stesso codice fiscale già in anagrafica o già in coda
-		}
-		if ( self::pending_count() >= Limits::get( 'applications_max' ) ) {
+		// Tre controlli, tutti eseguiti sempre (nessuno salta gli altri): già nell'anagrafica o in coda per email o codice fiscale, oppure coda piena.
+		// Per chi scrive l'esito è lo stesso, e anche il lavoro fatto lo è (vedi decoy_submit).
+		$known_mail = '' !== $d['email'] && (bool) $people->find_by_email( $d['email'] );
+		$known_tax  = (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s', $d['tax_code'] ) ) > 0;
+		$queue_full = self::pending_count() >= Limits::get( 'applications_max' );
+		if ( $known_mail || $known_tax || $queue_full ) {
+			self::decoy_submit();
 			return array( 'status' => 'ok', 'errors' => array() );
 		}
 		$now = Db::now();
@@ -154,6 +154,17 @@ final class Applications {
 		return array( 'status' => 'ok', 'errors' => array() );
 	}
 
+	/**
+	 * Per una domanda che non si registra (doppione, coda piena): le stesse scritture di una domanda vera (la riga, il consenso, il registro), senza
+	 * che nessuna riga corrisponda. Il tempo di risposta non dipende dall'esito (non è uno sleep) e le email partono comunque dopo la risposta.
+	 */
+	private static function decoy_submit(): void {
+		$db = self::db();
+		for ( $i = 0; $i < 8; $i++ ) { // quante ne fa una domanda vera tra riga, consenso, regolamento e registro
+			$db->update( Db::t( 'people' ), array( 'updated_at' => Db::now() ), array( 'id' => 0 ) );
+		}
+	}
+
 	private static function assoc_suffix(): string {
 		$assoc = (string) Settings::get( 'association_name' );
 		return '' !== $assoc ? ' — ' . $assoc : '';
@@ -163,7 +174,7 @@ final class Applications {
 		$who  = trim( $d['first_name'] . ' ' . $d['last_name'] );
 		$text = "È arrivata una nuova domanda di adesione.\n\n" . $who . ' (' . ( $minor ? 'minorenne, con un genitore indicato' : MemberType::label( $d['type'] ) ) . ")\n\n"
 			. 'Approvala o rifiutala dalla Bacheca: ' . admin_url( 'admin.php?page=asem' );
-		Texts::mail( self::notify_email(), 'Nuova domanda di adesione' . self::assoc_suffix(), $text );
+		ResponseMail::send( self::notify_email(), 'Nuova domanda di adesione' . self::assoc_suffix(), $text );
 	}
 
 	/** Conferma a chi ha chiesto di iscriversi (per un minore, al genitore): cosa succede adesso e come pagare la quota. */
@@ -180,7 +191,7 @@ final class Applications {
 			}
 		}
 		$text .= 'Se non sei stato tu a chiederlo, ignora questo messaggio.';
-		Texts::mail( $to, 'Domanda di adesione ricevuta' . self::assoc_suffix(), $text );
+		ResponseMail::send( $to, 'Domanda di adesione ricevuta' . self::assoc_suffix(), $text );
 	}
 
 	// ---------- Pagamento della quota ----------

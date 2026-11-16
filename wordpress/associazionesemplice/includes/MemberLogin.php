@@ -16,22 +16,29 @@ final class MemberLogin {
 	const MAX_ACTIVE = 3;     // richieste valide contemporaneamente per persona (chi riceve due email non perde il primo link)
 	const MAX_PASSWORD_BYTES = 1000; // oltre non si controlla nemmeno: l'impronta di una password enorme costerebbe al server
 
-	/** @var bool le email di accesso partono dopo la risposta (così il tempo di risposta non dice se l'indirizzo è di un socio) */
-	private static $defer = false;
-	/** @var callable[] invii in attesa */
-	private static $queue = array();
-
+	/** Le email di accesso partono dopo la risposta (così il tempo di risposta non dice se l'indirizzo è di un socio): vedi {@see ResponseMail}. */
 	public static function defer( bool $on ): void {
-		self::$defer = $on;
+		ResponseMail::defer( $on );
 	}
 
 	/** Manda le email messe in coda, dopo che la risposta è stata consegnata. */
 	public static function send_queued(): void {
-		$jobs        = self::$queue;
-		self::$queue = array();
-		foreach ( $jobs as $job ) {
-			$job();
-		}
+		ResponseMail::flush();
+	}
+
+	/**
+	 * Lavoro di una richiesta di link per un indirizzo che non è di un socio (o che ha già raggiunto il limite): stesse letture, scritture e impronte
+	 * di una richiesta vera, senza scrivere né spedire niente, così il tempo di risposta non dipende dall'esito. Non è uno sleep.
+	 */
+	private static function decoy_request(): void {
+		$db  = Db::db();
+		$tbl = Db::t( 'member_challenges' );
+		$db->query( $db->prepare( "DELETE FROM $tbl WHERE person_id = %d AND (used_at IS NOT NULL OR expires_at <= %s)", 0, self::now() ) );
+		$db->get_col( $db->prepare( "SELECT id FROM $tbl WHERE person_id = %d ORDER BY id DESC", 0 ) );
+		$db->query( $db->prepare( "DELETE FROM $tbl WHERE id = %d", 0 ) ); // al posto della pulizia delle richieste più vecchie
+		SessionToken::hash( SessionToken::generate() );
+		SessionToken::hash_code( SessionToken::code(), 0, MemberSession::secret() );
+		$db->query( $db->prepare( "UPDATE $tbl SET attempts = attempts WHERE id = %d", 0 ) ); // al posto dell'inserimento: nessuna riga corrisponde
 	}
 
 	/** Chi può entrare così: socio con accesso e senza un utente WordPress (chi ha un utente, cioè chi ha poteri, entra da WordPress). */
@@ -83,11 +90,14 @@ final class MemberLogin {
 		}
 		$p = self::person_by_email( $email );
 		if ( ! $p ) {
+			get_transient( 'asem_ml_m_' . md5( strtolower( trim( $email ) ) ) );
+			self::decoy_request(); // stesso lavoro di una richiesta vera: il tempo di risposta non dice se l'indirizzo è di un socio
 			return false;
 		}
 		$mail_key = 'asem_ml_m_' . md5( strtolower( (string) $p['email'] ) ); // come per il primo accesso: nessuno può inondare la casella di un socio
 		$sent     = (int) get_transient( $mail_key );
 		if ( $sent >= Limits::get( 'first_access_per_email' ) ) {
+			self::decoy_request();
 			return false;
 		}
 		$db  = Db::db();
@@ -127,12 +137,9 @@ final class MemberLogin {
 		}
 		$to      = (string) $p['email'];
 		$subject = $subject . ( '' !== $assoc ? ' — ' . $assoc : '' );
-		if ( self::$defer ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
+		if ( ResponseMail::deferring() ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
 			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
-			self::$queue[] = static function () use ( $to, $subject, $text ) {
-				Texts::mail( $to, $subject, $text );
-			};
-			return true;
+			return ResponseMail::send( $to, $subject, $text );
 		}
 		$ok = (bool) Texts::mail( $to, $subject, $text );
 		if ( $ok ) {
