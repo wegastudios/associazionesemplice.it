@@ -593,6 +593,39 @@ remove_filter( 'home_url', $lic_home );
 Settings::clear_secret( 'license_key' );
 delete_option( License::OPT_STATE );
 asem_ok( ! License::enabled() && '' === Admin\LicenseNotice::html(), 'sito locale: la verifica torna in standby' );
+// chiave cifrata che non si apre più (codici di sicurezza cambiati, sito spostato): avviso fisso, nessuna chiamata al portale, stato di licenza intatto
+$ur_calls = 0;
+$ur_http  = function ( $pre, $args, $url ) use ( &$ur_calls ) {
+	if ( false !== strpos( $url, 'associazionesemplice.it' ) ) {
+		$ur_calls++;
+		return new WP_Error( 'http_request_failed', 'non si doveva chiamare' );
+	}
+	return $pre;
+};
+\AssociazioneSemplice\LicenseClient::set_local_override( false );
+add_filter( 'home_url', $lic_home );
+add_filter( 'pre_http_request', $ur_http, 10, 3 );
+update_option( License::OPT_STATE, array( 'status' => 'active', 'plan' => 'lite', 'checked_at' => Db::now() ) );
+$ur_all                = (array) get_option( Settings::OPTION, array() );
+$ur_all['license_key'] = 'enc1:' . base64_encode( random_bytes( 60 ) ); // prefisso giusto, contenuto che non si apre
+update_option( Settings::OPTION, $ur_all );
+asem_ok( License::has_key() && '' === License::key() && License::key_unreadable(), 'chiave illeggibile: riconosciuta (salvata ma non si apre)' );
+$ur_r     = License::sync();
+$ur_state = (array) get_option( License::OPT_STATE, array() );
+asem_ok( false === $ur_r['ok'] && 0 === $ur_calls && false !== strpos( (string) $ur_r['message'], 'non si legge più' ), 'chiave illeggibile: il controllo si ferma con un errore chiaro e non chiama il portale' );
+asem_ok( 'active' === ( $ur_state['status'] ?? '' ) && 'lite' === ( $ur_state['plan'] ?? '' ), 'chiave illeggibile: lo stato di licenza resta com\'era (non diventa «nessuna chiave»)' );
+wp_set_current_user( 1 );
+$ur_notice_admin = Admin\LicenseNotice::html();
+wp_set_current_user( 0 );
+$ur_notice_none = Admin\LicenseNotice::html();
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( $ur_notice_admin, 'La chiave di licenza salvata non si legge più su questo sito' ) && false !== strpos( $ur_notice_admin, 'asem-license' ) && false === strpos( $ur_notice_admin, 'dismiss' ), 'chiave illeggibile: avviso fisso in Bacheca per chi amministra, con il collegamento al pannello Licenza' );
+asem_ok( false === strpos( $ur_notice_none, 'non si legge più' ), 'chiave illeggibile: nessun avviso per chi non ha il permesso' );
+Settings::clear_secret( 'license_key' );
+delete_option( License::OPT_STATE );
+remove_filter( 'pre_http_request', $ur_http, 10 );
+remove_filter( 'home_url', $lic_home );
+\AssociazioneSemplice\LicenseClient::set_local_override( null );
 $lic_save = \AssociazioneSemplice\ProBoot::save_license( array( 'license_key' => '' ) );
 asem_ok( false !== strpos( (string) $lic_save[0], 'asem-settings' ), 'licenza: salvando la chiave si torna alle impostazioni (non un errore fatale)' );
 // quote diverse: spariscono, resta la quota sola
