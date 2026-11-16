@@ -13,8 +13,9 @@ use Illuminate\Support\Facades\Route;
 $domain = config('saas.members_domain');
 
 // Area soci: https://<slug>.<dominio dei soci>/area. Il sito dell'associazione (pacchetto Sito) avrà il resto.
-Route::domain('{org}.'.(is_string($domain) ? $domain : 'associazionesemplice.it'))->where(['org' => '[a-z0-9-]{3,40}'])
-    ->middleware(['web', 'member-org'])->prefix('area')->group(function (): void {
+// Le stesse pagine rispondono anche sul dominio personalizzato dell'associazione (solo se verificato: lo decide
+// `member-org`), con gli stessi indirizzi e i nomi preceduti da «custom.»: link e codice arrivano sullo stesso dominio.
+$memberArea = function (): void {
         Route::get('/accesso', [AccessController::class, 'show'])->name('member.login');
         Route::post('/accesso', [AccessController::class, 'request'])->name('member.login.request');
         Route::post('/accesso/codice', [AccessController::class, 'code'])->name('member.login.code');
@@ -42,7 +43,13 @@ Route::domain('{org}.'.(is_string($domain) ? $domain : 'associazionesemplice.it'
             Route::get('/pagamenti/{payment}/esito', [MemberPaymentsController::class, 'result'])->whereUuid('payment')->name('member.pay.result');
             Route::get('/pagamenti/{payment}/annullato', [MemberPaymentsController::class, 'cancelled'])->whereUuid('payment')->name('member.pay.cancelled');
         });
-    });
+};
+
+Route::domain('{org}.'.(is_string($domain) ? $domain : 'associazionesemplice.it'))->where(['org' => '[a-z0-9-]{3,40}'])
+    ->middleware(['web', 'member-org'])->prefix('area')->group($memberArea);
+
+Route::name('custom.')->domain('{host}')->where(['host' => '[a-z0-9]([a-z0-9.-]{2,251}[a-z0-9])?'])
+    ->middleware(['web', 'member-org'])->prefix('area')->group($memberArea);
 
 // Webhook di Stripe, sul sottodominio dell'associazione: niente sessione né CSRF, vale la firma.
 Route::domain('{org}.'.(is_string($domain) ? $domain : 'associazionesemplice.it'))->where(['org' => '[a-z0-9-]{3,40}'])
