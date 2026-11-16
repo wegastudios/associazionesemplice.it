@@ -5,11 +5,13 @@ use AssociazioneSemplice\CertificateRules;
 use AssociazioneSemplice\Certificates;
 use AssociazioneSemplice\Db;
 use AssociazioneSemplice\Edition;
+use AssociazioneSemplice\Employees;
 use AssociazioneSemplice\ExpiryRules;
 use AssociazioneSemplice\MemberQuery;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Texts;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -54,12 +56,18 @@ final class CertificatesPage {
 				$activities[ $id ] = $a['name'] . ' (' . $a['social_year'] . ')';
 			}
 		}
+		$limited = Certificates::limited(); // dipendente senza «Certificati medici»: solo gli iscritti alle attività che può gestire, senza esportazione né elenco di tutti i soci
+		if ( $limited ) {
+			$all        = false;
+			$activities = array_intersect_key( $activities, array_flip( Certificates::scoped_activity_ids() ) );
+			echo '<p class="description">' . esc_html( Texts::t( 'Vedi lo stato e apri il certificato solo di chi è iscritto alle tue attività. Ogni apertura del file resta scritta nel registro azioni.' ) ) . ' ' . esc_html( Texts::t( 'Chi ha l\'area Corsi o Eventi vede i certificati degli iscritti alle attività di cui è istruttore e di quelle senza istruttore.' ) ) . '</p>';
+		}
 		$args = array( 'filter' => $filter, 'activity' => $act, 'all' => $all ? 1 : '' );
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-medical">'
 			. '<select name="filter">' . Ui::options( ExpiryRules::labels(), $filter, 'Tutti gli stati' ) . '</select> '
 			. '<select name="activity">' . Ui::options( $activities, $act ?: null, 'Tutte le attività che lo richiedono' ) . '</select> '
-			. '<label><input type="checkbox" name="all" value="1"' . checked( $all, true, false ) . '> tutti i soci attivi, anche senza attività che lo richiedono</label> '
-			. '<button class="button">Filtra</button> <a class="button" href="' . esc_url( BlockCExports::url( 'asem_cert_csv', $args ) ) . '">Esporta (CSV)</a></form>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
+			. ( $limited ? '' : '<label><input type="checkbox" name="all" value="1"' . checked( $all, true, false ) . '> tutti i soci attivi, anche senza attività che lo richiedono</label> ' )
+			. '<button class="button">Filtra</button>' . ( $limited ? '' : ' <a class="button" href="' . esc_url( BlockCExports::url( 'asem_cert_csv', $args ) ) . '">Esporta (CSV)</a>' ) . '</form>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 
 		$rows = Certificates::rows( $filter, $act, $all );
 		echo '<table class="widefat striped asem-rows"><thead><tr><th>Socio</th><th>Stato</th><th>Tipo</th><th>Scade il</th><th>Giorni</th><th>Attività che lo richiedono</th><th></th></tr></thead><tbody>';
@@ -69,13 +77,18 @@ final class CertificatesPage {
 		foreach ( $rows as $r ) {
 			$p = $r['person'];
 			$c = $r['cert'];
-			echo '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) ) . '">' . esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) ) . '</a></td>'
+			$card  = Employees::page_allowed( 'asem-person' ); // senza Anagrafica soci la scheda non si apre: resta il nome e, se c'è, il file
+			$name  = esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) );
+			$last  = $card
+				? '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) ) . '#asem-medical">Apri la scheda</a>'
+				: ( $c && ! empty( $c['file_stored'] ) ? '<a href="' . esc_url( Certificates::file_url( (int) $c['id'] ) ) . '">' . esc_html( Texts::t( 'Apri il certificato' ) ) . '</a>' : '—' );
+			echo '<tr><td>' . ( $card ? '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) ) . '">' . $name . '</a>' : $name ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 				. '<td>' . self::badge( $r['status'] ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 				. '<td data-label="Tipo">' . ( $c ? esc_html( CertificateRules::kinds()[ $c['kind'] ] ?? $c['kind'] ) : '—' ) . '</td>'
 				. '<td data-label="Scade il">' . self::date( $c ? (string) $c['expires_on'] : null ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
 				. '<td data-label="Giorni">' . ( null === $r['days_left'] ? '—' : (int) $r['days_left'] ) . '</td>'
 				. '<td data-label="Attività">' . esc_html( implode( ', ', $r['activities'] ) ) . '</td>'
-				. '<td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) ) . '#asem-medical">Apri la scheda</a></td></tr>';
+				. '<td>' . $last . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 		}
 		echo '</tbody></table>';
 
@@ -105,6 +118,10 @@ final class CertificatesPage {
 			return;
 		}
 		$id    = (int) $p['id'];
+		if ( ! Certificates::person_in_scope( $id ) ) { // dipendente senza «Certificati medici»: la scheda di chi non è iscritto alle sue attività non mostra niente
+			return;
+		}
+		$ro    = Certificates::limited(); // sola lettura: registrare ed eliminare certificati richiede «Certificati medici»
 		$back  = Ui::url( 'asem-person', array( 'id' => $id ) );
 		$st    = Certificates::status_of( $id );
 		$certs = Certificates::for_person( $id );
@@ -115,12 +132,18 @@ final class CertificatesPage {
 			foreach ( $certs as $c ) {
 				echo '<tr><td>' . esc_html( CertificateRules::kinds()[ $c['kind'] ] ?? $c['kind'] ) . '</td><td>' . self::date( (string) $c['issued_on'] ) . '</td><td>' . self::date( (string) $c['expires_on'] ) . '</td><td>' . esc_html( (string) $c['doctor'] ) . '</td><td>' // phpcs:ignore WordPress.Security.EscapeOutput
 					. ( ! empty( $c['file_stored'] ) ? '<a href="' . esc_url( Certificates::file_url( (int) $c['id'] ) ) . '">Scarica</a>' : '—' ) . '</td><td>';
-				Ui::form_open( 'asem_cert_delete', $back, false, 'asem-inline' );
-				echo Ui::hidden( 'id', $c['id'] ) . '<button class="button-link-delete" data-confirm="Eliminare questo certificato (e il file allegato)?">elimina</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
-				Ui::form_close();
+				if ( ! $ro ) {
+					Ui::form_open( 'asem_cert_delete', $back, false, 'asem-inline' );
+					echo Ui::hidden( 'id', $c['id'] ) . '<button class="button-link-delete" data-confirm="Eliminare questo certificato (e il file allegato)?">elimina</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					Ui::form_close();
+				}
 				echo '</td></tr>';
 			}
 			echo '</tbody></table>';
+		}
+		if ( $ro ) {
+			echo '</div>';
+			return;
 		}
 		Ui::form_open( 'asem_cert_add', $back, true );
 		echo Ui::hidden( 'person_id', $id ) // phpcs:ignore WordPress.Security.EscapeOutput

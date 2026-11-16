@@ -2653,6 +2653,7 @@ check( 'vendita gestionale: l\'interruttore la accende e la spegne; /saas e /saa
 	true === Portale\SaasSale::on() && ( Portale\Switches::save( $swdb, array() ) || true ) && false === Portale\SaasSale::on()
 	&& Portale\SaasSale::isSalesPath( '/saas' ) && Portale\SaasSale::isSalesPath( '/saas/acquista' ) && ! Portale\SaasSale::isSalesPath( '/saas/admin' ) && ! Portale\SaasSale::isSalesPath( '/account' ) );
 Portale\Switches::save( $swdb, array( 'saas_v2_domain' => '1' ) ); // com'era prima di questa prova
+check( 'stato pubblico per il supporto: solo la vendita del gestionale, come booleano', array( 'saas_sale' => false ) === Portale\SaasSale::publicState() && ( Config::set( 'saas_sale.enabled', true ) || true ) && '{"saas_sale":true}' === json_encode( Portale\SaasSale::publicState() ) && ( Config::set( 'saas_sale.enabled', false ) || true ) );
 Config::set( 'saas_v2', array( 'enabled' => true, 'domain' => false ) );
 Portale\Switches::load( $swdb );
 check( 'interruttori: all\'avvio il valore salvato vince su config.php', false === Config::get( 'saas_v2.enabled' ) && true === Config::get( 'saas_v2.domain' ) );

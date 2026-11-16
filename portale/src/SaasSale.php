@@ -13,6 +13,11 @@ final class SaasSale {
 		return true === Config::get( 'saas_sale.enabled', false );
 	}
 
+	/** Stato pubblico letto dal sito di supporto (GET /api/stato): solo se il gestionale è in vendita. */
+	public static function publicState(): array {
+		return array( 'saas_sale' => self::on() );
+	}
+
 	/** Dove si manda chi apre una pagina di vendita del gestionale mentre è spenta. */
 	public static function fallback(): string {
 		return '/';

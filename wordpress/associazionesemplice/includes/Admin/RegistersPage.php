@@ -26,6 +26,12 @@ final class RegistersPage {
 	// ---------- Libro soci ----------
 
 	public static function render_book(): void {
+		if ( ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::PEOPLE ) ) { // la pagina «Registri» si apre anche a chi ha solo gli altri registri; il libro soci è anagrafica
+			Ui::header( 'Libro soci' );
+			echo '<p>' . esc_html( \AssociazioneSemplice\Texts::t( 'Il libro soci è dell\'area «Anagrafica soci», che non hai. Gli altri registri sono nelle schede qui sopra.' ) ) . '</p>';
+			Ui::footer();
+			return;
+		}
 		$filter = Ui::get_str( 'filter' );
 		$filter = in_array( $filter, array( MemberBook::IN_FORCE, MemberBook::LEFT ), true ) ? $filter : '';
 		$years  = array();

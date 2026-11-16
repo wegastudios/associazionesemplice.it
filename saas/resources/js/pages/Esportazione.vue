@@ -16,6 +16,11 @@ const restore = (y) => {
         router.post(`/gestionale/archivio/${y}/rimetti`, {}, { preserveScroll: true });
     }
 };
+const rebuild = (y) => {
+    if (window.confirm(`Ricostruire le ricevute dell'anno fiscale ${y} dai dati salvati quando sono state emesse? Si rifanno i PDF, i file singoli tornano al loro posto e l'archivio rovinato viene tolto. L'operazione resta scritta nel registro azioni.`)) {
+        router.post(`/gestionale/archivio/${y}/ricostruisci`, {}, { preserveScroll: true });
+    }
+};
 const day = (d) => (d ? d.split('-').reverse().join('/') : '');
 </script>
 
@@ -60,6 +65,7 @@ const day = (d) => (d ? d.split('-').reverse().join('/') : '');
                         <td class="p-2 text-right">
                             <button v-if="a.state === 'ready'" type="button" class="btn" @click="archive(a.year)">Archivia l'anno</button>
                             <button v-else-if="a.state === 'archived'" type="button" class="btn" @click="restore(a.year)">Rimetti i file</button>
+                            <button v-if="a.state === 'archived' && page.props.errors?.archive_recover === String(a.year)" type="button" class="btn ml-2" @click="rebuild(a.year)">Ricostruisci dai dati dell'emissione</button>
                         </td>
                     </tr>
                 </tbody>

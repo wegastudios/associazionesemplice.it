@@ -11,6 +11,7 @@ use App\Modules\Cifratura\Contracts\EncryptedFiles;
 use App\Modules\Cifratura\Contracts\FieldCipher;
 use App\Modules\Cifratura\Contracts\StoredFile;
 use App\Modules\Contabilita\Archive\ArchivedReceipts;
+use App\Modules\Contabilita\Archive\ArchiveLock;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Database\ConnectionInterface;
@@ -123,6 +124,28 @@ final readonly class ReceiptFiles
      */
     public function rebuild(string $receiptId): bool
     {
+        $row = $this->row($receiptId) ?? throw new ReceiptFileProblem('Questa ricevuta non ha ancora un PDF fissato.', ReceiptFileProblem::MISSING);
+        if (($row->archived_year ?? null) !== null) {
+            throw new ReceiptFileProblem('Questa ricevuta è nell\'archivio dell\'anno fiscale '.(is_numeric($row->archived_year) ? (int) $row->archived_year : '').': per rifarla rimetti prima i file di quell\'anno da «Copie di sicurezza».', ReceiptFileProblem::CHANGED);
+        }
+        // Si rifà solo un PDF mancante o alterato: uno sano non si tocca.
+        if ($this->status($receiptId) === self::OK) {
+            throw new ReceiptFileProblem('Il PDF di questa ricevuta è a posto: non serve rifarlo.', ReceiptFileProblem::CHANGED);
+        }
+        $lock = ArchiveLock::take($this->context->require()->id, 120);
+        if ($lock === null) {
+            throw new ReceiptFileProblem(ArchiveLock::BUSY, ReceiptFileProblem::CHANGED);
+        }
+        try {
+            return $this->rebuildLocked($receiptId);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function rebuildLocked(string $receiptId): bool
+    {
+        // Riletta col blocco preso: nel frattempo la ricevuta può essere entrata in un archivio.
         $row = $this->row($receiptId) ?? throw new ReceiptFileProblem('Questa ricevuta non ha ancora un PDF fissato.', ReceiptFileProblem::MISSING);
         if (($row->archived_year ?? null) !== null) {
             throw new ReceiptFileProblem('Questa ricevuta è nell\'archivio dell\'anno fiscale '.(is_numeric($row->archived_year) ? (int) $row->archived_year : '').': per rifarla rimetti prima i file di quell\'anno da «Copie di sicurezza».', ReceiptFileProblem::CHANGED);
@@ -243,6 +266,24 @@ final readonly class ReceiptFiles
      * @return array<string, mixed>|null
      */
     private function snapshotOf(object $row): ?array
+    {
+        return $this->decodeSnapshot($row);
+    }
+
+    /**
+     * Il PDF rifatto dalla fotografia dei dati dell'emissione, senza toccare niente (serve a ricostruire un archivio che
+     * non si apre). Null se la ricevuta non ha la fotografia.
+     */
+    public function pdfFromSnapshot(string $receiptId): ?string
+    {
+        $row = $this->row($receiptId);
+        $snapshot = $row === null ? null : $this->decodeSnapshot($row);
+
+        return $snapshot === null ? null : $this->pdf->render($snapshot);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function decodeSnapshot(object $row): ?array
     {
         if (($row->snapshot ?? null) === null) {
             return null;

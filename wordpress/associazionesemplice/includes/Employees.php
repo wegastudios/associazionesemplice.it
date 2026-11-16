@@ -92,7 +92,20 @@ final class Employees {
 		} ) );
 	}
 
-	/** Il dipendente è in servizio oggi? Fuori dal periodo di servizio non opera (come se non avesse il ruolo). */
+	/**
+	 * L'utente corrente è un dipendente a cui è stato tolto «Certificati medici»? Allora dei certificati vede solo lo stato e il file degli iscritti
+	 * alle attività (corsi o eventi) che può gestire, e ogni apertura finisce nel registro azioni.
+	 */
+	public static function health_limited(): bool {
+		return ! EmployeeRules::has( self::denied_for( get_current_user_id() ), EmployeeRules::HEALTH );
+	}
+
+	/** Un'attività (riga con «kind») è tra quelle che il dipendente corrente può gestire, secondo i permessi «Corsi» ed «Eventi». */
+	public static function activity_allowed( array $activity ): bool {
+		return EmployeeRules::has( self::denied_for( get_current_user_id() ), EmployeeRules::activity_key( (string) ( $activity['kind'] ?? ActivityKind::EVENT ) ) );
+	}
+
+	/** Il dipendente è in servizio oggi?Fuori dal periodo di servizio non opera (come se non avesse il ruolo). */
 	public static function is_in_service( int $user_id, ?string $on = null ): bool {
 		return EmployeeRules::is_active( self::date_of( $user_id, self::META_FROM ), self::date_of( $user_id, self::META_TO ), $on ?? Db::today() );
 	}
@@ -292,7 +305,7 @@ final class Employees {
 		if ( ! self::denied_for( get_current_user_id() ) ) {
 			return;
 		}
-		foreach ( array( 'asem-activities', 'asem-money' ) as $slug ) {
+		foreach ( array( 'asem-people', 'asem-activities', 'asem-money', 'asem-book', 'asem-tools', 'asem-resources' ) as $slug ) {
 			if ( ! self::page_allowed( $slug ) ) {
 				remove_submenu_page( 'asem', $slug );
 			}

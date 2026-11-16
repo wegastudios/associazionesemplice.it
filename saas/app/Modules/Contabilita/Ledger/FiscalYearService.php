@@ -171,6 +171,10 @@ final readonly class FiscalYearService
         if (is_numeric($latest)) {
             throw new LedgerError("Si può riaprire solo l'ultimo anno fiscale chiuso: prima riapri il {$latest}.");
         }
+        // Un anno con le ricevute nell'archivio non si riapre: prima si rimettono i file.
+        if ($this->connection()->table('app.year_archives')->where('fiscal_year', $year)->exists()) {
+            throw new LedgerError("L'anno fiscale {$year} ha le ricevute nell'archivio: prima rimettile con «Rimetti i file» in «Copie di sicurezza», poi riapri l'anno.");
+        }
         $this->connection()->transaction(function () use ($year, $reason): void {
             $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'closed')
                 ->update(['status' => 'open', 'closed_at' => null, 'closed_by' => null]);

@@ -107,6 +107,35 @@
 		});
 	});
 
+	/* Ricerca minima delle persone (per chi non ha l'anagrafica): almeno 3 lettere, al più 10 risultati, solo nome, tessera e stato della quota */
+	$$('.asem-minsearch').forEach(function (inp) {
+		var sel = $(inp.getAttribute('data-target'));
+		if (!sel || !window.ajaxurl) { return; }
+		var timer = null, seq = 0;
+		inp.addEventListener('input', function () {
+			window.clearTimeout(timer);
+			var q = inp.value.trim();
+			timer = window.setTimeout(function () {
+				if (q.length < 3) { return; }
+				var mine = ++seq, body = new FormData();
+				body.append('action', 'asem_person_search'); body.append('nonce', inp.getAttribute('data-nonce') || ''); body.append('q', q);
+				fetch(window.ajaxurl, { method: 'POST', credentials: 'same-origin', body: body }).then(function (r) { return r.json(); }).then(function (j) {
+					if (mine !== seq || !j || !j.success) { return; }
+					var cur = sel.value, curOpt = sel.options[sel.selectedIndex], first = sel.options[0];
+					sel.innerHTML = '';
+					if (first && first.value === '') { sel.appendChild(first); }
+					(j.data.results || []).forEach(function (p) {
+						var o = el('option', { value: String(p.id), text: p.label + (p.quota ? ' — ' + p.quota : '') });
+						o.setAttribute('data-type', p.type || '');
+						if (String(p.id) === cur) { o.selected = true; }
+						sel.appendChild(o);
+					});
+					if (cur && !sel.querySelector('option[value="' + cur + '"]') && curOpt) { curOpt.selected = true; sel.appendChild(curOpt); }
+				});
+			}, 250);
+		});
+	});
+
 	/* Scheda persona: regole per tipo */
 	var typeSel = $('#asem-type');
 	if (typeSel) {
@@ -393,9 +422,9 @@
 			render();
 		}
 
-		function addPerson(id, autofill) {
+		function addPerson(id, autofill, src) {
 			if (blocks.some(function (b) { return !b.isNew && b.id === id; })) { return; }
-			var info = G.people.filter(function (p) { return p.id === id; })[0]; if (!info) { return; }
+			var info = G.people.filter(function (p) { return p.id === id; })[0]; if (!info && src && src.selectedOptions && src.selectedOptions[0]) { info = { id: id, label: src.selectedOptions[0].text.replace(/ — quota .*$/, ''), type: src.selectedOptions[0].getAttribute('data-type') || '' }; } if (!info) { return; }
 			var b = { id: id, label: info.label, type: info.type, lines: [], ctx: null, key: ++seq };
 			blocks.push(b); render();
 			var fd = new FormData();
@@ -410,8 +439,8 @@
 			});
 		}
 
-		payerSel.addEventListener('change', function () { var id = parseInt(payerSel.value, 10); if (id) { addPerson(id, true); } });
-		addSel.addEventListener('change', function () { var id = parseInt(addSel.value, 10); addSel.value = ''; if (id) { addPerson(id, false); } });
+		payerSel.addEventListener('change', function () { var id = parseInt(payerSel.value, 10); if (id) { addPerson(id, true, payerSel); } });
+		addSel.addEventListener('change', function () { var id = parseInt(addSel.value, 10); if (id) { addPerson(id, false, addSel); } addSel.value = ''; });
 		$('#asem-g-add-guest').addEventListener('click', function () { blocks.push({ isNew: true, label: 'Nuovo ospite', type: 'guest', lines: [], key: ++seq }); render(); });
 		$('#asem-g-account').addEventListener('change', refreshTotal);
 		$('#asem-g-tendered').addEventListener('input', refreshTotal);

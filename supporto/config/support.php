@@ -87,6 +87,9 @@ return [
         'grande' => env('SUPPORT_PLAN_GRANDE', 'Grande'),
     ],
 
+    // Stato del portale (JSON {"saas_sale": true|false}): se indicato, le guide del gestionale seguono la vendita del gestionale del portale
+    'portal_status_url' => env('SUPPORT_PORTAL_STATUS_URL'),
+
     // Validita del link inviato al cliente per seguire il ticket
     'customer_link_days' => (int) env('SUPPORT_CUSTOMER_LINK_DAYS', 60),
 ];

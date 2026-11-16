@@ -27,7 +27,7 @@ final class DashboardPage {
 			. ( Employees::page_allowed( 'asem-income' ) ? '<a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> ' : '' )
 			. ( \AssociazioneSemplice\Edition::has( 'funds' ) && Employees::page_allowed( 'asem-group' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )
 			. ( Employees::page_allowed( 'asem-expense' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Nuova spesa</a> ' : '' )
-			. '<a class="button" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a>' . ( \AssociazioneSemplice\Modules::on( 'activities' ) && Employees::page_allowed( 'asem-calendar' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-calendar' ) ) . '">Calendario</a>' : '' ) . '</p>';
+			. ( Employees::page_allowed( 'asem-person' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a>' : '' ) . ( \AssociazioneSemplice\Modules::on( 'activities' ) && Employees::page_allowed( 'asem-calendar' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-calendar' ) ) . '">Calendario</a>' : '' ) . '</p>';
 		echo '<p class="description">Il tuo account su associazionesemplice.it: <a href="' . esc_url( (string) apply_filters( 'asem_portal_account_url', 'https://associazionesemplice.it/account' ) ) . '" target="_blank" rel="noopener">Area riservata</a> (licenza, dominio, pagamenti, download) · <a href="' . esc_url( (string) apply_filters( 'asem_portal_support_url', 'https://associazionesemplice.it/supporto/accedi' ) ) . '" target="_blank" rel="noopener">Supporto</a></p>';
 
 		ob_start(); // le cose da fare vengono prima dei numeri
@@ -93,8 +93,12 @@ final class DashboardPage {
 		self::applications();
 		self::adults_to_invite();
 		self::incomplete_cards();
-		self::overdue_loans();
-		ConventionsPage::dashboard_card();
+		if ( Employees::can( EmployeeRules::INVENTORY ) ) { // i prestiti scaduti e le convenzioni in scadenza li vede solo chi ha quelle aree
+			self::overdue_loans();
+		}
+		if ( Employees::can( EmployeeRules::CONVENTIONS ) ) {
+			ConventionsPage::dashboard_card();
+		}
 		do_action( 'asem_dashboard_cards' ); // le estensioni aggiungono qui le loro schede
 
 		$requests = \AssociazioneSemplice\AccessRequests::pending();
@@ -190,6 +194,9 @@ final class DashboardPage {
 			if ( $minor ) {
 				$g = $a['guardian'];
 				echo '<br><span class="description">Genitore/tutore: <strong>' . esc_html( trim( $g['first_name'] . ' ' . $g['last_name'] ) ) . '</strong> · ' . esc_html( (string) $g['email'] ) . ' · ' . esc_html( (string) $g['phone'] ) . ' · ha accettato regolamento e privacy a nome del minore</span>';
+			}
+			if ( $minor && ! empty( $a['guardian']['email'] ) && \AssociazioneSemplice\Plugin::people()->find_by_email( strtolower( (string) $a['guardian']['email'] ), (int) $a['id'] ) ) {
+				echo '<br><span class="description"><strong>Il genitore è già in anagrafica e non ha ancora confermato</strong>: se approvi, gli arriva un\'email e il collegamento con il minore si crea quando conferma.</span>';
 			}
 			if ( $a['fee_cents'] > 0 ) {
 				echo wp_kses( '<br><span class="description">Quota ' . Ui::money( (int) $a['fee_cents'] ) . ' — ' . ( $a['paid'] ? '<strong>pagata online</strong> (' . Ui::money( (int) $a['paid']['cents'] ) . ')' : 'da pagare in sede' ) . '</span>', Html::allowed() );

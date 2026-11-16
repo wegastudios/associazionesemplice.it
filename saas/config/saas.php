@@ -46,6 +46,9 @@ return [
     // Indirizzi da cui fidarsi degli X-Forwarded-* (il proxy del portale), separati da virgole; vuoto = nessuno.
     'trusted_proxies' => env('SAAS_TRUSTED_PROXIES', ''),
 
+    // Registro delle query lente (millisecondi; 0 = spento). Scrive solo il testo della query con i segnaposto, mai i valori.
+    'slow_query_ms' => (int) env('SAAS_SLOW_QUERY_MS', 200),
+
     // Indirizzo pubblico di /saas/admin e /saas/staff dietro il proxy del portale (https://associazionesemplice.it): gli
     // indirizzi scritti dal SaaS in quelle pagine partono da qui, mai dalle intestazioni della richiesta. Vuoto = nessuno.
     'public_url' => env('SAAS_PUBLIC_URL', ''),

@@ -28,6 +28,7 @@ final class Admin {
 		WpDashboard::register();
 		Exports::register();
 		IncomePage::register_ajax();
+		PersonSearch::register();
 		Dismiss::register();
 		RegistersActions::register();
 		BlockBActions::register();

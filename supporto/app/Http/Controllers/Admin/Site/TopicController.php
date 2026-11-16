@@ -16,17 +16,20 @@ class TopicController extends Controller
 {
     public function index(): View
     {
-        return view('admin.site.topics', ['topics' => Topic::query()->orderBy('sort')->orderBy('name')->with('sections')->get(), 'saasGuides' => SaasGuides::enabled()]);
+        return view('admin.site.topics', ['topics' => Topic::query()->orderBy('sort')->orderBy('name')->with('sections')->get(), 'saasGuides' => SaasGuides::enabled(), 'pluginGuides' => SaasGuides::enabled('plugin'), 'followsPortal' => SaasGuides::followsPortal() && SaasGuides::portalSaysOn() !== null]);
     }
 
     /** Accende o spegne le guide del gestionale per il pubblico (lo staff le vede sempre). */
     public function saasGuides(Request $request, \App\Services\AuditLogger $audit): RedirectResponse
     {
+        $product = $request->input('product') === 'plugin' ? 'plugin' : 'saas';
         $on = $request->boolean('on');
-        SaasGuides::set($on);
-        $audit->record('admin.saas_guides_toggled', null, ['visible' => $on], \App\Support\Actor::user($request->user()->id));
+        SaasGuides::set($on, $product);
+        $audit->record('admin.saas_guides_toggled', null, ['product' => $product, 'visible' => $on], \App\Support\Actor::user($request->user()->id));
 
-        return back()->with('ok', $on ? 'Le guide del gestionale ora sono visibili a tutti.' : 'Le guide del gestionale ora sono nascoste al pubblico.');
+        $name = $product === 'plugin' ? 'del plugin' : 'del gestionale';
+
+        return back()->with('ok', $on ? "Le guide $name ora sono visibili a tutti." : "Le guide $name ora sono nascoste al pubblico.");
     }
 
     public function store(Request $request): RedirectResponse

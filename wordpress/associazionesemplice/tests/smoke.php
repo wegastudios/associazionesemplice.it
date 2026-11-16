@@ -8867,6 +8867,19 @@ $ap_form = \AssociazioneSemplice\Frontend\Application::form_html();
 asem_ok( false !== strpos( $ap_form, 'name="birth_date"' ) && false !== strpos( $ap_form, 'name="tax_code"' ) && false !== strpos( $ap_form, 'name="rules_ok"' ) && false !== strpos( $ap_form, 'name="privacy_ok"' ) && false !== strpos( $ap_form, 'data-asemf-guardian' ) && false !== strpos( $ap_form, 'name="website"' ), 'domanda: il modulo ha i campi, il blocco del genitore e il campo esca' );
 $ap_bad = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'tax_code' => 'XXX' ) ) );
 asem_ok( 'invalid' === $ap_bad['status'] && $ap_bad['errors'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: dati sbagliati rifiutati con il motivo' );
+foreach ( array( "Aldo\nBcc: x@example.com", 'Visita http://example.com', 'Aldo2', str_repeat( 'a', 61 ) ) as $ap_badname ) {
+	$ap_nb = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => $ap_badname ) ) );
+	asem_ok( 'invalid' === $ap_nb['status'] && in_array( 'Nome non valido: usa solo lettere, spazi, apostrofi e trattini.', $ap_nb['errors'], true ) && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: un nome con a capo, link, cifre o troppo lungo è rifiutato con un errore chiaro' );
+}
+$ap_nb = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'last_name' => 'Rossi <script>' ) ) );
+asem_ok( 'invalid' === $ap_nb['status'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: lo stesso vale per il cognome' );
+$ap_nn = count( $ap_mails );
+$ap_real = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Zoë Maria', 'last_name' => "D'Angelo-Nguyễn", 'email' => 'zoe.nguyen@example.com', 'tax_code' => 'RSSMRA79A09H501W' ) ) );
+$ap_rid  = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE tax_code = %s', 'RSSMRA79A09H501W' ) );
+asem_ok( 'ok' === $ap_real['status'] && $ap_rid > 0 && "D'Angelo-Nguyễn" === $people->get( $ap_rid )['last_name'] && false !== strpos( (string) $ap_mail_to( 'zoe.nguyen@example.com' )['message'], 'Ciao Zoë Maria,' ), 'domanda: i nomi veri (accenti, apostrofo, trattino, nome doppio) passano e finiscono nell\'email' );
+\AssociazioneSemplice\Applications::reject( $ap_rid );
+$wpdb->query( 'ALTER TABLE ' . Db::t( 'people' ) . ' AUTO_INCREMENT = ' . ( 1 + (int) $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL -- prova: la persona di prova non sposta i numeri delle prove successive
+asem_ok( 0 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) > $ap_nn, 'domanda: la prova con i nomi veri non lascia domande in coda' );
 $ap_mn = count( $ap_mails );
 asem_ok( 'ok' === \AssociazioneSemplice\Applications::submit( $ap_in )['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: registrata' );
 $ap_list = \AssociazioneSemplice\Applications::pending();
@@ -8971,7 +8984,49 @@ asem_ok( null !== asem_throws( function () use ( $ap_g ) { Plugin::people()->set
 $ap_mia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
 $ap_ppl = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
 \AssociazioneSemplice\Applications::approve( $ap_mia, 'ap201' );
-asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) === $ap_ppl && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE email = %s', 'marta.madre@example.com' ) ), 'minorenne con genitore già socio: collegato a lui, nessun doppione' );
+asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) === $ap_ppl && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE email = %s', 'marta.madre@example.com' ) ), 'minorenne con genitore già socio: nessun collegamento prima della conferma, nessun doppione' );
+// ... ma i consensi non gli si attribuiscono finché non conferma via email
+$GC = '\AssociazioneSemplice\GuardianConsent';
+$ap_mia_row = $people->get( $ap_mia );
+asem_ok( empty( $ap_mia_row['privacy_consent_by'] ) && empty( $ap_mia_row['image_consent_by'] ) && empty( $ap_mia_row['rules_accepted_by'] ), 'genitore già socio: regolamento, privacy e immagini non gli sono attribuiti prima della conferma' );
+$ap_gc = $GC::pending( $ap_mia_row );
+asem_ok( $ap_gc && (int) $ap_gc['guardian'] === $mn_mum && ! $ap_gc['expired'], 'genitore già socio: la conferma risulta in attesa (la segreteria la vede nella scheda)' );
+$ap_gm = $ap_mail_to( 'marta.madre@example.com' );
+asem_ok( $ap_gm && 1 === preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_gm['message'], $ap_gp ) && false !== strpos( (string) $ap_gm['subject'], 'Conferma del genitore' ), 'genitore già socio: l\'email di conferma parte all\'indirizzo registrato, con un link' );
+$ap_gparam = $ap_gp[1];
+$ap_gtoken = substr( $ap_gparam, (int) strpos( $ap_gparam, '.' ) + 1 );
+asem_ok( false === strpos( (string) $people->get( $ap_mia )['application_data'], $ap_gtoken ) && false !== strpos( (string) $people->get( $ap_mia )['application_data'], hash( 'sha256', $ap_gtoken ) ), 'conferma del genitore: nel database c\'è solo l\'impronta del token' );
+asem_ok( false !== strpos( $GC::confirm_page( $ap_gparam ), 'Confermo' ) && $GC::pending( $people->get( $ap_mia ) ) && empty( $people->get( $ap_mia )['privacy_consent_by'] ), 'conferma del genitore: aprire il link mostra il pulsante e non conferma nulla' );
+asem_ok( ! $GC::submit( $ap_gparam, 'nonce-sbagliato' )['ok'] && empty( $people->get( $ap_mia )['privacy_consent_by'] ), 'conferma del genitore: senza il nonce della pagina non si conferma' );
+$ap_gnonce = wp_create_nonce( 'asem_gcf_' . $ap_mia );
+asem_ok( ! $GC::submit( substr( $ap_gparam, 0, -1 ) . ( 'a' === substr( $ap_gparam, -1 ) ? 'b' : 'a' ), $ap_gnonce )['ok'] && empty( $people->get( $ap_mia )['privacy_consent_by'] ), 'conferma del genitore: un token sbagliato non conferma' );
+asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ), 'conferma del genitore: finché non conferma non ha accesso ai dati del minore' );
+asem_ok( $GC::submit( $ap_gparam, $ap_gnonce )['ok'], 'conferma del genitore: con il pulsante la conferma va a buon fine' );
+asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ) && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s AND object_id = %d', 'guardian.linked', $ap_mia ) ), 'conferma del genitore: il collegamento con il minore nasce alla conferma, con una riga nel registro' );
+$ap_mia_row = $people->get( $ap_mia );
+asem_ok( (int) $ap_mia_row['privacy_consent_by'] === $mn_mum && (int) $ap_mia_row['image_consent_by'] === $mn_mum && (int) $ap_mia_row['rules_accepted_by'] === $mn_mum && null === $GC::pending( $ap_mia_row ) && '' === (string) $ap_mia_row['application_data'], 'conferma del genitore: dopo la conferma i consensi sono attribuiti a lui e l\'attesa sparisce' );
+asem_ok( ! $GC::submit( $ap_gparam, $ap_gnonce )['ok'] && false !== strpos( $GC::confirm_page( $ap_gparam ), 'non è valido' ), 'conferma del genitore: il link si usa una volta sola' );
+// link scaduto, nuovo invio dalla segreteria (il vecchio link non vale più), limite di invii
+\AssociazioneSemplice\Applications::submit( array_merge( $ap_kid_in, array( 'first_name' => 'Nia', 'last_name' => 'Madre', 'tax_code' => 'BNCGNN12B04F205N', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
+$ap_nia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
+\AssociazioneSemplice\Applications::approve( $ap_nia, 'ap202' );
+preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np );
+$ap_nrow = $people->get( $ap_nia );
+$ap_nd   = json_decode( (string) $ap_nrow['application_data'], true );
+$ap_nd['guardian_confirm']['expires'] = time() - 10;
+$wpdb->update( Db::t( 'people' ), array( 'application_data' => wp_json_encode( $ap_nd ) ), array( 'id' => $ap_nia ) );
+asem_ok( $GC::pending( $people->get( $ap_nia ) )['expired'] && ! $GC::submit( $ap_np[1], wp_create_nonce( 'asem_gcf_' . $ap_nia ) )['ok'] && false !== strpos( $GC::confirm_page( $ap_np[1] ), 'scaduto' ), 'conferma del genitore: un link scaduto non conferma' );
+$ap_gn = count( $ap_mails );
+$GC::resend( $ap_nia );
+asem_ok( count( $ap_mails ) === $ap_gn + 1 && 1 === preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np2 ) && $ap_np2[1] !== $ap_np[1] && ! $GC::pending( $people->get( $ap_nia ) )['expired'], 'conferma del genitore: la segreteria rimanda l\'email con un link nuovo' );
+asem_ok( ! $GC::submit( $ap_np[1], wp_create_nonce( 'asem_gcf_' . $ap_nia ) )['ok'] && empty( $people->get( $ap_nia )['privacy_consent_by'] ), 'conferma del genitore: il link vecchio non vale più dopo il nuovo invio' );
+$GC::resend( $ap_nia );
+$GC::resend( $ap_nia );
+asem_ok( null !== asem_throws( function () use ( $GC, $ap_nia ) { $GC::resend( $ap_nia ); } ), 'conferma del genitore: i nuovi invii sono limitati all\'ora' );
+asem_ok( null !== asem_throws( function () use ( $GC, $ap_mia ) { $GC::resend( $ap_mia ); } ) && null !== asem_throws( function () use ( $GC, $mn_mum ) { $GC::resend( $mn_mum ); } ), 'conferma del genitore: se non c\'è nulla in attesa non c\'è niente da rimandare' );
+asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_nia ) && empty( $people->get( $ap_nia )['privacy_consent_by'] ), 'conferma del genitore: con link scaduto o non usato il genitore non è collegato al minore' );
+preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np3 );
+asem_ok( $GC::submit( $ap_np3[1], wp_create_nonce( 'asem_gcf_' . $ap_nia ) )['ok'] && ( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_nia ) || in_array( $mn_mum, array_map( 'intval', array_column( \AssociazioneSemplice\Guardians::of( $ap_nia ), 'id' ) ), true ) ), 'conferma del genitore: l\'ultimo link vale e crea il collegamento anche per la domanda già approvata' );
 
 // modulo: invio, esca, tempo minimo, gettone, limite
 $AP = '\AssociazioneSemplice\Frontend\Application';
@@ -11333,7 +11388,7 @@ foreach ( array_merge( $ru_ids, array( $ru_adult, $ru_minor, $ru_volun ) ) as $r
 // ---------- Dipendenti ----------
 wp_set_current_user( 1 );
 add_filter( 'pre_wp_mail', '__return_true' ); // nessuna email vera: l'invito parte «a vuoto»
-$em_keys = \AssociazioneSemplice\EmployeeRules::enforced_keys(); // le aree con già le porte; le altre nove sono solo memorizzate
+$em_keys = \AssociazioneSemplice\EmployeeRules::enforced_keys(); // le aree con le porte: tutte e quindici
 asem_ok( null !== get_role( Plugin::ROLE_EMPLOYEE ) && 'Dipendente' === wp_roles()->role_names[ Plugin::ROLE_EMPLOYEE ], 'dipendente: il ruolo esiste e si chiama «Dipendente»' );
 asem_ok( get_role( Plugin::ROLE_EMPLOYEE )->capabilities === get_role( Plugin::ROLE_SECRETARY )->capabilities, 'dipendente: il ruolo parte con le stesse capability della segreteria' );
 $em_sy     = Settings::social_year()->label();
@@ -11407,17 +11462,30 @@ $em_cases = array(
 	'collect'  => array( array( 'admin.php', array( 'page' => 'asem-income' ) ), array( 'admin-post.php', array( 'action' => 'asem_save_income' ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_cash', 'category_id' => $em_cat_inc ) ), array( 'admin-post.php', array( 'action' => 'asem_walk_in' ) ) ),
 	'expenses' => array( array( 'admin.php', array( 'page' => 'asem-expense' ) ), array( 'admin-post.php', array( 'action' => 'asem_save_expense' ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_cash', 'category_id' => $em_cat_exp ) ) ),
 	'refunds'  => array( array( 'admin.php', array( 'page' => 'asem-refunds' ) ), array( 'admin-post.php', array( 'action' => 'asem_refund_pay' ) ), array( 'admin-post.php', array( 'action' => 'asem_refunds_csv' ) ) ),
-	'funds'    => array( array( 'admin.php', array( 'page' => 'asem-money' ) ), array( 'admin.php', array( 'page' => 'asem-ledger' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'ledger' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'period' ) ), array( 'admin-post.php', array( 'action' => 'asem_cash_count' ) ) ),
+	'funds'    => array( array( 'admin.php', array( 'page' => 'asem-money' ) ), array( 'admin.php', array( 'page' => 'asem-ledger' ) ), array( 'admin-post.php', array( 'action' => 'asem_cash_count' ) ) ),
 	'courses'  => array( array( 'admin.php', array( 'page' => 'asem-activity', 'id' => $em_course ) ), array( 'admin-post.php', array( 'action' => 'asem_enroll', 'activity_id' => $em_course ) ), array( 'admin-post.php', array( 'action' => 'asem_save_activity', 'kind' => 'course' ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_enroll', 'target' => 'a:' . $em_course ) ) ),
 	'events'   => array( array( 'admin.php', array( 'page' => 'asem-activity', 'id' => $em_event ) ), array( 'admin.php', array( 'page' => 'asem-bookdesk' ) ), array( 'admin-post.php', array( 'action' => 'asem_book', 'session_id' => $em_sess ) ), array( 'admin-post.php', array( 'action' => 'asem_checkin', 'session_id' => $em_sess ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_enroll', 'target' => 's:' . $em_sess ) ) ),
 );
-$em_always = array( array( 'admin.php', array( 'page' => 'asem-people' ) ), array( 'admin.php', array( 'page' => 'asem-person' ) ), array( 'admin-post.php', array( 'action' => 'asem_save_person' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'people' ) ), array( 'admin.php', array( 'page' => 'asem-book' ) ), array( 'admin.php', array( 'page' => 'asem' ) ) );
+$em_cases['people'] = array(
+	array( 'admin.php', array( 'page' => 'asem-people' ) ), array( 'admin.php', array( 'page' => 'asem-person' ) ), array( 'admin.php', array( 'page' => 'asem-runts' ) ),
+	array( 'admin-post.php', array( 'action' => 'asem_save_person' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'book' ) ),
+	array( 'admin-post.php', array( 'action' => 'asem_card_add' ) ), array( 'admin-post.php', array( 'action' => 'asem_aff_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_policy_add' ) ),
+);
+$em_cases['health'] = array( array( 'admin-post.php', array( 'action' => 'asem_cert_add' ) ), array( 'admin-post.php', array( 'action' => 'asem_cert_delete' ) ), array( 'admin-post.php', array( 'action' => 'asem_cert_csv' ) ) );
+$em_cases['resources']   = array( array( 'admin.php', array( 'page' => 'asem-resources' ) ), array( 'admin.php', array( 'page' => 'asem-resource' ) ), array( 'admin.php', array( 'page' => 'asem-res-report' ) ), array( 'admin-post.php', array( 'action' => 'asem_resource_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_res_book' ) ), array( 'admin-post.php', array( 'action' => 'asem_res_cancel' ) ) );
+$em_cases['comms']       = array( array( 'admin.php', array( 'page' => 'asem-messages' ) ), array( 'admin-post.php', array( 'action' => 'asem_broadcast_send' ) ), array( 'admin-post.php', array( 'action' => 'asem_broadcast_test' ) ), array( 'admin-post.php', array( 'action' => 'asem_sms_retry' ) ), array( 'admin-post.php', array( 'action' => 'asem_reminders_run' ) ) );
+$em_cases['documents']   = array( array( 'admin.php', array( 'page' => 'asem-documents' ) ), array( 'admin-post.php', array( 'action' => 'asem_document_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_document_delete' ) ) );
+$em_cases['assemblies']  = array( array( 'admin.php', array( 'page' => 'asem-assemblies' ) ), array( 'admin.php', array( 'page' => 'asem-minutes' ) ), array( 'admin.php', array( 'page' => 'asem-polls' ) ), array( 'admin-post.php', array( 'action' => 'asem_assembly_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_minute_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_poll_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'minute' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'poll' ) ) );
+$em_cases['inventory']   = array( array( 'admin.php', array( 'page' => 'asem-inventory' ) ), array( 'admin-post.php', array( 'action' => 'asem_item_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_loan_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'items' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'loans' ) ) );
+$em_cases['conventions'] = array( array( 'admin.php', array( 'page' => 'asem-conventions' ) ), array( 'admin-post.php', array( 'action' => 'asem_convention_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_conventions_csv' ) ) );
+$em_cases['tools']       = array( array( 'admin.php', array( 'page' => 'asem-exports' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'altro' ) ) );
+$em_always = array( array( 'admin.php', array( 'page' => 'asem' ) ) );
 foreach ( $em_keys as $em_k ) {
 	\AssociazioneSemplice\Employees::set_denied( $em_uid, array( $em_k ) );
 	asem_ok( array( $em_k ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), "dipendente: tolto solo $em_k" );
 	foreach ( $em_cases[ $em_k ] as $em_i => $em_c ) {
 		$em_msg = $em_blocked( $em_c[0], $em_c[1] );
-		asem_ok( null !== $em_msg && false !== strpos( $em_msg, \AssociazioneSemplice\EmployeeRules::label( $em_k ) ), "dipendente senza $em_k: la porta $em_i si chiude con un messaggio che dice quale permesso manca" );
+		asem_ok( null !== $em_msg && false !== strpos( $em_msg, esc_html( \AssociazioneSemplice\EmployeeRules::label( $em_k ) ) ), "dipendente senza $em_k: la porta $em_i si chiude con un messaggio che dice quale permesso manca" );
 	}
 	foreach ( array_diff( $em_keys, array( $em_k ) ) as $em_o ) { // le porte degli altri permessi restano aperte
 		foreach ( $em_cases[ $em_o ] as $em_i => $em_c ) {
@@ -11459,22 +11527,128 @@ asem_ok( false === strpos( $em_dash, 'Disponibilità reale' ), 'dipendente senza
 wp_set_current_user( 1 );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità reale' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
+// ricerca minima: senza «Anagrafica soci» l'elenco delle persone non si porta in pagina; si cerca con almeno 3 lettere, al più 10 risultati, solo nome, tessera e quota
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people' ) );
+\AssociazioneSemplice\Employees::reset_cache();
+$em_full = Admin\Ui::person_select( 'person_id', $people->search(), null, '— scegli —', 'asem-test-sel' );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+$em_min = Admin\Ui::person_select( 'person_id', $people->search(), null, '— scegli —', 'asem-test-sel' );
+asem_ok( false !== strpos( $em_full, 'Cecilia' ) && false === strpos( $em_min, 'Cecilia' ) && false !== strpos( $em_min, 'asem-minsearch' ), 'ricerca minima: senza Anagrafica soci nel campo non c\'è l\'elenco dei soci, solo la ricerca' );
+asem_ok( array() === Admin\PersonSearch::find( 'Ce' ) && array() === Admin\PersonSearch::find( '  ' ), 'ricerca minima: sotto le 3 lettere non risponde' );
+$em_hit = Admin\PersonSearch::find( 'Cecilia Certa' );
+asem_ok( 1 === count( $em_hit ) && (int) $bc_a === (int) $em_hit[0]['id'] && array( 'id', 'label', 'quota', 'type' ) === ( function ( $a ) { sort( $a ); return $a; } )( array_keys( $em_hit[0] ) ), 'ricerca minima: di ogni persona solo id, nome con tessera, tipo e quota' );
+asem_ok( array() === Admin\PersonSearch::find( 'cecilia.certa@example.com' ) && array() === Admin\PersonSearch::find( 'RSSMRA85T50A562W' ), 'ricerca minima: non si cerca per email né codice fiscale' );
+asem_ok( array() === Admin\PersonSearch::find( 'cecilia.c' ) && array() === Admin\PersonSearch::find( 'cecilia@' ) && array() === Admin\PersonSearch::find( 'RSSMRA85' ), 'ricerca minima: un pezzo di email o di codice fiscale non trova nessuno' );
+asem_ok( null === $em_blocked( 'admin-post.php', array( 'action' => 'asem_person_search' ) ), 'ricerca minima: la porta è aperta a chi ha incassi, corsi o eventi' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people', 'collect', 'courses', 'events', 'expenses', 'refunds' ) );
+asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_person_search' ) ), 'ricerca minima: chiusa a chi non ha nessuna area che sceglie le persone' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
 remove_filter( 'wp_die_handler', $em_die );
 
 // si tolgono solo le 15 aree dell'elenco; solo chi ha titolo le toglie
-\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'asem_manage', 'people', 'asem_operate', 'members' ) );
-asem_ok( array( 'people', 'courses' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 15 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 6 === count( $em_keys ), 'dipendente: si tolgono solo le 15 aree dell\'elenco, gli altri nomi si ignorano' );
-asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-people' ) ) && null === $em_blocked( 'admin-post.php', array( 'action' => 'asem_save_person' ) ), 'dipendente: le nove aree nuove sono per ora solo memorizzate, non chiudono nessuna porta' );
-asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipendente: togliere un\'area nuova resta nel registro azioni' );
-// avviso in Bacheca: fisso, solo a chi ha titolo, solo se esistono dipendenti, finché la pagina dei dipendenti non è stata aperta
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'asem_manage', 'comms', 'asem_operate', 'members' ) );
+asem_ok( array( 'courses', 'comms' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 15 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 15 === count( $em_keys ), 'dipendente: si tolgono solo le 15 aree dell\'elenco, gli altri nomi si ignorano' );
+add_filter( 'wp_die_handler', $em_die ); // le porte chiuse lanciano l'eccezione della prova
+asem_ok( null !== $em_blocked( 'admin.php', array( 'page' => 'asem-messages' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_broadcast_send' ) ), 'dipendente senza Comunicazioni: pagina e invii si chiudono' );
+asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipendente: togliere un\'area resta nel registro azioni' );
+// avviso in Bacheca: con tutte le porte attive si accende, fisso, solo a chi ha titolo, solo se esistono dipendenti, finché la pagina dei dipendenti non è stata aperta
 delete_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN );
-asem_ok( ! \AssociazioneSemplice\Employees::areas_review_pending( 1 ) && ( array() !== \AssociazioneSemplice\EmployeeRules::pending_keys() ), 'permessi per area: finché le porte di tutte le aree non sono attive l\'avviso non compare' );
-\AssociazioneSemplice\Employees::mark_areas_seen( 1 );
-asem_ok( ! get_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN ), 'permessi per area: aprire la pagina prima delle porte non segna l\'avviso come visto' );
-// salvataggio dalla pagina: le aree «in arrivo» non cambiano, quelle attive seguono le spunte
+asem_ok( array() === \AssociazioneSemplice\EmployeeRules::pending_keys() && \AssociazioneSemplice\Employees::areas_review_pending( 1 ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid ), 'permessi per area: con le porte di tutte le aree attive l\'avviso compare, ma solo a chi ha titolo' );
+$em_dash1 = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno sociale' );
+asem_ok( false !== strpos( $em_dash1, 'Rivedi i permessi dei dipendenti: ora si danno per area.' ), 'permessi per area: l\'avviso «Rivedi i permessi dei dipendenti» è in Bacheca' );
+// salvataggio dalla pagina: tutte le aree seguono le spunte
 Admin\EmployeesPage::save( array( 'user_id' => $em_uid, 'perm' => array( 'courses' ) ) );
-asem_ok( array( 'people', 'events', 'collect', 'expenses', 'refunds', 'funds' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'permessi per area: il modulo toglie le aree attive non spuntate e lascia com\'erano quelle «in arrivo»' );
-\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people', 'courses' ) );
+asem_ok( array_values( array_diff( \AssociazioneSemplice\EmployeeRules::keys(), array( 'courses' ) ) ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'permessi per area: il modulo toglie tutte le aree non spuntate' );
+// import, esportazioni e avvisi ai soci: oltre alla propria area servono quelle dei dati toccati
+$em_with = function ( array $denied, string $pagenow, array $req ) use ( $em_uid, $em_blocked ): ?string {
+	wp_set_current_user( 1 );
+	\AssociazioneSemplice\Employees::set_denied( $em_uid, $denied );
+	return $em_blocked( $pagenow, $req );
+};
+$em_imp = array( 'admin-post.php', array( 'action' => 'asem_import_apply' ) );
+asem_ok( null !== $em_with( array( 'tools' ), 'admin.php', array( 'page' => 'asem-import' ) ) && null !== $em_with( array( 'people' ), 'admin.php', array( 'page' => 'asem-import' ) ) && null !== $em_with( array( 'funds' ), 'admin.php', array( 'page' => 'asem-import' ) ) && null === $em_with( array( 'comms', 'courses' ), 'admin.php', array( 'page' => 'asem-import' ) ), 'importa da Excel o CSV: servono Importa ed esporta dati, Anagrafica soci e Fondi' );
+foreach ( array( 'tools', 'people', 'funds' ) as $em_d ) {
+	asem_ok( null !== $em_with( array( $em_d ), $em_imp[0], $em_imp[1] ) && null !== $em_with( array( $em_d ), 'admin-post.php', array( 'action' => 'asem_import_preview' ) ), "importa: senza $em_d si chiudono anteprima e conferma" );
+}
+asem_ok( null !== $em_with( array( 'tools' ), 'admin-post.php', array( 'action' => 'asem_tec_import' ) ) && null !== $em_with( array( 'courses' ), 'admin-post.php', array( 'action' => 'asem_tec_import' ) ) && null !== $em_with( array( 'events' ), 'admin-post.php', array( 'action' => 'asem_tec_import' ) ) && null !== $em_with( array( 'events' ), 'admin.php', array( 'page' => 'asem-tec' ) ) && null === $em_with( array( 'people', 'funds' ), 'admin-post.php', array( 'action' => 'asem_tec_import' ) ), 'importa da The Events Calendar: servono Importa ed esporta dati, Corsi ed Eventi' );
+foreach ( array( 'people', 'ledger', 'period', 'social' ) as $em_w ) {
+	asem_ok( null !== $em_with( array( 'tools' ), 'admin-post.php', array( 'action' => 'asem_export', 'what' => $em_w ) ), "esportazione $em_w: senza Importa ed esporta dati si chiude" );
+}
+asem_ok( null !== $em_with( array( 'people' ), 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'people' ) ) && null === $em_with( array( 'people' ), 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'ledger' ) ) && null !== $em_with( array( 'funds' ), 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'ledger' ) ), 'esportazioni: oltre a Importa ed esporta dati serve l\'area dei dati (soci = Anagrafica, prima nota = Fondi)' );
+foreach ( array( array( 'asem_assembly_convene', 'assemblies' ), array( 'asem_poll_announce', 'assemblies' ), array( 'asem_convention_announce', 'conventions' ) ) as $em_a ) {
+	asem_ok( null !== $em_with( array( $em_a[1] ), 'admin-post.php', array( 'action' => $em_a[0] ) ) && null !== $em_with( array( 'comms' ), 'admin-post.php', array( 'action' => $em_a[0] ) ) && null === $em_with( array( 'tools', 'inventory' ), 'admin-post.php', array( 'action' => $em_a[0] ) ), "{$em_a[0]}: manda un avviso ai soci, servono {$em_a[1]} e Comunicazioni" );
+}
+asem_ok( null === $em_with( array( 'resources' ), 'admin-post.php', array( 'action' => 'asem_res_pay' ) ), 'risorse: l\'incasso di una prenotazione resta di Incassi' );
+asem_ok( null !== $em_with( array( 'courses', 'events' ), 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'attendance' ) ) && null === $em_with( array( 'courses' ), 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'attendance' ) ), 'registro presenze: serve Corsi o Eventi' );
+// «Registri» e «Strumenti»: restano aperti a chi ha almeno una delle loro aree; il libro soci si vede solo con l'Anagrafica
+asem_ok( null === $em_with( array( 'people' ), 'admin.php', array( 'page' => 'asem-book' ) ) && null !== $em_with( array( 'people', 'assemblies', 'inventory', 'documents', 'conventions' ), 'admin.php', array( 'page' => 'asem-book' ) ), 'Registri: senza Anagrafica restano gli altri registri; senza nessuna si chiude' );
+asem_ok( null === $em_with( array( 'tools' ), 'admin.php', array( 'page' => 'asem-tools' ) ) && null !== $em_with( array( 'tools', 'courses', 'events' ), 'admin.php', array( 'page' => 'asem-tools' ) ), 'Strumenti: senza Importa ed esporta dati resta il calendario; senza nulla si chiude' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people' ) );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+$em_book_html = asem_render( array( Admin\RegistersPage::class, 'render_book' ), 'Libro soci' );
+asem_ok( false !== strpos( $em_book_html, esc_html( 'Il libro soci è dell\'area «Anagrafica soci», che non hai.' ) ) && false === strpos( $em_book_html, 'matricola' ), 'Registri: senza Anagrafica il libro soci non mostra i soci, solo il messaggio' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'tools' ) );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+$em_tools_html = asem_render( array( Admin\ToolsPage::class, 'render' ), 'Strumenti' );
+asem_ok( false === strpos( $em_tools_html, 'page=asem-import' ) && false === strpos( $em_tools_html, 'page=asem-exports' ) && false !== strpos( $em_tools_html, 'page=asem-calendar' ), 'Strumenti: senza Importa ed esporta dati la panoramica non offre import ed esportazioni, resta il calendario' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses' ) );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'comms', 'courses' ) );
+add_filter( 'wp_die_handler', $em_die ); // le porte chiuse tornano a lanciare l'eccezione della prova
+// certificati medici: senza «Certificati medici» il dipendente vede solo gli iscritti alle attività che può gestire, scrive nel registro a ogni apertura, non modifica niente
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'health' ) );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+// regola mista: iscritti alle attività di cui è istruttore e a quelle senza istruttore; un altro istruttore no
+asem_ok( $CE::limited() && array() === $CE::rows() && ! $CE::person_in_scope( $bc_a ), 'dipendente senza certificati medici: l\'attività ha un altro istruttore (e lui non ha una persona collegata), non la vede' );
+wp_set_current_user( 1 );
+$em_pid = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Ivo', 'last_name' => 'Istruttore', 'email' => 'ivo.istruttore@example.com' ) );
+$wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => $em_uid ), array( 'id' => $em_pid ) );
+$acts->update( $bc_act, array( 'instructor_person_id' => $em_pid ) );
+$em_free  = $acts->create( array( 'name' => 'Corso senza istruttore', 'social_year' => $sy->label(), 'monthly_fee_cents' => 1000 ) );
+$em_other = $acts->create( array( 'name' => 'Corso di un altro', 'social_year' => $sy->label(), 'instructor_person_id' => $vol, 'monthly_fee_cents' => 1000 ) );
+$em_y     = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Yara', 'last_name' => 'Libera', 'email' => 'yara.libera@example.com' ) );
+$em_x     = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Xenia', 'last_name' => 'Altrui', 'email' => 'xenia.altrui@example.com' ) );
+$acts->enroll( $em_free, $em_y, $month );
+$acts->enroll( $em_other, $em_x, $month );
+$CE::set_required( $em_free, true );
+$CE::set_required( $em_other, true );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( $CE::limited() && 3 === count( $CE::rows() ) && 3 === count( $CE::rows( '', 0, true ) ) && $CE::person_in_scope( $bc_a ) && $CE::person_in_scope( $em_y ) && ! $CE::person_in_scope( $em_x ) && ! $CE::person_in_scope( $bc_g ), 'dipendente senza certificati medici: vede gli iscritti alle attività di cui è istruttore e di quelle senza istruttore, non quelli di un altro istruttore (anche chiedendo tutti i soci)' );
+asem_ok( array() === $CE::rows( '', $em_other ) && 1 === count( $CE::rows( '', $em_free ) ), 'dipendente senza certificati medici: l\'attività di un altro istruttore è fuori elenco anche scegliendola dal filtro' );
+asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-medical' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_cert_add' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_cert_delete' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_cert_csv' ) ), 'dipendente senza certificati medici: la pagina si apre, non si registra, non si elimina, non si esporta' );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+$em_cert_html = asem_render( array( Admin\CertificatesPage::class, 'render' ), 'Certificati medici' );
+wp_set_current_user( 1 );
+asem_ok( false === strpos( $em_cert_html, 'asem_cert_csv' ) && false === strpos( $em_cert_html, 'name="all"' ), 'dipendente senza certificati medici: niente esportazione né elenco di tutti i soci' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'health', 'courses' ) );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( array() === $CE::rows() && ! $CE::person_in_scope( $bc_a ), 'dipendente senza certificati medici e senza corsi: non vede gli iscritti a un corso' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'health', 'courses', 'events' ) );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( null !== $em_blocked( 'admin.php', array( 'page' => 'asem-medical' ) ), 'dipendente senza certificati medici, corsi ed eventi: la pagina si chiude' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( ! $CE::limited() && 4 === count( $CE::rows() ), 'amministratore: i certificati restano tutti visibili' );
+$CE::set_required( $em_free, false );
+$CE::set_required( $em_other, false );
+$acts->update( $bc_act, array( 'instructor_person_id' => $vol ) );
+$wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => null ), array( 'id' => $em_pid ) );
+remove_filter( 'wp_die_handler', $em_die );
 asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( 0, true ), 'permessi per area: l\'avviso in Bacheca è solo per chi ha titolo' );
 \AssociazioneSemplice\Employees::mark_areas_seen( $em_uid, true );
 asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ), 'permessi per area: aprire la pagina senza titolo non toglie l\'avviso' );
