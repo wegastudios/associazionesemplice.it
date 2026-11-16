@@ -10674,6 +10674,56 @@ asem_ok( $er_ap['ok'] && 1 === count( $er_aw ) && ! $acts->has_active_booking( $
 asem_ok( false !== strpos( $er::admin_box( $er_c, 'http://example.test/' ), 'asem_event_request_approve' ), 'approvazione: la scheda dell\'attività mostra la richiesta' );
 $er::approve( (int) $er_aw[0]['id'] );
 asem_ok( $acts->has_active_booking( $er_sid( $er_c ), (int) $er_nr['id'] ) && ! $er::awaiting( $er_c ), 'approvazione: approvata, la persona è prenotata' );
+// Conferma atomica: la presa della richiesta riesce a una sola chiamata; chi arriva dopo vede «già confermata» e non crea nulla.
+$er_claim = new \ReflectionMethod( $er, 'claim' );
+$er_claim->setAccessible( true );
+$er_e = $er_mk( 'Cena aperta E', 800 );
+wp_update_post( array( 'ID' => \AssociazioneSemplice\PublicEvents::post_of( $er_e ), 'post_status' => 'publish' ) );
+$er_eo = \AssociazioneSemplice\PublicEvents::options( $er_e );
+$er_in_p = array_merge( $er_in, array( 'session_id' => $er_sid( $er_e ), 'first_name' => 'Paolo', 'last_name' => 'Atomico', 'email' => 'paolo.atomico@example.com', 'tax_code' => 'VRDLGU75C10F205C', 'birth_date' => '1975-03-10' ) );
+$er::create( $er_in_p, $acts->get( $er_e ), $er_eo );
+$er_pp   = $er_get( 'paolo.atomico@example.com' );
+$er_pid  = (int) explode( '.', $er_pp )[0];
+asem_ok( '' !== $er_pp && true === $er_claim->invoke( null, $er_pid, array( 'new' ) ) && false === $er_claim->invoke( null, $er_pid, array( 'new' ) ) && false === $er_claim->invoke( null, $er_pid, array( 'new', 'approval' ) ), 'conferma atomica: la presa riesce una volta sola' );
+asem_ok( 'processing' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_pid ) ), 'conferma atomica: la richiesta presa è «in lavorazione»' );
+$er_dup = $er::confirm( $er_pp );
+asem_ok( $er_dup['ok'] && false !== strpos( $er_dup['message'], 'Hai già confermato' ) && 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $er_ppl WHERE tax_code = 'VRDLGU75C10F205C'" ) && ! $er::book_request( $er_pid )['ok'], 'conferma atomica: chi arriva dopo legge «già confermata» e non crea ospiti né prenotazioni' );
+$wpdb->update( $er_tbl, array( 'updated_at' => wp_date( 'Y-m-d H:i:s', time() - 3 * HOUR_IN_SECONDS ) ), array( 'id' => $er_pid ) );
+$er::run();
+asem_ok( 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_pid ) ), 'conferma atomica: una conferma interrotta torna alla segreteria dopo un\'ora' );
+$er::reject( $er_pid );
+// Ospite esistente: si riusa la scheda solo se nome, cognome (e data di nascita) coincidono; altrimenti la richiesta resta per la segreteria.
+$er_el_tax = 'BNCLRA85M41H501Z';
+$er_el_n   = static function () use ( $wpdb, $er_ppl, $er_el_tax ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $er_ppl WHERE tax_code = %s", $er_el_tax ) );
+};
+$er_book_as = function ( array $over, string $email ) use ( $er, $er_in, $er_e, $er_sid, $acts, $er_eo, $er_get, $er_el_tax ) {
+	$er::create( array_merge( $er_in, array( 'session_id' => $er_sid( $er_e ), 'tax_code' => $er_el_tax, 'email' => $email ), $over ), $acts->get( $er_e ), $er_eo );
+	return $er::confirm( $er_get( strtolower( $email ) ) );
+};
+$er_mails_before = count( $er_mails );
+$er_ix = $er_book_as( array( 'first_name' => 'Marta', 'last_name' => 'Altra' ), 'marta.altra@example.com' );
+asem_ok( $er_ix['ok'] && false !== strpos( $er_ix['message'], 'La segreteria esamina la richiesta' ) && 1 === $er_el_n() && ! $acts->has_active_booking( $er_sid( $er_e ), (int) $er_el['id'] ), 'ospite esistente: stesso codice fiscale ma altro nome, la scheda non si riusa e non si prenota' );
+$er_hold_id = (int) $wpdb->get_var( "SELECT id FROM $er_tbl WHERE email = 'marta.altra@example.com'" );
+$er_hmail   = '';
+foreach ( array_slice( $er_mails, $er_mails_before ) as $m ) {
+	$er_hmail .= ( is_array( $m['to'] ) ? implode( ',', $m['to'] ) : $m['to'] ) . '|' . $m['subject'] . '|' . $m['message'] . "\n";
+}
+asem_ok( 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_hold_id ) ) && false !== strpos( $er_hmail, 'da verificare' ) && 1 === substr_count( $er_hmail, 'marta.altra@example.com|' ), 'ospite esistente: la richiesta resta per la segreteria con un avviso, e a chi scrive non arriva altro che la conferma' );
+$er_hw = $er::awaiting( $er_e );
+asem_ok( 1 === count( $er_hw ) && ! empty( $er_hw[0]['differs'] ) && false !== strpos( $er::admin_box( $er_e, 'http://example.test/' ), 'Attenzione: il codice fiscale è già in anagrafica' ), 'ospite esistente: la scheda dell\'attività avverte che i dati non coincidono' );
+$er::reject( $er_hold_id );
+$er_bd = $er_book_as( array( 'birth_date' => '1985-08-02' ), 'elena.nascita@example.com' );
+asem_ok( 1 === $er_el_n() && ! $acts->has_active_booking( $er_sid( $er_e ), (int) $er_el['id'] ) && 'approval' === $wpdb->get_var( "SELECT status FROM $er_tbl WHERE email = 'elena.nascita@example.com'" ), 'ospite esistente: data di nascita diversa, la richiesta resta per la segreteria' );
+$er::reject( (int) $wpdb->get_var( "SELECT id FROM $er_tbl WHERE email = 'elena.nascita@example.com'" ) );
+$er_ok2 = $er_book_as( array( 'first_name' => 'ELENA ', 'last_name' => ' ospiti' ), 'elena.stessa@example.com' );
+asem_ok( 1 === $er_el_n() && $acts->has_active_booking( $er_sid( $er_e ), (int) $er_el['id'] ), 'ospite esistente: stessi dati (maiuscole e spazi a parte), si riusa la scheda e si prenota' );
+// Una richiesta da verificare, approvata dalla segreteria, usa la scheda esistente.
+$wpdb->delete( \AssociazioneSemplice\Db::t( 'bookings' ), array( 'session_id' => $er_sid( $er_e ), 'person_id' => (int) $er_el['id'] ) );
+$er_book_as( array( 'first_name' => 'Marta', 'last_name' => 'Altra' ), 'marta.seconda@example.com' );
+$er_hid = (int) $wpdb->get_var( "SELECT id FROM $er_tbl WHERE email = 'marta.seconda@example.com'" );
+$er::approve( $er_hid );
+asem_ok( 1 === $er_el_n() && $acts->has_active_booking( $er_sid( $er_e ), (int) $er_el['id'] ) && 'booked' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_hid ) ), 'ospite esistente: approvata dalla segreteria, la prenotazione va sulla scheda esistente' );
 // Iscrizione a un corso dal sito: il socio chiede in un clic, il non socio dal modulo; approva la segreteria, si parte dal mese corrente.
 $er_course = $acts->create( array( 'name' => 'Corso di disegno', 'social_year' => $sy->label(), 'kind' => 'course', 'fee_cents' => 3000, 'guest_fee_cents' => 4000, 'lesson_weekday' => 4, 'lesson_start' => '18:00', 'lesson_end' => '19:00' ) );
 wp_update_post( array( 'ID' => \AssociazioneSemplice\PublicEvents::ensure( $er_course ), 'post_status' => 'publish' ) );
