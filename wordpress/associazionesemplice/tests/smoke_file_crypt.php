@@ -182,7 +182,7 @@ FileKey::mode();
 $fc_b1 = FileKey::bundle();
 $fc_e1k = reset( $fc_b1['keys'] );
 $fc_ok( 'license' === FileKey::phrase_kind() && hash_file( 'sha256', $fc_path ) === $fc_h0 && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ) && ! empty( $fc_e1k['l']['w'] ) && ! empty( $fc_e1k['r']['w'] ), 'licenza: la frase diventa il codice di licenza e la chiave si avvolge anche con quello, senza ricifrare i file' );
-$fc_ok( false !== strpos( html_entity_decode( \AssociazioneSemplice\Admin\FileCryptPanel::copy_note(), ENT_QUOTES, 'UTF-8' ), 'segreto del codice' ), 'licenza: la schermata dice che la copia vale quanto il segreto del codice' );
+$fc_ok( false !== strpos( html_entity_decode( \AssociazioneSemplice\Admin\FileCryptPanel::copy_note(), ENT_QUOTES, 'UTF-8' ), 'nelle email di acquisto' ) && false !== strpos( \AssociazioneSemplice\Admin\FileCryptPanel::copy_note(), 'tratta la copia come un dato riservato' ), 'licenza: la schermata dice che chi ha la copia e la frase apre i documenti e che il codice sta nelle email di acquisto' );
 // codici di sicurezza cambiati e frase persa: il codice di licenza riapre
 add_filter( 'salt', $fc_salt, 10, 2 );
 FileKey::reset();
