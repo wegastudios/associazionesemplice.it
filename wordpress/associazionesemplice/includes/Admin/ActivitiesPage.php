@@ -11,6 +11,7 @@ use AssociazioneSemplice\PriceLists;
 use AssociazioneSemplice\PublicEvents;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\SocialYear;
+use AssociazioneSemplice\Texts;
 use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
@@ -953,7 +954,8 @@ final class ActivitiesPage {
 
 			$queue = \AssociazioneSemplice\Waitlist::waiting( (int) $s['id'] );
 			if ( $queue ) {
-				echo '<p><strong>Lista d\'attesa (' . count( $queue ) . ')</strong> <span class="description">entrano da soli, nell\'ordine, se si libera un posto.</span></p><ol>';
+				$by_request = (bool) \AssociazioneSemplice\PublicEvents::options( (int) $activity['id'] )['approval']; // evento su richiesta: la coda non avanza da sola
+				echo '<p><strong>Lista d\'attesa (' . count( $queue ) . ')</strong> <span class="description">' . ( $by_request ? esc_html( Texts::t( 'Evento su richiesta: la lista d\'attesa non avanza da sola. Prenota tu chi vuoi far entrare.' ) ) : 'entrano da soli, nell\'ordine, se si libera un posto.' ) . '</span></p><ol>';
 				foreach ( $queue as $w ) {
 					echo '<li>' . esc_html( trim( $w['first_name'] . ' ' . $w['last_name'] ) ) . ' <span class="description">dal ' . esc_html( mysql2date( 'd/m H:i', $w['since'] ) ) . '</span> ';
 					Ui::form_open( 'asem_waitlist_remove', $back, false, 'asem-inline' );
