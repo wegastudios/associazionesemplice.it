@@ -10947,6 +10947,7 @@ $er_cnt    = static function ( string $e ) use ( $wpdb, $er_tbl ): int {
 $er_reset  = static function () use ( $er_keyip ) {
 	delete_transient( $er_keyip );
 	delete_transient( 'asem_evq_dropped' );
+	delete_transient( 'asem_evq_dropped_seats' );
 };
 $er_r      = array_merge( $er_in, array( 'tax_code' => 'NRIMRC92D15F205P', 'first_name' => 'Nora', 'last_name' => 'Pagamenti', 'birth_date' => '1992-04-15' ) );
 $er_reset();
@@ -10954,12 +10955,18 @@ Settings::update( array( 'limits' => array( 'event_seats_per_email' => 10, 'even
 set_transient( $er_keyem( 'tetto.email@example.com' ), 9, DAY_IN_SECONDS );
 $er_t1 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
 $er_t2 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
-asem_ok( 'ok' === $er_t1['status'] && 'ok' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore, e la risposta è sempre la stessa' );
+$er_mn1 = count( $er_mails );
+asem_ok( 'ok' === $er_t1['status'] && 'invalid' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ) && 0 === strpos( $er_t2['errors'][0], 'Con questo indirizzo email sono già stati chiesti molti posti nelle ultime 24 ore: per altri posti scrivi alla segreteria' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore e legge un messaggio onesto, senza richiesta registrata' );
+asem_ok( 1 === (int) get_transient( 'asem_evq_dropped_seats' ) && false !== strpos( $er::queue_alert(), '1 richiesta è stata respinta perché una email o una connessione aveva già chiesto molti posti' ), 'tetto posti: il rifiuto è contato e l\'avviso in Bacheca lo riporta (anche con la coda non piena)' );
+$er_c1 = $er::course_create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $er_ca );
+asem_ok( 'invalid' === $er_c1['status'] && 0 === strpos( $er_c1['errors'][0], 'Con questo indirizzo email' ) && 1 === $er_cnt( 'tetto.email@example.com' ) && 2 === (int) get_transient( 'asem_evq_dropped_seats' ), 'tetto posti: stesso messaggio e stesso conteggio per le iscrizioni ai corsi' );
 $er_reset();
 Settings::update( array( 'limits' => array( 'event_seats_per_email' => 200, 'event_seats_per_ip' => 10, 'event_requests_max' => 5000 ) ) );
 set_transient( $er_keyip, 10, DAY_IN_SECONDS );
 $er_t3 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.ip1@example.com' ) ), $acts->get( $er_a ), $er_o );
-asem_ok( 'ok' === $er_t3['status'] && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse' );
+asem_ok( 'invalid' === $er_t3['status'] && 0 === strpos( $er_t3['errors'][0], 'Da questa connessione sono già stati chiesti molti posti nelle ultime 24 ore: riprova più tardi o scrivi alla segreteria' ) && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse, e legge un messaggio onesto' );
+$er_c2 = $er::course_create( array_merge( $er_r, array( 'email' => 'tetto.ip2@example.com' ) ), $er_ca );
+asem_ok( 'invalid' === $er_c2['status'] && 0 === strpos( $er_c2['errors'][0], 'Da questa connessione' ) && 0 === $er_cnt( 'tetto.ip2@example.com' ) && count( $er_mails ) === $er_mn1, 'tetto posti: stesso messaggio per le iscrizioni ai corsi e nessuna email' );
 wp_set_current_user( 1 );
 $er::create( array_merge( $er_r, array( 'email' => 'tetto.segreteria@example.com' ) ), $acts->get( $er_a ), $er_o );
 asem_ok( 1 === $er_cnt( 'tetto.segreteria@example.com' ), 'tetto posti: la segreteria non è mai limitata' );
