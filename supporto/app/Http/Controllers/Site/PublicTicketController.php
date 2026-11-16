@@ -29,8 +29,9 @@ class PublicTicketController extends Controller
 
         return view('site.ticket-new', [
             'formToken' => $human->issue(),
+            'products' => ProductPlans::selectable((array) ($request->session()->get('customer.plans') ?? [])),
             'privacyUrl' => config('support.privacy.url'),
-            'topics' => Topic::query()->where('is_public', true)->orderBy('sort')->orderBy('name')->get(),
+            'topics' => Topic::query()->forPublic()->orderBy('sort')->orderBy('name')->get(),
             'plans' => Plan::query()->where('is_active', true)->orderBy('sort')->orderBy('name')->get(),
             'related' => $request->query('rif'),
             'customer' => $request->session()->get('customer'),
@@ -83,8 +84,13 @@ class PublicTicketController extends Controller
             $data['plan_id'] = $customer['plan_id'] ?? null;
         }
 
+        // Il prodotto «Gestionale» si sceglie solo se le guide sono accese o si è clienti del gestionale
+        if (! array_key_exists($data['product'], ProductPlans::selectable((array) ($request->session()->get('customer.plans') ?? [])))) {
+            return back()->withInput($request->except(HumanCheck::TOKEN_FIELD))->withErrors(['product' => "Scegli il prodotto dall'elenco."]);
+        }
+
         // L'argomento deve essere del prodotto scelto o «Per tutti»
-        if (! empty($data['topic_id']) && ! Topic::query()->whereKey($data['topic_id'])
+        if (! empty($data['topic_id']) && ! Topic::query()->forPublic()->whereKey($data['topic_id'])
             ->where(fn ($q) => $q->whereNull('product')->orWhere('product', $data['product']))->exists()) {
             return back()->withInput($request->except(HumanCheck::TOKEN_FIELD))->withErrors(['topic_id' => 'L\'argomento scelto non riguarda questo prodotto.']);
         }

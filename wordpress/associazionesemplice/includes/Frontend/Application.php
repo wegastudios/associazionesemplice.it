@@ -10,6 +10,7 @@ use AssociazioneSemplice\Pages;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\PrivacyNotice;
 use AssociazioneSemplice\Regulation;
+use AssociazioneSemplice\ResponseMail;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\Texts;
 
@@ -83,6 +84,7 @@ final class Application {
 					if ( 'early' === $token ) {
 						$sent = true;
 					} else {
+						ResponseMail::defer( true ); // le email partono a risposta consegnata: il tempo di risposta non dice se l'indirizzo è già registrato
 						$res = Applications::submit( $post );
 						if ( 'invalid' === $res['status'] ) {
 							$errors = $res['errors'];

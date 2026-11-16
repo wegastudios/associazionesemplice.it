@@ -405,4 +405,13 @@ class PublicTicketTest extends SiteTestCase
         $this->assertSame('open', $ticket->refresh()->status);
         Mail::assertNothingQueued();
     }
+
+    public function test_gestionale_product_is_hidden_unless_guides_are_on_or_customer_has_it(): void
+    {
+        $this->get('/ticket/nuovo')->assertOk()->assertDontSee('value="saas"', false);
+        $this->post('/ticket', $this->form(['product' => 'saas']))->assertSessionHasErrors('product');
+
+        $this->withSession(['customer' => ['email' => 'mario@example.com', 'name' => null, 'plan_id' => null, 'at' => now()->timestamp, 'plans' => [['product' => 'saas', 'plan' => 'piccola', 'support_level' => 'free', 'status' => 'trial']]]]);
+        $this->get('/ticket/nuovo')->assertOk()->assertSee('value="saas"', false);
+    }
 }

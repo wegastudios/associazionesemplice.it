@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Site;
 use App\Http\Controllers\Controller;
 use App\Models\Article;
 use App\Models\Topic;
+use App\Support\SaasGuides;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -13,25 +15,33 @@ class HelpCenterController extends Controller
 {
     public function index(): View
     {
-        $topics = Topic::query()->where('is_public', true)->orderBy('sort')->orderBy('name')
+        $topics = Topic::query()->forPublic()->orderBy('sort')->orderBy('name')
             ->with(['sections' => fn ($q) => $q->withCount(['articles' => fn ($a) => $a->where('is_published', true)])])
             ->get();
 
         return view('site.index', ['topics' => $topics]);
     }
 
-    public function topic(Topic $topic): View
+    public function topic(Topic $topic): View|RedirectResponse
     {
         abort_unless($topic->is_public, 404);
+
+        if ($topic->product === 'saas' && ! SaasGuides::visible()) {
+            return redirect()->route('help.index');
+        }
 
         $topic->load(['sections.articles' => fn ($q) => $q->where('is_published', true)]);
 
         return view('site.topic', ['topic' => $topic]);
     }
 
-    public function article(Article $article): View
+    public function article(Article $article): View|RedirectResponse
     {
         abort_unless($article->is_published && $article->section->topic->is_public, 404);
+
+        if ($article->section->topic->product === 'saas' && ! SaasGuides::visible()) {
+            return redirect()->route('help.index');
+        }
 
         return view('site.article', ['article' => $article->load('section.topic')]);
     }
@@ -43,7 +53,7 @@ class HelpCenterController extends Controller
 
         $results = mb_strlen($q) < 2 ? collect() : Article::query()
             ->where('is_published', true)
-            ->whereHas('section.topic', fn ($t) => $t->where('is_public', true))
+            ->whereHas('section.topic', fn ($t) => $t->forPublic())
             ->where(fn ($w) => $w->where('title', 'like', "%{$escaped}%")->orWhere('body', 'like', "%{$escaped}%"))
             ->with('section.topic')->limit(60)->get()
             ->map(function (Article $a) use ($q) {

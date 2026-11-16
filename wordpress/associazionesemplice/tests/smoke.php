@@ -8100,6 +8100,9 @@ file_put_contents( $bk_file, 'contenuto allegato' );
 $wpdb->insert( Db::t( 'attachments' ), array( 'transaction_id' => 0, 'original_name' => 'prova-copia.txt', 'stored_name' => str_repeat( 'a', 32 ), 'mime' => 'text/plain', 'size_bytes' => 18, 'sha256' => hash( 'sha256', 'contenuto allegato' ), 'created_at' => Db::now() ) ); // l'allegato si rimette solo se una riga dei dati lo cita
 $bk_att_row = (int) $wpdb->insert_id;
 Settings::update( array( 'association_name' => 'Associazione di prova' ) );
+$bk_pw_hash = \AssociazioneSemplice\MemberPassword::make( 'vecchia password dei soci' ); // una password di un socio già dentro la copia: dopo il ripristino torna, con il cambio obbligatorio
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => 999001, 'login_email' => 'copia-password@example.com', 'pass_hash' => $bk_pw_hash, 'must_reset' => 0, 'created_at' => Db::now() ) );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => 999002, 'login_email' => 'solo-link@example.com', 'pass_hash' => null, 'must_reset' => 0, 'created_at' => Db::now() ) ); // un socio che entra solo con il link, senza password: dopo il ripristino non riceve nessun segno
 $bk_zip = \AssociazioneSemplice\Backup::export( true );
 $za     = new ZipArchive();
 $za->open( $bk_zip );
@@ -8314,12 +8317,20 @@ wp_delete_file( $bk_t6 );
 
 // 5. registro azioni, accessi dei soci e notifiche push non fanno parte del ripristino
 Audit::log( 'prova.dopo_la_copia', 'settings', 0 );
-$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $victim, 'login_email' => 'prova-ripristino@example.com', 'pass_hash' => 'x', 'created_at' => Db::now() ) );
+$wpdb->update( Db::t( 'member_auth' ), array( 'pass_hash' => 'x', 'must_reset' => 0 ), array( 'person_id' => 999001 ) ); // dopo la copia la password è cambiata e il segno tolto: il ripristino rimette quella della copia
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $victim, 'login_email' => 'prova-ripristino@example.com', 'pass_hash' => 'x', 'created_at' => Db::now() ) ); // una password nata dopo la copia: non c'è nella copia, sparisce
+$wpdb->insert( Db::t( 'member_sessions' ), array( 'token_hash' => str_repeat( 'b', 64 ), 'person_id' => 999001, 'created_at' => Db::now(), 'last_seen' => Db::now(), 'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 3600 ) ) );
 $bk_people_t = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Db::t( 'push_subs' ) ) );
 $bk_audit_total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) );
 $bk_r5 = \AssociazioneSemplice\Backup::restore( $bk_zip );
 asem_ok( 1 === $bk_audit_n( 'prova.dopo_la_copia' ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) > $bk_audit_total, 'ripristino: il registro azioni non viene sostituito (le righe fatte dopo la copia restano, e si aggiunge quella del ripristino)' );
-asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) ) && ( ! $bk_people_t || 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) ) ) && ! empty( $bk_r5['members_reset'] ), 'ripristino: password dei soci e notifiche push non si ripristinano (e non restano legate a persone diverse): i soci rientrano con il link' );
+$bk_auth = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = 999001', ARRAY_A );
+asem_ok( is_array( $bk_auth ) && $bk_auth['pass_hash'] === $bk_pw_hash && 2 === (int) $bk_auth['must_reset'] && \AssociazioneSemplice\MemberPassword::verify( 'vecchia password dei soci', (string) $bk_auth['pass_hash'] ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . " WHERE person_id = $victim" ) && ! empty( $bk_r5['passwords'] ), 'ripristino: le password dei soci tornano come nella copia, con il segno «cambio obbligatorio» (e quelle nate dopo la copia spariscono)' );
+asem_ok( 'restored' === \AssociazioneSemplice\MemberLogin::password_state( 999001 ), 'ripristino: lo stato della password del socio è «da cambiare dopo il ripristino»' );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT must_reset FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = 999002' ) && 'none' === \AssociazioneSemplice\MemberLogin::password_state( 999002 ), 'ripristino: il segno «cambio obbligatorio» va solo a chi ha una password ripristinata, non a chi entrava solo con il link' );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) ) && ( ! $bk_people_t || 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) ) ) && ! empty( $bk_r5['members_reset'] ), 'ripristino: sessioni e notifiche push dei soci non si ripristinano (sono cancellate)' );
+$bk_audit_row = (string) $wpdb->get_var( 'SELECT details FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'backup.restored' ORDER BY id DESC LIMIT 1" );
+asem_ok( false === stripos( $bk_audit_row, 'pass_hash' ) && false === strpos( $bk_audit_row, $bk_pw_hash ), 'ripristino: il registro azioni non contiene nessuna impronta di password' );
 
 // 6. un ripristino alla volta
 Db::$lock_fake = '0';
@@ -8874,6 +8885,25 @@ $ap_dup2 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, arra
 $ap_dup3 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'email' => 'altra.email@example.com' ) ) );
 asem_ok( 'ok' === $ap_dup3['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: lo stesso codice fiscale già in coda ha la stessa risposta e non crea nulla' );
 asem_ok( 'ok' === $ap_dup1['status'] && 'ok' === $ap_dup2['status'] && 1 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) === $ap_n, 'domanda: doppioni e email di soci esistenti hanno la stessa risposta e non creano nulla' );
+// tempi di risposta uguali: dal modulo pubblico le email sono in coda; doppione e domanda nuova hanno la stessa risposta e lavoro simile
+\AssociazioneSemplice\ResponseMail::defer( true );
+$tr_n   = count( $ap_mails );
+$tr_q   = $wpdb->num_queries;
+$tr_new = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Tina', 'last_name' => 'Tempi', 'email' => 'tina.tempi@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
+$tr_dn  = $wpdb->num_queries - $tr_q;
+asem_ok( 'ok' === $tr_new['status'] && count( $ap_mails ) === $tr_n && 2 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: la domanda nuova mette in coda le due email e non le manda nella richiesta' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( count( $ap_mails ) === $tr_n + 2 && 0 === \AssociazioneSemplice\ResponseMail::pending() && null !== $ap_mail_to( 'tina.tempi@example.com' ), 'tempi di risposta: a risposta consegnata le due email partono' );
+$tr_q   = $wpdb->num_queries;
+$tr_dup = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Tina', 'last_name' => 'Tempi', 'email' => 'tina.tempi@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
+$tr_dd  = $wpdb->num_queries - $tr_q;
+asem_ok( $tr_dup === $tr_new && 0 === \AssociazioneSemplice\ResponseMail::pending() && count( $ap_mails ) === $tr_n + 2, 'tempi di risposta: la domanda già presente ha la stessa risposta, nessuna email e nessuna riga in più' );
+WP_CLI::log( 'tempi di risposta: richieste al database per la domanda, nuova ' . $tr_dn . ', doppione ' . $tr_dd );
+asem_ok( abs( $tr_dn - $tr_dd ) <= 2, 'tempi di risposta: il doppione fa sul database lo stesso lavoro (controlli e scritture finte) di una domanda nuova' );
+\AssociazioneSemplice\ResponseMail::defer( false );
+$tr_id = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE tax_code = %s', 'RSSMRA79A07H501S' ) );
+\AssociazioneSemplice\Applications::reject( $tr_id ); // la prova non lascia domande in coda
+asem_ok( 1 === \AssociazioneSemplice\Applications::pending_count(), 'tempi di risposta: tolta la domanda di prova resta quella di prima' );
 asem_ok( 'emailed' !== \AssociazioneSemplice\Frontend\FirstAccess::submit( 'Aldo Adesioni', 'aldo.adesioni@example.com', '333 1010101' ) && ! get_user_by( 'email', 'aldo.adesioni@example.com' ), 'domanda: con il «Primo accesso» chi non è ancora approvato non entra' );
 $ap_html = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Domande di adesione' );
 asem_ok( false !== strpos( $ap_html, 'Aldo Adesioni' ) && false !== strpos( $ap_html, 'asem_application_approve' ) && false !== strpos( $ap_html, 'asem_application_reject' ), 'dashboard: la domanda con Approva e Rifiuta' );
@@ -8952,6 +8982,8 @@ $ap_post = function ( array $data ) use ( $AP ) {
 	$_SERVER['REQUEST_METHOD'] = 'POST';
 	$_POST                     = wp_slash( $data );
 	$html                      = $AP::form_html();
+	\AssociazioneSemplice\ResponseMail::flush(); // fine della richiesta: le email in coda partono e la coda torna spenta come nella richiesta successiva
+	\AssociazioneSemplice\ResponseMail::defer( false );
 	$_SERVER                   = $old_s;
 	$_POST                     = $old_p;
 	return $html;
@@ -10625,6 +10657,35 @@ asem_ok( MemberLogin::request( $pw_addr ) && count( $ml_mail ) === $df_n, 'sicur
 MemberLogin::send_queued();
 MemberLogin::defer( false );
 asem_ok( count( $ml_mail ) === $df_n + 1, 'sicurezza: a risposta consegnata l\'email parte' );
+// tempi di risposta uguali: stessa coda per il «Primo accesso», limite per indirizzo ancora valido, indirizzo noto e ignoto fanno lo stesso lavoro
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\ResponseMail::defer( true );
+$tr_n = count( $ml_mail );
+asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $pw_addr ) && count( $ml_mail ) === $tr_n && 1 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: il «Primo accesso» mette l\'email in coda e non la manda nella richiesta' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( 1 === count( $ml_mail ) - $tr_n && 0 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: a risposta consegnata l\'email del «Primo accesso» parte' );
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+$tr_lim = (int) \AssociazioneSemplice\Limits::get( 'first_access_per_email' );
+for ( $tr_i = 0; $tr_i < $tr_lim + 3; $tr_i++ ) {
+	MemberLogin::request( $pw_addr );
+}
+asem_ok( $tr_lim === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: il limite di email per indirizzo vale anche con la coda (' . $tr_lim . ')' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( $tr_lim === count( $ml_mail ) - $tr_n - 1, 'tempi di risposta: partono solo le email entro il limite' );
+$tr_known = null;
+$tr_other = null;
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+$tr_q = $wpdb->num_queries;
+MemberLogin::request( $pw_addr );
+$tr_known = $wpdb->num_queries - $tr_q;
+$tr_q = $wpdb->num_queries;
+MemberLogin::request( 'sconosciuto.tempi@example.org' );
+$tr_other = $wpdb->num_queries - $tr_q;
+\AssociazioneSemplice\ResponseMail::flush();
+WP_CLI::log( 'tempi di risposta: richieste al database, indirizzo noto ' . $tr_known . ', ignoto ' . $tr_other );
+asem_ok( abs( $tr_known - $tr_other ) <= 1, 'tempi di risposta: indirizzo di un socio e indirizzo ignoto fanno lo stesso lavoro sul database' );
+\AssociazioneSemplice\ResponseMail::defer( false );
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
 // chi riceve più email non perde il primo link, ma le richieste valide sono al massimo 3
 $cf_addr = 'codici.prova@example.org';
 $cf_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Codici', 'last_name' => 'Prova', 'email' => $cf_addr ) );
