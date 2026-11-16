@@ -16,6 +16,9 @@ dataset('scritture della demo', [
     'chiavi dei pagamenti' => ['put', '/gestionale/pagamenti-online'],
     'prova dei pagamenti' => ['post', '/gestionale/pagamenti-online/prova/stripe'],
     'dati dell\'ente' => ['post', '/gestionale/configurazione'],
+    'archivia l\'anno' => ['post', '/gestionale/archivio/2025'],
+    'rimetti i file' => ['post', '/gestionale/archivio/2025/rimetti'],
+    'verifica ricevute' => ['post', '/gestionale/verifica-ricevute/fissa'],
 ]);
 
 it('nella demo rifiuta le scritture che toccherebbero tutti i visitatori', function (string $method, string $url): void {
