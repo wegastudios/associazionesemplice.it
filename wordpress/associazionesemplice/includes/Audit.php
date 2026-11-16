@@ -9,7 +9,30 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Audit {
 
+	/** Impronta breve dell'indirizzo di rete di chi agisce (mai l'indirizzo in chiaro): serve a riconoscere lo stesso accesso, non a risalire alla persona. */
+	public static function ip_fingerprint( string $ip, string $salt ): string {
+		return '' === $ip ? '' : substr( hash_hmac( 'sha256', $ip, $salt ), 0, 12 );
+	}
+
+	/** Nomi delle voci diverse tra prima e dopo (mai i valori), in ordine alfabetico. @return string[] */
+	public static function changed_keys( array $before, array $after ): array {
+		$out = array();
+		foreach ( $after as $k => $v ) {
+			if ( ! array_key_exists( $k, $before ) || serialize( $before[ $k ] ) !== serialize( $v ) ) {
+				$out[] = (string) $k;
+			}
+		}
+		sort( $out );
+		return $out;
+	}
+
 	public static function log( string $action, string $object_type = '', ?int $object_id = null, array $details = array() ): void {
+		if ( ! isset( $details['ip'] ) && function_exists( 'wp_salt' ) ) { // da dove arriva l'azione (vuoto per i lavori programmati)
+			$fp = self::ip_fingerprint( ClientIp::get(), wp_salt( 'auth' ) );
+			if ( '' !== $fp ) {
+				$details['ip'] = $fp;
+			}
+		}
 		Db::db()->insert(
 			Db::t( 'audit_log' ),
 			array(

@@ -1,0 +1,152 @@
+name: Plugin update tests
+
+# Prove degli aggiornamenti dei plugin dentro un WordPress reale (wp-env): canale vero del portale (solo lettura), finto portale con chiavi di prova,
+# aggiornamento dei dati dalla 1.3.25. Non cambiano il plugin: le copie di prova si ottengono con sed dai pacchetti costruiti da build.sh.
+# Nessuna chiave o dato personale: il gratuito chiede al portale solo prodotto e versione.
+
+on:
+  push:
+    branches: [main, "feature/**"]
+    paths: ["wordpress/**", ".github/workflows/plugin-prove-aggiornamenti.yml"]
+  pull_request:
+    paths: ["wordpress/**", ".github/workflows/plugin-prove-aggiornamenti.yml"]
+  workflow_dispatch:
+
+jobs:
+  canale-reale:
+    name: Real portal channel (read only, free 1.3.0 sees and installs the published version)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build the packages and make the test copy (version 1.3.0)
+        run: |
+          bash wordpress/build.sh wordpress/dist-prove
+          cd wordpress/dist-prove
+          mf=free/associazionesemplice/associazionesemplice.php
+          sed -i -E "s/^( \* Version: +)[0-9][0-9.]*/\11.3.0/; s/(define\( 'ASEM_VERSION', ')[0-9][0-9.]*/\11.3.0/" "$mf"
+          grep -E "Update URI|^ \* Version:|'ASEM_VERSION'" "$mf"
+          mkdir prove
+          (cd free && zip -qr ../prove/free-1.3.0.zip associazionesemplice)
+          cp ../associazionesemplice/tests/ci/prova-canale-reale.php prove/
+          cat > .wp-env.json <<'JSON'
+          {
+            "phpVersion": "8.1",
+            "plugins": [],
+            "mappings": { "wp-content/prove": "./prove" },
+            "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
+          }
+          JSON
+      - name: Start WordPress and install the test copy
+        working-directory: wordpress/dist-prove
+        run: |
+          npx --yes @wordpress/env start
+          npx --yes @wordpress/env run cli wp plugin install wp-content/prove/free-1.3.0.zip --activate
+      - name: See the update in Dashboard → Updates and install it
+        working-directory: wordpress/dist-prove
+        run: npx --yes @wordpress/env run cli wp eval-file wp-content/prove/prova-canale-reale.php
+      - name: Debug log
+        if: failure()
+        working-directory: wordpress/dist-prove
+        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
+
+  finto-portale:
+    name: Fake portal with test keys (v2 signatures, rollback, signed denial)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          extensions: sodium
+      - name: Build the packages, generate the test keys and make the test copies
+        run: |
+          bash wordpress/build.sh wordpress/dist-prove
+          cd wordpress/dist-prove
+          mkdir prove
+          php ../associazionesemplice/tests/ci/fake-portal/genkeys.php prove/keys.json
+          kid=$(jq -r .pkg.kid prove/keys.json)
+          pub=$(jq -r .pkg.pub prove/keys.json)
+          # copia di prova: versioni 1.3.0 e, nel solo Updater della copia, chiave pubblica dei pacchetti di prova al posto di quella vera
+          up=free/associazionesemplice/includes/Updater.php
+          grep -cE "'pkg-[^']+' => '[^']+'" "$up"
+          sed -i -E "s/'pkg-[^']+' => '[^']+'/'$kid' => '$pub'/" "$up"
+          test "$(grep -oE "'pkg-[^']+' =>" "$up" | sort -u)" = "'$kid' =>"
+          grep -qF "'$kid' => '$pub'" "$up"
+          sed -i -E "s/^( \* Version: +)[0-9][0-9.]*/\11.3.0/; s/(define\( 'ASEM_VERSION', ')[0-9][0-9.]*/\11.3.0/" free/associazionesemplice/associazionesemplice.php
+          sed -i -E "s/^( \* Version: +)[0-9][0-9.]*/\11.3.0/; s/(define\( 'ASEM_PRO_VERSION', ')[0-9][0-9.]*/\11.3.0/" pro/associazionesemplice-pro/associazionesemplice-pro.php
+          (cd free && zip -qr ../prove/free-1.3.0.zip associazionesemplice)
+          (cd pro && zip -qr ../prove/pro-1.3.0.zip associazionesemplice-pro)
+          echo "contenuto del pacchetto di prova" > pacchetto.txt
+          zip -q prove/pacchetto.zip pacchetto.txt
+          cp -r ../associazionesemplice/tests/ci/fake-portal prove/fake-portal
+          cp ../associazionesemplice/tests/ci/prova-finto-portale.php prove/
+          cat > .wp-env.json <<'JSON'
+          {
+            "phpVersion": "8.1",
+            "plugins": [],
+            "mappings": { "wp-content/prove": "./prove" },
+            "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
+          }
+          JSON
+      - name: Start WordPress and install free + Pro (test copies)
+        working-directory: wordpress/dist-prove
+        run: |
+          npx --yes @wordpress/env start
+          npx --yes @wordpress/env run cli wp plugin install wp-content/prove/free-1.3.0.zip --activate
+          npx --yes @wordpress/env run cli wp plugin install wp-content/prove/pro-1.3.0.zip --activate
+      - name: Run the fake portal cases
+        working-directory: wordpress/dist-prove
+        run: npx --yes @wordpress/env run cli wp eval-file wp-content/prove/prova-finto-portale.php
+      - name: Fake portal log and debug log
+        if: failure()
+        working-directory: wordpress/dist-prove
+        run: npx --yes @wordpress/env run cli sh -c 'tail -30 /tmp/fake-portal.log 2>/dev/null; tail -50 wp-content/debug.log 2>/dev/null || true'
+
+  dati-1-3-25:
+    name: Update from the 1.3.25 build keeps the data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build the current package and take the 1.3.25 zip (published bytes, at the repository root)
+        run: |
+          unzip -p associazionesemplice.zip associazionesemplice/associazionesemplice.php | grep -E "^ \* Version:"
+          unzip -p associazionesemplice.zip associazionesemplice/associazionesemplice.php | grep -qE "^ \* Version: +1\.3\.25$"
+          bash wordpress/build.sh wordpress/dist-prove
+          cd wordpress/dist-prove
+          mkdir prove
+          cp ../../associazionesemplice.zip prove/vecchia-1.3.25.zip
+          cp associazionesemplice.zip prove/corrente.zip
+          cp ../associazionesemplice/tests/ci/prova-dati-*.php prove/
+          cat > .wp-env.json <<'JSON'
+          {
+            "phpVersion": "8.1",
+            "plugins": [],
+            "mappings": { "wp-content/prove": "./prove" },
+            "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
+          }
+          JSON
+      - name: Start WordPress, install 1.3.25 and create members and movements
+        working-directory: wordpress/dist-prove
+        run: |
+          npx --yes @wordpress/env start
+          npx --yes @wordpress/env run cli wp plugin install wp-content/prove/vecchia-1.3.25.zip --activate
+          npx --yes @wordpress/env run cli wp eval-file wp-content/prove/prova-dati-crea.php
+      - name: Install the current build over it and check the data
+        working-directory: wordpress/dist-prove
+        run: |
+          npx --yes @wordpress/env run cli wp plugin install wp-content/prove/corrente.zip --force
+          npx --yes @wordpress/env run cli wp plugin list --fields=name,status,version
+          npx --yes @wordpress/env run cli wp eval-file wp-content/prove/prova-dati-verifica.php
+      - name: Debug log
+        if: failure()
+        working-directory: wordpress/dist-prove
+        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'

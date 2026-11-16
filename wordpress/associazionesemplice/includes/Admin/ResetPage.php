@@ -19,7 +19,7 @@ final class ResetPage {
 			. '<li>' . (int) $p['people'] . ' soci e volontari, ' . (int) $p['guests'] . ' ospiti</li>'
 			. '<li>' . (int) $p['activities'] . ' attività ed eventi, con prenotazioni, iscrizioni e presenze</li>'
 			. '<li>' . (int) $p['transactions'] . ' movimenti in prima nota, ' . (int) $p['memberships'] . ' iscrizioni all\'anno, ' . (int) $p['minutes'] . ' verbali</li>'
-			. '<li>' . (int) $p['attachments'] . ' allegati (' . (int) $p['files'] . ' file di scontrini e fatture)</li></ul>';
+			. '<li>' . (int) $p['attachments'] . ' allegati (' . (int) $p['files'] . ' file di scontrini, fatture e altri documenti)</li></ul>';
 
 		$step = Ui::get_int( 'step', 1 );
 		if ( 2 === $step ) {

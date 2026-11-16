@@ -33,6 +33,9 @@ final class Documents {
 		if ( empty( $_FILES[ $field ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return null;
 		}
+		if ( ! (bool) apply_filters( 'asem_documents_uploads_enabled', true ) ) { // chi lo spegne (per esempio una demo pubblica) non accetta alcun file
+			throw new \InvalidArgumentException( 'Il caricamento di file è disattivato su questo sito.' );
+		}
 		$n = Attachments::request_files( $field );
 		if ( $n['errors'] ) {
 			throw new \InvalidArgumentException( $n['errors'][0] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -47,7 +50,8 @@ final class Documents {
 		}
 		$size = (int) filesize( $path );
 		$mime = Attachments::mime_of( $path );
-		$err  = DocumentRules::check( $f['name'], $size, $mime, Limits::get( 'attach_max_mb' ) * 1048576 );
+		$head = (string) file_get_contents( $path, false, null, 0, 8 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file temporaneo locale
+		$err  = DocumentRules::check( $f['name'], $size, $mime, Limits::get( 'attach_max_mb' ) * 1048576, $head );
 		if ( $err ) {
 			throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}

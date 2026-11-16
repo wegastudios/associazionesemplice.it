@@ -143,6 +143,24 @@ final class Limits {
 			'Se ricevi molte domande vere e non le lavori in tempo, le nuove vengono scartate: chi le ha inviate non lo sa.'
 		);
 		$add(
+			'event_requests_max', 'accesso', 'Richieste di evento o corso in attesa, al massimo', 'richieste', 100, 10, 5000,
+			'Quante richieste di posto o di iscrizione dei non soci possono aspettare insieme: quelle da confermare via email (contano solo nelle 24 ore in cui il link vale, poi si cancellano) e quelle che aspettano la segreteria. Oltre questo numero le nuove richieste non vengono registrate e in Bacheca compare un avviso. Non si somma alle domande di adesione, che hanno il loro limite.',
+			'Chi vuole intasare le richieste con indirizzi falsi può farlo più a lungo prima di essere fermato.',
+			'Se ricevi molte richieste vere (un evento molto atteso) e non le lavori in tempo, le nuove vengono scartate: chi le ha inviate non lo sa.'
+		);
+		$add(
+			'event_seats_per_email', 'accesso', 'Posti chiedibili con lo stesso indirizzo email, in 24 ore', 'posti', 20, 10, 200,
+			'Quanti posti, in tutto, può chiedere dal sito lo stesso indirizzo email nelle ultime 24 ore (eventi e corsi, anche se poi non paga). Impedisce di tenere occupati i posti senza pagare. La segreteria non ha questo limite.',
+			'Un valore alto permette di occupare molti posti con pochi indirizzi.',
+			'Chi organizza una gita per più gruppi con la stessa email può doversi rivolgere alla segreteria. Non può scendere sotto i 10 posti di una singola richiesta.'
+		);
+		$add(
+			'event_seats_per_ip', 'accesso', 'Posti chiedibili dalla stessa connessione, in 24 ore', 'posti', 40, 10, 500,
+			'Quanti posti, in tutto, può chiedere dal sito la stessa connessione nelle ultime 24 ore, con qualunque indirizzo email. La segreteria non ha questo limite.',
+			'Un valore alto permette di occupare molti posti cambiando solo indirizzo email. Se il sito è dietro un proxy, controlla la scelta sull\'indirizzo del visitatore (tutti i visitatori potrebbero apparire uguali).',
+			'Una sede con un solo wifi pubblico (un open day) può esaurirlo: alzalo per l\'occasione.'
+		);
+		$add(
 			'profile_required', 'accesso', 'Indirizzo e codice fiscale obbligatori per chi attiva l\'accesso dal sito', 'flag', 1, 0, 1,
 			'Chi attiva da solo il proprio accesso (dal link ricevuto o dal «Primo accesso») deve completare il profilo con indirizzo e codice fiscale. Se la segreteria aveva già registrato il codice fiscale, deve coincidere: è un secondo controllo che impedisce di attivare l\'accesso di un altro socio con un link ricevuto per errore. L\'iscrizione fatta dalla segreteria resta snella: questi dati non sono obbligatori.',
 			'Se lo disattivi i soci possono attivarsi senza dati: ricevute e attestazioni risultano incomplete e viene meno il controllo del codice fiscale sull\'attivazione.',
