@@ -50,7 +50,7 @@ final class SessionToken {
 
 	/** Origine (schema://host[:porta]) di un indirizzo, in minuscolo e senza la porta di default; stringa vuota se non è un indirizzo web. */
 	public static function origin_of( string $url ): string {
-		$p = parse_url( trim( $url ) );
+		$p = wp_parse_url( trim( $url ) );
 		if ( ! is_array( $p ) || empty( $p['scheme'] ) || empty( $p['host'] ) ) {
 			return '';
 		}
