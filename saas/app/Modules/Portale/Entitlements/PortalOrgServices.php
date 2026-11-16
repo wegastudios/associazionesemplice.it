@@ -215,6 +215,11 @@ final readonly class PortalOrgServices
         if ($domain === $root || str_ends_with($domain, '.'.$root)) {
             return 'reserved';
         }
+        // Anche il dominio dei soci, se è diverso dal dominio base: l'area soci risponde sui nomi dei nostri host.
+        $members = config('saas.members_domain');
+        if (is_string($members) && $members !== '' && ($domain === $members || str_ends_with($domain, '.'.$members))) {
+            return 'reserved';
+        }
         $stored = $this->stored($orgId);
         $packages = is_array($stored['packages'] ?? null) ? $stored['packages'] : [];
         if (! array_key_exists('custom_domain', $packages)) {

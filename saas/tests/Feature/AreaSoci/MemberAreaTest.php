@@ -15,6 +15,7 @@ use App\Modules\Soci\Services\GuardianService;
 use App\Modules\Soci\Services\MembershipService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // Dati di prova inventati.
@@ -252,4 +253,12 @@ it('il link d\'accesso preparato dalla segreteria usa il dominio proprio se veri
     $link = (string) $this->postJson('/gestionale/soci/'.$anna->id.'/area-soci/link')->assertOk()->json('link');
     expect($link)->toStartWith('http://soci.alfa-sport.it/area/entra/');
     $this->get($link)->assertRedirect('/area');
+});
+
+it('il link di verifica della tessera resta sul dominio proprio quando il socio è entrato da lì', function (): void {
+    DB::table('core.org_domains')->insert(['org_id' => $this->org->id, 'domain' => 'soci.alfa-sport.it', 'state' => 'active']);
+    $verify = URL::signedRoute('custom.member.verify', ['host' => 'soci.alfa-sport.it', 'person' => $this->mario->id]);
+
+    expect($verify)->toStartWith('http://soci.alfa-sport.it/area/verifica/');
+    $this->get($verify)->assertOk()->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Verifica'));
 });
