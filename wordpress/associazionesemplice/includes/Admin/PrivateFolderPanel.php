@@ -34,6 +34,8 @@ final class PrivateFolderPanel {
 
 		if ( '' !== $st['error'] ) {
 			echo '<div class="notice notice-error inline"><p><strong>' . esc_html( Texts::t( 'Il percorso indicato in wp-config.php non è utilizzabile.' ) ) . '</strong> <code>' . esc_html( $st['configured'] ) . '</code> ' . esc_html( PrivateFolder::error_text( $st['error'] ) ) . ' ' . esc_html( Texts::t( 'Finché non viene sistemato, i nuovi file vengono salvati nella cartella predefinita dentro wp-content/uploads.' ) ) . '</p></div>';
+		} elseif ( $st['custom'] && ! $st['active'] ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::t( 'Il percorso è indicato in wp-config.php (ASEM_PRIVATE_DIR) ma la nuova cartella non è ancora in uso: ci passa il sito quando tutti i file della cartella predefinita sono stati copiati con «Sposta i file». Fino ad allora i file restano dove sono e il sito li legge da lì.' ) ) . '</p></div>';
 		} elseif ( $st['custom'] && ! $st['in_web'] ) {
 			echo '<p>' . esc_html( Texts::t( 'Il percorso è indicato in wp-config.php (ASEM_PRIVATE_DIR): la cartella sta fuori dalla parte pubblica del sito e non ha un indirizzo web.' ) ) . '</p>';
 		} elseif ( $st['custom'] ) {
@@ -89,7 +91,7 @@ final class PrivateFolderPanel {
 			echo '<p>' . esc_html( Texts::t( 'Nella cartella predefinita non resta nessun file da spostare.' ) ) . '</p>';
 			return;
 		}
-		echo '<p>' . esc_html( Texts::t( 'Nella cartella predefinita ci sono ancora {n} file da portare nella nuova cartella. Si procede a lotti di {lotto} file: ogni file viene copiato, controllato con la sua impronta e solo dopo cancellato dalla vecchia posizione. Se ne restano, premi di nuovo.', array( 'n' => $left >= 5000 ? '5000+' : $left, 'lotto' => PrivateFolder::BATCH ) ) ) . '</p>';
+		echo '<p>' . esc_html( Texts::t( 'Nella cartella predefinita ci sono ancora {n} file da portare nella nuova cartella. Si procede a lotti di {lotto} file: prima ogni file viene copiato e controllato con la sua impronta, senza toccare l\'originale; quando sono stati copiati tutti, la nuova cartella entra in uso e i file vecchi vengono cancellati uno alla volta, solo se la copia è identica. Se ne restano, premi di nuovo.', array( 'n' => $left >= 5000 ? '5000+' : $left, 'lotto' => PrivateFolder::BATCH ) ) ) . '</p>';
 		echo '<p><strong>' . esc_html( Texts::t( 'Prima di spostare i file fai una copia di sicurezza.' ) ) . '</strong> <a href="' . esc_url( \AssociazioneSemplice\Backup::download_link( true ) ) . '">' . esc_html( Texts::t( 'Scarica la copia con gli allegati' ) ) . '</a></p>';
 		Ui::form_open( 'asem_private_move', $back, false, 'asem-inline' );
 		echo '<button class="button button-primary" data-confirm="' . esc_attr( Texts::t( 'Spostare i file nella nuova cartella?' ) ) . '">' . esc_html( Texts::t( 'Sposta i file' ) ) . '</button>';

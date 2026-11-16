@@ -177,6 +177,15 @@ if ( class_exists( '\\AssociazioneSemplice\\FileMigration' ) ) {
 	$pf_ok( 'running' !== $pf_cs['status'] && 'done' !== $pf_cs['status'] && ! wp_next_scheduled( \AssociazioneSemplice\FileMigration::CERT_HOOK ), 'spostamento: la cifratura automatica dei certificati non parte e non si chiude come finita finché ci sono file da spostare' );
 	delete_option( \AssociazioneSemplice\FileMigration::CERT_OPT );
 }
+if ( class_exists( '\\AssociazioneSemplice\\Admin\\ReceiptCheckPage' ) ) {
+	$pf_stop = false;
+	try {
+		\AssociazioneSemplice\Admin\ReceiptCheckPage::regenerate( array() );
+	} catch ( \InvalidArgumentException $e ) {
+		$pf_stop = false !== strpos( $e->getMessage(), 'file da spostare' );
+	}
+	$pf_ok( $pf_stop, 'spostamento: «Rifai dai dati salvati» delle ricevute resta fermo finché ci sono file da spostare' );
+}
 $pf_zip = \AssociazioneSemplice\Backup::export( true );
 $pf_za  = new ZipArchive();
 $pf_has = true === $pf_za->open( $pf_zip ) && false !== $pf_za->locateName( 'allegati/' . $pf_a );

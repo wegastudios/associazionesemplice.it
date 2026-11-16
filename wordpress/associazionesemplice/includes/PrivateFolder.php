@@ -15,6 +15,8 @@ defined( 'ABSPATH' ) || exit;
  *   Se la prova non si può fare (il sito non riesce a chiamarsi, è dietro una password del server, risponde con un errore) l'esito è «non verificabile»
  *   e non scatta nessun allarme.
  * - Come si sposta: il pulsante «Sposta i file» porta a lotti i file della cartella predefinita in quella indicata, verificando l'impronta di ciascuno.
+ *   La cartella indicata entra in uso solo quando tutti i file sono stati copiati: fino ad allora il sito legge e scrive nella vecchia, che è completa.
+ *   Non si cancella mai un file che è lo stesso file della copia (stessa cartella vista da percorsi diversi). Un solo spostamento alla volta.
  */
 final class PrivateFolder {
 
@@ -26,8 +28,13 @@ final class PrivateFolder {
 	const BATCH    = 100;
 	const MAX_SECS = 20;
 
+	const OPT_ACTIVE = 'asem_private_active'; // impronta del percorso di wp-config.php che è entrato in uso a spostamento finito
+
 	/** @var array|null percorso risolto (una volta per richiesta) */
 	private static $resolved = null;
+
+	/** @var bool|null la cartella di wp-config.php è già in uso (una volta per richiesta) */
+	private static $active = null;
 
 	// ---------- Dove sta ----------
 
@@ -63,7 +70,32 @@ final class PrivateFolder {
 		if ( ! wp_is_writable( $path ) ) {
 			return array( 'path' => '', 'error' => 'not_writable' );
 		}
+		// Lo stesso posto visto da un altro percorso (collegamento simbolico, alias dell'hosting, maiuscole diverse): il confronto sul testo non basta.
+		$real_path = realpath( $path );
+		$real_def  = realpath( $default );
+		if ( false !== $real_path && false !== $real_def && ( PrivateFolderRules::is_inside( $real_path, $real_def ) || PrivateFolderRules::is_inside( $real_def, $real_path ) || self::same_file( $path, $default ) ) ) {
+			return array( 'path' => '', 'error' => 'overlaps' );
+		}
 		return array( 'path' => $path, 'error' => '' );
+	}
+
+	/**
+	 * Due percorsi sono lo stesso file o la stessa cartella? Si guarda il percorso reale (risolti collegamenti e maiuscole) e, in subordine,
+	 * il numero identificativo sul disco (un file con due nomi, una cartella montata due volte).
+	 */
+	public static function same_file( string $a, string $b ): bool {
+		clearstatcache();
+		if ( ! file_exists( $a ) || ! file_exists( $b ) ) {
+			return false;
+		}
+		$ra = realpath( $a );
+		$rb = realpath( $b );
+		if ( false !== $ra && false !== $rb && PrivateFolderRules::normalize( $ra ) === PrivateFolderRules::normalize( $rb ) ) {
+			return true;
+		}
+		$sa = stat( $a );
+		$sb = stat( $b );
+		return is_array( $sa ) && is_array( $sb ) && (int) $sa['ino'] > 0 && $sa['ino'] === $sb['ino'] && $sa['dev'] === $sb['dev'];
 	}
 
 	/** @return array{path:string,error:string} */
@@ -81,24 +113,52 @@ final class PrivateFolder {
 	/** Dimentica il percorso già valutato (dopo un cambio della costante, nei test). */
 	public static function reset(): void {
 		self::$resolved = null;
+		self::$active   = null;
 	}
 
-	/** La cartella in uso: quella di wp-config.php se utilizzabile, altrimenti quella predefinita. */
+	/**
+	 * La cartella indicata in wp-config.php è già in uso? Solo quando nella cartella predefinita non resta nessun file da spostare (e quindi tutto
+	 * ciò che il sito legge, scrive e cancella sta in un posto solo): finché ce ne sono, i file vecchi restano raggiungibili dove sono. La decisione
+	 * si ricorda (opzione legata al percorso): da lì in poi non si guarda più la vecchia cartella.
+	 */
+	private static function in_use(): bool {
+		$c = self::custom();
+		if ( '' === $c['path'] ) {
+			return false;
+		}
+		if ( null === self::$active ) {
+			$key = md5( PrivateFolderRules::normalize( $c['path'] ) );
+			if ( get_option( self::OPT_ACTIVE ) === $key ) {
+				self::$active = true;
+			} elseif ( array() === self::list_default( 1 ) ) { // niente da spostare (installazione nuova o spostamento finito): si comincia subito
+				update_option( self::OPT_ACTIVE, $key );
+				self::$active = true;
+			} else {
+				self::$active = false;
+			}
+		}
+		return self::$active;
+	}
+
+	/** La cartella in uso: quella di wp-config.php se utilizzabile e già pronta (nessun file da spostare), altrimenti quella predefinita. */
 	public static function dir(): string {
 		$c = self::custom();
-		return '' !== $c['path'] ? $c['path'] : self::default_dir();
+		return '' !== $c['path'] && self::in_use() ? $c['path'] : self::default_dir();
 	}
 
 	/**
 	 * Situazione della cartella.
 	 *
-	 * @return array{custom:bool,dir:string,default:string,configured:string,error:string,in_web:bool}
+	 * @return array{custom:bool,active:bool,target:string,dir:string,default:string,configured:string,error:string,in_web:bool}
+	 *   custom: il percorso di wp-config.php è valido; active: è già in uso (nessun file da spostare); target: il percorso valido, in uso o no
 	 */
 	public static function status(): array {
 		$c   = self::custom();
 		$dir = self::dir();
 		return array(
 			'custom'     => '' !== $c['path'],
+			'active'     => '' !== $c['path'] && self::in_use(),
+			'target'     => $c['path'],
 			'dir'        => $dir,
 			'default'    => self::default_dir(),
 			'configured' => self::configured(),
@@ -159,8 +219,8 @@ final class PrivateFolder {
 	// ---------- Protezione ----------
 
 	/** Scrive un `index.php` vuoto nella cartella e in ogni cartella sopra di essa, fino alla radice riservata (contro l'elenco dei file). */
-	public static function protect( string $dir ): void {
-		$root = PrivateFolderRules::normalize( self::dir() );
+	public static function protect( string $dir, string $root = '' ): void {
+		$root = PrivateFolderRules::normalize( '' !== $root ? $root : self::dir() );
 		$d    = PrivateFolderRules::normalize( $dir );
 		for ( $i = 0; $i < 12 && PrivateFolderRules::is_inside( $d, $root ) && is_dir( $d ); $i++ ) {
 			if ( ! file_exists( $d . '/index.php' ) && false === @file_put_contents( $d . '/index.php', "<?php\n// Silence is golden.\n" ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
@@ -331,6 +391,14 @@ final class PrivateFolder {
 				7
 			);
 		}
+		if ( $st['custom'] ) { // avviso fisso (non si chiude) finché nella vecchia cartella restano file da spostare
+			$left = count( self::pending( 5000 ) );
+			if ( $left > 0 ) {
+				$out .= '<div class="notice notice-warning inline asem-private-move"><p><strong>' . esc_html( Texts::t( 'Ci sono ancora {n} file da spostare nella cartella indicata in wp-config.php.', array( 'n' => $left >= 5000 ? '5000+' : $left ) ) ) . '</strong> '
+					. esc_html( Texts::t( 'Finché non sono stati spostati la nuova cartella non entra in uso, e la cifratura automatica dei certificati e il rifacimento delle ricevute restano fermi.' ) )
+					. ' <a href="' . esc_url( $url ) . '">' . esc_html( Texts::t( 'Sposta i file' ) ) . '</a>.</p></div>';
+			}
+		}
 		$last = self::last();
 		if ( null !== $last && PrivateFolderRules::EXPOSED === $last['state'] ) {
 			$out .= Admin\Dismiss::html(
@@ -348,18 +416,17 @@ final class PrivateFolder {
 	// ---------- Spostamento dei file ----------
 
 	/**
-	 * File ancora nella cartella predefinita che andrebbero portati in quella di wp-config.php (percorsi relativi). Vuoto se la cartella
-	 * indicata non è in uso. Non conta i file di protezione né quelli del controllo.
+	 * File che stanno nella cartella predefinita (percorsi relativi). Non conta i file di protezione, quelli del controllo e i resti di copie
+	 * interrotte (nome con «.part-»).
 	 *
 	 * @return string[]
 	 */
-	public static function pending( int $limit = 5000 ): array {
-		$st = self::status();
-		if ( ! $st['custom'] || ! is_dir( $st['default'] ) ) {
+	private static function list_default( int $limit ): array {
+		$base = PrivateFolderRules::normalize( self::default_dir() );
+		if ( ! is_dir( $base ) ) {
 			return array();
 		}
-		$base = PrivateFolderRules::normalize( $st['default'] );
-		$out  = array();
+		$out = array();
 		try {
 			$it = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $base, \FilesystemIterator::SKIP_DOTS ), \RecursiveIteratorIterator::LEAVES_ONLY );
 			foreach ( $it as $f ) {
@@ -367,7 +434,7 @@ final class PrivateFolder {
 					continue;
 				}
 				$rel = ltrim( substr( PrivateFolderRules::normalize( (string) $f->getPathname() ), strlen( $base ) ), '/' );
-				if ( '.htaccess' === basename( $rel ) || 'index.php' === basename( $rel ) || 0 === strpos( $rel, PrivateFolderRules::CHECK_DIR . '/' ) ) {
+				if ( '.htaccess' === basename( $rel ) || 'index.php' === basename( $rel ) || false !== strpos( basename( $rel ), '.part-' ) || 0 === strpos( $rel, PrivateFolderRules::CHECK_DIR . '/' ) ) {
 					continue;
 				}
 				$out[] = $rel;
@@ -382,58 +449,180 @@ final class PrivateFolder {
 	}
 
 	/**
-	 * Porta un lotto di file dalla cartella predefinita a quella indicata: copia, controlla l'impronta SHA-256 e solo dopo cancella l'originale.
-	 * Un file già presente nella nuova cartella con lo stesso contenuto si considera spostato; con contenuto diverso resta dov'è.
+	 * File ancora nella cartella predefinita che vanno portati in quella di wp-config.php (percorsi relativi). Vuoto se la cartella indicata
+	 * non è utilizzabile. Non conta i file di protezione né quelli del controllo.
 	 *
-	 * @return array{moved:int,failed:int,conflict:int,left:int}
+	 * @return string[]
+	 */
+	public static function pending( int $limit = 5000 ): array {
+		return '' === self::custom()['path'] ? array() : self::list_default( $limit );
+	}
+
+	/**
+	 * File degli allegati (nome casuale al primo livello) rimasti nella cartella predefinita quando quella nuova è già in uso: la copia di sicurezza
+	 * li prende da qui, perché non vadano persi. Prima che la nuova sia in uso la predefinita è la cartella in uso e non serve.
+	 *
+	 * @return string[] percorsi assoluti
+	 */
+	public static function left_behind(): array {
+		if ( '' === self::custom()['path'] || ! self::in_use() ) {
+			return array();
+		}
+		$out = array();
+		foreach ( glob( self::default_dir() . '/*' ) ?: array() as $f ) {
+			if ( is_file( $f ) && preg_match( '/^[0-9a-f]{32}$/', basename( $f ) ) ) {
+				$out[] = $f;
+			}
+		}
+		return $out;
+	}
+
+	/** C'è una cartella indicata in wp-config.php e nella predefinita resta almeno un file da spostare? (Si ferma al primo.) */
+	public static function move_incomplete(): bool {
+		return '' !== self::custom()['path'] && array() !== self::list_default( 1 );
+	}
+
+	/**
+	 * Porta un lotto di file dalla cartella predefinita a quella indicata in wp-config.php, in due tempi:
+	 * 1. finché la nuova cartella non è in uso, ogni file si COPIA (su un file temporaneo con nome «….part-…», controllo dell'impronta SHA-256 e solo poi
+	 *    rinomina) e l'originale resta dov'è, così il sito continua a leggere e scrivere nella vecchia cartella, che è completa;
+	 * 2. quando sono stati copiati tutti (nessun errore, nessun conflitto) la nuova cartella entra in uso e i file vecchi si cancellano uno alla volta,
+	 *    solo se la copia è identica.
+	 * Non si cancella mai un file che è lo stesso file della copia (collegamento simbolico, cartella montata due volte) e un file già presente nella
+	 * nuova cartella con contenuto diverso resta dov'è, segnalato come conflitto. Un solo spostamento alla volta.
+	 *
+	 * @return array{moved:int,copied:int,failed:int,conflict:int,same:int,same_dir:bool,switched:bool,busy:bool,left:int}
 	 */
 	public static function move_batch( int $max = self::BATCH ): array {
-		$res = array( 'moved' => 0, 'failed' => 0, 'conflict' => 0, 'left' => 0 );
-		$st  = self::status();
-		if ( ! $st['custom'] ) {
+		$res = array( 'moved' => 0, 'copied' => 0, 'failed' => 0, 'conflict' => 0, 'same' => 0, 'same_dir' => false, 'switched' => false, 'busy' => false, 'left' => 0 );
+		$c   = self::custom();
+		if ( '' === $c['path'] ) {
 			return $res;
 		}
-		$src   = PrivateFolderRules::normalize( $st['default'] );
-		$dst   = PrivateFolderRules::normalize( $st['dir'] );
-		$start = time();
-		$done  = 0; // i file in conflitto restano dove sono e non contano nel lotto
-		foreach ( self::pending( 5000 ) as $rel ) {
+		try {
+			Db::with_lock(
+				'asem_private_move',
+				function () use ( &$res, $max, $c ): void {
+					self::move_locked( $res, $max, $c['path'] );
+				},
+				0
+			);
+		} catch ( \InvalidArgumentException $e ) {
+			$res['busy'] = true; // un altro spostamento è in corso
+		}
+		return $res;
+	}
+
+	/** @param array<string,mixed> $res risultato da riempire */
+	private static function move_locked( array &$res, int $max, string $target ): void {
+		$src = PrivateFolderRules::normalize( self::default_dir() );
+		$dst = PrivateFolderRules::normalize( $target );
+		if ( is_dir( $src ) && self::same_file( $src, $dst ) ) { // la stessa cartella vista da un altro percorso: nulla da spostare, nulla da cancellare
+			$res['same']     = 1;
+			$res['same_dir'] = true;
+			$res['left']     = count( self::list_default( 5000 ) );
+			return;
+		}
+		try {
+			Attachments::prepare_dir_at( $dst );
+		} catch ( \Throwable $e ) {
+			$res['failed']++;
+			$res['left'] = count( self::list_default( 5000 ) );
+			return;
+		}
+		$start  = time();
+		$active = self::in_use();
+		$clean  = self::move_pass( $res, $src, $dst, $max, $start, $active );
+		if ( ! $active && $clean && 0 === $res['failed'] && 0 === $res['conflict'] ) { // tutto copiato e controllato: la nuova cartella entra in uso
+			update_option( self::OPT_ACTIVE, md5( $dst ) );
+			self::$active    = true;
+			$res['switched'] = true;
+			Audit::log( 'private_folder.activated', 'folder', 0, array( 'copied' => $res['copied'] ) );
+			self::move_pass( $res, $src, $dst, $max, $start, true );
+		}
+		$res['left'] = count( self::list_default( 5000 ) );
+	}
+
+	/**
+	 * Un giro sui file della cartella predefinita: copia quelli che mancano nella nuova e, a nuova cartella in uso, cancella gli originali la cui copia è identica.
+	 *
+	 * @param array<string,mixed> $res
+	 * @return bool true se si sono esaminati tutti i file (nessun taglio per numero, tempo o lunghezza dell'elenco)
+	 */
+	private static function move_pass( array &$res, string $src, string $dst, int $max, int $start, bool $active ): bool {
+		clearstatcache();
+		$list     = self::list_default( 5000 );
+		$complete = count( $list ) < 5000;
+		$done     = 0; // i file in conflitto e quelli già coincidenti non contano nel lotto
+		foreach ( $list as $rel ) {
 			if ( $done >= $max || time() - $start > self::MAX_SECS ) {
-				break;
+				return false;
 			}
 			$from = $src . '/' . $rel;
 			$to   = $dst . '/' . $rel;
-			$hash = (string) hash_file( 'sha256', $from );
+			if ( ! is_file( $from ) ) {
+				continue; // sparito nel frattempo
+			}
 			if ( file_exists( $to ) ) {
-				if ( '' !== $hash && hash_equals( $hash, (string) hash_file( 'sha256', $to ) ) ) {
-					wp_delete_file( $from );
-					$res['moved']++;
-					$done++;
-				} else {
-					$res['conflict']++;
+				if ( self::same_file( $from, $to ) ) { // è lo stesso file visto da due percorsi: cancellare l'originale cancellerebbe anche la copia
+					$res['same']++;
+					continue;
 				}
-				continue;
+				$hash = (string) hash_file( 'sha256', $from );
+				if ( '' !== $hash && hash_equals( $hash, (string) hash_file( 'sha256', $to ) ) ) {
+					$done++;
+					if ( $active ) {
+						wp_delete_file( $from );
+						$res['moved']++;
+					}
+					continue;
+				}
+				// Con la nuova cartella in uso un file diverso è un conflitto. Prima, la vecchia cartella è quella buona: se l'originale è cambiato dopo la copia, si ricopia.
+				if ( $active || '' === $hash || (int) filemtime( $from ) <= (int) filemtime( $to ) ) {
+					$res['conflict']++;
+					$complete = false;
+					continue;
+				}
 			}
 			$done++;
-			if ( ! is_dir( dirname( $to ) ) && ! wp_mkdir_p( dirname( $to ) ) ) {
+			$hash = (string) hash_file( 'sha256', $from );
+			if ( '' === $hash || ( ! is_dir( dirname( $to ) ) && ! wp_mkdir_p( dirname( $to ) ) ) ) {
 				$res['failed']++;
+				$complete = false;
 				continue;
 			}
-			self::protect( dirname( $to ) );
-			if ( '' === $hash || ! copy( $from, $to ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions -- spostamento di file privati tra due cartelle del sito
+			self::protect( dirname( $to ), $dst );
+			if ( ! self::copy_checked( $from, $to, $hash ) ) {
 				$res['failed']++;
+				$complete = false;
 				continue;
 			}
-			if ( ! hash_equals( $hash, (string) hash_file( 'sha256', $to ) ) ) { // la copia non coincide: si butta e l'originale resta
-				wp_delete_file( $to );
-				$res['failed']++;
-				continue;
+			if ( $active ) {
+				wp_delete_file( $from );
+				$res['moved']++;
+			} else {
+				$res['copied']++;
 			}
-			chmod( $to, 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
-			wp_delete_file( $from );
-			$res['moved']++;
 		}
-		$res['left'] = count( self::pending( 5000 ) );
-		return $res;
+		return $complete;
+	}
+
+	/** Copia su un file temporaneo accanto alla destinazione, ne controlla l'impronta e solo allora lo rinomina: la destinazione non è mai a metà. */
+	private static function copy_checked( string $from, string $to, string $hash ): bool {
+		$tmp = $to . '.part-' . bin2hex( random_bytes( 4 ) );
+		if ( ! copy( $from, $tmp ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions -- spostamento di file privati tra due cartelle del sito
+			wp_delete_file( $tmp );
+			return false;
+		}
+		if ( ! hash_equals( $hash, (string) hash_file( 'sha256', $tmp ) ) ) { // la copia non coincide: si butta e l'originale resta
+			wp_delete_file( $tmp );
+			return false;
+		}
+		chmod( $tmp, 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
+		if ( ! rename( $tmp, $to ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions -- spostamento di file privati tra due cartelle del sito
+			wp_delete_file( $tmp );
+			return false;
+		}
+		return true;
 	}
 }
