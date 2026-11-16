@@ -286,9 +286,20 @@ final class TechActions {
 		if ( trim( (string) ( $p['phrase'] ?? '' ) ) !== \AssociazioneSemplice\Reset::PHRASE ) {
 			throw new \InvalidArgumentException( 'La frase scritta non corrisponde: non è stato cancellato nulla.' );
 		}
+		$keys = \AssociazioneSemplice\AttemptLimit::keys( $user && $user->exists() ? (int) $user->ID : 0, \AssociazioneSemplice\ClientIp::get() ); // stesse chiavi del ripristino della copia
+		$lim  = \AssociazioneSemplice\AttemptLimit::standard();
+		$busy = \AssociazioneSemplice\Texts::t( 'Troppi tentativi: riprova tra qualche minuto.' );
+		if ( $lim->is_locked( $keys ) ) { // durante il blocco la password non viene nemmeno controllata
+			throw new \InvalidArgumentException( $busy ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
+		}
 		if ( ! $user || ! $user->exists() || '' === (string) ( $p['password'] ?? '' ) || ! wp_check_password( (string) $p['password'], $user->user_pass, $user->ID ) ) {
+			if ( $lim->fail( $keys ) ) {
+				Audit::log( 'tech.reset_locked', 'settings', 0, array( 'minutes' => (int) ( \AssociazioneSemplice\AttemptLimit::WINDOW / 60 ) ) );
+				throw new \InvalidArgumentException( $busy ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
+			}
 			throw new \InvalidArgumentException( 'La password non è corretta: non è stato cancellato nulla.' );
 		}
+		$lim->clear( $keys );
 		$mode = 'factory' === (string) ( $p['mode'] ?? '' ) ? \AssociazioneSemplice\Reset::FACTORY : \AssociazioneSemplice\Reset::DATA;
 		$r    = \AssociazioneSemplice\Reset::run( $mode, ! empty( $p['users'] ) );
 		$msg  = ( \AssociazioneSemplice\Reset::FACTORY === $mode ? 'Ripristino di fabbrica completato.' : 'Dati azzerati.' ) . ' Sul sito non resta nessuna copia dei dati: conserva quella che hai scaricato.'
