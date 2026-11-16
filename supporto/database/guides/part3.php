@@ -301,7 +301,8 @@ Per non riempire il sito di richieste inutili ci sono tre limiti, che cambi in *
 
 - **«Richieste di evento o corso in attesa, al massimo»**: di partenza **100** (da 10 a 5000);
 - **«Posti chiedibili con lo stesso indirizzo email, in 24 ore»**: di partenza **20** (da 10 a 200);
-- **«Posti chiedibili dalla stessa connessione, in 24 ore»**: di partenza **40** (da 10 a 500).
+$1
+**Quando il tetto è raggiunto**, chi scrive vede «In questo momento non possiamo ricevere altre richieste per questa attività: riprova più tardi o scrivi alla segreteria (indirizzo).» (l'indirizzo compare solo se la segreteria ne ha uno). Tu trovi in **Bacheca** l'avviso **«Le richieste di evento e di corso sono al limite»**, con quante richieste ci sono in attesa, il limite e, se ce ne sono, quante nuove sono state scartate negli ultimi giorni. Per far posto **approva o rifiuta** le richieste in attesa dalla scheda delle attività, oppure **alza il limite** da **Limiti e soglie**.
 
 **La segreteria non ha questi limiti** quando prenota.
 $2 il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.

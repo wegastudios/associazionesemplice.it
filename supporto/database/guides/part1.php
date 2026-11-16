@@ -129,7 +129,8 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attività, prima nota, registri e impostazioni (senza le chiavi segrete dei pagamenti). Puoi aggiungere anche gli allegati. Solo gli amministratori possono farla.
+$1
+**Dopo un ripristino su un altro sito** le chiavi dei pagamenti e la chiave di licenza vanno **reinserite**, perché non sono nella copia.
 
 ## Fare la copia
 
@@ -227,7 +228,10 @@ MD,
 
 1. In WordPress vai in **Impostazioni → Licenza**.
 2. Incolla la chiave che trovi nell'area riservata di associazionesemplice.it.
-3. Salva. Il plugin verifica subito la chiave.
+$1
+La chiave viene **salvata cifrata**. Quando riapri la pagina nel campo vedi solo le **ultime cifre** e la scritta «(salvata): lascia vuoto per non cambiarla»: se non scrivi nulla, la chiave resta quella. Per **toglierla** spunta **«rimuovi»**.
+
+**Se compare l'avviso «La chiave di licenza salvata non si legge più su questo sito…»** in Bacheca: succede se cambiano i **codici di sicurezza di WordPress**, se il sito è stato **spostato** o se hai **ripristinato una copia su un altro sito**. Basta **reinserire la chiave** in **Impostazioni → Licenza** (il pulsante dell'avviso, «Apri il pannello Licenza», ti ci porta). Intanto il **Pro non si spegne**.
 
 ## Controllare lo stato
 
