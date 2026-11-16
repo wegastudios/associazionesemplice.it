@@ -5,11 +5,14 @@ declare(strict_types=1);
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Cifratura\Contracts\EncryptedFiles;
 use App\Modules\Cifratura\Contracts\StoredFile;
+use App\Modules\Contabilita\Archive\ArchiveLock;
+use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -178,4 +181,39 @@ it('il registro dell\'archivio e di «Rimetti i file» è scritto con l\'operazi
 
     expect($this->orgContext()->run($this->org->id, fn () => DB::table('audit.log')->whereIn('action', ['archive.created', 'archive.restored'])->orderBy('seq')->pluck('action')->all()))
         ->toBe(['archive.created', 'archive.restored']);
+});
+
+it('un anno con le ricevute nell\'archivio non si riapre finché non si rimettono i file', function (): void {
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
+    $years = fn () => $this->orgContext()->run($this->org->id, fn () => app(FiscalYearService::class));
+
+    $years()->reopen($this->year + 1, 'Correzione');
+    expect(fn () => $years()->reopen($this->year, 'Correzione'))
+        ->toThrow(LedgerError::class, "L'anno fiscale {$this->year} ha le ricevute nell'archivio: prima rimetti i file da «Copie di sicurezza», poi lo riapri.");
+
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/rimetti")->assertSessionHasNoErrors();
+    $years()->reopen($this->year, 'Correzione');
+    expect($this->orgContext()->run($this->org->id, fn () => DB::table('app.fiscal_years')->where('year', $this->year)->value('status')))->toBe('open');
+});
+
+it('archivia, rimette e rifà non si sovrappongono: con un lavoro in corso non cambia niente', function (): void {
+    $lock = Cache::lock('receipts-archive:'.$this->org->id, 60);
+    expect($lock->get())->toBeTrue();
+    $filesBefore = Storage::disk('org_files')->allFiles();
+
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasErrors(['archive' => ArchiveLock::BUSY]);
+    Storage::disk('org_files')->delete(archiveRow($this->org->id, $this->receipt)->path);
+    $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")->assertSessionHasErrors(['ledger' => ArchiveLock::BUSY]);
+
+    expect($this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->count()))->toBe(0)
+        ->and(count(Storage::disk('org_files')->allFiles()))->toBe(count($filesBefore) - 1);
+    $lock->release();
+    $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")->assertSessionHasNoErrors();
+});
+
+it('«Rifai» su un PDF sano non fa niente e lo dice', function (): void {
+    $before = archiveRow($this->org->id, $this->receipt);
+    $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")
+        ->assertSessionHasErrors(['ledger' => 'Il PDF di questa ricevuta è a posto: non serve rifarlo.']);
+    expect(archiveRow($this->org->id, $this->receipt)->sha256)->toBe($before->sha256);
 });
