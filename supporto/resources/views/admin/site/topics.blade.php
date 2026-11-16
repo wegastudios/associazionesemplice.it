@@ -2,6 +2,12 @@
 @section('title', 'Argomenti')
 @section('content')
     <h1>Argomenti e sezioni</h1>
+    <form method="post" action="{{ route('admin.topics.saas-guides') }}" class="card">
+        @csrf
+        <p style="margin-top:0"><strong>Guide del gestionale: {{ $saasGuides ? 'visibili a tutti' : 'nascoste al pubblico' }}.</strong> Finché sono nascoste non compaiono negli elenchi, nella ricerca e nei rimandi, e chi apre il loro indirizzo torna alla home. Lo staff che è entrato le vede sempre.</p>
+        <input type="hidden" name="on" value="{{ $saasGuides ? 0 : 1 }}">
+        <button type="submit">{{ $saasGuides ? 'Nascondi le guide del gestionale' : 'Mostra le guide del gestionale' }}</button>
+    </form>
     <form method="post" action="{{ route('admin.topics.store') }}" class="card filters">
         @csrf
         <div><label for="name">Nuovo argomento</label><input id="name" name="name" maxlength="120" required></div>

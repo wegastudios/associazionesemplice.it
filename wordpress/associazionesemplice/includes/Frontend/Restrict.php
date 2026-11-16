@@ -28,6 +28,18 @@ final class Restrict {
 		add_filter( 'get_the_excerpt', array( __CLASS__, 'filter_get_excerpt' ), 999, 2 );
 		add_filter( 'the_content_feed', array( __CLASS__, 'filter_content' ), 999 );
 		add_action( 'template_redirect', array( __CLASS__, 'early_no_cache' ), 0 ); // prima di disegnare: le intestazioni si possono ancora mandare
+		// Gli altri canali da cui il testo riservato potrebbe uscire: ricerca (anche REST), commenti, allegati, descrizioni dei plugin SEO.
+		add_action( 'pre_get_posts', array( __CLASS__, 'exclude_from_search' ) );
+		add_filter( 'comments_open', array( __CLASS__, 'filter_comments_open' ), 10, 2 );
+		add_filter( 'comments_array', array( __CLASS__, 'filter_comments_array' ), 10, 2 );
+		add_filter( 'get_comments_number', array( __CLASS__, 'filter_comments_number' ), 10, 2 );
+		add_filter( 'the_comments', array( __CLASS__, 'filter_comment_list' ), 10, 2 );
+		add_filter( 'rest_prepare_comment', array( __CLASS__, 'filter_rest_comment' ), 10, 2 );
+		add_filter( 'rest_prepare_attachment', array( __CLASS__, 'filter_rest_attachment' ), 10, 2 );
+		add_filter( 'rest_attachment_query', array( __CLASS__, 'filter_rest_attachment_query' ) );
+		foreach ( array( 'wpseo_metadesc', 'wpseo_opengraph_desc', 'wpseo_twitter_description', 'rank_math/frontend/description', 'rank_math/opengraph/facebook/og_description', 'rank_math/opengraph/twitter/twitter_description', 'seopress_titles_desc', 'seopress_social_og_desc', 'aioseo_description' ) as $seo_filter ) {
+			add_filter( $seo_filter, array( __CLASS__, 'filter_seo_description' ) );
+		}
 		add_action( 'init', array( __CLASS__, 'hook_post_types' ), 20 );
 		add_action( 'add_meta_boxes', array( __CLASS__, 'add_meta_box' ) );
 		add_action( 'save_post', array( __CLASS__, 'save_meta_box' ), 10, 2 );
@@ -77,6 +89,10 @@ final class Restrict {
 
 	/** @return array [regola, id attività] di un contenuto */
 	public static function rule_of( int $post_id ): array {
+		$post = get_post( $post_id );
+		if ( $post && 'attachment' === $post->post_type && (int) $post->post_parent > 0 ) {
+			$post_id = (int) $post->post_parent; // un allegato segue la regola del contenuto a cui è allegato
+		}
 		$rule = (string) get_post_meta( $post_id, self::META_RULE, true );
 		if ( ! Visibility::is_valid( $rule ) ) {
 			$rule = Visibility::PUBLIC_;
@@ -223,6 +239,158 @@ final class Restrict {
 		$data['asem_restricted'] = true;
 		$response->set_data( $data );
 		return $response;
+	}
+
+	// ---------- Ricerca, commenti, allegati, anteprime ----------
+
+	private static bool $listing = false;
+
+	/**
+	 * Contenuti riservati che chi guarda non può leggere, con gli allegati che ne dipendono.
+	 * Servono a escluderli dalla ricerca: altrimenti un visitatore scopre quali contenuti contengono una parola anche senza leggerli.
+	 *
+	 * @return int[]
+	 */
+	public static function hidden_post_ids(): array {
+		if ( self::$listing ) {
+			return array();
+		}
+		self::$listing = true;
+		$ids           = get_posts(
+			array(
+				'post_type'              => self::post_types(),
+				'post_status'            => 'any',
+				'fields'                 => 'ids',
+				'posts_per_page'         => -1,
+				'no_found_rows'          => true,
+				'orderby'                => 'none',
+				'update_post_term_cache' => false,
+				'meta_query'             => array( array( 'key' => self::META_RULE, 'compare' => 'EXISTS' ) ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			)
+		);
+		$hidden        = array();
+		foreach ( $ids as $id ) {
+			if ( ! self::can_view_post( (int) $id ) ) {
+				$hidden[] = (int) $id;
+			}
+		}
+		if ( $hidden ) {
+			$children = get_posts(
+				array(
+					'post_type'              => 'attachment',
+					'post_status'            => 'any',
+					'post_parent__in'        => $hidden,
+					'fields'                 => 'ids',
+					'posts_per_page'         => -1,
+					'no_found_rows'          => true,
+					'orderby'                => 'none',
+					'update_post_term_cache' => false,
+				)
+			);
+			$hidden   = array_merge( $hidden, array_map( 'intval', $children ) );
+		}
+		self::$listing = false;
+		return $hidden;
+	}
+
+	/** Chi non può leggere un contenuto riservato non lo trova nemmeno cercando una parola del suo testo (ricerca del sito, REST, ricerche in ajax). */
+	public static function exclude_from_search( $query ): void {
+		if ( ! $query instanceof \WP_Query || '' === trim( (string) $query->get( 's' ) ) ) {
+			return;
+		}
+		if ( is_admin() && current_user_can( 'edit_others_posts' ) ) {
+			return; // chi gestisce i contenuti li cerca tutti nell'area di amministrazione
+		}
+		$hidden = self::hidden_post_ids();
+		if ( $hidden ) {
+			$query->set( 'post__not_in', array_values( array_unique( array_merge( array_map( 'intval', (array) $query->get( 'post__not_in' ) ), $hidden ) ) ) );
+		}
+	}
+
+	public static function filter_comments_open( $open, $post_id = 0 ) {
+		return $open && ( (int) $post_id <= 0 || self::can_view_post( (int) $post_id ) );
+	}
+
+	public static function filter_comments_array( $comments, $post_id = 0 ) {
+		return (int) $post_id > 0 && ! self::can_view_post( (int) $post_id ) ? array() : $comments;
+	}
+
+	public static function filter_comments_number( $count, $post_id = 0 ) {
+		return (int) $post_id > 0 && ! self::can_view_post( (int) $post_id ) ? 0 : $count;
+	}
+
+	/** Elenchi di commenti (feed, widget, REST): spariscono quelli dei contenuti riservati che chi guarda non può leggere. */
+	public static function filter_comment_list( $comments, $query = null ) {
+		if ( ! is_array( $comments ) || ( is_admin() && current_user_can( 'moderate_comments' ) ) ) {
+			return $comments;
+		}
+		$seen = array();
+		return array_values(
+			array_filter(
+				$comments,
+				function ( $c ) use ( &$seen ) {
+					$c   = is_object( $c ) ? $c : get_comment( (int) $c );
+					$pid = $c ? (int) $c->comment_post_ID : 0;
+					if ( $pid <= 0 ) {
+						return true;
+					}
+					if ( ! isset( $seen[ $pid ] ) ) {
+						$seen[ $pid ] = self::can_view_post( $pid );
+					}
+					return $seen[ $pid ];
+				}
+			)
+		);
+	}
+
+	public static function filter_rest_comment( $response, $comment ) {
+		if ( ! $comment instanceof \WP_Comment || self::can_view_post( (int) $comment->comment_post_ID ) || current_user_can( 'moderate_comments' ) ) {
+			return $response;
+		}
+		$data = $response->get_data();
+		if ( isset( $data['content'] ) ) {
+			$data['content'] = array( 'rendered' => '', 'protected' => true );
+		}
+		$data['asem_restricted'] = true;
+		$response->set_data( $data );
+		return $response;
+	}
+
+	/** Gli allegati di un contenuto riservato non descrivono né indicano il file a chi non può leggerlo. */
+	public static function filter_rest_attachment( $response, $post ) {
+		if ( ! $post instanceof \WP_Post || self::can_view_post( (int) $post->ID ) ) {
+			return $response;
+		}
+		$data = $response->get_data();
+		foreach ( array( 'description', 'caption', 'title' ) as $k ) {
+			if ( isset( $data[ $k ] ) ) {
+				$data[ $k ] = array( 'rendered' => '' );
+			}
+		}
+		$data['alt_text']        = '';
+		$data['source_url']      = '';
+		$data['media_details']   = array();
+		$data['asem_restricted'] = true;
+		$response->set_data( $data );
+		return $response;
+	}
+
+	public static function filter_rest_attachment_query( $args ) {
+		$hidden = self::hidden_post_ids();
+		if ( $hidden && is_array( $args ) ) {
+			// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- pochi elementi: i contenuti riservati che chi guarda non può leggere
+			$args['post__not_in'] = array_values( array_unique( array_merge( array_map( 'intval', (array) ( $args['post__not_in'] ?? array() ) ), $hidden ) ) );
+		}
+		return $args;
+	}
+
+	/** Descrizione (meta description, anteprime social) scritta da un plugin SEO: vuota per un contenuto riservato che chi guarda non può leggere. */
+	public static function filter_seo_description( $desc ) {
+		return is_singular() ? self::description_for( (string) $desc, (int) get_queried_object_id() ) : $desc;
+	}
+
+	public static function description_for( string $desc, int $post_id ): string {
+		return $post_id > 0 && ! self::can_view_post( $post_id ) ? '' : $desc;
 	}
 
 	// ---------- Riquadro nell'editor ----------

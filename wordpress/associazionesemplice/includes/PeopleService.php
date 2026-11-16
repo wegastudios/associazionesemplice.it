@@ -385,7 +385,7 @@ class PeopleService {
 
 	private function normalize( array $d ): array {
 		$t = function ( $k ) use ( $d ) {
-			$v = isset( $d[ $k ] ) ? trim( (string) $d[ $k ] ) : '';
+			$v = isset( $d[ $k ] ) ? Text::plain( (string) $d[ $k ] ) : ''; // niente tag nei testi, da qualunque strada arrivino (modulo, import, ripristino)
 			return '' === $v ? null : $v;
 		};
 		return array(

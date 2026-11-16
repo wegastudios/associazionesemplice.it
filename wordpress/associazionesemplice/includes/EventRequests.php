@@ -113,23 +113,28 @@ final class EventRequests {
 	}
 
 	/**
-	 * Una nuova richiesta può essere registrata? No se la coda è piena (la segreteria lo vede in Bacheca), se lo stesso indirizzo email o la stessa
-	 * connessione ha già chiesto troppi posti nelle ultime 24 ore (posti tenuti senza pagare), o se una verifica aggiuntiva la ferma.
-	 * Chi scrive legge comunque lo stesso esito. Se sì, i posti si aggiungono al conteggio.
+	 * Una nuova richiesta può essere registrata? No se lo stesso indirizzo email o la stessa connessione ha già chiesto troppi posti nelle ultime
+	 * 24 ore (posti tenuti senza pagare), o se una verifica aggiuntiva la ferma. In questi casi chi scrive legge comunque lo stesso esito di sempre
+	 * (la coda piena invece si dice apertamente: vedi queue_refusal). Se sì, i posti si aggiungono al conteggio.
+	 *
+	 * @return true|false|string[] vero se può proseguire; falso se la verifica aggiuntiva la ferma (esito di sempre); altrimenti il messaggio per chi scrive (troppi posti)
 	 */
-	private static function admit( string $email, int $seats ): bool {
+	private static function admit( string $email, int $seats ) {
 		if ( self::exempt() ) {
 			return true;
-		}
-		if ( self::queue_full() ) {
-			set_transient( 'asem_evq_dropped', (int) get_transient( 'asem_evq_dropped' ) + 1, 7 * DAY_IN_SECONDS );
-			return false;
 		}
 		$caps = array( Limits::get( 'event_seats_per_email' ), Limits::get( 'event_seats_per_ip' ) );
 		$keys = self::seat_keys( $email );
 		foreach ( $keys as $i => $key ) {
 			if ( (int) get_transient( $key ) + $seats > $caps[ $i ] ) {
-				return false; // (nessuna riga nel registro: un invio ripetuto lo riempirebbe)
+				set_transient( 'asem_evq_dropped_seats', (int) get_transient( 'asem_evq_dropped_seats' ) + 1, 7 * DAY_IN_SECONDS ); // solo un contatore: nessuna riga nel registro, un invio ripetuto lo riempirebbe
+				$mail  = trim( (string) Applications::notify_email() );
+				$where = '' !== $mail ? ' (' . $mail . ')' : '';
+				return array(
+					0 === $i
+						? 'Con questo indirizzo email sono già stati chiesti molti posti nelle ultime 24 ore: per altri posti scrivi alla segreteria' . $where . '.'
+						: 'Da questa connessione sono già stati chiesti molti posti nelle ultime 24 ore: riprova più tardi o scrivi alla segreteria' . $where . '.',
+				);
 			}
 		}
 		/**
@@ -148,15 +153,34 @@ final class EventRequests {
 		return true;
 	}
 
+	/**
+	 * Coda al tetto: la richiesta non viene registrata e chi scrive lo legge subito (nessuna email). La segreteria non è mai limitata.
+	 *
+	 * @return string[] messaggio da mostrare, oppure vuoto se la richiesta può proseguire
+	 */
+	private static function queue_refusal(): array {
+		if ( self::exempt() || ! self::queue_full() ) {
+			return array();
+		}
+		set_transient( 'asem_evq_dropped', (int) get_transient( 'asem_evq_dropped' ) + 1, 7 * DAY_IN_SECONDS );
+		$mail = trim( (string) Applications::notify_email() );
+		return array( 'In questo momento non possiamo ricevere altre richieste per questa attività: riprova più tardi o scrivi alla segreteria' . ( '' !== $mail ? ' (' . $mail . ')' : '' ) . '.' );
+	}
+
 	/** Avviso per la Bacheca quando la coda ha raggiunto il tetto (già escapato); vuoto se non serve. */
 	public static function queue_alert(): string {
-		if ( ! self::queue_full() ) {
-			return '';
+		$out = '';
+		if ( self::queue_full() ) {
+			$dropped = (int) get_transient( 'asem_evq_dropped' );
+			$out    .= '<strong>Le richieste di evento e di corso sono al limite.</strong> Ce ne sono ' . (int) self::open_count() . ' in attesa (il limite è ' . (int) Limits::get( 'event_requests_max' ) . ')'
+				. ( $dropped > 0 ? ' e ' . $dropped . ( 1 === $dropped ? ' nuova richiesta è stata scartata' : ' nuove richieste sono state scartate' ) . ' negli ultimi giorni' : '' )
+				. ': chi scrive vede un messaggio che gli chiede di riprovare più tardi o di scrivere alla segreteria. Approva o rifiuta quelle in attesa dalla scheda delle attività, oppure alza il limite da <a href="' . esc_url( admin_url( 'admin.php?page=asem-limits' ) ) . '">Limiti e soglie</a>.';
 		}
-		$dropped = (int) get_transient( 'asem_evq_dropped' );
-		return '<strong>Le richieste di evento e di corso sono al limite.</strong> Ce ne sono ' . (int) self::open_count() . ' in attesa (il limite è ' . (int) Limits::get( 'event_requests_max' ) . ')'
-			. ( $dropped > 0 ? ' e ' . $dropped . ( 1 === $dropped ? ' nuova richiesta è stata scartata' : ' nuove richieste sono state scartate' ) . ' negli ultimi giorni' : '' )
-			. ': chi scrive vede comunque «Richiesta ricevuta». Approva o rifiuta quelle in attesa dalla scheda delle attività, oppure alza il limite da <a href="' . esc_url( admin_url( 'admin.php?page=asem-limits' ) ) . '">Limiti e soglie</a>.';
+		$seats = (int) get_transient( 'asem_evq_dropped_seats' );
+		if ( $seats > 0 ) {
+			$out .= ( '' !== $out ? '<br>' : '' ) . ( 1 === $seats ? '1 richiesta è stata respinta' : $seats . ' richieste sono state respinte' ) . ' perché una email o una connessione aveva già chiesto molti posti (il limite si cambia da <a href="' . esc_url( admin_url( 'admin.php?page=asem-limits' ) ) . '">Limiti e soglie</a>).';
+		}
+		return $out;
 	}
 
 	// ---------- Modulo ----------
@@ -329,6 +353,10 @@ final class EventRequests {
 		if ( $errors ) {
 			return array( 'status' => 'invalid', 'errors' => array_values( array_unique( $errors ) ) );
 		}
+		$full = self::queue_refusal();
+		if ( $full ) {
+			return array( 'status' => 'invalid', 'errors' => $full );
+		}
 		// Da qui in poi l'esito per chi scrive è sempre lo stesso.
 		$email = $people[0]['email'];
 		$ekey  = 'asem_evq_em_' . md5( $email );
@@ -336,8 +364,12 @@ final class EventRequests {
 			return $ok; // un solo flusso di email per indirizzo (impedisce di riempire una casella o di inviare due volte per un doppio clic)
 		}
 		set_transient( $ekey, (int) get_transient( $ekey ) + 1, HOUR_IN_SECONDS );
-		if ( ! self::admit( $email, count( $people ) ) ) {
-			return $ok; // coda piena o troppi posti dallo stesso indirizzo o dalla stessa connessione: stessa risposta per tutti
+		$adm = self::admit( $email, count( $people ) );
+		if ( is_array( $adm ) ) {
+			return array( 'status' => 'invalid', 'errors' => $adm ); // troppi posti dallo stesso indirizzo o dalla stessa connessione: si dice apertamente, nessuna richiesta registrata
+		}
+		if ( ! $adm ) {
+			return $ok; // fermata da una verifica aggiuntiva: esito di sempre
 		}
 		$token = wp_generate_password( 32, false, false );
 		$now   = Db::now();
@@ -933,6 +965,10 @@ final class EventRequests {
 		if ( $chk['errors'] ) {
 			return array( 'status' => 'invalid', 'errors' => array_values( array_unique( $chk['errors'] ) ) );
 		}
+		$full = self::queue_refusal();
+		if ( $full ) {
+			return array( 'status' => 'invalid', 'errors' => $full );
+		}
 		$p     = $chk['data'];
 		$email = $p['email'];
 		$ekey  = 'asem_evq_em_' . md5( $email );
@@ -940,8 +976,12 @@ final class EventRequests {
 			return $ok; // un solo flusso di email per indirizzo
 		}
 		set_transient( $ekey, (int) get_transient( $ekey ) + 1, HOUR_IN_SECONDS );
-		if ( ! self::admit( $email, 1 ) ) {
-			return $ok; // coda piena o troppi posti dallo stesso indirizzo o dalla stessa connessione: stessa risposta per tutti
+		$adm = self::admit( $email, 1 );
+		if ( is_array( $adm ) ) {
+			return array( 'status' => 'invalid', 'errors' => $adm );
+		}
+		if ( ! $adm ) {
+			return $ok;
 		}
 		$token = wp_generate_password( 32, false, false );
 		$now   = Db::now();

@@ -74,7 +74,7 @@ Per ogni dipendente puoi **togliere la spunta** ai singoli permessi, uno per uno
 
 ## Periodo di servizio
 
-Senza date il dipendente è sempre in servizio. **Fuori dal periodo** non può usare il gestionale e non conta tra i lavoratori dei [Dati per il RUNTS](guida:dati-per-il-runts).
+Senza date il dipendente è sempre in servizio. **Fuori dal periodo** non può usare il pannello di amministrazione del plugin e non conta tra i lavoratori dei [Dati per il RUNTS](guida:dati-per-il-runts).
 
 ## Se è anche socio
 

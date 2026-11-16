@@ -45,6 +45,6 @@ add_action( 'plugins_loaded', array( 'AssociazioneSemplice\\Plugin', 'init' ) );
 register_deactivation_hook(
 	__FILE__,
 	function () {
-		wp_clear_scheduled_hook( 'asem_check_pending_payments' );
+		AssociazioneSemplice\Install::clear_jobs();
 	}
 );

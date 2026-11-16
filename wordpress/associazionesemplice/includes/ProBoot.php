@@ -140,6 +140,8 @@ final class ProBoot {
 		// Impostazioni, limiti e sezione «Licenza» nelle impostazioni.
 		add_filter( 'asem_settings_defaults', array( __CLASS__, 'settings_defaults' ) );
 		add_filter( 'asem_settings_clean', array( __CLASS__, 'settings_clean' ) );
+		add_filter( 'asem_secret_keys', array( __CLASS__, 'secret_keys' ) ); // la chiave di licenza si tiene cifrata, come le chiavi dei pagamenti
+		add_action( 'admin_init', array( License::class, 'encrypt_legacy_key' ) ); // chiave salvata in chiaro da una versione precedente: si cifra alla prima visita
 		add_filter( 'asem_limits_defs', array( __CLASS__, 'limits' ) );
 		add_filter( 'asem_portal_license_key', array( License::class, 'key' ) ); // l'aggiornatore (nel gratuito) manda la chiave solo per il Pro
 		add_filter( 'asem_portal_is_local', function () { return LicenseClient::is_local(); } );
@@ -258,8 +260,15 @@ final class ProBoot {
 	}
 
 	public static function settings_clean( $clean ) {
-		$clean['license_key'] = mb_substr( trim( (string) ( $clean['license_key'] ?? '' ) ), 0, 120 );
+		$key = trim( (string) ( $clean['license_key'] ?? '' ) );
+		$clean['license_key'] = Secrets::is_encrypted( $key ) ? $key : mb_substr( $key, 0, 120 ); // il valore cifrato non si accorcia: non si aprirebbe più
 		return $clean;
+	}
+
+	public static function secret_keys( $keys ) {
+		$keys   = (array) $keys;
+		$keys[] = 'license_key';
+		return $keys;
 	}
 
 	/** Limiti della licenza e degli aggiornamenti (stessa forma di quelli di Associazione Semplice). */
@@ -292,9 +301,17 @@ final class ProBoot {
 
 	public static function save_license( array $p ): array {
 		$key = mb_substr( sanitize_text_field( $p['license_key'] ?? '' ), 0, 120 );
-		Settings::update( array( 'license_key' => $key ) );
+		if ( '' !== $key ) {
+			Settings::update( array( 'license_key' => $key ) );
+			$note = 'Chiave salvata. ';
+		} elseif ( ! empty( $p['clear_license_key'] ) ) {
+			Settings::clear_secret( 'license_key' );
+			$note = 'Chiave rimossa. ';
+		} else {
+			$note = 'Chiave invariata. '; // campo vuoto = si tiene quella che c'è
+		}
 		$r = License::sync();
-		return array( Admin\Ui::url( 'asem-settings' ), ( '' === $key ? 'Chiave rimossa. ' : 'Chiave salvata. ' ) . $r['message'] );
+		return array( Admin\Ui::url( 'asem-settings' ), $note . $r['message'] );
 	}
 
 	public static function license_check( array $p ): array {

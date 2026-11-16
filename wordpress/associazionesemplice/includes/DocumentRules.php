@@ -33,7 +33,7 @@ final class DocumentRules {
 		return self::MEMBERS === $visibility && $is_active_member;
 	}
 
-	/** Estensione => tipi reali accettati (letti dal contenuto). `''`: va bene anche se il server non sa riconoscerlo. */
+	/** Estensione => tipi reali accettati (letti dal contenuto). Un tipo generico o non riconosciuto non basta mai. */
 	const TYPES = array(
 		'pdf'  => array( 'application/pdf' ),
 		'jpg'  => array( 'image/jpeg' ),
@@ -41,12 +41,12 @@ final class DocumentRules {
 		'png'  => array( 'image/png' ),
 		'webp' => array( 'image/webp' ),
 		'txt'  => array( 'text/plain' ),
-		'doc'  => array( 'application/msword', 'application/CDFV2', 'application/x-ole-storage', 'application/octet-stream', '' ),
-		'docx' => array( 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/octet-stream', '' ),
-		'odt'  => array( 'application/vnd.oasis.opendocument.text', 'application/zip', 'application/octet-stream', '' ),
-		'xls'  => array( 'application/vnd.ms-excel', 'application/CDFV2', 'application/x-ole-storage', 'application/octet-stream', '' ),
-		'xlsx' => array( 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip', 'application/octet-stream', '' ),
-		'ods'  => array( 'application/vnd.oasis.opendocument.spreadsheet', 'application/zip', 'application/octet-stream', '' ),
+		'doc'  => array( 'application/msword', 'application/CDFV2', 'application/x-ole-storage' ),
+		'docx' => array( 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip' ),
+		'odt'  => array( 'application/vnd.oasis.opendocument.text', 'application/zip' ),
+		'xls'  => array( 'application/vnd.ms-excel', 'application/CDFV2', 'application/x-ole-storage' ),
+		'xlsx' => array( 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip' ),
+		'ods'  => array( 'application/vnd.oasis.opendocument.spreadsheet', 'application/zip' ),
 	);
 
 	/** Tipo con cui si serve il file (deciso dall'estensione controllata, mai da quello inviato dal browser). */
@@ -65,8 +65,23 @@ final class DocumentRules {
 		'ods'  => 'application/vnd.oasis.opendocument.spreadsheet',
 	);
 
-	/** @return string|null messaggio d'errore, oppure null se il file va bene */
-	public static function check( string $name, int $size, string $real_mime, int $max_bytes = self::MAX_BYTES ): ?string {
+	/** Firma d'apertura dei formati a contenitore: ZIP (docx, odt, xlsx, ods) e OLE (doc, xls). */
+	const SIG_ZIP = "PK\x03\x04";
+	const SIG_OLE = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
+
+	/** I primi byte del file corrispondono al formato dichiarato dall'estensione? Per PDF, foto e testi basta il tipo letto dal contenuto. */
+	public static function signature_ok( string $ext, string $head ): bool {
+		if ( in_array( $ext, array( 'docx', 'odt', 'xlsx', 'ods' ), true ) ) {
+			return 0 === strncmp( $head, self::SIG_ZIP, 4 );
+		}
+		if ( in_array( $ext, array( 'doc', 'xls' ), true ) ) {
+			return 0 === strncmp( $head, self::SIG_OLE, 8 );
+		}
+		return true;
+	}
+
+	/** @return string|null messaggio d'errore, oppure null se il file va bene ($head: i primi byte del file, per verificarne la firma) */
+	public static function check( string $name, int $size, string $real_mime, int $max_bytes = self::MAX_BYTES, ?string $head = null ): ?string {
 		$shown = AttachmentRules::display_name( $name );
 		if ( $size <= 0 ) {
 			return 'Il file "' . $shown . '" è vuoto.';
@@ -75,7 +90,7 @@ final class DocumentRules {
 			return 'Il file "' . $shown . '" supera i ' . (int) ( $max_bytes / 1048576 ) . ' MB.';
 		}
 		$ext = AttachmentRules::extension( $name );
-		if ( ! isset( self::TYPES[ $ext ] ) || ! in_array( $real_mime, self::TYPES[ $ext ], true ) ) {
+		if ( ! isset( self::TYPES[ $ext ] ) || ! in_array( $real_mime, self::TYPES[ $ext ], true ) || ( null !== $head && ! self::signature_ok( $ext, $head ) ) ) {
 			return 'Il file "' . $shown . '" non è ammesso: si accettano PDF, foto (JPG, PNG, WebP), testi e fogli (Word, Excel, LibreOffice).';
 		}
 		return null;

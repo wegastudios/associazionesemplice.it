@@ -8,9 +8,35 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
+/**
+ * Toglie sempre, anche se i dati restano: i lavori programmati, le chiavi segrete (cifrate), la chiave di licenza, le chiavi delle notifiche.
+ * Servono solo a questo sito: chi reinstalla il plugin le reinserisce o si rigenerano da sole. Il segreto dei QR (asem_card_salt) e le chiavi dei file (asem_file_keys) restano: i QR già consegnati e i file cifrati devono restare validi; spariscono solo con «Cancella tutti i dati».
+ */
+function asem_uninstall_secrets() {
+	foreach ( \AssociazioneSemplice\Install::JOB_HOOKS as $hook ) {
+		wp_unschedule_hook( $hook );
+	}
+	$settings = get_option( 'asem_settings', array() );
+	if ( is_array( $settings ) ) {
+		$changed = false;
+		foreach ( $settings as $key => $value ) {
+			if ( 'license_key' === $key || ( is_string( $value ) && 0 === strpos( $value, 'enc1:' ) ) ) {
+				unset( $settings[ $key ] );
+				$changed = true;
+			}
+		}
+		if ( $changed ) {
+			update_option( 'asem_settings', $settings );
+		}
+	}
+	delete_option( 'asem_vapid' );
+}
+
 /** Cancella i dati del plugin del sito corrente. */
 function asem_uninstall_site() {
 	global $wpdb;
+
+	asem_uninstall_secrets();
 
 	$settings = get_option( 'asem_settings', array() );
 	if ( ! is_array( $settings ) || empty( $settings['delete_on_uninstall'] ) ) {
@@ -19,9 +45,19 @@ function asem_uninstall_site() {
 
 	$private_site = (string) get_option( 'asem_private_site', '' ); // identificativo di questo sito nel segnaposto della cartella indicata in wp-config.php (le opzioni si cancellano più sotto)
 
-	foreach ( array( 'asem_send_reminders', 'asem_release_holds', 'asem_event_requests', 'asem_broadcast_batch', 'asem_check_pending_payments', 'asem_purge_backups', 'asem_private_folder_check', 'asem_file_crypt_migrate', 'asem_file_crypt_migrate_certs', 'asem_file_crypt_certs_check', 'asem_receipt_pdfs_batch', 'asem_purge_audit', 'asem_purge_member_sessions' ) as $hook ) {
-		wp_clear_scheduled_hook( $hook );
+	// Contenuti del plugin (eventi pubblici e righe in attesa di importazione) e meta di accesso messi sulle pagine.
+	foreach ( array( 'asem_import_person', 'asem_import_tx', 'asem_evento' ) as $type ) {
+		do {
+			$deleted = 0;
+			$ids     = get_posts( array( 'post_type' => $type, 'post_status' => array( 'publish', 'future', 'draft', 'pending', 'private', 'trash', 'auto-draft' ), 'posts_per_page' => 200, 'fields' => 'ids', 'no_found_rows' => true ) );
+			foreach ( $ids as $post_id ) {
+				if ( wp_delete_post( (int) $post_id, true ) ) {
+					++$deleted;
+				}
+			}
+		} while ( $deleted > 0 ); // si ferma anche se un contenuto non si lascia cancellare
 	}
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE %s", $wpdb->esc_like( '_asem_access' ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- meta del plugin, nessuna API di WordPress equivalente
 
 	// Tabelle del plugin.
 	$like = $wpdb->esc_like( $wpdb->prefix . 'asem_' ) . '%';
@@ -85,12 +121,19 @@ function asem_uninstall_site() {
 	}
 }
 
+require_once __DIR__ . '/includes/Install.php';
+
 if ( is_multisite() ) {
-	foreach ( get_sites( array( 'fields' => 'ids' ) ) as $asem_blog_id ) {
-		switch_to_blog( $asem_blog_id );
-		asem_uninstall_site();
-		restore_current_blog();
-	}
+	$asem_offset = 0;
+	do { // tutti i siti della rete, a gruppi (get_sites da solo si ferma a 100)
+		$asem_blog_ids = get_sites( array( 'fields' => 'ids', 'number' => 100, 'offset' => $asem_offset ) );
+		foreach ( $asem_blog_ids as $asem_blog_id ) {
+			switch_to_blog( $asem_blog_id );
+			asem_uninstall_site();
+			restore_current_blog();
+		}
+		$asem_offset += 100;
+	} while ( count( $asem_blog_ids ) === 100 );
 } else {
 	asem_uninstall_site();
 }

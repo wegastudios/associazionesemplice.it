@@ -22,6 +22,29 @@ class ProductPlans
         return isset(self::LEVELS[$value]) ? $value : 'free';
     }
 
+    /** Prodotti da proporre nel modulo: «Gestionale» solo se le guide sono accese o chi scrive ha il gestionale (prova o attivo). */
+    public static function selectable(array $plans): array
+    {
+        $products = self::PRODUCTS;
+        if (! SaasGuides::enabled() && ! self::hasSaas($plans)) {
+            unset($products['saas']);
+        }
+
+        return $products;
+    }
+
+    /** @param  array<int, array{product: string, status: string}>  $plans */
+    public static function hasSaas(array $plans): bool
+    {
+        foreach ($plans as $p) {
+            if (($p['product'] ?? null) === 'saas' && in_array($p['status'] ?? null, ['active', 'trial'], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public const STATUSES = ['active', 'trial', 'past_due', 'suspended', 'cancelled'];
 
     /**
