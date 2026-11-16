@@ -57,7 +57,7 @@ final class AuthServiceProvider extends ServiceProvider
 
             return Inertia::render('Auth/Login', ['status' => session('status'), 'demoAccounts' => DemoEnvironment::credentials()]);
         });
-        Fortify::twoFactorChallengeView(static fn () => Inertia::render('Auth/TwoFactorChallenge'));
+        Fortify::twoFactorChallengeView(static fn () => Inertia::render('Auth/TwoFactorChallenge', ['status' => session('status')]));
         Fortify::requestPasswordResetLinkView(static fn () => Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
         ]));
