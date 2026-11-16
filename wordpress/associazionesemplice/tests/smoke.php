@@ -6912,7 +6912,9 @@ $ro_err = asem_throws( function () { Admin\TechActions::save_roles( array() ); }
 wp_set_current_user( 1 );
 asem_ok( null !== $ro_err && get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: non si toglie l\'accesso al ruolo con cui si sta operando' );
 get_role( 'editor' )->add_cap( Plugin::CAP );
-asem_ok( null !== asem_throws( function () { Admin\TechPage::set_role_access( 'editor', false ); } ) && get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: non si toglie l\'accesso a un ruolo che amministra il plugin' );
+Admin\TechPage::set_role_access( 'editor', false );
+asem_ok( ! get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: un amministratore dell\'associazione (ruolo che non è «administrator») si può limitare da un altro amministratore' );
+asem_ok( null !== asem_throws( function () { Admin\TechPage::assert_can_remove( 'administrator' ); } ), 'ruoli: un amministratore di WordPress non si toglie mai' );
 get_role( 'editor' )->remove_cap( Plugin::CAP );
 wp_delete_user( $ro_u );
 Admin\TechActions::save_roles( array() );
@@ -11230,7 +11232,7 @@ foreach ( array_merge( $ru_ids, array( $ru_adult, $ru_minor, $ru_volun ) ) as $r
 // ---------- Dipendenti ----------
 wp_set_current_user( 1 );
 add_filter( 'pre_wp_mail', '__return_true' ); // nessuna email vera: l'invito parte «a vuoto»
-$em_keys = \AssociazioneSemplice\EmployeeRules::keys();
+$em_keys = \AssociazioneSemplice\EmployeeRules::enforced_keys(); // le aree con già le porte; le altre nove sono solo memorizzate
 asem_ok( null !== get_role( Plugin::ROLE_EMPLOYEE ) && 'Dipendente' === wp_roles()->role_names[ Plugin::ROLE_EMPLOYEE ], 'dipendente: il ruolo esiste e si chiama «Dipendente»' );
 asem_ok( get_role( Plugin::ROLE_EMPLOYEE )->capabilities === get_role( Plugin::ROLE_SECRETARY )->capabilities, 'dipendente: il ruolo parte con le stesse capability della segreteria' );
 $em_sy     = Settings::social_year()->label();
@@ -11358,9 +11360,18 @@ asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità real
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
 remove_filter( 'wp_die_handler', $em_die );
 
-// solo i sei permessi si tolgono; solo chi ha titolo li toglie
+// si tolgono solo le 15 aree dell'elenco; solo chi ha titolo le toglie
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'asem_manage', 'people', 'asem_operate', 'members' ) );
-asem_ok( array( 'courses' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 6 === count( $em_keys ), 'dipendente: dei permessi solo i sei dell\'elenco si possono togliere, gli altri nomi si ignorano' );
+asem_ok( array( 'people', 'courses' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 15 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 6 === count( $em_keys ), 'dipendente: si tolgono solo le 15 aree dell\'elenco, gli altri nomi si ignorano' );
+asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-people' ) ) && null === $em_blocked( 'admin-post.php', array( 'action' => 'asem_save_person' ) ), 'dipendente: le nove aree nuove sono per ora solo memorizzate, non chiudono nessuna porta' );
+asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipendente: togliere un\'area nuova resta nel registro azioni' );
+// avviso in Bacheca: fisso, solo a chi ha titolo, solo se esistono dipendenti, finché la pagina dei dipendenti non è stata aperta
+delete_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN );
+asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1 ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid ) && ! \AssociazioneSemplice\Employees::areas_review_pending( 0 ), 'permessi per area: l\'avviso in Bacheca è solo per chi ha titolo' );
+\AssociazioneSemplice\Employees::mark_areas_seen( $em_uid );
+asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1 ), 'permessi per area: aprire la pagina senza titolo non toglie l\'avviso' );
+\AssociazioneSemplice\Employees::mark_areas_seen( 1 );
+asem_ok( ! \AssociazioneSemplice\Employees::areas_review_pending( 1 ), 'permessi per area: aperta la pagina dei dipendenti, l\'avviso sparisce' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
 $em_try = function ( int $who ) use ( $em_uid ) {
 	wp_set_current_user( $who );
