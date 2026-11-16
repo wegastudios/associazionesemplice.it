@@ -255,7 +255,7 @@ final class LicenseClientTest extends TestCase {
 		$d1 = array( 'rc' => 'EXPIRED', 'iat' => strtotime( '2026-11-16 23:59:00 UTC' ) );
 		$s1 = C::denial_step( array(), $d1 );
 		$this->assertFalse( $s1['apply'] );
-		$this->assertSame( array( 'day' => '2026-11-16', 'rc' => 'EXPIRED' ), $s1['stored'] );
+		$this->assertSame( array( 'day' => '2026-11-16', 'rc' => 'EXPIRED', 'iat' => $d1['iat'] ), $s1['stored'] );
 		// lo stesso iat (cache del portale) e lo stesso giorno UTC contano come uno
 		$this->assertFalse( C::denial_step( $s1['stored'], $d1 )['apply'] );
 		$this->assertFalse( C::denial_step( $s1['stored'], array( 'rc' => 'EXPIRED', 'iat' => strtotime( '2026-11-16 00:00:01 UTC' ) ) )['apply'] );
