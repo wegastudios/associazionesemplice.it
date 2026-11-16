@@ -35,18 +35,17 @@ final readonly class DatabaseOrgPurger implements OrgPurger
             throw new RuntimeException('Si cancellano solo associazioni sospese o chiuse.');
         }
 
-        // Prima il blocco: nessun accesso mentre si cancella.
-        $owner->table('core.orgs')->where('id', $orgId)->update(['status' => 'closed']);
-
-        Storage::disk('org_files')->deleteDirectory($orgId);
-
+        // Nessun accesso mentre si cancella: l'associazione è già sospesa o chiusa. Stato e file si toccano solo dopo il
+        // successo del database, così un errore a metà lascia tutto com'era e il giro successivo può riprovare.
         $rows = 0;
         $users = 0;
         // Il database dedicato, se c'è, si svuota qui; il database stesso lo toglie chi gestisce il server (vedi il registro dello staff).
         $data = is_string($org->database ?? null) && $org->database !== '' ? $this->db->connection($this->names->ownerConnection($org->database)) : $owner;
         $data->transaction(function () use ($data, $orgId, &$rows): void {
             $data->select("SELECT set_config('app.org_id', ?, true)", [$orgId]);
-            $rows = $this->deleteAuditRows($data, $orgId) + $this->deleteDataRows($data, $orgId);
+            // Autorizza, in questa sola transazione, la cancellazione dei movimenti di questa associazione.
+            $data->select("SELECT set_config('app.purging', ?, true)", [$orgId]);
+            $rows =$this->deleteAuditRows($data, $orgId) + $this->deleteDataRows($data, $orgId);
         });
 
         $owner->transaction(function () use ($owner, $orgId, &$users): void {
@@ -63,9 +62,12 @@ final readonly class DatabaseOrgPurger implements OrgPurger
             $owner->table('core.org_roles')->where('org_id', $orgId)->delete();
 
             // Per ultima la chiave: senza, i campi cifrati e i file rimasti nei backup non si aprono più.
-            $owner->table('core.orgs')->where('id', $orgId)->update(['deleted_at' => now()]);
+            $owner->table('core.orgs')->where('id', $orgId)->update(['status' => 'closed', 'deleted_at' => now()]);
             $owner->table('core.org_keys')->where('org_id', $orgId)->delete();
         });
+
+        // Per ultimi i file: se il database non si è svuotato, sono ancora tutti lì.
+        Storage::disk('org_files')->deleteDirectory($orgId);
 
         return ['rows' => $rows, 'users' => $users];
     }
