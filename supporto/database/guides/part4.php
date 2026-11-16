@@ -277,7 +277,7 @@ Premi il pulsante di controllo nella pagina **Pagamenti online**: il plugin inte
 
 ## Con WooCommerce
 
-Se usi WooCommerce, quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota una sola volta; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
+Se usi WooCommerce, l'incasso entra in prima nota una sola volta. Con **carta e PayPal** entra quando l'ordine passa a «in lavorazione» o «completato». Con **bonifico, assegno o contrassegno** la quota risulta pagata solo quando metti l'ordine su **«Completato»**: finché l'ordine è «in lavorazione» la quota resta da pagare, quindi controlla di averla ricevuta e poi completa l'ordine; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
 MD,
     ],
     [

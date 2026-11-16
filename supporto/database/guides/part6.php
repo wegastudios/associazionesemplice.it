@@ -203,7 +203,7 @@ MD,
         'body' => <<<'MD'
 - **Elementor**: sì, in tutte le versioni. Le schermate dei soci sono disponibili come **widget Elementor**, oltre che come blocchi e shortcode; i colori si prendono dal tema impostato in Elementor.
 - **WP All Import**: sì, per importare soci e prima nota con le stesse regole dell'importazione da file.
-- **WooCommerce**: con **Pro**, in alternativa a Stripe e PayPal. Ogni quota o attività si collega a un prodotto del negozio e il pagamento entra in prima nota una sola volta quando l'ordine è «in lavorazione» o «completato».
+- **WooCommerce**: con **Pro**, in alternativa a Stripe e PayPal. Ogni quota o attività si collega a un prodotto del negozio e il pagamento entra in prima nota una sola volta. Con carta e PayPal succede quando l'ordine è «in lavorazione» o «completato»; con bonifico, assegno o contrassegno solo quando la segreteria mette l'ordine su **«Completato»**.
 MD,
     ],
     [
