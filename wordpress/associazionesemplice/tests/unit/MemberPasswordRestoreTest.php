@@ -38,6 +38,7 @@ final class MemberPasswordRestoreTest extends TestCase {
 		$this->assertStringContainsString( 'asem_push_subs', $not_restored ); // sessioni e push restano cancellate
 		$this->assertStringContainsString( 'asem_member_sessions', $wiped );
 		$this->assertStringContainsString( 'SET must_reset = %d WHERE pass_hash IS NOT NULL', $b );
+		$this->assertStringContainsString( "pass_hash IS NOT NULL AND pass_hash <> ''", $b ); // chi non ha password (solo link) non riceve il segno
 		$this->assertStringContainsString( 'MemberPassword::RESTORED', $b );
 	}
 
@@ -66,6 +67,9 @@ final class MemberPasswordRestoreTest extends TestCase {
 		$en = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/languages/en.json' );
 		$this->assertStringContainsString( 'each member will have to choose a new one at first login', $en );
 		$this->assertStringNotContainsString( 'members come back in with the link they receive', $en );
+		$this->assertStringContainsString( "i soci dovranno entrare di nuovo", $b );
+		$this->assertStringContainsString( "members will have to log in again", $en );
+		$this->assertStringNotContainsString( "rientrano di nuovo", $b );
 	}
 
 	public function test_csv_import_does_not_carry_passwords(): void {

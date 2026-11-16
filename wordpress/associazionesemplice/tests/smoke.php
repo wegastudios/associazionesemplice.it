@@ -8067,6 +8067,7 @@ $bk_att_row = (int) $wpdb->insert_id;
 Settings::update( array( 'association_name' => 'Associazione di prova' ) );
 $bk_pw_hash = \AssociazioneSemplice\MemberPassword::make( 'vecchia password dei soci' ); // una password di un socio già dentro la copia: dopo il ripristino torna, con il cambio obbligatorio
 $wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => 999001, 'login_email' => 'copia-password@example.com', 'pass_hash' => $bk_pw_hash, 'must_reset' => 0, 'created_at' => Db::now() ) );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => 999002, 'login_email' => 'solo-link@example.com', 'pass_hash' => null, 'must_reset' => 0, 'created_at' => Db::now() ) ); // un socio che entra solo con il link, senza password: dopo il ripristino non riceve nessun segno
 $bk_zip = \AssociazioneSemplice\Backup::export( true );
 $za     = new ZipArchive();
 $za->open( $bk_zip );
@@ -8291,6 +8292,7 @@ asem_ok( 1 === $bk_audit_n( 'prova.dopo_la_copia' ) && (int) $wpdb->get_var( 'SE
 $bk_auth = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = 999001', ARRAY_A );
 asem_ok( is_array( $bk_auth ) && $bk_auth['pass_hash'] === $bk_pw_hash && 2 === (int) $bk_auth['must_reset'] && \AssociazioneSemplice\MemberPassword::verify( 'vecchia password dei soci', (string) $bk_auth['pass_hash'] ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . " WHERE person_id = $victim" ) && ! empty( $bk_r5['passwords'] ), 'ripristino: le password dei soci tornano come nella copia, con il segno «cambio obbligatorio» (e quelle nate dopo la copia spariscono)' );
 asem_ok( 'restored' === \AssociazioneSemplice\MemberLogin::password_state( 999001 ), 'ripristino: lo stato della password del socio è «da cambiare dopo il ripristino»' );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT must_reset FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = 999002' ) && 'none' === AssociazioneSempliceMemberLogin::password_state( 999002 ), 'ripristino: il segno «cambio obbligatorio» va solo a chi ha una password ripristinata, non a chi entrava solo con il link' );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) ) && ( ! $bk_people_t || 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) ) ) && ! empty( $bk_r5['members_reset'] ), 'ripristino: sessioni e notifiche push dei soci non si ripristinano (sono cancellate)' );
 $bk_audit_row = (string) $wpdb->get_var( 'SELECT details FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'backup.restored' ORDER BY id DESC LIMIT 1" );
 asem_ok( false === stripos( $bk_audit_row, 'pass_hash' ) && false === strpos( $bk_audit_row, $bk_pw_hash ), 'ripristino: il registro azioni non contiene nessuna impronta di password' );
