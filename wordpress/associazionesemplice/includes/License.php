@@ -18,6 +18,8 @@ final class License {
 	const OPT_INSTALL_ID  = 'asem_install_id';
 	const OPT_INSTALL_URL = 'asem_install_url';
 	const OPT_STATE       = 'asem_license_state';
+	/** Primo esito negativo firmato (giorno UTC e motivo), in attesa del secondo. */
+	const OPT_DENIAL      = 'asem_license_denial';
 
 	/** Funzioni avanzate che si bloccano se la licenza a pagamento non è in regola (solo con il plugin Pro installato). */
 	const FEATURES = array(
@@ -237,7 +239,31 @@ final class License {
 		}
 		$claims = null;
 		$att    = '';
-		if ( ! empty( $r['valid'] ) ) {
+		if ( empty( $r['valid'] ) ) {
+			// Un «non valida» conta solo con la prova negativa firmata dal portale, e si applica al secondo esito in un giorno UTC diverso:
+			// altrimenti è come un errore transitorio e lo stato resta com'era.
+			// Il prodotto atteso è quello già salvato sul sito, non quello della risposta che si sta verificando (solo se manca, si usa questo).
+			$known    = (string) ( self::state()['product'] ?? '' );
+			$given    = (string) ( $r['product_code'] ?? '' );
+			if ( '' !== $known && '' !== $given && $known !== $given ) {
+				return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );
+			}
+			$audience = '' !== $known ? $known : $given;
+			$denial   = LicenseClient::verify_denial( (string) ( $r['portal_attestation'] ?? '' ), $key, $audience, $domain );
+			if ( null === $denial ) {
+				return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );
+			}
+			$first = get_option( self::OPT_DENIAL, array() );
+			$first = is_array( $first ) ? $first : array();
+			$step  = LicenseClient::denial_step( $first, $denial );
+			if ( $step['stored'] !== $first ) {
+				update_option( self::OPT_DENIAL, $step['stored'], false );
+			}
+			if ( ! $step['apply'] ) {
+				return array( 'ok' => false, 'message' => LicenseClient::reason_label( $denial['rc'] ) );
+			}
+			$r['reason_code'] = $denial['rc']; // il motivo è quello firmato
+		} else {
 			// Una licenza valida deve portare l'attestazione firmata da Wega (chiavi scritte nel plugin): senza firma, o con una firma che non torna,
 			// non ci si fida e si resta allo stato precedente.
 			$att    = (string) ( $r['attestation'] ?? '' );
@@ -245,8 +271,9 @@ final class License {
 			if ( null === $claims ) {
 				return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );
 			}
+			delete_option( self::OPT_DENIAL ); // un esito positivo valido azzera il conteggio dei negativi
 		}
-		$i = LicenseClient::interpret( $r );
+		$i =LicenseClient::interpret( $r );
 		if ( $claims && ! empty( $claims['plan'] ) ) {
 			$i['plan'] = LicenseClient::plan_from_name( (string) $claims['plan'] ); // il livello lo dice la parte firmata, non quella modificabile in transito
 		}

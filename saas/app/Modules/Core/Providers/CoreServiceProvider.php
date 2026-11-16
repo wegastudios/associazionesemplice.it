@@ -11,6 +11,7 @@ use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
 use App\Modules\Core\Console\PurgeTmpCommand;
+use App\Modules\Core\Console\ResetUserTwoFactorCommand;
 use App\Modules\Core\Console\SelfTestPurgeCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
@@ -78,7 +79,7 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobFailed::class, $reset);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class]);
+            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class]);
 
             // Code su Postgres: un lavoratore a giro di cron, che si ferma quando la coda è vuota o dopo 50 secondi
             // (sul server non ci sono processi sempre attivi).

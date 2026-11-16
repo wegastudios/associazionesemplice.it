@@ -61,7 +61,7 @@ Ruoli Postgres:
 |---|---|---|
 | proprietario (migrazioni) | `php artisan saas:migrate` | proprietario delle tabelle; anche lui soggetto alla RLS (`FORCE`) |
 | applicazione | richieste web e code | solo i permessi necessari, tabella per tabella; mai `BYPASSRLS` né superuser |
-| backup | `pg_dump` (`saas:backup:dump`) | solo `SELECT`; le policy lo ammettono in lettura (`OR current_user = '<ruolo dei backup>'`), mai in scrittura |
+| backup | `pg_dump` (`saas:backup:dump`) | solo `SELECT`; ha una policy `backup_read` di sola lettura su ogni tabella, mai di scrittura |
 
 Esempio:
 
@@ -95,9 +95,16 @@ CREATE TABLE app.transactions (
 ALTER TABLE app.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.transactions FORCE ROW LEVEL SECURITY;
 CREATE POLICY org_isolation ON app.transactions
-  USING      (org_id = NULLIF(current_setting('app.org_id', true), '')::uuid)
-  WITH CHECK (org_id = NULLIF(current_setting('app.org_id', true), '')::uuid);
+  USING      (org_id = (SELECT NULLIF(current_setting('app.org_id', true), '')::uuid))
+  WITH CHECK (org_id = (SELECT NULLIF(current_setting('app.org_id', true), '')::uuid));
+CREATE POLICY backup_read ON app.transactions FOR SELECT TO <ruolo dei backup> USING (true);
 ```
+
+Il sottoselect fa leggere `app.org_id` una volta per istruzione: PostgreSQL lo tratta come un valore fisso e usa gli indici
+che partono da `org_id` anche nelle query che non lo scrivono (con la forma precedente, con un `OR` sul ruolo dei backup,
+faceva una scansione completa di tutte le associazioni; misurato su 60.000 righe, costo del piano da 3243 a 8).
+Il ruolo dei backup legge con la sua policy `backup_read` (sola lettura). Le policy valgono per tutti i ruoli, il
+proprietario compreso (`FORCE`): le operazioni del proprietario impostano `app.org_id` come l'applicazione.
 
 (Prova della RLS con `FORCE` e `set_config` fatta sul server SupportHost il 2026-11-02: funziona.)
 

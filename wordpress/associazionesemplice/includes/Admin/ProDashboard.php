@@ -18,6 +18,12 @@ final class ProDashboard {
 				echo Dismiss::html( 'res-overlap-' . count( $ov ), 'warning', '<strong>Risorse occupate due volte (' . count( $ov ) . ').</strong> ' . esc_html( implode( ' · ', array_slice( $ov, 0, 4 ) ) ) . ( count( $ov ) > 4 ? ' …' : '' ) . ' Vanno sistemate a mano: sposta o annulla una delle due. <a href="' . esc_url( Ui::url( 'asem-resources' ) ) . '">Apri le risorse</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 		}
+		if ( \AssociazioneSemplice\Edition::has( 'payments' ) && current_user_can( \AssociazioneSemplice\Plugin::CAP_OPS ) ) {
+			$rv = \AssociazioneSemplice\PaymentService::engine()->review_count(); // rimborsi, contestazioni e incassi dubbi segnalati dal gestore o dal sito
+			if ( $rv > 0 ) {
+				echo Dismiss::html( 'payments-review-' . $rv, 'warning', '<strong>Pagamenti online da controllare:</strong> <span>' . (int) $rv . '</span> <a href="' . esc_url( Ui::url( 'asem-payments', array( 'review' => 1 ) ) ) . '">Apri i pagamenti</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+		}
 		if ( \AssociazioneSemplice\Edition::has( 'insurance' ) && (bool) \AssociazioneSemplice\Settings::get( 'insurance_association' ) ) {
 			$rc = \AssociazioneSemplice\AssocPolicies::rc_status();
 			if ( \AssociazioneSemplice\Insurance::VALID !== $rc ) {

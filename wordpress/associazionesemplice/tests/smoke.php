@@ -448,11 +448,80 @@ asem_ok( 'Associazione Semplice Pro' === License::plan_label( 'lite' ) && 'Assoc
 update_option( License::OPT_STATE, array_merge( (array) $lic_keep, array( 'plan_name' => 'Nome dal portale' ) ) );
 asem_ok( 'Nome dal portale' === License::plan_label( 'fiscal' ), 'nomi dei piani: si usa il nome che arriva dalla licenza' );
 update_option( License::OPT_STATE, $lic_keep );
-$lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ), 'product_code' => 'associazionesemplice' );
+// esito negativo: conta solo se firmato dal portale e dopo due esiti in giorni UTC diversi (confronto sull'iat)
+$lic_keyv = 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD';
+$pl_deny  = function ( array $over = array(), array $drop = array(), ?string $pair = null, string $kid = 'kportal' ) use ( $pl_pair, $lic_b64, $lic_keyv ) {
+	$iat    = (int) ( $over['iat'] ?? time() );
+	$claims = $over + array( 'iss' => \AssociazioneSemplice\LicenseClient::PORTAL_ISSUER, 'aud' => 'associazionesemplice', 'bid' => 'prova-sito.it', 'res' => 'deny', 'rc' => 'EXPIRED', 'kh' => substr( hash( 'sha256', $lic_keyv ), 0, 16 ), 'iat' => $iat, 'exp' => $iat + 259200 );
+	$claims = array_diff_key( $claims, array_flip( $drop ) );
+	$pair   = $pair ?? $pl_pair;
+	$head   = $lic_b64( wp_json_encode( array( 'alg' => 'EdDSA', 'typ' => 'JWT', 'kid' => $kid ) ) );
+	$body   = $lic_b64( wp_json_encode( $claims ) );
+	return $head . '.' . $body . '.' . $lic_b64( sodium_crypto_sign_detached( $head . '.' . $body, sodium_crypto_sign_secretkey( $pair ) ) );
+};
+$lic_deny_resp = function ( string $jwt, string $rc = 'EXPIRED' ) {
+	return array( 'valid' => false, 'reason_code' => $rc, 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'portal_attestation' => $jwt );
+};
+$lic_still_pro = function () {
+	return 'active' === License::state()['status'] && 'lite' === License::plan() && ! \AssociazioneSemplice\Edition::degraded();
+};
+delete_option( License::OPT_DENIAL );
+$lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
 $lic_r    = License::sync();
-asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta, funzioni Pro sospese' );
+asem_ok( ! $lic_r['ok'] && $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo non firmato: non spegne il Pro, come un errore transitorio' );
+$lic_bad = array(
+	'firma di un\'altra chiave'            => $pl_deny( array(), array(), sodium_crypto_sign_keypair() ),
+	'chiave di Wega, non del portale'      => $pl_deny( array(), array(), $lic_pair, 'ktest' ),
+	'prodotto sbagliato'                   => $pl_deny( array( 'aud' => 'altro-prodotto' ) ),
+	'dominio sbagliato'                    => $pl_deny( array( 'bid' => 'altro-sito.it' ) ),
+	'impronta della chiave diversa'        => $pl_deny( array( 'kh' => '0000000000000000' ) ),
+	'scaduto'                              => $pl_deny( array( 'iat' => time() - 4 * DAY_IN_SECONDS ) ),
+	'emesso nel futuro'                    => $pl_deny( array( 'iat' => time() + HOUR_IN_SECONDS ) ),
+	'senza res'                            => $pl_deny( array(), array( 'res' ) ),
+	'motivo ignoto'                        => $pl_deny( array( 'rc' => 'INVENTATO' ) ),
+	'prova positiva al posto del negativo' => $pl_att( array( 'plan' => 'lite' ) ),
+	'con il livello'                       => $pl_deny( array( 'plan' => 'lite' ) ),
+);
+foreach ( $lic_bad as $lic_why => $lic_jwt ) {
+	$lic_resp = $lic_deny_resp( $lic_jwt );
+	License::sync();
+	asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo non valido (' . $lic_why . '): non spegne il Pro e non conta' );
+}
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS ) ) );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && $lic_still_pro() && gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ) === get_option( License::OPT_DENIAL )['day'], 'esito negativo firmato, il primo: si ricorda ma il Pro resta acceso' );
+License::sync(); // la stessa risposta ancora (il portale la tiene in cache qualche minuto)
+asem_ok( $lic_still_pro(), 'esito negativo firmato con lo stesso iat: conta come uno solo' );
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS + 60 ) ) );
+License::sync();
+asem_ok( $lic_still_pro(), 'due esiti negativi nello stesso giorno UTC: il Pro resta acceso' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'expires_at' => '2027-01-01T00:00:00Z', 'product_code' => 'associazionesemplice' );
+License::sync();
+asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito positivo valido: azzera il conteggio dei negativi' );
+$lic_resp = $lic_deny_resp( $pl_deny() );
+License::sync();
+asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'dopo l\'azzeramento un nuovo esito negativo vale di nuovo come il primo' );
+// motivi che non contano (PENDING, LICENSE_NOT_FOUND), prodotto diverso da quello salvato, primo esito troppo vecchio
+delete_option( License::OPT_DENIAL );
+foreach ( array( 'PENDING', 'LICENSE_NOT_FOUND' ) as $lic_rc ) {
+	$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => $lic_rc ) ), $lic_rc );
+	License::sync();
+	asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo ' . $lic_rc . ': non conta, non si memorizza e il Pro resta acceso' );
+}
+$lic_resp                 = $lic_deny_resp( $pl_deny( array( 'aud' => 'altro-prodotto' ) ) );
+$lic_resp['product_code'] = 'altro-prodotto';
+License::sync();
+asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo per un prodotto diverso da quello salvato sul sito: non conta, anche se la risposta e la prova concordano' );
+update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 8 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 8 * DAY_IN_SECONDS ), false );
+$lic_resp = $lic_deny_resp( $pl_deny() );
+License::sync();
+asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'esito negativo a più di 7 giorni dal primo: non si applica e diventa il nuovo primo' );
+update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 2 * DAY_IN_SECONDS ), false );
+$lic_resp = array( 'valid' => false, 'reason_code' => 'REVOKED', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'portal_attestation' => $pl_deny(), 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ) );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta (due esiti firmati in giorni diversi), funzioni Pro sospese; il motivo è quello firmato' );
 asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'notice-warning' ) && \AssociazioneSemplice\Edition::allows( 'export' ), 'verifica: licenza scaduta, avviso e nessuna funzione di base toccata' );
-$lic_resp = array( 'valid' => false, 'reason_code' => 'DOMAIN_MISMATCH', 'plan_name' => 'Pro Full' );
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => 'DOMAIN_MISMATCH' ) ), 'DOMAIN_MISMATCH' );
 License::sync();
 asem_ok( 'unlicensed' === License::state()['status'] && false !== strpos( License::status()['reason'], 'dominio' ), 'verifica: dominio diverso, spiegazione in italiano' );
 $lic_resp = null;
@@ -2247,7 +2316,31 @@ asem_ok( 200 === $r->get_status() && 'registrato' === $r->get_data()['result'] &
 $before = $balance_of( 'Stripe' );
 $webhook( $mk_event( $row, 800 ) );
 asem_ok( $before === $balance_of( 'Stripe' ) && 3300 === $before, 'webhook ripetuto da Stripe: nessun doppio incasso' );
-asem_ok( 'ignorato' === $webhook( array( 'id' => 'e', 'type' => 'charge.refunded', 'data' => array( 'object' => array() ) ) )->get_data()['result'], 'webhook di altro tipo: ignorato' );
+asem_ok( 'ignorato' === $webhook( array( 'id' => 'e', 'type' => 'customer.created', 'data' => array( 'object' => array() ) ) )->get_data()['result'], 'webhook di altro tipo: ignorato' );
+
+// rimborsi e contestazioni segnalati da Stripe: il pagamento va «da controllare», senza toccare la prima nota né rimborsare da soli
+$wpdb->update( Db::t( 'payments' ), array( 'provider_payment_id' => 'pi_chg_1' ), array( 'id' => (int) $ps->get_by_public( $row['public_id'] )['id'] ) );
+$chg_ev  = function ( string $type, array $obj ) {
+	return array( 'id' => 'evt_' . wp_generate_password( 6, false ), 'type' => $type, 'data' => array( 'object' => $obj ) );
+};
+$chg_snap = $balance_of( 'Stripe' );
+asem_ok( 'pagamento sconosciuto' === $webhook( $chg_ev( 'charge.refunded', array( 'payment_intent' => 'pi_non_nostro', 'amount_refunded' => 300 ) ) )->get_data()['result'] && 'pagamento sconosciuto' === $webhook( $chg_ev( 'charge.refunded', array( 'amount_refunded' => 300 ) ) )->get_data()['result'], 'rimborso segnalato da Stripe per un pagamento che non conosciamo: nessun effetto' );
+$chg_ref = $chg_ev( 'charge.refunded', array( 'payment_intent' => 'pi_chg_1', 'amount_refunded' => 300 ) );
+asem_ok( 'da controllare' === $webhook( $chg_ref )->get_data()['result'], 'rimborso fatto fuori dal sito: il pagamento va «da controllare»' );
+$chg_p = $ps->get_by_public( $row['public_id'] );
+asem_ok( 'paid' === $chg_p['status'] && 1 === (int) $chg_p['review'] && 0 === (int) $chg_p['refunded_cents'] && false !== strpos( (string) $chg_p['error'], 'rimborso di 3,00' ) && $chg_snap === $balance_of( 'Stripe' ), 'rimborso segnalato da Stripe: pagamento da controllare, nulla rimborsato né annullato, prima nota invariata' );
+asem_ok( 'payment.refund_reported' === $wpdb->get_var( 'SELECT action FROM ' . Db::t( 'audit_log' ) . ' ORDER BY id DESC LIMIT 1' ), 'rimborso segnalato da Stripe: riga nel registro azioni' );
+asem_ok( 'già segnalato' === $webhook( $chg_ref )->get_data()['result'], 'rimborso segnalato da Stripe: lo stesso evento ripetuto non segnala di nuovo' );
+asem_ok( $ps->review_count() >= 1, 'rimborso segnalato da Stripe: il pagamento conta tra quelli da controllare (avviso in Bacheca)' );
+$ps->mark_reviewed( (int) $chg_p['id'] );
+$wpdb->update( Db::t( 'payments' ), array( 'refunded_cents' => 300 ), array( 'id' => (int) $chg_p['id'] ) );
+asem_ok( 'già registrato' === $webhook( $chg_ref )->get_data()['result'] && 0 === (int) $ps->get_by_public( $row['public_id'] )['review'], 'rimborso fatto da qui e riconfermato da Stripe: nulla da segnalare' );
+$wpdb->update( Db::t( 'payments' ), array( 'refunded_cents' => 0 ), array( 'id' => (int) $chg_p['id'] ) );
+asem_ok( 'da controllare' === $webhook( $chg_ev( 'charge.dispute.created', array( 'payment_intent' => 'pi_chg_1', 'amount' => 800, 'reason' => 'fraudulent' ) ) )->get_data()['result'], 'contestazione aperta su Stripe: il pagamento va «da controllare»' );
+$chg_p = $ps->get_by_public( $row['public_id'] );
+asem_ok( 'paid' === $chg_p['status'] && 1 === (int) $chg_p['review'] && false !== strpos( (string) $chg_p['error'], 'contestazione' ) && 'payment.dispute_reported' === $wpdb->get_var( 'SELECT action FROM ' . Db::t( 'audit_log' ) . ' ORDER BY id DESC LIMIT 1' ) && $chg_snap === $balance_of( 'Stripe' ), 'contestazione: pagamento da controllare, riga nel registro, prima nota invariata' );
+$ps->mark_reviewed( (int) $chg_p['id'] );
+$wpdb->update( Db::t( 'payments' ), array( 'error' => null ), array( 'id' => (int) $chg_p['id'] ) );
 
 // importo pagato diverso da quello atteso
 wp_set_current_user( $u_pm );
@@ -2345,6 +2438,21 @@ $wpdb->update( Db::t( 'payments' ), array( 'status' => 'processing', 'updated_at
 $ps->check_pending();
 $p5 = $ps->get_by_public( $late5['public_id'] );
 asem_ok( 'paid' === $p5['status'] && 1 === (int) $p5['review'] && false !== strpos( (string) $p5['error'], 'interrotta' ), 'pagamento rimasto "in registrazione": segnato da controllare, non registrato due volte' );
+// 6. pagamento scaduto sul sito ma incassato dopo dal gestore: si ricontrolla una volta al giorno per 30 giorni
+list( $lt6, $u_lt6, $late6 ) = $mk_pending( 'Scaduta' );
+$wpdb->update( Db::t( 'payments' ), array( 'status' => 'expired', 'created_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-10 days' ) ), 'updated_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-2 days' ) ) ), array( 'id' => (int) $late6['id'] ) );
+list( $lt7, $u_lt7, $late7 ) = $mk_pending( 'Vecchissima' );
+$wpdb->update( Db::t( 'payments' ), array( 'status' => 'expired', 'created_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-40 days' ) ), 'updated_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-39 days' ) ) ), array( 'id' => (int) $late7['id'] ) );
+$stripe_sessions[ $late7['provider_ref'] ]['paid'] = true; // scaduta da più di 30 giorni: non si ricontrolla più
+$res6 = $ps->check_pending();
+asem_ok( $res6['rechecked'] >= 1 && 'expired' === $ps->get_by_public( $late6['public_id'] )['status'], 'scaduti: un pagamento scaduto da 2 giorni viene ricontrollato (il gestore non lo ha incassato)' );
+$stripe_sessions[ $late6['provider_ref'] ]['paid'] = true;
+$res6 = $ps->check_pending();
+asem_ok( 'expired' === $ps->get_by_public( $late6['public_id'] )['status'] && 0 === $res6['rechecked'], 'scaduti: un solo ricontrollo al giorno per pagamento (la seconda chiamata è rifiutata)' );
+$wpdb->update( Db::t( 'payments' ), array( 'updated_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-2 days' ) ) ), array( 'id' => (int) $late6['id'] ) );
+$res6 = $ps->check_pending();
+asem_ok( 'paid' === $ps->get_by_public( $late6['public_id'] )['status'] && $res6['registered'] >= 1 && $people->is_active_member( $lt6 ), 'scaduti: il giorno dopo il gestore lo risulta incassato, viene registrato' );
+asem_ok( 'expired' === $ps->get_by_public( $late7['public_id'] )['status'], 'scaduti: dopo 30 giorni non si ricontrolla più' );
 wp_set_current_user( 1 );
 
 // PayPal: ordine, approvazione, cattura
@@ -4942,8 +5050,23 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) { // l'avviso riguarda solo il Pro (il grat
 \AssociazioneSemplice\LicenseClient::set_local_override( false );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => 'https://associazionesemplice.it/scarica/pro/99.0.0' ) ), false );
+$upd_local0 = function () { return true; }; // qui si prova il ripiego a mano: l'aggiornamento diretto non è disponibile
+add_filter( 'asem_portal_is_local', $upd_local0 );
 $upd_html = Admin\UpdateNotice::html();
+remove_filter( 'asem_portal_is_local', $upd_local0 );
 asem_ok( false !== strpos( $upd_html, '99.0.0' ) && false !== strpos( $upd_html, 'asem-dismissible' ) && false !== strpos( $upd_html, 'https://associazionesemplice.it/scarica/pro/99.0.0' ), 'aggiornamenti: avviso chiudibile con la nuova versione e il link di scarico' );
+if ( class_exists( '\AssociazioneSemplice\Updater' ) ) { // pacchetto del portale: con l'aggiornamento diretto attivo l'avviso porta a Bacheca → Aggiornamenti
+	$upd_local = function () { return false; };
+	add_filter( 'asem_portal_is_local', $upd_local );
+	$upd_core = Admin\UpdateNotice::html();
+	asem_ok( false !== strpos( $upd_core, 'update-core.php' ) && false === strpos( $upd_core, 'scarica/pro/99.0.0' ) && false === strpos( $upd_core, 'Plugin → Aggiungi nuovo' ), 'aggiornamenti: con l\'aggiornamento diretto attivo l\'avviso porta a Bacheca → Aggiornamenti' );
+	remove_filter( 'asem_portal_is_local', $upd_local );
+	$upd_local = function () { return true; };
+	add_filter( 'asem_portal_is_local', $upd_local );
+	$upd_manual = Admin\UpdateNotice::html();
+	asem_ok( false === strpos( $upd_manual, 'update-core.php' ) && false !== strpos( $upd_manual, 'Plugin → Aggiungi nuovo' ), 'aggiornamenti: sito locale, il caricamento manuale resta il ripiego' );
+	remove_filter( 'asem_portal_is_local', $upd_local );
+}
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => ASEM_PRO_VERSION, 'url' => '' ) ), false );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: nessun avviso se la versione è l\'ultima' );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
@@ -5263,6 +5386,34 @@ $_GET    = array( 'asemf_err' => 'Spesa registrata.', 'asemf_sig' => (string) ( 
 $f_kind  = \AssociazioneSemplice\Flash::read( 'asemf' );
 $_GET    = $old_get;
 asem_ok( 'Spesa registrata.' === $f_ok['ok'] && '' === $f_ok['err'] && '' === $f_fake['err'] && '' === $f_fake['ok'] && '' === $f_alt['ok'] && '' === $f_kind['err'], 'messaggi di esito: si mostrano solo quelli firmati dal sito (un testo messo in un link viene ignorato)' );
+// Avvisi legati a chi li ha generato e a una scadenza breve.
+$fs_read = function ( string $url ) {
+	parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $q );
+	$old  = $_GET;
+	$_GET = $q;
+	$r    = \AssociazioneSemplice\Flash::read( 'asemf' );
+	$_GET = $old;
+	return $r;
+};
+wp_set_current_user( 1 );
+$fs_url = \AssociazioneSemplice\Flash::url( 'https://example.org/area/', 'asemf', 'Prenotazione registrata per Mario.' );
+asem_ok( 'Prenotazione registrata per Mario.' === $fs_read( $fs_url )['ok'], 'avvisi: li legge chi li ha generati' );
+wp_set_current_user( $u_f );
+asem_ok( '' === $fs_read( $fs_url )['ok'] && '' === $fs_read( $fs_url )['err'], 'avvisi: un altro utente con lo stesso indirizzo non vede nulla' );
+wp_set_current_user( 0 );
+asem_ok( '' === $fs_read( $fs_url )['ok'], 'avvisi: chi non ha fatto l\'accesso non vede l\'avviso di un utente' );
+$fs_anon = \AssociazioneSemplice\Flash::url( 'https://example.org/area/', 'asemf', 'Accesso attivato.' ); // generato senza accesso (ritorni dai pagamenti, attivazione)
+wp_set_current_user( 1 );
+asem_ok( 'Accesso attivato.' === $fs_read( $fs_anon )['ok'], 'avvisi: quelli generati senza accesso restano leggibili' );
+$fs_exp = time() - 5;
+$fs_old = add_query_arg( array( 'asemf_ok' => 'Scaduto.', 'asemf_sig' => $fs_exp . '.' . \AssociazioneSemplice\Flash::sign( 'ok', 'Scaduto.', $fs_exp, \AssociazioneSemplice\Flash::binding() ) ), 'https://example.org/area/' );
+$fs_exp2 = time() + 120;
+$fs_new = add_query_arg( array( 'asemf_ok' => 'Valido.', 'asemf_sig' => $fs_exp2 . '.' . \AssociazioneSemplice\Flash::sign( 'ok', 'Valido.', $fs_exp2, \AssociazioneSemplice\Flash::binding() ) ), 'https://example.org/area/' );
+asem_ok( '' === $fs_read( $fs_old )['ok'] && 'Valido.' === $fs_read( $fs_new )['ok'], 'avvisi: dopo la scadenza non si mostrano più' );
+$fs_late = add_query_arg( array( 'asemf_ok' => 'Valido.', 'asemf_sig' => ( $fs_exp2 + 3600 ) . '.' . \AssociazioneSemplice\Flash::sign( 'ok', 'Valido.', $fs_exp2, \AssociazioneSemplice\Flash::binding() ) ), 'https://example.org/area/' );
+asem_ok( '' === $fs_read( $fs_late )['ok'], 'avvisi: la scadenza non si può spostare in avanti' );
+$fs_nosig = add_query_arg( array( 'asemf_ok' => 'Senza scadenza.', 'asemf_sig' => \AssociazioneSemplice\Flash::sign( 'ok', 'Senza scadenza.', 0, \AssociazioneSemplice\Flash::binding() ) ), 'https://example.org/area/' );
+asem_ok( '' === $fs_read( $fs_nosig )['ok'], 'avvisi: una firma senza scadenza non vale' );
 $GLOBALS['asem_probe'] = 0;
 add_shortcode( 'asem_probe', function () { $GLOBALS['asem_probe']++; return 'SEGRETO'; } );
 wp_set_current_user( 0 );
@@ -5948,6 +6099,36 @@ foreach ( $wl_mail as $m ) {
 }
 asem_ok( $acts->has_active_booking( $wl_s4, $wl_g ) && 1 === count( $wl_guest_to ) && 0 === strpos( $wl_guest_to[0], 'carla.attesa@example.com|' ) && false !== strpos( $wl_guest_to[0], 'per Gigi Inattesa' ), 'lista d\'attesa: un ospite in coda entra e la email va al socio che lo ospita' );
 remove_all_filters( 'pre_wp_mail' );
+// Lista d'attesa e listini: si sceglie la tariffa, la promozione prenota con quella; senza una tariffa valida non entra da sola.
+$wp_ev = $mkev( 'Serata a listino in coda', 0, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ), 'price_lists' => array( array( 'label' => 'Individuale', 'cents' => 4000, 'entries' => 1 ), array( 'label' => 'Di gruppo', 'cents' => 2500, 'entries' => 1 ) ) ) );
+$wp_s  = $first_session( $wp_ev );
+list( $wp_h ) = $mkmem( 'Hugo', 'Titolare' );
+list( $wp_o ) = $mkmem( 'Olga', 'Vecchiariga' );
+list( $wp_x ) = $mkmem( 'Xenia', 'Sparita' );
+list( $wp_p, $wp_pu ) = $mkmem( 'Piero', 'Promosso' );
+$acts->book( $wp_s, $wp_h, array( 'price_list' => 'individuale' ) );
+$wp_wl = \AssociazioneSemplice\Db::t( 'waitlist' );
+$wpdb->insert( $wp_wl, array( 'session_id' => $wp_s, 'person_id' => $wp_o, 'status' => 'waiting', 'created_at' => \AssociazioneSemplice\Db::now() ) ); // riga già in coda prima della scelta della tariffa
+$wpdb->insert( $wp_wl, array( 'session_id' => $wp_s, 'person_id' => $wp_x, 'price_list' => 'sparito', 'status' => 'waiting', 'created_at' => \AssociazioneSemplice\Db::now() ) ); // tariffa poi tolta dall'attività
+wp_set_current_user( $wp_pu );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $wp_s, $wp_p ) { $front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p ) ); } ), 'tariffa' ) && null === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ), 'lista d\'attesa: con i listini senza tariffa non ci si mette in coda' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $wp_s, $wp_p ) { $front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p, 'price_list' => 'inesistente' ) ); } ), 'non trovato' ) && null === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ), 'lista d\'attesa: una tariffa inesistente è rifiutata' );
+$front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p, 'price_list' => 'di_gruppo' ) );
+asem_ok( 3 === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ) && 'di_gruppo' === $wpdb->get_var( $wpdb->prepare( "SELECT price_list FROM $wp_wl WHERE session_id = %d AND person_id = %d", $wp_s, $wp_p ) ), 'lista d\'attesa: la tariffa scelta resta salvata' );
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'manca la tariffa scelta', array( 'id' => (string) $wp_ev ) ), 'manca la tariffa scelta' ), 'lista d\'attesa: la segreteria vede le righe senza tariffa valida' );
+$acts->cancel_booking( $wp_s, $wp_h );
+asem_ok( $acts->has_active_booking( $wp_s, $wp_p ) && 2500 === (int) $acts->booking( $wp_s, $wp_p )['fee_due_cents'] && 'di_gruppo' === $acts->booking( $wp_s, $wp_p )['price_list'], 'lista d\'attesa: la promozione prenota con la tariffa memorizzata, al suo prezzo' );
+asem_ok( ! $acts->has_active_booking( $wp_s, $wp_o ) && ! $acts->has_active_booking( $wp_s, $wp_x ) && null !== \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_o ) && null !== \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_x ), 'lista d\'attesa: senza tariffa valida (riga vecchia o tariffa sparita) non entra da sola e resta in coda' );
+$acts->cancel_booking( $wp_s, $wp_p );
+asem_ok( 0 === \AssociazioneSemplice\Waitlist::promote( $wp_s ) && ! $acts->has_active_booking( $wp_s, $wp_o ) && ! $acts->has_active_booking( $wp_s, $wp_x ), 'lista d\'attesa: nemmeno quando i posti liberi restano, nessuna prenotazione al contributo base' );
+$wp_ev2 = $mkev( 'Serata senza listini in coda', 300, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ) ) );
+$wp_s2  = $first_session( $wp_ev2 );
+$acts->book( $wp_s2, $wp_h );
+\AssociazioneSemplice\Waitlist::join( $wp_s2, $wp_o, 0, 'qualsiasi' );
+asem_ok( null === $wpdb->get_var( $wpdb->prepare( "SELECT price_list FROM $wp_wl WHERE session_id = %d AND person_id = %d", $wp_s2, $wp_o ) ), 'lista d\'attesa: senza listini non si salva nessuna tariffa' );
+$acts->cancel_booking( $wp_s2, $wp_h );
+asem_ok( $acts->has_active_booking( $wp_s2, $wp_o ), 'lista d\'attesa: senza listini la promozione è quella di prima' );
 
 // ---------- Comunicazioni a gruppi ----------
 wp_set_current_user( 1 );
@@ -8336,6 +8517,24 @@ asem_ok( 1000 === $pl_fund(), 'ospite volontario: il fondo del volontario non si
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $pl_a, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 2500, 'activity_id' => $pl_act, 'session_id' => $pl_sess[0] ) ) ) );
 asem_ok( 1625 === $pl_fund(), 'listini: chi paga il listino normale alimenta il fondo con la quota ordinaria (25%)' );
 asem_ok( null !== asem_throws( function () use ( $acts, $pl_sess, $pl_a ) { $acts->book( $pl_sess[1], $pl_a, array( 'price_list' => 'inesistente' ) ); } ), 'listini: un listino che non esiste è rifiutato' );
+// Con i listini il socio dal sito ne sceglie uno: senza listino non si prenota al contributo base.
+$pr_wpu = Settings::get( 'member_wp_users' ); // il socio di prova ha un utente WordPress
+Settings::update( array( 'member_wp_users' => 1 ) );
+list( $pr_m, $pr_mu ) = $mkmem( 'Lisa', 'Listino' );
+$pr_rules = Settings::get( 'rules_enabled' ); // il regolamento da accettare non c'entra con questa prova
+Settings::update( array( 'rules_enabled' => 0 ) );
+wp_set_current_user( $pr_mu );
+$pr_msg = (string) asem_throws( function () use ( $front, $pl_sess, $pr_m ) { $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m ) ); } );
+asem_ok( false !== strpos( $pr_msg, 'tariffa' ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: dal sito senza listino non si prenota [' . $pr_msg . ']' );
+asem_ok( null !== asem_throws( function () use ( $front, $pl_sess, $pr_m ) { $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m, 'price_list' => '' ) ); } ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: nemmeno con il campo vuoto' );
+asem_ok( null !== asem_throws( function () use ( $front, $pl_sess, $pr_m ) { $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m, 'price_list' => 'inesistente' ) ); } ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: nemmeno con un listino che non esiste' );
+$front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m, 'price_list' => 'di_gruppo' ) );
+asem_ok( $acts->has_active_booking( $pl_sess[1], $pr_m ) && 2500 === (int) $acts->booking( $pl_sess[1], $pr_m )['fee_due_cents'], 'listino obbligatorio: con un listino scelto si prenota al suo prezzo' );
+wp_set_current_user( 1 );
+list( $pr_n ) = $mkmem( 'Nino', 'Listino' );
+$acts->book( $pl_sess[1], $pr_n );
+asem_ok( $acts->has_active_booking( $pl_sess[1], $pr_n ) && empty( $acts->booking( $pl_sess[1], $pr_n )['price_list'] ), 'listino obbligatorio: la segreteria prenota come prima, anche al contributo base' );
+Settings::update( array( 'rules_enabled' => $pr_rules, 'member_wp_users' => $pr_wpu ) );
 asem_ok( '' !== \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ) && false !== strpos( \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ), 'ospite dell\'associazione' ), 'listini: l\'etichetta della prenotazione dice listino e ospite' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Admin\ActivitiesPage::booking_fields( $pl_a_row, 0 ), 'asem-use-pk' ) && false !== strpos( \AssociazioneSemplice\Admin\ActivitiesPage::booking_fields( $pl_a_row, 0 ), 'data-packages' ), 'prenota: la casella del pacchetto porta i pacchetti dei soci, per dire gli ingressi rimasti appena scegli la persona' );
 $pl_html = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ospite del volontario', array( 'id' => (string) $pl_act ) );
@@ -8726,6 +8925,41 @@ asem_ok( 1 === (int) $ap_rrow['refund_due'] && $ap_stripe_before + $ap_fee === $
 $ap_pp = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'da rimborsare' );
 asem_ok( false !== strpos( $ap_pp, 'asem_payment_refunded' ), 'pagamenti online: la quota da rimborsare si vede e si segna come restituita' );
 $ap_ps->mark_refunded( (int) $ap_rrow['id'] );
+// quota della domanda: la presa della riga è atomica, la seconda chiamata è rifiutata e l'incasso non si scrive due volte
+$ap_before_again = $balance_of( 'Stripe' );
+asem_ok( false === $ap_ps->application_settle( $ap_paolo, Settings::membership_year()->label() ) && $ap_before_again === $balance_of( 'Stripe' ), 'quota online: una seconda approvazione non registra di nuovo l\'incasso' );
+$wpdb->insert(
+	Db::t( 'payments' ),
+	array(
+		'public_id' => 'cl-' . substr( md5( 'claim' ), 0, 30 ), 'provider' => 'stripe', 'status' => 'paid', 'amount_cents' => 1000, 'currency' => 'EUR', 'payer_person_id' => $ap_paolo, 'payer_user_id' => 0,
+		'items' => wp_json_encode( array( array( 'type' => 'application', 'person_id' => $ap_paolo, 'amount_cents' => 1000 ) ) ), 'provider_ref' => 'cs_claim_1', 'created_at' => Db::now(), 'updated_at' => Db::now(), 'paid_at' => Db::now(),
+	)
+);
+$ap_claim_id = (int) $wpdb->insert_id;
+asem_ok( true === $ap_ps->application_claim( $ap_claim_id ) && false === $ap_ps->application_claim( $ap_claim_id ) && 1000 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT allocated_cents FROM ' . Db::t( 'payments' ) . ' WHERE id = %d', $ap_claim_id ) ), 'quota online: la presa della quota riesce una volta sola, la seconda è rifiutata' );
+// pagamento già incassato: se un passo dopo la ricevuta non riesce, l'incasso resta uno solo e il pagamento va «da controllare»
+$ap_cr_pub = 'ccr-' . substr( md5( 'credits' ), 0, 30 );
+$ap_cr_item = array( 'type' => 'credits', 'person_id' => $ap_paolo, 'person_name' => 'Paolo Paga', 'credits' => 5, 'amount_cents' => 500, 'label' => '5 crediti' );
+$ap_cr_item['key'] = \AssociazioneSemplice\PaymentItems::key( $ap_cr_item );
+$wpdb->insert(
+	Db::t( 'payments' ),
+	array(
+		'public_id' => $ap_cr_pub, 'provider' => 'stripe', 'status' => 'pending', 'amount_cents' => 500, 'currency' => 'EUR', 'payer_person_id' => $ap_paolo, 'payer_user_id' => 0,
+		'items' => wp_json_encode( array( $ap_cr_item ) ), 'provider_ref' => 'cs_ccr_1', 'created_at' => Db::now(), 'updated_at' => Db::now(),
+	)
+);
+$ap_cr_fail = function ( $q ) {
+	return 0 === stripos( ltrim( (string) $q ), 'INSERT' ) && false !== strpos( $q, 'credit_entries' ) ? '' : $q; // l'accredito dei crediti non riesce
+};
+$ap_cr_ev = array( 'id' => 'evt_ccr', 'type' => 'checkout.session.completed', 'data' => array( 'object' => array( 'id' => 'cs_ccr_1', 'client_reference_id' => $ap_cr_pub, 'payment_status' => 'paid', 'amount_total' => 500, 'payment_intent' => 'pi_ccr_1' ) ) );
+add_filter( 'query', $ap_cr_fail );
+$ap_ps->handle_stripe_event( $ap_cr_ev );
+remove_filter( 'query', $ap_cr_fail );
+$ap_cr_row = $ap_ps->get_by_public( $ap_cr_pub );
+asem_ok( 'paid' === $ap_cr_row['status'] && 1 === (int) $ap_cr_row['review'] && 500 === (int) $ap_cr_row['allocated_cents'] && false !== strpos( (string) $ap_cr_row['error'], 'passo successivo' ), 'pagamento online: passo dopo la ricevuta fallito, pagamento «da controllare» [' . wp_json_encode( array( $ap_cr_row['status'], $ap_cr_row['review'], $ap_cr_row['allocated_cents'], $ap_cr_row['error'] ) ) . ']' );
+asem_ok( 500 === $sum_tx( "type = 'income' AND method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: passo dopo la ricevuta fallito, l\'incasso è scritto una sola volta (non anche «non abbinato»)' );
+$ap_ps->handle_stripe_event( $ap_cr_ev );
+asem_ok( 500 === $sum_tx( "type = 'income' AND method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: lo stesso evento ripetuto non scrive un secondo incasso' );
 asem_ok( 0 === (int) $ap_ps->get_by_public( $ap_rrow['public_id'] )['refund_due'], 'pagamenti online: rimborso segnato come fatto' );
 
 // ---------- Rimborso dei pagamenti online dal gateway (Stripe e PayPal) ----------
@@ -9231,6 +9465,25 @@ asem_ok( $as_throws( function () use ( $as_asm, $as_c ) { \AssociazioneSemplice\
 $as_e = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Elia', 'last_name' => 'Assemblea Epsilon', 'email' => 'elia.assemblea@example.com' ) );
 $people->set_membership( $as_e, $as_label, true );
 asem_ok( $as_throws( function () use ( $as_asm, $as_e, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_e, $as_b ); } ), 'deleghe: al massimo tre per socio (meno di 500 soci)' );
+// Messaggi neutri: dal lato soci non si dice com'è messo l'altro socio; la segreteria vede il motivo preciso.
+$as_msg = function ( callable $fn ): string {
+	try {
+		$fn();
+	} catch ( \InvalidArgumentException $e ) {
+		return $e->getMessage();
+	}
+	return '';
+};
+$as_m_member = $as_msg( function () use ( $as_asm, $as_e, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_e, $as_b, false ); } );
+$as_m_staff  = $as_msg( function () use ( $as_asm, $as_e, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_e, $as_b, true ); } );
+asem_ok( '' !== $as_m_member && false === strpos( $as_m_member, 'massimo' ) && false === strpos( $as_m_member, 'delegato qualcun' ) && false !== strpos( $as_m_staff, 'massimo' ), 'deleghe: dal lato soci il rifiuto per un delegato già al massimo è neutro, la segreteria vede il motivo' );
+$as_m_member2 = $as_msg( function () use ( $as_asm, $as_c, $as_g ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_g, false ); } );
+asem_ok( '' !== $as_m_member2 && $as_m_member2 === $as_m_member && false === strpos( $as_m_member2, 'diritto di voto' ), 'deleghe: dal lato soci è lo stesso messaggio anche per chi non ha diritto di voto' );
+$as_dup_staff = $as_msg( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Doppio', 'last_name' => 'Email', 'email' => 'elia.assemblea@example.com' ) ); } );
+wp_set_current_user( 0 );
+$as_dup_pub   = $as_msg( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Doppio', 'last_name' => 'Email', 'email' => 'elia.assemblea@example.com' ) ); } );
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( $as_dup_staff, 'Elia' ) && '' !== $as_dup_pub && false === strpos( $as_dup_pub, 'Elia' ) && false === strpos( $as_dup_pub, 'Epsilon' ) && false === strpos( $as_dup_pub, 'elia.assemblea' ), 'riservatezza: l\'email già usata non dice di chi è, se non alla segreteria' );
 $as_n = \AssociazioneSemplice\Assemblies::set_attendance( $as_asm, array( $as_b, $as_g, 999999 ) );
 $as_t = \AssociazioneSemplice\Assemblies::tally( $as_asm );
 asem_ok( 1 === $as_n && 1 === $as_t['present'] && 3 === $as_t['proxies'], 'presenze: tutore e persone inesistenti non si registrano; le deleghe contano se il delegato c\'è' );
@@ -10487,6 +10740,31 @@ asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_a, $er_gid ) 
 $er::member_request( $er_sid( $er_c ), $er_gid );
 asem_ok( $er::pending_for( $er_sid( $er_c ), $er_gid ) && ! $acts->has_active_booking( $er_sid( $er_c ), $er_gid ), 'richiesta socio: registrata, il posto non è ancora occupato' );
 asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_c, $er_gid ) { $er::member_request( $er_sid( $er_c ), $er_gid ); } ), 'richiesta socio: una sola richiesta per data' );
+// Evento su richiesta: nessun percorso lo prenota direttamente (area soci, servizio, lista d'attesa), salvo segreteria o richiesta approvata.
+$er_d = $er_mk( 'Cena su richiesta D', null );
+update_post_meta( \AssociazioneSemplice\PublicEvents::post_of( $er_d ), '_asem_ev_approval', '1' );
+list( $ap_p, $ap_u ) = $mkmem( 'Rita', 'Richiesta' );
+list( $ap_q, $ap_qu ) = $mkmem( 'Sara', 'Richiesta' );
+$ap_s = $er_sid( $er_d );
+$ap_rules = Settings::get( 'rules_enabled' ); // il regolamento da accettare non c'entra con questa prova
+Settings::update( array( 'rules_enabled' => 0 ) );
+wp_set_current_user( $ap_u );
+$ap_msg = (string) asem_throws( function () use ( $front, $ap_s, $ap_p ) { $front::do_book( array( 'session_id' => $ap_s, 'person_id' => $ap_p ) ); } );
+asem_ok( false !== strpos( $ap_msg, 'su richiesta' ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: il socio non si prenota direttamente dall\'area soci [' . $ap_msg . ']' );
+asem_ok( null !== asem_throws( function () use ( $acts, $ap_s, $ap_p ) { $acts->book( $ap_s, $ap_p ); } ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: nemmeno chiamando direttamente la prenotazione senza essere segreteria' );
+wp_set_current_user( 0 );
+asem_ok( null !== asem_throws( function () use ( $acts, $ap_s, $ap_p ) { $acts->book( $ap_s, $ap_p ); } ), 'evento su richiesta: né senza alcun utente' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $ap_s, $ap_p ) { \AssociazioneSemplice\Waitlist::join( $ap_s, $ap_p ); } ), 'su richiesta' ), 'evento su richiesta: la lista d\'attesa non si apre' );
+$wpdb->insert( \AssociazioneSemplice\Db::t( 'waitlist' ), array( 'session_id' => $ap_s, 'person_id' => $ap_p, 'status' => 'waiting', 'created_at' => \AssociazioneSemplice\Db::now() ) ); // già in coda prima che l'evento diventasse su richiesta
+asem_ok( 0 === \AssociazioneSemplice\Waitlist::promote( $ap_s ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: la lista d\'attesa non prenota nessuno da sola' );
+asem_ok( $acts->book( $ap_s, $ap_p, array( 'approved' => true ) ) > 0 && $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: con la richiesta approvata si prenota' );
+wp_set_current_user( 1 );
+asem_ok( $acts->book( $ap_s, $ap_q ) > 0 && $acts->has_active_booking( $ap_s, $ap_q ), 'evento su richiesta: la segreteria prenota direttamente' );
+list( $ap_r ) = $mkmem( 'Tina', 'Richiesta' );
+wp_set_current_user( $sec_u );
+asem_ok( $acts->book( $ap_s, $ap_r ) > 0 && $acts->has_active_booking( $ap_s, $ap_r ), 'evento su richiesta: anche l\'utente di segreteria (non amministratore) prenota direttamente' );
+wp_set_current_user( 1 );
+Settings::update( array( 'rules_enabled' => $ap_rules ) );
 $er_aw2 = $er::awaiting( $er_c );
 asem_ok( 1 === count( $er_aw2 ) && false !== strpos( $er_aw2[0]['names'][0], '(socio)' ), 'richiesta socio: compare alla segreteria' );
 $er::approve( (int) $er_aw2[0]['id'] );

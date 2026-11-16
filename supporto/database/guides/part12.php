@@ -751,6 +751,85 @@ In fondo trovi l'elenco dei **pagamenti dei soci** con lo stato (per esempio **c
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Gestione', 'slug' => 'gestionale-il-tuo-profilo-e-la-verifica-in-due-passaggi',
+        'title' => 'Il tuo profilo e la verifica in due passaggi',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Qui trovi come gestire **il tuo accesso** al gestionale: nome, email, password, verifica in due passaggi e dispositivi collegati. Riguarda **chi lavora nel gestionale** (titolare, amministratori, operatori), non i soci che entrano dall'[area soci](guida:gestionale-come-entro-nell-area-soci).
+
+## Dove si trova
+
+Apri il menu **«Il tuo account»**: sul computer premi il tuo nome nel menu a lato, nel telefono premi **Altro** e scegli **«Il tuo profilo»**. Nello stesso menu c'è **«Sicurezza»**, che porta alla verifica in due passaggi.
+
+## Nome e password
+
+- **Nome**: scrivi nome e cognome e premi **«Salva il nome»**.
+- **Password**: inserisci la **password attuale**, la **nuova** e ripetila, poi **«Cambia password»**.
+- Se non ricordi la password, nella pagina di accesso usa **«Password dimenticata?»**.
+
+## Cambiare l'email di accesso
+
+**L'email cambia solo quando apri il link che ti arriva al nuovo indirizzo.** Finché non lo apri, per entrare vale ancora quella di prima.
+
+1. Nel profilo, in **«Email di accesso»**, scrivi la **nuova email**.
+2. Scrivi la tua **password**, per confermare, e premi **«Cambia email»**.
+3. Il gestionale ti avvisa: «È stato mandato un link al nuovo indirizzo: l'email cambia solo quando lo apri. Il link vale 60 minuti.»
+4. Apri la posta **del nuovo indirizzo** e premi **«Conferma l'indirizzo»** nell'email «Conferma il nuovo indirizzo email». Fallo mentre sei **già entrato nel gestionale con il tuo account**: il link funziona solo per la stessa persona che l'ha chiesto.
+5. Torni nel profilo con il messaggio «Email aggiornata.»
+
+Cose da sapere:
+
+- **Il link vale 60 minuti.** Se è scaduto o non è valido, compare «Il link non è valido o è scaduto: chiedi un nuovo cambio email dal tuo profilo.»: ripeti la richiesta.
+- Al **vecchio indirizzo** arriva un'email di avviso, «Richiesta di cambio email», con l'indirizzo nuovo **nascosto in parte**. Se non l'hai chiesto tu, **cambia subito la password** dal profilo: finché nessuno apre il link, la tua email non cambia.
+- Se la **nuova email non arriva**, controlla la posta indesiderata e di aver scritto bene l'indirizzo. Per sicurezza, il gestionale risponde **allo stesso modo** anche quando quell'indirizzo è già usato da un altro accesso: se è così, il link non arriva e l'email non può cambiare.
+- Per cambiare l'email di un **socio** (non del tuo accesso) si usa la sua scheda, non il profilo.
+
+## La verifica in due passaggi
+
+A ogni accesso, oltre alla password, serve un **codice di 6 cifre** generato da un'app sul telefono (per esempio Google Authenticator, Microsoft Authenticator o 1Password). Protegge i dati dei soci anche se qualcuno scopre la tua password. **Per chi lavora nel gestionale è obbligatoria**: **una volta attivata non la puoi disattivare**. Se perdi il telefono e i codici, usa il ripristino via email (vedi sotto).
+
+**Attivarla:**
+
+1. Da **«Sicurezza»** (o dal profilo, **«Attivala»**) premi **«Attiva la verifica»**. Il gestionale può chiederti di **riscrivere la password**.
+2. **Inquadra il QR** con l'app. Se non riesci, inserisci a mano la **chiave** scritta sotto.
+3. Scrivi il **codice di 6 cifre** che vedi nell'app e premi **«Conferma»**.
+4. Compaiono i **codici di recupero**: **salvali subito** in un posto sicuro (per esempio in un gestore di password). **Non vengono mostrati di nuovo.**
+
+**Ai prossimi accessi** scrivi la password e poi il codice dell'app. Se **non hai il telefono**, premi **«Non hai il telefono? Usa un codice di recupero»** e scrivine uno: **ogni codice vale una sola volta**.
+
+**Gestirla** (dal profilo, **«Gestisci»**):
+
+- **«Genera nuovi codici di recupero»**: i vecchi **non valgono più**;
+- **Non c'è un pulsante per disattivarla**: una volta attivata si toglie solo con il ripristino via email, descritto qui sotto.
+
+**Conserva i codici di recupero in un posto sicuro**: ti evitano di dover fare quello che segue.
+
+### Ho perso il telefono e i codici di recupero
+
+Puoi **togliere la verifica da solo, con un link che ti arriva per email**:
+
+1. Entra con **email e password**. Arrivi alla schermata del codice a 6 cifre.
+2. Premi **«Ho perso il telefono e i codici di recupero»**. Parte subito, senza altre conferme.
+3. Compare il messaggio «Se serve, ti abbiamo scritto all'indirizzo del tuo account: apri il link entro 15 minuti.» **È sempre uguale**, anche se non è partita nessuna email.
+4. Apri l'email **«Togli la verifica in due passaggi»** e premi **«Togli la verifica»**: si apre la pagina **«Togli la verifica in due passaggi»** con la frase «Se confermi, la verifica in due passaggi del tuo accesso viene tolta. Al prossimo accesso riattivala subito, con il telefono nuovo.». **Premi di nuovo «Togli la verifica»**: solo allora viene tolta (aprire il link non basta). Con **«Torna all'accesso»** rinunci.
+5. Torni alla schermata di accesso con il messaggio «La verifica in due passaggi è stata tolta. Accedi con la password e riattivala subito con il telefono nuovo.»
+6. Entra con la password e **riattiva subito la verifica** dalla pagina della verifica in due passaggi, con un **nuovo QR** da inquadrare con il telefono nuovo. Il gestionale ti dà **nuovi codici di recupero**: **quelli vecchi non valgono più**. Salvali subito.
+
+Cose da sapere:
+
+- **Il link vale 15 minuti e una volta sola.** Se è già stato usato, è scaduto o non è valido, torni alla schermata di accesso con «Il link non è valido o è scaduto: dalla schermata del codice chiedine uno nuovo.»
+- **Se non ricevi l'email**, controlla la posta indesiderata. L'email parte **solo se la password è giusta** e va **all'indirizzo del tuo account** (se l'hai cambiato, quello nuovo).
+- **I link si possono chiedere al massimo 2 al giorno e 6 al mese.** Oltre il limite compare «Hai già chiesto troppi link: scrivi al supporto di Associazione Semplice per sbloccare l'accesso.»: ti sblocchiamo noi, su tua richiesta.
+- Appena la verifica è tolta ti arriva **una seconda email**, «La verifica in due passaggi è stata tolta». **Se non l'hai tolta tu**, cambia subito la password dal profilo. Se l'ha tolta il supporto su tua richiesta, l'email lo dice.
+- Se **non sei stato tu** a chiedere il link, ignora l'email: non succede nulla e il tuo accesso resta protetto.
+
+## I dispositivi collegati
+
+In fondo al profilo vedi i **dispositivi** da cui sei entrato, con sistema, browser, indirizzo e ultimo uso, e quale è **«questo dispositivo»**. Se ce n'è più di uno, per scollegare gli altri scrivi la tua **password** e premi **«Scollega gli altri dispositivi»**: questo resta collegato. Usalo se hai perso un telefono o hai lasciato il tuo account aperto su un computer che non è tuo.
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Gestione', 'slug' => 'gestionale-operatori-e-ruoli',
         'title' => 'Operatori e ruoli, anche per il commercialista',
         'body' => <<<'MD'
@@ -769,6 +848,86 @@ Nella sezione **Operatori** scrivi **nome** ed **email**, scegli il **ruolo** e 
 - **Ruoli dell'associazione**: con **«Nuovo ruolo»** crei ruoli per segretari, consiglieri, tesorieri… scegliendo i permessi.
 
 Cambi il ruolo di un operatore dalla tendina accanto al suo nome.
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Gestione', 'slug' => 'gestionale-il-registro-delle-azioni',
+        'title' => 'Il registro delle azioni: cosa si scrive e come leggerlo',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Il gestionale tiene un **registro delle azioni**: un diario in cui si scrive **cosa è successo, quando e chi l'ha fatto**. Serve a **ritrovare chi ha toccato un dato** e a dimostrare, per esempio a un revisore, che le cose sono andate come dici.
+
+**Non c'è una pagina per leggerlo dentro il gestionale**: il registro si ottiene con l'**esportazione dei dati**, come tabella da aprire con Excel.
+
+## Cosa si registra
+
+Ogni riga è un'azione. Tra le più comuni:
+
+- **Accessi**: entrata e uscita di operatori e soci, tentativi falliti, password reimpostata, verifica in due passaggi (attivata, codice sbagliato, codice di recupero usato, nuovi codici generati);
+- **Soci**: modifica di una scheda, importazione dell'elenco, tutori collegati o scollegati, tessere assegnate o revocate a mano, domande di adesione;
+- **Prima nota**: incassi, spese, giroconti, **movimenti stornati**, importazioni;
+- **Ricevute**: emesse, inviate, rifatte o fissate;
+- **Pagamenti online**: creati, falliti, rimborsati, controllati;
+- **Attività**: date aggiunte, cambiate o annullate, prenotazioni, liste d'attesa, **presenze registrate**;
+- **Anni fiscali**: creati, chiusi, riaperti, cambio del mese di inizio;
+- **Dati riservati**: ogni **lettura di un file sulla salute** (per esempio il download di un certificato medico), le esportazioni, i download della copia di sicurezza, l'archivio degli anni chiusi;
+- **Configurazione guidata**: completata o rimandata.
+
+Di solito **non si copia il contenuto** dei dati: si scrive che l'azione c'è stata, con i pochi dettagli utili (per esempio quali campi di una scheda sono cambiati).
+
+## Chi può averlo
+
+Il registro è nell'esportazione per chi ha il permesso **«Vedere il registro delle azioni»**: **titolare e amministratori**. Gli altri operatori non lo ricevono. Per scaricarlo apri la pagina **Esportazione** (vedi [Esportare i dati](guida:gestionale-esportare-i-dati)): nell'archivio ZIP, nella parte **«Dati per il programma»**, trovi il file **`registro-delle-azioni.csv`**.
+
+## Come si legge
+
+Il file si apre con Excel o con un foglio di calcolo. Ogni riga ha queste colonne:
+
+| Colonna | Cosa contiene |
+|---|---|
+| **N.** | il numero progressivo dell'azione |
+| **Quando** | data e ora |
+| **Azione** | il **codice** dell'azione (vedi sotto) |
+| **Oggetto** e **Id** | su cosa è stata fatta (il tipo di dato e il suo identificativo) |
+| **Chi** e **Id di chi** | chi l'ha fatta: **operatore**, **socio** oppure **sistema** (per le azioni automatiche), e il suo identificativo |
+| **Dettagli** | pochi dati utili sull'azione |
+| **Sigillo** | il sigillo della riga (vedi sotto) |
+
+I **codici** sono scritti in inglese, con un punto in mezzo. I più frequenti:
+
+| Codice | Cosa significa |
+|---|---|
+| `auth.login` / `auth.logout` | un operatore è entrato / uscito |
+| `auth.failed` | accesso non riuscito |
+| `two_factor.recovery_code_used` | è stato usato un codice di recupero |
+| `person.updated` | è stata modificata una scheda |
+| `people.imported` | è stato importato un elenco di soci |
+| `ledger.income` / `ledger.expense` | incasso / spesa registrati |
+| `ledger.transfer` | giroconto |
+| `ledger.voided` | movimento **stornato** |
+| `ledger.imported` | prima nota importata da un file |
+| `receipt.sent` | ricevuta inviata |
+| `payment.refunded` | pagamento online rimborsato |
+| `fiscal_year.closed` / `fiscal_year.reopened` | anno fiscale chiuso / riaperto |
+| `attendance.saved` | presenze registrate |
+| `health.read` | è stato aperto un file sulla salute |
+| `export.done` | è stata fatta un'esportazione |
+| `backup.downloaded` | è stata scaricata una copia di sicurezza |
+
+Se trovi un codice che non è in elenco, scrivi al supporto: te lo spieghiamo.
+
+**Per trovare chi ha toccato un dato**: nel foglio filtra la colonna **Azione** (per esempio `ledger.voided`) o ordina per **Quando**.
+
+## Per quanto tempo si conserva
+
+Il registro conserva le azioni **dell'anno in corso e di tutto l'anno precedente**. Si conta l'**anno solare** (da gennaio a dicembre), non l'anno fiscale. **Il 1° gennaio** si cancellano le azioni più vecchie: per esempio il 1° gennaio 2028 si cancellano quelle del 2026. Quindi le azioni restano **da uno a due anni**. **Se ti servono per più tempo**, scarica prima l'esportazione e conservala tu.
+
+## Il sigillo
+
+Ogni riga ha un **sigillo** (una sequenza di lettere e numeri) che dipende anche dalla riga precedente: sono **legate a catena**. Se qualcuno cancellasse o cambiasse una riga, la catena **non tornerebbe più** e il controllo se ne accorge. **Ogni notte** il gestionale controlla da solo che la catena sia intatta. Per te significa che **il registro non si può correggere di nascosto**, nemmeno da chi lavora nel gestionale.
+
+Le azioni vengono scritte **in automatico**: nessuno può aggiungere, togliere o modificare righe a mano. Anche quando le righe più vecchie vengono cancellate il 1° gennaio, il controllo della catena continua a funzionare sulle righe rimaste.
 MD,
     ],
     [

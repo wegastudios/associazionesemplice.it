@@ -45,18 +45,37 @@ final class OrgSchema
         $connection->statement("ALTER TABLE {$table} ENABLE ROW LEVEL SECURITY");
         $connection->statement("ALTER TABLE {$table} FORCE ROW LEVEL SECURITY");
         $connection->statement("CREATE POLICY org_isolation ON {$table} USING ({$using}) WITH CHECK ({$check})");
+        self::allowBackupRead($connection, $table);
     }
 
-    /** @return array{0: string, 1: string} condizione di lettura e di scrittura */
+    /**
+     * Il ruolo dei backup legge tutte le righe con una policy sua, di sola lettura. Non sta più nella condizione
+     * dell'associazione: un «OR» con il ruolo impediva a PostgreSQL di usare gli indici su org_id nelle query che non lo
+     * scrivono (docs/DATABASE.md). Idempotente.
+     */
+    public static function allowBackupRead(ConnectionInterface $connection, string $table): void
+    {
+        self::assertTable($table);
+        $backup = '"'.self::role($connection, 'backup_role').'"';
+
+        $connection->statement("DROP POLICY IF EXISTS backup_read ON {$table}");
+        $connection->statement("CREATE POLICY backup_read ON {$table} FOR SELECT TO {$backup} USING (true)");
+    }
+
+    /**
+     * Condizione di lettura e di scrittura: l'associazione corrente, letta una volta sola per istruzione (sottoselect),
+     * così PostgreSQL la tratta come un valore fisso e usa gli indici che partono da org_id.
+     *
+     * @return array{0: string, 1: string}
+     */
     public static function conditions(ConnectionInterface $connection, string $orgColumn = 'org_id'): array
     {
         if (preg_match('/^[a-z_]+$/', $orgColumn) !== 1) {
             throw new InvalidArgumentException('Colonna non valida.');
         }
-        $check = "{$orgColumn} = NULLIF(current_setting('app.org_id', true), '')::uuid";
-        $backup = self::role($connection, 'backup_role');
+        $check = "{$orgColumn} = (SELECT NULLIF(current_setting('app.org_id', true), '')::uuid)";
 
-        return ["{$check} OR current_user = '{$backup}'", $check];
+        return [$check, $check];
     }
 
     /** Ruolo dei backup, già quotato per l'SQL. */

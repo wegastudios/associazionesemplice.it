@@ -2613,6 +2613,27 @@
   "Conferma" : "Confirm",
   "Troppi tentativi: riprova tra qualche minuto." : "Too many attempts: try again in a few minutes.",
   "La password non è corretta: non è stato scaricato nulla." : "The password is not correct: nothing has been downloaded.",
-  "Per scaricare la copia scrivi la tua password." : "To download the copy, enter your password."
+  "Per scaricare la copia scrivi la tua password." : "To download the copy, enter your password.",
+  "Stripe segnala un rimborso di {importo} non fatto da qui: controlla dal pannello di Stripe e dalla prima nota." : "Stripe reports a refund of {importo} that was not made from here: check it in the Stripe dashboard and in the cash book.",
+  "Stripe segnala una contestazione sul pagamento ({motivo}): controlla dal pannello di Stripe." : "Stripe reports a dispute on the payment ({motivo}): check it in the Stripe dashboard.",
+  "Pagamenti online da controllare:" : "Online payments to check:",
+  "Apri i pagamenti" : "Open the payments",
+  "Incasso registrato, ma un passo successivo non è riuscito ({voce}): controlla il pagamento." : "Payment recorded, but a later step did not complete ({voce}): please check the payment.",
+  "Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall'area clienti e scrivici." : "The package offered by the portal does not have a valid signature: it was not installed. Download it from the customer area and write to us.",
+  "La versione offerta dal portale è sotto la soglia minima ammessa: non è stata installata." : "The version offered by the portal is below the minimum allowed: it was not installed.",
+  "La versione offerta dal portale è più vecchia di una già vista: non è stata installata." : "The version offered by the portal is older than one already seen: it was not installed.",
+  "La firma del pacchetto ha una data nel futuro: non è stato installato. Controlla data e ora del server." : "The package signature is dated in the future: it was not installed. Check the server date and time.",
+  "Il pacchetto offerto dal portale non ha la firma del nuovo formato, richiesta dopo il primo pacchetto così firmato: non è stato installato. Scaricalo dall'area clienti e scrivici." : "The package offered by the portal lacks the signature of the new format, required after the first package signed that way: it was not installed. Download it from the customer area and write to us.",
+  "Installalo da Bacheca → Aggiornamenti: i dati restano." : "Install it from Dashboard → Updates: your data is kept.",
+  "Vai agli aggiornamenti" : "Go to updates",
+  "Questo numero di tessera non si può usare: scrivi alla segreteria." : "This card number cannot be used: write to the office.",
+  "Questa email non si può usare: scrivi alla segreteria." : "This email cannot be used: write to the office.",
+  "Non puoi scegliere questo socio come delegato: scegline un altro." : "You cannot choose this member as your proxy: choose another.",
+  "Questo evento è su richiesta: chiedi di partecipare dalla pagina dell'evento e la segreteria ti risponde." : "This event is by request: ask to take part from the event page and the office will reply.",
+  "Questo evento è su richiesta: la lista d'attesa non c'è, la segreteria decide chi partecipa." : "This event is by request: there is no waiting list, the office decides who takes part.",
+  "Scegli la tariffa: per questa attività bisogna sceglierne una." : "Choose a rate: this activity requires you to pick one.",
+  "Listino non trovato per questa attività." : "Price list not found for this activity.",
+  "manca la tariffa scelta: non entra da solo, prenotalo a mano scegliendo il listino" : "no rate chosen: this person will not be booked automatically, book them by hand and choose the price list",
+  "Evento su richiesta: la lista d'attesa non avanza da sola. Prenota tu chi vuoi far entrare." : "By-request event: the waiting list does not move on its own. Book the people you want to let in."
  }
 }

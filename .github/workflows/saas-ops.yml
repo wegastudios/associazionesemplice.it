@@ -10,8 +10,12 @@ on:
       action:
         description: Cosa fare
         type: choice
-        options: [diagnosi, chiave-catalogo, percorso-pgdump, ciclo-vita, prova-cancellazione, catalogo, bozza-listino, accendi-ciclo-vita, spegni-cancellazione, pubblica-catalogo, soci-in-vendita, spegni-avvisi, conta-fotografie]
+        options: [diagnosi, chiave-catalogo, percorso-pgdump, ciclo-vita, prova-cancellazione, catalogo, bozza-listino, accendi-ciclo-vita, spegni-cancellazione, pubblica-catalogo, soci-in-vendita, spegni-avvisi, conta-fotografie, sblocca-utente, cancellazioni, permessi-backup]
         default: diagnosi
+      email:
+        description: Solo per sblocca-utente, email di chi ha perso telefono e codici di recupero
+        type: string
+        required: false
       pg_bin_dir:
         description: Solo per percorso-pgdump, cartella dei programmi PostgreSQL 16 (es. /usr/pgsql-16/bin)
         type: string
@@ -50,9 +54,12 @@ jobs:
           SSH_USER: ${{ secrets.SAAS_SSH_USER }}
           ACTION: ${{ inputs.action }}
           PG_BIN_DIR: ${{ inputs.pg_bin_dir }}
+          EMAIL: ${{ inputs.email }}
         run: |
+          # L'email finisce in un comando remoto: solo caratteri da indirizzo, altrimenti si ferma qui.
+          if [ -n "$EMAIL" ] && ! printf '%s' "$EMAIL" | grep -Eq '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then echo "Email non valida." >&2; exit 1; fi
           ssh -i ~/.ssh/deploy -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$SSH_USER@$HOST" \
-            "bash -s -- '$ACTION' '$PG_BIN_DIR'" < saas/deploy/ops.sh
+            "bash -s -- '$ACTION' '$PG_BIN_DIR' '$EMAIL'" < saas/deploy/ops.sh
       - name: Pulizia
         if: always()
         run: rm -f ~/.ssh/deploy

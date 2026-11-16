@@ -13,7 +13,8 @@ final class Waitlist {
 		return Db::db();
 	}
 
-	public static function join( int $session_id, int $person_id, int $by_person_id = 0 ): void {
+	/** @param string $price_list chiave del listino scelto: obbligatoria se l'attività ha dei listini (la prenotazione partirà con quello) */
+	public static function join( int $session_id, int $person_id, int $by_person_id = 0, string $price_list = '' ): void {
 		$acts    = Plugin::activities();
 		$session = $acts->session( $session_id );
 		$person  = Plugin::people()->get( $person_id );
@@ -22,6 +23,9 @@ final class Waitlist {
 		}
 		if ( $session['session_date'] < current_time( 'Y-m-d' ) ) {
 			throw new \InvalidArgumentException( 'Questo evento è già passato.' );
+		}
+		if ( PublicEvents::options( (int) $session['activity_id'] )['approval'] ) {
+			throw new \InvalidArgumentException( 'Questo evento è su richiesta: la lista d\'attesa non c\'è, la segreteria decide chi partecipa.' );
 		}
 		if ( null === $session['capacity'] || (int) $acts->seats( $session_id )['free'] > 0 ) {
 			throw new \InvalidArgumentException( 'Ci sono ancora posti liberi: puoi prenotare direttamente.' );
@@ -32,13 +36,25 @@ final class Waitlist {
 		if ( null !== self::position( $session_id, $person_id ) ) {
 			throw new \InvalidArgumentException( 'Questa persona è già in lista d\'attesa.' );
 		}
+		$activity = $acts->get( (int) $session['activity_id'] );
+		$stored   = null;
+		if ( $activity && PriceLists::for_activity( $activity ) ) { // con i listini ne va scelto uno, come per la prenotazione diretta
+			if ( '' === $price_list ) {
+				throw new \InvalidArgumentException( 'Scegli la tariffa: per questa attività bisogna sceglierne una.' );
+			}
+			if ( ! PriceLists::find( $activity, $price_list ) ) {
+				throw new \InvalidArgumentException( 'Listino non trovato per questa attività.' );
+			}
+			$stored = $price_list;
+		}
 		$tbl = Db::t( 'waitlist' );
 		self::db()->query(
 			self::db()->prepare(
-				"INSERT INTO $tbl (session_id, person_id, requested_by, status, created_at) VALUES (%d, %d, %d, 'waiting', %s) ON DUPLICATE KEY UPDATE status = 'waiting', requested_by = VALUES(requested_by), created_at = VALUES(created_at), resolved_at = NULL",
+				"INSERT INTO $tbl (session_id, person_id, requested_by, price_list, status, created_at) VALUES (%d, %d, %d, NULLIF(%s,''), 'waiting', %s) ON DUPLICATE KEY UPDATE status = 'waiting', requested_by = VALUES(requested_by), price_list = VALUES(price_list), created_at = VALUES(created_at), resolved_at = NULL",
 				$session_id,
 				$person_id,
 				$by_person_id ?: null,
+				$stored,
 				Db::now()
 			)
 		);
@@ -65,7 +81,7 @@ final class Waitlist {
 		$tbl = Db::t( 'waitlist' );
 		return self::db()->get_results(
 			self::db()->prepare(
-				"SELECT w.person_id, w.created_at AS since, p.first_name, p.last_name, p.type FROM $tbl w JOIN " . Db::t( 'people' ) . " p ON p.id = w.person_id AND p.deleted_at IS NULL WHERE w.session_id = %d AND w.status = 'waiting' ORDER BY w.id",
+				"SELECT w.person_id, w.price_list, w.created_at AS since, p.first_name, p.last_name, p.type FROM $tbl w JOIN " . Db::t( 'people' ) . " p ON p.id = w.person_id AND p.deleted_at IS NULL WHERE w.session_id = %d AND w.status = 'waiting' ORDER BY w.id",
 				$session_id
 			),
 			ARRAY_A
@@ -74,6 +90,15 @@ final class Waitlist {
 
 	public static function count( int $session_id ): int {
 		return count( self::waiting( $session_id ) );
+	}
+
+	/** L'attività ha dei listini e la riga in coda non ne ha uno valido (riga antecedente alla scelta, o listino tolto dall'attività)? */
+	public static function needs_list_choice( array $activity, array $row ): bool {
+		if ( ! PriceLists::for_activity( $activity ) ) {
+			return false;
+		}
+		$key = (string) ( $row['price_list'] ?? '' );
+		return '' === $key || null === PriceLists::find( $activity, $key );
 	}
 
 	/**
@@ -90,7 +115,14 @@ final class Waitlist {
 		}
 		$n   = 0;
 		$tbl = Db::t( 'waitlist' );
+		if ( PublicEvents::options( (int) $session['activity_id'] )['approval'] ) {
+			return 0; // evento su richiesta: nessuno entra da solo, la segreteria prenota chi approva (chi era già in coda resta dov'è)
+		}
+		$activity = $acts->get( (int) $session['activity_id'] );
 		foreach ( self::waiting( $session_id ) as $w ) {
+			if ( $activity && self::needs_list_choice( $activity, $w ) ) {
+				continue; // listino mancante o non più valido: resta in coda e non entra da solo (la segreteria lo vede nella scheda e prenota a mano)
+			}
 			$seats = $acts->seats( $session_id );
 			if ( null !== $seats['free'] && $seats['free'] <= 0 ) {
 				break;
@@ -105,7 +137,7 @@ final class Waitlist {
 				&& '' === Regulation::booking_block( $who );
 			if ( $ok ) {
 				try {
-					$acts->book( $session_id, $pid );
+					$acts->book( $session_id, $pid, array( 'price_list' => (string) ( $w['price_list'] ?? '' ) ) );
 					$n++;
 					self::db()->update( $tbl, array( 'status' => 'promoted', 'resolved_at' => Db::now() ), array( 'session_id' => $session_id, 'person_id' => $pid, 'status' => 'waiting' ) );
 					self::notify( $p, $session );

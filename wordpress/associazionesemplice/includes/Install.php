@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '65'; // dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '66'; // dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	public static function activate(): void {
 		self::create_tables();
@@ -646,6 +646,7 @@ final class Install {
   session_id bigint(20) unsigned NOT NULL,
   person_id bigint(20) unsigned NOT NULL,
   requested_by bigint(20) unsigned DEFAULT NULL,
+  price_list varchar(30) DEFAULT NULL,
   status varchar(12) NOT NULL DEFAULT 'waiting',
   created_at datetime NOT NULL,
   resolved_at datetime DEFAULT NULL,

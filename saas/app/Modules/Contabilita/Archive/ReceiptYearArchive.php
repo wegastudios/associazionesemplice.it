@@ -98,18 +98,21 @@ final readonly class ReceiptYearArchive implements YearArchives
         $zipPath = $work.'.zip';
         $checkPath = $work.'.check';
         $stored = null;
+        $before = (int) array_sum(array_map(static fn (object $r): int => is_numeric($r->size_bytes ?? null) ? (int) $r->size_bytes : 0, $rows));
         try {
             $this->collect($rows, $year, $zipPath, $work);
             $stored = $this->files->store($orgId, $zipPath, 'archivio-ricevute-'.$year.'.zip', 'application/zip');
             $this->verify($stored, $rows, $checkPath);
 
             $user = $this->auth->guard()->id();
-            $this->connection()->transaction(function () use ($year, $stored, $rows, $user): void {
+            $this->connection()->transaction(function () use ($year, $stored, $rows, $user, $before): void {
                 $this->connection()->table('app.year_archives')->insert([
                     'org_id' => $this->context->require()->id, 'fiscal_year' => $year, 'path' => $stored->path, 'original_name' => $stored->originalName,
                     'size_bytes' => $stored->size, 'sha256' => $stored->sha256, 'file_count' => count($rows), 'archived_by' => is_string($user) ? $user : null,
                 ]);
                 $this->connection()->table('app.receipt_files')->whereIn('receipt_id', array_map(static fn (object $r): string => is_string($r->receipt_id ?? null) ? $r->receipt_id : '', $rows))->update(['archived_year' => $year]);
+                // Il registro sta nella stessa transazione: se non si scrive, l'archivio non si registra e i file singoli restano.
+                $this->audit->record('archive.created', 'app.year_archives', null, ['year' => $year, 'receipts' => count($rows), 'checksum' => $stored->sha256, 'bytes_before' => $before, 'bytes_after' => $stored->size]);
             });
         } catch (Throwable $e) {
             // Prima di questo punto non è stato tolto niente: si toglie solo l'archivio appena creato.
@@ -132,7 +135,6 @@ final readonly class ReceiptYearArchive implements YearArchives
             $this->safeDelete(new StoredFile(is_string($r->path ?? null) ? $r->path : '', 'ricevuta.pdf', 'application/pdf', 0, ''));
         }
         $this->archived->flush();
-        $this->audit->record('archive.created', 'app.year_archives', null, ['year' => $year, 'receipts' => count($rows), 'checksum' => $stored->sha256]);
 
         return count($rows);
     }
@@ -180,6 +182,7 @@ final readonly class ReceiptYearArchive implements YearArchives
                     $this->connection()->table('app.receipt_files')->where('receipt_id', $id)->update(['path' => $s->path, 'size_bytes' => $s->size, 'archived_year' => null]);
                 }
                 $this->connection()->table('app.year_archives')->where('fiscal_year', $year)->delete();
+                $this->audit->record('archive.restored', 'app.year_archives', null, ['year' => $year, 'receipts' => count($new)]);
             });
         } catch (Throwable $e) {
             foreach ($new as $s) {
@@ -192,13 +195,13 @@ final readonly class ReceiptYearArchive implements YearArchives
         }
         $this->archived->flush();
         $this->safeDelete($archive);
-        $this->audit->record('archive.restored', 'app.year_archives', null, ['year' => $year, 'receipts' => count($new)]);
 
         return count($new);
     }
 
     /**
-     * Raccoglie i PDF singoli in uno ZIP (senza compressione: sono già PDF), con l'indice.
+     * Raccoglie i PDF singoli in uno ZIP, con l'indice. Le voci si comprimono (deflate): i PDF del generatore interno sono
+     * testo non compresso, e l'archivio deve liberare spazio, non solo numero di file.
      *
      * @param  array<int, object>  $rows
      */
@@ -229,7 +232,7 @@ final readonly class ReceiptYearArchive implements YearArchives
             }
             $files[] = $file;
             $zip->addFile($file, $id.'.pdf');
-            $zip->setCompressionName($id.'.pdf', ZipArchive::CM_STORE);
+            $zip->setCompressionName($id.'.pdf', ZipArchive::CM_DEFLATE, 9);
             $index[] = ['receipt_id' => $id, 'number' => $number, 'file' => $r->original_name ?? '', 'sha256' => $r->sha256 ?? ''];
         }
         $zip->addFromString('indice.json', json_encode(['fiscal_year' => $year, 'receipts' => $index], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}');

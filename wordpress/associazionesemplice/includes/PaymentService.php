@@ -364,11 +364,22 @@ class PaymentService extends OfflinePayments {
 		return $rows ? array( 'cents' => (int) $rows[0]['amount_cents'], 'id' => (int) $rows[0]['id'] ) : null;
 	}
 
+	/**
+	 * Prenota la quota di un pagamento per la prima nota: la riga passa da «non registrata» a «registrata» in un solo passo, quindi due approvazioni
+	 * in contemporanea non registrano l'incasso due volte. @return bool true se questa chiamata ha preso la quota
+	 */
+	public function application_claim( int $id ): bool {
+		return 1 === (int) $this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'payments' ) . ' SET allocated_cents = amount_cents, updated_at = %s WHERE id = %d AND allocated_cents = 0', Db::now(), $id ) );
+	}
+
 	/** Domanda approvata: la quota pagata online entra in prima nota (e con lei l'iscrizione all'anno). */
 	public function application_settle( int $person_id, string $social_year ): bool {
 		$done   = false;
 		$ledger = Plugin::ledger();
 		foreach ( $this->application_payments( $person_id ) as $p ) {
+			if ( ! $this->application_claim( (int) $p['id'] ) ) {
+				continue; // un'altra approvazione, in contemporanea, ha già preso questa quota
+			}
 			try {
 				$ledger->record_receipt(
 					array(
@@ -377,10 +388,13 @@ class PaymentService extends OfflinePayments {
 						'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => (int) $p['amount_cents'], 'social_year' => $social_year, 'description' => 'Pagamento online della quota con la domanda di adesione' ) ),
 					)
 				);
-				$this->update( (int) $p['id'], array( 'allocated_cents' => (int) $p['amount_cents'] ) );
 				$done = true;
-			} catch ( \InvalidArgumentException $e ) {
+			} catch ( \InvalidArgumentException $e ) { // nulla è stato scritto: la quota torna da registrare e il pagamento da controllare
+				$this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'payments' ) . ' SET allocated_cents = 0 WHERE id = %d AND allocated_cents = amount_cents', (int) $p['id'] ) );
 				$this->update( (int) $p['id'], array( 'review' => 1, 'error' => mb_substr( 'Quota della domanda non registrata: ' . $e->getMessage(), 0, 250 ) ) );
+			} catch ( \Throwable $e ) { // non si sa quanto sia stato scritto: la quota resta presa (nessun secondo incasso) e il pagamento da controllare
+				$this->update( (int) $p['id'], array( 'review' => 1, 'error' => mb_substr( 'Registrazione della quota incompleta: ' . $e->getMessage(), 0, 250 ) ) );
+				throw $e;
 			}
 		}
 		return $done;
@@ -825,6 +839,9 @@ class PaymentService extends OfflinePayments {
 	public function handle_stripe_event( array $event ): string {
 		$type = (string) ( $event['type'] ?? '' );
 		$obj  = $event['data']['object'] ?? array();
+		if ( is_array( $obj ) && in_array( $type, array( 'charge.refunded', 'charge.dispute.created' ), true ) ) {
+			return $this->handle_stripe_charge_event( $type, $obj, $event );
+		}
 		if ( 0 !== strpos( $type, 'checkout.session.' ) || ! is_array( $obj ) ) {
 			return 'ignorato';
 		}
@@ -853,6 +870,81 @@ class PaymentService extends OfflinePayments {
 		return 'in attesa';
 	}
 
+	/**
+	 * Rimborso o contestazione segnalati da Stripe su un pagamento incassato: il pagamento va «da controllare», con una riga nel registro azioni.
+	 * Non si rimborsa né si annulla nulla da soli. Un rimborso fatto da qui (già registrato o in corso) non è una novità e non si segnala.
+	 *
+	 * @return string esito per il log
+	 */
+	private function handle_stripe_charge_event( string $type, array $obj, array $event ): string {
+		$intent = (string) ( $obj['payment_intent'] ?? '' );
+		if ( '' === $intent ) {
+			return 'pagamento sconosciuto';
+		}
+		if ( isset( $event['livemode'] ) && (bool) $event['livemode'] !== ( 'live' === (string) Settings::get( 'stripe_mode' ) ) ) {
+			return 'modalità diversa';
+		}
+		$p = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = 'stripe' AND provider_payment_id = %s ORDER BY id DESC LIMIT 1", $intent ), ARRAY_A );
+		if ( ! $p ) {
+			return 'pagamento sconosciuto';
+		}
+		if ( 'charge.refunded' === $type ) {
+			$refunded = (int) ( $obj['amount_refunded'] ?? 0 );
+			if ( $refunded <= (int) $p['refunded_cents'] + (int) ( $p['refund_pending_cents'] ?? 0 ) ) {
+				return 'già registrato'; // è il rimborso fatto da qui
+			}
+			$msg    = Texts::t( 'Stripe segnala un rimborso di {importo} non fatto da qui: controlla dal pannello di Stripe e dalla prima nota.', array( 'importo' => Money::format( $refunded ) ) );
+			$action = 'payment.refund_reported';
+			$audit  = array( 'cents' => $refunded );
+		} else {
+			$msg    = Texts::t( 'Stripe segnala una contestazione sul pagamento ({motivo}): controlla dal pannello di Stripe.', array( 'motivo' => mb_substr( (string) ( $obj['reason'] ?? '?' ), 0, 40 ) ) );
+			$action = 'payment.dispute_reported';
+			$audit  = array( 'cents' => (int) ( $obj['amount'] ?? 0 ) );
+		}
+		$msg = mb_substr( $msg, 0, 250 );
+		if ( 1 === (int) $p['review'] && $msg === (string) $p['error'] ) {
+			return 'già segnalato'; // lo stesso evento arrivato di nuovo
+		}
+		$this->update( (int) $p['id'], array( 'review' => 1, 'error' => $msg ) );
+		Audit::log( $action, 'payment', (int) $p['id'], $audit );
+		return 'da controllare';
+	}
+
+	/** Pagamenti da controllare (per l'avviso in Bacheca). */
+	public function review_count(): int {
+		return (int) $this->db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'payments' ) . ' WHERE review = 1' );
+	}
+
+	/** Per quanti giorni un pagamento scaduto ma con un riferimento del gestore si ricontrolla (uno al giorno). */
+	const RECHECK_DAYS = 30;
+
+	/**
+	 * Pagamenti scaduti che il gestore potrebbe aver incassato dopo: si ricontrollano al massimo una volta al giorno, per {@see RECHECK_DAYS} giorni.
+	 * L'ultimo controllo è la data di aggiornamento della riga. @return array{checked:int,registered:int}
+	 */
+	private function recheck_expired(): array {
+		$now  = strtotime( Db::now() );
+		$rows = $this->db()->get_results(
+			$this->db()->prepare(
+				'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE status = 'expired' AND provider_ref <> '' AND provider <> %s AND created_at >= %s AND updated_at <= %s ORDER BY updated_at LIMIT 20",
+				PaymentConfig::WOOCOMMERCE,
+				gmdate( 'Y-m-d H:i:s', $now - self::RECHECK_DAYS * DAY_IN_SECONDS ),
+				gmdate( 'Y-m-d H:i:s', $now - DAY_IN_SECONDS )
+			),
+			ARRAY_A
+		) ?: array();
+		$out = array( 'checked' => 0, 'registered' => 0 );
+		foreach ( $rows as $p ) {
+			$out['checked']++;
+			if ( $this->confirm_with_gateway( $p ) ) {
+				$out['registered']++;
+				continue;
+			}
+			$this->update( (int) $p['id'], array() ); // segna il controllo di oggi
+		}
+		return $out;
+	}
+
 	/** Lavoro periodico di WP-Cron (pianificato da Plugin::schedule_jobs()). */
 	public static function check_pending_job(): void {
 		PaymentService::engine()->check_pending();
@@ -879,6 +971,9 @@ class PaymentService extends OfflinePayments {
 				$out['expired']++;
 			}
 		}
+		$re                = $this->recheck_expired();
+		$out['registered'] += $re['registered'];
+		$out['rechecked']   = $re['checked'];
 		return $out;
 	}
 
@@ -938,19 +1033,26 @@ class PaymentService extends OfflinePayments {
 					}
 					try {
 						$ledger->record_receipt( array( 'date' => $today, 'account_id' => $account, 'method' => $method, 'person_id' => (int) $person_id, 'document_ref' => $ref, 'lines' => $lines ) );
-						$allocated += PaymentItems::total( $group );
-						foreach ( $group as $i ) {
+					} catch ( \InvalidArgumentException $e ) {
+						$review       = true;
+						$error        = mb_substr( $e->getMessage(), 0, 250 );
+						$unallocated += PaymentItems::total( $group );
+						continue;
+					}
+					$allocated += PaymentItems::total( $group );
+					foreach ( $group as $i ) { // l'incasso è già in prima nota: se un passo successivo non riesce il pagamento resta «da controllare», senza riscrivere l'incasso
+						try {
 							if ( PaymentItems::RESERVATION === $i['type'] ) {
 								Resources::confirm( (int) $i['reservation_id'] ); // pagata: la fascia non è più provvisoria
 							}
 							if ( PaymentItems::CREDITS === $i['type'] ) {
 								Credits::granted_online( (int) $i['person_id'], (int) $i['credits'], (int) $p['id'] ); // pacchetto pagato: i crediti arrivano al socio
 							}
+						} catch ( \Throwable $e ) {
+							$review = true;
+							$error  = mb_substr( Texts::t( 'Incasso registrato, ma un passo successivo non è riuscito ({voce}): controlla il pagamento.', array( 'voce' => (string) ( $i['label'] ?? $i['type'] ) ) ), 0, 250 );
+							Audit::log( 'payment.after_receipt_failed', 'payment', (int) $p['id'], array( 'item' => (string) $i['type'] ) );
 						}
-					} catch ( \InvalidArgumentException $e ) {
-						$review       = true;
-						$error        = mb_substr( $e->getMessage(), 0, 250 );
-						$unallocated += PaymentItems::total( $group );
 					}
 				}
 			}

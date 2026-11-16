@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -162,6 +162,60 @@ case "$ACTION" in
       }
       echo "fine", PHP_EOL;
     '
+    ;;
+  cancellazioni)
+    # Sola lettura (decisione del titolare, 16/11/2026): com'è andata la cancellazione notturna e che cosa resta delle associazioni
+    # sospese, chiuse o cancellate. Nessun nome né slug: l uscita finisce nel log pubblico del workflow, solo identificativi tecnici e conteggi. Nessuna scrittura.
+    cd "$BASE/current"
+    echo "== Registro dello staff: cancellazioni dal 13/11 =="
+    "$PHP" artisan tinker --execute='
+      $c = DB::connection("pgsql_owner");
+      $n = 0;
+      $rows = $c->table("core.platform_audit")->whereIn("action", ["org.purged", "org.purge_failed", "org.purge_stopped"])->where("created_at", ">=", "2026-11-13")->orderBy("created_at")->get(["created_at", "action", "subject", "details"]);
+      foreach ($rows as $r) { $n++; echo $r->created_at, " ", $r->action, " ", $r->subject ?? "-", " ", $r->details, PHP_EOL; }
+      if ($n === 0) { echo "(nessuna riga: la cancellazione non ha preso ne tentato nessuna associazione)", PHP_EOL; }
+      echo "== Avvisi registrati (la cancellazione parte solo dopo l ultimo avviso) ==", PHP_EOL;
+      foreach ($c->table("core.org_notices")->get(["kind", "sent_at"])->groupBy("kind") as $k => $g) { echo $k, ": ", $g->count(), PHP_EOL; }
+      echo "== Associazioni sospese, chiuse o cancellate ==", PHP_EOL;
+      $names = app(App\Modules\Core\Contracts\DatabaseNames::class);
+      $orgs = $c->table("core.orgs")->where(fn ($q) => $q->whereIn("status", ["suspended", "closed"])->orWhereNotNull("deleted_at"))->orderBy("id")->get(["id", "status", "suspended_at", "deleted_at", "database"]);
+      foreach ($orgs as $o) {
+        $ent = $c->table("core.org_entitlements")->where("org_id", $o->id)->first(["status", "until"]);
+        $users = $c->transaction(function () use ($c, $o) { $c->select("SELECT set_config(?, ?, true)", ["app.org_id", $o->id]); return $c->table("core.org_users")->where("org_id", $o->id)->count(); });
+        $domains = $c->transaction(function () use ($c, $o) { $c->select("SELECT set_config(?, ?, true)", ["app.org_id", $o->id]); return $c->table("core.org_domains")->where("org_id", $o->id)->count(); });
+        $keys = $c->transaction(function () use ($c, $o) { $c->select("SELECT set_config(?, ?, true)", ["app.org_id", $o->id]); return $c->table("core.org_keys")->where("org_id", $o->id)->count(); });
+        $data = is_string($o->database) && $o->database !== "" ? DB::connection($names->ownerConnection($o->database)) : $c;
+        $rowsLeft = $data->transaction(function () use ($data, $o) {
+          $data->select("SELECT set_config(?, ?, true)", ["app.org_id", $o->id]);
+          $tot = 0;
+          $tables = $data->select("SELECT c.table_schema || ? || c.table_name AS t FROM information_schema.columns c JOIN information_schema.tables t ON t.table_schema = c.table_schema AND t.table_name = c.table_name WHERE c.column_name = ? AND t.table_type = ? AND c.table_schema IN (?, ?, ?, ?) ORDER BY 1", [".", "org_id", "BASE TABLE", "app", "sites", "portal", "audit"]);
+          foreach ($tables as $t) { if (preg_match("/^(app|sites|portal|audit)\.[a-z][a-z0-9_]*$/", $t->t) === 1) { $tot += (int) $data->scalar("SELECT count(*) FROM ".$t->t." WHERE org_id = ?", [$o->id]); } }
+          return $tot;
+        });
+        echo $o->id, " stato=", $o->status, " sospesa=", $o->suspended_at ?? "-", " cancellata=", $o->deleted_at ?? "no", " diritti=", $ent->status ?? "-", " until=", $ent->until ?? "-", " righe=", $rowsLeft, " utenti=", $users, " domini=", $domains, " chiavi=", $keys, " cartella=", Storage::disk("org_files")->exists($o->id) ? "si" : "no", PHP_EOL;
+      }
+      echo "fine (", $orgs->count(), " associazioni)", PHP_EOL;
+    ' || true
+    echo "== Log: righe sulla cancellazione dal 14/11 =="
+    grep -hiE "purge|cancellat" "$BASE/shared/storage/logs/"*.log 2>/dev/null | grep -E "^\[2026-11-(1[4-9]|2[0-9])" | tail -40 | cut -c1-300 || true
+    ;;
+  permessi-backup)
+    # Sola lettura: privilegi del ruolo dei backup fuori da SELECT. Atteso: nessuna riga.
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $role = DB::connection("pgsql_owner")->getConfig("backup_role");
+      $rows = DB::connection("pgsql_owner")->select("SELECT table_schema, table_name, privilege_type FROM information_schema.role_table_grants WHERE grantee = ? AND privilege_type <> ? ORDER BY 1, 2, 3", [$role, "SELECT"]);
+      echo "Ruolo dei backup: ", $role, PHP_EOL, "Privilegi oltre SELECT: ", count($rows), PHP_EOL;
+      foreach ($rows as $r) { echo $r->table_schema, ".", $r->table_name, " ", $r->privilege_type, PHP_EOL; }
+    ' || true
+    ;;
+  sblocca-utente)
+    # Sblocco dal supporto (decisione scritta del titolare, 16/11/2026): toglie la verifica in due passaggi a chi lavora
+    # nel gestionale e ha finito le richieste per email; azzera i conteggi, annota l'evento e avvisa la persona. L'email è il terzo argomento.
+    EMAIL="${3:-}"
+    [[ "$EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "Email non valida." >&2; exit 1; }
+    cd "$BASE/current"
+    "$PHP" artisan saas:user:reset-2fa "$EMAIL"
     ;;
   spegni-avvisi)
     # Spegne gli avvisi email del gestionale (restano solo le email del portale) e dice se ne sono già partiti.

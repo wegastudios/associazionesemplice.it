@@ -140,18 +140,21 @@ final readonly class ReceiptFiles
             }
         }
         $stored = $this->store($pdf, is_string($row->original_name ?? null) ? $row->original_name : 'ricevuta.pdf');
-        $this->connection()->table('app.receipt_files')->where('receipt_id', $receiptId)->update([
-            'path' => $stored->path, 'size_bytes' => $stored->size, 'sha256' => $stored->sha256, 'source' => 'rifatta', 'fixed_at' => now(),
-        ]);
         $previous = is_string($row->sha256 ?? null) ? $row->sha256 : '';
         $identical = hash_equals($previous, $stored->sha256);
-        $this->audit->record('receipt.rebuilt', 'app.receipts', $receiptId, [
-            'previous_path' => is_string($row->path ?? null) ? $row->path : '',
-            'previous_checksum' => $previous,
-            'checksum' => $stored->sha256,
-            'identical' => $identical,
-            'from_snapshot' => $snapshot !== null,
-        ]);
+        // Aggiornamento e registro nella stessa transazione: o si fanno tutti e due o nessuno.
+        $this->connection()->transaction(function () use ($receiptId, $stored, $row, $previous, $identical, $snapshot): void {
+            $this->connection()->table('app.receipt_files')->where('receipt_id', $receiptId)->update([
+                'path' => $stored->path, 'size_bytes' => $stored->size, 'sha256' => $stored->sha256, 'source' => 'rifatta', 'fixed_at' => now(),
+            ]);
+            $this->audit->record('receipt.rebuilt', 'app.receipts', $receiptId, [
+                'previous_path' => is_string($row->path ?? null) ? $row->path : '',
+                'previous_checksum' => $previous,
+                'checksum' => $stored->sha256,
+                'identical' => $identical,
+                'from_snapshot' => $snapshot !== null,
+            ]);
+        });
 
         return $identical;
     }
