@@ -8,6 +8,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Libro soci per anno fiscale: segue l'anno fiscale e alla chiusura diventa definitivo (pubblicato e bloccato, non cambia più), prima è una bozza; ogni socio ha una matricola fissa e ogni riga un numero; «Emetti i documenti definitivi degli anni già chiusi» emette quelli passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
 | Soci che sono enti: scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
+| Dati dell'ente obbligatori (forma dell'ente, codice fiscale, sede, email e telefono della segreteria; partita IVA, numero RUNTS e PEC o la spunta «non ce l'ha»), con la banda gialla in alto finché manca qualcosa | ✓ | ✓ | ✓ |
 | Utente «Dipendente»: permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
 | Quota associativa a rate: saldo da incassare e tessera valida al saldo | ✓ | ✓ | ✓ |
@@ -97,6 +98,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online con Stripe, PayPal, SumUp o WooCommerce | — | ✓ | ✓ |
 | Satispay e Klarna (tramite Stripe) tra i metodi di pagamento online | — | ✓ | ✓ |
+| Rimborso dei pagamenti online Stripe e PayPal dal programma, totale o parziale, con motivo obbligatorio ed email al socio (nel plugin non c'è «rimborsa e storna» e non si chiede la password, a differenza del gestionale online) | — | ✓ | ✓ |
 | Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Commissione di incasso sul conto (fissa più percentuale), per esempio POS: a ogni incasso la spesa va in prima nota | — | ✓ | ✓ |
@@ -107,7 +109,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Voce di prima nota per ogni risorsa, separata nei report | — | ✓ | ✓ |
 | Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
 | Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
-| Ricevute in PDF e attestazione annuale, numerate per anno fiscale; la ricevuta emessa non cambia più e, se annulli l'incasso, il numero non si libera: si emette la ricevuta sostitutiva | — | ✓ | ✓ |
+| Ricevute in PDF e attestazione annuale, numerate per anno fiscale; il PDF della ricevuta è definitivo (si crea una volta sola e non cambia più), con la pagina «Verifica delle ricevute» per controllarlo, fissarlo e rifarlo dai dati salvati, e, se annulli l'incasso, il numero non si libera: si emette la ricevuta sostitutiva | — | ✓ | ✓ |
 | Ricevute dei minori intestate al genitore, con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
 | Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
 
@@ -122,6 +124,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
 | Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
 | Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
+| Avviso se un anno fiscale passato ancora aperto è in disavanzo (non blocca la chiusura) | — | — | ✓ |
 | Verifiche di fine anno e blocco della chiusura se mancano le spese documentate dei rimborsi | — | — | ✓ |
 
 ## Registri e privacy
@@ -164,6 +167,11 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Testi personalizzabili, tipo di ente e termini | — | ✓ | ✓ |
 | Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
+| Copie di sicurezza firmate: ripristino con conferma scritta e password, copia modificata rifiutata | ✓ | ✓ | ✓ |
+| La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
+| Cifratura dei file riservati (documenti e scansioni, allegati dei movimenti, foto dell'inventario), con la frase per riaprirli | ✓ | ✓ | ✓ |
+| Cifratura anche di certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
+| Controllo che la cartella dei file riservati non sia raggiungibile da internet | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
 | Registro azioni con spazio occupato, «Libera spazio» e pulizia automatica | ✓ | ✓ | ✓ |
 

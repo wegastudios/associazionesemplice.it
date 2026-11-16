@@ -64,6 +64,8 @@ Negli **ultimi giorni prima della scadenza** (quelli dell'avviso di scadenza, **
 2. Premi **Incassa** accanto al socio: l'incasso si apre già compilato con la persona e gli importi dovuti.
 3. Se un socio non rinnova più, puoi **Sospendere**: diventa inattivo, non compare più in Bacheca e non può prenotare finché non lo riattivi a mano dalla sua scheda.
 
+Se il socio ha **già la tessera di quell'anno**, la quota non si incassa due volte. Nella pagina Incasso la quota non viene più proposta da sola, e se la aggiungi a mano compare l'avviso **«⚠ il socio ha già la tessera 2026: l'incasso non verrà salvato finché c'è questa voce»** (con l'anno giusto al posto di 2026). Se provi a salvare, il programma dice, per esempio, **«Voce 2: il socio ha già la tessera 2026.»** (il numero indica la riga dell'incasso) e l'incasso non viene salvato, nemmeno le altre voci (per esempio un corso): togli la voce della quota e salva di nuovo. Succede anche se metti due volte la quota dello stesso socio nello stesso incasso, e se, per un socio nuovo che si iscrive a fine anno, aggiungi a mano la quota dell'anno che riceve già in omaggio. Se il socio paga la quota **a rate**, il blocco scatta solo dopo l'ultima rata: finché non è saldata puoi continuare a incassare le rate.
+
 ## Quota pagata a rate
 
 Un socio può versare la quota in più volte.

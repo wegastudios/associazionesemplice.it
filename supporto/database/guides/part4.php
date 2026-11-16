@@ -26,7 +26,7 @@ Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra ne
 
 ## Se hai sbagliato
 
-I movimenti della prima nota **non si modificano**: si **annullano** (resta traccia dell'annullamento) e si registra quello giusto. Un incasso annullato sparisce da saldi, report e ricevute.
+I movimenti della prima nota **non si modificano**: si **annullano** (resta traccia dell'annullamento) e si registra quello giusto. Un incasso annullato sparisce da saldi, report e ricevute. Se annulli un incasso della quota, la **tessera resta** quando c'è **un altro incasso valido** della stessa quota per lo stesso socio e lo stesso anno (per esempio se era stata incassata due volte); se era l'unico incasso, la tessera non è più valida.
 
 > Un incasso può avere una ricevuta in PDF (vedi [Ricevute in PDF](guida:ricevute-in-pdf), funzione Pro).
 MD,
@@ -80,6 +80,10 @@ Da settembre la **Bacheca** ti ricorda di aprire l'anno fiscale nuovo. L'avviso 
 3. Per chiudere un anno fiscale non devono restare fondi non rimborsati (funzione Pro).
 
 Si può incassare, spendere e girare denaro solo negli anni fiscali **aperti**. Se provi a modificare un anno chiuso, un messaggio ti dice che per modificarlo va riaperto dalla pagina «Anni fiscali» (si può riaprire solo l'ultimo anno chiuso). Un anno fiscale chiuso non si modifica più: nemmeno allegati, saldi iniziali, cessazioni dei soci. Si bloccano anche **assemblee** (anche non svolte), **votazioni**, **sondaggi** e **verbali** di quell'anno, la **relazione del rendiconto**, la **cessione del posto** e l'eliminazione di eventi e iscrizioni con incassi in quell'anno, l'accantonamento e il rilascio dei **fondi**; il **nome e il tipo di un conto** con movimenti in quell'anno non si cambiano (commissione, chiusura e riapertura del conto sì).
+
+## Anno passato ancora aperto e in disavanzo ({piano_fiscale})
+
+Se un anno fiscale passato è ancora aperto e le uscite superano le entrate, il programma te lo segnala in **Bacheca** e in **Cassa** con un avviso fisso: **«Anno fiscale 2025 in disavanzo.»** (con l'anno giusto). L'avviso sparisce quando il risultato torna a zero o più, o quando chiudi l'anno. Se mancano delle entrate, registrale in **Prima nota** con una data dentro quell'anno; se invece i conti sono giusti, controllali e poi chiudi l'anno: il programma te lo fa confermare con la spunta **«chiudo anche se l'anno è in disavanzo di …»** (con l'importo). Non blocca nulla.
 
 ## Il libro soci dell'anno fiscale
 
@@ -265,7 +269,7 @@ A volte un pagamento online non coincide con quello che il sistema si aspettava,
 2. Trova i pagamenti con lo stato **da controllare**.
 3. Confronta importo e riferimento con quello che trovi nel pannello del fornitore.
 4. Se la persona ha pagato più o meno del dovuto, correggi a mano: annulla il movimento e registra l'incasso corretto, oppure registra la differenza.
-5. Se il pagamento era per una prenotazione annullata, decidi se **rimborsare** (dal pannello del fornitore) e registra la spesa e l'eventuale restituzione.
+5. Se il pagamento era per una prenotazione annullata, decidi se **rimborsare**: con Stripe o PayPal si fa dal programma (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)), con gli altri metodi dal pannello del fornitore.
 
 ## Se un pagamento non compare
 
@@ -298,6 +302,25 @@ Ogni incasso può avere una **ricevuta in PDF**, numerata e con il nome dell'ass
 - Con la partita IVA, imponibile e IVA contenuta per ogni aliquota.
 
 Un incasso annullato non ha ricevuta.
+
+## La ricevuta non cambia più
+
+Il **PDF di una ricevuta si crea una volta sola**, quando viene emessa, e si salva nella **cartella riservata** del sito. Quando lo scarichi o lo spedisci è sempre **lo stesso file**: il programma controlla che sia quello emesso. I **dati** della ricevuta (nome, codice fiscale, importi, dati dell'ente, piè di pagina, righe) sono **sempre quelli salvati all'emissione**, anche se poi cambiano i dati del socio o dell'associazione.
+
+Le ricevute emesse **prima di questo aggiornamento** si fissano **in automatico** dopo l'aggiornamento: per il loro PDF valgono i dati dell'emissione ma i **testi di oggi** (i tuoi testi personalizzati, le parole scelte per il tipo di ente, la grafica del programma). Quelle emesse da ora in poi restano identiche per sempre.
+
+Le ricevute emesse molto tempo fa, prima che il sito salvasse i dati, non hanno ancora un PDF fisso. Dalla pagina **«Verifica delle ricevute»**, sotto **«Emesse prima che si salvassero i dati»**, l'**amministratore** può fissarle con il pulsante **«Fissa anche queste con i dati di oggi»** (a gruppi di 100), senza aprirle una per una. Il programma avvisa: **«I dati sono quelli di oggi, non quelli dell'emissione.»** Il PDF usa quindi i dati di oggi e da quel momento non cambia più. Conviene farlo prima di una copia di sicurezza. Le ricevute annullate restano come sono: il programma dice «Le … rimaste sono ricevute annullate: restano come sono.»
+
+## La pagina «Verifica delle ricevute»
+
+È solo per gli **amministratori**. La apri dai riquadri **«PDF definitivi delle ricevute»** (pagina **Anni fiscali**) e **«Ricevute: PDF definitivi»** (pagina **Copia di sicurezza**). Scegli l'**anno fiscale**: vedi quante ricevute sono «A posto», «PDF ancora da fissare», «Emesse prima che si salvassero i dati», «File mancanti» e «File diversi da quando sono stati emessi».
+
+- **«Fissa i prossimi PDF»** fissa le ricevute ancora da fissare a gruppi di 100: se ne restano, premilo ancora.
+- **«Rifai dai dati salvati»** (per un file mancante o diverso) rifà il PDF dai dati salvati all'emissione. Prima chiede conferma: «Rifare questo PDF dai dati salvati all'emissione? Un file diverso resta messo da parte e l'operazione viene scritta nel registro azioni.» Poi compare «PDF rifatto dai dati salvati all'emissione. L'operazione è scritta nel registro azioni.»
+- Il file si può anche **ripristinare da una copia di sicurezza**, che contiene sempre i PDF delle ricevute.
+- **«Scarica i PDF di questo anno fiscale (ZIP)»** li scarica tutti insieme.
+
+Finché un PDF non coincide con quello emesso, **scaricare quella ricevuta dà un errore**: non viene mai rifatta di nascosto. Il **socio** che prova a scaricarla dall'area soci legge: «Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria: {email}, tel. {telefono}.» con i contatti che hai inserito nei Dati dell'ente.
 
 ## Se annulli un incasso
 

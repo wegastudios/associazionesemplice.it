@@ -43,8 +43,10 @@ Parte da sola alla prima attivazione. Puoi riaprirla quando vuoi da **Strumenti 
 
 ## Le sezioni
 
-1. **Ente**: nome, tipo di ente, come chiamare chi partecipa (socio, tesserato…), se accetti ospiti e chi può iscriversi. Scegliendo **«Chiunque può chiedere di iscriversi»** si accende anche la **domanda di adesione online** (pagina **«Diventa socio»**), mentre **«Solo su presentazione»** la spegne. Chi ha già configurato non cambia nulla finché non riapre la procedura guidata. Al **primo passo** scegli subito i **due mesi**: da che mese inizia l'**anno sociale** (da cui dipendono tessere e attività) e da che mese inizia l'**anno fiscale** (bilancio e rendiconto), poi metti la spunta **«Ho controllato i due mesi»**. Sono precompilati con gennaio: se va bene, basta la spunta. I due mesi sono indipendenti. Nei dettagli trovi codice fiscale e sede.
-2. **Partita IVA**: rispondi sì o no. Se sì, inserisci numero e regime.
+1. **Il tuo ente**: i **dati dell'ente**, obbligatori (vedi sotto), poi come chiamare chi partecipa (socio, tesserato…), se accetti ospiti e chi può iscriversi. Scegliendo **«Chiunque può chiedere di iscriversi»** si accende anche la **domanda di adesione online** (pagina **«Diventa socio»**), mentre **«Solo su presentazione»** la spegne. Chi ha già configurato non cambia nulla finché non riapre la procedura guidata. Al **primo passo** scegli subito i **due mesi**: da che mese inizia l'**anno sociale** (da cui dipendono tessere e attività) e da che mese inizia l'**anno fiscale** (bilancio e rendiconto), poi metti la spunta **«Ho controllato i due mesi»**. Sono precompilati con gennaio: se va bene, basta la spunta. I due mesi sono indipendenti. 
+
+   I dati obbligatori sono: la **denominazione**; la **forma dell'ente** («ASD – associazione sportiva dilettantistica», «APS – associazione di promozione sociale», «ODV – organizzazione di volontariato», «ETS – altro ente del Terzo settore», «Circolo», «Altro»); il **codice fiscale**; la **sede legale** (indirizzo, CAP, comune, provincia); l'**email** e il **telefono della segreteria**. Per **partita IVA**, **numero RUNTS** e **PEC** scrivi il dato oppure, se non esiste, metti la spunta «L'associazione non ha la partita IVA», «L'associazione non è iscritta al RUNTS» o «L'associazione non ha una PEC». Il **legale rappresentante** non si scrive qui: è la persona con la carica di presidente, che indichi tra le **Persone**. Vedi [Dati dell'ente e contatti della segreteria](guida:dati-dell-ente-e-contatti-della-segreteria).
+2. **Partita IVA** (con {piano_contabile} e {piano_fiscale}): se l'associazione ha la partita IVA, qui imposti l'IVA.
 3. **Cosa ti serve**: scegli le parti che userai, per esempio corsi ed eventi, prima nota, libro soci e verbali. Una parte che spegni sparisce dal menu, ma i dati non vengono toccati.
 4. **Quota associativa** e, nei dettagli, altri tipi di socio.
 5. **Pagamenti dei soci**: nessuno, Stripe, PayPal, WooCommerce o bonifico (la scelta dipende dalla tua licenza).
@@ -140,15 +142,21 @@ Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 
 ## Ripristinare
 
-> Il ripristino funziona sullo stesso sito e sostituisce i dati del plugin con quelli della copia, **tutto o niente**.
+> Il ripristino sostituisce i dati del plugin con quelli della copia, **tutto o niente**. Le copie sono **firmate**: una copia **modificata dopo essere stata fatta** viene **rifiutata**.
 
 1. Nella stessa pagina scegli **Ripristina** e seleziona il file.
 2. Prima di sostituire i dati, il plugin salva sul sito una copia dello stato attuale (ne tiene alcune, scaricabili).
-3. Conferma. A operazione finita controlla soci e prima nota.
+3. Per confermare scrivi **RIPRISTINA** e la **tua password di amministratore**. Se la copia è stata fatta **su un altro sito**, scrivi invece **RIPRISTINA DA ALTRO SITO** (e la password): il programma ti dice prima cosa verrà sostituito, e l'operazione resta scritta nel registro delle azioni.
+4. A operazione finita controlla soci e prima nota.
+
+**La frase della copia.** Serve solo se la copia viene da un altro sito: è il codice di licenza o, nel gratuito, la data e l'ora in cui era stata creata la chiave dei file (in UTC, non la data di installazione del plugin). Se la lasci vuota, **soci e prima nota si ripristinano lo stesso**, ma i documenti cifrati restano chiusi finché non riapri la chiave con la frase.
+
+**Dopo un cambio dei codici di sicurezza**, le copie fatte prima chiedono la conferma per altro sito.
 
 ## Da sapere
 
 - Gli utenti di WordPress non fanno parte della copia.
+- **Non si ripristinano**: le password dei soci, le loro sessioni e le notifiche (i soci rientrano con il link che ricevono) e il registro delle azioni.
 - La copia contiene dati personali: tienila protetta e non condividerla.
 MD,
     ],

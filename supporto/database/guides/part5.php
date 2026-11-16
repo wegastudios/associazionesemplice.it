@@ -76,9 +76,8 @@ Se l'ente ha la partita IVA, il plugin la gestisce a un livello minimo, pensato 
 
 1. Vai in **Impostazioni → Ente e fiscalità → Dati e fiscalità**.
 2. Inserisci la **partita IVA** (11 cifre, anche con prefisso IT): viene controllata.
-3. Scegli il **regime**, l'**aliquota** proposta (22, 10, 5, 4 o 0 %) e se gli importi si scrivono IVA compresa o esclusa. Il codice SDI è facoltativo.
+3. Scegli l'**aliquota** proposta (22, 10, 5, 4 o 0 %) e se gli importi si scrivono IVA compresa o esclusa. Il codice SDI è facoltativo.
 
-In regime forfettario l'IVA non si applica.
 
 ## Come si applica
 
