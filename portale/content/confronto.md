@@ -100,8 +100,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online :: Pagamenti online con Stripe, PayPal, SumUp, Satispay o WooCommerce | — | ✓ | ✓ |
-| Rimborsi online :: Si rimborsa un pagamento fatto online direttamente dalla scheda, con traccia in prima nota | — | ✓ | ✓ |
-| Buoni di rimborso cifrati :: I documenti dei buoni di rimborso si conservano cifrati | — | ✓ | ✓ |
+| Rimborso dei pagamenti online :: Rimborso dei pagamenti online Stripe e PayPal dal programma, totale o parziale, con motivo obbligatorio ed email al socio | — | ✓ | ✓ |
 | Klarna: paga dopo o a rate :: Klarna (paga dopo o a rate) tra i metodi di pagamento di Stripe | — | ✓ | ✓ |
 | SMS ai soci :: SMS ai soci dalle comunicazioni e, a scelta, dai promemoria (Brevo o Twilio), con consenso, crediti, registro e nuovi tentativi | — | ✓ | ✓ |
 | Newsletter (Brevo, Mailchimp, MailPoet) :: Newsletter: sincronizzazione dei soci con consenso verso Brevo, Mailchimp o MailPoet | — | ✓ | ✓ |
@@ -117,7 +116,6 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
 | Ricevute numerate per anno fiscale :: Ogni ricevuta ha un numero che riparte a ogni anno fiscale; si può annullare e sostituire con «Emetti la ricevuta sostitutiva»; le ricevute annullate non si vedono più ai soci | — | ✓ | ✓ |
 | Ricevute dei minori intestate al genitore :: Ricevute dei minori intestate al genitore, con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
-| Ricevute definitive cifrate :: Le ricevute emesse restano sul server cifrate, non leggibili da chi non ha la chiave | — | ✓ | ✓ |
 | Report di gestione :: Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
 | Bilancio preventivo :: Bilancio preventivo per categoria con confronto con il consuntivo della prima nota | — | ✓ | ✓ |
 | Rimborsi ai volontari :: Rimborsi ai volontari: richiesta, approvazione, pagamento e registrazione in prima nota | — | ✓ | ✓ |
@@ -135,7 +133,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Bilancio provvisorio e storico mensile :: Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
 | Prospetto dei rimborsi per persona :: Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
 | Verifiche di fine anno :: Verifiche di fine anno e blocco della chiusura se mancano le spese documentate dei rimborsi | — | — | ✓ |
-| Avviso di disavanzo :: Un anno fiscale finito, ancora aperto e con le uscite maggiori delle entrate resta segnalato in Bacheca e in Cassa finché il risultato non torna a zero o più | — | — | ✓ |
+| Avviso di disavanzo :: Avviso se un anno fiscale passato ancora aperto è in disavanzo (non blocca la chiusura) | — | — | ✓ |
 
 ## Registri e privacy
 
@@ -144,7 +142,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
 | Votazioni e sondaggi dei soci, anche a voto segreto, con verbale dei risultati in PDF e CSV; votano i soci maggiorenni | ✓ | ✓ | ✓ |
 | Diritto di voto per livello :: Si sceglie per ogni livello di socio se ha diritto di voto | — | ✓ | ✓ |
-| Dati dell'ente e contatti della segreteria obbligatori :: All'installazione si chiedono dati fiscali e contatti della segreteria, così ricevute, avvisi e pagine pubbliche sono sempre corretti | ✓ | ✓ | ✓ |
+| Dati dell'ente obbligatori :: Forma dell'ente, codice fiscale, sede, email e telefono della segreteria; partita IVA, numero RUNTS e PEC o la spunta «non ce l'ha»; finché manca qualcosa compare una banda gialla in alto | ✓ | ✓ | ✓ |
 | Dati per il RUNTS :: Registri → «Dati per il RUNTS»: numeri al 31 dicembre, soci che sono enti, avviso se si scende sotto il minimo di soci per ODV e APS e promemoria del 30 giugno | ✓ | ✓ | ✓ |
 | Assemblee dei soci :: Assemblee dei soci: convocazione per email, presenze, deleghe tra soci, numero legale e verbale già compilato | — | ✓ | ✓ |
 | Inventario dei beni con prestiti a soci e volontari, rientri, storico e promemoria | ✓ | ✓ | ✓ |
@@ -155,7 +153,6 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Assicurazioni dei volontari :: Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
 | Registro delle presenze :: Registro delle presenze a corsi ed eventi, anche in vista a calendario | — | ✓ | ✓ |
 | Certificato medico sportivo :: Certificato medico sportivo dei soci: scadenze, attività che lo richiedono, promemoria ed esportazione | — | ✓ | ✓ |
-| Certificati medici cifrati da soli :: I certificati caricati si cifrano in automatico, senza che tu faccia nulla | — | ✓ | ✓ |
 | Affiliazioni agli enti sportivi :: Affiliazioni agli enti (CONI/RAS e enti di promozione sportiva), tessere dei soci anche in blocco e file CSV per i portali degli enti con sport e disciplina | — | ✓ | ✓ |
 
 ## Comunicazione
@@ -177,9 +174,11 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Testi personalizzabili :: Testi personalizzabili, tipo di ente e termini | — | ✓ | ✓ |
 | Lingue aggiuntive :: Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
-| File caricati cifrati :: Documenti, allegati e inventario si cifrano sul server, con frase di recupero per riaprirli se serve | ✓ | ✓ | ✓ |
-| Controllo della cartella riservata :: Un controllo dice se la cartella dei file riservati è raggiungibile dall'esterno e come sistemarla | ✓ | ✓ | ✓ |
-| Ripristino firmato :: Una copia di sicurezza si ripristina solo se è firmata dal tuo sito, così nessuna copia manomessa entra nei dati | ✓ | ✓ | ✓ |
+| Copie di sicurezza firmate :: Una copia modificata viene rifiutata; una copia di un altro sito si ripristina con conferma scritta e password | ✓ | ✓ | ✓ |
+| Quota già pagata nell'anno :: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
+| Cifratura dei file riservati :: Documenti e scansioni, allegati dei movimenti e foto dell'inventario si cifrano, con la frase per riaprirli | ✓ | ✓ | ✓ |
+| Cifratura di certificati, giustificativi e ricevute :: Cifratura anche di certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
+| Controllo della cartella dei file riservati :: Controlla che la cartella dei file riservati non sia raggiungibile da internet | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
 | Registro azioni con spazio occupato, «Libera spazio» e pulizia automatica | ✓ | ✓ | ✓ |
 
