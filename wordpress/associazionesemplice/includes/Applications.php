@@ -243,6 +243,7 @@ final class Applications {
 		$gd       = self::guardian_data( $row );
 		$guardian = null;
 		$created  = false;
+		$confirm  = false;
 		if ( $gd ) {
 			$guardian = $people->find_by_email( strtolower( (string) $gd['email'] ), $id );
 			if ( $guardian && ! empty( $guardian['application_status'] ) ) {
@@ -273,14 +274,25 @@ final class Applications {
 			}
 		}
 		if ( $guardian ) {
-			Guardians::link( $id, (int) $guardian['id'] );
-			self::db()->update( Db::t( 'people' ), array( 'image_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) ); // la liberatoria immagini del minore la risponde il genitore
-			// A nome del minore hanno accettato regolamento e privacy il genitore: resta registrato chi.
-			self::db()->update( Db::t( 'people' ), array( 'rules_accepted_by' => Regulation::enabled() ? (int) $guardian['id'] : null, 'privacy_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) );
+			// Un genitore già in anagrafica (non creato ora da questa domanda) deve prima confermare: finché non lo fa non gli si attribuiscono i consensi e non si crea il collegamento con il minore (nasce alla conferma).
+			if ( ! $created ) {
+				$confirm = true;
+			} else {
+				Guardians::link( $id, (int) $guardian['id'] );
+				self::db()->update( Db::t( 'people' ), array( 'image_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) ); // la liberatoria immagini del minore la risponde il genitore
+				// A nome del minore hanno accettato regolamento e privacy il genitore: resta registrato chi.
+				self::db()->update( Db::t( 'people' ), array( 'rules_accepted_by' => Regulation::enabled() ? (int) $guardian['id'] : null, 'privacy_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) );
+			}
 		}
 		Audit::log( 'application.approved', 'person', $id, array( 'guardian' => $guardian ? (int) $guardian['id'] : 0 ) );
-		self::mail_approved( $people->get( $id ), $guardian, $due );
+		self::mail_approved( $people->get( $id ), $guardian, $due, ! $confirm );
+		if ( $confirm ) {
+			GuardianConsent::begin( $id, (int) $guardian['id'] ); // all'indirizzo già registrato per il genitore
+		}
 		$msg = 'Domanda approvata: tessera n. ' . $card . '. ' . ( $guardian ? 'È arrivata l\'email al genitore.' : 'Al nuovo socio è arrivato il link per scegliere la password.' );
+		if ( $confirm ) {
+			$msg .= ' Il genitore è già in anagrafica: gli è arrivata un\'email per confermare di aver accettato lui, a nome del minore, regolamento, privacy e immagini. Il genitore non ha ancora confermato: il collegamento si crea quando conferma, e finché non lo fa queste accettazioni non gli vengono attribuite (lo vedi nella scheda del minore).';
+		}
 		if ( $due > 0 ) {
 			$msg .= ' Quota da incassare: ' . Money::format( $due ) . ' (in sede o dall\'area riservata); la tessera diventa valida all\'incasso.';
 		}
@@ -319,7 +331,7 @@ final class Applications {
 		return $id;
 	}
 
-	private static function mail_approved( ?array $person, ?array $guardian, int $due = 0 ): void {
+	private static function mail_approved( ?array $person, ?array $guardian, int $due = 0, bool $linked = true ): void {
 		if ( ! $person ) {
 			return;
 		}
@@ -332,7 +344,9 @@ final class Applications {
 		}
 		if ( $guardian ) {
 			$text = 'Ciao ' . $guardian['first_name'] . ",\n\nla domanda di adesione di " . $person['first_name'] . ' ' . $person['last_name'] . ' è stata approvata: la tessera è la n. ' . $person['card_number'] . ".\n\n";
-			if ( empty( $guardian['wp_user_id'] ) ) {
+			if ( ! $linked ) { // genitore già in anagrafica: il collegamento nasce quando conferma dal link dell'altra email
+				$text .= $person['first_name'] . ' compare nella tua area riservata dopo che hai confermato dal link che ti abbiamo mandato con un\'altra email.' . "\n";
+			} elseif ( empty( $guardian['wp_user_id'] ) ) {
 				$text .= 'Da genitore o tutore segui ' . $person['first_name'] . ' dalla tua area riservata (tessera, prenotazioni, pagamenti). Scegli la tua password da questo link (vale ' . $days . "):\n" . Frontend\Activation::url( (int) $guardian['id'] ) . "\n";
 			} else {
 				$text .= $person['first_name'] . ' compare ora nella tua area riservata: ' . Gatekeeper::area_url() . "\n";
