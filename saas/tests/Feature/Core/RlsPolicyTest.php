@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\DatabaseNames;
 use Illuminate\Support\Facades\DB;
 
 /*
