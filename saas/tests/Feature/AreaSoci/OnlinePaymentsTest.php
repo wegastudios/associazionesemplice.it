@@ -8,6 +8,7 @@ use App\Modules\AreaSoci\Payments\OnlinePayments;
 use App\Modules\AreaSoci\Payments\StripeWebhook;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
+use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
