@@ -80,6 +80,98 @@ final class PrivateFolderRules {
 	}
 
 	/**
+	 * Percorso suggerito per la cartella riservata: nella cartella sopra la radice web più alta fra quelle conosciute (cartella di WordPress, radice del
+	 * server, cartelle dei caricamenti e dei contenuti), così non cade dentro la parte servita dal web.
+	 *
+	 * @param string[] $web_roots cartelle servite dal web
+	 * @return string stringa vuota se non c'è nulla da cui partire
+	 */
+	public static function suggest_path( array $web_roots, string $name ): string {
+		$best  = '';
+		$depth = PHP_INT_MAX;
+		foreach ( $web_roots as $r ) {
+			$n = self::normalize( (string) $r );
+			if ( '' === $n || '/' === $n || preg_match( '#^[A-Za-z]:$#', $n ) ) {
+				continue;
+			}
+			$d = substr_count( $n, '/' );
+			if ( $d < $depth ) {
+				$depth = $d;
+				$best  = $n;
+			}
+		}
+		if ( '' === $best ) {
+			return '';
+		}
+		$parent = self::normalize( dirname( $best ) );
+		return ( '/' === $parent || '.' === $parent ? '' : $parent ) . '/' . $name;
+	}
+
+	/** Nome del file segnaposto che marca una cartella come dedicata a un sito (contiene l'identificativo del sito). */
+	const PLACEHOLDER = '.asem-segnaposto';
+
+	/** Testo del segnaposto. */
+	public static function placeholder_text( string $site_id ): string {
+		return 'asem-sito:' . $site_id . "\nCartella dei file riservati di Associazione Semplice: non cancellare questo file.\n";
+	}
+
+	/** Identificativo del sito scritto in un segnaposto (stringa vuota se il testo non è un segnaposto). */
+	public static function placeholder_id( string $content ): string {
+		return 1 === preg_match( '/^asem-sito:([0-9a-f-]{8,64})\s*$/m', $content, $m ) ? $m[1] : '';
+	}
+
+	/**
+	 * Una cartella indicata va bene? Sì se è vuota o se il segnaposto è di questo sito.
+	 *
+	 * @param bool   $has_other_files nella cartella c'è qualcosa oltre a un segnaposto valido
+	 * @param string $found_id        identificativo letto dal segnaposto ('' se manca o non è valido)
+	 * @return string '' = va bene; not_empty = non è vuota e non è segnata da questo sito; foreign_site = è segnata da un altro sito
+	 */
+	public static function placeholder_verdict( bool $has_other_files, string $found_id, string $my_id ): string {
+		if ( '' !== $found_id ) {
+			return '' !== $my_id && $found_id !== $my_id ? 'foreign_site' : '';
+		}
+		return $has_other_files ? 'not_empty' : '';
+	}
+
+	/** Nome di un file che il plugin scrive al primo livello della cartella riservata (nome casuale, o resto di una copia interrotta). */
+	public static function is_plugin_file( string $name ): bool {
+		return 1 === preg_match( '/^[0-9a-f]{32}(\.part-[0-9a-f]+)?$/D', $name );
+	}
+
+	/** Una voce (file o cartella al primo livello) che il plugin scrive da sé nella cartella riservata: nome casuale, protezioni, sottocartelle sue, segnaposto. */
+	public static function is_plugin_entry( string $name ): bool {
+		return self::is_plugin_file( $name ) || in_array( $name, array( 'index.php', '.htaccess', 'backups', 'receipts', self::CHECK_DIR, self::PLACEHOLDER ), true );
+	}
+
+	/**
+	 * Forme dei file veri su cui si fa la prova: senza estensione nella cartella principale, PDF sotto receipts/<anno>/, ZIP sotto backups/.
+	 *
+	 * @return array<int,array{rel:string,ext:string}>
+	 */
+	public static function probe_shapes( string $year ): array {
+		return array(
+			array( 'rel' => '', 'ext' => '' ),
+			array( 'rel' => 'receipts/' . $year, 'ext' => '.pdf' ),
+			array( 'rel' => 'backups', 'ext' => '.zip' ),
+		);
+	}
+
+	/**
+	 * Il file di riferimento (messo in una cartella pubblica, che il server di norma serve) si scarica? Se no, l'esito del controllo non vale:
+	 * un «chiusa» sarebbe solo la richiesta del sito a sé stesso che non arriva dove arriva un visitatore.
+	 *
+	 * @return array{0:bool,1:string} [si scarica, motivo]: motivo vuoto se sì; loopback, auth, redirect, server oppure reference (risposta che non contiene il file)
+	 */
+	public static function reference_ok( int $code, string $body, string $token ): array {
+		$c = self::classify( $code, $body, $token );
+		if ( self::EXPOSED === $c[0] ) {
+			return array( true, '' );
+		}
+		return array( false, self::UNKNOWN === $c[0] ? $c[1] : 'reference' );
+	}
+
+	/**
 	 * Esito del controllo dalla risposta alla richiesta del file di prova.
 	 *
 	 * @param int    $code  codice HTTP (0 se la richiesta non è riuscita)

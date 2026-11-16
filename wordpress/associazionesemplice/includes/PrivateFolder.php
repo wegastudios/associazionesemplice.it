@@ -10,7 +10,8 @@ defined( 'ABSPATH' ) || exit;
  *   (percorso assoluto, meglio fuori dalla parte pubblica del sito) sta lì. Se il percorso non è utilizzabile si continua con quello predefinito
  *   e l'avviso lo dice, senza fermare il sito.
  * - Come si protegge: `.htaccess` (solo Apache) e un `index.php` vuoto in ogni cartella, anche sottocartelle create dopo (contro l'elenco dei file).
- * - Come si controlla: un file di prova, innocuo e senza dati, che si prova a scaricare dall'indirizzo web della cartella. Non si fa a ogni pagina:
+ * - Come si controlla: tre file di prova, innocui e senza dati, con la forma dei file veri (senza estensione, .pdf, .zip), che si provano a scaricare dall'indirizzo
+ *   web della cartella, preceduti da un file di riferimento in una cartella pubblica: se nemmeno quello si scarica l'esito è «non verificabile». Non si fa a ogni pagina:
  *   il lavoro periodico lo ripete circa ogni sette giorni e un pulsante nella pagina Copia di sicurezza lo fa a richiesta. L'esito resta salvato.
  *   Se la prova non si può fare (il sito non riesce a chiamarsi, è dietro una password del server, risponde con un errore) l'esito è «non verificabile»
  *   e non scatta nessun allarme.
@@ -28,6 +29,7 @@ final class PrivateFolder {
 	const BATCH    = 100;
 	const MAX_SECS = 20;
 
+	const OPT_SITE   = 'asem_private_site';   // identificativo di questo sito, scritto nel segnaposto della cartella indicata in wp-config.php
 	const OPT_ACTIVE = 'asem_private_active'; // impronta del percorso di wp-config.php che è entrato in uso a spostamento finito
 
 	/** @var array|null percorso risolto (una volta per richiesta) */
@@ -76,7 +78,68 @@ final class PrivateFolder {
 		if ( false !== $real_path && false !== $real_def && ( PrivateFolderRules::is_inside( $real_path, $real_def ) || PrivateFolderRules::is_inside( $real_def, $real_path ) || self::same_file( $path, $default ) ) ) {
 			return array( 'path' => '', 'error' => 'overlaps' );
 		}
+		$claim = self::claim( $path ); // una cartella usata anche per altro, o da un altro sito, non si accetta: azzeramento e disinstallazione toglierebbero file non nostri
+		if ( '' !== $claim ) {
+			return array( 'path' => '', 'error' => $claim );
+		}
 		return array( 'path' => $path, 'error' => '' );
+	}
+
+	/** Identificativo di questo sito per il segnaposto delle cartelle (si crea una volta sola, con un blocco). Stringa vuota se non si riesce a leggerlo o crearlo. */
+	public static function site_id(): string {
+		$id = (string) get_option( self::OPT_SITE, '' );
+		if ( 1 === preg_match( '/^[0-9a-f-]{32,36}$/', $id ) ) {
+			return $id;
+		}
+		try {
+			Db::with_lock(
+				'asem_private_site',
+				function () use ( &$id ): void {
+					wp_cache_delete( self::OPT_SITE, 'options' );
+					wp_cache_delete( 'alloptions', 'options' );
+					wp_cache_delete( 'notoptions', 'options' );
+					$id = (string) get_option( self::OPT_SITE, '' ); // riletto dopo aver preso il blocco: se un'altra richiesta l'ha creato, vale il suo
+					if ( 1 !== preg_match( '/^[0-9a-f-]{32,36}$/', $id ) ) {
+						$id = wp_generate_uuid4();
+						update_option( self::OPT_SITE, $id );
+					}
+				},
+				3
+			);
+		} catch ( \InvalidArgumentException $e ) {
+			return '';
+		}
+		return 1 === preg_match( '/^[0-9a-f-]{32,36}$/', $id ) ? $id : '';
+	}
+
+	/**
+	 * La cartella indicata è dedicata a questo sito? Vuota (o con soli file del plugin) la si segna con un file segnaposto che porta l'identificativo del
+	 * sito; già segnata da questo sito va bene; segnata da un altro sito, o con altri file dentro, no.
+	 *
+	 * @return string stringa vuota se va bene, altrimenti not_empty o foreign_site
+	 */
+	private static function claim( string $path ): string {
+		$mine = self::site_id();
+		if ( '' === $mine ) {
+			return ''; // non si riesce a decidere: non si ferma il sito per questo
+		}
+		$ph    = $path . '/' . PrivateFolderRules::PLACEHOLDER;
+		$found = is_file( $ph ) ? PrivateFolderRules::placeholder_id( (string) file_get_contents( $ph ) ) : '';
+		if ( $found === $mine ) {
+			return '';
+		}
+		$other = false;
+		foreach ( (array) scandir( $path ) as $name ) {
+			if ( '.' !== $name && '..' !== $name && ! PrivateFolderRules::is_plugin_entry( (string) $name ) ) {
+				$other = true;
+				break;
+			}
+		}
+		$verdict = PrivateFolderRules::placeholder_verdict( $other, $found, $mine );
+		if ( '' === $verdict ) {
+			file_put_contents( $ph, PrivateFolderRules::placeholder_text( $mine ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- segnaposto nella cartella riservata
+		}
+		return $verdict;
 	}
 
 	/**
@@ -182,6 +245,10 @@ final class PrivateFolder {
 				return Texts::t( 'La cartella non esiste e non si riesce a crearla.' );
 			case 'not_writable':
 				return Texts::t( 'La cartella esiste ma il sito non può scriverci: servono i permessi di scrittura per l\'utente del server web.' );
+			case 'not_empty':
+				return Texts::t( 'La cartella contiene già altri file e non è stata preparata da questo sito: serve una cartella vuota e dedicata, perché l\'azzeramento dei dati e la disinstallazione tolgono i file del plugin da quella cartella.' );
+			case 'foreign_site':
+				return Texts::t( 'La cartella è già usata da un altro sito (o da un\'altra installazione dello stesso sito, ad esempio quella di prova): serve una cartella diversa per ognuno.' );
 		}
 		return '';
 	}
@@ -194,7 +261,36 @@ final class PrivateFolder {
 			$pairs[] = array( (string) WP_CONTENT_DIR, (string) content_url() );
 		}
 		$pairs[] = array( (string) ABSPATH, (string) site_url( '/' ) );
+		$docroot = self::document_root(); // radice del server: WordPress può stare in una sottocartella e la cartella riservata sopra di essa, ma ancora dentro la radice
+		$root    = 1 === preg_match( '#^(https?://[^/]+)#i', (string) home_url(), $m ) ? $m[1] . '/' : '';
+		if ( '' !== $docroot && '' !== $root ) {
+			$pairs[] = array( $docroot, $root );
+		}
 		return $pairs;
+	}
+
+	/** Radice dei documenti del server web (DOCUMENT_ROOT), stringa vuota se manca o non è un percorso assoluto utilizzabile. */
+	private static function document_root(): string {
+		if ( empty( $_SERVER['DOCUMENT_ROOT'] ) || ! is_string( $_SERVER['DOCUMENT_ROOT'] ) ) {
+			return '';
+		}
+		$d = PrivateFolderRules::normalize( sanitize_text_field( wp_unslash( $_SERVER['DOCUMENT_ROOT'] ) ) );
+		return '' === PrivateFolderRules::path_error( $d ) ? $d : '';
+	}
+
+	/** Percorso suggerito per la cartella riservata: sopra la radice web più alta fra quelle conosciute, non sopra la sola cartella di WordPress. */
+	public static function suggested_path(): string {
+		$u     = wp_upload_dir( null, false );
+		$roots = array( (string) ABSPATH, (string) $u['basedir'] );
+		if ( defined( 'WP_CONTENT_DIR' ) ) {
+			$roots[] = (string) WP_CONTENT_DIR;
+		}
+		$docroot = self::document_root();
+		if ( '' !== $docroot && PrivateFolderRules::is_inside( (string) ABSPATH, $docroot ) ) {
+			$roots[] = $docroot;
+		}
+		$s = PrivateFolderRules::suggest_path( $roots, 'asem-riservata' );
+		return '' !== $s ? $s : PrivateFolderRules::normalize( dirname( untrailingslashit( str_replace( '\\', '/', ABSPATH ) ) ) ) . '/asem-riservata';
 	}
 
 	/** Indirizzo web di un percorso se sta nella parte pubblica del sito (anche se è un collegamento a una cartella altrove), altrimenti stringa vuota. */
@@ -277,14 +373,17 @@ final class PrivateFolder {
 	}
 
 	/**
-	 * Fa il controllo: crea un file di prova (senza dati) nella cartella riservata, prova a scaricarlo dall'indirizzo web e lo cancella.
+	 * Fa il controllo. Prima un file di riferimento in una cartella pubblica (la cartella dei caricamenti): se nemmeno quello si scarica dalla richiesta
+	 * del sito a sé stesso, l'esito è «non verificabile» e non «chiusa» (un firewall, una rete di distribuzione o un nome interno possono respingerla).
+	 * Poi tre file di prova nella cartella riservata, con la forma dei file veri (senza estensione, .pdf sotto receipts/<anno>/, .zip sotto backups/),
+	 * che si provano a scaricare dall'indirizzo web; se uno qualsiasi si scarica la cartella è raggiungibile. I file non contengono dati e si cancellano sempre.
 	 * Non lancia mai eccezioni e non blocca: se qualcosa non si può fare l'esito è «non verificabile».
 	 *
 	 * @return array{state:string,reason:string,code:int,at:int,key:string}
 	 */
 	public static function check(): array {
 		$res   = array( 'state' => PrivateFolderRules::UNKNOWN, 'reason' => 'write', 'code' => 0, 'at' => time(), 'key' => self::key() );
-		$probe = '';
+		$files = array();
 		try {
 			$dir = self::dir();
 			$url = self::web_url( $dir );
@@ -293,34 +392,38 @@ final class PrivateFolder {
 				$res['reason'] = '';
 			} else {
 				Attachments::prepare_dir();
-				$sub = $dir . '/' . PrivateFolderRules::CHECK_DIR;
-				if ( is_dir( $sub ) || wp_mkdir_p( $sub ) ) {
-					self::protect( $sub );
-					foreach ( glob( $sub . '/prova-*.txt' ) ?: array() as $old ) { // resti di un controllo interrotto
-						if ( (int) filemtime( $old ) < time() - HOUR_IN_SECONDS ) {
-							wp_delete_file( $old );
-						}
+				foreach ( glob( $dir . '/' . PrivateFolderRules::CHECK_DIR . '/prova-*.txt' ) ?: array() as $old ) { // resti del controllo delle versioni precedenti
+					if ( (int) filemtime( $old ) < time() - HOUR_IN_SECONDS ) {
+						wp_delete_file( $old );
 					}
-					$token = 'asem-controllo-' . bin2hex( random_bytes( 16 ) );
-					$name  = 'prova-' . bin2hex( random_bytes( 8 ) ) . '.txt';
-					$probe = $sub . '/' . $name;
-					if ( false !== @file_put_contents( $probe, $token . "\n" ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-						$resp = wp_remote_get(
-							trailingslashit( $url ) . PrivateFolderRules::CHECK_DIR . '/' . $name,
-							array(
-								'timeout'     => 5,
-								'redirection' => 0,
-								'sslverify'   => (bool) apply_filters( 'https_local_ssl_verify', false ), // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- filtro di WordPress per le chiamate del sito a sé stesso
-								'user-agent'  => 'AssociazioneSemplice-controllo',
-								'headers'     => array( 'Cache-Control' => 'no-cache' ),
-							)
-						);
-						$code  = is_wp_error( $resp ) ? 0 : (int) wp_remote_retrieve_response_code( $resp );
-						$body  = is_wp_error( $resp ) ? '' : substr( (string) wp_remote_retrieve_body( $resp ), 0, 4096 );
-						$class = PrivateFolderRules::classify( $code, $body, $token );
-						$res['state']  = $class[0];
-						$res['reason'] = $class[1];
-						$res['code']   = $code;
+				}
+				$up     = wp_upload_dir( null, false );
+				$ref    = self::probe( (string) $up['basedir'], (string) $up['baseurl'], 'asem-prova-ref-' . bin2hex( random_bytes( 8 ) ) . '.txt', $files );
+				$probes = array();
+				foreach ( PrivateFolderRules::probe_shapes( gmdate( 'Y' ) ) as $shape ) {
+					$where    = '' === $shape['rel'] ? '' : '/' . $shape['rel'];
+					$probes[] = self::probe( $dir . $where, rtrim( $url, '/' ) . $where, 'asem-prova-' . bin2hex( random_bytes( 8 ) ) . $shape['ext'], $files, $dir );
+				}
+				if ( null !== $ref && ! in_array( null, $probes, true ) ) {
+					$got         = self::fetch( $ref['url'] );
+					$ok          = PrivateFolderRules::reference_ok( $got[0], $got[1], $ref['token'] );
+					$res['code'] = $got[0];
+					if ( ! $ok[0] ) { // il riferimento non si scarica: la prova non può dire nulla
+						$res['state']  = PrivateFolderRules::UNKNOWN;
+						$res['reason'] = $ok[1];
+					} else {
+						$res['state']  = PrivateFolderRules::CLOSED;
+						$res['reason'] = '';
+						foreach ( $probes as $p ) {
+							$got         = self::fetch( $p['url'] );
+							$class       = PrivateFolderRules::classify( $got[0], $got[1], $p['token'] );
+							$res['code'] = $got[0];
+							if ( PrivateFolderRules::CLOSED !== $class[0] ) { // si scarica (allarme) o non si può dire (nessun allarme): ci si ferma
+								$res['state']  = $class[0];
+								$res['reason'] = $class[1];
+								break;
+							}
+						}
 					}
 				}
 			}
@@ -328,11 +431,60 @@ final class PrivateFolder {
 			$res['state']  = PrivateFolderRules::UNKNOWN;
 			$res['reason'] = 'write';
 		}
-		if ( '' !== $probe && file_exists( $probe ) ) {
-			wp_delete_file( $probe );
+		foreach ( $files as $f ) {
+			if ( file_exists( $f ) ) {
+				wp_delete_file( $f );
+			}
 		}
 		update_option( self::OPT, $res, false );
 		return $res;
+	}
+
+	/**
+	 * Mette un file di prova (solo un testo casuale, nessun dato) in una cartella e ne ricorda il percorso per cancellarlo.
+	 *
+	 * @param string[] $files elenco dei file creati, da cancellare a fine controllo
+	 * @param string   $root  radice riservata (per proteggere le sottocartelle create); vuota per una cartella pubblica
+	 * @return array{url:string,token:string}|null null se non si riesce a scriverlo
+	 */
+	private static function probe( string $dir, string $dir_url, string $name, array &$files, string $root = '' ): ?array {
+		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
+			return null;
+		}
+		if ( '' !== $root ) {
+			self::protect( $dir, $root );
+		}
+		foreach ( glob( $dir . '/asem-prova-*' ) ?: array() as $old ) { // resti di un controllo interrotto
+			if ( is_file( $old ) && (int) filemtime( $old ) < time() - HOUR_IN_SECONDS ) {
+				wp_delete_file( $old );
+			}
+		}
+		$token = 'asem-controllo-' . bin2hex( random_bytes( 16 ) );
+		$path  = $dir . '/' . $name;
+		if ( false === @file_put_contents( $path, $token . "\n" ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+			return null;
+		}
+		$files[] = $path;
+		return array( 'url' => rtrim( $dir_url, '/' ) . '/' . $name, 'token' => $token );
+	}
+
+	/**
+	 * Scarica un indirizzo del sito stesso: breve, senza seguire rimandi, senza cookie né password dell'utente.
+	 *
+	 * @return array{0:int,1:string} [codice (0 se la richiesta non è riuscita), inizio del corpo]
+	 */
+	private static function fetch( string $url ): array {
+		$resp = wp_remote_get(
+			$url,
+			array(
+				'timeout'     => 5,
+				'redirection' => 0,
+				'sslverify'   => (bool) apply_filters( 'https_local_ssl_verify', false ), // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- filtro di WordPress per le chiamate del sito a sé stesso
+				'user-agent'  => 'AssociazioneSemplice-controllo',
+				'headers'     => array( 'Cache-Control' => 'no-cache' ),
+			)
+		);
+		return array( is_wp_error( $resp ) ? 0 : (int) wp_remote_retrieve_response_code( $resp ), is_wp_error( $resp ) ? '' : substr( (string) wp_remote_retrieve_body( $resp ), 0, 4096 ) );
 	}
 
 	/** Lavoro periodico (una volta al giorno): protegge le sottocartelle e rifà il controllo se l'ultimo è vecchio. */
@@ -350,11 +502,13 @@ final class PrivateFolder {
 			case PrivateFolderRules::EXPOSED:
 				return Texts::t( 'la cartella è raggiungibile da internet.' );
 			case PrivateFolderRules::CLOSED:
-				return Texts::t( 'un file di prova messo nella cartella non si scarica dall\'indirizzo web del sito. Il controllo parte dal sito stesso: per la certezza chiedi conferma a chi gestisce il server.' );
+				return Texts::t( 'tre file di prova, fatti come i file veri, messi nella cartella non si scaricano dall\'indirizzo web del sito. Il controllo parte dal sito stesso: per la certezza chiedi conferma a chi gestisce il server.' );
 			case PrivateFolderRules::OUTSIDE:
-				return Texts::t( 'la cartella sta fuori dalla parte pubblica del sito e non ha un indirizzo web: non serve altro.' );
+				return Texts::t( 'la cartella non risulta dentro la parte pubblica del sito, quindi il plugin non ha un indirizzo web da provare. Se il server la rende comunque raggiungibile (ad esempio perché sta dentro la cartella pubblica di un altro dominio dello stesso hosting), chi lo gestisce può controllare a mano che l\'indirizzo di un file della cartella non si apra.' );
 		}
 		switch ( (string) ( $r['reason'] ?? '' ) ) {
+			case 'reference':
+				return Texts::t( 'non verificabile: nemmeno un file messo in una cartella pubblica del sito si scarica dalla richiesta del sito a sé stesso (può dipendere da un firewall, da una rete di distribuzione dei contenuti o da un indirizzo interno). Nessun allarme: chi gestisce il server può controllare a mano che l\'indirizzo di un file della cartella non si apra.' );
 			case 'auth':
 				return Texts::t( 'non verificabile: il sito è protetto da una password del server e la prova non può passare. Nessun allarme.' );
 			case 'redirect':
@@ -434,7 +588,7 @@ final class PrivateFolder {
 					continue;
 				}
 				$rel = ltrim( substr( PrivateFolderRules::normalize( (string) $f->getPathname() ), strlen( $base ) ), '/' );
-				if ( '.htaccess' === basename( $rel ) || 'index.php' === basename( $rel ) || false !== strpos( basename( $rel ), '.part-' ) || 0 === strpos( $rel, PrivateFolderRules::CHECK_DIR . '/' ) ) {
+				if ( '.htaccess' === basename( $rel ) || 'index.php' === basename( $rel ) || false !== strpos( basename( $rel ), '.part-' ) || 0 === strpos( basename( $rel ), 'asem-prova-' ) || 0 === strpos( $rel, PrivateFolderRules::CHECK_DIR . '/' ) ) {
 					continue;
 				}
 				$out[] = $rel;
