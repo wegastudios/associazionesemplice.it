@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
  *  1. il socio sceglie le voci da pagare (come con Stripe/PayPal) e viene mandato al checkout;
  *  2. nel carrello ogni voce è un prodotto collegato (WooLinks) con il prezzo calcolato dal server (quota del livello, sconto familiare, mensilità…);
  *  3. quando l'ordine risulta pagato l'incasso entra in prima nota, una sola volta, come per gli altri gateway: con i metodi online (carta, PayPal…)
- *     basta «in lavorazione»; con i metodi fuori linea (bonifico, assegno, contrassegno, pagamento in sede, fattura…) serve «completato», cioè la segreteria ha visto i soldi.
+ *     basta «in lavorazione»; con i metodi fuori linea (bonifico, assegno, contrassegno; altri, come il pagamento in sede, si aggiungono con il filtro asem_woo_offline_methods) serve «completato», cioè la segreteria ha visto i soldi.
  *
  * Gli ordini che non contengono voci Associazione Semplice non vengono toccati.
  */
@@ -206,7 +206,7 @@ final class WooBridge {
 		if ( ! $order ) {
 			return;
 		}
-		// Metodi fuori linea (bonifico, assegno, contrassegno, pagamento in sede, fattura…): l'ordine nasce «in attesa» o «in lavorazione» senza che sia arrivato un euro. Si registra solo quando viene completato (la segreteria ha visto i soldi).
+		// Metodi fuori linea (bonifico, assegno, contrassegno; altri, come il pagamento in sede, si aggiungono con il filtro asem_woo_offline_methods): l'ordine nasce «in attesa» o «in lavorazione» senza che sia arrivato un euro. Si registra solo quando viene completato (la segreteria ha visto i soldi).
 		if ( self::is_offline_method( (string) $order->get_payment_method() ) && ! $order->has_status( 'completed' ) ) {
 			return;
 		}
