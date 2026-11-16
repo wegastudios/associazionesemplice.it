@@ -468,10 +468,10 @@ Due interruttori, entrambi spenti di default; la scheda **Assicurazioni** in Reg
 **Impostazioni** ha tre sezioni, ognuna con le sue schede:
 
 - **Ente e funzioni**: Generale (denominazione, anno sociale, quota, livelli, sconto familiare e l'elenco delle **funzioni attive**: tessera digitale, QR della tessera, biglietti QR, Wallet, calendario pubblicato, regolamento, promemoria, assicurazioni, 5x1000), promemoria/privacy/regolamento/ricevute, testi e lingua, guida iniziale.
-- **Tecniche** (solo amministratori): Integrazioni (WooCommerce, collegamenti con gli altri servizi), Pagamenti online (Stripe e PayPal), Tessera/QR/Wallet (credenziali e rigenerazione), **Ruoli e accessi**, Copia di sicurezza, Registro azioni.
+- **Tecniche** (solo amministratori): Integrazioni (WooCommerce, collegamenti con gli altri servizi), Pagamenti online (Stripe e PayPal), Tessera/QR/Wallet (credenziali e rigenerazione), Copia di sicurezza, Registro azioni.
 - **Contabilità**: opzioni contabili (interruttore per **Report e rendiconto**: spento, le schede spariscono ma la prima nota resta) con i rimandi a quota, anni solari, conti e fondi, ricevute.
 
-**Ruoli e accessi**: oltre ad amministratori e «Segreteria» (assegnata dalla scheda del socio) si può dare l'accesso operativo — lo stesso della segreteria, senza impostazioni, pagamenti, copia e testi — a qualunque altro ruolo di WordPress (capability `asem_operate`). Tesoriere e staff degli eventi restano ruoli sulle persone.
+**Ruoli**: il plugin lavora solo sul ruolo «Amministratore» di WordPress e sui suoi tre ruoli (Socio, Segreteria, Dipendente). I ruoli standard di WordPress (Editore, Autore, Collaboratore, Sottoscrittore) e quelli di altri plugin non ricevono né perdono permessi: chi non è amministratore entra nel pannello solo con il ruolo Segreteria o Dipendente (si assegnano dalla scheda del socio e da Rubrica soci → Dipendenti) o come presidente o vicepresidente in regola. Tesoriere e staff degli eventi restano ruoli sulle persone.
 
 **WooCommerce** (Impostazioni → Tecniche → Integrazioni, spento di default): la compatibilità si attiva con «Usa WooCommerce per i pagamenti online» e sostituisce Stripe e PayPal come gateway.
 - Ogni **quota associativa** (per livello di socio) e ogni **corso o evento** si collega a un prodotto semplice (meglio se virtuale); un **prodotto generico** copre le voci senza un prodotto proprio, come le mensilità.
@@ -632,7 +632,7 @@ I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Ruo
 - **Staff dell'evento** (scheda dell'attività): verifica gli ingressi di quell'evento e, se l'incasso è abilitato per lui, incassa il biglietto sul posto.
 - **Socio**: i propri dati, tessera, prenotazioni e pagamenti.
 
-La pagina Impostazioni → Ruoli e accessi riporta la matrice «chi può fare cosa» e l'elenco di chi ha un ruolo.
+La matrice «chi può fare cosa» qui sopra riassume i ruoli dell'ente; i permessi si assegnano dalla scheda della persona (Rubrica soci).
 
 ## Aree del sito, blocchi e widget
 

@@ -65,6 +65,7 @@ final class EmployeesPage {
 			return;
 		}
 		Employees::mark_areas_seen( get_current_user_id() );
+		Employees::mark_legacy_roles_seen( get_current_user_id() );
 		echo '<p class="description">Il dipendente è un utente del sito con gli <strong>stessi permessi della segreteria</strong>. Non è nel libro soci, non ha la tessera e non conta per le assemblee. '
 			. 'Solo chi legge questa pagina (amministratori, presidente e vicepresidente) può togliergli, area per area, i permessi qui sotto: un dipendente nuovo li ha tutti, mentre impostazioni, pagamenti e copie di sicurezza restano solo per gli amministratori. '
 			. 'Ogni cambio resta scritto nel registro azioni. Il numero dei lavoratori per il RUNTS è il numero dei dipendenti in servizio alla data.</p>';

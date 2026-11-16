@@ -5448,9 +5448,6 @@ wp_set_current_user( $stf_u );
 asem_ok( null !== asem_throws( function () use ( $nm_lv ) { \AssociazioneSemplice\Frontend\Actions::do_new_member( array( 'first_name' => 'Abusivo', 'last_name' => 'Test', 'level_id' => (string) $nm_lv ) ); } ), 'iscrizione dall\'area riservata: chi non è tesoriere non può' );
 wp_set_current_user( 1 );
 Access::set_treasurer( $u_tre, false );
-$rm = Admin\TechPage::matrix();
-$rh = array_map( function ( $h ) { return $h['roles']; }, Admin\TechPage::role_holders() );
-asem_ok( 8 === count( $rm['columns'] ) && 'Presidente e vice' === $rm['columns'][2] && count( $rh ) >= 2, 'ruoli: la pagina elenca la matrice dei permessi e chi ha un ruolo' );
 $vol_b =$people->create( array( 'type' => 'volunteer', 'first_name' => 'Vera', 'last_name' => 'Volontaria', 'email' => 'vera.volontaria@example.com' ) );
 $exp_b = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Scaduto', 'email' => 'ugo.scaduto@example.com' ) );
 asem_ok( null !== asem_throws( function () use ( $people, $vol_b ) { $people->set_board_role( $vol_b, 'councillor' ); } ) && null !== asem_throws( function () use ( $people, $guest_door ) { $people->set_board_role( $guest_door, 'councillor' ); } ), 'consiglio: solo soci fondatori e ordinari (non volontari né ospiti)' );
@@ -6922,35 +6919,71 @@ asem_ok( ! isset( \AssociazioneSemplice\Languages::available()['fr'] ) && 'it' =
 wp_set_current_user( 1 );
 $st_tabs = Admin\Admin::tabs( 'asem-settings' );
 $tc_tabs = Admin\Admin::tabs( 'asem-tech' );
-asem_ok( false !== strpos( $st_tabs, 'Ente e fiscalità' ) && false !== strpos( $st_tabs, 'Soci e identità' ) && false !== strpos( $st_tabs, 'Cassa' ) && false !== strpos( $st_tabs, 'Contabilità' ) && false !== strpos( $st_tabs, 'Sistema' ) && false !== strpos( Admin\Admin::tabs( 'asem-roles' ), 'Ruoli e accessi' ) && false !== strpos( $tc_tabs, 'Integrazioni' ) && false !== strpos( $tc_tabs, 'Copia di sicurezza' ), 'impostazioni: sezioni per ambito (ente e fiscalità, soci e identità, soldi, contabilità, comunicazioni, sistema) con le loro schede' );
-foreach ( array( 'asem-tech', 'asem-roles', 'asem-acct' ) as $pg ) {
+asem_ok( false !== strpos( $st_tabs, 'Ente e fiscalità' ) && false !== strpos( $st_tabs, 'Soci e identità' ) && false !== strpos( $st_tabs, 'Cassa' ) && false !== strpos( $st_tabs, 'Contabilità' ) && false !== strpos( $st_tabs, 'Sistema' ) && false !== strpos( $tc_tabs, 'Integrazioni' ) && false !== strpos( $tc_tabs, 'Copia di sicurezza' ), 'impostazioni: sezioni per ambito (ente e fiscalità, soci e identità, soldi, contabilità, comunicazioni, sistema) con le loro schede' );
+foreach ( array( 'asem-tech', 'asem-acct' ) as $pg ) {
 	asem_ok( in_array( $pg, Admin\Admin::admin_only(), true ), 'impostazioni: ' . $pg . ' è riservata agli amministratori' );
 }
 asem_render( array( Admin\SettingsPage::class, 'render' ), 'Funzioni attive' );
 asem_render( array( Admin\TechPage::class, 'render_integrations' ), 'WooCommerce' );
-asem_render( array( Admin\TechPage::class, 'render_roles' ), 'Come la segreteria' );
-asem_render( array( Admin\ProRegisters::class, 'render_accounting' ), 'Report e rendiconto' );
-// ruoli
-$ro = Admin\TechPage::roles();
-asem_ok( isset( $ro['editor'] ) && ! isset( $ro['administrator'] ) && ! isset( $ro['asem_secretary'] ) && ! isset( $ro['asem_member'] ), 'ruoli: elenco dei ruoli modificabili (senza amministratore, segreteria e soci)' );
-Admin\TechActions::save_roles( array( 'roles' => array( 'editor' ) ) );
-asem_ok( get_role( 'editor' )->has_cap( Plugin::CAP_OPS ) && ! get_role( 'editor' )->has_cap( Plugin::CAP ), 'ruoli: un altro ruolo può avere l\'accesso operativo, senza quello da amministratore' );
-Admin\TechActions::save_roles( array() );
-asem_ok( ! get_role( 'editor' )->has_cap( Plugin::CAP_OPS ) && null !== asem_throws( function () { Admin\TechPage::set_role_access( 'administrator', false ); } ) && null !== asem_throws( function () { Admin\TechPage::set_role_access( 'ruolo_inesistente', true ); } ), 'ruoli: l\'accesso si toglie; amministratore e ruoli inesistenti si rifiutano' );
-asem_ok( ! empty( Audit::recent( 1, 'roles.access_granted' ) ) && ! empty( Audit::recent( 1, 'roles.access_revoked' ) ), 'ruoli: concessione e revoca dell\'accesso restano nel registro azioni' );
-Admin\TechActions::save_roles( array( 'roles' => array( 'editor' ) ) );
-$ro_u = wp_insert_user( array( 'user_login' => 'asem_ro_lock', 'user_pass' => wp_generate_password(), 'user_email' => 'ro-lock@example.com', 'role' => 'editor' ) );
-wp_set_current_user( $ro_u );
-$ro_err = asem_throws( function () { Admin\TechActions::save_roles( array() ); } );
-wp_set_current_user( 1 );
-asem_ok( null !== $ro_err && get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: non si toglie l\'accesso al ruolo con cui si sta operando' );
-get_role( 'editor' )->add_cap( Plugin::CAP );
-Admin\TechPage::set_role_access( 'editor', false );
-asem_ok( ! get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: un amministratore dell\'associazione (ruolo che non è «administrator») si può limitare da un altro amministratore' );
-asem_ok( null !== asem_throws( function () { Admin\TechPage::assert_can_remove( 'administrator' ); } ), 'ruoli: un amministratore di WordPress non si toglie mai' );
-get_role( 'editor' )->remove_cap( Plugin::CAP );
-wp_delete_user( $ro_u );
-Admin\TechActions::save_roles( array() );
+// ruoli di WordPress altrui: dalla v67 il plugin non dà più permessi (solo amministratore e i tre ruoli interni)
+$wr_ed = get_role( 'editor' );
+$wr_au = get_role( 'author' );
+$wr_ed->add_cap( Plugin::CAP_OPS );
+$wr_au->add_cap( Plugin::CAP );
+$wr_mk = function ( string $login, string $role, string $name ) {
+	return wp_insert_user( array( 'user_login' => $login, 'user_pass' => wp_generate_password(), 'user_email' => $login . '@example.com', 'role' => $role, 'display_name' => $name ) );
+};
+$wr_u    = $wr_mk( 'asem_wr_ed', 'editor', 'Edoardo Editore' );
+$wr_u2   = $wr_mk( 'asem_wr_au', 'author', 'Aurora Autrice' );
+$wr_sec  = $wr_mk( 'asem_wr_sec', 'editor', 'Sara Segreteria' );
+$wr_emp  = $wr_mk( 'asem_wr_emp', Plugin::ROLE_EMPLOYEE, 'Dino Dipendente' );
+$wr_bd   = $wr_mk( 'asem_wr_bd', 'editor', 'Pino Presidente' );
+( new WP_User( $wr_sec ) )->add_role( Plugin::ROLE_SECRETARY );
+$wr_pid = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pino', 'last_name' => 'Presidente', 'email' => 'pino.presidente.wr@example.com' ) );
+$people->set_membership( $wr_pid, Settings::membership_year()->label(), true );
+$people->set_board_role( $wr_pid, 'president' );
+$wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => $wr_bd ), array( 'id' => $wr_pid ) );
+delete_option( \AssociazioneSemplice\Install::OPT_LEGACY_ROLE_USERS );
+delete_option( \AssociazioneSemplice\Employees::OPT_LEGACY_ROLES_SEEN );
+asem_ok( user_can( $wr_u, Plugin::CAP_OPS ) && user_can( $wr_u2, Plugin::CAP ) && '67' === \AssociazioneSemplice\Install::DB_VERSION, 'ruoli WordPress: prima dell\'aggiornamento un Editore con il permesso operativo entra nel pannello' );
+$wr_au_before = count( Audit::recent( 50, 'roles.wp_access_removed' ) );
+$wr_res = \AssociazioneSemplice\Install::migrate_wp_role_access();
+asem_ok( array() === array_diff( array( "author", "editor" ), $wr_res["roles"] ) && $wr_res["users"] >= 2, 'ruoli WordPress: l\'aggiornamento ripulisce i due ruoli e segnala solo i due utenti che entravano per quel ruolo ' . wp_json_encode( $wr_res ) );
+asem_ok( ! get_role( 'editor' )->has_cap( Plugin::CAP_OPS ) && ! get_role( 'author' )->has_cap( Plugin::CAP ) && ! user_can( $wr_u, Plugin::CAP_OPS ) && ! user_can( $wr_u2, Plugin::CAP ) && ! user_can( $wr_u2, Plugin::CAP_OPS ), 'ruoli WordPress: il ruolo non ha più il permesso e l\'utente non entra nel pannello' );
+asem_ok( in_array( 'editor', ( new WP_User( $wr_u ) )->roles, true ) && in_array( 'author', ( new WP_User( $wr_u2 ) )->roles, true ), 'ruoli WordPress: nessun utente cambia ruolo' );
+asem_ok( user_can( 1, Plugin::CAP ) && user_can( 1, Plugin::CAP_OPS ) && user_can( $wr_sec, Plugin::CAP_OPS ) && ! user_can( $wr_sec, Plugin::CAP ) && user_can( $wr_emp, Plugin::CAP_OPS ) && get_role( Plugin::ROLE_EMPLOYEE )->has_cap( Plugin::CAP_OPS ) && get_role( Plugin::ROLE_SECRETARY )->has_cap( Plugin::CAP_OPS ), 'ruoli WordPress: amministratore, Segreteria e Dipendente funzionano come prima' );
+asem_ok( user_can( $wr_bd, Plugin::CAP_OPS ) && ! user_can( $wr_bd, Plugin::CAP ), 'ruoli WordPress: il presidente in regola lavora come la segreteria anche con un ruolo senza permessi' );
+$wr_list = \AssociazioneSemplice\Employees::legacy_role_users( 1 );
+$wr_names = array_column( $wr_list, 'name' );
+sort( $wr_names );
+asem_ok( array() === array_diff( array( "Aurora Autrice", "Edoardo Editore" ), $wr_names ) && ! in_array( 'Sara Segreteria', $wr_names, true ) && ! in_array( 'Pino Presidente', $wr_names, true ) && ! in_array( 'Dino Dipendente', $wr_names, true ), 'ruoli WordPress: l\'elenco ha solo chi entrava solo per il ruolo (non Segreteria, Dipendente, presidente)' );
+asem_ok( array() === \AssociazioneSemplice\Employees::legacy_role_users( $wr_u ) && array() === \AssociazioneSemplice\Employees::legacy_role_users( $wr_sec ) && array() === \AssociazioneSemplice\Employees::legacy_role_users( 0 ), 'ruoli WordPress: l\'avviso è solo per l\'amministratore' );
+$wr_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Alcuni utenti entravano nel pannello con un ruolo di WordPress (per esempio Editore): ora non entrano più. Se servono, dagli il ruolo Segreteria o Dipendente.' );
+asem_ok( false !== strpos( $wr_dash, 'Edoardo Editore' ) && false !== strpos( $wr_dash, 'Aurora Autrice' ) && false !== strpos( $wr_dash, 'Apri i dipendenti' ) && false !== strpos( $wr_dash, 'page=asem-employees' ), 'ruoli WordPress: l\'avviso in Bacheca elenca nome e ruolo e rimanda ai dipendenti' );
+\AssociazioneSemplice\Employees::mark_legacy_roles_seen( $wr_sec );
+asem_ok( $wr_res["users"] === count( \AssociazioneSemplice\Employees::legacy_role_users( 1 ) ), 'ruoli WordPress: aprire la pagina dei dipendenti senza essere amministratore non toglie l\'avviso' );
+$wr_audit = Audit::recent( 50, 'roles.wp_access_removed' );
+asem_ok( count( $wr_audit ) === $wr_au_before + 1 && false === strpos( (string) $wr_audit[0]['details'], 'Edoardo' ) && false === strpos( (string) $wr_audit[0]['details'], 'asem_wr_ed' ), 'ruoli WordPress: una sola riga nel registro azioni, senza nomi di persone' );
+$wr_res2 = \AssociazioneSemplice\Install::migrate_wp_role_access();
+asem_ok( array() === $wr_res2['roles'] && $wr_res['users'] === count( \AssociazioneSemplice\Employees::legacy_role_users( 1 ) ) && count( Audit::recent( 50, 'roles.wp_access_removed' ) ) === $wr_au_before + 1, 'ruoli WordPress: un secondo passaggio non cambia niente' );
+\AssociazioneSemplice\Employees::mark_legacy_roles_seen( 1 );
+asem_ok( array() === \AssociazioneSemplice\Employees::legacy_role_users( 1 ), 'ruoli WordPress: aperta la pagina dei dipendenti da un amministratore, l\'avviso sparisce' );
+ob_start();
+Admin\DashboardPage::render();
+asem_ok( false === strpos( (string) ob_get_clean(), 'Alcuni utenti entravano nel pannello' ), 'ruoli WordPress: la Bacheca non mostra più l\'avviso' );
+delete_option( \AssociazioneSemplice\Install::OPT_LEGACY_ROLE_USERS );
+delete_option( \AssociazioneSemplice\Employees::OPT_LEGACY_ROLES_SEEN );
+add_role( 'asem_wr_vuoto', 'Ruolo di prova', array( 'read' => true, Plugin::CAP_OPS => true ) );
+$wr_res3 = \AssociazioneSemplice\Install::migrate_wp_role_access();
+asem_ok( array( 'asem_wr_vuoto' ) === $wr_res3['roles'] && 0 === $wr_res3['users'] && ! get_role( 'asem_wr_vuoto' )->has_cap( Plugin::CAP_OPS ) && array() === \AssociazioneSemplice\Employees::legacy_role_users( 1 ) && count( Audit::recent( 50, 'roles.wp_access_removed' ) ) === $wr_au_before + 2, 'ruoli WordPress: senza utenti coinvolti l\'avviso non compare, ma il ruolo ripulito resta nel registro' );
+remove_role( 'asem_wr_vuoto' );
+asem_ok( \AssociazioneSemplice\WpRoleCleanup::OWN_ROLES === array( 'administrator', 'asem_member', 'asem_secretary', 'asem_employee' ), 'ruoli WordPress: il plugin lavora solo sul ruolo amministratore e sui tre ruoli interni' );
+$people->set_board_role( $wr_pid, null );
+$people->delete( $wr_pid );
+foreach ( array( $wr_u, $wr_u2, $wr_sec, $wr_emp, $wr_bd ) as $wr_del ) {
+	wp_delete_user( $wr_del );
+}
+// ruoli di WordPress altrui: pulizia (fine)
 // interruttori
 $ft = Settings::all();
 Settings::update( array( 'card_enabled' => 0 ) );
@@ -7248,7 +7281,7 @@ if ( ! \AssociazioneSemplice\WebPush::supported() ) {
 Admin\ProActions::save_app( array( 'pwa_enabled' => '1', 'push_enabled' => '1', 'pwa_name' => 'Mia App', 'pwa_short_name' => 'MiaApp' ) );
 asem_ok( 'Mia App' === \AssociazioneSemplice\Pwa::app_name() && 'MiaApp' === \AssociazioneSemplice\Pwa::short_name(), 'app: nome e nome breve si impostano da qui' );
 asem_render( array( Admin\AppPage::class, 'render' ), 'App installabile (PWA)' );
-asem_ok( in_array( 'asem-app', Admin\Admin::admin_only(), true ) && false !== strpos( Admin\Admin::tabs( 'asem-roles' ), 'Comunicazioni' ) && isset( Admin\SettingsPage::all_features()['pwa_enabled'], Admin\SettingsPage::all_features()['push_enabled'] ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['app'] ) && shortcode_exists( 'associazionesemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
+asem_ok( in_array( 'asem-app', Admin\Admin::admin_only(), true ) && false !== strpos( Admin\Admin::tabs( 'asem-settings' ), 'Comunicazioni' ) && isset( Admin\SettingsPage::all_features()['pwa_enabled'], Admin\SettingsPage::all_features()['push_enabled'] ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['app'] ) && shortcode_exists( 'associazionesemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
 Admin\ProActions::save_app( array() );
 Settings::update( array( 'pwa_name' => '', 'pwa_short_name' => '', 'accent_color' => $pw_accent, 'association_name' => $pw_name, 'push_enabled' => 0, 'pwa_enabled' => 0 ) );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'push_subs' ) );

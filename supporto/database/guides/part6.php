@@ -262,7 +262,7 @@ Sì, in tutte le versioni. I permessi si assegnano dalla **scheda del socio** e 
 - **Volontario**: gestisce solo le attività di cui è referente.
 - **Staff**: verifica gli ingressi agli eventi.
 
-Presidente e vicepresidente agiscono come la segreteria. In **Impostazioni → Soci e identità → Ruoli e accessi** trovi la matrice «chi può fare cosa». Vedi [Assegnare ruoli e permessi](guida:assegnare-ruoli-e-permessi).
+Presidente e vicepresidente agiscono come la segreteria. Vedi [Assegnare ruoli e permessi](guida:assegnare-ruoli-e-permessi).
 MD,
     ],
 ];

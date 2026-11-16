@@ -151,6 +151,34 @@ final class Employees {
 		}
 	}
 
+	const OPT_LEGACY_ROLES_SEEN = 'asem_legacy_roles_seen'; // segno «visto»: un amministratore ha aperto la pagina dei dipendenti dopo la pulizia dei ruoli di WordPress
+
+	/**
+	 * Chi entrava nel pannello solo con un ruolo di WordPress (per esempio Editore) e ora non entra più: elenco per l'avviso in Bacheca.
+	 * Solo per gli amministratori, finché uno di loro non apre la pagina dei dipendenti.
+	 *
+	 * @return array<int,array{id:int,name:string,role:string}>
+	 */
+	public static function legacy_role_users( int $user_id ): array {
+		if ( $user_id <= 0 || ! user_can( $user_id, Plugin::CAP ) || get_option( self::OPT_LEGACY_ROLES_SEEN ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( (array) get_option( Install::OPT_LEGACY_ROLE_USERS, array() ) as $u ) {
+			if ( is_array( $u ) && ! empty( $u['id'] ) ) {
+				$out[] = array( 'id' => (int) $u['id'], 'name' => (string) ( $u['name'] ?? '' ), 'role' => (string) ( $u['role'] ?? '' ) );
+			}
+		}
+		return $out;
+	}
+
+	/** Un amministratore ha aperto la pagina dei dipendenti: l'avviso sui ruoli di WordPress non si mostra più. */
+	public static function mark_legacy_roles_seen( int $user_id ): void {
+		if ( $user_id > 0 && user_can( $user_id, Plugin::CAP ) && get_option( Install::OPT_LEGACY_ROLE_USERS ) && ! get_option( self::OPT_LEGACY_ROLES_SEEN ) ) {
+			update_option( self::OPT_LEGACY_ROLES_SEEN, 1, false );
+		}
+	}
+
 	// ---------- Controllo unico ----------
 
 	/** Controlla pagine, azioni, esportazioni e chiamate ajax del dipendente corrente. */
