@@ -185,14 +185,14 @@ it('il registro dell\'archivio e di «Rimetti i file» è scritto con l\'operazi
 
 it('un anno con le ricevute nell\'archivio non si riapre finché non si rimettono i file', function (): void {
     $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
-    $years = fn () => $this->orgContext()->run($this->org->id, fn () => app(FiscalYearService::class));
+    $reopen = fn (int $y) => $this->orgContext()->run($this->org->id, fn () => app(FiscalYearService::class)->reopen($y, 'Correzione'));
 
-    $years()->reopen($this->year + 1, 'Correzione');
-    expect(fn () => $years()->reopen($this->year, 'Correzione'))
+    $reopen($this->year + 1);
+    expect(fn () => $reopen($this->year))
         ->toThrow(LedgerError::class, "L'anno fiscale {$this->year} ha le ricevute nell'archivio: prima rimetti i file da «Copie di sicurezza», poi lo riapri.");
 
     $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/rimetti")->assertSessionHasNoErrors();
-    $years()->reopen($this->year, 'Correzione');
+    $reopen($this->year);
     expect($this->orgContext()->run($this->org->id, fn () => DB::table('app.fiscal_years')->where('year', $this->year)->value('status')))->toBe('open');
 });
 
