@@ -114,7 +114,7 @@ L'**area soci** è la parte del gestionale che il socio apre dal telefono o dal 
 
 ## L'indirizzo
 
-L'area soci sta all'indirizzo **https://nome-della-tua-associazione.associazionesemplice.it/area**, dove «nome-della-tua-associazione» è lo stesso che usi per entrare nel gestionale. Il gestionale non mostra un indirizzo generale da copiare: **dallo ai soci tu** (sul sito, in una email, in un messaggio). Per spiegare ai soci come entrare puoi mandare la pagina [Come entro nell'area soci](guida:gestionale-come-entro-nell-area-soci).
+L'area soci sta all'indirizzo **https://nome-breve.associazionesemplice.it/area**, dove «nome-breve» è il nome breve della tua associazione. Il gestionale non mostra un indirizzo generale da copiare, e **non è lo stesso indirizzo con cui apri il gestionale**: il nome breve lo ritrovi in due punti. Nella pagina delle **domande di adesione** vedi l'indirizzo del modulo pubblico, che finisce con /adesione/nome-breve; e nel link personale che prepari dalla scheda di un socio (vedi sotto) compare all'inizio dell'indirizzo, prima di .associazionesemplice.it. Una volta composto l'indirizzo, **dallo ai soci tu** (sul sito, in una email, in un messaggio). Per spiegare ai soci come entrare puoi mandare la pagina [Come entro nell'area soci](guida:gestionale-come-entro-nell-area-soci).
 
 ## Come entra un socio
 
@@ -130,7 +130,7 @@ Se il socio sbaglia o chiede troppi link, vede «Troppi tentativi: riprova tra q
 Il menu in basso (o in alto sul computer) ha queste voci:
 
 - **Tessera**: il nome e un **codice** da mostrare all'ingresso; chi lo legge vede se la tessera è valida. Se la persona non è socia, il gestionale dice «Non è una tessera da socio: qui trovi eventi, quote e ricevute.»; se è uscita dall'associazione, «Risulti uscito dall'associazione.».
-- **Eventi**: gli eventi dei **prossimi due mesi**, con **«Prenota»**. Se l'evento è pieno compare «posti esauriti» e **«Lista d'attesa»**; il socio legge «Sei in lista d'attesa: se si libera un posto entri da solo.». Il socio **annulla da solo fino al giorno prima**, se la prenotazione non fa parte di un pacchetto o di un listino e non è già pagata; negli altri casi legge «per annullare scrivi alla segreteria».
+- **Eventi**: gli eventi dei **prossimi due mesi**, con **«Prenota»**. Se l'evento è pieno compare «posti esauriti» e **«Lista d'attesa»**; il socio legge «Sei in lista d'attesa: se si libera un posto entri da solo.» Il passaggio è automatico (quando qualcuno annulla o si aggiungono posti entra il primo in lista), ma **il socio non riceve nessun avviso**: se ne accorge guardando **Eventi**, dove trova la prenotazione. Ricordaglielo di controllare. Il socio **annulla da solo fino al giorno prima**, se la prenotazione non fa parte di un pacchetto o di un listino e non è già pagata; negli altri casi legge «per annullare scrivi alla segreteria».
 - **Prenota** (solo se la tua associazione ha il pacchetto **Risorse in versione Web** e almeno una risorsa a ore o a giornata): il socio sceglie il giorno e tocca una fascia libera. Le risorse stagionali non compaiono: le assegna la segreteria. Vedi [Risorse e prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni).
 - **Quote**: corsi e attività con **«Dovuto finora … · versato …»** e **«in regola»** oppure **«da versare …»**, il pulsante **«Paga online»** (se l'associazione ha attivato i pagamenti online: vedi [Pagamenti online dei soci](guida:gestionale-pagamenti-online-dei-soci)) e le **ricevute** da scaricare in PDF. Le ricevute annullate non compaiono.
 - **Profilo**: i suoi dati (nome, email e codice fiscale **non si cambiano da qui**: «Per correggere nome, email o codice fiscale scrivi alla segreteria.»), telefono e indirizzo che può correggere da solo, le tessere degli anni e il pulsante **«Esci da tutti i dispositivi»**.
@@ -171,7 +171,7 @@ Dopo il primo ingresso resti collegato su quel telefono o computer: devi rifarlo
 ## Cosa trovi
 
 - **Tessera**: mostra il codice all'ingresso.
-- **Eventi**: prenoti un posto; se è pieno puoi metterti in lista d'attesa. Puoi annullare da solo fino al giorno prima, se non hai già pagato; altrimenti scrivi alla segreteria.
+- **Eventi**: prenoti un posto; se è pieno puoi metterti in lista d'attesa: se si libera un posto entri da solo, ma non ricevi un avviso, quindi ricordati di guardare in Eventi. Puoi annullare da solo fino al giorno prima, se non hai già pagato; altrimenti scrivi alla segreteria.
 - **Prenota**: se la tua associazione lo offre, prenoti campi o sale.
 - **Quote**: quanto devi e quanto hai versato, **«Paga online»** (se l'associazione lo ha attivato) e le **ricevute** da scaricare.
 - **Profilo**: puoi correggere telefono e indirizzo. Per nome, email o codice fiscale scrivi alla segreteria.
