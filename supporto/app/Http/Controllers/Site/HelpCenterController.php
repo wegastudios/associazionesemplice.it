@@ -26,7 +26,7 @@ class HelpCenterController extends Controller
     {
         abort_unless($topic->is_public, 404);
 
-        if ($topic->product === 'saas' && ! SaasGuides::visible()) {
+        if (in_array($topic->product, ['saas', 'plugin'], true) && ! SaasGuides::visible($topic->product)) {
             return redirect()->route('help.index');
         }
 
@@ -39,7 +39,7 @@ class HelpCenterController extends Controller
     {
         abort_unless($article->is_published && $article->section->topic->is_public, 404);
 
-        if ($article->section->topic->product === 'saas' && ! SaasGuides::visible()) {
+        if (in_array($article->section->topic->product, ['saas', 'plugin'], true) && ! SaasGuides::visible($article->section->topic->product)) {
             return redirect()->route('help.index');
         }
 
