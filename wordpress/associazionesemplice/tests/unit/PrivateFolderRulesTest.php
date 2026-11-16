@@ -130,6 +130,15 @@ final class PrivateFolderRulesTest extends TestCase {
 		$this->assertFalse( R::is_plugin_file( str_repeat( 'a', 32 ) . '.pdf' ) );
 	}
 
+	public function test_entries_the_plugin_writes_itself(): void {
+		foreach ( array( str_repeat( 'a', 32 ), 'index.php', '.htaccess', 'backups', 'receipts', 'controllo', R::PLACEHOLDER ) as $n ) {
+			$this->assertTrue( R::is_plugin_entry( $n ), $n );
+		}
+		foreach ( array( 'altro.txt', 'wp-config.php', 'uploads', 'foto.jpg', 'sito-2' ) as $n ) {
+			$this->assertFalse( R::is_plugin_entry( $n ), $n );
+		}
+	}
+
 	public function test_probes_have_the_shape_of_the_real_files(): void {
 		$s = R::probe_shapes( '2026' );
 		$this->assertSame( array( '', 'receipts/2026', 'backups' ), array_column( $s, 'rel' ) );

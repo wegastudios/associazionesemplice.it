@@ -48,18 +48,29 @@ final class Reset {
 		return $out;
 	}
 
+	/**
+	 * File della cartella riservata che l'azzeramento cancella: solo quelli con i nomi che il plugin scrive (nome casuale al primo livello), mai
+	 * altri file della cartella (può essere condivisa) né quelli di protezione e il segnaposto.
+	 *
+	 * @return string[] percorsi assoluti
+	 */
+	public static function private_files(): array {
+		$out = array();
+		foreach ( glob( Attachments::dir() . '/*' ) ?: array() as $f ) {
+			if ( is_file( $f ) && PrivateFolderRules::is_plugin_file( basename( $f ) ) ) {
+				$out[] = $f;
+			}
+		}
+		return $out;
+	}
+
 	/** Quanto verrebbe cancellato. @return array<string,int> */
 	public static function preview(): array {
 		$db = self::db();
 		$n  = function ( string $table, string $where = '1=1' ) use ( $db ) {
 			return (int) $db->get_var( 'SELECT COUNT(*) FROM ' . Db::t( $table ) . ' WHERE ' . $where );
 		};
-		$files = 0;
-		foreach ( glob( Attachments::dir() . '/*' ) ?: array() as $f ) {
-			if ( is_file( $f ) && '.htaccess' !== basename( $f ) && 'index.php' !== basename( $f ) ) {
-				$files++;
-			}
-		}
+		$files = count( self::private_files() );
 		return array(
 			'people'       => $n( 'people', "deleted_at IS NULL AND type NOT IN ('guest','guardian')" ),
 			'guests'       => $n( 'people', "deleted_at IS NULL AND type = 'guest'" ),
@@ -109,10 +120,8 @@ final class Reset {
 
 		// Allegati (scontrini e fatture): si tolgono i file, non la cartella delle copie di sicurezza.
 		$files = 0;
-		foreach ( glob( Attachments::dir() . '/*' ) ?: array() as $f ) {
-			if ( is_file( $f ) && '.htaccess' !== basename( $f ) && 'index.php' !== basename( $f ) ) {
-				wp_delete_file( $f );
-			}
+		foreach ( self::private_files() as $f ) {
+			wp_delete_file( $f );
 			if ( ! file_exists( $f ) ) {
 				$files++;
 			}
