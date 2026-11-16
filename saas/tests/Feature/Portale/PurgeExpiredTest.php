@@ -152,7 +152,12 @@ it('una scadenza che arretra di molto finisce nel registro dell\'associazione', 
     ($this->entitle)($alfa, 'sub_a', ['status' => 'active', 'until' => now()->addDays(300)->toDateString()]);
     $this->putJson("/api/portale/v1/orgs/{$alfa}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($alfa, 'sub_a', 2, ['status' => 'suspended', 'until' => now()->subDays(400)->toDateString()]))])->assertOk();
 
-    $details = DB::connection('pgsql_owner')->table('audit.log')->where('org_id', $alfa)->where('action', 'subscription.updated')->orderByDesc('created_at')->value('details');
+    $owner = DB::connection('pgsql_owner');
+    $details = $owner->transaction(function () use ($owner, $alfa): mixed {
+        $owner->select("SELECT set_config('app.org_id', ?, true)", [$alfa]);
+
+        return $owner->table('audit.log')->where('org_id', $alfa)->where('action', 'subscription.updated')->orderByDesc('seq')->value('details');
+    });
     expect(json_decode((string) $details, true))->toHaveKey('until_back_days');
 });
 
