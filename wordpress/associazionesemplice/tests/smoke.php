@@ -7084,6 +7084,22 @@ $cr_refund = new ReflectionMethod( $RS, 'refund_credits' );
 $cr_refund->setAccessible( true );
 $cr_refund->invoke( null, $cr_stale ); // una copia vecchia della riga non riaccredita di nuovo
 asem_ok( $cr_bal0 === $CR::balance( $cr_m ) && 0 === (int) $RS::reservation( $cr_b3 )['credits_paid'], 'crediti: nemmeno rieseguendo il rimborso con la riga letta prima' );
+// riaccredito che fallisce: la prenotazione resta prenotata, i crediti come prima, e si può riprovare
+$cr_b4   = $RS::book_slot( $cr_res, $cr_m, $cr_day, '16:00', 1 );
+$RS::pay_with_credits( $cr_b4, $cr_m );
+$cr_bal4 = $CR::balance( $cr_m ); // dopo la spesa
+$cr_paid4 = (int) $RS::reservation( $cr_b4 )['credits_paid'];
+$cr_fail = function ( $q ) {
+	return 0 === stripos( ltrim( (string) $q ), 'INSERT' ) && false !== strpos( $q, 'credit_entries' ) ? '' : $q; // la scrittura del rimborso non riesce
+};
+add_filter( 'query', $cr_fail );
+$cr_msg4 = asem_throws( function () use ( $RS, $cr_b4 ) { $RS::cancel( $cr_b4, true ); } );
+remove_filter( 'query', $cr_fail );
+$cr_row4 = $RS::reservation( $cr_b4 );
+asem_ok( null !== $cr_msg4, 'crediti: se il riaccredito non riesce l\'annullo è rifiutato' );
+asem_ok( 'booked' === $cr_row4['status'] && $cr_paid4 === (int) $cr_row4['credits_paid'] && $cr_bal4 === $CR::balance( $cr_m ), 'crediti: riaccredito fallito, la prenotazione resta prenotata e pagata in crediti' );
+$RS::cancel( $cr_b4, true );
+asem_ok( 'cancelled' === $RS::reservation( $cr_b4 )['status'] && $cr_bal4 + $cr_paid4 === $CR::balance( $cr_m ), 'crediti: dopo il fallimento un nuovo annullo funziona e i crediti tornano' );
 // addebito dal vivo con il QR
 $cr_ch = $CR::create_charge( $cr_m2, 5, 'Ingresso serata', null );
 asem_ok( 24 === strlen( $cr_ch['code'] ) && 'ok' === $CR::charge_status( $cr_ch['id'], 1 )['state'] && $CR::can_charge( 1 ), 'crediti: lo staff crea un addebito valido con un codice casuale' );
