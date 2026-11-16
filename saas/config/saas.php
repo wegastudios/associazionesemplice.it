@@ -54,6 +54,10 @@ return [
     // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.
     'demo' => [
         'enabled' => (bool) env('SAAS_DEMO', false),
+        // Nome del database della demo: l'azzeramento si rifiuta se il database collegato è un altro (obbligatorio).
+        'database' => env('SAAS_DEMO_DATABASE', ''),
+        // L'applicazione e i suoi file devono stare in una cartella con questo nome: altrimenti niente azzeramento.
+        'path_marker' => env('SAAS_DEMO_PATH_MARKER', 'saas-demo'),
         'org_name' => 'Polisportiva Demo',
         'org_slug' => env('SAAS_DEMO_SLUG', 'polisportiva-demo'),
         // Quante persone fisiche ha l'associazione dimostrativa: più sono, più il reset notturno dura (ricevute comprese).
