@@ -578,6 +578,10 @@ Prima della chiusura il rendiconto è una **bozza**: i numeri sono quelli di ogg
 
 Nella stessa pagina vedi **inizio e fine dell'anno fiscale**. Quando il rendiconto è approvato premi **«Emetti il rendiconto definitivo»** (con l'anno): da quel momento non si registrano né si stornano movimenti con date di quell'anno. Se serve correggere qualcosa, **«Riapri l'anno fiscale»**: scrivi il **motivo della riapertura** e l'anno per confermare, e il motivo resta in traccia. **Se le ricevute di quell'anno sono nell'archivio**, la riapertura viene rifiutata con «L'anno fiscale (anno) ha le ricevute nell'archivio: prima rimettile con «Rimetti i file» in «Copie di sicurezza», poi riapri l'anno.» Se lo riapri e lo richiudi nasce una nuova versione del rendiconto; le precedenti restano elencate.
 
+## Rendiconti pubblicati alla chiusura
+
+Nella pagina del rendiconto, la sezione **«Rendiconti pubblicati alla chiusura»** spiega che un anno fiscale chiuso si legge **sempre dal rendiconto pubblicato e bloccato alla chiusura**, anche se voci e conti cambiano dopo. Se riapri l'anno e lo richiudi nasce **una nuova versione**; **le precedenti restano**: per ognuna vedi la data e se è «in uso» o «superata dopo una riapertura».
+
 > Chiudi l'anno fiscale solo dopo aver controllato la prima nota e il rendiconto.
 MD,
     ],
@@ -995,6 +999,12 @@ I file singoli vengono tolti **solo dopo che l'archivio è stato controllato**: 
 **Archiviare non sostituisce la copia di sicurezza.** Resta consigliato **«Scarica copia di sicurezza»**, e la copia contiene comunque **anche gli anni archiviati**.
 
 In **Altro → Verifica delle ricevute** le ricevute di un anno archiviato hanno lo stato **«In archivio»**. Per rifare il PDF di una ricevuta di un anno archiviato, devi prima **rimettere i file** di quell'anno.
+
+**Se l'archivio di un anno non si apre**, nella pagina compare l'errore e, sotto, il pulsante **«Ricostruisci dai dati dell'emissione»** (con una conferma): il gestionale rifà le ricevute di quell'anno dai dati con cui sono state emesse. Al termine leggi «Anno fiscale 2025: N ricevute ricostruite dai dati dell'emissione. L'operazione è scritta nel registro delle azioni.» (con il tuo anno e il numero di ricevute).
+
+**Ogni domenica alle 04:07** il gestionale controlla da solo che gli archivi si aprano.
+
+**Per riaprire un anno fiscale con l'archivio**, prima premi **«Rimetti i file»** in **Copie di sicurezza**, poi riapri l'anno.
 
 **Una sola operazione alla volta sulle ricevute**: se ne è già in corso un'altra (archiviare, «Rimetti i file» o «Rifai»), compare «Un'altra operazione sulle ricevute è in corso: riprova tra qualche minuto. Non è cambiato nulla.»
 
