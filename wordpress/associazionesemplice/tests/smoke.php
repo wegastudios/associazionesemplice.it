@@ -8878,6 +8878,7 @@ $ap_real = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, arra
 $ap_rid  = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE tax_code = %s', 'RSSMRA79A09H501W' ) );
 asem_ok( 'ok' === $ap_real['status'] && $ap_rid > 0 && "D'Angelo-Nguyễn" === $people->get( $ap_rid )['last_name'] && false !== strpos( (string) $ap_mail_to( 'zoe.nguyen@example.com' )['message'], 'Ciao Zoë Maria,' ), 'domanda: i nomi veri (accenti, apostrofo, trattino, nome doppio) passano e finiscono nell\'email' );
 \AssociazioneSemplice\Applications::reject( $ap_rid );
+$wpdb->query( 'ALTER TABLE ' . Db::t( 'people' ) . ' AUTO_INCREMENT = ' . ( 1 + (int) $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL -- prova: la persona di prova non sposta i numeri delle prove successive
 asem_ok( 0 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) > $ap_nn, 'domanda: la prova con i nomi veri non lascia domande in coda' );
 $ap_mn = count( $ap_mails );
 asem_ok( 'ok' === \AssociazioneSemplice\Applications::submit( $ap_in )['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: registrata' );
