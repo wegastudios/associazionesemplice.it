@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Modules\Audit\Contracts\AuditLog;
+use App\Modules\Cifratura\Contracts\EncryptedFiles;
+use App\Modules\Cifratura\Contracts\StoredFile;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
@@ -121,4 +124,58 @@ it('l\'archivio è solo per titolare e amministratore', function (): void {
     $this->addOperator($this->org, $op, OrgRole::Operator);
     $this->actingAs($op)->post("/gestionale/archivio/{$this->year}")->assertForbidden();
     $this->actingAs($op)->post("/gestionale/archivio/{$this->year}/rimetti")->assertForbidden();
+});
+
+it('comprime i PDF nell\'archivio e annota quanto spazio libera', function (): void {
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
+
+    [$archive, $details] = $this->orgContext()->run($this->org->id, fn () => [
+        DB::table('app.year_archives')->sole(),
+        json_decode((string) DB::table('audit.log')->where('action', 'archive.created')->value('details'), true),
+    ]);
+    $tmp = tempnam(sys_get_temp_dir(), 'arc');
+    $this->orgContext()->run($this->org->id, fn () => app(EncryptedFiles::class)->readToFile($this->org->id, new StoredFile($archive->path, 'archivio.zip', 'application/zip', (int) $archive->size_bytes, (string) $archive->sha256), (string) $tmp));
+    $zip = new ZipArchive;
+    expect($zip->open((string) $tmp))->toBeTrue();
+    $entry = $zip->statName($this->receipt.'.pdf');
+    $zip->close();
+    @unlink((string) $tmp);
+
+    expect($entry['comp_method'])->toBe(ZipArchive::CM_DEFLATE)
+        ->and($entry['comp_size'])->toBeLessThan($entry['size'])
+        ->and($details['bytes_before'])->toBeGreaterThan(0)
+        ->and($details['bytes_after'])->toBe((int) $archive->size_bytes);
+});
+
+it('se il registro delle azioni non si scrive non cambia niente: l\'archivio non si registra e i file singoli restano', function (): void {
+    $single = archiveRow($this->org->id, $this->receipt)->path;
+    $filesBefore = Storage::disk('org_files')->allFiles();
+    // Si rompe solo la scrittura dell'archivio; il resto (accesso, associazione) scrive come sempre.
+    $this->app->instance(AuditLog::class, new class($this->app->make(AuditLog::class)) implements AuditLog
+    {
+        public function __construct(private readonly AuditLog $real) {}
+
+        public function record(string $action, ?string $subjectType = null, ?string $subjectId = null, array $details = []): void
+        {
+            if (str_starts_with($action, 'archive.')) {
+                throw new RuntimeException('registro non disponibile');
+            }
+            $this->real->record($action, $subjectType, $subjectId, $details);
+        }
+    });
+
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasErrors('archive');
+
+    expect(archiveRow($this->org->id, $this->receipt)->archived_year)->toBeNull()
+        ->and(Storage::disk('org_files')->exists($single))->toBeTrue()
+        ->and($this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->count()))->toBe(0)
+        ->and(Storage::disk('org_files')->allFiles())->toEqual($filesBefore);
+});
+
+it('il registro dell\'archivio e di «Rimetti i file» è scritto con l\'operazione stessa', function (): void {
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertRedirect();
+    $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/rimetti")->assertRedirect();
+
+    expect($this->orgContext()->run($this->org->id, fn () => DB::table('audit.log')->whereIn('action', ['archive.created', 'archive.restored'])->orderBy('seq')->pluck('action')->all()))
+        ->toBe(['archive.created', 'archive.restored']);
 });

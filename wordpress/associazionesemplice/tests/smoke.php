@@ -448,11 +448,80 @@ asem_ok( 'Associazione Semplice Pro' === License::plan_label( 'lite' ) && 'Assoc
 update_option( License::OPT_STATE, array_merge( (array) $lic_keep, array( 'plan_name' => 'Nome dal portale' ) ) );
 asem_ok( 'Nome dal portale' === License::plan_label( 'fiscal' ), 'nomi dei piani: si usa il nome che arriva dalla licenza' );
 update_option( License::OPT_STATE, $lic_keep );
-$lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ), 'product_code' => 'associazionesemplice' );
+// esito negativo: conta solo se firmato dal portale e dopo due esiti in giorni UTC diversi (confronto sull'iat)
+$lic_keyv = 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD';
+$pl_deny  = function ( array $over = array(), array $drop = array(), ?string $pair = null, string $kid = 'kportal' ) use ( $pl_pair, $lic_b64, $lic_keyv ) {
+	$iat    = (int) ( $over['iat'] ?? time() );
+	$claims = $over + array( 'iss' => \AssociazioneSemplice\LicenseClient::PORTAL_ISSUER, 'aud' => 'associazionesemplice', 'bid' => 'prova-sito.it', 'res' => 'deny', 'rc' => 'EXPIRED', 'kh' => substr( hash( 'sha256', $lic_keyv ), 0, 16 ), 'iat' => $iat, 'exp' => $iat + 259200 );
+	$claims = array_diff_key( $claims, array_flip( $drop ) );
+	$pair   = $pair ?? $pl_pair;
+	$head   = $lic_b64( wp_json_encode( array( 'alg' => 'EdDSA', 'typ' => 'JWT', 'kid' => $kid ) ) );
+	$body   = $lic_b64( wp_json_encode( $claims ) );
+	return $head . '.' . $body . '.' . $lic_b64( sodium_crypto_sign_detached( $head . '.' . $body, sodium_crypto_sign_secretkey( $pair ) ) );
+};
+$lic_deny_resp = function ( string $jwt, string $rc = 'EXPIRED' ) {
+	return array( 'valid' => false, 'reason_code' => $rc, 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'portal_attestation' => $jwt );
+};
+$lic_still_pro = function () {
+	return 'active' === License::state()['status'] && 'lite' === License::plan() && ! \AssociazioneSemplice\Edition::degraded();
+};
+delete_option( License::OPT_DENIAL );
+$lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
 $lic_r    = License::sync();
-asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta, funzioni Pro sospese' );
+asem_ok( ! $lic_r['ok'] && $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo non firmato: non spegne il Pro, come un errore transitorio' );
+$lic_bad = array(
+	'firma di un\'altra chiave'            => $pl_deny( array(), array(), sodium_crypto_sign_keypair() ),
+	'chiave di Wega, non del portale'      => $pl_deny( array(), array(), $lic_pair, 'ktest' ),
+	'prodotto sbagliato'                   => $pl_deny( array( 'aud' => 'altro-prodotto' ) ),
+	'dominio sbagliato'                    => $pl_deny( array( 'bid' => 'altro-sito.it' ) ),
+	'impronta della chiave diversa'        => $pl_deny( array( 'kh' => '0000000000000000' ) ),
+	'scaduto'                              => $pl_deny( array( 'iat' => time() - 4 * DAY_IN_SECONDS ) ),
+	'emesso nel futuro'                    => $pl_deny( array( 'iat' => time() + HOUR_IN_SECONDS ) ),
+	'senza res'                            => $pl_deny( array(), array( 'res' ) ),
+	'motivo ignoto'                        => $pl_deny( array( 'rc' => 'INVENTATO' ) ),
+	'prova positiva al posto del negativo' => $pl_att( array( 'plan' => 'lite' ) ),
+	'con il livello'                       => $pl_deny( array( 'plan' => 'lite' ) ),
+);
+foreach ( $lic_bad as $lic_why => $lic_jwt ) {
+	$lic_resp = $lic_deny_resp( $lic_jwt );
+	License::sync();
+	asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo non valido (' . $lic_why . '): non spegne il Pro e non conta' );
+}
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS ) ) );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && $lic_still_pro() && gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ) === get_option( License::OPT_DENIAL )['day'], 'esito negativo firmato, il primo: si ricorda ma il Pro resta acceso' );
+License::sync(); // la stessa risposta ancora (il portale la tiene in cache qualche minuto)
+asem_ok( $lic_still_pro(), 'esito negativo firmato con lo stesso iat: conta come uno solo' );
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS + 60 ) ) );
+License::sync();
+asem_ok( $lic_still_pro(), 'due esiti negativi nello stesso giorno UTC: il Pro resta acceso' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'expires_at' => '2027-01-01T00:00:00Z', 'product_code' => 'associazionesemplice' );
+License::sync();
+asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito positivo valido: azzera il conteggio dei negativi' );
+$lic_resp = $lic_deny_resp( $pl_deny() );
+License::sync();
+asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'dopo l\'azzeramento un nuovo esito negativo vale di nuovo come il primo' );
+// motivi che non contano (PENDING, LICENSE_NOT_FOUND), prodotto diverso da quello salvato, primo esito troppo vecchio
+delete_option( License::OPT_DENIAL );
+foreach ( array( 'PENDING', 'LICENSE_NOT_FOUND' ) as $lic_rc ) {
+	$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => $lic_rc ) ), $lic_rc );
+	License::sync();
+	asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo ' . $lic_rc . ': non conta, non si memorizza e il Pro resta acceso' );
+}
+$lic_resp                 = $lic_deny_resp( $pl_deny( array( 'aud' => 'altro-prodotto' ) ) );
+$lic_resp['product_code'] = 'altro-prodotto';
+License::sync();
+asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo per un prodotto diverso da quello salvato sul sito: non conta, anche se la risposta e la prova concordano' );
+update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 8 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 8 * DAY_IN_SECONDS ), false );
+$lic_resp = $lic_deny_resp( $pl_deny() );
+License::sync();
+asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'esito negativo a più di 7 giorni dal primo: non si applica e diventa il nuovo primo' );
+update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 2 * DAY_IN_SECONDS ), false );
+$lic_resp = array( 'valid' => false, 'reason_code' => 'REVOKED', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'portal_attestation' => $pl_deny(), 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ) );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta (due esiti firmati in giorni diversi), funzioni Pro sospese; il motivo è quello firmato' );
 asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'notice-warning' ) && \AssociazioneSemplice\Edition::allows( 'export' ), 'verifica: licenza scaduta, avviso e nessuna funzione di base toccata' );
-$lic_resp = array( 'valid' => false, 'reason_code' => 'DOMAIN_MISMATCH', 'plan_name' => 'Pro Full' );
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => 'DOMAIN_MISMATCH' ) ), 'DOMAIN_MISMATCH' );
 License::sync();
 asem_ok( 'unlicensed' === License::state()['status'] && false !== strpos( License::status()['reason'], 'dominio' ), 'verifica: dominio diverso, spiegazione in italiano' );
 $lic_resp = null;
@@ -10576,6 +10645,31 @@ asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_a, $er_gid ) 
 $er::member_request( $er_sid( $er_c ), $er_gid );
 asem_ok( $er::pending_for( $er_sid( $er_c ), $er_gid ) && ! $acts->has_active_booking( $er_sid( $er_c ), $er_gid ), 'richiesta socio: registrata, il posto non è ancora occupato' );
 asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_c, $er_gid ) { $er::member_request( $er_sid( $er_c ), $er_gid ); } ), 'richiesta socio: una sola richiesta per data' );
+// Evento su richiesta: nessun percorso lo prenota direttamente (area soci, servizio, lista d'attesa), salvo segreteria o richiesta approvata.
+$er_d = $er_mk( 'Cena su richiesta D', null );
+update_post_meta( \AssociazioneSemplice\PublicEvents::post_of( $er_d ), '_asem_ev_approval', '1' );
+list( $ap_p, $ap_u ) = $mkmem( 'Rita', 'Richiesta' );
+list( $ap_q, $ap_qu ) = $mkmem( 'Sara', 'Richiesta' );
+$ap_s = $er_sid( $er_d );
+$ap_rules = Settings::get( 'rules_enabled' ); // il regolamento da accettare non c'entra con questa prova
+Settings::update( array( 'rules_enabled' => 0 ) );
+wp_set_current_user( $ap_u );
+$ap_msg = (string) asem_throws( function () use ( $front, $ap_s, $ap_p ) { $front::do_book( array( 'session_id' => $ap_s, 'person_id' => $ap_p ) ); } );
+asem_ok( false !== strpos( $ap_msg, 'su richiesta' ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: il socio non si prenota direttamente dall\'area soci [' . $ap_msg . ']' );
+asem_ok( null !== asem_throws( function () use ( $acts, $ap_s, $ap_p ) { $acts->book( $ap_s, $ap_p ); } ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: nemmeno chiamando direttamente la prenotazione senza essere segreteria' );
+wp_set_current_user( 0 );
+asem_ok( null !== asem_throws( function () use ( $acts, $ap_s, $ap_p ) { $acts->book( $ap_s, $ap_p ); } ), 'evento su richiesta: né senza alcun utente' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $ap_s, $ap_p ) { \AssociazioneSemplice\Waitlist::join( $ap_s, $ap_p ); } ), 'su richiesta' ), 'evento su richiesta: la lista d\'attesa non si apre' );
+$wpdb->insert( \AssociazioneSemplice\Db::t( 'waitlist' ), array( 'session_id' => $ap_s, 'person_id' => $ap_p, 'status' => 'waiting', 'created_at' => \AssociazioneSemplice\Db::now() ) ); // già in coda prima che l'evento diventasse su richiesta
+asem_ok( 0 === \AssociazioneSemplice\Waitlist::promote( $ap_s ) && ! $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: la lista d\'attesa non prenota nessuno da sola' );
+asem_ok( $acts->book( $ap_s, $ap_p, array( 'approved' => true ) ) > 0 && $acts->has_active_booking( $ap_s, $ap_p ), 'evento su richiesta: con la richiesta approvata si prenota' );
+wp_set_current_user( 1 );
+asem_ok( $acts->book( $ap_s, $ap_q ) > 0 && $acts->has_active_booking( $ap_s, $ap_q ), 'evento su richiesta: la segreteria prenota direttamente' );
+list( $ap_r ) = $mkmem( 'Tina', 'Richiesta' );
+wp_set_current_user( $sec_u );
+asem_ok( $acts->book( $ap_s, $ap_r ) > 0 && $acts->has_active_booking( $ap_s, $ap_r ), 'evento su richiesta: anche l\'utente di segreteria (non amministratore) prenota direttamente' );
+wp_set_current_user( 1 );
+Settings::update( array( 'rules_enabled' => $ap_rules ) );
 $er_aw2 = $er::awaiting( $er_c );
 asem_ok( 1 === count( $er_aw2 ) && false !== strpos( $er_aw2[0]['names'][0], '(socio)' ), 'richiesta socio: compare alla segreteria' );
 $er::approve( (int) $er_aw2[0]['id'] );

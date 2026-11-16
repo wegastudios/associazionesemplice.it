@@ -227,6 +227,68 @@ final class LicenseClient {
 		return in_array( $plan, License::PLANS, true ) ? $plan : null;
 	}
 
+	/** Motivi con cui il portale firma un esito negativo. */
+	const DENY_CODES = array( 'EXPIRED', 'SUSPENDED', 'REVOKED', 'DOMAIN_MISMATCH' );
+
+	/** Entro quanto dal primo esito negativo deve arrivare il secondo perché si applichi: 7 giorni (secondi tra i due `iat`). */
+	const DENY_WINDOW = 604800;
+
+	/**
+	 * L'esito negativo firmato dal portale («licenza non valida»), se regge: firma, emittente, prodotto, dominio, scadenza, `res` = deny, motivo noto,
+	 * `kh` uguale all'impronta della chiave di licenza di questo sito, `iat` non nel futuro (oltre pochi minuti) e nessun claim di piano.
+	 * Senza una prova così, un «non valida» non vale.
+	 *
+	 * @return array|null ['rc' => motivo, 'iat' => istante di emissione] oppure null
+	 */
+	public static function verify_denial( string $jwt, string $license_key, string $audience, ?string $domain, ?int $now = null, ?array $jwks = null ): ?array {
+		$jwks = $jwks ?? self::portal_jwks();
+		if ( '' === $jwt || '' === $license_key || '' === $audience || empty( $jwks['keys'] ) ) {
+			return null;
+		}
+		$now    = $now ?? time();
+		$claims = self::verify_attestation( $jwt, $jwks, self::PORTAL_ISSUER, $audience, $domain, $now );
+		if ( null === $claims ) {
+			return null;
+		}
+		$rc  = $claims['rc'] ?? '';
+		$iat = $claims['iat'] ?? null;
+		$exp = $claims['exp'] ?? null;
+		$kh  = $claims['kh'] ?? '';
+		if ( 'deny' !== ( $claims['res'] ?? '' ) || isset( $claims['plan'] ) || isset( $claims['sub'] ) || ! is_string( $rc ) || ! in_array( $rc, self::DENY_CODES, true ) ) {
+			return null;
+		}
+		if ( ! is_int( $iat ) || ! is_int( $exp ) || $iat <= 0 || $iat > $now + 300 || $exp > $iat + 259200 + 300 ) {
+			return null;
+		}
+		if ( ! is_string( $kh ) || '' === $kh || ! hash_equals( substr( hash( 'sha256', $license_key ), 0, 16 ), $kh ) ) {
+			return null;
+		}
+		return array( 'rc' => $rc, 'iat' => $iat );
+	}
+
+	/**
+	 * Un esito negativo firmato si applica solo dopo due esiti negativi in giorni UTC diversi (si confronta il giorno dell'`iat`, non l'ora locale).
+	 * Il primo si ricorda soltanto; con lo stesso giorno (o uno precedente) non cambia niente.
+	 *
+	 * @param array $stored ['day' => Y-m-d, 'rc' => motivo] del primo esito negativo, o vuoto
+	 * @param array $denial ['rc', 'iat'] di {@see verify_denial()}
+	 * @return array ['apply' => bool, 'stored' => array da salvare]
+	 */
+	public static function denial_step( array $stored, array $denial ): array {
+		$iat   = (int) $denial['iat'];
+		$day   = gmdate( 'Y-m-d', $iat );
+		$fresh = array( 'day' => $day, 'rc' => (string) $denial['rc'], 'iat' => $iat );
+		$old   = isset( $stored['day'] ) && is_string( $stored['day'] ) && 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $stored['day'] ) ? $stored['day'] : '';
+		$oiat  = isset( $stored['iat'] ) && is_int( $stored['iat'] ) && $stored['iat'] > 0 ? $stored['iat'] : 0;
+		if ( '' === $old || 0 === $oiat ) {
+			return array( 'apply' => false, 'stored' => $fresh );
+		}
+		if ( $iat - $oiat > self::DENY_WINDOW ) { // il primo è troppo vecchio: questo diventa il nuovo primo
+			return array( 'apply' => false, 'stored' => $fresh );
+		}
+		return array( 'apply' => $day > $old, 'stored' => array( 'day' => $old, 'rc' => (string) ( $stored['rc'] ?? '' ), 'iat' => $oiat ) );
+	}
+
 	private static function b64d( string $s ): string {
 		$r = base64_decode( strtr( $s, '-_', '+/' ) . str_repeat( '=', ( 4 - strlen( $s ) % 4 ) % 4 ), true );
 		return false === $r ? '' : $r;

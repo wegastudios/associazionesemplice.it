@@ -17,10 +17,17 @@ final class Updater {
 	const API    = 'https://associazionesemplice.it/api/plugin/update';
 	const OPT    = 'asem_portal_updates';
 	const PREFIX = 'asem-portal://';
+	/** Versioni più alte e soglie minime già viste con firma v2 valida, per prodotto (opzione senza autoload). */
+	const SEEN_OPT = 'asem_portal_seen';
+	/** Prefisso del messaggio firmato v2. */
+	const V2_TAG = 'asem-pkg-v2';
+	/** Una firma datata oltre questo margine nel futuro non vale (secondi). */
+	const V2_FUTURE_SLACK = 86400;
 
 	/**
 	 * Chiavi pubbliche con cui si firmano i pacchetti (kid => Ed25519, base64url). La chiave privata non sta sul server del portale: chi lo
 	 * compromette non può far installare codice sui siti. Un kid sconosciuto o una firma sbagliata bloccano l'installazione.
+	 * Può contenere più chiavi: ogni firma si verifica con la chiave del proprio kid.
 	 */
 	const PACKAGE_KEYS = array(
 		'pkg-2026-10-85dce7' => 'ld_4NilmHT-TtaH8vUw_YGq7eEt4a0e4L4YAxSzP6oI',
@@ -122,8 +129,24 @@ final class Updater {
 			'sha256'  => isset( $j['sha256'] ) && is_string( $j['sha256'] ) ? strtolower( trim( $j['sha256'] ) ) : '',
 			'signature' => isset( $j['signature'] ) && is_string( $j['signature'] ) ? trim( $j['signature'] ) : '',
 			'kid'     => isset( $j['kid'] ) && is_string( $j['kid'] ) ? trim( $j['kid'] ) : '',
+			// firma v2: se il portale dichiara anche solo uno di questi campi, la v2 è obbligatoria (un campo di tipo sbagliato resta vuoto e fa rifiutare il pacchetto)
+			'v2'      => self::declares_v2( $j ),
+			'signature_v2' => isset( $j['signature_v2'] ) && is_string( $j['signature_v2'] ) ? trim( $j['signature_v2'] ) : '',
+			'kid_v2'  => isset( $j['kid_v2'] ) && is_string( $j['kid_v2'] ) ? trim( $j['kid_v2'] ) : '',
+			'signed_at' => isset( $j['signed_at'] ) && is_int( $j['signed_at'] ) ? $j['signed_at'] : 0,
+			'min_version' => isset( $j['min_version'] ) && is_string( $j['min_version'] ) ? trim( $j['min_version'] ) : '',
 			'changelog' => isset( $j['changelog'] ) && is_string( $j['changelog'] ) ? mb_substr( $j['changelog'], 0, 20000 ) : '',
 		);
+	}
+
+	/** La risposta dichiara almeno un campo della firma v2 (presente e non nullo)? */
+	private static function declares_v2( array $j ): bool {
+		foreach ( array( 'signature_v2', 'kid_v2', 'signed_at', 'min_version' ) as $k ) {
+			if ( array_key_exists( $k, $j ) && null !== $j[ $k ] ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -163,6 +186,114 @@ final class Updater {
 		$pub = self::b64d( $keys[ $kid ] );
 		$sig = self::b64d( $signature );
 		return 32 === strlen( $pub ) && 64 === strlen( $sig ) && sodium_crypto_sign_verify_detached( $sig, $product . '|' . $version . '|' . $sha256, $pub );
+	}
+
+	/** Soglia minima in forma «1.2» o «1.2.3». */
+	private static function valid_min_version( string $v ): bool {
+		return (bool) preg_match( '/^\d{1,3}(\.\d{1,4}){1,2}$/', $v );
+	}
+
+	/**
+	 * La firma v2 del portale per «asem-pkg-v2|prodotto|versione|sha256|signed_at|min_version» torna con la chiave del suo kid?
+	 * Controlla anche la forma dei campi; il confronto con la soglia, la data e le versioni già viste sta in v2_verdict().
+	 *
+	 * @param array<string,string> $keys kid => chiave pubblica (base64url)
+	 */
+	public static function verify_signature_v2( string $product, string $version, string $sha256, int $signed_at, string $min_version, string $kid, string $signature, array $keys ): bool {
+		if ( ! function_exists( 'sodium_crypto_sign_verify_detached' ) || ! isset( $keys[ $kid ] ) || ! preg_match( '/^[a-f0-9]{64}$/', $sha256 ) ) {
+			return false;
+		}
+		if ( $signed_at <= 0 || ! self::valid_version( $version ) || ! self::valid_min_version( $min_version ) ) {
+			return false;
+		}
+		$pub = self::b64d( $keys[ $kid ] );
+		$sig = self::b64d( $signature );
+		$msg = self::V2_TAG . '|' . $product . '|' . $version . '|' . $sha256 . '|' . $signed_at . '|' . $min_version;
+		return 32 === strlen( $pub ) && 64 === strlen( $sig ) && sodium_crypto_sign_verify_detached( $sig, $msg, $pub );
+	}
+
+	/**
+	 * Regole sul pacchetto offerto, prima di proporlo o di scaricarlo. Senza campi v2 non ce ne sono (resta la firma v1, controllata allo scarico).
+	 * Con campi v2 la v2 è obbligatoria e valida: niente ripiego sulla v1.
+	 *
+	 * @param array                                      $r    risposta di parse()
+	 * @param array<string,string>                       $keys kid => chiave pubblica
+	 * @param array{version?:string,min_version?:string} $seen cosa si è già visto per questo prodotto
+	 * @return string '' se va bene, altrimenti il motivo: invalid (firma v2 non valida), min (sotto la soglia), rollback (sotto la versione più alta già vista), future (firma datata nel futuro), missing_v2 (pacchetto senza v2 dopo che ne è già stato visto uno)
+	 */
+	public static function v2_verdict( string $product, array $r, array $keys, array $seen, int $now ): string {
+		$seen_min = (string) ( $seen['min_version'] ?? '' );
+		$seen_v   = (string) ( $seen['version'] ?? '' );
+		if ( empty( $r['v2'] ) ) {
+			if ( ! empty( $seen['v2'] ) ) { // già visto un pacchetto v2 per questo prodotto: da qui in poi la v2 è obbligatoria
+				return 'missing_v2';
+			}
+			$v1 = (string) ( $r['version'] ?? '' ); // la v1 è ancora ammessa, ma senza passi indietro rispetto a quanto già visto
+			if ( '' !== $seen_min && self::valid_min_version( $seen_min ) && version_compare( $v1, $seen_min, '<' ) ) {
+				return 'min';
+			}
+			if ( '' !== $seen_v && self::valid_version( $seen_v ) && version_compare( $v1, $seen_v, '<' ) ) { // la stessa versione resta ammessa
+				return 'rollback';
+			}
+			return '';
+		}
+		$version = (string) ( $r['version'] ?? '' );
+		$min     = (string) ( $r['min_version'] ?? '' );
+		$at      = (int) ( $r['signed_at'] ?? 0 );
+		if ( ! self::verify_signature_v2( $product, $version, (string) ( $r['sha256'] ?? '' ), $at, $min, (string) ( $r['kid_v2'] ?? '' ), (string) ( $r['signature_v2'] ?? '' ), $keys ) ) {
+			return 'invalid';
+		}
+		if ( version_compare( $version, $min, '<' ) ) {
+			return 'min';
+		}
+		if ( '' !== $seen_min && self::valid_min_version( $seen_min ) && version_compare( $version, $seen_min, '<' ) ) {
+			return 'min';
+		}
+		if ( '' !== $seen_v && self::valid_version( $seen_v ) && version_compare( $version, $seen_v, '<' ) ) { // la stessa versione ripubblicata resta ammessa
+			return 'rollback';
+		}
+		if ( $at > $now + self::V2_FUTURE_SLACK ) {
+			return 'future';
+		}
+		return '';
+	}
+
+	/** Versione e soglia più alte tra quelle già viste e quelle del pacchetto verificato: non scendono mai. */
+	public static function seen_after( array $seen, string $version, string $min_version, bool $v2 = true ): array {
+		$v = (string) ( $seen['version'] ?? '' );
+		$m = (string) ( $seen['min_version'] ?? '' );
+		if ( '' === $m || ! self::valid_min_version( $m ) ) {
+			$m = $min_version; // un pacchetto v1 non ha soglia: resta quella già vista (se c'è)
+		} elseif ( '' !== $min_version && version_compare( $min_version, $m, '>' ) ) {
+			$m = $min_version;
+		}
+		return array(
+			'version'     => '' === $v || ! self::valid_version( $v ) || version_compare( $version, $v, '>' ) ? $version : $v,
+			'min_version' => $m,
+			'v2'          => $v2 || ! empty( $seen['v2'] ), // dal primo pacchetto v2 in poi, senza v2 non si accetta più niente
+		);
+	}
+
+	/** @return array{version?:string,min_version?:string,v2?:bool} */
+	private static function seen( string $product ): array {
+		$all = get_option( self::SEEN_OPT, array() );
+		return is_array( $all ) && isset( $all[ $product ] ) && is_array( $all[ $product ] ) ? $all[ $product ] : array();
+	}
+
+	private static function remember( string $product, array $r, bool $v2 = true ): void {
+		$all             = get_option( self::SEEN_OPT, array() );
+		$all             = is_array( $all ) ? $all : array();
+		$all[ $product ] = self::seen_after( self::seen( $product ), (string) $r['version'], $v2 ? (string) $r['min_version'] : '', $v2 );
+		update_option( self::SEEN_OPT, $all, false );
+	}
+
+	/** Motivo del rifiuto o '' se il pacchetto va bene; se è un v2 valido ricorda versione e soglia più alte. */
+	private static function package_verdict( string $product, array $r ): string {
+		$v = self::v2_verdict( $product, $r, self::PACKAGE_KEYS, self::seen( $product ), time() );
+		if ( '' === $v && ! empty( $r['v2'] ) ) {
+			self::remember( $product, $r );
+		}
+		return $v;
 	}
 
 	/** Il pacchetto viene davvero dal portale (stesso sito dell'indirizzo di verifica)? */
@@ -254,6 +385,9 @@ final class Updater {
 			if ( empty( $state[ $p ]['version'] ) || ! self::is_newer( $info['version'], (string) $state[ $p ]['version'] ) || empty( $state[ $p ]['update'] ) ) {
 				continue;
 			}
+			if ( '' !== self::package_verdict( $p, (array) $state[ $p ] ) ) { // non si propone ciò che lo scarico rifiuterebbe
+				continue;
+			}
 			if ( ! isset( $transient->response ) || ! is_array( $transient->response ) ) {
 				$transient->response = array();
 			}
@@ -316,8 +450,22 @@ final class Updater {
 		if ( '' === $installed || ! self::is_newer( $installed, $r['version'] ) ) { // niente passi indietro: una versione vecchia firmata non si reinstalla
 			return new \WP_Error( 'asem_update_not_newer', 'La versione offerta dal portale non è più recente di quella installata.' );
 		}
-		if ( ! self::verify_signature( $p, $r['version'], $r['sha256'], $r['kid'], $r['signature'], self::PACKAGE_KEYS ) ) {
+		$why = self::package_verdict( $p, $r );
+		if ( '' !== $why ) {
+			$msg = array(
+				'invalid'  => 'Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall\'area clienti e scrivici.',
+				'min'      => 'La versione offerta dal portale è sotto la soglia minima ammessa: non è stata installata.',
+				'rollback' => 'La versione offerta dal portale è più vecchia di una già vista: non è stata installata.',
+				'missing_v2' => 'Il pacchetto offerto dal portale non ha la firma del nuovo formato, richiesta dopo il primo pacchetto così firmato: non è stato installato. Scaricalo dall\'area clienti e scrivici.',
+				'future'   => 'La firma del pacchetto ha una data nel futuro: non è stato installato. Controlla data e ora del server.',
+			);
+			return new \WP_Error( 'asem_update_unsigned', Texts::t( $msg[ $why ] ?? $msg['invalid'] ) );
+		}
+		if ( empty( $r['v2'] ) && ! self::verify_signature( $p, $r['version'], $r['sha256'], $r['kid'], $r['signature'], self::PACKAGE_KEYS ) ) {
 			return new \WP_Error( 'asem_update_unsigned', 'Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall\'area clienti e scrivici.' );
+		}
+		if ( empty( $r['v2'] ) ) {
+			self::remember( $p, $r, false ); // firma v1 verificata: si ricorda la versione, così non si torna indietro
 		}
 		if ( ! function_exists( 'download_url' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';

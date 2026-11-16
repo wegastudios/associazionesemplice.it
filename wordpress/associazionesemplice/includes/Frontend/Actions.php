@@ -542,7 +542,7 @@ final class Actions {
 				}
 				foreach ( $lines as $l ) {
 					if ( ! empty( $l['session_id'] ) && ! $acts->has_active_booking( (int) $l['session_id'], $pid ) ) {
-						$acts->book( (int) $l['session_id'], $pid ); // chi paga un evento senza prenotazione viene prenotato (se c'e posto)
+						$acts->book( (int) $l['session_id'], $pid, array( 'approved' => true ) ); // incasso dello staff: chi paga un evento senza prenotazione viene prenotato (se c'e posto)
 					}
 				}
 				$ledger->record_receipt( array( 'date' => current_time( 'Y-m-d' ), 'account_id' => (int) ( $post['account_id'] ?? 0 ), 'method' => '', 'person_id' => $pid, 'lines' => $lines ) );
