@@ -2626,6 +2626,9 @@
   "Il pacchetto offerto dal portale non ha la firma del nuovo formato, richiesta dopo il primo pacchetto così firmato: non è stato installato. Scaricalo dall'area clienti e scrivici." : "The package offered by the portal lacks the signature of the new format, required after the first package signed that way: it was not installed. Download it from the customer area and write to us.",
   "Installalo da Bacheca → Aggiornamenti: i dati restano." : "Install it from Dashboard → Updates: your data is kept.",
   "Vai agli aggiornamenti" : "Go to updates",
+  "Questo numero di tessera non si può usare: scrivi alla segreteria." : "This card number cannot be used: write to the office.",
+  "Questa email non si può usare: scrivi alla segreteria." : "This email cannot be used: write to the office.",
+  "Non puoi scegliere questo socio come delegato: scegline un altro." : "You cannot choose this member as your proxy: choose another.",
   "Questo evento è su richiesta: chiedi di partecipare dalla pagina dell'evento e la segreteria ti risponde." : "This event is by request: ask to take part from the event page and the office will reply.",
   "Questo evento è su richiesta: la lista d'attesa non c'è, la segreteria decide chi partecipa." : "This event is by request: there is no waiting list, the office decides who takes part.",
   "Scegli la tariffa: per questa attività bisogna sceglierne una." : "Choose a rate: this activity requires you to pick one."

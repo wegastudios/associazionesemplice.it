@@ -55,6 +55,31 @@ final class BlockDRulesTest extends TestCase {
 		$this->assertSame( '', $ok( 1, 2, true, true, array( 3, 4 ), array( 3, 4 ), array( 2 ) ) );
 	}
 
+	public function test_proxy_refusals_are_neutral_for_members(): void {
+		$m = function ( int $a, int $b, bool $ea, bool $eb, array $of, array $givers, array $takers, int $max = 3 ) {
+			return AssemblyRules::proxy_refusal( $a, $b, $ea, $eb, $of, $givers, $takers, $max, true );
+		};
+		$s = function ( int $a, int $b, bool $ea, bool $eb, array $of, array $givers, array $takers, int $max = 3 ) {
+			return AssemblyRules::proxy_refusal( $a, $b, $ea, $eb, $of, $givers, $takers, $max );
+		};
+		$this->assertSame( '', $m( 1, 2, true, true, array(), array(), array() ) );
+		// Tre rifiuti che dicono com'è messo l'altro socio: dal lato soci è lo stesso messaggio, la segreteria vede il motivo.
+		$cases = array(
+			array( 1, 2, true, false, array(), array(), array() ),
+			array( 1, 2, true, true, array(), array( 2 ), array() ),
+			array( 1, 2, true, true, array( 3, 4, 5 ), array( 3, 4, 5 ), array( 2 ) ),
+		);
+		$seen = array();
+		foreach ( $cases as $c ) {
+			$seen[ $m( ...$c ) ] = true;
+			$this->assertNotSame( $m( ...$c ), $s( ...$c ) );
+		}
+		$this->assertCount( 1, $seen );
+		// Le regole su chi sta delegando restano dette chiaramente.
+		$this->assertSame( $s( 1, 1, true, true, array(), array(), array() ), $m( 1, 1, true, true, array(), array(), array() ) );
+		$this->assertSame( $s( 1, 2, false, true, array(), array(), array() ), $m( 1, 2, false, true, array(), array(), array() ) );
+	}
+
 	public function test_status_moves(): void {
 		$this->assertTrue( AssemblyRules::can_move( AssemblyRules::DRAFT, AssemblyRules::CONVENED ) );
 		$this->assertTrue( AssemblyRules::can_move( AssemblyRules::CONVENED, AssemblyRules::HELD ) );

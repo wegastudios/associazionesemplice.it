@@ -432,13 +432,15 @@ class PeopleService {
 		if ( null !== $d['card_number'] ) {
 			$holder = $this->find_by_card( $d['card_number'], $except_id );
 			if ( $holder ) {
-				throw new \InvalidArgumentException( 'La tessera ' . $d['card_number'] . ' è già assegnata a ' . $this->full_name( $holder ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				$staff = current_user_can( Plugin::CAP ) || current_user_can( Plugin::CAP_OPS ); // il nome di chi ha già il dato lo vede solo la segreteria: gli altri non possono scoprire chi è socio
+				throw new \InvalidArgumentException( $staff ? 'La tessera ' . $d['card_number'] . ' è già assegnata a ' . $this->full_name( $holder ) . '.' : 'Questo numero di tessera non si può usare: scrivi alla segreteria.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 		if ( null !== $d['email'] ) {
 			$holder = $this->find_by_email( $d['email'], $except_id );
 			if ( $holder ) {
-				throw new \InvalidArgumentException( 'L\'email ' . $d['email'] . ' è già usata da ' . $this->full_name( $holder ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				$staff = current_user_can( Plugin::CAP ) || current_user_can( Plugin::CAP_OPS );
+				throw new \InvalidArgumentException( $staff ? 'L\'email ' . $d['email'] . ' è già usata da ' . $this->full_name( $holder ) . '.' : 'Questa email non si può usare: scrivi alla segreteria.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 	}

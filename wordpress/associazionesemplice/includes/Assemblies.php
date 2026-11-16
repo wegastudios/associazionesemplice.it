@@ -308,7 +308,8 @@ final class Assemblies {
 			} ), 'delegator_id' ) ),
 			array_map( 'intval', array_column( $all, 'delegator_id' ) ),
 			array_map( 'intval', array_column( $all, 'delegate_id' ) ),
-			$max
+			$max,
+			! $staff
 		);
 		if ( '' !== $reason ) {
 			throw new \InvalidArgumentException( $reason ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html

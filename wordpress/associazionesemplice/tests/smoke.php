@@ -5386,6 +5386,34 @@ $_GET    = array( 'asemf_err' => 'Spesa registrata.', 'asemf_sig' => (string) ( 
 $f_kind  = \AssociazioneSemplice\Flash::read( 'asemf' );
 $_GET    = $old_get;
 asem_ok( 'Spesa registrata.' === $f_ok['ok'] && '' === $f_ok['err'] && '' === $f_fake['err'] && '' === $f_fake['ok'] && '' === $f_alt['ok'] && '' === $f_kind['err'], 'messaggi di esito: si mostrano solo quelli firmati dal sito (un testo messo in un link viene ignorato)' );
+// Avvisi legati a chi li ha generato e a una scadenza breve.
+$fs_read = function ( string $url ) {
+	parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $q );
+	$old  = $_GET;
+	$_GET = $q;
+	$r    = \AssociazioneSemplice\Flash::read( 'asemf' );
+	$_GET = $old;
+	return $r;
+};
+wp_set_current_user( 1 );
+$fs_url = \AssociazioneSemplice\Flash::url( 'https://example.org/area/', 'asemf', 'Prenotazione registrata per Mario.' );
+asem_ok( 'Prenotazione registrata per Mario.' === $fs_read( $fs_url )['ok'], 'avvisi: li legge chi li ha generati' );
+wp_set_current_user( $u_f );
+asem_ok( '' === $fs_read( $fs_url )['ok'] && '' === $fs_read( $fs_url )['err'], 'avvisi: un altro utente con lo stesso indirizzo non vede nulla' );
+wp_set_current_user( 0 );
+asem_ok( '' === $fs_read( $fs_url )['ok'], 'avvisi: chi non ha fatto l\'accesso non vede l\'avviso di un utente' );
+$fs_anon = \AssociazioneSemplice\Flash::url( 'https://example.org/area/', 'asemf', 'Accesso attivato.' ); // generato senza accesso (ritorni dai pagamenti, attivazione)
+wp_set_current_user( 1 );
+asem_ok( 'Accesso attivato.' === $fs_read( $fs_anon )['ok'], 'avvisi: quelli generati senza accesso restano leggibili' );
+$fs_exp = time() - 5;
+$fs_old = add_query_arg( array( 'asemf_ok' => 'Scaduto.', 'asemf_sig' => $fs_exp . '.' . \AssociazioneSemplice\Flash::sign( 'ok', 'Scaduto.', $fs_exp, \AssociazioneSemplice\Flash::binding() ) ), 'https://example.org/area/' );
+$fs_exp2 = time() + 120;
+$fs_new = add_query_arg( array( 'asemf_ok' => 'Valido.', 'asemf_sig' => $fs_exp2 . '.' . \AssociazioneSemplice\Flash::sign( 'ok', 'Valido.', $fs_exp2, \AssociazioneSemplice\Flash::binding() ) ), 'https://example.org/area/' );
+asem_ok( '' === $fs_read( $fs_old )['ok'] && 'Valido.' === $fs_read( $fs_new )['ok'], 'avvisi: dopo la scadenza non si mostrano più' );
+$fs_late = add_query_arg( array( 'asemf_ok' => 'Valido.', 'asemf_sig' => ( $fs_exp2 + 3600 ) . '.' . \AssociazioneSemplice\Flash::sign( 'ok', 'Valido.', $fs_exp2, \AssociazioneSemplice\Flash::binding() ) ), 'https://example.org/area/' );
+asem_ok( '' === $fs_read( $fs_late )['ok'], 'avvisi: la scadenza non si può spostare in avanti' );
+$fs_nosig = add_query_arg( array( 'asemf_ok' => 'Senza scadenza.', 'asemf_sig' => \AssociazioneSemplice\Flash::sign( 'ok', 'Senza scadenza.', 0, \AssociazioneSemplice\Flash::binding() ) ), 'https://example.org/area/' );
+asem_ok( '' === $fs_read( $fs_nosig )['ok'], 'avvisi: una firma senza scadenza non vale' );
 $GLOBALS['asem_probe'] = 0;
 add_shortcode( 'asem_probe', function () { $GLOBALS['asem_probe']++; return 'SEGRETO'; } );
 wp_set_current_user( 0 );
@@ -9407,6 +9435,25 @@ asem_ok( $as_throws( function () use ( $as_asm, $as_c ) { \AssociazioneSemplice\
 $as_e = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Elia', 'last_name' => 'Assemblea Epsilon', 'email' => 'elia.assemblea@example.com' ) );
 $people->set_membership( $as_e, $as_label, true );
 asem_ok( $as_throws( function () use ( $as_asm, $as_e, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_e, $as_b ); } ), 'deleghe: al massimo tre per socio (meno di 500 soci)' );
+// Messaggi neutri: dal lato soci non si dice com'è messo l'altro socio; la segreteria vede il motivo preciso.
+$as_msg = function ( callable $fn ): string {
+	try {
+		$fn();
+	} catch ( \InvalidArgumentException $e ) {
+		return $e->getMessage();
+	}
+	return '';
+};
+$as_m_member = $as_msg( function () use ( $as_asm, $as_e, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_e, $as_b, false ); } );
+$as_m_staff  = $as_msg( function () use ( $as_asm, $as_e, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_e, $as_b, true ); } );
+asem_ok( '' !== $as_m_member && false === strpos( $as_m_member, 'massimo' ) && false === strpos( $as_m_member, 'delegato qualcun' ) && false !== strpos( $as_m_staff, 'massimo' ), 'deleghe: dal lato soci il rifiuto per un delegato già al massimo è neutro, la segreteria vede il motivo' );
+$as_m_member2 = $as_msg( function () use ( $as_asm, $as_c, $as_g ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_g, false ); } );
+asem_ok( '' !== $as_m_member2 && $as_m_member2 === $as_m_member && false === strpos( $as_m_member2, 'diritto di voto' ), 'deleghe: dal lato soci è lo stesso messaggio anche per chi non ha diritto di voto' );
+$as_dup_staff = $as_msg( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Doppio', 'last_name' => 'Email', 'email' => 'elia.assemblea@example.com' ) ); } );
+wp_set_current_user( 0 );
+$as_dup_pub   = $as_msg( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Doppio', 'last_name' => 'Email', 'email' => 'elia.assemblea@example.com' ) ); } );
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( $as_dup_staff, 'Elia' ) && '' !== $as_dup_pub && false === strpos( $as_dup_pub, 'Elia' ) && false === strpos( $as_dup_pub, 'Epsilon' ) && false === strpos( $as_dup_pub, 'elia.assemblea' ), 'riservatezza: l\'email già usata non dice di chi è, se non alla segreteria' );
 $as_n = \AssociazioneSemplice\Assemblies::set_attendance( $as_asm, array( $as_b, $as_g, 999999 ) );
 $as_t = \AssociazioneSemplice\Assemblies::tally( $as_asm );
 asem_ok( 1 === $as_n && 1 === $as_t['present'] && 3 === $as_t['proxies'], 'presenze: tutore e persone inesistenti non si registrano; le deleghe contano se il delegato c\'è' );
