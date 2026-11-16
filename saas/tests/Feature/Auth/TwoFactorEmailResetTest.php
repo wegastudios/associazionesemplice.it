@@ -32,7 +32,11 @@ it('toglie la verifica in due passaggi col link ricevuto per email e la fa riatt
     $link = resetLink($this, $user);
 
     expect($user->fresh()?->hasConfirmedTwoFactor())->toBeTrue();
-    $this->get($link)->assertRedirect('/accesso')->assertSessionHas('status');
+    // Aprire il link (come fanno i filtri della posta) non toglie niente: mostra solo la pagina col pulsante.
+    $this->get($link)->assertOk()->assertInertia(fn ($page) => $page->component('Auth/TwoFactorEmailReset'));
+    $this->get($link)->assertOk();
+    expect($user->fresh()?->hasConfirmedTwoFactor())->toBeTrue();
+    $this->post($link)->assertRedirect('/accesso')->assertSessionHas('status');
 
     $fresh = $user->fresh();
     expect($fresh?->hasConfirmedTwoFactor())->toBeFalse()
@@ -54,10 +58,12 @@ it('il link vale una volta sola e non se è stato manomesso', function (): void 
     $link = resetLink($this, $user);
 
     $this->get($link.'x')->assertRedirect('/accesso')->assertSessionHasErrors('email');
+    $this->post($link.'x')->assertRedirect('/accesso')->assertSessionHasErrors('email');
     expect($user->fresh()?->hasConfirmedTwoFactor())->toBeTrue();
 
-    $this->get($link)->assertSessionHas('status');
-    $this->get($link)->assertSessionHasErrors('email');
+    $this->post($link)->assertSessionHas('status');
+    $this->post($link)->assertSessionHasErrors('email');
+    $this->get($link)->assertRedirect('/accesso')->assertSessionHasErrors('email');
 });
 
 it('senza la password giusta non parte nessuna email', function (): void {
@@ -105,7 +111,8 @@ it('il link vale 15 minuti', function (): void {
     $link = resetLink($this, $user);
 
     $this->travel(16)->minutes();
-    $this->get($link)->assertSessionHasErrors('email');
+    $this->post($link)->assertSessionHasErrors('email');
+    $this->get($link)->assertRedirect('/accesso')->assertSessionHasErrors('email');
     expect($user->fresh()?->hasConfirmedTwoFactor())->toBeTrue();
 });
 

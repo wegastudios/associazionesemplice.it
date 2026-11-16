@@ -15,11 +15,13 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response;
 
 /**
  * Chi ha perso il telefono e i codici di recupero toglie da sé la verifica in due passaggi: si parte dalla schermata del
  * codice (quindi con la password già giusta), arriva un link all'indirizzo dell'account, valido 15 minuti e una volta
- * sola; al massimo 2 richieste al giorno e 6 al mese per utente (oltre, lo sblocca il supporto) e 5 all'ora per indirizzo. Aprendolo la verifica si toglie; al prossimo accesso va riattivata subito, col telefono nuovo.
+ * sola; al massimo 2 richieste al giorno e 6 al mese per utente (oltre, lo sblocca il supporto) e 5 all'ora per indirizzo. Il link apre una pagina col pulsante «Togli la verifica»: la verifica si toglie solo col pulsante (POST); al prossimo accesso va riattivata subito, col telefono nuovo.
  */
 final readonly class TwoFactorEmailResetController
 {
@@ -61,7 +63,23 @@ final readonly class TwoFactorEmailResetController
         return $reply;
     }
 
-    public function confirm(Request $request): RedirectResponse
+    /**
+     * Aprire il link non toglie niente: i filtri della posta (Safe Links, antivirus) lo aprono da soli. Si mostra solo la
+     * pagina col pulsante; il codice monouso si consuma nel POST.
+     */
+    public function confirm(Request $request): Response|RedirectResponse
+    {
+        $nonce = $request->query('n');
+        $uid = $request->query('uid');
+        $user = is_string($uid) ? User::query()->find($uid) : null;
+        if (! $request->hasValidSignature() || ! $user instanceof User || ! is_string($nonce) || Cache::get('2fa-reset:'.hash('sha256', $nonce)) !== (string) $user->id) {
+            return $this->invalid();
+        }
+
+        return Inertia::render('Auth/TwoFactorEmailReset', ['action' => $request->fullUrl()]);
+    }
+
+    public function apply(Request $request): RedirectResponse
     {
         $nonce = $request->query('n');
         $uid = $request->query('uid');
@@ -69,7 +87,7 @@ final readonly class TwoFactorEmailResetController
         // Il codice si consuma solo se la firma è valida: un link manomesso non brucia quello vero.
         $stored = $request->hasValidSignature() && is_string($nonce) ? Cache::pull('2fa-reset:'.hash('sha256', $nonce)) : null;
         if (! $user instanceof User || $stored !== (string) $user->id) {
-            return redirect()->route('login')->withErrors(['email' => 'Il link non è valido o è scaduto: dalla schermata del codice chiedine uno nuovo.']);
+            return $this->invalid();
         }
 
         $user->forceFill(['two_factor_secret' => null, 'two_factor_recovery_codes' => null, 'two_factor_confirmed_at' => null])->save();
@@ -77,5 +95,10 @@ final readonly class TwoFactorEmailResetController
         $user->notify(new TwoFactorResetNoticeNotification($user->name));
 
         return redirect()->route('login')->with('status', 'La verifica in due passaggi è stata tolta. Accedi con la password e riattivala subito con il telefono nuovo.');
+    }
+
+    private function invalid(): RedirectResponse
+    {
+        return redirect()->route('login')->withErrors(['email' => 'Il link non è valido o è scaduto: dalla schermata del codice chiedine uno nuovo.']);
     }
 }

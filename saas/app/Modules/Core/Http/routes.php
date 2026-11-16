@@ -27,6 +27,7 @@ Route::middleware('web')->group(function (): void {
     // Chi ha perso telefono e codici di recupero: link per email che toglie la verifica in due passaggi.
     Route::post('/verifica-accesso/recupero-email', [TwoFactorEmailResetController::class, 'request'])->middleware('throttle:5,60')->name('two-factor.email-reset.request');
     Route::get('/verifica-accesso/recupero-email/conferma', [TwoFactorEmailResetController::class, 'confirm'])->middleware('throttle:10,1')->name('two-factor.email-reset.confirm');
+    Route::post('/verifica-accesso/recupero-email/conferma', [TwoFactorEmailResetController::class, 'apply'])->middleware('throttle:10,1')->name('two-factor.email-reset.apply');
 
     Route::middleware(['auth', 'password.confirm'])->group(function (): void {
         Route::get('/account/verifica-in-due-passaggi', [TwoFactorSetupController::class, 'show'])->name('account.two-factor');
