@@ -240,6 +240,62 @@ Se non sai quale numero comunicare, **chiedi al tuo commercialista**: il gestion
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-certificati-medici-dei-soci',
+        'title' => 'I certificati medici dei soci',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Per le attività sportive puoi tenere traccia del **certificato medico** di ogni socio: quando scade, chi lo ha, chi no. Il gestionale ti mostra le scadenze e, se vuoi, **avvisa il socio per email**.
+
+**È un dato sulla salute, quindi riservato.** Lo vedono **titolare, amministratori e operatori**; **il commercialista no**. Ogni volta che qualcuno **scarica un file** di certificato, resta scritto nel **registro azioni**. I file sono **conservati cifrati**.
+
+## Registrare un certificato
+
+1. In **Soci** apri la **scheda del socio** e vai alla scheda **«Certificato»**.
+2. Compila il modulo:
+   - **Tipo**: non agonistico, agonistico oppure altro;
+   - **Rilascio** e **Scadenza**: la scadenza viene proposta **a un anno** dal rilascio, correggila con quella scritta sul certificato. Il certificato **non può scadere prima di essere stato rilasciato**;
+   - **Medico**: facoltativo;
+   - **File (PDF o foto)**: facoltativo, **PDF, JPG o PNG**, fino a **10 MB**.
+3. Premi **«Registra il certificato»**.
+
+Nella scheda vedi l'**elenco dei certificati** del socio, con il tipo, il medico e le date. Quello **che conta oggi** è scritto in grassetto: tra quelli già rilasciati, **quello che scade più tardi**. Per aprire il file premi **«Scarica»**.
+
+**Se ti sei sbagliato**, premi **«Togli»**: il gestionale chiede «Cancellare questo certificato medico? Il file allegato viene eliminato.» e, se confermi, il certificato e il suo file **spariscono**. Per rinnovare un certificato non serve toglierlo: registra il nuovo, e il vecchio resta nell'elenco.
+
+Registrare, togliere e scaricare è permesso a **titolare, amministratori e operatori** (chi può modificare i soci e vedere i dati sulla salute).
+
+## Chi è in regola: l'elenco dei certificati
+
+In **Soci**, dal pulsante con i **tre puntini** (**«Altri strumenti»**), scegli **«Certificati medici»**. Vedi i soci con la **tessera**, la **scadenza** e lo **stato**:
+
+- **Valido**: in regola;
+- **In scadenza**: scade entro il numero di giorni di preavviso (di partenza **30**);
+- **Scaduto**;
+- **Mancante**: nessun certificato già rilasciato.
+
+In alto i pulsanti **«Tutti»**, **«In scadenza»**, **«Scaduti»**, **«Mancanti»** e **«Validi»** filtrano l'elenco. Cliccando sul nome apri la scheda. Questa pagina mostra solo **nomi e date**: i dati del certificato si aprono dalla scheda.
+
+L'elenco comprende i **soci in corso** (fondatori, ordinari e volontari): i soci usciti non compaiono.
+
+## Il preavviso
+
+Il numero di giorni dopo i quali un certificato risulta «in scadenza» si cambia nelle **«Impostazioni del tesseramento»** (campo **«Preavviso certificati (giorni)»**, da 1 a 365), in fondo alla pagina **Nuova scheda socio**. Solo il titolare e gli amministratori possono modificarlo.
+
+## I promemoria per email
+
+Se li hai attivati, il gestionale manda **un'email** quando il certificato sta per scadere e **un'altra** quando è scaduto, **una sola volta per ogni scadenza**. Riceve l'email il **socio** (se ha un indirizzo); per un **minorenne** va al **genitore o tutore operativo**. I soci usciti non ricevono nulla.
+
+I promemoria valgono anche per le **tessere in scadenza** e si accendono o spengono in **Domande di adesione → «Domande online e promemoria»** (vedi [Le domande di adesione online](guida:gestionale-domande-di-adesione-online)).
+
+Chi **non ha mai avuto** un certificato registrato **non riceve** nessun promemoria: compare solo come **«Mancante»** nell'elenco.
+
+## Portare i certificati fuori dal gestionale
+
+Se esporti i tuoi dati puoi includere anche i certificati medici (solo se hai il permesso sui dati sulla salute): vedi [Esportare i dati](guida:gestionale-esportare-i-dati). **Nella demo il caricamento dei file è spento.**
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-rinnovare-una-tessera',
         'title' => 'Rinnovare una tessera e incassare la quota',
         'body' => <<<'MD'
@@ -626,7 +682,54 @@ In **Attività** trovi i corsi e gli eventi dell'anno sociale: ognuno raccoglie 
 
 Se l'associazione ha la partita IVA, nella scheda trovi anche la casella **«Con IVA»**: vedi [IVA: la pagina «Aspetto fiscale»](guida:gestionale-iva-e-aspetto-fiscale).
 
-Nella scheda vedi gli **iscritti**, il **registro presenze** e i **carnet** con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date.
+Nella scheda vedi gli **iscritti**, il **registro presenze** e i **carnet** con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date: vedi [Il calendario e le presenze delle attività](guida:gestionale-calendario-e-presenze).
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Attività', 'slug' => 'gestionale-calendario-e-presenze',
+        'title' => 'Il calendario e le presenze delle attività',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Due strumenti ti dicono **cosa c'è in programma** e **chi c'era**: il **Calendario** delle attività e il **Registro presenze** di ogni attività.
+
+## Il calendario
+
+Lo apri dal menu, in **Attività e risorse → Calendario**. Mostra le **lezioni dei corsi**, gli **eventi** e le **date con prenotazione**, **tranne quelle delle attività archiviate**.
+
+- In alto scegli la vista: **Giorno**, **Settimana** (parte dal giorno scelto e va avanti di sette giorni) o **Mese**. Di partenza vedi la settimana.
+- Le frecce **←** e **→** spostano di un giorno, di sette giorni o di un mese, secondo la vista. Con il **campo data** salti a un giorno preciso.
+- Ogni riga riporta l'**orario** (per le date con prenotazione), il **nome dell'attività** (cliccandolo la apri), il **tipo**, il **luogo** e, per le date con prenotazione, quanti sono **prenotati** su quanti posti.
+- Il collegamento **«presenze»** ti porta al registro di quel giorno.
+
+Il calendario dà una **vista d'insieme**; se in **Risorse** usi le **prenotazioni di spazi**, quel calendario è un altro: vedi [Risorse e prenotazioni](guida:gestionale-risorse-e-prenotazioni).
+
+## Il registro presenze
+
+Si apre dalla **scheda dell'attività** (**«Registro presenze»**), dal **calendario** (**«presenze»**) o dalla pagina di una data.
+
+1. Scegli il **mese** con le frecce **←** e **→**.
+2. Tocca il **giorno** della lezione: i giorni già registrati hanno una **spunta ✓**. Se in quel mese l'attività non ha lezioni, la pagina te lo dice.
+3. Vedi l'**elenco di chi è atteso**. Togli la spunta a chi è **assente**: di partenza sono tutti presenti. Con **«tutti presenti»** e **«nessuno»** cambi tutto in un colpo.
+4. Premi **«Registra le presenze»**. Compare il riepilogo, per esempio «Presenze registrate: 8 su 10.»
+
+Chi è atteso dipende dal tipo di attività:
+
+- **Corsi**: gli **iscritti** nel mese di quella lezione (dal mese di inizio a quello di fine dell'iscrizione);
+- **Eventi**: gli **iscritti**;
+- **Eventi con prenotazioni**: chi ha la **prenotazione confermata** per quella data. Chi è in lista d'attesa non compare.
+
+Cose da sapere:
+
+- **Le presenze si registrano a lezione fatta, non in anticipo.** Per le date future l'elenco c'è, ma i pulsanti sono spenti: «Si registrano a lezione fatta.»
+- Si possono registrare **solo le date in cui l'attività ha una lezione**.
+- Se **registri di nuovo** lo stesso giorno, le presenze **sostituiscono** quelle di prima: puoi correggere un errore riaprendo il giorno.
+- In fondo alla pagina c'è il **«Riepilogo del mese»**: per ogni persona un pallino pieno (presente) o vuoto (assente) per ogni lezione e il totale, per esempio «7/9».
+- Ogni registrazione resta scritta nel **registro azioni**.
+
+Per **registrare le presenze** servono **due caselle insieme** in **Operatori e ruoli**: **«Modificare l'anagrafica, tesseramento, attività»** e **«Gestire i corsi»**. Valgono **anche per gli eventi**: «Gestire gli eventi» da solo non basta. Per **vedere** il registro e il riepilogo basta **«Vedere l'anagrafica»**: chi ha solo quella casella non può modificare nulla.
+
+Per creare le attività e iscrivere le persone vedi [Creare un corso o un evento](guida:gestionale-creare-un-corso-o-un-evento).
 MD,
     ],
     [
