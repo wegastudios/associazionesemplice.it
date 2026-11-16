@@ -401,7 +401,8 @@ final readonly class OnlinePayments
         }
         $mailed = $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName, $sent['stays']);
         if ($voidError !== null) {
-            throw new MemberAccessError('Il rimborso di '.self::euro($amount).' è stato fatto'.($mailed ? ' e il socio è stato avvisato' : ' e il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu').', ma lo storno in prima nota no: '.$voidError.' Stornalo a mano dalla prima nota.');
+            throw new MemberAccessError('Il rimborso di '.self::euro($amount).' è stato fatto'.($mailed ? ' e il socio è stato avvisato' : '').', ma lo storno in prima nota no: '.$voidError.' Stornalo a mano dalla prima nota.'
+                .($mailed ? '' : ' Il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu.'));
         }
 
         return $mailed;
