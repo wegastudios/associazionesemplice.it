@@ -2637,6 +2637,16 @@
   "Evento su richiesta: la lista d'attesa non avanza da sola. Prenota tu chi vuoi far entrare." : "By-request event: the waiting list does not move on its own. Book the people you want to let in.",
   "Errore imprevisto (codice {codice}). Riprova; se si ripete scrivi al supporto indicando il codice." : "Unexpected error (code {codice}). Try again; if it happens again, contact support and quote the code.",
   "Questo ruolo amministra il plugin: non gli si può togliere l'accesso da qui." : "This role manages the plugin: its access cannot be removed from here.",
-  "Non puoi togliere l'accesso al ruolo con cui stai operando: te lo toglieresti da solo. Chiedi a un amministratore." : "You cannot remove access from the role you are working with: you would lock yourself out. Ask an administrator."
+  "Non puoi togliere l'accesso al ruolo con cui stai operando: te lo toglieresti da solo. Chiedi a un amministratore." : "You cannot remove access from the role you are working with: you would lock yourself out. Ask an administrator.",
+  "Conferma del genitore o tutore" : "Parent or guardian confirmation",
+  "Confermo" : "I confirm",
+  "Grazie, confermato." : "Thank you, confirmed.",
+  "Il link non è valido o la conferma è già stata data." : "The link is not valid or the confirmation has already been given.",
+  "Il link è scaduto: scrivi alla segreteria, che ti manda un nuovo messaggio." : "The link has expired: write to the office, who will send you a new message.",
+  "Il collegamento con il minore non esiste più: scrivi alla segreteria." : "The link with the minor no longer exists: write to the office.",
+  "Email di conferma rimandata al genitore." : "Confirmation email sent again to the parent.",
+  "Non è stato possibile mandare l'email: controlla l'indirizzo del genitore." : "The email could not be sent: check the parent's address.",
+  "Nessuna conferma del genitore in attesa per questa persona." : "No parent confirmation is pending for this person.",
+  "Hai già rimandato il messaggio più volte: riprova tra un'ora." : "You have already sent the message again several times: try again in an hour."
  }
 }

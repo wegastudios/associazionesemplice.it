@@ -8940,6 +8940,43 @@ $ap_mia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
 $ap_ppl = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
 \AssociazioneSemplice\Applications::approve( $ap_mia, 'ap201' );
 asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) === $ap_ppl && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE email = %s', 'marta.madre@example.com' ) ), 'minorenne con genitore già socio: collegato a lui, nessun doppione' );
+// ... ma i consensi non gli si attribuiscono finché non conferma via email
+$GC = '\AssociazioneSemplice\GuardianConsent';
+$ap_mia_row = $people->get( $ap_mia );
+asem_ok( empty( $ap_mia_row['privacy_consent_by'] ) && empty( $ap_mia_row['image_consent_by'] ) && empty( $ap_mia_row['rules_accepted_by'] ), 'genitore già socio: regolamento, privacy e immagini non gli sono attribuiti prima della conferma' );
+$ap_gc = $GC::pending( $ap_mia_row );
+asem_ok( $ap_gc && (int) $ap_gc['guardian'] === $mn_mum && ! $ap_gc['expired'], 'genitore già socio: la conferma risulta in attesa (la segreteria la vede nella scheda)' );
+$ap_gm = $ap_mail_to( 'marta.madre@example.com' );
+asem_ok( $ap_gm && 1 === preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_gm['message'], $ap_gp ) && false !== strpos( (string) $ap_gm['subject'], 'Conferma del genitore' ), 'genitore già socio: l\'email di conferma parte all\'indirizzo registrato, con un link' );
+$ap_gparam = $ap_gp[1];
+$ap_gtoken = substr( $ap_gparam, (int) strpos( $ap_gparam, '.' ) + 1 );
+asem_ok( false === strpos( (string) $people->get( $ap_mia )['application_data'], $ap_gtoken ) && false !== strpos( (string) $people->get( $ap_mia )['application_data'], hash( 'sha256', $ap_gtoken ) ), 'conferma del genitore: nel database c\'è solo l\'impronta del token' );
+asem_ok( false !== strpos( $GC::confirm_page( $ap_gparam ), 'Confermo' ) && $GC::pending( $people->get( $ap_mia ) ) && empty( $people->get( $ap_mia )['privacy_consent_by'] ), 'conferma del genitore: aprire il link mostra il pulsante e non conferma nulla' );
+asem_ok( ! $GC::submit( $ap_gparam, 'nonce-sbagliato' )['ok'] && empty( $people->get( $ap_mia )['privacy_consent_by'] ), 'conferma del genitore: senza il nonce della pagina non si conferma' );
+$ap_gnonce = wp_create_nonce( 'asem_gcf_' . $ap_mia );
+asem_ok( ! $GC::submit( substr( $ap_gparam, 0, -1 ) . ( 'a' === substr( $ap_gparam, -1 ) ? 'b' : 'a' ), $ap_gnonce )['ok'] && empty( $people->get( $ap_mia )['privacy_consent_by'] ), 'conferma del genitore: un token sbagliato non conferma' );
+asem_ok( $GC::submit( $ap_gparam, $ap_gnonce )['ok'], 'conferma del genitore: con il pulsante la conferma va a buon fine' );
+$ap_mia_row = $people->get( $ap_mia );
+asem_ok( (int) $ap_mia_row['privacy_consent_by'] === $mn_mum && (int) $ap_mia_row['image_consent_by'] === $mn_mum && (int) $ap_mia_row['rules_accepted_by'] === $mn_mum && null === $GC::pending( $ap_mia_row ) && '' === (string) $ap_mia_row['application_data'], 'conferma del genitore: dopo la conferma i consensi sono attribuiti a lui e l\'attesa sparisce' );
+asem_ok( ! $GC::submit( $ap_gparam, $ap_gnonce )['ok'] && false !== strpos( $GC::confirm_page( $ap_gparam ), 'non è valido' ), 'conferma del genitore: il link si usa una volta sola' );
+// link scaduto, nuovo invio dalla segreteria (il vecchio link non vale più), limite di invii
+\AssociazioneSemplice\Applications::submit( array_merge( $ap_kid_in, array( 'first_name' => 'Nia', 'last_name' => 'Madre', 'tax_code' => 'BNCGNN12B04F205N', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
+$ap_nia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
+\AssociazioneSemplice\Applications::approve( $ap_nia, 'ap202' );
+preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np );
+$ap_nrow = $people->get( $ap_nia );
+$ap_nd   = json_decode( (string) $ap_nrow['application_data'], true );
+$ap_nd['guardian_confirm']['expires'] = time() - 10;
+$wpdb->update( Db::t( 'people' ), array( 'application_data' => wp_json_encode( $ap_nd ) ), array( 'id' => $ap_nia ) );
+asem_ok( $GC::pending( $people->get( $ap_nia ) )['expired'] && ! $GC::submit( $ap_np[1], wp_create_nonce( 'asem_gcf_' . $ap_nia ) )['ok'] && false !== strpos( $GC::confirm_page( $ap_np[1] ), 'scaduto' ), 'conferma del genitore: un link scaduto non conferma' );
+$ap_gn = count( $ap_mails );
+$GC::resend( $ap_nia );
+asem_ok( count( $ap_mails ) === $ap_gn + 1 && 1 === preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np2 ) && $ap_np2[1] !== $ap_np[1] && ! $GC::pending( $people->get( $ap_nia ) )['expired'], 'conferma del genitore: la segreteria rimanda l\'email con un link nuovo' );
+asem_ok( ! $GC::submit( $ap_np[1], wp_create_nonce( 'asem_gcf_' . $ap_nia ) )['ok'] && empty( $people->get( $ap_nia )['privacy_consent_by'] ), 'conferma del genitore: il link vecchio non vale più dopo il nuovo invio' );
+$GC::resend( $ap_nia );
+$GC::resend( $ap_nia );
+asem_ok( null !== asem_throws( function () use ( $GC, $ap_nia ) { $GC::resend( $ap_nia ); } ), 'conferma del genitore: i nuovi invii sono limitati all\'ora' );
+asem_ok( null !== asem_throws( function () use ( $GC, $ap_mia ) { $GC::resend( $ap_mia ); } ) && null !== asem_throws( function () use ( $GC, $mn_mum ) { $GC::resend( $mn_mum ); } ), 'conferma del genitore: se non c\'è nulla in attesa non c\'è niente da rimandare' );
 
 // modulo: invio, esca, tempo minimo, gettone, limite
 $AP = '\AssociazioneSemplice\Frontend\Application';

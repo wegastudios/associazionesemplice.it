@@ -232,6 +232,7 @@ final class Applications {
 		$gd       = self::guardian_data( $row );
 		$guardian = null;
 		$created  = false;
+		$confirm  = false;
 		if ( $gd ) {
 			$guardian = $people->find_by_email( strtolower( (string) $gd['email'] ), $id );
 			if ( $guardian && ! empty( $guardian['application_status'] ) ) {
@@ -263,13 +264,24 @@ final class Applications {
 		}
 		if ( $guardian ) {
 			Guardians::link( $id, (int) $guardian['id'] );
-			self::db()->update( Db::t( 'people' ), array( 'image_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) ); // la liberatoria immagini del minore la risponde il genitore
-			// A nome del minore hanno accettato regolamento e privacy il genitore: resta registrato chi.
-			self::db()->update( Db::t( 'people' ), array( 'rules_accepted_by' => Regulation::enabled() ? (int) $guardian['id'] : null, 'privacy_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) );
+			// Un genitore già in anagrafica (non creato ora da questa domanda) deve prima confermare di aver dato lui i consensi: finché non lo fa non gli si attribuiscono.
+			if ( ! $created ) {
+				$confirm = true;
+			} else {
+				self::db()->update( Db::t( 'people' ), array( 'image_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) ); // la liberatoria immagini del minore la risponde il genitore
+				// A nome del minore hanno accettato regolamento e privacy il genitore: resta registrato chi.
+				self::db()->update( Db::t( 'people' ), array( 'rules_accepted_by' => Regulation::enabled() ? (int) $guardian['id'] : null, 'privacy_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) );
+			}
 		}
 		Audit::log( 'application.approved', 'person', $id, array( 'guardian' => $guardian ? (int) $guardian['id'] : 0 ) );
 		self::mail_approved( $people->get( $id ), $guardian, $due );
+		if ( $confirm ) {
+			GuardianConsent::begin( $id, (int) $guardian['id'] ); // all'indirizzo già registrato per il genitore
+		}
 		$msg = 'Domanda approvata: tessera n. ' . $card . '. ' . ( $guardian ? 'È arrivata l\'email al genitore.' : 'Al nuovo socio è arrivato il link per scegliere la password.' );
+		if ( $confirm ) {
+			$msg .= ' Il genitore è già in anagrafica: gli è arrivata un\'email per confermare di aver accettato lui, a nome del minore, regolamento, privacy e immagini. Finché non conferma, queste accettazioni non gli vengono attribuite (lo vedi nella scheda del minore).';
+		}
 		if ( $due > 0 ) {
 			$msg .= ' Quota da incassare: ' . Money::format( $due ) . ' (in sede o dall\'area riservata); la tessera diventa valida all\'incasso.';
 		}
