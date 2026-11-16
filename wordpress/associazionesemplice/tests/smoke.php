@@ -2189,6 +2189,17 @@ $url = $ps->create_checkout( $pmp, $u_pm, array( $k_mon, $k_ev, 'm:999:1:2026-01
 $row = $latest();
 asem_ok( 0 === strpos( $url, 'https://checkout.stripe.com/c/pay/cs_test_' ) && 'pending' === $row['status'] && 2500 === (int) $row['amount_cents'] && 'stripe' === $row['provider'], 'checkout Stripe: pagamento in attesa, importo 25,00 deciso dal server' );
 asem_ok( 2500 === $stripe_sessions[ $row['provider_ref'] ]['amount'] && $stripe_sessions[ $row['provider_ref'] ]['key'] === $row['public_id'], 'Stripe riceve l\'importo del server e una chiave di idempotenza' );
+asem_ok( 1 === preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', (string) $row['public_id'] ), 'pagamento online: l\'identificativo pubblico è un UUID versione 4' );
+// le chiamate ai gestori non seguono i rimandi
+$gw_args = null;
+$gw_spy  = function ( $pre, $args ) use ( &$gw_args ) {
+	$gw_args = $args;
+	return array( 'headers' => array(), 'body' => '{}', 'response' => array( 'code' => 200, 'message' => 'OK' ), 'cookies' => array(), 'filename' => null );
+};
+add_filter( 'pre_http_request', $gw_spy, 10, 2 );
+\AssociazioneSemplice\Gateways::wp_http( 'GET', 'https://api.stripe.com/v1/balance', array( 'Accept' => 'application/json' ), null );
+remove_filter( 'pre_http_request', $gw_spy, 10 );
+asem_ok( is_array( $gw_args ) && array_key_exists( 'redirection', $gw_args ) && 0 === $gw_args['redirection'], 'chiamate ai gestori di pagamento: nessun rimando seguito' );
 License::set_state( 'unpaid', $today );
 asem_ok( ! $ps->enabled() && null !== asem_throws( function () use ( $ps, $pmp, $u_pm, $k_ev ) { $ps->create_checkout( $pmp, $u_pm, array( $k_ev ), home_url( '/area/' ) ); } ), 'licenza non in regola: niente nuovi pagamenti online' );
 delete_option( License::OPT_STATE );
@@ -6791,6 +6802,53 @@ if ( ! \AssociazioneSemplice\WooBridge::active() ) {
 	$wc_o4->set_status( 'completed' );
 	$wc_o4->save();
 	asem_ok( 'paid' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay4['id'] ) && $people->has_membership( $wc_p4, $wc_sy ), 'woocommerce: a ordine completato (denaro incassato alla consegna) la quota si registra' );
+	// metodi fuori linea (bonifico, assegno, in sede…): conta solo a ordine completato, una volta sola
+	$wc_off = function ( string $nome, string $metodo, string $stato_iniziale ) use ( $mkb, $people, $wpdb, $wc_order, $wc_q, $wc_fee ) {
+		$pp = $mkb( $nome, 'FuoriLinea' );
+		$uu = (int) $people->get( $pp )['wp_user_id'];
+		wp_set_current_user( $uu );
+		$dd = Plugin::payments()->dues_for( $people->get( $pp ) );
+		Plugin::payments()->create_checkout( $people->get( $pp ), $uu, array_keys( $dd ), home_url( '/' ) );
+		$row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = 'woocommerce' ORDER BY id DESC LIMIT 1", ARRAY_A );
+		$o   = $wc_order( $row['public_id'], $wc_q, $wc_fee / 100 );
+		$o->set_payment_method( $metodo );
+		$o->set_status( $stato_iniziale );
+		$o->save();
+		return array( $pp, (int) $row['id'], $o );
+	};
+	$wc_tx = function () use ( $wpdb ) {
+		return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+	};
+	$wc_st = function ( int $id ) use ( $wpdb ) {
+		return (string) $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . $id );
+	};
+	asem_ok( array( 'bacs', 'cheque', 'cod' ) === \AssociazioneSemplice\WooBridge::offline_methods() && \AssociazioneSemplice\WooBridge::is_offline_method( 'bacs' ) && ! \AssociazioneSemplice\WooBridge::is_offline_method( 'stripe' ) && ! \AssociazioneSemplice\WooBridge::is_offline_method( '' ), 'woocommerce: bonifico, assegno e contrassegno sono metodi fuori linea; la carta no' );
+	$tx0 = $wc_tx();
+	list( $wc_pb, $wc_idb, $wc_ob ) = $wc_off( 'Bruna', 'bacs', 'processing' );
+	asem_ok( 'pending' === $wc_st( $wc_idb ) && $tx0 === $wc_tx() && ! $people->has_membership( $wc_pb, $wc_sy ), 'woocommerce: bonifico "in lavorazione" non è un incasso: nessuna quota registrata' );
+	$wc_ob->set_status( 'completed' );
+	$wc_ob->save();
+	asem_ok( 'paid' === $wc_st( $wc_idb ) && $tx0 + 1 === $wc_tx() && $people->has_membership( $wc_pb, $wc_sy ), 'woocommerce: bonifico completato => un incasso e quota registrata' );
+	$wc_ob->set_status( 'processing' );
+	$wc_ob->save();
+	$wc_ob->set_status( 'completed' );
+	$wc_ob->save();
+	\AssociazioneSemplice\WooBridge::on_paid( $wc_ob->get_id() );
+	asem_ok( $tx0 + 1 === $wc_tx(), 'woocommerce: ordine riaperto e completato di nuovo: nessun doppio incasso' );
+	list( $wc_pc, $wc_idc ) = $wc_off( 'Carla', 'stripe', 'processing' );
+	asem_ok( 'paid' === $wc_st( $wc_idc ) && $people->has_membership( $wc_pc, $wc_sy ), 'woocommerce: carta "in lavorazione" => incasso come prima' );
+	$wc_filtro = function ( $m ) {
+		$m[] = 'pagamento_in_sede';
+		return $m;
+	};
+	add_filter( 'asem_woo_offline_methods', $wc_filtro );
+	asem_ok( \AssociazioneSemplice\WooBridge::is_offline_method( 'pagamento_in_sede' ), 'woocommerce: il filtro aggiunge un metodo fuori linea' );
+	list( $wc_ps, $wc_ids, $wc_os ) = $wc_off( 'Sara', 'pagamento_in_sede', 'processing' );
+	asem_ok( 'pending' === $wc_st( $wc_ids ) && ! $people->has_membership( $wc_ps, $wc_sy ), 'woocommerce: metodo aggiunto dal filtro "in lavorazione" => nessun incasso' );
+	$wc_os->set_status( 'completed' );
+	$wc_os->save();
+	asem_ok( 'paid' === $wc_st( $wc_ids ) && $people->has_membership( $wc_ps, $wc_sy ), 'woocommerce: metodo aggiunto dal filtro completato => incasso' );
+	remove_filter( 'asem_woo_offline_methods', $wc_filtro );
 	wp_set_current_user( 1 );
 	asem_render( array( Admin\PaymentsPage::class, 'render' ), 'WooCommerce' );
 	// un ordine senza voci Associazione Semplice non cambia nulla
@@ -9415,10 +9473,19 @@ asem_ok( 1000 === $be_pay[ $be_row['provider_ref'] ]['amount'] && $be_pay[ $be_r
 asem_ok( 'in attesa' === $ps->handle_satispay_callback( $be_row['provider_ref'] ) && 'pending' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: avviso con pagamento non ancora accettato resta in attesa' );
 asem_ok( 'pagamento sconosciuto' === $ps->handle_satispay_callback( 'sp-999' ) && 'ignorato' === $ps->handle_satispay_callback( '<>' ), 'Satispay: un avviso per un pagamento che non conosciamo non fa nulla' );
 $be_pay[ $be_row['provider_ref'] ]['paid'] = true;
+asem_ok( 'troppo presto' === $ps->handle_satispay_callback( $be_row['provider_ref'] ) && 'pending' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: un secondo avviso subito dopo è rifiutato e non rilegge il pagamento' );
+delete_transient( 'asem_spcb_' . (int) $be_row['id'] ); // passati i secondi di pausa
 $be_req = new WP_REST_Request( 'GET', '/associazionesemplice/v1/webhooks/satispay' );
 $be_req->set_param( 'payment_id', $be_row['provider_ref'] );
 $be_res = \AssociazioneSemplice\ProData::satispay_callback( $be_req );
-asem_ok( 'registrato' === $be_res->get_data()['result'] && 'paid' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: l\'avviso fa rileggere lo stato firmato e registra l\'incasso' );
+asem_ok( array( 'received' => true ) === $be_res->get_data() && 'paid' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: l\'avviso fa rileggere lo stato firmato e registra l\'incasso' );
+$be_same = true;
+foreach ( array( 'sp-999', '<>', '', $be_row['provider_ref'] ) as $be_pid ) { // la risposta è la stessa per un pagamento noto, sconosciuto o un identificativo vuoto
+	$be_rq = new WP_REST_Request( 'GET', '/associazionesemplice/v1/webhooks/satispay' );
+	$be_rq->set_param( 'payment_id', $be_pid );
+	$be_same = $be_same && array( 'received' => true ) === \AssociazioneSemplice\ProData::satispay_callback( $be_rq )->get_data();
+}
+asem_ok( $be_same, 'Satispay: a chi chiama l\'avviso la risposta è sempre la stessa' );
 asem_ok( 'in attesa' === $ps->handle_satispay_callback( $be_row['provider_ref'] ) && 1000 === $sum_tx( "type = 'income' AND method = 'satispay'" ) && 1000 === $balance_of( 'Satispay' ), 'Satispay: incasso registrato una sola volta sul conto Satispay' );
 asem_ok( isset( \AssociazioneSemplice\Labels::methods()['satispay'] ) && in_array( 'satispay', \AssociazioneSemplice\ActivityReset::online_methods(), true ), 'Satispay: è un metodo di pagamento online riconosciuto' );
 $be_row2 = null;

@@ -331,7 +331,10 @@ final class ProData {
 	 */
 	public static function satispay_callback( \WP_REST_Request $r ) {
 		$id = SatispayRules::clean_id( (string) $r->get_param( 'payment_id' ) );
-		return rest_ensure_response( array( 'received' => true, 'result' => '' === $id ? 'ignorato' : PaymentService::engine()->handle_satispay_callback( $id ) ) );
+		if ( '' !== $id ) {
+			PaymentService::engine()->handle_satispay_callback( $id ); // l'esito va solo nel sito: a chi chiama la risposta è sempre la stessa
+		}
+		return rest_ensure_response( array( 'received' => true ) );
 	}
 
 	/** Il servizio dei pagamenti online. */

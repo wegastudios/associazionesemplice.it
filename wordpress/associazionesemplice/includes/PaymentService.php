@@ -165,7 +165,7 @@ class PaymentService extends OfflinePayments {
 			throw new \InvalidArgumentException( 'L\'importo minimo per pagare online è ' . Money::format( $min ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 
-		$public = wp_generate_uuid4();
+		$public = PaymentItems::new_public_id();
 		$now    = Db::now();
 		if ( PaymentConfig::WOOCOMMERCE === $provider ) { // negozio WooCommerce: le voci vanno nel carrello e si paga al checkout
 			$url = WooBridge::checkout_url( $items, $public );
@@ -316,7 +316,7 @@ class PaymentService extends OfflinePayments {
 		);
 		$item['key'] = PaymentItems::key( $item );
 		$items       = array( $item );
-		$public      = wp_generate_uuid4();
+		$public      = PaymentItems::new_public_id();
 		$now         = Db::now();
 		$this->db()->insert(
 			$tbl,
@@ -808,8 +808,18 @@ class PaymentService extends OfflinePayments {
 		if ( ! $p ) {
 			return 'pagamento sconosciuto';
 		}
+		if ( in_array( $p['status'], self::OPEN_STATUSES, true ) ) { // un solo controllo ogni pochi secondi per pagamento: gli avvisi ripetuti non fanno altre richieste al gestore
+			$slot = 'asem_spcb_' . (int) $p['id'];
+			if ( false !== get_transient( $slot ) ) {
+				return 'troppo presto';
+			}
+			set_transient( $slot, 1, self::SATISPAY_CALLBACK_SECONDS );
+		}
 		return $this->confirm_with_gateway( $p ) ? 'registrato' : 'in attesa';
 	}
+
+	/** Pausa minima tra due controlli dello stesso pagamento Satispay avviati da un avviso (callback). */
+	const SATISPAY_CALLBACK_SECONDS = 12;
 
 	/** Webhook di Stripe già verificato (firma). @return string esito per il log */
 	public function handle_stripe_event( array $event ): string {

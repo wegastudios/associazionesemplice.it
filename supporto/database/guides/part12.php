@@ -186,6 +186,116 @@ Entri con la tua email. In alto trovi **«Io»** e il nome dei tuoi figli: un cl
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-libro-soci-livelli-e-runts',
+        'title' => 'Libro soci, livelli di quota e dati per il RUNTS',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Nella pagina **Soci**, il pulsante con i **tre puntini** (**«Altri strumenti»**), accanto alla ricerca, apre un elenco con tre pagine che servono all'associazione per tenere in regola l'anagrafica: **«Libro soci»**, **«Livelli e quote»** e **«Dati per il RUNTS»**.
+
+## Il libro soci
+
+Il **«Libro soci»** elenca **tutti i soci in ordine di ingresso**, con la data della domanda, l'ammissione, l'eventuale cessazione e l'ultima quota. **Ospiti e genitori non soci non ci sono.** Ogni riga ha un **numero** e, se c'è, la **matricola** del socio; i minorenni mostrano il nome del **tutore**.
+
+Le colonne sono: **N. e matricola**, **Socio** (con il codice fiscale), **Nascita**, **Residenza**, **Tessera** (con il livello), **Ammissione**, **Cessazione** (con il motivo) e **Ultima quota**. In alto scegli **«Tutti»**, **«In carica»** o **«Cessati»**. Chi ha il permesso **«Esportare l'anagrafica»** (si assegna in **Operatori e ruoli**) vede anche **«Stampa (PDF)»** e **«CSV»**. Libro soci e CSV contengono **codice fiscale e residenza** dei soci: dai questo permesso solo a chi deve davvero averli.
+
+### Il libro di un anno fiscale
+
+Con **«Anno fiscale»** scegli un anno: vedi chi ha avuto una **tessera valida per almeno un giorno** di quell'anno.
+
+- **Anno ancora aperto: è una bozza.** La pagina dice che i numeri sono quelli di oggi e possono cambiare.
+- **Anno chiuso: è definitivo.** Alla chiusura il libro viene **emesso e bloccato** e **non cambia più**: la pagina lo dice («Libro soci definitivo: emesso e bloccato alla chiusura dell'anno fiscale …, non cambia più»).
+- **Se riapri l'ultimo anno chiuso**, il libro di quell'anno si rifà alla chiusura successiva: in cima trovi le **versioni** del libro definitivo, con la data e se la versione è **«in uso»** o **«superata dopo una riapertura»**.
+
+Per la chiusura e la riapertura degli anni fiscali vedi [Chiudere l'anno fiscale e leggere il rendiconto](guida:gestionale-chiudere-l-esercizio-e-leggere-il-rendiconto).
+
+## I livelli di socio
+
+In **«Livelli e quote»** crei i **livelli** dei soci: per esempio un **«Socio junior»** con una quota ridotta. Ogni livello ha:
+
+- **Nome**;
+- **Base**: il tipo di socio da cui parte (**Socio fondatore**, **Socio ordinario** o **Socio e volontario**);
+- **Quota**: facoltativa. **Senza una quota propria vale quella dell'associazione.**
+- **«attivo»**: decide solo se il livello **si può dare** a un socio. Se togli la spunta, il livello non compare più tra quelli che scegli nella scheda; i soci che **lo hanno già lo conservano**, anche quando salvi la loro scheda, e nella loro scheda il livello compare come **«Nome (non attivo)»**; agli altri soci si propongono e si assegnano solo i livelli attivi. Il nome resta nel libro soci e, se il livello ha una quota, quella vale ancora al loro rinnovo;
+- **«vota»**: dice se chi ha quel livello ha **diritto di voto in assemblea** (è una scelta a parte, non dipende da «attivo»). **I minorenni non votano mai.** Un livello nuovo vota.
+
+Per ogni livello vedi quanti soci lo hanno. Per creare un livello compili **Nome**, **Base** e, se vuoi, **Quota**, poi **«Crea»**; per cambiarne uno premi **«Salva»** sulla sua riga. Può farlo chi può cambiare le impostazioni dell'associazione. Il livello di un socio si sceglie nella sua scheda e appare nel libro soci accanto alla tessera.
+
+## I dati per il RUNTS
+
+La pagina **«Dati per il RUNTS»** raccoglie i **numeri da comunicare al Registro unico del Terzo settore**, calcolati da soli dall'anagrafica **al 31 dicembre** dell'anno che scegli (con **«Anno»**). Il programma indica la **scadenza** per la comunicazione; se è passata, te lo ricorda: «La scadenza del … è passata: se non hai ancora comunicato questi dati, fallo appena puoi.»
+
+Vedi quattro numeri:
+
+- **Soci persone fisiche con diritto di voto**: i maggiorenni alla data, con un tipo di socio che vota;
+- **Enti soci con diritto di voto**, con quanti sono della stessa sezione del Registro;
+- **Volontari iscritti**: i soci con tipo **«Socio e volontario»**;
+- **Lavoratori**: gli utenti con il ruolo **Dipendente**; il programma ti invita a controllare che sia il numero giusto.
+
+Sotto trovi l'elenco degli **«Enti soci»**, con **«Stessa sezione»**, **«Altra sezione»** o **«Sezione non indicata»**.
+
+**L'avviso sul numero minimo di soci.** Se oggi i soci con diritto di voto sono sotto il minimo previsto per un'APS o un'ODV, la pagina te lo segnala con il numero di persone e di enti di oggi, e ti ricorda che in quel caso va comunicato al Registro. Se qualcuno ha la **tessera scaduta da poco**, vedi il suo nome: se rinnova, torna socio. L'avviso guarda i soci **di oggi**; i numeri nei riquadri sono quelli **al 31 dicembre**, da copiare nel portale del RUNTS.
+
+Se non sai quale numero comunicare, **chiedi al tuo commercialista**: il gestionale calcola dai dati che ha, non decide per te. Per i soci che sono enti vedi anche [Aggiungere e importare i soci](guida:gestionale-aggiungere-e-importare-i-soci).
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-certificati-medici-dei-soci',
+        'title' => 'I certificati medici dei soci',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Per le attività sportive puoi tenere traccia del **certificato medico** di ogni socio: quando scade, chi lo ha, chi no. Il gestionale ti mostra le scadenze e, se vuoi, **avvisa il socio per email**.
+
+**È un dato sulla salute, quindi riservato.** Lo vedono **titolare, amministratori e operatori**; **il commercialista no**. Ogni volta che qualcuno **scarica un file** di certificato, resta scritto nel **registro azioni**. I file sono **conservati cifrati**.
+
+## Registrare un certificato
+
+1. In **Soci** apri la **scheda del socio** e vai alla scheda **«Certificato»**.
+2. Compila il modulo:
+   - **Tipo**: non agonistico, agonistico oppure altro;
+   - **Rilascio** e **Scadenza**: la scadenza viene proposta **a un anno** dal rilascio, correggila con quella scritta sul certificato. Il certificato **non può scadere prima di essere stato rilasciato**;
+   - **Medico**: facoltativo;
+   - **File (PDF o foto)**: facoltativo, **PDF, JPG o PNG**, fino a **10 MB**.
+3. Premi **«Registra il certificato»**.
+
+Nella scheda vedi l'**elenco dei certificati** del socio, con il tipo, il medico e le date. Quello **che conta oggi** è scritto in grassetto: tra quelli già rilasciati, **quello che scade più tardi**. Per aprire il file premi **«Scarica»**.
+
+**Se ti sei sbagliato**, premi **«Togli»**: il gestionale chiede «Cancellare questo certificato medico? Il file allegato viene eliminato.» e, se confermi, il certificato e il suo file **spariscono**. Per rinnovare un certificato non serve toglierlo: registra il nuovo, e il vecchio resta nell'elenco.
+
+Registrare, togliere e scaricare è permesso a **titolare, amministratori e operatori** (chi può modificare i soci e vedere i dati sulla salute).
+
+## Chi è in regola: l'elenco dei certificati
+
+In **Soci**, dal pulsante con i **tre puntini** (**«Altri strumenti»**), scegli **«Certificati medici»**. Vedi i soci con la **tessera**, la **scadenza** e lo **stato**:
+
+- **Valido**: in regola;
+- **In scadenza**: scade entro il numero di giorni di preavviso (di partenza **30**);
+- **Scaduto**;
+- **Mancante**: nessun certificato già rilasciato.
+
+In alto i pulsanti **«Tutti»**, **«In scadenza»**, **«Scaduti»**, **«Mancanti»** e **«Validi»** filtrano l'elenco. Cliccando sul nome apri la scheda. Questa pagina mostra solo **nomi e date**: i dati del certificato si aprono dalla scheda.
+
+L'elenco comprende i **soci in corso** (fondatori, ordinari e volontari): i soci usciti non compaiono.
+
+## Il preavviso
+
+Il numero di giorni dopo i quali un certificato risulta «in scadenza» si cambia nelle **«Impostazioni del tesseramento»** (campo **«Preavviso certificati (giorni)»**, da 1 a 365), in fondo alla pagina **Nuova scheda socio**. Solo il titolare e gli amministratori possono modificarlo.
+
+## I promemoria per email
+
+Se li hai attivati, il gestionale manda **un'email** quando il certificato sta per scadere e **un'altra** quando è scaduto, **una sola volta per ogni scadenza**. Riceve l'email il **socio** (se ha un indirizzo); per un **minorenne** va al **genitore o tutore operativo**. I soci usciti non ricevono nulla.
+
+I promemoria valgono anche per le **tessere in scadenza** e si accendono o spengono in **Domande di adesione → «Domande online e promemoria»** (vedi [Le domande di adesione online](guida:gestionale-domande-di-adesione-online)).
+
+Chi **non ha mai avuto** un certificato registrato **non riceve** nessun promemoria: compare solo come **«Mancante»** nell'elenco.
+
+## Portare i certificati fuori dal gestionale
+
+Se esporti i tuoi dati puoi includere anche i certificati medici (solo se hai il permesso sui dati sulla salute): vedi [Esportare i dati](guida:gestionale-esportare-i-dati). **Nella demo il caricamento dei file è spento.**
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-rinnovare-una-tessera',
         'title' => 'Rinnovare una tessera e incassare la quota',
         'body' => <<<'MD'
@@ -290,7 +400,7 @@ La trovi in **Altro**, ed è **solo per gli amministratori**. Scegli l'**«Anno 
 
 ## Cercare e filtrare
 
-In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica.
+In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica: vedi [Importare la prima nota da Excel o CSV](guida:gestionale-importare-la-prima-nota).
 
 ## Correggere un errore
 
@@ -375,6 +485,66 @@ Il gestionale ti avvisa se qualcosa non torna:
 - se provi a togliere da Aspetto fiscale un'aliquota usata da qualche risorsa: «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.»; se sono usate anche da qualche attività, il messaggio dice «Alcune attività o risorse usano l'aliquota X%: prima cambia l'IVA di quelle attività o risorse, poi toglila dall'elenco.»;
 - se l'aliquota è usata da prenotazioni non ancora finite: «Alcune prenotazioni non ancora finite usano l'aliquota X%: togli l'aliquota dall'elenco quando saranno finite o annullate.»;
 - in scheda, un avviso rosso: «L'aliquota di questa risorsa non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa risorsa si registrano senza IVA.»
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-importare-la-prima-nota',
+        'title' => 'Importare la prima nota da Excel o CSV',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Se finora hai tenuto la contabilità in un foglio Excel, non devi riscriverla: la carichi da un file e il gestionale registra i movimenti in **Prima nota**. **Prima vedi sempre l'anteprima: nulla si salva finché non confermi.**
+
+**Chi può farlo:** chi ha il permesso **«Registrare in prima nota»** (titolare, amministratori e operatori; si assegna in **Operatori e ruoli**).
+
+## Come si fa
+
+1. In **Prima nota** apri il pulsante con i **tre puntini** (**«Altri strumenti»**) e scegli **«Importa da Excel o CSV»**.
+2. Scegli il **file**: `.xlsx` o `.csv`, al massimo **5 MB** e **10.000 movimenti** (se sono di più, dividilo in più file).
+3. Se nel file ci sono righe **senza il conto**, scegli il **«Conto per le righe senza conto»**. Se non lo scegli, quelle righe risultano errori.
+4. Premi **«Mostra l'anteprima»**.
+5. Controlla l'anteprima e premi **«Importa N movimenti»**. A fine importazione trovi **«Import completato»** con quanti movimenti sono stati registrati e il collegamento **«Vai alla prima nota»**.
+
+## Come deve essere fatto il file
+
+Nella **prima riga** ci sono i nomi delle colonne. Servono:
+
+- **Data**;
+- **Importo**, oppure **Entrata** e **Uscita** in due colonne separate.
+
+Sono facoltative: **Tipo, Conto, Modalità, Voce, Attività, N. tessera, Persona, Descrizione, Competenza, Riferimento**. Il programma riconosce anche i nomi simili (per esempio «Causale» per la voce o «Socio» per la persona).
+
+- Le **date** vanno bene come `15/01/2025` o `2025-01-15`; gli importi come `1.234,56` o `1234.56`.
+- Con la sola colonna **Importo**, un importo negativo è una **uscita**, uno positivo un'**entrata** (oppure usa la colonna **Tipo**).
+- Le righe vuote o quelle di totale (senza data e senza importo) vengono ignorate.
+- **Il file che esporti da Prima nota con «Esporta l'anno fiscale (CSV)» si ricarica così com'è.**
+
+## Cosa succede con i dati del file
+
+- **Conti**: se un conto non esiste, **si crea** (con saldo iniziale zero). L'anteprima ti dice quali conti nuovi nascono.
+- **Voci, persone, attività**: se il nome non si riconosce, il movimento si importa lo stesso con una **voce generica**, oppure **senza persona** o **senza attività**; nella colonna **Note** dell'anteprima vedi l'avviso. Con **N. tessera** o **Persona** il movimento si collega alla scheda del socio.
+- **Modalità** non riconosciuta: si usa «Altro».
+- **Doppioni**: un movimento uguale a uno già in prima nota (stessa data, conto, importo, descrizione e riferimento) **viene saltato**. Puoi quindi ricaricare lo stesso file senza duplicare i movimenti.
+- **Giroconti**: due righe con la **stessa data e lo stesso importo**, una in uscita da un conto e una in entrata su un altro, diventano **un giroconto**. Se manca la riga corrispondente, quella riga **non si importa**: registrala da **Giroconto tra conti**.
+- **Ricevute**: **non se ne emettono**. I movimenti importati sono storici, come se li avessi registrati a mano senza ricevuta.
+
+## L'anteprima
+
+In alto vedi i conteggi: **movimenti nuovi, giroconti, doppioni, saltati, con errori**, il periodo coperto e il totale di entrate e uscite. Sotto, riga per riga, l'**esito** (nuovo, giroconto, doppione, saltato, errore) e le note. Le righe con errori **non si importano**: correggile nel file e ricaricalo; i doppioni verranno saltati e si aggiungerà solo il resto.
+
+Se una riga viene rifiutata durante l'importazione, le altre si registrano comunque e il motivo compare sotto **«Righe non importate»**.
+
+## Prima di importare anni passati
+
+Se il file contiene movimenti di un **anno fiscale già chiuso**, quell'anno non accetta nuovi movimenti. Le righe di quell'anno **non si importano** e compaiono sotto **«Righe non importate»** con il messaggio «L'anno fiscale … è chiuso: per modificarlo va riaperto.». **Le righe degli altri anni, invece, si importano lo stesso.** Se vuoi importare anche quelle, [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) e **ricarica lo stesso file**: i movimenti già entrati vengono saltati come doppioni e si aggiunge solo il resto.
+
+Controlla anche i **saldi iniziali** dei conti. L'importazione registra solo movimenti: il **saldo iniziale** lo imposta solo per i conti nuovi, a zero, e non cambia quello dei conti già esistenti. Il **saldo attuale** invece cambia, perché i movimenti importati contano: se importi anni passati verifica che torni con la tua banca e la tua cassa.
+
+## Correggere un'importazione sbagliata
+
+I movimenti importati si correggono come gli altri: non si cancellano, si **stornano uno per uno** dalla Prima nota (vedi [Registrare un incasso e una spesa](guida:gestionale-registrare-un-incasso-e-una-spesa)). L'importazione viene scritta nel **registro azioni**.
+
+**Nella demo il caricamento dei file è spento**: l'importazione si prova sul gestionale vero.
 MD,
     ],
     [
@@ -512,7 +682,54 @@ In **Attività** trovi i corsi e gli eventi dell'anno sociale: ognuno raccoglie 
 
 Se l'associazione ha la partita IVA, nella scheda trovi anche la casella **«Con IVA»**: vedi [IVA: la pagina «Aspetto fiscale»](guida:gestionale-iva-e-aspetto-fiscale).
 
-Nella scheda vedi gli **iscritti**, il **registro presenze** e i **carnet** con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date.
+Nella scheda vedi gli **iscritti**, il **registro presenze** e i **carnet** con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date: vedi [Il calendario e le presenze delle attività](guida:gestionale-calendario-e-presenze).
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Attività', 'slug' => 'gestionale-calendario-e-presenze',
+        'title' => 'Il calendario e le presenze delle attività',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Due strumenti ti dicono **cosa c'è in programma** e **chi c'era**: il **Calendario** delle attività e il **Registro presenze** di ogni attività.
+
+## Il calendario
+
+Lo apri dal menu, in **Attività e risorse → Calendario**. Mostra le **lezioni dei corsi**, gli **eventi** e le **date con prenotazione**, **tranne quelle delle attività archiviate**.
+
+- In alto scegli la vista: **Giorno**, **Settimana** (parte dal giorno scelto e va avanti di sette giorni) o **Mese**. Di partenza vedi la settimana.
+- Le frecce **←** e **→** spostano di un giorno, di sette giorni o di un mese, secondo la vista. Con il **campo data** salti a un giorno preciso.
+- Ogni riga riporta l'**orario** (per le date con prenotazione), il **nome dell'attività** (cliccandolo la apri), il **tipo**, il **luogo** e, per le date con prenotazione, quanti sono **prenotati** su quanti posti.
+- Il collegamento **«presenze»** ti porta al registro di quel giorno.
+
+Il calendario dà una **vista d'insieme**; se in **Risorse** usi le **prenotazioni di spazi**, quel calendario è un altro: vedi [Risorse e prenotazioni](guida:gestionale-risorse-e-prenotazioni).
+
+## Il registro presenze
+
+Si apre dalla **scheda dell'attività** (**«Registro presenze»**), dal **calendario** (**«presenze»**) o dalla pagina di una data.
+
+1. Scegli il **mese** con le frecce **←** e **→**.
+2. Tocca il **giorno** della lezione: i giorni già registrati hanno una **spunta ✓**. Se in quel mese l'attività non ha lezioni, la pagina te lo dice.
+3. Vedi l'**elenco di chi è atteso**. Togli la spunta a chi è **assente**: di partenza sono tutti presenti. Con **«tutti presenti»** e **«nessuno»** cambi tutto in un colpo.
+4. Premi **«Registra le presenze»**. Compare il riepilogo, per esempio «Presenze registrate: 8 su 10.»
+
+Chi è atteso dipende dal tipo di attività:
+
+- **Corsi**: gli **iscritti** nel mese di quella lezione (dal mese di inizio a quello di fine dell'iscrizione);
+- **Eventi**: gli **iscritti**;
+- **Eventi con prenotazioni**: chi ha la **prenotazione confermata** per quella data. Chi è in lista d'attesa non compare.
+
+Cose da sapere:
+
+- **Le presenze si registrano a lezione fatta, non in anticipo.** Per le date future l'elenco c'è, ma i pulsanti sono spenti: «Si registrano a lezione fatta.»
+- Si possono registrare **solo le date in cui l'attività ha una lezione**.
+- Se **registri di nuovo** lo stesso giorno, le presenze **sostituiscono** quelle di prima: puoi correggere un errore riaprendo il giorno.
+- In fondo alla pagina c'è il **«Riepilogo del mese»**: per ogni persona un pallino pieno (presente) o vuoto (assente) per ogni lezione e il totale, per esempio «7/9».
+- Ogni registrazione resta scritta nel **registro azioni**.
+
+Per **registrare le presenze** servono **due caselle insieme** in **Operatori e ruoli**: **«Modificare l'anagrafica, tesseramento, attività»** e **«Gestire i corsi»**. Valgono **anche per gli eventi**: «Gestire gli eventi» da solo non basta. Per **vedere** il registro e il riepilogo basta **«Vedere l'anagrafica»**: chi ha solo quella casella non può modificare nulla.
+
+Per creare le attività e iscrivere le persone vedi [Creare un corso o un evento](guida:gestionale-creare-un-corso-o-un-evento).
 MD,
     ],
     [
