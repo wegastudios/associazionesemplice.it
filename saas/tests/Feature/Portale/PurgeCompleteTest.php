@@ -12,6 +12,7 @@ use App\Modules\Contabilita\Models\Category;
 use App\Modules\Core\Contracts\OrgPurger;
 use App\Modules\Core\Models\Org;
 use App\Modules\Core\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -56,6 +57,25 @@ it('cancella anche un\'associazione con movimenti in prima nota e un titolare co
         ->and($db->table('core.org_keys')->where('org_id', $alfa)->exists())->toBeFalse()
         ->and(User::query()->where('email', 'solo-alfa@example.com')->exists())->toBeFalse()
         ->and(Storage::disk('org_files')->exists("{$alfa}/prova.enc"))->toBeFalse();
+});
+
+it('l\'utente dell\'applicazione non cancella i movimenti nemmeno impostando la variabile della cancellazione', function (): void {
+    $alfa = ($this->provision)('sub_a', 'Alfa', 'alfa-circolo', 'alfa@example.com');
+    $this->orgContext()->run($alfa, function () use ($alfa): void {
+        $cash = Account::query()->where('type', 'cash')->sole();
+        $donation = Category::query()->where('kind', CategoryKind::Donation)->sole();
+        app(Ledger::class)->recordIncome(new Income(now()->toDateString(), $cash->id, [new IncomeLine($donation->id, 5000, 'Offerta')], null, null, false));
+
+        DB::select("SELECT set_config('app.purging', ?, true)", [$alfa]);
+        $refused = false;
+        try {
+            DB::transaction(fn () => DB::delete('DELETE FROM app.transactions WHERE org_id = ?', [$alfa]));
+        } catch (QueryException) {
+            $refused = true;
+        }
+
+        expect($refused)->toBeTrue()->and(DB::table('app.transactions')->count())->toBeGreaterThan(0);
+    });
 });
 
 it('se la cancellazione dei dati si ferma lascia stato e file com\'erano', function (): void {

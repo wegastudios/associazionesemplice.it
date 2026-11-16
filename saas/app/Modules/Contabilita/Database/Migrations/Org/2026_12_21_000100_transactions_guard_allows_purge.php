@@ -21,8 +21,10 @@ return new class extends Migration
                 fy app.fiscal_years%ROWTYPE;
             BEGIN
                 IF TG_OP = 'DELETE' THEN
-                    -- Solo la cancellazione definitiva dell'associazione (transazione che ha impostato app.purging).
-                    IF current_setting('app.purging', true) = OLD.org_id::text THEN
+                    -- Solo la cancellazione definitiva dell'associazione: transazione che ha impostato app.purging E
+                    -- connessione del proprietario (session_user = current_user, che qui è il proprietario della funzione).
+                    -- L'utente dell'applicazione non ha comunque il permesso DELETE su questa tabella.
+                    IF current_setting('app.purging', true) = OLD.org_id::text AND session_user = current_user THEN
                         RETURN OLD;
                     END IF;
                     RAISE EXCEPTION 'I movimenti della prima nota non si cancellano: si stornano.';
