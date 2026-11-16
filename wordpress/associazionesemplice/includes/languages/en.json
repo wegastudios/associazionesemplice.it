@@ -2655,7 +2655,8 @@
   "Apri i dipendenti" : "Open employees",
   "(in arrivo)" : "(coming soon)",
   "Vedi lo stato e apri il certificato solo di chi è iscritto alle tue attività. Ogni apertura del file resta scritta nel registro azioni." : "You see the status and can open the certificate only of people enrolled in your activities. Every time a file is opened it is written in the action log.",
-  "Apri il certificato" : "Open the certificate",
   "Non puoi togliere l'accesso al ruolo con cui stai operando: te lo toglieresti da solo. Chiedi a un amministratore." : "You cannot remove access from the role you are working with: you would lock yourself out. Ask an administrator."
+  "Non puoi togliere l'accesso al ruolo con cui stai operando: te lo toglieresti da solo. Chiedi a un amministratore." : "You cannot remove access from the role you are working with: you would lock yourself out. Ask an administrator.",
+  "Nome non valido: usa solo lettere, spazi, apostrofi e trattini." : "Invalid name: use only letters, spaces, apostrophes and hyphens."
  }
 }

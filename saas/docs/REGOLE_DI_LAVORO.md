@@ -41,6 +41,7 @@ indicare chi vende (per esempio sulle fatture). Colori, logo e carattere sono in
 - Le regole portate dal plugin arrivano insieme ai loro test.
 - Importi in centesimi interi. Istanti in `timestamptz`, date contabili in `date`.
 - Ogni modifica dello schema passa da una migrazione, in due tempi: prima si aggiunge il nuovo, poi si toglie il vecchio.
+- Migrazioni su tabelle grandi (registro delle azioni, movimenti, soci): gli indici si creano con `CREATE INDEX CONCURRENTLY` in una migrazione senza transazione (`$withinTransaction = false`), mai durante il dump orario né negli orari dei backup; prima si prova il tempo su una copia con dati veri.
 - I moduli comunicano solo dalle interfacce pubbliche (namespace `Contracts` di ogni modulo; c'è il test).
 - Ogni richiesta e ogni lavoro in coda impostano `app.org_id`.
 

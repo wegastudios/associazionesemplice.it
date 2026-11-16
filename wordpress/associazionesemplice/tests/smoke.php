@@ -8867,6 +8867,19 @@ $ap_form = \AssociazioneSemplice\Frontend\Application::form_html();
 asem_ok( false !== strpos( $ap_form, 'name="birth_date"' ) && false !== strpos( $ap_form, 'name="tax_code"' ) && false !== strpos( $ap_form, 'name="rules_ok"' ) && false !== strpos( $ap_form, 'name="privacy_ok"' ) && false !== strpos( $ap_form, 'data-asemf-guardian' ) && false !== strpos( $ap_form, 'name="website"' ), 'domanda: il modulo ha i campi, il blocco del genitore e il campo esca' );
 $ap_bad = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'tax_code' => 'XXX' ) ) );
 asem_ok( 'invalid' === $ap_bad['status'] && $ap_bad['errors'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: dati sbagliati rifiutati con il motivo' );
+foreach ( array( "Aldo\nBcc: x@example.com", 'Visita http://example.com', 'Aldo2', str_repeat( 'a', 61 ) ) as $ap_badname ) {
+	$ap_nb = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => $ap_badname ) ) );
+	asem_ok( 'invalid' === $ap_nb['status'] && in_array( 'Nome non valido: usa solo lettere, spazi, apostrofi e trattini.', $ap_nb['errors'], true ) && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: un nome con a capo, link, cifre o troppo lungo è rifiutato con un errore chiaro' );
+}
+$ap_nb = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'last_name' => 'Rossi <script>' ) ) );
+asem_ok( 'invalid' === $ap_nb['status'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: lo stesso vale per il cognome' );
+$ap_nn = count( $ap_mails );
+$ap_real = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Zoë Maria', 'last_name' => "D'Angelo-Nguyễn", 'email' => 'zoe.nguyen@example.com', 'tax_code' => 'RSSMRA79A09H501W' ) ) );
+$ap_rid  = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE tax_code = %s', 'RSSMRA79A09H501W' ) );
+asem_ok( 'ok' === $ap_real['status'] && $ap_rid > 0 && "D'Angelo-Nguyễn" === $people->get( $ap_rid )['last_name'] && false !== strpos( (string) $ap_mail_to( 'zoe.nguyen@example.com' )['message'], 'Ciao Zoë Maria,' ), 'domanda: i nomi veri (accenti, apostrofo, trattino, nome doppio) passano e finiscono nell\'email' );
+\AssociazioneSemplice\Applications::reject( $ap_rid );
+$wpdb->query( 'ALTER TABLE ' . Db::t( 'people' ) . ' AUTO_INCREMENT = ' . ( 1 + (int) $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL -- prova: la persona di prova non sposta i numeri delle prove successive
+asem_ok( 0 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) > $ap_nn, 'domanda: la prova con i nomi veri non lascia domande in coda' );
 $ap_mn = count( $ap_mails );
 asem_ok( 'ok' === \AssociazioneSemplice\Applications::submit( $ap_in )['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: registrata' );
 $ap_list = \AssociazioneSemplice\Applications::pending();
