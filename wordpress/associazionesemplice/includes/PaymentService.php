@@ -165,7 +165,7 @@ class PaymentService extends OfflinePayments {
 			throw new \InvalidArgumentException( 'L\'importo minimo per pagare online è ' . Money::format( $min ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 
-		$public = wp_generate_uuid4();
+		$public = PaymentItems::new_public_id();
 		$now    = Db::now();
 		if ( PaymentConfig::WOOCOMMERCE === $provider ) { // negozio WooCommerce: le voci vanno nel carrello e si paga al checkout
 			$url = WooBridge::checkout_url( $items, $public );
@@ -316,7 +316,7 @@ class PaymentService extends OfflinePayments {
 		);
 		$item['key'] = PaymentItems::key( $item );
 		$items       = array( $item );
-		$public      = wp_generate_uuid4();
+		$public      = PaymentItems::new_public_id();
 		$now         = Db::now();
 		$this->db()->insert(
 			$tbl,
@@ -364,11 +364,22 @@ class PaymentService extends OfflinePayments {
 		return $rows ? array( 'cents' => (int) $rows[0]['amount_cents'], 'id' => (int) $rows[0]['id'] ) : null;
 	}
 
+	/**
+	 * Prenota la quota di un pagamento per la prima nota: la riga passa da «non registrata» a «registrata» in un solo passo, quindi due approvazioni
+	 * in contemporanea non registrano l'incasso due volte. @return bool true se questa chiamata ha preso la quota
+	 */
+	public function application_claim( int $id ): bool {
+		return 1 === (int) $this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'payments' ) . ' SET allocated_cents = amount_cents, updated_at = %s WHERE id = %d AND allocated_cents = 0', Db::now(), $id ) );
+	}
+
 	/** Domanda approvata: la quota pagata online entra in prima nota (e con lei l'iscrizione all'anno). */
 	public function application_settle( int $person_id, string $social_year ): bool {
 		$done   = false;
 		$ledger = Plugin::ledger();
 		foreach ( $this->application_payments( $person_id ) as $p ) {
+			if ( ! $this->application_claim( (int) $p['id'] ) ) {
+				continue; // un'altra approvazione, in contemporanea, ha già preso questa quota
+			}
 			try {
 				$ledger->record_receipt(
 					array(
@@ -377,10 +388,13 @@ class PaymentService extends OfflinePayments {
 						'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => (int) $p['amount_cents'], 'social_year' => $social_year, 'description' => 'Pagamento online della quota con la domanda di adesione' ) ),
 					)
 				);
-				$this->update( (int) $p['id'], array( 'allocated_cents' => (int) $p['amount_cents'] ) );
 				$done = true;
-			} catch ( \InvalidArgumentException $e ) {
+			} catch ( \InvalidArgumentException $e ) { // nulla è stato scritto: la quota torna da registrare e il pagamento da controllare
+				$this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'payments' ) . ' SET allocated_cents = 0 WHERE id = %d AND allocated_cents = amount_cents', (int) $p['id'] ) );
 				$this->update( (int) $p['id'], array( 'review' => 1, 'error' => mb_substr( 'Quota della domanda non registrata: ' . $e->getMessage(), 0, 250 ) ) );
+			} catch ( \Throwable $e ) { // non si sa quanto sia stato scritto: la quota resta presa (nessun secondo incasso) e il pagamento da controllare
+				$this->update( (int) $p['id'], array( 'review' => 1, 'error' => mb_substr( 'Registrazione della quota incompleta: ' . $e->getMessage(), 0, 250 ) ) );
+				throw $e;
 			}
 		}
 		return $done;
@@ -808,8 +822,18 @@ class PaymentService extends OfflinePayments {
 		if ( ! $p ) {
 			return 'pagamento sconosciuto';
 		}
+		if ( in_array( $p['status'], self::OPEN_STATUSES, true ) ) { // un solo controllo ogni pochi secondi per pagamento: gli avvisi ripetuti non fanno altre richieste al gestore
+			$slot = 'asem_spcb_' . (int) $p['id'];
+			if ( false !== get_transient( $slot ) ) {
+				return 'troppo presto';
+			}
+			set_transient( $slot, 1, self::SATISPAY_CALLBACK_SECONDS );
+		}
 		return $this->confirm_with_gateway( $p ) ? 'registrato' : 'in attesa';
 	}
+
+	/** Pausa minima tra due controlli dello stesso pagamento Satispay avviati da un avviso (callback). */
+	const SATISPAY_CALLBACK_SECONDS = 12;
 
 	/** Webhook di Stripe già verificato (firma). @return string esito per il log */
 	public function handle_stripe_event( array $event ): string {
@@ -1009,19 +1033,26 @@ class PaymentService extends OfflinePayments {
 					}
 					try {
 						$ledger->record_receipt( array( 'date' => $today, 'account_id' => $account, 'method' => $method, 'person_id' => (int) $person_id, 'document_ref' => $ref, 'lines' => $lines ) );
-						$allocated += PaymentItems::total( $group );
-						foreach ( $group as $i ) {
+					} catch ( \InvalidArgumentException $e ) {
+						$review       = true;
+						$error        = mb_substr( $e->getMessage(), 0, 250 );
+						$unallocated += PaymentItems::total( $group );
+						continue;
+					}
+					$allocated += PaymentItems::total( $group );
+					foreach ( $group as $i ) { // l'incasso è già in prima nota: se un passo successivo non riesce il pagamento resta «da controllare», senza riscrivere l'incasso
+						try {
 							if ( PaymentItems::RESERVATION === $i['type'] ) {
 								Resources::confirm( (int) $i['reservation_id'] ); // pagata: la fascia non è più provvisoria
 							}
 							if ( PaymentItems::CREDITS === $i['type'] ) {
 								Credits::granted_online( (int) $i['person_id'], (int) $i['credits'], (int) $p['id'] ); // pacchetto pagato: i crediti arrivano al socio
 							}
+						} catch ( \Throwable $e ) {
+							$review = true;
+							$error  = mb_substr( Texts::t( 'Incasso registrato, ma un passo successivo non è riuscito ({voce}): controlla il pagamento.', array( 'voce' => (string) ( $i['label'] ?? $i['type'] ) ) ), 0, 250 );
+							Audit::log( 'payment.after_receipt_failed', 'payment', (int) $p['id'], array( 'item' => (string) $i['type'] ) );
 						}
-					} catch ( \InvalidArgumentException $e ) {
-						$review       = true;
-						$error        = mb_substr( $e->getMessage(), 0, 250 );
-						$unallocated += PaymentItems::total( $group );
 					}
 				}
 			}

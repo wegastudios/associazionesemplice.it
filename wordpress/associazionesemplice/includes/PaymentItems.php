@@ -27,6 +27,15 @@ final class PaymentItems {
 	/** Importo minimo accettato dai gateway (Stripe: 0,50 €). */
 	const MIN_TOTAL_CENTS = 50;
 
+	/** Identificativo pubblico di un pagamento: UUID versione 4 fatto con byte casuali del sistema operativo. */
+	public static function new_public_id(): string {
+		$b    = random_bytes( 16 );
+		$b[6] = chr( ( ord( $b[6] ) & 0x0f ) | 0x40 );
+		$b[8] = chr( ( ord( $b[8] ) & 0x3f ) | 0x80 );
+		$h    = bin2hex( $b );
+		return substr( $h, 0, 8 ) . '-' . substr( $h, 8, 4 ) . '-' . substr( $h, 12, 4 ) . '-' . substr( $h, 16, 4 ) . '-' . substr( $h, 20, 12 );
+	}
+
 	public static function key( array $i ): string {
 		switch ( $i['type'] ) {
 			case self::MEMBERSHIP:

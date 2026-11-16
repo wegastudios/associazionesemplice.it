@@ -2189,6 +2189,17 @@ $url = $ps->create_checkout( $pmp, $u_pm, array( $k_mon, $k_ev, 'm:999:1:2026-01
 $row = $latest();
 asem_ok( 0 === strpos( $url, 'https://checkout.stripe.com/c/pay/cs_test_' ) && 'pending' === $row['status'] && 2500 === (int) $row['amount_cents'] && 'stripe' === $row['provider'], 'checkout Stripe: pagamento in attesa, importo 25,00 deciso dal server' );
 asem_ok( 2500 === $stripe_sessions[ $row['provider_ref'] ]['amount'] && $stripe_sessions[ $row['provider_ref'] ]['key'] === $row['public_id'], 'Stripe riceve l\'importo del server e una chiave di idempotenza' );
+asem_ok( 1 === preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', (string) $row['public_id'] ), 'pagamento online: l\'identificativo pubblico è un UUID versione 4' );
+// le chiamate ai gestori non seguono i rimandi
+$gw_args = null;
+$gw_spy  = function ( $pre, $args ) use ( &$gw_args ) {
+	$gw_args = $args;
+	return array( 'headers' => array(), 'body' => '{}', 'response' => array( 'code' => 200, 'message' => 'OK' ), 'cookies' => array(), 'filename' => null );
+};
+add_filter( 'pre_http_request', $gw_spy, 10, 2 );
+\AssociazioneSemplice\Gateways::wp_http( 'GET', 'https://api.stripe.com/v1/balance', array( 'Accept' => 'application/json' ), null );
+remove_filter( 'pre_http_request', $gw_spy, 10 );
+asem_ok( is_array( $gw_args ) && array_key_exists( 'redirection', $gw_args ) && 0 === $gw_args['redirection'], 'chiamate ai gestori di pagamento: nessun rimando seguito' );
 License::set_state( 'unpaid', $today );
 asem_ok( ! $ps->enabled() && null !== asem_throws( function () use ( $ps, $pmp, $u_pm, $k_ev ) { $ps->create_checkout( $pmp, $u_pm, array( $k_ev ), home_url( '/area/' ) ); } ), 'licenza non in regola: niente nuovi pagamenti online' );
 delete_option( License::OPT_STATE );
@@ -8754,6 +8765,41 @@ asem_ok( 1 === (int) $ap_rrow['refund_due'] && $ap_stripe_before + $ap_fee === $
 $ap_pp = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'da rimborsare' );
 asem_ok( false !== strpos( $ap_pp, 'asem_payment_refunded' ), 'pagamenti online: la quota da rimborsare si vede e si segna come restituita' );
 $ap_ps->mark_refunded( (int) $ap_rrow['id'] );
+// quota della domanda: la presa della riga è atomica, la seconda chiamata è rifiutata e l'incasso non si scrive due volte
+$ap_before_again = $balance_of( 'Stripe' );
+asem_ok( false === $ap_ps->application_settle( $ap_paolo, Settings::membership_year()->label() ) && $ap_before_again === $balance_of( 'Stripe' ), 'quota online: una seconda approvazione non registra di nuovo l\'incasso' );
+$wpdb->insert(
+	Db::t( 'payments' ),
+	array(
+		'public_id' => 'cl-' . substr( md5( 'claim' ), 0, 30 ), 'provider' => 'stripe', 'status' => 'paid', 'amount_cents' => 1000, 'currency' => 'EUR', 'payer_person_id' => $ap_paolo, 'payer_user_id' => 0,
+		'items' => wp_json_encode( array( array( 'type' => 'application', 'person_id' => $ap_paolo, 'amount_cents' => 1000 ) ) ), 'provider_ref' => 'cs_claim_1', 'created_at' => Db::now(), 'updated_at' => Db::now(), 'paid_at' => Db::now(),
+	)
+);
+$ap_claim_id = (int) $wpdb->insert_id;
+asem_ok( true === $ap_ps->application_claim( $ap_claim_id ) && false === $ap_ps->application_claim( $ap_claim_id ) && 1000 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT allocated_cents FROM ' . Db::t( 'payments' ) . ' WHERE id = %d', $ap_claim_id ) ), 'quota online: la presa della quota riesce una volta sola, la seconda è rifiutata' );
+// pagamento già incassato: se un passo dopo la ricevuta non riesce, l'incasso resta uno solo e il pagamento va «da controllare»
+$ap_cr_pub = 'ccr-' . substr( md5( 'credits' ), 0, 30 );
+$ap_cr_item = array( 'type' => 'credits', 'person_id' => $ap_paolo, 'person_name' => 'Paolo Paga', 'credits' => 5, 'amount_cents' => 500, 'label' => '5 crediti' );
+$ap_cr_item['key'] = \AssociazioneSemplice\PaymentItems::key( $ap_cr_item );
+$wpdb->insert(
+	Db::t( 'payments' ),
+	array(
+		'public_id' => $ap_cr_pub, 'provider' => 'stripe', 'status' => 'pending', 'amount_cents' => 500, 'currency' => 'EUR', 'payer_person_id' => $ap_paolo, 'payer_user_id' => 0,
+		'items' => wp_json_encode( array( $ap_cr_item ) ), 'provider_ref' => 'cs_ccr_1', 'created_at' => Db::now(), 'updated_at' => Db::now(),
+	)
+);
+$ap_cr_fail = function ( $q ) {
+	return 0 === stripos( ltrim( (string) $q ), 'INSERT' ) && false !== strpos( $q, 'credit_entries' ) ? '' : $q; // l'accredito dei crediti non riesce
+};
+$ap_cr_ev = array( 'id' => 'evt_ccr', 'type' => 'checkout.session.completed', 'data' => array( 'object' => array( 'id' => 'cs_ccr_1', 'client_reference_id' => $ap_cr_pub, 'payment_status' => 'paid', 'amount_total' => 500, 'payment_intent' => 'pi_ccr_1' ) ) );
+add_filter( 'query', $ap_cr_fail );
+$ap_ps->handle_stripe_event( $ap_cr_ev );
+remove_filter( 'query', $ap_cr_fail );
+$ap_cr_row = $ap_ps->get_by_public( $ap_cr_pub );
+asem_ok( 'paid' === $ap_cr_row['status'] && 1 === (int) $ap_cr_row['review'] && 500 === (int) $ap_cr_row['allocated_cents'] && false !== strpos( (string) $ap_cr_row['error'], 'passo successivo' ), 'pagamento online: passo dopo la ricevuta fallito, pagamento «da controllare» [' . wp_json_encode( array( $ap_cr_row['status'], $ap_cr_row['review'], $ap_cr_row['allocated_cents'], $ap_cr_row['error'] ) ) . ']' );
+asem_ok( 500 === $sum_tx( "type = 'income' AND method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: passo dopo la ricevuta fallito, l\'incasso è scritto una sola volta (non anche «non abbinato»)' );
+$ap_ps->handle_stripe_event( $ap_cr_ev );
+asem_ok( 500 === $sum_tx( "type = 'income' AND method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: lo stesso evento ripetuto non scrive un secondo incasso' );
 asem_ok( 0 === (int) $ap_ps->get_by_public( $ap_rrow['public_id'] )['refund_due'], 'pagamenti online: rimborso segnato come fatto' );
 
 // ---------- Rimborso dei pagamenti online dal gateway (Stripe e PayPal) ----------
@@ -9501,10 +9547,19 @@ asem_ok( 1000 === $be_pay[ $be_row['provider_ref'] ]['amount'] && $be_pay[ $be_r
 asem_ok( 'in attesa' === $ps->handle_satispay_callback( $be_row['provider_ref'] ) && 'pending' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: avviso con pagamento non ancora accettato resta in attesa' );
 asem_ok( 'pagamento sconosciuto' === $ps->handle_satispay_callback( 'sp-999' ) && 'ignorato' === $ps->handle_satispay_callback( '<>' ), 'Satispay: un avviso per un pagamento che non conosciamo non fa nulla' );
 $be_pay[ $be_row['provider_ref'] ]['paid'] = true;
+asem_ok( 'troppo presto' === $ps->handle_satispay_callback( $be_row['provider_ref'] ) && 'pending' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: un secondo avviso subito dopo è rifiutato e non rilegge il pagamento' );
+delete_transient( 'asem_spcb_' . (int) $be_row['id'] ); // passati i secondi di pausa
 $be_req = new WP_REST_Request( 'GET', '/associazionesemplice/v1/webhooks/satispay' );
 $be_req->set_param( 'payment_id', $be_row['provider_ref'] );
 $be_res = \AssociazioneSemplice\ProData::satispay_callback( $be_req );
-asem_ok( 'registrato' === $be_res->get_data()['result'] && 'paid' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: l\'avviso fa rileggere lo stato firmato e registra l\'incasso' );
+asem_ok( array( 'received' => true ) === $be_res->get_data() && 'paid' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: l\'avviso fa rileggere lo stato firmato e registra l\'incasso' );
+$be_same = true;
+foreach ( array( 'sp-999', '<>', '', $be_row['provider_ref'] ) as $be_pid ) { // la risposta è la stessa per un pagamento noto, sconosciuto o un identificativo vuoto
+	$be_rq = new WP_REST_Request( 'GET', '/associazionesemplice/v1/webhooks/satispay' );
+	$be_rq->set_param( 'payment_id', $be_pid );
+	$be_same = $be_same && array( 'received' => true ) === \AssociazioneSemplice\ProData::satispay_callback( $be_rq )->get_data();
+}
+asem_ok( $be_same, 'Satispay: a chi chiama l\'avviso la risposta è sempre la stessa' );
 asem_ok( 'in attesa' === $ps->handle_satispay_callback( $be_row['provider_ref'] ) && 1000 === $sum_tx( "type = 'income' AND method = 'satispay'" ) && 1000 === $balance_of( 'Satispay' ), 'Satispay: incasso registrato una sola volta sul conto Satispay' );
 asem_ok( isset( \AssociazioneSemplice\Labels::methods()['satispay'] ) && in_array( 'satispay', \AssociazioneSemplice\ActivityReset::online_methods(), true ), 'Satispay: è un metodo di pagamento online riconosciuto' );
 $be_row2 = null;

@@ -120,7 +120,7 @@ final class Gateways {
 
 	/** Chiamata di rete reale, tramite l'API HTTP di WordPress. */
 	public static function wp_http( string $method, string $url, array $headers, ?string $body ): array {
-		$res = wp_remote_request( $url, array( 'method' => $method, 'headers' => $headers, 'body' => $body, 'timeout' => 15 ) );
+		$res = wp_remote_request( $url, array( 'method' => $method, 'headers' => $headers, 'body' => $body, 'timeout' => 15, 'redirection' => 0 ) );
 		if ( is_wp_error( $res ) ) {
 			throw new \RuntimeException( $res->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
