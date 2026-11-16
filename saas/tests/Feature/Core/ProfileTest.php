@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Auth\EmailChangeNoticeNotification;
+use App\Modules\Core\Auth\EmailChangeNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
 it('mostra il profilo con nome, email e verifica in due passaggi', function (): void {
@@ -22,21 +26,6 @@ it('cambia il nome', function (): void {
     expect($user->refresh()->name)->toBe('Anna Rossi');
 });
 
-it('cambia l\'email solo con la password giusta e non su un\'email già usata', function (): void {
-    $user = $this->createUser('anna@example.com', twoFactor: true);
-    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
-    $this->createUser('bruno@example.com');
-
-    $this->actingAs($user)->put('/gestionale/profilo/email', ['email' => 'nuova@example.com', 'password' => 'sbagliata'])
-        ->assertSessionHasErrors('password');
-    $this->put('/gestionale/profilo/email', ['email' => 'bruno@example.com', 'password' => $this::PASSWORD])
-        ->assertSessionHasErrors('email');
-    expect($user->refresh()->email)->toBe('anna@example.com');
-
-    $this->put('/gestionale/profilo/email', ['email' => 'Nuova@Example.com', 'password' => $this::PASSWORD])->assertSessionHasNoErrors();
-    expect($user->refresh()->email)->toBe('nuova@example.com');
-});
-
 it('scollega gli altri dispositivi tenendo questo', function (): void {
     $user = $this->createUser('anna@example.com', twoFactor: true);
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
@@ -51,4 +40,45 @@ it('scollega gli altri dispositivi tenendo questo', function (): void {
 
 it('non è raggiungibile senza accesso', function (): void {
     $this->get('/gestionale/profilo')->assertRedirect('/accesso');
+});
+
+it('cambia l\'email solo dopo il link aperto dal nuovo indirizzo, con la password giusta', function (): void {
+    Notification::fake();
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+
+    $this->actingAs($user)->put('/gestionale/profilo/email', ['email' => 'nuova@example.com', 'password' => 'sbagliata'])->assertSessionHasErrors('password');
+    $this->put('/gestionale/profilo/email', ['email' => 'anna@example.com', 'password' => $this::PASSWORD])->assertSessionHasErrors('email');
+    Notification::assertNothingSent();
+
+    $this->put('/gestionale/profilo/email', ['email' => 'Nuova@Example.com', 'password' => $this::PASSWORD])->assertSessionHasNoErrors()->assertSessionHas('status');
+    expect($user->refresh()->email)->toBe('anna@example.com');
+    $url = null;
+    Notification::assertSentOnDemand(EmailChangeNotification::class, function (EmailChangeNotification $n, array $channels, object $notifiable) use (&$url): bool {
+        $url = $n->url;
+
+        return ($notifiable->routes['mail'] ?? null) === 'nuova@example.com';
+    });
+    Notification::assertSentTo($user, EmailChangeNoticeNotification::class, fn (EmailChangeNoticeNotification $n): bool => $n->maskedNew === 'n***@e***.com');
+
+    $this->get($url)->assertRedirect('/gestionale/profilo')->assertSessionHas('status', 'Email aggiornata.');
+    expect($user->refresh()->email)->toBe('nuova@example.com')->and($user->email_verified_at)->not->toBeNull();
+});
+
+it('l\'email di un altro non si prende: stessa risposta, nessun link, e il link manomesso non vale', function (): void {
+    Notification::fake();
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+    $this->createUser('bruno@example.com');
+
+    $this->actingAs($user)->put('/gestionale/profilo/email', ['email' => 'bruno@example.com', 'password' => $this::PASSWORD])
+        ->assertSessionHasNoErrors()->assertSessionHas('status');
+    Notification::assertNothingSent();
+
+    $this->get('/gestionale/profilo/email/conferma?email=bruno@example.com')->assertSessionHasErrors('ledger');
+    $this->get(URL::temporarySignedRoute('profile.email.confirm', now()->addMinutes(60), ['email' => 'bruno@example.com']))
+        ->assertSessionHasErrors('ledger');
+    $this->get(URL::temporarySignedRoute('profile.email.confirm', now()->subMinute(), ['email' => 'libera@example.com']))
+        ->assertSessionHasErrors('ledger');
+    expect($user->refresh()->email)->toBe('anna@example.com');
 });

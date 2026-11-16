@@ -55,7 +55,7 @@ final readonly class OrgMembers
             $this->assertOperatorAvailable($org, $email, $role);
         }
 
-        return $this->db->connection('pgsql')->transaction(function () use ($org, $email, $name, $role, $customRoleId): User {
+        return $this->db->connection('pgsql')->transaction(function () use ($org, $email, $name, $role, $customRoleId, $by): User {
             $user = User::query()->where('email', $email)->first();
             $isNew = $user === null;
 
@@ -68,11 +68,20 @@ final readonly class OrgMembers
                 $user->save();
             }
 
+            // Chi è già nell'associazione non si «reinvita»: l'invito non è una scorciatoia per cambiargli il ruolo
+            // (si passa da changeRole, con i suoi controlli). Il primo titolare dal portale si può ripetere senza effetti.
+            $existing = $isNew ? null : $this->memberships->find($user->id, $org->id);
+            if ($existing !== null) {
+                if ($by !== null || $existing->role !== $role) {
+                    throw new InvalidArgumentException('Questa persona ha già un accesso a questa associazione: il ruolo si cambia dall\'elenco degli operatori.');
+                }
+
+                return $user;
+            }
+
             $now = now();
-            $this->db->connection('pgsql')->table('core.org_users')->upsert(
-                [['org_id' => $org->id, 'user_id' => $user->id, 'role' => $role->value, 'custom_role_id' => $customRoleId, 'denied_abilities' => '{}', 'created_at' => $now, 'updated_at' => $now]],
-                ['org_id', 'user_id'],
-                ['role', 'custom_role_id', 'denied_abilities', 'updated_at'],
+            $this->db->connection('pgsql')->table('core.org_users')->insert(
+                ['org_id' => $org->id, 'user_id' => $user->id, 'role' => $role->value, 'custom_role_id' => $customRoleId, 'denied_abilities' => '{}', 'created_at' => $now, 'updated_at' => $now],
             );
 
             $this->audit($org, 'operator.invited', $user->id, ['role' => $role->value, 'new_user' => $isNew] + ($customRoleId === null ? [] : ['custom_role_id' => $customRoleId]));

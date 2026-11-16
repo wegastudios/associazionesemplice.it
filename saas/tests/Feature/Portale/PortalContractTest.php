@@ -151,11 +151,12 @@ it('limita gli inviti al numero di operatori dell\'abbonamento', function (): vo
     expect(fn () => $members->invite($org, 'op@example.com', 'Op', OrgRole::Operator, $by))->toThrow(OperatorLimitReached::class);
 
     $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1))])->assertOk();
-    $members->invite($org, 'op@example.com', 'Op', OrgRole::Operator, $by);
+    $op = $members->invite($org, 'op@example.com', 'Op', OrgRole::Operator, $by);
     expect(fn () => $members->invite($org, 'op2@example.com', 'Op2', OrgRole::Operator, $by))->toThrow(OperatorLimitReached::class);
 
     // Cambiare il ruolo di chi è già operatore non conta come nuovo operatore.
-    $members->invite($org, 'op@example.com', 'Op', OrgRole::Accountant, $by);
+    $members->changeRole($org, $op->id, OrgRole::Accountant, $by);
+    expect(fn () => $members->invite($org, 'op@example.com', 'Op', OrgRole::Admin, $by))->toThrow(InvalidArgumentException::class, 'ha già un accesso');
 });
 
 it('manda al portale solo i numeri di ogni associazione, firmati dal SaaS', function (): void {

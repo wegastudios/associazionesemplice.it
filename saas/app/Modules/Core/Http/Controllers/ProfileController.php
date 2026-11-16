@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Http\Controllers;
 
+use App\Modules\Core\Auth\EmailChangeNoticeNotification;
+use App\Modules\Core\Auth\EmailChangeNotification;
 use App\Modules\Core\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,6 +22,8 @@ use Inertia\Response;
  */
 final readonly class ProfileController
 {
+    private const EMAIL_LINK_MINUTES = 60;
+
     public function show(Request $request): Response
     {
         /** @var User $user */
@@ -54,14 +60,41 @@ final readonly class ProfileController
     {
         $user = $request->user();
         $request->validate([
-            'email' => ['required', 'string', 'email:rfc', 'max:254', Rule::unique('pgsql.core.users', 'email')->ignore($user instanceof User ? $user->id : null)],
+            'email' => ['required', 'string', 'email:rfc', 'max:254'],
             'password' => ['required', 'string', 'current_password:web'],
-        ], ['password.current_password' => 'La password non è corretta.', 'email.unique' => 'Questa email è già usata da un altro accesso.']);
+        ], ['password.current_password' => 'La password non è corretta.']);
         if ($user instanceof User) {
-            $user->forceFill(['email' => mb_strtolower($request->string('email')->trim()->toString())])->save();
+            $new = mb_strtolower($request->string('email')->trim()->toString());
+            if ($new === mb_strtolower($user->email)) {
+                throw ValidationException::withMessages(['email' => 'Questa è già la tua email.']);
+            }
+            // Stessa risposta se l'indirizzo è libero o già usato: chi scrive non scopre chi ha un accesso.
+            if (! DB::table('core.users')->whereRaw('lower(email) = ?', [$new])->exists()) {
+                $url = URL::temporarySignedRoute('profile.email.confirm', now()->addMinutes(self::EMAIL_LINK_MINUTES), ['email' => $new]);
+                Notification::route('mail', $new)->notify(new EmailChangeNotification($user->name, $url));
+                $user->notify(new EmailChangeNoticeNotification(EmailChangeNoticeNotification::mask($new)));
+            }
         }
 
-        return back()->with('status', 'Email aggiornata.');
+        return back()->with('status', 'Ti abbiamo scritto un link al nuovo indirizzo: l\'email cambia solo quando lo apri. Il link vale 60 minuti.');
+    }
+
+    /** Apre il link ricevuto al nuovo indirizzo: solo la stessa persona che l'ha chiesto, solo se il link è valido e l'indirizzo è libero. */
+    public function confirmEmail(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $new = mb_strtolower($request->string('email')->trim()->toString());
+        if (! $user instanceof User || ! $request->hasValidSignature() || filter_var($new, FILTER_VALIDATE_EMAIL) === false) {
+            return redirect()->route('profile')->withErrors(['ledger' => 'Il link non è valido o è scaduto: chiedi un nuovo cambio email dal tuo profilo.']);
+        }
+        if ($new !== mb_strtolower($user->email)) {
+            if (DB::table('core.users')->whereRaw('lower(email) = ?', [$new])->where('id', '!=', $user->id)->exists()) {
+                return redirect()->route('profile')->withErrors(['ledger' => 'Questo indirizzo non è disponibile: chiedi un nuovo cambio email dal tuo profilo.']);
+            }
+            $user->forceFill(['email' => $new, 'email_verified_at' => now()])->save();
+        }
+
+        return redirect()->route('profile')->with('status', 'Email aggiornata.');
     }
 
     /** Chiude tutte le altre sessioni della persona (altri telefoni e computer), tenendo questa. */

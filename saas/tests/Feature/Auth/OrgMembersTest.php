@@ -110,3 +110,25 @@ it('rifiuta una password nuova troppo corta', function (): void {
         'password_confirmation' => 'corta',
     ])->assertSessionHasErrors('password');
 });
+
+it('un invito non cambia il ruolo di chi è già nell\'associazione: il titolare non si retrocede invitandolo', function (): void {
+    $org = $this->createOrg('Polisportiva Alfa');
+    $owner = members()->invite($org, 'titolare@example.com', 'Titolare', OrgRole::Owner, null);
+    $byOwner = app(Memberships::class)->find($owner->id, $org->id);
+    $admin = members()->invite($org, 'admin@example.com', 'Ada', OrgRole::Admin, $byOwner);
+    $byAdmin = app(Memberships::class)->find($admin->id, $org->id);
+
+    expect(fn () => members()->invite($org, 'titolare@example.com', 'Titolare', OrgRole::Operator, $byAdmin))->toThrow(InvalidArgumentException::class, 'ha già un accesso')
+        ->and(fn () => members()->invite($org, 'admin@example.com', 'Ada', OrgRole::Operator, $byOwner))->toThrow(InvalidArgumentException::class, 'ha già un accesso');
+    expect(app(Memberships::class)->find($owner->id, $org->id)?->role)->toBe(OrgRole::Owner)
+        ->and(app(Memberships::class)->find($admin->id, $org->id)?->role)->toBe(OrgRole::Admin);
+});
+
+it('ripetere da riga di comando lo stesso invito è innocuo, con un altro ruolo no', function (): void {
+    $org = $this->createOrg('Polisportiva Alfa');
+    $owner = members()->invite($org, 'titolare@example.com', 'Titolare', OrgRole::Owner, null);
+
+    expect(members()->invite($org, 'titolare@example.com', 'Titolare', OrgRole::Owner, null)->id)->toBe($owner->id)
+        ->and(fn () => members()->invite($org, 'titolare@example.com', 'Titolare', OrgRole::Operator, null))->toThrow(InvalidArgumentException::class);
+    expect(app(Memberships::class)->find($owner->id, $org->id)?->role)->toBe(OrgRole::Owner);
+});
