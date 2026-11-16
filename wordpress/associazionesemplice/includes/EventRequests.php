@@ -17,7 +17,9 @@ defined( 'ABSPATH' ) || exit;
  *
  * Minori: prenota sempre un adulto (il tutore), che dichiara di rispondere dei minori indicati come accompagnati; un minorenne da solo non prenota.
  * Gli ospiti che hanno già raggiunto il limite di partecipazioni devono iscriversi, salvo che l'evento costi di più agli ospiti che ai soci.
- * La risposta del modulo è sempre la stessa: non si scopre chi è già socio. Le richieste non confermate o non approvate si cancellano dopo 30 giorni.
+ * La risposta del modulo è sempre la stessa: non si scopre chi è già socio. Le richieste mai confermate si cancellano quando il link scade (24 ore); quelle non approvate dopo 30 giorni.
+ * Tetti: la coda ha un limite proprio (separato dalle domande di adesione) e i posti chiesti da una stessa email o connessione in 24 ore sono limitati; la segreteria non è mai limitata.
+ * I posti di un evento gratuito prenotato dal sito non scadono da soli (non c'è nulla da pagare): li protegge il tetto dei posti.
  */
 final class EventRequests {
 
@@ -76,6 +78,85 @@ final class EventRequests {
 		}
 		$taken = (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = %d AND status = 'booked'", (int) $s['id'] ) );
 		return max( 0, (int) $s['capacity'] - $taken );
+	}
+
+	// ---------- Tetti ----------
+
+	/** La segreteria (chi ha poteri oltre a quelli di un socio) non è mai limitata dai tetti delle richieste pubbliche. */
+	private static function exempt(): bool {
+		return is_user_logged_in() && Access::has_powers( get_current_user_id() );
+	}
+
+	/**
+	 * Richieste che contano contro il tetto: quelle in attesa della segreteria e quelle da confermare per email, queste solo finché il link vale
+	 * (poi si cancellano). Il tetto è proprio delle richieste di evento e corso, separato da quello delle domande di adesione.
+	 */
+	public static function open_count(): int {
+		return (int) self::db()->get_var(
+			self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE status = 'approval' OR ( status = 'new' AND created_at > %s )", wp_date( 'Y-m-d H:i:s', time() - self::CONFIRM_H * HOUR_IN_SECONDS ) ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna, valori preparati
+		);
+	}
+
+	/** La coda ha raggiunto il tetto? */
+	public static function queue_full(): bool {
+		return self::open_count() >= Limits::get( 'event_requests_max' );
+	}
+
+	/** @return string[] chiavi del conteggio dei posti chiesti: indirizzo email e connessione */
+	private static function seat_keys( string $email ): array {
+		$keys = array( 'asem_evq_se_' . md5( strtolower( $email ) ) );
+		$ip   = ClientIp::get();
+		if ( '' !== $ip ) {
+			$keys[] = 'asem_evq_si_' . md5( $ip );
+		}
+		return $keys;
+	}
+
+	/**
+	 * Una nuova richiesta può essere registrata? No se la coda è piena (la segreteria lo vede in Bacheca), se lo stesso indirizzo email o la stessa
+	 * connessione ha già chiesto troppi posti nelle ultime 24 ore (posti tenuti senza pagare), o se una verifica aggiuntiva la ferma.
+	 * Chi scrive legge comunque lo stesso esito. Se sì, i posti si aggiungono al conteggio.
+	 */
+	private static function admit( string $email, int $seats ): bool {
+		if ( self::exempt() ) {
+			return true;
+		}
+		if ( self::queue_full() ) {
+			set_transient( 'asem_evq_dropped', (int) get_transient( 'asem_evq_dropped' ) + 1, 7 * DAY_IN_SECONDS );
+			return false;
+		}
+		$caps = array( Limits::get( 'event_seats_per_email' ), Limits::get( 'event_seats_per_ip' ) );
+		$keys = self::seat_keys( $email );
+		foreach ( $keys as $i => $key ) {
+			if ( (int) get_transient( $key ) + $seats > $caps[ $i ] ) {
+				return false; // (nessuna riga nel registro: un invio ripetuto lo riempirebbe)
+			}
+		}
+		/**
+		 * Verifica aggiuntiva (ad esempio un CAPTCHA) prima di registrare una richiesta: oggi non ne esiste nessuna. Restituire false scarta la richiesta.
+		 *
+		 * @param bool   $pass  vero se la richiesta può proseguire
+		 * @param string $email indirizzo email di chi chiede
+		 * @param int    $seats posti chiesti
+		 */
+		if ( ! apply_filters( 'asem_event_request_challenge', true, $email, $seats ) ) {
+			return false;
+		}
+		foreach ( $keys as $key ) {
+			set_transient( $key, (int) get_transient( $key ) + $seats, DAY_IN_SECONDS );
+		}
+		return true;
+	}
+
+	/** Avviso per la Bacheca quando la coda ha raggiunto il tetto (già escapato); vuoto se non serve. */
+	public static function queue_alert(): string {
+		if ( ! self::queue_full() ) {
+			return '';
+		}
+		$dropped = (int) get_transient( 'asem_evq_dropped' );
+		return '<strong>Le richieste di evento e di corso sono al limite.</strong> Ce ne sono ' . (int) self::open_count() . ' in attesa (il limite è ' . (int) Limits::get( 'event_requests_max' ) . ')'
+			. ( $dropped > 0 ? ' e ' . $dropped . ( 1 === $dropped ? ' nuova richiesta è stata scartata' : ' nuove richieste sono state scartate' ) . ' negli ultimi giorni' : '' )
+			. ': chi scrive vede comunque «Richiesta ricevuta». Approva o rifiuta quelle in attesa dalla scheda delle attività, oppure alza il limite da <a href="' . esc_url( admin_url( 'admin.php?page=asem-limits' ) ) . '">Limiti e soglie</a>.';
 	}
 
 	// ---------- Modulo ----------
@@ -255,9 +336,8 @@ final class EventRequests {
 			return $ok; // un solo flusso di email per indirizzo (impedisce di riempire una casella o di inviare due volte per un doppio clic)
 		}
 		set_transient( $ekey, (int) get_transient( $ekey ) + 1, HOUR_IN_SECONDS );
-		$open = (int) self::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE status IN ('new','approval')" );
-		if ( $open >= Limits::get( 'applications_max' ) ) {
-			return $ok;
+		if ( ! self::admit( $email, count( $people ) ) ) {
+			return $ok; // coda piena o troppi posti dallo stesso indirizzo o dalla stessa connessione: stessa risposta per tutti
 		}
 		$token = wp_generate_password( 32, false, false );
 		$now   = Db::now();
@@ -860,9 +940,8 @@ final class EventRequests {
 			return $ok; // un solo flusso di email per indirizzo
 		}
 		set_transient( $ekey, (int) get_transient( $ekey ) + 1, HOUR_IN_SECONDS );
-		$open = (int) self::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE status IN ('new','approval')" );
-		if ( $open >= Limits::get( 'applications_max' ) ) {
-			return $ok;
+		if ( ! self::admit( $email, 1 ) ) {
+			return $ok; // coda piena o troppi posti dallo stesso indirizzo o dalla stessa connessione: stessa risposta per tutti
 		}
 		$token = wp_generate_password( 32, false, false );
 		$now   = Db::now();
@@ -1035,6 +1114,7 @@ final class EventRequests {
 				Texts::mail( $r['email'], 'Posto liberato' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "Il pagamento non è arrivato entro il termine, quindi il posto è tornato libero.\n\nSe hai già pagato, scrivi subito alla segreteria. Se vuoi ancora partecipare, prenota di nuovo dalla pagina dell'evento (se ci sono posti) oppure scrivi alla segreteria." );
 			}
 		}
+		$db->query( $db->prepare( "DELETE FROM $t WHERE status = 'new' AND created_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::CONFIRM_H * HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati; le richieste mai confermate spariscono quando il link scade
 		$db->query( $db->prepare( "DELETE FROM $t WHERE updated_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::KEEP_DAYS * DAY_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
 	}
 
