@@ -21,7 +21,7 @@ final class BackupPage {
 		Ui::form_open( 'asem_backup', Ui::url( 'asem-backup' ) );
 		echo '<p><label>' . esc_html( Texts::t( 'La tua password di amministratore' ) ) . '<br><input type="password" name="password" class="regular-text" autocomplete="current-password" required></label><br><span class="description">' . esc_html( Texts::t( 'Per scaricare la copia scrivi la tua password.' ) ) . '</span></p>'
 			. '<p><button type="submit" name="files" value="0" class="button button-primary">Scarica la copia dei dati</button> '
-			. '<button type="submit" name="files" value="1" class="button">Scarica la copia con gli allegati (scontrini e fatture)</button></p>';
+			. '<button type="submit" name="files" value="1" class="button">Scarica la copia con gli allegati (scontrini, fatture e altri documenti)</button></p>';
 		Ui::form_close();
 		if ( FileKey::has_keys() ) {
 			echo '<p class="description">' . esc_html( FileCryptPanel::copy_note() ) . '</p>';

@@ -10695,8 +10695,31 @@ asem_ok( $acts->has_active_booking( $er_sid( $er_c ), (int) $er_el['id'] ), 'lim
 $people->create( array( 'type' => 'ordinary', 'first_name' => 'Gilda', 'last_name' => 'Socia', 'email' => 'gilda.socia.er@example.com', 'tax_code' => 'GLLPLA88H50L219H' ) );
 $er_in_m = array_merge( $er_in, array( 'first_name' => 'Gilda', 'last_name' => 'Socia', 'email' => 'gverdi.test@example.com', 'tax_code' => 'GLLPLA88H50L219H', 'birth_date' => '1988-06-10' ) );
 $er::create( $er_in_m, $acts->get( $er_a ), $er_o );
-$er_mc = $er::confirm( $er_get( 'gverdi.test@example.com' ) );
-asem_ok( ! $er_mc['ok'] && false !== strpos( $er_mc['message'], 'già socio' ), 'richiesta posto: chi è già socio è mandato al proprio accesso' );
+$er_mails_m  = count( $er_mails );
+$er_mc       = $er::confirm( $er_get( 'gverdi.test@example.com' ) );
+$er_mrow     = $wpdb->get_row( "SELECT * FROM $er_tbl WHERE email = 'gverdi.test@example.com'", ARRAY_A );
+$er_to_req   = '';
+$er_to_staff = '';
+foreach ( array_slice( $er_mails, $er_mails_m ) as $m ) {
+	$to = is_array( $m['to'] ) ? implode( ',', $m['to'] ) : (string) $m['to'];
+	if ( false !== strpos( $to, 'gverdi.test@example.com' ) ) {
+		$er_to_req .= $m['subject'] . ' ' . $m['message'];
+	} else {
+		$er_to_staff .= $m['subject'] . ' ' . $m['message'];
+	}
+}
+asem_ok( $er_mc['ok'] && $er::REVIEW === $er_mc['message'] && false === stripos( $er_mc['message'], 'socio' ) && 'approval' === $er_mrow['status'] && ! $acts->has_active_booking( $er_sid( $er_a ), (int) $wpdb->get_var( "SELECT id FROM $er_ppl WHERE tax_code = 'GLLPLA88H50L219H'" ) ), 'richiesta posto: con il codice fiscale di un socio chi scrive legge l\'esito neutro (la segreteria risponde) e non si prenota' );
+asem_ok( '' !== $er_to_req && false === stripos( $er_to_req, 'già socio' ) && false === stripos( $er_to_req, 'Gilda' ) && false !== stripos( $er_to_req, 'La segreteria la esamina' ), 'richiesta posto: l\'email a chi scrive non dice che il codice fiscale è di un socio' );
+asem_ok( false !== strpos( $er_to_staff, 'Gilda Socia' ) && false !== strpos( $er_to_staff, 'da verificare' ), 'richiesta posto: la segreteria riceve l\'avviso preciso con il nome del socio' );
+asem_ok( 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . \AssociazioneSemplice\Db::t( 'audit_log' ) . " WHERE action = 'event_request.member_tax_code' AND details LIKE '%Gilda Socia%'" ), 'richiesta posto: il registro riporta il nome del socio' );
+$er_mbox = $er::admin_box( $er_a, 'http://example.test/' );
+asem_ok( false !== strpos( $er_mbox, 'è quello del socio Gilda Socia' ) && false === strpos( $er_mbox, 'asem_event_request_approve' ) && false !== strpos( $er_mbox, 'asem_event_request_reject' ), 'richiesta posto: la scheda dell\'attività avverte del socio e non offre «Approva»' );
+$er_mmsg = (string) asem_throws( function () use ( $er, $er_mrow ) { $er::approve( (int) $er_mrow['id'] ); } );
+asem_ok( false !== strpos( $er_mmsg, 'Gilda Socia' ) && 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", (int) $er_mrow['id'] ) ), 'richiesta posto: approvare comunque lo dice alla segreteria e la richiesta resta in attesa' );
+$er_mails_r = count( $er_mails );
+$er::reject( (int) $er_mrow['id'] );
+$er_rej = (string) end( $er_mails )['message'];
+asem_ok( 'rejected' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", (int) $er_mrow['id'] ) ) && count( $er_mails ) > $er_mails_r && false === stripos( $er_rej, 'già socio' ) && false === stripos( $er_rej, 'Gilda' ), 'richiesta posto: il rifiuto della segreteria non nomina nessun socio' );
 // Scadenza del pagamento.
 $er_in_n = array_merge( $er_in, array( 'first_name' => 'Nora', 'last_name' => 'Pagamenti', 'email' => 'nora.pagamenti@example.com', 'tax_code' => 'NRIMRC92D15F205P', 'birth_date' => '1992-04-15' ) );
 $er::create( $er_in_n, $acts->get( $er_a ), $er_o );
@@ -10718,6 +10741,56 @@ asem_ok( $er_ap['ok'] && 1 === count( $er_aw ) && ! $acts->has_active_booking( $
 asem_ok( false !== strpos( $er::admin_box( $er_c, 'http://example.test/' ), 'asem_event_request_approve' ), 'approvazione: la scheda dell\'attività mostra la richiesta' );
 $er::approve( (int) $er_aw[0]['id'] );
 asem_ok( $acts->has_active_booking( $er_sid( $er_c ), (int) $er_nr['id'] ) && ! $er::awaiting( $er_c ), 'approvazione: approvata, la persona è prenotata' );
+// Conferma atomica: la presa della richiesta riesce a una sola chiamata; chi arriva dopo vede «già confermata» e non crea nulla.
+$er_claim = new \ReflectionMethod( $er, 'claim' );
+$er_claim->setAccessible( true );
+$er_e = $er_mk( 'Cena aperta E', 800 );
+wp_update_post( array( 'ID' => \AssociazioneSemplice\PublicEvents::post_of( $er_e ), 'post_status' => 'publish' ) );
+$er_eo = \AssociazioneSemplice\PublicEvents::options( $er_e );
+$er_in_p = array_merge( $er_in, array( 'session_id' => $er_sid( $er_e ), 'first_name' => 'Paolo', 'last_name' => 'Atomico', 'email' => 'paolo.atomico@example.com', 'tax_code' => 'VRDLGU75C10F205C', 'birth_date' => '1975-03-10' ) );
+$er::create( $er_in_p, $acts->get( $er_e ), $er_eo );
+$er_pp   = $er_get( 'paolo.atomico@example.com' );
+$er_pid  = (int) explode( '.', $er_pp )[0];
+asem_ok( '' !== $er_pp && true === $er_claim->invoke( null, $er_pid, array( 'new' ) ) && false === $er_claim->invoke( null, $er_pid, array( 'new' ) ) && false === $er_claim->invoke( null, $er_pid, array( 'new', 'approval' ) ), 'conferma atomica: la presa riesce una volta sola' );
+asem_ok( 'processing' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_pid ) ), 'conferma atomica: la richiesta presa è «in lavorazione»' );
+$er_dup = $er::confirm( $er_pp );
+asem_ok( $er_dup['ok'] && false !== strpos( $er_dup['message'], 'Hai già confermato' ) && 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $er_ppl WHERE tax_code = 'VRDLGU75C10F205C'" ) && ! $er::book_request( $er_pid )['ok'], 'conferma atomica: chi arriva dopo legge «già confermata» e non crea ospiti né prenotazioni' );
+$wpdb->update( $er_tbl, array( 'updated_at' => wp_date( 'Y-m-d H:i:s', time() - 3 * HOUR_IN_SECONDS ) ), array( 'id' => $er_pid ) );
+$er::run();
+asem_ok( 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_pid ) ), 'conferma atomica: una conferma interrotta torna alla segreteria dopo un\'ora' );
+$er::reject( $er_pid );
+// Ospite esistente: si riusa la scheda solo se nome, cognome (e data di nascita) coincidono; altrimenti la richiesta resta per la segreteria.
+$er_el_tax = 'BNCLRA85M41H501Z';
+$er_el_n   = static function () use ( $wpdb, $er_ppl, $er_el_tax ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $er_ppl WHERE tax_code = %s", $er_el_tax ) );
+};
+$er_book_as = function ( array $over, string $email ) use ( $er, $er_in, $er_e, $er_sid, $acts, $er_eo, $er_get, $er_el_tax ) {
+	$er::create( array_merge( $er_in, array( 'session_id' => $er_sid( $er_e ), 'tax_code' => $er_el_tax, 'email' => $email ), $over ), $acts->get( $er_e ), $er_eo );
+	return $er::confirm( $er_get( strtolower( $email ) ) );
+};
+$er_mails_before = count( $er_mails );
+$er_ix = $er_book_as( array( 'first_name' => 'Marta', 'last_name' => 'Altra' ), 'marta.altra@example.com' );
+asem_ok( $er_ix['ok'] && false !== strpos( $er_ix['message'], 'La segreteria esamina la richiesta' ) && 1 === $er_el_n() && ! $acts->has_active_booking( $er_sid( $er_e ), (int) $er_el['id'] ), 'ospite esistente: stesso codice fiscale ma altro nome, la scheda non si riusa e non si prenota' );
+$er_hold_id = (int) $wpdb->get_var( "SELECT id FROM $er_tbl WHERE email = 'marta.altra@example.com'" );
+$er_hmail   = '';
+foreach ( array_slice( $er_mails, $er_mails_before ) as $m ) {
+	$er_hmail .= ( is_array( $m['to'] ) ? implode( ',', $m['to'] ) : $m['to'] ) . '|' . $m['subject'] . '|' . $m['message'] . "\n";
+}
+asem_ok( 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_hold_id ) ) && false !== strpos( $er_hmail, 'da verificare' ) && 2 === substr_count( $er_hmail, 'marta.altra@example.com|' ) && false !== strpos( $er_hmail, 'marta.altra@example.com|Richiesta ricevuta' ), 'ospite esistente: la richiesta resta per la segreteria con un avviso, e a chi scrive arrivano solo il link e un avviso neutro' );
+$er_hw = $er::awaiting( $er_e );
+asem_ok( 1 === count( $er_hw ) && ! empty( $er_hw[0]['differs'] ) && false !== strpos( $er::admin_box( $er_e, 'http://example.test/' ), 'Attenzione: il codice fiscale è già in anagrafica' ), 'ospite esistente: la scheda dell\'attività avverte che i dati non coincidono' );
+$er::reject( $er_hold_id );
+$er_bd = $er_book_as( array( 'birth_date' => '1985-08-02' ), 'elena.nascita@example.com' );
+asem_ok( 1 === $er_el_n() && ! $acts->has_active_booking( $er_sid( $er_e ), (int) $er_el['id'] ) && 'approval' === $wpdb->get_var( "SELECT status FROM $er_tbl WHERE email = 'elena.nascita@example.com'" ), 'ospite esistente: data di nascita diversa, la richiesta resta per la segreteria' );
+$er::reject( (int) $wpdb->get_var( "SELECT id FROM $er_tbl WHERE email = 'elena.nascita@example.com'" ) );
+$er_ok2 = $er_book_as( array( 'first_name' => 'ELENA ', 'last_name' => ' ospiti' ), 'elena.stessa@example.com' );
+asem_ok( 1 === $er_el_n() && $acts->has_active_booking( $er_sid( $er_e ), (int) $er_el['id'] ), 'ospite esistente: stessi dati (maiuscole e spazi a parte), si riusa la scheda e si prenota' );
+// Una richiesta da verificare, approvata dalla segreteria, usa la scheda esistente.
+$wpdb->delete( \AssociazioneSemplice\Db::t( 'bookings' ), array( 'session_id' => $er_sid( $er_e ), 'person_id' => (int) $er_el['id'] ) );
+$er_book_as( array( 'first_name' => 'Marta', 'last_name' => 'Altra' ), 'marta.seconda@example.com' );
+$er_hid = (int) $wpdb->get_var( "SELECT id FROM $er_tbl WHERE email = 'marta.seconda@example.com'" );
+$er::approve( $er_hid );
+asem_ok( 1 === $er_el_n() && $acts->has_active_booking( $er_sid( $er_e ), (int) $er_el['id'] ) && 'booked' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_hid ) ), 'ospite esistente: approvata dalla segreteria, la prenotazione va sulla scheda esistente' );
 // Iscrizione a un corso dal sito: il socio chiede in un clic, il non socio dal modulo; approva la segreteria, si parte dal mese corrente.
 $er_course = $acts->create( array( 'name' => 'Corso di disegno', 'social_year' => $sy->label(), 'kind' => 'course', 'fee_cents' => 3000, 'guest_fee_cents' => 4000, 'lesson_weekday' => 4, 'lesson_start' => '18:00', 'lesson_end' => '19:00' ) );
 wp_update_post( array( 'ID' => \AssociazioneSemplice\PublicEvents::ensure( $er_course ), 'post_status' => 'publish' ) );
@@ -10748,6 +10821,21 @@ $wpdb->update( $er_tbl, array( 'deadline' => wp_date( 'Y-m-d H:i:s', time() - 72
 $er::run();
 asem_ok( ! in_array( $er_course, $acts->active_activity_ids( (int) $er_nr['id'] ), true ) && 'expired' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_crid ) ), 'iscrizione corso: senza ricevuta entro il termine l\'iscrizione del non socio è annullata' );
 asem_ok( in_array( $er_course, $acts->active_activity_ids( $er_gid ), true ), 'iscrizione corso: l\'iscrizione del socio non si tocca' );
+// Corso, codice fiscale di un socio: la segreteria vede il motivo, chi ha chiesto non riceve nulla che nomini un socio.
+$er_gm = array_merge( $er_in_n, array( 'first_name' => 'Gilda', 'last_name' => 'Socia', 'email' => 'gcorso.test@example.com', 'tax_code' => 'GLLPLA88H50L219H', 'birth_date' => '1988-06-10' ) );
+$er::course_create( $er_gm, $er_ca );
+$er_gm_n = count( $er_mails );
+$er_gmc  = $er::confirm( $er_get( 'gcorso.test@example.com' ) );
+$er_gmid = (int) $wpdb->get_var( "SELECT id FROM $er_tbl WHERE email = 'gcorso.test@example.com'" );
+$er_gmsg = (string) asem_throws( function () use ( $er, $er_gmid ) { $er::approve( $er_gmid ); } );
+$er_gmail = '';
+foreach ( array_slice( $er_mails, $er_gm_n ) as $m ) {
+	if ( false !== strpos( is_array( $m['to'] ) ? implode( ',', $m['to'] ) : (string) $m['to'], 'gcorso.test@example.com' ) ) {
+		$er_gmail .= $m['message'];
+	}
+}
+asem_ok( $er_gmc['ok'] && 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_gmid ) ) && false !== strpos( $er_gmsg, 'Gilda Socia' ) && '' === $er_gmail, 'iscrizione corso: con il codice fiscale di un socio la richiesta resta in attesa, la segreteria legge il motivo e a chi ha chiesto non scrive nessuno' );
+$er::reject( $er_gmid );
 // Richiesta di partecipazione di un socio (evento con approvazione): in ordine di arrivo, decide la segreteria.
 $er_gid = (int) $wpdb->get_var( "SELECT id FROM $er_ppl WHERE tax_code = 'GLLPLA88H50L219H'" );
 asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_a, $er_gid ) { $er::member_request( $er_sid( $er_a ), $er_gid ); } ), 'richiesta socio: un evento senza approvazione si prenota direttamente' );
@@ -10787,8 +10875,82 @@ asem_ok( $acts->has_active_booking( $er_sid( $er_c ), $er_gid ) && ! $er::pendin
 $wpdb->update( $er_tbl, array( 'updated_at' => wp_date( 'Y-m-d H:i:s', time() - 40 * DAY_IN_SECONDS ) ), array( 'id' => $er_rid ) );
 $er::run();
 asem_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $er_tbl WHERE id = %d", $er_rid ) ), 'privacy: le richieste di oltre 30 giorni si cancellano' );
+// Tetti: coda separata dalle domande di adesione, richieste mai confermate che scadono, posti per email e per connessione, segreteria libera.
+wp_set_current_user( 0 );
+$er_remote = $_SERVER['REMOTE_ADDR'] ?? null;
+$_SERVER['REMOTE_ADDR'] = '203.0.113.77'; // da riga di comando non c'è: serve per il conteggio per connessione
+$er_ip     = \AssociazioneSemplice\ClientIp::get();
+$er_keyem  = static function ( string $e ): string {
+	return 'asem_evq_se_' . md5( strtolower( $e ) );
+};
+$er_keyip  = 'asem_evq_si_' . md5( $er_ip );
+$er_cnt    = static function ( string $e ) use ( $wpdb, $er_tbl ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $er_tbl WHERE email = %s", $e ) );
+};
+$er_reset  = static function () use ( $er_keyip ) {
+	delete_transient( $er_keyip );
+	delete_transient( 'asem_evq_dropped' );
+};
+$er_r      = array_merge( $er_in, array( 'tax_code' => 'NRIMRC92D15F205P', 'first_name' => 'Nora', 'last_name' => 'Pagamenti', 'birth_date' => '1992-04-15' ) );
+$er_reset();
+Settings::update( array( 'limits' => array( 'event_seats_per_email' => 10, 'event_seats_per_ip' => 500, 'event_requests_max' => 5000 ) ) );
+set_transient( $er_keyem( 'tetto.email@example.com' ), 9, DAY_IN_SECONDS );
+$er_t1 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
+$er_t2 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 'ok' === $er_t1['status'] && 'ok' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore, e la risposta è sempre la stessa' );
+$er_reset();
+Settings::update( array( 'limits' => array( 'event_seats_per_email' => 200, 'event_seats_per_ip' => 10, 'event_requests_max' => 5000 ) ) );
+set_transient( $er_keyip, 10, DAY_IN_SECONDS );
+$er_t3 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.ip1@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 'ok' === $er_t3['status'] && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse' );
+wp_set_current_user( 1 );
+$er::create( array_merge( $er_r, array( 'email' => 'tetto.segreteria@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 1 === $er_cnt( 'tetto.segreteria@example.com' ), 'tetto posti: la segreteria non è mai limitata' );
+wp_set_current_user( 0 );
+$er_reset();
+$er::create( array_merge( $er_r, array( 'email' => 'tetto.ok@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 1 === $er_cnt( 'tetto.ok@example.com' ) && 1 === (int) get_transient( $er_keyip ) && 1 === (int) get_transient( $er_keyem( 'tetto.ok@example.com' ) ), 'tetto posti: una richiesta normale passa e i suoi posti si contano' );
+add_filter( 'asem_event_request_challenge', '__return_false' );
+$er::create( array_merge( $er_r, array( 'email' => 'tetto.verifica@example.com' ) ), $acts->get( $er_a ), $er_o );
+remove_filter( 'asem_event_request_challenge', '__return_false' );
+asem_ok( 0 === $er_cnt( 'tetto.verifica@example.com' ), 'tetto posti: una verifica aggiuntiva (agganciata al filtro) può fermare la richiesta' );
+// Coda: conta solo ciò che aspetta la segreteria e le richieste da confermare ancora valide; separata dalle domande di adesione.
+$er_reset();
+$er_before = $er::open_count();
+Settings::update( array( 'limits' => array( 'event_requests_max' => 10, 'event_seats_per_email' => 200, 'event_seats_per_ip' => 500 ) ) );
+$er_fake = function ( string $status, int $age_h, string $email ) use ( $wpdb, $er_tbl, $er_a, $er_sid ) {
+	$wpdb->insert( $er_tbl, array( 'activity_id' => $er_a, 'session_id' => $er_sid( $er_a ), 'seats' => 1, 'status' => $status, 'token_hash' => hash( 'sha256', $email ), 'email' => $email, 'created_at' => wp_date( 'Y-m-d H:i:s', time() - $age_h * HOUR_IN_SECONDS ), 'updated_at' => \AssociazioneSemplice\Db::now() ) );
+};
+for ( $i = 0; $i < 12; $i++ ) {
+	$er_fake( 'new', 48, "vecchia$i@example.com" );
+}
+asem_ok( $er::open_count() === $er_before && ! $er::queue_full() && '' === $er::queue_alert(), 'coda: le richieste mai confermate e già scadute non contano contro il tetto' );
+$er::run();
+asem_ok( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $er_tbl WHERE email LIKE 'vecchia%@example.com'" ), 'coda: le richieste mai confermate si cancellano alla scadenza del link' );
+$er_fake( 'new', 2, 'recente@example.com' );
+asem_ok( $er::open_count() === $er_before + 1 && 1 === $er_cnt( 'recente@example.com' ), 'coda: una richiesta da confermare ancora valida conta' );
+$er::run();
+asem_ok( 1 === $er_cnt( 'recente@example.com' ), 'coda: la scadenza non tocca le richieste ancora valide' );
+for ( $i = 0; $i < 10; $i++ ) {
+	$er_fake( 'approval', 1, "attesa$i@example.com" );
+}
+asem_ok( $er::queue_full() && false !== strpos( $er::queue_alert(), 'al limite' ), 'coda: al tetto compare l\'avviso per la segreteria' );
+$er::create( array_merge( $er_r, array( 'email' => 'coda.piena@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 0 === $er_cnt( 'coda.piena@example.com' ) && (int) get_transient( 'asem_evq_dropped' ) >= 1 && false !== strpos( $er::queue_alert(), 'scartat' ), 'coda: al tetto la nuova richiesta è scartata (la risposta resta quella di sempre) e l\'avviso lo dice' );
+asem_ok( 'ok' === $er::course_create( array_merge( $er_r, array( 'email' => 'coda.corso@example.com' ) ), $er_ca )['status'] && 0 === $er_cnt( 'coda.corso@example.com' ), 'coda: lo stesso tetto vale per le richieste di iscrizione a un corso' );
+wp_set_current_user( 1 );
+$er::create( array_merge( $er_r, array( 'email' => 'coda.segreteria@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 1 === $er_cnt( 'coda.segreteria@example.com' ), 'coda: la segreteria non è limitata nemmeno a coda piena' );
+$wpdb->query( "DELETE FROM $er_tbl WHERE email LIKE 'attesa%@example.com' OR email LIKE 'tetto.%@example.com' OR email LIKE 'coda.%@example.com' OR email = 'recente@example.com'" );
+$er_reset();
+Settings::update( array( 'limits' => array() ) );
+if ( null === $er_remote ) {
+	unset( $_SERVER['REMOTE_ADDR'] );
+} else {
+	$_SERVER['REMOTE_ADDR'] = $er_remote;
+}
 // Modulo nella pagina.
-$er_form = \AssociazioneSemplice\Frontend\Views::event_booking( (array) $acts->get( $er_a ) );
+$er_form =\AssociazioneSemplice\Frontend\Views::event_booking( (array) $acts->get( $er_a ) );
 asem_ok( false !== strpos( $er_form, 'asem_evreq_go' ) && false !== strpos( $er_form, 'name="tax_code"' ) && false !== strpos( $er_form, 'name="website"' ), 'pagina evento: il modulo «Non sei socio?» ha i dati e il campo esca' );
 update_post_meta( \AssociazioneSemplice\PublicEvents::post_of( $er_a ), '_asem_ev_guests', '0' );
 asem_ok( false === strpos( \AssociazioneSemplice\Frontend\Views::event_booking( (array) $acts->get( $er_a ) ), 'asem_evreq_go' ), 'pagina evento: senza l\'opzione ospiti il modulo non compare' );

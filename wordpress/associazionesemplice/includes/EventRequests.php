@@ -17,7 +17,9 @@ defined( 'ABSPATH' ) || exit;
  *
  * Minori: prenota sempre un adulto (il tutore), che dichiara di rispondere dei minori indicati come accompagnati; un minorenne da solo non prenota.
  * Gli ospiti che hanno già raggiunto il limite di partecipazioni devono iscriversi, salvo che l'evento costi di più agli ospiti che ai soci.
- * La risposta del modulo è sempre la stessa: non si scopre chi è già socio. Le richieste non confermate o non approvate si cancellano dopo 30 giorni.
+ * La risposta del modulo è sempre la stessa: non si scopre chi è già socio. Le richieste mai confermate si cancellano quando il link scade (24 ore); quelle non approvate dopo 30 giorni.
+ * Tetti: la coda ha un limite proprio (separato dalle domande di adesione) e i posti chiesti da una stessa email o connessione in 24 ore sono limitati; la segreteria non è mai limitata.
+ * I posti di un evento gratuito prenotato dal sito non scadono da soli (non c'è nulla da pagare): li protegge il tetto dei posti.
  */
 final class EventRequests {
 
@@ -27,6 +29,13 @@ final class EventRequests {
 	const CONFIRM_H = 24;
 	const MAX_SEATS = 10;
 	const MESSAGE   = 'Richiesta ricevuta. Ti abbiamo scritto un\'email: apri il link che contiene entro 24 ore per confermare l\'indirizzo (controlla anche la posta indesiderata).';
+	const ALREADY   = 'Hai già confermato questa richiesta: ti abbiamo scritto un\'email con le informazioni.';
+	/** Esito di una richiesta che la segreteria deve esaminare: lo stesso per qualunque motivo (approvazione prevista, dati da verificare, codice fiscale già in anagrafica). */
+	const REVIEW    = 'Email confermata. La segreteria esamina la richiesta e ti scrive appena è approvata.';
+	/** Stato transitorio: la richiesta è in lavorazione (presa atomica); chi non la ottiene non fa nulla. */
+	const WORKING   = 'processing';
+	/** Dopo quanto una richiesta rimasta «in lavorazione» (lavoro interrotto) torna alla segreteria. */
+	const STUCK_H   = 1;
 
 	/** Esito dell'invio già elaborato nella richiesta in corso (il testo della pagina può passare più volte dal filtro). */
 	private static $handled = null;
@@ -69,6 +78,85 @@ final class EventRequests {
 		}
 		$taken = (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = %d AND status = 'booked'", (int) $s['id'] ) );
 		return max( 0, (int) $s['capacity'] - $taken );
+	}
+
+	// ---------- Tetti ----------
+
+	/** La segreteria (chi ha poteri oltre a quelli di un socio) non è mai limitata dai tetti delle richieste pubbliche. */
+	private static function exempt(): bool {
+		return is_user_logged_in() && Access::has_powers( get_current_user_id() );
+	}
+
+	/**
+	 * Richieste che contano contro il tetto: quelle in attesa della segreteria e quelle da confermare per email, queste solo finché il link vale
+	 * (poi si cancellano). Il tetto è proprio delle richieste di evento e corso, separato da quello delle domande di adesione.
+	 */
+	public static function open_count(): int {
+		return (int) self::db()->get_var(
+			self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE status = 'approval' OR ( status = 'new' AND created_at > %s )", wp_date( 'Y-m-d H:i:s', time() - self::CONFIRM_H * HOUR_IN_SECONDS ) ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna, valori preparati
+		);
+	}
+
+	/** La coda ha raggiunto il tetto? */
+	public static function queue_full(): bool {
+		return self::open_count() >= Limits::get( 'event_requests_max' );
+	}
+
+	/** @return string[] chiavi del conteggio dei posti chiesti: indirizzo email e connessione */
+	private static function seat_keys( string $email ): array {
+		$keys = array( 'asem_evq_se_' . md5( strtolower( $email ) ) );
+		$ip   = ClientIp::get();
+		if ( '' !== $ip ) {
+			$keys[] = 'asem_evq_si_' . md5( $ip );
+		}
+		return $keys;
+	}
+
+	/**
+	 * Una nuova richiesta può essere registrata? No se la coda è piena (la segreteria lo vede in Bacheca), se lo stesso indirizzo email o la stessa
+	 * connessione ha già chiesto troppi posti nelle ultime 24 ore (posti tenuti senza pagare), o se una verifica aggiuntiva la ferma.
+	 * Chi scrive legge comunque lo stesso esito. Se sì, i posti si aggiungono al conteggio.
+	 */
+	private static function admit( string $email, int $seats ): bool {
+		if ( self::exempt() ) {
+			return true;
+		}
+		if ( self::queue_full() ) {
+			set_transient( 'asem_evq_dropped', (int) get_transient( 'asem_evq_dropped' ) + 1, 7 * DAY_IN_SECONDS );
+			return false;
+		}
+		$caps = array( Limits::get( 'event_seats_per_email' ), Limits::get( 'event_seats_per_ip' ) );
+		$keys = self::seat_keys( $email );
+		foreach ( $keys as $i => $key ) {
+			if ( (int) get_transient( $key ) + $seats > $caps[ $i ] ) {
+				return false; // (nessuna riga nel registro: un invio ripetuto lo riempirebbe)
+			}
+		}
+		/**
+		 * Verifica aggiuntiva (ad esempio un CAPTCHA) prima di registrare una richiesta: oggi non ne esiste nessuna. Restituire false scarta la richiesta.
+		 *
+		 * @param bool   $pass  vero se la richiesta può proseguire
+		 * @param string $email indirizzo email di chi chiede
+		 * @param int    $seats posti chiesti
+		 */
+		if ( ! apply_filters( 'asem_event_request_challenge', true, $email, $seats ) ) {
+			return false;
+		}
+		foreach ( $keys as $key ) {
+			set_transient( $key, (int) get_transient( $key ) + $seats, DAY_IN_SECONDS );
+		}
+		return true;
+	}
+
+	/** Avviso per la Bacheca quando la coda ha raggiunto il tetto (già escapato); vuoto se non serve. */
+	public static function queue_alert(): string {
+		if ( ! self::queue_full() ) {
+			return '';
+		}
+		$dropped = (int) get_transient( 'asem_evq_dropped' );
+		return '<strong>Le richieste di evento e di corso sono al limite.</strong> Ce ne sono ' . (int) self::open_count() . ' in attesa (il limite è ' . (int) Limits::get( 'event_requests_max' ) . ')'
+			. ( $dropped > 0 ? ' e ' . $dropped . ( 1 === $dropped ? ' nuova richiesta è stata scartata' : ' nuove richieste sono state scartate' ) . ' negli ultimi giorni' : '' )
+			. ': chi scrive vede comunque «Richiesta ricevuta». Approva o rifiuta quelle in attesa dalla scheda delle attività, oppure alza il limite da <a href="' . esc_url( admin_url( 'admin.php?page=asem-limits' ) ) . '">Limiti e soglie</a>.';
 	}
 
 	// ---------- Modulo ----------
@@ -248,9 +336,8 @@ final class EventRequests {
 			return $ok; // un solo flusso di email per indirizzo (impedisce di riempire una casella o di inviare due volte per un doppio clic)
 		}
 		set_transient( $ekey, (int) get_transient( $ekey ) + 1, HOUR_IN_SECONDS );
-		$open = (int) self::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE status IN ('new','approval')" );
-		if ( $open >= Limits::get( 'applications_max' ) ) {
-			return $ok;
+		if ( ! self::admit( $email, count( $people ) ) ) {
+			return $ok; // coda piena o troppi posti dallo stesso indirizzo o dalla stessa connessione: stessa risposta per tutti
 		}
 		$token = wp_generate_password( 32, false, false );
 		$now   = Db::now();
@@ -393,7 +480,7 @@ final class EventRequests {
 			return array( 'error' => 'Il link non è valido o la richiesta è stata annullata.', 'ok' => false );
 		}
 		if ( 'new' !== $row['status'] ) {
-			return array( 'error' => 'Hai già confermato questa richiesta: ti abbiamo scritto un\'email con le informazioni.', 'ok' => true );
+			return array( 'error' => self::ALREADY, 'ok' => true );
 		}
 		if ( ( new \DateTimeImmutable( (string) $row['created_at'], wp_timezone() ) )->getTimestamp() < time() - self::CONFIRM_H * HOUR_IN_SECONDS ) {
 			return array( 'error' => 'Il link è scaduto: invia di nuovo la richiesta dalla pagina dell\'evento.', 'ok' => false );
@@ -407,9 +494,13 @@ final class EventRequests {
 		if ( isset( $row['error'] ) ) {
 			return array( 'ok' => $row['ok'], 'message' => $row['error'] );
 		}
-		$a =Plugin::activities()->get( (int) $row['activity_id'] );
+		$a = Plugin::activities()->get( (int) $row['activity_id'] );
 		if ( ! $a ) {
 			return array( 'ok' => false, 'message' => 'L\'evento non esiste più.' );
+		}
+		// Presa atomica: con due conferme insieme (doppio clic, più schede aperte) una sola va avanti, l'altra legge l'esito «già confermata».
+		if ( ! self::claim( (int) $row['id'], array( 'new' ) ) ) {
+			return array( 'ok' => true, 'message' => self::ALREADY );
 		}
 		if ( ActivityKind::COURSE === $a['kind'] ) { // l'iscrizione a un corso la approva sempre la segreteria
 			self::set( (int) $row['id'], array( 'status' => 'approval' ) );
@@ -427,12 +518,25 @@ final class EventRequests {
 				'Richiesta di partecipazione da approvare: ' . $a['name'] . self::assoc_suffix(),
 				'È arrivata una richiesta di partecipazione a «' . $a['name'] . '» (' . (int) $row['seats'] . ' posti).' . "\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
 			);
-			return array( 'ok' => true, 'message' => 'Email confermata. La segreteria esamina la richiesta e ti scrive appena è approvata.' );
+			return array( 'ok' => true, 'message' => self::REVIEW );
 		}
-		return self::book_request( (int) $row['id'] );
+		return self::process( self::row( (int) $row['id'] ) ?: $row, 'new', false );
 	}
 
 	// ---------- Prenotazione ----------
+
+	/**
+	 * Presa atomica di una richiesta: passa a «in lavorazione» solo se è ancora in uno degli stati indicati.
+	 * Vera per una sola chiamata alla volta: chi perde non deve fare nulla (niente ospiti o prenotazioni doppi).
+	 *
+	 * @param string[] $from stati di partenza ammessi (new, approval)
+	 */
+	private static function claim( int $id, array $from ): bool {
+		$db = self::db();
+		$in = implode( ',', array_fill( 0, count( $from ), '%s' ) );
+		$n  = $db->query( $db->prepare( 'UPDATE ' . Db::t( 'event_requests' ) . " SET status = %s, updated_at = %s WHERE id = %d AND status IN ($in)", array_merge( array( self::WORKING, Db::now(), $id ), $from ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- segnaposto costruiti qui, valori preparati
+		return 1 === (int) $n;
+	}
 
 	private static function row( int $id ): ?array {
 		$r = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'event_requests' ) . ' WHERE id = %d', $id ), ARRAY_A );
@@ -513,7 +617,7 @@ final class EventRequests {
 	}
 
 	/** Prenota un socio la cui richiesta è stata approvata (contributo e blocco posti come per ogni prenotazione). */
-	private static function book_member( array $row ): array {
+	private static function book_member( array $row, string $prev ): array {
 		$svc = Plugin::activities();
 		$a   = $svc->get( (int) $row['activity_id'] );
 		$s   = $svc->session( (int) $row['session_id'] );
@@ -523,7 +627,8 @@ final class EventRequests {
 		try {
 			$svc->book( (int) $s['id'], (int) $row['person_id'], array( 'approved' => true ) );
 		} catch ( \InvalidArgumentException $e ) {
-			return array( 'ok' => false, 'message' => 'Non è stato possibile prenotare: ' . $e->getMessage() ); // la richiesta resta in attesa
+			self::set( (int) $row['id'], array( 'status' => $prev ) ); // la richiesta resta in attesa
+			return array( 'ok' => false, 'message' => 'Non è stato possibile prenotare: ' . $e->getMessage() );
 		}
 		self::set( (int) $row['id'], array( 'status' => 'booked', 'data' => null ) );
 		$to = self::recipient( $row );
@@ -540,14 +645,26 @@ final class EventRequests {
 	 */
 	public static function book_request( int $id ): array {
 		$row = self::row( $id );
-		if ( ! $row || ! in_array( $row['status'], array( 'new', 'approval' ), true ) ) {
+		if ( ! $row || ! in_array( $row['status'], array( 'new', 'approval' ), true ) || ! self::claim( $id, array( 'new', 'approval' ) ) ) {
 			return array( 'ok' => false, 'message' => 'Richiesta non trovata o già lavorata.' );
 		}
+		return self::process( $row, (string) $row['status'], 'approval' === $row['status'] ); // approvata dalla segreteria: vale anche per i casi da verificare
+	}
+
+	/**
+	 * Lavora una richiesta già presa (stato «in lavorazione»). Se non si può concludere e deve restare in attesa, torna a $prev.
+	 *
+	 * @param string $prev     stato di partenza (new o approval)
+	 * @param bool   $reviewed la segreteria ha già esaminato la richiesta (può riusare una scheda con dati diversi)
+	 * @return array{ok:bool,message:string}
+	 */
+	private static function process( array $row, string $prev, bool $reviewed ): array {
+		$id = (int) $row['id'];
 		if ( 0 === (int) $row['session_id'] ) { // richiesta di iscrizione a un corso (nessuna data)
-			return self::enroll_request( $row );
+			return self::enroll_request( $row, $prev ); // l'approvazione della segreteria c'è sempre (la scheda mostra se i dati non coincidono con quelli in anagrafica)
 		}
 		if ( ! empty( $row['person_id'] ) ) {
-			return self::book_member( $row );
+			return self::book_member( $row, $prev );
 		}
 		$data = json_decode( (string) $row['data'], true );
 		$list = is_array( $data ) && ! empty( $data['people'] ) ? $data['people'] : array();
@@ -564,15 +681,22 @@ final class EventRequests {
 		// Chi è già socio prenota dal proprio accesso; chi ha raggiunto il limite di partecipazioni da ospite deve iscriversi (salvo contributo maggiore per gli ospiti).
 		$existing = array();
 		$counts   = array();
+		$differs  = array();
 		foreach ( $list as $i => $p ) {
 			$found = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s LIMIT 1', $p['tax_code'] ), ARRAY_A );
 			if ( $found && MemberType::GUEST !== $found['type'] ) {
-				return self::fail( $row, 'rejected', "Tra le persone indicate c'è chi risulta già socio: i soci prenotano dal proprio accesso al sito (area soci). Per qualsiasi dubbio scrivi alla segreteria." );
+				return self::member_tax_code( $row, $a, $found, $prev, $reviewed );
+			}
+			if ( $found && ! $reviewed && ! EventRequestRules::same_person( $found, $p ) ) {
+				$differs[] = trim( $found['first_name'] . ' ' . $found['last_name'] );
 			}
 			$existing[ $i ] = $found ?: null;
 			if ( $found ) {
 				$counts[ $i ] = $svc->participation_counts( array( (int) $found['id'] ) )[ (int) $found['id'] ] ?? 0;
 			}
+		}
+		if ( $differs ) {
+			return self::hold_for_office( $row, $a, $differs );
 		}
 		$limit = $svc->guest_limit();
 		if ( $limit > 0 && self::must_join( $a ) ) {
@@ -609,6 +733,63 @@ final class EventRequests {
 		$text .= 'Per disdire scrivi alla segreteria (' . Applications::notify_email() . ').';
 		Texts::mail( $row['email'], 'Prenotazione: ' . $a['name'] . self::assoc_suffix(), $text );
 		return array( 'ok' => true, 'message' => $fee > 0 ? 'Prenotazione registrata. Ti abbiamo scritto come pagare con bonifico istantaneo: manda la ricevuta del bonifico alla segreteria entro ' . self::pay_hours() . ' ore, altrimenti il posto torna libero.' : 'Prenotazione confermata: ti abbiamo scritto un\'email di riepilogo.' );
+	}
+
+	/**
+	 * Il codice fiscale è quello di un ospite già in anagrafica ma nome, cognome o data di nascita non coincidono: la scheda esistente non si riusa
+	 * e la richiesta resta per la segreteria. Chi scrive legge lo stesso testo di una richiesta che aspetta l'approvazione.
+	 *
+	 * Effetto sui pagamenti, se la segreteria approva (si usa la scheda esistente): la prenotazione si aggiunge a quella scheda e il contributo dovuto
+	 * segue le sue regole; se la scheda ha un socio ospitante, resta a lui (o a chi gestisce la scheda) la corrispondenza di ricevute e promemoria.
+	 * Nessun pagamento viene spostato o modificato da questa funzione.
+	 *
+	 * @param string[] $names nomi delle schede esistenti con dati diversi
+	 * @return array{ok:bool,message:string}
+	 */
+	private static function hold_for_office( array $row, array $activity, array $names ): array {
+		self::set( (int) $row['id'], array( 'status' => 'approval' ) );
+		Audit::log( 'event_request.held', 'activity', (int) $activity['id'], array( 'seats' => (int) $row['seats'] ) ); // niente dati personali nel registro
+		self::review_notice( $row, $activity );
+		Texts::mail(
+			self::staff_recipients( (int) $activity['id'] ),
+			'Richiesta di partecipazione da verificare: ' . $activity['name'] . self::assoc_suffix(),
+			'È arrivata una richiesta di partecipazione a «' . $activity['name'] . '» (' . (int) $row['seats'] . " posti) con un codice fiscale già presente in anagrafica ma con nome, cognome o data di nascita diversi dalla scheda esistente (" . implode( ', ', $names ) . ").\n\nNon è stata prenotata. Se i dati sono della stessa persona approvala (si userà la scheda esistente), altrimenti rifiutala: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $activity['id'] )
+		);
+		return array( 'ok' => true, 'message' => self::REVIEW );
+	}
+
+	/** A chi ha chiesto: la richiesta è confermata e la segreteria risponde (lo stesso testo per qualunque motivo, senza dettagli). */
+	private static function review_notice( array $row, array $activity ): void {
+		$to = self::recipient( $row );
+		if ( '' !== $to ) {
+			Texts::mail( $to, 'Richiesta ricevuta: ' . $activity['name'] . self::assoc_suffix(), 'Abbiamo confermato la tua richiesta per «' . $activity['name'] . "». La segreteria la esamina e ti scrive appena è approvata.\n\nPer qualsiasi dubbio scrivi alla segreteria (" . Applications::notify_email() . ').' );
+		}
+	}
+
+	/**
+	 * Il codice fiscale indicato è quello di un socio: chi ha chiesto non viene a saperlo (stesso esito di una richiesta da esaminare, nessun
+	 * messaggio che lo dica) e la richiesta non si prenota come ospite. La segreteria riceve l'avviso preciso con il nome del socio (email, scheda
+	 * dell'attività, registro). Se è la segreteria stessa ad approvare, la richiesta resta in attesa e legge il motivo.
+	 *
+	 * @param array  $member scheda del socio con quel codice fiscale
+	 * @param string $prev   stato di partenza (new o approval)
+	 * @return array{ok:bool,message:string}
+	 */
+	private static function member_tax_code( array $row, array $activity, array $member, string $prev, bool $reviewed ): array {
+		$name = trim( $member['first_name'] . ' ' . $member['last_name'] );
+		if ( $reviewed ) {
+			self::set( (int) $row['id'], array( 'status' => $prev ) );
+			return array( 'ok' => false, 'message' => 'Il codice fiscale indicato è quello del socio ' . $name . ': non si può prenotare come ospite. Rifiuta la richiesta, oppure prenota il socio dalla sua area.' );
+		}
+		self::set( (int) $row['id'], array( 'status' => 'approval' ) );
+		Audit::log( 'event_request.member_tax_code', 'activity', (int) $activity['id'], array( 'person_id' => (int) $member['id'], 'name' => $name ) );
+		Texts::mail(
+			self::staff_recipients( (int) $activity['id'] ),
+			'Richiesta di partecipazione da verificare: ' . $activity['name'] . self::assoc_suffix(),
+			'È arrivata una richiesta di partecipazione a «' . $activity['name'] . '» (' . (int) $row['seats'] . ' posti) con il codice fiscale del socio ' . $name . ".\n\nNon è stata prenotata e a chi l'ha inviata non è stato detto il motivo. Rifiutala, oppure contatta il socio: i soci prenotano dalla propria area. " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $activity['id'] )
+		);
+		self::review_notice( $row, $activity );
+		return array( 'ok' => true, 'message' => self::REVIEW );
 	}
 
 	/** Registra un ospite senza socio ospitante (la prenotazione online non lo richiede). */
@@ -759,9 +940,8 @@ final class EventRequests {
 			return $ok; // un solo flusso di email per indirizzo
 		}
 		set_transient( $ekey, (int) get_transient( $ekey ) + 1, HOUR_IN_SECONDS );
-		$open = (int) self::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE status IN ('new','approval')" );
-		if ( $open >= Limits::get( 'applications_max' ) ) {
-			return $ok;
+		if ( ! self::admit( $email, 1 ) ) {
+			return $ok; // coda piena o troppi posti dallo stesso indirizzo o dalla stessa connessione: stessa risposta per tutti
 		}
 		$token = wp_generate_password( 32, false, false );
 		$now   = Db::now();
@@ -800,7 +980,7 @@ final class EventRequests {
 	 *
 	 * @return array{ok:bool,message:string}
 	 */
-	private static function enroll_request( array $row ): array {
+	private static function enroll_request( array $row, string $prev ): array {
 		$svc   = Plugin::activities();
 		$a     = $svc->get( (int) $row['activity_id'] );
 		$month = self::course_month();
@@ -811,7 +991,8 @@ final class EventRequests {
 			try {
 				$svc->enroll( (int) $a['id'], (int) $row['person_id'], $month );
 			} catch ( \InvalidArgumentException $e ) {
-				return array( 'ok' => false, 'message' => 'Non è stato possibile iscrivere: ' . $e->getMessage() ); // la richiesta resta in attesa
+				self::set( (int) $row['id'], array( 'status' => $prev ) ); // la richiesta resta in attesa
+				return array( 'ok' => false, 'message' => 'Non è stato possibile iscrivere: ' . $e->getMessage() );
 			}
 			self::set( (int) $row['id'], array( 'status' => 'booked', 'data' => null ) );
 			$to = self::recipient( $row );
@@ -827,7 +1008,7 @@ final class EventRequests {
 		}
 		$found = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s LIMIT 1', $p['tax_code'] ), ARRAY_A );
 		if ( $found && MemberType::GUEST !== $found['type'] ) {
-			return self::fail( $row, 'rejected', "Risulti già socio: i soci chiedono l'iscrizione al corso dal proprio accesso al sito (area soci). Per qualsiasi dubbio scrivi alla segreteria." );
+			return self::member_tax_code( $row, $a, $found, $prev, true ); // approva la segreteria: la richiesta resta in attesa e lei legge il perché
 		}
 		try {
 			$pid = $found ? (int) $found['id'] : self::new_guest( $p, ! empty( $data['image_ok'] ), (string) $row['email'] );
@@ -861,8 +1042,16 @@ final class EventRequests {
 				$mp           = Plugin::people()->get( (int) $r['person_id'] );
 				$r['names'][] = $mp ? trim( $mp['first_name'] . ' ' . $mp['last_name'] ) . ' (socio)' : 'Socio';
 			}
+			$r['differs'] = array(); // schede esistenti con lo stesso codice fiscale ma altri dati: approvando si userebbe quella scheda
+			$r['members'] = array(); // soci con lo stesso codice fiscale: non si può prenotare come ospite
 			foreach ( is_array( $d ) && ! empty( $d['people'] ) ? $d['people'] : array() as $p ) {
 				$r['names'][] = trim( $p['first_name'] . ' ' . $p['last_name'] );
+				$card         = self::db()->get_row( self::db()->prepare( 'SELECT first_name, last_name, birth_date, type FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s LIMIT 1', (string) ( $p['tax_code'] ?? '' ) ), ARRAY_A );
+				if ( $card && MemberType::GUEST !== $card['type'] ) {
+					$r['members'][] = trim( $card['first_name'] . ' ' . $card['last_name'] );
+				} elseif ( $card && ! EventRequestRules::same_person( $card, $p ) ) {
+					$r['differs'][] = trim( $card['first_name'] . ' ' . $card['last_name'] );
+				}
 			}
 		}
 		unset( $r );
@@ -894,6 +1083,8 @@ final class EventRequests {
 		$db  = self::db();
 		$t   = Db::t( 'event_requests' );
 		$svc = Plugin::activities();
+		// Una conferma interrotta a metà (richiesta rimasta «in lavorazione») torna alla segreteria, che la esamina a mano.
+		$db->query( $db->prepare( "UPDATE $t SET status = 'approval' WHERE status = %s AND updated_at < %s", self::WORKING, wp_date( 'Y-m-d H:i:s', time() - self::STUCK_H * HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
 		foreach ( $db->get_results( $db->prepare( "SELECT * FROM $t WHERE status = 'booked' AND deadline IS NOT NULL AND deadline <= %s", Db::now() ), ARRAY_A ) ?: array() as $r ) {
 			$d    = json_decode( (string) $r['data'], true );
 			if ( is_array( $d ) && ! empty( $d['enrollments'] ) ) { // iscrizione a un corso: se il contributo non è arrivato entro il termine l'iscrizione si annulla
@@ -923,6 +1114,7 @@ final class EventRequests {
 				Texts::mail( $r['email'], 'Posto liberato' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "Il pagamento non è arrivato entro il termine, quindi il posto è tornato libero.\n\nSe hai già pagato, scrivi subito alla segreteria. Se vuoi ancora partecipare, prenota di nuovo dalla pagina dell'evento (se ci sono posti) oppure scrivi alla segreteria." );
 			}
 		}
+		$db->query( $db->prepare( "DELETE FROM $t WHERE status = 'new' AND created_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::CONFIRM_H * HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati; le richieste mai confermate spariscono quando il link scade
 		$db->query( $db->prepare( "DELETE FROM $t WHERE updated_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::KEEP_DAYS * DAY_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
 	}
 
@@ -966,7 +1158,9 @@ final class EventRequests {
 			. ( $course ? 'Persone che hanno chiesto l\'iscrizione al corso (i non soci dopo aver confermato l\'email). Approvando si iscrivono dal mese corrente; chi non è socio è registrato come ospite e deve pagare in anticipo con bonifico entro il termine.' : 'Persone che hanno chiesto un posto dalla pagina pubblica e confermato l\'email. Approvando si registrano come ospiti e si prenotano.' ) . '</p><ul>';
 		foreach ( $rows as $r ) {
 			$h .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . ( $course ? '' : (int) $r['seats'] . ' posti, ' ) . esc_html( mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
-				. self::admin_form( 'asem_event_request_approve', (int) $r['id'], $back, 'Approva' ) . ' ' . self::admin_form( 'asem_event_request_reject', (int) $r['id'], $back, 'Rifiuta' ) . '</li>';
+				. ( $r['members'] ? '' : self::admin_form( 'asem_event_request_approve', (int) $r['id'], $back, 'Approva' ) . ' ' ) . self::admin_form( 'asem_event_request_reject', (int) $r['id'], $back, 'Rifiuta' )
+				. ( $r['members'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è quello del socio ' . implode( ', ', $r['members'] ) . ': non si può prenotare come ospite. Rifiuta la richiesta (chi l\'ha inviata riceve il solito messaggio) o contatta il socio.' ) . '</span>' : '' )
+				. ( $r['differs'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è già in anagrafica con altri dati (' . implode( ', ', $r['differs'] ) . '). Approvando si usa la scheda esistente.' ) . '</span>' : '' ) . '</li>';
 		}
 		return $h . '</ul></div>';
 	}
