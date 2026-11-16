@@ -10783,6 +10783,69 @@ $wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET pdf_path = NULL, pdf_sha25
 asem_ok( has_action( 'asem_year_closed', array( \AssociazioneSemplice\ReceiptFiles::class, 'on_year_closed' ) ) && 1 <= \AssociazioneSemplice\ReceiptFiles::pending_count( $pf_fy ), 'ricevute PDF: alla chiusura dell\'anno si fissano i PDF mancanti (azione agganciata)' );
 do_action( 'asem_year_closed', $pf_fy );
 asem_ok( 0 === \AssociazioneSemplice\ReceiptFiles::pending_count( $pf_fy ), 'ricevute PDF: la chiusura fissa i PDF ancora mancanti dell\'anno' );
+// primo lotto dopo l'aggiornamento: solo programmato (mai dentro la richiesta), la presa del lavoro è una sola, con la chiave chiusa non si disegna nulla
+$bf_RF    = \AssociazioneSemplice\ReceiptFiles::class;
+$bf_id    = (int) $pf_old[5400]['id'];
+$bf_drop  = function () use ( $wpdb, $bf_id ): void { // una ricevuta con i dati ma senza PDF fissato
+	$wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET pdf_path = NULL, pdf_sha256 = NULL, pdf_at = NULL, pdf_enc_ver = NULL WHERE id = ' . $bf_id );
+};
+$bf_fixed = function () use ( $wpdb ): int {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'receipt.pdfs_fixed'" );
+};
+$bf_flush = function () use ( $bf_RF ): void {
+	wp_cache_delete( $bf_RF::FLAG, 'options' );
+	wp_cache_delete( 'notoptions', 'options' );
+	wp_cache_delete( 'alloptions', 'options' );
+};
+$bf_raw   = function ( ?string $v ) use ( $wpdb, $bf_RF, $bf_flush ): void { // come scriverebbe un'altra richiesta: nel database, la cache di questa non lo sa
+	if ( null === $v ) {
+		$wpdb->delete( $wpdb->options, array( 'option_name' => $bf_RF::FLAG ) );
+	} else {
+		$wpdb->replace( $wpdb->options, array( 'option_name' => $bf_RF::FLAG, 'option_value' => $v, 'autoload' => 'yes' ) );
+	}
+};
+$bf_clean = function () use ( $bf_raw, $bf_flush, $bf_RF ): void {
+	wp_unschedule_hook( $bf_RF::CRON );
+	$bf_raw( null );
+	$bf_flush();
+};
+$bf_drop();
+$bf_clean();
+$bf_p0 = $bf_RF::pending_count( null );
+$bf_RF::maybe_backfill();
+$bf_al = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT autoload FROM ' . $wpdb->options . ' WHERE option_name = %s', $bf_RF::FLAG ) );
+asem_ok( $bf_p0 >= 1 && $bf_p0 === $bf_RF::pending_count( null ) && 'started' === get_option( $bf_RF::FLAG ) && false !== wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) ), 'ricevute PDF: dopo l\'aggiornamento il primo lotto è solo programmato, non gira dentro la richiesta di chi capita' );
+asem_ok( in_array( $bf_al, array( 'yes', 'on', 'auto', 'auto-on' ), true ), 'ricevute PDF: l\'opzione del lavoro si legge insieme alle altre, senza una domanda in più al database a ogni richiesta' );
+$bf_clean();
+get_option( $bf_RF::FLAG ); // questa richiesta legge «lavoro non ancora preso»…
+$bf_raw( 'started' );       // …ma un'altra richiesta l'ha appena preso
+$bf_RF::maybe_backfill();
+asem_ok( $bf_p0 === $bf_RF::pending_count( null ) && false === wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) ), 'ricevute PDF: due richieste insieme non rifanno lo stesso lavoro, lo prende una sola' );
+$bf_clean();
+$bf_raw( 'started' );
+$bf_flush();
+$bf_salt = function ( $s, $scheme ) {
+	return 'auth' === $scheme ? 'altri-codici-' . $s : $s;
+};
+if ( property_exists( \AssociazioneSemplice\FileKey::class, 'auto_reopen' ) ) {
+	\AssociazioneSemplice\FileKey::$auto_reopen = false;
+}
+add_filter( 'salt', $bf_salt, 10, 2 );
+\AssociazioneSemplice\FileKey::reset();
+$bf_a0 = $bf_fixed();
+$bf_RF::maybe_backfill();
+$bf_sc = wp_next_scheduled( $bf_RF::CRON, array( 0, 0 ) );
+$bf_RF::cron_batch( 0, 0 );
+asem_ok( 'mismatch' === \AssociazioneSemplice\FileKey::state() && false === $bf_sc && $bf_a0 === $bf_fixed() && $bf_p0 === $bf_RF::pending_count( null ), 'ricevute PDF: con la chiave che non si apre non si programma né si disegna nessun lotto' );
+remove_filter( 'salt', $bf_salt, 10 );
+if ( property_exists( \AssociazioneSemplice\FileKey::class, 'auto_reopen' ) ) {
+	\AssociazioneSemplice\FileKey::$auto_reopen = true;
+}
+\AssociazioneSemplice\FileKey::reset();
+$bf_clean();
+update_option( $bf_RF::FLAG, 'done', true );
+$bf_RF::complete( $pf_fy, 0, 500 );
+asem_ok( 'ok' === \AssociazioneSemplice\FileKey::state() && 0 === $bf_RF::pending_count( $pf_fy ), 'ricevute PDF: aperta la chiave il lavoro riprende e i PDF mancanti si fissano' );
 // verifica e archivio ZIP dell'anno
 $pf_v   = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 $pf_num = (int) \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['number'];

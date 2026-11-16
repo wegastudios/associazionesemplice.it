@@ -27,6 +27,15 @@ if ( ! FileCrypt::available() ) {
 wp_set_current_user( (int) get_users( array( 'role' => 'administrator', 'number' => 1 ) )[0]->ID );
 $fc_dir = Attachments::prepare_dir();
 
+// La chiave chiusa si riapre da sola con la frase automatica o il codice di licenza: le prove che vogliono la chiave chiusa spengono questa riapertura
+// (la accende di nuovo il blocco «Chiave: richieste insieme…» e alla fine del file).
+$fk_auto = function ( bool $on ): void {
+	if ( property_exists( FileKey::class, 'auto_reopen' ) ) {
+		FileKey::$auto_reopen = $on;
+	}
+};
+$fk_auto( false );
+
 $fc_marker = 'MARCATORE-SEGRETO-' . bin2hex( random_bytes( 4 ) );
 $fc_tmp    = function ( string $content ) {
 	$f = wp_tempnam( 'asem-fc' );
@@ -205,6 +214,219 @@ FileKey::use_auto_phrase();
 $fc_b2  = FileKey::bundle();
 $fc_e2k = reset( $fc_b2['keys'] );
 $fc_ok( ( '' !== $fc_lic0 ? 'license' : 'timestamp' ) === FileKey::phrase_kind() && ( '' === $fc_lic0 ) === empty( $fc_e2k['l']['w'] ) && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'licenza: se la licenza sparisce la frase torna quella automatica e il codice non avvolge più la chiave' );
+
+// ---------- Chiave: richieste insieme, frasi con spazi, riapertura da sola ----------
+$fk_names = array( FileKey::OPT_KEYS, FileKey::OPT_SITE, FileKey::OPT_TS, FileKey::OPT_CHANGED );
+$fk_row   = function ( string $name ) use ( $wpdb ) { // il valore nel database, senza passare dalla cache di questa richiesta
+	return $wpdb->get_var( $wpdb->prepare( 'SELECT option_value FROM ' . $wpdb->options . ' WHERE option_name = %s', $name ) );
+};
+$fk_flush = function () use ( $fk_names ): void { // dimentica ciò che questa richiesta ha letto
+	foreach ( $fk_names as $n ) {
+		wp_cache_delete( $n, 'options' );
+	}
+	wp_cache_delete( 'notoptions', 'options' );
+	wp_cache_delete( 'alloptions', 'options' );
+	FileKey::reset();
+};
+$fk_raw   = function ( string $name, $raw ) use ( $wpdb, $fk_flush ): void { // come scriverebbe un'altra richiesta: nel database, la cache di questa non lo sa
+	if ( null === $raw ) {
+		$wpdb->delete( $wpdb->options, array( 'option_name' => $name ) );
+	} else {
+		$wpdb->replace( $wpdb->options, array( 'option_name' => $name, 'option_value' => $raw, 'autoload' => 'no' ) );
+	}
+};
+$fk_keep  = array();
+foreach ( $fk_names as $fk_n ) {
+	$fk_keep[ $fk_n ] = $fk_row( $fk_n );
+}
+$fk_back  = function () use ( $fk_names, $fk_keep, $fk_raw, $fk_flush ): void { // rimette com'erano chiave, identificativo, data e segno del cambio frase
+	foreach ( $fk_names as $n ) {
+		$fk_raw( $n, $fk_keep[ $n ] );
+	}
+	$fk_flush();
+};
+$fk_wipe  = function () use ( $fk_names, $fk_raw, $fk_flush ): void { // sito senza chiave, senza identificativo e senza data
+	foreach ( $fk_names as $n ) {
+		$fk_raw( $n, null );
+	}
+	$fk_flush();
+};
+$fk_audit = function ( string $action ) use ( $wpdb ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s', $action ) );
+};
+
+// Creazione della chiave: la prima richiesta crea chiave, identificativo e data, e lo scrive nel registro azioni
+$fk_c0 = $fk_audit( 'file_crypt.key_created' );
+$fk_wipe();
+$fk_b_mode = FileKey::mode(); // la richiesta «B»
+$fk_b_keys = (string) $fk_row( FileKey::OPT_KEYS );
+$fk_b_site = (string) $fk_row( FileKey::OPT_SITE );
+$fk_b_ts   = (string) $fk_row( FileKey::OPT_TS );
+$fk_bo     = maybe_unserialize( $fk_b_keys );
+$fk_bid    = is_array( $fk_bo ) && ! empty( $fk_bo['keys'] ) ? (int) array_key_first( $fk_bo['keys'] ) : 0;
+$fc_ok( 'encrypt' === $fk_b_mode && 1 === preg_match( '/^[0-9a-f]{16}$/', $fk_b_site ) && 1 === preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $fk_b_ts ) && $fk_bid > 0, 'chiave nuova: si crea con chiave, identificativo del sito e data di attivazione' );
+$fc_ok( $fk_c0 + 1 === $fk_audit( 'file_crypt.key_created' ) && is_array( $fk_bo ) && ( $fk_bo['site'] ?? '' ) === $fk_b_site, 'chiave nuova: la creazione entra nel registro azioni e l\'identificativo del sito è scritto accanto alla chiave' );
+
+// Due richieste insieme: la «A» ha letto «nessuna chiave», nel frattempo la «B» ha creato la sua. Quella della «B» deve restare
+$fk_wipe();
+FileKey::state();                      // A: nessuna chiave (ricorda l'assenza)
+get_option( FileKey::OPT_SITE, '' );   // A: nessun identificativo
+get_option( FileKey::OPT_TS, '' );     // A: nessuna data
+$fk_raw( FileKey::OPT_KEYS, $fk_b_keys ); // B scrive la sua chiave, il suo identificativo e la sua data
+$fk_raw( FileKey::OPT_SITE, $fk_b_site );
+$fk_raw( FileKey::OPT_TS, $fk_b_ts );
+$fk_a_mode = FileKey::mode();          // A procede: deve trovare e usare quelle di B
+$fk_ao     = maybe_unserialize( (string) $fk_row( FileKey::OPT_KEYS ) );
+$fc_ok( 'encrypt' === $fk_a_mode && is_array( $fk_ao ) && 1 === count( $fk_ao['keys'] ) && array_key_first( $fk_ao['keys'] ) === $fk_bid && ( $fk_ao['keys'][ $fk_bid ]['w'] ?? 'a' ) === ( $fk_bo['keys'][ $fk_bid ]['w'] ?? 'b' ), 'due richieste insieme: la chiave creata per prima resta, la seconda non la sovrascrive' );
+$fc_ok( $fk_b_site === (string) $fk_row( FileKey::OPT_SITE ) && $fk_b_ts === (string) $fk_row( FileKey::OPT_TS ) && $fk_b_site === FileKey::site_id() && null !== FileKey::current() && $fk_bid === FileKey::current()['id'], 'due richieste insieme: identificativo e data restano quelli della prima e la seconda li usa' );
+$fc_ok( $fk_c0 + 1 === $fk_audit( 'file_crypt.key_created' ), 'due richieste insieme: la seconda non crea nulla e non scrive nel registro' );
+
+// Identificativo e data letti come assenti mentre un'altra richiesta li crea
+$fk_back();
+$fk_raw( FileKey::OPT_SITE, null );
+$fk_flush();
+get_option( FileKey::OPT_SITE, '' );
+$fk_raw( FileKey::OPT_SITE, 'abcdef0123456789' );
+$fc_ok( 'abcdef0123456789' === FileKey::site_id() && 'abcdef0123456789' === (string) $fk_row( FileKey::OPT_SITE ), 'due richieste insieme: l\'identificativo creato da un\'altra richiesta non viene sostituito' );
+$fk_back();
+$fk_raw( FileKey::OPT_TS, null );
+$fk_flush();
+get_option( FileKey::OPT_TS, '' );
+$fk_raw( FileKey::OPT_TS, '2020-01-02 03:04:05' );
+$fc_ok( '2020-01-02 03:04:05' === FileKey::activated_at() && '2020-01-02 03:04:05' === (string) $fk_row( FileKey::OPT_TS ), 'due richieste insieme: la data di attivazione creata da un\'altra richiesta non viene sostituita' );
+
+// Chiavi già salvate e identificativo perso: non se ne inventa uno nuovo; se è scritto accanto alle chiavi si ritrova
+$fk_back();
+$fk_ko = maybe_unserialize( (string) $fk_keep[ FileKey::OPT_KEYS ] );
+unset( $fk_ko['site'] );
+$fk_raw( FileKey::OPT_KEYS, maybe_serialize( $fk_ko ) );
+$fk_raw( FileKey::OPT_SITE, null );
+$fk_flush();
+$fc_ok( '' === FileKey::site_id() && null === $fk_row( FileKey::OPT_SITE ), 'identificativo: se esistono già chiavi e l\'identificativo manca non se ne inventa uno nuovo' );
+$fk_ko['site'] = 'fedcba9876543210';
+$fk_raw( FileKey::OPT_KEYS, maybe_serialize( $fk_ko ) );
+$fk_flush();
+$fc_ok( 'fedcba9876543210' === FileKey::site_id() && 'fedcba9876543210' === (string) $fk_row( FileKey::OPT_SITE ), 'identificativo: perso quello del sito, si ritrova quello scritto accanto alle chiavi' );
+$fk_back();
+// chiavi di una versione che non scriveva l'identificativo accanto, mai usate per cifrare: al primo uso si dà l'identificativo, una volta sola
+unset( $fk_ko['site'] );
+$fk_raw( FileKey::OPT_KEYS, maybe_serialize( $fk_ko ) );
+$fk_raw( FileKey::OPT_SITE, null );
+$fk_flush();
+$fk_m  = FileKey::mode();
+$fk_s1 = (string) $fk_row( FileKey::OPT_SITE );
+$fk_ko2 = maybe_unserialize( (string) $fk_row( FileKey::OPT_KEYS ) );
+$fc_ok( 'encrypt' === $fk_m && 1 === preg_match( '/^[0-9a-f]{16}$/', $fk_s1 ) && ( $fk_ko2['site'] ?? '' ) === $fk_s1 && $fk_s1 === FileKey::site_id(), 'identificativo: chiavi di prima senza identificativo, al primo uso se ne dà uno e si scrive anche accanto alle chiavi' );
+$fk_back();
+
+// Ogni modifica delle chiavi parte da quanto c'è nel database in quel momento: ciò che un'altra richiesta ha aggiunto non va perso
+FileKey::state();
+$fk_ko = maybe_unserialize( (string) $fk_keep[ FileKey::OPT_KEYS ] );
+$fk_ko['keys'][999999] = array( 'w' => 'x', 'by' => 'salt', 'at' => time() ); // un'altra richiesta aggiunge una chiave
+$fk_raw( FileKey::OPT_KEYS, maybe_serialize( $fk_ko ) );
+FileKey::use_auto_phrase();
+$fk_ao = maybe_unserialize( (string) $fk_row( FileKey::OPT_KEYS ) );
+$fc_ok( is_array( $fk_ao ) && isset( $fk_ao['keys'][999999] ) && count( $fk_ao['keys'] ) === count( $fk_ko['keys'] ), 'due richieste insieme: cambiare la frase non cancella una chiave aggiunta nel frattempo da un\'altra richiesta' );
+$fk_back();
+
+// Frase con spazi ai bordi: si salva ripulita e si riapre scritta in tutti e due i modi
+$fc_ok( '' !== FileKey::recovery_error( '    abcdef    ', '    abcdef    ' ), 'frase scelta: gli spazi ai bordi non contano per la lunghezza minima' );
+$fk_auto( false );
+$fk_ph = '   una frase con spazi ai bordi, lunga abbastanza   ';
+FileKey::set_custom_phrase( $fk_ph, $fk_ph );
+add_filter( 'salt', $fc_salt, 10, 2 );
+FileKey::reset();
+$fc_ok( 'mismatch' === FileKey::state(), 'frase con spazi: con i codici cambiati la chiave si chiude' );
+$fk_e = asem_or_free_throws( function () use ( $fk_ph ) { FileKey::recover_with_phrase( trim( $fk_ph ) ); } );
+$fc_ok( null === $fk_e && 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'frase con spazi ai bordi: scritta senza spazi riapre la chiave' );
+remove_filter( 'salt', $fc_salt, 10 );
+FileKey::reset();
+FileKey::recover( '', $fc_new, '' );
+add_filter( 'salt', $fc_salt, 10, 2 );
+FileKey::reset();
+$fk_e = asem_or_free_throws( function () use ( $fk_ph ) { FileKey::recover_with_phrase( $fk_ph ); } );
+$fc_ok( null === $fk_e && 'ok' === FileKey::state(), 'frase con spazi ai bordi: scritta con gli spazi, come incollata, riapre la chiave' );
+remove_filter( 'salt', $fc_salt, 10 );
+FileKey::reset();
+FileKey::recover( '', $fc_new, '' );
+// una frase già salvata con gli spazi (come faceva la versione di prima) si riapre ancora, scritta com'è
+$fk_cur = FileKey::current();
+$fk_rec = FileCrypt::kdf_make( $fk_ph );
+$fk_lo  = maybe_unserialize( (string) $fk_row( FileKey::OPT_KEYS ) );
+$fk_lo['keys'][ $fk_cur['id'] ]['r'] = array( 'w' => FileCrypt::wrap_key( $fk_cur['key'], $fk_rec['key'] ), 'k' => $fk_rec['kdf'] );
+$fk_lo['pm'] = 'custom';
+$fk_raw( FileKey::OPT_KEYS, maybe_serialize( $fk_lo ) );
+$fk_flush();
+add_filter( 'salt', $fc_salt, 10, 2 );
+FileKey::reset();
+$fk_e = asem_or_free_throws( function () use ( $fk_ph ) { FileKey::recover_with_phrase( $fk_ph ); } );
+$fc_ok( 'mismatch' !== FileKey::state() && null === $fk_e, 'frase con spazi ai bordi: una frase già salvata con gli spazi si riapre scrivendola com\'è' );
+remove_filter( 'salt', $fc_salt, 10 );
+FileKey::reset();
+FileKey::recover( '', $fc_new, '' );
+$fk_back();
+
+// Vecchi codici di sicurezza con uno spazio in fondo: la chiave è nata da quelli com'erano, non si ripuliscono
+$fk_sp = function ( $s, $scheme ) {
+	return 'auth' === $scheme ? $s . ' ' : $s;
+};
+add_filter( 'salt', $fk_sp, 10, 2 );
+FileKey::reset();
+FileKey::recover( '', $fc_orig, '' ); // la chiave si avvolge con la chiave principale ricavata dai codici con lo spazio
+remove_filter( 'salt', $fk_sp, 10 );
+FileKey::reset();
+$fk_e = asem_or_free_throws( function () use ( $fc_orig ) { FileKey::recover( '', $fc_orig . ' ', '' ); } );
+$fc_ok( null === $fk_e && 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'vecchi codici: con lo spazio in fondo, scritti com\'erano, la chiave si riapre' );
+$fk_back();
+
+// Codici di sicurezza cambiati: la chiave che ha la frase automatica (o il codice di licenza) si riapre da sola e lo scrive nel registro
+$fk_auto( true );
+$fk_r0 = $fk_audit( 'file_crypt.key_reopened_auto' );
+add_filter( 'salt', $fc_salt, 10, 2 );
+FileKey::reset();
+$fc_ok( 'ok' === FileKey::state() && FileKey::check()['valid'] && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'codici cambiati: con la frase automatica la chiave si riapre da sola, senza che nessuno scriva nulla' );
+$fc_ok( $fk_r0 + 1 === $fk_audit( 'file_crypt.key_reopened_auto' ), 'codici cambiati: la riapertura da sola entra nel registro azioni' );
+remove_filter( 'salt', $fc_salt, 10 );
+FileKey::reset();
+$fc_ok( 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'codici cambiati: rimessi quelli di prima la chiave si apre ancora' );
+$fk_back();
+if ( '' === $fc_lic0 ) {
+	// frase scelta e nessuna licenza: la chiave resta chiusa e la frase la sa solo l'amministratore
+	FileKey::set_custom_phrase( $fc_custom, $fc_custom );
+	add_filter( 'salt', $fc_salt, 10, 2 );
+	FileKey::reset();
+	$fc_ok( 'mismatch' === FileKey::state(), 'codici cambiati: con una frase scelta e senza licenza la chiave resta chiusa (la frase la sa solo l\'amministratore)' );
+	remove_filter( 'salt', $fc_salt, 10 );
+	FileKey::reset();
+	$fk_back();
+	// frase automatica ma chiave che non si riapre da sola: la schermata mostra la data da scrivere
+	$fk_auto( false );
+	add_filter( 'salt', $fc_salt, 10, 2 );
+	FileKey::reset();
+	ob_start();
+	\AssociazioneSemplice\Admin\FileCryptPanel::render();
+	$fk_pn2 = html_entity_decode( ob_get_clean(), ENT_QUOTES, 'UTF-8' );
+	$fc_ok( 'mismatch' === FileKey::state() && false !== strpos( $fk_pn2, FileKey::activated_at() ), 'chiave chiusa: la schermata mostra la data e ora di attivazione, che è la frase da scrivere nel plugin gratuito' );
+	remove_filter( 'salt', $fc_salt, 10 );
+	$fk_auto( true );
+	$fk_back();
+}
+// frase scelta ma con il codice di licenza: il codice apre da solo
+$fk_lc = function ( $c ) {
+	return 'CODICE-LICENZA-PROVA-0002';
+};
+add_filter( 'asem_file_license_code', $fk_lc, 99 );
+FileKey::reset();
+FileKey::mode();
+FileKey::set_custom_phrase( $fc_custom, $fc_custom );
+add_filter( 'salt', $fc_salt, 10, 2 );
+FileKey::reset();
+$fc_ok( 'custom' === FileKey::phrase_kind() && 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'codici cambiati: con una frase scelta ma con il codice di licenza la chiave si riapre da sola' );
+remove_filter( 'salt', $fc_salt, 10 );
+FileKey::reset();
+remove_filter( 'asem_file_license_code', $fk_lc, 99 );
+$fk_back();
+$fk_auto( false );
 
 // ---------- Migrazione dei file già caricati ----------
 delete_option( FileMigration::OPT );
@@ -540,6 +762,7 @@ FileKey::reset();
 $fc_ok( 'encrypt' === FileKey::mode() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'sodium di nuovo disponibile: tutto torna a funzionare' );
 
 // pulizia delle prove
+$fk_auto( true );
 Documents::delete( $fc_doc );
 Inventory::delete_item( $fc_item );
 foreach ( array( $fc_l1, $fc_l2, $fc_l4 ) as $fc_x ) {
