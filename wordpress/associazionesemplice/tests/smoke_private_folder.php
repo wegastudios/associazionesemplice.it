@@ -51,30 +51,58 @@ $pf_rm( $pf_root . '/prova-b' );
 $pf_calls = 0;
 $pf_url   = '';
 $pf_args  = array();
-$pf_mock  = function ( string $mode ) use ( &$pf_calls, &$pf_url, &$pf_args ) {
-	return function ( $pre, $args, $url ) use ( $mode, &$pf_calls, &$pf_url, &$pf_args ) {
+$pf_urls  = array();
+// Modi: exposed = tutto si scarica; closed = si scarica solo il file di riferimento (cartella pubblica), i file di prova no; refblocked = nemmeno il
+// riferimento si scarica; shape = si scarica il riferimento e solo il file di prova .pdf (una regola per estensione lascia passare i PDF);
+// auth, redirect, fail = ogni richiesta ha quella risposta; error = il sito non riesce a chiamarsi.
+$pf_mock  = function ( string $mode ) use ( &$pf_calls, &$pf_url, &$pf_args, &$pf_urls ) {
+	return function ( $pre, $args, $url ) use ( $mode, &$pf_calls, &$pf_url, &$pf_args, &$pf_urls ) {
 		$pf_calls++;
-		$pf_url  = (string) $url;
-		$pf_args = (array) $args;
+		$pf_url    = (string) $url;
+		$pf_urls[] = (string) $url;
+		$pf_args   = (array) $args;
 		if ( 'error' === $mode ) {
 			return new WP_Error( 'http_request_failed', 'cURL error 7: connessione rifiutata' );
 		}
-		$files = glob( PrivateFolder::dir() . '/controllo/prova-*.txt' ) ?: array();
-		$codes = array( 'exposed' => 200, 'closed' => 404, 'auth' => 401, 'redirect' => 302, 'fail' => 503 );
-		return array( 'headers' => array(), 'body' => 'exposed' === $mode && $files ? (string) file_get_contents( $files[0] ) : 'Non trovato', 'response' => array( 'code' => $codes[ $mode ], 'message' => '' ), 'cookies' => array(), 'filename' => null );
+		$up    = wp_upload_dir( null, false );
+		$file  = str_replace( (string) $up['baseurl'], (string) $up['basedir'], (string) $url );
+		$body  = is_file( $file ) ? (string) file_get_contents( $file ) : 'Non trovato';
+		$isref = false !== strpos( (string) $url, 'asem-prova-ref-' );
+		$ext   = (string) pathinfo( (string) wp_parse_url( (string) $url, PHP_URL_PATH ), PATHINFO_EXTENSION );
+		$resp  = function ( int $code, string $b ) {
+			return array( 'headers' => array(), 'body' => $b, 'response' => array( 'code' => $code, 'message' => '' ), 'cookies' => array(), 'filename' => null );
+		};
+		if ( 'exposed' === $mode || ( in_array( $mode, array( 'closed', 'shape' ), true ) && $isref ) || ( 'shape' === $mode && 'pdf' === $ext ) ) {
+			return $resp( 200, $body );
+		}
+		$codes = array( 'closed' => 404, 'refblocked' => 403, 'shape' => 404, 'auth' => 401, 'redirect' => 302, 'fail' => 503 );
+		return $resp( $codes[ $mode ], 'Non trovato' );
 	};
 };
-$pf_run = function ( string $mode ) use ( $pf_mock ): array {
+$pf_run = function ( string $mode ) use ( $pf_mock, &$pf_urls ): array {
 	remove_all_filters( 'pre_http_request' );
+	$pf_urls = array();
 	add_filter( 'pre_http_request', $pf_mock( $mode ), 10, 3 );
 	return PrivateFolder::check();
 };
 $pf_left = function () {
-	return glob( PrivateFolder::dir() . '/controllo/prova-*.txt' ) ?: array();
+	$d = PrivateFolder::dir();
+	$u = (string) wp_upload_dir( null, false )['basedir'];
+	return array_merge( glob( $u . '/asem-prova-*' ) ?: array(), glob( $d . '/asem-prova-*' ) ?: array(), glob( $d . '/receipts/*/asem-prova-*' ) ?: array(), glob( $d . '/backups/asem-prova-*' ) ?: array(), glob( $d . '/controllo/prova-*' ) ?: array() );
 };
 
+$pf_base = (string) wp_upload_dir( null, false )['baseurl'];
 $r = $pf_run( 'exposed' );
-$pf_ok( PrivateFolderRules::EXPOSED === $r['state'] && 1 === $pf_calls && 0 === strpos( $pf_url, (string) wp_upload_dir( null, false )['baseurl'] . '/associazionesemplice-private/controllo/prova-' ) && ! $pf_left(), 'controllo cartella: un file di prova che si scarica da fuori è un allarme, e il file di prova viene cancellato' );
+$pf_ok( PrivateFolderRules::EXPOSED === $r['state'] && $pf_calls >= 2 && 0 === strpos( $pf_urls[0], $pf_base . '/asem-prova-ref-' ) && 0 === strpos( $pf_urls[1], $pf_base . '/associazionesemplice-private/asem-prova-' ) && ! $pf_left(), 'controllo cartella: un file di prova che si scarica da fuori è un allarme, e i file di prova vengono cancellati' );
+$r = $pf_run( 'closed' );
+$pf_ok( PrivateFolderRules::CLOSED === $r['state'] && 4 === count( $pf_urls ) && ! $pf_left(), 'controllo cartella: con il file di riferimento che si scarica e i tre di prova no, l\'esito è «chiusa» (una richiesta di riferimento e tre di prova)' );
+$pf_priv = $pf_base . '/associazionesemplice-private/';
+$pf_ok( 0 === strpos( $pf_urls[0], $pf_base . '/asem-prova-ref-' ) && 0 === strpos( $pf_urls[1], $pf_priv ) && 1 === preg_match( '#^' . preg_quote( $pf_priv, '#' ) . 'asem-prova-[0-9a-f]+$#', $pf_urls[1] ) && 1 === preg_match( '#^' . preg_quote( $pf_priv, '#' ) . 'receipts/\d{4}/asem-prova-[0-9a-f]+\.pdf$#', $pf_urls[2] ) && 1 === preg_match( '#^' . preg_quote( $pf_priv, '#' ) . 'backups/asem-prova-[0-9a-f]+\.zip$#', $pf_urls[3] ), 'controllo cartella: i tre file di prova hanno la forma dei file veri (senza estensione, .pdf in receipts/<anno>/, .zip in backups/) e il riferimento sta in una cartella pubblica' );
+$r = $pf_run( 'shape' );
+$pf_ok( PrivateFolderRules::EXPOSED === $r['state'] && ! $pf_left(), 'controllo cartella: se si scarica solo il file di prova .pdf, la cartella è raggiungibile (una regola per estensione non inganna il controllo)' );
+$r = $pf_run( 'refblocked' );
+$pf_ok( PrivateFolderRules::UNKNOWN === $r['state'] && 'reference' === $r['reason'] && 1 === count( $pf_urls ) && '' === PrivateFolder::alerts_html() && ! $pf_left() && false !== strpos( PrivateFolder::outcome_text( $r ), 'Nessun allarme' ), 'controllo cartella: se nemmeno il file di riferimento in una cartella pubblica si scarica l\'esito è «non verificabile», non «chiusa»' );
+$pf_run( 'exposed' ); // l'esito salvato torna «raggiungibile» per le prove che seguono
 $pf_ok( ( $pf_args['timeout'] ?? 99 ) <= 5 && 0 === ( $pf_args['redirection'] ?? 1 ) && empty( $pf_args['headers']['Authorization'] ) && empty( $pf_args['cookies'] ), 'controllo cartella: richiesta breve, senza seguire rimandi e senza password né cookie dell\'utente' );
 $pf_alert = PrivateFolder::alerts_html();
 $pf_ok( false !== strpos( $pf_alert, 'private-folder-exposed' ) && false !== strpos( $pf_alert, 'raggiungibile da internet' ) && false !== strpos( $pf_alert, 'is-dismissible' ) && false !== strpos( $pf_alert, 'chi gestisce il server' ), 'controllo cartella: l\'avviso all\'amministratore è chiudibile e dice a chi rivolgersi' );
@@ -112,7 +140,7 @@ $o       = get_option( PrivateFolder::OPT );
 $o['at'] = time() - 8 * DAY_IN_SECONDS;
 update_option( PrivateFolder::OPT, $o );
 PrivateFolder::cron();
-$pf_ok( $n0 + 1 === $pf_calls && PrivateFolder::last()['at'] > time() - 60, 'controllo cartella: dopo sette giorni il lavoro periodico lo ripete' );
+$pf_ok( $pf_calls > $n0 && PrivateFolder::last()['at'] > time() - 60, 'controllo cartella: dopo sette giorni il lavoro periodico lo ripete' );
 $o        = get_option( PrivateFolder::OPT );
 $o['key'] = 'altra-situazione';
 update_option( PrivateFolder::OPT, $o );
@@ -129,9 +157,47 @@ $pf_ok( 'relative' === PrivateFolder::resolve( 'relativo/x', $pf_def )['error'] 
 $pf_tmpfile = tempnam( sys_get_temp_dir(), 'asem' );
 $pf_ok( 'missing' === PrivateFolder::resolve( $pf_tmpfile . '/sotto', $pf_def )['error'], 'cartella in wp-config.php: una cartella che non esiste e non si può creare dà un errore chiaro' );
 unlink( $pf_tmpfile );
-foreach ( array( 'relative', 'dotdot', 'root', 'overlaps', 'missing', 'not_writable' ) as $code ) {
+foreach ( array( 'relative', 'dotdot', 'root', 'overlaps', 'missing', 'not_writable', 'not_empty', 'foreign_site' ) as $code ) {
 	$pf_ok( '' !== PrivateFolder::error_text( $code ), 'cartella in wp-config.php: frase per l\'errore «' . $code . '»' );
 }
+
+// una cartella indicata va bene solo se vuota o già segnata da questo sito (segnaposto con l'identificativo del sito)
+$pf_c3 = trailingslashit( sys_get_temp_dir() ) . 'asem-privata3-' . bin2hex( random_bytes( 4 ) );
+wp_mkdir_p( $pf_c3 );
+file_put_contents( $pf_c3 . '/altro.txt', 'non del plugin' );
+$pf_ok( 'not_empty' === PrivateFolder::resolve( $pf_c3, $pf_def )['error'] && 'non del plugin' === file_get_contents( $pf_c3 . '/altro.txt' ) && ! file_exists( $pf_c3 . '/' . PrivateFolderRules::PLACEHOLDER ), 'cartella in wp-config.php: una cartella che contiene già altri file e non è segnata da questo sito viene rifiutata, senza toccare nulla' );
+unlink( $pf_c3 . '/altro.txt' );
+$pf_mine = PrivateFolder::site_id();
+$pf_ok( '' === PrivateFolder::resolve( $pf_c3, $pf_def )['error'] && '' !== $pf_mine && PrivateFolderRules::placeholder_text( $pf_mine ) === file_get_contents( $pf_c3 . '/' . PrivateFolderRules::PLACEHOLDER ), 'cartella in wp-config.php: una cartella vuota viene accettata e segnata con l\'identificativo del sito' );
+file_put_contents( $pf_c3 . '/altro.txt', 'qualcosa' );
+$pf_ok( '' === PrivateFolder::resolve( $pf_c3, $pf_def )['error'], 'cartella in wp-config.php: una cartella già segnata da questo sito resta accettata anche con dei file dentro' );
+file_put_contents( $pf_c3 . '/' . PrivateFolderRules::PLACEHOLDER, PrivateFolderRules::placeholder_text( '99999999-9999-4999-8999-999999999999' ) );
+$pf_ok( 'foreign_site' === PrivateFolder::resolve( $pf_c3, $pf_def )['error'] && 'qualcosa' === file_get_contents( $pf_c3 . '/altro.txt' ), 'cartella in wp-config.php: una cartella segnata da un altro sito viene rifiutata, senza toccare nulla' );
+$pf_rm( $pf_c3 );
+
+// azzeramento: si cancellano solo i file con i nomi del plugin
+$pf_x = str_repeat( '1', 32 );
+file_put_contents( $pf_root . '/' . $pf_x, 'del plugin' );
+file_put_contents( $pf_root . '/foto-di-altri.jpg', 'non del plugin' );
+$pf_files = \AssociazioneSemplice\Reset::private_files();
+$pf_ok( in_array( $pf_root . '/' . $pf_x, $pf_files, true ) && ! in_array( $pf_root . '/foto-di-altri.jpg', $pf_files, true ) && ! in_array( $pf_root . '/index.php', $pf_files, true ) && ! in_array( $pf_root . '/.htaccess', $pf_files, true ), 'azzeramento: toglie solo i file con i nomi del plugin, mai gli altri file della cartella né quelli di protezione' );
+unlink( $pf_root . '/' . $pf_x );
+unlink( $pf_root . '/foto-di-altri.jpg' );
+
+// percorso suggerito e indirizzo web: la radice del server (DOCUMENT_ROOT) conta quanto la cartella di WordPress
+$pf_dr  = $_SERVER['DOCUMENT_ROOT'] ?? null;
+$pf_up  = PrivateFolderRules::normalize( dirname( rtrim( str_replace( '\\', '/', ABSPATH ), '/' ) ) );
+$pf_hr  = (string) preg_replace( '#^(https?://[^/]+).*$#i', '$1', home_url() );
+$_SERVER['DOCUMENT_ROOT'] = $pf_up;
+$pf_ok( $pf_hr . '/zz-prova' === PrivateFolder::web_url( $pf_up . '/zz-prova' ) && '' === PrivateFolder::web_url( dirname( $pf_up ) . '/fuori-da-tutto' ), 'cartella indicata: un percorso dentro la radice del server ha un indirizzo web e viene provato anche se sta sopra la cartella di WordPress' );
+$pf_ok( PrivateFolderRules::normalize( dirname( $pf_up ) ) . '/asem-riservata' === PrivateFolder::suggested_path(), 'percorso suggerito: si calcola sopra la radice del server, non sopra la cartella di WordPress' );
+unset( $_SERVER['DOCUMENT_ROOT'] );
+$pf_ok( PrivateFolderRules::normalize( dirname( rtrim( str_replace( '\\', '/', ABSPATH ), '/' ) ) ) . '/asem-riservata' === PrivateFolder::suggested_path(), 'percorso suggerito: senza la radice del server si parte da quella di WordPress' );
+if ( null !== $pf_dr ) {
+	$_SERVER['DOCUMENT_ROOT'] = $pf_dr;
+}
+$pf_panel = free_render_pf( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ) );
+$pf_ok( false !== strpos( $pf_panel, PrivateFolder::suggested_path() ) && false !== strpos( $pf_panel, 'deve controllare che non finisca dentro la cartella pubblica di un altro sito' ), 'riquadro: il percorso suggerito è quello calcolato e la frase invita a controllare che non finisca nella cartella pubblica di un altro sito' );
 
 // errore mostrato nell'avviso e nel riquadro (si simula il percorso non utilizzabile)
 $pf_prop = new ReflectionProperty( PrivateFolder::class, 'resolved' );
@@ -224,9 +290,9 @@ if ( class_exists( '\\AssociazioneSemplice\\ReceiptFiles' ) ) {
 }
 $n0 = $pf_calls;
 $r  = PrivateFolder::check();
-$pf_ok( PrivateFolderRules::OUTSIDE === $r['state'] && $n0 === $pf_calls && '' === PrivateFolder::alerts_html() && false !== strpos( PrivateFolder::outcome_text( $r ), 'fuori dalla parte pubblica' ), 'controllo cartella: una cartella fuori dalla parte pubblica non ha indirizzo web, niente richiesta e niente allarme' );
+$pf_ok( PrivateFolderRules::OUTSIDE === $r['state'] && $n0 === $pf_calls && '' === PrivateFolder::alerts_html() && false !== strpos( PrivateFolder::outcome_text( $r ), 'non risulta dentro la parte pubblica' ), 'controllo cartella: una cartella fuori dalla parte pubblica non ha indirizzo web, niente richiesta e niente allarme' );
 $pf_panel = free_render_pf( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ) );
-$pf_ok( false !== strpos( $pf_panel, 'fuori dalla parte pubblica del sito e non ha un indirizzo web' ), 'cartella in wp-config.php: a spostamento finito il riquadro dice che la cartella è fuori dalla parte pubblica' );
+$pf_ok( false !== strpos( $pf_panel, 'per quanto risulta al sito la cartella sta fuori dalla parte pubblica' ), 'cartella in wp-config.php: a spostamento finito il riquadro dice che la cartella è fuori dalla parte pubblica' );
 
 // dopo l'entrata in uso: un file rimasto nella vecchia cartella si porta nella nuova; uno che esiste già con contenuto diverso non si tocca
 $pf_e = str_repeat( 'e', 32 );

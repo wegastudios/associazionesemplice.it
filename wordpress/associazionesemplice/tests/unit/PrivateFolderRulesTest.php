@@ -87,4 +87,64 @@ final class PrivateFolderRulesTest extends TestCase {
 	public function test_an_empty_token_never_matches(): void {
 		$this->assertSame( R::CLOSED, R::classify( 200, 'qualunque cosa', '' )[0] );
 	}
+
+	public function test_suggested_path_sits_above_the_web_root(): void {
+		$this->assertSame( '/home/u/asem-riservata', R::suggest_path( array( '/home/u/public_html' ), 'asem-riservata' ) );
+		// WordPress in una sottocartella: conta la radice web, non la cartella di WordPress
+		$this->assertSame( '/home/u/asem-riservata', R::suggest_path( array( '/home/u/public_html/blog', '/home/u/public_html', '/home/u/public_html/blog/wp-content/uploads' ), 'asem-riservata' ) );
+		// struttura con la radice web dentro la cartella del progetto
+		$this->assertSame( '/srv/asem-riservata', R::suggest_path( array( '/srv/web/wp', '/srv/web', '/srv/web/app/uploads' ), 'asem-riservata' ) );
+		$this->assertSame( '/asem-riservata', R::suggest_path( array( '/public_html' ), 'asem-riservata' ) );
+		$this->assertSame( 'C:/siti/asem-riservata', R::suggest_path( array( 'C:\\siti\\www' ), 'asem-riservata' ) );
+		$this->assertSame( '', R::suggest_path( array(), 'asem-riservata' ) );
+		$this->assertSame( '', R::suggest_path( array( '/', 'C:/' ), 'asem-riservata' ) );
+	}
+
+	public function test_placeholder_text_and_id(): void {
+		$id = '123e4567-e89b-42d3-a456-426614174000';
+		$this->assertSame( $id, R::placeholder_id( R::placeholder_text( $id ) ) );
+		$this->assertSame( '', R::placeholder_id( '' ) );
+		$this->assertSame( '', R::placeholder_id( 'un file qualunque' ) );
+		$this->assertSame( '', R::placeholder_id( 'asem-sito:xyz' ) );
+	}
+
+	public function test_a_folder_is_accepted_only_if_empty_or_marked_by_this_site(): void {
+		$me    = '123e4567-e89b-42d3-a456-426614174000';
+		$other = '999e4567-e89b-42d3-a456-426614174999';
+		$this->assertSame( '', R::placeholder_verdict( false, '', $me ) ); // vuota
+		$this->assertSame( '', R::placeholder_verdict( true, $me, $me ) ); // segnaposto di questo sito
+		$this->assertSame( 'not_empty', R::placeholder_verdict( true, '', $me ) ); // piena e senza segnaposto
+		$this->assertSame( 'foreign_site', R::placeholder_verdict( true, $other, $me ) ); // segnaposto di un altro sito
+		$this->assertSame( 'foreign_site', R::placeholder_verdict( false, $other, $me ) );
+	}
+
+	public function test_only_the_names_the_plugin_writes_are_its_own(): void {
+		$this->assertTrue( R::is_plugin_file( str_repeat( 'a', 32 ) ) );
+		$this->assertTrue( R::is_plugin_file( str_repeat( '0f', 16 ) . '.part-1a2b3c4d' ) );
+		$this->assertFalse( R::is_plugin_file( 'foto-vacanze.jpg' ) );
+		$this->assertFalse( R::is_plugin_file( 'index.php' ) );
+		$this->assertFalse( R::is_plugin_file( '.htaccess' ) );
+		$this->assertFalse( R::is_plugin_file( R::PLACEHOLDER ) );
+		$this->assertFalse( R::is_plugin_file( str_repeat( 'a', 31 ) ) );
+		$this->assertFalse( R::is_plugin_file( str_repeat( 'g', 32 ) ) );
+		$this->assertFalse( R::is_plugin_file( str_repeat( 'a', 32 ) . '.pdf' ) );
+	}
+
+	public function test_probes_have_the_shape_of_the_real_files(): void {
+		$s = R::probe_shapes( '2026' );
+		$this->assertSame( array( '', 'receipts/2026', 'backups' ), array_column( $s, 'rel' ) );
+		$this->assertSame( array( '', '.pdf', '.zip' ), array_column( $s, 'ext' ) );
+	}
+
+	public function test_the_reference_probe_must_download_before_a_closed_result_counts(): void {
+		$t = 'asem-controllo-abc';
+		$this->assertSame( array( true, '' ), R::reference_ok( 200, "x $t\n", $t ) );
+		$this->assertSame( array( false, 'reference' ), R::reference_ok( 403, 'Forbidden', $t ) ); // nemmeno il file in una cartella pubblica si scarica: la prova non vale
+		$this->assertSame( array( false, 'reference' ), R::reference_ok( 404, 'Non trovato', $t ) );
+		$this->assertSame( array( false, 'reference' ), R::reference_ok( 200, '<html>Home</html>', $t ) );
+		$this->assertSame( array( false, 'loopback' ), R::reference_ok( 0, '', $t ) );
+		$this->assertSame( array( false, 'auth' ), R::reference_ok( 401, '', $t ) );
+		$this->assertSame( array( false, 'redirect' ), R::reference_ok( 302, '', $t ) );
+		$this->assertSame( array( false, 'server' ), R::reference_ok( 503, '', $t ) );
+	}
 }
