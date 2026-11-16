@@ -7,10 +7,13 @@ defined( 'ABSPATH' ) || exit;
  * Regole del tipo di utente «Dipendente» (parte pura, senza WordPress: si prova con i test unitari).
  *
  * Il dipendente parte con gli stessi permessi della segreteria. Chi ha titolo (amministratori, presidente, vicepresidente)
- * può togliergli, uno per uno, SOLO i sei permessi di questo elenco chiuso; tutti gli altri restano fissi.
+ * può togliergli, area per area, i permessi di questo elenco chiuso (15 aree); tutto il resto resta solo amministratore.
+ * Si memorizza l'elenco dei permessi TOLTI: chi non ha niente di tolto ha tutto, come la segreteria.
  *
  * Ogni pagina, azione o esportazione che dipende da uno di quei permessi è scritta qui, in una tabella sola:
  * il controllo è unico ({@see Employees::gate()}), così un permesso tolto vale ovunque.
+ * Le sei aree storiche (corsi, eventi, incassi, spese, rimborsi, fondi) hanno già i loro controlli; le altre nove sono per ora solo
+ * memorizzate e mostrate, i controlli arrivano area per area (vedi {@see EmployeeRules::enforced_keys()}).
  */
 final class EmployeeRules {
 
@@ -21,16 +24,45 @@ final class EmployeeRules {
 	const REFUNDS  = 'refunds';
 	const FUNDS    = 'funds';
 
-	/** @return array<string,string> i soli permessi che si possono togliere, con il nome che si legge */
+	const PEOPLE      = 'people';
+	const HEALTH      = 'health';
+	const RESOURCES   = 'resources';
+	const COMMS       = 'comms';
+	const DOCUMENTS   = 'documents';
+	const ASSEMBLIES  = 'assemblies';
+	const INVENTORY   = 'inventory';
+	const CONVENTIONS = 'conventions';
+	const TOOLS       = 'tools';
+
+	/** @return array<string,string> i permessi che si possono togliere (le 15 aree), con il nome che si legge, nell'ordine della pagina */
 	public static function labels(): array {
 		return array(
-			self::COURSES  => 'Corsi',
-			self::EVENTS   => 'Eventi',
-			self::COLLECT  => 'Incassi',
-			self::EXPENSES => 'Registrazione delle spese',
-			self::REFUNDS  => 'Emissione dei rimborsi',
-			self::FUNDS    => 'Visualizzazione di fondi, casse e conti',
+			self::PEOPLE      => 'Anagrafica soci (schede, rubrica, libro soci, RUNTS, tessere, affiliazioni, polizze)',
+			self::HEALTH      => 'Certificati medici',
+			self::COURSES     => 'Corsi',
+			self::EVENTS      => 'Eventi',
+			self::RESOURCES   => 'Risorse prenotabili',
+			self::COLLECT     => 'Incassi',
+			self::EXPENSES    => 'Registrazione delle spese',
+			self::REFUNDS     => 'Emissione dei rimborsi',
+			self::FUNDS       => 'Visualizzazione di fondi, casse e conti',
+			self::COMMS       => 'Comunicazioni (avvisi, newsletter, SMS, promemoria)',
+			self::DOCUMENTS   => 'Documenti dell\'associazione',
+			self::ASSEMBLIES  => 'Assemblee, verbali e votazioni',
+			self::INVENTORY   => 'Inventario e prestiti',
+			self::CONVENTIONS => 'Convenzioni',
+			self::TOOLS       => 'Importa ed esporta dati',
 		);
+	}
+
+	/** Le aree che hanno già i loro controlli su pagine e azioni; le altre nove sono per ora solo memorizzate e mostrate. @return string[] */
+	public static function enforced_keys(): array {
+		return array( self::COURSES, self::EVENTS, self::COLLECT, self::EXPENSES, self::REFUNDS, self::FUNDS );
+	}
+
+	/** Le aree senza controlli ancora (arrivano nelle prossime modifiche): per ora un permesso tolto qui non chiude niente. @return string[] */
+	public static function pending_keys(): array {
+		return array_values( array_diff( array_keys( self::labels() ), self::enforced_keys() ) );
 	}
 
 	/** @return string[] */

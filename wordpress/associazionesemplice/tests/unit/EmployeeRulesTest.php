@@ -4,20 +4,76 @@ use PHPUnit\Framework\TestCase;
 
 final class EmployeeRulesTest extends TestCase {
 
-	public function test_the_removable_permissions_are_exactly_these_six(): void {
-		$this->assertSame( array( 'courses', 'events', 'collect', 'expenses', 'refunds', 'funds' ), EmployeeRules::keys() );
-		$this->assertCount( 6, EmployeeRules::labels() );
+	public function test_the_removable_permissions_are_exactly_these_fifteen_areas(): void {
+		$this->assertSame(
+			array( 'people', 'health', 'courses', 'events', 'resources', 'collect', 'expenses', 'refunds', 'funds', 'comms', 'documents', 'assemblies', 'inventory', 'conventions', 'tools' ),
+			EmployeeRules::keys()
+		);
+		$this->assertCount( 15, EmployeeRules::labels() );
 		foreach ( EmployeeRules::keys() as $k ) {
 			$this->assertTrue( EmployeeRules::is_removable( $k ) );
 			$this->assertNotSame( '', EmployeeRules::label( $k ) );
 		}
-		foreach ( array( 'people', 'asem_manage', 'asem_operate', 'members', 'settings', '' ) as $other ) {
+		foreach ( array( 'asem_manage', 'asem_operate', 'members', 'settings', 'roles', '' ) as $other ) {
 			$this->assertFalse( EmployeeRules::is_removable( $other ), $other );
 		}
 	}
 
+	public function test_every_area_has_its_own_label_and_none_is_repeated(): void {
+		$keys   = EmployeeRules::keys();
+		$labels = array_values( EmployeeRules::labels() );
+		$this->assertSame( count( $keys ), count( array_unique( $keys ) ), 'chiavi doppie' );
+		$this->assertSame( count( $labels ), count( array_unique( $labels ) ), 'etichette doppie' );
+		foreach ( $labels as $l ) {
+			$this->assertSame( trim( $l ), $l );
+			$this->assertNotSame( '', $l );
+		}
+	}
+
+	public function test_enforced_and_pending_areas_split_the_list_without_overlap(): void {
+		$enforced = EmployeeRules::enforced_keys();
+		$pending  = EmployeeRules::pending_keys();
+		$this->assertSame( array( 'courses', 'events', 'collect', 'expenses', 'refunds', 'funds' ), $enforced );
+		$this->assertSame( array( 'people', 'health', 'resources', 'comms', 'documents', 'assemblies', 'inventory', 'conventions', 'tools' ), $pending );
+		$this->assertSame( array(), array_intersect( $enforced, $pending ) );
+		$this->assertEqualsCanonicalizing( EmployeeRules::keys(), array_merge( $enforced, $pending ) );
+	}
+
+	public function test_pending_areas_close_no_page_or_action_yet(): void {
+		$all_pending = EmployeeRules::pending_keys();
+		foreach ( array( 'asem-people', 'asem-person', 'asem-book', 'asem-runts', 'asem-minutes', 'asem-documents', 'asem-messages', 'asem-inventory', 'asem-income', 'asem-money' ) as $page ) {
+			$this->assertNull( EmployeeRules::blocked_by( $all_pending, EmployeeRules::page_need( $page ) ), $page );
+		}
+		foreach ( array( 'asem_save_person', 'asem_save_income', 'asem_save_expense', 'asem_refund_pay', 'asem_cash_count' ) as $action ) {
+			$this->assertNull( EmployeeRules::blocked_by( $all_pending, EmployeeRules::action_need( $action ) ), $action );
+		}
+	}
+
+	public function test_a_new_employee_has_every_area_and_existing_removals_stay_the_same(): void {
+		foreach ( EmployeeRules::keys() as $k ) {
+			$this->assertTrue( EmployeeRules::has( array(), $k ), $k );
+		}
+		$stored = array( 'funds', 'courses' ); // come l'ha lasciato la versione precedente: nessuna area nuova è tolta
+		$denied = EmployeeRules::sanitize_denied( $stored );
+		$this->assertSame( array( 'courses', 'funds' ), $denied );
+		foreach ( EmployeeRules::pending_keys() as $k ) {
+			$this->assertTrue( EmployeeRules::has( $denied, $k ), $k );
+		}
+	}
+
+	public function test_a_removed_new_area_is_remembered_and_reported_as_removed(): void {
+		$denied = EmployeeRules::sanitize_denied( array( 'tools', 'people', 'asem_manage', 'people' ) );
+		$this->assertSame( array( 'people', 'tools' ), $denied );
+		$this->assertFalse( EmployeeRules::has( $denied, 'people' ) );
+		$this->assertFalse( EmployeeRules::has( $denied, 'tools' ) );
+		$this->assertTrue( EmployeeRules::has( $denied, 'health' ) );
+		$this->assertStringContainsString( 'Importa ed esporta dati', EmployeeRules::denied_message( 'tools' ) );
+		$this->assertSame( 'people', EmployeeRules::blocked_by( $denied, array( 'all' => array( 'people' ) ) ) );
+		$this->assertNull( EmployeeRules::blocked_by( $denied, array( 'any' => array( 'people', 'health' ) ) ) );
+	}
+
 	public function test_sanitize_keeps_only_removable_permissions_without_duplicates(): void {
-		$this->assertSame( array( 'courses', 'funds' ), EmployeeRules::sanitize_denied( array( 'funds', 'asem_manage', 'courses', 'courses', 'people' ) ) );
+		$this->assertSame( array( 'courses', 'funds' ), EmployeeRules::sanitize_denied( array( 'funds', 'asem_manage', 'courses', 'courses', 'members' ) ) );
 		$this->assertSame( array(), EmployeeRules::sanitize_denied( 'courses' ) );
 		$this->assertSame( array(), EmployeeRules::sanitize_denied( null ) );
 	}
