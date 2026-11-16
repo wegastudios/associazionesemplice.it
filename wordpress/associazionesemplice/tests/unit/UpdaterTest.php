@@ -74,4 +74,29 @@ final class UpdaterTest extends TestCase {
 		$this->assertStringNotContainsString( 'Testo libero', $html );
 		$this->assertSame( '', U::changelog_html( 'niente di valido' ) );
 	}
+
+	/** Il Pro dichiara «Update URI» con lo stesso host dell'API del portale: WordPress non cerca aggiornamenti con lo stesso nome su WordPress.org. */
+	public function test_pro_header_declares_update_uri_on_the_portal_host(): void {
+		$pro = (string) file_get_contents( dirname( __DIR__, 3 ) . '/associazionesemplice-pro/associazionesemplice-pro.php' );
+		$this->assertSame( 1, preg_match( '/^\s*\*\s*Update URI:\s*(\S+)/m', $pro, $m ) );
+		$this->assertSame( parse_url( U::API, PHP_URL_HOST ), parse_url( $m[1], PHP_URL_HOST ) );
+		$this->assertSame( 'https', parse_url( $m[1], PHP_URL_SCHEME ) );
+	}
+
+	/** Il gratuito del repository non dichiara «Update URI» (è lo stesso codice di WordPress.org): lo aggiunge solo build.sh al pacchetto del portale. */
+	public function test_free_source_has_no_update_uri_and_only_the_portal_build_adds_it(): void {
+		$free  = (string) file_get_contents( dirname( __DIR__, 2 ) . '/associazionesemplice.php' );
+		$build = (string) file_get_contents( dirname( __DIR__, 3 ) . '/build.sh' );
+		$this->assertStringNotContainsStringIgnoringCase( 'Update URI', $free );
+		$this->assertStringContainsString( 'Update URI:        https://associazionesemplice.it/', $build );
+	}
+
+	/** Con l'aggiornamento diretto attivo l'avviso di nuova versione porta a Bacheca → Aggiornamenti; il caricamento a mano resta il ripiego. */
+	public function test_update_notice_points_to_update_core_when_the_updater_is_active(): void {
+		$src = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/Admin/UpdateNotice.php' );
+		$this->assertStringContainsString( "admin_url( 'update-core.php' )", $src );
+		$this->assertStringContainsString( 'Updater::enabled()', $src );
+		$this->assertStringContainsString( 'Updater::products()', $src );
+		$this->assertStringContainsString( 'Plugin → Aggiungi nuovo', $src );
+	}
 }
