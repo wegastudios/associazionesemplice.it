@@ -37,6 +37,16 @@ final readonly class OnlinePayments
 {
     public const MIN_CENTS = 50;
 
+    /** Dopo «rimborsa e storna»: la voce non sparisce, torna da pagare. Frasi mostrate in gestionale (conferma ed esito). */
+    public const STAYS_RESERVATION = 'La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.';
+
+    public const STAYS_ENROLLMENT = "L'iscrizione resta e il contributo torna da pagare: se non serve più, togli l'iscrizione dalla scheda dell'attività.";
+
+    /** Frasi dell'email al socio, in coda al rimborso. */
+    public const MAIL_RESERVATION = 'La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.';
+
+    public const MAIL_ENROLLMENT = 'La tua iscrizione resta attiva e il contributo risulta da pagare: se non ti serve più, avvisa la segreteria.';
+
     public const MAX_PER_HOUR = 10;
 
     public function __construct(
@@ -260,6 +270,39 @@ final readonly class OnlinePayments
     }
 
     /**
+     * Che cosa resta in piedi dopo uno storno: prenotazioni di risorse («r:») e iscrizioni ad attività o eventi
+     * («m:», «e:», «b:»). Le quote associative no: lo storno annulla la tessera.
+     *
+     * @param  list<Due>  $items
+     * @return array{reservation: bool, enrollment: bool}
+     */
+    public static function stays(array $items): array
+    {
+        $out = ['reservation' => false, 'enrollment' => false];
+        foreach ($items as $i) {
+            if (str_starts_with($i['key'], 'r:')) {
+                $out['reservation'] = true;
+            } elseif (preg_match('/^[meb]:/', $i['key']) === 1) {
+                $out['enrollment'] = true;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Le frasi di gestionale per quel pagamento (vuoto se non c'è nulla che resti in piedi).
+     *
+     * @param  list<Due>  $items
+     */
+    public static function staysNote(array $items): string
+    {
+        $s = self::stays($items);
+
+        return trim(($s['reservation'] ? self::STAYS_RESERVATION : '').' '.($s['enrollment'] ? self::STAYS_ENROLLMENT : ''));
+    }
+
+    /**
      * Restituisce soldi al socio: l'ordine di rimborso parte verso Stripe o PayPal, resta nel registro e il socio riceve
      * un'email. Con $cents si restituisce una parte dei soldi non registrati di un pagamento «da controllare».
      * Con $cents null è il gesto unico per un pagamento già registrato: si stornano le sue ricevute in prima nota (che
@@ -310,10 +353,13 @@ final readonly class OnlinePayments
             $this->table()->where('id', $paymentId)->update($update);
             $this->audit->record('payment.refunded', 'app.online_payments', $paymentId, ['cents' => $cents, 'provider' => $p['provider'], 'refund' => $refundId, 'voided' => $p['receipts'] !== [] && $p['status'] === 'settled']);
 
-            return ['person_id' => $p['person_id'], 'cents' => $cents, 'date' => $p['created_at']];
+            // Solo con lo storno le prenotazioni e le iscrizioni restano in piedi e tornano da pagare.
+            $stays = $voided ? self::stays($p['items']) : ['reservation' => false, 'enrollment' => false];
+
+            return ['person_id' => $p['person_id'], 'cents' => $cents, 'date' => $p['created_at'], 'stays' => $stays];
         });
 
-        return $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName);
+        return $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName, $sent['stays']);
     }
 
     /**
@@ -344,7 +390,8 @@ final readonly class OnlinePayments
     }
 
     /** Email al socio: importo, motivo e tempi di accredito. Se non parte, il rimborso resta valido e si scrive nel registro. */
-    private function tellMember(string $paymentId, string $personId, int $cents, string $createdAt, string $reason, string $orgName): bool
+    /** @param  array{reservation: bool, enrollment: bool}  $stays */
+    private function tellMember(string $paymentId, string $personId, int $cents, string $createdAt, string $reason, string $orgName, array $stays): bool
     {
         $details = $this->profiles->details($personId);
         $email = $details['email'] ?? null;
@@ -356,7 +403,8 @@ final readonly class OnlinePayments
         // L'avviso è una conseguenza automatica del rimborso: parte sempre; senza i contatti della segreteria esce senza indirizzo di risposta né riga contatti.
         $contacts = $this->app->make(OrgContacts::class)->all();
         try {
-            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200), $contacts['email'] ?? null, $contacts['phone'] ?? null));
+            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200), $contacts['email'] ?? null, $contacts['phone'] ?? null,
+                array_values(array_filter([$stays['reservation'] ? self::MAIL_RESERVATION : null, $stays['enrollment'] ? self::MAIL_ENROLLMENT : null]))));
             $this->audit->record('payment.refund_mail_sent', 'app.online_payments', $paymentId, []);
 
             return true;

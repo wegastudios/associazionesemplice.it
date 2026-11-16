@@ -57,7 +57,7 @@ final readonly class PaymentSettingsController
                 'id' => $p['id'], 'date' => date('d/m/Y H:i', (int) strtotime($p['created_at'])), 'person' => $names[$p['person_id']] ?? '', 'person_id' => $p['person_id'],
                 'provider' => $p['provider'] === 'stripe' ? 'Stripe' : 'PayPal', 'status' => $p['status'], 'amount' => Money::format($p['amount_cents']),
                 'items' => implode(', ', array_column($p['items'], 'label')), 'receipts' => implode(', ', $p['receipts']), 'error' => $p['error'],
-                'refundable' => $p['status'] === 'review' && $p['paid_cents'] !== null ? max(0, $p['paid_cents'] - $p['refunded_cents']) : 0, 'refunded' => Money::format($p['refunded_cents']), 'has_receipts' => $p['receipts'] !== [],
+                'refundable' => $p['status'] === 'review' && $p['paid_cents'] !== null ? max(0, $p['paid_cents'] - $p['refunded_cents']) : 0, 'refunded' => Money::format($p['refunded_cents']), 'has_receipts' => $p['receipts'] !== [], 'stays_note' => OnlinePayments::staysNote($p['items']),
                 'voidable' => $p['receipts'] !== [] && in_array($p['status'], ['settled', 'review'], true) && $p['paid_cents'] !== null && $p['paid_cents'] - $p['refunded_cents'] > 0,
             ], $list),
             'canSettings' => $request->user()?->can('org.settings') ?? false,
@@ -143,6 +143,7 @@ final readonly class PaymentSettingsController
             throw ValidationException::withMessages(['amount' => 'Importo non valido.']);
         }
         $name = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->value('name');
+        $before = $cents === null ? $this->payments->find($payment) : null;
         try {
             $mailed = $this->payments->refund($payment, $cents, Input::string($data, 'reason'), is_string($name) ? $name : '');
         } catch (MemberAccessError $e) {
@@ -151,6 +152,9 @@ final readonly class PaymentSettingsController
 
         $notice = $mailed ? 'Il socio è stato avvisato per email.' : 'Il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu.';
 
-        return back()->with('status', ($cents === null ? 'Rimborsato e stornato: ricevute e tessere annullate. ' : 'Rimborso di '.Money::format($cents).' inviato al socio. ').$notice);
+        // Dopo lo storno, prenotazioni e iscrizioni restano e tornano da pagare: lo si dice chiaro, senza lasciarlo indovinare.
+        $stays = $before === null ? '' : OnlinePayments::staysNote($before['items']);
+
+        return back()->with('status', ($cents === null ? 'Rimborsato e stornato: ricevute e tessere annullate. ' : 'Rimborso di '.Money::format($cents).' inviato al socio. ').($stays !== '' ? $stays.' ' : '').$notice);
     }
 }
