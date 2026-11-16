@@ -26,7 +26,7 @@ Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra ne
 
 ## Se hai sbagliato
 
-I movimenti della prima nota **non si modificano**: si **annullano** (resta traccia dell'annullamento) e si registra quello giusto. Un incasso annullato sparisce da saldi, report e ricevute.
+I movimenti della prima nota **non si modificano**: si **annullano** (resta traccia dell'annullamento) e si registra quello giusto. Un incasso annullato sparisce da saldi, report e ricevute. Se annulli un incasso della quota, la **tessera resta** quando c'è **un altro incasso valido** della stessa quota per lo stesso socio e lo stesso anno (per esempio se era stata incassata due volte); se era l'unico incasso, la tessera non è più valida.
 
 > Un incasso può avere una ricevuta in PDF (vedi [Ricevute in PDF](guida:ricevute-in-pdf), funzione Pro).
 MD,

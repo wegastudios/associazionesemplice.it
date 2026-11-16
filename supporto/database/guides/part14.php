@@ -35,6 +35,7 @@ A operazione fatta compare «Rimborso di X,XX € inviato al socio.» e, se il s
 - Se hai già restituito i soldi dal pannello di Stripe o PayPal, **non rimborsare di nuovo da qui**: segna il pagamento con **«Rimborsato»**.
 - Con **SumUp**, **Satispay** e **WooCommerce** il rimborso si fa dal pannello del gestore (con WooCommerce, dall'ordine nel negozio).
 - Se il gestore rifiuta il rimborso, il programma ne spiega il motivo (per esempio la chiave non ha il permesso di fare rimborsi, o il saldo non basta): non cambia nulla.
+- Se **Stripe o PayPal non rispondono** o danno un errore loro, il pagamento resta **«da controllare»** e compare «Rimborso di … non confermato dal gestore: per ripeterlo usa lo stesso importo.» Si può ripetere **solo lo stesso importo**: così non si rimborsa due volte.
 
 ## Chi può farlo
 
@@ -112,6 +113,8 @@ Lo vede solo l'amministratore. Dice **«La cartella dei file riservati è raggiu
 **Cosa fare:** premi **«Vedi cosa fare»** (porta a **Impostazioni → Copia di sicurezza**, sezione «Cartella dei file riservati») e poi **«Controlla ora»**. Se il risultato è rosso, **inoltra il messaggio già pronto a chi gestisce il sito o l'hosting**: deve bloccare l'accesso diretto a quella cartella o spostarla fuori dalla parte pubblica del sito. Quando è sistemato, premi di nuovo **«Controlla ora»**.
 
 Per chi gestisce il server: le istruzioni tecniche (cartella fuori dal sito, pulsante «Sposta i file») sono nella stessa pagina, sotto «Cosa fare se la cartella è raggiungibile (o per metterla al sicuro)».
+
+La **nuova cartella entra in uso solo a spostamento finito**: finché non hai premuto **«Sposta i file»** e il lavoro non è completo, i file restano dove sono e il sito li legge da lì. **«Sposta i file»** copia ogni file e **controlla che la copia sia identica prima di cancellare l'originale**. La cartella deve essere **vuota e dedicata a questo sito**: ogni altra installazione, anche di prova, ne vuole una sua.
 MD,
     ],
     [
@@ -155,6 +158,8 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
+**Questa protezione serve se qualcuno porta via la cartella dei file. Non sostituisce la sicurezza del sito e del suo database.**
+
 Nel **gratuito** si salvano **cifrati** i **documenti e le scansioni**, gli **allegati dei movimenti** e le **foto dell'inventario**. Con {piano_contabile} e {piano_fiscale} si cifrano anche i **certificati medici**, i **giustificativi dei rimborsi** e i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP delle ricevute di un anno fiscale (**«Scarica i PDF di questo anno fiscale (ZIP)»**), invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
 
 <!-- Certificati medici: frasi riverificate sul codice di main dopo la PR 754 del plugin (FileCryptPanel::cert_parts), 15/11/2026. -->
@@ -176,19 +181,18 @@ Su alcuni server manca la libreria che serve a cifrare: il programma lo dice e t
 
 La frase serve a **riaprire i documenti** se il sito viene spostato o riparato, se i codici di sicurezza del sito cambiano e per **ripristinare una copia di sicurezza su un altro sito**. **Conservala fuori dal sito**, su carta o in un gestore di password: se perdi il sito, altrimenti non la ritrovi.
 
-- Nel **gratuito** è la **data e l'ora di attivazione** del plugin: «La frase è la data e l'ora di attivazione del plugin: {data}. Va scritta esattamente come la vedi qui, spazi e trattini compresi.» (c'è il pulsante **«Stampa»**).
+- Nel **gratuito** è **la data e l'ora in cui è stata creata la chiave dei file, in UTC**: «La frase è la data e l'ora in cui è stata creata la chiave dei file, in UTC: {data}. Non è la data di installazione del plugin. Va scritta esattamente così, spazi e trattini compresi.» (c'è il pulsante **«Stampa»**). **Non è la data di installazione del plugin.**
 - Con la **licenza** è il **codice di licenza**, che ritrovi nell'area clienti di Associazione Semplice; il codice di licenza apre sempre i documenti.
 
-Dopo aver cambiato la frase, fai subito una **copia nuova**: quelle fatte prima si aprono con la frase di allora.
+**Cambiare la frase non cambia la chiave dei file**: le copie fatte prima si aprono ancora con la frase di allora, e con quella si aprono anche i file salvati dopo. Conservale con cura o cancellale; fai anche una **copia nuova**.
 
 ## Quanto protegge
 
-Con le parole del programma: chi si portasse via la sola cartella dei file non può leggerli. Chi ha anche il database e il file di configurazione del sito può aprirli se conosce o indovina la frase. **La data di attivazione si indovina facilmente**; il codice di licenza **lo conosce anche Associazione Semplice** e sta nelle email di acquisto. Per le copie di sicurezza: **con la data di attivazione la copia è protetta da un'apertura per sbaglio, non da chi vuole aprirla.**
+Chi si porta via la sola cartella dei file non può leggerli. **Chi ha anche il database può aprirli quando la frase è quella automatica o il codice di licenza**, perché stanno nel database; il codice di licenza **lo conosce anche Associazione Semplice** e sta nelle email di acquisto. Nel plugin senza licenza, con una **frase propria**, servono anche il file `wp-config.php` o la frase. La frase serve a te, per riaprire i documenti su un altro sito o dopo un cambio dei codici di sicurezza.
 
 ## Per proteggere di più
 
-Scegli una **frase tua e lunga** (almeno quattro parole) con **«Cambia la frase»**; con **«Torna alla frase automatica»** torni indietro. Prima di cambiare i codici di sicurezza del sito, controlla di avere la frase.
-
+Nel plugin **senza licenza**, scegli una **frase tua e lunga** (almeno quattro parole) con **«Cambia la frase»**; con **«Torna alla frase automatica»** torni indietro. **In ogni caso** conviene la costante `ASEM_ENC_KEY` in `wp-config.php`, che sta fuori dal database (vedi sotto, «per chi gestisce il sito»). **Con la licenza il codice di licenza apre sempre**: la frase tua serve solo a riaprire i documenti. Prima di cambiare i codici di sicurezza del sito, controlla di avere la frase.
 *Per chi gestisce il sito:* la protezione più alta si ottiene con una frase propria e lunga e con la costante `ASEM_ENC_KEY` nel file `wp-config.php` (un testo lungo e casuale). Va conservata con cura: senza di essa e senza la frase i file non si aprono, a meno di avere il codice di licenza, che apre sempre. Se i codici `AUTH_KEY` e `AUTH_SALT` mancano o sono quelli di esempio, la chiave è più debole e il programma lo segnala.
 
 ## Se la chiave non si apre

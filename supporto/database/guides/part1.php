@@ -142,15 +142,21 @@ Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 
 ## Ripristinare
 
-> Il ripristino funziona sullo stesso sito e sostituisce i dati del plugin con quelli della copia, **tutto o niente**.
+> Il ripristino sostituisce i dati del plugin con quelli della copia, **tutto o niente**. Le copie sono **firmate**: una copia **modificata dopo essere stata fatta** viene **rifiutata**.
 
 1. Nella stessa pagina scegli **Ripristina** e seleziona il file.
 2. Prima di sostituire i dati, il plugin salva sul sito una copia dello stato attuale (ne tiene alcune, scaricabili).
-3. Conferma. A operazione finita controlla soci e prima nota.
+3. Per confermare scrivi **RIPRISTINA** e la **tua password di amministratore**. Se la copia è stata fatta **su un altro sito**, scrivi invece **RIPRISTINA DA ALTRO SITO** (e la password): il programma ti dice prima cosa verrà sostituito, e l'operazione resta scritta nel registro delle azioni.
+4. A operazione finita controlla soci e prima nota.
+
+**La frase della copia.** Serve solo se la copia viene da un altro sito: è il codice di licenza o, nel gratuito, la data e l'ora in cui era stata creata la chiave dei file (in UTC, non la data di installazione del plugin). Se la lasci vuota, **soci e prima nota si ripristinano lo stesso**, ma i documenti cifrati restano chiusi finché non riapri la chiave con la frase.
+
+**Dopo un cambio dei codici di sicurezza**, le copie fatte prima chiedono la conferma per altro sito.
 
 ## Da sapere
 
 - Gli utenti di WordPress non fanno parte della copia.
+- **Non si ripristinano**: le password dei soci, le loro sessioni e le notifiche (i soci rientrano con il link che ricevono) e il registro delle azioni.
 - La copia contiene dati personali: tienila protetta e non condividerla.
 MD,
     ],
