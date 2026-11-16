@@ -8480,7 +8480,8 @@ Settings::update( array( 'payment_provider' => 'stripe_paypal', 'paypal_mode' =>
 $rf_calls = array();
 $rf_seen  = array();
 $rf_mode  = 'ok';
-$rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_seen, &$rf_mode, $fake_gateway ) {
+$rf_hook  = null; // se impostata, gira mentre la richiesta è dal gestore (per simulare un'altra richiesta nello stesso istante)
+$rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_seen, &$rf_mode, &$rf_hook, $fake_gateway ) {
 	$stripe = false !== strpos( $url, 'api.stripe.com/v1/refunds' );
 	$paypal = false !== strpos( $url, '/v2/payments/captures/' ) && '/refund' === substr( $url, -7 );
 	if ( ! $stripe && ! $paypal ) {
@@ -8510,6 +8511,9 @@ $rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_s
 	}
 	if ( isset( $errs[ $rf_mode ] ) ) {
 		return array( 'code' => $errs[ $rf_mode ][0], 'body' => wp_json_encode( $errs[ $rf_mode ][1] ) );
+	}
+	if ( null !== $rf_hook ) {
+		( $rf_hook )();
 	}
 	if ( ! isset( $rf_seen[ $key ] ) ) { // lo stesso invio con la stessa chiave dà lo stesso rimborso, senza rimborsare di nuovo
 		$rf_seen[ $key ] = ( $stripe ? 're_' : 'RF' ) . ( count( $rf_seen ) + 1 );
@@ -8699,6 +8703,56 @@ $rf_rv = $rf_pay( 'stripe', 1000, array( 'review' => 1, 'payer_user_id' => 4242 
 $rf_ok = $rf_pay( 'stripe', 1000, array( 'payer_user_id' => 4242 ) );
 asem_ok( 'Pagamento ricevuto: la segreteria lo sta controllando.' === $ap_ps->handle_return( $rf_row( $rf_rv )['public_id'], 'ok', 4242 ) && 'Pagamento ricevuto: grazie!' === $ap_ps->handle_return( $rf_row( $rf_ok )['public_id'], 'ok', 4242 ), 'socio dopo il pagamento: «la segreteria lo sta controllando» solo se il pagamento resta da controllare' );
 asem_ok( false !== strpos( (string) $rf_try( $rf_ct, 700 ), 'Importo non valido: si può restituire da 0,50 € a 6,00 €' ), 'rimborso: un secondo rimborso oltre il pagato è rifiutato con la cifra massima' );
+
+// presa atomica e tentativi non confermati: due richieste insieme o un nuovo tentativo dopo un timeout non restituiscono più del dovuto
+$rf_k1 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_n0 = count( $rf_calls );
+$rf_inner = null;
+$rf_hook  = function () use ( &$rf_inner, &$rf_hook, $rf_try, $rf_k1 ) { // un'altra persona prova a restituire 4,00 € mentre i 3,00 € sono dal gestore
+	$rf_h     = $rf_hook;
+	$rf_hook  = null;
+	$rf_inner = $rf_try( $rf_k1, 400, 0 );
+	$rf_hook  = $rf_h;
+};
+$ap_ps->refund( $rf_k1, 300, 0, 'Motivo di prova' );
+$rf_hook = null;
+asem_ok( is_string( $rf_inner ) && false !== strpos( $rf_inner, 'rimborso in corso' ) && $rf_n0 + 1 === count( $rf_calls ) && 300 === (int) $rf_row( $rf_k1 )['refunded_cents'] && 0 === (int) $rf_row( $rf_k1 )['refund_pending_cents'], 'rimborso: due richieste insieme con importi diversi, la seconda non arriva al gestore e resta restituito solo il primo importo' );
+
+$rf_k2 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_n0 = count( $rf_calls );
+$rf_mode = 'down';
+$rf_msg  = (string) $rf_try( $rf_k2, 500 );
+$rf_mode = 'ok';
+$rf_p    = $rf_row( $rf_k2 );
+asem_ok( false !== strpos( $rf_msg, 'non risponde' ) && false !== strpos( $rf_msg, 'con lo stesso importo' ) && 500 === (int) $rf_p['refund_pending_cents'] && 1 === (int) $rf_p['review'] && false !== strpos( (string) $rf_p['error'], 'non confermato' ) && 0 === (int) $rf_p['refunded_cents'], 'rimborso: se il gestore non risponde il pagamento resta «da controllare» con il tentativo salvato' );
+asem_ok( false !== strpos( asem_render( array( Admin\PaymentsPage::class, 'render' ), 'asem_payment_refund' ), 'Rimborso di 5,00 € non confermato dal gestore: per ripeterlo usa lo stesso importo.' ), 'rimborso: la pagina dice che c\'è un rimborso non confermato e quale importo ripetere' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_k2, 600 ), 'solo lo stesso importo' ) && $rf_n0 === count( $rf_calls ) && 500 === (int) $rf_row( $rf_k2 )['refund_pending_cents'], 'rimborso: dopo un timeout un importo diverso non parte, nemmeno verso il gestore' );
+$rf_seen[ 'refund-' . $rf_p['public_id'] . '-0-500' ] = 're_prima'; // il gestore aveva in realtà ricevuto il primo invio
+$ap_ps->refund( $rf_k2, 500, 0, 'Motivo di prova' );
+$rf_p = $rf_row( $rf_k2 );
+asem_ok( $rf_n0 + 1 === count( $rf_calls ) && 'refund-' . $rf_p['public_id'] . '-0-500' === $rf_calls[ $rf_n0 ]['key'] && 're_prima' === $rf_p['refund_id'] && 500 === (int) $rf_p['refunded_cents'] && 0 === (int) $rf_p['refund_pending_cents'], 'rimborso: il nuovo tentativo con lo stesso importo usa la stessa chiave e non rimborsa due volte' );
+
+$rf_k3 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$wpdb->update( Db::t( 'payments' ), array( 'refund_pending_cents' => 500, 'refund_pending_at' => gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - 30 * 3600 ) ), array( 'id' => $rf_k3 ) );
+$rf_n0 = count( $rf_calls );
+asem_ok( false !== strpos( (string) $rf_try( $rf_k3, 500 ), 'più di 24 ore' ) && $rf_n0 === count( $rf_calls ), 'rimborso: un tentativo non confermato di più di 24 ore fa non si ripete in automatico' );
+$ap_ps->mark_reviewed( $rf_k3 );
+asem_ok( 0 === (int) $rf_row( $rf_k3 )['refund_pending_cents'] && 500 === $ap_ps->refund( $rf_k3, 500, 0, 'Motivo di prova' )['cents'], 'rimborso: dopo il controllo di chi ha guardato il pannello del gestore si può ripartire' );
+
+$rf_k4 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_hook = function () use ( $wpdb, $rf_k4 ) { // mentre il gestore risponde la riga cambia: la scrittura condizionata non passa
+	$wpdb->update( Db::t( 'payments' ), array( 'refunded_cents' => 100 ), array( 'id' => $rf_k4 ) );
+};
+$rf_r4   = $ap_ps->refund( $rf_k4, 300, 0, 'Motivo di prova' );
+$rf_hook = null;
+$rf_p    = $rf_row( $rf_k4 );
+asem_ok( 400 === (int) $rf_p['refunded_cents'] && 400 === $rf_r4['total'] && 1 === (int) $rf_p['review'] && 0 === (int) $rf_p['refund_pending_cents'] && false !== strpos( (string) $rf_p['error'], 'da controllare' ), 'rimborso: se il gestore conferma ma la scrittura non passa, l\'importo si somma comunque e il pagamento è «da controllare»' );
+
+$rf_k5 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_mode = 'balance';
+$rf_try( $rf_k5, 500 );
+$rf_mode = 'ok';
+asem_ok( 0 === (int) $rf_row( $rf_k5 )['refund_pending_cents'] && 500 === $ap_ps->refund( $rf_k5, 500, 0, 'Motivo di prova' )['cents'], 'rimborso: se il gestore rifiuta con certezza non resta nessun tentativo in sospeso' );
 
 // anno fiscale chiuso: il rimborso non scrive nella prima nota (nemmeno nei suoi anni chiusi)
 $rf_fy = \AssociazioneSemplice\FiscalYears::get( $fy_far );
