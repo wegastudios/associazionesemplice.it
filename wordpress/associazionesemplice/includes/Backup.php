@@ -23,11 +23,11 @@ final class Backup {
 	const RESTORE_PHRASE       = 'RIPRISTINA';
 	const RESTORE_PHRASE_OTHER = 'RIPRISTINA DA ALTRO SITO';
 
-	/** Tabelle che il ripristino non riscrive: il registro azioni è la memoria di ciò che è successo (anche del ripristino stesso). */
-	const NOT_RESTORED = array( 'asem_audit_log', 'asem_member_auth', 'asem_push_subs', 'asem_member_sessions', 'asem_member_challenges' );
+	/** Tabelle che il ripristino non riscrive: il registro azioni è la memoria di ciò che è successo (anche del ripristino stesso); sessioni, codici di accesso e notifiche push dei soci non tornano (le password sì, vedi {@see self::MEMBER_ACCESS}). */
+	const NOT_RESTORED = array( 'asem_audit_log', 'asem_push_subs', 'asem_member_sessions', 'asem_member_challenges' );
 
-	/** Tabelle con le password, le sessioni e le notifiche dei soci: legate alle persone di QUESTO sito, dopo un ripristino si svuotano e i soci rientrano con il link. */
-	const MEMBER_ACCESS = array( 'asem_member_auth', 'asem_member_sessions', 'asem_member_challenges', 'asem_push_subs' );
+	/** Tabelle con le sessioni, i codici di accesso e le notifiche push dei soci: dopo un ripristino si svuotano (le password invece tornano, e ogni socio ne sceglie una nuova al primo accesso). */
+	const MEMBER_ACCESS = array( 'asem_member_sessions', 'asem_member_challenges', 'asem_push_subs' );
 
 	/** Solo per le prove: tetti più bassi di quelli predefiniti (vedi {@see BackupSeal::limits()}). @var array<string,int> */
 	public static $test_limits = array();
@@ -248,7 +248,7 @@ final class Backup {
 			. "Si ripristina da Strumenti → Copia di sicurezza.\n"
 			. "I dati in chiaro (soci, prima nota e tutte le altre tabelle) si ripristinano sempre, anche senza la frase e anche su un server senza la libreria sodium.\n"
 			. "I documenti riservati (certificati, allegati, scansioni) sono cifrati quando il sito li ha cifrati; i campi di testo che sul sito non si potevano cifrare (il manifest ne conta il numero in «plain_fields») stanno nella copia in chiaro. Le chiavi dei documenti cifrati sono in chiavi.json, avvolte con la chiave del sito, con la frase in uso (il codice di licenza, la data e l'ora in cui è stata creata la chiave dei file, in UTC, oppure la frase scelta; la frase non è la data di installazione del plugin) e, se il Pro era attivo quando hai fatto la copia, anche con il codice di licenza. Senza la chiave del sito di origine e senza una di queste frasi i documenti cifrati si rimettono sul sito ma restano chiusi: il ripristino dice quanti sono e si aprono più tardi con «Riapri la chiave con la frase».\n"
-			. "Il file contiene anche le impronte delle password dei soci e le notifiche push: il ripristino non le rimette (i soci rientrano con il link ricevuto per e-mail). Non vengono ripristinati nemmeno il registro delle azioni e gli utenti WordPress.\n"
+			. "Il file contiene anche le impronte delle password dei soci (mai le password in chiaro) e le notifiche push. Il ripristino rimette le password: ogni socio, al primo accesso, entra con la password di prima e deve scegliere subito una nuova password (vale anche entrando con il link ricevuto per e-mail). Le sessioni aperte e le notifiche push non vengono ripristinate, e nemmeno il registro delle azioni e gli utenti WordPress.\n"
 			. $plain_line . "Le chiavi segrete dei pagamenti online non sono incluse.\n";
 	}
 
@@ -293,7 +293,7 @@ final class Backup {
 	public static function other_site_text(): string {
 		return Texts::t( 'Questa copia non è stata fatta su questo sito. Ripristinala solo se è tua e sai da dove viene: sostituirà i dati attuali.' )
 			. ' ' . Texts::t( 'Verranno sostituiti: tutte le tabelle del plugin (soci, prima nota, attività, ricevute, fondi e le altre), le impostazioni e i testi personalizzati, gli allegati e i PDF delle ricevute citati dai dati della copia, le chiavi dei documenti riservati e l\'identificativo del sito che li lega.' )
-			. ' ' . Texts::t( 'Verranno cancellate, senza essere ripristinate dalla copia: le password dei soci, le loro sessioni e le notifiche push di adesso (i soci rientrano con il link che ricevono).' )
+			. ' ' . Texts::t( 'Verranno cancellate, senza essere ripristinate dalla copia: le sessioni dei soci e le notifiche push di adesso. Le password dei soci invece tornano come nella copia, e ogni socio dovrà sceglierne una nuova al primo accesso.' )
 			. ' ' . Texts::t( 'Non verranno toccati: il registro delle azioni, gli utenti WordPress, le chiavi segrete dei pagamenti e il codice di licenza di questo sito.' )
 			. ' ' . Texts::t( 'Per procedere scrivi «{frase}» nel campo di conferma e la tua password; l\'operazione resta scritta nel registro delle azioni.', array( 'frase' => self::RESTORE_PHRASE_OTHER ) );
 	}
@@ -440,13 +440,13 @@ final class Backup {
 	 * Sostituisce i dati del plugin con quelli della copia. Prima salva una copia di sicurezza sul sito; il ripristino è tutto o niente per i dati.
 	 *
 	 * Un solo ripristino alla volta (blocco del database con nome per sito). Le copie fatte da questo sito si ripristinano se firma e impronte sono
-	 * valide; quelle fatte altrove (o senza firma) solo con $other_site_ok. Non si riscrivono il registro azioni, le password dei soci e le notifiche
-	 * push (tabelle con le persone di questo sito: si svuotano e i soci rientrano con il link). Le chiavi dei documenti cifrati e l'identificativo del
+	 * valide; quelle fatte altrove (o senza firma) solo con $other_site_ok. Non si riscrive il registro azioni; sessioni, codici di accesso e notifiche
+	 * push dei soci si svuotano. Le impronte delle password dei soci tornano dalla copia, con il segno «cambio obbligatorio» (must_reset = 2): ogni socio ne sceglie una nuova al primo accesso. Le chiavi dei documenti cifrati e l'identificativo del
 	 * sito si adottano DOPO il COMMIT, con una riga nel registro azioni.
 	 *
 	 * @param string $phrase        la frase della copia (il codice di licenza o la data di attivazione di allora, o la frase scelta): serve solo per aprire le chiavi che questo sito non conosce; senza, quelle chiavi si adottano chiuse
 	 * @param bool   $other_site_ok chi ripristina ha confermato per iscritto una copia fatta su un altro sito
-	 * @return array tables, rows, files, bad (file non rimessi perché l'impronta non coincide), skipped (file che nessuna riga cita), closed (documenti rimessi ma chiusi), keys_closed, members_reset (righe di accessi dei soci cancellate), origin, safety, documents
+	 * @return array tables, rows, files, bad (file non rimessi perché l'impronta non coincide), skipped (file che nessuna riga cita), closed (documenti rimessi ma chiusi), keys_closed, members_reset (righe di sessioni, codici e notifiche dei soci cancellate), passwords (password dei soci rimesse con il cambio obbligatorio), origin, safety, documents
 	 * @throws \InvalidArgumentException|\RuntimeException
 	 */
 	public static function restore( string $zip_path, string $phrase = '', bool $other_site_ok = false ): array {
@@ -512,13 +512,18 @@ final class Backup {
 		$db         = Db::db();
 		$names      = array_values( array_diff( array_keys( $m['tables'] ), self::NOT_RESTORED ) );
 		$wipe       = array();
-		foreach ( self::MEMBER_ACCESS as $t ) {
+		$tables_wipe = self::MEMBER_ACCESS;
+		if ( ! isset( $m['tables']['asem_member_auth'] ) ) {
+			$tables_wipe[] = 'asem_member_auth'; // una copia senza le password: quelle di adesso erano legate alle persone di prima, si svuotano
+		}
+		foreach ( $tables_wipe as $t ) {
 			if ( $db->get_var( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $db->prefix . $t ) ) ) ) {
 				$wipe[] = $t;
 			}
 		}
 		$rows_total    = 0;
 		$members_reset = 0;
+		$passwords     = 0;
 		$db->query( 'START TRANSACTION' );
 		try {
 			foreach ( $names as $name ) {
@@ -555,7 +560,15 @@ final class Backup {
 					self::insert_rows( $tbl, $use, $batch );
 				}
 			}
-			foreach ( $wipe as $t ) { // gli accessi dei soci erano legati alle persone di prima: dopo il ripristino i soci rientrano con il link
+			if ( isset( $m['tables']['asem_member_auth'] ) ) { // le password tornano, ma ogni socio ne sceglie una nuova al primo accesso (il segno si toglie solo cambiandola)
+				$auth = $db->prefix . 'asem_member_auth';
+				$n    = $db->query( $db->prepare( "UPDATE `$auth` SET must_reset = %d WHERE pass_hash IS NOT NULL AND pass_hash <> ''", MemberPassword::RESTORED ) ); // phpcs:ignore WordPress.DB.PreparedSQL
+				if ( false === $n ) {
+					throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				$passwords = (int) $n;
+			}
+			foreach ( $wipe as $t ) { // sessioni, codici e notifiche dei soci erano legati a ciò che c'era prima: dopo il ripristino i soci dovranno entrare di nuovo
 				$tbl = $db->prefix . $t;
 				$n   = $db->query( "DELETE FROM `$tbl`" ); // phpcs:ignore WordPress.DB.PreparedSQL
 				if ( false === $n ) {
@@ -645,6 +658,7 @@ final class Backup {
 				'documents_closed'  => $closed_all,
 				'keys_closed'       => (int) $keys['closed'],
 				'members_reset'     => $members_reset,
+				'passwords'         => $passwords,
 				'documents'         => $documents,
 			)
 		);
@@ -659,6 +673,7 @@ final class Backup {
 			'keys_closed'   => (int) $keys['closed'],
 			'keys_failed'   => (bool) $keys['failed'],
 			'members_reset' => $members_reset,
+			'passwords'     => $passwords,
 			'origin'        => $origin,
 			'safety'        => basename( $safety ),
 			'documents'     => $documents,

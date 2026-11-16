@@ -272,10 +272,16 @@ final class MemberLoginPage {
 
 		$pending = MemberSession::pending_setup(); // entrato ma senza password valida: solo scelta della password
 		if ( $pending ) {
-			$intro = 'reset' === $pending['state']
-				? 'Hai chiesto di reimpostare la password: scegline una nuova per continuare.'
-				: 'Prima di continuare scegli la tua password: la userai per entrare ogni volta (potrai sempre usare anche il link che ti arriva per email).';
-			$body .= '<div class="n">Scegli la tua password</div><p>' . esc_html( $intro ) . '</p>'
+			if ( 'restored' === $pending['state'] ) {
+				$title = 'Scegli una nuova password';
+				$intro = 'Il sito è stato ripristinato da una copia di sicurezza: per la tua sicurezza scegli una nuova password prima di continuare.';
+			} else {
+				$title = 'Scegli la tua password';
+				$intro = 'reset' === $pending['state']
+					? 'Hai chiesto di reimpostare la password: scegline una nuova per continuare.'
+					: 'Prima di continuare scegli la tua password: la userai per entrare ogni volta (potrai sempre usare anche il link che ti arriva per email).';
+			}
+			$body .= '<div class="n">' . esc_html( $title ) . '</div><p>' . esc_html( $intro ) . '</p>'
 				. self::form(
 					'password',
 					self::field( 'Nuova password (almeno 8 caratteri)', 'password', 'password', 'new-password', '', ' minlength="8"' ) . self::field( 'Ripeti la password', 'password2', 'password', 'new-password', '', ' minlength="8"' ),
@@ -283,7 +289,7 @@ final class MemberLoginPage {
 					true,
 					$back
 				) . $gap . self::form( 'logout', '', 'Esci', true );
-			return CardVerify::layout( 'Scegli la password', Assets::accent( '#2271b1' ), $body );
+			return CardVerify::layout( 'restored' === $pending['state'] ? 'Scegli una nuova password' : 'Scegli la password', Assets::accent( '#2271b1' ), $body );
 		}
 
 		$session = MemberSession::current();
