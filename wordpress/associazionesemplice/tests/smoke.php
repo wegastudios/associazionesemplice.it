@@ -9271,6 +9271,17 @@ asem_ok( $bd_throws( function () use ( $R, $bd_vol ) { $R::request( $bd_vol, arr
 asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'km', 'expense_date' => $today, 'description' => 'Km', 'km' => 10 ) ); } ), 'rimborsi: senza tariffa non c\'è il rimborso chilometrico' );
 $bd_r1 = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Carta e penne', 'amount' => '6,00' ), null, 1 );
 asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Altre', 'amount' => '5,00' ) ); } ), 'rimborsi: l\'autocertificazione ha il tetto di 10 euro al giorno' );
+// Limiti di legge anche con richieste insieme: il blocco per persona rifiuta la seconda, e l'approvazione ricontrolla i totali
+$bd_cnt_before = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'refunds' ) . ' WHERE person_id = %d', $bd_vol ) );
+Db::$lock_fake = '0';
+$bd_lk = asem_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Insieme', 'amount' => '1,00' ) ); } );
+Db::$lock_fake = 'x';
+asem_ok( null !== $bd_lk && false !== strpos( $bd_lk, 'Un\'altra operazione è in corso' ) && (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'refunds' ) . ' WHERE person_id = %d', $bd_vol ) ) === $bd_cnt_before, 'rimborsi: mentre un\'altra richiesta della stessa persona è in corso la seconda viene rifiutata e non si scrive nulla' );
+asem_ok( Db::lock_name( 'asem_refund_p_' . $bd_vol ) !== Db::lock_name( 'asem_refund_p_' . $bd_vol, 'db1|wp_' ), 'rimborsi: il blocco per persona è per sito (Db::lock_name)' );
+$wpdb->insert( Db::t( 'refunds' ), array( 'person_id' => $bd_vol, 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Arrivata insieme', 'amount_cents' => 500, 'status' => 'requested', 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$bd_over = (int) $wpdb->insert_id;
+asem_ok( $bd_throws( function () use ( $R, $bd_over ) { $R::approve( $bd_over, 1 ); } ) && 'requested' === $R::get( $bd_over )['status'], 'rimborsi: l\'approvazione ricontrolla il tetto di 10 euro al giorno (6 + 5 non si approvano)' );
+$wpdb->delete( Db::t( 'refunds' ), array( 'id' => $bd_over ) );
 asem_ok( $bd_throws( function () use ( $R, $bd_r1, $cash ) { $R::pay( $bd_r1, (int) $cash['id'], '' ); } ), 'rimborsi: non si paga senza approvare' );
 $R::approve( $bd_r1, 1 );
 asem_ok( $bd_mail >= 1, 'rimborsi: il volontario riceve l\'avviso di approvazione' );
