@@ -50,7 +50,7 @@ function asem_uninstall_site() {
 	foreach ( array( 'asem_import_person', 'asem_import_tx', 'asem_evento' ) as $type ) {
 		do {
 			$deleted = 0;
-			$ids     = get_posts( array( 'post_type' => $type, 'post_status' => array( 'publish', 'future', 'draft', 'pending', 'private', 'trash', 'auto-draft' ), 'posts_per_page' => 200, 'fields' => 'ids', 'no_found_rows' => true, 'suppress_filters' => true ) );
+			$ids     = get_posts( array( 'post_type' => $type, 'post_status' => array( 'publish', 'future', 'draft', 'pending', 'private', 'trash', 'auto-draft' ), 'posts_per_page' => 200, 'fields' => 'ids', 'no_found_rows' => true ) );
 			foreach ( $ids as $post_id ) {
 				if ( wp_delete_post( (int) $post_id, true ) ) {
 					++$deleted;
