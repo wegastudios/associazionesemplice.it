@@ -704,6 +704,66 @@ In fondo trovi l'elenco dei **pagamenti dei soci** con lo stato (per esempio **c
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Gestione', 'slug' => 'gestionale-il-tuo-profilo-e-la-verifica-in-due-passaggi',
+        'title' => 'Il tuo profilo e la verifica in due passaggi',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Qui trovi come gestire **il tuo accesso** al gestionale: nome, email, password, verifica in due passaggi e dispositivi collegati. Riguarda **chi lavora nel gestionale** (titolare, amministratori, operatori), non i soci che entrano dall'[area soci](guida:gestionale-come-entro-nell-area-soci).
+
+## Dove si trova
+
+Apri il menu **«Il tuo account»**: sul computer premi il tuo nome nel menu a lato, nel telefono premi **Altro** e scegli **«Il tuo profilo»**. Nello stesso menu c'è **«Sicurezza»**, che porta alla verifica in due passaggi.
+
+## Nome e password
+
+- **Nome**: scrivi nome e cognome e premi **«Salva il nome»**.
+- **Password**: inserisci la **password attuale**, la **nuova** e ripetila, poi **«Cambia password»**.
+- Se non ricordi la password, nella pagina di accesso usa **«Password dimenticata?»**.
+
+## Cambiare l'email di accesso
+
+**L'email cambia solo quando apri il link che ti arriva al nuovo indirizzo.** Finché non lo apri, per entrare vale ancora quella di prima.
+
+1. Nel profilo, in **«Email di accesso»**, scrivi la **nuova email**.
+2. Scrivi la tua **password**, per confermare, e premi **«Cambia email»**.
+3. Il gestionale ti avvisa: «È stato mandato un link al nuovo indirizzo: l'email cambia solo quando lo apri. Il link vale 60 minuti.»
+4. Apri la posta **del nuovo indirizzo** e premi **«Conferma l'indirizzo»** nell'email «Conferma il nuovo indirizzo email». Fallo mentre sei **già entrato nel gestionale con il tuo account**: il link funziona solo per la stessa persona che l'ha chiesto.
+5. Torni nel profilo con il messaggio «Email aggiornata.»
+
+Cose da sapere:
+
+- **Il link vale 60 minuti.** Se è scaduto o non è valido, compare «Il link non è valido o è scaduto: chiedi un nuovo cambio email dal tuo profilo.»: ripeti la richiesta.
+- Al **vecchio indirizzo** arriva un'email di avviso, «Richiesta di cambio email», con l'indirizzo nuovo **nascosto in parte**. Se non l'hai chiesto tu, **cambia subito la password** dal profilo: finché nessuno apre il link, la tua email non cambia.
+- Se la **nuova email non arriva**, controlla la posta indesiderata e di aver scritto bene l'indirizzo. Per sicurezza, il gestionale risponde **allo stesso modo** anche quando quell'indirizzo è già usato da un altro accesso: se è così, il link non arriva e l'email non può cambiare.
+- Per cambiare l'email di un **socio** (non del tuo accesso) si usa la sua scheda, non il profilo.
+
+## La verifica in due passaggi
+
+A ogni accesso, oltre alla password, serve un **codice di 6 cifre** generato da un'app sul telefono (per esempio Google Authenticator, Microsoft Authenticator o 1Password). Protegge i dati dei soci anche se qualcuno scopre la tua password. **Per lavorare nel gestionale può essere obbligatoria**: in quel caso la pagina te lo dice e non puoi disattivarla.
+
+**Attivarla:**
+
+1. Da **«Sicurezza»** (o dal profilo, **«Attivala»**) premi **«Attiva la verifica»**. Il gestionale può chiederti di **riscrivere la password**.
+2. **Inquadra il QR** con l'app. Se non riesci, inserisci a mano la **chiave** scritta sotto.
+3. Scrivi il **codice di 6 cifre** che vedi nell'app e premi **«Conferma»**.
+4. Compaiono i **codici di recupero**: **salvali subito** in un posto sicuro (per esempio in un gestore di password). **Non vengono mostrati di nuovo.**
+
+**Ai prossimi accessi** scrivi la password e poi il codice dell'app. Se **non hai il telefono**, premi **«Non hai il telefono? Usa un codice di recupero»** e scrivine uno: **ogni codice vale una sola volta**.
+
+**Gestirla** (dal profilo, **«Gestisci»**):
+
+- **«Genera nuovi codici di recupero»**: i vecchi **non valgono più**;
+- **«Disattiva la verifica»**: per entrare basterà la password. Se la verifica è obbligatoria, questo pulsante non c'è.
+
+**Se perdi il telefono e i codici di recupero**, scrivi al supporto di Associazione Semplice: non puoi entrare da solo.
+
+## I dispositivi collegati
+
+In fondo al profilo vedi i **dispositivi** da cui sei entrato, con sistema, browser, indirizzo e ultimo uso, e quale è **«questo dispositivo»**. Se ce n'è più di uno, per scollegare gli altri scrivi la tua **password** e premi **«Scollega gli altri dispositivi»**: questo resta collegato. Usalo se hai perso un telefono o hai lasciato il tuo account aperto su un computer che non è tuo.
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Gestione', 'slug' => 'gestionale-operatori-e-ruoli',
         'title' => 'Operatori e ruoli, anche per il commercialista',
         'body' => <<<'MD'
