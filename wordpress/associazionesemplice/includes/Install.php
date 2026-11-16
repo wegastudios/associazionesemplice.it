@@ -8,6 +8,40 @@ final class Install {
 	const DB_VERSION_OPTION = 'asem_db_version';
 	const DB_VERSION        = '66'; // dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
+	/**
+	 * Tutti i lavori periodici e programmati del plugin e delle sue estensioni (nomi dei punti di aggancio di WP-Cron).
+	 * Alla disattivazione e alla disinstallazione si tolgono tutti, qualunque siano gli argomenti con cui erano stati programmati.
+	 */
+	const JOB_HOOKS = array(
+		'asem_send_reminders',
+		'asem_release_holds',
+		'asem_event_requests',
+		'asem_broadcast_batch',
+		'asem_check_pending_payments',
+		'asem_purge_backups',
+		'asem_private_folder_check',
+		'asem_file_crypt_migrate',
+		'asem_file_crypt_migrate_certs',
+		'asem_file_crypt_certs_check',
+		'asem_receipt_pdfs_batch',
+		'asem_purge_audit',
+		'asem_purge_member_sessions',
+		'asem_sms_hourly',
+		'asem_sms_queue',
+		'asem_newsletter_sync',
+		'asem_license_check',
+		'asem_license_resync',
+		'asem_update_check',
+		'asem_watch_month_end',
+	);
+
+	/** Toglie dal sito corrente tutti i lavori programmati del plugin (anche quelli con argomenti). */
+	public static function clear_jobs(): void {
+		foreach ( self::JOB_HOOKS as $hook ) {
+			wp_unschedule_hook( $hook );
+		}
+	}
+
 	public static function activate(): void {
 		self::create_tables();
 		self::add_roles_and_caps();
