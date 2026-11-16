@@ -148,6 +148,8 @@ it('controlla e imposta il dominio personalizzato, con le istruzioni per il DNS'
     $check('non un dominio')->assertOk()->assertExactJson(['ok' => false, 'reason' => 'invalid']);
     $check('www.associazionesemplice.it')->assertOk();   // il dominio base dipende dall'indirizzo del SaaS di prova
     $check('app.example.test')->assertOk()->assertExactJson(['ok' => false, 'reason' => 'reserved']);
+    config(['saas.members_domain' => 'soci.example.test']);
+    $check('club.soci.example.test')->assertOk()->assertExactJson(['ok' => false, 'reason' => 'reserved']);
 
     $set('WWW.PolisportivaAlfa.it')->assertOk()->assertExactJson([
         'domain' => 'www.polisportivaalfa.it', 'state' => 'pending',
@@ -231,4 +233,24 @@ it('dà lo stato per l\'area clienti: solo numeri e stati', function (): void {
     ($this->call)("orgs/{$this->orgId}/status", 'org_status', ['ref' => 'sub_999'])->assertNotFound();
     ($this->call)('orgs/00000000-0000-7000-8000-000000000000/status', 'org_status', ['ref' => 'sub_123'])->assertNotFound();
     $this->postJson("/api/portale/v2/orgs/{$this->orgId}/status", ['token' => 'non.un.token'])->assertUnauthorized();
+});
+
+it('un dominio attivo che non punta più a noi torna in attesa e l\'area soci si ferma', function (): void {
+    DB::table('core.org_domains')->insert(['org_id' => $this->orgId, 'domain' => 'www.polisportivaalfa.it', 'state' => 'active']);
+    $this->app->instance(DomainDns::class, new readonly class implements DomainDns
+    {
+        public function nameservers(string $domain): array
+        {
+            return ['ns1.altro.test'];
+        }
+
+        public function hasCertificate(string $domain): bool
+        {
+            return false;
+        }
+    });
+
+    $this->artisan('saas:portal:verify-domains')->assertSuccessful();
+
+    expect(DB::table('core.org_domains')->value('state'))->toBe('pending')->and((string) DB::table('core.org_domains')->value('message'))->toContain('sospesa');
 });

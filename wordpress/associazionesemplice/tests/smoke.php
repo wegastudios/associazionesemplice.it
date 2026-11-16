@@ -6791,6 +6791,53 @@ if ( ! \AssociazioneSemplice\WooBridge::active() ) {
 	$wc_o4->set_status( 'completed' );
 	$wc_o4->save();
 	asem_ok( 'paid' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay4['id'] ) && $people->has_membership( $wc_p4, $wc_sy ), 'woocommerce: a ordine completato (denaro incassato alla consegna) la quota si registra' );
+	// metodi fuori linea (bonifico, assegno, in sede…): conta solo a ordine completato, una volta sola
+	$wc_off = function ( string $nome, string $metodo, string $stato_iniziale ) use ( $mkb, $people, $wpdb, $wc_order, $wc_q, $wc_fee ) {
+		$pp = $mkb( $nome, 'FuoriLinea' );
+		$uu = (int) $people->get( $pp )['wp_user_id'];
+		wp_set_current_user( $uu );
+		$dd = Plugin::payments()->dues_for( $people->get( $pp ) );
+		Plugin::payments()->create_checkout( $people->get( $pp ), $uu, array_keys( $dd ), home_url( '/' ) );
+		$row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = 'woocommerce' ORDER BY id DESC LIMIT 1", ARRAY_A );
+		$o   = $wc_order( $row['public_id'], $wc_q, $wc_fee / 100 );
+		$o->set_payment_method( $metodo );
+		$o->set_status( $stato_iniziale );
+		$o->save();
+		return array( $pp, (int) $row['id'], $o );
+	};
+	$wc_tx = function () use ( $wpdb ) {
+		return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+	};
+	$wc_st = function ( int $id ) use ( $wpdb ) {
+		return (string) $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . $id );
+	};
+	asem_ok( array( 'bacs', 'cheque', 'cod' ) === \AssociazioneSemplice\WooBridge::offline_methods() && \AssociazioneSemplice\WooBridge::is_offline_method( 'bacs' ) && ! \AssociazioneSemplice\WooBridge::is_offline_method( 'stripe' ) && ! \AssociazioneSemplice\WooBridge::is_offline_method( '' ), 'woocommerce: bonifico, assegno e contrassegno sono metodi fuori linea; la carta no' );
+	$tx0 = $wc_tx();
+	list( $wc_pb, $wc_idb, $wc_ob ) = $wc_off( 'Bruna', 'bacs', 'processing' );
+	asem_ok( 'pending' === $wc_st( $wc_idb ) && $tx0 === $wc_tx() && ! $people->has_membership( $wc_pb, $wc_sy ), 'woocommerce: bonifico "in lavorazione" non è un incasso: nessuna quota registrata' );
+	$wc_ob->set_status( 'completed' );
+	$wc_ob->save();
+	asem_ok( 'paid' === $wc_st( $wc_idb ) && $tx0 + 1 === $wc_tx() && $people->has_membership( $wc_pb, $wc_sy ), 'woocommerce: bonifico completato => un incasso e quota registrata' );
+	$wc_ob->set_status( 'processing' );
+	$wc_ob->save();
+	$wc_ob->set_status( 'completed' );
+	$wc_ob->save();
+	\AssociazioneSemplice\WooBridge::on_paid( $wc_ob->get_id() );
+	asem_ok( $tx0 + 1 === $wc_tx(), 'woocommerce: ordine riaperto e completato di nuovo: nessun doppio incasso' );
+	list( $wc_pc, $wc_idc ) = $wc_off( 'Carla', 'stripe', 'processing' );
+	asem_ok( 'paid' === $wc_st( $wc_idc ) && $people->has_membership( $wc_pc, $wc_sy ), 'woocommerce: carta "in lavorazione" => incasso come prima' );
+	$wc_filtro = function ( $m ) {
+		$m[] = 'pagamento_in_sede';
+		return $m;
+	};
+	add_filter( 'asem_woo_offline_methods', $wc_filtro );
+	asem_ok( \AssociazioneSemplice\WooBridge::is_offline_method( 'pagamento_in_sede' ), 'woocommerce: il filtro aggiunge un metodo fuori linea' );
+	list( $wc_ps, $wc_ids, $wc_os ) = $wc_off( 'Sara', 'pagamento_in_sede', 'processing' );
+	asem_ok( 'pending' === $wc_st( $wc_ids ) && ! $people->has_membership( $wc_ps, $wc_sy ), 'woocommerce: metodo aggiunto dal filtro "in lavorazione" => nessun incasso' );
+	$wc_os->set_status( 'completed' );
+	$wc_os->save();
+	asem_ok( 'paid' === $wc_st( $wc_ids ) && $people->has_membership( $wc_ps, $wc_sy ), 'woocommerce: metodo aggiunto dal filtro completato => incasso' );
+	remove_filter( 'asem_woo_offline_methods', $wc_filtro );
 	wp_set_current_user( 1 );
 	asem_render( array( Admin\PaymentsPage::class, 'render' ), 'WooCommerce' );
 	// un ordine senza voci Associazione Semplice non cambia nulla
@@ -6967,6 +7014,11 @@ asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { 
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '17:00', 2 ); } ), 'risorse: nemmeno con una prenotazione di 2 fasce che la sfiora' );
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '19:00', 1 ) > 0, 'risorse: la fascia subito dopo è libera' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } ), 'risorse: il limite di prenotazioni per socio vale per i soci' );
+// Il massimo per persona si conta sotto lo stesso blocco della prenotazione: con il blocco occupato il conteggio non è nemmeno raggiunto
+Db::$lock_fake = '0';
+$rs_lk = asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } );
+Db::$lock_fake = 'x';
+asem_ok( null !== $rs_lk && false !== strpos( $rs_lk, 'Un\'altra operazione è in corso' ) && false === strpos( $rs_lk, 'Hai già' ), 'risorse: il massimo per persona si controlla dentro il blocco della risorsa (con il blocco occupato la richiesta è rifiutata prima del conteggio)' );
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1, array(), true ) > 0, 'risorse: la segreteria può superare il limite' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_gst, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_gst, $rs_day, '10:00', 1, array(), true ); } ), 'risorse: un non socio non può avere una risorsa, nemmeno dalla segreteria' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '10:00', 1, array( 'A', 'B' ), true ); } ), 'risorse: gli ospiti oltre il massimo sono rifiutati' );
@@ -9271,6 +9323,17 @@ asem_ok( $bd_throws( function () use ( $R, $bd_vol ) { $R::request( $bd_vol, arr
 asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'km', 'expense_date' => $today, 'description' => 'Km', 'km' => 10 ) ); } ), 'rimborsi: senza tariffa non c\'è il rimborso chilometrico' );
 $bd_r1 = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Carta e penne', 'amount' => '6,00' ), null, 1 );
 asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Altre', 'amount' => '5,00' ) ); } ), 'rimborsi: l\'autocertificazione ha il tetto di 10 euro al giorno' );
+// Limiti di legge anche con richieste insieme: il blocco per persona rifiuta la seconda, e l'approvazione ricontrolla i totali
+$bd_cnt_before = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'refunds' ) . ' WHERE person_id = %d', $bd_vol ) );
+Db::$lock_fake = '0';
+$bd_lk = asem_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Insieme', 'amount' => '1,00' ) ); } );
+Db::$lock_fake = 'x';
+asem_ok( null !== $bd_lk && false !== strpos( $bd_lk, 'Un\'altra operazione è in corso' ) && (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'refunds' ) . ' WHERE person_id = %d', $bd_vol ) ) === $bd_cnt_before, 'rimborsi: mentre un\'altra richiesta della stessa persona è in corso la seconda viene rifiutata e non si scrive nulla' );
+asem_ok( Db::lock_name( 'asem_refund_p_' . $bd_vol ) !== Db::lock_name( 'asem_refund_p_' . $bd_vol, 'db1|wp_' ), 'rimborsi: il blocco per persona è per sito (Db::lock_name)' );
+$wpdb->insert( Db::t( 'refunds' ), array( 'person_id' => $bd_vol, 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Arrivata insieme', 'amount_cents' => 500, 'status' => 'requested', 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$bd_over = (int) $wpdb->insert_id;
+asem_ok( $bd_throws( function () use ( $R, $bd_over ) { $R::approve( $bd_over, 1 ); } ) && 'requested' === $R::get( $bd_over )['status'], 'rimborsi: l\'approvazione ricontrolla il tetto di 10 euro al giorno (6 + 5 non si approvano)' );
+$wpdb->delete( Db::t( 'refunds' ), array( 'id' => $bd_over ) );
 asem_ok( $bd_throws( function () use ( $R, $bd_r1, $cash ) { $R::pay( $bd_r1, (int) $cash['id'], '' ); } ), 'rimborsi: non si paga senza approvare' );
 $R::approve( $bd_r1, 1 );
 asem_ok( $bd_mail >= 1, 'rimborsi: il volontario riceve l\'avviso di approvazione' );

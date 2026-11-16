@@ -25,6 +25,7 @@ use App\Modules\Soci\Services\MemberLimit;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleService;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -289,8 +290,9 @@ final readonly class PeopleController
             ],
             'firstFreeCard' => $this->people->firstFreeCard(),
             'types' => self::types(),
-            'levels' => MemberLevel::query()->where('active', true)->orderBy('sort_order')->get(['id', 'name'])
-                ->map(static fn (MemberLevel $l): array => ['id' => $l->id, 'name' => $l->name])->values(),
+            // Solo livelli attivi, più quello già assegnato a questo socio se nel frattempo è stato disattivato.
+            'levels' => MemberLevel::query()->where(static fn (Builder $q) => $q->where('active', true)->orWhere('id', $person?->level_id))->orderBy('sort_order')->get(['id', 'name', 'active'])
+                ->map(static fn (MemberLevel $l): array => ['id' => $l->id, 'name' => $l->active ? $l->name : $l->name.' (non attivo)'])->values(),
             'accounts' => $this->ledger->openAccounts(),
             'socialYear' => ['current' => $year->label(), 'next' => $year->next()->label()],
             'renewal' => $person === null ? null : $this->memberships->renewalPlan($person->id),

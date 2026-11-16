@@ -25,7 +25,7 @@ final class VerifyDomainsCommand extends Command
     public function handle(DatabaseManager $db, DomainDns $dns, PortalConfig $config): int
     {
         $expected = $config->nameservers();
-        $rows = $db->connection('pgsql')->table('core.org_domains')->whereIn('state', ['pending', 'error'])->get(['org_id', 'domain', 'requested_at']);
+        $rows = $db->connection('pgsql')->table('core.org_domains')->whereIn('state', ['pending', 'error', 'active'])->get(['org_id', 'domain', 'state', 'requested_at']);
         $active = 0;
         foreach ($rows as $row) {
             if (! is_string($row->org_id) || ! is_string($row->domain)) {
@@ -38,6 +38,9 @@ final class VerifyDomainsCommand extends Command
             if ($delegated && $dns->hasCertificate($row->domain)) {
                 [$state, $message] = ['active', null];
                 $active++;
+            } elseif ($row->state === 'active') {
+                // Era attivo ma non punta più a noi (scaduto, passato ad altri, certificato perso): l'area soci su questo dominio si ferma.
+                [$state, $message] = ['pending', 'Il dominio non è più collegato correttamente ai nostri server: l\'area soci su questo indirizzo è sospesa finché non torna a posto.'];
             } elseif ($delegated) {
                 [$state, $message] = ['pending', 'Nameserver corretti: il certificato è in emissione.'];
             } else {

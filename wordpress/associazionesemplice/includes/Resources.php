@@ -344,8 +344,8 @@ final class Resources {
 	}
 
 	/** Una prenotazione sola, sotto blocco: vedi {@see insert_many}. */
-	private static function insert( array $res, string $kind, ?int $person_id, string $starts, ?string $ends, int $fee, array $guests, string $note, ?string $hold_until = null ): int {
-		return self::insert_many( $res, $kind, $person_id, array( array( $starts, $ends, $fee ) ), $guests, $note, $hold_until )[0];
+	private static function insert( array $res, string $kind, ?int $person_id, string $starts, ?string $ends, int $fee, array $guests, string $note, ?string $hold_until = null, ?callable $check = null ): int {
+		return self::insert_many( $res, $kind, $person_id, array( array( $starts, $ends, $fee ) ), $guests, $note, $hold_until, $check )[0];
 	}
 
 	/**
@@ -357,12 +357,15 @@ final class Resources {
 	 * @return int[] numeri delle prenotazioni
 	 * @throws \InvalidArgumentException
 	 */
-	private static function insert_many( array $res, string $kind, ?int $person_id, array $ranges, array $guests, string $note, ?string $hold_until = null ): array {
+	private static function insert_many( array $res, string $kind, ?int $person_id, array $ranges, array $guests, string $note, ?string $hold_until = null, ?callable $check = null ): array {
 		$rid = (int) $res['id'];
 		return Db::with_lock(
 			'asem_res_' . $rid,
-			function () use ( $res, $rid, $kind, $person_id, $ranges, $guests, $note, $hold_until ) {
+			function () use ( $res, $rid, $kind, $person_id, $ranges, $guests, $note, $hold_until, $check ) {
 				self::release_unpaid( $rid ); // prima di dire «occupata» si liberano le fasce riservate per un pagamento online mai arrivato
+				if ( $check ) {
+					$check(); // controlli che dipendono dalle prenotazioni già scritte (es. il massimo per persona), sotto lo stesso blocco
+				}
 				$tbl   = Db::t( 'reservations' );
 				$until = null;
 				foreach ( $ranges as $r ) {
@@ -444,14 +447,15 @@ final class Resources {
 		$guests = ResourceRules::guests( (int) $res['guests_max'], $guest_names );
 		$fee    = ResourceRules::fee( $res, $slots, count( $guests ), $starts );
 		$max    = (int) $res['max_per_person'];
-		if ( ! $by_staff && $max > 0 ) {
+		// Il massimo per persona si conta sotto lo stesso blocco che scrive la prenotazione: vale anche con più richieste insieme.
+		$check = ( ! $by_staff && $max > 0 ) ? function () use ( $resource_id, $person_id, $max ) {
 			$mine = (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'reservations' ) . " WHERE resource_id = %d AND person_id = %d AND status = 'booked' AND kind = 'slot' AND starts_at >= %s", $resource_id, $person_id, Db::now() ) );
 			if ( $mine >= $max ) {
-				throw new \InvalidArgumentException( 'Hai già ' . $mine . ' ' . ( 1 === $mine ? 'prenotazione' : 'prenotazioni' ) . ' su questa risorsa (massimo ' . $max . '): annullane una per prenotarne un\'altra.' );
+				throw new \InvalidArgumentException( 'Hai già ' . $mine . ' ' . ( 1 === $mine ? 'prenotazione' : 'prenotazioni' ) . ' su questa risorsa (massimo ' . $max . '): annullane una per prenotarne un\'altra.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
-		}
+		} : null;
 		$hold_until = $hold && $fee > 0 && ! $by_staff ? gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' +' . ResourceRules::HOLD_MINUTES . ' minutes' ) ) : null; // il pagamento online deve arrivare entro pochi minuti
-		$id         = self::insert( $res, ResourceRules::KIND_SLOT, $person_id, $starts, $ends, $fee, $guests, $note, $hold_until );
+		$id         = self::insert( $res, ResourceRules::KIND_SLOT, $person_id, $starts, $ends, $fee, $guests, $note, $hold_until, $check );
 		Audit::log( 'reservation.created', 'resource', $resource_id, array( 'reservation' => $id, 'person_id' => (int) $person['id'], 'starts' => $starts, 'fee' => $fee, 'hold' => null !== $hold_until ) );
 		return $id;
 	}

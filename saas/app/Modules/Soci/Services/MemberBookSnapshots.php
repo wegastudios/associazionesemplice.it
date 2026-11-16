@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Soci\Services;
 
+use App\Modules\Cifratura\Contracts\Bytea;
+use App\Modules\Cifratura\Contracts\FieldCipher;
 use App\Modules\Contabilita\Contracts\FiscalYearClosed;
 use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Core\Contracts\OrgContext;
@@ -30,12 +32,46 @@ final readonly class MemberBookSnapshots
      */
     public const FIELDS = ['n', 'matricola', 'name', 'tax_code', 'birth', 'residence', 'level', 'card', 'approved_on', 'left_on', 'left_reason'];
 
+    /** Nome del campo cifrato: legato all'associazione e a questo campo. */
+    private const FIELD = 'member_book_snapshot.rows';
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
         private MemberBookService $book,
         private Auth $auth,
+        private FieldCipher $cipher,
     ) {}
+
+    /**
+     * Le righe della fotografia si salvano cifrate con la chiave dell'associazione: codice fiscale, nascita e residenza
+     * non stanno mai in chiaro nel database né nei backup.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function seal(array $rows): string
+    {
+        $json = json_encode($rows, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+        return Bytea::encode($this->cipher->encrypt($this->context->require()->id, self::FIELD, $json));
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function open(mixed $stored): array
+    {
+        $json = $this->cipher->decrypt($this->context->require()->id, self::FIELD, Bytea::decode($stored));
+        $rows = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+
+        $out = [];
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            if (is_array($row)) {
+                /** @var array<string, mixed> $row */
+                $out[] = $row;
+            }
+        }
+
+        return $out;
+    }
 
     /** Alla chiusura: fotografa il libro dell'esercizio (nuova versione). */
     public function take(FiscalYearClosed $event): void
@@ -54,7 +90,7 @@ final readonly class MemberBookSnapshots
             'version' => $version,
             'starts_on' => $event->startsOn,
             'ends_on' => $event->endsOn,
-            'rows' => json_encode($rows, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+            'rows_enc' => $this->seal($rows),
             'created_by' => is_string($user) ? $user : null,
         ]);
     }
@@ -92,14 +128,13 @@ final readonly class MemberBookSnapshots
     public function all(): array
     {
         $out = [];
-        foreach ($this->table()->orderBy('fiscal_year')->orderBy('version')->get(['fiscal_year', 'version', 'created_at', 'superseded_at', 'rows']) as $r) {
-            $rows = is_string($r->rows ?? null) ? json_decode($r->rows, true) : null;
+        foreach ($this->table()->orderBy('fiscal_year')->orderBy('version')->get(['fiscal_year', 'version', 'created_at', 'superseded_at', 'rows_enc']) as $r) {
             $out[] = [
                 'fiscal_year' => is_numeric($r->fiscal_year ?? null) ? (int) $r->fiscal_year : 0,
                 'version' => is_numeric($r->version ?? null) ? (int) $r->version : 0,
                 'created_at' => is_string($r->created_at ?? null) ? $r->created_at : '',
                 'superseded' => ($r->superseded_at ?? null) !== null,
-                'rows' => is_array($rows) ? array_values(array_filter($rows, is_array(...))) : [],
+                'rows' => $this->open($r->rows_enc ?? null),
             ];
         }
 
@@ -113,12 +148,10 @@ final readonly class MemberBookSnapshots
      */
     public function forYear(int $year, string $filter = ''): array
     {
-        $snap = $this->table()->where('fiscal_year', $year)->whereNull('superseded_at')->orderByDesc('version')->first(['rows']);
-        if ($snap !== null && is_string($snap->rows)) {
-            /** @var list<array<string, mixed>> $saved */
-            $saved = json_decode($snap->rows, true, 512, JSON_THROW_ON_ERROR);
+        $snap = $this->table()->where('fiscal_year', $year)->whereNull('superseded_at')->orderByDesc('version')->first(['rows_enc']);
+        if ($snap !== null && ($snap->rows_enc ?? null) !== null) {
             $rows = [];
-            foreach ($saved as $r) {
+            foreach ($this->open($snap->rows_enc) as $r) {
                 $row = self::fill($r);
                 if (($filter === MemberBookService::IN_FORCE && ! $row['in_force']) || ($filter === MemberBookService::LEFT && $row['in_force'])) {
                     continue;

@@ -162,7 +162,10 @@ final readonly class PeopleService
         $errors = PersonRules::validate($check, $hostType);
 
         if (is_string($values['level_id'] ?? null)) {
-            $level = Str::isUuid($values['level_id']) ? MemberLevel::query()->where('active', true)->find($values['level_id']) : null;
+            // Si assegnano solo livelli attivi; chi ha già un livello non più attivo lo conserva anche salvando la scheda.
+            $level = Str::isUuid($values['level_id'])
+                ? MemberLevel::query()->where(static fn (Builder $q) => $q->where('active', true)->orWhere('id', $current?->level_id))->find($values['level_id'])
+                : null;
             if ($level === null) {
                 $errors[] = 'Livello di socio non valido.';
             }

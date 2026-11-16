@@ -8,7 +8,8 @@ defined( 'ABSPATH' ) || exit;
  *
  *  1. il socio sceglie le voci da pagare (come con Stripe/PayPal) e viene mandato al checkout;
  *  2. nel carrello ogni voce è un prodotto collegato (WooLinks) con il prezzo calcolato dal server (quota del livello, sconto familiare, mensilità…);
- *  3. quando l'ordine risulta pagato (in lavorazione o completato) l'incasso entra in prima nota, una sola volta, come per gli altri gateway.
+ *  3. quando l'ordine risulta pagato l'incasso entra in prima nota, una sola volta, come per gli altri gateway: con i metodi online (carta, PayPal…)
+ *     basta «in lavorazione»; con i metodi fuori linea (bonifico, assegno, contrassegno; altri, come il pagamento in sede, si aggiungono con il filtro asem_woo_offline_methods) serve «completato», cioè la segreteria ha visto i soldi.
  *
  * Gli ordini che non contengono voci Associazione Semplice non vengono toccati.
  */
@@ -183,14 +184,30 @@ final class WooBridge {
 		return $out;
 	}
 
+	/**
+	 * Metodi di pagamento WooCommerce che non incassano subito: il pagamento conta solo a ordine completato. Filtrabile (per un metodo di pagamento in sede o di fatturazione).
+	 *
+	 * @return array<int,string>
+	 */
+	public static function offline_methods(): array {
+		$list = (array) apply_filters( 'asem_woo_offline_methods', array( 'bacs', 'cheque', 'cod' ) );
+		return array_values( array_filter( array_map( 'strval', $list ), static function ( $m ) {
+			return '' !== $m;
+		} ) );
+	}
+
+	public static function is_offline_method( string $method ): bool {
+		return '' !== $method && in_array( $method, self::offline_methods(), true );
+	}
+
 	/** Ordine pagato: l'incasso entra in prima nota (una sola volta per pagamento). */
 	public static function on_paid( $order_id ): void {
 		$order = wc_get_order( (int) $order_id );
 		if ( ! $order ) {
 			return;
 		}
-		// Contrassegno: l'ordine nasce "in lavorazione" senza che sia arrivato un euro. Si registra solo quando viene completato (dopo l'incasso alla consegna).
-		if ( 'cod' === (string) $order->get_payment_method() && ! $order->has_status( 'completed' ) ) {
+		// Metodi fuori linea (bonifico, assegno, contrassegno; altri, come il pagamento in sede, si aggiungono con il filtro asem_woo_offline_methods): l'ordine nasce «in attesa» o «in lavorazione» senza che sia arrivato un euro. Si registra solo quando viene completato (la segreteria ha visto i soldi).
+		if ( self::is_offline_method( (string) $order->get_payment_method() ) && ! $order->has_status( 'completed' ) ) {
 			return;
 		}
 		$euro = 'EUR' === strtoupper( (string) $order->get_currency() );

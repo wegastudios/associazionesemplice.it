@@ -114,7 +114,7 @@ L'**area soci** è la parte del gestionale che il socio apre dal telefono o dal 
 
 ## L'indirizzo
 
-L'area soci sta all'indirizzo **https://nome-breve.associazionesemplice.it/area**, dove «nome-breve» è il nome breve della tua associazione. Il gestionale non mostra un indirizzo generale da copiare, e **non è lo stesso indirizzo con cui apri il gestionale**: il nome breve lo ritrovi in due punti. Nella pagina delle **domande di adesione** vedi l'indirizzo del modulo pubblico, che finisce con /adesione/nome-breve; e nel link personale che prepari dalla scheda di un socio (vedi sotto) compare all'inizio dell'indirizzo, prima di .associazionesemplice.it. Una volta composto l'indirizzo, **dallo ai soci tu** (sul sito, in una email, in un messaggio). Per spiegare ai soci come entrare puoi mandare la pagina [Come entro nell'area soci](guida:gestionale-come-entro-nell-area-soci).
+L'indirizzo dell'area soci lo trovi in **Altro → Configurazione guidata**, nel passo **«Area soci»**, con il pulsante **«Copia»**: **dallo ai soci tu** (sul sito, in una email, in un messaggio). Di solito è del tipo **https://nome-breve.associazionesemplice.it/area**. Se l'associazione ha un **dominio proprio verificato**, l'area soci risponde anche lì. Il link di accesso, il codice e il QR della tessera restano sullo stesso indirizzo da cui il socio è entrato. Per spiegare ai soci come entrare puoi mandare la pagina [Come entro nell'area soci](guida:gestionale-come-entro-nell-area-soci).
 
 ## Come entra un socio
 
@@ -130,7 +130,7 @@ Se il socio sbaglia o chiede troppi link, vede «Troppi tentativi: riprova tra q
 Il menu in basso (o in alto sul computer) ha queste voci:
 
 - **Tessera**: il nome e un **codice** da mostrare all'ingresso; chi lo legge vede se la tessera è valida. Se la persona non è socia, il gestionale dice «Non è una tessera da socio: qui trovi eventi, quote e ricevute.»; se è uscita dall'associazione, «Risulti uscito dall'associazione.».
-- **Eventi**: gli eventi dei **prossimi due mesi**, con **«Prenota»**. Se l'evento è pieno compare «posti esauriti» e **«Lista d'attesa»**; il socio legge «Sei in lista d'attesa: se si libera un posto entri da solo.» Il passaggio è automatico (quando qualcuno annulla o si aggiungono posti entra il primo in lista), ma **il socio non riceve nessun avviso**: se ne accorge guardando **Eventi**, dove trova la prenotazione. Ricordagli di controllare. Il socio **annulla da solo fino al giorno prima**, se la prenotazione non fa parte di un pacchetto o di un listino e non è già pagata; negli altri casi legge «per annullare scrivi alla segreteria».
+- **Eventi**: gli eventi dei **prossimi due mesi**, con **«Prenota»**. Se l'evento è pieno compare «posti esauriti» e **«Lista d'attesa»**; il socio legge «Sei in lista d'attesa: se si libera un posto entri da solo.» Il passaggio è automatico: quando qualcuno annulla o si aggiungono posti entra il primo in lista e, **se ha un indirizzo email**, **riceve un'email** («Si è liberato un posto…»; per un minore va al genitore o tutore). La prenotazione vale lo stesso anche senza email: la trova in **Eventi**. Il socio **annulla da solo fino al giorno prima**, se la prenotazione non fa parte di un pacchetto o di un listino e non è già pagata; negli altri casi legge «per annullare scrivi alla segreteria».
 - **Prenota** (solo se la tua associazione ha il pacchetto **Risorse in versione Web** e almeno una risorsa a ore o a giornata): il socio sceglie il giorno e tocca una fascia libera. Le risorse stagionali non compaiono: le assegna la segreteria. Vedi [Risorse e prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni).
 - **Quote**: corsi e attività con **«Dovuto finora … · versato …»** e **«in regola»** oppure **«da versare …»**, il pulsante **«Paga online»** (se l'associazione ha attivato i pagamenti online: vedi [Pagamenti online dei soci](guida:gestionale-pagamenti-online-dei-soci)) e le **ricevute** da scaricare in PDF. Le ricevute annullate non compaiono.
 - **Profilo**: i suoi dati (nome, email e codice fiscale **non si cambiano da qui**: «Per correggere nome, email o codice fiscale scrivi alla segreteria.»), telefono e indirizzo che può correggere da solo, le tessere degli anni e il pulsante **«Esci da tutti i dispositivi»**.
@@ -171,7 +171,7 @@ Dopo il primo ingresso resti collegato su quel telefono o computer: devi rifarlo
 ## Cosa trovi
 
 - **Tessera**: mostra il codice all'ingresso.
-- **Eventi**: prenoti un posto; se è pieno puoi metterti in lista d'attesa: se si libera un posto entri da solo, ma non ricevi un avviso, quindi ricordati di guardare in Eventi. Puoi annullare da solo fino al giorno prima, se non hai già pagato; altrimenti scrivi alla segreteria.
+- **Eventi**: prenoti un posto; se è pieno puoi metterti in lista d'attesa: se si libera un posto entri da solo e ricevi un'email; la prenotazione la trovi in Eventi. Puoi annullare da solo fino al giorno prima, se non hai già pagato; altrimenti scrivi alla segreteria.
 - **Prenota**: se la tua associazione lo offre, prenoti campi o sale.
 - **Quote**: quanto devi e quanto hai versato, **«Paga online»** (se l'associazione lo ha attivato) e le **ricevute** da scaricare.
 - **Profilo**: puoi correggere telefono e indirizzo. Per nome, email o codice fiscale scrivi alla segreteria.
@@ -344,7 +344,7 @@ La trovi in **Altro**, ed è **solo per gli amministratori**. Scegli l'**«Anno 
 
 ## Cercare e filtrare
 
-In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica.
+In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica: vedi [Importare la prima nota da Excel o CSV](guida:gestionale-importare-la-prima-nota).
 
 ## Correggere un errore
 
@@ -429,6 +429,66 @@ Il gestionale ti avvisa se qualcosa non torna:
 - se provi a togliere da Aspetto fiscale un'aliquota usata da qualche risorsa: «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.»; se sono usate anche da qualche attività, il messaggio dice «Alcune attività o risorse usano l'aliquota X%: prima cambia l'IVA di quelle attività o risorse, poi toglila dall'elenco.»;
 - se l'aliquota è usata da prenotazioni non ancora finite: «Alcune prenotazioni non ancora finite usano l'aliquota X%: togli l'aliquota dall'elenco quando saranno finite o annullate.»;
 - in scheda, un avviso rosso: «L'aliquota di questa risorsa non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa risorsa si registrano senza IVA.»
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-importare-la-prima-nota',
+        'title' => 'Importare la prima nota da Excel o CSV',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Se finora hai tenuto la contabilità in un foglio Excel, non devi riscriverla: la carichi da un file e il gestionale registra i movimenti in **Prima nota**. **Prima vedi sempre l'anteprima: nulla si salva finché non confermi.**
+
+**Chi può farlo:** chi ha il permesso **«Registrare in prima nota»** (titolare, amministratori e operatori; si assegna in **Operatori e ruoli**).
+
+## Come si fa
+
+1. In **Prima nota** apri il pulsante con i **tre puntini** (**«Altri strumenti»**) e scegli **«Importa da Excel o CSV»**.
+2. Scegli il **file**: `.xlsx` o `.csv`, al massimo **5 MB** e **10.000 movimenti** (se sono di più, dividilo in più file).
+3. Se nel file ci sono righe **senza il conto**, scegli il **«Conto per le righe senza conto»**. Se non lo scegli, quelle righe risultano errori.
+4. Premi **«Mostra l'anteprima»**.
+5. Controlla l'anteprima e premi **«Importa N movimenti»**. A fine importazione trovi **«Import completato»** con quanti movimenti sono stati registrati e il collegamento **«Vai alla prima nota»**.
+
+## Come deve essere fatto il file
+
+Nella **prima riga** ci sono i nomi delle colonne. Servono:
+
+- **Data**;
+- **Importo**, oppure **Entrata** e **Uscita** in due colonne separate.
+
+Sono facoltative: **Tipo, Conto, Modalità, Voce, Attività, N. tessera, Persona, Descrizione, Competenza, Riferimento**. Il programma riconosce anche i nomi simili (per esempio «Causale» per la voce o «Socio» per la persona).
+
+- Le **date** vanno bene come `15/01/2025` o `2025-01-15`; gli importi come `1.234,56` o `1234.56`.
+- Con la sola colonna **Importo**, un importo negativo è una **uscita**, uno positivo un'**entrata** (oppure usa la colonna **Tipo**).
+- Le righe vuote o quelle di totale (senza data e senza importo) vengono ignorate.
+- **Il file che esporti da Prima nota con «Esporta l'anno fiscale (CSV)» si ricarica così com'è.**
+
+## Cosa succede con i dati del file
+
+- **Conti**: se un conto non esiste, **si crea** (con saldo iniziale zero). L'anteprima ti dice quali conti nuovi nascono.
+- **Voci, persone, attività**: se il nome non si riconosce, il movimento si importa lo stesso con una **voce generica**, oppure **senza persona** o **senza attività**; nella colonna **Note** dell'anteprima vedi l'avviso. Con **N. tessera** o **Persona** il movimento si collega alla scheda del socio.
+- **Modalità** non riconosciuta: si usa «Altro».
+- **Doppioni**: un movimento uguale a uno già in prima nota (stessa data, conto, importo, descrizione e riferimento) **viene saltato**. Puoi quindi ricaricare lo stesso file senza duplicare i movimenti.
+- **Giroconti**: due righe con la **stessa data e lo stesso importo**, una in uscita da un conto e una in entrata su un altro, diventano **un giroconto**. Se manca la riga corrispondente, quella riga **non si importa**: registrala da **Giroconto tra conti**.
+- **Ricevute**: **non se ne emettono**. I movimenti importati sono storici, come se li avessi registrati a mano senza ricevuta.
+
+## L'anteprima
+
+In alto vedi i conteggi: **movimenti nuovi, giroconti, doppioni, saltati, con errori**, il periodo coperto e il totale di entrate e uscite. Sotto, riga per riga, l'**esito** (nuovo, giroconto, doppione, saltato, errore) e le note. Le righe con errori **non si importano**: correggile nel file e ricaricalo; i doppioni verranno saltati e si aggiungerà solo il resto.
+
+Se una riga viene rifiutata durante l'importazione, le altre si registrano comunque e il motivo compare sotto **«Righe non importate»**.
+
+## Prima di importare anni passati
+
+Se il file contiene movimenti di un **anno fiscale già chiuso**, quell'anno non accetta nuovi movimenti. Le righe di quell'anno **non si importano** e compaiono sotto **«Righe non importate»** con il messaggio «L'anno fiscale … è chiuso: per modificarlo va riaperto.». **Le righe degli altri anni, invece, si importano lo stesso.** Se vuoi importare anche quelle, [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) e **ricarica lo stesso file**: i movimenti già entrati vengono saltati come doppioni e si aggiunge solo il resto.
+
+Controlla anche i **saldi iniziali** dei conti. L'importazione registra solo movimenti: il **saldo iniziale** lo imposta solo per i conti nuovi, a zero, e non cambia quello dei conti già esistenti. Il **saldo attuale** invece cambia, perché i movimenti importati contano: se importi anni passati verifica che torni con la tua banca e la tua cassa.
+
+## Correggere un'importazione sbagliata
+
+I movimenti importati si correggono come gli altri: non si cancellano, si **stornano uno per uno** dalla Prima nota (vedi [Registrare un incasso e una spesa](guida:gestionale-registrare-un-incasso-e-una-spesa)). L'importazione viene scritta nel **registro azioni**.
+
+**Nella demo il caricamento dei file è spento**: l'importazione si prova sul gestionale vero.
 MD,
     ],
     [
