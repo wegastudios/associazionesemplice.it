@@ -19,6 +19,8 @@ dataset('scritture della demo', [
     'archivia l\'anno' => ['post', '/gestionale/archivio/2025'],
     'rimetti i file' => ['post', '/gestionale/archivio/2025/rimetti'],
     'verifica ricevute' => ['post', '/gestionale/verifica-ricevute/fissa'],
+    'chiusura anno fiscale' => ['post', '/gestionale/esercizi/2025/chiudi'],
+    'riapertura anno fiscale' => ['post', '/gestionale/esercizi/2025/riapri'],
 ]);
 
 it('nella demo rifiuta le scritture che toccherebbero tutti i visitatori', function (string $method, string $url): void {

@@ -35,7 +35,6 @@ final class DemoRestrictions
         'gestionale/domande', 'gestionale/domande/*',
         'gestionale/conti', 'gestionale/conti/*',
         'gestionale/prima-nota', 'gestionale/prima-nota/*',
-        'gestionale/esercizi', 'gestionale/esercizi/*',
         'gestionale/ricevute/*',
         // Profilo: solo il nome; la configurazione guidata si può rimandare, non salvare.
         'gestionale/profilo/nome', 'gestionale/configurazione/rimanda',
