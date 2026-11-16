@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 it('stampa i piani di esecuzione con la policy RLS attuale', function (): void {
     $orgs = [$this->createOrg('Alfa'), $this->createOrg('Beta'), $this->createOrg('Gamma')];
     foreach ($orgs as $org) {
-        $this->orgContext()->run($org->id, function () use ($org): void {
+        $this->orgContext()->run($org->id, function (): void {
             $base = Person::create(['first_name' => 'Base', 'last_name' => 'Socio']);
             $columns = DB::select("SELECT column_name FROM information_schema.columns WHERE table_schema = 'app' AND table_name = 'people' AND is_generated = 'NEVER' ORDER BY ordinal_position");
             $names = [];
