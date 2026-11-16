@@ -189,7 +189,7 @@ it('un anno con le ricevute nell\'archivio non si riapre finché non si rimetton
 
     $reopen($this->year + 1);
     expect(fn () => $reopen($this->year))
-        ->toThrow(LedgerError::class, "L'anno fiscale {$this->year} ha le ricevute nell'archivio: prima rimetti i file da «Copie di sicurezza», poi lo riapri.");
+        ->toThrow(LedgerError::class, "L'anno fiscale {$this->year} ha le ricevute nell'archivio: prima rimettile con «Rimetti i file» in «Copie di sicurezza», poi riapri l'anno.");
 
     $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/rimetti")->assertSessionHasNoErrors();
     $reopen($this->year);

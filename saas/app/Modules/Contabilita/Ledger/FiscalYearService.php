@@ -173,7 +173,7 @@ final readonly class FiscalYearService
         }
         // Un anno con le ricevute nell'archivio non si riapre: prima si rimettono i file.
         if ($this->connection()->table('app.year_archives')->where('fiscal_year', $year)->exists()) {
-            throw new LedgerError("L'anno fiscale {$year} ha le ricevute nell'archivio: prima rimetti i file da «Copie di sicurezza», poi lo riapri.");
+            throw new LedgerError("L'anno fiscale {$year} ha le ricevute nell'archivio: prima rimettile con «Rimetti i file» in «Copie di sicurezza», poi riapri l'anno.");
         }
         $this->connection()->transaction(function () use ($year, $reason): void {
             $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'closed')
