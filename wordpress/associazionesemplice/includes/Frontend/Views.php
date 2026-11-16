@@ -1404,7 +1404,7 @@ final class Views {
 					$free[] = $person;
 				}
 			}
-			if ( $free && $full ) { // posti finiti: lista d'attesa
+			if ( $free && $full && ! \AssociazioneSemplice\PublicEvents::options( (int) $activity['id'] )['approval'] ) { // posti finiti: lista d'attesa (non per gli eventi su richiesta)
 				$queue = array();
 				foreach ( $free as $person ) {
 					$pos = \AssociazioneSemplice\Waitlist::position( (int) $s['id'], (int) $person['id'] );

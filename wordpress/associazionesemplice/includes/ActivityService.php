@@ -544,6 +544,9 @@ class ActivityService {
 		if ( ! $a || ! $person ) {
 			throw new \InvalidArgumentException( 'Attività o persona non trovata.' );
 		}
+		if ( empty( $opt['approved'] ) && ! current_user_can( Plugin::CAP ) && PublicEvents::options( (int) $a['id'] )['approval'] ) { // evento su richiesta: la prenotazione diretta è della segreteria, oppure dopo l'approvazione
+			throw new \InvalidArgumentException( 'Questo evento è su richiesta: chiedi di partecipare dalla pagina dell\'evento e la segreteria ti risponde.' );
+		}
 		$conflict = (string) apply_filters( 'asem_booking_errors', '', $session_id, $person_id ); // un'estensione (risorse) può rifiutare una fascia occupata da altro
 		if ( '' !== $conflict ) {
 			throw new \InvalidArgumentException( $conflict ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
