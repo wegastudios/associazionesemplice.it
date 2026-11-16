@@ -12,6 +12,8 @@ use App\Modules\Core\Contracts\OrgProfile;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Org\SetupWizard;
+use App\Modules\Portale\Contracts\Entitlements;
+use App\Modules\Portale\Contracts\OrgEntitlements;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -137,4 +139,36 @@ it('chiede tutti i dati fiscali, con la casella «non ce l\'ha» per partita IVA
         expect($s->get('ente.legal_rep'))->toBe('Mario Rossi')->and($s->get('ente.vat_none'))->toBeTrue()->and($s->get('ente.runts_none'))->toBeTrue()
             ->and(app(OrgProfile::class)->missing())->toBe([]);
     });
+});
+
+it('mostra l\'indirizzo dell\'area soci solo con il pacchetto, e quello con il dominio proprio se verificato', function (): void {
+    $on = static fn (bool $enabled) => app()->instance(Entitlements::class, new class($enabled) implements Entitlements
+    {
+        public function __construct(private bool $on) {}
+
+        public function for(string $orgId): OrgEntitlements
+        {
+            return new OrgEntitlements(1, 'active', null, null, 150, 3, 5, $this->on ? ['member_area' => []] : [], null);
+        }
+    });
+    $slug = (string) DB::table('core.orgs')->where('id', $this->org->id)->value('slug');
+
+    $on(false);
+    $this->actingAs($this->owner)->get('/gestionale/configurazione')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('steps', fn ($steps) => ! collect($steps)->contains('key', 'area_soci')));
+
+    $on(true);
+    $this->get('/gestionale/configurazione')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('steps', function ($steps) use ($slug): bool {
+            $step = collect($steps)->firstWhere('key', 'area_soci');
+
+            return $step !== null && count($step['props']['urls']) === 1 && str_contains($step['props']['urls'][0]['url'], $slug.'.') && str_ends_with($step['props']['urls'][0]['url'], '/area');
+        }));
+
+    DB::table('core.org_domains')->insert(['org_id' => $this->org->id, 'domain' => 'soci.alfa-sport.it', 'state' => 'active']);
+    $this->get('/gestionale/configurazione')->assertInertia(fn (Assert $page) => $page->where('steps', function ($steps): bool {
+        $urls = collect($steps)->firstWhere('key', 'area_soci')['props']['urls'];
+
+        return count($urls) === 2 && str_contains($urls[1]['url'], '://soci.alfa-sport.it/area');
+    }));
 });

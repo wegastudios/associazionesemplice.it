@@ -1,5 +1,6 @@
 <script setup>
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 
 const props = defineProps({ status: String, canSkip: { type: Boolean, default: true }, steps: Array, can: Object });
@@ -26,6 +27,18 @@ const months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'l
 const field = 'field';
 const label = 'space-y-1 text-sm';
 const has = (k) => props.steps.some((s) => s.key === k);
+
+// Indirizzo dell'area soci: copia negli appunti e conferma sul pulsante.
+const copied = ref('');
+const copy = async (url) => {
+    try {
+        await navigator.clipboard.writeText(url);
+        copied.value = url;
+        setTimeout(() => { copied.value = ''; }, 2500);
+    } catch {
+        copied.value = '';
+    }
+};
 const title = (k) => props.steps.find((s) => s.key === k)?.title;
 </script>
 
@@ -104,6 +117,20 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                     <label :class="label"><span class="font-semibold">Pagina dell'informativa privacy</span><input v-model="form.steps.soci.privacy_url" type="url" placeholder="https://" :class="field" /></label>
                     <label :class="label"><span class="font-semibold">Pagina del regolamento</span><input v-model="form.steps.soci.rules_url" type="url" placeholder="https://" :class="field" /></label>
                     <label class="flex items-center gap-2 sm:col-span-2"><input v-model="form.steps.soci.reminders_enabled" type="checkbox" /> Manda per email i promemoria di tessera e certificato medico in scadenza</label>
+                </div>
+            </section>
+
+            <section v-if="has('area_soci')" class="card p-4 sm:p-5" aria-labelledby="s-area">
+                <h2 id="s-area" class="mb-3 text-lg font-bold">6. {{ title('area_soci') }}</h2>
+                <p class="mb-3 text-sm text-muted">Da dare ai soci: da qui entrano nella loro area con il link o il codice che ricevono per email.</p>
+                <div class="space-y-3 text-sm">
+                    <div v-for="u in by.area_soci.urls" :key="u.url" class="space-y-1">
+                        <span class="font-semibold">{{ u.label }}</span>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input :value="u.url" readonly :class="[field, 'min-w-0 flex-1']" :aria-label="u.label" @focus="$event.target.select()" />
+                            <button type="button" class="btn btn-secondary" @click="copy(u.url)">{{ copied === u.url ? 'Copiato' : 'Copia' }}</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
