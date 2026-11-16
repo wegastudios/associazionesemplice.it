@@ -12,8 +12,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * Ogni pagina, azione o esportazione che dipende da uno di quei permessi è scritta qui, in una tabella sola:
  * il controllo è unico ({@see Employees::gate()}), così un permesso tolto vale ovunque.
- * Hanno già i loro controlli le aree anagrafica soci, certificati medici, corsi, eventi, incassi, spese, rimborsi e fondi; le altre sono per ora solo
- * memorizzate e mostrate, i controlli arrivano area per area (vedi {@see EmployeeRules::enforced_keys()}).
+ * Tutte e quindici le aree hanno i loro controlli (vedi {@see EmployeeRules::enforced_keys()}).
  */
 final class EmployeeRules {
 
@@ -55,12 +54,15 @@ final class EmployeeRules {
 		);
 	}
 
-	/** Le aree che hanno già i loro controlli su pagine e azioni; le altre nove sono per ora solo memorizzate e mostrate. @return string[] */
+	/** Le aree che hanno già i loro controlli su pagine e azioni: ora sono tutte e quindici. @return string[] */
 	public static function enforced_keys(): array {
-		return array( self::PEOPLE, self::HEALTH, self::COURSES, self::EVENTS, self::COLLECT, self::EXPENSES, self::REFUNDS, self::FUNDS );
+		return array(
+			self::PEOPLE, self::HEALTH, self::COURSES, self::EVENTS, self::RESOURCES, self::COLLECT, self::EXPENSES, self::REFUNDS, self::FUNDS,
+			self::COMMS, self::DOCUMENTS, self::ASSEMBLIES, self::INVENTORY, self::CONVENTIONS, self::TOOLS,
+		);
 	}
 
-	/** Le aree senza controlli ancora (arrivano nelle prossime modifiche): per ora un permesso tolto qui non chiude niente. @return string[] */
+	/** Le aree senza controlli ancora: oggi nessuna (l'elenco resta per le aree che si aggiungessero in futuro prima delle loro porte). @return string[] */
 	public static function pending_keys(): array {
 		return array_values( array_diff( array_keys( self::labels() ), self::enforced_keys() ) );
 	}
@@ -102,7 +104,8 @@ final class EmployeeRules {
 			// anagrafica soci: rubrica, scheda, libro soci, RUNTS, affiliazioni e tessere degli enti, polizze e registro dei volontari
 			'asem-people'       => array( 'all' => array( self::PEOPLE ) ),
 			'asem-person'       => array( 'all' => array( self::PEOPLE ) ),
-			'asem-book'         => array( 'all' => array( self::PEOPLE ) ),
+			// «Registri»: la pagina si apre a chi ha almeno un registro (libro soci = anagrafica; gli altri registri sono assemblee, inventario, documenti, convenzioni); il libro soci in sé lo mostra solo a chi ha l'anagrafica
+			'asem-book'         => array( 'any' => array( self::PEOPLE, self::ASSEMBLIES, self::INVENTORY, self::DOCUMENTS, self::CONVENTIONS ) ),
 			'asem-runts'        => array( 'all' => array( self::PEOPLE ) ),
 			'asem-affiliations' => array( 'all' => array( self::PEOPLE ) ),
 			'asem-volunteers'   => array( 'all' => array( self::PEOPLE ) ),
@@ -126,6 +129,22 @@ final class EmployeeRules {
 			'asem-statement'  => array( 'all' => array( self::FUNDS ) ),
 			'asem-fivepm'     => array( 'all' => array( self::FUNDS ) ),
 			'asem-budget'     => array( 'all' => array( self::FUNDS ) ),
+			// risorse prenotabili: elenco, scheda e occupazione
+			'asem-resources'  => array( 'all' => array( self::RESOURCES ) ),
+			'asem-resource'   => array( 'all' => array( self::RESOURCES ) ),
+			'asem-res-report' => array( 'all' => array( self::RESOURCES ) ),
+			'asem-messages'   => array( 'all' => array( self::COMMS ) ),
+			'asem-documents'  => array( 'all' => array( self::DOCUMENTS ) ),
+			'asem-assemblies' => array( 'all' => array( self::ASSEMBLIES ) ),
+			'asem-minutes'    => array( 'all' => array( self::ASSEMBLIES ) ),
+			'asem-polls'      => array( 'all' => array( self::ASSEMBLIES ) ),
+			'asem-inventory'  => array( 'all' => array( self::INVENTORY ) ),
+			'asem-conventions' => array( 'all' => array( self::CONVENTIONS ) ),
+			// importa ed esporta dati: l'importazione scrive soci e prima nota, la TEC scrive corsi ed eventi: servono anche le aree di quei dati
+			'asem-tools'      => array( 'any' => array( self::TOOLS, self::COURSES, self::EVENTS ) ), // la panoramica mostra solo ciò che si può aprire (c'è anche il calendario)
+			'asem-exports'    => array( 'all' => array( self::TOOLS ) ),
+			'asem-import'     => array( 'all' => array( self::TOOLS, self::PEOPLE, self::FUNDS ) ),
+			'asem-tec'        => array( 'all' => array( self::TOOLS, self::COURSES, self::EVENTS ) ),
 		);
 		return $map[ $slug ] ?? null;
 	}
@@ -137,7 +156,7 @@ final class EmployeeRules {
 			'asem_stop_renewal', 'asem_add_session', 'asem_update_session', 'asem_generate_sessions', 'asem_add_dates', 'asem_cancel_session', 'asem_book',
 			'asem_event_staff_add', 'asem_event_staff_remove', 'asem_event_staff_cash', 'asem_checkin', 'asem_send_notice', 'asem_transfer_booking',
 			'asem_cancel_booking', 'asem_waitlist_remove', 'asem_quick_enroll', 'asem_delete_activity', 'asem_delete_activities', 'asem_delete_booking',
-			'asem_purge_enrollments', 'asem_event_request_approve', 'asem_event_request_reject', 'asem_attendance_save', 'asem_attendance_matrix_save', 'asem_tec_import',
+			'asem_purge_enrollments', 'asem_event_request_approve', 'asem_event_request_reject', 'asem_attendance_save', 'asem_attendance_matrix_save',
 		);
 	}
 
@@ -178,32 +197,61 @@ final class EmployeeRules {
 					'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit',
 					'asem_fund_release', 'asem_fund_settle', 'asem_receipt_replace', 'asem_watch_snapshot', 'asem_discrepancy_approve', 'asem_discrepancy_revoke', 'asem_watch_csv', 'asem_cash_count',
 					'asem_void_tx', 'asem_credit_adjust', 'asem_fivepm_add', 'asem_fivepm_settings', 'asem_fivepm_report', 'asem_fivepm_delete', 'asem_statement_notes', 'asem_statement_backfill',
-					'asem_import_apply', 'asem_import_preview', 'asem_import_undo', 'asem_budget_save', 'asem_budget_lines', 'asem_budget_copy', 'asem_budget_approve', 'asem_budget_reopen', 'asem_budget_delete', 'asem_budget_csv',
+					'asem_budget_save', 'asem_budget_lines', 'asem_budget_copy', 'asem_budget_approve', 'asem_budget_reopen', 'asem_budget_delete', 'asem_budget_csv',
 				),
 				array( 'all' => array( self::FUNDS ) )
 			);
 			$add( array( 'asem_add_attachment', 'asem_remove_attachment', 'asem_attachment' ), array( 'any' => array( self::COLLECT, self::EXPENSES, self::REFUNDS ) ) );
+			$add( array( 'asem_res_assign', 'asem_res_block', 'asem_res_book', 'asem_res_cancel', 'asem_res_wait_remove', 'asem_resource_delete', 'asem_resource_save' ), array( 'all' => array( self::RESOURCES ) ) ); // l'incasso di una prenotazione (asem_res_pay) resta «Incassi»
+			$add( array( 'asem_broadcast_retry', 'asem_broadcast_send', 'asem_broadcast_test', 'asem_sms_retry', 'asem_reminders_run' ), array( 'all' => array( self::COMMS ) ) );
+			$add( array( 'asem_document', 'asem_document_delete', 'asem_document_save' ), array( 'all' => array( self::DOCUMENTS ) ) );
+			$add(
+				array(
+					'asem_assembly_attendance', 'asem_assembly_cancel', 'asem_assembly_csv', 'asem_assembly_delete', 'asem_assembly_draft', 'asem_assembly_hold', 'asem_assembly_minutes',
+					'asem_assembly_proxy_add', 'asem_assembly_proxy_revoke', 'asem_assembly_save', 'asem_minute_delete', 'asem_minute_save', 'asem_poll_delete', 'asem_poll_save',
+				),
+				array( 'all' => array( self::ASSEMBLIES ) )
+			);
+			$add( array( 'asem_assembly_convene', 'asem_poll_announce' ), array( 'all' => array( self::ASSEMBLIES, self::COMMS ) ) ); // mandano un avviso ai soci: serve anche «Comunicazioni»
+			$add( array( 'asem_item_delete', 'asem_item_file', 'asem_item_save', 'asem_loan_return', 'asem_loan_save' ), array( 'all' => array( self::INVENTORY ) ) );
+			$add( array( 'asem_convention_archive', 'asem_convention_categories', 'asem_convention_delete', 'asem_convention_save', 'asem_conventions_csv' ), array( 'all' => array( self::CONVENTIONS ) ) );
+			$add( array( 'asem_convention_announce' ), array( 'all' => array( self::CONVENTIONS, self::COMMS ) ) );
+			$add( array( 'asem_import_apply', 'asem_import_preview', 'asem_import_undo' ), array( 'all' => array( self::TOOLS, self::PEOPLE, self::FUNDS ) ) );
+			$add( array( 'asem_tec_import' ), array( 'all' => array( self::TOOLS, self::COURSES, self::EVENTS ) ) );
 		}
 		return $map[ $action ] ?? null;
 	}
 
 	/** Cosa serve per un'esportazione dell'azione «asem_export» (parametro «what»). @return array{all?:string[],any?:string[]}|null */
 	public static function export_need( string $what ): ?array {
-		if ( 'people' === $what ) { // l'elenco dei soci è l'anagrafica
-			return array( 'all' => array( self::PEOPLE ) );
+		if ( 'people' === $what ) { // l'elenco dei soci: «Importa ed esporta dati» e l'anagrafica
+			return array( 'all' => array( self::TOOLS, self::PEOPLE ) );
 		}
-		return in_array( $what, array( 'ledger', 'period', 'social' ), true ) ? array( 'all' => array( self::FUNDS ) ) : null;
+		if ( in_array( $what, array( 'ledger', 'period', 'social' ), true ) ) { // prima nota, rendiconto e report: «Importa ed esporta dati» e i fondi
+			return array( 'all' => array( self::TOOLS, self::FUNDS ) );
+		}
+		return array( 'all' => array( self::TOOLS ) ); // qualunque altra esportazione è un'esportazione
 	}
 
 	/**
 	 * Cosa serve per un documento dell'azione «asem_doc» (parametro «what»): il rendiconto mostra incassi e costi, come fondi, casse e conti;
-	 * libro soci, tessere e registro dei volontari sono anagrafica.
+	 * libro soci, tessere e registro dei volontari sono anagrafica; verbali e votazioni sono assemblee; elenco beni e prestiti sono inventario;
+	 * il registro presenze è di corsi ed eventi.
 	 *
 	 * @return array{all?:string[],any?:string[]}|null
 	 */
 	public static function doc_need( string $what ): ?array {
 		if ( in_array( $what, array( 'book', 'cards', 'volunteers' ), true ) ) {
 			return array( 'all' => array( self::PEOPLE ) );
+		}
+		if ( in_array( $what, array( 'minute', 'poll' ), true ) ) {
+			return array( 'all' => array( self::ASSEMBLIES ) );
+		}
+		if ( in_array( $what, array( 'items', 'loans' ), true ) ) {
+			return array( 'all' => array( self::INVENTORY ) );
+		}
+		if ( 'attendance' === $what ) {
+			return array( 'any' => array( self::COURSES, self::EVENTS ) );
 		}
 		return 'statement' === $what ? array( 'all' => array( self::FUNDS ) ) : null;
 	}

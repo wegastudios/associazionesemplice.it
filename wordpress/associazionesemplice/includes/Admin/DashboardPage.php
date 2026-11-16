@@ -93,8 +93,12 @@ final class DashboardPage {
 		self::applications();
 		self::adults_to_invite();
 		self::incomplete_cards();
-		self::overdue_loans();
-		ConventionsPage::dashboard_card();
+		if ( Employees::can( EmployeeRules::INVENTORY ) ) { // i prestiti scaduti e le convenzioni in scadenza li vede solo chi ha quelle aree
+			self::overdue_loans();
+		}
+		if ( Employees::can( EmployeeRules::CONVENTIONS ) ) {
+			ConventionsPage::dashboard_card();
+		}
 		do_action( 'asem_dashboard_cards' ); // le estensioni aggiungono qui le loro schede
 
 		$requests = \AssociazioneSemplice\AccessRequests::pending();
