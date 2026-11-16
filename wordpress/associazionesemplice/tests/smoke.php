@@ -6850,6 +6850,8 @@ asem_ok( ! get_role( 'editor' )->has_cap( Plugin::CAP_OPS ) && null !== asem_thr
 // interruttori
 $ft = Settings::all();
 Settings::update( array( 'card_enabled' => 0 ) );
+$au_set = Audit::recent( 1, 'settings.updated' );
+asem_ok( $au_set && false !== strpos( (string) $au_set[0]['details'], 'card_enabled' ) && false === strpos( (string) $au_set[0]['details'], '"card_enabled":0' ), 'registro: settings.updated elenca i nomi delle voci cambiate, non i valori' );
 $ft_p = $people->get( $rg_p );
 asem_ok( '' === \AssociazioneSemplice\Frontend\Views::section_card( $ft_p ), 'funzioni: la tessera digitale si spegne dalle impostazioni' );
 Settings::update( array( 'card_enabled' => 1 ) );
