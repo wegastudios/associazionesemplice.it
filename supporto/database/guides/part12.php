@@ -137,7 +137,7 @@ Il menu in basso (o in alto sul computer) ha queste voci:
 
 ## I minori
 
-Per un minore **entra il genitore o il tutore** (anche se non è socio), con la propria email. Vede la sua scheda e quelle dei figli: in alto compaiono dei pulsanti, **«Io»** e il nome di ogni figlio, per cambiare scheda con un clic. Tessera, Profilo, Quote ed Eventi lavorano sulla scheda scelta; il pagamento online e il PDF delle ricevute valgono per tutte. A ogni nuovo ingresso si riparte dalla propria. Se due persone usano la stessa email, entra la prima (prima i soci). Per collegare un genitore, vedi la scheda del minore: **«Genitori o tutori»**.
+Per un minore **entra il genitore o il tutore** (anche se non è socio), con la propria email. Vede la sua scheda e quelle dei figli: in alto compaiono dei pulsanti, **«Io»** e il nome di ogni figlio, per cambiare scheda con un clic. Tessera, Profilo, Quote ed Eventi lavorano sulla scheda scelta. In **Quote** il genitore può **pagare online e scaricare le ricevute anche dei figli**, tutto da un'unica pagina. A ogni nuovo ingresso si riparte dalla propria. **Ogni email apre una sola scheda**: se due persone hanno la stessa email, entra solo una delle due (prima il socio). Per i maggiorenni usa un'email diversa per ciascuno; i figli minori si vedono dalla scheda del genitore. Per collegare un genitore, vedi la scheda del minore: **«Genitori o tutori»**.
 
 ## Se un socio ha perso il telefono
 
@@ -152,7 +152,7 @@ MD,
         'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-come-entro-nell-area-soci',
         'title' => 'Come entro nell\'area soci',
         'body' => <<<'MD'
-> Pagina da dare ai soci. L'indirizzo dell'area soci te lo dà la segreteria della tua associazione.
+> L'indirizzo dell'area soci te lo dà la segreteria della tua associazione.
 
 L'**area soci** è la tua pagina personale: la tessera, gli eventi, le quote e le ricevute, il tuo profilo. **Non serve nessuna password.**
 
@@ -178,7 +178,7 @@ Dopo il primo ingresso resti collegato su quel telefono o computer: devi rifarlo
 
 ## Se perdi il telefono
 
-Dal **Profilo** premi **«Esci da tutti i dispositivi»**: nessuno potrà più usare il tuo accesso già aperto. Per entrare di nuovo ti basta chiedere un nuovo link.
+Entra da un altro telefono o computer, apri **Profilo** e premi **«Esci da tutti i dispositivi»**: nessuno potrà più usare il tuo accesso già aperto. Se non riesci, chiedi alla segreteria di chiudere i tuoi accessi. Per entrare di nuovo ti basta chiedere un nuovo link.
 
 ## Se sei un genitore
 
