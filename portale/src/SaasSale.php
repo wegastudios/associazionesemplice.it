@@ -2,10 +2,10 @@
 namespace Portale;
 
 /**
- * Il gestionale online è in vendita sul portale? Decisione del titolare del 16/11/2026: per ora no (prove di uso più approfondite e feedback prima del lancio).
+ * Il gestionale SaaS è in vendita sul portale? Decisione del titolare del 16/11/2026: per ora no (prove di uso più approfondite e feedback prima del lancio).
  * Con la vendita spenta il sito non mostra prezzi, piani, prova gratuita, iscrizione né colonna del gestionale nel confronto, e /saas e /saas/acquista
  * rimandano alla home. Non si tocca altro: il SaaS, la sua demo e i clienti già attivi (account, «Gestisci», amministrazione) funzionano come prima.
- * Si riaccende dall'interruttore «Vendita del gestionale online» in /account/impostazioni (o `saas_sale.enabled` in config.php).
+ * Si riaccende dall'interruttore «Vendita del gestionale SaaS» in /account/impostazioni (o `saas_sale.enabled` in config.php).
  */
 final class SaasSale {
 

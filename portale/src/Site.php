@@ -35,7 +35,7 @@ final class Site {
 			'/domande'   => 'Le risposte alle domande più comuni su Associazione Semplice: licenza e dominio, passaggio al Pro, rinnovo, pagamenti e cosa succede ai tuoi dati.',
 			'/free'      => 'Ottieni la licenza gratuita di Associazione Semplice: crei il tuo account e accedi al supporto. Non serve la carta di credito.',
 			'/accedi'    => 'Area riservata di Associazione Semplice: chiave di licenza, dominio, pacchetti da scaricare, cambio di piano e disdetta.',
-			'/saas'      => 'Il gestionale online di Associazione Semplice: soci, quote, attività e prima nota dal browser, con l\'area riservata dei soci su un indirizzo dedicato alla tua associazione.',
+			'/saas'      => 'Il gestionale SaaS di Associazione Semplice: soci, quote, attività e prima nota dal browser, con l\'area riservata dei soci su un indirizzo dedicato alla tua associazione.',
 			'/wordpress' => 'Il plugin WordPress di Associazione Semplice: presentazione, novità di ogni versione e demo.',
 			'/plugin'    => 'Cos\'è Associazione Semplice, il plugin WordPress per le piccole associazioni italiane: cosa include il gratuito, cosa aggiunge il Pro e cosa contatta.',
 		);

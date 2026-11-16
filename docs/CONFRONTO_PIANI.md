@@ -1,4 +1,4 @@
-# Tabella di confronto: plugin o gestionale online
+# Tabella di confronto: plugin o gestionale SaaS
 
 Specifica di progetto per la sessione «Portale: vendita e area clienti». Completa [ARCHITETTURA_DOMINI.md](ARCHITETTURA_DOMINI.md)
 (catalogo `catalogo/v1`, §4) e sostituisce il confronto scritto a mano per la parte che confronta i due prodotti.
@@ -9,7 +9,7 @@ Chi prende il plugin non prende il SaaS: sono **alternative**. Quindi serve una 
 
 | # | Tabella | Dove | Colonne | Da dove arriva |
 |---|---|---|---|---|
-| 1 | **Plugin o gestionale online?** (guida alla scelta) | `associazionesemplice.it/confronto` | Plugin · Gestionale online | testo del portale + celle riempite dal catalogo |
+| 1 | **Plugin o gestionale SaaS?** (guida alla scelta) | `associazionesemplice.it/confronto` | Plugin · Gestionale SaaS | testo del portale + celle riempite dal catalogo |
 | 2 | **Confronto dei piani del plugin** (oggi `portale/content/confronto.md`) | `associazionesemplice.it/wordpress/confronto` (e il popup della demo `/confronto-demo`, invariato) | Gratuito · Contabilità · Contabilità & Fiscale | catalogo del plugin (`features`, `plans`, `prices`) |
 | 3 | **Cosa comprende il gestionale e i suoi pacchetti** | `associazionesemplice.it/saas/prezzi` | base · un pacchetto per riga con il prezzo | catalogo del SaaS (`features`, `addons`, `prices`) |
 
@@ -22,7 +22,7 @@ Testo sopra: «Tutti e due gestiscono soci, tessere, prima nota, corsi ed eventi
 dell'installazione**.» Le celle `{…}` si riempiono dal catalogo; la riga segnata ★ va **verificata** prima di pubblicare
 (non le ho potute confermare dai documenti).
 
-| | Plugin WordPress | Gestionale online |
+| | Plugin WordPress | Gestionale SaaS |
 |---|---|---|
 | **A chi serve** | a chi ha già un sito WordPress e vuole i dati sul proprio spazio web | a chi vuole un gestionale pronto, senza WordPress e senza installare nulla |
 | **Dove stanno i dati** | sul tuo spazio web | sui nostri server, con campi sensibili cifrati e copie di sicurezza |
@@ -103,7 +103,7 @@ mensile e annuale: è un'idea di progetto, da realizzare dopo la tabella.
 
 ## 5. Aspetto
 
-- Telefono: la tabella 1 diventa **due viste alternate** (`Segmented` «Plugin | Gestionale online») con la stessa riga per ogni voce
+- Telefono: la tabella 1 diventa **due viste alternate** (`Segmented` «Plugin | Gestionale SaaS») con la stessa riga per ogni voce
   (titolo, dettaglio, ✓ o testo a destra); non una tabella che scorre di lato. Da `lg`: tabella a tre colonne (voce, plugin, gestionale),
   intestazione che resta in vista.
 - Ogni cella ha una **parola** oltre al segno: ✓ ha il testo nascosto «incluso», — ha «non incluso» (screen reader). Il colore non è

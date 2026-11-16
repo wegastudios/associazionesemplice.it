@@ -29,8 +29,8 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 
 <?php $saasAcc = Portale\SaasSale::on() ? Portale\SaasDemo::accounts() : array(); if ( $saasAcc ) :$sd = Portale\SaasDemo::url(); ?>
 <section class="section" id="gestionale"><div class="wrap" style="max-width:960px">
-	<h2>Prova il gestionale online</h2>
-	<p class="muted">Non hai un sito WordPress? Il gestionale online è un'altra demo, con dati inventati: scegli un ruolo, entra e clicca dove vuoi. Non scrivere dati veri: si azzera ogni notte, non partono email e le password non si possono cambiare.</p>
+	<h2>Prova il gestionale SaaS</h2>
+	<p class="muted">Non hai un sito WordPress? Il gestionale SaaS è un'altra demo, con dati inventati: scegli un ruolo, entra e clicca dove vuoi. Non scrivere dati veri: si azzera ogni notte, non partono email e le password non si possono cambiare.</p>
 	<p><a class="btn big" href="<?php echo e( $sd ); ?>">Apri la demo del gestionale</a></p>
 	<div class="grid-3" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-bottom:12px">
 	<?php foreach ( $saasAcc as $a ) : ?>

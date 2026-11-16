@@ -240,7 +240,7 @@ Il portale **legge** piani, caratteristiche e prezzi del SaaS dal suo catalogo (
 - **Prezzi** (`src/PriceCalculator.php`): stesse regole del SaaS (centesimi IVA esclusa, scaglioni marginali sui soci, IVA una sola volta sul totale, metà in su); casi comuni in `tests/fixtures/catalogo-casi.json` (copia di `saas/tests/Fixtures/catalogo-casi.json`: se cambia lì, va ricopiata).
 - Il confronto del **plugin** resta `content/confronto.md` finché il plugin non espone il suo catalogo (passo 4, sessione portale-plugin); la regola «tabella confronto sempre aggiornata» vale per entrambi.
 - Da fare: pagina staff con `rev` e «aggiornato il…», `promo.check`, carrello (passo 6).
-- **Due prodotti, stesse pagine** (decisione della titolare, 10/11/2026): `/prezzi` mostra le schede del plugin e, sotto, quelle del gestionale online dal catalogo; `/confronto` la tabella del plugin e sotto quella del gestionale. I due prodotti si distinguono con un'etichetta (`eyebrow`), la navigazione `product-nav` in cima a `/prezzi` e un filetto di separazione; `/saas` e `/wordpress` restano approfondimenti brevi. Il partial `views/_catalog_saas.php` si include con `$show_cards` / `$show_table`.
+- **Due prodotti, stesse pagine** (decisione della titolare, 10/11/2026): `/prezzi` mostra le schede del plugin e, sotto, quelle del gestionale SaaS dal catalogo; `/confronto` la tabella del plugin e sotto quella del gestionale. I due prodotti si distinguono con un'etichetta (`eyebrow`), la navigazione `product-nav` in cima a `/prezzi` e un filetto di separazione; `/saas` e `/wordpress` restano approfondimenti brevi. Il partial `views/_catalog_saas.php` si include con `$show_cards` / `$show_table`.
 
 ## Accesso unico al supporto: elenco dei piani (v2)
 
@@ -367,9 +367,9 @@ Il comando firma sul computer di chi pubblica (come `release.sh free`), carica l
 ## Vendita: prima tranche delle correzioni dell'audit (13/11/2026)
 
 - Dove i pagamenti online non sono attivi (nessuna chiave Stripe né PayPal: `Billing::paymentsOn()`), le pagine dei piani non mostrano «Scegli» ma «Avvisami quando si può acquistare» (porta a `/free`); `buy.php` dice la verità invece di «riprova tra poco». Si riaccende da solo con le chiavi vere.
-- Home: sotto la promessa il bivio «Hai già un sito WordPress? Plugin» / «Non hai un sito? Gestionale online»; voce «Gestionale online» nel menu (anche da telefono).
+- Home: sotto la promessa il bivio «Hai già un sito WordPress? Plugin» / «Non hai un sito? Gestionale SaaS»; voce «Gestionale SaaS» nel menu (anche da telefono).
 - `/saas/prezzi` → `/prezzi#prezzi-saas` e `/wordpress/confronto` → `/confronto` (301 in `Sections::legacy`).
-- Piccoli testi: «ci sono le domande frequenti», «Guarda il gestionale online» (niente sigle).
+- Piccoli testi: «ci sono le domande frequenti», «Guarda il gestionale SaaS» (niente sigle).
 
 ## Condizioni di vendita del catalogo (`terms`, 13/11/2026)
 
@@ -393,7 +393,7 @@ Su PostgreSQL le tabelle del portale sono in parte del proprietario (`associazio
 
 **Stato al 16/11/2026:** il cambio di proprietario non è stato possibile (il proprietario `saasown` non ha ADMIN sul proprio ruolo): le 18 tabelle restano del portale e al portale è stato tolto solo CREATE sullo schema. `bin/migrate.php` migra come proprietario e riprova con l'utente del portale le sole ALTER rifiutate con «must be owner» (42501); se qualcosa non riesce con nessuno dei due elenca le istruzioni ed esce con codice 1, e `deploy.sh` finisce comunque la pubblicazione e termina con errore.
 
-**Vendita del gestionale online (decisione del 16/11/2026):** spenta. Interruttore `saas_sale.enabled` (config.php, o «Vendita del gestionale online» in /account/impostazioni), default spento. Spenta: niente voci nei menu e nel piè di pagina, niente sezione del gestionale in /prezzi e /confronto, niente demo del gestionale in /prova e in home, e `/saas` e `/saas/acquista` rimandano alla home (302 per GET, 303 per POST). Non cambia il SaaS, la sua demo né i clienti già attivi (account, «Gestisci», /saas/admin). Per riaccendere basta l'interruttore.
+**Vendita del gestionale SaaS (decisione del 16/11/2026):** spenta. Interruttore `saas_sale.enabled` (config.php, o «Vendita del gestionale SaaS» in /account/impostazioni), default spento. Spenta: niente voci nei menu e nel piè di pagina, niente sezione del gestionale in /prezzi e /confronto, niente demo del gestionale in /prova e in home, e `/saas` e `/saas/acquista` rimandano alla home (302 per GET, 303 per POST). Non cambia il SaaS, la sua demo né i clienti già attivi (account, «Gestisci», /saas/admin). Per riaccendere basta l'interruttore.
 
 **Motori di ricerca (preparato il 16/11/2026, indicizzazione ancora spenta):** `Seo` genera `/sitemap.xml` (pagine di presentazione, legali, /wordpress e novità; /saas solo con la vendita accesa), il `robots.txt` completo con riga `Sitemap:` (solo con `indexable` acceso; chiude account, accesso, twofactor, grazie, paypal, admin, API, scarica, entra e /demo/), il canonical, Open Graph e Twitter card (immagine `assets/brand/og-1200x630.png`) e i dati strutturati (Organization in home, SoftwareApplication per il plugin, senza prezzi). Il codice di verifica di Google Search Console va in `seo.google_verification` (config.php, solo il valore di content=). L'apertura vera resta l'interruttore `indexable` nel pannello Impostazioni.
 
