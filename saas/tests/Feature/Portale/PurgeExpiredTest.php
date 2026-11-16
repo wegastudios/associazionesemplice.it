@@ -27,6 +27,12 @@ beforeEach(function (): void {
         'owner' => ['email' => $email, 'name' => 'Titolare'],
     ])])->json('org_id');
     $this->entitle = fn (string $orgId, string $ref, array $overrides) => $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, $ref, 1, $overrides))])->assertOk();
+    // «Maturo» per la cancellazione: sospeso dal SaaS da tempo e avviso finale partito da più di 24 ore.
+    $this->ripen = function (string $orgId, string $until, int $suspendedDaysAgo = 400, int $noticeHoursAgo = 48, string $kind = 'purge_1'): void {
+        $owner = DB::connection('pgsql_owner');
+        $owner->table('core.orgs')->where('id', $orgId)->update(['suspended_at' => now()->subDays($suspendedDaysAgo)]);
+        $owner->table('core.org_notices')->insert(['org_id' => $orgId, 'kind' => $kind, 'until' => $until, 'sent_at' => now()->subHours($noticeHoursAgo)]);
+    };
     $this->people = function (string $orgId): int {
         $owner = DB::connection('pgsql_owner');
 
@@ -42,6 +48,7 @@ it('cancella i dati scaduti da più di 180 giorni e lascia le altre associazioni
     $alfa = ($this->provision)('sub_a', 'Alfa', 'alfa-circolo', 'solo-alfa@example.com');
     $beta = ($this->provision)('sub_b', 'Beta', 'beta-circolo', 'solo-beta@example.com');
     ($this->entitle)($alfa, 'sub_a', ['status' => 'suspended', 'until' => now()->subDays(181)->toDateString()]);
+    ($this->ripen)($alfa, now()->subDays(181)->toDateString());
     ($this->entitle)($beta, 'sub_b', ['status' => 'active', 'until' => now()->addDays(10)->toDateString()]);
     $this->orgContext()->run($alfa, fn () => Person::create(['type' => 'founder', 'first_name' => 'Mario', 'last_name' => 'Rossi']));
     $this->orgContext()->run($beta, fn () => Person::create(['type' => 'founder', 'first_name' => 'Bruno', 'last_name' => 'Bianchi']));
@@ -72,6 +79,7 @@ it('chi non ha scelto un piano si cancella 7 giorni dopo la fine della prova, no
 it('non cancella nulla con l\'interruttore spento, e con --dry-run elenca soltanto', function (): void {
     $alfa = ($this->provision)('sub_a', 'Alfa', 'alfa-circolo', 'alfa@example.com');
     ($this->entitle)($alfa, 'sub_a', ['status' => 'suspended', 'until' => now()->subDays(300)->toDateString()]);
+    ($this->ripen)($alfa, now()->subDays(300)->toDateString());
 
     $this->artisan('saas:portal:purge-expired')->assertSuccessful();
     expect(Org::withTrashed()->findOrFail($alfa)->deleted_at)->toBeNull();
@@ -86,6 +94,7 @@ it('si ferma se i candidati di una notte sono troppi', function (): void {
     $beta = ($this->provision)('sub_b', 'Beta', 'beta-circolo', 'beta@example.com');
     foreach ([[$alfa, 'sub_a'], [$beta, 'sub_b']] as [$id, $ref]) {
         ($this->entitle)($id, $ref, ['status' => 'suspended', 'until' => now()->subDays(300)->toDateString()]);
+        ($this->ripen)($id, now()->subDays(300)->toDateString());
     }
     config(['saas.portal.purge_enabled' => true, 'saas.portal.purge_max_per_night' => 1]);
 
@@ -93,6 +102,63 @@ it('si ferma se i candidati di una notte sono troppi', function (): void {
 
     expect(Org::withTrashed()->findOrFail($alfa)->deleted_at)->toBeNull()
         ->and(Org::withTrashed()->findOrFail($beta)->deleted_at)->toBeNull();
+});
+
+it('non cancella se la sospensione non l\'ha scritta il SaaS da abbastanza tempo, anche con una scadenza vecchissima dal portale', function (): void {
+    $alfa = ($this->provision)('sub_a', 'Alfa', 'alfa-circolo', 'alfa@example.com');
+    ($this->entitle)($alfa, 'sub_a', ['status' => 'suspended', 'until' => now()->subDays(400)->toDateString()]);
+    ($this->ripen)($alfa, now()->subDays(400)->toDateString(), suspendedDaysAgo: 2);
+    config(['saas.portal.purge_enabled' => true]);
+
+    $this->artisan('saas:portal:purge-expired')->assertSuccessful();
+
+    expect(Org::withTrashed()->findOrFail($alfa)->deleted_at)->toBeNull()
+        ->and(DB::table('core.orgs')->where('id', $alfa)->value('suspended_at'))->not->toBeNull();
+});
+
+it('non cancella senza l\'avviso finale partito da almeno 24 ore', function (): void {
+    $alfa = ($this->provision)('sub_a', 'Alfa', 'alfa-circolo', 'alfa@example.com');
+    $beta = ($this->provision)('sub_b', 'Beta', 'beta-circolo', 'beta@example.com');
+    ($this->entitle)($alfa, 'sub_a', ['status' => 'suspended', 'until' => now()->subDays(300)->toDateString()]);
+    ($this->entitle)($beta, 'sub_b', ['status' => 'suspended', 'until' => now()->subDays(300)->toDateString()]);
+    // Alfa: nessun avviso. Beta: avviso partito due ore fa.
+    DB::connection('pgsql_owner')->table('core.orgs')->whereIn('id', [$alfa, $beta])->update(['suspended_at' => now()->subDays(300)]);
+    DB::connection('pgsql_owner')->table('core.org_notices')->insert(['org_id' => $beta, 'kind' => 'purge_1', 'until' => now()->subDays(300)->toDateString(), 'sent_at' => now()->subHours(2)]);
+    config(['saas.portal.purge_enabled' => true]);
+
+    $this->artisan('saas:portal:purge-expired')->assertSuccessful();
+
+    expect(Org::withTrashed()->findOrFail($alfa)->deleted_at)->toBeNull()
+        ->and(Org::withTrashed()->findOrFail($beta)->deleted_at)->toBeNull();
+});
+
+it('il momento della sospensione lo scrive il SaaS una volta sola e si azzera se l\'associazione torna attiva', function (): void {
+    $alfa = ($this->provision)('sub_a', 'Alfa', 'alfa-circolo', 'alfa@example.com');
+    $orgs = app(App\Modules\Core\Contracts\OrgDirectory::class);
+
+    expect(DB::table('core.orgs')->where('id', $alfa)->value('suspended_at'))->toBeNull();
+    $orgs->setStatus($alfa, 'suspended');
+    $first = DB::table('core.orgs')->where('id', $alfa)->value('suspended_at');
+    expect($first)->not->toBeNull();
+    $this->travel(2)->days();
+    $orgs->setStatus($alfa, 'closed');
+    expect(DB::table('core.orgs')->where('id', $alfa)->value('suspended_at'))->toBe($first);
+    $orgs->setStatus($alfa, 'active');
+    expect(DB::table('core.orgs')->where('id', $alfa)->value('suspended_at'))->toBeNull();
+});
+
+it('una scadenza che arretra di molto finisce nel registro dell\'associazione', function (): void {
+    $alfa = ($this->provision)('sub_a', 'Alfa', 'alfa-circolo', 'alfa@example.com');
+    ($this->entitle)($alfa, 'sub_a', ['status' => 'active', 'until' => now()->addDays(300)->toDateString()]);
+    $this->putJson("/api/portale/v1/orgs/{$alfa}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($alfa, 'sub_a', 2, ['status' => 'suspended', 'until' => now()->subDays(400)->toDateString()]))])->assertOk();
+
+    $owner = DB::connection('pgsql_owner');
+    $details = $owner->transaction(function () use ($owner, $alfa): mixed {
+        $owner->select("SELECT set_config('app.org_id', ?, true)", [$alfa]);
+
+        return $owner->table('audit.log')->where('org_id', $alfa)->where('action', 'subscription.updated')->orderByDesc('seq')->value('details');
+    });
+    expect(json_decode((string) $details, true))->toHaveKey('until_back_days');
 });
 
 afterEach(function (): void {

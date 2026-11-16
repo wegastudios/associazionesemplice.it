@@ -146,9 +146,14 @@ Se il pagamento era **già stato registrato** (c'è la ricevuta in Prima nota e 
 
 Ti chiede la **password** e il **motivo del rimborso**, che il socio leggerà nell'email. **Restituisce sempre tutto il pagamento**: qui non si può restituire solo una parte. **Non si può annullare.** A operazione finita compare «Rimborsato e stornato: ricevute e tessere annullate. Il socio è stato avvisato per email.».
 
-Se l'**anno fiscale dell'incasso è chiuso**, l'operazione non parte: né rimborso né storno. Se il rimborso non riesce, non cambia nulla: ricevute e tessere restano come prima. Serve lo stesso permesso **«Emettere rimborsi»**. Il rimborso **parziale** c'è solo per i soldi non registrati, con «rimborsa».
+Se l'**anno fiscale dell'incasso è chiuso**, l'operazione non parte: né rimborso né storno. Il gestionale dice: «Non si può stornare la ricevuta N/AAAA: l'anno fiscale AAAA è chiuso, va riaperto. Il rimborso non è stato fatto.» Se il rimborso non riesce, non cambia nulla: ricevute e tessere restano come prima. **Caso raro:** se il rimborso è stato fatto ma lo storno in prima nota no, il gestionale lo dice e ti chiede di **stornarlo a mano dalla prima nota**. Serve lo stesso permesso **«Emettere rimborsi»**. Il rimborso **parziale** c'è solo per i soldi non registrati, con «rimborsa».
 
 **Se il pagamento comprendeva una prenotazione di una risorsa o l'iscrizione a un'attività o a un evento**, quella voce **resta valida e torna da pagare**: il gestionale non la annulla. Lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» oppure «L'iscrizione resta e il contributo torna da pagare: se non serve più, togli l'iscrizione dalla scheda dell'attività.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.» (o «La tua iscrizione resta attiva e il contributo risulta da pagare: …»). Per le quote associative non c'è questa riga, perché la tessera si annulla.
+
+
+## Se il gestore dei pagamenti non risponde
+
+Se Stripe o PayPal non rispondono mentre fai un rimborso, il gestionale non sa se è partito. Non storna nulla e ti dice di **controllare sul pannello di Stripe o PayPal** e, se il rimborso non risulta, di **ripetere lo stesso rimborso con lo stesso importo**: non viene fatto due volte. Se provi con un importo diverso, il gestionale ti ricorda che c'è un rimborso di cui non si sa l'esito e ti chiede di ripetere quello stesso importo, senza cambiarlo.
 
 ## Se l'importo pagato è diverso
 
@@ -502,7 +507,7 @@ Il file scaricato si chiama «copia-di-sicurezza-» seguito dal nome dell'associ
 
 1. Apri **Copie di sicurezza**.
 2. In **«Documenti leggibili di»** scegli **«tutti gli anni fiscali»** oppure un **«anno fiscale»** (per esempio 2026).
-3. Premi **«Scarica copia di sicurezza»**. Dopo il clic la copia viene preparata: può richiedere qualche minuto. Il download parte da solo: **non chiudere la pagina**.
+3. Premi **«Scarica copia di sicurezza»**. Ti viene chiesta la **password**: scrivila e premi di nuovo **«Scarica copia di sicurezza»**. La copia viene preparata: può richiedere qualche minuto. Il download parte da solo: **non chiudere la pagina**.
 
 Se l'associazione ha **molti documenti**, la copia unica non parte e il gestionale ti dice: «Questa associazione ha molti documenti: una copia unica rischia di non finire. Scegli un anno fiscale e scarica una copia per anno.»
 

@@ -40,6 +40,7 @@ Route::middleware('web')->group(function (): void {
             Route::get('/profilo', [ProfileController::class, 'show'])->name('profile');
             Route::put('/profilo/nome', [ProfileController::class, 'name'])->name('profile.name');
             Route::put('/profilo/email', [ProfileController::class, 'email'])->middleware('throttle:10,1')->name('profile.email');
+            Route::get('/profilo/email/conferma', [ProfileController::class, 'confirmEmail'])->middleware('throttle:10,1')->name('profile.email.confirm');
             Route::post('/profilo/dispositivi', [ProfileController::class, 'closeOthers'])->middleware('throttle:10,1')->name('profile.devices');
 
             // Configurazione guidata: titolare e amministratore.

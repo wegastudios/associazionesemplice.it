@@ -108,3 +108,9 @@ esporta (la prova non esporta). La cancellazione usa gli stessi passi di §3–4
 - Nei 7 giorni dopo la prova il gestionale è in **sola lettura** e si può acquistare un piano (realizzazione nell'app: «Sviluppo SaaS in locale»).
 - Commercialista: i termini di legge di conservazione non sono un problema nostro. Backup legati al servizio: distrutta la chiave, i dati non si aprono più.
 - Pacchetti di soci (decisione definitiva 13/11): «500 soci in più» 17 €/mese (170 €/anno) e «1.000 soci in più» 30 €/mese (300 €/anno), IVA esclusa, solo sopra il piano Grande, nascosti finché la titolare non li mette in vendita. Piccola e Media non li hanno. Da chiederle: si sommano e si comprano più volte? Cosa succede se si supera il limite senza cambiare piano?
+
+## 10. Le condizioni della cancellazione automatica (16/11/2026)
+
+La cancellazione notturna parte solo se, insieme: la scadenza più i giorni di conservazione è passata; la sospensione (`core.orgs.suspended_at`) più i giorni di conservazione è passata; l'ultimo avviso risulta inviato da almeno un giorno. Una scadenza che arretra di oltre 30 giorni resta segnata nel registro (`until_back_days`) ma da sola non basta mai a far cancellare. Con `ops.sh spegni-cancellazione` si spegne tutto per la notte.
+
+**Limite attuale.** Gli avvisi ai clienti non li manda più il gestionale (decisione del 13/11) ma il portale (email `saas_purge_15` e `saas_purge_1`, colonna `purge_notice`). Il controllo di oggi guarda gli avvisi registrati nel gestionale, che non ci sono: finché non si collega l'avviso del portale, la cancellazione automatica non cancella mai. È voluto, ed è l'effetto giusto fino al collegamento, che si fa dopo le otto colonne mancanti in produzione (tra cui `purge_notice`).

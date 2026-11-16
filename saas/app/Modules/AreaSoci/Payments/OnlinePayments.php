@@ -363,7 +363,7 @@ final readonly class OnlinePayments
             // ripetendo lo stesso importo la chiave identica evita un secondo rimborso.
             $this->table()->where('id', $paymentId)->update(['error' => mb_substr(trim(($p['error'] ?? '').' Rimborso di '.self::euro($amount).': il gestore non ha risposto, esito da verificare.'), 0, 1000), 'updated_at' => now()]);
             $this->audit->record('payment.refund_unknown', 'app.online_payments', $paymentId, ['cents' => $amount, 'provider' => $p['provider']]);
-            throw new MemberAccessError('Il gestore dei pagamenti non ha risposto: non è possibile sapere se il rimborso di'.self::euro($amount).' è partito. Non è stato stornato nulla. Controlla sul pannello di '.($p['provider'] === 'stripe' ? 'Stripe' : 'PayPal').' e, se non risulta, ripeti lo stesso rimborso con lo stesso importo: non viene fatto due volte.');
+            throw new MemberAccessError('Il gestore dei pagamenti non ha risposto: non è possibile sapere se il rimborso di '.self::euro($amount).' è partito. Non è stato stornato nulla. Controlla sul pannello di '.($p['provider'] === 'stripe' ? 'Stripe' : 'PayPal').' e, se non risulta, ripeti lo stesso rimborso con lo stesso importo: non viene fatto due volte.');
         } catch (RuntimeException $e) {
             $this->table()->where('id', $paymentId)->update(['refund_pending_cents' => null, 'refund_key' => null, 'updated_at' => now()]);
             throw new MemberAccessError('Rimborso non riuscito: '.$e->getMessage().($void ? ' Nulla è stato stornato: ricevute e tessere sono come prima.' : ''));

@@ -7,7 +7,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | {free_name} | {lite_name} | {full_name} |
 |---|---|---|---|
 | Libro soci con numerazione progressiva e cessazioni | ✓ | ✓ | ✓ |
-| Libro soci per anno fiscale :: Il libro soci segue l'anno fiscale e alla chiusura diventa definitivo (pubblicato e bloccato, non cambia più), prima è una bozza; ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
+| Libro soci per anno fiscale :: Il libro soci segue l'anno fiscale e alla chiusura diventa definitivo (pubblicato e bloccato, non cambia più), prima è una bozza; ogni socio ha una matricola fissa e ogni riga un numero; «Emetti i documenti definitivi degli anni già chiusi» ricostruisce i libri passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
 | Soci che sono enti :: Scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
@@ -100,6 +100,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online :: Pagamenti online con Stripe, PayPal, SumUp, Satispay o WooCommerce | — | ✓ | ✓ |
+| Rimborso dei pagamenti online :: Rimborso dei pagamenti online Stripe e PayPal dal programma, totale o parziale, con motivo obbligatorio ed email al socio | — | ✓ | ✓ |
 | Klarna: paga dopo o a rate :: Klarna (paga dopo o a rate) tra i metodi di pagamento di Stripe | — | ✓ | ✓ |
 | SMS ai soci :: SMS ai soci dalle comunicazioni e, a scelta, dai promemoria (Brevo o Twilio), con consenso, crediti, registro e nuovi tentativi | — | ✓ | ✓ |
 | Newsletter (Brevo, Mailchimp, MailPoet) :: Newsletter: sincronizzazione dei soci con consenso verso Brevo, Mailchimp o MailPoet | — | ✓ | ✓ |
@@ -132,6 +133,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Bilancio provvisorio e storico mensile :: Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
 | Prospetto dei rimborsi per persona :: Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
 | Verifiche di fine anno :: Verifiche di fine anno e blocco della chiusura se mancano le spese documentate dei rimborsi | — | — | ✓ |
+| Avviso di disavanzo :: Avviso se un anno fiscale passato ancora aperto è in disavanzo (non blocca la chiusura) | — | — | ✓ |
 
 ## Registri e privacy
 
@@ -140,6 +142,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
 | Votazioni e sondaggi dei soci, anche a voto segreto, con verbale dei risultati in PDF e CSV; votano i soci maggiorenni | ✓ | ✓ | ✓ |
 | Diritto di voto per livello :: Si sceglie per ogni livello di socio se ha diritto di voto | — | ✓ | ✓ |
+| Dati dell'ente obbligatori :: Forma dell'ente, codice fiscale, sede, email e telefono della segreteria; partita IVA, numero RUNTS e PEC o la spunta «non ce l'ha»; finché manca qualcosa compare una banda gialla in alto | ✓ | ✓ | ✓ |
 | Dati per il RUNTS :: Registri → «Dati per il RUNTS»: numeri al 31 dicembre, soci che sono enti, avviso se si scende sotto il minimo di soci per ODV e APS e promemoria del 30 giugno | ✓ | ✓ | ✓ |
 | Assemblee dei soci :: Assemblee dei soci: convocazione per email, presenze, deleghe tra soci, numero legale e verbale già compilato | — | ✓ | ✓ |
 | Inventario dei beni con prestiti a soci e volontari, rientri, storico e promemoria | ✓ | ✓ | ✓ |
@@ -171,6 +174,11 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Testi personalizzabili :: Testi personalizzabili, tipo di ente e termini | — | ✓ | ✓ |
 | Lingue aggiuntive :: Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
+| Copie di sicurezza firmate :: Una copia modificata viene rifiutata; una copia di un altro sito si ripristina con conferma scritta e password | ✓ | ✓ | ✓ |
+| Quota già pagata nell'anno :: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
+| Cifratura dei file riservati :: Documenti e scansioni, allegati dei movimenti e foto dell'inventario si cifrano, con la frase per riaprirli | ✓ | ✓ | ✓ |
+| Cifratura di certificati, giustificativi e ricevute :: Cifratura anche di certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
+| Controllo della cartella dei file riservati :: Controlla che la cartella dei file riservati non sia raggiungibile da internet | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
 | Registro azioni con spazio occupato, «Libera spazio» e pulizia automatica | ✓ | ✓ | ✓ |
 
