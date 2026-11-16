@@ -8747,9 +8747,9 @@ $ap_ps->handle_stripe_event( $ap_cr_ev );
 remove_filter( 'query', $ap_cr_fail );
 $ap_cr_row = $ap_ps->get_by_public( $ap_cr_pub );
 asem_ok( 'paid' === $ap_cr_row['status'] && 1 === (int) $ap_cr_row['review'] && 500 === (int) $ap_cr_row['allocated_cents'] && false !== strpos( (string) $ap_cr_row['error'], 'passo successivo' ), 'pagamento online: passo dopo la ricevuta fallito, pagamento «da controllare» [' . wp_json_encode( array( $ap_cr_row['status'], $ap_cr_row['review'], $ap_cr_row['allocated_cents'], $ap_cr_row['error'] ) ) . ']' );
-asem_ok( 500 === $sum_tx( "method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: passo dopo la ricevuta fallito, l\'incasso è scritto una sola volta (non anche «non abbinato»)' );
+asem_ok( 500 === $sum_tx( "type = 'income' AND method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: passo dopo la ricevuta fallito, l\'incasso è scritto una sola volta (non anche «non abbinato»)' );
 $ap_ps->handle_stripe_event( $ap_cr_ev );
-asem_ok( 500 === $sum_tx( "method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: lo stesso evento ripetuto non scrive un secondo incasso' );
+asem_ok( 500 === $sum_tx( "type = 'income' AND method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: lo stesso evento ripetuto non scrive un secondo incasso' );
 asem_ok( 0 === (int) $ap_ps->get_by_public( $ap_rrow['public_id'] )['refund_due'], 'pagamenti online: rimborso segnato come fatto' );
 
 // ---------- Rimborso dei pagamenti online dal gateway (Stripe e PayPal) ----------
