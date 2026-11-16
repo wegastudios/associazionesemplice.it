@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '66'; // dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '67'; // dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	/**
 	 * Tutti i lavori periodici e programmati del plugin e delle sue estensioni (nomi dei punti di aggancio di WP-Cron).
@@ -118,6 +118,9 @@ final class Install {
 			if ( '' !== $old && version_compare( $old, '64', '<' ) ) {
 				self::migrate_whatsapp_button();
 			}
+			if ( '' !== $old && version_compare( $old, '67', '<' ) ) {
+				self::migrate_wp_role_access();
+			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
@@ -196,6 +199,53 @@ final class Install {
 		$saved['social_year_start_month'] = 1;
 		update_option( Settings::OPTION, $saved );
 		return true;
+	}
+
+	const OPT_LEGACY_ROLE_USERS = 'asem_legacy_role_users'; // elenco (id, nome, ruolo) di chi entrava nel pannello solo con un ruolo di WordPress, per l'avviso in Bacheca
+
+	/**
+	 * Dalla v67 il plugin non dà più permessi ai ruoli di WordPress altrui (Editore, Autore, ruoli di altri plugin): si toglie ai ruoli che li avevano.
+	 * Nessun utente cambia ruolo. Chi entrava solo per quel ruolo (non è amministratore, non ha un ruolo interno, non è presidente o vicepresidente)
+	 * finisce in un elenco per l'avviso dell'amministratore; l'operazione resta scritta nel registro azioni (numero di ruoli e di utenti, nomi dei ruoli).
+	 * Si può rilanciare senza effetti: al secondo passaggio non c'è più niente da togliere. @return array{roles:string[],users:int} ruoli ripuliti e utenti nell'avviso
+	 */
+	public static function migrate_wp_role_access(): array {
+		$wp_roles = wp_roles();
+		$caps     = array();
+		foreach ( $wp_roles->roles as $key => $r ) {
+			$caps[ (string) $key ] = (array) ( $r['capabilities'] ?? array() );
+		}
+		$clean = WpRoleCleanup::roles_to_clean( $caps );
+		if ( ! $clean ) {
+			return array( 'roles' => array(), 'users' => 0 );
+		}
+		$list = (array) get_option( self::OPT_LEGACY_ROLE_USERS, array() );
+		$list = array_filter( $list, 'is_array' );
+		foreach ( get_users( array( 'role__in' => $clean ) ) as $u ) { // prima di togliere i permessi: chi lavora come presidente o vicepresidente non dipende dal ruolo
+			$roles = array_values( (array) $u->roles );
+			if ( ! WpRoleCleanup::entered_only_by_cleaned_role( $roles, $clean, Access::is_board_operator( (int) $u->ID ) ) ) {
+				continue;
+			}
+			$names = array();
+			foreach ( array_intersect( $roles, $clean ) as $rk ) {
+				$names[] = translate_user_role( (string) ( $wp_roles->roles[ $rk ]['name'] ?? $rk ) );
+			}
+			$list[ (int) $u->ID ] = array( 'id' => (int) $u->ID, 'name' => (string) $u->display_name, 'role' => implode( ', ', $names ) );
+		}
+		foreach ( $clean as $key ) {
+			$role = get_role( $key );
+			foreach ( WpRoleCleanup::caps() as $cap ) {
+				if ( $role && array_key_exists( $cap, (array) $role->capabilities ) ) {
+					$role->remove_cap( $cap );
+				}
+			}
+		}
+		if ( $list ) {
+			update_option( self::OPT_LEGACY_ROLE_USERS, $list, false );
+			delete_option( Employees::OPT_LEGACY_ROLES_SEEN );
+		}
+		Audit::log( 'roles.wp_access_removed', 'role', null, array( 'roles' => count( $clean ), 'users' => count( $list ), 'names' => implode( ',', $clean ) ) );
+		return array( 'roles' => $clean, 'users' => count( $list ) );
 	}
 
 	/**

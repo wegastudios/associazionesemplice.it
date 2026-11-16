@@ -83,6 +83,14 @@ final class DashboardPage {
 		if ( Employees::areas_review_pending( get_current_user_id() ) ) { // fisso, non si chiude: sparisce quando si apre la pagina dei dipendenti
 			echo '<div class="notice notice-info inline"><p>' . esc_html( \AssociazioneSemplice\Texts::t( 'Rivedi i permessi dei dipendenti: ora si danno per area.' ) ) . ' <a href="' . esc_url( Ui::url( 'asem-employees' ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( 'Apri i dipendenti' ) ) . '</a></p></div>';
 		}
+		$legacy_users = Employees::legacy_role_users( get_current_user_id() );
+		if ( $legacy_users ) { // fisso, non si chiude: sparisce quando un amministratore apre la pagina dei dipendenti
+			echo '<div class="notice notice-warning inline"><p>' . esc_html( \AssociazioneSemplice\Texts::t( 'Alcuni utenti entravano nel pannello con un ruolo di WordPress (per esempio Editore): ora non entrano più. Se servono, dagli il ruolo Segreteria o Dipendente.' ) ) . '</p><ul style="list-style:disc;margin-left:20px">';
+			foreach ( $legacy_users as $lu ) {
+				echo '<li>' . esc_html( $lu['name'] ) . ' <span class="description">(' . esc_html( $lu['role'] ) . ')</span></li>';
+			}
+			echo '</ul><p><a href="' . esc_url( Ui::url( 'asem-employees' ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( 'Apri i dipendenti' ) ) . '</a></p></div>';
+		}
 		do_action( 'asem_dashboard_alerts' ); // le estensioni aggiungono i loro avvisi
 		$alerts = trim( (string) ob_get_clean() );
 		ob_start();

@@ -154,7 +154,7 @@ I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Si 
 
 ## Quadro completo
 
-**Impostazioni → Soci e identità → Ruoli e accessi** mostra la matrice «chi può fare cosa» e l'elenco di chi ha un ruolo. Puoi anche dare l'accesso operativo della segreteria a un altro ruolo di WordPress.
+Gli amministratori di WordPress hanno tutto. Gli altri entrano nel pannello solo con il ruolo **Segreteria** o **Dipendente** (si assegnano dalla scheda del socio e da Rubrica soci → Dipendenti) o come presidente o vicepresidente in regola. I ruoli standard di WordPress (Editore, Autore, Collaboratore, Sottoscrittore) non danno accesso al plugin.
 MD,
     ],
     [

@@ -73,7 +73,7 @@ function asem_uninstall_site() {
 	remove_role( 'asem_member' );
 	remove_role( 'asem_secretary' );
 	remove_role( 'asem_employee' );
-	foreach ( array( 'administrator' ) as $role_name ) {
+	foreach ( array_keys( wp_roles()->roles ) as $role_name ) { // i permessi del plugin si tolgono da tutti i ruoli di WordPress, anche da quelli che li avevano ricevuti da versioni precedenti
 		$role = get_role( $role_name );
 		if ( $role ) {
 			foreach ( array_keys( (array) $role->capabilities ) as $cap ) {

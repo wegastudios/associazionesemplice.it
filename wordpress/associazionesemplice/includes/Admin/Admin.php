@@ -45,19 +45,19 @@ final class Admin {
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-expense' => 'Nuova spesa', 'asem-years' => 'Anni fiscali' ) ),
 		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-runts' => 'Dati per il RUNTS', 'asem-minutes' => 'Verbali', 'asem-polls' => 'Votazioni', 'asem-inventory' => 'Inventario', 'asem-documents' => 'Documenti', 'asem-conventions' => 'Convenzioni' ) ),
-		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati dell\'ente', 'asem-comms' => 'Privacy e regolamento', 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni', 'asem-card' => 'Tessera e QR', 'asem-roles' => 'Ruoli e accessi', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
+		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati dell\'ente', 'asem-comms' => 'Privacy e regolamento', 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni', 'asem-card' => 'Tessera e QR', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
 	);
 
 	/** Le Impostazioni sono in sezioni. Titolo => pagine (la prima è quella a cui porta la scheda). */
 	const BASE_SECTIONS = array(
 		'Ente'            => array( 'asem-entity' => 'Dati dell\'ente', 'asem-comms' => 'Privacy e regolamento' ),
-		'Soci e identità' => array( 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-card' => 'Tessera e QR', 'asem-roles' => 'Ruoli e accessi' ),
+		'Soci e identità' => array( 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-card' => 'Tessera e QR' ),
 		'Cassa'           => array( 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni' ),
 		'Sistema'         => array( 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ),
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const BASE_ADMIN_ONLY = array( 'asem-years', 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-tech', 'asem-roles', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset' );
+	const BASE_ADMIN_ONLY = array( 'asem-years', 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-tech', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const BASE_PARENTS = array( 'asem-person' => 'asem-people', 'asem-activity' => 'asem-activities', 'asem-activity-delete' => 'asem-activities', 'asem-booking-delete' => 'asem-activities' );
@@ -121,7 +121,6 @@ final class Admin {
 			array( 'asem-conventions', 'Convenzioni', array( ConventionsPage::class, 'render' ) ),
 			array( 'asem-guide', 'Guida iniziale', array( GuidePage::class, 'render' ) ),
 			array( 'asem-tech', 'Integrazioni', array( TechPage::class, 'render_integrations' ) ),
-			array( 'asem-roles', 'Ruoli e accessi', array( TechPage::class, 'render_roles' ) ),
 			array( 'asem-limits', 'Limiti e soglie', array( LimitsPage::class, 'render' ) ),
 			array( 'asem-wizard', 'Configurazione guidata', array( WizardPage::class, 'render' ) ),
 			array( 'asem-entity', 'Dati dell\'ente', array( EntityPage::class, 'render' ) ),

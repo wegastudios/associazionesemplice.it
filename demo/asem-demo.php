@@ -85,7 +85,7 @@ $asem_demo_blocked = array(
 	'Nella demo questa impostazione è bloccata.' => array(
 		'asem_save_payment_settings', 'asem_satispay_connect', 'asem_save_bank', 'asem_save_donate', 'asem_save_campaign', 'asem_save_woo',
 		'asem_save_sms', 'asem_save_newsletter', 'asem_save_places', 'asem_save_wallet_apple', 'asem_save_wallet_google', 'asem_save_app', 'asem_save_wpai', 'asem_push_test',
-		'asem_save_roles', 'asem_save_limits', 'asem_audit_free', 'asem_save_license', 'asem_set_staff', 'asem_set_secretary', 'asem_set_treasurer', 'asem_reset_limits',
+		'asem_save_limits', 'asem_audit_free', 'asem_save_license', 'asem_set_staff', 'asem_set_secretary', 'asem_set_treasurer', 'asem_reset_limits',
 	),
 	'Nella demo questa operazione è bloccata.' => array(
 		'asem_enc_start', 'asem_enc_step', 'asem_enc_recover', 'asem_enc_recoverphrase', 'asem_enc_newkey', 'asem_enc_setrecovery', 'asem_enc_autophrase',

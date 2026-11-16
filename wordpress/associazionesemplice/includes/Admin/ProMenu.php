@@ -19,13 +19,13 @@ final class ProMenu {
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-refunds' => 'Rimborsi', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
 		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Riepilogo', 'asem-years' => 'Anni fiscali', 'asem-budget' => 'Preventivo', 'asem-watch' => 'Bilancio provvisorio', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto',  'asem-fivepm' => 'Adempimenti (5 per mille)' ) ),
 		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-runts' => 'Dati per il RUNTS', 'asem-minutes' => 'Verbali', 'asem-polls' => 'Votazioni', 'asem-assemblies' => 'Assemblee', 'asem-inventory' => 'Inventario', 'asem-documents' => 'Documenti', 'asem-conventions' => 'Convenzioni', 'asem-volunteers' => 'Assicurazioni', 'asem-attendance' => 'Presenze', 'asem-medical' => 'Certificati medici', 'asem-affiliations' => 'Affiliazioni' ) ),
-		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati e fiscalità', 'asem-comms' => 'Privacy, regolamento e ricevute', 'asem-texts' => 'Testi e lingua', 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni', 'asem-card' => 'Tessera, QR e Wallet', 'asem-roles' => 'Ruoli e accessi', 'asem-payments' => 'Pagamenti online', 'asem-acct' => 'Opzioni contabili', 'asem-app' => 'App e notifiche', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
+		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati e fiscalità', 'asem-comms' => 'Privacy, regolamento e ricevute', 'asem-texts' => 'Testi e lingua', 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni', 'asem-card' => 'Tessera, QR e Wallet', 'asem-payments' => 'Pagamenti online', 'asem-acct' => 'Opzioni contabili', 'asem-app' => 'App e notifiche', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
 	);
 
 	/** Le Impostazioni sono in tre sezioni: ente e funzioni, tecniche, contabilità. Titolo => pagine (la prima è quella a cui porta la scheda). */
 	const SECTIONS = array(
 		'Ente e fiscalità' => array( 'asem-entity' => 'Dati e fiscalità', 'asem-comms' => 'Privacy, regolamento e ricevute', 'asem-texts' => 'Testi e lingua' ),
-		'Soci e identità'  => array( 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-card' => 'Tessera, QR e Wallet', 'asem-roles' => 'Ruoli e accessi' ),
+		'Soci e identità'  => array( 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-card' => 'Tessera, QR e Wallet' ),
 		'Cassa'            => array( 'asem-payments' => 'Pagamenti online', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni' ),
 		'Contabilità'      => array( 'asem-acct' => 'Opzioni contabili' ),
 		'Comunicazioni'    => array( 'asem-app' => 'App e notifiche' ),
@@ -33,7 +33,7 @@ final class ProMenu {
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-texts', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-years', 'asem-tech', 'asem-roles', 'asem-acct', 'asem-app', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset', 'asem-receipt-check' );
+	const ADMIN_ONLY = array( 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-texts', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-years', 'asem-tech', 'asem-acct', 'asem-app', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset', 'asem-receipt-check' );
 
 
 	/** Pagine delle funzioni aggiuntive raggiungibili solo dai link: [slug, titolo, [classe, metodo]]. */

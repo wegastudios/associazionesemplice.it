@@ -11,7 +11,6 @@ defined( 'ABSPATH' ) || exit;
 final class TechActions {
 
 	const ACTIONS = array(
-		'asem_save_roles' => 'save_roles',
 		'asem_save_acct'  => 'save_acct',
 		'asem_save_places' => 'save_places',
 		'asem_mail_test'  => 'mail_test',
@@ -209,19 +208,6 @@ final class TechActions {
 		}
 		Settings::update( array( 'places_enabled' => $on ? 1 : 0, 'places_key' => $key ) );
 		return array( Ui::url( 'asem-tech' ), $on ? 'Ricerca dei luoghi attiva: nei campi «Luogo» compaiono i suggerimenti di Google.' : 'Impostazioni salvate: la ricerca dei luoghi è spenta.' );
-	}
-
-	public static function save_roles( array $p ): array {
-		$chosen = array_map( 'strval', (array) ( $p['roles'] ?? array() ) );
-		foreach ( TechPage::roles() as $key => $r ) { // prima si controlla tutto: se una revoca è rifiutata non cambia niente
-			if ( $r['has'] && ! in_array( (string) $key, $chosen, true ) ) {
-				TechPage::assert_can_remove( (string) $key );
-			}
-		}
-		foreach ( array_keys( TechPage::roles() ) as $key ) {
-			TechPage::set_role_access( (string) $key, in_array( (string) $key, $chosen, true ) );
-		}
-		return array( Ui::url( 'asem-roles' ), 'Accessi salvati.' );
 	}
 
 
