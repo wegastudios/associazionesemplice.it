@@ -33,18 +33,18 @@ final class EmployeeRulesTest extends TestCase {
 	public function test_enforced_and_pending_areas_split_the_list_without_overlap(): void {
 		$enforced = EmployeeRules::enforced_keys();
 		$pending  = EmployeeRules::pending_keys();
-		$this->assertSame( array( 'courses', 'events', 'collect', 'expenses', 'refunds', 'funds' ), $enforced );
-		$this->assertSame( array( 'people', 'health', 'resources', 'comms', 'documents', 'assemblies', 'inventory', 'conventions', 'tools' ), $pending );
+		$this->assertSame( array( 'people', 'health', 'courses', 'events', 'collect', 'expenses', 'refunds', 'funds' ), $enforced );
+		$this->assertSame( array( 'resources', 'comms', 'documents', 'assemblies', 'inventory', 'conventions', 'tools' ), $pending );
 		$this->assertSame( array(), array_intersect( $enforced, $pending ) );
 		$this->assertEqualsCanonicalizing( EmployeeRules::keys(), array_merge( $enforced, $pending ) );
 	}
 
 	public function test_pending_areas_close_no_page_or_action_yet(): void {
 		$all_pending = EmployeeRules::pending_keys();
-		foreach ( array( 'asem-people', 'asem-person', 'asem-book', 'asem-runts', 'asem-minutes', 'asem-documents', 'asem-messages', 'asem-inventory', 'asem-income', 'asem-money' ) as $page ) {
+		foreach ( array( 'asem-minutes', 'asem-documents', 'asem-messages', 'asem-inventory', 'asem-income', 'asem-money' ) as $page ) {
 			$this->assertNull( EmployeeRules::blocked_by( $all_pending, EmployeeRules::page_need( $page ) ), $page );
 		}
-		foreach ( array( 'asem_save_person', 'asem_save_income', 'asem_save_expense', 'asem_refund_pay', 'asem_cash_count' ) as $action ) {
+		foreach ( array( 'asem_save_income', 'asem_save_expense', 'asem_refund_pay', 'asem_cash_count' ) as $action ) {
 			$this->assertNull( EmployeeRules::blocked_by( $all_pending, EmployeeRules::action_need( $action ) ), $action );
 		}
 	}
@@ -114,7 +114,7 @@ final class EmployeeRulesTest extends TestCase {
 
 	public function test_pages_of_fixed_permissions_are_never_blocked(): void {
 		$all = EmployeeRules::keys();
-		foreach ( array( 'asem-people', 'asem-person', 'asem-book', 'asem-runts', 'asem-minutes', 'asem-documents', 'asem-messages', 'asem', 'asem-inventory' ) as $page ) {
+		foreach ( array( 'asem-minutes', 'asem-documents', 'asem-messages', 'asem', 'asem-inventory' ) as $page ) {
 			$this->assertNull( EmployeeRules::page_need( $page ), $page );
 			$this->assertNull( EmployeeRules::blocked_by( $all, EmployeeRules::page_need( $page ) ), $page );
 		}
@@ -129,8 +129,8 @@ final class EmployeeRulesTest extends TestCase {
 		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::action_need( 'asem_cash_count' ) ) );
 		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::export_need( 'ledger' ) ) );
 		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::export_need( 'period' ) ) );
-		$this->assertNull( EmployeeRules::export_need( 'people' ), 'l\'elenco soci non dipende da nessun permesso rimovibile' );
-		$this->assertNull( EmployeeRules::action_need( 'asem_save_person' ) );
+		$this->assertNull( EmployeeRules::export_need( 'minutes' ), 'le altre esportazioni non dipendono da nessun permesso rimovibile' );
+		$this->assertNull( EmployeeRules::action_need( 'asem_save_activity' ) );
 		$this->assertContains( 'asem_save_activity', EmployeeRules::activity_actions() );
 	}
 
@@ -170,7 +170,43 @@ final class EmployeeRulesTest extends TestCase {
 		$this->assertSame( 'courses', EmployeeRules::blocked_by( array( 'courses' ), EmployeeRules::ability_need( 'asem_view_participants', 'course' ) ) );
 		$this->assertNull( EmployeeRules::blocked_by( array( 'courses' ), EmployeeRules::ability_need( 'asem_view_participants', 'event' ) ) );
 		$this->assertSame( 'events', EmployeeRules::blocked_by( array( 'events' ), EmployeeRules::ability_need( 'asem_manage_event', 'recurring' ) ) );
-		$this->assertNull( EmployeeRules::ability_need( 'asem_view_person', null ), 'le schede dei soci restano fisse' );
+		$this->assertNull( EmployeeRules::ability_need( 'asem_view_payments', null ), 'i pagamenti della persona restano fissi' );
+	}
+
+	public function test_people_area_closes_the_registry_pages_actions_exports_and_abilities(): void {
+		foreach ( array( 'asem-people', 'asem-person', 'asem-book', 'asem-runts', 'asem-affiliations', 'asem-volunteers' ) as $page ) {
+			$this->assertSame( 'people', EmployeeRules::blocked_by( array( 'people' ), EmployeeRules::page_need( $page ) ), $page );
+			foreach ( array_diff( EmployeeRules::keys(), array( 'people' ) ) as $other ) {
+				$this->assertNull( EmployeeRules::blocked_by( array( $other ), EmployeeRules::page_need( $page ) ), "$other / $page" );
+			}
+		}
+		foreach ( array( 'asem_save_person', 'asem_delete_person', 'asem_application_approve', 'asem_aff_save', 'asem_aff_csv', 'asem_card_add', 'asem_card_pdf', 'asem_policy_add', 'asem_insurance_delete', 'asem_rules_record' ) as $action ) {
+			$this->assertSame( 'people', EmployeeRules::blocked_by( array( 'people' ), EmployeeRules::action_need( $action ) ), $action );
+			$this->assertNull( EmployeeRules::blocked_by( array( 'health', 'courses', 'events' ), EmployeeRules::action_need( $action ) ), $action );
+		}
+		$this->assertSame( 'people', EmployeeRules::blocked_by( array( 'people' ), EmployeeRules::export_need( 'people' ) ) );
+		foreach ( array( 'book', 'cards', 'volunteers' ) as $doc ) {
+			$this->assertSame( 'people', EmployeeRules::blocked_by( array( 'people' ), EmployeeRules::doc_need( $doc ) ), $doc );
+		}
+		$this->assertNull( EmployeeRules::doc_need( 'minute' ), 'i verbali non sono anagrafica' );
+		foreach ( array( 'asem_view_person', 'asem_register_member' ) as $ability ) {
+			$this->assertSame( 'people', EmployeeRules::blocked_by( array( 'people' ), EmployeeRules::ability_need( $ability, null ) ), $ability );
+		}
+	}
+
+	public function test_health_area_closes_writing_but_the_list_and_the_file_stay_open_for_enrolled_people(): void {
+		foreach ( array( 'asem_cert_add', 'asem_cert_delete', 'asem_cert_csv' ) as $action ) {
+			$this->assertSame( 'health', EmployeeRules::blocked_by( array( 'health' ), EmployeeRules::action_need( $action ) ), $action );
+			$this->assertNull( EmployeeRules::blocked_by( array( 'people', 'courses', 'events' ), EmployeeRules::action_need( $action ) ), $action );
+		}
+		// senza «Certificati medici» la pagina e il file restano aperti a chi ha corsi o eventi (poi si guardano solo i propri iscritti)
+		foreach ( array( EmployeeRules::page_need( 'asem-medical' ), EmployeeRules::action_need( 'asem_cert_file' ) ) as $need ) {
+			$this->assertNull( EmployeeRules::blocked_by( array( 'health' ), $need ) );
+			$this->assertNull( EmployeeRules::blocked_by( array( 'health', 'courses' ), $need ) );
+			$this->assertNull( EmployeeRules::blocked_by( array( 'health', 'events' ), $need ) );
+			$this->assertSame( 'health', EmployeeRules::blocked_by( array( 'health', 'courses', 'events' ), $need ) );
+			$this->assertNull( EmployeeRules::blocked_by( array(), $need ) );
+		}
 	}
 
 	public function test_dates_are_validated(): void {

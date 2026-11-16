@@ -11411,7 +11411,13 @@ $em_cases = array(
 	'courses'  => array( array( 'admin.php', array( 'page' => 'asem-activity', 'id' => $em_course ) ), array( 'admin-post.php', array( 'action' => 'asem_enroll', 'activity_id' => $em_course ) ), array( 'admin-post.php', array( 'action' => 'asem_save_activity', 'kind' => 'course' ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_enroll', 'target' => 'a:' . $em_course ) ) ),
 	'events'   => array( array( 'admin.php', array( 'page' => 'asem-activity', 'id' => $em_event ) ), array( 'admin.php', array( 'page' => 'asem-bookdesk' ) ), array( 'admin-post.php', array( 'action' => 'asem_book', 'session_id' => $em_sess ) ), array( 'admin-post.php', array( 'action' => 'asem_checkin', 'session_id' => $em_sess ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_enroll', 'target' => 's:' . $em_sess ) ) ),
 );
-$em_always = array( array( 'admin.php', array( 'page' => 'asem-people' ) ), array( 'admin.php', array( 'page' => 'asem-person' ) ), array( 'admin-post.php', array( 'action' => 'asem_save_person' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'people' ) ), array( 'admin.php', array( 'page' => 'asem-book' ) ), array( 'admin.php', array( 'page' => 'asem' ) ) );
+$em_cases['people'] = array(
+	array( 'admin.php', array( 'page' => 'asem-people' ) ), array( 'admin.php', array( 'page' => 'asem-person' ) ), array( 'admin.php', array( 'page' => 'asem-book' ) ), array( 'admin.php', array( 'page' => 'asem-runts' ) ),
+	array( 'admin-post.php', array( 'action' => 'asem_save_person' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'people' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'book' ) ),
+	array( 'admin-post.php', array( 'action' => 'asem_card_add' ) ), array( 'admin-post.php', array( 'action' => 'asem_aff_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_policy_add' ) ),
+);
+$em_cases['health'] = array( array( 'admin-post.php', array( 'action' => 'asem_cert_add' ) ), array( 'admin-post.php', array( 'action' => 'asem_cert_delete' ) ), array( 'admin-post.php', array( 'action' => 'asem_cert_csv' ) ) );
+$em_always = array( array( 'admin.php', array( 'page' => 'asem-minutes' ) ), array( 'admin.php', array( 'page' => 'asem' ) ) );
 foreach ( $em_keys as $em_k ) {
 	\AssociazioneSemplice\Employees::set_denied( $em_uid, array( $em_k ) );
 	asem_ok( array( $em_k ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), "dipendente: tolto solo $em_k" );
@@ -11462,9 +11468,9 @@ asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità real
 remove_filter( 'wp_die_handler', $em_die );
 
 // si tolgono solo le 15 aree dell'elenco; solo chi ha titolo le toglie
-\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'asem_manage', 'people', 'asem_operate', 'members' ) );
-asem_ok( array( 'people', 'courses' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 15 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 6 === count( $em_keys ), 'dipendente: si tolgono solo le 15 aree dell\'elenco, gli altri nomi si ignorano' );
-asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-people' ) ) && null === $em_blocked( 'admin-post.php', array( 'action' => 'asem_save_person' ) ), 'dipendente: le nove aree nuove sono per ora solo memorizzate, non chiudono nessuna porta' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'asem_manage', 'comms', 'asem_operate', 'members' ) );
+asem_ok( array( 'courses', 'comms' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 15 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 8 === count( $em_keys ), 'dipendente: si tolgono solo le 15 aree dell\'elenco, gli altri nomi si ignorano' );
+asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-messages' ) ) && null === $em_blocked( 'admin-post.php', array( 'action' => 'asem_broadcast_send' ) ), 'dipendente: le aree nuove ancora «in arrivo» sono solo memorizzate, non chiudono nessuna porta' );
 asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipendente: togliere un\'area nuova resta nel registro azioni' );
 // avviso in Bacheca: fisso, solo a chi ha titolo, solo se esistono dipendenti, finché la pagina dei dipendenti non è stata aperta
 delete_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN );
@@ -11473,8 +11479,30 @@ asem_ok( ! \AssociazioneSemplice\Employees::areas_review_pending( 1 ) && ( array
 asem_ok( ! get_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN ), 'permessi per area: aprire la pagina prima delle porte non segna l\'avviso come visto' );
 // salvataggio dalla pagina: le aree «in arrivo» non cambiano, quelle attive seguono le spunte
 Admin\EmployeesPage::save( array( 'user_id' => $em_uid, 'perm' => array( 'courses' ) ) );
-asem_ok( array( 'people', 'events', 'collect', 'expenses', 'refunds', 'funds' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'permessi per area: il modulo toglie le aree attive non spuntate e lascia com\'erano quelle «in arrivo»' );
-\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people', 'courses' ) );
+asem_ok( array( 'people', 'health', 'events', 'collect', 'expenses', 'refunds', 'funds', 'comms' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'permessi per area: il modulo toglie le aree attive non spuntate e lascia com\'erano quelle «in arrivo»' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'comms', 'courses' ) );
+// certificati medici: senza «Certificati medici» il dipendente vede solo gli iscritti alle attività che può gestire, scrive nel registro a ogni apertura, non modifica niente
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'health' ) );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( $CE::limited() && 2 === count( $CE::rows() ) && 2 === count( $CE::rows( '', 0, true ) ) && $CE::person_in_scope( $bc_a ) && ! $CE::person_in_scope( $bc_g ), 'dipendente senza certificati medici: vede solo gli iscritti alle attività che gestisce (anche chiedendo tutti i soci)' );
+asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-medical' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_cert_add' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_cert_delete' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_cert_csv' ) ), 'dipendente senza certificati medici: la pagina si apre, non si registra, non si elimina, non si esporta' );
+$em_cert_html = asem_render( array( Admin\CertificatesPage::class, 'render' ), 'Certificati medici' );
+asem_ok( false === strpos( $em_cert_html, 'asem_cert_csv' ) && false === strpos( $em_cert_html, 'name="all"' ), 'dipendente senza certificati medici: niente esportazione né elenco di tutti i soci' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'health', 'courses' ) );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( array() === $CE::rows() && ! $CE::person_in_scope( $bc_a ), 'dipendente senza certificati medici e senza corsi: non vede gli iscritti a un corso' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'health', 'courses', 'events' ) );
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( null !== $em_blocked( 'admin.php', array( 'page' => 'asem-medical' ) ), 'dipendente senza certificati medici, corsi ed eventi: la pagina si chiude' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( ! $CE::limited() && 2 === count( $CE::rows() ), 'amministratore: i certificati restano tutti visibili' );
 asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( 0, true ), 'permessi per area: l\'avviso in Bacheca è solo per chi ha titolo' );
 \AssociazioneSemplice\Employees::mark_areas_seen( $em_uid, true );
 asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ), 'permessi per area: aprire la pagina senza titolo non toglie l\'avviso' );

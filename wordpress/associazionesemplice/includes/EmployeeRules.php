@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * Ogni pagina, azione o esportazione che dipende da uno di quei permessi è scritta qui, in una tabella sola:
  * il controllo è unico ({@see Employees::gate()}), così un permesso tolto vale ovunque.
- * Le sei aree storiche (corsi, eventi, incassi, spese, rimborsi, fondi) hanno già i loro controlli; le altre nove sono per ora solo
+ * Hanno già i loro controlli le aree anagrafica soci, certificati medici, corsi, eventi, incassi, spese, rimborsi e fondi; le altre sono per ora solo
  * memorizzate e mostrate, i controlli arrivano area per area (vedi {@see EmployeeRules::enforced_keys()}).
  */
 final class EmployeeRules {
@@ -57,7 +57,7 @@ final class EmployeeRules {
 
 	/** Le aree che hanno già i loro controlli su pagine e azioni; le altre nove sono per ora solo memorizzate e mostrate. @return string[] */
 	public static function enforced_keys(): array {
-		return array( self::COURSES, self::EVENTS, self::COLLECT, self::EXPENSES, self::REFUNDS, self::FUNDS );
+		return array( self::PEOPLE, self::HEALTH, self::COURSES, self::EVENTS, self::COLLECT, self::EXPENSES, self::REFUNDS, self::FUNDS );
 	}
 
 	/** Le aree senza controlli ancora (arrivano nelle prossime modifiche): per ora un permesso tolto qui non chiude niente. @return string[] */
@@ -99,6 +99,15 @@ final class EmployeeRules {
 	 */
 	public static function page_need( string $slug ): ?array {
 		$map = array(
+			// anagrafica soci: rubrica, scheda, libro soci, RUNTS, affiliazioni e tessere degli enti, polizze e registro dei volontari
+			'asem-people'       => array( 'all' => array( self::PEOPLE ) ),
+			'asem-person'       => array( 'all' => array( self::PEOPLE ) ),
+			'asem-book'         => array( 'all' => array( self::PEOPLE ) ),
+			'asem-runts'        => array( 'all' => array( self::PEOPLE ) ),
+			'asem-affiliations' => array( 'all' => array( self::PEOPLE ) ),
+			'asem-volunteers'   => array( 'all' => array( self::PEOPLE ) ),
+			// certificati medici: elenco completo con «Certificati medici»; senza, resta lo stato dei soli iscritti alle attività che il dipendente può gestire
+			'asem-medical'      => array( 'any' => array( self::HEALTH, self::COURSES, self::EVENTS ) ),
 			'asem-activities' => array( 'any' => array( self::COURSES, self::EVENTS ) ),
 			'asem-calendar'   => array( 'any' => array( self::COURSES, self::EVENTS ) ),
 			'asem-bookdesk'   => array( 'all' => array( self::EVENTS ) ),
@@ -148,6 +157,18 @@ final class EmployeeRules {
 				}
 			};
 			$add( array( 'asem_save_income', 'asem_walk_in', 'asem_save_group_cash', 'asem_credit_sell', 'asem_check_payments', 'asem_payment_reviewed', 'asem_res_pay', 'asem_receipt_email' ), array( 'all' => array( self::COLLECT ) ) );
+			$add(
+				array(
+					'asem_access_approve', 'asem_access_done', 'asem_adult_invite', 'asem_application_approve', 'asem_application_reject', 'asem_consent_set', 'asem_delete_person',
+					'asem_detach_email', 'asem_detach_phone', 'asem_member_left', 'asem_privacy_consent', 'asem_promote_guest', 'asem_reactivate_member', 'asem_save_person',
+					'asem_set_membership', 'asem_set_staff', 'asem_suspend_expired', 'asem_suspend_member', 'asem_rules_record',
+					'asem_aff_csv', 'asem_aff_delete', 'asem_aff_save', 'asem_card_add', 'asem_card_bulk', 'asem_card_delete', 'asem_card_pdf', 'asem_card_update',
+					'asem_insurance_add', 'asem_insurance_delete', 'asem_policy_add', 'asem_policy_delete',
+				),
+				array( 'all' => array( self::PEOPLE ) )
+			);
+			$add( array( 'asem_cert_add', 'asem_cert_delete', 'asem_cert_csv' ), array( 'all' => array( self::HEALTH ) ) );
+			$add( array( 'asem_cert_file' ), array( 'any' => array( self::HEALTH, self::COURSES, self::EVENTS ) ) ); // senza «Certificati medici» solo il file di un iscritto alle proprie attività (lo decide Certificates)
 			$add( array( 'asem_person_context', 'asem_quick_person' ), array( 'any' => array( self::COLLECT, self::COURSES, self::EVENTS ) ) );
 			$add( array( 'asem_save_expense', 'asem_expense_fund_attach', 'asem_expense_fund_undo' ), array( 'all' => array( self::EXPENSES ) ) );
 			$add( array( 'asem_refund_request', 'asem_refund_approve', 'asem_refund_reject', 'asem_refund_cancel', 'asem_refund_pay', 'asem_refunds_csv', 'asem_refund_file', 'asem_payment_refund', 'asem_payment_refunded' ), array( 'all' => array( self::REFUNDS ) ) );
@@ -167,11 +188,22 @@ final class EmployeeRules {
 
 	/** Cosa serve per un'esportazione dell'azione «asem_export» (parametro «what»). @return array{all?:string[],any?:string[]}|null */
 	public static function export_need( string $what ): ?array {
+		if ( 'people' === $what ) { // l'elenco dei soci è l'anagrafica
+			return array( 'all' => array( self::PEOPLE ) );
+		}
 		return in_array( $what, array( 'ledger', 'period', 'social' ), true ) ? array( 'all' => array( self::FUNDS ) ) : null;
 	}
 
-	/** Cosa serve per un documento dell'azione «asem_doc» (parametro «what»): il rendiconto mostra incassi e costi, come fondi, casse e conti. @return array{all?:string[],any?:string[]}|null */
+	/**
+	 * Cosa serve per un documento dell'azione «asem_doc» (parametro «what»): il rendiconto mostra incassi e costi, come fondi, casse e conti;
+	 * libro soci, tessere e registro dei volontari sono anagrafica.
+	 *
+	 * @return array{all?:string[],any?:string[]}|null
+	 */
 	public static function doc_need( string $what ): ?array {
+		if ( in_array( $what, array( 'book', 'cards', 'volunteers' ), true ) ) {
+			return array( 'all' => array( self::PEOPLE ) );
+		}
 		return 'statement' === $what ? array( 'all' => array( self::FUNDS ) ) : null;
 	}
 
@@ -210,6 +242,9 @@ final class EmployeeRules {
 	/** Permesso richiesto da una capability «asem_*» (null = nessuno in gioco). $kind è il tipo dell'attività se la capability riguarda un'attività. */
 	public static function ability_need( string $ability, ?string $kind ): ?array {
 		switch ( $ability ) {
+			case 'asem_view_person':
+			case 'asem_register_member':
+				return array( 'all' => array( self::PEOPLE ) );
 			case 'asem_add_expense':
 				return array( 'all' => array( self::EXPENSES ) );
 			case 'asem_collect':

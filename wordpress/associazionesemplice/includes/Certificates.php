@@ -25,6 +25,48 @@ final class Certificates {
 		return Access::is_admin_user( get_current_user_id() );
 	}
 
+	/** L'utente corrente è un dipendente senza «Certificati medici»: vede solo gli iscritti alle attività che può gestire. */
+	public static function limited(): bool {
+		return Employees::health_limited();
+	}
+
+	/**
+	 * Attività che richiedono il certificato e che l'utente corrente può guardare: tutte, oppure (dipendente senza «Certificati medici»)
+	 * solo quelle di un tipo (corso o evento) per cui ha il permesso.
+	 *
+	 * @return int[]
+	 */
+	public static function scoped_activity_ids(): array {
+		$ids = self::required_ids();
+		if ( ! self::limited() ) {
+			return $ids;
+		}
+		return array_values(
+			array_filter(
+				$ids,
+				function ( $id ) {
+					$a = Plugin::activities()->get( (int) $id );
+					return $a && Employees::activity_allowed( $a );
+				}
+			)
+		);
+	}
+
+	/** L'utente corrente può vedere i certificati di questa persona? Sì per lo staff con «Certificati medici»; altrimenti solo se la persona è iscritta a una delle attività che può gestire. */
+	public static function person_in_scope( int $person_id ): bool {
+		if ( ! self::limited() ) {
+			return true;
+		}
+		foreach ( self::scoped_activity_ids() as $aid ) {
+			foreach ( MemberQuery::enrolled_in( (int) $aid ) as $p ) {
+				if ( (int) $p['id'] === $person_id ) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	public static function warn_days(): int {
 		return ExpiryRules::warn_days( Settings::get( 'cert_warn_days' ) );
 	}
@@ -47,7 +89,10 @@ final class Certificates {
 		if ( '' === $path || '' === basename( $path ) || ! is_readable( $path ) ) {
 			wp_die( 'File non trovato.', 404 );
 		}
-		Audit::log( 'medical.file_opened', 'medical_cert', $id ); // solo l'azione: niente nome, tipo o date
+		if ( ! self::person_in_scope( (int) $c['person_id'] ) ) {
+			wp_die( esc_html( EmployeeRules::denied_message( EmployeeRules::HEALTH ) ), 'Permesso non disponibile', array( 'response' => 403, 'back_link' => true ) );
+		}
+		Audit::log( 'medical.file_opened', 'medical_cert', $id, self::limited() ? array( 'via' => 'iscritto' ) : array() ); // solo l'azione (e, per chi vede solo i propri iscritti, il motivo): niente nome, tipo o date
 		$ext = AttachmentRules::extension( (string) $c['file_name'] );
 		Attachments::stream( $path, $ext, 'certificato-' . (int) $id . ( '' !== $ext ? '.' . $ext : '' ), false, array( 'enc_ver' => $c['enc_ver'] ?? null, 'sha256' => (string) ( $c['file_sha256'] ?? '' ), 'kind' => 'cert' ) ); // il nome originale può contenere il nome della persona: non lo si rimanda
 	}
@@ -195,12 +240,19 @@ final class Certificates {
 		$today  = $today ?: Db::today();
 		$people = array();
 		$why    = array();
+		$scoped = self::scoped_activity_ids();
+		if ( self::limited() ) { // solo gli iscritti alle attività che può gestire, mai l'elenco di tutti i soci
+			$all = false;
+			if ( $activity_id > 0 && ! in_array( $activity_id, $scoped, true ) ) {
+				return array();
+			}
+		}
 		if ( $all ) {
 			foreach ( MemberQuery::active() as $p ) {
 				$people[ (int) $p['id'] ] = $p;
 			}
 		} else {
-			$ids = $activity_id > 0 ? array( $activity_id ) : self::required_ids();
+			$ids = $activity_id > 0 ? array( $activity_id ) : $scoped;
 			foreach ( $ids as $aid ) {
 				$a = Plugin::activities()->get( $aid );
 				foreach ( MemberQuery::enrolled_in( $aid ) as $p ) {
@@ -228,7 +280,8 @@ final class Certificates {
 
 	/** Conteggi per la Bacheca; si ricalcolano al massimo ogni 5 minuti o appena cambia un certificato. @return array<string,int> */
 	public static function counts( ?string $today = null ): array {
-		if ( null === $today ) {
+		$shared = null === $today && ! self::limited(); // il conteggio in cache è quello di tutto lo staff: chi vede solo i propri iscritti lo calcola ogni volta
+		if ( $shared ) {
 			$cached = get_transient( self::COUNTS_KEY );
 			if ( is_array( $cached ) && ( $cached['day'] ?? '' ) === Db::today() ) {
 				return $cached['counts'];
@@ -238,7 +291,7 @@ final class Certificates {
 		foreach ( self::rows( '', 0, false, $today ) as $r ) {
 			$c[ $r['status'] ]++;
 		}
-		if ( null === $today ) {
+		if ( $shared ) {
 			set_transient( self::COUNTS_KEY, array( 'day' => Db::today(), 'counts' => $c ), 5 * MINUTE_IN_SECONDS );
 		}
 		return $c;
