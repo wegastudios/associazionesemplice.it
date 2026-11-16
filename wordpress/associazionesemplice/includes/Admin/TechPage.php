@@ -82,8 +82,23 @@ final class TechPage {
 		}
 		if ( $on && ! $role->has_cap( Plugin::CAP_OPS ) ) {
 			$role->add_cap( Plugin::CAP_OPS );
+			\AssociazioneSemplice\Audit::log( 'roles.access_granted', 'role', null, array( 'role' => $key ) );
 		} elseif ( ! $on && $role->has_cap( Plugin::CAP_OPS ) ) {
+			self::assert_can_remove( $key );
 			$role->remove_cap( Plugin::CAP_OPS );
+			\AssociazioneSemplice\Audit::log( 'roles.access_revoked', 'role', null, array( 'role' => $key ) );
+		}
+	}
+
+	/** Rifiuta di togliere l'accesso a un ruolo che amministra il plugin o che è tra i ruoli di chi sta operando. @throws \InvalidArgumentException */
+	public static function assert_can_remove( string $key ): void {
+		$role = get_role( $key );
+		$why  = \AssociazioneSemplice\RoleAccessRules::refuse_removal( $key, (bool) ( $role && $role->has_cap( Plugin::CAP ) ), (array) wp_get_current_user()->roles );
+		if ( \AssociazioneSemplice\RoleAccessRules::REFUSE_MANAGER === $why ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Questo ruolo amministra il plugin: non gli si può togliere l\'accesso da qui.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( \AssociazioneSemplice\RoleAccessRules::REFUSE_OWN === $why ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Non puoi togliere l\'accesso al ruolo con cui stai operando: te lo toglieresti da solo. Chiedi a un amministratore.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
