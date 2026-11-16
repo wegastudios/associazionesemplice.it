@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -142,6 +142,25 @@ case "$ACTION" in
       if ($n !== 2) { echo "Pacchetti soci non trovati.", PHP_EOL; exit(1); }
       $p->saveDraft($d, (string) $id);
       echo "Pubblicata la revisione ", $p->publish((string) $id, "Pacchetti soci in vendita sulla Grande"), PHP_EOL;
+    '
+    ;;
+  conta-fotografie)
+    # Solo lettura: per ogni associazione, quante fotografie del libro soci ha, se la sua chiave c'è e se è cancellata.
+    # Serve prima di cifrare le fotografie (una associazione senza chiave o già cancellata, con fotografie, va trattata a parte).
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $o = DB::connection("pgsql_owner");
+      foreach ($o->table("core.orgs")->get(["id", "deleted_at"]) as $org) {
+        $n = $o->transaction(function () use ($o, $org) {
+          $o->select("SELECT set_config(?, ?, true)", ["app.org_id", $org->id]);
+          return $o->table("app.member_book_snapshots")->count();
+        });
+        if ($n > 0) {
+          $key = $o->table("core.org_keys")->where("org_id", $org->id)->exists();
+          echo $org->id, " fotografie=", $n, " chiave=", $key ? "si" : "NO", " cancellata=", $org->deleted_at === null ? "no" : "SI", PHP_EOL;
+        }
+      }
+      echo "fine", PHP_EOL;
     '
     ;;
   spegni-avvisi)
