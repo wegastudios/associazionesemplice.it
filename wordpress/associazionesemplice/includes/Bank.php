@@ -206,6 +206,21 @@ final class Bank {
 		}, $accounts ) );
 	}
 
+	/** Chi sta facendo la modifica, come testo per le email di avviso. */
+	public static function acting_user(): string {
+		$user = wp_get_current_user();
+		return $user && $user->exists() ? $user->display_name . ' (' . $user->user_email . ')' : 'un amministratore';
+	}
+
+	/** Indirizzi degli amministratori che ricevono gli avvisi sui cambi di destinatario dei soldi. @return string[] */
+	public static function admin_recipients(): array {
+		$to = array( (string) get_option( 'admin_email' ) );
+		foreach ( get_users( array( 'capability' => Plugin::CAP, 'number' => 10, 'fields' => array( 'user_email' ) ) ) as $u ) {
+			$to[] = (string) $u->user_email;
+		}
+		return array_values( array_unique( array_filter( array_map( 'strtolower', $to ), 'is_email' ) ) );
+	}
+
 	/**
 	 * Registra il cambio dei conti (IBAN mascherati) e avvisa per email gli amministratori: un accesso rubato non può cambiare il conto in silenzio.
 	 *
@@ -222,13 +237,8 @@ final class Bank {
 			}, $list );
 		};
 		Audit::log( 'bank.changed', 'settings', 0, array( 'prima' => $mask( $old ), 'dopo' => $mask( $new ) ) );
-		$user  = wp_get_current_user();
-		$who   = $user && $user->exists() ? $user->display_name . ' (' . $user->user_email . ')' : 'un amministratore';
-		$to    = array( (string) get_option( 'admin_email' ) );
-		foreach ( get_users( array( 'capability' => Plugin::CAP, 'number' => 10, 'fields' => array( 'user_email' ) ) ) as $u ) {
-			$to[] = (string) $u->user_email;
-		}
-		$to   = array_values( array_unique( array_filter( array_map( 'strtolower', $to ), 'is_email' ) ) );
+		$who   = self::acting_user();
+		$to    = self::admin_recipients();
 		$text = "Le coordinate bancarie mostrate ai soci sono state modificate da " . $who . ".\n\nPrima: " . ( implode( ', ', $mask( $old ) ) ?: 'nessuna' ) . "\nDopo: " . ( implode( ', ', $mask( $new ) ) ?: 'nessuna' )
 			. "\n\nSe non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni dei pagamenti.";
 		foreach ( $to as $addr ) {

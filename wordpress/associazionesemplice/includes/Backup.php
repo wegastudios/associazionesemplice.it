@@ -789,6 +789,7 @@ final class Backup {
 			wp_die( esc_html( $e->getMessage() ), 500 );
 		}
 		self::mark_downloaded();
+		Audit::log( 'export.downloaded', 'export', 0, array( 'what' => $with ? 'backup_with_files' : 'backup' ) );
 		self::send_zip( $path, 'copia-associazionesemplice-' . gmdate( 'Y-m-d-His' ) . '.zip', true );
 	}
 
@@ -853,6 +854,7 @@ final class Backup {
 		if ( ! preg_match( '/^prima-del-ripristino-\d{8}-\d{6}(-[0-9a-f]{16})?\.zip$/', $name ) || ! is_file( $path ) ) {
 			wp_die( 'Copia non trovata.', 404 );
 		}
+		Audit::log( 'export.downloaded', 'export', 0, array( 'what' => 'backup_saved' ) );
 		self::send_zip( $path, $name, false );
 	}
 }

@@ -81,6 +81,7 @@ final class Exports {
 			default:
 				wp_die( 'Export non valido.' );
 		}
+		\AssociazioneSemplice\Audit::log( 'export.downloaded', 'export', 0, array( 'what' => $what ) );
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $name ) . '"' );
