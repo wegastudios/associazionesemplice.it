@@ -90,12 +90,11 @@ final class TechPage {
 		}
 	}
 
-	/** Rifiuta di togliere l'accesso a un ruolo che amministra il plugin o che è tra i ruoli di chi sta operando. @throws \InvalidArgumentException */
+	/** Rifiuta di togliere l'accesso al ruolo «Amministratore» di WordPress o a quello con cui sta operando chi fa la modifica. @throws \InvalidArgumentException */
 	public static function assert_can_remove( string $key ): void {
-		$role = get_role( $key );
-		$why  = \AssociazioneSemplice\RoleAccessRules::refuse_removal( $key, (bool) ( $role && $role->has_cap( Plugin::CAP ) ), (array) wp_get_current_user()->roles );
-		if ( \AssociazioneSemplice\RoleAccessRules::REFUSE_MANAGER === $why ) {
-			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Questo ruolo amministra il plugin: non gli si può togliere l\'accesso da qui.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		$why = \AssociazioneSemplice\RoleAccessRules::refuse_removal( $key, (array) wp_get_current_user()->roles );
+		if ( \AssociazioneSemplice\RoleAccessRules::REFUSE_WP_ADMIN === $why ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Un amministratore di WordPress non si può togliere né limitare dal plugin.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( \AssociazioneSemplice\RoleAccessRules::REFUSE_OWN === $why ) {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Non puoi togliere l\'accesso al ruolo con cui stai operando: te lo toglieresti da solo. Chiedi a un amministratore.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html

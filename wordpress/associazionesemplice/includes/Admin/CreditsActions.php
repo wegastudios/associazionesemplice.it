@@ -20,7 +20,7 @@ final class CreditsActions {
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {
-					if ( ! current_user_can( Plugin::CAP_OPS ) ) {
+					if ( ! current_user_can( 'asem_credit_packs' === $action ? Plugin::CAP : Plugin::CAP_OPS ) ) { // il listino dei pacchetti lo cambia solo l'amministratore
 						wp_die( 'Non autorizzato.', 403 );
 					}
 					check_admin_referer( $action );
@@ -31,7 +31,7 @@ final class CreditsActions {
 					} catch ( \InvalidArgumentException $e ) {
 						Ui::redirect( $back, '', $e->getMessage() );
 					} catch ( \Throwable $e ) {
-						Ui::redirect( $back, '', 'Errore imprevisto: ' . $e->getMessage() );
+						Ui::redirect( $back, '', \AssociazioneSemplice\UnexpectedError::report( $e ) );
 					}
 				}
 			);

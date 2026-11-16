@@ -80,6 +80,9 @@ final class DashboardPage {
 			$gp = \AssociazioneSemplice\Guide::progress();
 			echo wp_kses( Dismiss::html( 'guide', 'info', 'Configurazione iniziale: ' . (int) $gp['done'] . ' passi su ' . (int) $gp['total'] . '. <a href="' . esc_url( Ui::url( 'asem-guide' ) ) . '">Apri la guida</a>.', 7 ), Html::allowed() );
 		}
+		if ( Employees::areas_review_pending( get_current_user_id() ) ) { // fisso, non si chiude: sparisce quando si apre la pagina dei dipendenti
+			echo '<div class="notice notice-info inline"><p>' . esc_html( \AssociazioneSemplice\Texts::t( 'Rivedi i permessi dei dipendenti: ora si danno per area.' ) ) . ' <a href="' . esc_url( Ui::url( 'asem-employees' ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( 'Apri i dipendenti' ) ) . '</a></p></div>';
+		}
 		do_action( 'asem_dashboard_alerts' ); // le estensioni aggiungono i loro avvisi
 		$alerts = trim( (string) ob_get_clean() );
 		ob_start();
@@ -187,6 +190,9 @@ final class DashboardPage {
 			if ( $minor ) {
 				$g = $a['guardian'];
 				echo '<br><span class="description">Genitore/tutore: <strong>' . esc_html( trim( $g['first_name'] . ' ' . $g['last_name'] ) ) . '</strong> · ' . esc_html( (string) $g['email'] ) . ' · ' . esc_html( (string) $g['phone'] ) . ' · ha accettato regolamento e privacy a nome del minore</span>';
+			}
+			if ( $minor && ! empty( $a['guardian']['email'] ) && \AssociazioneSemplice\Plugin::people()->find_by_email( strtolower( (string) $a['guardian']['email'] ), (int) $a['id'] ) ) {
+				echo '<br><span class="description"><strong>Il genitore è già in anagrafica e non ha ancora confermato</strong>: se approvi, gli arriva un\'email e il collegamento con il minore si crea quando conferma.</span>';
 			}
 			if ( $a['fee_cents'] > 0 ) {
 				echo wp_kses( '<br><span class="description">Quota ' . Ui::money( (int) $a['fee_cents'] ) . ' — ' . ( $a['paid'] ? '<strong>pagata online</strong> (' . Ui::money( (int) $a['paid']['cents'] ) . ')' : 'da pagare in sede' ) . '</span>', Html::allowed() );

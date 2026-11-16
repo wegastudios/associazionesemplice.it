@@ -7,10 +7,13 @@ defined( 'ABSPATH' ) || exit;
  * Regole del tipo di utente «Dipendente» (parte pura, senza WordPress: si prova con i test unitari).
  *
  * Il dipendente parte con gli stessi permessi della segreteria. Chi ha titolo (amministratori, presidente, vicepresidente)
- * può togliergli, uno per uno, SOLO i sei permessi di questo elenco chiuso; tutti gli altri restano fissi.
+ * può togliergli, area per area, i permessi di questo elenco chiuso (15 aree); tutto il resto resta solo amministratore.
+ * Si memorizza l'elenco dei permessi TOLTI: chi non ha niente di tolto ha tutto, come la segreteria.
  *
  * Ogni pagina, azione o esportazione che dipende da uno di quei permessi è scritta qui, in una tabella sola:
  * il controllo è unico ({@see Employees::gate()}), così un permesso tolto vale ovunque.
+ * Le sei aree storiche (corsi, eventi, incassi, spese, rimborsi, fondi) hanno già i loro controlli; le altre nove sono per ora solo
+ * memorizzate e mostrate, i controlli arrivano area per area (vedi {@see EmployeeRules::enforced_keys()}).
  */
 final class EmployeeRules {
 
@@ -21,16 +24,45 @@ final class EmployeeRules {
 	const REFUNDS  = 'refunds';
 	const FUNDS    = 'funds';
 
-	/** @return array<string,string> i soli permessi che si possono togliere, con il nome che si legge */
+	const PEOPLE      = 'people';
+	const HEALTH      = 'health';
+	const RESOURCES   = 'resources';
+	const COMMS       = 'comms';
+	const DOCUMENTS   = 'documents';
+	const ASSEMBLIES  = 'assemblies';
+	const INVENTORY   = 'inventory';
+	const CONVENTIONS = 'conventions';
+	const TOOLS       = 'tools';
+
+	/** @return array<string,string> i permessi che si possono togliere (le 15 aree), con il nome che si legge, nell'ordine della pagina */
 	public static function labels(): array {
 		return array(
-			self::COURSES  => 'Corsi',
-			self::EVENTS   => 'Eventi',
-			self::COLLECT  => 'Incassi',
-			self::EXPENSES => 'Registrazione delle spese',
-			self::REFUNDS  => 'Emissione dei rimborsi',
-			self::FUNDS    => 'Visualizzazione di fondi, casse e conti',
+			self::PEOPLE      => 'Anagrafica soci (schede, rubrica, libro soci, RUNTS, tessere, affiliazioni, polizze)',
+			self::HEALTH      => 'Certificati medici',
+			self::COURSES     => 'Corsi',
+			self::EVENTS      => 'Eventi',
+			self::RESOURCES   => 'Risorse prenotabili',
+			self::COLLECT     => 'Incassi',
+			self::EXPENSES    => 'Registrazione delle spese',
+			self::REFUNDS     => 'Emissione dei rimborsi',
+			self::FUNDS       => 'Visualizzazione di fondi, casse e conti',
+			self::COMMS       => 'Comunicazioni (avvisi, newsletter, SMS, promemoria)',
+			self::DOCUMENTS   => 'Documenti dell\'associazione',
+			self::ASSEMBLIES  => 'Assemblee, verbali e votazioni',
+			self::INVENTORY   => 'Inventario e prestiti',
+			self::CONVENTIONS => 'Convenzioni',
+			self::TOOLS       => 'Importa ed esporta dati',
 		);
+	}
+
+	/** Le aree che hanno già i loro controlli su pagine e azioni; le altre nove sono per ora solo memorizzate e mostrate. @return string[] */
+	public static function enforced_keys(): array {
+		return array( self::COURSES, self::EVENTS, self::COLLECT, self::EXPENSES, self::REFUNDS, self::FUNDS );
+	}
+
+	/** Le aree senza controlli ancora (arrivano nelle prossime modifiche): per ora un permesso tolto qui non chiude niente. @return string[] */
+	public static function pending_keys(): array {
+		return array_values( array_diff( array_keys( self::labels() ), self::enforced_keys() ) );
 	}
 
 	/** @return string[] */
@@ -83,6 +115,8 @@ final class EmployeeRules {
 			'asem-accounting' => array( 'all' => array( self::FUNDS ) ),
 			'asem-reports'    => array( 'all' => array( self::FUNDS ) ),
 			'asem-statement'  => array( 'all' => array( self::FUNDS ) ),
+			'asem-fivepm'     => array( 'all' => array( self::FUNDS ) ),
+			'asem-budget'     => array( 'all' => array( self::FUNDS ) ),
 		);
 		return $map[ $slug ] ?? null;
 	}
@@ -113,14 +147,16 @@ final class EmployeeRules {
 					$map[ $a ] = $need;
 				}
 			};
-			$add( array( 'asem_save_income', 'asem_walk_in', 'asem_save_group_cash', 'asem_credit_sell', 'asem_receipt_email' ), array( 'all' => array( self::COLLECT ) ) );
+			$add( array( 'asem_save_income', 'asem_walk_in', 'asem_save_group_cash', 'asem_credit_sell', 'asem_check_payments', 'asem_payment_reviewed', 'asem_res_pay', 'asem_receipt_email' ), array( 'all' => array( self::COLLECT ) ) );
 			$add( array( 'asem_person_context', 'asem_quick_person' ), array( 'any' => array( self::COLLECT, self::COURSES, self::EVENTS ) ) );
 			$add( array( 'asem_save_expense', 'asem_expense_fund_attach', 'asem_expense_fund_undo' ), array( 'all' => array( self::EXPENSES ) ) );
-			$add( array( 'asem_refund_request', 'asem_refund_approve', 'asem_refund_reject', 'asem_refund_cancel', 'asem_refund_pay', 'asem_refunds_csv', 'asem_refund_file' ), array( 'all' => array( self::REFUNDS ) ) );
+			$add( array( 'asem_refund_request', 'asem_refund_approve', 'asem_refund_reject', 'asem_refund_cancel', 'asem_refund_pay', 'asem_refunds_csv', 'asem_refund_file', 'asem_payment_refund', 'asem_payment_refunded' ), array( 'all' => array( self::REFUNDS ) ) );
 			$add(
 				array(
 					'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit',
 					'asem_fund_release', 'asem_fund_settle', 'asem_receipt_replace', 'asem_watch_snapshot', 'asem_discrepancy_approve', 'asem_discrepancy_revoke', 'asem_watch_csv', 'asem_cash_count',
+					'asem_void_tx', 'asem_credit_adjust', 'asem_fivepm_add', 'asem_fivepm_settings', 'asem_fivepm_report', 'asem_fivepm_delete', 'asem_statement_notes', 'asem_statement_backfill',
+					'asem_import_apply', 'asem_import_preview', 'asem_import_undo', 'asem_budget_save', 'asem_budget_lines', 'asem_budget_copy', 'asem_budget_approve', 'asem_budget_reopen', 'asem_budget_delete', 'asem_budget_csv',
 				),
 				array( 'all' => array( self::FUNDS ) )
 			);
@@ -131,7 +167,12 @@ final class EmployeeRules {
 
 	/** Cosa serve per un'esportazione dell'azione «asem_export» (parametro «what»). @return array{all?:string[],any?:string[]}|null */
 	public static function export_need( string $what ): ?array {
-		return in_array( $what, array( 'ledger', 'period' ), true ) ? array( 'all' => array( self::FUNDS ) ) : null;
+		return in_array( $what, array( 'ledger', 'period', 'social' ), true ) ? array( 'all' => array( self::FUNDS ) ) : null;
+	}
+
+	/** Cosa serve per un documento dell'azione «asem_doc» (parametro «what»): il rendiconto mostra incassi e costi, come fondi, casse e conti. @return array{all?:string[],any?:string[]}|null */
+	public static function doc_need( string $what ): ?array {
+		return 'statement' === $what ? array( 'all' => array( self::FUNDS ) ) : null;
 	}
 
 	/** Un'attività di questo tipo (course, event, recurring) dipende da quale permesso? */

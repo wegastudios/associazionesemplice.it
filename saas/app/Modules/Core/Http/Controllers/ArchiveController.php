@@ -45,6 +45,6 @@ final readonly class ArchiveController
             throw ValidationException::withMessages(['archive' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'Anno fiscale '.$year.': '.$n.' ricevute ricostruite dalle fotografie dei dati. L\'operazione è scritta nel registro delle azioni.');
+        return back()->with('status', 'Anno fiscale '.$year.': '.$n.' ricevute ricostruite dai dati dell\'emissione. L\'operazione è scritta nel registro delle azioni.');
     }
 }

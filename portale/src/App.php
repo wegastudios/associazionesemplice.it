@@ -57,6 +57,11 @@ final class App {
 				View::render( 'message', array( 'title' => 'Scarico non disponibile', 'text' => $file ) );
 				return;
 			}
+			// Manutenzione (spenta di default): le API e i webhook sono già passati sopra e non si fermano mai; qui si ferma il resto per i visitatori.
+			if ( Maintenance::on() && Maintenance::blocks( $path, Maintenance::bypass() ) ) {
+				Maintenance::serve();
+				return;
+			}
 			// La POST dell'accesso staff unico arriva dal SaaS (altro sito): non ha il nostro CSRF, vale il token firmato.
 			if ( 'POST' === $method && Plugin\Admin::BASE . '/sso' !== $path && ! $this->csrfOk() ) {
 				throw new UserError( 'Sessione scaduta: ricarica la pagina e riprova.' );
@@ -111,6 +116,9 @@ final class App {
 				}
 			}
 			( new Plugin\Admin( $this->db, $this->billing, $staff ? '' : $this->customerId(), $staff ) )->handle( $method, $path );
+		} elseif ( ! SaasSale::on() && SaasSale::isSalesPath( $path ) ) {
+			// Gestionale non in vendita (decisione del 16/11/2026): vecchi link a /saas e /saas/acquista, e i moduli già aperti, tornano alla home. Temporaneo (302/303): si riaccende dall'interruttore.
+			header( 'Location: ' . SaasSale::fallback(), true, $get || 'HEAD' === $method ? 302 : 303 );
 		} elseif ( ( $legacy = Sections::legacy( $method, $path, (string) ( $_SERVER['QUERY_STRING'] ?? '' ) ) ) ) {
 			// Vecchi indirizzi di /saas: accesso dal gestionale, vecchia gestione delle associazioni, /saas/admin (vedi {@see Sections}).
 			header( 'Location: ' . $legacy[1], true, $legacy[0] );
@@ -127,9 +135,19 @@ final class App {
 			header( 'X-Robots-Tag: noindex' );
 			header( 'Cache-Control: public, max-age=300' );
 			echo json_encode( Site::publicPlans(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+		} elseif ( $get && '/api/stato' === $path ) {
+			// Stato pubblico degli interruttori che il sito di supporto segue (oggi solo la vendita del gestionale): niente dati personali né riservati.
+			header( 'Content-Type: application/json; charset=utf-8' );
+			View::security();
+			header( 'X-Robots-Tag: noindex' );
+			header( 'Cache-Control: public, max-age=60' );
+			echo json_encode( SaasSale::publicState(), JSON_UNESCAPED_SLASHES );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
-			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /wordpress/admin\nDisallow: /saas/admin\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
+			echo Seo::robots();
+		} elseif ( $get && '/sitemap.xml' === $path ) {
+			View::headers( 'application/xml; charset=utf-8' );
+			echo Seo::sitemap();
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
@@ -298,8 +316,16 @@ final class App {
 			}
 			$flash = '';
 			if ( ! $get ) {
+				$was   = Switches::current();
+				$actor = $idn ? (string) $idn['email'] : $this->customerEmail( (string) $_SESSION['customer'] );
 				Switches::save( $this->db, $_POST );
-				Audit::log( $this->db, $idn ? (string) $idn['email'] : $this->customerEmail( (string) $_SESSION['customer'] ), 'switches', 'Interruttori: ' . json_encode( Switches::current() ) );
+				$now = Switches::current();
+				Audit::log( $this->db, $actor, 'switches', 'Interruttori: ' . json_encode( $now ) );
+				foreach ( array( 'maintenance' => 'Modalità manutenzione', 'indexable' => 'Portale nei motori di ricerca', 'saas_sale' => 'Vendita del gestionale online' ) as $k => $label ) {
+					if ( $was[ $k ] !== $now[ $k ] ) {
+						Audit::log( $this->db, $actor, $k, $label . ': ' . ( $now[ $k ] ? 'acceso' : 'spento' ) );
+					}
+				}
 				$flash = 'Salvato: vale subito.';
 			}
 			View::render( 'switches', array( 'title' => 'Impostazioni del portale', 'all' => Switches::ALL, 'on' => Switches::current(), 'flash' => $flash ) );

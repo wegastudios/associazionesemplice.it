@@ -16,22 +16,29 @@ final class MemberLogin {
 	const MAX_ACTIVE = 3;     // richieste valide contemporaneamente per persona (chi riceve due email non perde il primo link)
 	const MAX_PASSWORD_BYTES = 1000; // oltre non si controlla nemmeno: l'impronta di una password enorme costerebbe al server
 
-	/** @var bool le email di accesso partono dopo la risposta (così il tempo di risposta non dice se l'indirizzo è di un socio) */
-	private static $defer = false;
-	/** @var callable[] invii in attesa */
-	private static $queue = array();
-
+	/** Le email di accesso partono dopo la risposta (così il tempo di risposta non dice se l'indirizzo è di un socio): vedi {@see ResponseMail}. */
 	public static function defer( bool $on ): void {
-		self::$defer = $on;
+		ResponseMail::defer( $on );
 	}
 
 	/** Manda le email messe in coda, dopo che la risposta è stata consegnata. */
 	public static function send_queued(): void {
-		$jobs        = self::$queue;
-		self::$queue = array();
-		foreach ( $jobs as $job ) {
-			$job();
-		}
+		ResponseMail::flush();
+	}
+
+	/**
+	 * Lavoro di una richiesta di link per un indirizzo che non è di un socio (o che ha già raggiunto il limite): stesse letture, scritture e impronte
+	 * di una richiesta vera, senza scrivere né spedire niente, così il tempo di risposta non dipende dall'esito. Non è uno sleep.
+	 */
+	private static function decoy_request(): void {
+		$db  = Db::db();
+		$tbl = Db::t( 'member_challenges' );
+		$db->query( $db->prepare( "DELETE FROM $tbl WHERE person_id = %d AND (used_at IS NOT NULL OR expires_at <= %s)", 0, self::now() ) );
+		$db->get_col( $db->prepare( "SELECT id FROM $tbl WHERE person_id = %d ORDER BY id DESC", 0 ) );
+		$db->query( $db->prepare( "DELETE FROM $tbl WHERE id = %d", 0 ) ); // al posto della pulizia delle richieste più vecchie
+		SessionToken::hash( SessionToken::generate() );
+		SessionToken::hash_code( SessionToken::code(), 0, MemberSession::secret() );
+		$db->query( $db->prepare( "UPDATE $tbl SET attempts = attempts WHERE id = %d", 0 ) ); // al posto dell'inserimento: nessuna riga corrisponde
 	}
 
 	/** Chi può entrare così: socio con accesso e senza un utente WordPress (chi ha un utente, cioè chi ha poteri, entra da WordPress). */
@@ -54,13 +61,10 @@ final class MemberLogin {
 		return gmdate( 'Y-m-d H:i:s' );
 	}
 
-	/** Stato della password di un socio: «ok» (scelta), «none» (non l'ha ancora scelta), «reset» (ha chiesto il recupero e deve sceglierne una nuova). */
+	/** Stato della password di un socio: «ok» (scelta), «none» (non l'ha ancora scelta), «reset» (ha chiesto il recupero e deve sceglierne una nuova), «restored» (la password arriva da una copia ripristinata: ne sceglie una nuova prima di tutto). */
 	public static function password_state( int $person_id ): string {
 		$r = Db::db()->get_row( Db::db()->prepare( 'SELECT pass_hash, must_reset FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = %d', $person_id ), ARRAY_A );
-		if ( ! $r || '' === (string) $r['pass_hash'] ) {
-			return 'none';
-		}
-		return (int) $r['must_reset'] ? 'reset' : 'ok';
+		return MemberPassword::state( $r ? (string) $r['pass_hash'] : '', $r ? (int) $r['must_reset'] : 0 );
 	}
 
 	/** Dopo il recupero della password: prima di navigare il socio deve sceglierne una nuova. */
@@ -68,7 +72,7 @@ final class MemberLogin {
 		$db  = Db::db();
 		$tbl = Db::t( 'member_auth' );
 		if ( $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $tbl WHERE person_id = %d", $person_id ) ) ) {
-			$db->update( $tbl, array( 'must_reset' => 1 ), array( 'person_id' => $person_id ) );
+			$db->query( $db->prepare( "UPDATE $tbl SET must_reset = %d WHERE person_id = %d AND must_reset <> %d", 1, $person_id, MemberPassword::RESTORED ) ); // il segno del ripristino non si abbassa a «recupero»
 			return;
 		}
 		$p = Plugin::people()->get( $person_id );
@@ -86,11 +90,14 @@ final class MemberLogin {
 		}
 		$p = self::person_by_email( $email );
 		if ( ! $p ) {
+			get_transient( 'asem_ml_m_' . md5( strtolower( trim( $email ) ) ) );
+			self::decoy_request(); // stesso lavoro di una richiesta vera: il tempo di risposta non dice se l'indirizzo è di un socio
 			return false;
 		}
 		$mail_key = 'asem_ml_m_' . md5( strtolower( (string) $p['email'] ) ); // come per il primo accesso: nessuno può inondare la casella di un socio
 		$sent     = (int) get_transient( $mail_key );
 		if ( $sent >= Limits::get( 'first_access_per_email' ) ) {
+			self::decoy_request();
 			return false;
 		}
 		$db  = Db::db();
@@ -130,12 +137,9 @@ final class MemberLogin {
 		}
 		$to      = (string) $p['email'];
 		$subject = $subject . ( '' !== $assoc ? ' — ' . $assoc : '' );
-		if ( self::$defer ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
+		if ( ResponseMail::deferring() ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
 			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
-			self::$queue[] = static function () use ( $to, $subject, $text ) {
-				Texts::mail( $to, $subject, $text );
-			};
-			return true;
+			return ResponseMail::send( $to, $subject, $text );
 		}
 		$ok = (bool) Texts::mail( $to, $subject, $text );
 		if ( $ok ) {
@@ -240,7 +244,7 @@ final class MemberLogin {
 			}
 			return null;
 		}
-		$upd = array( 'failed_count' => 0, 'locked_until' => null, 'must_reset' => 0 ); // ha dimostrato di conoscere la password: un recupero lasciato a metà non la blocca
+		$upd = array( 'failed_count' => 0, 'locked_until' => null, 'must_reset' => MemberPassword::marker_after_login( (int) $auth['must_reset'] ) ); // ha dimostrato di conoscere la password: un recupero lasciato a metà non la blocca; dopo un ripristino invece il cambio resta obbligatorio
 		if ( MemberPassword::needs_rehash( $hash ) ) {
 			$upd['pass_hash'] = MemberPassword::make( $password );
 		}
@@ -288,7 +292,8 @@ final class MemberLogin {
 		if ( $taken ) {
 			return 'Non è possibile impostare la password per questo accesso. Scrivi alla segreteria.';
 		}
-		$hash = MemberPassword::make( $password );
+		$hash     = MemberPassword::make( $password );
+		$restored = MemberPassword::RESTORED === (int) $db->get_var( $db->prepare( "SELECT must_reset FROM $tbl WHERE person_id = %d", $person_id ) );
 		if ( $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $tbl WHERE person_id = %d", $person_id ) ) ) {
 			$db->update( $tbl, array( 'login_email' => $email, 'pass_hash' => $hash, 'must_reset' => 0, 'failed_count' => 0, 'locked_until' => null ), array( 'person_id' => $person_id ) );
 		} else {
@@ -296,6 +301,9 @@ final class MemberLogin {
 		}
 		MemberSession::destroy_others( $person_id ); // cambiata la password, gli altri dispositivi devono rientrare
 		Audit::log( 'member.password_set', 'person', $person_id );
+		if ( $restored ) { // il cambio obbligatorio dopo il ripristino è fatto: resta scritto, senza nessun dato della password
+			Audit::log( 'member.password_changed_after_restore', 'person', $person_id );
+		}
 		return '';
 	}
 }

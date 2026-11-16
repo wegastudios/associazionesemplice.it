@@ -76,6 +76,9 @@ add_filter( 'wp_check_filetype_and_ext', function ( $data ) {
 	return array( 'ext' => false, 'type' => false, 'proper_filename' => false );
 }, 99 );
 
+// Nell'archivio documenti e in ogni punto che passa da Documents::prepare_upload (inventario, certificati, rimborsi) non si accetta alcun file: decisione del titolare.
+add_filter( 'asem_documents_uploads_enabled', '__return_false', 99 );
+
 // Protezioni più strette: nella demo (accessi pubblici) non si salvano chiavi, conti o contatti propri, non si tocca la chiave dei file né si ripristinano o azzerano i dati,
 // e nessun file arriva sul server. Valgono solo qui: il plugin dei clienti non cambia. Le azioni si fermano per nome, prima del gestore del plugin (priorità 0).
 $asem_demo_blocked = array(
@@ -297,6 +300,21 @@ add_action( 'admin_init', function () {
 	} );
 }, 1 );
 
+// La demo resta fuori dai motori di ricerca: WordPress emette noindex e un robots.txt che vieta tutto, e ogni risposta porta l'intestazione.
+add_filter( 'pre_option_blog_public', '__return_zero' );
+add_action( 'send_headers', function () {
+	header( 'X-Robots-Tag: noindex, nofollow' );
+}, 0 );
+add_action( 'login_init', function () {
+	if ( ! headers_sent() ) {
+		header( 'X-Robots-Tag: noindex, nofollow' );
+	}
+} );
+add_action( 'admin_init', function () {
+	if ( ! headers_sent() ) {
+		header( 'X-Robots-Tag: noindex, nofollow' );
+	}
+} );
 // Niente indicizzazione e un avviso ben visibile.
 add_filter( 'wp_robots', function ( $robots ) {
 	return array( 'noindex' => true, 'nofollow' => true );

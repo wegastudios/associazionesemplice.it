@@ -21,6 +21,18 @@ final class Secrets {
 		return 0 === strpos( $value, self::PREFIX );
 	}
 
+	/** Toglie da un elenco di impostazioni ogni valore cifrato (anche annidato): serve alle copie, perché una chiave cifrata è utile solo su questo sito. */
+	public static function strip_encrypted( array $values ): array {
+		foreach ( $values as $k => $v ) {
+			if ( is_string( $v ) && self::is_encrypted( $v ) ) {
+				unset( $values[ $k ] );
+			} elseif ( is_array( $v ) ) {
+				$values[ $k ] = self::strip_encrypted( $v );
+			}
+		}
+		return $values;
+	}
+
 	/** @param string $material segreto da cui derivare la chiave (in WordPress: wp_salt('auth')) */
 	public static function encrypt( string $plain, string $material ): string {
 		if ( '' === $plain ) {

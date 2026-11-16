@@ -28,13 +28,16 @@ use App\Modules\Core\Org\DatabaseOrgPurger;
 use App\Modules\Core\Platform\PlatformConfig;
 use App\Modules\Core\Platform\PlatformSettings;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 
 final class CoreServiceProvider extends ServiceProvider
@@ -74,6 +77,14 @@ final class CoreServiceProvider extends ServiceProvider
         $reset = function (): void {
             $this->app->make(OrgContext::class)->leave();
         };
+        // Query oltre la soglia (config saas.slow_query_ms): una riga nel log con il testo e i tempi, mai i valori (dati dei soci).
+        DB::listen(static function (QueryExecuted $query): void {
+            $limit = config('saas.slow_query_ms');
+            if (is_int($limit) && $limit > 0 && $query->time >= $limit) {
+                Log::warning('Query lenta', ['ms' => (int) round($query->time), 'connection' => $query->connectionName, 'sql' => mb_substr($query->sql, 0, 1000)]);
+            }
+        });
+
         Event::listen(JobProcessing::class, $reset);
         Event::listen(JobProcessed::class, $reset);
         Event::listen(JobFailed::class, $reset);
