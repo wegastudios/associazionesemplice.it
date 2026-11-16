@@ -28,3 +28,10 @@ if ( ! function_exists( 'wp_delete_file' ) ) {
 		}
 	}
 }
+
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	/** Sostituto minimo di quello di WordPress per i test senza WordPress. */
+	function wp_parse_url( $url, $component = -1 ) {
+		return parse_url( $url, $component );
+	}
+}

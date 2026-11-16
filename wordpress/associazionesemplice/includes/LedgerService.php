@@ -258,6 +258,11 @@ class LedgerService {
 	}
 
 	private function insert_tx( array $row ): int {
+		foreach ( array( 'description', 'document_ref' ) as $k ) { // testi semplici: niente tag, da qualunque strada arrivino (modulo, import)
+			if ( isset( $row[ $k ] ) && is_string( $row[ $k ] ) ) {
+				$row[ $k ] = Text::plain( $row[ $k ] );
+			}
+		}
 		if ( ! $this->db()->insert( Db::t( 'transactions' ), $this->tx_defaults( $row ) ) ) {
 			throw new \RuntimeException( 'Errore del database nel salvare il movimento.' );
 		}

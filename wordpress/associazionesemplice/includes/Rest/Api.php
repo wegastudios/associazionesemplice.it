@@ -66,6 +66,14 @@ final class Api {
 		if ( ! MemberSession::logged_in() ) {
 			return false;
 		}
+		// Con l'accesso proprio il cookie viaggia anche verso un altro sottodominio dello stesso sito: si rifiuta ciò che non arriva dal sito stesso.
+		if ( MemberSession::is_own_session() && ! \AssociazioneSemplice\SessionToken::request_origin_allowed(
+			isset( $_SERVER['HTTP_ORIGIN'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_ORIGIN'] ) ) : '',
+			isset( $_SERVER['HTTP_SEC_FETCH_SITE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_SITE'] ) ) : '',
+			array( home_url(), site_url() )
+		) ) {
+			return false;
+		}
 		// Con l'accesso proprio le richieste che modificano qualcosa devono portare il token della sessione (intestazione X-ASEM-CSRF).
 		if ( MemberSession::is_own_session() && ! in_array( isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET', array( 'GET', 'HEAD' ), true ) ) {
 			$tok = isset( $_SERVER['HTTP_X_ASEM_CSRF'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_ASEM_CSRF'] ) ) : '';

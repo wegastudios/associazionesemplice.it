@@ -442,6 +442,7 @@ final class Docs {
 		} catch ( \InvalidArgumentException $e ) {
 			wp_die( esc_html( $e->getMessage() ), 404 );
 		}
+		Audit::log( 'export.downloaded', 'export', 0, array( 'what' => sanitize_key( $what ), 'format' => $format ) );
 		self::send( $doc );
 	}
 }
