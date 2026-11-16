@@ -779,7 +779,7 @@ final class Backup {
 		}
 		check_admin_referer( 'asem_backup' );
 		$user = wp_get_current_user();
-		$keys = AttemptLimit::keys( $user && $user->exists() ? (int) $user->ID : 0, ClientIp::get() ); // stesse chiavi del ripristino e dell'azzeramento
+		$keys = \AssociazioneSemplice\AttemptLimit::keys( $user && $user->exists() ? (int) $user->ID : 0, \AssociazioneSemplice\ClientIp::get() ); // stesse chiavi del ripristino e dell'azzeramento
 		$lim  = AttemptLimit::standard();
 		$busy = Texts::t( 'Troppi tentativi: riprova tra qualche minuto.' );
 		if ( $lim->is_locked( $keys ) ) { // durante il blocco la password non viene nemmeno controllata
