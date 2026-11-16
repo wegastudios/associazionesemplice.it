@@ -80,7 +80,8 @@ final class AssemblyRules {
 	 * @param int[] $delegators             chi ha già delegato qualcuno (compreso chi sta delegando)
 	 * @param int[] $delegates              chi ha già ricevuto una delega
 	 */
-	public static function proxy_refusal( int $delegator, int $delegate, bool $delegator_eligible, bool $delegate_eligible, array $delegators_of_delegate, array $delegators, array $delegates, int $max ): string {
+	public static function proxy_refusal( int $delegator, int $delegate, bool $delegator_eligible, bool $delegate_eligible, array $delegators_of_delegate, array $delegators, array $delegates, int $max, bool $member_view = false ): string {
+		$neutral = 'Non puoi scegliere questo socio come delegato: scegline un altro.'; // dal lato soci non si dice com'è messo l'altro socio (iscritto, già delegante, già al massimo)
 		if ( $delegator === $delegate ) {
 			return 'Non si può delegare sé stessi.';
 		}
@@ -88,19 +89,19 @@ final class AssemblyRules {
 			return 'Chi delega deve essere un socio in regola.';
 		}
 		if ( ! $delegate_eligible ) {
-			return 'La delega si dà a un altro socio in regola, non a chi non ha diritto di voto.';
+			return $member_view ? $neutral : 'La delega si dà a un altro socio in regola, non a chi non ha diritto di voto.';
 		}
 		if ( in_array( $delegator, $delegates, true ) ) {
 			return 'Questo socio ha già ricevuto deleghe: non può a sua volta delegare.';
 		}
 		if ( in_array( $delegate, $delegators, true ) ) {
-			return 'Il socio scelto ha già delegato qualcun altro: scegline un altro.';
+			return $member_view ? $neutral : 'Il socio scelto ha già delegato qualcun altro: scegline un altro.';
 		}
 		if ( in_array( $delegator, $delegators, true ) ) {
 			return 'Questo socio ha già dato una delega per questa assemblea: revocala prima.';
 		}
 		if ( count( array_diff( $delegators_of_delegate, array( $delegator ) ) ) >= $max ) {
-			return 'Il socio scelto ha già ' . $max . ' deleghe, che è il massimo.';
+			return $member_view ? $neutral : 'Il socio scelto ha già ' . $max . ' deleghe, che è il massimo.';
 		}
 		return '';
 	}
