@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Auth\EmailChangeNotification;
 use App\Modules\Core\Contracts\DemoScale;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 
 dataset('scritture della demo', [
@@ -48,8 +50,10 @@ it('fuori dalla demo non cambia nulla', function (): void {
     $user = $this->createUser('titolare@example.com', twoFactor: true);
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
-    $this->actingAs($user)->put('/gestionale/profilo/email', ['email' => 'nuova@example.com', 'password' => $this::PASSWORD])->assertSessionHasNoErrors();
-    expect($user->refresh()->email)->toBe('nuova@example.com');
+    // Fuori dalla demo la richiesta passa: il link di conferma parte, e l'email cambia solo quando lo si apre.
+    Notification::fake();
+    $this->actingAs($user)->put('/gestionale/profilo/email', ['email' => 'nuova@example.com', 'password' => $this::PASSWORD])->assertSessionHasNoErrors()->assertSessionHas('status');
+    Notification::assertSentOnDemand(EmailChangeNotification::class);
 });
 
 it('nella demo una rotta di scrittura mai vista viene rifiutata, una sotto un\'azione permessa passa', function (): void {
