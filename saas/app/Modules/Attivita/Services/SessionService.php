@@ -22,6 +22,7 @@ use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\Package;
 use App\Modules\Risorse\Contracts\ResourceBookings;
 use App\Modules\Soci\Contracts\MemberType;
+use App\Modules\Soci\Contracts\People;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -48,6 +49,7 @@ final readonly class SessionService
         private ActivityOccupancy $occupancy,
         private ActivityVat $vat,
         private Entitlements $entitlements,
+        private People $people,
     ) {}
 
     /**
@@ -442,16 +444,17 @@ final readonly class SessionService
     private function notifyPromoted(ActivitySession $s, string $personId, bool $toPay): string
     {
         $c = $this->connection();
-        $p = $c->table('app.people')->where('id', $personId)->first(['first_name', 'email', 'birth_date', 'anonymized_at', 'left_on']);
+        $p = $c->table('app.people')->where('id', $personId)->first(['first_name', 'email', 'anonymized_at', 'left_on']);
         if ($p === null || $p->anonymized_at !== null || $p->left_on !== null) {
             return 'no_email';
         }
-        $minor = is_string($p->birth_date ?? null) && CarbonImmutable::parse($p->birth_date)->addYears(18)->isFuture();
+        $birth = $this->people->card($personId)['birth_date'] ?? null;
+        $minor = is_string($birth) && CarbonImmutable::parse($birth)->addYears(18)->isFuture();
         $about = is_string($p->first_name ?? null) ? $p->first_name : '';
         $to = $p;
         if ($minor) {
-            $guardianId = $c->table('app.guardians')->where('person_id', $personId)->where('is_operative', true)->value('guardian_person_id');
-            $to = is_string($guardianId) ? $c->table('app.people')->where('id', $guardianId)->first(['first_name', 'email']) : null;
+            $guardian = $this->people->guardians($personId)[0] ?? null;
+            $to = $guardian === null ? null : (object) ['first_name' => $guardian['first_name'], 'email' => $guardian['email']];
         }
         $email = $to !== null && is_string($to->email ?? null) ? $to->email : '';
         if ($to === null || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
