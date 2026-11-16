@@ -6847,6 +6847,18 @@ Admin\TechActions::save_roles( array( 'roles' => array( 'editor' ) ) );
 asem_ok( get_role( 'editor' )->has_cap( Plugin::CAP_OPS ) && ! get_role( 'editor' )->has_cap( Plugin::CAP ), 'ruoli: un altro ruolo può avere l\'accesso operativo, senza quello da amministratore' );
 Admin\TechActions::save_roles( array() );
 asem_ok( ! get_role( 'editor' )->has_cap( Plugin::CAP_OPS ) && null !== asem_throws( function () { Admin\TechPage::set_role_access( 'administrator', false ); } ) && null !== asem_throws( function () { Admin\TechPage::set_role_access( 'ruolo_inesistente', true ); } ), 'ruoli: l\'accesso si toglie; amministratore e ruoli inesistenti si rifiutano' );
+asem_ok( ! empty( Audit::recent( 1, 'roles.access_granted' ) ) && ! empty( Audit::recent( 1, 'roles.access_revoked' ) ), 'ruoli: concessione e revoca dell\'accesso restano nel registro azioni' );
+Admin\TechActions::save_roles( array( 'roles' => array( 'editor' ) ) );
+$ro_u = wp_insert_user( array( 'user_login' => 'asem_ro_lock', 'user_pass' => wp_generate_password(), 'user_email' => 'ro-lock@example.com', 'role' => 'editor' ) );
+wp_set_current_user( $ro_u );
+$ro_err = asem_throws( function () { Admin\TechActions::save_roles( array() ); } );
+wp_set_current_user( 1 );
+asem_ok( null !== $ro_err && get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: non si toglie l\'accesso al ruolo con cui si sta operando' );
+get_role( 'editor' )->add_cap( Plugin::CAP );
+asem_ok( null !== asem_throws( function () { Admin\TechPage::set_role_access( 'editor', false ); } ) && get_role( 'editor' )->has_cap( Plugin::CAP_OPS ), 'ruoli: non si toglie l\'accesso a un ruolo che amministra il plugin' );
+get_role( 'editor' )->remove_cap( Plugin::CAP );
+wp_delete_user( $ro_u );
+Admin\TechActions::save_roles( array() );
 // interruttori
 $ft = Settings::all();
 Settings::update( array( 'card_enabled' => 0 ) );

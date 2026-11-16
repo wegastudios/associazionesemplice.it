@@ -213,6 +213,11 @@ final class TechActions {
 
 	public static function save_roles( array $p ): array {
 		$chosen = array_map( 'strval', (array) ( $p['roles'] ?? array() ) );
+		foreach ( TechPage::roles() as $key => $r ) { // prima si controlla tutto: se una revoca è rifiutata non cambia niente
+			if ( $r['has'] && ! in_array( (string) $key, $chosen, true ) ) {
+				TechPage::assert_can_remove( (string) $key );
+			}
+		}
 		foreach ( array_keys( TechPage::roles() ) as $key ) {
 			TechPage::set_role_access( (string) $key, in_array( (string) $key, $chosen, true ) );
 		}
