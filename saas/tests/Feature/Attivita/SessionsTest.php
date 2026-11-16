@@ -8,11 +8,16 @@ use App\Modules\Attivita\Rules\SessionRules;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Attivita\Services\AttendanceService;
 use App\Modules\Attivita\Services\SessionService;
+use App\Modules\Attivita\Services\WaitlistPromotedNotification;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Portale\Contracts\Entitlements;
+use App\Modules\Portale\Contracts\OrgEntitlements;
 use App\Modules\Soci\Models\Person;
+use App\Modules\Soci\Services\GuardianService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // Dati di prova inventati.
@@ -195,4 +200,72 @@ it('mostra il calendario a giorno, a settimana e a mese', function (): void {
     $this->get('/gestionale/calendario?dal=2026-11-12&vista=giorno')->assertOk()->assertInertia(fn (Assert $page) => $page->where('view', 'giorno')->has('days', 1));
     $this->get('/gestionale/calendario?dal=2026-11-12')->assertOk()->assertInertia(fn (Assert $page) => $page->where('view', 'settimana')->has('days', 7)->where('from', '2026-11-12'));
     $this->get('/gestionale/calendario?dal=2026-11-12&vista=mese')->assertOk()->assertInertia(fn (Assert $page) => $page->where('view', 'mese')->has('days', 30)->where('from', '2026-11-01')->where('next', '2026-12-01'));
+});
+
+it('avvisa per email chi passa dalla lista d\'attesa alla prenotazione, e il genitore per un minore', function (): void {
+    app()->instance(Entitlements::class, new class implements Entitlements
+    {
+        public function for(string $orgId): OrgEntitlements
+        {
+            return new OrgEntitlements(1, 'active', null, null, 150, 3, 5, ['member_area' => []], null);
+        }
+    });
+    Notification::fake();
+    $this->orgContext()->run($this->org->id, function (): void {
+        $s = app(SessionService::class);
+        $a = recurring();
+        $s->addDates($a->id, $this->day, null, false, '09:00', '13:00', 'Rifugio', 1);
+        $session = $s->sessions($a)[0]['id'];
+
+        $anna = Person::create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
+        $eva = Person::create(['first_name' => 'Eva', 'last_name' => 'Verdi', 'email' => 'eva@example.com']);
+        $mamma = Person::create(['first_name' => 'Maria', 'last_name' => 'Bianchi', 'email' => 'maria@example.com']);
+        $figlio = Person::create(['first_name' => 'Luca', 'last_name' => 'Bianchi', 'birth_date' => now()->subYears(10)->toDateString()]);
+        app(GuardianService::class)->link($figlio->id, $mamma->id);
+        $s->book($session, $anna->id);
+        $s->waitlistJoin($session, $eva->id);
+        $s->waitlistJoin($session, $figlio->id);
+
+        $ab = (string) DB::table('app.session_bookings')->where('person_id', $anna->id)->value('id');
+        expect($s->cancelBooking($ab))->toBe(['Verdi Eva']);
+        Notification::assertSentOnDemand(WaitlistPromotedNotification::class, function (WaitlistPromotedNotification $n, array $channels, object $notifiable): bool {
+            return ($notifiable->routes['mail'] ?? null) === 'eva@example.com'
+                && str_starts_with($n->body, 'Si è liberato un posto: ora hai un posto per Escursioni del ')
+                && str_contains($n->body, ', alle ore 09:00. Se non puoi venire, annulla dall\'area soci o scrivi alla segreteria.')
+                && $n->payLine === 'La quota da versare la trovi in Quote, nell\'area soci.';
+        });
+
+        // Il posto torna libero e il prossimo in lista è il minore: scrive la madre.
+        $eb = (string) DB::table('app.session_bookings')->where('person_id', $eva->id)->value('id');
+        $s->cancelBooking($eb);
+        Notification::assertSentOnDemand(WaitlistPromotedNotification::class, fn (WaitlistPromotedNotification $n, array $channels, object $notifiable): bool => ($notifiable->routes['mail'] ?? null) === 'maria@example.com'
+            && str_starts_with($n->body, 'Si è liberato un posto: ora Luca ha un posto per Escursioni del '));
+    });
+});
+
+it('senza il pacchetto Area soci l\'avviso rimanda solo alla segreteria', function (): void {
+    app()->instance(Entitlements::class, new class implements Entitlements
+    {
+        public function for(string $orgId): OrgEntitlements
+        {
+            return new OrgEntitlements(1, 'active', null, null, 150, 3, 5, [], null);
+        }
+    });
+    Notification::fake();
+    $this->orgContext()->run($this->org->id, function (): void {
+        $s = app(SessionService::class);
+        $a = recurring();
+        $s->addDates($a->id, $this->day, null, false, '09:00', '13:00', 'Rifugio', 1);
+        $session = $s->sessions($a)[0]['id'];
+        $anna = Person::create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
+        $eva = Person::create(['first_name' => 'Eva', 'last_name' => 'Verdi', 'email' => 'eva@example.com']);
+        $s->book($session, $anna->id);
+        $s->waitlistJoin($session, $eva->id);
+
+        $s->cancelBooking((string) DB::table('app.session_bookings')->where('person_id', $anna->id)->value('id'));
+        Notification::assertSentOnDemand(WaitlistPromotedNotification::class, fn (WaitlistPromotedNotification $n): bool => $n->areaUrl === null
+            && str_ends_with($n->body, 'Se non puoi venire, scrivi alla segreteria.')
+            && ! str_contains($n->body, 'area soci')
+            && $n->payLine === 'Per la quota da versare scrivi alla segreteria.');
+    });
 });

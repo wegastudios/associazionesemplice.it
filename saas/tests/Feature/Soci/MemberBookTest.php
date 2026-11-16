@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Cifratura\Contracts\Bytea;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
@@ -99,6 +100,10 @@ it('fotografa il libro alla chiusura dell\'esercizio e non lo cambia più, nemme
 
         $years->close($year);
         Person::query()->where('first_name', 'Anna')->sole()->delete();
+
+        // La fotografia è cifrata: nella tabella non c'è nulla di leggibile (né codice fiscale, né residenza, né nomi).
+        $stored = Bytea::decode(DB::table('app.member_book_snapshots')->where('fiscal_year', $year)->value('rows_enc'));
+        expect($stored)->not->toContain('RSSMRA80A01H501U')->and($stored)->not->toContain('Via Roma')->and($stored)->not->toContain('Fondatore');
 
         $closed = $snapshots->forYear($year);
         expect($closed['source'])->toBe('snapshot')
