@@ -63,3 +63,15 @@ it('nella demo una rotta di scrittura mai vista viene rifiutata, una sotto un\'a
     $this->post('/gestionale/soci/azione-nuova')->assertOk()->assertSee('fatto');
     $this->post('/area/azione-del-socio')->assertOk()->assertSee('fatto');
 });
+
+it('nella demo lo scarico della copia è chiuso e l\'amministrazione della piattaforma non esiste', function (): void {
+    config(['saas.demo.enabled' => true]);
+    $user = $this->createUser('titolare@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+
+    $this->actingAs($user)->get('/gestionale/esportazione.zip')->assertSessionHasErrors(['ledger' => DemoScale::BACKUP_OFF]);
+    $this->post('/gestionale/esportazione.zip')->assertSessionHasErrors(['ledger' => DemoScale::BACKUP_OFF]);
+    $this->get('/saas/admin/accesso')->assertNotFound();
+    $this->post('/saas/admin/accesso', ['email' => 'staff@example.com', 'password' => 'x'])->assertNotFound();
+    $this->get('/saas/staff/invito/qualcosa')->assertNotFound();
+});

@@ -36,8 +36,7 @@ final class DemoRestrictions
         'gestionale/conti', 'gestionale/conti/*',
         'gestionale/prima-nota', 'gestionale/prima-nota/*',
         'gestionale/esercizi', 'gestionale/esercizi/*',
-        'gestionale/ricevute/*', 'gestionale/verifica-ricevute', 'gestionale/verifica-ricevute/*',
-        'gestionale/archivio/*',
+        'gestionale/ricevute/*',
         // Profilo: solo il nome; la configurazione guidata si può rimandare, non salvare.
         'gestionale/profilo/nome', 'gestionale/configurazione/rimanda',
     ];
@@ -45,23 +44,30 @@ final class DemoRestrictions
     /** @param  Closure(Request): Response  $next */
     public function handle(Request $request, Closure $next): Response
     {
-        if (DemoScale::restricted() && ! $request->isMethodSafe() && ! $request->is([...self::ALLOWED, ...$this->platformPaths()])) {
+        if (! DemoScale::restricted()) {
+            return $next($request);
+        }
+        // L'amministrazione della piattaforma e lo staff non esistono nella demo pubblica.
+        if ($request->is($this->platformPaths())) {
+            abort(404);
+        }
+        // Lo scarico della copia di sicurezza pesa sul server condiviso: chiuso, in lettura e in scrittura.
+        if ($request->is('gestionale/esportazione.zip')) {
+            throw ValidationException::withMessages(['ledger' => DemoScale::BACKUP_OFF]);
+        }
+        if (! $request->isMethodSafe() && ! $request->is(self::ALLOWED)) {
             throw ValidationException::withMessages(['ledger' => DemoScale::CHANGE_OFF]);
         }
 
         return $next($request);
     }
 
-    /**
-     * L'amministrazione della piattaforma ha accesso e sessione propri (staff, non gli accessi pubblici della demo).
-     *
-     * @return list<string>
-     */
+    /** @return list<string> */
     private function platformPaths(): array
     {
         $path = config('saas.admin_path', 'saas/admin');
         $path = trim(is_string($path) ? $path : 'saas/admin', '/');
 
-        return [$path, $path.'/*'];
+        return [$path, $path.'/*', 'saas/staff/*'];
     }
 }
