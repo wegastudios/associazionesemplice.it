@@ -62,7 +62,15 @@ final readonly class MemberBookSnapshots
         $json = $this->cipher->decrypt($this->context->require()->id, self::FIELD, Bytea::decode($stored));
         $rows = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
-        return is_array($rows) ? array_values(array_filter($rows, is_array(...))) : [];
+        $out = [];
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            if (is_array($row)) {
+                /** @var array<string, mixed> $row */
+                $out[] = $row;
+            }
+        }
+
+        return $out;
     }
 
     /** Alla chiusura: fotografa il libro dell'esercizio (nuova versione). */
