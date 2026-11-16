@@ -60,7 +60,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Il **Dipendente** è un tipo di utente a parte: è un utente del sito con gli **stessi permessi della segreteria**, ma **non è un socio**. Non è nel libro soci, non ha la tessera e non conta per le assemblee. Si gestisce da **Rubrica soci → Dipendenti**.
+Il **Dipendente** è un tipo di utente a parte: è un utente del sito che **parte con gli stessi permessi della segreteria**, ma **non è un socio**. Non è nel libro soci, non ha la tessera e non conta per le assemblee. Si gestisce da **Rubrica soci → Dipendenti**.
 
 ## Creare un dipendente
 
@@ -68,13 +68,63 @@ Il **Dipendente** è un tipo di utente a parte: è un utente del sito con gli **
 2. Nel modulo in fondo scrivi **nome**, **cognome** e **email**; facoltativi il **primo e l'ultimo giorno di servizio**.
 3. Salva: al dipendente arriva l'**invito per scegliere la password**. Se l'email non parte, controlla la posta del sito e usa **«Rimanda l'invito»**.
 
-## Togliere dei permessi
+Un dipendente nuovo ha **tutti i permessi**.
 
-Per ogni dipendente puoi **togliere la spunta** ai singoli permessi, uno per uno. Solo gli **amministratori, il presidente e il vicepresidente** vedono questa pagina e possono farlo. Ogni cambio resta scritto nel registro azioni, e dalla pagina puoi vedere chi ha tolto o dato permessi, e quando.
+## Togliere dei permessi, area per area
+
+Per ogni dipendente puoi **togliere la spunta** a una o più delle **15 aree** qui sotto. Togliendola, le pagine e le azioni di quell'area si chiudono: nel menu e nelle schede compaiono solo le pagine che il dipendente può aprire, e chi prova a fare ciò che non può legge «Non puoi farlo con il tuo accesso: ti è stato tolto il permesso «…». Se ti serve, chiedi al presidente, al vicepresidente o a un amministratore del sito di ridartelo.» Un'area ancora senza i suoi controlli compare disattivata con l'indicazione «(in arrivo)».
+
+Possono farlo **solo gli amministratori, il presidente e il vicepresidente**: la segreteria, il dipendente stesso e i soci non vedono nemmeno la pagina. Ogni cambio resta scritto nel registro azioni, e dalla pagina puoi vedere chi ha tolto o dato permessi, e quando.
+
+| Area | Che cosa apre | Chiede anche |
+|---|---|---|
+| **Anagrafica soci** | Rubrica e scheda persona, libro soci, dati per il RUNTS, affiliazioni, tessere, polizze, registro dei volontari. Creare, modificare ed eliminare soci, approvare le domande di adesione, sospendere o riattivare. | Per esportare l'elenco soci serve anche «Importa ed esporta dati». |
+| **Certificati medici** | Elenco completo dei certificati, caricarli e toglierli, esportarli in CSV. | Vedi la regola più sotto. |
+| **Corsi** | Elenco, scheda, iscrizioni, lezioni, presenze, registro presenze, calendario. | Con Eventi condivide l'elenco «Corsi ed eventi» e il calendario: si aprono se c'è almeno uno dei due. |
+| **Eventi** | Elenco, scheda, prenotazioni, lista d'attesa, check-in, staff, richieste di evento, pagina «Prenota». | Come Corsi. |
+| **Risorse prenotabili** | Sale e attrezzi: schede, prenotazioni, blocchi, assegnazioni, occupazione. | L'incasso di una prenotazione resta di «Incassi». |
+| **Incassi** | Nuovo incasso, cassa per più persone, vendita crediti, controllo dei pagamenti online, ricevute, allegati. | Per scegliere chi paga serve l'Anagrafica, o la ricerca minima (vedi sotto). |
+| **Registrazione delle spese** | Nuova spesa, collegare o togliere una spesa da un fondo, allegati. | Come Incassi. |
+| **Emissione dei rimborsi** | Rimborsi ai volontari (richiesta, approvazione, pagamento, file e CSV) e rimborsi dei pagamenti online. | — |
+| **Visualizzazione di fondi, casse e conti** | Cassa, prima nota, conti e fondi, giroconti, bilancio provvisorio, contabilità, report, rendiconto, 5 per mille, preventivo, ricevuta sostitutiva, conteggio di cassa, annullamenti. In Bacheca i saldi. | Importare la prima nota chiede anche «Importa ed esporta dati» e «Anagrafica soci». |
+| **Comunicazioni** | Avvisi, newsletter, SMS e promemoria ai soci; rinvio delle email e degli SMS non partiti. | Gli avvisi che partono da altre aree (convocare un'assemblea, annunciare una votazione o una convenzione) chiedono anche questa area. |
+| **Documenti dell'associazione** | Archivio dei documenti (statuto, moduli): elenco, caricare, modificare, eliminare. | — |
+| **Assemblee, verbali e votazioni** | Convocazione, presenze, deleghe, chiusura, verbali, votazioni; verbali e votazioni in PDF e CSV. | Convocare e annunciare una votazione mandano un avviso: serve anche «Comunicazioni». |
+| **Inventario e prestiti** | Beni e prestiti: schede, file allegati, registrare prestito e rientro, elenchi in CSV. In Bacheca i prestiti scaduti. | — |
+| **Convenzioni** | Schede, categorie, archivio, elenco in CSV. In Bacheca quelle in scadenza. | Annunciare una convenzione ai soci chiede anche «Comunicazioni». |
+| **Importa ed esporta dati** | Pagina Esportazioni, panoramica Strumenti, tutte le esportazioni in CSV. | Esportare i soci chiede anche «Anagrafica soci»; prima nota, rendiconto e report chiedono anche «Fondi, casse e conti». Importare da Excel o CSV chiede anche «Anagrafica soci» e «Fondi»; importare da The Events Calendar chiede anche «Corsi» ed «Eventi». |
+
+Qualche regola in più:
+
+- **«Registri»** si apre a chi ha almeno una tra Anagrafica, Assemblee, Inventario, Documenti e Convenzioni. Senza Anagrafica, nel libro soci si legge un messaggio e restano gli altri registri.
+- **«Strumenti»** si apre a chi ha «Importa ed esporta dati», Corsi o Eventi, e mostra solo ciò che si può aprire (per esempio il calendario).
+- I **pulsanti di esportazione** che trovi in altre pagine funzionano solo con «Importa ed esporta dati». Il registro presenze in PDF o CSV chiede invece Corsi o Eventi.
+
+### Certificati medici senza l'area
+
+Senza «Certificati medici» il dipendente non vede l'elenco completo e non può esportare. Se ha **Corsi** o **Eventi**, vede lo stato e può aprire il certificato **solo degli iscritti alle attività di cui è istruttore e di quelle senza istruttore**; le attività con un altro istruttore non contano. Se al suo accesso non è collegata una persona, vede solo le attività senza istruttore. Ogni apertura di un file resta scritta nel registro azioni.
+
+### Scegliere una persona senza l'Anagrafica
+
+Senza «Anagrafica soci», i campi che scelgono una persona (chi paga, chi iscrivere, cassa per più persone) non mostrano l'elenco dei soci ma una casella **«Cerca per nome o tessera (almeno 3 lettere)»**. I risultati sono al massimo **10** e di ogni persona si vedono solo **nome, cognome (con il numero di tessera) e se la quota è in regola**. Si cerca solo per nome, cognome o numero di tessera: non per email, telefono o codice fiscale. Funziona finché il dipendente ha almeno una tra Incassi, Corsi, Eventi, Spese e Rimborsi.
+
+## Che cosa resta solo agli amministratori
+
+Il dipendente **non lo ha mai**, qualunque spunta abbia: tutte le **impostazioni** (dati dell'ente, soci e quote, aspetto, bonifico, donazioni, tessera e QR, privacy e regolamento, limiti e soglie, ruoli e accessi, testi e lingua, pagamenti online), gli **anni fiscali e le chiusure**, la **copia di sicurezza e il ripristino**, il **registro azioni**, le **integrazioni**, la **procedura guidata**, l'**azzeramento dei dati**, l'**eliminazione definitiva** di attività e iscrizioni, la **cifratura e la cartella riservata**, l'**anonimizzazione dei dati** e la **gestione dei dipendenti**. Restano fuori anche le azioni personali di ciascuno (chiudere un avviso, la guida iniziale, le notifiche del proprio dispositivo) e quelle dell'area soci.
+
+## Gli amministratori non si limitano
+
+- **L'amministratore di WordPress non si può mai togliere né limitare dal plugin**: se un utente è anche amministratore del sito, vede e fa tutto anche con il ruolo Dipendente. In **Ruoli e accessi**, se provi a togliere l'accesso a questo ruolo, compare «Un amministratore di WordPress non si può togliere né limitare dal plugin.»
+- Un **amministratore dell'associazione** (un ruolo del plugin, non di WordPress) **si può togliere o limitare da un altro amministratore**.
+- **Nessuno può togliere l'accesso a sé stesso**: se provi a togliere l'accesso al ruolo con cui stai operando compare «Non puoi togliere l'accesso al ruolo con cui stai operando: te lo toglieresti da solo. Chiedi a un amministratore.»
 
 ## Periodo di servizio
 
 Senza date il dipendente è sempre in servizio. **Fuori dal periodo** non può usare il pannello di amministrazione del plugin e non conta tra i lavoratori dei [Dati per il RUNTS](guida:dati-per-il-runts).
+
+## Se prima aveva dei permessi tolti
+
+Quando i permessi sono passati all'assegnazione per area, in Bacheca compare agli amministratori, al presidente e al vicepresidente l'avviso **«Rivedi i permessi dei dipendenti: ora si danno per area.»** (solo se esiste almeno un dipendente). Non si chiude da solo: sparisce quando apri la pagina **Dipendenti**. Serve a controllare chi aveva dei permessi tolti prima.
 
 ## Se è anche socio
 
