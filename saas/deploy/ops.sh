@@ -165,7 +165,7 @@ case "$ACTION" in
     ;;
   cancellazioni)
     # Sola lettura (decisione del titolare, 16/11/2026): com'è andata la cancellazione notturna e che cosa resta delle associazioni
-    # sospese, chiuse o cancellate. Nessun nome: solo identificativo e slug. Nessuna scrittura.
+    # sospese, chiuse o cancellate. Nessun nome né slug: l uscita finisce nel log pubblico del workflow, solo identificativi tecnici e conteggi. Nessuna scrittura.
     cd "$BASE/current"
     echo "== Registro dello staff: cancellazioni dal 13/11 =="
     "$PHP" artisan tinker --execute='
@@ -178,7 +178,7 @@ case "$ACTION" in
       foreach ($c->table("core.org_notices")->get(["kind", "sent_at"])->groupBy("kind") as $k => $g) { echo $k, ": ", $g->count(), PHP_EOL; }
       echo "== Associazioni sospese, chiuse o cancellate ==", PHP_EOL;
       $names = app(App\Modules\Core\Contracts\DatabaseNames::class);
-      $orgs = $c->table("core.orgs")->where(fn ($q) => $q->whereIn("status", ["suspended", "closed"])->orWhereNotNull("deleted_at"))->orderBy("slug")->get(["id", "slug", "status", "suspended_at", "deleted_at", "database"]);
+      $orgs = $c->table("core.orgs")->where(fn ($q) => $q->whereIn("status", ["suspended", "closed"])->orWhereNotNull("deleted_at"))->orderBy("id")->get(["id", "status", "suspended_at", "deleted_at", "database"]);
       foreach ($orgs as $o) {
         $ent = $c->table("core.org_entitlements")->where("org_id", $o->id)->first(["status", "until"]);
         $users = $c->transaction(function () use ($c, $o) { $c->select("SELECT set_config(?, ?, true)", ["app.org_id", $o->id]); return $c->table("core.org_users")->where("org_id", $o->id)->count(); });
@@ -192,7 +192,7 @@ case "$ACTION" in
           foreach ($tables as $t) { if (preg_match("/^(app|sites|portal|audit)\.[a-z][a-z0-9_]*$/", $t->t) === 1) { $tot += (int) $data->scalar("SELECT count(*) FROM ".$t->t." WHERE org_id = ?", [$o->id]); } }
           return $tot;
         });
-        echo $o->id, " slug=", $o->slug, " stato=", $o->status, " sospesa=", $o->suspended_at ?? "-", " cancellata=", $o->deleted_at ?? "no", " diritti=", $ent->status ?? "-", " until=", $ent->until ?? "-", " righe=", $rowsLeft, " utenti=", $users, " domini=", $domains, " chiavi=", $keys, " cartella=", Storage::disk("org_files")->exists($o->id) ? "si" : "no", PHP_EOL;
+        echo $o->id, " stato=", $o->status, " sospesa=", $o->suspended_at ?? "-", " cancellata=", $o->deleted_at ?? "no", " diritti=", $ent->status ?? "-", " until=", $ent->until ?? "-", " righe=", $rowsLeft, " utenti=", $users, " domini=", $domains, " chiavi=", $keys, " cartella=", Storage::disk("org_files")->exists($o->id) ? "si" : "no", PHP_EOL;
       }
       echo "fine (", $orgs->count(), " associazioni)", PHP_EOL;
     ' || true
