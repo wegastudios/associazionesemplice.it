@@ -53,6 +53,14 @@ final class PluginUpdates {
 			'sha256'  => $newer ? $all[0]['sha256'] : null, 'signature' => $newer ? $all[0]['signature'] : null, 'kid' => $newer ? $all[0]['kid'] : null,
 			'url'     => rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/accedi',
 		);
+		// Firma v2 (con data della firma e versione minima): solo per le release che la hanno; le altre restano come prima.
+		$r0 = $all[0];
+		if ( $newer && ! empty( $r0['signature_v2'] ) && ! empty( $r0['kid_v2'] ) && ! empty( $r0['signed_at'] ) && ! empty( $r0['min_version'] ) ) {
+			$out['signature_v2'] = $r0['signature_v2'];
+			$out['kid_v2']       = $r0['kid_v2'];
+			$out['signed_at']    = (int) $r0['signed_at'];
+			$out['min_version']  = $r0['min_version'];
+		}
 		if ( $newer ) {
 			$log = Releases::changelog( $p, $latest, $cur );
 			if ( '' !== $log ) {

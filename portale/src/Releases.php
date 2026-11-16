@@ -23,7 +23,7 @@ final class Releases {
 	 * Aggiunge una versione leggendo numero e cartella dal pacchetto. Una versione già presente non si sovrascrive.
 	 * @return array riga inserita
 	 */
-	public static function add( Db $db, string $product, string $tmpFile, string $note, string $actor, ?int $now = null, ?string $signature = null, ?string $kid = null ): array {
+	public static function add( Db $db, string $product, string $tmpFile, string $note, string $actor, ?int $now = null, ?string $signature = null, ?string $kid = null, ?array $v2 = null ): array {
 		$version = self::packageVersion( $product, $tmpFile );
 		if ( $db->one( 'SELECT 1 AS x FROM releases WHERE product = ? AND version = ?', array( $product, $version ) ) ) {
 			throw new UserError( 'La versione ' . $version . ' è già presente: aumenta il numero di versione per pubblicarne una nuova.' );
@@ -32,6 +32,10 @@ final class Releases {
 		if ( '' !== $signature && ! self::verify( $product, $version, (string) hash_file( 'sha256', $tmpFile ), $signature, (string) $kid ) ) {
 			throw new UserError( 'La firma non corrisponde a questo pacchetto (prodotto, versione e impronta) o alla chiave dei pacchetti: ricalcolala con release.sh.' );
 		}
+		if ( null !== $v2 && '' === $signature ) {
+			throw new UserError( 'La firma v2 si pubblica insieme alla firma v1.' );
+		}
+		$v2 = null !== $v2 ? self::checkV2( $product, $version, (string) hash_file( 'sha256', $tmpFile ), $v2, $now ) : null;
 		$dir = self::dir( $product );
 		if ( ! is_dir( $dir ) && ! mkdir( $dir, 0750, true ) ) {
 			throw new UserError( 'Non riesco a creare la cartella dei pacchetti.' );
@@ -51,7 +55,11 @@ final class Releases {
 			$row['signature'] = $signature;
 			$row['kid']       = (string) $kid;
 		}
-		Audit::log( $db, $actor, 'release.add', $product . ' ' . $version . ( '' !== $signature ? ' (firmata)' : ' (NON firmata)' ) );
+		if ( null !== $v2 ) {
+			self::storeV2( $db, $product, $version, $v2 );
+			$row = array_merge( $row, $v2 );
+		}
+		Audit::log( $db, $actor, 'release.add', $product . ' ' . $version . ( '' !== $signature ? ' (firmata' . ( null !== $v2 ? ' v1+v2' : '' ) . ')' : ' (NON firmata)' ) );
 		self::prune( $db, $product, $actor );
 		return $row;
 	}
@@ -87,7 +95,7 @@ final class Releases {
 	 * @return array riga aggiornata
 	 * @throws UserError
 	 */
-	public static function replace( Db $db, string $product, string $tmpFile, string $note, string $actor, string $signature, string $kid ): array {
+	public static function replace( Db $db, string $product, string $tmpFile, string $note, string $actor, string $signature, string $kid, ?array $v2 = null ): array {
 		$version = self::packageVersion( $product, $tmpFile );
 		$old     = self::get( $db, $product, $version );
 		if ( ! $old ) {
@@ -100,6 +108,7 @@ final class Releases {
 		if ( '' === trim( $signature ) || ! self::verify( $product, $version, $sha, trim( $signature ), $kid ) ) {
 			throw new UserError( 'La firma non corrisponde a questo pacchetto (prodotto, versione e impronta) o alla chiave dei pacchetti: ricalcolala con release.sh.' );
 		}
+		$v2 = null !== $v2 ? self::checkV2( $product, $version, $sha, $v2 ) : null;
 		$dest = self::dir( $product ) . '/' . $version . '.zip';
 		if ( is_file( $dest ) && ! copy( $dest, $dest . '.' . substr( (string) $old['sha256'], 0, 8 ) . '.replaced' ) ) {
 			throw new UserError( 'Non riesco a conservare il vecchio pacchetto: sostituzione annullata.' );
@@ -113,8 +122,10 @@ final class Releases {
 			'signature' => trim( $signature ), 'kid' => $kid,
 		);
 		$db->run( 'UPDATE releases SET size = ?, sha256 = ?, note = ?, signature = ?, kid = ? WHERE product = ? AND version = ?', array( $row['size'], $row['sha256'], $row['note'], $row['signature'], $row['kid'], $product, $version ) );
-		Audit::log( $db, $actor, 'release.replace', $product . ' ' . $version . ' ' . substr( (string) $old['sha256'], 0, 12 ) . ' → ' . substr( $row['sha256'], 0, 12 ) );
-		return array_merge( $old, $row );
+		// La firma v2 vecchia riguarda l'impronta vecchia: o si rifirma (nuovo signed_at) o si toglie.
+		self::storeV2( $db, $product, $version, $v2 ?? array( 'signature_v2' => null, 'kid_v2' => null, 'signed_at' => null, 'min_version' => null ) );
+		Audit::log( $db, $actor, 'release.replace', $product . ' ' . $version . ' ' . substr( (string) $old['sha256'], 0, 12 ) . ' → ' . substr( $row['sha256'], 0, 12 ) . ( null !== $v2 ? ' (v1+v2)' : '' ) );
+		return array_merge( $old, $row, $v2 ?? array() );
 	}
 
 	/**
@@ -140,6 +151,10 @@ final class Releases {
 
 	/** Verifica la firma Ed25519 (base64url) del messaggio con la chiave pubblica `kid`. */
 	public static function verify( string $product, string $version, string $sha256, string $signature, string $kid ): bool {
+		return self::verifyMessage( self::signedMessage( $product, $version, $sha256 ), $signature, $kid );
+	}
+
+	private static function verifyMessage( string $message, string $signature, string $kid ): bool {
 		$keys = self::keys();
 		if ( ! isset( $keys[ $kid ] ) || ! function_exists( 'sodium_crypto_sign_verify_detached' ) ) {
 			return false;
@@ -149,11 +164,11 @@ final class Releases {
 		if ( SODIUM_CRYPTO_SIGN_BYTES !== strlen( $sig ) || SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES !== strlen( $pub ) ) {
 			return false;
 		}
-		return sodium_crypto_sign_verify_detached( $sig, self::signedMessage( $product, $version, $sha256 ), $pub );
+		return sodium_crypto_sign_verify_detached( $sig, $message, $pub );
 	}
 
 	/** Aggiunge la firma a una versione già pubblicata (verificata contro l'impronta registrata). @throws UserError */
-	public static function sign( Db $db, string $product, string $version, string $signature, string $kid, string $actor ): void {
+	public static function sign( Db $db, string $product, string $version, string $signature, string $kid, string $actor, ?array $v2 = null ): void {
 		$rel = self::get( $db, $product, $version );
 		if ( ! $rel ) {
 			throw new UserError( 'Versione non trovata.' );
@@ -161,8 +176,67 @@ final class Releases {
 		if ( ! self::verify( $product, $version, (string) $rel['sha256'], trim( $signature ), $kid ) ) {
 			throw new UserError( 'La firma non corrisponde a questa versione.' );
 		}
+		$v2 = null !== $v2 ? self::checkV2( $product, $version, (string) $rel['sha256'], $v2 ) : null;
 		$db->run( 'UPDATE releases SET signature = ?, kid = ? WHERE product = ? AND version = ?', array( trim( $signature ), $kid, $product, $version ) );
-		Audit::log( $db, $actor, 'release.sign', $product . ' ' . $version );
+		if ( null !== $v2 ) {
+			self::storeV2( $db, $product, $version, $v2 );
+		}
+		Audit::log( $db, $actor, 'release.sign', $product . ' ' . $version . ( null !== $v2 ? ' (v1+v2)' : '' ) );
+	}
+
+	/**
+	 * Messaggio firmato v2: «asem-pkg-v2|prodotto|versione|sha256|signed_at|min_version». Il prefisso fisso separa le due firme:
+	 * una firma v1 non vale come v2 e viceversa. signed_at (secondi UNIX UTC) è il momento della firma, non della pubblicazione.
+	 */
+	public static function signedMessageV2( string $product, string $version, string $sha256, int $signedAt, string $minVersion ): string {
+		return 'asem-pkg-v2|' . $product . '|' . $version . '|' . strtolower( $sha256 ) . '|' . $signedAt . '|' . $minVersion;
+	}
+
+	/** Verifica la firma v2 con la chiave pubblica `kid`. */
+	public static function verifyV2( string $product, string $version, string $sha256, int $signedAt, string $minVersion, string $signature, string $kid ): bool {
+		return self::verifyMessage( self::signedMessageV2( $product, $version, $sha256, $signedAt, $minVersion ), $signature, $kid );
+	}
+
+	/**
+	 * Controlla i campi v2 (signature_v2, kid_v2, signed_at, min_version): tutti presenti, min_version in formato versione e non oltre la versione,
+	 * signed_at plausibile (non nel futuro oltre un giorno), firma valida con la chiave kid_v2. @return array campi normalizzati @throws UserError
+	 */
+	public static function checkV2( string $product, string $version, string $sha256, array $v2, ?int $now = null ): array {
+		$sig = trim( (string) ( $v2['signature_v2'] ?? '' ) );
+		$kid = trim( (string) ( $v2['kid_v2'] ?? '' ) );
+		$at  = $v2['signed_at'] ?? null;
+		$min = trim( (string) ( $v2['min_version'] ?? '' ) );
+		if ( '' === $sig || '' === $kid || '' === $min || ! ( is_int( $at ) || ( is_string( $at ) && ctype_digit( $at ) ) ) || (int) $at <= 0 ) {
+			throw new UserError( 'La firma v2 vuole firma, chiave, data della firma e versione minima, tutte insieme.' );
+		}
+		$at = (int) $at;
+		if ( ! self::validVersion( $min ) || version_compare( $min, $version, '>' ) ) {
+			throw new UserError( 'La versione minima deve essere nel formato 1.2 o 1.2.3 e non superiore alla versione del pacchetto.' );
+		}
+		if ( $at > ( $now ?? time() ) + 86400 ) {
+			throw new UserError( 'La data della firma è nel futuro: controlla l\'orologio del computer che firma.' );
+		}
+		if ( ! self::verifyV2( $product, $version, $sha256, $at, $min, $sig, $kid ) ) {
+			throw new UserError( 'La firma v2 non corrisponde a questo pacchetto (prodotto, versione, impronta, data, versione minima) o alla chiave dei pacchetti: ricalcolala con release.sh.' );
+		}
+		return array( 'signature_v2' => $sig, 'kid_v2' => $kid, 'signed_at' => $at, 'min_version' => $min );
+	}
+
+	private static function storeV2( Db $db, string $product, string $version, array $v2 ): void {
+		$db->run(
+			'UPDATE releases SET signature_v2 = ?, kid_v2 = ?, signed_at = ?, min_version = ? WHERE product = ? AND version = ?',
+			array( $v2['signature_v2'], $v2['kid_v2'], $v2['signed_at'], $v2['min_version'], $product, $version )
+		);
+	}
+
+	/** Versione minima dichiarata dall'ultima release del prodotto che ne ha una (per il valore predefinito di release.sh); stringa vuota se nessuna. */
+	public static function latestMinVersion( Db $db, string $product ): string {
+		foreach ( self::all( $db, $product ) as $r ) {
+			if ( ! empty( $r['min_version'] ) ) {
+				return (string) $r['min_version'];
+			}
+		}
+		return '';
 	}
 
 	/** Numero di versione ammesso: x.y.z oppure x.y (es. 1.1.14, 1.2). */
