@@ -86,6 +86,13 @@ final class License {
 		return Settings::secret( 'license_key' );
 	}
 
+	/** La chiave è salvata ma non si apre più su questo sito (codici di sicurezza cambiati, sito spostato, copia ripristinata altrove)? */
+	public static function key_unreadable(): bool {
+		return self::has_key() && '' === self::key();
+	}
+
+	const UNREADABLE_MESSAGE = 'La chiave di licenza salvata non si legge più su questo sito (succede se cambiano i codici di sicurezza di WordPress o se il sito è stato spostato): reinseriscila in Impostazioni → Licenza.';
+
 	/** C'è una chiave salvata, anche se qui non si legge? */
 	public static function has_key(): bool {
 		return '' !== (string) Settings::get( 'license_key' );
@@ -243,6 +250,11 @@ final class License {
 			return array( 'ok' => true, 'message' => LicenseClient::is_local() ? 'Ambiente di sviluppo locale: non serve la licenza.' : 'La verifica della licenza non è ancora attiva.' );
 		}
 		$key = self::key();
+		if ( '' === $key && self::key_unreadable() ) {
+			// Una chiave c'è ma non si apre: niente chiamata al portale e lo stato resta com'era (come per un errore di rete: se il problema dura, la
+			// politica di LicensePolicy sul tempo trascorso dall'ultimo controllo riuscito fa il resto). Non è «nessuna chiave»: non si passa al gratuito.
+			return self::failed( self::UNREADABLE_MESSAGE );
+		}
 		if ( '' === $key ) {
 			self::set_state( LicensePolicy::STATUS_NOKEY, null, null, self::PLAN_FREE );
 			return array( 'ok' => true, 'message' => 'Nessuna chiave inserita: funzionano le funzioni di base.' );

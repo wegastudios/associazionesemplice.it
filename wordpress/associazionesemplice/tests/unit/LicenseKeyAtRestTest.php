@@ -39,6 +39,24 @@ final class LicenseKeyAtRestTest extends TestCase {
 		$this->assertSame( $plain, Secrets::decrypt( $stored, 'sale-di-prova-abcdefghijklmnopqrstuvwxyz' ) );
 	}
 
+	/** Chiave illeggibile: avviso fisso per chi amministra e nessuna chiamata al portale con una chiave vuota. */
+	public function test_unreadable_key_notice_and_no_portal_call(): void {
+		$lic = $this->src( 'includes/License.php' );
+		$this->assertStringContainsString( 'La chiave di licenza salvata non si legge più su questo sito (succede se cambiano i codici di sicurezza di WordPress o se il sito è stato spostato): reinseriscila in Impostazioni → Licenza.', $lic );
+		$sync = (int) strpos( $lic, 'public static function sync()' );
+		$body = substr( $lic, $sync );
+		$unread = (int) strpos( $body, 'self::key_unreadable()' );
+		$nokey  = (int) strpos( $body, 'STATUS_NOKEY' );
+		$call   = (int) strpos( $body, 'LicenseClient::validate(' );
+		$this->assertTrue( $unread > 0 && $unread < $nokey && $nokey < $call, 'la chiave illeggibile si ferma prima di «nessuna chiave» e prima della chiamata' );
+		$this->assertStringContainsString( 'return self::failed( self::UNREADABLE_MESSAGE );', $body, 'stato di licenza invariato, errore esplicito' );
+		$notice = $this->src( 'includes/Admin/LicenseNotice.php' );
+		$this->assertStringContainsString( 'License::key_unreadable()', $notice );
+		$this->assertStringContainsString( 'current_user_can( Plugin::CAP )', $notice );
+		$this->assertStringNotContainsString( 'Dismiss::html( \'license-unreadable', $notice, 'non si può chiudere' );
+		$this->assertStringContainsString( "'#asem-license'", $notice, 'collegamento al pannello Licenza' );
+	}
+
 	public function test_backup_strips_any_encrypted_value(): void {
 		$enc  = Secrets::encrypt( 'sk_live_x', 'sale' );
 		$in   = array( 'association_name' => 'Ente', 'stripe_secret_key' => $enc, 'altro' => array( 'k' => $enc, 'ok' => 'valore' ), 'n' => 3 );
