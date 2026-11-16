@@ -68,6 +68,15 @@ final class XlsxTest extends TestCase {
 		Xlsx::parse( $files );
 	}
 
+	public function test_rejects_column_beyond_excel_limit(): void {
+		$ok = Xlsx::parse( $this->files( '<row r="1"><c r="A1" t="inlineStr"><is><t>x</t></is></c><c r="XFD1" t="inlineStr"><is><t>y</t></is></c></row>' ) );
+		$this->assertCount( 16384, $ok[0]['rows'][0], 'XFD, l\'ultima colonna di Excel, si legge' );
+
+		$this->expectException( \InvalidArgumentException::class );
+		$this->expectExceptionMessage( 'colonne' );
+		Xlsx::parse( $this->files( '<row r="1"><c r="A1" t="inlineStr"><is><t>x</t></is></c><c r="ZZZZZ1" t="inlineStr"><is><t>y</t></is></c></row>' ) );
+	}
+
 	public function test_scientific_numbers_and_prefixed_namespace(): void {
 		$ns   = 'xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
 		$rows = '<x:row r="1"><x:c r="A1"><x:v>1.5E+3</x:v></x:c><x:c r="B1"><x:v>0.1</x:v></x:c></x:row>';
