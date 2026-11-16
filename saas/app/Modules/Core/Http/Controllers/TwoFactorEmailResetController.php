@@ -66,8 +66,9 @@ final readonly class TwoFactorEmailResetController
         $nonce = $request->query('n');
         $uid = $request->query('uid');
         $user = is_string($uid) ? User::query()->find($uid) : null;
-        $stored = is_string($nonce) ? Cache::pull('2fa-reset:'.hash('sha256', $nonce)) : null;
-        if (! $request->hasValidSignature() || ! $user instanceof User || $stored !== (string) $user->id) {
+        // Il codice si consuma solo se la firma è valida: un link manomesso non brucia quello vero.
+        $stored = $request->hasValidSignature() && is_string($nonce) ? Cache::pull('2fa-reset:'.hash('sha256', $nonce)) : null;
+        if (! $user instanceof User || $stored !== (string) $user->id) {
             return redirect()->route('login')->withErrors(['email' => 'Il link non è valido o è scaduto: dalla schermata del codice chiedine uno nuovo.']);
         }
 
