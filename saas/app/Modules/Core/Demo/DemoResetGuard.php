@@ -78,7 +78,7 @@ final class DemoResetGuard
 
     private static function under(string $path, string $marker): bool
     {
-        $segments = explode('/', str_replace('\', '/', $path));
+        $segments = explode('/', str_replace('\\', '/', $path));
 
         return $marker !== '' && in_array($marker, $segments, true);
     }
