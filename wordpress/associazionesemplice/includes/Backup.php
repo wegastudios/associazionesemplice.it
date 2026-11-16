@@ -565,7 +565,7 @@ final class Backup {
 				}
 				$passwords = (int) $n;
 			}
-			foreach ( $wipe as $t ) { // sessioni, codici e notifiche dei soci erano legati a ciò che c'era prima: dopo il ripristino i soci rientrano di nuovo
+			foreach ( $wipe as $t ) { // sessioni, codici e notifiche dei soci erano legati a ciò che c'era prima: dopo il ripristino i soci dovranno entrare di nuovo
 				$tbl = $db->prefix . $t;
 				$n   = $db->query( "DELETE FROM `$tbl`" ); // phpcs:ignore WordPress.DB.PreparedSQL
 				if ( false === $n ) {
