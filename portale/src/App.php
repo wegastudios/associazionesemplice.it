@@ -111,6 +111,9 @@ final class App {
 				}
 			}
 			( new Plugin\Admin( $this->db, $this->billing, $staff ? '' : $this->customerId(), $staff ) )->handle( $method, $path );
+		} elseif ( ! SaasSale::on() && SaasSale::isSalesPath( $path ) ) {
+			// Gestionale non in vendita (decisione del 16/11/2026): vecchi link a /saas e /saas/acquista, e i moduli già aperti, tornano alla home. Temporaneo (302/303): si riaccende dall'interruttore.
+			header( 'Location: ' . SaasSale::fallback(), true, $get || 'HEAD' === $method ? 302 : 303 );
 		} elseif ( ( $legacy = Sections::legacy( $method, $path, (string) ( $_SERVER['QUERY_STRING'] ?? '' ) ) ) ) {
 			// Vecchi indirizzi di /saas: accesso dal gestionale, vecchia gestione delle associazioni, /saas/admin (vedi {@see Sections}).
 			header( 'Location: ' . $legacy[1], true, $legacy[0] );

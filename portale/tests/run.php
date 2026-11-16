@@ -2595,9 +2595,14 @@ Config::set( 'saas_sign_key', '' );
 $swdb = testDb();
 $swdb->migrate();
 Config::set( 'saas_v2', array( 'enabled' => true, 'domain' => false ) );
-check( 'interruttori: lo stato parte da config.php', array( 'saas_v2' => true, 'saas_v2_domain' => false ) === Portale\Switches::current() );
+check( 'interruttori: lo stato parte da config.php (la vendita del gestionale è spenta se non c\'è scritto)', array( 'saas_sale' => false, 'saas_v2' => true, 'saas_v2_domain' => false ) === Portale\Switches::current() && false === Portale\SaasSale::on() );
 Portale\Switches::save( $swdb, array( 'saas_v2_domain' => '1', 'sconosciuta' => '1' ) );
-check( 'interruttori: salvando, ciò che non è spuntato si spegne e il resto si accende', array( 'saas_v2' => false, 'saas_v2_domain' => true ) === Portale\Switches::current() );
+check( 'interruttori: salvando, ciò che non è spuntato si spegne e il resto si accende', array( 'saas_sale' => false, 'saas_v2' => false, 'saas_v2_domain' => true ) === Portale\Switches::current() );
+Portale\Switches::save( $swdb, array( 'saas_sale' => '1' ) );
+check( 'vendita gestionale: l\'interruttore la accende e la spegne; /saas e /saas/acquista sono pagine di vendita, /saas/admin no',
+	true === Portale\SaasSale::on() && ( Portale\Switches::save( $swdb, array() ) || true ) && false === Portale\SaasSale::on()
+	&& Portale\SaasSale::isSalesPath( '/saas' ) && Portale\SaasSale::isSalesPath( '/saas/acquista' ) && ! Portale\SaasSale::isSalesPath( '/saas/admin' ) && ! Portale\SaasSale::isSalesPath( '/account' ) );
+Portale\Switches::save( $swdb, array( 'saas_v2_domain' => '1' ) ); // com'era prima di questa prova
 Config::set( 'saas_v2', array( 'enabled' => true, 'domain' => false ) );
 Portale\Switches::load( $swdb );
 check( 'interruttori: all\'avvio il valore salvato vince su config.php', false === Config::get( 'saas_v2.enabled' ) && true === Config::get( 'saas_v2.domain' ) );
