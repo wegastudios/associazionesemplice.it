@@ -80,6 +80,9 @@ final class DashboardPage {
 			$gp = \AssociazioneSemplice\Guide::progress();
 			echo wp_kses( Dismiss::html( 'guide', 'info', 'Configurazione iniziale: ' . (int) $gp['done'] . ' passi su ' . (int) $gp['total'] . '. <a href="' . esc_url( Ui::url( 'asem-guide' ) ) . '">Apri la guida</a>.', 7 ), Html::allowed() );
 		}
+		if ( Employees::areas_review_pending( get_current_user_id() ) ) { // fisso, non si chiude: sparisce quando si apre la pagina dei dipendenti
+			echo '<div class="notice notice-info inline"><p>' . esc_html( \AssociazioneSemplice\Texts::t( 'Rivedi i permessi dei dipendenti: ora si danno per area.' ) ) . ' <a href="' . esc_url( Ui::url( 'asem-employees' ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( 'Apri i dipendenti' ) ) . '</a></p></div>';
+		}
 		do_action( 'asem_dashboard_alerts' ); // le estensioni aggiungono i loro avvisi
 		$alerts = trim( (string) ob_get_clean() );
 		ob_start();

@@ -63,6 +63,11 @@ final readonly class ReceiptYearArchive implements YearArchives
 
     public function archive(int $year): int
     {
+        return $this->locked(fn (): int => $this->archiveLocked($year));
+    }
+
+    private function archiveLocked(int $year): int
+    {
         $info = null;
         foreach ($this->years() as $y) {
             if ($y['year'] === $year) {
@@ -110,7 +115,14 @@ final readonly class ReceiptYearArchive implements YearArchives
                     'org_id' => $this->context->require()->id, 'fiscal_year' => $year, 'path' => $stored->path, 'original_name' => $stored->originalName,
                     'size_bytes' => $stored->size, 'sha256' => $stored->sha256, 'file_count' => count($rows), 'archived_by' => is_string($user) ? $user : null,
                 ]);
-                $this->connection()->table('app.receipt_files')->whereIn('receipt_id', array_map(static fn (object $r): string => is_string($r->receipt_id ?? null) ? $r->receipt_id : '', $rows))->update(['archived_year' => $year]);
+                // Ogni file entra nell'archivio solo se è ancora quello letto: stesso percorso e stessa impronta.
+                foreach ($rows as $r) {
+                    $done = $this->connection()->table('app.receipt_files')->where('receipt_id', $r->receipt_id)->where('path', $r->path)->where('sha256', $r->sha256)
+                        ->whereNull('archived_year')->update(['archived_year' => $year]);
+                    if ($done !== 1) {
+                        throw new ArchiveError('Una ricevuta è cambiata mentre si archiviava: non è cambiato nulla, riprova.');
+                    }
+                }
                 // Il registro sta nella stessa transazione: se non si scrive, l'archivio non si registra e i file singoli restano.
                 $this->audit->record('archive.created', 'app.year_archives', null, ['year' => $year, 'receipts' => count($rows), 'checksum' => $stored->sha256, 'bytes_before' => $before, 'bytes_after' => $stored->size]);
             });
@@ -140,6 +152,11 @@ final readonly class ReceiptYearArchive implements YearArchives
     }
 
     public function restore(int $year): int
+    {
+        return $this->locked(fn (): int => $this->restoreLocked($year));
+    }
+
+    private function restoreLocked(int $year): int
     {
         $arc = $this->connection()->table('app.year_archives')->where('fiscal_year', $year)->first();
         if ($arc === null) {
@@ -278,6 +295,25 @@ final readonly class ReceiptYearArchive implements YearArchives
             $this->files->delete($this->context->require()->id, $file);
         } catch (Throwable) {
             // File già assente: niente da togliere.
+        }
+    }
+
+    /**
+     * Un solo lavoro alla volta per associazione (archivia, rimetti, rifai). Se un altro è in corso si dice chiaro, senza
+     * toccare niente: prima la seconda archiviazione dello stesso anno falliva sulla chiave primaria e lasciava un archivio orfano.
+     *
+     * @param  callable(): int  $work
+     */
+    private function locked(callable $work): int
+    {
+        $lock = ArchiveLock::take($this->context->require()->id, 1800);
+        if ($lock === null) {
+            throw new ArchiveError(ArchiveLock::BUSY);
+        }
+        try {
+            return $work();
+        } finally {
+            $lock->release();
         }
     }
 
