@@ -95,6 +95,42 @@ final class PortalAttestation {
 		) );
 	}
 
+
+	/** Motivi con cui Wega dice «non valida» e che il portale firma. */
+	const DENY_CODES = array( 'EXPIRED', 'SUSPENDED', 'REVOKED', 'PENDING', 'DOMAIN_MISMATCH', 'LICENSE_NOT_FOUND' );
+
+	/** Durata di un esito negativo firmato: 3 giorni. */
+	const DENY_TTL = 259200;
+
+	/**
+	 * L'esito negativo firmato: stessa chiave e stesso schema della prova positiva, ma senza il claim `plan` e con `res`=deny, `rc` (il motivo di Wega) e `kh`
+	 * (primi 16 caratteri dell'hash della chiave: mai la chiave). Null se la chiave del portale non c'è, la licenza è valida, il motivo non è tra quelli noti
+	 * o Wega non dà il prodotto (il plugin lo usa per controllare chi firma). Un errore di rete o di Wega non arriva mai qui.
+	 *
+	 * @param array $wega risposta di Wega a /licenses/validate
+	 */
+	public static function forDenial( array $wega, string $licenseKey, string $domain, ?int $now = null ): ?string {
+		$rc = strtoupper( (string) ( $wega['reason_code'] ?? '' ) );
+		if ( ! self::enabled() || ! empty( $wega['valid'] ) || ! in_array( $rc, self::DENY_CODES, true ) || empty( $wega['product_code'] ) || '' === $licenseKey ) {
+			return null;
+		}
+		$bid = (string) ( $wega['identity'] ?? $wega['domain'] ?? $domain );
+		if ( '' === $bid ) {
+			return null;
+		}
+		$now = $now ?? time();
+		return self::sign( array(
+			'iss' => rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ),
+			'aud' => (string) $wega['product_code'],
+			'bid' => $bid,
+			'res' => 'deny',
+			'rc'  => $rc,
+			'kh'  => substr( hash( 'sha256', $licenseKey ), 0, 16 ),
+			'iat' => $now,
+			'exp' => $now + self::DENY_TTL,
+		) );
+	}
+
 	/** Livello scritto in una prova appena emessa dal portale (la firma non si controlla: serve a rileggere il nostro stesso output). */
 	public static function levelOf( string $jwt ): ?string {
 		$p = explode( '.', $jwt );
