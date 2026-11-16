@@ -81,8 +81,8 @@ add_action(
 register_deactivation_hook(
 	__FILE__,
 	function () {
-		foreach ( array( 'asem_license_check', 'asem_update_check', 'asem_license_resync' ) as $hook ) {
-			wp_clear_scheduled_hook( $hook );
+		foreach ( array( 'asem_license_check', 'asem_update_check', 'asem_license_resync', 'asem_watch_month_end', 'asem_sms_hourly', 'asem_sms_queue', 'asem_newsletter_sync' ) as $hook ) {
+			wp_unschedule_hook( $hook );
 		}
 	}
 );
