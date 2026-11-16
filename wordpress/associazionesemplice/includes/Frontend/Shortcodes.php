@@ -135,7 +135,7 @@ final class Shortcodes {
 			case 'area_volontari':
 				return Views::volunteer();
 			case 'attivita':
-				Views::no_cache_if_personal();
+				Views::no_cache();
 				return Views::activities( shortcode_atts( array( 'anno' => '', 'tipo' => '', 'id' => '', 'date' => '5' ), $atts ) );
 			case 'eventi':
 				return \AssociazioneSemplice\PublicEvents::list_html( shortcode_atts( array( 'categoria' => '', 'limite' => '30', 'mesi' => '', 'modo' => 'elenco', 'filtri' => 'si', 'titolo' => '', 'vuoto' => '', 'pulsante' => '' ), $atts ) );
@@ -149,7 +149,7 @@ final class Shortcodes {
 			case 'evento_condividi':
 				return \AssociazioneSemplice\PublicEvents::part( substr( $view, 7 ), shortcode_atts( array( 'evento' => '', 'titolo' => '' ), $atts ) );
 			case 'prossimi_eventi':
-				Views::no_cache_if_personal();
+				Views::no_cache();
 				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si', 'categoria' => '', 'titolo' => '', 'vuoto' => '' ), $atts ) );
 			case 'bonifico':
 				return Views::bank_public();

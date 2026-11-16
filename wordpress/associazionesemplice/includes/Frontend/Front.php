@@ -9,7 +9,6 @@ final class Front {
 	public static function init(): void {
 		Shortcodes::register();
 		Restrict::register();
-		\AssociazioneSemplice\PageCache::register();
 		Actions::register();
 		BlockBViews::register();
 		BlockFViews::register();

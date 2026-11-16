@@ -27,19 +27,4 @@ final class CachePolicy {
 	public static function skip_page_cache( string $rule, bool $has_session ): bool {
 		return $has_session || Visibility::PUBLIC_ !== $rule;
 	}
-
-	/**
-	 * Le pagine pubbliche degli eventi sono uguali per tutti gli anonimi, quindi si possono conservare: no all'invio di un modulo e a chi è collegato.
-	 *
-	 * @param bool $is_post   la richiesta è l'invio di un modulo
-	 * @param bool $logged_in chi guarda è collegato (WordPress o accesso proprio)
-	 */
-	public static function personal_request( bool $is_post, bool $logged_in ): bool {
-		return $is_post || $logged_in;
-	}
-
-	/** Un'azione del registro che cambia ciò che le pagine pubbliche mostrano (posti liberi, date, attività): la cache di pagina va svuotata. */
-	public static function changes_public_pages( string $audit_action ): bool {
-		return 1 === preg_match( '/^(booking|session|activity)\.[a-z_]+$/', $audit_action );
-	}
 }

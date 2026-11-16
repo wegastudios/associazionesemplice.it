@@ -135,7 +135,7 @@ final class BlockFViews {
 
 	/** Elenco pubblico: solo le convenzioni segnate «pubbliche» e valide oggi; niente codice né condizioni. @param array $atts categoria */
 	public static function public_list( array $atts ): string {
-		Views::no_cache_if_personal(); // l'elenco cambia con le date di validità
+		Views::no_cache(); // l'elenco cambia con le date di validità
 		$cat  = trim( (string) ( $atts['categoria'] ?? '' ) );
 		$list = Conventions::public_list( $cat );
 		if ( ! $list ) {

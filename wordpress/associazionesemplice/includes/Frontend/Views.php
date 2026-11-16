@@ -171,17 +171,6 @@ final class Views {
 		}
 	}
 
-	/**
-	 * Per le pagine pubbliche degli eventi: uguali per tutti gli anonimi, quindi salvabili in cache (si svuota quando i dati cambiano, vedi PageCache).
-	 * Non in cache solo l'invio di un modulo e chi è collegato.
-	 */
-	public static function no_cache_if_personal(): void {
-		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
-		if ( \AssociazioneSemplice\CachePolicy::personal_request( 'POST' === $method, \AssociazioneSemplice\MemberSession::logged_in() ) ) {
-			self::no_cache();
-		}
-	}
-
 	/** Esegue $fn( persona ) solo se l'utente è collegato e ha una scheda socio; altrimenti mostra il messaggio giusto. */
 	public static function with_person( callable $fn, string $class = '' ): string {
 		if ( ! \AssociazioneSemplice\MemberSession::logged_in() ) {
@@ -1497,7 +1486,7 @@ final class Views {
 	 * e il pulsante per prenotarsi (soci con tessera valida, anche per i propri ospiti).
 	 */
 	public static function activities( array $atts = array() ): string {
-		self::no_cache_if_personal();
+		self::no_cache();
 		$svc   = Plugin::activities();
 		$label = ! empty( $atts['anno'] ) ? (string) $atts['anno'] : Settings::social_year()->label();
 		$kind  = self::kind_from_text( (string) ( $atts['tipo'] ?? '' ) );
@@ -1563,7 +1552,7 @@ final class Views {
 
 	/** Le date di un evento con i posti e il modulo per prenotarsi (stesse regole dell'area soci). Per la pagina pubblica dell'evento. */
 	public static function event_booking( array $activity ): string {
-		self::no_cache_if_personal();
+		self::no_cache();
 		$rows = Plugin::activities()->upcoming_sessions( 50, (int) $activity['id'] );
 		if ( ! $rows ) {
 			return '<p class="asemf-muted">Nessuna data in programma.</p>';
@@ -1585,7 +1574,7 @@ final class Views {
 	 * La segreteria approva sempre; l'iscrizione parte dal mese corrente.
 	 */
 	public static function course_request( array $activity ): string {
-		self::no_cache_if_personal();
+		self::no_cache();
 		if ( ! \AssociazioneSemplice\EventRequests::course_open( $activity ) ) {
 			return '';
 		}
@@ -1631,7 +1620,7 @@ final class Views {
 
 	/** Le prossime date di tutti gli eventi, in ordine di data. */
 	public static function upcoming( array $atts = array() ): string {
-		self::no_cache_if_personal();
+		self::no_cache();
 		$limit = max( 1, min( 50, (int) ( $atts['limite'] ?? 5 ) ) );
 		$cat   = sanitize_title( (string) ( $atts['categoria'] ?? '' ) );
 		if ( '' !== $cat ) { // solo gli eventi di una categoria: si cercano più date e poi si tengono quelle giuste

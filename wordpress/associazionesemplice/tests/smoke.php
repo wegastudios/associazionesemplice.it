@@ -9705,27 +9705,6 @@ asem_ok( $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub );
 MemberSession::destroy_all( $nc_p );
 $ms_fake->setValue( null, null );
 asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: chiusa la sessione la pagina pubblica torna salvabile' );
-// pagine pubbliche degli eventi: salvabili per gli anonimi, ma quando i dati cambiano la cache si svuota
-$nc_flush = array( \AssociazioneSemplice\PageCache::class, 'flush' );
-remove_action( 'shutdown', $nc_flush );
-Audit::log( 'credits.refunded', 'person', 0 );
-asem_ok( false === has_action( 'shutdown', $nc_flush ), 'cache: un movimento che non tocca le pagine pubbliche non svuota la cache' );
-Audit::log( 'booking.created', 'activity', 0 );
-asem_ok( false !== has_action( 'shutdown', $nc_flush ), 'cache: una prenotazione programma lo svuotamento della cache di pagina' );
-remove_action( 'shutdown', $nc_flush );
-Audit::log( 'session.updated', 'activity', 0 );
-Audit::log( 'activity.updated', 'activity', 0 );
-asem_ok( false !== has_action( 'shutdown', $nc_flush ), 'cache: la modifica di date e attività programma lo svuotamento' );
-$nc_purged = 0;
-$nc_pcb    = function () use ( &$nc_purged ) {
-	++$nc_purged;
-};
-add_action( 'asem_public_pages_changed', $nc_pcb );
-\AssociazioneSemplice\PageCache::flush();
-asem_ok( 1 === $nc_purged, 'cache: lo svuotamento avvisa chi ha una cache propria con un solo evento' );
-remove_action( 'asem_public_pages_changed', $nc_pcb );
-asem_ok( in_array( MemberSession::COOKIE, (array) apply_filters( 'rocket_cache_reject_cookies', array( 'altro_cookie' ) ), true ) && in_array( 'altro_cookie', (array) apply_filters( 'rocket_cache_reject_cookies', array( 'altro_cookie' ) ), true ), 'cache: WP Rocket non salva né serve pagine a chi ha il cookie di sessione dei soci (e lascia gli altri)' );
-remove_action( 'shutdown', $nc_flush );
 remove_action( 'litespeed_control_set_nocache', $nc_cb );
 MemberSession::forget_person( $nc_p );
 unset( $_COOKIE[ MemberSession::COOKIE ] );
