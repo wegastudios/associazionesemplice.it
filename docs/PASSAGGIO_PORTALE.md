@@ -45,9 +45,7 @@ Scritto il 10/11/2026 dalla sessione «Portale e pagamenti», che si ferma per d
 
 ## c) Accessi e parametri (dove stanno, come si usano; nessun valore)
 
-**Server** (hosting con cPanel, utente `associazionesemp`, IP `65.108.75.89`, SSH porta 2299, **solo chiave**): dalla macchina della titolare, con la chiave `deploy_key` nella radice del repo (cartella principale, non tracciata, mai da committare):
-`ssh -i deploy_key -p 2299 -o BatchMode=yes -o IdentitiesOnly=yes associazionesemp@65.108.75.89`.
-Non c'è un alias in `~/.ssh/config`. Lo script `deploy.sh`/`release.sh` leggono `PORTALE_KEY` (default `../deploy_key`), `PORTALE_HOST`, `PORTALE_PORT`, `PORTALE_USER`. Da Git Bash i percorsi che iniziano con `/` vanno protetti con `MSYS_NO_PATHCONV=1` nei `curl`.
+**Server** (hosting con cPanel, SSH **solo chiave**): indirizzo, porta e utente non stanno nel repository (pubblico) ma nel file non tracciato `deploy_key.env`, accanto alla chiave `deploy_key` nella radice della cartella principale; il modello è `portale/deploy-server.env.example`. Non c'è un alias in `~/.ssh/config`. Lo script `deploy.sh`/`release.sh` leggono `PORTALE_KEY` (default `../deploy_key`), poi `deploy_key.env` accanto alla chiave (o `PORTALE_ENV`) con `PORTALE_HOST`, `PORTALE_PORT`, `PORTALE_USER`; senza quei valori si fermano con un messaggio. Da Git Bash i percorsi che iniziano con `/` vanno protetti con `MSYS_NO_PATHCONV=1` nei `curl`.
 Sul server: PHP CLI 8.3 in `/usr/local/bin/php` (il semplice `php` da cron è la versione CGI e non funziona), `wp` in `/usr/local/bin/wp`, `composer` in `/usr/local/bin/composer`, PostgreSQL 16 (con `pg_dump`/`pg_restore`), Redis su socket `/tmp/redis.sock` (porta 0, senza password). Non c'è Node.
 
 **Portale sul server:**

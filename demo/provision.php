@@ -46,6 +46,7 @@ demo_step( 'ente e funzioni', function () {
 	} catch ( \Throwable $e ) {
 		WP_CLI::log( '  (procedura guidata rifiutata: ' . wp_trim_words( $e->getMessage(), 8 ) . ' — salvo le impostazioni direttamente)' );
 		Settings::update( $set );
+		Wizard::mark( Wizard::DONE ); // senza questo la procedura guidata si riapre a chi entra come amministratore
 	}
 } );
 
@@ -85,7 +86,7 @@ demo_step( 'pagine', function () {
 			. $card( 'Senza entrare', 'Guarda cosa vede chi visita il sito dell\'associazione: l\'elenco di corsi ed eventi e la domanda di adesione online.', '', $btn( 'Attività ed eventi', $url( 'attivita' ) ) . $btn( 'Diventa socio', $url( 'adesione' ), true ) )
 			. $card( 'Come socio', 'La tessera con QR, le prenotazioni, i pagamenti e i propri dati: l\'area riservata che ogni socio ha sul sito.', $cred( 'socio@demo.invalid', 'Socio-Demo-2026', 'Email' ), $btn( 'Area soci', $url( 'area' ) ) )
 			. $card( 'Come segreteria', 'Soci, incassi, spese, attività e registri: il lavoro di ogni giorno, dal pannello o dal sito.', $cred( 'segreteria@demo.invalid', 'Segreteria-Demo-2026', 'Email' ), $btn( 'Bacheca', admin_url( 'admin.php?page=asem' ) ) . $btn( 'Area segreteria', $url( 'segreteria' ), true ) )
-			. $card( 'Come amministratore del plugin', 'Tutte le impostazioni di Associazione Semplice. Qui puoi scaricare una copia dei tuoi dati e ricaricarla il giorno dopo, per provare a lungo.', $cred( 'amministratore@demo.invalid', 'Amministratore-Demo-2026', 'Email' ), $btn( 'Copia di sicurezza', admin_url( 'admin.php?page=asem-backup' ) ) . $btn( 'Impostazioni', admin_url( 'admin.php?page=asem-settings' ), true ) )
+			. $card( 'Come amministratore del plugin', 'Tutte le impostazioni di Associazione Semplice, tranne pagamenti, conti, contatti pubblici e file, che nella demo sono bloccati. Qui puoi anche scaricare una copia dei tuoi dati (ricaricarla è bloccato nella demo).', $cred( 'amministratore@demo.invalid', 'Amministratore-Demo-2026', 'Email' ), $btn( 'Copia di sicurezza', admin_url( 'admin.php?page=asem-backup' ) ) . $btn( 'Impostazioni', admin_url( 'admin.php?page=asem-settings' ), true ) )
 			. '</div><!-- /wp:columns -->'
 			. '<!-- wp:shortcode -->[asem_demo_confronto]<!-- /wp:shortcode -->'
 			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Per i ruoli del plugin, i collegamenti e il confronto con le versioni: <a href="https://associazionesemplice.it/prova">associazionesemplice.it/prova</a></p><!-- /wp:paragraph -->'

@@ -27,6 +27,7 @@ final class Restrict {
 		add_filter( 'the_excerpt', array( __CLASS__, 'filter_excerpt' ), 999 );
 		add_filter( 'get_the_excerpt', array( __CLASS__, 'filter_get_excerpt' ), 999, 2 );
 		add_filter( 'the_content_feed', array( __CLASS__, 'filter_content' ), 999 );
+		add_action( 'template_redirect', array( __CLASS__, 'early_no_cache' ), 0 ); // prima di disegnare: le intestazioni si possono ancora mandare
 		add_action( 'init', array( __CLASS__, 'hook_post_types' ), 20 );
 		add_action( 'add_meta_boxes', array( __CLASS__, 'add_meta_box' ) );
 		add_action( 'save_post', array( __CLASS__, 'save_meta_box' ), 10, 2 );
@@ -49,6 +50,30 @@ final class Restrict {
 	}
 
 	// ---------- Regole e permessi ----------
+
+	/**
+	 * Le pagine che cambiano con chi le guarda non vanno nella cache di pagina: quelle riservate (per chiunque le apra: il riquadro «accedi» e il contenuto
+	 * non devono scambiarsi) e ogni pagina vista con una sessione socio valida (chi entra con l'accesso proprio non ha il cookie di WordPress che le cache riconoscono).
+	 */
+	public static function early_no_cache(): void {
+		$rule = Visibility::PUBLIC_;
+		if ( is_singular() ) {
+			$id = (int) get_queried_object_id();
+			if ( $id > 0 ) {
+				list( $rule ) = self::rule_of( $id );
+			}
+		}
+		if ( \AssociazioneSemplice\CachePolicy::skip_page_cache( $rule, null !== \AssociazioneSemplice\MemberSession::session_person() ) ) {
+			Views::no_cache();
+		}
+	}
+
+	/** Un contenuto o una parte con regola diversa da «pubblico» cambia con chi lo guarda: mai nella cache di pagina. */
+	private static function keep_out_of_cache( string $rule ): void {
+		if ( \AssociazioneSemplice\CachePolicy::skip_page_cache( $rule, false ) ) {
+			Views::no_cache();
+		}
+	}
 
 	/** @return array [regola, id attività] di un contenuto */
 	public static function rule_of( int $post_id ): array {
@@ -157,6 +182,7 @@ final class Restrict {
 			return $content;
 		}
 		list( $rule, $ids ) = self::rule_of( (int) $id );
+		self::keep_out_of_cache( $rule );
 		if ( Visibility::PUBLIC_ === $rule || self::allowed( $rule, $ids ) ) {
 			return $content;
 		}
@@ -165,11 +191,17 @@ final class Restrict {
 
 	public static function filter_excerpt( $excerpt ) {
 		$id = get_the_ID();
+		if ( $id ) {
+			self::keep_out_of_cache( self::rule_of( (int) $id )[0] );
+		}
 		return $id && ! self::can_view_post( (int) $id ) ? '' : $excerpt;
 	}
 
 	public static function filter_get_excerpt( $excerpt, $post = null ) {
 		$post = get_post( $post );
+		if ( $post ) {
+			self::keep_out_of_cache( self::rule_of( (int) $post->ID )[0] );
+		}
 		return $post && ! self::can_view_post( (int) $post->ID ) ? '' : $excerpt;
 	}
 
@@ -270,6 +302,7 @@ final class Restrict {
 		$a = shortcode_atts( array( 'accesso' => 'soci', 'attivita' => '', 'messaggio' => '' ), (array) $atts, 'associazionesemplice_riservato' );
 		$ids = array_values( array_filter( array_map( 'intval', preg_split( '/[\s,;]+/', (string) $a['attivita'] ) ?: array() ) ) );
 		$rule = self::rule_from_text( (string) $a['accesso'] );
+		self::keep_out_of_cache( $rule );
 		if ( ! self::allowed( $rule, $ids ) ) {
 			return self::gate_html( $rule, $ids, '', (string) $a['messaggio'] ); // gli shortcode dentro non vengono nemmeno eseguiti
 		}
@@ -278,6 +311,7 @@ final class Restrict {
 
 	/** Mostra $content a chi può vederlo, altrimenti il riquadro "riservato". Usato da shortcode, blocco e widget. */
 	public static function render_reserved( string $rule, array $activity_ids, string $content, string $message = '' ): string {
+		self::keep_out_of_cache( $rule );
 		if ( self::allowed( $rule, $activity_ids ) ) {
 			return $content;
 		}

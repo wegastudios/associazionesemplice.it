@@ -9,7 +9,7 @@ if ( 'cli' !== PHP_SAPI ) {
 require __DIR__ . '/../src/bootstrap.php';
 Portale\Config::load( require __DIR__ . '/../config.php' );
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
-$db->migrate();
+$db->migrateOnStart();
 Portale\Settings::load( $db );
 $wega = new Portale\WegaClient( (string) Portale\Config::get( 'wega.base_url' ), (string) Portale\Config::get( 'wega.token' ) );
 try {

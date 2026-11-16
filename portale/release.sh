@@ -7,8 +7,11 @@
 # Chiave: PORTALE_SIGN_KEY (default ~/.asem/pacchetti-ed25519.pem); identificativo in ~/.asem/pacchetti-ed25519.kid. Fai una copia della chiave in un luogo sicuro.
 set -euo pipefail
 cd "$(dirname "$0")"
-HOST="${PORTALE_HOST:-65.108.75.89}"; PORT="${PORTALE_PORT:-2299}"; USER_="${PORTALE_USER:-associazionesemp}"
 KEY="${PORTALE_KEY:-../deploy_key}"
+# Indirizzo, porta e utente del server stanno in un file non tracciato accanto alla chiave (deploy_key.env, vedi deploy-server.env.example): il repository è pubblico.
+ENVF="${PORTALE_ENV:-$(dirname "$KEY")/deploy_key.env}"
+[ -f "$ENVF" ] && . "$ENVF"
+HOST="${PORTALE_HOST:?manca PORTALE_HOST: copia deploy-server.env.example in deploy_key.env accanto alla chiave}"; PORT="${PORTALE_PORT:?manca PORTALE_PORT}"; USER_="${PORTALE_USER:?manca PORTALE_USER}"
 SIGN_KEY="${PORTALE_SIGN_KEY:-$HOME/.asem/pacchetti-ed25519.pem}"
 SIGN_KID="$(cat "${SIGN_KEY%.pem}.kid" 2>/dev/null || true)"
 S=(ssh -i "$KEY" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes "$USER_@$HOST")

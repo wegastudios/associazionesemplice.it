@@ -4,8 +4,11 @@
 # tutti i file PHP: se c'è un errore il sito in funzione non viene toccato. Uso: bash portale/deploy.sh
 set -euo pipefail
 cd "$(dirname "$0")"
-HOST="${PORTALE_HOST:-65.108.75.89}"; PORT="${PORTALE_PORT:-2299}"; USER_="${PORTALE_USER:-associazionesemp}"
 KEY="${PORTALE_KEY:-../deploy_key}"
+# Indirizzo, porta e utente del server stanno in un file non tracciato accanto alla chiave (deploy_key.env, vedi deploy-server.env.example): il repository è pubblico.
+ENVF="${PORTALE_ENV:-$(dirname "$KEY")/deploy_key.env}"
+[ -f "$ENVF" ] && . "$ENVF"
+HOST="${PORTALE_HOST:?manca PORTALE_HOST: copia deploy-server.env.example in deploy_key.env accanto alla chiave}"; PORT="${PORTALE_PORT:?manca PORTALE_PORT}"; USER_="${PORTALE_USER:?manca PORTALE_USER}"
 S=(ssh -i "$KEY" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes "$USER_@$HOST")
 
 tar --exclude=tests --exclude=config.php --exclude=data --exclude=.gitignore -cf - . | "${S[@]}" 'rm -rf ~/portale-next && mkdir -p ~/portale-next && tar -xf - -C ~/portale-next'
@@ -23,6 +26,8 @@ if [ "$bad" = 1 ]; then
 fi
 mkdir -p ~/portale && cp -r ~/portale-next/. ~/portale/ && rm -rf ~/portale-next
 cd ~/portale && mkdir -p data
+# Struttura del database con l'utente proprietario (data/pg-migrate.php, non tracciato); se non riesce lo dice ma il sito resta com'è.
+/usr/local/bin/php ~/portale/bin/migrate.php || echo "ATTENZIONE: la migrazione del database non è riuscita (vedi sopra): controlla prima di usare le funzioni nuove." >&2
 cd ~/public_html
 printf '<?php\n// Punto d'"'"'ingresso del portale: il codice sta fuori dalla cartella pubblica (~/portale).\nrequire __DIR__ . "/../portale/public/index.php";\n' > index.php
 mkdir -p assets && cp -r ../portale/public/assets/* assets/

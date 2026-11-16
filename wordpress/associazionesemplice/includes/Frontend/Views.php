@@ -134,6 +134,7 @@ final class Views {
 	}
 
 	public static function login_prompt(): string {
+		self::no_cache(); // l'invito ad accedere non deve restare in cache: chi ha già la sessione vedrebbe quello invece della sua pagina
 		Assets::enqueue();
 		if ( \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ) { // i soci non sono utenti WordPress: email e password propri
 			$back = Restrict::current_url();
@@ -164,6 +165,9 @@ final class Views {
 		do_action( 'litespeed_control_set_nocache', 'Associazione Semplice: posti e prenotazioni' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- azione di LiteSpeed Cache
 		if ( ! headers_sent() ) {
 			nocache_headers();
+			foreach ( \AssociazioneSemplice\CachePolicy::headers() as $name => $value ) { // anche «private» e «no-store»: nessuna cache condivisa la conserva
+				header( $name . ': ' . $value );
+			}
 		}
 	}
 
