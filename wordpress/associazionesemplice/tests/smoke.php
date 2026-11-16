@@ -417,7 +417,7 @@ $lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp, &$lic
 \AssociazioneSemplice\LicenseClient::set_local_override( false );
 add_filter( 'home_url', $lic_home );
 add_filter( 'pre_http_request', $lic_http, 10, 3 );
-Settings::update( array( 'license_key' => '' ) );
+Settings::clear_secret( 'license_key' );
 License::sync();
 asem_ok( \AssociazioneSemplice\LicensePolicy::STATUS_NOKEY === License::state()['status'] && 'free' === License::plan() && ! $lic_calls && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica attiva senza chiave: livello gratuito e nessuna chiamata al server' );
 wp_set_current_user( 1 ); // l'invito lo vede solo l'amministratore
@@ -534,7 +534,7 @@ asem_ok( false !== strpos( License::free_url(), 'https://associazionesemplice.it
 ob_start();
 Admin\LicensePanel::render();
 $lic_panel = (string) ob_get_clean();
-asem_ok( false !== strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $lic_panel, 'prova-sito.it' ) && false !== strpos( $lic_panel, 'Controlla adesso' ), 'pannello licenza: chiave, dominio e controllo immediato' );
+asem_ok( false === strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $lic_panel, '••••DDDD' ) && false !== strpos( $lic_panel, 'prova-sito.it' ) && false !== strpos( $lic_panel, 'Controlla adesso' ), 'pannello licenza: chiave non in chiaro (solo le ultime cifre), dominio e controllo immediato' );
 // firma obbligatoria, livello dalla parte firmata, prova scaduta o manomessa
 $lic_sign_on = false;
 $lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
@@ -590,9 +590,42 @@ delete_option( License::OPT_STATE );
 remove_filter( 'pre_http_request', $lic_http, 10 );
 remove_filter( 'home_url', $lic_home );
 \AssociazioneSemplice\LicenseClient::set_local_override( null );
-Settings::update( array( 'license_key' => '' ) );
+Settings::clear_secret( 'license_key' );
 delete_option( License::OPT_STATE );
 asem_ok( ! License::enabled() && '' === Admin\LicenseNotice::html(), 'sito locale: la verifica torna in standby' );
+// chiave cifrata che non si apre più (codici di sicurezza cambiati, sito spostato): avviso fisso, nessuna chiamata al portale, stato di licenza intatto
+$ur_calls = 0;
+$ur_http  = function ( $pre, $args, $url ) use ( &$ur_calls ) {
+	if ( false !== strpos( $url, 'associazionesemplice.it' ) ) {
+		$ur_calls++;
+		return new WP_Error( 'http_request_failed', 'non si doveva chiamare' );
+	}
+	return $pre;
+};
+\AssociazioneSemplice\LicenseClient::set_local_override( false );
+add_filter( 'home_url', $lic_home );
+add_filter( 'pre_http_request', $ur_http, 10, 3 );
+update_option( License::OPT_STATE, array( 'status' => 'active', 'plan' => 'lite', 'checked_at' => Db::now() ) );
+$ur_all                = (array) get_option( Settings::OPTION, array() );
+$ur_all['license_key'] = 'enc1:' . base64_encode( random_bytes( 60 ) ); // prefisso giusto, contenuto che non si apre
+update_option( Settings::OPTION, $ur_all );
+asem_ok( License::has_key() && '' === License::key() && License::key_unreadable(), 'chiave illeggibile: riconosciuta (salvata ma non si apre)' );
+$ur_r     = License::sync();
+$ur_state = (array) get_option( License::OPT_STATE, array() );
+asem_ok( false === $ur_r['ok'] && 0 === $ur_calls && false !== strpos( (string) $ur_r['message'], 'non si legge più' ), 'chiave illeggibile: il controllo si ferma con un errore chiaro e non chiama il portale' );
+asem_ok( 'active' === ( $ur_state['status'] ?? '' ) && 'lite' === ( $ur_state['plan'] ?? '' ), 'chiave illeggibile: lo stato di licenza resta com\'era (non diventa «nessuna chiave»)' );
+wp_set_current_user( 1 );
+$ur_notice_admin = Admin\LicenseNotice::html();
+wp_set_current_user( 0 );
+$ur_notice_none = Admin\LicenseNotice::html();
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( $ur_notice_admin, 'La chiave di licenza salvata non si legge più su questo sito' ) && false !== strpos( $ur_notice_admin, 'asem-license' ) && false === strpos( $ur_notice_admin, 'dismiss' ), 'chiave illeggibile: avviso fisso in Bacheca per chi amministra, con il collegamento al pannello Licenza' );
+asem_ok( false === strpos( $ur_notice_none, 'non si legge più' ), 'chiave illeggibile: nessun avviso per chi non ha il permesso' );
+Settings::clear_secret( 'license_key' );
+delete_option( License::OPT_STATE );
+remove_filter( 'pre_http_request', $ur_http, 10 );
+remove_filter( 'home_url', $lic_home );
+\AssociazioneSemplice\LicenseClient::set_local_override( null );
 $lic_save = \AssociazioneSemplice\ProBoot::save_license( array( 'license_key' => '' ) );
 asem_ok( false !== strpos( (string) $lic_save[0], 'asem-settings' ), 'licenza: salvando la chiave si torna alle impostazioni (non un errore fatale)' );
 // quote diverse: spariscono, resta la quota sola
@@ -3141,7 +3174,7 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	Settings::update( array( 'limits' => array( 'portal_updates' => 0 ) ) );
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	asem_ok( empty( $up_tr->response ), 'aggiornamento diretto: spento dai limiti, niente aggiornamenti' );
-	Settings::update( array( 'limits' => array(), 'license_key' => '' ) );
+	Settings::update( array( 'limits' => array() ) ); Settings::clear_secret( 'license_key' );
 	remove_filter( 'pre_http_request', $up_http, 10 );
 	remove_filter( 'home_url', $up_home );
 	\AssociazioneSemplice\LicenseClient::set_local_override( null );
@@ -5127,7 +5160,7 @@ if ( class_exists( '\AssociazioneSemplice\Updater' ) ) { // pacchetto del portal
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => ASEM_PRO_VERSION, 'url' => '' ) ), false );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: nessun avviso se la versione è l\'ultima' );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
-Settings::update( array( 'license_key' => '' ) );
+Settings::clear_secret( 'license_key' );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: senza chiave di licenza nessun avviso' );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY', 'limits' => array( 'update_notice' => 0 ) ) );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: spento dai limiti' );
@@ -5139,7 +5172,7 @@ asem_ok( false !== strpos( \AssociazioneSemplice\UpdateCheck::summary(), 'non ri
 ob_start();
 Admin\LicensePanel::render();
 asem_ok( false !== strpos( (string) ob_get_clean(), 'cerca nuove versioni' ), 'pannello licenza: «Controlla adesso» cerca anche le nuove versioni' );
-Settings::update( array( 'license_key' => '', 'limits' => array() ) );
+Settings::update( array( 'limits' => array() ) ); Settings::clear_secret( 'license_key' );
 \AssociazioneSemplice\LicenseClient::set_local_override( null );
 delete_option( \AssociazioneSemplice\UpdateCheck::OPT );
 }
@@ -10949,6 +10982,7 @@ $er_cnt    = static function ( string $e ) use ( $wpdb, $er_tbl ): int {
 $er_reset  = static function () use ( $er_keyip ) {
 	delete_transient( $er_keyip );
 	delete_transient( 'asem_evq_dropped' );
+	delete_transient( 'asem_evq_dropped_seats' );
 };
 $er_r      = array_merge( $er_in, array( 'tax_code' => 'NRIMRC92D15F205P', 'first_name' => 'Nora', 'last_name' => 'Pagamenti', 'birth_date' => '1992-04-15' ) );
 $er_reset();
@@ -10956,12 +10990,18 @@ Settings::update( array( 'limits' => array( 'event_seats_per_email' => 10, 'even
 set_transient( $er_keyem( 'tetto.email@example.com' ), 9, DAY_IN_SECONDS );
 $er_t1 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
 $er_t2 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
-asem_ok( 'ok' === $er_t1['status'] && 'ok' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore, e la risposta è sempre la stessa' );
+$er_mn1 = count( $er_mails );
+asem_ok( 'ok' === $er_t1['status'] && 'invalid' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ) && 0 === strpos( $er_t2['errors'][0], 'Con questo indirizzo email sono già stati chiesti molti posti nelle ultime 24 ore: per altri posti scrivi alla segreteria' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore e legge un messaggio onesto, senza richiesta registrata' );
+asem_ok( 1 === (int) get_transient( 'asem_evq_dropped_seats' ) && false !== strpos( $er::queue_alert(), '1 richiesta è stata respinta perché una email o una connessione aveva già chiesto molti posti' ), 'tetto posti: il rifiuto è contato e l\'avviso in Bacheca lo riporta (anche con la coda non piena)' );
+$er_c1 = $er::course_create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $er_ca );
+asem_ok( 'invalid' === $er_c1['status'] && 0 === strpos( $er_c1['errors'][0], 'Con questo indirizzo email' ) && 1 === $er_cnt( 'tetto.email@example.com' ) && 2 === (int) get_transient( 'asem_evq_dropped_seats' ), 'tetto posti: stesso messaggio e stesso conteggio per le iscrizioni ai corsi' );
 $er_reset();
 Settings::update( array( 'limits' => array( 'event_seats_per_email' => 200, 'event_seats_per_ip' => 10, 'event_requests_max' => 5000 ) ) );
 set_transient( $er_keyip, 10, DAY_IN_SECONDS );
 $er_t3 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.ip1@example.com' ) ), $acts->get( $er_a ), $er_o );
-asem_ok( 'ok' === $er_t3['status'] && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse' );
+asem_ok( 'invalid' === $er_t3['status'] && 0 === strpos( $er_t3['errors'][0], 'Da questa connessione sono già stati chiesti molti posti nelle ultime 24 ore: riprova più tardi o scrivi alla segreteria' ) && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse, e legge un messaggio onesto' );
+$er_c2 = $er::course_create( array_merge( $er_r, array( 'email' => 'tetto.ip2@example.com' ) ), $er_ca );
+asem_ok( 'invalid' === $er_c2['status'] && 0 === strpos( $er_c2['errors'][0], 'Da questa connessione' ) && 0 === $er_cnt( 'tetto.ip2@example.com' ) && count( $er_mails ) === $er_mn1, 'tetto posti: stesso messaggio per le iscrizioni ai corsi e nessuna email' );
 wp_set_current_user( 1 );
 $er::create( array_merge( $er_r, array( 'email' => 'tetto.segreteria@example.com' ) ), $acts->get( $er_a ), $er_o );
 asem_ok( 1 === $er_cnt( 'tetto.segreteria@example.com' ), 'tetto posti: la segreteria non è mai limitata' );
