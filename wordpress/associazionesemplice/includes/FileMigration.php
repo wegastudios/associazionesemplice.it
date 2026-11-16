@@ -153,6 +153,9 @@ final class FileMigration {
 		if ( ( 'nosodium' === $s['status'] && ! FileCrypt::available() ) || ( 'nokey' === $s['status'] && 'encrypt' !== FileKey::mode() ) ) {
 			return; // ancora bloccato: niente da fare finché non viene sistemato (l'avviso resta)
 		}
+		if ( PrivateFolder::move_incomplete() ) {
+			return; // file da spostare in un'altra cartella: non si parte né si chiude come finita, si riguarda a spostamento finito
+		}
 		if ( '' === $s['status'] && (int) $s['last'] > time() ) {
 			return; // controllato da poco, nessuna fonte dei certificati: si riprova più tardi
 		}
@@ -232,6 +235,11 @@ final class FileMigration {
 	 */
 	public static function run_batch( int $max = self::BATCH, ?string $only = null ): array {
 		$res = array( 'done' => 0, 'already' => 0, 'failed' => 0, 'missing' => 0, 'finished' => false, 'busy' => false );
+		if ( PrivateFolder::move_incomplete() ) { // si sta passando a un'altra cartella: i file non si toccano finché non sono stati spostati tutti
+			$res['busy']   = true;
+			$res['moving'] = true;
+			return $res;
+		}
 		if ( 'encrypt' !== FileKey::mode() ) {
 			return $res; // senza libreria o con la chiave che non coincide non si tocca nulla
 		}
