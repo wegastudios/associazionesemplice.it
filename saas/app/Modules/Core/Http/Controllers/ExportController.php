@@ -33,7 +33,7 @@ final readonly class ExportController
         $operator = $this->current->get() ?? abort(403);
         $years = $this->db->connection($this->context->require()->connection)->table('app.fiscal_years')->orderByDesc('year')->pluck('year')->map(static fn (mixed $y): int => is_numeric($y) ? (int) $y : 0)->all();
 
-        return Inertia::render('Esportazione', ['canHealth' => $operator->can(Ability::ViewHealth), 'years' => $years, 'archives' => $this->archives->years()]);
+        return Inertia::render('Esportazione', ['csrf' => csrf_token(), 'canHealth' => $operator->can(Ability::ViewHealth), 'years' => $years, 'archives' => $this->archives->years()]);
     }
 
     public function download(Request $request): BinaryFileResponse|RedirectResponse
