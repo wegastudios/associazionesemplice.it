@@ -57,6 +57,11 @@ final class App {
 				View::render( 'message', array( 'title' => 'Scarico non disponibile', 'text' => $file ) );
 				return;
 			}
+			// Manutenzione (spenta di default): le API e i webhook sono già passati sopra e non si fermano mai; qui si ferma il resto per i visitatori.
+			if ( Maintenance::on() && Maintenance::blocks( $path, Maintenance::bypass() ) ) {
+				Maintenance::serve();
+				return;
+			}
 			// La POST dell'accesso staff unico arriva dal SaaS (altro sito): non ha il nostro CSRF, vale il token firmato.
 			if ( 'POST' === $method && Plugin\Admin::BASE . '/sso' !== $path && ! $this->csrfOk() ) {
 				throw new UserError( 'Sessione scaduta: ricarica la pagina e riprova.' );
@@ -304,8 +309,16 @@ final class App {
 			}
 			$flash = '';
 			if ( ! $get ) {
+				$was   = Switches::current();
+				$actor = $idn ? (string) $idn['email'] : $this->customerEmail( (string) $_SESSION['customer'] );
 				Switches::save( $this->db, $_POST );
-				Audit::log( $this->db, $idn ? (string) $idn['email'] : $this->customerEmail( (string) $_SESSION['customer'] ), 'switches', 'Interruttori: ' . json_encode( Switches::current() ) );
+				$now = Switches::current();
+				Audit::log( $this->db, $actor, 'switches', 'Interruttori: ' . json_encode( $now ) );
+				foreach ( array( 'maintenance' => 'Modalità manutenzione', 'indexable' => 'Portale nei motori di ricerca', 'saas_sale' => 'Vendita del gestionale online' ) as $k => $label ) {
+					if ( $was[ $k ] !== $now[ $k ] ) {
+						Audit::log( $this->db, $actor, $k, $label . ': ' . ( $now[ $k ] ? 'acceso' : 'spento' ) );
+					}
+				}
 				$flash = 'Salvato: vale subito.';
 			}
 			View::render( 'switches', array( 'title' => 'Impostazioni del portale', 'all' => Switches::ALL, 'on' => Switches::current(), 'flash' => $flash ) );
