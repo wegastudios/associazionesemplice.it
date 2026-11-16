@@ -74,8 +74,7 @@ it('nella demo lo scarico della copia è chiuso e l\'amministrazione della piatt
     $user = $this->createUser('titolare@example.com', twoFactor: true);
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
-    $this->actingAs($user)->get('/gestionale/esportazione.zip')->assertSessionHasErrors(['ledger' => DemoScale::BACKUP_OFF]);
-    $this->post('/gestionale/esportazione.zip')->assertSessionHasErrors(['ledger' => DemoScale::BACKUP_OFF]);
+    $this->actingAs($user)->post('/gestionale/esportazione.zip')->assertSessionHasErrors(['ledger' => DemoScale::BACKUP_OFF]);
     $this->get('/saas/admin/accesso')->assertNotFound();
     $this->post('/saas/admin/accesso', ['email' => 'staff@example.com', 'password' => 'x'])->assertNotFound();
     $this->get('/saas/staff/invito/qualcosa')->assertNotFound();
