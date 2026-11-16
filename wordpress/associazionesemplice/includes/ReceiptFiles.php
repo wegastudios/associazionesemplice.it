@@ -447,24 +447,50 @@ final class ReceiptFiles {
 	 * Il primo lotto parte all'aggiornamento, gli altri con un lavoro programmato (anno 0 = tutti gli anni) fino a esaurimento.
 	 */
 	public static function maybe_backfill(): void {
-		$flag = get_option( self::FLAG );
+		$flag = get_option( self::FLAG ); // l'opzione si carica con le altre: nessuna domanda in più al database a ogni richiesta
 		if ( 'done' === $flag || ! Edition::has( 'receipts' ) ) {
 			return;
 		}
 		try {
 			if ( false === $flag ) {
 				if ( 0 === self::pending_count( null ) ) {
-					update_option( self::FLAG, 'done', false );
+					update_option( self::FLAG, 'done', true );
 					return;
 				}
-				update_option( self::FLAG, 'started', false );
-				self::run_batch( 0, 0 );
-			} elseif ( ! self::has_scheduled_batch() ) {
+				if ( ! self::claim_backfill() ) {
+					return; // un'altra richiesta ha già preso il lavoro
+				}
+				// Il primo lotto non gira dentro questa richiesta (di un visitatore o di chi ha appena aggiornato): lo fa il lavoro programmato.
+				if ( self::key_ready() && ! self::has_scheduled_batch() ) {
+					wp_schedule_single_event( time() + 20, self::CRON, array( 0, 0 ) );
+				}
+			} elseif ( ! self::has_scheduled_batch() && self::key_ready() ) {
 				wp_schedule_single_event( time() + 20, self::CRON, array( 0, 0 ) );
 			}
 		} catch ( \Throwable $e ) {
 			error_log( 'Associazione Semplice: PDF delle ricevute non fissati all\'aggiornamento: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
+	}
+
+	/**
+	 * Prende il lavoro dei PDF in modo atomico: lo scrive «started» solo se l'opzione non esiste ancora. Vero solo per la richiesta che l'ha scritta.
+	 * (add_option() non basta: se questa richiesta ha già letto l'opzione come assente, WordPress scrive comunque, anche sopra quella di un'altra.)
+	 */
+	private static function claim_backfill(): bool {
+		$db = self::db();
+		$n  = $db->query( $db->prepare( 'INSERT IGNORE INTO ' . $db->options . ' ( option_name, option_value, autoload ) VALUES ( %s, %s, %s )', self::FLAG, 'started', 'yes' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery,PluginCheck.Security.DirectDB.UnescapedDBParameter -- tabella delle opzioni di WordPress: serve una scrittura che non sovrascrive
+		wp_cache_delete( self::FLAG, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		return 1 === (int) $n;
+	}
+
+	/** La chiave dei file si apre (o non c'è ancora, e si crea al primo PDF), oppure manca sodium e i PDF si fissano in chiaro come sempre. */
+	private static function key_ready(): bool {
+		if ( ! FileCrypt::available() ) {
+			return true;
+		}
+		return in_array( FileKey::state(), array( 'ok', 'none' ), true );
 	}
 
 	/** C'è già un lotto in coda (con qualunque cursore)? */
@@ -491,12 +517,19 @@ final class ReceiptFiles {
 	}
 
 	private static function run_batch( int $year, int $after ): void {
+		if ( ! self::key_ready() ) {
+			// Con la chiave chiusa ogni lotto disegnerebbe i PDF per poi scartarli: si aspetta, e si riprova più tardi.
+			if ( ! wp_next_scheduled( self::CRON, array( $year, $after ) ) ) {
+				wp_schedule_single_event( time() + HOUR_IN_SECONDS, self::CRON, array( $year, $after ) );
+			}
+			return;
+		}
 		$r = self::complete( $year > 0 ? $year : null, $after );
 		if ( $r['done'] || $r['failed'] ) {
 			Audit::log( 'receipt.pdfs_fixed', 'year', $year, array( 'done' => $r['done'], 'failed' => $r['failed'] ) );
 		}
 		if ( 0 === $year && ! $r['more'] ) {
-			update_option( self::FLAG, 'done', false );
+			update_option( self::FLAG, 'done', true );
 		}
 		if ( $r['more'] && ! wp_next_scheduled( self::CRON, array( $year, $r['last_id'] ) ) ) {
 			wp_schedule_single_event( time() + 20, self::CRON, array( $year, $r['last_id'] ) );

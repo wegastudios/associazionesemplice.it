@@ -382,6 +382,10 @@ final class FileCryptPanel {
 		echo '<h3>' . esc_html( Texts::t( 'Sistemare la chiave' ) ) . '</h3>';
 		self::forward_line();
 		echo '<p>' . esc_html( Texts::t( 'Scrivi qui la frase (o il codice di licenza): la chiave si riapre e i file tornano leggibili, senza cifrarli di nuovo. Se non l\'hai cambiata, la frase è il codice di licenza o, nel plugin gratuito, la data e l\'ora di attivazione.' ) ) . '</p>';
+		$when = 'timestamp' === FileKey::phrase_kind() ? FileKey::activated_at_saved() : '';
+		if ( '' !== $when ) {
+			echo '<p><strong>' . esc_html( Texts::t( 'Se non l\'hai cambiata, la frase è la data e ora di attivazione: {when}. Va scritta esattamente così, spazi e trattini compresi.', array( 'when' => $when ) ) ) . '</strong></p>';
+		}
 		Ui::form_open( 'asem_enc_recoverphrase', $back, false );
 		echo '<p><label>' . esc_html( Texts::t( 'Frase o codice di licenza' ) ) . '<br><input type="password" name="recovery_phrase" class="regular-text" autocomplete="off" required></label></p>'
 			. '<p><button class="button button-primary">' . esc_html( Texts::t( 'Riapri la chiave con la frase' ) ) . '</button></p>';
