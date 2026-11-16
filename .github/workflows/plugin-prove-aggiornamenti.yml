@@ -150,3 +150,102 @@ jobs:
         if: failure()
         working-directory: wordpress/dist-prove
         run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
+
+  pro-copione:
+    name: Pro data script (the current build stands in for the old one; no secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build, install, create the Pro data, install over, check
+        run: |
+          bash wordpress/build.sh "$RUNNER_TEMP/standin"
+          bash wordpress/associazionesemplice/tests/ci/prova-pro.sh "$RUNNER_TEMP/standin/associazionesemplice.zip" "$RUNNER_TEMP/standin/associazionesemplice-pro.zip"
+      - name: Debug log
+        if: failure()
+        working-directory: wordpress/dist-prove
+        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
+
+  pro-1-3-12:
+    name: Pro from the published 1.3.12 (real license key, main only)
+    # Mai su pull request (quindi mai da fork): il segreto esiste solo per i push a main e gli avvii manuali di questo repository.
+    if: github.event_name != 'pull_request' && github.repository == 'wegastudios/associazionesemplice.it'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    concurrency:
+      group: portale-licenza-demo
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download the published Pro from the portal (skip when the secret is missing)
+        id: scarica
+        shell: bash
+        env:
+          DEMO_LICENSE_KEY: ${{ secrets.DEMO_LICENSE_KEY }}
+          DOMINIO: ${{ vars.DEMO_LICENSE_DOMAIN || 'associazionesemplice.it' }}
+        run: |
+          if [ -z "$DEMO_LICENSE_KEY" ]; then
+            echo "Il segreto DEMO_LICENSE_KEY non esiste: la prova del Pro pubblicato viene saltata."
+            echo "have=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Pro dalla versione pubblicata"
+              echo "Saltato: il segreto GitHub DEMO_LICENSE_KEY non esiste, quindi il Pro pubblicato non è stato scaricato né provato."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          KEY="$(printf '%s' "$DEMO_LICENSE_KEY" | tr -d '[:space:]')"
+          echo "::add-mask::$KEY"
+          export KEY
+          umask 077
+          # la chiave va nel corpo della richiesta da un file (mai sulla riga di comando); lo zip scaricato resta fuori dall'area di lavoro, non è un artefatto e non entra nel repository
+          jq -n --arg d "$DOMINIO" '{product: "pro", version: "0.0.1", domain: $d, license_key: env.KEY}' > "$RUNNER_TEMP/richiesta.json"
+          code="$(curl -sS -o "$RUNNER_TEMP/risposta.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' --data-binary @"$RUNNER_TEMP/richiesta.json" https://associazionesemplice.it/api/plugin/update || true)"
+          rm -f "$RUNNER_TEMP/richiesta.json"
+          if [ "$code" != "200" ]; then
+            echo "::error::Il portale ha risposto $code alla richiesta del Pro (403: licenza non in regola o legata a un altro dominio, imposta la variabile DEMO_LICENSE_DOMAIN; 429: troppe richieste)."
+            rm -f "$RUNNER_TEMP/risposta.json"
+            exit 1
+          fi
+          ver="$(jq -r .version "$RUNNER_TEMP/risposta.json")"
+          pkg="$(jq -r '.package // empty' "$RUNNER_TEMP/risposta.json")"
+          sha="$(jq -r '.sha256 // empty' "$RUNNER_TEMP/risposta.json")"
+          rm -f "$RUNNER_TEMP/risposta.json"
+          case "$pkg" in https://associazionesemplice.it/*) ;; *) echo "::error::Indirizzo del pacchetto inatteso"; exit 1 ;; esac
+          curl -sS --fail -o "$RUNNER_TEMP/pro-pubblicato.zip" "$pkg"
+          [ "$(sha256sum "$RUNNER_TEMP/pro-pubblicato.zip" | cut -d' ' -f1)" = "$sha" ] || { echo "::error::L'impronta dello zip scaricato non coincide con quella dichiarata dal portale"; exit 1; }
+          echo "Pro pubblicato scaricato: versione $ver"
+          echo "have=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        if: steps.scarica.outputs.have == 'true'
+        with:
+          node-version: 20
+
+      - name: Free 1.3.25 + published Pro, create the Pro data, install the current build over, check
+        if: steps.scarica.outputs.have == 'true'
+        shell: bash
+        run: |
+          unzip -p associazionesemplice.zip associazionesemplice/associazionesemplice.php | grep -E "^ \* Version:"
+          unzip -p "$RUNNER_TEMP/pro-pubblicato.zip" associazionesemplice-pro/associazionesemplice-pro.php | grep -E "^ \* Version:"
+          bash wordpress/associazionesemplice/tests/ci/prova-pro.sh associazionesemplice.zip "$RUNNER_TEMP/pro-pubblicato.zip"
+
+      - name: Debug log
+        if: failure() && steps.scarica.outputs.have == 'true'
+        working-directory: wordpress/dist-prove
+        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
+
+      - name: Remove the downloaded zip
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/pro-pubblicato.zip" "$RUNNER_TEMP/risposta.json" "$RUNNER_TEMP/richiesta.json"
+          rm -rf wordpress/dist-prove

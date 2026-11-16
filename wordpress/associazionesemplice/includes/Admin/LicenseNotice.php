@@ -27,6 +27,18 @@ final class LicenseNotice {
 
 	/** Markup dell'avviso, stringa vuota se la licenza è in regola (o in standby). */
 	public static function html(): string {
+		return self::unreadable_html() . self::main_html();
+	}
+
+	/** Avviso fisso (non si chiude) per chi amministra: la chiave salvata non si apre più su questo sito. */
+	private static function unreadable_html(): string {
+		if ( ! License::enabled() || ! License::key_unreadable() || ! current_user_can( Plugin::CAP ) ) {
+			return '';
+		}
+		return '<div class="notice notice-error asem-license-notice asem-license-unreadable"><p><strong>' . esc_html( License::UNREADABLE_MESSAGE ) . '</strong> <a class="button button-primary" href="' . esc_url( Ui::url( 'asem-settings' ) . '#asem-license' ) . '">Apri il pannello Licenza</a></p></div>';
+	}
+
+	private static function main_html(): string {
 		if ( ! License::degraded() ) {
 			return self::info_html();
 		}
@@ -45,7 +57,7 @@ final class LicenseNotice {
 		if ( ! License::enabled() ) {
 			return '';
 		}
-		if ( '' === License::key() ) {
+		if ( '' === License::key() && ! License::has_key() ) { // chiave illeggibile ≠ nessuna chiave: non si invita a collegare la licenza gratuita
 			// Solo agli amministratori (la segreteria non può aprire le Impostazioni) e, una volta chiuso, resta chiuso per tre mesi.
 			if ( ! current_user_can( Plugin::CAP ) ) {
 				return '';
