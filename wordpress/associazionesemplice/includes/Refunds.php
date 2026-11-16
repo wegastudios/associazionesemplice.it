@@ -75,11 +75,6 @@ final class Refunds {
 		} else {
 			$cents = Money::parse( (string) ( $in['amount'] ?? '' ) ) ?? 0;
 		}
-		list( $day, $month ) = RefundRules::SELFCERT === $kind ? self::selfcert_totals( $person_id, $date ) : array( 0, 0 );
-		$err = RefundRules::amount_refusal( $kind, $cents, $day, $month );
-		if ( $err ) {
-			throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-		}
 		if ( RefundRules::needs_receipt( $kind ) && ! $file ) {
 			throw new \InvalidArgumentException( 'Allega lo scontrino o la fattura (PDF o foto).' );
 		}
@@ -87,32 +82,43 @@ final class Refunds {
 		if ( $activity && ! Plugin::activities()->get( $activity ) ) {
 			throw new \InvalidArgumentException( 'Attività non trovata.' );
 		}
-		$row = array(
-			'person_id'    => $person_id,
-			'kind'         => $kind,
-			'expense_date' => $date,
-			'description'  => $desc,
-			'activity_id'  => $activity ?: null,
-			'km'           => $km,
-			'amount_cents' => $cents,
-			'status'       => RefundRules::REQUESTED,
-			'requested_by' => $user_id,
-			'created_at'   => Db::now(),
-			'updated_at'   => Db::now(),
+		// Totali, controllo e inserimento sotto lo stesso blocco per persona: il limite vale anche con più richieste insieme.
+		return Db::with_lock(
+			'asem_refund_p_' . $person_id,
+			function () use ( $person_id, $kind, $date, $cents, $km, $desc, $activity, $file, $user_id ) {
+				list( $day, $month ) = RefundRules::SELFCERT === $kind ? self::selfcert_totals( $person_id, $date ) : array( 0, 0 );
+				$err = RefundRules::amount_refusal( $kind, $cents, $day, $month );
+				if ( $err ) {
+					throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				}
+				$row = array(
+					'person_id'    => $person_id,
+					'kind'         => $kind,
+					'expense_date' => $date,
+					'description'  => $desc,
+					'activity_id'  => $activity ?: null,
+					'km'           => $km,
+					'amount_cents' => $cents,
+					'status'       => RefundRules::REQUESTED,
+					'requested_by' => $user_id,
+					'created_at'   => Db::now(),
+					'updated_at'   => Db::now(),
+				);
+				if ( $file ) {
+					$saved              = Attachments::save_file( $file );
+					$row['file_name']   = $file['name'];
+					$row['file_stored'] = $saved['stored'];
+					$row['file_sha256'] = $saved['sha256'];
+					$row['enc_ver']     = $saved['enc_ver'];
+				}
+				if ( ! self::db()->insert( Db::t( 'refunds' ), $row ) ) {
+					throw new \InvalidArgumentException( 'Impossibile salvare la richiesta (errore del database).' );
+				}
+				$id = (int) self::db()->insert_id;
+				Audit::log( 'refund.requested', 'refund', $id, array( 'kind' => $kind, 'cents' => $cents ) );
+				return $id;
+			}
 		);
-		if ( $file ) {
-			$saved              = Attachments::save_file( $file );
-			$row['file_name']   = $file['name'];
-			$row['file_stored'] = $saved['stored'];
-			$row['file_sha256'] = $saved['sha256'];
-			$row['enc_ver']     = $saved['enc_ver'];
-		}
-		if ( ! self::db()->insert( Db::t( 'refunds' ), $row ) ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare la richiesta (errore del database).' );
-		}
-		$id = (int) self::db()->insert_id;
-		Audit::log( 'refund.requested', 'refund', $id, array( 'kind' => $kind, 'cents' => $cents ) );
-		return $id;
 	}
 
 	/** Autocertificazioni già chieste dalla persona nel giorno e nel mese della spesa (escluse quelle rifiutate o annullate). @return int[] [giorno, mese] */
@@ -200,6 +206,14 @@ final class Refunds {
 			RefundRules::APPROVED,
 			function ( array $r ) use ( $id, $user_id ) {
 				self::guard_self( $r );
+				if ( RefundRules::SELFCERT === $r['kind'] ) {
+					// I totali contano già questa richiesta: si ricontrollano senza di lei.
+					list( $day, $month ) = self::selfcert_totals( (int) $r['person_id'], (string) $r['expense_date'] );
+					$err = RefundRules::amount_refusal( RefundRules::SELFCERT, (int) $r['amount_cents'], $day - (int) $r['amount_cents'], $month - (int) $r['amount_cents'] );
+					if ( $err ) {
+						throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					}
+				}
 				self::db()->update( Db::t( 'refunds' ), array( 'status' => RefundRules::APPROVED, 'decided_by' => $user_id, 'decided_on' => Db::today(), 'reject_reason' => null, 'updated_at' => Db::now() ), array( 'id' => $id ) );
 				Audit::log( 'refund.approved', 'refund', $id );
 				self::notify( $r, 'refund_approved', 'Rimborso approvato', 'la tua richiesta di rimborso ' . self::summary( $r ) . ' è stata approvata. Ti sarà pagato dalla segreteria.' );

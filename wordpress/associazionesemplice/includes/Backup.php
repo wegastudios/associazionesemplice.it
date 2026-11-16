@@ -727,19 +727,21 @@ final class Backup {
 
 	// ---------- Download ----------
 
+	/** Indirizzo dell'azione di scarico: senza password non scarica nulla, lo scarico parte solo dal modulo della pagina. */
 	public static function download_url( bool $with_files ): string {
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_backup', 'files' => $with_files ? 1 : 0 ), admin_url( 'admin-post.php' ) ), 'asem_backup' );
+		return add_query_arg( array( 'action' => 'asem_backup', 'files' => $with_files ? 1 : 0 ), admin_url( 'admin-post.php' ) );
 	}
 
 	/**
-	 * Dove mandare chi vuole una copia: il download diretto.
+	 * Dove mandare chi vuole una copia: la pagina Copia di sicurezza, dove si scrive la password prima dello scarico.
 	 */
 	public static function download_link( bool $with_files ): string {
-		return self::download_url( $with_files );
+		return Admin\Ui::url( 'asem-backup' );
 	}
 
+	/** Indirizzo dell'azione di scarico di una copia salvata: lo scarico parte solo dal modulo della pagina (POST con password). */
 	public static function saved_url( string $name ): string {
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_backup_saved', 'name' => $name ), admin_url( 'admin-post.php' ) ), 'asem_backup_saved' );
+		return add_query_arg( array( 'action' => 'asem_backup_saved', 'name' => $name ), admin_url( 'admin-post.php' ) );
 	}
 
 	private static function send_zip( string $path, string $filename, bool $delete ): void {
@@ -772,8 +774,13 @@ final class Backup {
 		if ( ! current_user_can( Plugin::CAP ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}
+		$back = Admin\Ui::url( 'asem-backup' );
+		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // un vecchio indirizzo diretto porta alla pagina, dove si scrive la password
+			Admin\Ui::redirect( $back );
+		}
 		check_admin_referer( 'asem_backup' );
-		$with   = isset( $_REQUEST['files'] ) && 1 === absint( $_REQUEST['files'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce controllato sopra con check_admin_referer()
+		self::require_password( $back );
+		$with = isset( $_POST['files'] ) && 1 === absint( $_POST['files'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce controllato sopra
 		try {
 			$path = self::export( $with );
 		} catch ( \RuntimeException $e ) {
@@ -781,6 +788,29 @@ final class Backup {
 		}
 		self::mark_downloaded();
 		self::send_zip( $path, 'copia-associazionesemplice-' . gmdate( 'Y-m-d-His' ) . '.zip', true );
+	}
+
+	/**
+	 * Password dell'utente e blocco dei tentativi, uguali per ogni scarico di una copia (nuova o già salvata). Se non va, torna alla pagina con il messaggio.
+	 * Da chiamare solo dopo permesso e nonce.
+	 */
+	private static function require_password( string $back ): void {
+		$user = wp_get_current_user();
+		$keys = \AssociazioneSemplice\AttemptLimit::keys( $user && $user->exists() ? (int) $user->ID : 0, \AssociazioneSemplice\ClientIp::get() ); // stesse chiavi del ripristino e dell'azzeramento
+		$lim  = AttemptLimit::standard();
+		$busy = Texts::t( 'Troppi tentativi: riprova tra qualche minuto.' );
+		if ( $lim->is_locked( $keys ) ) { // durante il blocco la password non viene nemmeno controllata
+			Admin\Ui::redirect( $back, '', $busy );
+		}
+		$pass = isset( $_POST['password'] ) ? (string) wp_unslash( $_POST['password'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- nonce controllato dal chiamante; la password non va modificata
+		if ( ! $user || ! $user->exists() || '' === $pass || ! wp_check_password( $pass, $user->user_pass, $user->ID ) ) {
+			if ( $lim->fail( $keys ) ) {
+				Audit::log( 'backup.download_locked', 'settings', 0, array( 'minutes' => (int) ( AttemptLimit::WINDOW / 60 ) ) );
+				Admin\Ui::redirect( $back, '', $busy );
+			}
+			Admin\Ui::redirect( $back, '', Texts::t( 'La password non è corretta: non è stato scaricato nulla.' ) );
+		}
+		$lim->clear( $keys );
 	}
 
 	const META_DOWNLOADED = 'asem_backup_downloaded';
@@ -810,8 +840,13 @@ final class Backup {
 		if ( ! current_user_can( Plugin::CAP ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}
+		$back = Admin\Ui::url( 'asem-backup' );
+		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // un vecchio indirizzo diretto porta alla pagina, dove si scrive la password
+			Admin\Ui::redirect( $back );
+		}
 		check_admin_referer( 'asem_backup_saved' );
-		$name = isset( $_GET['name'] ) ? basename( sanitize_text_field( wp_unslash( $_GET['name'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		self::require_password( $back );
+		$name = isset( $_POST['name'] ) ? basename( sanitize_text_field( wp_unslash( $_POST['name'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce controllato sopra
 		$path = self::dir() . '/' . $name;
 		if ( ! preg_match( '/^prima-del-ripristino-\d{8}-\d{6}(-[0-9a-f]{16})?\.zip$/', $name ) || ! is_file( $path ) ) {
 			wp_die( 'Copia non trovata.', 404 );

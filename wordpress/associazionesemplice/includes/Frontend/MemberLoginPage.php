@@ -60,7 +60,23 @@ final class MemberLoginPage {
 
 	/** Il modulo arriva dal browser che ha aperto la pagina di accesso? (il segno si ricava dal cookie di pre-sessione) */
 	public static function from_login_page( string $given ): bool {
-		return PreSession::check( $given, self::pre_cookie(), 'member_login', MemberSession::secret(), time() );
+		return self::from_page( $given, 'member_login' );
+	}
+
+	/** Come sopra, per un altro modulo (attivazione, primo accesso): ogni modulo ha la sua azione, quindi il segno di uno non vale per l'altro. */
+	public static function from_page( string $given, string $action ): bool {
+		return PreSession::check( $given, self::pre_cookie(), $action, MemberSession::secret(), time() );
+	}
+
+	/** Segno del modulo per l'azione indicata, derivato dal cookie di pre-sessione (vuoto se il cookie non c'è). */
+	public static function pre_sign( string $action ): string {
+		$c = self::pre_cookie();
+		return '' !== $c ? PreSession::token( $c, $action, MemberSession::secret() ) : '';
+	}
+
+	/** Campo nascosto con il segno del modulo per l'azione indicata. */
+	public static function sign_field( string $action ): string {
+		return '<input type="hidden" name="_asem_nonce" value="' . esc_attr( self::pre_sign( $action ) ) . '">';
 	}
 
 	/** Dà il cookie di pre-sessione a chi non lo ha (solo sulle pagine di accesso, che non si salvano in cache). Vero se il cookie c'è. */
@@ -91,8 +107,7 @@ final class MemberLoginPage {
 
 	/** Campo nascosto del modulo di accesso: il segno derivato dal cookie di pre-sessione (vuoto se il cookie non c'è). */
 	private static function guard_field(): string {
-		$c = self::pre_cookie();
-		return '<input type="hidden" name="_asem_nonce" value="' . esc_attr( '' !== $c ? PreSession::token( $c, 'member_login', MemberSession::secret() ) : '' ) . '">';
+		return self::sign_field( 'member_login' );
 	}
 
 	/** Troppi tentativi dalla stessa connessione? Conta ogni invio. */

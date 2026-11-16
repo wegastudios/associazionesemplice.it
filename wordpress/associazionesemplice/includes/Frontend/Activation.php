@@ -16,6 +16,7 @@ defined( 'ABSPATH' ) || exit;
 final class Activation {
 
 	const MAX_ATTEMPTS_PER_HOUR = 15;
+	const NOT_FROM_PAGE         = 'Il modulo deve partire dalla sua pagina, oppure è scaduto: ricarica la pagina e riprova.';
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
@@ -159,7 +160,7 @@ final class Activation {
 		$body  = ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
 			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'Scegli la tua password: con email e password entrerai nell\'area riservata. Se la dimentichi, potrai riceverne una nuova per email.' : 'Scegli l\'email e la password con cui entrerai nell\'area riservata.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( add_query_arg( 'asem_activate', $param, home_url( '/' ) ) ) . '" autocomplete="on">'
-			. '<input type="hidden" name="asem_activate_go" value="1">' . wp_nonce_field( 'asem_activate_' . (int) $p['id'], '_asem_nonce', false, false )
+			. '<input type="hidden" name="asem_activate_go" value="1">' . MemberLoginPage::sign_field( 'activation' )
 			. '<label>La tua email<input style="' . $input . '" type="email" name="email" value="' . esc_attr( (string) ( $post['email'] ?? $p['email'] ?? '' ) ) . '" required autocomplete="email"></label>'
 			. '<label>Il tuo cellulare<input style="' . $input . '" type="tel" name="phone" value="' . esc_attr( (string) ( $post['phone'] ?? $p['phone'] ?? '' ) ) . '" required autocomplete="tel"></label>'
 			. '<p class="a" style="margin:4px 0 8px">I tuoi dati' . ( $need ? ' (obbligatori)' : '' ) . ': servono per le ricevute e per verificare che sei proprio tu.</p>'
@@ -190,8 +191,8 @@ final class Activation {
 			$tries   = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'activation_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';
-			} elseif ( ! $parsed || ! wp_verify_nonce( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'asem_activate_' . $parsed[0] ) ) {
-				$error = 'Sessione scaduta: riprova.';
+			} elseif ( ! $parsed || ! MemberLoginPage::from_page( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'activation' ) ) {
+				$error = self::NOT_FROM_PAGE;
 			} else {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );
 				$res = self::complete( $param, $post );
@@ -206,7 +207,10 @@ final class Activation {
 				$error = $res['error'];
 			}
 		}
+		Views::no_cache(); // la pagina porta il segno di chi la apre: mai in cache
+		MemberLoginPage::ensure_pre_session();
 		CardVerify::send_headers();
+		header( 'Cache-Control: no-store, max-age=0' );
 		CardVerify::output( self::page( $param, $post, $error ) );
 		exit;
 	}

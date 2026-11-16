@@ -43,7 +43,11 @@ final readonly class MemberAreaController
     public function card(Request $request): Response
     {
         $card = $this->profiles->card($this->current->active()) ?? abort(404);
-        $verify = $card['member'] ? URL::signedRoute('member.verify', ['org' => $this->current->require()['org_slug'], 'person' => $card['id']]) : null;
+        // Il link del codice della tessera resta sullo stesso indirizzo da cui il socio è entrato (anche il dominio proprio).
+        $custom = str_starts_with((string) $request->route()?->getName(), 'custom.');
+        $verify = $card['member'] ? ($custom
+            ? URL::signedRoute('custom.member.verify', ['host' => $request->getHost(), 'person' => $card['id']])
+            : URL::signedRoute('member.verify', ['org' => $this->current->require()['org_slug'], 'person' => $card['id']])) : null;
 
         $dues = $this->payments->dues($this->current->ids());
 

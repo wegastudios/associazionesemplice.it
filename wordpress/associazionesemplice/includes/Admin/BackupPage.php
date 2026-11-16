@@ -18,8 +18,11 @@ final class BackupPage {
 		echo '<p>Scarica un file con <strong>tutti i dati</strong> del plugin (soci, attività, prima nota, fondi, ricevute, comunicazioni…) e le impostazioni. Conservalo in un posto sicuro, fuori dal sito. '
 			. 'Le chiavi segrete dei pagamenti online non sono incluse.</p>';
 		echo '<p>' . ( $last ? 'Ultima copia scaricata: <strong>' . esc_html( wp_date( 'd/m/Y H:i', $last ) ) . '</strong>' . ( time() - $last > 30 * DAY_IN_SECONDS ? ' <span class="asem-warn">(più di 30 giorni fa)</span>' : '' ) : '<span class="asem-warn">Nessuna copia scaricata finora.</span>' ) . '</p>';
-		echo '<p><a class="button button-primary" href="' . esc_url( Backup::download_url( false ) ) . '">Scarica la copia dei dati</a> '
-			. '<a class="button" href="' . esc_url( Backup::download_url( true ) ) . '">Scarica la copia con gli allegati (scontrini e fatture)</a></p>';
+		Ui::form_open( 'asem_backup', Ui::url( 'asem-backup' ) );
+		echo '<p><label>' . esc_html( Texts::t( 'La tua password di amministratore' ) ) . '<br><input type="password" name="password" class="regular-text" autocomplete="current-password" required></label><br><span class="description">' . esc_html( Texts::t( 'Per scaricare la copia scrivi la tua password.' ) ) . '</span></p>'
+			. '<p><button type="submit" name="files" value="0" class="button button-primary">Scarica la copia dei dati</button> '
+			. '<button type="submit" name="files" value="1" class="button">Scarica la copia con gli allegati (scontrini e fatture)</button></p>';
+		Ui::form_close();
 		if ( FileKey::has_keys() ) {
 			echo '<p class="description">' . esc_html( FileCryptPanel::copy_note() ) . '</p>';
 		}
@@ -47,11 +50,15 @@ final class BackupPage {
 
 		$saved = Backup::saved();
 		if ( $saved ) {
-			echo '<h2>Copie di sicurezza fatte prima dei ripristini</h2><ul>';
+			echo '<h2>Copie di sicurezza fatte prima dei ripristini</h2>';
+			Ui::form_open( 'asem_backup_saved', Ui::url( 'asem-backup' ) );
+			echo '<p><label>' . esc_html( Texts::t( 'La tua password di amministratore' ) ) . '<br><input type="password" name="password" class="regular-text" autocomplete="current-password" required></label><br><span class="description">' . esc_html( Texts::t( 'Per scaricare la copia scrivi la tua password.' ) ) . '</span></p><ul>';
 			foreach ( $saved as $s ) {
-				echo '<li><a href="' . esc_url( Backup::saved_url( $s['name'] ) ) . '">' . esc_html( $s['name'] ) . '</a> <span class="description">' . esc_html( wp_date( 'd/m/Y H:i', $s['time'] ) ) . ' · ' . esc_html( size_format( $s['size'] ) ) . '</span></li>';
+				echo '<li><button type="submit" name="name" value="' . esc_attr( $s['name'] ) . '" class="button-link">' . esc_html( $s['name'] ) . '</button> <span class="description">' . esc_html( wp_date( 'd/m/Y H:i', $s['time'] ) ) . ' · ' . esc_html( size_format( $s['size'] ) ) . '</span></li>';
 			}
-			echo '</ul><p class="description">Si conservano al massimo ' . (int) \AssociazioneSemplice\Limits::get( 'backup_keep' ) . ' copie e solo per ' . (int) \AssociazioneSemplice\Limits::get( 'backup_hours' ) . ' ore, poi vengono cancellate da sole. Per tornare indietro scarica il file e ripristinalo da qui.</p>';
+			echo '</ul>';
+			Ui::form_close();
+			echo '<p class="description">Si conservano al massimo ' . (int) \AssociazioneSemplice\Limits::get( 'backup_keep' ) . ' copie e solo per ' . (int) \AssociazioneSemplice\Limits::get( 'backup_hours' ) . ' ore, poi vengono cancellate da sole. Per tornare indietro scarica il file e ripristinalo da qui.</p>';
 		}
 		FileCryptPanel::render();
 		PrivateFolderPanel::render();

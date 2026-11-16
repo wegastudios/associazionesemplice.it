@@ -67,6 +67,9 @@ final class LicenseProxy {
 
 		// Il livello lo decide e lo firma il portale (tabella dei piani e degli acquisti), non il nome del piano scritto su Wega.
 		$portal = PortalAttestation::forResponse( $this->db, $data, $now );
+		if ( null === $portal ) {
+			$portal = PortalAttestation::forDenial( $data, $key, $reg, $now ); // l'esito «non valida» di Wega si firma con la stessa chiave
+		}
 		if ( null !== $portal ) {
 			$data['portal_attestation'] = $portal;
 		}

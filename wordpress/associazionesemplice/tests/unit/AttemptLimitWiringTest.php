@@ -9,7 +9,39 @@ final class AttemptLimitWiringTest extends TestCase {
 		return array(
 			'ripristino'  => array( 'includes/Admin/Actions.php', 'backup.restore_locked' ),
 			'azzeramento' => array( 'includes/Admin/TechActions.php', 'tech.reset_locked' ),
+			'scarico'     => array( 'includes/Backup.php', 'backup.download_locked' ),
 		);
+	}
+
+	/** La pagina della copia chiede la password e non ha più un link diretto allo scarico; lo scarico senza invio del modulo non parte. */
+	public function test_backup_page_asks_for_the_password(): void {
+		$page = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/Admin/BackupPage.php' );
+		$this->assertStringContainsString( "Ui::form_open( 'asem_backup'", $page );
+		$this->assertStringContainsString( 'name="password"', $page );
+		$this->assertStringNotContainsString( 'Backup::download_url(', $page );
+		$src  = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/Backup.php' );
+		$post = strpos( $src, "'POST' !== \$_SERVER['REQUEST_METHOD']" );
+		$exp  = strpos( $src, '$path = self::export( $with );' );
+		$this->assertNotFalse( $post );
+		$this->assertLessThan( $exp, $post, 'senza modulo inviato non si crea la copia' );
+		$this->assertLessThan( $exp, (int) strpos( $src, 'self::require_password( $back );' ), 'la password si controlla prima di creare la copia' );
+	}
+
+	/** Anche le copie già salvate: modulo con password nella pagina, solo POST, password prima di leggere il nome del file. */
+	public function test_saved_copies_ask_for_the_password(): void {
+		$page = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/Admin/BackupPage.php' );
+		$this->assertStringContainsString( "Ui::form_open( 'asem_backup_saved'", $page );
+		$this->assertStringNotContainsString( 'Backup::saved_url(', $page );
+		$src = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/Backup.php' );
+		$fn  = (int) strpos( $src, 'public static function handle_saved' );
+		$this->assertGreaterThan( 0, $fn );
+		$body = substr( $src, $fn );
+		$post = (int) strpos( $body, "'POST' !== \$_SERVER['REQUEST_METHOD']" );
+		$nonce = (int) strpos( $body, "check_admin_referer( 'asem_backup_saved' )" );
+		$pwd   = (int) strpos( $body, 'self::require_password( $back );' );
+		$send  = (int) strpos( $body, 'self::send_zip(' );
+		$this->assertTrue( $post > 0 && $nonce > $post && $pwd > $nonce && $send > $pwd, 'POST, nonce, password e solo poi lo scarico' );
+		$this->assertStringNotContainsString( "\$_GET['name']", $body );
 	}
 
 	/** @dataProvider entries */

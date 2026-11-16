@@ -6802,6 +6802,53 @@ if ( ! \AssociazioneSemplice\WooBridge::active() ) {
 	$wc_o4->set_status( 'completed' );
 	$wc_o4->save();
 	asem_ok( 'paid' === $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . (int) $wc_pay4['id'] ) && $people->has_membership( $wc_p4, $wc_sy ), 'woocommerce: a ordine completato (denaro incassato alla consegna) la quota si registra' );
+	// metodi fuori linea (bonifico, assegno, in sede…): conta solo a ordine completato, una volta sola
+	$wc_off = function ( string $nome, string $metodo, string $stato_iniziale ) use ( $mkb, $people, $wpdb, $wc_order, $wc_q, $wc_fee ) {
+		$pp = $mkb( $nome, 'FuoriLinea' );
+		$uu = (int) $people->get( $pp )['wp_user_id'];
+		wp_set_current_user( $uu );
+		$dd = Plugin::payments()->dues_for( $people->get( $pp ) );
+		Plugin::payments()->create_checkout( $people->get( $pp ), $uu, array_keys( $dd ), home_url( '/' ) );
+		$row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = 'woocommerce' ORDER BY id DESC LIMIT 1", ARRAY_A );
+		$o   = $wc_order( $row['public_id'], $wc_q, $wc_fee / 100 );
+		$o->set_payment_method( $metodo );
+		$o->set_status( $stato_iniziale );
+		$o->save();
+		return array( $pp, (int) $row['id'], $o );
+	};
+	$wc_tx = function () use ( $wpdb ) {
+		return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+	};
+	$wc_st = function ( int $id ) use ( $wpdb ) {
+		return (string) $wpdb->get_var( 'SELECT status FROM ' . Db::t( 'payments' ) . ' WHERE id = ' . $id );
+	};
+	asem_ok( array( 'bacs', 'cheque', 'cod' ) === \AssociazioneSemplice\WooBridge::offline_methods() && \AssociazioneSemplice\WooBridge::is_offline_method( 'bacs' ) && ! \AssociazioneSemplice\WooBridge::is_offline_method( 'stripe' ) && ! \AssociazioneSemplice\WooBridge::is_offline_method( '' ), 'woocommerce: bonifico, assegno e contrassegno sono metodi fuori linea; la carta no' );
+	$tx0 = $wc_tx();
+	list( $wc_pb, $wc_idb, $wc_ob ) = $wc_off( 'Bruna', 'bacs', 'processing' );
+	asem_ok( 'pending' === $wc_st( $wc_idb ) && $tx0 === $wc_tx() && ! $people->has_membership( $wc_pb, $wc_sy ), 'woocommerce: bonifico "in lavorazione" non è un incasso: nessuna quota registrata' );
+	$wc_ob->set_status( 'completed' );
+	$wc_ob->save();
+	asem_ok( 'paid' === $wc_st( $wc_idb ) && $tx0 + 1 === $wc_tx() && $people->has_membership( $wc_pb, $wc_sy ), 'woocommerce: bonifico completato => un incasso e quota registrata' );
+	$wc_ob->set_status( 'processing' );
+	$wc_ob->save();
+	$wc_ob->set_status( 'completed' );
+	$wc_ob->save();
+	\AssociazioneSemplice\WooBridge::on_paid( $wc_ob->get_id() );
+	asem_ok( $tx0 + 1 === $wc_tx(), 'woocommerce: ordine riaperto e completato di nuovo: nessun doppio incasso' );
+	list( $wc_pc, $wc_idc ) = $wc_off( 'Carla', 'stripe', 'processing' );
+	asem_ok( 'paid' === $wc_st( $wc_idc ) && $people->has_membership( $wc_pc, $wc_sy ), 'woocommerce: carta "in lavorazione" => incasso come prima' );
+	$wc_filtro = function ( $m ) {
+		$m[] = 'pagamento_in_sede';
+		return $m;
+	};
+	add_filter( 'asem_woo_offline_methods', $wc_filtro );
+	asem_ok( \AssociazioneSemplice\WooBridge::is_offline_method( 'pagamento_in_sede' ), 'woocommerce: il filtro aggiunge un metodo fuori linea' );
+	list( $wc_ps, $wc_ids, $wc_os ) = $wc_off( 'Sara', 'pagamento_in_sede', 'processing' );
+	asem_ok( 'pending' === $wc_st( $wc_ids ) && ! $people->has_membership( $wc_ps, $wc_sy ), 'woocommerce: metodo aggiunto dal filtro "in lavorazione" => nessun incasso' );
+	$wc_os->set_status( 'completed' );
+	$wc_os->save();
+	asem_ok( 'paid' === $wc_st( $wc_ids ) && $people->has_membership( $wc_ps, $wc_sy ), 'woocommerce: metodo aggiunto dal filtro completato => incasso' );
+	remove_filter( 'asem_woo_offline_methods', $wc_filtro );
 	wp_set_current_user( 1 );
 	asem_render( array( Admin\PaymentsPage::class, 'render' ), 'WooCommerce' );
 	// un ordine senza voci Associazione Semplice non cambia nulla
@@ -6978,6 +7025,11 @@ asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { 
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '17:00', 2 ); } ), 'risorse: nemmeno con una prenotazione di 2 fasce che la sfiora' );
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '19:00', 1 ) > 0, 'risorse: la fascia subito dopo è libera' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } ), 'risorse: il limite di prenotazioni per socio vale per i soci' );
+// Il massimo per persona si conta sotto lo stesso blocco della prenotazione: con il blocco occupato il conteggio non è nemmeno raggiunto
+Db::$lock_fake = '0';
+$rs_lk = asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } );
+Db::$lock_fake = 'x';
+asem_ok( null !== $rs_lk && false !== strpos( $rs_lk, 'Un\'altra operazione è in corso' ) && false === strpos( $rs_lk, 'Hai già' ), 'risorse: il massimo per persona si controlla dentro il blocco della risorsa (con il blocco occupato la richiesta è rifiutata prima del conteggio)' );
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1, array(), true ) > 0, 'risorse: la segreteria può superare il limite' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_gst, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_gst, $rs_day, '10:00', 1, array(), true ); } ), 'risorse: un non socio non può avere una risorsa, nemmeno dalla segreteria' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '10:00', 1, array( 'A', 'B' ), true ); } ), 'risorse: gli ospiti oltre il massimo sono rifiutati' );
@@ -9282,6 +9334,17 @@ asem_ok( $bd_throws( function () use ( $R, $bd_vol ) { $R::request( $bd_vol, arr
 asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'km', 'expense_date' => $today, 'description' => 'Km', 'km' => 10 ) ); } ), 'rimborsi: senza tariffa non c\'è il rimborso chilometrico' );
 $bd_r1 = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Carta e penne', 'amount' => '6,00' ), null, 1 );
 asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Altre', 'amount' => '5,00' ) ); } ), 'rimborsi: l\'autocertificazione ha il tetto di 10 euro al giorno' );
+// Limiti di legge anche con richieste insieme: il blocco per persona rifiuta la seconda, e l'approvazione ricontrolla i totali
+$bd_cnt_before = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'refunds' ) . ' WHERE person_id = %d', $bd_vol ) );
+Db::$lock_fake = '0';
+$bd_lk = asem_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Insieme', 'amount' => '1,00' ) ); } );
+Db::$lock_fake = 'x';
+asem_ok( null !== $bd_lk && false !== strpos( $bd_lk, 'Un\'altra operazione è in corso' ) && (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'refunds' ) . ' WHERE person_id = %d', $bd_vol ) ) === $bd_cnt_before, 'rimborsi: mentre un\'altra richiesta della stessa persona è in corso la seconda viene rifiutata e non si scrive nulla' );
+asem_ok( Db::lock_name( 'asem_refund_p_' . $bd_vol ) !== Db::lock_name( 'asem_refund_p_' . $bd_vol, 'db1|wp_' ), 'rimborsi: il blocco per persona è per sito (Db::lock_name)' );
+$wpdb->insert( Db::t( 'refunds' ), array( 'person_id' => $bd_vol, 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Arrivata insieme', 'amount_cents' => 500, 'status' => 'requested', 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$bd_over = (int) $wpdb->insert_id;
+asem_ok( $bd_throws( function () use ( $R, $bd_over ) { $R::approve( $bd_over, 1 ); } ) && 'requested' === $R::get( $bd_over )['status'], 'rimborsi: l\'approvazione ricontrolla il tetto di 10 euro al giorno (6 + 5 non si approvano)' );
+$wpdb->delete( Db::t( 'refunds' ), array( 'id' => $bd_over ) );
 asem_ok( $bd_throws( function () use ( $R, $bd_r1, $cash ) { $R::pay( $bd_r1, (int) $cash['id'], '' ); } ), 'rimborsi: non si paga senza approvare' );
 $R::approve( $bd_r1, 1 );
 asem_ok( $bd_mail >= 1, 'rimborsi: il volontario riceve l\'avviso di approvazione' );
@@ -10162,6 +10225,30 @@ preg_match( '/function inline_login\( string \$back \): string \{\s*Views::no_ca
 preg_match( '/headers_sent\(\) \) \{\s*return false;\s*\}\s*Views::no_cache\(\);[^\r\n]*\s*\$value = PreSession::make/', $ps_src, $ps_m2 );
 asem_ok( defined( 'DONOTCACHEPAGE' ) && $ps_m1 && $ps_m2, 'accesso soci: le pagine con il modulo di accesso non finiscono nella cache di pagina (inline_login ed emissione del cookie chiamano no_cache)' );
 asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' ), 'from_login_page( self::post( \'_asem_nonce\' ) )' ) && false === strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' ), 'wp_verify_nonce' ), 'accesso soci: l\'invio dei moduli di accesso passa dal controllo del cookie' );
+// Attivazione e primo accesso: il modulo vale solo dal browser che ha aperto la sua pagina (stesso cookie di pre-sessione, azione distinta per modulo)
+$fa_cls  = \AssociazioneSemplice\Frontend\FirstAccess::class;
+$fa_name = \AssociazioneSemplice\PreSession::COOKIE;
+$fa_sign = function ( string $html ): string {
+	return 1 === preg_match( '/name="_asem_nonce" value="([a-f0-9]*)"/', $html, $m ) ? $m[1] : 'MANCA';
+};
+unset( $_COOKIE[ $fa_name ] );
+asem_ok( '' === $fa_sign( $fa_cls::page() ) && ! $ps_cls::from_page( '', 'first_access' ) && ! $ps_cls::from_page( 'x', 'activation' ), 'primo accesso e attivazione: senza cookie di pre-sessione il modulo non ha il segno e l\'invio è rifiutato' );
+$_COOKIE[ $fa_name ] = \AssociazioneSemplice\PreSession::make( time() );
+$fa_tok = $fa_sign( $fa_cls::page() );
+asem_ok( 64 === strlen( $fa_tok ) && $ps_cls::from_page( $fa_tok, 'first_access' ), 'primo accesso: con il cookie giusto l\'invio dalla sua pagina è accettato' );
+asem_ok( $ps_cls::from_page( $ps_cls::pre_sign( 'activation' ), 'activation' ) && $ps_cls::pre_sign( 'activation' ) !== $fa_tok, 'attivazione: con il cookie giusto l\'invio è accettato, con un segno diverso da quello del primo accesso' );
+asem_ok( ! $ps_cls::from_page( $fa_tok, 'activation' ) && ! $ps_cls::from_page( $ps_cls::pre_sign( 'activation' ), 'first_access' ) && ! $ps_cls::from_page( $fa_tok, 'member_login' ), 'moduli di accesso: il segno di un modulo non vale per un altro' );
+$_COOKIE[ $fa_name ] = \AssociazioneSemplice\PreSession::make( time() ); // un altro browser
+asem_ok( ! $ps_cls::from_page( $fa_tok, 'first_access' ), 'primo accesso: l\'invio col segno di un altro cookie è rifiutato' );
+$_COOKIE[ $fa_name ] = ( time() - 3 * HOUR_IN_SECONDS ) . '.' . SessionToken::generate();
+asem_ok( ! $ps_cls::from_page( \AssociazioneSemplice\PreSession::token( $_COOKIE[ $fa_name ], 'activation', MemberSession::secret() ), 'activation' ), 'attivazione: un cookie scaduto non vale' );
+$_COOKIE[ $fa_name ] = \AssociazioneSemplice\PreSession::make( time() ); // come prima di questa serie di prove: il visitatore ha il cookie
+$fa_src = (string) file_get_contents( ASEM_DIR . 'includes/Frontend/FirstAccess.php' );
+$ac_src = (string) file_get_contents( ASEM_DIR . 'includes/Frontend/Activation.php' );
+$fa_end = '/Views::no_cache\(\);[^\r\n]*\s*MemberLoginPage::ensure_pre_session\(\);\s*CardVerify::send_headers\(\);\s*header\( \'Cache-Control: no-store, max-age=0\' \);\s*CardVerify::output\( self::page\(/';
+asem_ok( 1 === preg_match( $fa_end, $fa_src ) && 1 === preg_match( $fa_end, $ac_src ), 'primo accesso e attivazione: le pagine non finiscono nella cache e danno il cookie prima di scrivere la pagina' );
+asem_ok( false !== strpos( $fa_src, "'first_access' )" ) && false !== strpos( $ac_src, "'activation' ) ) {" ) && false !== strpos( $ac_src, "sign_field( 'activation' )" ) && false === strpos( $fa_src . $ac_src, 'wp_verify_nonce' ) && false === strpos( $fa_src . $ac_src, 'wp_nonce_field' ), 'primo accesso e attivazione: l\'invio passa dal controllo del cookie e non dal nonce' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Activation::NOT_FROM_PAGE, 'dalla sua pagina' ) && false === stripos( \AssociazioneSemplice\Frontend\Activation::NOT_FROM_PAGE, 'nonce' ), 'attivazione e primo accesso: il messaggio di rifiuto è chiaro e neutro' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'name="password"' ) && false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'Password dimenticata' ), 'password: il modulo dell\'area soci è email e password, con il recupero' );
 unset( $_COOKIE[ $pw_cookie ] );
 $ms_fake->setValue( null, null );

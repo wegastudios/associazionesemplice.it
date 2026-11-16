@@ -181,7 +181,7 @@ final class PeoplePage {
 			if ( ! (int) $lv['active'] && ! $sel ) {
 				continue;
 			}
-			$lv_opts .= '<option value="' . (int) $lv['id'] . '" data-base="' . esc_attr( $lv['base_type'] ) . '"' . selected( $sel, true, false ) . '>' . esc_html( $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' — ' . \AssociazioneSemplice\Money::format( (int) $lv['fee_cents'] ) ) ) . '</option>';
+			$lv_opts .= '<option value="' . (int) $lv['id'] . '" data-base="' . esc_attr( $lv['base_type'] ) . '"' . selected( $sel, true, false ) . '>' . esc_html( $lv['name'] . ( (int) $lv['active'] ? '' : ' (non attivo)' ) . ( null === $lv['fee_cents'] ? '' : ' — ' . \AssociazioneSemplice\Money::format( (int) $lv['fee_cents'] ) ) ) . '</option>';
 		}
 		echo wp_kses( '<tr class="asem-row-level"><th>Livello</th><td><select name="level_id" id="asem-level">' . $lv_opts . '</select>', Html::allowed() );
 		echo '<p class="description">Decide il nome sulla tessera e la quota associativa (si definiscono in Impostazioni).</p></td></tr>';

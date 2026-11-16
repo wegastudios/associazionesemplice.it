@@ -105,6 +105,197 @@ Apri la domanda dall'elenco **«Da esaminare»**, controlla i dati e decidi. Una
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-area-soci-per-la-segreteria',
+        'title' => 'L\'area soci: cosa vede il socio e come fargli avere l\'accesso',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_media}, {piano_grande}
+
+L'**area soci** è la parte del gestionale che il socio apre dal telefono o dal computer, **senza chiedere nulla alla segreteria**: vede la sua tessera, le quote e le ricevute, gli eventi, il suo profilo e, se l'associazione lo offre, può prenotare gli spazi.
+
+## L'indirizzo
+
+L'indirizzo dell'area soci lo trovi in **Altro → Configurazione guidata**, nel passo **«Area soci»**, con il pulsante **«Copia»**: **dallo ai soci tu** (sul sito, in una email, in un messaggio). Di solito è del tipo **https://nome-breve.associazionesemplice.it/area**. Se l'associazione ha un **dominio proprio verificato**, l'area soci risponde anche lì. Il link di accesso, il codice e il QR della tessera restano sullo stesso indirizzo da cui il socio è entrato. Per spiegare ai soci come entrare puoi mandare la pagina [Come entro nell'area soci](guida:gestionale-come-entro-nell-area-soci).
+
+## Come entra un socio
+
+- **Se ha un'email registrata**, entra da solo: scrive la sua email, riceve un **link e un codice di 6 cifre** nella stessa email e usa l'uno o l'altro. Non c'è nessuna password da ricordare. Link e codice valgono **15 minuti** e **una volta sola**; il codice si può sbagliare al massimo 5 volte. Se qualcuno scrive un'email che non è di un socio, il gestionale risponde allo stesso modo e non parte nulla.
+- **Se non ha un'email**, apri la sua scheda, scheda **«Altro»**, sezione **«Area soci»**, e premi **«Prepara il link d'accesso»**, poi **«Copia»**. Il link vale **7 giorni**, **una volta sola**: mandalo per esempio su WhatsApp. Il pulsante non c'è per gli ospiti.
+
+Una volta dentro, il socio resta collegato fino a **30 giorni senza usare** l'area, e comunque al massimo **90 giorni**.
+
+Se il socio sbaglia o chiede troppi link, vede «Troppi tentativi: riprova tra qualche minuto.»: si può chiedere un link al minuto e cinque all'ora.
+
+## Cosa trova il socio
+
+Il menu in basso (o in alto sul computer) ha queste voci:
+
+- **Tessera**: il nome e un **codice** da mostrare all'ingresso; chi lo legge vede se la tessera è valida. Se la persona non è socia, il gestionale dice «Non è una tessera da socio: qui trovi eventi, quote e ricevute.»; se è uscita dall'associazione, «Risulti uscito dall'associazione.».
+- **Eventi**: gli eventi dei **prossimi due mesi**, con **«Prenota»**. Se l'evento è pieno compare «posti esauriti» e **«Lista d'attesa»**; il socio legge «Sei in lista d'attesa: se si libera un posto entri da solo.» Il passaggio è automatico: quando qualcuno annulla o si aggiungono posti entra il primo in lista e, **se ha un indirizzo email**, **riceve un'email** («Si è liberato un posto…»; per un minore va al genitore o tutore). La prenotazione vale lo stesso anche senza email: la trova in **Eventi**. Il socio **annulla da solo fino al giorno prima**, se la prenotazione non fa parte di un pacchetto o di un listino e non è già pagata; negli altri casi legge «per annullare scrivi alla segreteria».
+- **Prenota** (solo se la tua associazione ha il pacchetto **Risorse in versione Web** e almeno una risorsa a ore o a giornata): il socio sceglie il giorno e tocca una fascia libera. Le risorse stagionali non compaiono: le assegna la segreteria. Vedi [Risorse e prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni).
+- **Quote**: corsi e attività con **«Dovuto finora … · versato …»** e **«in regola»** oppure **«da versare …»**, il pulsante **«Paga online»** (se l'associazione ha attivato i pagamenti online: vedi [Pagamenti online dei soci](guida:gestionale-pagamenti-online-dei-soci)) e le **ricevute** da scaricare in PDF. Le ricevute annullate non compaiono.
+- **Profilo**: i suoi dati (nome, email e codice fiscale **non si cambiano da qui**: «Per correggere nome, email o codice fiscale scrivi alla segreteria.»), telefono e indirizzo che può correggere da solo, le tessere degli anni e il pulsante **«Esci da tutti i dispositivi»**.
+
+## I minori
+
+Per un minore **entra il genitore o il tutore** (anche se non è socio), con la propria email. Vede la sua scheda e quelle dei figli: in alto compaiono dei pulsanti, **«Io»** e il nome di ogni figlio, per cambiare scheda con un clic. Tessera, Profilo, Quote ed Eventi lavorano sulla scheda scelta. In **Quote** il genitore può **pagare online e scaricare le ricevute anche dei figli**, tutto da un'unica pagina. A ogni nuovo ingresso si riparte dalla propria. **Ogni email apre una sola scheda**: se due persone hanno la stessa email, entra solo una delle due (prima il socio). Per i maggiorenni usa un'email diversa per ciascuno; i figli minori si vedono dalla scheda del genitore. Per collegare un genitore, vedi la scheda del minore: **«Genitori o tutori»**.
+
+## Se un socio ha perso il telefono
+
+Dalla sua scheda, **«Altro» → «Area soci» → «Chiudi i suoi accessi»** (serve il permesso di modificare i soci): chiude **tutte le sessioni aperte** di quella persona e il gestionale dice «Accessi chiusi: N.». **Non annulla** i link o i codici già mandati e non ancora usati: valgono fino alla scadenza. Non tocca le schede dei figli. Il socio può fare lo stesso da solo, dal suo profilo, con **«Esci da tutti i dispositivi»**: esce subito e torna all'accesso con «Sei uscito da tutti i dispositivi.». Il semplice **«Esci»** chiude solo la sessione di quel dispositivo.
+
+## Se l'indirizzo non si apre
+
+Se il socio vede una pagina «non trovata», controlla che l'associazione sia attiva e che l'indirizzo sia quello giusto. Se il problema continua, scrivi all'assistenza di Associazione Semplice.
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-come-entro-nell-area-soci',
+        'title' => 'Come entro nell\'area soci',
+        'body' => <<<'MD'
+> L'indirizzo dell'area soci te lo dà la segreteria della tua associazione.
+
+L'**area soci** è la tua pagina personale: la tessera, gli eventi, le quote e le ricevute, il tuo profilo. **Non serve nessuna password.**
+
+## Per entrare
+
+1. Apri l'indirizzo che ti ha dato la segreteria.
+2. Scrivi la **tua email**, quella che hai dato all'associazione, e premi **«Mandami il link»**.
+3. Ti arriva un'email con un **link** e un **codice di 6 cifre**: apri il link, oppure scrivi il codice nella pagina e premi **«Entra»**.
+
+Link e codice valgono **15 minuti** e si usano **una volta sola**. Se sono scaduti, premi **«Mandami un altro codice»**. Non hai ricevuto niente? Controlla la posta indesiderata e che l'email sia quella giusta.
+
+**Non hai un'email registrata?** Chiedi alla segreteria un **link d'accesso**: te lo manda per esempio su WhatsApp, vale 7 giorni e si usa una volta sola.
+
+Dopo il primo ingresso resti collegato su quel telefono o computer: devi rifarlo solo dopo molto tempo senza usarlo.
+
+## Cosa trovi
+
+- **Tessera**: mostra il codice all'ingresso.
+- **Eventi**: prenoti un posto; se è pieno puoi metterti in lista d'attesa: se si libera un posto entri da solo e ricevi un'email; la prenotazione la trovi in Eventi. Puoi annullare da solo fino al giorno prima, se non hai già pagato; altrimenti scrivi alla segreteria.
+- **Prenota**: se la tua associazione lo offre, prenoti campi o sale.
+- **Quote**: quanto devi e quanto hai versato, **«Paga online»** (se l'associazione lo ha attivato) e le **ricevute** da scaricare.
+- **Profilo**: puoi correggere telefono e indirizzo. Per nome, email o codice fiscale scrivi alla segreteria.
+
+## Se perdi il telefono
+
+Entra da un altro telefono o computer, apri **Profilo** e premi **«Esci da tutti i dispositivi»**: nessuno potrà più usare il tuo accesso già aperto. Se non riesci, chiedi alla segreteria di chiudere i tuoi accessi. Per entrare di nuovo ti basta chiedere un nuovo link.
+
+## Se sei un genitore
+
+Entri con la tua email. In alto trovi **«Io»** e il nome dei tuoi figli: un clic per passare dall'una all'altra scheda.
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-libro-soci-livelli-e-runts',
+        'title' => 'Libro soci, livelli di quota e dati per il RUNTS',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Nella pagina **Soci**, il pulsante con i **tre puntini** (**«Altri strumenti»**), accanto alla ricerca, apre un elenco con tre pagine che servono all'associazione per tenere in regola l'anagrafica: **«Libro soci»**, **«Livelli e quote»** e **«Dati per il RUNTS»**.
+
+## Il libro soci
+
+Il **«Libro soci»** elenca **tutti i soci in ordine di ingresso**, con la data della domanda, l'ammissione, l'eventuale cessazione e l'ultima quota. **Ospiti e genitori non soci non ci sono.** Ogni riga ha un **numero** e, se c'è, la **matricola** del socio; i minorenni mostrano il nome del **tutore**.
+
+Le colonne sono: **N. e matricola**, **Socio** (con il codice fiscale), **Nascita**, **Residenza**, **Tessera** (con il livello), **Ammissione**, **Cessazione** (con il motivo) e **Ultima quota**. In alto scegli **«Tutti»**, **«In carica»** o **«Cessati»**. Chi ha il permesso **«Esportare l'anagrafica»** (si assegna in **Operatori e ruoli**) vede anche **«Stampa (PDF)»** e **«CSV»**. Libro soci e CSV contengono **codice fiscale e residenza** dei soci: dai questo permesso solo a chi deve davvero averli.
+
+### Il libro di un anno fiscale
+
+Con **«Anno fiscale»** scegli un anno: vedi chi ha avuto una **tessera valida per almeno un giorno** di quell'anno.
+
+- **Anno ancora aperto: è una bozza.** La pagina dice che i numeri sono quelli di oggi e possono cambiare.
+- **Anno chiuso: è definitivo.** Alla chiusura il libro viene **emesso e bloccato** e **non cambia più**: la pagina lo dice («Libro soci definitivo: emesso e bloccato alla chiusura dell'anno fiscale …, non cambia più»).
+- **Se riapri l'ultimo anno chiuso**, il libro di quell'anno si rifà alla chiusura successiva: in cima trovi le **versioni** del libro definitivo, con la data e se la versione è **«in uso»** o **«superata dopo una riapertura»**.
+
+Per la chiusura e la riapertura degli anni fiscali vedi [Chiudere l'anno fiscale e leggere il rendiconto](guida:gestionale-chiudere-l-esercizio-e-leggere-il-rendiconto).
+
+## I livelli di socio
+
+In **«Livelli e quote»** crei i **livelli** dei soci: per esempio un **«Socio junior»** con una quota ridotta. Ogni livello ha:
+
+- **Nome**;
+- **Base**: il tipo di socio da cui parte (**Socio fondatore**, **Socio ordinario** o **Socio e volontario**);
+- **Quota**: facoltativa. **Senza una quota propria vale quella dell'associazione.**
+- **«attivo»**: decide solo se il livello **si può dare** a un socio. Se togli la spunta, il livello non compare più tra quelli che scegli nella scheda; i soci che **lo hanno già lo conservano**, anche quando salvi la loro scheda, e nella loro scheda il livello compare come **«Nome (non attivo)»**; agli altri soci si propongono e si assegnano solo i livelli attivi. Il nome resta nel libro soci e, se il livello ha una quota, quella vale ancora al loro rinnovo;
+- **«vota»**: dice se chi ha quel livello ha **diritto di voto in assemblea** (è una scelta a parte, non dipende da «attivo»). **I minorenni non votano mai.** Un livello nuovo vota.
+
+Per ogni livello vedi quanti soci lo hanno. Per creare un livello compili **Nome**, **Base** e, se vuoi, **Quota**, poi **«Crea»**; per cambiarne uno premi **«Salva»** sulla sua riga. Può farlo chi può cambiare le impostazioni dell'associazione. Il livello di un socio si sceglie nella sua scheda e appare nel libro soci accanto alla tessera.
+
+## I dati per il RUNTS
+
+La pagina **«Dati per il RUNTS»** raccoglie i **numeri da comunicare al Registro unico del Terzo settore**, calcolati da soli dall'anagrafica **al 31 dicembre** dell'anno che scegli (con **«Anno»**). Il programma indica la **scadenza** per la comunicazione; se è passata, te lo ricorda: «La scadenza del … è passata: se non hai ancora comunicato questi dati, fallo appena puoi.»
+
+Vedi quattro numeri:
+
+- **Soci persone fisiche con diritto di voto**: i maggiorenni alla data, con un tipo di socio che vota;
+- **Enti soci con diritto di voto**, con quanti sono della stessa sezione del Registro;
+- **Volontari iscritti**: i soci con tipo **«Socio e volontario»**;
+- **Lavoratori**: gli utenti con il ruolo **Dipendente**; il programma ti invita a controllare che sia il numero giusto.
+
+Sotto trovi l'elenco degli **«Enti soci»**, con **«Stessa sezione»**, **«Altra sezione»** o **«Sezione non indicata»**.
+
+**L'avviso sul numero minimo di soci.** Se oggi i soci con diritto di voto sono sotto il minimo previsto per un'APS o un'ODV, la pagina te lo segnala con il numero di persone e di enti di oggi, e ti ricorda che in quel caso va comunicato al Registro. Se qualcuno ha la **tessera scaduta da poco**, vedi il suo nome: se rinnova, torna socio. L'avviso guarda i soci **di oggi**; i numeri nei riquadri sono quelli **al 31 dicembre**, da copiare nel portale del RUNTS.
+
+Se non sai quale numero comunicare, **chiedi al tuo commercialista**: il gestionale calcola dai dati che ha, non decide per te. Per i soci che sono enti vedi anche [Aggiungere e importare i soci](guida:gestionale-aggiungere-e-importare-i-soci).
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-certificati-medici-dei-soci',
+        'title' => 'I certificati medici dei soci',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Per le attività sportive puoi tenere traccia del **certificato medico** di ogni socio: quando scade, chi lo ha, chi no. Il gestionale ti mostra le scadenze e, se vuoi, **avvisa il socio per email**.
+
+**È un dato sulla salute, quindi riservato.** Lo vedono **titolare, amministratori e operatori**; **il commercialista no**. Ogni volta che qualcuno **scarica un file** di certificato, resta scritto nel **registro azioni**. I file sono **conservati cifrati**.
+
+## Registrare un certificato
+
+1. In **Soci** apri la **scheda del socio** e vai alla scheda **«Certificato»**.
+2. Compila il modulo:
+   - **Tipo**: non agonistico, agonistico oppure altro;
+   - **Rilascio** e **Scadenza**: la scadenza viene proposta **a un anno** dal rilascio, correggila con quella scritta sul certificato. Il certificato **non può scadere prima di essere stato rilasciato**;
+   - **Medico**: facoltativo;
+   - **File (PDF o foto)**: facoltativo, **PDF, JPG o PNG**, fino a **10 MB**.
+3. Premi **«Registra il certificato»**.
+
+Nella scheda vedi l'**elenco dei certificati** del socio, con il tipo, il medico e le date. Quello **che conta oggi** è scritto in grassetto: tra quelli già rilasciati, **quello che scade più tardi**. Per aprire il file premi **«Scarica»**.
+
+**Se ti sei sbagliato**, premi **«Togli»**: il gestionale chiede «Cancellare questo certificato medico? Il file allegato viene eliminato.» e, se confermi, il certificato e il suo file **spariscono**. Per rinnovare un certificato non serve toglierlo: registra il nuovo, e il vecchio resta nell'elenco.
+
+Registrare, togliere e scaricare è permesso a **titolare, amministratori e operatori** (chi può modificare i soci e vedere i dati sulla salute).
+
+## Chi è in regola: l'elenco dei certificati
+
+In **Soci**, dal pulsante con i **tre puntini** (**«Altri strumenti»**), scegli **«Certificati medici»**. Vedi i soci con la **tessera**, la **scadenza** e lo **stato**:
+
+- **Valido**: in regola;
+- **In scadenza**: scade entro il numero di giorni di preavviso (di partenza **30**);
+- **Scaduto**;
+- **Mancante**: nessun certificato già rilasciato.
+
+In alto i pulsanti **«Tutti»**, **«In scadenza»**, **«Scaduti»**, **«Mancanti»** e **«Validi»** filtrano l'elenco. Cliccando sul nome apri la scheda. Questa pagina mostra solo **nomi e date**: i dati del certificato si aprono dalla scheda.
+
+L'elenco comprende i **soci in corso** (fondatori, ordinari e volontari): i soci usciti non compaiono.
+
+## Il preavviso
+
+Il numero di giorni dopo i quali un certificato risulta «in scadenza» si cambia nelle **«Impostazioni del tesseramento»** (campo **«Preavviso certificati (giorni)»**, da 1 a 365), in fondo alla pagina **Nuova scheda socio**. Solo il titolare e gli amministratori possono modificarlo.
+
+## I promemoria per email
+
+Se li hai attivati, il gestionale manda **un'email** quando il certificato sta per scadere e **un'altra** quando è scaduto, **una sola volta per ogni scadenza**. Riceve l'email il **socio** (se ha un indirizzo); per un **minorenne** va al **genitore o tutore operativo**. I soci usciti non ricevono nulla.
+
+I promemoria valgono anche per le **tessere in scadenza** e si accendono o spengono in **Domande di adesione → «Domande online e promemoria»** (vedi [Le domande di adesione online](guida:gestionale-domande-di-adesione-online)).
+
+Chi **non ha mai avuto** un certificato registrato **non riceve** nessun promemoria: compare solo come **«Mancante»** nell'elenco.
+
+## Portare i certificati fuori dal gestionale
+
+Se esporti i tuoi dati puoi includere anche i certificati medici (solo se hai il permesso sui dati sulla salute): vedi [Esportare i dati](guida:gestionale-esportare-i-dati). **Nella demo il caricamento dei file è spento.**
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-rinnovare-una-tessera',
         'title' => 'Rinnovare una tessera e incassare la quota',
         'body' => <<<'MD'
@@ -209,7 +400,7 @@ La trovi in **Altro**, ed è **solo per gli amministratori**. Scegli l'**«Anno 
 
 ## Cercare e filtrare
 
-In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica.
+In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica: vedi [Importare la prima nota da Excel o CSV](guida:gestionale-importare-la-prima-nota).
 
 ## Correggere un errore
 
@@ -294,6 +485,66 @@ Il gestionale ti avvisa se qualcosa non torna:
 - se provi a togliere da Aspetto fiscale un'aliquota usata da qualche risorsa: «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.»; se sono usate anche da qualche attività, il messaggio dice «Alcune attività o risorse usano l'aliquota X%: prima cambia l'IVA di quelle attività o risorse, poi toglila dall'elenco.»;
 - se l'aliquota è usata da prenotazioni non ancora finite: «Alcune prenotazioni non ancora finite usano l'aliquota X%: togli l'aliquota dall'elenco quando saranno finite o annullate.»;
 - in scheda, un avviso rosso: «L'aliquota di questa risorsa non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa risorsa si registrano senza IVA.»
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-importare-la-prima-nota',
+        'title' => 'Importare la prima nota da Excel o CSV',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Se finora hai tenuto la contabilità in un foglio Excel, non devi riscriverla: la carichi da un file e il gestionale registra i movimenti in **Prima nota**. **Prima vedi sempre l'anteprima: nulla si salva finché non confermi.**
+
+**Chi può farlo:** chi ha il permesso **«Registrare in prima nota»** (titolare, amministratori e operatori; si assegna in **Operatori e ruoli**).
+
+## Come si fa
+
+1. In **Prima nota** apri il pulsante con i **tre puntini** (**«Altri strumenti»**) e scegli **«Importa da Excel o CSV»**.
+2. Scegli il **file**: `.xlsx` o `.csv`, al massimo **5 MB** e **10.000 movimenti** (se sono di più, dividilo in più file).
+3. Se nel file ci sono righe **senza il conto**, scegli il **«Conto per le righe senza conto»**. Se non lo scegli, quelle righe risultano errori.
+4. Premi **«Mostra l'anteprima»**.
+5. Controlla l'anteprima e premi **«Importa N movimenti»**. A fine importazione trovi **«Import completato»** con quanti movimenti sono stati registrati e il collegamento **«Vai alla prima nota»**.
+
+## Come deve essere fatto il file
+
+Nella **prima riga** ci sono i nomi delle colonne. Servono:
+
+- **Data**;
+- **Importo**, oppure **Entrata** e **Uscita** in due colonne separate.
+
+Sono facoltative: **Tipo, Conto, Modalità, Voce, Attività, N. tessera, Persona, Descrizione, Competenza, Riferimento**. Il programma riconosce anche i nomi simili (per esempio «Causale» per la voce o «Socio» per la persona).
+
+- Le **date** vanno bene come `15/01/2025` o `2025-01-15`; gli importi come `1.234,56` o `1234.56`.
+- Con la sola colonna **Importo**, un importo negativo è una **uscita**, uno positivo un'**entrata** (oppure usa la colonna **Tipo**).
+- Le righe vuote o quelle di totale (senza data e senza importo) vengono ignorate.
+- **Il file che esporti da Prima nota con «Esporta l'anno fiscale (CSV)» si ricarica così com'è.**
+
+## Cosa succede con i dati del file
+
+- **Conti**: se un conto non esiste, **si crea** (con saldo iniziale zero). L'anteprima ti dice quali conti nuovi nascono.
+- **Voci, persone, attività**: se il nome non si riconosce, il movimento si importa lo stesso con una **voce generica**, oppure **senza persona** o **senza attività**; nella colonna **Note** dell'anteprima vedi l'avviso. Con **N. tessera** o **Persona** il movimento si collega alla scheda del socio.
+- **Modalità** non riconosciuta: si usa «Altro».
+- **Doppioni**: un movimento uguale a uno già in prima nota (stessa data, conto, importo, descrizione e riferimento) **viene saltato**. Puoi quindi ricaricare lo stesso file senza duplicare i movimenti.
+- **Giroconti**: due righe con la **stessa data e lo stesso importo**, una in uscita da un conto e una in entrata su un altro, diventano **un giroconto**. Se manca la riga corrispondente, quella riga **non si importa**: registrala da **Giroconto tra conti**.
+- **Ricevute**: **non se ne emettono**. I movimenti importati sono storici, come se li avessi registrati a mano senza ricevuta.
+
+## L'anteprima
+
+In alto vedi i conteggi: **movimenti nuovi, giroconti, doppioni, saltati, con errori**, il periodo coperto e il totale di entrate e uscite. Sotto, riga per riga, l'**esito** (nuovo, giroconto, doppione, saltato, errore) e le note. Le righe con errori **non si importano**: correggile nel file e ricaricalo; i doppioni verranno saltati e si aggiungerà solo il resto.
+
+Se una riga viene rifiutata durante l'importazione, le altre si registrano comunque e il motivo compare sotto **«Righe non importate»**.
+
+## Prima di importare anni passati
+
+Se il file contiene movimenti di un **anno fiscale già chiuso**, quell'anno non accetta nuovi movimenti. Le righe di quell'anno **non si importano** e compaiono sotto **«Righe non importate»** con il messaggio «L'anno fiscale … è chiuso: per modificarlo va riaperto.». **Le righe degli altri anni, invece, si importano lo stesso.** Se vuoi importare anche quelle, [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) e **ricarica lo stesso file**: i movimenti già entrati vengono saltati come doppioni e si aggiunge solo il resto.
+
+Controlla anche i **saldi iniziali** dei conti. L'importazione registra solo movimenti: il **saldo iniziale** lo imposta solo per i conti nuovi, a zero, e non cambia quello dei conti già esistenti. Il **saldo attuale** invece cambia, perché i movimenti importati contano: se importi anni passati verifica che torni con la tua banca e la tua cassa.
+
+## Correggere un'importazione sbagliata
+
+I movimenti importati si correggono come gli altri: non si cancellano, si **stornano uno per uno** dalla Prima nota (vedi [Registrare un incasso e una spesa](guida:gestionale-registrare-un-incasso-e-una-spesa)). L'importazione viene scritta nel **registro azioni**.
+
+**Nella demo il caricamento dei file è spento**: l'importazione si prova sul gestionale vero.
 MD,
     ],
     [

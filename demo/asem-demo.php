@@ -37,6 +37,12 @@ add_action( 'init', function () {
 add_action( 'admin_post_asem_save_license', function () {
 	wp_die( 'Nella demo la licenza non si cambia.', '', array( 'response' => 403, 'back_link' => true ) );
 }, 0 );
+// Nessuno scarico della copia di sicurezza dalla demo (né la copia nuova né quelle già salvate): decisione del titolare del 16/11/2026.
+foreach ( array( 'asem_backup', 'asem_backup_saved' ) as $asem_demo_blocked ) {
+	add_action( 'admin_post_' . $asem_demo_blocked, function () {
+		wp_die( 'Nella demo questa operazione è bloccata.', '', array( 'response' => 403, 'back_link' => true ) );
+	}, 0 );
+}
 add_action( 'admin_init', function () {
 	if ( ! isset( $_GET['page'] ) || ! class_exists( '\AssociazioneSemplice\License' ) ) { // solo le pagine del pannello: mai gli scarichi (come la copia di sicurezza)
 		return;
