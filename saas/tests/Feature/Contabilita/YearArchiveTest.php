@@ -106,7 +106,7 @@ it('la copia di sicurezza ha anche le ricevute degli anni archiviati', function 
     $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
 
     $zip = new ZipArchive;
-    $zip->open($this->actingAs($this->owner)->get('/gestionale/esportazione.zip')->assertOk()->baseResponse->getFile()->getPathname());
+    $zip->open($this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')->assertOk()->baseResponse->getFile()->getPathname());
     $names = [];
     for ($i = 0; $i < $zip->numFiles; $i++) {
         $names[] = (string) $zip->getNameIndex($i);

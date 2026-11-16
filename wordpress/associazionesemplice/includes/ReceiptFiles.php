@@ -45,7 +45,7 @@ final class ReceiptFiles {
 		add_action( self::CRON, array( __CLASS__, 'cron_batch' ), 10, 2 );
 		add_filter( 'asem_file_sources', array( __CLASS__, 'file_sources' ) ); // i PDF si cifrano come gli altri file riservati
 		add_filter( 'asem_backup_documents', array( __CLASS__, 'backup_documents' ) );
-		add_filter( 'asem_backup_restore_documents', array( __CLASS__, 'restore_documents' ), 10, 3 );
+		add_filter( 'asem_backup_restore_documents', array( __CLASS__, 'restore_documents' ), 10, 4 );
 		add_action( 'asem_reset_private_files', array( __CLASS__, 'delete_all' ) );
 	}
 
@@ -695,19 +695,26 @@ final class ReceiptFiles {
 	 * Filtro `asem_backup_restore_documents`: dopo il ripristino delle tabelle, rimette sul disco i PDF fissati. I percorsi si leggono dal DATABASE
 	 * appena ripristinato (mai dai nomi dentro lo ZIP) e un file si accetta solo se la sua impronta coincide con quella registrata.
 	 *
-	 * @param array $res counters: restored, present, missing, bad
+	 * @param array      $res    counters: restored, present, missing, bad, closed (rimessi ma chiusi: la chiave per aprirli non c'è ancora)
+	 * @param mixed      $zip    la copia aperta
+	 * @param array      $manifest il manifest della copia
+	 * @param array|null $index  l'indice dei PDF già letto e controllato dal ripristino prima di toccare i dati (se manca si legge dallo ZIP)
 	 * @return array
 	 */
-	public static function restore_documents( $res, $zip, $manifest = array() ): array {
-		$res = array_merge( array( 'restored' => 0, 'present' => 0, 'missing' => 0, 'bad' => 0 ), (array) $res );
+	public static function restore_documents( $res, $zip, $manifest = array(), $index = null ): array {
+		$res = array_merge( array( 'restored' => 0, 'present' => 0, 'missing' => 0, 'bad' => 0, 'closed' => 0 ), (array) $res );
 		if ( ! $zip instanceof \ZipArchive ) {
 			return $res;
 		}
 		$db    = self::db();
 		$last  = 0;
 		$files = array(); // nome nello ZIP => impronta del file com'è nello ZIP (cifrato), dall'indice
-		$raw   = $zip->getFromName( 'documenti/indice.json' );
-		$idx0  = $raw ? json_decode( $raw, true ) : null;
+		if ( is_array( $index ) ) {
+			$idx0 = $index;
+		} else {
+			$raw  = $zip->getFromName( 'documenti/indice.json' );
+			$idx0 = $raw ? json_decode( $raw, true ) : null;
+		}
 		foreach ( is_array( $idx0 ) && isset( $idx0['files'] ) && is_array( $idx0['files'] ) ? $idx0['files'] : array() as $f ) {
 			if ( is_array( $f ) && ! empty( $f['name'] ) && ! empty( $f['file_sha256'] ) ) {
 				$files[ (string) $f['name'] ] = strtolower( (string) $f['file_sha256'] );
@@ -770,7 +777,8 @@ final class ReceiptFiles {
 					}
 					$wrote = strlen( $bytes ) === fwrite( $h, $bytes ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- file privato
 					fclose( $h ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- file privato
-					$good = false;
+					$good   = false;
+					$closed = false;
 					if ( $wrote ) {
 						try {
 							if ( self::is_stored_encrypted( $tmp, $r[ self::enc_col( $kind ) ] ?? null ) ) {
@@ -780,7 +788,12 @@ final class ReceiptFiles {
 								$good = strlen( $bytes ) <= self::MAX_SIZE && hash_equals( (string) $r[ $c[1] ], hash( 'sha256', $bytes ) );
 							}
 						} catch ( FileCryptError $e ) {
-							$good = false;
+							// La chiave per aprirlo non c'è (copia fatta altrove e rimessa senza frase, o server senza sodium): se il file nello ZIP è quello
+							// dell'indice (stessa impronta del file com'è) si rimette chiuso; si aprirà quando la chiave sarà riaperta.
+							if ( in_array( $e->reason, array( FileCryptError::NO_KEY, FileCryptError::NO_SODIUM ), true ) && '' !== $want ) {
+								$good   = true;
+								$closed = true;
+							}
 						}
 					}
 					if ( ! $good ) {
@@ -796,6 +809,9 @@ final class ReceiptFiles {
 					}
 					if ( @rename( $tmp, $abs ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename -- sostituzione atomica sullo stesso disco
 						$res['restored']++;
+						if ( $closed ) {
+							$res['closed']++;
+						}
 					} else {
 						wp_delete_file( $tmp );
 						$res['bad']++;

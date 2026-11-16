@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Console;
 
 use App\Modules\Core\Demo\DemoEnvironment;
+use App\Modules\Core\Demo\DemoResetGuard;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
@@ -28,9 +29,27 @@ final class DemoResetCommand extends Command
             return self::FAILURE;
         }
 
+        // Prima di cancellare: database atteso, nessuna associazione estranea, cartella della demo.
+        $refusal = DemoResetGuard::check();
+        if ($refusal !== null) {
+            $this->error($refusal);
+
+            return self::FAILURE;
+        }
+
         $status = $this->call('saas:migrate', ['--fresh' => true, '--database' => ['shared'], '--force' => true]);
         if ($status !== self::SUCCESS) {
             return self::FAILURE;
+        }
+
+        // I file cifrati dell'associazione precedente non servono più: senza questa pulizia crescono a ogni notte.
+        $root = config('filesystems.disks.org_files.root');
+        $marker = config('saas.demo.path_marker');
+        $removed = DemoResetGuard::clearFiles(is_string($root) ? $root : '', is_string($marker) ? $marker : 'saas-demo');
+        if ($removed === null) {
+            $this->warn('Cartella dei file non toccata: non sta nella cartella della demo.');
+        } else {
+            $this->line("File della demo precedente tolti: {$removed}.");
         }
 
         try {

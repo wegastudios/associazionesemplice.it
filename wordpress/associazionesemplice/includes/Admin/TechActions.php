@@ -168,14 +168,14 @@ final class TechActions {
 	public static function enc_setrecovery( array $p ): array {
 		\AssociazioneSemplice\FileKey::set_custom_phrase( (string) ( $p['rphrase'] ?? '' ), (string) ( $p['rphrase2'] ?? '' ) );
 		Audit::log( 'file_crypt.phrase_changed', 'folder', 0 );
-		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Frase cambiata. Conservala fuori dal sito. Fai subito una copia nuova: quelle fatte prima si aprono con la frase di allora.' ) );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Frase cambiata. Conservala fuori dal sito.' ) . ' ' . \AssociazioneSemplice\Admin\FileCryptPanel::phrase_changed_text() );
 	}
 
 	/** «Torna alla frase automatica». */
 	public static function enc_autophrase( array $p ): array {
 		\AssociazioneSemplice\FileKey::use_auto_phrase();
 		Audit::log( 'file_crypt.phrase_auto', 'folder', 0 );
-		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Tornata alla frase automatica. Fai subito una copia nuova: quelle fatte prima si aprono con la frase di allora.' ) );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Tornata alla frase automatica.' ) . ' ' . \AssociazioneSemplice\Admin\FileCryptPanel::phrase_changed_text() );
 	}
 
 	/** Chiave che non si apre più: con la frase di recupero si riapre, senza ricifrare i file. */

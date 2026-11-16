@@ -189,7 +189,8 @@ final class FileCryptPanel {
 		$back = Ui::url( 'asem-backup' ) . '#asem-cifratura';
 		echo '<h2 id="asem-cifratura">' . esc_html( Texts::t( 'Cifratura dei file riservati' ) ) . '</h2>';
 		echo '<p>' . esc_html( Texts::t( 'Certificati medici, documenti e scansioni, allegati dei movimenti, giustificativi dei rimborsi, foto dell\'inventario e PDF delle ricevute si salvano cifrati sul disco: chi si portasse via la sola cartella dei file, senza il database, non potrebbe leggerli. La chiave la gestisce il plugin da solo.' ) ) . '</p>';
-		echo '<p class="description">' . esc_html( Texts::t( 'Non protegge allo stesso modo da chi ha anche il database e il file wp-config.php: può aprire i file se conosce o indovina la frase (vedi sotto).' ) ) . '</p>';
+		echo '<p><strong>' . esc_html( Texts::t( 'Questa protezione serve se qualcuno porta via la cartella dei file. Non sostituisce la sicurezza del sito e del suo database.' ) ) . '</strong></p>';
+		echo '<p class="description">' . esc_html( Texts::t( 'Protegge se qualcuno porta via la sola cartella dei file. Chi ha anche il database può aprirli quando la frase è quella automatica (la data di creazione della chiave) o il codice di licenza, perché stanno nel database. Con una frase tua, nel plugin senza licenza, servono anche il file wp-config.php o la frase.' ) ) . '</p>';
 
 		if ( ! FileCrypt::available() ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Questo server non ha la libreria di cifratura (sodium): la funzione non è attiva. I file si salvano in chiaro (con questo avviso) e i nuovi certificati medici non si possono caricare. Va chiesto a chi gestisce il server o l\'hosting di attivare l\'estensione sodium di PHP.' ) ) . '</p></div>';
@@ -229,18 +230,18 @@ final class FileCryptPanel {
 		echo '<p><strong>' . esc_html( self::phrase_line() ) . '</strong></p>';
 		if ( 'timestamp' === $kind ) {
 			echo '<p>' . esc_html( Texts::t( 'Conservala fuori dal sito (su carta o in un gestore di password): se perdi il sito, altrimenti non la ritrovi.' ) ) . ' ';
-			echo '<button type="button" class="button" id="asem-frase-stampa" data-text="' . esc_attr( Texts::t( 'Associazione Semplice: frase per riaprire i documenti riservati' ) . "\n\n" . FileKey::activated_at() . "\n\n" . Texts::t( 'Va scritta esattamente come la vedi qui, spazi e trattini compresi.' ) ) . '">' . esc_html( Texts::t( 'Stampa' ) ) . '</button></p>';
+			echo '<button type="button" class="button" id="asem-frase-stampa" data-text="' . esc_attr( Texts::t( 'Associazione Semplice: frase per riaprire i documenti riservati' ) . "\n\n" . self::timestamp_text( FileKey::activated_at() ) ) . '">' . esc_html( Texts::t( 'Stampa' ) ) . '</button></p>';
 			Ui::inline_js( 'document.getElementById("asem-frase-stampa").addEventListener("click",function(){var w=window.open("","_blank","width=520,height=360");if(!w){return;}var p=w.document.createElement("pre");p.style.fontSize="18px";p.textContent=this.getAttribute("data-text");w.document.body.appendChild(p);w.focus();w.print();});' );
 		}
 		if ( FileKey::phrase_changed_at() > (int) get_user_meta( get_current_user_id(), Backup::META_DOWNLOADED, true ) ) {
-			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html( Texts::t( 'Fai subito una copia nuova: quelle fatte prima si aprono con la frase di allora.' ) ) . '</strong> <a href="' . esc_url( Backup::download_link( true ) ) . '">' . esc_html( Texts::t( 'Scarica la copia con gli allegati' ) ) . '</a></p></div>';
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html( self::phrase_changed_text() ) . '</strong> <a href="' . esc_url( Backup::download_link( true ) ) . '">' . esc_html( Texts::t( 'Scarica la copia con gli allegati' ) ) . '</a></p></div>';
 		}
-		echo '<p class="description">' . esc_html( Texts::t( 'Quanto protegge: chi si portasse via la sola cartella dei file non può leggerli. Chi ha anche il database e il file wp-config.php può aprirli se conosce o indovina la frase. La data di attivazione si indovina facilmente; il codice di licenza vale quanto il segreto del codice, che conosce anche Associazione Semplice e sta nelle email di acquisto.' ) ) . ' ' . esc_html( Texts::t( 'Se queste parole non ti dicono nulla, chiedi a chi gestisce il sito.' ) ) . '</p>';
-		echo '<p class="description"><strong>' . esc_html( Texts::t( 'Per proteggere di più: una frase tua e lunga (almeno quattro parole) e la costante ASEM_ENC_KEY in wp-config.php.' ) ) . '</strong></p>';
+		echo '<p class="description">' . esc_html( Texts::t( 'Quanto protegge: chi si porta via la sola cartella dei file non può leggerli. Chi ha anche il database può aprirli quando la frase è quella automatica o il codice di licenza, perché stanno nel database. La frase serve a te, per riaprire i documenti su un altro sito o dopo un cambio dei codici di sicurezza.' ) ) . ' ' . esc_html( Texts::t( 'Se queste parole non ti dicono nulla, chiedi a chi gestisce il sito.' ) ) . '</p>';
+		echo '<p class="description"><strong>' . esc_html( Texts::t( 'Per proteggere di più: nel plugin senza licenza, una frase tua e lunga (almeno quattro parole); in ogni caso la costante ASEM_ENC_KEY in wp-config.php, che sta fuori dal database. Con la licenza il codice di licenza apre sempre: la frase tua serve solo a riaprire i documenti.' ) ) . '</strong></p>';
 		echo '<details style="margin:1em 0"><summary>' . esc_html( Texts::t( 'Cambia la frase' ) ) . '</summary>';
 		echo '<p><strong>' . esc_html( Texts::t( 'Scegli una frase e conservala fuori dal sito (su carta o in un gestore di password): serve a riaprire i documenti se il sito viene spostato o riparato.' ) ) . '</strong></p>';
 		echo '<p>' . esc_html( Texts::t( 'Scegli una frase lunga (almeno {n} caratteri, meglio almeno quattro parole). Prima di cambiare i codici di sicurezza di wp-config.php o ASEM_ENC_KEY, controlla di avere la frase: serve per riaprire i documenti.', array( 'n' => FileKey::RECOVERY_MIN ) ) ) . '</p>';
-		echo '<p><strong>' . esc_html( Texts::t( 'Dopo averla cambiata, fai subito una copia nuova: quelle fatte prima si aprono con la frase di allora.' ) ) . '</strong></p>';
+		echo '<p><strong>' . esc_html( self::phrase_changed_text() ) . '</strong></p>';
 		$note = self::kdf_note();
 		if ( '' !== $note ) {
 			echo '<p class="description">' . esc_html( $note ) . '</p>';
@@ -269,7 +270,22 @@ final class FileCryptPanel {
 				? Texts::t( 'Hai scelto una frase tua: conservala. Il codice di licenza apre comunque i documenti.' )
 				: Texts::t( 'Hai scelto una frase tua: conservala.' );
 		}
-		return Texts::t( 'La frase è la data e l\'ora di attivazione del plugin: {timestamp}. Va scritta esattamente come la vedi qui, spazi e trattini compresi. Conservala (è stampabile).', array( 'timestamp' => FileKey::activated_at() ) );
+		return self::timestamp_text( FileKey::activated_at() ) . ' ' . Texts::t( 'Conservala (è stampabile).' );
+	}
+
+	/** La frase automatica: che cos'è davvero (il momento in cui è nata la chiave, non la data di installazione). */
+	public static function timestamp_text( string $timestamp ): string {
+		return Texts::t( 'La frase è la data e l\'ora in cui è stata creata la chiave dei file, in UTC: {timestamp}. Non è la data di installazione del plugin. Va scritta esattamente così, spazi e trattini compresi.', array( 'timestamp' => $timestamp ) );
+	}
+
+	/** Dopo il cambio frase: cosa succede alle copie fatte prima. */
+	public static function phrase_changed_text(): string {
+		return Texts::t( 'Hai cambiato la frase. Le copie fatte prima si aprono ancora con la frase di allora, e con quella si aprono anche i file salvati dopo: la chiave dei file non cambia. Conservale con cura o cancellale; non c\'è ancora un cambio completo della chiave.' );
+	}
+
+	/** La copia con gli allegati: come si apre e come tenerla. */
+	public static function copy_open_text(): string {
+		return Texts::t( 'La copia con gli allegati si apre con la frase (nel gratuito la data e ora in cui è stata creata la chiave; con la licenza il codice di licenza, che conosce anche Associazione Semplice e sta nelle email di acquisto). Conservala fuori dal sito. Chi ha la copia e la frase apre i documenti: tratta la copia come un dato riservato.' );
 	}
 
 	/** Cosa protegge la copia di sicurezza, senza promettere più del vero. */
@@ -280,9 +296,9 @@ final class FileCryptPanel {
 			return $out . Texts::t( 'Con la frase che hai scelto la copia vale quanto quella frase: più è lunga, meglio è.' );
 		}
 		if ( 'license' === $kind ) {
-			return $out . Texts::t( 'Con il codice di licenza la copia vale quanto il segreto del codice, che conosce anche Associazione Semplice e sta nelle email di acquisto. Per proteggerla di più scegli una frase tua e lunga (almeno quattro parole) e aggiungi la costante ASEM_ENC_KEY.' );
+			return $out . self::copy_open_text();
 		}
-		return $out . Texts::t( 'Con la data di attivazione la copia è protetta da un\'apertura per sbaglio, non da chi vuole aprirla. Per proteggerla davvero scegli una frase tua e lunga (almeno quattro parole) e aggiungi la costante ASEM_ENC_KEY.' );
+		return $out . self::copy_open_text();
 	}
 
 	private static function protection(): void {
@@ -381,10 +397,10 @@ final class FileCryptPanel {
 	private static function recovery( string $back ): void {
 		echo '<h3>' . esc_html( Texts::t( 'Sistemare la chiave' ) ) . '</h3>';
 		self::forward_line();
-		echo '<p>' . esc_html( Texts::t( 'Scrivi qui la frase (o il codice di licenza): la chiave si riapre e i file tornano leggibili, senza cifrarli di nuovo. Se non l\'hai cambiata, la frase è il codice di licenza o, nel plugin gratuito, la data e l\'ora di attivazione.' ) ) . '</p>';
+		echo '<p>' . esc_html( Texts::t( 'Scrivi qui la frase (o il codice di licenza): la chiave si riapre e i file tornano leggibili, senza cifrarli di nuovo. Se non l\'hai cambiata, la frase è il codice di licenza o, nel plugin gratuito, la data e l\'ora in cui è stata creata la chiave dei file (non la data di installazione del plugin).' ) ) . '</p>';
 		$when = 'timestamp' === FileKey::phrase_kind() ? FileKey::activated_at_saved() : '';
 		if ( '' !== $when ) {
-			echo '<p><strong>' . esc_html( Texts::t( 'Se non l\'hai cambiata, la frase è la data e ora di attivazione: {when}. Va scritta esattamente così, spazi e trattini compresi.', array( 'when' => $when ) ) ) . '</strong></p>';
+			echo '<p><strong>' . esc_html( Texts::t( 'Se non l\'hai cambiata, la frase è la data e l\'ora in cui è stata creata la chiave dei file, in UTC: {when}. Non è la data di installazione del plugin. Va scritta esattamente com\'era, spazi e trattini compresi.', array( 'when' => $when ) ) ) . '</strong></p>';
 		}
 		Ui::form_open( 'asem_enc_recoverphrase', $back, false );
 		echo '<p><label>' . esc_html( Texts::t( 'Frase o codice di licenza' ) ) . '<br><input type="password" name="recovery_phrase" class="regular-text" autocomplete="off" required></label></p>'

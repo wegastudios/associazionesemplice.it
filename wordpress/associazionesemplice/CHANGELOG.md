@@ -2,6 +2,20 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.25
+- Prima di aggiornare fai una copia di sicurezza. Dopo l'aggiornamento: 1) inserisci email e telefono della segreteria e i dati dell'associazione che la banda gialla in alto ti chiede (forma, codice fiscale, sede, RUNTS, PEC, partita IVA: se l'associazione non ce l'ha, spunta «non ce l'ha»); 2) in Impostazioni → Copia di sicurezza premi «Cifra i file già caricati»: i file nuovi si salvano già cifrati, quelli vecchi si cifrano da quel momento; 3) nella stessa pagina trovi la frase che riapre i documenti: conservala fuori dal sito.
+- Quota doppia: la prima nota rifiuta una seconda quota dello stesso anno e lo spiega; due incassi insieme non registrano due volte; annullando un incasso la tessera si toglie solo se non ce ne sono altri validi
+- Contatti della segreteria obbligatori: email e telefono vanno inseriti; finché mancano, la segreteria non può inviare messaggi ai soci a mano (gli invii automatici, come il link di accesso, partono lo stesso); i messaggi riportano i contatti e le risposte arrivano alla segreteria
+- Dati dell'associazione obbligatori: forma, codice fiscale, sede, numero RUNTS, PEC e partita IVA, ognuno con la casella «non ce l'ha»; il legale rappresentante è la persona con la carica di presidente; una banda gialla in alto elenca cosa manca, con il pulsante «Completali ora»
+- File riservati cifrati (documenti e scansioni, allegati dei movimenti, foto dell'inventario) con una frase per riaprirli e il foglio stampabile; la copia di sicurezza porta i file cifrati. Protegge da chi porta via la sola cartella dei file; per una protezione più alta scegli una frase tua e lunga
+- Cartella dei file riservati: ogni settimana il programma controlla che non sia raggiungibile da internet e avvisa l'amministratore; la cartella si può tenere fuori dalla parte pubblica del sito e «Sposta i file» copia e controlla prima di cancellare
+- Ripristino della copia più sicuro: le copie sono firmate e una copia modificata viene rifiutata; una copia fatta su un altro sito si ripristina solo con una conferma scritta e la password; soci e prima nota si ripristinano anche se manca la frase; le password dei soci non fanno parte del ripristino (i soci rientrano con il link). Dopo un cambio dei codici di sicurezza le copie fatte prima chiedono la conferma per altro sito
+- Le pagine riservate ai soci non vengono salvate dalla cache delle pagine
+- Più sicurezza su file temporanei e lavori simultanei (chiavi, numerazione)
+- Le copie di sicurezza e i file CSV si aprono bene in Excel (accenti corretti)
+- Più messaggi e frasi con numeri anche in inglese
+- Il rendiconto e la prima nota non cambiano: nessuna modifica ai dati contabili.
+
 ## 1.3.24
 - La tessera segue l'anno sociale: l'etichetta è «2026» oppure «2026/2027», e negli ultimi giorni prima della scadenza si può rinnovare in anticipo; se cambi il mese, vale solo per le tessere nuove
 - Anno sociale e anno fiscale si scelgono subito all'installazione, al primo passo della procedura guidata
