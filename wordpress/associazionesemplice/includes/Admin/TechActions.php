@@ -246,7 +246,6 @@ final class TechActions {
 				'bank_accounts'     => $accounts,
 			)
 		);
-		\AssociazioneSemplice\Bank::notify_change( $old, $accounts );
 		return array( Ui::url( 'asem-bank' ), 'Coordinate bancarie salvate.' . ( \AssociazioneSemplice\Bank::signature( $old ) !== \AssociazioneSemplice\Bank::signature( $accounts ) ? ' Gli amministratori sono stati avvisati per email del cambio.' : '' ) );
 	}
 
