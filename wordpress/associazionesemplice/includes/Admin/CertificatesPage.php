@@ -60,7 +60,7 @@ final class CertificatesPage {
 		if ( $limited ) {
 			$all        = false;
 			$activities = array_intersect_key( $activities, array_flip( Certificates::scoped_activity_ids() ) );
-			echo '<p class="description">' . esc_html( Texts::t( 'Vedi lo stato e apri il certificato solo di chi è iscritto alle tue attività. Ogni apertura del file resta scritta nel registro azioni.' ) ) . '</p>';
+			echo '<p class="description">' . esc_html( Texts::t( 'Vedi lo stato e apri il certificato solo di chi è iscritto alle tue attività. Ogni apertura del file resta scritta nel registro azioni.' ) ) . ' ' . esc_html( Texts::t( 'Chi ha l\'area Corsi o Eventi vede i certificati degli iscritti alle attività di cui è istruttore e di quelle senza istruttore.' ) ) . '</p>';
 		}
 		$args = array( 'filter' => $filter, 'activity' => $act, 'all' => $all ? 1 : '' );
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-medical">'

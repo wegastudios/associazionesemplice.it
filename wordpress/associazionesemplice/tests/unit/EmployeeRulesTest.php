@@ -209,6 +209,14 @@ final class EmployeeRulesTest extends TestCase {
 		}
 	}
 
+	public function test_limited_certificate_view_follows_the_instructor_rule(): void {
+		$this->assertTrue( EmployeeRules::instructor_in_scope( 0, 0 ), 'senza istruttore: si vede' );
+		$this->assertTrue( EmployeeRules::instructor_in_scope( 0, 7 ), 'senza istruttore: si vede' );
+		$this->assertTrue( EmployeeRules::instructor_in_scope( 7, 7 ), 'istruttore: io' );
+		$this->assertFalse( EmployeeRules::instructor_in_scope( 8, 7 ), 'un altro istruttore: non si vede' );
+		$this->assertFalse( EmployeeRules::instructor_in_scope( 8, 0 ), 'nessuna persona collegata: solo le attività senza istruttore' );
+	}
+
 	public function test_dates_are_validated(): void {
 		$this->assertSame( '2026-02-28', EmployeeRules::clean_date( '2026-02-28' ) );
 		$this->assertNull( EmployeeRules::clean_date( '2026-02-30' ) );
