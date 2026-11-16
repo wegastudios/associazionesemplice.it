@@ -10773,8 +10773,82 @@ asem_ok( $acts->has_active_booking( $er_sid( $er_c ), $er_gid ) && ! $er::pendin
 $wpdb->update( $er_tbl, array( 'updated_at' => wp_date( 'Y-m-d H:i:s', time() - 40 * DAY_IN_SECONDS ) ), array( 'id' => $er_rid ) );
 $er::run();
 asem_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $er_tbl WHERE id = %d", $er_rid ) ), 'privacy: le richieste di oltre 30 giorni si cancellano' );
+// Tetti: coda separata dalle domande di adesione, richieste mai confermate che scadono, posti per email e per connessione, segreteria libera.
+wp_set_current_user( 0 );
+$er_remote = $_SERVER['REMOTE_ADDR'] ?? null;
+$_SERVER['REMOTE_ADDR'] = '203.0.113.77'; // da riga di comando non c'è: serve per il conteggio per connessione
+$er_ip     = \AssociazioneSemplice\ClientIp::get();
+$er_keyem  = static function ( string $e ): string {
+	return 'asem_evq_se_' . md5( strtolower( $e ) );
+};
+$er_keyip  = 'asem_evq_si_' . md5( $er_ip );
+$er_cnt    = static function ( string $e ) use ( $wpdb, $er_tbl ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $er_tbl WHERE email = %s", $e ) );
+};
+$er_reset  = static function () use ( $er_keyip ) {
+	delete_transient( $er_keyip );
+	delete_transient( 'asem_evq_dropped' );
+};
+$er_r      = array_merge( $er_in, array( 'tax_code' => 'NRIMRC92D15F205P', 'first_name' => 'Nora', 'last_name' => 'Pagamenti', 'birth_date' => '1992-04-15' ) );
+$er_reset();
+Settings::update( array( 'limits' => array( 'event_seats_per_email' => 10, 'event_seats_per_ip' => 500, 'event_requests_max' => 5000 ) ) );
+set_transient( $er_keyem( 'tetto.email@example.com' ), 9, DAY_IN_SECONDS );
+$er_t1 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
+$er_t2 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.email@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 'ok' === $er_t1['status'] && 'ok' === $er_t2['status'] && 1 === $er_cnt( 'tetto.email@example.com' ), 'tetto posti: la stessa email non supera i posti consentiti in 24 ore, e la risposta è sempre la stessa' );
+$er_reset();
+Settings::update( array( 'limits' => array( 'event_seats_per_email' => 200, 'event_seats_per_ip' => 10, 'event_requests_max' => 5000 ) ) );
+set_transient( $er_keyip, 10, DAY_IN_SECONDS );
+$er_t3 = $er::create( array_merge( $er_r, array( 'email' => 'tetto.ip1@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 'ok' === $er_t3['status'] && 0 === $er_cnt( 'tetto.ip1@example.com' ), 'tetto posti: la stessa connessione non supera i posti consentiti, con email diverse' );
+wp_set_current_user( 1 );
+$er::create( array_merge( $er_r, array( 'email' => 'tetto.segreteria@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 1 === $er_cnt( 'tetto.segreteria@example.com' ), 'tetto posti: la segreteria non è mai limitata' );
+wp_set_current_user( 0 );
+$er_reset();
+$er::create( array_merge( $er_r, array( 'email' => 'tetto.ok@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 1 === $er_cnt( 'tetto.ok@example.com' ) && 1 === (int) get_transient( $er_keyip ) && 1 === (int) get_transient( $er_keyem( 'tetto.ok@example.com' ) ), 'tetto posti: una richiesta normale passa e i suoi posti si contano' );
+add_filter( 'asem_event_request_challenge', '__return_false' );
+$er::create( array_merge( $er_r, array( 'email' => 'tetto.verifica@example.com' ) ), $acts->get( $er_a ), $er_o );
+remove_filter( 'asem_event_request_challenge', '__return_false' );
+asem_ok( 0 === $er_cnt( 'tetto.verifica@example.com' ), 'tetto posti: una verifica aggiuntiva (agganciata al filtro) può fermare la richiesta' );
+// Coda: conta solo ciò che aspetta la segreteria e le richieste da confermare ancora valide; separata dalle domande di adesione.
+$er_reset();
+$er_before = $er::open_count();
+Settings::update( array( 'limits' => array( 'event_requests_max' => 10, 'event_seats_per_email' => 200, 'event_seats_per_ip' => 500 ) ) );
+$er_fake = function ( string $status, int $age_h, string $email ) use ( $wpdb, $er_tbl, $er_a, $er_sid ) {
+	$wpdb->insert( $er_tbl, array( 'activity_id' => $er_a, 'session_id' => $er_sid( $er_a ), 'seats' => 1, 'status' => $status, 'token_hash' => hash( 'sha256', $email ), 'email' => $email, 'created_at' => wp_date( 'Y-m-d H:i:s', time() - $age_h * HOUR_IN_SECONDS ), 'updated_at' => \AssociazioneSemplice\Db::now() ) );
+};
+for ( $i = 0; $i < 12; $i++ ) {
+	$er_fake( 'new', 48, "vecchia$i@example.com" );
+}
+asem_ok( $er::open_count() === $er_before && ! $er::queue_full() && '' === $er::queue_alert(), 'coda: le richieste mai confermate e già scadute non contano contro il tetto' );
+$er::run();
+asem_ok( 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $er_tbl WHERE email LIKE 'vecchia%@example.com'" ), 'coda: le richieste mai confermate si cancellano alla scadenza del link' );
+$er_fake( 'new', 2, 'recente@example.com' );
+asem_ok( $er::open_count() === $er_before + 1 && 1 === $er_cnt( 'recente@example.com' ), 'coda: una richiesta da confermare ancora valida conta' );
+$er::run();
+asem_ok( 1 === $er_cnt( 'recente@example.com' ), 'coda: la scadenza non tocca le richieste ancora valide' );
+for ( $i = 0; $i < 10; $i++ ) {
+	$er_fake( 'approval', 1, "attesa$i@example.com" );
+}
+asem_ok( $er::queue_full() && false !== strpos( $er::queue_alert(), 'al limite' ), 'coda: al tetto compare l\'avviso per la segreteria' );
+$er::create( array_merge( $er_r, array( 'email' => 'coda.piena@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 0 === $er_cnt( 'coda.piena@example.com' ) && (int) get_transient( 'asem_evq_dropped' ) >= 1 && false !== strpos( $er::queue_alert(), 'scartat' ), 'coda: al tetto la nuova richiesta è scartata (la risposta resta quella di sempre) e l\'avviso lo dice' );
+asem_ok( 'ok' === $er::course_create( array_merge( $er_r, array( 'email' => 'coda.corso@example.com' ) ), $er_ca )['status'] && 0 === $er_cnt( 'coda.corso@example.com' ), 'coda: lo stesso tetto vale per le richieste di iscrizione a un corso' );
+wp_set_current_user( 1 );
+$er::create( array_merge( $er_r, array( 'email' => 'coda.segreteria@example.com' ) ), $acts->get( $er_a ), $er_o );
+asem_ok( 1 === $er_cnt( 'coda.segreteria@example.com' ), 'coda: la segreteria non è limitata nemmeno a coda piena' );
+$wpdb->query( "DELETE FROM $er_tbl WHERE email LIKE 'attesa%@example.com' OR email LIKE 'tetto.%@example.com' OR email LIKE 'coda.%@example.com' OR email = 'recente@example.com'" );
+$er_reset();
+Settings::update( array( 'limits' => array() ) );
+if ( null === $er_remote ) {
+	unset( $_SERVER['REMOTE_ADDR'] );
+} else {
+	$_SERVER['REMOTE_ADDR'] = $er_remote;
+}
 // Modulo nella pagina.
-$er_form = \AssociazioneSemplice\Frontend\Views::event_booking( (array) $acts->get( $er_a ) );
+$er_form =\AssociazioneSemplice\Frontend\Views::event_booking( (array) $acts->get( $er_a ) );
 asem_ok( false !== strpos( $er_form, 'asem_evreq_go' ) && false !== strpos( $er_form, 'name="tax_code"' ) && false !== strpos( $er_form, 'name="website"' ), 'pagina evento: il modulo «Non sei socio?» ha i dati e il campo esca' );
 update_post_meta( \AssociazioneSemplice\PublicEvents::post_of( $er_a ), '_asem_ev_guests', '0' );
 asem_ok( false === strpos( \AssociazioneSemplice\Frontend\Views::event_booking( (array) $acts->get( $er_a ) ), 'asem_evreq_go' ), 'pagina evento: senza l\'opzione ospiti il modulo non compare' );
