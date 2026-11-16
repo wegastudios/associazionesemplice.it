@@ -3,7 +3,7 @@ import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 
-defineProps({ canHealth: Boolean, years: Array, archives: Array });
+defineProps({ csrf: String, canHealth: Boolean, years: Array, archives: Array });
 const page = usePage();
 const withCertificates = ref(false);
 const archive = (y) => {
@@ -31,14 +31,15 @@ const day = (d) => (d ? d.split('-').reverse().join('/') : '');
                 <li>La prima nota e l'anagrafica si possono ricaricare con gli import.</li>
             </ul>
             <p v-if="page.props.errors?.export" class="mb-3 font-semibold text-danger" role="alert">{{ page.props.errors.export }}</p>
-            <form method="get" action="/gestionale/esportazione.zip" class="space-y-3">
+            <form method="post" action="/gestionale/esportazione.zip" class="space-y-3">
+                <input type="hidden" name="_token" :value="csrf" />
                 <label class="flex items-center gap-2"><span class="font-semibold">Documenti leggibili di</span>
                     <select name="anno" class="field w-auto"><option value="">tutti gli anni fiscali</option><option v-for="y in years" :key="y" :value="y">anno fiscale {{ y }}</option></select></label>
                 <div v-if="canHealth">
                     <label class="flex items-center gap-2 font-semibold"><input v-model="withCertificates" type="checkbox" name="certificati" value="1">Includi i certificati medici (dati sulla salute) in chiaro</label>
                     <p class="mt-1 text-muted">Sono dati sulla salute, in chiaro, senza protezione: conservali con cura e consegnali solo a chi ne ha titolo.</p>
                 </div>
-                <p class="text-muted">Dopo il clic la copia viene preparata: può richiedere qualche minuto. Il download parte da solo: non chiudere la pagina.</p>
+                <p class="text-muted">Prima di scaricare ti viene chiesta la password; dopo averla scritta, premi di nuovo «Scarica copia di sicurezza». La copia viene preparata: può richiedere qualche minuto. Il download parte da solo: non chiudere la pagina.</p>
                 <button type="submit" class="btn btn-primary">Scarica copia di sicurezza</button>
             </form>
         </section>

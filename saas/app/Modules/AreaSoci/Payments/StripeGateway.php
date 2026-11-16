@@ -75,6 +75,9 @@ final readonly class StripeGateway
             throw new RuntimeException('Stripe: pagamento non trovato, niente da rimborsare.');
         }
         $d = $this->call('POST', '/v1/refunds', $secret, ['payment_intent' => $intent, 'amount' => $cents], ['Idempotency-Key' => $idempotencyKey]);
+        if (in_array($d['status'] ?? null, ['failed', 'canceled'], true)) {
+            throw new RuntimeException('Stripe: il rimborso non è andato a buon fine.');
+        }
         $id = $d['id'] ?? null;
         if (! is_string($id)) {
             throw new RuntimeException('Stripe: rimborso senza conferma.');
@@ -121,7 +124,7 @@ final readonly class StripeGateway
         $data = $res->json();
         if (! $res->successful() || ! is_array($data)) {
             $msg = is_array($data) && is_array($data['error'] ?? null) && is_string($data['error']['message'] ?? null) ? $data['error']['message'] : 'risposta '.$res->status();
-            throw new RuntimeException('Stripe: '.$msg);
+            throw GatewayUnknown::applies($res) ? new GatewayUnknown('Stripe: '.$msg) : new RuntimeException('Stripe: '.$msg);
         }
 
         /** @var array<string, mixed> $data */

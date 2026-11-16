@@ -48,7 +48,7 @@ Route::middleware('web')->group(function (): void {
                 Route::post('/configurazione', [SetupController::class, 'save'])->name('setup.save');
                 Route::post('/configurazione/rimanda', [SetupController::class, 'skip'])->name('setup.skip');
                 Route::get('/esportazione', [ExportController::class, 'show'])->middleware('exports.allowed')->name('export');
-                Route::get('/esportazione.zip', [ExportController::class, 'download'])->middleware(['exports.allowed', 'throttle:3,1'])->name('export.download');
+                Route::post('/esportazione.zip', [ExportController::class, 'download'])->middleware(['exports.allowed', 'password.confirm', 'throttle:3,1'])->name('export.download');
                 Route::post('/archivio/{year}', [ArchiveController::class, 'archive'])->whereNumber('year')->middleware(['exports.allowed', 'throttle:6,1'])->name('archive.create');
                 Route::post('/archivio/{year}/rimetti', [ArchiveController::class, 'restore'])->whereNumber('year')->middleware(['exports.allowed', 'throttle:6,1'])->name('archive.restore');
             });

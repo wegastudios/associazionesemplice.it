@@ -18,6 +18,8 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Query\JoinClause;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
@@ -315,51 +317,119 @@ final readonly class OnlinePayments
         if ($reason === '') {
             throw new MemberAccessError('Scrivi il motivo del rimborso: lo leggerà il socio.');
         }
-        $sent = $this->connection()->transaction(function () use ($paymentId, $cents, $reason): array {
+        $void = $cents === null;
+
+        // 1. Breve: controlli e promemoria «rimborso in corso» (con la chiave che lo rende ripetibile senza doppioni).
+        $plan = $this->connection()->transaction(function () use ($paymentId, $cents, $void): array {
             $row = $this->table()->where('id', $paymentId)->lockForUpdate()->first();
             $p = $row === null ? null : $this->find($paymentId);
-            $voided = false;
-            $allowed = $cents === null ? ['settled', 'review'] : ['review'];
+            $allowed = $void ? ['settled', 'review'] : ['review'];
             if ($row === null || $p === null || ! in_array($p['status'], $allowed, true) || $p['provider_ref'] === null || $p['paid_cents'] === null) {
-                throw new MemberAccessError($cents === null ? 'Si rimborsano solo i pagamenti già incassati.' : 'Si rimborsano solo i pagamenti «da controllare» già incassati.');
+                throw new MemberAccessError($void ? 'Si rimborsano solo i pagamenti già incassati.' : 'Si rimborsano solo i pagamenti «da controllare» già incassati.');
             }
             $done = is_numeric($row->refunded_cents ?? null) ? (int) $row->refunded_cents : 0;
             $left = $p['paid_cents'] - $done;
-            if ($cents === null) {
-                if ($p['receipts'] === []) {
-                    throw new MemberAccessError('Questo pagamento non ha voci registrate: usa «rimborsa» con l\'importo.');
-                }
-                $this->voidReceipts($p['receipts'], $reason);
-                $voided = true;
-                $cents = $left;
+            if ($void && $p['receipts'] === []) {
+                throw new MemberAccessError('Questo pagamento non ha voci registrate: usa «rimborsa» con l\'importo.');
             }
-            if ($cents < self::MIN_CENTS || $cents > $left) {
+            $amount = $void ? $left : (int) $cents;
+            if ($amount < self::MIN_CENTS || $amount > $left) {
                 throw new MemberAccessError('Importo non valido: si può restituire da 0,50 € a '.self::euro(max(0, $left)).'.');
             }
-            $settings = $this->settings() ?? throw new MemberAccessError('Mancano le impostazioni dei pagamenti online.');
-            $key = 'refund-'.$paymentId.'-'.$done.'-'.$cents;
-            try {
-                $refundId = $p['provider'] === 'stripe'
-                    ? $this->stripe->refund((string) $settings->stripe_secret, $p['provider_ref'], $cents, $key)
-                    : $this->paypal->refund($settings->paypal_live, $this->paypal->token($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret), $p['provider_ref'], $cents, $key);
-            } catch (RuntimeException $e) {
-                throw new MemberAccessError('Rimborso non riuscito: '.$e->getMessage().($voided ? ' Nulla è stato stornato: ricevute e tessere sono come prima.' : ''));
+            $pending = is_numeric($row->refund_pending_cents ?? null) ? (int) $row->refund_pending_cents : null;
+            if ($pending !== null && $pending !== $amount) {
+                throw new MemberAccessError('C\'è un rimborso di '.self::euro($pending).' di cui non si sa l\'esito: controlla sul pannello di '.($p['provider'] === 'stripe' ? 'Stripe' : 'PayPal').' e ripeti quello stesso importo, senza cambiarlo.');
             }
-            $note = 'Restituiti '.self::euro($cents).' al socio.';
-            $update = ['refunded_cents' => $done + $cents, 'refunded_at' => now(), 'updated_at' => now(), 'error' => mb_substr(trim(($p['error'] ?? '').' '.$note), 0, 1000)];
+            if ($void) {
+                $this->assertVoidable($p['receipts']);
+            }
+            $key = 'refund-'.$paymentId.'-'.$done.'-'.$amount;
+            $this->table()->where('id', $paymentId)->update(['refund_pending_cents' => $amount, 'refund_key' => $key, 'updated_at' => now()]);
+
+            return ['p' => $p, 'done' => $done, 'amount' => $amount, 'key' => $key];
+        });
+        $p = $plan['p'];
+        $amount = $plan['amount'];
+        $providerRef = (string) $p['provider_ref'];
+
+        // 2. La chiamata al gestore, senza transazione e senza blocchi sui conti.
+        $settings = $this->settings() ?? throw new MemberAccessError('Mancano le impostazioni dei pagamenti online.');
+        try {
+            $refundId = $p['provider'] === 'stripe'
+                ? $this->stripe->refund((string) $settings->stripe_secret, $providerRef, $amount, $plan['key'])
+                : $this->paypal->refund($settings->paypal_live, $this->paypal->token($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret), $providerRef, $amount, $plan['key']);
+        } catch (ConnectionException|GatewayUnknown) {
+            // Il gestore non ha risposto: il rimborso può essere partito. Non si annulla in silenzio: resta il promemoria, e
+            // ripetendo lo stesso importo la chiave identica evita un secondo rimborso.
+            $this->table()->where('id', $paymentId)->update(['error' => mb_substr(trim(($p['error'] ?? '').' Rimborso di '.self::euro($amount).': il gestore non ha risposto, esito da verificare.'), 0, 1000), 'updated_at' => now()]);
+            $this->audit->record('payment.refund_unknown', 'app.online_payments', $paymentId, ['cents' => $amount, 'provider' => $p['provider']]);
+            throw new MemberAccessError('Il gestore dei pagamenti non ha risposto: non è possibile sapere se il rimborso di'.self::euro($amount).' è partito. Non è stato stornato nulla. Controlla sul pannello di '.($p['provider'] === 'stripe' ? 'Stripe' : 'PayPal').' e, se non risulta, ripeti lo stesso rimborso con lo stesso importo: non viene fatto due volte.');
+        } catch (RuntimeException $e) {
+            $this->table()->where('id', $paymentId)->update(['refund_pending_cents' => null, 'refund_key' => null, 'updated_at' => now()]);
+            throw new MemberAccessError('Rimborso non riuscito: '.$e->getMessage().($void ? ' Nulla è stato stornato: ricevute e tessere sono come prima.' : ''));
+        }
+
+        // 3. Registrazione: storno delle ricevute (se richiesto), importo restituito, registro azioni.
+        $voidError = null;
+        $sent = $this->connection()->transaction(function () use ($paymentId, $plan, $p, $amount, $refundId, $reason, $void, &$voidError): ?array {
+            $row = $this->table()->where('id', $paymentId)->lockForUpdate()->first();
+            $done = $row !== null && is_numeric($row->refunded_cents ?? null) ? (int) $row->refunded_cents : 0;
+            if ($row === null || $done !== $plan['done']) {
+                return null; // già registrato da un'altra richiesta identica
+            }
+            if ($void) {
+                try {
+                    $this->voidReceipts($p['receipts'], $reason);
+                } catch (MemberAccessError $e) {
+                    $voidError = $e->getMessage();
+                }
+            }
+            $note = 'Restituiti '.self::euro($amount).' al socio.'.($voidError !== null ? ' Storno in prima nota NON riuscito: da fare a mano.' : '');
+            $update = ['refunded_cents' => $done + $amount, 'refunded_at' => now(), 'updated_at' => now(), 'refund_pending_cents' => null, 'refund_key' => null,
+                'error' => mb_substr(trim(($p['error'] ?? '').' '.$note), 0, 1000)];
             if ($p['status'] === 'settled' || $p['receipts'] !== []) {
                 $update += ['status' => 'settled', 'reviewed_at' => now()];
             }
             $this->table()->where('id', $paymentId)->update($update);
-            $this->audit->record('payment.refunded', 'app.online_payments', $paymentId, ['cents' => $cents, 'provider' => $p['provider'], 'refund' => $refundId, 'voided' => $p['receipts'] !== [] && $p['status'] === 'settled']);
+            $this->audit->record('payment.refunded', 'app.online_payments', $paymentId, ['cents' => $amount, 'provider' => $p['provider'], 'refund' => $refundId, 'voided' => $void && $voidError === null]);
 
-            // Solo con lo storno le prenotazioni e le iscrizioni restano in piedi e tornano da pagare.
-            $stays = $voided ? self::stays($p['items']) : ['reservation' => false, 'enrollment' => false];
-
-            return ['person_id' => $p['person_id'], 'cents' => $cents, 'date' => $p['created_at'], 'stays' => $stays];
+            return ['person_id' => $p['person_id'], 'cents' => $amount, 'date' => $p['created_at'],
+                'stays' => $void && $voidError === null ? self::stays($p['items']) : ['reservation' => false, 'enrollment' => false]];
         });
+        if ($sent === null) {
+            return false;
+        }
+        $mailed = $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName, $sent['stays']);
+        if ($voidError !== null) {
+            throw new MemberAccessError('Il rimborso di '.self::euro($amount).' è stato fatto'.($mailed ? ' e il socio è stato avvisato' : '').', ma lo storno in prima nota no: '.$voidError.' Stornalo a mano dalla prima nota.'
+                .($mailed ? '' : ' Il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu.'));
+        }
 
-        return $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName, $sent['stays']);
+        return $mailed;
+    }
+
+    /**
+     * Prima di toccare il gestore: lo storno delle ricevute deve essere possibile (anno fiscale aperto).
+     *
+     * @param  list<string>  $receipts
+     */
+    private function assertVoidable(array $receipts): void
+    {
+        foreach ($receipts as $label) {
+            if (preg_match('#^(\d+)/(\d{4})$#', $label, $m) !== 1) {
+                continue;
+            }
+            $receipt = $this->connection()->table('app.receipts')->where('number', (int) $m[1])->where('year', (int) $m[2])->first(['id', 'voided_at']);
+            if ($receipt === null || ($receipt->voided_at ?? null) !== null || ! is_string($receipt->id ?? null)) {
+                continue;
+            }
+            $closed = $this->connection()->table('app.transactions as t')
+                ->join('app.fiscal_years as f', static fn (JoinClause $j) => $j->on('f.org_id', '=', 't.org_id')->on('f.year', '=', 't.fiscal_year'))
+                ->where('t.receipt_id', $receipt->id)->whereNull('t.voided_at')->where('f.status', 'closed')->value('f.year');
+            if ($closed !== null) {
+                throw new MemberAccessError('Non si può stornare la ricevuta '.$label.': l\'anno fiscale '.(is_numeric($closed) ? (int) $closed : '').' è chiuso, va riaperto. Il rimborso non è stato fatto.');
+            }
+        }
     }
 
     /**

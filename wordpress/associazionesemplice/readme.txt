@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.24
+Stable tag: 1.3.25
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,6 +61,20 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 
 == Changelog ==
 
+= 1.3.25 =
+* Prima di aggiornare fai una copia di sicurezza. Dopo l'aggiornamento: 1) inserisci email e telefono della segreteria e i dati dell'associazione che la banda gialla in alto ti chiede (forma, codice fiscale, sede, RUNTS, PEC, partita IVA: se l'associazione non ce l'ha, spunta «non ce l'ha»); 2) in Impostazioni → Copia di sicurezza premi «Cifra i file già caricati»: i file nuovi si salvano già cifrati, quelli vecchi si cifrano da quel momento; 3) nella stessa pagina trovi la frase che riapre i documenti: conservala fuori dal sito.
+* Quota doppia: la prima nota rifiuta una seconda quota dello stesso anno e lo spiega; due incassi insieme non registrano due volte; annullando un incasso la tessera si toglie solo se non ce ne sono altri validi
+* Contatti della segreteria obbligatori: email e telefono vanno inseriti; finché mancano, la segreteria non può inviare messaggi ai soci a mano (gli invii automatici, come il link di accesso, partono lo stesso); i messaggi riportano i contatti e le risposte arrivano alla segreteria
+* Dati dell'associazione obbligatori: forma, codice fiscale, sede, numero RUNTS, PEC e partita IVA, ognuno con la casella «non ce l'ha»; il legale rappresentante è la persona con la carica di presidente; una banda gialla in alto elenca cosa manca, con il pulsante «Completali ora»
+* File riservati cifrati (documenti e scansioni, allegati dei movimenti, foto dell'inventario) con una frase per riaprirli e il foglio stampabile; la copia di sicurezza porta i file cifrati. Protegge da chi porta via la sola cartella dei file; per una protezione più alta scegli una frase tua e lunga
+* Cartella dei file riservati: ogni settimana il programma controlla che non sia raggiungibile da internet e avvisa l'amministratore; la cartella si può tenere fuori dalla parte pubblica del sito e «Sposta i file» copia e controlla prima di cancellare
+* Ripristino della copia più sicuro: le copie sono firmate e una copia modificata viene rifiutata; una copia fatta su un altro sito si ripristina solo con una conferma scritta e la password; soci e prima nota si ripristinano anche se manca la frase; le password dei soci non fanno parte del ripristino (i soci rientrano con il link). Dopo un cambio dei codici di sicurezza le copie fatte prima chiedono la conferma per altro sito
+* Le pagine riservate ai soci non vengono salvate dalla cache delle pagine
+* Più sicurezza su file temporanei e lavori simultanei (chiavi, numerazione)
+* Le copie di sicurezza e i file CSV si aprono bene in Excel (accenti corretti)
+* Più messaggi e frasi con numeri anche in inglese
+* Il rendiconto e la prima nota non cambiano: nessuna modifica ai dati contabili.
+
 = 1.3.24 =
 * La tessera segue l'anno sociale: l'etichetta è «2026» oppure «2026/2027», e negli ultimi giorni prima della scadenza si può rinnovare in anticipo; se cambi il mese, vale solo per le tessere nuove
 * Anno sociale e anno fiscale si scelgono subito all'installazione, al primo passo della procedura guidata
@@ -70,26 +84,6 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 * Il nome e il tipo di un conto con movimenti in un anno fiscale chiuso non si cambiano
 * La pagina «Esercizi» si chiama ora «Anni fiscali» e i testi parlano di «anno fiscale», «bozza» e «definitivo»
 * Quando un anno fiscale è chiuso i messaggi sono più chiari: si riapre dalla pagina «Anni fiscali», ma solo l'ultimo
-
-= 1.3.23 =
-* Libro soci per esercizio: segue l'esercizio e alla chiusura viene fotografato, così da quel momento non cambia più
-* Ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati con la dicitura «ricostruito il…»
-* Il libro soci di ogni esercizio si scarica in PDF e in CSV
-* Un esercizio chiuso si può riaprire solo se è l'ultimo, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture; gli esercizi si chiudono in ordine
-* Il mese di inizio dell'esercizio si sceglie in tutte le edizioni; le tessere di un esercizio chiuso non si modificano
-* L'esportazione dei dati personali di un socio comprende anche i libri soci chiusi
-* Nuova voce Registri → «Dati per il RUNTS»: numeri al 31 dicembre, soci che sono enti, avviso se si scende sotto il minimo di soci per ODV e APS, promemoria del 30 giugno
-* Diritto di voto: votano i soci maggiorenni
-* Soci che sono enti: scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci
-* Nuovo tipo di utente «Dipendente»: permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS
-* Trasparenza: è scritto cosa il programma invia al sito associazionesemplice.it per gli aggiornamenti (solo prodotto e versione); si spegne da Impostazioni → Tecniche → Limiti e soglie, e il testo è in Strumenti → Privacy
-
-= 1.3.22 =
-* Informativa privacy: ora si parla di «Referente per la privacy», con una frase più chiara su a chi rivolgersi per i propri dati
-* Parole più semplici: «non si può annullare», «Cedi il posto a un'altra persona», «Non è ancora entrato nell'area soci», «Scarica per Excel», «Scarica i dati», «la domanda viene cancellata»; il prezzo a fasce si legge «all'ora» o «per turno»
-* Tessera non valida: ogni messaggio spiega dove e come rinnovare; il socio trova il link per rinnovare online, oppure l'indicazione di andare in segreteria, e la segreteria viene mandata alla scheda del socio
-* Bacheca da telefono: «Incassa» e «Sospendi» sono più grandi e facili da toccare, e «Sospendi» sta dentro «Altro» così non si preme per sbaglio
-* Tessera: la frase sotto il codice QR è in un blocco ordinato e «Apri la verifica» va a capo
 
 
 Le versioni precedenti sono nel file CHANGELOG.md del plugin.
