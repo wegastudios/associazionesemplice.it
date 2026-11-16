@@ -234,7 +234,12 @@ final class Actions {
 		if ( $session['session_date'] < current_time( 'Y-m-d' ) ) {
 			throw new \InvalidArgumentException( 'Questo evento è già passato.' );
 		}
-		Plugin::activities()->book( (int) $session['id'], $person_id, array( 'price_list' => sanitize_key( (string) ( $post['price_list'] ?? '' ) ) ) ); // ospiti e pacchetti già pagati: solo la segreteria
+		$list_key = sanitize_key( (string) ( $post['price_list'] ?? '' ) );
+		$act_row  = Plugin::activities()->get( (int) $session['activity_id'] );
+		if ( '' === $list_key && $act_row && \AssociazioneSemplice\PriceLists::for_activity( $act_row ) ) { // con i listini ne va scelto uno: il contributo base non basta
+			throw new \InvalidArgumentException( 'Scegli la tariffa: per questa attività bisogna sceglierne una.' );
+		}
+		Plugin::activities()->book( (int) $session['id'], $person_id, array( 'price_list' => $list_key ) ); // ospiti e pacchetti già pagati: solo la segreteria
 		$person = Plugin::people()->get( $person_id );
 		return 'Prenotazione registrata' . ( $person ? ' per ' . $person['first_name'] : '' ) . '.';
 	}

@@ -8459,6 +8459,24 @@ asem_ok( 1000 === $pl_fund(), 'ospite volontario: il fondo del volontario non si
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $pl_a, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 2500, 'activity_id' => $pl_act, 'session_id' => $pl_sess[0] ) ) ) );
 asem_ok( 1625 === $pl_fund(), 'listini: chi paga il listino normale alimenta il fondo con la quota ordinaria (25%)' );
 asem_ok( null !== asem_throws( function () use ( $acts, $pl_sess, $pl_a ) { $acts->book( $pl_sess[1], $pl_a, array( 'price_list' => 'inesistente' ) ); } ), 'listini: un listino che non esiste è rifiutato' );
+// Con i listini il socio dal sito ne sceglie uno: senza listino non si prenota al contributo base.
+$pr_wpu = Settings::get( 'member_wp_users' ); // il socio di prova ha un utente WordPress
+Settings::update( array( 'member_wp_users' => 1 ) );
+list( $pr_m, $pr_mu ) = $mkmem( 'Lisa', 'Listino' );
+$pr_rules = Settings::get( 'rules_enabled' ); // il regolamento da accettare non c'entra con questa prova
+Settings::update( array( 'rules_enabled' => 0 ) );
+wp_set_current_user( $pr_mu );
+$pr_msg = (string) asem_throws( function () use ( $front, $pl_sess, $pr_m ) { $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m ) ); } );
+asem_ok( false !== strpos( $pr_msg, 'tariffa' ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: dal sito senza listino non si prenota [' . $pr_msg . ']' );
+asem_ok( null !== asem_throws( function () use ( $front, $pl_sess, $pr_m ) { $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m, 'price_list' => '' ) ); } ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: nemmeno con il campo vuoto' );
+asem_ok( null !== asem_throws( function () use ( $front, $pl_sess, $pr_m ) { $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m, 'price_list' => 'inesistente' ) ); } ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: nemmeno con un listino che non esiste' );
+$front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m, 'price_list' => 'di_gruppo' ) );
+asem_ok( $acts->has_active_booking( $pl_sess[1], $pr_m ) && 2500 === (int) $acts->booking( $pl_sess[1], $pr_m )['fee_due_cents'], 'listino obbligatorio: con un listino scelto si prenota al suo prezzo' );
+wp_set_current_user( 1 );
+list( $pr_n ) = $mkmem( 'Nino', 'Listino' );
+$acts->book( $pl_sess[1], $pr_n );
+asem_ok( $acts->has_active_booking( $pl_sess[1], $pr_n ) && empty( $acts->booking( $pl_sess[1], $pr_n )['price_list'] ), 'listino obbligatorio: la segreteria prenota come prima, anche al contributo base' );
+Settings::update( array( 'rules_enabled' => $pr_rules, 'member_wp_users' => $pr_wpu ) );
 asem_ok( '' !== \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ) && false !== strpos( \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ), 'ospite dell\'associazione' ), 'listini: l\'etichetta della prenotazione dice listino e ospite' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Admin\ActivitiesPage::booking_fields( $pl_a_row, 0 ), 'asem-use-pk' ) && false !== strpos( \AssociazioneSemplice\Admin\ActivitiesPage::booking_fields( $pl_a_row, 0 ), 'data-packages' ), 'prenota: la casella del pacchetto porta i pacchetti dei soci, per dire gli ingressi rimasti appena scegli la persona' );
 $pl_html = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ospite del volontario', array( 'id' => (string) $pl_act ) );
