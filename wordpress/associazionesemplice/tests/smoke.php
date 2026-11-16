@@ -534,7 +534,7 @@ asem_ok( false !== strpos( License::free_url(), 'https://associazionesemplice.it
 ob_start();
 Admin\LicensePanel::render();
 $lic_panel = (string) ob_get_clean();
-asem_ok( false !== strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $lic_panel, 'prova-sito.it' ) && false !== strpos( $lic_panel, 'Controlla adesso' ), 'pannello licenza: chiave, dominio e controllo immediato' );
+asem_ok( false === strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $lic_panel, '••••DDDD' ) && false !== strpos( $lic_panel, 'prova-sito.it' ) && false !== strpos( $lic_panel, 'Controlla adesso' ), 'pannello licenza: chiave non in chiaro (solo le ultime cifre), dominio e controllo immediato' );
 // firma obbligatoria, livello dalla parte firmata, prova scaduta o manomessa
 $lic_sign_on = false;
 $lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
