@@ -11,8 +11,16 @@ case "$out" in /*) ;; *) out="$root/$out" ;; esac
 list="associazionesemplice/tests/pro-files.txt"
 rm -rf "$out"
 mkdir -p "$out/free" "$out/pro"
-cp -r associazionesemplice "$out/free/associazionesemplice"
-cp -r associazionesemplice-pro "$out/pro/associazionesemplice-pro"
+# Si copiano solo i file versionati in git (contenuto della cartella di lavoro): file non versionati (appunti, prove, copie, zip) non finiscono mai in un pacchetto.
+tracked() {
+	git ls-files -z -- "$1" | while IFS= read -r -d '' f; do if [ -f "$f" ]; then printf '%s\0' "$f"; fi; done > "$out/tracked.lst"
+	[ -s "$out/tracked.lst" ] || { echo "Nessun file versionato in $1 (serve git)" >&2; exit 1; }
+	mkdir -p "$2"
+	tar --null -T "$out/tracked.lst" -cf - | tar -xf - -C "$2"
+	rm -f "$out/tracked.lst"
+}
+tracked associazionesemplice "$out/free"
+tracked associazionesemplice-pro "$out/pro"
 mkdir -p "$out/pro/associazionesemplice-pro/includes"
 # ASEM_WPORG=1: pacchetto per WordPress.org, senza l'aggiornatore dal portale (lì aggiorna WordPress.org)
 [ "${ASEM_WPORG:-}" = "1" ] && rm -f "$out/free/associazionesemplice/includes/Updater.php"
