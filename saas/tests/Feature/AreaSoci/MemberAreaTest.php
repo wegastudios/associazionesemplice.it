@@ -15,6 +15,7 @@ use App\Modules\Soci\Services\GuardianService;
 use App\Modules\Soci\Services\MembershipService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // Dati di prova inventati.
@@ -213,4 +214,51 @@ it('l\'email di accesso ha la segreteria come indirizzo di risposta', function (
     Mail::fake();
     $this->post($this->base.'/accesso', ['email' => 'mario@example.com']);
     Mail::assertSent(LoginLink::class, fn (LoginLink $m): bool => $m->hasReplyTo('segreteria@alfa.example') && $m->contactPhone === '06 1234567');
+});
+
+it('sul dominio personalizzato verificato l\'area soci risponde, e link e codice restano su quel dominio', function (): void {
+    DB::table('core.org_domains')->insert(['org_id' => $this->org->id, 'domain' => 'soci.alfa-sport.it', 'state' => 'active']);
+    $base = 'http://soci.alfa-sport.it/area';
+
+    Mail::fake();
+    $this->post($base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso');
+    $mail = null;
+    Mail::assertSent(LoginLink::class, function (LoginLink $m) use (&$mail): bool {
+        $mail = $m;
+
+        return true;
+    });
+    expect($mail->link)->toStartWith($base.'/entra/');
+
+    $cookie = (string) $this->post($base.'/accesso/codice', ['email' => 'mario@example.com', 'code' => $mail->code])->assertRedirect('/area')->getCookie('as_socio', false)?->getValue();
+    asMember($this, $cookie)->get($base)->assertOk()->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Tessera'));
+});
+
+it('un dominio personalizzato non verificato, o di un\'altra associazione, non apre l\'area soci', function (): void {
+    DB::table('core.org_domains')->insert(['org_id' => $this->org->id, 'domain' => 'soci.alfa-sport.it', 'state' => 'pending']);
+
+    $this->get('http://soci.alfa-sport.it/area/accesso')->assertNotFound();
+    $this->get('http://non-registrato.example/area/accesso')->assertNotFound();
+});
+
+it('il link d\'accesso preparato dalla segreteria usa il dominio proprio se verificato, altrimenti quello standard', function (): void {
+    $op = $this->createUser('seg@example.com', twoFactor: true);
+    $this->addOperator($this->org, $op, OrgRole::Operator);
+    $anna = $this->orgContext()->run($this->org->id, fn () => Person::create(['first_name' => 'Anna', 'last_name' => 'Blu']));
+    DB::table('core.org_domains')->insert(['org_id' => $this->org->id, 'domain' => 'soci.alfa-sport.it', 'state' => 'pending']);
+
+    expect((string) $this->actingAs($op)->postJson('/gestionale/soci/'.$anna->id.'/area-soci/link')->assertOk()->json('link'))->toStartWith($this->base.'/entra/');
+
+    DB::table('core.org_domains')->where('org_id', $this->org->id)->update(['state' => 'active']);
+    $link = (string) $this->postJson('/gestionale/soci/'.$anna->id.'/area-soci/link')->assertOk()->json('link');
+    expect($link)->toStartWith('http://soci.alfa-sport.it/area/entra/');
+    $this->get($link)->assertRedirect('/area');
+});
+
+it('il link di verifica della tessera resta sul dominio proprio quando il socio è entrato da lì', function (): void {
+    DB::table('core.org_domains')->insert(['org_id' => $this->org->id, 'domain' => 'soci.alfa-sport.it', 'state' => 'active']);
+    $verify = URL::signedRoute('custom.member.verify', ['host' => 'soci.alfa-sport.it', 'person' => $this->mario->id]);
+
+    expect($verify)->toStartWith('http://soci.alfa-sport.it/area/verifica/');
+    $this->get($verify)->assertOk()->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Verifica'));
 });
