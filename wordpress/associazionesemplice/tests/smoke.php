@@ -690,6 +690,18 @@ asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'Nes
 wp_update_post( array( 'ID' => $pe_post, 'post_status' => 'publish' ) );
 $pe_list = \AssociazioneSemplice\PublicEvents::list_html();
 asem_ok( false !== strpos( $pe_list, 'asemf-card' ) && false !== strpos( $pe_list, 'Serata giochi' ) && false !== strpos( $pe_list, 'asemf-month' ), 'elenco eventi: la pagina pubblicata compare a card, sotto il suo mese' );
+// Evento riservato: né calendario, né dati strutturati, né scheda nell'elenco per chi non può leggerlo
+$pe_wp = get_post( $pe_post );
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::ics_for( $pe_wp ), 'BEGIN:VEVENT' ) && false !== strpos( \AssociazioneSemplice\PublicEvents::structured_json( $pe_wp ), '"startDate"' ), 'evento pubblico: calendario e dati strutturati ci sono' );
+update_post_meta( $pe_post, '_asem_access', 'members' );
+$pe_user = get_current_user_id();
+wp_set_current_user( 0 );
+asem_ok( '' === \AssociazioneSemplice\PublicEvents::ics_for( $pe_wp ) && '' === \AssociazioneSemplice\PublicEvents::structured_json( $pe_wp ), 'evento riservato: niente calendario né dati strutturati (visitatore)' );
+asem_ok( false === strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'Serata giochi' ) && false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese' ) ), 'Serata giochi' ), 'evento riservato: non compare negli elenchi (visitatore)' );
+wp_set_current_user( 1 );
+asem_ok( '' !== \AssociazioneSemplice\PublicEvents::ics_for( $pe_wp ) && '' !== \AssociazioneSemplice\PublicEvents::structured_json( $pe_wp ) && false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'Serata giochi' ), 'evento riservato: l\'amministratore vede tutto' );
+delete_post_meta( $pe_post, '_asem_access' );
+wp_set_current_user( $pe_user );
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'categoria' => 'inesistente' ) ), 'Nessun evento' ), 'elenco eventi: il filtro per categoria funziona' );
 asem_ok( false !== strpos( do_shortcode( '[associazionesemplice_eventi]' ), 'asemf-card' ), 'elenco eventi: lo shortcode funziona' );
 $pe_cal = \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese' ) );
@@ -953,6 +965,51 @@ wp_set_current_user( 0 );
 $rest = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/posts/' . $p_mem ) )->get_data();
 asem_ok( '' === $rest['content']['rendered'] && ! empty( $rest['content']['protected'] ), 'riservati: l\'API REST non rivela il contenuto' );
 asem_ok( false === strpos( get_the_excerpt( $p_mem ), 'RIASSUNTO' ), 'riservati: neanche il riassunto' );
+
+// Gli altri canali: ricerca, commenti, allegati, anteprime dei plugin SEO
+$srch = function ( int $user, string $via = 'wp' ) use ( $p_pub ) {
+	wp_set_current_user( $user );
+	if ( 'rest' === $via ) {
+		$req = new WP_REST_Request( 'GET', '/wp/v2/posts' );
+		$req->set_param( 'search', 'SEGRETO' );
+		$req->set_param( 'per_page', 50 );
+		return wp_list_pluck( rest_do_request( $req )->get_data(), 'id' );
+	}
+	return ( new WP_Query( array( 's' => 'SEGRETO', 'post_type' => 'post', 'post_status' => 'publish', 'fields' => 'ids', 'posts_per_page' => 50 ) ) )->posts;
+};
+foreach ( array( 'wp', 'rest' ) as $via ) {
+	$found = array_map( 'intval', $srch( 0, $via ) );
+	asem_ok( in_array( $p_pub, $found, true ), "riservati: la ricerca ($via) trova il contenuto pubblico" );
+	asem_ok( ! array_intersect( array( $p_mem, $p_vol, $p_yoga, $p_teat ), $found ), "riservati: la ricerca ($via) non trova per parola i contenuti riservati (visitatore)" );
+}
+$found = array_map( 'intval', $srch( $u_ord ) );
+asem_ok( in_array( $p_mem, $found, true ) && in_array( $p_yoga, $found, true ) && ! in_array( $p_vol, $found, true ) && ! in_array( $p_teat, $found, true ), 'riservati: la ricerca mostra al socio solo ciò che può leggere' );
+$found = array_map( 'intval', $srch( 1 ) );
+asem_ok( in_array( $p_mem, $found, true ) && in_array( $p_vol, $found, true ) && in_array( $p_teat, $found, true ), 'riservati: l\'amministratore trova tutto' );
+
+wp_update_post( array( 'ID' => $p_mem, 'comment_status' => 'open' ) );
+$c_mem = wp_insert_comment( array( 'comment_post_ID' => $p_mem, 'comment_content' => 'COMMENTORISERVATO', 'comment_approved' => 1, 'comment_author' => 'Ospite' ) );
+wp_set_current_user( 0 );
+asem_ok( ! comments_open( $p_mem ) && 0 === (int) get_comments_number( $p_mem ), 'riservati: commenti chiusi e conteggio a zero per il visitatore' );
+asem_ok( array() === apply_filters( 'comments_array', array( get_comment( $c_mem ) ), $p_mem ) && array() === get_comments( array( 'post_id' => $p_mem ) ), 'riservati: i commenti non si leggono (visitatore)' );
+$rest = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/comments/' . $c_mem ) )->get_data();
+asem_ok( isset( $rest['content']['rendered'] ) && '' === $rest['content']['rendered'], 'riservati: l\'API REST non rivela il commento' );
+$req = new WP_REST_Request( 'GET', '/wp/v2/comments' );
+$req->set_param( 'post', $p_mem );
+asem_ok( array() === rest_do_request( $req )->get_data(), 'riservati: l\'elenco dei commenti via REST è vuoto' );
+wp_set_current_user( $u_ord );
+asem_ok( comments_open( $p_mem ) && 1 === count( get_comments( array( 'post_id' => $p_mem ) ) ), 'riservati: il socio vede e può scrivere i commenti' );
+
+$att = wp_insert_attachment( array( 'post_title' => 'TITOLOALLEGATO', 'post_content' => 'ALLEGATOSEGRETO', 'post_excerpt' => 'ALLEGATOSEGRETO', 'post_mime_type' => 'image/png', 'post_status' => 'inherit', 'guid' => home_url( '/wp-content/uploads/allegato-riservato.png' ) ), false, $p_mem );
+asem_ok( false === strpos( $show( $att, 0 ), 'ALLEGATOSEGRETO' ) && false !== strpos( $show( $att, 0 ), 'Accedi' ), 'riservati: la pagina dell\'allegato non rivela nulla (visitatore)' );
+asem_ok( false !== strpos( $show( $att, $u_ord ), 'ALLEGATOSEGRETO' ), 'riservati: il socio vede la pagina dell\'allegato' );
+wp_set_current_user( 0 );
+$rest = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/media/' . $att ) )->get_data();
+asem_ok( isset( $rest['source_url'] ) && '' === $rest['source_url'] && empty( $rest['description']['rendered'] ) && empty( $rest['title']['rendered'] ), 'riservati: l\'API REST non rivela l\'allegato' );
+$req = new WP_REST_Request( 'GET', '/wp/v2/media' );
+$req->set_param( 'parent', $p_mem );
+asem_ok( ! in_array( $att, array_map( 'intval', wp_list_pluck( rest_do_request( $req )->get_data(), 'id' ) ), true ), 'riservati: l\'elenco dei media via REST non include gli allegati riservati' );
+asem_ok( '' === \AssociazioneSemplice\Frontend\Restrict::description_for( 'DESCRIZIONE', $p_mem ) && 'DESCRIZIONE' === \AssociazioneSemplice\Frontend\Restrict::description_for( 'DESCRIZIONE', $p_pub ), 'riservati: le descrizioni dei plugin SEO escono vuote per il visitatore' );
 wp_set_current_user( 1 );
 $rest = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/posts/' . $p_mem ) )->get_data();
 asem_ok( false !== strpos( $rest['content']['rendered'], 'SEGRETO' ), 'riservati: l\'amministratore legge il contenuto via REST' );
