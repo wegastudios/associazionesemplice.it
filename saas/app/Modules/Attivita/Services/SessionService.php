@@ -18,11 +18,16 @@ use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Portale\Contracts\Entitlements;
+use App\Modules\Portale\Contracts\Package;
 use App\Modules\Risorse\Contracts\ResourceBookings;
 use App\Modules\Soci\Contracts\MemberType;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Eventi con prenotazioni (dall'ActivityService e dal Waitlist del plugin): date con i loro posti, prenotazioni alla
@@ -42,6 +47,7 @@ final readonly class SessionService
         private ResourceBookings $resources,
         private ActivityOccupancy $occupancy,
         private ActivityVat $vat,
+        private Entitlements $entitlements,
     ) {}
 
     /**
@@ -414,9 +420,10 @@ final readonly class SessionService
                 break;
             }
             try {
-                $this->book($s->id, $w['person_id']);
+                $booking = $this->book($s->id, $w['person_id']);
                 $in[] = $w['name'];
-                $this->audit->record('waitlist.promoted', 'app.activities', $s->activity_id, ['session' => $s->id, 'person_id' => $w['person_id']]);
+                $mail = $this->notifyPromoted($s, $w['person_id'], $booking->fee_due_cents > 0);
+                $this->audit->record('waitlist.promoted', 'app.activities', $s->activity_id, ['session' => $s->id, 'person_id' => $w['person_id'], 'mail' => $mail]);
             } catch (ActivityError) {
                 $this->connection()->table('app.session_waitlist')->where('session_id', $s->id)->where('person_id', $w['person_id'])->where('status', 'waiting')
                     ->update(['status' => 'left', 'resolved_at' => now()]);
@@ -424,6 +431,73 @@ final readonly class SessionService
         }
 
         return $in;
+    }
+
+    /**
+     * Avvisa per email chi è passato dalla lista d'attesa alla prenotazione (il genitore o tutore operativo per un minore).
+     * Senza email l'iscrizione resta valida; un errore di invio non la tocca.
+     *
+     * @return 'sent'|'no_email'|'failed'
+     */
+    private function notifyPromoted(ActivitySession $s, string $personId, bool $toPay): string
+    {
+        $c = $this->connection();
+        $p = $c->table('app.people')->where('id', $personId)->first(['first_name', 'email', 'birth_date', 'anonymized_at', 'left_on']);
+        if ($p === null || $p->anonymized_at !== null || $p->left_on !== null) {
+            return 'no_email';
+        }
+        $minor = is_string($p->birth_date ?? null) && CarbonImmutable::parse($p->birth_date)->addYears(18)->isFuture();
+        $about = is_string($p->first_name ?? null) ? $p->first_name : '';
+        $to = $p;
+        if ($minor) {
+            $guardianId = $c->table('app.guardians')->where('person_id', $personId)->where('is_operative', true)->value('guardian_person_id');
+            $to = is_string($guardianId) ? $c->table('app.people')->where('id', $guardianId)->first(['first_name', 'email']) : null;
+        }
+        $email = $to !== null && is_string($to->email ?? null) ? $to->email : '';
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return 'no_email';
+        }
+
+        $activity = $this->activities->find($s->activity_id);
+        $when = $s->session_date->format('d/m/Y').(is_string($s->start_time) && $s->start_time !== '' ? ', alle ore '.substr($s->start_time, 0, 5) : '');
+        $body = $minor
+            ? "Si è liberato un posto: ora {$about} ha un posto per {$activity->name} del {$when}. Se non può venire, annulla dall'area soci o scrivi alla segreteria."
+            : "Si è liberato un posto: ora hai un posto per {$activity->name} del {$when}. Se non puoi venire, annulla dall'area soci o scrivi alla segreteria.";
+        $org = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->first(['id', 'name', 'slug']);
+        if ($org === null || ! is_string($org->id ?? null)) {
+            return 'failed';
+        }
+
+        try {
+            Notification::route('mail', $email)->notify(new WaitlistPromotedNotification(
+                'Ciao '.(is_string($to->first_name ?? null) ? $to->first_name : '').',',
+                $body,
+                $toPay ? 'La quota da versare la trovi in Quote, nell\'area soci.' : null,
+                $this->areaUrl($org->id, is_string($org->slug ?? null) ? $org->slug : ''),
+                is_string($org->name ?? null) ? $org->name : '',
+            ));
+        } catch (Throwable $e) {
+            report($e);
+
+            return 'failed';
+        }
+
+        return 'sent';
+    }
+
+    /** Indirizzo dell'area soci (dominio proprio se verificato), solo se l'associazione ha il pacchetto. */
+    private function areaUrl(string $orgId, string $slug): ?string
+    {
+        if ($slug === '' || ! $this->entitlements->for($orgId)->has(Package::MemberArea)) {
+            return null;
+        }
+        $custom = $this->db->connection('pgsql')->table('core.org_domains')->where('org_id', $orgId)->where('state', 'active')->value('domain');
+        $app = config('app.url');
+        $scheme = is_string($app) ? parse_url($app, PHP_URL_SCHEME) : null;
+        $members = config('saas.members_domain');
+        $host = is_string($custom) && $custom !== '' ? $custom : $slug.'.'.(is_string($members) ? $members : 'associazionesemplice.it');
+
+        return (is_string($scheme) ? $scheme : 'https').'://'.$host.'/area';
     }
 
     /**
