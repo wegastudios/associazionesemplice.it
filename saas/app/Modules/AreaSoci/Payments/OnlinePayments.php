@@ -16,7 +16,7 @@ use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Soci\Contracts\MemberProfiles;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Mail\Mailer;
-use IlluminateDatabaseConnectionInterface;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Str;
