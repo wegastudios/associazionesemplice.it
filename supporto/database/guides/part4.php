@@ -171,7 +171,7 @@ Se in **Impostazioni → Cassa → Pagamenti online** compare un avviso sulle **
 1. Vai in **Impostazioni → Cassa → Pagamenti online**.
 2. Scegli il gateway: Stripe, PayPal, SumUp (anche combinati), WooCommerce (in alternativa) oppure solo bonifico. Per SumUp vedi [Attivare i pagamenti online con SumUp](guida:attivare-sumup).
 3. Incolla le chiavi. Vengono salvate **cifrate** e legate al sito: se lo copi su un altro dominio vanno reinserite.
-4. Per Stripe, crea nel pannello Stripe un **webhook** verso l'indirizzo mostrato nella pagina del plugin.
+4. Per Stripe, crea nel pannello Stripe (**Sviluppatori → Webhook**) un **webhook** verso l'indirizzo mostrato nella pagina del plugin e aggiungi questi **cinque eventi**: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`, `charge.refunded` e `charge.dispute.created`. **Se il webhook c'è già**, aggiungi solo gli ultimi due (`charge.refunded` e `charge.dispute.created`): servono per gli avvisi sui rimborsi e sulle contestazioni fatti dal pannello di Stripe.
 5. Salva e fai un **pagamento di prova** con un importo minimo.
 
 ## Come funziona
@@ -181,6 +181,8 @@ Se in **Impostazioni → Cassa → Pagamenti online** compare un avviso sulle **
 3. La conferma torna al sito per tre strade (ritorno del socio, webhook e controllo orario), tutte senza rischio di doppio conteggio.
 4. L'incasso entra in prima nota sul conto **Stripe** o **PayPal** (creato in automatico) e il socio riceve la ricevuta via email.
 
+> **Rimborsi e contestazioni su Stripe.** Con i due eventi `charge.refunded` e `charge.dispute.created` nel webhook, un rimborso o una contestazione fatti dal **pannello di Stripe** mettono il pagamento **«da controllare»** e compare in Bacheca l'avviso **«Pagamenti online da controllare»**. Il plugin **non rimborsa e non annulla nulla da solo**, e la prima nota **non cambia**: controlla dal pannello di Stripe e, se serve, **storna** il movimento in prima nota. Per **PayPal** questi avvisi non arrivano.
+>
 > Commissioni, trasferimenti sul conto corrente e rimborsi si registrano a mano (una spesa e un giroconto). I rimborsi si fanno dal pannello del fornitore.
 MD,
     ],
@@ -269,7 +271,8 @@ A volte un pagamento online non coincide con quello che il sistema si aspettava,
 2. Trova i pagamenti con lo stato **da controllare**.
 3. Confronta importo e riferimento con quello che trovi nel pannello del fornitore.
 4. Se la persona ha pagato più o meno del dovuto, correggi a mano: annulla il movimento e registra l'incasso corretto, oppure registra la differenza.
-5. Se il pagamento era per una prenotazione annullata, decidi se **rimborsare**: con Stripe o PayPal si fa dal programma (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)), con gli altri metodi dal pannello del fornitore.
+5. Se il pagamento è «da controllare» perché **rimborsato o contestato da Stripe** (compare l'avviso «Pagamenti online da controllare» in Bacheca), il plugin non ha cambiato nulla: guarda nel pannello di Stripe com'è andata e, se serve, **storna** il movimento in prima nota. Questo avviso arriva solo se nel webhook ci sono `charge.refunded` e `charge.dispute.created`, e solo per Stripe.
+6. Se il pagamento era per una prenotazione annullata, decidi se **rimborsare**: con Stripe o PayPal si fa dal programma (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)), con gli altri metodi dal pannello del fornitore.
 
 ## Se un pagamento non compare
 
