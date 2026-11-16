@@ -194,4 +194,84 @@ final class LicenseClientTest extends TestCase {
 		$this->assertTrue( C::portal_decides_plan() );
 		$this->assertSame( array_keys( C::PINNED_PORTAL_KEYS ), array_column( C::portal_jwks()['keys'], 'kid' ) );
 	}
+
+	// --- Esito negativo firmato dal portale ----------------------------------------------------------------------------
+
+	private const KEY = 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD';
+	private const NOW = 1800000000;
+
+	private function deny_claims( array $over = array(), array $drop = array() ): array {
+		return array_diff_key( $over + array( 'iss' => C::PORTAL_ISSUER, 'aud' => 'associazionesemplice', 'bid' => 'esempio.it', 'res' => 'deny', 'rc' => 'EXPIRED', 'kh' => substr( hash( 'sha256', self::KEY ), 0, 16 ), 'iat' => self::NOW - 60, 'exp' => self::NOW - 60 + 259200 ), array_flip( $drop ) );
+	}
+
+	private function deny( array $over = array(), array $drop = array(), string $key = self::KEY, string $aud = 'associazionesemplice' ): ?array {
+		list( $jwt, $jwks ) = $this->make( $this->deny_claims( $over, $drop ) );
+		return C::verify_denial( $jwt, $key, $aud, 'esempio.it', self::NOW, $jwks );
+	}
+
+	public function test_signed_denial_is_accepted(): void {
+		$d = $this->deny();
+		$this->assertSame( 'EXPIRED', $d['rc'] );
+		$this->assertSame( self::NOW - 60, $d['iat'] );
+		foreach ( C::DENY_CODES as $rc ) {
+			$this->assertIsArray( $this->deny( array( 'rc' => $rc ) ), $rc );
+		}
+	}
+
+	public function test_denial_that_does_not_hold_is_refused(): void {
+		$this->assertNull( $this->deny( array( 'aud' => 'altro-prodotto' ) ), 'prodotto' );
+		$this->assertNull( $this->deny( array(), array(), self::KEY, 'altro-prodotto' ), 'prodotto atteso diverso' );
+		$this->assertNull( $this->deny( array( 'bid' => 'altro.it' ) ), 'dominio' );
+		$this->assertNull( $this->deny( array( 'iss' => C::ISSUER ) ), 'emittente' );
+		$this->assertNull( $this->deny( array( 'kh' => '0000000000000000' ) ), 'impronta della chiave' );
+		$this->assertNull( $this->deny( array(), array( 'kh' ) ), 'senza impronta' );
+		$this->assertNull( $this->deny( array(), array(), 'WEGA-ALTRA-CHIAVE' ), 'chiave locale diversa' );
+		$this->assertNull( $this->deny( array(), array(), '' ), 'nessuna chiave locale' );
+		$this->assertNull( $this->deny( array( 'iat' => self::NOW - 4 * 86400, 'exp' => self::NOW - 86400 ) ), 'scaduto' );
+		$this->assertNull( $this->deny( array( 'iat' => self::NOW + 3600, 'exp' => self::NOW + 3600 + 259200 ) ), 'emesso nel futuro' );
+		$this->assertIsArray( $this->deny( array( 'iat' => self::NOW + 120, 'exp' => self::NOW + 120 + 259200 ) ), 'pochi minuti di scarto si tollerano' );
+		$this->assertNull( $this->deny( array( 'exp' => self::NOW + 90 * 86400 ) ), 'durata esagerata' );
+		$this->assertNull( $this->deny( array(), array( 'res' ) ), 'senza res' );
+		$this->assertNull( $this->deny( array( 'res' => 'allow' ) ), 'res diverso' );
+		$this->assertNull( $this->deny( array( 'rc' => 'INVENTATO' ) ), 'motivo ignoto' );
+		$this->assertNull( $this->deny( array( 'plan' => 'lite' ) ), 'con il livello' );
+		$this->assertNull( $this->deny( array( 'sub' => 'lic-1' ) ), 'con sub' );
+		$this->assertNull( $this->deny( array( 'iat' => '1799999940' ) ), 'iat non numerico' );
+		$this->assertNull( $this->deny( array(), array( 'iat' ) ), 'senza iat' );
+	}
+
+	public function test_denial_needs_the_portal_key_and_a_signature(): void {
+		list( $jwt, $jwks ) = $this->make( $this->deny_claims() );
+		list( , $other )    = $this->make( $this->deny_claims() ); // un'altra chiave
+		$this->assertNull( C::verify_denial( $jwt, self::KEY, 'associazionesemplice', 'esempio.it', self::NOW, $other ), 'firma di un\'altra chiave' );
+		$this->assertNull( C::verify_denial( '', self::KEY, 'associazionesemplice', 'esempio.it', self::NOW, $jwks ), 'non firmato' );
+		$this->assertNull( C::verify_denial( 'non-un-jwt', self::KEY, 'associazionesemplice', 'esempio.it', self::NOW, $jwks ), 'non è un JWT' );
+		$this->assertNull( C::verify_denial( $jwt, self::KEY, 'associazionesemplice', 'esempio.it', self::NOW, array( 'keys' => array() ) ), 'senza chiavi' );
+		list( $pos, $jwks2 ) = $this->make( $this->portal_claims() ); // la prova positiva non è un esito negativo
+		$this->assertNull( C::verify_denial( $pos, self::KEY, 'associazionesemplice', 'esempio.it', self::NOW, $jwks2 ), 'prova positiva' );
+	}
+
+	public function test_denial_applies_only_at_the_second_day(): void {
+		$d1 = array( 'rc' => 'EXPIRED', 'iat' => strtotime( '2026-11-16 23:59:00 UTC' ) );
+		$s1 = C::denial_step( array(), $d1 );
+		$this->assertFalse( $s1['apply'] );
+		$this->assertSame( array( 'day' => '2026-11-16', 'rc' => 'EXPIRED' ), $s1['stored'] );
+		// lo stesso iat (cache del portale) e lo stesso giorno UTC contano come uno
+		$this->assertFalse( C::denial_step( $s1['stored'], $d1 )['apply'] );
+		$this->assertFalse( C::denial_step( $s1['stored'], array( 'rc' => 'EXPIRED', 'iat' => strtotime( '2026-11-16 00:00:01 UTC' ) ) )['apply'] );
+		// un iat più vecchio non vale
+		$this->assertFalse( C::denial_step( $s1['stored'], array( 'rc' => 'EXPIRED', 'iat' => strtotime( '2026-11-15 12:00:00 UTC' ) ) )['apply'] );
+		// il giorno dopo (UTC, anche a un minuto di distanza) si applica, e il primo resta memorizzato
+		$s2 = C::denial_step( $s1['stored'], array( 'rc' => 'REVOKED', 'iat' => strtotime( '2026-11-17 00:00:30 UTC' ) ) );
+		$this->assertTrue( $s2['apply'] );
+		$this->assertSame( $s1['stored'], $s2['stored'] );
+	}
+
+	public function test_denial_step_ignores_a_corrupt_stored_value(): void {
+		foreach ( array( array( 'day' => 'ieri', 'rc' => 'X' ), array( 'day' => array() ), array( 'rc' => 'EXPIRED' ), array( 'day' => '2026-11-1' ) ) as $bad ) {
+			$s = C::denial_step( $bad, array( 'rc' => 'EXPIRED', 'iat' => strtotime( '2026-11-16 10:00:00 UTC' ) ) );
+			$this->assertFalse( $s['apply'] );
+			$this->assertSame( '2026-11-16', $s['stored']['day'] );
+		}
+	}
 }
