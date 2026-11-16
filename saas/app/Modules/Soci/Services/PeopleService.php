@@ -78,20 +78,15 @@ final readonly class PeopleService
      */
     public function firstFreeCard(): string
     {
-        $used = Person::query()->whereNotNull('card_number')->pluck('card_number')
-            ->filter(static fn (mixed $c): bool => is_string($c) && ctype_digit($c))
-            ->map(static fn (string $c): int => (int) $c)->sort()->values()->all();
+        // Un'unica query: il numero 1 se è libero, altrimenti il primo numero che segue una serie occupata e non ha il successivo.
+        $person = new Person;
+        $row = $person->getConnection()->selectOne(
+            "WITH used AS (SELECT DISTINCT card_number::bigint AS n FROM app.people WHERE deleted_at IS NULL AND card_number ~ '^[0-9]{1,15}$')
+             SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM used WHERE n = 1) THEN 1
+                         ELSE (SELECT min(u.n) + 1 FROM used u WHERE u.n >= 1 AND NOT EXISTS (SELECT 1 FROM used v WHERE v.n = u.n + 1)) END AS free",
+        );
 
-        $next = 1;
-        foreach ($used as $n) {
-            if ($n === $next) {
-                $next++;
-            } elseif ($n > $next) {
-                break;
-            }
-        }
-
-        return (string) $next;
+        return (string) (is_object($row) && is_numeric($row->free ?? null) ? (int) $row->free : 1);
     }
 
     /**

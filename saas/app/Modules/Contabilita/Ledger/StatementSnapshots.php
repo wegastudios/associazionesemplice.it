@@ -61,8 +61,9 @@ final readonly class StatementSnapshots
      */
     public function forYear(int $year): array
     {
-        $live = $this->live->forYear($year); // 404 se l'esercizio non esiste
-        if ($live['status'] === 'closed') {
+        // Un anno chiuso con la sua fotografia non si ricalcola: si legge solo lo stato, senza passare dai movimenti.
+        $status = $this->db->connection($this->context->require()->connection)->table('app.fiscal_years')->where('year', $year)->value('status');
+        if ($status === 'closed') {
             $snap = $this->table()->where('fiscal_year', $year)->whereNull('superseded_at')->orderByDesc('version')->first(['payload', 'version']);
             if ($snap !== null && is_string($snap->payload)) {
                 /** @var Statement $saved */
@@ -72,7 +73,7 @@ final readonly class StatementSnapshots
             }
         }
 
-        return ['statement' => $live, 'source' => 'live', 'version' => null];
+        return ['statement' => $this->live->forYear($year), 'source' => 'live', 'version' => null]; // 404 se l'anno non esiste
     }
 
     /**

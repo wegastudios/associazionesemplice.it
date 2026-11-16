@@ -1,7 +1,8 @@
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 
-const pages = import.meta.glob('./pages/**/*.vue', { eager: true });
+// Ogni pagina è un pacchetto a parte, scaricato quando serve: il primo caricamento porta solo ciò che si vede.
+const pages = import.meta.glob('./pages/**/*.vue');
 
 createInertiaApp({
     title: (title) => (title ? `${title} · Associazione Semplice` : 'Associazione Semplice'),
@@ -10,7 +11,7 @@ createInertiaApp({
         if (!page) {
             throw new Error(`Pagina inesistente: ${name}`);
         }
-        return page;
+        return page();
     },
     setup({ el, App, props, plugin }) {
         createApp({ render: () => h(App, props) }).use(plugin).mount(el);
