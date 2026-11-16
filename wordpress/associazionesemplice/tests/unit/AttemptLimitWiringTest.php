@@ -9,7 +9,22 @@ final class AttemptLimitWiringTest extends TestCase {
 		return array(
 			'ripristino'  => array( 'includes/Admin/Actions.php', 'backup.restore_locked' ),
 			'azzeramento' => array( 'includes/Admin/TechActions.php', 'tech.reset_locked' ),
+			'scarico'     => array( 'includes/Backup.php', 'backup.download_locked' ),
 		);
+	}
+
+	/** La pagina della copia chiede la password e non ha più un link diretto allo scarico; lo scarico senza invio del modulo non parte. */
+	public function test_backup_page_asks_for_the_password(): void {
+		$page = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/Admin/BackupPage.php' );
+		$this->assertStringContainsString( "Ui::form_open( 'asem_backup'", $page );
+		$this->assertStringContainsString( 'name="password"', $page );
+		$this->assertStringNotContainsString( 'Backup::download_url(', $page );
+		$src  = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/Backup.php' );
+		$post = strpos( $src, "'POST' !== \$_SERVER['REQUEST_METHOD']" );
+		$exp  = strpos( $src, '$path = self::export( $with );' );
+		$this->assertNotFalse( $post );
+		$this->assertLessThan( $exp, $post, 'senza modulo inviato non si crea la copia' );
+		$this->assertLessThan( $exp, (int) strpos( $src, 'wp_check_password(' ), 'la password si controlla prima di creare la copia' );
 	}
 
 	/** @dataProvider entries */

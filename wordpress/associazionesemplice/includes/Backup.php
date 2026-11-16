@@ -727,15 +727,16 @@ final class Backup {
 
 	// ---------- Download ----------
 
+	/** Indirizzo dell'azione di scarico: senza password non scarica nulla, lo scarico parte solo dal modulo della pagina. */
 	public static function download_url( bool $with_files ): string {
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_backup', 'files' => $with_files ? 1 : 0 ), admin_url( 'admin-post.php' ) ), 'asem_backup' );
+		return add_query_arg( array( 'action' => 'asem_backup', 'files' => $with_files ? 1 : 0 ), admin_url( 'admin-post.php' ) );
 	}
 
 	/**
-	 * Dove mandare chi vuole una copia: il download diretto.
+	 * Dove mandare chi vuole una copia: la pagina Copia di sicurezza, dove si scrive la password prima dello scarico.
 	 */
 	public static function download_link( bool $with_files ): string {
-		return self::download_url( $with_files );
+		return Admin\Ui::url( 'asem-backup' );
 	}
 
 	public static function saved_url( string $name ): string {
@@ -772,8 +773,28 @@ final class Backup {
 		if ( ! current_user_can( Plugin::CAP ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}
+		$back = Admin\Ui::url( 'asem-backup' );
+		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // un vecchio indirizzo diretto porta alla pagina, dove si scrive la password
+			Admin\Ui::redirect( $back );
+		}
 		check_admin_referer( 'asem_backup' );
-		$with   = isset( $_REQUEST['files'] ) && 1 === absint( $_REQUEST['files'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce controllato sopra con check_admin_referer()
+		$user = wp_get_current_user();
+		$keys = AttemptLimit::keys( $user && $user->exists() ? (int) $user->ID : 0, ClientIp::get() ); // stesse chiavi del ripristino e dell'azzeramento
+		$lim  = AttemptLimit::standard();
+		$busy = Texts::t( 'Troppi tentativi: riprova tra qualche minuto.' );
+		if ( $lim->is_locked( $keys ) ) { // durante il blocco la password non viene nemmeno controllata
+			Admin\Ui::redirect( $back, '', $busy );
+		}
+		$pass = isset( $_POST['password'] ) ? (string) wp_unslash( $_POST['password'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- nonce controllato sopra; la password non va modificata
+		if ( ! $user || ! $user->exists() || '' === $pass || ! wp_check_password( $pass, $user->user_pass, $user->ID ) ) {
+			if ( $lim->fail( $keys ) ) {
+				Audit::log( 'backup.download_locked', 'settings', 0, array( 'minutes' => (int) ( AttemptLimit::WINDOW / 60 ) ) );
+				Admin\Ui::redirect( $back, '', $busy );
+			}
+			Admin\Ui::redirect( $back, '', Texts::t( 'La password non è corretta: non è stato scaricato nulla.' ) );
+		}
+		$lim->clear( $keys );
+		$with = isset( $_POST['files'] ) && 1 === absint( $_POST['files'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce controllato sopra
 		try {
 			$path = self::export( $with );
 		} catch ( \RuntimeException $e ) {
