@@ -8,7 +8,7 @@
 				<p>Nessuna versione pubblicata.</p>
 			<?php else : ?>
 				<p>Ultima versione: <strong><?php echo e( $r['versions'][0]['version'] ); ?></strong> · <?php echo e( substr( (string) $r['versions'][0]['created_at'], 0, 10 ) ); ?></p>
-				<?php if ( '' !== $r['latest'] ) : ?><?php echo Portale\Legal::html( $r['latest'] ); // Già filtrato da Legal::html(). ?><?php endif; ?>
+				<?php if ( '' !== $r['latest'] ) : ?><?php echo Portale\Releases::changelogHtml( $r['latest'] ); // Escape fatto in changelogHtml(). ?><?php endif; ?>
 				<?php if ( count( $r['versions'] ) > 1 ) : ?>
 					<details><summary>Versioni precedenti</summary><ul>
 					<?php foreach ( array_slice( $r['versions'], 1 ) as $v ) : ?><li><?php echo e( $v['version'] ); ?> · <?php echo e( substr( (string) $v['created_at'], 0, 10 ) ); ?></li><?php endforeach; ?>
