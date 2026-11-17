@@ -647,7 +647,7 @@ License::sync( true );
 // la regola dei due negativi in giorni UTC diversi resta com'è: il primo ricordato non ritarda né anticipa lo spegnimento
 delete_option( License::OPT_DENIAL );
 $lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS, 'rc' => 'DOMAIN_MISMATCH' ) ), 'DOMAIN_MISMATCH' );
-$lic_a    = License::sync();
+$lic_a    = License::sync( true );
 asem_ok( ! $lic_a['ok'] && $lic_still_pro() && is_array( get_option( License::OPT_MEMO ) ), 'memoria licenza: il primo negativo firmato si ricorda e il Pro resta acceso' );
 $n1       = $lic_calls_n();
 $lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => 'DOMAIN_MISMATCH' ) ), 'DOMAIN_MISMATCH' );
