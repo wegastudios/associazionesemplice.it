@@ -134,6 +134,8 @@ final class Actions {
 			'asem_import_preview'     => 'import_preview',
 			'asem_import_apply'       => 'import_apply',
 			'asem_import_undo'        => 'import_undo',
+			'asem_import_continue'    => 'import_continue',
+			'asem_import_stop'        => 'import_stop',
 			'asem_save_wpai'          => 'save_wpai',
 			'asem_wpai_process'       => 'wpai_process',
 			'asem_wpai_retry'         => 'wpai_retry',
@@ -1559,8 +1561,32 @@ final class Actions {
 		if ( ! is_array( $prev ) ) {
 			throw new \InvalidArgumentException( 'L\'anteprima è scaduta: ricarica il file.' );
 		}
-		$res = \AssociazioneSemplice\ImportService::apply( $prev, array( 'mark_members' => ! empty( $p['mark_members'] ), 'keep_balances' => ! empty( $p['keep_balances'] ) ) );
-		delete_transient( $key );
+		\AssociazioneSemplice\ImportJob::start( $prev, array( 'mark_members' => ! empty( $p['mark_members'] ), 'keep_balances' => ! empty( $p['keep_balances'] ), 'source' => (string) ( $prev['file'] ?? 'Import' ) ) );
+		delete_transient( $key ); // da qui il piano sta nell'importazione in corso: se il tempo finisce si riprende da dove si è arrivati
+		return self::import_step();
+	}
+
+	/** «Riprendi l'importazione»: un altro giro, dal punto salvato. */
+	private static function import_continue( array $p ): array {
+		return self::import_step();
+	}
+
+	/** «Ferma qui l'importazione»: quello che è già entrato resta e si annulla in blocco; il resto non viene importato. */
+	private static function import_stop( array $p ): array {
+		return self::import_finished( \AssociazioneSemplice\ImportJob::stop() );
+	}
+
+	/** Un giro dell'importazione: a metà torna alla pagina con l'avanzamento, a fine lavoro con il riepilogo. */
+	private static function import_step(): array {
+		$r = \AssociazioneSemplice\ImportJob::step();
+		if ( ! $r['finished'] ) {
+			return array( Ui::url( 'asem-import' ), \AssociazioneSemplice\Texts::t( 'Importazione in corso: elaborate {n} righe su {tot}. Premi «Riprendi l\'importazione» per continuare.', array( 'n' => $r['done'], 'tot' => $r['total'] ) ) );
+		}
+		return self::import_finished( $r['result'] );
+	}
+
+	/** Il riepilogo di un'importazione finita (o fermata). */
+	private static function import_finished( array $res ): array {
 		$parts = array();
 		if ( $res['people'] ) {
 			$f       = $res['people']['failed'];
@@ -1571,7 +1597,11 @@ final class Actions {
 			$parts[] = 'Prima nota: ' . $l['created'] . ' movimenti' . ( $l['transfers'] ? ', ' . $l['transfers'] . ' giroconti' : '' ) . ( $l['duplicates'] ? ', ' . $l['duplicates'] . ' già presenti saltati' : '' )
 				. ( $l['memberships'] ? ', ' . $l['memberships'] . ' iscrizioni registrate' : '' ) . ( $l['shifted'] ? ', saldi attuali invariati' : '' );
 		}
-		$msg = 'Import completato. ' . implode( '. ', $parts ) . '.' . ( $res['batch_id'] ? ' (Import n. ' . (int) $res['batch_id'] . ': si può annullare in blocco da "Importa".)' : '' );
+		$lead = ! empty( $res['stopped'] ) ? \AssociazioneSemplice\Texts::t( 'Importazione fermata: quello che è già entrato resta e si può annullare in blocco da «Import già fatti».' ) . ' ' : 'Import completato. ';
+		$msg  = $lead . implode( '. ', $parts ) . '.' . ( $res['batch_id'] ? ' (Import n. ' . (int) $res['batch_id'] . ': si può annullare in blocco da "Importa".)' : '' );
+		if ( ! empty( $res['interrupted'] ) ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'La prima nota si era interrotta a metà: controlla i movimenti importati e, se serve, annulla l\'import in blocco.' );
+		}
 		return array( $res['people'] && ! $res['ledger'] ? Ui::url( 'asem-people' ) : Ui::url( 'asem-ledger' ), $msg );
 	}
 }

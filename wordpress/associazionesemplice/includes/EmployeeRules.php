@@ -216,7 +216,7 @@ final class EmployeeRules {
 			$add( array( 'asem_item_delete', 'asem_item_file', 'asem_item_save', 'asem_loan_return', 'asem_loan_save' ), array( 'all' => array( self::INVENTORY ) ) );
 			$add( array( 'asem_convention_archive', 'asem_convention_categories', 'asem_convention_delete', 'asem_convention_save', 'asem_conventions_csv' ), array( 'all' => array( self::CONVENTIONS ) ) );
 			$add( array( 'asem_convention_announce' ), array( 'all' => array( self::CONVENTIONS, self::COMMS ) ) );
-			$add( array( 'asem_import_apply', 'asem_import_preview', 'asem_import_undo' ), array( 'all' => array( self::TOOLS, self::PEOPLE, self::FUNDS ) ) );
+			$add( array( 'asem_import_apply', 'asem_import_continue', 'asem_import_preview', 'asem_import_stop', 'asem_import_undo' ), array( 'all' => array( self::TOOLS, self::PEOPLE, self::FUNDS ) ) );
 			$add( array( 'asem_tec_import' ), array( 'all' => array( self::TOOLS, self::COURSES, self::EVENTS ) ) );
 		}
 		return $map[ $action ] ?? null;

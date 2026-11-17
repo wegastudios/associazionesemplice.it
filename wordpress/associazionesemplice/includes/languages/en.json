@@ -2674,6 +2674,15 @@
   "← Precedenti" : "← Previous",
   "Successive →" : "Next →",
   "Un invio dei promemoria è già in corso: riprova tra qualche minuto." : "A reminder run is already in progress: try again in a few minutes.",
-  "Ne restano altri: partono da soli tra pochi minuti." : "More are left: they will go out by themselves in a few minutes."
+  "Ne restano altri: partono da soli tra pochi minuti." : "More are left: they will go out by themselves in a few minutes.",
+  "Un'importazione è già in corso: riprendila o fermala prima di caricare un altro file." : "An import is already in progress: resume it or stop it before uploading another file.",
+  "Nessuna importazione in corso." : "No import in progress.",
+  "Importazione in corso: elaborate {n} righe su {tot}. Premi «Riprendi l'importazione» per continuare." : "Import in progress: {n} of {tot} rows processed. Press \"Resume the import\" to continue.",
+  "Riprendi l'importazione" : "Resume the import",
+  "Ferma qui l'importazione" : "Stop the import here",
+  "Fermare l'importazione? Le righe già importate restano (si annullano in blocco da «Import già fatti»); le altre non vengono importate." : "Stop the import? The rows already imported stay (they can be undone all together from \"Imports already done\"); the others are not imported.",
+  "Importazione fermata: quello che è già entrato resta e si può annullare in blocco da «Import già fatti»." : "Import stopped: what has already come in stays and can be undone all together from \"Imports already done\".",
+  "La prima nota si era interrotta a metà: controlla i movimenti importati e, se serve, annulla l'import in blocco." : "The ledger import was interrupted halfway: check the imported entries and, if needed, undo the whole import.",
+  "Un'altra operazione è in corso: riprova tra qualche secondo." : "Another operation is in progress: try again in a few seconds."
  }
 }

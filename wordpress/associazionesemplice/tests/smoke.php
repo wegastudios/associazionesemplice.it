@@ -13210,6 +13210,7 @@ asem_ok( in_array( 'account_date', $ix_cols, true ) && in_array( 'document_ref',
 // Il piano di esecuzione dipende da dati e versione del database: si verifica solo che per il riferimento del documento (valore raro) venga scelto l'indice dedicato.
 asem_ok( false !== strpos( $ix_plan( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE document_ref = 'xyz-nessuno' AND method = 'cash' AND type = 'income'" ), 'document_ref' ), 'indici: la ricerca per riferimento del documento usa l\'indice' );
 
+require __DIR__ . '/smoke_import_blocks.php'; // importazione di soci a giri, con ripresa: stesso risultato della vecchia versione
 require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme del database identiche al calcolo di prima
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR

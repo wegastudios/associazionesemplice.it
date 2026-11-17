@@ -140,29 +140,34 @@ final class ImportService {
 	 * @return array people {created, updated, failed[]}, ledger {created, transfers, duplicates, skipped, failed[], memberships, shifted}, batch_id
 	 */
 	public static function apply( array $preview, array $opts = array() ): array {
+		// Stesso lavoro dell'importazione a giri (vedi ImportJob), fatto qui tutto in una volta: nessun limite di tempo.
+		ImportJob::start( $preview, $opts );
+		try {
+			do {
+				$r = ImportJob::step( INF );
+			} while ( ! $r['finished'] );
+		} catch ( \Throwable $e ) {
+			try {
+				ImportJob::stop(); // anche se qualcosa va storto a metà: quello che è stato scritto si può annullare
+			} catch ( \Throwable $unused ) { // l'import è già chiuso (errore nella prima nota) o il database non risponde: conta l'errore di partenza
+				unset( $unused );
+			}
+			throw $e;
+		}
+		return $r['result'];
+	}
+
+	/** Prima di scrivere qualunque cosa: con anni fiscali chiusi non si può aggiustare il saldo iniziale dei conti. @throws \InvalidArgumentException */
+	public static function assert_can_apply( array $preview, array $opts ): void {
 		if ( ! empty( $preview['ledger'] ) && ! empty( $opts['keep_balances'] ) && null !== FiscalYears::last_closed() ) {
 			// Aggiustare il saldo iniziale cambierebbe i saldi degli esercizi chiusi: si ferma prima di scrivere qualunque cosa.
 			throw new \InvalidArgumentException( FiscalYears::closed_message( (int) FiscalYears::last_closed() ) . ' «Non cambiare i saldi attuali dei conti» aggiusta il saldo iniziale e non si può usare con anni fiscali chiusi: togli la spunta (i saldi derivano dai movimenti) oppure riapri l\'anno fiscale.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$res   = array( 'people' => null, 'ledger' => null, 'batch_id' => null );
-		$track = array( 'people_created' => array(), 'people_updated' => array(), 'wp_users_created' => array(), 'memberships' => array(), 'shifts' => array(), 'accounts_created' => array() );
-		$batch = self::open_batch( (string) ( $opts['source'] ?? $preview['file'] ?? 'Import' ) );
-		try {
-			if ( ! empty( $preview['people'] ) ) {
-				$res['people'] = self::apply_people( $preview['people']['plan'], ! empty( $opts['mark_members'] ), $track );
-			}
-			if ( ! empty( $preview['ledger'] ) ) {
-				$res['ledger'] = self::apply_ledger( $preview['ledger']['plan'], ! empty( $opts['keep_balances'] ), $batch, $track );
-			}
-		} finally {
-			self::close_batch( $batch, $res, $track ); // anche se qualcosa va storto a metà: quello che è stato scritto si può annullare
-		}
-		$changed         = ( $res['people']['created'] ?? 0 ) + ( $res['people']['updated'] ?? 0 ) + ( $res['ledger']['created'] ?? 0 ) + ( $res['ledger']['transfers'] ?? 0 );
-		$res['batch_id'] = $changed > 0 ? $batch : null;
-		if ( ! $changed ) {
-			Db::db()->delete( Db::t( 'import_batches' ), array( 'id' => $batch ) );
-		}
-		return $res;
+	}
+
+	/** La traccia per l'annullo di un import appena aperto, ancora vuota. */
+	public static function empty_track(): array {
+		return array( 'people_created' => array(), 'people_updated' => array(), 'wp_users_created' => array(), 'memberships' => array(), 'shifts' => array(), 'accounts_created' => array() );
 	}
 
 	/** Apre un import (numero): quello che si scrive da qui in poi si può annullare in blocco. Lo usano anche gli import che non sono prima nota (The Events Calendar). */
@@ -187,7 +192,8 @@ final class ImportService {
 		Audit::log( 'import.undone', 'import', $batch_id, $audit );
 	}
 
-	private static function close_batch( int $batch, array $res, array $track ): void {
+	/** Chiude un import con il riepilogo e i dati per annullarlo. */
+	public static function close_batch( int $batch, array $res, array $track ): void {
 		$summary = array(
 			'people_created' => count( $track['people_created'] ), 'people_updated' => count( $track['people_updated'] ),
 			'transactions'   => (int) ( $res['ledger']['created'] ?? 0 ), 'transfers' => (int) ( $res['ledger']['transfers'] ?? 0 ),
@@ -195,148 +201,223 @@ final class ImportService {
 		Db::db()->update( Db::t( 'import_batches' ), array( 'summary' => wp_json_encode( $summary ), 'data' => wp_json_encode( $track ) ), array( 'id' => $batch ) );
 	}
 
-	private static function apply_people( array $plan, bool $mark, array &$track ): array {
-		$db      = Db::db();
-		$year    = Settings::membership_year()->label();
-		$people  = Plugin::people();
-		$created = 0;
-		$updated = 0;
-		$failed  = array();
-		$links   = array();
-		$order   = array();
-		foreach ( $plan as $row ) {
-			if ( 'error' === $row['action'] ) {
-				continue;
-			}
-			$order[ MemberType::GUEST === $row['type'] ? 1 : 0 ][] = $row; // prima i soci, poi gli ospiti (l'ospitante può essere nuovo)
-		}
-		foreach ( array( 0, 1 ) as $pass ) {
-			foreach ( $order[ $pass ] ?? array() as $row ) {
-				$r    = $row['row'];
-				$data = array( 'first_name' => $r['first'], 'last_name' => $r['last'] );
-				if ( null !== $r['email'] ) {
-					$data['email'] = $r['email'];
-				}
-				foreach ( array( 'card' => 'card_number', 'phone' => 'phone', 'tax' => 'tax_code', 'addr' => 'address', 'zip' => 'zip', 'city' => 'city', 'prov' => 'province' ) as $from => $to ) {
-					if ( isset( $r[ $from ] ) && null !== $r[ $from ] && ( 0 === $pass || 'card' !== $from ) ) {
-						$data[ $to ] = $r[ $from ];
-					}
-				}
-				if ( ! empty( $r['notes'] ) ) {
-					$data['notes'] = $r['notes']; // ad es. gli eventi passati a cui l'ospite ha già partecipato
-				}
-				if ( ! empty( $r['since'] ) ) {
-					$data['joined_on'] = $r['since']; // anno (o data) di iscrizione
-				}
-				if ( ! empty( $r['birth'] ) && RuntsRules::ENTITY !== ( $r['kind'] ?? '' ) ) {
-					$data['birth_date'] = $r['birth'];
-				}
-				if ( RuntsRules::ENTITY === ( $r['kind'] ?? '' ) ) { // socio ente: denominazione nel «cognome», nome vuoto, sezione del RUNTS se indicata
-					$data['subject_kind'] = RuntsRules::ENTITY;
-					if ( is_bool( $r['same'] ?? null ) ) {
-						$data['runts_same_section'] = $r['same'] ? '1' : '0';
-					}
-				}
-				if ( 1 === $pass && isset( $r['prior'] ) && null !== $r['prior'] ) {
-					$data['prior_visits'] = (int) $r['prior']; // volte già venuto prima di usare il programma
-				}
-				try {
-					if ( 1 === $pass ) {
-						$host = ! empty( $row['host_id'] ) ? (int) $row['host_id'] : self::find_host( (string) $row['host_text'] );
-						if ( ! $host && ( '' !== trim( (string) $row['host_text'] ) || Limits::flag( 'guest_host_required' ) ) ) {
-							throw new \InvalidArgumentException( 'socio ospitante "' . $row['host_text'] . '" non trovato' );
-						}
-						$data['host_person_id'] = $host ?: '';
-					}
-					if ( 'create' === $row['action'] ) {
-						$data['type'] = $row['type'];
-						$user_existed = ! empty( $data['email'] ) && (bool) get_user_by( 'email', $data['email'] );
-						$id           = $people->create( $data );
-						$created++;
-						$track['people_created'][] = $id;
-						$person                    = $people->get( $id );
-						if ( ! $user_existed && $person && ! empty( $person['wp_user_id'] ) ) {
-							$track['wp_users_created'][ $id ] = (int) $person['wp_user_id']; // utente nato con questo import: si potrà togliere
-						}
-					} else {
-						$id     = (int) $row['matched_id'];
-						$before = $people->get( $id );
-						if ( ! empty( $row['type_given'] ) && 0 === $pass ) {
-							$data['type'] = $row['type'];
-						}
-						$people->update( $id, $data );
-						$updated++;
-						if ( $before ) {
-							$track['people_updated'][ $id ] = array_intersect_key( $before, array_flip( array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'address', 'zip', 'city', 'province', 'card_number', 'type', 'host_person_id', 'notes', 'joined_on', 'prior_visits', 'birth_date', 'subject_kind', 'runts_same_section' ) ) );
-						}
-					}
-					if ( ! empty( $r['guardian'] ) ) {
-						$links[] = array( $id, (string) $r['guardian'], ( $r['sheet'] ? $r['sheet'] . ' ' : '' ) . 'riga ' . $r['line'] );
-					}
-					$person = $people->get( $id );
-					if ( $mark && $person && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
-						$had = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $id, $year ) );
-						$people->set_membership( $id, $year, true, 'import' );
-						if ( ! $had ) {
-							$track['memberships'][] = array( $id, $year );
-						}
-					}
-					if ( $person && ! empty( $r['years'] ) && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
-						foreach ( $r['years'] as $y ) { // anni di iscrizione indicati nelle colonne del file (2024, 2025… oppure «ANNO CORRENTE» e «ANNO SCORSO»)
-							$y = '@current' === $y ? $year : ( '@previous' === $y ? Settings::membership_year()->previous()->label() : MembershipRules::import_label( (string) $y, Settings::start_month() ) );
-							$y_had = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $id, (string) $y ) );
-							$people->set_membership( $id, (string) $y, true, 'import' );
-							if ( ! $y_had ) {
-								$track['memberships'][] = array( $id, (string) $y );
-							}
-						}
-					}
-				} catch ( \InvalidArgumentException $e ) {
-					$failed[] = ( $r['sheet'] ? $r['sheet'] . ' ' : '' ) . 'riga ' . $r['line'] . ': ' . $e->getMessage();
-				}
-			}
-		}
-		foreach ( $links as $l ) { // i tutori si cercano alla fine: possono essere nello stesso file
-			try {
-				$g = Guardians::find_by_ref( $l[1] );
-				if ( ! $g ) {
-					throw new \InvalidArgumentException( 'tutore "' . $l[1] . '" non trovato o ambiguo (indica la tessera o l\'email)' );
-				}
-				if ( ! Guardians::is_guardian_of( (int) $g['id'], (int) $l[0] ) ) {
-					Guardians::link( (int) $l[0], (int) $g['id'] );
-					$track['guardians'][] = array( (int) $l[0], (int) $g['id'] );
-				}
-			} catch ( \InvalidArgumentException $e ) {
-				$failed[] = $l[2] . ': ' . $e->getMessage();
-			}
-		}
-		Audit::log( 'import.applied', 'people', null, array( 'created' => $created, 'updated' => $updated, 'failed' => count( $failed ) ) );
-		return array( 'created' => $created, 'updated' => $updated, 'failed' => $failed );
+	/** I campi di una scheda che si ricordano prima di aggiornarla: servono a rimetterla com'era se l'import viene annullato. */
+	const BEFORE_FIELDS = array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'address', 'zip', 'city', 'province', 'card_number', 'type', 'host_person_id', 'notes', 'joined_on', 'prior_visits', 'birth_date', 'subject_kind', 'runts_same_section' );
+
+	/** @var array|null ospitanti possibili (non ospiti) per tessera, email e nome: si carica una volta per giro, quando serve il primo ospite */
+	private static $host_idx = null;
+
+	/** Da chiamare a ogni giro: l'elenco degli ospitanti si rilegge dal database (i soci creati nel primo passaggio servono agli ospiti del secondo). */
+	public static function reset_host_index(): void {
+		self::$host_idx = null;
 	}
 
-	/** L'ospitante di un ospite: tessera, email oppure nome e cognome (unico). */
+	/**
+	 * L'ordine in cui si scrivono le righe di soci e ospiti: prima i soci, poi gli ospiti (l'ospitante può essere nuovo); le righe con errore si saltano.
+	 *
+	 * @return array<int,array{0:int,1:int}> per ogni passo: posizione nel piano e passaggio (0 soci, 1 ospiti)
+	 */
+	public static function people_sequence( array $plan ): array {
+		$order = array( array(), array() );
+		foreach ( $plan as $i => $row ) {
+			if ( ! $row || 'error' === $row['action'] ) {
+				continue;
+			}
+			$pass               =MemberType::GUEST === $row['type'] ? 1 : 0;
+			$order[ $pass ][]   = array( (int) $i, $pass );
+		}
+		return array_merge( $order[0], $order[1] );
+	}
+
+	/**
+	 * Scrive una riga di soci o ospiti: crea o aggiorna la scheda, segna le iscrizioni e ricorda i tutori da collegare dopo.
+	 * Quello che fa è ricordato in $track (per l'annullo) e in $job (contatori, righe non riuscite, tutori).
+	 *
+	 * @param array $job   created, updated, failed[], links[]
+	 * @param array $track la traccia dell'import
+	 * @param array $ctx   mark (bool), year (anno sociale), pre (schede prima di un aggiornamento, per id), touched (id già aggiornati in questo giro),
+	 *                     adopt (id di una scheda già creata da questa riga in un giro interrotto: non si crea di nuovo), since (marca di tempo di quel giro)
+	 */
+	public static function apply_person_row( array $row, int $pass, array &$job, array &$track, array &$ctx ): void {
+		$db     = Db::db();
+		$people = Plugin::people();
+		$year   = (string) $ctx['year'];
+		$mark   = ! empty( $ctx['mark'] );
+		$r      = $row['row'];
+		$data   = array( 'first_name' => $r['first'], 'last_name' => $r['last'] );
+		if ( null !== $r['email'] ) {
+			$data['email'] = $r['email'];
+		}
+		foreach ( array( 'card' => 'card_number', 'phone' => 'phone', 'tax' => 'tax_code', 'addr' => 'address', 'zip' => 'zip', 'city' => 'city', 'prov' => 'province' ) as $from => $to ) {
+			if ( isset( $r[ $from ] ) && null !== $r[ $from ] && ( 0 === $pass || 'card' !== $from ) ) {
+				$data[ $to ] = $r[ $from ];
+			}
+		}
+		if ( ! empty( $r['notes'] ) ) {
+			$data['notes'] = $r['notes']; // ad es. gli eventi passati a cui l'ospite ha già partecipato
+		}
+		if ( ! empty( $r['since'] ) ) {
+			$data['joined_on'] = $r['since']; // anno (o data) di iscrizione
+		}
+		if ( ! empty( $r['birth'] ) && RuntsRules::ENTITY !== ( $r['kind'] ?? '' ) ) {
+			$data['birth_date'] = $r['birth'];
+		}
+		if ( RuntsRules::ENTITY === ( $r['kind'] ?? '' ) ) { // socio ente: denominazione nel «cognome», nome vuoto, sezione del RUNTS se indicata
+			$data['subject_kind'] = RuntsRules::ENTITY;
+			if ( is_bool( $r['same'] ?? null ) ) {
+				$data['runts_same_section'] = $r['same'] ? '1' : '0';
+			}
+		}
+		if ( 1 === $pass && isset( $r['prior'] ) && null !== $r['prior'] ) {
+			$data['prior_visits'] = (int) $r['prior']; // volte già venuto prima di usare il programma
+		}
+		$adopted = false;
+		try {
+			if ( 1 === $pass ) {
+				$host = ! empty( $row['host_id'] ) ? (int) $row['host_id'] : self::find_host( (string) $row['host_text'] );
+				if ( ! $host && ( '' !== trim( (string) $row['host_text'] ) || Limits::flag( 'guest_host_required' ) ) ) {
+					throw new \InvalidArgumentException( 'socio ospitante "' . $row['host_text'] . '" non trovato' );
+				}
+				$data['host_person_id'] = $host ?: '';
+			}
+			if ( 'create' === $row['action'] ) {
+				$data['type'] = $row['type'];
+				if ( ! empty( $ctx['adopt'] ) ) { // la scheda l'ha già scritta un giro interrotto: si riprende da quella, senza crearne un'altra
+					$adopted = true;
+					$id      = (int) $ctx['adopt'];
+					$job['created']++;
+					if ( ! in_array( $id, $track['people_created'], true ) ) {
+						$track['people_created'][] = $id;
+					}
+					$person = $people->get( $id );
+					if ( $person && ! empty( $person['wp_user_id'] ) && ! isset( $track['wp_users_created'][ $id ] ) && self::user_is_new( (int) $person['wp_user_id'], (int) ( $ctx['since'] ?? 0 ) ) ) {
+						$track['wp_users_created'][ $id ] = (int) $person['wp_user_id'];
+					}
+				} else {
+					$user_existed = ! empty( $data['email'] ) && (bool) get_user_by( 'email', $data['email'] );
+					$id           = $people->create( $data );
+					$job['created']++;
+					$track['people_created'][] = $id;
+					$person                    = $people->get( $id );
+					if ( ! $user_existed && $person && ! empty( $person['wp_user_id'] ) ) {
+						$track['wp_users_created'][ $id ] = (int) $person['wp_user_id']; // utente nato con questo import: si potrà togliere
+					}
+				}
+			} else {
+				$id = (int) $row['matched_id'];
+				if ( ! isset( $ctx['touched'][ $id ] ) && isset( $ctx['pre'][ $id ] ) ) {
+					$before = $ctx['pre'][ $id ]; // letta prima del giro (uguale a quella di adesso): sopravvive a un'interruzione
+				} else {
+					$b      = $people->get( $id );
+					$before = $b ? array_intersect_key( $b, array_flip( self::BEFORE_FIELDS ) ) : null;
+				}
+				if ( ! empty( $row['type_given'] ) && 0 === $pass ) {
+					$data['type'] = $row['type'];
+				}
+				$people->update( $id, $data );
+				$job['updated']++;
+				$ctx['touched'][ $id ] = true;
+				if ( $before ) {
+					$track['people_updated'][ $id ] = $before;
+				}
+			}
+			if ( ! empty( $r['guardian'] ) ) {
+				$job['links'][] = array( $id, (string) $r['guardian'], ( $r['sheet'] ? $r['sheet'] . ' ' : '' ) . 'riga ' . $r['line'] );
+			}
+			$person = $people->get( $id );
+			if ( $mark && $person && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
+				$had = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $id, $year ) );
+				$people->set_membership( $id, $year, true, 'import' );
+				if ( ! $had || $adopted ) {
+					$track['memberships'][] = array( $id, $year );
+				}
+			}
+			if ( $person && ! empty( $r['years'] ) && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
+				foreach ( $r['years'] as $y ) { // anni di iscrizione indicati nelle colonne del file (2024, 2025… oppure «ANNO CORRENTE» e «ANNO SCORSO»)
+					$y = '@current' === $y ? $year : ( '@previous' === $y ? Settings::membership_year()->previous()->label() : MembershipRules::import_label( (string) $y, Settings::start_month() ) );
+					$y_had = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $id, (string) $y ) );
+					$people->set_membership( $id, (string) $y, true, 'import' );
+					if ( ! $y_had || $adopted ) {
+						$track['memberships'][] = array( $id, (string) $y );
+					}
+				}
+			}
+		} catch ( \InvalidArgumentException $e ) {
+			$job['failed'][] = ( $r['sheet'] ? $r['sheet'] . ' ' : '' ) . 'riga ' . $r['line'] . ': ' . $e->getMessage();
+		}
+	}
+
+	/** L'utente WordPress è nato dopo il momento indicato (marca di tempo)? */
+	private static function user_is_new( int $user_id, int $since ): bool {
+		$u = get_userdata( $user_id );
+		return $u && $since > 0 && strtotime( (string) $u->user_registered . ' UTC' ) >= $since - 2;
+	}
+
+	/**
+	 * Collega un minore al suo tutore (uno dei collegamenti ricordati da {@see apply_person_row()}); i tutori si cercano alla fine: possono essere nello stesso file.
+	 *
+	 * @param array  $link  id del minore, riferimento al tutore, riga del file
+	 * @param string $since se non è vuoto (data e ora del sito), un collegamento già presente e nato dopo quel momento è di un giro interrotto: si ricorda per l'annullo
+	 */
+	public static function apply_guardian_link( array $link, array &$job, array &$track, string $since = '' ): void {
+		try {
+			$g = Guardians::find_by_ref( $link[1] );
+			if ( ! $g ) {
+				throw new \InvalidArgumentException( 'tutore "' . $link[1] . '" non trovato o ambiguo (indica la tessera o l\'email)' );
+			}
+			$pair = array( (int) $link[0], (int) $g['id'] );
+			if ( ! Guardians::is_guardian_of( (int) $g['id'], (int) $link[0] ) ) {
+				Guardians::link( (int) $link[0], (int) $g['id'] );
+				$track['guardians'][] = $pair;
+			} elseif ( '' !== $since ) {
+				$db  = Db::db();
+				$own = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' WHERE person_id = %d AND guardian_person_id = %d AND created_at >= %s', $pair[0], $pair[1], $since ) );
+				if ( $own > 0 && ! in_array( $pair, (array) ( $track['guardians'] ?? array() ), true ) ) {
+					$track['guardians'][] = $pair;
+				}
+			}
+		} catch ( \InvalidArgumentException $e ) {
+			$job['failed'][] = $link[2] . ': ' . $e->getMessage();
+		}
+	}
+
+	/** L'ospitante di un ospite: tessera, email oppure nome e cognome (unico). Gli ospitanti si leggono una volta per giro. */
 	private static function find_host( string $text ): int {
 		$text = trim( $text );
 		if ( '' === $text ) {
 			return 0;
 		}
+		if ( null === self::$host_idx ) {
+			$idx = array( 'card' => array(), 'mail' => array(), 'name' => array() );
+			foreach ( Plugin::people()->search() as $p ) {
+				if ( MemberType::GUEST === $p['type'] ) {
+					continue;
+				}
+				$id = (int) $p['id'];
+				if ( ! empty( $p['card_number'] ) ) {
+					$idx['card'][ Text::lower( (string) $p['card_number'] ) ][ $id ] = true;
+				}
+				if ( ! empty( $p['email'] ) ) {
+					$idx['mail'][ Text::lower( (string) $p['email'] ) ][ $id ] = true;
+				}
+				$idx['name'][ Text::normalize( $p['first_name'] . $p['last_name'] ) ][ $id ] = true;
+				$idx['name'][ Text::normalize( $p['last_name'] . $p['first_name'] ) ][ $id ] = true;
+			}
+			self::$host_idx = $idx;
+		}
 		$n = Text::normalize( $text );
 		$c = Text::lower( PeopleCsv::clean_card( $text ) );
 		$m = array();
-		foreach ( Plugin::people()->search() as $p ) {
-			if ( MemberType::GUEST === $p['type'] ) {
-				continue;
-			}
-			if ( ( ! empty( $p['card_number'] ) && Text::lower( (string) $p['card_number'] ) === $c )
-				|| ( ! empty( $p['email'] ) && Text::lower( (string) $p['email'] ) === Text::lower( $text ) )
-				|| Text::normalize( $p['first_name'] . $p['last_name'] ) === $n || Text::normalize( $p['last_name'] . $p['first_name'] ) === $n ) {
-				$m[ (int) $p['id'] ] = true;
+		foreach ( array( self::$host_idx['card'][ $c ] ?? array(), self::$host_idx['mail'][ Text::lower( $text ) ] ?? array(), self::$host_idx['name'][ $n ] ?? array() ) as $set ) {
+			foreach ( $set as $id => $unused ) {
+				$m[ $id ] = true;
 			}
 		}
 		return 1 === count( $m ) ? (int) array_keys( $m )[0] : 0;
 	}
 
-	private static function apply_ledger( array $plan, bool $keep_balances, int $batch, array &$track ): array {
+	/** @internal usato da ImportJob: la prima nota si scrive tutta in una volta, in un'unica transazione. */
+	public static function apply_ledger( array $plan, bool $keep_balances, int $batch, array &$track ): array {
 		$ledger = Plugin::ledger();
 		$people = Plugin::people();
 		$res    = array( 'created' => 0, 'transfers' => 0, 'duplicates' => 0, 'skipped' => 0, 'failed' => array(), 'memberships' => 0, 'shifted' => 0 );
@@ -504,7 +585,7 @@ final class ImportService {
 	 */
 	public static function undo( int $batch_id ): array {
 		$b = self::batch( $batch_id );
-		if ( ! $b ) {
+		if ( ! $b || ImportJob::is_running( $batch_id ) ) { // un import ancora a giri non si annulla: prima si finisce o si ferma
 			throw new \InvalidArgumentException( 'Import non trovato.' );
 		}
 		if ( ! empty( $b['undone_at'] ) ) {
