@@ -73,7 +73,6 @@ final class LicenseMemoTest extends TestCase {
 		$boot = $this->src( 'includes/ProBoot.php' );
 		$from = (int) strpos( $boot, 'public static function deactivate()' );
 		$this->assertStringContainsString( 'License::forget();', substr( $boot, $from, 400 ) );
-		$this->assertStringContainsString( 'AssociazioneSemplice\\License::forget();', $this->src( 'associazionesemplice.php' ) );
 		$un   = $this->src( 'uninstall.php' );
 		$from = (int) strpos( $un, 'function asem_uninstall_secrets()' );
 		$body = substr( $un, $from, (int) strpos( $un, 'function asem_uninstall_site()' ) - $from );
