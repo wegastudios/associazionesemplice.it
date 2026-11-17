@@ -14,6 +14,13 @@ $ora = dati_impronta();
 dati_ok( $ora === $prima['impronta'], 'soci, iscrizioni, movimenti, importi e prenotazioni identici a prima: ' . wp_json_encode( $ora ) );
 dati_ok( (string) get_option( 'asem_db_version', '' ) === Install::DB_VERSION, 'schema aggiornato: DB ' . $prima['db_version'] . ' → ' . get_option( 'asem_db_version' ) . ' (livello della build: ' . Install::DB_VERSION . ')' );
 dati_ok( version_compare( $prima['db_version'], Install::DB_VERSION, '<=' ), 'lo schema non è mai tornato indietro' );
+$indici_ok = true;
+foreach ( Install::INDEXES as $t_ix => $lista_ix ) {
+	foreach ( array_keys( $lista_ix ) as $n_ix ) {
+		$indici_ok = $indici_ok && Install::index_exists( \AssociazioneSemplice\Db::t( $t_ix ), $n_ix );
+	}
+}
+dati_ok( $indici_ok, 'indici delle ricerche frequenti presenti dopo l\'aggiornamento' );
 $admin = get_users( array( 'role' => 'administrator', 'number' => 1 ) )[0];
 wp_set_current_user( $admin->ID );
 \AssociazioneSemplice\Admin\Admin::init();

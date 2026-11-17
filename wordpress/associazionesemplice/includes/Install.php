@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '67'; // dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '68'; // dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	/**
 	 * Tutti i lavori periodici e programmati del plugin e delle sue estensioni (nomi dei punti di aggancio di WP-Cron).
@@ -45,6 +45,7 @@ final class Install {
 
 	public static function activate(): void {
 		self::create_tables();
+		self::ensure_indexes(); // indici delle ricerche frequenti: si creano solo se mancano (idempotente)
 		self::add_roles_and_caps();
 		self::seed();
 		self::migrate_year_closures(); // gli anni fiscali già chiusi entrano nella traccia permanente (idempotente)
@@ -127,6 +128,61 @@ final class Install {
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
 			}
 		}
+	}
+
+	/**
+	 * Indici delle ricerche più frequenti: tabella => nome dell'indice => colonne. Solo tabelle del gratuito; le altre hanno già quelli che servono.
+	 * Elenco anagrafico per cognome e nome (ordine e pagine), ricerca per codice fiscale, movimenti di un conto in un periodo, movimenti per pagante e per
+	 * riferimento del documento (pagamenti online), richieste di prenotazione per turno e persona.
+	 */
+	const INDEXES = array(
+		'people'         => array(
+			'last_first' => 'last_name, first_name',
+			'tax_code'   => 'tax_code',
+		),
+		'transactions'   => array(
+			'account_date'    => 'account_id, tx_date',
+			'payer_person_id' => 'payer_person_id',
+			'document_ref'    => 'document_ref',
+		),
+		'event_requests' => array(
+			'session_person' => 'session_id, person_id',
+		),
+	);
+
+	/** L'indice esiste già sulla tabella? @param string $table nome completo con prefisso */
+	public static function index_exists( string $table, string $index ): bool {
+		$db = Db::db();
+		return (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s', $table, $index ) ) > 0; // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- struttura della tabella, non un dato
+	}
+
+	/**
+	 * Crea gli indici di {@see INDEXES} che mancano. Non modifica né riscrive i dati (indici secondari, creati sul posto senza bloccare le scritture),
+	 * non fa nulla se l'indice c'è già e non dà errore se un'altra richiesta lo crea nello stesso momento. Si può rilanciare quando si vuole.
+	 *
+	 * @return string[] indici creati ora, come «tabella.indice»
+	 */
+	public static function ensure_indexes(): array {
+		$db      = Db::db();
+		$created = array();
+		foreach ( self::INDEXES as $name => $indexes ) {
+			$table = Db::t( $name );
+			if ( $table !== (string) $db->get_var( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $table ) ) ) ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- struttura del database
+				continue;
+			}
+			foreach ( $indexes as $index => $columns ) {
+				if ( self::index_exists( $table, $index ) ) {
+					continue;
+				}
+				$quiet = $db->suppress_errors( true ); // «indice già presente» per una richiesta in parallelo non è un errore
+				$db->query( "CREATE INDEX `{$index}` ON `{$table}` ({$columns})" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- nomi fissi del codice
+				$db->suppress_errors( $quiet );
+				if ( self::index_exists( $table, $index ) ) {
+					$created[] = $name . '.' . $index;
+				}
+			}
+		}
+		return $created;
 	}
 
 	/**

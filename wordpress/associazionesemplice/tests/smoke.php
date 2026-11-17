@@ -7436,7 +7436,7 @@ $people->set_board_role( $wr_pid, 'president' );
 $wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => $wr_bd ), array( 'id' => $wr_pid ) );
 delete_option( \AssociazioneSemplice\Install::OPT_LEGACY_ROLE_USERS );
 delete_option( \AssociazioneSemplice\Employees::OPT_LEGACY_ROLES_SEEN );
-asem_ok( user_can( $wr_u, Plugin::CAP_OPS ) && user_can( $wr_u2, Plugin::CAP ) && '67' === \AssociazioneSemplice\Install::DB_VERSION, 'ruoli WordPress: prima dell\'aggiornamento un Editore con il permesso operativo entra nel pannello' );
+asem_ok( user_can( $wr_u, Plugin::CAP_OPS ) && user_can( $wr_u2, Plugin::CAP ) && version_compare( \AssociazioneSemplice\Install::DB_VERSION, '67', '>=' ), 'ruoli WordPress: prima dell\'aggiornamento un Editore con il permesso operativo entra nel pannello' );
 $wr_au_before = count( Audit::recent( 50, 'roles.wp_access_removed' ) );
 $wr_res = \AssociazioneSemplice\Install::migrate_wp_role_access();
 asem_ok( array() === array_diff( array( "author", "editor" ), $wr_res["roles"] ) && $wr_res["users"] >= 2, 'ruoli WordPress: l\'aggiornamento ripulisce i due ruoli e segnala solo i due utenti che entravano per quel ruolo ' . wp_json_encode( $wr_res ) );
@@ -13182,6 +13182,33 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 	asem_ok( false === strpos( $bom_src, 'echo $csv;' ) && ( false !== strpos( $bom_src, 'Download::csv(' ) || false !== strpos( $bom_src, 'Download::csv_chunks(' ) || false !== strpos( $bom_src, 'Download::bytes( self::export_csv' ) || false !== strpos( $bom_src, '"\xEF\xBB\xBF" . $csv' ) ), 'CSV: ' . $bom_f . ' invia il file con il BOM' );
 }
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
+
+// Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
+asem_ok( '68' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 68' );
+$ix_all = true;
+foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
+	foreach ( array_keys( $ix_list ) as $ix_n ) {
+		$ix_all = $ix_all && \AssociazioneSemplice\Install::index_exists( Db::t( $ix_t ), $ix_n );
+	}
+}
+asem_ok( $ix_all, 'indici: dopo l\'installazione ci sono tutti' );
+asem_ok( array() === \AssociazioneSemplice\Install::ensure_indexes(), 'indici: rilanciare la creazione non fa nulla e non dà errori' );
+$ix_people_before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
+$ix_tx_before     = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) );
+$wpdb->query( 'ALTER TABLE ' . Db::t( 'people' ) . ' DROP INDEX last_first' );
+$wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_date' );
+asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
+update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
+\AssociazioneSemplice\Install::maybe_upgrade();
+asem_ok( '68' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 68' );
+asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
+$ix_plan = static function ( string $sql ) use ( $wpdb ): string {
+	return strtolower( implode( ' ', array_map( static fn( $r ) => (string) ( $r['key'] ?? $r['Key'] ?? '' ), (array) $wpdb->get_results( 'EXPLAIN ' . $sql, ARRAY_A ) ) ) );
+};
+$ix_cols = array_map( 'strtolower', (array) $wpdb->get_col( 'SELECT INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = \'' . Db::t( 'transactions' ) . '\'' ) );
+asem_ok( in_array( 'account_date', $ix_cols, true ) && in_array( 'document_ref', $ix_cols, true ) && in_array( 'payer_person_id', $ix_cols, true ), 'indici: movimenti con conto e data, riferimento del documento e pagante' );
+// Il piano di esecuzione dipende da dati e versione del database: si verifica solo che per il riferimento del documento (valore raro) venga scelto l'indice dedicato.
+asem_ok( false !== strpos( $ix_plan( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE document_ref = 'xyz-nessuno' AND method = 'cash' AND type = 'income'" ), 'document_ref' ), 'indici: la ricerca per riferimento del documento usa l\'indice' );
 
 require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme del database identiche al calcolo di prima
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
