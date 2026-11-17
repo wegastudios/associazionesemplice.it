@@ -39,7 +39,9 @@ The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, 
 == Changelog ==
 
 = 1.3.14 =
-* Altro: allineato al plugin gratuito 1.3.27, nessuna novità propria; richiede il gratuito 1.3.27
+* Ottimizzazione: Cassa, crediti, rimborsi, risorse, promemoria e comunicazioni più rapidi, con gli stessi risultati di prima; la licenza non viene chiesta al portale più di una volta ogni 12 ore
+* Nuovo: verifica delle ricevute a richiesta, a lotti, con l'esito salvato per anno fiscale
+* Altro: richiede il plugin gratuito 1.3.27
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.13 =

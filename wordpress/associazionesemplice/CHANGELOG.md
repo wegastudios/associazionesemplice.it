@@ -3,11 +3,10 @@
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
 ## 1.3.27 – 2026-11-17
-- Ottimizzazione: Bacheca, elenco e schede di corsi ed eventi, rendiconto, calendario, elenco soci, Prima nota, esportazioni, promemoria e comunicazioni molto più rapidi, con gli stessi risultati di prima
+- Ottimizzazione: Bacheca, elenco e schede di corsi ed eventi, rendiconto, calendario, elenco soci, Prima nota ed esportazioni molto più rapidi, con gli stessi risultati di prima
 - Ottimizzazione: «Soci e ospiti» a 50 righe per pagina e Prima nota a 100, con i totali sempre dell'anno intero
 - Ottimizzazione: le pagine pubbliche degli eventi restano in memoria per i visitatori e si aggiornano a ogni prenotazione o modifica
 - Nuovo: l'importazione di file grandi procede a piccoli giri, con avanzamento e pulsanti per riprendere o fermare
-- Nuovo: verifica delle ricevute a richiesta, a lotti, con l'esito salvato per anno fiscale
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 ## 1.3.26 – 2026-11-17
