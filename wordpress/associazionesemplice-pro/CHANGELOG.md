@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.14 – 2026-11-17
+- Altro: allineato al plugin gratuito 1.3.27, nessuna novità propria; richiede il gratuito 1.3.27
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.13 – 2026-11-17
 - Nuovo: i rimborsi fatti dal pannello di Stripe e le contestazioni si riflettono nel plugin: il pagamento passa a «da controllare»
 - Sicurezza: chiave di licenza cifrata; la licenza si spegne solo con un «non valida» firmato e confermato in due giorni diversi
