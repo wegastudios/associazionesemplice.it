@@ -633,7 +633,7 @@ class LedgerService {
 	// ---------- Lettura ----------
 
 	/** Prima nota con i nomi risolti. $asc = ordine cronologico (per gli export). */
-	public function rows( string $from, string $to, ?int $account_id = null, bool $asc = false ): array {
+	public function rows( string $from, string $to, ?int $account_id = null, bool $asc = false, int $limit = 0, int $offset = 0 ): array {
 		$sql  = 'SELECT t.*, a.name AS account_name, c.name AS category_name, CONCAT(p.first_name, " ", p.last_name) AS person_name, '
 			. 'p.card_number AS person_card, act.name AS activity_name, CONCAT(pp.first_name, " ", pp.last_name) AS payer_name FROM ' . Db::t( 'transactions' ) . ' t '
 			. 'JOIN ' . Db::t( 'accounts' ) . ' a ON a.id = t.account_id '
@@ -648,7 +648,32 @@ class LedgerService {
 			$args[] = $account_id;
 		}
 		$sql .= $asc ? ' ORDER BY t.tx_date, t.id' : ' ORDER BY t.tx_date DESC, t.id DESC';
+		if ( $limit > 0 ) { // una pagina: stesso ordine di sempre, solo una porzione
+			$sql   .= ' LIMIT %d OFFSET %d';
+			$args[] = $limit;
+			$args[] = max( 0, $offset );
+		}
 		return $this->db()->get_results( $this->db()->prepare( $sql, $args ), ARRAY_A ) ?: array();
+	}
+
+	/**
+	 * Numero dei movimenti, entrate e uscite di un periodo (e conto) calcolati dal database su TUTTI i movimenti, non sulla pagina mostrata.
+	 * Stesso insieme di righe di rows(): non annullati, nel periodo, con conto e voce esistenti. I giroconti contano come movimenti ma non come entrate né uscite.
+	 *
+	 * @return array{count:int,income:int,expense:int}
+	 */
+	public function totals( string $from, string $to, ?int $account_id = null ): array {
+		$sql  = 'SELECT COUNT(*) AS n, COALESCE(SUM(CASE WHEN t.type = \'income\' THEN t.amount_cents ELSE 0 END), 0) AS income, COALESCE(SUM(CASE WHEN t.type = \'expense\' THEN t.amount_cents ELSE 0 END), 0) AS expense FROM ' . Db::t( 'transactions' ) . ' t '
+			. 'JOIN ' . Db::t( 'accounts' ) . ' a ON a.id = t.account_id '
+			. 'JOIN ' . Db::t( 'categories' ) . ' c ON c.id = t.category_id '
+			. 'WHERE t.voided_at IS NULL AND t.tx_date BETWEEN %s AND %s';
+		$args = array( $from, $to );
+		if ( $account_id ) {
+			$sql   .= ' AND t.account_id = %d';
+			$args[] = $account_id;
+		}
+		$r = $this->db()->get_row( $this->db()->prepare( $sql, $args ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi di tabella interni, valori preparati
+		return array( 'count' => (int) ( $r['n'] ?? 0 ), 'income' => (int) ( $r['income'] ?? 0 ), 'expense' => (int) ( $r['expense'] ?? 0 ) );
 	}
 
 	// ---------- Import storico ----------

@@ -16,6 +16,8 @@ final class Broadcasts {
 	const MAX_SUBJ   = 120;
 	const MAX_BODY   = 5000;
 	const MAX_PER_DAY = 20;
+	const QUEUE_CHUNK = 500; // destinatari scritti con una sola query
+	const STUCK_MIN   = 10;  // minuti dopo i quali una email «in invio» si considera rimasta a metà
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -223,6 +225,7 @@ final class Broadcasts {
 		if ( ! $r['list'] && ! $sms['list'] ) {
 			throw new \InvalidArgumentException( $use_sms && ! $use_email ? 'Nessun destinatario con un numero valido e il consenso agli SMS in questo gruppo.' : 'Nessun destinatario con un indirizzo email in questo gruppo.' );
 		}
+		$db->query( 'START TRANSACTION' ); // la comunicazione e i suoi destinatari si scrivono insieme: o c'è tutto o non c'è nulla
 		$db->insert(
 			Db::t( 'broadcasts' ),
 			array(
@@ -231,9 +234,11 @@ final class Broadcasts {
 			)
 		);
 		$id = (int) $db->insert_id;
-		foreach ( $r['list'] as $x ) {
-			$db->insert( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => $id, 'person_id' => $x['person_id'], 'email' => mb_substr( $x['email'], 0, 190 ), 'name' => mb_substr( $x['name'], 0, 120 ), 'status' => 'queued' ) );
+		if ( $id <= 0 || ! self::queue_recipients( $id, $r['list'] ) ) {
+			$db->query( 'ROLLBACK' );
+			throw new \InvalidArgumentException( 'La comunicazione non è stata creata (errore del database): non è partito nulla. Riprova.' );
 		}
+		$db->query( 'COMMIT' );
 		$assoc = (string) Settings::get( 'association_name' );
 		foreach ( $sms['list'] as $x ) {
 			Sms::enqueue( $x['person_id'], $x['phone'], $x['name'], SmsRules::personalize( $body, (string) strtok( $x['name'], ' ' ), $assoc ), 'broadcast', $id );
@@ -248,6 +253,28 @@ final class Broadcasts {
 		return $id;
 	}
 
+	/** Mette in coda i destinatari a blocchi di 500 per volta (una sola query a blocco). @return bool false se il database ha rifiutato un blocco */
+	private static function queue_recipients( int $id, array $list ): bool {
+		$db  = self::db();
+		$tbl = Db::t( 'broadcast_rcpt' );
+		foreach ( array_chunk( $list, self::QUEUE_CHUNK ) as $chunk ) {
+			$values = array();
+			foreach ( $chunk as $x ) {
+				$values[] = $db->prepare( "(%d, %d, %s, %s, 'queued')", $id, (int) $x['person_id'], mb_substr( (string) $x['email'], 0, 190 ), mb_substr( (string) $x['name'], 0, 120 ) );
+			}
+			if ( false === $db->query( 'INSERT INTO ' . $tbl . ' (broadcast_id, person_id, email, name, status) VALUES ' . implode( ',', $values ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno, valori già passati da prepare()
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Le email prese in carico da un passaggio interrotto (timeout, errore fatale) tornano in coda dopo qualche minuto. */
+	private static function recover_stuck( int $id ): void {
+		$db = self::db();
+		$db->query( $db->prepare( 'UPDATE ' . Db::t( 'broadcast_rcpt' ) . " SET status = 'queued' WHERE broadcast_id = %d AND status = 'sending' AND (sent_at IS NULL OR sent_at < %s)", $id, gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - self::STUCK_MIN * 60 ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
+	}
+
 	/** Manda il prossimo gruppo di email di una comunicazione. @return int rimaste da mandare */
 	public static function process( int $id, ?int $batch = null ): int {
 		$batch = $batch ?: Limits::get( 'broadcast_batch' );
@@ -256,11 +283,12 @@ final class Broadcasts {
 		if ( ! $b || 'sending' !== $b['status'] || ! Edition::has( 'broadcasts' ) ) {
 			return 0; // con la licenza non in regola l'invio resta fermo: riprende da solo quando torna in regola
 		}
+		self::recover_stuck( $id );
 		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' ORDER BY id LIMIT %d", $id, $batch ), ARRAY_A ) ?: array();
 		$assoc = (string) Settings::get( 'association_name' );
 		foreach ( $rows as $r ) {
 			// si prende in carico la riga: se un altro passaggio (cron e pagina insieme) sta mandando le stesse email, non si manda due volte
-			if ( 1 !== (int) $db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => 'sending' ), array( 'id' => (int) $r['id'], 'status' => 'queued' ) ) ) {
+			if ( 1 !== (int) $db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => 'sending', 'sent_at' => Db::now() ), array( 'id' => (int) $r['id'], 'status' => 'queued' ) ) ) { // sent_at ricorda da quando è «in invio»
 				continue;
 			}
 			$ok = Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $b['subject'], self::text_for( $b['body'], $r['name'] ) );
@@ -268,7 +296,7 @@ final class Broadcasts {
 			Push::notify_email( (string) $r['email'], (string) $b['subject'], strtr( (string) $b['body'], array( '{nome}' => $first, '{associazione}' => $assoc ) ) ); // anche sul telefono, se ha attivato le notifiche
 			$db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => $ok ? 'sent' : 'failed', 'sent_at' => Db::now(), 'error' => $ok ? null : 'invio non riuscito' ), array( 'id' => (int) $r['id'] ) );
 		}
-		$left = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued'", $id ) );
+		$left = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status IN ('queued','sending')", $id ) ); // anche quelle in invio: la comunicazione non è finita finché una email è a metà
 		$sent = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'sent'", $id ) );
 		$fail = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'failed'", $id ) );
 		$db->update( Db::t( 'broadcasts' ), array( 'sent' => $sent, 'failed' => $fail, 'status' => $left > 0 ? 'sending' : 'done', 'finished_at' => $left > 0 ? null : Db::now() ), array( 'id' => $id ) );

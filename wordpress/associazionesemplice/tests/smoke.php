@@ -2322,6 +2322,40 @@ wp_set_current_user( 1 );
 $csv = Admin\Exports::ledger( $year . '-01-01', $year . '-12-31' )[1];
 asem_ok( false !== strpos( $csv, 'N. tessera' ) && false !== strpos( $csv, 'Rimborso' ), 'export prima nota' );
 asem_ok( false !== strpos( Admin\Exports::people()[1], 'fulvia@example.com' ), 'export soci' );
+// download a pezzi: stesso file, scritto un blocco alla volta
+ob_start();
+\AssociazioneSemplice\Download::csv_chunks( array( 'ab', 'cd', '' ) );
+$chunked = ob_get_clean();
+asem_ok( "\xEF\xBB\xBFabcd" === $chunked, 'download CSV: il file si scrive a pezzi con il BOM, senza perdere nulla' );
+$ld_all = Plugin::ledger()->rows( $year . '-01-01', $year . '-12-31' );
+// prima nota a pagine: totali e ordine identici al calcolo di prima (tutto in una pagina)
+$ld_ref_in = 0;
+$ld_ref_out = 0;
+foreach ( $ld_all as $ld_r ) {
+	if ( 'income' === $ld_r['type'] ) {
+		$ld_ref_in += (int) $ld_r['amount_cents'];
+	} elseif ( 'expense' === $ld_r['type'] ) {
+		$ld_ref_out += (int) $ld_r['amount_cents'];
+	}
+}
+$ld_tot = Plugin::ledger()->totals( $year . '-01-01', $year . '-12-31' );
+asem_ok( count( $ld_all ) > 1 && $ld_tot['count'] === count( $ld_all ) && $ld_tot['income'] === $ld_ref_in && $ld_tot['expense'] === $ld_ref_out, 'prima nota: i totali dell\'anno calcolati dal database sono quelli di prima' );
+$ld_pages = array();
+for ( $ld_o = 0; $ld_o < count( $ld_all ); $ld_o += 3 ) {
+	$ld_pages = array_merge( $ld_pages, Plugin::ledger()->rows( $year . '-01-01', $year . '-12-31', null, false, 3, $ld_o ) );
+}
+asem_ok( array_column( $ld_pages, 'id' ) === array_column( $ld_all, 'id' ) && $ld_pages === $ld_all, 'prima nota: le pagine messe in fila sono gli stessi movimenti, nello stesso ordine' );
+$ld_acc = (int) $ld_all[0]['account_id'];
+$ld_acc_all = Plugin::ledger()->rows( $year . '-01-01', $year . '-12-31', $ld_acc );
+$ld_acc_in = 0;
+foreach ( $ld_acc_all as $ld_r ) {
+	$ld_acc_in += 'income' === $ld_r['type'] ? (int) $ld_r['amount_cents'] : 0;
+}
+$ld_acc_tot = Plugin::ledger()->totals( $year . '-01-01', $year . '-12-31', $ld_acc );
+asem_ok( $ld_acc_tot['count'] === count( $ld_acc_all ) && $ld_acc_tot['income'] === $ld_acc_in && array_column( Plugin::ledger()->rows( $year . '-01-01', $year . '-12-31', $ld_acc, false, 2, 1 ), 'id' ) === array_slice( array_column( $ld_acc_all, 'id' ), 1, 2 ), 'prima nota: con il filtro per conto totali e pagine restano quelli del conto' );
+$ld_html = asem_render( array( Admin\LedgerPage::class, 'render' ), Admin\Ui::money( $ld_ref_in ), array( 'year' => (string) $year, 'paged' => '99' ) );
+asem_ok( false !== strpos( $ld_html, Admin\Ui::money( $ld_ref_out ) ), 'prima nota: la pagina mostra i totali dell\'intero anno, anche chiedendo una pagina che non c\'è' );
+asem_ok( implode( '', iterator_to_array( ( new ReflectionMethod( Admin\Exports::class, 'ledger_chunks' ) )->invoke( null, $year . '-01-01', $year . '-12-31' ), false ) ) === $csv && 'Data;Tipo;Conto' === substr( $csv, 0, 15 ), 'export prima nota: il file a blocchi è identico a quello intero, intestazione per prima' );
 asem_ok( "'=HYPERLINK(\"x\")" === Admin\Exports::neutralize( '=HYPERLINK("x")' ) && "'+1+1" === Admin\Exports::neutralize( '+1+1' ) && "'-2+3" === Admin\Exports::neutralize( '-2+3' ) && "'@SUM(A1)" === Admin\Exports::neutralize( '@SUM(A1)' ) && "'\t=1" === Admin\Exports::neutralize( "\t=1" ), 'export CSV: le formule nelle celle di testo vengono neutralizzate' );
 asem_ok( '-12,50' === Admin\Exports::neutralize( '-12,50' ) && '1.234,56' === Admin\Exports::neutralize( '1.234,56' ) && '+39 336 1112233' === Admin\Exports::neutralize( '+39 336 1112233' ) && 'Mario Rossi' === Admin\Exports::neutralize( 'Mario Rossi' ) && '' === Admin\Exports::neutralize( '' ), 'export CSV: importi, telefoni e testi normali restano com\'erano' );
 
@@ -6043,6 +6077,32 @@ asem_ok( false !== strpos( $t_rita, 'sta per scadere' ) && false !== strpos( $t_
 $n_rita = $mails_to( 'rita.promemoria@example.com' );
 \AssociazioneSemplice\Reminders::run( $today );
 asem_ok( $n_rita === $mails_to( 'rita.promemoria@example.com' ) && $r_on['events'] >= 2, 'promemoria: ogni promemoria si manda una sola volta' );
+// giri a tempo limitato: ogni giro manda almeno un promemoria e il resto riprende da solo, senza perderne né ripeterne
+$gi_mails = array();
+foreach ( array( 'Tea', 'Teo', 'Tina' ) as $gi_n ) {
+	$gi_p = $people->create( array( 'type' => 'ordinary', 'first_name' => $gi_n, 'last_name' => 'Giroleto', 'email' => strtolower( $gi_n ) . '.giroleto@example.com' ) );
+	$people->set_membership( $gi_p, $ym_label, true );
+	$wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' +12 days' ) ) ), array( 'person_id' => $gi_p ) );
+	$gi_mails[] = strtolower( $gi_n ) . '.giroleto@example.com';
+}
+$gi_pending = \AssociazioneSemplice\Reminders::run( $today, false )['membership'];
+add_filter( 'asem_reminders_budget_seconds', '__return_zero' );
+$gi_first = \AssociazioneSemplice\Reminders::run( $today );
+asem_ok( 3 === $gi_pending && 1 === $gi_first['membership'] && \AssociazioneSemplice\Reminders::more_pending() && false !== wp_next_scheduled( 'asem_send_reminders' ) && false === get_option( \AssociazioneSemplice\Reminders::OPT_LOCK, false ), 'promemoria: con il tempo finito il giro si ferma dopo un invio, ne programma un altro e libera il blocco' );
+$gi_sum = $gi_first['membership'];
+for ( $gi_i = 0; $gi_i < 6 && \AssociazioneSemplice\Reminders::more_pending(); $gi_i++ ) {
+	$gi_sum += \AssociazioneSemplice\Reminders::run( $today )['membership'];
+}
+remove_filter( 'asem_reminders_budget_seconds', '__return_zero' );
+$gi_ok = true;
+foreach ( $gi_mails as $gi_m ) {
+	$gi_ok = $gi_ok && 1 === $mails_to( $gi_m );
+}
+asem_ok( 3 === $gi_sum && $gi_ok && ! \AssociazioneSemplice\Reminders::more_pending() && 0 === \AssociazioneSemplice\Reminders::run( $today )['membership'], 'promemoria: a giri successivi arrivano tutti, una sola volta ciascuno, e poi non resta nulla' );
+add_option( \AssociazioneSemplice\Reminders::OPT_LOCK, time(), '', 'no' ); // un altro giro in corso: questo non parte e non manda nulla
+$gi_busy = \AssociazioneSemplice\Reminders::run( $today );
+asem_ok( \AssociazioneSemplice\Reminders::was_busy() && array( 0, 0, 0, 0, 0 ) === array_values( $gi_busy ), 'promemoria: con un altro giro in corso non si manda due volte' );
+delete_option( \AssociazioneSemplice\Reminders::OPT_LOCK );
 // corsi mensili: dopo l'ultima lezione del mese, promemoria a chi non ha pagato il mese dopo
 $cur_m = substr( $today, 0, 7 );
 $tgt_m = gmdate( 'Y-m', strtotime( $cur_m . '-01 +1 month' ) );
@@ -6694,6 +6754,30 @@ $b3a = \AssociazioneSemplice\Broadcasts::get( $b3 );
 asem_ok( 1 === (int) $b3a['failed'] && (int) $b3a['sent'] === (int) $b3a['total'] - 1, 'comunicazioni: le email non partite sono contate' );
 $GLOBALS['bc_fail'] = '';
 asem_ok( 1 === \AssociazioneSemplice\Broadcasts::retry_failed( $b3 ) && 0 === (int) \AssociazioneSemplice\Broadcasts::get( $b3 )['failed'] && 'done' === \AssociazioneSemplice\Broadcasts::get( $b3 )['status'], 'comunicazioni: si possono riprovare' );
+// email rimaste «in invio» per un giro interrotto: dopo qualche minuto tornano in coda e partono, una volta sola ciascuna
+$bc_mail = array();
+$b4  = \AssociazioneSemplice\Broadcasts::create( 'Avviso interrotto', 'Prova.', 'activity', $acq );
+$b4n = (int) \AssociazioneSemplice\Broadcasts::get( $b4 )['total'];
+$wpdb->update( Db::t( 'broadcast_rcpt' ), array( 'status' => 'queued', 'sent_at' => null ), array( 'broadcast_id' => $b4 ) );
+$wpdb->update( Db::t( 'broadcasts' ), array( 'status' => 'sending', 'sent' => 0, 'finished_at' => null ), array( 'id' => $b4 ) );
+$b4_first = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE broadcast_id = %d ORDER BY id LIMIT 1', $b4 ) );
+$wpdb->update( Db::t( 'broadcast_rcpt' ), array( 'status' => 'sending', 'sent_at' => Db::now() ), array( 'id' => $b4_first ) ); // preso in carico adesso da un altro passaggio
+$bc_mail = array();
+$b4_left = \AssociazioneSemplice\Broadcasts::process( $b4 );
+asem_ok( 1 === $b4_left && 'sending' === \AssociazioneSemplice\Broadcasts::get( $b4 )['status'] && count( $bc_mail ) === $b4n - 1, 'comunicazioni: una email appena presa in carico da un altro passaggio non si rimanda e la comunicazione non risulta finita' );
+$wpdb->update( Db::t( 'broadcast_rcpt' ), array( 'sent_at' => gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - 3600 ) ), array( 'id' => $b4_first ) ); // rimasta a metà da un'ora
+\AssociazioneSemplice\Broadcasts::process( $b4 );
+$b4b = \AssociazioneSemplice\Broadcasts::get( $b4 );
+asem_ok( 'done' === $b4b['status'] && (int) $b4b['sent'] === $b4n && count( $bc_mail ) === $b4n && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status <> 'sent'", $b4 ) ), 'comunicazioni: la email rimasta a metà torna in coda e parte; ognuno riceve una sola email' );
+// destinatari scritti a blocchi: stessi destinatari, stesso ordine
+$bq_list = array();
+for ( $bq_i = 1; $bq_i <= 1203; $bq_i++ ) {
+	$bq_list[] = array( 'person_id' => $bq_i, 'email' => 'blocco' . $bq_i . '@example.com', 'name' => 'Persona ' . $bq_i . ' 100%' );
+}
+$bq_ok = ( new ReflectionMethod( \AssociazioneSemplice\Broadcasts::class, 'queue_recipients' ) )->invoke( null, 987654321, $bq_list );
+$bq_rows = $wpdb->get_results( $wpdb->prepare( 'SELECT person_id, email, name, status FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE broadcast_id = %d ORDER BY id', 987654321 ), ARRAY_A );
+asem_ok( true === $bq_ok && 1203 === count( $bq_rows ) && 1 === (int) $bq_rows[0]['person_id'] && 1203 === (int) $bq_rows[1202]['person_id'] && 'Persona 600 100%' === $bq_rows[599]['name'] && 'queued' === $bq_rows[1202]['status'], 'comunicazioni: 1.203 destinatari in coda a blocchi, in ordine e con i caratteri speciali intatti' );
+$wpdb->delete( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => 987654321 ) );
 // controlli
 asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Broadcasts::create( '', 'testo', 'members_all' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Broadcasts::create( 'Oggetto', 'testo', 'gruppo_inesistente' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Broadcasts::create( 'Oggetto', str_repeat( 'x', 6000 ), 'members_all' ); } ), 'comunicazioni: oggetto e testo obbligatori, gruppo valido, lunghezza limitata' );
 $empty_s = $first_session( $mkev( 'Evento senza prenotati', 0, null ) );

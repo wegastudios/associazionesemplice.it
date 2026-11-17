@@ -7,11 +7,14 @@ use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\Labels;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\Texts;
 use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
 final class LedgerPage {
+
+	const PER_PAGE = 100; // movimenti per pagina
 
 	/** Allegati di un movimento: elenco con apertura/rimozione e aggiunta di altri file. */
 	private static function attachments_cell( int $tx_id, array $list, string $here ): void {
@@ -40,17 +43,13 @@ final class LedgerPage {
 		$year   = Ui::get_int( 'year', FiscalYears::current() );
 		$acc    = Ui::get_int( 'account' );
 		list( $from, $to ) = FiscalYears::range( $year );
-		$rows   = Plugin::ledger()->rows( $from, $to, $acc ?: null );
-		$here   = Ui::url( 'asem-ledger', array( 'year' => $year, 'account' => $acc ?: null ) );
-		$income = 0;
-		$expense = 0;
-		foreach ( $rows as $r ) {
-			if ( 'income' === $r['type'] ) {
-				$income += (int) $r['amount_cents'];
-			} elseif ( 'expense' === $r['type'] ) {
-				$expense += (int) $r['amount_cents'];
-			}
-		}
+		$tot    = Plugin::ledger()->totals( $from, $to, $acc ?: null ); // entrate e uscite dell'intero anno, non della sola pagina
+		$income = $tot['income'];
+		$expense = $tot['expense'];
+		$pages  = max( 1, (int) ceil( $tot['count'] / self::PER_PAGE ) );
+		$paged  = max( 1, min( $pages, Ui::get_int( 'paged', 1 ) ) );
+		$rows   = Plugin::ledger()->rows( $from, $to, $acc ?: null, false, self::PER_PAGE, ( $paged - 1 ) * self::PER_PAGE );
+		$here   = Ui::url( 'asem-ledger', array( 'year' => $year, 'account' => $acc ?: null, 'paged' => $paged > 1 ? $paged : null ) ); // dopo un'azione si torna alla stessa pagina
 
 		Ui::header( 'Prima nota — ' . 'anno fiscale ' . FiscalYears::label( $year ), Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Scarica per Excel' ) );
 		echo wp_kses( '<p><a class="button" href="' . esc_url( Ui::url( 'asem-ledger', array( 'year' => $year - 1, 'account' => $acc ?: null ) ) ) . '">‹ ' . ( $year - 1 ) . '</a> '
@@ -89,6 +88,18 @@ final class LedgerPage {
 			echo '</details></td></tr>';
 		}
 		echo '</tbody></table>';
+		if ( $pages > 1 ) { // 100 movimenti alla volta: anno e conto scelti restano nei collegamenti
+			$nav = array( 'year' => $year, 'account' => $acc ?: null );
+			echo '<p class="tablenav asem-pager">';
+			if ( $paged > 1 ) {
+				echo '<a class="button" href="' . esc_url( Ui::url( 'asem-ledger', array_merge( $nav, array( 'paged' => $paged - 1 ) ) ) ) . '">' . esc_html( Texts::t( '← Precedenti' ) ) . '</a> ';
+			}
+			echo esc_html( Texts::t( 'Pagina {n} di {tot}', array( 'n' => $paged, 'tot' => $pages ) ) ) . ' ';
+			if ( $paged < $pages ) {
+				echo '<a class="button" href="' . esc_url( Ui::url( 'asem-ledger', array_merge( $nav, array( 'paged' => $paged + 1 ) ) ) ) . '">' . esc_html( Texts::t( 'Successive →' ) ) . '</a>';
+			}
+			echo '</p>';
+		}
 		echo '<p class="description">I movimenti non si modificano: per correggere si annulla e si registra di nuovo. L\'annullamento resta tracciato.</p>';
 		Ui::footer();
 	}
