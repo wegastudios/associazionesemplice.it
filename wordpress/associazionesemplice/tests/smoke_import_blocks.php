@@ -461,7 +461,7 @@ add_filter( 'asem_import_budget_seconds', $imp_budget );
 $bk_r = ImportJob::step();
 remove_filter( 'asem_import_budget_seconds', $imp_budget );
 asem_ok( false === $bk_r['finished'] && 1 === $bk_r['done'] && false === get_option( ImportJob::OPT_LOCK, false ), 'import a giri: un blocco scaduto non ferma per sempre, e a fine giro il blocco è libero' );
-$html = asem_render( array( Admin\ImportPage::class, 'render' ), 'Riprendi l\'importazione' );
+$html = asem_render( array( Admin\ImportPage::class, 'render' ), 'asem_import_continue' );
 asem_ok( false !== strpos( $html, 'elaborate 1 righe su' ) && false !== strpos( $html, 'asem_import_stop' ) && false === strpos( $html, 'name="file"' ), 'pagina: l\'importazione a metà mostra l\'avanzamento con «Riprendi» e «Ferma», e non il caricamento di un altro file' );
 asem_ok( 0 === strpos( (string) ( new ReflectionMethod( Admin\Actions::class, 'import_continue' ) )->getName(), 'import_continue' ), 'azione «Riprendi l\'importazione» registrata' );
 $cont = new ReflectionMethod( Admin\Actions::class, 'import_continue' );
