@@ -121,12 +121,15 @@ function m_profile( string $label, callable $page, array $get = array() ): void 
 	$f    = function ( $sql ) use ( &$seen, &$tot ) {
 		++$tot;
 		$norm  = preg_replace( array( "/'[^']*'/", '/\b\d+\b/' ), array( "'S'", 'N' ), (string) $sql );
-		$norm  = substr( (string) preg_replace( '/\s+/', ' ', (string) $norm ), 0, 150 );
+		$norm  = substr( (string) preg_replace( '/\s+/', ' ', (string) $norm ), 0, 80 );
 		$where = '';
-		foreach ( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 16 ) as $fr ) { // phpcs:ignore WordPress.PHP.DevelopmentFunctions
+		$n     = 0;
+		foreach ( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 30 ) as $fr ) { // phpcs:ignore WordPress.PHP.DevelopmentFunctions
 			if ( isset( $fr['file'] ) && 1 === preg_match( '~/associazionesemplice[^/]*/includes/~', str_replace( '\\', '/', $fr['file'] ) ) ) {
-				$where = basename( $fr['file'] ) . ':' . ( $fr['line'] ?? 0 );
-				break;
+				$where .= ( '' === $where ? '' : ' < ' ) . basename( $fr['file'], '.php' ) . ':' . ( $fr['line'] ?? 0 );
+				if ( ++$n >= 4 ) {
+					break;
+				}
 			}
 		}
 		$k          = $norm . ' @ ' . $where;
