@@ -1078,7 +1078,7 @@ final class ActivitiesPage {
 						echo '<details style="margin-top:6px"><summary>Cedi il posto a un\'altra persona</summary>';
 						Ui::form_open( 'asem_transfer_booking', $back );
 						echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ), Html::allowed() );
-						echo wp_kses( Ui::person_select( 'to_person_id', $others, null, '— scegli la nuova persona —', 'asem-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'] ) . ' <button class="button button-small">Cambia</button>', Html::allowed() );
+						Ui::echo_person_select( '', 'to_person_id', $others, null, '— scegli la nuova persona —', 'asem-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'], ' <button class="button button-small">Cambia</button>' );
 						echo '<p class="description">Il pagamento già fatto passa alla nuova persona; se il suo contributo è maggiore (es. ospite) resta da pagare la differenza.</p>';
 						Ui::form_close();
 						echo '</details>';
@@ -1094,7 +1094,7 @@ final class ActivitiesPage {
 				} ) );
 				Ui::form_open( 'asem_book', $back );
 				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ), Html::allowed() );
-				echo wp_kses( '<p>Prenota: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-book-' . (int) $s['id'] ) . ' ' . self::booking_fields( $activity, 0 ) . ' <button class="button button-primary">Prenota</button></p>', Html::allowed() );
+				Ui::echo_person_select( '<p>Prenota: ', 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-book-' . (int) $s['id'], ' ' . self::booking_fields( $activity, 0 ) . ' <button class="button button-primary">Prenota</button></p>' );
 				Ui::form_close();
 				if ( \AssociazioneSemplice\Edition::has( 'door_sales' ) ) {
 					self::walk_in_form( $activity, $s, $candidates, $back );

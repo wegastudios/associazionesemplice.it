@@ -331,3 +331,18 @@ foreach ( array( '2026-01-01', '2026-02-28', '2026-12-31', '2024-02-29', '2026-0
 	}
 }
 asem_ok( $lb_same, 'modulo del corso: il primo giorno di una lezione settimanale è quello di sempre per ogni giorno della settimana (e nessun giorno non valido)' );
+
+// ---------- Scelta di una persona nelle righe delle prenotazioni: stesso HTML di quando passava tutto dal filtro ----------
+$lb_ppl = array(
+	array( 'id' => 11, 'card_number' => '7', 'first_name' => "D'Angelo & <Figli>", 'last_name' => '"Rossi"' ),
+	array( 'id' => 12, 'card_number' => '', 'first_name' => 'Zoë', 'last_name' => 'Müller' ),
+	array( 'id' => 13, 'card_number' => '9', 'first_name' => 'Anna', 'last_name' => 'a&amp;b' ),
+);
+$lb_same = true;
+foreach ( array( null, 12 ) as $lb_sel ) {
+	$lb_ref = wp_kses( '<p>Prenota: ' . Admin\Ui::person_select( 'person_id', $lb_ppl, $lb_sel, '— scegli —', 'asem-book-1' ) . ' <b>x</b> <button class="button">Prenota</button></p>', \AssociazioneSemplice\Html::allowed() );
+	ob_start();
+	Admin\Ui::echo_person_select( '<p>Prenota: ', 'person_id', $lb_ppl, $lb_sel, '— scegli —', 'asem-book-1', ' <b>x</b> <button class="button">Prenota</button></p>' );
+	$lb_same = $lb_same && (string) ob_get_clean() === $lb_ref && false !== strpos( $lb_ref, "D&#039;Angelo" );
+}
+asem_ok( $lb_same, 'scelta di una persona: il campo stampato a pezzi è identico a quello passato intero dal filtro (nomi con apici, e commerciale e segni minore)' );

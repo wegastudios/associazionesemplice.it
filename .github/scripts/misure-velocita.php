@@ -703,6 +703,30 @@ for ( $i = 0; $i < 10; $i++ ) {
 	$kses = wp_kses( $sel . ' <button class="button button-small">Cambia</button>', \AssociazioneSemplice\Html::allowed() );
 }
 m_log( sprintf( 'PARTE prova::wp_kses della stessa scelta, 10 volte: %d ms (uguale all\'originale: %s)', round( ( microtime( true ) - $t0 ) * 1000 ), $kses === $sel . ' <button class="button button-small">Cambia</button>' ? 'sì' : 'no' ) );
+$row0 = $all_light[0];
+foreach ( array(
+	'Edition::has(levels) x3000'   => function () {
+		\AssociazioneSemplice\Edition::has( 'levels' );
+	},
+	'Levels::fee_for x3000'        => function () use ( $row0 ) {
+		\AssociazioneSemplice\Levels::fee_for( $row0 );
+	},
+	'Limits::flag x3000'           => function () {
+		\AssociazioneSemplice\Limits::flag( 'membership_on_balance' );
+	},
+	'Settings::get x3000'          => function () {
+		Settings::get( 'membership_fee_cents' );
+	},
+) as $b_name => $b_fn ) {
+	$t0 = microtime( true );
+	for ( $i = 0; $i < 3000; $i++ ) {
+		$b_fn();
+	}
+	m_log( sprintf( 'PARTE prova::%s %d ms', $b_name, round( ( microtime( true ) - $t0 ) * 1000 ) ) );
+}
+$t0 = microtime( true );
+Plugin::people()->search_light( array(), true );
+m_log( sprintf( 'PARTE prova::search_light con scadenza %d ms', round( ( microtime( true ) - $t0 ) * 1000 ) ) );
 $_GET = array( 'page' => 'asem' );
 foreach ( array( 'payments_due', 'renewals', 'expected_guests', 'applications', 'adults_to_invite', 'incomplete_cards', 'overdue_loans', 'quick_cash', 'quick_enroll' ) as $m_name ) {
 	$rm = new \ReflectionMethod( 'AssociazioneSemplice\\Admin\\DashboardPage', $m_name );
