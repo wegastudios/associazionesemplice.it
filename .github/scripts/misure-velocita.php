@@ -111,6 +111,47 @@ function m_page( string $label, callable $page, array $get = array(), int $reps 
 	);
 }
 
+/**
+ * Profilo delle query di una pagina (una sola esecuzione, fuori dalla tabella dei tempi): le interrogazioni che si ripetono di più, col punto del plugin che le chiede.
+ * Serve a capire dove stanno le query «una per riga»; non fa mai fallire il job.
+ */
+function m_profile( string $label, callable $page, array $get = array() ): void {
+	$seen = array();
+	$tot  = 0;
+	$f    = function ( $sql ) use ( &$seen, &$tot ) {
+		++$tot;
+		$norm  = preg_replace( array( "/'[^']*'/", '/\b\d+\b/' ), array( "'S'", 'N' ), (string) $sql );
+		$norm  = substr( (string) preg_replace( '/\s+/', ' ', (string) $norm ), 0, 150 );
+		$where = '';
+		foreach ( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 16 ) as $fr ) { // phpcs:ignore WordPress.PHP.DevelopmentFunctions
+			if ( isset( $fr['file'] ) && 1 === preg_match( '~/associazionesemplice[^/]*/includes/~', str_replace( '\\', '/', $fr['file'] ) ) ) {
+				$where = basename( $fr['file'] ) . ':' . ( $fr['line'] ?? 0 );
+				break;
+			}
+		}
+		$k          = $norm . ' @ ' . $where;
+		$seen[ $k ] = ( $seen[ $k ] ?? 0 ) + 1;
+		return $sql;
+	};
+	add_filter( 'query', $f );
+	$old  = $_GET;
+	$_GET = $get;
+	ob_start();
+	try {
+		$page();
+	} catch ( \Throwable $e ) {
+		m_log( 'PROFILO ' . $label . ': errore ' . $e->getMessage() );
+	}
+	ob_end_clean();
+	$_GET = $old;
+	remove_filter( 'query', $f );
+	arsort( $seen );
+	m_log( 'PROFILO ' . $label . ': ' . $tot . ' query, ' . count( $seen ) . ' diverse' );
+	foreach ( array_slice( $seen, 0, 14, true ) as $k => $n ) {
+		m_log( sprintf( 'PROFILO   %5d x %s', $n, $k ) );
+	}
+}
+
 function m_table(): void {
 	m_log( '' );
 	m_log( '| Voce | 1ª volta (ms) | Migliore (ms) | Query | Memoria di picco (MB) | Byte in uscita | Nota |' );
@@ -596,6 +637,14 @@ if ( class_exists( 'AssociazioneSemplice\\TextsEngine' ) && '' !== $html_rubrica
 	$reset();
 }
 
+m_profile( 'Bacheca', array( 'AssociazioneSemplice\\Admin\\DashboardPage', 'render' ), array( 'page' => 'asem' ) );
+m_profile( 'Elenco corsi ed eventi', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_list' ), array( 'page' => 'asem-activities' ) );
+if ( $course_id ) {
+	m_profile( 'Scheda corso', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_detail' ), array( 'page' => 'asem-activity', 'id' => (string) $course_id ) );
+}
+if ( $ev_id ) {
+	m_profile( 'Scheda evento', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_detail' ), array( 'page' => 'asem-activity', 'id' => (string) $ev_id ) );
+}
 m_table();
 m_log( sprintf( 'Misure finite in %.1f s (generatore compreso).', microtime( true ) - $T0 ) );
 
