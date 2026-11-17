@@ -95,6 +95,9 @@ final class EmployeeRulesTest extends TestCase {
 		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), $import ) );
 		$this->assertNull( EmployeeRules::blocked_by( array( 'courses', 'comms' ), $import ) );
 		$this->assertSame( EmployeeRules::action_need( 'asem_import_apply' ), EmployeeRules::page_need( 'asem-import' ) );
+		foreach ( array( 'asem_import_continue', 'asem_import_stop' ) as $step ) { // riprendere o fermare un'importazione a metà chiede gli stessi permessi dell'importazione
+			$this->assertSame( $import, EmployeeRules::action_need( $step ), $step );
+		}
 		$tec = EmployeeRules::action_need( 'asem_tec_import' );
 		$this->assertSame( 'tools', EmployeeRules::blocked_by( array( 'tools' ), $tec ) );
 		$this->assertSame( 'courses', EmployeeRules::blocked_by( array( 'courses' ), $tec ) );

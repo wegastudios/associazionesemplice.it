@@ -7,6 +7,7 @@ use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PeopleCsv;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Texts;
 use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
@@ -21,12 +22,29 @@ final class ImportPage {
 		Ui::header( 'Importa da Excel o CSV', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-people' ) ) . '">← Soci</a>' );
 		$token = Ui::get_str( 'token' );
 		$prev  = '' !== $token ? get_transient( 'asem_import_' . get_current_user_id() . '_' . sanitize_key( $token ) ) : null;
-		if ( is_array( $prev ) ) {
+		$job   = \AssociazioneSemplice\ImportJob::current();
+		if ( $job ) { // un'importazione a metà: prima si finisce o si ferma, poi si carica un altro file
+			self::progress( $job );
+			self::history();
+		} elseif ( is_array( $prev ) ) {
 			self::preview( $token, $prev );
 		} else {
 			self::upload();
 		}
 		Ui::footer();
+	}
+
+	/** L'importazione a metà: a che punto è e i due pulsanti (riprendere, fermarsi). Non parte nulla da solo: si riprende premendo. */
+	private static function progress( array $job ): void {
+		echo '<div class="asem-card"><h2>' . esc_html( (string) $job['source'] ) . '</h2><p>' . esc_html( Texts::t( 'Importazione in corso: elaborate {n} righe su {tot}. Premi «Riprendi l\'importazione» per continuare.', array( 'n' => (int) ( $job['done'] ?? 0 ), 'tot' => (int) ( $job['total'] ?? 0 ) ) ) ) . '</p>';
+		Ui::form_open( 'asem_import_continue', Ui::url( 'asem-import' ), false, 'asem-inline' );
+		echo '<button class="button button-primary">' . esc_html( Texts::t( 'Riprendi l\'importazione' ) ) . '</button>';
+		Ui::form_close();
+		echo ' ';
+		Ui::form_open( 'asem_import_stop', Ui::url( 'asem-import' ), false, 'asem-inline' );
+		echo '<button class="button" data-confirm="' . esc_attr( Texts::t( 'Fermare l\'importazione? Le righe già importate restano (si annullano in blocco da «Import già fatti»); le altre non vengono importate.' ) ) . '">' . esc_html( Texts::t( 'Ferma qui l\'importazione' ) ) . '</button>';
+		Ui::form_close();
+		echo '</div>';
 	}
 
 	private static function data_link( string $csv, string $file, string $label ): string {
@@ -75,6 +93,9 @@ final class ImportPage {
 				array_filter(
 					\AssociazioneSemplice\ImportService::batches( 100 ),
 					function ( $b ) use ( $kind ) {
+						if ( \AssociazioneSemplice\ImportJob::is_running( (int) $b['id'] ) ) {
+							return false; // ancora in corso: compare qui a lavoro finito
+						}
 						return ( 'tribe' === (string) ( $b['data']['kind'] ?? '' ) ) === ( 'tribe' === $kind );
 					}
 				)
