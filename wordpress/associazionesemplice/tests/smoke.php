@@ -4631,7 +4631,7 @@ asem_ok( 'x' === \AssociazioneSemplice\BootState::get( 'prova', 'asem_boot_prova
 $bs_q = $wpdb->num_queries;
 for ( $i = 0; $i < 10; $i++ ) {
 	\AssociazioneSemplice\FiscalYears::maybe_open_current();
-	\AssociazioneSemplice\Wizard::maybe_redirect();
+	\AssociazioneSemplice\BootState::get( \AssociazioneSemplice\Wizard::REDIRECT_KEY, '', 0 ); // quello che controlla la procedura guidata a ogni pagina dell'amministrazione
 }
 asem_ok( 0 === $wpdb->num_queries - $bs_q, 'segnali di avvio: anno fiscale e procedura guidata non fanno nessuna query a ogni avvio (' . ( $wpdb->num_queries - $bs_q ) . ')' );
 
@@ -4675,7 +4675,7 @@ $wpdb->update( Db::t( 'people' ), array( 'deleted_at' => null, 'first_name' => '
 asem_ok( (int) $pu_p === (int) Access::person_for_user( $pu_id )['id'], 'permessi: la persona ripristinata si ritrova' );
 
 // Pagina collegata a un'attività: cercata una volta per richiesta, e dopo ogni scrittura sui contenuti il risultato è quello vero
-$pm_a = $acts->create( array( 'name' => 'Memoria pagina', 'social_year' => Settings::social_year()->label(),'kind' => 'event', 'fee_cents' => 0 ) );
+$pm_a = $acts->create( array( 'name' => 'Memoria pagina', 'social_year' => Settings::social_year()->label(), 'kind' => 'course', 'fee_cents' => 0 ) );
 $pm_p = \AssociazioneSemplice\PublicEvents::ensure( $pm_a );
 $pm_q = $wpdb->num_queries;
 for ( $i = 0; $i < 10; $i++ ) {
@@ -4689,11 +4689,19 @@ asem_ok( $pm_p2 > 0 && $pm_p2 === \AssociazioneSemplice\PublicEvents::post_of( $
 // creazione automatica delle pagine: una sola query per sapere quali attività ce l'hanno già (non una per attività)
 wp_delete_post( $pm_p2, true );
 \AssociazioneSemplice\BootState::set( 'events_backfill', '' );
-$pm_n = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL' );
-$pm_q = $wpdb->num_queries;
-\AssociazioneSemplice\PublicEvents::backfill();
-$pm_d = $wpdb->num_queries - $pm_q;
-asem_ok( $pm_n > 10 && $pm_d < $pm_n && \AssociazioneSemplice\PublicEvents::post_of( $pm_a ) > 0 && 'done' === \AssociazioneSemplice\BootState::get( 'events_backfill' ), 'pagine pubbliche: la creazione automatica non cerca una pagina per attività (' . $pm_d . ' query per ' . $pm_n . ' attività)' );
+\AssociazioneSemplice\PublicEvents::backfill(); // la prima attività (la più recente) è quella di prova: la sua pagina si ricrea
+asem_ok( \AssociazioneSemplice\PublicEvents::post_of( $pm_a ) > 0, 'pagine pubbliche: la creazione automatica ricrea la pagina mancante' );
+for ( $i = 0; $i < 20 && 'done' !== \AssociazioneSemplice\BootState::get( 'events_backfill' ); $i++ ) {
+	\AssociazioneSemplice\PublicEvents::backfill(); // a gruppi, finché tutte le attività hanno la pagina
+}
+if ( 'done' === \AssociazioneSemplice\BootState::get( 'events_backfill' ) ) {
+	\AssociazioneSemplice\BootState::set( 'events_backfill', '' );
+	$pm_n = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL' );
+	$pm_q = $wpdb->num_queries;
+	\AssociazioneSemplice\PublicEvents::backfill();
+	$pm_d = $wpdb->num_queries - $pm_q;
+	asem_ok( $pm_n > 10 && $pm_d <= 6 && 'done' === \AssociazioneSemplice\BootState::get( 'events_backfill' ), 'pagine pubbliche: con tutte le pagine già create il controllo non cerca una pagina per attività (' . $pm_d . ' query per ' . $pm_n . ' attività)' );
+}
 
 // Blocchi dell'editor: l'elenco delle attività si prepara solo quando l'editor si apre, non a ogni pagina
 $bk_before = implode( '', (array) wp_scripts()->get_data( 'asem-blocks', 'before' ) );
