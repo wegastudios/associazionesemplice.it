@@ -127,8 +127,16 @@ final class Settings {
 	}
 
 	public static function all(): array {
+		if ( RequestMemo::has( 'settings', 'all' ) ) { // già letta in questa richiesta: la memoria si svuota da sola a ogni scrittura sulle opzioni
+			return RequestMemo::get( 'settings', 'all' );
+		}
 		$saved = get_option( self::OPTION, array() );
-		return array_merge( self::defaults(), is_array( $saved ) ? $saved : array() );
+		return RequestMemo::put( 'settings', 'all', array_merge( self::defaults(), is_array( $saved ) ? $saved : array() ), array( $GLOBALS['wpdb']->options ) );
+	}
+
+	/** Dopo ogni scrittura dell'opzione delle impostazioni (anche da copie di sicurezza e aggiornamenti): si rilegge dal database. */
+	public static function forget(): void {
+		RequestMemo::forget( 'settings' );
 	}
 
 	/** L'ente accetta ospiti (persone che partecipano senza essere soci)? */
@@ -274,7 +282,8 @@ final class Settings {
 			$clean = (array) apply_filters( 'asem_settings_clean', $clean, $values ); // un'estensione controlla le sue impostazioni
 		}
 		Audit::log( 'settings.updated', 'settings', null, array( 'keys' => array_slice( Audit::changed_keys( $before, $clean ), 0, 60 ) ) ); // solo i nomi delle voci cambiate, mai i valori: nel registro non finiscono chiavi
-		update_option( self::OPTION, $clean );
+		update_option( self::OPTION, $clean, false ); // senza caricamento automatico (può contenere il regolamento intero); un'opzione già salvata mantiene la scelta di prima finché non cambia
+		self::forget();
 		// Chi riceve i soldi non cambia in silenzio, da qualunque strada arrivi la modifica (pannello, ripristino di una copia): registro e email agli amministratori.
 		Bank::notify_change( is_array( $before['bank_accounts'] ?? null ) ? $before['bank_accounts'] : array(), is_array( $clean['bank_accounts'] ?? null ) ? $clean['bank_accounts'] : array() );
 		Donations::notify_change( (string) ( $before['donate_paypal'] ?? '' ), (string) ( $clean['donate_paypal'] ?? '' ) );
@@ -326,7 +335,8 @@ final class Settings {
 		}
 		$all         = self::all();
 		$all[ $key ] = '';
-		update_option( self::OPTION, $all );
+		update_option( self::OPTION, $all, false );
+		self::forget();
 		Audit::log( 'settings.secret_cleared', 'settings', null, array( 'key' => $key ) );
 	}
 

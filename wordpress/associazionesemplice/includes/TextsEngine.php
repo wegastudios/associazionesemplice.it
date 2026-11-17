@@ -51,7 +51,7 @@ final class TextsEngine {
 			}
 			$clean[ $o ] = $c;
 		}
-		update_option( self::OPT, $clean );
+		update_option( self::OPT, $clean, false ); // senza caricamento automatico a ogni richiesta; un'opzione già salvata mantiene la scelta di prima finché non cambia
 		self::$map = $clean;
 		self::$eff = null; // le sostituzioni in vigore si ricalcolano
 		self::$tok = array();

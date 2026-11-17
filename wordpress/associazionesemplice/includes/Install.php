@@ -198,6 +198,7 @@ final class Install {
 		$saved                            = is_array( $saved ) ? $saved : array();
 		$saved['social_year_start_month'] = 1;
 		update_option( Settings::OPTION, $saved );
+		Settings::forget(); // la copia in memoria di questa richiesta si rilegge
 		return true;
 	}
 
@@ -259,6 +260,7 @@ final class Install {
 		}
 		$saved['whatsapp_button'] = 1;
 		update_option( Settings::OPTION, $saved );
+		Settings::forget(); // la copia in memoria di questa richiesta si rilegge
 		return true;
 	}
 
@@ -280,6 +282,7 @@ final class Install {
 		}
 		unset( $saved['voting_types'] );
 		update_option( Settings::OPTION, $saved );
+		Settings::forget(); // la copia in memoria di questa richiesta si rilegge
 	}
 
 	/** Dalla v45 di due tutori ne opera uno solo sul sito: dove prima ce n'erano due resta operativo il primo collegato. */

@@ -15,6 +15,7 @@ final class Blocks {
 
 	public static function register(): void {
 		add_action( 'init', array( __CLASS__, 'register_blocks' ) );
+		add_action( 'enqueue_block_editor_assets', array( __CLASS__, 'editor_data' ), 5 );
 	}
 
 	public static function register_blocks(): void {
@@ -28,16 +29,6 @@ final class Blocks {
 			\AssociazioneSemplice\Plugin::asset_version( 'blocks.js' ),
 			true
 		);
-		$activities = array();
-		foreach ( Plugin::activities()->all_for_select() as $a ) {
-			$activities[] = array( 'value' => (int) $a['id'], 'label' => $a['name'] . ' (' . $a['social_year'] . ')' );
-		}
-		wp_add_inline_script(
-			'asem-blocks',
-			'window.ASEM_BLOCKS = ' . wp_json_encode( array( 'views' => \AssociazioneSemplice\Areas::options(), 'rules' => Visibility::labels(), 'activities' => $activities ), JSON_HEX_TAG | JSON_HEX_AMP ) . ';',
-			'before'
-		);
-
 		register_block_type(
 			'associazionesemplice/vista',
 			array(
@@ -77,6 +68,22 @@ final class Blocks {
 				),
 				'render_callback' => array( __CLASS__, 'render_reserved' ),
 			)
+		);
+	}
+
+	/** Elenco delle attività e delle viste per le scelte nell'editor: si prepara solo quando l'editor si apre, non a ogni pagina del sito. */
+	public static function editor_data(): void {
+		if ( ! wp_script_is( 'asem-blocks', 'registered' ) ) {
+			return;
+		}
+		$activities = array();
+		foreach ( Plugin::activities()->all_for_select() as $a ) {
+			$activities[] = array( 'value' => (int) $a['id'], 'label' => $a['name'] . ' (' . $a['social_year'] . ')' );
+		}
+		wp_add_inline_script(
+			'asem-blocks',
+			'window.ASEM_BLOCKS = ' . wp_json_encode( array( 'views' => \AssociazioneSemplice\Areas::options(), 'rules' => Visibility::labels(), 'activities' => $activities ), JSON_HEX_TAG | JSON_HEX_AMP ) . ';',
+			'before'
 		);
 	}
 

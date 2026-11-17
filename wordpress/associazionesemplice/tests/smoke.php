@@ -1663,6 +1663,17 @@ $ev_p1 = $ev_mk( 'Paola', 'Prenotata', '347 1112233' );
 $ev_p2 = $ev_mk( 'Mario', 'Senzatel' );
 $acts->book( $ev_s, $ev_p1 );
 $acts->book( $ev_s, $ev_p2 );
+$ev_act = $acts->get( $ev_a );
+$ev_ns  = 0;
+foreach ( $acts->sessions( $ev_a ) as $ev_x ) {
+	if ( empty( $ev_x['cancelled_at'] ) && $ev_x['session_date'] >= $today && $ev_ns < 8 ) {
+		$ev_ns++;
+	}
+}
+$ev_q = $wpdb->num_queries;
+$ev_part = Admin\ActivitiesPage::participants_html( $ev_act, 8, false );
+$ev_qn   = $wpdb->num_queries - $ev_q;
+asem_ok( false !== strpos( $ev_part, 'Paola Prenotata' ) && false !== strpos( $ev_part, 'wa.me/' ) && $ev_qn <= 1 + 2 * $ev_ns, 'elenco attività: i partecipanti attesi non fanno una query a testa (' . $ev_qn . ' query per ' . $ev_ns . ' date e 2 prenotati)' );
 $_GET['id'] = (string) $ev_a;
 ob_start();
 Admin\ActivitiesPage::render_detail();
@@ -4603,8 +4614,105 @@ asem_ok( $threw && ! \AssociazioneSemplice\FiscalYears::is_open( $cy ), 'anni so
 $wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'open' ), array( 'year' => $cy ) ); // ripristino la prova
 $wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $cy ) );
 delete_option( 'asem_fy_auto' );
+\AssociazioneSemplice\BootState::forget( 'fy_auto' );
 \AssociazioneSemplice\FiscalYears::maybe_open_current();
-asem_ok( \AssociazioneSemplice\FiscalYears::is_open( $cy ) && (string) $cy === get_option( 'asem_fy_auto' ), 'anni solari: all\'inizio dell\'anno il nuovo anno si apre in automatico' );
+asem_ok( \AssociazioneSemplice\FiscalYears::is_open( $cy ) && (string) $cy === (string) \AssociazioneSemplice\BootState::get( 'fy_auto' ), 'anni solari: all\'inizio dell\'anno il nuovo anno si apre in automatico' );
+
+// ---------- Meno query a ogni pagina: segnali riuniti e memorie della richiesta, sempre coerenti con i salvataggi ----------
+$bs_auto = $wpdb->get_var( $wpdb->prepare( "SELECT autoload FROM {$wpdb->options} WHERE option_name = %s", \AssociazioneSemplice\BootState::OPTION ) );
+asem_ok( in_array( (string) $bs_auto, array( 'yes', 'on', 'auto', 'auto-on' ), true ), 'segnali di avvio: stanno in una sola opzione caricata con le altre' );
+update_option( 'asem_boot_prova_vecchia', 'x', false ); // un segnale ancora nella vecchia opzione si legge una volta e poi vale quello riunito
+\AssociazioneSemplice\BootState::forget( 'prova' );
+asem_ok( 'x' === \AssociazioneSemplice\BootState::get( 'prova', 'asem_boot_prova_vecchia', '' ), 'segnali di avvio: il valore della vecchia opzione si legge ancora' );
+delete_option( 'asem_boot_prova_vecchia' );
+\AssociazioneSemplice\BootState::reset_memory();
+asem_ok( 'x' === \AssociazioneSemplice\BootState::get( 'prova', 'asem_boot_prova_vecchia', '' ), 'segnali di avvio: dopo la prima lettura vale quello riunito' );
+\AssociazioneSemplice\BootState::forget( 'prova' );
+$bs_q = $wpdb->num_queries;
+for ( $i = 0; $i < 10; $i++ ) {
+	\AssociazioneSemplice\FiscalYears::maybe_open_current();
+	\AssociazioneSemplice\Wizard::maybe_redirect();
+}
+asem_ok( 0 === $wpdb->num_queries - $bs_q, 'segnali di avvio: anno fiscale e procedura guidata non fanno nessuna query a ogni avvio (' . ( $wpdb->num_queries - $bs_q ) . ')' );
+
+// Impostazioni: lette una volta, ma dopo ogni salvataggio (anche diretto sull'opzione) si legge il valore nuovo
+Settings::update( array( 'whatsapp_button' => 1 ) );
+Settings::all();
+$ms_q = $wpdb->num_queries;
+for ( $i = 0; $i < 20; $i++ ) {
+	Settings::all();
+	Settings::get( 'whatsapp_button' );
+}
+asem_ok( 0 === $wpdb->num_queries - $ms_q && 1 === (int) Settings::get( 'whatsapp_button' ), 'impostazioni: letture ripetute senza nuove query (' . ( $wpdb->num_queries - $ms_q ) . ')' );
+Settings::update( array( 'whatsapp_button' => 0 ) );
+asem_ok( 0 === (int) Settings::get( 'whatsapp_button' ), 'impostazioni: dopo un salvataggio si legge il valore nuovo' );
+$ms_raw                    = (array) get_option( Settings::OPTION, array() );
+$ms_raw['whatsapp_button'] = 1;
+update_option( Settings::OPTION, $ms_raw ); // scrittura diretta, come fanno copie di sicurezza e aggiornamenti
+asem_ok( 1 === (int) Settings::get( 'whatsapp_button' ), 'impostazioni: anche dopo una scrittura diretta dell\'opzione si legge il valore nuovo' );
+$ms_raw['whatsapp_button'] = 0;
+update_option( Settings::OPTION, $ms_raw );
+Settings::update( array( 'privacy_retention_years' => 6 ) ); // un nuovo salvataggio cambia il valore: l'opzione passa a «senza caricamento automatico»
+$ms_auto = $wpdb->get_var( $wpdb->prepare( "SELECT autoload FROM {$wpdb->options} WHERE option_name = %s", Settings::OPTION ) );
+asem_ok( ! in_array( (string) $ms_auto, array( 'yes', 'on', 'auto', 'auto-on' ), true ), 'impostazioni: un nuovo salvataggio non le carica a ogni richiesta (' . $ms_auto . ')' );
+Settings::update( array( 'privacy_retention_years' => 5 ) );
+
+// Persona dell'utente WordPress: una query per richiesta, e dopo una modifica della persona si legge il dato nuovo
+$pu_p = $people->create( array( 'type' => 'volunteer', 'card_number' => 'MEM1', 'first_name' => 'Fulvia', 'last_name' => 'Memoria', 'email' => 'fulvia.memoria@example.com' ) ); // persona di prova con utente WordPress
+$pu_id   = (int) $people->get( $pu_p )['wp_user_id'];
+asem_ok( $pu_id > 0, 'permessi: la persona di prova ha un utente WordPress' );
+Access::person_for_user( $pu_id );
+$pu_q = $wpdb->num_queries;
+for ( $i = 0; $i < 10; $i++ ) {
+	Access::person_for_user( $pu_id );
+}
+asem_ok( 0 === $wpdb->num_queries - $pu_q && (int) $pu_p === (int) Access::person_for_user( $pu_id )['id'], 'permessi: la persona dell\'utente si cerca una volta per richiesta (' . ( $wpdb->num_queries - $pu_q ) . ')' );
+$wpdb->update( Db::t( 'people' ), array( 'first_name' => 'Fulvia Memoria' ), array( 'id' => $pu_p ) );
+asem_ok( 'Fulvia Memoria' === Access::person_for_user( $pu_id )['first_name'], 'permessi: dopo la modifica della persona si legge il dato nuovo' );
+$wpdb->update( Db::t( 'people' ), array( 'deleted_at' => Db::now() ), array( 'id' => $pu_p ) );
+asem_ok( null === Access::person_for_user( $pu_id ), 'permessi: una persona eliminata non si trova più' );
+$wpdb->update( Db::t( 'people' ), array( 'deleted_at' => null, 'first_name' => 'Fulvia' ), array( 'id' => $pu_p ) );
+asem_ok( (int) $pu_p === (int) Access::person_for_user( $pu_id )['id'], 'permessi: la persona ripristinata si ritrova' );
+
+// Pagina collegata a un'attività: cercata una volta per richiesta, e dopo ogni scrittura sui contenuti il risultato è quello vero
+$pm_a = $acts->create( array( 'name' => 'Memoria pagina', 'social_year' => Settings::social_year()->label(),'kind' => 'event', 'fee_cents' => 0 ) );
+$pm_p = \AssociazioneSemplice\PublicEvents::ensure( $pm_a );
+$pm_q = $wpdb->num_queries;
+for ( $i = 0; $i < 10; $i++ ) {
+	\AssociazioneSemplice\PublicEvents::post_of( $pm_a );
+}
+asem_ok( $pm_p > 0 && $pm_p === \AssociazioneSemplice\PublicEvents::post_of( $pm_a ) && 0 === $wpdb->num_queries - $pm_q, 'pagina pubblica: la pagina dell\'attività si cerca una volta per richiesta (' . ( $wpdb->num_queries - $pm_q ) . ')' );
+wp_delete_post( $pm_p, true );
+asem_ok( 0 === \AssociazioneSemplice\PublicEvents::post_of( $pm_a ), 'pagina pubblica: eliminata la pagina, non risulta più' );
+$pm_p2 = \AssociazioneSemplice\PublicEvents::ensure( $pm_a );
+asem_ok( $pm_p2 > 0 && $pm_p2 === \AssociazioneSemplice\PublicEvents::post_of( $pm_a ), 'pagina pubblica: ricreata la pagina, risulta subito' );
+// creazione automatica delle pagine: una sola query per sapere quali attività ce l'hanno già (non una per attività)
+wp_delete_post( $pm_p2, true );
+\AssociazioneSemplice\BootState::set( 'events_backfill', '' );
+$pm_n = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL' );
+$pm_q = $wpdb->num_queries;
+\AssociazioneSemplice\PublicEvents::backfill();
+$pm_d = $wpdb->num_queries - $pm_q;
+asem_ok( $pm_n > 10 && $pm_d < $pm_n && \AssociazioneSemplice\PublicEvents::post_of( $pm_a ) > 0 && 'done' === \AssociazioneSemplice\BootState::get( 'events_backfill' ), 'pagine pubbliche: la creazione automatica non cerca una pagina per attività (' . $pm_d . ' query per ' . $pm_n . ' attività)' );
+
+// Blocchi dell'editor: l'elenco delle attività si prepara solo quando l'editor si apre, non a ogni pagina
+$bk_before = implode( '', (array) wp_scripts()->get_data( 'asem-blocks', 'before' ) );
+\AssociazioneSemplice\Frontend\Blocks::editor_data();
+$bk_after = implode( '', (array) wp_scripts()->get_data( 'asem-blocks', 'before' ) );
+asem_ok( false === strpos( $bk_before, 'ASEM_BLOCKS' ) && false !== strpos( $bk_after, 'ASEM_BLOCKS' ) && false !== strpos( $bk_after, 'Memoria pagina' ), 'blocchi: i dati per l\'editor non si preparano a ogni pagina del sito, ma quando l\'editor si apre' );
+
+// Calendario: i corsi finiti prima del periodo non si leggono, ma quelli con date proprie o ripetizioni con una fine esplicita restano
+$cl_sy  = Settings::social_year();
+$cl_end = gmdate( 'Y-m-d', strtotime( $today . ' -1 day' ) );
+if ( $cl_end >= $cl_sy->start()->format( 'Y-m-d' ) ) {
+	$cl_start = $cl_sy->start()->format( 'Y-m-d' );
+	$cl_plain = $acts->create( array( 'name' => 'Corso finito semplice', 'social_year' => $cl_sy->label(), 'kind' => 'course', 'fee_cents' => 100, 'lesson_weekday' => 2, 'starts_on' => $cl_start, 'ends_on' => $cl_end ) );
+	$cl_long  = $acts->create( array( 'name' => 'Corso finito con ripetizione lunga', 'social_year' => $cl_sy->label(), 'kind' => 'course', 'fee_cents' => 100, 'starts_on' => $cl_start, 'ends_on' => $cl_end, 'lesson_slots' => wp_json_encode( array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00', 'until' => gmdate( 'Y-m-d', strtotime( $today . ' +60 days' ) ) ) ) ) ) );
+	$cl_occ   = array_column( \AssociazioneSemplice\Calendar::occurrences( $today, gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) ) ), 'activity_id' );
+	asem_ok( ! in_array( $cl_plain, array_map( 'intval', $cl_occ ), true ) && in_array( $cl_long, array_map( 'intval', $cl_occ ), true ), 'calendario: un corso finito non compare, uno con ripetizione che continua sì' );
+	$cl_back = array_column( \AssociazioneSemplice\Calendar::occurrences( $cl_start, $cl_end ), 'activity_id' );
+	asem_ok( in_array( $cl_plain, array_map( 'intval', $cl_back ), true ), 'calendario: guardando il periodo in cui il corso c\'era, compare' );
+}
 // ---------- Esercizio chiuso: «il chiuso è chiuso» ----------
 $yl_msg  = function ( int $y ): string {
 	return 'L\'anno ' . \AssociazioneSemplice\FiscalYears::label( $y ) . ' è chiuso: per modificarlo va riaperto dalla pagina «Anni fiscali» (si può riaprire solo l\'ultimo anno chiuso).';
@@ -10420,6 +10528,20 @@ asem_ok( $wt_t['result'] === $wt_t['income'] - $wt_t['expense'], 'bilancio provv
 $wt_s2 = \AssociazioneSemplice\BalanceWatch::status( $wt_cur_cal . '-04-10' );
 asem_ok( 3 === $wt_s2['completed_months'] && $wt_s2['prov_to'] === $wt_cur_cal . '-03-31' && null !== $wt_s2['provisional'], 'bilancio provvisorio: aggiornato al mese concluso' );
 asem_ok( null === \AssociazioneSemplice\BalanceWatch::status( $wt_cur_cal . '-01-20' )['provisional'], 'bilancio provvisorio: nel primo mese non c\'è ancora un mese concluso' );
+// la situazione si calcola una volta per richiesta, ma dopo un movimento registrato (o annullato) è quella nuova
+$wt_m0 = \AssociazioneSemplice\BalanceWatch::status();
+$wt_q  = $wpdb->num_queries;
+for ( $i = 0; $i < 5; $i++ ) {
+	\AssociazioneSemplice\BalanceWatch::status();
+}
+asem_ok( 0 === $wpdb->num_queries - $wt_q, 'bilancio provvisorio: la situazione si calcola una volta per richiesta (' . ( $wpdb->num_queries - $wt_q ) . ' query nelle chiamate ripetute)' );
+if ( \AssociazioneSemplice\FiscalYears::is_open( \AssociazioneSemplice\FiscalYears::current() ) ) {
+	$wt_tx = $ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $cat['general_cost'], 'amount_cents' => 12345, 'description' => 'Prova memoria bilancio' ) );
+	$wt_m1 = \AssociazioneSemplice\BalanceWatch::status();
+	asem_ok( $wt_m1['month']['expense'] === $wt_m0['month']['expense'] + 12345, 'bilancio provvisorio: dopo una spesa registrata la situazione mostra il valore nuovo' );
+	$ledger->void( (int) $wt_tx, 'prova memoria' );
+	asem_ok( \AssociazioneSemplice\BalanceWatch::status()['month']['expense'] === $wt_m0['month']['expense'], 'bilancio provvisorio: dopo l\'annullo la situazione torna com\'era' );
+}
 $wt_fake = array( 'enough' => true, 'projection' => array( 'income' => 10000, 'expense' => 12000 ) );
 asem_ok( 1 === count( \AssociazioneSemplice\BalanceWatch::alerts_for( $wt_fake ) ) && 'uncovered' === \AssociazioneSemplice\BalanceWatch::alerts_for( $wt_fake )[0]['kind'], 'avviso: spese non coperte oltre la soglia' );
 asem_ok( 'surplus' === \AssociazioneSemplice\BalanceWatch::alerts_for( array( 'enough' => true, 'projection' => array( 'income' => 13000, 'expense' => 10000 ) ) )[0]['kind'], 'avviso: utile eccessivo oltre la soglia' );

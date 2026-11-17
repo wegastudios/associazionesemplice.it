@@ -9,8 +9,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Wizard {
 
-	const OPTION    = 'asem_wizard_status';
-	const TRANSIENT = 'asem_wizard_redirect';
+	const OPTION       = 'asem_wizard_status';
+	const REDIRECT_KEY = 'wizard_redirect'; // segnale in {@see BootState}: scadenza (ora Unix) dell'apertura automatica
 
 	/** Funzioni che hanno una loro scheda e non stanno nell'elenco delle funzioni facoltative (le indica un'estensione con il filtro `asem_wizard_own_step`). */
 	public static function own_step(): array {
@@ -33,13 +33,13 @@ final class Wizard {
 
 	public static function mark( string $status ): void {
 		update_option( self::OPTION, in_array( $status, array( self::DONE, self::SKIPPED ), true ) ? $status : self::DONE, false );
-		delete_transient( self::TRANSIENT );
+		BootState::set( self::REDIRECT_KEY, 0 );
 	}
 
 	/** Alla prima attivazione la configurazione guidata si apre da sola, una volta sola. */
 	public static function schedule_first_run(): void {
-		if ( self::pending() && false === get_transient( self::TRANSIENT ) ) {
-			set_transient( self::TRANSIENT, 1, 10 * MINUTE_IN_SECONDS );
+		if ( self::pending() && (int) BootState::get( self::REDIRECT_KEY, '', 0 ) < time() ) {
+			BootState::set( self::REDIRECT_KEY, time() + 10 * MINUTE_IN_SECONDS ); // scadenza dentro il segnale riunito: il controllo a ogni pagina non costa query
 		}
 	}
 
@@ -48,13 +48,13 @@ final class Wizard {
 	}
 
 	public static function maybe_redirect(): void {
-		if ( ! get_transient( self::TRANSIENT ) || wp_doing_ajax() || ( defined( 'DOING_CRON' ) && DOING_CRON ) || isset( $_GET['activate-multi'] ) || is_network_admin() ) { // phpcs:ignore WordPress.Security.NonceVerification
+		if ( (int) BootState::get( self::REDIRECT_KEY, '', 0 ) < time() || wp_doing_ajax() || ( defined( 'DOING_CRON' ) && DOING_CRON ) || isset( $_GET['activate-multi'] ) || is_network_admin() ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return;
 		}
 		if ( ! current_user_can( Plugin::CAP ) ) {
 			return;
 		}
-		delete_transient( self::TRANSIENT );
+		BootState::set( self::REDIRECT_KEY, 0 );
 		if ( self::pending() ) {
 			wp_safe_redirect( admin_url( 'admin.php?page=asem-wizard' ) );
 			exit;

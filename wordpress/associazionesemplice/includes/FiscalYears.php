@@ -223,9 +223,9 @@ final class FiscalYears {
 	/** Controllo leggero a ogni avvio: quando cambia l'anno, il nuovo anno si apre in automatico. */
 	public static function maybe_open_current(): void {
 		$cur = (string) self::current();
-		if ( (string) get_option( 'asem_fy_auto', '' ) !== $cur ) {
+		if ( (string) BootState::get( 'fy_auto', 'asem_fy_auto', '' ) !== $cur ) { // flag letto dall'opzione riunita (già in memoria): nessuna query a ogni avvio
 			self::ensure_current_open();
-			update_option( 'asem_fy_auto', $cur, false );
+			BootState::set( 'fy_auto', $cur );
 		}
 	}
 

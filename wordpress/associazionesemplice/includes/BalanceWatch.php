@@ -55,12 +55,20 @@ final class BalanceWatch {
 	// ---------- Situazione ----------
 
 	/**
-	 * La situazione dell'anno fiscale in corso (ricalcolata a ogni chiamata).
+	 * La situazione dell'anno fiscale in corso. Nella stessa richiesta si calcola una volta sola: la memoria si svuota da sola a ogni scrittura
+	 * sulle tabelle del plugin o sulle opzioni (un movimento registrato, un fondo, un preventivo, un limite cambiato).
 	 *
 	 * @return array anno, etichetta, da, a, oggi, giorni trascorsi e totali, mesi conclusi, bilancio provvisorio, mese in corso, preventivo, tendenza, avvisi
 	 */
 	public static function status( ?string $today = null ): array {
 		$today = $today ?: Db::today();
+		if ( RequestMemo::has( 'balance_watch', $today ) ) {
+			return RequestMemo::get( 'balance_watch', $today );
+		}
+		return RequestMemo::put( 'balance_watch', $today, self::compute_status( $today ), array( Db::t( '' ), Db::db()->options ) );
+	}
+
+	private static function compute_status( string $today ): array {
 		$start = FiscalYears::start_month();
 		$year  = FiscalYears::year_for( $today, $start );
 		list( $from, $to ) = FiscalYears::range_for( $year, $start );
