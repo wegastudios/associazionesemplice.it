@@ -147,4 +147,20 @@ it('la verifica dell\'anno dà lo stato di ogni ricevuta con una sola lettura de
     $rows = $this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->overview($year));
 
     expect($rows)->toHaveCount(1)->and($rows[0]['status'])->toBe('ok');
+
+it('il documento di una ricevuta fissata non rifà il PDF: numero e intestatario vengono dall\'emissione', function (): void {
+    $row = receiptRow($this->org->id, $this->receipt);
+    $queries = 0;
+    $doc = $this->orgContext()->run($this->org->id, function () use (&$queries) {
+        DB::listen(static function () use (&$queries): void {
+            $queries++;
+        });
+
+        return app(ReceiptFiles::class)->document($this->receipt);
+    });
+
+    expect(hash('sha256', $doc['pdf']))->toBe($row->sha256)
+        ->and($doc['number'])->toMatch('/^\d+\/\d{4}$/')
+        ->and($doc['filename'])->toBe($row->original_name)
+        ->and($queries)->toBeLessThan(8);
 });

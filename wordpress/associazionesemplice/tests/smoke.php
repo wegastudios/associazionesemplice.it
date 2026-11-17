@@ -430,7 +430,7 @@ asem_ok( '' === Admin\LicenseNotice::html(), 'invito alla licenza gratuita: non 
 wp_set_current_user( 1 );
 asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'asem-dismissible' ), 'invito alla licenza gratuita: l\'amministratore lo vede e lo può chiudere' );
 Settings::update( array( 'license_key' => 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' ) );
-$lic_r = License::sync();
+$lic_r = License::sync( true );
 asem_ok( $lic_r['ok'] && 'lite' === License::plan() && 1 === count( $lic_calls ) && 'prova-sito.it' === $lic_calls[0][1]['domain'] && 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' === $lic_calls[0][1]['license_key'], 'verifica: chiave e dominio normalizzato inviati, livello Lite letto' );
 $lic_saved = get_option( License::OPT_STATE );
 update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'plan' => 'fiscal' ) ) ); // livello alzato a mano nel database
@@ -467,7 +467,7 @@ $lic_still_pro = function () {
 };
 delete_option( License::OPT_DENIAL );
 $lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
-$lic_r    = License::sync();
+$lic_r    = License::sync( true );
 asem_ok( ! $lic_r['ok'] && $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo non firmato: non spegne il Pro, come un errore transitorio' );
 $lic_bad = array(
 	'firma di un\'altra chiave'            => $pl_deny( array(), array(), sodium_crypto_sign_keypair() ),
@@ -484,51 +484,51 @@ $lic_bad = array(
 );
 foreach ( $lic_bad as $lic_why => $lic_jwt ) {
 	$lic_resp = $lic_deny_resp( $lic_jwt );
-	License::sync();
+	License::sync( true );
 	asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo non valido (' . $lic_why . '): non spegne il Pro e non conta' );
 }
 $lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS ) ) );
-$lic_r    = License::sync();
+$lic_r    = License::sync( true );
 asem_ok( ! $lic_r['ok'] && $lic_still_pro() && gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ) === get_option( License::OPT_DENIAL )['day'], 'esito negativo firmato, il primo: si ricorda ma il Pro resta acceso' );
-License::sync(); // la stessa risposta ancora (il portale la tiene in cache qualche minuto)
+License::sync( true ); // la stessa risposta ancora (il portale la tiene in cache qualche minuto)
 asem_ok( $lic_still_pro(), 'esito negativo firmato con lo stesso iat: conta come uno solo' );
 $lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS + 60 ) ) );
-License::sync();
+License::sync( true );
 asem_ok( $lic_still_pro(), 'due esiti negativi nello stesso giorno UTC: il Pro resta acceso' );
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'expires_at' => '2027-01-01T00:00:00Z', 'product_code' => 'associazionesemplice' );
-License::sync();
+License::sync( true );
 asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito positivo valido: azzera il conteggio dei negativi' );
 $lic_resp = $lic_deny_resp( $pl_deny() );
-License::sync();
+License::sync( true );
 asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'dopo l\'azzeramento un nuovo esito negativo vale di nuovo come il primo' );
 // motivi che non contano (PENDING, LICENSE_NOT_FOUND), prodotto diverso da quello salvato, primo esito troppo vecchio
 delete_option( License::OPT_DENIAL );
 foreach ( array( 'PENDING', 'LICENSE_NOT_FOUND' ) as $lic_rc ) {
 	$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => $lic_rc ) ), $lic_rc );
-	License::sync();
+	License::sync( true );
 	asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo ' . $lic_rc . ': non conta, non si memorizza e il Pro resta acceso' );
 }
 $lic_resp                 = $lic_deny_resp( $pl_deny( array( 'aud' => 'altro-prodotto' ) ) );
 $lic_resp['product_code'] = 'altro-prodotto';
-License::sync();
+License::sync( true );
 asem_ok( $lic_still_pro() && false === get_option( License::OPT_DENIAL ), 'esito negativo per un prodotto diverso da quello salvato sul sito: non conta, anche se la risposta e la prova concordano' );
 update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 8 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 8 * DAY_IN_SECONDS ), false );
 $lic_resp = $lic_deny_resp( $pl_deny() );
-License::sync();
+License::sync( true );
 asem_ok( $lic_still_pro() && gmdate( 'Y-m-d' ) === get_option( License::OPT_DENIAL )['day'], 'esito negativo a più di 7 giorni dal primo: non si applica e diventa il nuovo primo' );
 update_option( License::OPT_DENIAL, array( 'day' => gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ), 'rc' => 'EXPIRED', 'iat' => time() - 2 * DAY_IN_SECONDS ), false );
 $lic_resp = array( 'valid' => false, 'reason_code' => 'REVOKED', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'portal_attestation' => $pl_deny(), 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ) );
-$lic_r    = License::sync();
+$lic_r    = License::sync( true );
 asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta (due esiti firmati in giorni diversi), funzioni Pro sospese; il motivo è quello firmato' );
 asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'notice-warning' ) && \AssociazioneSemplice\Edition::allows( 'export' ), 'verifica: licenza scaduta, avviso e nessuna funzione di base toccata' );
 $lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => 'DOMAIN_MISMATCH' ) ), 'DOMAIN_MISMATCH' );
-License::sync();
+License::sync( true );
 asem_ok( 'unlicensed' === License::state()['status'] && false !== strpos( License::status()['reason'], 'dominio' ), 'verifica: dominio diverso, spiegazione in italiano' );
 $lic_resp = null;
-$lic_r    = License::sync();
+$lic_r    = License::sync( true );
 asem_ok( ! $lic_r['ok'] && 'unlicensed' === License::state()['status'] && '' !== License::state()['error'], 'verifica: server irraggiungibile, lo stato precedente resta e l\'errore si ricorda' );
 $lic_resp = array( 'valid' => true, 'reason_code' => 'IN_GRACE', 'plan_name' => 'Pro Full', 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - DAY_IN_SECONDS ), 'product_code' => 'associazionesemplice' );
-License::sync();
+License::sync( true );
 asem_ok( 'active' === License::state()['status'] && '' === License::state()['error'] && 'fiscal' === License::plan() && false !== strpos( Admin\LicenseNotice::html(), 'scaduta da pochi giorni' ), 'verifica: tolleranza di pochi giorni, funzioni attive e invito a rinnovare' );
 asem_ok( false !== strpos( License::free_url(), 'https://associazionesemplice.it/free?domain=prova-sito.it' ), 'chiave gratuita: indirizzo del portale con il dominio' );
 ob_start();
@@ -539,31 +539,136 @@ asem_ok( false === strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $l
 $lic_sign_on = false;
 $lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
 $lic_plan0   = License::state()['plan'];
-$lic_r       = License::sync();
+$lic_r       = License::sync( true );
 asem_ok( ! $lic_r['ok'] && false !== strpos( $lic_r['message'], 'firma' ) && License::state()['plan'] === $lic_plan0, 'verifica: una licenza valida senza firma non viene accettata e lo stato resta com\'era' );
 $lic_sign_on = true;
 $lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => $pl_att( array( 'plan' => 'lite' ) ) );
-License::sync();
+License::sync( true );
 asem_ok( 'lite' === License::plan(), 'verifica: il livello è quello firmato dal portale, non quello modificabile in transito' );
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'aud' => 'altro-prodotto' ) ) );
-$lic_r    = License::sync();
+$lic_r    = License::sync( true );
 asem_ok( ! $lic_r['ok'] && 'lite' === License::plan(), 'verifica: una firma per un altro prodotto non vale' );
 // il piano lo decide solo il portale: il nome del piano su Wega non conta e può cambiare senza toccare la validità
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => $pl_att() );
-License::sync();
+License::sync( true );
 asem_ok( 'accounting' === License::plan() && 'accounting' === License::state()['plan'], 'piano del portale: il livello è quello firmato dal portale, non quello salvato su Wega' );
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Nome nuovo del piano', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'nome-nuovo' ) ), 'portal_attestation' => $pl_att( array( 'plan' => 'fiscal' ) ) );
-$lic_r    = License::sync();
+$lic_r    = License::sync( true );
 asem_ok( $lic_r['ok'] && 'active' === License::state()['status'] && 'fiscal' === License::plan(), 'piano del portale: se il piano cambia nome su Wega la licenza resta valida e il livello non cambia' );
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => $pl_att( array( 'bid' => 'altro-sito.it', 'plan' => 'lite' ) ) );
-$lic_r    = License::sync();
+$lic_r    = License::sync( true );
 asem_ok( ! $lic_r['ok'] && 'fiscal' === License::plan(), 'piano del portale: la prova di un altro dominio non vale e lo stato resta com\'era' );
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => 'non-un-jwt' );
-$lic_r    = License::sync();
+$lic_r    = License::sync( true );
 asem_ok( ! $lic_r['ok'] && 'fiscal' === License::plan(), 'piano del portale: una prova non valida non si accetta e lo stato resta com\'era' );
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'fiscal' ) ), 'portal_attestation' => '' );
-$lic_r    = License::sync();
+$lic_r    = License::sync( true );
 asem_ok( ! $lic_r['ok'] && false !== strpos( $lic_r['message'], 'piano firmato' ) && 'fiscal' === License::plan(), 'piano del portale: una licenza valida senza la prova del portale non si accetta e lo stato resta com\'era' );
+// esito verificato ricordato per 12 ore: nessuna seconda chiamata, scade, errori e risposte senza firma non si ricordano, il resto delle regole non cambia
+$lic_pre_state = get_option( License::OPT_STATE );
+$lic_calls_n   = function () use ( &$lic_calls ) {
+	return count( $lic_calls );
+};
+$lic_age_memo  = function ( int $seconds ) { // simula il passare del tempo: la scadenza ricordata si sposta indietro
+	$m          = get_option( License::OPT_MEMO, array() );
+	$m['until'] = (int) $m['until'] - $seconds;
+	update_option( License::OPT_MEMO, $m, false );
+};
+$lic_ok_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'expires_at' => '2027-01-01T00:00:00Z', 'product_code' => 'associazionesemplice' );
+$lic_sign_on = true;
+License::forget();
+delete_option( License::OPT_DENIAL );
+$lic_resp = $lic_ok_resp;
+$n0       = $lic_calls_n();
+$lic_a    = License::sync( true );
+asem_ok( $lic_a['ok'] && $n0 + 1 === $lic_calls_n() && is_array( get_option( License::OPT_MEMO ) ), 'memoria licenza: un esito positivo firmato si ricorda' );
+$lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'product_code' => 'associazionesemplice' ); // se il server fosse richiamato direbbe altro
+$lic_b    = License::sync();
+asem_ok( $lic_b === $lic_a && $n0 + 1 === $lic_calls_n(), 'memoria licenza: entro 12 ore il secondo controllo non richiama il server e dà lo stesso esito' );
+$lic_memo = (array) get_option( License::OPT_MEMO );
+asem_ok( false === strpos( wp_json_encode( $lic_memo ), 'WEGA-AAAAAAAA' ) && ! in_array( (string) $wpdb->get_var( $wpdb->prepare( "SELECT autoload FROM {$wpdb->options} WHERE option_name = %s", License::OPT_MEMO ) ), array( 'yes', 'on', 'auto', 'auto-on' ), true ) && $lic_memo['until'] <= time() + 12 * HOUR_IN_SECONDS && $lic_memo['until'] > time() + 12 * HOUR_IN_SECONDS - 60, 'memoria licenza: scade tra 12 ore, ha l\'impronta e non la chiave in chiaro, senza caricamento automatico' );
+$lic_age_memo( 11 * HOUR_IN_SECONDS );
+License::sync();
+asem_ok( $n0 + 1 === $lic_calls_n(), 'memoria licenza: dopo 11 ore vale ancora' );
+$lic_age_memo( 61 * MINUTE_IN_SECONDS );
+$lic_resp = $lic_ok_resp;
+License::sync();
+asem_ok( $n0 + 2 === $lic_calls_n(), 'memoria licenza: dopo 12 ore si controlla di nuovo' );
+asem_ok( $lic_a === License::sync() && $n0 + 2 === $lic_calls_n(), 'memoria licenza: il nuovo esito si ricorda per altre 12 ore' );
+// controlli senza firma valida: mai ricordati
+License::forget();
+$lic_sign_on = false;
+$lic_resp    = $lic_ok_resp; // valida ma senza attestazione
+$n1          = $lic_calls_n();
+$lic_a       = License::sync();
+License::sync();
+asem_ok( ! $lic_a['ok'] && false === get_option( License::OPT_MEMO, false ) && $n1 + 2 === $lic_calls_n(), 'memoria licenza: una risposta senza firma valida non si ricorda (ogni controllo richiama il server)' );
+$lic_sign_on = true;
+$lic_resp    = null; // errore di rete
+$n1          = $lic_calls_n();
+License::sync();
+License::sync();
+asem_ok( false === get_option( License::OPT_MEMO, false ) && $n1 + 2 === $lic_calls_n(), 'memoria licenza: un errore di rete non si ricorda' );
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'aud' => 'altro-prodotto' ) ) ); // negativo con firma che non torna
+License::sync();
+asem_ok( false === get_option( License::OPT_MEMO, false ), 'memoria licenza: un esito negativo con firma non valida non si ricorda' );
+// «Controlla adesso» e chiave nuova saltano la memoria
+$lic_resp = $lic_ok_resp;
+License::sync( true );
+$n1       = $lic_calls_n();
+$lic_resp = $lic_ok_resp;
+License::sync( true );
+asem_ok( $n1 + 1 === $lic_calls_n(), 'memoria licenza: «Controlla adesso» (controllo forzato) salta la memoria' );
+Settings::update( array( 'license_key' => 'WEGA-ZZZZZZZZ-BBBBBBBB-CCCCCCCC-DDDDDDDD' ) );
+$lic_resp = $lic_ok_resp;
+License::sync();
+asem_ok( $n1 + 2 === $lic_calls_n() && 'WEGA-ZZZZZZZZ-BBBBBBBB-CCCCCCCC-DDDDDDDD' === $lic_calls[ count( $lic_calls ) - 1 ][1]['license_key'], 'memoria licenza: una chiave diversa svuota la memoria e si controlla subito' );
+Settings::update( array( 'license_key' => $lic_keyv ) );
+License::sync( true );
+Settings::clear_secret( 'license_key' );
+License::sync();
+asem_ok( false === get_option( License::OPT_MEMO, false ), 'memoria licenza: tolta la chiave la memoria è vuota' );
+Settings::update( array( 'license_key' => $lic_keyv ) );
+License::sync( true );
+// cambio di dominio del sito
+$lic_home2 = function () {
+	return 'https://altro-sito.it';
+};
+remove_filter( 'home_url', $lic_home );
+add_filter( 'home_url', $lic_home2 );
+$n1       = $lic_calls_n();
+$lic_resp = $lic_ok_resp;
+License::sync();
+asem_ok( $n1 + 1 === $lic_calls_n() && 'altro-sito.it' === $lic_calls[ count( $lic_calls ) - 1 ][1]['domain'], 'memoria licenza: un dominio diverso del sito svuota la memoria e si controlla subito' );
+remove_filter( 'home_url', $lic_home2 );
+add_filter( 'home_url', $lic_home );
+$lic_resp = $lic_ok_resp;
+License::sync( true );
+// la regola dei due negativi in giorni UTC diversi resta com'è: il primo ricordato non ritarda né anticipa lo spegnimento
+delete_option( License::OPT_DENIAL );
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'iat' => time() - 2 * DAY_IN_SECONDS, 'rc' => 'DOMAIN_MISMATCH' ) ), 'DOMAIN_MISMATCH' );
+$lic_a    = License::sync( true );
+asem_ok( ! $lic_a['ok'] && $lic_still_pro() && is_array( get_option( License::OPT_MEMO ) ), 'memoria licenza: il primo negativo firmato si ricorda e il Pro resta acceso' );
+$n1       = $lic_calls_n();
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => 'DOMAIN_MISMATCH' ) ), 'DOMAIN_MISMATCH' );
+License::sync();
+asem_ok( $n1 === $lic_calls_n() && $lic_still_pro(), 'memoria licenza: entro 12 ore il secondo negativo non è ancora chiesto e il Pro resta acceso' );
+$lic_age_memo( 12 * HOUR_IN_SECONDS + 5 );
+License::sync();
+asem_ok( $n1 + 1 === $lic_calls_n() && 'unlicensed' === License::state()['status'] && ! $lic_still_pro(), 'memoria licenza: dopo 12 ore il secondo negativo, in un giorno UTC diverso, spegne come prima' );
+// stessa regola con il primo negativo di oggi: non si spegne nemmeno dopo 12 ore nello stesso giorno UTC
+$lic_resp = $lic_ok_resp;
+License::sync( true );
+delete_option( License::OPT_DENIAL );
+$lic_resp = $lic_deny_resp( $pl_deny( array( 'rc' => 'DOMAIN_MISMATCH' ) ), 'DOMAIN_MISMATCH' );
+License::sync( true );
+$lic_age_memo( 12 * HOUR_IN_SECONDS + 5 );
+$n1 = $lic_calls_n();
+License::sync();
+asem_ok( $n1 + 1 === $lic_calls_n() && $lic_still_pro(), 'memoria licenza: due negativi nello stesso giorno UTC non spengono, con o senza memoria' );
+License::forget();
+delete_option( License::OPT_DENIAL );
+update_option( License::OPT_STATE, $lic_pre_state );
 $lic_saved = get_option( License::OPT_STATE );
 update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'plan' => 'fiscal', 'portal_attestation' => 'non-un-jwt' ) ) );
 asem_ok( 'free' === License::plan(), 'piano del portale: una prova del portale che non regge non lascia il livello al nome su Wega: gratuito' );
@@ -610,7 +715,9 @@ $ur_all                = (array) get_option( Settings::OPTION, array() );
 $ur_all['license_key'] = 'enc1:' . base64_encode( random_bytes( 60 ) ); // prefisso giusto, contenuto che non si apre
 update_option( Settings::OPTION, $ur_all );
 asem_ok( License::has_key() && '' === License::key() && License::key_unreadable(), 'chiave illeggibile: riconosciuta (salvata ma non si apre)' );
+update_option( License::OPT_MEMO, array( 'until' => time() + HOUR_IN_SECONDS, 'fp' => 'x', 'status' => 'active', 'ok' => true, 'message' => 'ricordato' ), false );
 $ur_r     = License::sync();
+asem_ok( false === get_option( License::OPT_MEMO, false ), 'memoria licenza: con la chiave illeggibile la memoria si svuota' );
 $ur_state = (array) get_option( License::OPT_STATE, array() );
 asem_ok( false === $ur_r['ok'] && 0 === $ur_calls && false !== strpos( (string) $ur_r['message'], 'non si legge più' ), 'chiave illeggibile: il controllo si ferma con un errore chiaro e non chiama il portale' );
 asem_ok( 'active' === ( $ur_state['status'] ?? '' ) && 'lite' === ( $ur_state['plan'] ?? '' ), 'chiave illeggibile: lo stato di licenza resta com\'era (non diventa «nessuna chiave»)' );
@@ -2731,6 +2838,9 @@ wp_set_current_user( 1 );
 // ---------- Allegati alle spese (cartella privata, non la libreria media) ----------
 wp_set_current_user( 1 );
 $_SERVER['REQUEST_METHOD'] = 'GET';
+if ( class_exists( '\AssociazioneSemplice\ProBoot' ) ) {
+	\AssociazioneSemplice\ProBoot::handlers(); // le azioni del Pro si registrano solo in amministrazione: in WP-CLI is_admin() è falso, quindi qui
+}
 Admin\Admin::init(); // in WP-CLI is_admin() è falso: si registrano qui i gestori dell'amministrazione
 foreach ( array( 'admin_post_asem_export', 'wp_ajax_asem_person_context', 'admin_post_asem_front_pay', 'admin_post_asem_attachment', 'admin_post_asem_add_attachment', 'admin_post_asem_save_expense' ) as $hook ) {
 	asem_ok( has_action( $hook ), "hook registrato con il prefisso asem_: $hook" );
@@ -3146,6 +3256,10 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	delete_option( \AssociazioneSemplice\Updater::OPT );
 	Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+	asem_ok( array() === $up_calls && empty( $up_tr->response ) && false !== wp_next_scheduled( \AssociazioneSemplice\Updater::REFRESH_HOOK ), 'aggiornamento diretto: una pagina qualunque non chiama il portale, il controllo è programmato in background' );
+	\AssociazioneSemplice\Updater::refresh_in_background();
+	wp_clear_scheduled_hook( \AssociazioneSemplice\Updater::REFRESH_HOOK );
+	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	$up_bn = plugin_basename( ASEM_PRO_DIR . 'associazionesemplice-pro.php' );
 	asem_ok( isset( $up_tr->response[ $up_bn ] ) && '99.0' === $up_tr->response[ $up_bn ]->new_version && 'asem-portal://pro' === $up_tr->response[ $up_bn ]->package && 'associazionesemplice-pro' === $up_tr->response[ $up_bn ]->slug, 'aggiornamento diretto: la nuova versione del Pro compare tra gli aggiornamenti di WordPress' );
 	$up_by = array();
@@ -3184,7 +3298,7 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 // marchio ufficiale: icona del menu e logo in bacheca
 $mi = new ReflectionMethod( Admin\Admin::class, 'menu_icon' );
 $mi->setAccessible( true );
-asem_ok( 0 === strpos( (string) $mi->invoke( null ), 'data:image/svg+xml;base64,' ) && file_exists( ASEM_DIR . 'assets/brand/simbolo-bianco.svg' ) && file_exists( ASEM_DIR . 'assets/brand/logo-orizzontale.png' ), 'marchio: il menu usa il simbolo ufficiale (SVG) e i file del logo ci sono' );
+asem_ok( 0 === strpos( (string) $mi->invoke( null ), 'data:image/svg+xml;base64,' ) && file_exists( ASEM_DIR . 'assets/brand/simbolo-bianco.svg' ) && filesize( ASEM_DIR . 'assets/brand/simbolo-bianco-menu.svg' ) < 2048 && strlen( (string) $mi->invoke( null ) ) < 3200 && file_exists( ASEM_DIR . 'assets/brand/logo-orizzontale.png' ), 'marchio: il menu usa il simbolo ufficiale (SVG) e i file del logo ci sono' );
 $br_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'asem-logo' );
 asem_ok( false !== strpos( $br_dash, 'assets/brand/logo-orizzontale.png' ), 'marchio: la bacheca mostra il logo ufficiale' );
 // Bacheca: «Da fare» prima degli avvisi e degli strumenti; un avviso solo resta com'è, più avvisi stanno in un riquadro «N cose da sistemare»
@@ -12071,6 +12185,7 @@ $pf_rec = \AssociazioneSemplice\Receipts::record( $pf_key[5100] );
 asem_ok( 'altered' === \AssociazioneSemplice\ReceiptFiles::state( $pf_rec, 'issued' ) && null !== $pf_e && false !== strpos( $pf_e, 'diverso' ) && null !== asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::email( $pf_key[5100] ); } ) && 'x' === substr( (string) file_get_contents( $pf_f ), -1 ), 'ricevute PDF: un file alterato si rileva, non si scarica né si invia e non viene rifatto di nascosto' );
 $pf_v = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 asem_ok( $pf_v['summary']['altered'] >= 1 && in_array( $pf_key[5100], array_column( $pf_v['problems'], 'key' ), true ), 'ricevute PDF: la verifica segnala il file alterato' );
+\AssociazioneSemplice\ReceiptFiles::verify_step( $pf_fy ); // la pagina mostra l'esito dell'ultima verifica: prima si fa il giro
 $pf_html = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File diversi da quando sono stati emessi', array( 'year' => $pf_fy ) );
 asem_ok( false !== strpos( $pf_html, 'Rifai dai dati salvati' ) && false !== strpos( $pf_html, 'asem_receipt_pdf_regen' ), 'ricevute PDF: la pagina di verifica propone di rifarlo dai dati salvati' );
 \AssociazioneSemplice\Receipts::regenerate_pdf( $pf_key[5100], 'issued' );
@@ -12084,6 +12199,7 @@ $pf_f2 = $pf_dir . '/' . $pf_r2['pdf_path'];
 wp_delete_file( $pf_f2 );
 $pf_e2 = asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::build( $pf_key[5200] ); } );
 asem_ok( 'missing' === \AssociazioneSemplice\ReceiptFiles::state( $pf_r2, 'issued' ) && null !== $pf_e2 && false !== strpos( $pf_e2, 'non si trova più' ) && ! is_file( $pf_f2 ) && \AssociazioneSemplice\Receipts::can_view( $pf_key[5200] ), 'ricevute PDF: file mancante, errore chiaro e nessun PDF rifatto in silenzio' );
+\AssociazioneSemplice\ReceiptFiles::verify_step( $pf_fy ); // la pagina mostra l'esito dell'ultima verifica: prima si fa il giro
 asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File mancanti', array( 'year' => $pf_fy ) );
 $pf_docs = \AssociazioneSemplice\ReceiptFiles::backup_documents( array() );
 asem_ok( in_array( 'documenti/' . $pf_r['pdf_path'], array_column( $pf_docs, 'name' ), true ) && ! in_array( 'documenti/' . $pf_r2['pdf_path'], array_column( $pf_docs, 'name' ), true ), 'ricevute PDF: la copia di sicurezza prende i PDF integri e ignora quelli mancanti senza fallire' );
@@ -12222,6 +12338,63 @@ asem_ok( 0 === strpos( $pf_zc, '%PDF-' ) && hash( 'sha256', $pf_zc ) === \Associ
 asem_ok( 0 === $pf_v['summary']['pending'] && 0 === $pf_v['summary']['altered'] && 0 === $pf_v['summary']['locked'] && $pf_zv && $pf_zip['count'] >= 5 && false !== strpos( \AssociazioneSemplice\Receipts::zip_url( $pf_fy ), 'action=asem_receipt_zip' ), 'ricevute PDF: la verifica dell\'anno è pulita e lo ZIP contiene i PDF emessi e quelli annullati' );
 $pf_okp = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Ricevute emesse', array( 'year' => $pf_fy ) );
 asem_ok( false !== strpos( $pf_okp, 'Scarica i PDF di questo anno fiscale' ) && false !== strpos( $pf_okp, 'contengono dati personali' ), 'ricevute PDF: la pagina di verifica si apre, offre l\'archivio ZIP e avvisa che contiene dati personali' );
+// verifica a richiesta: aprire la pagina non apre nessun PDF; il pulsante verifica a lotti, con cursore e blocco, e salva l'esito
+$vr_RF = \AssociazioneSemplice\ReceiptFiles::class;
+delete_option( $vr_RF::VERIFY_RUN );
+delete_option( $vr_RF::VERIFY_LAST );
+$vr_n0   = $vr_RF::$examined;
+$vr_tot  = $vr_RF::sql_counts( $pf_fy )['total'];
+$vr_page = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Non hai ancora verificato i PDF di questo anno fiscale', array( 'year' => $pf_fy ) );
+asem_ok( $vr_n0 === $vr_RF::$examined && false === get_option( $vr_RF::VERIFY_LAST, false ) && false === get_option( $vr_RF::VERIFY_RUN, false ) && false === strpos( $vr_page, 'Ricevute controllate' ) && false !== strpos( $vr_page, 'name="action" value="asem_receipt_verify"' ) && false !== strpos( $vr_page, '_wpnonce' ) && false !== strpos( $vr_page, 'Verifica i PDF di questo anno fiscale' ) && false !== strpos( $vr_page, 'Ricevute emesse' ), 'verifica a richiesta: aprire la pagina non controlla nessun file e non salva nulla; offre il pulsante con il suo nonce' );
+$vr_a    = $vr_RF::verify_step( $pf_fy, 2, 20 );
+$vr_prog = $vr_RF::verify_progress( $pf_fy );
+asem_ok( $vr_tot > 2 && false === $vr_a['finished'] && 2 === $vr_a['checked'] && $vr_n0 + 2 === $vr_RF::$examined && null !== $vr_prog && $vr_prog['after'] > 0 && null === $vr_RF::verify_last( $pf_fy ), 'verifica a richiesta: un giro controlla solo il suo lotto e salva l\'avanzamento (cursore), senza esito finché non finisce' );
+$vr_page = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Verifica in corso: controllate 2 ricevute su ' . $vr_tot, array( 'year' => $pf_fy ) );
+asem_ok( $vr_n0 + 2 === $vr_RF::$examined && false !== strpos( $vr_page, 'Continua la verifica' ), 'verifica a richiesta: la pagina mostra l\'avanzamento e propone di continuare, senza aprire altri file' );
+\AssociazioneSemplice\Db::$lock_fake = '0';
+$vr_busy = asem_throws( function () use ( $vr_RF, $pf_fy ) { $vr_RF::verify_step( $pf_fy ); } );
+\AssociazioneSemplice\Db::$lock_fake = 'x';
+asem_ok( null !== $vr_busy && false !== strpos( $vr_busy, 'Un\'altra operazione è in corso' ) && $vr_n0 + 2 === $vr_RF::$examined && $vr_prog === $vr_RF::verify_progress( $pf_fy ), 'verifica a richiesta: con un altro giro in corso il secondo non parte e non tocca l\'avanzamento' );
+// nonce sbagliato: la porta si chiude prima di fare qualunque cosa
+$vr_cap = Admin\Actions::required_cap( 'asem_receipt_verify' );
+add_filter( 'wp_die_handler', $vr_die = function () { return function ( $message ) { throw new \RuntimeException( is_scalar( $message ) ? (string) $message : 'die' ); }; } );
+wp_set_current_user( 1 );
+$vr_old_r = $_REQUEST;
+$vr_old_p = $_POST;
+$_REQUEST = $_POST = array( 'action' => 'asem_receipt_verify', '_wpnonce' => 'sbagliato', 'year' => (string) $pf_fy );
+$vr_died  = false;
+try {
+	do_action( 'admin_post_asem_receipt_verify' );
+} catch ( \RuntimeException $e ) {
+	$vr_died = true;
+}
+$_REQUEST = $vr_old_r;
+$_POST    = $vr_old_p;
+remove_filter( 'wp_die_handler', $vr_die );
+asem_ok( Plugin::CAP === $vr_cap && has_action( 'admin_post_asem_receipt_verify' ) && $vr_died && $vr_n0 + 2 === $vr_RF::$examined && $vr_prog === $vr_RF::verify_progress( $pf_fy ), 'verifica a richiesta: solo l\'amministratore e solo con il nonce giusto; con un nonce sbagliato non si controlla nulla' );
+// il secondo giro riprende dal cursore e porta a termine la verifica, con lo stesso criterio di sempre
+$vr_msg  = Admin\ReceiptCheckPage::verify( array( 'year' => $pf_fy ) );
+$vr_last = $vr_RF::verify_last( $pf_fy );
+asem_ok( false !== strpos( $vr_msg[1], 'Verifica finita: controllate ' . $vr_tot . ' ricevute' ) && $vr_n0 + $vr_tot === $vr_RF::$examined && null === $vr_RF::verify_progress( $pf_fy ) && null !== $vr_last && ! empty( $vr_last['at'] ), 'verifica a richiesta: il secondo giro riprende dal cursore (nessuna ricevuta ricontrollata), finisce e salva l\'esito con la data' );
+$vr_full = $vr_RF::verify( $pf_fy );
+asem_ok( $vr_full['summary'] === $vr_last['summary'] && $vr_tot === (int) $vr_last['summary']['total'], 'verifica a richiesta: l\'esito a lotti è identico a quello della verifica intera (stesso criterio)' );
+$vr_n1   = $vr_RF::$examined;
+$vr_page = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Ricevute controllate', array( 'year' => $pf_fy ) );
+asem_ok( $vr_n1 === $vr_RF::$examined && false !== strpos( $vr_page, 'Ricevute controllate' ) && false !== strpos( $vr_page, 'Verifica di nuovo' ) && false === strpos( $vr_page, 'Non hai ancora verificato' ), 'verifica a richiesta: l\'esito salvato si vede nella pagina senza riaprire i file' );
+asem_ok( null !== asem_throws( function () { Admin\ReceiptCheckPage::verify( array( 'year' => 1999 ) ); } ) && null !== asem_throws( function () { Admin\ReceiptCheckPage::verify( array() ); } ), 'verifica a richiesta: un anno senza ricevute non si verifica' );
+// un file alterato si trova al giro successivo e, rifatto il PDF, sparisce dall'esito senza rifare tutto
+$vr_rec = \AssociazioneSemplice\Receipts::record( $pf_key[5100] );
+$vr_abs = $pf_dir . '/' . $vr_rec['pdf_path'];
+$vr_bak = (string) file_get_contents( $vr_abs );
+file_put_contents( $vr_abs, 'x', FILE_APPEND );
+$vr_RF::verify_step( $pf_fy );
+$vr_l2 = $vr_RF::verify_last( $pf_fy );
+asem_ok( 1 <= $vr_l2['summary']['altered'] && in_array( $pf_key[5100], array_column( $vr_l2['problems'], 'key' ), true ) && $vr_l2['summary']['ok'] === $vr_last['summary']['ok'] - 1, 'verifica a richiesta: un file alterato compare nell\'esito del giro seguente' );
+file_put_contents( $vr_abs, $vr_bak );
+$vr_RF::verify_recheck( $pf_fy, $pf_key[5100] );
+$vr_l3 = $vr_RF::verify_last( $pf_fy );
+asem_ok( $vr_l3['summary']['altered'] === $vr_l2['summary']['altered'] - 1 && ! in_array( $pf_key[5100], array_column( $vr_l3['problems'], 'key' ), true ) && $vr_l3['summary']['ok'] === $vr_l2['summary']['ok'] + 1, 'verifica a richiesta: un PDF rimesso a posto esce dall\'esito e i conteggi si aggiornano' );
+delete_option( $vr_RF::VERIFY_LAST );
 asem_ok( has_action( 'asem_reset_private_files', array( \AssociazioneSemplice\ReceiptFiles::class, 'delete_all' ) ) && has_filter( 'asem_backup_documents' ) && has_filter( 'asem_backup_restore_documents' ), 'ricevute PDF: azzeramento, copia di sicurezza e ripristino sono collegati' );
 // ricevute emesse prima che si salvassero i dati: «Fissa anche queste con i dati di oggi» (a lotti, solo le non annullate)
 foreach ( array( 5700, 5800, 5900 ) as $pf_c ) {
@@ -12274,6 +12447,7 @@ $pf_er  = asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Recei
 $pf_lv  = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 $pf_ld  = in_array( 'documenti/' . $pf_r['pdf_path'], array_column( \AssociazioneSemplice\ReceiptFiles::backup_documents( array() ), 'name' ), true );
 asem_ok( 'locked' === \AssociazioneSemplice\ReceiptFiles::state( $pf_rec, 'issued' ) && null !== $pf_el && false !== strpos( $pf_el, 'non è leggibile su questo sito' ) && null !== $pf_er && false !== strpos( $pf_er, 'cifrato' ) && $pf_lv['summary']['locked'] >= 1 && $pf_ld && 0 === (int) $pf_lv['summary']['altered'] && hash( 'sha256', (string) file_get_contents( $pf_f ) ) !== hash( 'sha256', $pf_orig ), 'ricevute PDF: con la chiave che non lo apre il file è «cifrato che la chiave non apre», non si scarica, non si rifà e la copia lo tiene com\'è' );
+\AssociazioneSemplice\ReceiptFiles::verify_step( $pf_fy ); // la pagina mostra l'esito dell'ultima verifica: prima si fa il giro
 $pf_lp = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File cifrati che la chiave non apre', array( 'year' => $pf_fy ) );
 asem_ok( false !== strpos( $pf_lp, 'la chiave di questo sito non li apre' ) && false === strpos( $pf_lp, 'Rifai dai dati salvati' ), 'ricevute PDF: la pagina di verifica lo dice e non offre di rifarlo' );
 file_put_contents( $pf_f, $pf_orig );
@@ -12470,6 +12644,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 }
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
+require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme del database identiche al calcolo di prima
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 

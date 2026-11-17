@@ -89,26 +89,54 @@ final class ReceiptCheckPage {
 		}
 		echo '</p>';
 
-		$v   = ReceiptFiles::verify( $year );
-		$sum = $v['summary'];
+		// Conteggi dal database: aprire la pagina non apre nessun PDF.
+		$cnt = ReceiptFiles::sql_counts( $year );
 		echo '<table class="widefat striped" style="max-width:560px"><tbody>';
-		foreach ( array( 'total' => Texts::t( 'Ricevute emesse' ), 'ok' => Texts::t( 'A posto' ), 'pending' => Texts::t( 'PDF ancora da fissare' ), 'nodata' => Texts::t( 'Emesse prima che si salvassero i dati' ), 'locked' => Texts::t( 'File cifrati che la chiave non apre' ), 'missing' => Texts::t( 'File mancanti' ), 'altered' => Texts::t( 'File diversi da quando sono stati emessi' ) ) as $k => $label ) {
-			echo '<tr><td>' . esc_html( $label ) . '</td><td style="text-align:right"><strong>' . (int) $sum[ $k ] . '</strong></td></tr>';
+		foreach ( array( 'total' => Texts::t( 'Ricevute emesse' ), 'pending' => Texts::t( 'PDF ancora da fissare' ), 'nodata' => Texts::t( 'Emesse prima che si salvassero i dati' ) ) as $k => $label ) {
+			echo '<tr><td>' . esc_html( $label ) . '</td><td style="text-align:right"><strong>' . (int) $cnt[ $k ] . '</strong></td></tr>';
 		}
 		echo '</tbody></table>';
-		if ( $v['truncated'] ) {
-			echo '<p class="description">' . esc_html( Texts::t( 'Sono state controllate le prime 20000 ricevute dell\'anno.' ) ) . '</p>';
+
+		// Verifica dei file: parte solo con il pulsante, un lotto per volta.
+		$last = ReceiptFiles::verify_last( $year );
+		$run  = ReceiptFiles::verify_progress( $year );
+		echo '<div class="asem-card"><h2>' . esc_html( Texts::t( 'Verifica dei PDF di questo anno fiscale' ) ) . '</h2><p>' . esc_html( Texts::t( 'La verifica apre ogni PDF e ne controlla l\'impronta: con molte ricevute richiede tempo, perciò parte solo quando premi il pulsante e procede a lotti di {n} ricevute. Se non finisce in un giro, premi di nuovo: riprende da dove si era fermata.', array( 'n' => ReceiptFiles::VERIFY_BATCH ) ) ) . '</p>';
+		if ( $run ) {
+			echo '<p><strong>' . esc_html( Texts::t( 'Verifica in corso: controllate {n} ricevute su {tot}.', array( 'n' => (int) $run['summary']['total'], 'tot' => max( (int) $run['total'], (int) $run['summary']['total'] ) ) ) ) . '</strong></p>';
+		}
+		Ui::form_open( 'asem_receipt_verify', $here, false, 'asem-inline' );
+		echo Ui::hidden( 'year', $year ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Ui::hidden() protegge i valori
+		echo '<button class="button button-primary">' . esc_html( $run ? Texts::t( 'Continua la verifica' ) : ( $last ? Texts::t( 'Verifica di nuovo' ) : Texts::t( 'Verifica i PDF di questo anno fiscale' ) ) ) . '</button>';
+		Ui::form_close();
+		echo '</div>';
+
+		if ( null === $last ) {
+			echo '<p>' . esc_html( Texts::t( 'Non hai ancora verificato i PDF di questo anno fiscale.' ) ) . '</p>';
+		} else {
+			$sum = $last['summary'];
+			echo '<h2>' . esc_html( Texts::t( 'Esito dell\'ultima verifica' ) ) . '</h2><p>' . esc_html( Texts::t( 'Verifica del {data}.', array( 'data' => Ui::date( substr( (string) $last['at'], 0, 10 ) ) . ' ' . substr( (string) $last['at'], 11, 5 ) ) ) ) . '</p>';
+			echo '<table class="widefat striped" style="max-width:560px"><tbody>';
+			foreach ( array( 'total' => Texts::t( 'Ricevute controllate' ), 'ok' => Texts::t( 'A posto' ), 'locked' => Texts::t( 'File cifrati che la chiave non apre' ), 'missing' => Texts::t( 'File mancanti' ), 'altered' => Texts::t( 'File diversi da quando sono stati emessi' ) ) as $k => $label ) {
+				echo '<tr><td>' . esc_html( $label ) . '</td><td style="text-align:right"><strong>' . (int) ( $sum[ $k ] ?? 0 ) . '</strong></td></tr>';
+			}
+			echo '</tbody></table>';
+			if ( (int) $sum['total'] < (int) $cnt['total'] ) {
+				echo '<p class="description">' . esc_html( Texts::t( 'Dopo questa verifica sono state emesse altre ricevute: verifica di nuovo per controllare anche quelle.' ) ) . '</p>';
+			}
+
+			$bad = (int) $sum['missing'] + (int) $sum['altered'];
+			if ( 0 === $bad && 0 === (int) $sum['locked'] && 0 === (int) $cnt['pending'] && 0 === (int) $cnt['nodata'] && (int) $sum['total'] >= (int) $cnt['total'] ) {
+				echo '<div class="notice notice-success inline"><p>' . esc_html( Texts::t( 'Tutti i PDF di questo anno fiscale sono al loro posto e coincidono con la loro impronta.' ) ) . '</p></div>';
+			}
+			if ( $bad ) {
+				echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Alcuni PDF non coincidono con quelli emessi. Finché non li sistemi, scaricare quelle ricevute dà un errore (non vengono mai rifatte di nascosto). Puoi ripristinare il file da una copia di sicurezza oppure rifarlo dai dati salvati: lo si fa solo se i dati sono intatti e l\'operazione resta scritta nel registro azioni.' ) ) . '</p></div>';
+			}
+			if ( (int) $sum['locked'] > 0 ) {
+				echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Alcuni PDF sono cifrati e la chiave di questo sito non li apre: i file non sono stati toccati. Sistema la chiave da Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»; finché non è sistemata, scaricare quelle ricevute dà un errore.' ) ) . '</p></div>';
+			}
 		}
 
-		$bad = (int) $sum['missing'] + (int) $sum['altered'];
-		if ( 0 === $bad && 0 === (int) $sum['locked'] && 0 === (int) $sum['pending'] && 0 === (int) $sum['nodata'] ) {
-			echo '<div class="notice notice-success inline"><p>' . esc_html( Texts::t( 'Tutti i PDF di questo anno fiscale sono al loro posto e coincidono con la loro impronta.' ) ) . '</p></div>';
-		}
-		if ( $bad ) {
-			echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Alcuni PDF non coincidono con quelli emessi. Finché non li sistemi, scaricare quelle ricevute dà un errore (non vengono mai rifatte di nascosto). Puoi ripristinare il file da una copia di sicurezza oppure rifarlo dai dati salvati: lo si fa solo se i dati sono intatti e l\'operazione resta scritta nel registro azioni.' ) ) . '</p></div>';
-		}
-
-		if ( (int) $sum['nodata'] > 0 ) {
+		if ( (int) $cnt['nodata'] > 0 ) {
 			echo '<p class="description">' . esc_html( Texts::t( 'Queste ricevute non hanno i dati salvati: il loro PDF non è ancora stato fissato e non è nella copia di sicurezza. Aprire o scaricare la ricevuta una volta salva i suoi dati di quel momento e ne fissa il PDF; le ricevute già annullate in questo stato non si possono più aprire.' ) ) . '</p>';
 			if ( ReceiptFiles::nodata_count( $year ) > 0 ) {
 				echo '<div class="asem-card"><h2>' . esc_html( Texts::t( 'Fissa anche queste con i dati di oggi' ) ) . '</h2><p><strong>' . esc_html( Texts::t( 'I dati sono quelli di oggi, non quelli dell\'emissione.' ) ) . '</strong> ' . esc_html( Texts::t( 'Per ogni ricevuta si salvano il nome, il codice fiscale, gli importi e i dati dell\'ente come sono adesso e se ne fissa il PDF cifrato; da quel momento non cambia più. Le ricevute annullate restano come sono. Si procede a lotti di {n} ricevute: se ne restano, premi di nuovo. L\'operazione viene scritta nel registro azioni.', array( 'n' => ReceiptFiles::BATCH ) ) ) . '</p>';
@@ -120,11 +148,7 @@ final class ReceiptCheckPage {
 			}
 		}
 
-		if ( (int) $sum['locked'] > 0 ) {
-			echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Alcuni PDF sono cifrati e la chiave di questo sito non li apre: i file non sono stati toccati. Sistema la chiave da Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»; finché non è sistemata, scaricare quelle ricevute dà un errore.' ) ) . '</p></div>';
-		}
-
-		if ( (int) $sum['pending'] > 0 ) {
+		if ( (int) $cnt['pending'] > 0 ) {
 			echo '<div class="asem-card"><h2>' . esc_html( Texts::t( 'Fissa i PDF ancora da fissare' ) ) . '</h2><p>' . esc_html( Texts::t( 'Sono ricevute emesse prima che i PDF si salvassero. Il PDF si disegna dai dati già salvati, senza cambiarli, e da quel momento non cambia più. Si procede a lotti di {n} ricevute: se ne restano, premi di nuovo.', array( 'n' => ReceiptFiles::BATCH ) ) ) . '</p>';
 			Ui::form_open( 'asem_receipt_pdf_complete', $here, false, 'asem-inline' );
 			echo Ui::hidden( 'year', $year ) . Ui::hidden( 'after', $after ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Ui::hidden() protegge i valori
@@ -133,9 +157,9 @@ final class ReceiptCheckPage {
 			echo '</div>';
 		}
 
-		if ( $v['problems'] ) {
+		if ( $last && $last['problems'] ) {
 			echo '<h2>' . esc_html( Texts::t( 'Ricevute da controllare' ) ) . '</h2><table class="widefat striped"><thead><tr><th>' . esc_html( Texts::t( 'Ricevuta' ) ) . '</th><th>' . esc_html( Texts::t( 'Problema' ) ) . '</th><th></th></tr></thead><tbody>';
-			foreach ( array_slice( $v['problems'], 0, 200 ) as $p ) {
+			foreach ( array_slice( $last['problems'], 0, ReceiptFiles::VERIFY_KEEP ) as $p ) {
 				echo '<tr><td>n. ' . esc_html( $p['label'] ) . '</td><td>';
 				$acts = '';
 				foreach ( $p['detail'] as $kind => $st ) {
@@ -147,8 +171,8 @@ final class ReceiptCheckPage {
 				echo '</td><td>' . $acts . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Ui::confirm_button() protegge ogni valore
 			}
 			echo '</tbody></table>';
-			if ( count( $v['problems'] ) > 200 ) {
-				echo '<p class="description">' . esc_html( Texts::t( 'Si vedono le prime 200: sistemale e ricarica la pagina per vedere le altre.' ) ) . '</p>';
+			if ( (int) $last['summary']['locked'] + (int) $last['summary']['missing'] + (int) $last['summary']['altered'] > count( $last['problems'] ) ) {
+				echo '<p class="description">' . esc_html( Texts::t( 'Si vedono le prime {n}: sistemale e verifica di nuovo per vedere le altre.', array( 'n' => ReceiptFiles::VERIFY_KEEP ) ) ) . '</p>';
 			}
 		}
 
@@ -156,6 +180,23 @@ final class ReceiptCheckPage {
 		echo '<p class="description"><strong>' . esc_html( Texts::t( 'I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.' ) ) . '</strong></p>';
 		echo '<p class="description">' . esc_html( Texts::t( 'Ogni PDF pesa pochi KB e sta nella cartella riservata del sito ({cartella}/receipts), la stessa degli allegati. Se la cartella risultasse raggiungibile da internet, la pagina Copia di sicurezza lo segnala. Conserva sempre anche una copia di sicurezza fuori dal sito.', array( 'cartella' => \AssociazioneSemplice\Attachments::dir() ) ) ) . '</p>';
 		Ui::footer();
+	}
+
+	/** Azione del pulsante «Verifica i PDF»: un giro della verifica (a lotti, con cursore); un solo giro per volta in tutto il sito. */
+	public static function verify( array $p ): array {
+		$year = max( 0, (int) ( $p['year'] ?? 0 ) );
+		if ( ! in_array( $year, ReceiptFiles::years(), true ) ) {
+			throw new \InvalidArgumentException( Texts::t( 'Scegli un anno fiscale che abbia ricevute emesse.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$r    = ReceiptFiles::verify_step( $year );
+		$back = Ui::url( 'asem-receipt-check', array( 'year' => $year ) );
+		if ( ! $r['finished'] ) {
+			return array( $back, Texts::t( 'Controllate {n} ricevute su {tot}: premi di nuovo per continuare.', array( 'n' => $r['checked'], 'tot' => $r['total'] ) ) );
+		}
+		$bad = (int) $r['summary']['locked'] + (int) $r['summary']['missing'] + (int) $r['summary']['altered'];
+		return array( $back, 0 === $bad
+			? Texts::t( 'Verifica finita: controllate {n} ricevute, nessun problema trovato.', array( 'n' => $r['checked'] ) )
+			: Texts::t( 'Verifica finita: controllate {n} ricevute, {bad} da sistemare.', array( 'n' => $r['checked'], 'bad' => $bad ) ) );
 	}
 
 	/** Azione del modulo «Fissa i prossimi PDF»: un lotto per volta. */
@@ -203,6 +244,7 @@ final class ReceiptCheckPage {
 			throw new \InvalidArgumentException( Texts::t( 'Ci sono ancora file da spostare nella cartella indicata in wp-config.php: rifai le ricevute quando lo spostamento è finito.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		Receipts::regenerate_pdf( (string) ( $p['key'] ?? '' ), (string) ( $p['kind'] ?? '' ) );
+		ReceiptFiles::verify_recheck( (int) ( $p['year'] ?? 0 ), (string) ( $p['key'] ?? '' ) );
 		return array( Ui::url( 'asem-receipt-check', array( 'year' => (int) ( $p['year'] ?? 0 ) ) ), Texts::t( 'PDF rifatto dai dati salvati all\'emissione. L\'operazione è scritta nel registro azioni.' ) );
 	}
 }

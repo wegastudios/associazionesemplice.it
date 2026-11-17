@@ -14,6 +14,7 @@ final class Newsletter {
 	const OPT_LISTS    = 'asem_newsletter_lists';
 	const BATCH_MANUAL = 300;
 	const BATCH_CRON   = 200;
+	const MAX_SECONDS  = 20; // oltre questo tempo una sincronizzazione si ferma e riprende da sola
 
 	/** @var callable|null rete iniettabile per i test */
 	private static $http = null;
@@ -139,8 +140,9 @@ final class Newsletter {
 	 *
 	 * @return array{added:int,updated:int,removed:int,errors:int,unchanged:int,partial:bool,message:string}
 	 */
-	public static function sync( int $max = self::BATCH_MANUAL ): array {
-		$out = array( 'added' => 0, 'updated' => 0, 'removed' => 0, 'errors' => 0, 'unchanged' => 0, 'partial' => false, 'message' => '' );
+	public static function sync( int $max = self::BATCH_MANUAL, int $seconds = self::MAX_SECONDS ): array {
+		$started = microtime( true );
+		$out     = array( 'added' => 0, 'updated' => 0, 'removed' => 0, 'errors' => 0, 'unchanged' => 0, 'partial' => false, 'message' => '' );
 		if ( ! self::available() ) {
 			$out['message'] = 'La newsletter non è pronta: scegli il servizio e la lista.';
 			return $out;
@@ -172,7 +174,7 @@ final class Newsletter {
 			if ( NewsletterRules::SKIP === $action ) {
 				continue;
 			}
-			if ( $work >= $max ) {
+			if ( $work >= $max || ( $work > 0 && microtime( true ) - $started >= $seconds ) ) { // oltre il lotto o il tempo: il resto al prossimo passaggio
 				$out['partial'] = true;
 				break;
 			}
@@ -196,9 +198,16 @@ final class Newsletter {
 		}
 		foreach ( $rows as $id => $row ) { // persone cancellate del tutto: via anche dalla lista
 			if ( ! isset( $people[ $id ] ) && in_array( $row['status'], array( NewsletterRules::ST_SUBSCRIBED, NewsletterRules::ST_REMOVE_ERR ), true ) && $work < $max ) {
+				if ( $work > 0 && microtime( true ) - $started >= $seconds ) {
+					$out['partial'] = true;
+					break;
+				}
 				$work++;
 				self::remove_row( $p, $list, $id, $row, $active_emails, $out );
 			}
+		}
+		if ( $out['partial'] && ( $out['added'] + $out['updated'] + $out['removed'] ) > 0 && ! wp_next_scheduled( self::HOOK, array( 'more' ) ) ) {
+			wp_schedule_single_event( time() + 2 * MINUTE_IN_SECONDS, self::HOOK, array( 'more' ) ); // si prosegue da soli, ma solo se questo passaggio ha fatto progressi (con il servizio fermo non si insiste)
 		}
 		update_option( self::OPT_LAST, array( 't' => time(), 'result' => $out ), false );
 		$out['message'] = sprintf( 'Newsletter: %d iscritti, %d aggiornati, %d tolti, %d invariati%s%s.', $out['added'], $out['updated'], $out['removed'], $out['unchanged'], $out['errors'] ? ', ' . $out['errors'] . ' con errore' : '', $out['partial'] ? ' (altri al prossimo passaggio)' : '' );
@@ -255,8 +264,8 @@ final class Newsletter {
 	}
 
 	/** Lavoro periodico. */
-	public static function job(): void {
-		if ( Edition::has( 'newsletter' ) && ! empty( Settings::get( 'newsletter_auto' ) ) && self::configured() ) {
+	public static function job( string $more = '' ): void {
+		if ( Edition::has( 'newsletter' ) && ( '' !== $more || ! empty( Settings::get( 'newsletter_auto' ) ) ) && self::configured() ) { // «more»: seguito di una sincronizzazione rimasta a metà
 			self::sync( self::BATCH_CRON );
 		}
 	}

@@ -60,4 +60,34 @@ final class ReceiptFilesTest extends TestCase {
 		$this->assertTrue( ReceiptFiles::has( array( 'pdf_path' => 'receipts/2026/1-' . self::MAC . '.pdf' ), 'issued' ) );
 		$this->assertFalse( ReceiptFiles::has( array( 'pdf_path' => 'receipts/2026/1-' . self::MAC . '.pdf' ), 'void' ) );
 	}
+	public function test_summaries_of_two_rounds_add_up(): void {
+		$a = array( 'total' => 500, 'ok' => 498, 'locked' => 0, 'missing' => 1, 'altered' => 1, 'pending' => 0, 'nodata' => 0 );
+		$b = array( 'total' => 120, 'ok' => 119, 'locked' => 0, 'missing' => 0, 'altered' => 1, 'pending' => 0, 'nodata' => 0 );
+		$s = ReceiptFiles::merge_summary( $a, $b );
+		$this->assertSame( 620, $s['total'] );
+		$this->assertSame( 617, $s['ok'] );
+		$this->assertSame( 1, $s['missing'] );
+		$this->assertSame( 2, $s['altered'] );
+		$this->assertSame( 0, ReceiptFiles::merge_summary( ReceiptFiles::empty_summary(), ReceiptFiles::empty_summary() )['total'] );
+	}
+
+	public function test_result_keeps_only_files_to_fix_and_no_more_than_the_limit(): void {
+		$p = static function ( string $state, int $i ): array {
+			return array( 'key' => 'k' . $i, 'label' => $i . '/2026', 'state' => $state, 'detail' => array( 'issued' => $state ) );
+		};
+		$kept = ReceiptFiles::keep_problems( array(), array( $p( 'pending', 1 ), $p( 'nodata', 2 ), $p( 'missing', 3 ), $p( 'altered', 4 ), $p( 'locked', 5 ) ) );
+		$this->assertSame( array( 'k3', 'k4', 'k5' ), array_column( $kept, 'key' ) );
+		$many = array();
+		for ( $i = 0; $i < ReceiptFiles::VERIFY_KEEP + 50; $i++ ) {
+			$many[] = $p( 'missing', $i );
+		}
+		$this->assertCount( ReceiptFiles::VERIFY_KEEP, ReceiptFiles::keep_problems( array(), $many ) );
+		$this->assertCount( ReceiptFiles::VERIFY_KEEP, ReceiptFiles::keep_problems( ReceiptFiles::keep_problems( array(), $many ), $many ) );
+	}
+
+	public function test_a_round_is_bounded_and_uses_its_own_options(): void {
+		$this->assertSame( 500, ReceiptFiles::VERIFY_BATCH );
+		$this->assertGreaterThan( 0, ReceiptFiles::VERIFY_BUDGET );
+		$this->assertNotSame( ReceiptFiles::VERIFY_RUN, ReceiptFiles::VERIFY_LAST );
+	}
 }

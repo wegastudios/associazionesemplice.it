@@ -20,6 +20,10 @@ final class License {
 	const OPT_STATE       = 'asem_license_state';
 	/** Primo esito negativo firmato (giorno UTC e motivo), in attesa del secondo. */
 	const OPT_DENIAL      = 'asem_license_denial';
+	/** Esito già verificato dell'ultimo controllo con il server, ricordato per un po' (mai la chiave in chiaro, mai caricato a ogni richiesta). */
+	const OPT_MEMO        = 'asem_license_memo';
+	/** Per quanto si ricorda un esito verificato: 12 ore, cioè al massimo due controlli al giorno. */
+	const MEMO_TTL        = 12 * HOUR_IN_SECONDS;
 
 	/** Funzioni avanzate che si bloccano se la licenza a pagamento non è in regola (solo con il plugin Pro installato). */
 	const FEATURES = array(
@@ -243,13 +247,19 @@ final class License {
 	 * Verifica la chiave con il server e salva l'esito. Se il server non risponde lo stato precedente resta com'è (una revoca non
 	 * si «annulla» per un errore di rete, e un errore di rete non toglie le funzioni).
 	 *
+	 * Un esito già verificato (firma valida, positivo o negativo firmato) si ricorda per 12 ore: nello stesso periodo una nuova richiesta di
+	 * controllo restituisce lo stesso esito senza richiamare il server. Con $force ("Controlla adesso", chiave nuova) si controlla subito.
+	 *
 	 * @return array ['ok' => bool, 'message' => string]
 	 */
-	public static function sync(): array {
+	public static function sync( bool $force = false ): array {
 		if ( ! LicenseClient::enabled() ) {
 			return array( 'ok' => true, 'message' => LicenseClient::is_local() ? 'Ambiente di sviluppo locale: non serve la licenza.' : 'La verifica della licenza non è ancora attiva.' );
 		}
 		$key = self::key();
+		if ( '' === $key ) {
+			self::forget(); // senza chiave leggibile non c'è niente da ricordare
+		}
 		if ( '' === $key && self::key_unreadable() ) {
 			// Una chiave c'è ma non si apre: niente chiamata al portale e lo stato resta com'era (come per un errore di rete: se il problema dura, la
 			// politica di LicensePolicy sul tempo trascorso dall'ultimo controllo riuscito fa il resto). Non è «nessuna chiave»: non si passa al gratuito.
@@ -262,6 +272,13 @@ final class License {
 		$domain = LicenseClient::normalize_domain( home_url() );
 		if ( '' === $domain ) {
 			return self::failed( 'Indirizzo del sito non utilizzabile per la licenza (serve un nome di dominio).' );
+		}
+		$print = self::memo_print( $key, $domain );
+		if ( ! $force ) {
+			$memo = self::recall( $print );
+			if ( null !== $memo ) {
+				return $memo;
+			}
 		}
 		$r = LicenseClient::validate( $key, $domain );
 		if ( is_wp_error( $r ) ) {
@@ -290,7 +307,7 @@ final class License {
 				update_option( self::OPT_DENIAL, $step['stored'], false );
 			}
 			if ( ! $step['apply'] ) {
-				return array( 'ok' => false, 'message' => LicenseClient::reason_label( $denial['rc'] ) );
+				return self::remember( $print, array( 'ok' => false, 'message' => LicenseClient::reason_label( $denial['rc'] ) ) ); // negativo firmato, il primo: si ricorda
 			}
 			$r['reason_code'] = $denial['rc']; // il motivo è quello firmato
 		} else {
@@ -326,7 +343,46 @@ final class License {
 		if ( LicensePolicy::STATUS_ACTIVE === $i['status'] ) {
 			$msg = 'Licenza ' . self::plan_label( $i['plan'] ) . ' valida' . ( $i['expires_at'] ? ' fino al ' . gmdate( 'd/m/Y', strtotime( $i['expires_at'] ) ) : '' ) . '.' . ( $i['in_grace'] ? ' ' . LicenseClient::reason_label( 'IN_GRACE' ) : '' );
 		}
-		return array( 'ok' => LicensePolicy::STATUS_ACTIVE === $i['status'], 'message' => '' !== $msg ? $msg : 'Licenza non valida.' );
+		return self::remember( $print, array( 'ok' => LicensePolicy::STATUS_ACTIVE === $i['status'], 'message' => '' !== $msg ? $msg : 'Licenza non valida.' ) ); // qui l'esito è sempre firmato e verificato
+	}
+
+	/** Impronta di dominio e chiave (non reversibile, legata ai codici di sicurezza del sito): se cambia uno dei due, la memoria non vale più. */
+	private static function memo_print( string $key, string $domain ): string {
+		return hash_hmac( 'sha256', $domain . "\n" . $key, wp_salt( 'auth' ) );
+	}
+
+	/** Ricorda un esito verificato per 12 ore e lo restituisce. Si chiama solo dopo una firma valida: errori, risposte senza firma e timeout non passano di qui. */
+	private static function remember( string $print, array $result ): array {
+		update_option(
+			self::OPT_MEMO,
+			array( 'until' => time() + self::MEMO_TTL, 'fp' => $print, 'status' => self::state()['status'], 'ok' => ! empty( $result['ok'] ), 'message' => (string) $result['message'] ),
+			false
+		);
+		return $result;
+	}
+
+	/** L'esito ricordato, se c'è, non è scaduto, è per questa chiave e questo dominio e lo stato salvato è ancora quello di allora; altrimenti null. */
+	private static function recall( string $print ): ?array {
+		$m = get_option( self::OPT_MEMO, array() );
+		if ( ! is_array( $m ) || empty( $m ) ) {
+			return null;
+		}
+		$now = time();
+		$ok  = isset( $m['until'], $m['fp'], $m['status'], $m['message'] ) && is_int( $m['until'] ) && is_string( $m['fp'] ) && is_string( $m['status'] ) && is_string( $m['message'] )
+			&& $m['until'] > $now && $m['until'] <= $now + self::MEMO_TTL + 60 // una scadenza lontana nel tempo (valore modificato a mano) non vale
+			&& hash_equals( $m['fp'], $print ) && self::state()['status'] === $m['status'];
+		if ( ! $ok ) {
+			self::forget();
+			return null;
+		}
+		return array( 'ok' => ! empty( $m['ok'] ), 'message' => $m['message'] );
+	}
+
+	/** Svuota la memoria dell'esito: chiave nuova o tolta, chiave illeggibile, dominio cambiato, disattivazione, disinstallazione. */
+	public static function forget(): void {
+		if ( false !== get_option( self::OPT_MEMO, false ) ) {
+			delete_option( self::OPT_MEMO );
+		}
 	}
 
 	/** Errore di rete o di risposta: lo si ricorda per mostrarlo, ma lo stato non cambia. */
@@ -351,6 +407,11 @@ final class License {
 		self::sync();
 	}
 
+	/** Rinnovo della prova firmata dopo un aggiornamento del plugin: serve la risposta nuova, non quella ricordata. */
+	public static function resync(): void {
+		self::sync( true );
+	}
+
 	/**
 	 * Identità di QUESTA installazione: un id casuale che resta finché il sito non cambia indirizzo.
 	 * Se il sito viene copiato altrove (es. produzione -> staging) la copia porta con sé il database, quindi lo
@@ -366,6 +427,9 @@ final class License {
 		$moved = false;
 		if ( '' === $id || ( '' !== $known && LicenseRules::host( $known ) !== $host ) ) {
 			$moved = '' !== $id;
+			if ( $moved ) {
+				self::forget(); // sito copiato o spostato su un altro indirizzo: l'esito ricordato non è il suo
+			}
 			$id    = wp_generate_uuid4();
 			update_option( self::OPT_INSTALL_ID, $id );
 		}
