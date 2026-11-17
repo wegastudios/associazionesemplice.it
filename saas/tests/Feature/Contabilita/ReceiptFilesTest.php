@@ -127,3 +127,18 @@ it('il PDF rifatto dagli stessi dati è identico byte per byte', function (): vo
     $b = $this->orgContext()->run($this->org->id, fn () => app(ReceiptPdf::class)->build($this->receipt)['pdf']);
     expect($a)->toBe($b);
 });
+
+it('il lavoro programmato su tutte le associazioni salta quelle sospese', function (): void {
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.receipt_files')->where('receipt_id', $this->receipt)->delete());
+    DB::connection('pgsql')->table('core.orgs')->where('id', $this->org->id)->update(['status' => 'suspended']);
+
+    $this->artisan('saas:receipts:fix')->doesntExpectOutputToContain($this->org->id)->assertSuccessful();
+    expect($this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->unfixedCount()))->toBe(1);
+});
+
+it('la verifica dell\'anno dà lo stato di ogni ricevuta con una sola lettura dell\'elenco', function (): void {
+    $year = (int) $this->orgContext()->run($this->org->id, fn () => DB::table('app.receipts')->value('year'));
+    $rows = $this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->overview($year));
+
+    expect($rows)->toHaveCount(1)->and($rows[0]['status'])->toBe('ok');
+});

@@ -16,9 +16,11 @@ use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use League\Flysystem\UnableToReadFile;
 use RuntimeException;
+use Throwable;
 
 /**
  * Ricevute definitive: il PDF si crea una volta sola e si salva cifrato con la sua impronta SHA-256. Download ed email
@@ -98,7 +100,12 @@ final readonly class ReceiptFiles
     /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED */
     public function status(string $receiptId): string
     {
-        $row = $this->row($receiptId);
+        return $this->statusOf($this->row($receiptId));
+    }
+
+    /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED */
+    private function statusOf(?object $row): string
+    {
         if ($row === null) {
             return self::UNFIXED;
         }
@@ -198,6 +205,9 @@ final readonly class ReceiptFiles
                     $fixed += $this->fix($id, 'lotto') ? 1 : 0;
                 } catch (LedgerError) {
                     // Ricevuta senza voci o annullata nel frattempo: resta da fissare.
+                } catch (Throwable $e) {
+                    // Un errore su una ricevuta non ferma le altre: si annota (solo identificativo e tipo) e si prosegue.
+                    Log::warning('Ricevuta non fissata', ['receipt' => $id, 'error' => $e::class]);
                 }
             }
         }
@@ -219,14 +229,17 @@ final readonly class ReceiptFiles
     public function overview(int $year): array
     {
         $out = [];
-        $rows = $this->connection()->table('app.receipts')->where('year', $year)->orderBy('number')->get(['id', 'number', 'issued_on', 'voided_at']);
+        // Una sola query per le ricevute dell'anno e i loro file (niente query per ogni ricevuta); resta il controllo del file.
+        $rows = $this->connection()->table('app.receipts as r')->leftJoin('app.receipt_files as f', 'f.receipt_id', '=', 'r.id')
+            ->where('r.year', $year)->orderBy('r.number')
+            ->get(['r.id', 'r.number', 'r.issued_on', 'r.voided_at', 'f.receipt_id', 'f.path', 'f.original_name', 'f.size_bytes', 'f.sha256', 'f.archived_year']);
         foreach ($rows as $r) {
             $id = is_string($r->id ?? null) ? $r->id : '';
             $out[] = [
                 'id' => $id,
                 'number' => (is_scalar($r->number ?? null) ? (string) $r->number : '').'/'.$year,
                 'issued_on' => is_scalar($r->issued_on ?? null) ? (string) $r->issued_on : '',
-                'status' => ($r->voided_at ?? null) !== null ? 'voided' : $this->status($id),
+                'status' => ($r->voided_at ?? null) !== null ? 'voided' : $this->statusOf($r->receipt_id === null ? null : $r),
             ];
         }
 

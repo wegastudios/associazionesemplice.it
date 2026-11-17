@@ -24,7 +24,7 @@ final class FixReceiptsCommand extends Command
         $org = $this->argument('org');
         $ids = is_string($org)
             ? [$org]
-            : $db->connection('pgsql')->table('core.orgs')->whereNull('deleted_at')->orderBy('id')->pluck('id')->all();
+            : $db->connection('pgsql')->table('core.orgs')->where('status', 'active')->whereNull('deleted_at')->orderBy('id')->pluck('id')->all();
         $batch = max(1, (int) $this->option('batch'));
 
         $failed = 0;
