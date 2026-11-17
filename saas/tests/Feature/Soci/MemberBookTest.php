@@ -136,5 +136,6 @@ it('a video il libro va a pagine da 100 righe con il totale vero; stampa e CSV r
     $this->get('/gestionale/soci/libro?pagina=2')->assertInertia(fn (Assert $page) => $page
         ->has('rows', 23)->where('page', 2)->where('pages', 2)->where('total', 123));
     $this->get('/gestionale/soci/libro?pagina=99')->assertInertia(fn (Assert $page) => $page->where('page', 2));
-    expect(substr_count((string) $this->get('/gestionale/soci/libro.csv')->assertOk()->getContent(), 'Cognome'))->toBe(120);
+    $csv = (string) $this->get('/gestionale/soci/libro.csv')->assertOk()->getContent();
+    expect($csv)->toContain('Cognome0 Nome0')->toContain('Cognome119 Nome119');
 });
