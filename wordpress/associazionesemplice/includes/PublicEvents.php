@@ -204,6 +204,39 @@ final class PublicEvents {
 		return (int) RequestMemo::put( 'event_post_of', $activity_id, self::find_post_of( $activity_id ), array( $wpdb->posts, $wpdb->postmeta ) );
 	}
 
+	/**
+	 * Cerca in una volta sola il contenuto collegato a più attività (stessa scelta di {@see PublicEvents::post_of()}: il più vecchio, anche nel cestino)
+	 * e prepara in memoria stato e immagine in evidenza dei contenuti trovati: l'elenco pubblico non fa più una ricerca per attività.
+	 *
+	 * @param int[] $activity_ids
+	 */
+	public static function prime_posts( array $activity_ids ): void {
+		$wpdb = Db::db();
+		$todo = array();
+		foreach ( $activity_ids as $id ) {
+			$id = (int) $id;
+			if ( $id > 0 && ! RequestMemo::has( 'event_post_of', $id ) ) {
+				$todo[ $id ] = $id;
+			}
+		}
+		if ( count( $todo ) < 2 ) { // una sola: basta la ricerca di sempre
+			return;
+		}
+		$in    = implode( ',', array_fill( 0, count( $todo ), '%s' ) ); // testo come in get_posts(): stesso confronto di prima
+		$args  = array_merge( array( self::META, self::POST_TYPE ), array_map( 'strval', array_values( $todo ) ) );
+		$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT m.meta_value AS activity, MIN(p.ID) AS post FROM ' . $wpdb->postmeta . ' m JOIN ' . $wpdb->posts . " p ON p.ID = m.post_id WHERE m.meta_key = %s AND p.post_type = %s AND p.post_status IN ('publish','draft','pending','private','future','trash') AND m.meta_value IN ($in) GROUP BY m.meta_value", $args ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- segnaposto generati, nomi di tabella di WordPress
+		$found = array();
+		foreach ( (array) $rows as $r ) {
+			$found[ (string) $r['activity'] ] = (int) $r['post'];
+		}
+		foreach ( $todo as $id ) {
+			RequestMemo::put( 'event_post_of', $id, $found[ (string) $id ] ?? 0, array( $wpdb->posts, $wpdb->postmeta ) );
+		}
+		if ( $found ) { // contenuti e meta in memoria con due ricerche in tutto
+			get_posts( array( 'post_type' => self::POST_TYPE, 'post_status' => array( 'publish', 'draft', 'pending', 'private', 'future', 'trash' ), 'include' => array_values( array_unique( $found ) ), 'numberposts' => -1, 'orderby' => 'ID', 'order' => 'ASC' ) );
+		}
+	}
+
 	/** Id delle attività (tra quelle indicate) che hanno già un contenuto collegato, anche nel cestino: una sola query. @return array<int,true> */
 	private static function activities_with_page( array $activity_ids ): array {
 		$wpdb = Db::db();

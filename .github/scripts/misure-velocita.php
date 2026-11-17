@@ -727,6 +727,12 @@ foreach ( array(
 $t0 = microtime( true );
 Plugin::people()->search_light( array(), true );
 m_log( sprintf( 'PARTE prova::search_light con scadenza %d ms', round( ( microtime( true ) - $t0 ) * 1000 ) ) );
+m_profile( 'Elenco pubblico delle attività (visitatore)', function () {
+	$uid = get_current_user_id();
+	wp_set_current_user( 0 ); // come un visitatore anonimo, che è chi lo guarda di solito
+	echo \AssociazioneSemplice\Frontend\Views::activities( array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	wp_set_current_user( $uid );
+} );
 $_GET = array( 'page' => 'asem' );
 foreach ( array( 'payments_due', 'renewals', 'expected_guests', 'applications', 'adults_to_invite', 'incomplete_cards', 'overdue_loans', 'quick_cash', 'quick_enroll' ) as $m_name ) {
 	$rm = new \ReflectionMethod( 'AssociazioneSemplice\\Admin\\DashboardPage', $m_name );

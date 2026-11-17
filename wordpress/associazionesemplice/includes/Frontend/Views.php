@@ -1518,7 +1518,15 @@ final class Views {
 		$ctx  = self::booking_context();
 		$ctx['hide_login'] = true;
 		$mine = ! empty( $ctx['actor'] ) ? $svc->person_activity_ids( (int) $ctx['actor']['id'] ) : array();
-		$html = '<div class="asemf-grid">';
+		\AssociazioneSemplice\PublicEvents::prime_posts( array_map( 'intval', array_column( $list, 'id' ) ) ); // contenuti collegati: una ricerca per tutte le attività
+		$dated = array();
+		foreach ( $list as $a ) {
+			if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
+				$dated[] = (int) $a['id'];
+			}
+		}
+		$dates = $dated ? $svc->sessions_many( $dated ) : array(); // date di tutte le attività insieme
+		$html  = '<div class="asemf-grid">';
 		foreach ( $list as $a ) {
 			$page   = \AssociazioneSemplice\PublicEvents::page_url( (int) $a['id'] ); // la pagina pubblica dell'attività, se c'è: locandina, descrizione, altre date
 			$poster = '' !== $page ? \AssociazioneSemplice\PublicEvents::poster( (int) $a['id'] ) : '';
@@ -1532,7 +1540,7 @@ final class Views {
 			if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
 				$sessions = array_values(
 					array_filter(
-						$svc->sessions( (int) $a['id'] ),
+						$dates[ (int) $a['id'] ] ?? array(),
 						function ( $s ) {
 							return empty( $s['cancelled_at'] ) && $s['session_date'] >= current_time( 'Y-m-d' );
 						}

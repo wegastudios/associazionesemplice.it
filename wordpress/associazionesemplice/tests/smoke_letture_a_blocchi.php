@@ -346,3 +346,24 @@ foreach ( array( null, 12 ) as $lb_sel ) {
 	$lb_same = $lb_same && (string) ob_get_clean() === $lb_ref && false !== strpos( $lb_ref, "D&#039;Angelo" );
 }
 asem_ok( $lb_same, 'scelta di una persona: il campo stampato a pezzi è identico a quello passato intero dal filtro (nomi con apici, e commerciale e segni minore)' );
+
+// ---------- Elenco pubblico delle attività: i contenuti collegati cercati tutti insieme ----------
+\AssociazioneSemplice\PublicEvents::ensure( $lb_course ); // resta in bozza
+$lb_pe_ev1 = \AssociazioneSemplice\PublicEvents::ensure( $lb_ev1 );
+wp_update_post( array( 'ID' => $lb_pe_ev1, 'post_status' => 'publish' ) );
+$lb_ev3 = $lb_acts->create( array( 'name' => 'Serata nel cestino', 'social_year' => $lb_sy->label(), 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $lb_today, 'capacity' => 5 ) ) );
+wp_trash_post( \AssociazioneSemplice\PublicEvents::ensure( $lb_ev3 ) );
+$lb_pe_ids = array( $lb_course, $lb_ev1, $lb_ev2, $lb_ev3, 987654 ); // una bozza, una pubblicata, una senza pagina, una nel cestino, una che non esiste
+$lb_ref    = array();
+foreach ( $lb_pe_ids as $lb_i ) {
+	$lb_f            = get_posts( array( 'post_type' => 'asem_evento', 'post_status' => array( 'publish', 'draft', 'pending', 'private', 'future', 'trash' ), 'meta_key' => '_asem_activity_id', 'meta_value' => $lb_i, 'orderby' => 'ID', 'order' => 'ASC', 'numberposts' => 5, 'fields' => 'ids' ) );
+	$lb_ref[ $lb_i ] = $lb_f ? (int) $lb_f[0] : 0;
+}
+\AssociazioneSemplice\RequestMemo::forget();
+\AssociazioneSemplice\PublicEvents::prime_posts( $lb_pe_ids );
+$lb_got = array();
+foreach ( $lb_pe_ids as $lb_i ) {
+	$lb_got[ $lb_i ] = \AssociazioneSemplice\PublicEvents::post_of( $lb_i );
+}
+asem_ok( $lb_got === $lb_ref && $lb_ref[ $lb_ev1 ] === $lb_pe_ev1 && 0 === $lb_ref[987654] && $lb_ref[ $lb_ev3 ] > 0 && $lb_ref[ $lb_course ] > 0, 'elenco pubblico: il contenuto collegato a ogni attività, cercato in blocco, è lo stesso della ricerca una per una' );
+asem_ok( '' !== \AssociazioneSemplice\PublicEvents::page_url( $lb_ev1 ) && '' === \AssociazioneSemplice\PublicEvents::page_url( $lb_course ) && '' === \AssociazioneSemplice\PublicEvents::page_url( $lb_ev3 ) && '' === \AssociazioneSemplice\PublicEvents::page_url( 987654 ), 'elenco pubblico: la pagina si offre solo per i contenuti pubblicati (non per bozze, cestino o attività senza pagina)' );
