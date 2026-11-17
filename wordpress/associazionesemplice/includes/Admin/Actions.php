@@ -315,7 +315,11 @@ final class Actions {
 			throw new \InvalidArgumentException( 'I promemoria sono disattivati: attivali e salva le impostazioni prima di inviarli.' );
 		}
 		$r = \AssociazioneSemplice\Reminders::run();
-		return array( Ui::url( 'asem-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani, ' . $r['polls'] . ' per le votazioni, ' . $r['loans'] . ' per i prestiti scaduti.' );
+		if ( \AssociazioneSemplice\Reminders::was_busy() ) {
+			return array( Ui::url( 'asem-comms' ), \AssociazioneSemplice\Texts::t( 'Un invio dei promemoria è già in corso: riprova tra qualche minuto.' ) );
+		}
+		return array( Ui::url( 'asem-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani, ' . $r['polls'] . ' per le votazioni, ' . $r['loans'] . ' per i prestiti scaduti.'
+			. ( \AssociazioneSemplice\Reminders::more_pending() ? ' ' . \AssociazioneSemplice\Texts::t( 'Ne restano altri: partono da soli tra pochi minuti.' ) : '' ) );
 	}
 
 

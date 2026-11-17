@@ -2672,6 +2672,8 @@
   "Verifica finita: controllate {n} ricevute, {bad} da sistemare." : "Check finished: {n} receipts checked, {bad} to fix.",
   "Pagina {n} di {tot}" : "Page {n} of {tot}",
   "← Precedenti" : "← Previous",
-  "Successive →" : "Next →"
+  "Successive →" : "Next →",
+  "Un invio dei promemoria è già in corso: riprova tra qualche minuto." : "A reminder run is already in progress: try again in a few minutes.",
+  "Ne restano altri: partono da soli tra pochi minuti." : "More are left: they will go out by themselves in a few minutes."
  }
 }

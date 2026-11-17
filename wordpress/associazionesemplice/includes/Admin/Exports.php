@@ -65,18 +65,24 @@ final class Exports {
 		if ( ( ( 'period' === $what && ! Edition::has( 'fiscal' ) ) || ( 'social' === $what && ! Edition::has( 'reports' ) ) ) ) { // in questa edizione si esportano solo soci e prima nota
 			wp_die( 'Questa esportazione non è disponibile in questa edizione.', 403 );
 		}
-		switch ( $what ) {
+		switch ( $what ) { // $chunks: il file a pezzi, scritto in uscita man mano (prima nota e soci possono essere molto lunghi)
 			case 'ledger':
-				list( $name, $csv ) = self::ledger( Ui::get_str( 'from' ), Ui::get_str( 'to' ) );
+				$from   = Ui::get_str( 'from' );
+				$to     = Ui::get_str( 'to' );
+				$name   = "prima-nota-$from-$to.csv";
+				$chunks = self::ledger_chunks( $from, $to );
 				break;
 			case 'period':
 				list( $name, $csv ) = self::period( Ui::get_str( 'from' ), Ui::get_str( 'to' ) );
+				$chunks = array( $csv );
 				break;
 			case 'social':
 				list( $name, $csv ) = self::social( Ui::get_int( 'year', (int) Settings::social_year()->start_year ) );
+				$chunks = array( $csv );
 				break;
 			case 'people':
-				list( $name, $csv ) = self::people();
+				$name   = 'soci.csv';
+				$chunks = self::people_chunks();
 				break;
 			default:
 				wp_die( 'Export non valido.' );
@@ -85,13 +91,29 @@ final class Exports {
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $name ) . '"' );
-		\AssociazioneSemplice\Download::csv( $csv );
+		\AssociazioneSemplice\Download::csv_chunks( $chunks );
 		exit;
 	}
 
+	/** Righe per blocco quando il file si scrive man mano in uscita. */
+	const CHUNK_ROWS = 1000;
+
+	/** La prima nota come file intero (stesso contenuto di quello che si scarica). */
 	public static function ledger( string $from, string $to ): array {
+		return array( "prima-nota-$from-$to.csv", implode( '', iterator_to_array( self::ledger_chunks( $from, $to ), false ) ) );
+	}
+
+	/** I soci come file intero (stesso contenuto di quello che si scarica). */
+	public static function people(): array {
+		return array( 'soci.csv', implode( '', iterator_to_array( self::people_chunks(), false ) ) );
+	}
+
+	/** La prima nota a blocchi di 1.000 righe: intestazione, poi i movimenti nello stesso ordine di sempre. @return \Generator<string> */
+	private static function ledger_chunks( string $from, string $to ): \Generator {
 		$vat = \AssociazioneSemplice\Fiscal::vat_applies();
-		$csv = self::line( array_merge( array( 'Data', 'Tipo', 'Conto', 'Modalità', 'Voce', 'Attività', 'N. tessera', 'Persona', 'Descrizione', 'Competenza', 'Riferimento', 'Entrata', 'Uscita' ), $vat ? array( 'Aliquota IVA', 'Imponibile', 'IVA' ) : array() ) );
+		yield self::line( array_merge( array( 'Data', 'Tipo', 'Conto', 'Modalità', 'Voce', 'Attività', 'N. tessera', 'Persona', 'Descrizione', 'Competenza', 'Riferimento', 'Entrata', 'Uscita' ), $vat ? array( 'Aliquota IVA', 'Imponibile', 'IVA' ) : array() ) );
+		$csv = '';
+		$n   = 0;
 		foreach ( Plugin::ledger()->rows( $from, $to, null, true ) as $r ) {
 			$plus = Labels::sign( $r['type'] ) > 0 ? Money::plain( (int) $r['amount_cents'] ) : '';
 			$minus = Labels::sign( $r['type'] ) < 0 ? Money::plain( (int) $r['amount_cents'] ) : '';
@@ -105,8 +127,14 @@ final class Exports {
 				$cells    = array_merge( $cells, Labels::is_transfer( $r['type'] ) ? array( '', '', '' ) : array( $has_rate ? (string) (int) $r['vat_rate'] . '%' : 'fuori campo', $has_rate ? Money::plain( (int) $r['amount_cents'] - (int) $r['vat_cents'] ) : '', $has_rate ? Money::plain( (int) $r['vat_cents'] ) : '' ) );
 			}
 			$csv .= self::line( $cells );
+			if ( 0 === ++$n % self::CHUNK_ROWS ) {
+				yield $csv;
+				$csv = '';
+			}
 		}
-		return array( "prima-nota-$from-$to.csv", $csv );
+		if ( '' !== $csv ) {
+			yield $csv;
+		}
 	}
 
 	public static function period( string $from, string $to ): array {
@@ -159,14 +187,23 @@ final class Exports {
 		return array( 'anno-sociale-' . str_replace( '/', '-', $year->label() ) . '.csv', $csv );
 	}
 
-	public static function people(): array {
-		$csv = self::line( array( 'Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Telefono', 'Codice fiscale', 'Data di nascita', 'Tutore', 'Indirizzo', 'CAP', 'Comune', 'Provincia', 'Ospite di', 'Tessera valida fino al', 'Tipo di tesseramento', 'Foto e video' ) );
+	/** I soci a blocchi di 1.000 righe. @return \Generator<string> */
+	private static function people_chunks(): \Generator {
+		yield self::line( array( 'Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Telefono', 'Codice fiscale', 'Data di nascita', 'Tutore', 'Indirizzo', 'CAP', 'Comune', 'Provincia', 'Ospite di', 'Tessera valida fino al', 'Tipo di tesseramento', 'Foto e video' ) );
+		$csv    = '';
+		$n      = 0;
 		$tutori = \AssociazioneSemplice\Guardians::names_by_person();
 		foreach ( Plugin::people()->search() as $p ) {
 			$csv .= self::line(
 				array( $p['card_number'], \AssociazioneSemplice\Levels::label( $p ), $p['first_name'], $p['last_name'], $p['email'], $p['phone'], $p['tax_code'], self::d( $p['birth_date'] ?? null ), $tutori[ (int) $p['id'] ] ?? '', $p['address'], $p['zip'], $p['city'], $p['province'], $p['host_name'], self::d( MemberType::GUEST === $p['type'] ? null : $p['active_until'] ), \AssociazioneSemplice\MembershipRoles::label( $p['affiliation_role'] ?? null ), null === ( $p['image_consent'] ?? null ) ? '' : ( (int) $p['image_consent'] ? 'Sì' : 'No' ) )
 			);
+			if ( 0 === ++$n % self::CHUNK_ROWS ) {
+				yield $csv;
+				$csv = '';
+			}
 		}
-		return array( 'soci.csv', $csv );
+		if ( '' !== $csv ) {
+			yield $csv;
+		}
 	}
 }

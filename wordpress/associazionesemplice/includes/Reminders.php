@@ -14,7 +14,50 @@ final class Reminders {
 
 	const HOOK            = 'asem_send_reminders';
 	const OPT_LAST        = 'asem_reminders_last';
+	const OPT_LOCK        = 'asem_reminders_lock';
+	const BUDGET_SECONDS  = 20;  // tempo massimo di un giro: se resta lavoro, il giro dopo parte da solo
+	const RETRY_SECONDS   = 120; // attesa prima del giro successivo
+	const LOCK_SECONDS    = 600; // un blocco più vecchio di così si considera rimasto da un giro interrotto
 	const EXPIRED_WINDOW  = 7; // giorni dopo la scadenza in cui si manda ancora il promemoria "scaduta"
+
+	/** @var float momento oltre il quale il giro in corso si ferma */
+	private static $deadline = 0.0;
+	/** @var bool l'ultimo giro si è fermato per il tempo e resta lavoro */
+	private static $more = false;
+	/** @var bool l'ultimo giro non è partito perché un altro era in corso */
+	private static $busy = false;
+
+	/** L'ultimo giro si è fermato per il tempo: un altro parte da solo tra poco. */
+	public static function more_pending(): bool {
+		return self::$more;
+	}
+
+	/** L'ultimo giro non è partito: un altro era già in corso. */
+	public static function was_busy(): bool {
+		return self::$busy;
+	}
+
+	/** Il tempo del giro è finito? Si controlla dopo ogni invio, così ogni giro ne fa almeno uno e il lavoro avanza sempre. */
+	private static function time_up(): bool {
+		if ( microtime( true ) < self::$deadline ) {
+			return false;
+		}
+		self::$more = true;
+		return true;
+	}
+
+	/** Un solo giro alla volta (cron e «Invia ora» insieme). Un blocco rimasto da un giro interrotto scade dopo dieci minuti. */
+	private static function lock(): bool {
+		$now = time();
+		if ( add_option( self::OPT_LOCK, $now, '', 'no' ) ) {
+			return true;
+		}
+		if ( $now - (int) get_option( self::OPT_LOCK, 0 ) > self::LOCK_SECONDS ) {
+			update_option( self::OPT_LOCK, $now, false );
+			return true;
+		}
+		return false;
+	}
 
 	public static function enabled(): bool {
 		return ! empty( Settings::get( 'reminders_enabled' ) );
@@ -78,6 +121,9 @@ final class Reminders {
 			$body = 'il rientro di «' . $l['item_name'] . '» era previsto per il ' . ( new \DateTimeImmutable( $l['due_on'] ) )->format( 'd/m/Y' ) . '. Quando puoi, riportalo alla segreteria o scrivici se ti serve più tempo. Se l\'hai già riportato, ignora questo messaggio.';
 			if ( $send ? self::notify( $p, 'loan_late', (string) $l['id'], 'Rientro scaduto: ' . $l['item_name'], $body ) : self::pending( $p, 'loan_late', (string) $l['id'] ) ) {
 				$n++;
+				if ( $send && self::time_up() ) {
+					break; // il resto al giro successivo
+				}
 			}
 		}
 		return $n;
@@ -132,24 +178,47 @@ final class Reminders {
 			return $out;
 		}
 		$today = $today ?: current_time( 'Y-m-d' );
+		if ( ! $send ) {
+			self::$deadline = INF; // l'anteprima non manda nulla: nessun limite di tempo
+			return self::collect( $today, false, $out );
+		}
+		self::$more = false;
+		if ( ! self::lock() ) {
+			self::$busy = true;
+			return $out; // un altro giro è già in corso: i promemoria si prenotano uno per uno, niente va perso né si manda due volte
+		}
+		self::$busy     = false;
+		self::$deadline = microtime( true ) + (float) apply_filters( 'asem_reminders_budget_seconds', self::BUDGET_SECONDS );
+		try {
+			$out = self::collect( $today, true, $out );
+		} finally {
+			delete_option( self::OPT_LOCK );
+		}
+		update_option( self::OPT_LAST, array( 'at' => Db::now(), 'counts' => $out ), false );
+		Audit::log( 'reminders.sent', 'settings', 0, $out );
+		$next = wp_next_scheduled( self::HOOK ); // il giro quotidiano c'è sempre: conta solo se è vicino
+		if ( self::$more && ( false === $next || $next - time() > self::RETRY_SECONDS ) ) {
+			wp_schedule_single_event( time() + self::RETRY_SECONDS, self::HOOK ); // il resto parte da solo tra poco; quelli già mandati sono registrati e non si ripetono
+		}
+		return $out;
+	}
+
+	/** Le cinque famiglie di promemoria, una dopo l'altra; con il tempo finito ci si ferma e il resto tocca al giro successivo. */
+	private static function collect( string $today, bool $send, array $out ): array {
 		if ( ! empty( Settings::get( 'reminders_membership' ) ) ) {
 			$out['membership'] = self::membership( $today, $send );
 		}
-		if ( ! empty( Settings::get( 'reminders_dues' ) ) ) {
+		if ( ! empty( Settings::get( 'reminders_dues' ) ) && ! ( $send && self::$more ) ) {
 			$out['dues'] = self::dues( $today, $send );
 		}
-		if ( ! empty( Settings::get( 'reminders_events' ) ) ) {
+		if ( ! empty( Settings::get( 'reminders_events' ) ) && ! ( $send && self::$more ) ) {
 			$out['events'] = self::events( $today, $send );
 		}
-		if ( ! empty( Settings::get( 'reminders_polls' ) ) ) {
+		if ( ! empty( Settings::get( 'reminders_polls' ) ) && ! ( $send && self::$more ) ) {
 			$out['polls'] = Polls::remind( $send );
 		}
-		if ( ! empty( Settings::get( 'reminders_loans' ) ) ) {
+		if ( ! empty( Settings::get( 'reminders_loans' ) ) && ! ( $send && self::$more ) ) {
 			$out['loans'] = self::loans( $send );
-		}
-		if ( $send ) {
-			update_option( self::OPT_LAST, array( 'at' => Db::now(), 'counts' => $out ), false );
-			Audit::log( 'reminders.sent', 'settings', 0, $out );
 		}
 		return $out;
 	}
@@ -188,6 +257,9 @@ final class Reminders {
 				continue;
 			}
 			$n++;
+			if ( $send && self::time_up() ) {
+				break; // il resto al giro successivo
+			}
 		}
 		return $n;
 	}
@@ -258,6 +330,9 @@ final class Reminders {
 					continue;
 				}
 				$n++;
+				if ( $send && self::time_up() ) {
+					return $n; // il resto al giro successivo
+				}
 			}
 		}
 		return $n;
@@ -295,6 +370,9 @@ final class Reminders {
 				continue;
 			}
 			$n++;
+			if ( $send && self::time_up() ) {
+				break; // il resto al giro successivo
+			}
 		}
 		return $n;
 	}
