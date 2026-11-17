@@ -127,6 +127,7 @@ function prova_seen( string $p ): array {
 // ---------- (a) il primo pacchetto con firma v2 è accettato (anche nell'elenco degli aggiornamenti di WordPress) ----------
 prova_reset();
 prova_free( prova_v2( '1.3.20', '1.3.0' ) );
+\AssociazioneSemplice\Updater::refresh_in_background(); // la richiesta al portale parte dal lavoro in background, non dalla pagina
 $t = apply_filters( 'pre_set_site_transient_update_plugins', (object) array( 'response' => array() ) );
 $b = plugin_basename( ASEM_FILE );
 prova_ok( isset( $t->response[ $b ] ) && '1.3.20' === $t->response[ $b ]->new_version && 'asem-portal://free' === $t->response[ $b ]->package, '(a) Bacheca → Aggiornamenti: 1.3.20 offerta dal finto portale' );

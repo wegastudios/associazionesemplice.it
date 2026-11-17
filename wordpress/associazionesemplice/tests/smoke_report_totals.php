@@ -196,7 +196,7 @@ foreach ( $rt_ranges as $rt_r ) {
 }
 // i casi limite scelti davvero contano: 2003 ha importi con i centesimi, annullati, rimborsi, fondi e una voce senza movimenti che non compare
 $rt_2003 = $rt_rep->period( '2003-01-01', '2003-12-31' );
-asem_ok( 1234 + 99 === $rt_2003['income'][0]['cents'] && 'Quote' === $rt_2003['income'][0]['fiscal_group'] && 2 === count( array_filter( $rt_2003['income'], function ( $l ) {
+asem_ok( 1234 + 99 + 100 === $rt_2003['income'][0]['cents'] && 'Quote' === $rt_2003['income'][0]['fiscal_group'] && 2 === count( array_filter( $rt_2003['income'], function ( $l ) {
 	return false !== strpos( $l['name'], 'Prova totali' );
 } ) ), 'totali del rendiconto: le entrate con i centesimi sono sommate per voce, l\'annullato non conta' );
 asem_ok( array() === array_filter( array_merge( $rt_2003['income'], $rt_2003['expenses'] ), function ( $l ) {

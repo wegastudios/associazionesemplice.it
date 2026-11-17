@@ -45,6 +45,8 @@ WP_CLI::log( 'info - firma v2 presente: ' . ( $r['v2'] ? 'sì' : 'no' ) . ', pac
 delete_option( Updater::OPT );
 delete_option( Updater::SEEN_OPT );
 delete_site_transient( 'update_plugins' );
+Updater::refresh_in_background(); // la richiesta al portale parte dal lavoro in background, non dalla pagina
+delete_site_transient( 'update_plugins' );
 wp_update_plugins();
 $t = get_site_transient( 'update_plugins' );
 reale_ok( is_object( $t ) && isset( $t->response[ $basename ] ), 'WordPress vede l\'aggiornamento in update_plugins' );
