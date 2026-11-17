@@ -18,6 +18,77 @@ defined( 'ABSPATH' ) || exit;
 
 final class ActivitiesPage {
 
+	/**
+	 * Letture fatte una volta sola per tutte le righe di un elenco (date, prenotazioni, iscritti, persone): le righe le usano al posto di una lettura ciascuna.
+	 * Vuote (null) fuori dall'elenco delle attività: le funzioni pubbliche funzionano allo stesso modo, con una lettura per riga.
+	 *
+	 * @var array|null
+	 */
+	private static $pre = null;
+
+	/**
+	 * Per ogni iscrizione, se cancellarla non tocca la prima nota (chiave «attività|data|persona»): calcolato insieme per tutte le righe di un elenco.
+	 *
+	 * @var array<string,bool>
+	 */
+	private static $free = array();
+
+	/** Date di un'attività: dalla lettura comune dell'elenco se c'è, altrimenti dal database. */
+	private static function sessions_of( int $activity_id ): array {
+		return self::$pre['sessions'][ $activity_id ] ?? Plugin::activities()->sessions( $activity_id );
+	}
+
+	/** Prenotazioni di una data: dalla lettura comune dell'elenco se c'è, altrimenti dal database. */
+	private static function bookings_of( int $session_id ): array {
+		return self::$pre['bookings'][ $session_id ] ?? Plugin::activities()->bookings_for_session( $session_id );
+	}
+
+	/** Le letture comuni delle righe dell'elenco delle attività (date, prenotazioni della prossima data, iscritti in corso e le loro schede). @param array[] $summaries righe di ReportService::social_year */
+	private static function prime_list( array $summaries ): void {
+		$svc    = Plugin::activities();
+		$events = array();
+		$course = array();
+		foreach ( $summaries as $s ) {
+			if ( ActivityKind::uses_sessions( $s['activity']['kind'] ) ) {
+				$events[] = (int) $s['activity']['id'];
+			} else {
+				$course[] = (int) $s['activity']['id'];
+			}
+		}
+		$sessions = $svc->sessions_many( $events );
+		$today    = current_time( 'Y-m-d' );
+		$next     = array(); // la prima data futura non annullata di ogni evento: è quella di cui l'elenco mostra i partecipanti attesi
+		foreach ( $sessions as $list ) {
+			foreach ( $list as $x ) {
+				if ( empty( $x['cancelled_at'] ) && $x['session_date'] >= $today ) {
+					$next[] = (int) $x['id'];
+					break;
+				}
+			}
+		}
+		$enrollees = $svc->current_enrollees_many( $course, current_time( 'Y-m' ) );
+		$ids       = array();
+		foreach ( $enrollees as $list ) {
+			$ids = array_merge( $ids, $list );
+		}
+		self::$pre = array(
+			'sessions'  => $sessions,
+			'bookings'  => $svc->bookings_for_sessions( $next ),
+			'enrollees' => $enrollees,
+			'people'    => Plugin::people()->get_many( $ids ),
+		);
+	}
+
+	/** Le cancellazioni delle iscrizioni di queste persone toccano la prima nota? Si calcola per tutte insieme e poi cancel_control() lo trova già pronto. @param int[] $person_ids */
+	private static function prime_free( int $activity_id, int $session_id, array $person_ids ): void {
+		if ( ! current_user_can( Plugin::CAP ) ) { // i comandi di cancellazione li vedono solo gli amministratori
+			return;
+		}
+		foreach ( \AssociazioneSemplice\ActivityReset::free_registrations( $activity_id, $person_ids, $session_id ) as $pid => $free ) {
+			self::$free[ $activity_id . '|' . $session_id . '|' . $pid ] = $free;
+		}
+	}
+
 
 	/** Righe del modulo: cancellabile e termine (solo per eventi ed eventi ricorrenti). */
 	private static function cancel_rows( ?array $a, string $row_class ): string {
@@ -165,6 +236,7 @@ final class ActivitiesPage {
 				. '<button class="button" style="color:#b32d2e;border-color:#b32d2e">Elimina selezionate…</button> <span class="description">Spunta le attività da togliere: prima di eliminare vedrai l\'elenco e cosa viene cancellato.</span></p>';
 		}
 		echo '<div class="asem-grid asem-more">';
+		self::prime_list( $report['activities'] );
 		foreach ( $report['activities'] as $s ) {
 			$a = $s['activity'];
 			echo '<div class="asem-card">' . ( $can_bulk ? '<label style="float:right"><input type="checkbox" class="asem-bulk-item" name="ids[]" value="' . (int) $a['id'] . '" aria-label="' . esc_attr( 'Seleziona ' . $a['name'] ) . '"></label>' : '' ) . '<p class="description" style="margin-bottom:0">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</p>';
@@ -172,7 +244,7 @@ final class ActivitiesPage {
 			echo '<p class="description">' . esc_html( self::fee_text( $a ) ) . '<br>' . (int) $s['participants'] . ' partecipanti · '
 				. ( $a['instructor_name'] ? 'tenuta da ' . esc_html( $a['instructor_name'] ) : 'senza referente' ) . '</p>';
 			if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
-				$sessions = Plugin::activities()->sessions( (int) $a['id'] );
+				$sessions = self::sessions_of( (int) $a['id'] );
 				$next     = null;
 				foreach ( $sessions as $x ) {
 					if ( empty( $x['cancelled_at'] ) && $x['session_date'] >= $today ) {
@@ -188,6 +260,7 @@ final class ActivitiesPage {
 				. '<p><a class="button button-small" href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $a['id'] ) ) . '#asem-riproponi' ) . '">Riproponi</a></p></div>', Html::allowed() );
 		}
 		echo '</div>';
+		self::$pre = null; // le letture comuni servono solo alle righe qui sopra
 		if ( $can_bulk ) {
 			echo '</form>';
 		}
@@ -404,7 +477,9 @@ final class ActivitiesPage {
 	 */
 	private static function cancel_control( int $activity_id, array $person, int $session_id, string $label ): string {
 		$name = trim( $person['first_name'] . ' ' . $person['last_name'] );
-		if ( \AssociazioneSemplice\ActivityReset::registration_is_free( $activity_id, (int) $person['id'], $session_id ) ) {
+		$key  = $activity_id . '|' . $session_id . '|' . (int) $person['id'];
+		$free = self::$free[ $key ] ?? \AssociazioneSemplice\ActivityReset::registration_is_free( $activity_id, (int) $person['id'], $session_id );
+		if ( $free ) {
 			return Ui::confirm_button( 'asem_delete_booking', Ui::url( 'asem-activity', array( 'id' => $activity_id ) ), array( 'activity' => $activity_id, 'person' => (int) $person['id'], 'session' => $session_id ), $label, 'Cancellare l\'iscrizione di ' . $name . '? Non ci sono incassi collegati: la prima nota non cambia.', 'color:#b32d2e' );
 		}
 		return '<a class="asem-neg" href="' . esc_url( DeleteBookingPage::url( $activity_id, (int) $person['id'], $session_id ) ) . '">' . esc_html( $label ) . '</a>';
@@ -427,18 +502,24 @@ final class ActivitiesPage {
 	/** Partecipanti attesi, a scomparsa: per gli eventi una voce per data (le prossime), per i corsi gli iscritti in corso. */
 	public static function participants_html( array $activity, int $max_sessions = 8, bool $with_delete = true ): string {
 		$people = Plugin::people();
-		$svc    = Plugin::activities();
 		$html   = '';
+		self::$free = array(); // le risposte sulle cancellazioni valgono solo per questa chiamata: dopo una modifica si rileggono
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			$n = 0;
-			foreach ( $svc->sessions( (int) $activity['id'] ) as $s ) {
+			foreach ( self::sessions_of( (int) $activity['id'] ) as $s ) {
 				if ( ! empty( $s['cancelled_at'] ) || $s['session_date'] < current_time( 'Y-m-d' ) || $n >= $max_sessions ) {
 					continue;
 				}
 				$n++;
 				$rows = '';
 				$cnt  = 0;
-				foreach ( $svc->bookings_for_session( (int) $s['id'] ) as $b ) {
+				$booked_rows = self::bookings_of( (int) $s['id'] );
+				if ( $with_delete ) { // il comando «Cancella» di ogni riga sa già se tocca la prima nota
+					self::prime_free( (int) $activity['id'], (int) $s['id'], array_column( array_filter( $booked_rows, function ( $b ) {
+						return 'booked' === $b['status'];
+					} ), 'person_id' ) );
+				}
+				foreach ( $booked_rows as $b ) {
 					if ( 'booked' !== $b['status'] ) {
 						continue;
 					}
@@ -458,8 +539,19 @@ final class ActivitiesPage {
 			$ym   = current_time( 'Y-m' );
 			$rows = '';
 			$cnt  = 0;
-			foreach ( \AssociazioneSemplice\Db::db()->get_col( \AssociazioneSemplice\Db::db()->prepare( 'SELECT person_id FROM ' . \AssociazioneSemplice\Db::t( 'enrollments' ) .' WHERE activity_id = %d AND (end_month IS NULL OR end_month >= %s)', (int) $activity['id'], $ym ) ) as $pid ) {
-				$person = $people->get( (int) $pid );
+			$aid = (int) $activity['id'];
+			if ( isset( self::$pre['enrollees'][ $aid ] ) ) { // dalla lettura comune dell'elenco
+				$pids   = self::$pre['enrollees'][ $aid ];
+				$loaded = self::$pre['people'];
+			} else {
+				$pids   = array_map( 'intval', \AssociazioneSemplice\Db::db()->get_col( \AssociazioneSemplice\Db::db()->prepare( 'SELECT person_id FROM ' . \AssociazioneSemplice\Db::t( 'enrollments' ) .' WHERE activity_id = %d AND (end_month IS NULL OR end_month >= %s)', $aid, $ym ) ) );
+				$loaded = $people->get_many( $pids ); // le schede si leggono tutte insieme, nell'ordine degli iscritti
+			}
+			if ( $with_delete ) {
+				self::prime_free( $aid, 0, $pids );
+			}
+			foreach ( $pids as $pid ) {
+				$person = $loaded[ (int) $pid ] ?? null;
 				if ( $person ) {
 					$cnt++;
 					$rows .= self::participant_row( $activity, $person, 0, '', $with_delete );
@@ -718,6 +810,8 @@ final class ActivitiesPage {
 				. '<p class="description">Si tolgono soltanto gli iscritti senza incassi: la prima nota non cambia. Chi ha incassi resta e si cancella uno per uno con «Cancella», scegliendo cosa fare delle somme.</p></div>', Html::allowed() );
 			Ui::form_close();
 		}
+		self::$free = array();
+		self::prime_free( $id, 0, array_column( array_column( $statuses, 'enrollment' ), 'person_id' ) ); // il comando «Cancella» di ogni iscritto sa già se tocca la prima nota
 		foreach ( $statuses as $s ) {
 			$e      = $s['enrollment'];
 			$active = null === $e['end_month'];

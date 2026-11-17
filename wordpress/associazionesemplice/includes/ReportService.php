@@ -148,12 +148,13 @@ class ReportService {
 				$by_activity[ (int) $r['activity_id'] ][ $r['type'] ] = (int) $r['s'];
 			}
 		}
-		$summaries = array();
+		$summaries    = array();
+		$participants = Plugin::activities()->active_participants_many( $activities ); // un solo conteggio per gli eventi e uno per i corsi
 		foreach ( $activities as $a ) {
 			$income      = $by_activity[ (int) $a['id'] ]['income'] ?? 0;
 			$cost        = $by_activity[ (int) $a['id'] ]['expense'] ?? 0;
 			$summaries[] = array(
-				'activity' => $a, 'participants' => Plugin::activities()->active_participants( (int) $a['id'] ),
+				'activity' => $a, 'participants' => $participants[ (int) $a['id'] ] ?? 0,
 				'income' => $income, 'cost' => $cost, 'margin' => $income - $cost,
 			);
 		}

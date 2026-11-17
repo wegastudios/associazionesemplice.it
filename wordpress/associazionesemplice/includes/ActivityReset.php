@@ -526,6 +526,54 @@ final class ActivityReset {
 		return $pre && 0 === (int) $pre['income']['count'];
 	}
 
+	/**
+	 * La risposta di {@see registration_is_free()} per più persone della stessa attività (e della stessa data, per gli eventi) con poche letture in tutto:
+	 * serve agli elenchi che mostrano un comando «Cancella» per ogni iscritto. Stessa regola: l'iscrizione esiste, la persona è in anagrafica
+	 * e nessun incasso ancora da restituire è collegato.
+	 *
+	 * @param int[] $person_ids
+	 * @return array<int,bool> persona => true se la cancellazione non tocca la prima nota
+	 */
+	public static function free_registrations( int $activity_id, array $person_ids, int $session_id = 0 ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $person_ids ) ) ) );
+		$out = array_fill_keys( $ids, false );
+		$a   = $ids ? Plugin::activities()->get( $activity_id ) : null;
+		if ( ! $a ) {
+			return $out;
+		}
+		$db = self::db();
+		$in = implode( ',', $ids );
+		if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
+			$session = $session_id ? Plugin::activities()->session( $session_id ) : null;
+			if ( ! $session || (int) $session['activity_id'] !== $activity_id ) {
+				return $out;
+			}
+			$reg = $db->get_col( $db->prepare( 'SELECT person_id FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id IN (' . $in . ')', $session_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- id interi
+		} else {
+			$session_id = 0;
+			$reg        = $db->get_col( $db->prepare( 'SELECT person_id FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id IN (' . $in . ')', $activity_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- id interi
+		}
+		$reg    = array_flip( array_map( 'intval', $reg ?: array() ) );
+		$people = Plugin::people()->get_many( $ids );
+		$ctx    = self::fruit_context( $a );
+		$sql    = 'SELECT person_id, session_id, competence_month FROM ' . Db::t( 'transactions' ) . " WHERE activity_id = %d AND person_id IN ($in) AND type = 'income' AND voided_at IS NULL"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- id interi
+		$args   = array( $activity_id );
+		if ( $session_id ) {
+			$sql   .= ' AND session_id = %d';
+			$args[] = $session_id;
+		}
+		$open = array(); // incassi collegati e non ancora fruiti
+		foreach ( $db->get_results( $db->prepare( $sql, $args ), ARRAY_A ) ?: array() as $m ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+			if ( ! self::is_fruited( $m, $ctx ) ) {
+				$open[ (int) $m['person_id'] ] = true;
+			}
+		}
+		foreach ( $ids as $id ) {
+			$out[ $id ] = isset( $people[ $id ], $reg[ $id ] ) && empty( $open[ $id ] );
+		}
+		return $out;
+	}
+
 	/** L'eliminazione dell'evento non tocca la prima nota (nessun incasso, spesa o restituzione collegati): basta una sola conferma. */
 	public static function activity_is_free( int $activity_id ): bool {
 		$p = self::preview( $activity_id );

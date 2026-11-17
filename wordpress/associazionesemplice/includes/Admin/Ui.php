@@ -165,8 +165,22 @@ final class Ui {
 		if ( null !== $empty ) {
 			$html .= '<option value="">' . esc_html( $empty ) . '</option>';
 		}
+		static $memo = array(); // la stessa voce non scelta (stesso valore e stessa etichetta) esce sempre uguale: nelle pagine con molti elenchi di persone si prepara una volta sola
+		if ( count( $memo ) > 20000 ) {
+			$memo = array();
+		}
+		$sel = (string) $selected;
 		foreach ( $map as $v => $label ) {
-			$html .= '<option value="' . esc_attr( (string) $v ) . '"' . selected( (string) $selected, (string) $v, false ) . '>' . esc_html( (string) $label ) . '</option>';
+			$sv = (string) $v;
+			if ( $sel === $sv ) {
+				$html .= '<option value="' . esc_attr( $sv ) . '"' . selected( $sel, $sv, false ) . '>' . esc_html( (string) $label ) . '</option>';
+				continue;
+			}
+			$k = $sv . "\0" . (string) $label;
+			if ( ! isset( $memo[ $k ] ) ) {
+				$memo[ $k ] = '<option value="' . esc_attr( $sv ) . '">' . esc_html( (string) $label ) . '</option>';
+			}
+			$html .= $memo[ $k ];
 		}
 		return $html;
 	}
