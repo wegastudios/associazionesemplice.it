@@ -280,7 +280,7 @@ final class ImportJob {
 			$snap           = null;
 			try {
 				for ( $i = $from; $i < $to; $i++ ) {
-					$snap         = array( (int) $job['created'], (int) $job['updated'], count( $job['failed'] ), count( $job['links'] ) );
+					$snap         = array( (int) $job['created'], (int) $job['updated'], count( $job['failed'] ), count( $job['links'] ), count( $track['people_created'] ) );
 					$row          = $rows[ $seq[ $i ][0] ];
 					$ctx['adopt'] = $redo && 'create' === $row['action'] ? self::take_candidate( $row, $cands ) : 0;
 					ImportService::apply_person_row( $row, (int) $seq[ $i ][1], $job, $track, $ctx );
@@ -427,6 +427,15 @@ final class ImportJob {
 				$job['updated'] = $snap[1];
 				$job['failed']  = array_slice( (array) $job['failed'], 0, $snap[2] );
 				$job['links']   = array_slice( (array) $job['links'], 0, $snap[3] );
+				if ( isset( $snap[4] ) && count( $track['people_created'] ) > $snap[4] ) { // la scheda appena creata si riconosce alla ripresa (si adotta), non va già nella traccia
+					foreach ( array_slice( $track['people_created'], $snap[4] ) as $gone ) {
+						unset( $track['wp_users_created'][ $gone ] );
+					}
+					$track['people_created'] = array_slice( $track['people_created'], 0, $snap[4] );
+					$track['memberships']    = array_values( array_filter( (array) $track['memberships'], function ( $m ) use ( $gone ) {
+						return (int) $m[0] !== (int) $gone;
+					} ) );
+				}
 			}
 			self::save( $batch, $job, $track );
 			$cursor = 'people' === $stage ? (int) $job['cursor'] : (int) $job['lcursor'];
