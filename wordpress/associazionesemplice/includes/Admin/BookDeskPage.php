@@ -120,7 +120,7 @@ final class BookDeskPage {
 		}
 
 		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-bookdesk">'
-			. '<p><strong>Chi</strong> ' . Ui::person_select( 'person_id', Plugin::people()->search(), $pid ?: null, '— scegli la persona —', 'asem-desk-person' )
+			. '<p><strong>Chi</strong> ' . Ui::person_select( 'person_id', Plugin::people()->search_light(), $pid ?: null, '— scegli la persona —', 'asem-desk-person' )
 			. ' <a href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">+ nuovo socio</a></p>'
 			. '<p><label><input type="radio" name="mode" value="date"' . checked( 'date' === $mode, true, false ) . '> <strong>Parto dalla data</strong></label> '
 			. '<input type="date" name="date" value="' . esc_attr( $date ) . '"> &nbsp; '

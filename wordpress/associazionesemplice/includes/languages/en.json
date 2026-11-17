@@ -2669,6 +2669,9 @@
   "Scegli un anno fiscale che abbia ricevute emesse." : "Choose a fiscal year that has issued receipts.",
   "Controllate {n} ricevute su {tot}: premi di nuovo per continuare." : "{n} receipts checked out of {tot}: press again to continue.",
   "Verifica finita: controllate {n} ricevute, nessun problema trovato." : "Check finished: {n} receipts checked, no problems found.",
-  "Verifica finita: controllate {n} ricevute, {bad} da sistemare." : "Check finished: {n} receipts checked, {bad} to fix."
+  "Verifica finita: controllate {n} ricevute, {bad} da sistemare." : "Check finished: {n} receipts checked, {bad} to fix.",
+  "Pagina {n} di {tot}" : "Page {n} of {tot}",
+  "← Precedenti" : "← Previous",
+  "Successive →" : "Next →"
  }
 }

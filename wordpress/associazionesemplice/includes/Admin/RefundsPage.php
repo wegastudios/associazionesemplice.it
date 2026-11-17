@@ -63,7 +63,7 @@ final class RefundsPage {
 		echo '<h2>Registra una richiesta per un volontario</h2>';
 		Ui::form_open( 'asem_refund_request', Ui::url( 'asem-refunds' ), true );
 		$people = array();
-		foreach ( Plugin::people()->search() as $p ) {
+		foreach ( Plugin::people()->search_light() as $p ) {
 			if ( \AssociazioneSemplice\MemberType::is_member( $p['type'] ) ) {
 				$people[] = $p;
 			}

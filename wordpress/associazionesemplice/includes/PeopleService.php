@@ -21,6 +21,19 @@ class PeopleService {
 		return $row ?: null;
 	}
 
+	/** Le schede (non cancellate) delle persone con gli id dati, in una sola lettura: id => riga, come {@see get()}. */
+	public function get_many( array $ids ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
+		if ( ! $ids ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $this->db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND id IN (' . implode( ',', $ids ) . ')', ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+			$out[ (int) $r['id'] ] = $r;
+		}
+		return $out;
+	}
+
 	public function full_name( array $p ): string {
 		return trim( $p['first_name'] . ' ' . $p['last_name'] );
 	}
@@ -58,15 +71,59 @@ class PeopleService {
 	 * @return array[] righe con 'active_until' (ultimo giorno di validità della tessera) e 'host_name'
 	 */
 	public function search( array $f = array() ): array {
+		return $this->query_people( $f, false, true );
+	}
+
+	/** Colonne dell'elenco leggero: quanto serve a scegliere una persona e ai filtri di stato (non tutte le colonne della scheda). */
+	const LIGHT_COLUMNS = 'p.id, p.type, p.first_name, p.last_name, p.card_number, p.level_id, p.family_head_id, p.host_person_id, p.suspended_at, p.wp_user_id, p.privacy_consent_at, p.rules_accepted_at, p.rules_accepted_version';
+
+	/**
+	 * Le stesse persone di {@see search()}, con gli stessi filtri e nello stesso ordine, ma con le sole colonne per scegliere una persona
+	 * (id, tipo, nome, cognome, tessera, livello, nucleo, ospitante e i dati dei filtri di stato). Per le tendine e per gli elenchi che poi
+	 * leggono per intero solo le righe mostrate. 'active_until' c'è solo se lo chiedi o se il filtro di stato lo richiede.
+	 *
+	 * @param array $f stessi filtri di search()
+	 */
+	public function search_light( array $f = array(), bool $with_until = false ): array {
+		return $this->query_people( $f, true, $with_until );
+	}
+
+	/** Righe complete, come quelle di search(), delle sole persone con gli id dati e nell'ordine degli id (chi non è più in anagrafica manca). */
+	public function search_ids( array $ids ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
+		if ( ! $ids ) {
+			return array();
+		}
+		$by = array();
+		foreach ( $this->query_people( array( 'ids' => $ids ), false, true ) as $r ) {
+			$by[ (int) $r['id'] ] = $r;
+		}
+		$out = array();
+		foreach ( $ids as $id ) {
+			if ( isset( $by[ $id ] ) ) {
+				$out[] = $by[ $id ];
+			}
+		}
+		return $out;
+	}
+
+	private function query_people( array $f, bool $light, bool $with_until ): array {
 		$db    = $this->db();
 		$today = Db::today();
+		$state = isset( $f['status'] ) ? (string) $f['status'] : '';
+		if ( '' !== $state && ! in_array( $state, array( 'norules', 'noconsent', 'noaccess', 'suspended' ), true ) ) {
+			$with_until = true; // «tessera valida» e «scaduta» guardano la scadenza
+		}
 		$where = array( 'p.deleted_at IS NULL', 'p.anonymized_at IS NULL' ); // le persone anonimizzate non compaiono più negli elenchi
 		if ( empty( $f['applications'] ) ) {
 			$where[] = 'p.application_status IS NULL'; // chi ha chiesto di aderire e non è ancora stato approvato non è nell'anagrafica
 		} else {
 			$where[] = 'p.application_status = \'requested\'';
 		}
-		$args  = array( $today, $today, $today ); // tre volte: serve alla scadenza della tessera (vedi active_until)
+		$args  = $with_until ? array( $today, $today, $today ) : array(); // tre volte: serve alla scadenza della tessera (vedi active_until)
+		if ( ! empty( $f['ids'] ) ) {
+			$where[] = 'p.id IN (' . implode( ',', array_map( 'intval', (array) $f['ids'] ) ) . ')';
+		}
 		if ( ! empty( $f['type'] ) ) {
 			$where[] = 'p.type = %s';
 			$args[]  = $f['type'];
@@ -80,12 +137,12 @@ class PeopleService {
 			$where[] = '(p.first_name LIKE %s OR p.last_name LIKE %s OR CONCAT(p.first_name, " ", p.last_name) LIKE %s OR CONCAT(p.last_name, " ", p.first_name) LIKE %s OR p.card_number LIKE %s OR p.email LIKE %s OR p.tax_code LIKE %s)';
 			array_push( $args, $like, $like, $like, $like, $like, $like, $like );
 		}
-		$sql = 'SELECT p.*, '
-			. '(SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND (m.valid_from <= %s OR EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' c WHERE c.person_id = p.id AND c.deleted_at IS NULL AND c.valid_from <= %s AND c.valid_to >= %s))) AS active_until, '
-			. 'CONCAT(h.first_name, " ", h.last_name) AS host_name '
-			. 'FROM ' . Db::t( 'people' ) . ' p LEFT JOIN ' . Db::t( 'people' ) . ' h ON h.id = p.host_person_id '
-			. 'WHERE ' . implode( ' AND ', $where ) . ' ORDER BY p.last_name, p.first_name';
-		$rows = $db->get_results( $db->prepare( $sql, $args ), ARRAY_A ) ?: array();
+		$sql = 'SELECT ' . ( $light ? self::LIGHT_COLUMNS : 'p.*' )
+			. ( $with_until ? ', (SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND (m.valid_from <= %s OR EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' c WHERE c.person_id = p.id AND c.deleted_at IS NULL AND c.valid_from <= %s AND c.valid_to >= %s))) AS active_until' : '' )
+			. ( $light ? '' : ', CONCAT(h.first_name, " ", h.last_name) AS host_name' )
+			. ' FROM ' . Db::t( 'people' ) . ' p' . ( $light ? '' : ' LEFT JOIN ' . Db::t( 'people' ) . ' h ON h.id = p.host_person_id' )
+			. ' WHERE ' . implode( ' AND ', $where ) . ' ORDER BY p.last_name, p.first_name, p.id';
+		$rows = $db->get_results( $args ? $db->prepare( $sql, $args ) : $sql, ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- senza segnaposto non c'è nulla da preparare
 
 		if ( ! empty( $f['status'] ) ) {
 			$rows = array_values(
@@ -341,7 +398,7 @@ class PeopleService {
 	public function expired_for_months( int $months = 8 ): array {
 		$limit = gmdate( 'Y-m-d', strtotime( Db::today() . ' -' . $months . ' months' ) );
 		$out   = array();
-		foreach ( $this->search() as $p ) {
+		foreach ( $this->search_light( array(), true ) as $p ) { // servono solo tipo, sospensione e scadenza
 			if ( ! MemberType::is_member( $p['type'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) || empty( $p['active_until'] ) ) {
 				continue;
 			}
@@ -659,15 +716,18 @@ class PeopleService {
 			return array();
 		}
 		$key = Phone::key( $raw );
-		$out = array();
-		// Solo chi ha un cellulare, senza le sottointerrogazioni dell'elenco completo: la ricerca è chiamata anche da pagine pubbliche.
-		$rows = $this->db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND anonymized_at IS NULL AND application_status IS NULL AND phone IS NOT NULL AND phone <> ''", ARRAY_A ) ?: array();
+		$ids = array();
+		// Prima si leggono solo id e cellulare di chi ne ha uno (la ricerca è chiamata anche da pagine pubbliche); le schede complete solo di chi corrisponde.
+		$rows = $this->db()->get_results( 'SELECT id, phone FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND anonymized_at IS NULL AND application_status IS NULL AND phone IS NOT NULL AND phone <> '' ORDER BY id", ARRAY_A ) ?: array();
 		foreach ( $rows as $p ) {
 			if ( (int) $p['id'] !== (int) $except_id && Phone::key( (string) $p['phone'] ) === $key ) {
-				$out[] = $p;
+				$ids[] = (int) $p['id'];
 			}
 		}
-		return $out;
+		if ( ! $ids ) {
+			return array();
+		}
+		return $this->db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE id IN (' . implode( ',', $ids ) . ') ORDER BY id', ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
 	}
 
 	/** Persone con lo stesso nome e cognome (senza maiuscole né accenti): serve a non registrare due volte lo stesso ospite. */

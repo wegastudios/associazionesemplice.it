@@ -21,7 +21,7 @@ final class InventoryPage {
 
 	/** Soci e volontari a cui si può prestare un bene. */
 	private static function borrowers(): array {
-		return array_values( array_filter( Plugin::people()->search(), function ( $p ) {
+		return array_values( array_filter( Plugin::people()->search_light(), function ( $p ) {
 			return MemberType::is_member( $p['type'] );
 		} ) );
 	}

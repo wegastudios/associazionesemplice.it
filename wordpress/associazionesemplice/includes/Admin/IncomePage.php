@@ -168,7 +168,7 @@ final class IncomePage {
 			$acc_map[ $a['id'] ] = $a['name'];
 		}
 		echo wp_kses( '<select name="account_id" id="asem-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>', Html::allowed() );
-		echo wp_kses( '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), Ui::get_int( 'person_id' ) ?: null, '— nessuno / anonimo —', 'asem-person-select' )
+		echo wp_kses( '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search_light(), Ui::get_int( 'person_id' ) ?: null, '— nessuno / anonimo —', 'asem-person-select' )
 			. ' <button type="button" class="button" id="asem-new-person">+ nuovo socio</button>'
 			. '<div id="asem-person-info" class="asem-info"></div></td></tr>', Html::allowed() );
 		echo '</tbody></table>';

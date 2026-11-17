@@ -193,7 +193,7 @@ final class ActivitiesPage {
 		}
 
 		self::sports_card();
-		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );
+		$volunteers = Plugin::people()->search_light( array( 'type' => MemberType::VOLUNTEER ) );
 		echo '<div class="asem-card" id="asem-new-activity"><h2>Nuova attività</h2>';
 		Ui::form_open( 'asem_save_activity', $back );
 		echo wp_kses( Ui::hidden( 'social_year', $year->label() ), Html::allowed() );
@@ -626,7 +626,7 @@ final class ActivitiesPage {
 	}
 
 	private static function edit_card( array $activity, string $back ): void {
-		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );
+		$volunteers = Plugin::people()->search_light( array( 'type' => MemberType::VOLUNTEER ) );
 		echo '<div class="asem-card"><h2>Dati dell\'attività</h2>';
 		Ui::form_open( 'asem_save_activity', $back );
 		echo wp_kses( Ui::hidden( 'id', $activity['id'] ) . Ui::hidden( 'social_year', $activity['social_year'] ), Html::allowed() );
@@ -679,7 +679,7 @@ final class ActivitiesPage {
 				$enrolled_ids[] = (int) $s['enrollment']['person_id'];
 			}
 		}
-		$candidates = array_values( array_filter( Plugin::people()->search(), function ( $p ) use ( $enrolled_ids ) {
+		$candidates = array_values( array_filter( Plugin::people()->search_light(), function ( $p ) use ( $enrolled_ids ) {
 			return ! in_array( (int) $p['id'], $enrolled_ids, true );
 		} ) );
 		echo '<div class="asem-card"><h2>Iscrivi un socio o un ospite</h2>' . ( 'once' === $activity['billing']
@@ -826,7 +826,7 @@ final class ActivitiesPage {
 			$accounts[ (int) $a['id'] ] = $a['name'];
 		}
 		$default = $ledger->default_account_for( 'cash' );
-		$members = array_values( array_filter( Plugin::people()->search(), function ( $p ) {
+		$members = array_values( array_filter( Plugin::people()->search_light(), function ( $p ) {
 			return MemberType::is_member( $p['type'] );
 		} ) );
 		$sid   = (int) $s['id'];
@@ -920,7 +920,7 @@ final class ActivitiesPage {
 			}
 			echo '</ul>';
 		}
-		$candidates = array_values( array_filter( Plugin::people()->search(), function ( $p ) use ( $in, $activity ) {
+		$candidates = array_values( array_filter( Plugin::people()->search_light(), function ( $p ) use ( $in, $activity ) {
 			return MemberType::is_member( $p['type'] ) && ! in_array( (int) $p['id'], $in, true ) && (int) $p['id'] !== (int) $activity['instructor_person_id'];
 		} ) );
 		Ui::form_open( 'asem_event_staff_add', $back );
@@ -932,7 +932,7 @@ final class ActivitiesPage {
 	private static function sessions_list( array $activity, string $back ): void {
 		$id       = (int) $activity['id'];
 		$sessions = Plugin::activities()->sessions( $id );
-		$all      = Plugin::people()->search();
+		$all      = Plugin::people()->search_light();
 		$gov      = Plugin::people()->guest_overview();
 		echo '<h2>' . ( ActivityKind::EVENT === $activity['kind'] ? 'Data e prenotazioni' : 'Date e prenotazioni' ) . '</h2>';
 		if ( ! $sessions ) {
