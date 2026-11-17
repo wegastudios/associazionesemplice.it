@@ -167,4 +167,30 @@ final readonly class CertificateService
 
         return $out;
     }
+
+    /**
+     * Quanti soci hanno il certificato in scadenza o scaduto (per il cruscotto): stessi criteri di {@see overview()},
+     * ma senza nomi né ordinamento, con due query.
+     *
+     * @return array{expiring: int, expired: int}
+     */
+    public function counts(): array
+    {
+        $today = now()->toDateString();
+        $warn = $this->warnDays();
+        $latest = MedicalCertificate::query()->where('issued_on', '<=', $today)
+            ->selectRaw('person_id, max(expires_on) AS expires_on')->groupBy('person_id')
+            ->toBase()->pluck('expires_on', 'person_id');
+
+        $expiring = 0;
+        $expired = 0;
+        foreach (Person::query()->whereNull('left_on')->whereNull('anonymized_at')->whereIn('type', ['founder', 'ordinary', 'volunteer'])->pluck('id') as $id) {
+            $expires = $latest->get($id);
+            $status = ExpiryRules::status(is_string($expires) ? substr($expires, 0, 10) : null, $today, $warn);
+            $expiring += $status === ExpiryRules::EXPIRING ? 1 : 0;
+            $expired += $status === ExpiryRules::EXPIRED ? 1 : 0;
+        }
+
+        return ['expiring' => $expiring, 'expired' => $expired];
+    }
 }

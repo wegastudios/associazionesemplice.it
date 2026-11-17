@@ -41,8 +41,12 @@ final readonly class ChainedAuditLog implements AuditLog
         $connection = $this->db->connection($org->connection);
 
         $connection->transaction(function () use ($connection, $org, $actor, $action, $subjectType, $subjectId, $details): void {
-            $connection->table('audit.heads')->insertOrIgnore(['org_id' => $org->id, 'seq' => 0, 'hash' => Bytea::encode(self::GENESIS)]);
+            // La testa si crea solo la prima volta: di solito c'è già e basta leggerla (e bloccarla).
             $head = $connection->table('audit.heads')->where('org_id', $org->id)->lockForUpdate()->first(['seq', 'hash']);
+            if ($head === null) {
+                $connection->table('audit.heads')->insertOrIgnore(['org_id' => $org->id, 'seq' => 0, 'hash' => Bytea::encode(self::GENESIS)]);
+                $head = $connection->table('audit.heads')->where('org_id', $org->id)->lockForUpdate()->first(['seq', 'hash']);
+            }
             if ($head === null) {
                 throw new InvalidArgumentException('Testa del registro non disponibile.');
             }

@@ -68,9 +68,9 @@ final readonly class PeopleController
         }
         $status = $request->string('stato')->toString();
         if ($status === 'in_regola') {
-            $query->whereIn('id', $this->memberships->activeIds());
+            $query->whereIn('id', $this->memberships->activeSubquery());
         } elseif ($status === 'da_rinnovare') {
-            $query->whereNull('left_on')->whereIn('type', ['ordinary', 'volunteer'])->whereNotIn('id', $this->memberships->activeIds());
+            $query->whereNull('left_on')->whereIn('type', ['ordinary', 'volunteer'])->whereNotIn('id', $this->memberships->activeSubquery());
         } elseif ($status === 'usciti') {
             $query->whereNotNull('left_on');
         }

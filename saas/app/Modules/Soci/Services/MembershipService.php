@@ -244,6 +244,12 @@ final readonly class MembershipService implements Members
         return array_values(array_filter($this->activeQuery($date ?? now()->toDateString())->pluck('p.id')->all(), is_string(...)));
     }
 
+    /** Le persone attive come sottoquery (colonna `id`), da usare in `whereIn`: niente elenco di migliaia di id portato in giro. */
+    public function activeSubquery(?string $date = null): Builder
+    {
+        return $this->activeQuery($date ?? now()->toDateString())->select('p.id');
+    }
+
     public function activeCount(?string $date = null): int
     {
         return $this->activeQuery($date ?? now()->toDateString())->count();
