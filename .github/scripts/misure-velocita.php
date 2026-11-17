@@ -661,6 +661,37 @@ function m_excel( float $scala ): void {
 			throw new \RuntimeException( 'foglio letto male' );
 		}
 	}, 1, false );
+	// Un import vero: 5.000 soci e 5.000 movimenti scritti nel database (con il codice presente nel ramo), poi annullato. Si misura la scrittura, non la lettura.
+	$w     = max( 50, (int) round( 5000 * $scala ) );
+	$prows = array( array( 'Nome', 'Cognome', 'Email', 'Telefono', 'Città' ) );
+	$lrows = array( array( 'Data', 'Conto', 'Voce', 'Entrata', 'Descrizione' ) );
+	for ( $i = 0; $i < $w; $i++ ) {
+		$prows[] = array( 'Scritto' . $i, 'Import' . $i, 'scritto' . $i . '@demo.invalid', sprintf( '348%07d', 3000000 + $i ), 'Roma' );
+		$lrows[] = array( sprintf( '%02d/%02d/%d', 1 + $i % 27, 1 + $i % 12, (int) gmdate( 'Y' ) ), 'Cassa', 'Quote associative', (string) ( 10 + $i % 90 ), 'Incasso importato ' . $i );
+	}
+	$sheets  = array( array( 'name' => 'Soci', 'rows' => $prows ), array( 'name' => 'Prima nota', 'rows' => $lrows ) );
+	$wprev   = null;
+	$wres    = null;
+	m_run( 'Importazione VERA: anteprima di ' . $w . ' soci e ' . $w . ' movimenti', function () use ( $sheets, &$wprev ) {
+		$wprev = \AssociazioneSemplice\ImportService::preview_sheets( $sheets );
+		if ( empty( $wprev['people']['plan'] ) || empty( $wprev['ledger']['plan'] ) ) {
+			throw new \RuntimeException( 'anteprima vuota' );
+		}
+	}, 1, false );
+	if ( $wprev ) {
+		m_run( 'Importazione VERA: scrittura di ' . $w . ' soci e ' . $w . ' movimenti nel database', function () use ( $wprev, &$wres ) {
+			$wres = \AssociazioneSemplice\ImportService::apply( $wprev, array( 'mark_members' => true, 'source' => 'misura' ) );
+			if ( empty( $wres['people']['created'] ) ) {
+				throw new \RuntimeException( 'nessun socio scritto' );
+			}
+		}, 1, false );
+	}
+	if ( $wres ) {
+		m_log( sprintf( 'Importazione vera: %d soci creati, %d movimenti creati, %d non riusciti.', $wres['people']['created'], (int) ( $wres['ledger']['created'] ?? 0 ), count( $wres['people']['failed'] ) ) );
+		m_run( 'Importazione VERA: annullo dell\'import in blocco', function () use ( $wres ) {
+			\AssociazioneSemplice\ImportService::undo( (int) $wres['batch_id'] );
+		}, 1, false );
+	}
 	foreach ( array( $f5, $f19, $fc ) as $f ) {
 		@unlink( $f ); // phpcs:ignore WordPress.PHP.NoSilencedErrors,WordPress.WP.AlternativeFunctions
 	}
