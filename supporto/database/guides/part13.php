@@ -110,13 +110,15 @@ Senza «Anagrafica soci», i campi che scelgono una persona (chi paga, chi iscri
 
 ## Che cosa resta solo agli amministratori
 
-Il dipendente **non lo ha mai**, qualunque spunta abbia: tutte le **impostazioni** (dati dell'ente, soci e quote, aspetto, bonifico, donazioni, tessera e QR, privacy e regolamento, limiti e soglie, ruoli e accessi, testi e lingua, pagamenti online), gli **anni fiscali e le chiusure**, la **copia di sicurezza e il ripristino**, il **registro azioni**, le **integrazioni**, la **procedura guidata**, l'**azzeramento dei dati**, l'**eliminazione definitiva** di attività e iscrizioni, la **cifratura e la cartella riservata**, l'**anonimizzazione dei dati** e la **gestione dei dipendenti**. Restano fuori anche le azioni personali di ciascuno (chiudere un avviso, la guida iniziale, le notifiche del proprio dispositivo) e quelle dell'area soci.
+Il dipendente **non lo ha mai**, qualunque spunta abbia: tutte le **impostazioni** (dati dell'ente, soci e quote, aspetto, bonifico, donazioni, tessera e QR, privacy e regolamento, limiti e soglie, testi e lingua, pagamenti online), gli **anni fiscali e le chiusure**, la **copia di sicurezza e il ripristino**, il **registro azioni**, le **integrazioni**, la **procedura guidata**, l'**azzeramento dei dati**, l'**eliminazione definitiva** di attività e iscrizioni, la **cifratura e la cartella riservata**, l'**anonimizzazione dei dati** e la **gestione dei dipendenti**. Restano fuori anche le azioni personali di ciascuno (chiudere un avviso, la guida iniziale, le notifiche del proprio dispositivo) e quelle dell'area soci.
 
-## Gli amministratori non si limitano
+## Chi entra nel pannello
 
-- **L'amministratore di WordPress non si può mai togliere né limitare dal plugin**: se un utente è anche amministratore del sito, vede e fa tutto anche con il ruolo Dipendente. In **Ruoli e accessi**, se provi a togliere l'accesso a questo ruolo, compare «Un amministratore di WordPress non si può togliere né limitare dal plugin.»
-- Un **amministratore dell'associazione** (un ruolo del plugin, non di WordPress) **si può togliere o limitare da un altro amministratore**.
-- **Nessuno può togliere l'accesso a sé stesso**: se provi a togliere l'accesso al ruolo con cui stai operando compare «Non puoi togliere l'accesso al ruolo con cui stai operando: te lo toglieresti da solo. Chiedi a un amministratore.»
+- **Gli amministratori di WordPress hanno tutto** e **non si possono mai togliere né limitare dal plugin**: se un utente è anche amministratore del sito, vede e fa tutto anche con il ruolo Dipendente.
+- **Gli altri entrano nel pannello solo** con il ruolo **Segreteria** o **Dipendente** (si assegnano dalla scheda del socio e da **Rubrica soci → Dipendenti**) o come **presidente o vicepresidente in regola**.
+- **I ruoli standard di WordPress** (Editore, Autore, Collaboratore, Sottoscrittore) **non danno accesso al plugin**: non c'è più una pagina «Ruoli e accessi» per darglielo.
+
+Se prima qualcuno entrava con un ruolo di WordPress, agli amministratori compare in Bacheca l'avviso **«Alcuni utenti entravano nel pannello con un ruolo di WordPress (per esempio Editore): ora non entrano più. Se servono, dagli il ruolo Segreteria o Dipendente.»**, con l'elenco delle persone e il link **«Apri i dipendenti»**. L'avviso non si chiude da solo: sparisce quando un amministratore apre la pagina **Dipendenti**.
 
 ## Periodo di servizio
 
