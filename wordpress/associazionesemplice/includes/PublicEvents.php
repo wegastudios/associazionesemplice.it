@@ -93,6 +93,7 @@ final class PublicEvents {
 		add_action( 'template_redirect', array( __CLASS__, 'maybe_hide_cancelled' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		EventRequests::register(); // prenotazione dei non soci dalla pagina dell'evento
+		PageCache::register(); // copie delle parti pubbliche, svuotate a ogni cambio dei dati
 		add_action( 'save_post_' . self::POST_TYPE, array( __CLASS__, 'save_options' ) );
 		if ( is_admin() ) {
 			add_action( 'admin_init', array( __CLASS__, 'backfill' ) );
@@ -596,11 +597,24 @@ final class PublicEvents {
 			return $content;
 		}
 		Frontend\Views::no_cache();
-		$all     = self::list_page_url();
-		$html    = '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
-		$html   .= self::poster_html( $post ) . self::facts_html( $a ) . '</div>';
-		$html   .= '<div class="asemf-event-text">' . $content . '</div>';
-		return $html . self::booking_html( $a, $post ) . self::venue_html( $a, $post ) . self::share_html( $post ) . self::prev_next_html( $post ) . '</div>';
+		$head = PageCache::remember(
+			'event-head',
+			array( (int) $post->ID ),
+			function () use ( $a, $post ) {
+				$all = self::list_page_url();
+				return '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">'
+					. self::poster_html( $post ) . self::facts_html( $a ) . '</div>';
+			}
+		);
+		$tail = PageCache::remember(
+			'event-tail',
+			array( (int) $post->ID ),
+			function () use ( $a, $post ) {
+				return self::venue_html( $a, $post ) . self::share_html( $post ) . self::prev_next_html( $post );
+			}
+		);
+		// la prenotazione (moduli, posti, stato di chi guarda) non si conserva mai: si disegna a ogni visita
+		return $head . '<div class="asemf-event-text">' . $content . '</div>' . self::booking_html( $a, $post ) . $tail . '</div>';
 	}
 
 	/** Pezzi della pagina evento, ognuno una vista (shortcode `associazionesemplice_evento_*`, blocco e widget «Associazione Semplice»). */
@@ -683,28 +697,37 @@ final class PublicEvents {
 		if ( ! $a ) {
 			return '';
 		}
-		Frontend\Views::no_cache();
-		switch ( $part ) {
-			case 'locandina':
-				$h = self::poster_html( $post );
-				break;
-			case 'dati':
-				$h = self::facts_html( $a );
-				break;
-			case 'prenotazione':
-				$h = self::booking_html( $a, $post );
-				break;
-			case 'dove':
-				$h = self::venue_html( $a, $post );
-				break;
-			case 'navigazione':
-				$all = self::list_page_url();
-				$h   = ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . self::prev_next_html( $post );
-				break;
-			default:
-				$h = self::share_html( $post );
+		if ( 'prenotazione' === $part ) { // moduli, posti e stato di chi guarda: mai in cache, né nostra né della pagina
+			Frontend\Views::no_cache();
+			PageCache::bypass();
+			$h = self::booking_html( $a, $post );
+			return '' === $h ? '' : Frontend\Views::shell( self::title_html( $atts ) . $h, 'asemf-event' );
 		}
-		return '' === $h ? '' : Frontend\Views::shell( self::title_html( $atts ) . $h, 'asemf-event' );
+		PageCache::announce_public();
+		return PageCache::remember(
+			'event-part',
+			array( $part, (int) $post->ID, $atts, (string) get_permalink() ),
+			function () use ( $part, $a, $post, $atts ) {
+				switch ( $part ) {
+					case 'locandina':
+						$h = self::poster_html( $post );
+						break;
+					case 'dati':
+						$h = self::facts_html( $a );
+						break;
+					case 'dove':
+						$h = self::venue_html( $a, $post );
+						break;
+					case 'navigazione':
+						$all = self::list_page_url();
+						$h   = ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . self::prev_next_html( $post );
+						break;
+					default:
+						$h = self::share_html( $post );
+				}
+				return '' === $h ? '' : Frontend\Views::shell( self::title_html( $atts ) . $h, 'asemf-event' );
+			}
+		);
 	}
 
 	/** Dove e come contattarci: luogo con il collegamento alla mappa (si apre solo cliccando) e l'email della segreteria. */
@@ -841,7 +864,18 @@ final class PublicEvents {
 	 * @param array $atts modo (elenco|mese), categoria (indirizzo), limite (date, 1–100), mesi (quanti mesi, 1–24), filtri (si|no).
 	 */
 	public static function list_html( array $atts = array() ): string {
-		Frontend\Views::no_cache();
+		PageCache::announce_public(); // senza moduli né dati di chi guarda: a un anonimo si può servire una copia, a chiunque altro no
+		return PageCache::remember(
+			'event-list',
+			array( $atts, (string) get_permalink() ),
+			function () use ( $atts ) {
+				return self::render_list( $atts );
+			}
+		);
+	}
+
+	/** Disegna l'elenco o il calendario (vedi {@see PublicEvents::list_html()}). */
+	private static function render_list( array $atts ): string {
 		$view = 'mese' === strtolower( (string) ( $atts['modo'] ?? '' ) ) ? 'mese' : 'elenco';
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- filtri di sola lettura sull'indirizzo della pagina
 		$cat = isset( $_GET['asem_cat'] ) ? sanitize_title( wp_unslash( (string) $_GET['asem_cat'] ) ) : sanitize_title( (string) ( $atts['categoria'] ?? '' ) );

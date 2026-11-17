@@ -10692,7 +10692,9 @@ Settings::update( array( 'member_wp_users' => 0 ) );
 use AssociazioneSemplice\MemberPassword;
 use AssociazioneSemplice\MemberSession;
 use AssociazioneSemplice\SessionToken;
-$ms_raw = SessionToken::generate();
+use AssociazioneSemplice\PageCache;
+use AssociazioneSemplice\PublicEvents;
+$ms_raw =SessionToken::generate();
 asem_ok( SessionToken::is_well_formed( $ms_raw ) && ! SessionToken::is_well_formed( $ms_raw . 'x' ) && ! SessionToken::is_well_formed( '' ), 'accesso proprio: il token ha il formato atteso' );
 asem_ok( SessionToken::generate() !== $ms_raw && 64 === strlen( SessionToken::hash( $ms_raw ) ) && SessionToken::hash( $ms_raw ) !== $ms_raw, 'accesso proprio: token diversi a ogni giro e nel database solo l\'impronta' );
 asem_ok( 1 === preg_match( '/^\d{6}$/', SessionToken::code() ) && SessionToken::hash_code( '123456', 7, 's' ) !== SessionToken::hash_code( '123456', 8, 's' ) && SessionToken::hash_code( '123456', 7, 's' ) !== SessionToken::hash_code( '123456', 7, 't' ), 'accesso proprio: il codice a 6 cifre è legato alla persona e al segreto del sito' );
@@ -10805,6 +10807,152 @@ asem_ok( $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub );
 MemberSession::destroy_all( $nc_p );
 $ms_fake->setValue( null, null );
 asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: chiusa la sessione la pagina pubblica torna salvabile' );
+
+// ---------- Cache delle parti pubbliche degli eventi: solo per gli anonimi, svuotata a ogni cambio dei dati ----------
+$pc_method                 = $_SERVER['REQUEST_METHOD'] ?? null;
+$pc_get                    = $_GET;
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_GET                      = array();
+wp_set_current_user( 0 );
+unset( $_COOKIE[ MemberSession::COOKIE ], $_COOKIE[ \AssociazioneSemplice\PreSession::COOKIE ] );
+$ms_fake->setValue( null, null );
+$pc_stored = function () use ( $wpdb ): int { // voci conservate (senza cache esterna degli oggetti stanno tra le opzioni)
+	return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_asem\\_pc\\_%'" );
+};
+$pc_ext  = wp_using_ext_object_cache();
+$pc_evt  = $acts->create( array( 'name' => 'Cena in cache', 'social_year' => $sy_label, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $ev_date, 'start_time' => '20:00', 'location' => 'Sede', 'capacity' => 5 ) ) );
+$pc_sid  = (int) $acts->sessions( $pc_evt )[0]['id'];
+$pc_post = \AssociazioneSemplice\PublicEvents::ensure( $pc_evt );
+wp_update_post( array( 'ID' => $pc_post, 'post_status' => 'publish' ) );
+$pc_up   = function () {
+	return \AssociazioneSemplice\Frontend\Views::upcoming( array( 'limite' => '50' ) );
+};
+$pc_cold = $pc_up(); // la prima volta si disegna e si conserva
+asem_ok( 'miss' === PageCache::last() && false !== strpos( $pc_cold, 'Cena in cache' ) && false !== strpos( $pc_cold, '5 posti liberi' ), 'cache eventi: la prima visita di un anonimo disegna la pagina (MISS)' );
+$pc_n    = $pc_stored();
+$pc_warm = $pc_up();
+asem_ok( 'hit' === PageCache::last() && $pc_warm === $pc_cold && ( $pc_ext || $pc_stored() === $pc_n ), 'cache eventi: la seconda visita arriva dalla cache (HIT), uguale e senza scrivere altro' );
+PublicEvents::list_html();
+PublicEvents::list_html();
+asem_ok( 'hit' === PageCache::last(), 'cache eventi: anche l\'elenco alla seconda visita è un HIT' );
+// chi ha un cookie dei soci, anche inventato, non legge e non scrive mai
+foreach ( array( MemberSession::COOKIE, \AssociazioneSemplice\PreSession::COOKIE ) as $pc_cookie ) {
+	$_COOKIE[ $pc_cookie ] = SessionToken::generate();
+	$ms_fake->setValue( null, null );
+	$pc_n = $pc_stored();
+	$pc_x = $pc_up();
+	asem_ok( 'bypass' === PageCache::last() && $pc_x === $pc_cold && ( $pc_ext || $pc_stored() === $pc_n ), 'cache eventi: con il cookie ' . $pc_cookie . ' la pagina non viene mai dalla cache e non la popola' );
+	unset( $_COOKIE[ $pc_cookie ] );
+	$ms_fake->setValue( null, null );
+}
+// chi ha una sessione valida: mai
+MemberSession::start( $nc_p );
+$ms_fake->setValue( null, null );
+PageCache::purge();
+$pc_n = $pc_stored();
+$pc_up();
+asem_ok( 'bypass' === PageCache::last() && ( $pc_ext || $pc_stored() === $pc_n ), 'cache eventi: con una sessione socio valida mai in cache, in lettura e in scrittura' );
+MemberSession::destroy_all( $nc_p );
+unset( $_COOKIE[ MemberSession::COOKIE ] );
+$ms_fake->setValue( null, null );
+wp_set_current_user( 1 );
+$pc_up();
+asem_ok( 'bypass' === PageCache::last(), 'cache eventi: un utente WordPress collegato non passa dalla cache' );
+wp_set_current_user( 0 );
+// indirizzi e metodi esclusi
+$pc_up();
+$pc_up();
+asem_ok( 'hit' === PageCache::last(), 'cache eventi: pagina calda prima delle esclusioni' );
+foreach ( array( 'asem_cat', 'asem_vista', 'asemf_ok', 'asemf_err', 'asemf_sig', 'token', 'asem_token', 'PayerID', 'paymentId', '_back', '_n', 'preview' ) as $pc_q ) {
+	$_GET = array( $pc_q => 'x' );
+	$pc_up();
+	asem_ok( 'bypass' === PageCache::last(), 'cache eventi: un indirizzo con «' . $pc_q . '» non passa dalla cache' );
+}
+$_GET = array( 'utm_source' => 'newsletter' ); // un parametro di tracciamento non rende la pagina personale
+$pc_up();
+asem_ok( 'hit' === PageCache::last(), 'cache eventi: un parametro di tracciamento non toglie la pagina dalla cache' );
+$_GET = array();
+foreach ( array( 'POST', 'PUT', 'DELETE' ) as $pc_m ) {
+	$_SERVER['REQUEST_METHOD'] = $pc_m;
+	$pc_up();
+	asem_ok( 'bypass' === PageCache::last(), 'cache eventi: la richiesta ' . $pc_m . ' non passa dalla cache' );
+}
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_POST                     = array( 'x' => '1' );
+$pc_up();
+asem_ok( 'bypass' === PageCache::last(), 'cache eventi: un invio di modulo non passa dalla cache' );
+$_POST = array();
+unset( $_SERVER['REQUEST_METHOD'] );
+$pc_up();
+asem_ok( 'bypass' === PageCache::last(), 'cache eventi: fuori da una visita (riga di comando, lavori programmati) niente cache' );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+// mai un modulo, un campo o un nonce in una pagina conservata
+$pc_n = $pc_stored();
+foreach ( array( '<form method="post"><input type="hidden" name="a" value="1"></form>', '<a href="?token=abc">x</a>', '<p data-n="_wpnonce">x</p>' ) as $pc_i => $pc_bad ) {
+	PageCache::remember( 'prova-' . $pc_i, array(), function () use ( $pc_bad ) { return $pc_bad; } );
+	PageCache::remember( 'prova-' . $pc_i, array(), function () use ( $pc_bad ) { return $pc_bad; } );
+	asem_ok( 'miss' === PageCache::last(), 'cache eventi: un testo con modulo, nonce o token non si conserva (' . $pc_i . ')' );
+}
+asem_ok( $pc_ext || $pc_stored() === $pc_n, 'cache eventi: nessuna voce scritta per i testi con moduli' );
+// la pagina evento: i pezzi senza prenotazione si conservano, la prenotazione mai
+$pc_dati = PublicEvents::part( 'dati', array( 'evento' => $pc_post ) );
+PublicEvents::part( 'dati', array( 'evento' => $pc_post ) );
+asem_ok( 'hit' === PageCache::last() && false !== strpos( $pc_dati, 'asemf-facts' ), 'cache eventi: i dati dell\'evento si conservano' );
+$pc_n = $pc_stored();
+PublicEvents::part( 'prenotazione', array( 'evento' => $pc_post ) );
+PublicEvents::part( 'prenotazione', array( 'evento' => $pc_post ) );
+asem_ok( 'bypass' === PageCache::last() && ( $pc_ext || $pc_stored() === $pc_n ), 'cache eventi: la prenotazione non passa mai dalla cache e non ne scrive' );
+// svuotamento: prenotazione e annullamento
+$pc_up();
+$pc_up();
+asem_ok( 'hit' === PageCache::last(), 'cache eventi: pagina calda prima della prenotazione' );
+$acts->book( $pc_sid, $founder );
+$pc_after = $pc_up();
+asem_ok( 'miss' === PageCache::last() && false !== strpos( $pc_after, '4 posti liberi' ), 'cache eventi: dopo una prenotazione la cache si svuota e i posti sono giusti' );
+$pc_up();
+asem_ok( 'hit' === PageCache::last(), 'cache eventi: di nuovo calda' );
+$acts->cancel_booking( $pc_sid, $founder );
+$pc_after = $pc_up();
+asem_ok( 'miss' === PageCache::last() && false !== strpos( $pc_after, '5 posti liberi' ), 'cache eventi: dopo un annullamento la cache si svuota e i posti tornano' );
+// svuotamento: tariffe e posti
+$pc_up();
+$acts->update( $pc_evt, array( 'fee_cents' => 700 ) );
+$pc_up();
+asem_ok( 'miss' === PageCache::last(), 'cache eventi: la modifica della tariffa svuota la cache' );
+$pc_up();
+$wpdb->update( Db::t( 'sessions' ), array( 'capacity' => 9 ), array( 'id' => $pc_sid ) );
+asem_ok( false !== strpos( $pc_up(), '9 posti liberi' ) && 'miss' === PageCache::last(), 'cache eventi: un cambio dei posti svuota la cache' );
+// modifica del contenuto evento
+PublicEvents::list_html();
+PublicEvents::list_html();
+asem_ok( 'hit' === PageCache::last(), 'cache eventi: elenco caldo prima della modifica del contenuto' );
+wp_update_post( array( 'ID' => $pc_post, 'post_title' => 'Cena rinominata' ) );
+asem_ok( false !== strpos( PublicEvents::list_html(), 'Cena rinominata' ) && 'miss' === PageCache::last(), 'cache eventi: la modifica del contenuto evento svuota la cache' );
+PublicEvents::list_html();
+update_post_meta( $pc_post, '_asem_access', 'members' );
+asem_ok( false === strpos( PublicEvents::list_html(), 'Cena rinominata' ) && 'miss' === PageCache::last(), 'cache eventi: un evento reso riservato sparisce subito dall\'elenco di un anonimo' );
+delete_post_meta( $pc_post, '_asem_access' );
+// impostazioni pubbliche
+$pc_part = function () use ( $pc_post ) {
+	return PublicEvents::part( 'dati', array( 'evento' => $pc_post ) );
+};
+$pc_part();
+$pc_part();
+asem_ok( 'hit' === PageCache::last(), 'cache eventi: pezzo caldo prima del cambio delle impostazioni' );
+Settings::update( array( 'association_name' => 'Associazione di prova cache' ) );
+asem_ok( false !== strpos( $pc_part(), 'Associazione di prova cache' ) && 'miss' === PageCache::last(), 'cache eventi: un cambio delle impostazioni svuota la cache' );
+// nessuna pagina conservata porta un dato di chi ha prenotato
+$pc_blob = '';
+foreach ( $wpdb->get_col( "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_asem\\_pc\\_%'" ) as $pc_v ) {
+	$pc_blob .= $pc_v;
+}
+asem_ok( $pc_ext || ( false === strpos( $pc_blob, 'Fulvia' ) && false === strpos( $pc_blob, 'Fondi' ) && ! preg_match( '/<form|nonce|token=/i', $pc_blob ) ), 'cache eventi: nelle pagine conservate niente nomi dei soci, moduli, nonce o token' );
+if ( null === $pc_method ) {
+	unset( $_SERVER['REQUEST_METHOD'] );
+} else {
+	$_SERVER['REQUEST_METHOD'] = $pc_method;
+}
+$_GET = $pc_get;
 remove_action( 'litespeed_control_set_nocache', $nc_cb );
 MemberSession::forget_person( $nc_p );
 unset( $_COOKIE[ MemberSession::COOKIE ] );

@@ -1628,7 +1628,18 @@ final class Views {
 
 	/** Le prossime date di tutti gli eventi, in ordine di data. */
 	public static function upcoming( array $atts = array() ): string {
-		self::no_cache();
+		\AssociazioneSemplice\PageCache::announce_public(); // un anonimo non vede moduli: si può servire una copia; chi è collegato no
+		return \AssociazioneSemplice\PageCache::remember(
+			'event-upcoming',
+			array( $atts, (string) get_permalink() ),
+			function () use ( $atts ) {
+				return self::render_upcoming( $atts );
+			}
+		);
+	}
+
+	/** Disegna le prossime date (vedi {@see Views::upcoming()}). */
+	private static function render_upcoming( array $atts ): string {
 		$limit = max( 1, min( 50, (int) ( $atts['limite'] ?? 5 ) ) );
 		$cat   = sanitize_title( (string) ( $atts['categoria'] ?? '' ) );
 		if ( '' !== $cat ) { // solo gli eventi di una categoria: si cercano più date e poi si tengono quelle giuste

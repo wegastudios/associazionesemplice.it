@@ -149,7 +149,6 @@ final class Shortcodes {
 			case 'evento_condividi':
 				return \AssociazioneSemplice\PublicEvents::part( substr( $view, 7 ), shortcode_atts( array( 'evento' => '', 'titolo' => '' ), $atts ) );
 			case 'prossimi_eventi':
-				Views::no_cache();
 				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si', 'categoria' => '', 'titolo' => '', 'vuoto' => '' ), $atts ) );
 			case 'bonifico':
 				return Views::bank_public();
