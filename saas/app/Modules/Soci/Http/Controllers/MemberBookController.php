@@ -21,6 +21,8 @@ use Inertia\Response;
  */
 final readonly class MemberBookController
 {
+    private const PAGE_SIZE = 100;
+
     public function __construct(
         private MemberBookService $book,
         private MemberBookSnapshots $snapshots,
@@ -33,10 +35,17 @@ final readonly class MemberBookController
         $filter = $this->filter($request);
         $year = $this->year($request);
         $result = $this->load($filter, $year);
+        // A video il libro va a pagine da 100 righe (stampa e CSV restano interi); il totale è quello vero.
+        $total = count($result['rows']);
+        $pages = max(1, (int) ceil($total / self::PAGE_SIZE));
+        $page = min($pages, max(1, (int) $request->integer('pagina', 1)));
 
         return Inertia::render('Soci/LibroSoci', [
             'filter' => $filter,
-            'rows' => $result['rows'],
+            'rows' => array_slice($result['rows'], ($page - 1) * self::PAGE_SIZE, self::PAGE_SIZE),
+            'page' => $page,
+            'pages' => $pages,
+            'total' => $total,
             'year' => $year,
             'source' => $result['source'],
             'years' => $this->years(),

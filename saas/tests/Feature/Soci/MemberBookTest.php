@@ -121,3 +121,20 @@ it('fotografa il libro alla chiusura dell\'esercizio e non lo cambia più, nemme
         expect(DB::table('app.member_book_snapshots')->where('fiscal_year', $year)->orderBy('version')->pluck('version')->all())->toBe([1, 2]);
     });
 });
+
+it('a video il libro va a pagine da 100 righe con il totale vero; stampa e CSV restano interi', function (): void {
+    $op = $this->createUser('seg@example.com', twoFactor: true);
+    $this->addOperator($this->org, $op, OrgRole::Operator);
+    $this->orgContext()->run($this->org->id, function (): void {
+        for ($i = 0; $i < 120; $i++) {
+            Person::create(['first_name' => 'Nome'.$i, 'last_name' => 'Cognome'.$i, 'joined_on' => '2021-01-01']);
+        }
+    });
+
+    $this->actingAs($op)->get('/gestionale/soci/libro')->assertInertia(fn (Assert $page) => $page
+        ->has('rows', 100)->where('page', 1)->where('pages', 2)->where('total', 123));
+    $this->get('/gestionale/soci/libro?pagina=2')->assertInertia(fn (Assert $page) => $page
+        ->has('rows', 23)->where('page', 2)->where('pages', 2)->where('total', 123));
+    $this->get('/gestionale/soci/libro?pagina=99')->assertInertia(fn (Assert $page) => $page->where('page', 2));
+    expect(substr_count((string) $this->get('/gestionale/soci/libro.csv')->assertOk()->getContent(), 'Cognome'))->toBe(120);
+});
