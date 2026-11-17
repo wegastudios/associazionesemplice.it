@@ -282,7 +282,7 @@ final class Settings {
 			$clean = (array) apply_filters( 'asem_settings_clean', $clean, $values ); // un'estensione controlla le sue impostazioni
 		}
 		Audit::log( 'settings.updated', 'settings', null, array( 'keys' => array_slice( Audit::changed_keys( $before, $clean ), 0, 60 ) ) ); // solo i nomi delle voci cambiate, mai i valori: nel registro non finiscono chiavi
-		update_option( self::OPTION, $clean, false ); // senza caricamento automatico (può contenere il regolamento intero); un'opzione già salvata mantiene la scelta di prima finché non cambia
+		update_option( self::OPTION, $clean, true ); // caricata con le altre opzioni (si legge a quasi ogni richiesta); chi l'aveva senza caricamento automatico la riallinea al primo salvataggio che cambia qualcosa
 		self::forget();
 		// Chi riceve i soldi non cambia in silenzio, da qualunque strada arrivi la modifica (pannello, ripristino di una copia): registro e email agli amministratori.
 		Bank::notify_change( is_array( $before['bank_accounts'] ?? null ) ? $before['bank_accounts'] : array(), is_array( $clean['bank_accounts'] ?? null ) ? $clean['bank_accounts'] : array() );
@@ -335,7 +335,7 @@ final class Settings {
 		}
 		$all         = self::all();
 		$all[ $key ] = '';
-		update_option( self::OPTION, $all, false );
+		update_option( self::OPTION, $all, true );
 		self::forget();
 		Audit::log( 'settings.secret_cleared', 'settings', null, array( 'key' => $key ) );
 	}

@@ -4766,9 +4766,11 @@ update_option( Settings::OPTION, $ms_raw ); // scrittura diretta, come fanno cop
 asem_ok( 1 === (int) Settings::get( 'whatsapp_button' ), 'impostazioni: anche dopo una scrittura diretta dell\'opzione si legge il valore nuovo' );
 $ms_raw['whatsapp_button'] = 0;
 update_option( Settings::OPTION, $ms_raw );
-Settings::update( array( 'privacy_retention_years' => 6 ) ); // un nuovo salvataggio cambia il valore: l'opzione passa a «senza caricamento automatico»
+$wpdb->update( $wpdb->options, array( 'autoload' => 'no' ), array( 'option_name' => Settings::OPTION ) ); // sito già aggiornato con l'opzione senza caricamento automatico
+wp_cache_delete( 'alloptions', 'options' );
+Settings::update( array( 'privacy_retention_years' => 6 ) ); // un salvataggio che cambia il valore la riporta caricata con le altre
 $ms_auto = $wpdb->get_var( $wpdb->prepare( "SELECT autoload FROM {$wpdb->options} WHERE option_name = %s", Settings::OPTION ) );
-asem_ok( ! in_array( (string) $ms_auto, array( 'yes', 'on', 'auto', 'auto-on' ), true ), 'impostazioni: un nuovo salvataggio non le carica a ogni richiesta (' . $ms_auto . ')' );
+asem_ok( in_array( (string) $ms_auto, array( 'yes', 'on', 'auto', 'auto-on' ), true ), 'impostazioni: dopo un salvataggio restano caricate con le altre opzioni (' . $ms_auto . ')' );
 Settings::update( array( 'privacy_retention_years' => 5 ) );
 
 // Persona dell'utente WordPress: una query per richiesta, e dopo una modifica della persona si legge il dato nuovo
