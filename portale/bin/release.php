@@ -3,7 +3,8 @@
 //   php bin/release.php free|pro file.zip ["nota"] [firma kid [firma_v2 kid_v2 signed_at min_version]]   pubblica una versione (la firma Ed25519 base64url è facoltativa ma senza non si aggiorna da WordPress)
 //   php bin/release.php sign free|pro VERSIONE firma kid [firma_v2 kid_v2 signed_at min_version]          aggiunge la firma a una versione già pubblicata
 //   php bin/release.php replace free|pro file.zip nota firma kid [firma_v2 kid_v2 signed_at min_version]   sostituisce zip, impronta e firma di una versione già pubblicata (stesso numero; firma obbligatoria; il vecchio zip resta conservato)
-//   php bin/release.php minver free|pro                                                                    stampa la versione minima dell'ultima release che ne ha una (vuota se nessuna)
+//   php bin/release.php changelog free|pro VERSIONE [file.md]                                              scrive (o toglie, senza file) il testo del changelog di una versione, non coperto dalla firma
+//   php bin/release.php minver free|pro                                                                   stampa la versione minima dell'ultima release che ne ha una (vuota se nessuna)
 // La firma v2 («asem-pkg-v2|prodotto|versione|sha256|signed_at|min_version») si dà sempre insieme alla v1: i plugin già installati leggono solo la v1.
 if ( 'cli' !== PHP_SAPI ) {
 	exit( 1 );
@@ -48,6 +49,17 @@ try {
 			exit( 3 );
 		}
 		echo "ok\n";
+		exit( 0 );
+	}
+	if ( 'changelog' === $argv[1] ) {
+		// Testo del changelog scritto a parte per una versione già pubblicata (non tocca zip, impronta né firme); senza file lo toglie.
+		if ( $argc < 4 ) {
+			fwrite( STDERR, "Uso: php bin/release.php changelog free|pro VERSIONE [file.md]\n" );
+			exit( 2 );
+		}
+		$text = isset( $argv[4] ) ? (string) file_get_contents( $argv[4] ) : '';
+		Portale\Releases::setChangelog( $db, $argv[2], $argv[3], $text, 'cli' );
+		echo '' === trim( $text ) ? 'Testo tolto: ' : 'Testo del changelog salvato: ', $argv[2], ' ', $argv[3], "\n";
 		exit( 0 );
 	}
 	if ( 'sign' === $argv[1] ) {

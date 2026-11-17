@@ -67,7 +67,7 @@ final class Sections {
 			$out[ $product ] = array(
 				'label'    => $label,
 				'versions' => $all,
-				'latest'   => $all ? Releases::changelog( $product, (string) $all[0]['version'], '0', array_column( $all, 'version' ) ) : '',
+				'latest'   => $all ? Releases::changelog( $product, (string) $all[0]['version'], '0', array_column( $all, 'version' ), Releases::customChangelogs( $all ) ) : '',
 			);
 		}
 		return $out;

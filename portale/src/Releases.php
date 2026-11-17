@@ -260,7 +260,7 @@ final class Releases {
 	 * Novità dal CHANGELOG.md dentro il pacchetto pubblicato: solo le voci «## x.y.z» più recenti della versione installata
 	 * (senza versione installata, la più recente) e solo le righe «## versione» e «- voce». Massimo 20000 caratteri.
 	 */
-	public static function changelog( string $product, string $latest, string $installed = '', ?array $available = null ): string {
+	public static function changelog( string $product, string $latest, string $installed = '', ?array $available = null, array $custom = array() ): string {
 		if ( ! isset( self::PRODUCTS[ $product ] ) || ! self::validVersion( $latest ) || ! class_exists( 'ZipArchive' ) ) {
 			return '';
 		}
@@ -271,7 +271,55 @@ final class Releases {
 		}
 		$raw = $zip->getFromName( self::PRODUCTS[ $product ][0] . '/CHANGELOG.md' );
 		$zip->close();
-		return false === $raw ? '' : self::filterChangelog( (string) $raw, $installed, $available );
+		$raw = false === $raw ? '' : (string) $raw;
+		return self::filterChangelog( $custom ? self::mergeChangelog( $raw, $custom ) : $raw, $installed, $available );
+	}
+
+	/** Testi del changelog scritti a parte (colonna «changelog», non coperta dalla firma) per versione, dalle righe di Releases::all(). */
+	public static function customChangelogs( array $rows ): array {
+		$out = array();
+		foreach ( $rows as $r ) {
+			if ( isset( $r['version'], $r['changelog'] ) && '' !== trim( (string) $r['changelog'] ) ) {
+				$out[ (string) $r['version'] ] = (string) $r['changelog'];
+			}
+		}
+		return $out;
+	}
+
+	/** Unisce il CHANGELOG.md del pacchetto con i testi scritti a parte: per una versione che ne ha uno, questo prende il posto del blocco del pacchetto; le versioni restano dalla più nuova. */
+	public static function mergeChangelog( string $md, array $custom ): string {
+		$blocks = array();
+		$cur    = '';
+		foreach ( preg_split( '/\r?\n/', $md ) as $line ) {
+			$line = rtrim( $line );
+			if ( preg_match( '/^## (\d+\.\d+(?:\.\d+)?)(?: [–-] \d{4}-\d{2}-\d{2})?$/u', $line, $m ) ) {
+				$cur            = $m[1];
+				$blocks[ $cur ] = $line;
+			} elseif ( '' !== $cur ) {
+				$blocks[ $cur ] .= "\n" . $line;
+			}
+		}
+		foreach ( $custom as $v => $text ) {
+			$blocks[ (string) $v ] = str_replace( "\r", '', trim( (string) $text ) );
+		}
+		uksort( $blocks, function ( $a, $b ) { return version_compare( (string) $b, (string) $a ); } );
+		return implode( "\n\n", $blocks );
+	}
+
+	/** Scrive (o toglie, se vuoto) il testo del changelog di una release già pubblicata; non tocca zip, impronta né firme. @throws UserError */
+	public static function setChangelog( Db $db, string $product, string $version, string $text, string $actor ): void {
+		if ( ! self::get( $db, $product, $version ) ) {
+			throw new UserError( 'Versione non trovata.' );
+		}
+		$text = str_replace( "\r", '', trim( $text ) );
+		if ( '' !== $text && ! preg_match( '/^## ' . preg_quote( $version, '/' ) . '(?: [–-] \d{4}-\d{2}-\d{2})?\n/u', $text . "\n" ) ) {
+			throw new UserError( 'Il testo deve cominciare con «## ' . $version . '» (con eventuale « – AAAA-MM-GG»).' );
+		}
+		if ( strlen( $text ) > 20000 ) {
+			throw new UserError( 'Testo troppo lungo (massimo 20000 caratteri).' );
+		}
+		$db->run( 'UPDATE releases SET changelog = ? WHERE product = ? AND version = ?', array( '' === $text ? null : $text, $product, $version ) );
+		Audit::log( $db, $actor, 'release.changelog', $product . ' ' . $version . ( '' === $text ? ' (tolto)' : '' ) );
 	}
 
 	/**

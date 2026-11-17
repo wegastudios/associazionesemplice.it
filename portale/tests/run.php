@@ -646,6 +646,16 @@ if ( class_exists( 'ZipArchive' ) ) {
 	check( 'pacchetti: i file vecchi sono cancellati dal disco', ! is_file( $rdir . '/free/1.0.1.zip' ) && is_file( $rdir . '/free/1.0.12.zip' ) );
 	check( 'pacchetti: 1.0.10 viene dopo 1.0.9 (ordine numerico)', array_search( '1.0.10', $vers, true ) < array_search( '1.0.9', $vers, true ) );
 	check( 'pacchetti: versione già presente rifiutata', null !== throwsUser( function () use ( $rdb, $mkzip ) { Portale\Releases::add( $rdb, 'free', $mkzip( 'associazionesemplice', '1.0.12' ), '', 'test' ); } ) );
+	Portale\Releases::setChangelog( $rdb, 'free', '1.0.12', "## 1.0.12 – 2026-11-17\n- Nuovo: testo a parte\nChangelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog", 'test' );
+	$rows12 = Portale\Releases::all( $rdb, 'free' );
+	$cust   = Portale\Releases::customChangelogs( $rows12 );
+	check( 'changelog a parte: salvato per la versione, senza toccare l\'impronta', array( '1.0.12' ) === array_keys( $cust ) && '' !== (string) $rows12[0]['sha256'] );
+	$mg = Portale\Releases::mergeChangelog( "# T\n\n## 1.0.12\n- vecchio\n\n## 1.0.11\n- altro", $cust );
+	check( 'changelog a parte: prende il posto del blocco del pacchetto, le versioni restano in ordine', 0 === strpos( $mg, "## 1.0.12 – 2026-11-17\n- Nuovo: testo a parte" ) && false !== strpos( $mg, "## 1.0.11\n- altro" ) && false === strpos( $mg, '- vecchio' ) );
+	check( 'changelog a parte: testo che non comincia con il titolo della versione rifiutato', null !== throwsUser( function () use ( $rdb ) { Portale\Releases::setChangelog( $rdb, 'free', '1.0.12', "## 9.9.9\n- x", 'test' ); } ) );
+	check( 'changelog a parte: versione inesistente rifiutata', null !== throwsUser( function () use ( $rdb ) { Portale\Releases::setChangelog( $rdb, 'free', '7.7.7', "## 7.7.7\n- x", 'test' ); } ) );
+	Portale\Releases::setChangelog( $rdb, 'free', '1.0.12', '', 'test' );
+	check( 'changelog a parte: testo vuoto lo toglie', array() === Portale\Releases::customChangelogs( Portale\Releases::all( $rdb, 'free' ) ) );
 	check( 'pacchetti: zip del prodotto sbagliato rifiutato', null !== throwsUser( function () use ( $rdb, $mkzip ) { Portale\Releases::add( $rdb, 'pro', $mkzip( 'associazionesemplice', '2.0.0' ), '', 'test' ); } ) );
 	check( 'pacchetti: file non zip rifiutato', null !== throwsUser( function () use ( $rdb ) { Portale\Releases::add( $rdb, 'free', __FILE__, '', 'test' ); } ) );
 	Portale\Releases::add( $rdb, 'pro', $mkzip( 'associazionesemplice-pro', '1.1.4' ), '', 'test' );
