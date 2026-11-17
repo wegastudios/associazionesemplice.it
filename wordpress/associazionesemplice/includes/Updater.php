@@ -33,8 +33,11 @@ final class Updater {
 		'pkg-2026-10-85dce7' => 'ld_4NilmHT-TtaH8vUw_YGq7eEt4a0e4L4YAxSzP6oI',
 	);
 
+	const REFRESH_HOOK = 'asem_updater_refresh'; // evento singolo: chiede al portale lo stato degli aggiornamenti fuori dalla pagina
+
 	public static function register(): void {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'inject' ) );
+		add_action( self::REFRESH_HOOK, array( __CLASS__, 'refresh_in_background' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'info' ), 10, 3 );
 		add_filter( 'upgrader_pre_download', array( __CLASS__, 'download' ), 10, 3 );
 		add_action( 'admin_init', array( __CLASS__, 'privacy_policy' ) );
@@ -360,6 +363,15 @@ final class Updater {
 		update_option( self::OPT, $state, false );
 	}
 
+	/** Lavoro in background: aggiorna lo stato e rimette l'elenco degli aggiornamenti di WordPress al passo, senza attendere la prossima scadenza. */
+	public static function refresh_in_background(): void {
+		if ( ! self::enabled() || ! self::due() ) {
+			return;
+		}
+		self::refresh();
+		delete_site_transient( 'update_plugins' ); // alla prossima visita WordPress lo ricostruisce con lo stato nuovo
+	}
+
 	/** Icone del plugin nell'elenco degli aggiornamenti (immagini pubblicate dal portale). */
 	private static function icons(): array {
 		$base = 'https://associazionesemplice.it/assets/plugin/';
@@ -378,7 +390,11 @@ final class Updater {
 			return $transient;
 		}
 		if ( self::due() ) {
-			self::refresh();
+			if ( wp_doing_cron() || ( is_admin() && isset( $_GET['force-check'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- sola lettura del parametro con cui WordPress chiede «Controlla di nuovo»
+				self::refresh(); // lavoro in background o richiesta esplicita: la chiamata al portale non rallenta una pagina qualunque
+			} elseif ( ! wp_next_scheduled( self::REFRESH_HOOK ) ) {
+				wp_schedule_single_event( time(), self::REFRESH_HOOK ); // si mostra l'ultimo stato salvato; quello nuovo arriva dal lavoro in background
+			}
 		}
 		$state = self::state();
 		foreach ( self::products() as $p => $info ) {

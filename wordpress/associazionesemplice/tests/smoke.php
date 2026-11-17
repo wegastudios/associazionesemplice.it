@@ -2731,6 +2731,9 @@ wp_set_current_user( 1 );
 // ---------- Allegati alle spese (cartella privata, non la libreria media) ----------
 wp_set_current_user( 1 );
 $_SERVER['REQUEST_METHOD'] = 'GET';
+if ( class_exists( '\AssociazioneSemplice\ProBoot' ) ) {
+	\AssociazioneSemplice\ProBoot::handlers(); // le azioni del Pro si registrano solo in amministrazione: in WP-CLI is_admin() è falso, quindi qui
+}
 Admin\Admin::init(); // in WP-CLI is_admin() è falso: si registrano qui i gestori dell'amministrazione
 foreach ( array( 'admin_post_asem_export', 'wp_ajax_asem_person_context', 'admin_post_asem_front_pay', 'admin_post_asem_attachment', 'admin_post_asem_add_attachment', 'admin_post_asem_save_expense' ) as $hook ) {
 	asem_ok( has_action( $hook ), "hook registrato con il prefisso asem_: $hook" );
@@ -3146,6 +3149,10 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	delete_option( \AssociazioneSemplice\Updater::OPT );
 	Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+	asem_ok( array() === $up_calls && empty( $up_tr->response ) && false !== wp_next_scheduled( \AssociazioneSemplice\Updater::REFRESH_HOOK ), 'aggiornamento diretto: una pagina qualunque non chiama il portale, il controllo è programmato in background' );
+	\AssociazioneSemplice\Updater::refresh_in_background();
+	wp_clear_scheduled_hook( \AssociazioneSemplice\Updater::REFRESH_HOOK );
+	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	$up_bn = plugin_basename( ASEM_PRO_DIR . 'associazionesemplice-pro.php' );
 	asem_ok( isset( $up_tr->response[ $up_bn ] ) && '99.0' === $up_tr->response[ $up_bn ]->new_version && 'asem-portal://pro' === $up_tr->response[ $up_bn ]->package && 'associazionesemplice-pro' === $up_tr->response[ $up_bn ]->slug, 'aggiornamento diretto: la nuova versione del Pro compare tra gli aggiornamenti di WordPress' );
 	$up_by = array();
@@ -3184,7 +3191,7 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 // marchio ufficiale: icona del menu e logo in bacheca
 $mi = new ReflectionMethod( Admin\Admin::class, 'menu_icon' );
 $mi->setAccessible( true );
-asem_ok( 0 === strpos( (string) $mi->invoke( null ), 'data:image/svg+xml;base64,' ) && file_exists( ASEM_DIR . 'assets/brand/simbolo-bianco.svg' ) && file_exists( ASEM_DIR . 'assets/brand/logo-orizzontale.png' ), 'marchio: il menu usa il simbolo ufficiale (SVG) e i file del logo ci sono' );
+asem_ok( 0 === strpos( (string) $mi->invoke( null ), 'data:image/svg+xml;base64,' ) && file_exists( ASEM_DIR . 'assets/brand/simbolo-bianco.svg' ) && filesize( ASEM_DIR . 'assets/brand/simbolo-bianco-menu.svg' ) < 2048 && strlen( (string) $mi->invoke( null ) ) < 3200 && file_exists( ASEM_DIR . 'assets/brand/logo-orizzontale.png' ), 'marchio: il menu usa il simbolo ufficiale (SVG) e i file del logo ci sono' );
 $br_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'asem-logo' );
 asem_ok( false !== strpos( $br_dash, 'assets/brand/logo-orizzontale.png' ), 'marchio: la bacheca mostra il logo ufficiale' );
 // Bacheca: «Da fare» prima degli avvisi e degli strumenti; un avviso solo resta com'è, più avvisi stanno in un riquadro «N cose da sistemare»
@@ -12470,6 +12477,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 }
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
+require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme del database identiche al calcolo di prima
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 

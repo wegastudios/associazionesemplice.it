@@ -2,7 +2,6 @@
 namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Calendar;
-use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Modules;
 use AssociazioneSemplice\Plugin;
 
@@ -32,16 +31,7 @@ final class WpDashboard {
 	private static function renewals(): int {
 		$today = current_time( 'Y-m-d' );
 		$soon  = gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) );
-		$n     = 0;
-		foreach ( Plugin::people()->search() as $p ) {
-			if ( MemberType::GUEST === $p['type'] || empty( $p['active_until'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) ) {
-				continue;
-			}
-			if ( $p['active_until'] <= $soon ) {
-				$n++;
-			}
-		}
-		return $n;
+		return Plugin::people()->count_renewals_due( $soon );
 	}
 
 	/** Le cose da lavorare: [numero, testo, indirizzo]. */

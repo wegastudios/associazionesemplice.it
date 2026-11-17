@@ -149,7 +149,9 @@ final class ProBoot {
 		add_action( 'asem_settings_page_end', array( Admin\LicensePanel::class, 'render' ) );
 
 		// Azioni di amministrazione della licenza.
-		add_action( 'plugins_loaded', array( __CLASS__, 'handlers' ), 6 );
+		if ( is_admin() ) { // le azioni passano da admin-post.php e admin-ajax.php (anche quelle dell'area soci): sulle pagine pubbliche non servono e le loro classi non si caricano
+			add_action( 'plugins_loaded', array( __CLASS__, 'handlers' ), 6 );
+		}
 
 		// Avvisi, aggiornamenti diretti e lavori periodici.
 		add_action( 'plugins_loaded', array( __CLASS__, 'late' ), 11 );

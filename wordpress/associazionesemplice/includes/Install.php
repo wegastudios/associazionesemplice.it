@@ -32,6 +32,7 @@ final class Install {
 		'asem_license_check',
 		'asem_license_resync',
 		'asem_update_check',
+		'asem_updater_refresh',
 		'asem_watch_month_end',
 	);
 
