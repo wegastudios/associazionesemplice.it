@@ -157,18 +157,30 @@ final class Updater {
 	 * Tutto il testo viene protetto: vale solo ciò che segue questo formato.
 	 */
 	public static function changelog_html( string $md ): string {
-		$html = '';
-		$open = false;
+		$html   = '';
+		$open   = false; // un elenco è aperto
+		$inside = false; // dentro una versione
 		foreach ( preg_split( '/\R/', $md ) ?: array() as $line ) {
 			$line = trim( $line );
-			if ( preg_match( '/^##\s+(\d+(?:\.\d+){1,2})$/', $line, $m ) ) {
-				$html .= ( $open ? '</ul>' : '' ) . '<h4>' . htmlspecialchars( $m[1], ENT_QUOTES, 'UTF-8' ) . '</h4><ul>';
-				$open = true;
+			if ( preg_match( '/^##\s+(\d+(?:\.\d+){1,2})(?:\s+–\s+(\d{4}-\d{2}-\d{2}))?$/u', $line, $m ) ) {
+				$title  = $m[1] . ( isset( $m[2] ) ? ' – ' . $m[2] : '' );
+				$html  .= ( $open ? '</ul>' : '' ) . '<h4>' . htmlspecialchars( $title, ENT_QUOTES, 'UTF-8' ) . '</h4><ul>';
+				$open   = true;
+				$inside = true;
+			} elseif ( $inside && "Da fare dopo l'aggiornamento:" === $line ) {
+				$html .= ( $open ? '</ul>' : '' ) . '<p><strong>' . htmlspecialchars( $line, ENT_QUOTES, 'UTF-8' ) . '</strong></p><ul>';
+				$open  = true;
+			} elseif ( $inside && preg_match( '#^Changelog di tutte le versioni: (https://associazionesemplice\.it/[A-Za-z0-9/_\-.]*)$#', $line, $m ) ) {
+				$html .= ( $open ? '</ul>' : '' ) . '<p><a href="' . htmlspecialchars( $m[1], ENT_QUOTES, 'UTF-8' ) . '">Changelog di tutte le versioni</a></p>';
+				$open  = false;
 			} elseif ( $open && preg_match( '/^-\s+(.+)$/', $line, $m ) ) {
-				$html .= '<li>' . htmlspecialchars( $m[1], ENT_QUOTES, 'UTF-8' ) . '</li>';
+				$text = htmlspecialchars( $m[1], ENT_QUOTES, 'UTF-8' );
+				// Etichetta di tipo in grassetto: «Nuovo:», «Ottimizzazione:», «Sicurezza:», «Altro:».
+				$text  = preg_replace( '/^(Nuovo|Ottimizzazione|Sicurezza|Altro):/u', '<strong>$1:</strong>', $text ) ?? $text;
+				$html .= '<li>' . $text . '</li>';
 			}
 		}
-		return $open ? $html . '</ul>' : '';
+		return $inside ? $html . ( $open ? '</ul>' : '' ) : '';
 	}
 
 	/** base64url senza padding → byte ('' se non valido). */

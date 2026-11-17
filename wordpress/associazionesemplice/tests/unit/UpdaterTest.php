@@ -200,6 +200,17 @@ final class UpdaterTest extends TestCase {
 		$this->assertSame( '', U::changelog_html( 'niente di valido' ) );
 	}
 
+	public function test_changelog_new_format_with_labels_date_todo_and_link(): void {
+		$md   = "## 1.3.26 – 2026-11-17\n- Nuovo: permessi per area\n- Sicurezza: <i>x</i>\n- Altro: errori\nDa fare dopo l'aggiornamento:\n- Stripe: eventi del webhook\nChangelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog\n\n## 1.3.25\n- Vecchia voce\nChangelog di tutte le versioni: https://example.com/x";
+		$html = U::changelog_html( $md );
+		$this->assertStringContainsString( '<h4>1.3.26 – 2026-11-17</h4><ul><li><strong>Nuovo:</strong> permessi per area</li>', $html );
+		$this->assertStringContainsString( '<li><strong>Sicurezza:</strong> &lt;i&gt;x&lt;/i&gt;</li>', $html );
+		$this->assertStringContainsString( '</ul><p><strong>Da fare dopo l&#039;aggiornamento:</strong></p><ul><li>Stripe: eventi del webhook</li></ul>', $html );
+		$this->assertStringContainsString( '<p><a href="https://associazionesemplice.it/wordpress/changelog">Changelog di tutte le versioni</a></p>', $html );
+		$this->assertStringContainsString( '<h4>1.3.25</h4><ul><li>Vecchia voce</li>', $html );
+		$this->assertStringNotContainsString( 'example.com', $html, 'un link fuori dal sito non entra' );
+	}
+
 	/** Il Pro dichiara «Update URI» con lo stesso host dell'API del portale: WordPress non cerca aggiornamenti con lo stesso nome su WordPress.org. */
 	public function test_pro_header_declares_update_uri_on_the_portal_host(): void {
 		$pro = (string) file_get_contents( dirname( __DIR__, 3 ) . '/associazionesemplice-pro/associazionesemplice-pro.php' );
