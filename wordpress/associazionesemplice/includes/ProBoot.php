@@ -157,7 +157,7 @@ final class ProBoot {
 		add_action( 'plugins_loaded', array( __CLASS__, 'late' ), 11 );
 		add_action( 'asem_license_check', array( License::class, 'cron' ) );
 		add_action( 'asem_update_check', array( UpdateCheck::class, 'cron' ) );
-		add_action( 'asem_license_resync', array( License::class, 'cron' ) );
+		add_action( 'asem_license_resync', array( License::class, 'resync' ) );
 	}
 
 	public static function handlers(): void {
@@ -193,6 +193,7 @@ final class ProBoot {
 	/** Alla disattivazione si tolgono i lavori periodici. */
 	public static function deactivate(): void {
 		ProBlockE::unschedule();
+		License::forget();
 		foreach ( array( 'asem_license_check', 'asem_update_check', 'asem_license_resync', 'asem_watch_month_end' ) as $hook ) {
 			wp_clear_scheduled_hook( $hook );
 		}
@@ -303,6 +304,7 @@ final class ProBoot {
 
 	public static function save_license( array $p ): array {
 		$key = mb_substr( sanitize_text_field( $p['license_key'] ?? '' ), 0, 120 );
+		License::forget(); // chiave nuova o tolta: si controlla subito, senza usare l'esito ricordato
 		if ( '' !== $key ) {
 			Settings::update( array( 'license_key' => $key ) );
 			$note = 'Chiave salvata. ';
@@ -312,12 +314,12 @@ final class ProBoot {
 		} else {
 			$note = 'Chiave invariata. '; // campo vuoto = si tiene quella che c'è
 		}
-		$r = License::sync();
+		$r = License::sync( true );
 		return array( Admin\Ui::url( 'asem-settings' ), $note . $r['message'] );
 	}
 
 	public static function license_check( array $p ): array {
-		$r   = License::sync();
+		$r   = License::sync( true ); // «Controlla adesso»: controllo immediato, senza l'esito ricordato
 		$msg = $r['message'];
 		if ( \AssociazioneSemplice\UpdateCheck::enabled() ) {
 			\AssociazioneSemplice\UpdateCheck::fetch(); // «Controlla adesso» salta anche l'attesa tra un controllo di versione e l'altro

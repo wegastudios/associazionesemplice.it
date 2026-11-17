@@ -43,7 +43,7 @@ final class LicenseKeyAtRestTest extends TestCase {
 	public function test_unreadable_key_notice_and_no_portal_call(): void {
 		$lic = $this->src( 'includes/License.php' );
 		$this->assertStringContainsString( 'La chiave di licenza salvata non si legge più su questo sito (succede se cambiano i codici di sicurezza di WordPress o se il sito è stato spostato): reinseriscila in Impostazioni → Licenza.', $lic );
-		$sync = (int) strpos( $lic, 'public static function sync()' );
+		$sync = (int) strpos( $lic, 'public static function sync(' );
 		$body = substr( $lic, $sync );
 		$unread = (int) strpos( $body, 'self::key_unreadable()' );
 		$nokey  = (int) strpos( $body, 'STATUS_NOKEY' );
