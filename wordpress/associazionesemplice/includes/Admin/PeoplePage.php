@@ -86,7 +86,7 @@ final class PeoplePage {
 			echo wp_kses( '<button class="button" data-confirm="Sospendere ' . count( $stale ) . ' soci con la tessera scaduta da oltre ' . (int) $months . ' mesi? Diventano inattivi (non compaiono più in Bacheca) finché non li riattivi a mano.">Sospendi soci scaduti da oltre ' . (int) $months . ' mesi (' . count( $stale ) . ')</button>', Html::allowed() );
 			Ui::form_close();
 		}
-		echo '<p class="description">' . $total . ' persone.</p>';
+		echo '<p class="description">' . (int) $total . ' persone.</p>';
 		echo wp_kses( '<table class="widefat striped asem-cards asem-more"><thead><tr>' . self::sort_th( 'Tessera', 'card', $by, $dir, $keep ) . self::sort_th( 'Nome', 'name', $by, $dir, $keep ) . self::sort_th( 'Tipo', 'type', $by, $dir, $keep ) . '<th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>', Html::allowed() );
 		if ( ! $shown ) {
 			echo '<tr><td colspan="6">Nessuna persona trovata.</td></tr>';
