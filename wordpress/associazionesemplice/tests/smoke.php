@@ -13179,7 +13179,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 		continue; // classe non presente in questa edizione
 	}
 	$bom_src = (string) file_get_contents( (string) ( new ReflectionClass( '\\AssociazioneSemplice\\' . $bom_f ) )->getFileName() );
-	asem_ok( false === strpos( $bom_src, 'echo $csv;' ) && ( false !== strpos( $bom_src, 'Download::csv(' ) || false !== strpos( $bom_src, 'Download::bytes( self::export_csv' ) || false !== strpos( $bom_src, '"\xEF\xBB\xBF" . $csv' ) ), 'CSV: ' . $bom_f . ' invia il file con il BOM' );
+	asem_ok( false === strpos( $bom_src, 'echo $csv;' ) && ( false !== strpos( $bom_src, 'Download::csv(' ) || false !== strpos( $bom_src, 'Download::csv_chunks(' ) || false !== strpos( $bom_src, 'Download::bytes( self::export_csv' ) || false !== strpos( $bom_src, '"\xEF\xBB\xBF" . $csv' ) ), 'CSV: ' . $bom_f . ' invia il file con il BOM' );
 }
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
