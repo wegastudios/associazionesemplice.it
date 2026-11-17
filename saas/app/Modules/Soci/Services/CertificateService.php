@@ -185,7 +185,7 @@ final readonly class CertificateService
         $expiring = 0;
         $expired = 0;
         foreach (Person::query()->whereNull('left_on')->whereNull('anonymized_at')->whereIn('type', ['founder', 'ordinary', 'volunteer'])->pluck('id') as $id) {
-            $expires = $latest->get($id);
+            $expires = is_string($id) ? $latest->get($id) : null;
             $status = ExpiryRules::status(is_string($expires) ? substr($expires, 0, 10) : null, $today, $warn);
             $expiring += $status === ExpiryRules::EXPIRING ? 1 : 0;
             $expired += $status === ExpiryRules::EXPIRED ? 1 : 0;
