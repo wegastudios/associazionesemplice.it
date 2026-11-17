@@ -100,6 +100,10 @@ final readonly class FullExport
                 file_put_contents($file, $body);
                 unset($body);
                 $zip->addFile($file, $name);
+                // Foto, scansioni e archivi sono già compressi: ricomprimerli costa tempo e non fa guadagnare spazio.
+                if (preg_match('/\.(jpe?g|png|webp|gif|heic|zip)$/i', $name) === 1) {
+                    $zip->setCompressionName($name, ZipArchive::CM_STORE);
+                }
                 $tmp[] = $file;
                 $count++;
                 $certificates += str_starts_with($name, self::READABLE.'/'.self::CERTIFICATES.'/') ? 1 : 0;
