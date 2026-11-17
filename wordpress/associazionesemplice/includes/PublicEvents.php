@@ -212,7 +212,7 @@ final class PublicEvents {
 		}
 		$in   = implode( ',', array_fill( 0, count( $activity_ids ), '%s' ) ); // testo come in get_posts(): stesso confronto di prima
 		$args = array_merge( array( self::META, self::POST_TYPE ), array_map( 'strval', $activity_ids ) );
-		$rows = $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT m.meta_value FROM ' . $wpdb->postmeta . ' m JOIN ' . $wpdb->posts . " p ON p.ID = m.post_id WHERE m.meta_key = %s AND p.post_type = %s AND p.post_status IN ('publish','draft','pending','private','future','trash') AND m.meta_value IN ($in)", $args ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- segnaposto generati, nomi di tabella di WordPress
+		$rows = $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT m.meta_value FROM ' . $wpdb->postmeta . ' m JOIN ' . $wpdb->posts . " p ON p.ID = m.post_id WHERE m.meta_key = %s AND p.post_type = %s AND p.post_status IN ('publish','draft','pending','private','future','trash') AND m.meta_value IN ($in)", $args ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- segnaposto generati, nomi di tabella di WordPress
 		foreach ( (array) $rows as $v ) {
 			$out[ (int) $v ] = true;
 		}
