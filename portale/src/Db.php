@@ -171,6 +171,7 @@ final class Db {
 			'ALTER TABLE releases ADD COLUMN kid_v2 VARCHAR(40) NULL',
 			'ALTER TABLE releases ADD COLUMN signed_at BIGINT NULL',
 			'ALTER TABLE releases ADD COLUMN min_version VARCHAR(20) NULL',
+			'ALTER TABLE releases ADD COLUMN changelog TEXT NULL',
 			'ALTER TABLE subscriptions ADD COLUMN reminded_for VARCHAR(19) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN note VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN mode VARCHAR(10) NULL',

@@ -62,7 +62,7 @@ final class PluginUpdates {
 			$out['min_version']  = $r0['min_version'];
 		}
 		if ( $newer ) {
-			$log = Releases::changelog( $p, $latest, $cur, array_column( $all, 'version' ) );
+			$log = Releases::changelog( $p, $latest, $cur, array_column( $all, 'version' ), Releases::customChangelogs( $all ) );
 			if ( '' !== $log ) {
 				$out['changelog'] = $log;
 			}
