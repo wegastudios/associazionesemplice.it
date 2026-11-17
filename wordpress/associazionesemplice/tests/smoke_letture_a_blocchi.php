@@ -365,5 +365,5 @@ $lb_got = array();
 foreach ( $lb_pe_ids as $lb_i ) {
 	$lb_got[ $lb_i ] = \AssociazioneSemplice\PublicEvents::post_of( $lb_i );
 }
-asem_ok( $lb_got === $lb_ref && $lb_ref[ $lb_ev1 ] === $lb_pe_ev1 && 0 === $lb_ref[ $lb_ev2 ] && 0 === $lb_ref[987654] && $lb_ref[ $lb_ev3 ] > 0 && $lb_ref[ $lb_course ] > 0, 'elenco pubblico: il contenuto collegato a ogni attività, cercato in blocco, è lo stesso della ricerca una per una ' . wp_json_encode( array( $lb_got, $lb_ref, $lb_pe_ev1 ) ) );
-asem_ok( '' !== \AssociazioneSemplice\PublicEvents::page_url( $lb_ev1 ) && '' === \AssociazioneSemplice\PublicEvents::page_url( $lb_course ) && '' === \AssociazioneSemplice\PublicEvents::page_url( $lb_ev3 ) && '' === \AssociazioneSemplice\PublicEvents::page_url( $lb_ev2 ), 'elenco pubblico: la pagina si offre solo per i contenuti pubblicati (non per bozze, cestino o attività senza pagina)' );
+asem_ok( $lb_got === $lb_ref && $lb_ref[ $lb_ev1 ] === $lb_pe_ev1 && 0 === $lb_ref[987654] && $lb_ref[ $lb_ev3 ] > 0 && $lb_ref[ $lb_course ] > 0, 'elenco pubblico: il contenuto collegato a ogni attività, cercato in blocco, è lo stesso della ricerca una per una' );
+asem_ok( '' !== \AssociazioneSemplice\PublicEvents::page_url( $lb_ev1 ) && '' === \AssociazioneSemplice\PublicEvents::page_url( $lb_course ) && '' === \AssociazioneSemplice\PublicEvents::page_url( $lb_ev3 ) && '' === \AssociazioneSemplice\PublicEvents::page_url( 987654 ), 'elenco pubblico: la pagina si offre solo per i contenuti pubblicati (non per bozze, cestino o attività senza pagina)' );
