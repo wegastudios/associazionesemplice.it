@@ -136,6 +136,11 @@ function m_profile( string $label, callable $page, array $get = array() ): void 
 		$seen[ $k ] = ( $seen[ $k ] ?? 0 ) + 1;
 		return $sql;
 	};
+	global $wpdb;
+	if ( ! defined( 'SAVEQUERIES' ) ) {
+		define( 'SAVEQUERIES', true ); // wpdb lo legge a ogni query: da qui in poi tiene il tempo di ciascuna
+	}
+	$q_from = is_array( $wpdb->queries ) ? count( $wpdb->queries ) : 0;
 	add_filter( 'query', $f );
 	$old  = $_GET;
 	$_GET = $get;
@@ -152,6 +157,13 @@ function m_profile( string $label, callable $page, array $get = array() ): void 
 	m_log( 'PROFILO ' . $label . ': ' . $tot . ' query, ' . count( $seen ) . ' diverse' );
 	foreach ( array_slice( $seen, 0, 14, true ) as $k => $n ) {
 		m_log( sprintf( 'PROFILO   %5d x %s', $n, $k ) );
+	}
+	$slow = array_slice( (array) $wpdb->queries, $q_from ); // [sql, secondi, chiamate]
+	usort( $slow, function ( $a, $b ) {
+		return $b[1] <=> $a[1];
+	} );
+	foreach ( array_slice( $slow, 0, 5 ) as $s ) {
+		m_log( sprintf( 'PROFILO   lenta %5.1f ms: %s', $s[1] * 1000, substr( (string) preg_replace( '/\s+/', ' ', (string) $s[0] ), 0, 110 ) ) );
 	}
 }
 
@@ -680,6 +692,17 @@ function m_parts( string $label, int $activity_id, array $methods ): void {
 		}
 	}
 }
+$all_light = Plugin::people()->search_light();
+$t0        = microtime( true );
+for ( $i = 0; $i < 10; $i++ ) {
+	$sel = \AssociazioneSemplice\Admin\Ui::person_select( 'x', $all_light, null, '— scegli —', 'asem-x' );
+}
+m_log( sprintf( 'PARTE prova::person_select di %d persone, 10 volte: %d ms (%d byte ciascuna)', count( $all_light ), round( ( microtime( true ) - $t0 ) * 1000 ), strlen( $sel ) ) );
+$t0 = microtime( true );
+for ( $i = 0; $i < 10; $i++ ) {
+	$kses = wp_kses( $sel . ' <button class="button button-small">Cambia</button>', \AssociazioneSemplice\Html::allowed() );
+}
+m_log( sprintf( 'PARTE prova::wp_kses della stessa scelta, 10 volte: %d ms (uguale all\'originale: %s)', round( ( microtime( true ) - $t0 ) * 1000 ), $kses === $sel . ' <button class="button button-small">Cambia</button>' ? 'sì' : 'no' ) );
 $_GET = array( 'page' => 'asem' );
 foreach ( array( 'payments_due', 'renewals', 'expected_guests', 'applications', 'adults_to_invite', 'incomplete_cards', 'overdue_loans', 'quick_cash', 'quick_enroll' ) as $m_name ) {
 	$rm = new \ReflectionMethod( 'AssociazioneSemplice\\Admin\\DashboardPage', $m_name );

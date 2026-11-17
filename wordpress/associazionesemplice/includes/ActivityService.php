@@ -204,7 +204,8 @@ class ActivityService {
 				$rows[] = array( 'date' => $s['date'], 'from' => (string) $s['start'], 'to' => (string) $s['end'], 'recurring' => false, 'end' => '', 'repeat' => 'weekly' );
 				continue;
 			}
-			$date   = Schedule::weekly_dates( $s['from'] ?: ( $a['starts_on'] ?: $default_from ), '9999-12-31', (int) $s['day'] );
+			$from   = (string) ( $s['from'] ?: ( $a['starts_on'] ?: $default_from ) );
+			$date   = Schedule::weekly_dates( $from, ( new \DateTimeImmutable( $from ) )->modify( '+6 days' )->format( 'Y-m-d' ), (int) $s['day'] ); // serve solo il primo giorno giusto: cade sempre nei sette giorni da $from
 			$rows[] = array( 'date' => $date ? $date[0] : $default_from, 'from' => (string) $s['start'], 'to' => (string) $s['end'], 'recurring' => true, 'end' => (string) ( $s['until'] ?: '' ), 'repeat' => 'weekly' );
 		}
 		return $rows;

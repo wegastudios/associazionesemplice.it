@@ -320,3 +320,14 @@ $lb_fam  = array( 'id' => 999999, 'family_head_id' => $lb_head );
 asem_ok( Levels::is_family_member( $lb_fam ) && Levels::is_family_member( $lb_fam ), 'nucleo familiare: il familiare di un capofamiglia socio è riconosciuto (anche alla seconda lettura)' );
 $wpdb->update( Db::t( 'people' ), array( 'deleted_at' => Db::now() ), array( 'id' => $lb_head ) );
 asem_ok( ! Levels::is_family_member( $lb_fam ), 'nucleo familiare: se il capofamiglia esce dall\'anagrafica la memoria si aggiorna da sola' );
+
+// ---------- Modulo del corso: il primo giorno giusto di una lezione settimanale ----------
+$lb_same = true;
+foreach ( array( '2026-01-01', '2026-02-28', '2026-12-31', '2024-02-29', '2026-09-07' ) as $lb_from ) {
+	for ( $lb_day = 0; $lb_day <= 8; $lb_day++ ) {
+		$lb_old = \AssociazioneSemplice\Schedule::weekly_dates( $lb_from, '2032-12-31', $lb_day ); // come prima ma fino a un orizzonte vicino: il primo elemento è lo stesso
+		$lb_new = \AssociazioneSemplice\Schedule::weekly_dates( $lb_from, ( new \DateTimeImmutable( $lb_from ) )->modify( '+6 days' )->format( 'Y-m-d' ), $lb_day );
+		$lb_same = $lb_same && ( $lb_old ? $lb_old[0] : null ) === ( $lb_new ? $lb_new[0] : null );
+	}
+}
+asem_ok( $lb_same, 'modulo del corso: il primo giorno di una lezione settimanale è quello di sempre per ogni giorno della settimana (e nessun giorno non valido)' );
