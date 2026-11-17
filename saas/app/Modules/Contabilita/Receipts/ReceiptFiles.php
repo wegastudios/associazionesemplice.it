@@ -84,8 +84,26 @@ final readonly class ReceiptFiles
      */
     public function document(string $receiptId): array
     {
+        $row = $this->row($receiptId);
+        $saved = $row === null ? null : $this->decodeSnapshot($row);
+        if ($row !== null && $saved !== null) {
+            // Già fissata, con i dati dell'emissione: niente PDF rifatto per poi scartarlo. Numero, nome del file e
+            // intestatario vengono dall'emissione; si controlla soltanto che la ricevuta non sia annullata.
+            $receipt = Str::isUuid($receiptId) ? $this->connection()->table('app.receipts')->where('id', $receiptId)->first(['voided_at']) : null;
+            if ($receipt === null) {
+                throw new LedgerError('Ricevuta non trovata.');
+            }
+            if (($receipt->voided_at ?? null) !== null) {
+                throw new LedgerError('La ricevuta è annullata: l\'incasso è stato stornato.');
+            }
+            $number = is_string($saved['number'] ?? null) ? $saved['number'] : '';
+            $name = is_string($row->original_name ?? null) ? $row->original_name : (is_string($saved['filename'] ?? null) ? $saved['filename'] : 'ricevuta.pdf');
+
+            return ['pdf' => $this->read($row, $number), 'filename' => $name, 'number' => $number, 'email' => $this->pdf->holderEmail($saved), 'holder' => $this->pdf->holderName($saved)];
+        }
+
         $meta = $this->pdf->build($receiptId);
-        if ($this->row($receiptId) === null) {
+        if ($row === null) {
             // Mai fissata (emessa prima di questa funzione): la prima volta che serve diventa il suo file definitivo.
             $this->fix($receiptId, 'lotto');
         }

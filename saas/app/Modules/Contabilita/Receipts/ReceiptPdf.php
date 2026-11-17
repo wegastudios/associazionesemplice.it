@@ -230,7 +230,7 @@ final readonly class ReceiptPdf
     }
 
     /** @param  array<string, mixed>  $d */
-    private function holderEmail(array $d): ?string
+    public function holderEmail(array $d): ?string
     {
         $minor = self::arr($d['minor'] ?? null);
         $holder = is_array($minor['holder'] ?? null) ? self::arr($minor['holder']) : null;
@@ -244,7 +244,7 @@ final readonly class ReceiptPdf
     }
 
     /** @param  array<string, mixed>  $d */
-    private function holderName(array $d): string
+    public function holderName(array $d): string
     {
         $minor = self::arr($d['minor'] ?? null);
         $holder = is_array($minor['holder'] ?? null) ? self::arr($minor['holder']) : null;
