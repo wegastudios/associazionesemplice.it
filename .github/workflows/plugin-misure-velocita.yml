@@ -1,0 +1,111 @@
+name: Plugin speed measures
+
+# «Misure di velocità»: un sito di prova (wp-env) con 2.000 soci, iscrizioni, qualche migliaio di movimenti di prima nota e ricevute, poi tempi, query e memoria
+# delle pagine di amministrazione, delle esportazioni, delle ricerche, degli eventi pubblici, dei fogli Excel grandi e del motore dei testi.
+# Solo in CI: non tocca dati veri, non gira sul server dell'hosting né sulla demo. NON fallisce per i tempi (i runner sono variabili):
+# fallisce solo se il generatore o una pagina va in errore. Il risultato è nel log e nel riepilogo del job.
+
+on:
+  push:
+    branches: [main]
+    paths: ["wordpress/**", ".github/scripts/misure-*", ".github/scripts/misure-mu/**", ".github/workflows/plugin-misure-velocita.yml"]
+  pull_request:
+    paths: ["wordpress/**", ".github/scripts/misure-*", ".github/scripts/misure-mu/**", ".github/workflows/plugin-misure-velocita.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: misure-velocita-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  misure:
+    name: Misure di velocità
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build the packages and start WordPress (free + Pro)
+        shell: bash
+        run: |
+          bash wordpress/build.sh wordpress/dist
+          cd wordpress/dist
+          cat > .wp-env.json <<'JSON'
+          {
+            "phpVersion": "8.3",
+            "plugins": [
+              "./free/associazionesemplice",
+              "./pro/associazionesemplice-pro"
+            ],
+            "mappings": {
+              "wp-content/sandbox-scripts": "../../.github/scripts",
+              "wp-content/mu-plugins": "../../.github/scripts/misure-mu"
+            },
+            "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
+          }
+          JSON
+          npx --yes @wordpress/env start
+
+      - name: Generate the test data and measure (admin pages, exports, searches, events, texts)
+        shell: bash
+        working-directory: wordpress/dist
+        run: |
+          npx --yes @wordpress/env run cli wp eval-file wp-content/sandbox-scripts/misure-velocita.php dati 2>&1 | tee "$RUNNER_TEMP/misure-dati.log"
+
+      - name: Measure big Excel sheets (separate process)
+        shell: bash
+        working-directory: wordpress/dist
+        run: |
+          set +e
+          npx --yes @wordpress/env run cli wp eval-file wp-content/sandbox-scripts/misure-velocita.php excel 2>&1 | tee "$RUNNER_TEMP/misure-excel.log"
+          st=${PIPESTATUS[0]}
+          if [ "$st" != 0 ]; then
+            if grep -q '^ERRORI:' "$RUNNER_TEMP/misure-excel.log"; then
+              echo "::error::Le misure dei fogli Excel sono finite in errore."
+              exit 1
+            fi
+            # nessun errore di pagina o di generatore: il processo si è fermato (tipicamente memoria o tempo): è un risultato, non un guasto
+            echo "::warning title=Fogli Excel grandi::Il processo si è interrotto prima di finire (codice $st): vedi il log, di solito è la memoria."
+            echo '| Importazione: fogli Excel grandi | processo interrotto (memoria o tempo) | | | | | lenta |' >> "$RUNNER_TEMP/misure-excel.log"
+          fi
+          exit 0
+
+      - name: Measure the public pages of the site (as a visitor)
+        shell: bash
+        run: |
+          bash .github/scripts/misure-http.sh "$RUNNER_TEMP/misure-dati.log" 2>&1 | tee "$RUNNER_TEMP/misure-http.log"
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Misure di velocità"
+            echo
+            echo "Sito di prova: 2.000 soci, iscrizioni a corsi ed eventi, qualche migliaio di movimenti di prima nota in due anni fiscali, ricevute numerate. PHP 8.3, un solo runner: i numeri servono a confrontare le voci tra loro e nel tempo, non come valori assoluti. «Nota: lenta» = oltre 300 ms o oltre 100 query."
+            echo
+            grep -h '^Soci creati\|^Quote\|^Ricevute numerate\|^Corsi \|^Generatore finito\|^Misure finite\|^Pagina per la prova' "$RUNNER_TEMP"/misure-dati.log 2>/dev/null | sed 's/^/- /'
+            echo
+            echo "#### Pagine di amministrazione, esportazioni, ricerche, eventi, testi"
+            grep -h '^|' "$RUNNER_TEMP/misure-dati.log" 2>/dev/null || true
+            echo
+            echo "#### Fogli Excel grandi"
+            grep -h '^|' "$RUNNER_TEMP/misure-excel.log" 2>/dev/null | grep -v '^| Voce\|^|---' || true
+            echo
+            echo "#### Pagine pubbliche del sito"
+            grep -h '^|' "$RUNNER_TEMP/misure-http.log" 2>/dev/null || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Debug log
+        if: failure()
+        shell: bash
+        working-directory: wordpress/dist
+        run: npx --yes @wordpress/env run cli sh -c 'tail -60 wp-content/debug.log 2>/dev/null || true'
