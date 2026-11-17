@@ -67,6 +67,11 @@ if ( true !== $res ) {
 wp_clean_plugins_cache();
 $after = get_plugin_data( WP_PLUGIN_DIR . '/' . $basename, false, false );
 reale_ok( $new === $after['Version'], 'installato: la versione sul disco è ora ' . $after['Version'] );
+// La prima firma v2 vera è stata accettata: la memoria v2 del gratuito è accesa e la versione vista è quella installata.
+$seen_all = get_option( Updater::SEEN_OPT, array() );
+$seen     = is_array( $seen_all ) && isset( $seen_all['free'] ) && is_array( $seen_all['free'] ) ? $seen_all['free'] : array();
+reale_ok( ! empty( $seen['v2'] ), 'dopo l\'installazione la memoria v2 del gratuito è accesa' );
+reale_ok( isset( $seen['version'] ) && $seen['version'] === $new, 'la versione vista con firma v2 è ' . ( $seen['version'] ?? '(nessuna)' ) . ' (installata ' . $new . ')' );
 // Informazione, non errore: lo zip pubblicato dal portale può essere più vecchio dell'introduzione di Update URI nella build.
 if ( 'https://associazionesemplice.it/' !== ( $after['UpdateURI'] ?? '' ) ) {
 	echo "::warning::Il pacchetto pubblicato sul portale (versione {$after['Version']}) non dichiara Update URI: lo dichiarerà dal prossimo rilascio costruito con build.sh.\n";
