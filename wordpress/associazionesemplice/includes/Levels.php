@@ -104,7 +104,12 @@ final class Levels {
 		if ( ! $person || empty( $person['family_head_id'] ) ) {
 			return false;
 		}
-		$head = Plugin::people()->get( (int) $person['family_head_id'] );
+		$hid = (int) $person['family_head_id'];
+		if ( RequestMemo::has( 'family_head', $hid ) ) { // un capofamiglia ha molti familiari: si legge una volta sola per richiesta (la memoria si svuota da sola a ogni scrittura sulle persone)
+			$head = RequestMemo::get( 'family_head', $hid );
+		} else {
+			$head = RequestMemo::put( 'family_head', $hid, Plugin::people()->get( $hid ), array( Db::t( 'people' ) ) );
+		}
 		return $head && MemberType::is_member( $head['type'] ) && (int) $head['id'] !== (int) $person['id'];
 	}
 

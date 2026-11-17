@@ -165,8 +165,22 @@ final class Ui {
 		if ( null !== $empty ) {
 			$html .= '<option value="">' . esc_html( $empty ) . '</option>';
 		}
+		static $memo = array(); // la stessa voce non scelta (stesso valore e stessa etichetta) esce sempre uguale: nelle pagine con molti elenchi di persone si prepara una volta sola
+		if ( count( $memo ) > 20000 ) {
+			$memo = array();
+		}
+		$sel = (string) $selected;
 		foreach ( $map as $v => $label ) {
-			$html .= '<option value="' . esc_attr( (string) $v ) . '"' . selected( (string) $selected, (string) $v, false ) . '>' . esc_html( (string) $label ) . '</option>';
+			$sv = (string) $v;
+			if ( $sel === $sv ) {
+				$html .= '<option value="' . esc_attr( $sv ) . '"' . selected( $sel, $sv, false ) . '>' . esc_html( (string) $label ) . '</option>';
+				continue;
+			}
+			$k = $sv . "\0" . (string) $label;
+			if ( ! isset( $memo[ $k ] ) ) {
+				$memo[ $k ] = '<option value="' . esc_attr( $sv ) . '">' . esc_html( (string) $label ) . '</option>';
+			}
+			$html .= $memo[ $k ];
 		}
 		return $html;
 	}
@@ -224,6 +238,11 @@ final class Ui {
 
 	/** Campo di scelta con filtro di testo, per elenchi lunghi di persone. */
 	public static function person_select( string $name, array $people, $selected = null, ?string $empty = null, string $id = '' ): string {
+		return implode( '', self::person_select_parts( $name, $people, $selected, $empty, $id ) );
+	}
+
+	/** Il campo di {@see person_select()} in tre pezzi: l'apertura (campo di filtro e select), le voci e la chiusura. */
+	private static function person_select_parts( string $name, array $people, $selected, ?string $empty, string $id ): array {
 		if ( ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::PEOPLE ) ) { // senza «Anagrafica soci» non si porta in pagina l'elenco: ricerca minima (3 lettere, 10 risultati)
 			$id    = $id ?: 'asem-sel-' . sanitize_key( $name );
 			$cur   = $selected ? \AssociazioneSemplice\Plugin::people()->get( (int) $selected ) : null;
@@ -231,15 +250,35 @@ final class Ui {
 			if ( $cur ) {
 				$opts[ (int) $cur['id'] ] = self::person_label( $cur );
 			}
-			return '<span class="asem-filter-select">' . PersonSearch::input( $id ) . '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '">' . self::options( $opts, $cur ? (int) $cur['id'] : null, null ) . '</select></span>';
+			return array( '<span class="asem-filter-select">' . PersonSearch::input( $id ) . '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '">', self::options( $opts, $cur ? (int) $cur['id'] : null, null ), '</select></span>' );
 		}
 		$map = array();
 		foreach ( $people as $p ) {
 			$map[ $p['id'] ] = self::person_label( $p );
 		}
 		$id = $id ?: 'asem-sel-' . sanitize_key( $name );
-		return '<span class="asem-filter-select"><input type="search" class="asem-filter" data-target="#' . esc_attr( $id ) . '" placeholder="Filtra…" autocomplete="off"> '
-			. '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '">' . self::options( $map, $selected, $empty ) . '</select></span>';
+		return array(
+			'<span class="asem-filter-select"><input type="search" class="asem-filter" data-target="#' . esc_attr( $id ) . '" placeholder="Filtra…" autocomplete="off"> '
+			. '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '">',
+			self::options( $map, $selected, $empty ),
+			'</select></span>',
+		);
+	}
+
+	/**
+	 * Stampa «$before + campo di scelta di persone + $after» come si faceva con wp_kses( $before . person_select(…) . $after, Html::allowed() ), ma passando dal filtro solo
+	 * le parti scritte a mano: le voci sono già protette da esc_attr ed esc_html (Ui::options), e in un elenco di migliaia di persone il filtro ripetuto per ogni riga
+	 * è ciò che costa di più. Il risultato è lo stesso carattere per carattere (lo verifica la prova di fumo).
+	 */
+	public static function echo_person_select( string $before, string $name, array $people, $selected, ?string $empty, string $id, string $after = '' ): void {
+		$parts = self::person_select_parts( $name, $people, $selected, $empty, $id );
+		if ( false !== strpos( $parts[1], ' selected=' ) ) { // con una voce scelta il filtro riscrive l'attributo «selected» (virgolette): resta il percorso intero, identico a prima
+			echo wp_kses( $before . implode( '', $parts ) . $after, \AssociazioneSemplice\Html::allowed() );
+			return;
+		}
+		echo wp_kses( $before . $parts[0], \AssociazioneSemplice\Html::allowed() );
+		echo $parts[1]; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- voci già protette da esc_attr ed esc_html in Ui::options
+		echo wp_kses( $parts[2] . $after, \AssociazioneSemplice\Html::allowed() );
 	}
 
 	/** Stato del contributo di una prenotazione. */

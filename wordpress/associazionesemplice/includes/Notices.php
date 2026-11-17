@@ -57,11 +57,12 @@ final class Notices {
 			}
 			$ids = $db->get_col( $db->prepare( $sql, $args ) );
 		}
-		$out = array();
-		foreach ( array_map( 'intval', $ids ?: array() ) as $pid ) {
-			$p = Plugin::people()->get( $pid );
-			if ( $p ) {
-				$out[] = $p;
+		$out  = array();
+		$ids  = array_map( 'intval', $ids ?: array() );
+		$full = Plugin::people()->get_many( $ids ); // le schede si leggono tutte insieme; l'ordine resta quello degli iscritti
+		foreach ( $ids as $pid ) {
+			if ( isset( $full[ $pid ] ) ) {
+				$out[] = $full[ $pid ];
 			}
 		}
 		return $out;

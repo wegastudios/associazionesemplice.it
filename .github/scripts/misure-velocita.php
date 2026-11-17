@@ -111,6 +111,62 @@ function m_page( string $label, callable $page, array $get = array(), int $reps 
 	);
 }
 
+/**
+ * Profilo delle query di una pagina (una sola esecuzione, fuori dalla tabella dei tempi): le interrogazioni che si ripetono di più, col punto del plugin che le chiede.
+ * Serve a capire dove stanno le query «una per riga»; non fa mai fallire il job.
+ */
+function m_profile( string $label, callable $page, array $get = array() ): void {
+	$seen = array();
+	$tot  = 0;
+	$f    = function ( $sql ) use ( &$seen, &$tot ) {
+		++$tot;
+		$norm  = preg_replace( array( "/'[^']*'/", '/\b\d+\b/' ), array( "'S'", 'N' ), (string) $sql );
+		$norm  = substr( (string) preg_replace( '/\s+/', ' ', (string) $norm ), 0, 80 );
+		$where = '';
+		$n     = 0;
+		foreach ( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 30 ) as $fr ) { // phpcs:ignore WordPress.PHP.DevelopmentFunctions
+			if ( isset( $fr['file'] ) && 1 === preg_match( '~/associazionesemplice[^/]*/includes/~', str_replace( '\\', '/', $fr['file'] ) ) ) {
+				$where .= ( '' === $where ? '' : ' < ' ) . basename( $fr['file'], '.php' ) . ':' . ( $fr['line'] ?? 0 );
+				if ( ++$n >= 4 ) {
+					break;
+				}
+			}
+		}
+		$k          = $norm . ' @ ' . $where;
+		$seen[ $k ] = ( $seen[ $k ] ?? 0 ) + 1;
+		return $sql;
+	};
+	global $wpdb;
+	if ( ! defined( 'SAVEQUERIES' ) ) {
+		define( 'SAVEQUERIES', true ); // wpdb lo legge a ogni query: da qui in poi tiene il tempo di ciascuna
+	}
+	$q_from = is_array( $wpdb->queries ) ? count( $wpdb->queries ) : 0;
+	add_filter( 'query', $f );
+	$old  = $_GET;
+	$_GET = $get;
+	ob_start();
+	try {
+		$page();
+	} catch ( \Throwable $e ) {
+		m_log( 'PROFILO ' . $label . ': errore ' . $e->getMessage() );
+	}
+	ob_end_clean();
+	$_GET = $old;
+	remove_filter( 'query', $f );
+	arsort( $seen );
+	m_log( 'PROFILO ' . $label . ': ' . $tot . ' query, ' . count( $seen ) . ' diverse' );
+	foreach ( array_slice( $seen, 0, 14, true ) as $k => $n ) {
+		m_log( sprintf( 'PROFILO   %5d x %s', $n, $k ) );
+	}
+	$slow = array_slice( (array) $wpdb->queries, $q_from ); // [sql, secondi, chiamate]
+	usort( $slow, function ( $a, $b ) {
+		return $b[1] <=> $a[1];
+	} );
+	foreach ( array_slice( $slow, 0, 5 ) as $s ) {
+		m_log( sprintf( 'PROFILO   lenta %5.1f ms: %s', $s[1] * 1000, substr( (string) preg_replace( '/\s+/', ' ', (string) $s[0] ), 0, 110 ) ) );
+	}
+}
+
 function m_table(): void {
 	m_log( '' );
 	m_log( '| Voce | 1ª volta (ms) | Migliore (ms) | Query | Memoria di picco (MB) | Byte in uscita | Nota |' );
@@ -596,6 +652,101 @@ if ( class_exists( 'AssociazioneSemplice\\TextsEngine' ) && '' !== $html_rubrica
 	$reset();
 }
 
+m_profile( 'Bacheca', array( 'AssociazioneSemplice\\Admin\\DashboardPage', 'render' ), array( 'page' => 'asem' ) );
+m_profile( 'Elenco corsi ed eventi', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_list' ), array( 'page' => 'asem-activities' ) );
+if ( $course_id ) {
+	m_profile( 'Scheda corso', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_detail' ), array( 'page' => 'asem-activity', 'id' => (string) $course_id ) );
+}
+if ( $ev_id ) {
+	m_profile( 'Scheda evento', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_detail' ), array( 'page' => 'asem-activity', 'id' => (string) $ev_id ) );
+}
+/** Tempo e memoria di ogni blocco della scheda di un'attività (per capire dove va il tempo oltre alle query). Non fa mai fallire il job. */
+function m_parts( string $label, int $activity_id, array $methods ): void {
+	$act = Plugin::activities()->get( $activity_id );
+	if ( ! $act ) {
+		return;
+	}
+	$year = \AssociazioneSemplice\SocialYear::from_label( $act['social_year'], Settings::start_month() );
+	$back = 'x';
+	$_GET = array( 'page' => 'asem-activity', 'id' => (string) $activity_id );
+	foreach ( $methods as $m ) {
+		try {
+			$rm = new \ReflectionMethod( 'AssociazioneSemplice\\Admin\\ActivitiesPage', $m );
+			$rm->setAccessible( true );
+			$n    = $rm->getNumberOfParameters();
+			$args = array( $act, $year, $back );
+			$args = 1 === $n ? array( $act ) : ( 2 === $n ? array( $act, $back ) : $args );
+			gc_collect_cycles();
+			memory_reset_peak_usage();
+			$m0 = memory_get_usage();
+			$t0 = microtime( true );
+			ob_start();
+			$rm->invokeArgs( null, $args );
+			$out = (string) ob_get_clean();
+			m_log( sprintf( 'PARTE %s::%s %d ms, picco +%.1f MB, %d byte', $label, $m, round( ( microtime( true ) - $t0 ) * 1000 ), ( memory_get_peak_usage() - $m0 ) / 1048576, strlen( $out ) ) );
+		} catch ( \Throwable $e ) {
+			while ( ob_get_level() > 1 ) {
+				ob_end_clean();
+			}
+			m_log( 'PARTE ' . $label . '::' . $m . ' errore ' . $e->getMessage() );
+		}
+	}
+}
+$all_light = Plugin::people()->search_light();
+$t0        = microtime( true );
+for ( $i = 0; $i < 10; $i++ ) {
+	$sel = \AssociazioneSemplice\Admin\Ui::person_select( 'x', $all_light, null, '— scegli —', 'asem-x' );
+}
+m_log( sprintf( 'PARTE prova::person_select di %d persone, 10 volte: %d ms (%d byte ciascuna)', count( $all_light ), round( ( microtime( true ) - $t0 ) * 1000 ), strlen( $sel ) ) );
+$t0 = microtime( true );
+for ( $i = 0; $i < 10; $i++ ) {
+	$kses = wp_kses( $sel . ' <button class="button button-small">Cambia</button>', \AssociazioneSemplice\Html::allowed() );
+}
+m_log( sprintf( 'PARTE prova::wp_kses della stessa scelta, 10 volte: %d ms (uguale all\'originale: %s)', round( ( microtime( true ) - $t0 ) * 1000 ), $kses === $sel . ' <button class="button button-small">Cambia</button>' ? 'sì' : 'no' ) );
+$row0 = $all_light[0];
+foreach ( array(
+	'Edition::has(levels) x3000'   => function () {
+		\AssociazioneSemplice\Edition::has( 'levels' );
+	},
+	'Levels::fee_for x3000'        => function () use ( $row0 ) {
+		\AssociazioneSemplice\Levels::fee_for( $row0 );
+	},
+	'Limits::flag x3000'           => function () {
+		\AssociazioneSemplice\Limits::flag( 'membership_on_balance' );
+	},
+	'Settings::get x3000'          => function () {
+		Settings::get( 'membership_fee_cents' );
+	},
+) as $b_name => $b_fn ) {
+	$t0 = microtime( true );
+	for ( $i = 0; $i < 3000; $i++ ) {
+		$b_fn();
+	}
+	m_log( sprintf( 'PARTE prova::%s %d ms', $b_name, round( ( microtime( true ) - $t0 ) * 1000 ) ) );
+}
+$t0 = microtime( true );
+Plugin::people()->search_light( array(), true );
+m_log( sprintf( 'PARTE prova::search_light con scadenza %d ms', round( ( microtime( true ) - $t0 ) * 1000 ) ) );
+$_GET = array( 'page' => 'asem' );
+foreach ( array( 'payments_due', 'renewals', 'expected_guests', 'applications', 'adults_to_invite', 'incomplete_cards', 'overdue_loans', 'quick_cash', 'quick_enroll' ) as $m_name ) {
+	$rm = new \ReflectionMethod( 'AssociazioneSemplice\\Admin\\DashboardPage', $m_name );
+	$rm->setAccessible( true );
+	gc_collect_cycles();
+	memory_reset_peak_usage();
+	$m0 = memory_get_usage();
+	$q0 = $wpdb->num_queries;
+	$t0 = microtime( true );
+	ob_start();
+	$rm->invoke( null );
+	$out = (string) ob_get_clean();
+	m_log( sprintf( 'PARTE bacheca::%s %d ms, %d query, picco +%.1f MB, %d byte', $m_name, round( ( microtime( true ) - $t0 ) * 1000 ), $wpdb->num_queries - $q0, ( memory_get_peak_usage() - $m0 ) / 1048576, strlen( $out ) ) );
+}
+if ( $course_id ) {
+	m_parts( 'corso', (int) $course_id, array( 'course_left', 'course_enrolled', 'edit_card', 'lessons_card', 'calendar_card', 'notices_card', 'participants_card', 'copy_card', 'delete_card' ) );
+}
+if ( $ev_id ) {
+	m_parts( 'evento', (int) $ev_id, array( 'sessions_summary', 'sessions_calendar', 'sessions_list', 'sessions_left', 'edit_card', 'calendar_card', 'notices_card', 'participants_card', 'copy_card', 'delete_card' ) );
+}
 m_table();
 m_log( sprintf( 'Misure finite in %.1f s (generatore compreso).', microtime( true ) - $T0 ) );
 

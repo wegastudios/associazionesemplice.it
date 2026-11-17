@@ -1173,13 +1173,95 @@ class PeopleService {
 	/**
 	 * Quanto manca per completare la quota di quell'anno quando si paga a rate («tessera solo al saldo» attivo e almeno un versamento già fatto); altrimenti 0.
 	 */
-	public function membership_missing( array $person, string $year_label ): int {
+	public function membership_missing( array $person, string $year_label, ?int $paid = null ): int {
 		if ( ! Limits::flag( 'membership_on_balance' ) ) {
 			return 0;
 		}
 		$fee  = Levels::fee_for( $person );
-		$paid = $this->membership_paid( (int) $person['id'], $year_label );
+		$paid = $paid ?? $this->membership_paid( (int) $person['id'], $year_label ); // $paid: già letto per più persone insieme (vedi membership_paid_many)
 		return $fee > 0 && $paid > 0 ? max( 0, $fee - $paid ) : 0;
+	}
+
+	/**
+	 * Quanto è stato incassato per la quota associativa, per più persone insieme (ognuna col suo anno della tessera): lo stesso numero di {@see membership_paid()}
+	 * con una sola interrogazione. Chi non ha versato nulla vale 0.
+	 *
+	 * @param array<int,string> $year_of persona => anno della tessera
+	 * @return array<int,int> persona => versato
+	 */
+	public function membership_paid_many( array $year_of ): array {
+		$out = array_fill_keys( array_map( 'intval', array_keys( $year_of ) ), 0 );
+		if ( ! $year_of ) {
+			return $out;
+		}
+		$db    = $this->db();
+		$years = array_values( array_unique( array_map( 'strval', $year_of ) ) );
+		$in_y  = implode( ',', array_map( function ( $y ) use ( $db ) {
+			return $db->prepare( '%s', $y );
+		}, $years ) );
+		$rows  = $db->get_results(
+			'SELECT t.person_id, t.social_year, SUM(t.amount_cents + t.discount_cents) AS s FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.person_id IN (" . implode( ',', array_map( 'intval', array_keys( $year_of ) ) ) . ") AND t.social_year IN ($in_y) AND t.type = 'income' AND t.voided_at IS NULL AND c.kind = 'membership' GROUP BY t.person_id, t.social_year", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi e anni già preparati
+			ARRAY_A
+		) ?: array();
+		foreach ( $rows as $r ) {
+			$pid = (int) $r['person_id'];
+			if ( isset( $year_of[ $pid ] ) && (string) $year_of[ $pid ] === (string) $r['social_year'] ) {
+				$out[ $pid ] = (int) $r['s'];
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Per quale anno paga la quota (e quale anno è in omaggio) ciascuna delle persone date: lo stesso risultato di {@see membership_plan()} per ognuna,
+	 * ma le tessere di tutte si leggono insieme (e solo quando il rinnovo è aperto: fuori dal periodo di rinnovo non serve nessuna lettura).
+	 *
+	 * @param int[] $ids
+	 * @return array<int,array{year:string,free:?string}>
+	 */
+	public function membership_plans_many( array $ids, string $date ): array {
+		$ids  = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
+		$cur  = Settings::membership_year( $date );
+		$open = MembershipRules::renewal_open( $cur, $date, Settings::renewal_days() );
+		$have = array();
+		$prev = $cur->previous()->label();
+		if ( $open && $ids ) {
+			$db = $this->db();
+			foreach ( $db->get_results(
+				$db->prepare( 'SELECT DISTINCT person_id, social_year FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL AND social_year IN (%s, %s) AND person_id IN (' . implode( ',', $ids ) . ')', $cur->label(), $prev ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- id interi
+				ARRAY_A
+			) ?: array() as $r ) {
+				$have[ (int) $r['person_id'] ][ (string) $r['social_year'] ] = true;
+			}
+		}
+		$out = array();
+		foreach ( $ids as $id ) {
+			$out[ $id ] = MembershipRules::plan( $cur, $open, $open && isset( $have[ $id ][ $cur->label() ] ), $open && isset( $have[ $id ][ $prev ] ) );
+		}
+		return $out;
+	}
+
+	/**
+	 * La scadenza della tessera (vedi {@see active_until()}) per più persone insieme, con una sola interrogazione.
+	 *
+	 * @param int[] $ids
+	 * @return array<int,?string> persona => scadenza (null se non ha tessere); chi non c'è più in anagrafica manca
+	 */
+	public function active_until_many( array $ids, ?string $date = null ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
+		if ( ! $ids ) {
+			return array();
+		}
+		$date = $date ?? Db::today();
+		$db   = $this->db();
+		$out  = array();
+		foreach ( $db->get_results(
+			$db->prepare( 'SELECT p.id, ' . $this->until_sql() . ' AS until_on FROM ' . Db::t( 'people' ) . ' p WHERE p.id IN (' . implode( ',', $ids ) . ')', $date, $date, $date ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- id interi
+			ARRAY_A
+		) ?: array() as $r ) {
+			$out[ (int) $r['id'] ] = $r['until_on'] ? (string) $r['until_on'] : null;
+		}
+		return $out;
 	}
 
 	/**

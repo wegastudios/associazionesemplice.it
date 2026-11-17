@@ -204,7 +204,8 @@ class ActivityService {
 				$rows[] = array( 'date' => $s['date'], 'from' => (string) $s['start'], 'to' => (string) $s['end'], 'recurring' => false, 'end' => '', 'repeat' => 'weekly' );
 				continue;
 			}
-			$date   = Schedule::weekly_dates( $s['from'] ?: ( $a['starts_on'] ?: $default_from ), '9999-12-31', (int) $s['day'] );
+			$from   = (string) ( $s['from'] ?: ( $a['starts_on'] ?: $default_from ) );
+			$date   = Schedule::weekly_dates( $from, ( new \DateTimeImmutable( $from ) )->modify( '+6 days' )->format( 'Y-m-d' ), (int) $s['day'] ); // serve solo il primo giorno giusto: cade sempre nei sette giorni da $from
 			$rows[] = array( 'date' => $date ? $date[0] : $default_from, 'from' => (string) $s['start'], 'to' => (string) $s['end'], 'recurring' => true, 'end' => (string) ( $s['until'] ?: '' ), 'repeat' => 'weekly' );
 		}
 		return $rows;
@@ -1209,6 +1210,121 @@ class ActivityService {
 		return (int) $this->db()->get_var( $this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND end_month IS NULL', $activity_id ) );
 	}
 
+	/**
+	 * Partecipanti di più attività insieme: gli stessi numeri di {@see active_participants()} con due interrogazioni in tutto (una per gli eventi, una per i corsi)
+	 * invece di due per attività. Servono alle righe con i totali (Bacheca, elenco delle attività).
+	 *
+	 * @param array[] $activities righe di attività (con id e kind)
+	 * @return array<int,int> attività => partecipanti
+	 */
+	public function active_participants_many( array $activities ): array {
+		$out    = array();
+		$events = array();
+		$course = array();
+		foreach ( $activities as $a ) {
+			$id         = (int) $a['id'];
+			$out[ $id ] = 0;
+			if ( ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
+				$events[] = $id;
+			} else {
+				$course[] = $id;
+			}
+		}
+		if ( $events ) {
+			foreach ( $this->db()->get_results(
+				'SELECT s.activity_id, COUNT(DISTINCT b.person_id) AS n FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . " s ON s.id = b.session_id AND s.cancelled_at IS NULL WHERE b.status = 'booked' AND s.activity_id IN (" . implode( ',', $events ) . ') GROUP BY s.activity_id', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+				ARRAY_A
+			) ?: array() as $r ) {
+				$out[ (int) $r['activity_id'] ] = (int) $r['n'];
+			}
+		}
+		if ( $course ) {
+			foreach ( $this->db()->get_results(
+				'SELECT activity_id, COUNT(*) AS n FROM ' . Db::t( 'enrollments' ) . ' WHERE end_month IS NULL AND activity_id IN (' . implode( ',', $course ) . ') GROUP BY activity_id', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+				ARRAY_A
+			) ?: array() as $r ) {
+				$out[ (int) $r['activity_id'] ] = (int) $r['n'];
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Le date di più attività insieme, come {@see sessions()} (stesso ordine e stesse colonne) ma con una sola interrogazione.
+	 *
+	 * @param int[] $activity_ids
+	 * @return array<int,array[]> attività => date
+	 */
+	public function sessions_many( array $activity_ids ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $activity_ids ) ) ) );
+		$out = array_fill_keys( $ids, array() );
+		if ( ! $ids ) {
+			return $out;
+		}
+		foreach ( $this->db()->get_results(
+			'SELECT s.*, (SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " b WHERE b.session_id = s.id AND b.status = 'booked') AS booked_count "
+			. 'FROM ' . Db::t( 'sessions' ) . ' s WHERE s.activity_id IN (' . implode( ',', $ids ) . ') ORDER BY s.activity_id, s.session_date, s.start_time, s.id', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+			ARRAY_A
+		) ?: array() as $r ) {
+			$out[ (int) $r['activity_id'] ][] = $r;
+		}
+		return $out;
+	}
+
+	/**
+	 * Le prenotazioni di più date insieme, come {@see bookings_for_session()} (stesse colonne, stessa situazione dei pagamenti, attive per prime) con due interrogazioni in tutto.
+	 *
+	 * @param int[] $session_ids
+	 * @return array<int,array[]> data => prenotazioni
+	 */
+	public function bookings_for_sessions( array $session_ids ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $session_ids ) ) ) );
+		$out = array_fill_keys( $ids, array() );
+		if ( ! $ids ) {
+			return $out;
+		}
+		$in   = implode( ',', $ids );
+		$rows = $this->db()->get_results(
+			'SELECT b.*, p.first_name, p.last_name, p.type, p.card_number, p.email, p.host_person_id, p.phone AS person_phone FROM ' . Db::t( 'bookings' ) . ' b '
+			. 'JOIN ' . Db::t( 'people' ) . " p ON p.id = b.person_id AND p.deleted_at IS NULL WHERE b.session_id IN ($in) " // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+			. "ORDER BY b.session_id, (b.status = 'booked') DESC, p.last_name, p.first_name, b.person_id",
+			ARRAY_A
+		) ?: array();
+		$paid = array();
+		foreach ( $this->db()->get_results(
+			'SELECT session_id, person_id, SUM(amount_cents + discount_cents) AS s FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id IN ($in) GROUP BY session_id, person_id", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+			ARRAY_A
+		) ?: array() as $r ) {
+			$paid[ (int) $r['session_id'] ][ (int) $r['person_id'] ] = (int) $r['s'];
+		}
+		foreach ( $rows as $b ) {
+			$out[ (int) $b['session_id'] ][] = $this->booking_row( $b, $paid[ (int) $b['session_id'] ][ (int) $b['person_id'] ] ?? 0 );
+		}
+		return $out;
+	}
+
+	/**
+	 * Gli iscritti in corso (iscrizione non finita prima del mese $ym) di più corsi insieme, nell'ordine di persona di ciascun corso.
+	 *
+	 * @param int[] $activity_ids
+	 * @return array<int,int[]> corso => id delle persone
+	 */
+	public function current_enrollees_many( array $activity_ids, string $ym ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $activity_ids ) ) ) );
+		$out = array_fill_keys( $ids, array() );
+		if ( ! $ids ) {
+			return $out;
+		}
+		$until = $this->db()->prepare( ' AND (end_month IS NULL OR end_month >= %s)', $ym );
+		foreach ( $this->db()->get_results(
+			'SELECT activity_id, person_id FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id IN (' . implode( ',', $ids ) . ')' . $until . ' ORDER BY activity_id, person_id', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi e condizione già preparata
+			ARRAY_A
+		) ?: array() as $r ) {
+			$out[ (int) $r['activity_id'] ][] = (int) $r['person_id'];
+		}
+		return $out;
+	}
+
 	// ---------- Corsi: situazione pagamenti ----------
 
 	/** @return array ['activity_id' => ['person_id' => ['YYYY-MM' => centesimi]]] (solo incassi senza data di evento) */
@@ -1271,8 +1387,44 @@ class ActivityService {
 			),
 			ARRAY_A
 		) ?: array();
-		$paid = $this->paid_map( array( $activity_id ) );
-		$out  = array();
+		return $this->status_rows( $activity, $rows, $this->paid_map( array( $activity_id ) ) );
+	}
+
+	/**
+	 * Come {@see status_for_activity()} per più corsi insieme (le righe di attività sono quelle già lette, ad esempio da for_year): tre interrogazioni in tutto
+	 * invece di tre per corso. Stesso risultato per ogni corso, stesso ordine degli iscritti.
+	 *
+	 * @param array[] $activities righe di attività
+	 * @return array<int,array[]> corso => iscritti con la situazione pagamenti
+	 */
+	public function status_for_activities( array $activities ): array {
+		$by_id = array();
+		foreach ( $activities as $a ) {
+			$by_id[ (int) $a['id'] ] = $a;
+		}
+		$out = array_fill_keys( array_keys( $by_id ), array() );
+		if ( ! $by_id ) {
+			return $out;
+		}
+		$rows = array();
+		foreach ( $this->db()->get_results(
+			'SELECT e.*, p.first_name, p.last_name, p.type, p.card_number, p.email, p.phone, p.host_person_id FROM ' . Db::t( 'enrollments' ) . ' e '
+			. 'JOIN ' . Db::t( 'people' ) . ' p ON p.id = e.person_id AND p.deleted_at IS NULL WHERE e.activity_id IN (' . implode( ',', array_keys( $by_id ) ) . ') ORDER BY e.activity_id, e.person_id', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+			ARRAY_A
+		) ?: array() as $e ) {
+			$rows[ (int) $e['activity_id'] ][] = $e;
+		}
+		$paid = $this->paid_map( array_keys( $by_id ) );
+		foreach ( $by_id as $id => $a ) {
+			$out[ $id ] = $this->status_rows( $a, $rows[ $id ] ?? array(), $paid );
+		}
+		return $out;
+	}
+
+	/** Le righe degli iscritti di un corso con la situazione pagamenti, attivi per primi (in comune a {@see status_for_activity()} e {@see status_for_activities()}). */
+	private function status_rows( array $activity, array $rows, array $paid ): array {
+		$activity_id = (int) $activity['id'];
+		$out         = array();
 		foreach ( $rows as $e ) {
 			$out[] = array(
 				'enrollment' => $e,

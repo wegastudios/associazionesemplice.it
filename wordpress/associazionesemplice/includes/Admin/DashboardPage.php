@@ -350,17 +350,56 @@ final class DashboardPage {
 		$people = Plugin::people();
 		$today  = current_time( 'Y-m-d' );
 		$by     = array(); // person_id => [person, what[], cents]
-		$member_due = function ( array $p ) use ( $people, $today ) {
+		// Tutto ciò che serve per decidere chi deve la quota si legge prima, per tutti insieme (scadenza della tessera, anno della quota, già versato):
+		// le stesse risposte di una lettura per persona, con poche interrogazioni in tutto.
+		$light     = $people->search_light( array(), true ); // basta una riga leggera: la scheda intera serve solo alle prime 12 voci mostrate
+		$courses   = array_values( array_filter( $acts->for_year( \AssociazioneSemplice\Settings::social_year()->label() ), function ( $a ) {
+			return 'course' === $a['kind'];
+		} ) );
+		$statuses  = $acts->status_for_activities( $courses );
+		$enrollees = array();
+		foreach ( $courses as $a ) {
+			foreach ( $statuses[ (int) $a['id'] ] ?? array() as $s ) {
+				if ( null === $s['enrollment']['end_month'] && $s['summary']['unpaid_months'] ) {
+					$enrollees[] = (int) $s['enrollment']['person_id'];
+				}
+			}
+		}
+		$full_of  = $people->get_many( $enrollees );
+		$until_of = $people->active_until_many( $enrollees, $today ); // chi viene dalle righe leggere ha già la scadenza
+		$cand     = $enrollees;
+		foreach ( $light as $p ) {
+			if ( empty( $p['active_until'] ) ) {
+				$cand[] = (int) $p['id'];
+			}
+		}
+		$plans   = $people->membership_plans_many( $cand, $today );
+		$paid_of = null; // senza «tessera solo al saldo» non serve leggere i versamenti
+		if ( \AssociazioneSemplice\Limits::flag( 'membership_on_balance' ) ) {
+			$years = array();
+			foreach ( $plans as $pid => $pl ) {
+				$years[ $pid ] = $pl['year'];
+			}
+			$paid_of = $people->membership_paid_many( $years );
+		}
+		$member_due = function ( array $p ) use ( $people, $today, $until_of, $plans, $paid_of ) {
 			$fee = \AssociazioneSemplice\Levels::fee_for( $p );
 			if ( $fee <= 0 ||! MemberType::is_member( $p['type'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) ) {
 				return null;
 			}
-			$until = $people->active_until( (int) $p['id'], $today );
+			$pid = (int) $p['id'];
+			if ( array_key_exists( $pid, $until_of ) ) {
+				$until = $until_of[ $pid ];
+			} elseif ( array_key_exists( 'active_until', $p ) ) {
+				$until = $p['active_until']; // riga leggera: la scadenza è già calcolata con la stessa regola di active_until()
+			} else {
+				$until = $people->active_until( $pid, $today );
+			}
 			if ( $until && $until >= $today ) {
 				return null; // tessera valida
 			}
-			$plan    = $people->membership_plan( (int) $p['id'], $today );
-			$missing = $people->membership_missing( $p, $plan['year'] ); // quota a rate: manca solo il residuo
+			$plan    = $plans[ $pid ] ?? $people->membership_plan( $pid, $today );
+			$missing = $people->membership_missing( $p, $plan['year'], null === $paid_of ? null : ( $paid_of[ $pid ] ?? null ) ); // quota a rate: manca solo il residuo
 			if ( $missing > 0 ) {
 				return array( 'Quota associativa ' . $plan['year'] . ' (versati ' . \AssociazioneSemplice\Money::format( $fee - $missing ) . ' su ' . \AssociazioneSemplice\Money::format( $fee ) . ')', $missing );
 			}
@@ -375,21 +414,18 @@ final class DashboardPage {
 			$by[ $pid ]['cents'] += $cents;
 		};
 		// nuovi soci che non hanno mai pagato la quota
-		foreach ( $people->search_light( array(), true ) as $p ) { // basta una riga leggera: la scheda intera serve solo alle prime 12 voci mostrate
+		foreach ( $light as $p ) {
 			if ( empty( $p['active_until'] ) && ( $m = $member_due( $p ) ) ) {
 				$add( $p, $m[0], $m[1] );
 			}
 		}
 		// iscritti ai corsi con mensilità dovute: se la tessera non è valida, si aggiunge anche la quota associativa
-		foreach ( $acts->for_year( \AssociazioneSemplice\Settings::social_year()->label() ) as $a ) {
-			if ( 'course' !== $a['kind'] ) {
-				continue;
-			}
-			foreach ( $acts->status_for_activity( (int) $a['id'] ) as $s ) {
+		foreach ( $courses as $a ) {
+			foreach ( $statuses[ (int) $a['id'] ] ?? array() as $s ) {
 				if ( null !== $s['enrollment']['end_month'] || ! $s['summary']['unpaid_months'] ) {
 					continue;
 				}
-				$p = $people->get( (int) $s['enrollment']['person_id'] );
+				$p = $full_of[ (int) $s['enrollment']['person_id'] ] ?? null;
 				if ( ! $p ) {
 					continue;
 				}
