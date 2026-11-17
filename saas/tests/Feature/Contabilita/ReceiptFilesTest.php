@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
+use App\Modules\Contabilita\Contracts\ReceiptIssued;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Receipts\ReceiptFiles;
 use App\Modules\Contabilita\Receipts\ReceiptPdf;
@@ -11,6 +12,7 @@ use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 
 // Ricevute definitive: il PDF si fissa all'emissione e da lì si serve sempre lo stesso file. Dati di prova inventati.
@@ -126,6 +128,25 @@ it('il PDF rifatto dagli stessi dati è identico byte per byte', function (): vo
     $a = $this->orgContext()->run($this->org->id, fn () => app(ReceiptPdf::class)->build($this->receipt)['pdf']);
     $b = $this->orgContext()->run($this->org->id, fn () => app(ReceiptPdf::class)->build($this->receipt)['pdf']);
     expect($a)->toBe($b);
+});
+
+it('il lavoro programmato su tutte le associazioni salta quelle sospese', function (): void {
+    Event::fake([ReceiptIssued::class]);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $p = Person::create(['first_name' => 'Anna', 'last_name' => 'Verdi', 'tax_code' => 'VRDNNA85B41H501X', 'birth_date' => '1985-02-01']);
+        app(MembershipService::class)->renewWithPayment($p->id, Account::query()->sole()->id, 3000);
+    });
+    DB::connection('pgsql')->table('core.orgs')->where('id', $this->org->id)->update(['status' => 'suspended']);
+
+    $this->artisan('saas:receipts:fix')->assertSuccessful();
+    expect($this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->unfixedCount()))->toBe(1);
+});
+
+it('la verifica dell\'anno dà lo stato di ogni ricevuta con una sola lettura dell\'elenco', function (): void {
+    $year = (int) $this->orgContext()->run($this->org->id, fn () => DB::table('app.receipts')->value('year'));
+    $rows = $this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->overview($year));
+
+    expect($rows)->toHaveCount(1)->and($rows[0]['status'])->toBe('ok');
 });
 
 it('il documento di una ricevuta fissata non rifà il PDF: numero e intestatario vengono dall\'emissione', function (): void {
