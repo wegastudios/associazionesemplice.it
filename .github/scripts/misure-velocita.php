@@ -733,12 +733,6 @@ m_profile( 'Elenco pubblico delle attività (visitatore)', function () {
 	echo \AssociazioneSemplice\Frontend\Views::activities( array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	wp_set_current_user( $uid );
 } );
-$m_uid = get_current_user_id();
-wp_set_current_user( 0 );
-foreach ( explode( '<article', \AssociazioneSemplice\Frontend\Views::activities( array() ) ) as $m_i => $m_card ) { // PROVVISORIO: confronto dell'HTML carta per carta
-	m_log( 'HTMLDUMP ' . $m_i . ' ' . strlen( $m_card ) . ' ' . str_replace( "\n", ' ', $m_card ) );
-}
-wp_set_current_user( $m_uid );
 $_GET = array( 'page' => 'asem' );
 foreach ( array( 'payments_due', 'renewals', 'expected_guests', 'applications', 'adults_to_invite', 'incomplete_cards', 'overdue_loans', 'quick_cash', 'quick_enroll' ) as $m_name ) {
 	$rm = new \ReflectionMethod( 'AssociazioneSemplice\\Admin\\DashboardPage', $m_name );
