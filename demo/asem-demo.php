@@ -94,7 +94,7 @@ $asem_demo_blocked = array(
 		'asem_reset_private_files', 'asem_reset_texts', 'asem_update_account', 'asem_update_api', 'asem_update_check', 'asem_update_hash', 'asem_update_session',
 	),
 	'Nella demo il ripristino di una copia è bloccato.' => array( 'asem_backup_restore' ),
-	'Nella demo l\'importazione da file è bloccata: i dati che vedi sono di esempio.' => array( 'asem_import_preview', 'asem_import_apply', 'asem_import_person', 'asem_import_tx', 'asem_import_undo', 'asem_import_language', 'asem_import_texts', 'asem_tec_import' ),
+	'Nella demo l\'importazione da file è bloccata: i dati che vedi sono di esempio.' => array( 'asem_import_preview', 'asem_import_apply', 'asem_import_person', 'asem_import_tx', 'asem_import_undo', 'asem_import_continue', 'asem_import_stop', 'asem_import_language', 'asem_import_texts', 'asem_tec_import' ),
 	'Nella demo i dati non si azzerano da qui: si azzerano da soli ogni notte.' => array( 'asem_reset_all' ),
 );
 // Elenco delle azioni PERMESSE (non solo di quelle vietate): ogni azione con prefisso asem_ che arriva da admin-post.php o admin-ajax.php e non è qui sotto si ferma, quindi un'azione
