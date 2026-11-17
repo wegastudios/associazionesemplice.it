@@ -5520,7 +5520,7 @@ $st_ms( $st_e, 'T2', $st_day( 2 ), $st_day( 365 ) );
 $st_ids[] = $st_f = $st_mk( 'Sospeso' ); // sospeso con la tessera valida
 $st_ms( $st_f, 'T1', $st_day( -10 ), $st_day( 100 ) );
 $wpdb->update( Db::t( 'people' ), array( 'suspended_at' => Db::now() ), array( 'id' => $st_f ) );
-$st_ids[] = $st_g = $st_mk( 'Ospite', 'guest' );
+$st_ids[] = $st_g = $people->create( array( 'type' => 'guest', 'first_name' => 'Ospite', 'last_name' => 'Zzstato', 'email' => 'ospite.zzstato@example.com', 'phone' => '3339990077', 'host_person_id' => $st_a ) );
 $st_ms( $st_g, 'T1', $st_day( -10 ), $st_day( 100 ) );
 $st_ids[] = $st_h = $st_mk( 'Tutore', 'guardian' );
 $st_ids[] = $st_i = $st_mk( 'Consenso', 'volunteer' );
