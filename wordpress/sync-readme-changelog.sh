@@ -15,8 +15,9 @@ grep -q '^== Changelog ==' "$readme" || { echo "$readme non ha la sezione Change
 tmp="$(mktemp)"; new="$(mktemp)"; trap 'rm -f "$tmp" "$new"' EXIT
 # 1) voci nuove, dal log in italiano: «## 1.3.18» + «- voce» → «= 1.3.18 =» + «* voce»
 tr -d '\r' < "$log" | awk '
-	/^## [0-9]+\.[0-9]+(\.[0-9]+)?[[:space:]]*$/ { v = $2; print ""; print "= " v " ="; next }
-	v != "" && /^- / { sub(/^- /, ""); print "* " $0 }
+	/^## [0-9]+\.[0-9]+(\.[0-9]+)?([[:space:]].*)?$/ { v = $2; print ""; print "= " v " ="; next }
+	v != "" && /^- / { sub(/^- /, ""); print "* " $0; next }
+	v != "" && NF { print }
 ' > "$new"
 # 2) il readme: tutto fino a «== Changelog ==», poi le voci nuove, poi le vecchie che il log non ha
 tr -d '\r' < "$readme" | awk -v newfile="$new" '

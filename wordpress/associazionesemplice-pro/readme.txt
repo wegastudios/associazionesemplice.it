@@ -39,14 +39,14 @@ The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, 
 == Changelog ==
 
 = 1.3.13 =
-* Prima di aggiornare conviene fare una copia di sicurezza. Richiede il plugin gratuito 1.3.26.
-* Stripe: nel pannello di Stripe, tra gli eventi del webhook vanno aggiunti anche charge.refunded e charge.dispute.created. Così un rimborso fatto direttamente da Stripe e una contestazione si riflettono nel plugin: il pagamento passa a «da controllare», compare l'avviso «Pagamenti online da controllare» in Bacheca e il fatto resta nel registro; non si rimborsa né si annulla nulla da soli
-* Licenza: la chiave è salvata in forma cifrata e nel campo si vedono solo le ultime cifre. Se cambiano i codici di sicurezza di WordPress o il sito viene spostato, va reinserita in Impostazioni → Licenza: il plugin lo segnala in Bacheca e nel frattempo il Pro non si spegne
-* Licenza: un «licenza non valida» spegne il Pro solo se la risposta è firmata e confermata in due giorni diversi, così un errore passeggero non lo disattiva
-* Aggiornamenti: il Pro viene aggiornato solo dal sito associazionesemplice.it, con pacchetti firmati e controllo di data e di versione minima
-* Pagamenti online: l'incasso si registra una sola volta; i pagamenti scaduti con un riferimento del gestore si ricontrollano una volta al giorno per 30 giorni per registrare un incasso arrivato in ritardo; se un passo dopo l'incasso non riesce il pagamento resta «da controllare»
-* Readme: elenco completo dei servizi esterni contattati (pagamenti, newsletter, SMS, notifiche push, Wallet)
-* Disinstallazione più completa (lavori programmati, chiave di licenza)
+* Nuovo: i rimborsi fatti dal pannello di Stripe e le contestazioni si riflettono nel plugin: il pagamento passa a «da controllare»
+* Sicurezza: chiave di licenza cifrata; la licenza si spegne solo con un «non valida» firmato e confermato in due giorni diversi
+* Sicurezza: il Pro si aggiorna solo da associazionesemplice.it, con pacchetti firmati
+* Altro: l'incasso online si registra una sola volta e i pagamenti scaduti si ricontrollano ogni giorno per 30 giorni; richiede il plugin gratuito 1.3.26
+Da fare dopo l'aggiornamento:
+* Stripe: aggiungi al webhook gli eventi charge.refunded e charge.dispute.created
+* Se sposti il sito, reinserisci la chiave di licenza in Impostazioni → Licenza
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.12 =
 * Prima di aggiornare fai una copia di sicurezza. Dopo l'aggiornamento: 1) inserisci email e telefono della segreteria e i dati dell'associazione che la banda gialla in alto ti chiede (forma, codice fiscale, sede, RUNTS, PEC, partita IVA: se l'associazione non ce l'ha, spunta «non ce l'ha»); 2) i certificati medici già caricati vengono cifrati da soli dopo l'aggiornamento; per gli altri file già caricati premi «Cifra i file già caricati» in Impostazioni → Copia di sicurezza. I file nuovi si salvano già cifrati; 3) nella stessa pagina trovi la frase che riapre i documenti: conservala fuori dal sito.

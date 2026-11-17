@@ -52,10 +52,10 @@ final class VersionTest extends TestCase {
 		foreach ( array( 'associazionesemplice', 'associazionesemplice-pro' ) as $dir ) {
 			$log    = str_replace( "\r", '', (string) file_get_contents( $root . '/' . $dir . '/CHANGELOG.md' ) );
 			$readme = str_replace( "\r", '', (string) file_get_contents( $root . '/' . $dir . '/readme.txt' ) );
-			preg_match( '/^## (\d+\.\d+\.\d+)\s*\n((?:- .*\n?)+)/m', $log, $l );
+			preg_match( '/^## (\d+\.\d+\.\d+)[^\n]*\n((?:.+\n?)+)/m', $log, $l );
 			$this->assertNotEmpty( $l, "$dir: manca la voce più recente nel log" );
 			$expected = preg_replace( '/^- /m', '* ', trim( $l[2] ) );
-			preg_match( '/^= ' . preg_quote( $l[1], '/' ) . ' =\s*\n((?:\* .*\n?)+)/m', $readme, $r );
+			preg_match( '/^= ' . preg_quote( $l[1], '/' ) . ' =\s*\n((?:.+\n?)+)/m', $readme, $r );
 			$this->assertSame( $expected, trim( $r[1] ?? '' ), "$dir: il changelog del readme.txt per {$l[1]} deve ripetere CHANGELOG.md (lancia wordpress/sync-readme-changelog.sh)" );
 		}
 	}
@@ -68,9 +68,9 @@ final class VersionTest extends TestCase {
 			preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', $main, $v );
 			$log = (string) file_get_contents( $root . '/' . $dir . '/CHANGELOG.md' );
 			$this->assertNotSame( '', $log, "$dir: manca CHANGELOG.md" );
-			preg_match( '/^## (\d+\.\d+\.\d+)\s*$/m', $log, $top );
+			preg_match( '/^## (\d+\.\d+\.\d+)(?: – [^\n]*)?\s*$/m', $log, $top );
 			$this->assertSame( $v[1], $top[1] ?? '', "$dir: la prima voce del log deve essere la versione {$v[1]}" );
-			$this->assertMatchesRegularExpression( '/^## ' . preg_quote( $v[1], '/' ) . '\s*\r?\n- /m', $log, "$dir: la voce {$v[1]} ha almeno una riga" );
+			$this->assertMatchesRegularExpression( '/^## ' . preg_quote( $v[1], '/' ) . '(?: – [^\n]*)?\s*\r?\n- /m', $log, "$dir: la voce {$v[1]} ha almeno una riga" );
 		}
 	}
 }
