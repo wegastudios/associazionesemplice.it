@@ -78,8 +78,8 @@ final class CommsPage {
 		}
 
 		// Privacy: consensi e anonimizzazione
-		$people = Plugin::people()->search( array( 'status' => 'noconsent' ) );
-		echo '<h2>Consenso privacy</h2><p>Persone senza consenso registrato: <strong>' . count( $people ) . '</strong> '
+		$n_nc = Plugin::people()->count_people( array( 'status' => 'noconsent' ) ); // basta il conteggio, fatto dal database
+		echo '<h2>Consenso privacy</h2><p>Persone senza consenso registrato: <strong>' . (int) $n_nc . '</strong> '
 			. '<a href="' . esc_url( Ui::url( 'asem-people', array( 'status' => 'noconsent' ) ) ) . '">vedi l\'elenco</a></p>';
 		$cands = Privacy::retention_candidates();
 		echo '<h2>Ex soci da anonimizzare (' . count( $cands ) . ')</h2>';

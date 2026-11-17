@@ -5493,6 +5493,112 @@ foreach ( $pg_ids as $pg_id ) {
 }
 unset( $pg_ids, $pg_all, $pg_p1, $pg_p2, $pg_p9, $pg_desc );
 
+// filtro di stato fatto dal database: stessi soci, stesso ordine, stessi conteggi di quando il filtro si faceva in PHP (che qui resta come riferimento)
+$st_today = Db::today();
+$st_day   = function ( int $d ) use ( $st_today ) {
+	return gmdate( 'Y-m-d', strtotime( $st_today . ( $d >= 0 ? ' +' : ' ' ) . $d . ' days' ) );
+};
+$st_mk = function ( string $first, string $type = 'ordinary' ) use ( $people ) {
+	return $people->create( array( 'type' => $type, 'first_name' => $first, 'last_name' => 'Zzstato', 'email' => strtolower( $first ) . '.zzstato@example.com' ) );
+};
+$st_ms = function ( int $pid, string $label, string $from, string $to ) use ( $wpdb ) {
+	$wpdb->insert( Db::t( 'memberships' ), array( 'person_id' => $pid, 'social_year' => $label, 'valid_from' => $from, 'valid_to' => $to, 'source' => 'manual', 'created_at' => Db::now() ) );
+};
+$st_ids   = array();
+$st_ids[] = $st_a = $st_mk( 'Oggi' ); // scade oggi: ancora valida
+$st_ms( $st_a, 'T1', $st_day( -300 ), $st_today );
+$st_ids[] = $st_b = $st_mk( 'Ieri' ); // scaduta ieri
+$st_ms( $st_b, 'T1', $st_day( -300 ), $st_day( -1 ) );
+$st_ids[] = $st_c = $st_mk( 'Futura' ); // solo una tessera che inizia domani: non è in regola
+$st_ms( $st_c, 'T2', $st_day( 1 ), $st_day( 365 ) );
+$st_ids[] = $st_d = $st_mk( 'Cavallo' ); // anno sociale a cavallo: scade oggi e ha già pagato l'anno dopo
+$st_ms( $st_d, 'T1', $st_day( -300 ), $st_today );
+$st_ms( $st_d, 'T2', $st_day( 1 ), $st_day( 365 ) );
+$st_ids[] = $st_e = $st_mk( 'Scadutafutura' ); // scaduta ieri, con l'anno dopo già pagato ma non ancora iniziato
+$st_ms( $st_e, 'T1', $st_day( -300 ), $st_day( -1 ) );
+$st_ms( $st_e, 'T2', $st_day( 2 ), $st_day( 365 ) );
+$st_ids[] = $st_f = $st_mk( 'Sospeso' ); // sospeso con la tessera valida
+$st_ms( $st_f, 'T1', $st_day( -10 ), $st_day( 100 ) );
+$wpdb->update( Db::t( 'people' ), array( 'suspended_at' => Db::now() ), array( 'id' => $st_f ) );
+$st_ids[] = $st_g = $people->create( array( 'type' => 'guest', 'first_name' => 'Ospite', 'last_name' => 'Zzstato', 'email' => 'ospite.zzstato@example.com', 'phone' => '3339990077', 'host_person_id' => $st_a ) );
+$st_ms( $st_g, 'T1', $st_day( -10 ), $st_day( 100 ) );
+$st_ids[] = $st_h = $st_mk( 'Tutore', 'guardian' );
+$st_ids[] = $st_i = $st_mk( 'Consenso', 'volunteer' );
+$wpdb->update( Db::t( 'people' ), array( 'privacy_consent_at' => Db::now(), 'wp_user_id' => 987654321, 'rules_accepted_at' => Db::now(), 'rules_accepted_version' => '2' ), array( 'id' => $st_i ) );
+$st_ids[] = $st_j = $st_mk( 'Regolavecchia', 'founder' );
+$wpdb->update( Db::t( 'people' ), array( 'privacy_consent_at' => Db::now(), 'rules_accepted_at' => Db::now(), 'rules_accepted_version' => '1' ), array( 'id' => $st_j ) );
+$st_ids[] = $st_k = $st_mk( 'Senzatessera' );
+$st_old = function ( array $rows, string $status ) use ( $st_today ) { // il filtro come era prima, in PHP
+	return array_values(
+		array_filter(
+			$rows,
+			function ( $r ) use ( $status, $st_today ) {
+				if ( 'norules' === $status ) {
+					return \AssociazioneSemplice\Regulation::applies_to( $r ) && ! \AssociazioneSemplice\Regulation::accepted( $r );
+				}
+				if ( 'noconsent' === $status ) {
+					return empty( $r['privacy_consent_at'] );
+				}
+				if ( ! \AssociazioneSemplice\MemberType::is_member( $r['type'] ) && 'noaccess' !== $status ) {
+					return false;
+				}
+				if ( \AssociazioneSemplice\MemberType::GUEST === $r['type'] ) {
+					return false;
+				}
+				if ( 'noaccess' === $status ) {
+					return empty( $r['wp_user_id'] );
+				}
+				if ( 'suspended' === $status ) {
+					return ! empty( $r['suspended_at'] );
+				}
+				$active = ! empty( $r['active_until'] ) && $r['active_until'] >= $st_today;
+				return 'active' === $status ? $active : ! $active;
+			}
+		)
+	);
+};
+$st_rules_before = array( Settings::get( 'rules_enabled' ), Settings::get( 'rules_text' ), Settings::get( 'rules_version' ) );
+$st_same  = true;
+$st_count = 0;
+foreach ( array( 0, 1 ) as $st_rules_on ) {
+	Settings::update( array( 'rules_enabled' => $st_rules_on, 'rules_text' => $st_rules_on ? 'Art. 1 - prova' : '', 'rules_version' => '2' ) );
+	foreach ( array( 'active', 'expired', 'noaccess', 'suspended', 'noconsent', 'norules', 'inactive' ) as $st_status ) {
+		foreach ( array( array(), array( 'type' => 'ordinary' ), array( 'type' => 'guest' ), array( 'q' => 'Zzstato' ), array( 'type' => 'volunteer', 'q' => 'Zzstato' ) ) as $st_extra ) {
+			$st_ref  = array_map( 'intval', array_column( $st_old( $people->search( $st_extra ), $st_status ), 'id' ) );
+			$st_full = $people->search( $st_extra + array( 'status' => $st_status ) );
+			$st_lite = $people->search_light( $st_extra + array( 'status' => $st_status ) );
+			$st_n    = $people->count_people( $st_extra + array( 'status' => $st_status ) );
+			if ( $st_ref !== array_map( 'intval', array_column( $st_full, 'id' ) ) || $st_ref !== array_map( 'intval', array_column( $st_lite, 'id' ) ) || count( $st_ref ) !== $st_n ) {
+				$st_same = false;
+				WP_CLI::log( 'differenza: regolamento ' . $st_rules_on . ', stato ' . $st_status . ', filtri ' . wp_json_encode( $st_extra ) . ': prima ' . count( $st_ref ) . ', ora ' . count( $st_full ) . ' / ' . count( $st_lite ) . ' / ' . $st_n );
+			}
+			$st_count++;
+		}
+	}
+}
+asem_ok( $st_same && 70 === $st_count, 'filtro di stato nel database: con ogni stato, tipo e ricerca, con e senza regolamento, restano gli stessi soci nello stesso ordine e lo stesso conteggio (' . $st_count . ' combinazioni)' );
+$st_names = function ( string $status ) use ( $people ) {
+	return array_map(
+		function ( $r ) {
+			return $r['first_name'];
+		},
+		$people->search( array( 'q' => 'Zzstato', 'status' => $status ) )
+	);
+};
+Settings::update( array( 'rules_enabled' => 1, 'rules_text' => 'Art. 1 - prova', 'rules_version' => '2' ) );
+$st_act = $st_names( 'active' );
+$st_exp = $st_names( 'expired' );
+asem_ok( in_array( 'Oggi', $st_act, true ) && in_array( 'Cavallo', $st_act, true ) && in_array( 'Sospeso', $st_act, true ) && ! in_array( 'Ieri', $st_act, true ) && ! in_array( 'Futura', $st_act, true ) && ! in_array( 'Scadutafutura', $st_act, true ) && ! in_array( 'Ospite', $st_act, true ), 'tessera valida: oggi e l\'anno a cavallo sì, ieri, solo futura e ospiti no, il sospeso con la tessera valida sì' );
+asem_ok( in_array( 'Ieri', $st_exp, true ) && in_array( 'Futura', $st_exp, true ) && in_array( 'Senzatessera', $st_exp, true ) && ! in_array( 'Oggi', $st_exp, true ) && ! in_array( 'Ospite', $st_exp, true ) && ! in_array( 'Tutore', $st_exp, true ), 'tessera scaduta: ieri, solo futura e senza tessera sì, chi è valido oggi, gli ospiti e i tutori no' );
+$st_nr = $st_names( 'norules' );
+asem_ok( in_array( 'Regolavecchia', $st_nr, true ) && in_array( 'Oggi', $st_nr, true ) && ! in_array( 'Consenso', $st_nr, true ) && ! in_array( 'Ospite', $st_nr, true ) && ! in_array( 'Tutore', $st_nr, true ), 'regolamento non accettato: versione vecchia e mai accettato sì, versione attuale, ospiti e tutori no' );
+Settings::update( array( 'rules_enabled' => (int) $st_rules_before[0], 'rules_text' => (string) $st_rules_before[1], 'rules_version' => (string) $st_rules_before[2] ) );
+foreach ( $st_ids as $st_id ) {
+	$wpdb->delete( Db::t( 'people' ), array( 'id' => $st_id ) );
+	$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $st_id ) );
+}
+unset( $st_ids, $st_old, $st_full, $st_lite );
+
 // ---------- Dopo l'iscrizione si apre l'incasso già compilato ----------
 $p_inv   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Iscritto', 'last_name' => 'Senzatessera', 'email' => 'iscritto.senzatessera@example.com' ) );
 $res_inv = $qe->invoke( null, array( 'person_id' => (string) $p_inv, 'target' => 'a:' . $qe_c ) );
