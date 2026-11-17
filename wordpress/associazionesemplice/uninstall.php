@@ -30,6 +30,7 @@ function asem_uninstall_secrets() {
 		}
 	}
 	delete_option( 'asem_vapid' );
+	delete_option( 'asem_license_memo' ); // l'esito ricordato del controllo della licenza
 	// Permessi del plugin rimasti sui ruoli di WordPress altrui (Editore, Autore, ruoli di altri plugin): si tolgono sempre, anche se i dati restano.
 	// Il ruolo Amministratore e i tre ruoli del plugin non si toccano qui: se i dati restano, alla reinstallazione devono ritrovarsi com'erano.
 	foreach ( array_keys( wp_roles()->roles ) as $role_name ) {

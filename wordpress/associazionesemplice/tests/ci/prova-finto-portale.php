@@ -172,7 +172,7 @@ prova_ok( is_wp_error( $r ) && 'asem_update_unavailable' === $r->get_error_code(
 prova_ok( \AssociazioneSemplice\LicenseClient::enabled() && '' !== \AssociazioneSemplice\LicenseClient::normalize_domain( home_url() ), '(d) verifica della licenza attiva per il dominio di prova' );
 function prova_deny( int $iat, array $extra = array() ): array {
 	prova_scenario( array( 'license' => $extra + array( 'rc' => 'EXPIRED', 'iat' => $iat ) ) );
-	return License::sync();
+	return License::sync( true ); // ogni prova è un controllo nuovo: la memoria di 12 ore è provata a parte
 }
 $unpaid = function () {
 	return LicensePolicy::STATUS_UNPAID === License::state()['status'];
