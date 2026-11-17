@@ -481,14 +481,14 @@ asem_ok( null !== asem_throws( function () { ImportJob::step(); } ) && null !== 
 
 // l'azione «Importa» dell'anteprima: parte, e se il tempo finisce si riprende
 $ap_pv  = asem_imp_preview( 'Apa', 550000, 40, '6' );
-$ap_tok = 'imp' . wp_generate_password( 6, false );
+$ap_tok = 'imp' . strtolower( wp_generate_password( 6, false ) );
 set_transient( 'asem_import_' . get_current_user_id() . '_' . $ap_tok, $ap_pv, HOUR_IN_SECONDS );
 $apply = new ReflectionMethod( Admin\Actions::class, 'import_apply' );
 $apply->setAccessible( true );
 add_filter( 'asem_import_budget_seconds', $imp_budget );
 $ar = $apply->invoke( null, array( 'token' => $ap_tok ) );
 remove_filter( 'asem_import_budget_seconds', $imp_budget );
-asem_ok( false !== strpos( $ar[1], 'Importazione in corso: elaborate 1 righe su' ) && false === get_transient( 'asem_import_' . get_current_user_id() . '_' . $ap_tok ) && null !== ImportJob::current(), 'azione «Importa»: scrive il primo giro, poi l\'anteprima non serve più e si riprende dall\'avanzamento' );
+asem_ok( false !== strpos( $ar[1], 'Importazione in corso: elaborate 1 righe su' ) && false === get_transient( 'asem_import_' . get_current_user_id() . '_' . $ap_tok ) && null !== ImportJob::current(), 'azione «Importa»: scrive il primo giro, poi l\'anteprima non serve più e si riprende dall\'avanzamento [' . $ar[1] . ']' );
 $ar2 = $stop->invoke( null, array() );
 asem_ok( false !== strpos( $ar2[1], 'Importazione fermata' ), 'azione «Importa»: si può fermare subito' );
 ImportService::undo( (int) $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'import_batches' ) ) );
