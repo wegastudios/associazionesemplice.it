@@ -2,9 +2,10 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ filter: String, rows: Array, year: Number, source: String, years: Array, versions: { type: Array, default: () => [] }, canExport: Boolean });
+const props = defineProps({ filter: String, rows: Array, page: { type: Number, default: 1 }, pages: { type: Number, default: 1 }, total: { type: Number, default: 0 }, year: Number, source: String, years: Array, versions: { type: Array, default: () => [] }, canExport: Boolean });
 const filters = [{ value: '', label: 'Tutti' }, { value: 'in_force', label: 'In carica' }, { value: 'left', label: 'Cessati' }];
 const params = (over = {}) => { const p = { ...(props.filter ? { stato: props.filter } : {}), ...(props.year ? { anno: props.year } : {}), ...over }; return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== '' && v != null)); };
+const go = (page) => router.get('/gestionale/soci/libro', params({ pagina: page > 1 ? page : '' }), { preserveScroll: true });
 const q = () => { const s = new URLSearchParams(params()).toString(); return s ? `?${s}` : ''; };
 </script>
 
@@ -61,5 +62,10 @@ const q = () => { const s = new URLSearchParams(params()).toString(); return s ?
                 </tbody>
             </table>
         </div>
+        <nav v-if="pages > 1" class="mt-4 flex items-center justify-between text-sm" aria-label="Pagine">
+            <button v-if="page > 1" type="button" class="btn btn-secondary" @click="go(page - 1)">← Precedenti</button><span v-else />
+            <span class="text-muted">Pagina {{ page }} di {{ pages }} · {{ total }} soci</span>
+            <button v-if="page < pages" type="button" class="btn btn-secondary" @click="go(page + 1)">Successive →</button><span v-else />
+        </nav>
     </AppLayout>
 </template>
