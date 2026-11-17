@@ -543,8 +543,24 @@ final class ReceiptFiles {
 		return array_map( 'intval', self::db()->get_col( 'SELECT DISTINCT year FROM ' . Db::t( 'receipts' ) . ' ORDER BY year DESC' ) ?: array() ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno, nessun valore esterno
 	}
 
+	/** Le colonne che servono a controllare un PDF (senza i dati della ricevuta, che pesano). */
+	const VERIFY_COLS = 'id, receipt_key, year, number, voided_at, pdf_path, pdf_sha256, pdf_enc_ver, void_pdf_path, void_pdf_sha256, void_pdf_enc_ver, ( data IS NOT NULL AND data <> \'\' ) AS has_data';
+
+	/** Quante ricevute si controllano per giro, e quanti secondi al massimo (poi il giro si ferma e riprende dal cursore). */
+	const VERIFY_BATCH  = 500;
+	const VERIFY_BUDGET = 20;
+
+	/** Quanti problemi si conservano nell'esito (i conteggi restano completi). */
+	const VERIFY_KEEP = 200;
+
+	const VERIFY_RUN  = 'asem_receipt_verify_run';  // avanzamento di una verifica non finita (un anno alla volta)
+	const VERIFY_LAST = 'asem_receipt_verify_last'; // esito dell'ultima verifica finita, per anno
+
+	/** Solo per le prove: quante ricevute sono state controllate (file aperti) da quando il processo è partito. @var int */
+	public static $examined = 0;
+
 	/**
-	 * Controlla le impronte dei PDF fissati di un anno fiscale.
+	 * Controlla le impronte dei PDF fissati di un anno fiscale, tutte in una volta (per le prove e per chi la usa da codice; la pagina usa {@see verify_step()}).
 	 *
 	 * @return array{summary:array<string,int>,problems:array[],truncated:bool} stati: ok, pending (da fissare), nodata (emessa prima della fotografia dei dati),
 	 *         locked (cifrato e la chiave non lo apre), missing (file mancante), altered (impronta diversa); per ogni ricevuta con problemi: key, label, state, detail (tipo => stato)
@@ -553,17 +569,39 @@ final class ReceiptFiles {
 		$db   = self::db();
 		$rows = $db->get_results(
 			$db->prepare(
-				'SELECT id, receipt_key, year, number, voided_at, pdf_path, pdf_sha256, pdf_enc_ver, void_pdf_path, void_pdf_sha256, void_pdf_enc_ver, ( data IS NOT NULL AND data <> \'\' ) AS has_data FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d ORDER BY number LIMIT %d',
+				'SELECT ' . self::VERIFY_COLS . ' FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d ORDER BY number LIMIT %d', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- colonne costanti interne
 				$year,
 				$cap
 			),
 			ARRAY_A
 		) ?: array();
+		$c = self::classify_rows( $rows );
+		return array( 'summary' => $c['summary'], 'problems' => $c['problems'], 'truncated' => count( $rows ) >= $cap );
+	}
+
+	/** Un riepilogo vuoto. @return array<string,int> */
+	public static function empty_summary(): array {
+		return array( 'total' => 0, 'ok' => 0, 'pending' => 0, 'nodata' => 0, 'locked' => 0, 'missing' => 0, 'altered' => 0 );
+	}
+
+	/**
+	 * Controlla le ricevute date (stesso criterio di sempre: {@see state()} di ogni PDF). Se si passa una scadenza (microtime) si ferma appena è passata,
+	 * dopo aver controllato almeno una ricevuta.
+	 *
+	 * @return array{summary:array<string,int>,problems:array[],done:int}
+	 */
+	public static function classify_rows( array $rows, float $deadline = 0.0 ): array {
 		$rank = array( 'ok' => 0, 'pending' => 1, 'nodata' => 2, 'locked' => 3, 'missing' => 4, 'altered' => 5 );
-		$sum  = array( 'total' => 0, 'ok' => 0, 'pending' => 0, 'nodata' => 0, 'locked' => 0, 'missing' => 0, 'altered' => 0 );
+		$sum  = self::empty_summary();
 		$bad  = array();
+		$done = 0;
 		foreach ( $rows as $r ) {
+			if ( $done > 0 && $deadline > 0.0 && microtime( true ) >= $deadline ) {
+				break;
+			}
+			$done++;
 			$sum['total']++;
+			self::$examined++;
 			$worst  = 'ok';
 			$detail = array();
 			foreach ( null !== $r['voided_at'] ? self::kinds() : array( self::ISSUED ) as $kind ) {
@@ -583,7 +621,174 @@ final class ReceiptFiles {
 				$bad[] = array( 'key' => (string) $r['receipt_key'], 'label' => (int) $r['number'] . '/' . (int) $r['year'], 'state' => $worst, 'detail' => $detail );
 			}
 		}
-		return array( 'summary' => $sum, 'problems' => $bad, 'truncated' => count( $rows ) >= $cap );
+		return array( 'summary' => $sum, 'problems' => $bad, 'done' => $done );
+	}
+
+	/**
+	 * Conteggi dell'anno calcolati dal database, senza aprire nessun file: ricevute emesse, PDF ancora da fissare, emesse prima che si salvassero i dati.
+	 *
+	 * @return array{total:int,pending:int,nodata:int}
+	 */
+	public static function sql_counts( int $year ): array {
+		$db = self::db();
+		return array(
+			'total'   => (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d', $year ) ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
+			'pending' => self::pending_count( $year ),
+			'nodata'  => self::nodata_count( $year ) + self::nodata_voided_count( $year ),
+		);
+	}
+
+	/**
+	 * Verifica in corso per questo anno (cursore e conteggi finora), o null.
+	 *
+	 * @return array<string,mixed>|null
+	 */
+	public static function verify_progress( int $year ): ?array {
+		$run = get_option( self::VERIFY_RUN, array() );
+		return is_array( $run ) && (int) ( $run['year'] ?? 0 ) === $year && isset( $run['after'], $run['summary'] ) ? $run : null;
+	}
+
+	/**
+	 * Esito dell'ultima verifica finita di un anno (data, conteggi, problemi), o null.
+	 *
+	 * @return array<string,mixed>|null
+	 */
+	public static function verify_last( int $year ): ?array {
+		$all = get_option( self::VERIFY_LAST, array() );
+		return is_array( $all ) && isset( $all[ $year ] ) && is_array( $all[ $year ] ) && isset( $all[ $year ]['summary'], $all[ $year ]['at'] ) ? $all[ $year ] : null;
+	}
+
+	/**
+	 * Somma di due riepiloghi.
+	 *
+	 * @param array<string,int> $into
+	 * @param array<string,int> $add
+	 * @return array<string,int>
+	 */
+	public static function merge_summary( array $into, array $add ): array {
+		foreach ( $add as $k => $n ) {
+			$into[ $k ] = (int) ( $into[ $k ] ?? 0 ) + (int) $n;
+		}
+		return $into;
+	}
+
+	/**
+	 * Aggiunge ai problemi già conservati quelli nuovi che l'esito tiene (file cifrato che la chiave non apre, mancante, diverso), fino a {@see VERIFY_KEEP}.
+	 *
+	 * @param array[] $have
+	 * @param array[] $add
+	 * @return array[]
+	 */
+	public static function keep_problems( array $have, array $add ): array {
+		foreach ( $add as $p ) {
+			if ( count( $have ) >= self::VERIFY_KEEP ) {
+				break;
+			}
+			if ( self::is_kept_problem( $p ) ) {
+				$have[] = $p;
+			}
+		}
+		return $have;
+	}
+
+	/** Gli stati che l'esito conserva come «problema da sistemare» (gli altri si vedono dai conteggi del database). */
+	private static function is_kept_problem( array $p ): bool {
+		return in_array( (string) ( $p['state'] ?? '' ), array( 'locked', 'missing', 'altered' ), true );
+	}
+
+	/**
+	 * Un giro della verifica di un anno: controlla fino a `$limit` ricevute (e per non oltre `$budget` secondi) a partire dal cursore salvato, salva
+	 * l'avanzamento e, all'ultimo giro, l'esito. Un solo giro per volta in tutto il sito (blocco): se un altro è in corso si rifiuta.
+	 * Non cambia il criterio della verifica: ogni PDF si controlla con {@see state()}.
+	 *
+	 * @return array{finished:bool,checked:int,total:int,summary:array<string,int>}
+	 * @throws \InvalidArgumentException
+	 */
+	public static function verify_step( int $year, int $limit = self::VERIFY_BATCH, int $budget = self::VERIFY_BUDGET ): array {
+		return Db::with_lock(
+			'receipt_verify',
+			function () use ( $year, $limit, $budget ): array {
+				$db    = self::db();
+				$limit = max( 1, min( 2000, $limit ) );
+				$run   = self::verify_progress( $year );
+				if ( null === $run ) {
+					$run = array( 'year' => $year, 'after' => 0, 'started' => Db::now(), 'total' => self::sql_counts( $year )['total'], 'summary' => self::empty_summary(), 'problems' => array() );
+				}
+				$rows = $db->get_results(
+					$db->prepare(
+						'SELECT ' . self::VERIFY_COLS . ' FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND id > %d ORDER BY id LIMIT %d', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- colonne costanti interne
+						$year,
+						(int) $run['after'],
+						$limit + 1 // una in più: così si sa se ne restano senza un altro giro a vuoto
+					),
+					ARRAY_A
+				) ?: array();
+				$more = count( $rows ) > $limit;
+				$rows = array_slice( $rows, 0, $limit );
+				$c    = self::classify_rows( $rows, microtime( true ) + max( 1, $budget ) );
+				if ( $c['done'] < count( $rows ) ) { // tempo finito prima della fine del lotto: si riprende dal cursore
+					$more = true;
+					$rows = array_slice( $rows, 0, $c['done'] );
+				}
+				if ( $rows ) {
+					$run['after'] = (int) $rows[ count( $rows ) - 1 ]['id'];
+				}
+				$run['summary']  = self::merge_summary( $run['summary'], $c['summary'] );
+				$run['problems'] = self::keep_problems( $run['problems'], $c['problems'] );
+				if ( $more ) {
+					update_option( self::VERIFY_RUN, $run, false );
+					return array( 'finished' => false, 'checked' => (int) $run['summary']['total'], 'total' => max( (int) $run['total'], (int) $run['summary']['total'] ), 'summary' => $run['summary'] );
+				}
+				$all          = get_option( self::VERIFY_LAST, array() );
+				$all          = is_array( $all ) ? $all : array();
+				$all[ $year ] = array( 'at' => Db::now(), 'started' => (string) $run['started'], 'summary' => $run['summary'], 'problems' => $run['problems'] );
+				update_option( self::VERIFY_LAST, $all, false );
+				delete_option( self::VERIFY_RUN );
+				return array( 'finished' => true, 'checked' => (int) $run['summary']['total'], 'total' => (int) $run['summary']['total'], 'summary' => $run['summary'] );
+			},
+			0,
+			true
+		);
+	}
+
+	/**
+	 * Dopo aver rifatto un PDF: ricontrolla quella sola ricevuta e aggiorna l'esito salvato (via il problema se ora è a posto, conteggi aggiornati).
+	 * Non fa nulla se la ricevuta non è tra i problemi dell'esito.
+	 */
+	public static function verify_recheck( int $year, string $key ): void {
+		$last = self::verify_last( $year );
+		if ( null === $last ) {
+			return;
+		}
+		$idx = null;
+		foreach ( (array) $last['problems'] as $i => $p ) {
+			if ( (string) $p['key'] === $key ) {
+				$idx = $i;
+			}
+		}
+		if ( null === $idx ) {
+			return;
+		}
+		$db  = self::db();
+		$row = $db->get_row( $db->prepare( 'SELECT ' . self::VERIFY_COLS . ' FROM ' . Db::t( 'receipts' ) . ' WHERE receipt_key = %s', $key ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- colonne costanti interne
+		if ( ! is_array( $row ) ) {
+			return;
+		}
+		$c   = self::classify_rows( array( $row ) );
+		$old = (string) $last['problems'][ $idx ]['state'];
+		$new = array() === $c['problems'] ? 'ok' : (string) $c['problems'][0]['state'];
+		$last['summary'][ $old ] = max( 0, (int) ( $last['summary'][ $old ] ?? 0 ) - 1 );
+		$last['summary'][ $new ] = (int) ( $last['summary'][ $new ] ?? 0 ) + 1;
+		if ( $c['problems'] && self::is_kept_problem( $c['problems'][0] ) ) {
+			$last['problems'][ $idx ] = $c['problems'][0];
+		} else {
+			unset( $last['problems'][ $idx ] );
+			$last['problems'] = array_values( $last['problems'] );
+		}
+		$all          = get_option( self::VERIFY_LAST, array() );
+		$all          = is_array( $all ) ? $all : array();
+		$all[ $year ] = $last;
+		update_option( self::VERIFY_LAST, $all, false );
 	}
 
 	/**

@@ -12071,6 +12071,7 @@ $pf_rec = \AssociazioneSemplice\Receipts::record( $pf_key[5100] );
 asem_ok( 'altered' === \AssociazioneSemplice\ReceiptFiles::state( $pf_rec, 'issued' ) && null !== $pf_e && false !== strpos( $pf_e, 'diverso' ) && null !== asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::email( $pf_key[5100] ); } ) && 'x' === substr( (string) file_get_contents( $pf_f ), -1 ), 'ricevute PDF: un file alterato si rileva, non si scarica né si invia e non viene rifatto di nascosto' );
 $pf_v = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 asem_ok( $pf_v['summary']['altered'] >= 1 && in_array( $pf_key[5100], array_column( $pf_v['problems'], 'key' ), true ), 'ricevute PDF: la verifica segnala il file alterato' );
+\AssociazioneSemplice\ReceiptFiles::verify_step( $pf_fy ); // la pagina mostra l'esito dell'ultima verifica: prima si fa il giro
 $pf_html = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File diversi da quando sono stati emessi', array( 'year' => $pf_fy ) );
 asem_ok( false !== strpos( $pf_html, 'Rifai dai dati salvati' ) && false !== strpos( $pf_html, 'asem_receipt_pdf_regen' ), 'ricevute PDF: la pagina di verifica propone di rifarlo dai dati salvati' );
 \AssociazioneSemplice\Receipts::regenerate_pdf( $pf_key[5100], 'issued' );
@@ -12084,6 +12085,7 @@ $pf_f2 = $pf_dir . '/' . $pf_r2['pdf_path'];
 wp_delete_file( $pf_f2 );
 $pf_e2 = asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::build( $pf_key[5200] ); } );
 asem_ok( 'missing' === \AssociazioneSemplice\ReceiptFiles::state( $pf_r2, 'issued' ) && null !== $pf_e2 && false !== strpos( $pf_e2, 'non si trova più' ) && ! is_file( $pf_f2 ) && \AssociazioneSemplice\Receipts::can_view( $pf_key[5200] ), 'ricevute PDF: file mancante, errore chiaro e nessun PDF rifatto in silenzio' );
+\AssociazioneSemplice\ReceiptFiles::verify_step( $pf_fy ); // la pagina mostra l'esito dell'ultima verifica: prima si fa il giro
 asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File mancanti', array( 'year' => $pf_fy ) );
 $pf_docs = \AssociazioneSemplice\ReceiptFiles::backup_documents( array() );
 asem_ok( in_array( 'documenti/' . $pf_r['pdf_path'], array_column( $pf_docs, 'name' ), true ) && ! in_array( 'documenti/' . $pf_r2['pdf_path'], array_column( $pf_docs, 'name' ), true ), 'ricevute PDF: la copia di sicurezza prende i PDF integri e ignora quelli mancanti senza fallire' );
@@ -12222,6 +12224,63 @@ asem_ok( 0 === strpos( $pf_zc, '%PDF-' ) && hash( 'sha256', $pf_zc ) === \Associ
 asem_ok( 0 === $pf_v['summary']['pending'] && 0 === $pf_v['summary']['altered'] && 0 === $pf_v['summary']['locked'] && $pf_zv && $pf_zip['count'] >= 5 && false !== strpos( \AssociazioneSemplice\Receipts::zip_url( $pf_fy ), 'action=asem_receipt_zip' ), 'ricevute PDF: la verifica dell\'anno è pulita e lo ZIP contiene i PDF emessi e quelli annullati' );
 $pf_okp = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Ricevute emesse', array( 'year' => $pf_fy ) );
 asem_ok( false !== strpos( $pf_okp, 'Scarica i PDF di questo anno fiscale' ) && false !== strpos( $pf_okp, 'contengono dati personali' ), 'ricevute PDF: la pagina di verifica si apre, offre l\'archivio ZIP e avvisa che contiene dati personali' );
+// verifica a richiesta: aprire la pagina non apre nessun PDF; il pulsante verifica a lotti, con cursore e blocco, e salva l'esito
+$vr_RF = \AssociazioneSemplice\ReceiptFiles::class;
+delete_option( $vr_RF::VERIFY_RUN );
+delete_option( $vr_RF::VERIFY_LAST );
+$vr_n0   = $vr_RF::$examined;
+$vr_tot  = $vr_RF::sql_counts( $pf_fy )['total'];
+$vr_page = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Non hai ancora verificato i PDF di questo anno fiscale', array( 'year' => $pf_fy ) );
+asem_ok( $vr_n0 === $vr_RF::$examined && false === get_option( $vr_RF::VERIFY_LAST, false ) && false === get_option( $vr_RF::VERIFY_RUN, false ) && false === strpos( $vr_page, 'Ricevute controllate' ) && false !== strpos( $vr_page, 'name="action" value="asem_receipt_verify"' ) && false !== strpos( $vr_page, '_wpnonce' ) && false !== strpos( $vr_page, 'Verifica i PDF di questo anno fiscale' ) && false !== strpos( $vr_page, 'Ricevute emesse' ), 'verifica a richiesta: aprire la pagina non controlla nessun file e non salva nulla; offre il pulsante con il suo nonce' );
+$vr_a    = $vr_RF::verify_step( $pf_fy, 2, 20 );
+$vr_prog = $vr_RF::verify_progress( $pf_fy );
+asem_ok( $vr_tot > 2 && false === $vr_a['finished'] && 2 === $vr_a['checked'] && $vr_n0 + 2 === $vr_RF::$examined && null !== $vr_prog && $vr_prog['after'] > 0 && null === $vr_RF::verify_last( $pf_fy ), 'verifica a richiesta: un giro controlla solo il suo lotto e salva l\'avanzamento (cursore), senza esito finché non finisce' );
+$vr_page = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Verifica in corso: controllate 2 ricevute su ' . $vr_tot, array( 'year' => $pf_fy ) );
+asem_ok( $vr_n0 + 2 === $vr_RF::$examined && false !== strpos( $vr_page, 'Continua la verifica' ), 'verifica a richiesta: la pagina mostra l\'avanzamento e propone di continuare, senza aprire altri file' );
+\AssociazioneSemplice\Db::$lock_fake = '0';
+$vr_busy = asem_throws( function () use ( $vr_RF, $pf_fy ) { $vr_RF::verify_step( $pf_fy ); } );
+\AssociazioneSemplice\Db::$lock_fake = 'x';
+asem_ok( null !== $vr_busy && false !== strpos( $vr_busy, 'Un\'altra operazione è in corso' ) && $vr_n0 + 2 === $vr_RF::$examined && $vr_prog === $vr_RF::verify_progress( $pf_fy ), 'verifica a richiesta: con un altro giro in corso il secondo non parte e non tocca l\'avanzamento' );
+// nonce sbagliato: la porta si chiude prima di fare qualunque cosa
+$vr_cap = Admin\Actions::required_cap( 'asem_receipt_verify' );
+add_filter( 'wp_die_handler', $vr_die = function () { return function ( $message ) { throw new \RuntimeException( is_scalar( $message ) ? (string) $message : 'die' ); }; } );
+wp_set_current_user( 1 );
+$vr_old_r = $_REQUEST;
+$vr_old_p = $_POST;
+$_REQUEST = $_POST = array( 'action' => 'asem_receipt_verify', '_wpnonce' => 'sbagliato', 'year' => (string) $pf_fy );
+$vr_died  = false;
+try {
+	do_action( 'admin_post_asem_receipt_verify' );
+} catch ( \RuntimeException $e ) {
+	$vr_died = true;
+}
+$_REQUEST = $vr_old_r;
+$_POST    = $vr_old_p;
+remove_filter( 'wp_die_handler', $vr_die );
+asem_ok( Plugin::CAP === $vr_cap && has_action( 'admin_post_asem_receipt_verify' ) && $vr_died && $vr_n0 + 2 === $vr_RF::$examined && $vr_prog === $vr_RF::verify_progress( $pf_fy ), 'verifica a richiesta: solo l\'amministratore e solo con il nonce giusto; con un nonce sbagliato non si controlla nulla' );
+// il secondo giro riprende dal cursore e porta a termine la verifica, con lo stesso criterio di sempre
+$vr_msg  = Admin\ReceiptCheckPage::verify( array( 'year' => $pf_fy ) );
+$vr_last = $vr_RF::verify_last( $pf_fy );
+asem_ok( false !== strpos( $vr_msg[1], 'Verifica finita: controllate ' . $vr_tot . ' ricevute' ) && $vr_n0 + $vr_tot === $vr_RF::$examined && null === $vr_RF::verify_progress( $pf_fy ) && null !== $vr_last && ! empty( $vr_last['at'] ), 'verifica a richiesta: il secondo giro riprende dal cursore (nessuna ricevuta ricontrollata), finisce e salva l\'esito con la data' );
+$vr_full = $vr_RF::verify( $pf_fy );
+asem_ok( $vr_full['summary'] === $vr_last['summary'] && $vr_tot === (int) $vr_last['summary']['total'], 'verifica a richiesta: l\'esito a lotti è identico a quello della verifica intera (stesso criterio)' );
+$vr_n1   = $vr_RF::$examined;
+$vr_page = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Ricevute controllate', array( 'year' => $pf_fy ) );
+asem_ok( $vr_n1 === $vr_RF::$examined && false !== strpos( $vr_page, 'Ricevute controllate' ) && false !== strpos( $vr_page, 'Verifica di nuovo' ) && false === strpos( $vr_page, 'Non hai ancora verificato' ), 'verifica a richiesta: l\'esito salvato si vede nella pagina senza riaprire i file' );
+asem_ok( null !== asem_throws( function () { Admin\ReceiptCheckPage::verify( array( 'year' => 1999 ) ); } ) && null !== asem_throws( function () { Admin\ReceiptCheckPage::verify( array() ); } ), 'verifica a richiesta: un anno senza ricevute non si verifica' );
+// un file alterato si trova al giro successivo e, rifatto il PDF, sparisce dall'esito senza rifare tutto
+$vr_rec = \AssociazioneSemplice\Receipts::record( $pf_key[5100] );
+$vr_abs = $pf_dir . '/' . $vr_rec['pdf_path'];
+$vr_bak = (string) file_get_contents( $vr_abs );
+file_put_contents( $vr_abs, 'x', FILE_APPEND );
+$vr_RF::verify_step( $pf_fy );
+$vr_l2 = $vr_RF::verify_last( $pf_fy );
+asem_ok( 1 <= $vr_l2['summary']['altered'] && in_array( $pf_key[5100], array_column( $vr_l2['problems'], 'key' ), true ) && $vr_l2['summary']['ok'] === $vr_last['summary']['ok'] - 1, 'verifica a richiesta: un file alterato compare nell\'esito del giro seguente' );
+file_put_contents( $vr_abs, $vr_bak );
+$vr_RF::verify_recheck( $pf_fy, $pf_key[5100] );
+$vr_l3 = $vr_RF::verify_last( $pf_fy );
+asem_ok( $vr_l3['summary']['altered'] === $vr_l2['summary']['altered'] - 1 && ! in_array( $pf_key[5100], array_column( $vr_l3['problems'], 'key' ), true ) && $vr_l3['summary']['ok'] === $vr_l2['summary']['ok'] + 1, 'verifica a richiesta: un PDF rimesso a posto esce dall\'esito e i conteggi si aggiornano' );
+delete_option( $vr_RF::VERIFY_LAST );
 asem_ok( has_action( 'asem_reset_private_files', array( \AssociazioneSemplice\ReceiptFiles::class, 'delete_all' ) ) && has_filter( 'asem_backup_documents' ) && has_filter( 'asem_backup_restore_documents' ), 'ricevute PDF: azzeramento, copia di sicurezza e ripristino sono collegati' );
 // ricevute emesse prima che si salvassero i dati: «Fissa anche queste con i dati di oggi» (a lotti, solo le non annullate)
 foreach ( array( 5700, 5800, 5900 ) as $pf_c ) {
@@ -12274,6 +12333,7 @@ $pf_er  = asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Recei
 $pf_lv  = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 $pf_ld  = in_array( 'documenti/' . $pf_r['pdf_path'], array_column( \AssociazioneSemplice\ReceiptFiles::backup_documents( array() ), 'name' ), true );
 asem_ok( 'locked' === \AssociazioneSemplice\ReceiptFiles::state( $pf_rec, 'issued' ) && null !== $pf_el && false !== strpos( $pf_el, 'non è leggibile su questo sito' ) && null !== $pf_er && false !== strpos( $pf_er, 'cifrato' ) && $pf_lv['summary']['locked'] >= 1 && $pf_ld && 0 === (int) $pf_lv['summary']['altered'] && hash( 'sha256', (string) file_get_contents( $pf_f ) ) !== hash( 'sha256', $pf_orig ), 'ricevute PDF: con la chiave che non lo apre il file è «cifrato che la chiave non apre», non si scarica, non si rifà e la copia lo tiene com\'è' );
+\AssociazioneSemplice\ReceiptFiles::verify_step( $pf_fy ); // la pagina mostra l'esito dell'ultima verifica: prima si fa il giro
 $pf_lp = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File cifrati che la chiave non apre', array( 'year' => $pf_fy ) );
 asem_ok( false !== strpos( $pf_lp, 'la chiave di questo sito non li apre' ) && false === strpos( $pf_lp, 'Rifai dai dati salvati' ), 'ricevute PDF: la pagina di verifica lo dice e non offre di rifarlo' );
 file_put_contents( $pf_f, $pf_orig );

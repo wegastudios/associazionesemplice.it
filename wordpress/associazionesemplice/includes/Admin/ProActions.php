@@ -51,6 +51,7 @@ final class ProActions {
 		'asem_receipt_replace' => array( 'receipt_replace', 'receipts', false ),
 		'asem_receipt_pdf_complete' => array( 'receipt_pdf_complete', 'receipts', true ),
 		'asem_receipt_pdf_regen' => array( 'receipt_pdf_regen', 'receipts', true ),
+		'asem_receipt_verify' => array( 'receipt_verify', 'receipts', true ),
 		'asem_receipt_nodata_fix' => array( 'receipt_nodata_fix', 'receipts', true ),
 		'asem_walk_in' => array( 'walk_in', 'door_sales', false ),
 		'asem_broadcast_send' => array( 'broadcast_send', 'broadcasts', false ),
@@ -571,6 +572,11 @@ final class ProActions {
 	/** Fotografa i dati di oggi e fissa il PDF delle ricevute emesse prima che si salvassero i dati (a lotti). */
 	public static function receipt_nodata_fix( array $p ): array {
 		return ReceiptCheckPage::fix_nodata( $p );
+	}
+
+	/** Un giro della verifica dei PDF delle ricevute (a lotti, con cursore e blocco): parte solo da questo pulsante. */
+	public static function receipt_verify( array $p ): array {
+		return ReceiptCheckPage::verify( $p );
 	}
 
 	/** Rifà dai dati salvati il PDF mancante o alterato di una ricevuta. */

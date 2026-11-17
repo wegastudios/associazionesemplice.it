@@ -2653,6 +2653,22 @@
   "Nome non valido: usa solo lettere, spazi, apostrofi e trattini." : "Invalid name: use only letters, spaces, apostrophes and hyphens.",
   "Cerca per nome o tessera (almeno 3 lettere)" : "Search by name or card number (at least 3 letters)",
   "Chi ha l'area Corsi o Eventi vede i certificati degli iscritti alle attività di cui è istruttore e di quelle senza istruttore." : "Whoever has the Courses or Events area sees the certificates of people enrolled in activities they are the instructor of and in activities with no instructor.",
-  "Il libro soci è dell'area «Anagrafica soci», che non hai. Gli altri registri sono nelle schede qui sopra." : "The members' register belongs to the “Members registry” area, which you do not have. The other registers are in the tabs above."
+  "Il libro soci è dell'area «Anagrafica soci», che non hai. Gli altri registri sono nelle schede qui sopra." : "The members' register belongs to the “Members registry” area, which you do not have. The other registers are in the tabs above.",
+  "Ricevute controllate" : "Receipts checked",
+  "Verifica dei PDF di questo anno fiscale" : "Check the PDFs of this fiscal year",
+  "La verifica apre ogni PDF e ne controlla l'impronta: con molte ricevute richiede tempo, perciò parte solo quando premi il pulsante e procede a lotti di {n} ricevute. Se non finisce in un giro, premi di nuovo: riprende da dove si era fermata." : "The check opens every PDF and checks its fingerprint: with many receipts it takes time, so it only starts when you press the button and goes on in batches of {n} receipts. If it does not finish in one round, press again: it picks up where it stopped.",
+  "Verifica in corso: controllate {n} ricevute su {tot}." : "Check in progress: {n} receipts checked out of {tot}.",
+  "Continua la verifica" : "Continue the check",
+  "Verifica di nuovo" : "Check again",
+  "Verifica i PDF di questo anno fiscale" : "Check the PDFs of this fiscal year",
+  "Non hai ancora verificato i PDF di questo anno fiscale." : "You have not checked the PDFs of this fiscal year yet.",
+  "Esito dell'ultima verifica" : "Result of the last check",
+  "Verifica del {data}." : "Check of {data}.",
+  "Dopo questa verifica sono state emesse altre ricevute: verifica di nuovo per controllare anche quelle." : "More receipts have been issued since this check: check again to include them.",
+  "Si vedono le prime {n}: sistemale e verifica di nuovo per vedere le altre." : "The first {n} are shown: fix them and check again to see the others.",
+  "Scegli un anno fiscale che abbia ricevute emesse." : "Choose a fiscal year that has issued receipts.",
+  "Controllate {n} ricevute su {tot}: premi di nuovo per continuare." : "{n} receipts checked out of {tot}: press again to continue.",
+  "Verifica finita: controllate {n} ricevute, nessun problema trovato." : "Check finished: {n} receipts checked, no problems found.",
+  "Verifica finita: controllate {n} ricevute, {bad} da sistemare." : "Check finished: {n} receipts checked, {bad} to fix."
  }
 }
