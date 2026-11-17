@@ -62,23 +62,32 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 == Changelog ==
 
 = 1.3.26 =
-* Prima di aggiornare conviene fare una copia di sicurezza. Lo schema dei dati passa alla versione 67: l'aggiornamento è automatico alla prima apertura del sito e non modifica i dati esistenti.
-* Permessi dei dipendenti per area: la pagina Dipendenti ha 15 spunte (anagrafica, certificati medici, corsi, eventi, risorse, incassi, spese, rimborsi, fondi, comunicazioni, documenti, assemblee, inventario, convenzioni, importa ed esporta); un permesso tolto vale in tutte le strade verso gli stessi dati. I dipendenti già presenti mantengono l'accesso di prima; in Bacheca compare l'avviso «Rivedi i permessi dei dipendenti: ora si danno per area.»
-* Certificati medici: senza l'area dedicata, chi ha Corsi o Eventi vede solo i certificati degli iscritti alle attività di cui è istruttore e di quelle senza istruttore; ogni apertura di un file resta nel registro delle azioni
-* Chi non ha l'area «Anagrafica soci» sceglie le persone con una ricerca («Cerca per nome o tessera (almeno 3 lettere)»), al massimo 10 risultati
-* Ruoli di WordPress: il plugin non dà più accessi ai ruoli standard di WordPress (Editore, Autore e simili); vedono il pannello l'amministratore di WordPress, la Segreteria, i Dipendenti e presidente e vicepresidente. Chi entrava con un ruolo di WordPress lo trova in un avviso in Bacheca; la pagina «Ruoli e accessi» non c'è più
-* Eventi su richiesta: la prenotazione diretta è della sola segreteria e la lista d'attesa non avanza da sola; richieste con link di conferma, tetto alle richieste in attesa e ai posti chiedibili in 24 ore per email e per connessione, con messaggi chiari e un avviso in Bacheca; se il codice fiscale è già in anagrafica, chi chiede non vede né il nome né lo stato della persona e la richiesta passa alla segreteria
-* Prenotazione dal sito: se l'attività ha dei listini va scelta la tariffa e la lista d'attesa la ricorda
-* Adesione di un minore: se il genitore è già in anagrafica, i consensi gli vengono attribuiti e il collegamento al minore nasce solo dopo la sua conferma da un link ricevuto per email
-* Moduli pubblici: nome e cognome accettano solo lettere, spazi, apostrofi e trattini
-* Password dei soci dopo un ripristino: tornano come nella copia, ma al primo accesso ogni socio sceglie una nuova password
-* Copia di sicurezza: lo scarico chiede la password dell'amministratore; le copie non contengono chiavi cifrate; nel ripristino i testi semplici vengono ripuliti
-* Aggiornamenti firmati: il programma accetta solo pacchetti firmati e non installa versioni più vecchie di quelle già viste
-* Documenti: per Word, Excel e LibreOffice si accettano solo file davvero di quel formato; un foglio Excel con troppe colonne viene rifiutato con un messaggio chiaro
-* Contenuti riservati: chi non può leggerli non li trova con la ricerca del sito né in commenti, allegati e file del calendario
-* Registro delle azioni più completo (provenienza, impostazioni cambiate, scarichi); il cambio del conto che riceve i soldi è sempre notificato agli amministratori
-* Pagamenti: l'incasso si registra una sola volta anche con avvisi ripetuti; con bonifico e altri metodi fuori linea la quota risulta pagata a ordine «completato»; rimborsi con autocertificazione e massimo di prenotazioni valgono anche con più richieste insieme
-* Disinstallazione più completa: si tolgono lavori programmati, chiavi e permessi del plugin dai ruoli; un errore imprevisto in amministrazione mostra un messaggio con un codice da citare al supporto
+* Nuovo: permessi dei dipendenti per area. I certificati medici hanno un permesso a parte, e chi non ha l'anagrafica cerca i soci per nome o tessera
+* Nuovo: negli eventi su richiesta prenota solo la segreteria; la lista d'attesa ricorda la tariffa scelta
+* Nuovo: l'adesione di un minore aspetta la conferma del genitore già registrato
+* Nuovo: limiti alle richieste dei non soci, regolabili in Limiti e soglie
+* Sicurezza: password per scaricare le copie di sicurezza, aggiornamenti solo firmati, chiave di licenza cifrata
+* Sicurezza: dopo un ripristino i soci scelgono una nuova password; i ruoli standard di WordPress non danno più accesso al plugin
+* Sicurezza: i contenuti riservati non compaiono più in ricerca, commenti e anteprime
+* Altro: con bonifico, assegno o contrassegno la quota risulta pagata a ordine «completato»; gli errori imprevisti mostrano un codice per il supporto
+Da fare dopo l'aggiornamento:
+* Stripe: aggiungi al webhook gli eventi charge.refunded e charge.dispute.created
+* Se sposti il sito, reinserisci la chiave di licenza in Impostazioni → Licenza
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
+= 1.3.25 =
+* Prima di aggiornare fai una copia di sicurezza. Dopo l'aggiornamento: 1) inserisci email e telefono della segreteria e i dati dell'associazione che la banda gialla in alto ti chiede (forma, codice fiscale, sede, RUNTS, PEC, partita IVA: se l'associazione non ce l'ha, spunta «non ce l'ha»); 2) in Impostazioni → Copia di sicurezza premi «Cifra i file già caricati»: i file nuovi si salvano già cifrati, quelli vecchi si cifrano da quel momento; 3) nella stessa pagina trovi la frase che riapre i documenti: conservala fuori dal sito.
+* Quota doppia: la prima nota rifiuta una seconda quota dello stesso anno e lo spiega; due incassi insieme non registrano due volte; annullando un incasso la tessera si toglie solo se non ce ne sono altri validi
+* Contatti della segreteria obbligatori: email e telefono vanno inseriti; finché mancano, la segreteria non può inviare messaggi ai soci a mano (gli invii automatici, come il link di accesso, partono lo stesso); i messaggi riportano i contatti e le risposte arrivano alla segreteria
+* Dati dell'associazione obbligatori: forma, codice fiscale, sede, numero RUNTS, PEC e partita IVA, ognuno con la casella «non ce l'ha»; il legale rappresentante è la persona con la carica di presidente; una banda gialla in alto elenca cosa manca, con il pulsante «Completali ora»
+* File riservati cifrati (documenti e scansioni, allegati dei movimenti, foto dell'inventario) con una frase per riaprirli e il foglio stampabile; la copia di sicurezza porta i file cifrati. Protegge da chi porta via la sola cartella dei file; per una protezione più alta scegli una frase tua e lunga
+* Cartella dei file riservati: ogni settimana il programma controlla che non sia raggiungibile da internet e avvisa l'amministratore; la cartella si può tenere fuori dalla parte pubblica del sito e «Sposta i file» copia e controlla prima di cancellare
+* Ripristino della copia più sicuro: le copie sono firmate e una copia modificata viene rifiutata; una copia fatta su un altro sito si ripristina solo con una conferma scritta e la password; soci e prima nota si ripristinano anche se manca la frase; le password dei soci non fanno parte del ripristino (i soci rientrano con il link). Dopo un cambio dei codici di sicurezza le copie fatte prima chiedono la conferma per altro sito
+* Le pagine riservate ai soci non vengono salvate dalla cache delle pagine
+* Più sicurezza su file temporanei e lavori simultanei (chiavi, numerazione)
+* Le copie di sicurezza e i file CSV si aprono bene in Excel (accenti corretti)
+* Più messaggi e frasi con numeri anche in inglese
+* Il rendiconto e la prima nota non cambiano: nessuna modifica ai dati contabili.
 
 
 Le versioni precedenti sono nel file CHANGELOG.md del plugin.
