@@ -191,6 +191,7 @@ $phones  = array();
 $host    = 0;
 $pay_cur = array(); // chi paga la quota nell'anno in corso
 $pay_prv = array();
+$unpaid  = array();
 for ( $i = 0; $i < $n_ppl; $i++ ) {
 	$state = $i % 20; // 0-11 in regola, 12-15 scaduti, 16 sospeso, 17-18 senza tessera, 19 ospite
 	$type  = 19 === $state ? 'guest' : ( 0 === $i % 9 ? 'volunteer' : 'ordinary' );
@@ -225,6 +226,9 @@ for ( $i = 0; $i < $n_ppl; $i++ ) {
 			$pay_prv[] = $id;
 		} elseif ( $state > 11 && $state <= 15 ) {
 			$people->set_membership( $id, $prev, true );
+		}
+		if ( 17 === $state ) {
+			$unpaid[] = $id; // senza tessera: serve alla misura dell'incasso
 		}
 		if ( 16 === $state ) {
 			$people->suspend( $id );
@@ -536,8 +540,8 @@ m_run( 'Creazione di un evento (con la sua pagina pubblica)', function () use ( 
 m_run( 'Iscrizione di un socio a un corso', function () use ( $act, $course_id, $ids, $month ) {
 	$act->enroll( $course_id, $ids[ count( $ids ) - 3 ], $month );
 }, 1, false );
-m_run( 'Registrazione di un incasso (quota di un socio)', function () use ( $ledger, $ids, $bank, $cat_mem, $today ) {
-	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $bank['id'], 'method' => 'bank_transfer', 'person_id' => $ids[ 5 ], 'lines' => array( array( 'category_id' => $cat_mem, 'amount_cents' => 2000, 'description' => 'Quota misurata' ) ) ) );
+m_run( 'Registrazione di un incasso (quota di un socio)', function () use ( $ledger, $unpaid, $bank, $cat_mem, $today ) {
+	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $bank['id'], 'method' => 'bank_transfer', 'person_id' => $unpaid[0], 'lines' => array( array( 'category_id' => $cat_mem, 'amount_cents' => 2000, 'description' => 'Quota misurata' ) ) ) );
 }, 1, false );
 m_page( 'Registro delle azioni', array( 'AssociazioneSemplice\\Admin\\AuditPage', 'render' ), array( 'page' => 'asem-audit' ) );
 
