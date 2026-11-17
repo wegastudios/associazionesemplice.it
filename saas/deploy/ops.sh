@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -208,6 +208,13 @@ case "$ACTION" in
       echo "Ruolo dei backup: ", $role, PHP_EOL, "Privilegi oltre SELECT: ", count($rows), PHP_EOL;
       foreach ($rows as $r) { echo $r->table_schema, ".", $r->table_name, " ", $r->privilege_type, PHP_EOL; }
     ' || true
+    ;;
+  interruttori)
+    # Sola lettura: valore degli interruttori NON segreti (acceso/spento, remoto/locale). Niente altro dal file d'ambiente.
+    for v in SAAS_UNIFIED_OPERATORS SAAS_UNIFIED_LOGIN SAAS_REQUIRE_TWO_FACTOR SAAS_STAFF_SSO SAAS_STAFF_ISSUER SAAS_NOTICES_ENABLED SAAS_PURGE_ENABLED SAAS_KEY_VAULT SAAS_DEMO; do
+      val="$(get "$v")"
+      [ -n "$val" ] && echo "$v = $val" || echo "$v = (non impostato: vale il predefinito)"
+    done
     ;;
   sblocca-utente)
     # Sblocco dal supporto (decisione scritta del titolare, 16/11/2026): toglie la verifica in due passaggi a chi lavora

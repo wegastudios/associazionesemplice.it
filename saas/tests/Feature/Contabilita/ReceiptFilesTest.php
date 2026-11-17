@@ -127,3 +127,23 @@ it('il PDF rifatto dagli stessi dati è identico byte per byte', function (): vo
     $b = $this->orgContext()->run($this->org->id, fn () => app(ReceiptPdf::class)->build($this->receipt)['pdf']);
     expect($a)->toBe($b);
 });
+
+it('il documento di una ricevuta fissata non rifà il PDF: numero e intestatario vengono dall\'emissione', function (): void {
+    $row = receiptRow($this->org->id, $this->receipt);
+    $doc = $this->orgContext()->run($this->org->id, function () {
+        $renders = 0;
+        $pdf = app(ReceiptPdf::class);
+        $queries = 0;
+        DB::listen(static function () use (&$queries): void {
+            $queries++;
+        });
+        $doc = app(ReceiptFiles::class)->document($this->receipt);
+
+        return [$doc, $queries, $renders, $pdf];
+    });
+
+    expect(hash('sha256', $doc[0]['pdf']))->toBe($row->sha256)
+        ->and($doc[0]['number'])->toMatch('/^\d+\/\d{4}$/')
+        ->and($doc[0]['filename'])->toBe($row->original_name)
+        ->and($doc[1])->toBeLessThan(8);
+});
