@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.26
+Stable tag: 1.3.27
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,6 +61,14 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 
 == Changelog ==
 
+= 1.3.27 =
+* Ottimizzazione: Bacheca, elenco e schede di corsi ed eventi, rendiconto, calendario, elenco soci, Prima nota, esportazioni, promemoria e comunicazioni molto più rapidi, con gli stessi risultati di prima
+* Ottimizzazione: «Soci e ospiti» a 50 righe per pagina e Prima nota a 100, con i totali sempre dell'anno intero
+* Ottimizzazione: le pagine pubbliche degli eventi restano in memoria per i visitatori e si aggiornano a ogni prenotazione o modifica
+* Nuovo: l'importazione di file grandi procede a piccoli giri, con avanzamento e pulsanti per riprendere o fermare
+* Nuovo: verifica delle ricevute a richiesta, a lotti, con l'esito salvato per anno fiscale
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 = 1.3.26 =
 * Nuovo: permessi dei dipendenti per area. I certificati medici hanno un permesso a parte, e chi non ha l'anagrafica cerca i soci per nome o tessera
 * Nuovo: negli eventi su richiesta prenota solo la segreteria; la lista d'attesa ricorda la tariffa scelta
@@ -74,20 +82,6 @@ Da fare dopo l'aggiornamento:
 * Stripe: aggiungi al webhook gli eventi charge.refunded e charge.dispute.created
 * Se sposti il sito, reinserisci la chiave di licenza in Impostazioni → Licenza
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.25 =
-* Prima di aggiornare fai una copia di sicurezza. Dopo l'aggiornamento: 1) inserisci email e telefono della segreteria e i dati dell'associazione che la banda gialla in alto ti chiede (forma, codice fiscale, sede, RUNTS, PEC, partita IVA: se l'associazione non ce l'ha, spunta «non ce l'ha»); 2) in Impostazioni → Copia di sicurezza premi «Cifra i file già caricati»: i file nuovi si salvano già cifrati, quelli vecchi si cifrano da quel momento; 3) nella stessa pagina trovi la frase che riapre i documenti: conservala fuori dal sito.
-* Quota doppia: la prima nota rifiuta una seconda quota dello stesso anno e lo spiega; due incassi insieme non registrano due volte; annullando un incasso la tessera si toglie solo se non ce ne sono altri validi
-* Contatti della segreteria obbligatori: email e telefono vanno inseriti; finché mancano, la segreteria non può inviare messaggi ai soci a mano (gli invii automatici, come il link di accesso, partono lo stesso); i messaggi riportano i contatti e le risposte arrivano alla segreteria
-* Dati dell'associazione obbligatori: forma, codice fiscale, sede, numero RUNTS, PEC e partita IVA, ognuno con la casella «non ce l'ha»; il legale rappresentante è la persona con la carica di presidente; una banda gialla in alto elenca cosa manca, con il pulsante «Completali ora»
-* File riservati cifrati (documenti e scansioni, allegati dei movimenti, foto dell'inventario) con una frase per riaprirli e il foglio stampabile; la copia di sicurezza porta i file cifrati. Protegge da chi porta via la sola cartella dei file; per una protezione più alta scegli una frase tua e lunga
-* Cartella dei file riservati: ogni settimana il programma controlla che non sia raggiungibile da internet e avvisa l'amministratore; la cartella si può tenere fuori dalla parte pubblica del sito e «Sposta i file» copia e controlla prima di cancellare
-* Ripristino della copia più sicuro: le copie sono firmate e una copia modificata viene rifiutata; una copia fatta su un altro sito si ripristina solo con una conferma scritta e la password; soci e prima nota si ripristinano anche se manca la frase; le password dei soci non fanno parte del ripristino (i soci rientrano con il link). Dopo un cambio dei codici di sicurezza le copie fatte prima chiedono la conferma per altro sito
-* Le pagine riservate ai soci non vengono salvate dalla cache delle pagine
-* Più sicurezza su file temporanei e lavori simultanei (chiavi, numerazione)
-* Le copie di sicurezza e i file CSV si aprono bene in Excel (accenti corretti)
-* Più messaggi e frasi con numeri anche in inglese
-* Il rendiconto e la prima nota non cambiano: nessuna modifica ai dati contabili.
 
 
 Le versioni precedenti sono nel file CHANGELOG.md del plugin.

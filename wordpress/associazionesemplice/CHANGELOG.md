@@ -2,6 +2,14 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.27 – 2026-11-17
+- Ottimizzazione: Bacheca, elenco e schede di corsi ed eventi, rendiconto, calendario, elenco soci, Prima nota, esportazioni, promemoria e comunicazioni molto più rapidi, con gli stessi risultati di prima
+- Ottimizzazione: «Soci e ospiti» a 50 righe per pagina e Prima nota a 100, con i totali sempre dell'anno intero
+- Ottimizzazione: le pagine pubbliche degli eventi restano in memoria per i visitatori e si aggiornano a ogni prenotazione o modifica
+- Nuovo: l'importazione di file grandi procede a piccoli giri, con avanzamento e pulsanti per riprendere o fermare
+- Nuovo: verifica delle ricevute a richiesta, a lotti, con l'esito salvato per anno fiscale
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.26 – 2026-11-17
 - Nuovo: permessi dei dipendenti per area. I certificati medici hanno un permesso a parte, e chi non ha l'anagrafica cerca i soci per nome o tessera
 - Nuovo: negli eventi su richiesta prenota solo la segreteria; la lista d'attesa ricorda la tariffa scelta
