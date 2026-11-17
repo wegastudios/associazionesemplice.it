@@ -648,6 +648,58 @@ if ( $course_id ) {
 if ( $ev_id ) {
 	m_profile( 'Scheda evento', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_detail' ), array( 'page' => 'asem-activity', 'id' => (string) $ev_id ) );
 }
+/** Tempo e memoria di ogni blocco della scheda di un'attività (per capire dove va il tempo oltre alle query). Non fa mai fallire il job. */
+function m_parts( string $label, int $activity_id, array $methods ): void {
+	$act = Plugin::activities()->get( $activity_id );
+	if ( ! $act ) {
+		return;
+	}
+	$year = \AssociazioneSemplice\SocialYear::from_label( $act['social_year'], Settings::start_month() );
+	$back = 'x';
+	$_GET = array( 'page' => 'asem-activity', 'id' => (string) $activity_id );
+	foreach ( $methods as $m ) {
+		try {
+			$rm = new \ReflectionMethod( 'AssociazioneSemplice\\Admin\\ActivitiesPage', $m );
+			$rm->setAccessible( true );
+			$n    = $rm->getNumberOfParameters();
+			$args = array( $act, $year, $back );
+			$args = 1 === $n ? array( $act ) : ( 2 === $n ? array( $act, $back ) : $args );
+			gc_collect_cycles();
+			memory_reset_peak_usage();
+			$m0 = memory_get_usage();
+			$t0 = microtime( true );
+			ob_start();
+			$rm->invokeArgs( null, $args );
+			$out = (string) ob_get_clean();
+			m_log( sprintf( 'PARTE %s::%s %d ms, picco +%.1f MB, %d byte', $label, $m, round( ( microtime( true ) - $t0 ) * 1000 ), ( memory_get_peak_usage() - $m0 ) / 1048576, strlen( $out ) ) );
+		} catch ( \Throwable $e ) {
+			while ( ob_get_level() > 1 ) {
+				ob_end_clean();
+			}
+			m_log( 'PARTE ' . $label . '::' . $m . ' errore ' . $e->getMessage() );
+		}
+	}
+}
+$_GET = array( 'page' => 'asem' );
+foreach ( array( 'payments_due', 'renewals', 'expected_guests', 'applications', 'adults_to_invite', 'incomplete_cards', 'overdue_loans', 'quick_cash', 'quick_enroll' ) as $m_name ) {
+	$rm = new \ReflectionMethod( 'AssociazioneSemplice\\Admin\\DashboardPage', $m_name );
+	$rm->setAccessible( true );
+	gc_collect_cycles();
+	memory_reset_peak_usage();
+	$m0 = memory_get_usage();
+	$q0 = $wpdb->num_queries;
+	$t0 = microtime( true );
+	ob_start();
+	$rm->invoke( null );
+	$out = (string) ob_get_clean();
+	m_log( sprintf( 'PARTE bacheca::%s %d ms, %d query, picco +%.1f MB, %d byte', $m_name, round( ( microtime( true ) - $t0 ) * 1000 ), $wpdb->num_queries - $q0, ( memory_get_peak_usage() - $m0 ) / 1048576, strlen( $out ) ) );
+}
+if ( $course_id ) {
+	m_parts( 'corso', (int) $course_id, array( 'course_left', 'course_enrolled', 'edit_card', 'lessons_card', 'calendar_card', 'notices_card', 'participants_card', 'copy_card', 'delete_card' ) );
+}
+if ( $ev_id ) {
+	m_parts( 'evento', (int) $ev_id, array( 'sessions_summary', 'sessions_calendar', 'sessions_list', 'sessions_left', 'edit_card', 'calendar_card', 'notices_card', 'participants_card', 'copy_card', 'delete_card' ) );
+}
 m_table();
 m_log( sprintf( 'Misure finite in %.1f s (generatore compreso).', microtime( true ) - $T0 ) );
 
