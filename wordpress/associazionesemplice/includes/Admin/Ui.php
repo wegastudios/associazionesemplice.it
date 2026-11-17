@@ -272,6 +272,10 @@ final class Ui {
 	 */
 	public static function echo_person_select( string $before, string $name, array $people, $selected, ?string $empty, string $id, string $after = '' ): void {
 		$parts = self::person_select_parts( $name, $people, $selected, $empty, $id );
+		if ( false !== strpos( $parts[1], ' selected=' ) ) { // con una voce scelta il filtro riscrive l'attributo «selected» (virgolette): resta il percorso intero, identico a prima
+			echo wp_kses( $before . implode( '', $parts ) . $after, \AssociazioneSemplice\Html::allowed() );
+			return;
+		}
 		echo wp_kses( $before . $parts[0], \AssociazioneSemplice\Html::allowed() );
 		echo $parts[1]; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- voci già protette da esc_attr ed esc_html in Ui::options
 		echo wp_kses( $parts[2] . $after, \AssociazioneSemplice\Html::allowed() );
