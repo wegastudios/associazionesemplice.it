@@ -107,20 +107,25 @@ class PeopleService {
 		return $out;
 	}
 
-	private function query_people( array $f, bool $light, bool $with_until ): array {
+	/** La scadenza della tessera (vedi active_until) come colonna calcolata: tre segnaposto con la data di oggi. */
+	private function until_sql(): string {
+		return '(SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND (m.valid_from <= %s OR EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' c WHERE c.person_id = p.id AND c.deleted_at IS NULL AND c.valid_from <= %s AND c.valid_to >= %s)))';
+	}
+
+	/**
+	 * Condizioni dell'elenco (anche il filtro di stato, fatto dal database) e relativi valori, nell'ordine dei segnaposto.
+	 *
+	 * @return array{0:string[],1:array}
+	 */
+	private function people_filter( array $f, string $today ): array {
 		$db    = $this->db();
-		$today = Db::today();
-		$state = isset( $f['status'] ) ? (string) $f['status'] : '';
-		if ( '' !== $state && ! in_array( $state, array( 'norules', 'noconsent', 'noaccess', 'suspended' ), true ) ) {
-			$with_until = true; // «tessera valida» e «scaduta» guardano la scadenza
-		}
 		$where = array( 'p.deleted_at IS NULL', 'p.anonymized_at IS NULL' ); // le persone anonimizzate non compaiono più negli elenchi
 		if ( empty( $f['applications'] ) ) {
 			$where[] = 'p.application_status IS NULL'; // chi ha chiesto di aderire e non è ancora stato approvato non è nell'anagrafica
 		} else {
 			$where[] = 'p.application_status = \'requested\'';
 		}
-		$args  = $with_until ? array( $today, $today, $today ) : array(); // tre volte: serve alla scadenza della tessera (vedi active_until)
+		$args = array();
 		if ( ! empty( $f['ids'] ) ) {
 			$where[] = 'p.id IN (' . implode( ',', array_map( 'intval', (array) $f['ids'] ) ) . ')';
 		}
@@ -137,43 +142,62 @@ class PeopleService {
 			$where[] = '(p.first_name LIKE %s OR p.last_name LIKE %s OR CONCAT(p.first_name, " ", p.last_name) LIKE %s OR CONCAT(p.last_name, " ", p.first_name) LIKE %s OR p.card_number LIKE %s OR p.email LIKE %s OR p.tax_code LIKE %s)';
 			array_push( $args, $like, $like, $like, $like, $like, $like, $like );
 		}
-		$sql = 'SELECT ' . ( $light ? self::LIGHT_COLUMNS : 'p.*' )
-			. ( $with_until ? ', (SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND (m.valid_from <= %s OR EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' c WHERE c.person_id = p.id AND c.deleted_at IS NULL AND c.valid_from <= %s AND c.valid_to >= %s))) AS active_until' : '' )
+		if ( ! empty( $f['status'] ) ) {
+			$status  = (string) $f['status'];
+			$members = MemberType::member_types();
+			$in      = '(' . implode( ',', array_fill( 0, count( $members ), '%s' ) ) . ')';
+			if ( 'norules' === $status ) {
+				if ( ! Regulation::enabled() ) {
+					$where[] = '1 = 0'; // senza regolamento nessuno deve accettarlo
+				} else {
+					$where[] = 'p.type IN ' . $in . ' AND NOT (p.rules_accepted_at IS NOT NULL AND COALESCE(BINARY p.rules_accepted_version, \'\') = %s)';
+					array_push( $args, ...$members );
+					$args[] = Regulation::version();
+				}
+			} elseif ( 'noconsent' === $status ) {
+				$where[] = 'p.privacy_consent_at IS NULL';
+			} elseif ( 'noaccess' === $status ) {
+				$where[] = 'p.type <> %s AND (p.wp_user_id IS NULL OR p.wp_user_id = 0)'; // soci e genitori/tutori, non gli ospiti
+				$args[]  = MemberType::GUEST;
+			} elseif ( 'suspended' === $status ) {
+				$where[] = 'p.type IN ' . $in . ' AND p.suspended_at IS NOT NULL';
+				array_push( $args, ...$members );
+			} else { // active: tessera valida; ogni altro valore (expired): scaduta o senza tessera
+				$where[] = 'p.type IN ' . $in . ' AND ' . ( 'active' === $status ? $this->until_sql() . ' >= %s' : '(' . $this->until_sql() . ' IS NULL OR ' . $this->until_sql() . ' < %s)' );
+				array_push( $args, ...$members );
+				if ( 'active' === $status ) {
+					array_push( $args, $today, $today, $today, $today );
+				} else {
+					array_push( $args, $today, $today, $today, $today, $today, $today, $today );
+				}
+			}
+		}
+		return array( $where, $args );
+	}
+
+	private function query_people( array $f, bool $light, bool $with_until ): array {
+		$db    = $this->db();
+		$today = Db::today();
+		$state = isset( $f['status'] ) ? (string) $f['status'] : '';
+		if ( '' !== $state && ! in_array( $state, array( 'norules', 'noconsent', 'noaccess', 'suspended' ), true ) ) {
+			$with_until = true; // «tessera valida» e «scaduta»: la riga porta anche la scadenza
+		}
+		$flt  = $this->people_filter( $f, $today );
+		$args = array_merge( $with_until ? array( $today, $today, $today ) : array(), $flt[1] ); // tre volte: serve alla scadenza della tessera (vedi active_until)
+		$sql  = 'SELECT ' . ( $light ? self::LIGHT_COLUMNS : 'p.*' )
+			. ( $with_until ? ', ' . $this->until_sql() . ' AS active_until' : '' )
 			. ( $light ? '' : ', CONCAT(h.first_name, " ", h.last_name) AS host_name' )
 			. ' FROM ' . Db::t( 'people' ) . ' p' . ( $light ? '' : ' LEFT JOIN ' . Db::t( 'people' ) . ' h ON h.id = p.host_person_id' )
-			. ' WHERE ' . implode( ' AND ', $where ) . ' ORDER BY p.last_name, p.first_name, p.id';
-		$rows = $db->get_results( $args ? $db->prepare( $sql, $args ) : $sql, ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- senza segnaposto non c'è nulla da preparare
+			. ' WHERE ' . implode( ' AND ', $flt[0] ) . ' ORDER BY p.last_name, p.first_name, p.id';
+		return $db->get_results( $args ? $db->prepare( $sql, $args ) : $sql, ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- senza segnaposto non c'è nulla da preparare
+	}
 
-		if ( ! empty( $f['status'] ) ) {
-			$rows = array_values(
-				array_filter(
-					$rows,
-					function ( $r ) use ( $f, $today ) {
-						if ( 'norules' === $f['status'] ) {
-							return Regulation::applies_to( $r ) && ! Regulation::accepted( $r );
-						}
-						if ( 'noconsent' === $f['status'] ) {
-							return empty( $r['privacy_consent_at'] );
-						}
-						if ( ! MemberType::is_member( $r['type'] ) && 'noaccess' !== $f['status'] ) {
-							return false; // ospiti e genitori/tutori non hanno la tessera
-						}
-						if ( MemberType::GUEST === $r['type'] ) {
-							return false;
-						}
-						if ( 'noaccess' === $f['status'] ) {
-							return empty( $r['wp_user_id'] );
-						}
-						if ( 'suspended' === $f['status'] ) {
-							return ! empty( $r['suspended_at'] );
-						}
-						$active = ! empty( $r['active_until'] ) && $r['active_until'] >= $today;
-						return 'active' === $f['status'] ? $active : ! $active;
-					}
-				)
-			);
-		}
-		return $rows;
+	/** Quante persone ha {@see search()} con gli stessi filtri, contate dal database (senza portare in memoria le righe). */
+	public function count_people( array $f = array() ): int {
+		$db  = $this->db();
+		$flt = $this->people_filter( $f, Db::today() );
+		$sql = 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' p WHERE ' . implode( ' AND ', $flt[0] );
+		return (int) $db->get_var( $flt[1] ? $db->prepare( $sql, $flt[1] ) : $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- senza segnaposto non c'è nulla da preparare
 	}
 
 	public function guests_of( int $member_id ): array {
