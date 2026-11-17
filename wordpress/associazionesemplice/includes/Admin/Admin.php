@@ -10,7 +10,7 @@ final class Admin {
 
 	/** Icona del menu: il simbolo ufficiale in bianco (SVG, WordPress lo adatta ai colori dell'amministrazione); se manca, l'icona di WordPress. */
 	private static function menu_icon(): string {
-		$file = ASEM_DIR . 'assets/brand/simbolo-bianco.svg';
+		$file = ASEM_DIR . 'assets/brand/simbolo-bianco-menu.svg'; // versione semplificata dello stesso simbolo (circa 1,5 KB invece di 25): finisce nel codice di ogni pagina di bacheca
 		if ( ! is_readable( $file ) ) {
 			return 'dashicons-groups';
 		}

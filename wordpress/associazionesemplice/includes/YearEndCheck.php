@@ -59,7 +59,7 @@ final class YearEndCheck {
 	/** Il risultato dell'anno fiscale come lo mostra il rendiconto (entrate meno uscite della prima nota, fondi compresi); negativo = disavanzo. */
 	public static function year_result( int $year ): int {
 		$span = FiscalYears::range( $year );
-		return (int) ( new ReportService() )->period( $span[0], $span[1] )['result'];
+		return ( new ReportService() )->period_result( $span[0], $span[1] );
 	}
 
 	/** Anni fiscali già finiti, ancora aperti e con il risultato negativo (quello in corso resta del controllo di bilancio). @return array<int,int> anno => risultato */

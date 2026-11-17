@@ -151,6 +151,16 @@ class PeopleService {
 		return $v ?: null;
 	}
 
+	/** Quante persone in anagrafica hanno la tessera (a rinnovo manuale, non sospese) scaduta o in scadenza entro $until: stesso conto di search() ma fatto dal database. */
+	public function count_renewals_due( string $until ): int {
+		$db    = $this->db();
+		$today = Db::today();
+		$sql   = 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' p '
+			. 'WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL AND p.application_status IS NULL AND p.suspended_at IS NULL AND p.type <> %s AND p.type <> %s '
+			. 'AND (SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND (m.valid_from <= %s OR EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' c WHERE c.person_id = p.id AND c.deleted_at IS NULL AND c.valid_from <= %s AND c.valid_to >= %s))) <= %s';
+		return (int) $db->get_var( $db->prepare( $sql, MemberType::GUEST, MemberType::FOUNDER, $today, $today, $today, $until ) );
+	}
+
 	public function is_active_member( int $person_id, ?string $date = null ): bool {
 		if ( $this->is_suspended( $person_id ) ) {
 			return false; // un socio sospeso è inattivo anche con la tessera valida
