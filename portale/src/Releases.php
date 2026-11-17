@@ -260,7 +260,7 @@ final class Releases {
 	 * Novità dal CHANGELOG.md dentro il pacchetto pubblicato: solo le voci «## x.y.z» più recenti della versione installata
 	 * (senza versione installata, la più recente) e solo le righe «## versione» e «- voce». Massimo 20000 caratteri.
 	 */
-	public static function changelog( string $product, string $latest, string $installed = '' ): string {
+	public static function changelog( string $product, string $latest, string $installed = '', ?array $available = null ): string {
 		if ( ! isset( self::PRODUCTS[ $product ] ) || ! self::validVersion( $latest ) || ! class_exists( 'ZipArchive' ) ) {
 			return '';
 		}
@@ -271,26 +271,66 @@ final class Releases {
 		}
 		$raw = $zip->getFromName( self::PRODUCTS[ $product ][0] . '/CHANGELOG.md' );
 		$zip->close();
-		return false === $raw ? '' : self::filterChangelog( (string) $raw, $installed );
+		return false === $raw ? '' : self::filterChangelog( (string) $raw, $installed, $available );
 	}
 
-	public static function filterChangelog( string $md, string $installed = '' ): string {
+	/**
+	 * Righe del CHANGELOG.md che il portale mostra: «## x.y.z» (con eventuale « – AAAA-MM-GG»), le voci «- …», la riga esatta
+	 * «Da fare dopo l'aggiornamento:» e, una sola volta in fondo, il «Changelog di tutte le versioni: https://associazionesemplice.it/…».
+	 * Con $available (elenco delle versioni ancora scaricabili) restano solo quelle: il changelog non cresce con le versioni tolte.
+	 */
+	public static function filterChangelog( string $md, string $installed = '', ?array $available = null ): string {
 		$out  = array();
+		$link = '';
 		$keep = false;
 		$n    = 0;
 		foreach ( preg_split( '/\r?\n/', $md ) as $line ) {
 			$line = rtrim( $line );
-			if ( preg_match( '/^## (\d+\.\d+(?:\.\d+)?)$/', $line, $m ) ) {
+			if ( preg_match( '/^## (\d+\.\d+(?:\.\d+)?)(?: [–-] \d{4}-\d{2}-\d{2})?$/u', $line, $m ) ) {
+				if ( null !== $available && ! in_array( $m[1], $available, true ) ) {
+					$keep = false;
+					continue;
+				}
 				++$n;
 				$keep = '' === $installed ? 1 === $n : version_compare( $m[1], $installed, '>' );
 				if ( $keep ) {
 					$out[] = $line;
 				}
-			} elseif ( $keep && 0 === strpos( $line, '- ' ) ) {
+			} elseif ( $keep && ( 0 === strpos( $line, '- ' ) || "Da fare dopo l'aggiornamento:" === $line ) ) {
 				$out[] = $line;
+			} elseif ( $keep && '' === $link && 0 === strpos( $line, 'Changelog di tutte le versioni: https://associazionesemplice.it/' ) ) {
+				$link = $line;
 			}
 		}
+		if ( $out && '' !== $link ) {
+			$out[] = $link;
+		}
 		return substr( implode( "\n", $out ), 0, 20000 );
+	}
+
+	/** Il testo filtrato di filterChangelog() in HTML: titoli di versione, etichette in grassetto, «Da fare dopo l'aggiornamento» e link finale (solo associazionesemplice.it). */
+	public static function changelogHtml( string $md ): string {
+		$out  = '';
+		$open = false;
+		foreach ( preg_split( '/\n/', $md ) as $line ) {
+			if ( 0 === strpos( $line, '- ' ) ) {
+				$out .= $open ? '' : '<ul>';
+				$open = true;
+				$item = htmlspecialchars( substr( $line, 2 ), ENT_QUOTES, 'UTF-8' );
+				$out .= '<li>' . preg_replace( '/^(Nuovo|Ottimizzazione|Sicurezza|Altro):/', '<strong>$1:</strong>', $item ) . '</li>';
+				continue;
+			}
+			$out .= $open ? '</ul>' : '';
+			$open = false;
+			if ( 0 === strpos( $line, '## ' ) ) {
+				$out .= '<h3>' . htmlspecialchars( substr( $line, 3 ), ENT_QUOTES, 'UTF-8' ) . '</h3>';
+			} elseif ( "Da fare dopo l'aggiornamento:" === $line ) {
+				$out .= '<p><strong>' . htmlspecialchars( $line, ENT_QUOTES, 'UTF-8' ) . '</strong></p>';
+			} elseif ( preg_match( '#^Changelog di tutte le versioni: (https://associazionesemplice\.it/[^\s"\'<>]*)$#', $line, $m ) ) {
+				$out .= '<p><a href="' . htmlspecialchars( $m[1], ENT_QUOTES, 'UTF-8' ) . '">Changelog di tutte le versioni</a></p>';
+			}
+		}
+		return $out . ( $open ? '</ul>' : '' );
 	}
 
 	public static function get( Db $db, string $product, string $version ): ?array {

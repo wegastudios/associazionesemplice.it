@@ -1340,6 +1340,14 @@ $cl = "# Novità\n\nTesto di introduzione.\n\n## 1.2.20\n- Widget nella Bacheca.
 check( 'novità: solo le versioni più recenti di quella installata', "## 1.2.20\n- Widget nella Bacheca.\n## 1.2.19\n- Anni solari.\n- Ospiti." === Releases::filterChangelog( $cl, '1.2.18' ) );
 check( 'novità: senza versione installata solo l\'ultima, senza righe estranee', "## 1.2.20\n- Widget nella Bacheca." === Releases::filterChangelog( $cl, '' ) );
 check( 'novità: nulla se è già aggiornato', '' === Releases::filterChangelog( $cl, '1.2.20' ) );
+$cl2 = "# Novità\n\n## 1.3.26 – 2026-11-17\n- Nuovo: una cosa\n- Altro: un'altra\nDa fare dopo l'aggiornamento:\n- Stripe: aggiungi gli eventi\nChangelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog\nriga estranea\n\n## 1.3.25\n- Voce vecchia\nChangelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog\n\n## 1.3.10\n- Voce tolta dal portale\n";
+$f2  = Releases::filterChangelog( $cl2, '1.3.20', array( '1.3.26', '1.3.25' ) );
+check( 'novità nuovo formato: titolo con data, etichette, «Da fare», link una sola volta', "## 1.3.26 – 2026-11-17\n- Nuovo: una cosa\n- Altro: un'altra\nDa fare dopo l'aggiornamento:\n- Stripe: aggiungi gli eventi\n## 1.3.25\n- Voce vecchia\nChangelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog" === $f2 );
+check( 'novità: le versioni non più scaricabili spariscono', false === strpos( Releases::filterChangelog( $cl2, '0', array( '1.3.26', '1.3.25' ) ), '1.3.10' ) && false !== strpos( Releases::filterChangelog( $cl2, '0' ), '1.3.10' ) );
+check( 'novità: un link fuori dal sito non passa', false === strpos( Releases::filterChangelog( "## 1.0\n- a\nChangelog di tutte le versioni: https://altro.example/x", '' ), 'altro.example' ) );
+$h2 = Releases::changelogHtml( $f2 );
+check( 'novità html: etichetta in grassetto, titolo, «Da fare», link del sito', false !== strpos( $h2, '<strong>Nuovo:</strong> una cosa' ) && false !== strpos( $h2, '<h3>1.3.26 – 2026-11-17</h3>' ) && false !== strpos( $h2, '<p><strong>Da fare dopo l&#039;aggiornamento:</strong></p>' ) && false !== strpos( $h2, '<a href="https://associazionesemplice.it/wordpress/changelog">' ) );
+check( 'novità html: niente HTML dal testo', false === strpos( Releases::changelogHtml( "## 1.0\n- Nuovo: <script>x</script>" ), '<script>' ) );
 check( 'novità: tetto di 20000 caratteri', strlen( Releases::filterChangelog( "## 9.0\n" . str_repeat( "- voce lunga lunga lunga\n", 2000 ), '1.0' ) ) <= 20000 );
 
 // --- Promozione in vetrina (listino barrato) -------------------------------------------------------------------------------
