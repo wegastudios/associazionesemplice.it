@@ -3825,6 +3825,7 @@ foreach ( $gov2[ $gy ]['twins'] as $t ) {
 }
 asem_ok( false !== strpos( (string) ( $why[ $twin_phone ] ?? '' ), 'stesso cellulare' ) && false !== strpos( (string) ( $why[ $twin_name ] ?? '' ), 'stesso nome' ), 'furbi: il motivo (stesso cellulare, stesso nome) è indicato' );
 asem_ok( 2 === count( $people->find_by_phone( '333-5555552' ) ) && 1 === count( $people->find_by_phone( '+39 3335555551' ) ) && array() === $people->find_by_phone( 'boh' ), 'ricerca per cellulare: scritto in qualunque modo' );
+asem_ok( array_key_exists( 'email', $people->find_by_phone( '+39 3335555551' )[0] ) && array_key_exists( 'host_person_id', $people->find_by_phone( '+39 3335555551' )[0] ), 'ricerca per cellulare: chi corrisponde ha la scheda completa' );
 $ids_to_invite = array_map( function ( $g ) { return (int) $g['id']; }, $people->guests_to_invite() );
 asem_ok( in_array( $gx, $ids_to_invite, true ) && in_array( $gy, $ids_to_invite, true ) && in_array( $twin_phone, $ids_to_invite, true ), 'ospiti da invitare: elenco per chi gestisce' );
 
@@ -5423,6 +5424,74 @@ asem_ok( $n_susp >= 1 && $people->is_suspended( $old_a ), 'sospensione in blocco
 $founder_ok = ! $people->is_suspended( $founder );
 asem_ok( $founder_ok, 'sospensione in blocco: i fondatori non si toccano' );
 asem_ok( 0 === $people->suspend_expired( 8 ), 'sospensione in blocco: rilanciarla non cambia nulla' );
+
+// elenco soci: elenco leggero identico a quello completo (stessi soci, stesso ordine, stessi totali), paginazione a 50 righe e meno query
+$pg_ids = array();
+for ( $i = 0; $i < 52; $i++ ) {
+	$pg_ids[] = $people->create( array( 'type' => 'ordinary', 'first_name' => sprintf( 'N%02d', $i ), 'last_name' => 'Zzpag', 'email' => 'zzpag' . $i . '@example.com' ) );
+}
+$pg_cy      = (int) current_time( 'Y' );
+$people->set_membership( $pg_ids[0], (string) $pg_cy, true, 'manual' );
+$people->set_membership( $pg_ids[1], (string) ( $pg_cy - 3 ), true, 'manual' );
+$pg_same = true;
+foreach ( array( array(), array( 'type' => 'ordinary' ), array( 'type' => 'guest' ), array( 'q' => 'Zzpag' ), array( 'q' => 'zzpag7@example' ), array( 'status' => 'active' ), array( 'status' => 'expired' ), array( 'status' => 'noaccess' ), array( 'status' => 'suspended' ), array( 'status' => 'noconsent' ), array( 'status' => 'norules' ), array( 'type' => 'ordinary', 'status' => 'expired', 'q' => 'Zzpag' ) ) as $pg_f ) {
+	$pg_full  = $people->search( $pg_f );
+	$pg_light = $people->search_light( $pg_f );
+	if ( array_map( 'intval', array_column( $pg_full, 'id' ) ) !== array_map( 'intval', array_column( $pg_light, 'id' ) ) ) {
+		$pg_same = false;
+		WP_CLI::log( 'differenza con i filtri ' . wp_json_encode( $pg_f ) . ': ' . count( $pg_full ) . ' contro ' . count( $pg_light ) );
+	}
+}
+asem_ok( $pg_same, 'elenco leggero: con ogni filtro restano gli stessi soci nello stesso ordine' );
+$pg_light_row = $people->search_light( array( 'q' => 'Zzpag' ) );
+asem_ok( 52 === count( $pg_light_row ) && ! array_key_exists( 'email', $pg_light_row[0] ) && ! array_key_exists( 'tax_code', $pg_light_row[0] ) && array_key_exists( 'card_number', $pg_light_row[0] ) && array_key_exists( 'level_id', $pg_light_row[0] ), 'elenco leggero: solo le colonne per scegliere la persona, senza email né codice fiscale' );
+$pg_q = $wpdb->num_queries;
+$people->search_light( array( 'q' => 'Zzpag' ) );
+asem_ok( 1 === $wpdb->num_queries - $pg_q, 'elenco leggero: una sola query (' . ( $wpdb->num_queries - $pg_q ) . ')' );
+$pg_two = $people->search_ids( array( $pg_ids[1], $pg_ids[0], 999999999 ) );
+asem_ok( 2 === count( $pg_two ) && (int) $pg_two[0]['id'] === $pg_ids[1] && (int) $pg_two[1]['id'] === $pg_ids[0] && array_key_exists( 'email', $pg_two[0] ) && array_key_exists( 'active_until', $pg_two[0] ) && $pg_two[1]['active_until'] === $people->active_until( $pg_ids[0] ), 'schede per id: righe complete nell\'ordine richiesto, senza chi non esiste' );
+$pg_full_q = $people->search( array( 'q' => 'Zzpag' ) );
+asem_ok( 52 === count( $pg_full_q ) && array_key_exists( 'email', $pg_full_q[0] ), 'elenco completo: le esportazioni e gli invii leggono sempre tutte le righe' );
+// la pagina dell'elenco: 50 righe, totale vero, filtri e ordine nei collegamenti, ultima pagina con le righe restanti
+$pg_p1 = asem_render( array( Admin\PeoplePage::class, 'render_list' ), '52 persone.', array( 'q' => 'Zzpag' ) );
+asem_ok( 50 === substr_count( $pg_p1, 'Zzpag N' ) && false !== strpos( $pg_p1, 'Pagina 1 di 2' ) && false !== strpos( $pg_p1, 'paged=2' ) && false !== strpos( $pg_p1, 'q=Zzpag' ) && false === strpos( $pg_p1, 'Precedenti' ), 'elenco soci: prima pagina con 50 persone, totale vero e collegamento alla successiva' );
+$pg_p2 = asem_render( array( Admin\PeoplePage::class, 'render_list' ), '52 persone.', array( 'q' => 'Zzpag', 'paged' => '2' ) );
+asem_ok( 2 === substr_count( $pg_p2, 'Zzpag N' ) && false !== strpos( $pg_p2, 'Pagina 2 di 2' ) && false !== strpos( $pg_p2, 'Precedenti' ) && false === strpos( $pg_p2, 'Successive' ) && false !== strpos( $pg_p2, 'Zzpag N50' ) && false === strpos( $pg_p2, 'Zzpag N00' ), 'elenco soci: ultima pagina con le righe restanti, in ordine' );
+$pg_p9 = asem_render( array( Admin\PeoplePage::class, 'render_list' ), '52 persone.', array( 'q' => 'Zzpag', 'paged' => '99' ) );
+asem_ok( false !== strpos( $pg_p9, 'Pagina 2 di 2' ), 'elenco soci: una pagina oltre la fine porta all\'ultima' );
+$pg_desc = asem_render( array( Admin\PeoplePage::class, 'render_list' ), '52 persone.', array( 'q' => 'Zzpag', 'orderby' => 'name', 'order' => 'desc' ) );
+asem_ok( false !== strpos( $pg_desc, 'Zzpag N51' ) && false === strpos( $pg_desc, 'Zzpag N00' ) && false !== strpos( $pg_desc, 'orderby=name' ) && false !== strpos( $pg_desc, 'order=desc' ), 'elenco soci: l\'ordine scelto vale su tutte le pagine' );
+$pg_all_n = count( $people->search() );
+$pg_all   = asem_render( array( Admin\PeoplePage::class, 'render_list' ), $pg_all_n . ' persone.' );
+// le righe in più non fanno query in più (il nome del livello si legge una volta sola)
+$pg_q50 = $wpdb->num_queries;
+asem_render( array( Admin\PeoplePage::class, 'render_list' ), '52 persone.', array( 'q' => 'Zzpag' ) );
+$pg_n50 = $wpdb->num_queries - $pg_q50;
+$pg_q2 = $wpdb->num_queries;
+asem_render( array( Admin\PeoplePage::class, 'render_list' ), '1 persone.', array( 'q' => 'N50' ) );
+$pg_n2 = $wpdb->num_queries - $pg_q2;
+asem_ok( $pg_n50 <= $pg_n2 + 6, 'elenco soci: 50 righe non costano più query di 1 (' . $pg_n50 . ' contro ' . $pg_n2 . ')' );
+$lv_q = $wpdb->num_queries;
+$lv_row = array( 'type' => 'ordinary', 'level_id' => (int) \AssociazioneSemplice\Levels::all()[0]['id'] );
+for ( $i = 0; $i < 30; $i++ ) {
+	\AssociazioneSemplice\Levels::label( $lv_row );
+}
+$lv_q = $wpdb->num_queries;
+for ( $i = 0; $i < 30; $i++ ) {
+	\AssociazioneSemplice\Levels::label( $lv_row );
+}
+asem_ok( 0 === $wpdb->num_queries - $lv_q, 'livelli: il nome del livello si legge una volta sola per richiesta (' . ( $wpdb->num_queries - $lv_q ) . ')' );
+$lv_before = \AssociazioneSemplice\Levels::get( (int) $lv_row['level_id'] );
+$wpdb->update( Db::t( 'member_levels' ), array( 'name' => 'Nome cambiato' ), array( 'id' => (int) $lv_row['level_id'] ) );
+\AssociazioneSemplice\Levels::forget();
+asem_ok( 'Nome cambiato' === \AssociazioneSemplice\Levels::get( (int) $lv_row['level_id'] )['name'], 'livelli: dopo una modifica si legge il nome nuovo' );
+$wpdb->update( Db::t( 'member_levels' ), array( 'name' => $lv_before['name'] ), array( 'id' => (int) $lv_row['level_id'] ) );
+\AssociazioneSemplice\Levels::forget();
+foreach ( $pg_ids as $pg_id ) {
+	$wpdb->delete( Db::t( 'people' ), array( 'id' => $pg_id ) );
+	$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $pg_id ) );
+}
+unset( $pg_ids, $pg_all, $pg_p1, $pg_p2, $pg_p9, $pg_desc );
 
 // ---------- Dopo l'iscrizione si apre l'incasso già compilato ----------
 $p_inv   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Iscritto', 'last_name' => 'Senzatessera', 'email' => 'iscritto.senzatessera@example.com' ) );

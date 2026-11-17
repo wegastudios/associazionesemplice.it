@@ -28,9 +28,23 @@ final class Levels {
 		return Db::db();
 	}
 
+	/** @var array<int,array>|null livelli già letti in questa richiesta, per id: l'elenco dei soci chiede il nome del livello a ogni riga */
+	private static $by_id = null;
+
+	/** Dimentica i livelli letti (dopo ogni salvataggio o modifica diretta della tabella). */
+	public static function forget(): void {
+		self::$by_id = null;
+	}
+
 	/** @return array[] livelli in ordine; $only_active = solo quelli proponibili per i nuovi soci */
 	public static function all( bool $only_active = false ): array {
 		$rows = self::db()->get_results( 'SELECT * FROM ' . Db::t( 'member_levels' ) . ( $only_active ? ' WHERE active = 1' : '' ) . ' ORDER BY sort_order, id', ARRAY_A ) ?: array();
+		if ( ! $only_active ) {
+			self::$by_id = array(); // la tabella ha al più 40 righe: una lettura completa riempie la memoria della richiesta
+			foreach ( $rows as $r ) {
+				self::$by_id[ (int) $r['id'] ] = $r;
+			}
+		}
 		return $rows;
 	}
 
@@ -38,7 +52,14 @@ final class Levels {
 		if ( $id <= 0 ) {
 			return null;
 		}
+		if ( isset( self::$by_id[ $id ] ) ) {
+			return self::$by_id[ $id ];
+		}
 		$r = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'member_levels' ) . ' WHERE id = %d', $id ), ARRAY_A );
+		if ( $r ) {
+			self::$by_id                    = is_array( self::$by_id ) ? self::$by_id : array();
+			self::$by_id[ (int) $r['id'] ] = $r; // si ricorda solo ciò che esiste: un livello creato dopo si trova sempre
+		}
 		return $r ?: null;
 	}
 
@@ -173,6 +194,7 @@ final class Levels {
 				$db->delete( $tbl, array( 'id' => (int) $lv['id'] ) );
 			}
 		}
+		self::forget();
 		Audit::log( 'levels.saved', 'settings', 0, array( 'levels' => count( $clean ) ) );
 		do_action( 'asem_levels_saved' );
 	}
@@ -191,6 +213,7 @@ final class Levels {
 		$i = 0;
 		foreach ( MemberType::member_types() as $t ) {
 			$db->insert( $tbl, array( 'name' => MemberType::label( $t ), 'base_type' => $t, 'fee_cents' => null, 'sort_order' => $i++, 'active' => 1, 'created_at' => Db::now() ) );
+			self::forget();
 		}
 	}
 }

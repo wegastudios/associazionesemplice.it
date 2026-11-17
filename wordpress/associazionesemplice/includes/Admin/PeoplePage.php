@@ -6,10 +6,13 @@ use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\Html;
+use AssociazioneSemplice\Texts;
 
 defined( 'ABSPATH' ) || exit;
 
 final class PeoplePage {
+
+	const PER_PAGE = 50; // persone per pagina nell'elenco
 
 	public static function render_list(): void {
 		$q      = Ui::get_str( 'q' );
@@ -17,15 +20,27 @@ final class PeoplePage {
 		$status = Ui::get_str( 'status' );
 		$by     = Ui::get_str( 'orderby' );
 		$dir    = 'desc' === Ui::get_str( 'order' ) ? 'desc' : 'asc';
-		$rows   = Plugin::people()->search( array( 'q' => $q, 'type' => $type, 'status' => $status ) );
+		$rows   = Plugin::people()->search_light( array( 'q' => $q, 'type' => $type, 'status' => $status ) ); // filtri e ordine su poche colonne: le schede intere si leggono solo per le righe della pagina
 		$at_limit = '1' === Ui::get_str( 'at_limit' );
-		$gov      = Plugin::people()->guest_overview();
+		$gov      = null; // il quadro degli ospiti si calcola solo se serve (filtro «ospiti da invitare» o ospiti nella pagina)
 		if ( $at_limit ) {
+			$gov  = Plugin::people()->guest_overview();
 			$rows = array_values( array_filter( $rows, function ( $x ) use ( $gov ) {
 				return MemberType::GUEST === $x['type'] && ! empty( $gov[ (int) $x['id'] ]['flag'] );
 			} ) );
 		}
 		$rows   = self::sort_rows( $rows, $by, $dir );
+		$total  = count( $rows ); // il totale è quello vero, non quello della pagina
+		$pages  = max( 1, (int) ceil( $total / self::PER_PAGE ) );
+		$paged  = max( 1, min( $pages, Ui::get_int( 'paged', 1 ) ) );
+		$shown  = Plugin::people()->search_ids( array_column( array_slice( $rows, ( $paged - 1 ) * self::PER_PAGE, self::PER_PAGE ), 'id' ) );
+		foreach ( $shown as $s ) {
+			if ( null === $gov && MemberType::GUEST === $s['type'] ) {
+				$gov = Plugin::people()->guest_overview();
+				break;
+			}
+		}
+		$gov    = (array) $gov;
 		$keep   = array_filter( array( 'q' => $q, 'type' => $type, 'status' => $status, 'at_limit' => $at_limit ? '1' : '' ), 'strlen' );
 		$today  = current_time( 'Y-m-d' );
 
@@ -71,12 +86,12 @@ final class PeoplePage {
 			echo wp_kses( '<button class="button" data-confirm="Sospendere ' . count( $stale ) . ' soci con la tessera scaduta da oltre ' . (int) $months . ' mesi? Diventano inattivi (non compaiono più in Bacheca) finché non li riattivi a mano.">Sospendi soci scaduti da oltre ' . (int) $months . ' mesi (' . count( $stale ) . ')</button>', Html::allowed() );
 			Ui::form_close();
 		}
-		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
+		echo '<p class="description">' . $total . ' persone.</p>';
 		echo wp_kses( '<table class="widefat striped asem-cards asem-more"><thead><tr>' . self::sort_th( 'Tessera', 'card', $by, $dir, $keep ) . self::sort_th( 'Nome', 'name', $by, $dir, $keep ) . self::sort_th( 'Tipo', 'type', $by, $dir, $keep ) . '<th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>', Html::allowed() );
-		if ( ! $rows ) {
+		if ( ! $shown ) {
 			echo '<tr><td colspan="6">Nessuna persona trovata.</td></tr>';
 		}
-		foreach ( $rows as $p ) {
+		foreach ( $shown as $p ) {
 			if ( MemberType::GUEST === $p['type'] ) {
 				$state = 'Ospite di ' . esc_html( (string) $p['host_name'] ) . '<br>' . self::guest_badge( $gov[ (int) $p['id'] ] ?? null );
 			} elseif ( ! empty( $p['suspended_at'] ) ) {
@@ -99,6 +114,18 @@ final class PeoplePage {
 			echo '<td class="asem-card-open"><a class="button button-small" href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">Apri</a></td></tr>';
 		}
 		echo '</tbody></table>';
+		if ( $pages > 1 ) { // una pagina di 50 persone alla volta: i filtri e l'ordine scelti restano
+			$nav  = array_merge( $keep, '' !== $by ? array( 'orderby' => $by, 'order' => $dir ) : array() );
+			echo '<p class="tablenav asem-pager">';
+			if ( $paged > 1 ) {
+				echo '<a class="button" href="' . esc_url( Ui::url( 'asem-people', array_merge( $nav, array( 'paged' => $paged - 1 ) ) ) ) . '">' . esc_html( Texts::t( '← Precedenti' ) ) . '</a> ';
+			}
+			echo esc_html( Texts::t( 'Pagina {n} di {tot}', array( 'n' => $paged, 'tot' => $pages ) ) ) . ' ';
+			if ( $paged < $pages ) {
+				echo '<a class="button" href="' . esc_url( Ui::url( 'asem-people', array_merge( $nav, array( 'paged' => $paged + 1 ) ) ) ) . '">' . esc_html( Texts::t( 'Successive →' ) ) . '</a>';
+			}
+			echo '</p>';
+		}
 		Ui::footer();
 	}
 
@@ -162,7 +189,7 @@ final class PeoplePage {
 		};
 		$host_id = $p ? (int) $p['host_person_id'] : Ui::get_int( 'host' );
 		$back    = Ui::url( 'asem-person', $id ? array( 'id' => $id ) : array( 'type' => $type ) );
-		$hosts   = array_values( array_filter( $people->search(), function ( $x ) use ( $id ) {
+		$hosts   = array_values( array_filter( $people->search_light(), function ( $x ) use ( $id ) {
 			return MemberType::is_member( $x['type'] ) && (int) $x['id'] !== $id;
 		} ) );
 
@@ -219,7 +246,7 @@ final class PeoplePage {
 		echo '<tr><th>Luogo di nascita</th><td><input type="text" name="birth_place" value="' . esc_attr( $val( 'birth_place' ) ) . '" class="regular-text" maxlength="120" placeholder="Comune (e provincia)"><p class="description">Facoltativo; il libro dei soci lo riporta.</p></td></tr>';
 		if ( MemberType::is_member( $type ) ) {
 			$guardians = $id ? \AssociazioneSemplice\Guardians::of( $id ) : array();
-			$cands     = array_values( array_filter( $people->search(), function ( $x ) use ( $id ) {
+			$cands     = array_values( array_filter( $people->search_light(), function ( $x ) use ( $id ) {
 				return (int) $x['id'] !== $id && MemberType::GUEST !== $x['type']; // basta che il genitore sia censito: socio o «genitore o tutore»; chi opera sul sito deve avere l'email
 			} ) );
 			echo '<tr><th>Tutore</th><td><input type="hidden" name="guardians_present" value="1">';

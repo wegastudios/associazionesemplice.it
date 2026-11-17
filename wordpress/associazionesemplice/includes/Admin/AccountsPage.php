@@ -129,7 +129,7 @@ final class AccountsPage {
 		Ui::form_open( 'asem_fund_create', $back );
 		echo '<table class="form-table"><tbody><tr><th>Nome</th><td><input type="text" name="name" class="regular-text" required placeholder="es. Rimborso Mario — Gita"></td></tr>'
 			. '<tr><th>Somma già accantonata</th><td><input type="text" name="amount" inputmode="decimal" placeholder="0,00"> €</td></tr>'
-			. '<tr><th>Da rimborsare a</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— nessuno —' ) . '<p class="description">Facoltativo: il volontario o socio che riceverà il rimborso.</p></td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<tr><th>Da rimborsare a</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search_light(), null, '— nessuno —' ) . '<p class="description">Facoltativo: il volontario o socio che riceverà il rimborso.</p></td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Crea il fondo' );
 		Ui::form_close();
 		echo '</div>';

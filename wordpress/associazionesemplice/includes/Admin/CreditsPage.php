@@ -22,7 +22,7 @@ final class CreditsPage {
 	private static function members(): array {
 		return array_values(
 			array_filter(
-				Plugin::people()->search(),
+				Plugin::people()->search_light(),
 				function ( $p ) {
 					return \AssociazioneSemplice\MemberType::is_member( $p['type'] );
 				}

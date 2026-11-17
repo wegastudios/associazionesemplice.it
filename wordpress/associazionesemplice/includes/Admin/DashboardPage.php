@@ -334,7 +334,7 @@ final class DashboardPage {
 			return;
 		}
 		Ui::form_open( 'asem_quick_enroll', Ui::url( 'asem' ) );
-		echo wp_kses( '<p>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— chi si iscrive —' ) . '</p>'
+		echo wp_kses( '<p>' . Ui::person_select( 'person_id', Plugin::people()->search_light(), null, '— chi si iscrive —' ) . '</p>'
 			. '<p><select name="target" required>' . Ui::options( $targets, null, '— a cosa —' ) . '</select></p>'
 			. '<p><button class="button button-primary">Iscrivi</button> <a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Poi incassa il contributo →</a></p>', Html::allowed() );
 		Ui::form_close();
@@ -375,7 +375,7 @@ final class DashboardPage {
 			$by[ $pid ]['cents'] += $cents;
 		};
 		// nuovi soci che non hanno mai pagato la quota
-		foreach ( $people->search() as $p ) {
+		foreach ( $people->search_light( array(), true ) as $p ) { // basta una riga leggera: la scheda intera serve solo alle prime 12 voci mostrate
 			if ( empty( $p['active_until'] ) && ( $m = $member_due( $p ) ) ) {
 				$add( $p, $m[0], $m[1] );
 			}
@@ -407,8 +407,12 @@ final class DashboardPage {
 		}
 		$rows = array_values( $by );
 		echo '<div class="asem-card"><h2>Pagamenti da incassare (' . count( $rows ) . ')</h2><p class="description">Quote dei nuovi soci o con la tessera non valida, mensilità dei corsi (dovute dalla prima lezione del mese) e contributi non ancora versati.</p><ul>';
-		foreach ( array_slice( $rows, 0, 12 ) as $r ) {
-			$p = $r['person'];
+		$shown = array_slice( $rows, 0, 12 );
+		$full  = $people->get_many( array_map( function ( $r ) {
+			return (int) $r['person']['id'];
+		}, $shown ) );
+		foreach ( $shown as $r ) {
+			$p = $full[ (int) $r['person']['id'] ] ?? $r['person']; // i contatti e il nome vengono dalla scheda intera
 			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">' . esc_html( implode( ' + ', $r['what'] ) ) . '</span> <strong>' . esc_html( Money::format( (int) $r['cents'] ) ) . '</strong> '
 				. '<a class="button button-small asem-tap" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> ' . Ui::contact_links( $p ) . '</li>', Html::allowed() );
 		}
@@ -420,7 +424,7 @@ final class DashboardPage {
 		$today = current_time( 'Y-m-d' );
 		$soon  = gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) );
 		$list  = array();
-		foreach ( Plugin::people()->search() as $p ) {
+		foreach ( Plugin::people()->search_light( array(), true ) as $p ) { // righe leggere: la scheda intera si legge solo per le 10 mostrate
 			if ( MemberType::GUEST === $p['type'] || empty( $p['active_until'] ) || MemberType::is_auto_renewed( $p['type'] ) || ! empty( $p['suspended_at'] ) ) {
 				continue;
 			}
@@ -435,7 +439,10 @@ final class DashboardPage {
 			return strcmp( $a['active_until'], $b['active_until'] );
 		} );
 		echo '<div class="asem-card"><h2>Soci da rinnovare (' . count( $list ) . ')</h2><p class="description">Tessera scaduta o in scadenza entro 30 giorni. Un socio con la tessera scaduta non può prenotare: incassa il rinnovo oppure sospendilo (diventa inattivo, finché non rinnova).</p><ul>';
-		foreach ( array_slice( $list, 0, 10 ) as $p ) {
+		$shown = array_slice( $list, 0, 10 );
+		$full  = Plugin::people()->get_many( array_column( $shown, 'id' ) );
+		foreach ( $shown as $p ) {
+			$p = array_merge( $p, $full[ (int) $p['id'] ] ?? array() ); // la scheda intera per i contatti; la scadenza calcolata resta
 			$expired = $p['active_until'] < $today;
 			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">'
 				. ( $expired ? 'scaduta il ' : 'scade il ' ) . esc_html( Ui::date( $p['active_until'] ) ) . '</span> '
