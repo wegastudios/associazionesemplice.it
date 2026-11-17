@@ -442,7 +442,7 @@ final class ActivitiesPage {
 					if ( 'booked' !== $b['status'] ) {
 						continue;
 					}
-					$person = $people->get( (int) $b['person_id'] );
+					$person = array( 'id' => (int) $b['person_id'], 'first_name' => $b['first_name'], 'last_name' => $b['last_name'], 'phone' => $b['person_phone'] ); // i dati della persona arrivano già con le prenotazioni (la persona eliminata non è nell'elenco): nessuna query per ciascuna
 					if ( $person ) {
 						$cnt++;
 						$rows .= self::participant_row( $activity, $person, (int) $s['id'], trim( ( 'paid' === ( $b['state'] ?? '' ) ? 'pagato' : ( ! empty( $b['fee_due_cents'] ) ? 'da pagare' : '' ) ) . ( '' !== PriceLists::booking_label( $activity, $b ) ? ' · ' . PriceLists::booking_label( $activity, $b ) : '' ), ' ·' ), $with_delete );

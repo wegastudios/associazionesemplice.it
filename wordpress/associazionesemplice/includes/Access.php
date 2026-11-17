@@ -132,11 +132,14 @@ final class Access {
 		if ( $user_id <= 0 ) {
 			return null;
 		}
+		if ( RequestMemo::has( 'person_for_user', $user_id ) ) { // già cercata in questa richiesta: la memoria si svuota da sola a ogni scrittura sulle persone
+			return RequestMemo::get( 'person_for_user', $user_id );
+		}
 		$row = Db::db()->get_row(
 			Db::db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE wp_user_id = %d AND deleted_at IS NULL', $user_id ),
 			ARRAY_A
 		);
-		return $row ?: null;
+		return RequestMemo::put( 'person_for_user', $user_id, $row ?: null, array( Db::t( 'people' ) ) );
 	}
 
 	/** Chi sta navigando: la persona dell'utente WordPress collegato oppure, senza utente, quella dell'accesso proprio. */

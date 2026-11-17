@@ -13,7 +13,7 @@ final class PayeeChangeNoticeTest extends TestCase {
 	/** L'avviso sta nel salvataggio delle impostazioni, dopo la scrittura: ci passano pannello e ripristino. */
 	public function test_settings_update_notifies_after_saving(): void {
 		$src  = $this->src( 'Settings.php' );
-		$save = (int) strpos( $src, 'update_option( self::OPTION, $clean );' );
+		$save = (int) strpos( $src, 'update_option( self::OPTION, $clean, false );' );
 		$bank = (int) strpos( $src, 'Bank::notify_change(' );
 		$pp   = (int) strpos( $src, 'Donations::notify_change(' );
 		$this->assertGreaterThan( 0, $save );

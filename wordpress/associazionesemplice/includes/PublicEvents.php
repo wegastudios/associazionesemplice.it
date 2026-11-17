@@ -159,9 +159,9 @@ final class PublicEvents {
 			self::META,
 			array( 'type' => 'integer', 'single' => true, 'show_in_rest' => false, 'auth_callback' => '__return_false' )
 		);
-		if ( '1' !== (string) get_option( self::OPT_FLUSH, '' ) ) { // indirizzi nuovi: si ricaricano una volta
+		if ( '1' !== (string) BootState::get( 'events_rewrite', self::OPT_FLUSH, '' ) ) { // indirizzi nuovi: si ricaricano una volta
 			flush_rewrite_rules( false );
-			update_option( self::OPT_FLUSH, '1', false );
+			BootState::set( 'events_rewrite', '1' );
 		}
 	}
 
@@ -196,6 +196,30 @@ final class PublicEvents {
 
 	/** Contenuto collegato a un'attività, anche nel cestino (0 se non c'è). */
 	public static function post_of( int $activity_id ): int {
+		$wpdb = Db::db();
+		if ( RequestMemo::has( 'event_post_of', $activity_id ) ) { // già cercato in questa richiesta: la memoria si svuota da sola a ogni scrittura su contenuti e meta
+			return (int) RequestMemo::get( 'event_post_of', $activity_id );
+		}
+		return (int) RequestMemo::put( 'event_post_of', $activity_id, self::find_post_of( $activity_id ), array( $wpdb->posts, $wpdb->postmeta ) );
+	}
+
+	/** Id delle attività (tra quelle indicate) che hanno già un contenuto collegato, anche nel cestino: una sola query. @return array<int,true> */
+	private static function activities_with_page( array $activity_ids ): array {
+		$wpdb = Db::db();
+		$out  = array();
+		if ( ! $activity_ids ) {
+			return $out;
+		}
+		$in   = implode( ',', array_fill( 0, count( $activity_ids ), '%s' ) ); // testo come in get_posts(): stesso confronto di prima
+		$args = array_merge( array( self::META, self::POST_TYPE ), array_map( 'strval', $activity_ids ) );
+		$rows = $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT m.meta_value FROM ' . $wpdb->postmeta . ' m JOIN ' . $wpdb->posts . " p ON p.ID = m.post_id WHERE m.meta_key = %s AND p.post_type = %s AND p.post_status IN ('publish','draft','pending','private','future','trash') AND m.meta_value IN ($in)", $args ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- segnaposto generati, nomi di tabella di WordPress
+		foreach ( (array) $rows as $v ) {
+			$out[ (int) $v ] = true;
+		}
+		return $out;
+	}
+
+	private static function find_post_of( int $activity_id ): int {
 		$ids = get_posts(
 			array(
 				'post_type'        => self::POST_TYPE,
@@ -299,21 +323,22 @@ final class PublicEvents {
 
 	/** Attività già esistenti: la prima volta (e a piccoli gruppi) si crea la loro pagina in bozza. */
 	public static function backfill(): void {
-		if ( 'done' === get_option( self::OPT_DONE, '' ) || ! current_user_can( Plugin::CAP ) ) {
+		if ( 'done' === BootState::get( 'events_backfill', self::OPT_DONE, '' ) || ! current_user_can( Plugin::CAP ) ) {
 			return;
 		}
 		$db  = Db::db();
 		$ids = $db->get_col( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL ORDER BY id DESC LIMIT 400' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+		$have = self::activities_with_page( array_map( 'intval', (array) $ids ) ); // una sola query per sapere quali attività hanno già la pagina
 		$todo = 0;
 		foreach ( (array) $ids as $aid ) {
-			if ( ! self::post_of( (int) $aid ) ) {
+			if ( ! isset( $have[ (int) $aid ] ) ) {
 				if ( ++$todo > 40 ) {
 					return; // il resto alla prossima pagina dell'amministrazione
 				}
 				self::ensure( (int) $aid );
 			}
 		}
-		update_option( self::OPT_DONE, 'done', false );
+		BootState::set( 'events_backfill', 'done' );
 	}
 
 	/** Chi lavora sulla gestione (segreteria, tesoriere, amministratore) può scrivere le pagine degli eventi e caricare le locandine; sugli altri contenuti del sito non guadagna nulla. */

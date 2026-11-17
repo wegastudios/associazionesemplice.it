@@ -718,7 +718,7 @@ class ActivityService {
 	public function bookings_for_session( int $session_id ): array {
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT b.*, p.first_name, p.last_name, p.type, p.card_number, p.email, p.host_person_id FROM ' . Db::t( 'bookings' ) . ' b '
+				'SELECT b.*, p.first_name, p.last_name, p.type, p.card_number, p.email, p.host_person_id, p.phone AS person_phone FROM ' . Db::t( 'bookings' ) . ' b '
 				. 'JOIN ' . Db::t( 'people' ) . ' p ON p.id = b.person_id AND p.deleted_at IS NULL WHERE b.session_id = %d '
 				. "ORDER BY (b.status = 'booked') DESC, p.last_name, p.first_name",
 				$session_id

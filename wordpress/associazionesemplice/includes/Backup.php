@@ -607,6 +607,7 @@ final class Backup {
 			$saved                       = (array) get_option( Settings::OPTION, array() );
 			$saved['fiscal_start_month'] = $fiscal_month;
 			update_option( Settings::OPTION, $saved );
+			Settings::forget(); // la copia in memoria di questa richiesta si rilegge
 			foreach ( self::OPT_NAMES as $n ) {
 				if ( isset( $p['options'][ $n ] ) && null !== $p['options'][ $n ] ) {
 					update_option( $n, $p['options'][ $n ], false );

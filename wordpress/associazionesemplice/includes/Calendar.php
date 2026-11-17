@@ -26,7 +26,15 @@ final class Calendar {
 	public static function occurrences( string $from, string $to ): array {
 		$db   = Db::db();
 		$out  = array();
-		$acts = $db->get_results( 'SELECT * FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL', ARRAY_A ) ?: array();
+		// Le lezioni vengono solo dai corsi: gli eventi non si leggono, e nemmeno i corsi già finiti prima di $from che non hanno date proprie o ripetizioni con una fine esplicita.
+		$acts = $db->get_results(
+			$db->prepare(
+				'SELECT * FROM ' . Db::t( 'activities' ) . " WHERE deleted_at IS NULL AND kind = %s AND NOT ( ends_on IS NOT NULL AND ends_on < %s AND ( lesson_slots IS NULL OR ( lesson_slots NOT LIKE '%%single%%' AND lesson_slots NOT LIKE '%%until\":\"%%' AND lesson_slots NOT LIKE '%%until\": \"%%' ) ) )", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnsupportedPlaceholder -- nome tabella interno
+				ActivityKind::COURSE,
+				$from
+			),
+			ARRAY_A
+		) ?: array();
 		$skip = array(); // lezioni annullate o spostate: activity_id => [data => true]
 		$moves = array();
 		foreach ( LessonExceptions::between( $from, $to ) as $e ) {
@@ -65,6 +73,12 @@ final class Calendar {
 						'kind' => 'course', 'activity_id' => (int) $a['id'], 'session_id' => 0,
 					);
 				}
+			}
+		}
+		$missing = array_values( array_diff( array_unique( array_map( 'intval', array_column( $moves, 'activity_id' ) ) ), array_keys( $by_id ) ) );
+		if ( $missing ) { // una lezione spostata da un'attività non letta sopra (corso finito prima di $from): si legge solo quella
+			foreach ( $db->get_results( 'SELECT * FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL AND id IN (' . implode( ',', $missing ) . ')', ARRAY_A ) ?: array() as $a ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+				$by_id[ (int) $a['id'] ] = $a;
 			}
 		}
 		foreach ( $moves as $e ) { // lezioni spostate: compaiono nella nuova data, con l'orario nuovo o quello solito
