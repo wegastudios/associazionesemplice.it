@@ -13310,7 +13310,7 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '69' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 69' );
+asem_ok( '70' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 70' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
 $ix_plan = static function ( string $sql ) use ( $wpdb ): string {
 	return strtolower( implode( ' ', array_map( static fn( $r ) => (string) ( $r['key'] ?? $r['Key'] ?? '' ), (array) $wpdb->get_results( 'EXPLAIN ' . $sql, ARRAY_A ) ) ) );
