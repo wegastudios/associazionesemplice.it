@@ -905,7 +905,7 @@ asem_ok( 1 === count( $mf_rows ) && $mf_to === $mf_rows[0]['last_day'], 'modulo:
 $mf_long = gmdate( 'Y-m-d', strtotime( $ob_tomorrow . ' +9 days' ) );
 asem_ok( null !== asem_throws( function () use ( $wr, $ob_tomorrow, $mf_long ) { $wr->invoke( null, array( 'when' => array( array( 'date' => $ob_tomorrow, 'last_day' => $mf_long ) ) ) ); } ), 'modulo: oltre 7 giorni serve la conferma' );
 asem_ok( 1 === count( $wr->invoke( null, array( 'when' => array( array( 'date' => $ob_tomorrow, 'last_day' => $mf_long, 'confirm' => '1' ) ) ) ) ), 'modulo: con la conferma passa' );
-$mf_act = $acts->create( array( 'name' => 'Regata dal modulo', 'social_year' => $sy_label, 'kind' => 'event', 'fee_cents' => 0 ) );
+$mf_act = $acts->create( array( 'name' => 'Regata dal modulo', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 0 ) );
 $acts->add_dates( $mf_act, $mf_rows, 'Porto', 10 );
 $mf_s = $acts->sessions( $mf_act );
 asem_ok( 1 === count( $mf_s ) && $mf_to === $mf_s[0]['end_date'], 'modulo: l\'evento creato dalle regole ha la data di fine' );
