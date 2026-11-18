@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\Package;
+use App\Modules\Portale\Entitlements\EntitlementReader;
 use App\Modules\Portale\Jwt\EdDsaJwt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -122,4 +123,19 @@ it('rifiuta con 409 un pacchetto non ammesso sul piano e non applica nulla', fun
 
     expect(DB::table('core.org_entitlements')->where('org_id', $this->orgId)->exists())->toBeFalse();
     ($this->put)(subscriptionClaims($this->orgId, 1, ['plan' => 'media', 'members' => 100, 'addons' => [['code' => 'operators_extra', 'qty' => 1]]]))->assertOk();
+});
+
+it('legge i diritti una sola volta per richiesta e vede subito una nuova revisione o una sospensione', function (): void {
+    ($this->put)(subscriptionClaims($this->orgId, 1))->assertOk();
+
+    app(EntitlementReader::class)->forget($this->orgId);
+    DB::enableQueryLog();
+    app(Entitlements::class)->for($this->orgId);
+    app(Entitlements::class)->for($this->orgId);
+    $reads = collect(DB::getQueryLog())->filter(static fn (array $q): bool => str_contains($q['query'], 'org_entitlements'))->count();
+    DB::disableQueryLog();
+    expect($reads)->toBe(1);
+
+    ($this->put)(subscriptionClaims($this->orgId, 2, ['status' => 'suspended']))->assertOk();
+    expect(app(Entitlements::class)->for($this->orgId)->status)->toBe('suspended');
 });

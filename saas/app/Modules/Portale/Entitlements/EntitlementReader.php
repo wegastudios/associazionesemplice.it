@@ -9,13 +9,29 @@ use App\Modules\Portale\Contracts\OrgEntitlements;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\DatabaseManager;
 
-/** Legge i diritti già verificati e salvati (core.org_entitlements). */
-final readonly class EntitlementReader implements Entitlements
+/**
+ * Legge i diritti già verificati e salvati (core.org_entitlements). Dentro la stessa richiesta (o lo stesso lavoro in
+ * coda) la lettura di un'associazione si fa una volta sola; ogni scrittura dei diritti la dimentica subito.
+ */
+final class EntitlementReader implements Entitlements
 {
-    public function __construct(private DatabaseManager $db) {}
+    /** @var array<string, OrgEntitlements> */
+    private array $loaded = [];
+
+    public function __construct(private readonly DatabaseManager $db) {}
+
+    /** Dimentica la copia letta (dopo una scrittura dei diritti). */
+    public function forget(string $orgId): void
+    {
+        unset($this->loaded[$orgId]);
+    }
 
     public function for(string $orgId): OrgEntitlements
     {
+        if (isset($this->loaded[$orgId])) {
+            return $this->loaded[$orgId];
+        }
+
         $row = $this->db->connection('pgsql')->table('core.org_entitlements')->where('org_id', $orgId)->first(['claims']);
         if ($row === null || ! is_string($row->claims)) {
             return OrgEntitlements::none();
@@ -31,7 +47,7 @@ final readonly class EntitlementReader implements Entitlements
         $plan = is_string($subscription['plan'] ?? null) ? $subscription['plan'] : null;
         $planVersion = is_int($subscription['plan_version'] ?? null) ? $subscription['plan_version'] : null;
 
-        return new OrgEntitlements(
+        return $this->loaded[$orgId] = new OrgEntitlements(
             $c['rev'],
             $c['status'],
             CarbonImmutable::parse($c['until']),
