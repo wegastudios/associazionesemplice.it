@@ -45,6 +45,8 @@ final class AuditServiceProvider extends ServiceProvider
                 // Tiene l'anno corrente e il precedente: parte solo con l'interruttore acceso (saas.audit_prune_enabled).
                 $schedule->command('saas:audit:prune')->monthlyOn(1, '02:43')->withoutOverlapping()->when(static fn (): bool => config('saas.audit_prune_enabled') === true);
                 $schedule->command('saas:audit:verify')->dailyAt('03:37')->withoutOverlapping();
+                // La domenica la verifica ripercorre l'intera catena, senza ripartire dal punto di controllo.
+                $schedule->command('saas:audit:verify --full')->weeklyOn(0, '03:57')->withoutOverlapping();
             });
         }
     }

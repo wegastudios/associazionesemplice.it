@@ -212,7 +212,7 @@ case "$ACTION" in
   verifica-registro)
     # Sola lettura: verifica la catena del registro delle azioni di tutte le associazioni e stampa l'esito (nessun dato personale).
     cd "$BASE/current"
-    "$PHP" artisan saas:audit:verify || true
+    "$PHP" artisan saas:audit:verify --full || true
     ;;
   interruttori)
     # Sola lettura: valore degli interruttori NON segreti (acceso/spento, remoto/locale). Niente altro dal file d'ambiente.

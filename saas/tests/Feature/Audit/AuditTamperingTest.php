@@ -35,6 +35,8 @@ afterEach(function (): void {
 function tamper(string $sql): void
 {
     $owner = DB::connection('pgsql_owner');
+    // Dopo una verifica l'associazione corrente viene azzerata su tutte le connessioni: la si reimposta per il proprietario.
+    $owner->select("SELECT set_config('app.org_id', ?, false)", [test()->org->id]);
     $owner->statement('ALTER TABLE audit.log DISABLE TRIGGER log_append_only');
     $owner->statement($sql);
     $owner->statement('ALTER TABLE audit.log ENABLE TRIGGER log_append_only');
@@ -72,4 +74,34 @@ it('trova un registro riscritto da capo senza la chiave', function (): void {
     $this->owner->statement('UPDATE audit.heads SET hash = (SELECT hash FROM audit.log ORDER BY seq DESC LIMIT 1)');
 
     expect(app(ChainVerifier::class)->verify($this->org->id))->toMatchArray(['ok' => false, 'broken_at' => 1]);
+});
+
+it('la verifica di ogni notte riparte dal punto di controllo e trova le modifiche dopo di esso', function (): void {
+    $verifier = app(ChainVerifier::class);
+    expect($verifier->verify($this->org->id, true)['ok'])->toBeTrue();
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        Person::create(['first_name' => 'Socio 5', 'last_name' => 'Prova']);
+    });
+
+    tamper("UPDATE audit.log SET details = '{\"fields\": [\"first_name\"]}' WHERE seq = 6");
+    expect($verifier->verify($this->org->id, true))->toMatchArray(['ok' => false, 'broken_at' => 6]);
+});
+
+it('la verifica intera trova una modifica prima del punto di controllo, quella di ogni notte no', function (): void {
+    $verifier = app(ChainVerifier::class);
+    expect($verifier->verify($this->org->id)['ok'])->toBeTrue();
+
+    tamper("UPDATE audit.log SET details = '{\"fields\": [\"first_name\"]}' WHERE seq = 2");
+
+    expect($verifier->verify($this->org->id))->toMatchArray(['ok' => false, 'broken_at' => 2]);
+});
+
+it('se la riga del punto di controllo è cambiata si ripercorre tutta la catena', function (): void {
+    $verifier = app(ChainVerifier::class);
+    expect($verifier->verify($this->org->id)['ok'])->toBeTrue();
+
+    tamper('UPDATE audit.log SET hash = sha256(hash) WHERE seq = (SELECT max(seq) FROM audit.log)');
+
+    expect($verifier->verify($this->org->id, true)['ok'])->toBeFalse();
 });
