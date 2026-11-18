@@ -235,7 +235,7 @@
 			var lastBox = el('span', { 'class': 'asem-last' });
 			lastBox.appendChild(field('fino al', last));
 			var conf = el('input', { type: 'checkbox', name: n + '[confirm]', value: '1' });
-			var confLabel = el('label', { style: 'margin-right:10px;display:none' }); confLabel.appendChild(conf); confLabel.appendChild(document.createTextNode(' confermo la durata (oltre 7 giorni)'));
+			var confLabel = el('label', { style: 'margin-right:10px;display:none' }); confLabel.appendChild(conf); confLabel.appendChild(document.createTextNode(' Confermo la durata (oltre 7 giorni)'));
 			row.appendChild(lastBox);
 			row.appendChild(field('alle', to));
 			row.appendChild(confLabel);
