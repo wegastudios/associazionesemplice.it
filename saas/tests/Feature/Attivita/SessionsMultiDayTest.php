@@ -127,9 +127,11 @@ it('dall\'area soci le date su più giorni si prenotano fino al giorno prima, qu
         $s->addDates($a->id, $day(-5), null, false, null, null, null, null, $day(-3));   // finita
         $s->addDates($a->id, $day(-1), null, false, null, null, null, null, $day(1));    // in corso
         $s->addDates($a->id, $day(2), null, false, null, null, null, null, $day(3));     // da domani in poi
-        $s->addDates($a->id, $day(0), null, false, '21:00', '22:00', null, null);        // un giorno, oggi
+        // Un giorno, oggi: in un'altra attività, perché nella stessa si sovrapporrebbe a quella in corso.
+        $b = app(ActivityService::class)->save(null, ['name' => 'Serata', 'kind' => 'recurring', 'social_year' => $this->year, 'fee_cents' => 0, 'guest_fee_cents' => 0]);
+        $s->addDates($b->id, $day(0), null, false, '21:00', '22:00', null, null);
         $ids = [];
-        foreach ($s->sessions($a) as $row) {
+        foreach ([...$s->sessions($a), ...$s->sessions($b)] as $row) {
             $ids[$row['date']] = $row['id'];
         }
         $who = Person::create(['first_name' => 'Ada', 'last_name' => 'Rossi'])->id;
