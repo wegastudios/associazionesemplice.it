@@ -12390,7 +12390,7 @@ asem_ok( Access::user_can( $em_uid, 'asem_register_member', 0 ) && Access::user_
 // la Bacheca non mostra saldi senza il permesso
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'funds' ) );
 wp_set_current_user( $em_uid );
-$em_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno sociale' );
+$em_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno fiscale' );
 asem_ok( false === strpos( $em_dash, 'Disponibilità reale' ), 'dipendente senza visualizzazione di fondi, casse e conti: la Bacheca non mostra i saldi' );
 wp_set_current_user( 1 );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità reale' );
@@ -12426,7 +12426,7 @@ asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipenden
 // avviso in Bacheca: con tutte le porte attive si accende, fisso, solo a chi ha titolo, solo se esistono dipendenti, finché la pagina dei dipendenti non è stata aperta
 delete_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN );
 asem_ok( array() === \AssociazioneSemplice\EmployeeRules::pending_keys() && \AssociazioneSemplice\Employees::areas_review_pending( 1 ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid ), 'permessi per area: con le porte di tutte le aree attive l\'avviso compare, ma solo a chi ha titolo' );
-$em_dash1 = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno sociale' );
+$em_dash1 = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno fiscale' );
 asem_ok( false !== strpos( $em_dash1, 'Rivedi i permessi dei dipendenti: ora si danno per area.' ), 'permessi per area: l\'avviso «Rivedi i permessi dei dipendenti» è in Bacheca' );
 // salvataggio dalla pagina: tutte le aree seguono le spunte
 Admin\EmployeesPage::save( array( 'user_id' => $em_uid, 'perm' => array( 'courses' ) ) );
