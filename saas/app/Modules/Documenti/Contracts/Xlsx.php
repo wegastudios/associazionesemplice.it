@@ -19,8 +19,8 @@ final class Xlsx
 {
     public const MAX_ROWS = 20000;
 
-    /** 50 MB di XML decompresso per parte: difesa dai file «bomba». */
-    public const MAX_ENTRY_SIZE = 52428800;
+    /** 15 MB di XML decompresso per parte (circa 20.000 righe piene): difesa dai file «bomba» e dalla memoria. */
+    public const MAX_ENTRY_SIZE = 15728640;
 
     private const NS_MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 

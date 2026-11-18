@@ -67,3 +67,17 @@ it('legge numeri in notazione scientifica e namespace con prefisso', function ()
     $s = Xlsx::parse(xlsxFiles('', ['xl/worksheets/sheet1.xml' => '<?xml version="1.0"?><x:worksheet '.$ns.'><x:sheetData>'.$rows.'</x:sheetData></x:worksheet>']));
     expect($s[0]['rows'])->toBe([['1500', '0.1']]);
 });
+
+it('rifiuta un foglio con più di 15 MB di XML decompresso', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'xlsx');
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::OVERWRITE);
+    $zip->addFromString('xl/worksheets/sheet1.xml', str_repeat(' ', Xlsx::MAX_ENTRY_SIZE + 1));
+    $zip->close();
+
+    try {
+        expect(fn () => Xlsx::read($path))->toThrow(InvalidArgumentException::class, 'troppo grande');
+    } finally {
+        @unlink($path);
+    }
+});
