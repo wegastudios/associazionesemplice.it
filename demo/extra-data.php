@@ -328,9 +328,13 @@ extra_step( 'eventi sul sito', function () {
 	$texts['Gita in montagna']   = array( 'Gite', 'Una camminata facile tra i prati, adatta anche ai bambini, con pranzo al sacco e rientro nel pomeriggio.', array( 60, 120, 140 ) );
 	$texts['Concerto d\'estate'] = array( 'Musica', 'Musica all\'aperto sotto le stelle con il coro e la banda dell\'associazione. Ingresso libero, porta un cuscino.', array( 220, 130, 70 ) );
 	$texts['Mercatino di Natale'] = array( 'Solidarietà', 'Decorazioni, dolci e idee regalo preparate dai volontari: il ricavato finanzia le attività dell\'anno.', array( 170, 60, 70 ) );
+	$texts['Serata delle castagne'] = array( 'Serate', 'Castagne, vin brulé e musica in sede: una serata tra soci e amici per salutare l\'autunno. Si è già svolta.', array( 150, 90, 50 ) );
+	$texts['Festa d\'autunno']      = array( 'Musica', 'Una festa con giochi per i bambini, banchetti dei volontari e concerto del coro. Si è già svolta.', array( 200, 110, 60 ) );
 	// Date relative a oggi, ma sempre dentro l'anno sociale (un evento inizia e finisce nello stesso anno sociale): le più lontane si fermano a fine anno.
 	$last_day = Settings::social_year()->end()->format( 'Y-m-d' );
 	$more     = array(
+		array( 'Festa d\'autunno', -30, '15:00', 'Oratorio', 100, 0 ), // già svolti: si vedono tornando indietro nell'elenco e nel calendario
+		array( 'Serata delle castagne', -12, '20:30', 'Sede dell\'associazione', 60, 500 ),
 		array( 'Concerto d\'autunno', 9, '21:00', 'Teatro parrocchiale', 120, 0 ),
 		array( 'Laboratorio di cucina', 35, '16:00', 'Sede dell\'associazione', 15, 1800 ),
 		array( 'Mercatino solidale', 48, '10:00', 'Piazza del paese', 0, 0 ),
@@ -349,7 +353,7 @@ extra_step( 'eventi sul sito', function () {
 	foreach ( $more as $e ) {
 		$want    = gmdate( 'Y-m-d', time() + $e[1] * 86400 );
 		$sy      = $want > $last_day ? Settings::social_year()->next() : Settings::social_year(); // oltre fine anno: anno sociale successivo
-		$day     = min( $want, $sy->end()->format( 'Y-m-d' ) );
+		$day     = max( min( $want, $sy->end()->format( 'Y-m-d' ) ), $sy->start()->format( 'Y-m-d' ) ); // mai fuori dall'anno sociale
 		$session = array( 'session_date' => $day, 'start_time' => $e[2], 'end_time' => gmdate( 'H:i', (int) strtotime( $e[2] ) + 9000 ), 'location' => $e[3] );
 		if ( $e[4] > 0 ) {
 			$session['capacity'] = $e[4];

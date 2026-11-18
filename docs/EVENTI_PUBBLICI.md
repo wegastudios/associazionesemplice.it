@@ -152,3 +152,12 @@ Lo stesso meccanismo della prima nota (tabella `import_batches`, elenco «Import
 - Gli eventi di The Events Calendar la cui attività è stata tolta tornano **importabili**; quelli la cui attività è rimasta restano segnati (altrimenti nascerebbe un doppione).
 - Si annulla una sola volta. L'elenco è nella pagina «Importa da The Events Calendar» (gli import da file restano in «Importa soci e prima nota»).
 - Voce del log da scrivere alla pubblicazione: «Ogni import, anche quello da The Events Calendar, si può annullare dall'elenco "Import già fatti": si tolgono gli eventi e i corsi creati (con le pagine pubbliche) se nessuno si è prenotato o iscritto; gli altri restano e vengono elencati».
+
+## Storico degli eventi (18/11/2026): elenco a mesi e date passate
+
+Richiesta di Luca, **non ancora pubblicata**.
+
+- **Elenco a card:** mostra una finestra di mesi (di norma il corrente e il prossimo, attributo `mesi`, da 1 a 6). Le frecce con il nome del mese la spostano di uno alla volta, avanti e indietro, anche nel passato (parametro `asem_mese`, come il calendario). Le date già passate si vedono una per una (niente «Tutti i giovedì»), con il pulsante «Dettagli» e non «Dettagli e prenotazione». Gli annullati non compaiono. Con `filtri="no"` le frecce non ci sono.
+- **Pagina dell'evento già svolto:** «Si è svolto <data>» (o «Si è svolto in N date, l'ultima <data>»), il luogo dell'ultima data, la sezione «Date passate» e nessuna prenotazione né «Salva nel tuo calendario». «Evento annullato» resta com'è.
+- **Invariati:** calendario mensile, `.ics` e dati strutturati (solo date future).
+- **Demo:** due eventi già svolti («Festa d'autunno», «Serata delle castagne») nel seme dei dati: compaiono al prossimo azzeramento notturno.
