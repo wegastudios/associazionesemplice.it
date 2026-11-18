@@ -270,11 +270,16 @@ final class ActivitiesPage {
 			Ui::form_open( 'asem_publish_pages', $back );
 			echo '<div class="asem-card"><h2>' . esc_html( \AssociazioneSemplice\Texts::t( 'Pagine in bozza: non si vedono ancora sul sito' ) ) . '</h2>'
 				. '<p class="description">' . esc_html( \AssociazioneSemplice\Texts::t( 'Spunta le pagine da pubblicare: dopo il clic compaiono subito sul sito.' ) ) . '</p>'
-				. '<p><label><input type="checkbox" checked data-asem-check-all="asem-draft-item"> <strong>' . esc_html( \AssociazioneSemplice\Texts::t( 'Seleziona tutte' ) ) . '</strong></label></p><ul>';
+				. '<p><label><input type="checkbox" data-asem-check-all="asem-draft-item"> <strong>' . esc_html( \AssociazioneSemplice\Texts::t( 'Seleziona tutte' ) ) . '</strong></label></p><ul>';
 			foreach ( $report['activities'] as $r ) {
 				$aid = (int) $r['activity']['id'];
 				if ( isset( $drafts[ $aid ] ) ) {
-					echo '<li><label><input type="checkbox" class="asem-draft-item" name="ids[]" value="' . (int) $aid . '" checked> ' . esc_html( (string) $r['activity']['name'] ) . '</label></li>';
+					$ds     = self::sessions_of( $aid ); // data accanto al nome; «(annullato)» se tutte le date sono annullate
+					$live   = array_values( array_filter( $ds, function ( $x ) { return empty( $x['cancelled_at'] ); } ) );
+					$shown  = $live ? $live[0] : ( $ds ? $ds[0] : null );
+					$when   = $shown ? ' — ' . Ui::date( (string) $shown['session_date'] ) : '';
+					$cancel = $ds && ! $live ? ' ' . \AssociazioneSemplice\Texts::t( '(annullato)' ) : '';
+					echo '<li><label><input type="checkbox" class="asem-draft-item" name="ids[]" value="' . (int) $aid . '"> ' . esc_html( (string) $r['activity']['name'] . $when . $cancel ) . '</label></li>';
 				}
 			}
 			echo '</ul><p><button class="button button-primary" onclick="return confirm(\'' . esc_js( \AssociazioneSemplice\Texts::t( 'Pubblicare le pagine selezionate? Compariranno subito sul sito.' ) ) . '\')">' . esc_html( \AssociazioneSemplice\Texts::t( 'Pubblica le pagine selezionate' ) ) . '</button></p></div></form>';
