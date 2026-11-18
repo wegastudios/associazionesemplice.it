@@ -16,8 +16,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
-use IlluminateSupportFacadesStorage;
-use IlluminateSupportStr;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 require_once __DIR__.'/PortalHelpers.php';
 
