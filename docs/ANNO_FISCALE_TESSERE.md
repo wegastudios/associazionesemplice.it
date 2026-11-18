@@ -17,3 +17,6 @@
 - Persone con due tessere che dopo il riallineamento avrebbero la stessa etichetta.
 - Tessere di soci fondatori e tessere cancellate.
 - Parole a schermo: «anno sociale» → «anno delle attività»? Testi uno per uno.
+- **Anni fiscali già chiusi (proposta di Audit, da confermare col titolare):** «il chiuso è chiuso» (annualità immodificabili, libro soci per anno fiscale). Si riallineano **solo** le tessere degli anni fiscali **aperti**; quelle degli anni chiusi restano come sono.
+- Il codice si può scrivere prima del riallineamento: il passaggio della tessera all'anno fiscale per i rinnovi nuovi non dipende dalla migrazione delle tessere esistenti.
+- Impostazioni: accanto al nome nuovo la spiegazione «(corsi ed eventi; la tessera segue l'anno fiscale)».
