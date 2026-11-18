@@ -3249,8 +3249,8 @@ $pv    = ImportService::preview_file( $csv_y, 'anni.csv', array() );
 asem_ok( 'create' === $pv['people']['plan'][0]['action'] && array( '2023', '2025' ) === $pv['people']['plan'][0]['row']['years'] && false !== strpos( (string) $pv['people']['plan'][0]['message'], 'Iscritto: 2023, 2025' ), 'import CSV: le colonne-anno diventano gli anni di iscrizione' );
 ImportService::apply( $pv, array() );
 $anni_p = $people->find_by_email( 'anni.effettivi@example.com' );
-$iy = function ( string $y ) { // con l'anno sociale sfalsato la colonna «2023» è la tessera che inizia nel 2023
-	return \AssociazioneSemplice\MembershipRules::import_label( $y, Settings::start_month() );
+$iy = function ( string $y ) { // con l'anno fiscale sfalsato la colonna «2023» è la tessera che inizia nel 2023
+	return \AssociazioneSemplice\MembershipRules::import_label( $y, Settings::membership_start_month() );
 };
 asem_ok( $anni_p && $people->has_membership( (int) $anni_p['id'], $iy( '2023' ) ) && $people->has_membership( (int) $anni_p['id'], $iy( '2025' ) ) && ! $people->has_membership( (int) $anni_p['id'], $iy( '2024' ) ), 'import CSV: iscrizioni registrate solo per gli anni indicati' );
 // Ospiti importati con il contatore delle volte già venuto, gli eventi passati nelle note e l'anno di iscrizione
@@ -7095,9 +7095,9 @@ asem_ok( $ts_r && '2026-01-01' === $ts_r['valid_from'] && '2026-12-31' === $ts_r
 // con tessere ancora valide che partono in un altro mese, il mese non si cambia (si confonderebbero le etichette); gennaio sempre possibile
 $set_sm( 9 );
 $people->set_membership( $ts_pn, Settings::membership_year()->label(), true );
-$ts_msg = asem_throws( function () { Settings::update( array( 'social_year_start_month' => 7 ) ); } );
-asem_ok( null !== $ts_msg && false !== strpos( $ts_msg, 'tessere ancora valide' ) && 9 === Settings::start_month(), 'cambio mese: con tessere in corso che partono in un altro mese non si cambia (messaggio chiaro, nulla viene toccato)' );
-asem_ok( null === asem_throws( function () { Settings::update( array( 'social_year_start_month' => 1 ) ); } ) && 1 === Settings::start_month(), 'cambio mese: passare a gennaio è sempre possibile' );
+$ts_msg = asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 7 ) ); } );
+asem_ok( null !== $ts_msg && false !== strpos( $ts_msg, 'tessere ancora valide' ) && 9 === Settings::membership_start_month(), 'cambio mese: con tessere in corso che partono in un altro mese non si cambia (messaggio chiaro, nulla viene toccato)' );
+asem_ok( null === asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 1 ) ); } ) && 1 === Settings::membership_start_month(), 'cambio mese: passare a gennaio è sempre possibile' );
 $set_sm( 9 );
 // la tessera non dipende dall'esercizio: con l'esercizio a luglio e a settembre nulla cambia per la tessera
 $ts_fm = function () { return 7; };
