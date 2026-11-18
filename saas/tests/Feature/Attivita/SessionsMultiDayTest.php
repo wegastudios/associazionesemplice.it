@@ -8,6 +8,7 @@ use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Rules\SessionRules;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Attivita\Services\SessionService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 // Dati di prova inventati.
@@ -53,7 +54,7 @@ it('salva una data su più giorni, con ora di fine libera, e la rilegge', functi
         // Sullo stesso giorno l'ora di fine deve restare dopo quella di inizio.
         expect(fn () => $s->addDates($a->id, $this->year.'-04-10', null, false, '21:30', '01:00', null, null))->toThrow(ActivityError::class, 'ora di fine');
         // Il vecchio controllo del database vale solo per le date di un giorno.
-        expect(fn () => DB::statement("UPDATE app.activity_sessions SET end_time = '00:30', end_date = NULL, start_time = '09:00' WHERE id = ?", [$row['id']]))->toThrow(Throwable::class);
+        expect(fn () => DB::statement("UPDATE app.activity_sessions SET end_time = '00:30', end_date = NULL, start_time = '09:00' WHERE id = ?", [$row['id']]))->toThrow(QueryException::class, 'activity_sessions_time_check');
     });
 });
 
