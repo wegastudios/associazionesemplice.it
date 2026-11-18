@@ -896,6 +896,19 @@ $ob_tomorrow  = gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) );
 $ob_yesterday = gmdate( 'Y-m-d', strtotime( $today . ' -1 day' ) );
 asem_ok( ! $ob( array( 'session_date' => $today, 'end_date' => $ob_tomorrow ) ) && ! $ob( array( 'session_date' => $ob_yesterday, 'end_date' => $ob_tomorrow ) ) && $ob( array( 'session_date' => $ob_tomorrow, 'end_date' => gmdate( 'Y-m-d', strtotime( $today . ' +3 days' ) ) ) ), 'prenotazioni online, evento su più giorni: da domani in poi sì; dal giorno di inizio e mentre è in corso solo la segreteria' );
 asem_ok( $ob( array( 'session_date' => $today ) ) && $ob( array( 'session_date' => $today, 'end_date' => $today ) ) && $ob( array( 'session_date' => $ob_tomorrow ) ) && ! $ob( array( 'session_date' => $ob_yesterday ) ), 'prenotazioni online, evento di un giorno: come prima, anche il giorno stesso, non dopo' );
+// Modulo di creazione: la riga «fino al» arriva fino alla sessione
+$wr = new ReflectionMethod( Admin\Actions::class, 'when_rows' );
+$wr->setAccessible( true );
+$mf_to   = gmdate( 'Y-m-d', strtotime( $ob_tomorrow . ' +2 days' ) );
+$mf_rows = $wr->invoke( null, array( 'when' => array( array( 'date' => $ob_tomorrow, 'last_day' => $mf_to, 'from' => '09:00', 'to' => '18:00' ) ) ) );
+asem_ok( 1 === count( $mf_rows ) && $mf_to === $mf_rows[0]['last_day'], 'modulo: la riga porta la data di fine' );
+$mf_long = gmdate( 'Y-m-d', strtotime( $ob_tomorrow . ' +9 days' ) );
+asem_ok( null !== asem_throws( function () use ( $wr, $ob_tomorrow, $mf_long ) { $wr->invoke( null, array( 'when' => array( array( 'date' => $ob_tomorrow, 'last_day' => $mf_long ) ) ) ); } ), 'modulo: oltre 7 giorni serve la conferma' );
+asem_ok( 1 === count( $wr->invoke( null, array( 'when' => array( array( 'date' => $ob_tomorrow, 'last_day' => $mf_long, 'confirm' => '1' ) ) ) ) ), 'modulo: con la conferma passa' );
+$mf_act = $acts->create( array( 'name' => 'Regata dal modulo', 'social_year' => $sy_label, 'kind' => 'event', 'fee_cents' => 0 ) );
+$acts->add_dates( $mf_act, $mf_rows, 'Porto', 10 );
+$mf_s = $acts->sessions( $mf_act );
+asem_ok( 1 === count( $mf_s ) && $mf_to === $mf_s[0]['end_date'], 'modulo: l\'evento creato dalle regole ha la data di fine' );
 $pe_course = $acts->create( array( 'name' => 'Corso di acquerello', 'social_year' => $sy->label(), 'kind' => 'course', 'fee_cents' => 2000, 'lesson_weekday' => 3, 'lesson_start' => '17:00', 'lesson_end' => '18:30' ) ); // un corso compare nel calendario con le lezioni settimanali
 $pe_cpost   = \AssociazioneSemplice\PublicEvents::ensure( $pe_course );
 wp_update_post( array( 'ID' => $pe_cpost, 'post_status' => 'publish' ) );

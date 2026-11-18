@@ -9,6 +9,28 @@ final class ScheduleTest extends TestCase {
 		$this->assertSame( array( array( 'date' => '2026-09-20', 'start' => '15:00', 'end' => '20:00' ) ), $d );
 	}
 
+	public function test_single_date_can_end_another_day(): void {
+		$d = Schedule::expand( array( array( 'type' => 'single', 'date' => '2026-06-12', 'last_day' => '2026-06-14', 'from' => '09:00', 'to' => '18:00' ) ) );
+		$this->assertSame( array( array( 'date' => '2026-06-12', 'start' => '09:00', 'end' => '18:00', 'end_date' => '2026-06-14' ) ), $d );
+		$night = Schedule::expand( array( array( 'type' => 'single', 'date' => '2026-06-12', 'last_day' => '2026-06-13', 'from' => '21:30', 'to' => '01:00' ) ) );
+		$this->assertSame( '2026-06-13', $night[0]['end_date'], 'oltre mezzanotte: la fine è il giorno dopo' );
+		$same = Schedule::expand( array( array( 'type' => 'single', 'date' => '2026-06-12', 'last_day' => '2026-06-12', 'from' => '09:00', 'to' => '18:00' ) ) );
+		$this->assertArrayNotHasKey( 'end_date', $same[0], 'fine nello stesso giorno = nessuna data di fine' );
+	}
+
+	public function test_end_day_before_start_or_invalid_is_refused(): void {
+		foreach ( array( '2026-06-11', '2026-02-30' ) as $bad ) {
+			try {
+				Schedule::expand( array( array( 'type' => 'single', 'date' => '2026-06-12', 'last_day' => $bad, 'from' => '09:00', 'to' => '18:00' ) ) );
+				$this->fail( 'doveva rifiutare ' . $bad );
+			} catch ( \InvalidArgumentException $e ) {
+				$this->assertNotSame( '', $e->getMessage() );
+			}
+		}
+		$this->expectException( \InvalidArgumentException::class ); // stesso giorno: la fine deve restare dopo l'inizio
+		Schedule::expand( array( array( 'type' => 'single', 'date' => '2026-06-12', 'from' => '21:30', 'to' => '01:00' ) ) );
+	}
+
 	public function test_tuesdays_and_fridays_until_the_end_date(): void {
 		$d = Schedule::expand( array( array( 'type' => 'weekly', 'days' => array( 2, 5 ), 'from' => '19:00', 'to' => '20:00', 'start' => '2026-09-01', 'end' => '2026-09-30' ) ) );
 		// settembre 2026: martedì 1, 8, 15, 22, 29 - venerdì 4, 11, 18, 25

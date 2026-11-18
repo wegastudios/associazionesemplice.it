@@ -68,7 +68,20 @@ final class Schedule {
 			$type  = (string) ( $r['type'] ?? '' );
 			$start = self::time( $r['from'] ?? '' );
 			$end   = self::time( $r['to'] ?? '' );
-			if ( $start && $end && $end <= $start ) {
+			$last  = 'single' === $type ? self::date( $r['last_day'] ?? '' ) : null; // una data unica può finire un altro giorno
+			if ( 'single' === $type && '' !== trim( (string) ( $r['last_day'] ?? '' ) ) ) {
+				$first = self::date( $r['date'] ?? '' );
+				if ( ! $last ) {
+					throw new \InvalidArgumentException( "Riga $n: la data di fine non è valida." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				if ( $first && $last < $first ) {
+					throw new \InvalidArgumentException( "Riga $n: la data di fine non può essere prima dell'inizio." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				if ( $first === $last ) {
+					$last = null; // finisce lo stesso giorno: come senza
+				}
+			}
+			if ( $start && $end && $end <= $start && ! $last ) {
 				throw new \InvalidArgumentException( "Riga $n: l'orario di fine deve essere dopo quello di inizio." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( 'single' === $type ) {
@@ -76,7 +89,7 @@ final class Schedule {
 				if ( ! $date ) {
 					throw new \InvalidArgumentException( "Riga $n: indica la data." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
-				$out[ $date . '|' . $start ] = array( 'date' => $date, 'start' => $start, 'end' => $end );
+				$out[ $date . '|' . $start ] = array( 'date' => $date, 'start' => $start, 'end' => $end ) + ( $last ? array( 'end_date' => $last ) : array() ); // la data di fine c'è solo se l'evento finisce un altro giorno
 			} elseif ( 'weekly' === $type ) {
 				$days = self::days( $r['days'] ?? array() );
 				$from = self::date( $r['start'] ?? '' );

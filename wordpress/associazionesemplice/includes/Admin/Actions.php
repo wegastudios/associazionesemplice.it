@@ -513,16 +513,21 @@ final class Actions {
 		return '' === $raw ? null : ( Money::parse( $raw ) ?? 0 );
 	}
 
-	private static function session_fields( array $p ): array {
-		$from = (string) ( $p['session_date'] ?? '' );
-		$to   = (string) ( $p['end_date'] ?? '' );
-		if ( '' !== $from && '' !== $to && $to > $from && empty( $p['confirm_long'] ) ) { // oltre 7 giorni è spesso un errore di battitura: serve la spunta
-			$a = \DateTimeImmutable::createFromFormat( 'Y-m-d', $from );
-			$b = \DateTimeImmutable::createFromFormat( 'Y-m-d', $to );
-			if ( $a && $b && (int) $a->diff( $b )->days + 1 > 7 ) {
-				throw new \InvalidArgumentException( 'Questa data dura ' . ( (int) $a->diff( $b )->days + 1 ) . ' giorni: è giusto? Se sì, spunta «Confermo la durata» e salva di nuovo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- numero calcolato, messaggio mostrato solo dopo esc_html
-			}
+	/** Oltre 7 giorni è spesso un errore di battitura: senza la spunta «Confermo la durata» si rifiuta. */
+	private static function assert_long_confirmed( string $from, string $to, bool $confirmed ): void {
+		if ( '' === $from || '' === $to || $to <= $from || $confirmed ) {
+			return;
 		}
+		$a = \DateTimeImmutable::createFromFormat( 'Y-m-d', $from );
+		$b = \DateTimeImmutable::createFromFormat( 'Y-m-d', $to );
+		if ( $a && $b && (int) $a->diff( $b )->days + 1 > 7 ) {
+			$msg = 'Questa data dura ' . ( (int) $a->diff( $b )->days + 1 ) . ' giorni: è giusto? Se sì, spunta «Confermo la durata» e salva di nuovo.';
+			throw new \InvalidArgumentException( $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- numero calcolato, messaggio mostrato solo dopo esc_html
+		}
+	}
+
+	private static function session_fields( array $p ): array {
+		self::assert_long_confirmed( (string) ( $p['session_date'] ?? '' ), (string) ( $p['end_date'] ?? '' ), ! empty( $p['confirm_long'] ) );
 		return array(
 			'session_date' => (string) ( $p['session_date'] ?? '' ),
 			'start_time'   => (string) ( $p['start_time'] ?? '' ),
@@ -567,10 +572,15 @@ final class Actions {
 				if ( 'single' === $w['type'] && '' === trim( (string) ( $w['date'] ?? '' ) ) ) {
 					continue;
 				}
-				$rows[] = array(
+				$row = array(
 					'type' => (string) $w['type'], 'date' => (string) ( $w['date'] ?? '' ), 'from' => (string) ( $w['from'] ?? '' ), 'to' => (string) ( $w['to'] ?? '' ),
 					'days' => (array) ( $w['days'] ?? array() ), 'start' => (string) ( $w['start'] ?? '' ), 'end' => (string) ( $w['end'] ?? '' ),
 				);
+				if ( 'single' === $w['type'] && '' !== trim( (string) ( $w['last_day'] ?? '' ) ) ) {
+					self::assert_long_confirmed( $row['date'], (string) $w['last_day'], ! empty( $w['confirm'] ) );
+					$row['last_day'] = (string) $w['last_day'];
+				}
+				$rows[] = $row;
 				continue;
 			}
 			if ( '' === trim( (string) ( $w['date'] ?? '' ) ) ) {
@@ -579,7 +589,12 @@ final class Actions {
 			if ( ! empty( $w['recurring'] ) ) {
 				$rows[] = array( 'type' => 'weekly', 'days' => self::repeat_days( $w ), 'from' => (string) ( $w['from'] ?? '' ), 'to' => (string) ( $w['to'] ?? '' ), 'start' => (string) $w['date'], 'end' => (string) ( $w['end'] ?? '' ) );
 			} else {
-				$rows[] = array( 'type' => 'single', 'date' => (string) $w['date'], 'from' => (string) ( $w['from'] ?? '' ), 'to' => (string) ( $w['to'] ?? '' ) );
+				$row = array( 'type' => 'single', 'date' => (string) $w['date'], 'from' => (string) ( $w['from'] ?? '' ), 'to' => (string) ( $w['to'] ?? '' ) );
+				if ( '' !== trim( (string) ( $w['last_day'] ?? '' ) ) ) { // evento su più giorni: «fino al»
+					self::assert_long_confirmed( $row['date'], (string) $w['last_day'], ! empty( $w['confirm'] ) );
+					$row['last_day'] = (string) $w['last_day'];
+				}
+				$rows[] = $row;
 			}
 		}
 		return $rows;
@@ -673,7 +688,7 @@ final class Actions {
 					throw new \InvalidArgumentException( 'Un evento una tantum ha una sola data: per più date scegli "Evento ricorrente".' );
 				}
 				if ( $dates ) {
-					$data['session'] = array( 'session_date' => $dates[0]['date'], 'start_time' => (string) $dates[0]['start'], 'end_time' => (string) $dates[0]['end'], 'location' => (string) ( $p['location'] ?? '' ), 'capacity' => (string) ( $p['capacity'] ?? '' ) );
+					$data['session'] = array( 'session_date' => $dates[0]['date'], 'start_time' => (string) $dates[0]['start'], 'end_date' => (string) ( $dates[0]['end_date'] ?? '' ), 'end_time' => (string) $dates[0]['end'], 'location' => (string) ( $p['location'] ?? '' ), 'capacity' => (string) ( $p['capacity'] ?? '' ) );
 				}
 			}
 		}
