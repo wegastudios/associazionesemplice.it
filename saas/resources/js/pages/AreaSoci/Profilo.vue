@@ -35,7 +35,7 @@ const field = 'field';
             <h2 id="m" class="mb-3 text-lg font-bold">Tessere</h2>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="m in details.memberships" :key="m.social_year + m.valid_to" class="flex justify-between py-2" :class="m.valid ? '' : 'text-muted line-through'">
-                    <span>Anno sociale {{ m.social_year }}</span><span>fino al {{ m.valid_to }}</span></li>
+                    <span>Tessera {{ m.social_year }}</span><span>fino al {{ m.valid_to }}</span></li>
             </ul>
         </section>
         <section v-if="own" class="card p-4 sm:p-5 text-sm">

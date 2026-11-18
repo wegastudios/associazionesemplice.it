@@ -92,7 +92,7 @@ final readonly class MemberLimit
         $members = $c->table('app.people')->whereNull('deleted_at')->whereNull('anonymized_at')
             ->whereIn('type', ['founder', 'ordinary', 'volunteer'])->count();
 
-        $year = $this->members->socialYearInfo($this->members->socialYearLabel());
+        $year = $this->members->membershipYearInfo($this->members->membershipYearLabel());
         $guests = $year === null ? 0 : $c->table('app.people')->whereNull('deleted_at')->whereNull('anonymized_at')->where('type', 'guest')
             ->whereRaw('coalesce(joined_on, created_at::date) between ? and ?', [$year['start'], $year['end']])->count();
         $free = (int) floor($limit * $guestsFreePercent / 100);

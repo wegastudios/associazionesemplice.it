@@ -309,6 +309,29 @@ final readonly class LedgerService implements Ledger
         return $out;
     }
 
+    public function activityTotalsByFiscalYear(array $activityIds): array
+    {
+        if ($activityIds === []) {
+            return [];
+        }
+        $out = [];
+        $rows = $this->connection()->table('app.transactions as t')->join('app.fiscal_years as f', static fn ($j) => $j->on('f.org_id', '=', 't.org_id')->on('f.year', '=', 't.fiscal_year'))
+            ->whereIn('t.activity_id', $activityIds)->whereNull('t.voided_at')->groupBy('f.year', 'f.starts_on', 'f.ends_on')->orderBy('f.starts_on')
+            ->selectRaw("f.year, f.starts_on, f.ends_on, coalesce(sum(t.amount_cents) FILTER (WHERE t.type = 'income'), 0) AS income, coalesce(sum(t.amount_cents) FILTER (WHERE t.type = 'expense'), 0) AS expense")
+            ->get();
+        foreach ($rows as $r) {
+            $out[] = [
+                'year' => is_numeric($r->year ?? null) ? (int) $r->year : 0,
+                'starts_on' => is_string($r->starts_on ?? null) ? $r->starts_on : '',
+                'ends_on' => is_string($r->ends_on ?? null) ? $r->ends_on : '',
+                'income' => is_numeric($r->income ?? null) ? (int) $r->income : 0,
+                'expense' => is_numeric($r->expense ?? null) ? (int) $r->expense : 0,
+            ];
+        }
+
+        return $out;
+    }
+
     public function activityMovements(string $activityId): array
     {
         $rows = $this->connection()->table('app.transactions as t')

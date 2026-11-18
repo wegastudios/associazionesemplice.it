@@ -30,7 +30,7 @@ const dateLabel = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'nume
         <section v-if="setupPending" class="card mb-5 flex flex-wrap items-center gap-4 border-accent/40 bg-info-soft p-4 sm:p-5" aria-labelledby="setup-title">
             <div class="min-w-0 flex-1">
                 <h2 id="setup-title" class="section-title">Completa la configurazione</h2>
-                <p class="mt-0.5 text-sm text-muted">Dati dell'ente, anno sociale e quota, conti e domande online: pochi minuti, tutto in una pagina.</p>
+                <p class="mt-0.5 text-sm text-muted">Dati dell'ente, anno delle attività e quota, conti e domande online: pochi minuti, tutto in una pagina.</p>
             </div>
             <Link href="/gestionale/configurazione" class="btn btn-primary w-full sm:w-auto">Apri la configurazione</Link>
         </section>

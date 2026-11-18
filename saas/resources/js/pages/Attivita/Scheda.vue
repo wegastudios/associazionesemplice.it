@@ -86,7 +86,7 @@ const label = 'space-y-1 text-sm';
         <form class="card p-4 sm:p-5" @submit.prevent="save">
             <fieldset :disabled="!canEdit" class="grid gap-4 sm:grid-cols-3">
                 <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Nome</span><input v-model="form.name" :class="field" required maxlength="160" /></label>
-                <label :class="label"><span class="font-semibold">Anno sociale</span><select v-model="form.social_year" :class="field"><option v-for="y in years" :key="y" :value="y">{{ y }}</option></select></label>
+                <label :class="label"><span class="font-semibold">Anno delle attività</span><select v-model="form.social_year" :class="field"><option v-for="y in years" :key="y" :value="y">{{ y }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Tipo</span><select v-model="form.kind" :class="field"><option v-for="k in kinds" :key="k.value" :value="k.value">{{ k.label }}</option></select></label>
                 <label v-if="isCourse" :class="label"><span class="font-semibold">Contributo</span><select v-model="form.billing" :class="field"><option v-for="b in billings" :key="b.value" :value="b.value">{{ b.label }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Importo per i soci</span><input v-model="form.fee" inputmode="decimal" placeholder="0 = gratuita" :class="field" /></label>

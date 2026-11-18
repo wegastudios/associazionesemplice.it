@@ -7,6 +7,7 @@ namespace App\Modules\Contabilita\Ledger;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\FiscalYearClosed;
 use App\Modules\Contabilita\Contracts\FiscalYearReopened;
+use App\Modules\Contabilita\Contracts\FiscalYearStartChanged;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgSettings;
@@ -80,6 +81,7 @@ final readonly class FiscalYearService
         $row = $this->connection()->selectOne('select app.realign_fiscal_years(?, ?) as moved', [$month, CarbonImmutable::today()->toDateString()]);
         $moved = is_object($row) && is_numeric($row->moved ?? null) ? (int) $row->moved : 0;
         if ($from !== $month) {
+            $this->events->dispatch(new FiscalYearStartChanged($month));
             $this->audit->record('fiscal_year.start_month_changed', 'app.fiscal_years', null, ['from' => $from, 'to' => $month, 'moved_transactions' => $moved]);
         }
 

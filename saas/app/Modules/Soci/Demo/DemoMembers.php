@@ -102,14 +102,14 @@ final readonly class DemoMembers implements DemoSeeder
                     $byBank ? ($bank ?? $cash) : $cash,
                     $type === MemberType::Volunteer ? 1500 : 2500,
                     $date,
-                    $this->memberships->socialYearLabel($date),
+                    $this->memberships->membershipYearLabel($date),
                     $byBank ? PaymentMethod::BankTransfer : PaymentMethod::Cash,
                 );
             }
         }
 
         // Due soci ente (denominazione, codice fiscale di 11 cifre finto), per la pagina «Dati per il RUNTS».
-        $label = $this->memberships->socialYearLabel();
+        $label = $this->memberships->membershipYearLabel();
         foreach (['Pro Loco di Cittàdemo' => true, 'Circolo Culturale Demo' => false] as $n => $same) {
             $entity = Person::query()->create([
                 'first_name' => '', 'last_name' => $n, 'is_entity' => true, 'entity_same_section' => $same,

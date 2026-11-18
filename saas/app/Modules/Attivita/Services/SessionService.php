@@ -152,7 +152,7 @@ final readonly class SessionService
         foreach ($dates as $i => $d) {
             $last = SessionRules::shifted($d, $days) ?? $d;
             if ($d < $year['start'] || $last > $year['end']) {
-                throw new ActivityError('La data '.date('d/m/Y', (int) strtotime($d)).' è fuori dall\'anno sociale '.$activity->social_year.'.');
+                throw new ActivityError('La data '.date('d/m/Y', (int) strtotime($d)).' è fuori dall\'anno delle attività '.$activity->social_year.'.');
             }
             if ($days > 1 && isset($dates[$i + 1]) && $dates[$i + 1] <= $last) {
                 throw new ActivityError('Due date della stessa attività non possono sovrapporsi.');

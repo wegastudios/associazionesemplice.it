@@ -11,13 +11,23 @@ interface Members
 
     public function isActive(string $personId, ?string $date = null): bool;
 
-    /** Etichetta dell'anno sociale di quella data («2026» o «2025/2026»). */
+    /** Etichetta dell'anno delle attività (corsi ed eventi) di quella data («2026» o «2025/2026»). */
     public function socialYearLabel(?string $date = null): string;
 
     /**
-     * L'anno sociale di un'etichetta: primo e ultimo giorno, i dodici mesi; null se l'etichetta non è valida.
+     * L'anno delle attività di un'etichetta: primo e ultimo giorno, i dodici mesi; null se l'etichetta non è valida.
      *
      * @return array{label: string, start: string, end: string, months: list<string>, next: string, previous: string}|null
      */
     public function socialYearInfo(string $label): ?array;
+
+    /** Etichetta dell'anno della tessera di quella data: segue l'anno fiscale. */
+    public function membershipYearLabel(?string $date = null): string;
+
+    /**
+     * L'anno fiscale della tessera di un'etichetta; null se l'etichetta non è valida.
+     *
+     * @return array{label: string, start: string, end: string, months: list<string>, next: string, previous: string}|null
+     */
+    public function membershipYearInfo(string $label): ?array;
 }

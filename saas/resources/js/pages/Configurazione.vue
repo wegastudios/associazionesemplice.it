@@ -50,12 +50,12 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
 
         <form class="space-y-6" novalidate @submit.prevent="save">
             <section v-if="has('anno_sociale') || has('anno_fiscale')" class="card p-4 sm:p-5" aria-labelledby="s-anni">
-                <h2 id="s-anni" class="mb-3 text-lg font-bold">1. Anno sociale e anno fiscale</h2>
+                <h2 id="s-anni" class="mb-3 text-lg font-bold">1. Anno delle attività e anno fiscale</h2>
                 <p v-if="form.errors['steps.anno_sociale']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.anno_sociale'] }}</p>
                 <p v-if="form.errors['steps.anno_fiscale']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.anno_fiscale'] }}</p>
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <label v-if="has('anno_sociale')" :class="label"><span class="font-semibold">L'anno sociale comincia a</span>
-                        <select v-model.number="form.steps.anno_sociale.start_month" :class="field" required><option value="" disabled>Scegli il mese</option><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
+                    <label v-if="has('anno_sociale')" :class="label"><span class="font-semibold">Da che mese iniziano corsi ed eventi (anno delle attività)?</span>
+                        <select v-model.number="form.steps.anno_sociale.start_month" :class="field" required><option value="" disabled>Scegli il mese</option><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select><span class="block text-sm text-muted">La tessera, le quote e gli incassi seguono invece l'anno fiscale.</span></label>
                     <label v-if="has('anno_fiscale')" :class="label"><span class="font-semibold">L'anno fiscale comincia a</span>
                         <select v-model.number="form.steps.anno_fiscale.start_month" :class="field" required :disabled="by.anno_fiscale.locked"><option value="" disabled>Scegli il mese</option><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
                 </div>

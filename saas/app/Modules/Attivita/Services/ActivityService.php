@@ -25,10 +25,12 @@ use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgFiscal;
 use App\Modules\Risorse\Contracts\ResourceBookings;
 use App\Modules\Risorse\Contracts\ResourceError;
 use App\Modules\Soci\Contracts\Members;
 use App\Modules\Soci\Contracts\MemberType;
+use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
@@ -51,6 +53,7 @@ final readonly class ActivityService implements Activities
         private ResourceBookings $resources,
         private ActivityOccupancy $occupancy,
         private ActivityVat $vat,
+        private OrgFiscal $fiscal,
     ) {}
 
     public function options(): array
@@ -91,7 +94,50 @@ final readonly class ActivityService implements Activities
     }
 
     /**
-     * Attività di un anno sociale con iscritti ed entrate e uscite.
+     * Totali generali dell'anno delle attività, suddivisi per gli anni fiscali che tocca (decisione del 18/11/2026):
+     * un blocco per ogni anno fiscale in cui cadono le date dell'anno o i movimenti, ciascuno con i suoi totali.
+     * L'etichetta dice solo i mesi dell'anno delle attività che cadono in quell'anno fiscale («set–dic 2025»).
+     *
+     * @param  list<string>  $activityIds
+     * @return list<array{label: string, income: int, expense: int}>
+     */
+    public function totalsByFiscalYear(string $label, array $activityIds): array
+    {
+        $span = $this->members->socialYearInfo($label);
+        $blocks = $this->ledger->activityTotalsByFiscalYear($activityIds);
+        $startMonth = $this->fiscal->startMonth();
+        $out = [];
+        $seen = [];
+        if ($span !== null) {
+            $day = new DateTimeImmutable($span['start']);
+            while ($day->format('Y-m-d') <= $span['end']) {
+                $fy = (int) $day->format('Y') - ((int) $day->format('n') < $startMonth ? 1 : 0);
+                $fyStart = new DateTimeImmutable(sprintf('%04d-%02d-01', $fy, $startMonth));
+                $fyEnd = $fyStart->modify('+1 year')->modify('-1 day');
+                $from = max($day->format('Y-m-d'), $fyStart->format('Y-m-d'));
+                $to = min($span['end'], $fyEnd->format('Y-m-d'));
+                $row = null;
+                foreach ($blocks as $b) {
+                    if ($b['starts_on'] <= $to && $b['ends_on'] >= $from) {
+                        $row = $b;
+                        $seen[$b['year']] = true;
+                    }
+                }
+                $out[] = ['label' => SessionRules::monthsLabel($from, $to), 'income' => $row['income'] ?? 0, 'expense' => $row['expense'] ?? 0];
+                $day = $fyEnd->modify('+1 day');
+            }
+        }
+        foreach ($blocks as $b) {
+            if (! isset($seen[$b['year']])) {
+                $out[] = ['label' => SessionRules::monthsLabel($b['starts_on'], $b['ends_on']), 'income' => $b['income'], 'expense' => $b['expense']];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Attività di un anno delle attività con iscritti ed entrate e uscite.
      *
      * @return list<array{id: string, name: string, kind: string, archived: bool, participants: int, income: int, expense: int}>
      */
@@ -155,7 +201,7 @@ final readonly class ActivityService implements Activities
         $activity = $id === null ? new Activity : $this->find($id);
         $data['social_year'] = is_string($data['social_year'] ?? null) ? $data['social_year'] : $this->members->socialYearLabel();
         if ($this->members->socialYearInfo($data['social_year']) === null) {
-            throw new ActivityError('Anno sociale non valido.');
+            throw new ActivityError('Anno delle attività non valido.');
         }
         if (in_array($data['kind'] ?? null, [ActivityKind::Event->value, ActivityKind::Recurring->value], true)) {
             $data['billing'] = Billing::Once->value;
@@ -474,7 +520,7 @@ final readonly class ActivityService implements Activities
             ? ($activity->firstMonth() ?? $year['months'][0])
             : ($startMonth ?? $this->defaultStart($activity, $year['months']));
         if (! in_array($start, $year['months'], true)) {
-            throw new ActivityError('Il mese di inizio non è nell\'anno sociale '.$activity->social_year.'.');
+            throw new ActivityError('Il mese di inizio non è nell\'anno delle attività '.$activity->social_year.'.');
         }
 
         $enrollment = Enrollment::query()->where('activity_id', $activity->id)->where('person_id', $person['id'])->first();
@@ -564,7 +610,7 @@ final readonly class ActivityService implements Activities
             }
             foreach ($months as $m) {
                 if (! in_array($m, $year['months'], true)) {
-                    throw new ActivityError('Il mese '.$m.' non è nell\'anno sociale dell\'attività.');
+                    throw new ActivityError('Il mese '.$m.' non è nell\'anno delle attività dell\'attività.');
                 }
                 $cents = $amountCents ?? $row['fee'];
                 if ($cents <= 0) {
@@ -595,7 +641,7 @@ final readonly class ActivityService implements Activities
     /** @return array{label: string, start: string, end: string, months: list<string>, next: string, previous: string} */
     public function year(Activity $activity): array
     {
-        return $this->members->socialYearInfo($activity->social_year) ?? throw new ActivityError('Anno sociale non valido.');
+        return $this->members->socialYearInfo($activity->social_year) ?? throw new ActivityError('Anno delle attività non valido.');
     }
 
     public static function monthLabel(string $ym): string

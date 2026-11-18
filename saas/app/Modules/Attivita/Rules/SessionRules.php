@@ -117,6 +117,18 @@ final class SessionRules
         return 'dal '.date($format, $first).' al '.date($format, $last);
     }
 
+    /** «set–dic 2025» o, se passa da un anno all'altro, «nov 2025–feb 2026». */
+    public static function monthsLabel(string $from, string $to): string
+    {
+        $mesi = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+        $a = (int) strtotime(substr($from, 0, 10));
+        $b = (int) strtotime(substr($to, 0, 10));
+        $left = $mesi[(int) date('n', $a) - 1];
+        $right = $mesi[(int) date('n', $b) - 1];
+
+        return date('Y', $a) === date('Y', $b) ? $left.'–'.$right.' '.date('Y', $b) : $left.' '.date('Y', $a).'–'.$right.' '.date('Y', $b);
+    }
+
     /** Quanti giorni dura una data (1 se finisce lo stesso giorno). */
     public static function days(string $date, ?string $endDate): int
     {

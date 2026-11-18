@@ -17,10 +17,20 @@ final readonly class OrgFiscal
 
     public const MEMBERSHIP_RATE = 'fiscal.membership_vat_rate';
 
+    /** Mese da cui parte l'anno fiscale (la tessera di socio lo segue); senza scelta è gennaio. */
+    public const FISCAL_START_MONTH = 'contabilita.fiscal_year_start_month';
+
     /** Aliquote proposte all'inizio (oltre a «IVA esente»). */
     public const DEFAULT_RATES = [22, 10, 5, 4];
 
     public function __construct(private OrgSettings $settings) {}
+
+    public function startMonth(): int
+    {
+        $month = $this->settings->get(self::FISCAL_START_MONTH);
+
+        return is_numeric($month) && (int) $month >= 1 && (int) $month <= 12 ? (int) $month : 1;
+    }
 
     public function hasVat(): bool
     {

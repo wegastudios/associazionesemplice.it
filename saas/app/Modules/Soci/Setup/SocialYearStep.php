@@ -10,10 +10,10 @@ use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Contracts\RequiredSetupStep;
 use App\Modules\Soci\Services\MembershipService;
 
-/** Mese di inizio dell'anno sociale: si sceglie subito, prima di tesserare chiunque. */
+/** Mese da cui iniziano corsi ed eventi (anno delle attività): si sceglie subito. La tessera segue l'anno fiscale. */
 final readonly class SocialYearStep implements RequiredSetupStep
 {
-    public function __construct(private OrgSettings $settings, private MembershipService $memberships) {}
+    public function __construct(private OrgSettings $settings) {}
 
     public function key(): string
     {
@@ -22,7 +22,7 @@ final readonly class SocialYearStep implements RequiredSetupStep
 
     public function title(): string
     {
-        return 'Anno sociale';
+        return 'Anno delle attività';
     }
 
     public function order(): int
@@ -52,11 +52,10 @@ final readonly class SocialYearStep implements RequiredSetupStep
         $month = $input['start_month'] ?? null;
 
         if (! is_numeric($month) || (int) $month < 1 || (int) $month > 12) {
-            return ['Scegli il mese in cui comincia l\'anno sociale.'];
+            return ['Scegli il mese da cui iniziano corsi ed eventi.'];
         }
-        $problem = $this->memberships->startMonthProblem((int) $month);
 
-        return $problem === null ? [] : [$problem];
+        return [];
     }
 
     public function save(array $input): void
