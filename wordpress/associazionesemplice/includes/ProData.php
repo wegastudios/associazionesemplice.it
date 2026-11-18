@@ -132,6 +132,7 @@ final class ProData {
 			$old_link  = Resources::activity_link( $activity_id );
 			$old_setup = Db::db()->get_row( Db::db()->prepare( 'SELECT setup_before_min, setup_after_min FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ), ARRAY_A ) ?: array( 'setup_before_min' => null, 'setup_after_min' => null );
 			$old_over  = $old_link ? Resources::activity_overlaps( $activity_id, $old_link ) : array();
+			$old_block = Resources::activity_block( $activity_id );
 		}
 		if ( Edition::has( 'resources' ) && ( array_key_exists( 'setup_before', $p ) || array_key_exists( 'setup_after', $p ) ) ) { // allestimento prima e dopo, prima del collegamento: il controllo dei conflitti lo usa
 			Resources::set_activity_setup( $activity_id, ResourceRules::parse_duration( (string) ( $p['setup_before'] ?? '' ) ), ResourceRules::parse_duration( (string) ( $p['setup_after'] ?? '' ) ) );
@@ -140,6 +141,11 @@ final class ProData {
 			$raw = trim( (string) $p['resource_id'] ); // vuoto = non indicata, «none» = nessuna risorsa (evento fuori sede)
 			Resources::link_activity( $activity_id, 'none' === $raw ? 0 : ( '' === $raw ? null : (int) $raw ) );
 			Resources::set_activity_slot_mode( $activity_id, ! empty( $p['occupy_on_booking'] ) );
+			if ( array_key_exists( 'resource_block_on', $p ) || array_key_exists( 'resource_block', $p ) ) { // tenere la risorsa occupata senza interruzioni, dal primo all'ultimo giorno
+				$bname = trim( (string) ( $p['resource_block'] ?? '' ) );
+				$a_row = Plugin::activities()->get( $activity_id );
+				Resources::set_activity_block( $activity_id, ! empty( $p['resource_block_on'] ) && Resources::activity_link( $activity_id ) ? ( '' !== $bname ? $bname : (string) ( $a_row['name'] ?? '' ) ) : null );
+			}
 		}
 		if ( $res_on ) {
 			$link = Resources::activity_link( $activity_id );
@@ -160,10 +166,16 @@ final class ProData {
 			if ( $new ) { // niente sovrapposizioni nuove: risorsa e allestimento tornano com'erano
 				Resources::set_activity_setup( $activity_id, null === $old_setup['setup_before_min'] ? null : (int) $old_setup['setup_before_min'], null === $old_setup['setup_after_min'] ? null : (int) $old_setup['setup_after_min'] );
 				Resources::link_activity( $activity_id, $old_link );
+				Resources::set_activity_block( $activity_id, '' === $old_block ? null : $old_block );
 				throw new \InvalidArgumentException( esc_html( 'Non posso salvare: la risorsa risulterebbe occupata due volte. Si sovrappone a ' . implode( '; ', array_slice( array_values( $new ), 0, 5 ) ) . '.' . $why . ' Risorsa e allestimento sono rimasti come prima (gli altri dati sono stati salvati): cambia orari, risorsa o allestimento' . ( $swap && '' === $why ? ', oppure spunta «Sposta sulla risorsa di prima ciò che si sovrappone» e salva di nuovo.' : '.' ) ) );
 			}
 			if ( $over ) { // quelle già presenti non si toccano: si segnalano e vanno sistemate a mano
 				$notes[] = ' Attenzione: restano ' . count( $over ) . ( 1 === count( $over ) ? ' sovrapposizione già presente' : ' sovrapposizioni già presenti' ) . ' sulla risorsa (prossimi 120 giorni): vanno sistemate a mano.';
+			}
+			$key = ResourceRules::block_key( Resources::activity_block( $activity_id ) );
+			$spn = '' !== $key && $link ? Resources::block_span( (int) $link, $key ) : null;
+			if ( $spn ) { // blocco di eventi: si dice fino a quando la risorsa resta occupata
+				$notes[] = ' Risorsa tenuta occupata dal ' . mysql2date( 'd/m', $spn['core_starts'] ) . ' al ' . mysql2date( 'd/m', $spn['core_ends'] ) . '.';
 			}
 		}
 		return $notes;

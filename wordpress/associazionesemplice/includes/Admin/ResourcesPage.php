@@ -59,6 +59,7 @@ final class ResourcesPage {
 		$link     = $activity_id ? Resources::activity_link( $activity_id ) : null; // null = non scelta, 0 = nessuna risorsa (fuori sede)
 		$selected = null === $link ? '' : ( 0 === $link ? 'none' : $link );
 		$a        = $activity_id ? Plugin::activities()->get( $activity_id ) : null;
+		$block    = $activity_id ? Resources::activity_block( $activity_id ) : '';
 		$show     = function ( $m ) {
 			return null === $m ? '' : ResourceRules::format_duration( (int) $m );
 		};
@@ -67,7 +68,11 @@ final class ResourcesPage {
 			. '<p><label><input type="checkbox" name="move_conflicts" value="1"> Sposta sulla risorsa di prima ciò che si sovrappone</label></p>'
 			. '<p class="description">Se cambi risorsa e quella nuova è già occupata negli stessi orari, il cambio non viene applicato e vedi cosa si sovrappone. Spuntando questa casella, le prenotazioni e le altre attività che si sovrappongono passano alla risorsa che si libera (le attività per intero); se anche lì non entrano, non si sposta niente.</p>'
 			. '<p><label><input type="checkbox" name="occupy_on_booking" value="1"' . ( $a && ! empty( $a['occupy_on_booking'] ) ? ' checked' : '' ) . '> Occupa la risorsa solo dove ci sono prenotazioni</label></p>'
-			. '<p class="description">Per le attività a fasce (ad esempio lezioni o sedute di mezz\'ora): la risorsa risulta occupata solo negli orari prenotati, e gli altri orari restano liberi per altre attività. Una fascia già occupata altrove non è prenotabile.</p></td></tr>'
+			. '<p class="description">Per le attività a fasce (ad esempio lezioni o sedute di mezz\'ora): la risorsa risulta occupata solo negli orari prenotati, e gli altri orari restano liberi per altre attività. Una fascia già occupata altrove non è prenotabile.</p>'
+			. '<p><label><input type="checkbox" name="resource_block_on" value="1"' . ( '' !== $block ? ' checked' : '' ) . '> Tieni la risorsa occupata senza interruzioni, dal primo all\'ultimo giorno</label></p>'
+			. '<p class="description">Nessuno potrà prenotarla in quel periodo, nemmeno tra un evento e l\'altro (utile per una regata con tre gare). Se sposti, accorci o annulli le date, il blocco si adegua da solo.</p>'
+			. '<p>Nome del blocco <input type="text" name="resource_block" class="regular-text" maxlength="120" value="' . esc_attr( $block ) . '" placeholder="Regata di giugno"></p>'
+			. '<p class="description">Gli eventi con lo stesso nome e la stessa risorsa condividono un solo blocco, dal primo inizio all\'ultima fine. Se lo lasci vuoto vale il nome dell\'evento.</p></td></tr>'
 			. '<tr><th>Allestimento</th><td>prima <input type="text" name="setup_before" class="small-text" value="' . esc_attr( $a ? $show( $a['setup_before_min'] ) : '' ) . '" placeholder="3 ore"> e dopo <input type="text" name="setup_after" class="small-text" value="' . esc_attr( $a ? $show( $a['setup_after_min'] ) : '' ) . '" placeholder="3 ore">'
 			. '<p class="description">Il tempo in cui la risorsa resta indisponibile prima e dopo questa attività, per prepararla e riordinare: «3 ore», «mezz\'ora», «20 minuti», «0» per nessuno. Se lasci vuoto: 3 ore per gli eventi, nessuno per i corsi. Si <strong>somma</strong> a quello della risorsa (ad esempio la risorsa vuole 20 minuti prima e dopo, questa attività 30 dopo: la risorsa è indisponibile 20 minuti prima e 50 dopo).</p></td></tr>';
 	}

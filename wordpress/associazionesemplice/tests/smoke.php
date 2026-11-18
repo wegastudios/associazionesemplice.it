@@ -8519,6 +8519,34 @@ $md_o = $acts->create( array( 'name' => 'Serata sul lungomare', 'social_year' =>
 $RS::link_activity( $md_o, $md_res );
 $md_msg = asem_throws( function () use ( $acts, $md_o, $md_d2 ) { $acts->update_session( (int) $acts->sessions( $md_o )[0]['id'], array( 'session_date' => $md_d2, 'start_time' => '12:00', 'end_time' => '14:00' ) ); } );
 asem_ok( null !== $md_msg && false !== strpos( $md_msg, 'Regata tre giorni risorse' ), 'risorse: un altro evento sul giorno di mezzo della regata è rifiutato, col nome del conflitto' );
+// blocco di eventi: la risorsa resta occupata senza interruzioni dal primo all'ultimo giorno, anche tra un evento e l'altro
+$bk_res = $RS::save( 0, array( 'name' => 'Campo regate', 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 ) );
+$bk_d1  = gmdate( 'Y-m-d', strtotime( $today . ' +50 days' ) );
+$bk_d2  = gmdate( 'Y-m-d', strtotime( $today . ' +51 days' ) );
+$bk_d3  = gmdate( 'Y-m-d', strtotime( $today . ' +52 days' ) );
+$bk_sy  = Settings::social_year( $bk_d3 )->label();
+$bk_a   = $acts->create( array( 'name' => 'Gara uno', 'social_year' => $bk_sy, 'kind' => 'event', 'session' => array( 'session_date' => $bk_d1, 'start_time' => '09:00', 'end_time' => '17:00' ) ) );
+$bk_b   = $acts->create( array( 'name' => 'Gara tre', 'social_year' => $bk_sy, 'kind' => 'event', 'session' => array( 'session_date' => $bk_d3, 'start_time' => '09:00', 'end_time' => '17:00' ) ) );
+$RS::link_activity( $bk_a, $bk_res );
+$RS::link_activity( $bk_b, $bk_res );
+$bk_free = $RS::book_slot( $bk_res, $rs_m1, $bk_d2, '12:00', 1, array(), true ); // senza blocco il giorno in mezzo è libero
+asem_ok( $bk_free > 0, 'blocco: senza blocco il giorno tra due eventi è libero' );
+$RS::cancel( $bk_free, true );
+$RS::set_activity_block( $bk_a, ' Regata di giugno ' );
+$RS::set_activity_block( $bk_b, 'regata di GIUGNO' );
+asem_ok( 'regata di giugno' === strtolower( trim( $RS::activity_block( $bk_a ) ) ) && 'regata di giugno' === strtolower( trim( $RS::activity_block( $bk_b ) ) ), 'blocco: lo stesso nome (maiuscole e spazi a parte) fa un blocco solo' );
+asem_ok( null !== asem_throws( function () use ( $RS, $bk_res, $rs_m1, $bk_d2 ) { $RS::book_slot( $bk_res, $rs_m1, $bk_d2, '12:00', 1, array(), true ); } ), 'blocco: il giorno tra i due eventi è occupato' );
+$bk_span = $RS::block_span( $bk_res, 'regata di giugno' );
+asem_ok( $bk_d1 === substr( $bk_span['core_starts'], 0, 10 ) && $bk_d3 === substr( $bk_span['core_ends'], 0, 10 ), 'blocco: dal primo inizio all\'ultima fine' );
+asem_ok( array() === $RS::activity_overlaps( $bk_a, $bk_res ) && array() === $RS::activity_overlaps( $bk_b, $bk_res ), 'blocco: gli eventi dello stesso blocco non si danno fastidio' );
+$bk_o = $acts->create( array( 'name' => 'Cena nel mezzo', 'social_year' => $bk_sy, 'kind' => 'event', 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $bk_d2 . ' +30 days' ) ), 'start_time' => '20:00', 'end_time' => '22:00' ) ) );
+$RS::link_activity( $bk_o, $bk_res );
+asem_ok( null !== asem_throws( function () use ( $acts, $bk_o, $bk_d2 ) { $acts->update_session( (int) $acts->sessions( $bk_o )[0]['id'], array( 'session_date' => $bk_d2, 'start_time' => '20:00', 'end_time' => '22:00' ) ); } ), 'blocco: un altro evento non entra nel giorno tra i due' );
+foreach ( $acts->sessions( $bk_b ) as $bk_s ) {
+	$acts->cancel_session( (int) $bk_s['id'] );
+}
+$bk_after = $RS::book_slot( $bk_res, $rs_m1, $bk_d2, '12:00', 1, array(), true );
+asem_ok( $bk_after > 0, 'blocco: annullato l\'ultimo evento il blocco si accorcia da solo e il giorno torna libero' );
 // cambio di risorsa: ciò che si sovrappone passa alla risorsa di prima, tutto o niente
 $mv_def  = array( 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 );
 $mv_old  = $RS::save( 0, array( 'name' => 'Sala di prima' ) + $mv_def );
