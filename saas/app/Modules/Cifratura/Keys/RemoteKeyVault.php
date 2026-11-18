@@ -40,7 +40,9 @@ final readonly class RemoteKeyVault implements KeyVault
         $body = Protocol::body($payload, time());
 
         $response = $this->http
+            ->connectTimeout(1)
             ->timeout($this->timeout)
+            ->retry(2, 150, null, false)
             ->withHeaders([Protocol::SIGNATURE_HEADER => Protocol::sign($body, $this->signingKey)])
             ->withBody($body, 'application/json')
             ->post($this->url);
