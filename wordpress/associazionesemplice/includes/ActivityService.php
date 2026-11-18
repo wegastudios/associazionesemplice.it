@@ -340,12 +340,18 @@ class ActivityService {
 		);
 	}
 
-	/** Ultimo giorno di una data: la data di fine se c'è, altrimenti il giorno stesso. Un evento è «passato» solo dopo questo giorno e «in corso» fino ad allora. */
-	/** Si può prenotare online? Solo le date che iniziano da domani in poi: per il giorno stesso, o per un evento già iniziato, prenota la segreteria. */
+	/**
+	 * Si può prenotare online? Una data di un giorno solo, finché non è passata (anche il giorno stesso). Una data su più giorni
+	 * (con fine in un giorno diverso dall'inizio) solo se inizia da domani in poi: dal giorno di inizio, e mentre è in corso, prenota la segreteria.
+	 */
 	public static function online_bookable( array $s ): bool {
-		return (string) ( $s['session_date'] ?? '' ) > current_time( 'Y-m-d' );
+		$start = (string) ( $s['session_date'] ?? '' );
+		$today = current_time( 'Y-m-d' );
+		$end   = (string) ( $s['end_date'] ?? '' );
+		return '' !== $end && $end !== $start ? $start > $today : $start >= $today;
 	}
 
+	/** Ultimo giorno di una data: la data di fine se c'è, altrimenti il giorno stesso. Un evento è «passato» solo dopo questo giorno e «in corso» fino ad allora. */
 	public static function last_day( array $s ): string {
 		return '' !== (string) ( $s['end_date'] ?? '' ) ? (string) $s['end_date'] : (string) ( $s['session_date'] ?? '' );
 	}

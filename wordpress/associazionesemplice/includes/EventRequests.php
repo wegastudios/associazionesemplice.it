@@ -312,7 +312,7 @@ final class EventRequests {
 		$ok  = array( 'status' => 'ok', 'errors' => array() );
 		$sid = (int) ( $in['session_id'] ?? 0 );
 		$s   = $sid ? Plugin::activities()->session( $sid ) : null;
-		if ( ! $s || (int) $s['activity_id'] !== (int) $activity['id'] || $s['cancelled_at'] || (string) $s['session_date'] <= Db::today() ) {
+		if ( ! $s || (int) $s['activity_id'] !== (int) $activity['id'] || $s['cancelled_at'] || ! ActivityService::online_bookable( $s ) ) {
 			return array( 'status' => 'invalid', 'errors' => array( 'Scegli una delle date indicate.' ) );
 		}
 		$today = Db::today();

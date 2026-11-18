@@ -891,7 +891,11 @@ asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::when_text( $acts-
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'Regata di prova' ) && false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'In corso' ), 'data di fine: l\'elenco mostra l\'evento in corso' );
 asem_ok( false === strpos( (string) \AssociazioneSemplice\Frontend\Views::event_booking( $acts->get( $ms_act ) ), 'Date passate' ), 'data di fine: un evento in corso non è tra le date passate' );
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::ics_for( get_post( $ms_post ) ), 'DTEND:' ), 'data di fine: il calendario .ics ha la fine' );
-asem_ok( ! \AssociazioneSemplice\ActivityService::online_bookable( $ms_n[0] ) && \AssociazioneSemplice\ActivityService::online_bookable( array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) ) ) ) && ! \AssociazioneSemplice\ActivityService::online_bookable( array( 'session_date' => $today ) ), 'prenotazioni online: da domani in poi sì; oggi o a evento iniziato solo la segreteria' );
+$ob           = array( '\AssociazioneSemplice\ActivityService', 'online_bookable' );
+$ob_tomorrow  = gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) );
+$ob_yesterday = gmdate( 'Y-m-d', strtotime( $today . ' -1 day' ) );
+asem_ok( ! $ob( array( 'session_date' => $today, 'end_date' => $ob_tomorrow ) ) && ! $ob( array( 'session_date' => $ob_yesterday, 'end_date' => $ob_tomorrow ) ) && $ob( array( 'session_date' => $ob_tomorrow, 'end_date' => gmdate( 'Y-m-d', strtotime( $today . ' +3 days' ) ) ) ), 'prenotazioni online, evento su più giorni: da domani in poi sì; dal giorno di inizio e mentre è in corso solo la segreteria' );
+asem_ok( $ob( array( 'session_date' => $today ) ) && $ob( array( 'session_date' => $today, 'end_date' => $today ) ) && $ob( array( 'session_date' => $ob_tomorrow ) ) && ! $ob( array( 'session_date' => $ob_yesterday ) ), 'prenotazioni online, evento di un giorno: come prima, anche il giorno stesso, non dopo' );
 $pe_course = $acts->create( array( 'name' => 'Corso di acquerello', 'social_year' => $sy->label(), 'kind' => 'course', 'fee_cents' => 2000, 'lesson_weekday' => 3, 'lesson_start' => '17:00', 'lesson_end' => '18:30' ) ); // un corso compare nel calendario con le lezioni settimanali
 $pe_cpost   = \AssociazioneSemplice\PublicEvents::ensure( $pe_course );
 wp_update_post( array( 'ID' => $pe_cpost, 'post_status' => 'publish' ) );
