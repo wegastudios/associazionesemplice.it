@@ -15,7 +15,9 @@ Entri dal tuo account: da **Il mio account** scegli **Gestionale**. Sulla Home, 
 
 La **Configurazione guidata** raccoglie le impostazioni principali in **una sola pagina**: compila quello che sai, il resto si cambia dopo. Si salva tutto insieme con **«Salva la configurazione»**; **«Più tardi»** ti lascia rimandare.
 
-1. **Anno sociale e anno fiscale**: scegli i **due mesi** da cui cominciano (**«L'anno sociale comincia a»** e **«L'anno fiscale comincia a»**). Sono obbligatori e indipendenti: con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). Scegli il mese fiscale prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare.
+1. **Anno delle attività e anno fiscale**: scegli i **due mesi** da cui cominciano. Il campo **«Da che mese iniziano corsi ed eventi (anno delle attività)?»** riguarda solo il calendario di corsi ed eventi; sotto c'è la riga «La tessera, le quote e gli incassi seguono invece l'anno fiscale.» Sono obbligatori e indipendenti: con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). Scegli il mese fiscale prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare.
+
+   **Se cambi il mese dell'anno fiscale** compare l'anteprima **«Cosa succede alle tessere»**: quante tessere degli anni fiscali aperti passano al nuovo anno fiscale (per esempio «2025/2026 → 2026») e quante restano **«sostituite»** (la persona ha già la tessera dello stesso anno e quella più recente resta valida). Le tessere degli anni fiscali chiusi non si toccano. Per salvare metti la spunta **«Ho letto cosa succede alle tessere e voglio cambiare il mese dell'anno fiscale.»** e premi **«Salva e riallinea le tessere»**. A fine lavoro leggi «Mese dell'anno fiscale cambiato. Tessere riallineate: N. Tessere sostituite: S.» Se nessuna tessera cambia: «Nessuna tessera da riallineare.» Il gestionale non fa una copia di sicurezza per associazione: **ogni tessera cambiata è scritta nel registro delle azioni**, con l'etichetta e le date di prima.
 2. **Dati dell'ente**: sono **obbligatori** la forma dell'ente (per esempio «APS – associazione di promozione sociale» o «ASD – associazione sportiva dilettantistica»), il **codice fiscale**, la **sede legale** (indirizzo, CAP, comune e provincia), il **legale rappresentante** (nome e cognome, di solito il presidente), l'**«Email della segreteria»** e il **«Telefono della segreteria»**. Per **partita IVA**, **numero RUNTS** e **PEC** scrivi il dato oppure, se non esiste, metti la spunta **«L'associazione non ha la partita IVA»**, **«L'associazione non è iscritta al RUNTS»** o **«L'associazione non ha una PEC»**. Il **codice destinatario** per la fattura elettronica è facoltativo. Poi c'è la **quota associativa**.
 3. **Conti**: aggiungi il **conto in banca** e il suo **saldo di partenza**.
 4. **Soci**: l'indirizzo della pagina dell'**informativa privacy** e quello del **regolamento**.
@@ -81,6 +83,8 @@ In **Soci** premi **Nuovo → Nuova scheda socio**. Nella scheda trovi i **dati 
 3. Scegli il file (**.xlsx o .csv, al massimo 5 MB**) e, se nel file manca la colonna «Tipo», indica il tipo di default.
 4. Premi **«Mostra l'anteprima»**: vedi cosa verrà importato. Le righe con errori si saltano: correggile nel file e ricaricalo quando vuoi.
 5. Conferma. A fine importazione trovi il riepilogo con le **righe non importate** e il collegamento **«Vai all'elenco»**.
+
+Se nel file ci sono **tessere con un'etichetta che non corrisponde all'anno fiscale** (per esempio «2025» con l'anno fiscale che non inizia a gennaio), l'anteprima mostra il riquadro **«Tessere con anno diverso dall'anno fiscale»**: con la conferma passano all'anno fiscale che le contiene (per esempio «2025/2026»). Per importare devi mettere la spunta **«Ho letto cosa succede alle tessere e voglio importarle così.»**
 
 ## Trovare e esportare
 
@@ -301,7 +305,7 @@ MD,
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
-Dalla scheda del socio, nella parte **Tesseramento**, premi **«Incassa e rinnova»**: l'incasso va in **prima nota** con la ricevuta, e la tessera viene rinnovata. Se **storni** quell'incasso, la tessera non vale più; dopo lo storno puoi ripetere la quota.
+Dalla scheda del socio, nella parte **Tesseramento**, premi **«Incassa e rinnova»**: l'incasso va in **prima nota** con la ricevuta, e la tessera viene rinnovata. La tessera segue l'**anno fiscale**: con gennaio è «**Tessera 2026**» e scade il 31/12, con un altro mese è per esempio «2025/2026». Se **storni** quell'incasso, la tessera non vale più; dopo lo storno puoi ripetere la quota.
 
 ## Se il socio ha già la tessera
 
@@ -677,7 +681,7 @@ MD,
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
-In **Attività** trovi i corsi e gli eventi dell'anno sociale: ognuno raccoglie i **suoi incassi e le sue spese**.
+In **Attività** trovi i corsi e gli eventi dell'anno delle attività: ognuno raccoglie i **suoi incassi e le sue spese**.
 
 1. Premi **«Nuova attività»** (o **Nuovo → Nuova attività**).
 2. Compila nome, **importo per i soci** e **importo per gli ospiti**. Per un corso scegli i **giorni delle lezioni**: il mese è dovuto dalla prima lezione del mese.
