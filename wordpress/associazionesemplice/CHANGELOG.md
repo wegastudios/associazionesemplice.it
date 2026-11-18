@@ -4,6 +4,7 @@ Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi u
 
 ## 1.3.29 – 2026-11-18
 - Nuovo: gli eventi su più giorni compaiono in ognuno dei loro giorni nei calendari, nella Bacheca e nel calendario dei soci, e l'importazione da The Events Calendar porta anche la data di fine.
+- Altro: passando l'anno sociale a gennaio, i corsi e gli eventi creati con l'anno a cavallo (per esempio 2025/2026) restano nell'elenco.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 ## 1.3.28 – 2026-11-18
