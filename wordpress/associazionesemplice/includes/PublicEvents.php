@@ -986,7 +986,7 @@ final class PublicEvents {
 		$lab  = function ( string $ym ): string {
 			return ucfirst( wp_date( 'F Y', (int) strtotime( $ym . '-01 12:00:00' ) ) );
 		};
-		return '<div class="asemf-cal-nav"><a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'elenco', 'asem_mese' => $prev ) ) ) . '">← ' . esc_html( $lab( $prev ) ) . '</a>'
+		return '<div class="asemf-list-nav"><a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'elenco', 'asem_mese' => $prev ) ) ) . '">← ' . esc_html( $lab( $prev ) ) . '</a>'
 			. '<a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'elenco', 'asem_mese' => $next ) ) ) . '">' . esc_html( $lab( $next ) ) . ' →</a></div>';
 	}
 

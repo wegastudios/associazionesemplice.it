@@ -328,13 +328,9 @@ extra_step( 'eventi sul sito', function () {
 	$texts['Gita in montagna']   = array( 'Gite', 'Una camminata facile tra i prati, adatta anche ai bambini, con pranzo al sacco e rientro nel pomeriggio.', array( 60, 120, 140 ) );
 	$texts['Concerto d\'estate'] = array( 'Musica', 'Musica all\'aperto sotto le stelle con il coro e la banda dell\'associazione. Ingresso libero, porta un cuscino.', array( 220, 130, 70 ) );
 	$texts['Mercatino di Natale'] = array( 'Solidarietà', 'Decorazioni, dolci e idee regalo preparate dai volontari: il ricavato finanzia le attività dell\'anno.', array( 170, 60, 70 ) );
-	$texts['Serata delle castagne'] = array( 'Serate', 'Castagne, vin brulé e musica in sede: una serata tra soci e amici per salutare l\'autunno. Si è già svolta.', array( 150, 90, 50 ) );
-	$texts['Festa d\'autunno']      = array( 'Musica', 'Una festa con giochi per i bambini, banchetti dei volontari e concerto del coro. Si è già svolta.', array( 200, 110, 60 ) );
 	// Date relative a oggi, ma sempre dentro l'anno sociale (un evento inizia e finisce nello stesso anno sociale): le più lontane si fermano a fine anno.
 	$last_day = Settings::social_year()->end()->format( 'Y-m-d' );
 	$more     = array(
-		array( 'Festa d\'autunno', -30, '15:00', 'Oratorio', 100, 0 ), // già svolti: si vedono tornando indietro nell'elenco e nel calendario
-		array( 'Serata delle castagne', -12, '20:30', 'Sede dell\'associazione', 60, 500 ),
 		array( 'Concerto d\'autunno', 9, '21:00', 'Teatro parrocchiale', 120, 0 ),
 		array( 'Laboratorio di cucina', 35, '16:00', 'Sede dell\'associazione', 15, 1800 ),
 		array( 'Mercatino solidale', 48, '10:00', 'Piazza del paese', 0, 0 ),
@@ -353,7 +349,7 @@ extra_step( 'eventi sul sito', function () {
 	foreach ( $more as $e ) {
 		$want    = gmdate( 'Y-m-d', time() + $e[1] * 86400 );
 		$sy      = $want > $last_day ? Settings::social_year()->next() : Settings::social_year(); // oltre fine anno: anno sociale successivo
-		$day     = max( min( $want, $sy->end()->format( 'Y-m-d' ) ), $sy->start()->format( 'Y-m-d' ) ); // mai fuori dall'anno sociale
+		$day     = min( $want, $sy->end()->format( 'Y-m-d' ) );
 		$session = array( 'session_date' => $day, 'start_time' => $e[2], 'end_time' => gmdate( 'H:i', (int) strtotime( $e[2] ) + 9000 ), 'location' => $e[3] );
 		if ( $e[4] > 0 ) {
 			$session['capacity'] = $e[4];
@@ -465,6 +461,55 @@ extra_step( 'evento ricorrente e annullato', function () {
 	$publish( (int) $can, 'Gita al castello', 'Gite', 'Una visita guidata al castello con pranzo al sacco nel parco. Purtroppo la guida non è disponibile e la gita è stata annullata.', array( 150, 90, 90 ) );
 	foreach ( $act->sessions( (int) $can ) as $s ) {
 		$act->cancel_session( (int) $s['id'] );
+	}
+} );
+
+// Due eventi che valgono per tutte le stagioni, con date passate (uno, due e tre mesi fa) e future: l'elenco e il calendario hanno sempre uno storico da mostrare.
+// Le date sono relative a oggi e restano dentro l'anno sociale: a ogni azzeramento notturno si rifanno da sole.
+extra_step( 'eventi di ogni stagione con date passate', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$act   = Plugin::activities();
+	$sy    = Settings::social_year();
+	$first = $sy->start()->format( 'Y-m-d' );
+	$last  = $sy->end()->format( 'Y-m-d' );
+	$term  = function ( string $name ) {
+		$t = term_exists( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		if ( ! $t ) {
+			$t = wp_insert_term( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		}
+		return is_wp_error( $t ) ? 0 : (int) $t['term_id'];
+	};
+	$events = array(
+		array( 'Serata danzante', 'Serate', 'Una serata di ballo in sede con musica dal vivo e liscio per tutti: si balla, si chiacchiera e si porta qualcosa da bere. Ingresso per i soci, con un piccolo contributo per gli ospiti.', array( 170, 60, 110 ), '21:00', 'Sede dell\'associazione', 80, 500, array( -90, -60, -30, 25, 55 ) ),
+		array( 'Festa dell\'associazione', 'Serate', 'La festa di tutti i soci: giochi per i bambini, banchetti dei volontari, musica e una tavolata per stare insieme e raccontare cosa abbiamo fatto.', array( 200, 110, 60 ), '16:00', 'Giardino dell\'associazione', 120, 0, array( -75, -45, -15, 35, 65 ) ),
+	);
+	foreach ( $events as $e ) {
+		$dates = array();
+		foreach ( $e[8] as $d ) {
+			$day = gmdate( 'Y-m-d', time() + $d * 86400 );
+			if ( $day >= $first && $day <= $last ) { // fuori dall'anno sociale non si può creare una data
+				$dates[] = $day;
+			}
+		}
+		if ( ! $dates ) {
+			continue;
+		}
+		$aid = $act->create( array( 'name' => $e[0], 'social_year' => $sy->label(), 'kind' => 'recurring', 'fee_cents' => $e[7], 'guest_fee_cents' => $e[7] > 0 ? $e[7] + 300 : null ) );
+		foreach ( $dates as $day ) {
+			$act->add_session( (int) $aid, array( 'session_date' => $day, 'start_time' => $e[4], 'end_time' => gmdate( 'H:i', (int) strtotime( $e[4] ) + 9000 ), 'location' => $e[5], 'capacity' => $e[6] ) );
+		}
+		$pid = \AssociazioneSemplice\PublicEvents::ensure( (int) $aid );
+		if ( ! $pid ) {
+			continue;
+		}
+		wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => extra_event_html( $e[2], $e[1], $e[5] ), 'post_excerpt' => wp_trim_words( $e[2], 18 ) ) );
+		wp_set_object_terms( $pid, array( $term( $e[1] ) ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		$thumb = extra_poster( $e[0], $e[3] );
+		if ( $thumb ) {
+			set_post_thumbnail( $pid, $thumb );
+		}
 	}
 } );
 

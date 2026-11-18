@@ -852,7 +852,7 @@ $_GET['asem_vista'] = 'mese'; // e Calendario in una pagina con l'elenco
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'asemf-cal' ), 'eventi: il pulsante Calendario vale più del modo elenco della pagina' );
 unset( $_GET['asem_vista'] );
 // Elenco a finestra di mesi: corrente e prossimo, frecce avanti e indietro, anche nel passato (storico)
-asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'asemf-cal-nav' ) && false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'filtri' => 'no' ) ), 'asemf-cal-nav' ), 'elenco eventi: le frecce dei mesi ci sono, senza filtri no' );
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'asemf-list-nav' ) && false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'filtri' => 'no' ) ), 'asemf-list-nav' ), 'elenco eventi: le frecce dei mesi ci sono, senza filtri no' );
 $_GET['asem_mese'] = gmdate( 'Y-m', strtotime( gmdate( 'Y-m-01' ) . ' +8 months' ) );
 $pe_far = \AssociazioneSemplice\PublicEvents::list_html();
 asem_ok( false === strpos( $pe_far, 'Serata giochi' ) && false !== strpos( $pe_far, 'Nessun evento in questi mesi' ), 'elenco eventi: scorrendo avanti oltre l\'ultima data la finestra è vuota' );
