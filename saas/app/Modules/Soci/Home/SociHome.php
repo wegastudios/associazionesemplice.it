@@ -45,7 +45,7 @@ final readonly class SociHome implements HomeWidget
         $ids = Person::query()->whereIn('type', ['ordinary', 'volunteer'])->whereNull('left_on')->whereNull('anonymized_at')->pluck('id')->all();
         $withoutCard = count($ids) - count($this->memberships->activeAmong(array_values(array_filter($ids, is_string(...)))));
         if ($withoutCard > 0) {
-            $out[] = HomeItem::todo($withoutCard === 1 ? '1 socio senza tessera valida' : $withoutCard.' soci senza tessera valida', '/gestionale/soci', 'info', 'Anno sociale '.$this->memberships->socialYearLabel(), 40);
+            $out[] = HomeItem::todo($withoutCard === 1 ? '1 socio senza tessera valida' : $withoutCard.' soci senza tessera valida', '/gestionale/soci', 'info', 'Anno fiscale '.$this->memberships->membershipYearLabel(), 40);
         }
 
         return $out;

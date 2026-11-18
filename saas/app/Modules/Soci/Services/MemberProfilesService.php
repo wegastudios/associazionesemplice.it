@@ -57,7 +57,7 @@ final readonly class MemberProfilesService implements MemberProfiles
         if ($p === null) {
             return null;
         }
-        $year = $this->memberships->socialYearLabel();
+        $year = $this->memberships->membershipYearLabel();
         $history = $this->memberships->history($p->id);
         $current = null;
         foreach ($history as $h) {

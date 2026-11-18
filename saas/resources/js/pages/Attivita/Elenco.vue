@@ -2,7 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-defineProps({ year: String, years: Array, rows: Array, totals: Object, canEdit: Boolean });
+defineProps({ year: String, years: Array, rows: Array, totals: Array, canEdit: Boolean });
 const field = 'field';
 </script>
 
@@ -15,7 +15,7 @@ const field = 'field';
                 <p class="text-sm text-muted">Corsi ed eventi: ognuno raccoglie i suoi incassi e le sue spese.</p>
             </div>
             <div class="flex flex-wrap items-end gap-3 text-sm">
-                <label class="space-y-1"><span class="block font-semibold">Anno sociale</span>
+                <label class="space-y-1"><span class="block font-semibold">Anno delle attività</span>
                     <select :class="field" :value="year" @change="router.get('/gestionale/attivita', { anno: $event.target.value })"><option v-for="y in years" :key="y" :value="y">{{ y }}</option></select>
                 </label>
                 <Link href="/gestionale/calendario" class="btn btn-secondary">Calendario</Link>
@@ -24,7 +24,7 @@ const field = 'field';
         </div>
 
         <div class="sm:hidden">
-            <p v-if="!rows.length" class="card p-4 text-center text-sm text-muted">Ancora nessun corso o evento per questo anno sociale. Crea il primo con «Nuova attività».</p>
+            <p v-if="!rows.length" class="card p-4 text-center text-sm text-muted">Ancora nessun corso o evento per questo anno delle attività. Crea il primo con «Nuova attività».</p>
             <ul v-else class="space-y-3">
                 <li v-for="r in rows" :key="r.id" class="card space-y-2 p-4" :class="r.archived ? 'text-muted' : ''">
                     <Link :href="`/gestionale/attivita/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link>
@@ -48,7 +48,7 @@ const field = 'field';
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-if="!rows.length"><td colspan="5" class="px-4 py-6 text-center text-muted">Ancora nessun corso o evento per questo anno sociale. Crea il primo con «Nuova attività».</td></tr>
+                    <tr v-if="!rows.length"><td colspan="5" class="px-4 py-6 text-center text-muted">Ancora nessun corso o evento per questo anno delle attività. Crea il primo con «Nuova attività».</td></tr>
                     <tr v-for="r in rows" :key="r.id" class="border-t border-line" :class="r.archived ? 'text-muted' : ''">
                         <td class="px-4 py-3">
                             <Link :href="`/gestionale/attivita/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link>
@@ -61,11 +61,11 @@ const field = 'field';
                     </tr>
                 </tbody>
                 <tfoot v-if="rows.length" class="border-t-2 border-line font-semibold">
-                    <tr>
-                        <td class="px-4 py-3" colspan="2">Totale</td>
-                        <td class="px-4 py-3 text-right tabular-nums">{{ totals.income }}</td>
-                        <td class="px-4 py-3 text-right tabular-nums">{{ totals.expense }}</td>
-                        <td class="px-4 py-3 text-right tabular-nums">{{ totals.balance }}</td>
+                    <tr v-for="t in totals" :key="t.label">
+                        <td class="px-4 py-3" colspan="2">{{ totals.length > 1 ? 'Totale ' + t.label : 'Totale' }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">{{ t.income }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">{{ t.expense }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">{{ t.balance }}</td>
                     </tr>
                 </tfoot>
             </table>

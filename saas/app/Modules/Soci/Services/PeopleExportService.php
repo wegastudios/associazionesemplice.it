@@ -35,7 +35,7 @@ final readonly class PeopleExportService
     /** @return array{csv: string, rows: int} */
     public function csv(string $q = '', ?MemberType $type = null): array
     {
-        $year = $this->memberships->socialYear();
+        $year = $this->memberships->membershipYear();
         $header = [...self::HEADER, 'In regola '.$year->label(), 'Tipo soggetto', 'Stessa sezione RUNTS'];
 
         $query = $this->people->search($q)->orderBy('last_name')->orderBy('first_name')->orderBy('id');

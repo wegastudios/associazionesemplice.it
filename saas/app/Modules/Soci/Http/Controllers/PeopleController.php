@@ -75,7 +75,7 @@ final readonly class PeopleController
             $query->whereNotNull('left_on');
         }
         $page = $query->cursorPaginate(50, ['id', 'first_name', 'last_name', 'email', 'card_number', 'type', 'left_on'])->withQueryString();
-        $year = $this->memberships->socialYear();
+        $year = $this->memberships->membershipYear();
         $active = $this->memberships->activeAmong(array_values(array_map(static fn (Person $p): string => $p->id, $page->items())));
 
         return Inertia::render('Soci/Elenco', [
@@ -242,10 +242,6 @@ final readonly class PeopleController
         if ($cents === null || $cents < 0) {
             throw ValidationException::withMessages(['fee' => 'Importo non valido.']);
         }
-        $problem = $this->memberships->startMonthProblem((int) $request->integer('start_month'));
-        if ($problem !== null) {
-            throw ValidationException::withMessages(['start_month' => $problem]);
-        }
         $this->settings->set(MembershipService::START_MONTH, (int) $request->integer('start_month'));
         $this->settings->set(MembershipService::DEFAULT_FEE, $cents);
         $this->settings->set(CertificateService::WARN_DAYS, $request->integer('warn_days', 30));
@@ -255,7 +251,7 @@ final readonly class PeopleController
 
     private function form(?Person $person, Request $request): Response
     {
-        $year = $this->memberships->socialYear();
+        $year = $this->memberships->membershipYear();
 
         return Inertia::render('Soci/Scheda', [
             'person' => $person === null ? null : [
@@ -297,7 +293,7 @@ final readonly class PeopleController
             'socialYear' => ['current' => $year->label(), 'next' => $year->next()->label()],
             'renewal' => $person === null ? null : $this->memberships->renewalPlan($person->id),
             'settings' => [
-                'start_month' => $this->memberships->startMonth(),
+                'start_month' => $this->memberships->activityStartMonth(),
                 'fee' => Money::plain($this->settings->int(MembershipService::DEFAULT_FEE, 0)),
                 'warn_days' => $this->certificates->warnDays(),
             ],

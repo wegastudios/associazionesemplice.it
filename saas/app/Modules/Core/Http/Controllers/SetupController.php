@@ -56,7 +56,7 @@ final readonly class SetupController
     public function skip(): RedirectResponse
     {
         if ($this->wizard->mustChoose($this->operator())) {
-            return redirect()->route('setup')->withErrors(['steps.anno_sociale' => 'Prima scegli il mese di inizio dell\'anno sociale e dell\'anno fiscale: non si rimanda.']);
+            return redirect()->route('setup')->withErrors(['steps.anno_sociale' => 'Prima scegli il mese da cui iniziano corsi ed eventi (anno delle attività) e quello dell\'anno fiscale: non si rimanda.']);
         }
         $this->wizard->skip();
 

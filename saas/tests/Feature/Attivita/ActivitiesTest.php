@@ -60,7 +60,7 @@ it('iscrive a un corso, incassa i mesi con ricevuta e ne calcola la situazione',
         // Chi non è iscritto non paga, i mesi fuori dall'anno non si incassano.
         $other = Person::create(['first_name' => 'Eva', 'last_name' => 'Verdi']);
         expect(fn () => $s->collect($yoga->id, $other->id, $cash, now()->toDateString(), [$month]))->toThrow(ActivityError::class, 'non è iscritta')
-            ->and(fn () => $s->collect($yoga->id, $anna->id, $cash, now()->toDateString(), ['1999-01']))->toThrow(ActivityError::class, 'anno sociale');
+            ->and(fn () => $s->collect($yoga->id, $anna->id, $cash, now()->toDateString(), ['1999-01']))->toThrow(ActivityError::class, 'anno delle attività');
     });
 });
 
@@ -134,12 +134,12 @@ it('controlla attività e iscrizioni', function (): void {
 
         expect(fn () => course(['instructor_person_id' => $member->id]))->toThrow(ActivityError::class, 'volontario')
             ->and(course(['instructor_person_id' => $volunteer->id, 'weekdays' => [4, 2, 2]])->refresh()->weekdays)->toBe([2, 4])
-            ->and(fn () => course(['social_year' => '2025/2027']))->toThrow(ActivityError::class, 'Anno sociale')
+            ->and(fn () => course(['social_year' => '2025/2027']))->toThrow(ActivityError::class, 'Anno delle attività')
             ->and(fn () => $s->save(null, ['name' => 'Gita', 'kind' => 'event', 'fee_cents' => 0]))->toThrow(ActivityError::class, 'data dell\'evento');
 
         $yoga = course();
         expect(fn () => $s->enroll($yoga->id, $guardian->id))->toThrow(ActivityError::class, 'genitore')
-            ->and(fn () => $s->enroll($yoga->id, $member->id, '1999-01'))->toThrow(ActivityError::class, 'anno sociale');
+            ->and(fn () => $s->enroll($yoga->id, $member->id, '1999-01'))->toThrow(ActivityError::class, 'anno delle attività');
         $s->archive($yoga->id, true);
         expect(fn () => $s->enroll($yoga->id, $member->id))->toThrow(ActivityError::class, 'archiviata')
             ->and(app(ActivityService::class)->options())->toHaveCount(1);

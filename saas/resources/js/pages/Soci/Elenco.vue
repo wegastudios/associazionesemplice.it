@@ -25,7 +25,7 @@ const chip = (on) => ['inline-flex min-h-10 shrink-0 items-center rounded-full b
 <template>
     <Head title="Soci" />
     <AppLayout>
-        <PageHeader title="Soci" :subtitle="`${activeCount} ${activeCount === 1 ? 'socio attivo' : 'soci attivi'}, anno sociale ${year}`">
+        <PageHeader title="Soci" :subtitle="`${activeCount} ${activeCount === 1 ? 'socio attivo' : 'soci attivi'}, anno fiscale ${year}`">
             <template #actions>
                 <Link v-if="canEdit" href="/gestionale/soci/nuovo" class="btn btn-primary hidden lg:inline-flex">Nuova scheda</Link>
             </template>

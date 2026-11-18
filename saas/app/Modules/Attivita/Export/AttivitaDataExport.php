@@ -31,7 +31,7 @@ final readonly class AttivitaDataExport implements DataExport
             $rows[] = [$a->name, $a->kind->label(), $a->social_year, $a->billing->label(), Money::plain($a->fee_cents), $a->guest_fee_cents === null ? '' : Money::plain($a->guest_fee_cents),
                 $a->starts_on?->format('d/m/Y') ?? '', $a->ends_on?->format('d/m/Y') ?? '', (string) $a->location, $a->archived_at !== null ? 'sì' : ''];
         }
-        $files = ['attivita/attivita.csv' => Csv::build(['Attività', 'Tipo', 'Anno sociale', 'Contributo', 'Importo', 'Importo ospiti', 'Inizio', 'Fine', 'Luogo', 'Archiviata'], $rows)];
+        $files = ['attivita/attivita.csv' => Csv::build(['Attività', 'Tipo', 'Anno delle attività', 'Contributo', 'Importo', 'Importo ospiti', 'Inizio', 'Fine', 'Luogo', 'Archiviata'], $rows)];
 
         $rows = [];
         $q = $this->db->connection($this->context->require()->connection)->table('app.enrollments as e')
@@ -41,7 +41,7 @@ final readonly class AttivitaDataExport implements DataExport
         foreach ($q as $e) {
             $rows[] = [$s($e->name ?? ''), $s($e->social_year ?? ''), trim($s($e->last_name ?? '').' '.$s($e->first_name ?? '')), $s($e->start_month ?? ''), $s($e->end_month ?? '')];
         }
-        $files['attivita/iscrizioni.csv'] = Csv::build(['Attività', 'Anno sociale', 'Persona', 'Dal mese', 'Fino al mese'], $rows);
+        $files['attivita/iscrizioni.csv'] = Csv::build(['Attività', 'Anno delle attività', 'Persona', 'Dal mese', 'Fino al mese'], $rows);
 
         $c = $this->db->connection($this->context->require()->connection);
         $rows = [];

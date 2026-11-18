@@ -30,7 +30,7 @@ it('conta soci con diritto di voto, enti, volontari e lavoratori al 31 dicembre'
         Person::create(['type' => 'guest', 'first_name' => 'Ospite', 'last_name' => 'Esterno', 'host_person_id' => $franco->id, 'phone' => '333 1234567']);
         Person::create(['type' => 'founder', 'is_entity' => true, 'first_name' => '', 'last_name' => 'Pro Loco Beta', 'entity_same_section' => true, 'joined_on' => '2018-01-01']);
         $gamma = Person::create(['type' => 'ordinary', 'is_entity' => true, 'first_name' => '', 'last_name' => 'Circolo Gamma', 'entity_same_section' => false, 'joined_on' => '2019-01-01']);
-        $year = app(MembershipService::class)->socialYear('2025-12-31')->label();
+        $year = app(MembershipService::class)->membershipYear('2025-12-31')->label();
         app(MembershipService::class)->grantManually($vera->id, $year, 'Prova');
         app(MembershipService::class)->grantManually($gamma->id, $year, 'Prova');
 
@@ -69,7 +69,7 @@ it('avvisa sotto il minimo con i soci di oggi e segnala le tessere scadute da po
         app(OrgSettings::class)->set('ente.kind', 'aps');
         Person::create(['type' => 'founder', 'first_name' => 'Franco', 'last_name' => 'Fondatore', 'joined_on' => '2015-03-01']);
         $vera = Person::create(['type' => 'ordinary', 'first_name' => 'Vera', 'last_name' => 'Rinnovi', 'joined_on' => '2020-01-10']);
-        app(MembershipService::class)->grantManually($vera->id, app(MembershipService::class)->socialYear('2025-12-31')->label(), 'Prova');
+        app(MembershipService::class)->grantManually($vera->id, app(MembershipService::class)->membershipYear('2025-12-31')->label(), 'Prova');
         $end = (string) DB::table('app.valid_memberships')->where('person_id', $vera->id)->value('valid_to');
         $soon = Carbon::parse($end)->addDays(10)->toDateString();
         $late = Carbon::parse($end)->addDays(200)->toDateString();

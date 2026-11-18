@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Models\Transaction;
+use App\Modules\Core\Contracts\OrgFiscal;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Contracts\Members;
 use App\Modules\Soci\Contracts\MemberType;
@@ -68,7 +69,7 @@ it('rinnova la tessera incassando la quota con ricevuta, e lo storno la toglie',
     $this->travelTo(now()->setDate(2026, 6, 15));
     $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
     app(OrgSettings::class)->set(MembershipService::DEFAULT_FEE, 3000);
-    $year = $this->memberships->socialYear()->label();
+    $year = $this->memberships->membershipYear()->label();
 
     $r = $this->memberships->renewWithPayment($socio->id, $this->cash);
 
@@ -92,22 +93,22 @@ it('rinnova la tessera incassando la quota con ricevuta, e lo storno la toglie',
     expect($this->memberships->isActive($socio->id))->toBeTrue();
 });
 
-it('usa l\'anno sociale dell\'associazione', function (): void {
-    app(OrgSettings::class)->set(MembershipService::START_MONTH, 9);
+it('usa l\'anno fiscale dell\'associazione per le tessere', function (): void {
+    app(OrgSettings::class)->set(OrgFiscal::FISCAL_START_MONTH, 9);
     $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
 
     $this->memberships->grantManually($socio->id, '2025/2026', 'Socia onoraria');
 
     expect($this->memberships->isActive($socio->id, '2026-08-31'))->toBeTrue()
         ->and($this->memberships->isActive($socio->id, '2026-09-01'))->toBeFalse()
-        ->and($this->memberships->socialYear('2026-09-15')->label())->toBe('2026/2027');
+        ->and($this->memberships->membershipYear('2026-09-15')->label())->toBe('2026/2027');
 });
 
 it('tratta fondatori, ospiti, usciti e tessere manuali come il plugin', function (): void {
     $founder = $this->people->create(['type' => 'founder', 'first_name' => 'F', 'last_name' => 'Fondatore']);
     $socio = $this->people->create(['first_name' => 'S', 'last_name' => 'Socio']);
     $guest = $this->people->create(['type' => 'guest', 'first_name' => 'O', 'last_name' => 'Ospite', 'phone' => '333 1234567', 'host_person_id' => $socio->id]);
-    $year = $this->memberships->socialYear()->label();
+    $year = $this->memberships->membershipYear()->label();
 
     expect($this->memberships->isActive($founder->id))->toBeTrue()
         ->and(fn () => $this->memberships->renewWithPayment($founder->id, $this->cash, 100))->toThrow(PeopleError::class, 'fondatore')
@@ -158,30 +159,8 @@ it('dà il diritto di voto ai soli soci', function (): void {
         ->and(MemberType::Guardian->hasVotingRights())->toBeFalse();
 });
 
-it('blocca il cambio mese solo con tessere valide "con la barra", e passare a gennaio è sempre libero', function (): void {
-    $settings = app(OrgSettings::class);
-    $settings->set(MembershipService::START_MONTH, 9);
-    $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
-
-    expect($this->memberships->startMonthProblem(3))->toBeNull();
-
-    $this->memberships->grantManually($socio->id, $this->memberships->socialYear()->label(), 'Socia onoraria');
-
-    expect($this->memberships->startMonthProblem(3))->toContain('solo a gennaio')
-        ->and($this->memberships->startMonthProblem(9))->toBeNull()
-        ->and($this->memberships->startMonthProblem(1))->toBeNull();
-});
-
-it('non blocca il cambio mese se le tessere valide hanno solo l\'anno (gennaio)', function (): void {
-    app(OrgSettings::class)->set(MembershipService::START_MONTH, 1);
-    $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
-    $this->memberships->grantManually($socio->id, $this->memberships->socialYear()->label(), 'Socia onoraria');
-
-    expect($this->memberships->startMonthProblem(9))->toBeNull();
-});
-
 it('sceglie la tessera da incassare come il plugin: il socio non sceglie l\'anno', function (): void {
-    app(OrgSettings::class)->set(MembershipService::START_MONTH, 1);
+    app(OrgSettings::class)->set(OrgFiscal::FISCAL_START_MONTH, 1);
     app(OrgSettings::class)->set(MembershipService::DEFAULT_FEE, 3000);
     $nuova = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
     $vecchia = $this->people->create(['first_name' => 'Luisa', 'last_name' => 'Bianchi']);
@@ -207,7 +186,7 @@ it('sceglie la tessera da incassare come il plugin: il socio non sceglie l\'anno
 });
 
 it('chi aveva solo la tessera dell\'anno prima paga prima quella in corso, anche negli ultimi giorni', function (): void {
-    app(OrgSettings::class)->set(MembershipService::START_MONTH, 1);
+    app(OrgSettings::class)->set(OrgFiscal::FISCAL_START_MONTH, 1);
     $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
     $this->memberships->grantManually($socio->id, '2025', 'Socia onoraria');
     $this->travelTo('2026-12-28');

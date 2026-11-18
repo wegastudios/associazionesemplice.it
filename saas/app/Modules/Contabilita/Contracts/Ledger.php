@@ -34,6 +34,14 @@ interface Ledger
     public function activityTotals(array $activityIds): array;
 
     /**
+     * Entrate e uscite non stornate delle attività, un blocco per ogni anno fiscale in cui cadono i movimenti.
+     *
+     * @param  list<string>  $activityIds
+     * @return list<array{year: int, starts_on: string, ends_on: string, income: int, expense: int}>
+     */
+    public function activityTotalsByFiscalYear(array $activityIds): array;
+
+    /**
      * Movimenti di un'attività, dal più recente.
      *
      * @return list<array{id: string, date: string, type: string, cents: int, category: string, person_id: string|null, description: string, receipt: string|null, receipt_id: string|null, voided: bool}>

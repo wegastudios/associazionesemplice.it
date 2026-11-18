@@ -47,40 +47,18 @@ final readonly class MembershipService implements Members
         private OrgFiscal $fiscal,
     ) {}
 
+    /** Mese da cui parte l'anno della tessera: quello dell'anno fiscale (decisione del 18/11/2026). */
     public function startMonth(): int
+    {
+        return $this->fiscal->startMonth();
+    }
+
+    /** Mese da cui partono corsi ed eventi («anno delle attività»): impostazione a parte, non tocca le tessere. */
+    public function activityStartMonth(): int
     {
         $month = $this->settings->int(self::START_MONTH, 1);
 
         return $month >= 1 && $month <= 12 ? $month : 1;
-    }
-
-    /** Il mese scelto per l'anno sociale, o null se non è ancora stato scelto. */
-    public function chosenStartMonth(): ?int
-    {
-        $month = $this->settings->get(self::START_MONTH);
-
-        return is_numeric($month) && (int) $month >= 1 && (int) $month <= 12 ? (int) $month : null;
-    }
-
-    /**
-     * Perché il mese di inizio dell'anno sociale non si può cambiare (null se si può). Le tessere già emesse restano
-     * come sono: con tessere valide «2026/2027» si può solo passare a gennaio, altrimenti bisogna aspettare che scadano.
-     */
-    public function startMonthProblem(int $month): ?string
-    {
-        $current = $this->chosenStartMonth();
-        if ($current === null || $month === $current || $month === 1) {
-            return null;
-        }
-
-        // Come nel plugin: blocca solo una tessera valida con la barra («2026/2027»), che parte in un altro mese.
-        $day = now()->toDateString();
-        $conflict = $this->connection()->table('app.valid_memberships')
-            ->where('social_year', 'like', '%/%')->where('valid_from', '<=', $day)->where('valid_to', '>=', $day)->exists();
-
-        return $conflict
-            ? 'Per ora puoi passare solo a gennaio. Con gennaio la tessera prende il nome dell\'anno (per esempio «2026») e non si confonde con quelle già emesse. Per un altro mese aspetta che le tessere ancora valide siano scadute.'
-            : null;
     }
 
     /**
@@ -94,7 +72,7 @@ final readonly class MembershipService implements Members
     public function renewalPlan(string $personId, ?string $date = null): array
     {
         $day = $date ?? now()->toDateString();
-        $current = $this->socialYear($day);
+        $current = $this->membershipYear($day);
         $days = ExpiryRules::warnDays($this->settings->get(CertificateService::WARN_DAYS, ExpiryRules::DEFAULT_WARN));
         $left = (int) (new DateTimeImmutable($day))->diff($current->end())->format('%r%a');
         if ($left < 0 || $left > $days) {
@@ -115,9 +93,26 @@ final readonly class MembershipService implements Members
         return $this->connection()->table('app.valid_memberships')->where('person_id', $personId)->where('social_year', $year)->exists();
     }
 
-    public function socialYear(?string $date = null): SocialYear
+    /** Anno fiscale della tessera che copre quella data. */
+    public function membershipYear(?string $date = null): SocialYear
     {
         return SocialYear::forDate($date ?? now()->toDateString(), $this->startMonth());
+    }
+
+    public function membershipYearLabel(?string $date = null): string
+    {
+        return $this->membershipYear($date)->label();
+    }
+
+    public function membershipYearInfo(string $label): ?array
+    {
+        return $this->info($label, $this->startMonth());
+    }
+
+    /** Anno delle attività (corsi ed eventi) di quella data. */
+    public function socialYear(?string $date = null): SocialYear
+    {
+        return SocialYear::forDate($date ?? now()->toDateString(), $this->activityStartMonth());
     }
 
     public function socialYearLabel(?string $date = null): string
@@ -127,10 +122,16 @@ final readonly class MembershipService implements Members
 
     public function socialYearInfo(string $label): ?array
     {
+        return $this->info($label, $this->activityStartMonth());
+    }
+
+    /** @return array{label: string, start: string, end: string, months: list<string>, next: string, previous: string}|null */
+    private function info(string $label, int $startMonth): ?array
+    {
         if (preg_match('/^(\d{4})(\/(\d{4}))?$/', $label, $m) !== 1 || (isset($m[3]) && (int) $m[3] !== (int) $m[1] + 1)) {
             return null;
         }
-        $year = SocialYear::fromLabel($label, $this->startMonth());
+        $year = SocialYear::fromLabel($label, $startMonth);
 
         return [
             'label' => $year->label(),
@@ -184,7 +185,7 @@ final readonly class MembershipService implements Members
             $id = $this->insert($person->id, $year, 'payment', $income['transactions'][0]);
             if ($free !== null) {
                 $freeId = $this->insert($person->id, $free, 'manual', null);
-                $this->audit->record('membership.manual', 'app.memberships', $freeId, ['social_year' => $free->label(), 'reason' => 'In omaggio: iscrizione negli ultimi giorni dell\'anno sociale']);
+                $this->audit->record('membership.manual', 'app.memberships', $freeId, ['social_year' => $free->label(), 'reason' => 'In omaggio: iscrizione negli ultimi giorni dell\'anno fiscale']);
             }
 
             return ['membership_id' => $id, 'receipt' => $income['receipt'], 'social_year' => $year->label()];

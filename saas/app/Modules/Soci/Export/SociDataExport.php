@@ -47,7 +47,7 @@ final readonly class SociDataExport implements DataExport
             $rows[] = [$name($m->person_id ?? null), $s($m->social_year ?? ''), $s($m->valid_from ?? ''), $s($m->valid_to ?? ''),
                 ($m->source ?? '') === 'payment' ? 'con incasso' : 'senza incasso', ($m->voided_at ?? null) !== null ? 'sì' : ''];
         }
-        $files['soci/tessere.csv'] = Csv::build(['Socio', 'Anno sociale', 'Dal', 'Al', 'Origine', 'Tolta'], $rows);
+        $files['soci/tessere.csv'] = Csv::build(['Socio', 'Anno fiscale', 'Dal', 'Al', 'Origine', 'Tolta'], $rows);
 
         $rows = [];
         foreach ($this->db()->table('app.guardians')->get() as $g) {

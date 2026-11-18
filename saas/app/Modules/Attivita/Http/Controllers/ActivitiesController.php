@@ -58,11 +58,12 @@ final readonly class ActivitiesController
                 'balance_label' => Money::format($r['income'] - $r['expense']),
                 'negative' => $r['income'] < $r['expense'],
             ], $rows),
-            'totals' => [
-                'income' => Money::format((int) array_sum(array_column($rows, 'income'))),
-                'expense' => Money::format(-(int) array_sum(array_column($rows, 'expense'))),
-                'balance' => Money::format((int) array_sum(array_column($rows, 'income')) - (int) array_sum(array_column($rows, 'expense'))),
-            ],
+            'totals' => array_map(static fn (array $b): array => [
+                'label' => $b['label'],
+                'income' => Money::format($b['income']),
+                'expense' => Money::format(-$b['expense']),
+                'balance' => Money::format($b['income'] - $b['expense']),
+            ], $this->activities->totalsByFiscalYear($year, array_values(array_column($rows, 'id')))),
             'canEdit' => $request->user()?->can('people.edit') ?? false,
         ]);
     }

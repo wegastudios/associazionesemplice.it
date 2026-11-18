@@ -58,7 +58,7 @@ const renew = useForm({ account_id: props.accounts[0]?.id ?? '', amount: p.fee ?
 const submitRenew = () => renew.post(`/gestionale/soci/${props.person.id}/tessera`, { preserveScroll: true });
 const grant = useForm({ social_year: props.socialYear.current, reason: '' });
 const submitGrant = () => grant.post(`/gestionale/soci/${props.person.id}/tessera-manuale`, { preserveScroll: true, onSuccess: () => grant.reset('reason') });
-const revoke = (id) => window.confirm('Togliere la tessera di questo anno sociale?') && router.post(`/gestionale/tessere/${id}/togli`, {}, { preserveScroll: true });
+const revoke = (id) => window.confirm('Togliere la tessera di questo anno fiscale?') && router.post(`/gestionale/tessere/${id}/togli`, {}, { preserveScroll: true });
 const leave = useForm({ date: today, reason: '' });
 const submitLeave = () => window.confirm(`Registrare l'uscita di ${props.person.first_name} ${props.person.last_name} dall'associazione?`) && leave.post(`/gestionale/soci/${props.person.id}/uscita`, { preserveScroll: true });
 const settingsForm = useForm({ start_month: props.settings.start_month, fee: props.settings.fee, warn_days: props.settings.warn_days });
@@ -160,7 +160,7 @@ const label = 'space-y-1 text-sm';
                 <ul v-if="person.memberships.length" class="list-group mb-4">
                     <li v-for="m in person.memberships" :key="m.id" class="list-row" :class="m.valid ? '' : 'opacity-60'">
                         <span class="min-w-0 flex-1">
-                            <span class="block font-semibold" :class="m.valid ? '' : 'line-through'">Anno sociale {{ m.social_year }}</span>
+                            <span class="block font-semibold" :class="m.valid ? '' : 'line-through'">Tessera {{ m.social_year }}</span>
                             <span class="caption block">fino al {{ m.valid_to }} – {{ { payment: 'quota incassata', manual: 'senza incasso', import: 'importata', founder: 'fondatore' }[m.source] }}</span>
                         </span>
                         <span v-if="m.valid" class="badge badge-ok">Valida</span><span v-else class="badge badge-neutral">Annullata</span>
@@ -168,7 +168,7 @@ const label = 'space-y-1 text-sm';
                     </li>
                 </ul>
                 <form v-if="canEdit && person.type !== 'founder' && !person.left_on" class="grid gap-3 sm:grid-cols-4" @submit.prevent="submitRenew">
-                    <p class="text-sm sm:col-span-4"><span class="font-semibold">Tessera che si incassa: {{ renewal.year }}</span><template v-if="renewal.free"> ({{ renewal.free }} in omaggio, perché si iscrive negli ultimi giorni dell’anno sociale)</template>. La sceglie il programma: chi chiede di essere socio, o di rinnovare, prende l’anno in corso; negli ultimi giorni dell’anno sociale chi ha già la tessera prende quella dell’anno dopo.</p>
+                    <p class="text-sm sm:col-span-4"><span class="font-semibold">Tessera che si incassa: {{ renewal.year }}</span><template v-if="renewal.free"> ({{ renewal.free }} in omaggio, perché si iscrive negli ultimi giorni dell’anno fiscale)</template>. La sceglie il programma: chi chiede di essere socio, o di rinnovare, prende l’anno in corso; negli ultimi giorni dell’anno fiscale chi ha già la tessera prende quella dell’anno dopo.</p>
                     <label :class="label"><span class="font-semibold">Quota</span><input v-model="renew.amount" inputmode="decimal" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Data</span><input v-model="renew.date" type="date" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Conto</span>
@@ -295,8 +295,8 @@ const label = 'space-y-1 text-sm';
         <section v-if="canSettings && !person" class="mt-6 card p-4 sm:p-5">
             <h2 class="mb-3 text-lg font-bold">Impostazioni del tesseramento</h2>
             <form class="flex flex-wrap items-end gap-3" @submit.prevent="submitSettings">
-                <label :class="label"><span class="font-semibold">L'anno sociale inizia a</span>
-                    <select v-model="settingsForm.start_month" :class="field"><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
+                <label :class="label"><span class="font-semibold">Da che mese iniziano corsi ed eventi (anno delle attività)?</span>
+                    <select v-model="settingsForm.start_month" :class="field"><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select><span class="block text-sm text-muted">La tessera, le quote e gli incassi seguono invece l'anno fiscale.</span></label>
                 <label :class="label"><span class="font-semibold">Quota associativa</span><input v-model="settingsForm.fee" inputmode="decimal" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Preavviso certificati (giorni)</span><input v-model="settingsForm.warn_days" type="number" min="1" max="365" :class="field" /></label>
                 <button type="submit" class="btn btn-secondary">Salva</button>

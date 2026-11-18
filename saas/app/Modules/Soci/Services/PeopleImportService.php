@@ -79,7 +79,7 @@ final readonly class PeopleImportService
     public function apply(array $plan, bool $markCurrentYear): array
     {
         $res = ['created' => 0, 'updated' => 0, 'memberships' => 0, 'guardians' => 0, 'failed' => []];
-        $current = $this->memberships->socialYear();
+        $current = $this->memberships->membershipYear();
         $startMonth = $this->memberships->startMonth();
 
         $this->db->connection($this->context->require()->connection)->transaction(function () use ($plan, $markCurrentYear, $current, $startMonth, &$res): void {
