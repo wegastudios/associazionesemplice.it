@@ -53,6 +53,7 @@ Route::middleware('web')->group(function (): void {
             Route::middleware('can:org.settings')->group(function (): void {
                 Route::get('/configurazione', [SetupController::class, 'show'])->name('setup');
                 Route::post('/configurazione', [SetupController::class, 'save'])->name('setup.save');
+                Route::get('/configurazione/anteprima-tessere', [SetupController::class, 'cardsPreview'])->name('setup.cards');
                 Route::post('/configurazione/rimanda', [SetupController::class, 'skip'])->name('setup.skip');
                 Route::get('/esportazione', [ExportController::class, 'show'])->middleware('exports.allowed')->name('export');
                 Route::post('/esportazione.zip', [ExportController::class, 'download'])->middleware(['exports.allowed', 'password.confirm', 'throttle:3,1'])->name('export.download');

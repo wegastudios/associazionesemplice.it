@@ -288,19 +288,21 @@ final readonly class MembershipService implements Members
             });
     }
 
-    /** @return list<array{id: string, social_year: string, valid_to: string, source: string, valid: bool}> */
+    /** @return list<array{id: string, social_year: string, valid_to: string, source: string, valid: bool, replaced_by: string|null}> */
     public function history(string $personId): array
     {
         $valid = $this->connection()->table('app.valid_memberships')->where('person_id', $personId)->pluck('id')->all();
+        $all = Membership::query()->where('person_id', $personId)->orderByDesc('valid_from')->get();
+        $labels = $all->pluck('social_year', 'id')->all();
 
-        return array_values(Membership::query()->where('person_id', $personId)->orderByDesc('valid_from')->get()
-            ->map(static fn (Membership $m): array => [
-                'id' => $m->id,
-                'social_year' => $m->social_year,
-                'valid_to' => $m->valid_to->format('d/m/Y'),
-                'source' => $m->source,
-                'valid' => in_array($m->id, $valid, true),
-            ])->all());
+        return array_values($all->map(static fn (Membership $m): array => [
+            'id' => $m->id,
+            'social_year' => $m->social_year,
+            'valid_to' => $m->valid_to->format('d/m/Y'),
+            'source' => $m->source,
+            'valid' => in_array($m->id, $valid, true),
+            'replaced_by' => $m->superseded_by === null ? null : (is_string($labels[$m->superseded_by] ?? null) ? $labels[$m->superseded_by] : $m->social_year),
+        ])->all());
     }
 
     private function member(string $personId): Person

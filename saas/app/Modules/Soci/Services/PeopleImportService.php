@@ -73,6 +73,33 @@ final readonly class PeopleImportService
     }
 
     /**
+     * Colonne con un anno («2025») che con l'anno fiscale non da gennaio diventano un'altra etichetta («2025/2026»):
+     * non cambiano in silenzio, la persona le vede in anteprima e conferma.
+     *
+     * @param  list<Plan>  $plan
+     * @return array{count: int, examples: list<string>}
+     */
+    public function yearsNote(array $plan): array
+    {
+        $startMonth = $this->memberships->startMonth();
+        $count = 0;
+        $examples = [];
+        foreach ($plan as $p) {
+            if ($p['action'] === 'error' || ! in_array($p['type'], [MemberType::Ordinary->value, MemberType::Volunteer->value], true)) {
+                continue;
+            }
+            foreach ($p['row']['years'] as $y) {
+                if ($startMonth !== 1 && preg_match('/^\d{4}$/', $y) === 1) {
+                    $count++;
+                    $examples[$y] = $y.' → '.$y.'/'.((int) $y + 1);
+                }
+            }
+        }
+
+        return ['count' => $count, 'examples' => array_slice(array_values($examples), 0, 5)];
+    }
+
+    /**
      * @param  list<Plan>  $plan
      * @return array{created: int, updated: int, memberships: int, guardians: int, failed: list<string>}
      */

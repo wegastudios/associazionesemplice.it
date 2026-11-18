@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 
 const props = defineProps({ status: String, canSkip: { type: Boolean, default: true }, steps: Array, can: Object });
@@ -15,11 +15,27 @@ const vatCount = (e) => [
 const initial = {};
 if (by.ente) initial.ente = { ...by.ente.values };
 if (by.anno_sociale) initial.anno_sociale = { start_month: by.anno_sociale.start_month ?? '' };
-if (by.anno_fiscale) initial.anno_fiscale = { start_month: by.anno_fiscale.start_month ?? '', confirm_move: false };
+if (by.anno_fiscale) initial.anno_fiscale = { start_month: by.anno_fiscale.start_month ?? '', confirm_move: false, confirm_cards: false };
 if (by.tesseramento) initial.tesseramento = { fee: by.tesseramento.fee };
 if (by.conti) initial.conti = { openings: Object.fromEntries(by.conti.accounts.map((a) => [a.id, a.opening])), bank_name: '', bank_opening: '' };
 if (by.soci) initial.soci = { ...by.soci };
 const form = useForm({ steps: initial });
+
+// Anteprima delle tessere se cambia il mese dell'anno fiscale: si vede prima di salvare.
+const cards = ref(null);
+if (by.anno_fiscale) {
+    watch(() => form.steps.anno_fiscale.start_month, async (m) => {
+        cards.value = null;
+        form.steps.anno_fiscale.confirm_cards = false;
+        if (!by.anno_fiscale.start_month || !m || m === by.anno_fiscale.start_month) return;
+        try {
+            const r = await fetch(`/gestionale/configurazione/anteprima-tessere?mese=${m}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (r.ok && form.steps.anno_fiscale.start_month === m) cards.value = await r.json();
+        } catch (e) {
+            cards.value = null;
+        }
+    });
+}
 const save = () => form.post('/gestionale/configurazione', { preserveScroll: true, onError: () => document.querySelector('[role=alert]')?.scrollIntoView({ block: 'center' }) });
 const skip = () => router.post('/gestionale/configurazione/rimanda');
 
@@ -61,6 +77,16 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                 </div>
                 <p class="mt-2 text-sm text-muted">Con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). I due anni possono cominciare in mesi diversi. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare.</p>
                 <label v-if="has('anno_fiscale') && by.anno_fiscale.has_movements && by.anno_fiscale.start_month && form.steps.anno_fiscale.start_month !== by.anno_fiscale.start_month && !by.anno_fiscale.locked" class="mt-3 flex items-start gap-2 text-sm"><input v-model="form.steps.anno_fiscale.confirm_move" type="checkbox" class="mt-1" /><span>Cambiando il mese, i movimenti già registrati passano all'anno fiscale che inizia a {{ months[form.steps.anno_fiscale.start_month - 1] }}. Le date non cambiano. Le ricevute già emesse restano con il loro numero.</span></label>
+                <div v-if="has('anno_fiscale') && cards && (cards.moved + cards.superseded > 0)" class="mt-3 rounded border border-line p-3 text-sm" role="status">
+                    <h3 class="font-semibold">Cosa succede alle tessere</h3>
+                    <p v-if="cards.moved > 0" class="mt-1">{{ cards.moved === 1 ? '1 tessera degli anni fiscali aperti passa al nuovo anno fiscale' : cards.moved + ' tessere degli anni fiscali aperti passano al nuovo anno fiscale' }} (per esempio «2025/2026 → 2026»).</p>
+                    <p v-if="cards.superseded > 0" class="mt-1">{{ cards.superseded === 1 ? '1 resta «sostituita»' : cards.superseded + ' restano «sostituite»' }}: la persona ha già la tessera dello stesso anno e quella più recente resta valida.</p>
+                    <p class="mt-1">Le tessere degli anni fiscali chiusi non si toccano.</p>
+                    <ul class="mt-2 list-disc pl-5"><li v-for="l in cards.lines" :key="l">{{ l }}</li><li v-if="cards.more > 0">e altre {{ cards.more }}</li></ul>
+                    <p class="mt-2 text-muted">Ogni tessera cambiata è scritta nel registro delle azioni, con l'etichetta e le date di prima.</p>
+                    <label class="mt-2 flex items-start gap-2"><input v-model="form.steps.anno_fiscale.confirm_cards" type="checkbox" class="mt-1" /><span>Ho letto cosa succede alle tessere e voglio cambiare il mese dell'anno fiscale.</span></label>
+                </div>
+                <p v-else-if="has('anno_fiscale') && cards && by.anno_fiscale.start_month && form.steps.anno_fiscale.start_month !== by.anno_fiscale.start_month" class="mt-2 text-sm text-muted">Nessuna tessera da riallineare.</p>
             </section>
 
             <section v-if="has('ente')" class="card p-4 sm:p-5" aria-labelledby="s-ente">
@@ -135,7 +161,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
             </section>
 
             <div class="flex flex-wrap items-center gap-3">
-                <button type="submit" class="rounded-lg bg-accent px-5 py-2.5 font-semibold text-accent-ink" :disabled="form.processing">Salva la configurazione</button>
+                <button type="submit" class="rounded-lg bg-accent px-5 py-2.5 font-semibold text-accent-ink" :disabled="form.processing">{{ cards && cards.moved + cards.superseded > 0 ? "Salva e riallinea le tessere" : "Salva la configurazione" }}</button>
                 <button v-if="!status && canSkip" type="button" class="btn btn-secondary" @click="skip">Più tardi</button>
             </div>
         </form>

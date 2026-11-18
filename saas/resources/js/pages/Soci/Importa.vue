@@ -4,7 +4,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 
 const props = defineProps({ types: Array, columns: Array, preview: Object, result: Object });
 
-const form = useForm({ file: null, default_type: props.types[0].value, mark_current: false, apply: false });
+const form = useForm({ file: null, default_type: props.types[0].value, mark_current: false, confirm_years: false, apply: false });
 const send = (apply) => {
     form.apply = apply;
     form.post('/gestionale/soci/importa', { forceFormData: true, preserveState: true, preserveScroll: true });
@@ -63,7 +63,13 @@ const field = 'field';
                     </tbody>
                 </table>
             </div>
-            <button type="button" class="mt-4 btn btn-primary" :disabled="form.processing || !(preview.create + preview.update)" @click="send(true)">
+            <div v-if="preview.years" class="mt-4 rounded border border-line p-3 text-sm" role="status">
+                <h3 class="font-semibold">Tessere con anno diverso dall'anno fiscale</h3>
+                <p class="mt-1">{{ preview.years.count }} {{ preview.years.count === 1 ? 'tessera dell’elenco ha' : 'tessere dell’elenco hanno' }} un'etichetta che non corrisponde all'anno fiscale (per esempio «{{ preview.years.examples[0].split(' → ')[0] }}» con l'anno fiscale non da gennaio). Con la conferma passano all'anno fiscale che le contiene (per esempio «{{ preview.years.examples[0].split(' → ')[1] }}»). Nessun cambio avviene senza la tua conferma.</p>
+                <ul class="mt-1 list-disc pl-5"><li v-for="e in preview.years.examples" :key="e">{{ e }}</li></ul>
+                <label class="mt-2 flex items-start gap-2"><input v-model="form.confirm_years" type="checkbox" class="mt-1" /><span>Ho letto cosa succede alle tessere e voglio importarle così.</span></label>
+            </div>
+            <button type="button" class="mt-4 btn btn-primary" :disabled="form.processing || !(preview.create + preview.update) || (preview.years && !form.confirm_years)" @click="send(true)">
                 Importa {{ preview.create + preview.update }} righe
             </button>
             <p v-if="preview.error" class="mt-2 text-sm text-muted">Le righe con errori si saltano: correggile nel file e ricaricalo quando vuoi.</p>

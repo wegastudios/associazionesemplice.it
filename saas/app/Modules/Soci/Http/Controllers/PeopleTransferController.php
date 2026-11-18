@@ -43,6 +43,7 @@ final readonly class PeopleTransferController
             'file' => ['required', 'file', 'max:5120', 'extensions:csv,txt,xlsx'],
             'default_type' => ['required', Rule::in(array_map(static fn (MemberType $t): string => $t->value, self::DEFAULT_TYPES))],
             'mark_current' => ['boolean'],
+            'confirm_years' => ['boolean'],
             'apply' => ['boolean'],
         ]);
         $file = $request->file('file');
@@ -69,8 +70,15 @@ final readonly class PeopleTransferController
             ], $preview['plan']),
         ];
 
+        $years = $this->import->yearsNote($preview['plan']);
+        $summary['years'] = $years['count'] > 0 ? $years : null;
+
         if (! $request->boolean('apply')) {
             return $this->page($summary, null);
+        }
+
+        if ($years['count'] > 0 && ! $request->boolean('confirm_years')) {
+            throw ValidationException::withMessages(['file' => "Conferma cosa succede alle tessere con un anno diverso dall'anno fiscale, oppure togli quelle righe."]);
         }
 
         return $this->page(null, $this->import->apply($preview['plan'], $request->boolean('mark_current')));
