@@ -492,6 +492,15 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 	} );
 	$taken = array();
 	foreach ( $events as $e ) {
+		$aid = 0; // rilanciato dopo un errore, il passo non rifà quello che c'è già e completa solo quello rimasto senza date
+		foreach ( $act->all_for_select() as $ex ) {
+			if ( $ex['name'] === $e[0] ) {
+				$aid = (int) $ex['id'];
+			}
+		}
+		if ( $aid && $act->sessions( $aid ) ) {
+			continue;
+		}
 		$dates = array();
 		for ( $m = -3; $m <= 2; $m++ ) { // gli ultimi tre mesi, quello in corso e i due prossimi
 			$ym = gmdate( 'Y-m', (int) strtotime( gmdate( 'Y-m-15' ) . ' ' . ( $m >= 0 ? '+' : '' ) . $m . ' months' ) );
@@ -535,9 +544,10 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 		if ( ! $dates ) {
 			continue;
 		}
-		$aid = $act->create( array( 'name' => $e[0], 'social_year' => $sy->label(), 'kind' => 'recurring', 'fee_cents' => $e[7], 'guest_fee_cents' => $e[7] > 0 ? $e[7] + 300 : null ) );
+		$aid = $aid ?: $act->create( array( 'name' => $e[0], 'social_year' => $sy->label(), 'kind' => 'recurring', 'fee_cents' => $e[7], 'guest_fee_cents' => $e[7] > 0 ? $e[7] + 300 : null ) );
 		foreach ( $dates as $day ) {
-			$act->add_session( (int) $aid, array( 'session_date' => $day, 'start_time' => $e[4], 'end_time' => gmdate( 'H:i', (int) strtotime( $e[4] ) + 9000 ), 'location' => $e[5], 'capacity' => $e[6] ) );
+			$end = gmdate( 'H:i', min( 86340, (int) strtotime( '1970-01-01 ' . $e[4] . ' UTC' ) + 9000 ) ); // due ore e mezza dopo l'inizio, ma mai oltre le 23:59 (a mezzanotte la fine sarebbe prima dell'inizio)
+			$act->add_session( (int) $aid, array( 'session_date' => $day, 'start_time' => $e[4], 'end_time' => $end, 'location' => $e[5], 'capacity' => $e[6] ) );
 		}
 		$pid = \AssociazioneSemplice\PublicEvents::ensure( (int) $aid );
 		if ( ! $pid ) {
