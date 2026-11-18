@@ -9,6 +9,8 @@ use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\SetupStep;
 use App\Modules\Core\Org\SetupWizard;
+use App\Modules\Soci\Contracts\MembershipRealignment;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -21,7 +23,16 @@ final readonly class SetupController
     public function __construct(
         private SetupWizard $wizard,
         private CurrentOperator $current,
+        private MembershipRealignment $cards,
     ) {}
+
+    /** Anteprima di cosa succede alle tessere se l'anno fiscale cambia mese (prima di salvare). */
+    public function cardsPreview(Request $request): JsonResponse
+    {
+        $month = $request->integer('mese');
+
+        return response()->json($month >= 1 && $month <= 12 ? $this->cards->preview($month) : ['moved' => 0, 'superseded' => 0, 'lines' => [], 'more' => 0]);
+    }
 
     public function show(): Response
     {
@@ -50,7 +61,9 @@ final readonly class SetupController
             throw ValidationException::withMessages($messages);
         }
 
-        return redirect()->route('dashboard')->with('status', 'Configurazione salvata. Puoi riaprirla quando vuoi da Altro › Configurazione guidata.');
+        $notice = session()->pull('setup_notice');
+
+        return redirect()->route('dashboard')->with('status', (is_string($notice) ? $notice.' ' : '').'Configurazione salvata. Puoi riaprirla quando vuoi da Altro › Configurazione guidata.');
     }
 
     public function skip(): RedirectResponse
