@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  *  [associazionesemplice_tessera] [associazionesemplice_mie_attivita] [associazionesemplice_ospiti] [associazionesemplice_profilo] [associazionesemplice_area_volontari]
  *  [associazionesemplice_attivita anno="2025/2026" tipo="corso|evento|ricorrente" id="12" date="5"]
  *  [associazionesemplice_prossimi_eventi limite="5" prenotazione="si|no" categoria="gite" titolo="I nostri prossimi eventi" vuoto="Presto nuovi eventi"]
- *  [associazionesemplice_eventi modo="elenco|mese" categoria="" limite="30" mesi="" filtri="si|no" titolo="" vuoto="" pulsante="Scopri"]   [associazionesemplice_calendario_eventi categoria="" filtri="si|no" titolo="" vuoto=""]
+ *  [associazionesemplice_eventi modo="elenco|mese" categoria="" limite="30" mesi="2" filtri="si|no" titolo="" vuoto="" pulsante="Scopri"]   [associazionesemplice_calendario_eventi categoria="" filtri="si|no" titolo="" vuoto=""]
  *  Pezzi della pagina di un evento (senza impaginazione): [associazionesemplice_evento_locandina|dati|prenotazione|dove|navigazione|condividi evento="ID" titolo=""]
  *  [associazionesemplice_accesso]
  *  [associazionesemplice_riservato accesso="soci|volontari|attivita" attivita="12,13"]…[/associazionesemplice_riservato]   (vedi Restrict)

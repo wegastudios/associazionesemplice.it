@@ -851,6 +851,25 @@ asem_ok( false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array(
 $_GET['asem_vista'] = 'mese'; // e Calendario in una pagina con l'elenco
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'asemf-cal' ), 'eventi: il pulsante Calendario vale più del modo elenco della pagina' );
 unset( $_GET['asem_vista'] );
+// Elenco a finestra di mesi: corrente e prossimo, frecce avanti e indietro, anche nel passato (storico)
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'asemf-list-nav' ) && false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'filtri' => 'no' ) ), 'asemf-list-nav' ), 'elenco eventi: le frecce dei mesi ci sono, senza filtri no' );
+$_GET['asem_mese'] = gmdate( 'Y-m', strtotime( gmdate( 'Y-m-01' ) . ' +8 months' ) );
+$pe_far = \AssociazioneSemplice\PublicEvents::list_html();
+asem_ok( false === strpos( $pe_far, 'Serata giochi' ) && false !== strpos( $pe_far, 'Nessun evento in questi mesi' ), 'elenco eventi: scorrendo avanti oltre l\'ultima data la finestra è vuota' );
+$pe_past_act = $acts->create( array( 'name' => 'Gita al lago', 'social_year' => $sy_label, 'kind' => 'event', 'session' => array( 'session_date' => $ev_date, 'start_time' => '09:00', 'location' => 'Lago', 'capacity' => 5 ) ) );
+$pe_past_day = gmdate( 'Y-m-d', strtotime( $today . ' -40 days' ) );
+$GLOBALS['wpdb']->update( \AssociazioneSemplice\Db::t( 'sessions' ), array( 'session_date' => $pe_past_day ), array( 'activity_id' => $pe_past_act ) ); // l'evento si è già svolto
+$pe_past_post = \AssociazioneSemplice\PublicEvents::ensure( $pe_past_act );
+wp_update_post( array( 'ID' => $pe_past_post, 'post_status' => 'publish' ) );
+$pe_pa = $acts->get( $pe_past_act );
+asem_ok( 0 === strpos( \AssociazioneSemplice\PublicEvents::when_text( $pe_pa ), 'Si è svolto' ) && 'Lago' === \AssociazioneSemplice\PublicEvents::where_text( $pe_pa ), 'evento passato: la pagina dice quando e dove si è svolto' );
+asem_ok( false !== strpos( \Associazionesemplice\Frontend\Views::event_booking( $pe_pa ), 'Date passate' ), 'evento passato: la pagina elenca le date passate, senza prenotazione' );
+unset( $_GET['asem_mese'] );
+asem_ok( false === strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'Gita al lago' ), 'elenco eventi: l\'evento passato non compare nella finestra di oggi' );
+$_GET['asem_mese'] = gmdate( 'Y-m', strtotime( $pe_past_day ) );
+$pe_back = \AssociazioneSemplice\PublicEvents::list_html();
+asem_ok( false !== strpos( $pe_back, 'Gita al lago' ) && false !== strpos( $pe_back, '>Dettagli</a>' ), 'elenco eventi: tornando indietro compare l\'evento passato, con il pulsante «Dettagli»' );
+unset( $_GET['asem_mese'] );
 $pe_course = $acts->create( array( 'name' => 'Corso di acquerello', 'social_year' => $sy->label(), 'kind' => 'course', 'fee_cents' => 2000, 'lesson_weekday' => 3, 'lesson_start' => '17:00', 'lesson_end' => '18:30' ) ); // un corso compare nel calendario con le lezioni settimanali
 $pe_cpost   = \AssociazioneSemplice\PublicEvents::ensure( $pe_course );
 wp_update_post( array( 'ID' => $pe_cpost, 'post_status' => 'publish' ) );

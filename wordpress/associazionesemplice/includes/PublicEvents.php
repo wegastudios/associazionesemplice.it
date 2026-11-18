@@ -533,7 +533,15 @@ final class PublicEvents {
 				return empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today();
 			} ) );
 			if ( ! $rows ) {
-				return self::cancelled_future( (int) $a['id'] ) ? 'Evento annullato' : 'Nessuna data in programma';
+				if ( self::cancelled_future( (int) $a['id'] ) ) {
+					return 'Evento annullato';
+				}
+				$past = self::past_sessions( (int) $a['id'] );
+				if ( $past ) {
+					$last = Frontend\Views::date_long( (string) end( $past )['session_date'] );
+					return 1 === count( $past ) ? 'Si è svolto ' . $last : 'Si è svolto in ' . count( $past ) . ' date, l\'ultima ' . $last;
+				}
+				return 'Nessuna data in programma';
 			}
 			$first = $rows[0];
 			$t     = Frontend\Views::date_long( (string) $first['session_date'] ) . ( ! empty( $first['start_time'] ) ? ' · ore ' . $first['start_time'] : '' );
@@ -557,6 +565,11 @@ final class PublicEvents {
 		if ( ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
 			foreach ( Plugin::activities()->sessions( (int) $a['id'] ) as $s ) {
 				if ( empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today() && ! empty( $s['location'] ) ) {
+					return (string) $s['location'];
+				}
+			}
+			foreach ( array_reverse( self::past_sessions( (int) $a['id'] ) ) as $s ) { // un evento passato dice comunque dove si è tenuto
+				if ( ! empty( $s['location'] ) ) {
 					return (string) $s['location'];
 				}
 			}
@@ -704,6 +717,9 @@ final class PublicEvents {
 			$html .= '<p class="asemf-notice asemf-notice-cancelled" role="status"><strong>Evento annullato.</strong> Ci dispiace: le date previste non si terranno. Segui le novità sul sito dell\'associazione.</p>';
 		} else {
 			$html .= Frontend\Views::event_booking( $a );
+		}
+		if ( ! self::upcoming_sessions( (int) $a['id'] ) ) {
+			return $html; // niente date future: niente calendario da salvare
 		}
 		return $html . '<p class="asemf-ics"><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( add_query_arg( 'asem_ics', '1', (string) get_permalink( $post ) ) ) . '">Salva nel tuo calendario</a></p>';
 	}
@@ -921,22 +937,24 @@ final class PublicEvents {
 		$filters = 'no' !== strtolower( (string) ( $atts['filtri'] ?? 'si' ) );
 		$title   = self::title_html( $atts );
 		$custom  = trim( (string) ( $atts['vuoto'] ?? '' ) );
-		$empty   = '' !== $custom ? $custom : 'Nessun evento in programma.';
 		$btn     = trim( (string) ( $atts['pulsante'] ?? '' ) );
 		$bar     = $title . ( $filters ? self::filter_bar( $view, $cat, $ym ) : '' );
 		if ( 'mese' === $view ) {
 			return Frontend\Views::shell( $bar . self::calendar( $cat, $ym, $custom ), 'asemf-events' );
 		}
+		// L'elenco guarda una finestra di mesi (di norma il corrente e il prossimo); le frecce la spostano di un mese alla volta, anche nel passato.
+		$span  = (int) ( $atts['mesi'] ?? 0 );
+		$span  = $span > 0 ? min( 6, $span ) : 2;
+		$start = preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $ym ) ? $ym : wp_date( 'Y-m' );
+		$end   = gmdate( 'Y-m', (int) strtotime( $start . '-01 +' . ( $span - 1 ) . ' months' ) );
+		$empty = '' !== $custom ? $custom : ( wp_date( 'Y-m' ) === $start ? 'Nessun evento in programma.' : 'Nessun evento in questi mesi.' );
+		$nav   = $filters ? self::list_nav( $cat, $start ) : '';
 		$limit = max( 1, min( 100, (int) ( $atts['limite'] ?? 30 ) ) );
-		$until = '9999-12-31';
-		if ( ! empty( $atts['mesi'] ) ) {
-			$until = gmdate( 'Y-m-d', strtotime( Db::today() . ' +' . max( 1, min( 24, (int) $atts['mesi'] ) ) . ' months' ) );
-		}
 		$posts = self::posts_by_activity( $cat );
-		$rows  = self::trim_recurring( self::rows( $posts, Db::today(), $until ) );
+		$rows  = self::trim_recurring( self::rows( $posts, $start . '-01', $end . '-31' ), Db::today() );
 		$rows  = array_slice( $rows, 0, $limit );
 		if ( ! $rows ) {
-			return Frontend\Views::shell( $bar . '<p class="asemf-muted">' . esc_html( $empty ) . '</p>', 'asemf-events' );
+			return Frontend\Views::shell( $bar . $nav . '<p class="asemf-muted">' . esc_html( $empty ) . '</p>', 'asemf-events' );
 		}
 		$html  = '';
 		$month = '';
@@ -958,7 +976,18 @@ final class PublicEvents {
 			}
 			$html .= self::card( $posts[ $aid ], $a, $s, $ts, $btn );
 		}
-		return Frontend\Views::shell( $bar . $html . '</ul>', 'asemf-events' );
+		return Frontend\Views::shell( $bar . $nav . $html . '</ul>', 'asemf-events' );
+	}
+
+	/** Frecce dell'elenco: la finestra di mesi si sposta di uno indietro o avanti. */
+	private static function list_nav( string $cat, string $start ): string {
+		$prev = gmdate( 'Y-m', (int) strtotime( $start . '-01 -1 month' ) );
+		$next = gmdate( 'Y-m', (int) strtotime( $start . '-01 +1 month' ) );
+		$lab  = function ( string $ym ): string {
+			return ucfirst( wp_date( 'F Y', (int) strtotime( $ym . '-01 12:00:00' ) ) );
+		};
+		return '<div class="asemf-list-nav"><a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'elenco', 'asem_mese' => $prev ) ) ) . '">← ' . esc_html( $lab( $prev ) ) . '</a>'
+			. '<a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'elenco', 'asem_mese' => $next ) ) ) . '">' . esc_html( $lab( $next ) ) . ' →</a></div>';
 	}
 
 	/** Intestazione facoltativa sopra una vista (attributo `titolo`): testo scelto da chi compone la pagina. */
@@ -1020,12 +1049,16 @@ final class PublicEvents {
 	 *    e la dicitura «Tutti i giovedì» (chiave `series_label`);
 	 *  - poche date (fino a 5): tutte; di più e irregolari: la prossima con «e altre N date».
 	 */
-	private static function trim_recurring( array $rows ): array {
-		$by = array();
+	private static function trim_recurring( array $rows, string $today = '' ): array {
+		$by   = array();
+		$keep = array();
 		foreach ( $rows as $s ) {
+			if ( '' !== $today && (string) $s['session_date'] < $today ) {
+				$keep[] = $s; // le date già passate restano una per una: l'elenco fa da storico
+				continue;
+			}
 			$by[ (int) $s['activity_id'] ][] = $s;
 		}
-		$keep = array();
 		foreach ( $by as $list ) {
 			$n    = count( $list );
 			$kind = (string) ( $list[0]['kind'] ?? '' );
@@ -1082,10 +1115,11 @@ final class PublicEvents {
 	/** Barra dei filtri: scelta della vista e categorie. */
 	private static function filter_bar( string $view, string $cat, string $ym ): string {
 		$terms = get_terms( array( 'taxonomy' => self::TAXONOMY, 'hide_empty' => true ) );
-		$month = 'mese' === $view ? ( '' !== $ym ? $ym : wp_date( 'Y-m' ) ) : '';
+		$valid = (bool) preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $ym );
+		$month = 'mese' === $view ? ( $valid ? $ym : wp_date( 'Y-m' ) ) : ( $valid ? $ym : '' );
 		$h     = '<nav class="asemf-filters" aria-label="Filtri degli eventi">';
 		$h    .= '<span class="asemf-filter-group">'
-			. '<a class="asemf-chip' . ( 'elenco' === $view ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'elenco' ) ) ) . '">Elenco</a>'
+			. '<a class="asemf-chip' . ( 'elenco' === $view ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'elenco', 'asem_mese' => $valid ? $ym : '' ) ) ) . '">Elenco</a>'
 			. '<a class="asemf-chip' . ( 'mese' === $view ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'mese', 'asem_mese' => '' !== $ym ? $ym : wp_date( 'Y-m' ) ) ) ) . '">Calendario</a></span>';
 		if ( $terms && ! is_wp_error( $terms ) ) {
 			$h .= '<span class="asemf-filter-group"><a class="asemf-chip' . ( '' === $cat ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_vista' => $view, 'asem_mese' => $month ) ) ) . '">Tutte le categorie</a>';
@@ -1214,7 +1248,7 @@ final class PublicEvents {
 		if ( '' !== $ex ) {
 			$h .= '<p class="asemf-card-ex">' . esc_html( wp_trim_words( $ex, 28 ) ) . '</p>';
 		}
-		$h .= '<div class="asemf-card-foot"><span class="asemf-card-price">' . esc_html( $fee ) . '</span><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">' . esc_html( '' !== $button ? $button : 'Dettagli e prenotazione' ) . '</a></div>';
+		$h .= '<div class="asemf-card-foot"><span class="asemf-card-price">' . esc_html( $fee ) . '</span><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">' . esc_html( '' !== $button ? $button : ( (string) $s['session_date'] < Db::today() ? 'Dettagli' : 'Dettagli e prenotazione' ) ) . '</a></div>';
 		return $h . '</div></li>';
 	}
 
@@ -1225,6 +1259,13 @@ final class PublicEvents {
 	private static function cancelled_future( int $activity_id ): array {
 		return array_values( array_filter( Plugin::activities()->sessions( $activity_id ), function ( $s ) {
 			return ! empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today();
+		} ) );
+	}
+
+	/** Date già passate e non annullate, dalla più vecchia. @return array[] */
+	public static function past_sessions( int $activity_id ): array {
+		return array_values( array_filter( Plugin::activities()->sessions( $activity_id ), function ( $s ) {
+			return empty( $s['cancelled_at'] ) && (string) $s['session_date'] < Db::today();
 		} ) );
 	}
 

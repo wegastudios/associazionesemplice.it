@@ -1571,7 +1571,15 @@ final class Views {
 		self::no_cache();
 		$rows = Plugin::activities()->upcoming_sessions( 50, (int) $activity['id'] );
 		if ( ! $rows ) {
-			return '<p class="asemf-muted">Nessuna data in programma.</p>';
+			$past = \AssociazioneSemplice\PublicEvents::past_sessions( (int) $activity['id'] ); // già svolto: le date passate, senza prenotazione
+			if ( ! $past ) {
+				return '<p class="asemf-muted">Nessuna data in programma.</p>';
+			}
+			$html = '<h3 class="asemf-event-h">Date passate</h3><ul class="asemf-list asemf-past">';
+			foreach ( array_reverse( $past ) as $s ) {
+				$html .= '<li>' . esc_html( self::date_long( (string) $s['session_date'] ) . ( ! empty( $s['start_time'] ) ? ' · ore ' . $s['start_time'] : '' ) . ( ! empty( $s['location'] ) ? ' · ' . $s['location'] : '' ) ) . '</li>';
+			}
+			return $html . '</ul>';
 		}
 		$ctx  = self::booking_context();
 		$html = '<h3 class="asemf-event-h">Date e prenotazione</h3><ul class="asemf-list asemf-upcoming">';

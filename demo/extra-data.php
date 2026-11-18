@@ -464,6 +464,94 @@ extra_step( 'evento ricorrente e annullato', function () {
 	}
 } );
 
+// Due eventi che valgono per tutte le stagioni, con date passate (uno, due e tre mesi fa) e future: l'elenco e il calendario hanno sempre uno storico da mostrare.
+// Le date sono relative a oggi e restano dentro l'anno sociale: a ogni azzeramento notturno si rifanno da sole.
+extra_step( 'eventi di ogni stagione con date passate', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$act   = Plugin::activities();
+	$sy    = Settings::social_year();
+	$first = $sy->start()->format( 'Y-m-d' );
+	$last  = $sy->end()->format( 'Y-m-d' );
+	$term  = function ( string $name ) {
+		$t = term_exists( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		if ( ! $t ) {
+			$t = wp_insert_term( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		}
+		return is_wp_error( $t ) ? 0 : (int) $t['term_id'];
+	};
+	$events = array(
+		array( 'Serata danzante', 'Serate', 'Una serata di ballo in sede con musica dal vivo e liscio per tutti: si balla, si chiacchiera e si porta qualcosa da bere. Ingresso per i soci, con un piccolo contributo per gli ospiti.', array( 170, 60, 110 ), '21:00', 'Sede dell\'associazione', 80, 500, 'terzo sabato' ),
+		array( 'Festa dell\'associazione', 'Serate', 'La festa di tutti i soci: giochi per i bambini, banchetti dei volontari, musica e una tavolata per stare insieme e raccontare cosa abbiamo fatto.', array( 200, 110, 60 ), '16:00', 'Giardino dell\'associazione', 120, 0, 'il 18' ),
+		array( 'Concerto di ukulele', 'Musica', 'Il gruppo ukulele dell\'associazione suona i suoi brani preferiti, dai classici alle canzoni da cantare insieme. Ingresso libero, porta un cuscino.', array( 60, 150, 140 ), '21:00', 'Sede dell\'associazione', 70, 0, 'venerdì a caso' ),
+		array( 'Concerto degli Who Cover Band', 'Musica', 'Una serata di rock con la tribute band degli Who: i grandi successi suonati dal vivo. Posti limitati, prenota per essere sicuro di entrare.', array( 190, 50, 50 ), '21:30', 'Teatro parrocchiale', 120, 800, 'venerdì a caso' ),
+	);
+	usort( $events, function ( $a, $b ) {
+		return strcmp( 'il 18' === $a[8] ? '0' : '1', 'il 18' === $b[8] ? '0' : '1' ); // prima la festa: la serata danzante evita i suoi giorni
+	} );
+	$taken = array();
+	foreach ( $events as $e ) {
+		$dates = array();
+		for ( $m = -3; $m <= 2; $m++ ) { // gli ultimi tre mesi, quello in corso e i due prossimi
+			$ym = gmdate( 'Y-m', (int) strtotime( gmdate( 'Y-m-15' ) . ' ' . ( $m >= 0 ? '+' : '' ) . $m . ' months' ) );
+			if ( 'il 18' === $e[8] ) {
+				if ( -1 !== $m ) {
+					continue; // la festa dell'associazione è una sola volta l'anno: il 18 del mese scorso (oggi 18 ottobre)
+				}
+				$day = $ym . '-18';
+			} elseif ( 'venerdì a caso' === $e[8] ) { // un venerdì del mese scelto a caso (sempre lo stesso a parità di mese e concerto), diverso da quello dell'altro concerto e dagli altri eventi
+				$fridays = array();
+				for ( $d = 1; $d <= 31; $d++ ) {
+					$f = sprintf( '%s-%02d', $ym, $d );
+					if ( (int) gmdate( 'j', (int) strtotime( $f . ' 12:00:00 UTC' ) ) === $d && '5' === gmdate( 'N', (int) strtotime( $f . ' 12:00:00 UTC' ) ) ) {
+						$fridays[] = $f;
+					}
+				}
+				mt_srand( (int) crc32( $ym . $e[0] ) );
+				shuffle( $fridays );
+				mt_srand();
+				$day = '';
+				foreach ( $fridays as $f ) {
+					if ( ! isset( $taken[ $f ] ) && ! $act->sessions_on( $f ) ) {
+						$day = $f;
+						break;
+					}
+				}
+				if ( '' === $day ) {
+					continue;
+				}
+			} else {
+				$day = gmdate( 'Y-m-d', (int) strtotime( 'third saturday of ' . gmdate( 'F Y', (int) strtotime( $ym . '-15' ) ) ) ); // la serata danzante, il terzo sabato
+				while ( isset( $taken[ $day ] ) || $act->sessions_on( $day ) ) { // se c'è già altro quel giorno, il sabato prima
+					$day = gmdate( 'Y-m-d', (int) strtotime( $day . ' -7 days' ) );
+				}
+			}
+			if ( $day >= $first && $day <= $last ) { // fuori dall'anno sociale non si può creare una data
+				$dates[]       = $day;
+				$taken[ $day ] = true;
+			}
+		}
+		if ( ! $dates ) {
+			continue;
+		}
+		$aid = $act->create( array( 'name' => $e[0], 'social_year' => $sy->label(), 'kind' => 'recurring', 'fee_cents' => $e[7], 'guest_fee_cents' => $e[7] > 0 ? $e[7] + 300 : null ) );
+		foreach ( $dates as $day ) {
+			$act->add_session( (int) $aid, array( 'session_date' => $day, 'start_time' => $e[4], 'end_time' => gmdate( 'H:i', (int) strtotime( $e[4] ) + 9000 ), 'location' => $e[5], 'capacity' => $e[6] ) );
+		}
+		$pid = \AssociazioneSemplice\PublicEvents::ensure( (int) $aid );
+		if ( ! $pid ) {
+			continue;
+		}
+		wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => extra_event_html( $e[2], $e[1], $e[5] ), 'post_excerpt' => wp_trim_words( $e[2], 18 ) ) );
+		wp_set_object_terms( $pid, array( $term( $e[1] ) ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		$thumb = extra_poster( $e[0], $e[3] );
+		if ( $thumb ) {
+			set_post_thumbnail( $pid, $thumb );
+		}
+	}
+} );
+
 update_option( 'asem_demo_extra_done', gmdate( 'c' ), false );
 WP_CLI::success( 'Dati in più della demo inseriti.' );
 
