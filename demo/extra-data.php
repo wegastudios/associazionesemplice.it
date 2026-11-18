@@ -562,6 +562,42 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 	}
 } );
 
+
+// Un evento su più giorni (una regata di tre giorni): per vedere come si comportano elenco, calendario, pagina e prenotazioni.
+extra_step( 'evento su più giorni', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$act   = Plugin::activities();
+	$sy    = Settings::social_year();
+	$start = gmdate( 'Y-m-d', time() + 10 * 86400 );
+	$end   = gmdate( 'Y-m-d', time() + 12 * 86400 );
+	if ( $end > $sy->end()->format( 'Y-m-d' ) ) {
+		return; // fuori dall'anno sociale non si può creare una data
+	}
+	foreach ( $act->all_for_select() as $ex ) {
+		if ( 'Regata di tre giorni' === $ex['name'] ) {
+			return;
+		}
+	}
+	$aid = $act->create( array( 'name' => 'Regata di tre giorni', 'social_year' => $sy->label(), 'kind' => 'event', 'fee_cents' => 1500, 'session' => array( 'session_date' => $start, 'end_date' => $end, 'start_time' => '09:00', 'end_time' => '18:00', 'location' => 'Porto turistico', 'capacity' => 40 ) ) );
+	$pid = \AssociazioneSemplice\PublicEvents::ensure( (int) $aid );
+	if ( ! $pid ) {
+		return;
+	}
+	$intro = 'Tre giorni di gara in mare con le barche dei soci: partenza al mattino, rientro nel pomeriggio, premiazione l\'ultimo giorno. Le iscrizioni online si chiudono alla vigilia della partenza: dopo ci si rivolge alla segreteria.';
+	$t     = term_exists( 'Sport', \AssociazioneSemplice\PublicEvents::TAXONOMY );
+	$t     = $t ? $t : wp_insert_term( 'Sport', \AssociazioneSemplice\PublicEvents::TAXONOMY );
+	wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => extra_event_html( $intro, 'Sport', 'Porto turistico' ), 'post_excerpt' => wp_trim_words( $intro, 18 ) ) );
+	if ( ! is_wp_error( $t ) ) {
+		wp_set_object_terms( $pid, array( (int) $t['term_id'] ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
+	}
+	$thumb = extra_poster( 'Regata di tre giorni', array( 30, 110, 170 ) );
+	if ( $thumb ) {
+		set_post_thumbnail( $pid, $thumb );
+	}
+} );
+
 update_option( 'asem_demo_extra_done', gmdate( 'c' ), false );
 WP_CLI::success( 'Dati in più della demo inseriti.' );
 

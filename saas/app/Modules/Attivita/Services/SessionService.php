@@ -6,6 +6,7 @@ namespace App\Modules\Attivita\Services;
 
 use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Contracts\ActivityOccupancy;
+use App\Modules\Attivita\Jobs\SendPromotionEmail;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Models\ActivitySession;
 use App\Modules\Attivita\Models\SessionBooking;
@@ -56,14 +57,14 @@ final readonly class SessionService
      * Rifiuta una data con orario che si sovrappone a una prenotazione della risorsa dell'attività o a una data di
      * un'altra attività sulla stessa risorsa. Senza risorsa o senza orario non c'è niente da controllare.
      */
-    private function assertFree(Activity $activity, string $date, ?string $start, ?string $end, ?string $exceptSessionId = null): void
+    private function assertFree(Activity $activity, string $date, ?string $start, ?string $end, ?string $exceptSessionId = null, ?string $endDate = null): void
     {
         if ($activity->resource_id === null) {
             return;
         }
         // Senza orari la data occupa il giorno intero.
-        [$from, $to] = SessionRules::slot($date, $start, $end);
-        $when = $start === null && $end === null ? 'tutto il giorno' : 'dalle '.($start ?? '00:00').' alle '.($end ?? '24:00');
+        [$from, $to] = SessionRules::slot($date, $start, $end, $endDate);
+        $when = $endDate !== null ? 'fino al '.date('d/m/Y', (int) strtotime($endDate)) : ($start === null && $end === null ? 'tutto il giorno' : 'dalle '.($start ?? '00:00').' alle '.($end ?? '24:00'));
         $what = $this->resources->busy($activity->resource_id, $from, $to)[0]['label'] ?? null;
         $what = $what !== null ? 'già '.$what : null;
         if ($what === null) {
@@ -76,10 +77,33 @@ final readonly class SessionService
         }
     }
 
+    /** Oltre una settimana serve la conferma di chi inserisce: un anno sbagliato fa durare una data mesi. */
+    private function assertDuration(int $days, bool $confirmed): void
+    {
+        if ($days > SessionRules::LONG_DAYS && ! $confirmed) {
+            throw new ActivityError('Questa data dura '.$days.' giorni: è giusto? Se sì, spunta «Confermo la durata» e salva di nuovo.');
+        }
+    }
+
+    /** Due date della stessa attività non si sovrappongono quando una delle due dura più giorni. */
+    private function assertNoOverlap(string $activityId, string $date, ?string $endDate, ?string $exceptSessionId = null): void
+    {
+        $q = ActivitySession::query()->where('activity_id', $activityId)->whereNull('cancelled_at');
+        if ($exceptSessionId !== null) {
+            $q->where('id', '!=', $exceptSessionId);
+        }
+        foreach ($q->get(['session_date', 'end_date']) as $o) {
+            $oEnd = $o->end_date?->format('Y-m-d');
+            if (($endDate !== null || $oEnd !== null) && SessionRules::overlap($date, $endDate, $o->session_date->format('Y-m-d'), $oEnd)) {
+                throw new ActivityError('Due date della stessa attività non possono sovrapporsi.');
+            }
+        }
+    }
+
     /**
      * Le date di un'attività con i posti presi e la lista d'attesa.
      *
-     * @return list<array{id: string, date: string, start: string|null, end: string|null, location: string|null, capacity: int|null, taken: int, free: int|null, waiting: int, cancelled: bool}>
+     * @return list<array{id: string, date: string, end_date: string|null, start: string|null, end: string|null, location: string|null, capacity: int|null, taken: int, free: int|null, waiting: int, cancelled: bool}>
      */
     public function sessions(Activity $activity): array
     {
@@ -89,7 +113,7 @@ final readonly class SessionService
         $waiting = $this->countBy('app.session_waitlist', 'session_id', $ids, 'waiting');
 
         return array_values($rows->map(static fn (ActivitySession $s): array => [
-            'id' => $s->id, 'date' => $s->session_date->format('Y-m-d'), 'start' => $s->start_time, 'end' => $s->end_time, 'location' => $s->location,
+            'id' => $s->id, 'date' => $s->session_date->format('Y-m-d'), 'end_date' => $s->end_date?->format('Y-m-d'), 'start' => $s->start_time, 'end' => $s->end_time, 'location' => $s->location,
             'capacity' => $s->capacity, 'taken' => $taken[$s->id] ?? 0, 'free' => SessionRules::free($s->capacity, $taken[$s->id] ?? 0),
             'waiting' => $waiting[$s->id] ?? 0, 'cancelled' => $s->cancelled_at !== null,
         ])->all());
@@ -107,12 +131,15 @@ final readonly class SessionService
      *
      * @return int date create
      */
-    public function addDates(string $activityId, string $from, ?string $to, bool $weekly, ?string $start, ?string $end, ?string $location, ?int $capacity): int
+    public function addDates(string $activityId, string $from, ?string $to, bool $weekly, ?string $start, ?string $end, ?string $location, ?int $capacity, ?string $endDate = null, bool $confirmLong = false): int
     {
         $activity = $this->bookable($activityId);
         $start = SessionRules::time($start);
         $end = SessionRules::time($end);
-        if ($start !== null && $end !== null && $end <= $start) {
+        $endDate = SessionRules::endDate($from, $endDate);
+        $days = SessionRules::days($from, $endDate);
+        $this->assertDuration($days, $confirmLong);
+        if ($endDate === null && $start !== null && $end !== null && $end <= $start) {
             throw new ActivityError('L\'ora di fine deve essere dopo quella di inizio.');
         }
         if ($capacity !== null && $capacity < 1) {
@@ -120,27 +147,32 @@ final readonly class SessionService
         }
         $year = $this->activities->year($activity);
         $dates = SessionRules::newDates($from, $to, $weekly);
-        foreach ($dates as $d) {
-            if ($d < $year['start'] || $d > $year['end']) {
+        foreach ($dates as $i => $d) {
+            $last = SessionRules::shifted($d, $days) ?? $d;
+            if ($d < $year['start'] || $last > $year['end']) {
                 throw new ActivityError('La data '.date('d/m/Y', (int) strtotime($d)).' è fuori dall\'anno sociale '.$activity->social_year.'.');
+            }
+            if ($days > 1 && isset($dates[$i + 1]) && $dates[$i + 1] <= $last) {
+                throw new ActivityError('Due date della stessa attività non possono sovrapporsi.');
             }
         }
         $have = [];
         foreach (ActivitySession::query()->where('activity_id', $activity->id)->get(['session_date', 'start_time']) as $s) {
             $have[$s->session_date->format('Y-m-d').'|'.($s->start_time ?? '')] = true;
         }
-        if (! $activity->occupy_on_booking) {
-            foreach ($dates as $d) {
-                if (! isset($have[$d.'|'.($start ?? '')])) {
-                    $this->assertFree($activity, $d, $start, $end);
+        foreach ($dates as $d) {
+            if (! isset($have[$d.'|'.($start ?? '')])) {
+                $this->assertNoOverlap($activity->id, $d, SessionRules::shifted($d, $days));
+                if (! $activity->occupy_on_booking) {
+                    $this->assertFree($activity, $d, $start, $end, null, SessionRules::shifted($d, $days));
                 }
             }
         }
         $made = 0;
-        $this->connection()->transaction(function () use ($dates, $have, $activity, $start, $end, $location, $capacity, &$made): void {
+        $this->connection()->transaction(function () use ($dates, $have, $activity, $start, $end, $days, $location, $capacity, &$made): void {
             foreach ($dates as $d) {
                 if (! isset($have[$d.'|'.($start ?? '')])) {
-                    (new ActivitySession(['activity_id' => $activity->id, 'session_date' => $d, 'start_time' => $start, 'end_time' => $end,
+                    (new ActivitySession(['activity_id' => $activity->id, 'session_date' => $d, 'end_date' => SessionRules::shifted($d, $days), 'start_time' => $start, 'end_time' => $end,
                         'location' => $location === null || trim($location) === '' ? null : mb_substr(trim($location), 0, 190), 'capacity' => $capacity]))->save();
                     $made++;
                 }
@@ -158,23 +190,27 @@ final readonly class SessionService
      *
      * @return list<string> chi è entrato
      */
-    public function updateSession(string $sessionId, ?string $start, ?string $end, ?string $location, ?int $capacity): array
+    public function updateSession(string $sessionId, ?string $start, ?string $end, ?string $location, ?int $capacity, ?string $endDate = null, bool $confirmLong = false): array
     {
         $s = $this->session($sessionId);
         $start = SessionRules::time($start);
         $end = SessionRules::time($end);
-        if ($start !== null && $end !== null && $end <= $start) {
+        $day = $s->session_date->format('Y-m-d');
+        $endDate = SessionRules::endDate($day, $endDate);
+        $this->assertDuration(SessionRules::days($day, $endDate), $confirmLong);
+        if ($endDate === null && $start !== null && $end !== null && $end <= $start) {
             throw new ActivityError('L\'ora di fine deve essere dopo quella di inizio.');
         }
         $activity = $this->activities->find($s->activity_id);
+        $this->assertNoOverlap($activity->id, $day, $endDate, $s->id);
         if (! $activity->occupy_on_booking) {
-            $this->assertFree($activity, $s->session_date->format('Y-m-d'), $start, $end, $s->id);
+            $this->assertFree($activity, $day, $start, $end, $s->id, $endDate);
         }
         $taken = $this->taken($s->id);
         if ($capacity !== null && $capacity < max(1, $taken)) {
             throw new ActivityError('Ci sono già '.$taken.' prenotati: i posti non possono essere meno.');
         }
-        $s->fill(['start_time' => $start, 'end_time' => $end, 'location' => $location === null || trim($location) === '' ? null : mb_substr(trim($location), 0, 190), 'capacity' => $capacity]);
+        $s->fill(['end_date' => $endDate, 'start_time' => $start, 'end_time' => $end, 'location' => $location === null || trim($location) === '' ? null : mb_substr(trim($location), 0, 190), 'capacity' => $capacity]);
         $s->save();
         $this->audit->record('session.updated', 'app.activities', $s->activity_id, ['session' => $s->id]);
 
@@ -212,7 +248,7 @@ final readonly class SessionService
             }
             if ($activity->occupy_on_booking) {
                 // La data occupa la risorsa solo da quando ha prenotazioni: se la fascia è già occupata altrove si rifiuta.
-                $this->assertFree($activity, $s->session_date->format('Y-m-d'), $s->start_time, $s->end_time, $s->id);
+                $this->assertFree($activity, $s->session_date->format('Y-m-d'), $s->start_time, $s->end_time, $s->id, $s->end_date?->format('Y-m-d'));
             }
             $person = $this->person($personId) ?? throw new ActivityError('Persona non trovata.');
             if ($person['type'] === MemberType::Guardian->value) {
@@ -436,17 +472,38 @@ final readonly class SessionService
     }
 
     /**
-     * Avvisa per email chi è passato dalla lista d'attesa alla prenotazione (il genitore o tutore operativo per un minore).
-     * Senza email l'iscrizione resta valida; un errore di invio non la tocca.
+     * Accoda l'avviso per email a chi è passato dalla lista d'attesa alla prenotazione. Nel lavoro ci sono solo
+     * identificativi: indirizzo e testo si ricavano al momento dell'invio. Un errore non tocca l'iscrizione.
      *
-     * @return 'sent'|'no_email'|'failed'
+     * @return 'queued'|'failed'
      */
     private function notifyPromoted(ActivitySession $s, string $personId, bool $toPay): string
     {
+        try {
+            SendPromotionEmail::dispatch($this->context->require()->id, $s->id, $personId, $toPay);
+        } catch (Throwable $e) {
+            report($e);
+
+            return 'failed';
+        }
+
+        return 'queued';
+    }
+
+    /**
+     * Manda l'avviso di promozione (dal lavoro in coda): il genitore o tutore operativo per un minore. Senza email
+     * non fa niente; un errore di posta si rilancia, così il lavoro riprova.
+     */
+    public function sendPromotion(string $sessionId, string $personId, bool $toPay): void
+    {
+        $s = ActivitySession::query()->find($sessionId);
+        if ($s === null) {
+            return;
+        }
         $c = $this->connection();
         $p = $c->table('app.people')->where('id', $personId)->first(['first_name', 'email', 'anonymized_at', 'left_on']);
         if ($p === null || $p->anonymized_at !== null || $p->left_on !== null) {
-            return 'no_email';
+            return;
         }
         $birth = $this->people->card($personId)['birth_date'] ?? null;
         $minor = is_string($birth) && CarbonImmutable::parse($birth)->addYears(18)->isFuture();
@@ -458,14 +515,14 @@ final readonly class SessionService
         }
         $email = $to !== null && is_string($to->email ?? null) ? $to->email : '';
         if ($to === null || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
-            return 'no_email';
+            return;
         }
 
         $activity = $this->activities->find($s->activity_id);
         $when = $s->session_date->format('d/m/Y').(is_string($s->start_time) && $s->start_time !== '' ? ', alle ore '.substr($s->start_time, 0, 5) : '');
         $org = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->first(['id', 'name', 'slug']);
         if ($org === null || ! is_string($org->id ?? null)) {
-            return 'failed';
+            return;
         }
         $area = $this->areaUrl($org->id, is_string($org->slug ?? null) ? $org->slug : '');
         $cancel = $area === null ? 'scrivi alla segreteria' : "annulla dall'area soci o scrivi alla segreteria";
@@ -474,21 +531,14 @@ final readonly class SessionService
             : "Si è liberato un posto: ora hai un posto per {$activity->name} del {$when}. Se non puoi venire, {$cancel}.";
         $payLine = $area === null ? 'Per la quota da versare scrivi alla segreteria.' : 'La quota da versare la trovi in Quote, nell\'area soci.';
 
-        try {
-            Notification::route('mail', $email)->notify(new WaitlistPromotedNotification(
-                'Ciao '.(is_string($to->first_name ?? null) ? $to->first_name : '').',',
-                $body,
-                $toPay ? $payLine : null,
-                $area,
-                is_string($org->name ?? null) ? $org->name : '',
-            ));
-        } catch (Throwable $e) {
-            report($e);
-
-            return 'failed';
-        }
-
-        return 'sent';
+        // Siamo già dentro un lavoro in coda: la posta parte subito, senza accodarla una seconda volta.
+        Notification::route('mail', $email)->notifyNow(new WaitlistPromotedNotification(
+            'Ciao '.(is_string($to->first_name ?? null) ? $to->first_name : '').',',
+            $body,
+            $toPay ? $payLine : null,
+            $area,
+            is_string($org->name ?? null) ? $org->name : '',
+        ));
     }
 
     /** Indirizzo dell'area soci (dominio proprio se verificato), solo se l'associazione ha il pacchetto. */

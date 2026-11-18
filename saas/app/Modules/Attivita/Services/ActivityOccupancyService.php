@@ -40,7 +40,7 @@ final readonly class ActivityOccupancyService implements ActivityOccupancy
             ->join('app.activities as a', static fn (JoinClause $j) => $j->on('a.org_id', '=', 's.org_id')->on('a.id', '=', 's.activity_id'))
             ->where('a.resource_id', $resourceId)->whereNull('a.archived_at')->whereNull('s.cancelled_at')
             ->whereRaw("(s.session_date + coalesce(s.start_time, '00:00')::time) < ?::timestamp", [$to])
-            ->whereRaw('(case when s.end_time is null then (s.session_date + 1)::timestamp else (s.session_date + s.end_time::time) end) > ?::timestamp', [$from])
+            ->whereRaw('(case when s.end_time is null then (coalesce(s.end_date, s.session_date) + 1)::timestamp else (coalesce(s.end_date, s.session_date) + s.end_time::time) end) > ?::timestamp', [$from])
             ->whereRaw("(not a.occupy_on_booking or exists (select 1 from app.session_bookings b where b.org_id = s.org_id and b.session_id = s.id and b.status = 'booked'))");
         if ($exceptSessionId !== null && Str::isUuid($exceptSessionId)) {
             $q->where('s.id', '<>', $exceptSessionId);
@@ -50,10 +50,11 @@ final readonly class ActivityOccupancyService implements ActivityOccupancy
         }
 
         $out = [];
-        foreach ($q->orderBy('s.session_date')->orderBy('s.start_time')->get(['s.id', 'a.id as activity_id', 's.session_date', 's.start_time', 's.end_time', 'a.name']) as $r) {
+        foreach ($q->orderBy('s.session_date')->orderBy('s.start_time')->get(['s.id', 'a.id as activity_id', 's.session_date', 's.end_date', 's.start_time', 's.end_time', 'a.name']) as $r) {
             $start = is_scalar($r->start_time) ? (string) $r->start_time : null;
             $end = is_scalar($r->end_time) ? (string) $r->end_time : null;
-            [$f, $t] = SessionRules::slot(substr(self::text($r->session_date), 0, 10), $start, $end);
+            $endDate = is_scalar($r->end_date) ? substr((string) $r->end_date, 0, 10) : null;
+            [$f, $t] = SessionRules::slot(substr(self::text($r->session_date), 0, 10), $start, $end, $endDate);
             $out[] = ['id' => self::text($r->id), 'activity_id' => self::text($r->activity_id), 'from' => $f, 'to' => $t, 'label' => self::text($r->name)];
         }
 

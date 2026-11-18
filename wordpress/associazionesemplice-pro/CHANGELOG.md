@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.15 – 2026-11-18
+- Altro: allineato al plugin gratuito 1.3.28.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.14 – 2026-11-17
 - Ottimizzazione: Cassa, crediti, rimborsi, risorse, promemoria e comunicazioni più rapidi, con gli stessi risultati di prima; la licenza non viene chiesta al portale più di una volta ogni 12 ore
 - Nuovo: verifica delle ricevute a richiesta, a lotti, con l'esito salvato per anno fiscale

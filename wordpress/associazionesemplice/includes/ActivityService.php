@@ -479,6 +479,9 @@ class ActivityService {
 		}
 		foreach ( $dates as $d ) { // tutte le date prima di scriverne una: o entrano tutte o nessuna
 			self::assert_in_social_year( (string) $a['social_year'], (string) $d['date'], 'La data dell\'evento' );
+			if ( ! empty( $d['end_date'] ) ) {
+				self::assert_in_social_year( (string) $a['social_year'], (string) $d['end_date'], 'La data di fine' );
+			}
 		}
 		$have = array();
 		foreach ( $this->sessions( $activity_id ) as $s ) {
@@ -492,7 +495,7 @@ class ActivityService {
 			if ( isset( $have[ $d['date'] . '|' . (string) $d['start'] ] ) ) {
 				continue;
 			}
-			$n = $this->normalize_session( array( 'session_date' => $d['date'], 'start_time' => $d['start'], 'end_time' => $d['end'], 'location' => $location, 'capacity' => $capacity ) );
+			$n = $this->normalize_session( array( 'session_date' => $d['date'], 'start_time' => $d['start'], 'end_date' => $d['end_date'] ?? null, 'end_time' => $d['end'], 'location' => $location, 'capacity' => $capacity ) );
 			$this->validate_session( $n );
 			$this->insert_session( $activity_id, $n );
 			$made++;

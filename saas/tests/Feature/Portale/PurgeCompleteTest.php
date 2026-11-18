@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 require_once __DIR__.'/PortalHelpers.php';
 
@@ -48,10 +49,18 @@ it('cancella anche un\'associazione con movimenti in prima nota e un titolare co
         app(Ledger::class)->recordIncome(new Income(now()->toDateString(), $cash->id, [new IncomeLine($donation->id, 5000, 'Offerta')], null, null, false));
     });
     Storage::disk('org_files')->put("{$alfa}/prova.enc", 'x');
+    // Lavori in coda e falliti dell'associazione (portano il suo identificativo): si cancellano con lei, quelli di altri restano.
+    $db = DB::connection('pgsql_owner');
+    $db->table('core.jobs')->insert([['queue' => 'default', 'payload' => '{"orgId":"'.$alfa.'"}', 'attempts' => 0, 'available_at' => time(), 'created_at' => time()],
+        ['queue' => 'default', 'payload' => '{"orgId":"altra"}', 'attempts' => 0, 'available_at' => time(), 'created_at' => time()]]);
+    $db->table('core.failed_jobs')->insert(['uuid' => (string) Str::uuid(), 'connection' => 'database', 'queue' => 'default', 'payload' => '{"orgId":"'.$alfa.'"}', 'exception' => 'x', 'failed_at' => now()]);
 
     app(OrgPurger::class)->purge($alfa);
 
-    $db = DB::connection('pgsql_owner');
+    expect($db->table('core.jobs')->where('payload', 'like', '%'.$alfa.'%')->exists())->toBeFalse()
+        ->and($db->table('core.jobs')->where('payload', 'like', '%altra%')->count())->toBe(1)
+        ->and($db->table('core.failed_jobs')->where('payload', 'like', '%'.$alfa.'%')->exists())->toBeFalse();
+    $db->table('core.jobs')->where('payload', 'like', '%altra%')->delete();
     $org = Org::withTrashed()->findOrFail($alfa);
     expect($org->status)->toBe('closed')->and($org->deleted_at)->not->toBeNull()
         ->and($db->table('core.org_keys')->where('org_id', $alfa)->exists())->toBeFalse()

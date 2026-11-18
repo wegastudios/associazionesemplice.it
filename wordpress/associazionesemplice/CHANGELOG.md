@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.28 – 2026-11-18
+- Nuovo: eventi su più giorni (una regata, un torneo) o che finiscono dopo mezzanotte, con il campo «fino al» nella data. Online si prenotano fino al giorno prima, poi ci pensa la segreteria; gli eventi di un giorno restano come prima.
+- Nuovo: l'elenco degli eventi si sfoglia mese per mese, anche all'indietro, e gli eventi già svolti restano visibili con le loro date.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.27 – 2026-11-17
 - Ottimizzazione: Bacheca, elenco e schede di corsi ed eventi, rendiconto, calendario, elenco soci, Prima nota ed esportazioni molto più rapidi, con gli stessi risultati di prima
 - Ottimizzazione: «Soci e ospiti» a 50 righe per pagina e Prima nota a 100, con i totali sempre dell'anno intero

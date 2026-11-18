@@ -44,6 +44,8 @@ final readonly class SessionsController
             'weekly' => ['boolean'],
             'start' => ['nullable', 'string', 'max:5'],
             'end' => ['nullable', 'string', 'max:5'],
+            'end_date' => ['nullable', 'date_format:Y-m-d'],
+            'confirm_long' => ['boolean'],
             'location' => ['nullable', 'string', 'max:190'],
             'capacity' => ['nullable', 'integer', 'between:1,100000'],
         ]));
@@ -51,7 +53,7 @@ final readonly class SessionsController
         return self::attempt(function () use ($activity, $data): RedirectResponse {
             $n = $this->sessions->addDates($activity, Input::string($data, 'from'), Input::optionalString($data, 'to'), Input::bool($data, 'weekly', false),
                 Input::optionalString($data, 'start'), Input::optionalString($data, 'end'), Input::optionalString($data, 'location'),
-                is_numeric($data['capacity'] ?? null) ? (int) $data['capacity'] : null);
+                is_numeric($data['capacity'] ?? null) ? (int) $data['capacity'] : null, Input::optionalString($data, 'end_date'), Input::bool($data, 'confirm_long', false));
 
             return back()->with('status', $n === 0 ? 'Nessuna data nuova: c\'erano già.' : ($n === 1 ? '1 data aggiunta.' : $n.' date aggiunte.'));
         });
@@ -70,7 +72,8 @@ final readonly class SessionsController
         return Inertia::render('Attivita/Data', [
             'activity' => ['id' => $a->id, 'name' => $a->name, 'archived' => $a->archived_at !== null],
             'session' => [
-                'id' => $s->id, 'date' => $s->session_date->format('Y-m-d'), 'label' => self::dayLabel($s->session_date->format('Y-m-d')),
+                'id' => $s->id, 'date' => $s->session_date->format('Y-m-d'), 'label' => self::rangeLabel($s->session_date->format('Y-m-d'), $s->end_date?->format('Y-m-d')),
+                'end_date' => $s->end_date?->format('Y-m-d'),
                 'start' => $s->start_time, 'end' => $s->end_time, 'location' => $s->location, 'capacity' => $s->capacity,
                 'taken' => $info['taken'] ?? 0, 'free' => $info['free'] ?? null, 'cancelled' => $s->cancelled_at !== null,
                 'past' => $s->session_date->format('Y-m-d') < now()->toDateString(),
@@ -95,13 +98,15 @@ final readonly class SessionsController
         $data = Input::of($request->validate([
             'start' => ['nullable', 'string', 'max:5'],
             'end' => ['nullable', 'string', 'max:5'],
+            'end_date' => ['nullable', 'date_format:Y-m-d'],
+            'confirm_long' => ['boolean'],
             'location' => ['nullable', 'string', 'max:190'],
             'capacity' => ['nullable', 'integer', 'between:1,100000'],
         ]));
 
         return self::attempt(function () use ($session, $data): RedirectResponse {
             $in = $this->sessions->updateSession($session, Input::optionalString($data, 'start'), Input::optionalString($data, 'end'), Input::optionalString($data, 'location'),
-                is_numeric($data['capacity'] ?? null) ? (int) $data['capacity'] : null);
+                is_numeric($data['capacity'] ?? null) ? (int) $data['capacity'] : null, Input::optionalString($data, 'end_date'), Input::bool($data, 'confirm_long', false));
 
             return back()->with('status', 'Data salvata.'.self::promoted($in));
         });
@@ -267,6 +272,19 @@ final readonly class SessionsController
         $t = (int) strtotime($date);
 
         return self::DAYS[(int) date('N', $t) - 1].' '.date('j', $t).' '.explode(' ', ActivityService::monthLabel(date('Y-m', $t)))[0];
+    }
+
+    /** «dal 12 al 14 giugno», «dal 30 maggio al 2 giugno»; una data di un giorno è «sabato 13 giugno». */
+    public static function rangeLabel(string $date, ?string $endDate): string
+    {
+        if ($endDate === null) {
+            return self::dayLabel($date);
+        }
+        $a = (int) strtotime($date);
+        $b = (int) strtotime($endDate);
+        $month = static fn (int $t): string => explode(' ', ActivityService::monthLabel(date('Y-m', $t)))[0];
+
+        return 'dal '.date('j', $a).($month($a) === $month($b) ? '' : ' '.$month($a)).' al '.date('j', $b).' '.$month($b);
     }
 
     /** @param  list<string>  $names */
