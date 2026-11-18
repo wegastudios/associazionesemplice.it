@@ -95,7 +95,7 @@ Si riapre **solo l'ultimo anno fiscale chiuso**, dalla stessa pagina con **Riapr
 
 ## La quota associativa
 
-La quota e la tessera non dipendono dagli anni fiscali: seguono l'**anno sociale** (vedi [Come dura la tessera](guida:iscrivere-un-socio-e-rinnovare-la-tessera)).
+La quota e la tessera seguono l'**anno fiscale** (vedi [Come dura la tessera](guida:iscrivere-un-socio-e-rinnovare-la-tessera)).
 
 ## Con Pro
 
@@ -111,8 +111,8 @@ MD,
 ## Esportare
 
 1. Vai in **Strumenti → Esporta**.
-2. Scegli cosa esportare: soci e ospiti, prima nota (anno fiscale) o report delle attività (anno sociale).
-3. Scarica il file CSV.
+2. Scegli cosa esportare: soci e ospiti, prima nota (anno fiscale) o report delle attività (anno delle attività).
+3. Scarica il file CSV. Il report delle attività si chiama «anno-attivita-» seguito dall'anno e ha, per ogni anno fiscale attraversato, le righe «ENTRATE GENERALI (non di attività) - …», «USCITE GENERALI (non di attività) - …» e «Totale generali …».
 
 I file usano il punto e virgola come separatore e la virgola come decimale, pronti per Excel. Con la partita IVA l'esportazione della prima nota aggiunge aliquota, imponibile e IVA, utili al commercialista.
 

@@ -61,7 +61,7 @@ Prima della chiusura dell'anno fiscale il rendiconto è una **bozza**: i numeri 
 
 ## Report
 
-La scheda **Report** offre **Conti e liquidità** (saldi, fondi, disponibilità reale), **Anno sociale** e **Anno fiscale (commercialista)**.
+La scheda **Report** offre **Conti e liquidità** (saldi, fondi, disponibilità reale), la **valutazione dell'anno delle attività** e **Anno fiscale (commercialista)**. Quando l'anno delle attività attraversa più anni fiscali, entrate e uscite generali sono divise per ogni anno fiscale (blocchi come «Anno fiscale 2025 (set–dic)»).
 MD,
     ],
     [
