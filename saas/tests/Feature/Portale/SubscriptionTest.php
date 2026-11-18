@@ -132,7 +132,7 @@ it('legge i diritti una sola volta per richiesta e vede subito una nuova revisio
     DB::enableQueryLog();
     app(Entitlements::class)->for($this->orgId);
     app(Entitlements::class)->for($this->orgId);
-    $reads = collect(DB::getQueryLog())->filter(static fn (array $q): bool => str_contains($q['query'], 'core.org_entitlements'))->count();
+    $reads = collect(DB::getQueryLog())->filter(static fn (array $q): bool => str_contains($q['query'], 'org_entitlements'))->count();
     DB::disableQueryLog();
     expect($reads)->toBe(1);
 
