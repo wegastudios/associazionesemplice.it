@@ -265,7 +265,8 @@ final class ActivitiesPage {
 			echo '</form>';
 		}
 
-		$drafts = current_user_can( Plugin::CAP_OPS ) ? \AssociazioneSemplice\PublicEvents::draft_pages( array_map( function ( $r ) { return (int) $r['activity']['id']; }, $report['activities'] ) ) : array();
+		$dn_denied = \AssociazioneSemplice\Employees::denied_for( get_current_user_id() ); // chi ha una sola area (corsi o eventi) vede solo le pagine della sua
+		$drafts    = current_user_can( Plugin::CAP_OPS ) ? \AssociazioneSemplice\PublicEvents::draft_pages( array_map( function ( $r ) { return (int) $r['activity']['id']; }, array_filter( $report['activities'], function ( $r ) use ( $dn_denied ) { return \AssociazioneSemplice\EmployeeRules::has( $dn_denied, \AssociazioneSemplice\EmployeeRules::activity_key( (string) $r['activity']['kind'] ) ); } ) ) ) : array();
 		if ( $drafts ) { // le pagine importate (per esempio da The Events Calendar) restano in bozza: si pubblicano insieme, senza aprirle una a una
 			Ui::form_open( 'asem_publish_pages', $back );
 			echo '<div class="asem-card"><h2>' . esc_html( \AssociazioneSemplice\Texts::t( 'Pagine in bozza: non si vedono ancora sul sito' ) ) . '</h2>'
