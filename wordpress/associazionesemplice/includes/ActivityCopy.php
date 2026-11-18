@@ -141,7 +141,8 @@ final class ActivityCopy {
 				$pick                = function ( string $k ) use ( $in, $last ) {
 					return array_key_exists( $k, $in ) ? $in[ $k ] : ( $last[ $k ] ?? null );
 				};
-				$data['session']     = array( 'session_date' => $date, 'start_time' => $pick( 'start_time' ), 'end_time' => $pick( 'end_time' ), 'location' => $pick( 'location' ), 'capacity' => $pick( 'capacity' ) );
+				$span = ! empty( $last['end_date'] ) ? (int) ( new \DateTimeImmutable( (string) $last['session_date'] ) )->diff( new \DateTimeImmutable( (string) $last['end_date'] ) )->days : 0; // una data su più giorni resta della stessa durata
+				$data['session']     = array( 'session_date' => $date, 'end_date' => $span > 0 ? self::shift_date( $date, $span ) : null, 'start_time' => $pick( 'start_time' ), 'end_time' => $pick( 'end_time' ), 'location' => $pick( 'location' ), 'capacity' => $pick( 'capacity' ) );
 			} else {
 				if ( ! $old ) {
 					throw new \InvalidArgumentException( 'L\'evento ricorrente non ha date da riproporre.' );
@@ -150,7 +151,8 @@ final class ActivityCopy {
 				foreach ( $old as $s ) {
 					$when = self::shift_date( (string) $s['session_date'], $days );
 					ActivityService::assert_in_social_year( $data['social_year'], $when, 'La data del ' . ( new \DateTimeImmutable( $when ) )->format( 'd/m/Y' ) ); // tutte nello stesso anno sociale, prima di scrivere
-					$sessions[] = array( 'session_date' => $when, 'start_time' => $s['start_time'], 'end_time' => $s['end_time'], 'location' => $s['location'], 'capacity' => $s['capacity'], 'notes' => $s['notes'] );
+					$span       = ! empty( $s['end_date'] ) ? (int) ( new \DateTimeImmutable( (string) $s['session_date'] ) )->diff( new \DateTimeImmutable( (string) $s['end_date'] ) )->days : 0;
+					$sessions[] = array( 'session_date' => $when, 'end_date' => $span > 0 ? self::shift_date( $when, $span ) : null, 'start_time' => $s['start_time'], 'end_time' => $s['end_time'], 'location' => $s['location'], 'capacity' => $s['capacity'], 'notes' => $s['notes'] );
 				}
 			}
 		}

@@ -100,9 +100,9 @@ final class Calendar {
 		$rows = $db->get_results(
 			$db->prepare(
 				'SELECT s.*, a.name, a.kind FROM ' . Db::t( 'sessions' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL '
-				. 'WHERE s.cancelled_at IS NULL AND s.session_date BETWEEN %s AND %s',
-				$from,
-				$to
+				. 'WHERE s.cancelled_at IS NULL AND s.session_date <= %s AND COALESCE(s.end_date, s.session_date) >= %s',
+				$to,
+				$from
 			),
 			ARRAY_A
 		) ?: array();

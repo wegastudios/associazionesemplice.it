@@ -232,7 +232,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Evento non trovato.' );
 		}
 		if ( $session['session_date'] < current_time( 'Y-m-d' ) ) {
-			throw new \InvalidArgumentException( 'Questo evento è già passato.' );
+			throw new \InvalidArgumentException( \AssociazioneSemplice\ActivityService::last_day( $session ) >= current_time( 'Y-m-d' ) ? 'Questo evento è già iniziato: le prenotazioni sono chiuse.' : 'Questo evento è già passato.' );
 		}
 		$list_key = sanitize_key( (string) ( $post['price_list'] ?? '' ) );
 		$act_row  = Plugin::activities()->get( (int) $session['activity_id'] );

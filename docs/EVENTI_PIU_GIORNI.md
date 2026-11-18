@@ -38,3 +38,8 @@ Validazione (Rules, ActivityService, Schedule/import), modulo dell'attività nel
 - Testi nuovi a Audit prima di ogni PR.
 - Eventi di tipo «corso»: restano senza data di fine (hanno le lezioni settimanali).
 - Punti 2 e 7: al titolare (via Audit).
+
+## Stato
+
+- **Fase 1 (18/11/2026), non ancora pubblicata:** schema 69 (`end_date` nelle date); regole (fine non prima dell'inizio, massimo 31 giorni, ora di fine libera se la fine è un altro giorno); in corso/passato guardati alla fine (pagina evento, elenco, «Date passate», biglietti, ingressi in ognuno dei giorni, elenchi del pannello); `.ics` e dati strutturati con la fine; calendario mensile e card («Dal 12 al 14 giugno», «In corso»); copia di un'attività con la stessa durata. Prenotazioni chiuse a evento iniziato («Questo evento è già iniziato: le prenotazioni sono chiuse.»).
+- **Da fare nella fase 1 o subito dopo:** campo «fino al» nel modulo di creazione dell'evento (oggi si imposta modificando la data, dopo averla creata); avviso con spunta oltre 7 giorni; import da The Events Calendar con la fine; calendario del pannello (`Calendar.php`) per giorno.

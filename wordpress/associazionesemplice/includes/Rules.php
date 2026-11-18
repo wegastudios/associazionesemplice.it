@@ -120,6 +120,9 @@ final class Rules {
 	 * @param array $s session_date (Y-m-d), start_time (HH:MM, facoltativa), capacity (>= 1, facoltativa)
 	 * @return string[]
 	 */
+	/** Durata massima di una data in giorni (contati dall'inizio alla fine: 30 giorni di distanza = 31 giorni di durata): oltre è quasi sempre un errore di battitura nell'anno. */
+	const MAX_SESSION_DAYS = 31;
+
 	public static function validate_session( array $s ): array {
 		$errors = array();
 		$date   = (string) ( $s['session_date'] ?? '' );
@@ -131,11 +134,25 @@ final class Rules {
 		if ( '' !== $time && ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $time ) ) {
 			$errors[] = 'L\'orario non è valido (usa il formato HH:MM).';
 		}
+		$last_day_text = (string) ( $s['end_date'] ?? '' );
+		if ( $last_day_text === $date ) {
+			$last_day_text = ''; // finisce lo stesso giorno: come senza data di fine
+		}
 		$end = (string) ( $s['end_time'] ?? '' );
 		if ( '' !== $end && ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $end ) ) {
 			$errors[] = 'L\'orario di fine non è valido (usa il formato HH:MM).';
-		} elseif ( '' !== $end && '' !== $time && $end <= $time ) {
-			$errors[] = 'L\'orario di fine deve essere dopo quello di inizio.';
+		} elseif ( '' !== $end && '' !== $time && $end <= $time && '' === $last_day_text ) {
+			$errors[] = 'L\'orario di fine deve essere dopo quello di inizio.'; // con una data di fine più avanti l'ora di fine può essere qualunque (21:30 → 01:00)
+		}
+		if ( '' !== $last_day_text ) {
+			$ld = \DateTime::createFromFormat( 'Y-m-d', $last_day_text );
+			if ( ! $ld || $ld->format( 'Y-m-d' ) !== $last_day_text ) {
+				$errors[] = 'La data di fine non è valida.';
+			} elseif ( $dt && $last_day_text < $date ) {
+				$errors[] = 'La data di fine non può essere prima dell\'inizio.';
+			} elseif ( $dt && (int) $dt->diff( $ld )->days >= self::MAX_SESSION_DAYS ) {
+				$errors[] = 'Una data non può durare più di ' . self::MAX_SESSION_DAYS . ' giorni: controlla l\'anno.';
+			}
 		}
 		if ( isset( $s['capacity'] ) && '' !== $s['capacity'] && (int) $s['capacity'] < 1 ) {
 			$errors[] = 'I posti disponibili devono essere almeno 1 (lascia vuoto per nessun limite).';

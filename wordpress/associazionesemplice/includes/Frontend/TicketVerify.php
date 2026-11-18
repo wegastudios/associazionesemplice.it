@@ -61,7 +61,7 @@ final class TicketVerify {
 		$status = 'valid';
 		if ( 'booked' !== $booking['status'] || ! empty( $session['cancelled_at'] ) ) {
 			$status = 'cancelled';
-		} elseif ( $session['session_date'] < $today ) {
+		} elseif ( \AssociazioneSemplice\ActivityService::last_day( $session ) < $today ) {
 			$status = 'past';
 		} elseif ( ! empty( $booking['checked_in_at'] ) ) {
 			$status = 'used';

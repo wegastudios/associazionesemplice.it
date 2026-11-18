@@ -517,6 +517,7 @@ final class Actions {
 		return array(
 			'session_date' => (string) ( $p['session_date'] ?? '' ),
 			'start_time'   => (string) ( $p['start_time'] ?? '' ),
+			'end_date'     => (string) ( $p['end_date'] ?? '' ),
 			'end_time'     => (string) ( $p['end_time'] ?? '' ),
 			'location'     => (string) ( $p['location'] ?? '' ),
 			'capacity'     => (string) ( $p['capacity'] ?? '' ),

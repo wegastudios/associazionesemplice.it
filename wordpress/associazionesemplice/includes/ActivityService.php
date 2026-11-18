@@ -325,14 +325,24 @@ class ActivityService {
 			$v = isset( $s[ $k ] ) ? trim( (string) $s[ $k ] ) : '';
 			return '' === $v ? null : $v;
 		};
+		$end_date = $t( 'end_date' );
+		if ( $end_date === (string) ( $s['session_date'] ?? '' ) ) {
+			$end_date = null; // finisce lo stesso giorno: è come non averla
+		}
 		return array(
 			'session_date' => (string) ( $s['session_date'] ?? '' ),
+			'end_date'     => $end_date,
 			'start_time'   => $t( 'start_time' ),
 			'end_time'     => $t( 'end_time' ),
 			'location'     => $t( 'location' ),
 			'capacity'     => $cap,
 			'notes'        => $t( 'notes' ),
 		);
+	}
+
+	/** Ultimo giorno di una data: la data di fine se c'è, altrimenti il giorno stesso. Un evento è «passato» solo dopo questo giorno e «in corso» fino ad allora. */
+	public static function last_day( array $s ): string {
+		return '' !== (string) ( $s['end_date'] ?? '' ) ? (string) $s['end_date'] : (string) ( $s['session_date'] ?? '' );
 	}
 
 	private function validate_session( array $s ): void {
@@ -363,6 +373,9 @@ class ActivityService {
 		$act = $this->get( $activity_id );
 		if ( $act ) {
 			self::assert_in_social_year( (string) $act['social_year'], (string) ( $s['session_date'] ?? '' ), 'La data dell\'evento' );
+			if ( ! empty( $s['end_date'] ) ) {
+				self::assert_in_social_year( (string) $act['social_year'], (string) $s['end_date'], 'La data di fine dell\'evento' );
+			}
 		}
 		$this->db()->insert( Db::t( 'sessions' ), array_merge( $s, array( 'activity_id' => $activity_id, 'created_at' => Db::now() ) ) );
 		$id = (int) $this->db()->insert_id;
@@ -404,7 +417,7 @@ class ActivityService {
 		}
 		$n = $this->normalize_session( $s );
 		$this->validate_session( $n );
-		$this->assert_dates_free( $activity_id, array( array( 'date' => $n['session_date'], 'start' => $n['start_time'], 'end' => $n['end_time'] ) ) );
+		$this->assert_dates_free( $activity_id, array( array( 'date' => $n['session_date'], 'end_date' => $n['end_date'], 'start' => $n['start_time'], 'end' => $n['end_time'] ) ) );
 		return $this->insert_session( $activity_id, $n );
 	}
 
@@ -427,8 +440,11 @@ class ActivityService {
 		if ( $act && $n['session_date'] !== (string) $cur['session_date'] ) { // si controlla solo se la data cambia: le date già presenti non bloccano altre modifiche
 			self::assert_in_social_year( (string) $act['social_year'], (string) $n['session_date'], 'La data dell\'evento' );
 		}
-		if ( $n['session_date'] !== (string) $cur['session_date'] || $n['start_time'] !== $cur['start_time'] || $n['end_time'] !== $cur['end_time'] ) { // si controlla solo se cambia quando si tiene
-			$this->assert_dates_free( (int) $cur['activity_id'], array( array( 'date' => $n['session_date'], 'start' => $n['start_time'], 'end' => $n['end_time'] ) ) );
+		if ( $act && ! empty( $n['end_date'] ) && $n['end_date'] !== (string) ( $cur['end_date'] ?? '' ) ) {
+			self::assert_in_social_year( (string) $act['social_year'], (string) $n['end_date'], 'La data di fine dell\'evento' );
+		}
+		if ( $n['session_date'] !== (string) $cur['session_date'] || $n['end_date'] !== ( $cur['end_date'] ?? null ) || $n['start_time'] !== $cur['start_time'] || $n['end_time'] !== $cur['end_time'] ) { // si controlla solo se cambia quando si tiene
+			$this->assert_dates_free( (int) $cur['activity_id'], array( array( 'date' => $n['session_date'], 'end_date' => $n['end_date'], 'start' => $n['start_time'], 'end' => $n['end_time'] ) ) );
 		}
 		$this->db()->update( Db::t( 'sessions' ), $n, array( 'id' => $session_id ) );
 		Audit::log( 'session.updated', 'activity', (int) $cur['activity_id'], array( 'session' => $session_id ) );
@@ -745,7 +761,7 @@ class ActivityService {
 	public function bookings_for_person( int $person_id ): array {
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT b.*, s.session_date, s.start_time, s.location, s.cancelled_at AS session_cancelled_at, s.activity_id, a.name AS activity_name, a.kind, a.booking_qr '
+				'SELECT b.*, s.session_date, s.end_date, s.start_time, s.location, s.cancelled_at AS session_cancelled_at, s.activity_id, a.name AS activity_name, a.kind, a.booking_qr '
 				. 'FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . ' s ON s.id = b.session_id '
 				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL WHERE b.person_id = %d ORDER BY s.session_date DESC, s.id DESC',
 				$person_id
@@ -814,7 +830,7 @@ class ActivityService {
 		) ?: array() as $r ) {
 			$out[] = array(
 				'type' => 'event', 'activity_id' => (int) $r['activity_id'], 'activity_name' => $r['name'], 'when' => $r['session_date'], 'time' => $r['start_time'],
-				'session_id' => (int) $r['session_id'], 'checked_in' => ! empty( $r['checked_in_at'] ), 'ended' => $r['session_date'] < current_time( 'Y-m-d' ),
+				'session_id' => (int) $r['session_id'], 'checked_in' => ! empty( $r['checked_in_at'] ), 'ended' => (string) ( $r['end_date'] ?? '' ) !== '' ? $r['end_date'] < current_time( 'Y-m-d' ) : $r['session_date'] < current_time( 'Y-m-d' ),
 			);
 		}
 		foreach ( $db->get_results(
@@ -977,8 +993,10 @@ class ActivityService {
 		if ( ! empty( $b['checked_in_at'] ) ) {
 			return array( 'status' => 'already', 'at' => $b['checked_in_at'] );
 		}
-		if ( ! $force && $s['session_date'] !== current_time( 'Y-m-d' ) ) {
-			throw new \InvalidArgumentException( 'Gli ingressi si registrano nel giorno dell\'evento (' . ( new \DateTimeImmutable( $s['session_date'] ) )->format( 'd/m/Y' ) . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		$today = current_time( 'Y-m-d' );
+		$last  = (string) ( $s['end_date'] ?? '' ) !== '' ? (string) $s['end_date'] : (string) $s['session_date'];
+		if ( ! $force && ( $today < (string) $s['session_date'] || $today > $last ) ) { // gli ingressi si registrano in uno qualunque dei giorni dell'evento
+			throw new \InvalidArgumentException( 'Gli ingressi si registrano nel giorno dell\'evento (' . ( new \DateTimeImmutable( $s['session_date'] ) )->format( 'd/m/Y' ) . ( $last !== (string) $s['session_date'] ? ' – ' . ( new \DateTimeImmutable( $last ) )->format( 'd/m/Y' ) : '' ) . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$now = Db::now();
 		$this->db()->update( $tbl, array( 'checked_in_at' => $now, 'checked_in_by' => get_current_user_id() ?: null ), array( 'id' => (int) $b['id'] ) );
@@ -1524,12 +1542,12 @@ class ActivityService {
 		) ?: array();
 	}
 
-	/** Date non annullate tra due giorni (inclusi), in ordine, con i dati dell'attività. */
+	/** Date non annullate che toccano l'intervallo tra due giorni (inclusi: una data su più giorni compare se anche solo un giorno cade dentro), in ordine, con i dati dell'attività. */
 	public function sessions_between( string $from, string $to, int $limit = 500 ): array {
 		return $this->db()->get_results(
 			$this->db()->prepare(
 				'SELECT s.*, a.name AS activity_name, a.kind, a.fee_cents, a.guest_fee_cents FROM ' . Db::t( 'sessions' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL '
-				. 'WHERE s.cancelled_at IS NULL AND s.session_date >= %s AND s.session_date <= %s ORDER BY s.session_date, s.start_time, s.id LIMIT %d',
+				. 'WHERE s.cancelled_at IS NULL AND COALESCE(s.end_date, s.session_date) >= %s AND s.session_date <= %s ORDER BY s.session_date, s.start_time, s.id LIMIT %d',
 				$from,
 				$to,
 				max( 1, $limit )
@@ -1538,12 +1556,12 @@ class ActivityService {
 		) ?: array();
 	}
 
-	/** Prossime date non annullate (da oggi), con i dati dell'attività e i posti occupati. */
+	/** Prossime date non annullate (da oggi, comprese quelle già iniziate e non ancora finite), con i dati dell'attività e i posti occupati. */
 	public function upcoming_sessions( int $limit = 10, ?int $activity_id = null ): array {
 		$sql  = 'SELECT s.*, a.name AS activity_name, a.kind, a.fee_cents, a.guest_fee_cents, '
 			. '(SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " b WHERE b.session_id = s.id AND b.status = 'booked') AS booked_count "
 			. 'FROM ' . Db::t( 'sessions' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL '
-			. 'WHERE s.cancelled_at IS NULL AND s.session_date >= %s';
+			. 'WHERE s.cancelled_at IS NULL AND COALESCE(s.end_date, s.session_date) >= %s';
 		$args = array( Db::today() );
 		if ( $activity_id ) {
 			$sql   .= ' AND a.id = %d';

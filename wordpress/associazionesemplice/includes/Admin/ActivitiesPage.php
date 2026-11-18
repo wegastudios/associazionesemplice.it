@@ -60,7 +60,7 @@ final class ActivitiesPage {
 		$next     = array(); // la prima data futura non annullata di ogni evento: è quella di cui l'elenco mostra i partecipanti attesi
 		foreach ( $sessions as $list ) {
 			foreach ( $list as $x ) {
-				if ( empty( $x['cancelled_at'] ) && $x['session_date'] >= $today ) {
+				if ( empty( $x['cancelled_at'] ) && \AssociazioneSemplice\ActivityService::last_day( $x ) >= $today ) {
 					$next[] = (int) $x['id'];
 					break;
 				}
@@ -247,7 +247,7 @@ final class ActivitiesPage {
 				$sessions = self::sessions_of( (int) $a['id'] );
 				$next     = null;
 				foreach ( $sessions as $x ) {
-					if ( empty( $x['cancelled_at'] ) && $x['session_date'] >= $today ) {
+					if ( empty( $x['cancelled_at'] ) && \AssociazioneSemplice\ActivityService::last_day( $x ) >= $today ) {
 						$next = $x;
 						break;
 					}
@@ -341,7 +341,7 @@ final class ActivitiesPage {
 		$first = '';
 		foreach ( Plugin::activities()->sessions( $id ) as $s ) {
 			$by[ $s['session_date'] ][] = $s;
-			if ( '' === $first && empty( $s['cancelled_at'] ) && $s['session_date'] >= $today ) {
+			if ( '' === $first && empty( $s['cancelled_at'] ) && \AssociazioneSemplice\ActivityService::last_day( $s ) >= $today ) {
 				$first = $s['session_date']; // di partenza si mostra il periodo della prossima data
 			}
 		}
@@ -884,7 +884,7 @@ final class ActivitiesPage {
 				array_filter(
 					Plugin::activities()->sessions( $id ),
 					function ( $s ) {
-						return empty( $s['cancelled_at'] ) && $s['session_date'] >= current_time( 'Y-m-d' );
+						return empty( $s['cancelled_at'] ) && \AssociazioneSemplice\ActivityService::last_day( $s ) >= current_time( 'Y-m-d' );
 					}
 				)
 			);
@@ -1102,7 +1102,7 @@ final class ActivitiesPage {
 
 				Ui::form_open( 'asem_update_session', $back );
 				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ), Html::allowed() );
-				echo '<p class="description">Modifica la data: <input type="date" name="session_date" value="' . esc_attr( $s['session_date'] ) . '"> ore <input type="time" name="start_time" value="' . esc_attr( (string) $s['start_time'] ) . '"> '
+				echo '<p class="description">Modifica la data: <input type="date" name="session_date" value="' . esc_attr( $s['session_date'] ) . '"> ore <input type="time" name="start_time" value="' . esc_attr( (string) $s['start_time'] ) . '"> fino al <input type="date" name="end_date" value="' . esc_attr( (string) ( $s['end_date'] ?? '' ) ) . '"> alle <input type="time" name="end_time" value="' . esc_attr( (string) ( $s['end_time'] ?? '' ) ) . '"> '
 					. 'luogo <input type="text" name="location" value="' . esc_attr( (string) $s['location'] ) . '"> posti <input type="number" min="1" name="capacity" class="small-text" value="' . esc_attr( null === $cap ? '' : (string) $cap ) . '"> <button class="button button-small">Salva</button></p>';
 				Ui::form_close();
 
