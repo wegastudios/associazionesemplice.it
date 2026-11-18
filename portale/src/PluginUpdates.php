@@ -64,10 +64,18 @@ final class PluginUpdates {
 		if ( $newer ) {
 			$log = Releases::changelog( $p, $latest, $cur, array_column( $all, 'version' ), Releases::customChangelogs( $all ) );
 			if ( '' !== $log ) {
-				$out['changelog'] = $log;
+				$out['changelog'] = self::undatedTitles( $log );
 			}
 		}
 		return array( 200, (string) json_encode( $out, JSON_UNESCAPED_SLASHES ), array( 'Cache-Control: no-store' ) );
+	}
+
+	/**
+	 * Titoli «## x.y.z – AAAA-MM-GG» → «## x.y.z». I plugin fino alla 1.3.26 leggono solo titoli senza data e, se non ne trovano,
+	 * scartano tutto il changelog; i più recenti leggono anche i titoli senza data. La data resta nella pagina pubblica del changelog.
+	 */
+	public static function undatedTitles( string $md ): string {
+		return (string) preg_replace( '/^(##\s+\d+(?:\.\d+){1,2})\s+[–-]\s+\d{4}-\d{2}-\d{2}[ \t]*$/mu', '$1', $md );
 	}
 
 	public static function packageUrl( string $product, string $version, ?int $now = null ): string {
