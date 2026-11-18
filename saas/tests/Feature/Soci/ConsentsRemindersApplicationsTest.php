@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
@@ -95,7 +96,16 @@ it('registra un consenso dalla scheda, per il minore dato dal tutore', function 
         ->where('person.consents.images.granted', true)->where('person.consents.images.given_by', 'Anna Rossi'));
 });
 
+/** Esegue i lavori accodati come farebbe il lavoratore, fuori da ogni associazione. */
+function runQueuedReminders(): void
+{
+    foreach (Queue::pushed(SendReminderEmail::class) as $job) {
+        $job->handle(app(OrgContext::class));
+    }
+}
+
 it('manda i promemoria una volta sola, al socio o al genitore del minore', function (): void {
+    Queue::fake();
     $this->orgContext()->run($this->org->id, function (): void {
         app(OrgSettings::class)->set(ReminderService::ENABLED, true);
         $today = now()->toDateString();
@@ -117,13 +127,16 @@ it('manda i promemoria una volta sola, al socio o al genitore del minore', funct
         $first = $r->run($today);
         expect($first)->toBe(['membership_soon' => 0, 'membership_expired' => 0, 'cert_soon' => 1, 'cert_expired' => 1])
             ->and($r->run($today))->toBe(['membership_soon' => 0, 'membership_expired' => 0, 'cert_soon' => 0, 'cert_expired' => 0]);
-
-        Notification::assertSentTo(new AnonymousNotifiable, MemberNotification::class, fn ($n, $c, $notifiable) => $notifiable->routes['mail'] === 'anna@example.com' && str_contains($n->body, 'di Luca'));
-        Notification::assertSentTimes(MemberNotification::class, 2);
     });
+
+    Notification::assertNothingSent();
+    runQueuedReminders();
+    Notification::assertSentTo(new AnonymousNotifiable, MemberNotification::class, fn ($n, $c, $notifiable) => $notifiable->routes['mail'] === 'anna@example.com' && str_contains($n->body, 'di Luca'));
+    Notification::assertSentTimes(MemberNotification::class, 2);
 });
 
 it('il comando passa le associazioni che hanno acceso i promemoria', function (): void {
+    Queue::fake();
     $this->orgContext()->run($this->org->id, function (): void {
         $p = Person::create(['first_name' => 'Mario', 'last_name' => 'Bianchi', 'email' => 'mario@example.com', 'birth_date' => '1980-01-01']);
         app(CertificateService::class)->add($p->id, ['kind' => 'agonistic', 'issued_on' => now()->subYear()->toDateString(), 'expires_on' => now()->addDays(2)->toDateString()]);
@@ -135,6 +148,8 @@ it('il comando passa le associazioni che hanno acceso i promemoria', function ()
     $this->artisan('saas:reminders:send', ['--dry-run' => true])->assertSuccessful();
     Notification::assertNothingSent();
     $this->artisan('saas:reminders:send')->assertSuccessful();
+    Notification::assertNothingSent();
+    runQueuedReminders();
     Notification::assertSentTimes(MemberNotification::class, 1);
 });
 
