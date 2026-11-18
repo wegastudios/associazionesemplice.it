@@ -514,6 +514,15 @@ final class Actions {
 	}
 
 	private static function session_fields( array $p ): array {
+		$from = (string) ( $p['session_date'] ?? '' );
+		$to   = (string) ( $p['end_date'] ?? '' );
+		if ( '' !== $from && '' !== $to && $to > $from && empty( $p['confirm_long'] ) ) { // oltre 7 giorni è spesso un errore di battitura: serve la spunta
+			$a = \DateTimeImmutable::createFromFormat( 'Y-m-d', $from );
+			$b = \DateTimeImmutable::createFromFormat( 'Y-m-d', $to );
+			if ( $a && $b && (int) $a->diff( $b )->days + 1 > 7 ) {
+				throw new \InvalidArgumentException( 'Questa data dura ' . ( (int) $a->diff( $b )->days + 1 ) . ' giorni: è giusto? Se sì, spunta «Confermo la durata» e salva di nuovo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- numero calcolato, messaggio mostrato solo dopo esc_html
+			}
+		}
 		return array(
 			'session_date' => (string) ( $p['session_date'] ?? '' ),
 			'start_time'   => (string) ( $p['start_time'] ?? '' ),

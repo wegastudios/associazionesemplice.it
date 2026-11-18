@@ -1102,7 +1102,7 @@ final class ActivitiesPage {
 
 				Ui::form_open( 'asem_update_session', $back );
 				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ), Html::allowed() );
-				echo '<p class="description">Modifica la data: <input type="date" name="session_date" value="' . esc_attr( $s['session_date'] ) . '"> ore <input type="time" name="start_time" value="' . esc_attr( (string) $s['start_time'] ) . '"> fino al <input type="date" name="end_date" value="' . esc_attr( (string) ( $s['end_date'] ?? '' ) ) . '"> alle <input type="time" name="end_time" value="' . esc_attr( (string) ( $s['end_time'] ?? '' ) ) . '"> '
+				echo '<p class="description">Modifica la data: <input type="date" name="session_date" value="' . esc_attr( $s['session_date'] ) . '"> ore <input type="time" name="start_time" value="' . esc_attr( (string) $s['start_time'] ) . '"> fino al <input type="date" name="end_date" value="' . esc_attr( (string) ( $s['end_date'] ?? '' ) ) . '"> alle <input type="time" name="end_time" value="' . esc_attr( (string) ( $s['end_time'] ?? '' ) ) . '"> <label><input type="checkbox" name="confirm_long" value="1"> Confermo la durata (oltre 7 giorni)</label> '
 					. 'luogo <input type="text" name="location" value="' . esc_attr( (string) $s['location'] ) . '"> posti <input type="number" min="1" name="capacity" class="small-text" value="' . esc_attr( null === $cap ? '' : (string) $cap ) . '"> <button class="button button-small">Salva</button></p>';
 				Ui::form_close();
 

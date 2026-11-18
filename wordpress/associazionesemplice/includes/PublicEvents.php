@@ -546,7 +546,8 @@ final class PublicEvents {
 			$first = $rows[0];
 			$t     = Frontend\Views::date_long( (string) $first['session_date'] ) . ( ! empty( $first['start_time'] ) ? ' · ore ' . $first['start_time'] : '' );
 			if ( ! empty( $first['end_date'] ) ) { // su più giorni: da quando a quando
-				$t = 'Da ' . $t . ' a ' . Frontend\Views::date_long( (string) $first['end_date'] ) . ( ! empty( $first['end_time'] ) ? ' · ore ' . $first['end_time'] : '' );
+				$t = 'Da ' . Frontend\Views::date_long( (string) $first['session_date'] ) . ( ! empty( $first['start_time'] ) ? ', ore ' . $first['start_time'] : '' )
+					. ', a ' . Frontend\Views::date_long( (string) $first['end_date'] ) . ( ! empty( $first['end_time'] ) ? ', ore ' . $first['end_time'] : '' );
 			}
 			return count( $rows ) > 1 ? $t . ' (e altre ' . ( count( $rows ) - 1 ) . ' date)' : $t;
 		}
@@ -1246,7 +1247,13 @@ final class PublicEvents {
 		$h .= '<h4 class="asemf-card-title"><a href="' . esc_url( $url ) . '">' . esc_html( get_the_title( $post ) ) . '</a></h4>';
 		if ( ! empty( $s['end_date'] ) ) { // su più giorni: «Dal 12 al 14 giugno», con «In corso» finché dura
 			$tse  = (int) strtotime( (string) $s['end_date'] . ' 12:00:00' );
-			$span = 'Dal ' . wp_date( 'j', $ts ) . ( wp_date( 'Y-m', $ts ) === wp_date( 'Y-m', $tse ) ? '' : ' ' . wp_date( 'F', $ts ) ) . ' al ' . wp_date( 'j F', $tse );
+			if ( wp_date( 'Y', $ts ) !== wp_date( 'Y', $tse ) ) { // a cavallo di due anni: «Dal 30 dicembre 2026 al 2 gennaio 2027»
+				$span = 'Dal ' . wp_date( 'j F Y', $ts ) . ' al ' . wp_date( 'j F Y', $tse );
+			} elseif ( wp_date( 'Y-m', $ts ) !== wp_date( 'Y-m', $tse ) ) { // a cavallo di due mesi: «Dal 30 maggio al 2 giugno»
+				$span = 'Dal ' . wp_date( 'j F', $ts ) . ' al ' . wp_date( 'j F', $tse );
+			} else {
+				$span = 'Dal ' . wp_date( 'j', $ts ) . ' al ' . wp_date( 'j F', $tse );
+			}
 			$h   .= '<div class="asemf-small">' . esc_html( $span ) . ( '' !== $time ? esc_html( ' · ore ' . $time ) : '' ) . ( (string) $s['session_date'] <= Db::today() && (string) $s['end_date'] >= Db::today() ? ' <span class="asemf-badge">In corso</span>' : '' ) . '</div>';
 		} else {
 			$h .= '<div class="asemf-small">' . esc_html( ucfirst( wp_date( 'l j F', $ts ) ) . ( '' !== $time ? ' · ore ' . $time : '' ) ) . '</div>';

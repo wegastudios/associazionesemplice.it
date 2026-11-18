@@ -1001,7 +1001,9 @@ class ActivityService {
 		$today = current_time( 'Y-m-d' );
 		$last  = (string) ( $s['end_date'] ?? '' ) !== '' ? (string) $s['end_date'] : (string) $s['session_date'];
 		if ( ! $force && ( $today < (string) $s['session_date'] || $today > $last ) ) { // gli ingressi si registrano in uno qualunque dei giorni dell'evento
-			throw new \InvalidArgumentException( 'Gli ingressi si registrano nel giorno dell\'evento (' . ( new \DateTimeImmutable( $s['session_date'] ) )->format( 'd/m/Y' ) . ( $last !== (string) $s['session_date'] ? ' – ' . ( new \DateTimeImmutable( $last ) )->format( 'd/m/Y' ) : '' ) . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( $last !== (string) $s['session_date']
+				? 'Gli ingressi si registrano nei giorni dell\'evento, dal ' . ( new \DateTimeImmutable( $s['session_date'] ) )->format( 'd/m/Y' ) . ' al ' . ( new \DateTimeImmutable( $last ) )->format( 'd/m/Y' ) . '.'
+				: 'Gli ingressi si registrano nel giorno dell\'evento (' . ( new \DateTimeImmutable( $s['session_date'] ) )->format( 'd/m/Y' ) . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$now = Db::now();
 		$this->db()->update( $tbl, array( 'checked_in_at' => $now, 'checked_in_by' => get_current_user_id() ?: null ), array( 'id' => (int) $b['id'] ) );
