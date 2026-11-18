@@ -7059,9 +7059,15 @@ $ts_row = function ( int $pid, string $label ) use ( $wpdb ) {
 $ts_mk = function ( string $n ) use ( $people ) {
 	return $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => $n, 'email' => strtolower( $n ) . '.tessera@example.com', 'joined_on' => '2020-01-01' ) );
 };
+$set_tm = function ( int $m ) { // tessera: anno sociale e anno fiscale allo stesso mese
+	$o                            = Settings::all();
+	$o['social_year_start_month'] = $m;
+	$o['fiscal_start_month']      = $m;
+	update_option( Settings::OPTION, $o );
+};
 $ts_d = '2026-11-13';
 // anno sociale a gennaio: la tessera è l'anno solare, come sempre
-$set_sm( 1 );
+$set_tm( 1 );
 $ts_a = $ts_mk( 'Solare' );
 $ts_l = Settings::membership_year( $ts_d )->label();
 $people->set_membership( $ts_a, $ts_l, true );
@@ -7069,7 +7075,7 @@ $ts_r = $ts_row( $ts_a, '2026' );
 asem_ok( '2026' === $ts_l && $ts_r && '2026-01-01' === $ts_r['valid_from'] && '2026-12-31' === $ts_r['valid_to'], 'tessera, anno sociale a gennaio: è l\'anno solare, etichetta «2026», dal 1/1 al 31/12' );
 asem_ok( array( 'year' => '2026', 'free' => null ) === $people->membership_plan( $ts_mk( 'Solarenuovo' ), '2026-06-01' ) && array( 'year' => '2027', 'free' => null ) === $people->membership_plan( $ts_a, '2026-12-15' ) && array( 'year' => '2027', 'free' => '2026' ) === $people->membership_plan( $ts_mk( 'Solarenuovo2' ), '2026-12-15' ), 'tessera solare: stesse etichette di prima, il rinnovo per l\'anno dopo si apre a dicembre' );
 // anno sociale a settembre: la tessera 2026/2027 va dal 1/9/2026 al 31/8/2027
-$set_sm( 9 );
+$set_tm( 9 );
 $ts_b = $ts_mk( 'Settembre' );
 $ts_l = Settings::membership_year( $ts_d )->label();
 $people->set_membership( $ts_b, $ts_l, true );
@@ -7081,7 +7087,7 @@ $ts_pn = $ts_mk( 'Nuovosett' );
 asem_ok( array( 'year' => '2026/2027', 'free' => null ) === $people->membership_plan( $ts_pn, '2027-03-01' ) && array( 'year' => '2027/2028', 'free' => null ) === $people->membership_plan( $ts_b, '2027-08-15' ) && array( 'year' => '2027/2028', 'free' => '2026/2027' ) === $people->membership_plan( $ts_pn, '2027-08-15' ), 'tessera a settembre: rinnovo anticipato solo negli ultimi giorni (chi ha l\'anno rinnova, il nuovo ha l\'anno in corso in omaggio)' );
 asem_ok( array( 'year' => '2026/2027', 'free' => null ) === $people->membership_plan( $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Rinnovolasciato', 'email' => 'rinnovolasciato.tessera@example.com', 'joined_on' => '2020-01-01' ) ), '2026-11-13' ), 'tessera: a metà anno la quota va all\'anno in corso' );
 // anno sociale a luglio
-$set_sm( 7 );
+$set_tm( 7 );
 $ts_c = $ts_mk( 'Luglio' );
 $people->set_membership( $ts_c, Settings::membership_year( $ts_d )->label(), true );
 $ts_r = $ts_row( $ts_c, '2026/2027' );
@@ -7093,12 +7099,12 @@ asem_ok( $ts_r && '2026-09-01' === $ts_r['valid_from'] && '2027-08-31' === $ts_r
 $ts_r = $ts_row( $ts_a, '2026' );
 asem_ok( $ts_r && '2026-01-01' === $ts_r['valid_from'] && '2026-12-31' === $ts_r['valid_to'], 'cambio mese: la tessera solare già emessa non cambia' );
 // con tessere ancora valide che partono in un altro mese, il mese non si cambia (si confonderebbero le etichette); gennaio sempre possibile
-$set_sm( 9 );
+$set_tm( 9 );
 $people->set_membership( $ts_pn, Settings::membership_year()->label(), true );
 $ts_msg = asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 7 ) ); } );
 asem_ok( null !== $ts_msg && false !== strpos( $ts_msg, 'tessere ancora valide' ) && 9 === Settings::membership_start_month(), 'cambio mese: con tessere in corso che partono in un altro mese non si cambia (messaggio chiaro, nulla viene toccato)' );
 asem_ok( null === asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 1 ) ); } ) && 1 === Settings::membership_start_month(), 'cambio mese: passare a gennaio è sempre possibile' );
-$set_sm( 9 );
+$set_tm( 9 );
 // la tessera non dipende dall'esercizio: con l'esercizio a luglio e a settembre nulla cambia per la tessera
 $ts_fm = function () { return 7; };
 add_filter( 'asem_fiscal_start_month', $ts_fm );
