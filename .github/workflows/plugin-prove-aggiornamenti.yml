@@ -186,7 +186,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Download the published Pro from the portal (skip when the secret is missing)
+      - name: Download the published Pro from the portal (skip with a warning when the secret is missing)
         id: scarica
         shell: bash
         env:
@@ -194,7 +194,7 @@ jobs:
           DOMINIO: ${{ vars.DEMO_LICENSE_DOMAIN || 'associazionesemplice.it' }}
         run: |
           if [ -z "$DEMO_LICENSE_KEY" ]; then
-            echo "Il segreto DEMO_LICENSE_KEY non esiste: la prova del Pro pubblicato viene saltata."
+            echo "::warning title=Prova del Pro pubblicato SALTATA::Saltato: manca il segreto DEMO_LICENSE_KEY, il Pro pubblicato non è stato provato."
             echo "have=false" >> "$GITHUB_OUTPUT"
             {
               echo "### Pro dalla versione pubblicata"
