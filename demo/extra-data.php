@@ -496,7 +496,10 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 		for ( $m = -3; $m <= 2; $m++ ) { // gli ultimi tre mesi, quello in corso e i due prossimi
 			$ym = gmdate( 'Y-m', (int) strtotime( gmdate( 'Y-m-15' ) . ' ' . ( $m >= 0 ? '+' : '' ) . $m . ' months' ) );
 			if ( 'il 18' === $e[8] ) {
-				$day = $ym . '-18'; // la festa dell'associazione è sempre il 18
+				if ( -1 !== $m ) {
+					continue; // la festa dell'associazione è una sola volta l'anno: il 18 del mese scorso (oggi 18 ottobre)
+				}
+				$day = $ym . '-18';
 			} elseif ( 'venerdì a caso' === $e[8] ) { // un venerdì del mese scelto a caso (sempre lo stesso a parità di mese e concerto), diverso da quello dell'altro concerto e dagli altri eventi
 				$fridays = array();
 				for ( $d = 1; $d <= 31; $d++ ) {
