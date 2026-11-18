@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use App\Modules\Attivita\Services\WaitlistPromotedNotification;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Contracts\ConsentChannel;
 use App\Modules\Soci\Contracts\ConsentSource;
+use App\Modules\Soci\Jobs\SendApplicationEmail;
 use App\Modules\Soci\Jobs\SendReminderEmail;
 use App\Modules\Soci\Models\Application;
 use App\Modules\Soci\Models\Person;
@@ -19,7 +19,6 @@ use App\Modules\Soci\Services\GuardianService;
 use App\Modules\Soci\Services\MemberNotification;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\ReminderService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -316,7 +315,18 @@ it('il limite di frequenza dei promemoria si regola da configurazione', function
     expect(array_map(static fn ($l) => $l->maxAttempts, $limits))->toBe([5, 2]);
 });
 
-it('le email di conferma della domanda e di promozione dalla lista d\'attesa partono in coda', function (): void {
-    expect(new MemberNotification('Oggetto', 'Ciao,', 'Testo', 'Alfa'))->toBeInstanceOf(ShouldQueue::class)
-        ->and(new WaitlistPromotedNotification('Ciao,', 'Testo', null, null, 'Alfa'))->toBeInstanceOf(ShouldQueue::class);
+it('la conferma della domanda va in coda con soli identificativi e parte con indirizzo e testo ricavati dopo', function (): void {
+    Queue::fake();
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(app(ApplicationService::class)->submit(adultApplication(), 'Polisportiva Alfa'))->toBe([]);
+    });
+
+    Notification::assertNothingSent();
+    Queue::assertPushed(SendApplicationEmail::class, 1);
+    Queue::assertPushed(SendApplicationEmail::class, fn (SendApplicationEmail $job) => ! str_contains(serialize($job), 'mario@example.com') && ! str_contains(serialize($job), 'Mario'));
+
+    foreach (Queue::pushed(SendApplicationEmail::class) as $job) {
+        $job->handle(app(OrgContext::class));
+    }
+    Notification::assertSentOnDemand(MemberNotification::class, fn (MemberNotification $n, array $channels, object $notifiable) => $notifiable->routes['mail'] === 'mario@example.com' && $n->greeting === 'Ciao Mario,');
 });

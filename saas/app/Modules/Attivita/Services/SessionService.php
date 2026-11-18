@@ -6,6 +6,7 @@ namespace App\Modules\Attivita\Services;
 
 use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Contracts\ActivityOccupancy;
+use App\Modules\Attivita\Jobs\SendPromotionEmail;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Models\ActivitySession;
 use App\Modules\Attivita\Models\SessionBooking;
@@ -436,17 +437,38 @@ final readonly class SessionService
     }
 
     /**
-     * Avvisa per email chi è passato dalla lista d'attesa alla prenotazione (il genitore o tutore operativo per un minore).
-     * Senza email l'iscrizione resta valida; un errore di invio non la tocca.
+     * Accoda l'avviso per email a chi è passato dalla lista d'attesa alla prenotazione. Nel lavoro ci sono solo
+     * identificativi: indirizzo e testo si ricavano al momento dell'invio. Un errore non tocca l'iscrizione.
      *
-     * @return 'sent'|'no_email'|'failed'
+     * @return 'queued'|'failed'
      */
     private function notifyPromoted(ActivitySession $s, string $personId, bool $toPay): string
     {
+        try {
+            SendPromotionEmail::dispatch($this->context->require()->id, $s->id, $personId, $toPay);
+        } catch (Throwable $e) {
+            report($e);
+
+            return 'failed';
+        }
+
+        return 'queued';
+    }
+
+    /**
+     * Manda l'avviso di promozione (dal lavoro in coda): il genitore o tutore operativo per un minore. Senza email
+     * non fa niente; un errore di posta si rilancia, così il lavoro riprova.
+     */
+    public function sendPromotion(string $sessionId, string $personId, bool $toPay): void
+    {
+        $s = ActivitySession::query()->find($sessionId);
+        if ($s === null) {
+            return;
+        }
         $c = $this->connection();
         $p = $c->table('app.people')->where('id', $personId)->first(['first_name', 'email', 'anonymized_at', 'left_on']);
         if ($p === null || $p->anonymized_at !== null || $p->left_on !== null) {
-            return 'no_email';
+            return;
         }
         $birth = $this->people->card($personId)['birth_date'] ?? null;
         $minor = is_string($birth) && CarbonImmutable::parse($birth)->addYears(18)->isFuture();
@@ -458,14 +480,14 @@ final readonly class SessionService
         }
         $email = $to !== null && is_string($to->email ?? null) ? $to->email : '';
         if ($to === null || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
-            return 'no_email';
+            return;
         }
 
         $activity = $this->activities->find($s->activity_id);
         $when = $s->session_date->format('d/m/Y').(is_string($s->start_time) && $s->start_time !== '' ? ', alle ore '.substr($s->start_time, 0, 5) : '');
         $org = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->first(['id', 'name', 'slug']);
         if ($org === null || ! is_string($org->id ?? null)) {
-            return 'failed';
+            return;
         }
         $area = $this->areaUrl($org->id, is_string($org->slug ?? null) ? $org->slug : '');
         $cancel = $area === null ? 'scrivi alla segreteria' : "annulla dall'area soci o scrivi alla segreteria";
@@ -474,21 +496,14 @@ final readonly class SessionService
             : "Si è liberato un posto: ora hai un posto per {$activity->name} del {$when}. Se non puoi venire, {$cancel}.";
         $payLine = $area === null ? 'Per la quota da versare scrivi alla segreteria.' : 'La quota da versare la trovi in Quote, nell\'area soci.';
 
-        try {
-            Notification::route('mail', $email)->notify(new WaitlistPromotedNotification(
-                'Ciao '.(is_string($to->first_name ?? null) ? $to->first_name : '').',',
-                $body,
-                $toPay ? $payLine : null,
-                $area,
-                is_string($org->name ?? null) ? $org->name : '',
-            ));
-        } catch (Throwable $e) {
-            report($e);
-
-            return 'failed';
-        }
-
-        return 'sent';
+        // Siamo già dentro un lavoro in coda: la posta parte subito, senza accodarla una seconda volta.
+        Notification::route('mail', $email)->notifyNow(new WaitlistPromotedNotification(
+            'Ciao '.(is_string($to->first_name ?? null) ? $to->first_name : '').',',
+            $body,
+            $toPay ? $payLine : null,
+            $area,
+            is_string($org->name ?? null) ? $org->name : '',
+        ));
     }
 
     /** Indirizzo dell'area soci (dominio proprio se verificato), solo se l'associazione ha il pacchetto. */

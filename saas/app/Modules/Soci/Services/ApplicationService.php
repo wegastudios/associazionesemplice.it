@@ -11,6 +11,7 @@ use App\Modules\Soci\Contracts\ConsentChannel;
 use App\Modules\Soci\Contracts\ConsentSource;
 use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Contracts\PeopleError;
+use App\Modules\Soci\Jobs\SendApplicationEmail;
 use App\Modules\Soci\Models\Application;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Rules\ApplicationRules;
@@ -82,9 +83,7 @@ final readonly class ApplicationService
         $application->save();
         $this->audit->record('application.submitted', 'app.applications', $application->id, ['minor' => $check['minor']]);
 
-        $c = $this->contact($data, $check['minor']);
-        $about = $c['about'] !== '' ? " per {$c['about']}" : '';
-        $this->mail($c['email'], 'Abbiamo ricevuto la domanda di adesione', "Ciao {$c['name']},", "abbiamo ricevuto la domanda di adesione{$about}. La segreteria la esamina e ti risponde al più presto.", $orgName);
+        $this->queueMail($application->id, 'received', $orgName);
 
         return [];
     }
@@ -170,9 +169,7 @@ final readonly class ApplicationService
             return $person->id;
         });
 
-        $c = $this->contact($data, $application->minor);
-        $about = $c['about'] !== '' ? " di {$c['about']}" : '';
-        $this->mail($c['email'], 'Domanda di adesione accolta', "Ciao {$c['name']},", "la domanda di adesione{$about} è stata accolta: benvenuto! Per la tessera e la quota rivolgiti alla segreteria.", $orgName);
+        $this->queueMail($application->id, 'accepted', $orgName);
 
         return $personId;
     }
@@ -186,9 +183,7 @@ final readonly class ApplicationService
         $this->decide($application, 'rejected', mb_substr(trim($reason), 0, 200), null);
 
         // Il motivo resta nel gestionale; a chi ha fatto domanda va una risposta, senza dettagli interni.
-        $c = $this->contact($application->data, $application->minor);
-        $about = $c['about'] !== '' ? " di {$c['about']}" : '';
-        $this->mail($c['email'], 'Domanda di adesione non accolta', "Ciao {$c['name']},", "la domanda di adesione{$about} non è stata accolta. Per chiarimenti rivolgiti alla segreteria.", $orgName);
+        $this->queueMail($application->id, 'rejected', $orgName);
     }
 
     /**
@@ -265,16 +260,43 @@ final readonly class ApplicationService
         return is_scalar($data[$key] ?? null) ? trim((string) $data[$key]) : '';
     }
 
-    private function mail(string $to, string $subject, string $greeting, string $body, string $orgName): void
+    /** Accoda l'email a chi ha fatto domanda (solo identificativi nel lavoro). La domanda resta salvata anche se l'accodamento fallisce. */
+    private function queueMail(string $applicationId, string $kind, string $orgName): void
     {
-        if (filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+        try {
+            SendApplicationEmail::dispatch($this->context->require()->id, $applicationId, $kind, $orgName);
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
+     * Manda l'email di una domanda (dal lavoro in coda): $kind è received, accepted o rejected. Indirizzo e testo si
+     * ricavano adesso dalla domanda; un errore di posta si rilancia, così il lavoro riprova.
+     */
+    public function sendMail(string $applicationId, string $kind, string $orgName): void
+    {
+        $application = Str::isUuid($applicationId) ? Application::query()->find($applicationId) : null;
+        if ($application === null) {
             return;
         }
-        try {
-            Notification::route('mail', $to)->notify(new MemberNotification($subject, $greeting, $body, $orgName));
-        } catch (Throwable $e) {
-            report($e); // la domanda resta salvata anche se l'email non parte
+        $c = $this->contact($application->data, $application->minor);
+        if (filter_var($c['email'], FILTER_VALIDATE_EMAIL) === false) {
+            return;
         }
+        $of = $c['about'] !== '' ? " di {$c['about']}" : '';
+        [$subject, $body] = match ($kind) {
+            'received' => ['Abbiamo ricevuto la domanda di adesione', 'abbiamo ricevuto la domanda di adesione'.($c['about'] !== '' ? " per {$c['about']}" : '').'. La segreteria la esamina e ti risponde al più presto.'],
+            'accepted' => ['Domanda di adesione accolta', "la domanda di adesione{$of} è stata accolta: benvenuto! Per la tessera e la quota rivolgiti alla segreteria."],
+            'rejected' => ['Domanda di adesione non accolta', "la domanda di adesione{$of} non è stata accolta. Per chiarimenti rivolgiti alla segreteria."],
+            default => [null, null],
+        };
+        if ($subject === null || $body === null) {
+            return;
+        }
+
+        // Siamo già dentro un lavoro in coda: la posta parte subito, senza accodarla una seconda volta.
+        Notification::route('mail', $c['email'])->notifyNow(new MemberNotification($subject, "Ciao {$c['name']},", $body, $orgName));
     }
 
     private function connection(): ConnectionInterface
