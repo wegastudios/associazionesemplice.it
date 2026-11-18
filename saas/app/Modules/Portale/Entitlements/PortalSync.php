@@ -29,6 +29,7 @@ final readonly class PortalSync
         private OrgContext $context,
         private AuditLog $audit,
         private PlanLimits $limits,
+        private EntitlementReader $reader,
     ) {}
 
     /**
@@ -149,6 +150,7 @@ final readonly class PortalSync
                 'token' => $token,
                 'received_at' => now(),
             ]], ['org_id'], ['rev', 'status', 'until', 'claims', 'token', 'received_at']);
+            $this->reader->forget($claims['sub']);
 
             $this->orgs->setStatus($claims['sub'], self::orgStatus($claims['status'], $claims['until'], $this->config->graceDays()));
 
