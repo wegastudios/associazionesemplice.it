@@ -92,7 +92,8 @@ final class WpDashboard {
 	public static function week_days(): array {
 		$today = current_time( 'Y-m-d' );
 		$days  = array();
-		foreach ( Calendar::occurrences( $today, gmdate( 'Y-m-d', strtotime( $today . ' +6 days' ) ) ) as $o ) {
+		$to = gmdate( 'Y-m-d', strtotime( $today . ' +6 days' ) );
+		foreach ( Calendar::spread( Calendar::occurrences( $today, $to ), $today, $to ) as $o ) { // un evento su più giorni compare in ogni suo giorno
 			$days[ $o['date'] ][] = $o;
 		}
 		ksort( $days );
@@ -116,7 +117,7 @@ final class WpDashboard {
 						}
 						$extra = ' · ' . $booked . ( 1 === $booked ? ' prenotato' : ' prenotati' );
 					}
-					echo '<li style="margin:3px 0">' . esc_html( $when ) . '<a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => (int) $o['activity_id'] ) ) ) . '">' . esc_html( $o['title'] ) . '</a>'
+					echo '<li style="margin:3px 0">' . esc_html( $when ) . '<a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => (int) $o['activity_id'] ) ) ) . '">' . esc_html( $o['title'] . Calendar::day_label( $o ) ) . '</a>'
 						. ( '' !== (string) $o['location'] ? ' <span class="description">' . esc_html( (string) $o['location'] ) . '</span>' : '' ) . '<span class="description">' . esc_html( $extra ) . '</span></li>';
 				}
 				echo '</ul>';

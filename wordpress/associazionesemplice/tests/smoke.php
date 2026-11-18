@@ -909,6 +909,16 @@ $mf_act = $acts->create( array( 'name' => 'Regata dal modulo', 'social_year' => 
 $acts->add_dates( $mf_act, $mf_rows, 'Porto', 10 );
 $mf_s = $acts->sessions( $mf_act );
 asem_ok( 1 === count( $mf_s ) && $mf_to === $mf_s[0]['end_date'], 'modulo: l\'evento creato dalle regole ha la data di fine' );
+// Calendario del pannello e della Bacheca: l'evento su più giorni compare in ognuno dei suoi giorni
+$cs_from = gmdate( 'Y-m-d', strtotime( $today . ' -3 days' ) );
+$cs_to   = gmdate( 'Y-m-d', strtotime( $today . ' +4 days' ) );
+$cs_occ  = array_filter( \AssociazioneSemplice\Calendar::occurrences( $cs_from, $cs_to ), function ( $o ) use ( $ms_act ) { return (int) $o['activity_id'] === (int) $ms_act; } );
+$cs_days = array_values( \AssociazioneSemplice\Calendar::spread( array_values( $cs_occ ), $cs_from, $cs_to ) );
+$cs_end  = gmdate( 'Y-m-d', strtotime( $ms_from . ' +1 day' ) ); // la regata di prova, dopo la modifica a 21:30 → 01:00, dura due giorni
+asem_ok( 2 === count( $cs_days ) && $ms_from === $cs_days[0]['date'] && $cs_end === $cs_days[1]['date'] && 2 === (int) $cs_days[1]['days'] && 2 === (int) $cs_days[1]['day_n'], 'calendario: l\'evento su più giorni compare in tutti i suoi giorni, con «giorno 2 di 2»' );
+asem_ok( ' (giorno 2 di 2)' === \AssociazioneSemplice\Calendar::day_label( $cs_days[1] ) && '' === \AssociazioneSemplice\Calendar::day_label( array( 'title' => 'x' ) ), 'calendario: l\'etichetta «giorno N di M» solo per le voci su più giorni' );
+$cs_clip = \AssociazioneSemplice\Calendar::spread( array_values( $cs_occ ), $cs_end, $cs_end );
+asem_ok( 1 === count( $cs_clip ) && $cs_end === $cs_clip[0]['date'], 'calendario: la finestra taglia i giorni fuori dall\'intervallo' );
 $pe_course = $acts->create( array( 'name' => 'Corso di acquerello', 'social_year' => $sy->label(), 'kind' => 'course', 'fee_cents' => 2000, 'lesson_weekday' => 3, 'lesson_start' => '17:00', 'lesson_end' => '18:30' ) ); // un corso compare nel calendario con le lezioni settimanali
 $pe_cpost   = \AssociazioneSemplice\PublicEvents::ensure( $pe_course );
 wp_update_post( array( 'ID' => $pe_cpost, 'post_status' => 'publish' ) );
