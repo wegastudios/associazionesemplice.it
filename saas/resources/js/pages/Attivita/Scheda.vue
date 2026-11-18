@@ -167,6 +167,7 @@ const label = 'space-y-1 text-sm';
                     <span v-if="!d.cancelled" :class="['rounded px-2 py-0.5', d.free === 0 ? 'bg-danger/15 text-danger' : 'bg-surface']">{{ d.taken }} prenotati<template v-if="d.capacity"> su {{ d.capacity }}</template></span>
                     <span v-if="d.waiting" class="text-muted">{{ d.waiting }} in attesa</span>
                     <span v-if="d.cancelled">annullata</span>
+                    <span v-else-if="d.ongoing" class="rounded bg-salvia/15 px-2 py-0.5 font-semibold">In corso</span>
                 </li>
             </ul>
             <form v-if="canEdit && !activity.archived" class="mt-4 grid gap-3 rounded-lg border border-line p-3 sm:grid-cols-4" @submit.prevent="submitDates">

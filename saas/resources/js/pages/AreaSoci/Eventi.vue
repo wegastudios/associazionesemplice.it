@@ -17,7 +17,7 @@ const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.
             <li v-for="e in events" :key="e.session_id" class="card p-4">
                 <div class="flex flex-wrap items-start gap-3">
                     <div class="min-w-0 flex-1">
-                        <p class="font-bold">{{ e.activity }}</p>
+                        <p class="font-bold">{{ e.activity }} <span v-if="e.ongoing" class="ml-2 rounded-full bg-salvia/15 px-2 py-0.5 text-xs font-semibold">In corso</span></p>
                         <p class="text-sm first-letter:uppercase">{{ e.label }}<template v-if="e.start"> · {{ e.start }}<template v-if="e.end">–{{ e.end }}</template></template></p>
                         <p v-if="e.location" class="text-sm text-muted">{{ e.location }}</p>
                         <p class="text-sm text-muted">{{ e.fee_label }}<template v-if="e.capacity !== null"> · {{ e.free === 0 ? 'posti esauriti' : e.free + (e.free === 1 ? ' posto libero' : ' posti liberi') }}</template></p>
@@ -29,6 +29,7 @@ const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.
                             <button v-if="e.cancellable" type="button" class="text-danger hover:underline" @click="cancel(e)">Annulla</button>
                             <span v-else class="text-xs text-muted">per annullare scrivi alla segreteria</span>
                         </template>
+                        <span v-else-if="e.closed_label" class="max-w-56 text-right text-xs text-muted">{{ e.closed_label }}</span>
                         <span v-else-if="e.waiting" class="rounded-full bg-surface px-3 py-1">In lista d'attesa</span>
                         <button v-else-if="e.free === 0" type="button" class="btn btn-secondary" @click="post(`/area/eventi/${e.session_id}/attesa`)">Lista d'attesa</button>
                         <button v-else type="button" class="btn btn-primary" @click="post(`/area/eventi/${e.session_id}/prenota`)">Prenota</button>

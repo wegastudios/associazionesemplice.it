@@ -112,7 +112,7 @@ final readonly class MemberAreaController
         return $this->page('AreaSoci/Eventi', [
             'online' => $this->payments->providers() !== [],
             'events' => array_map(fn (array $e): array => $e + [
-                'label' => $this->dayLabel($e['date']), 'fee_label' => Money::format($e['fee']), 'due' => max(0, $e['fee'] - $e['paid']),
+                'label' => $this->rangeLabel($e['date'], $e['end_date']), 'closed_label' => $e['closed'] ? 'Prenotazioni online chiuse: per questa data rivolgiti alla segreteria.' : null, 'fee_label' => Money::format($e['fee']), 'due' => max(0, $e['fee'] - $e['paid']),
             ], $this->activities->upcoming($this->current->active())),
         ]);
     }
@@ -163,6 +163,20 @@ final readonly class MemberAreaController
         }
 
         return back()->with('status', $message);
+    }
+
+    /** «dal 12 al 14 giugno», «dal 30 maggio al 2 giugno»; una data di un giorno è «sabato 13 giugno». */
+    private function rangeLabel(string $date, ?string $endDate): string
+    {
+        if ($endDate === null) {
+            return $this->dayLabel($date);
+        }
+        $a = (int) strtotime($date);
+        $b = (int) strtotime($endDate);
+        $from = self::MONTHS[(int) date('n', $a) - 1];
+        $to = self::MONTHS[(int) date('n', $b) - 1];
+
+        return 'dal '.date('j', $a).($from === $to ? '' : ' '.$from).' al '.date('j', $b).' '.$to;
     }
 
     private function dayLabel(string $date): string

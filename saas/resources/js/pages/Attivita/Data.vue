@@ -45,7 +45,9 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
         <div class="mb-4 flex flex-wrap items-center gap-3">
             <h1 class="text-2xl font-bold">{{ session.label }}<template v-if="session.start"> · {{ session.start }}<template v-if="session.end">–{{ session.end }}</template></template></h1>
             <span v-if="session.cancelled" class="rounded bg-danger/15 px-2 py-0.5 text-sm text-danger">annullata</span>
+            <span v-else-if="session.ongoing" class="rounded bg-salvia/15 px-2 py-0.5 text-sm font-semibold">In corso</span>
         </div>
+        <p v-if="session.span_label" class="mb-2 text-sm first-letter:uppercase">{{ session.span_label }}</p>
         <p class="mb-6 text-sm text-muted">
             {{ session.taken }} prenotati<template v-if="session.capacity"> su {{ session.capacity }} posti</template><template v-else> (posti senza limite)</template><template v-if="session.location"> · {{ session.location }}</template>
             · <Link :href="`/gestionale/attivita/${activity.id}/presenze?mese=${session.date.slice(0, 7)}&giorno=${session.date}`" class="font-semibold text-accent hover:underline">presenze</Link>

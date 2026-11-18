@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 use App\Modules\Attivita\Contracts\ActivityError;
+use App\Modules\Attivita\Contracts\MemberActivities;
 use App\Modules\Attivita\Http\Controllers\SessionsController;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Rules\SessionRules;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Attivita\Services\SessionService;
+use App\Modules\Soci\Models\Person;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -113,5 +115,40 @@ it('cambia la fine di una data esistente', function (): void {
         $s->updateSession($id, '09:00', '12:00', null, null, null);
         expect($s->sessions($a)[0]['end_date'])->toBeNull()
             ->and(fn () => $s->updateSession($id, '09:00', '12:00', null, null, $this->year.'-03-20'))->toThrow(ActivityError::class, 'è giusto?');
+    });
+});
+
+it('dall\'area soci le date su più giorni si prenotano fino al giorno prima, quelle di un giorno anche lo stesso giorno', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $s = app(SessionService::class);
+        $member = app(MemberActivities::class);
+        $a = trip();
+        $day = static fn (int $n): string => now('Europe/Rome')->addDays($n)->toDateString();
+        $s->addDates($a->id, $day(-5), null, false, null, null, null, null, $day(-3));   // finita
+        $s->addDates($a->id, $day(-1), null, false, null, null, null, null, $day(1));    // in corso
+        $s->addDates($a->id, $day(2), null, false, null, null, null, null, $day(3));     // da domani in poi
+        // Un giorno, oggi: in un'altra attività, perché nella stessa si sovrapporrebbe a quella in corso.
+        $b = app(ActivityService::class)->save(null, ['name' => 'Serata', 'kind' => 'recurring', 'social_year' => $this->year, 'fee_cents' => 0, 'guest_fee_cents' => 0]);
+        $s->addDates($b->id, $day(0), null, false, '21:00', '22:00', null, null);
+        $ids = [];
+        foreach ([...$s->sessions($a), ...$s->sessions($b)] as $row) {
+            $ids[$row['date']] = $row['id'];
+        }
+        $who = Person::create(['first_name' => 'Ada', 'last_name' => 'Rossi'])->id;
+
+        $rows = collect($member->upcoming($who))->keyBy('date');
+        expect($rows->has($day(-5)))->toBeFalse()
+            ->and($rows[$day(-1)])->toMatchArray(['ongoing' => true, 'closed' => true, 'end_date' => $day(1)])
+            ->and($rows[$day(2)])->toMatchArray(['ongoing' => false, 'closed' => false])
+            ->and($rows[$day(0)])->toMatchArray(['ongoing' => false, 'closed' => false, 'end_date' => null]);
+        expect(collect($s->sessions($a))->firstWhere('date', $day(-1))['ongoing'])->toBeTrue();
+
+        expect(fn () => $member->book($ids[$day(-1)], $who))->toThrow(ActivityError::class, 'si chiudono il giorno prima')
+            ->and(fn () => $member->book($ids[$day(-5)], $who))->toThrow(ActivityError::class, 'non si prenota')
+            ->and(fn () => $member->joinWaitlist($ids[$day(-1)], $who))->toThrow(ActivityError::class, 'si chiudono il giorno prima');
+        $member->book($ids[$day(2)], $who);
+        $member->book($ids[$day(0)], $who);
+        // La segreteria prenota anche sulla data già iniziata.
+        expect($s->book($ids[$day(-1)], $who)->status)->toBe('booked');
     });
 });
