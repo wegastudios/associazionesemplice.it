@@ -32,10 +32,13 @@ final class EntityPage {
 
 	/** «Cosa succede alle tessere»: anteprima del riallineamento con la spunta da confermare. */
 	public static function realign_box( int $month ): string {
-		$pv  = \AssociazioneSemplice\Install::realign_preview( $month );
-		$txt = Texts::t( 'Le tessere dei soci seguono l\'anno fiscale. Cambiando il mese, le tessere degli anni fiscali ancora aperti che hanno un pagamento registrato si riallineano al nuovo anno fiscale: non si accorciano mai e quelle degli anni chiusi non si toccano.' )
+		$pv = \AssociazioneSemplice\Install::realign_preview( $month );
+		if ( 0 === $pv['changed'] + $pv['replaced'] ) {
+			return '<p class="description">' . esc_html( Texts::t( 'Nessuna tessera da riallineare.' ) ) . '</p>'; // niente da confermare: nessuna spunta
+		}
+		$txt =Texts::t( 'Le tessere dei soci seguono l\'anno fiscale. Cambiando il mese, le tessere degli anni fiscali ancora aperti che hanno un pagamento registrato si riallineano al nuovo anno fiscale: non si accorciano mai e quelle degli anni chiusi non si toccano.' )
 			. ' ' . sprintf( Texts::t( 'Con questa scelta: %1$d tessere cambiano%2$s; %3$d risultano «sostituite» (restano registrate, i pagamenti non cambiano).' ), $pv['changed'], $pv['examples'] ? ' (' . implode( ', ', $pv['examples'] ) . ')' : '', $pv['replaced'] )
-			. ' ' . Texts::t( 'Prima del cambio il programma salva una copia di sicurezza dei dati, che resta sul sito per qualche ora.' );
+			. ' ' . Texts::t( 'Prima del cambio viene salvata una copia di sicurezza dei dati, che resta sul sito per 7 giorni.' );
 		return '<div class="notice notice-warning inline"><p><strong>' . esc_html( Texts::t( 'Cosa succede alle tessere' ) ) . '</strong></p><p>' . esc_html( $txt ) . '</p>'
 			. '<p><label><input type="checkbox" name="confirm_card_realign" value="1"> ' . esc_html( Texts::t( 'Ho letto cosa succede alle tessere e voglio cambiare il mese dell\'anno fiscale.' ) ) . '</label></p></div>';
 	}

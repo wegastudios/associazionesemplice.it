@@ -53,15 +53,21 @@ final class Backup {
 		return $dir;
 	}
 
-	/** Cancella le copie salvate sul sito da più di `backup_hours` ore (contengono dati personali). @return int copie cancellate */
+	/** Cancella le copie salvate sul sito da più di `backup_hours` ore (contengono dati personali); quella fatta prima di riallineare le tessere resta 7 giorni. @return int copie cancellate */
 	public static function purge_old(): int {
 		$limit = time() - max( 1, (int) Limits::get( 'backup_hours' ) ) * HOUR_IN_SECONDS;
+		$long  = time() - 7 * DAY_IN_SECONDS;
 		$n     = 0;
-		$files = array_merge( glob( self::dir() . '/prima-del-ripristino-*.zip' ) ?: array(), glob( self::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) ?: array() ); // anche la copia fatta prima di riallineare le tessere
-		foreach ( $files as $f ) {
-			if ( (int) filemtime( $f ) < $limit ) {
-				wp_delete_file( $f );
-				$n++;
+		$sets  = array(
+			array( glob( self::dir() . '/prima-del-ripristino-*.zip' ) ?: array(), $limit ),
+			array( glob( self::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) ?: array(), $long ),
+		);
+		foreach ( $sets as $set ) {
+			foreach ( $set[0] as $f ) {
+				if ( (int) filemtime( $f ) < $set[1] ) {
+					wp_delete_file( $f );
+					$n++;
+				}
 			}
 		}
 		return $n;
