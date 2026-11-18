@@ -163,6 +163,12 @@ Quando un corso o un evento si svolge in una sala o su un campo, collegalo alla 
 
 Per le attività a fasce c'è la casella **«Occupa la risorsa solo dove ci sono prenotazioni»**. Se la spunti, gli orari senza prenotazioni restano liberi. Una fascia già occupata altrove non si può prenotare.
 
+## Eventi su più giorni
+
+Se un evento dura più giorni, la risorsa è **occupata fino alla fine dell'ultimo giorno**, anche oltre mezzanotte. Nel modulo dell'evento c'è l'opzione **«Tieni la risorsa occupata dal primo all'ultimo giorno, senza interruzioni»**: il blocco si adegua da solo se sposti o annulli l'evento.
+
+Per far condividere lo stesso blocco a più eventi (per esempio le tre gare di una regata), scegli il blocco in **«Condividi il blocco con»**. Il blocco dura **al massimo 31 giorni** e **non si usa con gli eventi ricorrenti**.
+
 Nel calendario del giorno leggi **«Attività: …»** sulla fascia occupata e **«Allestimento per: …»** sul tempo di preparazione.
 
 ## Il tempo di allestimento
