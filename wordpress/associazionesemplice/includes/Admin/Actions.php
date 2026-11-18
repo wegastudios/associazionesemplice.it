@@ -623,9 +623,14 @@ final class Actions {
 		return array( Ui::url( 'asem-activity', array( 'id' => $aid ) ), 0 === $n ? 'Nessuna data nuova: erano già tutte presenti.' : $n . ( 1 === $n ? ' data aggiunta.' : ' date aggiunte.' ) );
 	}
 
-	/** Pubblica in una volta le pagine in bozza scelte (per esempio quelle importate da The Events Calendar). */
+	/** Pubblica in una volta le pagine in bozza scelte (per esempio quelle importate da The Events Calendar): solo quelle dell'area (corsi o eventi) che chi agisce può usare. */
 	private static function publish_pages( array $p ): array {
-		$ids = array_map( 'intval', (array) ( $p['ids'] ?? array() ) );
+		$ids    = array_map( 'intval', (array) ( $p['ids'] ?? array() ) );
+		$denied = \AssociazioneSemplice\Employees::denied_for( get_current_user_id() );
+		$ids    = array_values( array_filter( $ids, function ( $id ) use ( $denied ) {
+			$a = \AssociazioneSemplice\Plugin::activities()->get( $id );
+			return $a && \AssociazioneSemplice\EmployeeRules::has( $denied, \AssociazioneSemplice\EmployeeRules::activity_key( (string) $a['kind'] ) );
+		} ) );
 		if ( ! $ids ) {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Spunta almeno una pagina da pubblicare.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}

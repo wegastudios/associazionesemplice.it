@@ -3390,6 +3390,7 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	asem_ok( is_object( $up_info ) && '99.0' === $up_info->version && 'asem-portal://pro' === $up_info->download_link, 'aggiornamento diretto: scheda dei dettagli' );
 	$up_info_free = \AssociazioneSemplice\Updater::info( false, 'plugin_information', (object) array( 'slug' => 'associazionesemplice' ) );
 	asem_ok( is_object( $up_info_free ) && 'asem-portal://free' === $up_info_free->download_link, 'aggiornamento diretto: scheda dei dettagli anche per il gratuito' );
+	asem_ok( isset( $up_info->sections['changelog'], $up_info_free->sections['changelog'] ) && false !== strpos( (string) $up_info_free->sections['changelog'], '<h4>' ) && false !== strpos( (string) $up_info->sections['changelog'], '<h4>' ), 'aggiornamento diretto: la scheda dei dettagli ha sempre il changelog (dal plugin installato se il portale non lo manda), per gratuito e Pro' );
 	asem_ok( false === \AssociazioneSemplice\Updater::info( false, 'plugin_information', (object) array( 'slug' => 'altro-plugin' ) ), 'aggiornamento diretto: i plugin di altri non si toccano' );
 	asem_ok( 'altro' === \AssociazioneSemplice\Updater::download( 'altro', 'https://example.com/a.zip' ), 'aggiornamento diretto: i pacchetti di altri non si toccano' );
 	$up_update = false;

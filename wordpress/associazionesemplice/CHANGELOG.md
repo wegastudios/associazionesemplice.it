@@ -2,6 +2,15 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.30 – 2026-11-18
+- Nuovo: la tessera dei soci, le quote e gli incassi seguono l'anno fiscale; l'«anno delle attività» vale solo per corsi ed eventi. Le tessere già emesse con un pagamento si riallineano da sole (mai accorciate, anni chiusi intatti); se cambi il mese dell'anno fiscale vedi prima cosa succede alle tessere.
+- Nuovo: le pagine in bozza di eventi e corsi, anche quelle importate, si pubblicano tutte insieme.
+- Ottimizzazione: il report delle attività divide entrate e uscite generali per anno fiscale.
+- Altro: nella finestra «Visualizza i dettagli» di WordPress il changelog compare sempre, anche dopo l'aggiornamento.
+Da fare dopo l'aggiornamento:
+- In Bacheca controlla l'esito del riallineamento delle tessere
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.29 – 2026-11-18
 - Nuovo: gli eventi su più giorni compaiono in ognuno dei loro giorni nei calendari, nella Bacheca e nel calendario dei soci, e l'importazione da The Events Calendar porta anche la data di fine.
 - Altro: passando l'anno sociale a gennaio, i corsi e gli eventi creati con l'anno a cavallo (per esempio 2025/2026) restano nell'elenco.

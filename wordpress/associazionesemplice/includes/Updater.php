@@ -183,6 +183,36 @@ final class Updater {
 		return $inside ? $html . ( $open ? '</ul>' : '' ) : '';
 	}
 
+	/**
+	 * Le ultime novità dal CHANGELOG.md che sta dentro il plugin installato (al massimo le ultime $versions versioni, con un solo link finale).
+	 * Serve quando il portale non manda il testo, per esempio perché il sito è già aggiornato e non c'è una versione più nuova.
+	 */
+	public static function local_changelog( string $product, int $versions = 3 ): string {
+		$dir  = 'pro' === $product ? ( defined( 'ASEM_PRO_DIR' ) ? (string) ASEM_PRO_DIR : '' ) : ( defined( 'ASEM_DIR' ) ? (string) ASEM_DIR : '' );
+		$file = '' !== $dir ? rtrim( $dir, '/\\' ) . '/CHANGELOG.md' : '';
+		$raw  = '' !== $file && is_readable( $file ) ? file_get_contents( $file ) : ''; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file del plugin, non un indirizzo
+		if ( ! is_string( $raw ) || '' === $raw ) {
+			return '';
+		}
+		$out   = array();
+		$link  = '';
+		$count = 0;
+		foreach ( preg_split( '/\R/', $raw ) ?: array() as $line ) {
+			$line = trim( $line );
+			if ( 0 === strpos( $line, '## ' ) ) {
+				if ( ++$count > $versions ) {
+					break;
+				}
+				$out[] = $line;
+			} elseif ( $count > 0 && 0 === strpos( $line, 'Changelog di tutte le versioni:' ) ) {
+				$link = $line;
+			} elseif ( $count > 0 && ( 0 === strpos( $line, '- ' ) || "Da fare dopo l'aggiornamento:" === $line ) ) {
+				$out[] = $line;
+			}
+		}
+		return $out ? implode( "\n", $out ) . ( '' !== $link ? "\n" . $link : '' ) : '';
+	}
+
 	/** base64url senza padding → byte ('' se non valido). */
 	private static function b64d( string $s ): string {
 		$r = base64_decode( strtr( $s, '-_', '+/' ) . str_repeat( '=', ( 4 - strlen( $s ) % 4 ) % 4 ), true );
@@ -443,6 +473,9 @@ final class Updater {
 				$st       = self::state()[ $p ];
 				$sections = array( 'description' => '<p>' . esc_html( $info['name'] ) . ': gestione di soci, attività e prima nota per associazioni. L\'aggiornamento si scarica dal portale di Associazione Semplice.</p>' );
 				$news     = self::changelog_html( (string) ( $st['changelog'] ?? '' ) );
+				if ( '' === $news ) { // il portale non l'ha mandato (sito già aggiornato, risposta vecchia): si usano le novità del plugin installato
+					$news = self::changelog_html( self::local_changelog( $p ) );
+				}
 				if ( '' !== $news ) {
 					$sections['changelog'] = $news; // «Cosa cambia» nella scheda dei dettagli
 				}
