@@ -21,8 +21,8 @@ final class Waitlist {
 		if ( ! $session || ! $person || ! empty( $session['cancelled_at'] ) ) {
 			throw new \InvalidArgumentException( 'Data non disponibile (inesistente o annullata).' );
 		}
-		if ( $session['session_date'] < current_time( 'Y-m-d' ) ) {
-			throw new \InvalidArgumentException( 'Questo evento è già passato.' );
+		if ( ! ActivityService::online_bookable( $session ) ) {
+			throw new \InvalidArgumentException( ActivityService::last_day( $session ) >= current_time( 'Y-m-d' ) ? 'Le prenotazioni online si chiudono il giorno prima: per questa data rivolgiti alla segreteria.' : 'Questo evento è già passato.' );
 		}
 		if ( PublicEvents::options( (int) $session['activity_id'] )['approval'] ) {
 			throw new \InvalidArgumentException( 'Questo evento è su richiesta: la lista d\'attesa non c\'è, la segreteria decide chi partecipa.' );

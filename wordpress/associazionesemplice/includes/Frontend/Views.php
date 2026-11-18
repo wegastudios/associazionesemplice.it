@@ -1392,6 +1392,8 @@ final class Views {
 			if ( empty( $ctx['hide_login'] ) ) { // negli elenchi non c'è: la prenotazione si fa dalla pagina dell'evento
 				$html .= '<a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( self::member_login_url() ) . '">Sei socio? Accedi per prenotarti</a>';
 			}
+		} elseif ( ! \AssociazioneSemplice\ActivityService::online_bookable( $s ) ) {
+			$html .= '<span class="asemf-small asemf-muted">Prenotazioni online chiuse: per questa data rivolgiti alla segreteria.</span>';
 		} elseif ( ! empty( $ctx['can_book'] ) ) {
 			$free = array();
 			foreach ( $ctx['people'] as $person ) {

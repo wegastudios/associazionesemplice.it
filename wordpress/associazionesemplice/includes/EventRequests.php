@@ -221,6 +221,9 @@ final class EventRequests {
 		$rows = '';
 		$sel  = (int) ( $post['session_id'] ?? 0 );
 		foreach ( $sessions as $s ) {
+			if ( ! ActivityService::online_bookable( $s ) ) {
+				continue; // il giorno stesso, o a evento iniziato, si chiede alla segreteria
+			}
 			$free = self::free_seats( $s );
 			if ( null !== $free && $free < 1 ) {
 				continue;
@@ -309,7 +312,7 @@ final class EventRequests {
 		$ok  = array( 'status' => 'ok', 'errors' => array() );
 		$sid = (int) ( $in['session_id'] ?? 0 );
 		$s   = $sid ? Plugin::activities()->session( $sid ) : null;
-		if ( ! $s || (int) $s['activity_id'] !== (int) $activity['id'] || $s['cancelled_at'] || (string) $s['session_date'] < Db::today() ) {
+		if ( ! $s || (int) $s['activity_id'] !== (int) $activity['id'] || $s['cancelled_at'] || (string) $s['session_date'] <= Db::today() ) {
 			return array( 'status' => 'invalid', 'errors' => array( 'Scegli una delle date indicate.' ) );
 		}
 		$today = Db::today();

@@ -231,8 +231,8 @@ final class Actions {
 		if ( ! $session ) {
 			throw new \InvalidArgumentException( 'Evento non trovato.' );
 		}
-		if ( $session['session_date'] < current_time( 'Y-m-d' ) ) {
-			throw new \InvalidArgumentException( \AssociazioneSemplice\ActivityService::last_day( $session ) >= current_time( 'Y-m-d' ) ? 'Questo evento è già iniziato: le prenotazioni sono chiuse.' : 'Questo evento è già passato.' );
+		if ( ! \AssociazioneSemplice\ActivityService::online_bookable( $session ) ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\ActivityService::last_day( $session ) >= current_time( 'Y-m-d' ) ? 'Le prenotazioni online si chiudono il giorno prima: per questa data rivolgiti alla segreteria.' : 'Questo evento è già passato.' );
 		}
 		$list_key = sanitize_key( (string) ( $post['price_list'] ?? '' ) );
 		$act_row  = Plugin::activities()->get( (int) $session['activity_id'] );

@@ -1261,7 +1261,7 @@ final class PublicEvents {
 		if ( '' !== $ex ) {
 			$h .= '<p class="asemf-card-ex">' . esc_html( wp_trim_words( $ex, 28 ) ) . '</p>';
 		}
-		$h .= '<div class="asemf-card-foot"><span class="asemf-card-price">' . esc_html( $fee ) . '</span><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">' . esc_html( '' !== $button ? $button : ( (string) $s['session_date'] < Db::today() ? 'Dettagli' : 'Dettagli e prenotazione' ) ) . '</a></div>';
+		$h .= '<div class="asemf-card-foot"><span class="asemf-card-price">' . esc_html( $fee ) . '</span><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">' . esc_html( '' !== $button ? $button : ( ! ActivityService::online_bookable( $s ) ? 'Dettagli' : 'Dettagli e prenotazione' ) ) . '</a></div>';
 		return $h . '</div></li>';
 	}
 
