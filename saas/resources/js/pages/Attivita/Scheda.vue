@@ -175,7 +175,7 @@ const label = 'space-y-1 text-sm';
                 <label v-if="dates.weekly" :class="label"><span class="font-semibold">Fino al</span><input v-model="dates.to" type="date" :class="field" required /></label>
                 <label :class="label"><span class="font-semibold">Finisce il (facoltativo)</span><input v-model="dates.end_date" type="date" :min="dates.from" :class="field" />
                     <span class="block text-xs text-muted">Se lo lasci vuoto la data finisce lo stesso giorno.</span></label>
-                <label v-if="longDays" class="flex items-center gap-2 self-end pb-2 text-sm sm:col-span-2"><input v-model="dates.confirm_long" type="checkbox" /> Questa data dura {{ longDays }} giorni: è giusto? Sì, è giusto</label>
+                <label v-if="longDays" class="flex items-center gap-2 self-end pb-2 text-sm sm:col-span-2"><input v-model="dates.confirm_long" type="checkbox" /> Questa data dura {{ longDays }} giorni: è giusto? Confermo la durata (oltre 7 giorni)</label>
                 <label :class="label"><span class="font-semibold">Dalle</span><input v-model="dates.start" type="time" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Alle</span><input v-model="dates.end" type="time" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Posti</span><input v-model="dates.capacity" type="number" min="1" :class="field" placeholder="senza limite" /></label>

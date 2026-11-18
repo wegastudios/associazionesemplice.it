@@ -87,7 +87,7 @@ final class SessionRules
         $endDate = trim($endDate);
         self::assertDate($endDate);
         if ($endDate < $date) {
-            throw new ActivityError('La data di fine viene prima di quella di inizio.');
+            throw new ActivityError('La data di fine non può essere prima dell\'inizio.');
         }
         if (self::days($date, $endDate) > self::MAX_DAYS) {
             throw new ActivityError('Una data non può durare più di '.self::MAX_DAYS.' giorni: controlla l\'anno.');

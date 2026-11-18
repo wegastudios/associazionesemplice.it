@@ -81,7 +81,7 @@ final readonly class SessionService
     private function assertDuration(int $days, bool $confirmed): void
     {
         if ($days > SessionRules::LONG_DAYS && ! $confirmed) {
-            throw new ActivityError('Questa data dura '.$days.' giorni: conferma che è giusto.');
+            throw new ActivityError('Questa data dura '.$days.' giorni: è giusto? Se sì, spunta «Confermo la durata» e salva di nuovo.');
         }
     }
 

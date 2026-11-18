@@ -31,7 +31,7 @@ it('calcola giorni, fine e sovrapposizioni delle date su più giorni', function 
         ->and(SessionRules::days('2026-06-12', null))->toBe(1)
         ->and(SessionRules::shifted('2026-06-19', 3))->toBe('2026-06-21')
         ->and(SessionRules::shifted('2026-06-19', 1))->toBeNull()
-        ->and(fn () => SessionRules::endDate('2026-06-12', '2026-06-11'))->toThrow(ActivityError::class, 'viene prima')
+        ->and(fn () => SessionRules::endDate('2026-06-12', '2026-06-11'))->toThrow(ActivityError::class, 'non può essere prima')
         ->and(fn () => SessionRules::endDate('2026-06-01', '2026-07-02'))->toThrow(ActivityError::class, 'più di 31 giorni')
         ->and(SessionRules::endDate('2026-06-01', '2026-07-01'))->toBe('2026-07-01')
         ->and(SessionRules::overlap('2026-06-12', '2026-06-14', '2026-06-14', null))->toBeTrue()
@@ -62,10 +62,10 @@ it('chiede conferma oltre sette giorni e rifiuta oltre trentuno', function (): v
         $s = app(SessionService::class);
         $a = trip();
         $from = $this->year.'-03-01';
-        expect(fn () => $s->addDates($a->id, $from, null, false, null, null, null, null, $this->year.'-03-09'))->toThrow(ActivityError::class, 'Questa data dura 9 giorni: conferma')
+        expect(fn () => $s->addDates($a->id, $from, null, false, null, null, null, null, $this->year.'-03-09'))->toThrow(ActivityError::class, 'Questa data dura 9 giorni: è giusto?')
             ->and($s->addDates($a->id, $from, null, false, null, null, null, null, $this->year.'-03-07'))->toBe(1)
             ->and(fn () => $s->addDates($a->id, $this->year.'-05-01', null, false, null, null, null, null, $this->year.'-06-05', true))->toThrow(ActivityError::class, 'più di 31 giorni')
-            ->and(fn () => $s->addDates($a->id, $this->year.'-05-10', null, false, null, null, null, null, $this->year.'-05-09'))->toThrow(ActivityError::class, 'viene prima')
+            ->and(fn () => $s->addDates($a->id, $this->year.'-05-10', null, false, null, null, null, null, $this->year.'-05-09'))->toThrow(ActivityError::class, 'non può essere prima')
             ->and($s->addDates($a->id, $this->year.'-05-01', null, false, null, null, null, null, $this->year.'-05-20', true))->toBe(1);
     });
 });
@@ -111,6 +111,6 @@ it('cambia la fine di una data esistente', function (): void {
         expect($s->sessions($a)[0])->toMatchArray(['end_date' => $this->year.'-03-11', 'end' => '12:00']);
         $s->updateSession($id, '09:00', '12:00', null, null, null);
         expect($s->sessions($a)[0]['end_date'])->toBeNull()
-            ->and(fn () => $s->updateSession($id, '09:00', '12:00', null, null, $this->year.'-03-20'))->toThrow(ActivityError::class, 'conferma');
+            ->and(fn () => $s->updateSession($id, '09:00', '12:00', null, null, $this->year.'-03-20'))->toThrow(ActivityError::class, 'è giusto?');
     });
 });
