@@ -73,3 +73,34 @@ it('trova un registro riscritto da capo senza la chiave', function (): void {
 
     expect(app(ChainVerifier::class)->verify($this->org->id))->toMatchArray(['ok' => false, 'broken_at' => 1]);
 });
+
+it('la verifica di ogni notte riparte dal punto di controllo e trova le modifiche dopo di esso', function (): void {
+    $verifier = app(ChainVerifier::class);
+    expect($verifier->verify($this->org->id, true)['ok'])->toBeTrue();
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        Person::create(['first_name' => 'Socio 5', 'last_name' => 'Prova']);
+    });
+    expect($verifier->verify($this->org->id, true))->toMatchArray(['ok' => true, 'checked' => 6]);
+
+    tamper("UPDATE audit.log SET details = '{\"fields\": [\"first_name\"]}' WHERE seq = 6");
+    expect($verifier->verify($this->org->id, true))->toMatchArray(['ok' => false, 'broken_at' => 6]);
+});
+
+it('la verifica intera trova una modifica prima del punto di controllo, quella di ogni notte no', function (): void {
+    $verifier = app(ChainVerifier::class);
+    expect($verifier->verify($this->org->id)['ok'])->toBeTrue();
+
+    tamper("UPDATE audit.log SET details = '{\"fields\": [\"first_name\"]}' WHERE seq = 2");
+
+    expect($verifier->verify($this->org->id))->toMatchArray(['ok' => false, 'broken_at' => 2]);
+});
+
+it('se la riga del punto di controllo è cambiata si ripercorre tutta la catena', function (): void {
+    $verifier = app(ChainVerifier::class);
+    expect($verifier->verify($this->org->id)['ok'])->toBeTrue();
+
+    tamper('UPDATE audit.log SET hash = sha256(hash) WHERE seq = (SELECT max(seq) FROM audit.log)');
+
+    expect($verifier->verify($this->org->id, true)['ok'])->toBeFalse();
+});

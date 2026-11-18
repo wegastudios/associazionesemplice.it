@@ -13,7 +13,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 #[AsCommand(name: 'saas:audit:verify')]
 final class VerifyAuditCommand extends Command
 {
-    protected $signature = 'saas:audit:verify {org? : Identificativo dell\'associazione (vuoto = tutte)}';
+    protected $signature = 'saas:audit:verify {org? : Identificativo dell\'associazione (vuoto = tutte)} {--full : Ripercorre tutta la catena invece di ripartire dal punto di controllo}';
 
     protected $description = 'Verifica che il registro delle azioni non sia stato alterato';
 
@@ -29,7 +29,7 @@ final class VerifyAuditCommand extends Command
             if (! is_string($id)) {
                 continue;
             }
-            $result = $verifier->verify($id);
+            $result = $verifier->verify($id, $this->option('full') !== true);
             if ($result['ok']) {
                 $this->line("ok {$id}: {$result['checked']} righe");
             } else {

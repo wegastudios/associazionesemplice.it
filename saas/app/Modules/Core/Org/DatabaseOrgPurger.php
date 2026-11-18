@@ -82,6 +82,7 @@ final readonly class DatabaseOrgPurger implements OrgPurger
         $rows = $owner->delete('DELETE FROM audit.log WHERE org_id = ?', [$orgId]);
         $rows += $owner->delete('DELETE FROM audit.heads WHERE org_id = ?', [$orgId]);
         $rows += $owner->delete('DELETE FROM audit.anchors WHERE org_id = ?', [$orgId]);
+        $rows += $owner->delete('DELETE FROM audit.verify_checkpoints WHERE org_id = ?', [$orgId]);
         $owner->statement('ALTER TABLE audit.log ENABLE TRIGGER log_append_only');
 
         return $rows;

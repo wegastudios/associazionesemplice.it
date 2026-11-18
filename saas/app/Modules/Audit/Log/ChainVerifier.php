@@ -23,9 +23,9 @@ final readonly class ChainVerifier
     ) {}
 
     /** @return array{ok: bool, checked: int, broken_at: int|null, reason: string|null} */
-    public function verify(string $orgId): array
+    public function verify(string $orgId, bool $fromCheckpoint = false): array
     {
-        return $this->context->run($orgId, function () use ($orgId): array {
+        return $this->context->run($orgId, function () use ($orgId, $fromCheckpoint): array {
             $connection = $this->db->connection($this->context->require()->connection);
             $previous = ChainedAuditLog::GENESIS;
             $expected = 1;
@@ -38,7 +38,22 @@ final readonly class ChainVerifier
                 $expected = $anchorSeq + 1;
             }
 
-            $rows = $connection->table('audit.log')->where('org_id', $orgId)->where('seq', '>', $anchorSeq)->lazyById(500, 'seq');
+            // Verifica di ogni notte: riparte dall'ultimo punto di controllo giusto, se la riga di quel numero ha ancora
+            // lo stesso sigillo; altrimenti (o a richiesta) si ripercorre l'intera catena.
+            $startSeq = $anchorSeq;
+            if ($fromCheckpoint) {
+                $point = $connection->table('audit.verify_checkpoints')->where('org_id', $orgId)->first(['seq', 'hash']);
+                if ($point !== null && Entry::seq($point->seq) > $anchorSeq) {
+                    $row = $connection->table('audit.log')->where('org_id', $orgId)->where('seq', Entry::seq($point->seq))->first(['hash']);
+                    if ($row !== null && hash_equals(Bytea::decode($point->hash), Bytea::decode($row->hash))) {
+                        $startSeq = Entry::seq($point->seq);
+                        $previous = Bytea::decode($point->hash);
+                        $expected = $startSeq + 1;
+                    }
+                }
+            }
+
+            $rows = $connection->table('audit.log')->where('org_id', $orgId)->where('seq', '>', $startSeq)->lazyById(500, 'seq');
             foreach ($rows as $row) {
                 /** @var object{seq: int, occurred_at: string, actor_type: string, actor_id: string|null, action: string, subject_type: string|null, subject_id: string|null, ip: string|null, details: string, hash: mixed} $row */
                 if ((int) $row->seq !== $expected) {
@@ -79,6 +94,15 @@ final readonly class ChainVerifier
             // Una riga con un numero già usato verrebbe saltata dalla lettura per numero: si contano tutte.
             if ($connection->table('audit.log')->where('org_id', $orgId)->count() !== $headSeq - $anchorSeq) {
                 return self::result(false, $expected - 1, null, 'righe in più nella catena');
+            }
+
+            // Catena giusta: il punto di controllo avanza alla testa (per le associazioni senza righe nuove non cambia).
+            if ($headSeq > $anchorSeq) {
+                $connection->table('audit.verify_checkpoints')->upsert(
+                    [['org_id' => $orgId, 'seq' => $headSeq, 'hash' => Bytea::encode($headHash), 'verified_at' => now()]],
+                    ['org_id'],
+                    ['seq', 'hash', 'verified_at'],
+                );
             }
 
             return self::result(true, $expected - 1, null, null);
