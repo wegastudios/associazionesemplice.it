@@ -15,7 +15,7 @@ Un corso ha lezioni che si ripetono ogni settimana. Gli iscritti pagano **ogni m
 1. Vai in **Corsi ed eventi** e crea una nuova attività di tipo **corso**.
 2. Indica nome, luogo e referente.
 3. Costruisci il programma: ogni riga ha **giorno e orario**. Con la spunta *ricorrente* la lezione si ripete ogni settimana (puoi anche scegliere *tutti i giorni* o *lun-ven*). Puoi aggiungere più righe, per esempio lunedì alle 20 e giovedì alle 19.
-4. Imposta le **date di inizio e fine**: con la data di fine le mensilità non sono più dovute dopo quel mese. Le date devono cadere nello stesso anno sociale.
+4. Imposta le **date di inizio e fine**: con la data di fine le mensilità non sono più dovute dopo quel mese. Le date devono cadere nello stesso **anno delle attività**.
 5. Scegli **come si paga** e il contributo.
 6. Salva.
 
@@ -109,7 +109,7 @@ Le **singole lezioni** di un corso si possono **annullare** o **spostare**, per 
 4. Lascia la spunta **«avvisa gli iscritti»**, attiva di partenza, se vuoi che ricevano un avviso.
 5. Scegli come procedere:
    - **Annulla solo questa lezione**: premi il pulsante;
-   - **Annulla questa lezione e le successive**: annulla quella data e tutte le successive dello stesso giorno della settimana, fino alla fine del corso o dell'anno sociale. Le lezioni passate non si toccano;
+   - **Annulla questa lezione e le successive**: annulla quella data e tutte le successive dello stesso giorno della settimana, fino alla fine del corso o dell'anno delle attività. Le lezioni passate non si toccano;
    - **Sposta**: indica la nuova data in **«Sposta a»** (l'ora di inizio e di fine sono facoltative) e premi **Sposta**.
 
 Con la spunta gli iscritti ricevono un avviso come «La lezione di … del … è annullata» o «è spostata al …». L'avviso parte solo se chi opera può mandare avvisi per quel corso: se non parte, l'annullamento o lo spostamento resta comunque e il messaggio te lo dice.
@@ -141,7 +141,7 @@ Un evento ha una o più date e, se vuoi, posti limitati e un contributo.
 
 ## Regole utili
 
-- Tutte le date di un evento devono cadere nell'**anno sociale** dell'attività, altrimenti il salvataggio viene rifiutato e non resta nulla a metà.
+- Tutte le date di un evento devono cadere nell'**anno delle attività** (ogni attività ne ha uno solo), altrimenti il salvataggio viene rifiutato e non resta nulla a metà.
 - Se un incasso di un corso o di un evento cade in un **anno fiscale chiuso**, non si possono eliminare l'evento o l'iscrizione né cedere il posto: va prima riaperto l'ultimo anno chiuso.
 - Le date già presenti non si duplicano.
 - Per più date, usa l'evento ricorrente. In un evento ricorrente puoi aggiungere o togliere date con **«Aggiungi o elimina date»**.
@@ -287,7 +287,11 @@ Il pulsante fisso **«Scrivici su WhatsApp»** usa il **telefono della segreteri
 
 ## Se arrivi da The Events Calendar
 
-Con **Importa da The Events Calendar** si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento. Le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di default) pubblica solo quelle con una data futura. Gli eventi che si ripetono diventano **un solo evento ricorrente**. Si importa anche la **data di fine**, quindi gli eventi su più giorni restano su più giorni. Se l'evento dura più di 31 giorni, le date restano scritte nelle note. Rilanciando l'importazione non nascono doppioni e una pagina già scritta non viene toccata.
+Con **Importa da The Events Calendar** si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento. Le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di default) pubblica solo quelle con una data futura.
+
+Le pagine rimaste in bozza le trovi nell'elenco **Attività**, nella scheda **«Pagine in bozza: non si vedono ancora sul sito»**: ogni riga ha il nome e la data (con **«(annullato)»** se tutte le date sono annullate) e le caselle sono **vuote** all'apertura; **«Seleziona tutte»** le spunta in un colpo. Premi **«Pubblica le pagine selezionate»** e conferma «Pubblicare le pagine selezionate? Compariranno subito sul sito.»: a fine lavoro leggi «Pagine pubblicate: N. Ora si vedono sul sito.» Se non hai spuntato niente, «Spunta almeno una pagina da pubblicare.»
+
+Le pagine le può pubblicare **chi ha l'area della pagina**: **Eventi** per le pagine degli eventi, **Corsi** per quelle dei corsi. Gli **amministratori** e la **segreteria** le possono pubblicare **tutte**. Gli eventi che si ripetono diventano **un solo evento ricorrente**. Si importa anche la **data di fine**, quindi gli eventi su più giorni restano su più giorni. Se l'evento dura più di 31 giorni, le date restano scritte nelle note. Rilanciando l'importazione non nascono doppioni e una pagina già scritta non viene toccata.
 
 Se usi una cache delle pagine, **svuotala** dopo aver pubblicato o modificato un evento. Per prenotare e iscriversi dalla pagina leggi [Prenotarsi a un evento o a un corso dal sito](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito).
 MD,

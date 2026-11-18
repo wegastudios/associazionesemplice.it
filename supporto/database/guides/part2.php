@@ -28,6 +28,7 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 
 ## Da sapere
 
+- Se il file ha **colonne con gli anni** (2023, 2024…), la colonna è l'**anno fiscale** della tessera: con l'anno fiscale che non inizia a gennaio la colonna «2025» è la tessera «2025/2026». L'anteprima di ogni riga lo dice, per esempio «Iscritto: Anno 2025 → tessera 2025/2026».
 - I soci già presenti vengono **aggiornati** (riconosciuti per tessera, email, codice fiscale o nome): importare due volte lo stesso file non crea doppioni.
 - Se un'importazione tocca un **anno fiscale chiuso**, l'importazione può fermarsi con il messaggio «L'anno … è chiuso…»: [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) se è l'ultimo chiuso, oppure correggi il file.
 - Limiti: 5000 righe per tipo e 20 MB per file. Le formule di Excel si leggono con il risultato salvato.
@@ -55,9 +56,11 @@ Se preferisci un utente WordPress per ogni socio (per esempio per usare WooComme
 
 ## Come dura la tessera
 
-La tessera segue l'**anno sociale**, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**). Con gennaio vale da gennaio a dicembre e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2026/2027**». I soci fondatori hanno la tessera sempre rinnovata.
+La tessera segue l'**anno fiscale**, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**, alla domanda «Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?»). Con gennaio vale da gennaio a dicembre, scade il 31/12 e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2025/2026**». I soci fondatori hanno la tessera sempre rinnovata.
 
-Negli **ultimi giorni prima della scadenza** (quelli dell'avviso di scadenza, **30** di partenza) si può **rinnovare in anticipo**. Le tessere in corso non si accorciano: se cambi il mese dell'anno sociale, vale solo per le **tessere nuove**. Passare a gennaio si può sempre; scegliere un altro mese si può solo quando le tessere con la barra («2026/2027») sono scadute. L'anno sociale e l'anno fiscale sono **indipendenti**.
+Negli **ultimi giorni prima della scadenza** (quelli dell'avviso di scadenza, **30** di partenza) si può **rinnovare in anticipo**. L'anno fiscale è anche quello delle **quote** e degli **incassi**, iscrizioni comprese; l'**anno delle attività** è invece solo il calendario di corsi ed eventi e non c'entra con la tessera.
+
+Se **cambi il mese dell'anno fiscale** (finché non hai chiuso il primo anno), compare il riquadro **«Cosa succede alle tessere»**: le tessere degli anni fiscali ancora aperti che hanno un **pagamento registrato** si riallineano al nuovo anno fiscale, **non si accorciano mai** e quelle degli **anni chiusi** non si toccano. Le tessere omaggio, onorarie e a quota zero restano come sono. Due tessere dello stesso anno non possono convivere: resta la più recente e l'altra risulta **«sostituita»** (resta registrata e i pagamenti non cambiano; lo vedi solo nella scheda del socio). Per cambiare il mese devi spuntare **«Ho letto cosa succede alle tessere e voglio cambiare il mese dell'anno fiscale.»** e prima del cambio il plugin salva una **copia di sicurezza** dei dati, che resta sul sito per **7 giorni**. Vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale).
 
 ## Rinnovare
 

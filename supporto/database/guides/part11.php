@@ -8,25 +8,38 @@ return [
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Per molte associazioni l'anno fiscale non coincide con l'anno solare. Puoi indicare il **mese di inizio dell'anno fiscale** in tutte le versioni, separatamente da quello dell'anno sociale.
+Per molte associazioni l'anno fiscale non coincide con l'anno solare. Puoi indicare il **mese di inizio dell'anno fiscale** in tutte le versioni, separatamente da quello dell'**anno delle attività** (il calendario di corsi ed eventi).
 
 ## Dove si imposta
 
 1. Vai in **Impostazioni → Ente → Dati dell'ente** (con {piano_contabile} o {piano_fiscale}: **Impostazioni → Ente e fiscalità → Dati e fiscalità**).
-2. Nel menu **«L'anno fiscale inizia a»**, accanto a «L'anno sociale inizia a», scegli il mese. Di partenza è **gennaio**, cioè l'anno solare, come prima.
+2. Alla domanda **«Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?»**, che sta sotto **«Da che mese iniziano corsi ed eventi (anno delle attività)?»**, scegli il mese. Di partenza è **gennaio**, cioè l'anno solare.
 3. Salva.
 
-Lo scegli anche al primo passo della [configurazione guidata](guida:completare-la-configurazione-guidata), insieme al mese dell'anno sociale (spunta **«Ho controllato i due mesi»**).
+Lo scegli anche al primo passo della [configurazione guidata](guida:completare-la-configurazione-guidata), insieme al mese dell'anno delle attività (spunta **«Ho controllato i due mesi»**).
+
+Se per esempio un circolo velico ha le attività da maggio e il bilancio da gennaio a dicembre, imposta **maggio** per l'anno delle attività e **gennaio** per l'anno fiscale.
 
 Un anno si chiama con **l'anno in cui inizia**: con inizio a luglio, il 2025 va dal 1° luglio 2025 al 30 giugno 2026.
 
 ## Cosa segue l'anno fiscale
 
-Seguono il mese scelto l'apertura e la chiusura degli anni fiscali, la **prima nota**, i **report**, il **rendiconto**, il **preventivo**, i **fondi per anno** e le **esportazioni e importazioni**.
+Seguono il mese scelto l'apertura e la chiusura degli anni fiscali, la **prima nota**, i **report**, il **rendiconto**, il **preventivo**, i **fondi per anno**, le **esportazioni e importazioni** e anche la **tessera** dei soci, le **quote** e gli **incassi** (iscrizioni comprese), il **libro soci** e i **rinnovi**.
 
 ## Cosa non cambia
 
-Le **tessere** seguono l'**anno sociale**, non l'anno fiscale: i due mesi sono indipendenti. Il **5 per mille** e i **Dati per il RUNTS** restano sull'anno solare (31 dicembre).
+L'**anno delle attività** è solo il calendario di corsi ed eventi: ogni attività ne ha uno solo e le sue date devono stare dentro quell'anno. Il **5 per mille** e i **Dati per il RUNTS** restano sull'anno solare (31 dicembre).
+
+## Cosa succede alle tessere se cambi il mese
+
+Quando cambi il mese dell'anno fiscale compare il riquadro **«Cosa succede alle tessere»**: «Le tessere dei soci seguono l'anno fiscale. Cambiando il mese, le tessere degli anni fiscali ancora aperti che hanno un pagamento registrato si riallineano al nuovo anno fiscale: non si accorciano mai e quelle degli anni chiusi non si toccano.» Il riquadro dice anche quante tessere cambiano e quante risultano «sostituite» (restano registrate, i pagamenti non cambiano).
+
+- Si riallineano **solo le tessere con un pagamento registrato**: le allunga fino alla fine dell'anno fiscale in cui scadono, **mai le accorcia**. Gli anni chiusi restano intatti; tessere omaggio, onorarie e a quota zero restano come sono.
+- Se due tessere finiscono nello **stesso anno**, resta la più recente e l'altra è **«sostituita»**: si vede solo nella scheda del socio («Sostituita dalla tessera 2026: resta registrata e i pagamenti non cambiano.»), non compare nel libro soci.
+- Per cambiare il mese devi mettere la spunta **«Ho letto cosa succede alle tessere e voglio cambiare il mese dell'anno fiscale.»** Senza la spunta il resto dei dati si salva e il mese non cambia: «Il mese dell'anno fiscale non è cambiato: leggi «Cosa succede alle tessere» qui sotto, spunta la conferma e salva di nuovo.»
+- Se nessuna tessera cambia, leggi «Nessuna tessera da riallineare.». Altrimenti, a cambio fatto, «Tessere riallineate: N. Tessere sostituite: S.»
+- **Prima del cambio** viene salvata una **copia di sicurezza** dei dati, che resta sul sito per **7 giorni**.
+- Per **30 giorni** gli amministratori vedono in Bacheca l'avviso **«Le tessere seguono l'anno fiscale»** con il riepilogo e il collegamento **«Vedi il registro azioni»**.
 
 ## Da sapere
 

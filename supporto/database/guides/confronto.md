@@ -93,7 +93,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
 | Anni fiscali: apertura e chiusura (solo amministratori), con il mese di inizio a scelta (si blocca alla prima chiusura, anche se poi l'anno viene riaperto) e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
 | Riapertura dell'ultimo anno fiscale: si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
-| Tessera annuale che segue l'anno sociale: l'etichetta è «2026» oppure «2026/2027»; negli ultimi giorni prima della scadenza si rinnova in anticipo; se cambi il mese, vale solo per le tessere nuove; anno sociale e anno fiscale si scelgono al primo passo della configurazione guidata | ✓ | ✓ | ✓ |
+| Tessera annuale che segue l'anno fiscale: l'etichetta è «2026» oppure «2025/2026»; negli ultimi giorni prima della scadenza si rinnova in anticipo; se cambi il mese le tessere degli anni aperti con un pagamento si riallineano senza accorciarsi (copia di sicurezza prima, anni chiusi intatti); anno delle attività e anno fiscale si scelgono al primo passo della configurazione guidata | ✓ | ✓ | ✓ |
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
@@ -112,7 +112,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale, numerate per anno fiscale; il PDF della ricevuta è definitivo (si crea una volta sola e non cambia più), con la pagina «Verifica delle ricevute» per controllarlo, fissarlo e rifarlo dai dati salvati, e, se annulli l'incasso, il numero non si libera: si emette la ricevuta sostitutiva | — | ✓ | ✓ |
 | Ricevute dei minori intestate al genitore, con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
-| Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
+| Report di gestione (conti e liquidità, valutazione dell'anno delle attività con entrate e uscite generali per anno fiscale) | — | ✓ | ✓ |
 
 ## Parte fiscale
 

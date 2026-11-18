@@ -45,7 +45,7 @@ Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del
 
 ## La tessera e la quota
 
-- L'iscrizione all'anno sociale **non si registra all'approvazione**: la tessera diventa valida **con l'incasso della quota**. La quota resta tra le voci da pagare, in sede o online dall'area soci.
+- L'iscrizione all'anno fiscale **non si registra all'approvazione**: la tessera diventa valida **con l'incasso della quota**. La quota resta tra le voci da pagare, in sede o online dall'area soci.
 - Se la quota è stata già pagata online con la domanda, o è zero, la tessera vale **subito**.
 - Il **pagamento online della quota alla domanda** funziona solo con **Stripe o PayPal** (Pro), non con WooCommerce. Se rifiuti la domanda, il pagamento resta **«da rimborsare»**: il rimborso con Stripe o PayPal si fa dal programma (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)).
 MD,
