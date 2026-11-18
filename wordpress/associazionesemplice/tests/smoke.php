@@ -1806,7 +1806,7 @@ $mn_html = (string) ob_get_clean();
 ob_start();
 Admin\AccountingPage::render();
 $ac_html = (string) ob_get_clean();
-asem_ok( false !== strpos( $mn_html, 'Disponibilità reale' ) && false !== strpos( $mn_html, 'Nuovo incasso' ) && false !== strpos( $mn_html, 'Ultimi movimenti' ) && false !== strpos( $mn_html, 'Anno sociale' ) && false !== strpos( $mn_html, 'page=asem-ledger' ), 'soldi: cassa, liquidità reale, anno sociale e ultimi movimenti, con la prima nota' );
+asem_ok( false !== strpos( $mn_html, 'Disponibilità reale' ) && false !== strpos( $mn_html, 'Nuovo incasso' ) && false !== strpos( $mn_html, 'Ultimi movimenti' ) && false !== strpos( $mn_html, 'Anno fiscale' ) && false !== strpos( $mn_html, 'page=asem-ledger' ), 'soldi: cassa, liquidità reale, anno fiscale e ultimi movimenti, con la prima nota' );
 asem_ok( false !== strpos( $ac_html, 'Anno fiscale' ) && false !== strpos( $ac_html, 'Adempimenti' ) && false !== strpos( $ac_html, 'page=asem-years' ) && false !== strpos( $ac_html, 'page=asem-ledger' ), 'contabilità: esercizio, esercizi, adempimenti e la stessa prima nota' );
 $ac_tabs = Admin\Admin::tabs( 'asem-accounting' );
 asem_ok( false !== strpos( $ac_tabs, 'Anni fiscali' ) && false !== strpos( $ac_tabs, 'Rendiconto' ) && false !== strpos( $ac_tabs, 'Adempimenti' ) && false === strpos( $ac_tabs, 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'asem-money' ), 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'asem-money' ), 'Prima nota' ) && false === strpos( Admin\Admin::tabs( 'asem-money' ), 'Esercizi' ), 'menu: Soldi ha incassi, spese, conti e prima nota; Contabilità anni, rendiconto e adempimenti' );
