@@ -53,6 +53,13 @@ return [
     // indirizzi scritti dal SaaS in quelle pagine partono da qui, mai dalle intestazioni della richiesta. Vuoto = nessuno.
     'public_url' => env('SAAS_PUBLIC_URL', ''),
 
+    // Promemoria delle scadenze: vanno in coda, un'email per lavoro. Massimo di email al minuto per ogni associazione e in
+    // totale (oltre, il lavoro riparte più tardi): si regola dal .env senza toccare il codice.
+    'reminders' => [
+        'per_org_per_minute' => (int) env('SAAS_REMINDERS_PER_ORG_PER_MINUTE', 30),
+        'per_minute' => (int) env('SAAS_REMINDERS_PER_MINUTE', 120),
+    ],
+
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
     // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.
     'demo' => [

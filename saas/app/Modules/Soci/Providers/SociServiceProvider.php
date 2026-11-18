@@ -20,6 +20,7 @@ use App\Modules\Soci\Demo\DemoMembers;
 use App\Modules\Soci\Export\SociDataExport;
 use App\Modules\Soci\Export\SociReadableExport;
 use App\Modules\Soci\Home\SociHome;
+use App\Modules\Soci\Jobs\SendReminderEmail;
 use App\Modules\Soci\Payments\MembershipDues;
 use App\Modules\Soci\Services\MemberBookSnapshots;
 use App\Modules\Soci\Services\MemberProfilesService;
@@ -68,11 +69,30 @@ final class SociServiceProvider extends ServiceProvider
             ];
         });
 
+        // Promemoria in coda: frequenza massima per associazione e in totale (regolabile da configurazione).
+        RateLimiter::for('reminder-mail', static function (object $job): array {
+            $org = $job instanceof SendReminderEmail ? $job->orgId : '';
+
+            return [
+                Limit::perMinute(self::limit('saas.reminders.per_minute', 120))->by('reminder-mail'),
+                Limit::perMinute(self::limit('saas.reminders.per_org_per_minute', 30))->by('reminder-mail|'.$org),
+            ];
+        });
+
         if ($this->app->runningInConsole()) {
             $this->commands([SendRemindersCommand::class]);
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
-                $schedule->command('saas:reminders:send')->dailyAt('08:23')->withoutOverlapping();
+                // Il comando si limita ad accodare: se si inchioda, il blocco di sovrapposizione si libera dopo 30 minuti.
+                $schedule->command('saas:reminders:send')->dailyAt('08:23')->withoutOverlapping(30);
             });
         }
+    }
+
+    /** Limite dalla configurazione: un numero intero positivo, altrimenti quello di base. */
+    private static function limit(string $key, int $default): int
+    {
+        $value = config($key, $default);
+
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 }

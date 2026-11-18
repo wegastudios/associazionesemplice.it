@@ -6,6 +6,7 @@ namespace App\Modules\Soci\Services;
 
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgSettings;
+use App\Modules\Soci\Jobs\SendReminderEmail;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Rules\Age;
 use App\Modules\Soci\Rules\ExpiryRules;
@@ -47,17 +48,16 @@ final readonly class ReminderService
     {
         $counts = ['membership_soon' => 0, 'membership_expired' => 0, 'cert_soon' => 0, 'cert_expired' => 0];
         $days = ExpiryRules::warnDays($this->settings->get(self::DAYS, ExpiryRules::DEFAULT_WARN));
-        $orgName = $this->orgName();
 
         foreach ($this->expiries('app.valid_memberships', ['ordinary', 'volunteer']) as $personId => $until) {
             $kind = $this->kind('membership', $until, $today, $days);
-            if ($kind !== null && $this->deliver($personId, $kind, $until, $today, $orgName, $send)) {
+            if ($kind !== null && $this->deliver($personId, $kind, $until, $today, $send)) {
                 $counts[$kind]++;
             }
         }
         foreach ($this->expiries('app.medical_certs', ['founder', 'ordinary', 'volunteer'], $today) as $personId => $until) {
             $kind = $this->kind('cert', $until, $today, $this->certificates->warnDays());
-            if ($kind !== null && $this->deliver($personId, $kind, $until, $today, $orgName, $send)) {
+            if ($kind !== null && $this->deliver($personId, $kind, $until, $today, $send)) {
                 $counts[$kind]++;
             }
         }
@@ -79,7 +79,7 @@ final readonly class ReminderService
         return null;
     }
 
-    private function deliver(string $personId, string $kind, string $until, string $today, string $orgName, bool $send): bool
+    private function deliver(string $personId, string $kind, string $until, string $today, bool $send): bool
     {
         $person = Person::query()->find($personId);
         $to = $person === null ? null : $this->recipient($person, $today);
@@ -98,6 +98,28 @@ final readonly class ReminderService
             return false;
         }
 
+        // L'invio vero lo fa un lavoro in coda per destinatario (con limite di frequenza): qui si accoda soltanto.
+        try {
+            SendReminderEmail::dispatch($this->context->require()->id, $personId, $kind, $until, $today);
+        } catch (Throwable $e) {
+            $this->releaseClaim($personId, $kind, $until);
+            report($e);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /** Manda il promemoria (dal lavoro in coda): indirizzo e testo si ricavano adesso; un errore di posta si rilancia per riprovare. */
+    public function sendQueued(string $personId, string $kind, string $until, string $today): void
+    {
+        $person = Person::query()->find($personId);
+        $to = $person === null ? null : $this->recipient($person, $today);
+        if ($to === null) {
+            return;
+        }
+
         $date = date('d/m/Y', (int) strtotime($until));
         $about = $to['about'] !== '' ? " di {$to['about']}" : '';
         [$subject, $body] = match ($kind) {
@@ -107,16 +129,13 @@ final readonly class ReminderService
             default => ['Il certificato medico è scaduto', "Il certificato medico{$about} è scaduto il {$date}. Senza un certificato valido non si può partecipare alle attività sportive."],
         };
 
-        try {
-            Notification::route('mail', $to['email'])->notify(new MemberNotification($subject, "Ciao {$to['name']},", $body, $orgName));
-        } catch (Throwable $e) {
-            $this->connection()->table('app.reminders')->where('person_id', $personId)->where('kind', $kind)->where('ref', $until)->delete();
-            report($e);
+        Notification::route('mail', $to['email'])->notify(new MemberNotification($subject, "Ciao {$to['name']},", $body, $this->orgName()));
+    }
 
-            return false;
-        }
-
-        return true;
+    /** Toglie la prenotazione di un promemoria non partito, così il giro successivo può riprovare. */
+    public function releaseClaim(string $personId, string $kind, string $until): void
+    {
+        $this->connection()->table('app.reminders')->where('person_id', $personId)->where('kind', $kind)->where('ref', $until)->delete();
     }
 
     /** @return array{email: string, name: string, about: string}|null */
