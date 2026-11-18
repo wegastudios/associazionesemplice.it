@@ -7101,9 +7101,8 @@ asem_ok( $ts_r && '2026-01-01' === $ts_r['valid_from'] && '2026-12-31' === $ts_r
 // con tessere ancora valide che partono in un altro mese, il mese non si cambia (si confonderebbero le etichette); gennaio sempre possibile
 $set_tm( 9 );
 $people->set_membership( $ts_pn, Settings::membership_year()->label(), true );
-$ts_msg = asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 7 ) ); } );
-asem_ok( null !== $ts_msg && false !== strpos( $ts_msg, 'tessere ancora valide' ) && 9 === Settings::membership_start_month(), 'cambio mese: con tessere in corso che partono in un altro mese non si cambia (messaggio chiaro, nulla viene toccato)' );
-asem_ok( null === asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 1 ) ); } ) && 1 === Settings::membership_start_month(), 'cambio mese: passare a gennaio è sempre possibile' );
+$ts_cards = $wpdb->get_results( 'SELECT valid_from, valid_to FROM ' . Db::t( 'memberships' ) . " WHERE deleted_at IS NULL AND social_year LIKE '%/%'", ARRAY_A ); // con un anno fiscale già chiuso il mese non si cambia comunque (prova sopra): qui si controlla la regola sulle tessere
+asem_ok( \AssociazioneSemplice\MembershipRules::month_change_conflicts( $ts_cards, 7, Db::today() ) && ! \AssociazioneSemplice\MembershipRules::month_change_conflicts( $ts_cards, 1, Db::today() ), 'cambio mese: con tessere in corso che partono in un altro mese non si cambia, gennaio sempre possibile' );
 $set_tm( 9 );
 // la tessera non dipende dall'esercizio: con l'esercizio a luglio e a settembre nulla cambia per la tessera
 $ts_fm = function () { return 7; };
