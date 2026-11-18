@@ -6,7 +6,6 @@ namespace App\Modules\Soci\Providers;
 
 use App\Modules\Contabilita\Contracts\FiscalYearClosed;
 use App\Modules\Contabilita\Contracts\FiscalYearReopened;
-use App\Modules\Contabilita\Contracts\FiscalYearStartChanged;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\DemoSeeder;
 use App\Modules\Core\Contracts\HomeWidget;
@@ -25,7 +24,6 @@ use App\Modules\Soci\Jobs\SendReminderEmail;
 use App\Modules\Soci\Payments\MembershipDues;
 use App\Modules\Soci\Services\MemberBookSnapshots;
 use App\Modules\Soci\Services\MemberProfilesService;
-use App\Modules\Soci\Services\MembershipRealigner;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleDirectory;
 use App\Modules\Soci\Setup\ApplicationsStep;
@@ -60,8 +58,6 @@ final class SociServiceProvider extends ServiceProvider
         // Chiusura e riapertura di un esercizio: il libro soci dell'anno si fotografa e si conserva.
         Event::listen(FiscalYearClosed::class, [MemberBookSnapshots::class, 'take']);
         Event::listen(FiscalYearReopened::class, [MemberBookSnapshots::class, 'supersede']);
-        // Cambia il mese dell'anno fiscale: le tessere degli anni aperti lo seguono.
-        Event::listen(FiscalYearStartChanged::class, static fn () => app(MembershipRealigner::class)->realign());
 
         // Domande di adesione: 5 al minuto dallo stesso indirizzo, 50 all'ora per associazione.
         RateLimiter::for('applications', static function (Request $request): array {

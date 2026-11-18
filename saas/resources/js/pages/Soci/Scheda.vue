@@ -162,9 +162,8 @@ const label = 'space-y-1 text-sm';
                         <span class="min-w-0 flex-1">
                             <span class="block font-semibold" :class="m.valid ? '' : 'line-through'">Tessera {{ m.social_year }}</span>
                             <span class="caption block">fino al {{ m.valid_to }} – {{ { payment: 'quota incassata', manual: 'senza incasso', import: 'importata', founder: 'fondatore' }[m.source] }}</span>
-                            <span v-if="m.replaced_by" class="caption block">Sostituita dalla tessera {{ m.replaced_by }}: resta registrata e i pagamenti non cambiano.</span>
                         </span>
-                        <span v-if="m.valid" class="badge badge-ok">Valida</span><span v-else-if="m.replaced_by" class="badge badge-neutral">Sostituita</span><span v-else class="badge badge-neutral">Annullata</span>
+                        <span v-if="m.valid" class="badge badge-ok">Valida</span><span v-else class="badge badge-neutral">Annullata</span>
                         <button v-if="canEdit && m.valid && m.source !== 'payment'" type="button" class="btn btn-ghost btn-sm" @click="revoke(m.id)">Togli</button>
                     </li>
                 </ul>

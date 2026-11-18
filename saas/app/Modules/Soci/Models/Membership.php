@@ -19,8 +19,6 @@ use Carbon\CarbonImmutable;
  * @property string $source
  * @property string|null $transaction_id
  * @property CarbonImmutable|null $voided_at
- * @property CarbonImmutable|null $superseded_at
- * @property string|null $superseded_by
  */
 final class Membership extends OrgModel
 {
@@ -31,6 +29,6 @@ final class Membership extends OrgModel
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['valid_from' => 'immutable_date', 'valid_to' => 'immutable_date', 'voided_at' => 'immutable_datetime', 'superseded_at' => 'immutable_datetime'];
+        return ['valid_from' => 'immutable_date', 'valid_to' => 'immutable_date', 'voided_at' => 'immutable_datetime'];
     }
 }
