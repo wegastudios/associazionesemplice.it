@@ -17,14 +17,14 @@ return new class extends Migration
     {
         DB::statement('ALTER TABLE app.activities ADD COLUMN resource_block text CHECK (length(resource_block) BETWEEN 1 AND 40)');
         DB::statement('ALTER TABLE app.activities ADD COLUMN resource_block_label text CHECK (length(resource_block_label) <= 120)');
-        DB::statement("ALTER TABLE app.activities ADD CONSTRAINT activities_resource_block_check CHECK (resource_block IS NULL OR (kind = 'recurring' AND resource_id IS NOT NULL AND NOT occupy_on_booking))");
+        DB::statement("ALTER TABLE app.activities ADD CONSTRAINT activities_block_rules_check CHECK (resource_block IS NULL OR (kind = 'recurring' AND resource_id IS NOT NULL AND NOT occupy_on_booking))");
         DB::statement('CREATE INDEX activities_resource_block ON app.activities (org_id, resource_id, resource_block) WHERE resource_block IS NOT NULL');
     }
 
     public function down(): void
     {
         DB::statement('DROP INDEX IF EXISTS app.activities_resource_block');
-        DB::statement('ALTER TABLE app.activities DROP CONSTRAINT activities_resource_block_check');
+        DB::statement('ALTER TABLE app.activities DROP CONSTRAINT activities_block_rules_check');
         DB::statement('ALTER TABLE app.activities DROP COLUMN resource_block_label, DROP COLUMN resource_block');
     }
 };
