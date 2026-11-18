@@ -57,7 +57,8 @@ final class Backup {
 	public static function purge_old(): int {
 		$limit = time() - max( 1, (int) Limits::get( 'backup_hours' ) ) * HOUR_IN_SECONDS;
 		$n     = 0;
-		foreach ( glob( self::dir() . '/prima-del-ripristino-*.zip' ) ?: array() as $f ) {
+		$files = array_merge( glob( self::dir() . '/prima-del-ripristino-*.zip' ) ?: array(), glob( self::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) ?: array() ); // anche la copia fatta prima di riallineare le tessere
+		foreach ( $files as $f ) {
 			if ( (int) filemtime( $f ) < $limit ) {
 				wp_delete_file( $f );
 				$n++;

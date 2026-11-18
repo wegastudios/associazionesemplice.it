@@ -483,7 +483,12 @@ final class PeopleCsv {
 				$tax_in_file[ $tax ] = $r['line'];
 			}
 			if ( ! empty( $r['years'] ) ) {
-				$msg = ( null === $msg ? '' : $msg . ' · ' ) . 'Iscritto: ' . implode( ', ', str_replace( array( '@current', '@previous' ), array( 'anno corrente', 'anno scorso' ), $r['years'] ) );
+				$shown = array();
+				foreach ( $r['years'] as $yc ) { // con l'anno fiscale che non parte a gennaio la colonna «2025» diventa la tessera «2025/2026»: si dice prima di importare
+					$lab     = ( 1 === preg_match( '/^\d{4}$/', (string) $yc ) ) ? MembershipRules::import_label( (string) $yc, Settings::membership_start_month() ) : '';
+					$shown[] = ( '' !== $lab && $lab !== (string) $yc ) ? $yc . ' (tessera ' . $lab . ')' : str_replace( array( '@current', '@previous' ), array( 'anno corrente', 'anno scorso' ), (string) $yc );
+				}
+				$msg = ( null === $msg ? '' : $msg . ' · ' ) . 'Iscritto: ' . implode( ', ', $shown );
 			}
 			$plans[] = array( 'row' => $r, 'type' => $type, 'type_given' => null !== $r['type_text'], 'action' => $act, 'message' => $msg, 'matched_id' => $match ? $match['id'] : null );
 		}

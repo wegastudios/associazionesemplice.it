@@ -12,13 +12,32 @@ defined( 'ABSPATH' ) || exit;
 /** Dati dell'ente: denominazione, sede, codice fiscale e contatti. */
 final class EntityPage {
 
-	/** Il campo «L'anno fiscale inizia a»: con esercizi chiusi è bloccato e dice perché. */
+	/** Il campo «L'anno fiscale inizia a»: con esercizi chiusi è bloccato e dice perché; se c'è un cambio in attesa di conferma, ne mostra l'anteprima. */
 	public static function fiscal_month_field( array $s ): string {
 		$month = (int) ( $s['fiscal_start_month'] ?? 1 );
 		if ( FiscalYears::start_month_locked() ) {
 			return '<select name="fiscal_start_month" disabled>' . Ui::options( Ui::MONTHS, $month ) . '</select> <span class="description">' . esc_html( FiscalYears::start_month_locked_message() ) . '</span>';
 		}
-		return '<select name="fiscal_start_month">' . Ui::options( Ui::MONTHS, $month ) . '</select>';
+		$pending = self::pending_month();
+		$select  = '<select name="fiscal_start_month">' . Ui::options( Ui::MONTHS, $pending ?: $month ) . '</select>';
+		return $select . ( $pending ? self::realign_box( $pending ) : '' );
+	}
+
+	/** Mese scelto e non ancora confermato (salvato dalla persona che sta guardando la pagina), o 0. */
+	public static function pending_month(): int {
+		$t = get_transient( 'asem_fiscal_pending_' . get_current_user_id() );
+		$m = is_array( $t ) ? (int) ( $t['month'] ?? 0 ) : 0;
+		return ( $m >= 1 && $m <= 12 && $m !== \AssociazioneSemplice\Settings::membership_start_month() ) ? $m : 0;
+	}
+
+	/** «Cosa succede alle tessere»: anteprima del riallineamento con la spunta da confermare. */
+	public static function realign_box( int $month ): string {
+		$pv  = \AssociazioneSemplice\Install::realign_preview( $month );
+		$txt = Texts::t( 'Le tessere dei soci seguono l\'anno fiscale. Cambiando il mese, le tessere degli anni fiscali ancora aperti che hanno un pagamento registrato si riallineano al nuovo anno fiscale: non si accorciano mai e quelle degli anni chiusi non si toccano.' )
+			. ' ' . sprintf( Texts::t( 'Con questa scelta: %1$d tessere cambiano%2$s; %3$d risultano «sostituite» (restano registrate, i pagamenti non cambiano).' ), $pv['changed'], $pv['examples'] ? ' (' . implode( ', ', $pv['examples'] ) . ')' : '', $pv['replaced'] )
+			. ' ' . Texts::t( 'Prima del cambio il programma salva una copia di sicurezza dei dati, che resta sul sito per qualche ora.' );
+		return '<div class="notice notice-warning inline"><p><strong>' . esc_html( Texts::t( 'Cosa succede alle tessere' ) ) . '</strong></p><p>' . esc_html( $txt ) . '</p>'
+			. '<p><label><input type="checkbox" name="confirm_card_realign" value="1"> ' . esc_html( Texts::t( 'Ho letto cosa succede alle tessere e voglio cambiare il mese dell\'anno fiscale.' ) ) . '</label></p></div>';
 	}
 
 	/** Le due righe obbligatorie dei contatti della segreteria (email e telefono): le stesse nella procedura guidata e nei dati dell'ente. */

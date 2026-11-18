@@ -401,10 +401,10 @@ final class Install {
 	 *
 	 * @return int tessere riallineate (-1 se la copia di sicurezza non è riuscita: si riprova)
 	 */
-	public static function realign_memberships_to_fiscal(): int {
+	/** Cosa cambierebbe con il mese di inizio $m: elenco dei passi (tessere che cambiano etichetta o scadenza, tessere «sostituite»). */
+	public static function realign_plan( int $m ): array {
 		$db   = Db::db();
 		$tbl  = Db::t( 'memberships' );
-		$m    = Settings::membership_start_month();
 		$tx   = Db::t( 'transactions' );
 		$rows = $db->get_results( "SELECT m.*, (t.id IS NOT NULL) AS paid FROM $tbl m LEFT JOIN $tx t ON t.id = m.transaction_id AND t.voided_at IS NULL WHERE m.deleted_at IS NULL AND m.replaced_by IS NULL AND m.social_year <> 'FOUNDER' ORDER BY m.person_id, m.valid_to DESC, m.id DESC", ARRAY_A ) ?: array(); // si riallineano solo le tessere con un pagamento registrato: senza pagamento non si allunga niente
 		$plan = array();
@@ -432,6 +432,38 @@ final class Install {
 			$used[ $pid ][ $label ] = (int) $r['id'];
 			$plan[]               = array( 'id' => (int) $r['id'], 'label' => $label, 'valid_to' => max( (string) $r['valid_to'], $to ), 'old_label' => (string) $r['social_year'], 'old_to' => (string) $r['valid_to'] );
 		}
+		return $plan;
+	}
+
+	/**
+	 * Anteprima per chi sta per cambiare il mese dell'anno fiscale (o per la prima volta dopo l'aggiornamento): quante tessere cambiano,
+	 * come diventano (per esempio «2025/2026 → 2026») e quante finiscono «sostituite». Non cambia nulla.
+	 *
+	 * @return array{changed:int,replaced:int,examples:string[]}
+	 */
+	public static function realign_preview( int $m ): array {
+		$out = array( 'changed' => 0, 'replaced' => 0, 'examples' => array() );
+		foreach ( self::realign_plan( $m ) as $p ) {
+			if ( isset( $p['replace_by'] ) ) {
+				$out['replaced']++;
+				continue;
+			}
+			$out['changed']++;
+			$ex = $p['old_label'] . ' → ' . $p['label'];
+			if ( count( $out['examples'] ) < 3 && ! in_array( $ex, $out['examples'], true ) ) {
+				$out['examples'][] = $ex;
+			}
+		}
+		return $out;
+	}
+
+	const NOTICE_OPTION = 'asem_realign_notice'; // esito dell'ultimo riallineamento, per l'avviso in Bacheca: changed, replaced, at
+
+	/** @return int passi fatti (tessere riallineate o sostituite); -1 se la copia di sicurezza non è riuscita: si riprova */
+	public static function realign_memberships_to_fiscal(): int {
+		$db   = Db::db();
+		$tbl  = Db::t( 'memberships' );
+		$plan = self::realign_plan( Settings::membership_start_month() );
 		if ( ! $plan ) {
 			return 0;
 		}
@@ -440,23 +472,28 @@ final class Install {
 			if ( ! is_dir( Backup::dir() ) ) {
 				wp_mkdir_p( Backup::dir() ); // la cartella delle copie può non esserci ancora
 			}
-			Backup::export( false, Backup::dir() . '/prima-del-riallineamento-delle-tessere-' . gmdate( 'Ymd-His' ) . '.zip' );
+			Backup::export( false, Backup::dir() . '/prima-del-riallineamento-delle-tessere-' . gmdate( 'Ymd-His' ) . '-' . bin2hex( random_bytes( 8 ) ) . '.zip' ); // nome non prevedibile, come le altre copie
 		} catch ( \Throwable $e ) {
 			Audit::log( 'memberships.realign_skipped', 'membership', null, array( 'reason' => 'backup', 'error' => $e->getMessage() ) );
 			return -1;
 		}
 		$n = 0;
+		$changed = 0;
+		$replaced = 0;
 		foreach ( $plan as $p ) {
 			if ( isset( $p['replace_by'] ) ) {
 				$db->update( $tbl, array( 'replaced_by' => (int) $p['replace_by'] ), array( 'id' => (int) $p['id'] ) );
 				Audit::log( 'membership.replaced', 'membership', (int) $p['id'], array( 'by' => (int) $p['replace_by'] ) );
 				$n++;
+				$replaced++;
 				continue;
 			}
 			$db->update( $tbl, array( 'social_year' => $p['label'], 'valid_to' => $p['valid_to'] ), array( 'id' => (int) $p['id'] ) );
 			Audit::log( 'membership.realigned', 'membership', (int) $p['id'], array( 'from' => $p['old_label'], 'to' => $p['label'], 'valid_to_old' => $p['old_to'], 'valid_to_new' => $p['valid_to'] ) );
 			$n++;
+			$changed++;
 		}
+		update_option( self::NOTICE_OPTION, array( 'changed' => $changed, 'replaced' => $replaced, 'at' => time() ), false ); // l'avviso in Bacheca
 		return $n;
 	}
 
