@@ -224,13 +224,21 @@
 			var to = el('input', { type: 'time', name: n + '[to]', value: r.to || DEF.to || '' });
 			// Scrivendo l'inizio, la fine passa a un'ora dopo se è vuota o non è dopo l'inizio
 			function plusHour(t) { var m = /^(\d{2}):(\d{2})$/.exec(t); if (!m) { return ''; } var mins = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + 60; if (mins > 23 * 60 + 59) { mins = 23 * 60 + 59; } return ('0' + Math.floor(mins / 60)).slice(-2) + ':' + ('0' + (mins % 60)).slice(-2); }
-			function syncEnd() { if (from.value && (!to.value || to.value <= from.value)) { to.value = plusHour(from.value); } }
+			var last = el('input', { type: 'date', name: n + '[last_day]', value: r.last_day || '' });
+			function multiDay() { return !!(last.value && date.value && last.value > date.value); }
+			function syncEnd() { if (!multiDay() && from.value && (!to.value || to.value <= from.value)) { to.value = plusHour(from.value); } } // su più giorni l'ora di fine può essere «prima» di quella di inizio
 			from.addEventListener('change', syncEnd); from.addEventListener('input', syncEnd);
 			var rec = el('input', { type: 'checkbox', name: n + '[recurring]', value: '1' });
 			if (r.recurring) { rec.checked = true; }
 			row.appendChild(field('Giorno', date));
 			row.appendChild(field('dalle', from));
+			var lastBox = el('span', { 'class': 'asem-last' });
+			lastBox.appendChild(field('fino al', last));
+			var conf = el('input', { type: 'checkbox', name: n + '[confirm]', value: '1' });
+			var confLabel = el('label', { style: 'margin-right:10px;display:none' }); confLabel.appendChild(conf); confLabel.appendChild(document.createTextNode(' Confermo la durata (oltre 7 giorni)'));
+			row.appendChild(lastBox);
 			row.appendChild(field('alle', to));
+			row.appendChild(confLabel);
 			var rl = el('label', { style: 'margin-right:10px' }); rl.appendChild(rec); rl.appendChild(document.createTextNode(' ricorrente')); row.appendChild(rl);
 			var rbox = el('span', { 'class': 'asem-rec' });
 			var rep = el('select', { name: n + '[repeat]' });
@@ -246,8 +254,17 @@
 			var rm = el('button', { type: 'button', 'class': 'button-link-delete', text: 'Togli' });
 			rm.addEventListener('click', function () { row.parentNode.removeChild(row); });
 			row.appendChild(rm);
-			function sync() { rbox.style.display = rec.checked ? '' : 'none'; dn.textContent = 'ogni ' + dayName(date.value); }
+			function days() { var a = new Date(date.value + 'T12:00:00'), b = new Date(last.value + 'T12:00:00'); return isNaN(a) || isNaN(b) ? 0 : Math.round((b - a) / 86400000) + 1; }
+			function sync() {
+				rbox.style.display = rec.checked ? '' : 'none';
+				lastBox.style.display = rec.checked ? 'none' : ''; // le date ricorrenti hanno già «fino al» per la ripetizione
+				if (rec.checked) { last.value = ''; }
+				confLabel.style.display = !rec.checked && days() > 7 ? '' : 'none';
+				if (confLabel.style.display === 'none') { conf.checked = false; }
+				dn.textContent = 'ogni ' + dayName(date.value);
+			}
 			rec.addEventListener('change', sync); date.addEventListener('change', sync); date.addEventListener('input', sync);
+			last.addEventListener('change', sync); last.addEventListener('input', sync);
 			sync();
 			rows.appendChild(row);
 		}
