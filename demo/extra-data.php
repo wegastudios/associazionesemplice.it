@@ -484,6 +484,8 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 	$events = array(
 		array( 'Serata danzante', 'Serate', 'Una serata di ballo in sede con musica dal vivo e liscio per tutti: si balla, si chiacchiera e si porta qualcosa da bere. Ingresso per i soci, con un piccolo contributo per gli ospiti.', array( 170, 60, 110 ), '21:00', 'Sede dell\'associazione', 80, 500, 'terzo sabato' ),
 		array( 'Festa dell\'associazione', 'Serate', 'La festa di tutti i soci: giochi per i bambini, banchetti dei volontari, musica e una tavolata per stare insieme e raccontare cosa abbiamo fatto.', array( 200, 110, 60 ), '16:00', 'Giardino dell\'associazione', 120, 0, 'il 18' ),
+		array( 'Concerto di ukulele', 'Musica', 'Il gruppo ukulele dell\'associazione suona i suoi brani preferiti, dai classici alle canzoni da cantare insieme. Ingresso libero, porta un cuscino.', array( 60, 150, 140 ), '21:00', 'Sede dell\'associazione', 70, 0, 'venerdì a caso' ),
+		array( 'Concerto degli Who Cover Band', 'Musica', 'Una serata di rock con la tribute band degli Who: i grandi successi suonati dal vivo. Posti limitati, prenota per essere sicuro di entrare.', array( 190, 50, 50 ), '21:30', 'Teatro parrocchiale', 120, 800, 'venerdì a caso' ),
 	);
 	usort( $events, function ( $a, $b ) {
 		return strcmp( 'il 18' === $a[8] ? '0' : '1', 'il 18' === $b[8] ? '0' : '1' ); // prima la festa: la serata danzante evita i suoi giorni
@@ -495,6 +497,27 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 			$ym = gmdate( 'Y-m', (int) strtotime( gmdate( 'Y-m-15' ) . ' ' . ( $m >= 0 ? '+' : '' ) . $m . ' months' ) );
 			if ( 'il 18' === $e[8] ) {
 				$day = $ym . '-18'; // la festa dell'associazione è sempre il 18
+			} elseif ( 'venerdì a caso' === $e[8] ) { // un venerdì del mese scelto a caso (sempre lo stesso a parità di mese e concerto), diverso da quello dell'altro concerto e dagli altri eventi
+				$fridays = array();
+				for ( $d = 1; $d <= 31; $d++ ) {
+					$f = sprintf( '%s-%02d', $ym, $d );
+					if ( (int) gmdate( 'j', (int) strtotime( $f . ' 12:00:00 UTC' ) ) === $d && '5' === gmdate( 'N', (int) strtotime( $f . ' 12:00:00 UTC' ) ) ) {
+						$fridays[] = $f;
+					}
+				}
+				mt_srand( (int) crc32( $ym . $e[0] ) );
+				shuffle( $fridays );
+				mt_srand();
+				$day = '';
+				foreach ( $fridays as $f ) {
+					if ( ! isset( $taken[ $f ] ) && ! $act->sessions_on( $f ) ) {
+						$day = $f;
+						break;
+					}
+				}
+				if ( '' === $day ) {
+					continue;
+				}
 			} else {
 				$day = gmdate( 'Y-m-d', (int) strtotime( 'third saturday of ' . gmdate( 'F Y', (int) strtotime( $ym . '-15' ) ) ) ); // la serata danzante, il terzo sabato
 				while ( isset( $taken[ $day ] ) || $act->sessions_on( $day ) ) { // se c'è già altro quel giorno, il sabato prima
