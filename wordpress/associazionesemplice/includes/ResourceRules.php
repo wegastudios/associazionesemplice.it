@@ -349,14 +349,17 @@ final class ResourceRules {
 	 *
 	 * @return array{starts:string,ends:string,core_starts:string,core_ends:string} Y-m-d H:i:s; core_* = l'attività senza gli allestimenti
 	 */
-	public static function busy_window( string $date, ?string $start, ?string $end, int $before_min, int $after_min ): array {
+	public static function busy_window( string $date, ?string $start, ?string $end, int $before_min, int $after_min, ?string $end_date = null ): array {
 		$s = $start ?: '00:00';
 		$e = $end ?: '23:59';
-		if ( $e <= $s ) {
+		$day_e = $date;
+		if ( $end_date && $end_date > $date ) { // evento su più giorni: la fine è nell'ultimo giorno, a qualunque ora (anche «prima» dell'inizio)
+			$day_e = $end_date;
+		} elseif ( $e <= $s ) {
 			$e = '23:59';
 		}
 		$core_s = new \DateTimeImmutable( $date . ' ' . $s . ':00' );
-		$core_e = new \DateTimeImmutable( $date . ' ' . $e . ':00' );
+		$core_e = new \DateTimeImmutable( $day_e . ' ' . $e . ':00' );
 		return array(
 			'starts'      => $core_s->modify( '-' . max( 0, $before_min ) . ' minutes' )->format( 'Y-m-d H:i:s' ),
 			'ends'        => $core_e->modify( '+' . max( 0, $after_min ) . ' minutes' )->format( 'Y-m-d H:i:s' ),

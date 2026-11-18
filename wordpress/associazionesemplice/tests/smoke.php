@@ -8505,6 +8505,20 @@ $su_pd = '\AssociazioneSemplice\ProData';
 asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => '' ) ) ) && 1 === count( $su_pd::activity_errors( array(), 'recurring', array( 'resource_id' => '' ) ) ), 'risorse: un evento deve dire quale risorsa occupa' );
 asem_ok( 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => (string) $su_res ) ) ) && 1 === count( $su_pd::activity_errors( array(), 'course', array( 'resource_id' => '' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array() ) ), 'risorse: «fuori sede» o una risorsa bastano; anche i corsi; i moduli senza il campo no' );
 asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none', 'setup_before' => 'boh' ) ) ), 'risorse: un allestimento dell\'attività scritto male è segnalato' );
+// evento su più giorni: la risorsa è occupata in tutti i giorni, fino all'ultimo
+$md_res = $RS::save( 0, array( 'name' => 'Sala regata', 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 ) );
+$md_d1  = gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) );
+$md_d2  = gmdate( 'Y-m-d', strtotime( $today . ' +31 days' ) );
+$md_d3  = gmdate( 'Y-m-d', strtotime( $today . ' +32 days' ) );
+$md_e   = $acts->create( array( 'name' => 'Regata tre giorni risorse', 'social_year' => Settings::social_year( $md_d3 )->label(), 'kind' => 'event', 'session' => array( 'session_date' => $md_d1, 'end_date' => $md_d3, 'start_time' => '09:00', 'end_time' => '18:00' ) ) );
+$RS::link_activity( $md_e, $md_res );
+asem_ok( null !== asem_throws( function () use ( $RS, $md_res, $rs_m1, $md_d2 ) { $RS::book_slot( $md_res, $rs_m1, $md_d2, '12:00', 1, array(), true ); } ), 'risorse: il giorno di mezzo di un evento su più giorni è occupato' );
+asem_ok( null !== asem_throws( function () use ( $RS, $md_res, $rs_m1, $md_d3 ) { $RS::book_slot( $md_res, $rs_m1, $md_d3, '17:00', 1, array(), true ); } ), 'risorse: anche l\'ultimo giorno, fino all\'ora di fine' );
+asem_ok( $RS::book_slot( $md_res, $rs_m1, $md_d3, '22:00', 1, array(), true ) > 0, 'risorse: dopo la fine (e l\'allestimento) dell\'ultimo giorno la risorsa è libera' );
+$md_o = $acts->create( array( 'name' => 'Serata sul lungomare', 'social_year' => Settings::social_year( $md_d2 )->label(), 'kind' => 'event', 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $md_d2 . ' +40 days' ) ), 'start_time' => '20:00', 'end_time' => '22:00' ) ) );
+$RS::link_activity( $md_o, $md_res );
+$md_msg = asem_throws( function () use ( $acts, $md_o, $md_d2 ) { $acts->update_session( (int) $acts->sessions( $md_o )[0]['id'], array( 'session_date' => $md_d2, 'start_time' => '12:00', 'end_time' => '14:00' ) ); } );
+asem_ok( null !== $md_msg && false !== strpos( $md_msg, 'Regata tre giorni risorse' ), 'risorse: un altro evento sul giorno di mezzo della regata è rifiutato, col nome del conflitto' );
 // cambio di risorsa: ciò che si sovrappone passa alla risorsa di prima, tutto o niente
 $mv_def  = array( 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 );
 $mv_old  = $RS::save( 0, array( 'name' => 'Sala di prima' ) + $mv_def );

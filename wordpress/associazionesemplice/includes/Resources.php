@@ -260,7 +260,7 @@ final class Resources {
 			}
 			$before = ResourceRules::setup_total( (int) $res['setup_before_min'], null === $a['setup_before_min'] ? null : (int) $a['setup_before_min'], (string) $a['kind'] );
 			$after  = ResourceRules::setup_total( (int) $res['setup_after_min'], null === $a['setup_after_min'] ? null : (int) $a['setup_after_min'], (string) $a['kind'] );
-			$w      = ResourceRules::busy_window( (string) $o['date'], $o['start'] ?: null, $o['end'] ?: null, $before, $after );
+			$w      = ResourceRules::busy_window( (string) $o['date'], $o['start'] ?: null, $o['end'] ?: null, $before, $after, ! empty( $o['end_date'] ) ? (string) $o['end_date'] : null );
 			$out[]  = $w + array( 'title' => (string) $o['title'], 'activity_id' => (int) $o['activity_id'] );
 		}
 		return $out;
@@ -296,7 +296,7 @@ final class Resources {
 		if ( ! $rid || ! self::activity_slot_mode( $activity_id ) ) {
 			return '';
 		}
-		$over = self::dates_overlaps( $activity_id, array( array( 'date' => $s['session_date'], 'start' => $s['start_time'] ?: null, 'end' => $s['end_time'] ?: null ) ) );
+		$over = self::dates_overlaps( $activity_id, array( array( 'date' => $s['session_date'], 'end_date' => $s['end_date'] ?? null, 'start' => $s['start_time'] ?: null, 'end' => $s['end_time'] ?: null ) ) );
 		return $over ? 'Questa fascia non è disponibile: la risorsa è già occupata da ' . implode( '; ', array_slice( $over, 0, 3 ) ) . '.' : '';
 	}
 
@@ -1076,7 +1076,7 @@ final class Resources {
 		$after  = ResourceRules::setup_total( (int) $res['setup_after_min'], null === $a['setup_after_min'] ? null : (int) $a['setup_after_min'], (string) $a['kind'] );
 		$wins   = array();
 		foreach ( $dates as $d ) {
-			$wins[] = ResourceRules::busy_window( (string) $d['date'], $d['start'] ?: null, $d['end'] ?: null, $before, $after );
+			$wins[] = ResourceRules::busy_window( (string) $d['date'], $d['start'] ?: null, $d['end'] ?: null, $before, $after, ! empty( $d['end_date'] ) ? (string) $d['end_date'] : null );
 		}
 		return array_values( self::window_conflicts( (int) $rid, $wins, $activity_id ) );
 	}

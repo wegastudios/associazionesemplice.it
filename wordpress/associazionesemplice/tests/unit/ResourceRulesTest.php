@@ -258,6 +258,23 @@ final class ResourceRulesTest extends TestCase {
 		$this->assertSame( '2026-10-21 00:59:00', $w['ends'] );
 	}
 
+	public function test_a_multi_day_event_occupies_the_resource_until_its_last_day(): void {
+		$w = R::busy_window( '2026-06-12', '09:00', '18:00', 60, 30, '2026-06-14' );
+		$this->assertSame( '2026-06-12 08:00:00', $w['starts'] );
+		$this->assertSame( '2026-06-14 18:30:00', $w['ends'] );
+		$this->assertTrue( R::overlaps( '2026-06-13 10:00:00', '2026-06-13 11:00:00', $w['starts'], $w['ends'] ), 'il giorno di mezzo è occupato' );
+		$this->assertFalse( R::overlaps( '2026-06-14 19:00:00', '2026-06-14 20:00:00', $w['starts'], $w['ends'] ) );
+	}
+
+	public function test_an_event_over_midnight_occupies_until_the_next_morning(): void {
+		$w = R::busy_window( '2026-06-12', '21:30', '01:00', 0, 0, '2026-06-13' );
+		$this->assertSame( '2026-06-13 01:00:00', $w['core_ends'] );
+		$same = R::busy_window( '2026-06-12', '21:30', '01:00', 0, 0 );
+		$this->assertSame( '2026-06-12 23:59:00', $same['core_ends'], 'senza data di fine resta come prima' );
+		$none = R::busy_window( '2026-06-12', null, null, 0, 0, '2026-06-14' );
+		$this->assertSame( array( '2026-06-12 00:00:00', '2026-06-14 23:59:00' ), array( $none['core_starts'], $none['core_ends'] ) );
+	}
+
 	public function test_setup_windows_leave_the_neighbouring_slots_free(): void {
 		$w = R::busy_window( '2026-10-20', '15:00', '16:00', 200, 200 );
 		$this->assertFalse( R::overlaps( '2026-10-20 10:00:00', '2026-10-20 11:00:00', $w['starts'], $w['ends'] ), 'finisce prima delle 11:40' );
