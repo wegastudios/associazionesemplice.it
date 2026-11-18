@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Attivita\Services\WaitlistPromotedNotification;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgRole;
@@ -18,6 +19,7 @@ use App\Modules\Soci\Services\GuardianService;
 use App\Modules\Soci\Services\MemberNotification;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\ReminderService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -312,4 +314,9 @@ it('il limite di frequenza dei promemoria si regola da configurazione', function
     $limits = RateLimiter::limiter('reminder-mail')($job);
 
     expect(array_map(static fn ($l) => $l->maxAttempts, $limits))->toBe([5, 2]);
+});
+
+it('le email di conferma della domanda e di promozione dalla lista d\'attesa partono in coda', function (): void {
+    expect(new MemberNotification('Oggetto', 'Ciao,', 'Testo', 'Alfa'))->toBeInstanceOf(ShouldQueue::class)
+        ->and(new WaitlistPromotedNotification('Ciao,', 'Testo', null, null, 'Alfa'))->toBeInstanceOf(ShouldQueue::class);
 });
