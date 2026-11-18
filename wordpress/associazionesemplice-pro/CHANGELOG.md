@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.17 – 2026-11-18
+- Altro: allineato al plugin gratuito 1.3.30.
+- Altro: nella finestra «Visualizza i dettagli» di WordPress il changelog compare sempre, anche dopo l'aggiornamento.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.16 – 2026-11-18
 - Nuovo: negli eventi su più giorni la risorsa resta occupata in tutti i giorni, anche oltre mezzanotte; a scelta anche senza interruzioni tra più eventi della stessa manifestazione (per esempio le gare di una regata), fino a 31 giorni.
 - Altro: corretto il controllo delle risorse, che nelle date su più giorni guardava solo il primo giorno.
