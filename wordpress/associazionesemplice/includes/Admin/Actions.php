@@ -627,7 +627,7 @@ final class Actions {
 	private static function publish_pages( array $p ): array {
 		$ids = array_map( 'intval', (array) ( $p['ids'] ?? array() ) );
 		if ( ! $ids ) {
-			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Spunta almeno una pagina da pubblicare.' ) );
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Spunta almeno una pagina da pubblicare.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$n = \AssociazioneSemplice\PublicEvents::publish_pages( $ids );
 		return array( ! empty( $p['_back'] ) ? esc_url_raw( $p['_back'] ) : Ui::url( 'asem-activities' ), sprintf( \AssociazioneSemplice\Texts::t( 'Pagine pubblicate: %d. Ora si vedono sul sito.' ), $n ) );
