@@ -162,13 +162,19 @@ final readonly class SessionService
         foreach (ActivitySession::query()->where('activity_id', $activity->id)->get(['session_date', 'start_time']) as $s) {
             $have[$s->session_date->format('Y-m-d').'|'.($s->start_time ?? '')] = true;
         }
+        $windows = [];
         foreach ($dates as $d) {
             if (! isset($have[$d.'|'.($start ?? '')])) {
                 $this->assertNoOverlap($activity->id, $d, SessionRules::shifted($d, $days));
-                if (! $activity->occupy_on_booking) {
+                $windows[] = SessionRules::slot($d, $start, $end, SessionRules::shifted($d, $days));
+                if (! $activity->occupy_on_booking && $activity->resource_block === null) {
                     $this->assertFree($activity, $d, $start, $end, null, SessionRules::shifted($d, $days));
                 }
             }
+        }
+        if ($windows !== []) {
+            // Evento in un blocco di manifestazione: il periodo si allarga alle date nuove e va controllato per intero.
+            $this->activities->assertBlockFits($activity, $windows);
         }
         $made = 0;
         $this->connection()->transaction(function () use ($dates, $have, $activity, $start, $end, $days, $location, $capacity, &$made): void {
@@ -205,9 +211,11 @@ final readonly class SessionService
         }
         $activity = $this->activities->find($s->activity_id);
         $this->assertNoOverlap($activity->id, $day, $endDate, $s->id);
-        if (! $activity->occupy_on_booking) {
+        if (! $activity->occupy_on_booking && $activity->resource_block === null) {
             $this->assertFree($activity, $day, $start, $end, $s->id, $endDate);
         }
+        // Evento in un blocco: la vecchia posizione di questa data non conta, il periodo si ricalcola con la nuova.
+        $this->activities->assertBlockFits($activity, [SessionRules::slot($day, $start, $end, $endDate)], $s->id);
         $taken = $this->taken($s->id);
         if ($capacity !== null && $capacity < max(1, $taken)) {
             throw new ActivityError('Ci sono già '.$taken.' prenotati: i posti non possono essere meno.');
