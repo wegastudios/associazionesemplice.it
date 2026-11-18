@@ -265,6 +265,21 @@ final class ActivitiesPage {
 			echo '</form>';
 		}
 
+		$drafts = current_user_can( Plugin::CAP_OPS ) ? \AssociazioneSemplice\PublicEvents::draft_pages( array_map( function ( $r ) { return (int) $r['activity']['id']; }, $report['activities'] ) ) : array();
+		if ( $drafts ) { // le pagine importate (per esempio da The Events Calendar) restano in bozza: si pubblicano insieme, senza aprirle una a una
+			Ui::form_open( 'asem_publish_pages', $back );
+			echo '<div class="asem-card"><h2>' . esc_html( \AssociazioneSemplice\Texts::t( 'Pagine in bozza: non si vedono ancora sul sito' ) ) . '</h2>'
+				. '<p class="description">' . esc_html( \AssociazioneSemplice\Texts::t( 'Spunta le pagine da pubblicare: dopo il clic compaiono subito sul sito.' ) ) . '</p>'
+				. '<p><label><input type="checkbox" checked data-asem-check-all="asem-draft-item"> <strong>' . esc_html( \AssociazioneSemplice\Texts::t( 'Seleziona tutte' ) ) . '</strong></label></p><ul>';
+			foreach ( $report['activities'] as $r ) {
+				$aid = (int) $r['activity']['id'];
+				if ( isset( $drafts[ $aid ] ) ) {
+					echo '<li><label><input type="checkbox" class="asem-draft-item" name="ids[]" value="' . (int) $aid . '" checked> ' . esc_html( (string) $r['activity']['name'] ) . '</label></li>';
+				}
+			}
+			echo '</ul><p><button class="button button-primary" onclick="return confirm(\'' . esc_js( \AssociazioneSemplice\Texts::t( 'Pubblicare le pagine selezionate? Compariranno subito sul sito.' ) ) . '\')">' . esc_html( \AssociazioneSemplice\Texts::t( 'Pubblica le pagine selezionate' ) ) . '</button></p></div></form>';
+		}
+
 		self::sports_card();
 		$volunteers = Plugin::people()->search_light( array( 'type' => MemberType::VOLUNTEER ) );
 		echo '<div class="asem-card" id="asem-new-activity"><h2>Nuova attività</h2>';

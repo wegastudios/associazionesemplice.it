@@ -508,6 +508,40 @@ final class PublicEvents {
 		echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=asem-activity&id=' . $aid ) ) . '">Apri l\'attività</a></p>';
 	}
 
+	/**
+	 * Pagine pubbliche ancora in bozza (o in attesa di revisione) tra le attività indicate: le pagine importate non si pubblicano da sole.
+	 *
+	 * @param int[] $activity_ids
+	 * @return array<int,int> id attività => id della pagina
+	 */
+	public static function draft_pages( array $activity_ids ): array {
+		$out = array();
+		foreach ( array_unique( array_map( 'intval', $activity_ids ) ) as $aid ) {
+			$pid = $aid > 0 ? self::post_of( $aid ) : 0;
+			if ( $pid && in_array( get_post_status( $pid ), array( 'draft', 'pending' ), true ) ) {
+				$out[ $aid ] = $pid;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Pubblica in una volta le pagine in bozza delle attività indicate (quelle già pubblicate o nel cestino non si toccano).
+	 *
+	 * @param int[] $activity_ids
+	 * @return int pagine pubblicate
+	 */
+	public static function publish_pages( array $activity_ids ): int {
+		$n = 0;
+		foreach ( self::draft_pages( $activity_ids ) as $aid => $pid ) {
+			if ( ! is_wp_error( wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish' ), true ) ) ) {
+				Audit::log( 'event.page_published', 'activity', (int) $aid, array( 'bulk' => true ) );
+				$n++;
+			}
+		}
+		return $n;
+	}
+
 	/** Riquadro per la scheda dell'attività: collegamenti alla pagina pubblica. */
 	public static function activity_box( int $activity_id ): string {
 		$id = self::ensure( $activity_id );
