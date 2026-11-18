@@ -165,7 +165,7 @@ final class Exports {
 	public static function social( int $start_year ): array {
 		$year = new SocialYear( $start_year, Settings::start_month() );
 		$r    = Plugin::reports()->social_year( $year );
-		$csv  = self::line( array( 'Valutazione anno sociale', $year->label(), Settings::get( 'association_name' ) ) );
+		$csv  = self::line( array( 'Valutazione anno delle attività', $year->label(), Settings::get( 'association_name' ) ) );
 		foreach ( MemberType::member_types() as $t ) {
 			$csv .= self::line( array( MemberType::label( $t ), $r['members_by_type'][ $t ] ?? 0 ) );
 		}
@@ -173,18 +173,25 @@ final class Exports {
 		foreach ( $r['activities'] as $a ) {
 			$csv .= self::line( array( $a['activity']['name'], $a['activity']['instructor_name'], $a['participants'], Money::plain( $a['income'] ), Money::plain( $a['cost'] ), Money::plain( $a['margin'] ) ) );
 		}
-		$csv .= "\r\n" . self::line( array( 'ENTRATE GENERALI (non di attività)', '', 'Importo' ) );
-		foreach ( $r['general_income'] as $x ) {
-			$csv .= self::line( array( $x['name'], '', Money::plain( $x['cents'] ) ) );
-		}
-		$csv .= self::line( array( 'USCITE GENERALI (non di attività)', '', 'Importo' ) );
-		foreach ( $r['general_expenses'] as $x ) {
-			$csv .= self::line( array( $x['name'], '', Money::plain( $x['cents'] ) ) );
+		$parts = count( $r['fiscal_slices'] ) > 1 ? $r['fiscal_slices'] : array( array( 'label' => '', 'general_income' => $r['general_income'], 'general_expenses' => $r['general_expenses'], 'income' => array_sum( array_column( $r['general_income'], 'cents' ) ), 'expense' => array_sum( array_column( $r['general_expenses'], 'cents' ) ) ) );
+		foreach ( $parts as $part ) { // l'anno delle attività attraversa più anni fiscali: un blocco per ognuno
+			$suffix = '' === $part['label'] ? '' : ' - ' . $part['label'];
+			$csv   .= "\r\n" . self::line( array( 'ENTRATE GENERALI (non di attività)' . $suffix, '', 'Importo' ) );
+			foreach ( $part['general_income'] as $x ) {
+				$csv .= self::line( array( $x['name'], '', Money::plain( $x['cents'] ) ) );
+			}
+			$csv .= self::line( array( 'USCITE GENERALI (non di attività)' . $suffix, '', 'Importo' ) );
+			foreach ( $part['general_expenses'] as $x ) {
+				$csv .= self::line( array( $x['name'], '', Money::plain( $x['cents'] ) ) );
+			}
+			if ( '' !== $part['label'] ) {
+				$csv .= self::line( array( 'Totale generali ' . $part['label'], Money::plain( $part['income'] ), Money::plain( $part['expense'] ) ) );
+			}
 		}
 		$csv .= "\r\n" . self::line( array( 'Totale entrate', Money::plain( $r['total_income'] ) ) );
 		$csv .= self::line( array( 'Totale uscite', Money::plain( $r['total_expense'] ) ) );
 		$csv .= self::line( array( 'Risultato', Money::plain( $r['result'] ) ) );
-		return array( 'anno-sociale-' . str_replace( '/', '-', $year->label() ) . '.csv', $csv );
+		return array( 'anno-attivita-' . str_replace( '/', '-', $year->label() ) . '.csv', $csv );
 	}
 
 	/** I soci a blocchi di 1.000 righe. @return \Generator<string> */

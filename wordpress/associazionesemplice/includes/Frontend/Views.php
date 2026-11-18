@@ -1049,7 +1049,7 @@ final class Views {
 			return ''; // chi gestisce eventi senza esserne referente (staff, gestori) trova qui sotto solo gli ingressi
 		}
 		if ( ! $found ) {
-			$html .= '<p class="asemf-muted">Non sei referente di nessuna attività dell\'anno sociale in corso.</p>';
+			$html .= '<p class="asemf-muted">Non sei referente di nessuna attività dell\'anno delle attività in corso.</p>';
 		}
 		return $html . '</section>';
 	}

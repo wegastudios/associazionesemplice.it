@@ -165,7 +165,7 @@ final class BookDeskPage {
 		if ( 'date' === $mode ) {
 			echo '<h2>Disponibile il ' . esc_html( Docs::d( $date ) ) . '</h2><h3>Eventi</h3>';
 			self::sessions_table( Plugin::activities()->sessions_on( $date ), $person, false );
-			echo '<h3>Corsi (anno sociale ' . esc_html( $sy->label() ) . ')</h3>';
+			echo '<h3>Corsi (anno ' . esc_html( $sy->label() ) . ')</h3>';
 			$courses = array_filter(
 				Plugin::activities()->for_year( $sy->label() ),
 				function ( $a ) {

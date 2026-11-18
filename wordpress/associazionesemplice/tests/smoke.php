@@ -1806,7 +1806,7 @@ $mn_html = (string) ob_get_clean();
 ob_start();
 Admin\AccountingPage::render();
 $ac_html = (string) ob_get_clean();
-asem_ok( false !== strpos( $mn_html, 'Disponibilità reale' ) && false !== strpos( $mn_html, 'Nuovo incasso' ) && false !== strpos( $mn_html, 'Ultimi movimenti' ) && false !== strpos( $mn_html, 'Anno sociale' ) && false !== strpos( $mn_html, 'page=asem-ledger' ), 'soldi: cassa, liquidità reale, anno sociale e ultimi movimenti, con la prima nota' );
+asem_ok( false !== strpos( $mn_html, 'Disponibilità reale' ) && false !== strpos( $mn_html, 'Nuovo incasso' ) && false !== strpos( $mn_html, 'Ultimi movimenti' ) && false !== strpos( $mn_html, 'Anno fiscale' ) && false !== strpos( $mn_html, 'page=asem-ledger' ), 'soldi: cassa, liquidità reale, anno fiscale e ultimi movimenti, con la prima nota' );
 asem_ok( false !== strpos( $ac_html, 'Anno fiscale' ) && false !== strpos( $ac_html, 'Adempimenti' ) && false !== strpos( $ac_html, 'page=asem-years' ) && false !== strpos( $ac_html, 'page=asem-ledger' ), 'contabilità: esercizio, esercizi, adempimenti e la stessa prima nota' );
 $ac_tabs = Admin\Admin::tabs( 'asem-accounting' );
 asem_ok( false !== strpos( $ac_tabs, 'Anni fiscali' ) && false !== strpos( $ac_tabs, 'Rendiconto' ) && false !== strpos( $ac_tabs, 'Adempimenti' ) && false === strpos( $ac_tabs, 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'asem-money' ), 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'asem-money' ), 'Prima nota' ) && false === strpos( Admin\Admin::tabs( 'asem-money' ), 'Esercizi' ), 'menu: Soldi ha incassi, spese, conti e prima nota; Contabilità anni, rendiconto e adempimenti' );
@@ -3249,8 +3249,8 @@ $pv    = ImportService::preview_file( $csv_y, 'anni.csv', array() );
 asem_ok( 'create' === $pv['people']['plan'][0]['action'] && array( '2023', '2025' ) === $pv['people']['plan'][0]['row']['years'] && false !== strpos( (string) $pv['people']['plan'][0]['message'], 'Iscritto: 2023, 2025' ), 'import CSV: le colonne-anno diventano gli anni di iscrizione' );
 ImportService::apply( $pv, array() );
 $anni_p = $people->find_by_email( 'anni.effettivi@example.com' );
-$iy = function ( string $y ) { // con l'anno sociale sfalsato la colonna «2023» è la tessera che inizia nel 2023
-	return \AssociazioneSemplice\MembershipRules::import_label( $y, Settings::start_month() );
+$iy = function ( string $y ) { // con l'anno fiscale sfalsato la colonna «2023» è la tessera che inizia nel 2023
+	return \AssociazioneSemplice\MembershipRules::import_label( $y, Settings::membership_start_month() );
 };
 asem_ok( $anni_p && $people->has_membership( (int) $anni_p['id'], $iy( '2023' ) ) && $people->has_membership( (int) $anni_p['id'], $iy( '2025' ) ) && ! $people->has_membership( (int) $anni_p['id'], $iy( '2024' ) ), 'import CSV: iscrizioni registrate solo per gli anni indicati' );
 // Ospiti importati con il contatore delle volte già venuto, gli eventi passati nelle note e l'anno di iscrizione
@@ -4461,9 +4461,11 @@ $si->setAccessible( true );
 $cy = (int) substr( $today, 0, 4 );
 \AssociazioneSemplice\FiscalYears::create( $cy + 1 ); // serve agli esercizi (prove più sotto): la tessera non ne dipende più
 $sm_was = (int) Settings::get( 'social_year_start_month' );
-$set_sm = function ( int $m ) { // cambia il mese dell'anno sociale senza il controllo delle tessere già emesse (le prove mettono insieme mesi diversi)
+$fm_was = (int) Settings::get( 'fiscal_start_month' );
+$set_sm = function ( int $m ) use ( $sm_was, $fm_was ) { // cambia il mese dell'anno sociale senza il controllo delle tessere già emesse (le prove mettono insieme mesi diversi)
 	$o                            = Settings::all();
 	$o['social_year_start_month'] = $m;
+	$o['fiscal_start_month']      = $m === $sm_was ? $fm_was : $m; // la tessera segue l'anno fiscale: le prove sulla tessera spostano insieme i due mesi
 	update_option( Settings::OPTION, $o );
 };
 $set_sm( ( (int) substr( $today, 5, 2 ) % 12 ) + 1 ); // la tessera di oggi finisce a fine mese: siamo negli ultimi giorni e il rinnovo per l'anno dopo è aperto
@@ -5400,7 +5402,7 @@ asem_ok( null === \AssociazioneSemplice\FiscalYears::last_closed(), 'rendiconto 
 
 asem_render( array( Admin\YearsPage::class, 'render' ), 'Crea anno fiscale' );
 $rep_html = asem_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e liquidità' );
-asem_ok( strpos( $rep_html, 'Conti e liquidità' ) < strpos( $rep_html, 'Anno sociale (attività)' ) && strpos( $rep_html, 'Anno sociale (attività)' ) < strpos( $rep_html, 'Anno fiscale (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );
+asem_ok( strpos( $rep_html, 'Conti e liquidità' ) < strpos( $rep_html, 'Anno delle attività' ) && strpos( $rep_html, 'Anno delle attività' ) < strpos( $rep_html, 'Anno fiscale (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );
 asem_render( array( Admin\ReportsPage::class, 'render' ), 'Fondi per anno fiscale', array( 'mode' => 'solar' ) );
 
 // ---------- Soci sospesi (inattivi) ----------
@@ -7043,11 +7045,11 @@ $set_sm( $sm_was );
 ob_start();
 Admin\EntityPage::render();
 $sy_html = (string) ob_get_clean();
-asem_ok( false !== strpos( $sy_html, 'Da che mese inizia il tuo anno sociale (tessere e attività)?' ) && false !== strpos( $sy_html, 'Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?' ) && false !== strpos( $sy_html, 'restano al 31 dicembre in ogni caso' ), 'dati dell\'ente: le domande su anno sociale e anno fiscale sono due, separate' );
+asem_ok( false !== strpos( $sy_html, 'Da che mese iniziano corsi ed eventi (anno delle attività)?' ) && false !== strpos( $sy_html, 'Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?' ) && false !== strpos( $sy_html, 'restano al 31 dicembre in ogni caso' ), 'dati dell\'ente: le domande su anno sociale e anno fiscale sono due, separate' );
 ob_start();
 Admin\WizardPage::render();
 $sy_html = (string) ob_get_clean();
-asem_ok( false !== strpos( $sy_html, 'Da che mese inizia il tuo anno sociale (tessere e attività)?' ) && false !== strpos( $sy_html, 'Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?' ), 'procedura guidata: le domande su anno sociale e anno fiscale sono due, separate' );
+asem_ok( false !== strpos( $sy_html, 'Da che mese iniziano corsi ed eventi (anno delle attività)?' ) && false !== strpos( $sy_html, 'Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?' ), 'procedura guidata: le domande su anno sociale e anno fiscale sono due, separate' );
 $set_sm( $sm_was );
 
 // ---------- Tessera: segue l'anno sociale (non l'esercizio) ----------
@@ -7057,9 +7059,15 @@ $ts_row = function ( int $pid, string $label ) use ( $wpdb ) {
 $ts_mk = function ( string $n ) use ( $people ) {
 	return $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => $n, 'email' => strtolower( $n ) . '.tessera@example.com', 'joined_on' => '2020-01-01' ) );
 };
+$set_tm = function ( int $m ) { // tessera: anno sociale e anno fiscale allo stesso mese
+	$o                            = Settings::all();
+	$o['social_year_start_month'] = $m;
+	$o['fiscal_start_month']      = $m;
+	update_option( Settings::OPTION, $o );
+};
 $ts_d = '2026-11-13';
 // anno sociale a gennaio: la tessera è l'anno solare, come sempre
-$set_sm( 1 );
+$set_tm( 1 );
 $ts_a = $ts_mk( 'Solare' );
 $ts_l = Settings::membership_year( $ts_d )->label();
 $people->set_membership( $ts_a, $ts_l, true );
@@ -7067,7 +7075,7 @@ $ts_r = $ts_row( $ts_a, '2026' );
 asem_ok( '2026' === $ts_l && $ts_r && '2026-01-01' === $ts_r['valid_from'] && '2026-12-31' === $ts_r['valid_to'], 'tessera, anno sociale a gennaio: è l\'anno solare, etichetta «2026», dal 1/1 al 31/12' );
 asem_ok( array( 'year' => '2026', 'free' => null ) === $people->membership_plan( $ts_mk( 'Solarenuovo' ), '2026-06-01' ) && array( 'year' => '2027', 'free' => null ) === $people->membership_plan( $ts_a, '2026-12-15' ) && array( 'year' => '2027', 'free' => '2026' ) === $people->membership_plan( $ts_mk( 'Solarenuovo2' ), '2026-12-15' ), 'tessera solare: stesse etichette di prima, il rinnovo per l\'anno dopo si apre a dicembre' );
 // anno sociale a settembre: la tessera 2026/2027 va dal 1/9/2026 al 31/8/2027
-$set_sm( 9 );
+$set_tm( 9 );
 $ts_b = $ts_mk( 'Settembre' );
 $ts_l = Settings::membership_year( $ts_d )->label();
 $people->set_membership( $ts_b, $ts_l, true );
@@ -7079,7 +7087,7 @@ $ts_pn = $ts_mk( 'Nuovosett' );
 asem_ok( array( 'year' => '2026/2027', 'free' => null ) === $people->membership_plan( $ts_pn, '2027-03-01' ) && array( 'year' => '2027/2028', 'free' => null ) === $people->membership_plan( $ts_b, '2027-08-15' ) && array( 'year' => '2027/2028', 'free' => '2026/2027' ) === $people->membership_plan( $ts_pn, '2027-08-15' ), 'tessera a settembre: rinnovo anticipato solo negli ultimi giorni (chi ha l\'anno rinnova, il nuovo ha l\'anno in corso in omaggio)' );
 asem_ok( array( 'year' => '2026/2027', 'free' => null ) === $people->membership_plan( $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Rinnovolasciato', 'email' => 'rinnovolasciato.tessera@example.com', 'joined_on' => '2020-01-01' ) ), '2026-11-13' ), 'tessera: a metà anno la quota va all\'anno in corso' );
 // anno sociale a luglio
-$set_sm( 7 );
+$set_tm( 7 );
 $ts_c = $ts_mk( 'Luglio' );
 $people->set_membership( $ts_c, Settings::membership_year( $ts_d )->label(), true );
 $ts_r = $ts_row( $ts_c, '2026/2027' );
@@ -7091,12 +7099,11 @@ asem_ok( $ts_r && '2026-09-01' === $ts_r['valid_from'] && '2027-08-31' === $ts_r
 $ts_r = $ts_row( $ts_a, '2026' );
 asem_ok( $ts_r && '2026-01-01' === $ts_r['valid_from'] && '2026-12-31' === $ts_r['valid_to'], 'cambio mese: la tessera solare già emessa non cambia' );
 // con tessere ancora valide che partono in un altro mese, il mese non si cambia (si confonderebbero le etichette); gennaio sempre possibile
-$set_sm( 9 );
+$set_tm( 9 );
 $people->set_membership( $ts_pn, Settings::membership_year()->label(), true );
-$ts_msg = asem_throws( function () { Settings::update( array( 'social_year_start_month' => 7 ) ); } );
-asem_ok( null !== $ts_msg && false !== strpos( $ts_msg, 'tessere ancora valide' ) && 9 === Settings::start_month(), 'cambio mese: con tessere in corso che partono in un altro mese non si cambia (messaggio chiaro, nulla viene toccato)' );
-asem_ok( null === asem_throws( function () { Settings::update( array( 'social_year_start_month' => 1 ) ); } ) && 1 === Settings::start_month(), 'cambio mese: passare a gennaio è sempre possibile' );
-$set_sm( 9 );
+$ts_cards = $wpdb->get_results( 'SELECT valid_from, valid_to FROM ' . Db::t( 'memberships' ) . " WHERE deleted_at IS NULL AND social_year LIKE '%/%'", ARRAY_A ); // con un anno fiscale già chiuso il mese non si cambia comunque (prova sopra): qui si controlla la regola sulle tessere
+asem_ok( \AssociazioneSemplice\MembershipRules::month_change_conflicts( $ts_cards, 7, Db::today() ) && ! \AssociazioneSemplice\MembershipRules::month_change_conflicts( $ts_cards, 1, Db::today() ), 'cambio mese: con tessere in corso che partono in un altro mese non si cambia, gennaio sempre possibile' );
+$set_tm( 9 );
 // la tessera non dipende dall'esercizio: con l'esercizio a luglio e a settembre nulla cambia per la tessera
 $ts_fm = function () { return 7; };
 add_filter( 'asem_fiscal_start_month', $ts_fm );
@@ -8153,7 +8160,7 @@ asem_ok( $cp_ny === $cp_ca['social_year'] && 'Palestra' === $cp_ca['location'] &
 asem_ok( ( new DateTimeImmutable( $cp_ca['starts_on'] ) )->format( 'N' ) === ( new DateTimeImmutable( $sy->start()->format( 'Y-m-d' ) ) )->format( 'N' ) && 2 === (int) \AssociazioneSemplice\ActivityService::slots( $cp_ca )[0]['day'] && '18:00' === \AssociazioneSemplice\ActivityService::slots( $cp_ca )[0]['start'] && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d', $cp_cn ) ), 'riproporre: stesso giorno della settimana e stesse lezioni, senza iscritti' );
 asem_ok( null !== asem_throws( function () use ( $CP, $cp_c ) { $CP::duplicate( $cp_c, array() ); } ), 'riproporre: un corso vuole il nuovo anno sociale' );
 asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Riproponi', array( 'id' => $cp_src ) );
-asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Anno sociale', array( 'id' => $cp_c ) );
+asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Anno delle attività', array( 'id' => $cp_c ) );
 // The Events Calendar: i contenuti tribe_events si leggono dal database
 $tec_v  = wp_insert_post( array( 'post_type' => 'tribe_venue', 'post_status' => 'publish', 'post_title' => 'Sala Verde' ) );
 update_post_meta( $tec_v, '_VenueAddress', 'Via Po 3' );
@@ -8571,6 +8578,46 @@ asem_ok( '2025-09-01' === \AssociazioneSemplice\SocialYear::from_label( '2025/20
 $sy_o = get_option( Settings::OPTION, array() ); // si torna a settembre come il resto delle prove (senza i controlli sulle tessere)
 $sy_o['social_year_start_month'] = 9;
 update_option( Settings::OPTION, $sy_o );
+Settings::forget();
+// la tessera segue l'anno fiscale: riallineamento delle tessere esistenti (solo se pagate, mai accorciate, doppioni «sostituiti», prima la copia)
+$ra_opt = get_option( Settings::OPTION, array() );
+$ra_o2  = $ra_opt;
+$ra_o2['fiscal_start_month'] = 1; // l'anno fiscale parte a gennaio; l'anno delle attività è a settembre: due calendari diversi
+update_option( Settings::OPTION, $ra_o2 );
+Settings::forget();
+foreach ( array( 2026, 2027 ) as $ra_y ) {
+	if ( ! \AssociazioneSemplice\FiscalYears::get( $ra_y ) ) {
+		\AssociazioneSemplice\FiscalYears::create( $ra_y );
+	}
+}
+$ra_tx = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL ORDER BY id LIMIT 1' );
+$ra_mk = function ( string $first ) use ( $people ) {
+	return $people->create( array( 'type' => 'ordinary', 'first_name' => $first, 'last_name' => 'Riallineo', 'email' => strtolower( $first ) . '.riallineo@example.com', 'joined_on' => '2025-09-01' ) );
+};
+$ra_card = function ( int $pid, string $label, string $from, string $to, ?int $tx ) use ( $wpdb ) {
+	$wpdb->insert( Db::t( 'memberships' ), array( 'person_id' => $pid, 'social_year' => $label, 'valid_from' => $from, 'valid_to' => $to, 'source' => 'manual', 'transaction_id' => $tx, 'created_at' => Db::now() ) );
+	return (int) $wpdb->insert_id;
+};
+$ra_p1  = $ra_mk( 'Prima' );
+$ra_a   = $ra_card( $ra_p1, '2025/2026', '2025-09-01', '2026-08-31', $ra_tx ); // pagata: si allunga fino al 31/12/2026
+$ra_b   = $ra_card( $ra_p1, '2026/2027', '2026-09-01', '2027-08-31', null ); // senza pagamento: non si tocca
+$ra_p2  = $ra_mk( 'Seconda' );
+$ra_d   = $ra_card( $ra_p2, '2025/2026', '2025-09-01', '2026-08-31', $ra_tx ); // finirebbe come la «2026» che c'è già: sostituita
+$ra_e   = $ra_card( $ra_p2, '2026', '2026-01-01', '2026-12-31', $ra_tx );
+$ra_n   = \AssociazioneSemplice\Install::realign_memberships_to_fiscal();
+$ra_row = function ( int $id ) use ( $wpdb ) { return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'memberships' ) . ' WHERE id = %d', $id ), ARRAY_A ); };
+asem_ok( $ra_n >= 2,'tessera e anno fiscale: riallineate 2 tessere (una allungata, una sostituita) - risultato ' . $ra_n . ' ' . wp_json_encode( array_slice( Audit::recent( 3 ), 0, 3 ) ) . ', anno 2026 chiuso: ' . ( \AssociazioneSemplice\FiscalYears::is_open( 2026 ) ? 'no' : 'sì' ) . ', riga a: ' . wp_json_encode( $ra_row( $ra_a ) ) );
+asem_ok( '2026' === $ra_row( $ra_a )['social_year'] && '2026-12-31' === $ra_row( $ra_a )['valid_to'] && '2025-09-01' === $ra_row( $ra_a )['valid_from'], 'tessera e anno fiscale: la tessera pagata passa a «2026» e si allunga, senza accorciarsi' );
+asem_ok( '2026/2027' === $ra_row( $ra_b )['social_year'] && '2027-08-31' === $ra_row( $ra_b )['valid_to'], 'tessera e anno fiscale: senza un pagamento non si allunga niente' );
+asem_ok( (int) $ra_e === (int) $ra_row( $ra_d )['replaced_by'] && null === $ra_row( $ra_e )['replaced_by'] && '2025/2026' === $ra_row( $ra_d )['social_year'], 'tessera e anno fiscale: due tessere dello stesso anno, resta la più recente e l\'altra è «sostituita» (non cancellata)' );
+asem_ok( in_array( 'membership.realigned', array_column( Audit::recent( 50 ), 'action' ), true ) && in_array( 'membership.replaced', array_column( Audit::recent( 50 ), 'action' ), true ), 'tessera e anno fiscale: ogni passo è nel registro azioni' );
+asem_ok( 0 === \AssociazioneSemplice\Install::realign_memberships_to_fiscal(), 'tessera e anno fiscale: rilanciare il riallineamento non cambia nulla' );
+asem_ok( '2026/2027' === Settings::membership_year( '2026-11-18' )->label() || '2026' === Settings::membership_year( '2026-11-18' )->label(), 'tessera e anno fiscale: l\'anno della tessera di oggi segue l\'anno fiscale' );
+asem_ok( '2026' === Settings::membership_year( '2026-11-18' )->label() && 9 === Settings::start_month(), 'tessera e anno fiscale: con l\'anno fiscale a gennaio e le attività a settembre la tessera è «2026»' );
+foreach ( (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) as $ra_bk ) {
+	wp_delete_file( $ra_bk ); // la copia di prova non resta
+}
+update_option( Settings::OPTION, $ra_opt );
 Settings::forget();
 // cambio di risorsa: ciò che si sovrappone passa alla risorsa di prima, tutto o niente
 $mv_def  = array( 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 );
@@ -12343,7 +12390,7 @@ asem_ok( Access::user_can( $em_uid, 'asem_register_member', 0 ) && Access::user_
 // la Bacheca non mostra saldi senza il permesso
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'funds' ) );
 wp_set_current_user( $em_uid );
-$em_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno sociale' );
+$em_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno fiscale' );
 asem_ok( false === strpos( $em_dash, 'Disponibilità reale' ), 'dipendente senza visualizzazione di fondi, casse e conti: la Bacheca non mostra i saldi' );
 wp_set_current_user( 1 );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità reale' );
@@ -12379,7 +12426,7 @@ asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipenden
 // avviso in Bacheca: con tutte le porte attive si accende, fisso, solo a chi ha titolo, solo se esistono dipendenti, finché la pagina dei dipendenti non è stata aperta
 delete_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN );
 asem_ok( array() === \AssociazioneSemplice\EmployeeRules::pending_keys() && \AssociazioneSemplice\Employees::areas_review_pending( 1 ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid ), 'permessi per area: con le porte di tutte le aree attive l\'avviso compare, ma solo a chi ha titolo' );
-$em_dash1 = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno sociale' );
+$em_dash1 = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno fiscale' );
 asem_ok( false !== strpos( $em_dash1, 'Rivedi i permessi dei dipendenti: ora si danno per area.' ), 'permessi per area: l\'avviso «Rivedi i permessi dei dipendenti» è in Bacheca' );
 // salvataggio dalla pagina: tutte le aree seguono le spunte
 Admin\EmployeesPage::save( array( 'user_id' => $em_uid, 'perm' => array( 'courses' ) ) );
@@ -13229,7 +13276,9 @@ asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'assets/admin.
 // anno in omaggio: nuovo socio negli ultimi giorni della tessera (paga l'anno dopo, ha l'anno in corso in omaggio)
 $qo_sm = (int) Settings::get( 'social_year_start_month' );
 $qo_o  = Settings::all();
+$qo_fm = (int) Settings::get( 'fiscal_start_month' );
 $qo_o['social_year_start_month'] = ( (int) substr( $today, 5, 2 ) % 12 ) + 1;
+$qo_o['fiscal_start_month']      = $qo_o['social_year_start_month']; // la tessera segue l'anno fiscale
 update_option( Settings::OPTION, $qo_o );
 $qo_p    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Omaggio', 'last_name' => 'Doppio', 'email' => 'omaggio.doppio@example.com' ) );
 $qo_plan = $people->membership_plan( $qo_p, $today );
@@ -13255,6 +13304,7 @@ asem_ok( 1 === $qo_rec( array( array( 'category_id' => $qd_cat, 'amount_cents' =
 $wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qo_p );
 $wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qo_p ) );
 $qo_o['social_year_start_month'] = $qo_sm;
+$qo_o['fiscal_start_month']      = $qo_fm;
 update_option( Settings::OPTION, $qo_o );
 
 // ---------- Anno fiscale passato ancora aperto in disavanzo: avviso fisso in Bacheca e conferma alla chiusura ----------
@@ -13319,7 +13369,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '70' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 70' );
+asem_ok( '71' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 71' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
 	foreach ( array_keys( $ix_list ) as $ix_n ) {
@@ -13335,7 +13385,7 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '70' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 70' );
+asem_ok( '71' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
 $ix_plan = static function ( string $sql ) use ( $wpdb ): string {
 	return strtolower( implode( ' ', array_map( static fn( $r ) => (string) ( $r['key'] ?? $r['Key'] ?? '' ), (array) $wpdb->get_results( 'EXPLAIN ' . $sql, ARRAY_A ) ) ) );

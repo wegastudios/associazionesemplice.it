@@ -19,6 +19,8 @@ final class DashboardPage {
 		$avail    = Plugin::funds()->available();
 		$year     = Settings::social_year();
 		$r        = Plugin::reports()->social_year( $year );
+		$fiscal   = Plugin::reports()->fiscal_totals(); // le entrate e le uscite seguono l'anno fiscale
+		$members  = Plugin::people()->count_by_type_for_year( Settings::membership_year() ); // la tessera segue l'anno fiscale
 		$name     = (string) Settings::get( 'association_name' );
 
 		Ui::header( 'Associazione Semplice' . ( $name ? ' — ' . $name : '' ) );
@@ -45,12 +47,12 @@ final class DashboardPage {
 			echo wp_kses( '</table>' . ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p>' : '' ) . '</div>', Html::allowed() );
 		}
 
-		echo '<div class="asem-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="asem-kv">';
+		echo '<div class="asem-card"><h2>Anno fiscale ' . esc_html( $fiscal['label'] ) . '</h2><table class="asem-kv">';
 		foreach ( MemberType::member_types() as $t ) {
-			echo '<tr><td>' . esc_html( MemberType::label( $t ) ) . '</td><td>' . (int) ( $r['members_by_type'][ $t ] ?? 0 ) . '</td></tr>';
+			echo '<tr><td>' . esc_html( MemberType::label( $t ) ) . '</td><td>' . (int) ( $members[ $t ] ?? 0 ) . '</td></tr>';
 		}
-		echo wp_kses( '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>'
-			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>', Html::allowed() );
+		echo wp_kses( '<tr><td>Entrate</td><td>' . Ui::money( $fiscal['income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $fiscal['expense'] ) . '</td></tr>'
+			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $fiscal['result'] ) . '</strong></td></tr></table></div></div>', Html::allowed() );
 
 		$figures = (string) ob_get_clean();
 		ob_start(); // gli avvisi si raccolgono: in Bacheca vengono dopo «Da fare», raggruppati

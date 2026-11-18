@@ -149,7 +149,7 @@ final class MemberBook {
 	/** Le tessere non cancellate di tutte le persone: person_id => [ [valid_from, valid_to], … ]. */
 	public static function cards_by_person(): array {
 		$out = array();
-		foreach ( self::db()->get_results( 'SELECT person_id, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL', ARRAY_A ) ?: array() as $r ) {
+		foreach ( self::db()->get_results( 'SELECT person_id, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL AND replaced_by IS NULL', ARRAY_A ) ?: array() as $r ) {
 			$out[ (int) $r['person_id'] ][] = $r;
 		}
 		return $out;

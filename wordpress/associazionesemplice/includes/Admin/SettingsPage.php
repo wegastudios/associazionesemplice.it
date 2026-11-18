@@ -110,7 +110,7 @@ final class SettingsPage {
 			}
 		}
 		echo '<tr><td><code>[associazionesemplice_spese]</code></td><td>Nome precedente di «Area tesoriere»: continua a funzionare</td></tr>';
-		echo '<tr><td><code>[associazionesemplice_attivita tipo="evento" anno="2025/2026" date="5"]</code></td><td>Filtri: tipo = corso / evento / ricorrente, anno sociale, date da mostrare</td></tr>';
+		echo '<tr><td><code>[associazionesemplice_attivita tipo="evento" anno="2025/2026" date="5"]</code></td><td>Filtri: tipo = corso / evento / ricorrente, anno delle attività, date da mostrare</td></tr>';
 		echo '<tr><td><code>[associazionesemplice_riservato accesso="soci"]…[/associazionesemplice_riservato]</code></td><td>Parte di pagina visibile solo ai soci (accesso = soci / volontari / attivita, con attivita="12,13")</td></tr>';
 		echo '</tbody></table><p class="description">Per riservare una <strong>pagina o un articolo intero</strong> usa il riquadro «Accesso (Associazione Semplice)» nell\'editor: puoi renderlo visibile ai soli soci, ai volontari o agli iscritti a una o più attività (es. il programma della prima lezione).</p>';
 		echo '<h2>Informazioni</h2><p>L\'amministrazione è riservata agli utenti con ruolo Amministratore (capability <code>asem_manage</code>). '
