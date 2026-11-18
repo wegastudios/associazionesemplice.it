@@ -8623,7 +8623,10 @@ asem_ok( $ra_zips && 1 === preg_match( '/-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', base
 foreach ( $ra_zips as $ra_z ) {
 	touch( $ra_z, time() - 30 * DAY_IN_SECONDS );
 }
-asem_ok( \AssociazioneSemplice\Backup::purge_old() >= count( $ra_zips ) && ! (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ), 'copia prima del riallineamento: la pulizia delle copie vecchie la cancella' );
+clearstatcache();
+$ra_pn   = \AssociazioneSemplice\Backup::purge_old();
+$ra_left = (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' );
+asem_ok( $ra_pn >= count( $ra_zips ) && ! $ra_left, 'copia prima del riallineamento: la pulizia delle copie vecchie la cancella - cancellate ' . $ra_pn . ' su ' . count( $ra_zips ) . ', restano ' . wp_json_encode( array_map( function ( $z ) { return array( basename( $z ), filemtime( $z ), time() ); }, $ra_left ) ) . ', ore ' . (int) \AssociazioneSemplice\Limits::get( 'backup_hours' ) );
 asem_ok( '2026/2027' === Settings::membership_year( '2026-11-18' )->label() || '2026' === Settings::membership_year( '2026-11-18' )->label(), 'tessera e anno fiscale: l\'anno della tessera di oggi segue l\'anno fiscale' );
 asem_ok( '2026' === Settings::membership_year( '2026-11-18' )->label() && 9 === Settings::start_month(), 'tessera e anno fiscale: con l\'anno fiscale a gennaio e le attività a settembre la tessera è «2026»' );
 foreach ( (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) as $ra_bk ) {
