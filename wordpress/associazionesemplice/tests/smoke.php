@@ -8604,6 +8604,8 @@ $ra_b   = $ra_card( $ra_p1, '2026/2027', '2026-09-01', '2027-08-31', null ); // 
 $ra_p2  = $ra_mk( 'Seconda' );
 $ra_d   = $ra_card( $ra_p2, '2025/2026', '2025-09-01', '2026-08-31', $ra_tx ); // finirebbe come la «2026» che c'è già: sostituita
 $ra_e   = $ra_card( $ra_p2, '2026', '2026-01-01', '2026-12-31', $ra_tx );
+$ra_pv = \AssociazioneSemplice\Install::realign_preview( 1 ); // anteprima: non cambia nulla, dice quante tessere cambiano e quante sono sostituite
+asem_ok( $ra_pv['changed'] >= 1 && $ra_pv['replaced'] >= 1 && $ra_pv['examples'] && false !== strpos( $ra_pv['examples'][0], ' → ' ) && '2025/2026' === $wpdb->get_var( 'SELECT social_year FROM ' . Db::t( 'memberships' ) . ' WHERE id = ' . (int) $ra_a ), 'tessere e anno fiscale: l\'anteprima conta le tessere che cambiano e quelle sostituite, senza toccare niente' );
 $ra_n   = \AssociazioneSemplice\Install::realign_memberships_to_fiscal();
 $ra_row = function ( int $id ) use ( $wpdb ) { return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'memberships' ) . ' WHERE id = %d', $id ), ARRAY_A ); };
 asem_ok( $ra_n >= 2,'tessera e anno fiscale: riallineate 2 tessere (una allungata, una sostituita) - risultato ' . $ra_n . ' ' . wp_json_encode( array_slice( Audit::recent( 3 ), 0, 3 ) ) . ', anno 2026 chiuso: ' . ( \AssociazioneSemplice\FiscalYears::is_open( 2026 ) ? 'no' : 'sì' ) . ', riga a: ' . wp_json_encode( $ra_row( $ra_a ) ) );
@@ -8612,6 +8614,19 @@ asem_ok( '2026/2027' === $ra_row( $ra_b )['social_year'] && '2027-08-31' === $ra
 asem_ok( (int) $ra_e === (int) $ra_row( $ra_d )['replaced_by'] && null === $ra_row( $ra_e )['replaced_by'] && '2025/2026' === $ra_row( $ra_d )['social_year'], 'tessera e anno fiscale: due tessere dello stesso anno, resta la più recente e l\'altra è «sostituita» (non cancellata)' );
 asem_ok( in_array( 'membership.realigned', array_column( Audit::recent( 50 ), 'action' ), true ) && in_array( 'membership.replaced', array_column( Audit::recent( 50 ), 'action' ), true ), 'tessera e anno fiscale: ogni passo è nel registro azioni' );
 asem_ok( 0 === \AssociazioneSemplice\Install::realign_memberships_to_fiscal(), 'tessera e anno fiscale: rilanciare il riallineamento non cambia nulla' );
+$ra_nt = (array) get_option( \AssociazioneSemplice\Install::NOTICE_OPTION, array() );
+asem_ok( (int) ( $ra_nt['changed'] ?? 0 ) >= 1 && (int) ( $ra_nt['replaced'] ?? 0 ) >= 1, 'tessere e anno fiscale: l\'esito (riallineate e sostituite) resta per l\'avviso in Bacheca' );
+asem_render( array( Admin\DashboardPage::class, 'render' ), 'Tessere riallineate: ' . (int) $ra_nt['changed'] . '. Tessere sostituite: ' . (int) $ra_nt['replaced'] );
+asem_ok( \AssociazioneSemplice\Install::realign_preview( 7 )['changed'] >= 1 && false !== strpos( Admin\EntityPage::realign_box( 7 ), 'Cosa succede alle tessere' ) && false !== strpos( Admin\EntityPage::realign_box( 7 ), 'confirm_card_realign' ), 'cambio del mese fiscale: l\'anteprima «Cosa succede alle tessere» ha la spunta da confermare' );
+$ra_zips = (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' );
+asem_ok( $ra_zips && 1 === preg_match( '/-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', basename( $ra_zips[0] ) ), 'copia prima del riallineamento: nome non prevedibile, nella cartella riservata' );
+foreach ( $ra_zips as $ra_z ) {
+	touch( $ra_z, time() - 30 * DAY_IN_SECONDS );
+}
+clearstatcache();
+$ra_pn   = \AssociazioneSemplice\Backup::purge_old();
+$ra_left = (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' );
+asem_ok( $ra_pn >= count( $ra_zips ) && ! $ra_left, 'copia prima del riallineamento: la pulizia delle copie vecchie la cancella - cancellate ' . $ra_pn . ' su ' . count( $ra_zips ) . ', restano ' . wp_json_encode( array_map( function ( $z ) { return array( basename( $z ), filemtime( $z ), time() ); }, $ra_left ) ) . ', ore ' . (int) \AssociazioneSemplice\Limits::get( 'backup_hours' ) );
 asem_ok( '2026/2027' === Settings::membership_year( '2026-11-18' )->label() || '2026' === Settings::membership_year( '2026-11-18' )->label(), 'tessera e anno fiscale: l\'anno della tessera di oggi segue l\'anno fiscale' );
 asem_ok( '2026' === Settings::membership_year( '2026-11-18' )->label() && 9 === Settings::start_month(), 'tessera e anno fiscale: con l\'anno fiscale a gennaio e le attività a settembre la tessera è «2026»' );
 foreach ( (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) as $ra_bk ) {

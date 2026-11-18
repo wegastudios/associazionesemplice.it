@@ -56,6 +56,10 @@ final class DashboardPage {
 
 		$figures = (string) ob_get_clean();
 		ob_start(); // gli avvisi si raccolgono: in Bacheca vengono dopo «Da fare», raggruppati
+		$ra_notice = (array) get_option( \AssociazioneSemplice\Install::NOTICE_OPTION, array() ); // dopo un riallineamento delle tessere all'anno fiscale
+		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) && ! empty( $ra_notice['at'] ) && time() - (int) $ra_notice['at'] < 30 * DAY_IN_SECONDS && ( (int) ( $ra_notice['changed'] ?? 0 ) + (int) ( $ra_notice['replaced'] ?? 0 ) ) > 0 ) {
+			echo wp_kses( '<div class="notice notice-info inline"><p><strong>' . esc_html( \AssociazioneSemplice\Texts::t( 'Le tessere seguono l\'anno fiscale' ) ) . '</strong> ' . esc_html( sprintf( \AssociazioneSemplice\Texts::t( 'Tessere riallineate: %1$d. Tessere sostituite: %2$d (restano registrate, i pagamenti non cambiano).' ), (int) $ra_notice['changed'], (int) $ra_notice['replaced'] ) ) . ' <a href="' . esc_url( Ui::url( 'asem-audit' ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( 'Vedi il registro azioni' ) ) . '</a></p></div>', Html::allowed() );
+		}
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) { // promemoria della copia di sicurezza (solo amministratori)
 			$bk = \AssociazioneSemplice\Backup::last();
 			if ( ! $bk || time() - $bk > 30 * DAY_IN_SECONDS ) {
