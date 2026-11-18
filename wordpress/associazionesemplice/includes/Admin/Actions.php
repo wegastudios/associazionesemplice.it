@@ -75,6 +75,7 @@ final class Actions {
 			'asem_save_card'          => 'save_card',
 			'asem_save_activity'      => 'save_activity',
 			'asem_duplicate_activity' => 'duplicate_activity',
+			'asem_publish_pages'      => 'publish_pages',
 			'asem_lesson_exception'   => 'lesson_exception',
 			'asem_sports'             => 'sports',
 			'asem_lesson_restore'     => 'lesson_restore',
@@ -620,6 +621,16 @@ final class Actions {
 		$cap = isset( $p['capacity'] ) && '' !== trim( (string) $p['capacity'] ) ? (int) $p['capacity'] : null;
 		$n   = Plugin::activities()->add_dates( $aid, self::when_rows( $p ), self::opt( $p, 'location' ), $cap );
 		return array( Ui::url( 'asem-activity', array( 'id' => $aid ) ), 0 === $n ? 'Nessuna data nuova: erano già tutte presenti.' : $n . ( 1 === $n ? ' data aggiunta.' : ' date aggiunte.' ) );
+	}
+
+	/** Pubblica in una volta le pagine in bozza scelte (per esempio quelle importate da The Events Calendar). */
+	private static function publish_pages( array $p ): array {
+		$ids = array_map( 'intval', (array) ( $p['ids'] ?? array() ) );
+		if ( ! $ids ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Spunta almeno una pagina da pubblicare.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$n = \AssociazioneSemplice\PublicEvents::publish_pages( $ids );
+		return array( ! empty( $p['_back'] ) ? esc_url_raw( $p['_back'] ) : Ui::url( 'asem-activities' ), sprintf( \AssociazioneSemplice\Texts::t( 'Pagine pubblicate: %d. Ora si vedono sul sito.' ), $n ) );
 	}
 
 	private static function save_activity( array $p ): array {

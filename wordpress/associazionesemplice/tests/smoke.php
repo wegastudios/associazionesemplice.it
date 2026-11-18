@@ -8629,6 +8629,13 @@ $ra_left = (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riall
 asem_ok( $ra_pn >= count( $ra_zips ) && ! $ra_left, 'copia prima del riallineamento: la pulizia delle copie vecchie la cancella - cancellate ' . $ra_pn . ' su ' . count( $ra_zips ) . ', restano ' . wp_json_encode( array_map( function ( $z ) { return array( basename( $z ), filemtime( $z ), time() ); }, $ra_left ) ) . ', ore ' . (int) \AssociazioneSemplice\Limits::get( 'backup_hours' ) );
 asem_ok( '2026/2027' === Settings::membership_year( '2026-11-18' )->label() || '2026' === Settings::membership_year( '2026-11-18' )->label(), 'tessera e anno fiscale: l\'anno della tessera di oggi segue l\'anno fiscale' );
 asem_ok( '2026' === Settings::membership_year( '2026-11-18' )->label() && 9 === Settings::start_month(), 'tessera e anno fiscale: con l\'anno fiscale a gennaio e le attività a settembre la tessera è «2026»' );
+// pubblica collettivo: le pagine in bozza (per esempio importate) si pubblicano insieme
+$pb_a = $acts->create( array( 'name' => 'Bozza collettiva', 'social_year' => Settings::social_year( $today )->label(), 'kind' => 'event', 'session' => array( 'session_date' => $today, 'start_time' => '20:00', 'end_time' => '22:00' ) ) );
+$pb_p = \AssociazioneSemplice\PublicEvents::ensure( $pb_a );
+wp_update_post( array( 'ID' => $pb_p, 'post_status' => 'draft' ) );
+asem_ok( array( $pb_a => $pb_p ) === \AssociazioneSemplice\PublicEvents::draft_pages( array( $pb_a ) ), 'pubblica collettivo: la pagina in bozza è riconosciuta' );
+asem_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Pubblica le pagine selezionate' );
+asem_ok( 1 === \AssociazioneSemplice\PublicEvents::publish_pages( array( $pb_a, 0 ) ) && 'publish' === get_post_status( $pb_p ) && ! \AssociazioneSemplice\PublicEvents::draft_pages( array( $pb_a ) ) && 0 === \AssociazioneSemplice\PublicEvents::publish_pages( array( $pb_a ) ), 'pubblica collettivo: pubblica le bozze scelte e non tocca le già pubblicate' );
 foreach ( (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) as $ra_bk ) {
 	wp_delete_file( $ra_bk ); // la copia di prova non resta
 }
