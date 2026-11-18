@@ -13276,7 +13276,9 @@ asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'assets/admin.
 // anno in omaggio: nuovo socio negli ultimi giorni della tessera (paga l'anno dopo, ha l'anno in corso in omaggio)
 $qo_sm = (int) Settings::get( 'social_year_start_month' );
 $qo_o  = Settings::all();
+$qo_fm = (int) Settings::get( 'fiscal_start_month' );
 $qo_o['social_year_start_month'] = ( (int) substr( $today, 5, 2 ) % 12 ) + 1;
+$qo_o['fiscal_start_month']      = $qo_o['social_year_start_month']; // la tessera segue l'anno fiscale
 update_option( Settings::OPTION, $qo_o );
 $qo_p    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Omaggio', 'last_name' => 'Doppio', 'email' => 'omaggio.doppio@example.com' ) );
 $qo_plan = $people->membership_plan( $qo_p, $today );
@@ -13302,6 +13304,7 @@ asem_ok( 1 === $qo_rec( array( array( 'category_id' => $qd_cat, 'amount_cents' =
 $wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qo_p );
 $wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qo_p ) );
 $qo_o['social_year_start_month'] = $qo_sm;
+$qo_o['fiscal_start_month']      = $qo_fm;
 update_option( Settings::OPTION, $qo_o );
 
 // ---------- Anno fiscale passato ancora aperto in disavanzo: avviso fisso in Bacheca e conferma alla chiusura ----------
