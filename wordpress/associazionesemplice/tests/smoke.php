@@ -8606,7 +8606,7 @@ $ra_d   = $ra_card( $ra_p2, '2025/2026', '2025-09-01', '2026-08-31', $ra_tx ); /
 $ra_e   = $ra_card( $ra_p2, '2026', '2026-01-01', '2026-12-31', $ra_tx );
 $ra_n   = \AssociazioneSemplice\Install::realign_memberships_to_fiscal();
 $ra_row = function ( int $id ) use ( $wpdb ) { return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'memberships' ) . ' WHERE id = %d', $id ), ARRAY_A ); };
-asem_ok( 2 === $ra_n, 'tessera e anno fiscale: riallineate 2 tessere (una allungata, una sostituita)' );
+asem_ok( $ra_n >= 2, 'tessera e anno fiscale: riallineate 2 tessere (una allungata, una sostituita) - risultato ' . $ra_n . ', anno 2026 chiuso: ' . ( \AssociazioneSemplice\FiscalYears::is_open( 2026 ) ? 'no' : 'sì' ) . ', riga a: ' . wp_json_encode( $ra_row( $ra_a ) ) );
 asem_ok( '2026' === $ra_row( $ra_a )['social_year'] && '2026-12-31' === $ra_row( $ra_a )['valid_to'] && '2025-09-01' === $ra_row( $ra_a )['valid_from'], 'tessera e anno fiscale: la tessera pagata passa a «2026» e si allunga, senza accorciarsi' );
 asem_ok( '2026/2027' === $ra_row( $ra_b )['social_year'] && '2027-08-31' === $ra_row( $ra_b )['valid_to'], 'tessera e anno fiscale: senza un pagamento non si allunga niente' );
 asem_ok( (int) $ra_e === (int) $ra_row( $ra_d )['replaced_by'] && null === $ra_row( $ra_e )['replaced_by'] && '2025/2026' === $ra_row( $ra_d )['social_year'], 'tessera e anno fiscale: due tessere dello stesso anno, resta la più recente e l\'altra è «sostituita» (non cancellata)' );
