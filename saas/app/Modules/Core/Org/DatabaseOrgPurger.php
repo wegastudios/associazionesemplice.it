@@ -60,6 +60,9 @@ final readonly class DatabaseOrgPurger implements OrgPurger
             }
             $owner->table('core.org_domains')->where('org_id', $orgId)->delete();
             $owner->table('core.org_roles')->where('org_id', $orgId)->delete();
+            // Lavori in coda e falliti di questa associazione (portano il suo identificativo, mai dati personali).
+            $owner->delete('DELETE FROM core.jobs WHERE position(? in payload) > 0', [$orgId]);
+            $owner->delete('DELETE FROM core.failed_jobs WHERE position(? in payload) > 0', [$orgId]);
 
             // Per ultima la chiave: senza, i campi cifrati e i file rimasti nei backup non si aprono più.
             $owner->table('core.orgs')->where('id', $orgId)->update(['status' => 'closed', 'deleted_at' => now()]);

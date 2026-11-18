@@ -76,7 +76,11 @@ final class CoreServiceProvider extends ServiceProvider
 
         // Ogni lavoro in coda parte e finisce senza associazione: la imposta il lavoro stesso
         // (RunInOrgContext), così il lavoro precedente non lascia nulla al successivo.
-        $reset = function (): void {
+        // Un lavoro «sync» gira dentro la richiesta (o il comando) che lo ha lanciato, con la sua associazione: non si azzera.
+        $reset = function (JobProcessing|JobProcessed|JobFailed $event): void {
+            if ($event->connectionName === 'sync') {
+                return;
+            }
             $this->app->make(OrgContext::class)->leave();
         };
         // Query oltre la soglia (config saas.slow_query_ms): una riga nel log con il testo e i tempi, mai i valori (dati dei soci).
@@ -99,7 +103,7 @@ final class CoreServiceProvider extends ServiceProvider
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('queue:work --stop-when-empty --max-time=50 --tries=3')
                     ->everyMinute()->withoutOverlapping(5)->runInBackground();
-                $schedule->command('queue:prune-failed --hours=720')->dailyAt('05:47');
+                $schedule->command('queue:prune-failed --hours=168')->dailyAt('05:47');
                 // File di lavoro rimasti da richieste interrotte (copie, archivi, ricevute): via quelli di più di un'ora.
                 $schedule->command('saas:tmp:purge --minutes=60')->everyFifteenMinutes()->withoutOverlapping(10);
                 if (config('saas.demo.enabled') && ! app()->environment('production')) {
