@@ -54,6 +54,18 @@ final class SocialYearTest extends TestCase {
 		$this->assertSame( '2026-08', $y->clamp( '2027-01' ) );
 		$this->assertSame( '2026-02', $y->clamp( '2026-02' ) );
 	}
+
+	public function test_an_old_label_keeps_its_months_after_the_switch_to_january(): void {
+		SocialYear::$legacy_month = 9;
+		$y = SocialYear::from_label( '2025/2026', 1 );
+		$this->assertSame( '2025-09-01', $y->start()->format( 'Y-m-d' ) );
+		$this->assertSame( '2026-08-31', $y->end()->format( 'Y-m-d' ) );
+		$this->assertSame( '2025/2026', $y->label() );
+		SocialYear::$legacy_month = 10;
+		$this->assertSame( '2026-09-30', SocialYear::from_label( '2025/2026', 1 )->end()->format( 'Y-m-d' ) );
+		SocialYear::$legacy_month = 9;
+		$this->assertSame( '2026-12-31', SocialYear::from_label( '2026', 1 )->end()->format( 'Y-m-d' ), 'senza barra resta l\'anno solare' );
+	}
 }
 
 final class PaymentCalcTest extends TestCase {

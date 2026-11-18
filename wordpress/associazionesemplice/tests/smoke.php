@@ -8561,6 +8561,17 @@ asem_ok( 0 === strpos( $bk_long, 'Il blocco durerebbe 41 giorni: al massimo 31.'
 $bk_rec = $acts->create( array( 'name' => 'Gara settimanale', 'social_year' => $bk_sy, 'kind' => 'recurring' ) );
 \AssociazioneSemplice\ProData::activity_saved( array(), $bk_rec, array( 'resource_id' => (string) $bk_res, 'resource_block_on' => '1', 'resource_block_share' => '' ) );
 asem_ok( '' === $RS::activity_block( $bk_rec ), 'blocco: un evento ricorrente non ha il blocco' );
+// passaggio dell'anno sociale a gennaio: le attività con l'etichetta di prima («2025/2026») non spariscono dall'elenco
+$sy_old = $acts->create( array( 'name' => 'Festa di prima del cambio', 'social_year' => '2025/2026', 'kind' => 'event', 'session' => array( 'session_date' => '2025-11-15', 'start_time' => '20:00', 'end_time' => '22:00' ) ) );
+Settings::update( array( 'social_year_start_month' => 1 ) ); // dal 9 a gennaio: il mese di prima si ricorda
+asem_ok( 1 === Settings::start_month() && 9 === (int) Settings::get( 'social_year_legacy_month' ) && '2026' === Settings::social_year( '2026-03-01' )->label(), 'anno sociale a gennaio: etichetta senza barra e mese di prima ricordato' );
+asem_ok( in_array( $sy_old, array_map( 'intval', array_column( $acts->for_year( '2026' ), 'id' ) ), true ) && in_array( $sy_old, array_map( 'intval', array_column( $acts->for_year( '2025' ), 'id' ) ), true ), 'anno sociale a gennaio: l\'attività «2025/2026» compare negli anni 2025 e 2026' );
+asem_ok( ! in_array( $sy_old, array_map( 'intval', array_column( $acts->for_year( '2027' ), 'id' ) ), true ) && ! in_array( $sy_old, array_map( 'intval', array_column( $acts->for_year( '2024' ), 'id' ) ), true ), 'anno sociale a gennaio: non compare in anni che non tocca' );
+asem_ok( '2025-09-01' === \AssociazioneSemplice\SocialYear::from_label( '2025/2026', Settings::start_month() )->start()->format( 'Y-m-d' ), 'anno sociale a gennaio: l\'etichetta con la barra parte dal mese di prima' );
+$sy_o = get_option( Settings::OPTION, array() ); // si torna a settembre come il resto delle prove (senza i controlli sulle tessere)
+$sy_o['social_year_start_month'] = 9;
+update_option( Settings::OPTION, $sy_o );
+Settings::forget();
 // cambio di risorsa: ciò che si sovrappone passa alla risorsa di prima, tutto o niente
 $mv_def  = array( 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 );
 $mv_old  = $RS::save( 0, array( 'name' => 'Sala di prima' ) + $mv_def );
