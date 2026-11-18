@@ -254,9 +254,6 @@ Nelle **date ricorrenti** questo campo non c'è: lì **«fino al»** indica fino
 - **Solo le date su più giorni** si prenotano online **fino al giorno prima**: dal giorno di inizio, e mentre sono in corso, prenota solo la segreteria. Chi prova a prenotare online legge «Le prenotazioni online si chiudono il giorno prima: per questa data rivolgiti alla segreteria.»
 - Le date **di un giorno solo** non cambiano: si prenotano online come sempre, **anche il giorno stesso**, finché non sono passate.
 - L'elenco scrive la data come «Dal 12 al 14 giugno», con il distintivo **«In corso»** finché dura, e la mostra in ogni mese che attraversa.
-- Nel **calendario** del pannello, nei **prossimi 7 giorni** della Bacheca e nel calendario dei soci l'evento compare **in ognuno dei suoi giorni**, con la scritta «(giorno 2 di 3)»: l'orario di inizio si vede il primo giorno, quello di fine l'ultimo.
-- Se **importi da The Events Calendar** un evento che dura più giorni (fino a 31), la data di fine arriva da sola nella data; oltre 31 giorni resta scritta nelle note.
-- Con le **risorse** (funzione Pro) la risorsa resta occupata fino alla fine dell'ultimo giorno: vedi la guida su come collegare un evento a una risorsa.
 
 ## Cosa succede se l'evento cambia
 

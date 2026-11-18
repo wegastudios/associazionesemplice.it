@@ -174,19 +174,6 @@ Serve a lasciare libera la sala per preparare e riordinare. Ci sono due livelli,
 
 **Esempio**: sala con 20 minuti prima e dopo, corso di yoga con 30 minuti dopo. La sala risulta indisponibile **20 minuti prima** e **50 minuti dopo**.
 
-## Eventi su più giorni
-
-Se l'evento dura **più giorni** (una data con **«fino al»**) la risorsa resta occupata dall'inizio fino all'**ora di fine dell'ultimo giorno**, **allestimenti compresi**, anche se la fine è dopo mezzanotte. In nessuno dei giorni di mezzo si può prenotare la risorsa, né da un socio né da un altro evento.
-
-Se vuoi che la risorsa resti occupata **anche tra un evento e l'altro** (per esempio una regata con tre gare, ciascuna con i suoi ingressi), nella riga **Risorsa occupata** spunta **«Tieni la risorsa occupata senza interruzioni, dal primo all'ultimo giorno»** e scrivi un **nome del blocco** (per esempio «Regata di giugno»):
-
-- gli eventi con **lo stesso nome** e **la stessa risorsa** fanno **un blocco solo**, dal primo inizio all'ultima fine;
-- se **sposti, accorci, annulli o togli** un evento, il blocco si adegua da solo;
-- se nei giorni nuovi la risorsa è già occupata, il salvataggio viene rifiutato e vedi con cosa si sovrappone;
-- dopo il salvataggio leggi, per esempio, **«Risorsa tenuta occupata dal 12/06 al 14/06.»**.
-
-Senza la spunta la risorsa è occupata solo nei giorni e negli orari delle date dell'evento.
-
 ## Valori predefiniti
 
 - Se non scrivi niente, un **evento** ha **3 ore prima e dopo**; un **corso** non ha allestimento.

@@ -636,7 +636,7 @@ extra_step( 'evento oltre mezzanotte e blocco risorse', function () {
 	if ( $regata && class_exists( '\AssociazioneSemplice\Resources' ) && ! \AssociazioneSemplice\Resources::activity_block( $regata ) ) { // la banchina resta occupata dal primo all'ultimo giorno della regata
 		$rid = (int) \AssociazioneSemplice\Resources::save( 0, array( 'name' => 'Banchina del porto', 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 ) );
 		\AssociazioneSemplice\Resources::link_activity( $regata, $rid );
-		\AssociazioneSemplice\Resources::set_activity_block( $regata, 'Regata di tre giorni' );
+		\AssociazioneSemplice\Resources::set_activity_block( $regata, \AssociazioneSemplice\Resources::new_block_key(), 'Regata di tre giorni' );
 	}
 } );
 
