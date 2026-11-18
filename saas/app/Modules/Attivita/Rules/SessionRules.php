@@ -96,6 +96,27 @@ final class SessionRules
         return $endDate;
     }
 
+    /** Un blocco di risorsa per una manifestazione dura al massimo questi giorni. */
+    public const MAX_BLOCK_DAYS = 31;
+
+    /** Quanti giorni tocca un periodo «Y-m-d H:i:s» (la fine esclusa: 00:00 non conta come giorno). */
+    public static function blockDays(string $from, string $to): int
+    {
+        $last = date('Y-m-d', max((int) strtotime($to) - 1, (int) strtotime($from)));
+
+        return (int) round(((int) strtotime($last) - (int) strtotime(substr($from, 0, 10))) / 86400) + 1;
+    }
+
+    /** «dal 12/06 al 14/06», con l'anno se il periodo passa da un anno all'altro. */
+    public static function blockLabel(string $from, string $to): string
+    {
+        $first = (int) strtotime(substr($from, 0, 10));
+        $last = max((int) strtotime($to) - 1, $first);
+        $format = date('Y', $first) === date('Y', $last) ? 'd/m' : 'd/m/Y';
+
+        return 'dal '.date($format, $first).' al '.date($format, $last);
+    }
+
     /** Quanti giorni dura una data (1 se finisce lo stesso giorno). */
     public static function days(string $date, ?string $endDate): int
     {

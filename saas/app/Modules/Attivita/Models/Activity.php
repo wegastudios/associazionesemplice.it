@@ -33,6 +33,8 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  * @property string|null $resource_id
  * @property bool $no_resource
  * @property bool $occupy_on_booking
+ * @property string|null $resource_block
+ * @property string|null $resource_block_label
  */
 final class Activity extends OrgModel
 {
@@ -44,6 +46,7 @@ final class Activity extends OrgModel
     protected $fillable = [
         'name', 'kind', 'social_year', 'billing', 'fee_cents', 'guest_fee_cents', 'instructor_person_id', 'weekdays',
         'starts_on', 'ends_on', 'location', 'notes', 'price_lists', 'resource_id', 'no_resource', 'occupy_on_booking', 'vat_rate',
+        'resource_block', 'resource_block_label',
     ];
 
     /** @return array<string, string> */
