@@ -870,6 +870,32 @@ $_GET['asem_mese'] = gmdate( 'Y-m', strtotime( $pe_past_day ) );
 $pe_back = \AssociazioneSemplice\PublicEvents::list_html();
 asem_ok( false !== strpos( $pe_back, 'Gita al lago' ) && false !== strpos( $pe_back, '>Dettagli</a>' ), 'elenco eventi: tornando indietro compare l\'evento passato, con il pulsante «Dettagli»' );
 unset( $_GET['asem_mese'] );
+// Data di fine: un evento su più giorni (gara) e uno oltre mezzanotte
+$ms_from = gmdate( 'Y-m-d', strtotime( $today . ' -1 day' ) );
+$ms_to   = gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) );
+$ms_act  = $acts->create( array( 'name' => 'Regata di prova', 'social_year' => $sy_label, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $ms_from, 'end_date' => $ms_to, 'start_time' => '09:00', 'end_time' => '18:00', 'location' => 'Porto', 'capacity' => 20 ) ) );
+$ms_s    = $acts->sessions( $ms_act );
+asem_ok( 1 === count( $ms_s ) && $ms_to === $ms_s[0]['end_date'], 'data di fine: l\'evento su più giorni si salva con la fine' );
+asem_ok( $ms_to === \AssociazioneSemplice\ActivityService::last_day( $ms_s[0] ) && $ms_from === \AssociazioneSemplice\ActivityService::last_day( array( 'session_date' => $ms_from ) ), 'data di fine: l\'ultimo giorno è la fine, o il giorno stesso se manca' );
+$ms_in = array_column( $acts->sessions_between( $today, $today ), 'activity_id' );
+asem_ok( in_array( (string) $ms_act, array_map( 'strval', $ms_in ), true ), 'data di fine: l\'evento iniziato ieri compare tra le date di oggi (in corso)' );
+$ms_up = array_column( $acts->upcoming_sessions( 50, $ms_act ), 'id' );
+asem_ok( count( $ms_up ) === 1, 'data di fine: finché non finisce l\'evento è tra le prossime date' );
+asem_ok( null !== asem_throws( function () use ( $acts, $ms_act, $ms_s ) { $acts->update_session( (int) $ms_s[0]['id'], array( 'end_date' => gmdate( 'Y-m-d', strtotime( $ms_s[0]['session_date'] . ' -1 day' ) ) ) ); } ), 'data di fine: non può essere prima dell\'inizio' );
+$acts->update_session( (int) $ms_s[0]['id'], array( 'end_date' => gmdate( 'Y-m-d', strtotime( $ms_s[0]['session_date'] . ' +1 day' ) ), 'start_time' => '21:30', 'end_time' => '01:00' ) );
+$ms_n = $acts->sessions( $ms_act );
+asem_ok( '01:00' === $ms_n[0]['end_time'] && gmdate( 'Y-m-d', strtotime( $ms_n[0]['session_date'] . ' +1 day' ) ) === $ms_n[0]['end_date'], 'data di fine: 21:30 → 01:00 del giorno dopo si salva' );
+$ms_post = \AssociazioneSemplice\PublicEvents::ensure( $ms_act );
+wp_update_post( array( 'ID' => $ms_post, 'post_status' => 'publish' ) );
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::when_text( $acts->get( $ms_act ) ), ' a ' ), 'data di fine: la pagina dice da quando a quando' );
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'Regata di prova' ) && false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'In corso' ), 'data di fine: l\'elenco mostra l\'evento in corso' );
+asem_ok( false === strpos( (string) \AssociazioneSemplice\Frontend\Views::event_booking( $acts->get( $ms_act ) ), 'Date passate' ), 'data di fine: un evento in corso non è tra le date passate' );
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::ics_for( get_post( $ms_post ) ), 'DTEND:' ), 'data di fine: il calendario .ics ha la fine' );
+$ob           = array( '\AssociazioneSemplice\ActivityService', 'online_bookable' );
+$ob_tomorrow  = gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) );
+$ob_yesterday = gmdate( 'Y-m-d', strtotime( $today . ' -1 day' ) );
+asem_ok( ! $ob( array( 'session_date' => $today, 'end_date' => $ob_tomorrow ) ) && ! $ob( array( 'session_date' => $ob_yesterday, 'end_date' => $ob_tomorrow ) ) && $ob( array( 'session_date' => $ob_tomorrow, 'end_date' => gmdate( 'Y-m-d', strtotime( $today . ' +3 days' ) ) ) ), 'prenotazioni online, evento su più giorni: da domani in poi sì; dal giorno di inizio e mentre è in corso solo la segreteria' );
+asem_ok( $ob( array( 'session_date' => $today ) ) && $ob( array( 'session_date' => $today, 'end_date' => $today ) ) && $ob( array( 'session_date' => $ob_tomorrow ) ) && ! $ob( array( 'session_date' => $ob_yesterday ) ), 'prenotazioni online, evento di un giorno: come prima, anche il giorno stesso, non dopo' );
 $pe_course = $acts->create( array( 'name' => 'Corso di acquerello', 'social_year' => $sy->label(), 'kind' => 'course', 'fee_cents' => 2000, 'lesson_weekday' => 3, 'lesson_start' => '17:00', 'lesson_end' => '18:30' ) ); // un corso compare nel calendario con le lezioni settimanali
 $pe_cpost   = \AssociazioneSemplice\PublicEvents::ensure( $pe_course );
 wp_update_post( array( 'ID' => $pe_cpost, 'post_status' => 'publish' ) );
@@ -13203,7 +13229,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '68' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 68' );
+asem_ok( '69' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 69' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
 	foreach ( array_keys( $ix_list ) as $ix_n ) {
@@ -13219,7 +13245,7 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '68' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 68' );
+asem_ok( '69' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 69' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
 $ix_plan = static function ( string $sql ) use ( $wpdb ): string {
 	return strtolower( implode( ' ', array_map( static fn( $r ) => (string) ( $r['key'] ?? $r['Key'] ?? '' ), (array) $wpdb->get_results( 'EXPLAIN ' . $sql, ARRAY_A ) ) ) );

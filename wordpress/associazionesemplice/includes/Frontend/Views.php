@@ -296,7 +296,7 @@ final class Views {
 		$upcoming = array();
 		$past     = array();
 		foreach ( Plugin::activities()->bookings_for_person( (int) $p['id'] ) as $b ) {
-			if ( $b['active'] && $b['session_date'] >= $today ) {
+			if ( $b['active'] && \AssociazioneSemplice\ActivityService::last_day( $b ) >= $today ) {
 				$upcoming[] = $b;
 			} else {
 				$past[] = $b;
@@ -627,7 +627,7 @@ final class Views {
 			foreach ( $guests as $g ) {
 				$tickets = '';
 				foreach ( Plugin::activities()->bookings_for_person( (int) $g['id'] ) as $b ) { // biglietti QR degli eventi che li prevedono
-					if ( $b['active'] && $b['session_date'] >= $today && Settings::tickets_enabled() && ! empty( $b['booking_qr'] ) ) {
+					if ( $b['active'] && \AssociazioneSemplice\ActivityService::last_day( $b ) >= $today && Settings::tickets_enabled() && ! empty( $b['booking_qr'] ) ) {
 						$tickets .= '<div class="asemf-small">' . esc_html( $b['activity_name'] ) . ' · ' . esc_html( self::date_long( $b['session_date'] ) ) . '</div>' . self::ticket_qr( $b );
 					}
 				}
@@ -906,7 +906,7 @@ final class Views {
 		if ( ! $session_id && ActivityKind::uses_sessions( $a['kind'] ) ) {
 			$opts = '<option value="">Tutti i prenotati</option>';
 			foreach ( Plugin::activities()->sessions( $aid ) as $s ) {
-				if ( empty( $s['cancelled_at'] ) && $s['session_date'] >= current_time( 'Y-m-d' ) ) {
+				if ( empty( $s['cancelled_at'] ) && \AssociazioneSemplice\ActivityService::last_day( $s ) >= current_time( 'Y-m-d' ) ) {
 					$opts .= '<option value="' . (int) $s['id'] . '">Solo ' . esc_html( self::date_long( $s['session_date'] ) ) . '</option>';
 				}
 			}
@@ -1016,7 +1016,7 @@ final class Views {
 			$html .= '<div class="asemf-card"><h4>' . esc_html( $a['name'] ) . ' <span class="asemf-badge">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</span></h4>';
 			if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
 				$sessions = array_filter( $svc->sessions( $aid ), function ( $s ) {
-					return empty( $s['cancelled_at'] ) && $s['session_date'] >= current_time( 'Y-m-d' );
+					return empty( $s['cancelled_at'] ) && \AssociazioneSemplice\ActivityService::last_day( $s ) >= current_time( 'Y-m-d' );
 				} );
 				if ( ! $sessions ) {
 					$html .= '<p class="asemf-muted">Nessuna data in programma.</p>';
@@ -1392,6 +1392,8 @@ final class Views {
 			if ( empty( $ctx['hide_login'] ) ) { // negli elenchi non c'è: la prenotazione si fa dalla pagina dell'evento
 				$html .= '<a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( self::member_login_url() ) . '">Sei socio? Accedi per prenotarti</a>';
 			}
+		} elseif ( ! \AssociazioneSemplice\ActivityService::online_bookable( $s ) ) {
+			$html .= '<span class="asemf-small asemf-muted">Prenotazioni online chiuse: per questa data rivolgiti alla segreteria.</span>';
 		} elseif ( ! empty( $ctx['can_book'] ) ) {
 			$free = array();
 			foreach ( $ctx['people'] as $person ) {
@@ -1542,7 +1544,7 @@ final class Views {
 					array_filter(
 						$dates[ (int) $a['id'] ] ?? array(),
 						function ( $s ) {
-							return empty( $s['cancelled_at'] ) && $s['session_date'] >= current_time( 'Y-m-d' );
+							return empty( $s['cancelled_at'] ) && \AssociazioneSemplice\ActivityService::last_day( $s ) >= current_time( 'Y-m-d' );
 						}
 					)
 				);
@@ -1577,7 +1579,7 @@ final class Views {
 			}
 			$html = '<h3 class="asemf-event-h">Date passate</h3><ul class="asemf-list asemf-past">';
 			foreach ( array_reverse( $past ) as $s ) {
-				$html .= '<li>' . esc_html( self::date_long( (string) $s['session_date'] ) . ( ! empty( $s['start_time'] ) ? ' · ore ' . $s['start_time'] : '' ) . ( ! empty( $s['location'] ) ? ' · ' . $s['location'] : '' ) ) . '</li>';
+				$html .= '<li>' . esc_html( self::date_long( (string) $s['session_date'] ) . ( ! empty( $s['end_date'] ) ? ' – ' . self::date_long( (string) $s['end_date'] ) : '' ) . ( ! empty( $s['start_time'] ) ? ' · ore ' . $s['start_time'] : '' ) . ( ! empty( $s['location'] ) ? ' · ' . $s['location'] : '' ) ) . '</li>';
 			}
 			return $html . '</ul>';
 		}

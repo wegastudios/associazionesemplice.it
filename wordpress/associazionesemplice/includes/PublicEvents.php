@@ -530,7 +530,7 @@ final class PublicEvents {
 	public static function when_text( array $a ): string {
 		if ( ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
 			$rows = array_values( array_filter( Plugin::activities()->sessions( (int) $a['id'] ), function ( $s ) {
-				return empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today();
+				return empty( $s['cancelled_at'] ) && ActivityService::last_day( $s ) >= Db::today();
 			} ) );
 			if ( ! $rows ) {
 				if ( self::cancelled_future( (int) $a['id'] ) ) {
@@ -538,13 +538,17 @@ final class PublicEvents {
 				}
 				$past = self::past_sessions( (int) $a['id'] );
 				if ( $past ) {
-					$last = Frontend\Views::date_long( (string) end( $past )['session_date'] );
+					$last = Frontend\Views::date_long( ActivityService::last_day( (array) end( $past ) ) );
 					return 1 === count( $past ) ? 'Si è svolto ' . $last : 'Si è svolto in ' . count( $past ) . ' date, l\'ultima ' . $last;
 				}
 				return 'Nessuna data in programma';
 			}
 			$first = $rows[0];
 			$t     = Frontend\Views::date_long( (string) $first['session_date'] ) . ( ! empty( $first['start_time'] ) ? ' · ore ' . $first['start_time'] : '' );
+			if ( ! empty( $first['end_date'] ) ) { // su più giorni: da quando a quando
+				$t = 'Da ' . Frontend\Views::date_long( (string) $first['session_date'] ) . ( ! empty( $first['start_time'] ) ? ', ore ' . $first['start_time'] : '' )
+					. ', a ' . Frontend\Views::date_long( (string) $first['end_date'] ) . ( ! empty( $first['end_time'] ) ? ', ore ' . $first['end_time'] : '' );
+			}
 			return count( $rows ) > 1 ? $t . ' (e altre ' . ( count( $rows ) - 1 ) . ' date)' : $t;
 		}
 		$days  = array( 1 => 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica' );
@@ -564,7 +568,7 @@ final class PublicEvents {
 	public static function where_text( array $a ): string {
 		if ( ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
 			foreach ( Plugin::activities()->sessions( (int) $a['id'] ) as $s ) {
-				if ( empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today() && ! empty( $s['location'] ) ) {
+				if ( empty( $s['cancelled_at'] ) && ActivityService::last_day( $s ) >= Db::today() && ! empty( $s['location'] ) ) {
 					return (string) $s['location'];
 				}
 			}
@@ -1053,7 +1057,7 @@ final class PublicEvents {
 		$by   = array();
 		$keep = array();
 		foreach ( $rows as $s ) {
-			if ( '' !== $today && (string) $s['session_date'] < $today ) {
+			if ( '' !== $today && ActivityService::last_day( $s ) < $today ) {
 				$keep[] = $s; // le date già passate restano una per una: l'elenco fa da storico
 				continue;
 			}
@@ -1142,7 +1146,11 @@ final class PublicEvents {
 		$posts = self::posts_by_activity( $cat );
 		$by    = array(); // giorno => date
 		foreach ( self::rows( $posts, $ym . '-01', $last ) as $s ) {
-			$by[ (string) $s['session_date'] ][] = $s;
+			$from_day = max( (string) $s['session_date'], $ym . '-01' ); // una data su più giorni compare in ognuno dei giorni di questo mese
+			$to_day   = min( ActivityService::last_day( $s ), $last );
+			for ( $d = (int) substr( $from_day, 8, 2 ), $z = (int) substr( $to_day, 8, 2 ); $d <= $z; $d++ ) {
+				$by[ $ym . '-' . sprintf( '%02d', $d ) ][] = $s;
+			}
 		}
 		foreach ( $posts as $aid => $unused ) { // i corsi non hanno «date»: nel calendario compaiono con le loro lezioni settimanali
 			$a = Plugin::activities()->get( (int) $aid );
@@ -1237,7 +1245,19 @@ final class PublicEvents {
 			$h .= '<div class="asemf-card-cat">' . esc_html( $cat ) . '</div>';
 		}
 		$h .= '<h4 class="asemf-card-title"><a href="' . esc_url( $url ) . '">' . esc_html( get_the_title( $post ) ) . '</a></h4>';
-		$h .= '<div class="asemf-small">' . esc_html( ucfirst( wp_date( 'l j F', $ts ) ) . ( '' !== $time ? ' · ore ' . $time : '' ) ) . '</div>';
+		if ( ! empty( $s['end_date'] ) ) { // su più giorni: «Dal 12 al 14 giugno», con «In corso» finché dura
+			$tse  = (int) strtotime( (string) $s['end_date'] . ' 12:00:00' );
+			if ( wp_date( 'Y', $ts ) !== wp_date( 'Y', $tse ) ) { // a cavallo di due anni: «Dal 30 dicembre 2026 al 2 gennaio 2027»
+				$span = 'Dal ' . wp_date( 'j F Y', $ts ) . ' al ' . wp_date( 'j F Y', $tse );
+			} elseif ( wp_date( 'Y-m', $ts ) !== wp_date( 'Y-m', $tse ) ) { // a cavallo di due mesi: «Dal 30 maggio al 2 giugno»
+				$span = 'Dal ' . wp_date( 'j F', $ts ) . ' al ' . wp_date( 'j F', $tse );
+			} else {
+				$span = 'Dal ' . wp_date( 'j', $ts ) . ' al ' . wp_date( 'j F', $tse );
+			}
+			$h   .= '<div class="asemf-small">' . esc_html( $span ) . ( '' !== $time ? esc_html( ' · ore ' . $time ) : '' ) . ( (string) $s['session_date'] <= Db::today() && (string) $s['end_date'] >= Db::today() ? ' <span class="asemf-badge">In corso</span>' : '' ) . '</div>';
+		} else {
+			$h .= '<div class="asemf-small">' . esc_html( ucfirst( wp_date( 'l j F', $ts ) ) . ( '' !== $time ? ' · ore ' . $time : '' ) ) . '</div>';
+		}
 		if ( ! empty( $s['series_label'] ) ) {
 			$h .= '<div class="asemf-small"><strong>' . esc_html( (string) $s['series_label'] ) . '</strong></div>';
 		}
@@ -1248,7 +1268,7 @@ final class PublicEvents {
 		if ( '' !== $ex ) {
 			$h .= '<p class="asemf-card-ex">' . esc_html( wp_trim_words( $ex, 28 ) ) . '</p>';
 		}
-		$h .= '<div class="asemf-card-foot"><span class="asemf-card-price">' . esc_html( $fee ) . '</span><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">' . esc_html( '' !== $button ? $button : ( (string) $s['session_date'] < Db::today() ? 'Dettagli' : 'Dettagli e prenotazione' ) ) . '</a></div>';
+		$h .= '<div class="asemf-card-foot"><span class="asemf-card-price">' . esc_html( $fee ) . '</span><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">' . esc_html( '' !== $button ? $button : ( ! ActivityService::online_bookable( $s ) ? 'Dettagli' : 'Dettagli e prenotazione' ) ) . '</a></div>';
 		return $h . '</div></li>';
 	}
 
@@ -1258,20 +1278,20 @@ final class PublicEvents {
 	/** Date future annullate (per dire «evento annullato» quando non ne resta nessuna). @return array[] */
 	private static function cancelled_future( int $activity_id ): array {
 		return array_values( array_filter( Plugin::activities()->sessions( $activity_id ), function ( $s ) {
-			return ! empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today();
+			return ! empty( $s['cancelled_at'] ) && ActivityService::last_day( $s ) >= Db::today();
 		} ) );
 	}
 
 	/** Date già passate e non annullate, dalla più vecchia. @return array[] */
 	public static function past_sessions( int $activity_id ): array {
 		return array_values( array_filter( Plugin::activities()->sessions( $activity_id ), function ( $s ) {
-			return empty( $s['cancelled_at'] ) && (string) $s['session_date'] < Db::today();
+			return empty( $s['cancelled_at'] ) && ActivityService::last_day( $s ) < Db::today();
 		} ) );
 	}
 
 	private static function upcoming_sessions( int $activity_id ): array {
 		return array_values( array_filter( Plugin::activities()->sessions( $activity_id ), function ( $s ) {
-			return empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today();
+			return empty( $s['cancelled_at'] ) && ActivityService::last_day( $s ) >= Db::today();
 		} ) );
 	}
 
@@ -1310,6 +1330,7 @@ final class PublicEvents {
 				'uid'         => 'asem-evento-' . (int) $s['id'] . '@' . wp_parse_url( home_url(), PHP_URL_HOST ),
 				'summary'     => (string) $post->post_title,
 				'date'        => (string) $s['session_date'],
+				'end_date'    => ! empty( $s['end_date'] ) ? (string) $s['end_date'] : null,
 				'start'       => ! empty( $s['start_time'] ) ? (string) $s['start_time'] : null,
 				'end'         => ! empty( $s['end_time'] ) ? (string) $s['end_time'] : null,
 				'location'    => (string) ( $s['location'] ?? '' ),
@@ -1373,7 +1394,7 @@ final class PublicEvents {
 			'url'                 => (string) get_permalink( $post ),
 		);
 		if ( ! empty( $s['end_time'] ) ) {
-			$data['endDate'] = $iso( (string) $s['session_date'], (string) $s['end_time'] );
+			$data['endDate'] = $iso( ActivityService::last_day( $s ), (string) $s['end_time'] );
 		}
 		if ( ! empty( $s['location'] ) ) {
 			$data['location'] = array( '@type' => 'Place', 'name' => (string) $s['location'], 'address' => (string) $s['location'] );

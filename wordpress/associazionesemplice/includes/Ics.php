@@ -33,7 +33,7 @@ final class Ics {
 	}
 
 	/**
-	 * @param array  $e   uid, summary, date (Y-m-d), start (HH:MM|null), end (HH:MM|null), location?, description?, url?
+	 * @param array  $e   uid, summary, date (Y-m-d), end_date? (Y-m-d, se finisce un altro giorno), start (HH:MM|null), end (HH:MM|null), location?, description?, url?
 	 * @param string $tz  fuso orario dei dati (es. Europe/Rome)
 	 * @param string $now data e ora UTC di generazione (Ymd\THis\Z)
 	 */
@@ -42,7 +42,14 @@ final class Ics {
 		$lines = array( 'BEGIN:VEVENT', 'UID:' . $e['uid'], 'DTSTAMP:' . $now );
 		if ( ! empty( $e['start'] ) ) {
 			$start = new \DateTimeImmutable( $e['date'] . ' ' . $e['start'], $zone );
-			$end   = ! empty( $e['end'] ) ? new \DateTimeImmutable( $e['date'] . ' ' . $e['end'], $zone ) : $start->modify( '+' . self::DEFAULT_MINUTES . ' minutes' );
+			$last  = ! empty( $e['end_date'] ) ? (string) $e['end_date'] : (string) $e['date']; // l'evento può finire un altro giorno (anche 21:30 → 01:00 del giorno dopo)
+			if ( ! empty( $e['end'] ) ) {
+				$end = new \DateTimeImmutable( $last . ' ' . $e['end'], $zone );
+			} elseif ( ! empty( $e['end_date'] ) ) {
+				$end = new \DateTimeImmutable( $last . ' 23:59', $zone );
+			} else {
+				$end = $start->modify( '+' . self::DEFAULT_MINUTES . ' minutes' );
+			}
 			if ( $end <= $start ) {
 				$end = $start->modify( '+' . self::DEFAULT_MINUTES . ' minutes' );
 			}
@@ -52,7 +59,7 @@ final class Ics {
 		} else {
 			$day     = new \DateTimeImmutable( $e['date'] );
 			$lines[] = 'DTSTART;VALUE=DATE:' . $day->format( 'Ymd' );
-			$lines[] = 'DTEND;VALUE=DATE:' . $day->modify( '+1 day' )->format( 'Ymd' );
+			$lines[] = 'DTEND;VALUE=DATE:' . ( new \DateTimeImmutable( ! empty( $e['end_date'] ) ? (string) $e['end_date'] : (string) $e['date'] ) )->modify( '+1 day' )->format( 'Ymd' );
 		}
 		$lines[] = 'SUMMARY:' . self::escape( (string) $e['summary'] );
 		if ( ! empty( $e['location'] ) ) {
