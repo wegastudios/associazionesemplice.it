@@ -16,6 +16,12 @@ final class SessionRules
 {
     public const MAX_DATES = 120;
 
+    /** Oltre questi giorni una data su più giorni chiede una conferma. */
+    public const LONG_DAYS = 7;
+
+    /** Una data non dura più di così. */
+    public const MAX_DAYS = 31;
+
     /**
      * I giorni della settimana $weekday (1 = lunedì … 7 = domenica) tra due date comprese.
      *
@@ -61,11 +67,51 @@ final class SessionRules
      *
      * @return array{0: string, 1: string} «Y-m-d H:i:s» di inizio e fine
      */
-    public static function slot(string $date, ?string $start, ?string $end): array
+    public static function slot(string $date, ?string $start, ?string $end, ?string $endDate = null): array
     {
-        $to = $end === null ? date('Y-m-d', (int) strtotime($date.' +1 day')).' 00:00:00' : $date.' '.$end.':00';
+        $last = $endDate ?? $date;
+        $to = $end === null ? date('Y-m-d', (int) strtotime($last.' +1 day')).' 00:00:00' : $last.' '.$end.':00';
 
         return [$date.' '.($start ?? '00:00').':00', $to];
+    }
+
+    /**
+     * Il giorno di fine di una data: null se vuoto o uguale all'inizio (finisce lo stesso giorno). Prima dell'inizio o
+     * oltre MAX_DAYS giorni è un errore.
+     */
+    public static function endDate(string $date, ?string $endDate): ?string
+    {
+        if ($endDate === null || trim($endDate) === '' || trim($endDate) === $date) {
+            return null;
+        }
+        $endDate = trim($endDate);
+        self::assertDate($endDate);
+        if ($endDate < $date) {
+            throw new ActivityError('La data di fine viene prima di quella di inizio.');
+        }
+        if (self::days($date, $endDate) > self::MAX_DAYS) {
+            throw new ActivityError('Una data non può durare più di '.self::MAX_DAYS.' giorni: controlla l\'anno.');
+        }
+
+        return $endDate;
+    }
+
+    /** Quanti giorni dura una data (1 se finisce lo stesso giorno). */
+    public static function days(string $date, ?string $endDate): int
+    {
+        return $endDate === null ? 1 : (int) round(((int) strtotime($endDate) - (int) strtotime($date)) / 86400) + 1;
+    }
+
+    /** Il giorno di fine di $date se la durata è $days giorni (null se un giorno solo). */
+    public static function shifted(string $date, int $days): ?string
+    {
+        return $days <= 1 ? null : date('Y-m-d', (int) strtotime($date.' +'.($days - 1).' days'));
+    }
+
+    /** Due date (con giorno di fine facoltativo) si toccano in almeno un giorno? */
+    public static function overlap(string $aFrom, ?string $aTo, string $bFrom, ?string $bTo): bool
+    {
+        return $aFrom <= ($bTo ?? $bFrom) && $bFrom <= ($aTo ?? $aFrom);
     }
 
     /**

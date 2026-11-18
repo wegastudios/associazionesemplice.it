@@ -28,9 +28,14 @@ const days = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'];
 const isCourse = computed(() => form.kind === 'course');
 const isBookable = computed(() => form.kind === 'recurring');
 
-const dates = useForm({ from: today, to: '', weekly: false, start: '', end: '', location: a.location ?? '', capacity: '' });
-const submitDates = () => dates.transform((d) => ({ ...d, to: d.weekly ? d.to || null : null, capacity: d.capacity || null, start: d.start || null, end: d.end || null }))
-    .post(`/gestionale/attivita/${props.activity.id}/date`, { preserveScroll: true, onSuccess: () => dates.reset('to', 'weekly') });
+const dates = useForm({ from: today, to: '', weekly: false, start: '', end: '', end_date: '', confirm_long: false, location: a.location ?? '', capacity: '' });
+const submitDates = () => dates.transform((d) => ({ ...d, to: d.weekly ? d.to || null : null, capacity: d.capacity || null, start: d.start || null, end: d.end || null, end_date: d.end_date || null }))
+    .post(`/gestionale/attivita/${props.activity.id}/date`, { preserveScroll: true, onSuccess: () => dates.reset('to', 'weekly', 'end_date', 'confirm_long') });
+const longDays = computed(() => {
+    if (!dates.end_date || dates.end_date <= dates.from) return 0;
+    const n = Math.round((Date.parse(dates.end_date) - Date.parse(dates.from)) / 86400000) + 1;
+    return n > 7 ? n : 0;
+});
 
 const enroll = useForm({ person_id: '', start_month: '' });
 const submitEnroll = () => enroll.transform((d) => ({ ...d, start_month: d.start_month || null }))
@@ -168,6 +173,9 @@ const label = 'space-y-1 text-sm';
                 <label :class="label"><span class="font-semibold">Data</span><input v-model="dates.from" type="date" :class="field" required /></label>
                 <label class="flex items-center gap-2 self-end pb-2 text-sm"><input v-model="dates.weekly" type="checkbox" /> ogni settimana</label>
                 <label v-if="dates.weekly" :class="label"><span class="font-semibold">Fino al</span><input v-model="dates.to" type="date" :class="field" required /></label>
+                <label :class="label"><span class="font-semibold">Finisce il (facoltativo)</span><input v-model="dates.end_date" type="date" :min="dates.from" :class="field" />
+                    <span class="block text-xs text-muted">Se lo lasci vuoto la data finisce lo stesso giorno.</span></label>
+                <label v-if="longDays" class="flex items-center gap-2 self-end pb-2 text-sm sm:col-span-2"><input v-model="dates.confirm_long" type="checkbox" /> Questa data dura {{ longDays }} giorni: è giusto? Sì, è giusto</label>
                 <label :class="label"><span class="font-semibold">Dalle</span><input v-model="dates.start" type="time" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Alle</span><input v-model="dates.end" type="time" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Posti</span><input v-model="dates.capacity" type="number" min="1" :class="field" placeholder="senza limite" /></label>
