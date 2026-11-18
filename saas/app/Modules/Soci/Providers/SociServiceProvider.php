@@ -74,8 +74,8 @@ final class SociServiceProvider extends ServiceProvider
             $org = $job instanceof SendReminderEmail ? $job->orgId : '';
 
             return [
-                Limit::perMinute(self::limit('saas.reminders.per_minute', 120))->by('reminder-mail'),
-                Limit::perMinute(self::limit('saas.reminders.per_org_per_minute', 30))->by('reminder-mail|'.$org),
+                Limit::perMinute(self::limit('saas.reminders.per_minute', 20))->by('reminder-mail'),
+                Limit::perMinute(self::limit('saas.reminders.per_org_per_minute', 5))->by('reminder-mail|'.$org),
             ];
         });
 
