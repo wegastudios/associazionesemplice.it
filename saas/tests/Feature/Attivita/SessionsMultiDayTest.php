@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Contracts\MemberActivities;
+use App\Modules\Attivita\Export\AttivitaDataExport;
 use App\Modules\Attivita\Http\Controllers\SessionsController;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Rules\SessionRules;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Attivita\Services\AttendanceService;
 use App\Modules\Attivita\Services\SessionService;
+use App\Modules\Core\Contracts\Operator;
+use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Soci\Models\Person;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -179,5 +182,17 @@ it('registra le presenze in ognuno dei giorni di una data su più giorni', funct
             ->and($cal->pluck('start')->all())->toBe(['21:30', null, null])
             ->and($cal->pluck('end')->all())->toBe([null, null, '01:00'])
             ->and($cal->pluck('span')->all())->toBe(['Giorno 1 di 3', 'Giorno 2 di 3', 'Giorno 3 di 3']);
+    });
+});
+
+it('esporta la fine delle date nelle prenotazioni', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $s = app(SessionService::class);
+        $a = trip();
+        $s->addDates($a->id, $this->year.'-01-05', null, false, '21:30', '01:00', null, null, $this->year.'-01-07');
+        $s->book($s->sessions($a)[0]['id'], Person::create(['first_name' => 'Ada', 'last_name' => 'Rossi'])->id);
+        $files = app(AttivitaDataExport::class)->files(new Operator('00000000-0000-7000-8000-000000000001', $this->org->id, $this->org->name, OrgRole::Admin));
+        $csv = (string) ($files['attivita/prenotazioni.csv'] ?? '');
+        expect($csv)->toContain('Data fine')->and($csv)->toContain($this->year.'-01-07')->and($csv)->toContain('01:00');
     });
 });

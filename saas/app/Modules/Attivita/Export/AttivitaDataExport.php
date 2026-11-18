@@ -47,12 +47,13 @@ final readonly class AttivitaDataExport implements DataExport
         $rows = [];
         foreach ($c->table('app.session_bookings as b')->join('app.activity_sessions as s', 's.id', '=', 'b.session_id')->join('app.activities as a', 'a.id', '=', 's.activity_id')
             ->join('app.people as p', 'p.id', '=', 'b.person_id')->orderBy('s.session_date')->orderBy('a.name')->orderBy('p.last_name')
-            ->get(['a.name', 's.session_date', 's.start_time', 's.cancelled_at', 'p.last_name', 'p.first_name', 'b.fee_due_cents', 'b.price_list', 'b.status']) as $b) {
+            ->get(['a.name', 's.session_date', 's.end_date', 's.start_time', 's.end_time', 's.cancelled_at', 'p.last_name', 'p.first_name', 'b.fee_due_cents', 'b.price_list', 'b.status']) as $b) {
             $rows[] = [$s($b->name ?? ''), substr($s($b->session_date ?? ''), 0, 10), $s($b->start_time ?? ''), trim($s($b->last_name ?? '').' '.$s($b->first_name ?? '')),
                 Money::plain(is_numeric($b->fee_due_cents ?? null) ? (int) $b->fee_due_cents : 0), $s($b->price_list ?? ''),
-                $b->status === 'cancelled' ? 'annullata' : (($b->cancelled_at ?? null) !== null ? 'data annullata' : 'attiva')];
+                $b->status === 'cancelled' ? 'annullata' : (($b->cancelled_at ?? null) !== null ? 'data annullata' : 'attiva'),
+                substr($s($b->end_date ?? ''), 0, 10), $s($b->end_time ?? '')];
         }
-        $files['attivita/prenotazioni.csv'] = Csv::build(['Attività', 'Data', 'Ora', 'Persona', 'Dovuto', 'Listino', 'Stato'], $rows);
+        $files['attivita/prenotazioni.csv'] = Csv::build(['Attività', 'Data', 'Ora', 'Persona', 'Dovuto', 'Listino', 'Stato', 'Data fine', 'Ora fine'], $rows);
 
         $rows = [];
         foreach ($c->table('app.attendance as t')->join('app.activities as a', 'a.id', '=', 't.activity_id')->join('app.people as p', 'p.id', '=', 't.person_id')

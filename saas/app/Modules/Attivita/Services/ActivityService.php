@@ -207,15 +207,16 @@ final readonly class ActivityService implements Activities
         $today = now()->toDateString();
         $out = [];
         if ($activity->id !== null) {
-            $sessions = ActivitySession::query()->where('activity_id', $activity->id)->whereNull('cancelled_at')->where('session_date', '>=', $today)
+            $sessions = ActivitySession::query()->where('activity_id', $activity->id)->whereNull('cancelled_at')->whereRaw('coalesce(end_date, session_date) >= ?', [$today])
                 ->orderBy('session_date')->orderBy('start_time')->get();
             foreach ($sessions as $s) {
                 if ($activity->occupy_on_booking && ! SessionBooking::query()->where('session_id', $s->id)->where('status', 'booked')->exists()) {
                     continue;
                 }
                 $day = $s->session_date->format('Y-m-d');
-                [$from, $to] = SessionRules::slot($day, $s->start_time, $s->end_time);
-                $out[] = [$from, $to, date('d/m/Y', (int) strtotime($day)).($s->start_time === null ? ' (giorno intero)' : ' '.$s->start_time)];
+                $last = $s->end_date?->format('Y-m-d');
+                [$from, $to] = SessionRules::slot($day, $s->start_time, $s->end_time, $last);
+                $out[] = [$from, $to, date('d/m/Y', (int) strtotime($day)).($last !== null ? '–'.date('d/m/Y', (int) strtotime($last)) : ($s->start_time === null ? ' (giorno intero)' : ' '.$s->start_time))];
             }
         }
         if ($activity->kind === ActivityKind::Course) {
