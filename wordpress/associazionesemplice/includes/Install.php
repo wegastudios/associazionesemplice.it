@@ -436,9 +436,13 @@ final class Install {
 			return 0;
 		}
 		try { // prima la copia di sicurezza: se non riesce non si cambia nulla
+			Attachments::prepare_dir();
+			if ( ! is_dir( Backup::dir() ) ) {
+				wp_mkdir_p( Backup::dir() ); // la cartella delle copie può non esserci ancora
+			}
 			Backup::export( false, Backup::dir() . '/prima-del-riallineamento-delle-tessere-' . gmdate( 'Ymd-His' ) . '.zip' );
 		} catch ( \Throwable $e ) {
-			Audit::log( 'memberships.realign_skipped', 'membership', null, array( 'reason' => 'backup' ) );
+			Audit::log( 'memberships.realign_skipped', 'membership', null, array( 'reason' => 'backup', 'error' => $e->getMessage() ) );
 			return -1;
 		}
 		$n = 0;
