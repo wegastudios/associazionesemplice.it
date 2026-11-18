@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.29
+Stable tag: 1.3.30
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,15 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `assets/fonts/OFL.txt`) and icons from Lucide (ISC license, https://lucide.dev), both bundled with the plugin; nothing is loaded from external servers.
 
 == Changelog ==
+
+= 1.3.30 =
+* Nuovo: la tessera dei soci, le quote e gli incassi seguono l'anno fiscale; l'«anno delle attività» vale solo per corsi ed eventi. Le tessere già emesse con un pagamento si riallineano da sole (mai accorciate, anni chiusi intatti); se cambi il mese dell'anno fiscale vedi prima cosa succede alle tessere.
+* Nuovo: le pagine in bozza di eventi e corsi, anche quelle importate, si pubblicano tutte insieme.
+* Ottimizzazione: il report delle attività divide entrate e uscite generali per anno fiscale.
+* Altro: nella finestra «Visualizza i dettagli» di WordPress il changelog compare sempre, anche dopo l'aggiornamento.
+Da fare dopo l'aggiornamento:
+* In Bacheca controlla l'esito del riallineamento delle tessere
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.29 =
 * Nuovo: gli eventi su più giorni compaiono in ognuno dei loro giorni nei calendari, nella Bacheca e nel calendario dei soci, e l'importazione da The Events Calendar porta anche la data di fine.
