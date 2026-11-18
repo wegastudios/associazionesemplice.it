@@ -54,10 +54,11 @@ return [
     'public_url' => env('SAAS_PUBLIC_URL', ''),
 
     // Promemoria delle scadenze: vanno in coda, un'email per lavoro. Massimo di email al minuto per ogni associazione e in
-    // totale (oltre, il lavoro riparte più tardi): si regola dal .env senza toccare il codice.
+    // totale (oltre, il lavoro riparte più tardi): si regola dal .env senza toccare il codice. Valori prudenti (20 al minuto =
+    // 1.200 all'ora) per i limiti orari dell'hosting condiviso: con un SMTP dedicato si possono alzare.
     'reminders' => [
-        'per_org_per_minute' => (int) env('SAAS_REMINDERS_PER_ORG_PER_MINUTE', 30),
-        'per_minute' => (int) env('SAAS_REMINDERS_PER_MINUTE', 120),
+        'per_org_per_minute' => (int) env('SAAS_REMINDERS_PER_ORG_PER_MINUTE', 5),
+        'per_minute' => (int) env('SAAS_REMINDERS_PER_MINUTE', 20),
     ],
 
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
