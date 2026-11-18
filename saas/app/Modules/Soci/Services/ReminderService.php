@@ -129,7 +129,8 @@ final readonly class ReminderService
             default => ['Il certificato medico è scaduto', "Il certificato medico{$about} è scaduto il {$date}. Senza un certificato valido non si può partecipare alle attività sportive."],
         };
 
-        Notification::route('mail', $to['email'])->notify(new MemberNotification($subject, "Ciao {$to['name']},", $body, $this->orgName()));
+        // Siamo già dentro un lavoro in coda: la posta parte subito, senza accodarla una seconda volta.
+        Notification::route('mail', $to['email'])->notifyNow(new MemberNotification($subject, "Ciao {$to['name']},", $body, $this->orgName()));
     }
 
     /** Toglie la prenotazione di un promemoria non partito, così il giro successivo può riprovare. */
