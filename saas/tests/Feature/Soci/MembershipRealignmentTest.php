@@ -67,8 +67,8 @@ it('alla conferma riallinea le tessere degli anni aperti e scrive nel registro e
     $log = DB::table('audit.log')->where('action', 'membership.realigned')->where('subject_id', $id)->sole();
     $details = json_decode((string) $log->details, true);
     expect([$row->social_year, (string) $row->valid_from, (string) $row->valid_to])->toBe(['2026', '2026-01-01', '2026-12-31'])
-        ->and($details['from'])->toBe(['social_year' => '2025/2026', 'valid_from' => '2025-09-01', 'valid_to' => '2026-08-31'])
-        ->and($details['to'])->toBe(['social_year' => '2026', 'valid_from' => '2026-01-01', 'valid_to' => '2026-12-31'])
+        ->and($details)->toMatchArray(['from_year' => '2025/2026', 'from_valid_from' => '2025-09-01', 'from_valid_to' => '2026-08-31'])
+        ->and($details)->toMatchArray(['to_year' => '2026', 'to_valid_from' => '2026-01-01', 'to_valid_to' => '2026-12-31'])
         ->and($this->realigner->apply(1))->toBe(['moved' => 0, 'superseded' => 0]);
 });
 

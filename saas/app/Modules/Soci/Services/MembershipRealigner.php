@@ -72,8 +72,8 @@ final readonly class MembershipRealigner implements MembershipRealignment
             foreach ($plan['moves'] as $m) {
                 $db->table('app.memberships')->where('id', $m['id'])->update(['social_year' => $m['to'], 'valid_from' => $m['to_from'], 'valid_to' => $m['to_to']]);
                 $this->audit->record('membership.realigned', 'app.memberships', $m['id'], [
-                    'from' => ['social_year' => $m['from'], 'valid_from' => $m['from_from'], 'valid_to' => $m['from_to']],
-                    'to' => ['social_year' => $m['to'], 'valid_from' => $m['to_from'], 'valid_to' => $m['to_to']],
+                    'from_year' => $m['from'], 'from_valid_from' => $m['from_from'], 'from_valid_to' => $m['from_to'],
+                    'to_year' => $m['to'], 'to_valid_from' => $m['to_from'], 'to_valid_to' => $m['to_to'],
                 ]);
             }
         });
