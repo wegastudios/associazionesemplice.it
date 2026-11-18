@@ -8586,7 +8586,9 @@ $ra_o2['fiscal_start_month'] = 1; // l'anno fiscale parte a gennaio; l'anno dell
 update_option( Settings::OPTION, $ra_o2 );
 Settings::forget();
 foreach ( array( 2026, 2027 ) as $ra_y ) {
-	\AssociazioneSemplice\FiscalYears::create( $ra_y );
+	if ( ! \AssociazioneSemplice\FiscalYears::get( $ra_y ) ) {
+		\AssociazioneSemplice\FiscalYears::create( $ra_y );
+	}
 }
 $ra_tx = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL ORDER BY id LIMIT 1' );
 $ra_mk = function ( string $first ) use ( $people ) {
