@@ -235,7 +235,25 @@ La pagina è del tipo **«Eventi sul sito»** e nasce da sola dall'attività. Re
 
 ## Cosa vede chi visita la pagina
 
-La pagina mostra la locandina accanto ai dati, **dove si svolge** (con il collegamento alla mappa), i **contatti** con WhatsApp ed email, il pulsante **«Salva nel tuo calendario»**, i pulsanti per **condividere**, l'evento **precedente e successivo** e il collegamento **«Tutti gli eventi»**. Gli eventi che si ripetono ogni settimana compaiono nell'elenco con **una sola scheda** («Tutti i giovedì»).
+La pagina mostra la locandina accanto ai dati, **dove si svolge** (con il collegamento alla mappa), i **contatti** con WhatsApp ed email, il pulsante **«Salva nel tuo calendario»**, i pulsanti per **condividere**, l'evento **precedente e successivo** e il collegamento **«Tutti gli eventi»**. Gli eventi che si ripetono ogni settimana compaiono nell'elenco con **una sola scheda** («Tutti i giovedì»), finché sono futuri.
+
+## Eventi già svolti
+
+Gli eventi passati **non spariscono**: restano visibili nell'elenco, una scheda per ogni data (qui niente «Tutti i giovedì»), con il pulsante **«Dettagli»** al posto di «Dettagli e prenotazione». Gli eventi annullati non compaiono nell'elenco.
+
+Nella loro pagina si legge **«Si è svolto…»** con la data (oppure «Si è svolto in N date, l'ultima…»), il luogo dell'ultima data e la sezione **«Date passate»**. Non si può più prenotare e non c'è «Salva nel tuo calendario». Un evento **in corso** (per esempio una gara iniziata ieri e non ancora finita) non è considerato passato.
+
+## Date su più giorni
+
+Una data può avere anche una **data di fine**, nel campo **«fino al»**: serve per una gara di più giorni o per una serata che finisce dopo mezzanotte (per esempio dalle **21:30** all'**01:00** del giorno dopo). Lo trovi nella sezione **«Quando»** del modulo di creazione, su ogni **data unica**, e anche quando modifichi una data. Se lo lasci vuoto, la data finisce lo stesso giorno, come prima.
+
+Nelle **date ricorrenti** questo campo non c'è: lì **«fino al»** indica fino a quando la data si ripete, non quando finisce.
+
+- Una data dura **al massimo 31 giorni**. Oltre **7 giorni** il pannello ti avvisa («Questa data dura N giorni: è giusto?») e chiede di spuntare **«Confermo la durata (oltre 7 giorni)»** prima di salvare.
+- Chi si prenota a una data su più giorni paga **una quota sola**, non una per giorno.
+- **Solo le date su più giorni** si prenotano online **fino al giorno prima**: dal giorno di inizio, e mentre sono in corso, prenota solo la segreteria. Chi prova a prenotare online legge «Le prenotazioni online si chiudono il giorno prima: per questa data rivolgiti alla segreteria.»
+- Le date **di un giorno solo** non cambiano: si prenotano online come sempre, **anche il giorno stesso**, finché non sono passate.
+- L'elenco scrive la data come «Dal 12 al 14 giugno», con il distintivo **«In corso»** finché dura, e la mostra in ogni mese che attraversa.
 
 ## Cosa succede se l'evento cambia
 
@@ -249,11 +267,11 @@ Inserisci le viste con uno **shortcode**, con il blocco **«Associazione Semplic
 
 | Shortcode | Cosa mostra |
 |---|---|
-| `[associazionesemplice_eventi]` | schede degli eventi divise per mese |
+| `[associazionesemplice_eventi]` | schede degli eventi divise per mese: di norma il mese corrente e il prossimo, con le frecce **«← mese»** e **«mese →»** per andare avanti e indietro, anche nel passato (senza frecce con `filtri="no"`) |
 | `[associazionesemplice_calendario_eventi]` | calendario mensile |
 | `[associazionesemplice_prossimi_eventi]` | i prossimi eventi |
 
-Opzioni comuni: `categoria`, `limite`, `mesi`, `modo="elenco"` o `modo="mese"`, `filtri="si"` o `filtri="no"`, e per i testi `titolo` (l'intestazione sopra la vista), `vuoto` (il messaggio quando non ci sono eventi) e `pulsante` (il testo del pulsante nelle schede). Esempio: `[associazionesemplice_eventi titolo="I nostri prossimi eventi"]`.
+Opzioni comuni: `categoria`, `limite`, `mesi` (nell'elenco a schede, quanti mesi si vedono insieme: da 1 a 6, di partenza 2), `modo="elenco"` o `modo="mese"`, `filtri="si"` o `filtri="no"`, e per i testi `titolo` (l'intestazione sopra la vista), `vuoto` (il messaggio quando non ci sono eventi) e `pulsante` (il testo del pulsante nelle schede). Esempio: `[associazionesemplice_eventi titolo="I nostri prossimi eventi"]`.
 
 I **corsi** compaiono nel calendario con le loro **lezioni**, ciascuna con il collegamento alla pagina del corso.
 

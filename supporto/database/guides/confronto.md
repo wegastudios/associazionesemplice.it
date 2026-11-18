@@ -60,7 +60,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
 | Listini per eventi e corsi a date (quanti prezzi vuoi: individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
 | Calendario dell'evento (mese e giorno, con selettore della data) e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
-| Pagine pubbliche degli eventi (una pagina per ogni evento o corso con locandina e descrizione, elenco a schede per mese, calendario mensile con filtri per categoria, salvataggio nel calendario, dati strutturati per Google e prenotazione dei soci direttamente dalla pagina) | ✓ | ✓ | ✓ |
+| Pagine pubbliche degli eventi (una pagina per ogni evento o corso con locandina e descrizione, elenco a schede per mese con frecce avanti e indietro, eventi già svolti, date su più giorni (anche oltre mezzanotte), calendario mensile con filtri per categoria, salvataggio nel calendario, dati strutturati per Google e prenotazione dei soci direttamente dalla pagina) | ✓ | ✓ | ✓ |
 | Prenotazione dal sito anche per i non soci (modulo breve con conferma dell'indirizzo dall'email; per gli eventi a pagamento si versa in anticipo con bonifico istantaneo e si manda la ricevuta: non è un pagamento online) | ✓ | ✓ | ✓ |
 | Prenotazione automatica o su richiesta (per ogni evento scegli i posti per richiesta, gli ospiti e cosa succede se l'evento viene annullato) | ✓ | ✓ | ✓ |
 | Pagina dell'evento completa (dove si svolge con mappa, contatti con WhatsApp ed email, evento precedente e successivo, condivisione; gli eventi settimanali con una sola scheda) | ✓ | ✓ | ✓ |
