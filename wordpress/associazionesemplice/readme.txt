@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.28
+Stable tag: 1.3.29
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,10 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `assets/fonts/OFL.txt`) and icons from Lucide (ISC license, https://lucide.dev), both bundled with the plugin; nothing is loaded from external servers.
 
 == Changelog ==
+
+= 1.3.29 =
+* Nuovo: gli eventi su più giorni compaiono in ognuno dei loro giorni nei calendari, nella Bacheca e nel calendario dei soci, e l'importazione da The Events Calendar porta anche la data di fine.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.28 =
 * Nuovo: eventi su più giorni (una regata, un torneo) o che finiscono dopo mezzanotte, con il campo «fino al» nella data. Online si prenotano fino al giorno prima, poi ci pensa la segreteria; gli eventi di un giorno restano come prima.
