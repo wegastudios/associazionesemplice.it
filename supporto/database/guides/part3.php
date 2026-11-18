@@ -287,7 +287,7 @@ Il pulsante fisso **«Scrivici su WhatsApp»** usa il **telefono della segreteri
 
 ## Se arrivi da The Events Calendar
 
-Con **Importa da The Events Calendar** si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento. Le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di default) pubblica solo quelle con una data futura. Gli eventi che si ripetono diventano **un solo evento ricorrente**. Si importa anche la **data di fine**, quindi gli eventi su più giorni restano su più giorni. Rilanciando l'importazione non nascono doppioni e una pagina già scritta non viene toccata.
+Con **Importa da The Events Calendar** si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento. Le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di default) pubblica solo quelle con una data futura. Gli eventi che si ripetono diventano **un solo evento ricorrente**. Si importa anche la **data di fine**, quindi gli eventi su più giorni restano su più giorni. Se l'evento dura più di 31 giorni, le date restano scritte nelle note. Rilanciando l'importazione non nascono doppioni e una pagina già scritta non viene toccata.
 
 Se usi una cache delle pagine, **svuotala** dopo aver pubblicato o modificato un evento. Per prenotare e iscriversi dalla pagina leggi [Prenotarsi a un evento o a un corso dal sito](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito).
 MD,
