@@ -94,6 +94,8 @@ it('la verifica intera trova una modifica prima del punto di controllo, quella d
 
     tamper("UPDATE audit.log SET details = '{\"fields\": [\"first_name\"]}' WHERE seq = 2");
 
+    // Quella di ogni notte riparte dal punto di controllo e non guarda indietro: non vede la modifica.
+    expect($verifier->verify($this->org->id, true)['ok'])->toBeTrue();
     expect($verifier->verify($this->org->id))->toMatchArray(['ok' => false, 'broken_at' => 2]);
 });
 
