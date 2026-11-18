@@ -6,6 +6,7 @@ namespace App\Modules\Soci\Jobs;
 
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Soci\Services\ReminderService;
+use DateTimeInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -47,7 +48,7 @@ final class SendReminderEmail implements ShouldQueue
         return [300, 900, 3600];
     }
 
-    public function retryUntil(): \DateTimeInterface
+    public function retryUntil(): DateTimeInterface
     {
         return now()->addDay();
     }
