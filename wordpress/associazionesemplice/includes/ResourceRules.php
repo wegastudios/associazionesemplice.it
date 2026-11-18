@@ -368,6 +368,33 @@ final class ResourceRules {
 		);
 	}
 
+	/** Durata massima di un blocco di eventi, in giorni (dal primo all'ultimo giorno). */
+	const MAX_BLOCK_DAYS = 31;
+
+	/**
+	 * Il periodo unico che copre tutte le finestre: dal primo inizio all'ultima fine, senza interruzioni (anche tra un evento e l'altro).
+	 *
+	 * @param array[] $windows starts, ends, core_starts, core_ends (Y-m-d H:i:s) come da {@see busy_window()}
+	 * @return array{starts:string,ends:string,core_starts:string,core_ends:string}|null null se non ci sono finestre
+	 */
+	public static function span( array $windows ): ?array {
+		if ( ! $windows ) {
+			return null;
+		}
+		$out = null;
+		foreach ( $windows as $w ) {
+			if ( null === $out ) {
+				$out = array( 'starts' => $w['starts'], 'ends' => $w['ends'], 'core_starts' => $w['core_starts'], 'core_ends' => $w['core_ends'] );
+				continue;
+			}
+			$out['starts']      = min( $out['starts'], $w['starts'] );
+			$out['core_starts'] = min( $out['core_starts'], $w['core_starts'] );
+			$out['ends']        = max( $out['ends'], $w['ends'] );
+			$out['core_ends']   = max( $out['core_ends'], $w['core_ends'] );
+		}
+		return $out;
+	}
+
 	/**
 	 * Quanti minuti dell'intervallo A cadono dentro il periodo B (per i report di occupazione). Una fine vuota di A vale «senza scadenza».
 	 *

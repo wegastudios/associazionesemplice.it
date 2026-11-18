@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.16 – 2026-11-18
+- Nuovo: negli eventi su più giorni la risorsa resta occupata in tutti i giorni, anche oltre mezzanotte; a scelta anche senza interruzioni tra più eventi della stessa manifestazione (per esempio le gare di una regata), fino a 31 giorni.
+- Altro: corretto il controllo delle risorse, che nelle date su più giorni guardava solo il primo giorno.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.15 – 2026-11-18
 - Altro: allineato al plugin gratuito 1.3.28.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog

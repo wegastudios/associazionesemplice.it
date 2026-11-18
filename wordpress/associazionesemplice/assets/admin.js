@@ -202,9 +202,25 @@
 			$$('.asem-row-event input[name="session_date"]').forEach(function (i) { i.required = k === 'event'; });
 			$$('.asem-fee-label').forEach(function (l) { l.textContent = k === 'course' ? 'Contributo soci' : 'Contributo soci (a evento)'; });
 			var hint = $('#asem-kind-hint'); if (hint) { hint.textContent = kindHints[k] || ''; }
+			$$('.asem-resource-block').forEach(function (b) { b.style.display = k === 'recurring' ? 'none' : ''; });
 		};
 		kindSel.addEventListener('change', applyKind);
 		applyKind();
+	}
+
+	/* «Condividi il blocco con»: solo i blocchi della risorsa scelta */
+	var resSel = $('select[name="resource_id"]'), shareSel = $('select[name="resource_block_share"]');
+	if (resSel && shareSel) {
+		var filterBlocks = function () {
+			Array.prototype.forEach.call(shareSel.options, function (o) {
+				var r = o.getAttribute('data-resource');
+				var show = !r || r === resSel.value;
+				o.hidden = !show; o.disabled = !show;
+				if (!show && o.selected) { shareSel.value = ''; }
+			});
+		};
+		resSel.addEventListener('change', filterBlocks);
+		filterBlocks();
 	}
 
 	/* Programma: righe dinamiche "data + orario" con la spunta "ricorrente" (si ripete ogni settimana fino a una data di fine) */

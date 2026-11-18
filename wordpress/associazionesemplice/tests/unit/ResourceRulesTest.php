@@ -275,6 +275,17 @@ final class ResourceRulesTest extends TestCase {
 		$this->assertSame( array( '2026-06-12 00:00:00', '2026-06-14 23:59:00' ), array( $none['core_starts'], $none['core_ends'] ) );
 	}
 
+	public function test_a_block_runs_from_the_first_start_to_the_last_end_without_gaps(): void {
+		$a = R::busy_window( '2026-06-12', '09:00', '17:00', 60, 60 );
+		$b = R::busy_window( '2026-06-14', '10:00', '16:00', 60, 60 );
+		$s = R::span( array( $b, $a ) );
+		$this->assertSame( '2026-06-12 08:00:00', $s['starts'] );
+		$this->assertSame( '2026-06-14 17:00:00', $s['ends'] );
+		$this->assertSame( array( '2026-06-12 09:00:00', '2026-06-14 16:00:00' ), array( $s['core_starts'], $s['core_ends'] ) );
+		$this->assertTrue( R::overlaps( '2026-06-13 12:00:00', '2026-06-13 13:00:00', $s['starts'], $s['ends'] ), 'il giorno in mezzo è occupato' );
+		$this->assertNull( R::span( array() ) );
+	}
+
 	public function test_setup_windows_leave_the_neighbouring_slots_free(): void {
 		$w = R::busy_window( '2026-10-20', '15:00', '16:00', 200, 200 );
 		$this->assertFalse( R::overlaps( '2026-10-20 10:00:00', '2026-10-20 11:00:00', $w['starts'], $w['ends'] ), 'finisce prima delle 11:40' );

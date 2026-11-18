@@ -99,7 +99,12 @@ final readonly class ActivitiesController
         $move = $request->boolean('move_conflicts');
 
         try {
-            return $this->attempt(fn (): RedirectResponse => $this->done(fn () => $this->activities->save($activity, $data, $move), 'Attività salvata.'));
+            return $this->attempt(function () use ($activity, $data, $move): RedirectResponse {
+                $saved = $this->activities->save($activity, $data, $move);
+                $period = $this->activities->blockPeriod($saved);
+
+                return back()->with('status', 'Attività salvata.'.($period === null ? '' : ' Risorsa tenuta occupata '.SessionRules::blockLabel($period['from'], $period['to']).'.'));
+            });
         } catch (ResourceChangeConflict $e) {
             // Il modulo mostra l'elenco e propone: lasciare tutto com'è, oppure (se si può) spostare gli slot occupati sulla risorsa che si libera.
             throw ValidationException::withMessages(['resource' => $e->getMessage(), 'resource_movable' => $e->movable ? '1' : '0']);
@@ -208,6 +213,9 @@ final readonly class ActivitiesController
                 'price_lists' => SessionRules::priceListsText($activity->price_lists),
                 'resource' => $activity->no_resource ? 'none' : ($activity->resource_id ?? ''),
                 'occupy_on_booking' => $activity->occupy_on_booking,
+                'block_on' => $activity->resource_block !== null,
+                'block_with' => $activity->resource_block ?? '',
+                'block_name' => $activity->resource_block_label ?? '',
                 'sessions' => $activity->kind->usesSessions() ? array_map(static fn (array $x): array => $x + ['label' => SessionsController::rangeLabel($x['date'], $x['end_date'])], $this->sessions->sessions($activity)) : [],
                 'packages' => $activity->kind->usesSessions() ? $this->sessions->paidPackages($activity->id) : [],
                 'monthly' => $activity->kind === ActivityKind::Course && $activity->billing !== Billing::Once,
@@ -250,6 +258,7 @@ final readonly class ActivitiesController
             // Solo con la partita IVA: aliquote scelte in Aspetto fiscale e se i prezzi sono finali o «senza IVA».
             'fiscal' => ['hasVat' => $this->fiscal->hasVat(), 'includesVat' => $this->fiscal->includesVat(), 'rates' => $this->fiscal->rates()],
             'resources' => $this->resourceList->options(),
+            'blocks' => (object) $this->activities->blocksByResource(),
             'kinds' => array_map(static fn (ActivityKind $k): array => ['value' => $k->value, 'label' => $k->label()], ActivityKind::cases()),
             'billings' => array_map(static fn (Billing $b): array => ['value' => $b->value, 'label' => $b->label()], Billing::cases()),
             'years' => $this->activities->years(),
@@ -280,6 +289,9 @@ final readonly class ActivitiesController
             'price_lists' => ['nullable', 'string', 'max:200000'],
             'resource' => ['required', 'string', 'max:40'],
             'occupy_on_booking' => ['boolean'],
+            'block_on' => ['boolean'],
+            'block_with' => ['nullable', 'string', 'max:40'],
+            'block_name' => ['nullable', 'string', 'max:120'],
             'with_vat' => ['boolean'],
             'vat_rate' => ['nullable', 'integer', 'min:0', 'max:30'],
         ]));
@@ -320,6 +332,9 @@ final readonly class ActivitiesController
             'resource_id' => $resource === 'none' ? null : $resource,
             'no_resource' => $resource === 'none',
             'occupy_on_booking' => (bool) ($data['occupy_on_booking'] ?? false),
+            'block_on' => Input::bool($data, 'block_on', false),
+            'block_with' => Input::optionalString($data, 'block_with'),
+            'block_name' => Input::optionalString($data, 'block_name'),
             'vat_rate' => $vatRate,
         ];
     }

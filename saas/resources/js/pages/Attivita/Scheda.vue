@@ -5,7 +5,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 import PersonPicker from '../../components/PersonPicker.vue';
 
 const props = defineProps({
-    activity: Object, resources: Array, kinds: Array, billings: Array, years: Array, accounts: Array, methods: Array, canEdit: Boolean, canAccounting: Boolean, fiscal: Object,
+    activity: Object, resources: Array, blocks: { type: Object, default: () => ({}) }, kinds: Array, billings: Array, years: Array, accounts: Array, methods: Array, canEdit: Boolean, canAccounting: Boolean, fiscal: Object,
 });
 
 const a = props.activity ?? {};
@@ -16,11 +16,16 @@ const form = useForm({
     starts_on: a.starts_on ?? '', ends_on: a.ends_on ?? '', location: a.location ?? '', notes: a.notes ?? '', price_lists: a.price_lists ?? '',
     with_vat: a.with_vat ?? false, vat_rate: a.vat_rate ?? 0,
     resource: a.resource ?? '', occupy_on_booking: a.occupy_on_booking ?? false, move_conflicts: false,
+    block_on: a.block_on ?? false, block_with: a.block_with ?? '', block_name: a.block_name ?? '',
 });
 // Cambio di risorsa con sovrapposizioni: o si lascia tutto com'è, o si spostano gli slot occupati sulla risorsa che si libera.
 const keepResource = () => { form.resource = a.resource ?? ''; form.clearErrors(); };
 const saveMoving = () => { form.move_conflicts = true; save(); form.move_conflicts = false; };
-const clean = (d) => ({ ...d, vat_rate: d.with_vat ? d.vat_rate : null, instructor_person_id: d.instructor_person_id || null, starts_on: d.starts_on || null, ends_on: d.ends_on || null });
+// Il blocco della risorsa per una manifestazione: solo per eventi con prenotazioni, con una risorsa, senza «occupa solo se prenotata».
+const canBlock = computed(() => form.kind === 'recurring' && form.resource !== '' && form.resource !== 'none' && !form.occupy_on_booking);
+const resourceBlocks = computed(() => props.blocks[form.resource] ?? []);
+const pickBlock = () => { form.block_name = resourceBlocks.value.find((b) => b.key === form.block_with)?.label ?? ''; };
+const clean = (d) => ({ ...d, block_on: d.block_on && canBlock.value, block_with: d.block_on && canBlock.value ? d.block_with || null : null, block_name: d.block_on && canBlock.value ? d.block_name || null : null, vat_rate: d.with_vat ? d.vat_rate : null, instructor_person_id: d.instructor_person_id || null, starts_on: d.starts_on || null, ends_on: d.ends_on || null });
 const save = () => (props.activity
     ? form.transform(clean).put(`/gestionale/attivita/${props.activity.id}`, { preserveScroll: true })
     : form.transform(clean).post('/gestionale/attivita'));
@@ -124,6 +129,19 @@ const label = 'space-y-1 text-sm';
                 </div>
                 <label :class="label"><span class="flex items-center gap-2"><input v-model="form.occupy_on_booking" type="checkbox" /> <span class="font-semibold">Occupa la risorsa solo se prenotata</span></span>
                     <span class="text-muted">Le date senza prenotazioni lasciano libera la risorsa; una prenotazione su una fascia occupata altrove viene rifiutata.</span></label>
+                <div v-if="canBlock" :class="[label, 'sm:col-span-2']">
+                    <label class="flex items-center gap-2"><input v-model="form.block_on" type="checkbox" /> <span class="font-semibold">Tieni la risorsa occupata dal primo all'ultimo giorno, senza interruzioni</span></label>
+                    <span class="block text-muted">Nessuno potrà prenotarla in quel periodo, nemmeno tra un evento e l'altro. Se sposti, accorci o annulli le date, il blocco si adegua da solo. Dura al massimo 31 giorni e non si usa con gli eventi ricorrenti.</span>
+                    <div v-if="form.block_on" class="grid gap-3 pt-2 sm:grid-cols-2">
+                        <label class="flex flex-col gap-1"><span class="font-semibold">Condividi il blocco con</span>
+                            <select v-model="form.block_with" :class="field" @change="pickBlock">
+                                <option value="">Nessuno: blocco nuovo</option>
+                                <option v-for="b in resourceBlocks" :key="b.key" :value="b.key">{{ b.label }}</option>
+                            </select></label>
+                        <label class="flex flex-col gap-1"><span class="font-semibold">Nome del blocco</span>
+                            <input v-model="form.block_name" :class="field" maxlength="120" placeholder="Regata di giugno" /></label>
+                    </div>
+                </div>
                 <div :class="[label, 'sm:col-span-2']"><label for="instructor" class="font-semibold">Referente (socio volontario)</label>
                     <p v-if="activity?.instructor_name && form.instructor_person_id === activity.instructor_person_id" class="text-muted">{{ activity.instructor_name }} <button v-if="canEdit" type="button" class="ml-2 text-danger hover:underline" @click="form.instructor_person_id = ''">togli</button></p>
                     <PersonPicker v-else id="instructor" v-model="form.instructor_person_id" />

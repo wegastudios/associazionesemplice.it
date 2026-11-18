@@ -177,7 +177,8 @@ final readonly class ActivityService implements Activities
                 throw new ActivityError('Risorsa non trovata.');
             }
         }
-        $activity->fill(array_intersect_key($data, array_flip($activity->getFillable())));
+        $activity->fill(array_intersect_key($data, array_flip(array_diff($activity->getFillable(), ['resource_block', 'resource_block_label']))));
+        $this->applyBlock($activity, $data);
 
         return $this->connection()->transaction(function () use ($activity, $resourceId, $moveConflicts, $id): Activity {
             $plan = null;
@@ -186,14 +187,121 @@ final readonly class ActivityService implements Activities
             } elseif ($resourceId !== null && ($id === null || $activity->isDirty(['kind', 'weekdays', 'starts_on', 'ends_on']))) {
                 $this->assertCourseFree($activity);
             }
+            $blockChanged = $activity->isDirty(['resource_block', 'resource_id']);
             $activity->save();
             if ($plan !== null) {
                 // Prima l'attività lascia la risorsa di prima, poi ci passano gli elementi in conflitto: tutto o niente.
                 $this->swapOntoOldResource($plan);
             }
+            if ($activity->resource_block !== null) {
+                // Il nome è uguale per tutto il blocco. Il controllo viene dopo il salvataggio: le date di questa attività entrano nel periodo.
+                Activity::query()->where('resource_block', $activity->resource_block)->where('id', '<>', $activity->id)->update(['resource_block_label' => $activity->resource_block_label]);
+                if ($blockChanged) {
+                    $this->assertBlockFits($activity);
+                }
+            }
 
             return $activity;
         });
+    }
+
+    /**
+     * Il blocco della risorsa per una manifestazione, dal modulo: $data['block_on'] con, per condividerlo, 'block_with'
+     * (l'identificativo di un blocco della stessa risorsa) e 'block_name'. Senza 'block_on' il blocco resta com'è, salvo
+     * cambiare risorsa, tipo o «occupa solo se prenotata»: allora cade (il blocco vale per una risorsa e per le date fisse).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function applyBlock(Activity $activity, array $data): void
+    {
+        $on = array_key_exists('block_on', $data) ? $data['block_on'] === true : null;
+        if ($on === true) {
+            if ($activity->kind !== ActivityKind::Recurring || $activity->resource_id === null || $activity->occupy_on_booking) {
+                throw new ActivityError('Il blocco della risorsa vale per gli eventi con prenotazioni che hanno una risorsa e non usano «Occupa la risorsa solo se prenotata».');
+            }
+            $with = is_string($data['block_with'] ?? null) ? trim($data['block_with']) : '';
+            $name = is_string($data['block_name'] ?? null) ? mb_substr(trim($data['block_name']), 0, 120) : '';
+            if ($with !== '') {
+                $label = Activity::query()->where('resource_block', $with)->where('resource_id', $activity->resource_id)->whereNull('archived_at')->value('resource_block_label');
+                if ($label === null && ! Activity::query()->where('resource_block', $with)->where('resource_id', $activity->resource_id)->exists()) {
+                    throw new ActivityError('Blocco non trovato su questa risorsa: scegli un altro o «Nessuno: blocco nuovo».');
+                }
+                $activity->resource_block = $with;
+                $activity->resource_block_label = $name !== '' ? $name : (is_string($label) ? $label : '');
+            } else {
+                $activity->resource_block = 'b'.bin2hex(random_bytes(4));
+                $activity->resource_block_label = $name;
+            }
+
+            return;
+        }
+        $drops = $on === false || $activity->isDirty(['resource_id', 'occupy_on_booking', 'kind']);
+        if ($activity->resource_block !== null && $drops) {
+            $activity->resource_block = null;
+            $activity->resource_block_label = null;
+        }
+    }
+
+    /**
+     * Il periodo di tempo tenuto occupato dal blocco dell'attività («Y-m-d H:i:s» inizio e fine), se c'è.
+     *
+     * @return array{from: string, to: string}|null
+     */
+    public function blockPeriod(Activity $activity): ?array
+    {
+        if ($activity->resource_block === null || $activity->resource_id === null) {
+            return null;
+        }
+
+        return $this->occupancy->blockSpan($activity->resource_id, $activity->resource_block);
+    }
+
+    /**
+     * Il blocco dell'attività, con le finestre $extra («Y-m-d H:i:s» inizio e fine) non ancora salvate e senza la data
+     * $exceptSessionId, dura al massimo 31 giorni e la risorsa è libera in tutto il periodo? Altrimenti rifiuta, dicendo con chi c'è il conflitto.
+     *
+     * @param  list<array{0: string, 1: string}>  $extra
+     */
+    public function assertBlockFits(Activity $activity, array $extra = [], ?string $exceptSessionId = null): void
+    {
+        if ($activity->resource_block === null || $activity->resource_id === null) {
+            return;
+        }
+        $span = $this->occupancy->blockSpan($activity->resource_id, $activity->resource_block, $extra, $exceptSessionId);
+        if ($span === null) {
+            return;
+        }
+        $days = SessionRules::blockDays($span['from'], $span['to']);
+        if ($days > SessionRules::MAX_BLOCK_DAYS) {
+            throw new ActivityError('Il blocco durerebbe '.$days.' giorni: al massimo '.SessionRules::MAX_BLOCK_DAYS.'. Togli la spunta o separa gli eventi.');
+        }
+        $what = $this->resources->busy($activity->resource_id, $span['from'], $span['to'])[0]['label'] ?? null;
+        $what = $what !== null ? 'già '.$what : null;
+        if ($what === null) {
+            $other = $this->occupancy->busy($activity->resource_id, $span['from'], $span['to'], null, null, $activity->resource_block)[0]['label'] ?? null;
+            $what = $other !== null ? 'già l\'attività «'.$other.'»' : null;
+        }
+        if ($what !== null) {
+            $name = $this->resources->names([$activity->resource_id])[$activity->resource_id] ?? 'La risorsa';
+            throw new ActivityError($name.' è occupata '.SessionRules::blockLabel($span['from'], $span['to']).': c\'è '.$what.'.');
+        }
+    }
+
+    /**
+     * I blocchi già creati sulle risorse, per scegliere con quale condividere il blocco: risorsa => identificativo e nome.
+     *
+     * @return array<string, list<array{key: string, label: string}>>
+     */
+    public function blocksByResource(): array
+    {
+        $out = [];
+        foreach (Activity::query()->whereNotNull('resource_block')->whereNotNull('resource_id')->whereNull('archived_at')
+            ->selectRaw('resource_id, resource_block, max(resource_block_label) AS label')->groupBy('resource_id', 'resource_block')->orderByRaw('max(resource_block_label)')->get() as $r) {
+            $label = $r->getAttribute('label');
+            $out[(string) $r->resource_id][] = ['key' => (string) $r->resource_block, 'label' => is_string($label) && $label !== '' ? $label : 'Blocco senza nome'];
+        }
+
+        return $out;
     }
 
     /**
@@ -206,7 +314,19 @@ final readonly class ActivityService implements Activities
     {
         $today = now()->toDateString();
         $out = [];
-        if ($activity->id !== null) {
+        if ($activity->resource_block !== null && $activity->resource_id !== null && ! $activity->occupy_on_booking) {
+            // Un evento in un blocco occupa il periodo intero del blocco: le sue date più quelle degli eventi collegati.
+            $own = [];
+            if ($activity->id !== null) {
+                foreach (ActivitySession::query()->where('activity_id', $activity->id)->whereNull('cancelled_at')->get() as $s) {
+                    $own[] = SessionRules::slot($s->session_date->format('Y-m-d'), $s->start_time, $s->end_time, $s->end_date?->format('Y-m-d'));
+                }
+            }
+            $span = $this->occupancy->blockSpan($activity->resource_id, $activity->resource_block, $own);
+            if ($span !== null && substr($span['to'], 0, 10) >= $today) {
+                $out[] = [$span['from'], $span['to'], 'blocco '.SessionRules::blockLabel($span['from'], $span['to'])];
+            }
+        } elseif ($activity->id !== null) {
             $sessions = ActivitySession::query()->where('activity_id', $activity->id)->whereNull('cancelled_at')->whereRaw('coalesce(end_date, session_date) >= ?', [$today])
                 ->orderBy('session_date')->orderBy('start_time')->get();
             foreach ($sessions as $s) {

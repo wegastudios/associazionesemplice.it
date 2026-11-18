@@ -8519,6 +8519,48 @@ $md_o = $acts->create( array( 'name' => 'Serata sul lungomare', 'social_year' =>
 $RS::link_activity( $md_o, $md_res );
 $md_msg = asem_throws( function () use ( $acts, $md_o, $md_d2 ) { $acts->update_session( (int) $acts->sessions( $md_o )[0]['id'], array( 'session_date' => $md_d2, 'start_time' => '12:00', 'end_time' => '14:00' ) ); } );
 asem_ok( null !== $md_msg && false !== strpos( $md_msg, 'Regata tre giorni risorse' ), 'risorse: un altro evento sul giorno di mezzo della regata è rifiutato, col nome del conflitto' );
+// blocco di eventi: la risorsa resta occupata senza interruzioni dal primo all'ultimo giorno, anche tra un evento e l'altro
+$bk_res = $RS::save( 0, array( 'name' => 'Campo regate', 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 ) );
+$bk_d1  = gmdate( 'Y-m-d', strtotime( $today . ' +50 days' ) );
+$bk_d2  = gmdate( 'Y-m-d', strtotime( $today . ' +51 days' ) );
+$bk_d3  = gmdate( 'Y-m-d', strtotime( $today . ' +52 days' ) );
+$bk_sy  = Settings::social_year( $bk_d3 )->label();
+$bk_a   = $acts->create( array( 'name' => 'Gara uno', 'social_year' => $bk_sy, 'kind' => 'event', 'session' => array( 'session_date' => $bk_d1, 'start_time' => '09:00', 'end_time' => '17:00' ) ) );
+$bk_b   = $acts->create( array( 'name' => 'Gara tre', 'social_year' => $bk_sy, 'kind' => 'event', 'session' => array( 'session_date' => $bk_d3, 'start_time' => '09:00', 'end_time' => '17:00' ) ) );
+$RS::link_activity( $bk_a, $bk_res );
+$RS::link_activity( $bk_b, $bk_res );
+$bk_free = $RS::book_slot( $bk_res, $rs_m1, $bk_d2, '12:00', 1, array(), true ); // senza blocco il giorno in mezzo è libero
+asem_ok( $bk_free > 0, 'blocco: senza blocco il giorno tra due eventi è libero' );
+$RS::cancel( $bk_free, true );
+$bk_key = $RS::new_block_key();
+$RS::set_activity_block( $bk_a, $bk_key, 'Regata di giugno' );
+asem_ok( array( $bk_key => 'Regata di giugno' ) === $RS::resource_blocks( $bk_res ),'blocco: il blocco creato compare tra quelli della risorsa, col suo nome' );
+$bk_save = \AssociazioneSemplice\ProData::activity_saved( array(), $bk_b, array( 'resource_id' => (string) $bk_res, 'resource_block_on' => '1', 'resource_block_share' => $bk_key, 'resource_block' => '' ) );
+asem_ok( $bk_key === $RS::activity_block( $bk_b ) && 'Regata di giugno' === $RS::block_label( $bk_key ), 'blocco: dal modulo, la seconda gara si collega al blocco scelto' );
+asem_ok( false !== strpos( implode( '', $bk_save ), 'Risorsa tenuta occupata dal ' ), 'blocco: il salvataggio dice fino a quando la risorsa resta occupata' );
+$RS::set_activity_block( $bk_b, $bk_key, 'Regata di giugno 2' );
+asem_ok( 'Regata di giugno 2' === $RS::block_label( $bk_key ) && 1 === count( $RS::resource_blocks( $bk_res ) ), 'blocco: cambiare il nome lo cambia per tutto il blocco' );
+$bk_form = \AssociazioneSemplice\Admin\ResourcesPage::activity_row( $bk_a );
+asem_ok( false !== strpos( $bk_form, 'Condividi il blocco con' ) && false !== strpos( $bk_form, 'value="' . $bk_key . '"' ) && false !== strpos( $bk_form, 'Nessuno: blocco nuovo' ) && false !== strpos( $bk_form, 'asem-resource-block' ), 'blocco: il modulo offre «Condividi il blocco con» coi blocchi della risorsa' );
+asem_ok( null !== asem_throws( function () use ( $RS, $bk_res, $rs_m1, $bk_d2 ) { $RS::book_slot( $bk_res, $rs_m1, $bk_d2, '12:00', 1, array(), true ); } ), 'blocco: il giorno tra i due eventi è occupato' );
+$bk_span = $RS::block_span( $bk_res, $bk_key );
+asem_ok( $bk_d1 === substr( $bk_span['core_starts'], 0, 10 ) && $bk_d3 === substr( $bk_span['core_ends'], 0, 10 ), 'blocco: dal primo inizio all\'ultima fine' );
+asem_ok( array() === $RS::activity_overlaps( $bk_a, $bk_res ) && array() === $RS::activity_overlaps( $bk_b, $bk_res ), 'blocco: gli eventi dello stesso blocco non si danno fastidio' );
+$bk_o = $acts->create( array( 'name' => 'Cena nel mezzo', 'social_year' => $bk_sy, 'kind' => 'event', 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $bk_d2 . ' +30 days' ) ), 'start_time' => '20:00', 'end_time' => '22:00' ) ) );
+$RS::link_activity( $bk_o, $bk_res );
+asem_ok( null !== asem_throws( function () use ( $acts, $bk_o, $bk_d2 ) { $acts->update_session( (int) $acts->sessions( $bk_o )[0]['id'], array( 'session_date' => $bk_d2, 'start_time' => '20:00', 'end_time' => '22:00' ) ); } ), 'blocco: un altro evento non entra nel giorno tra i due' );
+foreach ( $acts->sessions( $bk_b ) as $bk_s ) {
+	$acts->cancel_session( (int) $bk_s['id'] );
+}
+$bk_after = $RS::book_slot( $bk_res, $rs_m1, $bk_d2, '12:00', 1, array(), true );
+asem_ok( $bk_after > 0, 'blocco: annullato l\'ultimo evento il blocco si accorcia da solo e il giorno torna libero' );
+$RS::cancel( $bk_after, true );
+asem_ok( '' === $RS::block_length_error( $bk_a ) && '' === $RS::block_length_error( $bk_a, array( array( 'date' => gmdate( 'Y-m-d', strtotime( $bk_d1 . ' +20 days' ) ), 'start' => '09:00', 'end' => '17:00' ) ) ), 'blocco: fino a 31 giorni va bene' );
+$bk_long = $RS::block_length_error( $bk_a, array( array( 'date' => gmdate( 'Y-m-d', strtotime( $bk_d1 . ' +40 days' ) ), 'start' => '09:00', 'end' => '17:00' ) ) );
+asem_ok( 0 === strpos( $bk_long, 'Il blocco durerebbe 41 giorni: al massimo 31.' ), 'blocco: oltre 31 giorni si rifiuta, con i giorni e il rimedio' );
+$bk_rec = $acts->create( array( 'name' => 'Gara settimanale', 'social_year' => $bk_sy, 'kind' => 'recurring' ) );
+\AssociazioneSemplice\ProData::activity_saved( array(), $bk_rec, array( 'resource_id' => (string) $bk_res, 'resource_block_on' => '1', 'resource_block_share' => '' ) );
+asem_ok( '' === $RS::activity_block( $bk_rec ), 'blocco: un evento ricorrente non ha il blocco' );
 // cambio di risorsa: ciò che si sovrappone passa alla risorsa di prima, tutto o niente
 $mv_def  = array( 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 );
 $mv_old  = $RS::save( 0, array( 'name' => 'Sala di prima' ) + $mv_def );
@@ -13266,7 +13308,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '69' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 69' );
+asem_ok( '70' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 70' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
 	foreach ( array_keys( $ix_list ) as $ix_n ) {
@@ -13282,7 +13324,7 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '69' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 69' );
+asem_ok( '70' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 70' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
 $ix_plan = static function ( string $sql ) use ( $wpdb ): string {
 	return strtolower( implode( ' ', array_map( static fn( $r ) => (string) ( $r['key'] ?? $r['Key'] ?? '' ), (array) $wpdb->get_results( 'EXPLAIN ' . $sql, ARRAY_A ) ) ) );
