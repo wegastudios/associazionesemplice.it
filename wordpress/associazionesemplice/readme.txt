@@ -63,6 +63,11 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 
 = 1.3.29 =
 * Nuovo: gli eventi su più giorni compaiono in ognuno dei loro giorni nei calendari, nella Bacheca e nel calendario dei soci, e l'importazione da The Events Calendar porta anche la data di fine.
+* Nuovo: la tessera dei soci, le iscrizioni e gli incassi seguono l'anno fiscale; l'anno delle attività vale solo per corsi ed eventi.
+* Nuovo: cambiando il mese dell'anno fiscale vedi cosa succede alle tessere e confermi; quelle già emesse con un pagamento si riallineano (mai accorciate, anni chiusi intatti) e in Bacheca trovi l'esito.
+* Nuovo: pubblichi in una volta le pagine in bozza di eventi e corsi, anche quelle importate.
+* Ottimizzazione: il report delle attività e il rendiconto dividono i totali per anno fiscale.
+* Sicurezza: la copia di sicurezza fatta prima del riallineamento ha un nome non prevedibile e viene eliminata dopo 7 giorni.
 * Altro: passando l'anno sociale a gennaio, i corsi e gli eventi creati con l'anno a cavallo (per esempio 2025/2026) restano nell'elenco.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
