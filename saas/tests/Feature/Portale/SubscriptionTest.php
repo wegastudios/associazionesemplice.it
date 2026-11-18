@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\Package;
+use App\Modules\Portale\Entitlements\EntitlementReader;
 use App\Modules\Portale\Jwt\EdDsaJwt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -127,6 +128,7 @@ it('rifiuta con 409 un pacchetto non ammesso sul piano e non applica nulla', fun
 it('legge i diritti una sola volta per richiesta e vede subito una nuova revisione o una sospensione', function (): void {
     ($this->put)(subscriptionClaims($this->orgId, 1))->assertOk();
 
+    app(EntitlementReader::class)->forget($this->orgId);
     DB::enableQueryLog();
     app(Entitlements::class)->for($this->orgId);
     app(Entitlements::class)->for($this->orgId);
