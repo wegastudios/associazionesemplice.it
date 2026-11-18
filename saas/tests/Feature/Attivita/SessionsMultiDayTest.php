@@ -8,6 +8,7 @@ use App\Modules\Attivita\Http\Controllers\SessionsController;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Rules\SessionRules;
 use App\Modules\Attivita\Services\ActivityService;
+use App\Modules\Attivita\Services\AttendanceService;
 use App\Modules\Attivita\Services\SessionService;
 use App\Modules\Soci\Models\Person;
 use Illuminate\Database\QueryException;
@@ -150,5 +151,33 @@ it('dall\'area soci le date su più giorni si prenotano fino al giorno prima, qu
         $member->book($ids[$day(0)], $who);
         // La segreteria prenota anche sulla data già iniziata.
         expect($s->book($ids[$day(-1)], $who)->status)->toBe('booked');
+    });
+});
+
+it('registra le presenze in ognuno dei giorni di una data su più giorni', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $s = app(SessionService::class);
+        $att = app(AttendanceService::class);
+        $a = trip();
+        $s->addDates($a->id, $this->year.'-01-05', null, false, '21:30', '01:00', null, null, $this->year.'-01-07');
+        $who = Person::create(['first_name' => 'Ada', 'last_name' => 'Rossi']);
+        $s->book($s->sessions($a)[0]['id'], $who->id);
+
+        expect($att->lessonDates($a, $this->year.'-01-01', $this->year.'-01-31'))->toBe([$this->year.'-01-05', $this->year.'-01-06', $this->year.'-01-07'])
+            ->and($att->lessonDates($a, $this->year.'-01-06', $this->year.'-01-06'))->toBe([$this->year.'-01-06'])
+            ->and(array_column($att->roster($a, $this->year.'-01-06'), 'name'))->toBe(['Rossi Ada'])
+            ->and($att->roster($a, $this->year.'-01-08'))->toBe([])
+            ->and($att->save($a->id, $this->year.'-01-05', [$who->id], null))->toBe(1)
+            ->and($att->save($a->id, $this->year.'-01-06', [], null))->toBe(1)
+            ->and($att->marks($a->id, $this->year.'-01-05'))->toBe([$who->id => true])
+            ->and($att->marks($a->id, $this->year.'-01-06'))->toBe([$who->id => false])
+            ->and($att->span($a, $this->year.'-01-06'))->toBe('Giorno 2 di 3 · 06/01/'.$this->year)
+            ->and($att->span($a, $this->year.'-01-08'))->toBeNull();
+
+        $cal = collect($att->calendar($this->year.'-01-04', $this->year.'-01-08'))->where('title', 'Uscita lunga')->values();
+        expect($cal->pluck('date')->all())->toBe([$this->year.'-01-05', $this->year.'-01-06', $this->year.'-01-07'])
+            ->and($cal->pluck('start')->all())->toBe(['21:30', null, null])
+            ->and($cal->pluck('end')->all())->toBe([null, null, '01:00'])
+            ->and($cal->pluck('span')->all())->toBe(['Giorno 1 di 3', 'Giorno 2 di 3', 'Giorno 3 di 3']);
     });
 });

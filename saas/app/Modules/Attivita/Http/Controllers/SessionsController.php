@@ -220,6 +220,7 @@ final readonly class SessionsController
             'dates' => array_map(static fn (string $d): array => ['value' => $d, 'label' => self::dayLabel($d), 'done' => in_array($d, $summary['dates'], true)], $dates),
             'day' => $day,
             'dayLabel' => $day === null ? null : self::dayLabel($day),
+            'span' => $day === null ? null : $this->attendance->span($a, $day),
             'future' => $day !== null && $day > $today,
             'saved' => $marks !== [],
             'roster' => $day === null ? [] : array_map(static fn (array $p): array => $p + ['present' => $marks[$p['id']] ?? true], $this->attendance->roster($a, $day)),
