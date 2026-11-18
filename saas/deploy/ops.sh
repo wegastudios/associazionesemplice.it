@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|coda> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -213,6 +213,22 @@ case "$ACTION" in
     # Sola lettura: verifica la catena del registro delle azioni di tutte le associazioni e stampa l'esito (nessun dato personale).
     cd "$BASE/current"
     "$PHP" artisan saas:audit:verify --full || true
+    ;;
+  coda)
+    # Sola lettura: stato della coda dei lavori, senza dati personali (solo numeri). Se il lavoratore (cron ogni minuto)
+    # è fermo, i lavori restano in attesa e il più vecchio invecchia.
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $db = DB::connection("pgsql");
+      $pending = $db->table("core.jobs")->whereNull("reserved_at")->count();
+      $reserved = $db->table("core.jobs")->whereNotNull("reserved_at")->count();
+      $oldest = $db->table("core.jobs")->whereNull("reserved_at")->min("available_at");
+      $failed = $db->table("core.failed_jobs")->count();
+      $failed24 = $db->table("core.failed_jobs")->where("failed_at", ">", now()->subDay())->count();
+      echo "In attesa: ", $pending, PHP_EOL, "In lavorazione: ", $reserved, PHP_EOL;
+      echo "Il più vecchio in attesa da (minuti): ", is_numeric($oldest) ? max(0, intdiv(time() - (int) $oldest, 60)) : "nessuno", PHP_EOL;
+      echo "Falliti in tutto: ", $failed, PHP_EOL, "Falliti nelle ultime 24 ore: ", $failed24, PHP_EOL;
+    ' || true
     ;;
   interruttori)
     # Sola lettura: valore degli interruttori NON segreti (acceso/spento, remoto/locale). Niente altro dal file d'ambiente.
