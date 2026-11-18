@@ -13,6 +13,7 @@ use Carbon\CarbonImmutable;
  * @property string $id
  * @property string $activity_id
  * @property CarbonImmutable $session_date
+ * @property CarbonImmutable|null $end_date
  * @property string|null $start_time
  * @property string|null $end_time
  * @property string|null $location
@@ -24,11 +25,11 @@ final class ActivitySession extends OrgModel
     protected $table = 'app.activity_sessions';
 
     /** @var list<string> */
-    protected $fillable = ['activity_id', 'session_date', 'start_time', 'end_time', 'location', 'capacity'];
+    protected $fillable = ['activity_id', 'session_date', 'end_date', 'start_time', 'end_time', 'location', 'capacity'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['session_date' => 'immutable_date', 'capacity' => 'integer', 'cancelled_at' => 'immutable_datetime'];
+        return ['session_date' => 'immutable_date', 'end_date' => 'immutable_date', 'capacity' => 'integer', 'cancelled_at' => 'immutable_datetime'];
     }
 }
