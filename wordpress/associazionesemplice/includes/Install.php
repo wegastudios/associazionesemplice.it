@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '70'; // dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '71'; // dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	/**
 	 * Tutti i lavori periodici e programmati del plugin e delle sue estensioni (nomi dei punti di aggancio di WP-Cron).
@@ -122,6 +122,10 @@ final class Install {
 			}
 			if ( '' !== $old && version_compare( $old, '67', '<' ) ) {
 				self::migrate_wp_role_access();
+			}
+			if ( '' !== $old && version_compare( $old, '71', '<' ) ) {
+				update_option( self::REALIGN_OPTION, '0', false ); // la tessera segue l'anno fiscale: riallineamento delle tessere esistenti (dopo una copia di sicurezza)
+				self::maybe_realign_memberships();
 			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
@@ -387,6 +391,81 @@ final class Install {
 		return $n;
 	}
 
+	const REALIGN_OPTION = 'asem_memberships_realigned'; // vuoto = da fare, 1 = fatto
+
+	/**
+	 * La tessera segue l'anno fiscale: le tessere già emesse con un altro anno (per esempio «2025/2026», settembre-agosto) si riallineano all'anno
+	 * fiscale in cui scadono. Mai accorciare: la scadenza si allunga fino alla fine di quell'anno fiscale, mai si anticipa. Gli anni fiscali già chiusi
+	 * non si toccano. Se una persona ha due tessere che finirebbero con la stessa etichetta resta valida la più recente e l'altra è segnata
+	 * «sostituita» (resta registrata, pagamenti invariati). Prima si fa una copia di sicurezza; ogni passo è nel registro azioni.
+	 *
+	 * @return int tessere riallineate (-1 se la copia di sicurezza non è riuscita: si riprova)
+	 */
+	public static function realign_memberships_to_fiscal(): int {
+		$db   = Db::db();
+		$tbl  = Db::t( 'memberships' );
+		$m    = Settings::membership_start_month();
+		$tx   = Db::t( 'transactions' );
+		$rows = $db->get_results( "SELECT m.*, (t.id IS NOT NULL) AS paid FROM $tbl m LEFT JOIN $tx t ON t.id = m.transaction_id AND t.voided_at IS NULL WHERE m.deleted_at IS NULL AND m.replaced_by IS NULL AND m.social_year <> 'FOUNDER' ORDER BY m.person_id, m.valid_to DESC, m.id DESC", ARRAY_A ) ?: array(); // si riallineano solo le tessere con un pagamento registrato: senza pagamento non si allunga niente
+		$plan = array();
+		$used = array(); // persona => etichette già prese dopo il riallineamento
+		foreach ( $rows as $r ) {
+			$fy              = FiscalYears::year_for( (string) $r['valid_to'], $m );
+			$label           = 1 === $m ? (string) $fy : $fy . '/' . ( $fy + 1 );
+			list( $from, $to ) = FiscalYears::range_for( $fy, $m );
+			$fiscal          = FiscalYears::get( $fy );
+			$closed          = $fiscal && 'open' !== $fiscal['status']; // il chiuso è chiuso
+			$pid             = (int) $r['person_id'];
+			$aligned         = ( $label === (string) $r['social_year'] && $to === (string) $r['valid_to'] );
+			if ( $closed || $aligned || empty( $r['paid'] ) ) {
+				$used[ $pid ][ (string) $r['social_year'] ] = (int) $r['id'];
+				continue;
+			}
+			if ( isset( $used[ $pid ][ $label ] ) ) { // c'è già una tessera più recente con questa etichetta: questa è sostituita
+				$plan[] = array( 'id' => (int) $r['id'], 'replace_by' => $used[ $pid ][ $label ] );
+				continue;
+			}
+			if ( (int) $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $tbl WHERE person_id = %d AND social_year = %s AND id <> %d", $pid, $label, (int) $r['id'] ) ) > 0 ) { // l'etichetta è già occupata (anche da una tessera cancellata): non si tocca
+				$used[ $pid ][ (string) $r['social_year'] ] = (int) $r['id'];
+				continue;
+			}
+			$used[ $pid ][ $label ] = (int) $r['id'];
+			$plan[]               = array( 'id' => (int) $r['id'], 'label' => $label, 'valid_to' => max( (string) $r['valid_to'], $to ), 'old_label' => (string) $r['social_year'], 'old_to' => (string) $r['valid_to'] );
+		}
+		if ( ! $plan ) {
+			return 0;
+		}
+		try { // prima la copia di sicurezza: se non riesce non si cambia nulla
+			Backup::export( false, Backup::dir() . '/prima-del-riallineamento-delle-tessere-' . gmdate( 'Ymd-His' ) . '.zip' );
+		} catch ( \Throwable $e ) {
+			Audit::log( 'memberships.realign_skipped', 'membership', null, array( 'reason' => 'backup' ) );
+			return -1;
+		}
+		$n = 0;
+		foreach ( $plan as $p ) {
+			if ( isset( $p['replace_by'] ) ) {
+				$db->update( $tbl, array( 'replaced_by' => (int) $p['replace_by'] ), array( 'id' => (int) $p['id'] ) );
+				Audit::log( 'membership.replaced', 'membership', (int) $p['id'], array( 'by' => (int) $p['replace_by'] ) );
+				$n++;
+				continue;
+			}
+			$db->update( $tbl, array( 'social_year' => $p['label'], 'valid_to' => $p['valid_to'] ), array( 'id' => (int) $p['id'] ) );
+			Audit::log( 'membership.realigned', 'membership', (int) $p['id'], array( 'from' => $p['old_label'], 'to' => $p['label'], 'valid_to_old' => $p['old_to'], 'valid_to_new' => $p['valid_to'] ) );
+			$n++;
+		}
+		return $n;
+	}
+
+	/** Fa il riallineamento delle tessere una volta sola; se la copia non è riuscita si riprova al prossimo accesso al pannello. */
+	public static function maybe_realign_memberships(): void {
+		if ( '0' !== (string) get_option( self::REALIGN_OPTION, '' ) ) { // solo dopo un aggiornamento che l'ha chiesto («0»), e finché non è riuscito
+			return;
+		}
+		if ( self::realign_memberships_to_fiscal() >= 0 ) {
+			update_option( self::REALIGN_OPTION, '1', false );
+		}
+	}
+
 	/**
 	 * Per soci e volontari esistono solo rimborsi (mai compensi) e gli istruttori non sono un ruolo: la voce
 	 * "Compenso / rimborso istruttore" si unisce a "Rimborso spese socio/volontario" (i movimenti passano alla voce unica).
@@ -535,6 +614,7 @@ final class Install {
   valid_from date NOT NULL,
   valid_to date NOT NULL,
   source varchar(20) NOT NULL,
+  replaced_by bigint(20) unsigned DEFAULT NULL,
   transaction_id bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,

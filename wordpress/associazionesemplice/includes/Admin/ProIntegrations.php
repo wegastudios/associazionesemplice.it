@@ -54,7 +54,7 @@ final class ProIntegrations {
 			echo '<h3>Corsi ed eventi</h3>';
 			$acts = Plugin::activities()->for_year( Settings::social_year()->label() );
 			if ( ! $acts ) {
-				echo '<p class="description">Nessuna attività in questo anno sociale.</p>';
+				echo '<p class="description">Nessuna attività in questo anno delle attività.</p>';
 			} else {
 				echo '<table class="widefat striped"><thead><tr><th>Attività</th><th>Prodotto</th></tr></thead><tbody>';
 				foreach ( $acts as $a ) {

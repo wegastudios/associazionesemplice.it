@@ -113,6 +113,21 @@ class ReportService {
 		return $out;
 	}
 
+	/**
+	 * Entrate, uscite e risultato dell'anno fiscale in corso (per cassa): i conti seguono l'anno fiscale, non l'anno delle attività.
+	 *
+	 * @return array{label:string,income:int,expense:int,result:int}
+	 */
+	public function fiscal_totals(): array {
+		$m  = Settings::membership_start_month();
+		$fy = FiscalYears::year_for( Db::today(), $m );
+		list( $from, $to ) = FiscalYears::range_for( $fy, $m );
+		$in  = array_sum( array_column( $this->category_totals( $from, $to, 'income' ), 'cents' ) );
+		$out = array_sum( array_column( $this->category_totals( $from, $to, 'expense' ), 'cents' ) );
+		return array( 'label' => 1 === $m ? (string) $fy : $fy . '/' . ( $fy + 1 ), 'income' => (int) $in, 'expense' => (int) $out, 'result' => (int) ( $in - $out ) );
+	}
+
+
 	/** Solo il risultato del periodo (entrate meno uscite, fondi compresi), con la stessa regola del rendiconto ma senza costruirlo. */
 	public function period_result( string $from, string $to ): int {
 		$payouts = array_keys( Plugin::funds()->payout_transactions() );
@@ -162,14 +177,49 @@ class ReportService {
 		// Movimenti generali: nel periodo dell'anno sociale, non legati ad attività e non giroconti
 		$from = $year->start()->format( 'Y-m-d' );
 		$to   = $year->end()->format( 'Y-m-d' );
-		$gi   = $this->category_totals( $from, $to, 'income', true );
-		$ge   = $this->category_totals( $from, $to, 'expense', true );
+		$slices = array(); // un blocco per ogni anno fiscale che l'anno delle attività attraversa: i conti seguono l'anno fiscale
+		foreach ( self::fiscal_slices( $from, $to, (int) Settings::get( 'fiscal_start_month' ) ) as $s ) {
+			$s['general_income']   = $this->category_totals( $s['from'], $s['to'], 'income', true );
+			$s['general_expenses'] = $this->category_totals( $s['from'], $s['to'], 'expense', true );
+			$s['income']           = array_sum( array_column( $s['general_income'], 'cents' ) );
+			$s['expense']          = array_sum( array_column( $s['general_expenses'], 'cents' ) );
+			$slices[]              = $s;
+		}
+		$gi = $this->category_totals( $from, $to, 'income', true ); // voci generali di tutto il periodo (il totale complessivo)
+		$ge = $this->category_totals( $from, $to, 'expense', true );
 		$ti = array_sum( array_column( $summaries, 'income' ) ) + array_sum( array_column( $gi, 'cents' ) );
 		$te = array_sum( array_column( $summaries, 'cost' ) ) + array_sum( array_column( $ge, 'cents' ) );
 
 		return array(
 			'year' => $year, 'activities' => $summaries, 'members_by_type' => Plugin::people()->count_by_type_for_year( $year ),
-			'general_income' => $gi, 'general_expenses' => $ge, 'total_income' => $ti, 'total_expense' => $te, 'result' => $ti - $te,
+			'general_income' => $gi, 'general_expenses' => $ge, 'fiscal_slices' => $slices, 'total_income' => $ti, 'total_expense' => $te, 'result' => $ti - $te,
 		);
+	}
+
+	/**
+	 * Gli anni fiscali toccati da un periodo, ognuno col suo pezzo di periodo (regola pura). Se il periodo sta in un solo anno fiscale il blocco è uno.
+	 *
+	 * @return array[] label («Anno fiscale 2025 (set–dic)»), fiscal_year, from, to, whole (l'anno fiscale è intero)
+	 */
+	public static function fiscal_slices( string $from, string $to, int $fiscal_start_month ): array {
+		$out = array();
+		$fy  = FiscalYears::year_for( $from, $fiscal_start_month );
+		$end = FiscalYears::year_for( $to, $fiscal_start_month );
+		$mon = array( 1 => 'gen', 2 => 'feb', 3 => 'mar', 4 => 'apr', 5 => 'mag', 6 => 'giu', 7 => 'lug', 8 => 'ago', 9 => 'set', 10 => 'ott', 11 => 'nov', 12 => 'dic' );
+		for ( ; $fy <= $end && count( $out ) < 5; $fy++ ) {
+			list( $a, $b ) = FiscalYears::range_for( $fy, $fiscal_start_month );
+			$s     = max( $a, $from );
+			$e     = min( $b, $to );
+			$whole = ( $s === $a && $e === $b );
+			$name  = 1 === $fiscal_start_month ? (string) $fy : $fy . '/' . ( $fy + 1 );
+			$out[] = array(
+				'label'       => 'Anno fiscale ' . $name . ( $whole ? '' : ' (' . $mon[ (int) substr( $s, 5, 2 ) ] . '–' . $mon[ (int) substr( $e, 5, 2 ) ] . ')' ),
+				'fiscal_year' => $fy,
+				'from'        => $s,
+				'to'          => $e,
+				'whole'       => $whole,
+			);
+		}
+		return $out;
 	}
 }
