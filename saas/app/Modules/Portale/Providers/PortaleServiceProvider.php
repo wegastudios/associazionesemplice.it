@@ -29,7 +29,7 @@ use App\Modules\Portale\Notifications\PortalNotifications;
 use App\Modules\Portale\Staff\PortalStaffAccess;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
-use IlluminateContractsFoundationApplication;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\RateLimiter;
