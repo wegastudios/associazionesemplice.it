@@ -482,15 +482,28 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 		return is_wp_error( $t ) ? 0 : (int) $t['term_id'];
 	};
 	$events = array(
-		array( 'Serata danzante', 'Serate', 'Una serata di ballo in sede con musica dal vivo e liscio per tutti: si balla, si chiacchiera e si porta qualcosa da bere. Ingresso per i soci, con un piccolo contributo per gli ospiti.', array( 170, 60, 110 ), '21:00', 'Sede dell\'associazione', 80, 500, array( -90, -60, -30, 25, 55 ) ),
-		array( 'Festa dell\'associazione', 'Serate', 'La festa di tutti i soci: giochi per i bambini, banchetti dei volontari, musica e una tavolata per stare insieme e raccontare cosa abbiamo fatto.', array( 200, 110, 60 ), '16:00', 'Giardino dell\'associazione', 120, 0, array( -75, -45, -15, 35, 65 ) ),
+		array( 'Serata danzante', 'Serate', 'Una serata di ballo in sede con musica dal vivo e liscio per tutti: si balla, si chiacchiera e si porta qualcosa da bere. Ingresso per i soci, con un piccolo contributo per gli ospiti.', array( 170, 60, 110 ), '21:00', 'Sede dell\'associazione', 80, 500, 'terzo sabato' ),
+		array( 'Festa dell\'associazione', 'Serate', 'La festa di tutti i soci: giochi per i bambini, banchetti dei volontari, musica e una tavolata per stare insieme e raccontare cosa abbiamo fatto.', array( 200, 110, 60 ), '16:00', 'Giardino dell\'associazione', 120, 0, 'il 18' ),
 	);
+	usort( $events, function ( $a, $b ) {
+		return strcmp( 'il 18' === $a[8] ? '0' : '1', 'il 18' === $b[8] ? '0' : '1' ); // prima la festa: la serata danzante evita i suoi giorni
+	} );
+	$taken = array();
 	foreach ( $events as $e ) {
 		$dates = array();
-		foreach ( $e[8] as $d ) {
-			$day = gmdate( 'Y-m-d', time() + $d * 86400 );
+		for ( $m = -3; $m <= 2; $m++ ) { // gli ultimi tre mesi, quello in corso e i due prossimi
+			$ym = gmdate( 'Y-m', (int) strtotime( gmdate( 'Y-m-15' ) . ' ' . ( $m >= 0 ? '+' : '' ) . $m . ' months' ) );
+			if ( 'il 18' === $e[8] ) {
+				$day = $ym . '-18'; // la festa dell'associazione è sempre il 18
+			} else {
+				$day = gmdate( 'Y-m-d', (int) strtotime( 'third saturday of ' . gmdate( 'F Y', (int) strtotime( $ym . '-15' ) ) ) ); // la serata danzante, il terzo sabato
+				while ( isset( $taken[ $day ] ) || $act->sessions_on( $day ) ) { // se c'è già altro quel giorno, il sabato prima
+					$day = gmdate( 'Y-m-d', (int) strtotime( $day . ' -7 days' ) );
+				}
+			}
 			if ( $day >= $first && $day <= $last ) { // fuori dall'anno sociale non si può creare una data
-				$dates[] = $day;
+				$dates[]       = $day;
+				$taken[ $day ] = true;
 			}
 		}
 		if ( ! $dates ) {
