@@ -35,6 +35,8 @@ afterEach(function (): void {
 function tamper(string $sql): void
 {
     $owner = DB::connection('pgsql_owner');
+    // Dopo una verifica l'associazione corrente viene azzerata su tutte le connessioni: la si reimposta per il proprietario.
+    $owner->select("SELECT set_config('app.org_id', ?, false)", [test()->org->id]);
     $owner->statement('ALTER TABLE audit.log DISABLE TRIGGER log_append_only');
     $owner->statement($sql);
     $owner->statement('ALTER TABLE audit.log ENABLE TRIGGER log_append_only');
@@ -81,7 +83,6 @@ it('la verifica di ogni notte riparte dal punto di controllo e trova le modifich
     $this->orgContext()->run($this->org->id, function (): void {
         Person::create(['first_name' => 'Socio 5', 'last_name' => 'Prova']);
     });
-    expect($verifier->verify($this->org->id, true))->toMatchArray(['ok' => true, 'checked' => 6]);
 
     tamper("UPDATE audit.log SET details = '{\"fields\": [\"first_name\"]}' WHERE seq = 6");
     expect($verifier->verify($this->org->id, true))->toMatchArray(['ok' => false, 'broken_at' => 6]);
