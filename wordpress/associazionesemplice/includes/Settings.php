@@ -32,7 +32,8 @@ final class Settings {
 		return array(
 			'association_name'        => '',
 			'tax_code'                => '',
-			'social_year_start_month' => 1,     // l'anno sociale (tessere e attività) inizia a gennaio; si sceglie in modo indipendente dall'anno fiscale
+			'social_year_legacy_month' => 9,    // il mese da cui partivano gli anni con la barra («2025/2026») prima del passaggio a gennaio (si ricorda da solo)
+			'social_year_start_month' => 1,    // l'anno sociale (tessere e attività) inizia a gennaio; si sceglie in modo indipendente dall'anno fiscale
 			'fiscal_start_month'      => 1,     // l'anno fiscale (bilancio e rendiconto) inizia a gennaio, cioè come l'anno fiscale; vale per tutte le edizioni; si sceglie in modo indipendente dall'anno sociale
 			'membership_fee_cents'    => 1000,  // quota associativa proposta negli incassi
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
@@ -186,6 +187,10 @@ final class Settings {
 			$clean[ $k ] = $values[ $k ];
 		}
 		$clean['social_year_start_month'] = max( 1, min( 12, (int) $clean['social_year_start_month'] ) );
+		$prev_month                       = max( 1, min( 12, (int) ( $before['social_year_start_month'] ?? 1 ) ) );
+		if ( 1 === $clean['social_year_start_month'] && $prev_month > 1 ) { // passando a gennaio si ricorda il mese di prima: le attività già create restano nel loro anno («2025/2026»)
+			$clean['social_year_legacy_month'] = $prev_month;
+		}
 		if ( $clean['social_year_start_month'] !== max( 1, min( 12, (int) ( $before['social_year_start_month'] ?? 1 ) ) ) ) { // la tessera segue l'anno sociale: le tessere già emesse non si toccano, ma due non devono avere la stessa etichetta
 				$cards = Db::db()->get_results( 'SELECT valid_from, valid_to FROM ' . Db::t( 'memberships' ) . " WHERE deleted_at IS NULL AND social_year LIKE '%/%'", ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery -- nomi tabella interni, nessun valore dall'esterno
 				if ( MembershipRules::month_change_conflicts( $cards, (int) $clean['social_year_start_month'], Db::today() ) ) {
@@ -366,6 +371,7 @@ final class Settings {
 	}
 
 	public static function start_month(): int {
+		SocialYear::$legacy_month = max( 2, min( 12, (int) self::get( 'social_year_legacy_month' ) ) );
 		return (int) self::get( 'social_year_start_month' );
 	}
 

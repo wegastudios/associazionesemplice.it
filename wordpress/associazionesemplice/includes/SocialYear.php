@@ -27,9 +27,14 @@ final class SocialYear {
 		return new self( $m >= $start_month ? $y : $y - 1, $start_month );
 	}
 
+	/** Il mese da cui partivano gli anni con la barra («2025/2026») prima del passaggio a gennaio: lo imposta {@see Settings::start_month()}. */
+	public static $legacy_month = 9;
+
 	public static function from_label( string $label, int $start_month ): self {
-			// Le etichette senza barra ("2026") sono anni solari, ad esempio gli anni delle tessere
-		return new self( (int) substr( $label, 0, 4 ), false === strpos( $label, '/' ) ? 1 : $start_month );
+			// Le etichette senza barra ("2026") sono anni solari, ad esempio gli anni delle tessere.
+			// Con l'anno sociale a gennaio, un'etichetta con la barra è di prima del cambio: parte dal mese che c'era allora.
+		$slash = false !== strpos( $label, '/' );
+		return new self( (int) substr( $label, 0, 4 ), ! $slash ? 1 : ( 1 === $start_month ? max( 2, min( 12, (int) self::$legacy_month ) ) : $start_month ) );
 	}
 
 	public function label(): string {
