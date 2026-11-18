@@ -7,6 +7,7 @@ use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Contracts\ConsentChannel;
 use App\Modules\Soci\Contracts\ConsentSource;
+use App\Modules\Soci\Jobs\SendReminderEmail;
 use App\Modules\Soci\Models\Application;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\ApplicationService;
@@ -19,6 +20,7 @@ use App\Modules\Soci\Services\ReminderService;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -259,4 +261,40 @@ it('salva le impostazioni di domande e promemoria', function (): void {
     $this->get('/gestionale/domande')->assertInertia(fn (Assert $page) => $page
         ->where('settings.applications_enabled', true)->where('settings.privacy_url', 'https://alfa.example/privacy')->where('settings.reminders_days', 20)
         ->where('formUrl', url('/adesione/'.$this->org->slug)));
+});
+
+it('i promemoria vanno in coda, un lavoro per destinatario, senza dati personali nel lavoro', function (): void {
+    Queue::fake();
+    $this->orgContext()->run($this->org->id, function (): void {
+        app(OrgSettings::class)->set(ReminderService::ENABLED, true);
+        $p = Person::create(['first_name' => 'Mario', 'last_name' => 'Bianchi', 'email' => 'mario@example.com', 'birth_date' => '1980-01-01']);
+        app(CertificateService::class)->add($p->id, ['kind' => 'agonistic', 'issued_on' => now()->subYear()->toDateString(), 'expires_on' => now()->addDays(2)->toDateString()]);
+
+        expect(app(ReminderService::class)->run(now()->toDateString()))->toMatchArray(['cert_soon' => 1]);
+        expect(DB::table('app.reminders')->where('person_id', $p->id)->count())->toBe(1);
+    });
+
+    Notification::assertNothingSent();
+    Queue::assertPushed(SendReminderEmail::class, 1);
+    Queue::assertPushed(SendReminderEmail::class, fn (SendReminderEmail $job) => ! str_contains(serialize($job), 'mario@example.com'));
+});
+
+it('se il promemoria in coda non parte più, la prenotazione si toglie e il giro dopo riprova', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $p = Person::create(['first_name' => 'Mario', 'last_name' => 'Bianchi', 'email' => 'mario@example.com', 'birth_date' => '1980-01-01']);
+        $until = now()->addDays(2)->toDateString();
+        DB::table('app.reminders')->insert(['org_id' => $this->org->id, 'person_id' => $p->id, 'kind' => 'cert_soon', 'ref' => $until]);
+
+        (new SendReminderEmail($this->org->id, $p->id, 'cert_soon', $until, now()->toDateString()))->failed(new RuntimeException('posta non raggiungibile'));
+
+        expect(DB::table('app.reminders')->where('person_id', $p->id)->count())->toBe(0);
+    });
+});
+
+it('il limite di frequenza dei promemoria si regola da configurazione', function (): void {
+    config(['saas.reminders.per_org_per_minute' => 2, 'saas.reminders.per_minute' => 5]);
+    $job = new SendReminderEmail($this->org->id, '00000000-0000-7000-8000-000000000001', 'cert_soon', now()->toDateString(), now()->toDateString());
+    $limits = RateLimiter::limiter('reminder-mail')($job);
+
+    expect(array_map(static fn ($l) => $l->maxAttempts, $limits))->toBe([5, 2]);
 });
