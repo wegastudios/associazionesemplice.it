@@ -235,3 +235,18 @@ it('un corso occupa la risorsa per intero nei giorni delle sue lezioni', functio
         expect(app(ReservationService::class)->block($room, $other.' 18:00', $other.' 19:00', null, null))->toBeString();
     });
 });
+
+it('una data su più giorni occupa la risorsa in tutti i suoi giorni', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $court = room('Campo 1');
+        $tennis = activityOn('Torneo', $court);
+        $volley = activityOn('Pallavolo', $court);
+        $s = app(SessionService::class);
+        $plus = static fn (int $n): string => date('Y-m-d', (int) strtotime($this->day.' +'.$n.' days'));
+
+        expect($s->addDates($tennis->id, $this->day, null, false, '18:00', '10:00', null, null, $plus(2)))->toBe(1)
+            ->and(fn () => $s->addDates($volley->id, $plus(1), null, false, '12:00', '13:00', null, null))->toThrow(ActivityError::class, 'è occupata')
+            ->and($s->addDates($volley->id, $plus(2), null, false, '11:00', '12:00', null, null))->toBe(1)
+            ->and($s->addDates($volley->id, $plus(-1), null, false, '12:00', '13:00', null, null))->toBe(1);
+    });
+});
