@@ -537,7 +537,8 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 		}
 		$aid = $act->create( array( 'name' => $e[0], 'social_year' => $sy->label(), 'kind' => 'recurring', 'fee_cents' => $e[7], 'guest_fee_cents' => $e[7] > 0 ? $e[7] + 300 : null ) );
 		foreach ( $dates as $day ) {
-			$act->add_session( (int) $aid, array( 'session_date' => $day, 'start_time' => $e[4], 'end_time' => gmdate( 'H:i', min( 86340, (int) strtotime( '1970-01-01 ' . $e[4] . ' UTC' ) + 9000 ) ), // a 21:30 + 2h30 si andrebbe a 00:00, prima dell'inizio: la fine resta alle 23:59 della stessa sera 'location' => $e[5], 'capacity' => $e[6] ) );
+			// A 21:30 + 2h30 si andrebbe a 00:00, prima dell'inizio: la fine resta alle 23:59 della stessa sera.
+			$act->add_session( (int) $aid, array( 'session_date' => $day, 'start_time' => $e[4], 'end_time' => gmdate( 'H:i', min( 86340, (int) strtotime( '1970-01-01 ' . $e[4] . ' UTC' ) + 9000 ) ), 'location' => $e[5], 'capacity' => $e[6] ) );
 		}
 		$pid = \AssociazioneSemplice\PublicEvents::ensure( (int) $aid );
 		if ( ! $pid ) {
