@@ -252,7 +252,7 @@ final class Resources {
 		// Un'attività a ridosso della mezzanotte occupa anche il giorno prima o dopo con l'allestimento: si guarda un giorno in più per parte.
 		$groups = array(); // blocco di eventi: chiave => id delle attività che la risorsa tiene occupata senza interruzioni
 		foreach ( $acts as $id => $a ) {
-			$k = ResourceRules::block_key( (string) ( $a['resource_block'] ?? '' ) );
+			$k = (string) ( $a['resource_block'] ?? '' );
 			if ( '' !== $k && empty( $a['occupy_on_booking'] ) ) {
 				$groups[ $k ][] = $id;
 			}
@@ -303,7 +303,7 @@ final class Resources {
 		$rows = self::db()->get_results(
 			self::db()->prepare(
 				'SELECT s.session_date, s.end_date, s.start_time, s.end_time, a.kind, a.setup_before_min, a.setup_after_min FROM ' . Db::t( 'sessions' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id '
-				. 'WHERE a.resource_id = %d AND a.deleted_at IS NULL AND a.occupy_on_booking = 0 AND s.cancelled_at IS NULL AND LOWER(TRIM(a.resource_block)) = %s',
+				. 'WHERE a.resource_id = %d AND a.deleted_at IS NULL AND a.occupy_on_booking = 0 AND s.cancelled_at IS NULL AND a.resource_block = %s',
 				$resource_id,
 				$key
 			),
@@ -318,16 +318,75 @@ final class Resources {
 		return ResourceRules::span( $wins );
 	}
 
-	/** Il nome del blocco di eventi dell'attività (vuoto = nessun blocco). */
+	/** L'identificativo del blocco di eventi dell'attività (vuoto = nessun blocco). */
 	public static function activity_block( int $activity_id ): string {
 		return (string) self::db()->get_var( self::db()->prepare( 'SELECT resource_block FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ) );
 	}
 
-	/** Tiene occupata la risorsa dal primo all'ultimo giorno degli eventi con questo nome (null o vuoto = no). */
-	public static function set_activity_block( int $activity_id, ?string $name ): void {
-		$name = null === $name ? '' : mb_substr( trim( $name ), 0, 120 );
-		self::db()->update( Db::t( 'activities' ), array( 'resource_block' => '' === $name ? null : $name ), array( 'id' => $activity_id ) );
-		Audit::log( 'activity.resource_block', 'activity', $activity_id, array( 'name' => $name ) );
+	/** Un identificativo nuovo per un blocco. */
+	public static function new_block_key(): string {
+		return 'b' . bin2hex( random_bytes( 4 ) );
+	}
+
+	/**
+	 * I blocchi già creati su una risorsa (identificativo => nome), per scegliere con quale condividere il blocco.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function resource_blocks( int $resource_id ): array {
+		$out = array();
+		foreach ( self::db()->get_results( self::db()->prepare( 'SELECT resource_block, MAX(resource_block_label) AS label FROM ' . Db::t( 'activities' ) . " WHERE resource_id = %d AND deleted_at IS NULL AND resource_block IS NOT NULL AND resource_block <> '' GROUP BY resource_block ORDER BY label", $resource_id ), ARRAY_A ) ?: array() as $r ) {
+			$out[ (string) $r['resource_block'] ] = '' !== (string) $r['label'] ? (string) $r['label'] : 'Blocco senza nome';
+		}
+		return $out;
+	}
+
+	/** Il nome del blocco (vuoto se non c'è). */
+	public static function block_label( string $key ): string {
+		return '' === $key ? '' : (string) self::db()->get_var( self::db()->prepare( 'SELECT MAX(resource_block_label) FROM ' . Db::t( 'activities' ) . ' WHERE resource_block = %s', $key ) );
+	}
+
+	/** Tiene occupata la risorsa dal primo all'ultimo giorno degli eventi dello stesso blocco (identificativo vuoto o null = no). Il nome si aggiorna per tutto il blocco. */
+	public static function set_activity_block( int $activity_id, ?string $key, string $label = '' ): void {
+		$key   = null === $key ? '' : mb_substr( trim( $key ), 0, 40 );
+		$label = mb_substr( trim( $label ), 0, 120 );
+		self::db()->update( Db::t( 'activities' ), array( 'resource_block' => '' === $key ? null : $key, 'resource_block_label' => '' === $key ? null : $label ), array( 'id' => $activity_id ) );
+		if ( '' !== $key ) {
+			self::db()->update( Db::t( 'activities' ), array( 'resource_block_label' => $label ), array( 'resource_block' => $key ) );
+		}
+		Audit::log( 'activity.resource_block', 'activity', $activity_id, array( 'block' => $key, 'name' => $label ) );
+	}
+
+	/** Le finestre occupate dalle date (nuove o da controllare) di un'attività, con gli allestimenti suoi e della risorsa. */
+	private static function dates_windows( int $activity_id, array $dates ): array {
+		$rid = self::activity_link( $activity_id );
+		$res = $rid ? self::get( $rid ) : null;
+		$a   = self::db()->get_row( self::db()->prepare( 'SELECT kind, setup_before_min, setup_after_min FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ), ARRAY_A );
+		if ( ! $res || ! $a ) {
+			return array();
+		}
+		$before = ResourceRules::setup_total( (int) $res['setup_before_min'], null === $a['setup_before_min'] ? null : (int) $a['setup_before_min'], (string) $a['kind'] );
+		$after  = ResourceRules::setup_total( (int) $res['setup_after_min'], null === $a['setup_after_min'] ? null : (int) $a['setup_after_min'], (string) $a['kind'] );
+		$wins   = array();
+		foreach ( $dates as $d ) {
+			$wins[] = ResourceRules::busy_window( (string) $d['date'], $d['start'] ?: null, $d['end'] ?: null, $before, $after, ! empty( $d['end_date'] ) ? (string) $d['end_date'] : null );
+		}
+		return $wins;
+	}
+
+	/** Il blocco dell'attività, con le date indicate in più, dura troppo? @return string messaggio, vuoto se va bene (o se non c'è un blocco) */
+	public static function block_length_error( int $activity_id, array $dates = array() ): string {
+		$key = self::activity_block( $activity_id );
+		$rid = self::activity_link( $activity_id );
+		if ( '' === $key || ! $rid || self::activity_slot_mode( $activity_id ) ) {
+			return '';
+		}
+		$span = self::block_span( (int) $rid, $key, self::dates_windows( $activity_id, $dates ) );
+		if ( ! $span ) {
+			return '';
+		}
+		$days = (int) round( ( strtotime( substr( $span['core_ends'], 0, 10 ) ) - strtotime( substr( $span['core_starts'], 0, 10 ) ) ) / DAY_IN_SECONDS ) + 1;
+		return $days > ResourceRules::MAX_BLOCK_DAYS ? 'Il blocco durerebbe ' . $days . ' giorni: al massimo ' . ResourceRules::MAX_BLOCK_DAYS . '. Togli la spunta o separa gli eventi.' : '';
 	}
 
 
@@ -1132,17 +1191,11 @@ final class Resources {
 	public static function dates_overlaps( int $activity_id, array $dates ): array {
 		$rid = self::activity_link( $activity_id );
 		$res = $rid ? self::get( $rid ) : null;
-		$a   = self::db()->get_row( self::db()->prepare( 'SELECT kind, setup_before_min, setup_after_min FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ), ARRAY_A );
-		if ( ! $res || ! $a || ResourceRules::SLOT !== $res['mode'] ) {
+		if ( ! $res || ResourceRules::SLOT !== $res['mode'] ) {
 			return array();
 		}
-		$before = ResourceRules::setup_total( (int) $res['setup_before_min'], null === $a['setup_before_min'] ? null : (int) $a['setup_before_min'], (string) $a['kind'] );
-		$after  = ResourceRules::setup_total( (int) $res['setup_after_min'], null === $a['setup_after_min'] ? null : (int) $a['setup_after_min'], (string) $a['kind'] );
-		$wins   = array();
-		foreach ( $dates as $d ) {
-			$wins[] = ResourceRules::busy_window( (string) $d['date'], $d['start'] ?: null, $d['end'] ?: null, $before, $after, ! empty( $d['end_date'] ) ? (string) $d['end_date'] : null );
-		}
-		$key = ResourceRules::block_key( self::activity_block( $activity_id ) );
+		$wins = self::dates_windows( $activity_id, $dates );
+		$key  = self::activity_block( $activity_id );
 		if ( '' !== $key && ! self::activity_slot_mode( $activity_id ) && $wins ) { // blocco di eventi: le date nuove allargano il periodo tenuto occupato
 			$wins = array( self::block_span( (int) $rid, $key, $wins ) );
 		}
@@ -1155,7 +1208,7 @@ final class Resources {
 		$mine  = array_values( array_filter( self::activity_busy( $resource_id, $today, gmdate( 'Y-m-d', strtotime( $today . ' +120 days' ) ) ), function ( $w ) use ( $activity_id ) {
 			return (int) $w['activity_id'] === $activity_id;
 		} ) );
-		return self::window_conflicts( $resource_id, $mine, $activity_id, ResourceRules::block_key( self::activity_block( $activity_id ) ) );
+		return self::window_conflicts( $resource_id, $mine, $activity_id, self::activity_block( $activity_id ) );
 	}
 
 	/**

@@ -42,6 +42,20 @@ final class ResourcesPage {
 		return $out;
 	}
 
+	/** Le scelte di «Condividi il blocco con»: un blocco nuovo, oppure uno già creato (per ogni risorsa a fasce; admin.js mostra solo quelli della risorsa scelta). */
+	private static function block_options( string $current ): string {
+		$out = '<option value="">Nessuno: blocco nuovo</option>';
+		foreach ( Resources::all() as $r ) {
+			if ( ResourceRules::SLOT !== $r['mode'] ) {
+				continue;
+			}
+			foreach ( Resources::resource_blocks( (int) $r['id'] ) as $key => $label ) {
+				$out .= '<option value="' . esc_attr( $key ) . '" data-resource="' . (int) $r['id'] . '"' . ( $key === $current ? ' selected' : '' ) . '>' . esc_html( $label ) . '</option>';
+			}
+		}
+		return $out;
+	}
+
 	/**
 	 * Righe del modulo di un corso o di un evento: la risorsa che occupa e l'allestimento che richiede. Vuote se non ci sono risorse a fasce.
 	 * Per gli eventi la scelta è obbligatoria (anche «nessuna risorsa»): lo controlla {@see ProData::activity_errors}. Da chiamare solo se la funzione c'è.
@@ -69,10 +83,12 @@ final class ResourcesPage {
 			. '<p class="description">Se cambi risorsa e quella nuova è già occupata negli stessi orari, il cambio non viene applicato e vedi cosa si sovrappone. Spuntando questa casella, le prenotazioni e le altre attività che si sovrappongono passano alla risorsa che si libera (le attività per intero); se anche lì non entrano, non si sposta niente.</p>'
 			. '<p><label><input type="checkbox" name="occupy_on_booking" value="1"' . ( $a && ! empty( $a['occupy_on_booking'] ) ? ' checked' : '' ) . '> Occupa la risorsa solo dove ci sono prenotazioni</label></p>'
 			. '<p class="description">Per le attività a fasce (ad esempio lezioni o sedute di mezz\'ora): la risorsa risulta occupata solo negli orari prenotati, e gli altri orari restano liberi per altre attività. Una fascia già occupata altrove non è prenotabile.</p>'
-			. '<p><label><input type="checkbox" name="resource_block_on" value="1"' . ( '' !== $block ? ' checked' : '' ) . '> Tieni la risorsa occupata senza interruzioni, dal primo all\'ultimo giorno</label></p>'
-			. '<p class="description">Nessuno potrà prenotarla in quel periodo, nemmeno tra un evento e l\'altro (utile per una regata con tre gare). Se sposti, accorci o annulli le date, il blocco si adegua da solo.</p>'
-			. '<p>Nome del blocco <input type="text" name="resource_block" class="regular-text" maxlength="120" value="' . esc_attr( $block ) . '" placeholder="Regata di giugno"></p>'
-			. '<p class="description">Gli eventi con lo stesso nome e la stessa risorsa condividono un solo blocco, dal primo inizio all\'ultima fine. Se lo lasci vuoto vale il nome dell\'evento.</p></td></tr>'
+			. '<div class="asem-resource-block"><p><label><input type="checkbox" name="resource_block_on" value="1"' . ( '' !== $block ? ' checked' : '' ) . '> Tieni la risorsa occupata dal primo all\'ultimo giorno, senza interruzioni</label></p>'
+			. '<p class="description">Nessuno potrà prenotarla in quel periodo, nemmeno tra un evento e l\'altro. Se sposti, accorci o annulli le date, il blocco si adegua da solo. Dura al massimo ' . (int) ResourceRules::MAX_BLOCK_DAYS . ' giorni e non si usa con gli eventi ricorrenti.</p>'
+			. '<p>Condividi il blocco con <select name="resource_block_share" class="asem-block-share">' . self::block_options( $block ) . '</select></p>'
+			. '<p class="description">Scegli un blocco già creato per questa risorsa se gli eventi fanno parte della stessa manifestazione (per esempio le tre gare di una regata).</p>'
+			. '<p>Nome del blocco <input type="text" name="resource_block" class="regular-text" maxlength="120" value="' . esc_attr( '' !== $block ? Resources::block_label( $block ) : '' ) . '" placeholder="Regata di giugno"></p>'
+			. '<p class="description">Se lo lasci vuoto vale il nome dell\'evento.</p></div></td></tr>'
 			. '<tr><th>Allestimento</th><td>prima <input type="text" name="setup_before" class="small-text" value="' . esc_attr( $a ? $show( $a['setup_before_min'] ) : '' ) . '" placeholder="3 ore"> e dopo <input type="text" name="setup_after" class="small-text" value="' . esc_attr( $a ? $show( $a['setup_after_min'] ) : '' ) . '" placeholder="3 ore">'
 			. '<p class="description">Il tempo in cui la risorsa resta indisponibile prima e dopo questa attività, per prepararla e riordinare: «3 ore», «mezz\'ora», «20 minuti», «0» per nessuno. Se lasci vuoto: 3 ore per gli eventi, nessuno per i corsi. Si <strong>somma</strong> a quello della risorsa (ad esempio la risorsa vuole 20 minuti prima e dopo, questa attività 30 dopo: la risorsa è indisponibile 20 minuti prima e 50 dopo).</p></td></tr>';
 	}

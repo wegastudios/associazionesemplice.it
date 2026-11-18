@@ -286,12 +286,6 @@ final class ResourceRulesTest extends TestCase {
 		$this->assertNull( R::span( array() ) );
 	}
 
-	public function test_blocks_with_the_same_name_are_one_block(): void {
-		$this->assertSame( 'regata di giugno', R::block_key( '  Regata di GIUGNO ' ) );
-		$this->assertSame( '', R::block_key( null ) );
-		$this->assertSame( '', R::block_key( '   ' ) );
-	}
-
 	public function test_setup_windows_leave_the_neighbouring_slots_free(): void {
 		$w = R::busy_window( '2026-10-20', '15:00', '16:00', 200, 200 );
 		$this->assertFalse( R::overlaps( '2026-10-20 10:00:00', '2026-10-20 11:00:00', $w['starts'], $w['ends'] ), 'finisce prima delle 11:40' );

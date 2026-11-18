@@ -8532,11 +8532,18 @@ $RS::link_activity( $bk_b, $bk_res );
 $bk_free = $RS::book_slot( $bk_res, $rs_m1, $bk_d2, '12:00', 1, array(), true ); // senza blocco il giorno in mezzo è libero
 asem_ok( $bk_free > 0, 'blocco: senza blocco il giorno tra due eventi è libero' );
 $RS::cancel( $bk_free, true );
-$RS::set_activity_block( $bk_a, ' Regata di giugno ' );
-$RS::set_activity_block( $bk_b, 'regata di GIUGNO' );
-asem_ok( 'regata di giugno' === strtolower( trim( $RS::activity_block( $bk_a ) ) ) && 'regata di giugno' === strtolower( trim( $RS::activity_block( $bk_b ) ) ), 'blocco: lo stesso nome (maiuscole e spazi a parte) fa un blocco solo' );
+$bk_key = $RS::new_block_key();
+$RS::set_activity_block( $bk_a, $bk_key, 'Regata di giugno' );
+asem_ok( array( $bk_key => 'Regata di giugno' ) === $RS::resource_blocks( $bk_res ),'blocco: il blocco creato compare tra quelli della risorsa, col suo nome' );
+$bk_save = \AssociazioneSemplice\ProData::activity_saved( array(), $bk_b, array( 'resource_id' => (string) $bk_res, 'resource_block_on' => '1', 'resource_block_share' => $bk_key, 'resource_block' => '' ) );
+asem_ok( $bk_key === $RS::activity_block( $bk_b ) && 'Regata di giugno' === $RS::block_label( $bk_key ), 'blocco: dal modulo, la seconda gara si collega al blocco scelto' );
+asem_ok( false !== strpos( implode( '', $bk_save ), 'Risorsa tenuta occupata dal ' ), 'blocco: il salvataggio dice fino a quando la risorsa resta occupata' );
+$RS::set_activity_block( $bk_b, $bk_key, 'Regata di giugno 2' );
+asem_ok( 'Regata di giugno 2' === $RS::block_label( $bk_key ) && 1 === count( $RS::resource_blocks( $bk_res ) ), 'blocco: cambiare il nome lo cambia per tutto il blocco' );
+$bk_form = \AssociazioneSemplice\Admin\ResourcesPage::activity_row( $bk_a );
+asem_ok( false !== strpos( $bk_form, 'Condividi il blocco con' ) && false !== strpos( $bk_form, 'value="' . $bk_key . '"' ) && false !== strpos( $bk_form, 'Nessuno: blocco nuovo' ) && false !== strpos( $bk_form, 'asem-resource-block' ), 'blocco: il modulo offre «Condividi il blocco con» coi blocchi della risorsa' );
 asem_ok( null !== asem_throws( function () use ( $RS, $bk_res, $rs_m1, $bk_d2 ) { $RS::book_slot( $bk_res, $rs_m1, $bk_d2, '12:00', 1, array(), true ); } ), 'blocco: il giorno tra i due eventi è occupato' );
-$bk_span = $RS::block_span( $bk_res, 'regata di giugno' );
+$bk_span = $RS::block_span( $bk_res, $bk_key );
 asem_ok( $bk_d1 === substr( $bk_span['core_starts'], 0, 10 ) && $bk_d3 === substr( $bk_span['core_ends'], 0, 10 ), 'blocco: dal primo inizio all\'ultima fine' );
 asem_ok( array() === $RS::activity_overlaps( $bk_a, $bk_res ) && array() === $RS::activity_overlaps( $bk_b, $bk_res ), 'blocco: gli eventi dello stesso blocco non si danno fastidio' );
 $bk_o = $acts->create( array( 'name' => 'Cena nel mezzo', 'social_year' => $bk_sy, 'kind' => 'event', 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $bk_d2 . ' +30 days' ) ), 'start_time' => '20:00', 'end_time' => '22:00' ) ) );
@@ -8547,6 +8554,13 @@ foreach ( $acts->sessions( $bk_b ) as $bk_s ) {
 }
 $bk_after = $RS::book_slot( $bk_res, $rs_m1, $bk_d2, '12:00', 1, array(), true );
 asem_ok( $bk_after > 0, 'blocco: annullato l\'ultimo evento il blocco si accorcia da solo e il giorno torna libero' );
+$RS::cancel( $bk_after, true );
+asem_ok( '' === $RS::block_length_error( $bk_a ) && '' === $RS::block_length_error( $bk_a, array( array( 'date' => gmdate( 'Y-m-d', strtotime( $bk_d1 . ' +20 days' ) ), 'start' => '09:00', 'end' => '17:00' ) ) ), 'blocco: fino a 31 giorni va bene' );
+$bk_long = $RS::block_length_error( $bk_a, array( array( 'date' => gmdate( 'Y-m-d', strtotime( $bk_d1 . ' +40 days' ) ), 'start' => '09:00', 'end' => '17:00' ) ) );
+asem_ok( 0 === strpos( $bk_long, 'Il blocco durerebbe 41 giorni: al massimo 31.' ), 'blocco: oltre 31 giorni si rifiuta, con i giorni e il rimedio' );
+$bk_rec = $acts->create( array( 'name' => 'Gara settimanale', 'social_year' => $bk_sy, 'kind' => 'recurring' ) );
+\AssociazioneSemplice\ProData::activity_saved( array(), $bk_rec, array( 'resource_id' => (string) $bk_res, 'resource_block_on' => '1', 'resource_block_share' => '' ) );
+asem_ok( '' === $RS::activity_block( $bk_rec ), 'blocco: un evento ricorrente non ha il blocco' );
 // cambio di risorsa: ciò che si sovrappone passa alla risorsa di prima, tutto o niente
 $mv_def  = array( 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 );
 $mv_old  = $RS::save( 0, array( 'name' => 'Sala di prima' ) + $mv_def );

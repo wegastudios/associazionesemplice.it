@@ -141,10 +141,20 @@ final class ProData {
 			$raw = trim( (string) $p['resource_id'] ); // vuoto = non indicata, «none» = nessuna risorsa (evento fuori sede)
 			Resources::link_activity( $activity_id, 'none' === $raw ? 0 : ( '' === $raw ? null : (int) $raw ) );
 			Resources::set_activity_slot_mode( $activity_id, ! empty( $p['occupy_on_booking'] ) );
-			if ( array_key_exists( 'resource_block_on', $p ) || array_key_exists( 'resource_block', $p ) ) { // tenere la risorsa occupata senza interruzioni, dal primo all'ultimo giorno
-				$bname = trim( (string) ( $p['resource_block'] ?? '' ) );
-				$a_row = Plugin::activities()->get( $activity_id );
-				Resources::set_activity_block( $activity_id, ! empty( $p['resource_block_on'] ) && Resources::activity_link( $activity_id ) ? ( '' !== $bname ? $bname : (string) ( $a_row['name'] ?? '' ) ) : null );
+			if ( array_key_exists( 'resource_block_on', $p ) || array_key_exists( 'resource_block', $p ) || array_key_exists( 'resource_block_share', $p ) ) { // tenere la risorsa occupata senza interruzioni, dal primo all'ultimo giorno
+				$a_row = Plugin::activities()->get( $activity_id ) ?: array();
+				$rid   = Resources::activity_link( $activity_id );
+				if ( ! empty( $p['resource_block_on'] ) && $rid && 'recurring' !== ( $a_row['kind'] ?? '' ) ) { // gli eventi ricorrenti non hanno un blocco
+					$share = array_key_exists( 'resource_block_share', $p ) ? trim( (string) $p['resource_block_share'] ) : $old_block; // vuoto = blocco nuovo
+					$key   = '' !== $share && isset( Resources::resource_blocks( (int) $rid )[ $share ] ) ? $share : ( '' !== $old_block && ! array_key_exists( 'resource_block_share', $p ) ? $old_block : Resources::new_block_key() );
+					$label = trim( (string) ( $p['resource_block'] ?? '' ) );
+					if ( '' === $label ) {
+						$label = Resources::block_label( $key );
+					}
+					Resources::set_activity_block( $activity_id, $key, '' !== $label ? $label : (string) ( $a_row['name'] ?? '' ) );
+				} else {
+					Resources::set_activity_block( $activity_id, null );
+				}
 			}
 		}
 		if ( $res_on ) {
@@ -163,19 +173,24 @@ final class ProData {
 					$why = ' Non ho spostato nulla: ' . implode( '; ', $moved['blocked'] ) . '.';
 				}
 			}
-			if ( $new ) { // niente sovrapposizioni nuove: risorsa e allestimento tornano com'erano
+			$too_long = Resources::block_length_error( $activity_id );
+			if ( $new || '' !== $too_long ) { // niente sovrapposizioni nuove né blocchi troppo lunghi: risorsa, allestimento e blocco tornano com'erano
 				Resources::set_activity_setup( $activity_id, null === $old_setup['setup_before_min'] ? null : (int) $old_setup['setup_before_min'], null === $old_setup['setup_after_min'] ? null : (int) $old_setup['setup_after_min'] );
 				Resources::link_activity( $activity_id, $old_link );
-				Resources::set_activity_block( $activity_id, '' === $old_block ? null : $old_block );
+				Resources::set_activity_block( $activity_id, '' === $old_block ? null : $old_block, Resources::block_label( $old_block ) );
+				if ( '' !== $too_long ) {
+					throw new \InvalidArgumentException( esc_html( 'Non posso salvare: ' . $too_long . ' Il blocco è rimasto com\'era (gli altri dati sono stati salvati).' ) );
+				}
 				throw new \InvalidArgumentException( esc_html( 'Non posso salvare: la risorsa risulterebbe occupata due volte. Si sovrappone a ' . implode( '; ', array_slice( array_values( $new ), 0, 5 ) ) . '.' . $why . ' Risorsa e allestimento sono rimasti come prima (gli altri dati sono stati salvati): cambia orari, risorsa o allestimento' . ( $swap && '' === $why ? ', oppure spunta «Sposta sulla risorsa di prima ciò che si sovrappone» e salva di nuovo.' : '.' ) ) );
 			}
 			if ( $over ) { // quelle già presenti non si toccano: si segnalano e vanno sistemate a mano
 				$notes[] = ' Attenzione: restano ' . count( $over ) . ( 1 === count( $over ) ? ' sovrapposizione già presente' : ' sovrapposizioni già presenti' ) . ' sulla risorsa (prossimi 120 giorni): vanno sistemate a mano.';
 			}
-			$key = ResourceRules::block_key( Resources::activity_block( $activity_id ) );
+			$key = Resources::activity_block( $activity_id );
 			$spn = '' !== $key && $link ? Resources::block_span( (int) $link, $key ) : null;
 			if ( $spn ) { // blocco di eventi: si dice fino a quando la risorsa resta occupata
-				$notes[] = ' Risorsa tenuta occupata dal ' . mysql2date( 'd/m', $spn['core_starts'] ) . ' al ' . mysql2date( 'd/m', $spn['core_ends'] ) . '.';
+				$fmt     = substr( $spn['core_starts'], 0, 4 ) === substr( $spn['core_ends'], 0, 4 ) ? 'd/m' : 'd/m/Y';
+				$notes[] = ' Risorsa tenuta occupata dal ' . mysql2date( $fmt, $spn['core_starts'] ) . ' al ' . mysql2date( $fmt, $spn['core_ends'] ) . '.';
 			}
 		}
 		return $notes;
@@ -225,6 +240,10 @@ final class ProData {
 	public static function session_errors( array $errors, int $activity_id, array $dates ): array {
 		if ( ! Edition::has( 'resources' ) || ! $dates || Resources::activity_slot_mode( $activity_id ) ) { // un'attività a fasce occupa la risorsa solo con prenotazioni vere: si controlla alla prenotazione
 			return $errors;
+		}
+		$long = Resources::block_length_error( $activity_id, $dates );
+		if ( '' !== $long ) {
+			$errors[] = $long;
 		}
 		$over = Resources::dates_overlaps( $activity_id, $dates );
 		if ( $over ) {

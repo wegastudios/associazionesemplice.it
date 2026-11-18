@@ -368,10 +368,8 @@ final class ResourceRules {
 		);
 	}
 
-	/** Chiave di un blocco di eventi: il nome senza maiuscole né spazi ai lati (gli eventi con lo stesso nome sulla stessa risorsa fanno un blocco solo). */
-	public static function block_key( ?string $name ): string {
-		return mb_strtolower( trim( (string) $name ), 'UTF-8' );
-	}
+	/** Durata massima di un blocco di eventi, in giorni (dal primo all'ultimo giorno). */
+	const MAX_BLOCK_DAYS = 31;
 
 	/**
 	 * Il periodo unico che copre tutte le finestre: dal primo inizio all'ultima fine, senza interruzioni (anche tra un evento e l'altro).
