@@ -103,10 +103,11 @@ final readonly class SessionService
     /**
      * Le date di un'attività con i posti presi e la lista d'attesa.
      *
-     * @return list<array{id: string, date: string, end_date: string|null, start: string|null, end: string|null, location: string|null, capacity: int|null, taken: int, free: int|null, waiting: int, cancelled: bool}>
+     * @return list<array{id: string, date: string, end_date: string|null, start: string|null, end: string|null, location: string|null, capacity: int|null, taken: int, free: int|null, waiting: int, cancelled: bool, ongoing: bool}>
      */
     public function sessions(Activity $activity): array
     {
+        $today = now()->toDateString();
         $rows = ActivitySession::query()->where('activity_id', $activity->id)->orderBy('session_date')->orderBy('start_time')->get();
         $ids = array_values($rows->map(static fn (ActivitySession $s): string => $s->id)->all());
         $taken = $this->countBy('app.session_bookings', 'session_id', $ids, 'booked');
@@ -116,6 +117,7 @@ final readonly class SessionService
             'id' => $s->id, 'date' => $s->session_date->format('Y-m-d'), 'end_date' => $s->end_date?->format('Y-m-d'), 'start' => $s->start_time, 'end' => $s->end_time, 'location' => $s->location,
             'capacity' => $s->capacity, 'taken' => $taken[$s->id] ?? 0, 'free' => SessionRules::free($s->capacity, $taken[$s->id] ?? 0),
             'waiting' => $waiting[$s->id] ?? 0, 'cancelled' => $s->cancelled_at !== null,
+            'ongoing' => $s->end_date !== null && $s->session_date->format('Y-m-d') <= $today && $s->end_date->format('Y-m-d') >= $today,
         ])->all());
     }
 
@@ -449,7 +451,7 @@ final readonly class SessionService
     public function promote(string $sessionId): array
     {
         $s = $this->session($sessionId);
-        if ($s->cancelled_at !== null || $s->session_date->format('Y-m-d') < now()->toDateString()) {
+        if ($s->cancelled_at !== null || ($s->end_date ?? $s->session_date)->format('Y-m-d') < now()->toDateString()) {
             return [];
         }
         $in = [];

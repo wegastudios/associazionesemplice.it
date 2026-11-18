@@ -61,7 +61,7 @@ final readonly class MemberActivitiesService implements MemberActivities
             return [];
         }
         $sessions = ActivitySession::query()->whereIn('activity_id', $activities->keys())->whereNull('cancelled_at')
-            ->whereBetween('session_date', [$today, $until])->orderBy('session_date')->orderBy('start_time')->limit(200)->get();
+            ->where('session_date', '<=', $until)->whereRaw('coalesce(end_date, session_date) >= ?', [$today])->orderBy('session_date')->orderBy('start_time')->limit(200)->get();
         $ids = array_values($sessions->map(static fn (ActivitySession $s): string => $s->id)->all());
         if ($ids === []) {
             return [];
@@ -85,7 +85,9 @@ final readonly class MemberActivitiesService implements MemberActivities
             }
             $b = $mine->get($s->id);
             $out[] = [
-                'session_id' => $s->id, 'activity_id' => $a->id, 'activity' => $a->name, 'date' => $s->session_date->format('Y-m-d'),
+                'session_id' => $s->id, 'activity_id' => $a->id, 'activity' => $a->name, 'date' => $s->session_date->format('Y-m-d'), 'end_date' => $s->end_date?->format('Y-m-d'),
+                'ongoing' => $s->end_date !== null && $s->session_date->format('Y-m-d') <= $today,
+                'closed' => $s->end_date !== null && $s->session_date->format('Y-m-d') <= $today,
                 'start' => $s->start_time, 'end' => $s->end_time, 'location' => $s->location ?? $a->location, 'capacity' => $s->capacity,
                 'free' => SessionRules::free($s->capacity, $taken[$s->id] ?? 0), 'booking_id' => $b instanceof SessionBooking ? $b->id : null,
                 'waiting' => in_array($s->id, $waiting, true), 'fee' => $b instanceof SessionBooking ? $b->fee_due_cents : $this->vat->gross($a, $a->fee_cents),
@@ -135,9 +137,16 @@ final readonly class MemberActivitiesService implements MemberActivities
         $s = $this->sessions->session($sessionId);
         $a = $this->activities->find($s->activity_id);
         $today = now('Europe/Rome')->toDateString();
-        if (! $a->kind->usesSessions() || $a->archived_at !== null || $s->cancelled_at !== null || $s->session_date->format('Y-m-d') < $today
-            || $s->session_date->format('Y-m-d') > now('Europe/Rome')->addDays(self::DAYS_AHEAD)->toDateString()) {
+        $day = $s->session_date->format('Y-m-d');
+        $last = $s->end_date?->format('Y-m-d') ?? $day;
+        // Una data è passata quando è finita il suo ultimo giorno, non il primo.
+        if (! $a->kind->usesSessions() || $a->archived_at !== null || $s->cancelled_at !== null || $last < $today
+            || $day > now('Europe/Rome')->addDays(self::DAYS_AHEAD)->toDateString()) {
             throw new ActivityError('Questa data non si prenota dall\'area soci.');
+        }
+        // Una data di un giorno si prenota anche il giorno stesso; su più giorni solo fino al giorno prima dell'inizio.
+        if ($s->end_date !== null && $day <= $today) {
+            throw new ActivityError('Le prenotazioni online si chiudono il giorno prima: per questa data rivolgiti alla segreteria.');
         }
     }
 }

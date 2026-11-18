@@ -76,7 +76,10 @@ final readonly class SessionsController
                 'end_date' => $s->end_date?->format('Y-m-d'),
                 'start' => $s->start_time, 'end' => $s->end_time, 'location' => $s->location, 'capacity' => $s->capacity,
                 'taken' => $info['taken'] ?? 0, 'free' => $info['free'] ?? null, 'cancelled' => $s->cancelled_at !== null,
-                'past' => $s->session_date->format('Y-m-d') < now()->toDateString(),
+                // Passata o in corso si decide sul giorno di fine, non su quello di inizio.
+                'past' => ($s->end_date ?? $s->session_date)->format('Y-m-d') < now()->toDateString(),
+                'ongoing' => $s->end_date !== null && $s->session_date->format('Y-m-d') <= now()->toDateString() && $s->end_date->format('Y-m-d') >= now()->toDateString(),
+                'span_label' => $s->end_date === null ? null : self::spanLabel($s->session_date->format('Y-m-d'), $s->start_time, $s->end_date->format('Y-m-d'), $s->end_time),
             ],
             'bookings' => array_map(static fn (array $b): array => array_merge($b, [
                 'fee' => Money::format($b['fee']), 'paid' => Money::format($b['paid']), 'due' => max(0, $b['fee'] - $b['paid']),
@@ -272,6 +275,18 @@ final readonly class SessionsController
         $t = (int) strtotime($date);
 
         return self::DAYS[(int) date('N', $t) - 1].' '.date('j', $t).' '.explode(' ', ActivityService::monthLabel(date('Y-m', $t)))[0];
+    }
+
+    /** «Da sabato 12 giugno 2026, ore 21:30, a domenica 13 giugno 2026, ore 01:00» (come nel plugin). */
+    public static function spanLabel(string $from, ?string $start, string $to, ?string $end): string
+    {
+        $full = static function (string $d, ?string $time): string {
+            $t = (int) strtotime($d);
+
+            return self::DAYS[(int) date('N', $t) - 1].' '.date('j', $t).' '.ActivityService::monthLabel(date('Y-m', $t)).($time !== null ? ', ore '.$time : '');
+        };
+
+        return 'Da '.$full($from, $start).', a '.$full($to, $end);
     }
 
     /** «dal 12 al 14 giugno», «dal 30 maggio al 2 giugno»; una data di un giorno è «sabato 13 giugno». */

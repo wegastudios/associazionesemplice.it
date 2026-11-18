@@ -9,7 +9,7 @@ namespace App\Modules\Attivita\Contracts;
  * prenotazioni, la prenotazione e l'annullamento da parte del socio (al contributo normale, da pagare in segreteria
  * o online quando ci sarà). Errori per il socio come ActivityError.
  *
- * @phpstan-type MemberEvent array{session_id: string, activity_id: string, activity: string, date: string, start: string|null, end: string|null, location: string|null, capacity: int|null, free: int|null, booking_id: string|null, waiting: bool, fee: int, paid: int, cancellable: bool}
+ * @phpstan-type MemberEvent array{session_id: string, activity_id: string, activity: string, date: string, end_date: string|null, ongoing: bool, closed: bool, start: string|null, end: string|null, location: string|null, capacity: int|null, free: int|null, booking_id: string|null, waiting: bool, fee: int, paid: int, cancellable: bool}
  */
 interface MemberActivities
 {
