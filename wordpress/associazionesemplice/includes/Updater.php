@@ -189,7 +189,7 @@ final class Updater {
 	 */
 	public static function local_changelog( string $product, int $versions = 3 ): string {
 		$dir  = 'pro' === $product ? ( defined( 'ASEM_PRO_DIR' ) ? (string) ASEM_PRO_DIR : '' ) : ( defined( 'ASEM_DIR' ) ? (string) ASEM_DIR : '' );
-		$file = '' !== $dir ? rtrim( $dir, '/\' ) . '/CHANGELOG.md' : '';
+		$file = '' !== $dir ? rtrim( $dir, '/\\' ) . '/CHANGELOG.md' : '';
 		$raw  = '' !== $file && is_readable( $file ) ? file_get_contents( $file ) : ''; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file del plugin, non un indirizzo
 		if ( ! is_string( $raw ) || '' === $raw ) {
 			return '';
