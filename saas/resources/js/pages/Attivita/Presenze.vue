@@ -4,7 +4,7 @@ import { watch } from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 
 const props = defineProps({
-    activity: Object, month: String, monthLabel: String, previous: String, next: String, dates: Array, day: String, dayLabel: String,
+    activity: Object, month: String, monthLabel: String, previous: String, next: String, dates: Array, day: String, dayLabel: String, span: String,
     future: Boolean, saved: Boolean, roster: Array, summary: Object, canEdit: Boolean,
 });
 const go = (q) => router.get(`/gestionale/attivita/${props.activity.id}/presenze`, q, { preserveScroll: true });
@@ -40,6 +40,7 @@ const all = (on) => { form.present = on ? props.roster.map((p) => p.id) : []; };
             <form class="mb-6 card p-4 sm:p-5" @submit.prevent="save">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <h2 class="text-lg font-bold first-letter:uppercase">{{ dayLabel }}</h2>
+                    <span v-if="span" class="text-sm text-muted">{{ span }}</span>
                     <span class="text-sm text-muted">{{ saved ? 'Registrata' : 'Non ancora registrata' }}</span>
                 </div>
                 <p v-if="!roster.length" class="text-sm text-muted">Nessuno atteso in questa data.</p>

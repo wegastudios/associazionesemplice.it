@@ -37,6 +37,7 @@ const nextLabel = computed(() => ({ giorno: 'Giorno dopo', settimana: 'Settimana
                     <li v-for="(x, i) in d.items" :key="i" class="flex flex-wrap items-center gap-3">
                         <span class="w-24 font-semibold tabular-nums">{{ x.start ?? '' }}<template v-if="x.end">–{{ x.end }}</template></span>
                         <Link :href="x.session_id ? `/gestionale/attivita/date/${x.session_id}` : `/gestionale/attivita/${x.activity_id}`" class="font-semibold text-accent hover:underline">{{ x.title }}</Link>
+                        <span v-if="x.span" class="text-xs text-muted">{{ x.span }}</span>
                         <span class="text-muted">{{ x.kind }}<template v-if="x.location"> · {{ x.location }}</template></span>
                         <span v-if="x.taken !== null" class="rounded bg-surface px-2 py-0.5 text-xs">{{ x.taken }} prenotati<template v-if="x.capacity"> su {{ x.capacity }}</template></span>
                         <Link :href="`/gestionale/attivita/${x.activity_id}/presenze?mese=${d.date.slice(0, 7)}&giorno=${d.date}`" class="text-xs text-accent hover:underline">presenze</Link>

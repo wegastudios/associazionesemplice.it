@@ -32,10 +32,23 @@ final readonly class AttendanceService
     public function lessonDates(Activity $a, string $from, string $to): array
     {
         if ($a->kind->usesSessions()) {
-            $dates = $this->connection()->table('app.activity_sessions')->where('activity_id', $a->id)->whereNull('cancelled_at')
-                ->whereBetween('session_date', [$from, $to])->orderBy('session_date')->distinct()->pluck('session_date')->all();
+            // Una data su più giorni conta in ognuno dei suoi giorni (dentro il periodo chiesto).
+            $rows = $this->connection()->table('app.activity_sessions')->where('activity_id', $a->id)->whereNull('cancelled_at')
+                ->where('session_date', '<=', $to)->whereRaw('coalesce(end_date, session_date) >= ?', [$from])->get(['session_date', 'end_date']);
+            $days = [];
+            foreach ($rows as $r) {
+                if (! is_string($r->session_date ?? null)) {
+                    continue;
+                }
+                $first = substr($r->session_date, 0, 10);
+                $last = is_string($r->end_date ?? null) ? substr($r->end_date, 0, 10) : $first;
+                for ($d = max($first, $from); $d <= min($last, $to); $d = date('Y-m-d', (int) strtotime($d.' +1 day'))) {
+                    $days[$d] = true;
+                }
+            }
+            ksort($days);
 
-            return array_values(array_map(static fn (mixed $d): string => is_string($d) ? substr($d, 0, 10) : '', $dates));
+            return array_map(static fn (int|string $d): string => (string) $d, array_keys($days));
         }
         if ($a->kind === ActivityKind::Event) {
             $d = $a->starts_on?->format('Y-m-d');
@@ -53,7 +66,8 @@ final readonly class AttendanceService
         $c = $this->connection();
         if ($a->kind->usesSessions()) {
             $q = $c->table('app.people as p')->join('app.session_bookings as b', 'b.person_id', '=', 'p.id')->join('app.activity_sessions as s', 's.id', '=', 'b.session_id')
-                ->where('s.activity_id', $a->id)->where('s.session_date', $date)->whereNull('s.cancelled_at')->where('b.status', 'booked');
+                ->where('s.activity_id', $a->id)->where('s.session_date', '<=', $date)->whereRaw('coalesce(s.end_date, s.session_date) >= ?', [$date])
+                ->whereNull('s.cancelled_at')->where('b.status', 'booked');
         } else {
             $ym = substr($date, 0, 7);
             $q = $c->table('app.people as p')->join('app.enrollments as e', 'e.person_id', '=', 'p.id')->where('e.activity_id', $a->id);
@@ -71,6 +85,22 @@ final readonly class AttendanceService
         }
 
         return $out;
+    }
+
+    /** «Giorno 2 di 3 · 13/06/2026» se $date cade dentro una data su più giorni dell'attività, altrimenti null. */
+    public function span(Activity $a, string $date): ?string
+    {
+        if (! $a->kind->usesSessions()) {
+            return null;
+        }
+        $r = $this->connection()->table('app.activity_sessions')->where('activity_id', $a->id)->whereNull('cancelled_at')->whereNotNull('end_date')
+            ->where('session_date', '<=', $date)->where('end_date', '>=', $date)->first(['session_date', 'end_date']);
+        if ($r === null || ! is_string($r->session_date ?? null) || ! is_string($r->end_date ?? null)) {
+            return null;
+        }
+        $first = substr($r->session_date, 0, 10);
+
+        return 'Giorno '.SessionRules::days($first, $date).' di '.SessionRules::days($first, substr($r->end_date, 0, 10)).' · '.date('d/m/Y', (int) strtotime($date));
     }
 
     /** @return array<string, bool> persona => presente, per una data già registrata (vuoto se non ancora) */
@@ -154,7 +184,7 @@ final readonly class AttendanceService
     /**
      * Lezioni e date di tutte le attività attive tra due date, in ordine.
      *
-     * @return list<array{date: string, start: string|null, end: string|null, title: string, kind: string, activity_id: string, location: string|null, session_id: string|null, taken: int|null, capacity: int|null}>
+     * @return list<array{date: string, start: string|null, end: string|null, title: string, kind: string, activity_id: string, location: string|null, session_id: string|null, taken: int|null, capacity: int|null, span: string|null}>
      */
     public function calendar(string $from, string $to): array
     {
@@ -166,25 +196,32 @@ final readonly class AttendanceService
             }
             foreach ($this->lessonDates($a, $from, $to) as $d) {
                 $out[] = ['date' => $d, 'start' => null, 'end' => null, 'title' => $a->name, 'kind' => $a->kind->label(), 'activity_id' => $a->id,
-                    'location' => $a->location, 'session_id' => null, 'taken' => null, 'capacity' => null];
+                    'location' => $a->location, 'session_id' => null, 'taken' => null, 'capacity' => null, 'span' => null];
             }
         }
         $names = [];
         foreach ($activities as $a) {
             $names[$a->id] = $a;
         }
-        $sessions = $this->connection()->table('app.activity_sessions as s')->whereNull('s.cancelled_at')->whereBetween('s.session_date', [$from, $to])
+        $sessions = $this->connection()->table('app.activity_sessions as s')->whereNull('s.cancelled_at')->where('s.session_date', '<=', $to)->whereRaw('coalesce(s.end_date, s.session_date) >= ?', [$from])
             ->whereIn('s.activity_id', array_keys($names))
-            ->selectRaw("s.id, s.activity_id, s.session_date, s.start_time, s.end_time, s.location, s.capacity, (SELECT count(*) FROM app.session_bookings b WHERE b.session_id = s.id AND b.status = 'booked') AS taken")
+            ->selectRaw("s.id, s.activity_id, s.session_date, s.end_date, s.start_time, s.end_time, s.location, s.capacity, (SELECT count(*) FROM app.session_bookings b WHERE b.session_id = s.id AND b.status = 'booked') AS taken")
             ->get();
         foreach ($sessions as $s) {
             $a = is_string($s->activity_id ?? null) ? ($names[$s->activity_id] ?? null) : null;
             if ($a === null || ! is_string($s->id ?? null) || ! is_string($s->session_date ?? null)) {
                 continue;
             }
-            $out[] = ['date' => substr($s->session_date, 0, 10), 'start' => is_string($s->start_time ?? null) ? $s->start_time : null, 'end' => is_string($s->end_time ?? null) ? $s->end_time : null,
-                'title' => $a->name, 'kind' => $a->kind->label(), 'activity_id' => $a->id, 'location' => is_string($s->location ?? null) ? $s->location : $a->location,
-                'session_id' => $s->id, 'taken' => is_numeric($s->taken ?? null) ? (int) $s->taken : 0, 'capacity' => is_numeric($s->capacity ?? null) ? (int) $s->capacity : null];
+            $first = substr($s->session_date, 0, 10);
+            $last = is_string($s->end_date ?? null) ? substr($s->end_date, 0, 10) : $first;
+            $total = SessionRules::days($first, $last === $first ? null : $last);
+            // Una data su più giorni compare in ognuno dei suoi giorni: l'ora di inizio il primo, quella di fine l'ultimo.
+            for ($d = max($first, $from); $d <= min($last, $to); $d = date('Y-m-d', (int) strtotime($d.' +1 day'))) {
+                $out[] = ['date' => $d, 'start' => $d === $first && is_string($s->start_time ?? null) ? $s->start_time : null, 'end' => $d === $last && is_string($s->end_time ?? null) ? $s->end_time : null,
+                    'title' => $a->name, 'kind' => $a->kind->label(), 'activity_id' => $a->id, 'location' => is_string($s->location ?? null) ? $s->location : $a->location,
+                    'session_id' => $s->id, 'taken' => is_numeric($s->taken ?? null) ? (int) $s->taken : 0, 'capacity' => is_numeric($s->capacity ?? null) ? (int) $s->capacity : null,
+                    'span' => $total > 1 ? 'Giorno '.SessionRules::days($first, $d).' di '.$total : null];
+            }
         }
         usort($out, static fn (array $x, array $y): int => [$x['date'], $x['start'] ?? '', mb_strtolower($x['title'])] <=> [$y['date'], $y['start'] ?? '', mb_strtolower($y['title'])]);
 
