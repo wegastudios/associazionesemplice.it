@@ -167,7 +167,7 @@ $csrf = Portale\App::csrf();
 			<?php endif; ?>
 		</div>
 		<?php if ( $key ) : ?><p class="hint"><b>Siti di prova inclusi.</b> La licenza vale per il dominio registrato <b><?php echo e( $s['domain'] ); ?></b> e per tutti i suoi sottodomini e sottocartelle: puoi usarla anche su <code>staging.<?php echo e( $s['domain'] ); ?></code>, <code>test.<?php echo e( $s['domain'] ); ?></code>, <code>clone.<?php echo e( $s['domain'] ); ?></code> oppure <code><?php echo e( $s['domain'] ); ?>/staging</code>, con la stessa chiave e senza cambiare nulla.</p><?php endif; ?>
-		<p class="hint">Il vecchio dominio smette di funzionare al controllo successivo. Il cambio è libero, ma dopo averlo fatto la chiave resta legata al nuovo dominio per <?php echo (int) Portale\Settings::limit( 'domain_lock_days' ); ?> giorni: poi puoi cambiarlo di nuovo.</p>
+		<p class="hint">Dopo il cambio il vecchio dominio smette di funzionare, di norma, nel giro di un paio di giorni. Il cambio è libero, ma poi la chiave resta legata al nuovo dominio per <?php echo (int) Portale\Settings::limit( 'domain_lock_days' ); ?> giorni: dopo puoi cambiarlo di nuovo.</p>
 	</div>
 	<?php endforeach; ?>
 </div></section>
