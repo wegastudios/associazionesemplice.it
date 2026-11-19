@@ -50,7 +50,7 @@ const chip = (on) => ['inline-flex min-h-10 shrink-0 items-center rounded-full b
         </div>
 
         <div class="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0" role="group" aria-label="Tipo di scheda">
-            <button type="button" :class="chip(!type)" :aria-pressed="!type" @click="filter({ tipo: '' })">Tutti</button>
+            <button type="button" :class="chip(!type)" :aria-pressed="!type" @click="filter({ tipo: '' })">Tutti i tipi</button>
             <button v-for="t in types" :key="t.value" type="button" :class="chip(type === t.value)" :aria-pressed="type === t.value" @click="filter({ tipo: t.value })">{{ t.label }}</button>
         </div>
 
@@ -60,7 +60,7 @@ const chip = (on) => ['inline-flex min-h-10 shrink-0 items-center rounded-full b
                     <Avatar :name="r.name" />
                     <span class="min-w-0 flex-1">
                         <span class="block truncate font-semibold">{{ r.name }}</span>
-                        <span class="caption block truncate"><template v-if="r.card">n. {{ r.card }} – </template>{{ r.type }}<template v-if="r.email"> – {{ r.email }}</template></span>
+                        <span class="caption block truncate"><template v-if="r.card">n. {{ r.card }} · </template>{{ r.type }}<template v-if="r.email"> · {{ r.email }}</template></span>
                     </span>
                     <span v-if="r.left" class="badge badge-neutral shrink-0">Uscito</span>
                     <span v-else-if="r.active" class="badge badge-ok shrink-0">In regola</span>
@@ -86,7 +86,7 @@ const chip = (on) => ['inline-flex min-h-10 shrink-0 items-center rounded-full b
                 <li><Link href="/gestionale/certificati" class="list-row" @click="tools = false"><FileText class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Certificati medici</span><ChevronRight class="size-5 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/gestionale/soci/libro" class="list-row" @click="tools = false"><BookOpen class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Libro soci</span><ChevronRight class="size-5 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/gestionale/soci/runts" class="list-row" @click="tools = false"><ListChecks class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Dati per il RUNTS</span><ChevronRight class="size-5 text-muted" aria-hidden="true" /></Link></li>
-                <li><Link href="/gestionale/soci/livelli" class="list-row" @click="tools = false"><ListChecks class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Livelli e quote</span><ChevronRight class="size-5 text-muted" aria-hidden="true" /></Link></li>
+                <li><Link href="/gestionale/soci/livelli" class="list-row" @click="tools = false"><ListChecks class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Livelli di socio</span><ChevronRight class="size-5 text-muted" aria-hidden="true" /></Link></li>
                 <li v-if="canEdit"><Link href="/gestionale/soci/importa" class="list-row" @click="tools = false"><Upload class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Importa da Excel o CSV</span><ChevronRight class="size-5 text-muted" aria-hidden="true" /></Link></li>
                 <li v-if="canExport"><a :href="exportUrl()" class="list-row" @click="tools = false"><Download class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Esporta l'elenco (CSV)</span></a></li>
             </ul>

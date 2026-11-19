@@ -25,7 +25,7 @@ const choose = (id) => router.post(`/associazioni/${id}`);
         <div v-else class="space-y-3">
             <p>Il tuo account non è collegato a nessuna associazione attiva.</p>
             <p class="text-sm text-muted">
-                Chiedi a chi gestisce la tua associazione di invitarti, oppure controlla lo stato dell'abbonamento.
+                Chiedi a chi gestisce la tua associazione di invitarti, oppure controlla l'abbonamento sul portale.
             </p>
         </div>
         <p class="mt-6 text-center text-sm">

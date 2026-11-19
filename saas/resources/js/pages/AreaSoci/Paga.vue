@@ -22,7 +22,7 @@ const pay = (provider) => {
     <Head title="Paga online" />
     <MemberLayout>
         <h1 class="mb-4 text-2xl font-bold">Paga online</h1>
-        <p v-if="!dues.length" class="mb-6 card p-5 sm:p-6 text-center text-muted">Non hai niente da pagare. 🎉</p>
+        <p v-if="!dues.length" class="mb-6 card p-5 sm:p-6 text-center text-muted">Non hai niente da pagare.</p>
         <template v-else>
             <p v-if="!providers.length" class="mb-4 field w-auto text-sm">L'associazione non ha ancora attivato i pagamenti online: puoi pagare in segreteria.</p>
             <form class="mb-6 space-y-4" @submit.prevent>
@@ -40,7 +40,7 @@ const pay = (provider) => {
                         <button v-if="providers.includes('stripe')" type="button" class="flex-1 rounded-lg bg-accent px-4 py-3 font-semibold text-accent-ink" :disabled="!form.keys.length || form.processing" @click="pay('stripe')">Paga con carta</button>
                         <button v-if="providers.includes('paypal')" type="button" class="flex-1 rounded-lg border border-line px-4 py-3 font-semibold" :disabled="!form.keys.length || form.processing" @click="pay('paypal')">Paga con PayPal</button>
                     </div>
-                    <p class="mt-2 text-xs text-muted">Paghi sulla pagina sicura del servizio scelto; l'associazione non vede i dati della carta. La ricevuta arriva qui.</p>
+                    <p class="mt-2 text-xs text-muted">Paghi sulla pagina sicura del servizio scelto: l'associazione non vede i dati della carta. La ricevuta la trovi in «Quote».</p>
                 </div>
             </form>
         </template>
@@ -49,7 +49,7 @@ const pay = (provider) => {
             <ul class="divide-y divide-line text-sm">
                 <li v-for="p in history" :key="p.id" class="py-2">
                     <div class="flex flex-wrap gap-2"><span class="font-semibold">{{ p.date }}</span><span>{{ p.amount }}</span><span class="text-muted">{{ p.provider }} · {{ p.status }}</span>
-                        <span v-if="p.receipts.length" class="text-muted">· ricevute {{ p.receipts.join(', ') }}</span></div>
+                        <span v-if="p.receipts.length" class="text-muted">· {{ p.receipts.length === 1 ? 'ricevuta' : 'ricevute' }} {{ p.receipts.join(', ') }}</span></div>
                     <p class="truncate text-xs text-muted">{{ p.items }}</p>
                 </li>
             </ul>

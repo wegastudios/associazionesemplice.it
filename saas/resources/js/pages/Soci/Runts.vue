@@ -8,7 +8,7 @@ const tiles = () => [
     ['Soci persone fisiche con diritto di voto', props.counts.persons, 'Maggiorenni alla data, tipo di socio con diritto di voto'],
     ['Enti soci con diritto di voto', props.counts.entities, `${props.counts.entities_same_section} della stessa sezione del Registro`],
     ['Volontari iscritti', props.counts.volunteers, 'Soci con tipo «socio e volontario»'],
-    ['Lavoratori', props.counts.workers, 'Utenti con ruolo Dipendente: controlla che sia il numero giusto'],
+    ['Lavoratori', props.counts.workers, 'Operatori con ruolo «Dipendente»: controlla che sia il numero giusto'],
 ];
 </script>
 
@@ -27,7 +27,7 @@ const tiles = () => [
 
         <p v-if="overdue" class="mb-4 rounded border border-line bg-surface p-3 text-sm" role="status">La scadenza del {{ deadline }} è passata: se non hai ancora comunicato questi dati, fallo appena puoi.</p>
         <section v-if="current.below_minimum" class="mb-4 rounded border border-line bg-surface p-3 text-sm" role="alert">
-            <p>Oggi i soci con diritto di voto sono {{ current.persons }} persone e {{ current.entities_same_section }} enti della stessa sezione. Una {{ counts.kind === 'odv' ? 'ODV' : 'APS' }} deve averne almeno {{ min.persons }} persone oppure {{ min.entities }} enti: se non torni sopra il minimo, va comunicato al Registro entro 30 giorni.</p>
+            <p>Oggi i soci con diritto di voto sono {{ current.persons }} {{ current.persons === 1 ? 'persona' : 'persone' }} e {{ current.entities_same_section }} {{ current.entities_same_section === 1 ? 'ente' : 'enti' }} della stessa sezione. Una {{ counts.kind === 'odv' ? 'ODV' : 'APS' }} deve avere almeno {{ min.persons }} persone oppure {{ min.entities }} enti: se non torni sopra il minimo, va comunicato al Registro entro 30 giorni.</p>
             <p v-if="current.recently_expired.length" class="mt-2">Hanno la tessera scaduta da meno di {{ current.expired_days }} giorni, se rinnovano tornano soci:
                 <template v-for="(p, i) in current.recently_expired" :key="p.id"><Link :href="`/gestionale/soci/${p.id}`" class="text-accent hover:underline">{{ p.name }}</Link><template v-if="i < current.recently_expired.length - 1">, </template></template>.</p>
         </section>

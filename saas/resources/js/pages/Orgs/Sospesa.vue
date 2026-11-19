@@ -20,8 +20,9 @@ defineProps({
                 <li v-for="name in orgs" :key="name">{{ name }}</li>
             </ul>
             <p class="text-sm text-muted">
-                I dati non sono stati toccati: restano custoditi fino alla cancellazione automatica. Pagando
-                dal portale l'accesso torna subito com'era. Finché l'accesso è sospeso non si può esportare.
+                I tuoi dati sono intatti: restano custoditi per un periodo limitato dopo la scadenza, poi vengono
+                eliminati. Pagando dal portale l'accesso torna subito com'era. Finché l'accesso è sospeso non puoi
+                scaricare la copia di sicurezza.
             </p>
             <a :href="portalUrl" class="mt-2 inline-flex min-h-11 items-center rounded-lg bg-accent px-5 font-bold text-white">
                 Riattiva dal portale

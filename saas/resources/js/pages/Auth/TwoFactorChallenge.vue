@@ -48,7 +48,7 @@ const submit = () => form.post('/verifica-accesso', { onFinish: () => form.reset
         <StatusMessage :message="status" class="mt-4" />
         <p v-if="reset.errors.reset" class="mt-4 text-sm font-semibold text-danger" role="alert">{{ reset.errors.reset }}</p>
         <button type="button" class="mt-4 w-full text-center text-sm text-muted hover:underline" :disabled="reset.processing" @click="resetByEmail">
-            Ho perso il telefono e i codici di recupero
+            Hai perso telefono e codici? Ricevi un link per email
         </button>
     </GuestLayout>
 </template>
