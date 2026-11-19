@@ -333,14 +333,14 @@ Per non riempire il sito di richieste inutili ci sono tre limiti, che cambi in *
 
 **La segreteria non ha questi limiti** quando prenota.
 
-Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
+Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti e soglie** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
 
 ## Le scelte per ogni evento
 
 Nella pagina dell'evento, nel riquadro **«Prenotazione online»**, scegli:
 
 - se **anche chi non è socio** può chiedere un posto dalla pagina;
-- se la prenotazione è **automatica** o **su richiesta** (la segreteria approva ogni richiesta, in ordine di arrivo). **In un evento su richiesta si prenota dalla segreteria**: chi vuole partecipare chiede dalla pagina dell'evento. Se cerca di prenotare in altro modo vede «Questo evento è su richiesta: chiedi di partecipare dalla pagina dell'evento e la segreteria ti risponde.» Non c'è la **lista d'attesa**: se prova a iscriversi vede «Questo evento è su richiesta: la lista d'attesa non c'è, la segreteria decide chi partecipa.» Chi era già in coda **resta dov'è, ma non entra da solo**: nella scheda dell'evento la coda dice «Evento su richiesta: la lista d'attesa non avanza da sola. Prenota tu chi vuoi far entrare.»;
+- se la prenotazione è **automatica** o **su richiesta**. Su richiesta, chi vuole partecipare chiede dalla pagina dell'evento e la segreteria approva in ordine di arrivo. Non c'è lista d'attesa: chi era già in lista resta dov'è ma non entra da solo, lo prenoti tu dalla scheda dell'evento;
 - quanti **posti al massimo** si possono chiedere per volta (0 = nessun limite);
 - cosa fare se l'evento viene **annullato**: nascondere la pagina oppure lasciarla con l'avviso «annullato».
 

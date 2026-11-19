@@ -179,7 +179,7 @@ Serve, per esempio, dopo le prove prima di iniziare davvero. Solo gli amministra
 
 ## Prima di cominciare
 
-Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (file di scontrini, fatture e altri documenti; vale poco tempo), scrivendo la tua password di amministratore: senza lo scarico l'azzeramento non parte. Conservala tu.
+Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (scontrini, fatture e altri documenti), scrivendo la tua password di amministratore: senza lo scarico l'azzeramento non parte. Lo scarico vale un'ora: se aspetti di più va rifatto. Conserva tu la copia.
 
 ## Cosa fare
 
