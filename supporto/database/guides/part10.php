@@ -63,7 +63,7 @@ Nel preventivo scrivi quanto prevedi di incassare e spendere nell'anno e vedi, v
 ## Creare il preventivo
 
 1. Premi **Nuovo preventivo** e scegli l'**anno** (c'è un solo preventivo per anno) e il titolo.
-2. Nella tabella scrivi l'**importo previsto** per ogni categoria di entrata e di uscita. Le righe vuote non si salvano.
+2. Nella tabella scrivi l'**importo previsto** per ogni voce di entrata e di uscita. Le righe vuote non si salvano.
 3. In alternativa premi **Parti dall'anno prima**: copia le voci dal preventivo o dal consuntivo dell'anno precedente, con una **variazione in percentuale**. Attenzione: sostituisce le voci già scritte.
 
 ## Leggere il confronto
@@ -112,7 +112,7 @@ Il **volontario** lo chiede dall'area soci, sezione **«Rimborsi spese»** (anch
 
 1. In **Cassa → Rimborsi** filtra per stato: da approvare, approvato da pagare, rifiutato, pagato, annullato.
 2. Apri la scheda e premi **Approva**, **Rifiuta** (scrivendo il motivo) o **Annulla la richiesta**.
-3. Per pagare premi **Segna come pagato e registra in prima nota**, scegli il **conto** e la **data**. Il sito registra un'uscita nella categoria **«Rimborso spese socio/volontario»** e la collega alla richiesta (riferimento RIMB-n). Un rimborso già pagato non si paga due volte.
+3. Per pagare premi **Segna come pagato e registra in prima nota**, scegli il **conto** e la **data**. Il sito registra un'uscita nella voce **«Rimborso spese socio/volontario»** e la collega alla richiesta (riferimento RIMB-n). Un rimborso già pagato non si paga due volte.
 
 Il volontario riceve un'email quando il rimborso è approvato, rifiutato o pagato, e può **ritirare la richiesta** finché non è decisa.
 
