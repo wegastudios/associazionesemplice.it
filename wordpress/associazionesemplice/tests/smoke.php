@@ -8727,13 +8727,41 @@ wp_update_post( array( 'ID' => $pb_p, 'post_status' => 'draft' ) );
 asem_ok( array( $pb_a => $pb_p ) === \AssociazioneSemplice\PublicEvents::draft_pages( array( $pb_a ) ), 'pubblica collettivo: la pagina in bozza è riconosciuta' );
 asem_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Pubblica le pagine selezionate' );
 asem_ok( 1 === \AssociazioneSemplice\PublicEvents::publish_pages( array( $pb_a, 0 ) ) && 'publish' === get_post_status( $pb_p ) && ! \AssociazioneSemplice\PublicEvents::draft_pages( array( $pb_a ) ) && 0 === \AssociazioneSemplice\PublicEvents::publish_pages( array( $pb_a ) ), 'pubblica collettivo: pubblica le bozze scelte e non tocca le già pubblicate' );
-// salvataggio dei dati dell'ente con il cambio del mese dell'anno fiscale: prima l'anteprima, poi la conferma (i messaggi usano Texts: un nome di classe sbagliato qui è un errore fatale)
-if ( ! \AssociazioneSemplice\FiscalYears::start_month_locked() ) {
-	$ra_ent  = array_merge( asem_wz_entity(), array( 'fiscal_start_month' => '7' ) );
-	$ra_sv1  = Admin\TechActions::save_entity( $ra_ent );
-	asem_ok( is_array( $ra_sv1 ) && false !== strpos( (string) $ra_sv1[1], 'Dati dell\'ente salvati.' ) && false !== strpos( (string) $ra_sv1[1], 'non è cambiato' ) && 1 === (int) Settings::get( 'fiscal_start_month' ), 'dati dell\'ente: il cambio del mese senza conferma salva il resto e spiega cosa succede alle tessere' );
-	$ra_sv2  = Admin\TechActions::save_entity( array_merge( $ra_ent, array( 'confirm_card_realign' => '1' ) ) );
-	asem_ok( false !== strpos( (string) $ra_sv2[1], 'Tessere riallineate' ) || false !== strpos( (string) $ra_sv2[1], 'copia di sicurezza non è riuscita' ), 'dati dell\'ente: il cambio del mese confermato dice l\'esito del riallineamento' );
+// salvataggio dei dati dell'ente con il cambio del mese dell'anno fiscale: prima l'anteprima, poi la conferma, e la copia di sicurezza fallita (i messaggi usano Texts: un nome di classe sbagliato qui è un errore fatale)
+// il blocco dopo la prima chiusura si toglie solo per la prova (anni e chiusure si rimettono come erano)
+$ra_cl = (array) $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'fiscal_year_closures' ), ARRAY_A );
+$ra_fy = (array) $wpdb->get_results( 'SELECT year FROM ' . Db::t( 'fiscal_years' ) . " WHERE status = 'closed'", ARRAY_A );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'fiscal_year_closures' ) );
+$wpdb->query( 'UPDATE ' . Db::t( 'fiscal_years' ) . " SET status = 'open' WHERE status = 'closed'" );
+asem_ok( ! \AssociazioneSemplice\FiscalYears::start_month_locked(), 'dati dell\'ente: per la prova il mese dell\'anno fiscale non è bloccato' );
+$ra_ent = array_merge( $en_base, array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567', 'fiscal_start_month' => '7' ) );
+$ra_sv1 = Admin\TechActions::save_entity( $ra_ent );
+asem_ok( is_array( $ra_sv1 ) && false !== strpos( (string) $ra_sv1[1], 'Dati dell\'ente salvati.' ) && false !== strpos( (string) $ra_sv1[1], 'non è cambiato' ) && 1 === (int) Settings::get( 'fiscal_start_month' ), 'dati dell\'ente: il cambio del mese senza conferma salva il resto e spiega cosa succede alle tessere' );
+// copia di sicurezza che non riesce: il mese si salva, le tessere non si toccano e il messaggio lo dice
+$ra_bd   = \AssociazioneSemplice\Backup::dir();
+$ra_had  = is_dir( $ra_bd );
+if ( $ra_had ) {
+	rename( $ra_bd, $ra_bd . '-prova' );
+}
+file_put_contents( $ra_bd, 'non è una cartella' ); // al posto della cartella delle copie c'è un file: la copia non può essere scritta
+$ra_before = (string) $wpdb->get_var( 'SELECT GROUP_CONCAT(CONCAT(id, social_year, valid_to) ORDER BY id) FROM ' . Db::t( 'memberships' ) );
+set_error_handler( function () { return true; } ); // l'avviso di ZipArchive è proprio ciò che la prova provoca
+$ra_svf    = Admin\TechActions::save_entity( array_merge( $ra_ent, array( 'confirm_card_realign' => '1' ) ) );
+restore_error_handler();
+unlink( $ra_bd );
+if ( $ra_had ) {
+	rename( $ra_bd . '-prova', $ra_bd );
+}
+asem_ok( false !== strpos( (string) $ra_svf[1], 'copia di sicurezza non è riuscita' ) && $ra_before === (string) $wpdb->get_var( 'SELECT GROUP_CONCAT(CONCAT(id, social_year, valid_to) ORDER BY id) FROM ' . Db::t( 'memberships' ) ), 'dati dell\'ente: con la copia di sicurezza fallita il messaggio lo dice e nessuna tessera cambia' );
+// copia riuscita: il mese confermato riallinea le tessere e dice quante
+Settings::update( array( 'fiscal_start_month' => 1 ) );
+$ra_sv2 = Admin\TechActions::save_entity( array_merge( $ra_ent, array( 'confirm_card_realign' => '1' ) ) );
+asem_ok( false !== strpos( (string) $ra_sv2[1], 'Tessere riallineate' ) && false !== strpos( (string) $ra_sv2[1], 'Tessere sostituite' ) && 7 === (int) Settings::get( 'fiscal_start_month' ), 'dati dell\'ente: il cambio del mese confermato riallinea le tessere e dice l\'esito' );
+foreach ( $ra_cl as $ra_c ) { // si rimettono le chiusure e gli anni chiusi
+	$wpdb->insert( Db::t( 'fiscal_year_closures' ), $ra_c );
+}
+foreach ( $ra_fy as $ra_f ) {
+	$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'year' => (int) $ra_f['year'] ) );
 }
 foreach ( (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) as $ra_bk ) {
 	wp_delete_file( $ra_bk ); // la copia di prova non resta
