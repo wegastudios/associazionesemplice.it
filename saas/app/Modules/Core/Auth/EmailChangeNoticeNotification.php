@@ -22,11 +22,11 @@ final class EmailChangeNoticeNotification extends Notification
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Richiesta di cambio email')
+            ->subject('Associazione Semplice · Richiesta di cambio email')
             ->greeting("Ciao {$notifiable->name},")
             ->line("è stato chiesto di cambiare l'email del tuo accesso in {$this->maskedNew}.")
             ->line('L\'email non cambia finché il nuovo indirizzo non viene confermato.')
-            ->line('Se non sei stato tu, cambia subito la password dal tuo profilo.');
+            ->line('Se non l\'hai chiesto tu, cambia subito la password dal tuo profilo.');
     }
 
     /** «m***@e***.it»: abbastanza per riconoscerlo, non per ricostruirlo. */

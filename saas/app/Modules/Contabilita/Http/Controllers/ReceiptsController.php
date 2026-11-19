@@ -58,7 +58,7 @@ final readonly class ReceiptsController
         }
         $contacts = $this->contacts->all();
         if ($contacts === null) {
-            throw ValidationException::withMessages(['ledger' => 'Prima inserisci email e telefono della segreteria (Altro › Configurazione guidata › Dati dell\'ente): senza, non puoi inviare la ricevuta per email. Intanto scarica la ricevuta e consegnala a mano.']);
+            throw ValidationException::withMessages(['ledger' => 'Per inviare la ricevuta per email servono email e telefono della segreteria: inseriscili in Altro › Configurazione guidata › Dati dell\'ente. Intanto scaricala e consegnala a mano.']);
         }
         $org = $this->db->connection($this->context->require()->connection)->table('app.orgs')->value('name');
         Mail::to($r['email'])->send(new ReceiptMail(is_string($org) ? $org : '', $r['number'], $r['holder'], $r['pdf'], $r['filename'], $contacts['email'], $contacts['phone']));

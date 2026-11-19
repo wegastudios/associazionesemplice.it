@@ -29,9 +29,9 @@ final class InvitationNotification extends Notification
     public function toMail(User $notifiable): MailMessage
     {
         $message = (new MailMessage)
-            ->subject("Invito a {$this->orgName} su Associazione Semplice")
+            ->subject("{$this->orgName} · Invito a lavorare nel gestionale")
             ->greeting("Ciao {$notifiable->name},")
-            ->line("sei stato invitato a lavorare nel gestionale di {$this->orgName}.");
+            ->line("ti hanno invitato a lavorare nel gestionale di {$this->orgName}.");
 
         if ($this->token === null) {
             return $message
@@ -42,6 +42,6 @@ final class InvitationNotification extends Notification
         return $message
             ->line('Per iniziare scegli la tua password. Il link vale 60 minuti; se scade, usa «Password dimenticata».')
             ->action('Scegli la password', route('password.reset', ['token' => $this->token, 'email' => $notifiable->email]))
-            ->line('Al primo accesso ti chiederemo di attivare la verifica in due passaggi.');
+            ->line('Al primo accesso dovrai attivare la verifica in due passaggi.');
     }
 }

@@ -73,7 +73,7 @@ final readonly class SetupController
         }
         $this->wizard->skip();
 
-        return redirect()->route('dashboard')->with('status', 'Va bene, più tardi: la trovi in Altro › Configurazione guidata.');
+        return redirect()->route('dashboard')->with('status', 'Configurazione rimandata: la riapri quando vuoi da Altro › Configurazione guidata.');
     }
 
     private function operator(): Operator

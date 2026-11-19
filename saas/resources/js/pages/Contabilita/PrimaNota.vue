@@ -256,17 +256,17 @@ const label = 'block space-y-1.5 text-sm';
                     <PersonPicker id="payer" v-model="income.person_id" />
                 </div>
                 <fieldset v-for="(line, i) in income.lines" :key="i" class="space-y-3 rounded-xl border border-line p-3">
-                    <legend class="px-1 text-sm font-semibold">{{ income.lines.length > 1 ? `Voce ${i + 1}` : 'Cosa incassi' }}</legend>
+                    <legend class="px-1 text-sm font-semibold">{{ income.lines.length > 1 ? `Riga ${i + 1}` : 'Cosa incassi' }}</legend>
                     <select v-model="line.category_id" class="field" aria-label="Voce"><option v-for="c in incomeCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select>
                     <input v-model="line.amount" inputmode="decimal" :placeholder="fiscal?.hasVat && !fiscal.includesVat ? 'Importo senza IVA, es. 30,00' : 'Importo, es. 30,00'" class="field" aria-label="Importo" required />
                     <select v-if="fiscal?.hasVat" v-model="line.vat_rate" class="field" aria-label="Aliquota IVA"><option v-for="o in rateOptions" :key="o.value" :value="o.value">{{ o.label }}</option></select>
                     <p v-if="grossText(line.amount, line.vat_rate)" class="text-sm font-semibold">Totale con IVA: {{ grossText(line.amount, line.vat_rate) }}</p>
                     <input v-model="line.description" placeholder="Descrizione (facoltativa)" class="field" aria-label="Descrizione" />
                     <label :class="label"><span class="caption">Mese di competenza (facoltativo)</span><input v-model="line.competence_month" type="month" class="field" /></label>
-                    <button v-if="income.lines.length > 1" type="button" class="text-sm font-semibold text-danger" @click="removeLine(i)">Togli questa voce</button>
+                    <button v-if="income.lines.length > 1" type="button" class="text-sm font-semibold text-danger" @click="removeLine(i)">Togli questa riga</button>
                     <p v-if="income.errors[`lines.${i}.amount`]" class="text-sm font-semibold text-danger">{{ income.errors[`lines.${i}.amount`] }}</p>
                 </fieldset>
-                <button type="button" class="btn btn-ghost btn-sm" @click="addLine">Aggiungi un'altra voce</button>
+                <button type="button" class="btn btn-ghost btn-sm" @click="addLine">Aggiungi un'altra riga</button>
                 <details class="rounded-xl border border-line px-4 py-3 text-sm">
                     <summary class="cursor-pointer font-semibold">Altre opzioni</summary>
                     <div class="mt-3 space-y-4">

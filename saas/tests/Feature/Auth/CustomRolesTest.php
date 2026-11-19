@@ -76,7 +76,7 @@ it('non accetta ruoli di un\'altra associazione né operatori senza titolo', fun
 
     expect(fn () => $m->invite($this->org, 'x@example.com', 'X', OrgRole::Custom, ownerOperator(), $betaRole))->toThrow(InvalidArgumentException::class, 'ruoli dell\'associazione')
         ->and(fn () => $m->invite($this->org, 'x@example.com', 'X', OrgRole::Custom, ownerOperator()))->toThrow(InvalidArgumentException::class)
-        ->and(fn () => $m->saveRole($this->org, $betaRole, 'Furto', ['people.view'], ownerOperator()))->toThrow(InvalidArgumentException::class, 'inesistente');
+        ->and(fn () => $m->saveRole($this->org, $betaRole, 'Furto', ['people.view'], ownerOperator()))->toThrow(InvalidArgumentException::class, 'non trovato');
 
     $admin = $m->invite($this->org, 'admin@example.com', 'Ada Admin', OrgRole::Admin, ownerOperator());
     $adminOp = app(Memberships::class)->find($admin->id, $this->org->id) ?? throw new RuntimeException;

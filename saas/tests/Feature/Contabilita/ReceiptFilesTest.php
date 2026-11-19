@@ -53,7 +53,7 @@ it('con il file mancante dà un errore chiaro e non lo rifà di nascosto', funct
     Storage::disk('org_files')->delete($row->path);
 
     $res = $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertStatus(409);
-    expect($res->getContent())->toContain('non si trova più sul sito')->toContain('Non viene rifatto in automatico');
+    expect($res->getContent())->toContain('non si trova più')->toContain('Non viene rifatto in automatico');
     expect($this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->status($this->receipt)))->toBe('missing');
 });
 

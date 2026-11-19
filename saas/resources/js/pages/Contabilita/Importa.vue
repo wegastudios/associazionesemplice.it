@@ -50,7 +50,7 @@ const field = 'field';
         <section v-if="preview" class="mt-6 card p-4 sm:p-5" aria-labelledby="preview-title">
             <h2 id="preview-title" class="mb-2 text-lg font-bold">Anteprima</h2>
             <p class="mb-1 text-sm">
-                {{ preview.summary.counts.create }} movimenti nuovi · {{ preview.summary.counts.transfer }} giroconti · {{ preview.summary.counts.duplicate }} doppioni · {{ preview.summary.counts.skip }} saltati · {{ preview.summary.counts.error }} con errori
+                {{ preview.summary.counts.create }} movimenti nuovi · {{ preview.summary.counts.transfer }} giroconti · {{ preview.summary.counts.duplicate }} già presenti · {{ preview.summary.counts.skip }} saltati · {{ preview.summary.counts.error }} con errori
                 <template v-if="preview.summary.from"> · dal {{ preview.summary.from.split('-').reverse().join('/') }} al {{ preview.summary.to.split('-').reverse().join('/') }}</template>
             </p>
             <p class="mb-3 text-sm">Entrate {{ euro(preview.summary.income) }} · uscite {{ euro(preview.summary.expense) }}<template v-if="preview.summary.new_accounts.length"> · conti nuovi: {{ preview.summary.new_accounts.join(', ') }}</template></p>

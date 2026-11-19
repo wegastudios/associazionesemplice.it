@@ -26,7 +26,7 @@ final class CollectionFee
     {
         $errors = [];
         if ($fixedCents < 0 || $fixedCents > self::MAX_FIXED_CENTS) {
-            $errors[] = 'La quota fissa va da 0 a 20 euro.';
+            $errors[] = 'La parte fissa va da 0 a 20 euro.';
         }
         if ($bp < 0 || $bp > self::MAX_BP) {
             $errors[] = 'La percentuale va da 0 a 25.';

@@ -21,7 +21,7 @@ final class SheetReader
             throw new InvalidArgumentException('Il vecchio formato Excel (.xls) non si legge: in Excel scegli File → Salva con nome → «Cartella di lavoro di Excel (.xlsx)» oppure CSV.');
         }
         if (in_array($ext, ['ods', 'numbers'], true)) {
-            throw new InvalidArgumentException('Salva il foglio come Excel (.xlsx) o CSV e ricaricalo.');
+            throw new InvalidArgumentException('Questo tipo di foglio non si legge: salvalo come Excel (.xlsx) o CSV e ricaricalo.');
         }
         if (str_starts_with($head, 'PK') || $ext === 'xlsx') { // un .xlsx è uno zip
             return Xlsx::read($path);

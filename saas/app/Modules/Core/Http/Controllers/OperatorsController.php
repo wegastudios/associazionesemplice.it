@@ -167,8 +167,8 @@ final readonly class OperatorsController
             return back()->with('status', $action());
         } catch (InvalidArgumentException|OperatorLimitReached $e) {
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
-        } catch (AuthorizationException) {
-            throw ValidationException::withMessages(['ledger' => 'Non puoi assegnare questo ruolo.']);
+        } catch (AuthorizationException $e) {
+            throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
     }
 }

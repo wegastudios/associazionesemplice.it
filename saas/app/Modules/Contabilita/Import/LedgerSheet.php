@@ -348,7 +348,7 @@ final class LedgerSheet
                 if (count($m) === 1) {
                     $personId = $m[0];
                 } else {
-                    $warn[] = ($m !== [] ? 'Più persone chiamate' : 'Persona non trovata:').' «'.$r['person'].'»: importato senza persona';
+                    $warn[] = ($m !== [] ? 'Più persone chiamate' : 'Persona non trovata').' «'.$r['person'].'»: importato senza persona';
                 }
             }
             $activityId = null;

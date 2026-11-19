@@ -1,5 +1,5 @@
 @extends('errors.layout')
-@section('title', 'Non hai accesso a questa pagina')
-@section('heading', 'Non hai accesso a questa pagina')
+@section('title', 'Operazione non permessa')
+@section('heading', 'Operazione non permessa')
 @php($detail = trim((string) $exception->getMessage()))
 @section('message', ($detail !== '' && ! in_array($detail, ['Forbidden', 'This action is unauthorized.'], true)) ? $detail : 'Non hai il permesso per questa operazione: chiedilo a un amministratore.')

@@ -30,6 +30,9 @@ final readonly class EntityStep implements SetupStep
     /** Campi di testo e lunghezza massima. */
     private const TEXT = ['runts' => 30, 'address' => 190, 'zip' => 5, 'city' => 120, 'province' => 2, 'phone' => 30, 'legal_rep' => 120, 'sdi' => 7];
 
+    /** Il nome di ciascun campo di testo, come si legge nella schermata (per dire quale è troppo lungo). */
+    private const TEXT_LABELS = ['runts' => 'Numero RUNTS', 'address' => 'Indirizzo', 'zip' => 'CAP', 'city' => 'Comune', 'province' => 'Provincia', 'phone' => 'Telefono', 'legal_rep' => 'Legale rappresentante', 'sdi' => 'Codice destinatario'];
+
     /** Dati «solo se esistono»: la casella «non ce l'ha» al posto del valore. */
     public const NONE = ['vat', 'runts', 'pec'];
 
@@ -132,8 +135,7 @@ final readonly class EntityStep implements SetupStep
         }
         foreach (self::TEXT as $k => $max) {
             if (mb_strlen($t($k)) > $max) {
-                $errors[] = 'Un campo dei dati dell\'ente è troppo lungo.';
-                break;
+                $errors[] = '«'.self::TEXT_LABELS[$k].'» è troppo lungo: al massimo '.$max.' caratteri.';
             }
         }
 

@@ -22,8 +22,9 @@ final class ResetPasswordNotification extends Notification
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Reimposta la password di Associazione Semplice')
-            ->line('Abbiamo ricevuto una richiesta di reimpostare la password del tuo account.')
+            ->subject('Associazione Semplice · Reimposta la password')
+            ->greeting("Ciao {$notifiable->name},")
+            ->line('hai chiesto di reimpostare la password del tuo accesso.')
             ->action('Reimposta la password', route('password.reset', ['token' => $this->token, 'email' => $notifiable->email]))
             ->line('Il link vale 60 minuti. Se non hai chiesto tu di reimpostare la password, ignora questo messaggio.');
     }

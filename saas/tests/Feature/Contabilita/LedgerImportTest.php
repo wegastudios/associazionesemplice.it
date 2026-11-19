@@ -96,7 +96,7 @@ it('importa ed esporta dalla prima nota secondo i permessi', function (): void {
 
     $this->actingAs($op)->get('/gestionale/prima-nota/importa')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Contabilita/Importa')->has('accounts', 1));
     $this->post('/gestionale/prima-nota/importa', ['file' => $upload()])
-        ->assertInertia(fn (Assert $page) => $page->where('preview.summary.counts.create', 3)->where('preview.summary.counts.error', 1)->where('preview.rows.5.label', 'errore'));
+        ->assertInertia(fn (Assert $page) => $page->where('preview.summary.counts.create', 3)->where('preview.summary.counts.error', 1)->where('preview.rows.5.label', 'Errore'));
     $this->post('/gestionale/prima-nota/importa', ['file' => $upload(), 'apply' => true])->assertInertia(fn (Assert $page) => $page->where('result.transfer', 1));
     $this->post('/gestionale/prima-nota/importa', ['file' => UploadedFile::fake()->createWithContent('x.csv', "Nome;Cognome\nA;B")])->assertSessionHasErrors('file');
 

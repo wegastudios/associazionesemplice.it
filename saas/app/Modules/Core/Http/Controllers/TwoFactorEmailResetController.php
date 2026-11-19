@@ -41,7 +41,7 @@ final readonly class TwoFactorEmailResetController
         $id = $request->session()->get('login.id');
         $user = is_string($id) || is_int($id) ? User::query()->find($id) : null;
         // La stessa risposta in ogni caso: niente si capisce da fuori.
-        $reply = back()->with('status', 'Se serve, è partita un\'email all\'indirizzo del tuo account: apri il link entro 15 minuti.');
+        $reply = back()->with('status', 'Se questo accesso ha la verifica in due passaggi, è partita un\'email al suo indirizzo: apri il link entro 15 minuti.');
         if (! $user instanceof User || ! $user->hasConfirmedTwoFactor() || $this->demo->enabled()) {
             return $reply;
         }
@@ -49,7 +49,7 @@ final readonly class TwoFactorEmailResetController
         // Chi è qui ha già la password giusta: può leggere che il limite è finito.
         [$day, $month] = [self::KEYS[0].$user->id, self::KEYS[1].$user->id];
         if (RateLimiter::tooManyAttempts($day, self::MAX_PER_DAY) || RateLimiter::tooManyAttempts($month, self::MAX_PER_MONTH)) {
-            return back()->withErrors(['reset' => 'Hai già chiesto troppi link: scrivi al supporto di Associazione Semplice per sbloccare l\'accesso.']);
+            return back()->withErrors(['reset' => 'Hai già chiesto troppi link: scrivi all\'assistenza di Associazione Semplice per sbloccare l\'accesso.']);
         }
         RateLimiter::hit($day, 86_400);
         RateLimiter::hit($month, 30 * 86_400);

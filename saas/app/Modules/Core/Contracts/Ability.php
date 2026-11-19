@@ -49,7 +49,7 @@ enum Ability: string
             self::ManageSettings => 'Impostazioni dell\'associazione',
             self::ManageOperators => 'Operatori e ruoli',
             self::ViewPeople => 'Vedere l\'anagrafica',
-            self::EditPeople => 'Modificare l\'anagrafica, tesseramento, attività',
+            self::EditPeople => 'Modificare anagrafica, tessere e attività',
             self::ExportPeople => 'Esportare l\'anagrafica',
             self::ViewHealth => 'Vedere i certificati medici',
             self::ViewAccounting => 'Vedere la contabilità',
@@ -61,7 +61,7 @@ enum Ability: string
             self::RecordIncome => 'Registrare gli incassi',
             self::RecordExpense => 'Registrare le spese',
             self::IssueRefunds => 'Emettere rimborsi',
-            self::ViewFunds => 'Vedere fondi, casse e conti',
+            self::ViewFunds => 'Vedere fondi e conti',
         };
     }
 

@@ -28,7 +28,7 @@ use ZipArchive;
  */
 final readonly class ReceiptYearArchive implements YearArchives
 {
-    private const CHECK_FAILED = 'L\'archivio non si apre o le impronte non coincidono: nessun file è stato tolto.';
+    private const CHECK_FAILED = 'L\'archivio non si apre o non supera il controllo: nessun file è stato tolto.';
 
     public function __construct(
         private DatabaseManager $db,
@@ -177,17 +177,17 @@ final readonly class ReceiptYearArchive implements YearArchives
             try {
                 $this->files->readToFile($orgId, $archive, $zipPath);
             } catch (UnableToReadFile|DecryptionFailed $e) {
-                throw new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 1, $e);
+                throw new ArchiveError('L\'archivio non si apre o non supera il controllo: nessun file è stato rimesso.', 1, $e);
             }
             $zip = new ZipArchive;
             if ($zip->open($zipPath) !== true) {
-                throw new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 1);
+                throw new ArchiveError('L\'archivio non si apre o non supera il controllo: nessun file è stato rimesso.', 1);
             }
             foreach ($rows as $r) {
                 $id = is_string($r->receipt_id ?? null) ? $r->receipt_id : '';
                 $pdf = $zip->getFromName($id.'.pdf');
                 if (! is_string($pdf) || ! hash_equals(is_string($r->sha256 ?? null) ? $r->sha256 : '', hash('sha256', $pdf))) {
-                    throw new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 1);
+                    throw new ArchiveError('L\'archivio non si apre o non supera il controllo: nessun file è stato rimesso.', 1);
                 }
                 file_put_contents($work, $pdf);
                 $new[$id] = $this->files->store($orgId, $work, is_string($r->original_name ?? null) ? $r->original_name : 'ricevuta.pdf', 'application/pdf');
@@ -214,7 +214,7 @@ final readonly class ReceiptYearArchive implements YearArchives
             foreach ($new as $s) {
                 $this->safeDelete($s);
             }
-            throw $e instanceof ArchiveError ? $e : new ArchiveError('L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.', 1, $e);
+            throw $e instanceof ArchiveError ? $e : new ArchiveError('L\'archivio non si apre o non supera il controllo: nessun file è stato rimesso.', 1, $e);
         } finally {
             @unlink($zipPath);
             @unlink($work);
@@ -348,7 +348,7 @@ final readonly class ReceiptYearArchive implements YearArchives
             }
         }
         if ($missing > 0) {
-            throw new ArchiveError('Per '.$missing.' ricevute mancano i dati salvati all\'emissione: non è cambiato nulla. Scrivi all\'assistenza di Associazione Semplice.');
+            throw new ArchiveError('Per '.($missing === 1 ? '1 ricevuta' : $missing.' ricevute').' mancano i dati salvati all\'emissione: non è cambiato nulla. Scrivi all\'assistenza di Associazione Semplice.');
         }
 
         $work = ArchivedReceipts::tmpPath();

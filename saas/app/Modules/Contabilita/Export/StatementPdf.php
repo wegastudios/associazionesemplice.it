@@ -35,7 +35,7 @@ final class StatementPdf
         }
         $y = $this->need($pdf, $y, 40);
         $pdf->rect(50, $y - 12, $w - 100, 22);
-        $pdf->text(56, $y + 3, 'Risultato dell\'anno (entrate meno uscite)', 11, true);
+        $pdf->text(56, $y + 3, 'Avanzo (o disavanzo) dell\'anno fiscale', 11, true);
         $pdf->text($w - 56, $y + 3, Money::format($s['totals']['result']), 11, true, 'R');
         $y += 36;
 

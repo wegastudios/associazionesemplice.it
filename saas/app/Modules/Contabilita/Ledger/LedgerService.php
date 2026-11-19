@@ -57,7 +57,7 @@ final readonly class LedgerService implements Ledger
     public function recordIncome(Income $income): array
     {
         if ($income->lines === []) {
-            throw new LedgerError('Aggiungi almeno una voce all\'incasso.');
+            throw new LedgerError('Aggiungi almeno una riga all\'incasso.');
         }
         $method = $this->method($income->accountId, $income->method);
         $this->assertPerson($income->personId);
@@ -71,15 +71,15 @@ final readonly class LedgerService implements Ledger
                 throw new LedgerError("Riga {$n}: voce non valida per un incasso.");
             }
             if ($line->amountCents <= 0) {
-                throw new LedgerError("Voce {$n}: importo non valido.");
+                throw new LedgerError("Riga {$n}:importo non valido.");
             }
             if ($line->competenceMonth !== null && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $line->competenceMonth) !== 1) {
-                throw new LedgerError("Voce {$n}: mese di competenza non valido.");
+                throw new LedgerError("Riga {$n}:mese di competenza non valido.");
             }
             if ($line->vatRate !== null && ! Vat::isRate($line->vatRate)) {
-                throw new LedgerError("Voce {$n}: aliquota IVA non valida.");
+                throw new LedgerError("Riga {$n}:aliquota IVA non valida.");
             }
-            $this->assertVat($line->vatRate, "Voce {$n}: ");
+            $this->assertVat($line->vatRate, "Riga {$n}:");
             $lines[] = $line;
         }
 
@@ -258,7 +258,7 @@ final readonly class LedgerService implements Ledger
     public function void(string $transactionId, string $reason): int
     {
         if (! Str::isUuid($transactionId)) {
-            throw new LedgerError('Movimento inesistente.');
+            throw new LedgerError('Movimento non trovato.');
         }
 
         return $this->transaction(function () use ($transactionId, $reason): int {
@@ -277,7 +277,7 @@ final readonly class LedgerService implements Ledger
                 ? $this->connection()->table('app.transactions')->where('id', $transactionId)->whereNull('voided_at')->lockForUpdate()->first(['id', 'type', 'activity_id'])
                 : null;
             if ($tx === null) {
-                throw new LedgerError('Movimento inesistente o stornato.');
+                throw new LedgerError('Movimento non trovato o già stornato.');
             }
             if (! in_array($tx->type ?? null, [TxType::Income->value, TxType::Expense->value], true)) {
                 throw new LedgerError('Un giroconto non si assegna a un\'attività.');

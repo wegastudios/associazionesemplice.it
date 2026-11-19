@@ -89,7 +89,7 @@ it('manda al massimo 2 link al giorno e 6 al mese per utente, poi dice di scrive
 
     $this->post('/verifica-accesso/recupero-email')->assertSessionDoesntHaveErrors();
     $this->post('/verifica-accesso/recupero-email')->assertSessionDoesntHaveErrors();
-    $this->post('/verifica-accesso/recupero-email')->assertSessionHasErrors(['reset' => 'Hai già chiesto troppi link: scrivi al supporto di Associazione Semplice per sbloccare l\'accesso.']);
+    $this->post('/verifica-accesso/recupero-email')->assertSessionHasErrors(['reset' => 'Hai già chiesto troppi link: scrivi all\'assistenza di Associazione Semplice per sbloccare l\'accesso.']);
     Notification::assertSentToTimes($user, TwoFactorEmailResetNotification::class, 2);
 
     // Passato il giorno restano i 6 al mese (2 già usati più 3 pregressi: la sesta richiesta passa, la settima no).

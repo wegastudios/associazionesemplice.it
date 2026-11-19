@@ -22,7 +22,7 @@ final readonly class ArchiveController
             throw ValidationException::withMessages(['archive' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'Anno fiscale '.$year.' archiviato: '.$n.' ricevute in un archivio controllato.');
+        return back()->with('status', 'Anno fiscale '.$year.' archiviato: '.($n === 1 ? '1 ricevuta' : $n.' ricevute').' in un archivio controllato.');
     }
 
     public function restore(int $year): RedirectResponse
@@ -34,7 +34,7 @@ final readonly class ArchiveController
             throw ValidationException::withMessages($e->getCode() === 1 ? ['archive' => $e->getMessage(), 'archive_recover' => (string) $year] : ['archive' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'File dell\'anno fiscale '.$year.' rimessi: '.$n.' ricevute.');
+        return back()->with('status', 'File dell\'anno fiscale '.$year.' rimessi: '.($n === 1 ? '1 ricevuta' : $n.' ricevute').'.');
     }
 
     public function rebuild(int $year): RedirectResponse
@@ -45,6 +45,6 @@ final readonly class ArchiveController
             throw ValidationException::withMessages(['archive' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'Anno fiscale '.$year.': '.$n.' ricevute ricostruite dai dati dell\'emissione. L\'operazione è scritta nel registro delle azioni.');
+        return back()->with('status', 'Anno fiscale '.$year.': '.($n === 1 ? '1 ricevuta ricostruita' : $n.' ricevute ricostruite').' dai dati dell\'emissione. L\'operazione è scritta nel registro delle azioni.');
     }
 }
