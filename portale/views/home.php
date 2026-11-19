@@ -33,7 +33,7 @@
 <section class="section"><div class="wrap">
 	<div class="section-head"><h2>Si parte in tre passi</h2></div>
 	<div class="steps">
-		<div class="step"><h3>Ottieni la licenza gratuita</h3><p>Inserisci email e dominio del sito: crei il tuo account, accedi al supporto e alle demo dei piani Pro e ricevi la chiave. Il plugin funziona anche senza.</p></div>
+		<div class="step"><h3>Ottieni la licenza gratuita</h3><p>Scrivi email e dominio del sito: ricevi la chiave ed entri nel supporto. Con l'account puoi anche provare gratis un piano Pro. Il plugin funziona anche senza chiave.</p></div>
 		<div class="step"><h3>Installa il plugin</h3><p>Lo installi da WordPress, incolli la chiave e la procedura guidata ti accompagna con poche domande.</p></div>
 		<div class="step"><h3>Cresci quando vuoi</h3><p>Ti servono incassi online o contabilità? Passi al Pro dall'area riservata, senza reinstallare nulla.</p></div>
 	</div>

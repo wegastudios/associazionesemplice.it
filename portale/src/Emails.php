@@ -43,7 +43,7 @@ final class Emails {
 			'payment_failed' => array(
 				'label' => 'Pagamento non riuscito', 'when' => 'Il pagamento di un rinnovo non è andato a buon fine.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'Pagamento non riuscito per {dominio}',
-				'body' => "Ciao,\nNon siamo riusciti a incassare il rinnovo del piano {piano} per {dominio}.\nControlla il metodo di pagamento: la licenza resta valida fino al {scadenza}, poi tornano le funzioni di base. I tuoi dati non vengono cancellati.\n\n{account_url}",
+				'body' => "Ciao,\nNon siamo riusciti a incassare il rinnovo del piano {piano} per {dominio}. Di solito succede per una carta scaduta o un limite di spesa.\nControlla il metodo di pagamento dall'area riservata. La licenza resta valida fino al {scadenza}; dopo restano le funzioni del piano gratuito e i tuoi dati non vengono cancellati.\n\n{account_url}",
 			),
 			'canceled' => array(
 				'label' => 'Disdetta registrata', 'when' => 'Il cliente disdice il rinnovo, o il provider annulla l\'abbonamento.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
@@ -53,7 +53,7 @@ final class Emails {
 			'plan_upgraded' => array(
 				'label' => 'Piano cambiato (upgrade)', 'when' => 'Il cliente passa a un piano superiore e paga la differenza.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'Piano aggiornato per {dominio}',
-				'body' => "Ciao,\nIl pagamento della differenza è andato a buon fine: la licenza per {dominio} ora è {piano}.\nLa chiave e la scadenza ({scadenza}) non cambiano: le nuove funzioni compaiono al prossimo controllo del plugin.\n\n{account_url}",
+				'body' => "Ciao,\nIl pagamento della differenza è andato a buon fine: la licenza per {dominio} ora è {piano}.\nLa chiave e la scadenza ({scadenza}) non cambiano: le nuove funzioni compaiono nel plugin entro un giorno, o subito da Impostazioni → Licenza → «Controlla adesso».\n\n{account_url}",
 			),
 			'plan_downgrade_scheduled' => array(
 				'label' => 'Cambio piano programmato (downgrade)', 'when' => 'Il cliente sceglie un piano più economico dal prossimo rinnovo.', 'vars' => array( 'dominio', 'piano', 'nuovo_piano', 'scadenza', 'account_url', 'email' ),

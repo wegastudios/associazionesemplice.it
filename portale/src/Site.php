@@ -57,12 +57,12 @@ final class Site {
 	/** Domande frequenti (tutte in /domande, le prime tre anche in home). */
 	public static function faq(): array {
 		return array(
-			array( 'Devo pagare per usare Associazione Semplice?', 'No. Il plugin è gratuito e resta tale. La licenza gratuita è facoltativa: è legata al dominio del tuo sito e dà accesso al supporto e alle demo dei piani Pro. La ricevi appena confermi la tua email.' ),
+			array( 'Devo pagare per usare Associazione Semplice?', 'No. Il plugin è gratuito e resta tale. La licenza gratuita è facoltativa: vale per il dominio del tuo sito, ti fa scrivere al supporto e provare gratis un piano Pro. Arriva appena confermi l\'email.' ),
 			array( 'Cosa significa «licenza legata a un dominio»?', 'La chiave funziona sul sito per cui l\'hai chiesta, compresi i sottodomini di prova (staging, test…). Se cambi indirizzo lo aggiorni tu dall\'area riservata. Dopo un cambio aspetti ' . Settings::limit( 'domain_lock_days' ) . ' giorni prima di farne un altro: se hai urgenza, scrivici dal supporto.' ),
 			array( 'Posso passare dal gratuito al Pro più avanti?', 'Sì, in qualsiasi momento. I dati restano dove sono: si attivano soltanto le funzioni in più.' ),
 			array( 'Come funziona il rinnovo?', 'Il rinnovo è automatico, mensile o annuale a scelta. Puoi disdire quando vuoi dall\'area riservata: la licenza resta valida fino alla scadenza già pagata.' ),
 			array( 'Cosa succede se un pagamento non va a buon fine?', 'Hai alcuni giorni di tolleranza. I tuoi dati non vengono mai cancellati: se la licenza scade, tornano disponibili le funzioni di base.' ),
-			array( 'Dove stanno i dati dei miei soci?', 'Sul tuo sito WordPress, non da noi. Il plugin gratuito non invia dati dei soci né dell\'associazione (scaricato da questo sito, chiede solo una volta al giorno se c\'è una versione nuova, con nome del plugin e versione; si può spegnere); il Pro verifica la licenza una volta al giorno e controlla gli aggiornamenti inviando solo chiave, dominio e versione.' ),
+			array( 'Dove stanno i dati dei miei soci?', 'Sul tuo sito WordPress, non da noi. Il plugin gratuito non invia dati dei soci né dell\'associazione: se lo scarichi da questo sito chiede solo, una volta al giorno, se c\'è una versione nuova (si può spegnere). Il Pro, di norma una volta al giorno, verifica la licenza e cerca aggiornamenti inviando solo chiave, dominio e versione.' ),
 			array( 'Cosa succede ai dati se disdico o la licenza scade?', 'Restano sul tuo sito. Alla scadenza restano le funzioni del piano gratuito: i dati non vengono cancellati e si possono sempre esportare.' ),
 			array( 'Come pago?','Con carta tramite Stripe oppure con PayPal. Non vediamo né conserviamo i dati della tua carta.' ),
 		);
