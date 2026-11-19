@@ -173,16 +173,22 @@ Su alcuni server manca la libreria che serve a cifrare: il programma lo dice e t
 
 ## La frase per riaprire i documenti
 
-La frase serve a **riaprire i documenti** se il sito viene spostato o riparato, se i codici di sicurezza del sito cambiano e per **ripristinare una copia di sicurezza su un altro sito**. **Conservala fuori dal sito**, su carta o in un gestore di password: se perdi il sito, altrimenti non la ritrovi.
+Trovi la frase in **Strumenti → Copia di sicurezza → «Frase per riaprire i documenti»**. Serve a **riaprire i documenti** se il sito viene spostato o riparato, se i codici di sicurezza del sito cambiano e per **ripristinare una copia di sicurezza su un altro sito**. **Conservala fuori dal sito**, su carta o in un gestore di password: se perdi il sito, altrimenti non la ritrovi.
 
 - Nel **gratuito** il programma te la mostra così: «La frase è la data e l'ora in cui è stata creata la chiave dei file, in UTC: {data}. Non è la data di installazione del plugin. Va scritta esattamente così, spazi e trattini compresi.» (c'è il pulsante **«Stampa»**).
 - Con la **licenza** è il **codice di licenza**, che ritrovi nell'area clienti di Associazione Semplice; il codice di licenza apre sempre i documenti.
 
 **Cambiare la frase non cambia la chiave dei file**: le copie fatte prima si aprono ancora con la frase di allora, e con quella si aprono anche i file salvati dopo. Le copie vecchie conservale con cura o cancellale, e fai una **copia nuova**.
 
+Una frase automatica protegge meno di una frase scelta da te: vedi il paragrafo seguente.
+
 ## Quanto protegge
 
 Chi si porta via la sola cartella dei file non può leggerli. **Chi ha anche il database può aprirli quando la frase è quella automatica o il codice di licenza**, perché stanno nel database; il codice di licenza **lo conosce anche Associazione Semplice** e sta nelle email di acquisto. Nel plugin senza licenza, con una **frase tua**, servono anche il file `wp-config.php` o la frase.
+
+## Testi che restano in chiaro nella copia
+
+Alcuni campi di testo riservati (per esempio il medico nei certificati) su certi siti non si possono ancora cifrare. Quanti sono lo vedi in **Strumenti → Copia di sicurezza**, subito dopo aver fatto la copia: compare un avviso con il numero e il rimando alla sezione **«Documenti riservati»**. Il numero non compare al ripristino. Nessun dato va perso: il numero è scritto anche nel file di descrizione della copia.
 
 ## Per proteggere di più
 
