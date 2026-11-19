@@ -179,7 +179,7 @@ it('apre le pagine secondo pacchetto e permessi', function (): void {
         ->assertInertia(fn (Assert $page) => $page->component('Risorse/Calendario')->where('hourly.0.slots.1.label', 'Torneo Beta'));
     $res = (string) $this->orgContext()->run($this->org->id, fn () => DB::table('app.reservations')->value('id'));
     $cash = (string) $this->orgContext()->run($this->org->id, fn () => Account::query()->sole()->id);
-    $this->post('/gestionale/prenotazioni/'.$res.'/incassa', ['account_id' => $cash, 'date' => now()->toDateString()])->assertSessionHas('status', 'Incasso registrato in prima nota.');
+    $this->post('/gestionale/prenotazioni/'.$res.'/incassa', ['account_id' => $cash, 'date' => now()->toDateString()])->assertSessionHas('status', 'Incasso registrato.');
     $this->get('/gestionale/risorse/'.$id.'?giorno='.$this->day)->assertInertia(fn (Assert $page) => $page->where('resource.upcoming.0.due', 0)->where('resource.upcoming.0.paid', '15,00 €'));
     $this->post('/gestionale/prenotazioni/'.$res.'/annulla')->assertSessionHas('status', 'Prenotazione annullata.');
 

@@ -107,7 +107,7 @@ final readonly class MemberAccess
     public function staffLink(string $personId, ?string $userId, string $baseUrl): string
     {
         if (! $this->profiles->canLogin($personId)) {
-            throw new MemberAccessError('Questa persona non può entrare nell\'area soci (ospiti esclusi).');
+            throw new MemberAccessError('Gli ospiti non entrano nell\'area soci.');
         }
         $link = self::random();
         $this->table('app.member_login_tokens')->insert([

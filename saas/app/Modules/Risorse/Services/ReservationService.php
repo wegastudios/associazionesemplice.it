@@ -207,7 +207,7 @@ final readonly class ReservationService
         if ($cents <= 0) {
             throw new ResourceError('Non c\'è niente da incassare: indica l\'importo.');
         }
-        $category = $res->category_id ?? $this->ledger->categoryFor(CategoryKind::OtherIncome) ?? throw new ResourceError('Manca la categoria «Altre entrate» in prima nota.');
+        $category = $res->category_id ?? $this->ledger->categoryFor(CategoryKind::OtherIncome) ?? throw new ResourceError('Manca la voce «Altre entrate» in prima nota.');
         $when = $res->typology === Typology::Hourly ? date('d/m/Y H:i', (int) strtotime($r->starts_at)) : date('d/m/Y', (int) strtotime($r->starts_at));
         // L'aliquota è quella di quando la prenotazione è stata fatta (se la partita IVA c'è ancora e l'aliquota è in elenco).
         $vatRate = $this->vat->usable($r->vat_rate);
@@ -300,7 +300,7 @@ final readonly class ReservationService
         }
         $c = $this->connection();
         if ($c->table('app.resource_waitlist')->where('resource_id', $res->id)->where('person_id', $personId)->where('status', 'waiting')->exists()) {
-            throw new ResourceError('È già in lista d\'attesa.');
+            throw new ResourceError('Questa persona è già in lista d\'attesa.');
         }
         if (! $c->table('app.people')->where('id', $personId)->whereNull('deleted_at')->exists()) {
             throw new ResourceError('Persona non trovata.');
@@ -316,7 +316,7 @@ final readonly class ReservationService
         $n = $this->connection()->table('app.resource_waitlist')->where('resource_id', $resourceId)->where('person_id', $personId)->where('status', 'waiting')
             ->update(['status' => 'left', 'resolved_at' => now()]);
         if ($n === 0) {
-            throw new ResourceError('Non è in lista d\'attesa.');
+            throw new ResourceError('Questa persona non è in lista d\'attesa.');
         }
         $this->audit->record('resource.waitlist_left', 'app.resources', $resourceId, ['person_id' => $personId]);
     }

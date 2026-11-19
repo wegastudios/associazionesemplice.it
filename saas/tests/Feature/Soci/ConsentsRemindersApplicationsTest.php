@@ -172,7 +172,7 @@ it('accoglie la domanda di un maggiorenne con i consensi del modulo', function (
             ->and(app(ConsentService::class)->has($p->id, ConsentChannel::Rules))->toBeFalse()
             ->and(app(ConsentService::class)->current($p->id)['privacy']['source'])->toBe('Online')
             ->and($a->refresh()->status)->toBe('approved')
-            ->and(fn () => $s->approve($a->id, null, ''))->toThrow(App\Modules\Soci\Contracts\PeopleError::class, 'già decisa');
+            ->and(fn () => $s->approve($a->id, null, ''))->toThrow(App\Modules\Soci\Contracts\PeopleError::class, 'già avuto risposta');
     });
 });
 

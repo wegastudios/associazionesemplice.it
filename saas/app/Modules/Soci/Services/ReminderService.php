@@ -123,10 +123,10 @@ final readonly class ReminderService
         $date = date('d/m/Y', (int) strtotime($until));
         $about = $to['about'] !== '' ? " di {$to['about']}" : '';
         [$subject, $body] = match ($kind) {
-            'membership_soon' => ['La tessera sta per scadere', "La tessera associativa{$about} scade il {$date}. Si può rinnovare in segreteria."],
-            'membership_expired' => ['La tessera è scaduta', "La tessera associativa{$about} è scaduta il {$date}. Per partecipare alle attività va rinnovata: rivolgiti alla segreteria."],
-            'cert_soon' => ['Il certificato medico sta per scadere', "Il certificato medico{$about} scade il {$date}. Ricordati di portare in segreteria quello nuovo."],
-            default => ['Il certificato medico è scaduto', "Il certificato medico{$about} è scaduto il {$date}. Senza un certificato valido non si può partecipare alle attività sportive."],
+            'membership_soon' => ['La tessera sta per scadere', "la tessera associativa{$about} scade il {$date}. Puoi rinnovarla in segreteria."],
+            'membership_expired' => ['La tessera è scaduta', "la tessera associativa{$about} è scaduta il {$date}. Per partecipare alle attività rinnovala in segreteria."],
+            'cert_soon' => ['Il certificato medico sta per scadere', "il certificato medico{$about} scade il {$date}. Porta in segreteria quello nuovo prima di quella data."],
+            default => ['Il certificato medico è scaduto', "il certificato medico{$about} è scaduto il {$date}. Per partecipare alle attività sportive porta in segreteria quello nuovo."],
         };
 
         // Siamo già dentro un lavoro in coda: la posta parte subito, senza accodarla una seconda volta.

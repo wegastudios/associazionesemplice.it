@@ -449,7 +449,7 @@ final class PeopleSheet
                 $msg = 'Già presente ('.$how.')';
                 $act = 'update';
             } else {
-                $msg = $card === null ? 'Senza tessera: assegnabile dopo' : null;
+                $msg = $card === null ? 'Senza numero di tessera: puoi assegnarlo dopo' : null;
                 $act = 'create';
             }
             if ($card !== null) {
@@ -462,7 +462,7 @@ final class PeopleSheet
                 $taxInFile[$tax] = $r['line'];
             }
             if ($r['years'] !== []) {
-                $msg = ($msg === null ? '' : $msg.' · ').'Iscritto: '.implode(', ', str_replace(['@current', '@previous'], ['anno corrente', 'anno scorso'], $r['years']));
+                $msg = ($msg === null ? '' : $msg.' · ').'Tessera: '.implode(', ', str_replace(['@current', '@previous'], ['anno corrente', 'anno scorso'], $r['years']));
             }
             $plans[] = ['row' => $r, 'type' => $type->value, 'type_given' => $r['type_text'] !== null, 'action' => $act, 'message' => $msg, 'matched_id' => $match['id'] ?? null, 'host_text' => null, 'host_id' => null];
         }

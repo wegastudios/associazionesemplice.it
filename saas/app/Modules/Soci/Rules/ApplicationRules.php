@@ -66,7 +66,7 @@ final class ApplicationRules
         }
         // Un maggiorenne ha bisogno di email e cellulare; per un minore contano quelli del genitore.
         if ((! $minor || $data['email'] !== '') && filter_var($data['email'], FILTER_VALIDATE_EMAIL) === false) {
-            $errors[] = $minor ? "L'email non è valida." : "Scrivi un'email valida: ci arriva il link per entrare.";
+            $errors[] = $minor ? "L'email non è valida." : "Scrivi un'email valida: lì ricevi il link per entrare.";
         }
         if ((! $minor || $data['phone'] !== '') && ! Phone::isValid($data['phone'])) {
             $errors[] = $minor ? 'Il cellulare non è valido.' : 'Scrivi il numero di cellulare.';

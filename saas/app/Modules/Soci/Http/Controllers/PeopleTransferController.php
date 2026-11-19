@@ -112,7 +112,7 @@ final readonly class PeopleTransferController
     {
         return Inertia::render('Soci/Importa', [
             'types' => array_map(static fn (MemberType $t): array => ['value' => $t->value, 'label' => $t->label()], self::DEFAULT_TYPES),
-            'columns' => ['Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Cellulare', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Indirizzo, CAP, Comune, Provincia', 'Data di ingresso', 'Ospite di', 'Tutore', 'Tipo soggetto (persona o ente)', 'Denominazione (enti)', 'Stessa sezione RUNTS (enti)', 'Note', '2025, 2026… (una crocetta per ogni anno di iscrizione)'],
+            'columns' => ['Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Cellulare', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Indirizzo, CAP, Comune, Provincia', 'Data di ingresso', 'Ospite di', 'Tutore', 'Tipo soggetto (persona o ente)', 'Denominazione (enti)', 'Stessa sezione RUNTS (enti)', 'Note', '2025, 2026… (una crocetta per ogni anno con la tessera)'],
             'preview' => $preview,
             'result' => $result,
         ]);

@@ -169,7 +169,7 @@ it('fa prenotare le risorse Web e le mette tra le voci da pagare', function (): 
     // Senza pagamenti online attivi si prenota lo stesso e il messaggio rimanda solo alla segreteria.
     expect($this->orgContext()->run($this->org->id, fn () => app(OnlinePayments::class)->providers()))->toBe([]);
     $member()->post($this->host.'/area/risorse/'.$court->id.'/prenota', ['date' => $day, 'start' => '18:00', 'units' => 1])
-        ->assertSessionHas('status', 'Prenotazione registrata: puoi pagarla in segreteria.');
+        ->assertSessionHas('status', 'Prenotazione registrata: si paga in segreteria.');
     $member()->get($this->host.'/area/risorse?giorno='.$day)->assertInertia(fn (Assert $page) => $page->where('online', false));
     $member()->post($this->host.'/area/risorse/'.$court->id.'/prenota', ['date' => $day, 'start' => '18:00'])->assertSessionHasErrors('ledger');
     $member()->post($this->host.'/area/risorse/'.$court->id.'/prenota', ['date' => now('Europe/Rome')->addDays(30)->toDateString(), 'start' => '18:00'])->assertSessionHasErrors('ledger');
@@ -358,7 +358,7 @@ it('se il gestore non risponde non annulla in silenzio il rimborso: non storna n
     ]);
 
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
-    expect(session('errors')->first('ledger'))->toContain('non è possibile sapere se il rimborso')->toContain('Non è stato stornato nulla');
+    expect(session('errors')->first('ledger'))->toContain('non si sa se il rimborso')->toContain('nulla è stato stornato');
     $this->orgContext()->run($this->org->id, function () use ($id): void {
         $row = DB::table('app.online_payments')->where('id', $id)->first();
         expect((int) $row->refund_pending_cents)->toBe(2500)
@@ -413,7 +413,7 @@ it('un errore 5xx del gestore vale come mancata risposta: esito da verificare, p
     // 502, 429 e risposta «bene» ma illeggibile: tre esiti incerti, mai un rifiuto.
     foreach ([1, 2, 3] as $_) {
         $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
-        expect(session('errors')->first('ledger'))->toContain('non è possibile sapere se il rimborso')->not->toContain('Rimborso non riuscito');
+        expect(session('errors')->first('ledger'))->toContain('non si sa se il rimborso')->not->toContain('Rimborso non riuscito');
     }
     $this->orgContext()->run($this->org->id, function () use ($id): void {
         expect((int) DB::table('app.online_payments')->where('id', $id)->value('refund_pending_cents'))->toBe(2500)

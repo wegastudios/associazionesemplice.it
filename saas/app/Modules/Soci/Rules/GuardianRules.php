@@ -29,9 +29,9 @@ final class GuardianRules
             $errors[] = 'Per collegare un tutore serve la data di nascita del minore.';
         }
         if ($guardian['type'] === MemberType::Guest) {
-            $errors[] = 'Un ospite non può essere genitore o tutore: registralo come «genitore o tutore».';
+            $errors[] = 'Un ospite non può fare da tutore: cambia il tipo della sua scheda in «Genitore o tutore (non socio)».';
         } elseif ($operative && ! $guardian['type']->canLogin()) {
-            $errors[] = "Il tutore deve poter entrare nell'area soci: un socio o una persona registrata come genitore o tutore.";
+            $errors[] = 'Il tutore deve essere un socio oppure una persona registrata come «Genitore o tutore (non socio)».';
         }
         $email = trim((string) $guardian['email']);
         if ($operative && ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {

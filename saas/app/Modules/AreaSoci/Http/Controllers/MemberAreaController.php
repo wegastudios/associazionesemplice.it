@@ -119,7 +119,7 @@ final readonly class MemberAreaController
 
     public function book(string $session): RedirectResponse
     {
-        return $this->attempt(fn () => $this->activities->book($session, $this->current->active()), $this->payments->providers() === [] ? 'Prenotazione registrata: il contributo si paga in segreteria.' : 'Prenotazione registrata: il contributo si paga in segreteria o da «Paga».');
+        return $this->attempt(fn () => $this->activities->book($session, $this->current->active()), $this->payments->providers() === [] ? 'Prenotazione registrata: il contributo si paga in segreteria.' : 'Prenotazione registrata: il contributo si paga in segreteria o da «Quote».');
     }
 
     public function cancel(string $booking): RedirectResponse
@@ -129,7 +129,7 @@ final readonly class MemberAreaController
 
     public function waitlist(string $session): RedirectResponse
     {
-        return $this->attempt(fn () => $this->activities->joinWaitlist($session, $this->current->active()), 'Sei in lista d\'attesa: se si libera un posto entri da solo.');
+        return $this->attempt(fn () => $this->activities->joinWaitlist($session, $this->current->active()), 'Sei in lista d\'attesa: se si libera un posto diventa tuo e ricevi un\'email.');
     }
 
     /** La pagina che si apre leggendo il QR della tessera: dice solo se la tessera è valida oggi. */

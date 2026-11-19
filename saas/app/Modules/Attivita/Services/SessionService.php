@@ -145,7 +145,7 @@ final readonly class SessionService
             throw new ActivityError('L\'ora di fine deve essere dopo quella di inizio.');
         }
         if ($capacity !== null && $capacity < 1) {
-            throw new ActivityError('I posti devono essere almeno 1 (vuoto = senza limite).');
+            throw new ActivityError('I posti devono essere almeno 1 (lascia vuoto per non mettere limite).');
         }
         $year = $this->activities->year($activity);
         $dates = SessionRules::newDates($from, $to, $weekly);
@@ -266,7 +266,7 @@ final readonly class SessionService
             }
             $existing = SessionBooking::query()->where('session_id', $s->id)->where('person_id', $personId)->first();
             if ($existing?->status === 'booked') {
-                throw new ActivityError($person['name'].' è già prenotato a questa data.');
+                throw new ActivityError($person['name'].' ha già una prenotazione per questa data.');
             }
             $free = SessionRules::free($s->capacity, $this->taken($s->id));
             if ($free === 0) {
@@ -414,7 +414,7 @@ final readonly class SessionService
         }
         $this->person($personId) ?? throw new ActivityError('Persona non trovata.');
         if (SessionBooking::query()->where('session_id', $s->id)->where('person_id', $personId)->where('status', 'booked')->exists()) {
-            throw new ActivityError('Questa persona è già prenotata a questa data.');
+            throw new ActivityError('Questa persona ha già una prenotazione per questa data.');
         }
         $c = $this->connection();
         if ($c->table('app.session_waitlist')->where('session_id', $s->id)->where('person_id', $personId)->where('status', 'waiting')->exists()) {
@@ -430,7 +430,7 @@ final readonly class SessionService
         $n = $this->connection()->table('app.session_waitlist')->where('session_id', $s->id)->where('person_id', $personId)->where('status', 'waiting')
             ->update(['status' => 'left', 'resolved_at' => now()]);
         if ($n === 0) {
-            throw new ActivityError('Non è in lista d\'attesa.');
+            throw new ActivityError('Questa persona non è in lista d\'attesa.');
         }
         $this->audit->record('waitlist.left', 'app.activities', $s->activity_id, ['session' => $s->id, 'person_id' => $personId]);
     }
@@ -539,7 +539,7 @@ final readonly class SessionService
         $body = $minor
             ? "Si è liberato un posto: ora {$about} ha un posto per {$activity->name} del {$when}. Se non può venire, {$cancel}."
             : "Si è liberato un posto: ora hai un posto per {$activity->name} del {$when}. Se non puoi venire, {$cancel}.";
-        $payLine = $area === null ? 'Per la quota da versare scrivi alla segreteria.' : 'La quota da versare la trovi in Quote, nell\'area soci.';
+        $payLine = $area === null ? 'Per il contributo da pagare scrivi alla segreteria.' : 'Il contributo da pagare lo trovi in «Quote», nell\'area soci.';
 
         // Siamo già dentro un lavoro in coda: la posta parte subito, senza accodarla una seconda volta.
         Notification::route('mail', $email)->notifyNow(new WaitlistPromotedNotification(
@@ -583,7 +583,7 @@ final readonly class SessionService
         if ($cents <= 0) {
             throw new ActivityError('Non c\'è niente da incassare: indica l\'importo.');
         }
-        $category = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la categoria «Quota attività / corso» in prima nota.');
+        $category = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Quota attività / corso» in prima nota.');
         $list = $b->price_list === null ? null : SessionRules::findList($activity->price_lists, $b->price_list);
         $description = mb_substr('Contributo '.$activity->name.' '.$s->session_date->format('d/m/Y').($list !== null ? ' · '.$list['label'] : ''), 0, 255);
 

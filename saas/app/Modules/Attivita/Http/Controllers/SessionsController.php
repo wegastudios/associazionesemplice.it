@@ -176,7 +176,7 @@ final readonly class SessionsController
         return self::attempt(function () use ($session, $data): RedirectResponse {
             $this->sessions->waitlistJoin($session, Input::string($data, 'person_id'));
 
-            return back()->with('status', 'Aggiunto alla lista d\'attesa.');
+            return back()->with('status', 'Persona aggiunta alla lista d\'attesa.');
         });
     }
 
@@ -185,7 +185,7 @@ final readonly class SessionsController
         return self::attempt(function () use ($session, $person): RedirectResponse {
             $this->sessions->waitlistLeave($session, $person);
 
-            return back()->with('status', 'Tolto dalla lista d\'attesa.');
+            return back()->with('status', 'Persona tolta dalla lista d\'attesa.');
         });
     }
 

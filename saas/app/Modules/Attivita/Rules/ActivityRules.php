@@ -28,7 +28,7 @@ final class ActivityRules
             $errors[] = 'Tipo di attività non valido.';
         }
         if ($text('billing') !== '' && Billing::tryFrom($text('billing')) === null) {
-            $errors[] = 'Modalità di pagamento non valida.';
+            $errors[] = 'Scegli ogni quanto si paga il contributo.';
         }
         if (! is_int($d['fee_cents'] ?? 0) || ($d['fee_cents'] ?? 0) < 0) {
             $errors[] = 'Il contributo non può essere negativo.';

@@ -246,7 +246,7 @@ final readonly class PeopleController
         $this->settings->set(MembershipService::DEFAULT_FEE, $cents);
         $this->settings->set(CertificateService::WARN_DAYS, $request->integer('warn_days', 30));
 
-        return back()->with('status', 'Impostazioni del tesseramento salvate.');
+        return back()->with('status', 'Impostazioni della quota associativa salvate.');
     }
 
     private function form(?Person $person, Request $request): Response

@@ -471,7 +471,7 @@ final readonly class ActivityService implements Activities
         foreach ($plan['reservations'] as [$from, $to]) {
             $other = $this->occupancy->busy($old, $from, $to)[0]['label'] ?? null;
             if ($other !== null) {
-                throw new ActivityError('Sulla risorsa di prima c\'è già l\'attività «'.$other.'»: non si sposta niente.');
+                throw new ActivityError('Sulla risorsa di prima c\'è già l\'attività «'.$other.'»: non è stato spostato niente.');
             }
         }
         try {
@@ -485,7 +485,7 @@ final readonly class ActivityService implements Activities
                 $busy = $this->resources->busy($old, $from, $to)[0]['label'] ?? null;
                 $busy ??= ($o = $this->occupancy->busy($old, $from, $to, null, $moved->id)[0] ?? null) === null ? null : 'l\'attività «'.$o['label'].'»';
                 if ($busy !== null) {
-                    throw new ActivityError('«'.$moved->name.'» non si sposta: '.$when.' sulla risorsa di prima c\'è già '.$busy.'. Non si sposta niente.');
+                    throw new ActivityError('«'.$moved->name.'» non si sposta: '.$when.' sulla risorsa di prima c\'è già '.$busy.'. Non è stato spostato niente.');
                 }
             }
             $moved->resource_id = $old;
@@ -525,7 +525,7 @@ final readonly class ActivityService implements Activities
 
         $enrollment = Enrollment::query()->where('activity_id', $activity->id)->where('person_id', $person['id'])->first();
         if ($enrollment !== null && $enrollment->end_month === null) {
-            throw new ActivityError($person['name'].' è già iscritto.');
+            throw new ActivityError($person['name'].' è già tra gli iscritti.');
         }
         $enrollment ??= new Enrollment(['activity_id' => $activity->id, 'person_id' => $person['id']]);
         $enrollment->fill(['start_month' => $start, 'end_month' => null])->save();
@@ -599,7 +599,7 @@ final readonly class ActivityService implements Activities
         if ($row === null) {
             throw new ActivityError('La persona non è iscritta a questa attività.');
         }
-        $category = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la categoria «Quota attività / corso» in prima nota.');
+        $category = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Quota attività / corso» in prima nota.');
 
         $lines = [];
         if ($activity->kind === ActivityKind::Course && $activity->billing !== Billing::Once) {
@@ -610,7 +610,7 @@ final readonly class ActivityService implements Activities
             }
             foreach ($months as $m) {
                 if (! in_array($m, $year['months'], true)) {
-                    throw new ActivityError('Il mese '.$m.' non è nell\'anno delle attività dell\'attività.');
+                    throw new ActivityError('Il mese '.(preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $m) === 1 ? self::monthLabel($m) : $m).' è fuori dall\'anno di questa attività.');
                 }
                 $cents = $amountCents ?? $row['fee'];
                 if ($cents <= 0) {
@@ -633,7 +633,7 @@ final readonly class ActivityService implements Activities
     public function expense(string $activityId, string $accountId, string $date, int $cents, string $description, ?string $categoryId = null, ?PaymentMethod $method = null, ?string $documentRef = null): string
     {
         $activity = $this->find($activityId);
-        $category = $categoryId ?? $this->ledger->categoryFor(CategoryKind::ActivityCost) ?? throw new ActivityError('Manca la categoria «Costo attività» in prima nota.');
+        $category = $categoryId ?? $this->ledger->categoryFor(CategoryKind::ActivityCost) ?? throw new ActivityError('Manca la voce «Costo attività» in prima nota.');
 
         return $this->ledger->recordExpense(new Expense($date, $accountId, $category, $cents, $method, $description !== '' ? $description : $activity->name, null, $documentRef, null, $activity->id));
     }

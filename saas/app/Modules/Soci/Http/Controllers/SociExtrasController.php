@@ -42,7 +42,7 @@ final readonly class SociExtrasController
 
     public function operativeGuardian(string $person, string $guardian): RedirectResponse
     {
-        return $this->attempt(fn () => $this->guardians->setOperative($person, $guardian), 'Tutore operativo cambiato.');
+        return $this->attempt(fn () => $this->guardians->setOperative($person, $guardian), 'Ora nell\'area soci entra questo tutore.');
     }
 
     public function unlinkGuardian(string $person, string $guardian): RedirectResponse
