@@ -59,7 +59,7 @@ final class MemberPasswordRestoreTest extends TestCase {
 
 	public function test_texts_say_passwords_come_back(): void {
 		$b = $this->src( 'Backup.php' ) . $this->src( 'Admin/BackupPage.php' ) . $this->src( 'Admin/Actions.php' );
-		$this->assertStringContainsString( 'ogni socio dovrà sceglierne una nuova al primo accesso', $b );
+		$this->assertStringContainsString( 'ogni socio ne sceglierà una nuova al primo accesso', $b );
 		$this->assertStringContainsString( 'deve scegliere subito una nuova password', $b );
 		$this->assertStringNotContainsString( 'password dei soci non fanno parte', $b );
 		$this->assertStringNotContainsString( 'il ripristino non le rimette', $b );
