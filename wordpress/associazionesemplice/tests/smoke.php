@@ -4145,7 +4145,7 @@ asem_ok( false !== strpos( $m2, 'Avviso inviato a 1 persona' ) && count( $mails 
 $_GET['asem_session'] = (string) $tev_s;
 $det2 = $as( $u_tre, '[associazionesemplice_ingressi]' );
 unset( $_GET['asem_session'] );
-asem_ok( false !== strpos( $det2, 'Invia un avviso agli iscritti' ) && false !== strpos( $det2, 'a questa data' ), 'ingressi: sotto la lista dei prenotati il modulo dell\'avviso per quella data' );
+asem_ok( false !== strpos( $det2, 'Invia un avviso agli iscritti' ) && false !== strpos( $det2, 'di questa data' ), 'ingressi: sotto la lista dei prenotati il modulo dell\'avviso per quella data' );
 remove_all_filters( 'pre_wp_mail' );
 Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
 wp_set_current_user( 1 );
