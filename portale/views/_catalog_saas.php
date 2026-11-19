@@ -14,7 +14,7 @@ $vatTxt = $exempt ? '' : ' + IVA';
 $trialOn = true === Portale\Config::get( 'saas_trial_enabled', false );
 ?>
 <section class="section product-saas" id="prezzi-saas"><div class="wrap">
-	<div class="section-head"><span class="eyebrow">Gestionale SaaS</span><h2>Piani e prezzi</h2><p><?php echo $exempt ? 'Importi in euro, senza IVA.' : 'Importi IVA esclusa.'; ?> Il prezzo cresce con i soci: nessun limite blocca la segreteria.</p></div>
+	<div class="section-head"><span class="eyebrow">Gestionale SaaS</span><h2>Piani e prezzi</h2><p><?php echo $exempt ? 'Importi in euro, senza IVA.' : 'Importi IVA esclusa.'; ?> Il prezzo cresce con i soci. Se superi il numero del piano hai un po' di tempo per passare al successivo; i soci e i dati già inseriti restano sempre.</p></div>
 	<?php if ( $show_cards ) : ?><div class="plans">
 	<?php foreach ( $plans as $p ) :
 		$m = Portale\Catalog::from( $p, 'month' );

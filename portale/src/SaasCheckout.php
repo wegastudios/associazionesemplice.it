@@ -290,7 +290,7 @@ final class SaasCheckout {
 		$q   = (array) json_decode( (string) $order['quote'], true );
 		$new = Quote::build( $cat['doc'], (string) $order['plan'], (string) $order['period'], (int) $order['members'], Orders::addonsOf( $q ) );
 		if ( null !== $seen && $seen !== $new['total'] ) {
-			throw new UserError( 'I prezzi sono stati aggiornati: il nuovo totale è ' . money( $new['total'] ) . '. Controlla e conferma di nuovo.' );
+			throw new UserError( 'I prezzi sono stati aggiornati: il nuovo totale è ' . money( $new['total'] ) . ( 'exempt' === Catalog::terms( $cat['doc'] )['vat_mode'] ? ' (senza IVA)' : ' (IVA inclusa)' ) . '. Controlla e conferma di nuovo.' );
 		}
 		if ( $new['total'] < 100 ) {
 			throw new UserError( 'Non riusciamo a riattivare da qui: scrivici e lo sistemiamo.' );
@@ -427,7 +427,7 @@ final class SaasCheckout {
 			$del  = gmdate( 'Y-m-d', strtotime( $end . ' UTC +' . $purge . ' days' ) );
 			$base = rtrim( (string) Config::get( 'base_url' ), '/' );
 			$vars = array(
-				'fine_prova' => date_it( $end . ' 00:00:00' ), 'data_cancellazione_prova' => date_it( $del . ' 00:00:00' ), 'piani_url' => $base . '/account#gestionale',
+				'fine_prova' => date_it( $end . ' 00:00:00' ), 'data_cancellazione_prova' => date_it( $del . ' 00:00:00' ), 'piani_url' => $base . '/account#gestionale', 'acquista_url' => $base . '/saas/acquista',
 				'sconto' => $pct . '%', 'codice_sconto' => $code, 'scadenza_sconto' => date_it( $del . ' 00:00:00' ),
 			);
 			$offer = $pct > 0 && '' !== $code ? array(
