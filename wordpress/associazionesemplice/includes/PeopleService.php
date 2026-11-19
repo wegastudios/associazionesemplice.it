@@ -580,7 +580,7 @@ class PeopleService {
 			)
 		);
 		if ( ! $ok ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare la persona (errore del database).' );
+			throw new \InvalidArgumentException( 'Persona non salvata: riprova.' );
 		}
 		$id = (int) $this->db()->insert_id;
 		if ( MemberType::is_auto_renewed( $d['type'] ) ) {

@@ -108,7 +108,7 @@ final class Polls {
 			$db->update( Db::t( 'polls' ), $d + array( 'updated_at' => Db::now() ), array( 'id' => $id ) );
 		} else {
 			if ( ! $db->insert( Db::t( 'polls' ), $d + array( 'created_by' => $user_id, 'created_at' => Db::now(), 'updated_at' => Db::now() ) ) ) {
-				throw new \InvalidArgumentException( 'Impossibile salvare (errore del database).' );
+				throw new \InvalidArgumentException( 'Sondaggio o votazione non salvati: riprova.' );
 			}
 			$id = (int) $db->insert_id;
 		}

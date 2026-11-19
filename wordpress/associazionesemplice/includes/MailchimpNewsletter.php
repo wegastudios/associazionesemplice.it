@@ -40,7 +40,7 @@ final class MailchimpNewsletter implements NewsletterProvider {
 		if ( '' === $key ) {
 			return 'Inserisci la chiave API di Mailchimp.';
 		}
-		return '' === NewsletterRules::mailchimp_dc( $key ) ? 'La chiave di Mailchimp deve finire con il datacenter, ad esempio «-us21».' : '';
+		return '' === NewsletterRules::mailchimp_dc( $key ) ? 'La chiave di Mailchimp deve finire con una sigla come «-us21»: copiala per intero.' : '';
 	}
 
 	/** @return array{code:int,data:mixed} */
