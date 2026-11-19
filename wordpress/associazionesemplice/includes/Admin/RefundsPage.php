@@ -149,7 +149,7 @@ final class RefundsPage {
 			echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<p>Pagato dal conto <select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select> il <input type="date" name="paid_on" value="' . esc_attr( Db::today() ) . '" max="' . esc_attr( Db::today() ) . '" required> '; // phpcs:ignore WordPress.Security.EscapeOutput
 			submit_button( 'Segna come pagato e registra in prima nota', 'primary', 'submit', false );
-			echo '</p><p class="description">Registra un\'uscita nella categoria «Rimborso spese socio/volontario» e la collega a questa richiesta.</p>';
+			echo '</p><p class="description">Registra un\'uscita nella voce «Rimborso spese socio/volontario» e la collega a questa richiesta.</p>';
 			Ui::form_close();
 		}
 		Ui::footer();

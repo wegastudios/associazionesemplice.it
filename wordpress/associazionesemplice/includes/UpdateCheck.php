@@ -77,6 +77,7 @@ final class UpdateCheck {
 		$old = self::latest();
 		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
 			$msg = is_wp_error( $res ) ? $res->get_error_message() : 'Risposta ' . (int) wp_remote_retrieve_response_code( $res );
+			Audit::log( 'updates.check_failed', 'settings', 0, array( 'detail' => $msg ) );
 			update_option( self::OPT, array_merge( $old, array( 'checked_at' => Db::now(), 'error' => $msg ) ), false );
 			return false;
 		}
@@ -119,7 +120,7 @@ final class UpdateCheck {
 		}
 		$when = mysql2date( 'd/m/Y H:i', (string) $l['checked_at'] );
 		if ( '' !== (string) $l['error'] ) {
-			return 'Aggiornamenti: ultimo controllo del ' . $when . ' non riuscito (' . $l['error'] . ').';
+			return 'Aggiornamenti: il controllo del ' . $when . ' non è riuscito. Riprova più tardi.'; // il dettaglio tecnico sta nel registro azioni
 		}
 		$pending = self::pending();
 		if ( $pending ) {

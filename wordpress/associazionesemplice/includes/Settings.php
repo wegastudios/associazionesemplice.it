@@ -14,6 +14,7 @@ final class Settings {
 	}
 
 	const DEFAULT_PAYMENT_HINT = 'Puoi pagare in sede, in segreteria.';
+	const OLD_PAYMENT_HINT     = 'Il pagamento si effettua in sede presso la segreteria.'; // il testo predefinito fino alla 1.3.30
 
 	/** @var array|null valori predefiniti, costruiti una sola volta per richiesta (non dipendono da nulla che cambi) */
 	private static $defaults_cache = null;
@@ -132,7 +133,11 @@ final class Settings {
 			return RequestMemo::get( 'settings', 'all' );
 		}
 		$saved = get_option( self::OPTION, array() );
-		return RequestMemo::put( 'settings', 'all', array_merge( self::defaults(), is_array( $saved ) ? $saved : array() ), array( $GLOBALS['wpdb']->options ) );
+		$all   = array_merge( self::defaults(), is_array( $saved ) ? $saved : array() );
+		if ( self::OLD_PAYMENT_HINT === ( $all['payment_hint'] ?? '' ) ) { // il testo di prima, mai cambiato dall'associazione: vale quello nuovo (un testo scritto da lei resta com'è)
+			$all['payment_hint'] = self::DEFAULT_PAYMENT_HINT;
+		}
+		return RequestMemo::put( 'settings', 'all', $all, array( $GLOBALS['wpdb']->options ) );
 	}
 
 	/** Dopo ogni scrittura dell'opzione delle impostazioni (anche da copie di sicurezza e aggiornamenti): si rilegge dal database. */
