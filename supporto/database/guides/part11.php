@@ -170,7 +170,7 @@ L'avviso elenca, con il link per correggere:
 - spese con beneficiario non attribuite;
 - sbilancio oltre le soglie;
 - voci fuori preventivo;
-- movimenti senza categoria vera.
+- movimenti senza una voce precisa.
 
 ## Approvare una discrepanza a mano
 
