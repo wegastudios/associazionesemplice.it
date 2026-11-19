@@ -616,7 +616,7 @@ class PeopleService {
 			throw new \InvalidArgumentException( 'Inserisci il tuo numero di cellulare.' );
 		}
 		if ( strlen( $password ) < MemberPassword::MIN_LENGTH ) {
-			throw new \InvalidArgumentException( 'La password deve avere almeno ' . MemberPassword::MIN_LENGTH . ' caratteri.' );
+			throw new \InvalidArgumentException( 'La password deve avere almeno ' . (int) MemberPassword::MIN_LENGTH . ' caratteri.' );
 		}
 		if ( get_user_by( 'email', $email ) ) {
 			throw new \InvalidArgumentException( 'Questa email è già registrata sul sito: usa «Password dimenticata» oppure scrivi alla segreteria.' );
