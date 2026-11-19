@@ -30,6 +30,9 @@ class GuideContentSeeder extends Seeder
     /** Argomenti del gestionale online (prodotto saas): tutti gli altri sono del plugin. */
     public const SAAS_TOPICS = ['gestionale'];
 
+    /** Sezioni rinominate: [argomento, vecchio slug, nuovo nome]. Si rinominano sul posto, senza ricreare gli articoli. */
+    private const SECTION_RENAMES = [['soci-e-tessere', 'area-riservata', 'Area soci']];
+
     /** @var array<string, string> articoli rinominati: lo slug vecchio si elimina, cosi non restano doppioni */
     public const RENAMED = ['anni-solari-e-rendiconto' => 'rendiconto-per-cassa-e-report'];
 
@@ -44,6 +47,16 @@ class GuideContentSeeder extends Seeder
                 ['slug' => $slug],
                 ['name' => $name, 'description' => $this->planNames($description), 'sort' => $sort++, 'is_public' => true, 'product' => in_array($slug, self::SAAS_TOPICS, true) ? 'saas' : 'plugin'],
             );
+        }
+
+        // Sezioni rinominate: si cambiano nome e slug sul posto, così gli articoli (e i loro id e indirizzi) restano gli stessi.
+        foreach (self::SECTION_RENAMES as [$topicSlug, $oldSlug, $newName]) {
+            $topic = $topics[$topicSlug] ?? null;
+            $old = $topic ? Section::query()->where('topic_id', $topic->id)->where('slug', $oldSlug)->first() : null;
+            $newSlug = Str::slug($newName);
+            if ($old && ! Section::query()->where('topic_id', $topic->id)->where('slug', $newSlug)->exists()) {
+                $old->forceFill(['name' => $newName, 'slug' => $newSlug])->save();
+            }
         }
 
         $sectionSort = [];

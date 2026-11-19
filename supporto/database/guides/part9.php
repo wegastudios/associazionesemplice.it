@@ -299,7 +299,7 @@ L'ingresso vale **dalla mezz'ora prima dell'inizio alla fine della fascia**, una
 MD,
     ],
     [
-        'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'convenzioni-per-i-soci',
+        'topic' => 'soci-e-tessere', 'section' => 'Area soci', 'slug' => 'convenzioni-per-i-soci',
         'title' => 'Offrire ai soci sconti e vantaggi: le convenzioni',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}

@@ -218,7 +218,7 @@ La tessera si ridimensiona da sola ed è identica a schermo e in stampa (**Stamp
 MD,
     ],
     [
-        'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'area-riservata-dei-soci',
+        'topic' => 'soci-e-tessere', 'section' => 'Area soci', 'slug' => 'area-riservata-dei-soci',
         'title' => 'Creare l\'area soci',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
@@ -248,7 +248,7 @@ L'area soci è la pagina dove ogni socio trova il suo spazio: tessera, attività
 MD,
     ],
     [
-        'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'primo-accesso-e-soci-senza-email',
+        'topic' => 'soci-e-tessere', 'section' => 'Area soci', 'slug' => 'primo-accesso-e-soci-senza-email',
         'title' => 'Primo accesso dei soci e soci senza email',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
@@ -283,7 +283,7 @@ Puoi indicare la pagina dell'informativa privacy e un regolamento: chi attiva il
 MD,
     ],
     [
-        'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'accesso-dei-soci-link-codice-o-utente-wordpress',
+        'topic' => 'soci-e-tessere', 'section' => 'Area soci', 'slug' => 'accesso-dei-soci-link-codice-o-utente-wordpress',
         'title' => 'Come entrano i soci: link, codice o utente WordPress',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
