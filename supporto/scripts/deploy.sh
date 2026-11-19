@@ -56,7 +56,7 @@ if [ "$("${SSH[@]}" "cat $SUMFILE 2>/dev/null || true")" != "$SUM" ]; then SEED=
 [ $SEED = 0 ] || echo "  Le guide sono cambiate: le riseminerò."
 
 echo "3/4 Aggiorno il server"
-"${SSH[@]}" "cd $REMOTE_DIR && $PHP artisan migrate --force && { [ $SEED = 0 ] || { $PHP artisan db:seed --class=GuideContentSeeder --force && echo $SUM > $SUMFILE; }; } && $PHP artisan view:clear && $PHP artisan config:clear"
+"${SSH[@]}" "cd $REMOTE_DIR && $PHP artisan migrate --force && { [ $SEED = 0 ] || { $PHP artisan db:seed --class=GuideContentSeeder --force && echo $SUM > storage/app/guide-content.sha; }; } && $PHP artisan view:clear && $PHP artisan config:clear"
 
 echo "4/4 Controllo il sito"
 if controlla; then
