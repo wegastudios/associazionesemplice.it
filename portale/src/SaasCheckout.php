@@ -337,8 +337,8 @@ final class SaasCheckout {
 			$vars  = array(
 				'nome' => $name,'associazione' => (string) ( $org['name'] ?? '' ), 'piano' => $plan,
 				'periodo' => 'year' === $order['period'] ? 'annuale' : 'mensile', 'scadenza' => date_it( $until . ' 00:00:00' ),
-				// Sospeso il giorno dopo la scadenza; dati conservati 180 giorni dalla sospensione (decisione della titolare, 13/11/2026).
-				'data_cancellazione' => date_it( gmdate( 'Y-m-d', strtotime( $until . ' UTC +181 days' ) ) . ' 00:00:00' ),
+				// Sospeso il giorno dopo la scadenza; l'ultimo giorno con i dati è scadenza + 180 giorni (il gestionale elimina quando sono passati) (decisione della titolare, 13/11/2026).
+				'data_cancellazione' => date_it( gmdate( 'Y-m-d', strtotime( $until . ' UTC +180 days' ) ) . ' 00:00:00' ),
 				'importo' => money( $total ) . ( 'exempt' === ( $q['vat_mode'] ?? '' ) ? ' (senza IVA)' : ' (IVA inclusa)' ),
 				'gestionale_url' => rtrim( (string) Config::get( 'saas_app_url', 'https://app.associazionesemplice.it/gestionale' ), '/' ),
 				'link_password' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/accedi/password-dimenticata',

@@ -65,7 +65,7 @@ final class SaasAccount {
 		}
 		return array(
 			'total'     => $total, 'since' => $until,
-			'delete_on' => '' !== $until ? gmdate( 'Y-m-d', strtotime( $until . ' UTC +181 days' ) ) : '',
+			'delete_on' => '' !== $until ? gmdate( 'Y-m-d', strtotime( $until . ' UTC +180 days' ) ) : '',
 			'pay_now'   => $payNow,
 		);
 	}
