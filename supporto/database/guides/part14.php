@@ -61,7 +61,7 @@ I soci devono sapere **a chi scrivere**. Li trovano:
 
 - nelle **email** che ricevono dal programma: la segreteria è l'indirizzo di risposta e l'email finisce con la riga «Segreteria: email · tel.»;
 - nell'**informativa sulla privacy**;
-- nell'**area soci**;
+- nell'area soci;
 - nel **modulo di adesione online**: «Per esercitare i tuoi diritti scrivi a … o chiama …»;
 - nel messaggio che legge il socio quando non riesce a scaricare una ricevuta.
 

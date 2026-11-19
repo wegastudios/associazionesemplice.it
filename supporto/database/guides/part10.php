@@ -27,12 +27,12 @@ I soci con la **tessera in regola**, non sospesi e non usciti. Tutori e ospiti n
 
 ## Le deleghe
 
-- Il socio sceglie un altro socio dalla sua **area soci**, sezione **«Assemblee»** (anche con lo shortcode `[associazionesemplice_assemblee]`).
+- Il socio sceglie un altro socio dalla sua area soci, sezione **«Assemblee»** (anche con lo shortcode `[associazionesemplice_assemblee]`).
 - Oppure la segreteria registra una **delega scritta** ricevuta.
 
 Le regole: ogni socio può dare **una sola delega** per assemblea e riceverne **al massimo 3** (5 se i soci sono almeno 500). Chi riceve una delega non può delegare, e chi ha delegato non può riceverne. Non si delega a chi non è socio in regola. 
 
-Dall'**area soci**, se il socio scelto non può ricevere la delega compare sempre lo stesso messaggio: «Non puoi scegliere questo socio come delegato: scegline un altro.» Il motivo (non è socio in regola, ha già delegato, ha già troppe deleghe) lo vede solo la **segreteria**.
+Dall'area soci, se il socio scelto non può ricevere la delega compare sempre lo stesso messaggio: «Non puoi scegliere questo socio come delegato: scegline un altro.» Il motivo (non è socio in regola, ha già delegato, ha già troppe deleghe) lo vede solo la **segreteria**.
 
 ## Presenze e numero legale
 
@@ -43,7 +43,7 @@ Il numero legale si scrive **assemblea per assemblea**, in percentuale degli ave
 
 ## Chiudere e creare il verbale
 
-1. Premi **«Chiudi: svolta in prima (o seconda) convocazione»**. Servono almeno una presenza e il numero legale raggiunto. Dopo la chiusura l'assemblea **non si modifica più**. Nemmeno le assemblee di un **anno fiscale chiuso** si modificano, svolte o no: per cambiarle riapri l'ultimo anno chiuso dalla pagina «Anni fiscali».
+1. Premi **«Chiudi: svolta in prima (o seconda) convocazione»**. Servono almeno una presenza e il numero legale raggiunto. Dopo la chiusura l'assemblea **non si modifica più**. Nemmeno le assemblee di un anno fiscale chiuso si modificano, svolte o no: per cambiarle riapri l'ultimo anno chiuso dalla pagina «Anni fiscali».
 2. Premi **Crea il verbale**: nasce il verbale in **Registri → Verbali**, già compilato con presenti, rappresentati per delega, numero legale e ordine del giorno. Resta da scrivere lo svolgimento. C'è un verbale per assemblea. Il verbale ha un **numero fisso** alla creazione (progressivo per anno fiscale della riunione), che non cambia e non viene mai riassegnato.
 3. **Foglio presenze (CSV)** scarica l'elenco di tutti i soci con presente, delegato o assente.
 
@@ -100,7 +100,7 @@ Qui gestisci le richieste di rimborso dei volontari, dall'approvazione al pagame
 
 ## Chi chiede il rimborso
 
-Il **volontario** lo chiede dall'**area soci**, sezione **«Rimborsi spese»** (anche con lo shortcode `[associazionesemplice_rimborsi]`). La segreteria può registrare una richiesta per lui da **Cassa → Rimborsi**. La voce compare solo ai volontari: gli altri soci non vedono nulla e le spese le gestisce la segreteria. Tutori e ospiti non sono soci e non chiedono rimborsi.
+Il **volontario** lo chiede dall'area soci, sezione **«Rimborsi spese»** (anche con lo shortcode `[associazionesemplice_rimborsi]`). La segreteria può registrare una richiesta per lui da **Cassa → Rimborsi**. La voce compare solo ai volontari: gli altri soci non vedono nulla e le spese le gestisce la segreteria. Tutori e ospiti non sono soci e non chiedono rimborsi.
 
 ## I tre tipi
 

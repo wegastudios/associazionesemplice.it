@@ -28,12 +28,12 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 
 ## Da sapere
 
-- Le **colonne con gli anni** (2023, 2024…) indicano l'**anno fiscale** della tessera. Se il tuo anno fiscale non inizia a gennaio, la colonna «2025» vale per la tessera «2025/2026»: l'anteprima lo dice riga per riga, per esempio «Iscritto: Anno 2025 → tessera 2025/2026».
+- Le **colonne con gli anni** (2023, 2024…) indicano l'anno fiscale della tessera. Se il tuo anno fiscale non inizia a gennaio, la colonna «2025» vale per la tessera «2025/2026»: l'anteprima lo dice riga per riga, per esempio «Iscritto: Anno 2025 → tessera 2025/2026».
 - I soci già presenti vengono **aggiornati** (riconosciuti per tessera, email, codice fiscale o nome): importare due volte lo stesso file non crea doppioni.
-- Se l'importazione tocca un **anno fiscale chiuso**, può fermarsi con il messaggio «L'anno … è chiuso…»: [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) se è l'ultimo chiuso, oppure correggi il file.
+- Se l'importazione tocca un anno fiscale chiuso, può fermarsi con il messaggio «L'anno … è chiuso…»: [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) se è l'ultimo chiuso, oppure correggi il file.
 - Limiti: 5000 righe per tipo e 20 MB per file. Le formule di Excel si leggono con il risultato salvato.
 - In alternativa puoi usare **WP All Import**: valgono le stesse regole.
-- Anche la **prima nota** si può importare da file: vedi [Importare ed esportare la prima nota](guida:importare-ed-esportare-la-prima-nota).
+- Anche la prima nota si può importare da file: vedi [Importare ed esportare la prima nota](guida:importare-ed-esportare-la-prima-nota).
 MD,
     ],
     [
@@ -56,7 +56,7 @@ Se preferisci un utente WordPress per ogni socio (per esempio per usare WooComme
 
 ## Come dura la tessera
 
-La tessera segue l'**anno fiscale**, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**, alla domanda «Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?»). Con gennaio vale da gennaio a dicembre, scade il 31/12 e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2025/2026**». I soci fondatori hanno la tessera sempre rinnovata.
+La tessera segue l'anno fiscale, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**, alla domanda «Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?»). Con gennaio vale da gennaio a dicembre, scade il 31/12 e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2025/2026**». I soci fondatori hanno la tessera sempre rinnovata.
 
 Negli ultimi giorni prima della scadenza (30, se non hai cambiato i giorni dell'avviso) si può **rinnovare in anticipo**. L'anno fiscale è anche quello delle **quote** e degli **incassi**, iscrizioni comprese; l'**anno delle attività** è invece solo il calendario di corsi ed eventi e non c'entra con la tessera.
 
@@ -137,7 +137,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-I permessi si assegnano dalla **scheda del socio**: contano il ruolo e le cariche che gli dai lì, non solo i ruoli di WordPress.
+I permessi si assegnano dalla scheda del socio: contano il ruolo e le cariche che gli dai lì, non solo i ruoli di WordPress.
 
 ## I ruoli
 

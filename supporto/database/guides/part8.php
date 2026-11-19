@@ -35,7 +35,7 @@ Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del
 1. Apri la domanda dalla Bacheca.
 2. Premi **Approva** e conferma il **numero di tessera** (il programma propone il successivo libero). Oppure premi **Rifiuta**.
 
-- **Se approvi**, la persona entra nel **libro soci** e riceve un'email con il **link per scegliere email e password**.
+- **Se approvi**, la persona entra nel libro soci e riceve un'email con il **link per scegliere email e password**.
 - **Se rifiuti**, la domanda sparisce e chi l'aveva inviata riceve un breve avviso. Se non c'è stato un pagamento, non resta alcun dato personale.
 
 ## Controllo dei doppioni e protezioni
@@ -57,7 +57,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Un minore si registra con **uno o due genitori o tutori**, anche non soci e senza email. Sul sito però **agisce solo il primo**: gestisce per il minore tessera, prenotazioni, pagamenti e avvisi. Per i minori già registrati vale il primo tutore già collegato. Nel **libro soci** il minore prende le date (domanda, delibera) di questo tutore.
+Un minore si registra con **uno o due genitori o tutori**, anche non soci e senza email. Sul sito però **agisce solo il primo**: gestisce per il minore tessera, prenotazioni, pagamenti e avvisi. Per i minori già registrati vale il primo tutore già collegato. Nel libro soci il minore prende le date (domanda, delibera) di questo tutore.
 
 ## Registrare un minore
 

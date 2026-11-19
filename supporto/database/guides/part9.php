@@ -29,7 +29,7 @@ In ogni caso vota solo chi ha il **diritto di voto**, cioè **tutti i soci maggi
 
 ## Come votano i soci
 
-Dall'**area soci**, nella sezione **«Votazioni e sondaggi»**. Si vota **una volta sola** e la risposta non si può cambiare. Per mostrare la sezione in una pagina del sito usa lo shortcode `[associazionesemplice_votazioni]`.
+Dall'area soci, nella sezione **«Votazioni e sondaggi»**. Si vota una volta sola e la risposta non si può cambiare. Per mostrare la sezione in una pagina del sito usa lo shortcode `[associazionesemplice_votazioni]`.
 
 ## Voto palese e voto segreto
 
@@ -51,7 +51,7 @@ Con **«Avvisa i soci per email»** attivo e i promemoria accesi (**Impostazioni
 
 - Dopo il **primo voto** non si cambiano più le risposte, il tipo di scelta, il voto segreto e chi può votare. Restano modificabili titolo, chiusura e avvisi.
 - Per cambiare altro, o per correggere dei voti, crea una **nuova votazione**: i voti non si possono riaprire.
-- Votazioni e sondaggi di un **anno fiscale chiuso**, e i relativi verbali, non si modificano più.
+- Votazioni e sondaggi di un anno fiscale chiuso, e i relativi verbali, non si modificano più.
 - I dati delle votazioni sono inclusi nella [copia di sicurezza](guida:copia-di-sicurezza-e-ripristino); l'azzeramento dei dati li cancella.
 
 ## Un socio non vede la votazione
@@ -327,7 +327,7 @@ In **Bacheca** il riquadro **«Convenzioni in scadenza»** mostra quelle che fin
 
 ## Cosa vedono i soci
 
-Nell'**area soci**, sezione **Convenzioni** (o con lo shortcode `[associazionesemplice_convenzioni_soci]` in una pagina). Vedono le convenzioni in corso che spettano a loro e possono filtrarle per categoria. Serve una **tessera valida oggi** e il tipo di socio previsto.
+Nell'area soci, sezione **Convenzioni** (o con lo shortcode `[associazionesemplice_convenzioni_soci]` in una pagina). Vedono le convenzioni in corso che spettano a loro e possono filtrarle per categoria. Serve una **tessera valida oggi** e il tipo di socio previsto.
 
 **Non le vedono**: soci sospesi, con tessera scaduta o usciti, ospiti, e genitori o tutori che non sono soci (nemmeno per i figli minori).
 
@@ -343,7 +343,7 @@ Le pagine con questi shortcode sono sempre aggiornate: una convenzione scaduta s
 
 Nella scheda della convenzione, il pulsante **«Avvisa i soci della nuova convenzione»** manda un'email a tutti i soci a cui spetta (tessera valida e tipo previsto) con il vantaggio e il rimando all'area soci. Prima dell'invio la pagina dice quanti soci hanno un indirizzo email.
 
-- Funziona solo se la convenzione è **in corso** e ogni socio riceve l'email **una volta sola**.
+- Funziona solo se la convenzione è **in corso** e ogni socio riceve l'email una volta sola.
 - Parte anche con i promemoria spenti («Promemoria attivi» in **Impostazioni → Privacy e regolamento**).
 - Per un minore l'email va al tutore.
 - **Una volta partito, l'avviso non si può inviare di nuovo.** Se invece non parte nessuna email (per esempio mancano gli indirizzi o la posta non funziona), l'avviso non risulta usato e puoi **riprovare**. Per scrivere ancora ai soci usa **Rubrica soci → Comunicazioni**.
@@ -373,7 +373,7 @@ Oltre alle email puoi scrivere ai soci per **SMS**, con Brevo o Twilio. Gli SMS 
 Per scrivere a qualcuno per SMS, o per iscriverlo alla newsletter, serve il suo **consenso**. Lo registri in due modi:
 
 - nella **scheda della persona**, riquadro **«Consensi SMS e newsletter»**, se il consenso è su modulo cartaceo o a voce;
-- oppure lo dà il socio da solo, nell'**area soci**, sezione **«Le mie comunicazioni»**.
+- oppure lo dà il socio da solo, nell'area soci, sezione **«Le mie comunicazioni»**.
 
 Si può **revocare quando si vuole**: da quel momento non parte più nulla. I consensi sono compresi nell'**esportazione dei dati** della persona.
 
@@ -475,7 +475,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Il **libro soci** è il registro ufficiale delle persone iscritte, in **Registri → Libro soci**. È completo: per ogni socio riporta
+Il libro soci è il registro ufficiale delle persone iscritte, in **Registri → Libro soci**. È completo: per ogni socio riporta
 
 - la **data della domanda** e la **data della delibera**;
 - il **luogo di nascita** e la **residenza**;
@@ -488,7 +488,7 @@ Lo scarichi in **PDF** e in **CSV**.
 
 ## Un libro per ogni anno fiscale
 
-Il libro soci **segue l'anno fiscale**. Finché l'anno è aperto il libro è una **bozza**; quando [chiudi l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) diventa **definitivo** e non cambia più. Per vedere un anno, sceglilo in **Registri → Libro soci**. Ogni socio ha una **matricola fissa** e ogni riga un **numero**.
+Il libro soci **segue l'anno fiscale**. Finché l'anno è aperto il libro è una bozza; quando [chiudi l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) diventa definitivo e non cambia più. Per vedere un anno, sceglilo in **Registri → Libro soci**. Ogni socio ha una **matricola fissa** e ogni riga un **numero**.
 
 Per gli anni chiusi quando il libro definitivo non c'era ancora, premi **«Emetti i documenti definitivi degli anni già chiusi»** nella pagina Anni fiscali: il libro esce con la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.»
 
@@ -500,7 +500,7 @@ Nella scheda del socio trovi anche il **tipo di tesseramento** (atleta, istrutto
 
 ## Tenerlo completo
 
-1. Compila questi dati nella **scheda del socio**.
+1. Compila questi dati nella scheda del socio.
 2. Se i soci arrivano dalla **domanda di adesione online**, il modulo chiede già luogo di nascita e residenza (vedi [Ricevere le domande di adesione online](guida:domanda-di-adesione-online)). Quando approvi la domanda, controlla la data della delibera.
 3. Per i soci che escono, registra il recesso dalla scheda: restano nel libro con quella data.
 
@@ -515,7 +515,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Il **registro azioni** tiene traccia di ciò che si fa nel plugin (chi ha cambiato cosa e quando). Col tempo occupa spazio sul sito: qui vedi quanto, e come liberarlo.
+Il registro azioni tiene traccia di ciò che si fa nel plugin (chi ha cambiato cosa e quando). Col tempo occupa spazio sul sito: qui vedi quanto, e come liberarlo.
 
 ## Vedere lo spazio occupato
 

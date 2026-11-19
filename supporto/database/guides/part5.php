@@ -55,7 +55,7 @@ Questa parte serve a chi deve preparare i documenti per il commercialista. L'ape
 
 ## Bozza e definitivo
 
-Prima della chiusura dell'anno fiscale il rendiconto è una **bozza**: i numeri sono quelli di oggi e possono cambiare. Alla chiusura viene emesso il **rendiconto definitivo**, bloccato e con un PDF numerato («n. 1/2026»): non cambia più. Per gli anni già chiusi, nella pagina **Anni fiscali**, **«Emetti il rendiconto definitivo»** o **«Emetti i documenti definitivi degli anni già chiusi»** lo emettono ora; il documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.»
+Prima della chiusura dell'anno fiscale il rendiconto è una bozza: i numeri sono quelli di oggi e possono cambiare. Alla chiusura viene emesso il **rendiconto definitivo**, bloccato e con un PDF numerato («n. 1/2026»): non cambia più. Per gli anni già chiusi, nella pagina **Anni fiscali**, **«Emetti il rendiconto definitivo»** o **«Emetti i documenti definitivi degli anni già chiusi»** lo emettono ora; il documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.»
 
 > Il rendiconto è un documento di lavoro: fallo verificare dal commercialista prima dell'approvazione.
 
@@ -142,7 +142,7 @@ Da **Registri → Assicurazioni** puoi accendere, separatamente:
 
 ## Altri registri
 
-Il **libro soci** e i **verbali** (assemblee e consiglio, con numerazione e firme) sono nello stesso menu e fanno parte anche della versione gratuita.
+Il libro soci e i **verbali** (assemblee e consiglio, con numerazione e firme) sono nello stesso menu e fanno parte anche della versione gratuita.
 MD,
     ],
     [
@@ -163,7 +163,7 @@ Con il plugin gratuito c'è una sola quota (con l'opzione socio fondatore). Con 
    - il **diritto di voto** («sì» o «no»): conta nelle votazioni, nel numero legale delle assemblee e nei [Dati per il RUNTS](guida:dati-per-il-runts). I minorenni non votano mai.
 3. Salva.
 
-Chi non ha un livello assegnato usa il nome della base e la quota predefinita: per i soci che hai già non devi cambiare nulla. Un livello con dei soci non si elimina: si disattiva. Nella **scheda del socio**, se il livello assegnato è stato disattivato, compare come **«Nome (non attivo)»** e resta valido per quel socio; agli altri soci si propongono solo i livelli attivi.
+Chi non ha un livello assegnato usa il nome della base e la quota predefinita: per i soci che hai già non devi cambiare nulla. Un livello con dei soci non si elimina: si disattiva. Nella scheda del socio, se il livello assegnato è stato disattivato, compare come **«Nome (non attivo)»** e resta valido per quel socio; agli altri soci si propongono solo i livelli attivi.
 
 ## Nucleo familiare
 
@@ -304,7 +304,7 @@ MD,
 
 ## Anonimizzare una persona
 
-L'anonimizzazione toglie nome, contatti, codice fiscale, tessera e note, scollega (ed elimina, se è solo un socio) l'utente del sito e sostituisce il nome nelle descrizioni dei movimenti. **I movimenti contabili restano**, per l'obbligo di conservazione; le descrizioni dei movimenti di un **anno fiscale chiuso** non vengono riscritte.
+L'anonimizzazione toglie nome, contatti, codice fiscale, tessera e note, scollega (ed elimina, se è solo un socio) l'utente del sito e sostituisce il nome nelle descrizioni dei movimenti. **I movimenti contabili restano**, per l'obbligo di conservazione; le descrizioni dei movimenti di un anno fiscale chiuso non vengono riscritte.
 
 1. Apri la scheda della persona.
 2. Premi **Anonimizza** e conferma.

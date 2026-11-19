@@ -8,7 +8,7 @@ return [
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Un corso ha lezioni che si ripetono ogni settimana. Gli iscritti pagano **ogni mese** (rinnovo mensile) oppure **una volta sola** (pagamento unico).
+Un corso ha lezioni che si ripetono ogni settimana. Gli iscritti pagano **ogni mese** (rinnovo mensile) oppure una volta sola (pagamento unico).
 
 ## Cosa fare
 
@@ -75,7 +75,7 @@ Dopo, nell'elenco degli iscritti, accanto a ogni persona trovi lo stesso menu co
 ### Cosa succede al contributo
 
 - Il contributo dell'iscritto segue la variante in **«Pagamenti da incassare»**, nell'incasso già compilato e nei pagamenti online del socio.
-- Chi si iscrive da solo dall'**area soci** paga sempre la **quota base**. L'iscritto non vede il nome della variante, vede solo l'importo che deve; il nome lo vede la segreteria.
+- Chi si iscrive da solo dall'area soci paga sempre la **quota base**. L'iscritto non vede il nome della variante, vede solo l'importo che deve; il nome lo vede la segreteria.
 - L'incasso resta una normale quota del corso per il mese di competenza, senza il nome della variante.
 
 > **Se cambi variante**, il dovuto si **ricalcola per tutta l'iscrizione** con il prezzo della nuova variante, anche per i mesi già passati. I versamenti già registrati restano come sono e il saldo è «dovuto meno versato»: con un prezzo più basso può comparire un credito, con uno più alto una differenza da incassare. Nei corsi a rinnovo mensile o trimestrale ogni periodo successivo usa il nuovo prezzo.
@@ -146,7 +146,7 @@ Un evento ha una o più date e, se vuoi, posti limitati e un contributo.
 ## Regole utili
 
 - Tutte le date di un evento devono cadere nello stesso **anno delle attività**: altrimenti l'evento non viene salvato.
-- Se un incasso di un corso o di un evento cade in un **anno fiscale chiuso**, non si possono eliminare l'evento o l'iscrizione né cedere il posto: va prima riaperto l'ultimo anno chiuso.
+- Se un incasso di un corso o di un evento cade in un anno fiscale chiuso, non si possono eliminare l'evento o l'iscrizione né cedere il posto: va prima riaperto l'ultimo anno chiuso.
 - Le date già presenti non si duplicano.
 - Per più date, usa l'evento ricorrente. In un evento ricorrente puoi aggiungere o togliere date con **«Aggiungi o elimina date»**.
 
@@ -233,7 +233,7 @@ Ogni evento e ogni corso può avere una **pagina pubblica** sul tuo sito, con lo
 
 ## Come nasce la pagina
 
-La pagina nasce da sola dall'attività e la trovi tra gli **«Eventi sul sito»**. Resta in **bozza** finché non la pubblichi: nessuno la vede prima.
+La pagina nasce da sola dall'attività e la trovi tra gli **«Eventi sul sito»**. Resta in bozza finché non la pubblichi: nessuno la vede prima.
 
 - Nella pagina scrivi la **descrizione**, carichi la **locandina** e scegli la **categoria**.
 - **Data, luogo, contributo e posti** non si scrivono lì: arrivano dall'attività e restano sempre aggiornati.
@@ -263,7 +263,7 @@ Nelle **date ricorrenti** questo campo non c'è: lì **«fino al»** indica fino
 
 ## Cosa succede se l'evento cambia
 
-- La pagina **non si elimina** finché l'evento esiste: se non la vuoi più vedere, rimettila in **bozza**.
+- La pagina **non si elimina** finché l'evento esiste: se non la vuoi più vedere, rimettila in bozza.
 - Se **elimini l'evento**, la pagina va nel **cestino**.
 - Se l'evento viene **annullato**, scegli nella pagina se nasconderla o lasciarla con l'avviso «annullato».
 
@@ -291,7 +291,7 @@ Il pulsante **«Scrivici su WhatsApp»** usa il telefono della segreteria indica
 
 ## Se arrivi da The Events Calendar
 
-Con **Importa da The Events Calendar** si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento. Le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di partenza) pubblica solo quelle con una data futura. Gli eventi che si ripetono diventano **un solo evento ricorrente**. Si importa anche la **data di fine**, quindi gli eventi su più giorni restano su più giorni. Se l'evento dura più di 31 giorni, le date restano scritte nelle note. Rilanciando l'importazione non nascono doppioni e una pagina già scritta non viene toccata.
+Con **Importa da The Events Calendar** si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento. Le pagine restano in bozza; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di partenza) pubblica solo quelle con una data futura. Gli eventi che si ripetono diventano **un solo evento ricorrente**. Si importa anche la **data di fine**, quindi gli eventi su più giorni restano su più giorni. Se l'evento dura più di 31 giorni, le date restano scritte nelle note. Rilanciando l'importazione non nascono doppioni e una pagina già scritta non viene toccata.
 
 ## Pubblicare le pagine in bozza
 

@@ -58,7 +58,7 @@ Per un ente basta uno tra Codice fiscale, Email, Cellulare e Numero tessera.
 
 ## Dove compaiono
 
-Nel **libro soci** gli enti hanno la colonna **«Tipo»** e nei **Dati per il RUNTS** sono contati a parte. Un ente non è una persona fisica: il diritto di voto delle persone e il numero dei maggiorenni non lo riguardano.
+Nel libro soci gli enti hanno la colonna **«Tipo»** e nei **Dati per il RUNTS** sono contati a parte. Un ente non è una persona fisica: il diritto di voto delle persone e il numero dei maggiorenni non lo riguardano.
 MD,
     ],
     [
@@ -117,7 +117,7 @@ Senza «Anagrafica soci», i campi che scelgono una persona (chi paga, chi iscri
 
 ## Che cosa resta solo agli amministratori
 
-Queste funzioni il dipendente **non le ha mai**, qualunque spunta abbia: tutte le **impostazioni** (dati dell'ente, soci e quote, aspetto, bonifico, donazioni, tessera e QR, privacy e regolamento, limiti e soglie, testi e lingua, pagamenti online), gli **anni fiscali e le chiusure**, la **copia di sicurezza e il ripristino**, il **registro azioni**, le **integrazioni**, la **procedura guidata**, l'**azzeramento dei dati**, l'**eliminazione definitiva** di attività e iscrizioni, la **cifratura e la cartella riservata**, l'**anonimizzazione dei dati** e la **gestione dei dipendenti**. Restano fuori anche le azioni personali di ciascuno (chiudere un avviso, la guida iniziale, le notifiche del proprio dispositivo) e quelle dell'area soci.
+Queste funzioni il dipendente **non le ha mai**, qualunque spunta abbia: tutte le **impostazioni** (dati dell'ente, soci e quote, aspetto, bonifico, donazioni, tessera e QR, privacy e regolamento, limiti e soglie, testi e lingua, pagamenti online), gli **anni fiscali e le chiusure**, la **copia di sicurezza e il ripristino**, il registro azioni, le **integrazioni**, la **procedura guidata**, l'**azzeramento dei dati**, l'**eliminazione definitiva** di attività e iscrizioni, la **cifratura e la cartella riservata**, l'**anonimizzazione dei dati** e la **gestione dei dipendenti**. Restano fuori anche le azioni personali di ciascuno (chiudere un avviso, la guida iniziale, le notifiche del proprio dispositivo) e quelle dell'area soci.
 
 ## Chi entra nel pannello
 

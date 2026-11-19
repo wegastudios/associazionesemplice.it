@@ -115,7 +115,7 @@ Associazione Semplice Pro è un plugin a parte, che si aggiunge a quello gratuit
 
 ## Cosa fare
 
-1. Scarica il file di Pro dall'**area riservata** del sito associazionesemplice.it.
+1. Scarica il file di Pro dall'area riservata del sito associazionesemplice.it.
 2. In WordPress vai su **Plugin → Aggiungi nuovo → Carica plugin**, seleziona il file e premi **Installa ora**.
 3. Premi **Attiva**.
 4. Vai in **Impostazioni → Licenza** e inserisci la chiave. Premi **Controlla adesso**.
@@ -295,7 +295,7 @@ Ogni licenza è legata a un dominio. Se sposti il sito su un indirizzo nuovo, ag
 
 ## Cosa fare
 
-1. Entra nell'**area riservata** di associazionesemplice.it.
+1. Entra nell'area riservata di associazionesemplice.it.
 2. Apri la licenza che vuoi spostare.
 3. Scegli di cambiare il dominio e scrivi quello nuovo, senza `https://` e senza `www`, per esempio `miaassociazione.it`.
 4. Conferma.

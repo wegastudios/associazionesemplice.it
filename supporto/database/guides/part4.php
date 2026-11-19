@@ -8,7 +8,7 @@ return [
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale} (cassa per più persone e IVA: Pro)
 
-Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra nella **prima nota**. Il plugin ricalcola sempre importi e voci.
+Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra nella prima nota. Il plugin ricalcola sempre importi e voci.
 
 ## Cosa fare
 
@@ -64,7 +64,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-L'**anno fiscale** (l'«esercizio», per il commercialista) è l'anno della contabilità: la prima nota è divisa per anno fiscale. Solo gli amministratori possono aprirlo, chiuderlo e riaprirlo. Di partenza coincide con l'anno solare; il mese di inizio si sceglie in **Dati dell'ente** (vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale)).
+L'anno fiscale (l'«esercizio», per il commercialista) è l'anno della contabilità: la prima nota è divisa per anno fiscale. Solo gli amministratori possono aprirlo, chiuderlo e riaprirlo. Di partenza coincide con l'anno solare; il mese di inizio si sceglie in **Dati dell'ente** (vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale)).
 
 ## Aprire l'anno fiscale nuovo
 
@@ -96,7 +96,7 @@ Se un anno fiscale passato è ancora aperto e le uscite superano le entrate, il 
 
 ## Il libro soci dell'anno fiscale
 
-Alla chiusura il **libro soci** di quell'anno fiscale diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più. Prima della chiusura è una **bozza**: i numeri sono quelli di oggi e possono cambiare. Si scarica in PDF e in CSV (vedi [Il libro soci completo](guida:libro-soci-completo)). Per gli anni chiusi che non hanno ancora il libro soci definitivo compare **«Emetti i documenti definitivi degli anni già chiusi»**: ogni documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» L'emissione non si può annullare.
+Alla chiusura il libro soci di quell'anno fiscale diventa definitivo: viene pubblicato e bloccato a quel momento e non cambia più. Prima della chiusura è una bozza: i numeri sono quelli di oggi e possono cambiare. Si scarica in PDF e in CSV (vedi [Il libro soci completo](guida:libro-soci-completo)). Per gli anni chiusi che non hanno ancora il libro soci definitivo compare **«Emetti i documenti definitivi degli anni già chiusi»**: ogni documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» L'emissione non si può annullare.
 
 ## Riaprire un anno fiscale
 
@@ -104,7 +104,7 @@ Si riapre **solo l'ultimo anno fiscale chiuso**, dalla stessa pagina con **Riapr
 
 ## La quota associativa
 
-La quota e la tessera seguono l'**anno fiscale** (vedi [Come dura la tessera](guida:iscrivere-un-socio-e-rinnovare-la-tessera)).
+La quota e la tessera seguono l'anno fiscale (vedi [Come dura la tessera](guida:iscrivere-un-socio-e-rinnovare-la-tessera)).
 
 ## Con Pro
 
@@ -317,7 +317,7 @@ Ogni incasso può avere una **ricevuta in PDF**, numerata e con il nome dell'ass
 
 ## Cosa contiene
 
-- Un numero progressivo **N/AAAA**, per **anno fiscale**, assegnato alla prima emissione e poi fisso: una ricevuta emessa non cambia più.
+- Un numero progressivo **N/AAAA**, per anno fiscale, assegnato alla prima emissione e poi fisso: una ricevuta emessa non cambia più.
 - La firma «Per l'associazione» con il nome del presidente, se assegnato, e una riga finale a tua scelta (per esempio un riferimento normativo).
 - Il titolo «Ricevuta di erogazione liberale» se sono solo donazioni.
 - Con la partita IVA, imponibile e IVA contenuta per ogni aliquota.
@@ -334,7 +334,7 @@ Le ricevute più vecchie, emesse quando il sito non salvava ancora i dati, non h
 
 ## La pagina «Verifica delle ricevute»
 
-È solo per gli **amministratori**. La apri dai riquadri **«PDF definitivi delle ricevute»** (pagina **Anni fiscali**) e **«Ricevute: PDF definitivi»** (pagina **Copia di sicurezza**). Scegli l'**anno fiscale**: vedi quante ricevute sono «A posto», «PDF ancora da fissare», «Emesse prima che si salvassero i dati», «File mancanti» e «File diversi da quando sono stati emessi».
+È solo per gli **amministratori**. La apri dai riquadri **«PDF definitivi delle ricevute»** (pagina **Anni fiscali**) e **«Ricevute: PDF definitivi»** (pagina **Copia di sicurezza**). Scegli l'anno fiscale: vedi quante ricevute sono «A posto», «PDF ancora da fissare», «Emesse prima che si salvassero i dati», «File mancanti» e «File diversi da quando sono stati emessi».
 
 - **«Fissa i prossimi PDF»** fissa le ricevute ancora da fissare a gruppi di 100: se ne restano, premilo ancora.
 - **«Rifai dai dati salvati»** (per un file mancante o diverso) rifà il PDF dai dati salvati all'emissione, dopo una conferma. Il file diverso resta messo da parte e l'operazione resta nel registro azioni.
@@ -345,7 +345,7 @@ Finché un PDF non coincide con quello emesso, **scaricare quella ricevuta dà u
 
 ## Se annulli un incasso
 
-Se annulli un incasso, anche la ricevuta già emessa viene annullata, ma il suo **numero non si libera**. La ricevuta annullata non si vede più nell'**area soci** (il socio la chiede alla segreteria); alla segreteria resta, con il PDF **«RICEVUTA ANNULLATA»**.
+Se annulli un incasso, anche la ricevuta già emessa viene annullata, ma il suo **numero non si libera**. La ricevuta annullata non si vede più nell'area soci (il socio la chiede alla segreteria); alla segreteria resta, con il PDF **«RICEVUTA ANNULLATA»**.
 
 Se serve una nuova ricevuta, dopo l'annullo premi **«Emetti la ricevuta sostitutiva»**: prende un **numero nuovo** e la **data di oggi**, e vale solo per le voci rimaste. Non si può emettere se l'incasso o la sua data cadono in un anno fiscale chiuso.
 

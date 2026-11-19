@@ -127,7 +127,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'prova-gratuita-di-pro',
         'title' => 'Come funziona la prova gratuita di Pro?',
         'body' => <<<'MD'
-Se hai già la licenza gratuita, dall'**area riservata** di associazionesemplice.it puoi provare un piano Pro **per 30 giorni**, **una sola volta**.
+Se hai già la licenza gratuita, dall'area riservata di associazionesemplice.it puoi provare un piano Pro **per 30 giorni**, **una sola volta**.
 
 La prova ti dà una chiave a tempo sullo stesso dominio: inseriscila in **Impostazioni → Licenza**. Alla fine dei 30 giorni, se non passi a un piano a pagamento, il plugin torna alle funzioni di base e i tuoi dati restano intatti. Vedi [Passare a Pro, provarlo e rinnovare](guida:passare-a-pro-e-rinnovare).
 MD,
@@ -136,7 +136,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'disdire-il-rinnovo',
         'title' => 'Come posso disdire o cambiare piano?',
         'body' => <<<'MD'
-Dall'**area riservata** di associazionesemplice.it. I piani Pro si rinnovano da soli, ma puoi disdire il rinnovo, cambiare piano o aggiornare i dati di fatturazione in autonomia, senza vincoli.
+Dall'area riservata di associazionesemplice.it. I piani Pro si rinnovano da soli, ma puoi disdire il rinnovo, cambiare piano o aggiornare i dati di fatturazione in autonomia, senza vincoli.
 
 Se disdici, alla scadenza il plugin torna alle funzioni di base senza toccare i dati. Se hai pagato con Stripe, dall'area riservata puoi aprire anche il portale di fatturazione del fornitore.
 MD,
@@ -154,7 +154,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'quando-scade-la-tessera',
         'title' => 'Quando scade la tessera associativa?',
         'body' => <<<'MD'
-La tessera segue l'**anno fiscale**, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**, alla domanda «Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?»). Con gennaio vale da gennaio a dicembre, scade il 31/12 e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2025/2026**». I soci fondatori hanno la tessera sempre rinnovata.
+La tessera segue l'anno fiscale, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**, alla domanda «Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?»). Con gennaio vale da gennaio a dicembre, scade il 31/12 e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2025/2026**». I soci fondatori hanno la tessera sempre rinnovata.
 
 Negli ultimi giorni prima della scadenza (30, se non hai cambiato i giorni dell'avviso) si può **rinnovare in anticipo**. L'**anno delle attività** (corsi ed eventi) non c'entra con la tessera.
 
@@ -257,7 +257,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'ruoli-e-permessi-del-direttivo',
         'title' => 'Posso dare permessi diversi a segreteria, tesoriere e volontari?',
         'body' => <<<'MD'
-Sì, in tutte le versioni. I permessi si assegnano dalla **scheda del socio** e valgono solo finché la persona ha il ruolo (e, per le cariche, la tessera in regola):
+Sì, in tutte le versioni. I permessi si assegnano dalla scheda del socio e valgono solo finché la persona ha il ruolo (e, per le cariche, la tessera in regola):
 
 - **Segreteria**: gestisce soci, attività, incassi, registri e comunicazioni, senza impostazioni.
 - **Tesoriere**: incassa, registra le spese e iscrive nuovi soci dall'area soci, senza vedere comunicazioni e impostazioni.

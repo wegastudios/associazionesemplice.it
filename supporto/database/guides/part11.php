@@ -24,7 +24,7 @@ Un anno si chiama con **l'anno in cui inizia**: con inizio a luglio, il 2025 va 
 
 ## Cosa segue l'anno fiscale
 
-Seguono il mese scelto l'apertura e la chiusura degli anni fiscali, la **prima nota**, i **report**, il **rendiconto**, il **preventivo**, i **fondi per anno**, le **esportazioni e importazioni** e anche la **tessera** dei soci, le **quote** e gli **incassi** (iscrizioni comprese), il **libro soci** e i **rinnovi**.
+Seguono il mese scelto l'apertura e la chiusura degli anni fiscali, la prima nota, i **report**, il **rendiconto**, il **preventivo**, i **fondi per anno**, le **esportazioni e importazioni** e anche la **tessera** dei soci, le **quote** e gli **incassi** (iscrizioni comprese), il libro soci e i **rinnovi**.
 
 ## Cosa non cambia
 
@@ -73,7 +73,7 @@ La regola vale **solo per le spese documentate**, cioè con scontrino o fattura 
 ## Beneficiario e volontari
 
 - Se il **beneficiario lo scegli tu**, vale sempre la tua scelta.
-- Dall'**area soci** non c'è la scelta del beneficiario né del fondo: il beneficiario è **chi registra** la spesa.
+- Dall'area soci non c'è la scelta del beneficiario né del fondo: il beneficiario è **chi registra** la spesa.
 - Le spese di un volontario vanno solo sui suoi fondi. La parte che li supera resta in credito e si chiude da sola con i prossimi incassi dei suoi corsi.
 - L'elenco **«Volontari in credito»** si trova in **Cassa → Conti e fondi** e in **Bacheca**.
 - L'attribuzione automatica si accende e si spegne con l'impostazione **«Attribuzione automatica delle spese ai fondi»** in Limiti e soglie: è **accesa** di partenza.
@@ -100,7 +100,7 @@ Per i conti e i fondi in generale vedi [Conti, fondi e giroconti](guida:conti-fo
 
 ## Il prospetto dei rimborsi per persona
 
-Nella stessa pagina, la sezione **«Rimborsi e spese documentate per persona»** (con la scelta dell'**anno fiscale**) ha le colonne **Persona**, **Rimborsato dai fondi**, **Spese documentate attribuite**, **Differenza** (rimborsato meno documentato) e **Situazione**. I pulsanti sono **Esporta CSV** e **Scarica PDF per il rendiconto**. Se i conti non quadrano, in Bacheca compare un avviso che non blocca nulla (si regola con **«Avviso in Bacheca se rimborsi e spese non quadrano»**).
+Nella stessa pagina, la sezione **«Rimborsi e spese documentate per persona»** (con la scelta dell'anno fiscale) ha le colonne **Persona**, **Rimborsato dai fondi**, **Spese documentate attribuite**, **Differenza** (rimborsato meno documentato) e **Situazione**. I pulsanti sono **Esporta CSV** e **Scarica PDF per il rendiconto**. Se i conti non quadrano, in Bacheca compare un avviso che non blocca nulla (si regola con **«Avviso in Bacheca se rimborsi e spese non quadrano»**).
 MD,
     ],
     [
@@ -133,7 +133,7 @@ Non scattano nei **primi 3 mesi** dell'anno fiscale.
 
 ## Lo storico mensile
 
-Sempre in **Bilancio provvisorio**, la sezione **«Storico mensile»** ti fa scegliere l'**anno fiscale** e mostra i mesi uno per uno, con **Esporta CSV** (e PDF). A ogni fine mese il programma **salva da solo una foto** del consuntivo contro il preventivo, che poi **non cambia**. Se ne mancano, il pulsante **«Salva ora le foto dei mesi conclusi mancanti»** le recupera. Non parte nessuna email.
+Sempre in **Bilancio provvisorio**, la sezione **«Storico mensile»** ti fa scegliere l'anno fiscale e mostra i mesi uno per uno, con **Esporta CSV** (e PDF). A ogni fine mese il programma **salva da solo una foto** del consuntivo contro il preventivo, che poi **non cambia**. Se ne mancano, il pulsante **«Salva ora le foto dei mesi conclusi mancanti»** le recupera. Non parte nessuna email.
 
 ## Le impostazioni
 
@@ -192,7 +192,7 @@ Le approvate restano elencate con **chi e quando** le ha approvate (per esempio 
 2. Di partenza la chiusura **si ferma** e mostra l'elenco se ci sono rimborsi non documentati.
 3. Con l'opzione **«chiedi conferma»** compare l'elenco con una casella da spuntare per procedere.
 
-Dopo la chiusura le regolarizzazioni si fanno da **prima nota**.
+Dopo la chiusura le regolarizzazioni si fanno da prima nota.
 
 ## Le impostazioni
 
