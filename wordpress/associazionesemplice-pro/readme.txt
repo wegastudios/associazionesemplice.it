@@ -47,8 +47,9 @@ The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, 
 == Changelog ==
 
 = 1.3.18 =
-* Nuovo: nella riga del Pro in Plugin c'è il link «Controlla aggiornamenti», e nell'avviso di incompatibilità con Associazione Semplice il pulsante «Aggiorna il Pro». «Controlla di nuovo» di WordPress controlla subito anche il Pro.
-* Altro: corretto un errore che bloccava «Conferma e paga» quando si pagano i crediti dal QR.
+* Nuovo: nella pagina Plugin c'è il link «Controlla aggiornamenti». Il Pro ricontrolla da solo quando il plugin gratuito si aggiorna, anche da WordPress.org, e nell'avviso di incompatibilità c'è il pulsante per aggiornarlo.
+* Ottimizzazione: rivisti i testi del Pro.
+* Altro: corretto il pagamento con i crediti dal QR, che si fermava con un errore.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.17 =
