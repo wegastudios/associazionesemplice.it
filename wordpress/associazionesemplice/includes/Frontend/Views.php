@@ -210,7 +210,7 @@ final class Views {
 			$when = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . self::d( $until ) : '' );
 			return '<section class="asemf-section">'
 				. \AssociazioneSemplice\CardLayout::html( trim( $p['first_name'] . ' ' . $p['last_name'] ), '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '', $when, self::card_qr_svg( $p ), \AssociazioneSemplice\CardLayout::extras( $p ) )
-				. ( $active ? '' : '<p><span class="asemf-badge asemf-badge-bad">Tessera scaduta</span></p>' ) // sulla tessera stampabile compare solo se non è in regola
+				. ( $active ? '' : '<p><span class="asemf-badge asemf-badge-bad">Tessera non valida</span></p>' ) // sulla tessera stampabile compare solo se non è in regola
 				. (string) apply_filters( 'asem_card_extra', '', $p )
 				. '<p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button> <a class="asemf-btn" target="_blank" rel="noopener" href="' . esc_url( \AssociazioneSemplice\CardLayout::pdf_url( (int) $p['id'] ) ) . '">Scarica il PDF</a></p></section>';
 		}
@@ -225,7 +225,7 @@ final class Views {
 			. ( '' !== $ex['text'] ? '<div class="asemf-memcard-text">' . esc_html( $ex['text'] ) . '</div>' : '' )
 			. '<dl class="asemf-memcard-data"><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div>'
 			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>'
-			. ( $active ? '' : '<span class="asemf-badge asemf-badge-bad">Tessera scaduta</span>' )
+			. ( $active ? '' : '<span class="asemf-badge asemf-badge-bad">Tessera non valida</span>' )
 			. self::card_qr( $p ) . (string) apply_filters( 'asem_card_extra', '', $p )
 			. '</div><p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button> <a class="asemf-btn" target="_blank" rel="noopener" href="' . esc_url( \AssociazioneSemplice\CardLayout::pdf_url( (int) $p['id'] ) ) . '">Scarica il PDF</a></p></section>';
 	}
@@ -861,13 +861,13 @@ final class Views {
 			. '<h3>' . esc_html( $a['name'] ) . '</h3><p><strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong>'
 			. ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' ) . '</p>'
 			. '<dl class="asemf-dl asemf-counts"><div><dt>Prenotati</dt><dd>' . (int) $booked . ( null === $s['capacity'] ? '' : ' / ' . (int) $s['capacity'] ) . '</dd></div><div><dt>Presenti</dt><dd>' . (int) $present . '</dd></div>'
-			. '<div><dt>Da registrare</dt><dd>' . (int) ( $booked - $present ) . '</dd></div><div><dt>Contributo da versare</dt><dd>' . (int) $unpaid . '</dd></div></dl>'
+			. '<div><dt>Non entrati</dt><dd>' . (int) ( $booked - $present ) . '</dd></div><div><dt>Devono ancora pagare</dt><dd>' . (int) $unpaid . '</dd></div></dl>'
 			. ( $s['session_date'] !== $today ? '<p class="asemf-small asemf-muted">Gli ingressi si registrano nel giorno dell\'evento.</p>' : '' ) . self::seats_html( $s ) . $scan . (string) apply_filters( 'asem_checkin_extra', '', $s, $a ) . self::notice_form( $a, (int) $s['id'] );
 		if ( ! $booked ) {
 			return $html . '<p class="asemf-muted">Nessuna prenotazione.</p></section>';
 		}
 		return $html . '<div class="asemf-checkin-tools"><input type="search" class="asemf-search" placeholder="Cerca per nome" aria-label="Cerca per nome">'
-			. '<span class="asemf-filters"><button type="button" class="asemf-chip is-on" data-filter="all">Tutti</button><button type="button" class="asemf-chip" data-filter="out">Da registrare</button><button type="button" class="asemf-chip" data-filter="in">Presenti</button></span></div>'
+			. '<span class="asemf-filters"><button type="button" class="asemf-chip is-on" data-filter="all">Tutti</button><button type="button" class="asemf-chip" data-filter="out">Non entrati</button><button type="button" class="asemf-chip" data-filter="in">Presenti</button></span></div>'
 			. '<ul class="asemf-list asemf-booked-list">' . $list . '</ul>'
 			. ( $cancel ? '<p class="asemf-small asemf-muted">' . (int) $cancel . ' prenotazioni annullate non sono in elenco.</p>' : '' ) . '</section>';
 	}
@@ -1488,7 +1488,7 @@ final class Views {
 				$html .= self::form( 'asem_front_book', self::hidden( 'session_id', $s['id'] ) . $fields, 'Prenotati', false, 'asemf-inline' );
 			}
 		} elseif ( ! empty( $ctx['actor'] ) ) {
-			$html .= '<span class="asemf-small asemf-muted">La tessera non è valida: per prenotarti rinnova la quota associativa (' . ( Plugin::payments()->enabled() ? 'apri «Pagamenti» qui sopra o ' : '' ) . 'rivolgiti alla segreteria).</span>';
+			$html .= '<span class="asemf-small asemf-muted">La tessera non è valida: per prenotarti rinnova la quota associativa ' . ( Plugin::payments()->enabled() ? 'dalla tua area soci (sezione «Pagamenti») o ' : '' ) . 'in segreteria.</span>';
 		}
 		return $html . '</div></li>';
 	}

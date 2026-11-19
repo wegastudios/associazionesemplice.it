@@ -34,7 +34,7 @@ final class RefundsPage {
 		$status = Ui::get_str( 'status' );
 		$status = isset( RefundRules::statuses()[ $status ] ) ? $status : '';
 		Ui::header( 'Rimborsi ai volontari' );
-		echo '<p class="description">I volontari chiedono il rimborso dall\'area riservata (o la segreteria lo registra per loro). Chi approva e paga lo decide qui: il pagamento registra l\'uscita in prima nota e la collega alla richiesta. Per le spese documentate serve lo scontrino o la fattura; l\'autocertificazione vale fino a 10 € al giorno e 150 € al mese per volontario, solo se l\'assemblea ha deliberato i tipi di spesa.</p>';
+		echo '<p class="description">I volontari chiedono il rimborso dall\'area soci, oppure lo registri tu per loro. Qui approvi e paghi: il pagamento registra la spesa in prima nota e la collega alla richiesta. Per le spese documentate serve lo scontrino o la fattura; l\'autocertificazione vale fino a 10 € al giorno e 150 € al mese per volontario, solo se l\'assemblea ha deliberato i tipi di spesa.</p>';
 		$counts = Refunds::counts();
 		echo '<p>';
 		foreach ( RefundRules::statuses() as $k => $label ) {

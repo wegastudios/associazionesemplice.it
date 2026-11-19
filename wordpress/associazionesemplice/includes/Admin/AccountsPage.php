@@ -138,7 +138,7 @@ final class AccountsPage {
 		Ui::form_open( 'asem_add_account', $back );
 		echo '<table class="form-table"><tbody><tr><th>Nome</th><td><input type="text" name="name" class="regular-text" required placeholder="es. Conto POS"></td></tr>';
 		echo '<tr><th>Tipo</th><td><select name="type">' . Ui::options( Labels::account_types(), 'bank' ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Saldo iniziale attuale</th><td><input type="text" name="opening" inputmode="decimal" placeholder="0,00"> €</td></tr></tbody></table>';
+		echo '<tr><th>Saldo di partenza</th><td><input type="text" name="opening" inputmode="decimal" placeholder="0,00"> €</td></tr></tbody></table>';
 		submit_button( 'Aggiungi conto' );
 		Ui::form_close();
 		echo '</div>';

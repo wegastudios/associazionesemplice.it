@@ -26,7 +26,7 @@ final class MemberLoginPage {
 	const SENT    = 'Se l\'email è di un socio ti abbiamo scritto: apri il link che trovi nell\'email (controlla anche la posta indesiderata).';
 	const FAIL    = 'Email, codice o password non corretti. Controlla e riprova, oppure premi «Mandami un link» per entrare senza password.';
 	const BLOCKED = 'Troppi tentativi da questa connessione. Aspetta un\'ora e riprova, oppure chiedi aiuto alla segreteria.';
-	const NOT_FROM_PAGE = 'Il modulo deve partire dalla pagina di accesso, oppure è scaduto: ricarica la pagina e riprova.';
+	const NOT_FROM_PAGE = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
@@ -153,7 +153,7 @@ final class MemberLoginPage {
 			$session = MemberSession::current();
 			if ( $session ) { // già dentro (anche se deve ancora scegliere la password): azioni protette dal token della sessione
 				if ( ! MemberSession::check_csrf( 'account', self::post( '_csrf' ) ) ) {
-					$err = 'Sessione scaduta: ricarica la pagina e riprova.';
+					$err = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 				} elseif ( 'logout' === $do ) {
 					Audit::log( 'member.logout', 'person', (int) $session['person_id'] );
 					MemberSession::destroy();

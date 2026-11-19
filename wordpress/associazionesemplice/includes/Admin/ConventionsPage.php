@@ -125,7 +125,7 @@ final class ConventionsPage {
 			} else {
 				$n = Conventions::announce( $id, false );
 				echo '<p class="description">Manda un\'email ai soci a cui spetta (tessera valida e tipo previsto): ora ' . (int) $n . ' con un indirizzo email. Parte una sola volta per convenzione.</p>';
-				echo wp_kses( Ui::confirm_button( 'asem_convention_announce', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci della nuova convenzione', 'Mandare ora l\'email ai soci a cui spetta? Non si può rimandare.' ), Html::allowed() );
+				echo wp_kses( Ui::confirm_button( 'asem_convention_announce', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci della nuova convenzione', 'Mandare ora l\'email ai soci a cui spetta? Parte una volta sola.' ), Html::allowed() );
 			}
 		}
 		Ui::inline_js( '(function(){var pick=document.getElementById("asem-conv-logo-pick"),clr=document.getElementById("asem-conv-logo-clear"),id=document.getElementById("asem-conv-logo-id"),pv=document.getElementById("asem-conv-logo-preview"),f;'

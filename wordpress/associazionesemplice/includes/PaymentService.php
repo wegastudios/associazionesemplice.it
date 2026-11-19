@@ -1133,6 +1133,6 @@ class PaymentService extends OfflinePayments {
 		}, $items );
 		$body  = 'Ciao ' . $payer['first_name'] . ",\n\nabbiamo ricevuto il tuo pagamento online" . ( '' !== $assoc ? ' per ' . $assoc : '' ) . ".\n\n" . implode( "\n", $lines )
 			. "\n\nTotale: " . Money::format( (int) $p['amount_cents'] ) . "\nData: " . ( new \DateTimeImmutable( (string) $p['paid_at'] ) )->format( 'd/m/Y' ) . "\nRiferimento: " . $p['public_id'] . "\n\nGrazie!";
-		\AssociazioneSemplice\Texts::mail( $payer['email'], 'Ricevuta del pagamento' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $body );
+		\AssociazioneSemplice\Texts::mail( $payer['email'], ( '' !== $assoc ? $assoc . ' · ' : '' ) . 'Conferma del pagamento', $body );
 	}
 }

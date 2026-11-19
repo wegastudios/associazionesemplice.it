@@ -73,7 +73,7 @@ final class Wizard {
 		$vals = array();
 
 		if ( ! empty( $p['months_present'] ) && empty( $p['months_confirmed'] ) ) { // i due mesi si confermano per primi: nessun valore nascosto
-			throw new \InvalidArgumentException( 'Prima di continuare conferma i due mesi: l\'inizio dell\'anno sociale e quello dell\'anno fiscale.' );
+			throw new \InvalidArgumentException( 'Prima di continuare conferma i due mesi: l\'inizio dell\'anno delle attività e quello dell\'anno fiscale.' );
 		}
 
 		// Frase per riaprire i documenti cifrati: facoltativa, se non si scrive nulla resta quella automatica
