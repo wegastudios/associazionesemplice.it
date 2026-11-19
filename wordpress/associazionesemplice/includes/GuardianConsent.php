@@ -95,7 +95,7 @@ final class GuardianConsent {
 			. self::line( (string) $minor['first_name'] ) . ' è stato iscritto' . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ' e tu risulti genitore o tutore. '
 			. 'Per registrare che sei stato tu ad accettare, a nome suo, ' . $what . ', apri questo link entro ' . self::DAYS . " giorni e tocca «Confermo»:\n\n" . self::url( $minor_id, $token )
 			. "\n\nSe non sei tu o non sei d'accordo, ignora questo messaggio e scrivi alla segreteria: finché non confermi, queste accettazioni non vengono attribuite a te.";
-		return Texts::mail( $to, 'Conferma del genitore o tutore' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		return Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Conferma del genitore o tutore' ), $text );
 	}
 
 	/**
@@ -213,7 +213,7 @@ final class GuardianConsent {
 		$key = 'asem_gcf_ip_' . md5( ClientIp::get() );
 		$n   = (int) get_transient( $key );
 		if ( $n >= Limits::get( 'apply_per_ip' ) * 2 ) {
-			self::stop( 'Troppi tentativi: riprova tra qualche minuto.', '#b32d2e' );
+			self::stop( 'Troppi tentativi: riprova tra un\'ora.', '#b32d2e' );
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 		$r = self::submit( $param, sanitize_text_field( wp_unslash( $_POST['_asem_nonce'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification -- verificato in submit

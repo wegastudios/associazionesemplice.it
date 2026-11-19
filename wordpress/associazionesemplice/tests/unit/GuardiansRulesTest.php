@@ -48,6 +48,6 @@ final class GuardiansRulesTest extends TestCase {
 			$this->assertSame( array(), Guardians::validate( $this->minor(), $this->parent_( array( 'type' => $t ) ), 0, '2026-10-26' ), $t );
 		}
 		$e = Guardians::validate( $this->minor(), $this->parent_( array( 'type' => 'guest' ) ), 0, '2026-10-26' );
-		$this->assertStringContainsString( 'area riservata', implode( ' ', $e ), 'un ospite non può essere tutore' );
+		$this->assertStringContainsString( 'area soci', implode( ' ', $e ), 'un ospite non può essere tutore' );
 	}
 }

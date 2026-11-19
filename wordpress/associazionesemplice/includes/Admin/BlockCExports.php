@@ -45,7 +45,7 @@ final class BlockCExports {
 	/** Elenco dei certificati medici: solo staff. Nel registro azioni resta solo che è stato scaricato. */
 	public static function cert_csv(): void {
 		if ( ! Certificates::can_manage() || ! Edition::has( 'medical' ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_cert_csv' );
 		Audit::log( 'medical.exported', 'settings', 0 );
@@ -55,7 +55,7 @@ final class BlockCExports {
 	/** Tessere degli enti: `kind=portal` è il file per il caricamento sui portali, `kind=list` l'elenco con numeri e costi. */
 	public static function aff_csv(): void {
 		if ( ! current_user_can( Plugin::CAP_OPS ) || ! Edition::has( 'affiliations' ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_aff_csv' );
 		$f = array(

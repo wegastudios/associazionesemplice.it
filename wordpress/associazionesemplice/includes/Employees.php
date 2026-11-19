@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * I permessi che si possono togliere sono quelli di {@see EmployeeRules} e si tolgono per singolo utente (user meta). Il controllo è in tre punti:
  *  1. {@see Employees::gate()} su `admin_init`: pagine di amministrazione, admin-post (moduli, esportazioni, download) e admin-ajax;
- *  2. {@see Access::user_can()}: le capability «asem_*» (area riservata, REST) per incassi, spese, eventi e corsi;
+ *  2. {@see Access::user_can()}: le capability «asem_*» (area soci, REST) per incassi, spese, eventi e corsi;
  *  3. gli elenchi (attività, schede, riquadri della Bacheca) che mostrano solo ciò che resta permesso.
  */
 final class Employees {
@@ -314,7 +314,7 @@ final class Employees {
 		wp_die( esc_html( $msg ), 'Permesso non disponibile', array( 'response' => 403, 'back_link' => true ) );
 	}
 
-	/** Le capability «asem_*» (area riservata e REST): il dipendente senza il permesso non ha nemmeno quella. */
+	/** Le capability «asem_*» (area soci e REST): il dipendente senza il permesso non ha nemmeno quella. */
 	public static function ability_denied( int $user_id, string $ability, int $object_id ): bool {
 		$denied = self::denied_for( $user_id );
 		if ( ! $denied ) {
@@ -440,7 +440,7 @@ final class Employees {
 		$link  = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ), 'login' );
 		$text  = 'Ciao ' . $user->first_name . ",\n\nè stato creato per te l'accesso come dipendente" . ( '' !== $assoc ? ' di ' . $assoc : '' ) . ":\n\n" . $link
 			. "\n\nApri il link, scegli la tua password e poi entra con questa email. Il link vale 24 ore: se scade, usa «Password dimenticata» nella pagina di accesso.\n\nSe non te lo aspettavi, ignora questo messaggio.";
-		return (bool) Texts::mail( $user->user_email, 'Il tuo accesso come dipendente' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		return (bool) Texts::mail( $user->user_email, \AssociazioneSemplice\Texts::subject( 'Il tuo accesso come dipendente' ), $text );
 	}
 
 	/** Cambia il periodo di servizio. @throws \InvalidArgumentException */

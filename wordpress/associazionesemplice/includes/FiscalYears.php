@@ -277,7 +277,7 @@ final class FiscalYears {
 	public static function blockers( int $year ): array {
 		$out = array();
 		if ( $year >= self::current() ) {
-			$out[] = 'l\'anno ' . ( $year === self::current() ? 'in corso' : 'non è ancora iniziato' ) . ' non si chiude: si chiude dopo la fine dell\'anno';
+			$out[] = 'l\'anno ' . ( $year === self::current() ? 'è ancora in corso' : 'non è ancora iniziato' ) . ' (si chiude dopo la sua fine)';
 		}
 		$funds = Plugin::funds()->unsettled_until_year( $year );
 		if ( $funds > 0 ) {

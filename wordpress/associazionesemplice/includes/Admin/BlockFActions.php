@@ -24,7 +24,7 @@ final class BlockFActions {
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {
 					if ( ! current_user_can( Plugin::CAP_OPS ) ) {
-						wp_die( 'Non autorizzato.', 403 );
+						wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 					}
 					check_admin_referer( $action );
 					$post = Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
@@ -79,7 +79,7 @@ final class BlockFActions {
 
 	public static function csv(): void {
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_conventions_csv' );
 		Audit::log( 'convention.exported', 'convention', 0 );

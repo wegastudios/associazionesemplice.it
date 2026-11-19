@@ -31,7 +31,7 @@ final class PayReturn {
 			try {
 				wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', $engine->handle_return( $public, $ret, 0 ) ) );
 			} catch ( \Throwable $e ) {
-				wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', 'Non è stato possibile verificare il pagamento. Se hai pagato, lo registreremo appena Stripe o PayPal lo confermano.' ) );
+				wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', 'Non è stato possibile verificare il pagamento. Se hai pagato, non rifarlo: sarà registrato appena arriva la conferma.' ) );
 			}
 			exit;
 		}
@@ -46,7 +46,7 @@ final class PayReturn {
 		} catch ( \InvalidArgumentException $e ) {
 			wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', $e->getMessage() ) );
 		} catch ( \Throwable $e ) {
-			wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', 'Non è stato possibile verificare il pagamento. Se hai pagato, lo registreremo appena Stripe o PayPal lo confermano.' ) );
+			wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', 'Non è stato possibile verificare il pagamento. Se hai pagato, non rifarlo: sarà registrato appena arriva la conferma.' ) );
 		}
 		exit;
 	}

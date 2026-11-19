@@ -128,7 +128,7 @@ final class DashboardPage {
 				echo '<li>' . ( $rq['person'] ? '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $rq['person']['id'] ) ) ) . '">' . esc_html( $who ) . '</a>' : '<strong>' . esc_html( $who ) . '</strong>' )
 					. ' <span class="description">' . esc_html( $label[ $rq['kind'] ] ) . ' · ' . esc_html( (string) $rq['email'] ) . ' · ' . esc_html( (string) $rq['phone'] ) . ' · ' . esc_html( mysql2date( 'd/m H:i', gmdate( 'Y-m-d H:i:s', (int) $rq['at'] ) ) ) . '</span> ';
 				if ( 'unknown' === $rq['kind'] && '' !== $wa ) {
-					$text = 'Ciao ' . $who . ', abbiamo ricevuto la tua richiesta di primo accesso. Per attivare l\'accesso confermaci nome, cognome ed email con cui sei iscritto/a.';
+					$text = 'Ciao ' . $who . ', abbiamo ricevuto la tua richiesta di primo accesso. Per attivare l\'accesso confermaci nome, cognome ed email che hai dato all\'associazione.';
 					echo '<a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( $text ) ) . '">💬 Scrivi su WhatsApp</a> ';
 				}
 				if ( 'change' === $rq['kind'] ) {
@@ -147,7 +147,7 @@ final class DashboardPage {
 
 		$at_limit = \AssociazioneSemplice\Plugin::people()->guests_to_invite();
 		if ( $at_limit ) {
-			echo '<div class="asem-card"><h2>Ospiti da invitare a iscriversi (' . count( $at_limit ) . ')</h2><p class="description">Hanno raggiunto la soglia di partecipazioni per i non soci (sommando le registrazioni dello stesso cellulare, email o nome). Nessun blocco: decidi tu.</p><ul>';
+			echo '<div class="asem-card"><h2>Ospiti da invitare a diventare soci (' . count( $at_limit ) . ')</h2><p class="description">Hanno raggiunto il numero massimo di partecipazioni come ospiti (contando insieme le schede con lo stesso cellulare, email o nome). Non vengono bloccati: decidi tu.</p><ul>';
 			foreach ( array_slice( $at_limit, 0, 10 ) as $g ) {
 				$ov = $g['overview'];
 				echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $g['id'] ) ) ) . '">' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</a> <span class="description">ospite di ' . esc_html( (string) $g['host_name'] ) . ' · ' . (int) $ov['total'] . ' partecipazioni'
@@ -171,7 +171,7 @@ final class DashboardPage {
 			echo '<h2>Attività</h2><div class="asem-grid">';
 			foreach ( $r['activities'] as $a ) {
 				echo wp_kses( '<div class="asem-card"><h3><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $a['activity']['id'] ) ) ) . '">' . esc_html( $a['activity']['name'] ) . '</a></h3>'
-					. '<p>' . (int) $a['participants'] . ' iscritti · resta ' . Ui::money( $a['margin'] ) . '</p></div>', Html::allowed() );
+					. '<p>' . (int) $a['participants'] . ( 1 === (int) $a['participants'] ? ' iscritto · resta ' : ' iscritti · resta ' ) . Ui::money( $a['margin'] ) . '</p></div>', Html::allowed() );
 			}
 			echo '</div>';
 		}
@@ -516,7 +516,7 @@ final class DashboardPage {
 		if ( ! $rows ) {
 			return;
 		}
-		echo '<div class="asem-card"><h2>Ospiti attesi che dovrebbero iscriversi (' . count( $rows ) . ')</h2><p class="description">Prenotati ai prossimi eventi, hanno già raggiunto la soglia di partecipazioni per i non soci.</p><ul>';
+		echo '<div class="asem-card"><h2>Ospiti attesi da invitare a diventare soci (' . count( $rows ) . ')</h2><p class="description">Prenotati ai prossimi eventi, hanno già raggiunto il numero massimo di partecipazioni come ospiti.</p><ul>';
 		foreach ( $rows as $r ) {
 			$b = $r['booking'];
 			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $b['first_name'] . ' ' . $b['last_name'] ) . '</a> <span class="description">a '

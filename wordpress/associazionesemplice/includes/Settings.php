@@ -64,7 +64,7 @@ final class Settings {
 			'privacy_email'           => '',    // indirizzo email per le richieste sulla privacy (vuoto = si usa la PEC)
 			'privacy_extra_cookies'   => '',    // altri cookie del sito da elencare nell'informativa: uno per riga, «nome — a cosa serve»
 			'privacy_retention_years' => 5,     // dopo quanti anni di inattività si propone l'anonimizzazione
-			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
+			'member_area_page_id'     => 0,     // pagina del sito con l'area soci (shortcode); 0 = home
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
 			'accent_color'            => '',    // colore d'accento del front-end; vuoto = quello del tema
 			'secondary_color'         => '',    // colore secondario; vuoto = quello del sito (Elementor o tema)

@@ -643,11 +643,23 @@ final class Admin {
 			CatalogStore::saveDraft( $this->db, $draft, $this->email );
 			$this->done( 'catalog_plans', 'Piani salvati nella bozza.', $to );
 		} elseif ( 'importa-confronto' === $b ) {
-			$imp               = ConfrontoImport::parse( (string) file_get_contents( dirname( __DIR__, 2 ) . '/content/confronto.md' ), $codes );
+			// Prima l'anteprima (nuove, rinominate, sparite): la bozza cambia solo dopo la conferma, e solo se il quadro è ancora quello mostrato.
+			$imp = ConfrontoImport::plan( (string) file_get_contents( dirname( __DIR__, 2 ) . '/content/confronto.md' ), $codes, (array) $draft['features'], (array) ( $draft['matrix'] ?? array() ) );
+			if ( '1' !== (string) ( $_POST['conferma'] ?? '' ) ) {
+				$this->show( 'catalog_import', 'catalogo', array( 'plan' => $imp ) );
+				return;
+			}
+			if ( ! hash_equals( $imp['digest'], (string) ( $_POST['digest'] ?? '' ) ) ) {
+				throw new UserError( 'Il confronto o la bozza sono cambiati dopo l\'anteprima: rifai l\'importazione per vedere le differenze di adesso.' );
+			}
 			$draft['features'] = $imp['features'];
 			$draft['matrix']   = $imp['matrix'];
 			CatalogStore::saveDraft( $this->db, $draft, $this->email );
-			$this->done( 'catalog_import', 'Importate ' . count( $imp['features'] ) . ' caratteristiche dal confronto nella bozza.', $to );
+			$this->done(
+				'catalog_import',
+				'Importate ' . count( $imp['features'] ) . ' caratteristiche dal confronto nella bozza: ' . count( $imp['new'] ) . ' nuove, ' . count( $imp['renamed'] ) . ' rinominate, ' . count( $imp['removed'] ) . ' tolte.',
+				$to
+			);
 		} elseif ( 'pubblica' === $b ) {
 			$rev = CatalogStore::publish( $this->db, $base, $this->email );
 			$this->done( 'catalog_publish', 'Catalogo pubblicato: revisione ' . $rev . '.', $to );

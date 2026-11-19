@@ -217,8 +217,8 @@ final class ProViews {
 				. '<label>Importo (€) <input type="text" name="rows[' . $i . '][amount]" inputmode="decimal" placeholder="standard"></label></div>';
 		}
 		$fields = '<div class="asemf-fields"><label>Chi paga <select name="payer_id" required>' . $opt . '</select></label><label>Sul conto <select name="account_id">' . $accounts . '</select></label></div>' . $rows;
-		return '<section class="asemf-section asemf-collect"><details><summary><h3 style="display:inline">Cassa per più persone</h3></summary>'
-			. '<p class="asemf-small asemf-muted">Una persona paga per sé e per altri: un solo incasso. Ogni riga è una persona (o un nuovo ospite) con una voce; la stessa persona può comparire in più righe. Gli ospiti nuovi sono ospiti di chi paga. Un evento si può pagare anche per un socio con la tessera scaduta; per un corso la tessera deve essere in regola (o rinnovata nello stesso incasso).</p>'
+		return '<section class="asemf-section asemf-collect"><details><summary><h3 style="display:inline">Incasso per più persone</h3></summary>'
+			. '<p class="asemf-small asemf-muted">Una persona paga per sé e per altri, in un solo incasso. Ogni riga è una persona (o un nuovo ospite, che diventa ospite di chi paga) con una voce; la stessa persona può stare in più righe. Se lasci vuoto l\'importo vale quello previsto. Un evento si può pagare anche con la tessera non valida; per un corso serve la tessera valida o la quota nello stesso incasso.</p>'
 			. Views::form( 'asem_front_group', $fields, 'Registra l\'incasso' ) . '</details></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
@@ -228,7 +228,7 @@ final class ProViews {
 		}
 		$seat = Plugin::activities()->seats( (int) $s['id'] );
 		if ( 0 === $seat['free'] ) {
-			return '<p class="asemf-small asemf-muted">Posti esauriti: nessun ingresso sul posto possibile.</p>';
+			return '<p class="asemf-small asemf-muted">Posti esauriti: non puoi aggiungere ingressi sul posto.</p>';
 		}
 		$all = '<option value="">— scegli il socio —</option>';
 		foreach ( Plugin::people()->search() as $p ) {
@@ -250,7 +250,7 @@ final class ProViews {
 				. '<label><input type="checkbox" name="pay" value="1" checked> Incassa il contributo d\'ingresso</label>'
 				. ( '' !== $accs ? '<label>Pagamento <select name="account_id">' . $accs . '</select></label>' : '' ),
 				'Prenota, incassa e registra l\'ingresso',
-				true
+				'Registrare l\'incasso e l\'ingresso?'
 			) . self::door_group_form( $s, $all, $accs ) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
@@ -353,8 +353,8 @@ final class ProViews {
 		$fields = Views::hidden( 'session_id', $s['id'] )
 			. '<label>Chi paga <select name="payer_id" required>' . $members_options . '</select></label>'
 			. '<label>Pagamento <select name="account_id">' . $accounts_options . '</select></label>'
-			. '<p class="asemf-small asemf-muted">Scegli i soci per cui paga (può includere anche sé stesso): ognuno viene prenotato, l\'importo del contributo d\'ingresso è calcolato automaticamente e l\'incasso è unico.</p>' . $rows;
+			. '<p class="asemf-small asemf-muted">Scegli i soci per cui paga, anche sé stesso. Ognuno viene prenotato; il contributo si calcola da solo e l\'incasso è unico.</p>' . $rows;
 		return '<details class="asemf-door-group"><summary><strong>＋ Un socio paga per più soci</strong></summary>'
-			. Views::form( 'asem_front_door_group', $fields, 'Prenota e incassa per tutti', true ) . '</details>';
+			. Views::form( 'asem_front_door_group', $fields, 'Prenota e incassa per tutti', 'Registrare l\'incasso e l\'ingresso?' ) . '</details>';
 	}
 }

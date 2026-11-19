@@ -303,7 +303,7 @@ final class Receipts {
 		}
 		$st = ReceiptFiles::state( $rec, $kind );
 		if ( 'locked' === $st ) {
-			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è cifrato e la chiave di questo sito non lo apre: non viene rifatto, per non perdere il file. Sistema prima la chiave da Impostazioni → Copia di sicurezza → «Cifratura dei file riservati».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è cifrato e la chiave di questo sito non lo apre: non viene rifatto, per non perdere il file. Sistema prima la chiave da Strumenti → Copia di sicurezza → «Cifratura dei file riservati».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! in_array( $st, array( 'missing', 'altered' ), true ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è a posto: non serve rifarlo.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -1026,7 +1026,7 @@ final class Receipts {
 			$assoc = (string) Settings::get( 'association_name' );
 			$ok    = \AssociazioneSemplice\Texts::mail(
 				$to,
-				'Ricevuta n. ' . $r['number'] . ( '' !== $assoc ? ' — ' . $assoc : '' ),
+				\AssociazioneSemplice\Texts::subject( 'Ricevuta n. ' . $r['number'] ),
 				'Ciao ' . ( $payer ? $payer['first_name'] : '' ) . ",\n\nin allegato la ricevuta n. " . $r['number'] . " del tuo pagamento.\n\nGrazie!",
 				array(),
 				array( $dst )
@@ -1060,7 +1060,7 @@ final class Receipts {
 		$key = isset( $_GET['key'] ) ? self::clean_key( sanitize_text_field( wp_unslash( $_GET['key'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		Csrf::check( 'asem_receipt_' . $key );
 		if ( ! self::can_view( $key ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		try {
 			$r = self::build( $key );
@@ -1085,7 +1085,7 @@ final class Receipts {
 	public static function handle_zip(): void {
 		$year = isset( $_GET['year'] ) ? absint( $_GET['year'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce controllato sotto
 		if ( ! current_user_can( Plugin::CAP ) || ! Edition::has( 'receipts' ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_receipt_zip_' . $year );
 		try {
@@ -1119,7 +1119,7 @@ final class Receipts {
 		$year = isset( $_GET['year'] ) ? (int) $_GET['year'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		Csrf::check( 'asem_statement_' . $pid . '_' . $year );
 		if ( ! self::can_statement( $pid ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		try {
 			$r = self::statement( $pid, $year );

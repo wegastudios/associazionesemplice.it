@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Avvisi "ufficiali" di chi tiene un'attività (o gestisce un evento) agli iscritti: cambi di orario, annullamenti dell'ultimo momento.
  * Ogni avviso arriva per email a ciascun iscritto (singolarmente, senza mostrare gli indirizzi degli altri) e resta nella bacheca
- * "Avvisi" dell'area riservata. I destinatari sono solo gli iscritti di quell'attività (per gli eventi: i prenotati delle date
+ * "Avvisi" dell'area soci. I destinatari sono solo gli iscritti di quell'attività (per gli eventi: i prenotati delle date
  * non ancora passate). Gli ospiti senza email ricevono l'avviso tramite il socio che li ospita.
  */
 final class Notices {
@@ -120,7 +120,7 @@ final class Notices {
 		}
 		// Indirizzi web e IBAN sono il modo più comune per dirottare i pagamenti dei soci: i volontari non li possono inserire (si cambia da Impostazioni → Limiti e soglie).
 		if ( ! current_user_can( Plugin::CAP_OPS ) && ! Limits::flag( 'notice_links' ) && TextGuard::has_payment_hint( $subject . "\n" . $body ) ) {
-			throw new \InvalidArgumentException( 'Negli avvisi dei volontari non si possono inserire indirizzi web né coordinate bancarie. Per i pagamenti rimanda i soci all\'area riservata o alla segreteria.' );
+			throw new \InvalidArgumentException( 'Negli avvisi dei volontari non si possono inserire indirizzi web né coordinate bancarie. Per i pagamenti rimanda i soci all\'area soci o alla segreteria.' );
 		}
 		if ( mb_strlen( $subject ) > self::MAX_SUBJECT || mb_strlen( $body ) > self::MAX_BODY ) {
 			throw new \InvalidArgumentException( 'Avviso troppo lungo: titolo fino a ' . self::MAX_SUBJECT . ' caratteri, testo fino a ' . self::MAX_BODY . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -155,7 +155,7 @@ final class Notices {
 		foreach ( $rcpt as $r ) {
 			$text = 'Ciao ' . $r['name'] . ",\n\n" . $body . "\n\n—\nAvviso di " . $by . ' per «' . $a['name'] . '»' . $when . ( '' !== $assoc ? ' — ' . $assoc : '' )
 				. ".\nPer rispondere rivolgiti alla segreteria dell'associazione.";
-			if ( \AssociazioneSemplice\Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $a['name'] . ': ' . $subject, $text ) ) {
+			if ( \AssociazioneSemplice\Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( $a['name'] . ': ' . $subject ), $text ) ) {
 				$sent++;
 			}
 			do_action( 'asem_notify_email', (string) $r['email'], $a['name'] . ': ' . $subject, $body ); // notifica sul telefono, se un'estensione la gestisce

@@ -40,7 +40,7 @@ final class Waitlist {
 		$stored   = null;
 		if ( $activity && PriceLists::for_activity( $activity ) ) { // con i listini ne va scelto uno, come per la prenotazione diretta
 			if ( '' === $price_list ) {
-				throw new \InvalidArgumentException( 'Scegli la tariffa: per questa attività bisogna sceglierne una.' );
+				throw new \InvalidArgumentException( 'Scegli uno dei contributi proposti per questa attività.' );
 			}
 			if ( ! PriceLists::find( $activity, $price_list ) ) {
 				throw new \InvalidArgumentException( 'Listino non trovato per questa attività.' );
@@ -167,7 +167,7 @@ final class Waitlist {
 			$to['email'],
 			'Posto disponibile: ' . ( $a ? $a['name'] : 'evento' ),
 			'Ciao ' . $to['name'] . ",\n\nsi è liberato un posto e la prenotazione " . $who . 'per «' . ( $a ? $a['name'] : 'evento' ) . '» del ' . $when . " è stata registrata automaticamente.\n\n"
-			. "Se non puoi più partecipare, annulla dall'area riservata: " . Gatekeeper::area_url() . ( '' !== $assoc ? "\n\n—\n" . $assoc : '' )
+			. "Se non puoi più partecipare, annulla dall'area soci: " . Gatekeeper::area_url() . ( '' !== $assoc ? "\n\n—\n" . $assoc : '' )
 		);
 	}
 }

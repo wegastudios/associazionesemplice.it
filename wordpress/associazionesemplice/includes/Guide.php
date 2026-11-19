@@ -25,7 +25,7 @@ final class Guide {
 			array( 'key' => 'fee', 'title' => 'Quota associativa e tessera', 'done' => (int) Settings::get( 'membership_fee_cents' ) > 0, 'page' => 'asem-settings', 'hint' => 'La quota proposta negli incassi e il mese in cui inizia l\'anno fiscale (la tessera lo segue). Puoi definire livelli con quote diverse.' ),
 			array( 'key' => 'members', 'title' => 'Inserisci i soci', 'done' => self::count( 'people', "deleted_at IS NULL AND type NOT IN ('guest','guardian')" ) >= 2, 'page' => 'asem-import', 'hint' => 'Uno alla volta dalla Rubrica o tutti insieme importando un file Excel/CSV.' ),
 			array( 'key' => 'president', 'title' => 'Assegna il presidente', 'done' => $president, 'page' => 'asem-people', 'hint' => 'Dalla scheda di un socio, nel riquadro «Consiglio direttivo»: compare sulle ricevute.' ),
-			array( 'key' => 'area', 'title' => 'Crea l\'area riservata sul sito', 'done' => (int) Settings::get( 'member_area_page_id' ) > 0, 'page' => 'asem-settings', 'hint' => 'La sezione «Pagine del sito e shortcode» crea le pagine per soci e volontari.' ),
+			array( 'key' => 'area', 'title' => 'Crea l\'area soci sul sito', 'done' => (int) Settings::get( 'member_area_page_id' ) > 0, 'page' => 'asem-settings', 'hint' => 'La sezione «Pagine del sito e shortcode» crea le pagine per soci e volontari.' ),
 			array( 'key' => 'activity', 'title' => 'Crea il primo corso o evento', 'done' => self::count( 'activities', 'deleted_at IS NULL' ) > 0, 'page' => 'asem-activities', 'hint' => 'Con date, contributo e, se serve, posti e prenotazioni.' ),
 			array( 'key' => 'backup', 'title' => 'Scarica una copia di sicurezza', 'done' => Backup::last() > 0, 'page' => 'asem-backup', 'hint' => 'Conservala fuori dal sito, e ripetila ogni tanto.' ),
 		);

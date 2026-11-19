@@ -50,12 +50,12 @@ final class MessagesPage {
 		}
 		Ui::header( 'Comunicazioni' );
 		echo '<p class="description">Un messaggio email a un gruppo di persone: ognuno riceve la propria email, senza vedere gli indirizzi degli altri. Nel testo puoi usare <code>{nome}</code> e <code>{associazione}</code>. '
-			. 'Chi non ha un\'email (un ospite) riceve il messaggio tramite il socio che lo ospita. Se i destinatari sono molti l\'invio continua da solo in background.</p>';
+			. 'Chi non ha un\'email (un ospite) riceve il messaggio tramite il socio che lo ospita. Se i destinatari sono molti, l\'invio continua da solo.</p>';
 		echo '<form method="get" class="asem-form"><input type="hidden" name="page" value="asem-messages"><input type="hidden" name="preview" value="1">';
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Canali</th><td><label><input type="checkbox" name="channels[]" value="email"' . checked( in_array( 'email', $chosen, true ), true, false ) . '> Email</label> '
 			. '<label><input type="checkbox" name="channels[]" value="sms"' . checked( in_array( 'sms', $chosen, true ), true, false ) . disabled( $sms_on, false, false ) . '> SMS</label>'
-			. ( $sms_on ? '<p class="description">Gli SMS partono solo a chi ha un numero valido e ha dato il consenso agli SMS; massimo ' . (int) \AssociazioneSemplice\SmsRules::MAX_CHARS . ' caratteri. Per i soli SMS l\'oggetto si può lasciare vuoto.</p>' : '<p class="description">Gli SMS non sono attivi: scegli un fornitore in <a href="' . esc_url( Ui::url( 'asem-tech' ) ) . '">Strumenti → Integrazioni</a>.</p>' ) . '</td></tr>';
+			. ( $sms_on ? '<p class="description">Gli SMS arrivano solo a chi ha un numero valido e ha dato il consenso; massimo' . (int) \AssociazioneSemplice\SmsRules::MAX_CHARS . ' caratteri. Per i soli SMS l\'oggetto si può lasciare vuoto.</p>' : '<p class="description">Gli SMS non sono attivi: scegli un fornitore in <a href="' . esc_url( Ui::url( 'asem-tech' ) ) . '">Strumenti → Integrazioni</a>.</p>' ) . '</td></tr>';
 		echo '<tr><th>A chi</th><td><select name="audience">' . self::audience_options( $aud ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Oggetto</th><td><input type="text" name="subject" value="' . esc_attr( $subject ) . '" class="large-text" maxlength="' . (int) Broadcasts::MAX_SUBJ . '"></td></tr>';
 		echo '<tr><th>Messaggio</th><td><textarea name="body" rows="10" class="large-text" maxlength="' . (int) Broadcasts::MAX_BODY . '">' . esc_textarea( $body ) . '</textarea></td></tr>';
@@ -90,7 +90,7 @@ final class MessagesPage {
 					}
 					$m = \AssociazioneSemplice\SmsRules::measure( $body );
 					if ( $m['parts'] > 0 ) {
-						echo '<br><span class="description">Il testo occupa ' . (int) $m['parts'] . ( 1 === $m['parts'] ? ' SMS' : ' SMS' ) . ' per destinatario (' . (int) $m['units'] . ' caratteri, ' . esc_html( $m['encoding'] ) . '). I crediti consumati sono quelli del fornitore.</span>';
+						echo '<br><span class="description">Il testo occupa ' . (int) $m['parts'] . ( 1 === $m['parts'] ? ' SMS' : ' SMS' ) . ' per destinatario (' . (int) $m['units'] . ' caratteri, ' . esc_html( $m['encoding'] ) . '). Ogni SMS consuma crediti del tuo fornitore.</span>';
 					}
 					echo '</p>';
 				}

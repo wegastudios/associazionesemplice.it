@@ -39,6 +39,27 @@ final class Texts {
 		return strtr( $s, $map );
 	}
 
+	/**
+	 * Messaggio con un numero che regge il singolare: `$one` se il numero è 1, altrimenti `$many`. Il segnaposto `{n}` vale il numero
+	 * (salvo un valore `n` passato in `$vars`, ad esempio «5000+»). Ciascuna delle due frasi è una chiave del pacchetto di lingua, come per `t()`.
+	 *
+	 * @param array<string,scalar> $vars altri segnaposto
+	 */
+	public static function n( int $n, string $one, string $many, array $vars = array() ): string {
+		return self::t( 1 === $n ? $one : $many, $vars + array( 'n' => $n ) );
+	}
+
+	/** Oggetto di un'email col nome dell'associazione, in un solo formato: «Nome · Oggetto» (senza nome, solo l'oggetto). */
+	public static function subject( string $subject ): string {
+		return self::with_name( (string) Settings::get( 'association_name' ), $subject );
+	}
+
+	/** Il formato dell'oggetto, senza leggere le impostazioni. */
+	public static function with_name( string $name, string $subject ): string {
+		$name = trim( $name );
+		return '' !== $name ? $name . ' · ' . $subject : $subject;
+	}
+
 	/** HTML con le personalizzazioni (solo il testo, mai tag, attributi tecnici o indirizzi). */
 	public static function html( string $html, ?array $map = null ): string {
 		return self::enabled() ? (string) apply_filters( 'asem_text_html', $html, $map ) : $html;

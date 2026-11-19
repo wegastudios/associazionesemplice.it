@@ -13,7 +13,7 @@ final class TransferPage {
 		foreach ( Plugin::ledger()->accounts() as $a ) {
 			$accounts[ $a['id'] ] = $a['name'];
 		}
-		Ui::header( 'Giroconto tra conti' );
+		Ui::header( 'Giroconto' );
 		echo '<p class="description">Per spostamenti tra i conti dell\'associazione (versamento di contanti in banca, accredito del POS…). Non conta come entrata né come uscita.</p>';
 		Ui::form_open( 'asem_save_transfer', Ui::url( 'asem-transfer' ) );
 		echo '<table class="form-table asem-form"><tbody>';

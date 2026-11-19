@@ -20,7 +20,7 @@ final class DeleteBookingPage {
 		$pid = Ui::get_int( 'person' );
 		$sid = Ui::get_int( 'session' );
 		$p   = ActivityReset::registration_preview( $aid, $pid, $sid );
-		Ui::header( 'Cancella l\'iscrizione' );
+		Ui::header( 'Elimina l\'iscrizione' );
 		if ( ! $p ) {
 			echo '<p>L\'iscrizione non esiste (più).</p><p><a href="' . esc_url( Ui::url( 'asem-activities' ) ) . '">← Torna all\'elenco</a></p>';
 			Ui::footer();
@@ -30,7 +30,7 @@ final class DeleteBookingPage {
 		$who  = Plugin::people()->full_name( $p['person'] );
 		$inc  = $p['income'];
 		echo '<h2>' . esc_html( $who ) . ' — ' . esc_html( (string) $p['activity']['name'] ) . ( $p['session'] ? ' del ' . esc_html( Ui::date( $p['session']['session_date'] ) ) : '' ) . '</h2>';
-		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> L\'iscrizione (' . ( $p['session'] ? 'prenotazione a questa data' : 'iscrizione al corso, con le presenze' ) . ') viene cancellata e non si può ripristinare.</p></div>';
+		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> ' . ( $p['session'] ? 'La prenotazione a questa data viene eliminata' : 'L\'iscrizione al corso, con le presenze, viene eliminata' ) . ' e non si può ripristinare.</p></div>';
 		echo '<h3>Soldi collegati all\'iscrizione</h3>';
 		echo $inc['count'] ? '<p><strong>' . (int) $inc['count'] . ' incassi</strong> per ' . esc_html( Money::format( (int) $inc['cents'] ) ) . ( $inc['online_cents'] > 0 ? ' (di cui ' . esc_html( Money::format( (int) $inc['online_cents'] ) ) . ' pagati online)' : '' ) . '.</p>' : '<p>Nessun incasso da restituire o annullare: la prima nota non cambia.</p>';
 		$kept = ActivityReset::kept_text( $p['fruited'] );
@@ -42,7 +42,7 @@ final class DeleteBookingPage {
 			if ( is_email( (string) $p['person']['email'] ) ) {
 				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa ' . esc_html( $who ) . ' per email</label></p>';
 			}
-			echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Cancella l\'iscrizione</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
+			echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina l\'iscrizione</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
 			Ui::form_close();
 			Ui::footer();
 			return;
@@ -70,7 +70,7 @@ final class DeleteBookingPage {
 			echo '<p>Nessun movimento da modificare: la prima nota non cambia.</p>';
 		} elseif ( ActivityReset::REFUND === $mode ) {
 			echo '<p><strong>Gli ' . (int) $inc['count'] . ' incassi (' . esc_html( Money::format( (int) $inc['cents'] ) ) . ') restano in prima nota</strong> e viene registrata, a oggi, <strong>un\'uscita di restituzione per ciascuno</strong> (sotto la voce «Restituzione quote»), sullo stesso conto e con la stessa modalità. Effetto netto sui saldi: zero.</p>'
-				. '<p><strong>Il denaro non viene restituito dal sistema:</strong> va riconsegnato' . ( $inc['online_cents'] > 0 ? '; per i pagamenti online il rimborso va fatto a mano dal pannello del fornitore' : '' ) . '.</p>';
+				. '<p><strong>Il gestionale non restituisce il denaro:</strong> va riconsegnato' . ( $inc['online_cents'] > 0 ? '; per i pagamenti online il rimborso va fatto a mano dal pannello del fornitore' : '' ) . '.</p>';
 		} else {
 			echo '<p><strong>Gli ' . (int) $inc['count'] . ' incassi (' . esc_html( Money::format( (int) $inc['cents'] ) ) . ') vengono ANNULLATI</strong>: <strong>spariscono da saldi, report, rendiconto e ricevute</strong>, come se non fossero mai avvenuti. Nessuna restituzione viene registrata e il denaro non viene restituito: il saldo dei conti scende di ' . esc_html( Money::format( (int) $inc['cents'] ) ) . '.</p>';
 		}
@@ -87,9 +87,9 @@ final class DeleteBookingPage {
 		echo '<h3>Conferma</h3>';
 		Ui::form_open( 'asem_delete_booking', self::url( $aid, $pid, $sid, array( 'step' => 2, 'mode' => $mode, 'notify' => $notify ? 1 : 0 ) ) );
 		echo wp_kses( Ui::hidden( 'activity', $aid ) . Ui::hidden( 'person', $pid ) . Ui::hidden( 'session', $sid ) . Ui::hidden( 'mode', $mode ) . Ui::hidden( 'notify', $notify ? 1 : 0 ), Html::allowed() );
-		echo '<p><label><input type="checkbox" name="confirm" value="1"> Ho letto e ho capito: la cancellazione è definitiva.</label></p>';
+		echo '<p><label><input type="checkbox" name="confirm" value="1"> Ho capito: l\'eliminazione è definitiva.</label></p>';
 		echo '<p><label>Per confermare scrivi nome e cognome: <strong>' . esc_html( $who ) . '</strong><br><input type="text" name="typed" class="regular-text" autocomplete="off"></label></p>';
-		echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Cancella l\'iscrizione</button> <a class="button" href="' . esc_url( self::url( $aid, $pid, $sid ) ) . '">← Cambia scelta</a> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
+		echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina l\'iscrizione</button> <a class="button" href="' . esc_url( self::url( $aid, $pid, $sid ) ) . '">← Cambia scelta</a> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
 		Ui::form_close();
 		Ui::footer();
 	}

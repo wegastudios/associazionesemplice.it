@@ -248,13 +248,20 @@ final class Backup {
 
 	/** Il LEGGIMI che sta dentro ogni copia. */
 	private static function readme( int $plain_files = 0 ): string {
-		$plain_line = $plain_files > 0 ? str_replace( '{n}', (string) $plain_files, "{n} file sono inclusi in chiaro perché non erano ancora cifrati.\n" ) : ''; // il LEGGIMI della copia è un testo fisso in italiano, come il resto del file
+		$plain_line = $plain_files > 0 ? ( 1 === $plain_files ? "Un file è incluso in chiaro perché non era ancora cifrato.\n" : str_replace( '{n}', (string) $plain_files, "{n} file sono inclusi in chiaro perché non erano ancora cifrati.\n" ) ) : ''; // il LEGGIMI della copia è un testo fisso in italiano, come il resto del file
 		return "Copia di sicurezza di Associazione Semplice.\n"
 			. "Contiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati. La cartella documenti/ contiene i PDF definitivi già emessi (ad esempio le ricevute) con l'indice delle loro impronte SHA-256 (documenti/indice.json).\n"
 			. "Il manifest (manifest.json) elenca l'impronta SHA-256 di ogni file della copia ed è firmato con i codici di sicurezza del sito che l'ha fatta. Sullo stesso sito una copia modificata dopo essere stata fatta viene rifiutata; su un altro sito il ripristino chiede una conferma scritta e la password dell'amministratore, e resta scritto nel registro delle azioni.\n"
 			. "Si ripristina da Strumenti → Copia di sicurezza.\n"
 			. "I dati in chiaro (soci, prima nota e tutte le altre tabelle) si ripristinano sempre, anche senza la frase e anche su un server senza la libreria sodium.\n"
-			. "I documenti riservati (certificati, allegati, scansioni) sono cifrati quando il sito li ha cifrati; i campi di testo che sul sito non si potevano cifrare (il manifest ne conta il numero in «plain_fields») stanno nella copia in chiaro. Le chiavi dei documenti cifrati sono in chiavi.json, avvolte con la chiave del sito, con la frase in uso (il codice di licenza, la data e l'ora in cui è stata creata la chiave dei file, in UTC, oppure la frase scelta; la frase non è la data di installazione del plugin) e, se il Pro era attivo quando hai fatto la copia, anche con il codice di licenza. Senza la chiave del sito di origine e senza una di queste frasi i documenti cifrati si rimettono sul sito ma restano chiusi: il ripristino dice quanti sono e si aprono più tardi con «Riapri la chiave con la frase».\n"
+			. "I documenti riservati (certificati, allegati, scansioni) restano cifrati anche in questa copia. Nel file chiavi.json le chiavi sono a loro volta cifrate: da sole non aprono niente.\n"
+			. "Per aprire i documenti dopo il ripristino serve una di queste tre cose:\n"
+			. "- il sito di origine, con la sua chiave principale;\n"
+			. "- la frase in uso quando hai fatto la copia;\n"
+			. "- il codice di licenza, se il Pro era attivo.\n"
+			. "Se non hai mai scelto una frase, quella in uso è automatica: nel plugin gratuito è la data e l'ora, in UTC, in cui è stata creata la chiave dei file (non è la data di installazione del plugin); con il Pro è il codice di licenza. Una frase automatica protegge meno di una frase scelta da te. Per una protezione vera scegline una tua in Strumenti → Copia di sicurezza → «Frase per riaprire i documenti» e conservala fuori dal sito.\n"
+			. "Se non hai nessuna delle tre, i documenti tornano sul sito ma restano chiusi: il ripristino ti dice quanti sono e puoi aprirli più tardi con «Riapri la chiave con la frase».\n"
+			. "Se il sito non è riuscito a cifrare alcuni testi, quei testi restano leggibili anche nella copia; quanti sono lo vedi in Strumenti → Copia di sicurezza, dopo aver fatto la copia.\n"
 			. "Il file contiene anche le impronte delle password dei soci (mai le password in chiaro) e le notifiche push. Il ripristino rimette le password: ogni socio, al primo accesso, entra con la password di prima e deve scegliere subito una nuova password (vale anche entrando con il link ricevuto per e-mail). Le sessioni aperte e le notifiche push non vengono ripristinate, e nemmeno il registro delle azioni e gli utenti WordPress.\n"
 			. $plain_line . "Le chiavi segrete dei pagamenti online non sono incluse.\n";
 	}
@@ -799,7 +806,7 @@ final class Backup {
 
 	public static function handle_download(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$back = Admin\Ui::url( 'asem-backup' );
 		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // un vecchio indirizzo diretto porta alla pagina, dove si scrive la password
@@ -866,7 +873,7 @@ final class Backup {
 
 	public static function handle_saved(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$back = Admin\Ui::url( 'asem-backup' );
 		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // un vecchio indirizzo diretto porta alla pagina, dove si scrive la password

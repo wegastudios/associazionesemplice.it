@@ -144,7 +144,7 @@ final class WatchPage {
 
 		// Quadratura rimborsi e spese per persona
 		$ry = Ui::get_int( 'ry', $s['year'] );
-		echo '<h2 id="asem-recon">Rimborsi e spese documentate per persona</h2><p class="description">Chi ha avuto rimborsi dai fondi deve trovarsi con le spese sostenute: a fine mese è bene, a fine anno è necessario. Differenza = rimborsato − documentato: se è positiva i rimborsi non hanno documenti a copertura (da regolarizzare), se è negativa ci sono spese documentate non ancora rimborsate.</p>';
+		echo '<h2 id="asem-recon">Rimborsi e spese documentate per persona</h2><p class="description">Chi ha ricevuto rimborsi dai fondi deve averli coperti con spese documentate: conviene controllarlo ogni mese, a fine anno è necessario. Differenza = rimborsato − documentato: se è positiva mancano documenti (da regolarizzare); se è negativa ci sono spese documentate non ancora rimborsate.</p>';
 		echo '<form method="get"><input type="hidden" name="page" value="asem-watch"><p><label>Anno fiscale <select name="ry" data-asem-autosubmit>';
 		for ( $y = $s['year']; $y >= $s['year'] - 5; $y-- ) {
 			echo '<option value="' . (int) $y . '"' . selected( $ry, $y, false ) . '>' . esc_html( \AssociazioneSemplice\FiscalYears::label( $y ) ) . '</option>';
@@ -252,7 +252,7 @@ final class WatchPage {
 
 		$crediti = ExpenseFunds::credits();
 		if ( $crediti ) {
-			echo '<div class="asem-card"><h2>Volontari in credito (' . count( $crediti ) . ')</h2><p class="description">Questi volontari hanno anticipato spese dell\'associazione, ad esempio per eventi che incasseranno più avanti, oltre quanto accantonato nei loro fondi: la spesa resta attribuita a loro ed essi restano creditori per un periodo, il che è normale. Si sana da solo con i prossimi incassi dei loro corsi, oppure versando una somma nel loro fondo da un conto o da un altro fondo («Accantona» nella scheda del fondo). Per distribuire la spesa su altri fondi: annulla l\'attribuzione qui sotto e attribuiscila a un altro fondo.</p>';
+			echo '<div class="asem-card"><h2>Volontari in credito (' . count( $crediti ) . ')</h2><p class="description">Questi volontari hanno anticipato spese dell\'associazione oltre quanto accantonato nei loro fondi, ad esempio per eventi che incasseranno più avanti. È normale: la spesa resta attribuita a loro e per un periodo restano in credito. Il credito si chiude da solo con i prossimi incassi dei loro corsi, oppure versando una somma nel loro fondo da un conto o da un altro fondo («Accantona» nella scheda del fondo). Per dividere la spesa su altri fondi, annulla l\'attribuzione qui sotto e attribuiscila a un altro fondo.</p>';
 			echo '<table class="widefat striped"><thead><tr><th>Volontario</th><th>Accantonato</th><th>Spese documentate</th><th>Credito</th></tr></thead><tbody>';
 			foreach ( array_slice( $crediti, 0, $limit ) as $c ) {
 				echo '<tr><td>' . esc_html( $c['name'] ) . '</td><td>' . self::m( (int) $c['accrued'] ) . '</td><td>' . self::m( (int) $c['documented'] ) . '</td><td><strong>' . self::m( (int) $c['credit'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput

@@ -140,7 +140,7 @@ final class Privacy {
 		$pid = isset( $_GET['person'] ) ? (int) $_GET['person'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		Csrf::check( 'asem_privacy_export_' . $pid );
 		if ( ! self::can_export( $pid ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		try {
 			$data = self::export( $pid );

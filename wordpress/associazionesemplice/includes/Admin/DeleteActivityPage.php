@@ -100,7 +100,7 @@ final class DeleteActivityPage {
 
 		echo '<h3>Cosa verrà eliminato</h3><ul style="list-style:disc;margin-left:20px">'
 			. '<li>' . (int) $p['sessions'] . ( 1 === $p['sessions'] ? ' data' : ' date' ) . ' e tutte le prenotazioni (' . (int) $p['bookings'] . ' attive), la lista d\'attesa e le presenze</li>'
-			. '<li>' . (int) $p['enrollments'] . ' iscrizioni in corso e ' . (int) $p['staff'] . ' persone dello staff</li>'
+			. '<li>' . (int) $p['enrollments'] . ' iscrizioni in corso e ' . (int) $p['staff'] . ( 1 === (int) $p['staff'] ? ' persona dello staff</li>' : ' persone dello staff</li>' )
 			. '<li>' . (int) $p['notices'] . ' avvisi inviati e i collegamenti (WooCommerce, pagine riservate)</li>'
 			. ( $p['fund_cents'] > 0 ? '<li>le somme accantonate per il rimborso del referente (' . esc_html( Money::format( (int) $p['fund_cents'] ) ) . ')</li>' : '' )
 			. '</ul>';
@@ -113,7 +113,7 @@ final class DeleteActivityPage {
 				. ( $p['income']['online_cents'] > 0 ? ' (di cui ' . esc_html( Money::format( (int) $p['income']['online_cents'] ) ) . ' pagati online)' : '' ) . '</li>'
 				. '<li>' . (int) $p['expense']['count'] . ' spese per ' . esc_html( Money::format( (int) $p['expense']['cents'] ) ) . '</li></ul>';
 			if ( $p['income_fruited']['count'] ) {
-				echo '<p class="description"><strong>' . (int) $p['income_fruited']['count'] . ' di questi incassi (' . esc_html( Money::format( (int) $p['income_fruited']['cents'] ) ) . ') riguardano date o mesi già svolti</strong>: restano in prima nota così come sono e non vengono restituiti né annullati. Restituzione e annullamento valgono solo per ciò che non è ancora stato fruito.</p>';
+				echo '<p class="description"><strong>' . (int) $p['income_fruited']['count'] . ' di questi incassi (' . esc_html( Money::format( (int) $p['income_fruited']['cents'] ) ) . ') riguardano date o mesi già svolti</strong>: restano in prima nota così come sono. Restituzione e annullamento valgono solo per le date e i mesi non ancora svolti.</p>';
 			}
 		}
 
@@ -121,7 +121,7 @@ final class DeleteActivityPage {
 			Ui::form_open( 'asem_delete_activity', $back );
 			echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 			if ( $p['recipients'] > 0 ) {
-				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email le ' . (int) $p['recipients'] . ' persone prenotate o iscritte con un indirizzo email</label></p>';
+				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email ' . ( 1 === (int) $p['recipients'] ? 'la persona prenotata o iscritta' : 'le ' . (int) $p['recipients'] . ' persone prenotate o iscritte' ) . ' con un indirizzo email</label></p>';
 			}
 			echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina l\'evento</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
 			Ui::form_close();
@@ -147,7 +147,7 @@ final class DeleteActivityPage {
 			echo '<p style="margin-left:24px"><label><input type="checkbox" name="void_costs" value="1"> Annulla anche le spese registrate per questo evento <span class="description">(solo con «Annulla gli incassi»; di norma le spese sono costi veri e restano)</span></label></p>';
 		}
 		if ( $p['recipients'] > 0 ) {
-			echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email le ' . (int) $p['recipients'] . ' persone prenotate o iscritte con un indirizzo email</label></p>';
+			echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email ' . ( 1 === (int) $p['recipients'] ? 'la persona prenotata o iscritta' : 'le ' . (int) $p['recipients'] . ' persone prenotate o iscritte' ) . ' con un indirizzo email</label></p>';
 		}
 		echo '<p><button class="button button-primary">Continua</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p></form>';
 	}
@@ -163,7 +163,7 @@ final class DeleteActivityPage {
 			echo '<p>Nessun movimento da modificare: la prima nota non cambia.</p>';
 		} elseif ( ActivityReset::REFUND === $mode ) {
 			echo '<p><strong>Gli ' . (int) $inc['count'] . ' incassi (' . esc_html( Money::format( (int) $inc['cents'] ) ) . ') restano in prima nota</strong> e viene registrata, a oggi, <strong>un\'uscita di restituzione per ciascuno</strong> (' . esc_html( Money::format( (int) $inc['cents'] ) ) . ' in tutto, sotto la voce «Restituzione quote»), sullo stesso conto e con la stessa modalità. Nei saldi l\'effetto netto è zero.</p>';
-			echo '<p><strong>Il denaro non viene restituito dal sistema:</strong> va riconsegnato a chi ha pagato' . ( $inc['online_cents'] > 0 ? '; per i pagamenti online (' . esc_html( Money::format( (int) $inc['online_cents'] ) ) . ') il rimborso va fatto a mano dal pannello del fornitore (Stripe, PayPal, negozio)' : '' ) . '.</p>';
+			echo '<p><strong>Il gestionale non restituisce il denaro:</strong> va riconsegnato a chi ha pagato' . ( $inc['online_cents'] > 0 ? '; per i pagamenti online (' . esc_html( Money::format( (int) $inc['online_cents'] ) ) . ') il rimborso va fatto a mano dal pannello del fornitore (Stripe, PayPal, negozio)' : '' ) . '.</p>';
 		} else {
 			echo '<p><strong>Gli ' . (int) $inc['count'] . ' incassi (' . esc_html( Money::format( (int) $inc['cents'] ) ) . ') vengono ANNULLATI</strong>: <strong>spariscono da saldi, report, rendiconto e ricevute</strong>, come se non fossero mai avvenuti. Restano consultabili solo tra gli annullamenti e nel registro azioni.</p>';
 			if ( $p['refund_exp']['count'] ) {

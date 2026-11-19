@@ -4,7 +4,7 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pagamento con bonifico: l'IBAN (o gli IBAN) dell'associazione si mostrano ai soci nell'area riservata, si possono mandare per email al socio
+ * Pagamento con bonifico: l'IBAN (o gli IBAN) dell'associazione si mostrano ai soci nell'area soci, si possono mandare per email al socio
  * e (se si vuole) si aggiungono ai promemoria di pagamento. Funziona da solo o insieme ai pagamenti online. Spento di default.
  *
  * Sicurezza: le coordinate si modificano solo dagli amministratori (Impostazioni → Pagamenti online); ogni modifica finisce nel registro azioni
@@ -191,7 +191,7 @@ final class Bank {
 			$body .= 'Totale: ' . Money::format( $total ) . "\n\n";
 		}
 		$body .= self::text_block( $person, $dues ) . "\n\nSe non hai chiesto tu questo messaggio, ignoralo: le coordinate sono quelle dell'associazione.";
-		if ( ! Texts::mail( $email, 'Coordinate per il bonifico' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $body ) ) {
+		if ( ! Texts::mail( $email, \AssociazioneSemplice\Texts::subject( 'Coordinate per il bonifico' ), $body ) ) {
 			throw new \InvalidArgumentException( 'Non è stato possibile inviare l\'email: riprova più tardi.' );
 		}
 		Audit::log( 'bank.emailed', 'person', (int) $person['id'] );

@@ -20,7 +20,7 @@ final class ReportsPage {
 		$mode   = in_array( $mode, array( 'social', 'solar' ), true ) && ( $fiscal || 'solar' !== $mode ) ? $mode : 'liquidity';
 		Ui::header( 'Report' );
 		WatchPage::box_html(); // bilancio provvisorio e avvisi (Pro Fiscale)
-		$tabs = array( 'liquidity' => 'Conti e liquidità', 'social' => 'Anno delle attività' ) + ( $fiscal ? array( 'solar' => 'Anno fiscale (commercialista)' ) : array() );
+		$tabs = array( 'liquidity' => 'Conti e disponibilità', 'social' => 'Anno delle attività' ) + ( $fiscal ? array( 'solar' => 'Anno fiscale (commercialista)' ) : array() );
 		echo '<h2 class="nav-tab-wrapper">';
 		foreach ( $tabs as $key => $label ) {
 			echo '<a class="nav-tab ' . ( $key === $mode ? 'nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( 'asem-reports', array( 'mode' => $key ) ) ) . '">' . esc_html( $label ) . '</a>';
@@ -76,7 +76,7 @@ final class ReportsPage {
 			echo '<tr><td>' . (int) $y . '</td><td>' . Ui::money( $r['accrued'] ) . '</td><td>' . Ui::money( $r['settled'] ) . '</td><td>' . ( $r['unsettled'] > 0 ? '<strong class="asem-warn">' . Ui::money( $r['unsettled'] ) . '</strong>' : Ui::money( 0 ) ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
 				. '<td>' . ( $fy ? ( 'open' === $fy['status'] ? 'aperto' : 'chiuso' ) : '—' ) . ( $r['unsettled'] > 0 && $fy && 'open' === $fy['status'] ? ' <span class="description">(non si può chiudere finché resta da rimborsare)</span>' : '' ) . '</td></tr>';
 		}
-		echo '</tbody></table><p class="description">Un rimborso o una liberazione copre prima gli accantonamenti più vecchi. Gli accantonamenti sono mostrati tra le uscite dell\'anno fiscale in cui si registrano, anche se il rimborso non è ancora stato pagato. Attenzione per il commercialista: nel rendiconto per cassa (Mod. D) una somma accantonata va considerata uscita solo quando il rimborso viene pagato; il dettaglio è in questa tabella.</p>';
+		echo '</tbody></table><p class="description">Un rimborso o una liberazione copre prima gli accantonamenti più vecchi. Gli accantonamenti sono mostrati tra le uscite dell\'anno fiscale in cui si registrano, anche se il rimborso non è ancora stato pagato. Nota per il commercialista: nel rendiconto per cassa (Mod. D) una somma accantonata va considerata uscita solo quando il rimborso viene pagato; il dettaglio è in questa tabella.</p>';
 	}
 
 	private static function nav( string $mode, int $year, string $label ): void {
@@ -108,7 +108,7 @@ final class ReportsPage {
 		}
 		echo '<p><strong>Avanzo / disavanzo: ' . Ui::money( $r['result'] ) . '</strong></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		if ( $r['fund_accrued'] || $r['fund_released'] ) {
-			echo '<p class="description">Le uscite comprendono i fondi accantonati nell\'anno (' . esc_html( \AssociazioneSemplice\Money::format( $r['fund_accrued'] ) ) . ')' . ( $r['fund_released'] ? ', al netto di ' . esc_html( \AssociazioneSemplice\Money::format( $r['fund_released'] ) ) . ' liberati' : '' ) . ', anche se il rimborso non è ancora stato pagato; il pagamento del rimborso non si conta una seconda volta. Attenzione per il commercialista: nel rendiconto per cassa (Mod. D) le somme accantonate vanno considerate uscite solo quando il rimborso viene pagato: trovi il dettaglio nella tabella «Fondi per anno fiscale» qui sotto.</p>';
+			echo '<p class="description">Le uscite comprendono i fondi accantonati nell\'anno (' . esc_html( \AssociazioneSemplice\Money::format( $r['fund_accrued'] ) ) . ')' . ( $r['fund_released'] ? ', al netto di ' . esc_html( \AssociazioneSemplice\Money::format( $r['fund_released'] ) ) . ' liberati' : '' ) . ', anche se il rimborso non è ancora stato pagato; il pagamento del rimborso non si conta una seconda volta. Nota per il commercialista: nel rendiconto per cassa (Mod. D) le somme accantonate vanno considerate uscite solo quando il rimborso viene pagato: trovi il dettaglio nella tabella «Fondi per anno fiscale» qui sotto.</p>';
 		}
 		self::funds_by_year();
 	}

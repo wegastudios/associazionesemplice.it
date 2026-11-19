@@ -30,16 +30,17 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | QR della tessera con verifica in diretta | ✓ | ✓ | ✓ |
 | Tessera in PDF da stampare, con testo libero, tipologia e incarichi | ✓ | ✓ | ✓ |
 | Tessera in Apple Wallet e Google Wallet | — | ✓ | ✓ |
+| Quota già pagata nell'anno :: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
 
-## Area riservata e permessi
+## Area soci e permessi
 
 | Funzione | {free_name} | {lite_name} | {full_name} |
 |---|---|---|---|
-| Area riservata dei soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
+| Area soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
 | App sul telefono :: Installabile, con notifiche e icona dell'associazione; pagina offline con «Riprova» e invito a installarla sotto la tessera | — | ✓ | ✓ |
 | Primo accesso e approvazione della segreteria | ✓ | ✓ | ✓ |
 | Domanda di adesione online per chi non è ancora socio, con approvazione, tessera e link per la password | ✓ | ✓ | ✓ |
-| Minori con uno o due genitori o tutori: area riservata del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
+| Minori con uno o due genitori o tutori: area soci del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
 | Liberatoria per foto e video nella scheda e nel modulo di domanda online, con il tutore per i minori | ✓ | ✓ | ✓ |
 | Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione soci | ✓ | ✓ | ✓ |
 | Avviso «Schede da completare» in Bacheca e in «Da lavorare» | ✓ | ✓ | ✓ |
@@ -175,7 +176,6 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Lingue aggiuntive :: Inglese incluso | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
 | Copie di sicurezza firmate :: Una copia modificata viene rifiutata; una copia di un altro sito si ripristina con conferma scritta e password | ✓ | ✓ | ✓ |
-| Quota già pagata nell'anno :: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
 | Cifratura dei file riservati :: Documenti e scansioni, allegati dei movimenti e foto dell'inventario si cifrano, con la frase per riaprirli | ✓ | ✓ | ✓ |
 | Cifratura di certificati, giustificativi e ricevute :: Anche per certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
 | Controllo della cartella dei file riservati :: Controlla che la cartella dei file riservati non sia raggiungibile da internet | ✓ | ✓ | ✓ |

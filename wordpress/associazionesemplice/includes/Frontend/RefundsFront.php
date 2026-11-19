@@ -40,7 +40,7 @@ final class RefundsFront {
 					$html .= '<div class="asemf-small">Motivo: ' . esc_html( (string) $r['reject_reason'] ) . '</div>';
 				}
 				if ( RefundRules::REQUESTED === $r['status'] ) {
-					$html .= Views::form( 'asem_front_refund_cancel', Views::hidden( 'refund_id', $id ), 'Ritira la richiesta', true );
+					$html .= Views::form( 'asem_front_refund_cancel', Views::hidden( 'refund_id', $id ), 'Ritira la richiesta', 'Ritirare la richiesta?' );
 				}
 				$html .= '</div></li>';
 			}

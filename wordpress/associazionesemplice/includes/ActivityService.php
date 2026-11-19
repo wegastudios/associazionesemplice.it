@@ -1523,7 +1523,7 @@ class ActivityService {
 		return null;
 	}
 
-	// ---------- Per l'area riservata e i contenuti riservati ----------
+	// ---------- Per l'area soci e i contenuti riservati ----------
 
 	/** Attività a cui la persona partecipa: corsi con iscrizione non conclusa, eventi con una prenotazione attiva. */
 	public function person_activity_ids( int $person_id ): array {

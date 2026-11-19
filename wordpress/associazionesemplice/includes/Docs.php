@@ -245,7 +245,7 @@ final class Docs {
 		if ( 'csv' === $format ) {
 			return array( 'body' => self::csv( self::book_cols( $snap ), self::book_rows( $rows, $snap ) ), 'filename' => $name . '.csv', 'mime' => 'text/csv; charset=utf-8' );
 		}
-		$sub = ( $cap ? mb_substr( $cap['title'], mb_strlen( 'Libro soci — ' ) ) : 'Aggiornato al ' . self::d( Db::today() ) ) . ' · ' . count( $all ) . ' soci, ' . $active . ' in carica';
+		$sub = ( $cap ? mb_substr( $cap['title'], mb_strlen( 'Libro soci — ' ) ) : 'Aggiornato al ' . self::d( Db::today() ) ) . ' · ' . count( $all ) . ( 1 === count( $all ) ? ' socio, ' : ' soci, ' ) . $active . ' in carica';
 		return array( 'body' => self::book_pdf( $rows, $sub, $snap ), 'filename' => $name . '.pdf', 'mime' => 'application/pdf' );
 	}
 
@@ -401,7 +401,7 @@ final class Docs {
 
 	public static function handle(): void {
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_doc' );
 		if ( ! Edition::allows( 'export' ) ) {

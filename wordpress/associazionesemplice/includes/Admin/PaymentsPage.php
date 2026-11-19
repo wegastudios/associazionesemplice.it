@@ -38,8 +38,8 @@ final class PaymentsPage {
 			. 'fissa <input type="text" name="pay_fee_fixed_' . esc_attr( $gateway ) . '" value="' . esc_attr( $fixed > 0 ? Money::plain( $fixed ) : '' ) . '" size="5" inputmode="decimal" placeholder="0,25"> € '
 			. '+ <input type="text" name="pay_fee_pct_' . esc_attr( $gateway ) . '" value="' . esc_attr( $pct > 0 ? rtrim( rtrim( number_format( $pct / 100, 2, ',', '' ), '0' ), ',' ) : '' ) . '" size="4" inputmode="decimal" placeholder="1,5"> % per ogni pagamento'
 			. '<p class="description">Quanto ti costa incassare con questo metodo. I valori di partenza sono le tariffe standard pubblicate dal gestore (carte europee standard per Stripe, vendite nazionali per PayPal, pagamenti online per SumUp): confrontali con il tuo contratto. Svuota i campi se non vuoi indicarli.</p>'
-			. '<label><input type="checkbox" name="pay_fee_pass_' . esc_attr( $gateway ) . '" value="1"' . checked( ! empty( $s[ 'pay_fee_pass_' . $gateway ] ), true, false ) . '> Ribalta la commissione su chi paga, in automatico</label>'
-			. '<p class="description">Con la spunta il totale da pagare aumenta di quanto serve a coprire la commissione e il socio la vede indicata sotto il pulsante. <strong>Attenzione:</strong> in Italia e nell\'Unione europea è vietato far pagare un supplemento a chi paga con carta (e con alcuni bonifici/addebiti) se è un consumatore (direttiva PSD2, D.Lgs. 11/2010): la spunta è spenta di partenza e usarla è una scelta e una responsabilità dell\'associazione. Se non sei sicuro lasciala spenta.</p></td></tr>';
+			. '<label><input type="checkbox" name="pay_fee_pass_' . esc_attr( $gateway ) . '" value="1"' . checked( ! empty( $s[ 'pay_fee_pass_' . $gateway ] ), true, false ) . '> Fai pagare la commissione a chi paga</label>'
+			. '<p class="description">Con la spunta il totale da pagare aumenta di quanto serve a coprire la commissione e il socio la vede indicata sotto il pulsante. <strong>Attenzione:</strong> in Italia e nell\'Unione europea è vietato chiedere un supplemento ai consumatori che pagano con carta, e con alcuni bonifici e addebiti (direttiva PSD2, D.Lgs. 11/2010). La spunta parte spenta: accenderla è una scelta e una responsabilità dell\'associazione. Nel dubbio, lasciala spenta.</p></td></tr>';
 	}
 
 	/** Stato del collegamento a Satispay (mai la chiave: solo se c'è). */
@@ -59,7 +59,7 @@ final class PaymentsPage {
 		echo '<tr><th>Come incassare online</th><td><select name="payment_provider" id="asem-pay-provider">' . Ui::options( PaymentConfig::providers(), $s['payment_provider'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description"><strong>Nessuno</strong> disattiva i pagamenti online: i soci vedono cosa devono e, se lo attivi più sotto, le coordinate per il bonifico. '
 			. '<strong>WooCommerce</strong> è alternativo a Stripe e PayPal. <strong>Stripe e PayPal insieme</strong> mostrano due pulsanti, con le diciture che scegli: utile ad esempio per offrire il pagamento a rate di PayPal accanto alla carta. '
-			. 'Con Stripe o PayPal i soci pagano su una <strong>pagina ospitata dal gateway</strong> (i dati della carta non passano dal sito) e l\'incasso entra da solo in prima nota sul conto "Stripe" o "PayPal". Prima di usarli in produzione verifica il funzionamento con le chiavi di prova.</p></td></tr>';
+			. 'Con Stripe o PayPal i soci pagano su una <strong>pagina di Stripe o di PayPal</strong> (i dati della carta non passano dal tuo sito) e l\'incasso entra da solo in prima nota, sul conto «Stripe» o «PayPal». Prima di incassare davvero, fai una prova con le chiavi di prova.</p></td></tr>';
 		echo self::label_rows( PaymentConfig::STRIPE, 'Stripe', $s, 'asem-pay-stripe', 'Ad esempio «Paga con carta».' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::label_rows( PaymentConfig::PAYPAL, 'PayPal', $s, 'asem-pay-paypal', 'Se il tuo account PayPal offre il pagamento a rate puoi scrivere ad esempio «Paga a rate con PayPal» e spiegare nella nota come funziona.' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::label_rows( PaymentConfig::SUMUP, 'SumUp', $s, 'asem-pay-sumup', 'Ad esempio «Paga con carta (SumUp)».' ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -71,7 +71,7 @@ final class PaymentsPage {
 		echo SettingsPage::secret_row( 'stripe_webhook_secret', 'Stripe — segreto del webhook', 'asem-pay-stripe', 'whsec_… (da Stripe → Sviluppatori → Webhook)' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr class="asem-pay-stripe"><th>Indirizzo del webhook</th><td><code>' . esc_html( rest_url( 'associazionesemplice/v1/webhooks/stripe' ) ) . '</code><p class="description">In Stripe (Sviluppatori → Webhook) aggiungi questo indirizzo con gli eventi <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>checkout.session.expired</code>, <code>charge.refunded</code> e <code>charge.dispute.created</code> (gli ultimi due segnalano un rimborso o una contestazione fatti su Stripe), poi incolla qui il segreto <code>whsec_…</code>. È una rete di sicurezza: il pagamento si conferma anche quando il socio torna sul sito e con un controllo automatico ogni ora.</p></td></tr>';
 		echo '<tr class="asem-pay-stripe"><th>Klarna</th><td><label><input type="checkbox" name="stripe_klarna" value="1"' . checked( ! empty( $s['stripe_klarna'] ), true, false ) . '> Offri anche Klarna (paga dopo o a rate) nella pagina di pagamento di Stripe</label>'
-			. '<p class="description">Klarna passa da Stripe: va attivato anche nel tuo account Stripe (Impostazioni → Metodi di pagamento). <strong>Attenzione:</strong> con Klarna acceso il sito elenca a mano i metodi della pagina di pagamento (carta e Klarna), quindi gli altri metodi che hai attivato nel pannello di Stripe (ad esempio Link) non compaiono finché Klarna è acceso.Si offre solo per pagamenti in euro, da ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MIN_CENTS ) ) . ' a ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MAX_CENTS ) ) . ' e quando il socio ha un indirizzo email; negli altri casi resta la sola carta. '
+			. '<p class="description">Klarna passa da Stripe: va attivato anche nel tuo account Stripe (Impostazioni → Metodi di pagamento). <strong>Attenzione:</strong> con Klarna acceso la pagina di pagamento mostra solo carta e Klarna: gli altri metodi attivati nel pannello di Stripe (ad esempio Link) non compaiono. Klarna si offre solo per pagamenti in euro, da ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MIN_CENTS ) ) . ' a ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MAX_CENTS ) ) . ' e quando il socio ha un indirizzo email; negli altri casi resta la sola carta. '
 			. 'Nel webhook di Stripe aggiungi anche <code>checkout.session.async_payment_failed</code>, per chiudere i pagamenti differiti non riusciti.</p></td></tr>';
 		echo '<tr class="asem-pay-paypal"><th>Conferma dei pagamenti</th><td><p class="description">PayPal non richiede configurazioni aggiuntive: il pagamento si conferma quando il socio torna sul sito e con un controllo automatico ogni ora.</p></td></tr>';
 		echo SettingsPage::gateway_row( 'paypal_mode', 'PayPal — modalità', $s, 'select', array( 'sandbox' => 'Prova (sandbox)', 'live' => 'Reale (live)' ), 'asem-pay-paypal' ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -84,7 +84,7 @@ final class PaymentsPage {
 		echo '<tr class="asem-pay-satispay"><th>Satispay — collegamento</th><td>';
 		echo self::satispay_status( $s ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description">In Satispay Business (Sviluppatori → Chiavi API) genera un <strong>codice di attivazione</strong> monouso, incollalo nel riquadro «Collega Satispay» qui sotto e premi il pulsante: il sito crea da solo la chiave di firma e la conserva cifrata. Scegli prima la modalità (prova o reale) e salva.</p></td></tr>';
-		echo '<tr class="asem-pay-satispay"><th>Conferma dei pagamenti</th><td><code>' . esc_html( rest_url( 'associazionesemplice/v1/webhooks/satispay' ) ) . '</code><p class="description">Satispay avvisa questo indirizzo a pagamento concluso (lo indichiamo noi a ogni pagamento, non devi configurarlo). Il sito non crede all\'avviso: rilegge lo stato del pagamento da Satispay con una richiesta firmata. In più c\'è il controllo automatico ogni ora.</p></td></tr>';
+		echo '<tr class="asem-pay-satispay"><th>Conferma dei pagamenti</th><td><code>' . esc_html( rest_url( 'associazionesemplice/v1/webhooks/satispay' ) ) . '</code><p class="description">Satispay avvisa questo indirizzo a pagamento concluso (il sito glielo comunica da solo: non devi configurare nulla). Per sicurezza il sito non si fida dell\'avviso e chiede a Satispay lo stato del pagamento. In più c\'è il controllo automatico ogni ora.</p></td></tr>';
 		echo self::fee_rows( PaymentConfig::STRIPE, 'Stripe', $s, 'asem-pay-stripe' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::fee_rows( PaymentConfig::PAYPAL, 'PayPal', $s, 'asem-pay-paypal' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::fee_rows( PaymentConfig::SUMUP, 'SumUp', $s, 'asem-pay-sumup' ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -99,8 +99,8 @@ final class PaymentsPage {
 				echo '<tr><th></th><td class="asem-warn">ℹ ' . esc_html( $w ) . '</td></tr>';
 			}
 		}
-		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete sono salvate <strong>cifrate</strong> nel database e non vengono mai mostrate né scritte nel registro azioni: si inseriscono qui e basta, senza toccare file. '
-			. 'La cifratura è legata a questo sito: se copi il database su un altro sito (ad esempio lo staging) le chiavi non vi sono leggibili e vanno reinserite. Questo impedisce a un sito di prova di usare per errore le chiavi reali. Usa le chiavi di prova finché non hai verificato il funzionamento.</p></td></tr>';
+		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete si salvano <strong>cifrate</strong> e non vengono più mostrate, nemmeno nel registro azioni. '
+			. 'La cifratura vale solo per questo sito: su una copia del sito (ad esempio un sito di prova) le chiavi non si leggono e vanno reinserite, così una copia non può usare per errore le chiavi reali. Usa le chiavi di prova finché non hai verificato che tutto funziona.</p></td></tr>';
 		if ( \AssociazioneSemplice\Secrets::salts_weak( defined( 'AUTH_KEY' ) ? (string) AUTH_KEY : null, defined( 'AUTH_SALT' ) ? (string) AUTH_SALT : null ) ) {
 			echo '<tr><th></th><td class="asem-warn">⚠ I codici di sicurezza di <code>wp-config.php</code> (AUTH_KEY e AUTH_SALT) mancano o sono quelli di esempio: la cifratura delle chiavi qui sopra è più debole. Generane di nuovi su <a href="https://api.wordpress.org/secret-key/1.1/salt/" target="_blank" rel="noopener">api.wordpress.org/secret-key</a> e incollali in <code>wp-config.php</code>; poi reinserisci le chiavi.</td></tr>';
 		}
@@ -113,7 +113,7 @@ final class PaymentsPage {
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
-		echo '<h2>Prova di connessione</h2><p class="description">Usa le chiavi già salvate (salva prima le impostazioni). Non muove denaro: Stripe legge il saldo, PayPal chiede un token di accesso, SumUp legge il profilo dell\'account.</p><div style="display:flex;gap:12px;flex-wrap:wrap">';
+		echo '<h2>Prova di connessione</h2><p class="description">Usa le chiavi già salvate (salva prima le impostazioni). Non muove denaro: controlla solo che il gestore accetti le chiavi.</p><div style="display:flex;gap:12px;flex-wrap:wrap">';
 		foreach ( array( PaymentConfig::STRIPE => 'Verifica connessione Stripe', PaymentConfig::PAYPAL => 'Verifica connessione PayPal', PaymentConfig::SUMUP => 'Verifica connessione SumUp', SatispayRules::ID => 'Verifica connessione Satispay' ) as $prov => $label ) {
 			Ui::form_open( 'asem_test_gateway', Ui::url( 'asem-payments' ) );
 			echo Ui::hidden( 'provider', $prov ) . '<button class="button">' . esc_html( $label ) . '</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -134,11 +134,11 @@ final class PaymentsPage {
 		Ui::form_open( 'asem_payment_refund', Ui::url( 'asem-payments' ) );
 		$form = ob_get_clean();
 		$why  = 'a' === $info['case']
-			? Texts::t( 'Questo pagamento non è in prima nota: il rimborso non scrive nulla in prima nota.' )
-			: Texts::t( 'L\'incasso è già stato annullato in prima nota: il rimborso non scrive nulla in prima nota.' );
+			? Texts::t( 'Questo pagamento non è in prima nota: il rimborso non vi registra nulla.' )
+			: Texts::t( 'L\'incasso è già stato annullato in prima nota: il rimborso non vi registra nulla.' );
 		return '<details><summary class="button button-small">' . esc_html( Texts::t( 'Rimborsa' ) ) . '</summary>' . $form
 			. Ui::hidden( 'id', $r['id'] ) . Ui::hidden( 'expected', (int) $r['refunded_cents'] )
-			. '<p><label>' . esc_html( Texts::t( 'Quanto restituire al socio (massimo {importo})? I soldi tornano sul suo metodo di pagamento e non si può annullare.', array( 'importo' => Money::format( $info['remaining'] ) ) ) )
+			. '<p><label>' . esc_html( Texts::t( 'Quanto restituire al socio (massimo {importo})? I soldi tornano sul suo metodo di pagamento e il rimborso non si può annullare.', array( 'importo' => Money::format( $info['remaining'] ) ) ) )
 			. '<br><input type="text" name="amount" size="8" inputmode="decimal" placeholder="0,00" autocomplete="off" required> €</label></p>'
 			. '<p><label>' . esc_html( Texts::t( 'Motivo del rimborso (lo leggerà il socio nell\'email):' ) ) . '<br><input type="text" name="reason" class="regular-text" maxlength="200" required></label></p>'
 			. '<p class="description">' . esc_html( $why ) . ' ' . esc_html( Texts::t( 'Si può restituire da 0,50 € in su.' ) ) . ' ' . esc_html( Texts::t( 'Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e crediti collegati a questo pagamento restano come sono. Se vanno tolti, sistemali a mano.' ) ) . '</p>'
@@ -165,7 +165,7 @@ final class PaymentsPage {
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-payments"><select name="status">' . Ui::options( self::STATUS, $status, 'Tutti gli stati' ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<label><input type="checkbox" name="review" value="1"' . checked( $review, true, false ) . '> Solo da controllare</label> <button class="button">Filtra</button></form>';
 		Ui::form_open( 'asem_check_payments', Ui::url( 'asem-payments' ) );
-		echo '<p><button class="button">Verifica i pagamenti in sospeso</button> <span class="description">Interroga il gateway sui pagamenti non ancora confermati (lo fa già da solo ogni ora).</span></p>';
+		echo '<p><button class="button">Verifica i pagamenti in sospeso</button> <span class="description">Chiede al gestore lo stato dei pagamenti non ancora confermati (succede già da solo ogni ora).</span></p>';
 		Ui::form_close();
 
 		echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Chi ha pagato</th><th>Metodo</th><th>Importo</th><th>Stato</th><th>Voci</th><th></th></tr></thead><tbody>';
@@ -196,12 +196,12 @@ final class PaymentsPage {
 				. '<td>' . esc_html( implode( '; ', $items ) ) . '<br><span class="description">' . esc_html( (string) $r['provider_ref'] ) . '</span></td><td>';
 			if ( ! empty( $r['refund_due'] ) ) {
 				Ui::form_open( 'asem_payment_refunded', Ui::url( 'asem-payments' ) );
-				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button button-small">Rimborsato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button button-small">Segna come rimborsato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
 			}
 			if ( $r['review'] ) {
 				Ui::form_open( 'asem_payment_reviewed', Ui::url( 'asem-payments' ) );
-				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button button-small">Controllato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button button-small">Segna come controllato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
 			}
 			if ( $info['ok'] ) {
@@ -212,8 +212,8 @@ final class PaymentsPage {
 			echo '</td></tr>';
 		}
 		echo '</tbody></table>';
-		echo '<p class="description">I pagamenti riusciti sono già in <a href="' . esc_url( Ui::url( 'asem-ledger' ) ) . '">Prima nota</a> sul conto "Stripe" o "PayPal". '
-			. 'Le commissioni del gateway si registrano da sole come spesa stimata (se lo hai scelto più sopra); il trasferimento sul conto corrente (payout) si registra a mano con un giroconto. Un pagamento Stripe o PayPal si restituisce al socio da qui con «Rimborsa» (tutto o in parte, da 0,50 €): vale per i pagamenti mai entrati in prima nota e per quelli il cui incasso è già stato annullato; i soldi tornano sul metodo del socio, il rimborso non si può annullare e non scrive nulla in prima nota. Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e crediti collegati a questo pagamento restano come sono; se vanno tolti, sistemali a mano. Se hai già restituito i soldi dal pannello di Stripe o PayPal, non rimborsare di nuovo da qui: segna il pagamento con «Rimborsato». Se l\'incasso è ancora in prima nota, annullalo prima da lì. Con gli altri metodi (SumUp, Satispay, negozio) il rimborso si fa dal pannello del gestore. I bonifici arrivati sul conto si registrano a mano da «Nuovo incasso».</p>';
+		echo '<p class="description">I pagamenti riusciti sono già in <a href="' . esc_url( Ui::url( 'asem-ledger' ) ) . '">Prima nota</a>, sul conto «Stripe» o «PayPal». '
+			. 'Le commissioni si registrano da sole come spesa stimata, se lo hai scelto più sopra; l\'accredito sul conto corrente si registra a mano con un giroconto. Un pagamento Stripe o PayPal si restituisce da qui con «Rimborsa» (tutto o in parte, da 0,50 €), ma solo se non è in prima nota: se l\'incasso c\'è ancora, annullalo prima da lì. I soldi tornano sul metodo del socio; il rimborso non si può annullare e non registra nulla in prima nota. Iscrizioni, prenotazioni e crediti collegati restano come sono: se vanno tolti, sistemali a mano. Se hai già rimborsato dal pannello di Stripe o PayPal, non farlo di nuovo da qui: usa «Segna come rimborsato». Con SumUp, Satispay e negozio il rimborso si fa dal pannello del gestore. I bonifici arrivati sul conto si registrano a mano da «Nuovo incasso».</p>';
 		Ui::footer();
 	}
 }

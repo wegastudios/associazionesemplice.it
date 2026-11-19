@@ -43,7 +43,7 @@ final class RuntsPage {
 	public static function minimum_text( array $min ): string {
 		$short = RuntsRules::section_short( (string) $min['section'] );
 		$t     = '<strong>I soci sono sotto il minimo previsto per le ' . esc_html( $short ) . ':</strong> oggi hai ' . (int) $min['persons'] . ' persone e ' . (int) $min['entities'] . ' enti iscritti come ' . esc_html( $short )
-			. ', ne servono almeno ' . RuntsRules::MIN_PERSONS . ' persone oppure ' . RuntsRules::MIN_ENTITIES . ' enti. Contiamo i soci con la tessera valida oggi: chi ha la tessera scaduta non è contato finché non rinnova. ';
+			. ', servono almeno ' . RuntsRules::MIN_PERSONS . ' persone oppure ' . RuntsRules::MIN_ENTITIES . ' enti. Contiamo i soci con la tessera valida oggi: chi ha la tessera scaduta non è contato finché non rinnova. ';
 		if ( ! empty( $min['recent'] ) ) {
 			$t .= (int) $min['recent'] . ( 1 === (int) $min['recent'] ? ' socio ha la tessera scaduta da poco' : ' soci hanno la tessera scaduta da poco' ) . ': se rinnovano, tornano nel conteggio'
 				. ( ! empty( $min['recoverable'] ) ? ' e si risale sopra il minimo' : '' ) . '. ';
@@ -91,12 +91,12 @@ final class RuntsPage {
 		if ( $man['year'] !== $year ) {
 			$vol .= '<strong class="asem-warn">' . ( $man['year'] ? 'Il numero inserito è riferito al 31 dicembre ' . (int) $man['year'] . ': aggiornalo.' : 'Non hai indicato l\'anno di riferimento.' ) . '</strong> ';
 		}
-		$vol .= 'Il programma non tiene il registro dei volontari: scrivi tu il numero in <a href="' . esc_url( Ui::url( 'asem-entity' ) ) . '">Dati dell\'ente</a>. Per aiutarti: a quella data i soci di tipo «Socio e volontario» erano ' . (int) $c['volunteer_members'] . '. Nel registro possono esserci anche volontari che non sono soci.</td></tr>';
+		$vol .= 'Qui non c\'è il registro dei volontari: scrivi tu il numero in <a href="' . esc_url( Ui::url( 'asem-entity' ) ) . '">Dati dell\'ente</a>. Per aiutarti: a quella data i soci di tipo «Socio e volontario» erano ' . (int) $c['volunteer_members'] . '. Nel registro possono esserci anche volontari che non sono soci.</td></tr>';
 		echo wp_kses( $vol, Html::allowed() );
 		$workers = Runts::workers_count( $date );
 		echo wp_kses(
 			'<tr><th>Lavoratori (dipendenti a qualsiasi titolo)</th><td><strong style="font-size:1.4em">' . ( null === $workers ? '—' : (int) $workers ) . '</strong></td><td class="description">'
-			. ( null === $workers ? 'Il programma non li conta ancora: scrivi tu il numero nel portale del RUNTS.' : 'Utenti «Dipendente» in servizio a quella data (senza date di servizio sono sempre in servizio): si gestiscono da Rubrica soci → Dipendenti.' ) . '</td></tr>',
+			. ( null === $workers ? 'Qui non vengono ancora contati: scrivi tu il numero nel portale del RUNTS.' : 'Utenti «Dipendente» in servizio a quella data (senza date di servizio sono sempre in servizio): si gestiscono da Rubrica soci → Dipendenti.' ) . '</td></tr>',
 			Html::allowed()
 		);
 		echo '</tbody></table>';
@@ -117,7 +117,7 @@ final class RuntsPage {
 		} elseif ( $min['below'] ) {
 			echo wp_kses( '<div class="notice notice-warning inline"><p>' . self::minimum_text( $min ) . '</p></div>', Html::allowed() );
 		} else {
-			echo '<p class="asem-ok">Tutto a posto: oggi hai ' . (int) $min['persons'] . ' persone e ' . (int) $min['entities'] . ' enti iscritti nella tua stessa sezione (ne servono almeno ' . (int) RuntsRules::MIN_PERSONS . ' persone oppure ' . (int) RuntsRules::MIN_ENTITIES . ' enti). Contiamo i soci con la tessera valida oggi.</p>';
+			echo '<p class="asem-ok">Tutto a posto: oggi hai ' . (int) $min['persons'] . ' persone e ' . (int) $min['entities'] . ' enti iscritti nella tua stessa sezione (servono almeno ' . (int) RuntsRules::MIN_PERSONS . ' persone oppure ' . (int) RuntsRules::MIN_ENTITIES . ' enti). Contiamo i soci con la tessera valida oggi.</p>';
 		}
 		Ui::footer();
 	}

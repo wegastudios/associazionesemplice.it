@@ -105,7 +105,7 @@ final class Admin {
 		// Schede e pagine di dettaglio: raggiungibili dai link e dalla barra in cima, non compaiono nel menu
 		$hidden = array(
 			array( 'asem-activity-delete', 'Elimina l\'evento', array( DeleteActivityPage::class, 'render' ) ),
-			array( 'asem-booking-delete', 'Cancella l\'iscrizione', array( DeleteBookingPage::class, 'render' ) ),
+			array( 'asem-booking-delete', 'Elimina l\'iscrizione', array( DeleteBookingPage::class, 'render' ) ),
 			array( 'asem-reset', 'Azzeramento dati', array( ResetPage::class, 'render' ) ),
 			array( 'asem-ledger', 'Prima nota', array( LedgerPage::class, 'render' ) ),
 			array( 'asem-calendar', 'Calendario', array( CalendarPage::class, 'render' ) ),

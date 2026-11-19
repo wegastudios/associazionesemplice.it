@@ -10,10 +10,10 @@ final class LimitsPage {
 
 	public static function render(): void {
 		Ui::header( 'Limiti e soglie' );
-		echo '<p>Qui trovi i limiti, le dimensioni dei gruppi di invio e i comportamenti automatici del plugin. I <strong>valori predefiniti sono prudenti</strong> e adatti a un sito su un hosting condiviso: '
+		echo '<p>Qui trovi i limiti, quanti messaggi partono per volta e i comportamenti automatici del gestionale. I <strong>valori predefiniti sono prudenti</strong> e adatti a un sito su un hosting condiviso: '
 			. 'proteggono i soci da messaggi in eccesso, il sito dai rallentamenti e la reputazione dell\'indirizzo email dell\'associazione. '
 			. 'Se hai un servizio di invio dedicato, un server più potente o esigenze particolari puoi cambiarli. Ogni valore ha un minimo e un massimo di sicurezza, e sotto ciascuno è spiegato cosa succede se lo alzi o lo abbassi.</p>';
-		echo '<div class="notice notice-info inline"><p><strong>Come regolarti.</strong> Cambia un valore alla volta e osserva per qualche giorno. Alzare un limite non rende il sito più veloce: sposta il rischio dal plugin al server, al servizio di posta o ai gateway di pagamento. '
+		echo '<div class="notice notice-info inline"><p><strong>Come regolarti.</strong> Cambia un valore alla volta e osserva per qualche giorno. Alzare un limite non rende il sito più veloce: sposta il rischio dal gestionale al server, al servizio di posta o ai servizi di pagamento. '
 			. 'Abbassarlo aumenta la sicurezza ma può bloccare operazioni legittime. Il pulsante «Ripristina i valori predefiniti» riporta tutto com\'era.</p></div>';
 
 		Ui::form_open( 'asem_save_limits', Ui::url( 'asem-limits' ) );

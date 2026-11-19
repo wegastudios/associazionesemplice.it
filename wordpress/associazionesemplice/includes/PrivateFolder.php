@@ -613,7 +613,7 @@ final class PrivateFolder {
 		if ( $st['custom'] ) { // avviso fisso (non si chiude) finché nella vecchia cartella restano file da spostare
 			$left = count( self::pending( 5000 ) );
 			if ( $left > 0 ) {
-				$out .= '<div class="notice notice-warning inline asem-private-move"><p><strong>' . esc_html( Texts::t( 'Ci sono ancora {n} file da spostare nella cartella indicata in wp-config.php.', array( 'n' => $left >= 5000 ? '5000+' : $left ) ) ) . '</strong> '
+				$out .= '<div class="notice notice-warning inline asem-private-move"><p><strong>' . esc_html( Texts::n( (int) $left, 'C\'è ancora un file da spostare nella cartella indicata in wp-config.php.', 'Ci sono ancora {n} file da spostare nella cartella indicata in wp-config.php.', array( 'n' => $left >= 5000 ? '5000+' : $left ) ) ) . '</strong> '
 					. esc_html( Texts::t( 'Finché non sono stati spostati la nuova cartella non entra in uso, e la cifratura automatica dei certificati e il rifacimento delle ricevute restano fermi.' ) )
 					. ' <a href="' . esc_url( $url ) . '">' . esc_html( Texts::t( 'Sposta i file' ) ) . '</a>.</p></div>';
 			}

@@ -8,7 +8,7 @@ use AssociazioneSemplice\Polls;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Viste per i soci: votazioni e documenti (nell'area riservata); elenco pubblico dei documenti. */
+/** Viste per i soci: votazioni e documenti (nell'area soci); elenco pubblico dei documenti. */
 final class BlockBViews {
 
 	public static function register(): void {
@@ -50,7 +50,7 @@ final class BlockBViews {
 				foreach ( Polls::options( $id ) as $o ) {
 					$fields .= '<label class="asemf-check"><input type="' . $type . '" name="choice[]" value="' . (int) $o['id'] . '"> ' . esc_html( $o['label'] ) . '</label> ';
 				}
-				$html .= Views::form( 'asem_front_vote', $fields, 'Vota', true );
+				$html .= Views::form( 'asem_front_vote', $fields, 'Vota', 'Confermare il voto? Dopo non potrai cambiarlo.' );
 			} elseif ( $poll['voted'] ) {
 				$html .= '<div class="asemf-small"><strong>Hai già votato.</strong></div>';
 			}
@@ -60,7 +60,7 @@ final class BlockBViews {
 				foreach ( $res['options'] as $o ) {
 					$html .= '<tr><td>' . esc_html( $o['label'] ) . '</td><td>' . (int) $o['count'] . ' (' . (int) $o['percent'] . '%)</td></tr>';
 				}
-				$html .= '</tbody></table><div class="asemf-small asemf-muted">Hanno votato ' . (int) $res['voters'] . ' soci su ' . (int) $res['eligible'] . '.</div>';
+				$html .= '</tbody></table><div class="asemf-small asemf-muted">' . ( 1 === (int) $res['voters'] ? 'Ha votato ' : 'Hanno votato ' ) . (int) $res['voters'] . ( 1 === (int) $res['voters'] ? ' socio su ' : ' soci su ' ) . (int) $res['eligible'] . '.</div>';
 			}
 			$html .= '</div></li>';
 		}

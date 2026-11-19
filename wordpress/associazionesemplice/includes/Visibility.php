@@ -25,7 +25,7 @@ final class Visibility {
 		return array(
 			self::PUBLIC_    => 'Pubblico (tutti)',
 			self::MEMBERS    => 'Solo soci (tessera valida)',
-			self::VOLUNTEERS => 'Solo soci e volontari',
+			self::VOLUNTEERS => 'Solo soci volontari',
 			self::ACTIVITY   => 'Solo iscritti a specifiche attività',
 		);
 	}
@@ -83,7 +83,7 @@ final class Visibility {
 			case self::MEMBERS:
 				return 'Solo soci';
 			case self::VOLUNTEERS:
-				return 'Solo volontari';
+				return 'Solo soci volontari';
 			case self::ACTIVITY:
 				return $activity_names ? 'Iscritti: ' . implode( ', ', $activity_names ) : 'Solo soci';
 		}

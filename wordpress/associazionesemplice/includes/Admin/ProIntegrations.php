@@ -40,12 +40,12 @@ final class ProIntegrations {
 		if ( ! $woo ) {
 			echo '<p class="description">WooCommerce non è attivo su questo sito: installalo e attivalo per far pagare quote e contributi dal negozio.</p>';
 		} else {
-			echo '<p class="description">I soci pagano quote e contributi dal carrello e dal checkout del negozio. Ogni quota (per livello di socio) e ogni corso o evento si collega a un prodotto semplice, preferibilmente virtuale: '
-				. 'nel carrello il prezzo è quello calcolato da Associazione Semplice (quota del livello, sconto familiare, mensilità dovute) e quando l\'ordine risulta pagato l\'incasso entra in prima nota con la sua ricevuta. '
-				. 'Gli ordini senza voci Associazione Semplice non vengono toccati.</p>';
+			echo '<p class="description">I soci pagano quote e contributi dal carrello del negozio. Collega ogni quota (una per livello di socio) e ogni corso o evento a un prodotto semplice, meglio se virtuale. '
+				. 'Nel carrello l\'importo lo calcola Associazione Semplice (quota del livello, sconto familiare, mensilità dovute); quando l\'ordine è pagato, l\'incasso entra in prima nota con la sua ricevuta. '
+				. 'Gli altri ordini del negozio non vengono toccati.</p>';
 			Ui::form_open( 'asem_save_woo', Ui::url( 'asem-tech' ) );
 			echo '<p><label><input type="checkbox" name="woo_enabled" value="1"' . checked( $on, true, false ) . '> <strong>Usa WooCommerce per i pagamenti online</strong></label> '
-				. '<span class="description">Al posto di Stripe e PayPal (il gateway scelto cambia).</span></p>';
+				. '<span class="description">Sostituisce il metodo scelto in Pagamenti online.</span></p>';
 			echo '<h3>Quote associative</h3><table class="widefat striped"><thead><tr><th>Livello</th><th>Prodotto</th></tr></thead><tbody>';
 			foreach ( Levels::all() as $lv ) {
 				echo '<tr><td>' . esc_html( $lv['name'] ) . ' <span class="description">(' . esc_html( \AssociazioneSemplice\MemberType::label( $lv['base_type'] ) ) . ')</span></td><td>' . $select( 'link_level[' . (int) $lv['id'] . ']', (int) ( $map[ 'level:' . (int) $lv['id'] ] ?? 0 ) ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -73,7 +73,7 @@ final class ProIntegrations {
 	/** Voci dell'elenco «Altre integrazioni». */
 	public static function list_items(): void {
 		$pay = \AssociazioneSemplice\Edition::has( 'payments' );
-		if ( $pay ) echo '<li><strong>Stripe, PayPal, SumUp, Satispay e Klarna</strong> — pagamenti con carta e portafoglio digitale senza negozio: <a href="' . esc_url( Ui::url( 'asem-payments' ) ) . '">Pagamenti online</a>.</li>';
+		if ( $pay ) echo '<li><strong>Stripe, PayPal, SumUp, Satispay e Klarna</strong>: pagamenti con carta e portafoglio digitale senza negozio: <a href="' . esc_url( Ui::url( 'asem-payments' ) ) . '">Pagamenti online</a>.</li>';
 		echo '<li><strong>Apple Wallet, Google Wallet, QR e calendario</strong>: <a href="' . esc_url( Ui::url( 'asem-card' ) ) . '">Tessera, QR e Wallet</a>.</li>';
 	}
 }
