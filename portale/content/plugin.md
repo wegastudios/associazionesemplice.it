@@ -29,8 +29,8 @@ Il confronto completo, funzione per funzione, è nella pagina [Confronto tra i p
 Il plugin gratuito non invia dati dei soci né dell'associazione.
 
 - **Scaricato da WordPress.org:** si aggiorna da lì e a noi non arriva nulla.
-- **Scaricato da questo sito:** una volta al giorno chiede se c'è una versione nuova, inviando solo nome del plugin e versione. Si può spegnere dalle impostazioni, e puoi controllare subito dal pulsante «Controlla aggiornamenti».
-- **Il Pro:** di norma una volta al giorno verifica la licenza e cerca aggiornamenti, inviando solo chiave, dominio e versione.
+- **Scaricato da questo sito:** una volta al giorno chiede se c'è una versione nuova, inviando solo nome del plugin e versione. Si può spegnere dalle impostazioni. Per controllare subito, usa «Controlla di nuovo» in Bacheca → Aggiornamenti.
+- **Il Pro:** di norma una volta al giorno verifica la licenza e cerca aggiornamenti, inviando solo chiave, dominio e versione. Per controllare subito c'è il link «Controlla aggiornamenti» nella pagina Plugin di WordPress.
 
 I dettagli sono nell'[informativa sulla privacy](/privacy) e nei [termini di utilizzo](/termini).
 
