@@ -5,6 +5,6 @@
 		<div class="feature"><div class="ico"><?php echo icon( $f[0] ); ?></div><h3><?php echo e( $f[1] ); ?></h3><p><?php echo e( $f[2] ); ?></p></div>
 	<?php endforeach; ?>
 	</div>
-	<p class="fine center">Ogni funzione, una per una, nel <a href="/confronto" data-confronto>confronto tra le versioni</a>.</p>
+	<p class="fine center">Ogni funzione, una per una, nel <a href="/confronto" data-confronto>confronto dei piani</a>.</p>
 </div></section>
 <script src="/assets/confronto.js" defer></script>

@@ -28,5 +28,5 @@ $euro = function ( $c ) { return number_format( $c / 100, ( $c % 100 ) ? 2 : 0, 
 	</div>
 <?php endforeach; ?>
 </div>
-<p class="fine center"><a href="/prezzi">Tutti i dettagli dei prezzi</a> · <a href="/confronto" data-confronto>Confronta le funzioni tra le versioni</a></p>
+<p class="fine center"><a href="/prezzi">Tutti i dettagli dei prezzi</a> · <a href="/confronto" data-confronto>Confronta le funzioni dei piani</a></p>
 <script src="/assets/confronto.js" defer></script>

@@ -33,57 +33,57 @@ final class Emails {
 			'welcome' => array(
 				'label' => 'Abbonamento attivo', 'when' => 'Subito dopo il primo pagamento riuscito.', 'vars' => array( 'link', 'dominio', 'piano', 'scadenza', 'email' ),
 				'subject' => 'Il tuo piano {piano} è attivo',
-				'body' => "Grazie!\nLa licenza {piano} per {dominio} è pronta e vale fino al {scadenza}.\n\nPer vedere la chiave apri questo link entro 15 minuti:\n\n{link}",
+				'body' => "Ciao,\ngrazie per l'acquisto. La licenza {piano} per {dominio} è pronta e vale fino al {scadenza}.\n\nPer vedere la chiave apri questo link entro 15 minuti:\n\n{link}",
 			),
 			'renewed' => array(
 				'label' => 'Rinnovo ricevuto', 'when' => 'A ogni rinnovo automatico andato a buon fine.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'Rinnovo ricevuto: {piano} fino al {scadenza}',
-				'body' => "Abbiamo ricevuto il pagamento: la licenza {piano} per {dominio} è rinnovata fino al {scadenza}.\n\nPuoi gestirla qui:\n{account_url}",
+				'body' => "Ciao,\nAbbiamo ricevuto il pagamento: la licenza {piano} per {dominio} è rinnovata fino al {scadenza}.\n\nPuoi gestirla qui:\n{account_url}",
 			),
 			'payment_failed' => array(
 				'label' => 'Pagamento non riuscito', 'when' => 'Il pagamento di un rinnovo non è andato a buon fine.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'Pagamento non riuscito per {dominio}',
-				'body' => "Non siamo riusciti a incassare il rinnovo del piano {piano} per {dominio}.\nControlla il metodo di pagamento: la licenza resta valida fino al {scadenza}, poi tornano le funzioni di base. I tuoi dati non vengono cancellati.\n\n{account_url}",
+				'body' => "Ciao,\nNon siamo riusciti a incassare il rinnovo del piano {piano} per {dominio}.\nControlla il metodo di pagamento: la licenza resta valida fino al {scadenza}, poi tornano le funzioni di base. I tuoi dati non vengono cancellati.\n\n{account_url}",
 			),
 			'canceled' => array(
 				'label' => 'Disdetta registrata', 'when' => 'Il cliente disdice il rinnovo, o il provider annulla l\'abbonamento.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'Disdetta registrata per {dominio}',
-				'body' => "Abbiamo registrato la disdetta del piano {piano} per {dominio}. La licenza resta valida fino al {scadenza}.\n\nSe cambi idea puoi scegliere di nuovo un piano dall'area riservata:\n{account_url}",
+				'body' => "Ciao,\nAbbiamo registrato la disdetta del piano {piano} per {dominio}. La licenza resta valida fino al {scadenza}.\n\nSe cambi idea puoi scegliere di nuovo un piano dall'area riservata:\n{account_url}",
 			),
 			'plan_upgraded' => array(
 				'label' => 'Piano cambiato (upgrade)', 'when' => 'Il cliente passa a un piano superiore e paga la differenza.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'Piano aggiornato per {dominio}',
-				'body' => "Il pagamento della differenza è andato a buon fine: la licenza per {dominio} ora è {piano}.\nLa chiave e la scadenza ({scadenza}) non cambiano: le nuove funzioni compaiono al prossimo controllo del plugin.\n\n{account_url}",
+				'body' => "Ciao,\nIl pagamento della differenza è andato a buon fine: la licenza per {dominio} ora è {piano}.\nLa chiave e la scadenza ({scadenza}) non cambiano: le nuove funzioni compaiono al prossimo controllo del plugin.\n\n{account_url}",
 			),
 			'plan_downgrade_scheduled' => array(
 				'label' => 'Cambio piano programmato (downgrade)', 'when' => 'Il cliente sceglie un piano più economico dal prossimo rinnovo.', 'vars' => array( 'dominio', 'piano', 'nuovo_piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'Cambio piano programmato per {dominio}',
-				'body' => "Abbiamo registrato il passaggio a {nuovo_piano} per {dominio}.\nFino al {scadenza} la licenza resta {piano}; dal rinnovo successivo cambia piano e prezzo. Puoi annullare il cambio dall'area riservata prima della scadenza.\n\n{account_url}",
+				'body' => "Ciao,\nAbbiamo registrato il passaggio a {nuovo_piano} per {dominio}.\nFino al {scadenza} la licenza resta {piano}; dal rinnovo successivo cambia piano e prezzo. Puoi annullare il cambio dall'area riservata prima della scadenza.\n\n{account_url}",
 			),
 			'plan_downgraded' => array(
 				'label' => 'Piano cambiato (downgrade)', 'when' => 'Dopo il rinnovo, la licenza passa al piano più economico scelto.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'Ora il piano di {dominio} è {piano}',
-				'body' => "Con il rinnovo la licenza per {dominio} è passata a {piano}, come avevi chiesto.\nLa chiave non cambia; le funzioni dei piani superiori si disattivano, i dati restano. Prossima scadenza: {scadenza}.\n\n{account_url}",
+				'body' => "Ciao,\nCon il rinnovo la licenza per {dominio} è passata a {piano}, come avevi chiesto.\nLa chiave non cambia; le funzioni dei piani superiori si disattivano, i dati restano. Prossima scadenza: {scadenza}.\n\n{account_url}",
 			),
 			'expiring' => array(
 				'label' => 'Licenza in scadenza', 'when' => 'Qualche giorno prima della scadenza di una licenza senza rinnovo automatico.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'La licenza di {dominio} scade il {scadenza}',
-				'body' => "La licenza {piano} per {dominio} scade il {scadenza} e non si rinnova da sola.\nPer continuare a usare le funzioni Pro puoi rinnovarla da qui:\n\n{account_url}",
+				'body' => "Ciao,\nLa licenza {piano} per {dominio} scade il {scadenza} e non si rinnova da sola.\nPer continuare a usare le funzioni Pro puoi rinnovarla da qui:\n\n{account_url}",
 			),
 			'trial_started' => array(
 				'label' => 'Prova Pro attivata', 'when' => 'Il cliente attiva la prova gratuita del piano Pro.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'La tua prova di {piano} è attiva',
-				'body' => "La prova gratuita di {piano} per {dominio} è attiva fino al {scadenza}.\n\nLa chiave di prova è nell'area riservata: incollala nel plugin al posto di quella gratuita. Alla fine della prova rimetti la chiave gratuita oppure passa al Pro.\n\n{account_url}",
+				'body' => "Ciao,\nLa prova gratuita di {piano} per {dominio} è attiva fino al {scadenza}.\n\nLa chiave di prova è nell'area riservata: incollala nel plugin al posto di quella gratuita. Alla fine della prova rimetti la chiave gratuita oppure passa al Pro.\n\n{account_url}",
 			),
 			'trial_ending' => array(
 				'label' => 'Prova in scadenza', 'when' => 'Qualche giorno prima della fine della prova gratuita.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'La prova di {piano} finisce il {scadenza}',
-				'body' => "La prova gratuita di {piano} per {dominio} finisce il {scadenza}.\nPer tenere le funzioni Pro scegli un piano; altrimenti rimetti la chiave gratuita e tutto continua con le funzioni di base.\n\n{account_url}",
+				'body' => "Ciao,\nLa prova gratuita di {piano} per {dominio} finisce il {scadenza}.\nPer tenere le funzioni Pro scegli un piano; altrimenti rimetti la chiave gratuita e tutto continua con le funzioni di base.\n\n{account_url}",
 			),
 			'domain_changed' => array(
 				'label' => 'Dominio cambiato', 'when' => 'Il dominio di una licenza viene cambiato.', 'vars' => array( 'dominio', 'vecchio_dominio', 'piano', 'account_url', 'email' ),
 				'subject' => 'Dominio aggiornato: {dominio}',
-				'body' => "Il dominio della licenza {piano} è passato da {vecchio_dominio} a {dominio}.\nIl vecchio dominio smette di funzionare al prossimo controllo.\n\nSe non hai fatto tu questa richiesta, scrivici subito.\n{account_url}",
+				'body' => "Ciao,\nIl dominio della licenza {piano} è passato da {vecchio_dominio} a {dominio}.\nIl vecchio dominio smette di funzionare al prossimo controllo.\n\nSe non hai fatto tu questa richiesta, scrivici subito.\n{account_url}",
 			),
 			// Gestionale SaaS (acquisto dal portale). Testi dell'audit del 13/11/2026. Regole della titolare (13/11/2026): nuovi tentativi per 7 giorni (3 al giorno
 			// nei primi 2, poi 1), sospensione il giorno dopo la scadenza, dati conservati 180 giorni.
