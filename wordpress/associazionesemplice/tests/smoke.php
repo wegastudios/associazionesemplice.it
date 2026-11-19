@@ -4013,9 +4013,9 @@ $html = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Partecipa
 asem_ok( false !== strpos( $html, 'Potrebbe essere la stessa persona' ) && false !== strpos( $html, 'Pinuccio' ) && false !== strpos( $html, 'stesso cellulare' ) && false !== strpos( $html, 'Corso di prova ospiti' ) && false !== strpos( $html, 'wa.me/393335555552' ) && false !== strpos( $html, 'Iscrivi come socio' ), 'scheda ospite: a cosa è venuto, le registrazioni gemelle, WhatsApp e iscrizione come socio' );
 $gz   = $people->create( array( 'type' => 'guest', 'first_name' => 'Zeno', 'last_name' => 'Zerovolte', 'phone' => '333 5555553', 'host_person_id' => $founder ) );
 $list = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Occasionale', array( 'type' => 'guest', 'at_limit' => '1' ) );
-asem_ok( false !== strpos( $list, 'da invitare a iscriversi' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a iscriversi"' );
+asem_ok( false !== strpos( $list, 'invitalo a diventare socio' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a iscriversi"' );
 $ev = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Open day yoga', array( 'id' => $e1 ) );
-asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'da invitare a iscriversi' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
+asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'invitalo a diventare socio' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Ospiti da invitare a diventare soci' );
 $front_g = $as( $u_f, '[associazionesemplice_ospiti]' );
 asem_ok( false !== strpos( $front_g, 'Partecipazioni: 2' ) && false !== strpos( $front_g, 'Open day yoga' ) && false === strpos( $front_g, 'iscriversi come socio' ) && false === strpos( $front_g, 'segreteria' ), 'area soci: il socio vede a cosa sono venuti i suoi ospiti, senza segnalazioni' );
@@ -4024,7 +4024,7 @@ $wpdb->update( Db::t( 'sessions' ), array( 'session_date' => $today ), array( 'i
 $_GET['asem_session'] = (string) $gs1;
 $det = $as( $u_tre, '[associazionesemplice_ingressi]' );
 unset( $_GET['asem_session'] );
-asem_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== strpos( $det, 'risulta registrato anche come' ) && false !== strpos( $det, 'da invitare a iscriversi' ), 'lista prenotati all\'ingresso: chi gestisce vede quante volte è venuto e se risulta registrato anche con altri nomi' );
+asem_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== strpos( $det, 'risulta registrato anche come' ) && false !== strpos( $det, 'invitalo a diventare socio' ), 'lista prenotati all\'ingresso: chi gestisce vede quante volte è venuto e se risulta registrato anche con altri nomi' );
 asem_ok( false === strpos( $det, '333 5555552' ) && false === strpos( $det, 'wa.me' ), 'lista prenotati all\'ingresso: nessun cellulare mostrato a chi gestisce l\'evento' );
 $set_html = asem_render( array( Admin\SettingsPage::class, 'render' ), 'Ospiti: soglia di segnalazione' );
 asem_ok( 4 === substr_count( $set_html, 'class="asem-section asem-card"' ) && 1 === substr_count( $set_html, 'asem-card" open' ), 'impostazioni: quattro sezioni richiudibili, solo la prima aperta' );
@@ -11573,7 +11573,7 @@ $ml_code  = \AssociazioneSemplice\Frontend\MemberLoginPage::page( '', '', '', 'c
 asem_ok( false !== strpos( $ml_main, 'value="password_login"' ) && false !== strpos( $ml_main, 'value="request"' ) && 1 === substr_count( $ml_main, 'type="password"' ) && 1 === substr_count( $ml_main, 'name="email"' ) && false !== strpos( $ml_main, 'Password dimenticata?' ) && false === strpos( $ml_main, 'codice a 6 cifre' ), 'pagina di accesso: un campo email e uno password, due pulsanti, «Password dimenticata?» e nessun codice finché non chiedi il link' );
 asem_ok( false !== strpos( $ml_reset, 'Password dimenticata' ) && false !== strpos( $ml_reset, 'value="recover"' ) && false === strpos( $ml_reset, 'type="password"' ), 'pagina di accesso: «Password dimenticata?» apre una schermata con la sola email' );
 asem_ok( false !== strpos( $ml_code, 'codice a 6 cifre' ) && false !== strpos( $ml_code, 'name="code"' ), 'pagina di accesso: il campo del codice compare dopo aver chiesto il link' );
-asem_ok( false !== strpos( $ml_main, 'Mandami un link</button>' ) && false !== strpos( $ml_main, 'link valido ' . (int) ( \AssociazioneSemplice\MemberLogin::TTL_SECONDS / 60 ) . ' minuti' ), 'pagina di accesso: il pulsante si chiama «Mandami un link» e il testo dice per quanti minuti vale' );
+asem_ok( false !== strpos( $ml_main, 'Mandami un link</button>' ) && false !== strpos( $ml_main, 'link che vale ' . (int) ( \AssociazioneSemplice\MemberLogin::TTL_SECONDS / 60 ) . ' minuti' ), 'pagina di accesso: il pulsante si chiama «Mandami un link» e il testo dice per quanti minuti vale' );
 asem_ok( ! MemberLogin::request( 'nessuno@example.org' ) && ! $ml_mail, 'accesso proprio: un\'email sconosciuta non riceve niente' );
 asem_ok( MemberLogin::request( $ml_addr ) && 1 === count( $ml_mail ), 'accesso proprio: a un socio arriva una email con link e codice' );
 list( $ml_tok, $ml_code ) = $ml_pull();
