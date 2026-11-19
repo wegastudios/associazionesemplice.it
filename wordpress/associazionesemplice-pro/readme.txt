@@ -11,7 +11,15 @@ Advanced features for Associazione Semplice: online payments, accounts and funds
 
 == Description ==
 
-Associazione Semplice Pro adds to Associazione Semplice (required) the features that go beyond the basics: online payments with Stripe and PayPal, several accounts and funds, accounting and reports, insurance and attendance registers, mass emails, installable app with notifications, Apple and Google Wallet cards, receipts in PDF, several member levels, VAT and customisation of every text and language.
+Associazione Semplice Pro adds the advanced features to Associazione Semplice (required):
+
+* Online payments (Stripe, PayPal, SumUp, Satispay)
+* Several accounts and funds, accounting and reports, VAT
+* Insurance and attendance registers
+* Mass emails, installable app with notifications
+* Apple and Google Wallet cards, PDF receipts
+* Several member levels
+* Every text and language can be customised
 
 == External services ==
 

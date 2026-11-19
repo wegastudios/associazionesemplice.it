@@ -81,7 +81,7 @@ final class Wallet {
 		if ( null !== $wwdr_bytes && '' !== $wwdr_bytes ) {
 			$pem = WalletCredentials::to_pem( $wwdr_bytes );
 			if ( ! @openssl_x509_read( $pem ) ) {
-				throw new \InvalidArgumentException( 'Il certificato intermedio WWDR non è valido (serve il file .cer di Apple, "Worldwide Developer Relations").' );
+				throw new \InvalidArgumentException( 'Il certificato intermedio WWDR non è valido (serve il file .cer di Apple, «Worldwide Developer Relations»).' );
 			}
 			$set['wallet_apple_wwdr_pem'] = $pem;
 			$note[]                       = 'certificato WWDR caricato';
@@ -147,7 +147,7 @@ final class Wallet {
 			'name'        => trim( $person['first_name'] . ' ' . $person['last_name'] ),
 			'type'        => Levels::label( $person ),
 			'card_number' => (string) ( $person['card_number'] ?: '—' ),
-			'until_text'  => MemberType::is_auto_renewed( $person['type'] ) ? 'Sempre rinnovata' : ( $until ? ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '—' ),
+			'until_text'  => MemberType::is_auto_renewed( $person['type'] ) ? 'Non va rinnovata' : ( $until ? ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '—' ),
 			'expires_iso' => $exp,
 			'org'         => '' !== $org ? $org : 'Associazione',
 			'color'       => Frontend\Assets::accent( '#2271b1' ),
@@ -210,7 +210,7 @@ final class Wallet {
 		$pid = isset( $_GET['person'] ) ? (int) $_GET['person'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		Csrf::check( 'asem_wallet_apple_' . $pid );
 		if ( ! current_user_can( 'asem_view_person', $pid ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		try {
 			$bin = self::apple_pass( $pid );

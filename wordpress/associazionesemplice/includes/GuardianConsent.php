@@ -93,9 +93,9 @@ final class GuardianConsent {
 		$what  = ( Regulation::enabled() ? 'il regolamento, ' : '' ) . 'l\'informativa sulla privacy e la scelta sulle immagini';
 		$text  = 'Ciao ' . self::line( (string) $guardian['first_name'] ) . ",\n\n"
 			. self::line( (string) $minor['first_name'] ) . ' è stato iscritto' . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ' e tu risulti genitore o tutore. '
-			. 'Per registrare che sei stato tu ad accettare, a nome suo, ' . $what . ', apri questo link entro ' . self::DAYS . " giorni e tocca «Confermo»:\n\n" . self::url( $minor_id, $token )
-			. "\n\nSe non sei tu o non sei d'accordo, ignora questo messaggio e scrivi alla segreteria: finché non confermi, queste accettazioni non vengono attribuite a te.";
-		return Texts::mail( $to, 'Conferma del genitore o tutore' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+			. 'Ci serve la tua conferma che hai accettato tu, a nome suo, ' . $what . '. Apri questo link entro ' . self::DAYS . " giorni e tocca «Confermo»:\n\n" . self::url( $minor_id, $token )
+			. "\n\nSe non sei tu o non sei d'accordo, ignora questo messaggio e scrivi alla segreteria: finché non confermi, non risultano accettati da te.";
+		return Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Conferma del genitore o tutore' ), $text );
 	}
 
 	/**
@@ -113,10 +113,10 @@ final class GuardianConsent {
 		$key = 'asem_gcf_r_' . $minor_id;
 		$n   = (int) get_transient( $key );
 		if ( $n >= self::RESEND_PER_HOUR ) {
-			throw new \InvalidArgumentException( 'Hai già rimandato il messaggio più volte: riprova tra un\'ora.' );
+			throw new \InvalidArgumentException( 'Hai già inviato di nuovo il messaggio più volte: riprova tra un\'ora.' );
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
-		return self::begin( $minor_id, $m['guardian'] ) ? 'Email di conferma rimandata al genitore.' : 'Non è stato possibile mandare l\'email: controlla l\'indirizzo del genitore.';
+		return self::begin( $minor_id, $m['guardian'] ) ? 'Email di conferma inviata di nuovo al genitore.' : 'Non è stato possibile mandare l\'email: controlla l\'indirizzo del genitore.';
 	}
 
 	// ---------- Conferma ----------
@@ -213,7 +213,7 @@ final class GuardianConsent {
 		$key = 'asem_gcf_ip_' . md5( ClientIp::get() );
 		$n   = (int) get_transient( $key );
 		if ( $n >= Limits::get( 'apply_per_ip' ) * 2 ) {
-			self::stop( 'Troppi tentativi: riprova tra qualche minuto.', '#b32d2e' );
+			self::stop( 'Troppi tentativi: riprova tra un\'ora.', '#b32d2e' );
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 		$r = self::submit( $param, sanitize_text_field( wp_unslash( $_POST['_asem_nonce'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification -- verificato in submit

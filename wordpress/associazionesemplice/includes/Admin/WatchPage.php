@@ -13,7 +13,7 @@ use AssociazioneSemplice\Plugin;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Contabilità → Bilancio provvisorio: l'anno fiscale in corso aggiornato al mese concluso, il mese in corso, gli avvisi sulla tendenza e lo
+ * Contabilità → Rendiconto provvisorio: l'anno fiscale in corso aggiornato al mese concluso, il mese in corso, gli avvisi sulla tendenza e lo
  * storico mensile; più i due elenchi dei fondi (spese documentate non rimborsate, fondi accantonati non documentati).
  */
 final class WatchPage {
@@ -35,11 +35,11 @@ final class WatchPage {
 		}
 		$s = BalanceWatch::status();
 		foreach ( $s['alerts'] as $a ) {
-			echo Dismiss::html( 'watch-' . $a['kind'] . '-' . $s['year'] . '-' . substr( $s['today'], 0, 7 ), 'warning', '<strong>' . esc_html( BalanceWatchRules::title( $a['kind'] ) ) . '.</strong> ' . esc_html( BalanceWatchRules::message( $a ) ) . ' <a href="' . esc_url( Ui::url( 'asem-watch' ) ) . '">Apri il bilancio provvisorio</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
+			echo Dismiss::html( 'watch-' . $a['kind'] . '-' . $s['year'] . '-' . substr( $s['today'], 0, 7 ), 'warning', '<strong>' . esc_html( BalanceWatchRules::title( $a['kind'] ) ) . '.</strong> ' . esc_html( BalanceWatchRules::message( $a ) ) . ' <a href="' . esc_url( Ui::url( 'asem-watch' ) ) . '">Apri il rendiconto provvisorio</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 		}
 	}
 
-	/** Schede della Bacheca: bilancio provvisorio e fondi da documentare. */
+	/** Schede della Bacheca: rendiconto provvisorio e fondi da documentare. */
 	public static function dashboard_cards(): void {
 		if ( ! Edition::has( 'watch' ) || ! current_user_can( Plugin::CAP_OPS ) ) {
 			return;
@@ -67,9 +67,9 @@ final class WatchPage {
 
 	// ---------- Il bilancio ----------
 
-	/** Bilancio provvisorio + mese in corso + tendenza. */
+	/** Rendiconto provvisorio + mese in corso + tendenza. */
 	private static function box( array $s, bool $link ): void {
-		echo '<h2>Bilancio dell\'anno fiscale ' . esc_html( $s['label'] ) . '</h2>';
+		echo '<h2>Rendiconto dell\'anno fiscale ' . esc_html( $s['label'] ) . '</h2>';
 		echo '<p class="description">Dal ' . esc_html( self::date( $s['from'] ) ) . ' al ' . esc_html( self::date( $s['to'] ) ) . '. Prima nota, senza giroconti né movimenti annullati; i fondi accantonati per i rimborsi contano come uscite.</p>';
 		if ( $s['provisional'] ) {
 			$p = $s['provisional'];
@@ -83,7 +83,7 @@ final class WatchPage {
 				echo '<p class="description">Non c\'è un preventivo per quest\'anno: <a href="' . esc_url( Ui::url( 'asem-budget', array( 'new' => 1 ) ) ) . '">crealo</a> per mettere a confronto previsto e speso.</p>';
 			}
 		} else {
-			echo '<p class="description">Il primo mese dell\'anno fiscale non è ancora concluso: il bilancio provvisorio compare a fine mese.</p>';
+			echo '<p class="description">Il primo mese dell\'anno fiscale non è ancora concluso: il rendiconto provvisorio compare a fine mese.</p>';
 		}
 		$mo = $s['month'];
 		echo '<h3>Mese in corso (dal ' . esc_html( self::date( $mo['from'] ) ) . ' a oggi)</h3><p>Entrate ' . self::m( $mo['income'] ) . ' · uscite ' . self::m( $mo['expense'] ) . ' · <strong>risultato ' . self::m( $mo['result'] ) . '</strong></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -99,7 +99,7 @@ final class WatchPage {
 	}
 
 	public static function render(): void {
-		Ui::header( 'Bilancio provvisorio' );
+		Ui::header( 'Rendiconto provvisorio' );
 		\AssociazioneSemplice\YearEndCheck::show();
 		$s = BalanceWatch::status();
 		foreach ( $s['alerts'] as $a ) {
@@ -144,7 +144,7 @@ final class WatchPage {
 
 		// Quadratura rimborsi e spese per persona
 		$ry = Ui::get_int( 'ry', $s['year'] );
-		echo '<h2 id="asem-recon">Rimborsi e spese documentate per persona</h2><p class="description">Chi ha avuto rimborsi dai fondi deve trovarsi con le spese sostenute: a fine mese è bene, a fine anno è necessario. Differenza = rimborsato − documentato: se è positiva i rimborsi non hanno documenti a copertura (da regolarizzare), se è negativa ci sono spese documentate non ancora rimborsate.</p>';
+		echo '<h2 id="asem-recon">Rimborsi e spese documentate per persona</h2><p class="description">Chi ha ricevuto rimborsi dai fondi deve averli coperti con spese documentate: conviene controllarlo ogni mese, a fine anno è necessario. Differenza = rimborsato − documentato: se è positiva mancano documenti (da regolarizzare); se è negativa ci sono spese documentate non ancora rimborsate.</p>';
 		echo '<form method="get"><input type="hidden" name="page" value="asem-watch"><p><label>Anno fiscale <select name="ry" data-asem-autosubmit>';
 		for ( $y = $s['year']; $y >= $s['year'] - 5; $y-- ) {
 			echo '<option value="' . (int) $y . '"' . selected( $ry, $y, false ) . '>' . esc_html( \AssociazioneSemplice\FiscalYears::label( $y ) ) . '</option>';
@@ -163,7 +163,7 @@ final class WatchPage {
 		// Storico mensile
 		$years = BalanceWatch::snapshot_years();
 		$year  = Ui::get_int( 'year', $years ? $years[0] : $s['year'] );
-		echo '<h2>Storico mensile</h2><p class="description">A ogni fine mese viene salvata una foto del consuntivo contro il preventivo: non cambia più, anche se poi si correggono dei movimenti. Le foto «ricostruite» sono state fatte dopo la prima settimana del mese successivo.</p>';
+		echo '<h2>Storico mensile</h2><p class="description">A ogni fine mese viene salvata la situazione del consuntivo contro il preventivo: non cambia più, anche se poi si correggono dei movimenti. Le situazioni «ricostruite» sono state salvate dopo la prima settimana del mese successivo.</p>';
 		if ( $years ) {
 			echo '<form method="get"><input type="hidden" name="page" value="asem-watch"><p><label>Anno fiscale <select name="year" data-asem-autosubmit>';
 			foreach ( $years as $y ) {
@@ -174,7 +174,7 @@ final class WatchPage {
 		$snaps = $years ? BalanceWatch::snapshots( $year ) : array();
 		echo '<table class="widefat striped"><thead><tr><th>Mese</th><th>Entrate del mese</th><th>Uscite del mese</th><th>Entrate dall\'inizio</th><th>Uscite dall\'inizio</th><th>Risultato dall\'inizio</th><th>Preventivo (entrate / uscite)</th><th>Origine</th></tr></thead><tbody>';
 		if ( ! $snaps ) {
-			echo '<tr><td colspan="8">Nessuna foto salvata: la prima arriva a fine mese.</td></tr>';
+			echo '<tr><td colspan="8">Nessuna situazione salvata: la prima arriva a fine mese.</td></tr>';
 		}
 		foreach ( $snaps as $x ) {
 			$plan = null === $x['planned_income_cents'] ? '—' : self::m( (int) $x['planned_income_cents'] ) . ' / ' . self::m( (int) $x['planned_expense_cents'] );
@@ -182,7 +182,7 @@ final class WatchPage {
 		}
 		echo '</tbody></table>';
 		Ui::form_open( 'asem_watch_snapshot', Ui::url( 'asem-watch' ), false, 'asem-inline' );
-		echo '<p><button class="button">Salva ora le foto dei mesi conclusi mancanti</button> <span class="description">Succede da sé ogni giorno; il pulsante serve se è appena stato acceso il salvataggio o dopo un blocco del sito.</span></p>';
+		echo '<p><button class="button">Salva ora la situazione dei mesi conclusi mancanti</button> <span class="description">Succede da sé ogni giorno; il pulsante serve se è appena stato acceso il salvataggio o dopo un blocco del sito.</span></p>';
 		Ui::form_close();
 		Ui::footer();
 	}
@@ -252,7 +252,7 @@ final class WatchPage {
 
 		$crediti = ExpenseFunds::credits();
 		if ( $crediti ) {
-			echo '<div class="asem-card"><h2>Volontari in credito (' . count( $crediti ) . ')</h2><p class="description">Questi volontari hanno anticipato spese dell\'associazione, ad esempio per eventi che incasseranno più avanti, oltre quanto accantonato nei loro fondi: la spesa resta attribuita a loro ed essi restano creditori per un periodo, il che è normale. Si sana da solo con i prossimi incassi dei loro corsi, oppure versando una somma nel loro fondo da un conto o da un altro fondo («Accantona» nella scheda del fondo). Per distribuire la spesa su altri fondi: annulla l\'attribuzione qui sotto e attribuiscila a un altro fondo.</p>';
+			echo '<div class="asem-card"><h2>Volontari in credito (' . count( $crediti ) . ')</h2><p class="description">Questi volontari hanno anticipato spese dell\'associazione oltre quanto accantonato nei loro fondi, ad esempio per eventi che incasseranno più avanti. È normale: la spesa resta attribuita a loro e per un periodo restano in credito. Il credito si chiude da solo con i prossimi incassi dei loro corsi, oppure versando una somma nel loro fondo da un conto o da un altro fondo («Accantona» nella scheda del fondo). Per dividere la spesa su altri fondi, annulla l\'attribuzione qui sotto e attribuiscila a un altro fondo.</p>';
 			echo '<table class="widefat striped"><thead><tr><th>Volontario</th><th>Accantonato</th><th>Spese documentate</th><th>Credito</th></tr></thead><tbody>';
 			foreach ( array_slice( $crediti, 0, $limit ) as $c ) {
 				echo '<tr><td>' . esc_html( $c['name'] ) . '</td><td>' . self::m( (int) $c['accrued'] ) . '</td><td>' . self::m( (int) $c['documented'] ) . '</td><td><strong>' . self::m( (int) $c['credit'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput

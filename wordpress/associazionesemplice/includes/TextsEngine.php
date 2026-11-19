@@ -424,7 +424,7 @@ final class TextsEngine {
 			}
 		);
 		if ( null === $h ) {
-			throw new \InvalidArgumentException( 'Il file non ha le colonne "Originale" e "Personalizzato": usa il file esportato da qui.' );
+			throw new \InvalidArgumentException( 'Il file non ha le colonne «Originale» e «Personalizzato»: usa il file esportato da qui.' );
 		}
 		$head = SheetReader::normalize_header( $rows[ $h ] );
 		$co   = SheetReader::col( $head, array( 'originale', 'testooriginale' ) );
@@ -478,7 +478,7 @@ final class TextsEngine {
 
 	public static function handle_export(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_export_texts' );
 		$only = isset( $_GET['only'] ) && 'custom' === sanitize_key( wp_unslash( $_GET['only'] ) ); // phpcs:ignore WordPress.Security.NonceVerification

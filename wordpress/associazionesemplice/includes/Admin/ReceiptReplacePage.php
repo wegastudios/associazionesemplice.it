@@ -26,7 +26,7 @@ final class ReceiptReplacePage {
 		$label = $rec['number'] . '/' . $rec['year'];
 		echo '<div class="asem-card"><p>' . sprintf( 'La ricevuta <strong>n. %1$s</strong> è stata annullata il <strong>%2$s</strong>', esc_html( $label ), esc_html( Ui::date( substr( (string) $rec['voided_at'], 0, 10 ) ) ) )
 			. ( '' !== trim( (string) $rec['void_reason'] ) ? ' (motivo: ' . esc_html( (string) $rec['void_reason'] ) . ')' : '' )
-			. ': una ricevuta annullata vale per intero, anche per le voci che non sono state annullate. Il suo numero resta suo e non torna libero; la ricevuta resta consultabile, con la scritta «RICEVUTA ANNULLATA».</p></div>';
+			. ': l\'annullamento riguarda tutta la ricevuta, anche le voci che non sono state annullate. Il numero non torna libero e la ricevuta resta consultabile, con la scritta «RICEVUTA ANNULLATA».</p></div>';
 		$replacement = Receipts::replacement_of( (int) $rec['id'] );
 		if ( $replacement ) {
 			echo '<p>Esiste già la ricevuta sostitutiva <strong>n. ' . esc_html( $replacement['number'] . '/' . $replacement['year'] ) . '</strong>.</p>';
@@ -57,7 +57,7 @@ final class ReceiptReplacePage {
 		}
 		Ui::form_open( 'asem_receipt_replace', $back, false, 'asem-confirm' );
 		echo Ui::hidden( 'key', $key ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p><button class="button button-primary" data-confirm="Emettere la ricevuta sostitutiva? Prende un numero nuovo e non si può cancellare. Se serve, annulli l\'incasso e la ricevuta risulta annullata.">Emetti la ricevuta sostitutiva</button> <a class="button" href="' . esc_url( $back ) . '">Non ora</a></p>';
+		echo '<p><button class="button button-primary" data-confirm="Emettere la ricevuta sostitutiva? Prende un numero nuovo e non si può eliminare. Per toglierle valore dovrai annullare l\'incasso: la ricevuta risulterà annullata.">Emetti la ricevuta sostitutiva</button> <a class="button" href="' . esc_url( $back ) . '">Non ora</a></p>';
 		Ui::form_close();
 		Ui::footer();
 	}

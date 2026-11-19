@@ -118,7 +118,7 @@ I file usano il punto e virgola come separatore e la virgola come decimale, pron
 
 ## Importare movimenti già registrati
 
-1. Vai in **Soci → Importa da Excel/CSV** e carica il file.
+1. Vai in **Strumenti → Importa da Excel/CSV** e carica il file.
 2. Colonne necessarie: **Data** e **Importo** (oppure *Entrata* e *Uscita*). Facoltative: *Tipo, Conto, Modalità, Voce, Descrizione, Riferimento, N. tessera, Persona, Attività, Competenza*.
 3. Controlla l'anteprima e conferma.
 
@@ -147,7 +147,9 @@ Il modulo donazioni porta chi dona sulla pagina di donazione di PayPal. Dal tuo 
 
 ## Dopo una donazione
 
-Le donazioni vanno **direttamente sul tuo account PayPal**. **Il conto PayPal lo cambiano solo gli amministratori**: ogni modifica, da qualunque strada arrivi (anche un ripristino di copia), è scritta nel **registro azioni** (con il conto mascherato) e **avvisata per email a tutti gli amministratori**. Se non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni. Il plugin non le vede: le registri tu in prima nota, con un incasso. Se vuoi, per ogni versamento puoi emettere una ricevuta.
+Le donazioni vanno direttamente sul tuo account PayPal. Il plugin non le vede: le registri tu in prima nota, con un incasso. Se vuoi, per ogni versamento puoi emettere una ricevuta.
+
+L'account PayPal lo cambiano solo gli amministratori. Ogni modifica, anche con il ripristino di una copia, resta nel registro azioni (con l'account mascherato) e viene segnalata per email a tutti gli amministratori. Se non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni.
 
 > Il titolo «Ricevuta di erogazione liberale» compare in automatico sulle ricevute che contengono solo donazioni (funzione Pro).
 MD,

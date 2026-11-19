@@ -95,7 +95,7 @@ final class License {
 		return self::has_key() && '' === self::key();
 	}
 
-	const UNREADABLE_MESSAGE = 'La chiave di licenza salvata non si legge più su questo sito (succede se cambiano i codici di sicurezza di WordPress o se il sito è stato spostato): reinseriscila in Impostazioni → Licenza.';
+	const UNREADABLE_MESSAGE = 'La chiave di licenza salvata non si legge più su questo sito (può succedere dopo uno spostamento del sito o un cambio dei codici di sicurezza di WordPress). Inseriscila di nuovo in Impostazioni → Licenza.';
 
 	/** C'è una chiave salvata, anche se qui non si legge? */
 	public static function has_key(): bool {
@@ -267,7 +267,7 @@ final class License {
 		}
 		if ( '' === $key ) {
 			self::set_state( LicensePolicy::STATUS_NOKEY, null, null, self::PLAN_FREE );
-			return array( 'ok' => true, 'message' => 'Nessuna chiave inserita: funzionano le funzioni di base.' );
+			return array( 'ok' => true, 'message' => 'Nessuna chiave inserita: sono attive le funzioni di base.' );
 		}
 		$domain = LicenseClient::normalize_domain( home_url() );
 		if ( '' === $domain ) {
@@ -293,12 +293,12 @@ final class License {
 			$known    = (string) ( self::state()['product'] ?? '' );
 			$given    = (string) ( $r['product_code'] ?? '' );
 			if ( '' !== $known && '' !== $given && $known !== $given ) {
-				return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );
+				return self::failed( 'Non è stato possibile verificare la risposta del server delle licenze: la licenza resta invariata. Riprova più tardi.' );
 			}
 			$audience = '' !== $known ? $known : $given;
 			$denial   = LicenseClient::verify_denial( (string) ( $r['portal_attestation'] ?? '' ), $key, $audience, $domain );
 			if ( null === $denial ) {
-				return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );
+				return self::failed( 'Non è stato possibile verificare la risposta del server delle licenze: la licenza resta invariata. Riprova più tardi.' );
 			}
 			$first = get_option( self::OPT_DENIAL, array() );
 			$first = is_array( $first ) ? $first : array();
@@ -316,7 +316,7 @@ final class License {
 			$att    = (string) ( $r['attestation'] ?? '' );
 			$claims = '' === $att ? null : LicenseClient::verify_attestation( $att, LicenseClient::jwks(), LicenseClient::ISSUER, (string) ( $r['product_code'] ?? '' ), $domain );
 			if ( null === $claims ) {
-				return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );
+				return self::failed( 'Non è stato possibile verificare la risposta del server delle licenze: la licenza resta invariata. Riprova più tardi.' );
 			}
 			delete_option( self::OPT_DENIAL ); // un esito positivo valido azzera il conteggio dei negativi
 		}
@@ -328,7 +328,7 @@ final class License {
 		$portal_att  = $claims ? (string) ( $r['portal_attestation'] ?? '' ) : '';
 		$portal_plan = '' === $portal_att ? null : LicenseClient::portal_plan( $portal_att, (string) ( $r['product_code'] ?? '' ), $domain );
 		if ( $claims && null === $portal_plan && LicenseClient::portal_decides_plan() ) {
-			return self::failed( 'La risposta del portale non porta il piano firmato: la licenza non è stata aggiornata.' ); // il livello lo decide il portale, mai il nome su Wega
+			return self::failed( 'Il portale non ha confermato il tuo piano: la licenza resta invariata. Riprova più tardi.' ); // il livello lo decide il portale, mai il nome su Wega
 		}
 		if ( null !== $portal_plan ) { // il piano firmato dal portale vale più del nome salvato su Wega
 			$i['plan']                  = $portal_plan;

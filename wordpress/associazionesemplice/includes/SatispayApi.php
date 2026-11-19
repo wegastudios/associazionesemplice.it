@@ -16,7 +16,7 @@ final class SatispayApi {
 	/** Nuova coppia di chiavi RSA. @return array{private:string,public:string} @throws \RuntimeException */
 	public static function generate_keys(): array {
 		if ( ! function_exists( 'openssl_pkey_new' ) ) {
-			throw new \RuntimeException( 'Satispay: sul server manca l\'estensione OpenSSL di PHP.' );
+			throw new \RuntimeException( 'Satispay non può funzionare su questo server: chiedi a chi gestisce il sito di attivare l\'estensione «openssl» di PHP.' );
 		}
 		$res = openssl_pkey_new( array( 'private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA ) );
 		if ( false === $res || ! openssl_pkey_export( $res, $private ) ) {
@@ -76,7 +76,7 @@ final class SatispayApi {
 		$r    = $http( 'POST', SatispayRules::base( $mode ) . '/g_business/v1/authentication_keys', array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' ), $body );
 		$d    = self::parse( $r );
 		if ( empty( $d['key_id'] ) ) {
-			throw new \RuntimeException( 'Satispay: risposta senza identificativo della chiave.' );
+			throw new \RuntimeException( 'Satispay non ha completato il collegamento: riprova.' );
 		}
 		return (string) $d['key_id'];
 	}
@@ -85,11 +85,11 @@ final class SatispayApi {
 	public static function create_payment( callable $http, array $cfg, array $payload ): array {
 		$d = self::call( $http, $cfg, 'POST', '/g_business/v1/payments', $payload );
 		if ( empty( $d['id'] ) || empty( $d['redirect_url'] ) ) {
-			throw new \RuntimeException( 'Satispay: risposta senza indirizzo di pagamento.' );
+			throw new \RuntimeException( 'Satispay non ha avviato il pagamento: riprova tra qualche minuto.' );
 		}
 		$url = (string) $d['redirect_url'];
 		if ( 0 !== strpos( $url, 'https://' ) ) {
-			throw new \RuntimeException( 'Satispay: indirizzo di pagamento non sicuro.' );
+			throw new \RuntimeException( 'Satispay non ha avviato il pagamento: riprova tra qualche minuto.' );
 		}
 		return array( 'id' => SatispayRules::clean_id( (string) $d['id'] ), 'url' => $url );
 	}

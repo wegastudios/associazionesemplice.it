@@ -154,7 +154,7 @@ final class ProActions {
 
 	public static function save_levels( array $p ): array {
 		if ( ! \AssociazioneSemplice\Edition::has( 'levels' ) ) {
-			throw new \InvalidArgumentException( 'Questa edizione ha un\'unica quota associativa.' );
+			throw new \InvalidArgumentException( 'Qui la quota associativa è una sola: i livelli di socio sono in Associazione Semplice Pro.' );
 		}
 		$rows = array();
 		foreach ( (array) ( $p['level'] ?? array() ) as $r ) {
@@ -243,9 +243,9 @@ final class ProActions {
 			}
 		}
 		if ( ! $res ) {
-			throw $err ?: new \InvalidArgumentException( 'File non valido.' );
+			throw $err ?: new \InvalidArgumentException( 'File non valido: usa il file esportato da questa pagina (CSV o Excel).' );
 		}
-		return array( Ui::url( 'asem-texts' ), 'Importazione completata: ' . $res['set'] . ' testi impostati, ' . $res['removed'] . ' ripristinati, ' . $res['manual'] . ' aggiunte a mano' . ( $res['ignored'] ? ', ' . $res['ignored'] . ' righe ignorate' : '' ) . '.' );
+		return array( Ui::url( 'asem-texts' ), 'Importazione completata: ' . $res['set'] . ' testi impostati, ' . $res['removed'] . ' ripristinati, ' . $res['manual'] . ' sostituzioni aggiunte' . ( $res['ignored'] ? ', ' . $res['ignored'] . ' righe ignorate' : '' ) . '.' );
 	}
 
 	public static function reset_texts( array $p ): array {
@@ -289,12 +289,12 @@ final class ProActions {
 			$parts[] = (int) $sc['sent'] . ' SMS inviati su ' . (int) array_sum( $sc );
 		}
 		$left = (int) $b['total'] - (int) $b['sent'] - (int) $b['failed'] + (int) $sc['queued'] + (int) $sc['sending'];
-		return array( Ui::url( 'asem-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . implode( ', ', $parts ) . ( $left > 0 ? ', gli altri continuano da soli in background.' : '.' ) );
+		return array( Ui::url( 'asem-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . implode( ', ', $parts ) . ( $left > 0 ? ', gli altri partono da soli.' : '.' ) );
 	}
 
 	public static function broadcast_test( array $p ): array {
 		if ( ! \AssociazioneSemplice\Broadcasts::send_test( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ) ) ) {
-			throw new \InvalidArgumentException( 'Invio della prova non riuscito: controlla la posta in uscita del sito.' );
+			throw new \InvalidArgumentException( 'Invio della prova non riuscito: controlla «Posta in uscita» in Strumenti → Integrazioni.' );
 		}
 		return array( $p['_back'] ?? Ui::url( 'asem-messages' ), 'Prova inviata al tuo indirizzo email.' );
 	}
@@ -351,12 +351,12 @@ final class ProActions {
 			throw new \InvalidArgumentException( 'Indica l\'importo da liberare.' );
 		}
 		Plugin::funds()->release( (int) ( $p['id'] ?? 0 ), $cents, (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
-		return array( Ui::url( 'asem-accounts' ), 'Quota liberata: è tornata nella disponibilità reale.' );
+		return array( Ui::url( 'asem-accounts' ), 'Somma liberata: è tornata nella disponibilità reale.' );
 	}
 
 	public static function fund_settle( array $p ): array {
 		$tx = Plugin::funds()->settle( (int) ( $p['id'] ?? 0 ), (int) ( $p['account_id'] ?? 0 ), (string) ( $p['method'] ?? '' ), (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
-		return array( Ui::url( 'asem-accounts' ), $tx ? 'Rimborso registrato in prima nota e fondo estinto.' : 'Fondo a zero: estinto.' );
+		return array( Ui::url( 'asem-accounts' ), $tx ? 'Rimborso registrato in prima nota e fondo chiuso.' : 'Fondo a zero: chiuso.' );
 	}
 
 	public static function close_account( array $p ): array {
@@ -613,7 +613,7 @@ final class ProActions {
 		$push = ! empty( $p['push_enabled'] );
 		$pwa  = ! empty( $p['pwa_enabled'] );
 		if ( $push && ! \AssociazioneSemplice\WebPush::supported() ) {
-			throw new \InvalidArgumentException( 'Questo server non ha le funzioni di cifratura necessarie per le notifiche (estensione openssl di PHP).' );
+			throw new \InvalidArgumentException( 'Le notifiche non si possono attivare: sul server manca l\'estensione openssl di PHP. Chiedi a chi gestisce il sito di attivarla.' );
 		}
 		$vals = array( 'pwa_enabled' => $pwa ? 1 : 0, 'push_enabled' => ( $push && $pwa ) ? 1 : 0, 'pwa_name' => (string) ( $p['pwa_name'] ?? '' ), 'pwa_short_name' => (string) ( $p['pwa_short_name'] ?? '' ) );
 		if ( ! empty( $p['pwa_icon_remove'] ) ) {
@@ -646,7 +646,7 @@ final class ProActions {
 		}
 		$id = wp_insert_attachment( array( 'post_mime_type' => 'image/png', 'post_title' => 'Icona dell\'app', 'post_status' => 'inherit' ), $up['file'] );
 		if ( ! $id || is_wp_error( $id ) ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare l\'icona.' );
+			throw new \InvalidArgumentException( 'L\'icona non è stata salvata: riprova.' );
 		}
 		wp_update_attachment_metadata( (int) $id, wp_generate_attachment_metadata( (int) $id, $up['file'] ) );
 		return (int) $id;
@@ -662,7 +662,7 @@ final class ProActions {
 
 	public static function push_reset( array $p ): array {
 		\AssociazioneSemplice\Push::reset_keys();
-		return array( Ui::url( 'asem-app' ), 'Chiavi rigenerate: i dispositivi devono riattivare le notifiche.' );
+		return array( Ui::url( 'asem-app' ), 'Chiavi rigenerate: i soci devono riattivare le notifiche sul telefono.' );
 	}
 
 }

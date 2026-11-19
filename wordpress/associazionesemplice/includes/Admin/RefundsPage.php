@@ -24,7 +24,7 @@ final class RefundsPage {
 
 	public static function render(): void {
 		if ( ! Refunds::can_manage() ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$view = Ui::get_int( 'view' );
 		if ( $view ) {
@@ -34,7 +34,7 @@ final class RefundsPage {
 		$status = Ui::get_str( 'status' );
 		$status = isset( RefundRules::statuses()[ $status ] ) ? $status : '';
 		Ui::header( 'Rimborsi ai volontari' );
-		echo '<p class="description">I volontari chiedono il rimborso dall\'area riservata (o la segreteria lo registra per loro). Chi approva e paga lo decide qui: il pagamento registra l\'uscita in prima nota e la collega alla richiesta. Per le spese documentate serve lo scontrino o la fattura; l\'autocertificazione vale fino a 10 € al giorno e 150 € al mese per volontario, solo se l\'assemblea ha deliberato i tipi di spesa.</p>';
+		echo '<p class="description">I volontari chiedono il rimborso dall\'area soci, oppure lo registri tu per loro. Qui approvi e paghi: il pagamento registra la spesa in prima nota e la collega alla richiesta. Per le spese documentate serve lo scontrino o la fattura; l\'autocertificazione vale fino a 10 € al giorno e 150 € al mese per volontario, solo se l\'assemblea ha deliberato i tipi di spesa.</p>';
 		$counts = Refunds::counts();
 		echo '<p>';
 		foreach ( RefundRules::statuses() as $k => $label ) {
@@ -149,7 +149,7 @@ final class RefundsPage {
 			echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<p>Pagato dal conto <select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select> il <input type="date" name="paid_on" value="' . esc_attr( Db::today() ) . '" max="' . esc_attr( Db::today() ) . '" required> '; // phpcs:ignore WordPress.Security.EscapeOutput
 			submit_button( 'Segna come pagato e registra in prima nota', 'primary', 'submit', false );
-			echo '</p><p class="description">Registra un\'uscita nella categoria «Rimborso spese socio/volontario» e la collega a questa richiesta.</p>';
+			echo '</p><p class="description">Registra un\'uscita nella voce «Rimborso spese socio/volontario» e la collega a questa richiesta.</p>';
 			Ui::form_close();
 		}
 		Ui::footer();

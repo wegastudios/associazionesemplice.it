@@ -58,7 +58,7 @@ final class Rules {
 		}
 		foreach ( array( 'first_name' => array( 'Il nome', 120 ), 'last_name' => array( 'Il cognome', 120 ), 'email' => array( 'L\'email', 190 ), 'phone' => array( 'Il cellulare', 60 ), 'tax_code' => array( 'Il codice fiscale', 32 ), 'address' => array( 'L\'indirizzo', 190 ), 'zip' => array( 'Il CAP', 12 ), 'city' => array( 'Il comune', 100 ), 'province' => array( 'La provincia', 5 ) ) as $field => $lim ) {
 			if ( mb_strlen( trim( (string) ( $d[ $field ] ?? '' ) ), 'UTF-8' ) > $lim[1] ) {
-				$errors[] = $lim[0] . ' è troppo lungo (al massimo ' . $lim[1] . ' caratteri).';
+				$errors[] = $lim[0] . ': testo troppo lungo (al massimo ' . $lim[1] . ' caratteri).';
 			}
 		}
 
@@ -70,7 +70,7 @@ final class Rules {
 			$errors[] = 'Gli ospiti non hanno il numero di tessera.';
 		}
 		if ( MemberType::GUEST === $type && empty( $relax['phone'] ) && ! Phone::is_valid( (string) ( $d['phone'] ?? '' ) ) ) {
-			$errors[] = 'Il numero di cellulare è obbligatorio per gli ospiti (serve a riconoscerli ed evitare doppioni, e a contattarli su WhatsApp).';
+			$errors[] = 'Per gli ospiti il cellulare è obbligatorio: serve a riconoscerli, evitare doppioni e contattarli su WhatsApp.';
 		}
 
 		if ( MemberType::requires_host( $type ) ) {
@@ -79,7 +79,7 @@ final class Rules {
 					$errors[] = 'Un ospite deve essere collegato al socio che lo ospita.';
 				}
 			} elseif ( null === $host || ! MemberType::is_member( (string) ( $host['type'] ?? '' ) ) ) {
-				$errors[] = 'Il socio ospitante non è valido (deve essere un socio, non un altro ospite).';
+				$errors[] = 'Chi ospita deve essere un socio, non un altro ospite.';
 			}
 		} elseif ( ! empty( $d['host_person_id'] ) ) {
 			$errors[] = 'Solo gli ospiti hanno un socio ospitante.';
@@ -132,7 +132,7 @@ final class Rules {
 		}
 		$time = (string) ( $s['start_time'] ?? '' );
 		if ( '' !== $time && ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $time ) ) {
-			$errors[] = 'L\'orario non è valido (usa il formato HH:MM).';
+			$errors[] = 'L\'orario non è valido: scrivilo così, 18:30.';
 		}
 		$last_day_text = (string) ( $s['end_date'] ?? '' );
 		if ( $last_day_text === $date ) {
@@ -140,7 +140,7 @@ final class Rules {
 		}
 		$end = (string) ( $s['end_time'] ?? '' );
 		if ( '' !== $end && ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $end ) ) {
-			$errors[] = 'L\'orario di fine non è valido (usa il formato HH:MM).';
+			$errors[] = 'L\'orario di fine non è valido: scrivilo così, 18:30.';
 		} elseif ( '' !== $end && '' !== $time && $end <= $time && '' === $last_day_text ) {
 			$errors[] = 'L\'orario di fine deve essere dopo quello di inizio.'; // con una data di fine più avanti l'ora di fine può essere qualunque (21:30 → 01:00)
 		}

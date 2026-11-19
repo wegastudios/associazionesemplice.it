@@ -32,7 +32,7 @@ function asem_pro_problem(): string {
 		return '<strong>Associazione Semplice Pro</strong> ha bisogno del plugin <strong>Associazione Semplice</strong>: installalo e attivalo.';
 	}
 	if ( ! defined( 'ASEM_API' ) || ASEM_API !== ASEM_PRO_API ) {
-		return '<strong>Associazione Semplice Pro</strong> non è compatibile con questa versione di Associazione Semplice: aggiorna Associazione Semplice Pro e Associazione Semplice all\'ultima versione. Intanto le funzioni avanzate sono sospese; il resto funziona e i dati sono al sicuro.';
+		return '<strong>Associazione Semplice Pro</strong> non è compatibile con questa versione di Associazione Semplice: le funzioni avanzate sono sospese. Aggiorna entrambi all\'ultima versione; il resto funziona e i dati sono al sicuro.';
 	}
 	return '';
 }

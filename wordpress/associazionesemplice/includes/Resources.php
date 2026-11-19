@@ -115,13 +115,13 @@ final class Resources {
 				$fund  = 0;
 			} else {
 				if ( $value <= 0 ) {
-					throw new \InvalidArgumentException( 'Indica la quota per il fondo (importo o percentuale maggiori di zero).' );
+					throw new \InvalidArgumentException( 'Indica quanto accantonare nel fondo (importo o percentuale maggiori di zero).' );
 				}
 				if ( FundShare::PERCENT === $mode && $value > 10000 ) {
 					throw new \InvalidArgumentException( 'La percentuale per il fondo non può superare il 100%.' );
 				}
 				if ( 0 === $fund ) {
-					throw new \InvalidArgumentException( 'Scegli il fondo in cui accantonare la quota, oppure creane uno nuovo.' );
+					throw new \InvalidArgumentException( 'Scegli il fondo in cui accantonare la somma, oppure creane uno nuovo.' );
 				}
 				if ( 'new' !== $fund && ! Plugin::funds()->get( $fund ) ) {
 					throw new \InvalidArgumentException( 'Fondo non trovato.' );
@@ -140,7 +140,7 @@ final class Resources {
 			$d['parent_id'] = null;
 		}
 		if ( isset( $d['fund_id'] ) && 'new' === $d['fund_id'] ) { // dopo i controlli: nessun fondo orfano se qualcosa non va
-			$d['fund_id'] = Plugin::funds()->create( 'Quota «' . $d['name'] . '»' );
+			$d['fund_id'] = Plugin::funds()->create( 'Accantonamento «' . $d['name'] . '»' );
 		}
 		if ( $id > 0 ) {
 			if ( ! self::get( $id ) ) {
@@ -420,7 +420,7 @@ final class Resources {
 			return '';
 		}
 		$over = self::dates_overlaps( $activity_id, array( array( 'date' => $s['session_date'], 'end_date' => $s['end_date'] ?? null, 'start' => $s['start_time'] ?: null, 'end' => $s['end_time'] ?: null ) ) );
-		return $over ? 'Questa fascia non è disponibile: la risorsa è già occupata da ' . implode( '; ', array_slice( $over, 0, 3 ) ) . '.' : '';
+		return $over ? 'Questa fascia non è disponibile. La risorsa è già occupata: ' . implode( '; ', array_slice( $over, 0, 3 ) ) . '.' : '';
 	}
 
 	/** La griglia di un giorno: per ogni fascia, libera oppure la prenotazione (o l'attività) che la occupa. */
@@ -632,7 +632,7 @@ final class Resources {
 		self::db()->update( Db::t( 'reservations' ), array( 'credits_paid' => $cost, 'hold_until' => null ), array( 'id' => $reservation_id ) );
 		$sh = self::fund_share( $res, (int) $r['fee_due_cents'] ); // la quota del fondo si calcola sul prezzo in euro della prenotazione: i crediti non hanno incasso in prima nota
 		if ( $sh > 0 ) {
-			Plugin::funds()->share_to_fund( (int) $res['fund_id'], $sh, Db::today(), null, 'Quota di «' . $res['name'] . '» pagata in crediti' );
+			Plugin::funds()->share_to_fund( (int) $res['fund_id'], $sh, Db::today(), null, 'Accantonamento di «' . $res['name'] . '» pagato in crediti' );
 		}
 		Audit::log( 'reservation.paid_credits', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'credits' => $cost ) );
 		return $cost;
@@ -741,11 +741,11 @@ final class Resources {
 					continue;
 				}
 				$d    = new \DateTimeImmutable( (string) $r['starts_at'] );
-				$body = 'ti ricordo la prenotazione di «' . $res['name'] . '» il ' . $d->format( 'd/m/Y' ) . ' dalle ' . $d->format( 'H:i' ) . ( $r['ends_at'] ? ' alle ' . substr( (string) $r['ends_at'], 11, 5 ) : '' ) . '.'
+				$body = 'ti ricordiamo la prenotazione di «' . $res['name'] . '» il ' . $d->format( 'd/m/Y' ) . ' dalle ' . $d->format( 'H:i' ) . ( $r['ends_at'] ? ' alle ' . substr( (string) $r['ends_at'], 11, 5 ) : '' ) . '.'
 					. ( $r['guests'] ? "\n\nOspiti: " . implode( ', ', $r['guests'] ) . '.' : '' )
 					. ( $r['remaining'] > 0 ? "\n\nDa pagare: " . Money::format( (int) $r['remaining'] ) . '.' : '' )
-					. "\n\nSe non puoi venire, annullala dalla tua area (o scrivi alla segreteria): così la fascia torna libera per altri soci.";
-				if ( Reminders::notify( $p, 'resource', (string) $r['id'], 'Promemoria: ' . $res['name'] . ' — ' . $d->format( 'd/m H:i' ), 'Ciao ' . $p['first_name'] . ",\n\n" . $body ) ) {
+					. "\n\nSe non puoi venire, annullala dall'area soci o scrivi alla segreteria: così la fascia torna libera per altri soci.";
+				if ( Reminders::notify( $p, 'resource', (string) $r['id'], 'Promemoria: ' . $res['name'] . ', ' . $d->format( 'd/m H:i' ), 'Ciao ' . $p['first_name'] . ",\n\n" . $body ) ) {
 					$sent++;
 				}
 			}
@@ -825,7 +825,7 @@ final class Resources {
 		$r   = self::reservation( $reservation_id );
 		$res = $r ? self::get( (int) $r['resource_id'] ) : null;
 		$sh  = $res ? self::fund_share( $res, $cents ) : 0;
-		return $sh > 0 ? Plugin::funds()->share_to_fund( (int) $res['fund_id'], $sh, $date, $tx_id, 'Quota di «' . $res['name'] . '»' ) : 0;
+		return $sh > 0 ? Plugin::funds()->share_to_fund( (int) $res['fund_id'], $sh, $date, $tx_id, 'Accantonamento di «' . $res['name'] . '»' ) : 0;
 	}
 
 	/** I crediti spesi per una prenotazione tornano al socio (annullamento). */
@@ -988,7 +988,7 @@ final class Resources {
 			return array( 'allowed' => false, 'message' => 'Prenotazione non trovata.' );
 		}
 		if ( ResourceRules::KIND_ASSIGN === $r['kind'] ) {
-			return array( 'allowed' => false, 'message' => 'Un\'assegnazione la rilascia la segreteria.' );
+			return array( 'allowed' => false, 'message' => 'Per lasciare una risorsa assegnata scrivi alla segreteria.' );
 		}
 		$now  = current_datetime();
 		$date = substr( (string) $r['starts_at'], 0, 10 );
@@ -1258,7 +1258,7 @@ final class Resources {
 			$db->update( Db::t( 'activities' ), array( 'resource_id' => $old_rid ), array( 'id' => $aid ) );
 			$undo_acts[ $aid ] = $was;
 			if ( self::activity_overlaps( $aid, $old_rid ) ) {
-				$out['blocked'][] = '«' . $title . '» non entra sulla risorsa di prima (si sovrappone a qualcosa)';
+				$out['blocked'][] = '«' . $title . '» non entra sulla risorsa di prima (l\'orario è già occupato)';
 			} else {
 				$out['moved'][] = '«' . $title . '» (tutte le sue date)';
 			}
@@ -1360,8 +1360,8 @@ final class Resources {
 		}
 		Texts::mail(
 			$queue[0]['email'],
-			'Si è liberato: ' . $res['name'],
-			'Ciao ' . $queue[0]['first_name'] . ",\n\nsei il primo in lista d'attesa per «" . $res['name'] . '» e la risorsa si è liberata.'
+			Texts::subject( 'Si è liberata: ' . $res['name'] ),
+			'Ciao ' . $queue[0]['first_name'] . ",\n\n«" . $res['name'] . '» si è liberata e tu sei in cima alla lista d\'attesa.'
 			. "\n\nLa segreteria ti contatterà per l'assegnazione."
 		);
 		Audit::log( 'resource.waitlist_notified', 'resource', $resource_id, array( 'person_id' => (int) $queue[0]['person_id'] ) );
@@ -1417,7 +1417,7 @@ final class Resources {
 		$res = self::get( (int) $r['resource_id'] );
 		$cat = self::income_category_for( $reservation_id );
 		if ( ! $cat ) {
-			throw new \InvalidArgumentException( 'Manca la voce «Altra entrata» in prima nota.' );
+			throw new \InvalidArgumentException( 'Manca la voce «Altre entrate» in prima nota e non si ricrea da sola: scrivi all\'assistenza.' );
 		}
 		Plugin::ledger()->record_receipt(
 			array(

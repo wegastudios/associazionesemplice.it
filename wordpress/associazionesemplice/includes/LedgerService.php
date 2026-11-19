@@ -41,7 +41,7 @@ class LedgerService {
 	private function check_account_fields( string $name, string $type ): string {
 		$name = trim( $name );
 		if ( '' === $name ) {
-			throw new \InvalidArgumentException( 'Il nome del conto è obbligatorio.' );
+			throw new \InvalidArgumentException( 'Dai un nome al conto.' );
 		}
 		if ( ! isset( Labels::account_types()[ $type ] ) ) {
 			throw new \InvalidArgumentException( 'Tipo di conto non valido.' );
@@ -264,7 +264,7 @@ class LedgerService {
 			}
 		}
 		if ( ! $this->db()->insert( Db::t( 'transactions' ), $this->tx_defaults( $row ) ) ) {
-			throw new \RuntimeException( 'Errore del database nel salvare il movimento.' );
+			throw new \RuntimeException( 'Movimento non salvato: riprova.' );
 		}
 		$id = (int) $this->db()->insert_id;
 		Audit::log( 'tx.created', 'transaction', $id, array( 'type' => $row['type'], 'cents' => (int) $row['amount_cents'], 'account' => (int) $row['account_id'] ) );
@@ -365,7 +365,7 @@ class LedgerService {
 				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: indica chi paga il contributo dell\'attività.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( $session_id && ! $activity_id ) {
-				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: la data dell\'evento richiede l\'attività.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: hai scelto una data ma non l\'evento. Indica l\'evento.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( $activity && ActivityKind::uses_sessions( $activity['kind'] ) ) {
 				// Eventi: il contributo si paga per una data a cui la persona è prenotata
@@ -377,13 +377,13 @@ class LedgerService {
 					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: la persona non è prenotata a questa data.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 			} elseif ( $session_id ) {
-				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: i corsi non hanno date: indica il mese di competenza.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: un corso non ha date, indica il mese di competenza.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$social_year = null;
 			$free_year   = null;
 			if ( 'membership' === $cat['kind'] ) {
 				if ( ! $person ) {
-					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: la quota associativa richiede di indicare il socio.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: indica di quale socio è la quota associativa.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( ! MemberType::is_member( $person['type'] ) ) {
 					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: un ospite o un genitore/tutore non è socio e non paga la quota associativa.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html

@@ -177,7 +177,7 @@ final class Broadcasts {
 	private static function text_for( string $body, string $name ): string {
 		$assoc = (string) Settings::get( 'association_name' );
 		return str_replace( array( '{nome}', '{associazione}' ), array( $name, $assoc ), $body )
-			. "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area riservata: ' . Gatekeeper::area_url() . "\nComunicazione di servizio ai soci e ai partecipanti.";
+			. "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area soci: ' . Gatekeeper::area_url() . "\nComunicazione di servizio ai soci e ai partecipanti.";
 	}
 
 	/**
@@ -218,7 +218,7 @@ final class Broadcasts {
 		$db    = self::db();
 		$today = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcasts' ) . ' WHERE created_at >= %s', gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -1 day' ) ) ) );
 		if ( $today >= Limits::get( 'broadcast_per_day' ) ) {
-			throw new \InvalidArgumentException( 'Sono già state inviate ' . Limits::get( 'broadcast_per_day' ) . ' comunicazioni nelle ultime 24 ore: aspetta un po\'.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Sono già state inviate ' . Limits::get( 'broadcast_per_day' ) . ' comunicazioni nelle ultime 24 ore: riprova più tardi.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$r   = $use_email ? self::recipients( $audience, $ref ) : array( 'list' => array(), 'no_email' => 0 );
 		$sms = $use_sms ? self::sms_recipients( $audience, $ref ) : array( 'list' => array(), 'no_phone' => 0, 'no_consent' => 0 );
@@ -236,7 +236,7 @@ final class Broadcasts {
 		$id = (int) $db->insert_id;
 		if ( $id <= 0 || ! self::queue_recipients( $id, $r['list'] ) ) {
 			$db->query( 'ROLLBACK' );
-			throw new \InvalidArgumentException( 'La comunicazione non è stata creata (errore del database): non è partito nulla. Riprova.' );
+			throw new \InvalidArgumentException( 'La comunicazione non è stata creata: non è partito nulla. Riprova.' );
 		}
 		$db->query( 'COMMIT' );
 		$assoc = (string) Settings::get( 'association_name' );
@@ -291,7 +291,7 @@ final class Broadcasts {
 			if ( 1 !== (int) $db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => 'sending', 'sent_at' => Db::now() ), array( 'id' => (int) $r['id'], 'status' => 'queued' ) ) ) { // sent_at ricorda da quando è «in invio»
 				continue;
 			}
-			$ok = Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $b['subject'], self::text_for( $b['body'], $r['name'] ) );
+			$ok = Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( $b['subject'] ), self::text_for( $b['body'], $r['name'] ) );
 			$first = (string) strtok( (string) $r['name'], ' ' );
 			Push::notify_email( (string) $r['email'], (string) $b['subject'], strtr( (string) $b['body'], array( '{nome}' => $first, '{associazione}' => $assoc ) ) ); // anche sul telefono, se ha attivato le notifiche
 			$db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => $ok ? 'sent' : 'failed', 'sent_at' => Db::now(), 'error' => $ok ? null : 'invio non riuscito' ), array( 'id' => (int) $r['id'] ) );
@@ -321,9 +321,9 @@ final class Broadcasts {
 	public static function send_test( string $subject, string $body ): bool {
 		$u = wp_get_current_user();
 		if ( ! $u || ! is_email( $u->user_email ) ) {
-			throw new \InvalidArgumentException( 'L\'utente collegato non ha un indirizzo email.' );
+			throw new \InvalidArgumentException( 'Il tuo utente non ha un indirizzo email: aggiungilo nel tuo profilo.' );
 		}
-		return Texts::mail( $u->user_email, '[Prova] ' . trim( $subject ), self::text_for( trim( $body ), (string) ( $u->first_name ?: $u->display_name ) ) );
+		return Texts::mail( $u->user_email, Texts::subject( '[Prova] ' . trim( $subject ) ), self::text_for( trim( $body ), (string) ( $u->first_name ?: $u->display_name ) ) );
 	}
 
 	// ---------- Storico ----------

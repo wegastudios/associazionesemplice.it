@@ -21,7 +21,7 @@ final class SheetReader {
 		$head = (string) file_get_contents( $path, false, null, 0, 8 );
 		$ext  = strtolower( (string) pathinfo( $original_name, PATHINFO_EXTENSION ) );
 		if ( 0 === strpos( $head, "\xD0\xCF\x11\xE0" ) || 'xls' === $ext ) {
-			throw new \InvalidArgumentException( 'Il vecchio formato Excel (.xls) non è supportato: in Excel scegli File → Salva con nome → "Cartella di lavoro di Excel (.xlsx)" oppure CSV.' );
+			throw new \InvalidArgumentException( 'Il vecchio formato Excel (.xls) non si può leggere: in Excel scegli File → Salva con nome → «Cartella di lavoro di Excel (.xlsx)» oppure CSV.' );
 		}
 		if ( in_array( $ext, array( 'ods', 'numbers' ), true ) ) {
 			throw new \InvalidArgumentException( 'Salva il foglio come Excel (.xlsx) o CSV e ricaricalo.' );

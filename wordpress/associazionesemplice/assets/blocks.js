@@ -33,7 +33,7 @@
 			];
 			if (v === 'attivita') {
 				controls.push(
-					el(TextControl, { key: 'a', label: 'Anno sociale (es. 2025/2026, vuoto = in corso)', value: a.anno, onChange: function (x) { set({ anno: x }); } }),
+					el(TextControl, { key: 'a', label: 'Anno delle attività (es. 2025/2026; vuoto = in corso)', value: a.anno, onChange: function (x) { set({ anno: x }); } }),
 					el(SelectControl, { key: 't', label: 'Tipo di attività', value: a.tipo, options: [
 						{ value: '', label: 'Tutte' }, { value: 'corso', label: 'Corsi' }, { value: 'evento', label: 'Eventi una tantum' }, { value: 'ricorrente', label: 'Eventi ricorrenti' }
 					], onChange: function (x) { set({ tipo: x }); } }),
@@ -43,13 +43,13 @@
 			}
 			if (v === 'eventi') {
 				controls.push(el(SelectControl, { key: 'm', label: 'Aspetto', value: a.modo || 'elenco', options: [{ value: 'elenco', label: 'Elenco a schede' }, { value: 'mese', label: 'Calendario mensile' }], onChange: function (x) { set({ modo: x }); } }));
-				controls.push(el(TextControl, { key: 'c', label: 'Solo questa categoria (indirizzo, facoltativo)', value: a.categoria, onChange: function (x) { set({ categoria: x }); } }));
+				controls.push(el(TextControl, { key: 'c', label: 'Solo questa categoria (il nome che ha nel suo indirizzo web; facoltativo)', value: a.categoria, onChange: function (x) { set({ categoria: x }); } }));
 			}
 			if (v === 'prossimi_eventi' || v === 'eventi') {
 				controls.push(el(TextControl, { key: 'l', label: 'Numero di eventi', value: a.limite, onChange: function (x) { set({ limite: x }); } }));
 			}
 			if (v === 'prossimi_eventi' || v === 'calendario_eventi') {
-				controls.push(el(TextControl, { key: 'c2', label: 'Solo questa categoria (indirizzo, facoltativo)', value: a.categoria, onChange: function (x) { set({ categoria: x }); } }));
+				controls.push(el(TextControl, { key: 'c2', label: 'Solo questa categoria (il nome che ha nel suo indirizzo web; facoltativo)', value: a.categoria, onChange: function (x) { set({ categoria: x }); } }));
 			}
 			if (v === 'prossimi_eventi') {
 				controls.push(el(SelectControl, { key: 'pr', label: 'Prenotazione dalla lista', value: a.prenotazione || 'si', options: [{ value: 'si', label: 'Sì, con i pulsanti' }, { value: 'no', label: 'No, solo date e luoghi' }], onChange: function (x) { set({ prenotazione: x }); } }));
@@ -58,7 +58,7 @@
 				controls.push(el(SelectControl, { key: 'f', label: 'Filtri (elenco/calendario e categorie)', value: a.filtri || 'si', options: [{ value: 'si', label: 'Mostra' }, { value: 'no', label: 'Nascondi' }], onChange: function (x) { set({ filtri: x }); } }));
 			}
 			if (v === 'eventi' || v === 'calendario_eventi' || v === 'prossimi_eventi') { // testi a piacere
-				controls.push(el(TextControl, { key: 'ti', label: 'Titolo sopra la vista (es. I nostri prossimi eventi)', value: a.titolo, onChange: function (x) { set({ titolo: x }); } }));
+				controls.push(el(TextControl, { key: 'ti', label: 'Titolo (es. I nostri prossimi eventi)', value: a.titolo, onChange: function (x) { set({ titolo: x }); } }));
 				controls.push(el(TextControl, { key: 'vu', label: 'Messaggio quando non ci sono eventi', value: a.vuoto, onChange: function (x) { set({ vuoto: x }); } }));
 			}
 			if (v === 'eventi') {
@@ -66,7 +66,7 @@
 			}
 			if (typeof v === 'string' && v.indexOf('evento_') === 0) { // pezzi della pagina di un evento
 				controls.push(el(TextControl, { key: 'ev', label: 'Evento (ID del contenuto; vuoto = quello della pagina)', value: a.evento, onChange: function (x) { set({ evento: x }); } }));
-				controls.push(el(TextControl, { key: 'et', label: 'Titolo sopra il pezzo (facoltativo)', value: a.titolo, onChange: function (x) { set({ titolo: x }); } }));
+				controls.push(el(TextControl, { key: 'et', label: 'Titolo (facoltativo)', value: a.titolo, onChange: function (x) { set({ titolo: x }); } }));
 			}
 			return el('div', useBlockProps ? useBlockProps() : {},
 				el(InspectorControls, null, el(PanelBody, { title: 'Associazione Semplice', initialOpen: true }, controls)),
@@ -100,7 +100,7 @@
 			var label = rules[a.accesso] || '';
 			return el('div', useBlockProps ? useBlockProps({ style: { border: '1px dashed #999', padding: '12px', borderRadius: '6px' } }) : {},
 				el(InspectorControls, null, el(PanelBody, { title: 'Accesso', initialOpen: true }, controls)),
-				el('p', { style: { margin: '0 0 8px', fontSize: '12px', opacity: 0.8 } }, '🔒 Contenuto riservato — ' + label),
+				el('p', { style: { margin: '0 0 8px', fontSize: '12px', opacity: 0.8 } }, '🔒 Contenuto riservato: ' + label),
 				el(InnerBlocks, null)
 			);
 		},

@@ -242,7 +242,7 @@ final class CardLayout {
 			return;
 		}
 		$until = ! MemberType::is_member( $p['type'] ) ? null : Plugin::people()->active_until( (int) $p['id'] );
-		$when  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '' );
+		$when  = MemberType::is_auto_renewed( $p['type'] ) ? 'Non va rinnovata' : ( $until ? 'Valida fino al ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '' );
 		$ex    = self::extras( $p );
 		$texts = array(
 			'name'   => trim( $p['first_name'] . ' ' . $p['last_name'] ),

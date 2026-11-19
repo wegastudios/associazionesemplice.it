@@ -20,7 +20,7 @@ The plugin is built around Italian third-sector rules (APS, ETS, registers, tax 
 * **Courses and events**: registrations, limited seats with a waiting list, a payment grace period for bank transfer and cash, participant lists, a calendar.
 * **Cash book**: income and expenses in a single cash account, bank transfer details for members, export of the cash book.
 * **Registers and privacy**: minutes book, privacy notice, consents, anonymisation, personal data download.
-* **Members' area** on the site, with notices, the rules to accept, the card and the events and courses, through shortcodes, blocks and Elementor widgets.
+* **Members' area** on the site: notices, rules to accept, membership card, events and courses. Available as shortcodes, blocks and Elementor widgets.
 * **Roles**: president, vice president, treasurer, councillors and secretary, with separate permissions.
 * **Donations with PayPal**: a form that takes the donor to PayPal's own donation page.
 * **Backup and reset**: download a full copy of the data; reset the data to start over.

@@ -293,7 +293,7 @@ class PaymentService extends OfflinePayments {
 	public function application_checkout( array $person, int $cents, string $back_url, string $provider = '' ): string {
 		$available = array_values( array_diff( $this->providers(), array( PaymentConfig::WOOCOMMERCE ) ) );
 		if ( ! $available || ! Edition::has( 'payments' ) ) {
-			throw new \InvalidArgumentException( 'Il pagamento online non è disponibile: la quota si paga in sede.' );
+			throw new \InvalidArgumentException( 'I pagamenti online non sono attivi: la quota si paga in sede.' );
 		}
 		if ( '' === $provider ) {
 			$provider = $available[0];
@@ -492,7 +492,7 @@ class PaymentService extends OfflinePayments {
 		}
 		$linked = $this->linked_income( $p );
 		if ( $linked['active'] > 0 ) {
-			return $no( Texts::t( 'L\'incasso è ancora registrato in prima nota: annullalo prima dalla prima nota, poi potrai restituire i soldi da qui.' ) );
+			return $no( Texts::t( 'L\'incasso è ancora in prima nota: annullalo lì, poi potrai restituire i soldi da qui.' ) );
 		}
 		if ( 0 === $linked['total'] ) {
 			$items = (array) json_decode( (string) $p['items'], true );
@@ -516,7 +516,7 @@ class PaymentService extends OfflinePayments {
 					? Texts::t( 'La chiave Stripe non ha il permesso di fare rimborsi: controlla le autorizzazioni della chiave su Stripe (serve poter scrivere i rimborsi).' )
 					: Texts::t( 'L\'app PayPal non ha il permesso di fare rimborsi: controlla le autorizzazioni dell\'app su developer.paypal.com e che l\'account PayPal possa rimborsare, poi riprova.' ) ) . $tail;
 			case 'key':
-				return Texts::t( 'Le credenziali di {metodo} non sono valide: controllale in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) );
+				return Texts::t( 'Le chiavi di {metodo} non sono valide: controllale in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) );
 			case 'already':
 				return Texts::t( '{metodo} dice che questo pagamento è già stato rimborsato per intero: controlla dal suo pannello.', array( 'metodo' => $name ) );
 			case 'not_found':
@@ -580,12 +580,12 @@ class PaymentService extends OfflinePayments {
 		try {
 			if ( 'stripe' === $provider ) {
 				if ( '' === (string) $cfg['stripe_secret_key'] ) {
-					throw new \InvalidArgumentException( Texts::t( 'Le credenziali di {metodo} non sono impostate: inseriscile in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \InvalidArgumentException( Texts::t( 'Le chiavi di {metodo} non sono impostate: inseriscile in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$res = StripeApi::refund( $this->http(), $cfg['stripe_secret_key'], (string) $p['provider_payment_id'], $cents, $key, (string) $p['public_id'] );
 			} else {
 				if ( '' === (string) $cfg['paypal_client_id'] || '' === (string) $cfg['paypal_client_secret'] ) {
-					throw new \InvalidArgumentException( Texts::t( 'Le credenziali di {metodo} non sono impostate: inseriscile in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \InvalidArgumentException( Texts::t( 'Le chiavi di {metodo} non sono impostate: inseriscile in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$live = 'live' === $cfg['paypal_mode'];
 				try {
@@ -601,14 +601,14 @@ class PaymentService extends OfflinePayments {
 		} catch ( \RuntimeException $e ) { // rete: non si sa se il gestore ha ricevuto la richiesta. Il tentativo resta salvato e il pagamento «da controllare»: si ripete solo con lo stesso importo (stessa chiave)
 			$this->update( $id, array( 'review' => 1, 'error' => mb_substr( Texts::t( 'Rimborso di {importo} non confermato dal gestore: da controllare.', array( 'importo' => Money::format( $cents ) ) ), 0, 250 ) ) );
 			Audit::log( 'payment.refund_unreachable', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents ) );
-			throw new \InvalidArgumentException( Texts::t( 'Il servizio di {metodo} non risponde: il rimborso di {importo} non è stato confermato. Riprova tra poco con lo stesso importo: ripetere lo stesso invio non rimborsa due volte. Con un importo diverso non si riparte finché questo non è chiarito.', array( 'metodo' => $name, 'importo' => Money::format( $cents ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il servizio di {metodo} non risponde: il rimborso di {importo} non è confermato. Riprova tra poco con lo stesso importo: non verrà rimborsato due volte. Un importo diverso non è accettato finché questo rimborso non è chiarito.', array( 'metodo' => $name, 'importo' => Money::format( $cents ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( empty( $res['ok'] ) ) {
 			$msg = $this->refund_error( $provider, (string) $res['reason'], (string) $res['message'] );
 			if ( empty( $res['certain'] ) ) { // errore del server, troppe richieste, risposta illeggibile o errore non riconosciuto: il rimborso può essere partito
 				$this->update( $id, array( 'review' => 1, 'error' => mb_substr( Texts::t( 'Rimborso di {importo} non confermato dal gestore: da controllare.', array( 'importo' => Money::format( $cents ) ) ), 0, 250 ) ) );
 				Audit::log( 'payment.refund_unconfirmed', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'reason' => $res['reason'] ) );
-				throw new \InvalidArgumentException( $msg . ' ' . Texts::t( 'Non è certo che il rimborso non sia partito: il pagamento resta «da controllare» e si può ripetere solo lo stesso importo ({importo}).', array( 'importo' => Money::format( $cents ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( $msg . ' ' . Texts::t( 'Il rimborso potrebbe essere partito lo stesso: il pagamento resta «da controllare» e puoi ripetere solo lo stesso importo ({importo}).', array( 'importo' => Money::format( $cents ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$this->refund_release( $id, $cents ); // rifiuto certo del gestore: nulla è stato restituito
 			Audit::log( 'payment.refund_refused', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'reason' => $res['reason'] ) );
@@ -623,7 +623,7 @@ class PaymentService extends OfflinePayments {
 		}
 		$done = $this->db()->update( $tbl, $data, array( 'id' => $id, 'refunded_cents' => $before, 'refund_pending_cents' => $cents ) ); // solo se la riga è ancora quella di prima
 		if ( 1 !== (int) $done ) { // il gestore ha confermato ma la scrittura non è passata: l'importo si somma comunque e il pagamento resta «da controllare»
-			$this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'payments' ) . ' SET refunded_cents = refunded_cents + %d, refund_pending_cents = 0, review = 1, refund_id = %s, refunded_at = %s, updated_at = %s, error = %s WHERE id = %d', $cents, mb_substr( (string) $res['id'], 0, 120 ), Db::now(), Db::now(), mb_substr( Texts::t( 'Rimborso di {importo} confermato dal gestore ma registrato in modo anomalo: da controllare.', array( 'importo' => Money::format( $cents ) ) ), 0, 250 ), $id ) );
+			$this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'payments' ) . ' SET refunded_cents = refunded_cents + %d, refund_pending_cents = 0, review = 1, refund_id = %s, refunded_at = %s, updated_at = %s, error = %s WHERE id = %d', $cents, mb_substr( (string) $res['id'], 0, 120 ), Db::now(), Db::now(), mb_substr( Texts::t( 'Rimborso di {importo} confermato dal gestore ma non registrato bene qui: da controllare.', array( 'importo' => Money::format( $cents ) ) ), 0, 250 ), $id ) );
 			$row   = $this->get( $id );
 			$total = (int) ( $row['refunded_cents'] ?? $total );
 			$full  = $total >= (int) $p['amount_cents'];
@@ -674,8 +674,8 @@ class PaymentService extends OfflinePayments {
 		}
 		$assoc   = (string) Settings::get( 'association_name' );
 		$assoc   = '' !== $assoc ? $assoc : Texts::t( 'l\'associazione' );
-		$subject = Texts::t( 'Rimborso del tuo pagamento · {associazione}', array( 'associazione' => $assoc ) );
-		$tpl     = 'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L\'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria. — {associazione}';
+		$subject = \AssociazioneSemplice\Texts::subject( Texts::t( 'Rimborso del tuo pagamento' ) );
+		$tpl     = 'Ciao, ti abbiamo restituito {importo} del pagamento del {data} a {associazione}. Motivo: {motivo}. L\'accredito arriva di solito in pochi giorni lavorativi (fino a 10, secondo la banca o il metodo di pagamento). Se hai dubbi, scrivi alla segreteria. — {associazione}';
 		if ( Contacts::complete() ) { // con i contatti della segreteria la chiusa li riporta (e Texts::mail aggiunge il Reply-To); senza, resta la frase generica
 			$tpl = str_replace( 'scrivi alla segreteria. —', 'scrivi alla segreteria: {email}, tel. {telefono}. —', $tpl );
 		}
@@ -728,7 +728,7 @@ class PaymentService extends OfflinePayments {
 
 	/** Messaggio al socio a pagamento ricevuto: se il pagamento resta da controllare lo sa, senza dettagli. */
 	private function received_message( ?array $p ): string {
-		return $p && ! empty( $p['review'] ) ? Texts::t( 'Pagamento ricevuto: la segreteria lo sta controllando.' ) : 'Pagamento ricevuto: grazie!';
+		return $p && ! empty( $p['review'] ) ? Texts::t( 'Pagamento ricevuto: la segreteria lo sta controllando.' ) : 'Pagamento ricevuto, grazie.';
 	}
 
 	/** Ritorno del socio dalla pagina del gateway. @return string messaggio per l'utente */
@@ -1132,7 +1132,7 @@ class PaymentService extends OfflinePayments {
 			return '- ' . PaymentItems::line_name( $i ) . ': ' . Money::format( (int) $i['amount_cents'] );
 		}, $items );
 		$body  = 'Ciao ' . $payer['first_name'] . ",\n\nabbiamo ricevuto il tuo pagamento online" . ( '' !== $assoc ? ' per ' . $assoc : '' ) . ".\n\n" . implode( "\n", $lines )
-			. "\n\nTotale: " . Money::format( (int) $p['amount_cents'] ) . "\nData: " . ( new \DateTimeImmutable( (string) $p['paid_at'] ) )->format( 'd/m/Y' ) . "\nRiferimento: " . $p['public_id'] . "\n\nGrazie!";
-		\AssociazioneSemplice\Texts::mail( $payer['email'], 'Ricevuta del pagamento' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $body );
+			. "\n\nTotale: " . Money::format( (int) $p['amount_cents'] ) . "\nData: " . ( new \DateTimeImmutable( (string) $p['paid_at'] ) )->format( 'd/m/Y' ) . "\nRiferimento: " . $p['public_id'] . "\n\nGrazie.";
+		\AssociazioneSemplice\Texts::mail( $payer['email'], \AssociazioneSemplice\Texts::subject( 'Conferma del pagamento' ), $body );
 	}
 }

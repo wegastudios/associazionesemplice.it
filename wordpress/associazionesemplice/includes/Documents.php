@@ -112,7 +112,7 @@ final class Documents {
 		$d['enc_ver']     = $saved['enc_ver'];
 		$d['file_size']   = $file['size'];
 		if ( ! $db->insert( Db::t( 'documents' ), $d + array( 'uploaded_by' => $user_id, 'created_at' => Db::now(), 'updated_at' => Db::now() ) ) ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare il documento (errore del database).' );
+			throw new \InvalidArgumentException( 'Documento non salvato: riprova.' );
 		}
 		$id = (int) $db->insert_id;
 		Audit::log( 'document.created', 'document', $id, array( 'visibility' => $vis ) );
@@ -197,7 +197,7 @@ final class Documents {
 			}
 		}
 		if ( ! Access::can_read_document( $doc ) ) {
-			if ( ! MemberSession::logged_in() ) { // dopo l'accesso si torna all'area riservata (il link aveva il nonce di chi non era entrato)
+			if ( ! MemberSession::logged_in() ) { // dopo l'accesso si torna all'area soci (il link aveva il nonce di chi non era entrato)
 				$page = (int) Settings::get( 'member_area_page_id' );
 				wp_safe_redirect( wp_login_url( $page ? (string) get_permalink( $page ) : home_url( '/' ) ) );
 				exit;

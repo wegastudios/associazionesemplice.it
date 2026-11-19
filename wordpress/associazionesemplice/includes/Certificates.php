@@ -83,7 +83,7 @@ final class Certificates {
 	public static function handle_file(): void {
 		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		if ( ! self::can_manage() || ! Edition::has( 'medical' ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_cert_file_' . $id );
 		$c    = self::get( $id );
@@ -130,7 +130,7 @@ final class Certificates {
 	/** @throws \InvalidArgumentException */
 	public static function add( int $person_id, array $in, ?array $file = null ): int {
 		if ( ! MemberQuery::find( $person_id ) ) {
-			throw new \InvalidArgumentException( 'Il certificato si registra per un socio attivo.' );
+			throw new \InvalidArgumentException( 'Puoi registrare il certificato solo per un socio attivo.' );
 		}
 		$d      = CertificateRules::clean( $in );
 		$doctor = (string) $d['doctor'];
@@ -144,7 +144,7 @@ final class Certificates {
 		}
 		if ( ! self::db()->insert( Db::t( 'medical_certs' ), $d + array( 'person_id' => $person_id, 'created_at' => Db::now() ) ) ) {
 			Attachments::delete_stored( (string) ( $d['file_stored'] ?? '' ) ); // niente file orfano nella cartella privata
-			throw new \InvalidArgumentException( 'Impossibile salvare il certificato (errore del database).' );
+			throw new \InvalidArgumentException( 'Certificato non salvato: riprova.' );
 		}
 		$id  = (int) self::db()->insert_id;
 		$upd = array( 'doctor' => '' === $doctor ? null : PrivateFiles::field_encrypt( self::TABLE, 'doctor', $id, $doctor ) );
@@ -398,7 +398,7 @@ final class Certificates {
 				$out['members']++;
 			}
 			if ( StaffReminders::fresh( (int) $p['id'], 'cert_staff', $ref, $send ) ) {
-				$lines[] = MemberQuery::name( $p ) . ' — ' . ( ExpiryRules::EXPIRING === $r['status'] ? 'scade il ' : 'scaduto il ' ) . $when;
+				$lines[] = MemberQuery::name( $p ) . ': ' . ( ExpiryRules::EXPIRING === $r['status'] ? 'scade il ' : 'scaduto il ' ) . $when;
 				$keys[]  = array( (int) $p['id'], 'cert_staff', $ref );
 			}
 		}

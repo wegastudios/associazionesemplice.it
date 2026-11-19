@@ -355,7 +355,7 @@ final class ActivityReset {
 							if ( $part > 0 ) { // mese in parte svolto: si rende solo la quota delle lezioni non tenute
 								$d = array(
 									'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => $part,
-									'person_id' => $m['person_id'] ? (int) $m['person_id'] : 0, 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'] . ' (quota non fruita)', 0, 255 ),
+									'person_id' => $m['person_id'] ? (int) $m['person_id'] : 0, 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'] . ' (contributo non usato)', 0, 255 ),
 								);
 								if ( null !== $m['vat_rate'] && '' !== $m['vat_rate'] ) {
 									$d['vat_rate'] = (int) $m['vat_rate'];
@@ -424,7 +424,7 @@ final class ActivityReset {
 			$text = 'Ciao ' . $person['first_name'] . ",\n\n" . 'l\'evento «' . $name . '» è stato annullato.'
 				. ( self::REFUND === $mode ? "\n\nSe avevi versato un contributo ti verrà restituito: la segreteria ti contatterà." : '' )
 				. "\n\nCi dispiace per il disagio.";
-			if ( Texts::mail( $person['email'], 'Evento annullato: ' . $name, $text ) ) {
+			if ( Texts::mail( $person['email'], Texts::subject( 'Evento annullato: ' . $name ), $text ) ) {
 				$sum['notified']++;
 			}
 		}
@@ -509,13 +509,13 @@ final class ActivityReset {
 	public static function kept_text( array $f ): string {
 		$out = '';
 		if ( (int) ( $f['count'] ?? $f['kept_count'] ?? 0 ) > 0 ) {
-			$out = ' Gli incassi già fruiti (' . Money::format( (int) ( $f['cents'] ?? $f['kept_cents'] ?? 0 ) ) . ') restano in prima nota così come sono e non vengono restituiti né annullati.';
+			$out = ' Gli incassi del periodo già frequentato (' . Money::format( (int) ( $f['cents'] ?? $f['kept_cents'] ?? 0 ) ) . ') restano in prima nota: non vengono restituiti né annullati.';
 		}
 		if ( (int) $f['debt_cents'] > 0 ) {
-			$out .= ' Per il fruito mancano ' . Money::format( (int) $f['debt_cents'] ) . ': restano da incassare, fuori dall\'iscrizione.';
+			$out .= ' Per il periodo già frequentato mancano ' . Money::format( (int) $f['debt_cents'] ) . ': restano da incassare a parte.';
 		}
 		if ( (int) $f['credit_cents'] > 0 ) {
-			$out .= ' Per il fruito risultano versati ' . Money::format( (int) $f['credit_cents'] ) . ' in più: il credito va restituito a mano.';
+			$out .= ' Per il periodo già frequentato sono stati versati ' . Money::format( (int) $f['credit_cents'] ) . ' in più: restituiscili a mano.';
 		}
 		return $out;
 	}
@@ -644,7 +644,7 @@ final class ActivityReset {
 	public static function registration_blockers( int $activity_id, int $person_id, int $session_id, string $mode ): array {
 		$p = self::registration_preview( $activity_id, $person_id, $session_id );
 		if ( ! $p ) {
-			return array( 'L\'iscrizione non esiste (più).' );
+			return array( 'L\'iscrizione non esiste più.' );
 		}
 		$years = $p['years'];
 		if ( self::REFUND === $mode && $p['income']['count'] ) {
@@ -667,7 +667,7 @@ final class ActivityReset {
 				$closed = YearLock::closed_year_with( 'fund_entries', 'entry_date', "kind = 'share' AND tx_id IN ($in)" );
 			}
 			if ( null !== $closed ) {
-				$msg = FiscalYears::closed_message( $closed ) . ' (Contiene incassi di questa iscrizione: cancellarla li modificherebbe.)';
+				$msg = FiscalYears::closed_message( $closed ) . ' (Contiene incassi di questa iscrizione: annullarla li modificherebbe.)';
 				if ( ! in_array( $msg, $out, true ) ) {
 					$out[] = $msg;
 				}
@@ -740,9 +740,9 @@ final class ActivityReset {
 			}
 		);
 		if ( ! empty( $opts['notify'] ) && is_email( (string) $p['person']['email'] ) ) {
-			$text = 'Ciao ' . $p['person']['first_name'] . ",\n\n" . 'la tua iscrizione a «' . $a['name'] . '»' . ( $p['session'] ? ' del ' . $p['session']['session_date'] : '' ) . ' è stata cancellata.'
+			$text = 'Ciao ' . $p['person']['first_name'] . ",\n\n" . 'la tua ' . ( $p['session'] ? 'prenotazione' : 'iscrizione' ) . ' a «' . $a['name'] . '»' . ( $p['session'] ? ' del ' . ( new \DateTimeImmutable( (string) $p['session']['session_date'] ) )->format( 'd/m/Y' ) : '' ) . ' è stata annullata.'
 				. ( self::REFUND === $mode && $p['income']['count'] ? "\n\nIl contributo che avevi versato ti verrà restituito: la segreteria ti contatterà." : '' );
-			if ( Texts::mail( $p['person']['email'], 'Iscrizione cancellata: ' . $a['name'], $text ) ) {
+			if ( Texts::mail( $p['person']['email'], Texts::subject( ( $p['session'] ? 'Prenotazione annullata: ' : 'Iscrizione annullata: ' ) . $a['name'] ), $text ) ) {
 				$sum['notified'] = 1;
 			}
 		}

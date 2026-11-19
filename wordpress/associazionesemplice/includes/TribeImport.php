@@ -736,7 +736,7 @@ final class TribeImport {
 				continue;
 			}
 			if ( self::page_hash( $post ) !== (string) ( $f['hash'] ?? '' ) ) {
-				$res['kept'][] = 'pagina «' . $post->post_title . '» (modificata dopo l\'import: non la tocco)';
+				$res['kept'][] = 'pagina «' . $post->post_title . '» (modificata dopo l\'importazione: resta com\'è)';
 				continue;
 			}
 			wp_update_post( array( 'ID' => $page, 'post_content' => '', 'post_excerpt' => '', 'post_status' => in_array( (string) ( $f['status'] ?? '' ), array( 'draft', 'pending', 'private', 'publish', 'future' ), true ) ? (string) $f['status'] : 'draft' ) );

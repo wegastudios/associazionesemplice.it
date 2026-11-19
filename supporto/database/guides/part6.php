@@ -56,7 +56,7 @@ MD,
 
 L'apertura e la chiusura degli anni fiscali sono incluse anche nel piano gratuito.
 
-Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, {piano_contabile} è di solito sufficiente. Puoi passare da un piano all'altro dall'area soci, senza reinstallare nulla.
+Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, {piano_contabile} è di solito sufficiente. Puoi passare da un piano all'altro dall'area riservata, senza reinstallare nulla.
 MD,
     ],
     [
@@ -138,7 +138,7 @@ MD,
         'body' => <<<'MD'
 Dall'**area riservata** di associazionesemplice.it. I piani Pro si rinnovano da soli, ma puoi disdire il rinnovo, cambiare piano o aggiornare i dati di fatturazione in autonomia, senza vincoli.
 
-Se disdici, alla scadenza il plugin torna alle funzioni di base senza toccare i dati. Se hai pagato con Stripe, dall'area soci puoi aprire anche il portale di fatturazione del fornitore.
+Se disdici, alla scadenza il plugin torna alle funzioni di base senza toccare i dati. Se hai pagato con Stripe, dall'area riservata puoi aprire anche il portale di fatturazione del fornitore.
 MD,
     ],
     [
@@ -250,7 +250,7 @@ MD,
         'body' => <<<'MD'
 Cerca prima nelle guide con il campo di ricerca del [centro assistenza](/cerca): la maggior parte delle procedure è descritta passo per passo.
 
-Se non trovi la risposta, **apri una richiesta**: accedi dall'area soci, scegli l'argomento e descrivi il problema, indicando la versione del plugin e, se puoi, i passi che hai fatto. Il tuo indirizzo email e il tuo piano vengono compilati da soli. Riceverai un numero di riferimento e potrai seguire le risposte dalla pagina **I miei ticket**.
+Se non trovi la risposta, **apri una richiesta**: accedi all'area riservata, scegli l'argomento e descrivi il problema, indicando la versione del plugin e, se puoi, i passi che hai fatto. Il tuo indirizzo email e il tuo piano vengono compilati da soli. Riceverai un numero di riferimento e potrai seguire le risposte dalla pagina **I miei ticket**.
 MD,
     ],
     [

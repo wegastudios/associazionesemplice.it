@@ -45,11 +45,11 @@ final class YearEndCheck {
 				$parts[] = (int) $i['count'] . ' ' . esc_html( $i['label'] ) . ' (<a href="' . esc_url( $i['url'] ) . '">verifica</a>)';
 			}
 			$monday = ( new \DateTimeImmutable( Db::today() ) )->modify( 'monday this week' )->format( 'Y-m-d' );
-			return Admin\Dismiss::html( 'yearend-' . $monday, 'warning', '<strong>Verifiche in vista della fine dell\'anno fiscale</strong> (' . esc_html( ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) ) . '): ' . implode( '; ', $parts ) . '. Si può chiudere per questa settimana; da lunedì ricompare finché ci sono discrepanze.', 7 );
+			return Admin\Dismiss::html( 'yearend-' . $monday, 'warning', '<strong>Verifiche in vista della fine dell\'anno fiscale</strong> (' . esc_html( ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) ) . '): ' . implode( '; ', $parts ) . '. Puoi nascondere questo avviso: da lunedì ricompare finché restano discrepanze.', 7 );
 		}
 		$li = '';
 		foreach ( $items as $i ) {
-			$li .= '<li>' . (int) $i['count'] . ' ' . esc_html( $i['label'] ) . ' — <a href="' . esc_url( $i['url'] ) . '">verifica</a></li>';
+			$li .= '<li>' . (int) $i['count'] . ' ' . esc_html( $i['label'] ) . ': <a href="' . esc_url( $i['url'] ) . '">verifica</a></li>';
 		}
 		return '<div class="notice notice-warning inline asem-yearend"><p><strong>Verifiche di fine anno fiscale.</strong> L\'anno finisce il ' . esc_html( ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) ) . ': conviene sistemare ora queste discrepanze, così non restano correzioni da fare dopo la chiusura. Ogni discrepanza si può anche approvare a mano per portarla al nuovo anno (<a href="' . esc_url( Admin\Ui::url( 'asem-watch' ) ) . '#asem-disc">verifica e approva</a>).</p><ul style="list-style:disc;margin-left:2em">' . $li . '</ul></div>';
 	}
@@ -116,7 +116,7 @@ final class YearEndCheck {
 		foreach ( self::past_deficits() as $year => $result ) {
 			$vars = array( 'anno' => FiscalYears::label( $year ), 'importo' => Money::format( abs( $result ) ) );
 			$out .= '<div class="notice notice-warning inline asem-yearend"><p><strong>' . esc_html( Texts::t( 'Anno fiscale {anno} in disavanzo.', $vars ) ) . '</strong> '
-				. esc_html( Texts::t( 'L\'anno fiscale {anno} è finito ma è ancora aperto e ha un disavanzo di {importo}: le uscite superano le entrate. Se mancano delle entrate, registrale in Prima nota con una data dentro quell\'anno. Se invece i conti sono giusti, controllali e poi chiudi l\'anno.', $vars ) )
+				. esc_html( Texts::t( 'L\'anno fiscale {anno} è finito ma è ancora aperto e ha un disavanzo di {importo}: le uscite superano le entrate. Se mancano delle entrate, registrale in Prima nota con una data di quell\'anno. Se invece i conti sono giusti, puoi chiudere l\'anno.', $vars ) )
 				. ' <a href="' . esc_url( Admin\Ui::url( 'asem-statement', array( 'year' => $year ) ) ) . '">' . esc_html( Texts::t( 'Apri il rendiconto' ) ) . '</a> · <a href="' . esc_url( Admin\Ui::url( 'asem-years' ) ) . '">' . esc_html( Texts::t( 'Vai agli anni fiscali' ) ) . '</a></p></div>';
 		}
 		return $out;
@@ -169,10 +169,10 @@ final class YearEndCheck {
 		foreach ( $items as $i ) {
 			$lines[] = '- ' . $i['count'] . ' ' . $i['label'] . ': ' . $i['url'];
 		}
-		$body = "L'anno fiscale finisce il " . ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) . ". Conviene sistemare ora queste discrepanze, così non restano correzioni da fare dopo la chiusura:\n\n" . implode( "\n", $lines );
+		$body = "Ciao,\n\nl'anno fiscale finisce il " . ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) . ". Conviene sistemare ora queste discrepanze, così non restano correzioni da fare dopo la chiusura:\n\n" . implode( "\n", $lines );
 		$n    = 0;
 		foreach ( self::recipients() as $to ) {
-			if ( wp_mail( $to, 'Verifiche di fine anno fiscale', $body ) ) {
+			if ( wp_mail( $to, Texts::subject( 'Verifiche di fine anno fiscale' ), $body ) ) {
 				$n++;
 			}
 		}

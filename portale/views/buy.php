@@ -27,7 +27,7 @@ $names = array(
 			<label for="domain">Indirizzo del sito WordPress</label>
 			<input id="domain" type="text" name="domain" placeholder="miaassociazione.it" autocapitalize="none" spellcheck="false" required>
 			<p class="hint">La licenza sarà legata a questo dominio; potrai cambiarlo in seguito.</p>
-			<label for="promo">Codice promo <span class="muted">(facoltativo)</span></label>
+			<label for="promo">Codice sconto <span class="muted">(facoltativo)</span></label>
 			<input id="promo" type="text" name="promo" maxlength="30" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Per esempio: BLACK-FRIDAY">
 			<p class="hint">Lo sconto vale con il pagamento singolo (carta o PayPal), non con il rinnovo automatico.</p>
 			<label>Come vuoi pagare</label>
@@ -45,7 +45,7 @@ $names = array(
 		<ul>
 			<li><?php echo icon( 'card' ); ?><div><b>Paghi in modo sicuro</b>Sul sito di Stripe o di PayPal: noi non vediamo i dati della carta.</div></li>
 			<li><?php echo icon( 'mail' ); ?><div><b>Ricevi un'email</b>Con il link per entrare nell'area riservata.</div></li>
-			<li><?php echo icon( 'key' ); ?><div><b>Trovi la chiave</b>Incolla la chiave nel plugin e le funzioni Pro si attivano.</div></li>
+			<li><?php echo icon( 'key' ); ?><div><b>Trovi la chiave</b>È nell'area riservata: la incolli nel plugin e le funzioni Pro si attivano.</div></li>
 		</ul>
 		<p class="muted small"><a href="/prezzi">Confronta di nuovo i piani</a></p>
 	</div>

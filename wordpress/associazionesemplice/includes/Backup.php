@@ -140,7 +140,7 @@ final class Backup {
 	 */
 	public static function export( bool $with_files = false, ?string $to = null ): string {
 		if ( ! class_exists( '\ZipArchive' ) ) {
-			throw new \RuntimeException( 'Questo server non può creare file ZIP (manca l\'estensione zip di PHP).' );
+			throw new \RuntimeException( 'Questo server non può creare file ZIP: chiedi al tuo hosting di attivare l\'estensione zip di PHP.' );
 		}
 		if ( function_exists( 'set_time_limit' ) ) {
 			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- lettura/scrittura in streaming di file grandi
@@ -248,13 +248,20 @@ final class Backup {
 
 	/** Il LEGGIMI che sta dentro ogni copia. */
 	private static function readme( int $plain_files = 0 ): string {
-		$plain_line = $plain_files > 0 ? str_replace( '{n}', (string) $plain_files, "{n} file sono inclusi in chiaro perché non erano ancora cifrati.\n" ) : ''; // il LEGGIMI della copia è un testo fisso in italiano, come il resto del file
+		$plain_line = $plain_files > 0 ? ( 1 === $plain_files ? "Un file è incluso in chiaro perché non era ancora cifrato.\n" : str_replace( '{n}', (string) $plain_files, "{n} file sono inclusi in chiaro perché non erano ancora cifrati.\n" ) ) : ''; // il LEGGIMI della copia è un testo fisso in italiano, come il resto del file
 		return "Copia di sicurezza di Associazione Semplice.\n"
 			. "Contiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati. La cartella documenti/ contiene i PDF definitivi già emessi (ad esempio le ricevute) con l'indice delle loro impronte SHA-256 (documenti/indice.json).\n"
 			. "Il manifest (manifest.json) elenca l'impronta SHA-256 di ogni file della copia ed è firmato con i codici di sicurezza del sito che l'ha fatta. Sullo stesso sito una copia modificata dopo essere stata fatta viene rifiutata; su un altro sito il ripristino chiede una conferma scritta e la password dell'amministratore, e resta scritto nel registro delle azioni.\n"
 			. "Si ripristina da Strumenti → Copia di sicurezza.\n"
 			. "I dati in chiaro (soci, prima nota e tutte le altre tabelle) si ripristinano sempre, anche senza la frase e anche su un server senza la libreria sodium.\n"
-			. "I documenti riservati (certificati, allegati, scansioni) sono cifrati quando il sito li ha cifrati; i campi di testo che sul sito non si potevano cifrare (il manifest ne conta il numero in «plain_fields») stanno nella copia in chiaro. Le chiavi dei documenti cifrati sono in chiavi.json, avvolte con la chiave del sito, con la frase in uso (il codice di licenza, la data e l'ora in cui è stata creata la chiave dei file, in UTC, oppure la frase scelta; la frase non è la data di installazione del plugin) e, se il Pro era attivo quando hai fatto la copia, anche con il codice di licenza. Senza la chiave del sito di origine e senza una di queste frasi i documenti cifrati si rimettono sul sito ma restano chiusi: il ripristino dice quanti sono e si aprono più tardi con «Riapri la chiave con la frase».\n"
+			. "I documenti riservati (certificati, allegati, scansioni) restano cifrati anche in questa copia. Nel file chiavi.json le chiavi sono a loro volta cifrate: da sole non aprono niente.\n"
+			. "Per aprire i documenti dopo il ripristino serve una di queste tre cose:\n"
+			. "- il sito di origine, con la sua chiave principale;\n"
+			. "- la frase in uso quando hai fatto la copia;\n"
+			. "- il codice di licenza, se il Pro era attivo.\n"
+			. "Se non hai mai scelto una frase, quella in uso è automatica: nel plugin gratuito è la data e l'ora, in UTC, in cui è stata creata la chiave dei file (non è la data di installazione del plugin); con il Pro è il codice di licenza. Una frase automatica protegge meno di una frase scelta da te. Per una protezione vera scegline una tua in Strumenti → Copia di sicurezza → «Frase per riaprire i documenti» e conservala fuori dal sito.\n"
+			. "Se non hai nessuna delle tre, i documenti tornano sul sito ma restano chiusi: il ripristino ti dice quanti sono e puoi aprirli più tardi con «Riapri la chiave con la frase».\n"
+			. "Se il sito non è riuscito a cifrare alcuni testi, quei testi restano leggibili anche nella copia; quanti sono lo vedi in Strumenti → Copia di sicurezza, dopo aver fatto la copia.\n"
 			. "Il file contiene anche le impronte delle password dei soci (mai le password in chiaro) e le notifiche push. Il ripristino rimette le password: ogni socio, al primo accesso, entra con la password di prima e deve scegliere subito una nuova password (vale anche entrando con il link ricevuto per e-mail). Le sessioni aperte e le notifiche push non vengono ripristinate, e nemmeno il registro delle azioni e gli utenti WordPress.\n"
 			. $plain_line . "Le chiavi segrete dei pagamenti online non sono incluse.\n";
 	}
@@ -299,8 +306,8 @@ final class Backup {
 	 */
 	public static function other_site_text(): string {
 		return Texts::t( 'Questa copia non è stata fatta su questo sito. Ripristinala solo se è tua e sai da dove viene: sostituirà i dati attuali.' )
-			. ' ' . Texts::t( 'Verranno sostituiti: tutte le tabelle del plugin (soci, prima nota, attività, ricevute, fondi e le altre), le impostazioni e i testi personalizzati, gli allegati e i PDF delle ricevute citati dai dati della copia, le chiavi dei documenti riservati e l\'identificativo del sito che li lega.' )
-			. ' ' . Texts::t( 'Verranno cancellate, senza essere ripristinate dalla copia: le sessioni dei soci e le notifiche push di adesso. Le password dei soci invece tornano come nella copia, e ogni socio dovrà sceglierne una nuova al primo accesso.' )
+			. ' ' . Texts::t( 'Verranno sostituiti: tutti i dati del plugin (soci, prima nota, attività, ricevute, fondi e il resto), le impostazioni e i testi personalizzati, gli allegati e i PDF delle ricevute presenti nella copia, le chiavi dei documenti riservati e il codice del sito a cui sono legati.' )
+			. ' ' . Texts::t( 'Verranno eliminati, e non tornano dalla copia: gli accessi aperti dei soci (dovranno rientrare) e le notifiche push attive. Le password dei soci tornano quelle della copia: ogni socio ne sceglierà una nuova al primo accesso.' )
 			. ' ' . Texts::t( 'Non verranno toccati: il registro delle azioni, gli utenti WordPress, le chiavi segrete dei pagamenti e il codice di licenza di questo sito.' )
 			. ' ' . Texts::t( 'Per procedere scrivi «{frase}» nel campo di conferma e la tua password; l\'operazione resta scritta nel registro delle azioni.', array( 'frase' => self::RESTORE_PHRASE_OTHER ) );
 	}
@@ -330,7 +337,7 @@ final class Backup {
 	 */
 	public static function inspect( string $zip_path, ?string &$origin = null ): array {
 		if ( ! class_exists( '\ZipArchive' ) ) {
-			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP.' );
+			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP: chiedi al tuo hosting di attivare l\'estensione zip di PHP.' );
 		}
 		$zip = new \ZipArchive();
 		if ( true !== $zip->open( $zip_path ) ) {
@@ -382,7 +389,7 @@ final class Backup {
 			$actual = BackupSeal::hashes( $zip, $sz['sizes'] );
 			$int    = null === $actual ? 'changed' : BackupSeal::compare( $listed, $actual );
 		}
-		$modified = Texts::t( 'La copia è stata modificata dopo essere stata fatta, oppure è danneggiata: il suo contenuto non coincide con l\'elenco con cui è stata firmata. Non è stato cambiato nulla.' );
+		$modified = Texts::t( 'La copia è stata modificata dopo la creazione, oppure è danneggiata. Non è stato cambiato nulla.' );
 		if ( is_string( $m['kfp'] ?? null ) && hash_equals( BackupSeal::fingerprint( $mine ), $m['kfp'] ) ) { // stessi codici di sicurezza: è una copia di questo sito
 			if ( null === $listed || '' !== $int ) {
 				throw self::refusal( 'modified', $modified ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
@@ -421,7 +428,7 @@ final class Backup {
 			$values[] = '(' . implode( ',', $vals ) . ')';
 		}
 		if ( false === $db->query( "INSERT INTO `$tbl` (`" . implode( '`,`', $cols ) . '`) VALUES ' . implode( ',', $values ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL
-			throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \RuntimeException( 'Ripristino non riuscito. Dettaglio tecnico: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -469,7 +476,7 @@ final class Backup {
 
 	private static function restore_locked( string $zip_path, string $phrase, bool $other_site_ok ): array {
 		if ( ! class_exists( '\ZipArchive' ) ) {
-			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP.' );
+			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP: chiedi al tuo hosting di attivare l\'estensione zip di PHP.' );
 		}
 		$zip = new \ZipArchive();
 		if ( true !== $zip->open( $zip_path ) ) {
@@ -571,7 +578,7 @@ final class Backup {
 				$auth = $db->prefix . 'asem_member_auth';
 				$n    = $db->query( $db->prepare( "UPDATE `$auth` SET must_reset = %d WHERE pass_hash IS NOT NULL AND pass_hash <> ''", MemberPassword::RESTORED ) ); // phpcs:ignore WordPress.DB.PreparedSQL
 				if ( false === $n ) {
-					throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \RuntimeException( 'Ripristino non riuscito. Dettaglio tecnico: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$passwords = (int) $n;
 			}
@@ -579,7 +586,7 @@ final class Backup {
 				$tbl = $db->prefix . $t;
 				$n   = $db->query( "DELETE FROM `$tbl`" ); // phpcs:ignore WordPress.DB.PreparedSQL
 				if ( false === $n ) {
-					throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \RuntimeException( 'Ripristino non riuscito. Dettaglio tecnico: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$members_reset += (int) $n;
 			}
@@ -587,7 +594,7 @@ final class Backup {
 		} catch ( \Throwable $e ) {
 			$db->query( 'ROLLBACK' );
 				wp_delete_file( $safety ); // nulla è cambiato: la copia con le tabelle in chiaro non serve a nessuno
-			throw new \RuntimeException( $e->getMessage() . ' Nessun dato è stato cambiato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \RuntimeException( $e->getMessage() . ' Non è stato cambiato nulla.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		// Chiavi dei documenti e identificativo del sito: solo ora che i dati sono al loro posto (una riga nel registro azioni dice che cosa si è adottato).
 		$keys = array( 'open' => 0, 'closed' => 0, 'site_changed' => false, 'failed' => false );
@@ -799,7 +806,7 @@ final class Backup {
 
 	public static function handle_download(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$back = Admin\Ui::url( 'asem-backup' );
 		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // un vecchio indirizzo diretto porta alla pagina, dove si scrive la password
@@ -866,7 +873,7 @@ final class Backup {
 
 	public static function handle_saved(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$back = Admin\Ui::url( 'asem-backup' );
 		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // un vecchio indirizzo diretto porta alla pagina, dove si scrive la password

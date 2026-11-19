@@ -58,11 +58,11 @@ final class Push {
 		$p256dh   = (string) ( $keys['p256dh'] ?? '' );
 		$auth     = (string) ( $keys['auth'] ?? '' );
 		if ( ! WebPush::allowed_endpoint( $endpoint ) ) {
-			throw new \InvalidArgumentException( 'Questo dispositivo non può ricevere notifiche (servizio di push non riconosciuto).' );
+			throw new \InvalidArgumentException( 'Questo telefono o browser non può ricevere le notifiche.' );
 		}
 		$pub = WebPush::unb64u( $p256dh );
 		if ( 65 !== strlen( $pub ) || "\x04" !== $pub[0] || strlen( WebPush::unb64u( $auth ) ) < 16 || strlen( $auth ) > 40 ) {
-			throw new \InvalidArgumentException( 'Sottoscrizione non valida.' );
+			throw new \InvalidArgumentException( 'Le notifiche non si sono attivate: riprova.' );
 		}
 		$tbl  = Db::t( 'push_subs' );
 		$hash = sha1( $endpoint );

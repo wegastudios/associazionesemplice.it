@@ -84,7 +84,7 @@ class FundService {
 			return 0;
 		}
 		$fund = $this->open_fund_for( (int) $activity['id'], $activity );
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund, 'kind' => 'share', 'cents' => $cents, 'tx_id' => $tx_id, 'entry_date' => $date, 'note' => 'Quota del pagamento', 'created_at' => Db::now() ) );
+		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund, 'kind' => 'share', 'cents' => $cents, 'tx_id' => $tx_id, 'entry_date' => $date, 'note' => 'Parte del pagamento', 'created_at' => Db::now() ) );
 		return $cents;
 	}
 
@@ -156,7 +156,7 @@ class FundService {
 	public function deposit( int $fund_id, int $cents, string $date, string $note = '' ): void {
 		$f = $this->get( $fund_id );
 		if ( ! $f || null !== $f['closed_at'] ) {
-			throw new \InvalidArgumentException( 'Fondo non trovato o già estinto.' );
+			throw new \InvalidArgumentException( 'Fondo non trovato o già chiuso.' );
 		}
 		if ( $cents <= 0 ) {
 			throw new \InvalidArgumentException( 'Indica un importo maggiore di zero.' );
@@ -235,13 +235,13 @@ class FundService {
 	public function release( int $fund_id, int $cents, string $date, string $note = '' ): void {
 		$f = $this->get( $fund_id );
 		if ( ! $f || null !== $f['closed_at'] ) {
-			throw new \InvalidArgumentException( 'Fondo non trovato o già estinto.' );
+			throw new \InvalidArgumentException( 'Fondo non trovato o già chiuso.' );
 		}
 		if ( $cents <= 0 || $cents > $f['balance'] ) {
 			throw new \InvalidArgumentException( 'Puoi liberare da zero fino a ' . Money::format( $f['balance'] ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		YearLock::assert_date_open( $date ); // come l'accantonamento: la quota liberata in un anno fiscale chiuso ne cambierebbe il rendiconto
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( '' !== $note ? $note : 'Quota liberata', 0, 255 ), 'created_at' => Db::now() ) );
+		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( '' !== $note ? $note : 'Somma liberata', 0, 255 ), 'created_at' => Db::now() ) );
 		Audit::log( 'fund.released', 'fund', $fund_id, array( 'cents' => $cents ) );
 	}
 
@@ -260,7 +260,7 @@ class FundService {
 					function () use ( $ledger, $fund_id, $account_id, $method, $date ) {
 						$f = $this->get( $fund_id );
 						if ( ! $f || null !== $f['closed_at'] ) {
-							throw new \InvalidArgumentException( 'Fondo non trovato o già estinto.' );
+							throw new \InvalidArgumentException( 'Fondo non trovato o già chiuso.' );
 						}
 						$tx_id = 0;
 						if ( $f['balance'] > 0 ) {

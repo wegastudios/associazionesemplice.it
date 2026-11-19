@@ -55,7 +55,7 @@ final class StripeApi {
 		$r    = $http( $method, self::BASE . $path, $headers, $body );
 		$data = json_decode( (string) $r['body'], true );
 		if ( (int) $r['code'] < 200 || (int) $r['code'] >= 300 || ! is_array( $data ) ) {
-			$msg = is_array( $data ) && isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'risposta ' . (int) $r['code'];
+			$msg = is_array( $data ) && isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'richiesta non riuscita (codice ' . (int) $r['code'] . ')';
 			throw new \RuntimeException( 'Stripe: ' . $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return $data;
@@ -65,7 +65,7 @@ final class StripeApi {
 	public static function create_session( callable $http, string $secret, array $params, string $idempotency_key ): array {
 		$d = self::call( $http, 'POST', '/v1/checkout/sessions', $secret, $params, array( 'Idempotency-Key' => $idempotency_key ) );
 		if ( empty( $d['id'] ) || empty( $d['url'] ) ) {
-			throw new \RuntimeException( 'Stripe: risposta senza indirizzo di pagamento.' );
+			throw new \RuntimeException( 'Stripe non ha avviato il pagamento: riprova tra qualche minuto.' );
 		}
 		return array( 'id' => (string) $d['id'], 'url' => (string) $d['url'] );
 	}
@@ -97,11 +97,11 @@ final class StripeApi {
 		$data = json_decode( (string) $r['body'], true );
 		if ( $code >= 200 && $code < 300 && is_array( $data ) && ! empty( $data['id'] ) ) {
 			if ( in_array( (string) ( $data['status'] ?? '' ), array( 'failed', 'canceled' ), true ) ) {
-				return array( 'ok' => false, 'id' => (string) $data['id'], 'reason' => 'other', 'certain' => true, 'message' => 'rimborso ' . (string) $data['status'] );
+				return array( 'ok' => false, 'id' => (string) $data['id'], 'reason' => 'other', 'certain' => true, 'message' => 'rimborso non riuscito (stato ' . (string) $data['status'] . ')' );
 			}
 			return array( 'ok' => true, 'id' => (string) $data['id'], 'reason' => '', 'message' => '' );
 		}
-		return array( 'ok' => false, 'id' => '', 'reason' => self::refund_reason( $code, $data ), 'certain' => $code >= 400 && $code < 500 && 429 !== $code && 'other' !== self::refund_reason( $code, $data ), 'message' => is_array( $data ) && isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'risposta ' . $code );
+		return array( 'ok' => false, 'id' => '', 'reason' => self::refund_reason( $code, $data ), 'certain' => $code >= 400 && $code < 500 && 429 !== $code && 'other' !== self::refund_reason( $code, $data ), 'message' => is_array( $data ) && isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'richiesta non riuscita (codice ' . $code . ')' );
 	}
 
 	/** Perché Stripe ha rifiutato il rimborso. @param mixed $data risposta già decodificata */

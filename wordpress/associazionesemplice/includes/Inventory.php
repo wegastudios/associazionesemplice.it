@@ -25,7 +25,7 @@ final class Inventory {
 	public static function handle_file(): void {
 		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_item_file_' . $id );
 		$item = self::item( $id );
@@ -73,7 +73,7 @@ final class Inventory {
 		if ( $id ) {
 			$out = self::out_quantity( $id );
 			if ( $qty < $out ) {
-				throw new \InvalidArgumentException( 'Ci sono ' . $out . ' pezzi in prestito: la quantità non può essere più bassa.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( Texts::n( (int) $out, 'C\'è 1 pezzo in prestito: la quantità non può essere più bassa.', 'Ci sono {n} pezzi in prestito: la quantità non può essere più bassa.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 		$d = array(
@@ -108,7 +108,7 @@ final class Inventory {
 			return $id;
 		}
 		if ( ! $db->insert( Db::t( 'items' ), $d + array( 'created_at' => Db::now(), 'updated_at' => Db::now() ) ) ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare il bene (errore del database).' );
+			throw new \InvalidArgumentException( 'Bene non salvato: riprova.' );
 		}
 		$id = (int) $db->insert_id;
 		Audit::log( 'item.created', 'item', $id );

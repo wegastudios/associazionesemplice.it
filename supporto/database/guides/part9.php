@@ -23,7 +23,7 @@ Con le votazioni i soci decidono, o danno un parere, senza fogli e riunioni. La 
 
 Tutti i soci in regola con la tessera, oppure solo gli iscritti a una certa attività.
 
-Il **diritto di voto** ce l'hanno **tutti i soci maggiorenni**. Con {piano_contabile} e {piano_fiscale} si decide invece **per ogni livello di socio** (sì o no), in **Impostazioni → Livelli di socio**. La stessa regola vale per le votazioni, per il numero legale delle assemblee e per i [Dati per il RUNTS](guida:dati-per-il-runts).
+Il **diritto di voto** ce l'hanno **tutti i soci maggiorenni**. Con {piano_contabile} e {piano_fiscale} si decide invece **per ogni livello di socio** (sì o no), in **Impostazioni → Soci e quote**, sezione **«Livelli di socio»**. La stessa regola vale per le votazioni, per il numero legale delle assemblee e per i [Dati per il RUNTS](guida:dati-per-il-runts).
 
 **Non votano**: i minorenni (qualunque sia il livello), genitori e tutori che non sono soci, ospiti, soci sospesi, soci usciti e soci con la tessera scaduta. Non si vota per delega: ogni socio vota dal proprio accesso.
 
@@ -177,10 +177,10 @@ Il registro dei **certificati medici** ti dice chi ha il certificato in regola, 
 
 Sono **spenti** di partenza. Li accendi in **Registri → Certificati medici → Impostazioni → Promemoria automatici**.
 
-- Una volta al giorno il socio, o il suo tutore se è minorenne, riceve un'email quando il certificato sta per scadere e, una volta, quando è scaduto da poco.
+- Il socio, o il suo tutore se è minorenne, riceve un'email quando il certificato sta per scadere e un'altra quando è appena scaduto.
 - La segreteria riceve un'unica email con l'elenco.
 - Ogni avviso parte una sola volta per certificato.
-- **Preavviso**: i giorni prima della scadenza in cui il certificato risulta «in scadenza» (di partenza 30).
+- **Preavviso**: quanti giorni prima della scadenza il certificato diventa «in scadenza» (di partenza 30).
 
 Nelle stesse impostazioni puoi attivare **«Il socio vede nella sua area la scadenza del proprio certificato»**: il socio vede stato e scadenza, non il file né il medico. Le impostazioni le cambia solo l'amministratore.
 

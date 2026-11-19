@@ -12,8 +12,8 @@ final class TechPage {
 
 	/** Posta in uscita: esito degli ultimi messaggi e prova di invio, per capire perché un'email non parte. */
 	private static function mail_section(): void {
-		echo '<h2>Posta in uscita</h2><p class="description">Le email del plugin (primo accesso, ricevute, promemoria, avvisi) partono dalla posta del sito. Se non arrivano, qui vedi l\'ultimo esito e l\'errore segnalato dal server. '
-			. 'Se i messaggi risultano inviati ma non arrivano, di solito è un problema di consegna: la soluzione affidabile è collegare il sito a un servizio di posta (un plugin SMTP) con un indirizzo del tuo dominio, e controllare che il dominio abbia i record SPF e DKIM.</p>';
+		echo '<h2>Posta in uscita</h2><p class="description">Le email del plugin (primo accesso, ricevute, promemoria, avvisi) partono dalla posta del sito. Qui vedi l\'esito degli ultimi invii e l\'errore segnalato dal server. '
+			. 'Se risultano partite ma non arrivano, il problema è la consegna: chiedi a chi gestisce il sito di collegarlo a un servizio di posta (plugin SMTP) con un indirizzo del tuo dominio e di controllare i record SPF e DKIM.</p>';
 		$rows = \AssociazioneSemplice\MailLog::recent( 10 );
 		if ( $rows ) {
 			echo '<table class="widefat striped" style="max-width:900px"><thead><tr><th>Quando</th><th>A</th><th>Messaggio</th><th>Esito</th></tr></thead><tbody>';
@@ -35,7 +35,7 @@ final class TechPage {
 		do_action( 'asem_integrations_top' ); // le estensioni aggiungono qui le loro sezioni
 		self::mail_section();
 		echo '<h2>Ricerca dei luoghi con Google</h2>';
-		echo '<p class="description">Nei campi «Luogo» di corsi ed eventi compaiono i suggerimenti di Google mentre si scrive. Spenta di default. Serve una chiave API di Google Maps dell\'ente (Google Cloud, servizio «Places API»): '
+		echo '<p class="description">Nei campi «Luogo» di corsi ed eventi compaiono i suggerimenti di Google mentre si scrive. Parte spenta. Serve una chiave API di Google Maps dell\'ente (Google Cloud, servizio «Places API»): '
 			. 'limitala ai siti autorizzati dal pannello di Google, perché è visibile nel codice della pagina. Il collegamento con Google avviene solo nelle pagine di amministrazione, dal browser di chi compila il campo; nessun dato dei soci viene inviato.</p>'
 			. '<p><a href="https://developers.google.com/maps/documentation/javascript/get-api-key" target="_blank" rel="noopener noreferrer">Come ottenere la chiave API di Google Maps (guida di Google, si apre in una nuova finestra) ↗</a></p>';
 		Ui::form_open( 'asem_save_places', Ui::url( 'asem-tech' ) );
@@ -46,8 +46,8 @@ final class TechPage {
 		echo '<h2>Altre integrazioni</h2><ul>';
 		do_action( 'asem_integrations_list' ); // elenco delle altre integrazioni
 		echo '<li><strong>QR e calendario</strong>: <a href="' . esc_url( Ui::url( 'asem-card' ) ) . '">Tessera e QR</a>.</li>';
-		echo '<li><strong>WP All Import</strong> — ' . ( class_exists( 'PMXI_Plugin' ) ? 'attivo su questo sito' : 'non attivo' ) . ': <a href="' . esc_url( Ui::url( 'asem-wpai' ) ) . '">Import con WP All Import</a>.</li>';
-		echo '<li><strong>Elementor e Gutenberg</strong> — widget e blocchi «Associazione Semplice» disponibili dove gli editor sono attivi.</li></ul>';
+		echo '<li><strong>WP All Import</strong>: ' . ( class_exists( 'PMXI_Plugin' ) ? 'attivo su questo sito' : 'non attivo' ) . ': <a href="' . esc_url( Ui::url( 'asem-wpai' ) ) . '">Importazione con WP All Import</a>.</li>';
+		echo '<li><strong>Elementor e Gutenberg</strong>: widget e blocchi «Associazione Semplice» disponibili dove gli editor sono attivi.</li></ul>';
 		Ui::footer();
 	}
 

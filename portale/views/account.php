@@ -84,8 +84,8 @@ $csrf = Portale\App::csrf();
 			</details>
 			<?php endif; ?>
 		<?php endforeach; ?>
-		<p class="hint"><b>Aggiorna sempre insieme il plugin gratuito e il Pro:</b> se ne aggiorni uno solo, WordPress mostra un avviso finché non aggiorni anche l'altro. Il gratuito si aggiorna caricando lo zip da qui; il Pro si aggiorna direttamente da WordPress.</p>
-		<p class="hint">I pacchetti si scaricano solo da qui, con la licenza in regola. Carica lo zip da WordPress: Plugin → Aggiungi nuovo → Carica plugin. Per tornare indietro disattiva e sostituisci il plugin con la versione precedente (i dati restano).</p>
+		<p class="hint"><b>Aggiorna sempre insieme il plugin gratuito e il Pro:</b> se ne aggiorni uno solo, WordPress mostra un avviso finché non aggiorni anche l'altro. Entrambi si aggiornano da WordPress (Bacheca → Aggiornamenti); da qui scarichi lo zip se vuoi installarli a mano.</p>
+		<p class="hint">I file del plugin si scaricano solo da qui, con la licenza in regola. Li carichi da WordPress: <b>Plugin → Aggiungi nuovo → Carica plugin</b>. Per tornare a una versione precedente carichi il suo zip: i dati restano.</p>
 	</div>
 	<?php endif; ?>
 	<?php foreach ( $subs as $s ) :
@@ -150,7 +150,7 @@ $csrf = Portale\App::csrf();
 
 		<div class="actions">
 			<?php $lockUntil = $key ? Portale\Billing::domainUnlockAt( $s ) : null; if ( $key && $lockUntil ) : ?>
-			<p class="hint" style="margin:0">Dominio cambiato il <?php echo e( date_it( $s["domain_changed_at"] ) ); ?>: potrai cambiarlo di nuovo dal <?php echo e( date_it( $lockUntil ) ); ?>. Per un cambio sito vero prima di quella data, scrivi all'assistenza.</p>
+			<p class="hint" style="margin:0">Dominio cambiato il <?php echo e( date_it( $s["domain_changed_at"] ) ); ?>: potrai cambiarlo di nuovo dal <?php echo e( date_it( $lockUntil ) ); ?>. Se devi cambiarlo prima, scrivici dal supporto.</p>
 			<?php elseif ( $key ) : ?>
 			<form class="domain-form" method="post" action="/account/dominio">
 				<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>">
@@ -167,7 +167,7 @@ $csrf = Portale\App::csrf();
 			<?php endif; ?>
 		</div>
 		<?php if ( $key ) : ?><p class="hint"><b>Siti di prova inclusi.</b> La licenza vale per il dominio registrato <b><?php echo e( $s['domain'] ); ?></b> e per tutti i suoi sottodomini e sottocartelle: puoi usarla anche su <code>staging.<?php echo e( $s['domain'] ); ?></code>, <code>test.<?php echo e( $s['domain'] ); ?></code>, <code>clone.<?php echo e( $s['domain'] ); ?></code> oppure <code><?php echo e( $s['domain'] ); ?>/staging</code>, con la stessa chiave e senza cambiare nulla.</p><?php endif; ?>
-		<p class="hint">Il vecchio dominio smette di funzionare al controllo successivo. Il cambio è libero, ma dopo averlo fatto la chiave resta legata al nuovo dominio per <?php echo (int) Portale\Settings::limit( 'domain_lock_days' ); ?> giorni: poi puoi cambiarlo di nuovo.</p>
+		<p class="hint">Dopo il cambio il vecchio dominio smette di funzionare, di norma, nel giro di un paio di giorni. Il cambio è libero, ma poi la chiave resta legata al nuovo dominio per <?php echo (int) Portale\Settings::limit( 'domain_lock_days' ); ?> giorni: dopo puoi cambiarlo di nuovo.</p>
 	</div>
 	<?php endforeach; ?>
 </div></section>

@@ -42,7 +42,7 @@ final class ProRegisters {
 		$kinds    = AssocPolicies::kinds();
 		$cls      = array( Insurance::VALID => '', Insurance::EXPIRING => 'asem-warn', Insurance::EXPIRED => 'asem-neg', Insurance::NONE => 'asem-neg' );
 		echo '<h2>Polizze dell\'associazione</h2><p class="description">La polizza generale dell\'associazione, a copertura dei soci e della responsabilità civile verso terzi per le attività svolte. '
-			. 'Registra compagnia, numero, periodo di copertura, premio e massimale: viene segnalata in Bacheca se la responsabilità civile è scoperta o in scadenza entro ' . (int) Insurance::SOON . ' giorni.</p>';
+			. 'Registra compagnia, numero, periodo di copertura, premio e massimale: la Bacheca ti avvisa se la responsabilità civile è scoperta o scade entro ' . (int) Insurance::SOON . ' giorni.</p>';
 		echo '<table class="widefat striped"><thead><tr><th>Copertura</th><th>Polizza</th><th>Fino al</th><th>Stato</th></tr></thead><tbody>';
 		foreach ( $statuses as $k => $st ) {
 			$pol = $st['policy'];
@@ -141,7 +141,7 @@ final class ProRegisters {
 			}
 			echo '</tr>';
 		}
-		echo '</tbody></table></div><p class="description">Spunta chi era presente. Le lezioni mai registrate senza nessuna spunta restano da compilare.</p><p><button class="button button-primary">Registra le presenze</button></p>';
+		echo '</tbody></table></div><p class="description">Spunta chi era presente. Una lezione mai registrata e lasciata senza spunte resta da compilare.</p><p><button class="button button-primary">Registra le presenze</button></p>';
 		Ui::form_close();
 	}
 
@@ -236,7 +236,7 @@ final class ProRegisters {
 		$year  = in_array( $year, $years, true ) ? $year : $years[0];
 		Ui::header( 'Rendiconto per cassa (Mod. D)' );
 		echo '<p class="description">Il rendiconto dell\'anno fiscale costruito dalla prima nota: entrate e uscite per area, confronto con l\'anno precedente, avanzo o disavanzo, cassa e conti. '
-			. 'Le aree seguono la «voce di rendiconto» di ogni categoria. Stampa il PDF, aggiungi la relazione e fai firmare tesoriere e presidente; il commercialista può verificarlo prima dell\'approvazione.</p>';
+			. 'Le aree seguono la «voce di rendiconto» di ogni voce. Stampa il PDF, aggiungi la relazione e fai firmare tesoriere e presidente; il commercialista può verificarlo prima dell\'approvazione.</p>';
 		$labels  = array();
 		foreach ( $years as $y ) {
 			$labels[ $y ] = FiscalYears::label( $y );
@@ -303,10 +303,10 @@ final class ProRegisters {
 		echo '<p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
 		echo '<h2>Dove sono le altre impostazioni contabili</h2><ul>'
-			. '<li><a href="' . esc_url( Ui::url( 'asem-settings' ) ) . '">Soci e quote</a> — quota associativa, livelli di socio, sconto del nucleo familiare.</li>'
-			. '<li><a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Anni fiscali</a> — apertura e chiusura degli anni fiscali.</li>'
-			. '<li><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti e fondi</a> — cassa, banca, POS e fondi per i rimborsi ai volontari.</li>'
-			. '<li><a href="' . esc_url( Ui::url( 'asem-comms' ) ) . '">Privacy, regolamento e ricevute</a> — riga in fondo alla ricevuta, promemoria dei pagamenti.</li></ul>';
+			. '<li><a href="' . esc_url( Ui::url( 'asem-settings' ) ) . '">Soci e quote</a>: quota associativa, livelli di socio, sconto del nucleo familiare.</li>'
+			. '<li><a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Anni fiscali</a>: apertura e chiusura degli anni fiscali.</li>'
+			. '<li><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti e fondi</a>: cassa, banca, POS e fondi per i rimborsi ai volontari.</li>'
+			. '<li><a href="' . esc_url( Ui::url( 'asem-comms' ) ) . '">Privacy, regolamento e ricevute</a>: riga in fondo alla ricevuta, promemoria dei pagamenti.</li></ul>';
 		Ui::footer();
 	}
 }

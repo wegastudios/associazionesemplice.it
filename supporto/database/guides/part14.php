@@ -110,7 +110,7 @@ MD,
         'body' => <<<'MD'
 Lo vede solo l'amministratore. Dice **«La cartella dei file riservati è raggiungibile da internet.»**: il controllo automatico ha provato a scaricare dall'esterno un piccolo file di prova e ci è riuscito. Chi conosce l'indirizzo esatto di un file potrebbe leggerlo senza accedere al sito. I nomi dei file non si indovinano, ma un indirizzo finito per sbaglio in una email o in un registro basterebbe.
 
-**Cosa fare:** premi **«Vedi cosa fare»** (porta a **Impostazioni → Copia di sicurezza**, sezione «Cartella dei file riservati») e poi **«Controlla ora»**. Se il risultato è rosso, **inoltra il messaggio già pronto a chi gestisce il sito o l'hosting**: deve bloccare l'accesso diretto a quella cartella o spostarla fuori dalla parte pubblica del sito. Quando è sistemato, premi di nuovo **«Controlla ora»**.
+**Cosa fare:** premi **«Vedi cosa fare»** (porta a **Strumenti → Copia di sicurezza**, sezione «Cartella dei file riservati») e poi **«Controlla ora»**. Se il risultato è rosso, **inoltra il messaggio già pronto a chi gestisce il sito o l'hosting**: deve bloccare l'accesso diretto a quella cartella o spostarla fuori dalla parte pubblica del sito. Quando è sistemato, premi di nuovo **«Controlla ora»**.
 
 Per chi gestisce il server: le istruzioni tecniche (cartella fuori dal sito, pulsante «Sposta i file») sono nella stessa pagina, sotto «Cosa fare se la cartella è raggiungibile (o per metterla al sicuro)».
 
@@ -137,14 +137,14 @@ MD,
 
 **Prima di aggiornare, fai una copia di sicurezza.** Dopo l'aggiornamento i certificati medici già caricati vengono **cifrati da soli**, senza premere nulla. Parte alla **prima visita di un amministratore** o **entro un'ora**, e prosegue a gruppi, **un gruppo al minuto**. Se si interrompe, riprende da dove era arrivata.
 
-Gli **altri file già caricati** (documenti, allegati, giustificativi, foto) si cifrano invece con il pulsante **«Cifra i file già caricati»**. Lo stato si vede in **Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»**.
+Gli **altri file già caricati** (documenti, allegati, giustificativi, foto) si cifrano invece con il pulsante **«Cifra i file già caricati»**. Lo stato si vede in **Strumenti → Copia di sicurezza → «Cifratura dei file riservati»**.
 
 L'amministratore vede questi avvisi (in **Bacheca**, **Copia di sicurezza** e **Certificati**):
 
 - **«La cifratura dei certificati medici è partita.»**: «Si fa da sola, mentre usi il programma: non serve premere nulla.»
 - **«Cifratura dei certificati medici in corso: restano …»** (con il numero): «Il lavoro prosegue da solo, un lotto al minuto.»
 - **«La cifratura dei certificati medici è finita.»**: tutti i certificati già caricati sono ora cifrati sul disco.
-- **Finita con residui**: il programma dice quanti non si sono potuti cifrare e quanti non sono stati trovati sul disco. I certificati non cifrati sono rimasti dove stavano, in chiaro: l'elenco è in **Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»**. Apri l'elenco e premi **«Riprova»**; se il file non si trova, elimina il certificato dalla pagina **Certificati** e caricalo di nuovo, oppure ripristina una copia di sicurezza.
+- **Finita con residui**: il programma dice quanti non si sono potuti cifrare e quanti non sono stati trovati sul disco. I certificati non cifrati sono rimasti dove stavano, in chiaro: l'elenco è in **Strumenti → Copia di sicurezza → «Cifratura dei file riservati»**. Apri l'elenco e premi **«Riprova»**; se il file non si trova, elimina il certificato dalla pagina **Certificati** e caricalo di nuovo, oppure ripristina una copia di sicurezza.
 - **Libreria mancante**: «I certificati medici già caricati restano in chiaro: su questo server manca la libreria di cifratura (sodium).» Premi **«Vedi il messaggio da inoltrare»** e mandalo a chi gestisce il sito; la cifratura riparte da sola quando la libreria c'è.
 - **Chiave non valida**: «La cifratura dei certificati medici è ferma: la chiave non si apre su questo sito.» Non viene toccato nulla; si sistema da **«Sistemare la chiave»** e poi riparte da sola.
 
@@ -160,7 +160,7 @@ MD,
 
 **Questa protezione serve se qualcuno porta via la cartella dei file. Non sostituisce la sicurezza del sito e del suo database.**
 
-Nel **gratuito** si salvano **cifrati** i **documenti e le scansioni**, gli **allegati dei movimenti** e le **foto dell'inventario**. Con {piano_contabile} e {piano_fiscale} si cifrano anche i **certificati medici**, i **giustificativi dei rimborsi** e i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP delle ricevute di un anno fiscale (**«Scarica i PDF di questo anno fiscale (ZIP)»**), invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
+Nel **gratuito** si salvano **cifrati** i **documenti e le scansioni**, gli **allegati dei movimenti** e le **foto dell'inventario**. Con {piano_contabile} e {piano_fiscale} si cifrano anche i **certificati medici**, i **giustificativi dei rimborsi** e i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP delle ricevute di un anno fiscale (**«Scarica i PDF di questo anno fiscale (ZIP)»**), invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Strumenti → Copia di sicurezza**, sezione «Cifratura dei file riservati».
 
 ## File nuovi e file già caricati
 
@@ -171,7 +171,7 @@ Su alcuni server manca la libreria che serve a cifrare: il programma lo dice e t
 
 ## Dopo l'aggiornamento
 
-- **Gratuito**: per i file già caricati premi **«Cifra i file già caricati»** in **Impostazioni → Copia di sicurezza**.
+- **Gratuito**: per i file già caricati premi **«Cifra i file già caricati»** in **Strumenti → Copia di sicurezza**.
 - **Con {piano_contabile} e {piano_fiscale}**: i certificati medici già caricati vengono cifrati da soli; per gli altri file già caricati premi **«Cifra i file già caricati»**.
 
 ## La frase per riaprire i documenti
@@ -194,7 +194,7 @@ Nel plugin **senza licenza**, scegli una **frase tua e lunga** (almeno quattro p
 
 ## Se la chiave non si apre
 
-Nella pagina **«Verifica delle ricevute»** (vedi [Ricevute in PDF e attestazione annuale](guida:ricevute-in-pdf)) compare il conteggio **«File cifrati che la chiave non apre»**, con il rimando a **Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»**.
+Nella pagina **«Verifica delle ricevute»** (vedi [Ricevute in PDF e attestazione annuale](guida:ricevute-in-pdf)) compare il conteggio **«File cifrati che la chiave non apre»**, con il rimando a **Strumenti → Copia di sicurezza → «Cifratura dei file riservati»**.
 
 
 Se i codici di sicurezza sono cambiati o il database è stato copiato da un altro sito, il programma dice che la chiave non è valida su questo sito: i file cifrati non si leggono e i nuovi non si salvano finché non viene sistemata. Si usa la frase; per questo va conservata. Vedi anche [Copia di sicurezza e ripristino](guida:copia-di-sicurezza-e-ripristino).

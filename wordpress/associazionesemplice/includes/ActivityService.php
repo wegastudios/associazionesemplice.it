@@ -316,7 +316,7 @@ class ActivityService {
 			}
 		}
 		if ( '' === $d['social_year'] ) {
-			$errors[] = 'Anno sociale mancante.';
+			$errors[] = 'Scegli l\'anno delle attività.';
 		}
 		if ( $errors ) {
 			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -382,7 +382,7 @@ class ActivityService {
 		$from = $sy->start()->format( 'Y-m-d' );
 		$to   = $sy->end()->format( 'Y-m-d' );
 		if ( $date < $from || $date > $to ) {
-			throw new \InvalidArgumentException( $what . ' (' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . ') deve cadere nell\'anno sociale ' . $social_year_label . ', dal ' . ( new \DateTimeImmutable( $from ) )->format( 'd/m/Y' ) . ' al ' . ( new \DateTimeImmutable( $to ) )->format( 'd/m/Y' ) . ': un corso o un evento inizia e finisce nello stesso anno sociale.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( $what . ' (' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . ') deve cadere nell\'anno delle attività ' . $social_year_label . ' (dal ' . ( new \DateTimeImmutable( $from ) )->format( 'd/m/Y' ) . ' al ' . ( new \DateTimeImmutable( $to ) )->format( 'd/m/Y' ) . '): corsi ed eventi iniziano e finiscono nello stesso anno.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -422,7 +422,7 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'Attività non trovata.' );
 		}
 		if ( ! ActivityKind::uses_sessions( $activity['kind'] ) ) {
-			throw new \InvalidArgumentException( 'I corsi non hanno date: si iscrivono per mesi.' );
+			throw new \InvalidArgumentException( 'I corsi non hanno date: ci si iscrive per mesi.' );
 		}
 		return $activity;
 	}
@@ -481,7 +481,7 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'Aggiungi almeno una data.' );
 		}
 		if ( ActivityKind::EVENT === $a['kind'] && ( count( $dates ) > 1 || $this->sessions( $activity_id ) ) ) {
-			throw new \InvalidArgumentException( 'Un evento una tantum ha una sola data: per più date scegli "Evento ricorrente".' );
+			throw new \InvalidArgumentException( 'Un evento una tantum ha una sola data: per più date scegli «Evento ricorrente».' );
 		}
 		foreach ( $dates as $d ) { // tutte le date prima di scriverne una: o entrano tutte o nessuna
 			self::assert_in_social_year( (string) $a['social_year'], (string) $d['date'], 'La data dell\'evento' );
@@ -574,7 +574,7 @@ class ActivityService {
 	public function book( int $session_id, int $person_id, array $opt = array() ): int {
 		$s = $this->session( $session_id );
 		if ( ! $s || $s['cancelled_at'] ) {
-			throw new \InvalidArgumentException( 'Data non disponibile (inesistente o annullata).' );
+			throw new \InvalidArgumentException( 'Questa data non è più disponibile.' );
 		}
 		$a      = $this->get( (int) $s['activity_id'] );
 		$person = Plugin::people()->get( $person_id );
@@ -936,7 +936,7 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'Può gestire un evento solo un socio o volontario (non un ospite).' );
 		}
 		if ( $a['instructor_person_id'] && (int) $a['instructor_person_id'] === $person_id ) {
-			throw new \InvalidArgumentException( 'È già il referente dell\'evento e dispone di tutti i permessi di gestione.' );
+			throw new \InvalidArgumentException( 'È già il referente dell\'evento: ha già tutti i permessi.' );
 		}
 		if ( $this->is_staff( $activity_id, $person_id ) ) {
 			throw new \InvalidArgumentException( 'È già tra i gestori dell\'evento.' );
@@ -1088,7 +1088,7 @@ class ActivityService {
 	public function transfer_booking( int $session_id, int $from_id, int $to_id, bool $enforce_time = true ): void {
 		$s = $this->session( $session_id );
 		if ( ! $s || $s['cancelled_at'] ) {
-			throw new \InvalidArgumentException( 'Data non disponibile (inesistente o annullata).' );
+			throw new \InvalidArgumentException( 'Questa data non è più disponibile.' );
 		}
 		$a    = $this->get( (int) $s['activity_id'] );
 		$from = $this->booking( $session_id, $from_id );
@@ -1107,11 +1107,11 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'L\'evento è già iniziato: non si può più cedere il posto.' );
 		}
 		if ( $this->has_active_booking( $session_id, $to_id ) ) {
-			throw new \InvalidArgumentException( $to['first_name'] . ' è già prenotato/a a questa data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( $to['first_name'] . ' ha già una prenotazione per questa data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$tbl  = Db::t( 'bookings' );
 		$fee  = $this->fee_for( $a, $to['type'] );
-		$note = ' [intestato da ' . trim( $from_p['first_name'] . ' ' . $from_p['last_name'] ) . ' a ' . trim( $to['first_name'] . ' ' . $to['last_name'] ) . ']';
+		$note = ' [posto ceduto da ' . trim( $from_p['first_name'] . ' ' . $from_p['last_name'] ) . ' a ' . trim( $to['first_name'] . ' ' . $to['last_name'] ) . ']';
 		// la cessione riscrive persona e descrizione degli incassi del posto: se uno è in un esercizio chiuso non si può (il rendiconto è fotografato e la prima nota di un anno chiuso non si tocca)
 		YearLock::assert_rows_open( 'transactions', 'tx_date', $this->db()->prepare( "session_id = %d AND person_id = %d AND type = 'income' AND voided_at IS NULL", $session_id, $from_id ) );
 		$this->in_transaction(
@@ -1195,7 +1195,7 @@ class ActivityService {
 			array( 'activity_id' => $activity_id, 'person_id' => $person_id )
 		);
 		if ( false === $n ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare la variante (errore del database).' );
+			throw new \InvalidArgumentException( 'Variante non salvata: riprova.' );
 		}
 		Audit::log( 'activity.fee_variant', 'activity', $activity_id, array( 'person_id' => $person_id, 'price_list' => $price_list ) );
 	}
@@ -1523,7 +1523,7 @@ class ActivityService {
 		return null;
 	}
 
-	// ---------- Per l'area riservata e i contenuti riservati ----------
+	// ---------- Per l'area soci e i contenuti riservati ----------
 
 	/** Attività a cui la persona partecipa: corsi con iscrizione non conclusa, eventi con una prenotazione attiva. */
 	public function person_activity_ids( int $person_id ): array {

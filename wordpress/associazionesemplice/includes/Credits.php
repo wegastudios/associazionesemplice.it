@@ -169,7 +169,7 @@ final class Credits {
 		self::assert_member( $person_id );
 		$cat = Plugin::ledger()->category_id_of_kind( 'other_income' );
 		if ( ! $cat ) {
-			throw new \InvalidArgumentException( 'Manca la voce «Altra entrata» in prima nota.' );
+			throw new \InvalidArgumentException( 'Manca la voce «Altre entrate» in prima nota e non si ricrea da sola: scrivi all\'assistenza.' );
 		}
 		Plugin::ledger()->record_receipt(
 			array(
@@ -193,7 +193,7 @@ final class Credits {
 		foreach ( self::packs() as $p ) {
 			$i                = array(
 				'type' => PaymentItems::CREDITS, 'person_id' => (int) $actor['id'], 'person_name' => trim( $actor['first_name'] . ' ' . $actor['last_name'] ),
-				'credits' => (int) $p['credits'], 'amount_cents' => (int) $p['price_cents'], 'label' => $p['credits'] . ' crediti',
+				'credits' => (int) $p['credits'], 'amount_cents' => (int) $p['price_cents'], 'label' => $p['credits'] . ( 1 === (int) $p['credits'] ? ' credito' : ' crediti' ),
 			);
 			$i['key']         = PaymentItems::key( $i );
 			$out[ $i['key'] ] = $i;
@@ -325,7 +325,7 @@ final class Credits {
 		if ( $base <= 0 ) {
 			$base = self::euro_value( (int) $charge['credits'] );
 		}
-		Plugin::funds()->attribute_credits( $a, $base, Db::today(), 'Quota di «' . $a['name'] . '» pagata in crediti' );
+		Plugin::funds()->attribute_credits( $a, $base, Db::today(), 'Contributo di «' . $a['name'] . '» pagato in crediti' );
 	}
 
 	/**

@@ -18,12 +18,12 @@ final class Demo {
 			array(
 				'user' => 'segreteria@demo.invalid', 'label' => 'Email', 'password' => 'Segreteria-Demo-2026', 'role' => 'Segreteria', 'start' => '/wp-admin/admin.php?page=asem',
 				'what' => array( 'Soci, ospiti e tessere', 'Incassi e spese in prima nota', 'Attività, eventi e calendario', 'Registri, verbali e privacy', 'Comunicazioni ai soci' ),
-				'note' => 'Lavora nel pannello di WordPress. Non vede le impostazioni, i pagamenti online né la copia di sicurezza: sono dell\'amministratore del sito.',
+				'note' => 'Lavora nella bacheca di WordPress. Non vede le impostazioni, i pagamenti online né la copia di sicurezza: sono dell\'amministratore del sito.',
 			),
 			array(
 				'user' => 'socio@demo.invalid', 'label' => 'Email', 'password' => 'Socio-Demo-2026', 'role' => 'Socio', 'start' => '/area-soci/', 'login' => '/?asem_member_login=1',
 				'what' => array( 'Tessera con QR', 'Prenotazioni a corsi ed eventi', 'Pagamenti e quote', 'I propri dati e gli ospiti' ),
-				'note' => 'Non è un utente WordPress: entra dalla pagina «Accesso soci» con email e password e usa l\'area riservata del sito, come farebbe un socio vero.',
+				'note' => 'Non è un utente WordPress: entra dalla pagina «Accesso soci» con email e password e usa l\'area soci del sito, come farebbe un socio vero.',
 			),
 			array(
 				'user' => 'amministratore@demo.invalid', 'label' => 'Email', 'password' => 'Amministratore-Demo-2026', 'role' => 'Amministratore del plugin', 'start' => '/wp-admin/admin.php?page=asem-backup',
@@ -77,7 +77,7 @@ final class Demo {
 				'Incassi e spese'                                     => array( $y, $y, $y, $y, $n, $n, $n, $n ),
 				'Contabilità, registri e adempimenti'                 => array( $y, $y, $y, $n, $n, $n, $n, $n ),
 				'Comunicazioni agli iscritti'                         => array( $y, $y, $y, $n, 'ai propri eventi', $n, $n, $n ),
-				'Eventi e attività'                                   => array( $y, $y, $y, 'vende', 'propri', $n, $n, $n ),
+				'Eventi e attività'                                   => array( $y, $y, $y, 'incassa', 'propri', $n, $n, $n ),
 				'Verifica degli ingressi'                             => array( $y, $y, $y, $n, 'propri eventi', 'tutti gli eventi', 'suo evento', $n ),
 				'Incasso del biglietto sul posto'                     => array( $y, $y, $y, $y, 'propri eventi', $n, 'se abilitato', $n ),
 				'Propri dati, tessera e pagamenti'                    => array( $y, $y, $y, $y, $y, $y, $y, $y ),
@@ -90,14 +90,14 @@ final class Demo {
 		return array(
 			array( 'Amministratore', 'Chi gestisce il sito WordPress: tutto, comprese impostazioni, pagamenti online, licenza e copia di sicurezza.', false ),
 			array( 'Amministratore del plugin', 'Ha tutti i permessi di Associazione Semplice ma non gestisce il sito WordPress (plugin, temi, utenti). Nella demo è l\'unico che scarica e ricarica la copia dei dati.', true ),
-			array( 'Segreteria', 'Una persona del sito con il ruolo «Segreteria»: opera su soci, incassi, attività e registri, senza toccare le impostazioni.', true ),
+			array( 'Segreteria', 'Chi ha il ruolo «Segreteria»: lavora su soci, incassi, attività e registri, senza toccare le impostazioni.', true ),
 			array( 'Presidente e vicepresidente', 'Cariche del consiglio: se la tessera è in regola agiscono come la segreteria su tutto.', false ),
-			array( 'Tesoriere', 'Lavora dall\'area riservata: incassa, registra spese con la foto dello scontrino, iscrive soci e vende gli eventi.', false ),
+			array( 'Tesoriere', 'Lavora dall\'area soci: incassa, registra spese con la foto dello scontrino, iscrive i soci e incassa i contributi degli eventi.', false ),
 			array( 'Consigliere', 'Carica del consiglio direttivo, registrata nel libro soci; i permessi restano quelli di socio.', false ),
 			array( 'Volontario (referente)', 'Socio e volontario che tiene corsi ed eventi: gestisce iscritti, avvisi e ingressi solo delle sue attività.', false ),
 			array( 'Staff dell\'ente e dell\'evento', 'Chi controlla gli ingressi: di tutti gli eventi (staff dell\'ente) o di uno solo (staff dell\'evento, con l\'incasso se abilitato).', false ),
 			array( 'Socio', 'Socio fondatore, ordinario o volontario: vede e modifica solo i propri dati, la tessera, i pagamenti e gli ospiti.', true ),
-			array( 'Genitore o tutore', 'Non è socio: entra nell\'area riservata per seguire i figli, senza tessera né quota.', false ),
+			array( 'Genitore o tutore', 'Non è socio: entra nell\'area soci per seguire i figli, senza tessera né quota.', false ),
 			array( 'Ospite', 'Non ha un accesso: lo registra il socio che lo ospita e partecipa tramite lui.', false ),
 		);
 	}

@@ -136,7 +136,7 @@ final class MemberSession {
 		}
 		$p = Plugin::people()->get( (int) $s['person_id'] );
 		if ( self::person_allowed( $p ) ) {
-			return self::needs_password( (int) $p['id'] ) ? null : $p; // finché non sceglie la password nessuno vede l'area riservata
+			return self::needs_password( (int) $p['id'] ) ? null : $p; // finché non sceglie la password nessuno vede l'area soci
 		}
 		self::destroy(); // la persona non può più entrare (tolta, anonimizzata, tipo cambiato)
 		return null;

@@ -164,6 +164,7 @@ final class Newsletter {
 			}
 		}
 		$work = 0;
+		$left = 0; // contatti che restano da sincronizzare quando il passaggio si ferma
 		foreach ( $people as $id => $person ) {
 			$row    = $rows[ $id ] ?? null;
 			$action = NewsletterRules::action( $person, ! empty( $consent[ $id ] ), $row, $today, $extra );
@@ -176,7 +177,8 @@ final class Newsletter {
 			}
 			if ( $work >= $max || ( $work > 0 && microtime( true ) - $started >= $seconds ) ) { // oltre il lotto o il tempo: il resto al prossimo passaggio
 				$out['partial'] = true;
-				break;
+				$left++; // si continua a contare: serve a dire quanti restano
+				continue;
 			}
 			$work++;
 			if ( NewsletterRules::REMOVE === $action ) {
@@ -200,7 +202,8 @@ final class Newsletter {
 			if ( ! isset( $people[ $id ] ) && in_array( $row['status'], array( NewsletterRules::ST_SUBSCRIBED, NewsletterRules::ST_REMOVE_ERR ), true ) && $work < $max ) {
 				if ( $work > 0 && microtime( true ) - $started >= $seconds ) {
 					$out['partial'] = true;
-					break;
+					$left++;
+					continue;
 				}
 				$work++;
 				self::remove_row( $p, $list, $id, $row, $active_emails, $out );
@@ -210,7 +213,8 @@ final class Newsletter {
 			wp_schedule_single_event( time() + 2 * MINUTE_IN_SECONDS, self::HOOK, array( 'more' ) ); // si prosegue da soli, ma solo se questo passaggio ha fatto progressi (con il servizio fermo non si insiste)
 		}
 		update_option( self::OPT_LAST, array( 't' => time(), 'result' => $out ), false );
-		$out['message'] = sprintf( 'Newsletter: %d iscritti, %d aggiornati, %d tolti, %d invariati%s%s.', $out['added'], $out['updated'], $out['removed'], $out['unchanged'], $out['errors'] ? ', ' . $out['errors'] . ' con errore' : '', $out['partial'] ? ' (altri al prossimo passaggio)' : '' );
+		$more = ! $out['partial'] ? '' : ( wp_next_scheduled( self::HOOK, array( 'more' ) ) ? ' ' . Texts::t( 'Gli altri partono a gruppi nei prossimi minuti.' ) : ' ' . Texts::n( $left, 'Ne resta {n} da sincronizzare: avvia di nuovo la sincronizzazione.', 'Ne restano {n} da sincronizzare: avvia di nuovo la sincronizzazione.' ) );
+		$out['message'] = sprintf( 'Newsletter: %d aggiunti, %d aggiornati, %d tolti, %d invariati%s.', $out['added'], $out['updated'], $out['removed'], $out['unchanged'], $out['errors'] ? ', ' . $out['errors'] . ' con errore' : '' ) . $more;
 		return $out;
 	}
 

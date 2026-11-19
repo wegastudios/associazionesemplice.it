@@ -177,14 +177,14 @@ final class Restrict {
 		} elseif ( Visibility::ACTIVITY === $rule && $activity_ids ) {
 			$text = 'Contenuto riservato ai soci iscritti a: ' . implode( ', ', self::activity_names( $activity_ids ) ) . '.';
 		} elseif ( Visibility::VOLUNTEERS === $rule ) {
-			$text = 'Contenuto riservato ai soci e volontari.';
+			$text = 'Contenuto riservato ai soci volontari.';
 		} else {
 			$text = 'Contenuto riservato ai soci.';
 		}
 		$html = '<div class="asemf asemf-gate"><p class="asemf-gate-text">🔒 ' . esc_html( $text ) . '</p>';
 		if ( 'login' === $reason ) {
 			$url   = wp_login_url( '' !== $return_url ? $return_url : self::current_url() );
-			$html .= '<p><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">Accedi</a></p>';
+			$html .= '<p><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">Entra</a></p>';
 		}
 		$html .= '</div>';
 		return wp_kses( (string) apply_filters( 'asem_gate_html', \AssociazioneSemplice\Texts::html( $html ), $rule, $activity_ids ), \AssociazioneSemplice\Html::allowed() ); // esce dal filtro the_content, dallo shortcode e dal blocco: sempre filtrato
@@ -413,7 +413,7 @@ final class Restrict {
 		foreach ( Plugin::activities()->all_for_select() as $a ) {
 			echo '<option value="' . (int) $a['id'] . '"' . selected( in_array( (int) $a['id'], $ids, true ), true, false ) . '>' . esc_html( $a['name'] . ' (' . $a['social_year'] . ')' ) . '</option>';
 		}
-		echo '</select><p class="description">Vedono il contenuto gli iscritti (o prenotati) a una qualsiasi delle attività scelte e chi le tiene.</p></div>';
+		echo '</select><p class="description">Lo vede chi è iscritto o prenotato ad almeno una delle attività scelte, e chi ne è referente.</p></div>';
 		echo '<p class="description">Gli amministratori vedono sempre tutto.</p>';
 		\AssociazioneSemplice\Admin\Ui::inline_js( '(function(){var box=document.getElementById("asem-access-activities");if(!box){return;}var radios=document.querySelectorAll("input[name=asem_access]");function u(){var v="";radios.forEach(function(r){if(r.checked){v=r.value;}});box.style.display=v==="activity"?"":"none";}radios.forEach(function(r){r.addEventListener("change",u);});u();})();' );
 	}

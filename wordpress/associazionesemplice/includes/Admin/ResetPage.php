@@ -17,8 +17,8 @@ final class ResetPage {
 
 		echo '<h2>Cosa c\'è adesso</h2><ul style="list-style:disc;margin-left:20px">'
 			. '<li>' . (int) $p['people'] . ' soci e volontari, ' . (int) $p['guests'] . ' ospiti</li>'
-			. '<li>' . (int) $p['activities'] . ' attività ed eventi, con prenotazioni, iscrizioni e presenze</li>'
-			. '<li>' . (int) $p['transactions'] . ' movimenti in prima nota, ' . (int) $p['memberships'] . ' iscrizioni all\'anno, ' . (int) $p['minutes'] . ' verbali</li>'
+			. '<li>' . (int) $p['activities'] . ' corsi ed eventi, con prenotazioni, iscrizioni e presenze</li>'
+			. '<li>' . (int) $p['transactions'] . ' movimenti in prima nota, ' . (int) $p['memberships'] . ' tessere annuali, ' . (int) $p['minutes'] . ' verbali</li>'
 			. '<li>' . (int) $p['attachments'] . ' allegati (' . (int) $p['files'] . ' file di scontrini, fatture e altri documenti)</li></ul>';
 
 		$step = Ui::get_int( 'step', 1 );
@@ -34,7 +34,7 @@ final class ResetPage {
 		echo '<form method="get"><input type="hidden" name="page" value="asem-reset"><input type="hidden" name="step" value="2">';
 		echo '<h2>Che cosa vuoi azzerare</h2>';
 		echo '<p><label><input type="radio" name="mode" value="data" checked> <strong>Solo i dati</strong></label><br><span class="description">Cancella soci, ospiti, attività, prima nota, registri, pagamenti, comunicazioni, ricevute e allegati. <strong>Restano</strong> le impostazioni, i testi personalizzati, le pagine del sito e il registro azioni. Si ricreano conti, voci e livelli predefiniti.</span></p>';
-		echo '<p><label><input type="radio" name="mode" value="factory"> <strong>Ripristino di fabbrica</strong></label><br><span class="description">Come appena installato: cancella anche impostazioni, testi, pagine create dalla procedura e registro azioni, e riapre la configurazione guidata. Le chiavi dei pagamenti online (Stripe, PayPal) restano.</span></p>';
+		echo '<p><label><input type="radio" name="mode" value="factory"> <strong>Ripristino di fabbrica</strong></label><br><span class="description">Come appena installato: cancella anche impostazioni, testi, pagine create dalla configurazione guidata e registro azioni, e riapre la configurazione guidata. Le chiavi dei pagamenti online (Stripe, PayPal) restano.</span></p>';
 		echo '<p><label><input type="checkbox" name="users" value="1" checked> Elimina anche gli accessi dei soci (' . (int) $p['users'] . ' utenti WordPress con il solo ruolo «Socio»)</label><br><span class="description">Mai gli amministratori, la segreteria e gli altri utenti del sito.</span></p>';
 		echo '<p><button class="button button-primary">Continua</button></p></form>';
 	}
@@ -43,9 +43,9 @@ final class ResetPage {
 		$mode  = 'factory' === Ui::get_str( 'mode' ) ? Reset::FACTORY : Reset::DATA;
 		$users = '1' === Ui::get_str( 'users' );
 		echo '<div class="notice notice-warning inline" style="padding:12px 16px"><h3 style="margin-top:0">Cosa succede</h3>';
-		echo '<p><strong>Vengono cancellati per sempre:</strong> tutti i soci e gli ospiti, le attività e gli eventi con prenotazioni, iscrizioni e presenze, <strong>tutta la prima nota</strong> (incassi, spese, giroconti, rettifiche), i conti e i fondi, le iscrizioni all\'anno, i verbali, le assicurazioni, il 5 per mille, i pagamenti online registrati, le comunicazioni, le ricevute emesse (e la loro numerazione) e i file allegati (' . (int) $p['files'] . ').</p>';
+		echo '<p><strong>Vengono cancellati per sempre:</strong> tutti i soci e gli ospiti, i corsi e gli eventi con prenotazioni, iscrizioni e presenze, <strong>tutta la prima nota</strong> (incassi, spese, giroconti, rettifiche), i conti e i fondi, le tessere annuali, i verbali, le assicurazioni, il 5 per mille, i pagamenti online registrati, le comunicazioni, le ricevute emesse (e la loro numerazione) e i file allegati (' . (int) $p['files'] . ').</p>';
 		if ( Reset::FACTORY === $mode ) {
-			echo '<p><strong>Ripristino di fabbrica:</strong> vengono eliminati anche le impostazioni, i testi personalizzati, l\'elenco delle pagine create dalla procedura (le pagine WordPress restano, con i loro shortcode), le richieste di accesso e il registro azioni. La configurazione guidata si riapre.</p>';
+			echo '<p><strong>Ripristino di fabbrica:</strong> vengono eliminati anche le impostazioni, i testi personalizzati, l\'elenco delle pagine create dalla configurazione guidata (le pagine WordPress restano, con i loro shortcode), le richieste di accesso e il registro azioni. La configurazione guidata si riapre.</p>';
 		} else {
 			echo '<p><strong>Restano:</strong> impostazioni, testi personalizzati, pagine del sito e registro azioni (con la registrazione di questo azzeramento).</p>';
 		}

@@ -100,8 +100,8 @@ final class ProWizard {
 			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
 		}
 		if ( \AssociazioneSemplice\Edition::has( 'levels' ) ) { // l'edizione gratuita ha un'unica quota
-		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
-		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
+		echo '<tr><th>Livelli già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
+		echo '<tr><th>Altri livelli di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per livello: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
 		}
 	}
 
@@ -118,7 +118,7 @@ final class ProWizard {
 			$off  = PaymentConfig::WOOCOMMERCE === $val && ! $euro;
 			$note = '';
 			if ( PaymentConfig::WOOCOMMERCE === $val ) {
-				$note = ! $woo ? ' <em>WooCommerce non è stato rilevato su questo sito: installalo e attivalo per usare questa opzione.</em>' : ( ! $euro ? ' <em>WooCommerce è attivo, ma il negozio non usa l\'euro: non è utilizzabile.</em>' : ' <strong>WooCommerce è attivo su questo sito.</strong>' );
+				$note = ! $woo ? ' <em>WooCommerce non è attivo su questo sito: installalo e attivalo per usare questa opzione.</em>' : ( ! $euro ? ' <em>WooCommerce è attivo, ma il negozio non usa l\'euro: non è utilizzabile.</em>' : ' <strong>WooCommerce è attivo su questo sito.</strong>' );
 			}
 			$links = '';
 			foreach ( PaymentConfig::BOTH === $val ? array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ) : ( in_array( $val, array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::WOOCOMMERCE ), true ) ? array( $val ) : array() ) as $pv ) {
@@ -250,7 +250,7 @@ final class ProWizard {
 			}
 			if ( $added ) {
 				Levels::save( $rows );
-				self::$notes[] = $added . ( 1 === $added ? ' tipo di socio aggiunto.' : ' tipi di socio aggiunti.' );
+				self::$notes[] = $added . ( 1 === $added ? ' livello di socio aggiunto.' : ' livelli di socio aggiunti.' );
 			}
 		}
 		return $vals;

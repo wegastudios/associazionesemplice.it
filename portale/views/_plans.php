@@ -21,12 +21,12 @@ $euro = function ( $c ) { return number_format( $c / 100, ( $c % 100 ) ? 2 : 0, 
 		<?php if ( 'free' === $code ) : ?>
 			<a class="btn alt block" href="/free">Inizia gratis</a>
 		<?php elseif ( ! \Portale\Billing::paymentsOn() ) : ?>
-			<a class="btn alt block" href="/free">Avvisami quando si può acquistare</a>
+			<a class="btn alt block" href="/free">Intanto parti dal gratuito</a>
 		<?php else : ?>
 			<a class="btn<?php echo $hot ? '' : ' alt'; ?> block" href="/acquista?plan=<?php echo e( \Portale\Site::slug( $code ) ); ?>&amp;period=year">Scegli questo piano</a>
 		<?php endif; ?>
 	</div>
 <?php endforeach; ?>
 </div>
-<p class="fine center"><a href="/prezzi">Tutti i dettagli dei prezzi</a> · <a href="/confronto" data-confronto>Confronta le funzioni tra le versioni</a></p>
+<p class="fine center"><a href="/prezzi">Tutti i dettagli dei prezzi</a> · <a href="/confronto" data-confronto>Confronta le funzioni dei piani</a></p>
 <script src="/assets/confronto.js" defer></script>

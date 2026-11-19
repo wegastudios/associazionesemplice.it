@@ -60,7 +60,7 @@ final class Insurance {
 			)
 		);
 		if ( ! $ok ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare la polizza (errore del database).' );
+			throw new \InvalidArgumentException( 'Polizza non salvata: riprova.' );
 		}
 		$id = (int) self::db()->insert_id;
 		Audit::log( 'insurance.added', 'person', $person_id, array( 'policy' => $id, 'to' => $t ) );

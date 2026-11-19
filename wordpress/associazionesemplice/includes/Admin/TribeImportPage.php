@@ -11,11 +11,11 @@ final class TribeImportPage {
 	public static function render(): void {
 		Ui::header( 'Importa da The Events Calendar' );
 		$found = TribeImport::found();
-		echo '<p class="description">Porta qui gli eventi di The Events Calendar (passati e futuri) come eventi una tantum (o come corsi, per le categorie che indichi tu), con titolo, data, orario, luogo e descrizione. Ogni evento di The Events Calendar diventa una sola attività: niente viene raggruppato, nemmeno gli eventi con lo stesso titolo. Così un evento già fatto si può <strong>riproporre</strong> in una nuova data dalla sua scheda, senza rifare tutto. '
-			. 'Per ogni evento si compila anche la <strong>pagina pubblica</strong> (Eventi sul sito): descrizione, immagine in evidenza, categorie, organizzatore, sito dell\'evento e giorni; di norma resta in bozza, così la controlli prima di pubblicarla. '
-			. 'Non si importano costi e prenotazioni. The Events Calendar può anche essere disattivato: gli eventi si leggono dal database del sito. Se ci ripensi, ogni import si può <strong>annullare</strong> da «Import già fatti» in fondo a questa pagina: eventi e corsi creati senza prenotazioni né iscritti vengono tolti (con la loro pagina pubblica), gli altri restano.</p>';
+		echo '<p class="description">Porta qui gli eventi di The Events Calendar, passati e futuri, con titolo, data, orario, luogo e descrizione. Diventano eventi singoli, oppure corsi per le categorie che indichi tu. Ogni evento diventa una sola attività, anche se altri hanno lo stesso titolo: così un evento già fatto si può <strong>riproporre</strong> in una nuova data dalla sua scheda. '
+			. 'Per ogni evento si compila anche la <strong>pagina pubblica</strong> (Eventi sul sito), con descrizione, immagine in evidenza, categorie, organizzatore, sito dell\'evento e giorni: di norma resta in bozza, così la controlli prima di pubblicarla. '
+			. 'Costi e prenotazioni non si importano. The Events Calendar può anche essere disattivato: i suoi eventi restano leggibili. Se ci ripensi, puoi <strong>annullare</strong> ogni importazione da «Import già fatti», in fondo alla pagina: eventi e corsi senza prenotazioni né iscritti vengono tolti con la loro pagina pubblica, gli altri restano.</p>';
 		if ( ! $found ) {
-			echo '<p>Non ho trovato eventi di The Events Calendar su questo sito.</p>';
+			echo '<p>Su questo sito non ci sono eventi di The Events Calendar.</p>';
 			ImportPage::history( 'tribe', 'asem-tec' );
 			Ui::footer();
 			return;
@@ -28,7 +28,7 @@ final class TribeImportPage {
 		if ( ! $listed ) {
 			$none = TribeImport::undatable();
 			if ( $none ) {
-				echo '<div class="asem-card"><h2>Eventi che non si possono importare</h2><p>Manca la data, quindi non si importano. Correggili in The Events Calendar e rilancia l\'import:' . self::undatable_list( $none ) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput -- elenco già escapato
+				echo '<div class="asem-card"><h2>Eventi che non si possono importare</h2><p>Manca la data, quindi non si importano. Correggili in The Events Calendar e ripeti l\'importazione:' . self::undatable_list( $none ) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput -- elenco già escapato
 			}
 		}
 		ImportPage::history( 'tribe', 'asem-tec' ); // import già fatti, con «Annulla questo import»
@@ -71,8 +71,8 @@ final class TribeImportPage {
 			$none = TribeImport::uncategorized();
 			echo '<form method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '"><input type="hidden" name="page" value="asem-tec"><input type="hidden" name="preview" value="1">';
 			echo '<div class="asem-card"><h2>1. Ogni categoria è un evento o un corso?</h2><p class="description">The Events Calendar non distingue i corsi: lo decidi tu, categoria per categoria, prima di partire. '
-				. 'Ti propongo «Corso» solo per le categorie che nel nome dicono «corso» o «lezione»; tutte le altre sono «Evento». Gli eventi senza categoria sono eventi. '
-				. 'Un evento è un corso solo se nessuna delle sue categorie è «Evento» e almeno una è «Corso». Prima vengono importati tutti gli eventi, poi i corsi. '
+				. 'Trovi già scelto «Corso» per le categorie che nel nome hanno «corso» o «lezione»; tutte le altre sono «Evento». Gli eventi senza categoria restano eventi. '
+				. 'Un evento diventa un corso solo se almeno una sua categoria è «Corso» e nessuna è «Evento». Prima vengono importati tutti gli eventi, poi i corsi. '
 				. 'Le categorie di The Events Calendar (anche quelle dei corsi) vengono ricreate come categorie pubbliche con lo stesso nome e assegnate a tutte le pagine create.</p>';
 			echo '<table class="widefat striped"><thead><tr><th>Categoria</th><th>Eventi</th><th>Diventa</th></tr></thead><tbody>';
 			foreach ( $cats as $c ) {
@@ -102,9 +102,9 @@ final class TribeImportPage {
 			echo '<li>' . (int) $sum['failed'] . ( 1 === (int) $sum['failed'] ? ' evento non si importa' : ' eventi non si importano' ) . ' perché manca la data:' . wp_kses_post( self::undatable_list( $sum['failed_list'] ) ) . '</li>';
 		}
 		echo '</ul></div>';
-		echo '<p><label><input type="checkbox" name="publish_future" value="1"> Pubblica subito le pagine degli eventi futuri</label> <span class="description">Spenta: le pagine restano in bozza. Acceso: solo gli eventi con una data futura vengono pubblicati.</span></p>';
+		echo '<p><label><input type="checkbox" name="publish_future" value="1"> Pubblica subito le pagine degli eventi futuri</label> <span class="description">Senza spunta: le pagine restano in bozza. Con la spunta: si pubblicano solo gli eventi con una data futura.</span></p>';
 		echo '<p><button class="button button-primary">Importa</button> '
-			. ( $cats ? '<a class="button" href="' . esc_url( Ui::url( 'asem-tec' ) ) . '">Indietro</a> ' : '' ) . '<span class="description">Si può rilanciare senza creare doppioni.</span></p>';
+			. ( $cats ? '<a class="button" href="' . esc_url( Ui::url( 'asem-tec' ) ) . '">Indietro</a> ' : '' ) . '<span class="description">Puoi ripeterla senza creare doppioni.</span></p>';
 		Ui::form_close();
 		return true;
 	}

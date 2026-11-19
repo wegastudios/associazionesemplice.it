@@ -19,8 +19,8 @@ defined( 'ABSPATH' ) || exit;
 final class FirstAccess {
 
 	const MAX_PER_HOUR = 10;
-	const MESSAGE_OWN  = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il link per entrare (controlla anche la posta indesiderata). Altrimenti ti contatta la segreteria su WhatsApp.';
-	const MESSAGE      = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il messaggio e scegli la tua password (controlla anche la posta indesiderata). Altrimenti ti contatta la segreteria su WhatsApp.';
+	const MESSAGE_OWN  = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il link per entrare (controlla anche la posta indesiderata). Altrimenti la segreteria riceve la tua richiesta e ti risponde appena può.';
+	const MESSAGE      = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il messaggio e scegli la tua password (controlla anche la posta indesiderata). Altrimenti la segreteria riceve la tua richiesta e ti risponde appena può.';
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
@@ -78,8 +78,8 @@ final class FirstAccess {
 		$assoc = (string) Settings::get( 'association_name' );
 		$link  = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ), 'login' );
 		$text  = 'Ciao ' . $person['first_name'] . ",\n\necco il link per il tuo primo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ":\n\n" . $link
-			. "\n\nApri il link, scegli la tua password e poi entra con questa email. Il link vale 24 ore: se scade, ripeti il \"Primo accesso\" dal sito.\n\nSe non hai chiesto tu questo messaggio, ignoralo.";
-		$subject = 'Primo accesso' . ( '' !== $assoc ? ' — ' . $assoc : '' );
+			. "\n\nApri il link, scegli la tua password e poi entra con questo indirizzo email. Il link vale 24 ore: se scade, ripeti il «Primo accesso» dal sito.\n\nSe non hai chiesto tu questo messaggio, ignoralo.";
+		$subject = \AssociazioneSemplice\Texts::subject( 'Primo accesso' );
 		if ( \AssociazioneSemplice\ResponseMail::deferring() ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
 			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 			return \AssociazioneSemplice\ResponseMail::send( $user->user_email, $subject, $text );
@@ -170,8 +170,8 @@ final class FirstAccess {
 			$assoc = (string) Settings::get( 'association_name' );
 			\AssociazioneSemplice\Texts::mail(
 				$old,
-				'Email di accesso cambiata' . ( '' !== $assoc ? ' — ' . $assoc : '' ),
-				'Ciao ' . $before['first_name'] . ",\n\nsu richiesta, l'email del tuo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . " è stata cambiata: da questo indirizzo non entrerai più.\n\nSe non l'hai chiesta tu, scrivi subito alla segreteria."
+				\AssociazioneSemplice\Texts::subject( 'Email di accesso cambiata' ),
+				'Ciao ' . $before['first_name'] . ",\n\nla segreteria ha cambiato, su tua richiesta, l'email del tuo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ": con questo indirizzo non potrai più entrare.\n\nSe non l'hai chiesto tu, scrivi subito alla segreteria."
 			);
 		}
 	}
@@ -184,7 +184,7 @@ final class FirstAccess {
 		};
 		$body = ( '' !== $message ? '<div class="w" style="color:#1a7f37">' . esc_html( $message ) . '</div>' : '' )
 			. ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
-			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'ti mandiamo il link per entrare e scegliere la tua password. ' : 'ti mandiamo il link per scegliere la password. ' ) . ( 'invite' === Settings::get( 'join_mode' ) ? 'L\'accesso è riservato a chi è già iscritto: l\'iscrizione si fa su presentazione, rivolgendosi alla segreteria.' : 'Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti scrive su WhatsApp.' ) . '</p>'
+			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'ti mandiamo il link per entrare e scegliere la tua password. ' : 'ti mandiamo il link per scegliere la password. ' ) . ( 'invite' === Settings::get( 'join_mode' ) ? 'L\'accesso è riservato a chi è già socio: si diventa soci su presentazione, rivolgendosi alla segreteria.' : 'Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti risponde appena può.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( self::url() ) . '">' . MemberLoginPage::sign_field( 'first_access' ) . '<input type="hidden" name="asem_first_go" value="1">'
 			. $field( 'Nome e cognome', 'name', 'text', 'name' ) . $field( 'La tua email', 'email', 'email', 'email' ) . $field( 'Il tuo cellulare', 'phone', 'tel', 'tel' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . esc_attr( $accent ) . ';color:#fff">Mandami il link</button></form>'
@@ -204,7 +204,7 @@ final class FirstAccess {
 			$rl_key = 'asem_fa_' . md5( \AssociazioneSemplice\ClientIp::get() );
 			$tries  = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'first_access_per_ip' ) ) {
-				$error = 'Troppi tentativi: riprova tra qualche minuto.';
+				$error = 'Troppi tentativi: riprova tra un\'ora.';
 			} elseif ( ! MemberLoginPage::from_page( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'first_access' ) ) {
 				$error = Activation::NOT_FROM_PAGE;
 			} else {

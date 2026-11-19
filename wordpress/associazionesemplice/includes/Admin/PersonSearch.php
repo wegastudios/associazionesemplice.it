@@ -39,7 +39,7 @@ final class PersonSearch {
 	public static function ajax(): void {
 		check_ajax_referer( self::NONCE, 'nonce' );
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
-			wp_send_json_error( 'Non autorizzato', 403 );
+			wp_send_json_error( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$q = isset( $_POST['q'] ) ? sanitize_text_field( wp_unslash( $_POST['q'] ) ) : '';
 		wp_send_json_success( array( 'results' => self::find( $q ) ) );

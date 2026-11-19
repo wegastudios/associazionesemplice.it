@@ -13,7 +13,8 @@ final class Settings {
 		return function_exists( 'apply_filters' ) ? (array) apply_filters( 'asem_secret_keys', array() ) : array();
 	}
 
-	const DEFAULT_PAYMENT_HINT = 'Il pagamento si effettua in sede presso la segreteria.';
+	const DEFAULT_PAYMENT_HINT = 'Puoi pagare in sede, in segreteria.';
+	const OLD_PAYMENT_HINT     = 'Il pagamento si effettua in sede presso la segreteria.'; // il testo predefinito fino alla 1.3.30
 
 	/** @var array|null valori predefiniti, costruiti una sola volta per richiesta (non dipendono da nulla che cambi) */
 	private static $defaults_cache = null;
@@ -64,7 +65,7 @@ final class Settings {
 			'privacy_email'           => '',    // indirizzo email per le richieste sulla privacy (vuoto = si usa la PEC)
 			'privacy_extra_cookies'   => '',    // altri cookie del sito da elencare nell'informativa: uno per riga, «nome — a cosa serve»
 			'privacy_retention_years' => 5,     // dopo quanti anni di inattività si propone l'anonimizzazione
-			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
+			'member_area_page_id'     => 0,     // pagina del sito con l'area soci (shortcode); 0 = home
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
 			'accent_color'            => '',    // colore d'accento del front-end; vuoto = quello del tema
 			'secondary_color'         => '',    // colore secondario; vuoto = quello del sito (Elementor o tema)
@@ -132,7 +133,11 @@ final class Settings {
 			return RequestMemo::get( 'settings', 'all' );
 		}
 		$saved = get_option( self::OPTION, array() );
-		return RequestMemo::put( 'settings', 'all', array_merge( self::defaults(), is_array( $saved ) ? $saved : array() ), array( $GLOBALS['wpdb']->options ) );
+		$all   = array_merge( self::defaults(), is_array( $saved ) ? $saved : array() );
+		if ( self::OLD_PAYMENT_HINT === ( $all['payment_hint'] ?? '' ) ) { // il testo di prima, mai cambiato dall'associazione: vale quello nuovo (un testo scritto da lei resta com'è)
+			$all['payment_hint'] = self::DEFAULT_PAYMENT_HINT;
+		}
+		return RequestMemo::put( 'settings', 'all', $all, array( $GLOBALS['wpdb']->options ) );
 	}
 
 	/** Dopo ogni scrittura dell'opzione delle impostazioni (anche da copie di sicurezza e aggiornamenti): si rilegge dal database. */

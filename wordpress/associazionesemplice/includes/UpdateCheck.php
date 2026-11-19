@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
  * (`GET /api/plugin/latest`, risposta `{"free":{"version":"1.1.13","url":"…"},"pro":{…}}`) e la confronta con quella installata.
  * Non manda niente al portale (nessuna chiave, nessun dato del sito): la risposta è la stessa per tutti. Funziona solo con una chiave di
  * licenza inserita (anche gratuita), mai sui siti locali, e si spegne da Impostazioni → Limiti e soglie. Il Pro e, finché non è su
- * WordPress.org, anche il gratuito si scaricano dall'area clienti: WordPress da solo non li aggiorna.
+ * WordPress.org, anche il gratuito si scaricano dall'area riservata: WordPress da solo non li aggiorna.
  */
 final class UpdateCheck {
 
@@ -77,6 +77,7 @@ final class UpdateCheck {
 		$old = self::latest();
 		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
 			$msg = is_wp_error( $res ) ? $res->get_error_message() : 'Risposta ' . (int) wp_remote_retrieve_response_code( $res );
+			Audit::log( 'updates.check_failed', 'settings', 0, array( 'detail' => $msg ) );
 			update_option( self::OPT, array_merge( $old, array( 'checked_at' => Db::now(), 'error' => $msg ) ), false );
 			return false;
 		}
@@ -119,7 +120,7 @@ final class UpdateCheck {
 		}
 		$when = mysql2date( 'd/m/Y H:i', (string) $l['checked_at'] );
 		if ( '' !== (string) $l['error'] ) {
-			return 'Aggiornamenti: ultimo controllo del ' . $when . ' non riuscito (' . $l['error'] . ').';
+			return 'Aggiornamenti: il controllo del ' . $when . ' non è riuscito. Riprova più tardi.'; // il dettaglio tecnico sta nel registro azioni
 		}
 		$pending = self::pending();
 		if ( $pending ) {
@@ -130,7 +131,7 @@ final class UpdateCheck {
 		return 'Aggiornamenti: sei all\'ultima versione. Controllato il ' . $when . '.';
 	}
 
-	/** Dove si scarica: l'indirizzo indicato dal portale solo se è https e del sito del portale, altrimenti l'area clienti. */
+	/** Dove si scarica: l'indirizzo indicato dal portale solo se è https e del sito del portale, altrimenti l'area riservata. */
 	public static function download_url( array $u ): string {
 		$home = 'https://associazionesemplice.it/accedi';
 		$host = strtolower( (string) wp_parse_url( $u['url'], PHP_URL_HOST ) );

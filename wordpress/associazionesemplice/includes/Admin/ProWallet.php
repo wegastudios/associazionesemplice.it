@@ -25,7 +25,7 @@ final class ProWallet {
 
 	public static function switches(): void {
 		if ( \AssociazioneSemplice\Edition::has( 'wallet' ) ) echo '<p><label><input type="checkbox" name="wallet_enabled" value="1"' . checked( ! empty( Settings::get( 'wallet_enabled' ) ), true, false ) . '> <strong>Apple Wallet e Google Wallet</strong></label><br>'
-			. '<span class="description">Aggiunge i pulsanti per salvare la tessera nel telefono. Richiede le credenziali di Apple e/o Google, da inserire qui sotto dopo averlo attivato.</span></p>';
+			. '<span class="description">Aggiunge i pulsanti per salvare la tessera nel telefono. Servono le credenziali di Apple, di Google o di entrambi: le inserisci qui sotto dopo averlo attivato.</span></p>';
 	}
 
 	public static function sections(): void {
@@ -75,7 +75,7 @@ final class ProWallet {
 			echo Ui::hidden( 'which', 'apple' ) . '<button class="button" data-confirm="Togliere le credenziali di Apple Wallet?">Rimuovi</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_close();
 		}
-		echo '<p class="description">La chiave privata viene cifrata nel database e non si legge più. Se il file <code>.p12</code> esportato da macOS non si legge, esportalo di nuovo con una password o chiedi a chi gestisce il server.</p></div>';
+		echo '<p class="description">La chiave privata si salva cifrata e non viene più mostrata. Se il file <code>.p12</code> esportato da macOS non si legge, esportalo di nuovo con una password o chiedi a chi gestisce il server.</p></div>';
 	}
 
 	private static function google_card(): void {
@@ -84,7 +84,7 @@ final class ProWallet {
 		if ( $cfg ) {
 			echo '<p><strong class="asem-ok">Configurato</strong> · emittente ' . esc_html( $cfg['issuer'] ) . ' · ' . esc_html( $cfg['email'] ) . '</p>';
 		} else {
-			echo '<p>Non configurato. Servono un account <strong>Google Pay &amp; Wallet Console</strong> (ID emittente), l\'accesso ai pass di tipo "Generico" e un <strong>account di servizio</strong> di Google Cloud con la sua chiave in formato JSON.</p>';
+			echo '<p>Non configurato. Servono un account <strong>Google Pay &amp; Wallet Console</strong> (ID emittente), l\'accesso ai pass di tipo «Generico» e un <strong>account di servizio</strong> di Google Cloud con la sua chiave in formato JSON.</p>';
 		}
 		if ( Settings::secret_unreadable( 'wallet_google_key_pem' ) ) {
 			echo '<div class="notice notice-warning inline"><p>La chiave salvata non è leggibile su questo sito: ricarica il file JSON.</p></div>';

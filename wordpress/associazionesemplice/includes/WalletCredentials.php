@@ -23,11 +23,11 @@ final class WalletCredentials {
 	 */
 	public static function from_p12( string $bytes, string $password ): array {
 		if ( ! function_exists( 'openssl_pkcs12_read' ) ) {
-			throw new \InvalidArgumentException( 'Questo server non supporta i certificati (manca l\'estensione openssl di PHP).' );
+			throw new \InvalidArgumentException( 'Questo server non supporta i certificati: chiedi a chi gestisce il sito di attivare l\'estensione «openssl» di PHP.' );
 		}
 		$out = array();
 		if ( ! @openssl_pkcs12_read( $bytes, $out, $password ) || empty( $out['cert'] ) || empty( $out['pkey'] ) ) {
-			throw new \InvalidArgumentException( 'Impossibile leggere il file .p12: controlla la password. Se il file viene da "Accesso Portachiavi" di macOS e il problema resta, esportalo di nuovo oppure incolla certificato e chiave in formato PEM.' );
+			throw new \InvalidArgumentException( 'Impossibile leggere il file .p12: controlla la password. Se il file viene da «Accesso Portachiavi» di macOS e il problema resta, esportalo di nuovo oppure incolla certificato e chiave in formato PEM.' );
 		}
 		return array( 'cert' => trim( $out['cert'] ) . "\n", 'key' => trim( $out['pkey'] ) . "\n" );
 	}
@@ -76,7 +76,7 @@ final class WalletCredentials {
 	public static function google_from_json( string $json ): array {
 		$d = json_decode( $json, true );
 		if ( ! is_array( $d ) || empty( $d['client_email'] ) || empty( $d['private_key'] ) ) {
-			throw new \InvalidArgumentException( 'Il file non è la chiave JSON di un account di servizio Google (mancano "client_email" e "private_key").' );
+			throw new \InvalidArgumentException( 'Il file non è la chiave JSON di un account di servizio Google (mancano «client_email» e «private_key»).' );
 		}
 		if ( ! @openssl_pkey_get_private( (string) $d['private_key'] ) ) {
 			throw new \InvalidArgumentException( 'La chiave privata nel file JSON non è valida.' );

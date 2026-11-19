@@ -40,7 +40,7 @@ final class MoneyPage {
 
 		echo wp_kses( '<div class="asem-card"><h2>Anno fiscale ' . esc_html( $r['label'] ) . '</h2><table class="asem-kv">'
 			. '<tr><td>Entrate</td><td>' . Ui::money( $r['income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['expense'] ) . '</td></tr>'
-			. '<tr><td><strong>Resta all\'ente</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table>', Html::allowed() );
+			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table>', Html::allowed() );
 		echo '<p class="description">Calcolato per cassa: contano i soldi quando entrano ed escono davvero, nell\'anno fiscale in corso. '
 			. ( \AssociazioneSemplice\Edition::has( 'fiscal' ) ? 'Il rendiconto dell\'anno fiscale è in Contabilità.' : 'Per vedere i movimenti di un anno fiscale apri la Prima nota.' ) . '</p></div></div>';
 		do_action( 'asem_yearend_alert' ); // un'estensione mostra qui le verifiche di fine anno fiscale: dopo le cifre, che sono ciò che si cerca per primo

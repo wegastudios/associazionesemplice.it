@@ -266,7 +266,7 @@ final class FiscalYears {
 		}
 		$row = self::get( $year );
 		if ( ! $row ) {
-			throw new \InvalidArgumentException( 'L\'anno fiscale ' . self::label( $year ) . ' non è stato creato: crealo dalla scheda «Anni fiscali» prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'anno fiscale ' . self::label( $year ) . ' non è stato creato: crealo dalla pagina «Anni fiscali» prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( 'open' !== $row['status'] ) {
 			throw new \InvalidArgumentException( self::closed_message( $year ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -277,7 +277,7 @@ final class FiscalYears {
 	public static function blockers( int $year ): array {
 		$out = array();
 		if ( $year >= self::current() ) {
-			$out[] = 'l\'anno ' . ( $year === self::current() ? 'in corso' : 'non è ancora iniziato' ) . ' non si chiude: si chiude dopo la fine dell\'anno';
+			$out[] = 'l\'anno ' . ( $year === self::current() ? 'è ancora in corso' : 'non è ancora iniziato' ) . ' (si chiude dopo la sua fine)';
 		}
 		$funds = Plugin::funds()->unsettled_until_year( $year );
 		if ( $funds > 0 ) {

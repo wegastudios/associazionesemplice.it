@@ -50,9 +50,9 @@ final class PersonSearchRules {
 			return '';
 		}
 		if ( null === $until || '' === $until || $until < $today ) {
-			return 'quota non in regola';
+			return 'tessera non in regola';
 		}
-		return 'quota valida fino al ' . substr( $until, 8, 2 ) . '/' . substr( $until, 5, 2 ) . '/' . substr( $until, 0, 4 );
+		return 'tessera valida fino al ' . substr( $until, 8, 2 ) . '/' . substr( $until, 5, 2 ) . '/' . substr( $until, 0, 4 );
 	}
 
 	/**

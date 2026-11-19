@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Regulation {
 
-	const SOURCES = array( 'web' => 'Sul sito', 'paper' => 'Modulo cartaceo', 'verbal' => 'A voce / altro', 'import' => 'Importato' );
+	const SOURCES = array( 'web' => 'Sul sito', 'paper' => 'Modulo cartaceo', 'verbal' => 'A voce o altro', 'import' => 'Importato' );
 
 	public static function enabled(): bool {
 		return ! empty( Settings::get( 'rules_enabled' ) ) && ( '' !== trim( (string) Settings::get( 'rules_text' ) ) || '' !== (string) Settings::get( 'rules_url' ) );
@@ -72,6 +72,6 @@ final class Regulation {
 		if ( ! self::applies_to( $actor ) || self::accepted( $actor ) || empty( Settings::get( 'rules_block_booking' ) ) ) {
 			return '';
 		}
-		return 'Per prenotare devi prima accettare il ' . mb_strtolower( self::title(), 'UTF-8' ) . ': lo trovi in cima alla tua area riservata.';
+		return 'Per prenotare devi prima accettare il ' . mb_strtolower( self::title(), 'UTF-8' ) . ': lo trovi in cima alla tua area soci.';
 	}
 }

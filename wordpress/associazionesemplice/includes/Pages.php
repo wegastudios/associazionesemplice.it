@@ -39,7 +39,7 @@ final class Pages {
 			'privacy'   => array( 'title' => 'Informativa privacy', 'content' => '[associazionesemplice_privacy]', 'access' => '', 'hint' => 'L\'informativa sul trattamento dei dati personali, compilata con i dati dell\'ente (si aggiorna da sola).', 'default' => true ),
 			'bonifico'  => array( 'title' => 'Dona con bonifico', 'content' => '[associazionesemplice_bonifico]', 'access' => '', 'hint' => 'Le coordinate bancarie per chi vuole sostenere l\'associazione (servono il bonifico attivo e almeno un IBAN).', 'default' => false ),
 			'adesione'  => array( 'title' => 'Diventa socio', 'content' => '[associazionesemplice_adesione]', 'access' => '', 'hint' => 'La domanda di adesione online per chi non è ancora socio: la segreteria la approva dalla Bacheca.', 'default' => false ),
-			'segreteria' => array( 'title' => 'Area segreteria', 'content' => '[associazionesemplice_segreteria]', 'access' => '', 'hint' => 'Il punto d\'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente): richieste di accesso e collegamenti alla gestione.', 'default' => false ),
+			'segreteria' => array( 'title' => 'Area segreteria', 'content' => '[associazionesemplice_segreteria]', 'access' => '', 'hint' => 'Il punto d\'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente): richieste di accesso e link alla gestione.', 'default' => false ),
 			'tesoriere' => array( 'title' => 'Area tesoriere', 'content' => '[associazionesemplice_tesoriere]', 'access' => '', 'hint' => 'Per il tesoriere: incassi, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi.', 'default' => false ),
 			'ingressi'  => array( 'title' => 'Ingressi agli eventi', 'content' => '[associazionesemplice_ingressi]', 'access' => '', 'hint' => 'Per responsabili e staff: prenotati, QR e registrazione degli ingressi.', 'default' => false ),
 		);
@@ -108,13 +108,13 @@ final class Pages {
 			Settings::update( array( 'privacy_url' => (string) get_permalink( (int) $have['privacy'] ) ) ); // l'informativa creata diventa quella richiesta a chi attiva l'accesso
 		}
 		if ( in_array( 'Area soci', $made, true ) ) {
-			self::add_to_menu( (int) $have['area'] ); // la voce «Area riservata» compare nel menu del sito
+			self::add_to_menu( (int) $have['area'] ); // la voce «Area soci» compare nel menu del sito
 		}
 		return $made;
 	}
 
 	/**
-	 * Aggiunge al menu di navigazione del sito la voce «Area riservata» che porta all'area soci (con le funzioni nella versione per il sito,
+	 * Aggiunge al menu di navigazione del sito la voce «Area soci» che porta all'area soci (con le funzioni nella versione per il sito,
 	 * non quella di amministrazione). Sceglie il menu della posizione principale; non duplica la voce.
 	 *
 	 * @return bool true se la voce c'è (già presente o aggiunta), false se il sito non ha un menu a cui aggiungerla
@@ -153,7 +153,7 @@ final class Pages {
 			$menu_id,
 			0,
 			array(
-				'menu-item-title'     => 'Area riservata',
+				'menu-item-title'     => 'Area soci',
 				'menu-item-object'    => 'page',
 				'menu-item-object-id' => $page_id,
 				'menu-item-type'      => 'post_type',

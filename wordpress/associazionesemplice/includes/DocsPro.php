@@ -234,7 +234,7 @@ final class DocsPro {
 			$pdf->text( Docs::LEFT + 14, $y, 'di cui accantonato nei fondi (rimborsi ai volontari)', 8 );
 			$pdf->text( $cx, $y, Money::format( $s['funds_total'] ), 8, false, 'R' );
 			$y += 12;
-			$pdf->text( Docs::LEFT + 14, $y, 'Disponibilità effettiva', 8, true );
+			$pdf->text( Docs::LEFT + 14, $y, 'Disponibilità reale', 8, true );
 			$pdf->text( $cx, $y, Money::format( $s['available'] ), 8, true, 'R' );
 			$y += 12;
 		}

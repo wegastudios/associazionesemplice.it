@@ -18,11 +18,11 @@ $lines  = implode( "\n", array_map( function ( $f ) { return $f['id'] . ' | ' . 
 		<div class="row-actions"><button class="btn small" type="submit">Salva caratteristiche nella bozza</button></div>
 	</form>
 
-	<form class="card2" method="post" action="/wordpress/admin/catalogo/importa-confronto" onsubmit="<?php echo js_confirm( 'Sostituire caratteristiche e tabella della bozza con le righe del confronto di oggi?' ); ?>">
+	<form class="card2" method="post" action="/wordpress/admin/catalogo/importa-confronto">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 		<h3>Parti dal confronto di oggi</h3>
-		<p class="muted small">Carica nella bozza le righe della pagina «Confronto» (gruppi, funzioni e cosa è incluso in ogni piano) con codici stabili. Non pubblica niente.</p>
-		<div class="row-actions"><button class="btn alt small" type="submit">Importa nella bozza</button></div>
+		<p class="muted small">Carica nella bozza le righe della pagina «Confronto» (gruppi, funzioni e cosa è incluso in ogni piano) con codici stabili: le righe già nel catalogo, anche se rinominate, tengono il loro codice. Prima ti mostro cosa cambia (nuove, rinominate, tolte); la bozza si aggiorna solo se confermi. Non pubblica niente.</p>
+		<div class="row-actions"><button class="btn alt small" type="submit">Vedi cosa cambia</button></div>
 	</form>
 
 	<form class="card2" method="post" action="/wordpress/admin/catalogo/piani">

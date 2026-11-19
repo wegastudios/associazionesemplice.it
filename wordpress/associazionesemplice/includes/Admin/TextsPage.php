@@ -19,7 +19,7 @@ final class TextsPage {
 		Ui::form_open( 'asem_save_language', Ui::url( 'asem-texts' ), false, 'asem-inline' );
 		echo '<select name="language">' . Ui::options( $all, $cur ) . '</select> <button class="button button-primary">Usa questa lingua</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		Ui::form_close();
-		echo '<details><summary><strong>Aggiungi una lingua</strong></summary><p class="description">Parti dal file dei testi (lo ottieni con «Esporta tutti i testi» qui sotto), scrivi la traduzione nella colonna «Personalizzato» rinominandola «Traduzione» (oppure lascia il nome com\'è) e caricalo con il codice della lingua. Va bene CSV, Excel o JSON.</p>';
+		echo '<details><summary><strong>Aggiungi una lingua</strong></summary><p class="description">Parti dal file dei testi (lo ottieni con «Esporta tutti i testi» qui sotto), scrivi la traduzione nella colonna «Personalizzato» (puoi anche rinominarla «Traduzione») e caricalo con il codice della lingua. Va bene CSV, Excel o JSON.</p>';
 		Ui::form_open( 'asem_import_language', Ui::url( 'asem-texts' ), true );
 		echo '<p>Codice <input type="text" name="code" size="5" placeholder="fr" maxlength="6" required> Nome <input type="text" name="name" placeholder="Français" maxlength="60" required> <input type="file" name="lang_file" accept=".csv,.xlsx,.json" required> <button class="button">Carica</button></p>';
 		Ui::form_close();
@@ -102,7 +102,7 @@ final class TextsPage {
 		echo '</ul><p class="description">Si cambiano parole intere (mai «soci» dentro «sociale») e gli aggettivi o i participi collegati possono restare al genere originale: se serve, correggili qui sotto nei testi personalizzati.</p><hr>';
 
 		echo '<p>Cambia qui qualsiasi testo che il sito mostra: pagine dei soci, email e promemoria, ricevute in PDF, messaggi di conferma ed errore, etichette e amministrazione. '
-			. 'Scrivi nella colonna <strong>Personalizzato</strong> il testo che vuoi al posto dell\'originale; lascia vuoto per tenere quello di default. '
+			. 'Scrivi nella colonna <strong>Personalizzato</strong> il testo che vuoi al posto dell\'originale; lascia vuoto per tenere quello originale. '
 			. 'Per modificarne molti insieme <strong>esporta il file</strong> (si apre in Excel), cambia la colonna Personalizzato e <strong>importalo</strong>.</p>';
 		echo '<p class="description">La sostituzione vale ovunque compaia quel testo (anche dentro frasi più lunghe che lo contengono). Testi con nomi, date e importi variabili sono fatti di più pezzi: ogni pezzo si cambia a parte. '
 			. 'Nelle email e nei PDF il testo è semplice (niente formattazione). Se un pezzo non è nell\'elenco, aggiungilo in fondo con «Aggiungi una sostituzione».</p>';
@@ -152,7 +152,7 @@ final class TextsPage {
 
 		echo '<h2>Ripristino</h2>';
 		Ui::form_open( 'asem_reset_texts', $here, false, 'asem-inline' );
-		echo '<button class="button" data-confirm="Togliere TUTTE le sostituzioni e tornare ai testi originali?">Ripristina tutti i testi originali</button>';
+		echo '<button class="button" data-confirm="Togliere tutte le sostituzioni e tornare ai testi originali?">Ripristina tutti i testi originali</button>';
 		Ui::form_close();
 		Ui::footer();
 	}

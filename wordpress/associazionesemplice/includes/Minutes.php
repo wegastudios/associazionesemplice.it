@@ -42,11 +42,11 @@ final class Minutes {
 		}
 		$title = trim( sanitize_text_field( (string) ( $in['title'] ?? '' ) ) );
 		if ( '' === $title ) {
-			throw new \InvalidArgumentException( 'Indica un titolo (ad esempio «Approvazione del bilancio»).' );
+			throw new \InvalidArgumentException( 'Indica un titolo (ad esempio «Approvazione del rendiconto»).' );
 		}
 		$body = trim( sanitize_textarea_field( (string) ( $in['body'] ?? '' ) ) );
 		if ( '' === $body ) {
-			throw new \InvalidArgumentException( 'Il verbale non ha contenuto.' );
+			throw new \InvalidArgumentException( 'Scrivi il testo del verbale.' );
 		}
 		if ( mb_strlen( $body ) > self::MAX_BODY ) {
 			throw new \InvalidArgumentException( 'Il testo è troppo lungo.' );
@@ -91,7 +91,7 @@ final class Minutes {
 			}
 		);
 		if ( ! $ok ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare il verbale (errore del database).' );
+			throw new \InvalidArgumentException( 'Verbale non salvato: riprova.' );
 		}
 		$id = (int) self::db()->insert_id;
 		Audit::log( 'minutes.created', 'minutes', $id, array( 'kind' => $d['kind'] ) );

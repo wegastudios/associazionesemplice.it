@@ -75,9 +75,9 @@ final class Updater {
 		}
 		$p   = array();
 		$p[] = '<h2>Aggiornamenti dal sito associazionesemplice.it</h2>';
-		$p[] = '<p>Questa copia di Associazione Semplice è stata scaricata dal sito associazionesemplice.it, non da WordPress.org. Per offrirti gli aggiornamenti in Bacheca → Aggiornamenti, il programma contatta quel sito (indirizzo https://associazionesemplice.it/api/plugin/update) e gli invia solo il nome del prodotto («free») e la versione installata. Lo fa al massimo ogni 12 ore o più (di solito una volta al giorno), anche senza chiave di licenza, e mai su un sito di prova locale.</p>';
+		$p[] = '<p>Questa copia di Associazione Semplice è stata scaricata dal sito associazionesemplice.it, non da WordPress.org. Per offrirti gli aggiornamenti in Bacheca → Aggiornamenti, il programma contatta quel sito (indirizzo https://associazionesemplice.it/api/plugin/update) e gli invia solo il nome del prodotto («free») e la versione installata. Lo fa non più di una volta ogni 12 ore (di solito una volta al giorno), anche senza chiave di licenza, e mai su un sito di prova locale.</p>';
 		$p[] = '<p>Non invia la chiave di licenza, il dominio né dati dei soci o dell\'associazione. Come ogni richiesta su internet, il sito riceve l\'indirizzo IP del server e l\'User-Agent di WordPress, che contiene l\'indirizzo di questo sito.</p>';
-		$p[] = '<p>Si spegne da Impostazioni → Limiti e soglie, togliendo il segno da «Aggiornamenti diretti di Associazione Semplice e del Pro»: se è già spento, non parte nessuna richiesta, e gli aggiornamenti vanno scaricati dall\'area clienti e caricati a mano.</p>';
+		$p[] = '<p>Si spegne da Impostazioni → Limiti e soglie, togliendo il segno da «Aggiornamenti diretti di Associazione Semplice e del Pro». Da spento non parte nessuna richiesta: gli aggiornamenti si scaricano dall\'area riservata e si caricano a mano.</p>';
 		if ( isset( self::products()['pro'] ) ) {
 			$p[] = '<p>Con Associazione Semplice Pro attivo, la richiesta di aggiornamento porta con sé anche la chiave di licenza e il dominio del sito, e una volta al giorno il Pro verifica la licenza inviando gli stessi due dati. Nemmeno in questo caso partono dati dei soci.</p>';
 		}
@@ -549,7 +549,7 @@ final class Updater {
 			'wait'    => array( 'info', 'Hai già controllato da poco: riprova tra un minuto.' ),
 			'nokey'   => array( 'warning', 'Per controllare gli aggiornamenti del Pro serve la chiave di licenza: inseriscila in Associazione Semplice → Licenza.' ),
 			'license' => array( 'warning', 'Il portale non riconosce la licenza del Pro per questo sito: controllala in Associazione Semplice → Licenza.' ),
-			'off'     => array( 'warning', 'Gli aggiornamenti diretti sono spenti: scarica il Pro dall\'area clienti, oppure riaccendili da Impostazioni → Limiti e soglie.' ),
+			'off'     => array( 'warning', 'Gli aggiornamenti diretti sono spenti: scarica il Pro dall\'area riservata, oppure riaccendili da Impostazioni → Limiti e soglie.' ),
 		);
 		if ( ! isset( $msg[ $code ] ) ) {
 			return;
@@ -680,7 +680,7 @@ final class Updater {
 		$p = substr( $package, strlen( self::PREFIX ) );
 		$r = isset( self::products()[ $p ] ) ? self::ask( $p ) : null;
 		if ( ! $r || empty( $r['update'] ) || '' === $r['package'] || ! self::package_is_ours( $r['package'] ) ) {
-			return new \WP_Error( 'asem_update_unavailable', 'L\'aggiornamento non è disponibile adesso dal portale di Associazione Semplice (licenza non in regola, troppe richieste o portale non raggiungibile). Riprova più tardi o scaricalo dall\'area clienti.' );
+			return new \WP_Error( 'asem_update_unavailable', 'Ora l\'aggiornamento non si può scaricare dal portale di Associazione Semplice. Le cause possibili: licenza non in regola, troppe richieste o portale non raggiungibile. Riprova più tardi o scaricalo dall\'area riservata.' );
 		}
 		$installed = self::products()[ $p ]['version'] ?? '';
 		if ( '' === $installed || ! self::is_newer( $installed, $r['version'] ) ) { // niente passi indietro: una versione vecchia firmata non si reinstalla
@@ -689,16 +689,16 @@ final class Updater {
 		$why = self::package_verdict( $p, $r );
 		if ( '' !== $why ) {
 			$msg = array(
-				'invalid'  => 'Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall\'area clienti e scrivici.',
-				'min'      => 'La versione offerta dal portale è sotto la soglia minima ammessa: non è stata installata.',
-				'rollback' => 'La versione offerta dal portale è più vecchia di una già vista: non è stata installata.',
-				'missing_v2' => 'Il pacchetto offerto dal portale non ha la firma del nuovo formato, richiesta dopo il primo pacchetto così firmato: non è stato installato. Scaricalo dall\'area clienti e scrivici.',
+				'invalid'  => 'L\'aggiornamento non ha superato il controllo di sicurezza: non è stato installato. Scaricalo dall\'area riservata e scrivici.',
+				'min'      => 'La versione offerta dal portale è troppo vecchia: non è stata installata. Riprova più tardi; se succede ancora scrivici.',
+				'rollback' => 'La versione offerta dal portale è troppo vecchia: non è stata installata. Riprova più tardi; se succede ancora scrivici.',
+				'missing_v2' => 'L\'aggiornamento non ha superato il controllo di sicurezza: non è stato installato. Scaricalo dall\'area riservata e scrivici.',
 				'future'   => 'La firma del pacchetto ha una data nel futuro: non è stato installato. Controlla data e ora del server.',
 			);
 			return new \WP_Error( 'asem_update_unsigned', Texts::t( $msg[ $why ] ?? $msg['invalid'] ) );
 		}
 		if ( empty( $r['v2'] ) && ! self::verify_signature( $p, $r['version'], $r['sha256'], $r['kid'], $r['signature'], self::PACKAGE_KEYS ) ) {
-			return new \WP_Error( 'asem_update_unsigned', 'Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall\'area clienti e scrivici.' );
+			return new \WP_Error( 'asem_update_unsigned', 'L\'aggiornamento non ha superato il controllo di sicurezza: non è stato installato. Scaricalo dall\'area riservata e scrivici.' );
 		}
 		if ( empty( $r['v2'] ) ) {
 			self::remember( $p, $r, false ); // firma v1 verificata: si ricorda la versione, così non si torna indietro
@@ -712,7 +712,7 @@ final class Updater {
 		}
 		if ( ! hash_equals( $r['sha256'], (string) hash_file( 'sha256', $file ) ) ) { // il file scaricato è proprio quello firmato
 			wp_delete_file( $file );
-			return new \WP_Error( 'asem_update_hash', 'Il file scaricato non corrisponde alla firma del portale: non è stato installato.' );
+			return new \WP_Error( 'asem_update_hash', 'Il file scaricato non è quello pubblicato dal portale: non è stato installato. Riprova; se succede ancora scrivici.' );
 		}
 		return $file;
 	}

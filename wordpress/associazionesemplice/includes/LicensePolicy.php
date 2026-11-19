@@ -61,11 +61,11 @@ final class LicensePolicy {
 	/** Testo del popup per lo stato. */
 	public static function message( string $status ): string {
 		if ( self::STATUS_UNVERIFIED === $status ) {
-			return 'Non è stato possibile verificare la licenza di Associazione Semplice da troppo tempo: controlla che il sito raggiunga associazionesemplice.it, poi premi «Controlla adesso» in Impostazioni → Licenza.';
+			return 'La licenza di Associazione Semplice non si riesce a verificare da troppo tempo: controlla che il sito raggiunga associazionesemplice.it, poi premi «Controlla adesso» in Impostazioni → Licenza.';
 		}
 		if ( self::STATUS_UNLICENSED === $status ) {
-			return 'Questo sito non risulta più associato a una licenza valida di Associazione Semplice.';
+			return 'Questo sito non ha più una licenza valida di Associazione Semplice: controlla in Impostazioni → Licenza.';
 		}
-		return 'Il pagamento della licenza di Associazione Semplice non risulta effettuato.';
+		return 'Non ci risulta il pagamento della licenza di Associazione Semplice: controlla in Impostazioni → Licenza.';
 	}
 }

@@ -26,7 +26,7 @@ final class MemberLoginPage {
 	const SENT    = 'Se l\'email è di un socio ti abbiamo scritto: apri il link che trovi nell\'email (controlla anche la posta indesiderata).';
 	const FAIL    = 'Email, codice o password non corretti. Controlla e riprova, oppure premi «Mandami un link» per entrare senza password.';
 	const BLOCKED = 'Troppi tentativi da questa connessione. Aspetta un\'ora e riprova, oppure chiedi aiuto alla segreteria.';
-	const NOT_FROM_PAGE = 'Il modulo deve partire dalla pagina di accesso, oppure è scaduto: ricarica la pagina e riprova.';
+	const NOT_FROM_PAGE = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
@@ -36,7 +36,7 @@ final class MemberLoginPage {
 		return add_query_arg( 'asem_member_login', '1', home_url( '/' ) );
 	}
 
-	/** Dove si va dopo l'accesso: la pagina da cui si veniva (se è del sito), altrimenti l'area riservata o la pagina «Il tuo accesso». */
+	/** Dove si va dopo l'accesso: la pagina da cui si veniva (se è del sito), altrimenti l'area soci o la pagina «Il tuo accesso». */
 	private static function after_url( string $back ): string {
 		$back = '' !== $back ? wp_validate_redirect( esc_url_raw( $back ), '' ) : '';
 		if ( '' !== $back ) {
@@ -153,7 +153,7 @@ final class MemberLoginPage {
 			$session = MemberSession::current();
 			if ( $session ) { // già dentro (anche se deve ancora scegliere la password): azioni protette dal token della sessione
 				if ( ! MemberSession::check_csrf( 'account', self::post( '_csrf' ) ) ) {
-					$err = 'Sessione scaduta: ricarica la pagina e riprova.';
+					$err = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 				} elseif ( 'logout' === $do ) {
 					Audit::log( 'member.logout', 'person', (int) $session['person_id'] );
 					MemberSession::destroy();
@@ -176,7 +176,7 @@ final class MemberLoginPage {
 								wp_safe_redirect( self::after_url( $back ), 303 );
 								exit;
 							}
-							$msg = 'Password salvata. Gli altri dispositivi dovranno rientrare.';
+							$msg = 'Password salvata. Sugli altri dispositivi dovrai entrare di nuovo.';
 						}
 					}
 				}
@@ -253,17 +253,17 @@ final class MemberLoginPage {
 			. '<button type="submit" class="asemf-btn asemf-btn-ghost wp-element-button">Esci</button></form>';
 	}
 
-	/** Modulo email e password per l'area riservata (quando non si è entrati): quello predefinito dei soci senza utente WordPress. */
+	/** Modulo email e password per l'area soci (quando non si è entrati): quello predefinito dei soci senza utente WordPress. */
 	public static function inline_login( string $back ): string {
 		Views::no_cache(); // il modulo porta il cookie e il segno di chi lo apre: la pagina non va conservata
 		if ( ! self::ensure_pre_session() ) { // niente cookie di pre-sessione (la pagina è già partita): si passa dalla pagina di accesso, che lo dà
-			return '<p><a class="asemf-btn wp-element-button" href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), self::url() ) ) . '">Accedi</a></p>';
+			return '<p><a class="asemf-btn wp-element-button" href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), self::url() ) ) . '">Entra</a></p>';
 		}
 		$f ='<p><label>Email<br><input type="email" name="email" required autocomplete="username" class="asemf-input"></label></p>'
 			. '<p><label>Password<br><input type="password" name="password" required autocomplete="current-password" class="asemf-input"></label></p>';
 		return '<form class="asemf-form" method="post" action="' . esc_url( self::url() ) . '"><input type="hidden" name="asem_ml_do" value="password_login">'
 			. self::guard_field() . '<input type="hidden" name="_back" value="' . esc_url( $back ) . '">' . $f
-			. '<button type="submit" class="asemf-btn wp-element-button">Accedi</button></form>';
+			. '<button type="submit" class="asemf-btn wp-element-button">Entra</button></form>';
 	}
 
 	public static function page( string $token, string $msg, string $err, string $step, string $mail, string $back = '' ): string {
@@ -274,12 +274,12 @@ final class MemberLoginPage {
 		if ( $pending ) {
 			if ( 'restored' === $pending['state'] ) {
 				$title = 'Scegli una nuova password';
-				$intro = 'Il sito è stato ripristinato da una copia di sicurezza: per la tua sicurezza scegli una nuova password prima di continuare.';
+				$intro = 'Dopo un intervento tecnico sul sito, per sicurezza scegli una nuova password prima di continuare.';
 			} else {
 				$title = 'Scegli la tua password';
 				$intro = 'reset' === $pending['state']
-					? 'Hai chiesto di reimpostare la password: scegline una nuova per continuare.'
-					: 'Prima di continuare scegli la tua password: la userai per entrare ogni volta (potrai sempre usare anche il link che ti arriva per email).';
+					? 'Hai chiesto una nuova password: sceglila qui per continuare.'
+					: 'Prima di continuare scegli la tua password: la userai per entrare. Se preferisci, potrai sempre entrare anche con un link via email.';
 			}
 			$body .= '<div class="n">' . esc_html( $title ) . '</div><p>' . esc_html( $intro ) . '</p>'
 				. self::form(
@@ -297,8 +297,8 @@ final class MemberLoginPage {
 			$p     = Plugin::people()->get( (int) $session['person_id'] );
 			$area  = (int) Settings::get( 'member_area_page_id' ) ? (string) get_permalink( (int) Settings::get( 'member_area_page_id' ) ) : '';
 			list( , $btn ) = self::style();
-			$body .= '<div class="n">Sei dentro</div><p>' . esc_html( trim( (string) ( $p['first_name'] ?? '' ) . ' ' . (string) ( $p['last_name'] ?? '' ) ) ) . '</p>'
-				. ( '' !== $area ? '<p><a href="' . esc_url( $area ) . '" style="' . $btn . ';display:block;text-align:center;text-decoration:none;box-sizing:border-box">Vai alla tua area</a></p>' : '' )
+			$body .= '<div class="n">Accesso riuscito</div><p>' . esc_html( trim( (string) ( $p['first_name'] ?? '' ) . ' ' . (string) ( $p['last_name'] ?? '' ) ) ) . '</p>'
+				. ( '' !== $area ? '<p><a href="' . esc_url( $area ) . '" style="' . $btn . ';display:block;text-align:center;text-decoration:none;box-sizing:border-box">Vai all\'area soci</a></p>' : '' )
 				. self::form( 'logout', '', 'Esci', true ) . $gap
 				. '<div class="n">Cambia la password</div>'
 				. self::form( 'password', self::field( 'Password attuale', 'current_password', 'password', 'current-password' ) . self::field( 'Nuova password (almeno 8 caratteri)', 'password', 'password', 'new-password', '', ' minlength="8"' ) . self::field( 'Ripeti la password', 'password2', 'password', 'new-password', '', ' minlength="8"' ), 'Salva la password', true ) . $gap
@@ -323,11 +323,11 @@ final class MemberLoginPage {
 				. self::form( 'code', self::field( 'Email', 'email', 'email', 'email', $mail ) . self::field( 'Codice a 6 cifre', 'code', 'text', 'one-time-code', '', ' inputmode="numeric" pattern="[0-9]{6}" maxlength="6"' ), 'Entra con il codice', false, $back )
 			: '';
 		if ( 'reset' === $step || 'reset_code' === $step ) { // «Password dimenticata?»: una schermata sola, con la sola email
-			$body .= '<div class="n">Reimposta la password</div><p>Scrivi la tua email: ti mandiamo un link che ti fa scegliere una nuova password.</p>'
-				. self::form( 'recover', self::field( 'Email', 'email', 'email', 'username', $mail ), 'Mandami il link per reimpostarla', false, $back )
+			$body .= '<div class="n">Password dimenticata</div><p>Scrivi la tua email: ti mandiamo un link per sceglierne una nuova.</p>'
+				. self::form( 'recover', self::field( 'Email', 'email', 'email', 'username', $mail ), 'Mandami il link', false, $back )
 				. $code_box
 				. '<p style="margin:18px 0 0"><a href="' . esc_url( '' !== $back ? add_query_arg( '_back', rawurlencode( $back ), self::url() ) : self::url() ) . '">Torna all\'accesso</a></p>';
-			return CardVerify::layout( 'Reimposta la password', Assets::accent( '#2271b1' ), $body );
+			return CardVerify::layout( 'Password dimenticata', Assets::accent( '#2271b1' ), $body );
 		}
 		$reset_url = add_query_arg( 'asem_ml_reset', '1', self::url() );
 		if ( '' !== $back ) {
@@ -355,6 +355,6 @@ final class MemberLoginPage {
 			. '<div style="display:flex;flex-wrap:wrap;gap:10px">'
 			. '<button type="submit" name="asem_ml_do" value="password_login" style="' . $main . '">Entra</button>'
 			. '<button type="submit" name="asem_ml_do" value="request" formnovalidate style="' . $alt . '">Mandami un link</button></div>'
-			. '<p style="font-size:14px;color:#50575e;margin:10px 0 0">Con «Mandami un link» entri senza password: riceverai in email un link valido ' . (int) ( MemberLogin::TTL_SECONDS / 60 ) . ' minuti, con quello potrai entrare.</p></form>';
+			. '<p style="font-size:14px;color:#50575e;margin:10px 0 0">Con «Mandami un link» entri senza password: ti arriva per email un link che vale ' . (int) ( MemberLogin::TTL_SECONDS / 60 ) . ' minuti.</p></form>';
 	}
 }

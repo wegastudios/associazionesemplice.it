@@ -179,7 +179,7 @@ Serve, per esempio, dopo le prove prima di iniziare davvero. Solo gli amministra
 
 ## Prima di cominciare
 
-Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (file di scontrini, fatture e altri documenti; vale poco tempo), scrivendo la tua password di amministratore: senza lo scarico l'azzeramento non parte. Conservala tu.
+Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (scontrini, fatture e altri documenti), scrivendo la tua password di amministratore: senza lo scarico l'azzeramento non parte. Lo scarico vale un'ora: se aspetti di più va rifatto. Conserva tu la copia.
 
 ## Cosa fare
 
@@ -275,7 +275,7 @@ Se hai già la licenza gratuita, puoi provare un piano Pro **per 30 giorni**, un
 
 ## Rinnovare, cambiare o disdire
 
-I piani si rinnovano da soli. Dall'area soci puoi rinnovare, cambiare piano, aggiornare i dati di fatturazione o disdire il rinnovo in autonomia. Se non rinnovi, alla scadenza il plugin torna alle funzioni di base senza toccare i tuoi dati.
+I piani si rinnovano da soli. Dall'area riservata puoi rinnovare, cambiare piano, aggiornare i dati di fatturazione o disdire il rinnovo in autonomia. Se non rinnovi, alla scadenza il plugin torna alle funzioni di base senza toccare i tuoi dati.
 
 > I prezzi e le funzioni dei piani sono sempre aggiornati nella pagina [associazionesemplice.it](https://associazionesemplice.it). Per il confronto completo vedi [Free, {piano_contabile} e {piano_fiscale} a confronto](guida:free-pro-contabile-e-pro-fiscale-a-confronto).
 MD,

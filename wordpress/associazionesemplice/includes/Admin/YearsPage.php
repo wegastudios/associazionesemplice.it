@@ -42,8 +42,8 @@ final class YearsPage {
 		$totals = Plugin::funds()->yearly()['totals'];
 		$last   = FiscalYears::last_closed();
 		Ui::header( 'Anni fiscali' );
-		echo '<p class="description">Si può incassare, spendere e girare denaro solo negli anni fiscali <strong>aperti</strong>. Un anno fiscale chiuso non si modifica più: nemmeno allegati, saldi iniziali o cessazioni dei soci. Si chiude in ordine, dal più vecchio, e si può riaprire solo l\'ultimo anno fiscale chiuso, indicando il motivo (resta scritto per sempre). '
-			. 'L\'anno in corso non si chiude (e il primo giorno di ogni anno il nuovo anno si apre da solo). Un anno finito non si chiude se ha fondi accantonati non ancora rimborsati. La tessera dei soci segue l\'anno fiscale.</p>';
+		echo '<p class="description">Incassi, spese e giroconti si registrano solo negli anni fiscali <strong>aperti</strong>. Un anno fiscale chiuso non si modifica più: nemmeno allegati, saldi iniziali o cessazioni dei soci. Gli anni si chiudono in ordine, dal più vecchio; si può riaprire solo l\'ultimo chiuso, indicando il motivo, che resta scritto per sempre. '
+			. 'L\'anno in corso non si chiude; il nuovo anno si apre da solo il primo giorno. Un anno finito non si chiude finché ha fondi accantonati non ancora rimborsati. La tessera dei soci segue l\'anno fiscale.</p>';
 		if ( null !== $last ) {
 			echo '<p class="description">I documenti definitivi sono emessi e bloccati alla chiusura dell\'anno fiscale: non cambiano più.</p>';
 		}
@@ -90,7 +90,7 @@ final class YearsPage {
 				$retro
 			);
 			echo '<div class="asem-card"><h2>Emetti i documenti definitivi degli anni già chiusi</h2>';
-			echo '<p>Questi anni fiscali sono stati chiusi prima che esistessero i documenti definitivi: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Si possono emettere ora, ma i dati di allora non ci sono più: il libro viene <strong>ricostruito dai dati di oggi</strong> (chi è già stato cancellato non compare, nome e dati anagrafici sono quelli attuali). '
+			echo '<p>Questi anni fiscali sono stati chiusi prima che esistessero i documenti definitivi: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Si possono emettere ora, ma i dati di allora non ci sono più: il libro viene <strong>ricostruito dai dati di oggi</strong> (chi è già stato eliminato non compare, nome e dati anagrafici sono quelli attuali). '
 				. 'Ogni libro porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
 			Ui::form_open( 'asem_snapshot_past_years', $back, false, 'asem-inline' );
 			echo wp_kses( '<label><input type="checkbox" name="confirm_retro" value="1"> Ho capito: i dati sono ricostruiti, non ripresi alla chiusura.</label> <button class="button" data-confirm="Emettere ora i documenti definitivi degli anni fiscali già chiusi con i dati di oggi? Non si può annullare.">Emetti i documenti definitivi degli anni già chiusi</button>', Html::allowed() );
@@ -115,10 +115,10 @@ final class YearsPage {
 			echo '</tbody></table>';
 		}
 
-		echo '<div class="asem-card"><h2>Crea anno fiscale</h2>';
+		echo '<div class="asem-card"><h2>Apri un nuovo anno fiscale</h2>';
 		Ui::form_open( 'asem_create_year', $back );
-		echo '<p><input type="number" name="year" min="2000" max="2100" value="' . esc_attr( (string) ( $latest ? $latest + 1 : (int) current_time( 'Y' ) ) ) . '" required> <button class="button button-primary" data-confirm="Creare questo anno? Da adesso si possono registrare incassi e spese di quell\'anno.">Crea l\'anno</button></p>'
-			. '<p class="description">Crea in anticipo l\'anno che inizia (ad esempio a novembre l\'anno dopo), se devi registrare incassi o spese in anticipo. La tessera dei soci segue l\'anno fiscale.</p>';
+		echo '<p><input type="number" name="year" min="2000" max="2100" value="' . esc_attr( (string) ( $latest ? $latest + 1 : (int) current_time( 'Y' ) ) ) . '" required> <button class="button button-primary" data-confirm="Aprire questo anno fiscale? Da adesso potrai registrarvi incassi e spese.">Apri l\'anno</button></p>'
+			. '<p class="description">Apri in anticipo il prossimo anno (ad esempio a novembre) se devi già registrare incassi o spese che lo riguardano. La tessera dei soci segue l\'anno fiscale.</p>';
 		Ui::form_close();
 		echo '</div>';
 

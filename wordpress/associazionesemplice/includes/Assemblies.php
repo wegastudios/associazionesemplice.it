@@ -66,7 +66,7 @@ final class Assemblies {
 		} else {
 			$ok = $db->insert( Db::t( 'assemblies' ), $d + array( 'status' => AssemblyRules::DRAFT, 'created_by' => $user_id, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
 			if ( ! $ok ) {
-				throw new \InvalidArgumentException( 'Impossibile salvare (errore del database).' );
+				throw new \InvalidArgumentException( 'Salvataggio non riuscito: riprova.' );
 			}
 			$id = (int) $db->insert_id;
 		}
@@ -171,13 +171,13 @@ final class Assemblies {
 	/** Oggetto e testo dell'email di convocazione. */
 	private static function call_text( array $a ): array {
 		$kinds = AssemblyRules::kinds();
-		$text  = 'sei convocato all\'' . mb_strtolower( $kinds[ $a['kind'] ] ) . ' «' . $a['title'] . '».' . "\n"
+		$text  = 'è convocata l\'' . mb_strtolower( $kinds[ $a['kind'] ] ) . ' «' . $a['title'] . '».' . "\n"
 			. 'Prima convocazione: ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $a['first_call_at'] ) . ( '' !== (string) $a['place'] ? ', ' . $a['place'] : '' ) . ".\n";
 		if ( ! empty( $a['second_call_at'] ) ) {
 			$text .= 'Seconda convocazione: ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $a['second_call_at'] ) . ".\n";
 		}
 		$text .= "\nOrdine del giorno:\n" . $a['agenda'] . "\n\n"
-			. 'Se non puoi partecipare puoi delegare un altro socio dall\'area riservata: ' . Gatekeeper::area_url();
+			. 'Se non puoi partecipare puoi delegare un altro socio dall\'area soci: ' . Gatekeeper::area_url();
 		return array( 'Convocazione: ' . $a['title'], $text );
 	}
 
@@ -281,7 +281,7 @@ final class Assemblies {
 		} );
 	}
 
-	/** @param bool $staff true: la segreteria registra una delega scritta anche su un'assemblea in bozza; false: il socio dall'area riservata, solo su un'assemblea convocata */
+	/** @param bool $staff true: la segreteria registra una delega scritta anche su un'assemblea in bozza; false: il socio dall'area soci, solo su un'assemblea convocata */
 	private static function add_proxy_locked( int $id, int $delegator, int $delegate, bool $staff ): void {
 		$a = self::get( $id );
 		if ( ! $a ) {

@@ -22,7 +22,7 @@ final class ConventionsPage {
 		$state  = Ui::get_str( 'state' );
 		$labels = ConventionRules::status_labels();
 		Ui::header( 'Convenzioni', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-conventions', array( 'new' => 1 ) ) ) . '">Nuova convenzione</a>' );
-		echo '<p class="description">Sconti e vantaggi di esercenti ed enti partner per i soci. I soci in regola con la tessera vedono quelle valide oggi nell\'area riservata (sezione «Convenzioni», o lo shortcode <code>[associazionesemplice_convenzioni_soci]</code>). Per mostrare sul sito quelle segnate «pubbliche» usa lo shortcode <code>[associazionesemplice_convenzioni]</code>. Una convenzione scaduta o archiviata sparisce dall\'area soci ma resta qui.</p>';
+		echo '<p class="description">Sconti e vantaggi di esercenti ed enti partner per i soci. I soci in regola con la tessera vedono quelle valide oggi nell\'area soci (sezione «Convenzioni», o lo shortcode <code>[associazionesemplice_convenzioni_soci]</code>). Per mostrare sul sito quelle segnate «pubbliche» usa lo shortcode <code>[associazionesemplice_convenzioni]</code>. Una convenzione scaduta o archiviata sparisce dall\'area soci ma resta qui.</p>';
 		$cats = Conventions::categories();
 		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-conventions"><select name="category">' . Ui::options( array_combine( $cats, $cats ), $cat, 'Tutte le categorie' ) . '</select> '
 			. '<select name="state">' . Ui::options( $labels, $state, 'Tutti gli stati' ) . '</select> <button class="button">Filtra</button> '
@@ -125,7 +125,7 @@ final class ConventionsPage {
 			} else {
 				$n = Conventions::announce( $id, false );
 				echo '<p class="description">Manda un\'email ai soci a cui spetta (tessera valida e tipo previsto): ora ' . (int) $n . ' con un indirizzo email. Parte una sola volta per convenzione.</p>';
-				echo wp_kses( Ui::confirm_button( 'asem_convention_announce', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci della nuova convenzione', 'Mandare ora l\'email ai soci a cui spetta? Non si può rimandare.' ), Html::allowed() );
+				echo wp_kses( Ui::confirm_button( 'asem_convention_announce', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci della nuova convenzione', 'Mandare ora l\'email ai soci a cui spetta? Parte una volta sola.' ), Html::allowed() );
 			}
 		}
 		Ui::inline_js( '(function(){var pick=document.getElementById("asem-conv-logo-pick"),clr=document.getElementById("asem-conv-logo-clear"),id=document.getElementById("asem-conv-logo-id"),pv=document.getElementById("asem-conv-logo-preview"),f;'

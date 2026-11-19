@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * I permessi che si possono togliere sono quelli di {@see EmployeeRules} e si tolgono per singolo utente (user meta). Il controllo è in tre punti:
  *  1. {@see Employees::gate()} su `admin_init`: pagine di amministrazione, admin-post (moduli, esportazioni, download) e admin-ajax;
- *  2. {@see Access::user_can()}: le capability «asem_*» (area riservata, REST) per incassi, spese, eventi e corsi;
+ *  2. {@see Access::user_can()}: le capability «asem_*» (area soci, REST) per incassi, spese, eventi e corsi;
  *  3. gli elenchi (attività, schede, riquadri della Bacheca) che mostrano solo ciò che resta permesso.
  */
 final class Employees {
@@ -314,7 +314,7 @@ final class Employees {
 		wp_die( esc_html( $msg ), 'Permesso non disponibile', array( 'response' => 403, 'back_link' => true ) );
 	}
 
-	/** Le capability «asem_*» (area riservata e REST): il dipendente senza il permesso non ha nemmeno quella. */
+	/** Le capability «asem_*» (area soci e REST): il dipendente senza il permesso non ha nemmeno quella. */
 	public static function ability_denied( int $user_id, string $ability, int $object_id ): bool {
 		$denied = self::denied_for( $user_id );
 		if ( ! $denied ) {
@@ -403,7 +403,7 @@ final class Employees {
 		}
 		list( $from, $to ) = self::clean_period( $d );
 		if ( get_user_by( 'email', $email ) ) {
-			throw new \InvalidArgumentException( 'Con questa email esiste già un utente del sito. L\'accesso da dipendente è separato da quello da socio: usa un\'altra email per il dipendente (anche lo stesso socio ne può avere due).' );
+			throw new \InvalidArgumentException( 'Questa email è già usata da un utente del sito. Per l\'accesso da dipendente serve un\'altra email, anche se la persona è già socio.' );
 		}
 		self::ensure_role();
 		$uid = wp_insert_user(
@@ -418,7 +418,7 @@ final class Employees {
 			)
 		);
 		if ( is_wp_error( $uid ) ) {
-			throw new \InvalidArgumentException( 'Impossibile creare l\'utente: ' . $uid->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Utente non creato: ' . $uid->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$uid = (int) $uid;
 		self::save_period( $uid, $from, $to );
@@ -440,7 +440,7 @@ final class Employees {
 		$link  = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ), 'login' );
 		$text  = 'Ciao ' . $user->first_name . ",\n\nè stato creato per te l'accesso come dipendente" . ( '' !== $assoc ? ' di ' . $assoc : '' ) . ":\n\n" . $link
 			. "\n\nApri il link, scegli la tua password e poi entra con questa email. Il link vale 24 ore: se scade, usa «Password dimenticata» nella pagina di accesso.\n\nSe non te lo aspettavi, ignora questo messaggio.";
-		return (bool) Texts::mail( $user->user_email, 'Il tuo accesso come dipendente' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		return (bool) Texts::mail( $user->user_email, \AssociazioneSemplice\Texts::subject( 'Il tuo accesso come dipendente' ), $text );
 	}
 
 	/** Cambia il periodo di servizio. @throws \InvalidArgumentException */
