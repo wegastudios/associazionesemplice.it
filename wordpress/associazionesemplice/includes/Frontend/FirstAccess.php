@@ -79,7 +79,7 @@ final class FirstAccess {
 		$link  = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ), 'login' );
 		$text  = 'Ciao ' . $person['first_name'] . ",\n\necco il link per il tuo primo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ":\n\n" . $link
 			. "\n\nApri il link, scegli la tua password e poi entra con questo indirizzo email. Il link vale 24 ore: se scade, ripeti il «Primo accesso» dal sito.\n\nSe non hai chiesto tu questo messaggio, ignoralo.";
-		$subject = 'Primo accesso' . ( '' !== $assoc ? ' — ' . $assoc : '' );
+		$subject = \AssociazioneSemplice\Texts::subject( 'Primo accesso' );
 		if ( \AssociazioneSemplice\ResponseMail::deferring() ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
 			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 			return \AssociazioneSemplice\ResponseMail::send( $user->user_email, $subject, $text );
@@ -170,7 +170,7 @@ final class FirstAccess {
 			$assoc = (string) Settings::get( 'association_name' );
 			\AssociazioneSemplice\Texts::mail(
 				$old,
-				'Email di accesso cambiata' . ( '' !== $assoc ? ' — ' . $assoc : '' ),
+				\AssociazioneSemplice\Texts::subject( 'Email di accesso cambiata' ),
 				'Ciao ' . $before['first_name'] . ",\n\nla segreteria ha cambiato, su tua richiesta, l'email del tuo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ": con questo indirizzo non potrai più entrare.\n\nSe non l'hai chiesto tu, scrivi subito alla segreteria."
 			);
 		}

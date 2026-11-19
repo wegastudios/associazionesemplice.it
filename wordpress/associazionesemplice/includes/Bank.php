@@ -191,7 +191,7 @@ final class Bank {
 			$body .= 'Totale: ' . Money::format( $total ) . "\n\n";
 		}
 		$body .= self::text_block( $person, $dues ) . "\n\nSe non hai chiesto tu questo messaggio, ignoralo: le coordinate sono quelle dell'associazione.";
-		if ( ! Texts::mail( $email, 'Coordinate per il bonifico' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $body ) ) {
+		if ( ! Texts::mail( $email, \AssociazioneSemplice\Texts::subject( 'Coordinate per il bonifico' ), $body ) ) {
 			throw new \InvalidArgumentException( 'Non è stato possibile inviare l\'email: riprova più tardi.' );
 		}
 		Audit::log( 'bank.emailed', 'person', (int) $person['id'] );

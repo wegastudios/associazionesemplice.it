@@ -95,7 +95,7 @@ final class GuardianConsent {
 			. self::line( (string) $minor['first_name'] ) . ' è stato iscritto' . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ' e tu risulti genitore o tutore. '
 			. 'Per registrare che sei stato tu ad accettare, a nome suo, ' . $what . ', apri questo link entro ' . self::DAYS . " giorni e tocca «Confermo»:\n\n" . self::url( $minor_id, $token )
 			. "\n\nSe non sei tu o non sei d'accordo, ignora questo messaggio e scrivi alla segreteria: finché non confermi, queste accettazioni non vengono attribuite a te.";
-		return Texts::mail( $to, 'Conferma del genitore o tutore' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		return Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Conferma del genitore o tutore' ), $text );
 	}
 
 	/**

@@ -71,6 +71,12 @@ PHP;
 		$this->assertSame( '', TextsEngine::plain( '', $map ) );
 	}
 
+	public function test_email_subject_has_one_format(): void {
+		$this->assertSame( 'Associazione Rossi · Ricevuta n. 5', \AssociazioneSemplice\Texts::with_name( 'Associazione Rossi', 'Ricevuta n. 5' ) );
+		$this->assertSame( 'Ricevuta n. 5', \AssociazioneSemplice\Texts::with_name( '', 'Ricevuta n. 5' ) );
+		$this->assertSame( 'Ricevuta n. 5', \AssociazioneSemplice\Texts::with_name( '  ', 'Ricevuta n. 5' ) );
+	}
+
 	public function test_a_message_with_a_number_has_singular_and_plural(): void {
 		$one  = 'Un file non è stato trovato.';
 		$many = '{n} file non sono stati trovati.';

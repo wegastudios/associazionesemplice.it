@@ -155,7 +155,7 @@ final class Notices {
 		foreach ( $rcpt as $r ) {
 			$text = 'Ciao ' . $r['name'] . ",\n\n" . $body . "\n\n—\nAvviso di " . $by . ' per «' . $a['name'] . '»' . $when . ( '' !== $assoc ? ' — ' . $assoc : '' )
 				. ".\nPer rispondere rivolgiti alla segreteria dell'associazione.";
-			if ( \AssociazioneSemplice\Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $a['name'] . ': ' . $subject, $text ) ) {
+			if ( \AssociazioneSemplice\Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( $a['name'] . ': ' . $subject ), $text ) ) {
 				$sent++;
 			}
 			do_action( 'asem_notify_email', (string) $r['email'], $a['name'] . ': ' . $subject, $body ); // notifica sul telefono, se un'estensione la gestisce
