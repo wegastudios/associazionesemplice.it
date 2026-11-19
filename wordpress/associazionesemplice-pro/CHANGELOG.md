@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.18 – 2026-11-19
+- Nuovo: nella pagina Plugin c'è il link «Controlla aggiornamenti». Il Pro ricontrolla da solo quando il plugin gratuito si aggiorna, anche da WordPress.org, e nell'avviso di incompatibilità c'è il pulsante per aggiornarlo.
+- Ottimizzazione: rivisti i testi del Pro.
+- Altro: corretto il pagamento con i crediti dal QR, che si fermava con un errore.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.17 – 2026-11-18
 - Altro: allineato al plugin gratuito 1.3.30.
 - Altro: nella finestra «Visualizza i dettagli» di WordPress il changelog compare sempre, anche dopo l'aggiornamento.
