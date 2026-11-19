@@ -119,7 +119,7 @@
             @else
                 <form method="post" action="{{ route('platform.logout') }}" style="display:inline">@csrf<button type="submit" class="linklike">Esci</button></form>
             @endif
-            · <a href="{{ $portal }}/account">La mia area cliente</a></span></div>
+            · <a href="{{ $portal }}/account">Il mio account</a></span></div>
         <nav class="tabs" aria-label="Gestione">
             @foreach ($sections as $key => $section)
                 <a href="{{ array_values($section[1])[0][0] }}"@if ($key === $current) aria-current="page"@endif>{{ $section[0] }}</a>

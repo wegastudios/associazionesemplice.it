@@ -19,7 +19,7 @@
                             <td>{{ $v['in_vigore'] ? 'in vigore' : 'solo in bozza' }}</td>
                             <td>{{ $v['visible'] ? 'sì' : 'no' }}</td>
                             <td>{{ ['free' => 'Gratuita', 'paid' => 'Standard', 'top' => 'Top'][$v['support_level']] ?? $v['support_level'] }}</td>
-                            <td>{{ $v['trial_days'] }} giorni</td>
+                            <td>{{ $v['trial_days'] === 0 ? 'nessuna' : $v['trial_days'].' '.($v['trial_days'] === 1 ? 'giorno' : 'giorni') }}</td>
                         </tr>
                     @endforeach
                     </tbody>

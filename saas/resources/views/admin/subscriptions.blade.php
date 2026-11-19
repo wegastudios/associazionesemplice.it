@@ -45,7 +45,7 @@
             @endforelse
             </tbody>
         </table>
-        <p class="muted">{{ $total }} risultati · pagina {{ $page }} di {{ $pages }}
+        <p class="muted">{{ $total }} {{ $total === 1 ? 'risultato' : 'risultati' }} · pagina {{ $page }} di {{ $pages }}
             @if ($page > 1) · <a href="?{{ http_build_query(array_filter($filters) + ['pagina' => $page - 1]) }}">Precedente</a>@endif
             @if ($page < $pages) · <a href="?{{ http_build_query(array_filter($filters) + ['pagina' => $page + 1]) }}">Successiva</a>@endif
         </p>

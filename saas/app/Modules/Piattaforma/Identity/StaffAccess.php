@@ -84,7 +84,7 @@ final readonly class StaffAccess
         $link = $linkPrefix.$code;
         try {
             Mail::raw(
-                "Ciao,\n\nhai chiesto di scegliere una nuova password per l'accesso a Associazione Semplice. Usa questo link (vale ".self::RESET_MINUTES." minuti e si usa una volta sola):\n\n{$link}\n\nSe non l'hai chiesto tu, ignora questa email: la tua password resta quella di prima.\n",
+                "Ciao,\n\nhai chiesto di scegliere una nuova password per l'accesso ad Associazione Semplice. Usa questo link (vale ".self::RESET_MINUTES." minuti e si usa una volta sola):\n\n{$link}\n\nSe non l'hai chiesto tu, ignora questa email: la tua password resta quella di prima.\n",
                 static function (Message $message) use ($email): void {
                     $message->to($email)->subject('Nuova password per Associazione Semplice');
                 },
