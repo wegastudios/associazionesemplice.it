@@ -24,7 +24,7 @@ final class StatementPdf
         $y = 60.0;
         $pdf->text(50, $y, $orgName, 15, true);
         $y += 20;
-        $pdf->text(50, $y, 'Rendiconto per cassa — anno fiscale '.$s['year'], 12, true);
+        $pdf->text(50, $y, 'Rendiconto per cassa: anno fiscale '.$s['year'], 12, true);
         $y += 15;
         $pdf->text(50, $y, 'Dal '.self::date($s['starts_on']).' al '.self::date($s['ends_on']).($s['status'] === 'closed' ? ' · anno chiuso' : ' · anno aperto'), 10);
         $pdf->line(50, $y + 8, $w - 50, $y + 8, 1.0);

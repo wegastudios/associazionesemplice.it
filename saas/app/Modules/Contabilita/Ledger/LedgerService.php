@@ -168,7 +168,7 @@ final readonly class LedgerService implements Ledger
             'account_id' => $accountId,
             'method' => $method->value,
             'category_id' => $category,
-            'description' => self::text('Commissione di incasso (stima) — '.$account->name, 255),
+            'description' => self::text('Commissione di incasso (stima): '.$account->name, 255),
             'vat_rate' => null,
             'vat_cents' => 0,
         ]);
