@@ -400,7 +400,7 @@ per `jti` (`409 replayed`).
 |---|---|
 | **Tentativi dopo un pagamento rifiutato:** 3 al giorno per i primi 2 giorni, poi 1 al giorno per altri 5 giorni: 11 tentativi in 7 giorni, poi non si riprova. | Il **portale**, che incassa (Stripe, PayPal). Durante i tentativi lo stato è `past_due`. |
 | **Sospensione:** il giorno dopo la scadenza del periodo pagato (`until`). | Il **SaaS** da sé, ogni notte (`saas:portal:suspend-expired`, `saas.portal.grace_days` = 0), o subito se il portale manda `suspended`. |
-| **Conservazione dei dati:** 180 giorni dopo la sospensione o la disdetta, poi si cancellano. | Il **SaaS** (`saas.portal.retention_days` = 180). Il valore c'è; la cancellazione non è ancora fatta: va progettata (avviso prima, esportazione, cancellazione definitiva con conferma). |
+| **Conservazione dei dati:** 180 giorni dalla scadenza (l'ultimo giorno pagato), poi si cancellano. | Il **SaaS** (`saas.portal.retention_days` = 180). Il valore c'è; la cancellazione non è ancora fatta: va progettata (avviso prima, esportazione, cancellazione definitiva con conferma). |
 
 Limiti dei circuiti da rispettare nei tentativi (verificati il 13/11/2026 su pagine di Stripe e PayPal):
 - Visa: al massimo 15 nuovi tentativi in 30 giorni per lo stesso pagamento secondo Stripe; PayPal indica 20 in 30 giorni per i rifiuti non definitivi. Si assume il più prudente: 15. I tentativi previsti sono 11.
