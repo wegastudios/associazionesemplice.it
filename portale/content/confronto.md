@@ -30,6 +30,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | QR della tessera con verifica in diretta | ✓ | ✓ | ✓ |
 | Tessera in PDF da stampare, con testo libero, tipologia e incarichi | ✓ | ✓ | ✓ |
 | Tessera in Apple Wallet e Google Wallet | — | ✓ | ✓ |
+| Quota già pagata nell'anno :: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
 
 ## Area riservata e permessi
 
@@ -175,7 +176,6 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Lingue aggiuntive :: Inglese incluso | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
 | Copie di sicurezza firmate :: Una copia modificata viene rifiutata; una copia di un altro sito si ripristina con conferma scritta e password | ✓ | ✓ | ✓ |
-| Quota già pagata nell'anno :: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
 | Cifratura dei file riservati :: Documenti e scansioni, allegati dei movimenti e foto dell'inventario si cifrano, con la frase per riaprirli | ✓ | ✓ | ✓ |
 | Cifratura di certificati, giustificativi e ricevute :: Anche per certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
 | Controllo della cartella dei file riservati :: Controlla che la cartella dei file riservati non sia raggiungibile da internet | ✓ | ✓ | ✓ |
