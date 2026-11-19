@@ -66,7 +66,7 @@ final class Assemblies {
 		} else {
 			$ok = $db->insert( Db::t( 'assemblies' ), $d + array( 'status' => AssemblyRules::DRAFT, 'created_by' => $user_id, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
 			if ( ! $ok ) {
-				throw new \InvalidArgumentException( 'Impossibile salvare (errore del database).' );
+				throw new \InvalidArgumentException( 'Salvataggio non riuscito: riprova.' );
 			}
 			$id = (int) $db->insert_id;
 		}
@@ -171,7 +171,7 @@ final class Assemblies {
 	/** Oggetto e testo dell'email di convocazione. */
 	private static function call_text( array $a ): array {
 		$kinds = AssemblyRules::kinds();
-		$text  = 'sei convocato all\'' . mb_strtolower( $kinds[ $a['kind'] ] ) . ' «' . $a['title'] . '».' . "\n"
+		$text  = 'è convocata l\'' . mb_strtolower( $kinds[ $a['kind'] ] ) . ' «' . $a['title'] . '».' . "\n"
 			. 'Prima convocazione: ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $a['first_call_at'] ) . ( '' !== (string) $a['place'] ? ', ' . $a['place'] : '' ) . ".\n";
 		if ( ! empty( $a['second_call_at'] ) ) {
 			$text .= 'Seconda convocazione: ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $a['second_call_at'] ) . ".\n";

@@ -501,7 +501,7 @@ final class DashboardPage {
 		echo '</ul>' . ( count( $list ) > 10 ? '<p><a href="' . esc_url( Ui::url( 'asem-people', array( 'status' => 'inactive' ) ) ) . '">Vedi tutti →</a></p>' : '' ) . '</div>';
 	}
 
-	/** Ospiti prenotati ai prossimi eventi che hanno già raggiunto la soglia: da invitare a iscriversi. */
+	/** Ospiti prenotati ai prossimi eventi che hanno già raggiunto la soglia: da invitare a diventare soci. */
 	private static function expected_guests(): void {
 		$acts = Plugin::activities();
 		$ov   = Plugin::people()->guest_overview();

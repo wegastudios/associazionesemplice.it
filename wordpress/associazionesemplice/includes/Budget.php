@@ -41,7 +41,7 @@ final class Budget {
 			'notes' => mb_substr( trim( sanitize_textarea_field( (string) ( $in['notes'] ?? '' ) ) ), 0, 5000 ),
 		);
 		if ( '' === $d['title'] ) {
-			$d['title'] = 'Bilancio preventivo ' . $year;
+			$d['title'] = 'Preventivo ' . $year;
 		}
 		$db = self::db();
 		if ( $old ) {
@@ -51,7 +51,7 @@ final class Budget {
 			$db->update( Db::t( 'budgets' ), $d + array( 'updated_at' => Db::now() ), array( 'id' => $id ) );
 		} else {
 			if ( ! $db->insert( Db::t( 'budgets' ), $d + array( 'status' => BudgetRules::DRAFT, 'created_by' => $user_id, 'created_at' => Db::now(), 'updated_at' => Db::now() ) ) ) {
-				throw new \InvalidArgumentException( 'Impossibile salvare (errore del database).' );
+				throw new \InvalidArgumentException( 'Salvataggio non riuscito: riprova.' );
 			}
 			$id = (int) $db->insert_id;
 		}
@@ -213,7 +213,7 @@ final class Budget {
 	public static function copy_from_previous( int $id, string $source, int $percent ): int {
 		$b = self::get( $id );
 		if ( ! $b || BudgetRules::DRAFT !== $b['status'] ) {
-			throw new \InvalidArgumentException( 'Si copia solo in un preventivo in preparazione.' );
+			throw new \InvalidArgumentException( 'Puoi copiare le voci solo in un preventivo in preparazione.' );
 		}
 		$prev = (int) $b['year'] - 1;
 		$amounts = array();

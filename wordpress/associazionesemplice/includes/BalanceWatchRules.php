@@ -60,12 +60,12 @@ final class BalanceWatchRules {
 		if ( self::UNCOVERED === $alert['kind'] ) {
 			return 'Di questo passo l\'anno si chiude con uscite superiori alle entrate di ' . $gap . $pct . ': le spese non sono coperte. Conviene rimandare o ridurre le spese non urgenti e cercare nuove entrate (quote, eventi, contributi) prima della fine dell\'anno.';
 		}
-		return 'Di questo passo l\'anno si chiude con entrate superiori alle uscite di ' . $gap . $pct . ': un utile molto più alto del necessario. Conviene destinare le risorse alle attività dei soci (corsi, eventi, attrezzature) o rivedere le quote, e parlarne in consiglio direttivo.';
+		return 'Di questo passo l\'anno si chiude con entrate superiori alle uscite di ' . $gap . $pct . ': un avanzo molto più alto del necessario. Conviene usarlo per le attività dei soci (corsi, eventi, attrezzature) o rivedere le quote, e parlarne in consiglio direttivo.';
 	}
 
 	/** Titolo breve di un avviso. */
 	public static function title( string $kind ): string {
-		return self::UNCOVERED === $kind ? 'Spese non coperte' : 'Utile troppo alto';
+		return self::UNCOVERED === $kind ? 'Spese non coperte' : 'Avanzo troppo alto';
 	}
 
 	/** Posizione del mese nell'anno fiscale: 0 = il primo mese, 11 = l'ultimo. */

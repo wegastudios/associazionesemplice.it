@@ -109,7 +109,7 @@ final class GatewaysTest extends TestCase {
 	public function test_stripe_detects_a_live_key_in_test_mode(): void {
 		$r = Gateways::test( 'stripe', array( 'stripe_secret_key' => 'sk_live_1', 'stripe_mode' => 'test' ), $this->http( 200, '{"livemode":true}' ) );
 		$this->assertFalse( $r['ok'] );
-		$this->assertStringContainsString( 'REALE', $r['message'] );
+		$this->assertStringContainsString( 'reale (live)', $r['message'] );
 	}
 
 	public function test_stripe_invalid_key_and_missing_key(): void {

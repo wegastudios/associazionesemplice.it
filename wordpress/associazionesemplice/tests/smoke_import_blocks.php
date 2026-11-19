@@ -182,7 +182,7 @@ function asem_imp_ref_apply( array $preview, bool $mark ): array {
 				if ( 1 === $pass ) {
 					$host = ! empty( $row['host_id'] ) ? (int) $row['host_id'] : asem_imp_ref_find_host( (string) $row['host_text'] );
 					if ( ! $host && ( '' !== trim( (string) $row['host_text'] ) || \AssociazioneSemplice\Limits::flag( 'guest_host_required' ) ) ) {
-						throw new \InvalidArgumentException( 'socio ospitante "' . $row['host_text'] . '" non trovato' );
+						throw new \InvalidArgumentException( 'socio ospitante «' . $row['host_text'] . '» non trovato' );
 					}
 					$data['host_person_id'] = $host ?: '';
 				}
@@ -238,7 +238,7 @@ function asem_imp_ref_apply( array $preview, bool $mark ): array {
 		try {
 			$g = Guardians::find_by_ref( $l[1] );
 			if ( ! $g ) {
-				throw new \InvalidArgumentException( 'tutore "' . $l[1] . '" non trovato o ambiguo (indica la tessera o l\'email)' );
+				throw new \InvalidArgumentException( 'tutore «' . $l[1] . '» non trovato o ambiguo (indica la tessera o l\'email)' );
 			}
 			if ( ! Guardians::is_guardian_of( (int) $g['id'], (int) $l[0] ) ) {
 				Guardians::link( (int) $l[0], (int) $g['id'] );

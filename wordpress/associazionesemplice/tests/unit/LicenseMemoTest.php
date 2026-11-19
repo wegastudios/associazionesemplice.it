@@ -34,7 +34,7 @@ final class LicenseMemoTest extends TestCase {
 	public function test_only_verified_outcomes_are_remembered(): void {
 		$body = $this->sync_body();
 		$this->assertSame( 2, substr_count( $body, 'self::remember(' ), 'solo il negativo firmato (primo) e l\'esito finale' );
-		$this->assertStringContainsString( "return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );", $body );
+		$this->assertStringContainsString( "return self::failed( 'Non è stato possibile verificare la risposta del server delle licenze: la licenza resta invariata. Riprova più tardi.' );", $body );
 		$remember_pos = (int) strpos( $body, 'self::remember(' );
 		$this->assertGreaterThan( (int) strpos( $body, 'LicenseClient::verify_denial(' ), $remember_pos, 'dopo la verifica della firma del negativo' );
 		$last = (int) strrpos( $body, 'self::remember(' );

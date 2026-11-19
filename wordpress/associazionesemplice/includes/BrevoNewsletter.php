@@ -93,6 +93,6 @@ final class BrevoNewsletter implements NewsletterProvider {
 		if ( 200 === $r['code'] ) {
 			return array( 'ok' => true, 'message' => 'Brevo: connessione riuscita.' );
 		}
-		return array( 'ok' => false, 'message' => in_array( $r['code'], array( 401, 403 ), true ) ? 'Brevo: la chiave API non è valida.' : 'Brevo: risposta inattesa (' . $r['code'] . ').' );
+		return array( 'ok' => false, 'message' => in_array( $r['code'], array( 401, 403 ), true ) ? 'Brevo: la chiave API non è valida.' : 'Brevo non ha risposto come previsto (codice ' . $r['code'] . '): riprova più tardi.' );
 	}
 }

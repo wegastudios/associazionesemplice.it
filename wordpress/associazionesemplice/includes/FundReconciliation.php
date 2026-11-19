@@ -113,7 +113,7 @@ final class FundReconciliation {
 			return;
 		}
 		$unc = count( BalanceWatchRules::gaps( $gaps, true ) );
-		$msg = '<strong>Rimborsi e spese non quadrano</strong> per ' . count( $gaps ) . ( 1 === count( $gaps ) ? ' persona' : ' persone' ) . ' (' . (int) $unc . ' con rimborsi senza documenti). A fine anno chi ha avuto rimborsi deve trovarsi con le spese sostenute. <a href="' . esc_url( Admin\Ui::url( 'asem-watch', array( 'ry' => $year ) ) ) . '#asem-recon">Apri il prospetto</a>.';
+		$msg = '<strong>Rimborsi e spese non coincidono</strong> per ' . count( $gaps ) . ( 1 === count( $gaps ) ? ' persona' : ' persone' ) . ' (' . (int) $unc . ' con rimborsi senza documenti). A fine anno ogni rimborso deve corrispondere a spese documentate. <a href="' . esc_url( Admin\Ui::url( 'asem-watch', array( 'ry' => $year ) ) ) . '#asem-recon">Apri il prospetto</a>.';
 		echo Admin\Dismiss::html( 'watch-recon-' . $year . '-' . count( $gaps ) . '-' . $unc . '-' . substr( Db::today(), 0, 7 ), 'warning', $msg, 7 ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 	}
 

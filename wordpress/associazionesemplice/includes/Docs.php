@@ -358,7 +358,7 @@ final class Docs {
 		$y += 8;
 		$put( 'Risultati', 10, true );
 		foreach ( $res['options'] as $o ) {
-			$put( $o['label'] . ': ' . $o['count'] . ' voti (' . $o['percent'] . '%)' . ( in_array( $o['id'], $res['winners'], true ) ? ' — più votata' : '' ) );
+			$put( $o['label'] . ': ' . $o['count'] . ' voti (' . $o['percent'] . '%)' . ( in_array( $o['id'], $res['winners'], true ) ? ' (più votata)' : '' ) );
 			if ( $o['names'] ) {
 				$put( '   ' . implode( ', ', $o['names'] ), 9 );
 			}

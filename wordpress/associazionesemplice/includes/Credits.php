@@ -325,7 +325,7 @@ final class Credits {
 		if ( $base <= 0 ) {
 			$base = self::euro_value( (int) $charge['credits'] );
 		}
-		Plugin::funds()->attribute_credits( $a, $base, Db::today(), 'Quota di «' . $a['name'] . '» pagata in crediti' );
+		Plugin::funds()->attribute_credits( $a, $base, Db::today(), 'Contributo di «' . $a['name'] . '» pagato in crediti' );
 	}
 
 	/**

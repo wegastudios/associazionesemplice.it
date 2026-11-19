@@ -56,7 +56,7 @@ final class LedgerImport {
 	public static function parse_table( array $table, ?array $lines = null, string $sheet = '' ): array {
 		$hi = SheetReader::find_header( $table, array( __CLASS__, 'accepts_header' ) );
 		if ( null === $hi ) {
-			return array( 'error' => 'Nella prima riga servono le colonne "Data" e "Importo" (oppure "Entrata" e "Uscita").' );
+			return array( 'error' => 'Nella prima riga servono le colonne «Data» e «Importo» (oppure «Entrata» e «Uscita»).' );
 		}
 		$h   = SheetReader::normalize_header( $table[ $hi ] );
 		$col = array();
@@ -318,7 +318,7 @@ final class LedgerImport {
 			$method = self::method_from_text( Text::normalize( $r['method'] ) );
 			if ( null === $method ) {
 				if ( '' !== $r['method'] ) {
-					$warn[] = 'Modalità "' . $r['method'] . '" non riconosciuta: usata "Altro"';
+					$warn[] = 'Modalità «' . $r['method'] . '» non riconosciuta: usata «Altro»';
 					$method = 'other';
 				} else {
 					$method = array( 'cash' => 'cash', 'bank' => 'bank_transfer', 'pos' => 'pos' )[ $acc_type ] ?? 'other';
@@ -342,15 +342,15 @@ final class LedgerImport {
 				$fallback = $income ? 'other_income' : 'general_cost';
 				$cat_row  = $cats_by_kind[ $fallback ][0] ?? null;
 				if ( ! $cat_row ) {
-					$plans[] = $fail( 'Voce "' . $r['category'] . '" non trovata e manca una voce generica' );
+					$plans[] = $fail( 'Voce «' . $r['category'] . '» non trovata e manca una voce generica' );
 					continue;
 				}
 				$cat = array( 'id' => (int) $cat_row['id'], 'kind' => $fallback, 'name' => $cat_row['name'] );
 				if ( '' !== $r['category'] ) {
-					$warn[] = 'Voce "' . $r['category'] . '" non trovata: usata "' . $cat_row['name'] . '"';
+					$warn[] = 'Voce «' . $r['category'] . '» non trovata: usata «' . $cat_row['name'] . '»';
 					$desc   = '[' . $r['category'] . ']' . ( '' !== $desc ? ' ' . $desc : '' );
 				} else {
-					$warn[] = 'Senza voce: usata "' . $cat_row['name'] . '"';
+					$warn[] = 'Senza voce: usata «' . $cat_row['name'] . '»';
 				}
 			}
 
@@ -377,7 +377,7 @@ final class LedgerImport {
 				} elseif ( ! $m && 1 === count( $pending_name[ Text::normalize( $r['person'] ) ] ?? array() ) ) {
 					$late = true;
 				} else {
-					$warn[] = ( $m ? 'Più persone chiamate' : 'Persona non trovata:' ) . ' "' . $r['person'] . '": importato senza persona';
+					$warn[] = ( $m ? 'Più persone chiamate' : 'Persona non trovata' ) . ' «' . $r['person'] . '»: importato senza persona';
 				}
 			}
 			$activity_id = 0;
@@ -386,14 +386,14 @@ final class LedgerImport {
 				if ( 1 === count( $m ) ) {
 					$activity_id = (int) $m[0]['id'];
 				} else {
-					$warn[] = ( $m ? 'Attività con lo stesso nome in più anni' : 'Attività non trovata' ) . ' "' . $r['activity'] . '": importato senza attività';
+					$warn[] = ( $m ? 'Attività con lo stesso nome in più anni' : 'Attività non trovata' ) . ' «' . $r['activity'] . '»: importato senza attività';
 				}
 			}
 			$month = null;
 			if ( '' !== $r['month'] ) {
 				$month = self::parse_month( $r['month'] );
 				if ( null === $month ) {
-					$warn[] = 'Competenza "' . $r['month'] . '" non riconosciuta: ignorata';
+					$warn[] = 'Competenza «' . $r['month'] . '» non riconosciuta: ignorata';
 				}
 			}
 
@@ -461,7 +461,7 @@ final class LedgerImport {
 		foreach ( $plans as $i => $p ) {
 			if ( 'transfer_leg' === $p['action'] ) {
 				$plans[ $i ]['action']  = 'skip';
-				$plans[ $i ]['message'] = 'Giroconto senza la riga corrispondente (stessa data e importo su un altro conto): non importato, registralo da "Giroconto"';
+				$plans[ $i ]['message'] = 'Giroconto senza la riga corrispondente (stessa data e importo su un altro conto): non importato, registralo da «Giroconto»';
 				$plans[ $i ]['data']    = null;
 			}
 		}

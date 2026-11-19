@@ -45,14 +45,14 @@ final class Limits {
 		);
 		$add(
 			'broadcast_batch', 'comunicazioni', 'Email per ogni gruppo di invio', 'email', 25, 1, 500,
-			'Le comunicazioni partono a gruppi: il primo subito, gli altri in background. Questo numero è la grandezza di ogni gruppo.',
+			'Le comunicazioni partono a gruppi: il primo subito, gli altri poco dopo, da soli. Questo numero è la grandezza di ogni gruppo.',
 			'Gruppi grandi concludono prima, ma ogni passaggio resta in attesa più a lungo: se il server o il servizio di posta sono lenti l\'invio può interrompersi per tempo scaduto. Con un servizio di invio veloce si possono usare 100 o più.',
 			'Gruppi piccoli sono molto prudenti con i limiti orari dell\'hosting, ma una comunicazione a molti soci impiega più tempo a completarsi.'
 		);
 		$add(
 			'notice_per_day', 'comunicazioni', 'Avvisi per attività nelle 24 ore', 'avvisi', 5, 1, 100,
 			'Quanti avvisi ufficiali può inviare, agli iscritti di una stessa attività, chi ne è referente o la gestisce.',
-			'Utile se un corso ha molte comunicazioni operative. Un valore alto espone gli iscritti a messaggi ripetuti e permette a un account compromesso di inviarne molti prima di essere fermato.',
+			'Utile se un corso ha molte comunicazioni operative. Un valore alto espone gli iscritti a messaggi ripetuti e permette a chi ruba un accesso di inviarne molti prima di essere fermato.',
 			'Riduce il rumore e l\'impatto di un uso scorretto, ma può impedire di correggere in tempo un avviso sbagliato.'
 		);
 		$add(
@@ -63,8 +63,8 @@ final class Limits {
 		);
 		$add(
 			'notice_links', 'comunicazioni', 'Link e coordinate bancarie negli avvisi dei volontari', 'flag', 0, 0, 1,
-			'Per impostazione predefinita gli avvisi inviati dai volontari non possono contenere indirizzi web né IBAN: è il modo più comune per far arrivare ai soci un falso pagamento usando l\'account di un volontario compromesso. Gli amministratori e la segreteria non hanno questo limite.',
-			'Consentendoli, un account compromesso potrebbe indirizzare i pagamenti dei soci su un conto che non è quello dell\'associazione.',
+			'Di norma gli avvisi dei volontari non possono contenere indirizzi web né IBAN: sono il mezzo più usato per chiedere ai soci un pagamento falso con l\'accesso rubato a un volontario. Amministratori e segreteria non hanno questo limite.',
+			'Se li consenti, chi ruba un accesso potrebbe far pagare i soci su un conto che non è quello dell\'associazione.',
 			'Nessun rischio aggiuntivo: i volontari chiederanno alla segreteria di condividere link e coordinate.'
 		);
 		$add(
@@ -76,7 +76,7 @@ final class Limits {
 		$add(
 			'push_max_devices', 'comunicazioni', 'Dispositivi con le notifiche per ogni utente', 'dispositivi', 10, 1, 50,
 			'Quanti telefoni, tablet o computer di una stessa persona possono ricevere le notifiche.',
-			'Un account compromesso o un programma automatico potrebbe registrare moltissimi dispositivi e rallentare gli invii.',
+			'Chi ruba un accesso, o un programma automatico, potrebbe registrare moltissimi dispositivi e rallentare gli invii.',
 			'Chi usa più dispositivi non riuscirà ad attivarli tutti.'
 		);
 
@@ -91,7 +91,7 @@ final class Limits {
 		$add(
 			'trust_proxy_headers', 'accesso', 'Leggere l\'indirizzo del visitatore dal proxy (Cloudflare, bilanciatore)', 'flag', 0, 0, 1,
 			'Per i limiti «per connessione» (primo accesso, attivazione dell\'accesso) il sito conta i tentativi per indirizzo. Dietro un proxy tutti i visitatori hanno lo stesso indirizzo e uno solo può bloccare gli altri: con questa scelta si legge l\'indirizzo inoltrato dal proxy.',
-			'Accendilo solo se il sito è davvero dietro un proxy che aggiunge l\'indirizzo del visitatore: altrimenti chiunque può scrivere un indirizzo finto e aggirare i limiti.',
+			'Attivalo solo se il sito è davvero dietro un proxy che aggiunge l\'indirizzo del visitatore: altrimenti chiunque può scrivere un indirizzo finto e aggirare i limiti.',
 			'Spento (consigliato se non usi un proxy): il limite conta l\'indirizzo della connessione. Dietro un proxy un solo visitatore può esaurirlo per tutti.'
 		);
 		$add(
@@ -121,12 +121,12 @@ final class Limits {
 		$add(
 			'activation_days', 'accesso', 'Validità del link di attivazione', 'giorni', 1, 1, 180,
 			'Per quanti giorni resta valido (1 = 24 ore) il link di attivazione inviato (ad esempio su WhatsApp) ai soci registrati dalla segreteria.',
-			'Un link che resta valido a lungo (anche i 30 giorni di prima) può essere usato da altri se viene inoltrato o se il telefono è condiviso. Per attivare l\'accesso serve comunque il codice fiscale.',
+			'Un link che resta valido a lungo può essere usato da altri se viene inoltrato o se il telefono è condiviso. Per attivare l\'accesso serve comunque il codice fiscale.',
 			'Più sicuro, ma la segreteria dovrà rimandare il link ai soci che non lo aprono in tempo: con 24 ore, chi non lo apre entro il giorno dopo ne riceve uno nuovo.'
 		);
 		$add(
 			'member_session_hours', 'accesso', 'Durata dell\'accesso dei soci senza «Ricordami»', 'ore', 12, 1, 168,
-			'Per quante ore, senza usare l\'area soci, resta aperto l\'accesso di un socio che è entrato con un link, con un codice o con la password senza spuntare «Ricordami». Chi spunta «Ricordami» (solo con la password) resta entrato 30 giorni.',
+			'Dopo quante ore di inattività si chiude l\'accesso di un socio entrato con un link, con un codice o con la password senza «Ricordami». Chi spunta «Ricordami» (solo con la password) resta entrato 30 giorni.',
 			'Più comodo, ma su un dispositivo condiviso o lasciato aperto un\'altra persona può restare dentro all\'area del socio più a lungo.',
 			'Più sicuro sui dispositivi condivisi, ma i soci dovranno rifare l\'accesso più spesso.'
 		);
@@ -140,22 +140,22 @@ final class Limits {
 			'applications_max', 'accesso', 'Domande di adesione in attesa, al massimo', 'domande', 200, 10, 5000,
 			'Quante domande di adesione possono aspettare insieme una risposta della segreteria. Oltre questo numero le nuove domande non vengono registrate finché non ne approvi o rifiuti qualcuna.',
 			'Chi vuole intasare la Bacheca con domande false può farlo più a lungo prima di essere fermato.',
-			'Se ricevi molte domande vere e non le lavori in tempo, le nuove vengono scartate: chi le ha inviate non lo sa.'
+			'Se ricevi molte domande vere e non rispondi in tempo, le nuove vengono scartate: chi le ha inviate non lo sa.'
 		);
 		$add(
 			'event_requests_max', 'accesso', 'Richieste di evento o corso in attesa, al massimo', 'richieste', 100, 10, 5000,
-			'Quante richieste di posto o di iscrizione dei non soci possono aspettare insieme: quelle da confermare via email (contano solo nelle 24 ore in cui il link vale, poi si cancellano) e quelle che aspettano la segreteria. Oltre questo numero le nuove richieste non vengono registrate e in Bacheca compare un avviso. Non si somma alle domande di adesione, che hanno il loro limite.',
+			'Quante richieste di posto o di iscrizione dei non soci possono restare in attesa insieme: quelle ancora da confermare via email (per le 24 ore in cui il link vale, poi si eliminano) e quelle che aspettano la segreteria. Oltre questo numero le nuove non vengono registrate e in Bacheca compare un avviso. Le domande di adesione hanno un limite a parte.',
 			'Chi vuole intasare le richieste con indirizzi falsi può farlo più a lungo prima di essere fermato.',
-			'Se ricevi molte richieste vere (un evento molto atteso) e non le lavori in tempo, le nuove vengono scartate: chi le ha inviate non lo sa.'
+			'Se ricevi molte richieste vere (un evento molto atteso) e non rispondi in tempo, le nuove vengono scartate: chi le ha inviate non lo sa.'
 		);
 		$add(
-			'event_seats_per_email', 'accesso', 'Posti chiedibili con lo stesso indirizzo email, in 24 ore', 'posti', 20, 10, 200,
+			'event_seats_per_email', 'accesso', 'Posti per lo stesso indirizzo email in 24 ore, al massimo', 'posti', 20, 10, 200,
 			'Quanti posti, in tutto, può chiedere dal sito lo stesso indirizzo email nelle ultime 24 ore (eventi e corsi, anche se poi non paga). Impedisce di tenere occupati i posti senza pagare. La segreteria non ha questo limite.',
 			'Un valore alto permette di occupare molti posti con pochi indirizzi.',
-			'Chi organizza una gita per più gruppi con la stessa email può doversi rivolgere alla segreteria. Non può scendere sotto i 10 posti di una singola richiesta.'
+			'Chi organizza una gita per più gruppi con la stessa email potrebbe doversi rivolgere alla segreteria. Il limite non può scendere sotto 10, cioè i posti di una singola richiesta.'
 		);
 		$add(
-			'event_seats_per_ip', 'accesso', 'Posti chiedibili dalla stessa connessione, in 24 ore', 'posti', 40, 10, 500,
+			'event_seats_per_ip', 'accesso', 'Posti per la stessa connessione in 24 ore, al massimo', 'posti', 40, 10, 500,
 			'Quanti posti, in tutto, può chiedere dal sito la stessa connessione nelle ultime 24 ore, con qualunque indirizzo email. La segreteria non ha questo limite.',
 			'Un valore alto permette di occupare molti posti cambiando solo indirizzo email. Se il sito è dietro un proxy, controlla la scelta sull\'indirizzo del visitatore (tutti i visitatori potrebbero apparire uguali).',
 			'Una sede con un solo wifi pubblico (un open day) può esaurirlo: alzalo per l\'occasione.'
@@ -163,20 +163,20 @@ final class Limits {
 		$add(
 			'profile_required', 'accesso', 'Indirizzo e codice fiscale obbligatori per chi attiva l\'accesso dal sito', 'flag', 1, 0, 1,
 			'Chi attiva da solo il proprio accesso (dal link ricevuto o dal «Primo accesso») deve completare il profilo con indirizzo e codice fiscale. Se la segreteria aveva già registrato il codice fiscale, deve coincidere: è un secondo controllo che impedisce di attivare l\'accesso di un altro socio con un link ricevuto per errore. L\'iscrizione fatta dalla segreteria resta snella: questi dati non sono obbligatori.',
-			'Se lo disattivi i soci possono attivarsi senza dati: ricevute e attestazioni risultano incomplete e viene meno il controllo del codice fiscale sull\'attivazione.',
-			'Mantienilo attivo: è il comportamento consigliato.'
+			'Se lo spegni i soci possono attivarsi senza dati: ricevute e attestazioni risultano incomplete e viene meno il controllo del codice fiscale sull\'attivazione.',
+			'Lascialo attivo: è il comportamento consigliato.'
 		);
 		$add(
 			'member_sessions', 'accesso', 'Accesso dei soci indipendente da WordPress', 'flag', 1, 0, 1,
 			'I soci entrano con un accesso proprio (email e password; recupero e accesso senza password con un link via email) e non hanno bisogno di un utente WordPress. Spento, i soci tornano a entrare con un utente WordPress come prima.',
-			'Acceso, il sito usa un cookie tecnico di sessione («asem_s») e scrive ai soci per mandare il link di accesso. Se la posta del sito non funziona i soci non ricevono il link: provala prima.',
+			'Attivo, il sito usa un cookie tecnico di sessione («asem_s») e scrive ai soci per mandare il link di accesso. Se la posta del sito non funziona i soci non ricevono il link: provala prima.',
 			'Spento: i soci hanno un utente WordPress e un\'unica password sul sito, come nelle versioni precedenti.'
 		);
 		$add(
 			'profile_gate', 'accesso', 'Blocca prenotazioni e pagamenti finché il profilo è incompleto', 'flag', 1, 0, 1,
 			'Chi si è attivato dal sito senza completare indirizzo e codice fiscale non può prenotare né pagare online finché non li inserisce dal suo profilo.',
-			'Se lo disattivi i soci possono continuare a usare l\'area anche con il profilo incompleto: più comodo, ma i dati restano mancanti.',
-			'Mantienilo attivo per avere i dati completi; chi trova il blocco vede un messaggio che spiega cosa fare.'
+			'Se lo spegni i soci possono continuare a usare l\'area anche con il profilo incompleto: più comodo, ma i dati restano mancanti.',
+			'Lascialo attivo per avere i dati completi; chi trova il blocco vede un messaggio che spiega cosa fare.'
 		);
 		$add(
 			'access_requests_max', 'accesso', 'Richieste di accesso conservate in coda', 'richieste', 200, 20, 2000,
@@ -190,24 +190,24 @@ final class Limits {
 			'pay_min_cents', 'pagamenti', 'Importo minimo per pagare online', 'centesimi di euro', 50, 50, 10000,
 			'Sotto questa somma non si avvia un pagamento online. 50 centesimi è il minimo accettato da Stripe.',
 			'Un minimo più alto evita le commissioni su importi piccoli, ma impedisce di pagare online le voci più piccole.',
-			'Non si può scendere sotto i 50 centesimi: i gateway rifiuterebbero il pagamento.'
+			'Non si può scendere sotto i 50 centesimi: i servizi di pagamento rifiuterebbero il pagamento.'
 		);
 		$add(
 			'pay_pending_minutes', 'pagamenti', 'Attesa prima di ricontrollare un pagamento in sospeso', 'minuti', 10, 2, 120,
-			'Dopo quanti minuti il sito interroga il gateway sui pagamenti non ancora confermati (oltre al webhook e al ritorno del socio).',
+			'Dopo quanti minuti il sito chiede al servizio di pagamento l\'esito dei pagamenti non ancora confermati.',
 			'Le conferme mancate vengono recuperate più tardi: un socio può restare «in attesa» più a lungo.',
-			'Più controlli verso il gateway: aumentano le chiamate e si possono ricontrollare pagamenti che il socio sta ancora completando.'
+			'Più controlli verso il servizio di pagamento: aumentano le richieste e si possono ricontrollare pagamenti che il socio sta ancora completando.'
 		);
 		$add(
 			'pay_expire_days', 'pagamenti', 'Giorni dopo i quali un pagamento mai confermato scade', 'giorni', 3, 1, 30,
-			'Un pagamento avviato e mai concluso viene chiuso dopo questo periodo. Se il gateway lo conferma comunque più tardi, viene registrato lo stesso.',
+			'Un pagamento avviato e mai concluso viene chiuso dopo questo periodo. Se il servizio di pagamento lo conferma comunque più tardi, viene registrato lo stesso.',
 			'L\'elenco dei pagamenti in sospeso resta pieno più a lungo.',
 			'Un pagamento lento (bonifico istantaneo o carta in verifica) potrebbe risultare scaduto prima della conferma.'
 		);
 		$add(
 			'pay_open_per_hour', 'pagamenti', 'Pagamenti online avviati da uno stesso utente in un\'ora', 'pagamenti', 10, 1, 100,
-			'Impedisce a un utente (o a un programma automatico) di creare migliaia di pagamenti pendenti sul gateway.',
-			'Un valore alto permette abusi che riempiono l\'elenco dei pagamenti e consumano chiamate al gateway.',
+			'Impedisce a un utente (o a un programma automatico) di creare migliaia di pagamenti in sospeso sul servizio di pagamento.',
+			'Un valore alto permette abusi che riempiono l\'elenco dei pagamenti e consumano richieste al servizio di pagamento.',
 			'Un socio che ricomincia più volte il pagamento potrebbe dover aspettare.'
 		);
 
@@ -235,7 +235,7 @@ final class Limits {
 			'attach_max_per_tx', 'dati', 'Allegati per ogni movimento', 'allegati', 10, 1, 50,
 			'Quanti scontrini e fatture si possono allegare a un movimento.',
 			'Spazio sul server e lavoro di controllo che crescono senza motivo.',
-			'Più movimenti con lo stesso scontrino da dividere.'
+			'Chi ha molti documenti per una spesa deve dividerla in più movimenti.'
 		);
 		$add(
 			'attach_max_mb', 'dati', 'Peso massimo di un allegato', 'MB', 10, 1, 50,
@@ -245,9 +245,9 @@ final class Limits {
 		);
 		$add(
 			'audit_keep_months', 'dati', 'Per quanto tempo si conserva il registro azioni', 'mesi', 18, 6, 120,
-			'Dopo questo tempo le righe più vecchie del registro azioni (chi ha fatto cosa) vengono cancellate da sole, ogni giorno.',
-			'Si può risalire a più indietro per capire chi ha fatto cosa, ma la tabella cresce e occupa più spazio nel database del sito.',
-			'Il database resta più leggero, ma non si potrà più controllare chi ha fatto cosa prima di quel limite.'
+			'Dopo questo tempo le righe più vecchie del registro azioni (chi ha fatto cosa) vengono eliminate in automatico, ogni giorno.',
+			'Puoi risalire più indietro per capire chi ha fatto cosa, ma il registro cresce e occupa più spazio sul sito.',
+			'Il sito resta più leggero, ma non potrai più controllare chi ha fatto cosa prima di quel limite.'
 		);
 
 		$add(
@@ -259,26 +259,26 @@ final class Limits {
 
 		$add(
 			'backup_hours', 'dati', 'Per quanto tempo restano le copie fatte prima dei ripristini', 'ore', 24, 1, 168,
-			'Dopo questo tempo le copie salvate sul server vengono cancellate da sole.',
+			'Dopo questo tempo le copie salvate sul server vengono eliminate in automatico.',
 			'La copia contiene tutti i dati personali dei soci: tenerla a lungo sul sito prolunga il rischio se qualcuno ne ottenesse l\'accesso.',
-			'Passato il tempo non si potrà più tornare indietro dal sito: se vuoi un ricordo più duraturo scarica la copia e conservala tu.'
+			'Passato il tempo non potrai più tornare indietro dal sito: se vuoi tenerla più a lungo, scarica la copia e conservala tu.'
 		);
 		// ---------- Soci ----------
 		$add(
 			'guest_phone_required', 'soci', 'Cellulare obbligatorio per gli ospiti', 'flag', 1, 0, 1,
 			'Un ospite non si registra senza cellulare: è il dato che serve a riconoscerlo (anche se viene da soci diversi) e a contattarlo su WhatsApp.',
-			'Mantienilo attivo: è il comportamento consigliato.',
-			'Gli ospiti senza cellulare si distinguono solo per nome e cognome: più facile creare doppioni, e il contatore delle volte già venuto può dividersi su più schede. Utile per importare uno storico di ospiti di cui non hai il numero.'
+			'Lascialo attivo: è il comportamento consigliato.',
+			'Gli ospiti senza cellulare si distinguono solo per nome e cognome: è più facile creare doppioni, e il conteggio delle sue presenze può dividersi su più schede. Utile per importare uno storico di ospiti di cui non hai il numero.'
 		);
 		$add(
 			'guest_host_required', 'soci', 'Socio ospitante obbligatorio per gli ospiti', 'flag', 1, 0, 1,
 			'Un ospite si registra sempre come ospite di un socio (chi lo ha portato).',
-			'Mantienilo attivo: è il comportamento consigliato.',
+			'Lascialo attivo: è il comportamento consigliato.',
 			'Si possono registrare ospiti senza dire chi li ha portati: si perde l\'elenco degli ospiti di ciascun socio. Utile per importare uno storico di ospiti.'
 		);
 		$add(
 			'event_pay_hours', 'soci', 'Ore per il bonifico di chi prenota un evento senza essere socio', 'ore', 24, 1, 168,
-			'Chi non è socio e prenota dalla pagina dell\'evento deve pagare in anticipo con bonifico istantaneo e inviare la ricevuta alla segreteria entro questo tempo, altrimenti il posto viene cancellato.',
+			'Chi non è socio e prenota dalla pagina dell\'evento deve pagare in anticipo con bonifico istantaneo e inviare la ricevuta alla segreteria entro questo tempo, altrimenti il posto torna libero.',
 			'Un tempo lungo lascia posti occupati da chi poi non paga, a scapito di chi li vorrebbe.',
 			'Un tempo troppo breve costringe a pagare di fretta; chi arriva tardi perde il posto.'
 		);
@@ -286,13 +286,13 @@ final class Limits {
 			'membership_on_balance', 'soci', 'Tessera valida solo quando la quota è saldata', 'flag', 1, 0, 1,
 			'La quota associativa si può versare a rate (ad esempio 20 su 25): il programma mostra quanto manca e dà la tessera solo quando la somma raggiunge la quota.',
 			'Attivo: un socio che versa meno della quota non ha la tessera finché non salda. Va bene per chi vuole il saldo completo prima dell\'iscrizione.',
-			'Spento: basta un versamento qualsiasi, anche parziale, per avere la tessera (come nelle versioni precedenti) e il residuo non viene seguito.'
+			'Spento: basta un versamento qualsiasi, anche parziale, per avere la tessera (come nelle versioni precedenti) e il programma non tiene conto di quanto manca.'
 		);
 		$add(
 			'guardian_until_adult', 'soci', 'Il tutore smette di agire per chi compie 18 anni', 'flag', 1, 0, 1,
-			'Ai 18 anni il genitore o tutore collegato non vede più i dati del ragazzo, non prenota e non paga per lui e non riceve più le sue email, anche se il ragazzo non ha ancora un accesso suo. Il collegamento resta registrato e il ragazzo si invita a creare il suo accesso.',
-			'Acceso: è il comportamento consigliato, perché un maggiorenne decide da sé sui propri dati. Il ragazzo senza accesso proprio non ha nessuno che prenoti o paghi per lui finché non lo crea.',
-			'Spento: il tutore continua a gestire il ragazzo anche dopo i 18 anni, finché un amministratore non toglie il collegamento (è il comportamento delle versioni precedenti): il tutore vede e può esportare i dati di una persona adulta senza il suo consenso.'
+			'Ai 18 anni il genitore o tutore collegato non vede più i dati del ragazzo, non prenota e non paga per lui e non riceve più le sue email, anche se il ragazzo non ha ancora un accesso suo. Il collegamento resta registrato e puoi invitare il ragazzo a creare il suo accesso.',
+			'Attivo: è il comportamento consigliato, perché un maggiorenne decide da sé sui propri dati. Il ragazzo senza accesso proprio non ha nessuno che prenoti o paghi per lui finché non lo crea.',
+			'Spento: il tutore continua a gestire il ragazzo anche dopo i 18 anni, finché un amministratore non toglie il collegamento (come nelle versioni precedenti). Così il tutore vede e può esportare i dati di un adulto senza il suo consenso.'
 		);
 		$add(
 			'suspend_after_months', 'soci', 'Mesi di tessera scaduta prima di proporre la sospensione', 'mesi', 8, 1, 60,
@@ -303,7 +303,7 @@ final class Limits {
 		$add(
 			'reminders_expired_days', 'soci', 'Giorni dopo la scadenza in cui si ricorda ancora la tessera', 'giorni', 7, 1, 60,
 			'Per quanti giorni dopo la scadenza il promemoria automatico segnala la tessera scaduta.',
-			'Messaggi di sollecito più prolungati: utili ma possono dare fastidio.',
+			'Solleciti per più giorni: utili, ma possono dare fastidio.',
 			'Chi non legge subito l\'email può perdere il promemoria.'
 		);
 
@@ -316,9 +316,9 @@ final class Limits {
 		if ( class_exists( __NAMESPACE__ . '\Updater' ) ) { // il limite c'è solo dove c'è l'aggiornatore dal portale: nel pacchetto per WordPress.org non esiste
 			$add(
 				'portal_updates', 'comunicazioni', 'Aggiornamenti diretti di Associazione Semplice e del Pro (Bacheca → Aggiornamenti)', 'flag', 1, 0, 1,
-				'Il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore, anche senza chiave di licenza, mai su un sito locale) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. Il gratuito manda solo prodotto e versione (nessun dominio né dato dei soci; il portale vede l\'indirizzo IP del server e l\'User-Agent di WordPress, che contiene l\'indirizzo del sito); il Pro anche la chiave di licenza e il dominio.',
+				'Il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore, anche senza chiave di licenza, mai su un sito locale) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. La versione gratuita invia solo prodotto e versione: nessun dominio né dato dei soci. Il portale vede comunque l\'indirizzo IP del server e l\'indirizzo del sito, che WordPress aggiunge a ogni richiesta. Il Pro invia anche la chiave di licenza e il dominio.',
 				'Nessun rischio rilevante: una richiesta al portale ogni tanto.',
-				'Se lo disattivi non parte nessuna richiesta, ma gli aggiornamenti vanno scaricati dall\'area clienti e caricati a mano.'
+				'Se lo spegni non parte nessuna richiesta, ma gli aggiornamenti vanno scaricati dall\'area riservata del portale e caricati a mano.'
 			);
 		}
 		$d = function_exists( 'apply_filters' ) ? apply_filters( 'asem_limits_defs', $d ) : $d; // un'estensione può aggiungere i suoi limiti

@@ -140,7 +140,7 @@ final class Backup {
 	 */
 	public static function export( bool $with_files = false, ?string $to = null ): string {
 		if ( ! class_exists( '\ZipArchive' ) ) {
-			throw new \RuntimeException( 'Questo server non può creare file ZIP (manca l\'estensione zip di PHP).' );
+			throw new \RuntimeException( 'Questo server non può creare file ZIP: chiedi al tuo hosting di attivare l\'estensione zip di PHP.' );
 		}
 		if ( function_exists( 'set_time_limit' ) ) {
 			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- lettura/scrittura in streaming di file grandi
@@ -306,8 +306,8 @@ final class Backup {
 	 */
 	public static function other_site_text(): string {
 		return Texts::t( 'Questa copia non è stata fatta su questo sito. Ripristinala solo se è tua e sai da dove viene: sostituirà i dati attuali.' )
-			. ' ' . Texts::t( 'Verranno sostituiti: tutte le tabelle del plugin (soci, prima nota, attività, ricevute, fondi e le altre), le impostazioni e i testi personalizzati, gli allegati e i PDF delle ricevute citati dai dati della copia, le chiavi dei documenti riservati e l\'identificativo del sito che li lega.' )
-			. ' ' . Texts::t( 'Verranno cancellate, senza essere ripristinate dalla copia: le sessioni dei soci e le notifiche push di adesso. Le password dei soci invece tornano come nella copia, e ogni socio dovrà sceglierne una nuova al primo accesso.' )
+			. ' ' . Texts::t( 'Verranno sostituiti: tutti i dati del plugin (soci, prima nota, attività, ricevute, fondi e il resto), le impostazioni e i testi personalizzati, gli allegati e i PDF delle ricevute presenti nella copia, le chiavi dei documenti riservati e il codice del sito a cui sono legati.' )
+			. ' ' . Texts::t( 'Verranno eliminati, e non tornano dalla copia: gli accessi aperti dei soci (dovranno rientrare) e le notifiche push attive. Le password dei soci tornano quelle della copia: ogni socio ne sceglierà una nuova al primo accesso.' )
 			. ' ' . Texts::t( 'Non verranno toccati: il registro delle azioni, gli utenti WordPress, le chiavi segrete dei pagamenti e il codice di licenza di questo sito.' )
 			. ' ' . Texts::t( 'Per procedere scrivi «{frase}» nel campo di conferma e la tua password; l\'operazione resta scritta nel registro delle azioni.', array( 'frase' => self::RESTORE_PHRASE_OTHER ) );
 	}
@@ -337,7 +337,7 @@ final class Backup {
 	 */
 	public static function inspect( string $zip_path, ?string &$origin = null ): array {
 		if ( ! class_exists( '\ZipArchive' ) ) {
-			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP.' );
+			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP: chiedi al tuo hosting di attivare l\'estensione zip di PHP.' );
 		}
 		$zip = new \ZipArchive();
 		if ( true !== $zip->open( $zip_path ) ) {
@@ -389,7 +389,7 @@ final class Backup {
 			$actual = BackupSeal::hashes( $zip, $sz['sizes'] );
 			$int    = null === $actual ? 'changed' : BackupSeal::compare( $listed, $actual );
 		}
-		$modified = Texts::t( 'La copia è stata modificata dopo essere stata fatta, oppure è danneggiata: il suo contenuto non coincide con l\'elenco con cui è stata firmata. Non è stato cambiato nulla.' );
+		$modified = Texts::t( 'La copia è stata modificata dopo la creazione, oppure è danneggiata. Non è stato cambiato nulla.' );
 		if ( is_string( $m['kfp'] ?? null ) && hash_equals( BackupSeal::fingerprint( $mine ), $m['kfp'] ) ) { // stessi codici di sicurezza: è una copia di questo sito
 			if ( null === $listed || '' !== $int ) {
 				throw self::refusal( 'modified', $modified ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
@@ -428,7 +428,7 @@ final class Backup {
 			$values[] = '(' . implode( ',', $vals ) . ')';
 		}
 		if ( false === $db->query( "INSERT INTO `$tbl` (`" . implode( '`,`', $cols ) . '`) VALUES ' . implode( ',', $values ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL
-			throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \RuntimeException( 'Ripristino non riuscito. Dettaglio tecnico: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -476,7 +476,7 @@ final class Backup {
 
 	private static function restore_locked( string $zip_path, string $phrase, bool $other_site_ok ): array {
 		if ( ! class_exists( '\ZipArchive' ) ) {
-			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP.' );
+			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP: chiedi al tuo hosting di attivare l\'estensione zip di PHP.' );
 		}
 		$zip = new \ZipArchive();
 		if ( true !== $zip->open( $zip_path ) ) {
@@ -578,7 +578,7 @@ final class Backup {
 				$auth = $db->prefix . 'asem_member_auth';
 				$n    = $db->query( $db->prepare( "UPDATE `$auth` SET must_reset = %d WHERE pass_hash IS NOT NULL AND pass_hash <> ''", MemberPassword::RESTORED ) ); // phpcs:ignore WordPress.DB.PreparedSQL
 				if ( false === $n ) {
-					throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \RuntimeException( 'Ripristino non riuscito. Dettaglio tecnico: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$passwords = (int) $n;
 			}
@@ -586,7 +586,7 @@ final class Backup {
 				$tbl = $db->prefix . $t;
 				$n   = $db->query( "DELETE FROM `$tbl`" ); // phpcs:ignore WordPress.DB.PreparedSQL
 				if ( false === $n ) {
-					throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \RuntimeException( 'Ripristino non riuscito. Dettaglio tecnico: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$members_reset += (int) $n;
 			}
@@ -594,7 +594,7 @@ final class Backup {
 		} catch ( \Throwable $e ) {
 			$db->query( 'ROLLBACK' );
 				wp_delete_file( $safety ); // nulla è cambiato: la copia con le tabelle in chiaro non serve a nessuno
-			throw new \RuntimeException( $e->getMessage() . ' Nessun dato è stato cambiato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \RuntimeException( $e->getMessage() . ' Non è stato cambiato nulla.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		// Chiavi dei documenti e identificativo del sito: solo ora che i dati sono al loro posto (una riga nel registro azioni dice che cosa si è adottato).
 		$keys = array( 'open' => 0, 'closed' => 0, 'site_changed' => false, 'failed' => false );

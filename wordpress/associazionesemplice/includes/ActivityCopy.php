@@ -96,7 +96,7 @@ final class ActivityCopy {
 		if ( ActivityKind::COURSE === $a['kind'] ) {
 			$label = trim( (string) ( $in['social_year'] ?? '' ) );
 			if ( '' === $label ) {
-				throw new \InvalidArgumentException( 'Scegli l\'anno sociale del nuovo corso.' );
+				throw new \InvalidArgumentException( 'Scegli l\'anno delle attività del nuovo corso.' );
 			}
 			$old_year   = SocialYear::from_label( (string) $a['social_year'], Settings::start_month() );
 			$new_year   = SocialYear::from_label( $label, Settings::start_month() );

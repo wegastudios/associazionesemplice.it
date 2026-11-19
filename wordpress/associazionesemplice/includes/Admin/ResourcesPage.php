@@ -287,7 +287,7 @@ final class ResourcesPage {
 			$opts[ $c['id'] ] = $c['name'];
 		}
 		return '<tr><th>Voce di prima nota</th><td><select name="category_id">' . Ui::options( $opts, $res && ! empty( $res['category_id'] ) ? (int) $res['category_id'] : 0 ) . '</select>'
-			. '<p class="description">Gli incassi di questa risorsa (in segreteria e online) vanno su questa voce, così nei report e nel rendiconto si vedono separati da quelli delle altre risorse. Le voci si creano in <em>Conti e fondi</em>/<em>Prima nota</em>. I crediti spesi non hanno un incasso: l\'entrata è la vendita dei crediti.</p></td></tr>';
+			. '<p class="description">Gli incassi di questa risorsa (in segreteria e online) vanno su questa voce, così nei report e nel rendiconto si vedono separati da quelli delle altre risorse. Le voci sono quelle della prima nota (Cassa → Prima nota). I crediti spesi non hanno un incasso: l\'entrata è la vendita dei crediti.</p></td></tr>';
 	}
 
 	/** Riga del modulo: l'ingresso con il QR della prenotazione. */

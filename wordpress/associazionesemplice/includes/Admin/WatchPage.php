@@ -163,7 +163,7 @@ final class WatchPage {
 		// Storico mensile
 		$years = BalanceWatch::snapshot_years();
 		$year  = Ui::get_int( 'year', $years ? $years[0] : $s['year'] );
-		echo '<h2>Storico mensile</h2><p class="description">A ogni fine mese viene salvata una foto del consuntivo contro il preventivo: non cambia più, anche se poi si correggono dei movimenti. Le foto «ricostruite» sono state fatte dopo la prima settimana del mese successivo.</p>';
+		echo '<h2>Storico mensile</h2><p class="description">A ogni fine mese viene salvata la situazione del consuntivo contro il preventivo: non cambia più, anche se poi si correggono dei movimenti. Le situazioni «ricostruite» sono state salvate dopo la prima settimana del mese successivo.</p>';
 		if ( $years ) {
 			echo '<form method="get"><input type="hidden" name="page" value="asem-watch"><p><label>Anno fiscale <select name="year" data-asem-autosubmit>';
 			foreach ( $years as $y ) {
@@ -174,7 +174,7 @@ final class WatchPage {
 		$snaps = $years ? BalanceWatch::snapshots( $year ) : array();
 		echo '<table class="widefat striped"><thead><tr><th>Mese</th><th>Entrate del mese</th><th>Uscite del mese</th><th>Entrate dall\'inizio</th><th>Uscite dall\'inizio</th><th>Risultato dall\'inizio</th><th>Preventivo (entrate / uscite)</th><th>Origine</th></tr></thead><tbody>';
 		if ( ! $snaps ) {
-			echo '<tr><td colspan="8">Nessuna foto salvata: la prima arriva a fine mese.</td></tr>';
+			echo '<tr><td colspan="8">Nessuna situazione salvata: la prima arriva a fine mese.</td></tr>';
 		}
 		foreach ( $snaps as $x ) {
 			$plan = null === $x['planned_income_cents'] ? '—' : self::m( (int) $x['planned_income_cents'] ) . ' / ' . self::m( (int) $x['planned_expense_cents'] );
@@ -182,7 +182,7 @@ final class WatchPage {
 		}
 		echo '</tbody></table>';
 		Ui::form_open( 'asem_watch_snapshot', Ui::url( 'asem-watch' ), false, 'asem-inline' );
-		echo '<p><button class="button">Salva ora le foto dei mesi conclusi mancanti</button> <span class="description">Succede da sé ogni giorno; il pulsante serve se è appena stato acceso il salvataggio o dopo un blocco del sito.</span></p>';
+		echo '<p><button class="button">Salva ora la situazione dei mesi conclusi mancanti</button> <span class="description">Succede da sé ogni giorno; il pulsante serve se è appena stato acceso il salvataggio o dopo un blocco del sito.</span></p>';
 		Ui::form_close();
 		Ui::footer();
 	}

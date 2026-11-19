@@ -61,7 +61,7 @@ final class LessonExceptions {
 	public static function cancel_from( int $activity_id, string $date, string $note = '' ): int {
 		$a = Plugin::activities()->get( $activity_id );
 		if ( ! $a || ActivityKind::COURSE !== $a['kind'] ) {
-			throw new \InvalidArgumentException( 'Le lezioni si annullano o spostano per un corso.' );
+			throw new \InvalidArgumentException( 'Solo le lezioni di un corso si possono annullare o spostare.' );
 		}
 		if ( ! self::valid_date( $date ) ) {
 			throw new \InvalidArgumentException( 'Data della lezione non valida.' );
@@ -118,7 +118,7 @@ final class LessonExceptions {
 	private static function save( int $activity_id, string $date, string $action, string $new_date, string $start, string $end, string $note ): void {
 		$a = Plugin::activities()->get( $activity_id );
 		if ( ! $a || ActivityKind::COURSE !== $a['kind'] ) {
-			throw new \InvalidArgumentException( 'Le lezioni si annullano o spostano per un corso.' );
+			throw new \InvalidArgumentException( 'Solo le lezioni di un corso si possono annullare o spostare.' );
 		}
 		if ( ! self::valid_date( $date ) ) {
 			throw new \InvalidArgumentException( 'Data della lezione non valida.' );

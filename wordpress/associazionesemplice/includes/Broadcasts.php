@@ -218,7 +218,7 @@ final class Broadcasts {
 		$db    = self::db();
 		$today = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcasts' ) . ' WHERE created_at >= %s', gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -1 day' ) ) ) );
 		if ( $today >= Limits::get( 'broadcast_per_day' ) ) {
-			throw new \InvalidArgumentException( 'Sono già state inviate ' . Limits::get( 'broadcast_per_day' ) . ' comunicazioni nelle ultime 24 ore: aspetta un po\'.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Sono già state inviate ' . Limits::get( 'broadcast_per_day' ) . ' comunicazioni nelle ultime 24 ore: riprova più tardi.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$r   = $use_email ? self::recipients( $audience, $ref ) : array( 'list' => array(), 'no_email' => 0 );
 		$sms = $use_sms ? self::sms_recipients( $audience, $ref ) : array( 'list' => array(), 'no_phone' => 0, 'no_consent' => 0 );
@@ -236,7 +236,7 @@ final class Broadcasts {
 		$id = (int) $db->insert_id;
 		if ( $id <= 0 || ! self::queue_recipients( $id, $r['list'] ) ) {
 			$db->query( 'ROLLBACK' );
-			throw new \InvalidArgumentException( 'La comunicazione non è stata creata (errore del database): non è partito nulla. Riprova.' );
+			throw new \InvalidArgumentException( 'La comunicazione non è stata creata: non è partito nulla. Riprova.' );
 		}
 		$db->query( 'COMMIT' );
 		$assoc = (string) Settings::get( 'association_name' );
@@ -321,9 +321,9 @@ final class Broadcasts {
 	public static function send_test( string $subject, string $body ): bool {
 		$u = wp_get_current_user();
 		if ( ! $u || ! is_email( $u->user_email ) ) {
-			throw new \InvalidArgumentException( 'L\'utente collegato non ha un indirizzo email.' );
+			throw new \InvalidArgumentException( 'Il tuo utente non ha un indirizzo email: aggiungilo nel tuo profilo.' );
 		}
-		return Texts::mail( $u->user_email, '[Prova] ' . trim( $subject ), self::text_for( trim( $body ), (string) ( $u->first_name ?: $u->display_name ) ) );
+		return Texts::mail( $u->user_email, Texts::subject( '[Prova] ' . trim( $subject ) ), self::text_for( trim( $body ), (string) ( $u->first_name ?: $u->display_name ) ) );
 	}
 
 	// ---------- Storico ----------

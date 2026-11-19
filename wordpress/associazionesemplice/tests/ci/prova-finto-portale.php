@@ -182,7 +182,7 @@ $day0 = strtotime( gmdate( 'Y-m-d', time() - 2 * DAY_IN_SECONDS ) . ' 12:00:00 U
 delete_option( License::OPT_DENIAL );
 delete_option( License::OPT_STATE );
 $r = prova_deny( $day0, array( 'bad_sig' => true ) );
-prova_ok( false === $r['ok'] && false !== strpos( $r['message'], 'non ha una firma valida' ) && ! get_option( License::OPT_DENIAL ) && ! $unpaid(), '(d) esito negativo con firma sbagliata: non vale e non si ricorda' );
+prova_ok( false === $r['ok'] && false !== strpos( $r['message'], 'verificare la risposta' ) && ! get_option( License::OPT_DENIAL ) && ! $unpaid(), '(d) esito negativo con firma sbagliata: non vale e non si ricorda' );
 $r = prova_deny( $day0 );
 $st = get_option( License::OPT_DENIAL, array() );
 prova_ok( false === $r['ok'] && ( $st['day'] ?? '' ) === gmdate( 'Y-m-d', $day0 ) && ! $unpaid(), '(d) primo esito negativo firmato: solo ricordato, la licenza non cambia' );

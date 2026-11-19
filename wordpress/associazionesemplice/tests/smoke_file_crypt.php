@@ -750,7 +750,7 @@ $fc_zt0->open( $fc_tz0 );
 $fc_zt0->addFromString( 'allegati/' . $fc_row['file_stored'], $fc_bad ); // cambiato senza rifare la firma: la copia si ferma prima di toccare qualcosa
 $fc_zt0->close();
 $fc_e0 = (string) asem_or_free_throws( function () use ( $fc_tz0 ) { Backup::restore( $fc_tz0 ); } );
-$fc_ok( false !== strpos( $fc_e0, 'è stata modificata dopo essere stata fatta' ) && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'ripristino: un file della copia cambiato dopo la firma ferma la copia, e il file sul sito resta intatto' );
+$fc_ok( false !== strpos( $fc_e0, 'è stata modificata dopo la creazione' ) && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'ripristino: un file della copia cambiato dopo la firma ferma la copia, e il file sul sito resta intatto' );
 wp_delete_file( $fc_tz0 );
 asem_bk_reseal( $fc_tz, function ( $z ) use ( $fc_row, $fc_bad ) { $z->addFromString( 'allegati/' . $fc_row['file_stored'], $fc_bad ); } ); // rifirmata: resta il controllo del file con la sua chiave
 $fc_r2 = Backup::restore( $fc_tz );
