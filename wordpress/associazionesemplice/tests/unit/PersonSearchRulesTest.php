@@ -74,8 +74,8 @@ final class PersonSearchRulesTest extends TestCase {
 
 	public function test_quota_text(): void {
 		$this->assertSame( '', PersonSearchRules::quota_text( false, null, '2026-11-16' ) );
-		$this->assertSame( 'quota non in regola', PersonSearchRules::quota_text( true, null, '2026-11-16' ) );
-		$this->assertSame( 'quota non in regola', PersonSearchRules::quota_text( true, '2026-01-31', '2026-11-16' ) );
-		$this->assertSame( 'quota valida fino al 31/12/2026', PersonSearchRules::quota_text( true, '2026-12-31', '2026-11-16' ) );
+		$this->assertSame( 'tessera non in regola', PersonSearchRules::quota_text( true, null, '2026-11-16' ) );
+		$this->assertSame( 'tessera non in regola', PersonSearchRules::quota_text( true, '2026-01-31', '2026-11-16' ) );
+		$this->assertSame( 'tessera valida fino al 31/12/2026', PersonSearchRules::quota_text( true, '2026-12-31', '2026-11-16' ) );
 	}
 }

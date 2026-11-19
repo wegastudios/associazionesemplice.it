@@ -3246,7 +3246,7 @@ asem_ok( null === $pv['ledger'] && 'create' === $pv['people']['plan'][0]['action
 // CSV con colonne-anno: gli anni di iscrizione effettivi
 $csv_y = $mkf( 'anni.csv', "Tessera;Nome;Cognome;Email;2023;2024;2025\r\n931;Anni;Effettivi;anni.effettivi@example.com;X;;x\r\n" );
 $pv    = ImportService::preview_file( $csv_y, 'anni.csv', array() );
-asem_ok( 'create' === $pv['people']['plan'][0]['action'] && array( '2023', '2025' ) === $pv['people']['plan'][0]['row']['years'] && false !== strpos( (string) $pv['people']['plan'][0]['message'], 'Iscritto: 2023, 2025' ), 'import CSV: le colonne-anno diventano gli anni di iscrizione' );
+asem_ok( 'create' === $pv['people']['plan'][0]['action'] && array( '2023', '2025' ) === $pv['people']['plan'][0]['row']['years'] && false !== strpos( (string) $pv['people']['plan'][0]['message'], 'Tessera: 2023, 2025' ), 'import CSV: le colonne-anno diventano gli anni di iscrizione' );
 ImportService::apply( $pv, array() );
 $anni_p = $people->find_by_email( 'anni.effettivi@example.com' );
 $iy = function ( string $y ) { // con l'anno fiscale sfalsato la colonna «2023» è la tessera che inizia nel 2023

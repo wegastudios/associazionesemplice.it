@@ -35,7 +35,7 @@ final class Plugin {
 				'admin_notices',
 				function () {
 					if ( current_user_can( 'activate_plugins' ) ) {
-						echo '<div class="notice notice-error"><p><strong>Associazione Semplice Pro</strong> non è compatibile con questa versione di Associazione Semplice: le funzioni avanzate sono sospese. Aggiorna Associazione Semplice Pro e Associazione Semplice all\'ultima versione; il resto funziona e i dati sono al sicuro.</p></div>';
+						echo '<div class="notice notice-error"><p><strong>Associazione Semplice Pro</strong> non è compatibile con questa versione di Associazione Semplice: le funzioni avanzate sono sospese. Aggiorna entrambi all\'ultima versione; il resto funziona e i dati sono al sicuro.</p></div>';
 					}
 				}
 			);
