@@ -1,25 +1,27 @@
 Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso, **—** significa non incluso.
 
-**{piano_contabile}** comprende tutte le funzioni Pro tranne la parte fiscale. **{piano_fiscale}** comprende tutto. Il piano gratuito è completo per gestire soci, attività e prima nota, e resta gratuito.
+**{piano_contabile}** comprende tutte le funzioni Pro tranne la parte fiscale. **{piano_fiscale}** comprende tutto. Il piano gratuito è completo per gestire soci, attività e prima nota, e resta gratuito per sempre.
 
 ## Soci e tessere
 
 | Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
-| Libro soci per anno fiscale: segue l'anno fiscale e alla chiusura diventa definitivo (pubblicato e bloccato, non cambia più), prima è una bozza; ogni socio ha una matricola fissa e ogni riga un numero; «Emetti i documenti definitivi degli anni già chiusi» emette quelli passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
-| Soci che sono enti: scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
-| Dati dell'ente obbligatori (forma dell'ente, codice fiscale, sede, email e telefono della segreteria; partita IVA, numero RUNTS e PEC o la spunta «non ce l'ha»), con la banda gialla in alto finché manca qualcosa | ✓ | ✓ | ✓ |
-| Utente «Dipendente»: permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
+| Libro soci con numerazione progressiva e cessazioni | ✓ | ✓ | ✓ |
+| Libro soci per anno fiscale: È una bozza finché l'anno fiscale è aperto e diventa definitivo alla chiusura. Ogni socio ha una matricola fissa. I libri degli anni già chiusi si ricostruiscono con un pulsante; ogni libro si scarica in PDF e CSV | ✓ | ✓ | ✓ |
+| Soci che sono enti: Scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
-| Quota associativa a rate: saldo da incassare e tessera valida al saldo | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
-| Addebito di crediti con il QR da parte dello staff di un evento con incasso abilitato, anche senza utente WordPress | — | ✓ | ✓ |
-| Accesso dei soci con email e password (o link e codice via email), senza utente WordPress (utente WordPress solo per chi ha un ruolo, o per tutti se lo scegli) | ✓ | ✓ | ✓ |
+| Addebito crediti con il QR dello staff: Lo staff di un evento con incasso abilitato addebita i crediti con il QR, anche senza utente WordPress | — | ✓ | ✓ |
+| Accesso dei soci semplificato: Una sola schermata: email e password oppure un link via email, con «Ricordami» per 30 giorni. Ai soci non serve un utente WordPress | ✓ | ✓ | ✓ |
 | Quota associativa unica e socio fondatore | ✓ | ✓ | ✓ |
-| Più livelli di socio con quote diverse | — | ✓ | ✓ |
-| Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
+| Quota associativa a rate: residuo in scheda, saldo da incassare e tessera valida solo a quota saldata | ✓ | ✓ | ✓ |
+| Tessera annuale che segue l'anno fiscale: L'etichetta è «2026» oppure «2026/2027»; negli ultimi giorni prima della scadenza si rinnova in anticipo; se cambi il mese, vale solo per le tessere nuove | ✓ | ✓ | ✓ |
+| Più livelli di socio: Ognuno con la sua quota | — | ✓ | ✓ |
+| Nucleo familiare: Con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
-| Ospiti dell'associazione e del volontario con quote ripartite e rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
+| Ospiti con quote ripartite e rimborso al volontario: Quote ripartite tra gli ospiti dell'associazione e del volontario, con rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
+| Domanda di adesione online con modulo sul sito (shortcode) | ✓ | ✓ | ✓ |
+| Minori con genitori o tutori (non soci), con tessera valida dal pagamento | ✓ | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
 | Data di nascita e tutore nel libro soci, nell'esportazione e nell'importazione | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
@@ -29,19 +31,20 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Tessera in PDF da stampare, con testo libero, tipologia e incarichi | ✓ | ✓ | ✓ |
 | Tessera in Apple Wallet e Google Wallet | — | ✓ | ✓ |
 
-## Area riservata e permessi
+## Area soci e permessi
 
 | Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
-| Area riservata dei soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
+| Area soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
+| App sul telefono: Installabile, con notifiche e icona dell'associazione; pagina offline con «Riprova» e invito a installarla sotto la tessera | — | ✓ | ✓ |
 | Primo accesso e approvazione della segreteria | ✓ | ✓ | ✓ |
 | Domanda di adesione online per chi non è ancora socio, con approvazione, tessera e link per la password | ✓ | ✓ | ✓ |
-| Minori con uno o due genitori o tutori: area riservata del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
-| Convenzioni per i soci: sconti e vantaggi dei partner nell'area riservata, elenco pubblico e avviso ai soci | ✓ | ✓ | ✓ |
+| Minori con uno o due genitori o tutori: area soci del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
 | Liberatoria per foto e video nella scheda e nel modulo di domanda online, con il tutore per i minori | ✓ | ✓ | ✓ |
 | Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione soci | ✓ | ✓ | ✓ |
 | Avviso «Schede da completare» in Bacheca e in «Da lavorare» | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
+| Utente «Dipendente»: Permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |
 | Riquadri «Da lavorare» e «Eventi e corsi della settimana» nella Bacheca di WordPress | ✓ | ✓ | ✓ |
@@ -53,34 +56,34 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Corsi con rinnovo mensile, trimestrale o pagamento unico | ✓ | ✓ | ✓ |
 | Lezioni di un corso annullate o spostate, con avviso agli iscritti | ✓ | ✓ | ✓ |
 | Varianti del contributo dei corsi (per esempio «Famiglia», «Secondo corso»), assegnate a mano a ogni iscritto | ✓ | ✓ | ✓ |
+| Sport (elenco basato sull'elenco CONI) e disciplina dell'ente su corsi ed eventi | ✓ | ✓ | ✓ |
 | Eventi con date uniche o ricorrenti | ✓ | ✓ | ✓ |
 | Posti limitati, lista d'attesa e tolleranza sul pagamento | ✓ | ✓ | ✓ |
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
-| Listini per eventi e corsi a date (quanti prezzi vuoi: individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
-| Calendario dell'evento (mese e giorno, con selettore della data) e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
-| Pagine pubbliche degli eventi (una pagina per ogni evento o corso con locandina e descrizione, elenco a schede per mese con frecce avanti e indietro, eventi già svolti, date su più giorni (anche oltre mezzanotte), calendario mensile con filtri per categoria, salvataggio nel calendario, dati strutturati per Google e prenotazione dei soci direttamente dalla pagina) | ✓ | ✓ | ✓ |
-| Prenotazione dal sito anche per i non soci (modulo breve con conferma dell'indirizzo dall'email; per gli eventi a pagamento si versa in anticipo con bonifico istantaneo e si manda la ricevuta: non è un pagamento online) | ✓ | ✓ | ✓ |
-| Prenotazione automatica o su richiesta (per ogni evento scegli i posti per richiesta, gli ospiti e cosa succede se l'evento viene annullato) | ✓ | ✓ | ✓ |
-| Pagina dell'evento completa (dove si svolge con mappa, contatti con WhatsApp ed email, evento precedente e successivo, condivisione; gli eventi settimanali con una sola scheda) | ✓ | ✓ | ✓ |
-| Corsi nel calendario del sito (con le loro lezioni; iscrizione dalla pagina del corso: il socio con un clic, chi non è socio dal modulo; approva la segreteria) | ✓ | ✓ | ✓ |
-| Pulsante WhatsApp della segreteria (numero nelle impostazioni, pulsante fisso «Scrivici su WhatsApp») | ✓ | ✓ | ✓ |
-| Blocchi, shortcode e widget Elementor per gli eventi (elenco, calendario, prossimi eventi e pezzi della pagina evento, con titolo, messaggio e pulsante a tua scelta) | ✓ | ✓ | ✓ |
-| Importazione da The Events Calendar (anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore; pagine in bozza, ripetizioni in un solo evento ricorrente) | ✓ | ✓ | ✓ |
-| Incasso sul posto durante gli eventi | — | ✓ | ✓ |
-| Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
-| Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
-| Richieste di assegnazione dei soci per le risorse libere | — | ✓ | ✓ |
-| Promemoria prima della prenotazione di una risorsa | — | ✓ | ✓ |
+| Listini: Quanti prezzi vuoi per eventi e corsi a date: individuale, di gruppo, pacchetti di ingressi | ✓ | ✓ | ✓ |
+| Calendario dell'evento: Mese e giorno, con selettore della data, e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
+| Pagine pubbliche degli eventi: Una pagina per ogni evento o corso con locandina e descrizione, elenco a schede per mese, calendario mensile con filtri per categoria, salvataggio nel calendario (.ics), dati strutturati per Google e prenotazione dei soci direttamente dalla pagina | ✓ | ✓ | ✓ |
+| Prenotazione dal sito anche per i non soci: Chi non è socio si prenota dal sito con un modulo breve e conferma l'indirizzo dall'email; la segreteria vede la richiesta. Per gli eventi a pagamento si versa in anticipo con bonifico istantaneo e si manda la ricevuta (non è un pagamento online) | ✓ | ✓ | ✓ |
+| Prenotazione automatica o su richiesta: Per ogni evento scegli se la prenotazione è automatica o solo su richiesta, quanti posti si possono chiedere per volta, se ammettere gli ospiti e cosa succede se l'evento viene annullato | ✓ | ✓ | ✓ |
+| Pagina dell'evento completa: Dove si svolge con collegamento alla mappa, contatti con WhatsApp ed email, evento precedente e successivo, locandina e pulsanti per condividere; gli eventi che si ripetono ogni settimana compaiono con una sola scheda | ✓ | ✓ | ✓ |
+| Corsi nel calendario del sito: I corsi compaiono nel calendario con le loro lezioni; dalla pagina del corso si chiede l'iscrizione (il socio con un clic, chi non è socio dal modulo) e la segreteria approva | ✓ | ✓ | ✓ |
+| Pulsante WhatsApp della segreteria: Scrivi il numero nelle impostazioni e sul sito compare il pulsante fisso «Scrivici su WhatsApp» | ✓ | ✓ | ✓ |
+| Blocchi, shortcode e widget Elementor per gli eventi: Elenco a schede, calendario, prossimi eventi e i pezzi della pagina evento (locandina, dati, prenotazione, dove, precedente e successivo, condividi), con titolo, messaggio e testo del pulsante a tua scelta | ✓ | ✓ | ✓ |
+| Importazione da The Events Calendar: Gli eventi si importano insieme alle pagine pubbliche (descrizione, immagine, categoria, organizzatore, luogo); le pagine restano in bozza e gli eventi che si ripetono diventano un solo evento ricorrente | ✓ | ✓ | ✓ |
+| Incasso sul posto agli eventi | — | ✓ | ✓ |
+| Prenotazione di campi e sale: Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
+| Posti auto, armadietti e posti barca: Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
+| Richieste di assegnazione delle risorse: I soci chiedono le risorse libere | — | ✓ | ✓ |
+| Promemoria delle prenotazioni: Un avviso prima della prenotazione di una risorsa | — | ✓ | ✓ |
 | Ingresso con il QR della prenotazione | — | ✓ | ✓ |
 | Report di occupazione delle risorse | — | ✓ | ✓ |
-| Corsi ed eventi collegati alle risorse (anche «fuori sede»), con tempi di allestimento e fasce occupate solo dove ci sono prenotazioni | — | ✓ | ✓ |
-| Eventi su più giorni: la risorsa è occupata in tutti i giorni e, a scelta, senza interruzioni tra un evento e l'altro della stessa manifestazione (si adegua da solo se sposti o annulli) | — | ✓ | ✓ |
-| Cambio di risorsa con elenco di ciò che si sovrappone, e spostamento di prenotazioni e attività sulla risorsa che si libera (tutto o niente) | — | ✓ | ✓ |
+| Risorse per corsi ed eventi: Un corso o un evento occupa la sua sala o il suo campo, con i tempi di allestimento; può anche essere «fuori sede» | — | ✓ | ✓ |
+| Cambio di risorsa con controllo delle sovrapposizioni: Se sposti un'attività su una risorsa già occupata vedi cosa si sovrappone. Con una spunta, prenotazioni e attività in conflitto passano alla risorsa liberata | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
-| Pulsante «Non rinnova» nel corso: l'iscritto resta fino a fine periodo pagato e poi non deve più nulla; eliminando un corso si rende la quota proporzionale delle lezioni non tenute | ✓ | ✓ | ✓ |
-| Eliminando un corso, un evento o una singola iscrizione si restituisce solo ciò che non è ancora stato fatto; si può annullare una data o «questa data e le successive» (eventi ricorrenti e lezioni dei corsi) | ✓ | ✓ | ✓ |
+| Pulsante «Non rinnova» nel corso: l'iscritto resta fino a fine periodo pagato e poi non deve più nulla; eliminando un corso si restituisce il contributo delle lezioni non tenute | ✓ | ✓ | ✓ |
+| Restituzioni: Eliminando un corso, un evento o una singola iscrizione si restituisce solo ciò che non è ancora stato fatto; si può annullare una data o «questa data e le successive» (eventi ricorrenti e lezioni dei corsi) | ✓ | ✓ | ✓ |
 
 ## Cassa e conti
 
@@ -91,61 +94,66 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
-| Anni fiscali: apertura e chiusura (solo amministratori), con il mese di inizio a scelta (si blocca alla prima chiusura, anche se poi l'anno viene riaperto) e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
-| Riapertura dell'ultimo anno fiscale: si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
-| Tessera annuale che segue l'anno fiscale: l'etichetta è «2026» oppure «2025/2026»; negli ultimi giorni prima della scadenza si rinnova in anticipo; se cambi il mese le tessere degli anni aperti con un pagamento si riallineano senza accorciarsi (copia di sicurezza prima, anni chiusi intatti); anno delle attività e anno fiscale si scelgono al primo passo della configurazione guidata | ✓ | ✓ | ✓ |
-| Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
+| Anni fiscali: Apertura e chiusura (solo amministratori), con mese di inizio a scelta. Si chiudono in ordine; dopo la prima chiusura il mese di inizio non si cambia più | ✓ | ✓ | ✓ |
+| Riapertura dell'ultimo anno fiscale: Si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
+| Cassa «Prenota»: Prenoti per conto di un socio o ospite, per data o per attività | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
-| Pagamenti online con Stripe, PayPal, SumUp o WooCommerce | — | ✓ | ✓ |
-| Satispay e Klarna (tramite Stripe) tra i metodi di pagamento online | — | ✓ | ✓ |
-| Rimborso dei pagamenti online Stripe e PayPal dal programma, totale o parziale, con motivo obbligatorio ed email al socio (nel plugin non c'è «rimborsa e storna» e non si chiede la password, a differenza del gestionale online) | — | ✓ | ✓ |
-| Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
-| Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
-| Commissione di incasso sul conto (fissa più percentuale), per esempio POS: a ogni incasso la spesa va in prima nota | — | ✓ | ✓ |
-| Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
-| Bilancio preventivo per categoria, confrontato con la prima nota e approvato | — | ✓ | ✓ |
-| Rimborsi ai volontari: richiesta dall'area soci, approvazione, pagamento e registrazione in prima nota | — | ✓ | ✓ |
-| Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
-| Voce di prima nota per ogni risorsa, separata nei report | — | ✓ | ✓ |
-| Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
-| Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
-| Ricevute in PDF e attestazione annuale, numerate per anno fiscale; il PDF della ricevuta è definitivo (si crea una volta sola e non cambia più), con la pagina «Verifica delle ricevute» per controllarlo, fissarlo e rifarlo dai dati salvati, e, se annulli l'incasso, il numero non si libera: si emette la ricevuta sostitutiva | — | ✓ | ✓ |
-| Ricevute dei minori intestate al genitore, con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
-| Report di gestione (conti e liquidità, valutazione dell'anno delle attività con entrate e uscite generali per anno fiscale) | — | ✓ | ✓ |
+| Pagamenti online: Con Stripe, PayPal, SumUp, Satispay o WooCommerce | — | ✓ | ✓ |
+| Rimborso dei pagamenti online: Per Stripe e PayPal, dal programma, totale o parziale, con motivo obbligatorio ed email al socio | — | ✓ | ✓ |
+| Klarna: paga dopo o a rate: Klarna (paga dopo o a rate) tra i metodi di pagamento di Stripe | — | ✓ | ✓ |
+| SMS ai soci: Dalle comunicazioni e, a scelta, dai promemoria (Brevo o Twilio), con consenso, crediti, registro e nuovi tentativi | — | ✓ | ✓ |
+| Newsletter (Brevo, Mailchimp, MailPoet): Sincronizzazione dei soci con consenso verso Brevo, Mailchimp o MailPoet | — | ✓ | ✓ |
+| Commissioni di incasso: Per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
+| Quota online dalla domanda di adesione: Pagamento online della quota dalla domanda di adesione | — | ✓ | ✓ |
+| Conti multipli e cassa condivisa: Più conti con giroconti, e una cassa usata da più persone | — | ✓ | ✓ |
+| Commissione di incasso: Sul conto, fissa più percentuale, per esempio POS: a ogni incasso la spesa va in prima nota | — | ✓ | ✓ |
+| Fondi accantonati: Somme già destinate a qualcosa, per esempio i rimborsi ai volontari | — | ✓ | ✓ |
+| Quota di risorsa accantonata in un fondo: Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
+| Voce di prima nota per risorsa: Una voce per ogni risorsa, separata nei report | — | ✓ | ✓ |
+| Disponibilità reale dei fondi: Quanto resta davvero dei fondi, con liberazione ed estinzione | — | ✓ | ✓ |
+| Fondi da rimborsare per anno: Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
+| Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
+| Ricevute numerate per anno fiscale: Ogni ricevuta ha un numero che riparte a ogni anno fiscale; si può annullare e sostituire con «Emetti la ricevuta sostitutiva»; le ricevute annullate non si vedono più ai soci | — | ✓ | ✓ |
+| Ricevute dei minori intestate al genitore: Con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
+| Report di gestione: Report di gestione (conti e liquidità, anno fiscale) | — | ✓ | ✓ |
+| Bilancio preventivo: Per categoria, con il confronto con il consuntivo della prima nota | — | ✓ | ✓ |
+| Rimborsi ai volontari: Richiesta, approvazione, pagamento e registrazione in prima nota | — | ✓ | ✓ |
 
 ## Parte fiscale
 
 | Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
-| IVA su quote, attività, incassi e spese | — | — | ✓ |
-| 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
-| Rendiconto per cassa per il commercialista: alla chiusura dell'anno fiscale diventa definitivo, con un PDF numerato (n. 1/2026) che non cambia più; prima è una bozza | — | — | ✓ |
-| Anno fiscale del rendiconto per cassa e verifiche prima della chiusura | — | — | ✓ |
-| Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
-| Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
-| Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
-| Avviso se un anno fiscale passato ancora aperto è in disavanzo (non blocca la chiusura) | — | — | ✓ |
-| Verifiche di fine anno e blocco della chiusura se mancano le spese documentate dei rimborsi | — | — | ✓ |
+| IVA: Su quote, attività, incassi e spese | — | — | ✓ |
+| 5 per mille: Con il rendiconto sull'utilizzo | — | — | ✓ |
+| Rendiconto per cassa: Pronto per il commercialista | — | — | ✓ |
+| Anno fiscale con verifiche: Verifiche prima della chiusura dell'anno fiscale del rendiconto per cassa | — | — | ✓ |
+| Rendiconto definitivo: Alla chiusura dell'anno fiscale il rendiconto diventa definitivo, con un PDF numerato (n. 1/2026) che non cambia più; prima è una bozza | — | — | ✓ |
+| Spese documentate sui fondi dei rimborsi: Attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
+| Bilancio provvisorio e storico mensile: Con avvisi di bilancio e storico mensile in CSV | — | — | ✓ |
+| Prospetto dei rimborsi per persona: Per persona, con CSV e PDF | — | — | ✓ |
+| Verifiche di fine anno: La chiusura si blocca se mancano le spese documentate dei rimborsi | — | — | ✓ |
+| Avviso di disavanzo: Avviso se un anno fiscale passato ancora aperto è in disavanzo (non blocca la chiusura) | — | — | ✓ |
 
 ## Registri e privacy
 
 | Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
-| Verbali di assemblea e consiglio con PDF, con numero fisso che non cambia mai | ✓ | ✓ | ✓ |
-| Assemblee: convocazione per email, presenze, deleghe, numero legale e verbale compilato | — | ✓ | ✓ |
-| Votazioni e sondaggi tra i soci, anche a voto segreto, con verbale dei risultati; votano i soci maggiorenni | ✓ | ✓ | ✓ |
-| Diritto di voto per livello: si sceglie per ogni livello di socio se ha diritto di voto | — | ✓ | ✓ |
-| Dati per il RUNTS: Registri → «Dati per il RUNTS», con i numeri al 31 dicembre, i soci che sono enti, l'avviso se si scende sotto il minimo di soci per ODV e APS e il promemoria del 30 giugno | ✓ | ✓ | ✓ |
-| Inventario dei beni e prestiti ai soci con promemoria | ✓ | ✓ | ✓ |
-| Archivio documenti con accesso per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
-| Certificati medici sportivi con scadenze, promemoria e riquadro in Bacheca | — | ✓ | ✓ |
-| Affiliazioni agli enti (CONI/RAS e enti di promozione sportiva), tessere dei soci anche in blocco e file CSV per i portali degli enti con sport e disciplina | — | ✓ | ✓ |
-| Sport (elenco basato sull'elenco CONI) e disciplina dell'ente su corsi ed eventi | ✓ | ✓ | ✓ |
+| Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
+| Votazioni e sondaggi dei soci, anche a voto segreto, con verbale dei risultati in PDF e CSV; votano i soci maggiorenni | ✓ | ✓ | ✓ |
+| Diritto di voto per livello: Si sceglie per ogni livello di socio se ha diritto di voto | — | ✓ | ✓ |
+| Dati dell'ente obbligatori: Forma dell'ente, codice fiscale, sede, email e telefono della segreteria; partita IVA, numero RUNTS e PEC o la spunta «non ce l'ha»; finché manca qualcosa compare una banda gialla in alto | ✓ | ✓ | ✓ |
+| Dati per il RUNTS: Registri → «Dati per il RUNTS»: numeri al 31 dicembre, soci che sono enti, avviso se si scende sotto il minimo di soci per ODV e APS e promemoria del 30 giugno | ✓ | ✓ | ✓ |
+| Assemblee dei soci: Convocazione per email, presenze, deleghe tra soci, numero legale e verbale già compilato | — | ✓ | ✓ |
+| Inventario dei beni con prestiti a soci e volontari, rientri, storico e promemoria | ✓ | ✓ | ✓ |
+| Archivio documenti (statuto, regolamenti, moduli) per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
+| Convenzioni per i soci: sconti dei partner con codice, validità, destinatari per tipo di socio, elenco pubblico, avviso per email e CSV | ✓ | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
 | Anonimizzazione e download dei dati personali, con i libri soci chiusi | ✓ | ✓ | ✓ |
-| Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
-| Registro delle presenze a corsi ed eventi, anche in vista a calendario | — | ✓ | ✓ |
+| Assicurazioni dei volontari: Con le polizze dell'associazione | — | ✓ | ✓ |
+| Registro delle presenze: A corsi ed eventi, anche in vista a calendario | — | ✓ | ✓ |
+| Certificato medico sportivo: Scadenze, attività che lo richiedono, promemoria ed esportazione | — | ✓ | ✓ |
+| Affiliazioni agli enti sportivi: Agli enti (CONI/RAS e enti di promozione sportiva), tessere dei soci anche in blocco e file CSV per i portali degli enti con sport e disciplina | — | ✓ | ✓ |
 
 ## Comunicazione
 
@@ -154,10 +162,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Avvisi agli iscritti di un'attività | ✓ | ✓ | ✓ |
 | Promemoria automatici per email (tessera, corsi, eventi) | ✓ | ✓ | ✓ |
 | Registro della posta in uscita e invio di una email di prova | ✓ | ✓ | ✓ |
-| Comunicazioni a gruppi di soci con storico degli invii | — | ✓ | ✓ |
-| SMS ai soci (Brevo o Twilio) con consensi, anteprima e avvisi automatici | — | ✓ | ✓ |
-| Newsletter sincronizzata con Brevo, Mailchimp o MailPoet, solo per chi ha dato il consenso | — | ✓ | ✓ |
-| App installabile sul telefono e notifiche, con icona dell'associazione, pagina offline con «Riprova» e invito a installarla sotto la tessera | — | ✓ | ✓ |
+| Comunicazioni a gruppi di soci: Con lo storico degli invii | — | ✓ | ✓ |
 
 ## Personalizzazione e sicurezza dei dati
 
@@ -165,14 +170,15 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Colori e logo dell'associazione | ✓ | ✓ | ✓ |
 | Novità di ogni versione in italiano semplice (changelog) | ✓ | ✓ | ✓ |
-| Testi personalizzabili, tipo di ente e termini | — | ✓ | ✓ |
-| Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
+| Aggiornamenti diretti dal sito: Aggiornamenti dalla Bacheca di WordPress (Bacheca → Aggiornamenti), con le novità in italiano in «Visualizza i dettagli», anche per il plugin gratuito finché non è su WordPress.org | ✓ | ✓ | ✓ |
+| Testi personalizzabili: Con tipo di ente e termini | — | ✓ | ✓ |
+| Lingue aggiuntive: Inglese incluso | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
-| Copie di sicurezza firmate: ripristino con conferma scritta e password, copia modificata rifiutata | ✓ | ✓ | ✓ |
-| La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
-| Cifratura dei file riservati (documenti e scansioni, allegati dei movimenti, foto dell'inventario), con la frase per riaprirli | ✓ | ✓ | ✓ |
-| Cifratura anche di certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
-| Controllo che la cartella dei file riservati non sia raggiungibile da internet | ✓ | ✓ | ✓ |
+| Copie di sicurezza firmate: Una copia modificata viene rifiutata; una copia di un altro sito si ripristina con conferma scritta e password | ✓ | ✓ | ✓ |
+| Quota già pagata nell'anno: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
+| Cifratura dei file riservati: Documenti e scansioni, allegati dei movimenti e foto dell'inventario si cifrano, con la frase per riaprirli | ✓ | ✓ | ✓ |
+| Cifratura di certificati, giustificativi e ricevute: Anche per certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
+| Controllo della cartella dei file riservati: Controlla che la cartella dei file riservati non sia raggiungibile da internet | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
 | Registro azioni con spazio occupato, «Libera spazio» e pulizia automatica | ✓ | ✓ | ✓ |
 
@@ -181,14 +187,14 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Chiave di licenza | Gratuita e facoltativa | Obbligatoria | Obbligatoria |
-| Prova gratis 30 giorni (una volta sola) | ✓ | — | — |
+| Prova gratuita del Pro | ✓ | — | — |
 
-> I prezzi e i piani sono sempre aggiornati nella sezione **Prezzi** di [associazionesemplice.it](https://associazionesemplice.it). Con una licenza non in regola Pro torna alle funzioni di base, senza toccare i dati.
+> I prezzi e i piani sono sempre aggiornati nella pagina **Prezzi**. Se la licenza non è in regola restano le funzioni del piano gratuito: i dati non si toccano.
 
 ## Passare da una versione all'altra
 
 - **Da Free a {piano_contabile}**: si aggiungono pagamenti online, livelli di socio, conti e fondi, ricevute, comunicazioni, app, wallet e personalizzazione dei testi.
 - **Da {piano_contabile} a {piano_fiscale}**: si aggiungono IVA, 5 per mille e rendiconto per cassa.
-- **Non si reinstalla nulla** (se hai già Pro): cambia la chiave di licenza e compaiono le funzioni in più. Se la licenza scade, il plugin torna alle funzioni di base e i dati restano intatti.
+- **Non si reinstalla nulla** (se hai già il Pro): cambia la chiave di licenza e compaiono le funzioni in più. Se la licenza scade, il plugin torna alle funzioni di base e i dati restano intatti.
 
 Per i passi concreti leggi [Passare a Pro, provarlo e rinnovare](guida:passare-a-pro-e-rinnovare) e [Installare Associazione Semplice Pro](guida:installare-associazione-semplice-pro).
