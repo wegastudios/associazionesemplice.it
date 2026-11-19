@@ -37,6 +37,38 @@ function asem_pro_problem(): string {
 	return '';
 }
 
+/**
+ * Gli aggiornamenti del Pro dal portale. Se il gratuito è quello del portale, la classe è sua; se viene da WordPress.org (dove aggiorna WordPress.org)
+ * non la ha, e allora il Pro usa la sua copia (la stessa, messa nel pacchetto dalla costruzione). Si carica anche quando il Pro non è compatibile
+ * con il gratuito, perché è proprio lì che serve poterlo aggiornare.
+ */
+function asem_pro_updater(): void {
+	if ( ! defined( 'ASEM_VERSION' ) || ! defined( 'ASEM_DIR' ) ) {
+		return;
+	}
+	if ( ! class_exists( 'AssociazioneSemplice\Updater' ) ) {
+		$own = ASEM_PRO_DIR . 'updater/Updater.php';
+		if ( ! is_readable( $own ) ) {
+			return;
+		}
+		require_once $own;
+	}
+	\AssociazioneSemplice\Updater::register();
+}
+
+/** Pulsante dell'avviso di incompatibilità: «Aggiorna il Pro» se il portale ne ha uno nuovo, altrimenti «Controlla aggiornamenti». */
+function asem_pro_notice_button(): string {
+	if ( ! current_user_can( 'update_plugins' ) || ! class_exists( 'AssociazioneSemplice\Updater' ) || ! \AssociazioneSemplice\Updater::enabled() ) {
+		return '';
+	}
+	if ( null !== \AssociazioneSemplice\Updater::pro_update_available() ) {
+		$file = plugin_basename( __FILE__ );
+		$url  = wp_nonce_url( self_admin_url( 'update.php?action=upgrade-plugin&plugin=' . rawurlencode( $file ) ), 'upgrade-plugin_' . $file );
+		return ' <a class="button button-primary" href="' . esc_url( $url ) . '">' . esc_html( 'Aggiorna il Pro' ) . '</a>';
+	}
+	return ' <a class="button" href="' . esc_url( \AssociazioneSemplice\Updater::check_url() ) . '">' . esc_html( 'Controlla aggiornamenti' ) . '</a>';
+}
+
 // All'attivazione di Pro mancano ancora i dati di partenza delle funzioni avanzate (ad esempio il conto corrente accanto alla cassa).
 register_activation_hook(
 	__FILE__,
@@ -57,13 +89,15 @@ register_activation_hook(
 add_action(
 	'plugins_loaded',
 	function () {
+		asem_pro_updater();
 		$problem = asem_pro_problem();
 		if ( '' !== $problem ) {
 			add_action(
 				'admin_notices',
 				function () use ( $problem ) {
 					if ( current_user_can( 'activate_plugins' ) ) {
-						echo '<div class="notice notice-error"><p>' . wp_kses( $problem, array( 'strong' => array() ) ) . '</p></div>';
+						$button = defined( 'ASEM_API' ) && ASEM_API !== ASEM_PRO_API ? asem_pro_notice_button() : ''; // il pulsante solo se il problema è la versione, non l'assenza del gratuito
+						echo '<div class="notice notice-error"><p>' . wp_kses( $problem, array( 'strong' => array() ) ) . wp_kses( $button, array( 'a' => array( 'class' => array(), 'href' => array() ) ) ) . '</p></div>';
 					}
 				}
 			);

@@ -58,6 +58,9 @@ while IFS= read -r f; do
 	rm "$out/free/associazionesemplice/includes/$f"
 	n=$((n + 1))
 done < "$list"
+# L'aggiornatore dal portale sta nel gratuito del portale; il Pro ne porta una copia identica (da qui, un solo sorgente) per aggiornarsi anche quando il gratuito viene da WordPress.org e non lo ha.
+mkdir -p "$out/pro/associazionesemplice-pro/updater"
+cp associazionesemplice/includes/Updater.php "$out/pro/associazionesemplice-pro/updater/Updater.php"
 (cd "$out/free" && zip -qr ../associazionesemplice.zip associazionesemplice)
 (cd "$out/pro" && zip -qr ../associazionesemplice-pro.zip associazionesemplice-pro)
 echo "Pacchetti pronti in $out/: associazionesemplice.zip (gratuito), associazionesemplice-pro.zip ($n file avanzati)"

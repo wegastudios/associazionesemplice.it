@@ -3399,6 +3399,82 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	$up_unsigned = \AssociazioneSemplice\Updater::download( false, 'asem-portal://pro' );
 	asem_ok( is_wp_error( $up_unsigned ) && 'asem_update_unsigned' === $up_unsigned->get_error_code(), 'aggiornamento diretto: un pacchetto senza firma valida non si installa' );
 	$up_update = true;
+	// controlli forzati: link «Controlla aggiornamenti», «Controlla di nuovo» di WordPress, cambio del gratuito (al più uno al minuto)
+	$up_adm = get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ) );
+	$up_old = get_current_user_id();
+	wp_set_current_user( $up_adm ? (int) $up_adm[0] : 1 );
+	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
+	$up_calls = array();
+	asem_ok( 'new' === \AssociazioneSemplice\Updater::check_now() && 1 === count( $up_calls ) && 'pro' === $up_calls[0]['product'], 'controlla aggiornamenti: chiede subito il Pro al portale e segnala la versione nuova' );
+	asem_ok( '99.0' === \AssociazioneSemplice\Updater::pro_update_available() && 'wait' === \AssociazioneSemplice\Updater::check_now() && 1 === count( $up_calls ), 'controlla aggiornamenti: un secondo controllo entro un minuto non chiama il portale' );
+	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
+	$up_update = false;
+	asem_ok( 'none' === \AssociazioneSemplice\Updater::check_now() && null === \AssociazioneSemplice\Updater::pro_update_available(), 'controlla aggiornamenti: nessun aggiornamento se il portale non ne ha' );
+	$up_code = 503;
+	$up_bad  = function ( $pre, $args, $url ) use ( &$up_code ) {
+		return false === strpos( $url, '/api/plugin/update' ) ? $pre : array( 'response' => array( 'code' => $up_code, 'message' => 'x' ), 'body' => '', 'headers' => array(), 'cookies' => array(), 'filename' => null );
+	};
+	remove_filter( 'pre_http_request', $up_http, 10 );
+	add_filter( 'pre_http_request', $up_bad, 10, 3 );
+	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
+	asem_ok( 'err' === \AssociazioneSemplice\Updater::check_now(), 'controlla aggiornamenti: se il portale non risponde bene c\'è un errore chiaro' );
+	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
+	$up_code = 403;
+	asem_ok( 'license' === \AssociazioneSemplice\Updater::check_now(), 'controlla aggiornamenti: licenza non riconosciuta, messaggio dedicato' );
+	remove_filter( 'pre_http_request', $up_bad, 10 );
+	add_filter( 'pre_http_request', $up_http, 10, 3 );
+	$up_update = true;
+	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
+	Settings::clear_secret( 'license_key' );
+	asem_ok( 'nokey' === \AssociazioneSemplice\Updater::check_now(), 'controlla aggiornamenti: senza chiave di licenza lo dice' );
+	Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
+	$up_row = \AssociazioneSemplice\Updater::row_meta( array( 'x' ), $up_bn );
+	asem_ok( 2 === count( $up_row ) && false !== strpos( $up_row[1], 'asem_check_updates' ) && false !== strpos( $up_row[1], '_wpnonce=' ) && array( 'x' ) === \AssociazioneSemplice\Updater::row_meta( array( 'x' ), 'altro/altro.php' ), 'controlla aggiornamenti: il link sta solo nella riga del Pro e porta il controllo di sicurezza' );
+	wp_set_current_user( 0 );
+	asem_ok( array( 'x' ) === \AssociazioneSemplice\Updater::row_meta( array( 'x' ), $up_bn ), 'controlla aggiornamenti: chi non può aggiornare i plugin non vede il link' );
+	wp_set_current_user( $up_adm ? (int) $up_adm[0] : 1 );
+	// «Controlla di nuovo» di WordPress ignora le 12 ore (ma non più di una volta al minuto)
+	set_current_screen( 'dashboard' );
+	$_GET['force-check'] = '1';
+	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
+	$up_calls = array();
+	\AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+	$up_n = count( $up_calls );
+	\AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+	asem_ok( $up_n >= 1 && count( $up_calls ) === $up_n, 'controlla di nuovo: il Pro chiede subito al portale, e non più di una volta al minuto' );
+	unset( $_GET['force-check'] );
+	unset( $GLOBALS['current_screen'] );
+	// il gratuito cambia versione (anche da WordPress.org): il Pro ricontrolla il portale
+	delete_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT );
+	delete_option( \AssociazioneSemplice\Updater::RECHECK_OPT );
+	\AssociazioneSemplice\Updater::watch_free_version();
+	asem_ok( ASEM_VERSION === get_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT ) && ! get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ), 'cambio del gratuito: la prima volta si ricorda la versione senza ricontrollare' );
+	update_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT, '0.0.1', false );
+	\AssociazioneSemplice\Updater::watch_free_version();
+	asem_ok( (bool) get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ) && ASEM_VERSION === get_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT ), 'cambio del gratuito: una versione diversa chiede un nuovo controllo' );
+	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
+	$up_calls = array();
+	\AssociazioneSemplice\Updater::refresh_in_background();
+	asem_ok( ! get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ) && count( $up_calls ) >= 1, 'cambio del gratuito: il lavoro in background ricontrolla subito il portale' );
+	delete_option( \AssociazioneSemplice\Updater::RECHECK_OPT );
+	\AssociazioneSemplice\Updater::after_upgrade( null, array( 'type' => 'plugin', 'action' => 'update', 'plugins' => array( plugin_basename( ASEM_FILE ) ) ) );
+	asem_ok( (bool) get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ), 'cambio del gratuito: dopo l\'aggiornamento del gratuito da WordPress il Pro ricontrolla' );
+	delete_option( \AssociazioneSemplice\Updater::RECHECK_OPT );
+	\AssociazioneSemplice\Updater::after_upgrade( null, array( 'type' => 'plugin', 'action' => 'update', 'plugins' => array( 'altro/altro.php' ) ) );
+	asem_ok( ! get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ), 'cambio del gratuito: l\'aggiornamento di altri plugin non fa niente' );
+	wp_clear_scheduled_hook( \AssociazioneSemplice\Updater::REFRESH_HOOK );
+	// pulsante nell'avviso di incompatibilità con il gratuito
+	if ( function_exists( 'asem_pro_notice_button' ) ) {
+		update_option( \AssociazioneSemplice\Updater::OPT, array( 'checked_at' => \AssociazioneSemplice\Db::now(), 'pro' => array( 'version' => '99.0', 'update' => true ) ), false );
+		asem_ok( false !== strpos( asem_pro_notice_button(), 'Aggiorna il Pro' ) && false !== strpos( asem_pro_notice_button(), 'upgrade-plugin' ), 'avviso di incompatibilità: con un aggiornamento pronto il pulsante è «Aggiorna il Pro»' );
+		update_option( \AssociazioneSemplice\Updater::OPT, array( 'checked_at' => \AssociazioneSemplice\Db::now(), 'pro' => array( 'version' => ASEM_PRO_VERSION, 'update' => false ) ), false );
+		asem_ok( false !== strpos( asem_pro_notice_button(), 'Controlla aggiornamenti' ) && false !== strpos( asem_pro_notice_button(), 'asem_check_updates' ), 'avviso di incompatibilità: senza aggiornamento il pulsante è «Controlla aggiornamenti»' );
+		wp_set_current_user( 0 );
+		asem_ok( '' === asem_pro_notice_button(), 'avviso di incompatibilità: chi non può aggiornare i plugin non vede il pulsante' );
+	}
+	wp_set_current_user( $up_old );
+	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
+	delete_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT );
 	Settings::update( array( 'limits' => array( 'portal_updates' => 0 ) ) );
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	asem_ok( empty( $up_tr->response ), 'aggiornamento diretto: spento dai limiti, niente aggiornamenti' );

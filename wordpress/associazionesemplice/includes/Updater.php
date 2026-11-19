@@ -35,7 +35,28 @@ final class Updater {
 
 	const REFRESH_HOOK = 'asem_updater_refresh'; // evento singolo: chiede al portale lo stato degli aggiornamenti fuori dalla pagina
 
+	/** Istante dell'ultimo controllo forzato (link «Controlla aggiornamenti», «Controlla di nuovo» di WordPress, cambio del gratuito): al più uno al minuto. */
+	const FORCE_OPT = 'asem_updater_forced';
+	/** Un nuovo controllo è stato chiesto (il gratuito è cambiato): lo fa il lavoro in background, senza aspettare le 12 ore. */
+	const RECHECK_OPT = 'asem_updater_recheck';
+	/** Versione del gratuito vista l'ultima volta: se cambia (anche da WordPress.org) il Pro ricontrolla il portale. */
+	const FREE_VERSION_OPT = 'asem_updater_free_version';
+	const FORCE_GAP        = 60;
+
+	private static $registered = false;
+	/** Perché l'ultima richiesta al portale non ha dato niente: nokey, license, busy, net. */
+	private static $last_error = '';
+
 	public static function register(): void {
+		if ( self::$registered ) { // il gratuito del portale e il Pro la chiamano entrambi: una volta sola
+			return;
+		}
+		self::$registered = true;
+		add_filter( 'plugin_row_meta', array( __CLASS__, 'row_meta' ), 10, 2 );
+		add_action( 'admin_post_asem_check_updates', array( __CLASS__, 'handle_check' ) );
+		add_action( 'admin_notices', array( __CLASS__, 'print_result' ) );
+		add_action( 'upgrader_process_complete', array( __CLASS__, 'after_upgrade' ), 10, 2 );
+		add_action( 'admin_init', array( __CLASS__, 'watch_free_version' ) );
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'inject' ) );
 		add_action( self::REFRESH_HOOK, array( __CLASS__, 'refresh_in_background' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'info' ), 10, 3 );
@@ -101,9 +122,10 @@ final class Updater {
 
 	/** I plugin installati che si aggiornano da qui. @return array<string,array{basename:string,slug:string,name:string,version:string}> */
 	public static function products(): array {
-		$out = array(
-			'free' => array( 'basename' => plugin_basename( ASEM_FILE ), 'slug' => 'associazionesemplice', 'name' => 'Associazione Semplice', 'version' => (string) ASEM_VERSION ),
-		);
+		$out = array();
+		if ( is_readable( ASEM_DIR . 'includes/Updater.php' ) ) { // il gratuito scaricato da WordPress.org non ha questo file e si aggiorna da WordPress.org: qui solo il Pro
+			$out['free'] = array( 'basename' => plugin_basename( ASEM_FILE ), 'slug' => 'associazionesemplice', 'name' => 'Associazione Semplice', 'version' => (string) ASEM_VERSION );
+		}
 		if ( defined( 'ASEM_PRO_VERSION' ) && defined( 'ASEM_PRO_DIR' ) ) {
 			$out['pro'] = array( 'basename' => plugin_basename( ASEM_PRO_DIR . 'associazionesemplice-pro.php' ), 'slug' => 'associazionesemplice-pro', 'name' => 'Associazione Semplice Pro', 'version' => (string) ASEM_PRO_VERSION );
 		}
@@ -354,7 +376,8 @@ final class Updater {
 	 * @return array|null dati validi (vedi parse), null se non si può o il portale non risponde bene
 	 */
 	public static function ask( string $product ): ?array {
-		$all = self::products();
+		$all              = self::products();
+		self::$last_error = '';
 		if ( ! isset( $all[ $product ] ) ) {
 			return null;
 		}
@@ -363,6 +386,7 @@ final class Updater {
 			$body['domain'] = (string) apply_filters( 'asem_portal_domain', '' ); // lo dà il Pro
 			$key            = (string) apply_filters( 'asem_portal_license_key', '' ); // lo dà il Pro
 			if ( '' === $key || '' === $body['domain'] ) {
+				self::$last_error = 'nokey';
 				return null;
 			}
 			$body['license_key'] = $key;
@@ -376,9 +400,15 @@ final class Updater {
 			)
 		);
 		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+			$code             = is_wp_error( $res ) ? 0 : (int) wp_remote_retrieve_response_code( $res );
+			self::$last_error = 403 === $code ? 'license' : ( 429 === $code ? 'busy' : 'net' );
 			return null; // 403 (licenza), 429 (troppe richieste), rete: si tiene l'ultimo stato
 		}
-		return self::parse( wp_remote_retrieve_body( $res ) );
+		$r = self::parse( wp_remote_retrieve_body( $res ) );
+		if ( ! $r ) {
+			self::$last_error = 'net';
+		}
+		return $r;
 	}
 
 	/** Ultimo stato salvato. @return array{checked_at:?string,free?:array,pro?:array} */
@@ -393,9 +423,12 @@ final class Updater {
 	}
 
 	/** Aggiorna lo stato chiedendo al portale (un prodotto che non risponde conserva l'ultimo dato). */
-	public static function refresh(): void {
+	public static function refresh( array $only = array() ): void {
 		$state = self::state();
 		foreach ( array_keys( self::products() ) as $p ) {
+			if ( $only && ! in_array( $p, $only, true ) ) {
+				continue;
+			}
 			$r = self::ask( $p );
 			if ( $r ) {
 				$state[ $p ] = $r;
@@ -407,11 +440,151 @@ final class Updater {
 
 	/** Lavoro in background: aggiorna lo stato e rimette l'elenco degli aggiornamenti di WordPress al passo, senza attendere la prossima scadenza. */
 	public static function refresh_in_background(): void {
-		if ( ! self::enabled() || ! self::due() ) {
+		if ( ! self::enabled() ) {
+			return;
+		}
+		if ( get_option( self::RECHECK_OPT ) ) { // controllo chiesto dal cambio del gratuito: subito, ma al più uno al minuto
+			delete_option( self::RECHECK_OPT );
+			if ( ! self::force_allowed() ) {
+				return;
+			}
+		} elseif ( ! self::due() ) {
 			return;
 		}
 		self::refresh();
 		delete_site_transient( 'update_plugins' ); // alla prossima visita WordPress lo ricostruisce con lo stato nuovo
+	}
+
+	/** Un controllo forzato è permesso? Al più uno al minuto per sito, per non martellare il portale. */
+	private static function force_allowed(): bool {
+		$last = (int) get_option( self::FORCE_OPT, 0 );
+		if ( $last && time() - $last < self::FORCE_GAP ) {
+			return false;
+		}
+		update_option( self::FORCE_OPT, time(), false );
+		return true;
+	}
+
+	/** Chiede un nuovo controllo al lavoro in background (il gratuito è cambiato). */
+	private static function queue_recheck(): void {
+		update_option( self::RECHECK_OPT, time(), false );
+		if ( ! wp_next_scheduled( self::REFRESH_HOOK ) ) {
+			wp_schedule_single_event( time() + 5, self::REFRESH_HOOK );
+		}
+	}
+
+	/** La versione del Pro che il portale offre, se è più nuova di quella installata. */
+	public static function pro_update_available(): ?string {
+		$p = self::state()['pro'] ?? array();
+		if ( empty( $p['update'] ) || empty( $p['version'] ) || ! defined( 'ASEM_PRO_VERSION' ) || ! self::is_newer( (string) ASEM_PRO_VERSION, (string) $p['version'] ) ) {
+			return null;
+		}
+		return (string) $p['version'];
+	}
+
+	/** Indirizzo del controllo manuale (con il controllo di sicurezza di WordPress). */
+	public static function check_url(): string {
+		return wp_nonce_url( admin_url( 'admin-post.php?action=asem_check_updates' ), 'asem_check_updates' );
+	}
+
+	/**
+	 * Controllo subito, a richiesta: chiede il Pro al portale e sostituisce ciò che si sapeva.
+	 *
+	 * @return string off | nopro | wait | nokey | license | err | new | none
+	 */
+	public static function check_now(): string {
+		if ( ! self::enabled() ) {
+			return 'off';
+		}
+		if ( ! isset( self::products()['pro'] ) ) {
+			return 'nopro';
+		}
+		if ( ! self::force_allowed() ) {
+			return 'wait';
+		}
+		$r = self::ask( 'pro' );
+		if ( ! $r ) {
+			return in_array( self::$last_error, array( 'nokey', 'license' ), true ) ? self::$last_error : ( 'busy' === self::$last_error ? 'wait' : 'err' );
+		}
+		$state               = self::state();
+		$state['pro']        = $r;
+		$state['checked_at'] = Db::now();
+		update_option( self::OPT, $state, false );
+		delete_site_transient( 'update_plugins' ); // alla prossima visita WordPress lo ricostruisce con lo stato nuovo
+		return null !== self::pro_update_available() ? 'new' : 'none';
+	}
+
+	/** Nella riga del Pro in Plugin, accanto al rimando al sito: «Controlla aggiornamenti». */
+	public static function row_meta( $meta, $file ) {
+		$all = self::products();
+		if ( is_array( $meta ) && isset( $all['pro'] ) && $file === $all['pro']['basename'] && current_user_can( 'update_plugins' ) && self::enabled() ) {
+			$meta[] = '<a href="' . esc_url( self::check_url() ) . '">' . esc_html( 'Controlla aggiornamenti' ) . '</a>';
+		}
+		return $meta;
+	}
+
+	public static function handle_check(): void {
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			wp_die( esc_html( 'Non hai il permesso di controllare gli aggiornamenti.' ), '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( 'asem_check_updates' );
+		$back = wp_get_referer();
+		$back = $back ? remove_query_arg( 'asem_upd', $back ) : admin_url( 'plugins.php' );
+		wp_safe_redirect( add_query_arg( 'asem_upd', self::check_now(), $back ) );
+		exit;
+	}
+
+	/** Esito del controllo manuale, in cima alla pagina da cui si è partiti. */
+	public static function print_result(): void {
+		if ( empty( $_GET['asem_upd'] ) || ! current_user_can( 'update_plugins' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- sola lettura dell'esito
+			return;
+		}
+		$code = sanitize_key( wp_unslash( $_GET['asem_upd'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$ver  = defined( 'ASEM_PRO_VERSION' ) ? (string) ASEM_PRO_VERSION : '';
+		$new  = (string) ( self::state()['pro']['version'] ?? '' );
+		$msg  = array(
+			'none'    => array( 'success', 'Nessun aggiornamento: Associazione Semplice Pro è già alla versione più recente (' . $ver . ').' ),
+			'new'     => array( 'success', 'Aggiornamento disponibile: Associazione Semplice Pro ' . $new . '. Installalo da Bacheca → Aggiornamenti.' ),
+			'err'     => array( 'warning', 'Il portale non ha risposto. Riprova tra qualche minuto: intanto non cambia niente.' ),
+			'wait'    => array( 'info', 'Hai già controllato da poco: riprova tra un minuto.' ),
+			'nokey'   => array( 'warning', 'Per controllare gli aggiornamenti del Pro serve la chiave di licenza: inseriscila in Associazione Semplice → Licenza.' ),
+			'license' => array( 'warning', 'Il portale non riconosce la licenza del Pro per questo sito: controllala in Associazione Semplice → Licenza.' ),
+			'off'     => array( 'warning', 'Gli aggiornamenti diretti sono spenti: scarica il Pro dall\'area clienti, oppure riaccendili da Impostazioni → Limiti e soglie.' ),
+		);
+		if ( ! isset( $msg[ $code ] ) ) {
+			return;
+		}
+		echo '<div class="notice notice-' . esc_attr( $msg[ $code ][0] ) . ' is-dismissible"><p>' . esc_html( $msg[ $code ][1] );
+		if ( 'new' === $code ) {
+			echo ' <a class="button button-primary" href="' . esc_url( admin_url( 'update-core.php' ) ) . '">' . esc_html( 'Vai agli aggiornamenti' ) . '</a>';
+		}
+		echo '</p></div>';
+	}
+
+	/** Un plugin è stato aggiornato: se è il gratuito (anche da WordPress.org) il Pro ricontrolla subito il portale. */
+	public static function after_upgrade( $upgrader, $options ): void {
+		if ( ! is_array( $options ) || 'plugin' !== ( $options['type'] ?? '' ) || 'update' !== ( $options['action'] ?? '' ) || ! defined( 'ASEM_FILE' ) ) {
+			return;
+		}
+		$files = isset( $options['plugins'] ) && is_array( $options['plugins'] ) ? $options['plugins'] : ( isset( $options['plugin'] ) ? array( $options['plugin'] ) : array() );
+		if ( in_array( plugin_basename( ASEM_FILE ), $files, true ) && self::enabled() ) {
+			self::queue_recheck();
+		}
+	}
+
+	/** La versione del gratuito installato è diversa dall'ultima vista (aggiornamento da WordPress.org, carico a mano…): il Pro ricontrolla il portale. */
+	public static function watch_free_version(): void {
+		if ( ! defined( 'ASEM_VERSION' ) ) {
+			return;
+		}
+		$saved = get_option( self::FREE_VERSION_OPT, null );
+		if ( (string) ASEM_VERSION === $saved ) {
+			return;
+		}
+		update_option( self::FREE_VERSION_OPT, (string) ASEM_VERSION, false );
+		if ( null !== $saved && self::enabled() ) {
+			self::queue_recheck();
+		}
 	}
 
 	/** Icone del plugin nell'elenco degli aggiornamenti (immagini pubblicate dal portale). */
@@ -431,9 +604,11 @@ final class Updater {
 		if ( ! is_object( $transient ) || ! self::enabled() ) {
 			return $transient;
 		}
-		if ( self::due() ) {
-			if ( wp_doing_cron() || ( is_admin() && isset( $_GET['force-check'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- sola lettura del parametro con cui WordPress chiede «Controlla di nuovo»
-				self::refresh(); // lavoro in background o richiesta esplicita: la chiamata al portale non rallenta una pagina qualunque
+		if ( is_admin() && isset( $_GET['force-check'] ) && self::force_allowed() ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- sola lettura del parametro con cui WordPress chiede «Controlla di nuovo»
+			self::refresh(); // richiesta esplicita: si chiede subito al portale, senza aspettare le 12 ore (al più uno al minuto)
+		} elseif ( self::due() ) {
+			if ( wp_doing_cron() ) {
+				self::refresh(); // lavoro in background: la chiamata al portale non rallenta una pagina qualunque
 			} elseif ( ! wp_next_scheduled( self::REFRESH_HOOK ) ) {
 				wp_schedule_single_event( time(), self::REFRESH_HOOK ); // si mostra l'ultimo stato salvato; quello nuovo arriva dal lavoro in background
 			}
