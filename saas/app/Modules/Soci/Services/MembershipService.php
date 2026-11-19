@@ -170,7 +170,7 @@ final readonly class MembershipService implements Members
         if ($amount <= 0) {
             throw new PeopleError(['Indica l\'importo della quota (o imposta la quota associativa).']);
         }
-        $category = $this->ledger->categoryFor(CategoryKind::Membership) ?? throw new PeopleError(['Manca la categoria «Quota associativa» in prima nota.']);
+        $category = $this->ledger->categoryFor(CategoryKind::Membership) ?? throw new PeopleError(['Manca la voce «Quota associativa» in prima nota.']);
         $this->assertNoMembership($person->id, $year->label());
         $free = $plan['free'] === null || $this->holds($person->id, $plan['free']) ? null : SocialYear::fromLabel($plan['free'], $this->startMonth());
 
@@ -318,7 +318,7 @@ final readonly class MembershipService implements Members
             throw new PeopleError(['Il socio fondatore ha la tessera sempre rinnovata.']);
         }
         if ($person->left_on !== null) {
-            throw new PeopleError(['La persona è uscita dall\'associazione.']);
+            throw new PeopleError(['Questa persona è uscita dall\'associazione: non può avere la tessera.']);
         }
 
         return $person;

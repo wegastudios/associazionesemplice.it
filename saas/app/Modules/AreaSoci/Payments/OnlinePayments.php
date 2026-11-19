@@ -42,7 +42,7 @@ final readonly class OnlinePayments
     /** Dopo «rimborsa e storna»: la voce non sparisce, torna da pagare. Frasi mostrate in gestionale (conferma ed esito). */
     public const STAYS_RESERVATION = 'La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.';
 
-    public const STAYS_ENROLLMENT = "L'iscrizione resta e il contributo torna da pagare: se non serve più, togli l'iscrizione dalla scheda dell'attività.";
+    public const STAYS_ENROLLMENT = "L'iscrizione resta e il contributo torna da pagare: se non serve più, chiudi l'iscrizione dalla scheda dell'attività.";
 
     /** Frasi dell'email al socio, in coda al rimborso. */
     public const MAIL_RESERVATION = 'La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.';
@@ -103,7 +103,7 @@ final readonly class OnlinePayments
         }
         $recent = $this->table()->where('person_id', $payerId)->where('created_at', '>', now()->subHour())->count();
         if ($recent >= self::MAX_PER_HOUR) {
-            throw new MemberAccessError('Hai avviato molti pagamenti in poco tempo: aspetta un po\' prima di riprovare.');
+            throw new MemberAccessError('Hai avviato molti pagamenti in poco tempo: riprova tra qualche minuto.');
         }
         $dues = [];
         foreach ($this->dues($personIds) as $d) {
@@ -363,7 +363,7 @@ final readonly class OnlinePayments
             // ripetendo lo stesso importo la chiave identica evita un secondo rimborso.
             $this->table()->where('id', $paymentId)->update(['error' => mb_substr(trim(($p['error'] ?? '').' Rimborso di '.self::euro($amount).': il gestore non ha risposto, esito da verificare.'), 0, 1000), 'updated_at' => now()]);
             $this->audit->record('payment.refund_unknown', 'app.online_payments', $paymentId, ['cents' => $amount, 'provider' => $p['provider']]);
-            throw new MemberAccessError('Il gestore dei pagamenti non ha risposto: non è possibile sapere se il rimborso di '.self::euro($amount).' è partito. Non è stato stornato nulla. Controlla sul pannello di '.($p['provider'] === 'stripe' ? 'Stripe' : 'PayPal').' e, se non risulta, ripeti lo stesso rimborso con lo stesso importo: non viene fatto due volte.');
+            throw new MemberAccessError('Il gestore dei pagamenti non ha risposto: non si sa se il rimborso di '.self::euro($amount).' è partito, e nulla è stato stornato. Controlla sul pannello di '.($p['provider'] === 'stripe' ? 'Stripe' : 'PayPal').': se non risulta, ripeti il rimborso con lo stesso importo (non viene fatto due volte).');
         } catch (RuntimeException $e) {
             $this->table()->where('id', $paymentId)->update(['refund_pending_cents' => null, 'refund_key' => null, 'updated_at' => now()]);
             throw new MemberAccessError('Rimborso non riuscito: '.$e->getMessage().($void ? ' Nulla è stato stornato: ricevute e tessere sono come prima.' : ''));
@@ -384,7 +384,7 @@ final readonly class OnlinePayments
                     $voidError = $e->getMessage();
                 }
             }
-            $note = 'Restituiti '.self::euro($amount).' al socio.'.($voidError !== null ? ' Storno in prima nota NON riuscito: da fare a mano.' : '');
+            $note = 'Restituiti '.self::euro($amount).' al socio.'.($voidError !== null ? ' Lo storno in prima nota non è riuscito: fallo a mano.' : '');
             $update = ['refunded_cents' => $done + $amount, 'refunded_at' => now(), 'updated_at' => now(), 'refund_pending_cents' => null, 'refund_key' => null,
                 'error' => mb_substr(trim(($p['error'] ?? '').' '.$note), 0, 1000)];
             if ($p['status'] === 'settled' || $p['receipts'] !== []) {

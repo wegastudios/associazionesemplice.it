@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 /** Entrata e uscita dei soci: email → link e codice, link della segreteria, scelta della scheda, uscita. */
 final readonly class AccessController
 {
-    private const SENT = 'Se l\'email è di un socio è partita un\'email con un link e un codice: apri il link oppure scrivi qui il codice a 6 cifre (guarda anche nella posta indesiderata).';
+    private const SENT = 'Se l\'indirizzo è di un socio, è partita un\'email con un link e un codice a 6 cifre: apri il link oppure scrivi qui il codice. Controlla anche la posta indesiderata.';
 
     public function __construct(
         private MemberAccess $access,
@@ -88,7 +88,7 @@ final readonly class AccessController
         $request->session()->invalidate();
 
         return redirect('/area/accesso')->withCookie(Cookie::create(AuthenticateMember::COOKIE)->withPath('/area')->withExpires(1))
-            ->with('member_login_message', 'Sei uscito da tutti i dispositivi.');
+            ->with('member_login_message', 'Uscita fatta da tutti i dispositivi.');
     }
 
     /** Apre la scheda di un minore di cui si è tutori (o torna alla propria). */

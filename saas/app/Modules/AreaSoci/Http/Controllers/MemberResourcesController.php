@@ -81,7 +81,7 @@ final readonly class MemberResourcesController
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
-        return back()->with('status', $this->payments->providers() === [] ? 'Prenotazione registrata: puoi pagarla in segreteria.' : 'Prenotazione registrata: puoi pagarla da «Paga» o in segreteria.');
+        return back()->with('status', $this->payments->providers() === [] ? 'Prenotazione registrata: si paga in segreteria.' : 'Prenotazione registrata: si paga in segreteria o da «Quote».');
     }
 
     public function cancel(string $reservation): RedirectResponse

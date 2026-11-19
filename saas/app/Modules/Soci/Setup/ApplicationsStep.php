@@ -53,14 +53,14 @@ final readonly class ApplicationsStep implements SetupStep
     public function errors(array $input): array
     {
         $errors = [];
-        foreach (['privacy_url' => 'dell\'informativa privacy', 'rules_url' => 'del regolamento'] as $k => $label) {
+        foreach (['privacy_url' => 'dell\'informativa sulla privacy', 'rules_url' => 'del regolamento'] as $k => $label) {
             $url = is_string($input[$k] ?? null) ? trim($input[$k]) : '';
             if ($url !== '' && (! str_starts_with($url, 'https://') || filter_var($url, FILTER_VALIDATE_URL) === false || mb_strlen($url) > 300)) {
-                $errors[] = "L'indirizzo {$label} deve essere una pagina https://.";
+                $errors[] = "L'indirizzo {$label} deve iniziare con https://.";
             }
         }
         if (! empty($input['applications_enabled']) && (! is_string($input['privacy_url'] ?? null) || trim($input['privacy_url']) === '')) {
-            $errors[] = 'Per accettare domande online serve l\'indirizzo dell\'informativa privacy.';
+            $errors[] = 'Per accettare domande online serve l\'indirizzo dell\'informativa sulla privacy.';
         }
 
         return $errors;

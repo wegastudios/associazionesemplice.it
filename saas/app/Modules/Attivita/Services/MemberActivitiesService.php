@@ -120,7 +120,7 @@ final readonly class MemberActivitiesService implements MemberActivities
         }
         $s = $this->sessions->session($b->session_id);
         if ($s->session_date->format('Y-m-d') <= now('Europe/Rome')->toDateString()) {
-            throw new ActivityError('Si annulla fino al giorno prima: ormai scrivi alla segreteria.');
+            throw new ActivityError('Si può annullare fino al giorno prima: per questa data scrivi alla segreteria.');
         }
 
         return $this->sessions->cancelBooking($b->id);

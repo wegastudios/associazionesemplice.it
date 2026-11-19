@@ -40,7 +40,7 @@ it('iscrive a un corso, incassa i mesi con ricevuta e ne calcola la situazione',
 
         $s->enroll($yoga->id, $anna->id, $first);
         $s->enroll($yoga->id, $gino->id, $month);
-        expect(fn () => $s->enroll($yoga->id, $anna->id))->toThrow(ActivityError::class, 'già iscritto');
+        expect(fn () => $s->enroll($yoga->id, $anna->id))->toThrow(ActivityError::class, 'già tra gli iscritti');
 
         $receipt = $s->collect($yoga->id, $anna->id, $cash, now()->toDateString(), [$first]);
         expect($receipt)->toBe('1/'.now()->format('Y'));
@@ -160,7 +160,7 @@ it('mostra le pagine e rispetta i permessi', function (): void {
 
     $this->post("/gestionale/attivita/{$id}/iscrizioni", ['person_id' => $anna])->assertSessionHas('status', 'Iscrizione registrata.');
     $this->post("/gestionale/attivita/{$id}/incassi", ['person_id' => $anna, 'account_id' => $cash, 'date' => now()->toDateString(), 'months' => [now()->format('Y-m')]])
-        ->assertSessionHas('status', "Contributo incassato: ricevuta n. 1/{$year}.");
+        ->assertSessionHas('status', "Incasso registrato: ricevuta n. 1/{$year}.");
     $this->post("/gestionale/attivita/{$id}/spese", ['account_id' => $cash, 'date' => now()->toDateString(), 'amount' => '100,00', 'description' => 'Affitto'])
         ->assertSessionHas('status', 'Spesa registrata.');
 

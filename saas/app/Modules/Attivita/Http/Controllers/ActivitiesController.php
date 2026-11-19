@@ -116,7 +116,7 @@ final readonly class ActivitiesController
     {
         $archived = $request->boolean('archived');
 
-        return $this->attempt(fn (): RedirectResponse => $this->done(fn () => $this->activities->archive($activity, $archived), $archived ? 'Attività archiviata.' : 'Attività riaperta.'));
+        return $this->attempt(fn (): RedirectResponse => $this->done(fn () => $this->activities->archive($activity, $archived), $archived ? 'Attività archiviata.' : 'Attività riattivata.'));
     }
 
     public function enroll(Request $request, string $activity): RedirectResponse
@@ -154,7 +154,7 @@ final readonly class ActivitiesController
         return $this->attempt(function () use ($activity, $data, $amount, $method, $months): RedirectResponse {
             $receipt = $this->activities->collect($activity, Input::string($data, 'person_id'), Input::string($data, 'account_id'), Input::string($data, 'date'), $months, $amount, $method === null ? null : PaymentMethod::from($method));
 
-            return back()->with('status', $receipt === null ? 'Contributo incassato.' : "Contributo incassato: ricevuta n. {$receipt}.");
+            return back()->with('status', $receipt === null ? 'Incasso registrato.' : "Incasso registrato: ricevuta n. {$receipt}.");
         });
     }
 

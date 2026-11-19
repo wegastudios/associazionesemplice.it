@@ -162,7 +162,7 @@ final readonly class ReservationsController
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
-        return back()->with('status', $receipt === null ? 'Incasso registrato in prima nota.' : "Incasso registrato: ricevuta n. {$receipt}.");
+        return back()->with('status', $receipt === null ? 'Incasso registrato.' : "Incasso registrato: ricevuta n. {$receipt}.");
     }
 
     public function waitlistJoin(Request $request, string $resource): RedirectResponse
@@ -172,7 +172,7 @@ final readonly class ReservationsController
         return ResourcesController::attempt(function () use ($resource, $data): RedirectResponse {
             $this->reservations->waitlistJoin($resource, Input::string($data, 'person_id'), Input::optionalString($data, 'note'));
 
-            return back()->with('status', 'Aggiunto alla lista d\'attesa.');
+            return back()->with('status', 'Persona aggiunta alla lista d\'attesa.');
         });
     }
 
@@ -181,7 +181,7 @@ final readonly class ReservationsController
         return ResourcesController::attempt(function () use ($resource, $person): RedirectResponse {
             $this->reservations->waitlistLeave($resource, $person);
 
-            return back()->with('status', 'Tolto dalla lista d\'attesa.');
+            return back()->with('status', 'Persona tolta dalla lista d\'attesa.');
         });
     }
 

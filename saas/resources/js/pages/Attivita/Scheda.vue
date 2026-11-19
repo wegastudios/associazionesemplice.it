@@ -154,7 +154,7 @@ const label = 'space-y-1 text-sm';
             </fieldset>
             <div v-if="canEdit" class="mt-4 flex flex-wrap gap-3">
                 <button type="submit" class="btn btn-primary" :disabled="form.processing">{{ activity ? 'Salva' : 'Crea l\'attività' }}</button>
-                <button v-if="activity" type="button" class="btn btn-secondary" @click="archive(!activity.archived)">{{ activity.archived ? 'Riapri' : 'Archivia' }}</button>
+                <button v-if="activity" type="button" class="btn btn-secondary" @click="archive(!activity.archived)">{{ activity.archived ? 'Riattiva' : 'Archivia' }}</button>
             </div>
         </form>
 

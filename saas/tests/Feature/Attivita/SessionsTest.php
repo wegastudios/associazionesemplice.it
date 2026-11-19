@@ -49,7 +49,7 @@ it('crea le date, prenota entro i posti e fa entrare chi è in lista d\'attesa',
         $eva = Person::create(['first_name' => 'Eva', 'last_name' => 'Verdi']);
         expect($s->book($session, $anna->id)->fee_due_cents)->toBe(1500)
             ->and($s->book($session, $gino->id)->fee_due_cents)->toBe(2000)
-            ->and(fn () => $s->book($session, $anna->id))->toThrow(ActivityError::class, 'già prenotato')
+            ->and(fn () => $s->book($session, $anna->id))->toThrow(ActivityError::class, 'ha già una prenotazione')
             ->and(fn () => $s->book($session, $eva->id))->toThrow(ActivityError::class, 'Posti esauriti');
 
         $s->waitlistJoin($session, $eva->id);
@@ -232,7 +232,7 @@ it('avvisa per email chi passa dalla lista d\'attesa alla prenotazione, e il gen
             return ($notifiable->routes['mail'] ?? null) === 'eva@example.com'
                 && str_starts_with($n->body, 'Si è liberato un posto: ora hai un posto per Escursioni del ')
                 && str_contains($n->body, ', alle ore 09:00. Se non puoi venire, annulla dall\'area soci o scrivi alla segreteria.')
-                && $n->payLine === 'La quota da versare la trovi in Quote, nell\'area soci.';
+                && $n->payLine === 'Il contributo da pagare lo trovi in «Quote», nell\'area soci.';
         });
 
         // Il posto torna libero e il prossimo in lista è il minore: scrive la madre.
@@ -266,6 +266,6 @@ it('senza il pacchetto Area soci l\'avviso rimanda solo alla segreteria', functi
         Notification::assertSentOnDemand(WaitlistPromotedNotification::class, fn (WaitlistPromotedNotification $n): bool => $n->areaUrl === null
             && str_ends_with($n->body, 'Se non puoi venire, scrivi alla segreteria.')
             && ! str_contains($n->body, 'area soci')
-            && $n->payLine === 'Per la quota da versare scrivi alla segreteria.');
+            && $n->payLine === 'Per il contributo da pagare scrivi alla segreteria.');
     });
 });

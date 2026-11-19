@@ -137,7 +137,7 @@ final readonly class ResourceService
             throw new ResourceError('Il pacchetto Risorse dell\'associazione non comprende risorse '.mb_strtolower($typology->label()).': puoi aggiungerle dal portale.');
         }
         if ($limit['used'] >= $limit['tier']) {
-            throw new ResourceError('Hai già '.$limit['used'].' risorse '.mb_strtolower($typology->label()).' attive, il massimo del tuo pacchetto: archiviane una o aumenta lo scaglione dal portale.');
+            throw new ResourceError('Risorse '.mb_strtolower($typology->label()).' attive: '.$limit['used'].', il massimo del tuo pacchetto. Archiviane una oppure passa a un pacchetto più grande dal portale.');
         }
     }
 
