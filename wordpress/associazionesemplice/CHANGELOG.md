@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.31 – 2026-11-19
+- Ottimizzazione: rivisti tutti i testi del plugin, più chiari e coerenti: «area soci», messaggi di errore che dicono cosa fare, singolare e plurale giusti, un solo formato per l'oggetto delle email, «rendiconto» al posto di «bilancio».
+- Altro: corretto un errore che bloccava il salvataggio dei dati dell'ente quando si conferma il cambio del mese dell'anno fiscale.
+- Altro: «Controlla di nuovo» in Bacheca → Aggiornamenti ricontrolla subito anche il portale.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.30 – 2026-11-18
 - Nuovo: la tessera dei soci, le quote e gli incassi seguono l'anno fiscale; l'«anno delle attività» vale solo per corsi ed eventi. Le tessere già emesse con un pagamento si riallineano da sole (mai accorciate, anni chiusi intatti); se cambi il mese dell'anno fiscale vedi prima cosa succede alle tessere.
 - Nuovo: le pagine in bozza di eventi e corsi, anche quelle importate, si pubblicano tutte insieme.
