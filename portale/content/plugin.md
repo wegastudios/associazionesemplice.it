@@ -12,7 +12,7 @@ Si scarica da WordPress.org e funziona da solo, senza chiave e senza contattare 
 - **Corsi ed eventi:** iscrizioni, posti limitati con lista d'attesa, tolleranza sul pagamento per bonifico e contanti, elenchi dei partecipanti, calendario.
 - **Cassa:** entrate e uscite in una cassa unica, coordinate bancarie per i soci, anni fiscali, esportazione della prima nota.
 - **Registri e privacy:** libro dei verbali, informativa, consensi, anonimizzazione e download dei dati personali.
-- **Area riservata dei soci** sul tuo sito, con avvisi, regolamento da accettare, tessera, eventi e corsi, tramite blocchi, shortcode e widget Elementor.
+- **Area soci** sul tuo sito, con avvisi, regolamento da accettare, tessera, eventi e corsi, tramite blocchi, shortcode e widget Elementor.
 - **Ruoli:** presidente, vicepresidente, tesoriere, consiglieri e segreteria, con permessi separati.
 - **Donazioni con PayPal** e **copia di sicurezza** dei dati.
 

@@ -14,6 +14,7 @@ final class ConfrontoImport {
 		'libro soci'        => 'members',
 		'schede dei soci'   => 'members',
 		'area riservata dei soci' => 'member_area',
+		'area soci'         => 'member_area',
 		'prima nota'        => 'ledger',
 		'corsi'             => 'activities',
 		'eventi'            => 'activities',

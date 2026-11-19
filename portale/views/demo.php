@@ -81,5 +81,5 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 		<tr><td><b><?php echo e( $label ); ?></b></td><?php foreach ( $cells as $c ) : ?><td style="text-align:center"><?php echo e( $c ); ?></td><?php endforeach; ?></tr>
 	<?php endforeach; ?>
 	</tbody></table></div>
-	<p class="fine">Il presidente e il vicepresidente, con la tessera in regola, agiscono come la segreteria su tutto. Il tesoriere lavora dall'area riservata. Il volontario gestisce solo le sue attività. Lo staff verifica gli ingressi.</p>
+	<p class="fine">Il presidente e il vicepresidente, con la tessera in regola, agiscono come la segreteria su tutto. Il tesoriere lavora dall'area soci. Il volontario gestisce solo le sue attività. Lo staff verifica gli ingressi.</p>
 </div></section>
