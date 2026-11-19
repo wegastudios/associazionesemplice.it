@@ -42,7 +42,7 @@ final class LicenseKeyAtRestTest extends TestCase {
 	/** Chiave illeggibile: avviso fisso per chi amministra e nessuna chiamata al portale con una chiave vuota. */
 	public function test_unreadable_key_notice_and_no_portal_call(): void {
 		$lic = $this->src( 'includes/License.php' );
-		$this->assertStringContainsString( 'La chiave di licenza salvata non si legge più su questo sito (succede se cambiano i codici di sicurezza di WordPress o se il sito è stato spostato): reinseriscila in Impostazioni → Licenza.', $lic );
+		$this->assertStringContainsString( 'La chiave di licenza salvata non si legge più su questo sito (può succedere dopo uno spostamento del sito o un cambio dei codici di sicurezza di WordPress). Inseriscila di nuovo in Impostazioni → Licenza.', $lic );
 		$sync = (int) strpos( $lic, 'public static function sync(' );
 		$body = substr( $lic, $sync );
 		$unread = (int) strpos( $body, 'self::key_unreadable()' );

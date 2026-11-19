@@ -69,7 +69,7 @@ final class Gateways {
 		if ( in_array( (int) $r['code'], array( 401, 403 ), true ) ) {
 			return array( 'ok' => false, 'message' => 'SumUp: la chiave API non è valida.' );
 		}
-		return array( 'ok' => false, 'message' => 'SumUp: risposta inattesa (' . (int) $r['code'] . ').' );
+		return array( 'ok' => false, 'message' => 'SumUp non ha risposto come previsto (codice ' . (int) $r['code'] . '): riprova tra poco.' );
 	}
 
 	private static function test_stripe( array $c, callable $http ): array {
@@ -83,7 +83,7 @@ final class Gateways {
 			$live = is_array( $data ) && ! empty( $data['livemode'] );
 			$mode = 'live' === ( $c['stripe_mode'] ?? 'test' ) ? 'live' : 'test';
 			if ( $live !== ( 'live' === $mode ) ) {
-				return array( 'ok' => false, 'message' => 'La chiave funziona ma è ' . ( $live ? 'REALE (live)' : 'di PROVA (test)' ) . ', mentre la modalità scelta è ' . ( 'live' === $mode ? 'reale' : 'di prova' ) . '.' );
+				return array( 'ok' => false, 'message' => 'La chiave funziona ma è ' . ( $live ? 'reale (live)' : 'di prova (test)' ) . ', mentre la modalità scelta è ' . ( 'live' === $mode ? 'reale' : 'di prova' ) . '.' );
 			}
 			return array( 'ok' => true, 'message' => 'Stripe: connessione riuscita (' . ( $live ? 'modalità reale' : 'modalità di prova' ) . ').' );
 		}
@@ -110,12 +110,12 @@ final class Gateways {
 		);
 		$data = json_decode( (string) $r['body'], true );
 		if ( 200 === (int) $r['code'] && is_array( $data ) && ! empty( $data['access_token'] ) ) {
-			return array( 'ok' => true, 'message' => 'PayPal: connessione riuscita (' . ( $live ? 'modalità reale' : 'sandbox' ) . ').' );
+			return array( 'ok' => true, 'message' => 'PayPal: connessione riuscita (' . ( $live ? 'modalità reale' : 'modalità di prova (sandbox)' ) . ').' );
 		}
 		if ( in_array( (int) $r['code'], array( 400, 401 ), true ) ) {
-			return array( 'ok' => false, 'message' => 'PayPal: Client ID o Client Secret non validi per la modalità ' . ( $live ? 'reale' : 'sandbox' ) . '.' );
+			return array( 'ok' => false, 'message' => 'PayPal: Client ID o Client Secret non validi per la modalità ' . ( $live ? 'reale' : 'di prova (sandbox)' ) . '.' );
 		}
-		return array( 'ok' => false, 'message' => 'PayPal: risposta inattesa (' . (int) $r['code'] . ').' );
+		return array( 'ok' => false, 'message' => 'PayPal non ha risposto come previsto (codice ' . (int) $r['code'] . '): riprova tra poco.' );
 	}
 
 	/** Chiamata di rete reale, tramite l'API HTTP di WordPress. */

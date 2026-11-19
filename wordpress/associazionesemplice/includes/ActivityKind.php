@@ -20,7 +20,7 @@ final class ActivityKind {
 		return array(
 			self::COURSE    => 'Corso (iscrizione mensile)',
 			self::EVENT     => 'Evento una tantum (prenotazione obbligatoria)',
-			self::RECURRING => 'Evento ricorrente (iscrizione al singolo evento)',
+			self::RECURRING => 'Evento ricorrente (prenotazione data per data)',
 		);
 	}
 

@@ -21,7 +21,7 @@ final class WpDashboard {
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			return;
 		}
-		wp_add_dashboard_widget( 'asem_todo', 'Associazione Semplice — Da lavorare', array( __CLASS__, 'todo' ) );
+		wp_add_dashboard_widget( 'asem_todo', 'Associazione Semplice — Da fare', array( __CLASS__, 'todo' ) );
 		if ( Modules::on( 'activities' ) && \AssociazioneSemplice\Employees::page_allowed( 'asem-activities' ) ) {
 			wp_add_dashboard_widget( 'asem_week', 'Associazione Semplice — Eventi e corsi della settimana', array( __CLASS__, 'week' ) );
 		}
@@ -59,7 +59,7 @@ final class WpDashboard {
 		}
 		$inv = count( Plugin::people()->guests_to_invite() );
 		if ( $inv > 0 ) {
-			$items[] = array( $inv, 1 === $inv ? 'ospite da invitare a iscriversi' : 'ospiti da invitare a iscriversi', Ui::url( 'asem-people', array( 'type' => 'guest', 'at_limit' => 1 ) ) );
+			$items[] = array( $inv, 1 === $inv ? 'ospite da invitare a diventare socio' : 'ospiti da invitare a diventare soci', Ui::url( 'asem-people', array( 'type' => 'guest', 'at_limit' => 1 ) ) );
 		}
 		$late = count( \AssociazioneSemplice\Inventory::overdue() );
 		if ( $late > 0 ) {
@@ -77,7 +77,7 @@ final class WpDashboard {
 	public static function todo(): void {
 		$items = self::todo_items();
 		if ( ! $items ) {
-			echo '<p>Niente da lavorare: è tutto in ordine.</p>';
+			echo '<p>Niente da fare: è tutto in ordine.</p>';
 		} else {
 			echo '<ul class="asem-todo" style="margin:0 0 12px">';
 			foreach ( $items as $it ) {

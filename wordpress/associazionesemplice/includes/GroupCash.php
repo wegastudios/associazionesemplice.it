@@ -84,7 +84,7 @@ final class GroupCash {
 					$cents = Money::parse( $l['amount'] ?? '' ) ?? 0;
 					$title = mb_substr( (string) ( $l['title'] ?? '' ), 0, 200 );
 					if ( $staff && 'event' !== $kind ) {
-						throw new \InvalidArgumentException( 'Sul posto lo staff incassa solo i biglietti dell\'evento.' );
+						throw new \InvalidArgumentException( 'Sul posto lo staff incassa solo i contributi dell\'evento.' );
 					}
 					if ( 'event' === $kind ) {
 						$sid = (int) ( $l['session_id'] ?? 0 );
@@ -119,7 +119,7 @@ final class GroupCash {
 							throw new \InvalidArgumentException( $name . ': per un corso la tessera deve essere in regola (aggiungi la quota associativa nello stesso incasso, oppure riattiva il socio).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 						}
 						if ( $people->is_suspended( $pid ) ) {
-							throw new \InvalidArgumentException( $name . ' è sospeso (inattivo): riattivalo a mano prima di iscriverlo a un corso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+							throw new \InvalidArgumentException( $name . ' è sospeso (inattivo): riattivalo dalla sua scheda prima di iscriverlo a un corso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 						}
 						$month = (string) ( $l['month'] ?? '' );
 						if ( ! in_array( $aid, $acts->active_activity_ids( $pid ), true ) ) {
@@ -136,7 +136,7 @@ final class GroupCash {
 				}
 			}
 			if ( ! $lines ) {
-				throw new \InvalidArgumentException( $staff ? 'Niente da incassare: i biglietti risultano già versati.' : 'Aggiungi almeno una voce.' );
+				throw new \InvalidArgumentException( $staff ? 'Niente da incassare: i contributi risultano già pagati.' : 'Aggiungi almeno una voce.' );
 			}
 			$ledger->record_receipt(
 				array(

@@ -210,7 +210,7 @@ final class Newsletter {
 			wp_schedule_single_event( time() + 2 * MINUTE_IN_SECONDS, self::HOOK, array( 'more' ) ); // si prosegue da soli, ma solo se questo passaggio ha fatto progressi (con il servizio fermo non si insiste)
 		}
 		update_option( self::OPT_LAST, array( 't' => time(), 'result' => $out ), false );
-		$out['message'] = sprintf( 'Newsletter: %d iscritti, %d aggiornati, %d tolti, %d invariati%s%s.', $out['added'], $out['updated'], $out['removed'], $out['unchanged'], $out['errors'] ? ', ' . $out['errors'] . ' con errore' : '', $out['partial'] ? ' (altri al prossimo passaggio)' : '' );
+		$out['message'] = sprintf( 'Newsletter: %d aggiunti, %d aggiornati, %d tolti, %d invariati%s%s.', $out['added'], $out['updated'], $out['removed'], $out['unchanged'], $out['errors'] ? ', ' . $out['errors'] . ' con errore' : '', $out['partial'] ? ' (gli altri proseguono da soli tra poco)' : '' );
 		return $out;
 	}
 

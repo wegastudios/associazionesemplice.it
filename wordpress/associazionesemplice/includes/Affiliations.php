@@ -47,7 +47,7 @@ final class Affiliations {
 			throw new \InvalidArgumentException( 'C\'è già un\'affiliazione a questo ente per la stessa stagione: modificala invece di aggiungerne un\'altra.' );
 		}
 		if ( ! $db->insert( Db::t( 'affiliations' ), $d + array( 'created_at' => Db::now() ) ) ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare l\'affiliazione (errore del database).' );
+			throw new \InvalidArgumentException( 'Affiliazione non salvata: riprova.' );
 		}
 		$id = (int) $db->insert_id;
 		self::flush_counts();
@@ -100,7 +100,7 @@ final class Affiliations {
 	public static function add_card( int $person_id, array $in ): int {
 		$p = MemberQuery::find( $person_id );
 		if ( ! $p ) {
-			throw new \InvalidArgumentException( 'Si tessera un socio attivo.' );
+			throw new \InvalidArgumentException( 'Puoi tesserare solo un socio attivo.' );
 		}
 		return self::insert_card( $person_id, AffiliationRules::clean_card( $in ) );
 	}
@@ -113,7 +113,7 @@ final class Affiliations {
 			throw new \InvalidArgumentException( 'Questo socio ha già una tessera di questo ente per la stessa stagione.' );
 		}
 		if ( ! $db->insert( Db::t( 'body_cards' ), $d + array( 'person_id' => $person_id, 'created_at' => Db::now() ) ) ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare la tessera (errore del database).' );
+			throw new \InvalidArgumentException( 'Tessera non salvata: riprova.' );
 		}
 		$id = (int) $db->insert_id;
 		self::flush_counts();
@@ -368,7 +368,7 @@ final class Affiliations {
 			$kind = AffiliationRules::reminder_kind( 'aff', $a['status'], ExpiryRules::days_left( (string) $a['expires_on'], $today ) );
 			$ref  = $a['id'] . ':' . $a['expires_on'];
 			if ( '' !== $kind && StaffReminders::fresh( 0, $kind, $ref, $send ) ) {
-				$lines[] = 'Affiliazione ' . self::body_name( $a ) . ' ' . $a['season'] . ' (codice ' . $a['code'] . ') — ' . ( ExpiryRules::EXPIRING === $a['status'] ? 'scade il ' : 'scaduta il ' ) . ExpiryRules::it_date( (string) $a['expires_on'] );
+				$lines[] = 'Affiliazione ' . self::body_name( $a ) . ' ' . $a['season'] . ' (codice ' . $a['code'] . '): ' . ( ExpiryRules::EXPIRING === $a['status'] ? 'scade il ' : 'scaduta il ' ) . ExpiryRules::it_date( (string) $a['expires_on'] );
 				$keys[]  = array( 0, $kind, $ref );
 			}
 		}
@@ -396,7 +396,7 @@ final class Affiliations {
 				}
 			}
 			if ( StaffReminders::fresh( $pid, $kind . '_s', $ref, $send ) ) { // il tipo con «_s» distingue la riga della segreteria da quella del socio
-				$lines[] = 'Tessera ' . self::body_name( $c ) . ' di ' . trim( $c['last_name'] . ' ' . $c['first_name'] ) . ' — ' . ( ExpiryRules::EXPIRING === $c['status'] ? 'scade il ' : 'scaduta il ' ) . $when;
+				$lines[] = 'Tessera ' . self::body_name( $c ) . ' di ' . trim( $c['last_name'] . ' ' . $c['first_name'] ) . ': ' . ( ExpiryRules::EXPIRING === $c['status'] ? 'scade il ' : 'scaduta il ' ) . $when;
 				$keys[]  = array( $pid, $kind . '_s', $ref );
 			}
 		}

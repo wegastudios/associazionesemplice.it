@@ -403,7 +403,7 @@ final class Employees {
 		}
 		list( $from, $to ) = self::clean_period( $d );
 		if ( get_user_by( 'email', $email ) ) {
-			throw new \InvalidArgumentException( 'Con questa email esiste già un utente del sito. L\'accesso da dipendente è separato da quello da socio: usa un\'altra email per il dipendente (anche lo stesso socio ne può avere due).' );
+			throw new \InvalidArgumentException( 'Questa email è già usata da un utente del sito. Per l\'accesso da dipendente serve un\'altra email, anche se la persona è già socio.' );
 		}
 		self::ensure_role();
 		$uid = wp_insert_user(
@@ -418,7 +418,7 @@ final class Employees {
 			)
 		);
 		if ( is_wp_error( $uid ) ) {
-			throw new \InvalidArgumentException( 'Impossibile creare l\'utente: ' . $uid->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Utente non creato: ' . $uid->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$uid = (int) $uid;
 		self::save_period( $uid, $from, $to );

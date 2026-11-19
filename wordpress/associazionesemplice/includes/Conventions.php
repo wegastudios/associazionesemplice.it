@@ -50,7 +50,7 @@ final class Conventions {
 		$site = trim( (string) ( $in['website'] ?? '' ) );
 		$url  = ConventionRules::normalize_website( $site );
 		if ( '' !== $site && '' === $url ) {
-			throw new \InvalidArgumentException( 'L\'indirizzo del sito non è valido (deve essere http o https).' );
+			throw new \InvalidArgumentException( 'L\'indirizzo del sito non è valido: deve iniziare con https:// o http://.' );
 		}
 		$logo = (int) ( $in['logo_id'] ?? 0 );
 		if ( $logo > 0 && ! wp_attachment_is_image( $logo ) ) {
@@ -83,7 +83,7 @@ final class Conventions {
 			return $id;
 		}
 		if ( ! $db->insert( Db::t( 'conventions' ), $d + array( 'created_at' => Db::now(), 'updated_at' => Db::now() ) ) ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare la convenzione (errore del database).' );
+			throw new \InvalidArgumentException( 'Convenzione non salvata: riprova.' );
 		}
 		$id = (int) $db->insert_id;
 		Audit::log( 'convention.created', 'convention', $id );

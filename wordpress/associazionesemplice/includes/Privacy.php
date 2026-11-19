@@ -115,7 +115,7 @@ final class Privacy {
 	 */
 	public static function closed_books_note( int $person_id ): string {
 		$n = MemberBook::snapshot_count_for( $person_id );
-		return 0 === $n ? '' : ' Attenzione: i dati del libro soci (nome, codice fiscale, nascita, residenza, date) restano nei libri degli anni fiscali già chiusi (' . $n . ( 1 === $n ? ' libro' : ' libri' ) . '), come dovere di conservazione: non si cancellano né si rendono anonimi.';
+		return 0 === $n ? '' : ' Attenzione: i dati del libro soci (nome, codice fiscale, nascita, residenza, date) restano nei libri degli anni fiscali già chiusi (' . $n . ( 1 === $n ? ' libro' : ' libri' ) . '), perché la legge chiede di conservarli: non si eliminano né si rendono anonimi.';
 	}
 
 	/**
@@ -125,7 +125,7 @@ final class Privacy {
 	public static function closed_descriptions_note( int $person_id ): string {
 		$db = Db::db();
 		$n  = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE (person_id = %d OR payer_person_id = %d) AND description <> '' AND " . YearLock::in_closed_sql( 'tx_date' ), $person_id, $person_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- la condizione sugli anni fiscali chiusi è già preparata (date)
-		return 0 === $n ? '' : ' Attenzione: ' . $n . ( 1 === $n ? ' movimento' : ' movimenti' ) . ' di anni fiscali già chiusi ' . ( 1 === $n ? 'ha' : 'hanno' ) . ' una descrizione che non si modifica (il chiuso è chiuso): se vi è scritto a mano il nome della persona, resta. Riapri l\'anno fiscale solo se devi toglierlo.';
+		return 0 === $n ? '' : ' Attenzione: ' . $n . ( 1 === $n ? ' movimento' : ' movimenti' ) . ' di anni fiscali già chiusi ' . ( 1 === $n ? 'ha' : 'hanno' ) . ' una descrizione che non si può più modificare: se contiene il nome della persona, resta. Per toglierlo devi riaprire l\'anno fiscale.';
 	}
 
 	public static function can_export( int $person_id ): bool {
@@ -170,7 +170,7 @@ final class Privacy {
 			return 'Persona non trovata.';
 		}
 		if ( ! empty( $p['anonymized_at'] ) ) {
-			return 'Già anonimizzata.';
+			return 'È già stata resa anonima.';
 		}
 		if ( ! empty( $p['wp_user_id'] ) && user_can( (int) $p['wp_user_id'], Plugin::CAP_OPS ) ) {
 			return 'Ha il ruolo di amministratore del sito: toglilo prima.';
@@ -179,7 +179,7 @@ final class Privacy {
 			return 'Ha una carica nel consiglio direttivo: toglila prima.';
 		}
 		if ( Plugin::people()->guests_of( $person_id ) ) {
-			return 'Ha degli ospiti collegati: anonimizza o sposta prima loro.';
+			return 'Ha degli ospiti collegati: rendi anonimi o sposta prima loro.';
 		}
 		if ( (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE person_id = %d AND end_month IS NULL', $person_id ) ) > 0 ) {
 			return 'È iscritta a un corso: termina prima l\'iscrizione.';

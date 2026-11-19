@@ -245,7 +245,7 @@ final class Docs {
 		if ( 'csv' === $format ) {
 			return array( 'body' => self::csv( self::book_cols( $snap ), self::book_rows( $rows, $snap ) ), 'filename' => $name . '.csv', 'mime' => 'text/csv; charset=utf-8' );
 		}
-		$sub = ( $cap ? mb_substr( $cap['title'], mb_strlen( 'Libro soci — ' ) ) : 'Aggiornato al ' . self::d( Db::today() ) ) . ' · ' . count( $all ) . ( 1 === count( $all ) ? ' socio, ' : ' soci, ' ) . $active . ' in carica';
+		$sub = ( $cap ? mb_substr( $cap['title'], mb_strlen( 'Libro soci — ' ) ) : 'Aggiornato al ' . self::d( Db::today() ) ) . ' · ' . count( $all ) . ( 1 === count( $all ) ? ' socio, ' : ' soci, ' ) . $active . ( 1 === $active ? ' non cessato' : ' non cessati' );
 		return array( 'body' => self::book_pdf( $rows, $sub, $snap ), 'filename' => $name . '.pdf', 'mime' => 'application/pdf' );
 	}
 
@@ -358,7 +358,7 @@ final class Docs {
 		$y += 8;
 		$put( 'Risultati', 10, true );
 		foreach ( $res['options'] as $o ) {
-			$put( $o['label'] . ': ' . $o['count'] . ' voti (' . $o['percent'] . '%)' . ( in_array( $o['id'], $res['winners'], true ) ? ' — più votata' : '' ) );
+			$put( $o['label'] . ': ' . $o['count'] . ' voti (' . $o['percent'] . '%)' . ( in_array( $o['id'], $res['winners'], true ) ? ' (più votata)' : '' ) );
 			if ( $o['names'] ) {
 				$put( '   ' . implode( ', ', $o['names'] ), 9 );
 			}

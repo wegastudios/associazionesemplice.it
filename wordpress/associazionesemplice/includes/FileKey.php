@@ -632,7 +632,7 @@ final class FileKey {
 	 */
 	public static function recover( string $old_const, string $old_auth_key, string $old_auth_salt ): int {
 		if ( ! FileCrypt::available() ) {
-			throw new \InvalidArgumentException( Texts::t( 'Questo server non ha la libreria di cifratura (sodium).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Su questo server manca la libreria di cifratura (sodium): chiedi al tuo fornitore di hosting di attivarla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		// I vecchi valori si usano com'erano (senza ripulirli): la chiave è nata da quelli, spazi compresi.
 		$cands = array();
@@ -702,7 +702,7 @@ final class FileKey {
 	 */
 	public static function set_custom_phrase( string $phrase, string $again ): void {
 		if ( ! FileCrypt::available() ) {
-			throw new \InvalidArgumentException( Texts::t( 'Questo server non ha la libreria di cifratura (sodium).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Su questo server manca la libreria di cifratura (sodium): chiedi al tuo fornitore di hosting di attivarla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$phrase = trim( $phrase ); // stessa ripulitura in creazione, in apertura e nel ripristino: una frase incollata con uno spazio in fondo si riapre sempre
 		$again  = trim( $again );
@@ -758,7 +758,7 @@ final class FileKey {
 	 */
 	public static function recover_with_phrase( string $phrase ): int {
 		if ( ! FileCrypt::available() ) {
-			throw new \InvalidArgumentException( Texts::t( 'Questo server non ha la libreria di cifratura (sodium).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Su questo server manca la libreria di cifratura (sodium): chiedi al tuo fornitore di hosting di attivarla.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return (int) self::locked(
 			function () use ( $phrase ): int {

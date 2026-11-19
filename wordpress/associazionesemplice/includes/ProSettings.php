@@ -37,7 +37,7 @@ final class ProSettings {
 			'insurance_association' => array( 'Polizze dell\'associazione (responsabilità civile, infortuni)', 'insurance', 'insurance_volunteers' ),
 			'fivepm_enabled'        => array( '5 per mille', 'fivepm', 'insurance_association' ),
 			'pwa_enabled'           => array( 'App installabile sul telefono (PWA)', 'pwa', 'fivepm_enabled' ),
-			'push_enabled'          => array( 'Notifiche push ai dispositivi dei soci', 'pwa', 'pwa_enabled' ),
+			'push_enabled'          => array( 'Notifiche sul telefono dei soci', 'pwa', 'pwa_enabled' ),
 		);
 		foreach ( $extra as $key => $row ) { // ognuno va dopo l'interruttore indicato
 			if ( $visible_only && ! Edition::has( $row[1] ) ) {

@@ -59,7 +59,7 @@ final class FivePerMille {
 		}
 		$ok = self::db()->insert( Db::t( 'fivepm' ), array( 'year' => $year, 'amount_cents' => $cents, 'choices' => $choices, 'received_on' => $rec, 'created_at' => Db::now() ) );
 		if ( ! $ok ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare (errore del database).' );
+			throw new \InvalidArgumentException( '5 per mille non salvato: riprova.' );
 		}
 		$id = (int) self::db()->insert_id;
 		Audit::log( 'fivepm.added', 'fivepm', $id, array( 'year' => $year, 'cents' => $cents ) );
@@ -70,7 +70,7 @@ final class FivePerMille {
 	public static function report( int $id, string $date, string $notes ): void {
 		$row = self::get( $id );
 		if ( ! $row ) {
-			throw new \InvalidArgumentException( 'Contributo non trovato.' );
+			throw new \InvalidArgumentException( '5 per mille non trovato.' );
 		}
 		$d = self::date( $date );
 		if ( ! $d ) {
@@ -78,7 +78,7 @@ final class FivePerMille {
 		}
 		$notes = trim( sanitize_textarea_field( $notes ) );
 		if ( '' === $notes ) {
-			throw new \InvalidArgumentException( 'Racconta come è stato utilizzato il contributo.' );
+			throw new \InvalidArgumentException( 'Racconta come è stato usato il 5 per mille.' );
 		}
 		self::db()->update( Db::t( 'fivepm' ), array( 'reported_on' => $d, 'report_notes' => mb_substr( $notes, 0, 5000 ) ), array( 'id' => $id ) );
 		Audit::log( 'fivepm.reported', 'fivepm', $id, array() );
@@ -86,7 +86,7 @@ final class FivePerMille {
 
 	public static function delete( int $id ): void {
 		if ( ! self::get( $id ) ) {
-			throw new \InvalidArgumentException( 'Contributo non trovato.' );
+			throw new \InvalidArgumentException( '5 per mille non trovato.' );
 		}
 		self::db()->delete( Db::t( 'fivepm' ), array( 'id' => $id ) );
 		Audit::log( 'fivepm.deleted', 'fivepm', $id, array() );

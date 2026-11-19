@@ -266,7 +266,7 @@ final class FiscalYears {
 		}
 		$row = self::get( $year );
 		if ( ! $row ) {
-			throw new \InvalidArgumentException( 'L\'anno fiscale ' . self::label( $year ) . ' non è stato creato: crealo dalla scheda «Anni fiscali» prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'anno fiscale ' . self::label( $year ) . ' non è stato creato: crealo dalla pagina «Anni fiscali» prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( 'open' !== $row['status'] ) {
 			throw new \InvalidArgumentException( self::closed_message( $year ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html

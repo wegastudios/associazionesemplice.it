@@ -580,7 +580,7 @@ class PeopleService {
 			)
 		);
 		if ( ! $ok ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare la persona (errore del database).' );
+			throw new \InvalidArgumentException( 'Persona non salvata: riprova.' );
 		}
 		$id = (int) $this->db()->insert_id;
 		if ( MemberType::is_auto_renewed( $d['type'] ) ) {
@@ -615,11 +615,11 @@ class PeopleService {
 		if ( ! Phone::is_valid( $phone ) ) {
 			throw new \InvalidArgumentException( 'Inserisci il tuo numero di cellulare.' );
 		}
-		if ( strlen( $password ) < 8 ) {
-			throw new \InvalidArgumentException( 'La password deve avere almeno 8 caratteri.' );
+		if ( strlen( $password ) < MemberPassword::MIN_LENGTH ) {
+			throw new \InvalidArgumentException( 'La password deve avere almeno ' . (int) MemberPassword::MIN_LENGTH . ' caratteri.' );
 		}
 		if ( get_user_by( 'email', $email ) ) {
-			throw new \InvalidArgumentException( 'Questa email è già registrata sul sito: usa "Password dimenticata" oppure scrivi alla segreteria.' );
+			throw new \InvalidArgumentException( 'Questa email è già registrata sul sito: usa «Password dimenticata» oppure scrivi alla segreteria.' );
 		}
 		$this->update( $id, array( 'email' => $email, 'phone' => trim( $phone ) ) ); // crea l'utente WordPress
 		$uid = (int) ( $this->get( $id )['wp_user_id'] ?? 0 );
@@ -677,7 +677,7 @@ class PeopleService {
 		}
 		$uid = $this->ensure_wp_user( $this->normalize( $p ), $id );
 		if ( $uid <= 0 ) {
-			throw new \InvalidArgumentException( 'Con questa email c\'è già un dipendente del sito: i due accessi restano separati. Per dare al socio un potere (segreteria, tesoriere, staff) serve un\'altra email nella sua scheda.' );
+			throw new \InvalidArgumentException( 'Con questa email c\'è già un dipendente del sito: i due accessi restano separati. Per dare al socio un ruolo (segreteria, tesoriere, staff) serve un\'altra email nella sua scheda.' );
 		}
 		$this->db()->update( Db::t( 'people' ), array( 'wp_user_id' => $uid, 'updated_at' => Db::now() ), array( 'id' => $id ) );
 		Audit::log( 'person.wp_user_created', 'person', $id );
@@ -703,7 +703,7 @@ class PeopleService {
 			throw new \InvalidArgumentException( 'Prima inserisci la sua email nella scheda: il link di accesso arriva lì.' );
 		}
 		if ( Access::has_powers( $uid ) ) {
-			throw new \InvalidArgumentException( 'Ha ancora dei poteri (segreteria, presidente o vicepresidente, tesoriere, staff o altri ruoli del sito): toglili prima.' );
+			throw new \InvalidArgumentException( 'Ha ancora dei ruoli (segreteria, presidente o vicepresidente, tesoriere, staff o altri ruoli del sito): toglili prima.' );
 		}
 		if ( get_userdata( $uid ) ) {
 			if ( count_user_posts( $uid, 'any' ) > 0 ) {
@@ -1017,7 +1017,7 @@ class PeopleService {
 			)
 		);
 		if ( is_wp_error( $uid ) ) {
-			throw new \InvalidArgumentException( 'Impossibile creare l\'utente WordPress: ' . $uid->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Non è stato possibile creare l\'utente WordPress: ' . $uid->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return (int) $uid;
 	}
@@ -1069,7 +1069,7 @@ class PeopleService {
 		}
 		$res = wp_update_user( $args );
 		if ( is_wp_error( $res ) ) {
-			throw new \InvalidArgumentException( 'Impossibile aggiornare l\'utente WordPress: ' . $res->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Non è stato possibile aggiornare l\'utente WordPress: ' . $res->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -1112,7 +1112,7 @@ class PeopleService {
 			throw new \InvalidArgumentException( MemberType::GUARDIAN === $p['type'] ? 'Un genitore o tutore non è un socio: non ha iscrizione né tessera.' : 'Gli ospiti non sono soci: non hanno iscrizione.' );
 		}
 		if ( MemberType::is_auto_renewed( $p['type'] ) ) {
-			throw new \InvalidArgumentException( 'Il socio fondatore ha la tessera sempre rinnovata.' );
+			throw new \InvalidArgumentException( 'Il socio fondatore ha la tessera sempre valida: non c\'è nulla da rinnovare o togliere.' );
 		}
 		list( $label, $from, $to ) = $this->membership_span( $person_id, $year_label );
 		YearLock::assert_range_open( $from, $to ); // una tessera che cade interamente in anni fiscali chiusi non si aggiunge né si toglie: l'anno fiscale va riaperto

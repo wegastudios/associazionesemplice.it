@@ -17,7 +17,7 @@ final class ApplePass {
 	 */
 	public static function build( array $cfg, array $card ): string {
 		if ( ! class_exists( '\ZipArchive' ) || ! function_exists( 'openssl_pkcs7_sign' ) ) {
-			throw new \InvalidArgumentException( 'Questo server non può creare le tessere per Apple Wallet (servono le estensioni zip e openssl di PHP).' );
+			throw new \InvalidArgumentException( 'Questo server non può creare le tessere per Apple Wallet: chiedi al tuo hosting di attivare le estensioni zip e openssl di PHP.' );
 		}
 		$rgb  = Png::rgb( (string) ( $card['color'] ?? '' ) );
 		$fg   = Png::is_light( $rgb ) ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
@@ -39,7 +39,7 @@ final class ApplePass {
 					array( 'key' => 'type', 'label' => 'TIPO', 'value' => (string) $card['type'] ),
 				),
 				'auxiliaryFields' => array( array( 'key' => 'valid', 'label' => 'VALIDA FINO AL', 'value' => (string) $card['until_text'] ) ),
-				'backFields'      => array( array( 'key' => 'info', 'label' => 'Informazioni', 'value' => 'La validità della tessera si verifica sempre in diretta: il periodo indicato è quello al momento dell\'emissione.' ) ),
+				'backFields'      => array( array( 'key' => 'info', 'label' => 'Informazioni', 'value' => 'Il periodo indicato è quello di quando la tessera è stata emessa: la validità si controlla ogni volta in quel momento.' ) ),
 			),
 		);
 		if ( ! empty( $card['url'] ) ) {
@@ -86,7 +86,7 @@ final class ApplePass {
 		$cert = @openssl_x509_read( (string) $cfg['cert'] );
 		$key  = @openssl_pkey_get_private( (string) $cfg['key'] );
 		if ( ! $cert || ! $key ) {
-			throw new \InvalidArgumentException( 'Certificato o chiave per Apple Wallet non validi: ricaricali dalla pagina "Tessera, QR e Wallet".' );
+			throw new \InvalidArgumentException( 'Certificato o chiave per Apple Wallet non validi: ricaricali dalla pagina «Tessera, QR e Wallet».' );
 		}
 		$in   = (string) tempnam( sys_get_temp_dir(), 'asemm' );
 		$out  = (string) tempnam( sys_get_temp_dir(), 'asemo' );

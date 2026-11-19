@@ -91,7 +91,7 @@ final class DoorSales {
 					$svc->check_in( $sid, $pid, false, true );
 					$parts[] = 'ingresso registrato';
 				}
-				$msg = 'Sul posto: ' . trim( $person['first_name'] . ' ' . $person['last_name'] ) . ' — ' . implode( ', ', $parts ) . '.';
+				$msg = 'Sul posto: ' . trim( $person['first_name'] . ' ' . $person['last_name'] ) . ' (' . implode( ', ', $parts ) . ').';
 			}
 		);
 		return $msg;

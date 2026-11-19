@@ -76,7 +76,7 @@ final class PeoplePage {
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo wp_kses( '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ', Html::allowed() );
 		echo wp_kses( '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta o assente', 'noaccess' => 'Non è ancora entrato nell\'area soci', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy', 'norules' => 'Regolamento non accettato' ), $status, 'Qualsiasi stato' ) . '</select> ', Html::allowed() );
-		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
+		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a diventare soci</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
 		$months = \AssociazioneSemplice\Limits::get( 'suspend_after_months' );

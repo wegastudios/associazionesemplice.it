@@ -26,14 +26,14 @@ final class AttachmentRules {
 	/** @return string|null messaggio d'errore, oppure null se il file va bene */
 	public static function check( string $name, int $size, string $real_mime, int $max_bytes = self::MAX_BYTES ): ?string {
 		if ( $size <= 0 ) {
-			return 'Il file "' . self::display_name( $name ) . '" è vuoto.';
+			return 'Il file «' . self::display_name( $name ) . '» è vuoto.';
 		}
 		if ( $size > $max_bytes ) {
-			return 'Il file "' . self::display_name( $name ) . '" supera i ' . (int) ( $max_bytes / 1048576 ) . ' MB.';
+			return 'Il file «' . self::display_name( $name ) . '» supera i ' . (int) ( $max_bytes / 1048576 ) . ' MB.';
 		}
 		$ext = self::extension( $name );
 		if ( ! isset( self::TYPES[ $real_mime ] ) || ! in_array( $ext, self::TYPES[ $real_mime ], true ) ) {
-			return 'Il file "' . self::display_name( $name ) . '" non è ammesso: si accettano PDF e foto (JPG, PNG, WebP, HEIC).';
+			return 'Il file «' . self::display_name( $name ) . '» non è ammesso: si accettano PDF e foto (JPG, PNG, WebP, HEIC).';
 		}
 		return null;
 	}
@@ -85,8 +85,8 @@ final class AttachmentRules {
 			$label = self::display_name( (string) $name );
 			if ( UPLOAD_ERR_OK !== $err ) {
 				$out['errors'][] = in_array( $err, array( UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE ), true )
-					? 'Il file "' . $label . '" è troppo grande per il server.'
-					: 'Caricamento di "' . $label . '" non riuscito: riprova.';
+					? 'Il file «' . $label . '» è troppo grande per il server.'
+					: 'Caricamento di «' . $label . '» non riuscito: riprova.';
 				continue;
 			}
 			$out['files'][] = array(

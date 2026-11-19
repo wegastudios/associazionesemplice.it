@@ -59,16 +59,16 @@ final class MemberPasswordRestoreTest extends TestCase {
 
 	public function test_texts_say_passwords_come_back(): void {
 		$b = $this->src( 'Backup.php' ) . $this->src( 'Admin/BackupPage.php' ) . $this->src( 'Admin/Actions.php' );
-		$this->assertStringContainsString( 'ogni socio dovrà sceglierne una nuova al primo accesso', $b );
+		$this->assertStringContainsString( 'ogni socio ne sceglierà una nuova al primo accesso', $b );
 		$this->assertStringContainsString( 'deve scegliere subito una nuova password', $b );
 		$this->assertStringNotContainsString( 'password dei soci non fanno parte', $b );
 		$this->assertStringNotContainsString( 'il ripristino non le rimette', $b );
 		$this->assertStringNotContainsString( 'le password dei soci, le loro sessioni', $b );
 		$en = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/languages/en.json' );
-		$this->assertStringContainsString( 'each member will have to choose a new one at first login', $en );
+		$this->assertStringContainsString( 'each member will choose a new one at first login', $en );
 		$this->assertStringNotContainsString( 'members come back in with the link they receive', $en );
-		$this->assertStringContainsString( "i soci dovranno entrare di nuovo", $b );
-		$this->assertStringContainsString( "members will have to log in again", $en );
+		$this->assertStringContainsString( "dovranno rientrare", $b );
+		$this->assertStringContainsString( "they will have to log in again", $en );
 		$this->assertStringNotContainsString( "rientrano di nuovo", $b );
 	}
 

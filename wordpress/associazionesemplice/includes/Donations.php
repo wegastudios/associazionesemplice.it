@@ -78,9 +78,9 @@ final class Donations {
 		$now = self::mask_account( self::clean_account( $new ) );
 		Audit::log( 'donate.account_changed', 'settings', 0, array( 'prima' => $was, 'dopo' => $now ) );
 		$text = 'Il conto PayPal che riceve le donazioni è stato modificato da ' . Bank::acting_user() . ".\n\nPrima: " . ( '' !== $was ? $was : 'nessuno' ) . "\nDopo: " . ( '' !== $now ? $now : 'nessuno' )
-			. "\n\nSe non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni.";
+			. "\n\nSe non l'hai fatto tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni.";
 		foreach ( Bank::admin_recipients() as $addr ) {
-			Texts::mail( $addr, 'Modificato il conto PayPal delle donazioni', $text );
+			Texts::mail( $addr, Texts::subject( 'Modificato il conto PayPal delle donazioni' ), $text );
 		}
 	}
 

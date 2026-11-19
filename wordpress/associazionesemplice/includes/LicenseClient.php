@@ -134,8 +134,8 @@ final class LicenseClient {
 			'ACTIVE'            => 'Licenza valida.',
 			'IN_GRACE'          => 'Licenza scaduta da pochi giorni: c\'è ancora una breve tolleranza, rinnovala subito.',
 			'EXPIRED'           => 'Licenza scaduta: rinnovala per riattivare le funzioni.',
-			'SUSPENDED'         => 'Licenza sospesa dal fornitore.',
-			'REVOKED'           => 'Licenza revocata.',
+			'SUSPENDED'         => 'Licenza sospesa: scrivi al supporto di Associazione Semplice.',
+			'REVOKED'           => 'Licenza revocata: scrivi al supporto di Associazione Semplice.',
 			'PENDING'           => 'La licenza non è ancora iniziata.',
 			'DOMAIN_MISMATCH'   => 'La licenza è legata a un altro dominio: cambialo dall\'area riservata del portale.',
 			'LICENSE_NOT_FOUND' => 'Chiave di licenza non riconosciuta: controlla di averla copiata per intero.',
@@ -163,7 +163,7 @@ final class LicenseClient {
 		$code = (int) wp_remote_retrieve_response_code( $res );
 		$body = json_decode( (string) wp_remote_retrieve_body( $res ), true );
 		if ( 429 === $code || $code >= 500 || 0 === $code ) {
-			return new \WP_Error( 'asem_license_unavailable', 'Il server delle licenze non è disponibile adesso (codice ' . $code . ').' );
+			return new \WP_Error( 'asem_license_unavailable', 'Il server delle licenze non risponde (codice ' . $code . '): riprova più tardi.' );
 		}
 		if ( 200 !== $code || ! is_array( $body ) ) {
 			return new \WP_Error( 'asem_license_bad', 'Risposta inattesa dal server delle licenze (codice ' . $code . ').' );

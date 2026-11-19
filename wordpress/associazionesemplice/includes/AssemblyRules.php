@@ -150,6 +150,6 @@ final class AssemblyRules {
 	public static function summary_line( int $eligible, int $present, int $proxies, array $quorum, int $call ): string {
 		return 'Aventi diritto al voto: ' . $eligible . '. Presenti: ' . $present . ', rappresentati per delega: ' . $proxies . '. In ' . ( 2 === $call ? 'seconda' : 'prima' )
 			. ' convocazione ' . ( $quorum['required'] > 0 ? 'servivano ' . $quorum['required'] . ' soci' : 'non era richiesto un numero minimo' )
-			. ': l\'assemblea ' . ( $quorum['reached'] ? 'è validamente costituita' : 'NON raggiunge il numero legale' ) . '.';
+			. ': l\'assemblea ' . ( $quorum['reached'] ? 'è validamente costituita' : 'non raggiunge il numero legale' ) . '.';
 	}
 }

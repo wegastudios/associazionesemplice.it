@@ -567,13 +567,13 @@ final class PrivateFolder {
 			case PrivateFolderRules::EXPOSED:
 				return Texts::t( 'la cartella è raggiungibile da internet.' );
 			case PrivateFolderRules::CLOSED:
-				return Texts::t( 'tre file di prova, fatti come i file veri, messi nella cartella non si scaricano dall\'indirizzo web del sito. Il controllo parte dal sito stesso: per la certezza chiedi conferma a chi gestisce il server.' );
+				return Texts::t( 'tre file di prova messi nella cartella, simili a quelli veri, non si scaricano dall\'indirizzo web del sito. Il controllo parte dal sito stesso: per esserne certo chiedi conferma a chi gestisce il server.' );
 			case PrivateFolderRules::OUTSIDE:
 				return Texts::t( 'la cartella non risulta dentro la parte pubblica del sito, quindi il plugin non ha un indirizzo web da provare. Se il server la rende comunque raggiungibile (ad esempio perché sta dentro la cartella pubblica di un altro dominio dello stesso hosting), chi lo gestisce può controllare a mano che l\'indirizzo di un file della cartella non si apra.' );
 		}
 		switch ( (string) ( $r['reason'] ?? '' ) ) {
 			case 'reference':
-				return Texts::t( 'non verificabile: nemmeno un file messo in una cartella pubblica del sito si scarica dalla richiesta del sito a sé stesso (può dipendere da un firewall, da una rete di distribuzione dei contenuti o da un indirizzo interno). Nessun allarme: chi gestisce il server può controllare a mano che l\'indirizzo di un file della cartella non si apra.' );
+				return Texts::t( 'non verificabile: il sito non riesce a scaricare da sé stesso nemmeno un file pubblico (può dipendere da un firewall, da una rete di distribuzione dei contenuti o da un indirizzo interno). Nessun allarme: chi gestisce il server può controllare a mano che l\'indirizzo di un file della cartella non si apra.' );
 			case 'auth':
 				return Texts::t( 'non verificabile: il sito è protetto da una password del server e la prova non può passare. Nessun allarme.' );
 			case 'redirect':
@@ -624,7 +624,7 @@ final class PrivateFolder {
 				'private-folder-exposed',
 				'error',
 				'<strong>' . esc_html( Texts::t( 'La cartella dei file riservati è raggiungibile da internet.' ) ) . '</strong> '
-					. esc_html( Texts::t( 'Ricevute, allegati, scansioni, certificati medici e copie di sicurezza stanno in una cartella che dal controllo risulta aperta: chi conosce l\'indirizzo esatto di un file può leggerlo senza accedere al sito. I nomi dei file non si indovinano, ma un indirizzo finito per sbaglio in una email, in una cronologia o in un registro del server basterebbe per aprire il documento. Va chiesto a chi gestisce il server o l\'hosting del sito di bloccare l\'accesso diretto a quella cartella oppure di spostarla fuori dalla parte pubblica del sito.' ) )
+					. esc_html( Texts::t( 'Ricevute, allegati, scansioni, certificati medici e copie di sicurezza stanno in una cartella che dal controllo risulta aperta: chi conosce l\'indirizzo esatto di un file può leggerlo senza accedere al sito. I nomi dei file non si indovinano, ma un indirizzo finito per sbaglio in una email, in una cronologia o in un registro del server basterebbe per aprire il documento. Chiedi a chi gestisce il server o l\'hosting di bloccare l\'accesso diretto a quella cartella, oppure di spostarla fuori dalla parte pubblica del sito.' ) )
 					. ' <a href="' . esc_url( $url ) . '">' . esc_html( Texts::t( 'Vedi cosa fare' ) ) . '</a>.',
 				7
 			);

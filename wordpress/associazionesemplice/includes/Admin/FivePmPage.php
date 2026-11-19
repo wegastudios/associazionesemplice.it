@@ -57,7 +57,7 @@ final class FivePmPage {
 			if ( FivePerMille::REPORTED !== $st ) {
 				Ui::form_open( 'asem_fivepm_report', Ui::url( 'asem-fivepm' ) );
 				echo Ui::hidden( 'id', $r['id'] ) . '<details><summary>Registra il rendiconto</summary><p><input type="date" name="reported_on" value="' . esc_attr( Db::today() ) . '" required></p>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-					. '<p><textarea name="report_notes" rows="4" class="large-text" placeholder="Come è stato utilizzato il contributo" required></textarea></p><p><button class="button">Salva il rendiconto</button></p></details>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					. '<p><textarea name="report_notes" rows="4" class="large-text" placeholder="Come hai usato il contributo" required></textarea></p><p><button class="button">Salva il rendiconto</button></p></details>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
 			} else {
 				echo '<details><summary>Rendiconto del ' . self::date( $r['reported_on'] ) . '</summary><p style="white-space:pre-wrap">' . esc_html( (string) $r['report_notes'] ) . '</p></details>'; // phpcs:ignore WordPress.Security.EscapeOutput
