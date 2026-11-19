@@ -252,5 +252,5 @@ it('un dominio attivo che non punta più a noi torna in attesa e l\'area soci si
 
     $this->artisan('saas:portal:verify-domains')->assertSuccessful();
 
-    expect(DB::table('core.org_domains')->value('state'))->toBe('pending')->and((string) DB::table('core.org_domains')->value('message'))->toContain('sospesa');
+    expect(DB::table('core.org_domains')->value('state'))->toBe('pending')->and((string) DB::table('core.org_domains')->value('message'))->toContain('non si apre');
 });
