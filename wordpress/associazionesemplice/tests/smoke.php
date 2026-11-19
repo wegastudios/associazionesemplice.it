@@ -8730,11 +8730,11 @@ asem_ok( 1 === \AssociazioneSemplice\PublicEvents::publish_pages( array( $pb_a, 
 // salvataggio dei dati dell'ente con il cambio del mese dell'anno fiscale: prima l'anteprima, poi la conferma, e la copia di sicurezza fallita (i messaggi usano Texts: un nome di classe sbagliato qui è un errore fatale)
 // il blocco dopo la prima chiusura si toglie solo per la prova (anni e chiusure si rimettono come erano)
 $ra_cl = (array) $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'fiscal_year_closures' ), ARRAY_A );
-$ra_fy = (array) $wpdb->get_results( 'SELECT id FROM ' . Db::t( 'fiscal_years' ) . " WHERE status = 'closed'", ARRAY_A );
+$ra_fy = (array) $wpdb->get_results( 'SELECT year FROM ' . Db::t( 'fiscal_years' ) . " WHERE status = 'closed'", ARRAY_A );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'fiscal_year_closures' ) );
 $wpdb->query( 'UPDATE ' . Db::t( 'fiscal_years' ) . " SET status = 'open' WHERE status = 'closed'" );
 asem_ok( ! \AssociazioneSemplice\FiscalYears::start_month_locked(), 'dati dell\'ente: per la prova il mese dell\'anno fiscale non è bloccato' );
-$ra_ent = array_merge( asem_wz_entity(), array( 'fiscal_start_month' => '7' ) );
+$ra_ent = array_merge( $en_base, array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567', 'fiscal_start_month' => '7' ) );
 $ra_sv1 = Admin\TechActions::save_entity( $ra_ent );
 asem_ok( is_array( $ra_sv1 ) && false !== strpos( (string) $ra_sv1[1], 'Dati dell\'ente salvati.' ) && false !== strpos( (string) $ra_sv1[1], 'non è cambiato' ) && 1 === (int) Settings::get( 'fiscal_start_month' ), 'dati dell\'ente: il cambio del mese senza conferma salva il resto e spiega cosa succede alle tessere' );
 // copia di sicurezza che non riesce: il mese si salva, le tessere non si toccano e il messaggio lo dice
@@ -8759,7 +8759,7 @@ foreach ( $ra_cl as $ra_c ) { // si rimettono le chiusure e gli anni chiusi
 	$wpdb->insert( Db::t( 'fiscal_year_closures' ), $ra_c );
 }
 foreach ( $ra_fy as $ra_f ) {
-	$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'id' => (int) $ra_f['id'] ) );
+	$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'year' => (int) $ra_f['year'] ) );
 }
 foreach ( (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) as $ra_bk ) {
 	wp_delete_file( $ra_bk ); // la copia di prova non resta
