@@ -4013,7 +4013,7 @@ $html = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Partecipa
 asem_ok( false !== strpos( $html, 'Potrebbe essere la stessa persona' ) && false !== strpos( $html, 'Pinuccio' ) && false !== strpos( $html, 'stesso cellulare' ) && false !== strpos( $html, 'Corso di prova ospiti' ) && false !== strpos( $html, 'wa.me/393335555552' ) && false !== strpos( $html, 'Iscrivi come socio' ), 'scheda ospite: a cosa è venuto, le registrazioni gemelle, WhatsApp e iscrizione come socio' );
 $gz   = $people->create( array( 'type' => 'guest', 'first_name' => 'Zeno', 'last_name' => 'Zerovolte', 'phone' => '333 5555553', 'host_person_id' => $founder ) );
 $list = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Occasionale', array( 'type' => 'guest', 'at_limit' => '1' ) );
-asem_ok( false !== strpos( $list, 'invitalo a diventare socio' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a iscriversi"' );
+asem_ok( false !== strpos( $list, 'da invitare a iscriversi' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a iscriversi"' );
 $ev = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Open day yoga', array( 'id' => $e1 ) );
 asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'invitalo a diventare socio' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Ospiti da invitare a diventare soci' );
