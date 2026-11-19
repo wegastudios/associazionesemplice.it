@@ -1,6 +1,6 @@
 Ciao,
 
-abbiamo restituito {{ $amount }} del pagamento che hai fatto il {{ $paidOn }} a {{ $orgName }}.
+ti sono stati restituiti {{ $amount }} del pagamento che hai fatto il {{ $paidOn }} a {{ $orgName }}.
 
 Motivo: {{ $reason }}
 

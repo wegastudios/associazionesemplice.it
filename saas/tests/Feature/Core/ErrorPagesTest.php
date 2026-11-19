@@ -9,7 +9,7 @@ it('la pagina 403 mostra il motivo vero, non la frase generica', function (): vo
     Route::middleware('web')->get('/_prova/ruolo', fn () => abort(403));
 
     $this->get('/_prova/pacchetto')->assertForbidden()->assertSee('pacchetto che la tua associazione non ha attivato', false)->assertDontSee('chiedi a chi gestisce', false);
-    $this->get('/_prova/ruolo')->assertForbidden()->assertSee('Il tuo ruolo non comprende questa pagina', false);
+    $this->get('/_prova/ruolo')->assertForbidden()->assertSee('Non hai il permesso per questa operazione: chiedilo a un amministratore', false);
 });
 
 it('le pagine d\'errore riportano al gestionale, e nell\'area soci all\'area soci', function (): void {

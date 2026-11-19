@@ -2,4 +2,4 @@
 @section('title', 'Non hai accesso a questa pagina')
 @section('heading', 'Non hai accesso a questa pagina')
 @php($detail = trim((string) $exception->getMessage()))
-@section('message', ($detail !== '' && ! in_array($detail, ['Forbidden', 'This action is unauthorized.'], true)) ? $detail : 'Il tuo ruolo non comprende questa pagina. Se ti serve, chiedi al titolare o a un amministratore dell’associazione di cambiarti il ruolo.')
+@section('message', ($detail !== '' && ! in_array($detail, ['Forbidden', 'This action is unauthorized.'], true)) ? $detail : 'Non hai il permesso per questa operazione: chiedilo a un amministratore.')

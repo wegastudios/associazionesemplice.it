@@ -40,7 +40,7 @@ final class VerifyDomainsCommand extends Command
                 $active++;
             } elseif ($row->state === 'active') {
                 // Era attivo ma non punta più a noi (scaduto, passato ad altri, certificato perso): l'area soci su questo dominio si ferma.
-                [$state, $message] = ['pending', 'Il dominio non è più collegato correttamente ai nostri server: l\'area soci su questo indirizzo è sospesa finché non torna a posto.'];
+                [$state, $message] = ['pending', 'Il dominio non è più collegato correttamente al servizio: l\'area soci su questo indirizzo è sospesa finché non torna a posto.'];
             } elseif ($delegated) {
                 [$state, $message] = ['pending', 'Nameserver corretti: il certificato è in emissione.'];
             } else {

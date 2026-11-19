@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 /** Entrata e uscita dei soci: email → link e codice, link della segreteria, scelta della scheda, uscita. */
 final readonly class AccessController
 {
-    private const SENT = 'Se l\'email è di un socio ti abbiamo scritto: apri il link oppure scrivi qui il codice a 6 cifre (guarda anche nella posta indesiderata).';
+    private const SENT = 'Se l\'email è di un socio è partita un\'email con un link e un codice: apri il link oppure scrivi qui il codice a 6 cifre (guarda anche nella posta indesiderata).';
 
     public function __construct(
         private MemberAccess $access,
