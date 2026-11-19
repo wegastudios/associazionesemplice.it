@@ -113,7 +113,7 @@ final class BlockFViews {
 			if ( '' !== (string) $c['terms'] ) {
 				$html .= '<p class="asemf-small">' . nl2br( esc_html( $c['terms'] ) ) . '</p>';
 			}
-			$html .= '<p class="asemf-small">Per farti riconoscere mostra all\'esercente questa riga (o la tua tessera digitale): <strong>' . esc_html( $id_line ) . '</strong>.</p>' . self::contacts( $c ) . '</details></li>';
+			$html .= '<p class="asemf-small">Per farti riconoscere mostra questa riga (o la tessera digitale): <strong>' . esc_html( $id_line ) . '</strong>.</p>' . self::contacts( $c ) . '</details></li>';
 		}
 		return $html . '</ul></section>';
 	}
@@ -123,10 +123,10 @@ final class BlockFViews {
 		return Views::with_person(
 			function ( $p ) {
 				if ( ! MemberType::is_member( (string) $p['type'] ) ) {
-					return '<div class="asemf-notice">Le convenzioni sono riservate ai soci in regola con la tessera.</div>';
+					return '<div class="asemf-notice">Le convenzioni sono riservate ai soci con la tessera valida.</div>';
 				}
 				$html = self::section_members( $p );
-				return '' !== $html ? $html : '<div class="asemf-notice">Non ci sono convenzioni valide per te in questo momento. Se la tessera è scaduta, tornerai a vederle dopo il rinnovo. ' . esc_html( Actions::renew_where() ) . '</div>';
+				return '' !== $html ? $html : '<div class="asemf-notice">Non ci sono convenzioni valide per te in questo momento. Se la tessera non è valida, tornerai a vederle dopo il rinnovo. ' . esc_html( Actions::renew_where() ) . '</div>';
 			}
 		);
 	}

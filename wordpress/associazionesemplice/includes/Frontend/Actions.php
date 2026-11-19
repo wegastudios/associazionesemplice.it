@@ -69,7 +69,7 @@ final class Actions {
 				} catch ( \InvalidArgumentException $e ) {
 					self::redirect( $back, '', $e->getMessage() );
 				} catch ( \Throwable $e ) {
-					self::redirect( $back, '', 'Operazione non riuscita. Riprova più tardi.' );
+					self::redirect( $back, '', 'Qualcosa non ha funzionato. Riprova tra poco; se succede ancora, scrivi alla segreteria.' );
 				}
 			};
 		add_action( 'admin_post_' . $action, $run );
@@ -91,7 +91,7 @@ final class Actions {
 			$run = function () use ( $action, $method ) {
 				// Il profilo si salva solo con l'invio di un modulo: con un GET i campi arriverebbero vuoti e verrebbero cancellati.
 				if ( 'asem_front_profile' === $action && 'POST' !== strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-					wp_die( esc_html( 'Metodo non consentito.' ), '', array( 'response' => 405 ) );
+					wp_die( esc_html( 'Questa pagina si apre solo salvando il profilo: torna all\'area soci.' ), '', array( 'response' => 405 ) );
 				}
 				\AssociazioneSemplice\Csrf::check( $action );
 				$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
@@ -101,7 +101,7 @@ final class Actions {
 				} catch ( \InvalidArgumentException $e ) {
 					self::redirect( $back, '', $e->getMessage() );
 				} catch ( \Throwable $e ) {
-					self::redirect( $back, '', 'Operazione non riuscita. Riprova più tardi.' );
+					self::redirect( $back, '', 'Qualcosa non ha funzionato. Riprova tra poco; se succede ancora, scrivi alla segreteria.' );
 				}
 			};
 			add_action( 'admin_post_' . $action, $run );
@@ -124,7 +124,7 @@ final class Actions {
 	public static function actor(): array {
 		$p = Access::current_person();
 		if ( ! $p || ! MemberType::can_login( $p['type'] ) ) {
-			throw new \InvalidArgumentException( 'Serve un accesso come socio.' );
+			throw new \InvalidArgumentException( 'Per farlo devi entrare come socio.' );
 		}
 		return $p;
 	}
@@ -158,7 +158,7 @@ final class Actions {
 	public static function card_invalid( array $who, array $actor, string $for ): string {
 		$own   = (int) ( $who['id'] ?? 0 ) === (int) ( $actor['id'] ?? -1 );
 		$where = self::renew_where();
-		return ( $own ? 'La tua tessera non è valida: per ' . $for . ' rinnova la quota associativa. ' : 'La tessera di ' . trim( (string) ( $who['first_name'] ?? '' ) ) . ' non è valida: per ' . $for . ' rinnova prima la sua quota associativa. ' ) . $where;
+		return ( $own ? 'La tua tessera non è valida: non puoi ' . $for . '. ' : 'La tessera di ' . trim( (string) ( $who['first_name'] ?? '' ) ) . ' non è valida: per questa persona non puoi ' . $for . '. ' ) . $where;
 	}
 
 	/** Il pezzo di frase che diventa un link all'area soci quando il messaggio si mostra (vedi Views::flash). */
@@ -178,7 +178,7 @@ final class Actions {
 
 	/** Messaggio per lo staff che prenota o incassa per un socio con la tessera non valida: la quota si rinnova dalla sua scheda. */
 	public static function card_invalid_staff( string $name ): string {
-		return 'La tessera di ' . $name . ' non è in regola: rinnova la quota dalla scheda del socio, poi riprova a prenotare.';
+		return 'La tessera di ' . $name . ' non è valida: rinnova la quota dalla scheda del socio, poi riprova a prenotare.';
 	}
 
 	/** Chiede di partecipare a un evento con approvazione della segreteria (per sé o per un proprio ospite o minore). @return string messaggio */
@@ -196,7 +196,7 @@ final class Actions {
 			throw new \InvalidArgumentException( self::card_invalid( $subject, $actor, 'partecipare' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		\AssociazioneSemplice\EventRequests::member_request( (int) ( $post['session_id'] ?? 0 ), $person_id );
-		return 'Richiesta inviata: la segreteria la esamina e ti scrive. Le richieste si esaminano nell\'ordine di arrivo.';
+		return 'Richiesta inviata. La segreteria esamina le richieste in ordine di arrivo e ti scrive.';
 	}
 
 	/** Chiede l'iscrizione a un corso (per sé o per un proprio ospite o minore): la segreteria approva. @return string messaggio */
@@ -210,7 +210,7 @@ final class Actions {
 			throw new \InvalidArgumentException( self::card_invalid( $subject, $actor, 'iscriverti' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		\AssociazioneSemplice\EventRequests::course_member_request( (int) ( $post['activity_id'] ?? 0 ), $person_id );
-		return 'Richiesta inviata: la segreteria la esamina e ti scrive. Le richieste si esaminano nell\'ordine di arrivo.';
+		return 'Richiesta inviata. La segreteria esamina le richieste in ordine di arrivo e ti scrive.';
 	}
 
 	/** Prenota sé stessi o un proprio ospite. @return string messaggio */
@@ -229,7 +229,7 @@ final class Actions {
 		}
 		$session = Plugin::activities()->session( (int) ( $post['session_id'] ?? 0 ) );
 		if ( ! $session ) {
-			throw new \InvalidArgumentException( 'Evento non trovato.' );
+			throw new \InvalidArgumentException( 'Questo evento non c\'è più: ricarica la pagina.' );
 		}
 		if ( ! \AssociazioneSemplice\ActivityService::online_bookable( $session ) ) {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\ActivityService::last_day( $session ) >= current_time( 'Y-m-d' ) ? 'Le prenotazioni online si chiudono il giorno prima: per questa data rivolgiti alla segreteria.' : 'Questo evento è già passato.' );
@@ -237,7 +237,7 @@ final class Actions {
 		$list_key = sanitize_key( (string) ( $post['price_list'] ?? '' ) );
 		$act_row  = Plugin::activities()->get( (int) $session['activity_id'] );
 		if ( '' === $list_key && $act_row && \AssociazioneSemplice\PriceLists::for_activity( $act_row ) ) { // con i listini ne va scelto uno: il contributo base non basta
-			throw new \InvalidArgumentException( 'Scegli la tariffa: per questa attività bisogna sceglierne una.' );
+			throw new \InvalidArgumentException( 'Scegli uno dei contributi proposti per questa attività.' );
 		}
 		Plugin::activities()->book( (int) $session['id'], $person_id, array( 'price_list' => $list_key ) ); // ospiti e pacchetti già pagati: solo la segreteria
 		$person = Plugin::people()->get( $person_id );
@@ -281,7 +281,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Per continuare spunta la casella di accettazione.' );
 		}
 		\AssociazioneSemplice\Regulation::accept( (int) $actor['id'], 'web' );
-		return 'Grazie, il ' . mb_strtolower( \AssociazioneSemplice\Regulation::title(), 'UTF-8' ) . ' è stato accettato.';
+		return 'Grazie: hai accettato il ' . mb_strtolower( \AssociazioneSemplice\Regulation::title(), 'UTF-8' ) . '.';
 	}
 
 	/** Il tutore accetta il regolamento e/o dà il consenso privacy per conto di un minore: resta registrato chi ha accettato. */
@@ -315,7 +315,7 @@ final class Actions {
 		self::require_cap( 'asem_book_for', $person_id );
 		$session_id = (int) ( $post['session_id'] ?? 0 );
 		if ( ! Plugin::activities()->session( $session_id ) ) {
-			throw new \InvalidArgumentException( 'Evento non trovato.' );
+			throw new \InvalidArgumentException( 'Questo evento non c\'è più: ricarica la pagina.' );
 		}
 		$eval = Plugin::activities()->cancellation_for( $session_id, $person_id );
 		if ( ! $eval['allowed'] ) {
@@ -350,15 +350,15 @@ final class Actions {
 			$to_id = Plugin::people()->create( array( 'type' => MemberType::GUEST, 'host_person_id' => (int) $actor['id'], 'first_name' => $first, 'last_name' => $last, 'phone' => (string) ( $post['new_phone'] ?? '' ) ) );
 		}
 		if ( ! $to_id ) {
-			throw new \InvalidArgumentException( 'Scegli a chi intestare la prenotazione, oppure indica nome e cognome di un nuovo ospite.' );
+			throw new \InvalidArgumentException( 'Scegli a chi cedere il posto, oppure scrivi nome e cognome di un nuovo ospite.' );
 		}
 		self::require_cap( 'asem_book_for', $to_id );
 		Plugin::activities()->transfer_booking( $session_id, $from_id, $to_id, true );
 		$b   = Plugin::activities()->bookings_for_session( $session_id );
-		$msg = 'Nominativo cambiato.';
+		$msg = 'Posto ceduto.';
 		foreach ( $b as $row ) {
 			if ( (int) $row['person_id'] === $to_id && $row['remaining'] > 0 ) {
-				$msg .= ' Da integrare: ' . \AssociazioneSemplice\Money::format( (int) $row['remaining'] ) . ' (si paga in sede).';
+				$msg .= ' Resta da pagare: ' . \AssociazioneSemplice\Money::format( (int) $row['remaining'] ) . ' (in sede).';
 			}
 		}
 		return $msg;
@@ -437,7 +437,7 @@ final class Actions {
 			if ( (int) $b['person_id'] === $person_id ) {
 				$name = trim( $b['first_name'] . ' ' . $b['last_name'] );
 				if ( $b['active'] && (int) $b['remaining'] > 0 ) {
-					$due = ' — contributo da versare ' . Money::format( (int) $b['remaining'] );
+					$due = ' (contributo da pagare ' . Money::format( (int) $b['remaining'] ) . ')';
 				}
 			}
 		}
@@ -447,7 +447,7 @@ final class Actions {
 			case 'already':
 				return 'Ingresso già registrato alle ' . mysql2date( 'H:i', $r['at'] ) . ': ' . $name . '.';
 			case 'undone':
-				return 'Registrazione annullata: ' . $name . '.';
+				return 'Ingresso annullato: ' . $name . '.';
 		}
 		return 'Nessun ingresso da annullare per ' . $name . '.';
 	}
@@ -499,7 +499,7 @@ final class Actions {
 			} elseif ( 0 === strpos( $what, 's:' ) ) {
 				$s = Plugin::activities()->session( (int) substr( $what, 2 ) );
 				if ( ! $s ) {
-					throw new \InvalidArgumentException( 'Data dell\'evento non trovata.' );
+					throw new \InvalidArgumentException( 'Questa data non c\'è più: ricarica la pagina.' );
 				}
 				$lines[] = array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => $cents, 'activity_id' => (int) $s['activity_id'], 'session_id' => (int) $s['id'] );
 			} elseif ( 0 === strpos( $what, 'k:' ) ) {
@@ -528,14 +528,14 @@ final class Actions {
 				foreach ( $lines as $l ) {
 					// Un socio con la tessera non in regola prenota solo se la rinnova nello stesso incasso
 					if ( ! empty( $l['session_id'] ) && $who && MemberType::is_member( $who['type'] ) && ! $renewing && ! $people->is_active_member( $pid ) ) {
-						throw new \InvalidArgumentException( 'La tessera di ' . trim( $who['first_name'] . ' ' . $who['last_name'] ) . ' non è in regola: aggiungi la quota associativa nello stesso incasso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+						throw new \InvalidArgumentException( 'La tessera di ' . trim( $who['first_name'] . ' ' . $who['last_name'] ) . ' non è valida: aggiungi la quota associativa nello stesso incasso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 					}
 				}
 				foreach ( $lines as $l ) { // corsi: tessera in regola (o rinnovata qui), socio non sospeso, iscrizione se manca
 					if ( ! empty( $l['competence_month'] ) && ! empty( $l['activity_id'] ) ) {
 						$cname = $who ? trim( $who['first_name'] . ' ' . $who['last_name'] ) : '';
 						if ( $who && MemberType::is_member( $who['type'] ) && ! MemberType::is_auto_renewed( $who['type'] ) && ! $renewing && ! $people->is_active_member( $pid ) ) {
-							throw new \InvalidArgumentException( $cname . ': per un corso la tessera deve essere in regola (aggiungi la quota associativa nello stesso incasso).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+							throw new \InvalidArgumentException( $cname . ': per un corso la tessera deve essere valida (aggiungi la quota associativa nello stesso incasso).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 						}
 						if ( $people->is_suspended( $pid ) ) {
 							throw new \InvalidArgumentException( $cname . ' è sospeso (inattivo): va riattivato prima di iscriverlo a un corso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -589,7 +589,7 @@ final class Actions {
 		$pid     = (int) ( $post['person_id'] ?? 0 );
 		$session = Plugin::activities()->session( $sid );
 		if ( ! $session ) {
-			throw new \InvalidArgumentException( 'Data non trovata.' );
+			throw new \InvalidArgumentException( 'Questa data non c\'è più: ricarica la pagina.' );
 		}
 		self::require_cap( 'asem_manage_event', (int) $session['activity_id'] );
 		$r = Plugin::activities()->check_in( $sid, $pid, ! empty( $post['undo'] ), current_user_can( Plugin::CAP_OPS ) );
@@ -610,7 +610,7 @@ final class Actions {
 		}
 		$session = Plugin::activities()->session( $t[0] );
 		if ( ! $session ) {
-			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+			throw new \InvalidArgumentException( 'Questa prenotazione non c\'è più: ricarica la pagina.' );
 		}
 		self::require_cap( 'asem_manage_event', (int) $session['activity_id'] );
 		return self::checkin_message( Plugin::activities()->check_in( $t[0], $t[1], false, current_user_can( Plugin::CAP_OPS ) ), $t[0], $t[1] );
@@ -621,7 +621,7 @@ final class Actions {
 		$actor   = self::actor();
 		$choices = isset( $post['choice'] ) ? (array) $post['choice'] : array();
 		\AssociazioneSemplice\Polls::vote( (int) ( $post['poll_id'] ?? 0 ), (int) $actor['id'], array_map( 'intval', $choices ) );
-		return 'Il tuo voto è stato registrato. Grazie!';
+		return 'Voto registrato. Grazie.';
 	}
 
 	/** Avviso agli iscritti di un'attività: solo chi la tiene o chi gestisce l'evento (e gli amministratori). */
@@ -637,7 +637,7 @@ final class Actions {
 
 	public static function do_add_guest( array $post ): string {
 		if ( ! Settings::guests_enabled() ) {
-			throw new \InvalidArgumentException( 'L\'ente non accetta ospiti.' );
+			throw new \InvalidArgumentException( 'L\'associazione non prevede ospiti.' );
 		}
 		$actor = self::actor();
 		self::require_cap( 'asem_add_guest', (int) $actor['id'] );
@@ -645,7 +645,7 @@ final class Actions {
 		// Nessun limite automatico: si evita solo il doppione evidente tra i propri ospiti e chi è già socio (il resto lo segnalano gli elenchi a chi gestisce).
 		foreach ( Plugin::people()->find_by_phone( $phone ) as $h ) {
 			if ( MemberType::is_member( $h['type'] ) ) {
-				throw new \InvalidArgumentException( 'Non è possibile aggiungere questo numero come tuo ospite: scrivi alla segreteria.' ); // non si dice perché: nessuno può scoprire chi è socio provando dei numeri
+				throw new \InvalidArgumentException( 'Non puoi aggiungere questo numero come ospite: scrivi alla segreteria.' ); // non si dice perché: nessuno può scoprire chi è socio provando dei numeri
 			}
 			if ( (int) $h['host_person_id'] === (int) $actor['id'] ) {
 				throw new \InvalidArgumentException( 'Hai già questo ospite tra i tuoi.' );

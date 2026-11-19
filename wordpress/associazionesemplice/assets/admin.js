@@ -190,9 +190,9 @@
 	var kindSel = $('#asem-kind');
 	if (kindSel) {
 		var kindHints = {
-			course: 'Corso: i soci si iscrivono per mesi e pagano una quota mensile (anche gratuita).',
+			course: 'Corso: i soci si iscrivono per mesi e pagano una mensilità (anche gratuita).',
 			event: 'Evento una tantum: una data, prenotazione obbligatoria, un contributo per partecipante (anche gratuito).',
-			recurring: 'Evento ricorrente: molte date (le aggiungi dopo la creazione); ci si iscrive al singolo evento e si paga per ogni evento.'
+			recurring: 'Evento ricorrente: molte date (le aggiungi dopo averlo creato); ci si prenota e si paga data per data.'
 		};
 		var applyKind = function () {
 			var k = kindSel.value;
@@ -404,7 +404,7 @@
 				} else {
 					card.appendChild(el('input', { type: 'hidden', name: n + '[id]', value: String(b.id) }));
 					if (b.ctx && b.ctx.suspended) { card.appendChild(el('p', { 'class': 'asem-warn', text: 'Socio sospeso (inattivo): puoi pagargli un evento, non un corso né la quota.' })); }
-					else if (b.ctx && b.ctx.needs_membership && !b.ctx.is_guest && !b.ctx.is_founder) { card.appendChild(el('p', { 'class': 'asem-warn', text: 'Tessera non in regola: puoi pagargli un evento; per un corso serve prima la quota associativa.' })); }
+					else if (b.ctx && b.ctx.needs_membership && !b.ctx.is_guest && !b.ctx.is_founder) { card.appendChild(el('p', { 'class': 'asem-warn', text: 'Tessera non valida: puoi pagargli un evento; per un corso serve prima la quota associativa.' })); }
 				}
 				b.lines.forEach(function (l, j) {
 					var m = n + '[lines][' + j + ']';

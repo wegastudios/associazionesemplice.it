@@ -1095,7 +1095,7 @@ asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_area_volontari]' 
 
 // Elenco attività pubblico e prenotazioni
 $html = $as( 0, '[associazionesemplice_attivita]' );
-asem_ok( false !== strpos( $html, 'Yoga' ) && false !== strpos( $html, 'Serata giochi' ) && false === strpos( $html, 'Accedi per prenotarti' ), 'attività: pubblico, senza pulsante di accesso negli elenchi' );
+asem_ok( false !== strpos( $html, 'Yoga' ) && false !== strpos( $html, 'Serata giochi' ) && false === strpos( $html, 'Entra per prenotarti' ), 'attività: pubblico, senza pulsante di accesso negli elenchi' );
 asem_ok( false !== strpos( $html, 'Soci 5,00' ) && false !== strpos( $html, 'ospiti 8,00' ), 'attività: contributo soci e ospiti visibile' );
 $html = $as( 0, '[associazionesemplice_attivita tipo="evento"]' );
 asem_ok( false !== strpos( $html, 'Serata giochi' ) && false === strpos( $html, 'Yoga' ), 'attività: filtro per tipo' );
@@ -1158,7 +1158,7 @@ $sees   = function ( int $post, int $user ) use ( $show ) {
 	return false !== strpos( $show( $post, $user ), 'SEGRETO' );
 };
 asem_ok( $sees( $p_pub, 0 ), 'riservati: il contenuto pubblico lo vedono tutti' );
-asem_ok( ! $sees( $p_mem, 0 ) && false !== strpos( $show( $p_mem, 0 ), 'Accedi' ), 'riservati: l\'anonimo vede l\'invito ad accedere, non il contenuto' );
+asem_ok( ! $sees( $p_mem, 0 ) && false !== strpos( $show( $p_mem, 0 ), 'Entra' ), 'riservati: l\'anonimo vede l\'invito ad accedere, non il contenuto' );
 asem_ok( $sees( $p_mem, $u_ord ) && ! $sees( $p_vol, $u_ord ), 'riservati: il socio vede "solo soci" ma non "solo volontari"' );
 asem_ok( $sees( $p_vol, $u_vol ), 'riservati: il volontario vede "solo volontari"' );
 asem_ok( $sees( $p_yoga, $u_ord ) && ! $sees( $p_teat, $u_ord ), 'riservati: il socio iscritto a Yoga vede il programma di Yoga ma non quello di Teatro' );
@@ -1209,7 +1209,7 @@ wp_set_current_user( $u_ord );
 asem_ok( comments_open( $p_mem ) && 1 === count( get_comments( array( 'post_id' => $p_mem ) ) ), 'riservati: il socio vede e può scrivere i commenti' );
 
 $att = wp_insert_attachment( array( 'post_title' => 'TITOLOALLEGATO', 'post_content' => 'ALLEGATOSEGRETO', 'post_excerpt' => 'ALLEGATOSEGRETO', 'post_mime_type' => 'image/png', 'post_status' => 'inherit', 'guid' => home_url( '/wp-content/uploads/allegato-riservato.png' ) ), false, $p_mem );
-asem_ok( false === strpos( $show( $att, 0 ), 'ALLEGATOSEGRETO' ) && false !== strpos( $show( $att, 0 ), 'Accedi' ), 'riservati: la pagina dell\'allegato non rivela nulla (visitatore)' );
+asem_ok( false === strpos( $show( $att, 0 ), 'ALLEGATOSEGRETO' ) && false !== strpos( $show( $att, 0 ), 'Entra' ), 'riservati: la pagina dell\'allegato non rivela nulla (visitatore)' );
 asem_ok( false !== strpos( $show( $att, $u_ord ), 'ALLEGATOSEGRETO' ), 'riservati: il socio vede la pagina dell\'allegato' );
 wp_set_current_user( 0 );
 $rest = rest_do_request( new WP_REST_Request( 'GET', '/wp/v2/media/' . $att ) )->get_data();
@@ -2199,7 +2199,7 @@ foreach ( $people->guests_of( $founder ) as $g ) {
 }
 $msg = $front::do_transfer_booking( array( 'session_id' => $paid_s, 'person_id' => $founder, 'to_person_id' => $nico ) );
 $bk  = $by_person( $paid_s );
-asem_ok( false !== strpos( $msg, 'Da integrare' ) && false !== strpos( $msg, '3,00' ), 'cambio nominativo a un ospite: da integrare 3,00' );
+asem_ok( false !== strpos( $msg, 'Resta da pagare' ) && false !== strpos( $msg, '3,00' ), 'cambio nominativo a un ospite: resta da pagare 3,00' );
 asem_ok( 800 === (int) $bk[ $nico ]['fee_due_cents'] && 500 === $bk[ $nico ]['paid'] && 300 === $bk[ $nico ]['remaining'] && 'partial' === $bk[ $nico ]['state'], 'il pagamento già fatto passa all\'ospite' );
 asem_ok( ! $bk[ $founder ]['active'] && 'transferred' === $bk[ $founder ]['status'] && 0 === $bk[ $founder ]['paid'], 'la prenotazione del socio risulta trasferita' );
 asem_ok( 1 === (int) $acts->sessions( $paid_ev )[0]['booked_count'], 'i posti occupati non cambiano' );
@@ -2208,7 +2208,7 @@ asem_ok( false !== strpos( (string) $wpdb->get_var( $wpdb->prepare( 'SELECT desc
 
 // ...e poi a un nuovo ospite indicato per nome (resta lo stesso contributo, niente da integrare)
 $msg = $front::do_transfer_booking( array( 'session_id' => $paid_s, 'person_id' => $nico, 'new_first_name' => 'Nuovo', 'new_last_name' => 'Amico', 'new_phone' => '333 9999991' ) );
-asem_ok( false !== strpos( $msg, 'Da integrare' ) && false !== strpos( $msg, '3,00' ), 'cambio verso un nuovo ospite indicato per nome: resta da integrare 3,00' );
+asem_ok( false !== strpos( $msg, 'Resta da pagare' ) && false !== strpos( $msg, '3,00' ), 'cambio verso un nuovo ospite indicato per nome: resta da pagare 3,00' );
 $amico = 0;
 foreach ( $people->guests_of( $founder ) as $g ) {
 	if ( 'Amico' === $g['last_name'] ) {
@@ -3734,9 +3734,9 @@ asem_ok( false !== strpos( $guest_html, 'asem_ticket=' ) && false !== strpos( $g
 $t = \AssociazioneSemplice\Frontend\TicketVerify::result( $tm[1] );
 asem_ok( 'valid' === $t['status'] && (int) $t['person']['id'] === $founder && $t['today'] === false, 'biglietto: prenotazione valida' );
 $page = \AssociazioneSemplice\Frontend\TicketVerify::page( $tm[1] );
-asem_ok( false !== strpos( $page, 'Prenotazione valida' ) && false !== strpos( $page, 'Concerto con QR' ) && false !== strpos( $page, 'Da versare' ) && false !== strpos( $page, 'altra data' ) && false === strpos( $page, 'example.com' ), 'biglietto: evento, data, contributo da versare e avviso se non è oggi; nessuna email' );
+asem_ok( false !== strpos( $page, 'Prenotazione valida' ) && false !== strpos( $page, 'Concerto con QR' ) && false !== strpos( $page, 'Da pagare' ) && false !== strpos( $page, 'altra data' ) && false === strpos( $page, 'example.com' ), 'biglietto: evento, data, contributo da versare e avviso se non è oggi; nessuna email' );
 $pay( $founder, 500, $tev_s, $tev );
-asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $tm[1] ), 'Versato' ), 'biglietto: dopo il pagamento risulta versato (verifica in diretta)' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $tm[1] ), 'Pagato' ), 'biglietto: dopo il pagamento risulta versato (verifica in diretta)' );
 asem_ok( 'invalid' === \AssociazioneSemplice\Frontend\TicketVerify::result( \AssociazioneSemplice\CardToken::ticket_param( $paid_s, $founder, Settings::card_secret() ) )['status'], 'biglietto: per un evento senza QR attivo il codice non vale' );
 $other = explode( '.', $tm[1] );
 asem_ok( 'invalid' === \AssociazioneSemplice\Frontend\TicketVerify::result( $other[0] . '.' . $g_id . '.' . $other[2] )['status'] && 'invalid' === \AssociazioneSemplice\Frontend\TicketVerify::result( 'boh' )['status'], 'biglietto: la firma di un\'altra persona o un formato errato non valgono' );
@@ -3766,7 +3766,7 @@ asem_ok( false !== strpos( $list, 'Concerto con QR' ) && false !== strpos( $list
 asem_ok( false !== strpos( $as( $uq, '[associazionesemplice_ingressi]' ), 'Non gestisci nessun evento' ) && false === strpos( $as( $uq, '[associazionesemplice_area_soci]' ), 'Ingressi agli eventi' ), 'area soci: chi non gestisce eventi non vede la sezione' );
 $_GET['asem_session'] = (string) $tev_s;
 $det = $as( $u_tre, '[associazionesemplice_ingressi]' );
-asem_ok( false !== strpos( $det, $guest_row['first_name'] ) && false !== strpos( $det, 'Registra ingresso' ) && false !== strpos( $det, 'data-asemf-scan' ) && false !== strpos( $det, 'Prenotati' ) && false !== strpos( $det, 'Da versare' ), 'lista prenotati: nomi, contributo, pulsante di ingresso e scansione del QR' );
+asem_ok( false !== strpos( $det, $guest_row['first_name'] ) && false !== strpos( $det, 'Registra ingresso' ) && false !== strpos( $det, 'data-asemf-scan' ) && false !== strpos( $det, 'Prenotati' ) && false !== strpos( $det, 'Da pagare' ), 'lista prenotati: nomi, contributo, pulsante di ingresso e scansione del QR' );
 asem_ok( false === strpos( $det, '@' ) && false === strpos( $det, 'mailto:' ) && false === strpos( $det, 'tel:' ), 'lista prenotati: nessun recapito (email o telefono)' );
 unset( $_GET['asem_session'] );
 $_GET['asem_session'] = (string) $paid_s;
@@ -3779,7 +3779,7 @@ asem_ok( null !== asem_throws( function () use ( $front, $tev_s, $g_id ) { $fron
 wp_set_current_user( $u_tre );
 $m1 = $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id ) );
 $bk = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $tev_s, $g_id ), ARRAY_A );
-asem_ok( false !== strpos( $m1, 'Ingresso registrato' ) && false !== strpos( $m1, 'contributo da versare' ) && ! empty( $bk['checked_in_at'] ) && (int) $bk['checked_in_by'] === $u_tre, 'ingresso: registrato con ora e chi l\'ha fatto; avvisa se il contributo non è versato' );
+asem_ok( false !== strpos( $m1, 'Ingresso registrato' ) && false !== strpos( $m1, 'contributo da pagare' ) && ! empty( $bk['checked_in_at'] ) && (int) $bk['checked_in_by'] === $u_tre, 'ingresso: registrato con ora e chi l\'ha fatto; avvisa se il contributo non è versato' );
 asem_ok( false !== strpos( $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id ) ), 'già registrato' ), 'ingresso: la seconda volta dice che era già registrato' );
 $tp = \AssociazioneSemplice\Frontend\TicketVerify::result( $gt );
 asem_ok( 'used' === $tp['status'] && false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt ), 'Ingresso già registrato' ), 'biglietto: dopo l\'ingresso il QR risulta già usato (una copia del QR non entra due volte)' );
@@ -3789,7 +3789,7 @@ asem_ok( false === strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $g
 wp_set_current_user( $uq );
 asem_ok( false === strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt ), 'asem_front_checkin' ), 'pagina del biglietto: un socio che non gestisce l\'evento non ha comandi' );
 wp_set_current_user( $u_tre );
-asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt ), 'Annulla la registrazione' ) && false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt, array( 'ok' => 'Ingresso registrato: prova' ) ), 'Ingresso registrato: prova' ), 'pagina del biglietto: il gestore può annullare la registrazione e vede l\'esito dell\'azione' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt ), 'Annulla l\'ingresso' ) && false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt, array( 'ok' => 'Ingresso registrato: prova' ) ), 'Ingresso registrato: prova' ), 'pagina del biglietto: il gestore può annullare la registrazione e vede l\'esito dell\'azione' );
 asem_ok( false !== strpos( $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => '1' ) ), 'annullata' ) && empty( $wpdb->get_var( $wpdb->prepare( 'SELECT checked_in_at FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $tev_s, $g_id ) ) ), 'ingresso: la registrazione si può annullare' );
 asem_ok( 'valid' === \AssociazioneSemplice\Frontend\TicketVerify::result( $gt )['status'] && false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt ), 'Registra ingresso' ), 'biglietto: annullata la registrazione torna valido, con il comando per il gestore' );
 
@@ -4045,7 +4045,7 @@ asem_ok( false !== strpos( $no_phone, 'cellulare' ), 'nuovo ospite dall\'area so
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Altro', 'last_name' => 'Nome', 'phone' => '333 5555552' ) ); } ), 'Hai già questo ospite' ), 'nuovo ospite: lo stesso cellulare tra i propri ospiti (scritto in modo diverso) è il doppione evidente' );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'pino', 'last_name' => 'PROVINO', 'phone' => '333 0001111' ) ); } ), 'Hai già questo ospite' ), 'nuovo ospite: lo stesso nome tra i propri ospiti è rifiutato' );
 $member_phone = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Mara', 'last_name' => 'Telefonata', 'email' => 'mara.telefonata@example.com', 'phone' => '348 1234567' ) );
-asem_ok( false !== strpos( (string) asem_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Mara', 'last_name' => 'Telefonata', 'phone' => '+39 348 123 4567' ) ); } ), 'Non è possibile aggiungere questo numero' ), 'nuovo ospite: un cellulare già di un socio è rifiutato senza dire che è di un socio' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $front ) { $front::do_add_guest( array( 'first_name' => 'Mara', 'last_name' => 'Telefonata', 'phone' => '+39 348 123 4567' ) ); } ), 'Non puoi aggiungere questo numero' ), 'nuovo ospite: un cellulare già di un socio è rifiutato senza dire che è di un socio' );
 $front::do_add_guest( array( 'first_name' => 'Giovanni', 'last_name' => 'Altrui', 'phone' => '+39 333 5555554' ) ); // stesso cellulare di un ospite di un altro socio: consentito, ma lo si vedrà
 $twins_now = $people->guest_overview();
 $gianni_id = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Giovanni' AND last_name = 'Altrui' AND host_person_id = $founder" );
@@ -5927,7 +5927,7 @@ wp_set_current_user( $u_tre );
 $lm_id = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Luca', 'last_name' => 'Lastminute', 'email' => 'luca.lastminute@example.com' ) );
 $people->set_membership( $lm_id, Settings::membership_year()->label(), true );
 $edo_id = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Edo', 'last_name' => 'Scaduto', 'email' => 'edo.scaduto@example.com' ) );
-asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $kar_s, $edo_id ) { AssociazioneSemplice\Frontend\ProActions::do_door( array( 'session_id' => $kar_s, 'person_id' => $edo_id, 'pay' => '1' ) ); } ), 'non è in regola' ) && ! $acts->has_active_booking( $kar_s, $edo_id ), 'ingresso sul posto: un socio con la tessera scaduta non viene prenotato (deve rinnovare)' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $kar_s, $edo_id ) { AssociazioneSemplice\Frontend\ProActions::do_door( array( 'session_id' => $kar_s, 'person_id' => $edo_id, 'pay' => '1' ) ); } ), 'non è valida' ) && ! $acts->has_active_booking( $kar_s, $edo_id ), 'ingresso sul posto: un socio con la tessera scaduta non viene prenotato (deve rinnovare)' );
 $dm = AssociazioneSemplice\Frontend\ProActions::do_door( array( 'session_id' => $kar_s, 'person_id' => $lm_id, 'pay' => '1' ) );
 $lm = $people->get( $lm_id );
 $guest_door = $people->create( array( 'type' => 'guest', 'first_name' => 'Gina', 'last_name' => 'Ospite', 'phone' => '333 7770009', 'host_person_id' => $founder ) );
@@ -5965,7 +5965,7 @@ $tc_tot = (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . D
 asem_ok( 1700 === $tc_tot && $people->has_membership( $tc_p, Settings::membership_year()->label() ), 'tesoriere: incassa quota associativa ed evento in un solo incasso' );
 asem_ok( null !== asem_throws( function () use ( $front, $tc_p, $cash ) { $front::do_collect( array( 'person_id' => $tc_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => '', 'amount' => '' ) ) ) ); } ), 'tesoriere: senza voci non incassa' );
 $tc2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Senzatessera', 'email' => 'ugo.senzatessera@example.com' ) );
-asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $tc2, $tc_s, $cash ) { $front::do_collect( array( 'person_id' => $tc2, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 's:' . $tc_s, 'amount' => '7' ) ) ) ); } ), 'non è in regola' ) && ! $acts->has_active_booking( $tc_s, $tc2 ), 'tesoriere: un evento a un socio con la tessera scaduta solo insieme al rinnovo' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $tc2, $tc_s, $cash ) { $front::do_collect( array( 'person_id' => $tc2, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 's:' . $tc_s, 'amount' => '7' ) ) ) ); } ), 'non è valida' ) && ! $acts->has_active_booking( $tc_s, $tc2 ), 'tesoriere: un evento a un socio con la tessera scaduta solo insieme al rinnovo' );
 $front::do_collect( array( 'person_id' => $tc2, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '10' ), array( 'what' => 's:' . $tc_s, 'amount' => '7' ) ) ) );
 asem_ok( $acts->has_active_booking( $tc_s, $tc2 ) && $people->has_membership( $tc2, Settings::membership_year()->label() ), 'tesoriere: rinnovo ed evento nello stesso incasso vanno a buon fine' );
 wp_set_current_user( $uq );
@@ -6145,7 +6145,7 @@ $sg  = $people->create( array( 'type' => 'guest', 'first_name' => 'Gino', 'last_
 wp_set_current_user( $u_tre );
 asem_ok( null !== asem_throws( function () use ( $front, $quiz_s, $sa1, $sa2, $cash ) { AssociazioneSemplice\Frontend\ProActions::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $sa1 ), array( 'person' => (string) $sa2 ) ) ) ); } ), 'staff senza incasso abilitato: niente cassa per più soci' );
 $acts->set_staff_cash( $quiz, $tre_p, true );
-asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $quiz_s, $sa1, $sa3, $cash ) { AssociazioneSemplice\Frontend\ProActions::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $sa1 ), array( 'person' => (string) $sa3 ) ) ) ); } ), 'non è in regola' ) && ! $acts->has_active_booking( $quiz_s, $sa1 ), 'staff: un socio con la tessera scaduta blocca tutto, nulla resta scritto' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $quiz_s, $sa1, $sa3, $cash ) { AssociazioneSemplice\Frontend\ProActions::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $sa1 ), array( 'person' => (string) $sa3 ) ) ) ); } ), 'non è valida' ) && ! $acts->has_active_booking( $quiz_s, $sa1 ), 'staff: un socio con la tessera scaduta blocca tutto, nulla resta scritto' );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $quiz_s, $sa1, $sg, $cash ) { AssociazioneSemplice\Frontend\ProActions::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $cash['id'], 'rows' => array( array( 'person' => (string) $sg ) ) ) ); } ), 'solo dai soci' ), 'staff: gli ospiti non si incassano nella cassa per più soci' );
 $bank = $ledger->default_account_for( 'bank' );
 asem_ok( 'bank' === $bank['type'] && null !== asem_throws( function () use ( $front, $quiz_s, $sa1, $bank ) { AssociazioneSemplice\Frontend\ProActions::do_door_group( array( 'session_id' => $quiz_s, 'payer_id' => $sa1, 'account_id' => (int) $bank['id'], 'rows' => array( array( 'person' => (string) $sa1 ) ) ) ); } ), 'staff: solo contanti o POS' );
@@ -6812,7 +6812,7 @@ $wp_wl = \AssociazioneSemplice\Db::t( 'waitlist' );
 $wpdb->insert( $wp_wl, array( 'session_id' => $wp_s, 'person_id' => $wp_o, 'status' => 'waiting', 'created_at' => \AssociazioneSemplice\Db::now() ) ); // riga già in coda prima della scelta della tariffa
 $wpdb->insert( $wp_wl, array( 'session_id' => $wp_s, 'person_id' => $wp_x, 'price_list' => 'sparito', 'status' => 'waiting', 'created_at' => \AssociazioneSemplice\Db::now() ) ); // tariffa poi tolta dall'attività
 wp_set_current_user( $wp_pu );
-asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $wp_s, $wp_p ) { $front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p ) ); } ), 'tariffa' ) && null === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ), 'lista d\'attesa: con i listini senza tariffa non ci si mette in coda' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $wp_s, $wp_p ) { $front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p ) ); } ), 'contributi proposti' ) && null === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ), 'lista d\'attesa: con i listini senza tariffa non ci si mette in coda' );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $wp_s, $wp_p ) { $front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p, 'price_list' => 'inesistente' ) ); } ), 'non trovato' ) && null === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ), 'lista d\'attesa: una tariffa inesistente è rifiutata' );
 $front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p, 'price_list' => 'di_gruppo' ) );
 asem_ok( 3 === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ) && 'di_gruppo' === $wpdb->get_var( $wpdb->prepare( "SELECT price_list FROM $wp_wl WHERE session_id = %d AND person_id = %d", $wp_s, $wp_p ) ), 'lista d\'attesa: la tariffa scelta resta salvata' );
@@ -7488,7 +7488,7 @@ $tx_card = \AssociazioneSemplice\Frontend\Actions::card_invalid( array( 'id' => 
 $tx_ward = \AssociazioneSemplice\Frontend\Actions::card_invalid( array( 'id' => 6, 'first_name' => 'Gio' ), array( 'id' => 5 ), 'prenotare' );
 asem_ok( ! \AssociazioneSemplice\Plugin::payments()->enabled() ? false !== strpos( $tx_card, 'Rinnova la quota in segreteria' ) : false !== strpos( $tx_card, \AssociazioneSemplice\Frontend\Actions::RENEW_LINK ),'tessera non valida: dice dove rinnovare (online dall\'area soci se i pagamenti sono attivi, altrimenti in segreteria)' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Actions::card_invalid_staff( 'Lia Rossi' ), 'rinnova la quota dalla scheda del socio' ) && false === stripos( \AssociazioneSemplice\Frontend\Actions::card_invalid_staff( 'Lia Rossi' ),'va rinnovata' ), 'tessera non valida (staff): il messaggio manda alla scheda del socio' );
-asem_ok( 0 === strpos( $tx_card, 'La tua tessera non è valida' ) && false !== strpos( $tx_card, 'rinnova la quota associativa' ) && false !== strpos( $tx_card, 'segreteria' ) && 0 === strpos( $tx_ward, 'La tessera di Gio non è valida' ), 'tessera non valida: il messaggio dice come rinnovare e chi è il titolare della tessera' );
+asem_ok( 0 === strpos( $tx_card, 'La tua tessera non è valida' ) && false !== strpos( $tx_card, 'non puoi prenotare' ) && false !== strpos( $tx_card, 'segreteria' ) && 0 === strpos( $tx_ward, 'La tessera di Gio non è valida' ), 'tessera non valida: il messaggio dice come rinnovare e chi è il titolare della tessera' );
 asem_ok( \AssociazioneSemplice\Frontend\MemberLoginPage::FAIL !== \AssociazioneSemplice\Frontend\MemberLoginPage::BLOCKED && false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::BLOCKED, 'Troppi tentativi' ) && false === strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::FAIL, 'troppi tentativi' ), 'accesso: password sbagliata e blocco per troppi tentativi hanno messaggi diversi' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Configurazione iniziale' );
 Admin\RegistersActions::guide_dismiss( array( 'on' => '1' ) );
@@ -8918,7 +8918,7 @@ asem_ok( false !== strpos( $gt_staff, 'Campo con ingresso' ) && false !== strpos
 wp_set_current_user( 0 );
 $gt_pub = \AssociazioneSemplice\Frontend\ResourcesGate::page( $gt_p, array( 'ok' => '', 'err' => '' ) );
 asem_ok( false !== strpos( $gt_pub, 'Rita R.' ) && false === strpos( $gt_pub, 'Rita Risorsa' ) && false !== strpos( $gt_pub, 'Mostra questo QR allo staff' ), 'risorse: a chi non è dello staff la pagina mostra il nome abbreviato' );
-asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( '1.2.' . str_repeat( '0', 20 ), array( 'ok' => '', 'err' => '' ) ), 'Non valida' ) && false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( \AssociazioneSemplice\ResourceGate::param( $oc_b, $rs_m1, \AssociazioneSemplice\Settings::card_secret() ), array( 'ok' => '', 'err' => '' ) ), 'Non valida' ), 'risorse: un codice sbagliato o di una risorsa senza ingresso con QR non vale' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( '1.2.' . str_repeat( '0', 20 ), array( 'ok' => '', 'err' => '' ) ), 'QR non valido' ) && false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( \AssociazioneSemplice\ResourceGate::param( $oc_b, $rs_m1, \AssociazioneSemplice\Settings::card_secret() ), array( 'ok' => '', 'err' => '' ) ), 'QR non valido' ), 'risorse: un codice sbagliato o di una risorsa senza ingresso con QR non vale' );
 wp_set_current_user( 1 );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesFront::section( $people->get( $rs_m1 ) ), 'QR di ingresso' ), 'risorse: il socio trova il QR di ingresso nella sua area' );
 // ---------- Risorse: elenco degli orari con un solo pulsante ----------
@@ -9497,7 +9497,7 @@ $pr_rules = Settings::get( 'rules_enabled' ); // il regolamento da accettare non
 Settings::update( array( 'rules_enabled' => 0 ) );
 wp_set_current_user( $pr_mu );
 $pr_msg = (string) asem_throws( function () use ( $front, $pl_sess, $pr_m ) { $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m ) ); } );
-asem_ok( false !== strpos( $pr_msg, 'tariffa' ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: dal sito senza listino non si prenota [' . $pr_msg . ']' );
+asem_ok( false !== strpos( $pr_msg, 'contributi proposti' ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: dal sito senza listino non si prenota [' . $pr_msg . ']' );
 asem_ok( null !== asem_throws( function () use ( $front, $pl_sess, $pr_m ) { $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m, 'price_list' => '' ) ); } ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: nemmeno con il campo vuoto' );
 asem_ok( null !== asem_throws( function () use ( $front, $pl_sess, $pr_m ) { $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m, 'price_list' => 'inesistente' ) ); } ) && ! $acts->has_active_booking( $pl_sess[1], $pr_m ), 'listino obbligatorio: nemmeno con un listino che non esiste' );
 $front::do_book( array( 'session_id' => $pl_sess[1], 'person_id' => $pr_m, 'price_list' => 'di_gruppo' ) );
@@ -11571,7 +11571,7 @@ $ml_main  = \AssociazioneSemplice\Frontend\MemberLoginPage::page( '', '', '', ''
 $ml_reset = \AssociazioneSemplice\Frontend\MemberLoginPage::page( '', '', '', 'reset', '' );
 $ml_code  = \AssociazioneSemplice\Frontend\MemberLoginPage::page( '', '', '', 'code', 'socio@example.org' );
 asem_ok( false !== strpos( $ml_main, 'value="password_login"' ) && false !== strpos( $ml_main, 'value="request"' ) && 1 === substr_count( $ml_main, 'type="password"' ) && 1 === substr_count( $ml_main, 'name="email"' ) && false !== strpos( $ml_main, 'Password dimenticata?' ) && false === strpos( $ml_main, 'codice a 6 cifre' ), 'pagina di accesso: un campo email e uno password, due pulsanti, «Password dimenticata?» e nessun codice finché non chiedi il link' );
-asem_ok( false !== strpos( $ml_reset, 'Reimposta la password' ) && false !== strpos( $ml_reset, 'value="recover"' ) && false === strpos( $ml_reset, 'type="password"' ), 'pagina di accesso: «Password dimenticata?» apre una schermata con la sola email' );
+asem_ok( false !== strpos( $ml_reset, 'Password dimenticata' ) && false !== strpos( $ml_reset, 'value="recover"' ) && false === strpos( $ml_reset, 'type="password"' ), 'pagina di accesso: «Password dimenticata?» apre una schermata con la sola email' );
 asem_ok( false !== strpos( $ml_code, 'codice a 6 cifre' ) && false !== strpos( $ml_code, 'name="code"' ), 'pagina di accesso: il campo del codice compare dopo aver chiesto il link' );
 asem_ok( false !== strpos( $ml_main, 'Mandami un link</button>' ) && false !== strpos( $ml_main, 'link valido ' . (int) ( \AssociazioneSemplice\MemberLogin::TTL_SECONDS / 60 ) . ' minuti' ), 'pagina di accesso: il pulsante si chiama «Mandami un link» e il testo dice per quanti minuti vale' );
 asem_ok( ! MemberLogin::request( 'nessuno@example.org' ) && ! $ml_mail, 'accesso proprio: un\'email sconosciuta non riceve niente' );
@@ -12022,7 +12022,7 @@ wp_update_post( array( 'ID' => \AssociazioneSemplice\PublicEvents::ensure( $er_c
 $er_ca = $acts->get( $er_course );
 asem_ok( $er::course_open( $er_ca ) && ! $er::available( $er_ca ) && ! $er::course_open( $acts->get( $er_a ) ), 'iscrizione corso: la richiesta vale per i corsi, non per gli eventi' );
 $er_cform = \AssociazioneSemplice\Frontend\Views::course_request( $er_ca );
-asem_ok( false !== strpos( $er_cform, 'Come iscriversi' ) && false !== strpos( $er_cform, 'Invia la richiesta di iscrizione' ) && false !== strpos( $er_cform, 'Sei socio?' ), 'iscrizione corso: la pagina mostra l\'accesso dei soci e il modulo per chi non lo è' );
+asem_ok( false !== strpos( $er_cform, 'Come iscriverti' ) && false !== strpos( $er_cform, 'Invia la richiesta di iscrizione' ) && false !== strpos( $er_cform, 'Sei socio?' ), 'iscrizione corso: la pagina mostra l\'accesso dei soci e il modulo per chi non lo è' );
 $er_gid = (int) $wpdb->get_var( "SELECT id FROM $er_ppl WHERE tax_code = 'GLLPLA88H50L219H'" );
 $er::course_member_request( $er_course, $er_gid );
 asem_ok( $er::course_pending_for( $er_course, $er_gid ) && 1 === count( $er::awaiting( $er_course ) ) && ! in_array( $er_course, $acts->active_activity_ids( $er_gid ), true ), 'iscrizione corso: la richiesta del socio aspetta la segreteria' );

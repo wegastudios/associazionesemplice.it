@@ -67,8 +67,8 @@ final class Activation {
 				return 'Il link è scaduto: chiedi alla segreteria di mandartene uno nuovo.';
 			case 'done':
 				return ! \AssociazioneSemplice\MemberSession::wp_users_wanted()
-					? 'Il tuo accesso è già attivo: entra con la tua email e la tua password; se l\'hai dimenticata, nella pagina di accesso puoi riceverne una nuova.'
-					: 'Il tuo accesso è già attivo: entra con la tua email e, se hai dimenticato la password, usa "Password dimenticata".';
+					? 'Il tuo accesso è già attivo: entra con email e password. Se hai dimenticato la password, premi «Password dimenticata?» nella pagina di accesso.'
+					: 'Il tuo accesso è già attivo: entra con la tua email e, se hai dimenticato la password, usa «Password dimenticata».';
 			case 'suspended':
 				return 'Il servizio è temporaneamente sospeso. Riprova più tardi.';
 		}
@@ -158,7 +158,7 @@ final class Activation {
 		$input = 'width:100%;box-sizing:border-box;padding:10px;font-size:16px;margin:4px 0 12px;border:1px solid #8c8f94;border-radius:8px';
 		$need  = Limits::flag( 'profile_required' );
 		$body  = ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
-			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'Scegli la tua password: con email e password entrerai nell\'area soci. Se la dimentichi, potrai riceverne una nuova per email.' : 'Scegli l\'email e la password con cui entrerai nell\'area soci.' ) . '</p>'
+			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . ',</div><p>' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'Scegli la tua password: con email e password entrerai nell\'area soci. Se la dimentichi, potrai sceglierne una nuova con un link via email.' : 'Scegli l\'email e la password con cui entrerai nell\'area soci.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( add_query_arg( 'asem_activate', $param, home_url( '/' ) ) ) . '" autocomplete="on">'
 			. '<input type="hidden" name="asem_activate_go" value="1">' . MemberLoginPage::sign_field( 'activation' )
 			. '<label>La tua email<input style="' . $input . '" type="email" name="email" value="' . esc_attr( (string) ( $post['email'] ?? $p['email'] ?? '' ) ) . '" required autocomplete="email"></label>'

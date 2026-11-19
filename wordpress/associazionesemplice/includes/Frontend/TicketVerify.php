@@ -86,7 +86,7 @@ final class TicketVerify {
 			. '<input type="hidden" name="session_id" value="' . (int) $s['id'] . '"><input type="hidden" name="person_id" value="' . (int) $r['person']['id'] . '">'
 			. ( $undo ? '<input type="hidden" name="undo" value="1">' : '' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . ( $undo ? '#dcdcde;color:#1d2327' : '#1a7f37;color:#fff' ) . '">'
-			. ( $undo ? 'Annulla la registrazione' : 'Registra ingresso' ) . '</button></form>';
+			. ( $undo ? 'Annulla l\'ingresso' : 'Registra ingresso' ) . '</button></form>';
 	}
 
 	/** @param array $flash ok, err: esito dell'ultima azione (messaggi) */
@@ -113,8 +113,8 @@ final class TicketVerify {
 		$pay = '';
 		if ( $b && (int) $b['fee_due_cents'] > 0 ) {
 			$pay = 'paid' === $b['state']
-				? '<dd>Versato</dd>'
-				: '<dd style="color:#b32d2e">Da versare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</dd>';
+				? '<dd>Pagato</dd>'
+				: '<dd style="color:#b32d2e">Da pagare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</dd>';
 			$pay = '<div><dt>Contributo</dt>' . $pay . '</div>';
 		} elseif ( $b ) {
 			$pay = '<div><dt>Contributo</dt><dd>Gratuito</dd></div>';

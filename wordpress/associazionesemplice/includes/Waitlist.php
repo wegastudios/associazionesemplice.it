@@ -40,7 +40,7 @@ final class Waitlist {
 		$stored   = null;
 		if ( $activity && PriceLists::for_activity( $activity ) ) { // con i listini ne va scelto uno, come per la prenotazione diretta
 			if ( '' === $price_list ) {
-				throw new \InvalidArgumentException( 'Scegli la tariffa: per questa attività bisogna sceglierne una.' );
+				throw new \InvalidArgumentException( 'Scegli uno dei contributi proposti per questa attività.' );
 			}
 			if ( ! PriceLists::find( $activity, $price_list ) ) {
 				throw new \InvalidArgumentException( 'Listino non trovato per questa attività.' );

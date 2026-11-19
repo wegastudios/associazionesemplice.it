@@ -38,7 +38,7 @@ final class CreditsFront {
 				} catch ( \InvalidArgumentException $e ) {
 					wp_safe_redirect( Flash::url( $back, 'asemf', '', $e->getMessage() ) );
 				} catch ( \Throwable $e ) {
-					wp_safe_redirect( Flash::url( $back, 'asemf', '', 'Operazione non riuscita. Riprova più tardi.' ) );
+					wp_safe_redirect( Flash::url( $back, 'asemf', '', 'Qualcosa non ha funzionato. Riprova tra poco; se succede ancora, scrivi alla segreteria.' ) );
 				}
 				exit;
 			};
@@ -68,7 +68,7 @@ final class CreditsFront {
 	private static function actor(): array {
 		$p = Access::current_person();
 		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
-			throw new \InvalidArgumentException( 'Serve un accesso come socio.' );
+			throw new \InvalidArgumentException( 'Per farlo devi entrare come socio.' );
 		}
 		return $p;
 	}
@@ -97,7 +97,7 @@ final class CreditsFront {
 		$actor = self::actor();
 		$code  = (string) ( $post['code'] ?? '' );
 		$c     = Credits::pay_charge( $code, (int) $actor['id'] );
-		return array( 'url' => Flash::url( Credits::url( $code ), 'asemf', 'Pagamento di ' . (int) $c['credits'] . ' crediti riuscito.', '' ) );
+		return array( 'url' => Flash::url( Credits::url( $code ), 'asemf', 'Pagamento di ' . self::crediti( (int) $c['credits'] ) . ' riuscito.', '' ) );
 	}
 
 	/** Stato di un addebito per lo schermo dello staff (si aggiorna ogni due secondi). */
@@ -126,16 +126,16 @@ final class CreditsFront {
 		$msg = '' !== $flash['err'] ? '<div class="w" style="color:#b32d2e">' . esc_html( $flash['err'] ) . '</div>' : '';
 		$c   = Credits::charge_by_code( $code );
 		if ( ! $c ) {
-			return CardVerify::layout( 'QR non valido', '#b32d2e', '<div class="a">Questo codice non corrisponde a nessun addebito.</div>' );
+			return CardVerify::layout( 'QR non valido', '#b32d2e', '<div class="a">Questo QR non corrisponde a nessun pagamento in crediti.</div>' );
 		}
 		$actor = Access::current_person();
 		if ( ! $actor || ! MemberType::is_member( $actor['type'] ) ) {
-			return CardVerify::layout( 'Solo per i soci', '#b32d2e', '<div class="a">I crediti sono riservati ai soci: accedi con il tuo account.</div>' );
+			return CardVerify::layout( 'Solo per i soci', '#b32d2e', '<div class="a">I crediti sono riservati ai soci: entra con il tuo accesso.</div>' );
 		}
-		$what  = '<div class="n">' . (int) $c['credits'] . ' crediti</div><div class="t">' . esc_html( (string) $c['label'] ) . '</div>';
+		$what  = '<div class="n">' . self::crediti( (int) $c['credits'] ) . '</div><div class="t">' . esc_html( (string) $c['label'] ) . '</div>';
 		$state = CreditRules::charge_state( $c, current_time( 'mysql' ) );
 		if ( 'paid' === $state && (int) $c['payer_person_id'] === (int) $actor['id'] ) {
-			return CardVerify::layout( 'Pagato', '#1a7f37', $what . '<div class="a">Hai pagato con i crediti. Saldo: ' . (int) Credits::balance( (int) $actor['id'] ) . ' crediti.</div>' . $msg );
+			return CardVerify::layout( 'Pagato', '#1a7f37', $what . '<div class="a">Hai pagato con i crediti. Saldo: ' . self::crediti( (int) Credits::balance( (int) $actor['id'] ) ) . '.</div>' . $msg );
 		}
 		if ( 'ok' !== $state ) {
 			return CardVerify::layout( 'Non disponibile', '#b32d2e', $what . '<div class="a">' . esc_html( CreditRules::charge_message( $state ) ) . '</div>' . $msg );
@@ -148,9 +148,9 @@ final class CreditsFront {
 				. '<input type="hidden" name="code" value="' . esc_attr( $code ) . '"><input type="hidden" name="_back" value="' . esc_url( Credits::url( $code ) ) . '">' . \AssociazioneSemplice\Csrf::field( 'asem_front_credit_pay' )
 				. '<button style="width:100%;font-size:20px;padding:14px;border:0;border-radius:10px;background:#1a7f37;color:#fff;font-weight:700">Conferma e paga</button></form>';
 		} else {
-			$form = '<div class="w" style="color:#b32d2e">Crediti insufficienti. <a href="' . esc_url( home_url( '/' ) ) . '">Ricarica dalla tua area</a> e inquadra di nuovo il QR.</div>';
+			$form = '<div class="w" style="color:#b32d2e">Non hai abbastanza crediti. <a href="' . esc_url( home_url( '/' ) ) . '">Ricarica dalla tua area soci</a> e inquadra di nuovo il QR.</div>';
 		}
-		return CardVerify::layout( 'Pagare con i crediti?', '#2271b1', $what . '<div class="a">Il tuo saldo: <strong>' . (int) $balance . '</strong> crediti.</div>' . $form . $msg );
+		return CardVerify::layout( 'Pagare con i crediti?', '#2271b1', $what . '<div class="a">Il tuo saldo: <strong>' . (int) $balance . '</strong> ' . ( 1 === (int) $balance ? 'credito' : 'crediti' ) . '.</div>' . $form . $msg );
 	}
 
 	// ---------- Sezioni dell'area soci ----------
@@ -158,18 +158,18 @@ final class CreditsFront {
 	/** La sezione del socio: saldo, acquisto dei pacchetti, ultimi movimenti. */
 	public static function section( array $p ): string {
 		$pid  = (int) $p['id'];
-		$html = '<section class="asemf-section"><h3>I miei crediti</h3><p><span style="font-size:2em;font-weight:700">' . (int) Credits::balance( $pid ) . '</span> crediti</p>';
+		$html = '<section class="asemf-section"><h3>I miei crediti</h3><p><span style="font-size:2em;font-weight:700">' . (int) Credits::balance( $pid ) . '</span> ' . ( 1 === (int) Credits::balance( $pid ) ? 'credito' : 'crediti' ) . '</p>';
 		$packs = Credits::packs();
 		if ( $packs && Edition::has( 'payments' ) && Plugin::payments()->enabled() ) {
 			$html .= '<p><strong>Ricarica</strong></p><p>';
 			foreach ( $packs as $pk ) {
-				$html .= self::form( 'asem_front_pay', self::hidden( 'items[]', 'c:' . $pid . ':' . (int) $pk['credits'] ), (int) $pk['credits'] . ' crediti · ' . Money::format( (int) $pk['price_cents'] ) ) . ' ';
+				$html .= self::form( 'asem_front_pay', self::hidden( 'items[]', 'c:' . $pid . ':' . (int) $pk['credits'] ), self::crediti( (int) $pk['credits'] ) . ' · ' . Money::format( (int) $pk['price_cents'] ) ) . ' ';
 			}
 			$html .= '</p>';
 		} elseif ( $packs ) {
 			$html .= '<p class="asemf-muted">Per ricaricare i crediti rivolgiti alla segreteria.</p>';
 		}
-		$html .= '<p class="asemf-small asemf-muted">Spendi i crediti nelle attività e nelle risorse che li accettano. Dal vivo basta inquadrare il QR che ti mostra lo staff con la fotocamera del telefono e confermare.</p>';
+		$html .= '<p class="asemf-small asemf-muted">Spendi i crediti nelle attività e nelle risorse che li accettano. Dal vivo inquadra con il telefono il QR che ti mostra lo staff, poi conferma.</p>';
 		$rows  = Credits::history( $pid, 8 );
 		if ( $rows ) {
 			$html .= '<ul class="asemf-list">';
@@ -193,33 +193,38 @@ final class CreditsFront {
 			$state = 'paid' === $c['status'] ? 'paid' : CreditRules::charge_state( $c, current_time( 'mysql' ) );
 			$poll  = add_query_arg( array( 'action' => 'asem_credit_status', 'id' => $cid, 'n' => \AssociazioneSemplice\Csrf::create( 'asem_credit_status' ) ), admin_url( 'admin-ajax.php' ) );
 			$html .= '<div class="asemf-card" style="text-align:center" data-asemf-credit-poll="' . (int) $cid . '" data-url="' . esc_url( $poll ) . '" data-state="' . esc_attr( $state ) . '">'
-				. '<div style="font-size:2em;font-weight:700">' . (int) $c['credits'] . ' crediti</div><div>' . esc_html( (string) $c['label'] ) . '</div>'
-				. '<div style="max-width:320px;margin:12px auto">' . QrCode::svg( Credits::url( (string) $c['code'] ), 4, 'QR per pagare ' . (int) $c['credits'] . ' crediti' ) . '</div>' // phpcs:ignore WordPress.Security.EscapeOutput -- SVG generato dal plugin
+				. '<div style="font-size:2em;font-weight:700">' . self::crediti( (int) $c['credits'] ) . '</div><div>' . esc_html( (string) $c['label'] ) . '</div>'
+				. '<div style="max-width:320px;margin:12px auto">' . QrCode::svg( Credits::url( (string) $c['code'] ), 4, 'QR per pagare ' . self::crediti( (int) $c['credits'] ) ) . '</div>' // phpcs:ignore WordPress.Security.EscapeOutput -- SVG generato dal plugin
 				. '<div class="asemf-credit-status" style="font-weight:700">' . esc_html( 'paid' === $state ? 'Incassato' : ( 'ok' === $state ? 'In attesa del socio…' : CreditRules::charge_message( $state ) ) ) . '</div>'
 				. '<p class="asemf-small asemf-muted">Il socio inquadra il QR con la fotocamera e conferma. Il QR vale ' . (int) CreditRules::CHARGE_MINUTES . ' minuti.</p>'
-				. ( 'ok' === $state ? self::form( 'asem_front_credit_cancel', self::hidden( 'charge', $cid ), 'Annulla addebito', 'asemf-inline', true ) : '' ) . ' '
+				. ( 'ok' === $state ? self::form( 'asem_front_credit_cancel', self::hidden( 'charge', $cid ), 'Annulla addebito', 'asemf-inline', 'Annullare l\'addebito?' ) : '' ) . ' '
 				. '<a class="asemf-btn" href="' . esc_url( remove_query_arg( array( 'asem_charge', 'asemf_ok', 'asemf_err', 'asemf_sig' ) ) ) . '">Nuovo addebito</a></div>';
 			return $html . '</section>';
 		}
 		$opts = '<option value="">— importo libero —</option>';
 		foreach ( Credits::chargeable_activities() as $a ) {
-			$opts .= '<option value="' . (int) $a['id'] . '">' . esc_html( $a['name'] ) . ' (' . (int) $a['credit_price'] . ' crediti)</option>';
+			$opts .= '<option value="' . (int) $a['id'] . '">' . esc_html( $a['name'] ) . ' (' . self::crediti( (int) $a['credit_price'] ) . ')</option>';
 		}
 		$fields = '<p><label>Crediti <input type="number" name="credits" min="1" max="' . (int) CreditRules::MAX_CREDITS . '" style="width:6em"></label> '
 			. '<label>Attività <select name="activity_id">' . $opts . '</select></label></p>'
 			. '<p><label>Per cosa <input type="text" name="label" maxlength="190" placeholder="Ad esempio: ingresso serata"></label></p>';
-		$html  .= '<p class="asemf-muted">Indica i crediti (oppure scegli un’attività: l’importo si compila da solo) e mostra il QR al socio.</p>' . self::form( 'asem_front_credit_charge', $fields, 'Mostra il QR', 'asemf-stack' );
+		$html  .= '<p class="asemf-muted">Indica i crediti (oppure scegli un\'attività: l\'importo si compila da solo) e mostra il QR al socio.</p>' . self::form( 'asem_front_credit_charge', $fields, 'Mostra il QR', 'asemf-stack' );
 		return $html . '</section>';
 	}
 
 	// ---------- Utilità ----------
 
+	/** «1 credito» o «N crediti». */
+	public static function crediti( int $n ): string {
+		return $n . ( 1 === $n ? ' credito' : ' crediti' );
+	}
+
 	private static function hidden( string $name, $value ): string {
 		return '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '">';
 	}
 
-	private static function form( string $action, string $fields, string $button, string $class = 'asemf-inline', bool $confirm = false ): string {
-		return '<form class="asemf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"' . ( $confirm ? ' data-asemf-confirm="Confermi?"' : '' ) . '>'
+	private static function form( string $action, string $fields, string $button, string $class = 'asemf-inline', $confirm = false ): string {
+		return '<form class="asemf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"' . ( $confirm ? ' data-asemf-confirm="' . esc_attr( is_string( $confirm ) ? $confirm : 'Confermi?' ) . '"' : '' ) . '>'
 			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
 			. \AssociazioneSemplice\Csrf::field( $action ) . $fields . '<button class="asemf-btn">' . esc_html( $button ) . '</button></form>';
 	}

@@ -26,7 +26,7 @@ final class Application {
 
 	const MIN_SECONDS = 3;
 	const TOKEN_DAYS  = 7;
-	const MESSAGE     = 'Domanda ricevuta. Ti abbiamo scritto all\'email indicata (controlla anche la posta indesiderata): la segreteria la esamina e ti risponde.';
+	const MESSAGE     = 'Domanda ricevuta: la segreteria la esamina e ti risponde. Intanto ti abbiamo scritto all\'email indicata (controlla anche la posta indesiderata).';
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle_pay' ), 1 );
@@ -123,7 +123,7 @@ final class Application {
 			return '';
 		}
 		return Applications::online_payment()
-			? ' Nell\'email trovi anche il link per pagare subito la quota online; se la domanda non viene accettata ti viene restituita.'
+			? ' Nell\'email trovi anche il link per pagare subito la quota online; se la domanda non è accettata, riavrai la quota.'
 			: ' La quota associativa si paga in sede, alla segreteria.';
 	}
 
@@ -153,8 +153,8 @@ final class Application {
 		} else {
 			$html .= '<input type="hidden" name="type" value="' . esc_attr( (string) key( $types ) ) . '">';
 		}
-		$html .= '<fieldset class="asemf-guardian" data-asemf-guardian><legend>Hai meno di 18 anni? Indica un genitore o tutore</legend>'
-			. '<p class="asemf-small asemf-muted">Se sei minorenne l\'iscrizione la fa un genitore o tutore: compila questi dati. Se hai 18 anni o più, ignora questa parte.</p><div class="asemf-fields">'
+		$html .= '<fieldset class="asemf-guardian" data-asemf-guardian><legend>Per chi ha meno di 18 anni: genitore o tutore</legend>'
+			. '<p class="asemf-small asemf-muted">La domanda di un minorenne la presenta un genitore o tutore: qui vanno i suoi dati. Per i maggiorenni questa parte resta vuota.</p><div class="asemf-fields">'
 			. self::field( 'Nome del genitore', 'guardian_first_name', 'text', $post, 'off' ) . self::field( 'Cognome del genitore', 'guardian_last_name', 'text', $post, 'off' )
 			. self::field( 'Email del genitore', 'guardian_email', 'email', $post, 'off' ) . self::field( 'Cellulare del genitore', 'guardian_phone', 'tel', $post, 'off', false, ' inputmode="tel"' )
 			. self::field( 'Codice fiscale del genitore (facoltativo)', 'guardian_tax_code', 'text', $post, 'off', false, ' maxlength="16"' )
@@ -170,7 +170,7 @@ final class Application {
 		if ( '' !== \AssociazioneSemplice\Contacts::rights_line() ) {
 			$html .= '<p class="asemf-small asemf-muted">' . esc_html( \AssociazioneSemplice\Contacts::rights_line() ) . '</p>';
 		}
-		$html .= '<div class="asemf-rules-box"><label class="asemf-check"><input type="checkbox" name="image_ok" value="1"' . checked( ! empty( $post['image_ok'] ), true, false ) . '> Acconsento alla pubblicazione di foto e video dell\'attività (facoltativo; per un minore lo dichiara il genitore o tutore, che se ne assume la responsabilità anche verso l\'altro genitore).</label></div>';
+		$html .= '<div class="asemf-rules-box"><label class="asemf-check"><input type="checkbox" name="image_ok" value="1"' . checked( ! empty( $post['image_ok'] ), true, false ) . '> Acconsento alla pubblicazione di foto e video dell\'attività (facoltativo). Per un minore lo dichiara il genitore o tutore, che ne risponde anche verso l\'altro genitore.</label></div>';
 		if ( $fee > 0 ) {
 			$html .= '<p class="asemf-small asemf-muted">Quota associativa: ' . esc_html( Money::format( $fee ) ) . '.' . esc_html( self::fee_note() ) . '</p>';
 		}
@@ -205,7 +205,7 @@ final class Application {
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 		$r = Applications::resolve_pay( $param );
 		if ( 'ok' !== $r['status'] ) {
-			self::stop( 'expired' === $r['status'] ? 'Il link è scaduto: scrivi alla segreteria.' : ( 'closed' === $r['status'] ? 'Questa domanda è già stata esaminata.' : 'Il link non è valido.' ) );
+			self::stop( 'expired' === $r['status'] ? 'Il link è scaduto: scrivi alla segreteria.' : ( 'closed' === $r['status'] ? 'Questa domanda è già stata esaminata.' : 'Il link non è valido: riaprilo dall\'email o scrivi alla segreteria.' ) );
 		}
 		$p   = $r['person'];
 		$fee = Applications::fee_cents( (string) $p['type'] );
@@ -213,7 +213,7 @@ final class Application {
 			self::stop( 'Il pagamento online non è attivo: la quota si paga in sede, alla segreteria.' );
 		}
 		if ( Plugin::payments()->application_paid( (int) $p['id'] ) ) {
-			self::stop( 'Hai già pagato la quota: grazie!' );
+			self::stop( 'Hai già pagato la quota, grazie.' );
 		}
 		try {
 			$url = Plugin::payments()->application_checkout( $p, $fee, self::back_url() );

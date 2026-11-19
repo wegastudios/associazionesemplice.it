@@ -91,7 +91,7 @@ final class ProActions {
 		$sid     = (int) ( $post['session_id'] ?? 0 );
 		$session = Plugin::activities()->session( $sid );
 		if ( ! $session ) {
-			throw new \InvalidArgumentException( 'Data non trovata.' );
+			throw new \InvalidArgumentException( 'Questa data non c\'è più: ricarica la pagina.' );
 		}
 		$aid = (int) $session['activity_id'];
 		Actions::require_cap( 'asem_door_cash', $aid );
@@ -125,7 +125,7 @@ final class ProActions {
 		$sid     = (int) ( $post['session_id'] ?? 0 );
 		$session = Plugin::activities()->session( $sid );
 		if ( ! $session ) {
-			throw new \InvalidArgumentException( 'Data non trovata.' );
+			throw new \InvalidArgumentException( 'Questa data non c\'è più: ricarica la pagina.' );
 		}
 		$aid = (int) $session['activity_id'];
 		Actions::require_cap( 'asem_door_cash', $aid );
@@ -141,7 +141,7 @@ final class ProActions {
 		}
 		$pay = ! empty( $post['pay'] );
 		if ( $pay && ! $account ) {
-			throw new \InvalidArgumentException( 'Manca un conto di tipo "Cassa contanti": chiedi alla segreteria di crearlo.' );
+			throw new \InvalidArgumentException( 'Manca un conto di tipo «Cassa contanti»: chiedi alla segreteria di crearlo.' );
 		}
 		return \AssociazioneSemplice\DoorSales::sell(
 			array(

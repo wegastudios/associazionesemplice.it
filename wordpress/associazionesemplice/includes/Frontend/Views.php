@@ -94,7 +94,7 @@ final class Views {
 		if ( null !== $guest ) {
 			$txt .= ' · ' . ( 0 === $guest ? 'ospiti: gratuito' : 'ospiti ' . Money::format( $guest ) . rtrim( ' ' . $unit ) );
 		} elseif ( $fee > 0 ) {
-			$txt .= ' · ospiti: uguale';
+			$txt .= ' · ospiti: stesso contributo';
 		}
 		return $txt;
 	}
@@ -102,7 +102,7 @@ final class Views {
 	/**
 	 * @param array[] $buttons se indicati sostituiscono il pulsante unico: ciascuno con value (inviato come "provider") e label
 	 */
-	public static function form( string $action, string $fields_html, string $button, bool $confirm = false, string $class = '', bool $multipart = false, array $buttons = array() ): string {
+	public static function form( string $action, string $fields_html, string $button, $confirm = false, string $class = '', bool $multipart = false, array $buttons = array() ): string {
 		$html  = '<form class="asemf-form ' . esc_attr( $class ) . '" method="post"' . ( $multipart ? ' enctype="multipart/form-data"' : '' ) . ' action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		$html .= '<input type="hidden" name="action" value="' . esc_attr( $action ) . '">';
 		$html .= '<input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">';
@@ -114,7 +114,7 @@ final class Views {
 			}
 			return $html . '</form>';
 		}
-		$html .= '<button type="submit" class="asemf-btn wp-element-button"' . ( $confirm ? ' data-confirm="Confermi?"' : '' ) . '>' . esc_html( $button ) . '</button></form>';
+		$html .= '<button type="submit" class="asemf-btn wp-element-button"' . ( $confirm ? ' data-confirm="' . esc_attr( is_string( $confirm ) ? $confirm : 'Confermi?' ) . '"' : '' ) . '>' . esc_html( $button ) . '</button></form>';
 		return $html;
 	}
 
@@ -140,15 +140,15 @@ final class Views {
 			$back = Restrict::current_url();
 			$own  = MemberLoginPage::url();
 			return self::wrap(
-				'<div class="asemf-card"><h3>Area soci</h3><p>Accedi per vedere la tessera, le tue attività e prenotarti agli eventi.</p>'
+				'<div class="asemf-card"><h3>Area soci</h3><p>Entra per vedere la tessera, le tue attività e prenotarti agli eventi.</p>'
 				. MemberLoginPage::inline_login( $back )
 				. '<p class="asemf-small"><a href="' . esc_url( add_query_arg( array( 'asem_ml_reset' => '1', '_back' => rawurlencode( $back ) ), $own ) ) . '">Password dimenticata?</a> · <a href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), $own ) ) . '">Entra con un link via email</a> · <strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong></p>'
-				. '<p class="asemf-small">Segreteria e staff: <a href="' . esc_url( wp_login_url( $back ) ) . '">accedi da qui</a>.</p></div>'
+				. '<p class="asemf-small">Segreteria e staff: <a href="' . esc_url( wp_login_url( $back ) ) . '">entra da qui</a>.</p></div>'
 			);
 		}
-		$form = wp_login_form( array( 'echo' => false, 'redirect' => Restrict::current_url(), 'label_username' => 'Email o nome utente', 'label_log_in' => 'Accedi' ) );
+		$form = wp_login_form( array( 'echo' => false, 'redirect' => Restrict::current_url(), 'label_username' => 'Email o nome utente', 'label_log_in' => 'Entra' ) );
 		return self::wrap(
-			'<div class="asemf-card"><h3>Area soci</h3><p>Accedi per vedere la tua tessera, le tue attività e prenotarti agli eventi.</p>'
+			'<div class="asemf-card"><h3>Area soci</h3><p>Entra per vedere la tua tessera, le tue attività e prenotarti agli eventi.</p>'
 			. $form . '<p class="asemf-small"><strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong> (non hai ancora una password) · <a href="' . esc_url( wp_lostpassword_url( Restrict::current_url() ) ) . '">Password dimenticata?</a></p>'
 			. ( \AssociazioneSemplice\MemberSession::enabled() ? '<p class="asemf-small"><strong><a href="' . esc_url( MemberLoginPage::url() ) . '">Entra con un link via email</a></strong>, senza password.</p>' : '' ) . '</div>'
 		);
@@ -176,7 +176,7 @@ final class Views {
 		if ( ! \AssociazioneSemplice\MemberSession::logged_in() ) {
 			if ( \AssociazioneSemplice\MemberSession::pending_setup() ) { // entrato ma senza password: prima la sceglie
 				self::no_cache();
-				return self::wrap( '<div class="asemf-card"><h3>Scegli la tua password</h3><p>Per continuare devi scegliere la tua password.</p><p><a class="asemf-btn wp-element-button" href="' . esc_url( add_query_arg( '_back', rawurlencode( Restrict::current_url() ), MemberLoginPage::url() ) ) . '">Scegli la password</a></p></div>' );
+				return self::wrap( '<div class="asemf-card"><h3>Scegli la tua password</h3><p>La userai per entrare le prossime volte.</p><p><a class="asemf-btn wp-element-button" href="' . esc_url( add_query_arg( '_back', rawurlencode( Restrict::current_url() ), MemberLoginPage::url() ) ) . '">Scegli la password</a></p></div>' );
 			}
 			return self::login_prompt();
 		}
@@ -184,13 +184,13 @@ final class Views {
 		$uid      = get_current_user_id(); // 0 per chi è entrato con l'accesso proprio
 		$is_admin = Access::is_admin_user( $uid );
 		if ( ! $is_admin && ! Edition::allows( 'member_area' ) ) {
-			return self::wrap( self::notice( 'Servizio temporaneamente sospeso. Contatta l\'associazione.', 'asemf-err' ) );
+			return self::wrap( self::notice( 'L\'area soci è temporaneamente sospesa. Per informazioni scrivi alla segreteria.', 'asemf-err' ) );
 		}
 		$person = Access::current_person();
 		if ( ! $person ) {
 			return self::wrap( self::notice( $is_admin
 				? 'Sei amministratore del sito e non hai una scheda socio collegata: qui i soci vedono i propri dati.'
-				: 'Il tuo account non è collegato a una scheda socio. Contatta l\'associazione.' ) );
+				: 'Il tuo accesso non è collegato a nessun socio. Scrivi alla segreteria.' ) );
 		}
 		return self::wrap( (string) $fn( $person ), $class );
 	}
@@ -259,9 +259,9 @@ final class Views {
 
 	private static function pay_text( array $summary ): string {
 		if ( $summary['balance'] < 0 ) {
-			return '<span class="asemf-bad">Da versare ' . esc_html( Money::format( -$summary['balance'] ) ) . '</span>';
+			return '<span class="asemf-bad">Da pagare ' . esc_html( Money::format( -$summary['balance'] ) ) . '</span>';
 		}
-		return '<span class="asemf-good">In regola</span>' . ( $summary['balance'] > 0 ? ' <span class="asemf-small">(credito ' . esc_html( Money::format( $summary['balance'] ) ) . ')</span>' : '' );
+		return '<span class="asemf-good">In regola</span>' . ( $summary['balance'] > 0 ? ' <span class="asemf-small">(hai pagato ' . esc_html( Money::format( $summary['balance'] ) ) . ' in più)</span>' : '' );
 	}
 
 	private static function booking_pay( array $b ): string {
@@ -316,7 +316,7 @@ final class Views {
 			$html .= '</ul>';
 		}
 		if ( ! $stat && ! $upcoming && ! $past ) {
-			$html .= '<p class="asemf-muted">Non sei ancora iscritto a nessuna attività.</p>';
+			$html .= '<p class="asemf-muted">Non hai ancora corsi né prenotazioni.</p>';
 		}
 		$unpaid = array_filter( array_merge( $upcoming, $past ), function ( $b ) {
 			return $b['active'] && $b['remaining'] > 0;
@@ -350,7 +350,7 @@ final class Views {
 			return '';
 		}
 		return '<details class="asemf-details asemf-ticket"><summary>Biglietto QR</summary><div class="asemf-memcard-qr">' . $svg
-			. '<div class="asemf-small">Mostralo all\'ingresso: si vede se la prenotazione è valida e se il contributo è versato. <a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la verifica</a></div></div></details>';
+			. '<div class="asemf-small">Mostralo all\'ingresso: conferma la prenotazione e il pagamento. <a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la verifica</a></div></div></details>';
 	}
 
 	/** Annulla (se la regola lo consente) e Cambia nominativo di una prenotazione dell'area soci. */
@@ -362,7 +362,7 @@ final class Views {
 		$html = '<div class="asemf-manage">';
 		if ( $ev['allowed'] ) {
 			$html .= '<div class="asemf-small asemf-muted">' . esc_html( $ev['message'] ) . '</div>'
-				. self::form( 'asem_front_cancel_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ), 'Annulla prenotazione', true, 'asemf-inline' );
+				. self::form( 'asem_front_cancel_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ), 'Annulla prenotazione', 'Annullare la prenotazione?', 'asemf-inline' );
 		} else {
 			$html .= '<div class="asemf-small asemf-muted">' . esc_html( $ev['message'] ) . '</div>';
 		}
@@ -379,7 +379,7 @@ final class Views {
 				. ( '' !== $options ? '<label>Intesta a <select name="to_person_id"><option value="">— scegli —</option>' . $options . '</select></label>' : '' )
 				. '<label>' . ( '' !== $options ? 'oppure nuovo ospite: nome' : 'Nuovo ospite: nome' ) . ' <input type="text" name="new_first_name"></label><label>Cognome <input type="text" name="new_last_name"></label><label>Cellulare <input type="tel" name="new_phone" placeholder="333 1234567"></label></div>';
 			$html  .= '<details class="asemf-details"><summary>Cedi il posto a un\'altra persona</summary>'
-				. '<p class="asemf-small asemf-muted">Se il nuovo partecipante ha un contributo diverso (ad esempio un ospite) la differenza va integrata.</p>'
+				. '<p class="asemf-small asemf-muted">Se chi prende il posto ha un contributo più alto (per esempio un ospite), paga la differenza.</p>'
 				. self::form( 'asem_front_transfer_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ) . $fields, 'Cedi il posto' ) . '</details>';
 		}
 		return $html . '</div>';
@@ -388,7 +388,7 @@ final class Views {
 	/** Stato di un pagamento online, per l'elenco dei pagamenti recenti. */
 	private static function payment_status( string $status ): string {
 		$m = array(
-			'paid' => 'pagato', 'pending' => 'in attesa di conferma', 'created' => 'avviato', 'processing' => 'in registrazione',
+			'paid' => 'pagato', 'pending' => 'in attesa di conferma', 'created' => 'avviato', 'processing' => 'in corso',
 			'cancelled' => 'annullato', 'failed' => 'non riuscito', 'expired' => 'scaduto',
 		);
 		return $m[ $status ] ?? $status;
@@ -466,9 +466,9 @@ final class Views {
 		$html  = '<section class="asemf-section asemf-secretary"><h3>Segreteria</h3>';
 		$apps  = \AssociazioneSemplice\Applications::pending_count();
 		if ( $apps > 0 ) {
-			$html .= '<p><strong>' . (int) $apps . ( 1 === $apps ? ' domanda di adesione' : ' domande di adesione' ) . '</strong> da approvare: si approvano dalla <a href="' . $url( 'asem' ) . '">Bacheca</a>.</p>';
+			$html .= '<p><strong>' . (int) $apps . ( 1 === $apps ? ' domanda di adesione' : ' domande di adesione' ) . '</strong> da approvare nella <a href="' . $url( 'asem' ) . '">Bacheca</a>.</p>';
 		}
-		$html .= '<p>' . ( $pend > 0 ? '<strong>' . (int) $pend . ( 1 === $pend ? ' richiesta di accesso' : ' richieste di accesso' ) . '</strong> da controllare: le trovi in <a href="' . $url( 'asem' ) . '">Bacheca</a>.' : 'Nessuna richiesta di accesso da controllare.' ) . '</p><p class="asemf-small asemf-muted">Da qui si arriva alle funzioni di gestione.</p><p class="asemf-actions">';
+		$html .= '<p>' . ( $pend > 0 ? '<strong>' . (int) $pend . ( 1 === $pend ? ' richiesta di accesso' : ' richieste di accesso' ) . '</strong> da controllare: le trovi in <a href="' . $url( 'asem' ) . '">Bacheca</a>.' : 'Nessuna richiesta di accesso da controllare.' ) . '</p><p class="asemf-small asemf-muted">Da qui apri le pagine di gestione.</p><p class="asemf-actions">';
 		foreach ( $links as $l ) {
 			if ( $l[2] && \AssociazioneSemplice\Employees::page_allowed( $l[0] ) ) { // un dipendente non vede i collegamenti ai permessi che gli sono stati tolti
 				$html .= '<a class="asemf-btn" href="' . $url( $l[0] ) . '">' . esc_html( $l[1] ) . '</a> ';
@@ -492,8 +492,8 @@ final class Views {
 		$fields = '<div class="asemf-fields"><label>Nome <input type="text" name="first_name" required autocomplete="off"></label><label>Cognome <input type="text" name="last_name" required autocomplete="off"></label></div>'
 			. '<div class="asemf-fields"><label>Email (facoltativa) <input type="email" name="email" autocomplete="off"></label><label>Cellulare (facoltativo) <input type="tel" name="phone" autocomplete="off"></label>'
 			. '<label>Tipo di socio <select name="level_id">' . $opts . '</select></label></div>';
-		return '<section class="asemf-section asemf-new-member"><h3>Nuova iscrizione</h3><p class="asemf-small asemf-muted">Registra un nuovo socio: bastano nome e cognome, i dati restanti si completano dopo. La quota si incassa qui sotto.</p>'
-			. self::form( 'asem_front_new_member', $fields, 'Iscrivi' ) . '</section>';
+		return '<section class="asemf-section asemf-new-member"><h3>Nuovo socio</h3><p class="asemf-small asemf-muted">Bastano nome e cognome: gli altri dati li completi dopo. La quota associativa la incassi qui sotto.</p>'
+			. self::form( 'asem_front_new_member', $fields, 'Aggiungi il socio' ) . '</section>';
 	}
 
 	/** Incassi del tesoriere: una persona, un conto e fino a tre voci (quota associativa, eventi, altre entrate). Il resto lo calcola la contabilità. */
@@ -534,7 +534,7 @@ final class Views {
 		}
 		$fields = '<div class="asemf-fields"><label>Chi paga <select name="person_id" required>' . $people . '</select></label>'
 			. '<label>Sul conto <select name="account_id">' . $accounts . '</select></label></div>' . $rows;
-		return '<section class="asemf-section asemf-collect"><h3>Incassa</h3><p class="asemf-small asemf-muted">Quota associativa, eventi, corsi e altre entrate. Per le quote l\'anno viene calcolato automaticamente.</p>'
+		return '<section class="asemf-section asemf-collect"><h3>Incassa</h3><p class="asemf-small asemf-muted">Quota associativa, eventi, corsi e altre entrate. Per la quota associativa l\'anno fiscale si calcola da solo.</p>'
 			. self::form( 'asem_front_collect', $fields, 'Registra l\'incasso' ) . '</section>';
 	}
 
@@ -659,12 +659,12 @@ final class Views {
 		if ( ! $wards ) {
 			return '';
 		}
-		$html = '<section class="asemf-section"><h3>I miei figli</h3><p class="asemf-muted">Sei il tutore di queste persone: vedi la loro tessera e le attività, le prenoti agli eventi e paghi per loro. Le email che li riguardano arrivano anche a te.</p></section>';
+		$html = '<section class="asemf-section"><h3>I miei figli</h3><p class="asemf-muted">Sei il genitore o tutore di queste persone: vedi tessera e attività, le prenoti agli eventi e paghi per loro. Le email che le riguardano arrivano anche a te.</p></section>';
 		foreach ( $wards as $m ) {
 			$name  = trim( $m['first_name'] . ' ' . $m['last_name'] );
 			$adult = ! \AssociazioneSemplice\Age::is_minor( $m['birth_date'] ?? null, current_time( 'Y-m-d' ) ) && ! empty( $m['birth_date'] );
 			$html .= '<section class="asemf-section"><h3>' . esc_html( $name ) . '</h3>'
-				. ( $adult ? '<p class="asemf-small asemf-muted">Ha compiuto 18 anni: può avere un suo accesso. Chiedi alla segreteria di invitarlo; finché il collegamento resta, continui a vedere i suoi dati.</p>' : '' )
+				. ( $adult ? '<p class="asemf-small asemf-muted">Ha compiuto 18 anni: può avere un suo accesso. Chiedi alla segreteria di invitarlo; finché resta collegato a te, continui a vedere i suoi dati.</p>' : '' )
 				. '</section>';
 			$html .= self::ward_accept_box( $p, $m );
 			$html .= self::section_card( $m );
@@ -699,12 +699,12 @@ final class Views {
 		if ( ! $missing ) {
 			return '';
 		}
-		return '<section class="asemf-section asemf-complete"><h3>Completa i tuoi dati</h3><p>Per usare l\'area soci mancano ancora: <strong>' . esc_html( implode( ', ', $missing ) ) . '</strong>.'
-			. ( Limits::flag( 'profile_gate' ) ? ' Finché non li inserisci non puoi prenotare né pagare online.' : '' ) . ' Li trovi nel riquadro «Il mio profilo» qui sotto.</p></section>';
+		return '<section class="asemf-section asemf-complete"><h3>Completa i tuoi dati</h3><p>Mancano ancora: <strong>' . esc_html( implode( ', ', $missing ) ) . '</strong>.'
+			. ( Limits::flag( 'profile_gate' ) ? ' Finché non li inserisci non puoi prenotare né pagare online.' : '' ) . ' Inseriscili in «Il mio profilo», qui sotto.</p></section>';
 	}
 
 	public static function section_profile( array $p ): string {
-		$fields = '<div class="asemf-fields"><label>Telefono <input type="text" name="phone" value="' . esc_attr( (string) $p['phone'] ) . '"></label>'
+		$fields = '<div class="asemf-fields"><label>Cellulare <input type="text" name="phone" value="' . esc_attr( (string) $p['phone'] ) . '"></label>'
 			. '<label>Codice fiscale <input type="text" name="tax_code" maxlength="16" autocomplete="off" value="' . esc_attr( (string) $p['tax_code'] ) . '"></label>'
 			. '<label>Indirizzo (via e numero) <input type="text" name="address" maxlength="190" autocomplete="street-address" value="' . esc_attr( (string) $p['address'] ) . '"></label>'
 			. '<label>CAP <input type="text" name="zip" maxlength="12" autocomplete="postal-code" value="' . esc_attr( (string) $p['zip'] ) . '"></label>'
@@ -783,7 +783,7 @@ final class Views {
 				}
 				$rows .= '<li><div><strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong>'
 					. ( $s['session_date'] === $today ? ' <span class="asemf-badge asemf-badge-ok">oggi</span>' : '' )
-					. '<div class="asemf-small">' . (int) $active . ' prenotati · ' . (int) $present . ' presenti</div></div>'
+					. '<div class="asemf-small">' . (int) $active . ( 1 === (int) $active ? ' prenotato' : ' prenotati' ) . ' · ' . (int) $present . ( 1 === (int) $present ? ' presente' : ' presenti' ) . '</div></div>'
 					. '<a class="asemf-btn" href="' . esc_url( self::session_url( (int) $s['id'] ) ) . '">Apri</a></li>';
 			}
 			if ( '' !== $rows ) {
@@ -805,7 +805,7 @@ final class Views {
 		}
 		$cls  = 0 === $seat['free'] ? 'asemf-bad' : 'asemf-good';
 		$wait = \AssociazioneSemplice\Waitlist::count( (int) $s['id'] );
-		return '<p class="' . $cls . '"><strong>' . ( 0 === $seat['free'] ? 'Posti esauriti · lista d’attesa' : 'Posti liberi: ' . (int) $seat['free'] ) . '</strong> <span class="asemf-small asemf-muted">(' . (int) $seat['taken'] . ' prenotati su ' . (int) $seat['capacity'] . ')</span>' . ( $wait ? ' <span class="asemf-small asemf-muted">· in lista d\'attesa: ' . (int) $wait . '</span>' : '' ) . '</p>';
+		return '<p class="' . $cls . '"><strong>' . ( 0 === $seat['free'] ? 'Posti esauriti · lista d\'attesa' : 'Posti liberi: ' . (int) $seat['free'] ) . '</strong> <span class="asemf-small asemf-muted">(' . (int) $seat['taken'] . ( 1 === (int) $seat['taken'] ? ' prenotato su ' : ' prenotati su ' ) . (int) $seat['capacity'] . ')</span>' . ( $wait ? ' <span class="asemf-small asemf-muted">· in lista d\'attesa: ' . (int) $wait . '</span>' : '' ) . '</p>';
 	}
 
 
@@ -837,13 +837,13 @@ final class Views {
 				$pay = '<span class="asemf-small asemf-muted">Gratuito</span>';
 			} elseif ( (int) $b['remaining'] > 0 ) {
 				$unpaid++;
-				$pay = '<span class="asemf-bad asemf-small">Da versare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
+				$pay = '<span class="asemf-bad asemf-small">Da pagare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
 			} else {
-				$pay = '<span class="asemf-good asemf-small">Versato</span>';
+				$pay = '<span class="asemf-good asemf-small">Pagato</span>';
 			}
 			$ids = self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $b['person_id'] );
 			$act = $in
-				? '<span class="asemf-small asemf-good">✔ ore ' . esc_html( mysql2date( 'H:i', $b['checked_in_at'] ) ) . '</span>' . self::form( 'asem_front_checkin', $ids . self::hidden( 'undo', 1 ), 'Annulla', true, 'asemf-inline' )
+				? '<span class="asemf-small asemf-good">✔ ore ' . esc_html( mysql2date( 'H:i', $b['checked_in_at'] ) ) . '</span>' . self::form( 'asem_front_checkin', $ids . self::hidden( 'undo', 1 ), 'Annulla l\'ingresso', 'Annullare l\'ingresso?', 'asemf-inline' )
 				: self::form( 'asem_front_checkin', $ids, 'Registra ingresso', false, 'asemf-inline' );
 			$name = trim( $b['first_name'] . ' ' . $b['last_name'] );
 			$list .= '<li class="asemf-booked" data-name="' . esc_attr( Text::normalize( $name ) ) . '" data-state="' . ( $in ? 'in' : 'out' ) . '"><div><strong>' . esc_html( $name ) . '</strong>'
@@ -869,7 +869,7 @@ final class Views {
 		return $html . '<div class="asemf-checkin-tools"><input type="search" class="asemf-search" placeholder="Cerca per nome" aria-label="Cerca per nome">'
 			. '<span class="asemf-filters"><button type="button" class="asemf-chip is-on" data-filter="all">Tutti</button><button type="button" class="asemf-chip" data-filter="out">Non entrati</button><button type="button" class="asemf-chip" data-filter="in">Presenti</button></span></div>'
 			. '<ul class="asemf-list asemf-booked-list">' . $list . '</ul>'
-			. ( $cancel ? '<p class="asemf-small asemf-muted">' . (int) $cancel . ' prenotazioni annullate non sono in elenco.</p>' : '' ) . '</section>';
+			. ( $cancel ? '<p class="asemf-small asemf-muted">' . (int) $cancel . ( 1 === (int) $cancel ? ' prenotazione annullata non è in elenco.' : ' prenotazioni annullate non sono in elenco.' ) . '</p>' : '' ) . '</section>';
 	}
 
 	/**
@@ -888,7 +888,7 @@ final class Views {
 			$txt  .= ' · risulta registrato anche come ' . implode( '; ', $names ) . ': in tutto ' . $ov['total'];
 		}
 		if ( $ov['flag'] ) {
-			return '<div class="asemf-small asemf-bad">' . esc_html( $txt . ' — da invitare a iscriversi' ) . '</div>';
+			return '<div class="asemf-small asemf-bad">' . esc_html( $txt . ': invitalo a diventare socio' ) . '</div>';
 		}
 		return '<div class="asemf-small ' . ( $ov['twins'] ? 'asemf-bad' : 'asemf-muted' ) . '">' . esc_html( $txt ) . '</div>';
 	}
@@ -915,8 +915,8 @@ final class Views {
 		$fields .= '<label>Titolo <input type="text" name="subject" maxlength="' . \AssociazioneSemplice\Notices::MAX_SUBJECT . '" required></label>'
 			. '<label>Messaggio <textarea name="body" rows="4" maxlength="' . \AssociazioneSemplice\Notices::MAX_BODY . '" required></textarea></label></div>';
 		return '<details class="asemf-details"><summary>Invia un avviso agli iscritti</summary>'
-			. '<p class="asemf-small asemf-muted">Arriva per email a chi è iscritto' . ( $session_id ? ' a questa data' : '' ) . ' (ora ' . (int) $count . ' persone; gli ospiti senza email lo ricevono tramite il socio che li ospita) e resta nella loro bacheca. Usalo per cambi dell\'ultimo momento.</p>'
-			. self::form( 'asem_front_notice', $fields, 'Invia avviso', true ) . '</details>';
+			. '<p class="asemf-small asemf-muted">Arriva per email a ' . (int) $count . ( 1 === (int) $count ? ' persona' : ' persone' ) . ( $session_id ? ' di questa data' : '' ) . ' e resta tra gli «Avvisi» della loro area soci. Per gli ospiti senza email lo riceve il socio che li ospita. Usalo per i cambi dell\'ultimo momento.</p>'
+			. self::form( 'asem_front_notice', $fields, 'Invia avviso', 'Inviare l\'avviso a tutti?' ) . '</details>';
 	}
 
 	/** Bacheca degli avvisi per i soci (e per chi ha ospiti iscritti): quelli recenti delle attività a cui partecipano. */
@@ -1030,8 +1030,8 @@ final class Views {
 							$names[] = $b['first_name'] . ' ' . $b['last_name'] . ( MemberType::GUEST === $b['type'] ? ' (ospite)' : '' );
 						}
 					}
-					$html .= '<p><strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong> — '
-						. count( $names ) . ( null === $s['capacity'] ? ' prenotati' : ' / ' . (int) $s['capacity'] . ' posti' ) . '<br><span class="asemf-small">' . esc_html( $names ? implode( ', ', $names ) : 'Nessuna prenotazione' ) . '</span></p>';
+					$html .= '<p><strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong> · '
+						. count( $names ) . ( null === $s['capacity'] ? ( 1 === count( $names ) ? ' prenotato' : ' prenotati' ) : ' / ' . (int) $s['capacity'] . ' posti' ) . '<br><span class="asemf-small">' . esc_html( $names ? implode( ', ', $names ) : 'Nessuna prenotazione' ) . '</span></p>';
 				}
 			} else {
 				$names = array();
@@ -1040,7 +1040,7 @@ final class Views {
 						$names[] = $s['enrollment']['first_name'] . ' ' . $s['enrollment']['last_name'] . ( MemberType::GUEST === $s['enrollment']['type'] ? ' (ospite)' : '' );
 					}
 				}
-				$html .= '<p>' . count( $names ) . ' iscritti<br><span class="asemf-small">' . esc_html( $names ? implode( ', ', $names ) : 'Nessun iscritto' ) . '</span></p>';
+				$html .= '<p>' . count( $names ) . ( 1 === count( $names ) ? ' iscritto' : ' iscritti' ) . '<br><span class="asemf-small">' . esc_html( $names ? implode( ', ', $names ) : 'Nessun iscritto' ) . '</span></p>';
 			}
 			$html .= self::notice_form( $a );
 			$html .= '</div>';
@@ -1049,7 +1049,7 @@ final class Views {
 			return ''; // chi gestisce eventi senza esserne referente (staff, gestori) trova qui sotto solo gli ingressi
 		}
 		if ( ! $found ) {
-			$html .= '<p class="asemf-muted">Non sei referente di nessuna attività dell\'anno delle attività in corso.</p>';
+			$html .= '<p class="asemf-muted">Non sei referente di nessuna attività di quest\'anno.</p>';
 		}
 		return $html . '</section>';
 	}
@@ -1389,10 +1389,10 @@ final class Views {
 		$full   = null !== $cap && $booked >= $cap;
 		$html   = '<li><div>' . $prefix . '<strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong>'
 			. ( $s['location'] ? '<div class="asemf-small">' . esc_html( $s['location'] ) . '</div>' : '' )
-			. ( null !== $cap ? '<div class="asemf-small">' . ( $full ? 'Posti esauriti · lista d’attesa' : max( 0, $cap - $booked ) . ' posti liberi' ) . '</div>' : '' ) . '</div><div class="asemf-actions">';
+			. ( null !== $cap ? '<div class="asemf-small">' . ( $full ? 'Posti esauriti · lista d\'attesa' : ( $left = max( 0, $cap - $booked ) ) . ( 1 === $left ? ' posto libero' : ' posti liberi' ) ) . '</div>' : '' ) . '</div><div class="asemf-actions">';
 		if ( ! $ctx['logged'] ) {
 			if ( empty( $ctx['hide_login'] ) ) { // negli elenchi non c'è: la prenotazione si fa dalla pagina dell'evento
-				$html .= '<a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( self::member_login_url() ) . '">Sei socio? Accedi per prenotarti</a>';
+				$html .= '<a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( self::member_login_url() ) . '">Sei socio? Entra per prenotarti</a>';
 			}
 		} elseif ( ! \AssociazioneSemplice\ActivityService::online_bookable( $s ) ) {
 			$html .= '<span class="asemf-small asemf-muted">Prenotazioni online chiuse: per questa data rivolgiti alla segreteria.</span>';
@@ -1402,8 +1402,8 @@ final class Views {
 				if ( $svc->has_active_booking( (int) $s['id'], (int) $person['id'] ) ) {
 					$html .= '<span class="asemf-badge asemf-badge-ok">✓ ' . esc_html( $person['first_name'] ) . '</span> '
 						. ( $svc->cancellation_for( (int) $s['id'], (int) $person['id'] )['allowed']
-							? self::form( 'asem_front_cancel_booking', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Annulla', true, 'asemf-inline' )
-							: '<span class="asemf-small asemf-muted">non annullabile (gestiscila nella tua area)</span>' );
+							? self::form( 'asem_front_cancel_booking', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Annulla', 'Annullare la prenotazione?', 'asemf-inline' )
+							: '<span class="asemf-small asemf-muted">non si può più annullare: vedi la tua area soci</span>' );
 				} else {
 					$free[] = $person;
 				}
@@ -1414,7 +1414,7 @@ final class Views {
 					$pos = \AssociazioneSemplice\Waitlist::position( (int) $s['id'], (int) $person['id'] );
 					if ( null !== $pos ) {
 						$html .= '<span class="asemf-badge">' . esc_html( $person['first_name'] ) . ': in lista d\'attesa (n. ' . (int) $pos . ')</span> '
-							. self::form( 'asem_front_waitlist_leave', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Esci dalla lista', true, 'asemf-inline' );
+							. self::form( 'asem_front_waitlist_leave', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Esci dalla lista', 'Uscire dalla lista d\'attesa?', 'asemf-inline' );
 					} else {
 						$queue[] = $person;
 					}
@@ -1432,13 +1432,13 @@ final class Views {
 					}
 					$wl_lists = \AssociazioneSemplice\PriceLists::for_activity( $activity );
 					if ( $wl_lists ) { // con i listini si sceglie la tariffa anche per la lista d'attesa
-						$wf .= '<select name="price_list" aria-label="Tariffa">';
+						$wf .= '<select name="price_list" aria-label="Contributo">';
 						foreach ( $wl_lists as $l ) {
-							$wf .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' — ' . Money::format( $l['cents'] ) ) . '</option>';
+							$wf .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' · ' . Money::format( $l['cents'] ) ) . '</option>';
 						}
 						$wf .= '</select>';
 					}
-					$html .= self::form( 'asem_front_waitlist_join', self::hidden( 'session_id', $s['id'] ) . $wf, 'Lista d\'attesa', false, 'asemf-inline' );
+					$html .= self::form( 'asem_front_waitlist_join', self::hidden( 'session_id', $s['id'] ) . $wf, 'Metti in lista d\'attesa', false, 'asemf-inline' );
 				}
 			}
 			if ( $free && ! $full && \AssociazioneSemplice\PublicEvents::options( (int) $activity['id'] )['approval'] ) { // evento con richiesta di partecipazione: la segreteria approva, in ordine di arrivo
@@ -1471,7 +1471,7 @@ final class Views {
 					$fields .= '<select name="person_id" aria-label="Chi prenoti">';
 					foreach ( $free as $person ) {
 						$fee     = $svc->fee_for( $activity, $person['type'] );
-						$fields .= '<option value="' . (int) $person['id'] . '">' . esc_html( $person['first_name'] . ' — ' . ( 0 === $fee ? 'gratuito' : Money::format( $fee ) ) ) . '</option>';
+						$fields .= '<option value="' . (int) $person['id'] . '">' . esc_html( $person['first_name'] . ' · ' . ( 0 === $fee ? 'gratuito' : Money::format( $fee ) ) ) . '</option>';
 					}
 					$fields .= '</select>';
 				} else {
@@ -1479,13 +1479,13 @@ final class Views {
 				}
 				$lists = \AssociazioneSemplice\PriceLists::for_activity( $activity );
 				if ( $lists ) {
-					$fields .= '<select name="price_list" aria-label="Tariffa">';
+					$fields .= '<select name="price_list" aria-label="Contributo">';
 					foreach ( $lists as $l ) {
-						$fields .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' — ' . Money::format( $l['cents'] ) ) . '</option>';
+						$fields .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' · ' . Money::format( $l['cents'] ) ) . '</option>';
 					}
 					$fields .= '</select>';
 				}
-				$html .= self::form( 'asem_front_book', self::hidden( 'session_id', $s['id'] ) . $fields, 'Prenotati', false, 'asemf-inline' );
+				$html .= self::form( 'asem_front_book', self::hidden( 'session_id', $s['id'] ) . $fields, 'Prenota', false, 'asemf-inline' );
 			}
 		} elseif ( ! empty( $ctx['actor'] ) ) {
 			$html .= '<span class="asemf-small asemf-muted">La tessera non è valida: per prenotarti rinnova la quota associativa ' . ( Plugin::payments()->enabled() ? 'dalla tua area soci (sezione «Pagamenti») o ' : '' ) . 'in segreteria.</span>';
@@ -1609,7 +1609,7 @@ final class Views {
 		$aid  = (int) $activity['id'];
 		$ctx  = self::booking_context();
 		$svc  = Plugin::activities();
-		$html = '<h3 class="asemf-event-h">Come iscriversi</h3>';
+		$html = '<h3 class="asemf-event-h">Come iscriverti</h3>';
 		if ( ! empty( $ctx['can_book'] ) ) {
 			$ask = array();
 			foreach ( $ctx['people'] as $person ) {
@@ -1632,11 +1632,11 @@ final class Views {
 				} else {
 					$rf .= self::hidden( 'person_id', $ask[0]['id'] );
 				}
-				$html .= '<p class="asemf-small asemf-muted">La segreteria conferma la richiesta; l\'iscrizione parte dal mese corrente e il contributo segue le regole del corso.</p>'
+				$html .= '<p class="asemf-small asemf-muted">Dopo la conferma della segreteria sei iscritto da questo mese; il contributo è quello indicato per il corso.</p>'
 					. self::form( 'asem_front_course_request', self::hidden( 'activity_id', $aid ) . $rf, 'Chiedi l\'iscrizione', false, 'asemf-inline' );
 			}
 		} else {
-			$html .= '<p><a class="asemf-btn wp-element-button" href="' . esc_url( self::member_login_url() ) . '">Sei socio? Accedi per chiedere l\'iscrizione</a></p>';
+			$html .= '<p><a class="asemf-btn wp-element-button" href="' . esc_url( self::member_login_url() ) . '">Sei socio? Entra per chiedere l\'iscrizione</a></p>';
 			if ( \AssociazioneSemplice\EventRequests::course_guests_open( $activity ) ) {
 				$html .= \AssociazioneSemplice\EventRequests::course_form_html( $activity );
 			} else {

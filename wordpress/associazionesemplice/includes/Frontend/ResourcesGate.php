@@ -76,7 +76,7 @@ final class ResourcesGate {
 	public static function page( string $param, array $flash ): string {
 		$x = self::result( $param );
 		if ( 'invalid' === $x['state'] ) {
-			return CardVerify::layout( 'Non valida', '#b32d2e', '<div class="a">Questo QR non corrisponde a nessuna prenotazione.</div>' );
+			return CardVerify::layout( 'QR non valido', '#b32d2e', '<div class="a">Questo QR non corrisponde a nessuna prenotazione.</div>' );
 		}
 		$r      = $x['r'];
 		$res    = $x['res'];
@@ -99,7 +99,7 @@ final class ResourcesGate {
 			$do    = 'ok' === $x['state'] ? 'in' : 'undo';
 			$body .= '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin-top:14px"><input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">'
 				. '<input type="hidden" name="param" value="' . esc_attr( $param ) . '"><input type="hidden" name="do" value="' . esc_attr( $do ) . '">' . wp_nonce_field( self::ACTION, '_wpnonce', false, false )
-				. '<button style="width:100%;font-size:20px;padding:14px;border:0;border-radius:10px;background:' . ( 'in' === $do ? '#1a7f37' : '#50575e' ) . ';color:#fff;font-weight:700">' . ( 'in' === $do ? 'Registra l\'ingresso' : 'Togli l\'ingresso' ) . '</button></form>';
+				. '<button style="width:100%;font-size:20px;padding:14px;border:0;border-radius:10px;background:' . ( 'in' === $do ? '#1a7f37' : '#50575e' ) . ';color:#fff;font-weight:700">' . ( 'in' === $do ? 'Registra l\'ingresso' : 'Annulla l\'ingresso' ) . '</button></form>';
 		} elseif ( ! $staff && in_array( $x['state'], array( 'ok', 'early' ), true ) ) {
 			$body .= '<div class="a" style="margin-top:10px">Mostra questo QR allo staff.</div>';
 		}
@@ -114,7 +114,7 @@ final class ResourcesGate {
 		$back  = self::url( $param );
 		try {
 			if ( ! self::staff() ) {
-				throw new \InvalidArgumentException( 'Solo lo staff registra gli ingressi: accedi con il tuo account.' );
+				throw new \InvalidArgumentException( 'Solo lo staff registra gli ingressi: entra con il tuo accesso.' );
 			}
 			$x = self::result( $param );
 			if ( 'invalid' === $x['state'] ) {
@@ -122,7 +122,7 @@ final class ResourcesGate {
 			}
 			if ( 'undo' === ( $post['do'] ?? '' ) ) {
 				Resources::undo_check_in( (int) $x['r']['id'] );
-				wp_safe_redirect( Flash::url( $back, 'asemf', 'Ingresso tolto.', '' ) );
+				wp_safe_redirect( Flash::url( $back, 'asemf', 'Ingresso annullato.', '' ) );
 			} else {
 				Resources::check_in( (int) $x['r']['id'], get_current_user_id() );
 				wp_safe_redirect( Flash::url( $back, 'asemf', 'Ingresso registrato.', '' ) );
@@ -130,7 +130,7 @@ final class ResourcesGate {
 		} catch ( \InvalidArgumentException $e ) {
 			wp_safe_redirect( Flash::url( $back, 'asemf', '', $e->getMessage() ) );
 		} catch ( \Throwable $e ) {
-			wp_safe_redirect( Flash::url( $back, 'asemf', '', 'Operazione non riuscita. Riprova più tardi.' ) );
+			wp_safe_redirect( Flash::url( $back, 'asemf', '', 'Qualcosa non ha funzionato. Riprova tra poco; se succede ancora, scrivi alla segreteria.' ) );
 		}
 		exit;
 	}
