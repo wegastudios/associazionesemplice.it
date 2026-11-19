@@ -30,7 +30,7 @@ final class CertificatesPage {
 
 	public static function render(): void {
 		if ( ! Certificates::can_manage() ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$filter = Ui::get_str( 'filter' );
 		$filter = in_array( $filter, array( ExpiryRules::VALID, ExpiryRules::EXPIRING, ExpiryRules::EXPIRED, ExpiryRules::NONE ), true ) ? $filter : '';

@@ -55,7 +55,7 @@ final class Exports {
 
 	public static function handle(): void {
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_export' );
 		if ( ! Edition::allows( 'export' ) ) {

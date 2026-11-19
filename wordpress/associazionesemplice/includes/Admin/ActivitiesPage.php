@@ -181,7 +181,7 @@ final class ActivitiesPage {
 		$shown = \AssociazioneSemplice\FundShare::PERCENT === $mode ? rtrim( rtrim( number_format( $value / 100, 2, ',', '' ), '0' ), ',' ) : ( $value ? Money::plain( $value ) : '' );
 		return '<tr><th>Parte per il rimborso</th><td><select name="fund_mode">' . Ui::options( \AssociazioneSemplice\FundShare::modes(), $mode ) . '</select> '
 			. '<input type="text" name="fund_value" class="small-text" inputmode="decimal" value="' . esc_attr( $shown ) . '"> <span class="description">€ se importo fisso, % se percentuale</span>'
-			. '<p class="description">Una parte di ogni pagamento ricevuto va nel fondo "Rimborso (volontario) — (attività)". Il pagamento entra comunque nella cassa o nel conto usato: la parte accantonata si sottrae dalla disponibilità reale, finché non estingui il fondo registrando il rimborso. Serve indicare il referente.</p></td></tr>';
+			. '<p class="description">Una parte di ogni pagamento ricevuto va nel fondo "Rimborso (volontario) — (attività)". Il pagamento entra comunque nella cassa o nel conto usato: la parte accantonata si sottrae dalla disponibilità reale, finché non chiudi il fondo registrando il rimborso. Serve indicare il referente.</p></td></tr>';
 	}
 
 	/** Riga del modulo: tolleranza per il pagamento (solo eventi ed eventi ricorrenti; ha effetto se i posti sono limitati). */
@@ -993,7 +993,7 @@ final class ActivitiesPage {
 		$id    = (int) $activity['id'];
 		$count = count( \AssociazioneSemplice\Notices::recipients( $id ) );
 		echo '<div class="asem-card"><h2>Avvisi agli iscritti</h2><p class="description">Arrivano per email a chi è iscritto (ora ' . (int) $count . ' persone) e restano nella bacheca dell\'area riservata. '
-			. 'Il referente e i gestori dell\'evento li inviano dalla propria area riservata.</p>';
+			. 'Il referente e lo staff dell\'evento li inviano dalla propria area riservata.</p>';
 		Ui::form_open( 'asem_send_notice', $back );
 		echo wp_kses( Ui::hidden( 'activity_id', $id )
 			. '<p><input type="text" name="subject" class="large-text" maxlength="' . \AssociazioneSemplice\Notices::MAX_SUBJECT . '" placeholder="Titolo" required></p>'
@@ -1029,7 +1029,7 @@ final class ActivitiesPage {
 				Ui::form_close();
 				echo ' ';
 				Ui::form_open( 'asem_event_staff_remove', $back, false, 'asem-inline' );
-				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<button class="button-link" data-confirm="Togliere questo gestore?">togli</button>', Html::allowed() );
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<button class="button-link" data-confirm="Togliere questa persona dallo staff?">togli</button>', Html::allowed() );
 				Ui::form_close();
 				echo '</li>';
 			}

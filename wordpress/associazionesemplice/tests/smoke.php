@@ -4404,7 +4404,7 @@ $funds->release( (int) $fl[0]['id'], 100, $today );
 asem_ok( $threw && 400 === $funds->get( (int) $fl[0]['id'] )['balance'] && $funds->available()['available'] === $av_pre['available'] + 100, 'fondo: si libera una quota solo fino al saldo e torna nella disponibilità' );
 $dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità reale' );
 asem_ok( false !== strpos( $dash, 'Rimborso Vera Rimborso' ), 'fondo: la dashboard mostra disponibilità reale e fondi' );
-asem_render( array( Admin\AccountsPage::class, 'render' ), 'Estingui il fondo' );
+asem_render( array( Admin\AccountsPage::class, 'render' ), 'Chiudi il fondo' );
 $rep = Plugin::reports()->period( $today, $today );
 asem_ok( $rep['funds_total'] === $funds->total( $today ) && $rep['available'] === $rep['closing_total'] - $rep['funds_total'], 'fondo: il rendiconto riporta la disponibilità reale' );
 $av_before = $funds->available();

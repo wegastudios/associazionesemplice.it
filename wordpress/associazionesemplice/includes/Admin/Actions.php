@@ -157,7 +157,7 @@ final class Actions {
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {
 					if ( ! current_user_can( self::required_cap( $action ) ) ) {
-						wp_die( 'Non autorizzato.', 403 );
+						wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 					}
 					check_admin_referer( $action );
 					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
@@ -238,7 +238,7 @@ final class Actions {
 
 	private static function set_membership( array $p ): array {
 		Plugin::people()->set_membership( (int) $p['id'], (string) $p['social_year'], ! empty( $p['enabled'] ) );
-		return array( Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ), 'Iscrizione aggiornata.' );
+		return array( Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ), 'Tessera aggiornata.' );
 	}
 
 	private static function set_board_role( array $p ): array {
@@ -335,7 +335,7 @@ final class Actions {
 	private static function release_hint( array $person ): string {
 		$uid = (int) ( Plugin::people()->get( (int) $person['id'] )['wp_user_id'] ?? 0 );
 		if ( $uid > 0 && \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\Access::has_powers( $uid ) ) {
-			return ' Non ha più poteri: nella sua scheda, in «Accesso all\'area riservata», puoi farlo passare all\'accesso con link.';
+			return ' Non ha più incarichi: dalla sua scheda, in «Accesso all\'area riservata», puoi passarlo all\'accesso con link.';
 		}
 		return '';
 	}
@@ -423,7 +423,7 @@ final class Actions {
 		$ns   = (int) $s['sessions'];
 		$nb   = (int) $s['bookings'];
 		$nr   = (int) $s['refunds'];
-		$msg  = 'Evento «' . $s['name'] . '» eliminato: ' . ( 1 === $ns ? '1 data' : $ns . ' date' ) . ' e ' . ( 1 === $nb ? '1 prenotazione attiva cancellata' : $nb . ' prenotazioni attive cancellate' ) . '.';
+		$msg  = 'Evento «' . $s['name'] . '» eliminato: ' . ( 1 === $ns ? '1 data' : $ns . ' date' ) . ' e ' . ( 1 === $nb ? '1 prenotazione attiva eliminata' : $nb . ' prenotazioni attive eliminate' ) . '.';
 		$msg .= $nr ? ' ' . ( 1 === $nr ? 'Registrata 1 restituzione' : 'Registrate ' . $nr . ' restituzioni' ) . ' in prima nota (' . Money::format( (int) $s['income_cents'] ) . '): il denaro va restituito a chi ha pagato.' : '';
 		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
 		$msg .= $s['expenses_voided'] ? ' Annullate ' . (int) $s['expenses_voided'] . ' spese.' : '';
@@ -440,7 +440,7 @@ final class Actions {
 		$ids  = array_map( 'intval', explode( ',', (string) ( $p['ids'] ?? '' ) ) );
 		$plan = \AssociazioneSemplice\ActivityReset::bulk_plan( $ids );
 		if ( ! $plan['ok'] ) {
-			throw new \InvalidArgumentException( 'Nessuna delle attività scelte si può eliminare così.' );
+			throw new \InvalidArgumentException( 'Nessuna delle attività scelte si può eliminare da qui: hanno movimenti in prima nota o un blocco. Eliminale una per una dalla loro scheda.' );
 		}
 		$done = 0;
 		foreach ( $plan['ok'] as $pv ) {
@@ -455,7 +455,7 @@ final class Actions {
 				},
 				$plan['skipped']
 			);
-			$msg  .= ' Non eliminati perché hanno movimenti in prima nota o un blocco (da fare una per una): ' . implode( ', ', $names ) . '.';
+			$msg  .= ' Non eliminate perché hanno movimenti in prima nota o un blocco (eliminale una per una):' . implode( ', ', $names ) . '.';
 		}
 		return array( Ui::url( 'asem-activities' ), $msg );
 	}
@@ -472,7 +472,7 @@ final class Actions {
 		$r   = \AssociazioneSemplice\ActivityReset::purge_ended_enrollments( $aid );
 		$msg = $r['removed'] ? (int) $r['removed'] . ( 1 === $r['removed'] ? ' iscritto tolto' : ' iscritti tolti' ) . ' dall\'elenco: la prima nota non è cambiata.' : 'Nessun iscritto da togliere.';
 		if ( $r['kept'] ) {
-			$msg .= ' Restano perché hanno incassi registrati (cancellali uno per uno, scegliendo cosa fare delle somme): ' . implode( ', ', $r['kept'] ) . '.';
+			$msg .= ' Restano perché hanno incassi registrati (eliminali uno per uno, scegliendo cosa fare delle somme): ' . implode( ', ', $r['kept'] ) . '.';
 		}
 		return array( Ui::url( 'asem-activity', array( 'id' => $aid ) ), $msg );
 	}
@@ -490,16 +490,16 @@ final class Actions {
 		$who  = Plugin::people()->full_name( $pre['person'] );
 		if ( ! $free ) {
 			if ( empty( $p['confirm'] ) ) {
-				throw new \InvalidArgumentException( 'Spunta la conferma: la cancellazione è definitiva.' );
+				throw new \InvalidArgumentException( 'Spunta la conferma: l\'eliminazione è definitiva.' );
 			}
 			if ( mb_strtolower( trim( (string) ( $p['typed'] ?? '' ) ), 'UTF-8' ) !== mb_strtolower( $who, 'UTF-8' ) ) {
-				throw new \InvalidArgumentException( 'Il nome scritto non corrisponde: l\'iscrizione non è stata cancellata.' );
+				throw new \InvalidArgumentException( 'Il nome scritto non corrisponde: l\'iscrizione non è stata eliminata.' );
 			}
 		} elseif ( empty( $p['mode'] ) ) {
 			$p['mode'] = \AssociazioneSemplice\ActivityReset::REFUND;
 		}
 		$s    = \AssociazioneSemplice\ActivityReset::delete_registration( $aid, $pid, $sid, (string) ( $p['mode'] ?? '' ), array( 'notify' => ! empty( $p['notify'] ) ) );
-		$msg  = 'Iscrizione di ' . $s['name'] . ' cancellata.';
+		$msg  = 'Iscrizione di ' . $s['name'] . ' eliminata.';
 		$msg .= $s['refunds'] ? ' Registrata la restituzione di ' . Money::format( (int) $s['income_cents'] ) . ' in prima nota: il denaro va restituito a chi ha pagato.' : '';
 		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
 		$msg .= \AssociazioneSemplice\ActivityReset::kept_text( $s );
@@ -976,7 +976,7 @@ final class Actions {
 
 	private static function event_staff_add( array $p ): array {
 		Plugin::activities()->add_staff( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ), ! empty( $p['can_cash'] ) );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Gestore dell\'evento aggiunto: ora vede i prenotati e registra gli ingressi dall\'area riservata.' );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Aggiunto allo staff dell\'evento: ora vede i prenotati e registra gli ingressi dall\'area riservata.' );
 	}
 
 	private static function event_staff_cash( array $p ): array {
@@ -986,7 +986,7 @@ final class Actions {
 
 	private static function event_staff_remove( array $p ): array {
 		Plugin::activities()->remove_staff( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ) );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Gestore tolto.' );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Tolto dallo staff.' );
 	}
 
 	/** Ingresso registrato o annullato da amministrazione (anche in un giorno diverso da quello dell'evento). */
@@ -1030,10 +1030,10 @@ final class Actions {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'La copia era stata fatta su un altro sito: l\'hai ripristinata con la tua conferma e questo resta scritto nel registro delle azioni.' );
 		}
 		if ( ! empty( $r['skipped'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non sono citati dai dati e non sono stati rimessi sul sito.', array( 'n' => (int) $r['skipped'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non sono collegati a nessun dato e non sono stati rimessi sul sito.', array( 'n' => (int) $r['skipped'] ) );
 		}
 		if ( ! empty( $r['closed'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} documenti riservati sono sul sito ma restano chiusi: si aprono quando riapri la chiave con la frase della copia («Riapri la chiave con la frase», qui in Copia di sicurezza).', array( 'n' => (int) $r['closed'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} documenti riservati sono sul sito ma restano chiusi. Per aprirli usa «Riapri la chiave con la frase», qui in Copia di sicurezza.', array( 'n' => (int) $r['closed'] ) );
 		}
 		if ( ! empty( $r['keys_failed'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: le chiavi dei documenti riservati non si sono potute rimettere sul sito (un\'altra operazione era in corso): rifai il ripristino della stessa copia.' );
@@ -1045,13 +1045,13 @@ final class Actions {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le sessioni aperte e le notifiche dei soci non fanno parte del ripristino: i soci dovranno entrare di nuovo.' );
 		}
 		if ( ! empty( $r['bad'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non coincidono con la loro impronta (o non si aprono con la chiave) e non sono stati rimessi sul sito.', array( 'n' => (int) $r['bad'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia risultano alterati (o non si aprono con la chiave) e non sono stati rimessi sul sito.', array( 'n' => (int) $r['bad'] ) );
 		}
 		if ( ! empty( $d['restored'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Rimessi sul sito {n} PDF definitivi.', array( 'n' => (int) $d['restored'] ) );
 		}
 		if ( ! empty( $d['missing'] ) || ! empty( $d['bad'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} PDF definitivi non si sono potuti ritrovare o non coincidono con la loro impronta; controllali da «Verifica delle ricevute».', array( 'n' => (int) ( $d['missing'] ?? 0 ) + (int) ( $d['bad'] ?? 0 ) ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} PDF definitivi mancano o risultano alterati: controllali da «Verifica delle ricevute».', array( 'n' => (int) ( $d['missing'] ?? 0 ) + (int) ( $d['bad'] ?? 0 ) ) );
 		}
 		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '.' . $docs . ' Lo stato precedente non è stato conservato sul sito: se ti serve, scarica una copia prima di ripristinare.' );
 	}
@@ -1066,7 +1066,7 @@ final class Actions {
 
 	private static function cancel_booking( array $p ): array {
 		Plugin::activities()->cancel_booking( (int) $p['session_id'], (int) $p['person_id'] );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione annullata (eventuali pagamenti vanno rimborsati a mano).' );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione annullata. Se aveva già pagato, rimborsalo a mano.' );
 	}
 
 	private static function enroll( array $p ): array {
@@ -1089,7 +1089,7 @@ final class Actions {
 
 	private static function stop_renewal( array $p ): array {
 		$last = Plugin::activities()->stop_renewal( (int) $p['activity_id'], (int) $p['person_id'] );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Non rinnova: resta iscritto fino a ' . Ui::month( $last ) . ' (periodo già pagato o in corso), poi non deve più nulla. Non si restituisce niente.' );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Rinnovo disdetto: resta iscritto fino a ' . Ui::month( $last ) . ' (periodo già pagato o in corso), poi non deve più nulla. Non si restituisce niente.' );
 	}
 
 	private static function cancel_enrollment( array $p ): array {
@@ -1379,7 +1379,7 @@ final class Actions {
 
 	private static function transfer_booking( array $p ): array {
 		Plugin::activities()->transfer_booking( (int) $p['session_id'], (int) $p['person_id'], (int) ( $p['to_person_id'] ?? 0 ), false );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Nominativo cambiato: il pagamento già fatto passa alla nuova persona.' );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Posto ceduto: il pagamento già fatto passa alla nuova persona.' );
 	}
 
 	/** Crea la pagina del sito con l'informativa privacy (si compila da sola con i dati dell'ente) e la collega alle impostazioni. */
@@ -1516,7 +1516,7 @@ final class Actions {
 			return null;
 		}
 		if ( UPLOAD_ERR_OK !== $f['error'] || $f['size'] > 1048576 ) {
-			throw new \InvalidArgumentException( 'Caricamento del file non riuscito (massimo 1 MB).' );
+			throw new \InvalidArgumentException( 'Il file non si è caricato: può pesare al massimo 1 MB. Riprova con un file più leggero.' );
 		}
 		return (string) file_get_contents( $f['tmp_name'] );
 	}
@@ -1639,9 +1639,9 @@ final class Actions {
 				. ( $l['memberships'] ? ', ' . $l['memberships'] . ' iscrizioni registrate' : '' ) . ( $l['shifted'] ? ', saldi attuali invariati' : '' );
 		}
 		$lead = ! empty( $res['stopped'] ) ? \AssociazioneSemplice\Texts::t( 'Importazione fermata: quello che è già entrato resta e si può annullare in blocco da «Import già fatti».' ) . ' ' : 'Import completato. ';
-		$msg  = $lead . implode( '. ', $parts ) . '.' . ( $res['batch_id'] ? ' (Import n. ' . (int) $res['batch_id'] . ': si può annullare in blocco da "Importa".)' : '' );
+		$msg  = $lead . implode( '. ', $parts ) . '.' . ( $res['batch_id'] ? ' (Import n. ' . (int) $res['batch_id'] . ': puoi annullarlo in blocco da «Import già fatti».)' : '' );
 		if ( ! empty( $res['interrupted'] ) ) {
-			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'La prima nota si era interrotta a metà: controlla i movimenti importati e, se serve, annulla l\'import in blocco.' );
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'L\'importazione della prima nota si era interrotta a metà: controlla i movimenti importati e, se serve, annulla tutta l\'importazione.' );
 		}
 		return array( $res['people'] && ! $res['ledger'] ? Ui::url( 'asem-people' ) : Ui::url( 'asem-ledger' ), $msg );
 	}

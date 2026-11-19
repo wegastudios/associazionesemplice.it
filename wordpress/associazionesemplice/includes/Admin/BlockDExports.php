@@ -38,7 +38,7 @@ final class BlockDExports {
 
 	public static function budget_csv(): void {
 		if ( ! current_user_can( Plugin::CAP_OPS ) || ! Edition::has( 'budget' ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_budget_csv' );
 		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0;
@@ -53,7 +53,7 @@ final class BlockDExports {
 	/** Foglio presenze di un'assemblea. */
 	public static function assembly_csv(): void {
 		if ( ! current_user_can( Plugin::CAP_OPS ) || ! Edition::has( 'assemblies' ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_assembly_csv' );
 		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0;
@@ -66,7 +66,7 @@ final class BlockDExports {
 
 	public static function refunds_csv(): void {
 		if ( ! Refunds::can_manage() || ! Edition::has( 'refunds' ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_refunds_csv' );
 		$status = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';

@@ -35,7 +35,7 @@ final class AccountsPage {
 			. '<tr><th>Saldo di partenza</th><td><input type="text" name="opening" inputmode="decimal" value="' . esc_attr( Money::plain( (int) $a['opening_cents'] ) ) . '"> €<p class="description">È il saldo da cui parte il conto, prima dei movimenti registrati: il saldo attuale si ricalcola.</p></td></tr>'
 			. '<tr><th>Commissione di incasso</th><td>fisso <input type="text" name="fee_fixed" size="5" inputmode="decimal" placeholder="0,10" value="' . esc_attr( (int) $a['fee_fixed_cents'] > 0 ? Money::plain( (int) $a['fee_fixed_cents'] ) : '' ) . '"> € '
 			. '+ <input type="text" name="fee_pct" size="4" inputmode="decimal" placeholder="1,5" value="' . esc_attr( (int) $a['fee_bp'] > 0 ? rtrim( rtrim( number_format( (int) $a['fee_bp'] / 100, 2, ',', '' ), '0' ), ',' ) : '' ) . '"> % su ogni incasso'
-			. '<p class="description">Per un POS fisico o un conto che trattiene una commissione. A ogni incasso su questo conto, in segreteria o sul posto, la spesa va in prima nota in automatico. Gli incassi online hanno le loro tariffe in «Pagamenti online». Vuoto = nessuna commissione.</p></td></tr>'
+			. '<p class="description">Per un POS o un conto che trattiene una commissione. A ogni incasso su questo conto la commissione entra da sola in prima nota come spesa. Gli incassi online hanno le loro commissioni in «Pagamenti online». Vuoto = nessuna commissione.</p></td></tr>'
 			. '</tbody></table>';
 		submit_button( 'Salva', 'secondary', 'submit', false );
 		Ui::form_close();
@@ -69,11 +69,11 @@ final class AccountsPage {
 		echo Ui::hidden( 'id', $f['id'] ) . Ui::hidden( 'date', $today ) . '<p><input type="text" name="amount" inputmode="decimal" required placeholder="0,00"> € <button class="button">Libera</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		Ui::form_close();
 		echo '</details>';
-		echo '<details><summary>Estingui e paga il rimborso</summary><p class="description">Registra in prima nota l\'uscita di ' . esc_html( Money::format( $f['balance'] ) ) . ' (rimborso al volontario) e chiude il fondo.</p>';
+		echo '<details><summary>Chiudi il fondo e paga il rimborso</summary><p class="description">Registra in prima nota l\'uscita di ' . esc_html( Money::format( $f['balance'] ) ) . ' (rimborso al volontario) e chiude il fondo.</p>';
 		Ui::form_open( 'asem_fund_settle', $back );
 		echo Ui::hidden( 'id', $f['id'] ) . Ui::hidden( 'date', $today ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p>Pagato da <select name="account_id">' . Ui::options( $accounts, null ) . '</select></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<button class="button" onclick="return confirm(\'Registrare il rimborso e chiudere il fondo?\')">Estingui il fondo</button>';
+		echo '<button class="button" onclick="return confirm(\'Registrare il rimborso e chiudere il fondo?\')">Chiudi il fondo</button>';
 		Ui::form_close();
 		echo '</details></div>';
 	}
@@ -103,7 +103,7 @@ final class AccountsPage {
 		echo '</div>';
 
 		$funds = Plugin::funds()->all();
-		echo '<h2>Fondi per i rimborsi</h2><p class="description">Un corso o un evento può destinare una parte di ogni pagamento al rimborso del volontario. Il pagamento resta nel conto in cui è entrato; la parte accantonata sta qui e non fa parte della disponibilità reale finché il fondo non è estinto o liberato.</p>';
+		echo '<h2>Fondi per i rimborsi</h2><p class="description">Un corso o un evento può destinare una parte di ogni pagamento al rimborso del volontario. Il pagamento resta nel conto in cui è entrato; la parte accantonata sta qui e non fa parte della disponibilità reale finché il fondo non è chiuso o liberato.</p>';
 		if ( $funds ) {
 			echo '<div class="asem-grid">';
 			foreach ( $funds as $f ) {
@@ -125,7 +125,7 @@ final class AccountsPage {
 			echo '</div>';
 		}
 
-		echo '<div class="asem-card"><h2>Nuovo fondo</h2><p class="description">Per mettere da parte una somma che hai in cassa ma non è tua (una gita, un rimborso, una raccolta…). Si sottrae dalla disponibilità reale finché non lo estingui.</p>';
+		echo '<div class="asem-card"><h2>Nuovo fondo</h2><p class="description">Per mettere da parte una somma che hai in cassa ma non è tua (una gita, un rimborso, una raccolta…). Si sottrae dalla disponibilità reale finché non lo chiudi.</p>';
 		Ui::form_open( 'asem_fund_create', $back );
 		echo '<table class="form-table"><tbody><tr><th>Nome</th><td><input type="text" name="name" class="regular-text" required placeholder="es. Rimborso Mario — Gita"></td></tr>'
 			. '<tr><th>Somma già accantonata</th><td><input type="text" name="amount" inputmode="decimal" placeholder="0,00"> €</td></tr>'
