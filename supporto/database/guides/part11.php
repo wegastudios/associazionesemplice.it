@@ -1,6 +1,6 @@
 <?php
 
-// Guide: anno fiscale, spese e fondi, bilancio provvisorio e verifiche di fine anno ({piano_fiscale}, Pro 1.1.38).
+// Guide: anno fiscale, spese e fondi, rendiconto provvisorio e verifiche di fine anno ({piano_fiscale}, Pro 1.1.38).
 return [
     [
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'inizio-dell-anno-fiscale',
@@ -24,7 +24,7 @@ Un anno si chiama con **l'anno in cui inizia**: con inizio a luglio, il 2025 va 
 
 ## Cosa segue l'anno fiscale
 
-Seguono il mese scelto l'apertura e la chiusura degli anni fiscali, la **prima nota**, i **report**, il **rendiconto**, il **preventivo**, i **fondi per anno**, le **esportazioni e importazioni** e anche la **tessera** dei soci, le **quote** e gli **incassi** (iscrizioni comprese), il **libro soci** e i **rinnovi**.
+Seguono il mese scelto l'apertura e la chiusura degli anni fiscali, la prima nota, i **report**, il **rendiconto**, il **preventivo**, i **fondi per anno**, le **esportazioni e importazioni** e anche la **tessera** dei soci, le **quote** e gli **incassi** (iscrizioni comprese), il libro soci e i **rinnovi**.
 
 ## Cosa non cambia
 
@@ -32,12 +32,12 @@ L'**anno delle attività** è solo il calendario di corsi ed eventi: ogni attivi
 
 ## Cosa succede alle tessere se cambi il mese
 
-Quando cambi il mese dell'anno fiscale compare il riquadro **«Cosa succede alle tessere»**: «Le tessere dei soci seguono l'anno fiscale. Cambiando il mese, le tessere degli anni fiscali ancora aperti che hanno un pagamento registrato si riallineano al nuovo anno fiscale: non si accorciano mai e quelle degli anni chiusi non si toccano.» Il riquadro dice anche quante tessere cambiano e quante risultano «sostituite» (restano registrate, i pagamenti non cambiano).
+Quando cambi il mese dell'anno fiscale compare il riquadro **«Cosa succede alle tessere»**, che dice quante tessere cambiano e quante risultano «sostituite». In breve:
 
-- Si riallineano **solo le tessere con un pagamento registrato**: le allunga fino alla fine dell'anno fiscale in cui scadono, **mai le accorcia**. Gli anni chiusi restano intatti; tessere omaggio, onorarie e a quota zero restano come sono.
+- Si riallineano **solo le tessere con un pagamento registrato** degli anni ancora aperti: si allungano fino alla fine dell'anno fiscale in cui scadono, **non si accorciano mai**. Gli anni chiusi restano intatti; tessere omaggio, onorarie e a quota zero restano come sono.
 - Se due tessere finiscono nello **stesso anno**, resta la più recente e l'altra è **«sostituita»**: si vede solo nella scheda del socio («Sostituita dalla tessera 2026: resta registrata e i pagamenti non cambiano.»), non compare nel libro soci.
 - Per cambiare il mese devi mettere la spunta **«Ho letto cosa succede alle tessere e voglio cambiare il mese dell'anno fiscale.»** Senza la spunta il resto dei dati si salva e il mese non cambia: «Il mese dell'anno fiscale non è cambiato: leggi «Cosa succede alle tessere» qui sotto, spunta la conferma e salva di nuovo.»
-- Se nessuna tessera cambia, leggi «Nessuna tessera da riallineare.». Altrimenti, a cambio fatto, «Tessere riallineate: N. Tessere sostituite: S.»
+- Se nessuna tessera cambia, leggi «Nessuna tessera da riallineare.» Altrimenti, a cambio fatto, leggi «Tessere riallineate: N. Tessere sostituite: S.»
 - **Prima del cambio** viene salvata una **copia di sicurezza** dei dati, che resta sul sito per **7 giorni**.
 - Per **30 giorni** gli amministratori vedono in Bacheca l'avviso **«Le tessere seguono l'anno fiscale»** con il riepilogo e il collegamento **«Vedi il registro azioni»**.
 
@@ -49,17 +49,17 @@ MD,
     ],
     [
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'spese-documentate-e-fondi-dei-rimborsi',
-        'title' => 'Spese documentate e fondi: l\'attribuzione automatica',
+        'title' => 'Collegare le spese con scontrino ai fondi dei rimborsi',
         'body' => <<<'MD'
 > Disponibile in: {piano_fiscale} (aggiorna insieme gratuito e Pro)
 
-Quando registri una **spesa con scontrino o fattura**, il plugin la attribuisce da solo al fondo dei rimborsi che ha **accantonato ma non ha ancora spese a supporto**. L'attribuzione si vede sempre e si può correggere.
+Quando registri una **spesa con scontrino o fattura**, il plugin la attribuisce da solo al fondo dei rimborsi che ha **soldi accantonati ancora da documentare**. L'attribuzione si vede sempre e si può correggere.
 
 ## Registrare una spesa
 
 1. Vai in **Cassa → Nuova spesa** e allega lo scontrino o la fattura.
 2. Nella riga **«Fondo da coprire»** lascia **Automatico** (è la scelta di partenza), oppure scegli un fondo preciso o **«Nessun fondo»**. Con «Nessun fondo» la spesa **non viene mai attribuita**, nemmeno quando arrivano i documenti.
-3. Salva. Il messaggio dice **a quale fondo e per quanto** la spesa è stata attribuita, oppure che non lo è ancora: succede da sola quando c'è un documento allegato e un fondo con documentazione da coprire.
+3. Salva. Il messaggio dice **a quale fondo e per quanto** la spesa è stata attribuita, oppure che non lo è ancora: l'attribuzione avviene da sola appena ci sono un documento allegato e un fondo da documentare.
 
 ## Come sceglie il fondo
 
@@ -72,8 +72,8 @@ La regola vale **solo per le spese documentate**, cioè con scontrino o fattura 
 
 ## Beneficiario e volontari
 
-- Un **beneficiario scelto esplicitamente** vale sempre.
-- Dall'**area soci** non c'è la scelta del beneficiario né del fondo: il beneficiario è **chi registra** la spesa.
+- Se il **beneficiario lo scegli tu**, vale sempre la tua scelta.
+- Dall'area soci non c'è la scelta del beneficiario né del fondo: il beneficiario è **chi registra** la spesa.
 - Le spese di un volontario vanno solo sui suoi fondi. La parte che li supera resta in credito e si chiude da sola con i prossimi incassi dei suoi corsi.
 - L'elenco **«Volontari in credito»** si trova in **Cassa → Conti e fondi** e in **Bacheca**.
 - L'attribuzione automatica si accende e si spegne con l'impostazione **«Attribuzione automatica delle spese ai fondi»** in Limiti e soglie: è **accesa** di partenza.
@@ -86,7 +86,7 @@ La regola vale **solo per le spese documentate**, cioè con scontrino o fattura 
 
 ## Controllare e correggere
 
-In **Contabilità → Bilancio provvisorio** (in breve in **Bacheca**, e per intero anche in **Cassa → Conti e fondi**) trovi:
+In **Contabilità → Rendiconto provvisorio** (in breve in **Bacheca**, e per intero anche in **Cassa → Conti e fondi**) trovi:
 
 - **Spese documentate non rimborsate**: ogni riga ha il menu **«— scegli il fondo —»** e il pulsante **Attribuisci**, per attribuire a mano;
 - **Fondi accantonati non documentati**, con le colonne Fondo, Stato, Accantonato, Documentato e Da documentare;
@@ -100,31 +100,31 @@ Per i conti e i fondi in generale vedi [Conti, fondi e giroconti](guida:conti-fo
 
 ## Il prospetto dei rimborsi per persona
 
-Nella stessa pagina, la sezione **«Rimborsi e spese documentate per persona»** (con la scelta dell'**anno fiscale**) ha le colonne **Persona**, **Rimborsato dai fondi**, **Spese documentate attribuite**, **Differenza** (rimborsato meno documentato) e **Situazione**. I pulsanti sono **Esporta CSV** e **Scarica PDF per il rendiconto**. Se i conti non quadrano, in Bacheca compare un avviso che non blocca nulla (si regola con **«Avviso in Bacheca se rimborsi e spese non quadrano»**).
+Nella stessa pagina, la sezione **«Rimborsi e spese documentate per persona»** (con la scelta dell'anno fiscale) ha le colonne **Persona**, **Rimborsato dai fondi**, **Spese documentate attribuite**, **Differenza** (rimborsato meno documentato) e **Situazione**. I pulsanti sono **Esporta CSV** e **Scarica PDF per il rendiconto**. Se i conti non quadrano, in Bacheca compare un avviso che non blocca nulla (si regola con **«Avviso in Bacheca se rimborsi e spese non quadrano»**).
 MD,
     ],
     [
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'bilancio-provvisorio-e-avvisi-di-bilancio',
-        'title' => 'Bilancio provvisorio, avvisi di bilancio e storico mensile',
+        'title' => 'Rendiconto provvisorio, avvisi e storico mensile',
         'body' => <<<'MD'
 > Disponibile in: {piano_fiscale} (aggiorna insieme gratuito e Pro)
 
 Con il {piano_fiscale} hai sempre sott'occhio come sta andando l'anno fiscale.
 
-## Il bilancio provvisorio
+## Il rendiconto provvisorio
 
-Vai in **Contabilità → Bilancio provvisorio**. Il titolo è **«Bilancio dell'anno fiscale …»**. La pagina mostra:
+Vai in **Contabilità → Rendiconto provvisorio**. Il titolo è **«Rendiconto dell'anno fiscale …»**. La pagina mostra:
 
-- il bilancio **aggiornato all'ultimo mese concluso**, con il preventivo in proporzione ai mesi conclusi;
+- il rendiconto **aggiornato all'ultimo mese concluso**, con il preventivo in proporzione ai mesi conclusi;
 - l'andamento del **mese in corso**;
 - la **stima di fine anno**;
 - la tabella **«Voce per voce, contro il preventivo»**, con Previsto per i mesi conclusi, Consuntivo e Differenza a favore.
 
 Lo stesso riquadro compare in **Bacheca**, **Contabilità**, **Report** e **Preventivo**.
 
-## Gli avvisi di bilancio
+## Gli avvisi sull'andamento del rendiconto
 
-Compaiono **solo quando c'è qualcosa che non va**: se tutto è a posto non c'è nessun messaggio verde. In **Bacheca** la riga si può chiudere; il riquadro compare anche in **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Bilancio provvisorio**.
+Compaiono **solo quando c'è qualcosa che non va**: se tutto è a posto non c'è nessun messaggio verde. In **Bacheca** la riga si può chiudere; il riquadro compare anche in **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Rendiconto provvisorio**.
 
 - **«Spese non coperte»**: la stima di fine anno delle uscite supera le entrate di più di una soglia, di partenza **10%**.
 - **«Utile eccessivo»**: le entrate superano le uscite di più del **20%** delle uscite.
@@ -133,16 +133,16 @@ Non scattano nei **primi 3 mesi** dell'anno fiscale.
 
 ## Lo storico mensile
 
-Sempre in **Bilancio provvisorio**, la sezione **«Storico mensile»** ti fa scegliere l'**anno fiscale** e mostra i mesi uno per uno, con **Esporta CSV** (e PDF). A ogni fine mese un lavoro giornaliero **salva una foto** del consuntivo contro il preventivo, che poi **non cambia**. Se ne mancano, il pulsante **«Salva ora le foto dei mesi conclusi mancanti»** le recupera. Non parte nessuna email.
+Sempre in **Rendiconto provvisorio**, la sezione **«Storico mensile»** ti fa scegliere l'anno fiscale e mostra i mesi uno per uno, con **Esporta CSV** (e PDF). A ogni fine mese il programma **salva da solo la situazione** del consuntivo contro il preventivo, che poi **non cambia**. Se ne mancano, il pulsante **«Salva ora le foto dei mesi conclusi mancanti»** le recupera. Non parte nessuna email.
 
 ## Le impostazioni
 
-In **Impostazioni → Limiti e soglie**, gruppo **«Bilancio, avvisi e fondi»**:
+In **Impostazioni → Limiti e soglie**, gruppo **«Preventivo, avvisi e fondi»**:
 
-- **«Avvisi sulla tendenza del bilancio»**: sì o no;
+- **«Avvisi sull'andamento del rendiconto»**: sì o no;
 - **«Spese non coperte: soglia»** e **«Utile eccessivo: soglia»**, in percentuale;
 - **«Mesi trascorsi prima di fare la stima»**;
-- **«Istantanea mensile del bilancio»**;
+- **«Situazione mensile del rendiconto»**;
 - **«Attribuzione automatica delle spese ai fondi»** (vedi [Spese documentate e fondi](guida:spese-documentate-e-fondi-dei-rimborsi)).
 MD,
     ],
@@ -156,10 +156,10 @@ Prima della fine dell'anno fiscale il plugin ti avvisa se ci sono **discrepanze*
 
 ## Le due fasi dell'avviso
 
-1. **Preavviso**: parte **3 mesi prima** della fase fissa (di partenza) e si può **chiudere**. La chiusura vale per la settimana corrente: ricompare il lunedì, ed è per utente.
-2. **Avviso fisso**: **non si può chiudere**. Di partenza parte dal **mese prima dell'ultimo mese** dell'anno fiscale: con l'anno da gennaio a dicembre il 1° novembre, con l'anno da settembre il 1° luglio.
+1. **Preavviso**: di partenza compare **3 mesi prima** dell'avviso fisso e lo puoi **chiudere**: resta chiuso solo per te e ricompare il lunedì.
+2. **Avviso fisso**: **non si può chiudere**. Di partenza compare dal **penultimo mese** dell'anno fiscale: il 1° novembre se l'anno va da gennaio a dicembre, il 1° luglio se inizia a settembre.
 
-Lo vedono amministratori, segreteria, tesorieri, presidente e vicepresidente, in **Bacheca** e nelle pagine **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Bilancio provvisorio**.
+Lo vedono amministratori, segreteria, tesorieri, presidente e vicepresidente, in **Bacheca** e nelle pagine **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Rendiconto provvisorio**.
 
 L'avviso elenca, con il link per correggere:
 
@@ -170,21 +170,20 @@ L'avviso elenca, con il link per correggere:
 - spese con beneficiario non attribuite;
 - sbilancio oltre le soglie;
 - voci fuori preventivo;
-- movimenti senza categoria vera.
+- movimenti senza una voce precisa.
 
 ## Approvare una discrepanza a mano
 
 Le discrepanze si vedono **una per una**, con **tipo**, **voce** e **importo**. Se una la ritieni accettabile puoi **approvarla a mano**, con una **nota facoltativa**, per portarla al nuovo anno.
 
-1. Vai in **Contabilità → Bilancio provvisorio → «Discrepanze da verificare»**.
-2. Nella riga della discrepanza, se vuoi, scrivi il campo **«Nota (facoltativa)»**.
+1. Vai in **Contabilità → Rendiconto provvisorio → «Discrepanze da verificare»**.
+2. Nella riga della discrepanza, se vuoi, compila il campo **«Nota (facoltativa)»**.
 3. Premi **«Approva»** e conferma **«Approvare questa discrepanza e portarla al nuovo anno?»**.
 
-Le approvate restano elencate con **chi e quando** le ha approvate (per esempio «approvata il gg/mm/aaaa da Nome (anno N): nota»). Per **revocare** l'approvazione premi **«Revoca l'approvazione»**: la discrepanza torna «da verificare». Se l'importo cambia, l'approvazione **decade da sola**.
+Le approvate restano elencate con **chi e quando** le ha approvate (per esempio «approvata il gg/mm/aaaa da Nome (anno N): nota»). Per **revocare** l'approvazione premi **«Revoca l'approvazione»**: la discrepanza torna «da verificare».
 
 - L'approvazione vale **solo per quell'importo**: se l'importo cambia, la discrepanza torna.
 - Le discrepanze approvate **non generano avvisi** e **non fermano la chiusura dell'anno**.
-- Restano elencate in **Contabilità → Bilancio provvisorio → «Discrepanze da verificare»**.
 - Ogni approvazione è tracciata nel registro azioni.
 
 ## Chiudere l'anno
@@ -193,11 +192,11 @@ Le approvate restano elencate con **chi e quando** le ha approvate (per esempio 
 2. Di partenza la chiusura **si ferma** e mostra l'elenco se ci sono rimborsi non documentati.
 3. Con l'opzione **«chiedi conferma»** compare l'elenco con una casella da spuntare per procedere.
 
-Dopo la chiusura le regolarizzazioni si fanno da **prima nota**.
+Dopo la chiusura le regolarizzazioni si fanno da prima nota.
 
 ## Le impostazioni
 
-In **Impostazioni → Limiti e soglie**, gruppo **«Bilancio, avvisi e fondi»**:
+In **Impostazioni → Limiti e soglie**, gruppo **«Preventivo, avvisi e fondi»**:
 
 - **«Mesi di preavviso chiudibile prima dell'avviso fisso»**: di partenza 3, **0** = nessun preavviso, massimo 11;
 - **«Mesi di avviso fisso delle verifiche di fine anno fiscale»**: di partenza 1, da 1 a 3;

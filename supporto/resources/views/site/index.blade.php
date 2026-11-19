@@ -16,7 +16,7 @@
                 <ul>@foreach ($topic->sections as $section)<li><a href="{{ route('help.topic', $topic->slug) }}#sezione-{{ $section->id }}">{{ $section->name }}</a> <span class="muted">({{ $section->articles_count }})</span></li>@endforeach</ul>
             </section>
         @empty
-            <p class="muted">Non trovi una guida? Scrivici: la risposta arriva per email.</p>
+            <p class="muted">Le guide stanno arrivando.</p>
         @endforelse
     </div>
     <div class="card"><p style="margin-top:0">Non trovi quello che cerchi? Scrivici: ti rispondiamo per email.</p><p style="margin-bottom:0"><a class="btn" href="{{ route('ticket.create') }}">Apri una richiesta</a></p><p class="muted" style="margin-bottom:0">Per seguire le tue richieste entra con l'email del tuo account Associazione Semplice.</p></div>

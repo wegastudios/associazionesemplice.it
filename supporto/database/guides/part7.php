@@ -4,20 +4,20 @@
 return [
     [
         'topic' => 'installazione', 'section' => 'Manutenzione', 'slug' => 'bacheca-da-lavorare-ed-eventi-della-settimana',
-        'title' => 'Usare la Bacheca: cosa c\'è da lavorare e gli eventi della settimana',
+        'title' => 'Usare la Bacheca: cosa c\'è da fare e gli eventi della settimana',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Appena entri nella **Bacheca di WordPress** (la pagina iniziale di `wp-admin`) trovi due riquadri con ciò che ti serve oggi. Li vedono gli amministratori, la segreteria e i consiglieri con accesso operativo.
+Appena entri nella **Bacheca di WordPress** (la prima pagina dopo l'accesso) trovi due riquadri con ciò che ti serve oggi. Li vedono gli amministratori, la segreteria e i consiglieri con accesso operativo.
 
-## Da lavorare
+## Da fare
 
 Il riquadro elenca le cose che aspettano te:
 
 - **richieste di accesso** da controllare (i soci che hanno chiesto di entrare);
 - **soci da rinnovare**, con tessera scaduta o in scadenza;
 - **ospiti da invitare** a iscriversi;
-- **schede da completare**: soci in carica a cui mancano dei dati (l'avviso compare anche nella Bacheca di Associazione Semplice, con l'elenco e il contatore). Per ogni scheda il plugin controlla codice fiscale, data e luogo di nascita e residenza (indirizzo **e** comune). Per un **minorenne** serve almeno un genitore o tutore, con l'email del tutore che opera sul sito e il codice fiscale di ciascun genitore; per un maggiorenne (o senza data di nascita) serve almeno **email o telefono**. L'elenco mostra le voci mancanti scheda per scheda. Ospiti, genitori non soci, soci receduti o anonimizzati e domande in attesa non sono controllati, e la liberatoria non conta perché è facoltativa;
+- **schede da completare**: soci in carica a cui mancano dei dati (l'avviso compare anche nella Bacheca di Associazione Semplice, con l'elenco e il contatore). Il plugin controlla codice fiscale, data e luogo di nascita, residenza (indirizzo **e** comune) e un contatto: per un maggiorenne **email o telefono**, per un **minorenne** un genitore o tutore con la sua email e il codice fiscale di ciascun genitore. L'elenco dice cosa manca, scheda per scheda. Non sono controllati ospiti, genitori non soci, soci receduti o anonimizzati e domande in attesa;
 - **email non partite** (solo per l'amministratore).
 
 Ogni voce ha un collegamento che porta alla pagina giusta. In fondo trovi il collegamento alla **Bacheca di Associazione Semplice**, con il quadro completo.
@@ -74,7 +74,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale}
 
-Una **risorsa** è un bene che i soci possono prenotare o ricevere in uso: un campo da gioco, una sala, un posto barca, un posto auto, un armadietto. Una risorsa è **esclusiva**: o è libera o è occupata. Non c'è una capienza, perché ospita una prenotazione alla volta.
+Una **risorsa** è un bene che i soci possono prenotare o ricevere in uso: un campo da gioco, una sala, un posto barca, un posto auto, un armadietto. Una risorsa ospita **una prenotazione alla volta**: o è libera o è occupata.
 
 ## Creare una risorsa
 
@@ -102,7 +102,7 @@ Se una risorsa è da **pagare online in anticipo** ma i pagamenti online non son
 
 ## Chi può usare il menu Risorse
 
-Lo usano gli amministratori e chi opera (segreteria e consiglieri con accesso operativo). Per i permessi vedi [Assegnare ruoli e permessi](guida:assegnare-ruoli-e-permessi).
+Lo usano gli amministratori, la segreteria e i consiglieri con accesso operativo. Per i permessi vedi [Assegnare ruoli e permessi](guida:assegnare-ruoli-e-permessi).
 MD,
     ],
     [
@@ -111,7 +111,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale}
 
-Le risorse a fasce orarie si prenotano dall'**area soci**. La prenotazione è del socio che la fa.
+Le risorse a fasce orarie si prenotano dall'area soci. La prenotazione è del socio che la fa.
 
 ## Chi può prenotare
 
@@ -137,7 +137,7 @@ Un socio non può prenotare:
 2. Controlla orari, tariffe e regole.
 3. Verifica il socio: tessera, sospensione e regolamento (vedi [Iscrivere un socio e rinnovare la tessera](guida:iscrivere-un-socio-e-rinnovare-la-tessera)).
 
-Per le risorse **assegnate a periodo** (posto auto, armadietto) non c'è una prenotazione del socio: lo assegna la segreteria, con lista d'attesa.
+Le risorse **assegnate a periodo** (posto auto, armadietto) non si prenotano: le assegna la segreteria, con lista d'attesa.
 MD,
     ],
     [
@@ -157,7 +157,7 @@ Quando un corso o un evento si svolge in una sala o su un campo, collegalo alla 
 - Un **evento deve indicare** la risorsa oppure scegliere **«Nessuna risorsa (evento fuori sede)»**.
 - Anche per un **corso** va indicata la risorsa, oppure **«Nessuna risorsa (fuori sede)»**: così i calendari si incrociano.
 - Si possono scegliere solo risorse **a fasce orarie**.
-- Gli eventi già salvati scelgono la risorsa alla prima modifica.
+- Per gli eventi creati prima, la risorsa ti viene chiesta alla prima modifica.
 
 ## Occupare la risorsa solo quando serve
 
@@ -195,7 +195,7 @@ Una risorsa non può essere occupata due volte. Il plugin lo impedisce così:
 
 Quando cambi la risorsa di un'attività già occupata nelle stesse date, vedi **cosa si sovrappone** e il cambio **non viene applicato**. Se spunti **«Sposta sulla risorsa di prima ciò che si sovrappone»**, le prenotazioni e le altre attività (queste per intero) passano alla risorsa che si libera. Il cambio è **tutto o niente**: se qualcosa non si può spostare, non cambia nulla.
 
-Le sovrapposizioni **già presenti** prima dell'aggiornamento non cambiano da sole: in Bacheca compare l'avviso **«Risorse occupate due volte»** e vanno sistemate a mano, modificando le date o la risorsa di una delle due attività.
+Se in Bacheca compare l'avviso **«Risorse occupate due volte»**, ci sono sovrapposizioni nate prima di questi controlli: sistemale a mano, modificando le date o la risorsa di una delle due attività.
 
 > L'allestimento della risorsa non vale intorno alle prenotazioni dei soci: vale solo per le attività.
 MD,

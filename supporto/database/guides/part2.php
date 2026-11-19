@@ -14,10 +14,10 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 
 - Una riga di intestazione con i nomi delle colonne. Può stare anche sotto qualche riga di titolo.
 - Colonne riconosciute per **soci e ospiti**: *Numero tessera, Tipo, Nome, Cognome, Email, Telefono, Codice fiscale* e, per gli ospiti, *Ospite di* (tessera, email o nome e cognome del socio).
-- Per i **soci che sono enti** ci sono colonne in più (*Tipo soggetto*, *Denominazione*…): vedi [Soci che sono enti](guida:soci-che-sono-enti).
+- Per i **soci che sono enti** ci sono colonne in più (*Tipo soggetto*, *Denominazione*…): vedi [Registrare come socio un ente](guida:soci-che-sono-enti).
 - Se il file Excel ha più fogli (per esempio «Soci», «Ospiti», «Prima nota»), il plugin li legge tutti e capisce da solo a cosa serve ciascuno. I fogli non riconosciuti vengono ignorati.
 - I vecchi file `.xls` vanno salvati prima come `.xlsx` o CSV.
-- Un foglio Excel con **più di 16.384 colonne** (oltre la colonna XFD) viene rifiutato subito con «Il foglio ha più di 16384 colonne: controlla che sia il file giusto.»
+- Un foglio con più di 16.384 colonne viene rifiutato: controlla di aver scelto il file giusto.
 
 ## Importa
 
@@ -28,12 +28,12 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 
 ## Da sapere
 
-- Se il file ha **colonne con gli anni** (2023, 2024…), la colonna è l'**anno fiscale** della tessera: con l'anno fiscale che non inizia a gennaio la colonna «2025» è la tessera «2025/2026». L'anteprima di ogni riga lo dice, per esempio «Iscritto: Anno 2025 → tessera 2025/2026».
+- Le **colonne con gli anni** (2023, 2024…) indicano l'anno fiscale della tessera. Se il tuo anno fiscale non inizia a gennaio, la colonna «2025» vale per la tessera «2025/2026»: l'anteprima lo dice riga per riga, per esempio «Iscritto: Anno 2025 → tessera 2025/2026».
 - I soci già presenti vengono **aggiornati** (riconosciuti per tessera, email, codice fiscale o nome): importare due volte lo stesso file non crea doppioni.
-- Se un'importazione tocca un **anno fiscale chiuso**, l'importazione può fermarsi con il messaggio «L'anno … è chiuso…»: [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) se è l'ultimo chiuso, oppure correggi il file.
+- Se l'importazione tocca un anno fiscale chiuso, può fermarsi con il messaggio «L'anno … è chiuso…»: [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) se è l'ultimo chiuso, oppure correggi il file.
 - Limiti: 5000 righe per tipo e 20 MB per file. Le formule di Excel si leggono con il risultato salvato.
-- In alternativa puoi usare **WP All Import**: il plugin mette a disposizione due tipi di contenuto di appoggio, applicando le stesse regole.
-- Anche la **prima nota** si può importare da file: vedi [Importare ed esportare la prima nota](guida:importare-ed-esportare-la-prima-nota).
+- In alternativa puoi usare **WP All Import**: valgono le stesse regole.
+- Anche la prima nota si può importare da file: vedi [Importare ed esportare la prima nota](guida:importare-ed-esportare-la-prima-nota).
 MD,
     ],
     [
@@ -48,19 +48,19 @@ MD,
 2. Registra la quota associativa dalla scheda del socio o dall'incasso: se il socio ha la tessera non valida, la quota si inserisce da sola in qualunque incasso.
 3. La tessera si attiva quando la quota è **saldata** (vedi «Quota pagata a rate» più sotto).
 
-La scheda del socio è divisa in sezioni. Nell'elenco dei soci, il foglio **«Altro»** raccoglie le azioni meno usate. Anche la prima nota e l'incasso sono più leggibili, soprattutto da telefono.
+Nell'elenco dei soci, **«Altro»** raccoglie le azioni meno usate.
 
-I nuovi soci **non hanno più un utente WordPress**: entrano nell'area soci con **email e password** (obbligatoria, la scelgono alla prima entrata); il link o codice ricevuto per email resta come opzione. L'utente WordPress nasce **solo quando si dà un potere** al socio (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress. Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo. Se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
+I nuovi soci entrano nell'area soci con **email e password**, che scelgono alla prima entrata. Non hanno un utente WordPress: nasce solo quando dai al socio un ruolo (segreteria, tesoriere, staff). Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo; se ha altri ruoli (redattore, amministratore…) può collegarlo **solo un amministratore**.
 
 Se preferisci un utente WordPress per ogni socio (per esempio per usare WooCommerce con il loro account), vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
 
 ## Come dura la tessera
 
-La tessera segue l'**anno fiscale**, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**, alla domanda «Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?»). Con gennaio vale da gennaio a dicembre, scade il 31/12 e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2025/2026**». I soci fondatori hanno la tessera sempre rinnovata.
+La tessera segue l'anno fiscale, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**, alla domanda «Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?»). Con gennaio vale da gennaio a dicembre, scade il 31/12 e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2025/2026**». I soci fondatori hanno la tessera sempre rinnovata.
 
-Negli **ultimi giorni prima della scadenza** (quelli dell'avviso di scadenza, **30** di partenza) si può **rinnovare in anticipo**. L'anno fiscale è anche quello delle **quote** e degli **incassi**, iscrizioni comprese; l'**anno delle attività** è invece solo il calendario di corsi ed eventi e non c'entra con la tessera.
+Negli ultimi giorni prima della scadenza (30, se non hai cambiato i giorni dell'avviso) si può **rinnovare in anticipo**. L'anno fiscale è anche quello delle **quote** e degli **incassi**, iscrizioni comprese; l'**anno delle attività** è invece solo il calendario di corsi ed eventi e non c'entra con la tessera.
 
-Se **cambi il mese dell'anno fiscale** (finché non hai chiuso il primo anno), compare il riquadro **«Cosa succede alle tessere»**: le tessere degli anni fiscali ancora aperti che hanno un **pagamento registrato** si riallineano al nuovo anno fiscale, **non si accorciano mai** e quelle degli **anni chiusi** non si toccano. Le tessere omaggio, onorarie e a quota zero restano come sono. Due tessere dello stesso anno non possono convivere: resta la più recente e l'altra risulta **«sostituita»** (resta registrata e i pagamenti non cambiano; lo vedi solo nella scheda del socio). Per cambiare il mese devi spuntare **«Ho letto cosa succede alle tessere e voglio cambiare il mese dell'anno fiscale.»** e prima del cambio il plugin salva una **copia di sicurezza** dei dati, che resta sul sito per **7 giorni**. Vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale).
+Se **cambi il mese dell'anno fiscale** (puoi farlo finché non hai chiuso il primo anno), il riquadro **«Cosa succede alle tessere»** ti mostra l'effetto prima di confermare: le tessere pagate degli anni ancora aperti si riallineano senza mai accorciarsi, quelle degli anni chiusi non si toccano. Vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale).
 
 ## Rinnovare
 
@@ -68,7 +68,7 @@ Se **cambi il mese dell'anno fiscale** (finché non hai chiuso il primo anno), c
 2. Premi **Incassa** accanto al socio: l'incasso si apre già compilato con la persona e gli importi dovuti.
 3. Se un socio non rinnova più, puoi **Sospendere**: diventa inattivo, non compare più in Bacheca e non può prenotare finché non lo riattivi a mano dalla sua scheda.
 
-Se il socio ha **già la tessera di quell'anno**, la quota non si incassa due volte. Nella pagina Incasso la quota non viene più proposta da sola, e se la aggiungi a mano compare l'avviso **«⚠ il socio ha già la tessera 2026: l'incasso non verrà salvato finché c'è questa voce»** (con l'anno giusto al posto di 2026). Se provi a salvare, il programma dice, per esempio, **«Voce 2: il socio ha già la tessera 2026.»** (il numero indica la riga dell'incasso) e l'incasso non viene salvato, nemmeno le altre voci (per esempio un corso): togli la voce della quota e salva di nuovo. Succede anche se metti due volte la quota dello stesso socio nello stesso incasso, e se, per un socio nuovo che si iscrive a fine anno, aggiungi a mano la quota dell'anno che riceve già in omaggio. Se il socio paga la quota **a rate**, il blocco scatta solo dopo l'ultima rata: finché non è saldata puoi continuare a incassare le rate.
+Se il socio ha **già la tessera di quell'anno**, la quota non si incassa due volte. La pagina Incasso non propone la quota e, se la aggiungi a mano, avvisa: **«⚠ il socio ha già la tessera 2026: l'incasso non verrà salvato finché c'è questa voce»** (con l'anno giusto). Finché la voce resta non si salva nulla, nemmeno le altre voci: toglila e salva di nuovo. Succede anche se metti due volte la quota dello stesso socio nello stesso incasso, e se, per un socio nuovo che si iscrive a fine anno, aggiungi a mano la quota dell'anno che riceve già in omaggio. Se il socio paga la quota **a rate**, il blocco scatta solo dopo l'ultima rata: finché non è saldata puoi continuare a incassare le rate.
 
 ## Quota pagata a rate
 
@@ -80,7 +80,7 @@ Un socio può versare la quota in più volte.
 
 ### Cambiare il comportamento
 
-In **Impostazioni → Limiti e soglie** trovi **«Tessera valida solo quando la quota è saldata»**, attivo di partenza. Se lo **spegni**, basta un versamento qualsiasi per attivare la tessera, come prima.
+In **Impostazioni → Limiti e soglie** trovi **«Tessera valida solo quando la quota è saldata»**, attivo di partenza. Se lo **spegni**, basta un versamento qualsiasi per attivare la tessera.
 
 ### Quota ridotta di proposito
 
@@ -98,18 +98,18 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Ai non soci è consentito partecipare solo poche volte: oltre, anche per ragioni assicurative, dovrebbero iscriversi. Il plugin **non blocca nessuno**: tiene il conto e ti aiuta ad accorgertene.
+Un ospite può partecipare solo poche volte: poi, anche per ragioni assicurative, dovrebbe diventare socio. Il plugin **non blocca nessuno**: tiene il conto e ti aiuta ad accorgertene.
 
 ## Cosa fa il plugin
 
 - Chiede il **cellulare** per ogni ospite: è il dato migliore per riconoscerlo e scrivergli su WhatsApp.
-- Conta le partecipazioni (prenotazioni a eventi e iscrizioni a corsi). Raggiunta la **soglia** (di norma 2) l'ospite compare come **«da invitare a iscriversi»**.
+- Conta le partecipazioni (prenotazioni a eventi e iscrizioni a corsi). Raggiunta la **soglia** (di norma 2) l'ospite compare come **«da invitare a diventare socio»**.
 - Riconosce le schede «gemelle», cioè con lo stesso cellulare, la stessa email o lo stesso nome, e ne **somma** le partecipazioni.
 
 ## Cosa fare
 
 1. Per impostare la soglia vai in **Impostazioni → Soci e quote** (0 = nessuna segnalazione).
-2. Nell'elenco persone usa il filtro **Solo ospiti da invitare a iscriversi**.
+2. Nell'elenco persone usa il filtro **Solo ospiti da invitare a diventare soci**.
 3. Apri la scheda dell'ospite: vedi a cosa è già venuto e puoi scrivergli su WhatsApp con un messaggio d'invito già pronto.
 4. Per trasformarlo in socio premi **Iscrivi come socio** (serve l'email). La scheda resta la stessa: eventi, corsi e pagamenti già registrati restano collegati.
 
@@ -137,7 +137,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Si assegnano dalla **scheda del socio**.
+I permessi si assegnano dalla scheda del socio: contano il ruolo e le cariche che gli dai lì, non solo i ruoli di WordPress.
 
 ## I ruoli
 
@@ -147,7 +147,7 @@ I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Si 
 - **Tesoriere**: dall'area soci incassa, registra le spese, iscrive nuovi soci e vende gli eventi. Non vede comunicazioni né impostazioni.
 - **Volontario**: non gestisce soldi; per le attività di cui è referente gestisce avvisi agli iscritti, staff e ingressi.
 - **Staff dell'ente**: verifica gli ingressi di tutti gli eventi, ma manda avvisi solo agli iscritti degli eventi di cui è staff.
-- **Staff dell'evento**: verifica gli ingressi di quell'evento e, se abilitato, incassa il biglietto sul posto.
+- **Staff dell'evento**: verifica gli ingressi di quell'evento e, se abilitato, incassa il contributo sul posto.
 - **Socio**: i propri dati, la tessera, le prenotazioni e i pagamenti.
 
 ## Come assegnare
@@ -156,9 +156,9 @@ I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Si 
 2. Nel riquadro **Segreteria** (solo amministratori) o nei campi del ruolo, scegli quello che serve.
 3. Salva. Il permesso è immediato; per toglierlo basta rimuovere il ruolo.
 
-## Quadro completo
+## Chi entra nell'amministrazione
 
-Gli amministratori di WordPress hanno tutto. Gli altri entrano nel pannello solo con il ruolo **Segreteria** o **Dipendente** (si assegnano dalla scheda del socio e da Rubrica soci → Dipendenti) o come presidente o vicepresidente in regola. I ruoli standard di WordPress (Editore, Autore, Collaboratore, Sottoscrittore) non danno accesso al plugin.
+Gli amministratori di WordPress possono fare tutto. Gli altri entrano nell'amministrazione solo con il ruolo **Segreteria** o **Dipendente** (si assegnano dalla scheda del socio e da **Rubrica soci → Dipendenti**) o come presidente o vicepresidente in regola. I ruoli standard di WordPress (Editore, Autore, Collaboratore, Sottoscrittore) non danno accesso al plugin.
 MD,
     ],
     [
@@ -167,7 +167,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Il QR permette di verificare al volo una tessera o una prenotazione, anche a chi non ha accesso al sito. È facoltativo ed è spento di default.
+Il QR permette di verificare al volo una tessera o una prenotazione, anche a chi non ha accesso al sito. È facoltativo ed è spento di partenza.
 
 ## QR della tessera
 
@@ -201,8 +201,8 @@ La tessera standard è bianca e stampabile, con il logo e i testi nei colori del
 ## Colori e logo
 
 1. Vai in **Impostazioni → Soci e identità → Aspetto**.
-2. Scegli il logo dalla libreria media e il colore principale e secondario. Di default si prendono dal sito (Elementor o il tema).
-3. Spunta **Personalizza** per cambiarli. Togli la spunta per tornare ai colori del sito.
+2. Di partenza logo e colori sono quelli del sito (Elementor o il tema): per cambiarli spunta **Personalizza**.
+3. Scegli il logo dalla libreria media e i colori principale e secondario. Per tornare a quelli del sito togli la spunta.
 
 ## Tessera su immagine propria
 
@@ -212,14 +212,14 @@ La tessera standard è bianca e stampabile, con il logo e i testi nei colori del
 4. Per ogni dato scegli se mostrarlo, la dimensione e il colore.
 5. Premi **Salva tessera**. L'anteprima mostra la tessera con un QR di esempio.
 
-Le misure sono in percentuale della larghezza, quindi la tessera si ridimensiona da sola ed è identica a schermo e in stampa (**Stampa la tessera**).
+La tessera si ridimensiona da sola ed è identica a schermo e in stampa (**Stampa la tessera**).
 
 > Dopo aver spostato i campi controlla l'anteprima prima di salvare: ogni modifica seleziona la tessera personalizzata.
 MD,
     ],
     [
-        'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'area-riservata-dei-soci',
-        'title' => 'Creare l\'area soci dei soci',
+        'topic' => 'soci-e-tessere', 'section' => 'Area soci', 'slug' => 'area-riservata-dei-soci',
+        'title' => 'Creare l\'area soci',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
@@ -227,7 +227,7 @@ L'area soci è la pagina dove ogni socio trova il suo spazio: tessera, attività
 
 ## Creare la pagina
 
-1. La configurazione guidata crea la pagina **Area soci**: se non l'hai fatto, riaprila da **Strumenti → Configurazione guidata**.
+1. La configurazione guidata crea la pagina **Area soci**: se hai saltato quel passo, riaprila da **Strumenti → Configurazione guidata**.
 2. In alternativa crea una pagina e inserisci lo shortcode `[associazionesemplice_area_soci]` oppure il blocco **Associazione Semplice**.
 3. Pubblica e aggiungi la pagina al menu. La voce **Area riservata** compare da sola; se la pagina è già in un altro menu, non compare una seconda voce.
 
@@ -235,7 +235,7 @@ L'area soci è la pagina dove ogni socio trova il suo spazio: tessera, attività
 
 - **Tutti i soci**: «Il mio spazio» con tessera, attività, pagamenti, ricevute, ospiti, profilo, avvisi, calendario e regolamento.
 - **Chi ha un ruolo**: un piccolo menu laterale con **Segreteria**, **Gestione corsi** e **Gestione eventi**.
-- **Da telefono**: una barra permette di **saltare alle sezioni** dell'area soci e i pulsanti sono più grandi (44 px). In **«Il tuo accesso»** c'è il pulsante **«Vai alla tua area»**.
+- **Da telefono**: una barra porta alle sezioni dell'area soci e i pulsanti sono più grandi. In **«Il tuo accesso»** c'è il pulsante **«Vai alla tua area»**.
 
 ## Aspetto e contenuti
 
@@ -248,7 +248,7 @@ L'area soci è la pagina dove ogni socio trova il suo spazio: tessera, attività
 MD,
     ],
     [
-        'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'primo-accesso-e-soci-senza-email',
+        'topic' => 'soci-e-tessere', 'section' => 'Area soci', 'slug' => 'primo-accesso-e-soci-senza-email',
         'title' => 'Primo accesso dei soci e soci senza email',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
@@ -263,7 +263,7 @@ Nella pagina di accesso e nell'area soci c'è il link **Primo accesso**.
 
 Il socio può anche entrare con un **link o un codice** che riceve per email, senza password; la password però è **obbligatoria** e va scelta alla prima entrata. Vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
 
-La risposta mostrata al socio è sempre la stessa, così non si scopre chi è socio e chi no. Ogni indirizzo IP può fare 10 tentativi l'ora.
+La risposta mostrata al socio è sempre la stessa, così non si scopre chi è socio e chi no. Dalla stessa connessione si possono fare 10 tentativi l'ora.
 
 ## Cosa fa la segreteria
 
@@ -277,13 +277,13 @@ Se il socio ha indicato solo il cellulare, il plugin **non modifica nulla da sol
 
 Nella scheda del socio l'**email è facoltativa**. Con l'email il socio ha subito l'accesso all'area soci. Senza email, l'accesso si attiva con un **link da mandare al socio su WhatsApp**.
 
-## Se l'ente chiede dati obbligatori
+## Informativa e regolamento da accettare
 
 Puoi indicare la pagina dell'informativa privacy e un regolamento: chi attiva il proprio accesso deve accettarli, e l'accettazione si registra con data e versione.
 MD,
     ],
     [
-        'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'accesso-dei-soci-link-codice-o-utente-wordpress',
+        'topic' => 'soci-e-tessere', 'section' => 'Area soci', 'slug' => 'accesso-dei-soci-link-codice-o-utente-wordpress',
         'title' => 'Come entrano i soci: link, codice o utente WordPress',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
@@ -296,21 +296,21 @@ La pagina di accesso è **una sola schermata**: il socio sceglie se entrare con 
 
 Il **link** o il **codice** ricevuto per email restano come opzione, per entrare senza password. Valgono **12 ore**; il tempo si cambia da **Impostazioni → Limiti e soglie**. Per questo **la posta del sito deve funzionare**: link, codici e recupero password arrivano per email. Prova l'invio prima di aprire l'area ai soci.
 
-I moduli di accesso (entrare con la password, con il codice, il recupero della password) e quelli di attivazione e di «Primo accesso» **valgono solo dal browser che ha aperto la pagina**. Se il socio ha lasciato la pagina aperta troppo a lungo, o il modulo non arriva dalla pagina giusta, legge «Il modulo deve partire dalla pagina di accesso, oppure è scaduto: ricarica la pagina e riprova.» (nell'attivazione e nel primo accesso: «Il modulo deve partire dalla sua pagina, oppure è scaduto: ricarica la pagina e riprova.»). Basta **ricaricare la pagina** e riprovare.
+Se il socio lascia aperta troppo a lungo la pagina di accesso, di attivazione o di «Primo accesso», oppure invia il modulo da un altro browser, legge «La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.» Basta **ricaricare la pagina** e riprovare.
 
 ## Password dimenticata
 
-**«Password dimenticata»** manda un link che fa entrare, ma **obbliga a scegliere una nuova password** prima di navigare. Cambiata la password, gli **altri dispositivi devono rientrare**.
+**«Password dimenticata»** manda un link che fa entrare, ma **obbliga a scegliere una nuova password** prima di navigare. Per **cambiare** la password dall'area soci serve quella attuale.
 
-Per **cambiare** la password dall'area soci serve **quella attuale**; anche in questo caso gli altri dispositivi vengono chiusi.
+In entrambi i casi, sugli altri dispositivi il socio deve entrare di nuovo.
 
 ## Dopo un ripristino di una copia di sicurezza
 
-Le password dei soci **tornano come erano nella copia**. Al primo accesso il socio entra con la password di prima e trova la pagina **«Scegli una nuova password»**, con il testo «Il sito è stato ripristinato da una copia di sicurezza: per la tua sicurezza scegli una nuova password prima di continuare.» Deve sceglierla **prima di fare altro**, **anche se entra con il link ricevuto per email**. Vale solo per chi aveva una password. Le **sessioni aperte** e le **notifiche push** non si ripristinano: i soci devono **entrare di nuovo** e riattivare le notifiche.
+Dopo un ripristino i soci devono **entrare di nuovo** e riattivare le notifiche. Chi aveva una password entra con quella di prima e trova la pagina **«Scegli una nuova password»**: deve sceglierla prima di fare altro, anche se entra con il link ricevuto per email.
 
 ## Quando nasce un utente WordPress
 
-L'utente WordPress nasce **solo quando si dà un potere** al socio: segreteria, tesoriere, staff. Chi ha già un utente WordPress continua a entrare da WordPress, come prima.
+L'utente WordPress nasce **solo quando dai un ruolo** al socio: segreteria, tesoriere, staff. Chi ha già un utente WordPress continua a entrare da WordPress.
 
 ## Creare comunque un utente WordPress per ogni socio
 
@@ -329,9 +329,9 @@ Quando si toglie l'ultimo potere a un socio, la scheda propone **«Passa all'acc
 
 Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soci (non richiede consenso; 30 giorni senza uso, 90 al massimo). L'informativa generata dal plugin lo dichiara, insieme alla password conservata solo come impronta cifrata, ai link e codici validi 12 ore (impostabili) e al blocco crescente dopo i tentativi sbagliati. Vedi [Informativa privacy e consensi dei soci](guida:informativa-privacy-e-consensi).
 
-## Aggiornamento
+## Soci senza utente WordPress
 
-Gratuito e Pro vanno aggiornati insieme. Crediti, risorse e notifiche push funzionano anche per i soci senza utente WordPress, e lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche senza utente WordPress. La ricerca dei soci per cellulare è più veloce.
+Crediti, risorse e notifiche push funzionano anche per i soci senza utente WordPress. Lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche senza utente WordPress.
 MD,
     ],
 ];

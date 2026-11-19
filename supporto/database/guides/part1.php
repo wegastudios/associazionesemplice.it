@@ -21,7 +21,7 @@ Associazione Semplice si installa come qualsiasi plugin di WordPress. Ti servono
 
 - All'inizio le funzioni facoltative sono spente: la configurazione guidata accende solo ciò che ti serve.
 - I testi sono in italiano, perché il plugin segue le regole del terzo settore italiano (APS, ETS e simili).
-- I dati restano nel database del sito anche se disattivi il plugin. Vengono eliminati solo se, nelle impostazioni, scegli di cancellarli definitivamente quando elimini il plugin.
+- I dati restano sul sito anche se disattivi il plugin. Vengono eliminati solo se, nelle impostazioni, scegli di cancellarli definitivamente quando elimini il plugin.
 
 ## Se qualcosa non va
 
@@ -43,9 +43,15 @@ Parte da sola alla prima attivazione. Puoi riaprirla quando vuoi da **Strumenti 
 
 ## Le sezioni
 
-1. **Il tuo ente**: i **dati dell'ente**, obbligatori (vedi sotto), poi come chiamare chi partecipa (socio, tesserato…), se accetti ospiti e chi può iscriversi. Scegliendo **«Chiunque può chiedere di iscriversi»** si accende anche la **domanda di adesione online** (pagina **«Diventa socio»**), mentre **«Solo su presentazione»** la spegne. Chi ha già configurato non cambia nulla finché non riapre la procedura guidata. Al **primo passo** scegli subito i **due mesi**: «Da che mese iniziano corsi ed eventi (anno delle attività)?» (solo il calendario di corsi ed eventi) e «Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?» (l'anno dei conti, ma anche della **tessera**, delle quote e degli incassi), poi metti la spunta **«Ho controllato i due mesi»**. Sono precompilati con gennaio: se va bene, basta la spunta. I due mesi sono indipendenti. 
+1. **Il tuo ente**: i dati dell'ente, chi partecipa e i due mesi di inizio.
 
-   I dati obbligatori sono: la **denominazione**; la **forma dell'ente** («ASD – associazione sportiva dilettantistica», «APS – associazione di promozione sociale», «ODV – organizzazione di volontariato», «ETS – altro ente del Terzo settore», «Circolo», «Altro»); il **codice fiscale**; la **sede legale** (indirizzo, CAP, comune, provincia); l'**email** e il **telefono della segreteria**. Per **partita IVA**, **numero RUNTS** e **PEC** scrivi il dato oppure, se non esiste, metti la spunta «L'associazione non ha la partita IVA», «L'associazione non è iscritta al RUNTS» o «L'associazione non ha una PEC». Il **legale rappresentante** non si scrive qui: è la persona con la carica di presidente, che indichi tra le **Persone**. Vedi [Dati dell'ente e contatti della segreteria](guida:dati-dell-ente-e-contatti-della-segreteria).
+   **Dati dell'ente**: sono obbligatori (vedi sotto).
+
+   **Chi partecipa**: come chiamarlo (socio, tesserato…), se accetti ospiti e chi può iscriversi. Con **«Chiunque può chiedere di iscriversi»** si accende la pagina **«Diventa socio»** con la domanda di adesione online; con **«Solo su presentazione»** si spegne.
+
+   **I due mesi**: da che mese iniziano corsi ed eventi (anno delle attività) e da che mese inizia l'anno fiscale, che vale per conti, tessera, quote e incassi. Sono indipendenti e partono da gennaio: se va bene, metti la spunta **«Ho controllato i due mesi»**. 
+
+   I dati obbligatori sono: **denominazione**, **forma dell'ente** (ASD, APS, ODV, ETS, circolo o altro), **codice fiscale**, **sede legale**, **email** e **telefono della segreteria**. Per **partita IVA**, **numero RUNTS** e **PEC** scrivi il dato oppure, se non esiste, metti la spunta «L'associazione non ha la partita IVA», «L'associazione non è iscritta al RUNTS» o «L'associazione non ha una PEC». Il **legale rappresentante** non si scrive qui: è la persona con la carica di presidente, che indichi tra le **Persone**. Vedi [Dati dell'ente e contatti della segreteria](guida:dati-dell-ente-e-contatti-della-segreteria).
 2. **Partita IVA** (con {piano_contabile} e {piano_fiscale}): se l'associazione ha la partita IVA, qui imposti l'IVA.
 3. **Cosa ti serve**: scegli le parti che userai, per esempio corsi ed eventi, prima nota, libro soci e verbali. Una parte che spegni sparisce dal menu, ma i dati non vengono toccati.
 4. **Quota associativa** e, nei dettagli, altri tipi di socio.
@@ -53,7 +59,7 @@ Parte da sola alla prima attivazione. Puoi riaprirla quando vuoi da **Strumenti 
 6. **Pagine del sito**: scegli la pagina dell'informativa privacy e crea le pagine che servono.
 7. **Elenco dei soci**: se vuoi, importa subito il tuo elenco da Excel o CSV.
 
-> Le chiavi dei fornitori di pagamento e gli IBAN non si inseriscono qui: alla fine ti porta nella pagina giusta per farlo in sicurezza.
+> Le chiavi dei fornitori di pagamento e gli IBAN non si inseriscono qui: alla fine la procedura ti porta nella pagina giusta.
 
 ## Dopo la procedura
 
@@ -75,14 +81,14 @@ La configurazione guidata propone e crea le pagine per area, solo quelle che ser
 ## Le pagine più usate
 
 - **Area soci**: lo spazio personale del socio (tessera, attività, pagamenti, ospiti, profilo, avvisi, calendario).
-- **Segreteria**: richieste di accesso da evadere e collegamenti alla gestione, per segreteria, presidente e vicepresidente.
+- **Segreteria**: le richieste di accesso a cui rispondere e i link alla gestione, per segreteria, presidente e vicepresidente.
 - **Tesoriere**: incassi, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi.
 - **Ingressi**: elenco dei prenotati e registrazione degli ingressi per chi gestisce un evento.
 - **Pubblico**: elenco attività, prossimi eventi, coordinate per il bonifico, 5 per mille, accesso.
 
 ## Se usi un plugin di cache
 
-Gli elenchi pubblici di attività ed eventi e i posti liberi non restano più «vecchi» nella cache delle pagine (per esempio con LiteSpeed). Se hai pagine in cache, **svuota la cache una volta** dal plugin di cache dopo aver aggiornato il plugin.
+Elenchi di attività, eventi e posti liberi restano aggiornati anche con un plugin di cache (per esempio LiteSpeed). Dopo aver aggiornato Associazione Semplice **svuota la cache una volta**.
 
 ## Creare una pagina a mano
 
@@ -109,7 +115,7 @@ Associazione Semplice Pro è un plugin a parte, che si aggiunge a quello gratuit
 
 ## Cosa fare
 
-1. Scarica il file di Pro dall'**area riservata** del sito associazionesemplice.it.
+1. Scarica il file di Pro dall'area riservata del sito associazionesemplice.it.
 2. In WordPress vai su **Plugin → Aggiungi nuovo → Carica plugin**, seleziona il file e premi **Installa ora**.
 3. Premi **Attiva**.
 4. Vai in **Impostazioni → Licenza** e inserisci la chiave. Premi **Controlla adesso**.
@@ -118,7 +124,7 @@ Dopo il controllo compaiono nel menu le funzioni incluse nel tuo piano.
 
 ## Aggiornare
 
-Quando esce una nuova versione compare in Bacheca l'avviso «È disponibile la versione …». Se gli **aggiornamenti diretti** sono attivi, l'avviso dice **«Installalo da Bacheca → Aggiornamenti: i dati restano.»** e ha il pulsante **«Vai agli aggiornamenti»**: l'aggiornamento si installa da lì, come per gli altri plugin. Altrimenti l'avviso ti porta a scaricare il pacchetto dall'area clienti, da caricare in **Plugin → Aggiungi nuovo**: i dati restano.
+Quando esce una nuova versione compare in Bacheca l'avviso «È disponibile la versione …». Se gli **aggiornamenti diretti** sono attivi, l'avviso dice **«Installala da Bacheca → Aggiornamenti: i dati restano.»** e ha il pulsante **«Vai agli aggiornamenti»**: l'aggiornamento si installa da lì, come per gli altri plugin. Altrimenti l'avviso ti porta a scaricare il file dall'area riservata, da caricare in **Plugin → Aggiungi nuovo**: i dati restano.
 
 Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro; se il sito segnala che i due non sono compatibili, aggiorna entrambi all'ultima versione.
 
@@ -140,11 +146,11 @@ La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attivit�
 1. Vai in **Strumenti → Copia di sicurezza**.
 2. Scegli se includere gli allegati: il pulsante è **«Scarica la copia con gli allegati (scontrini, fatture e altri documenti)»**.
 3. Scrivi la **tua password di amministratore** e premi il pulsante per creare la copia: **senza password non si scarica nulla**. Se è sbagliata compare «La password non è corretta: non è stato scaricato nulla.»
-4. Conservalo in un posto sicuro, fuori dal sito.
+4. Conserva il file in un posto sicuro, fuori dal sito.
 
-La password serve **anche per scaricare le copie salvate prima dei ripristini** (le trovi sotto «Copie di sicurezza fatte prima dei ripristini»): scrivi la password e premi il nome della copia. Un vecchio indirizzo diretto di scarico non scarica più nulla: ti riporta alla pagina, dove scrivi la password.
+La password serve anche per scaricare le copie salvate prima dei ripristini: sotto **«Copie di sicurezza fatte prima dei ripristini»** scrivi la password e premi il nome della copia.
 
-**Dopo 5 password sbagliate in 15 minuti** il plugin si ferma per qualche minuto e non controlla nemmeno più la password: compare «Troppi tentativi: riprova tra qualche minuto.» Il blocco vale **insieme per scarico, ripristino e azzeramento dei dati**; con la password giusta il conteggio riparte da zero.
+Dopo 5 password sbagliate in 15 minuti compare «Troppi tentativi: riprova tra qualche minuto.»: per qualche minuto non passa nemmeno la password giusta. Il conteggio è unico per scarico, ripristino e azzeramento dei dati, e riparte da zero con la password giusta.
 
 Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 
@@ -159,13 +165,12 @@ Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 
 **La frase della copia.** Serve solo se la copia viene da un altro sito: è il codice di licenza o, nel gratuito, la data e l'ora in cui era stata creata la chiave dei file (in UTC, non la data di installazione del plugin). Se la lasci vuota, **soci e prima nota si ripristinano lo stesso**, ma i documenti cifrati restano chiusi finché non riapri la chiave con la frase.
 
-**Dopo un cambio dei codici di sicurezza**, le copie fatte prima chiedono la conferma per altro sito.
+Se sono cambiati i codici di sicurezza di WordPress, le copie fatte prima si ripristinano come quelle di un altro sito: scrivi «RIPRISTINA DA ALTRO SITO».
 
 ## Da sapere
 
-- Gli utenti di WordPress non fanno parte della copia.
 - **Non si ripristinano**: le **sessioni aperte** dei soci, le **notifiche push**, il **registro delle azioni** e gli **utenti WordPress**. I soci dovranno **entrare di nuovo** (e riattivare le notifiche).
-- **Le password dei soci tornano.** La copia contiene le **impronte** delle password (**mai le password in chiaro**) e il ripristino le rimette: ogni socio entra con la **password di prima** e deve **scegliere subito una nuova password**, anche se entra con il link ricevuto per email. Vale solo per chi aveva una password.
+- **Le password dei soci tornano.** La copia non contiene le password in chiaro, ma il ripristino le rimette: chi aveva una password entra con quella di prima e deve sceglierne subito una nuova, anche se entra con il link ricevuto per email.
 - La copia contiene dati personali: tienila protetta e non condividerla.
 MD,
     ],
@@ -192,7 +197,7 @@ Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prim
 
 La numerazione riparte da 1. L'operazione resta nel registro azioni.
 
-Anche qui, **dopo 5 password sbagliate in 15 minuti** compare «Troppi tentativi: riprova tra qualche minuto.» e per un po' la password non si controlla (il blocco è lo stesso del ripristino e dello scarico della copia).
+Dopo 5 password sbagliate in 15 minuti compare «Troppi tentativi: riprova tra qualche minuto.»: aspetta qualche minuto. Il conteggio è lo stesso dello scarico e del ripristino della copia.
 MD,
     ],
     [
@@ -201,7 +206,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free
 
-Il plugin gratuito funziona sempre, anche senza chiave: nessuna funzione di base dipende dalla licenza. La **chiave gratuita** è facoltativa e abilita i servizi collegati, come la prova Pro e l'avviso degli aggiornamenti. Crea un account che dà accesso al supporto e alle demo dei piani Pro.
+Il plugin gratuito funziona sempre, anche senza chiave: nessuna funzione di base dipende dalla licenza. La **chiave gratuita** è facoltativa e abilita i servizi collegati, come la prova Pro e l'avviso degli aggiornamenti. Chiedendola crei anche un account, con cui accedi al supporto e alle demo dei piani Pro.
 
 ## Cosa fare
 
@@ -219,7 +224,7 @@ Una volta al giorno, e quando salvi la chiave o premi **Controlla adesso**, il p
 
 ## Durata e rinnovo
 
-La chiave gratuita si **rinnova da sola** poco prima della scadenza, finché la usi: serve almeno un accesso recente, cioè una verifica dal plugin o il tuo ingresso nell'area riservata. Se per un po' non usi il plugin né entri nell'area riservata, la chiave scade. Il plugin gratuito continua a funzionare anche senza chiave.
+La chiave gratuita si **rinnova da sola** poco prima della scadenza, se di recente il plugin l'ha verificata o sei entrato nell'area riservata. Altrimenti scade, ma il plugin gratuito continua a funzionare.
 MD,
     ],
     [
@@ -290,7 +295,7 @@ Ogni licenza è legata a un dominio. Se sposti il sito su un indirizzo nuovo, ag
 
 ## Cosa fare
 
-1. Entra nell'**area riservata** di associazionesemplice.it.
+1. Entra nell'area riservata di associazionesemplice.it.
 2. Apri la licenza che vuoi spostare.
 3. Scegli di cambiare il dominio e scrivi quello nuovo, senza `https://` e senza `www`, per esempio `miaassociazione.it`.
 4. Conferma.
@@ -299,7 +304,7 @@ Ogni licenza è legata a un dominio. Se sposti il sito su un indirizzo nuovo, ag
 ## Limiti
 
 - Il **primo cambio è libero**. Dopo un cambio la chiave resta legata al nuovo dominio per un po' di giorni (lo vedi nell'area riservata); se ti serve prima, apri una richiesta.
-- Il dominio viene normalizzato: minuscolo, senza `www`, senza schema, porta e percorso.
+- Del dominio conta solo il nome: maiuscole, `https://`, `www` e ciò che segue il nome (porta o percorso) vengono ignorati.
 - Un dominio già usato da un'altra licenza non può essere assegnato.
 
 > Se il sito di prova è su un indirizzo locale o di test, non serve nessuna licenza.

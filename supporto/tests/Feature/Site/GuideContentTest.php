@@ -52,6 +52,22 @@ class GuideContentTest extends SiteTestCase
         }
     }
 
+    public function test_renamed_section_keeps_its_articles_and_their_ids(): void
+    {
+        $this->seedGuides();
+        $section = \App\Models\Section::query()->where('slug', 'area-soci')->firstOrFail();
+        $ids = $section->articles()->orderBy('id')->pluck('id')->all();
+        $this->assertNotEmpty($ids);
+        $section->forceFill(['name' => 'Area riservata', 'slug' => 'area-riservata'])->save(); // com'era prima della rinomina
+
+        $this->seedGuides();
+
+        $after = \App\Models\Section::query()->where('slug', 'area-soci')->firstOrFail();
+        $this->assertSame('Area soci', $after->name);
+        $this->assertSame($ids, $after->articles()->orderBy('id')->pluck('id')->all());
+        $this->assertFalse(\App\Models\Section::query()->where('slug', 'area-riservata')->exists());
+    }
+
     public function test_seeding_twice_does_not_duplicate_anything(): void
     {
         $this->seedGuides();

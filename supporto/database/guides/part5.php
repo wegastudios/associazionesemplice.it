@@ -27,7 +27,7 @@ Su un conto, per esempio un POS fisico, puoi indicare la **commissione di incass
 2. Scegli conto di partenza, conto di arrivo, importo e data.
 3. Salva. Il giroconto crea due righe collegate.
 
-Le commissioni e i trasferimenti dai gateway di pagamento al conto corrente si registrano così: una spesa per la commissione e un giroconto per il trasferimento.
+Le commissioni e i trasferimenti dai fornitori di pagamento al conto corrente si registrano così: una spesa per la commissione e un giroconto per il trasferimento.
 
 ## Cassa per più persone
 
@@ -55,7 +55,7 @@ Questa parte serve a chi deve preparare i documenti per il commercialista. L'ape
 
 ## Bozza e definitivo
 
-Prima della chiusura dell'anno fiscale il rendiconto è una **bozza**: i numeri sono quelli di oggi e possono cambiare. Alla chiusura viene emesso il **rendiconto definitivo**, bloccato e con un PDF numerato («n. 1/2026»): non cambia più. Per gli anni già chiusi, nella pagina **Anni fiscali**, **«Emetti il rendiconto definitivo»** o **«Emetti i documenti definitivi degli anni già chiusi»** lo emettono ora; il documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.».
+Prima della chiusura dell'anno fiscale il rendiconto è una bozza: i numeri sono quelli di oggi e possono cambiare. Alla chiusura viene emesso il **rendiconto definitivo**, bloccato e con un PDF numerato («n. 1/2026»): non cambia più. Per gli anni già chiusi, nella pagina **Anni fiscali**, **«Emetti il rendiconto definitivo»** o **«Emetti i documenti definitivi degli anni già chiusi»** lo emettono ora; il documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.»
 
 > Il rendiconto è un documento di lavoro: fallo verificare dal commercialista prima dell'approvazione.
 
@@ -70,7 +70,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: {piano_fiscale}
 
-Se l'ente ha la partita IVA, il plugin la gestisce a un livello minimo, pensato per chi ha un commercialista che completa i quadri. Senza partita IVA non compare nulla di fiscale.
+Se l'ente ha la partita IVA, il plugin gestisce l'IVA in modo essenziale: registra aliquote e importi, il resto lo completa il commercialista. Senza partita IVA non compare nulla di fiscale.
 
 ## Impostare i dati fiscali
 
@@ -89,7 +89,7 @@ Se l'ente ha la partita IVA, il plugin la gestisce a un livello minimo, pensato 
 
 ## Per il commercialista
 
-L'esportazione CSV della prima nota aggiunge aliquota, imponibile e IVA. Il plugin calcola lo scorporo mantenendo sempre la somma esatta.
+L'esportazione CSV della prima nota aggiunge aliquota, imponibile e IVA. Imponibile e IVA, sommati, danno sempre l'importo esatto al centesimo.
 MD,
     ],
     [
@@ -98,7 +98,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: {piano_fiscale}
 
-Il 5 per mille è spento di default e lo attiva un amministratore.
+Qui chiedi il 5 per mille ai soci, registri i contributi ricevuti e tieni d'occhio la scadenza del rendiconto. La funzione è spenta di partenza: la attiva un amministratore.
 
 ## Attivarlo
 
@@ -137,12 +137,12 @@ Da **Registri → Assicurazioni** puoi accendere, separatamente:
 
 1. In **Registri → Presenze** scegli la lezione di un corso o la data di un evento.
 2. A lezione fatta, segna chi c'era: la prima volta sono tutti presenti, togli gli assenti.
-3. Il riepilogo per periodo mostra presenze, lezioni e percentuale; il PDF è a matrice (fino a 10 lezioni) o riepilogativo.
+3. Il riepilogo per periodo mostra presenze, lezioni e percentuale; il PDF ha una colonna per lezione (fino a 10 lezioni) oppure solo i totali.
 4. C'è una **seconda vista a calendario**, con le **date in orizzontale** e le **persone in verticale**. Le lezioni annullate o spostate (vedi [Creare un corso](guida:creare-un-corso)) sono tenute in conto.
 
 ## Altri registri
 
-Il **libro soci** e i **verbali** (assemblee e consiglio, con numerazione e firme) sono nello stesso menu e fanno parte anche della versione gratuita.
+Il libro soci e i **verbali** (assemblee e consiglio, con numerazione e firme) sono nello stesso menu e fanno parte anche della versione gratuita.
 MD,
     ],
     [
@@ -159,11 +159,11 @@ Con il plugin gratuito c'è una sola quota (con l'opzione socio fondatore). Con 
 2. Aggiungi una riga per ogni livello e indica:
    - il **nome** (compare su tessera, elenchi ed esportazioni);
    - la **base**: fondatore, ordinario, socio o volontario, che decide il comportamento (tessera, attività, cariche);
-   - una **quota propria** facoltativa: se vuota, vale la quota predefinita.
-   - il **diritto di voto** («sì» o «no»): conta nelle votazioni, nel numero legale delle assemblee e nei [Dati per il RUNTS](guida:dati-per-il-runts). I minorenni non votano mai;
+   - una **quota propria** facoltativa: se vuota, vale la quota predefinita;
+   - il **diritto di voto** («sì» o «no»): conta nelle votazioni, nel numero legale delle assemblee e nei [Dati per il RUNTS](guida:dati-per-il-runts). I minorenni non votano mai.
 3. Salva.
 
-Chi non ha un livello assegnato usa il nome della base e la quota predefinita: nessuna migrazione dei soci esistenti. Un livello con dei soci non si cancella: resta disattivato. Nella **scheda del socio**, se il livello assegnato è stato disattivato, compare come **«Nome (non attivo)»** e resta valido per quel socio; agli altri soci si propongono solo i livelli attivi.
+Chi non ha un livello assegnato usa il nome della base e la quota predefinita: per i soci che hai già non devi cambiare nulla. Un livello con dei soci non si elimina: si disattiva. Nella scheda del socio, se il livello assegnato è stato disattivato, compare come **«Nome (non attivo)»** e resta valido per quel socio; agli altri soci si propongono solo i livelli attivi.
 
 ## Nucleo familiare
 
@@ -204,7 +204,7 @@ L'area soci può diventare un'**app installabile** sul telefono, con notifiche. 
 
 Insieme alle email, per comunicazioni a gruppi, avvisi dei volontari, promemoria e posti liberati dalla lista d'attesa. Chi non le ha attivate riceve solo l'email.
 
-> Per la privacy l'app **non salva mai pagine con dati personali**: offre soltanto una pagina «Sei offline», con il pulsante **«Riprova»**, e gli stili del plugin. L'app **non interferisce con l'amministrazione né con l'accesso del sito**: su wp-admin e sulla pagina di login non compaiono blocchi o pagine offline. Spegnendo l'app, scompare da sola dai dispositivi.
+> Per la privacy l'app **non salva mai pagine con dati personali**: senza connessione mostra solo la pagina «Sei offline», con il pulsante **«Riprova»**. Non tocca l'amministrazione né la pagina di accesso del sito. Se spegni l'app, scompare da sola dai dispositivi.
 MD,
     ],
     [
@@ -223,7 +223,7 @@ Il socio può salvare la tessera nel wallet del telefono. Il sito non contatta m
 ## Cosa fare
 
 1. Vai in **Impostazioni → Soci e identità → Tessera, QR e Wallet**.
-2. Carica le credenziali Apple e/o Google. Le chiavi private sono salvate cifrate e legate al sito: se copi il sito altrove vanno ricaricate.
+2. Carica le credenziali di Apple, di Google o di entrambi. Le chiavi private sono salvate cifrate e legate al sito: se copi il sito altrove vanno ricaricate.
 3. Nella tessera digitale del socio compaiono **Aggiungi ad Apple Wallet** e/o **Salva su Google Wallet**.
 
 ## Da sapere
@@ -293,7 +293,7 @@ MD,
     ],
     [
         'topic' => 'altro', 'section' => 'Privacy e dati personali', 'slug' => 'anonimizzare-un-ex-socio-e-scaricare-i-dati',
-        'title' => 'Anonimizzare un ex socio e scaricare i propri dati',
+        'title' => 'Anonimizzare un ex socio e scaricare i dati di una persona',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
@@ -304,7 +304,7 @@ MD,
 
 ## Anonimizzare una persona
 
-L'anonimizzazione toglie nome, contatti, codice fiscale, tessera e note, scollega (ed elimina, se è solo un socio) l'utente del sito e sostituisce il nome nelle descrizioni dei movimenti. **I movimenti contabili restano**, per l'obbligo di conservazione; le descrizioni dei movimenti di un **anno fiscale chiuso** non vengono riscritte.
+L'anonimizzazione toglie nome, contatti, codice fiscale, tessera e note, scollega (ed elimina, se è solo un socio) l'utente del sito e sostituisce il nome nelle descrizioni dei movimenti. **I movimenti contabili restano**, per l'obbligo di conservazione; le descrizioni dei movimenti di un anno fiscale chiuso non vengono riscritte.
 
 1. Apri la scheda della persona.
 2. Premi **Anonimizza** e conferma.
@@ -313,7 +313,7 @@ Non si può anonimizzare chi ha ospiti, iscrizioni a corsi, prenotazioni future 
 
 ## Ex soci da anonimizzare
 
-L'elenco **Ex soci da anonimizzare** mostra chi è inattivo da più di N anni (5 di default, modificabile nelle impostazioni). La decisione è tua, caso per caso.
+L'elenco **Ex soci da anonimizzare** mostra chi è inattivo da più di N anni (5 di partenza, modificabile nelle impostazioni). La decisione è tua, caso per caso.
 
 > Le persone anonimizzate spariscono dagli elenchi. L'operazione non si può annullare.
 MD,
