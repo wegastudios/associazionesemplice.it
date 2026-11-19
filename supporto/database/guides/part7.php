@@ -4,13 +4,13 @@
 return [
     [
         'topic' => 'installazione', 'section' => 'Manutenzione', 'slug' => 'bacheca-da-lavorare-ed-eventi-della-settimana',
-        'title' => 'Usare la Bacheca: cosa c\'è da lavorare e gli eventi della settimana',
+        'title' => 'Usare la Bacheca: cosa c\'è da fare e gli eventi della settimana',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Appena entri nella **Bacheca di WordPress** (la prima pagina dopo l'accesso) trovi due riquadri con ciò che ti serve oggi. Li vedono gli amministratori, la segreteria e i consiglieri con accesso operativo.
 
-## Da lavorare
+## Da fare
 
 Il riquadro elenca le cose che aspettano te:
 

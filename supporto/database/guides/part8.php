@@ -28,7 +28,7 @@ Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del
 
 - Finché non la approvi, la domanda resta in stato **«richiesta»**: la persona non compare in rubrica, libro soci, esportazioni e conti, non ha la tessera né un accesso al sito e non può usare il «Primo accesso».
 - La segreteria riceve un'email e chi ha scritto riceve una conferma.
-- La domanda si vede nella **Bacheca** di Associazione Semplice (riquadro **Domande di adesione**) e nel riquadro **Da lavorare** della Bacheca di WordPress.
+- La domanda si vede nella **Bacheca** di Associazione Semplice (riquadro **Domande di adesione**) e nel riquadro **Da fare** della Bacheca di WordPress.
 
 ## Approvare o rifiutare
 
@@ -97,7 +97,7 @@ Promemoria, avvisi delle attività e ricevute arrivano anche ai tutori, o **solo
 
 ## Il diciottesimo compleanno
 
-Nella Bacheca e in **Da lavorare** compare **«Maggiorenni da invitare»** con i ragazzi che non hanno ancora un accesso. Aggiungendo la loro email nella scheda, gli arriva l'invito per scegliere la password.
+Nella Bacheca e in **Da fare** compare **«Maggiorenni da invitare»** con i ragazzi che non hanno ancora un accesso. Aggiungendo la loro email nella scheda, gli arriva l'invito per scegliere la password.
 
 **A 18 anni il genitore o tutore collegato smette di agire per il ragazzo**, anche se questo non ha ancora un accesso suo: non lo vede più nell'area soci, non prenota né paga per lui e non riceve più le sue email. Il **collegamento resta registrato** e si toglie dalla scheda.
 

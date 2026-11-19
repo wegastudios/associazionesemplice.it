@@ -103,7 +103,7 @@ Lo storico dei prestiti si vede per bene e per persona.
 Un prestito non rientrato diventa **scaduto il giorno dopo** la data prevista. Lo trovi:
 
 - nel riquadro **«Prestiti da recuperare»** della Bacheca di Associazione Semplice;
-- nel riquadro **Da lavorare** della Bacheca di WordPress (vedi [Usare la Bacheca](guida:bacheca-da-lavorare-ed-eventi-della-settimana)).
+- nel riquadro **Da fare** della Bacheca di WordPress (vedi [Usare la Bacheca](guida:bacheca-da-lavorare-ed-eventi-della-settimana)).
 
 A chi ha il bene arriva anche un **promemoria per email**, una volta per prestito. Si attiva da **Impostazioni → Privacy e regolamento → Prestiti**.
 
@@ -496,7 +496,7 @@ L'**esportazione dei dati personali** di un socio comprende anche i libri soci c
 
 Per i soci che sono **enti** vedi [Registrare come socio un ente](guida:soci-che-sono-enti): nel libro hanno la colonna **«Tipo»**.
 
-Nella scheda del socio trovi anche il **tipo di tesseramento** (atleta, istruttore, dirigente…), che compare nell'**esportazione dei soci**, e la **liberatoria per foto e video**. In **Bacheca** e nel riquadro **Da lavorare** l'avviso **«Schede da completare»** ti ricorda i soci a cui mancano dei dati.
+Nella scheda del socio trovi anche il **tipo di tesseramento** (atleta, istruttore, dirigente…), che compare nell'**esportazione dei soci**, e la **liberatoria per foto e video**. In **Bacheca** e nel riquadro **Da fare** l'avviso **«Schede da completare»** ti ricorda i soci a cui mancano dei dati.
 
 ## Tenerlo completo
 
