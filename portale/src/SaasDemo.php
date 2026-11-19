@@ -10,10 +10,10 @@ final class SaasDemo {
 
 	const ROLES = array(
 		'titolare'       => array( 'Titolare', 'Vede e gestisce tutto: soci, cassa, assemblee, impostazioni.' ),
-		'amministratore' => array( 'Amministratore', 'Gestisce la gestione dell\'associazione e gli altri utenti.' ),
+		'amministratore' => array( 'Amministratore', 'Cambia le impostazioni dell\'associazione e gestisce gli operatori.' ),
 		'segreteria'     => array( 'Segreteria', 'Soci, tessere, quote e attività di ogni giorno.' ),
 		'dipendente'     => array( 'Dipendente', 'Vede solo ciò che serve al suo lavoro, senza i dati riservati.' ),
-		'commercialista' => array( 'Commercialista', 'Consulta cassa e rendiconto, senza modificare i soci.' ),
+		'commercialista' => array( 'Commercialista', 'Consulta prima nota e rendiconto, senza modificare nulla.' ),
 	);
 
 	/** Indirizzo della demo senza barra finale, oppure '' se non c'è ancora. */

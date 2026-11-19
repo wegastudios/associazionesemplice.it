@@ -54,7 +54,7 @@ final class SaasCheckout {
 		if ( empty( $res['valid'] ) || empty( $res['discount']['type'] ) ) {
 			$why = array(
 				'expired' => 'Questo codice è scaduto.', 'wrong_plan' => 'Questo codice non vale per il piano scelto.',
-				'exhausted' => 'Questo codice è stato usato troppe volte.',
+				'exhausted' => 'Questo codice non è più disponibile.',
 			);
 			throw new UserError( $why[ (string) ( $res['reason'] ?? '' ) ] ?? 'Codice non valido.' );
 		}
@@ -78,7 +78,7 @@ final class SaasCheckout {
 			$trialOrder = Orders::get( $db, (string) $in['convert'] );
 			$tg         = $trialOrder ? $db->one( 'SELECT g.name, g.slug, c.email FROM saas_orgs g JOIN customers c ON c.id = g.customer_id WHERE g.ref = ?', array( $trialOrder['org_ref'] ) ) : null;
 			if ( ! $trialOrder || 'trial' !== $trialOrder['status'] || ! $tg ) {
-				throw new UserError( 'Questa prova non è più attiva: scegli un piano da capo.' );
+				throw new UserError( 'Questa prova non è più attiva: riparti dalla scelta del piano.' );
 			}
 			$in['org_name'] = $tg['name'];
 			$in['slug']     = $tg['slug'];
@@ -90,7 +90,7 @@ final class SaasCheckout {
 			throw new UserError( 'Scrivi il nome dell\'associazione.' );
 		}
 		if ( ! self::validSlug( $slug ) ) {
-			throw new UserError( 'L\'indirizzo scelto non è valido: usa da 3 a 40 tra lettere minuscole, cifre e trattini.' );
+			throw new UserError( 'L\'indirizzo scelto non è valido: usa da 3 a 40 caratteri tra lettere minuscole, cifre e trattini.' );
 		}
 		$cust    = $billing->customer( (string) ( $in['email'] ?? '' ) );
 		$plan    = (string) ( $in['plan'] ?? '' );
@@ -167,7 +167,7 @@ final class SaasCheckout {
 			throw new UserError( 'Scrivi il nome dell\'associazione.' );
 		}
 		if ( ! self::validSlug( $slug ) ) {
-			throw new UserError( 'L\'indirizzo scelto non è valido: usa da 3 a 40 tra lettere minuscole, cifre e trattini.' );
+			throw new UserError( 'L\'indirizzo scelto non è valido: usa da 3 a 40 caratteri tra lettere minuscole, cifre e trattini.' );
 		}
 		$plan   = (string) ( $in['plan'] ?? '' );
 		$period = 'year' === ( $in['period'] ?? '' ) ? 'year' : 'month';
@@ -178,7 +178,7 @@ final class SaasCheckout {
 		}
 		$cust = $billing->customer( (string) ( $in['email'] ?? '' ) );
 		if ( (int) $db->one( "SELECT COUNT(*) n FROM orders WHERE customer_id = ? AND product = 'saas' AND trial_ends IS NOT NULL", array( $cust['id'] ) )['n'] > 0 ) {
-			throw new UserError( 'Con questa email hai già fatto la prova: scegli un piano da /saas/acquista oppure scrivici.' );
+			throw new UserError( 'Con questa email hai già fatto la prova: scegli un piano qui sotto oppure scrivici dal supporto.' );
 		}
 		$order = Orders::open( $db, $cust['id'], $plan, $period, max( 1, (int) ( $in['members'] ?? 50 ) ), self::cleanAddons( (array) ( $in['addons'] ?? array() ) ), null, $now );
 		$end   = gmdate( 'Y-m-d', strtotime( '+' . $days . ' days', $now ?? time() ) );

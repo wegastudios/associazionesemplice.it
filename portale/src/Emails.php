@@ -89,8 +89,8 @@ final class Emails {
 			// nei primi 2, poi 1), sospensione il giorno dopo la scadenza, dati conservati 180 giorni.
 			'saas_welcome' => array(
 				'label' => 'Gestionale: benvenuto', 'when' => 'Subito dopo il pagamento dell\'ordine del gestionale SaaS.', 'vars' => array( 'nome', 'associazione', 'piano', 'periodo', 'gestionale_url', 'link_password', 'account_url', 'supporto_url', 'email' ),
-				'subject' => 'Benvenuto: scegli la password per il gestionale di {associazione}',
-				'body' => "Ciao {nome},\ngrazie per aver scelto Associazione Semplice. Stiamo preparando il gestionale di {associazione}: ci vogliono pochi minuti.\n\nIntanto scegli la tua password da qui (scrivi questa email e ti arriva il link per sceglierla):\n{link_password}\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nHai scelto il piano {piano}, con pagamento {periodo}. Fatture e pagamenti sono in {account_url}.",
+				'subject' => 'Scegli la password per il gestionale di {associazione}',
+				'body' => "Ciao {nome},\ngrazie per aver scelto Associazione Semplice. Stiamo preparando il gestionale di {associazione}: ci vogliono pochi minuti.\n\nIntanto scegli la tua password da qui:\n{link_password}\nSi apre una pagina: scrivi la tua email e ti mandiamo il link per scegliere la password.\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nHai scelto il piano {piano}, con pagamento {periodo}. Fatture e pagamenti sono in {account_url}.",
 			),
 			'saas_ready' => array(
 				'label' => 'Gestionale: pronto', 'when' => 'Quando il gestionale dell\'associazione è stato creato.', 'vars' => array( 'nome', 'associazione', 'gestionale_url', 'link_password', 'account_url', 'supporto_url', 'email' ),
@@ -105,12 +105,12 @@ final class Emails {
 			'saas_payment_failed' => array(
 				'label' => 'Gestionale: pagamento non riuscito', 'when' => 'Il pagamento di un rinnovo del gestionale non è andato a buon fine.', 'vars' => array( 'nome', 'associazione', 'piano', 'importo', 'scadenza', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Pagamento non riuscito per {associazione}: cosa fare',
-				'body' => "Ciao {nome},\nnon siamo riusciti ad addebitare {importo} per il piano {piano}. Di solito succede per una carta scaduta o un limite di spesa.\n\nCosa fare: apri {account_url}, premi «Fatture e metodo di pagamento» e controlla o cambia il metodo di pagamento.\n\nRiproviamo da soli nei prossimi giorni, fino a 7. Se in quei giorni sistemi il metodo di pagamento, non devi fare altro.\n\nIl gestionale funziona fino al {scadenza}. Se entro quel giorno il pagamento non va a buon fine, dal giorno dopo viene sospeso finché non è sistemato. I dati restano al loro posto.",
+				'body' => "Ciao {nome},\nnon siamo riusciti ad addebitare {importo} per il piano {piano}. Di solito succede per una carta scaduta o un limite di spesa.\n\nCosa fare: apri {account_url}, premi «Fatture e metodo di pagamento» e controlla o cambia il metodo di pagamento.\n\nRiproviamo da soli per 7 giorni. Se in quei giorni sistemi il metodo di pagamento, non devi fare altro.\n\nIl gestionale funziona fino al {scadenza}. Se entro quel giorno il pagamento non va a buon fine, dal giorno dopo viene sospeso finché non è sistemato. I dati restano al loro posto.",
 			),
 			'saas_expiring' => array(
 				'label' => 'Gestionale: piano in scadenza', 'when' => 'Nei giorni di preavviso prima della scadenza di un gestionale disdetto (non si rinnova da solo).', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Il piano di {associazione} scade il {scadenza}',
-				'body' => "Ciao {nome},\nil piano {piano} di {associazione} scade il {scadenza} e non si rinnova da solo.\n\nPer continuare a usare il gestionale rinnovalo da {account_url}. Se non lo rinnovi, dal giorno dopo il gestionale viene sospeso: i dati restano conservati, ma tu e i soci non potrete entrare.\n\nScarica i tuoi dati prima del {scadenza}, da «Gestione → Esportazione dei dati»: da sospeso non si può più scaricare.",
+				'body' => "Ciao {nome},\nil piano {piano} di {associazione} scade il {scadenza} e non si rinnova da solo.\n\nPer continuare a usare il gestionale rinnovalo da {account_url}. Se non lo rinnovi, dal giorno dopo il gestionale viene sospeso: i dati restano conservati, ma tu e i soci non potrete entrare.\n\nScarica i tuoi dati prima del {scadenza}, da «Gestione → Copie di sicurezza»: da sospeso non si può più scaricare.",
 			),
 			'saas_suspended' => array(
 				'label' => 'Gestionale: sospeso', 'when' => 'Il giorno dopo la scadenza, se il gestionale non è stato rinnovato.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'data_cancellazione', 'account_url', 'supporto_url', 'email' ),
@@ -168,7 +168,7 @@ final class Emails {
 			'saas_cancelled' => array(
 				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Disdetta registrata: il gestionale resta attivo fino al {scadenza}',
-				'body' => "Ciao {nome},\nabbiamo registrato la disdetta del piano {piano} di {associazione}. Non ci saranno altri addebiti.\n\nIl gestionale resta attivo fino al {scadenza}.\n\nScarica i tuoi dati prima di quella data, da «Gestione → Esportazione dei dati»: dopo la scadenza il gestionale è sospeso e non si può più scaricare.\n\nHai cambiato idea? Scrivici da {supporto_url}.\n\nDopo il {scadenza} i dati restano conservati per 180 giorni, poi vengono cancellati.",
+				'body' => "Ciao {nome},\nabbiamo registrato la disdetta del piano {piano} di {associazione}. Non ci saranno altri addebiti.\n\nIl gestionale resta attivo fino al {scadenza}.\n\nScarica i tuoi dati prima di quella data, da «Gestione → Copie di sicurezza»: dopo la scadenza il gestionale è sospeso e non si può più scaricare.\n\nHai cambiato idea? Scrivici da {supporto_url}.\n\nDopo il {scadenza} i dati restano conservati per 180 giorni, poi vengono cancellati.",
 			),
 		);
 	}

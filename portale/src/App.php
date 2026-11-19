@@ -364,7 +364,7 @@ final class App {
 			}
 			$url = SaasCheckout::reactivate( $this->db, $this->billing, $row, (int) $this->in( 'seen_total' ) );
 			if ( null === $url ) {
-				$_SESSION['acc_flash'] = 'Fatto: il pagamento è andato a buon fine. Il gestionale torna attivo tra pochi istanti: ricarica la pagina tra poco.';
+				$_SESSION['acc_flash'] = 'Fatto: il pagamento è andato a buon fine. Il gestionale torna attivo tra pochi istanti: ricarica la pagina.';
 				header( 'Location: /account#gestionale', true, 303 );
 			} else {
 				header( 'Location: ' . $url, true, 303 );
@@ -583,7 +583,7 @@ final class App {
 			}
 		}
 		list( $c, $st ) = SaasClient::orgStatus( $org, $ref );
-		View::render( 'saas_manage', array( 'title' => 'Gestisci il gestionale', 'o' => $o, 'st' => 200 === $c ? $st : null, 'flash' => $flash, 'error' => $error, 'dns' => $dns, 'check' => $check, 'plans' => $plans ) );
+		View::render( 'saas_manage', array( 'title' => 'Abbonamento del gestionale', 'o' => $o, 'st' => 200 === $c ? $st : null, 'flash' => $flash, 'error' => $error, 'dns' => $dns, 'check' => $check, 'plans' => $plans ) );
 	}
 
 	/** Profilo e sicurezza: password, email, secondo livello, sessioni aperte. Tutto lo fa il SaaS; qui si mostrano esiti e moduli. */
