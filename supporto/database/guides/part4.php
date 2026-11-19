@@ -312,7 +312,7 @@ Un incasso annullato non ha ricevuta.
 
 Il **PDF di una ricevuta si crea una volta sola**, quando viene emessa, e si salva nella **cartella riservata** del sito. Quando lo scarichi o lo spedisci è sempre **lo stesso file**: il programma controlla che sia quello emesso. I **dati** della ricevuta (nome, codice fiscale, importi, dati dell'ente, piè di pagina, righe) sono **sempre quelli salvati all'emissione**, anche se poi cambiano i dati del socio o dell'associazione.
 
-Le ricevute emesse **prima di questo aggiornamento** si fissano **in automatico** dopo l'aggiornamento: per il loro PDF valgono i dati dell'emissione ma i **testi di oggi** (i tuoi testi personalizzati, le parole scelte per il tipo di ente, la grafica del programma). Quelle emesse da ora in poi restano identiche per sempre.
+Le ricevute emesse con le versioni precedenti del plugin sono state fissate in automatico: il loro PDF ha i dati dell'emissione ma i testi di oggi (i tuoi testi personalizzati, le parole scelte per il tipo di ente, la grafica).
 
 Le ricevute emesse molto tempo fa, prima che il sito salvasse i dati, non hanno ancora un PDF fisso. Dalla pagina **«Verifica delle ricevute»**, sotto **«Emesse prima che si salvassero i dati»**, l'**amministratore** può fissarle con il pulsante **«Fissa anche queste con i dati di oggi»** (a gruppi di 100), senza aprirle una per una. Il programma avvisa: **«I dati sono quelli di oggi, non quelli dell'emissione.»** Il PDF usa quindi i dati di oggi e da quel momento non cambia più. Conviene farlo prima di una copia di sicurezza. Le ricevute annullate restano come sono: il programma dice «Le … rimaste sono ricevute annullate: restano come sono.»
 
