@@ -39,6 +39,16 @@ final class Texts {
 		return strtr( $s, $map );
 	}
 
+	/**
+	 * Messaggio con un numero che regge il singolare: `$one` se il numero è 1, altrimenti `$many`. Il segnaposto `{n}` vale il numero
+	 * (salvo un valore `n` passato in `$vars`, ad esempio «5000+»). Ciascuna delle due frasi è una chiave del pacchetto di lingua, come per `t()`.
+	 *
+	 * @param array<string,scalar> $vars altri segnaposto
+	 */
+	public static function n( int $n, string $one, string $many, array $vars = array() ): string {
+		return self::t( 1 === $n ? $one : $many, $vars + array( 'n' => $n ) );
+	}
+
 	/** HTML con le personalizzazioni (solo il testo, mai tag, attributi tecnici o indirizzi). */
 	public static function html( string $html, ?array $map = null ): string {
 		return self::enabled() ? (string) apply_filters( 'asem_text_html', $html, $map ) : $html;

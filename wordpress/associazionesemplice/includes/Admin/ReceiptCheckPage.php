@@ -59,7 +59,7 @@ final class ReceiptCheckPage {
 		$n = ReceiptFiles::pending_count();
 		echo '<div class="asem-card"><h2>' . esc_html( Texts::t( 'PDF definitivi delle ricevute' ) ) . '</h2><p>'
 			. esc_html( $n > 0
-				? Texts::t( 'Ci sono {n} ricevute con il PDF ancora da fissare. Fissarlo non cambia nessun dato: il PDF si crea dai dati già salvati e da quel momento non cambia più.', array( 'n' => $n ) )
+				? Texts::n( (int) $n, 'C\'è una ricevuta con il PDF ancora da fissare. Fissarlo non cambia nessun dato: il PDF si crea dai dati già salvati e da quel momento non cambia più.', 'Ci sono {n} ricevute con il PDF ancora da fissare. Fissarlo non cambia nessun dato: il PDF si crea dai dati già salvati e da quel momento non cambia più.' )
 				: Texts::t( 'Tutte le ricevute emesse hanno il loro PDF definitivo.' ) )
 			. ' <a href="' . esc_url( Ui::url( 'asem-receipt-check' ) ) . '">' . esc_html( Texts::t( 'Verifica delle ricevute' ) ) . '</a></p></div>';
 	}
@@ -102,7 +102,7 @@ final class ReceiptCheckPage {
 		$run  = ReceiptFiles::verify_progress( $year );
 		echo '<div class="asem-card"><h2>' . esc_html( Texts::t( 'Verifica dei PDF di questo anno fiscale' ) ) . '</h2><p>' . esc_html( Texts::t( 'La verifica apre ogni PDF e ne controlla l\'impronta: con molte ricevute richiede tempo, perciò parte solo quando premi il pulsante e procede a lotti di {n} ricevute. Se non finisce in un giro, premi di nuovo: riprende da dove si era fermata.', array( 'n' => ReceiptFiles::VERIFY_BATCH ) ) ) . '</p>';
 		if ( $run ) {
-			echo '<p><strong>' . esc_html( Texts::t( 'Verifica in corso: controllate {n} ricevute su {tot}.', array( 'n' => (int) $run['summary']['total'], 'tot' => max( (int) $run['total'], (int) $run['summary']['total'] ) ) ) ) . '</strong></p>';
+			echo '<p><strong>' . esc_html( Texts::n( (int) $run['summary']['total'], 'Verifica in corso: controllata una ricevuta su {tot}.', 'Verifica in corso: controllate {n} ricevute su {tot}.', array( 'tot' => max( (int) $run['total'], (int) $run['summary']['total'] ) ) ) ) . '</strong></p>';
 		}
 		Ui::form_open( 'asem_receipt_verify', $here, false, 'asem-inline' );
 		echo Ui::hidden( 'year', $year ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Ui::hidden() protegge i valori
@@ -191,12 +191,12 @@ final class ReceiptCheckPage {
 		$r    = ReceiptFiles::verify_step( $year );
 		$back = Ui::url( 'asem-receipt-check', array( 'year' => $year ) );
 		if ( ! $r['finished'] ) {
-			return array( $back, Texts::t( 'Controllate {n} ricevute su {tot}: premi di nuovo per continuare.', array( 'n' => $r['checked'], 'tot' => $r['total'] ) ) );
+			return array( $back, Texts::n( (int) $r['checked'], 'Controllata una ricevuta su {tot}: premi di nuovo per continuare.', 'Controllate {n} ricevute su {tot}: premi di nuovo per continuare.', array( 'tot' => $r['total'] ) ) );
 		}
 		$bad = (int) $r['summary']['locked'] + (int) $r['summary']['missing'] + (int) $r['summary']['altered'];
 		return array( $back, 0 === $bad
-			? Texts::t( 'Verifica finita: controllate {n} ricevute, nessun problema trovato.', array( 'n' => $r['checked'] ) )
-			: Texts::t( 'Verifica finita: controllate {n} ricevute, {bad} da sistemare.', array( 'n' => $r['checked'], 'bad' => $bad ) ) );
+			? Texts::n( (int) $r['checked'], 'Verifica finita: controllata una ricevuta, nessun problema trovato.', 'Verifica finita: controllate {n} ricevute, nessun problema trovato.' )
+			: Texts::n( (int) $r['checked'], 'Verifica finita: controllata una ricevuta, {bad} da sistemare.', 'Verifica finita: controllate {n} ricevute, {bad} da sistemare.', array( 'bad' => $bad ) ) );
 	}
 
 	/** Azione del modulo «Fissa i prossimi PDF»: un lotto per volta. */
@@ -206,12 +206,12 @@ final class ReceiptCheckPage {
 		$r     = ReceiptFiles::complete( $year > 0 ? $year : null, $after );
 		Audit::log( 'receipt.pdfs_fixed', 'year', $year, array( 'done' => $r['done'], 'failed' => $r['failed'], 'manual' => 1 ) );
 		$left = ReceiptFiles::pending_count( $year > 0 ? $year : null );
-		$msg  = Texts::t( 'Fissati i PDF di {n} ricevute.', array( 'n' => $r['done'] ) );
+		$msg  = Texts::n( (int) $r['done'], 'Fissato il PDF di una ricevuta.', 'Fissati i PDF di {n} ricevute.' );
 		if ( $r['failed'] ) {
-			$msg .= ' ' . Texts::t( '{n} non si sono potuti fissare (controlla i permessi della cartella dei file riservati o i dati della ricevuta).', array( 'n' => $r['failed'] ) );
+			$msg .= ' ' . Texts::n( (int) $r['failed'], 'Un PDF non si è potuto fissare (controlla i permessi della cartella dei file riservati o i dati della ricevuta).', '{n} non si sono potuti fissare (controlla i permessi della cartella dei file riservati o i dati della ricevuta).' );
 		}
 		if ( $left > 0 && $r['more'] ) {
-			$msg .= ' ' . Texts::t( 'Ne restano ancora {n}: premi di nuovo.', array( 'n' => $left ) );
+			$msg .= ' ' . Texts::n( (int) $left, 'Ne resta ancora una: premi di nuovo.', 'Ne restano ancora {n}: premi di nuovo.' );
 		}
 		return array( Ui::url( 'asem-receipt-check', array( 'year' => $year, 'after' => $r['more'] ? $r['last_id'] : 0 ) ), $msg );
 	}
@@ -223,16 +223,16 @@ final class ReceiptCheckPage {
 		$r     = ReceiptFiles::complete_nodata( $year > 0 ? $year : null, $after );
 		Audit::log( 'receipt.nodata_fixed_today', 'year', $year, array( 'done' => $r['done'], 'failed' => $r['failed'], 'data_of_today' => 1 ) );
 		$left = ReceiptFiles::nodata_count( $year > 0 ? $year : null );
-		$msg  = Texts::t( 'Fissate con i dati di oggi {n} ricevute.', array( 'n' => $r['done'] ) );
+		$msg  = Texts::n( (int) $r['done'], 'Fissata con i dati di oggi una ricevuta.', 'Fissate con i dati di oggi {n} ricevute.' );
 		if ( $r['failed'] ) {
-			$msg .= ' ' . Texts::t( '{n} non si sono potute fissare (hanno perso le righe di incasso o la cartella dei file riservati non è scrivibile).', array( 'n' => $r['failed'] ) );
+			$msg .= ' ' . Texts::n( (int) $r['failed'], 'Una ricevuta non si è potuta fissare (ha perso le righe di incasso o la cartella dei file riservati non è scrivibile).', '{n} non si sono potute fissare (hanno perso le righe di incasso o la cartella dei file riservati non è scrivibile).' );
 		}
 		if ( $left > 0 && $r['more'] ) {
-			$msg .= ' ' . Texts::t( 'Ne restano ancora {n}: premi di nuovo.', array( 'n' => $left ) );
+			$msg .= ' ' . Texts::n( (int) $left, 'Ne resta ancora una: premi di nuovo.', 'Ne restano ancora {n}: premi di nuovo.' );
 		} elseif ( 0 === $left ) {
 			$voided = ReceiptFiles::nodata_voided_count( $year > 0 ? $year : null );
 			if ( $voided > 0 ) {
-				$msg .= ' ' . Texts::t( 'Le {n} rimaste sono ricevute annullate: restano come sono.', array( 'n' => $voided ) );
+				$msg .= ' ' . Texts::n( (int) $voided, 'La ricevuta rimasta è annullata: resta com\'è.', 'Le {n} rimaste sono ricevute annullate: restano come sono.' );
 			}
 		}
 		return array( Ui::url( 'asem-receipt-check', array( 'year' => $year, 'after' => $r['more'] ? $r['last_id'] : 0 ) ), $msg );

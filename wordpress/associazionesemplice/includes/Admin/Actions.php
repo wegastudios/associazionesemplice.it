@@ -1030,10 +1030,10 @@ final class Actions {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'La copia era stata fatta su un altro sito: l\'hai ripristinata con la tua conferma e questo resta scritto nel registro delle azioni.' );
 		}
 		if ( ! empty( $r['skipped'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non sono collegati a nessun dato e non sono stati rimessi sul sito.', array( 'n' => (int) $r['skipped'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['skipped'], 'Attenzione: un file della copia non è collegato a nessun dato e non è stato rimesso sul sito.', 'Attenzione: {n} file della copia non sono collegati a nessun dato e non sono stati rimessi sul sito.' );
 		}
 		if ( ! empty( $r['closed'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} documenti riservati sono sul sito ma restano chiusi. Per aprirli usa «Riapri la chiave con la frase», qui in Copia di sicurezza.', array( 'n' => (int) $r['closed'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['closed'], 'Attenzione: un documento riservato è sul sito ma resta chiuso. Per aprirlo usa «Riapri la chiave con la frase», qui in Copia di sicurezza.', 'Attenzione: {n} documenti riservati sono sul sito ma restano chiusi. Per aprirli usa «Riapri la chiave con la frase», qui in Copia di sicurezza.' );
 		}
 		if ( ! empty( $r['keys_failed'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: le chiavi dei documenti riservati non si sono potute rimettere sul sito (un\'altra operazione era in corso): rifai il ripristino della stessa copia.' );
@@ -1045,13 +1045,13 @@ final class Actions {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le sessioni aperte e le notifiche dei soci non fanno parte del ripristino: i soci dovranno entrare di nuovo.' );
 		}
 		if ( ! empty( $r['bad'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia risultano alterati (o non si aprono con la chiave) e non sono stati rimessi sul sito.', array( 'n' => (int) $r['bad'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['bad'], 'Attenzione: un file della copia risulta alterato (o non si apre con la chiave) e non è stato rimesso sul sito.', 'Attenzione: {n} file della copia risultano alterati (o non si aprono con la chiave) e non sono stati rimessi sul sito.' );
 		}
 		if ( ! empty( $d['restored'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Rimessi sul sito {n} PDF definitivi.', array( 'n' => (int) $d['restored'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) $d['restored'], 'Rimesso sul sito un PDF definitivo.', 'Rimessi sul sito {n} PDF definitivi.' );
 		}
 		if ( ! empty( $d['missing'] ) || ! empty( $d['bad'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} PDF definitivi mancano o risultano alterati: controllali da «Verifica delle ricevute».', array( 'n' => (int) ( $d['missing'] ?? 0 ) + (int) ( $d['bad'] ?? 0 ) ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) ( $d['missing'] ?? 0 ) + (int) ( $d['bad'] ?? 0 ), 'Attenzione: un PDF definitivo manca o risulta alterato: controllalo da «Verifica delle ricevute».', 'Attenzione: {n} PDF definitivi mancano o risultano alterati: controllali da «Verifica delle ricevute».' );
 		}
 		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '.' . $docs . ' Lo stato precedente non è stato conservato sul sito: se ti serve, scarica una copia prima di ripristinare.' );
 	}

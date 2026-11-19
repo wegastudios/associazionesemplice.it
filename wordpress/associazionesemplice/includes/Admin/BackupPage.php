@@ -32,7 +32,7 @@ final class BackupPage {
 
 		$plain = (int) get_option( Backup::OPT_PLAIN, 0 );
 		if ( $plain > 0 ) {
-			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::t( 'Nell\'ultima copia {n} campi riservati (ad esempio il medico nei certificati) non sono cifrati, perché su questo sito non si possono ancora cifrare: controlla «Documenti riservati» qui sotto. Nessun dato è andato perso.', array( 'n' => $plain ) ) ) . '</p></div>';
+			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::n( (int) $plain, 'Nell\'ultima copia un campo riservato (ad esempio il medico nei certificati) non è cifrato, perché su questo sito non si può ancora cifrare: controlla «Documenti riservati» qui sotto. Nessun dato è andato perso.', 'Nell\'ultima copia {n} campi riservati (ad esempio il medico nei certificati) non sono cifrati, perché su questo sito non si possono ancora cifrare: controlla «Documenti riservati» qui sotto. Nessun dato è andato perso.' ) ) . '</p></div>';
 		}
 
 		echo '<h2>Ripristino</h2><p class="description">Ripristina una copia scaricata da questo sito: <strong>i dati attuali del plugin vengono sostituiti</strong> da quelli della copia. '
