@@ -27,6 +27,15 @@ class ArticleBodyTest extends SiteTestCase
         $this->assertStringContainsString('<ul><li>punto</li><li>altro <code>codice</code></li></ul>', $html);
     }
 
+    public function test_italic_and_indented_steps_inside_a_bullet(): void
+    {
+        $html = ArticleBody::html("Ricorda *chi* ha votato, **non** cosa.\n\n- Voce, per sanarla:\n\n  1. primo passo\n  2. secondo passo\n- Altra voce");
+
+        $this->assertStringContainsString('<em>chi</em>', $html);
+        $this->assertStringContainsString('<strong>non</strong>', $html);
+        $this->assertStringContainsString('<li>Voce, per sanarla:<ol><li>primo passo</li><li>secondo passo</li></ol></li><li>Altra voce</li>', $html);
+    }
+
     public function test_table_with_header_and_separator(): void
     {
         $html = ArticleBody::html("| Funzione | Free |\n|---|---|\n| Soci | Si |");

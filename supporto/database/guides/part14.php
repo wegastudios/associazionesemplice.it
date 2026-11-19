@@ -162,9 +162,6 @@ MD,
 
 Nel **gratuito** si salvano **cifrati** i **documenti e le scansioni**, gli **allegati dei movimenti** e le **foto dell'inventario**. Con {piano_contabile} e {piano_fiscale} si cifrano anche i **certificati medici**, i **giustificativi dei rimborsi** e i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP delle ricevute di un anno fiscale (**«Scarica i PDF di questo anno fiscale (ZIP)»**), invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
 
-<!-- Certificati medici: frasi riverificate sul codice di main dopo la PR 754 del plugin (FileCryptPanel::cert_parts), 15/11/2026. -->
-<!-- Verificato sul codice di main dopo la PR 745 del plugin (cifratura dei PDF delle ricevute). -->
-
 ## File nuovi e file già caricati
 
 - I **file nuovi** si salvano cifrati **subito**.
