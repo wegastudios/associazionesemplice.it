@@ -8745,7 +8745,9 @@ if ( $ra_had ) {
 }
 file_put_contents( $ra_bd, 'non è una cartella' ); // al posto della cartella delle copie c'è un file: la copia non può essere scritta
 $ra_before = (string) $wpdb->get_var( 'SELECT GROUP_CONCAT(CONCAT(id, social_year, valid_to) ORDER BY id) FROM ' . Db::t( 'memberships' ) );
+set_error_handler( function () { return true; } ); // l'avviso di ZipArchive è proprio ciò che la prova provoca
 $ra_svf    = Admin\TechActions::save_entity( array_merge( $ra_ent, array( 'confirm_card_realign' => '1' ) ) );
+restore_error_handler();
 unlink( $ra_bd );
 if ( $ra_had ) {
 	rename( $ra_bd . '-prova', $ra_bd );
