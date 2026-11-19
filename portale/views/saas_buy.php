@@ -69,9 +69,9 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 			<h2 style="margin-top:1.4rem">I tuoi dati</h2>
 			<label for="org_name">Nome dell'associazione</label>
 			<input id="org_name" type="text" name="org_name" maxlength="150" value="<?php echo e( $v['org_name'] ); ?>" required<?php echo ! empty( $convert ) ? ' readonly' : ''; ?>>
-			<label for="slug">Indirizzo del gestionale</label>
+			<label for="slug">Indirizzo dell'area soci</label>
 			<input id="slug" type="text" name="slug" maxlength="40" autocapitalize="none" spellcheck="false" value="<?php echo e( $v['slug'] ); ?>" placeholder="la-mia-associazione" required<?php echo ! empty( $convert ) ? ' readonly' : ''; ?>>
-			<p class="hint">Sarà <b>indirizzo</b>.associazionesemplice.it. Se è già preso ne aggiungiamo un pezzetto noi.</p>
+			<p class="hint">I soci entreranno da <b>indirizzo</b>.associazionesemplice.it. Se è già occupato aggiungiamo noi quattro caratteri in fondo.</p>
 			<label for="email">La tua email</label>
 			<input id="email" type="email" name="email" autocomplete="email" value="<?php echo e( $v['email'] ); ?>" required<?php echo ! empty( $convert ) ? ' readonly' : ''; ?>>
 			<label for="name">Il tuo nome <span class="muted">(facoltativo)</span></label>
