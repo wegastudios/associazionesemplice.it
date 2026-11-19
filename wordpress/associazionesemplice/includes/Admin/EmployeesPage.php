@@ -68,7 +68,7 @@ final class EmployeesPage {
 		Employees::mark_legacy_roles_seen( get_current_user_id() );
 		echo '<p class="description">Il dipendente è un utente del sito con gli <strong>stessi permessi della segreteria</strong>. Non è nel libro soci, non ha la tessera e non conta per le assemblee. '
 			. 'Un dipendente nuovo ha tutti i permessi qui sotto: amministratori, presidente e vicepresidente possono toglierli area per area. Impostazioni, pagamenti e copie di sicurezza restano solo agli amministratori. '
-			. 'Ogni cambio resta scritto nel registro azioni. Il numero dei lavoratori per il RUNTS è il numero dei dipendenti in servizio alla data.</p>';
+			. 'Ogni cambio resta scritto nel registro azioni. Il numero dei lavoratori per il RUNTS è il numero dei dipendenti in servizio alla data di riferimento: nei «Dati per il RUNTS» è il 31 dicembre dell\'anno che scegli lì.</p>';
 		echo '<p class="description">Se il dipendente è anche socio, i due accessi restano separati: da dipendente entra con questo utente del sito, da socio con il suo accesso personale all\'area soci (link o codice via email) e una scheda nel libro soci a parte. Per il socio usa un\'altra email, oppure l\'accesso personale con la stessa email.</p>';
 		if ( current_user_can( Plugin::CAP ) ) {
 			echo '<p><a href="' . esc_url( Ui::url( 'asem-audit', array( 'type' => 'employee.' ) ) ) . '">Vedi chi ha tolto o dato permessi, e quando →</a></p>';
