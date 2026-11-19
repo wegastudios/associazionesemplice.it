@@ -31,7 +31,7 @@ final class ProPage {
 				array( 'vat', 'IVA', 'Aliquote su quote, attività e incassi, importi con IVA compresa o esclusa e IVA contenuta in ogni movimento.' ),
 				array( 'fivepm', '5 per mille', 'Messaggio con il codice fiscale, contributi ricevuti e scadenze del rendiconto sull\'utilizzo.' ),
 				array( 'fiscal', 'Anni fiscali e rendiconto', 'Apertura e chiusura degli anni fiscali, rendiconto per cassa e prima nota per il commercialista.' ),
-				array( 'watch', 'Controllo di bilancio e fondi', 'Bilancio provvisorio aggiornato al mese concluso, avvisi su spese non coperte e avanzo eccessivo, storico mensile, spese documentate attribuite ai fondi dei volontari, inizio dell\'anno fiscale a scelta.' ),
+				array( 'watch', 'Controllo di bilancio e fondi', 'Rendiconto provvisorio aggiornato al mese concluso, avvisi su spese non coperte e avanzo eccessivo, storico mensile, spese documentate attribuite ai fondi dei volontari, inizio dell\'anno fiscale a scelta.' ),
 			),
 		);
 	}

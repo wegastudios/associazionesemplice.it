@@ -98,7 +98,7 @@ final class Reset {
 			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- lettura/scrittura in streaming di file grandi
 		}
 		if ( ! Backup::downloaded_recently() ) { // la copia non resta sul sito (conterrebbe i dati che si vogliono cancellare): va scaricata e conservata da chi azzera
-			throw new \InvalidArgumentException( 'Scarica prima una copia completa dei dati e conservala: non è stato cancellato nulla.' );
+			throw new \InvalidArgumentException( 'Scarica prima una copia completa dei dati e conservala: non è stato eliminato nulla.' );
 		}
 		$users = $delete_users ? self::member_only_users() : array();
 		$db    = self::db();
@@ -112,7 +112,7 @@ final class Reset {
 			$db->query( 'COMMIT' );
 		} catch ( \Throwable $e ) {
 			$db->query( 'ROLLBACK' );
-			throw new \RuntimeException( 'Azzeramento non riuscito, nulla è stato cancellato: ' . $e->getMessage() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \RuntimeException( 'Azzeramento non riuscito, nulla è stato eliminato: ' . $e->getMessage() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		foreach ( $names as $name ) { // numerazione di nuovo da 1 (fuori dalla transazione)
 			$db->query( 'ALTER TABLE `' . $db->prefix . $name . '` AUTO_INCREMENT = 1' ); // phpcs:ignore WordPress.DB.PreparedSQL

@@ -174,10 +174,10 @@ final class ReceiptFiles {
 		$label = (int) $rec['number'] . '/' . (int) $rec['year'];
 		$abs   = self::abs_path( (string) ( $rec[ $c[0] ] ?? '' ) );
 		if ( '' === $abs ) {
-			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} ha un percorso non valido: per sicurezza non viene aperto. Avvisa un amministratore.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} non è al suo posto: per sicurezza non viene aperto. Avvisa un amministratore.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! is_file( $abs ) ) {
-			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} non si trova più sul sito (la cartella dei file riservati è stata svuotata o spostata). Non viene rifatto in automatico: un amministratore può ripristinarlo da una copia di sicurezza oppure, da «Verifica delle ricevute», rigenerarlo dai dati salvati.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} non è più sul sito: la cartella dei file riservati è stata svuotata o spostata. Un amministratore può ripristinarlo da una copia di sicurezza o rigenerarlo da «Verifica delle ricevute».', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( self::is_stored_encrypted( $abs, $rec[ self::enc_col( $kind ) ] ?? null ) ) {
 			$bytes = self::read_encrypted( $abs, (string) $rec[ $c[0] ], $label );
@@ -329,18 +329,18 @@ final class ReceiptFiles {
 		$c   = self::columns( $kind );
 		$abs = self::abs_path( (string) ( $rec[ $c[0] ] ?? '' ) );
 		if ( '' === $abs || 0 !== strpos( $bytes, '%PDF-' ) ) {
-			throw new \InvalidArgumentException( Texts::t( 'Impossibile rifare il PDF: percorso o contenuto non validi.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF non è stato rifatto: il file o i dati non sono validi. Avvisa un amministratore.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$mode = FileKey::mode();
 		if ( 'blocked' === $mode ) {
 			throw new \InvalidArgumentException( PrivateFiles::blocked_text() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( is_file( $abs ) && ! @rename( $abs, $abs . '.alterato-' . gmdate( 'YmdHis' ) ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename -- il file alterato si conserva
-			throw new \InvalidArgumentException( Texts::t( 'Non riesco a mettere da parte il file alterato: controlla i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il file alterato non si può mettere da parte: controlla i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$enc = 'encrypt' === $mode;
 		if ( ! self::write_new( $abs, $bytes, $enc ? (string) $rec[ $c[0] ] : null ) ) {
-			throw new \InvalidArgumentException( Texts::t( 'Non riesco a scrivere il nuovo PDF: controlla i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il nuovo PDF non si può salvare: controlla i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$e  = self::enc_col( $kind );
 		$db = self::db();
@@ -799,7 +799,7 @@ final class ReceiptFiles {
 	 */
 	public static function zip_year( int $year ): array {
 		if ( ! class_exists( '\ZipArchive' ) ) {
-			throw new \RuntimeException( Texts::t( 'Questo server non può creare file ZIP (manca l\'estensione zip di PHP).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \RuntimeException( Texts::t( 'Questo server non può creare file ZIP: chiedi a chi gestisce il sito di attivare l\'estensione «zip» di PHP.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$db   = self::db();
 		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND ( pdf_path IS NOT NULL OR void_pdf_path IS NOT NULL ) ORDER BY number', $year ), ARRAY_A ) ?: array();
@@ -808,7 +808,7 @@ final class ReceiptFiles {
 		}
 		$path = PrivateFolder::temp_file( 'ricevute' ); // lo ZIP e i PDF decifrati stanno nella cartella riservata (già protetta), non in quella temporanea del server
 		if ( '' === $path ) {
-			throw new \RuntimeException( Texts::t( 'Impossibile creare il file ZIP: la cartella riservata non è scrivibile.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \RuntimeException( Texts::t( 'Il file ZIP non è stato creato: controlla i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$n    = 0;
 		$temp = array(); // PDF decifrati per l'archivio: file temporanei, cancellati appena lo ZIP è scritto (e comunque a fine richiesta, anche se questa si interrompe)
@@ -824,7 +824,7 @@ final class ReceiptFiles {
 		$zip = new \ZipArchive();
 		if ( true !== $zip->open( $path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
 			wp_delete_file( $path );
-			throw new \RuntimeException( Texts::t( 'Impossibile creare il file ZIP.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \RuntimeException( Texts::t( 'Il file ZIP non è stato creato: riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		foreach ( $rows as $r ) {
 			foreach ( self::kinds() as $kind ) {
@@ -854,14 +854,14 @@ final class ReceiptFiles {
 				$n++;
 			}
 		}
-		$zip->addFromString( 'LEGGIMI.txt', "PDF definitivi delle ricevute dell'anno fiscale $year, così come sono stati emessi. Le impronte sono nel database del sito (e nelle copie di sicurezza).\nI PDF in questo archivio NON sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.\n" );
+		$zip->addFromString( 'LEGGIMI.txt', "PDF definitivi delle ricevute dell'anno fiscale $year, così come sono stati emessi. I dati per controllare che i file non siano stati modificati sono nel sito (e nelle copie di sicurezza).\nI PDF in questo archivio non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura ed eliminalo quando non ti serve più.\n" );
 		$ok = $zip->close();
 		foreach ( $temp as $t ) {
 			wp_delete_file( $t );
 		}
 		if ( ! $ok || ! is_file( $path ) ) {
 			wp_delete_file( $path );
-			throw new \RuntimeException( Texts::t( 'Creazione del file ZIP non riuscita.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \RuntimeException( Texts::t( 'Il file ZIP non è stato creato: riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return array( 'path' => $path, 'count' => $n );
 	}

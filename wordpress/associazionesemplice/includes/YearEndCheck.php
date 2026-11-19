@@ -49,7 +49,7 @@ final class YearEndCheck {
 		}
 		$li = '';
 		foreach ( $items as $i ) {
-			$li .= '<li>' . (int) $i['count'] . ' ' . esc_html( $i['label'] ) . ' — <a href="' . esc_url( $i['url'] ) . '">verifica</a></li>';
+			$li .= '<li>' . (int) $i['count'] . ' ' . esc_html( $i['label'] ) . ': <a href="' . esc_url( $i['url'] ) . '">verifica</a></li>';
 		}
 		return '<div class="notice notice-warning inline asem-yearend"><p><strong>Verifiche di fine anno fiscale.</strong> L\'anno finisce il ' . esc_html( ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) ) . ': conviene sistemare ora queste discrepanze, così non restano correzioni da fare dopo la chiusura. Ogni discrepanza si può anche approvare a mano per portarla al nuovo anno (<a href="' . esc_url( Admin\Ui::url( 'asem-watch' ) ) . '#asem-disc">verifica e approva</a>).</p><ul style="list-style:disc;margin-left:2em">' . $li . '</ul></div>';
 	}
@@ -169,10 +169,10 @@ final class YearEndCheck {
 		foreach ( $items as $i ) {
 			$lines[] = '- ' . $i['count'] . ' ' . $i['label'] . ': ' . $i['url'];
 		}
-		$body = "L'anno fiscale finisce il " . ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) . ". Conviene sistemare ora queste discrepanze, così non restano correzioni da fare dopo la chiusura:\n\n" . implode( "\n", $lines );
+		$body = "Ciao,\n\nl'anno fiscale finisce il " . ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) . ". Conviene sistemare ora queste discrepanze, così non restano correzioni da fare dopo la chiusura:\n\n" . implode( "\n", $lines );
 		$n    = 0;
 		foreach ( self::recipients() as $to ) {
-			if ( wp_mail( $to, 'Verifiche di fine anno fiscale', $body ) ) {
+			if ( wp_mail( $to, Texts::subject( 'Verifiche di fine anno fiscale' ), $body ) ) {
 				$n++;
 			}
 		}

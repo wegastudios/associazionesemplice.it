@@ -4,7 +4,7 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Controllo di bilancio (funzione di Associazione Semplice Pro Fiscale): bilancio provvisorio dell'anno fiscale in corso, aggiornato al mese
+ * Controllo di bilancio (funzione di Associazione Semplice Pro Fiscale): rendiconto provvisorio dell'anno fiscale in corso, aggiornato al mese
  * concluso, con l'andamento del mese in corso; avvisi sulla tendenza di fine anno (spese non coperte, utile eccessivo); istantanea mensile del
  * consuntivo contro il preventivo, conservata mese per mese. Il consuntivo è quello della prima nota (movimenti non annullati, senza giroconti),
  * con i fondi accantonati al posto dei rimborsi pagati. Le regole pure stanno in {@see BalanceWatchRules}.
@@ -58,7 +58,7 @@ final class BalanceWatch {
 	 * La situazione dell'anno fiscale in corso. Nella stessa richiesta si calcola una volta sola: la memoria si svuota da sola a ogni scrittura
 	 * sulle tabelle del plugin o sulle opzioni (un movimento registrato, un fondo, un preventivo, un limite cambiato).
 	 *
-	 * @return array anno, etichetta, da, a, oggi, giorni trascorsi e totali, mesi conclusi, bilancio provvisorio, mese in corso, preventivo, tendenza, avvisi
+	 * @return array anno, etichetta, da, a, oggi, giorni trascorsi e totali, mesi conclusi, rendiconto provvisorio, mese in corso, preventivo, tendenza, avvisi
 	 */
 	public static function status( ?string $today = null ): array {
 		$today = $today ?: Db::today();

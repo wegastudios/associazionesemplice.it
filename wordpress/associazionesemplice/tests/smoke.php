@@ -6220,7 +6220,7 @@ $acts->book( $rm_s, $rp_g );
 Settings::update( array( 'reminders_enabled' => 1 ) );
 $r_on = \AssociazioneSemplice\Reminders::run( $today );
 $t_rita = $mail_text( 'rita.promemoria@example.com' );
-asem_ok( false !== strpos( $t_rita, 'sta per scadere' ) && false !== strpos( $t_rita, 'Gita sociale' ) && false !== strpos( $t_rita, 'per Gianna Ospitedirita' ) && false !== strpos( $mail_text( 'raul.scaduto@example.com' ), 'è scaduta' ), 'promemoria: tessera in scadenza, scaduta da poco, evento di domani anche per l\'ospite (via il socio)' );
+asem_ok( false !== strpos( $t_rita, 'sta per scadere' ) && false !== strpos( $t_rita, 'Gita sociale' ) && false !== strpos( $t_rita, 'di Gianna Ospitedirita' ) && false !== strpos( $mail_text( 'raul.scaduto@example.com' ), 'è scaduta' ), 'promemoria: tessera in scadenza, scaduta da poco, evento di domani anche per l\'ospite (via il socio)' );
 $n_rita = $mails_to( 'rita.promemoria@example.com' );
 \AssociazioneSemplice\Reminders::run( $today );
 asem_ok( $n_rita === $mails_to( 'rita.promemoria@example.com' ) && $r_on['events'] >= 2, 'promemoria: ogni promemoria si manda una sola volta' );
@@ -6762,7 +6762,7 @@ $wl_to = array();
 foreach ( $wl_mail as $m ) {
 	$wl_to[] = implode( ',', (array) $m['to'] ) . '|' . $m['subject'];
 }
-asem_ok( in_array( 'bruno.attesa@example.com|Posto disponibile: Serata esaurita', $wl_to, true ), 'lista d\'attesa: chi entra riceve una email' );
+asem_ok( in_array( 'bruno.attesa@example.com|' . \AssociazioneSemplice\Texts::subject( 'Posto disponibile: Serata esaurita' ), $wl_to, true ), 'lista d\'attesa: chi entra riceve una email' );
 $acts->cancel_booking( $wl_s, $wb );
 asem_ok( $acts->has_active_booking( $wl_s, $wc ) && 0 === \AssociazioneSemplice\Waitlist::count( $wl_s ), 'lista d\'attesa: poi entra il secondo' );
 // più posti: entrano quelli in coda
@@ -6798,7 +6798,7 @@ $wl_guest_to = array();
 foreach ( $wl_mail as $m ) {
 	$wl_guest_to[] = implode( ',', (array) $m['to'] ) . '|' . $m['message'];
 }
-asem_ok( $acts->has_active_booking( $wl_s4, $wl_g ) && 1 === count( $wl_guest_to ) && 0 === strpos( $wl_guest_to[0], 'carla.attesa@example.com|' ) && false !== strpos( $wl_guest_to[0], 'per Gigi Inattesa' ), 'lista d\'attesa: un ospite in coda entra e la email va al socio che lo ospita' );
+asem_ok( $acts->has_active_booking( $wl_s4, $wl_g ) && 1 === count( $wl_guest_to ) && 0 === strpos( $wl_guest_to[0], 'carla.attesa@example.com|' ) && false !== strpos( $wl_guest_to[0], 'di Gigi Inattesa' ), 'lista d\'attesa: un ospite in coda entra e la email va al socio che lo ospita' );
 remove_all_filters( 'pre_wp_mail' );
 // Lista d'attesa e listini: si sceglie la tariffa, la promozione prenota con quella; senza una tariffa valida non entra da sola.
 $wp_ev = $mkev( 'Serata a listino in coda', 0, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ), 'price_lists' => array( array( 'label' => 'Individuale', 'cents' => 4000, 'entries' => 1 ), array( 'label' => 'Di gruppo', 'cents' => 2500, 'entries' => 1 ) ) ) );
@@ -8906,7 +8906,7 @@ asem_ok( null !== asem_throws( function () use ( $RS, $gt_b, $gt_day ) { $RS::ch
 $RS::check_in( $gt_b, 1, $gt_day . ' 17:45:00' );
 asem_ok( $gt_day . ' 17:45:00' === $RS::reservation( $gt_b )['checked_in_at'] && 'used' === $RS::gate_state( $RS::reservation( $gt_b ), $gt_day . ' 18:10:00' ), 'risorse: l\'ingresso si registra' );
 $gt_msg = asem_throws( function () use ( $RS, $gt_b, $gt_day ) { $RS::check_in( $gt_b, 1, $gt_day . ' 18:10:00' ); } );
-asem_ok( null !== $gt_msg && false !== strpos( $gt_msg, 'Già entrato' ), 'risorse: il QR vale una volta sola' );
+asem_ok( null !== $gt_msg && false !== strpos( $gt_msg, 'Ingresso già registrato' ), 'risorse: il QR vale una volta sola' );
 $RS::undo_check_in( $gt_b );
 asem_ok( null === $RS::reservation( $gt_b )['checked_in_at'] && 'ok' === $RS::gate_state( $RS::reservation( $gt_b ), $gt_day . ' 18:10:00' ), 'risorse: l\'ingresso registrato per sbaglio si toglie' );
 $gt_b2 = $RS::book_slot( $gt_res, $rs_m1, $gt_day, '20:00', 1, array(), true );
@@ -9075,7 +9075,7 @@ wp_delete_file( $bk_pa );
 $res_t = \AssociazioneSemplice\Backup::restore( $bk_tz );
 wp_delete_file( $bk_tz );
 $bk_et = asem_throws( function () use ( $bk_rc ) { \AssociazioneSemplice\Receipts::build( $bk_rc[0]['receipt_key'] ); } );
-asem_ok( $res_t['documents']['bad'] >= 1 && ! is_file( $bk_pa ) && null !== $bk_et && false !== strpos( $bk_et, 'non si trova più' ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[1]['receipt_key'] ), 'issued' ), 'ripristino: un PDF manomesso nella copia non si rimette; la ricevuta dà un errore chiaro e il resto torna a posto' );
+asem_ok( $res_t['documents']['bad'] >= 1 && ! is_file( $bk_pa ) && null !== $bk_et && false !== strpos( $bk_et, 'non è più sul sito' ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[1]['receipt_key'] ), 'issued' ), 'ripristino: un PDF manomesso nella copia non si rimette; la ricevuta dà un errore chiaro e il resto torna a posto' );
 \AssociazioneSemplice\Receipts::regenerate_pdf( $bk_rc[0]['receipt_key'], 'issued' );
 asem_ok( is_file( $bk_pa ) && 0 === strpos( asem_rf_content( $bk_rc[0]['pdf_path'] ), '%PDF-1.4' ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[0]['receipt_key'] ), 'issued' ), 'ripristino: il PDF mancante si può rifare dai dati salvati (solo da un amministratore, con i dati intatti)' );
 // tutto o niente: una copia con una riga rovinata non cambia nulla
@@ -11234,27 +11234,27 @@ asem_ok( 777 === \AssociazioneSemplice\ProWatch::expense_person( 777, array() ),
 asem_ok( 555 === \AssociazioneSemplice\ProWatch::expense_person( 0, array( 'fund_auto' => '1', 'person_id' => '555' ) ), 'spese: un beneficiario scelto esplicitamente vale anche con l\'attribuzione automatica' );
 asem_ok( false === has_filter( 'asem_front_expense_fields' ), 'area soci: nessun elenco di soci né di fondi nel modulo del tesoriere' );
 
-// Bilancio provvisorio, avvisi e istantanee mensili.
+// Rendiconto provvisorio, avvisi e istantanee mensili.
 $wt_s = \AssociazioneSemplice\BalanceWatch::status();
-asem_ok( $wt_s['year'] === \AssociazioneSemplice\FiscalYears::current() && $wt_s['from'] === $wt_cur_cal . '-01-01' && $wt_s['to'] === $wt_cur_cal . '-12-31' && isset( $wt_s['month']['income'] ), 'bilancio provvisorio: anno fiscale in corso e mese in corso' );
+asem_ok( $wt_s['year'] === \AssociazioneSemplice\FiscalYears::current() && $wt_s['from'] === $wt_cur_cal . '-01-01' && $wt_s['to'] === $wt_cur_cal . '-12-31' && isset( $wt_s['month']['income'] ), 'rendiconto provvisorio: anno fiscale in corso e mese in corso' );
 $wt_t = \AssociazioneSemplice\BalanceWatch::totals( $wt_cur_cal . '-01-01', $wt_cur_cal . '-12-31' );
-asem_ok( $wt_t['result'] === $wt_t['income'] - $wt_t['expense'], 'bilancio provvisorio: risultato = entrate − uscite' );
+asem_ok( $wt_t['result'] === $wt_t['income'] - $wt_t['expense'], 'rendiconto provvisorio: risultato = entrate − uscite' );
 $wt_s2 = \AssociazioneSemplice\BalanceWatch::status( $wt_cur_cal . '-04-10' );
-asem_ok( 3 === $wt_s2['completed_months'] && $wt_s2['prov_to'] === $wt_cur_cal . '-03-31' && null !== $wt_s2['provisional'], 'bilancio provvisorio: aggiornato al mese concluso' );
-asem_ok( null === \AssociazioneSemplice\BalanceWatch::status( $wt_cur_cal . '-01-20' )['provisional'], 'bilancio provvisorio: nel primo mese non c\'è ancora un mese concluso' );
+asem_ok( 3 === $wt_s2['completed_months'] && $wt_s2['prov_to'] === $wt_cur_cal . '-03-31' && null !== $wt_s2['provisional'], 'rendiconto provvisorio: aggiornato al mese concluso' );
+asem_ok( null === \AssociazioneSemplice\BalanceWatch::status( $wt_cur_cal . '-01-20' )['provisional'], 'rendiconto provvisorio: nel primo mese non c\'è ancora un mese concluso' );
 // la situazione si calcola una volta per richiesta, ma dopo un movimento registrato (o annullato) è quella nuova
 $wt_m0 = \AssociazioneSemplice\BalanceWatch::status();
 $wt_q  = $wpdb->num_queries;
 for ( $i = 0; $i < 5; $i++ ) {
 	\AssociazioneSemplice\BalanceWatch::status();
 }
-asem_ok( 0 === $wpdb->num_queries - $wt_q, 'bilancio provvisorio: la situazione si calcola una volta per richiesta (' . ( $wpdb->num_queries - $wt_q ) . ' query nelle chiamate ripetute)' );
+asem_ok( 0 === $wpdb->num_queries - $wt_q, 'rendiconto provvisorio: la situazione si calcola una volta per richiesta (' . ( $wpdb->num_queries - $wt_q ) . ' query nelle chiamate ripetute)' );
 if ( \AssociazioneSemplice\FiscalYears::is_open( \AssociazioneSemplice\FiscalYears::current() ) ) {
 	$wt_tx = $ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $cat['general_cost'], 'amount_cents' => 12345, 'description' => 'Prova memoria bilancio' ) );
 	$wt_m1 = \AssociazioneSemplice\BalanceWatch::status();
-	asem_ok( $wt_m1['month']['expense'] === $wt_m0['month']['expense'] + 12345, 'bilancio provvisorio: dopo una spesa registrata la situazione mostra il valore nuovo' );
+	asem_ok( $wt_m1['month']['expense'] === $wt_m0['month']['expense'] + 12345, 'rendiconto provvisorio: dopo una spesa registrata la situazione mostra il valore nuovo' );
 	$ledger->void( (int) $wt_tx, 'prova memoria' );
-	asem_ok( \AssociazioneSemplice\BalanceWatch::status()['month']['expense'] === $wt_m0['month']['expense'], 'bilancio provvisorio: dopo l\'annullo la situazione torna com\'era' );
+	asem_ok( \AssociazioneSemplice\BalanceWatch::status()['month']['expense'] === $wt_m0['month']['expense'], 'rendiconto provvisorio: dopo l\'annullo la situazione torna com\'era' );
 }
 $wt_fake = array( 'enough' => true, 'projection' => array( 'income' => 10000, 'expense' => 12000 ) );
 asem_ok( 1 === count( \AssociazioneSemplice\BalanceWatch::alerts_for( $wt_fake ) ) && 'uncovered' === \AssociazioneSemplice\BalanceWatch::alerts_for( $wt_fake )[0]['kind'], 'avviso: spese non coperte oltre la soglia' );
@@ -11271,11 +11271,11 @@ asem_ok( 3 === $wt_n && 0 === \AssociazioneSemplice\BalanceWatch::take_missing( 
 $wt_sn = \AssociazioneSemplice\BalanceWatch::snapshots( $wt_cur_cal );
 asem_ok( 3 === count( $wt_sn ) && $wt_cur_cal . '-03' === $wt_sn[0]['month'], 'istantanee mensili: tre mesi, dal più recente' );
 asem_ok( false !== strpos( \AssociazioneSemplice\BalanceWatch::snapshots_csv( $wt_cur_cal ), 'Entrate dall\'inizio dell\'anno' ) && in_array( $wt_cur_cal, \AssociazioneSemplice\BalanceWatch::snapshot_years(), true ), 'istantanee mensili: storico esportabile in CSV' );
-asem_render( array( Admin\WatchPage::class, 'render' ), 'Bilancio dell\'anno fiscale' );
-asem_render( array( Admin\ReportsPage::class, 'render' ), 'Bilancio dell\'anno fiscale' );
-asem_render( array( Admin\BudgetPage::class, 'render' ), 'Bilancio dell\'anno fiscale' );
-asem_render( array( Admin\AccountingPage::class, 'render' ), 'Bilancio dell\'anno fiscale' );
-asem_render( array( Admin\DashboardPage::class, 'render' ), 'Bilancio dell\'anno fiscale' );
+asem_render( array( Admin\WatchPage::class, 'render' ), 'Rendiconto dell\'anno fiscale' );
+asem_render( array( Admin\ReportsPage::class, 'render' ), 'Rendiconto dell\'anno fiscale' );
+asem_render( array( Admin\BudgetPage::class, 'render' ), 'Rendiconto dell\'anno fiscale' );
+asem_render( array( Admin\AccountingPage::class, 'render' ), 'Rendiconto dell\'anno fiscale' );
+asem_render( array( Admin\DashboardPage::class, 'render' ), 'Rendiconto dell\'anno fiscale' );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'balance_snaps' ) );
 wp_set_current_user( 1 );
 
@@ -13068,7 +13068,7 @@ $pf_r2 = \AssociazioneSemplice\Receipts::record( $pf_key[5200] );
 $pf_f2 = $pf_dir . '/' . $pf_r2['pdf_path'];
 wp_delete_file( $pf_f2 );
 $pf_e2 = asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::build( $pf_key[5200] ); } );
-asem_ok( 'missing' === \AssociazioneSemplice\ReceiptFiles::state( $pf_r2, 'issued' ) && null !== $pf_e2 && false !== strpos( $pf_e2, 'non si trova più' ) && ! is_file( $pf_f2 ) && \AssociazioneSemplice\Receipts::can_view( $pf_key[5200] ), 'ricevute PDF: file mancante, errore chiaro e nessun PDF rifatto in silenzio' );
+asem_ok( 'missing' === \AssociazioneSemplice\ReceiptFiles::state( $pf_r2, 'issued' ) && null !== $pf_e2 && false !== strpos( $pf_e2, 'non è più sul sito' ) && ! is_file( $pf_f2 ) && \AssociazioneSemplice\Receipts::can_view( $pf_key[5200] ), 'ricevute PDF: file mancante, errore chiaro e nessun PDF rifatto in silenzio' );
 \AssociazioneSemplice\ReceiptFiles::verify_step( $pf_fy ); // la pagina mostra l'esito dell'ultima verifica: prima si fa il giro
 asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File mancanti', array( 'year' => $pf_fy ) );
 $pf_docs = \AssociazioneSemplice\ReceiptFiles::backup_documents( array() );

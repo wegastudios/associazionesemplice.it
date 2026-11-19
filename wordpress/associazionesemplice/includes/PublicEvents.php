@@ -451,7 +451,7 @@ final class PublicEvents {
 		echo '<p><label><input type="checkbox" name="asem_ev_approval" value="1"' . checked( $o['approval'], true, false ) . '> Richiesta di partecipazione: la segreteria approva ogni richiesta (altrimenti la prenotazione è automatica)</label></p>';
 		echo '<p><label>Numero massimo di posti per richiesta (0 = nessun limite)<br><input type="number" min="0" max="50" name="asem_ev_max_seats" value="' . (int) $o['max_seats'] . '" style="width:5em"></label></p>';
 		echo '<p><label><input type="checkbox" name="asem_ev_hide_cancelled" value="1"' . checked( $o['hide_cancelled'], true, false ) . '> Se l\'evento viene annullato, nascondi la pagina (altrimenti resta con l\'avviso «annullato»)</label></p>';
-		echo '<p class="description">I soci prenotano sempre dall\'area soci. I non soci pagano in anticipo con bonifico e inviano la ricevuta alla segreteria.</p>';
+		echo '<p class="description">I soci prenotano sempre dall\'area soci. I non soci pagano in anticipo con bonifico e inviano la ricevuta del bonifico.</p>';
 	}
 
 	public static function save_options( $post_id ): void {

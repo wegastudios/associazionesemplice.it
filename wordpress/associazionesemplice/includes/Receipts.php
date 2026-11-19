@@ -299,11 +299,11 @@ final class Receipts {
 	public static function regenerate_pdf( string $key, string $kind ): void {
 		$rec = self::record( self::clean_key( $key ) );
 		if ( ! $rec || ! in_array( $kind, ReceiptFiles::kinds(), true ) || ! ReceiptFiles::has( $rec, $kind ) ) {
-			throw new \InvalidArgumentException( Texts::t( 'Questa ricevuta non ha un PDF fissato da rifare.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Questa ricevuta non ha ancora un PDF definitivo: non c\'è nulla da rifare.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$st = ReceiptFiles::state( $rec, $kind );
 		if ( 'locked' === $st ) {
-			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è cifrato e la chiave di questo sito non lo apre: non viene rifatto, per non perdere il file. Sistema prima la chiave da Strumenti → Copia di sicurezza → «Cifratura dei file riservati».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è cifrato e questo sito non riesce ad aprirlo. Per non perdere il file non viene rifatto: sistema prima la chiave da Strumenti → Copia di sicurezza → «Cifratura dei file riservati».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! in_array( $st, array( 'missing', 'altered' ), true ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è a posto: non serve rifarlo.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -312,7 +312,7 @@ final class Receipts {
 			throw new \InvalidArgumentException( Texts::t( 'Questa ricevuta non è annullata.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! self::data_intact( $rec ) || '' === (string) $rec['content_hash'] ) {
-			throw new \InvalidArgumentException( Texts::t( 'I dati salvati di questa ricevuta non coincidono con la loro impronta (o non ne hanno una): il PDF non viene rifatto, per non mostrare dati diversi da quelli emessi. Ripristina il file da una copia di sicurezza.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'I dati salvati di questa ricevuta risultano modificati dopo l\'emissione: il PDF non viene rifatto, per non mostrare dati diversi da quelli emessi. Ripristina il file da una copia di sicurezza.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$old = ReceiptFiles::replace( $rec, $kind, self::render( self::data_of( $rec ), ReceiptFiles::VOID === $kind ? $rec : null ) );
 		$new = self::record( (string) $rec['receipt_key'] );
@@ -500,7 +500,7 @@ final class Receipts {
 				$new['replaces_id'] = $replaces; // sostitutiva: il numero è nuovo, il collegamento alla ricevuta annullata è unico
 			}
 			if ( ! $db->insert( $tbl, $new ) ) {
-				throw new \RuntimeException( 'Impossibile assegnare il numero della ricevuta.' );
+				throw new \RuntimeException( 'Il numero della ricevuta non è stato assegnato: riprova.' );
 			}
 			if ( ! $replaces ) {
 				Audit::log( 'receipt.issued', 'receipt', (int) $db->insert_id, array( 'number' => $next . '/' . $year ) );
@@ -637,10 +637,10 @@ final class Receipts {
 		$lines = array();
 		foreach ( $guardians as $g ) {
 			if ( (int) $g['id'] !== (int) $holder['id'] ) {
-				$lines[] = 'Altro genitore o tutore: ' . trim( $g['first_name'] . ' ' . $g['last_name'] ) . ' — C.F. ' . ( ! empty( $g['tax_code'] ) ? $g['tax_code'] : 'non indicato' );
+				$lines[] = 'Altro genitore o tutore: ' . trim( $g['first_name'] . ' ' . $g['last_name'] ) . ', C.F. ' . ( ! empty( $g['tax_code'] ) ? $g['tax_code'] : 'non indicato' );
 			}
 		}
-		$lines[] = 'Per conto di ' . trim( $ward['first_name'] . ' ' . $ward['last_name'] ) . ' — C.F. ' . ( ! empty( $ward['tax_code'] ) ? $ward['tax_code'] : 'non indicato' ) . ', nato/a il ' . Age::display( $ward['birth_date'] );
+		$lines[] = 'Per conto di ' . trim( $ward['first_name'] . ' ' . $ward['last_name'] ) . ', C.F. ' . ( ! empty( $ward['tax_code'] ) ? $ward['tax_code'] : 'non indicato' ) . ', data di nascita ' . Age::display( $ward['birth_date'] );
 		$note  = '';
 		$years = Age::years( $ward['birth_date'], $date );
 		if ( null !== $years && $years >= 5 && $years <= 18 && array_intersect( $kinds, array( 'activity_fee', 'membership' ) ) ) {
@@ -785,7 +785,7 @@ final class Receipts {
 			$pdf = ReceiptFiles::read( $cur, $kind ); // file mancante o alterato: errore chiaro, mai un PDF rifatto in silenzio
 		} else { // non si è riusciti a salvare il file (permessi del disco): si serve il PDF disegnato dai dati fotografati, che sono quelli emessi
 			if ( $cur && ! self::data_intact( $cur ) ) {
-				throw new \InvalidArgumentException( Texts::t( 'I dati salvati della ricevuta n. {n} non coincidono con la loro impronta: per sicurezza non viene mostrata. Avvisa un amministratore.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( Texts::t( 'I dati salvati della ricevuta n. {n} risultano modificati dopo l\'emissione: per sicurezza non viene mostrata. Avvisa un amministratore.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$pdf = self::render( $s, $voided ? $cur : $void );
 		}
@@ -820,7 +820,7 @@ final class Receipts {
 			$pdf->text( 50, $y, 'RICEVUTA ANNULLATA', 28, true );
 			$pdf->color();
 			$y += 8;
-			foreach ( Pdf::wrap( 'Non ha valore. Annullata il ' . self::d( substr( (string) $void['voided_at'], 0, 10 ) ) . ( '' !== trim( (string) $void['void_reason'] ) ? ' — motivo: ' . trim( (string) $void['void_reason'] ) : '' ) . '.', Pdf::W - 100, 10 ) as $l ) {
+			foreach ( Pdf::wrap( 'Non ha valore. Annullata il ' . self::d( substr( (string) $void['voided_at'], 0, 10 ) ) . ( '' !== trim( (string) $void['void_reason'] ) ? '. Motivo: ' . trim( (string) $void['void_reason'] ) : '' ) . '.', Pdf::W - 100, 10 ) as $l ) {
 				$y += 14;
 				$pdf->text( 50, $y, $l, 10 );
 			}
@@ -929,7 +929,7 @@ final class Receipts {
 		Pdf::$filter = array( Texts::class, 'plain' );
 		$pdf    = new Pdf();
 		$y      = self::header( $pdf );
-		$pdf->text( 50, $y, 'ATTESTAZIONE DEI VERSAMENTI — ANNO ' . $year, 14, true );
+		$pdf->text( 50, $y, 'ATTESTAZIONE DEI VERSAMENTI · ANNO ' . $year, 14, true );
 		$y += 24;
 		$pdf->text( 50, $y, 'Si attesta che ' . Plugin::people()->full_name( $person ) . ( ! empty( $person['tax_code'] ) ? ' (C.F. ' . $person['tax_code'] . ')' : '' ) . ' ha versato nel ' . $year . ':', 11 );
 		$y += 28;
@@ -1010,24 +1010,24 @@ final class Receipts {
 			}
 		}
 		if ( '' === $to || ! is_email( $to ) ) {
-			throw new \InvalidArgumentException( 'Chi ha pagato non ha un indirizzo email (né il socio che lo ospita).' );
+			throw new \InvalidArgumentException( 'Chi ha pagato non ha un\'email, e nemmeno il socio che lo ospita: aggiungila e riprova.' );
 		}
 		$base = PrivateFolder::temp_dir(); // il PDF in chiaro (nome e cognome, codice fiscale) sta dentro la cartella riservata, mai in quella temporanea del server
 		$dir  = '' !== $base ? $base . '/asem-' . bin2hex( random_bytes( 12 ) ) : ''; // cartella con nome casuale: non indovinabile né sostituibile da altri
 		if ( '' === $dir || ! wp_mkdir_p( $dir ) ) {
-			throw new \InvalidArgumentException( Texts::t( 'Impossibile preparare la ricevuta: controlla i permessi della cartella riservata. L\'email non è stata inviata.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Email non inviata: la ricevuta non si può preparare. Controlla i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$dst = $dir . '/' . $r['filename'];
 		try {
 			chmod( $dir, 0700 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod
 			if ( false === file_put_contents( $dst, $r['pdf'] ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- allegato temporaneo, tolto subito dopo
-				throw new \InvalidArgumentException( Texts::t( 'Impossibile preparare la ricevuta: il PDF non si può scrivere (controlla lo spazio e i permessi della cartella riservata). L\'email non è stata inviata.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( Texts::t( 'Email non inviata: il PDF non si può salvare. Controlla lo spazio e i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$assoc = (string) Settings::get( 'association_name' );
 			$ok    = \AssociazioneSemplice\Texts::mail(
 				$to,
 				\AssociazioneSemplice\Texts::subject( 'Ricevuta n. ' . $r['number'] ),
-				'Ciao ' . ( $payer ? $payer['first_name'] : '' ) . ",\n\nin allegato la ricevuta n. " . $r['number'] . " del tuo pagamento.\n\nGrazie!",
+				'Ciao ' . ( $payer ? $payer['first_name'] : '' ) . ",\n\nin allegato trovi la ricevuta n. " . $r['number'] . " del tuo pagamento.\n\nGrazie.",
 				array(),
 				array( $dst )
 			);
@@ -1036,7 +1036,7 @@ final class Receipts {
 			@rmdir( $dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
 		}
 		if ( ! $ok ) {
-			throw new \InvalidArgumentException( 'Invio non riuscito: controlla la posta in uscita del sito.' );
+			throw new \InvalidArgumentException( 'Email non inviata: controlla le impostazioni di posta del sito.' );
 		}
 		Audit::log( 'receipt.emailed', 'receipt', 0, array( 'number' => $r['number'] ) );
 	}
@@ -1069,8 +1069,8 @@ final class Receipts {
 			$msg = $e->getMessage();
 			if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 				$msg = Contacts::complete()
-					? Texts::t( 'Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria: {email}, tel. {telefono}.', array( 'email' => Contacts::email(), 'telefono' => Contacts::phone() ) )
-					: Texts::t( 'Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria.' );
+					? Texts::t( 'Al momento questa ricevuta non è disponibile. Scrivi alla segreteria: {email}, tel. {telefono}.', array( 'email' => Contacts::email(), 'telefono' => Contacts::phone() ) )
+					: Texts::t( 'Al momento questa ricevuta non è disponibile. Scrivi alla segreteria.' );
 			}
 			wp_die( esc_html( $msg ), 404 );
 		}
