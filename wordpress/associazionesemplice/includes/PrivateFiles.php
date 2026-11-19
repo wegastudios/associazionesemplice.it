@@ -244,9 +244,9 @@ final class PrivateFiles {
 			case FileCryptError::NO_KEY:
 				return Texts::t( 'la chiave di cifratura usata per salvarlo non è disponibile su questo sito (codici di sicurezza di wp-config.php o costante ASEM_ENC_KEY cambiati, o database copiato da un altro sito). Rimetti quelli di prima oppure ripristina una copia di sicurezza con la sua frase.' );
 			case FileCryptError::AUTH:
-				return Texts::t( 'la chiave di questo sito non coincide con quella usata per salvarlo, oppure il file è stato modificato. Il sito non lo rifà in silenzio: rimetti la chiave di prima o ripristina una copia di sicurezza.' );
+				return Texts::t( 'la chiave di questo sito non coincide con quella usata per salvarlo, oppure il file è stato modificato: rimetti la chiave di prima o ripristina una copia di sicurezza.' );
 			case FileCryptError::HASH:
-				return Texts::t( 'l\'impronta del contenuto non coincide con quella registrata: il file è stato modificato o sostituito. Va ripristinato da una copia di sicurezza.' );
+				return Texts::t( 'il contenuto non è più quello salvato: il file è stato modificato o sostituito. Ripristinalo da una copia di sicurezza.' );
 			case FileCryptError::TRUNCATED:
 				return Texts::t( 'il file è incompleto (tagliato). Va ripristinato da una copia di sicurezza.' );
 			case FileCryptError::FORMAT:

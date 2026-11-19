@@ -105,10 +105,10 @@ function prova_accepted( $r, string $msg ): void {
 }
 function prova_refused( $r, string $why, string $msg ): void {
 	static $texts = array(
-		'invalid'    => 'Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall\'area clienti e scrivici.',
+		'invalid'    => 'Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall\'area riservata e scrivici.',
 		'min'        => 'La versione offerta dal portale è sotto la soglia minima ammessa: non è stata installata.',
 		'rollback'   => 'La versione offerta dal portale è più vecchia di una già vista: non è stata installata.',
-		'missing_v2' => 'Il pacchetto offerto dal portale non ha la firma del nuovo formato, richiesta dopo il primo pacchetto così firmato: non è stato installato. Scaricalo dall\'area clienti e scrivici.',
+		'missing_v2' => 'Il pacchetto offerto dal portale non ha la firma del nuovo formato, richiesta dopo il primo pacchetto così firmato: non è stato installato. Scaricalo dall\'area riservata e scrivici.',
 		'future'     => 'La firma del pacchetto ha una data nel futuro: non è stato installato. Controlla data e ora del server.',
 	);
 	prova_ok( is_wp_error( $r ) && 'asem_update_unsigned' === $r->get_error_code() && Texts::t( $texts[ $why ] ) === $r->get_error_message(), $msg . ' (motivo: ' . $why . ')' );

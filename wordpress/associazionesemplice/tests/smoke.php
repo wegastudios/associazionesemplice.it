@@ -5424,7 +5424,7 @@ $wpdb->update( Db::t( 'transactions' ), array( 'person_id' => $rs_p, 'descriptio
 $rs_d1 = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT description FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d', $rs_tx1 ) );
 $rs_d4 = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT description FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d', $rs_tx4 ) );
 asem_ok( false !== strpos( $rs_d1, $rs_nm ) && false === strpos( $rs_d4, $rs_nm ) && false !== strpos( $rs_d4, '[anonimizzato]' ), 'anonimizzazione: la descrizione di un movimento di un esercizio chiuso non si riscrive, quella di un movimento aperto sì' );
-asem_ok( false !== strpos( \AssociazioneSemplice\Privacy::closed_descriptions_note( $rs_p ), 'il chiuso è chiuso' ) && $rs_before === wp_json_encode( \AssociazioneSemplice\Statement::data( $rs_y ) ), 'anonimizzazione: chi la esegue è avvisato, e il rendiconto chiuso non cambia (importi e categorie intatti)' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Privacy::closed_descriptions_note( $rs_p ), 'non si può più modificare' ) && $rs_before === wp_json_encode( \AssociazioneSemplice\Statement::data( $rs_y ) ), 'anonimizzazione: chi la esegue è avvisato, e il rendiconto chiuso non cambia (importi e categorie intatti)' );
 
 // riapertura e nuova chiusura: la versione 1 resta, nasce la 2 con un nuovo numero
 \AssociazioneSemplice\FiscalYears::reopen( $rs_y, 'Correzione di prova del rendiconto' );

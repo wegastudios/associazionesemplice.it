@@ -170,7 +170,7 @@ final class ProData {
 					$over    = Resources::activity_overlaps( $activity_id, $link );
 					$new     = array_diff_key( $over, $old_over );
 				} else {
-					$why = ' Non ho spostato nulla: ' . implode( '; ', $moved['blocked'] ) . '.';
+					$why = ' Nulla è stato spostato: ' . implode( '; ', $moved['blocked'] ) . '.';
 				}
 			}
 			$too_long = Resources::block_length_error( $activity_id );
@@ -179,9 +179,9 @@ final class ProData {
 				Resources::link_activity( $activity_id, $old_link );
 				Resources::set_activity_block( $activity_id, '' === $old_block ? null : $old_block, Resources::block_label( $old_block ) );
 				if ( '' !== $too_long ) {
-					throw new \InvalidArgumentException( esc_html( 'Non posso salvare: ' . $too_long . ' Il blocco è rimasto com\'era (gli altri dati sono stati salvati).' ) );
+					throw new \InvalidArgumentException( esc_html( 'Blocco non salvato: ' . $too_long . ' È rimasto com\'era (gli altri dati sono stati salvati).' ) );
 				}
-				throw new \InvalidArgumentException( esc_html( 'Non posso salvare: la risorsa risulterebbe occupata due volte. Si sovrappone a ' . implode( '; ', array_slice( array_values( $new ), 0, 5 ) ) . '.' . $why . ' Risorsa e allestimento sono rimasti come prima (gli altri dati sono stati salvati): cambia orari, risorsa o allestimento' . ( $swap && '' === $why ? ', oppure spunta «Sposta sulla risorsa di prima ciò che si sovrappone» e salva di nuovo.' : '.' ) ) );
+				throw new \InvalidArgumentException( esc_html( 'Risorsa non salvata: risulterebbe occupata due volte. Si sovrappone a ' . implode( '; ', array_slice( array_values( $new ), 0, 5 ) ) . '.' . $why . ' Risorsa e allestimento sono rimasti come prima (gli altri dati sono stati salvati): cambia orari, risorsa o allestimento' . ( $swap && '' === $why ? ', oppure spunta «Sposta sulla risorsa di prima ciò che si sovrappone» e salva di nuovo.' : '.' ) ) );
 			}
 			if ( $over ) { // quelle già presenti non si toccano: si segnalano e vanno sistemate a mano
 				$notes[] = ' Attenzione: restano ' . count( $over ) . ( 1 === count( $over ) ? ' sovrapposizione già presente' : ' sovrapposizioni già presenti' ) . ' sulla risorsa (prossimi 120 giorni): vanno sistemate a mano.';
@@ -424,7 +424,7 @@ final class ProData {
 	public static function wizard_next( array $step, array $p ): array {
 		$prov = (string) Settings::get( 'payment_provider' );
 		if ( in_array( $prov, array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::BOTH ), true ) ) {
-			return array( Admin\Ui::url( 'asem-payments' ), ' Ora inserisci le chiavi del fornitore scelto.' );
+			return array( Admin\Ui::url( 'asem-payments' ), ' Ora inserisci le chiavi del gestore scelto.' );
 		}
 		return $step;
 	}

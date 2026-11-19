@@ -36,7 +36,7 @@ final class UpdateNotice {
 				$body = esc_html( Texts::t( 'Installala da Bacheca → Aggiornamenti: i dati restano.' ) ) . ' '
 					. '<a class="button button-primary" href="' . esc_url( admin_url( 'update-core.php' ) ) . '">' . esc_html( Texts::t( 'Vai agli aggiornamenti' ) ) . '</a>';
 			} else {
-				$body = 'Scaricala dalla tua area clienti e carica il nuovo pacchetto da Plugin → Aggiungi nuovo: i dati restano. '
+				$body = 'Scaricala dalla tua area riservata e carica il nuovo pacchetto da Plugin → Aggiungi nuovo: i dati restano. '
 					. '<a class="button button-primary" href="' . esc_url( UpdateCheck::download_url( $u ) ) . '" target="_blank" rel="noopener">Scarica l\'aggiornamento</a>';
 			}
 			$out .= Dismiss::html( 'update-' . $u['product'] . '-' . $u['latest'], 'info', $head . $body, 30 );
