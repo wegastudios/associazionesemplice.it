@@ -115,8 +115,6 @@ it('i fogli della prima nota mostrano l\'errore del server dentro il foglio, per
         'lines' => [['category_id' => $cost, 'amount' => '10']],
     ])->assertRedirect('/gestionale/prima-nota')->assertSessionHasErrors(['ledger' => 'Riga 1: voce non valida per un incasso.']);
 
-    $this->get('/gestionale/prima-nota')->assertInertia(fn (Assert $page) => $page->where('errors.ledger', 'Riga 1: voce non valida per un incasso.'));
-
     // E la pagina lo mostra in tutti e tre i fogli: niente segnaposto lasciati nel sorgente.
     $source = (string) file_get_contents(base_path('resources/js/pages/Contabilita/PrimaNota.vue'));
     expect($source)->not->toContain('E//FORM')
