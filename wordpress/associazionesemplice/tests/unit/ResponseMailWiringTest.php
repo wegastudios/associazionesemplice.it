@@ -25,8 +25,10 @@ final class ResponseMailWiringTest extends TestCase {
 
 	public function test_the_emails_of_the_three_requests_go_through_the_queue(): void {
 		$apps = $this->src( 'Applications.php' );
-		$this->assertStringContainsString( "ResponseMail::send( self::notify_email(), 'Nuova domanda di adesione'", $apps );
-		$this->assertStringContainsString( "ResponseMail::send( \$to, 'Domanda di adesione ricevuta'", $apps );
+		$this->assertStringContainsString( "ResponseMail::send( self::notify_email(), ", $apps );
+		$this->assertStringContainsString( "Texts::subject( 'Nuova domanda di adesione' )", $apps );
+		$this->assertStringContainsString( "ResponseMail::send( \$to, ", $apps );
+		$this->assertStringContainsString( "Texts::subject( 'Domanda di adesione ricevuta' )", $apps );
 		$first = $this->src( 'Frontend/FirstAccess.php' );
 		$this->assertStringContainsString( 'ResponseMail::send( $user->user_email', $first );
 		$login = $this->src( 'MemberLogin.php' );

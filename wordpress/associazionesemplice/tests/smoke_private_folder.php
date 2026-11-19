@@ -296,7 +296,7 @@ for ( $pf_i = 0; $pf_i < 12; $pf_i++ ) {
 	PrivateFolder::move_batch();
 }
 $pf_msg = \AssociazioneSemplice\Admin\TechActions::private_move( array() );
-$pf_ok( ! PrivateFolder::status()['active'] && PrivateFolder::dir() === $pf_def && 'contenuto uno' === file_get_contents( $pf_dir . '/' . $pf_a ) && 'contenuto uno' === file_get_contents( $pf_root . '/' . $pf_a ) && 'dal vecchio posto' === file_get_contents( $pf_root . '/' . $pf_c ) && 'contenuto diverso nella nuova cartella' === file_get_contents( $pf_dir . '/' . $pf_c ) && false !== strpos( $pf_msg[1], 'esistono già nella nuova cartella' ), 'spostamento: con un file in conflitto la nuova cartella non entra in uso, gli originali restano e il conflitto è segnalato' );
+$pf_ok( ! PrivateFolder::status()['active'] && PrivateFolder::dir() === $pf_def && 'contenuto uno' === file_get_contents( $pf_dir . '/' . $pf_a ) && 'contenuto uno' === file_get_contents( $pf_root . '/' . $pf_a ) && 'dal vecchio posto' === file_get_contents( $pf_root . '/' . $pf_c ) && 'contenuto diverso nella nuova cartella' === file_get_contents( $pf_dir . '/' . $pf_c ) && false !== strpos( $pf_msg[1], 'già nella nuova cartella' ), 'spostamento: con un file in conflitto la nuova cartella non entra in uso, gli originali restano e il conflitto è segnalato' );
 unlink( $pf_dir . '/' . $pf_c ); // il conflitto è risolto a mano
 for ( $pf_i = 0; $pf_i < 80 && PrivateFolder::pending(); $pf_i++ ) { // altri file di prova già nella cartella predefinita: si portano tutti, a lotti
 	PrivateFolder::move_batch();
@@ -320,7 +320,7 @@ file_put_contents( $pf_root . '/' . $pf_e, 'vecchio' );
 file_put_contents( $pf_dir . '/' . $pf_e, 'diverso' );
 file_put_contents( $pf_root . '/' . $pf_f, 'rimasto indietro' );
 $pf_msg = \AssociazioneSemplice\Admin\TechActions::private_move( array() );
-$pf_ok( 'vecchio' === file_get_contents( $pf_root . '/' . $pf_e ) && 'diverso' === file_get_contents( $pf_dir . '/' . $pf_e ) && false !== strpos( $pf_msg[1], 'esistono già nella nuova cartella' ) && array( $pf_e ) === array_values( PrivateFolder::pending() ) && 'rimasto indietro' === file_get_contents( $pf_dir . '/' . $pf_f ) && ! file_exists( $pf_root . '/' . $pf_f ), 'spostamento: un file che esiste già nella nuova cartella con contenuto diverso non viene toccato e viene segnalato' );
+$pf_ok( 'vecchio' === file_get_contents( $pf_root . '/' . $pf_e ) && 'diverso' === file_get_contents( $pf_dir . '/' . $pf_e ) && false !== strpos( $pf_msg[1], 'già nella nuova cartella' ) && array( $pf_e ) === array_values( PrivateFolder::pending() ) && 'rimasto indietro' === file_get_contents( $pf_dir . '/' . $pf_f ) && ! file_exists( $pf_root . '/' . $pf_f ), 'spostamento: un file che esiste già nella nuova cartella con contenuto diverso non viene toccato e viene segnalato' );
 unlink( $pf_root . '/' . $pf_e );
 unlink( $pf_dir . '/' . $pf_e );
 $pf_ok( in_array( 'private_folder.moved', array_column( \AssociazioneSemplice\Audit::recent( 8 ), 'action' ), true ), 'spostamento: l\'operazione resta scritta nel registro azioni' );
