@@ -15,6 +15,14 @@ abstract class HubTestCase extends RoleTestCase
 
     protected string $role = 'hub';
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Le prove non devono dipendere dal .env: l'indirizzo fisso degli avvisi è quello di produzione.
+        config(['support.notify_emails' => ['info@wegastudios.com']]);
+    }
+
     /** @return array{site: Site, token: string} */
     protected function makeSite(string $name = 'AssociazioneSemplice', array $priorities = [0, 1, 2], bool $allowReopen = true, array $notify = [], string $email = 'portale@associazionesemplice.it'): array
     {
