@@ -112,7 +112,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Fondi accantonati :: Somme già destinate a qualcosa, per esempio i rimborsi ai volontari | — | ✓ | ✓ |
 | Quota di risorsa accantonata in un fondo :: Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
 | Voce di prima nota per risorsa :: Una voce per ogni risorsa, separata nei report | — | ✓ | ✓ |
-| Disponibilità reale dei fondi :: Quanto resta davvero dei fondi, con liberazione ed estinzione | — | ✓ | ✓ |
+| Disponibilità reale dei fondi :: Quanto resta davvero dei fondi, con liberazione e chiusura | — | ✓ | ✓ |
 | Fondi da rimborsare per anno :: Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
 | Ricevute numerate per anno fiscale :: Ogni ricevuta ha un numero che riparte a ogni anno fiscale; si può annullare e sostituire con «Emetti la ricevuta sostitutiva»; le ricevute annullate non si vedono più ai soci | — | ✓ | ✓ |
