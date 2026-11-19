@@ -112,7 +112,7 @@ const showAccount = ref(false);
             <div class="border-t border-line p-3">
                 <button v-if="user" type="button" class="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left hover:bg-surface" @click="showAccount = true">
                     <Avatar :name="user.name" size="sm" />
-                    <span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold">{{ user.name }}</span><span class="caption block">Account</span></span>
+                    <span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold">{{ user.name }}</span><span class="caption block">Profilo e accesso</span></span>
                     <ChevronRight class="size-4 shrink-0 text-muted" aria-hidden="true" />
                 </button>
             </div>
@@ -137,7 +137,7 @@ const showAccount = ref(false);
             <div v-if="org?.data_missing?.length" class="mb-4 rounded-xl border border-warn bg-warn-soft p-3 text-sm font-semibold text-warn-ink" role="alert">
                 <template v-if="can('org.settings')">Mancano dei dati dell'associazione: {{ org.data_missing.join(', ') }}.<template v-if="org.contacts_missing"> Finché mancano email e telefono della segreteria, non puoi inviare le ricevute per email. Gli invii automatici, come il link di accesso, partono lo stesso.</template>
                     <Link href="/gestionale/configurazione" class="underline">Completali ora</Link></template>
-                <template v-else>Mancano dei dati dell'associazione: {{ org.data_missing.join(', ') }}. Chiedi a chi amministra di completarli.<template v-if="org.contacts_missing"> Finché mancano email e telefono della segreteria, non puoi inviare le ricevute per email. Gli invii automatici, come il link di accesso, partono lo stesso.</template></template>
+                <template v-else>Mancano dei dati dell'associazione: {{ org.data_missing.join(', ') }}. Chiedi a un amministratore di completarli.<template v-if="org.contacts_missing"> Finché mancano email e telefono della segreteria, non puoi inviare le ricevute per email. Gli invii automatici, come il link di accesso, partono lo stesso.</template></template>
             </div>
             <FlashMessages />
             <slot />
@@ -172,7 +172,7 @@ const showAccount = ref(false);
             </ul>
         </Sheet>
 
-        <Sheet v-model="showAccount" title="Il tuo account" :description="user?.email">
+        <Sheet v-model="showAccount" title="Profilo e accesso" :description="user?.email">
             <ul class="list-group">
                 <li><Link href="/gestionale/profilo" class="list-row" @click="showAccount = false"><UserRound class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Il tuo profilo</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/account/verifica-in-due-passaggi" class="list-row" @click="showAccount = false"><ShieldCheck class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Sicurezza</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
@@ -194,7 +194,7 @@ const showAccount = ref(false);
                     </li>
                 </ul>
             </div>
-            <p class="caption mb-1.5 px-1 font-semibold">Il tuo account</p>
+            <p class="caption mb-1.5 px-1 font-semibold">Profilo e accesso</p>
             <ul class="list-group">
                 <li><Link href="/gestionale/profilo" class="list-row" @click="showMore = false"><UserRound class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Il tuo profilo</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/account/verifica-in-due-passaggi" class="list-row" @click="showMore = false"><ShieldCheck class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Sicurezza</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>

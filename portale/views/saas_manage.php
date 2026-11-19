@@ -26,24 +26,24 @@ $stateName = array( 'pending' => 'In verifica', 'active' => 'Attivo', 'error' =>
 
 	<?php if ( $st && Portale\SaasAccount::domainEnabled() && in_array( 'custom_domain', $pk, true ) ) : ?>
 	<div class="sub">
-		<div class="sub-top"><h2>Dominio personalizzato</h2><?php if ( $dom ) : ?><span class="badge <?php echo 'active' === ( $dom['state'] ?? '' ) ? 'ok' : 'warn'; ?>"><?php echo e( $stateName[ $dom['state'] ?? '' ] ?? '' ); ?></span><?php endif; ?></div>
+		<div class="sub-top"><h2>Indirizzo personalizzato</h2><?php if ( $dom ) : ?><span class="badge <?php echo 'active' === ( $dom['state'] ?? '' ) ? 'ok' : 'warn'; ?>"><?php echo e( $stateName[ $dom['state'] ?? '' ] ?? '' ); ?></span><?php endif; ?></div>
 		<?php if ( $dom ) : ?><p>Oggi: <b><?php echo e( (string) ( $dom['name'] ?? '' ) ); ?></b></p><?php endif; ?>
 		<form method="post" action="<?php echo $base; ?>/dominio" class="domain-form" style="display:block">
 			<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
-			<label for="dom">Il tuo dominio (per esempio tuaassociazione.it)</label>
+			<label for="dom">Il tuo indirizzo (per esempio tuaassociazione.it)</label>
 			<input id="dom" type="text" name="domain" autocomplete="off" inputmode="url" required>
-			<button class="btn" type="submit" style="margin-top:10px">Salva il dominio</button>
+			<button class="btn" type="submit" style="margin-top:10px">Salva l'indirizzo</button>
 		</form>
 		<?php if ( $dns ) : ?>
 			<p class="hint" style="margin-top:12px"><b>Cosa fare ora.</b> Entra nel sito dove hai registrato il dominio e sostituisci i <b>nameserver</b> con quelli qui sotto; se non sai come, chiedilo a chi te lo ha registrato. Al resto pensiamo noi: il dominio si attiva da solo, entro <b>72 ore</b> al massimo.</p>
-			<p class="hint"><b>Attenzione alla posta.</b> Se usi caselle email su questo dominio (per esempio info@tuaassociazione.it), cambiando i nameserver smettono di ricevere. <b>Prima</b> di cambiarli scrivici dal supporto: le sistemiamo insieme.</p>
+			<p class="hint"><b>Attenzione alla posta.</b> Se usi caselle email su questo indirizzo (per esempio info@tuaassociazione.it), cambiando i nameserver smettono di ricevere. <b>Prima</b> di cambiarli scrivici dal supporto: le sistemiamo insieme.</p>
 			<?php foreach ( (array) ( $dns['dns'] ?? array() ) as $r ) : if ( ! is_array( $r ) ) { continue; } ?>
 				<p class="small"><code><?php echo e( (string) ( $r['type'] ?? '' ) ); ?> · <?php echo e( (string) ( $r['name'] ?? '' ) ); ?> → <?php echo e( (string) ( $r['value'] ?? '' ) ); ?></code></p>
 			<?php endforeach; ?>
 			<?php if ( ! empty( $dns['message'] ) ) : ?><p class="small muted"><?php echo e( (string) $dns['message'] ); ?></p><?php endif; ?>
 		<?php endif; ?>
 		<?php if ( $dom ) : ?>
-		<form method="post" action="<?php echo $base; ?>/dominio-togli" style="margin-top:10px" onsubmit="return confirm('Togliere il dominio personalizzato? Resta l\'indirizzo su associazionesemplice.it.')"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt small" type="submit">Togli il dominio personalizzato</button></form>
+		<form method="post" action="<?php echo $base; ?>/dominio-togli" style="margin-top:10px" onsubmit="return confirm('Togliere l\'indirizzo personalizzato? Resta l\'indirizzo su associazionesemplice.it.')"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt small" type="submit">Togli l'indirizzo personalizzato</button></form>
 		<?php endif; ?>
 	</div>
 	<?php endif; ?>

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Console;
 
-use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Portale\Notifications\OrgLifecycleNotification;
 use App\Modules\Portale\PortalConfig;
 use Carbon\CarbonImmutable;
@@ -14,8 +13,8 @@ use Illuminate\Support\Facades\Notification;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * Avvisi del ciclo di vita ai titolari e agli amministratori (docs/CANCELLAZIONE_DATI.md §2 e §8): scadenza vicina per
- * chi ha disdetto o non paga, sospensione, promemoria prima della cancellazione, fine della prova. Ogni avviso parte una
+ * Avvisi su dati e accesso ai titolari e agli amministratori (docs/CANCELLAZIONE_DATI.md §2 e §8): fine della prova,
+ * sospensione, promemoria prima dell'eliminazione dei dati. Ogni avviso parte una
  * sola volta per scadenza (core.org_notices); i giorni sono a finestre, così un giorno saltato non perde un avviso.
  */
 #[AsCommand(name: 'saas:portal:lifecycle-notices')]
@@ -23,14 +22,17 @@ final class SendLifecycleNoticesCommand extends Command
 {
     protected $signature = 'saas:portal:lifecycle-notices';
 
-    protected $description = 'Invia gli avvisi su scadenza, sospensione, cancellazione dei dati e fine della prova';
+    protected $description = 'Invia gli avvisi su fine della prova, sospensione ed eliminazione dei dati';
 
-    public function handle(DatabaseManager $db, PortalConfig $config, Catalog $catalog): int
+    /**
+     * Avvisi che manda il gestionale (dati e accesso). Quelli sui soldi (scadenza vicina, rinnovo, pagamento non riuscito,
+     * disdetta) li manda il portale: ogni evento ha un solo mittente, così nessun avviso parte due volte.
+     */
+    public const KINDS = ['trial_7', 'trial_2', 'trial_0', 'trial_3', 'trial_6', 'suspended', 'purge_30', 'purge_90', 'purge_150', 'purge_170', 'purge_1'];
+
+    public function handle(DatabaseManager $db, PortalConfig $config): int
     {
         $today = CarbonImmutable::today();
-        $terms = $catalog->published()->document['terms'] ?? null;
-        $trial = is_array($terms) && is_array($terms['trial'] ?? null) ? $terms['trial'] : [];
-        $discount = is_int($trial['end_discount_percent'] ?? null) ? $trial['end_discount_percent'] : 0;
         $sent = 0;
 
         $rows = $db->connection('pgsql')->table('core.org_entitlements as e')
@@ -55,7 +57,8 @@ final class SendLifecycleNoticesCommand extends Command
             }
             $emails = $db->connection('pgsql')->table('core.users')->whereIn('id', $db->connection('pgsql')->table('core.org_users')
                 ->where('org_id', $row->org_id)->whereIn('role', ['owner', 'admin'])->select('user_id'))->pluck('email')->all();
-            $notification = new OrgLifecycleNotification($kind, $row->name, $days, rtrim($config->portalUrl(), '/').'/account', $discount);
+            $keepDays = str_starts_with($kind, 'trial') ? $config->trialPurgeDays() : $config->retentionDays();
+            $notification = new OrgLifecycleNotification($kind, $row->name, $days, rtrim($config->portalUrl(), '/').'/account', $keepDays, $until->addDays($keepDays));
             foreach ($emails as $email) {
                 if (is_string($email)) {
                     Notification::route('mail', $email)->notify($notification);
@@ -92,14 +95,8 @@ final class SendLifecycleNoticesCommand extends Command
             };
         }
 
+        // Prima della scadenza non scrive il gestionale: «il piano sta per scadere» riguarda il pagamento ed è del portale.
         $retention = $config->retentionDays();
-        if ($orgStatus === 'active' && in_array($entitlement, ['cancelled', 'past_due'], true)) {
-            return match (true) {
-                $offset >= -7 && $offset <= 0 => ['expiry_7', -$offset],
-                $offset >= -30 && $offset < -7 => ['expiry_30', -$offset],
-                default => null,
-            };
-        }
         if ($orgStatus !== 'suspended' || $offset < 1 || $offset >= $retention) {
             return null;
         }

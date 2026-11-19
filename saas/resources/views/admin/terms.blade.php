@@ -49,7 +49,7 @@
                 <div><label for="tolerance_days">per quanti giorni</label><input id="tolerance_days" name="tolerance_days" value="{{ $t['tolerance_days'] }}" inputmode="numeric"></div>
                 <div><label for="guests_free_percent">Ospiti dell'anno che non contano (% del limite)</label><input id="guests_free_percent" name="guests_free_percent" value="{{ $t['guests_free_percent'] }}" inputmode="numeric"></div>
             </div>
-            <p class="muted small">Passato il tempo di tolleranza si bloccano i nuovi soci, non l'accesso né i dati: l'associazione cambia piano o, sulla Grande, compra un pacchetto di soci. Contano i soci e gli ex soci; gli ospiti degli anni passati no; gli ospiti dell'anno in corso contano solo oltre la quota che non conta. Scrivi 0 nella tolleranza per bloccare subito al limite.</p>
+            <p class="muted small">Passato il tempo di tolleranza si bloccano i nuovi soci, non l'accesso né i dati: l'associazione cambia piano o, sulla Grande, compra un pacchetto di soci. Contano i soci e gli ex soci; gli ospiti degli anni passati no; gli ospiti dell'anno in corso contano solo oltre la percentuale indicata sopra. Scrivi 0 nella tolleranza per bloccare subito al limite.</p>
         </fieldset>
 
         @if ($canWrite)

@@ -22,8 +22,8 @@ const field = 'field';
         <h1 class="mb-4 text-2xl font-bold">Importa la prima nota da Excel o CSV</h1>
 
         <section v-if="result" class="mb-6 card p-4 sm:p-5" role="status">
-            <h2 class="mb-2 text-lg font-bold">Import completato</h2>
-            <p>{{ result.income }} entrate, {{ result.expense }} uscite, {{ result.transfer }} giroconti registrati<template v-if="result.accounts">, {{ result.accounts }} conti creati</template>.</p>
+            <h2 class="mb-2 text-lg font-bold">Importazione completata</h2>
+            <p>{{ result.income }} {{ result.income === 1 ? 'entrata' : 'entrate' }}, {{ result.expense }} {{ result.expense === 1 ? 'uscita' : 'uscite' }}, {{ result.transfer }} {{ result.transfer === 1 ? 'giroconto registrato' : 'giroconti registrati' }}<template v-if="result.accounts">, {{ result.accounts }} {{ result.accounts === 1 ? 'conto creato' : 'conti creati' }}</template>.</p>
             <template v-if="result.failed.length">
                 <p class="mt-3 font-semibold text-danger">Righe non importate:</p>
                 <ul class="list-disc pl-5 text-sm"><li v-for="f in result.failed" :key="f">{{ f }}</li></ul>
@@ -41,7 +41,7 @@ const field = 'field';
                     <span v-if="form.errors.file" class="block text-danger" role="alert">{{ form.errors.file }}</span>
                 </label>
                 <label class="space-y-1"><span class="block font-semibold">Conto per le righe senza conto</span>
-                    <select v-model="form.default_account_id" :class="field"><option value="">nessuno (sono errori)</option><option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option></select>
+                    <select v-model="form.default_account_id" :class="field"><option value="">nessuno: quelle righe danno errore</option><option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option></select>
                 </label>
                 <div class="sm:col-span-2"><button type="submit" class="btn btn-secondary" :disabled="!form.file || form.processing">Mostra l'anteprima</button></div>
             </form>
@@ -50,7 +50,7 @@ const field = 'field';
         <section v-if="preview" class="mt-6 card p-4 sm:p-5" aria-labelledby="preview-title">
             <h2 id="preview-title" class="mb-2 text-lg font-bold">Anteprima</h2>
             <p class="mb-1 text-sm">
-                {{ preview.summary.counts.create }} movimenti nuovi · {{ preview.summary.counts.transfer }} giroconti · {{ preview.summary.counts.duplicate }} già presenti · {{ preview.summary.counts.skip }} saltati · {{ preview.summary.counts.error }} con errori
+                {{ preview.summary.counts.create }} {{ preview.summary.counts.create === 1 ? 'movimento nuovo' : 'movimenti nuovi' }} · {{ preview.summary.counts.transfer }} {{ preview.summary.counts.transfer === 1 ? 'giroconto' : 'giroconti' }} · {{ preview.summary.counts.duplicate }} già {{ preview.summary.counts.duplicate === 1 ? 'presente' : 'presenti' }} · {{ preview.summary.counts.skip }} {{ preview.summary.counts.skip === 1 ? 'saltato' : 'saltati' }} · {{ preview.summary.counts.error }} {{ preview.summary.counts.error === 1 ? 'con errore' : 'con errori' }}
                 <template v-if="preview.summary.from"> · dal {{ preview.summary.from.split('-').reverse().join('/') }} al {{ preview.summary.to.split('-').reverse().join('/') }}</template>
             </p>
             <p class="mb-3 text-sm">Entrate {{ euro(preview.summary.income) }} · uscite {{ euro(preview.summary.expense) }}<template v-if="preview.summary.new_accounts.length"> · conti nuovi: {{ preview.summary.new_accounts.join(', ') }}</template></p>
@@ -67,7 +67,7 @@ const field = 'field';
                 </table>
             </div>
             <button type="button" class="mt-4 btn btn-primary" :disabled="form.processing || !(preview.summary.counts.create + preview.summary.counts.transfer)" @click="send(true)">
-                Importa {{ preview.summary.counts.create + preview.summary.counts.transfer }} movimenti
+                {{ preview.summary.counts.create + preview.summary.counts.transfer === 1 ? 'Importa 1 movimento' : `Importa ${preview.summary.counts.create + preview.summary.counts.transfer} movimenti` }}
             </button>
         </section>
     </AppLayout>

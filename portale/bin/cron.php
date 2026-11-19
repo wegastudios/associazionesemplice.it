@@ -25,11 +25,14 @@ $step   = function ( string $label, callable $job ) use ( &$failed ): string {
 echo $step( 'avvisi di scadenza inviati', function () use ( $billing ) {
 	return $billing->sendReminders();
 } );
-echo $step( 'email del gestionale (scadenza, sospensione)', function () use ( $db ) {
+echo $step( 'email del gestionale (scadenza del piano a pagamento)', function () use ( $db ) {
 	return Portale\SaasCheckout::sendLifecycleMails( $db );
 } );
-echo $step( 'email di fine prova del gestionale', function () use ( $db ) {
-	return Portale\SaasCheckout::sendTrialMails( $db );
+echo $step( 'offerta di fine prova del gestionale', function () use ( $db ) {
+	return Portale\SaasCheckout::sendTrialOffers( $db );
+} );
+echo $step( 'prove del gestionale finite (chiusura degli ordini)', function () use ( $db ) {
+	return Portale\SaasCheckout::closeEndedTrials( $db );
 } );
 echo $step( 'licenze gratuite rinnovate / lasciate scadere per inattività', function () use ( $billing ) {
 	list( $renewed, $lapsed ) = $billing->autoRenewFree();

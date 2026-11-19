@@ -28,7 +28,7 @@ const field = 'field';
             <ul v-else class="space-y-3">
                 <li v-for="r in rows" :key="r.id" class="card space-y-2 p-4" :class="r.archived ? 'text-muted' : ''">
                     <Link :href="`/gestionale/attivita/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link>
-                    <p class="text-xs text-muted">{{ r.kind }}<template v-if="r.archived"> · archiviata</template> · {{ r.participants }} iscritti</p>
+                    <p class="text-xs text-muted">{{ r.kind }}<template v-if="r.archived"> · archiviata</template> · {{ r.participants === 1 ? '1 partecipante' : `${r.participants} partecipanti` }}</p>
                     <p class="flex justify-between text-sm"><span>Entrate</span><span class="tabular-nums">{{ r.income_label }}</span></p>
                     <p class="flex justify-between text-sm"><span>Uscite</span><span class="tabular-nums">{{ r.expense_label }}</span></p>
                     <p class="flex justify-between text-sm font-semibold" :class="r.negative ? 'text-danger' : ''"><span>Risultato</span><span class="tabular-nums">{{ r.balance_label }}</span></p>
@@ -41,7 +41,7 @@ const field = 'field';
                 <thead class="text-left text-muted">
                     <tr>
                         <th class="px-4 py-3 font-semibold">Attività</th>
-                        <th class="px-4 py-3 font-semibold">Iscritti</th>
+                        <th class="px-4 py-3 font-semibold">Partecipanti</th>
                         <th class="px-4 py-3 text-right font-semibold">Entrate</th>
                         <th class="px-4 py-3 text-right font-semibold">Uscite</th>
                         <th class="px-4 py-3 text-right font-semibold">Risultato</th>

@@ -4,22 +4,32 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Notifications;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Avvisi sul ciclo di vita dell'abbonamento: scadenza, sospensione, cancellazione dei dati, fine della prova.
- * Nessun dato dei soci nel messaggio. I testi sono una prima stesura da rivedere con l'audit.
+ * Avvisi su dati e accesso, mandati dal gestionale perché è lui a eseguire sospensione e cancellazione: fine della prova,
+ * sospensione, promemoria prima dell'eliminazione dei dati. Gli avvisi sui soldi (rinnovo, pagamento non riuscito,
+ * scadenza vicina, disdetta) li manda il portale. Nessun dato dei soci nel messaggio.
+ *
+ * I giorni sono quelli che il codice esegue: la conservazione dura `$keepDays` giorni dalla scadenza e `$lastDay` è
+ * l'ultimo giorno in cui i dati ci sono ancora; l'eliminazione avviene dopo.
  */
 final class OrgLifecycleNotification extends Notification
 {
-    /** @param  int  $days  giorni che mancano alla scadenza o alla cancellazione (secondo il tipo) */
+    /**
+     * @param  int  $days  giorni alla fine della prova (negativo dopo la fine); non usato dagli avvisi sui dati
+     * @param  int  $keepDays  giorni di conservazione dalla scadenza
+     * @param  CarbonImmutable  $lastDay  ultimo giorno in cui i dati si conservano
+     */
     public function __construct(
         public readonly string $kind,
         public readonly string $orgName,
         public readonly int $days,
         public readonly string $actionUrl,
-        public readonly int $discountPercent = 0,
+        public readonly int $keepDays,
+        public readonly CarbonImmutable $lastDay,
     ) {}
 
     /** @return list<string> */
@@ -30,41 +40,61 @@ final class OrgLifecycleNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $days = $this->days;
-        $when = $days <= 0 ? 'oggi' : ($days === 1 ? 'domani' : "tra {$days} giorni");
-        $keep = $days <= 0 ? 'solo fino a oggi' : "per {$days} ".($days === 1 ? 'giorno' : 'giorni');
-        $mail = (new MailMessage)->greeting('Buongiorno,');
+        $org = $this->orgName;
+        $last = $this->lastDay->format('d/m/Y');
+        $left = (int) CarbonImmutable::today()->diffInDays($this->lastDay, false);
+        $in = self::when($left);
+        $mail = (new MailMessage)->greeting('Ciao,');
+
         [$subject, $lines, $button] = match (true) {
-            str_starts_with($this->kind, 'expiry') => [
-                "L'abbonamento di {$this->orgName} sta per scadere",
-                ["l'abbonamento di {$this->orgName} scade {$when} e non risulta un pagamento in corso.", 'Dopo la scadenza il gestionale si sospende e non potrai più esportare i tuoi dati: se vuoi conservarli, esportali adesso.'],
-                'Gestisci l\'abbonamento',
-            ],
             $this->kind === 'suspended' => [
-                "{$this->orgName}: gestionale sospeso",
-                ["l'abbonamento di {$this->orgName} è scaduto e il gestionale è sospeso.", "I dati restano conservati {$keep}; poi vengono cancellati in modo definitivo. Per riattivare tutto basta rinnovare: nulla va perso."],
+                "{$org} · Gestionale sospeso",
+                [
+                    "il gestionale di {$org} è sospeso perché l'abbonamento è scaduto.",
+                    "I dati restano conservati per {$this->keepDays} giorni dalla scadenza, fino al {$last}; poi vengono eliminati per sempre.",
+                    "Se rinnovi entro il {$last} ritrovi tutti i dati come li hai lasciati.",
+                ],
                 'Riattiva il gestionale',
             ],
             str_starts_with($this->kind, 'purge') => [
-                $days <= 1 ? "{$this->orgName}: domani cancelliamo i tuoi dati" : "{$this->orgName}: i dati si cancellano tra {$days} giorni",
-                [$days <= 1 ? "domani i dati di {$this->orgName} verranno cancellati in modo definitivo." : "tra {$days} giorni i dati di {$this->orgName} verranno cancellati in modo definitivo.", 'La cancellazione non si può annullare. Puoi riattivare il gestionale in qualsiasi momento fino a quel giorno.'],
+                $left <= 1 ? "{$org} · Ultimo giorno per riattivare: {$in}" : "{$org} · I dati vengono eliminati dopo il {$last}",
+                [
+                    "i dati di {$org} saranno eliminati per sempre dopo il {$last} ({$in}).",
+                    "L'eliminazione non si può annullare. Fino al {$last} puoi riattivare il gestionale rinnovando l'abbonamento.",
+                ],
                 'Riattiva il gestionale',
             ],
+            $this->days >= 0 => [
+                "{$org} · La prova finisce ".self::when($this->days),
+                [
+                    "la prova gratuita di {$org} finisce ".self::when($this->days).'.',
+                    "Scegli un piano per continuare: senza un piano i dati della prova saranno eliminati per sempre dopo il {$last}.",
+                ],
+                'Scegli un piano',
+            ],
             default => [
-                $days >= 0 ? "La prova di {$this->orgName} finisce {$when}" : "La prova di {$this->orgName} è finita",
-                $days >= 0
-                    ? ["la prova gratuita di {$this->orgName} finisce {$when}.", 'Scegli un piano per continuare: se non lo fai, i dati della prova vengono cancellati pochi giorni dopo la fine.']
-                    : ["la prova gratuita di {$this->orgName} è finita.", 'Scegli un piano per continuare: i dati della prova stanno per essere cancellati.'],
+                "{$org} · La prova è finita",
+                [
+                    "la prova gratuita di {$org} è finita.",
+                    "Scegli un piano per continuare: i dati della prova saranno eliminati per sempre dopo il {$last} ({$in}).",
+                ],
                 'Scegli un piano',
             ],
         };
         foreach ($lines as $line) {
             $mail->line($line);
         }
-        if ($this->discountPercent > 0 && str_starts_with($this->kind, 'trial')) {
-            $mail->line("Per te c'è uno sconto del {$this->discountPercent}% sul primo pagamento, finché i dati non vengono cancellati.");
-        }
 
         return $mail->subject($subject)->action($button, $this->actionUrl);
+    }
+
+    /** «oggi», «domani» o «tra N giorni»: il numero ha sempre la forma giusta. */
+    private static function when(int $days): string
+    {
+        return match (true) {
+            $days <= 0 => 'oggi',
+            $days === 1 => 'domani',
+            default => "tra {$days} giorni",
+        };
     }
 }

@@ -222,7 +222,7 @@ it('in prova non si esporta né si collega il commercialista; con un piano sì',
     $this->addOperator($org, $user);
 
     $put('trial');
-    expect(fn () => app(OrgMembers::class)->invite($org, 'ct@example.com', 'Ct', OrgRole::Accountant, $by))->toThrow(InvalidArgumentException::class, 'Disponibile scegliendo un piano.');
+    expect(fn () => app(OrgMembers::class)->invite($org, 'ct@example.com', 'Ct', OrgRole::Accountant, $by))->toThrow(InvalidArgumentException::class, 'Durante la prova questa funzione non è attiva: si sblocca scegliendo un piano.');
     $this->actingAs($user)->get('/gestionale/esportazione')->assertForbidden();
     $this->get('/gestionale/prima-nota/esporta')->assertForbidden();
 

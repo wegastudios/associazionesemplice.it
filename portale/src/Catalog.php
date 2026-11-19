@@ -266,7 +266,7 @@ final class Catalog {
 		$t    = self::terms( $doc );
 		$gone = array();
 		if ( ! $t['trial_exports'] ) {
-			$gone[] = 'le esportazioni';
+			$gone[] = 'le copie di sicurezza';
 		}
 		if ( ! $t['trial_accountant_access'] ) {
 			$gone[] = 'l\'accesso del commercialista';

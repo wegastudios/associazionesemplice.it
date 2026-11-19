@@ -10,6 +10,6 @@
         <input id="password" name="password" type="password" required autocomplete="current-password">
         @error('email')<p class="error" role="alert">{{ $message }}</p>@enderror
         <button class="primary" type="submit">Continua</button>
-        <p class="muted">Dopo la password serve il codice a due passaggi.</p>
+        <p class="muted">Dopo la password serve il codice della verifica in due passaggi.</p>
     </form>
 @endsection

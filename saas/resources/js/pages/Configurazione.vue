@@ -75,15 +75,15 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                     <label v-if="has('anno_fiscale')" :class="label"><span class="font-semibold">L'anno fiscale comincia a</span>
                         <select v-model.number="form.steps.anno_fiscale.start_month" :class="field" required :disabled="by.anno_fiscale.locked"><option value="" disabled>Scegli il mese</option><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
                 </div>
-                <p class="mt-2 text-sm text-muted">Con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). I due anni possono cominciare in mesi diversi. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare.</p>
+                <p class="mt-2 text-sm text-muted">Con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). I due anni possono cominciare in mesi diversi. Scegli bene il mese dell'anno fiscale: dopo la prima chiusura non si può più cambiare.</p>
                 <label v-if="has('anno_fiscale') && by.anno_fiscale.has_movements && by.anno_fiscale.start_month && form.steps.anno_fiscale.start_month !== by.anno_fiscale.start_month && !by.anno_fiscale.locked" class="mt-3 flex items-start gap-2 text-sm"><input v-model="form.steps.anno_fiscale.confirm_move" type="checkbox" class="mt-1" /><span>Cambiando il mese, i movimenti già registrati passano all'anno fiscale che inizia a {{ months[form.steps.anno_fiscale.start_month - 1] }}. Le date non cambiano. Le ricevute già emesse restano con il loro numero.</span></label>
                 <div v-if="has('anno_fiscale') && cards && (cards.moved + cards.superseded > 0)" class="mt-3 rounded border border-line p-3 text-sm" role="status">
                     <h3 class="font-semibold">Cosa succede alle tessere</h3>
                     <p v-if="cards.moved > 0" class="mt-1">{{ cards.moved === 1 ? '1 tessera degli anni fiscali aperti passa al nuovo anno fiscale' : cards.moved + ' tessere degli anni fiscali aperti passano al nuovo anno fiscale' }} (per esempio «2025/2026 → 2026»).</p>
                     <p v-if="cards.superseded > 0" class="mt-1">{{ cards.superseded === 1 ? '1 resta «sostituita»' : cards.superseded + ' restano «sostituite»' }}: la persona ha già la tessera dello stesso anno e quella più recente resta valida.</p>
                     <p class="mt-1">Le tessere degli anni fiscali chiusi non si toccano.</p>
-                    <ul class="mt-2 list-disc pl-5"><li v-for="l in cards.lines" :key="l">{{ l }}</li><li v-if="cards.more > 0">e altre {{ cards.more }}</li></ul>
-                    <p class="mt-2 text-muted">Ogni tessera cambiata è scritta nel registro delle azioni, con l'etichetta e le date di prima.</p>
+                    <ul class="mt-2 list-disc pl-5"><li v-for="l in cards.lines" :key="l">{{ l }}</li><li v-if="cards.more > 0">{{ cards.more === 1 ? 'e un\'altra' : `e altre ${cards.more}` }}</li></ul>
+                    <p class="mt-2 text-muted">Ogni tessera cambiata è scritta nel registro azioni, con l'etichetta e le date di prima.</p>
                     <label class="mt-2 flex items-start gap-2"><input v-model="form.steps.anno_fiscale.confirm_cards" type="checkbox" class="mt-1" /><span>Ho letto cosa succede alle tessere e voglio cambiare il mese dell'anno fiscale.</span></label>
                 </div>
                 <p v-else-if="has('anno_fiscale') && cards && by.anno_fiscale.start_month && form.steps.anno_fiscale.start_month !== by.anno_fiscale.start_month" class="mt-2 text-sm text-muted">Nessuna tessera da riallineare.</p>
@@ -99,9 +99,9 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                     <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Legale rappresentante (obbligatorio)</span><input v-model="form.steps.ente.legal_rep" required :class="field" maxlength="120" autocomplete="name" />
                         <span class="block text-sm text-muted">Nome e cognome di chi rappresenta l'associazione, di solito il presidente. Compare nei dati esportati.</span></label>
                     <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Sede legale: indirizzo (obbligatorio)</span><input v-model="form.steps.ente.address" required :class="field" maxlength="190" /></label>
-                    <label :class="label"><span class="font-semibold">CAP</span><input v-model="form.steps.ente.zip" required inputmode="numeric" :class="field" maxlength="5" /></label>
-                    <label :class="label"><span class="font-semibold">Comune</span><input v-model="form.steps.ente.city" required :class="field" maxlength="120" /></label>
-                    <label :class="label"><span class="font-semibold">Provincia (sigla)</span><input v-model="form.steps.ente.province" required :class="field" maxlength="2" /></label>
+                    <label :class="label"><span class="font-semibold">CAP (obbligatorio)</span><input v-model="form.steps.ente.zip" required inputmode="numeric" :class="field" maxlength="5" /></label>
+                    <label :class="label"><span class="font-semibold">Comune (obbligatorio)</span><input v-model="form.steps.ente.city" required :class="field" maxlength="120" /></label>
+                    <label :class="label"><span class="font-semibold">Provincia, sigla (obbligatoria)</span><input v-model="form.steps.ente.province" required :class="field" maxlength="2" /></label>
                     <label :class="label"><span class="font-semibold">Email della segreteria (obbligatoria)</span><input v-model="form.steps.ente.email" type="email" required :class="field" /></label>
                     <label :class="label"><span class="font-semibold">Telefono della segreteria (obbligatorio)</span><input v-model="form.steps.ente.phone" type="tel" required :class="field" maxlength="30" /></label>
                     <p class="text-sm text-muted sm:col-span-3">Email e telefono li leggono i soci nelle email, nell'area soci e nel modulo di adesione, accanto al consenso sulla privacy: usa un recapito che qualcuno controlla davvero. Senza, la segreteria non può inviare le ricevute per email. Gli invii automatici, come il link di accesso, partono lo stesso.</p>
@@ -129,7 +129,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                 <p v-if="form.errors['steps.conti']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.conti'] }}</p>
                 <div class="grid gap-4 sm:grid-cols-3">
                     <label v-for="a in by.conti.accounts" :key="a.id" :class="label"><span class="font-semibold">{{ a.name }}: saldo di partenza</span><input v-model="form.steps.conti.openings[a.id]" inputmode="decimal" :class="field" /></label>
-                    <label :class="label"><span class="font-semibold">Aggiungi il conto in banca</span><input v-model="form.steps.conti.bank_name" placeholder="es. Banca Etica" :class="field" maxlength="120" /></label>
+                    <label :class="label"><span class="font-semibold">Nome del conto in banca (se c'è)</span><input v-model="form.steps.conti.bank_name" placeholder="es. Banca Etica" :class="field" maxlength="120" /></label>
                     <label v-if="form.steps.conti.bank_name" :class="label"><span class="font-semibold">Saldo di partenza in banca</span><input v-model="form.steps.conti.bank_opening" inputmode="decimal" :class="field" /></label>
                 </div>
             </section>
@@ -138,10 +138,10 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                 <h2 id="s-soci" class="mb-3 text-lg font-bold">5. {{ title('soci') }}</h2>
                 <p v-if="form.errors['steps.soci']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.soci'] }}</p>
                 <div class="grid gap-3 text-sm sm:grid-cols-2">
-                    <label class="flex items-center gap-2 sm:col-span-2"><input v-model="form.steps.soci.applications_enabled" type="checkbox" /> Chi vuole iscriversi può mandare la domanda online</label>
-                    <label class="flex items-center gap-2 sm:col-span-2"><input v-model="form.steps.soci.applications_rules" type="checkbox" /> Nella domanda si accetta il regolamento</label>
-                    <label :class="label"><span class="font-semibold">Pagina dell'informativa privacy</span><input v-model="form.steps.soci.privacy_url" type="url" placeholder="https://" :class="field" /></label>
-                    <label :class="label"><span class="font-semibold">Pagina del regolamento</span><input v-model="form.steps.soci.rules_url" type="url" placeholder="https://" :class="field" /></label>
+                    <label class="flex items-center gap-2 sm:col-span-2"><input v-model="form.steps.soci.applications_enabled" type="checkbox" /> Ricevi le domande di adesione online</label>
+                    <label class="flex items-center gap-2 sm:col-span-2"><input v-model="form.steps.soci.applications_rules" type="checkbox" /> Chiedi di accettare il regolamento</label>
+                    <label :class="label"><span class="font-semibold">Indirizzo dell'informativa privacy</span><input v-model="form.steps.soci.privacy_url" type="url" placeholder="https://" :class="field" /></label>
+                    <label :class="label"><span class="font-semibold">Indirizzo del regolamento</span><input v-model="form.steps.soci.rules_url" type="url" placeholder="https://" :class="field" /></label>
                     <label class="flex items-center gap-2 sm:col-span-2"><input v-model="form.steps.soci.reminders_enabled" type="checkbox" /> Manda per email i promemoria di tessera e certificato medico in scadenza</label>
                 </div>
             </section>
@@ -167,7 +167,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
         </form>
 
         <section class="mt-8 card p-4 sm:p-5">
-            <h2 class="mb-2 text-lg font-bold">E poi</h2>
+            <h2 class="mb-2 text-lg font-bold">Prossimi passi</h2>
             <ul class="list-disc space-y-1 pl-5 text-sm">
                 <li v-if="can.people"><Link href="/gestionale/soci/importa" class="font-semibold text-accent hover:underline">Importa i soci</Link> da Excel o CSV.</li>
                 <li v-if="can.operators"><Link href="/gestionale/operatori" class="font-semibold text-accent hover:underline">Invita gli altri operatori</Link> (segreteria, tesoriere, consiglieri).</li>

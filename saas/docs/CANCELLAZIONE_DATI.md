@@ -20,7 +20,7 @@ cancellazione parte: questo documento dice cosa costruire.
 | Quando | Cosa succede |
 |---|---|
 | Fino a `until` | L'associazione è attiva e può esportare, anche se ha disdetto. |
-| 30 e 7 giorni prima di `until`, se ha disdetto o non ha un pagamento in corso | Avviso: «dopo la scadenza non potrai più esportare i tuoi dati». |
+| 30 e 7 giorni prima di `until`, se ha disdetto o non ha un pagamento in corso | Avviso del portale (riguarda il pagamento): «dopo la scadenza non potrai più esportare i tuoi dati». Il gestionale non lo manda. |
 | `until` + 1 | Sospensione. Si segna `suspended_at` e `purge_after` = `until` + 180. Accesso solo alla pagina del pagamento. Avviso a titolare e amministratori: cosa è successo, che i dati restano fino al `purge_after`, come riattivare. |
 | Giorni 30, 90, 150, 170 dalla scadenza | Promemoria con i giorni che mancano. |
 | Giorno 179 | Ultimo avviso: «domani si cancella». |
@@ -97,7 +97,7 @@ cancellazione deve ammettere questa sola operazione, solo al ruolo proprietario 
 
 Chi non sceglie un piano alla fine dei 30 giorni di prova non ha avuto un abbonamento: i dati della prova si
 cancellano **7 giorni dopo la fine della prova** (`terms.trial.purge_days`), non dopo 180. Prima partono email di avviso,
-con una proposta scontata (`terms.trial.end_discount_percent`, partenza 0: la misura la decide la titolare). Non si
+con una proposta scontata che dà il portale (`terms.trial.end_discount_percent`, partenza 0), perché solo il portale conosce il codice sconto: gli avvisi del gestionale non nominano lo sconto. Non si
 esporta (la prova non esporta). La cancellazione usa gli stessi passi di §3–4 con la scadenza della prova al posto di
 `until`; chi sceglie un piano prima, la ferma. Sequenza degli avvisi da definire con l'audit (per esempio al giorno
 −7, −2 della fine prova, alla fine, +3 e +6).
@@ -113,4 +113,6 @@ esporta (la prova non esporta). La cancellazione usa gli stessi passi di §3–4
 
 La cancellazione notturna parte solo se, insieme: la scadenza più i giorni di conservazione è passata; la sospensione (`core.orgs.suspended_at`) più i giorni di conservazione è passata; l'ultimo avviso risulta inviato da almeno un giorno. Una scadenza che arretra di oltre 30 giorni resta segnata nel registro (`until_back_days`) ma da sola non basta mai a far cancellare. Con `ops.sh spegni-cancellazione` si spegne tutto per la notte.
 
-**Limite attuale.** Gli avvisi ai clienti non li manda più il gestionale (decisione del 13/11) ma il portale (email `saas_purge_15` e `saas_purge_1`, colonna `purge_notice`). Il controllo di oggi guarda gli avvisi registrati nel gestionale, che non ci sono: finché non si collega l'avviso del portale, la cancellazione automatica non cancella mai. È voluto, ed è l'effetto giusto fino al collegamento, che si fa dopo le otto colonne mancanti in produzione (tra cui `purge_notice`).
+**Chi manda gli avvisi (decisione del 19/11/2026, titolare via Audit; sostituisce quella del 13/11).** Ogni avviso ha un solo mittente. Il gestionale manda quelli su dati e accesso, perché è lui a eseguire sospensione e cancellazione: fine della prova, sospensione, promemoria prima dell'eliminazione, ultimo avviso (`SendLifecycleNoticesCommand::KINDS`, registrati in `core.org_notices`). Il portale manda quelli sui soldi: benvenuto, rinnovo, pagamento non riuscito, scadenza vicina del piano a pagamento, fattura, disdetta registrata. La cancellazione automatica guarda gli avvisi registrati nel gestionale: finché `SAAS_NOTICES_ENABLED` è spento non ce ne sono e la cancellazione non cancella mai (voluto). Ordine di lancio: prima il portale smette di mandare i suoi avvisi su dati e accesso, poi si accende `SAAS_NOTICES_ENABLED`, così nessun avviso parte due volte.
+
+**I numeri hanno una sola fonte**: `saas.portal.retention_days` (180, dalla scadenza) e `saas.portal.trial_purge_days` (7, dalla fine della prova). Le email dicono la data esatta: l'ultimo giorno in cui i dati ci sono è la scadenza più i giorni di conservazione; l'eliminazione avviene dopo.

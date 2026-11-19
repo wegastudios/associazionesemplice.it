@@ -129,7 +129,7 @@ it('dice se un cambio di piano è possibile e che cosa cambia', function (): voi
     $response = $check('piccolo')->assertOk();
     expect($response->json('allowed'))->toBeFalse()
         ->and($response->json('blockers'))->toBe(['Hai 120 soci e il piano ne ammette 100', 'Hai 1 operatori attivi e il piano ne ammette 0'])
-        ->and($response->json('effects'))->toBe(['Si perde il pacchetto Sito']);
+        ->and($response->json('effects'))->toBe(['Perdi il pacchetto Sito']);
 
     ($this->call)("orgs/{$this->orgId}/plan-change/check", 'plan_change_check', ['ref' => 'sub_123', 'to_plan' => 'ignoto', 'to_plan_version' => 1])->assertStatus(409)->assertExactJson(['error' => 'unknown_plan']);
     ($this->call)("orgs/{$this->orgId}/plan-change/check", 'plan_change_check', ['ref' => 'sub_999', 'to_plan' => 'gestionale', 'to_plan_version' => 1])->assertNotFound();
@@ -157,7 +157,7 @@ it('controlla e imposta il dominio personalizzato, con le istruzioni per il DNS'
             ['type' => 'NS', 'name' => 'www.polisportivaalfa.it', 'value' => 'ns1.example.test'],
             ['type' => 'NS', 'name' => 'www.polisportivaalfa.it', 'value' => 'ns2.example.test'],
         ],
-        'message' => 'In attesa che il dominio sia delegato ai nostri nameserver.',
+        'message' => 'In attesa: il dominio non usa ancora i nameserver indicati.',
     ]);
     $set('non un dominio')->assertStatus(409)->assertExactJson(['ok' => false, 'reason' => 'invalid']);
 
@@ -252,5 +252,5 @@ it('un dominio attivo che non punta più a noi torna in attesa e l\'area soci si
 
     $this->artisan('saas:portal:verify-domains')->assertSuccessful();
 
-    expect(DB::table('core.org_domains')->value('state'))->toBe('pending')->and((string) DB::table('core.org_domains')->value('message'))->toContain('sospesa');
+    expect(DB::table('core.org_domains')->value('state'))->toBe('pending')->and((string) DB::table('core.org_domains')->value('message'))->toContain('non si apre');
 });

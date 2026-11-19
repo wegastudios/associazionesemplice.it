@@ -2031,7 +2031,7 @@ $tx = Portale\Catalog::terms( $xdoc );
 check( 'condizioni: commissione fuori da 0–30 torna al valore di partenza, prova con esportazioni', 1 === $tx['own_gateway_percent'] && 3 === $tx['collected_by_us_percent'] && true === $tx['trial_exports'] );
 $xdoc['terms']['vat']['note'] = '';
 check( 'condizioni: «exempt» senza dicitura non si applica (resta l\'IVA)', 'standard' === Portale\Catalog::terms( $xdoc )['vat_mode'] && 4026 + 732 === Quote::build( $xdoc, 'gestionale', 'month', 150, array( 'operators_extra' => 2 ) )['total'] );
-check( 'condizioni: frase sulla prova dalle regole del catalogo', 'tutto tranne le esportazioni e l\'accesso del commercialista' === Portale\Catalog::trialLimits( $qdoc ) );
+check( 'condizioni: frase sulla prova dalle regole del catalogo', 'tutto tranne le copie di sicurezza e l\'accesso del commercialista' === Portale\Catalog::trialLimits( $qdoc ) );
 check( 'preventivo: annuale = 10 mensilità, piano o addon sconosciuti rifiutati', 33000 === Quote::build( $qdoc, 'gestionale', 'year', 150 )['net'] && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'altro', 'month', 10 ); } ) && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'gestionale', 'month', 10, array( 'zzz' => 1 ) ); } ) );
 
 $oseed = str_repeat( 'o', 32 );
@@ -2236,7 +2236,7 @@ $cdb->run( 'UPDATE saas_orgs SET rev = 3 WHERE ref = ?', array( $reOrd['org_ref'
 $cdb->run( 'DELETE FROM orders WHERE id = ?', array( $reNew['id'] ) );
 $mails = array();
 check( 'riattiva: il pulsante c\'è se in ritardo col pagamento o scaduto, non se tutto è in regola', null !== Portale\SaasAccount::reactivation( $rrow ) && true === Portale\SaasAccount::reactivation( $rrow )['pay_now'] && null === Portale\SaasAccount::reactivation( array( 'state' => 'active' ) + $rrow ) && null !== Portale\SaasAccount::reactivation( array( 'state' => 'active', 'until' => '2020-01-01', 'provider' => 'paypal' ) + $rrow, null, 1700000000 ) && null === Portale\SaasAccount::reactivation( array( 'state' => 'pending' ) + $rrow ) );
-check( 'riattiva: dati conservati 180 giorni dal giorno dopo la scadenza', '2020-06-30' === Portale\SaasAccount::reactivation( array( 'until' => '2020-01-01', 'state' => 'suspended' ) + $rrow )['delete_on'] );
+check( 'riattiva: dati conservati fino a 180 giorni dopo la scadenza', '2020-06-29' === Portale\SaasAccount::reactivation( array( 'until' => '2020-01-01', 'state' => 'suspended' ) + $rrow )['delete_on'] );
 SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'cancelled', 5000200 );
 check( 'disdetta: cancelled; riferimento sconosciuto → non è nostro', 'cancelled' === json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev = 4' )['body'], true )['status'] && false === SaasCheckout::event( $cdb, 'stripe', 'altro', 'renewed' ) );
 // Email di scadenza e sospensione (lavoro giornaliero): una per scadenza, niente a sorpresa per le scadenze vecchie.
@@ -2246,33 +2246,35 @@ check( 'scadenza: senza disdetta niente avviso', 0 === SaasCheckout::sendLifecyc
 $cdb->run( 'UPDATE orders SET cancel_at_period_end = 1 WHERE id = ?', array( $ord['id'] ) );
 check( 'scadenza: con disdetta e scadenza vicina, una email sola', 1 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil - 5 * 86400 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil - 4 * 86400 ) && 1 === count( $mails ) && 'anna@esempio.it' === $mails[0][0] && false === strpos( $mails[0][2], '{' ) );
 $mails = array();
-check( 'sospensione: il giorno dopo la scadenza, una email sola, con la data di cancellazione a 180 giorni', 1 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 86400 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 2 * 86400 ) && 1 === count( $mails ) && false !== strpos( $mails[0][2], date_it( gmdate( 'Y-m-d', $lcUntil + 181 * 86400 ) . ' 00:00:00' ) ) && false === strpos( $mails[0][2], '{' ) );
-$cdb->run( 'UPDATE orders SET suspended_for = NULL WHERE id = ?', array( $ord['id'] ) );
-$mails = array();
-check( 'sospensione: scadenza di molti giorni fa → niente email a sorpresa', 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 10 * 86400 ) && array() === $mails );
-// Avvisi prima della cancellazione dei dati (181 giorni dopo la scadenza): 15 giorni prima e il giorno prima, una volta ciascuno.
+check( 'sospensione: il portale non scrive più, l\'avviso è del gestionale', 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 86400 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 10 * 86400 ) && array() === $mails );
+// Promemoria prima dell'eliminazione dei dati (181 giorni dopo la scadenza): li manda il gestionale, il portale no.
 $pgDel  = $lcUntil + 181 * 86400;
-$mails  = array();
-check( 'cancellazione: 16 giorni prima non parte nulla', 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 16 * 86400 + 3600 ) && array() === $mails );
-check( 'cancellazione: 15 giorni prima un avviso, una volta sola (anche il giorno dopo)', 1 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 15 * 86400 + 3600 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 15 * 86400 + 7200 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 14 * 86400 + 3600 ) && 1 === count( $mails ) && false !== strpos( $mails[0][1], 'Tra 15 giorni' ) && false !== strpos( $mails[0][2], date_it( gmdate( 'Y-m-d', $pgDel ) . ' 00:00:00' ) ) && false === strpos( $mails[0][2], '{' ) );
-check( 'cancellazione: il giorno prima un secondo avviso, una volta sola; il giorno stesso nulla', 1 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 86400 + 3600 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 86400 + 7200 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel + 3600 ) && 2 === count( $mails ) && false !== strpos( $mails[1][1], 'Domani eliminiamo' ) );
-$mails = array();
-// Fine della prova senza un piano: sequenza P1…P6, sola lettura il giorno dopo, chiusura alla cancellazione; niente arretrati.
+check( 'cancellazione: il portale non manda avvisi (15 giorni prima, il giorno prima)', 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 15 * 86400 + 3600 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 86400 + 3600 ) && array() === $mails );
+// Fine della prova senza un piano: il portale non scrive, chiude l'ordine quando il gestionale elimina i dati.
 $cdb->run( 'INSERT INTO saas_orgs (ref, customer_id, name, slug, rev, created_at, org_id) VALUES (?,?,?,?,0,?,?)', array( 'otrial', $reOrd['customer_id'], 'Circolo Prova', 'prova', '2030-01-01 00:00:00', 'orgT' ) );
 $tOrd = Orders::open( $cdb, (string) $reOrd['customer_id'], (string) $reOrd['plan'], (string) $reOrd['period'], (int) $reOrd['members'], array(), null );
 $cdb->run( "UPDATE orders SET status = 'trial', trial_ends = '2030-01-31', org_ref = 'otrial' WHERE id = ?", array( $tOrd['id'] ) );
 $tAt   = function ( string $d ) { return strtotime( $d . ' 12:00:00 UTC' ); };
 $mails = array();
-check( 'prova: nei giorni prima di P1 non parte nulla', 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-23' ) ) && array() === $mails );
-check( 'prova: P1 sette giorni prima, una volta sola', 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-24' ) ) && 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-24' ) ) && false !== strpos( $mails[0][1], 'finisce il 31/01/2030' ) && false !== strpos( $mails[0][2], 'sola lettura' ) && false !== strpos( $mails[0][2], '07/02/2030' ) && false === strpos( $mails[0][2], '{' ) );
-check( 'prova: P2 due giorni prima', 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-29' ) ) && false !== strpos( $mails[1][1], 'Ancora 2 giorni' ) );
-check( 'prova: P3 il giorno della fine, senza sconto non c\'è il paragrafo dell\'offerta', 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-31' ) ) && false !== strpos( $mails[2][2], 'consultare tutto' ) && false === stripos( $mails[2][2], 'sconto' ) && false === strpos( $mails[2][2], "\n\n\n" ) );
-check( 'prova: dopo la fine non si manda «suspended» al SaaS (resta «trial»: la sospensione e la sola lettura le fa il SaaS)', 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-01' ) ) && 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-02' ) ) && '' === Portale\SaasAccount::stateOf( $cdb, 'orgT' ) && 0 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) )['n'] );
-check( 'prova: P4 tre giorni dopo, P5 il giorno prima della cancellazione', 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-03' ) ) && false !== strpos( $mails[3][2], 'in sola lettura da 3 giorni' ) && 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-06' ) ) && false !== strpos( $mails[4][1], 'Domani eliminiamo' ) );
-check( 'prova: P6 a cancellazione fatta, ordine chiuso', 'trial' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-07' ) ) && false !== strpos( $mails[5][1], 'Abbiamo eliminato' ) && 'trial_purged' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-08' ) ) );
-$cdb->run( "UPDATE orders SET status = 'trial', trial_step = 0, suspended_for = NULL WHERE id = ?", array( $tOrd['id'] ) );
+check( 'prova: il portale non manda email di fine prova, in nessun giorno', 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-01-24' ) ) && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-01-31' ) ) && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-03' ) ) && array() === $mails );
+$offDoc = json_decode( (string) json_encode( array( 'terms' => array( 'trial' => array( 'end_discount_percent' => 20, 'purge_days' => 7 ) ) ) ), true );
+check( 'offerta: senza sconto o senza codice non parte nulla', 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ) ) && ( Config::set( 'saas_trial_promo', 'FINEPROVA' ) || true ) && 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ) ) && ( Config::set( 'saas_trial_promo', '' ) || true ) && 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ), $offDoc ) && array() === $mails );
+Config::set( 'saas_trial_promo', 'FINEPROVA' );
+check( 'offerta: prima della fine non parte nulla', 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-30' ), $offDoc ) && array() === $mails );
+check( 'offerta: il giorno della fine una email sola, solo sull\'offerta, senza date di accesso o cancellazione', 1 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ), $offDoc ) && 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ), $offDoc ) && 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-02-01' ), $offDoc ) && 1 === count( $mails ) && false !== strpos( $mails[0][1], '20%' ) && false !== strpos( $mails[0][2], 'FINEPROVA' ) && false !== strpos( $mails[0][2], '07/02/2030' ) && false === stripos( $mails[0][2], 'sola lettura' ) && false === stripos( $mails[0][2], 'elimin' ) && false === strpos( $mails[0][2], '{' ) );
+$cdb->run( "UPDATE orders SET trial_step = 0 WHERE id = ?", array( $tOrd['id'] ) );
 $mails = array();
-check( 'prova: se il lavoro non è girato, gli avvisi vecchi non partono in arretrato', 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-05' ) ) && array() === $mails );
+check( 'offerta: se il lavoro non è girato il giorno della fine, quello dopo parte; poi niente arretrati', 1 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-02-01' ), $offDoc ) && 1 === count( $mails ) );
+$cdb->run( "UPDATE orders SET trial_step = 0 WHERE id = ?", array( $tOrd['id'] ) );
+$mails = array();
+Config::set( 'saas_trial_promo', 'FINEPROVA' );
+$offCust = (string) $cdb->one( 'SELECT customer_id AS c FROM orders WHERE id = ?', array( $tOrd['id'] ) )['c'];
+check( 'offerta: il codice vale fino a 7 giorni dopo la fine della prova, poi è scaduto', null === throwsUser( function () use ( $cdb, $offCust, $tAt ) { SaasCheckout::checkTrialPromo( $cdb, $offCust, 'fineprova', $tAt( '2030-02-07' ) ); } ) && 'Questo codice è scaduto.' === throwsUser( function () use ( $cdb, $offCust, $tAt ) { SaasCheckout::checkTrialPromo( $cdb, $offCust, 'FINEPROVA', $tAt( '2030-02-08' ) ); } ) );
+check( 'offerta: il codice non vale per chi non ha fatto la prova; gli altri codici non sono toccati', null !== throwsUser( function () use ( $cdb, $tAt ) { SaasCheckout::checkTrialPromo( $cdb, 'nessuno', 'FINEPROVA', $tAt( '2030-02-01' ) ); } ) && null === throwsUser( function () use ( $cdb, $tAt ) { SaasCheckout::checkTrialPromo( $cdb, 'nessuno', 'ALTRO', $tAt( '2030-03-01' ) ); } ) );
+check( 'offerta: in ritardo di più di un giorno non parte', 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-02-05' ), $offDoc ) && array() === $mails );
+Config::set( 'saas_trial_promo', '' );
+check( 'prova: dopo la fine non si manda «suspended» al SaaS (resta «trial»: la sospensione e la sola lettura le fa il SaaS)', '' === Portale\SaasAccount::stateOf( $cdb, 'orgT' ) && 0 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) )['n'] );
+check( 'prova: all\'eliminazione dei dati l\'ordine si chiude, una volta sola, senza email', 'trial' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 1 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-07' ) ) && 'trial_purged' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-08' ) ) && array() === $mails );
 $cdb->run( 'DELETE FROM orders WHERE id = ?', array( $tOrd['id'] ) );
 $cdb->run( 'DELETE FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) );
 $cdb->run( 'DELETE FROM saas_orgs WHERE ref = ?', array( 'otrial' ) );

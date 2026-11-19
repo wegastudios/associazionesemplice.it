@@ -25,7 +25,7 @@
             <p>Nessuna bozza: il catalogo in vigore è quello pubblicato.</p>
         @endif
         @if (auth('platform')->user()?->canWrite() && $hasDraft)
-            <form method="post" action="{{ route('platform.catalog.publish') }}" onsubmit="return confirm('Pubblicare la revisione? I prezzi cambiano subito sul portale.')">
+            <form method="post" action="{{ route('platform.catalog.publish') }}" onsubmit="return confirm('Pubblicare la revisione? I prezzi cambiano sul portale entro pochi minuti.')">
                 @csrf
                 <label for="note">Nota sulla modifica (facoltativa, resta nel registro)</label>
                 <input id="note" name="note" maxlength="300">

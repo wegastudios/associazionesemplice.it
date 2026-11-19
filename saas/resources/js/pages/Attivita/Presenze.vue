@@ -41,7 +41,7 @@ const all = (on) => { form.present = on ? props.roster.map((p) => p.id) : []; };
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <h2 class="text-lg font-bold first-letter:uppercase">{{ dayLabel }}</h2>
                     <span v-if="span" class="text-sm text-muted">{{ span }}</span>
-                    <span class="text-sm text-muted">{{ saved ? 'Registrata' : 'Non ancora registrata' }}</span>
+                    <span class="text-sm text-muted">{{ saved ? 'Presenze registrate' : 'Presenze da registrare' }}</span>
                 </div>
                 <p v-if="!roster.length" class="text-sm text-muted">Nessuno atteso in questa data.</p>
                 <fieldset v-else :disabled="!canEdit || future" class="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">

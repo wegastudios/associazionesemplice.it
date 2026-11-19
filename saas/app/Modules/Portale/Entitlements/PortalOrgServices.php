@@ -81,7 +81,7 @@ final readonly class PortalOrgServices
         $lost = array_diff(array_keys(is_array($stored['packages'] ?? null) ? $stored['packages'] : []), array_keys($resolved['packages']));
         sort($lost);
         foreach ($lost as $package) {
-            $effects[] = 'Si perde il pacchetto '.$this->packageName((string) $package);
+            $effects[] = 'Perdi il pacchetto '.$this->packageName((string) $package);
         }
 
         return ['allowed' => $blockers === [], 'blockers' => $blockers, 'effects' => $effects];
@@ -192,7 +192,7 @@ final readonly class PortalOrgServices
             'message' => is_string($row->message) && $row->message !== '' ? $row->message : match ($row->state) {
                 'active' => 'Il dominio è attivo.',
                 'error' => 'I nameserver del dominio non sono ancora quelli indicati.',
-                default => 'In attesa che il dominio sia delegato ai nostri nameserver.',
+                default => 'In attesa: il dominio non usa ancora i nameserver indicati.',
             },
         ];
     }

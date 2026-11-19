@@ -64,8 +64,8 @@ const field = 'field';
         </section>
 
         <section v-if="versions.length" class="mt-6 card p-4 sm:p-5 print:hidden">
-            <h2 class="mb-2 text-lg font-bold">Rendiconti pubblicati alla chiusura</h2>
-            <p class="mb-3 text-sm text-muted">Un anno fiscale chiuso si legge sempre dal rendiconto pubblicato e bloccato alla chiusura, anche se voci e conti cambiano dopo. Se lo riapri e lo richiudi nasce una nuova versione; le precedenti restano.</p>
+            <h2 class="mb-2 text-lg font-bold">Rendiconti emessi alla chiusura</h2>
+            <p class="mb-3 text-sm text-muted">Un anno fiscale chiuso si legge sempre dal rendiconto emesso e bloccato alla chiusura, anche se voci e conti cambiano dopo. Se lo riapri e lo richiudi nasce una nuova versione; le precedenti restano.</p>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="v in versions" :key="v.version" class="flex justify-between gap-3 py-2">
                     <span>Versione {{ v.version }} · {{ v.date }}</span>
@@ -73,12 +73,12 @@ const field = 'field';
                 </li>
             </ul>
         </section>
-        <p v-else-if="statement.status === 'closed'" class="mt-6 text-sm text-muted print:hidden">Anno fiscale chiuso prima dei rendiconti definitivi: questo rendiconto è ricalcolato dai dati attuali. Riaprilo e richiudilo per emettere il rendiconto definitivo.</p>
+        <p v-else-if="statement.status === 'closed'" class="mt-6 text-sm text-muted print:hidden">Questo anno fiscale è stato chiuso senza rendiconto definitivo: i numeri sono ricalcolati dai dati di oggi. Riaprilo e richiudilo per emetterlo.</p>
 
         <section v-if="canClose" class="mt-6 card p-4 sm:p-5 print:hidden">
             <h2 class="mb-3 text-lg font-bold">Chiusura dell'anno fiscale</h2>
             <template v-if="statement.status === 'open'">
-                <p class="mb-3 text-sm text-muted">Dopo l’approvazione, emetti il rendiconto definitivo. Da quel momento non si registrano né si stornano movimenti con date di quell’anno; se serve, si può riaprire.</p>
+                <p class="mb-3 text-sm text-muted">Dopo l'approvazione dell'assemblea, emetti il rendiconto definitivo. Da quel momento non si registrano né si stornano movimenti con date di quell’anno; se serve, si può riaprire.</p>
                 <button type="button" class="btn btn-secondary" @click="close">Emetti il rendiconto definitivo {{ statement.year }}</button>
             </template>
             <form v-else class="flex flex-wrap items-end gap-3" @submit.prevent="submitReopen">

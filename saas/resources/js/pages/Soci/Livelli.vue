@@ -16,7 +16,7 @@ const field = 'field';
     <AppLayout>
         <p class="mb-2 text-sm"><Link href="/gestionale/soci" class="font-semibold text-accent hover:underline">← Soci</Link></p>
         <h1 class="mb-1 text-2xl font-bold">Livelli di socio</h1>
-        <p class="mb-6 text-sm text-muted">Per esempio «Socio junior» con una quota ridotta. Senza quota propria vale quella dell'associazione. «Vota» dice se chi ha quel livello ha diritto di voto in assemblea (i minorenni mai); un livello nuovo vota.</p>
+        <p class="mb-6 text-sm text-muted">Per esempio «Socio junior» con una quota ridotta. Senza quota propria vale quella dell'associazione. «Vota» dice se chi ha quel livello ha diritto di voto in assemblea (i minorenni mai). I livelli nuovi nascono con il voto.</p>
 
         <div class="mb-8 space-y-3">
             <p v-if="!levels.length" class="text-sm text-muted">Nessun livello.</p>
@@ -29,7 +29,7 @@ const field = 'field';
                     <label class="flex items-center gap-2 text-sm"><input v-model="edits[i].votes" type="checkbox" class="size-4 accent-indaco" /> vota</label>
                     <button v-if="canEdit" type="submit" class="btn btn-secondary btn-sm">Salva</button>
                 </fieldset>
-                <p class="text-xs text-muted sm:col-span-6">{{ l.people }} soci con questo livello</p>
+                <p class="text-xs text-muted sm:col-span-6">{{ l.people === 1 ? '1 socio con questo livello' : `${l.people} soci con questo livello` }}</p>
             </form>
         </div>
 

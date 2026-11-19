@@ -6,7 +6,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 const props = defineProps({ view: String, from: String, previous: String, next: String, days: Array });
 const views = [['giorno', 'Giorno'], ['settimana', 'Settimana'], ['mese', 'Mese']];
 const go = (d, view = props.view) => router.get('/gestionale/calendario', { dal: d, vista: view }, { preserveScroll: true });
-const period = computed(() => ({ giorno: 'per un giorno', settimana: 'per sette giorni', mese: 'per un mese' })[props.view]);
+const period = computed(() => ({ giorno: 'del giorno', settimana: 'della settimana', mese: 'del mese' })[props.view]);
 const prev = computed(() => ({ giorno: 'Giorno prima', settimana: 'Settimana prima', mese: 'Mese prima' })[props.view]);
 const nextLabel = computed(() => ({ giorno: 'Giorno dopo', settimana: 'Settimana dopo', mese: 'Mese dopo' })[props.view]);
 </script>
@@ -18,7 +18,7 @@ const nextLabel = computed(() => ({ giorno: 'Giorno dopo', settimana: 'Settimana
         <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold">Calendario</h1>
-                <p class="text-sm text-muted">Lezioni dei corsi, eventi e date con prenotazione, {{ period }}.</p>
+                <p class="text-sm text-muted">Lezioni dei corsi, eventi e date con prenotazione {{ period }}.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 text-sm">
                 <div class="flex overflow-hidden rounded-lg border border-line" role="group" aria-label="Vista">
@@ -39,7 +39,7 @@ const nextLabel = computed(() => ({ giorno: 'Giorno dopo', settimana: 'Settimana
                         <Link :href="x.session_id ? `/gestionale/attivita/date/${x.session_id}` : `/gestionale/attivita/${x.activity_id}`" class="font-semibold text-accent hover:underline">{{ x.title }}</Link>
                         <span v-if="x.span" class="text-xs text-muted">{{ x.span }}</span>
                         <span class="text-muted">{{ x.kind }}<template v-if="x.location"> · {{ x.location }}</template></span>
-                        <span v-if="x.taken !== null" class="rounded bg-surface px-2 py-0.5 text-xs">{{ x.taken }} prenotati<template v-if="x.capacity"> su {{ x.capacity }}</template></span>
+                        <span v-if="x.taken !== null" class="rounded bg-surface px-2 py-0.5 text-xs">{{ x.taken }} {{ x.taken === 1 ? 'prenotato' : 'prenotati' }}<template v-if="x.capacity"> su {{ x.capacity }}</template></span>
                         <Link :href="`/gestionale/attivita/${x.activity_id}/presenze?mese=${d.date.slice(0, 7)}&giorno=${d.date}`" class="text-xs text-accent hover:underline">presenze</Link>
                     </li>
                 </ul>
