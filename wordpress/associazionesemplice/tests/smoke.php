@@ -9075,7 +9075,7 @@ wp_delete_file( $bk_pa );
 $res_t = \AssociazioneSemplice\Backup::restore( $bk_tz );
 wp_delete_file( $bk_tz );
 $bk_et = asem_throws( function () use ( $bk_rc ) { \AssociazioneSemplice\Receipts::build( $bk_rc[0]['receipt_key'] ); } );
-asem_ok( $res_t['documents']['bad'] >= 1 && ! is_file( $bk_pa ) && null !== $bk_et && false !== strpos( $bk_et, 'non si trova più' ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[1]['receipt_key'] ), 'issued' ), 'ripristino: un PDF manomesso nella copia non si rimette; la ricevuta dà un errore chiaro e il resto torna a posto' );
+asem_ok( $res_t['documents']['bad'] >= 1 && ! is_file( $bk_pa ) && null !== $bk_et && false !== strpos( $bk_et, 'non è più sul sito' ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[1]['receipt_key'] ), 'issued' ), 'ripristino: un PDF manomesso nella copia non si rimette; la ricevuta dà un errore chiaro e il resto torna a posto' );
 \AssociazioneSemplice\Receipts::regenerate_pdf( $bk_rc[0]['receipt_key'], 'issued' );
 asem_ok( is_file( $bk_pa ) && 0 === strpos( asem_rf_content( $bk_rc[0]['pdf_path'] ), '%PDF-1.4' ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[0]['receipt_key'] ), 'issued' ), 'ripristino: il PDF mancante si può rifare dai dati salvati (solo da un amministratore, con i dati intatti)' );
 // tutto o niente: una copia con una riga rovinata non cambia nulla
@@ -13068,7 +13068,7 @@ $pf_r2 = \AssociazioneSemplice\Receipts::record( $pf_key[5200] );
 $pf_f2 = $pf_dir . '/' . $pf_r2['pdf_path'];
 wp_delete_file( $pf_f2 );
 $pf_e2 = asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::build( $pf_key[5200] ); } );
-asem_ok( 'missing' === \AssociazioneSemplice\ReceiptFiles::state( $pf_r2, 'issued' ) && null !== $pf_e2 && false !== strpos( $pf_e2, 'non si trova più' ) && ! is_file( $pf_f2 ) && \AssociazioneSemplice\Receipts::can_view( $pf_key[5200] ), 'ricevute PDF: file mancante, errore chiaro e nessun PDF rifatto in silenzio' );
+asem_ok( 'missing' === \AssociazioneSemplice\ReceiptFiles::state( $pf_r2, 'issued' ) && null !== $pf_e2 && false !== strpos( $pf_e2, 'non è più sul sito' ) && ! is_file( $pf_f2 ) && \AssociazioneSemplice\Receipts::can_view( $pf_key[5200] ), 'ricevute PDF: file mancante, errore chiaro e nessun PDF rifatto in silenzio' );
 \AssociazioneSemplice\ReceiptFiles::verify_step( $pf_fy ); // la pagina mostra l'esito dell'ultima verifica: prima si fa il giro
 asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File mancanti', array( 'year' => $pf_fy ) );
 $pf_docs = \AssociazioneSemplice\ReceiptFiles::backup_documents( array() );
