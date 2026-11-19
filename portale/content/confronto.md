@@ -43,12 +43,12 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Minori con uno o due genitori o tutori: area soci del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
 | Liberatoria per foto e video nella scheda e nel modulo di domanda online, con il tutore per i minori | ✓ | ✓ | ✓ |
 | Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione soci | ✓ | ✓ | ✓ |
-| Avviso «Schede da completare» in Bacheca e in «Da lavorare» | ✓ | ✓ | ✓ |
+| Avviso «Schede da completare» in Bacheca e in «Da fare» | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
 | Utente «Dipendente» :: Permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |
-| Riquadri «Da lavorare» e «Eventi e corsi della settimana» nella Bacheca di WordPress | ✓ | ✓ | ✓ |
+| Riquadri «Da fare» e «Eventi e corsi della settimana» nella Bacheca di WordPress | ✓ | ✓ | ✓ |
 
 ## Corsi ed eventi
 
@@ -131,7 +131,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Anno fiscale con verifiche :: Verifiche prima della chiusura dell'anno fiscale del rendiconto per cassa | — | — | ✓ |
 | Rendiconto definitivo :: Alla chiusura dell'anno fiscale il rendiconto diventa definitivo, con un PDF numerato (n. 1/2026) che non cambia più; prima è una bozza | — | — | ✓ |
 | Spese documentate sui fondi dei rimborsi :: Attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
-| Bilancio provvisorio e storico mensile :: Con avvisi di bilancio e storico mensile in CSV | — | — | ✓ |
+| Rendiconto provvisorio e storico mensile :: Con avvisi di bilancio e storico mensile in CSV | — | — | ✓ |
 | Prospetto dei rimborsi per persona :: Per persona, con CSV e PDF | — | — | ✓ |
 | Verifiche di fine anno :: La chiusura si blocca se mancano le spese documentate dei rimborsi | — | — | ✓ |
 | Avviso di disavanzo :: Avviso se un anno fiscale passato ancora aperto è in disavanzo (non blocca la chiusura) | — | — | ✓ |
