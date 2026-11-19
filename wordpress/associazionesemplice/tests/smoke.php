@@ -3790,7 +3790,7 @@ wp_set_current_user( $uq );
 asem_ok( false === strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt ), 'asem_front_checkin' ), 'pagina del biglietto: un socio che non gestisce l\'evento non ha comandi' );
 wp_set_current_user( $u_tre );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt ), 'Annulla l\'ingresso' ) && false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt, array( 'ok' => 'Ingresso registrato: prova' ) ), 'Ingresso registrato: prova' ), 'pagina del biglietto: il gestore può annullare la registrazione e vede l\'esito dell\'azione' );
-asem_ok( false !== strpos( $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => '1' ) ), 'annullata' ) && empty( $wpdb->get_var( $wpdb->prepare( 'SELECT checked_in_at FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $tev_s, $g_id ) ) ), 'ingresso: la registrazione si può annullare' );
+asem_ok( false !== strpos( $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => '1' ) ), 'annullato' ) && empty( $wpdb->get_var( $wpdb->prepare( 'SELECT checked_in_at FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $tev_s, $g_id ) ) ), 'ingresso: la registrazione si può annullare' );
 asem_ok( 'valid' === \AssociazioneSemplice\Frontend\TicketVerify::result( $gt )['status'] && false !== strpos( \AssociazioneSemplice\Frontend\TicketVerify::page( $gt ), 'Registra ingresso' ), 'biglietto: annullata la registrazione torna valido, con il comando per il gestore' );
 
 // ingresso da QR scansionato
