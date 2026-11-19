@@ -37,9 +37,9 @@ final class AssembliesFront {
 			}
 			if ( $a['given'] ) {
 				$html .= '<div class="asemf-small"><strong>Hai delegato:</strong> ' . esc_html( Assemblies::proxy_name( $a['given'], 'b' ) ) . '.</div>'
-					. Views::form( 'asem_front_proxy_revoke', Views::hidden( 'assembly_id', $id ), 'Revoca la delega', true );
+					. Views::form( 'asem_front_proxy_revoke', Views::hidden( 'assembly_id', $id ), 'Revoca la delega', 'Revocare la delega?' );
 			} elseif ( ! $a['gotten'] && '' !== $others ) {
-				$html .= Views::form( 'asem_front_proxy', Views::hidden( 'assembly_id', $id ) . '<label class="asemf-field">Se non puoi venire, delega un altro socio <select name="delegate_id" required><option value="">— scegli —</option>' . $others . '</select></label>', 'Delega', true );
+				$html .= Views::form( 'asem_front_proxy', Views::hidden( 'assembly_id', $id ) . '<label class="asemf-field">Se non puoi venire, delega un altro socio <select name="delegate_id" required><option value="">— scegli —</option>' . $others . '</select></label>', 'Delega', 'Delegare questo socio?' );
 			}
 			$html .= '</div></li>';
 		}

@@ -929,7 +929,7 @@ class PeopleService {
 	}
 
 	/**
-	 * Scollega l'email di un socio: si riparte senza email (e senza accesso all'area riservata) ma lo storico resta.
+	 * Scollega l'email di un socio: si riparte senza email (e senza accesso all'area soci) ma lo storico resta.
 	 * L'utente WordPress non viene cancellato; si rifiuta se ha altri ruoli oltre a quello di socio.
 	 */
 	public function detach_email( int $id ): void {

@@ -335,7 +335,7 @@ final class Actions {
 	private static function release_hint( array $person ): string {
 		$uid = (int) ( Plugin::people()->get( (int) $person['id'] )['wp_user_id'] ?? 0 );
 		if ( $uid > 0 && \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\Access::has_powers( $uid ) ) {
-			return ' Non ha più incarichi: dalla sua scheda, in «Accesso all\'area riservata», puoi passarlo all\'accesso con link.';
+			return ' Non ha più incarichi: dalla sua scheda, in «Accesso all\'area soci», puoi passarlo all\'accesso con link.';
 		}
 		return '';
 	}
@@ -382,7 +382,7 @@ final class Actions {
 		$on = ! empty( $p['enabled'] );
 		\AssociazioneSemplice\Access::set_treasurer( (int) $person['wp_user_id'], $on );
 		Audit::log( $on ? 'treasurer.granted' : 'treasurer.revoked', 'person', (int) $person['id'] );
-		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora è tesoriere: può incassare, registrare spese, iscrivere soci e vendere gli eventi dall\'area riservata.' : 'Non è più tesoriere.' . self::release_hint( $person ) );
+		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora è tesoriere: può incassare, registrare spese, iscrivere soci e vendere gli eventi dall\'area soci.' : 'Non è più tesoriere.' . self::release_hint( $person ) );
 	}
 
 	/** Staff dell'ente: può verificare gli accessi a tutti gli eventi (l'incasso resta una scelta per singolo evento). */
@@ -976,7 +976,7 @@ final class Actions {
 
 	private static function event_staff_add( array $p ): array {
 		Plugin::activities()->add_staff( (int) $p['activity_id'], (int) ( $p['person_id'] ?? 0 ), ! empty( $p['can_cash'] ) );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Aggiunto allo staff dell\'evento: ora vede i prenotati e registra gli ingressi dall\'area riservata.' );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Aggiunto allo staff dell\'evento: ora vede i prenotati e registra gli ingressi dall\'area soci.' );
 	}
 
 	private static function event_staff_cash( array $p ): array {
@@ -1397,7 +1397,7 @@ final class Actions {
 		$made = \AssociazioneSemplice\Pages::create( array( 'area', 'volontari', 'attivita' ) );
 		$have = \AssociazioneSemplice\Pages::existing();
 		$menu = ! empty( $have['area'] ) && \AssociazioneSemplice\Pages::add_to_menu( (int) $have['area'] );
-		return array( Ui::url( 'asem-settings' ), ( $made ? 'Pagine create: ' . implode( ', ', $made ) . '.' : 'Le pagine standard esistono già.' ) . ( $menu ? ' La voce «Area riservata» è nel menu del sito.' : '' ) );
+		return array( Ui::url( 'asem-settings' ), ( $made ? 'Pagine create: ' . implode( ', ', $made ) . '.' : 'Le pagine standard esistono già.' ) . ( $menu ? ' La voce «Area soci» è nel menu del sito.' : '' ) );
 	}
 
 	// ---------- Import (Excel / CSV) ----------

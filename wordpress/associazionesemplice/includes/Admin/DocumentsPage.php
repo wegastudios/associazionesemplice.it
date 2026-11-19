@@ -55,7 +55,7 @@ final class DocumentsPage {
 		}
 		echo '</datalist></td></tr>';
 		echo '<tr><th>Data del documento</th><td><input type="date" name="doc_date" value="' . esc_attr( $v( 'doc_date' ) ) . '"></td></tr>';
-		echo wp_kses( '<tr><th>Chi lo vede</th><td><select name="visibility">' . Ui::options( DocumentRules::visibilities(), $v( 'visibility', DocumentRules::MEMBERS ) ) . '</select><p class="description">«Soci»: i soci in regola, dall\'area riservata. «Pubblico»: chiunque, con lo shortcode.</p></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Chi lo vede</th><td><select name="visibility">' . Ui::options( DocumentRules::visibilities(), $v( 'visibility', DocumentRules::MEMBERS ) ) . '</select><p class="description">«Soci»: i soci in regola, dall\'area soci. «Pubblico»: chiunque, con lo shortcode.</p></td></tr>', Html::allowed() );
 		echo '<tr><th>Descrizione</th><td><input type="text" name="description" value="' . esc_attr( $v( 'description' ) ) . '" class="large-text" maxlength="255"></td></tr>';
 		echo '<tr><th>File' . ( $d ? '' : ' *' ) . '</th><td><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.odt,.xls,.xlsx,.ods,.txt"' . ( $d ? '' : ' required' ) . '>';
 		if ( $d ) {

@@ -27,9 +27,9 @@ final class Access {
 		'asem_notify_activity',    // id attività: inviare un avviso ufficiale agli iscritti
 		'asem_manage_event',       // id attività: gestire un evento (lista prenotati, registrazione ingressi): referente e gestori indicati
 		'asem_door_cash',          // id attivita': incassare il biglietto sul posto a chi non ha prenotato (referente e gestori con l'incasso abilitato)
-		'asem_add_expense',        // (nessun oggetto) tesoriere: registrare spese dall'area riservata
-		'asem_collect',            // (nessun oggetto) tesoriere: incassare dall'area riservata
-		'asem_register_member',    // (nessun oggetto) tesoriere: iscrivere un nuovo socio dall'area riservata
+		'asem_add_expense',        // (nessun oggetto) tesoriere: registrare spese dall'area soci
+		'asem_collect',            // (nessun oggetto) tesoriere: incassare dall'area soci
+		'asem_register_member',    // (nessun oggetto) tesoriere: iscrivere un nuovo socio dall'area soci
 	);
 
 	/**
@@ -149,7 +149,7 @@ final class Access {
 
 	const TREASURER_META = 'asem_treasurer';
 
-	/** Tesoriere: socio o volontario a cui l'amministratore ha dato il permesso di registrare spese dall'area riservata. */
+	/** Tesoriere: socio o volontario a cui l'amministratore ha dato il permesso di registrare spese dall'area soci. */
 	public static function is_treasurer( int $user_id ): bool {
 		return $user_id > 0 && '1' === (string) get_user_meta( $user_id, self::TREASURER_META, true );
 	}
@@ -194,7 +194,7 @@ final class Access {
 	public static function user_can( int $user_id, string $ability, int $object_id ): bool {
 		$is_admin = self::is_admin_user( $user_id );
 		if ( $is_admin ) {
-			return ! Employees::ability_denied( $user_id, $ability, $object_id ); // un dipendente a cui è stato tolto un permesso non lo ha nemmeno dall'area riservata
+			return ! Employees::ability_denied( $user_id, $ability, $object_id ); // un dipendente a cui è stato tolto un permesso non lo ha nemmeno dall'area soci
 		}
 		// Licenza non in regola: l'accesso di soci e volontari è sospeso (gli amministratori restano, coperti dal popup).
 		if ( ! Edition::allows( 'member_area' ) ) {

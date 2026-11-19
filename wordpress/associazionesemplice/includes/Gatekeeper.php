@@ -4,7 +4,7 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Soci e volontari lavorano nell'area riservata del sito, non in wp-admin: l'area di amministrazione
+ * Soci e volontari lavorano nell'area soci del sito, non in wp-admin: l'area di amministrazione
  * resta solo per gli amministratori. Vale per gli utenti che hanno SOLO il ruolo "Socio": chi ha anche
  * altri ruoli (editor, amministratore…) non viene toccato.
  */
@@ -26,7 +26,7 @@ final class Gatekeeper {
 		return $user && $user->exists() && self::is_member_only( (array) $user->roles ) && ! user_can( $user, Plugin::CAP_OPS ); // presidente e vicepresidente lavorano come la segreteria
 	}
 
-	/** Pagina dell'area riservata scelta nelle impostazioni, altrimenti la home. */
+	/** Pagina dell'area soci scelta nelle impostazioni, altrimenti la home. */
 	public static function area_url(): string {
 		$id = (int) Settings::get( 'member_area_page_id' );
 		if ( $id > 0 && 'publish' === get_post_status( $id ) ) {

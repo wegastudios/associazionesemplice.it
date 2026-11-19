@@ -347,7 +347,7 @@ final class Polls {
 		list( $subject, $body ) = self::open_text( $poll );
 		if ( 'poll_closing' === $kind ) {
 			$subject = 'Ultimo giorno per votare: ' . $poll['title'];
-			$body    = 'la votazione «' . $poll['title'] . '» si chiude il ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $poll['closes_at'] ) . ' e non risulta il tuo voto. Puoi votare dall\'area riservata: ' . Gatekeeper::area_url();
+			$body    = 'la votazione «' . $poll['title'] . '» si chiude il ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $poll['closes_at'] ) . ' e non risulta il tuo voto. Puoi votare dall\'area soci: ' . Gatekeeper::area_url();
 		}
 		$ref = $manual ? 'm' . $poll_id . ':' . gmdate( 'Ymd', strtotime( Db::today() ) ) : (string) $poll_id;
 		$n   = 0;

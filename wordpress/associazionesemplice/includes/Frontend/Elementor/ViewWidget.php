@@ -29,13 +29,13 @@ class ViewWidget extends Widget_Base {
 	}
 
 	public function get_keywords() {
-		return array( 'associazionesemplice', 'soci', 'tessera', 'attività', 'eventi', 'area riservata' );
+		return array( 'associazionesemplice', 'soci', 'tessera', 'attività', 'eventi', 'area soci' );
 	}
 
 	protected function register_controls() {
 		$this->start_controls_section( 'content_section', array( 'label' => 'Vista', 'tab' => Controls_Manager::TAB_CONTENT ) );
 		$this->add_control( 'view', array( 'label' => 'Cosa mostrare', 'type' => Controls_Manager::SELECT, 'options' => \AssociazioneSemplice\Areas::options(), 'default' => 'area_soci' ) );
-		$this->add_control( 'anno', array( 'label' => 'Anno sociale (es. 2025/2026; vuoto = in corso)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => 'attivita' ) ) );
+		$this->add_control( 'anno', array( 'label' => 'Anno delle attività (es. 2025/2026; vuoto = in corso)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => 'attivita' ) ) );
 		$this->add_control(
 			'tipo',
 			array(
@@ -49,14 +49,14 @@ class ViewWidget extends Widget_Base {
 		$this->add_control( 'id', array( 'label' => 'Solo questa attività (ID, facoltativo)', 'type' => Controls_Manager::NUMBER, 'condition' => array( 'view' => 'attivita' ) ) );
 		$this->add_control( 'date', array( 'label' => 'Date da mostrare per attività', 'type' => Controls_Manager::NUMBER, 'default' => 5, 'condition' => array( 'view' => 'attivita' ) ) );
 		$this->add_control( 'limite', array( 'label' => 'Numero di eventi', 'type' => Controls_Manager::NUMBER, 'default' => 5, 'condition' => array( 'view' => array( 'prossimi_eventi', 'eventi' ) ) ) );
-		$this->add_control( 'categoria', array( 'label' => 'Solo questa categoria (indirizzo, facoltativo)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => 'eventi' ) ) );
+		$this->add_control( 'categoria', array( 'label' => 'Solo questa categoria (il nome che ha nel suo indirizzo web; facoltativo)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => 'eventi' ) ) );
 		$this->add_control( 'modo', array( 'label' => 'Aspetto', 'type' => Controls_Manager::SELECT, 'options' => array( 'elenco' => 'Elenco a schede', 'mese' => 'Calendario mensile' ), 'default' => 'elenco', 'condition' => array( 'view' => 'eventi' ) ) );
 		$lists = array( 'eventi', 'calendario_eventi', 'prossimi_eventi' );
 		$parts = array( 'evento_locandina', 'evento_dati', 'evento_prenotazione', 'evento_dove', 'evento_navigazione', 'evento_condividi' );
-		$this->add_control( 'categoria2', array( 'label' => 'Solo questa categoria (indirizzo, facoltativo)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => array( 'calendario_eventi', 'prossimi_eventi' ) ) ) );
+		$this->add_control( 'categoria2', array( 'label' => 'Solo questa categoria (il nome che ha nel suo indirizzo web; facoltativo)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => array( 'calendario_eventi', 'prossimi_eventi' ) ) ) );
 		$this->add_control( 'prenotazione', array( 'label' => 'Prenotazione dalla lista', 'type' => Controls_Manager::SELECT, 'options' => array( 'si' => 'Sì, con i pulsanti', 'no' => 'No, solo date e luoghi' ), 'default' => 'si', 'condition' => array( 'view' => 'prossimi_eventi' ) ) );
 		$this->add_control( 'filtri', array( 'label' => 'Filtri (elenco/calendario e categorie)', 'type' => Controls_Manager::SELECT, 'options' => array( 'si' => 'Mostra', 'no' => 'Nascondi' ), 'default' => 'si', 'condition' => array( 'view' => array( 'eventi', 'calendario_eventi' ) ) ) );
-		$this->add_control( 'titolo', array( 'label' => 'Titolo sopra la vista (es. I nostri prossimi eventi)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => array_merge( $lists, $parts ) ) ) );
+		$this->add_control( 'titolo', array( 'label' => 'Titolo (es. I nostri prossimi eventi)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => array_merge( $lists, $parts ) ) ) );
 		$this->add_control( 'vuoto', array( 'label' => 'Messaggio quando non ci sono eventi', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => $lists ) ) );
 		$this->add_control( 'pulsante', array( 'label' => 'Testo del pulsante nelle schede', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => 'eventi' ) ) );
 		$this->add_control( 'evento', array( 'label' => 'Evento (ID del contenuto; vuoto = quello della pagina)', 'type' => Controls_Manager::NUMBER, 'condition' => array( 'view' => $parts ) ) );

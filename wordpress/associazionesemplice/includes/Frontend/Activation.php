@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Attivazione dell'accesso per i soci registrati senza email: il socio apre il suo link (ricevuto su WhatsApp), indica email,
- * cellulare e password, e da quel momento ha il suo accesso all'area riservata.
+ * cellulare e password, e da quel momento ha il suo accesso all'area soci.
  */
 final class Activation {
 
@@ -42,7 +42,7 @@ final class Activation {
 	public static function invite_text( array $person ): string {
 		$assoc = (string) Settings::get( 'association_name' );
 		return 'Ciao ' . $person['first_name'] . ', la segreteria' . ( '' !== $assoc ? ' di ' . $assoc : '' ) . ' ti ha registrato tra i soci. '
-			. 'Attiva il tuo accesso all\'area riservata da questo link (vale ' . self::validity_text() . '): ' . self::url( (int) $person['id'] );
+			. 'Attiva il tuo accesso all\'area soci da questo link (vale ' . self::validity_text() . '): ' . self::url( (int) $person['id'] );
 	}
 
 	/** @return array status (ok|invalid|expired|done|suspended), person */
@@ -67,8 +67,8 @@ final class Activation {
 				return 'Il link è scaduto: chiedi alla segreteria di mandartene uno nuovo.';
 			case 'done':
 				return ! \AssociazioneSemplice\MemberSession::wp_users_wanted()
-					? 'Il tuo accesso è già attivo: entra con la tua email e la tua password; se l\'hai dimenticata, nella pagina di accesso puoi riceverne una nuova.'
-					: 'Il tuo accesso è già attivo: entra con la tua email e, se hai dimenticato la password, usa "Password dimenticata".';
+					? 'Il tuo accesso è già attivo: entra con email e password. Se hai dimenticato la password, premi «Password dimenticata?» nella pagina di accesso.'
+					: 'Il tuo accesso è già attivo: entra con la tua email e, se hai dimenticato la password, usa «Password dimenticata».';
 			case 'suspended':
 				return 'Il servizio è temporaneamente sospeso. Riprova più tardi.';
 		}
@@ -158,7 +158,7 @@ final class Activation {
 		$input = 'width:100%;box-sizing:border-box;padding:10px;font-size:16px;margin:4px 0 12px;border:1px solid #8c8f94;border-radius:8px';
 		$need  = Limits::flag( 'profile_required' );
 		$body  = ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
-			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'Scegli la tua password: con email e password entrerai nell\'area riservata. Se la dimentichi, potrai riceverne una nuova per email.' : 'Scegli l\'email e la password con cui entrerai nell\'area riservata.' ) . '</p>'
+			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . ',</div><p>' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'Scegli la tua password: con email e password entrerai nell\'area soci. Se la dimentichi, potrai sceglierne una nuova con un link via email.' : 'Scegli l\'email e la password con cui entrerai nell\'area soci.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( add_query_arg( 'asem_activate', $param, home_url( '/' ) ) ) . '" autocomplete="on">'
 			. '<input type="hidden" name="asem_activate_go" value="1">' . MemberLoginPage::sign_field( 'activation' )
 			. '<label>La tua email<input style="' . $input . '" type="email" name="email" value="' . esc_attr( (string) ( $post['email'] ?? $p['email'] ?? '' ) ) . '" required autocomplete="email"></label>'
@@ -197,7 +197,7 @@ final class Activation {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );
 				$res = self::complete( $param, $post );
 				if ( $res['ok'] ) {
-					// Il link attiva l'accesso ma non fa entrare: si entra dal modulo dell'area riservata con email e password,
+					// Il link attiva l'accesso ma non fa entrare: si entra dal modulo dell'area soci con email e password,
 					// così valgono i controlli sull'accesso di WordPress e dei plugin di sicurezza.
 					$page = (int) Settings::get( 'member_area_page_id' );
 					$url  = $page ? (string) get_permalink( $page ) : home_url( '/' );

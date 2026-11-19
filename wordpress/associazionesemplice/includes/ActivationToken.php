@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Link di attivazione per un socio registrato senza email: "ID.SCADENZA.firma". Chi ha il link (mandato su WhatsApp)
- * sceglie la propria email e la password e così attiva l'accesso all'area riservata. La firma non si può costruire senza il
+ * sceglie la propria email e la password e così attiva l'accesso all'area soci. La firma non si può costruire senza il
  * segreto del sito; il link scade e, una volta usato, non serve più (il socio ha già un utente).
  *
  * Lo stesso formato serve ad altri link a tempo legati a una persona (ad esempio il pagamento della quota di una domanda di adesione): lo scopo

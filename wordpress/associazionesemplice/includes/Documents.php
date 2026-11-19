@@ -197,7 +197,7 @@ final class Documents {
 			}
 		}
 		if ( ! Access::can_read_document( $doc ) ) {
-			if ( ! MemberSession::logged_in() ) { // dopo l'accesso si torna all'area riservata (il link aveva il nonce di chi non era entrato)
+			if ( ! MemberSession::logged_in() ) { // dopo l'accesso si torna all'area soci (il link aveva il nonce di chi non era entrato)
 				$page = (int) Settings::get( 'member_area_page_id' );
 				wp_safe_redirect( wp_login_url( $page ? (string) get_permalink( $page ) : home_url( '/' ) ) );
 				exit;

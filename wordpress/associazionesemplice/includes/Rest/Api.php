@@ -12,7 +12,7 @@ use AssociazioneSemplice\Settings;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * REST API `associazionesemplice/v1`: unico ingresso per l'area riservata di oggi e per la PWA di domani.
+ * REST API `associazionesemplice/v1`: unico ingresso per l'area soci di oggi e per la PWA di domani.
  * Ogni rotta controlla i permessi tramite {@see Access}; i dati escono già "sagomati" per chi li chiede
  * (ad esempio i volontari vedono i nomi degli iscritti ma non i loro contatti).
  */

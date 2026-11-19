@@ -210,7 +210,7 @@ final class Wallet {
 		$pid = isset( $_GET['person'] ) ? (int) $_GET['person'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		Csrf::check( 'asem_wallet_apple_' . $pid );
 		if ( ! current_user_can( 'asem_view_person', $pid ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		try {
 			$bin = self::apple_pass( $pid );

@@ -42,7 +42,7 @@ final class ResourcesFront {
 					} catch ( \InvalidArgumentException $e ) {
 						wp_safe_redirect( \AssociazioneSemplice\Flash::url( $back, 'asemf', '', $e->getMessage() ) );
 					} catch ( \Throwable $e ) {
-						wp_safe_redirect( \AssociazioneSemplice\Flash::url( $back, 'asemf', '', 'Operazione non riuscita. Riprova più tardi.' ) );
+						wp_safe_redirect( \AssociazioneSemplice\Flash::url( $back, 'asemf', '', 'Qualcosa non ha funzionato. Riprova tra poco; se succede ancora, scrivi alla segreteria.' ) );
 					}
 					exit;
 				};
@@ -60,7 +60,7 @@ final class ResourcesFront {
 	private static function actor(): array {
 		$p = Access::current_person();
 		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
-			throw new \InvalidArgumentException( 'Serve un accesso come socio.' );
+			throw new \InvalidArgumentException( 'Per farlo devi entrare come socio.' );
 		}
 		return $p;
 	}
@@ -101,7 +101,7 @@ final class ResourcesFront {
 				Resources::cancel( $id, true );
 				throw $e;
 			}
-			return 'Prenotazione registrata, pagata con ' . $spent . ' crediti.';
+			return 'Prenotazione registrata, pagata con ' . CreditsFront::crediti( (int) $spent ) . '.';
 		}
 		if ( 'online' !== $pay ) {
 			Resources::book_slot( $rid, (int) $actor['id'], $date, $start, $slots, $guests );
@@ -141,8 +141,8 @@ final class ResourcesFront {
 
 	// ---------- Vista ----------
 
-	private static function form( string $action, string $fields, string $button, string $class = 'asemf-inline', bool $confirm = false ): string {
-		return '<form class="asemf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"' . ( $confirm ? ' data-asemf-confirm="Confermi?"' : '' ) . '>'
+	private static function form( string $action, string $fields, string $button, string $class = 'asemf-inline', $confirm = false ): string {
+		return '<form class="asemf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"' . ( $confirm ? ' data-asemf-confirm="' . esc_attr( is_string( $confirm ) ? $confirm : 'Confermi?' ) . '"' : '' ) . '>'
 			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
 			. \AssociazioneSemplice\Csrf::field( $action ) . $fields . '<button class="asemf-btn">' . esc_html( $button ) . '</button></form>';
 	}
@@ -155,7 +155,7 @@ final class ResourcesFront {
 		if ( (int) $r['fee_cents'] <= 0 ) {
 			return 'gratuita';
 		}
-		return esc_html( Money::format( (int) $r['fee_cents'] ) ) . ( ResourceRules::SLOT === $r['mode'] ? ( 60 === (int) ( $r['slot_minutes'] ?? 0 ) ? ' all\'ora' : ' per turno' ) : ' a periodo' );
+		return esc_html( Money::format( (int) $r['fee_cents'] ) ) . ( ResourceRules::SLOT === $r['mode'] ? ( 60 === (int) ( $r['slot_minutes'] ?? 0 ) ? ' all\'ora' : ' per fascia' ) : ' a periodo' );
 	}
 
 	private static function when( array $r ): string {
@@ -173,7 +173,7 @@ final class ResourcesFront {
 	public static function section( array $p ): string {
 		$pid    = (int) $p['id'];
 		$active = Plugin::people()->is_active_member( $pid );
-		$html   = '<section class="asemf-section"><h3>Risorse</h3>';
+		$html   = '<section class="asemf-section"><h3>Spazi da prenotare</h3>';
 
 		$mine = Resources::for_person( $pid );
 		if ( $mine ) {
@@ -187,7 +187,7 @@ final class ResourcesFront {
 					. ( ! empty( $r['hold_until'] ) ? '<span class="asemf-small asemf-muted">riservata fino alle ' . esc_html( substr( (string) $r['hold_until'], 11, 5 ) ) . ', poi si libera se non paghi</span> ' : '' )
 					. ( isset( $due[ 'r:' . (int) $r['id'] . ':' . $pid ] ) ? self::form( 'asem_front_pay', self::hidden( 'items[]', 'r:' . (int) $r['id'] . ':' . $pid ), 'Paga ora' ) . ' ' : '' )
 					. self::gate_box( $r )
-					. ( $can['allowed'] ? self::form( 'asem_front_res_cancel', self::hidden( 'id', $r['id'] ), 'Annulla', 'asemf-inline', true ) : '<span class="asemf-small asemf-muted">' . esc_html( $can['message'] ) . '</span>' )
+					. ( $can['allowed'] ? self::form( 'asem_front_res_cancel', self::hidden( 'id', $r['id'] ), 'Annulla', 'asemf-inline', 'Annullare la prenotazione?' ) : '<span class="asemf-small asemf-muted">' . esc_html( $can['message'] ) . '</span>' )
 					. '</div></li>';
 			}
 			$html .= '</ul>';
@@ -250,7 +250,7 @@ final class ResourcesFront {
 		$pos = Resources::waitlist_position( $rid, $pid );
 		if ( null !== $pos ) {
 			return '<p class="asemf-muted">Sei in lista d\'attesa (posizione ' . (int) $pos . ').</p>'
-				. self::form( 'asem_front_res_unwait', self::hidden( 'resource_id', $rid ), 'Esci dalla lista', 'asemf-inline', true );
+				. self::form( 'asem_front_res_unwait', self::hidden( 'resource_id', $rid ), 'Esci dalla lista', 'asemf-inline', 'Uscire dalla lista d\'attesa?' );
 		}
 		if ( ! Resources::between( $rid, $now, gmdate( 'Y-m-d H:i:s', strtotime( $now . ' +1 second' ) ) ) ) {
 			return '<p class="asemf-muted">Al momento è libera: puoi chiederla, la segreteria valuta la richiesta e ti avvisa.</p>'
@@ -315,7 +315,7 @@ final class ResourcesFront {
 			return $html . '</form>';
 		}
 		if ( ! $options ) {
-			return $html . '<p class="asemf-small asemf-muted">Pagamento online non attivo: prenota in segreteria</p></form>';
+			return $html . '<p class="asemf-small asemf-muted">Pagamento online non attivo: prenota in segreteria.</p></form>';
 		}
 		if ( (int) $r['max_slots'] > 1 ) {
 			$opts = '';
@@ -330,7 +330,7 @@ final class ResourcesFront {
 			$html .= '<p><label class="asemf-sr" for="asemf-g-' . $rid . '-' . $g . '">Ospite ' . $g . '</label><input type="text" id="asemf-g-' . $rid . '-' . $g . '" name="guest[]" maxlength="120" placeholder="Ospite ' . $g . ' (nome e cognome)"></p>';
 		}
 		$only_desk = array( 'desk' ) === $options;
-		$labels    = array( 'free' => 'Prenota', 'desk' => $only_desk ? 'Prenota' : 'Prenota e pago in segreteria', 'online' => 'Prenota e paga ora', 'credits' => 'Paga con i crediti' );
+		$labels    = array( 'free' => 'Prenota', 'desk' => $only_desk ? 'Prenota' : 'Prenota e paga in segreteria', 'online' => 'Prenota e paga ora', 'credits' => 'Prenota e paga con i crediti' );
 		$html     .= '<p class="asemf-actions">';
 		foreach ( $options as $o ) {
 			$html .= '<button class="asemf-btn" name="pay" value="' . esc_attr( $o ) . '">' . esc_html( $labels[ $o ] ) . '</button> ';

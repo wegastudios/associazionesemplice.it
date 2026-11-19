@@ -356,7 +356,7 @@ final class ProActions {
 
 	public static function fund_settle( array $p ): array {
 		$tx = Plugin::funds()->settle( (int) ( $p['id'] ?? 0 ), (int) ( $p['account_id'] ?? 0 ), (string) ( $p['method'] ?? '' ), (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
-		return array( Ui::url( 'asem-accounts' ), $tx ? 'Rimborso registrato in prima nota e fondo estinto.' : 'Fondo a zero: estinto.' );
+		return array( Ui::url( 'asem-accounts' ), $tx ? 'Rimborso registrato in prima nota e fondo chiuso.' : 'Fondo a zero: chiuso.' );
 	}
 
 	public static function close_account( array $p ): array {

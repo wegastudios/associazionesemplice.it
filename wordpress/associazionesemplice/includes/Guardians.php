@@ -4,7 +4,7 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Minori e tutori. Un minore può non avere né email né accesso: il suo tutore (un genitore o tutore legale) lo vede nella propria area riservata,
+ * Minori e tutori. Un minore può non avere né email né accesso: il suo tutore (un genitore o tutore legale) lo vede nella propria area soci,
  * paga per lui e riceve le sue email. Il tutore è una persona già registrata con una email. A 18 anni i permessi del tutore si spengono da soli
  * (anche se il ragazzo non ha ancora un accesso suo: maggiorenne è maggiorenne); il collegamento resta registrato finché non lo toglie
  * l'amministratore e la dashboard avvisa che il ragazzo va invitato a creare il suo accesso.
@@ -36,7 +36,7 @@ final class Guardians {
 			$errors[] = 'Per collegare un tutore serve la data di nascita del minore.';
 		}
 		if ( $operative && ! MemberType::can_login( (string) ( $guardian['type'] ?? '' ) ) ) { // chi opera sul sito deve poter entrare; l'altro genitore basta che sia censito
-			$errors[] = 'Il tutore deve poter entrare nell\'area riservata: un socio o una persona registrata come genitore o tutore (un ospite non può).';
+			$errors[] = 'Il tutore deve poter entrare nell\'area soci: un socio o una persona registrata come genitore o tutore (un ospite non può).';
 		}
 		$email = trim( (string) ( $guardian['email'] ?? '' ) );
 		if ( $operative && ( '' === $email || ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) ) {

@@ -1060,7 +1060,7 @@ final class Receipts {
 		$key = isset( $_GET['key'] ) ? self::clean_key( sanitize_text_field( wp_unslash( $_GET['key'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		Csrf::check( 'asem_receipt_' . $key );
 		if ( ! self::can_view( $key ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		try {
 			$r = self::build( $key );
@@ -1085,7 +1085,7 @@ final class Receipts {
 	public static function handle_zip(): void {
 		$year = isset( $_GET['year'] ) ? absint( $_GET['year'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce controllato sotto
 		if ( ! current_user_can( Plugin::CAP ) || ! Edition::has( 'receipts' ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_receipt_zip_' . $year );
 		try {
@@ -1119,7 +1119,7 @@ final class Receipts {
 		$year = isset( $_GET['year'] ) ? (int) $_GET['year'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		Csrf::check( 'asem_statement_' . $pid . '_' . $year );
 		if ( ! self::can_statement( $pid ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		try {
 			$r = self::statement( $pid, $year );

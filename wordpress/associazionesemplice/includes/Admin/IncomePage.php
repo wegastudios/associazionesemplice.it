@@ -24,7 +24,7 @@ final class IncomePage {
 	public static function ajax_new_person(): void {
 		check_ajax_referer( 'asem_income', 'nonce' );
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
-			wp_send_json_error( 'Non autorizzato', 403 );
+			wp_send_json_error( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$in   = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 		$type = 'guest' === (string) ( $in['type'] ?? '' ) ? MemberType::GUEST : MemberType::ORDINARY;
@@ -49,7 +49,7 @@ final class IncomePage {
 	public static function ajax_context(): void {
 		check_ajax_referer( 'asem_income', 'nonce' );
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
-			wp_send_json_error( 'Non autorizzato', 403 );
+			wp_send_json_error( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$person = Plugin::people()->get( isset( $_POST['person_id'] ) ? absint( $_POST['person_id'] ) : 0 ); // phpcs:ignore WordPress.Security.NonceVerification
 		$date   = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification

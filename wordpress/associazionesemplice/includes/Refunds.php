@@ -306,12 +306,12 @@ final class Refunds {
 	public static function handle_file(): void {
 		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		if ( ! Edition::has( 'refunds' ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		Csrf::check( 'asem_refund_file_' . $id );
 		$r = self::get( $id );
 		if ( ! $r || ! ( self::can_manage() || ( self::actor_person_id() && (int) $r['person_id'] === self::actor_person_id() ) ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$path = ! empty( $r['file_stored'] ) ? Attachments::dir() . '/' . AttachmentRules::stored_name( (string) $r['file_stored'] ) : '';
 		if ( '' === $path || '' === basename( $path ) || ! is_readable( $path ) ) {

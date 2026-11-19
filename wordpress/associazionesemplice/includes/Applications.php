@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
  * (fuori dall'anagrafica, dagli elenchi e dai conti) finché la segreteria non la approva, assegnando il numero di tessera, o la rifiuta.
  *
  * Chi risulta minorenne dalla data di nascita indica anche un genitore o tutore: all'approvazione il genitore viene collegato (ed eventualmente
- * registrato) e riceve il link per entrare nell'area riservata, da dove segue il minore. Nessun dato personale va nel registro azioni.
+ * registrato) e riceve il link per entrare nell'area soci, da dove segue il minore. Nessun dato personale va nel registro azioni.
  */
 final class Applications {
 
@@ -250,7 +250,7 @@ final class Applications {
 				throw new \InvalidArgumentException( 'Il genitore ha chiesto a sua volta di iscriversi con la stessa email: approva prima la sua domanda.' );
 			}
 			if ( $guardian && ! MemberType::can_login( (string) $guardian['type'] ) ) {
-				throw new \InvalidArgumentException( 'L\'email del genitore è già usata da un ospite, che non può entrare nell\'area riservata: iscrivilo come socio o cambia l\'email, poi riprova.' );
+				throw new \InvalidArgumentException( 'L\'email del genitore è già usata da un ospite, che non può entrare nell\'area soci: iscrivilo come socio o cambia l\'email, poi riprova.' );
 			}
 		}
 		$year = Settings::membership_year()->label();
@@ -294,7 +294,7 @@ final class Applications {
 			$msg .= ' Il genitore è già in anagrafica: gli è stata inviata un\'email per confermare che ha accettato lui, a nome del minore, regolamento, privacy e immagini. Finché non conferma, il collegamento con il minore non si crea e le accettazioni non risultano a suo nome (lo vedi nella scheda del minore).';
 		}
 		if ( $due > 0 ) {
-			$msg .= ' Quota da incassare: ' . Money::format( $due ) . ' (in sede o dall\'area riservata); la tessera diventa valida all\'incasso.';
+			$msg .= ' Quota da incassare: ' . Money::format( $due ) . ' (in sede o dall\'area soci); la tessera diventa valida all\'incasso.';
 		}
 		if ( $created ) {
 			$msg .= ' Il genitore è registrato come «genitore o tutore» (non socio): ha solo l\'accesso per seguire il figlio, senza tessera né quota.';
@@ -340,16 +340,16 @@ final class Applications {
 		$days  = Frontend\Activation::validity_text();
 		$pay   = '';
 		if ( $due > 0 ) {
-			$pay = "\n\nLa tessera diventa valida appena versi la quota associativa di " . Money::format( $due ) . ': in sede, alla segreteria' . ( Plugin::payments()->enabled() ? ', oppure online dall\'area riservata (voce «Pagamenti»)' : '' ) . '.';
+			$pay = "\n\nLa tessera diventa valida appena versi la quota associativa di " . Money::format( $due ) . ': in sede, alla segreteria' . ( Plugin::payments()->enabled() ? ', oppure online dall\'area soci (voce «Pagamenti»)' : '' ) . '.';
 		}
 		if ( $guardian ) {
 			$text = 'Ciao ' . ApplicationRules::mail_name( (string) $guardian['first_name'] ) . ",\n\nla domanda di adesione di " . ApplicationRules::mail_name( (string) $person['first_name'] ) . ' ' . ApplicationRules::mail_name( (string) $person['last_name'] ) . ' è stata approvata: la tessera è la n. ' . $person['card_number'] . ".\n\n";
 			if ( ! $linked ) { // genitore già in anagrafica: il collegamento nasce quando conferma dal link dell'altra email
-				$text .= ApplicationRules::mail_name( (string) $person['first_name'] ) . ' compare nella tua area riservata dopo che hai confermato dal link che ti abbiamo mandato con un\'altra email.' . "\n";
+				$text .= ApplicationRules::mail_name( (string) $person['first_name'] ) . ' compare nella tua area soci dopo che hai confermato dal link che ti abbiamo mandato con un\'altra email.' . "\n";
 			} elseif ( empty( $guardian['wp_user_id'] ) ) {
-				$text .= 'Da genitore o tutore segui ' . $person['first_name'] . ' dalla tua area riservata (tessera, prenotazioni, pagamenti). Scegli la tua password da questo link (vale ' . $days . "):\n" . Frontend\Activation::url( (int) $guardian['id'] ) . "\n";
+				$text .= 'Da genitore o tutore segui ' . $person['first_name'] . ' dalla tua area soci (tessera, prenotazioni, pagamenti). Scegli la tua password da questo link (vale ' . $days . "):\n" . Frontend\Activation::url( (int) $guardian['id'] ) . "\n";
 			} else {
-				$text .= $person['first_name'] . ' compare ora nella tua area riservata: ' . Gatekeeper::area_url() . "\n";
+				$text .= $person['first_name'] . ' compare ora nella tua area soci: ' . Gatekeeper::area_url() . "\n";
 			}
 			$text .= $pay;
 			$to = (string) $guardian['email'];

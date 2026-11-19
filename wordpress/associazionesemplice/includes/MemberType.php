@@ -33,7 +33,7 @@ final class MemberType {
 		return array( self::FOUNDER, self::ORDINARY, self::VOLUNTEER );
 	}
 
-	/** Chi può entrare nell'area riservata: i soci e i genitori o tutori (che non sono soci: seguono i figli, senza tessera né quota). */
+	/** Chi può entrare nell'area soci: i soci e i genitori o tutori (che non sono soci: seguono i figli, senza tessera né quota). */
 	public static function can_login( string $type ): bool {
 		return self::is_member( $type ) || self::GUARDIAN === $type;
 	}

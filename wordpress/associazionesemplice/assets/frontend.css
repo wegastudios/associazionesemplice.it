@@ -160,7 +160,7 @@
 .asemf-card-qr { line-height: 0; background: #fff; padding: .4cqw; border-radius: 1cqw; }
 .asemf-card-qr svg { width: 100%; height: auto; background: #fff; border-radius: 0; max-width: none; }
 
-/* Area riservata con menu laterale: «Il mio spazio» e, per chi ha il ruolo, Segreteria e gestione di corsi ed eventi */
+/* Area soci con menu laterale: «Il mio spazio» e, per chi ha il ruolo, Segreteria e gestione di corsi ed eventi */
 .asemf-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 1.5rem; align-items: start; }
 .asemf-layout.asemf-nonav { grid-template-columns: minmax(0, 1fr); }
 .asemf-sidenav { position: sticky; top: 1rem; }

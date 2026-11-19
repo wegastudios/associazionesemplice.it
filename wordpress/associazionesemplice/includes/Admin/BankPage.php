@@ -26,7 +26,7 @@ final class BankPage {
 			$rows[] = array(); // una riga vuota per aggiungere un altro conto
 		}
 		echo '<div class="asem-card"><h2>Bonifico bancario</h2>';
-		echo '<p class="description">Mostra ai soci l\'IBAN dell\'associazione (anche più di uno) con la causale già pronta: nell\'area riservata e accanto a ciò che devono pagare. Possono anche farselo mandare per email.'
+		echo '<p class="description">Mostra ai soci l\'IBAN dell\'associazione (anche più di uno) con la causale già pronta: nell\'area soci e accanto a ciò che devono pagare. Possono anche farselo mandare per email.'
 			. 'Funziona da solo (con i pagamenti online disattivati) o insieme a Stripe e PayPal. <strong>Spento di default.</strong> '
 			. 'Per mostrare gli IBAN anche a chi non è socio (ad esempio per le donazioni) usa lo shortcode <code>[associazionesemplice_bonifico]</code>.</p>';
 		Ui::form_open( 'asem_save_bank', Ui::url( 'asem-bank' ) );
