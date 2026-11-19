@@ -551,8 +551,8 @@
 	/* Avviso «il socio ha già la tessera»: il modello arriva già tradotto da PHP (con {anno}); se manca, resta l'italiano */
 	function dupNote(year) {
 		var t = D.txt || {};
-		if (year) { return (t.dup_year || '⚠ il socio ha già la tessera {anno}: l\'incasso non verrà salvato finché c\'è questa voce').replace('{anno}', function () { return year; }); }
-		return t.dup || '⚠ il socio ha già la tessera: l\'incasso non verrà salvato finché c\'è questa voce';
+		if (year) { return (t.dup_year || '⚠ il socio ha già la tessera {anno}: togli questa voce per salvare l\'incasso').replace('{anno}', function () { return year; }); }
+		return t.dup || '⚠ il socio ha già la tessera: togli questa voce per salvare l\'incasso';
 	}
 	function catByKind(kind) { return D.categories.filter(function (c) { return c.kind === kind; })[0]; }
 	function addLine(l) { l.key = ++seq; if (l.kind === 'activity_fee' && l.due == null) { l.due = parseMoney(l.amount) || 0; } lines.push(l); render(); }

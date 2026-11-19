@@ -95,9 +95,9 @@ final class ActivitiesPage {
 		$on      = $a && ! empty( $a['cancellable'] );
 		$pol     = $a ? (string) $a['cancel_policy'] : '';
 		$default = CancelPolicy::labels()[ Settings::get( 'cancel_policy_default' ) ] ?? '';
-		return '<tr class="' . esc_attr( $row_class ) . '"><th>Cancellazione</th><td><label><input type="checkbox" name="cancellable" value="1"' . checked( $on, true, false ) . '> Cancellabile anche se a pagamento</label>'
+		return '<tr class="' . esc_attr( $row_class ) . '"><th>Annullamento</th><td><label><input type="checkbox" name="cancellable" value="1"' . checked( $on, true, false ) . '> Si può annullare anche se a pagamento</label>'
 			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
-			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cedere il posto a un\'altra persona (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
+			. '<p class="description">Evento gratuito: la prenotazione si può sempre annullare. A pagamento: si annulla solo con questa spunta ed entro il termine scelto; altrimenti si può solo cedere il posto (se il nuovo partecipante paga un contributo più alto, versa la differenza).</p></td></tr>';
 	}
 	/**
 	 * Programma a righe dinamiche: ogni riga ha giorno e orario e, con la spunta "ricorrente", si ripete ogni settimana
@@ -121,8 +121,8 @@ final class ActivitiesPage {
 			return $a && ! empty( $a[ $k ] ) ? esc_attr( (string) $a[ $k ] ) : '';
 		};
 		$tr = '<tr class="' . esc_attr( $row_class ) . '">';
-		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Una tantum (anche annuale)', 'monthly' => 'Rinnovo mensile', 'quarterly' => 'Rinnovo trimestrale' ), $billing ) . '</select>'
-			. '<p class="description"><strong>Una tantum:</strong> il contributo indicato è il totale (es. 10 incontri a 120 €), dovuto subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> il contributo indicato è quello di un trimestre, dovuto all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
+		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Pagamento unico (anche annuale)', 'monthly' => 'Rinnovo mensile', 'quarterly' => 'Rinnovo trimestrale' ), $billing ) . '</select>'
+			. '<p class="description"><strong>Pagamento unico:</strong> il contributo indicato è il totale (es. 10 incontri a 120 €), dovuto subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> il contributo indicato è quello di un trimestre, dovuto all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo disdice, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
 			. ( $with_when ? $tr . '<th>Quando</th><td>' . self::when_builder( $rows ) . '</td></tr>' : '' )
 			. $tr . '<th>Luogo</th><td><input type="text" name="location" class="regular-text" value="' . $val( 'location' ) . '"></td></tr>'
 			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data le mensilità non sono più dovute</span></td></tr>';
@@ -181,14 +181,14 @@ final class ActivitiesPage {
 		$shown = \AssociazioneSemplice\FundShare::PERCENT === $mode ? rtrim( rtrim( number_format( $value / 100, 2, ',', '' ), '0' ), ',' ) : ( $value ? Money::plain( $value ) : '' );
 		return '<tr><th>Parte per il rimborso</th><td><select name="fund_mode">' . Ui::options( \AssociazioneSemplice\FundShare::modes(), $mode ) . '</select> '
 			. '<input type="text" name="fund_value" class="small-text" inputmode="decimal" value="' . esc_attr( $shown ) . '"> <span class="description">€ se importo fisso, % se percentuale</span>'
-			. '<p class="description">Una parte di ogni pagamento ricevuto va nel fondo "Rimborso (volontario) — (attività)". Il pagamento entra comunque nella cassa o nel conto usato: la parte accantonata si sottrae dalla disponibilità reale, finché non estingui il fondo registrando il rimborso. Serve indicare il referente.</p></td></tr>';
+			. '<p class="description">Una parte di ogni pagamento ricevuto va nel fondo "Rimborso (volontario) — (attività)". Il pagamento entra comunque nella cassa o nel conto usato: la parte accantonata si sottrae dalla disponibilità reale, finché non chiudi il fondo registrando il rimborso. Serve indicare il referente.</p></td></tr>';
 	}
 
 	/** Riga del modulo: tolleranza per il pagamento (solo eventi ed eventi ricorrenti; ha effetto se i posti sono limitati). */
 	private static function hold_row( ?array $a, string $row_class ): string {
 		$h = $a ? (int) ( $a['hold_hours'] ?? 0 ) : 0;
-		return '<tr class="' . esc_attr( $row_class ) . '"><th>Tolleranza per il pagamento</th><td><input type="number" name="hold_hours" min="0" max="720" class="small-text" value="' . (int) $h . '"> ore'
-			. '<p class="description">Per chi paga con bonifico o contanti: se il contributo non arriva entro queste ore dalla prenotazione il posto si libera e passa a chi è in lista d\'attesa. Vale solo se i posti sono limitati e c\'è un contributo; non si libera mai il posto di chi ha già versato (anche in parte) o sta pagando online. 0 = nessun limite.</p></td></tr>';
+		return '<tr class="' . esc_attr( $row_class ) . '"><th>Tempo per pagare</th><td><input type="number" name="hold_hours" min="0" max="720" class="small-text" value="' . (int) $h . '"> ore'
+			. '<p class="description">Per chi paga con bonifico o contanti: se il contributo non arriva entro queste ore dalla prenotazione, il posto passa a chi è in lista d\'attesa. Vale solo con posti limitati e un contributo; chi ha già versato qualcosa o sta pagando online non perde mai il posto. 0 = nessun limite.</p></td></tr>';
 	}
 
 	/** Riga del modulo: biglietto QR per le prenotazioni (solo eventi ed eventi ricorrenti, spento di default). */
@@ -222,7 +222,7 @@ final class ActivitiesPage {
 		$back     = Ui::url( 'asem-activities', array( 'year' => $sy_start ) );
 		$today    = current_time( 'Y-m-d' );
 
-		Ui::header( 'Attività — anno ' . $year->label() );
+		Ui::header( 'Attività · anno delle attività ' . $year->label() );
 		echo '<p><a class="button" href="' . esc_url( Ui::url( 'asem-activities', array( 'year' => $sy_start - 1 ) ) ) . '">‹ ' . esc_html( $year->previous()->label() ) . '</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-activities', array( 'year' => $sy_start + 1 ) ) ) . '">' . esc_html( $year->next()->label() ) . ' ›</a></p>';
 
@@ -501,7 +501,7 @@ final class ActivitiesPage {
 		$key  = $activity_id . '|' . $session_id . '|' . (int) $person['id'];
 		$free = self::$free[ $key ] ?? \AssociazioneSemplice\ActivityReset::registration_is_free( $activity_id, (int) $person['id'], $session_id );
 		if ( $free ) {
-			return Ui::confirm_button( 'asem_delete_booking', Ui::url( 'asem-activity', array( 'id' => $activity_id ) ), array( 'activity' => $activity_id, 'person' => (int) $person['id'], 'session' => $session_id ), $label, 'Cancellare l\'iscrizione di ' . $name . '? Non ci sono incassi collegati: la prima nota non cambia.', 'color:#b32d2e' );
+			return Ui::confirm_button( 'asem_delete_booking', Ui::url( 'asem-activity', array( 'id' => $activity_id ) ), array( 'activity' => $activity_id, 'person' => (int) $person['id'], 'session' => $session_id ), $label, 'Eliminare l\'iscrizione di ' . $name . '? Non ci sono incassi collegati: la prima nota non cambia.', 'color:#b32d2e' );
 		}
 		return '<a class="asem-neg" href="' . esc_url( DeleteBookingPage::url( $activity_id, (int) $person['id'], $session_id ) ) . '">' . esc_html( $label ) . '</a>';
 	}
@@ -515,7 +515,7 @@ final class ActivitiesPage {
 		$html  = '<li>' . esc_html( $name ) . ( '' !== $extra ? ' <span class="description">' . esc_html( $extra ) . '</span>' : '' );
 		$html .= '' !== $wa ? ' · <a href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . $text ) . '" target="_blank" rel="noopener noreferrer">WhatsApp</a>' : ' · <span class="description">nessun cellulare</span>';
 		if ( $with_delete && current_user_can( Plugin::CAP ) ) {
-			$html .= ' · ' . self::cancel_control( (int) $activity['id'], $person, $session_id, 'Cancella l\'iscrizione' );
+			$html .= ' · ' . self::cancel_control( (int) $activity['id'], $person, $session_id, 'Elimina l\'iscrizione' );
 		}
 		return $html . '</li>';
 	}
@@ -632,7 +632,7 @@ final class ActivitiesPage {
 		if ( ! current_user_can( Plugin::CAP ) ) {
 			return;
 		}
-		echo '<div class="asem-card"><h2>Elimina l\'evento</h2><p class="description">Cancella l\'evento con tutte le sue date, prenotazioni e iscrizioni, e decide cosa fare delle somme incassate (restituirle o annullarle). Con doppia conferma.</p>'
+		echo '<div class="asem-card"><h2>Elimina l\'evento</h2><p class="description">Elimina l\'evento con tutte le date, le prenotazioni e le iscrizioni. Prima scegli cosa fare delle somme incassate (restituirle o annullarle) e confermi due volte.</p>'
 			. '<p><a class="button" style="color:#b32d2e;border-color:#b32d2e" href="' . esc_url( Ui::url( 'asem-activity-delete', array( 'id' => (int) $activity['id'] ) ) ) . '">Elimina l\'evento…</a></p></div>';
 	}
 
@@ -746,7 +746,7 @@ final class ActivitiesPage {
 		echo '<table class="form-table"><tbody><tr><th>Nome</th><td><input type="text" name="name" value="' . esc_attr( $activity['name'] ) . '" class="regular-text" required></td></tr>';
 		echo '<tr><th>Contributo soci' . ( ActivityKind::COURSE === $activity['kind'] ? '' : ' (' . esc_html( ActivityKind::fee_unit( $activity['kind'] ) ) . ')' ) . '</th><td><input type="text" name="fee" value="' . esc_attr( Money::plain( (int) $activity['fee_cents'] ) ) . '"> €</td></tr>';
 		$guest = null === $activity['guest_fee_cents'] ? '' : Money::plain( (int) $activity['guest_fee_cents'] );
-		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" value="' . esc_attr( $guest ) . '" placeholder="uguale ai soci"> €<p class="description">Vuoto = come i soci · 0 = gratuito. Vale per le nuove prenotazioni/mensilità: quelle già fatte tengono l\'importo di allora (eventi) o seguono la nuova quota (corsi).</p></td></tr>';
+		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" value="' . esc_attr( $guest ) . '" placeholder="uguale ai soci"> €<p class="description">Vuoto = come i soci · 0 = gratuito. Vale da ora: le prenotazioni già fatte tengono l\'importo di allora, le mensilità dei corsi seguono il nuovo contributo.</p></td></tr>';
 		echo wp_kses( self::price_list_row( $activity ), Html::allowed() );
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			echo wp_kses( self::cancel_rows( $activity, '' ), Html::allowed() );
@@ -782,7 +782,7 @@ final class ActivitiesPage {
 		}, $statuses ) );
 		$default_month = $year->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) );
 
-		echo wp_kses( '<div class="asem-card"><h2>Riepilogo · anno ' . esc_html( $activity['social_year'] ) . '</h2><table class="asem-kv">'
+		echo wp_kses( '<div class="asem-card"><h2>Riepilogo · anno delle attività ' . esc_html( $activity['social_year'] ) . '</h2><table class="asem-kv">'
 			. '<tr><td>Dovuto finora</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassato</td><td>' . Ui::money( $paid ) . '</td></tr>'
 			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $to_collect ) . '</strong></td></tr></table></div>', Html::allowed() );
 
@@ -797,7 +797,7 @@ final class ActivitiesPage {
 		} ) );
 		echo '<div class="asem-card"><h2>Iscrivi un socio o un ospite</h2>' . ( 'once' === $activity['billing']
 			? '<p class="description">Corso a <strong>pagamento unico</strong>: il contributo è dovuto per intero all\'iscrizione (si può versare anche a rate).</p>'
-			: ( 'quarterly' === $activity['billing'] ? '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni trimestre</strong> (tre mesi dal primo mese dovuto) finché non viene cancellata.</p>' : '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata' . ( $activity['ends_on'] ? ' (o fino alla fine del corso)' : '' ) . '. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>' ) );
+			: ( 'quarterly' === $activity['billing'] ? '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni trimestre</strong> (tre mesi dal primo mese dovuto) finché non viene disdetta.</p>' :'<p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene disdetta' . ( $activity['ends_on'] ? ' (o fino alla fine del corso)' : '' ) . '. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>' ) );
 		Ui::form_open( 'asem_enroll', $back );
 		echo wp_kses( Ui::hidden( 'activity_id', $id ), Html::allowed() );
 		echo wp_kses( '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'asem-enroll-person' ) . '</p>', Html::allowed() );
@@ -842,7 +842,7 @@ final class ActivitiesPage {
 				. ( $active ? '' : ' <span class="asem-warn">· cancellato dopo ' . esc_html( Ui::month( $e['end_month'] ) ) . '</span>' )
 				. ( self::variant_text( $activity, $e ) )
 				. ( (int) $s['summary']['balance'] < 0 ? ' <a class="button button-small button-primary" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => (int) $e['person_id'], 'due' => 1 ) ) ) . '">Paga</a>' : '' )
-				. ( current_user_can( Plugin::CAP ) ? ' ' . self::cancel_control( $id, array( 'id' => (int) $e['person_id'], 'first_name' => (string) $e['first_name'], 'last_name' => (string) $e['last_name'] ), 0, 'Cancella' ) : '' )
+				. ( current_user_can( Plugin::CAP ) ? ' ' . self::cancel_control( $id, array( 'id' => (int) $e['person_id'], 'first_name' => (string) $e['first_name'], 'last_name' => (string) $e['last_name'] ), 0, 'Elimina' ) : '' )
 				. '</summary>', Html::allowed() );
 			echo wp_kses( Ui::months_table( $s['summary'] ), Html::allowed() );
 			if ( PriceLists::for_activity( $activity ) ) { // varianti del contributo: le assegna la segreteria
@@ -853,7 +853,7 @@ final class ActivitiesPage {
 			}
 			if ( $active ) { // «Non rinnova»: finito il periodo pagato non è più dovuto nulla, senza scegliere il mese
 				Ui::form_open( 'asem_stop_renewal', $back, false, 'asem-inline' );
-				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ) . '<p><button class="button button-primary">Non rinnova</button> <span class="description">Resta nel corso fino alla fine del periodo già pagato (o del mese in corso) e poi non deve più nulla. Chi smette di venire ha già fruito del mese: non si restituisce niente.</span></p>', Html::allowed() );
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ) . '<p><button class="button button-primary">Disdici a fine periodo</button> <span class="description">Resta nel corso fino alla fine del periodo già pagato (o del mese in corso) e poi non deve più nulla. Il mese già iniziato non si rimborsa.</span></p>', Html::allowed() );
 				Ui::form_close();
 			}
 			Ui::form_open( $active ? 'asem_cancel_enrollment' : 'asem_enroll', $back );
@@ -900,7 +900,7 @@ final class ActivitiesPage {
 		self::staff_card( $activity, $back );
 
 		if ( ActivityKind::RECURRING === $activity['kind'] ) {
-			echo '<div class="asem-card"><h2>Aggiungi o elimina date</h2>';
+			echo '<div class="asem-card"><h2>Aggiungi o annulla date</h2>';
 			$upcoming = array_values(
 				array_filter(
 					Plugin::activities()->sessions( $id ),
@@ -984,7 +984,7 @@ final class ActivitiesPage {
 		echo $in ? '<strong class="asem-ok">✔ ' . esc_html( mysql2date( 'H:i', $b['checked_in_at'] ) ) . '</strong> ' : '';
 		Ui::form_open( 'asem_checkin', $back, false, 'asem-inline' );
 		echo wp_kses( Ui::hidden( 'activity_id', $activity_id ) . Ui::hidden( 'session_id', $session_id ) . Ui::hidden( 'person_id', $b['person_id'] ) . ( $in ? Ui::hidden( 'undo', 1 ) : '' )
-			. '<button class="button button-small">' . ( $in ? 'Annulla' : 'Registra ingresso' ) . '</button>', Html::allowed() );
+			. '<button class="button button-small">' . ( $in ? 'Annulla ingresso' : 'Registra ingresso' ) . '</button>', Html::allowed() );
 		Ui::form_close();
 	}
 
@@ -993,7 +993,7 @@ final class ActivitiesPage {
 		$id    = (int) $activity['id'];
 		$count = count( \AssociazioneSemplice\Notices::recipients( $id ) );
 		echo '<div class="asem-card"><h2>Avvisi agli iscritti</h2><p class="description">Arrivano per email a chi è iscritto (ora ' . (int) $count . ' persone) e restano nella bacheca dell\'area riservata. '
-			. 'Il referente e i gestori dell\'evento li inviano dalla propria area riservata.</p>';
+			. 'Il referente e lo staff dell\'evento li inviano dalla propria area riservata.</p>';
 		Ui::form_open( 'asem_send_notice', $back );
 		echo wp_kses( Ui::hidden( 'activity_id', $id )
 			. '<p><input type="text" name="subject" class="large-text" maxlength="' . \AssociazioneSemplice\Notices::MAX_SUBJECT . '" placeholder="Titolo" required></p>'
@@ -1018,7 +1018,7 @@ final class ActivitiesPage {
 		$staff = $svc->staff( $id );
 		$in    = array();
 		echo '<div class="asem-card"><h2>Staff dell\'evento (ingressi e cassa)</h2>';
-		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. Se abiliti l\'incasso, possono anche far pagare il contributo d\'ingresso sul posto a chi si presenta senza aver prenotato (se c\'è posto) e registrare subito l\'ingresso. Il referente e gli amministratori possono fare tutto questo già di default.</p>';
+		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. Con «può incassare sul posto» fanno anche pagare il contributo a chi arriva senza prenotazione (se c\'è posto) e ne registrano l\'ingresso. Il referente e gli amministratori possono già fare tutto questo.</p>';
 		if ( $staff ) {
 			echo '<ul>';
 			foreach ( $staff as $m ) {
@@ -1029,7 +1029,7 @@ final class ActivitiesPage {
 				Ui::form_close();
 				echo ' ';
 				Ui::form_open( 'asem_event_staff_remove', $back, false, 'asem-inline' );
-				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<button class="button-link" data-confirm="Togliere questo gestore?">togli</button>', Html::allowed() );
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<button class="button-link" data-confirm="Togliere questa persona dallo staff?">togli</button>', Html::allowed() );
 				Ui::form_close();
 				echo '</li>';
 			}
@@ -1072,7 +1072,7 @@ final class ActivitiesPage {
 				$by_request = (bool) \AssociazioneSemplice\PublicEvents::options( (int) $activity['id'] )['approval']; // evento su richiesta: la coda non avanza da sola
 				echo '<p><strong>Lista d\'attesa (' . count( $queue ) . ')</strong> <span class="description">' . ( $by_request ? esc_html( Texts::t( 'Evento su richiesta: la lista d\'attesa non avanza da sola. Prenota tu chi vuoi far entrare.' ) ) : 'entrano da soli, nell\'ordine, se si libera un posto.' ) . '</span></p><ol>';
 				foreach ( $queue as $w ) {
-					echo '<li>' . esc_html( trim( $w['first_name'] . ' ' . $w['last_name'] ) ) . ' <span class="description">dal ' . esc_html( mysql2date( 'd/m H:i', $w['since'] ) ) . '</span> ' . ( \AssociazioneSemplice\Waitlist::needs_list_choice( $activity, $w ) ? '<span class="asem-warn">manca la tariffa scelta: non entra da solo, prenotalo a mano scegliendo il listino</span> ' : '' );
+					echo '<li>' . esc_html( trim( $w['first_name'] . ' ' . $w['last_name'] ) ) . ' <span class="description">dal ' . esc_html( mysql2date( 'd/m H:i', $w['since'] ) ) . '</span> ' . ( \AssociazioneSemplice\Waitlist::needs_list_choice( $activity, $w ) ? '<span class="asem-warn">non ha scelto la tariffa: non entra da solo, prenotalo a mano scegliendola tu</span> ' : '' );
 					Ui::form_open( 'asem_waitlist_remove', $back, false, 'asem-inline' );
 					echo wp_kses( Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $w['person_id'] ) . Ui::hidden( 'activity_id', $id ) . '<button class="button-link">togli</button>', Html::allowed() );
 					Ui::form_close();
@@ -1085,13 +1085,13 @@ final class ActivitiesPage {
 				foreach ( $bookings as $b ) {
 					$label = trim( ( $b['card_number'] ? 'n.' . $b['card_number'] . ' · ' : '' ) . $b['first_name'] . ' ' . $b['last_name'] );
 					echo wp_kses( '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . ( MemberType::GUEST === $b['type'] && $b['active'] ? '<br>' . PeoplePage::guest_badge( $gov[ (int) $b['person_id'] ] ?? null ) : '' ) . '</td>'
-						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="asem-warn">trasferita ad altra persona' : '<span class="asem-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>', Html::allowed() );
+						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="asem-warn">posto ceduto a un\'altra persona' : '<span class="asem-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>', Html::allowed() );
 					self::checkin_cell( $b, (int) $s['id'], $id, $back, $cancelled );
 					echo '</td><td>';
 					if ( $b['active'] ) {
 						Ui::form_open( 'asem_cancel_booking', $back, false, 'asem-confirm' );
 						echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ), Html::allowed() );
-						echo '<button class="button button-small" data-confirm="Annullare la prenotazione? Gli eventuali pagamenti restano registrati.">Annulla prenotazione</button>';
+						echo '<button class="button button-small" data-confirm="Annullare la prenotazione? I pagamenti già fatti restano registrati: vanno rimborsati a mano.">Annulla prenotazione</button>';
 						Ui::form_close();
 						$others = array_values( array_filter( $all, function ( $x ) use ( $b, $booked ) {
 							return (int) $x['id'] !== (int) $b['person_id'] && ! in_array( (int) $x['id'], $booked, true );
@@ -1099,7 +1099,7 @@ final class ActivitiesPage {
 						echo '<details style="margin-top:6px"><summary>Cedi il posto a un\'altra persona</summary>';
 						Ui::form_open( 'asem_transfer_booking', $back );
 						echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ), Html::allowed() );
-						Ui::echo_person_select( '', 'to_person_id', $others, null, '— scegli la nuova persona —', 'asem-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'], ' <button class="button button-small">Cambia</button>' );
+						Ui::echo_person_select( '', 'to_person_id', $others, null, '— scegli la nuova persona —', 'asem-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'], ' <button class="button button-small">Cedi il posto</button>' );
 						echo '<p class="description">Il pagamento già fatto passa alla nuova persona; se il suo contributo è maggiore (es. ospite) resta da pagare la differenza.</p>';
 						Ui::form_close();
 						echo '</details>';

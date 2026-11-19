@@ -113,7 +113,7 @@ final class DeleteActivityPage {
 				. ( $p['income']['online_cents'] > 0 ? ' (di cui ' . esc_html( Money::format( (int) $p['income']['online_cents'] ) ) . ' pagati online)' : '' ) . '</li>'
 				. '<li>' . (int) $p['expense']['count'] . ' spese per ' . esc_html( Money::format( (int) $p['expense']['cents'] ) ) . '</li></ul>';
 			if ( $p['income_fruited']['count'] ) {
-				echo '<p class="description"><strong>' . (int) $p['income_fruited']['count'] . ' di questi incassi (' . esc_html( Money::format( (int) $p['income_fruited']['cents'] ) ) . ') riguardano date o mesi già svolti</strong>: restano in prima nota così come sono e non vengono restituiti né annullati. Restituzione e annullamento valgono solo per ciò che non è ancora stato fruito.</p>';
+				echo '<p class="description"><strong>' . (int) $p['income_fruited']['count'] . ' di questi incassi (' . esc_html( Money::format( (int) $p['income_fruited']['cents'] ) ) . ') riguardano date o mesi già svolti</strong>: restano in prima nota così come sono. Restituzione e annullamento valgono solo per le date e i mesi non ancora svolti.</p>';
 			}
 		}
 
@@ -163,7 +163,7 @@ final class DeleteActivityPage {
 			echo '<p>Nessun movimento da modificare: la prima nota non cambia.</p>';
 		} elseif ( ActivityReset::REFUND === $mode ) {
 			echo '<p><strong>Gli ' . (int) $inc['count'] . ' incassi (' . esc_html( Money::format( (int) $inc['cents'] ) ) . ') restano in prima nota</strong> e viene registrata, a oggi, <strong>un\'uscita di restituzione per ciascuno</strong> (' . esc_html( Money::format( (int) $inc['cents'] ) ) . ' in tutto, sotto la voce «Restituzione quote»), sullo stesso conto e con la stessa modalità. Nei saldi l\'effetto netto è zero.</p>';
-			echo '<p><strong>Il denaro non viene restituito dal sistema:</strong> va riconsegnato a chi ha pagato' . ( $inc['online_cents'] > 0 ? '; per i pagamenti online (' . esc_html( Money::format( (int) $inc['online_cents'] ) ) . ') il rimborso va fatto a mano dal pannello del fornitore (Stripe, PayPal, negozio)' : '' ) . '.</p>';
+			echo '<p><strong>Il gestionale non restituisce il denaro:</strong> va riconsegnato a chi ha pagato' . ( $inc['online_cents'] > 0 ? '; per i pagamenti online (' . esc_html( Money::format( (int) $inc['online_cents'] ) ) . ') il rimborso va fatto a mano dal pannello del fornitore (Stripe, PayPal, negozio)' : '' ) . '.</p>';
 		} else {
 			echo '<p><strong>Gli ' . (int) $inc['count'] . ' incassi (' . esc_html( Money::format( (int) $inc['cents'] ) ) . ') vengono ANNULLATI</strong>: <strong>spariscono da saldi, report, rendiconto e ricevute</strong>, come se non fossero mai avvenuti. Restano consultabili solo tra gli annullamenti e nel registro azioni.</p>';
 			if ( $p['refund_exp']['count'] ) {

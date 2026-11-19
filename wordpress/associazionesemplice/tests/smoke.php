@@ -1964,12 +1964,12 @@ Admin\DeleteActivityPage::render();
 $dp3 = (string) ob_get_clean();
 asem_ok( false !== strpos( $dp1, 'Restituisci le somme' ) && false !== strpos( $dp1, 'Annulla gli incassi' ) && false === strpos( $dp1, 'Elimina definitivamente' ), 'pagina di eliminazione: primo passaggio, scelta sulle somme e nessun pulsante finale' );
 asem_ok( false !== strpos( $dp2, 'ANNULLATI' ) && false !== strpos( $dp2, 'spariscono da saldi, report, rendiconto' ) && false !== strpos( $dp2, 'Elimina definitivamente' ) && false !== strpos( $dp2, 'name="typed"' ) && false !== strpos( $dp2, 'name="confirm"' ), 'pagina di eliminazione: secondo passaggio con il messaggio chiaro sulla prima nota e la doppia conferma' );
-asem_ok( false !== strpos( $dp3, 'restano in prima nota' ) && false !== strpos( $dp3, 'Restituzione quote' ) && false !== strpos( $dp3, 'non viene restituito dal sistema' ), 'pagina di eliminazione: con la restituzione dice che il denaro va restituito a mano' );
+asem_ok( false !== strpos( $dp3, 'restano in prima nota' ) && false !== strpos( $dp3, 'Restituzione quote' ) && false !== strpos( $dp3, 'non restituisce il denaro' ), 'pagina di eliminazione: con la restituzione dice che il denaro va restituito a mano' );
 $_GET = array( 'activity' => (string) $ev_a4, 'person' => (string) $ev_p6, 'session' => (string) $ev_s4, 'step' => '2', 'mode' => 'void' );
 ob_start();
 Admin\DeleteBookingPage::render();
 $dp4 = (string) ob_get_clean();
-asem_ok( false !== strpos( $dp4, 'ANNULLATI' ) && false !== strpos( $dp4, 'Cancella l\'iscrizione' ) && false !== strpos( $dp4, 'Gino Sei' ), 'pagina di cancellazione iscrizione: messaggio chiaro e conferma con nome' );
+asem_ok( false !== strpos( $dp4, 'ANNULLATI' ) && false !== strpos( $dp4, 'Elimina l\'iscrizione' ) && false !== strpos( $dp4, 'Gino Sei' ), 'pagina di cancellazione iscrizione: messaggio chiaro e conferma con nome' );
 $_GET = array();
 asem_ok( 'asem-activities' === Admin\Admin::menu_item_of( 'asem-activity-delete' ) && 'asem-activities' === Admin\Admin::menu_item_of( 'asem-booking-delete' ) && in_array( 'asem_delete_activity', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'asem_delete_booking', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'asem-activity-delete', Admin\Admin::admin_only(), true ), 'eliminazioni: riservate agli amministratori' );
 $ev_p8 = $ev_mk( 'Lia', 'Otto', '349 5556677' );
@@ -2065,7 +2065,7 @@ ob_start();
 Admin\ActivitiesPage::render_detail();
 $fr_det = (string) ob_get_clean();
 $_GET = array();
-asem_ok( false === strpos( $fr_pg, 'name="typed"' ) && false !== strpos( $fr_pg, 'Cancella l\'iscrizione' ) && false !== strpos( $fr_pg, 'la prima nota non cambia' ) && false === strpos( $fr_pe, 'name="typed"' ) && false !== strpos( $fr_pe, 'Elimina l\'evento' ), 'senza incassi: le pagine di cancellazione hanno un solo pulsante, niente nome da scrivere' );
+asem_ok( false === strpos( $fr_pg, 'name="typed"' ) && false !== strpos( $fr_pg, 'Elimina l\'iscrizione' ) && false !== strpos( $fr_pg, 'la prima nota non cambia' ) && false === strpos( $fr_pe, 'name="typed"' ) && false !== strpos( $fr_pe, 'Elimina l\'evento' ), 'senza incassi: le pagine di cancellazione hanno un solo pulsante, niente nome da scrivere' );
 asem_ok( false !== strpos( $fr_det, 'data-confirm="' ) && false === strpos( $fr_det, 'onsubmit=' ) && false !== strpos( $fr_det, 'asem_delete_booking' ), 'senza incassi: dalla lista la cancellazione è un pulsante con una sola conferma' );
 $fr_del_b = new ReflectionMethod( Admin\Actions::class, 'delete_booking' );
 $fr_del_b->setAccessible( true );
@@ -2267,9 +2267,9 @@ asem_ok( false !== strpos( $html, '<details class="asemf-details asemf-collapse"
 asem_ok( substr_count( $html, '<details class="asemf-details asemf-collapse"' ) === substr_count( $html, 'asemf-collapsible' ), 'area soci: ogni sezione richiudibile ha il suo titolo e il suo riquadro' );
 
 // Pagina attività: creazione con cancellabilità e pagina scheda
-asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Cancellabile anche se a pagamento', array( 'id' => $can7 ) );
+asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Si può annullare anche se a pagamento', array( 'id' => $can7 ) );
 asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Cedi il posto a un\'altra persona', array( 'id' => $paid_ev ) );
-asem_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Cancellabile anche se a pagamento' );
+asem_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Si può annullare anche se a pagamento' );
 $pc = new ReflectionMethod( Admin\Actions::class, 'save_activity' );
 $pc->setAccessible( true );
 $res = $pc->invoke( null, array( 'name' => 'Da modulo', 'social_year' => $sy_label, 'kind' => 'event', 'fee' => '4,00', 'guest_fee' => '6,00', 'cancellable' => '1', 'cancel_policy' => '24h', 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) ), 'start_time' => '18:30', 'capacity' => '3' ) );
@@ -4016,7 +4016,7 @@ $list = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Occasiona
 asem_ok( false !== strpos( $list, 'da invitare a iscriversi' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a iscriversi"' );
 $ev = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Open day yoga', array( 'id' => $e1 ) );
 asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'da invitare a iscriversi' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
-asem_render( array( Admin\DashboardPage::class, 'render' ), 'Ospiti da invitare a iscriversi' );
+asem_render( array( Admin\DashboardPage::class, 'render' ), 'Ospiti da invitare a diventare soci' );
 $front_g = $as( $u_f, '[associazionesemplice_ospiti]' );
 asem_ok( false !== strpos( $front_g, 'Partecipazioni: 2' ) && false !== strpos( $front_g, 'Open day yoga' ) && false === strpos( $front_g, 'iscriversi come socio' ) && false === strpos( $front_g, 'segreteria' ), 'area soci: il socio vede a cosa sono venuti i suoi ospiti, senza segnalazioni' );
 $acts->add_staff( $e1, $tre_p );
@@ -4404,7 +4404,7 @@ $funds->release( (int) $fl[0]['id'], 100, $today );
 asem_ok( $threw && 400 === $funds->get( (int) $fl[0]['id'] )['balance'] && $funds->available()['available'] === $av_pre['available'] + 100, 'fondo: si libera una quota solo fino al saldo e torna nella disponibilità' );
 $dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità reale' );
 asem_ok( false !== strpos( $dash, 'Rimborso Vera Rimborso' ), 'fondo: la dashboard mostra disponibilità reale e fondi' );
-asem_render( array( Admin\AccountsPage::class, 'render' ), 'Estingui il fondo' );
+asem_render( array( Admin\AccountsPage::class, 'render' ), 'Chiudi il fondo' );
 $rep = Plugin::reports()->period( $today, $today );
 asem_ok( $rep['funds_total'] === $funds->total( $today ) && $rep['available'] === $rep['closing_total'] - $rep['funds_total'], 'fondo: il rendiconto riporta la disponibilità reale' );
 $av_before = $funds->available();
@@ -6817,7 +6817,7 @@ asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $wp_s
 $front::do_waitlist_join( array( 'session_id' => $wp_s, 'person_id' => $wp_p, 'price_list' => 'di_gruppo' ) );
 asem_ok( 3 === \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_p ) && 'di_gruppo' === $wpdb->get_var( $wpdb->prepare( "SELECT price_list FROM $wp_wl WHERE session_id = %d AND person_id = %d", $wp_s, $wp_p ) ), 'lista d\'attesa: la tariffa scelta resta salvata' );
 wp_set_current_user( 1 );
-asem_ok( false !== strpos( asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'manca la tariffa scelta', array( 'id' => (string) $wp_ev ) ), 'manca la tariffa scelta' ), 'lista d\'attesa: la segreteria vede le righe senza tariffa valida' );
+asem_ok( false !== strpos( asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'non ha scelto la tariffa', array( 'id' => (string) $wp_ev ) ), 'non ha scelto la tariffa' ), 'lista d\'attesa: la segreteria vede le righe senza tariffa valida' );
 $acts->cancel_booking( $wp_s, $wp_h );
 asem_ok( $acts->has_active_booking( $wp_s, $wp_p ) && 2500 === (int) $acts->booking( $wp_s, $wp_p )['fee_due_cents'] && 'di_gruppo' === $acts->booking( $wp_s, $wp_p )['price_list'], 'lista d\'attesa: la promozione prenota con la tariffa memorizzata, al suo prezzo' );
 asem_ok( ! $acts->has_active_booking( $wp_s, $wp_o ) && ! $acts->has_active_booking( $wp_s, $wp_x ) && null !== \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_o ) && null !== \AssociazioneSemplice\Waitlist::position( $wp_s, $wp_x ), 'lista d\'attesa: senza tariffa valida (riga vecchia o tariffa sparita) non entra da sola e resta in coda' );
@@ -7923,7 +7923,7 @@ if ( ! \AssociazioneSemplice\WebPush::supported() ) {
 }
 Admin\ProActions::save_app( array( 'pwa_enabled' => '1', 'push_enabled' => '1', 'pwa_name' => 'Mia App', 'pwa_short_name' => 'MiaApp' ) );
 asem_ok( 'Mia App' === \AssociazioneSemplice\Pwa::app_name() && 'MiaApp' === \AssociazioneSemplice\Pwa::short_name(), 'app: nome e nome breve si impostano da qui' );
-asem_render( array( Admin\AppPage::class, 'render' ), 'App installabile (PWA)' );
+asem_render( array( Admin\AppPage::class, 'render' ), 'App installabile' );
 asem_ok( in_array( 'asem-app', Admin\Admin::admin_only(), true ) && false !== strpos( Admin\Admin::tabs( 'asem-settings' ), 'Comunicazioni' ) && isset( Admin\SettingsPage::all_features()['pwa_enabled'], Admin\SettingsPage::all_features()['push_enabled'] ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['app'] ) && shortcode_exists( 'associazionesemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
 Admin\ProActions::save_app( array() );
 Settings::update( array( 'pwa_name' => '', 'pwa_short_name' => '', 'accent_color' => $pw_accent, 'association_name' => $pw_name, 'push_enabled' => 0, 'pwa_enabled' => 0 ) );

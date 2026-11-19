@@ -33,7 +33,7 @@ final class ExpensePage {
 		echo '<table class="form-table asem-form"><tbody>';
 		echo '<tr><th>Data</th><td><input type="date" name="date" value="' . esc_attr( current_time( 'Y-m-d' ) ) . '" required></td></tr>';
 		echo wp_kses( '<tr><th>Pagato dal conto</th><td><select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select>', Html::allowed() );
-		echo '<p class="description">Il saldo tra parentesi è quello attuale: controlla che il conto abbia fondi sufficienti.</p></td></tr>';
+		echo '<p class="description">Il saldo tra parentesi è quello attuale: controlla che sul conto ci siano abbastanza soldi.</p></td></tr>';
 		echo wp_kses( '<tr><th>Voce</th><td><select name="category_id" required>' . Ui::options( $cats, null, '— scegli —' ) . '</select></td></tr>', Html::allowed() );
 		echo '<tr><th>Importo</th><td><input type="text" name="amount" inputmode="decimal" required> €</td></tr>';
 		echo wp_kses( '<tr><th>Attività</th><td><select name="activity_id">' . Ui::options( $acts, null, 'Nessuna (costo generale)' ) . '</select></td></tr>', Html::allowed() );

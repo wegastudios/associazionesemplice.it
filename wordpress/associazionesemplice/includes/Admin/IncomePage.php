@@ -151,8 +151,8 @@ final class IncomePage {
 			'guests'        => Settings::guests_enabled() ? 1 : 0,
 			// frasi con variabili che admin.js compone: tradotte qui (modello con {anno}), perché lo script non passa dalla sostituzione dei testi
 			'txt'           => array(
-				'dup_year' => \AssociazioneSemplice\Texts::t( '⚠ il socio ha già la tessera {anno}: l\'incasso non verrà salvato finché c\'è questa voce' ),
-				'dup'      => \AssociazioneSemplice\Texts::t( '⚠ il socio ha già la tessera: l\'incasso non verrà salvato finché c\'è questa voce' ),
+				'dup_year' => \AssociazioneSemplice\Texts::t( '⚠ il socio ha già la tessera {anno}: togli questa voce per salvare l\'incasso' ),
+				'dup'      => \AssociazioneSemplice\Texts::t( '⚠ il socio ha già la tessera: togli questa voce per salvare l\'incasso' ),
 			),
 		);
 

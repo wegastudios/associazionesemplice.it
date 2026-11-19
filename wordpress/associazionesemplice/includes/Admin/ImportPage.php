@@ -52,14 +52,14 @@ final class ImportPage {
 	}
 
 	private static function upload(): void {
-		echo '<p>Carica un file <strong>Excel (.xlsx)</strong> o <strong>CSV</strong> con i <strong>soci</strong>, gli <strong>ospiti</strong> e/o la <strong>prima nota</strong>, anche di anni passati. '
-			. 'Se nel file Excel ci sono più fogli (es. "Soci", "Ospiti", "Prima nota") vengono letti tutti: lo scopo di ciascuno si riconosce dalle intestazioni. Prima di registrare qualsiasi dato viene mostrata un\'anteprima.</p>';
+		echo '<p>Carica un file <strong>Excel (.xlsx)</strong> o <strong>CSV</strong> con i <strong>soci</strong>, gli <strong>ospiti</strong>, la <strong>prima nota</strong> o tutto insieme, anche di anni passati. '
+			. 'Se il file Excel ha più fogli (es. «Soci», «Ospiti», «Prima nota») vengono letti tutti: cosa contiene ciascuno si capisce dalle intestazioni. Prima di registrare qualcosa vedrai un\'anteprima.</p>';
 		echo '<div class="asem-cols"><div class="asem-col"><div class="asem-card"><h2>Soci e ospiti</h2>'
-			. '<p>Colonne riconosciute, in qualunque ordine: <strong>Numero tessera, Tipo, Nome, Cognome, Email, Telefono, Codice fiscale</strong> e, per gli ospiti, <strong>Cellulare</strong> (obbligatorio) e <strong>Ospite di</strong> (tessera, email o nome e cognome del socio). Facoltative: <strong>Data di nascita</strong> (31/12/2010) e <strong>Tutore</strong> (tessera, email o nome e cognome di un genitore già registrato o presente nel file: per indicarlo serve la data di nascita). '
-			. 'Per registrare gli <strong>anni di iscrizione effettivi</strong> aggiungi una colonna per ogni anno (intestazione <strong>2023</strong>, <strong>2024</strong>… oppure <strong>ANNO CORRENTE</strong> e <strong>ANNO SCORSO</strong>) con una crocetta, un «sì» o un 1 dove il socio era iscritto; la colonna <strong>Anno iscrizione</strong> dice da quando è socio. '
-			. 'Per gli ospiti: <strong>Venute</strong> (quante volte sono già venuti) e <strong>Note</strong> (gli eventi passati); per importare chi non ha il cellulare o il socio ospitante, spegni prima le due regole in Impostazioni → Limiti e soglie. '
-			. 'Per i <strong>soci che sono enti</strong> (associazioni, società, enti pubblici) aggiungi la colonna <strong>Tipo soggetto</strong> (<em>persona</em> oppure <em>ente</em>), la <strong>Denominazione</strong> al posto di Nome e Cognome, il <strong>Codice fiscale</strong> dell\'ente (11 cifre, oppure 16 caratteri) e, se serve, <strong>Stessa sezione RUNTS</strong> (sì o no). Per un ente basta uno tra Codice fiscale, Email, Cellulare e Numero tessera. '
-			. 'Per le persone Nome e Cognome sono obbligatori; per i soci serve poi <strong>almeno uno tra Email, Cellulare e Numero tessera</strong>. Con l\'email il socio ha subito il suo accesso all\'area riservata; senza, resta registrato e si attiva dopo con un <strong>link da mandare su WhatsApp</strong> (lo trovi nell\'elenco soci). Il Tipo può essere <em>fondatore</em>, <em>ordinario</em>, <em>volontario</em> oppure <em>ospite</em>.</p></div></div>'
+			. '<p>Colonne riconosciute, in qualunque ordine:</p><ul style="list-style:disc;margin-left:1.4em"><li><strong>Colonne di base.</strong> <strong>Numero tessera, Tipo, Nome, Cognome, Email, Telefono, Codice fiscale</strong> e, per gli ospiti, <strong>Cellulare</strong> (obbligatorio) e <strong>Ospite di</strong> (tessera, email o nome e cognome del socio). Facoltative: <strong>Data di nascita</strong> (31/12/2010) e <strong>Tutore</strong> (tessera, email o nome e cognome di un genitore già registrato o presente nel file: per indicarlo serve la data di nascita).</li>'
+			. '<li><strong>Anni di iscrizione.</strong> Per registrare gli <strong>anni di iscrizione effettivi</strong> aggiungi una colonna per ogni anno (intestazione <strong>2023</strong>, <strong>2024</strong>… oppure <strong>ANNO CORRENTE</strong> e <strong>ANNO SCORSO</strong>) con una crocetta, un «sì» o un 1 dove il socio era iscritto; la colonna <strong>Anno iscrizione</strong> dice da quando è socio.</li>'
+			. '<li><strong>Ospiti.</strong> <strong>Venute</strong> (quante volte sono già venuti) e <strong>Note</strong> (gli eventi passati); per importare chi non ha il cellulare o il socio ospitante, spegni prima le due regole in Impostazioni → Limiti e soglie.</li>'
+			. '<li><strong>Soci che sono enti</strong> (associazioni, società, enti pubblici): aggiungi la colonna <strong>Tipo soggetto</strong> (<em>persona</em> oppure <em>ente</em>), la <strong>Denominazione</strong> al posto di Nome e Cognome, il <strong>Codice fiscale</strong> dell\'ente (11 cifre, oppure 16 caratteri) e, se serve, <strong>Stessa sezione RUNTS</strong> (sì o no). Per un ente basta uno tra Codice fiscale, Email, Cellulare e Numero tessera.</li>'
+			. '<li><strong>Cosa è obbligatorio.</strong> Per le persone Nome e Cognome sono obbligatori; per i soci serve poi <strong>almeno uno tra Email, Cellulare e Numero tessera</strong>. Con l\'email il socio ha subito il suo accesso all\'area riservata; senza, resta registrato e si attiva dopo con un <strong>link da mandare su WhatsApp</strong> (lo trovi nell\'elenco soci). Il Tipo può essere <em>fondatore</em>, <em>ordinario</em>, <em>volontario</em> oppure <em>ospite</em>.</li></ul></div></div>'
 			. '<div class="asem-col"><div class="asem-card"><h2>Prima nota</h2>'
 			. '<p>Colonne: <strong>Data, Importo</strong> (oppure <strong>Entrata</strong> e <strong>Uscita</strong>), e se vuoi <strong>Tipo, Conto, Modalità, Voce, Descrizione, Riferimento, N. tessera, Persona, Attività, Competenza</strong>. '
 			. 'Viene riconosciuto anche il file esportato da questo plugin. Le date possono essere 15/01/2024 o 2024-01-15; gli importi 1.234,56 o 1234.56. I conti che non esistono si creano; le voci non riconosciute finiscono in "Altra entrata" / "Costo generale".</p></div></div></div>';
@@ -127,8 +127,8 @@ final class ImportPage {
 			} else {
 				Ui::form_open( 'asem_import_undo', Ui::url( $back ), false, 'asem-inline' );
 				$ask = 'tribe' === $kind
-					? 'Annullare TUTTO questo import? Si tolgono gli eventi e i corsi creati (con le loro pagine pubbliche) se nessuno si è prenotato o iscritto; quelli già usati restano. Non si può rifare con un clic.'
-					: 'Annullare TUTTO questo import? Si annullano i movimenti, si tolgono i soci creati se non sono ancora stati usati e si rimettono i dati dei soci aggiornati. Non si può rifare con un clic.';
+					? 'Annullare tutta questa importazione? Si tolgono gli eventi e i corsi creati (con le loro pagine pubbliche) se nessuno si è prenotato o iscritto; quelli già usati restano. Per rifarla dovrai importare di nuovo.'
+					: 'Annullare tutta questa importazione? Si annullano i movimenti, si tolgono i soci creati se non sono ancora stati usati e si rimettono i dati dei soci aggiornati. Per rifarla dovrai importare di nuovo.';
 				echo wp_kses( Ui::hidden( 'batch_id', $b['id'] ) . '<button class="button button-small" data-confirm="' . esc_attr( $ask ) . '">Annulla questo import</button>', Html::allowed() );
 				Ui::form_close();
 			}
@@ -138,7 +138,7 @@ final class ImportPage {
 			echo '</tbody></table><p class="description">L\'annullamento toglie gli eventi e i corsi nati con l\'import, con le date, le lezioni e la pagina pubblica, solo se non hanno prenotazioni, iscritti o movimenti (quelli usati restano e vengono elencati). Le pagine di attività già esistenti che l\'import ha compilato tornano vuote, se non le hai modificate; le categorie pubbliche create dall\'import si tolgono se restano vuote. Gli eventi di The Events Calendar tolti si possono importare di nuovo.</p></div>';
 			return;
 		}
-		echo '</tbody></table><p class="description">L\'annullamento in blocco annulla i movimenti (restano nel registro come annullati), rimette i saldi iniziali dei conti, toglie i conti nuovi rimasti vuoti, ripristina i dati dei soci aggiornati e rimuove i soci e gli ospiti creati che non sono stati ancora usati (iscritti ad attività, prenotati, con movimenti o pagamenti): quelli già usati restano e vengono elencati.</p></div>';
+		echo '</tbody></table><p class="description">L\'annullamento in blocco annulla i movimenti (restano nel registro come annullati), rimette i saldi di partenza dei conti e toglie i conti nuovi rimasti vuoti. Ripristina i dati dei soci aggiornati e toglie i soci e gli ospiti creati e mai usati. Quelli già usati (iscritti, prenotati, con movimenti o pagamenti) restano e vengono elencati.</p></div>';
 	}
 
 	private static function badge( string $action, bool $warn ): string {
@@ -198,7 +198,7 @@ final class ImportPage {
 				echo '<p><label><input type="checkbox" name="mark_members" value="1"> Segna la quota del ' . esc_html( Settings::membership_year()->label() ) . ' come pagata (non vale per i fondatori, sempre in regola)</label></p>';
 			}
 			if ( $ledger ) {
-				echo '<p><label><input type="checkbox" name="keep_balances" value="1" checked> <strong>Non cambiare i saldi attuali dei conti</strong> (consigliato per le annualità passate): si aggiusta il saldo iniziale dei conti già esistenti, così il saldo di oggi resta com\'è e la storia si completa. Toglila se il file contiene TUTTA la storia e vuoi che i saldi derivino dai movimenti.</label></p>';
+				echo '<p><label><input type="checkbox" name="keep_balances" value="1" checked> <strong>Non cambiare i saldi attuali dei conti</strong> (consigliato per le annualità passate): si aggiusta il saldo di partenza dei conti già esistenti, così il saldo di oggi resta com\'è e la storia si completa. Togli la spunta se il file contiene tutta la storia e vuoi che i saldi derivino dai movimenti.</label></p>';
 			}
 			submit_button( 'Importa' );
 			Ui::form_close();

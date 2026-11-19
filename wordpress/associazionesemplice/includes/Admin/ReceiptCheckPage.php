@@ -132,7 +132,7 @@ final class ReceiptCheckPage {
 				echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Alcuni PDF non coincidono con quelli emessi. Finché non li sistemi, scaricare quelle ricevute dà un errore (non vengono mai rifatte di nascosto). Puoi ripristinare il file da una copia di sicurezza oppure rifarlo dai dati salvati: lo si fa solo se i dati sono intatti e l\'operazione resta scritta nel registro azioni.' ) ) . '</p></div>';
 			}
 			if ( (int) $sum['locked'] > 0 ) {
-				echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Alcuni PDF sono cifrati e la chiave di questo sito non li apre: i file non sono stati toccati. Sistema la chiave da Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»; finché non è sistemata, scaricare quelle ricevute dà un errore.' ) ) . '</p></div>';
+				echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Alcuni PDF sono cifrati e la chiave di questo sito non li apre: i file non sono stati toccati. Sistema la chiave da Strumenti → Copia di sicurezza → «Cifratura dei file riservati»; finché non è sistemata, scaricare quelle ricevute dà un errore.' ) ) . '</p></div>';
 			}
 		}
 

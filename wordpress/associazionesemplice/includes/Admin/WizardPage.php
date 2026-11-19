@@ -168,7 +168,7 @@ final class WizardPage {
 		self::end_step();
 
 		if ( \AssociazioneSemplice\FileCrypt::available() ) {
-			self::step( 'Frase per riaprire i documenti', 'I documenti riservati (certificati, scansioni, allegati) si salvano cifrati. Questa frase serve a riaprirli se il sito viene spostato o riparato. Puoi tenere quella automatica o sceglierne una tua; si cambia anche dopo, da Impostazioni → Copia di sicurezza. Questo passo si può saltare.', '', 'aspetto' );
+			self::step( 'Frase per riaprire i documenti', 'I documenti riservati (certificati, scansioni, allegati) si salvano cifrati. Questa frase serve a riaprirli se il sito viene spostato o riparato. Puoi tenere quella automatica o sceglierne una tua; si cambia anche dopo, da Strumenti → Copia di sicurezza. Questo passo si può saltare.', '', 'aspetto' );
 			echo '<p><strong>' . esc_html( FileCryptPanel::phrase_line() ) . '</strong></p>';
 			echo '<p><label>Una frase tua (facoltativa, almeno ' . (int) \AssociazioneSemplice\FileKey::RECOVERY_MIN . ' caratteri, meglio quattro parole)<br><input type="password" name="file_phrase" class="regular-text" autocomplete="new-password"></label></p>'
 				. '<p><label>Ripeti la frase<br><input type="password" name="file_phrase2" class="regular-text" autocomplete="new-password"></label></p>';

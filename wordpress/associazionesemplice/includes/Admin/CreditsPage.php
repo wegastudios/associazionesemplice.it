@@ -35,7 +35,7 @@ final class CreditsPage {
 		$back  = Ui::url( 'asem-credits' );
 		$packs = Credits::packs();
 		echo '<p class="description">Il socio compra pacchetti di crediti e li spende nelle risorse e nelle attività che li accettano, anche dal vivo con un QR. Crediti in circolazione: <strong>' . (int) Credits::outstanding() . '</strong>. '
-			. 'La vendita di un pacchetto è l\'entrata in prima nota; la spesa dei crediti non registra niente in prima nota (vedi <code>docs/CREDITI.md</code>).</p>';
+			. 'Quando vendi un pacchetto l\'incasso entra in prima nota; quando il socio spende i crediti la prima nota non cambia.</p>';
 
 		echo '<div class="asem-card"><h2>Pacchetti in vendita</h2>';
 		if ( ! current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) { // il listino lo cambia solo l'amministratore
