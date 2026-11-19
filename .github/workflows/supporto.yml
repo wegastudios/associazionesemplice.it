@@ -1,0 +1,38 @@
+name: Supporto
+
+# Sito di supporto (supporto/): prove a ogni modifica della cartella. Il rilascio sul server è a mano con
+# supporto/scripts/deploy.sh, che non copia mai public/ (vedi supporto/README.md).
+on:
+  push:
+    branches: [main]
+    paths: ["supporto/**", ".github/workflows/supporto.yml"]
+  pull_request:
+    paths: ["supporto/**", ".github/workflows/supporto.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Supporto (PHP 8.4)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supporto
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: intl, sodium, pdo_sqlite, bcmath, mbstring
+          tools: composer
+      - name: Installa dipendenze
+        run: composer install --no-interaction --prefer-dist
+      - name: Controllo della sintassi dello script di rilascio
+        run: bash -n scripts/deploy.sh
+      - name: Prove
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan test
