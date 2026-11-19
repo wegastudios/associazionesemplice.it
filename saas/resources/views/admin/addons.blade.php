@@ -12,7 +12,7 @@
             @foreach ($addons as $a)
                 <tr>
                     <td>{{ $a['name'] }} <span class="tag">{{ $a['code'] }}</span></td>
-                    <td>{{ ['package' => 'Pacchetto', 'operators' => 'Operatori', 'storage' => 'Spazio', 'domain' => 'Dominio', 'dedicated_db' => 'Database dedicato', 'recharge' => 'Ricarica'][$a['kind']] ?? $a['kind'] }}</td>
+                    <td>{{ ['package' => 'Pacchetto', 'operators' => 'Operatori', 'members' => 'Soci in più', 'storage' => 'Spazio', 'domain' => 'Dominio', 'dedicated_db' => 'Database dedicato', 'recharge' => 'Ricarica'][$a['kind']] ?? $a['kind'] }}</td>
                     <td>{{ $a['riepilogo'] }}</td>
                     <td>{{ $a['in_vigore'] ? 'in vigore' : 'solo in bozza' }}</td>
                     <td>{{ $a['visible'] ? 'sì' : 'no' }}</td>

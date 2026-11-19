@@ -96,7 +96,7 @@ final readonly class StaffInvites
             $invite = $db->table('core.staff_invites')->where('token_hash', hash('sha256', $code))->whereNull('used_at')
                 ->where('expires_at', '>', now())->lock('for update')->first();
             if ($invite === null) {
-                return ['Questo invito non è più valido.'];
+                return ['Questo invito non è più valido: chiedine uno nuovo.'];
             }
             $email = is_string($invite->email ?? null) ? $invite->email : '';
             $name = is_string($invite->name ?? null) ? $invite->name : '';

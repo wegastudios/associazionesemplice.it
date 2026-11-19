@@ -161,7 +161,7 @@ final readonly class IdentityService
         $link = $linkPrefix.$code;
         try {
             Mail::raw(
-                "Ciao,\n\nper confermare il nuovo indirizzo email del tuo accesso a Associazione Semplice usa questo link (vale un'ora e si usa una volta sola):\n\n{$link}\n\nSe non l'hai chiesto tu, ignora questa email.\n",
+                "Ciao,\n\nper confermare il nuovo indirizzo email del tuo accesso ad Associazione Semplice apri questo link (vale un'ora e si usa una volta sola):\n\n{$link}\n\nSe non l'hai chiesto tu, ignora questa email.\n",
                 static function (Message $message) use ($newEmail): void {
                     $message->to($newEmail)->subject('Conferma il nuovo indirizzo email');
                 },
