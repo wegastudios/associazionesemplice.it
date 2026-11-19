@@ -183,7 +183,7 @@ L'area soci è la tua pagina personale: la tessera, gli eventi, le quote e le ri
 
 Link e codice valgono 15 minuti e si usano una volta sola. Se sono scaduti, premi **«Mandami un altro codice»**. Non hai ricevuto niente? Controlla la posta indesiderata e che l'email sia quella giusta.
 
-**Non hai un'email registrata?** Chiedi alla segreteria un link d'accesso: te lo manda per esempio su WhatsApp, vale 7 giorni e si usa una volta sola.
+Non hai un'email registrata? Chiedi alla segreteria un link d'accesso: te lo manda per esempio su WhatsApp, vale 7 giorni e si usa una volta sola.
 
 Dopo il primo ingresso resti collegato su quel telefono o computer: rientri con un nuovo link solo se non lo usi per 30 giorni.
 
@@ -324,7 +324,7 @@ Dalla scheda del socio, nel riquadro **Tesseramento** della scheda **Tessera**, 
 
 ## Se il socio ha già la tessera
 
-Se il socio ha già la tessera di quell'anno, il gestionale non registra la quota una seconda volta e ti dice, per esempio, **«Il socio ha già la tessera 2026.»**. Non viene registrato nulla: né incasso, né ricevuta, né tessera.
+Se il socio ha già la tessera di quell'anno, il gestionale non registra la quota una seconda volta e ti dice, per esempio, «Il socio ha già la tessera 2026.». Non viene registrato nulla: né incasso, né ricevuta, né tessera.
 
 ## Se il socio ha già pagato online
 
@@ -379,7 +379,7 @@ Tutti i movimenti stanno nella **Prima nota**: l'elenco di entrate e uscite in o
 
 1. Dal pulsante **Nuovo** (o dalla **Prima nota**) scegli **«Registra un incasso»** o **«Registra una spesa»**.
 2. Scegli il conto, l'importo, la data e, se serve, l'attività collegata. Puoi dividere il movimento in più voci con **«Aggiungi un'altra voce»** e **«Togli questa voce»**.
-3. Salva. L'incasso dà la ricevuta; con **«Invia per email»** la mandi alla persona. Se l'associazione ha la partita IVA, ogni voce ha anche la sua aliquota IVA (vedi [IVA: la pagina «Aspetto fiscale»](guida:gestionale-iva-e-aspetto-fiscale)).
+3. Salva. L'incasso dà la ricevuta; con **«Invia per email»** la mandi alla persona. Se l'associazione ha la partita IVA, ogni voce ha anche la sua aliquota IVA (vedi [Impostare l'IVA](guida:gestionale-iva-e-aspetto-fiscale)).
 
 ### Perché non riesco a inviare la ricevuta per email?
 
@@ -503,7 +503,7 @@ MD,
 
 Se finora hai tenuto la contabilità in un foglio Excel, non devi riscriverla: la carichi da un file e il gestionale registra i movimenti in **Prima nota**. **Prima vedi sempre l'anteprima: nulla si salva finché non confermi.**
 
-**Chi può farlo:** chi ha il permesso **«Registrare in prima nota»** (titolare, amministratori e operatori; si assegna in **Operatori e ruoli**).
+Chi può farlo: chi ha il permesso «Registrare in prima nota» (titolare, amministratori, segreteria e dipendenti; si assegna in **Operatori e ruoli**).
 
 ## Come si fa
 
@@ -622,7 +622,7 @@ Nell'elenco vedi, per ogni risorsa, come si prenota, la tariffa e lo stato di og
 2. Scrivi il nome (per esempio «Campo 1», «Sala feste», «Posto barca 12») e scegli **«Si prenota»**.
 3. Imposta le tariffe: **«Tariffa soci»** (0 = gratuita) e **«Tariffa non soci»** (se la lasci vuota vale come quella dei soci). **Chi ha la tessera valida paga la tariffa soci.**
 4. Per le risorse a ore, scegli gli orari e i minuti per fascia, quante fasce di seguito si possono prenotare e l'anticipo massimo in giorni (0 = nessun limite; vale per le prenotazioni dei soci).
-5. Scegli la **«Voce di entrata»** in cui finiranno gli incassi (di partenza «Altre entrate») e, se hai la partita IVA, la casella **«Con IVA»** (vedi [IVA: la pagina «Aspetto fiscale»](guida:gestionale-iva-e-aspetto-fiscale)).
+5. Scegli la **«Voce di entrata»** in cui finiranno gli incassi (di partenza «Altre entrate») e, se hai la partita IVA, la casella **«Con IVA»** (vedi [Impostare l'IVA](guida:gestionale-iva-e-aspetto-fiscale)).
 6. Salva.
 
 **Tariffe a fasce**: una per riga, con giorni (tutti, feriali, weekend), orario e prezzo per fascia; per esempio «feriali 18:00-22:00 15,00». Fuori dalle fasce vale la tariffa soci. **Servizi aggiuntivi**: uno per riga, nome e prezzo («Aperitivo 5,00»): si scelgono quando si prenota.
@@ -697,9 +697,9 @@ In **Attività** trovi i corsi e gli eventi dell'anno delle attività: ognuno ra
 3. Facoltativi: il referente (un socio volontario) e un listino (uno per riga: nome e prezzo; per un carnet «x» e gli ingressi). Senza listino vale l'importo per i soci o per gli ospiti.
 4. Con il pacchetto **Risorse** puoi indicare dove si svolge; più attività sulla stessa risorsa ne condividono il calendario.
 
-Se l'associazione ha la partita IVA, nella scheda trovi anche la casella **«Con IVA»**: vedi [IVA: la pagina «Aspetto fiscale»](guida:gestionale-iva-e-aspetto-fiscale).
+Se l'associazione ha la partita IVA, nella scheda trovi anche la casella **«Con IVA»**: vedi [Impostare l'IVA](guida:gestionale-iva-e-aspetto-fiscale).
 
-Nella scheda vedi gli iscritti, il registro presenze e i carnet con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date: vedi [Il calendario e le presenze delle attività](guida:gestionale-calendario-e-presenze).
+Nella scheda vedi gli iscritti, il registro presenze e i carnet con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date: vedi [Consultare il calendario e registrare le presenze](guida:gestionale-calendario-e-presenze).
 MD,
     ],
     [
@@ -1008,7 +1008,7 @@ Per ogni anno fiscale vedi uno di questi stati:
 
 - **«Da archiviare»**: c'è il pulsante **«Archivia l'anno»**.
 - **«Archiviato il» con la data**: c'è il pulsante **«Rimetti i file»**, per tornare indietro quando vuoi.
-- **«Non ancora: si archiviano solo gli anni fiscali prima dell'ultimo anno chiuso.»**
+- «Non ancora: si archiviano solo gli anni fiscali prima dell'ultimo anno chiuso.»
 
 I file singoli vengono tolti solo dopo che l'archivio è stato controllato: se qualcosa non torna, non cambia nulla.
 
