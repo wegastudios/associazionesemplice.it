@@ -123,7 +123,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Rendiconto per cassa per il commercialista: alla chiusura dell'anno fiscale diventa definitivo, con un PDF numerato (n. 1/2026) che non cambia più; prima è una bozza | — | — | ✓ |
 | Anno fiscale del rendiconto per cassa e verifiche prima della chiusura | — | — | ✓ |
 | Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
-| Rendiconto provvisorio dell'anno fiscale, avvisi sul rendiconto e storico mensile con CSV | — | — | ✓ |
+| Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
 | Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
 | Avviso se un anno fiscale passato ancora aperto è in disavanzo (non blocca la chiusura) | — | — | ✓ |
 | Verifiche di fine anno e blocco della chiusura se mancano le spese documentate dei rimborsi | — | — | ✓ |
