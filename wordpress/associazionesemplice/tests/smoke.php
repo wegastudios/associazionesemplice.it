@@ -5478,8 +5478,8 @@ $wpdb->delete( Db::t( 'people' ), array( 'id' => $rs_p ) );
 asem_ok( null === \AssociazioneSemplice\FiscalYears::last_closed(), 'rendiconto fotografato: prove ripulite, nessun esercizio chiuso' );
 
 asem_render( array( Admin\YearsPage::class, 'render' ), 'Crea anno fiscale' );
-$rep_html = asem_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e liquidità' );
-asem_ok( strpos( $rep_html, 'Conti e liquidità' ) < strpos( $rep_html, 'Anno delle attività' ) && strpos( $rep_html, 'Anno delle attività' ) < strpos( $rep_html, 'Anno fiscale (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );
+$rep_html = asem_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e disponibilità' );
+asem_ok( strpos( $rep_html, 'Conti e disponibilità' ) < strpos( $rep_html, 'Anno delle attività' ) && strpos( $rep_html, 'Anno delle attività' ) < strpos( $rep_html, 'Anno fiscale (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );
 asem_render( array( Admin\ReportsPage::class, 'render' ), 'Fondi per anno fiscale', array( 'mode' => 'solar' ) );
 
 // ---------- Soci sospesi (inattivi) ----------
@@ -12608,7 +12608,7 @@ asem_ok( null === $em_with( array( 'tools' ), 'admin.php', array( 'page' => 'ase
 wp_set_current_user( $em_uid );
 \AssociazioneSemplice\Employees::reset_cache();
 $em_book_html = asem_render( array( Admin\RegistersPage::class, 'render_book' ), 'Libro soci' );
-asem_ok( false !== strpos( $em_book_html, esc_html( 'Il libro soci è dell\'area «Anagrafica soci», che non hai.' ) ) && false === strpos( $em_book_html, 'matricola' ), 'Registri: senza Anagrafica il libro soci non mostra i soci, solo il messaggio' );
+asem_ok( false !== strpos( $em_book_html, esc_html( 'Per il libro soci serve il permesso «Anagrafica soci», che non hai.' ) ) && false === strpos( $em_book_html, 'matricola' ), 'Registri: senza Anagrafica il libro soci non mostra i soci, solo il messaggio' );
 wp_set_current_user( 1 );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'tools' ) );
 wp_set_current_user( $em_uid );

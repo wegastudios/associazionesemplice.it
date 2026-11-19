@@ -78,9 +78,9 @@ final class ResourcesPage {
 			return null === $m ? '' : ResourceRules::format_duration( (int) $m );
 		};
 		return '<tr><th>Risorsa occupata</th><td><select name="resource_id">' . Ui::options( array( '' => '— scegli —', 'none' => 'Nessuna risorsa (evento fuori sede)' ) + $opts, $selected ) . '</select>'
-			. '<p class="description">Scegli quale <a href="' . esc_url( Ui::url( 'asem-resources' ) ) . '">risorsa</a> occupa (campo, sala…), anche se ce n\'è una sola: così i calendari si incrociano e la risorsa non risulta libera quando c\'è già un corso o un evento. Se si tiene fuori sede, scegli «Nessuna risorsa». Allestimenti compresi.</p>'
-			. '<p><label><input type="checkbox" name="move_conflicts" value="1"> Sposta sulla risorsa di prima ciò che si sovrappone</label></p>'
-			. '<p class="description">Se cambi risorsa e quella nuova è già occupata negli stessi orari, il cambio non viene applicato e vedi cosa si sovrappone. Spuntando questa casella, le prenotazioni e le altre attività che si sovrappongono passano alla risorsa che si libera (le attività per intero); se anche lì non entrano, non si sposta niente.</p>'
+			. '<p class="description">Scegli la <a href="' . esc_url( Ui::url( 'asem-resources' ) ) . '">risorsa</a> che l\'attività occupa (campo, sala…), anche se ce n\'è una sola: così non risulta libera quando c\'è un corso o un evento, allestimenti compresi. Se l\'attività è fuori sede, scegli «Nessuna risorsa».</p>'
+			. '<p><label><input type="checkbox" name="move_conflicts" value="1"> Sposta sulla risorsa che si libera ciò che si sovrappone</label></p>'
+			. '<p class="description">Se la nuova risorsa è già occupata negli stessi orari, il cambio non avviene e vedi che cosa si sovrappone. Con questa spunta, prenotazioni e attività che si sovrappongono passano alla risorsa che si libera (le attività per intero); se non ci stanno nemmeno lì, non si sposta niente.</p>'
 			. '<p><label><input type="checkbox" name="occupy_on_booking" value="1"' . ( $a && ! empty( $a['occupy_on_booking'] ) ? ' checked' : '' ) . '> Occupa la risorsa solo dove ci sono prenotazioni</label></p>'
 			. '<p class="description">Per le attività a fasce (ad esempio lezioni o sedute di mezz\'ora): la risorsa risulta occupata solo negli orari prenotati, e gli altri orari restano liberi per altre attività. Una fascia già occupata altrove non è prenotabile.</p>'
 			. '<div class="asem-resource-block"><p><label><input type="checkbox" name="resource_block_on" value="1"' . ( '' !== $block ? ' checked' : '' ) . '> Tieni la risorsa occupata dal primo all\'ultimo giorno, senza interruzioni</label></p>'
@@ -116,7 +116,7 @@ final class ResourcesPage {
 		}
 		$review = Resources::to_review();
 		if ( $review ) {
-			echo '<div class="asem-card"><h2>Assegnazioni da verificare</h2><p class="description">Il titolare non ha più la tessera valida: rinnovala oppure rilascia la risorsa.</p><ul style="list-style:disc;margin-left:20px">';
+			echo '<div class="asem-card"><h2>Assegnazioni da verificare</h2><p class="description">Chi ha la risorsa non ha più la tessera valida: rinnova la tessera oppure rilascia la risorsa.</p><ul style="list-style:disc;margin-left:20px">';
 			foreach ( $review as $r ) {
 				echo '<li><a href="' . esc_url( Ui::url( 'asem-resource', array( 'id' => $r['resource_id'] ) ) ) . '">' . esc_html( $r['resource_name'] ) . '</a> — ' . esc_html( trim( $r['first_name'] . ' ' . $r['last_name'] ) ) . '</li>';
 			}
@@ -189,7 +189,7 @@ final class ResourcesPage {
 			}
 			echo '<tr><th>Ripetizione</th><td>per <input type="number" name="weeks" min="1" max="52" value="1" style="width:60px"> settimane, alla stessa ora <span class="description">1 = una volta sola. Con più settimane si prenotano tutte le date o nessuna.</span></td></tr>'
 				. '<tr><th>Nota</th><td><input type="text" name="note" class="regular-text" maxlength="255"></td></tr></table>'
-				. '<p><button class="button button-primary">Prenota</button> <span class="description">La segreteria può registrare anche nel passato e oltre il limite di anticipo.</span></p>';
+				. '<p><button class="button button-primary">Prenota</button> <span class="description">Da qui puoi prenotare anche date passate e oltre il limite di anticipo.</span></p>';
 			Ui::form_close();
 			echo '</div>';
 
@@ -253,8 +253,8 @@ final class ResourcesPage {
 						. '<select name="account_id">' . Ui::options( $amap ) . '</select> <button class="button button-small">Incassa</button></form>';
 				}
 			}
-			echo '</td><td>' . Ui::confirm_button( 'asem_res_cancel', $back, array( 'id' => $r['id'] ), ResourceRules::KIND_ASSIGN === $r['kind'] ? 'Rilascia' : ( ResourceRules::KIND_BLOCK === $r['kind'] ? 'Togli blocco' : 'Annulla' ), 'Confermi?' ) // phpcs:ignore WordPress.Security.EscapeOutput
-				. ( ! empty( $r['series_id'] ) ? ' ' . Ui::confirm_button( 'asem_res_cancel', $back, array( 'id' => $r['id'], 'series' => 1 ), 'Annulla anche le successive', 'Annullo questa prenotazione e tutte le successive della serie. Confermi?' ) : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '</td><td>' . Ui::confirm_button( 'asem_res_cancel', $back, array( 'id' => $r['id'] ), ResourceRules::KIND_ASSIGN === $r['kind'] ? 'Rilascia' : ( ResourceRules::KIND_BLOCK === $r['kind'] ? 'Togli blocco' : 'Annulla' ), ResourceRules::KIND_ASSIGN === $r['kind'] ? 'Rilasciare la risorsa?' : ( ResourceRules::KIND_BLOCK === $r['kind'] ? 'Togliere il blocco?' : 'Annullare la prenotazione?' ) ) // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( ! empty( $r['series_id'] ) ? ' ' . Ui::confirm_button( 'asem_res_cancel', $back, array( 'id' => $r['id'], 'series' => 1 ), 'Annulla anche le successive', 'Annullare questa prenotazione e tutte le successive della serie?' ) : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</tbody></table></div>';
 	}
@@ -277,7 +277,7 @@ final class ResourcesPage {
 		return '<tr><th>Fondo</th><td><select name="fund_mode">' . Ui::options( \AssociazioneSemplice\FundShare::modes(), $mode ) . '</select> '
 			. '<input type="text" name="fund_value" class="small-text" inputmode="decimal" value="' . esc_attr( $shown ) . '"> <span class="description">€ se importo fisso, % se percentuale</span><br>'
 			. 'nel fondo <select name="fund_id">' . Ui::options( $funds, $res && ! empty( $res['fund_id'] ) ? (int) $res['fund_id'] : 0 ) . '</select>'
-			. '<p class="description">Utile per le risorse date in gestione a terzi (la quota è del gestore) o i cui incassi servono a pagare altro. Una parte di ogni pagamento ricevuto (anche in crediti) va nel fondo scelto: l\'incasso resta in cassa o sul conto usato, la quota è accantonata e si sottrae dalla disponibilità reale finché il fondo non si salda o non si libera dalla pagina <em>Conti e fondi</em>. Annullando un incasso sparisce anche la sua quota.</p></td></tr>';
+			. '<p class="description">Utile per le risorse date in gestione a terzi (la parte accantonata spetta al gestore) o i cui incassi servono a pagare altro. Una parte di ogni pagamento ricevuto, anche in crediti, va nel fondo scelto: l\'incasso resta sul conto usato, ma quella parte è accantonata e non conta nella disponibilità reale finché il fondo non viene rimborsato o liberato da <em>Conti e fondi</em>. Se annulli un incasso, si annulla anche la sua parte.</p></td></tr>';
 	}
 
 	/** Riga del modulo: la voce di prima nota su cui vanno gli incassi della risorsa (così nei report si vedono separati). */
@@ -328,13 +328,13 @@ final class ResourcesPage {
 			. '<tr><th>Tariffa</th><td><input type="text" name="fee" size="8" value="' . esc_attr( Money::plain( (int) $v( 'fee_cents', 0 ) ) ) . '"> € <span class="description">per fascia (risorse a fasce) o per periodo (assegnazioni). 0 = gratuita.</span></td></tr>'
 			. self::setup_row( $res )
 			. '<tr><th>Tariffe a fasce</th><td><textarea name="rates_text" rows="3" cols="40" placeholder="feriali 18:00-22:00 15,00&#10;weekend 08:00-22:00 20,00">' . esc_textarea( ResourceRules::rates_text( ResourceRules::clean_rates( $v( 'rates', '' ) ) ) ) . '</textarea><br><span class="description">Facoltative, solo per le risorse a fasce: una per riga, «giorni ore importo» (giorni: <em>tutti</em>, <em>feriali</em> lun–ven, <em>weekend</em> sab–dom). Vale la prima riga che corrisponde all\'ora di inizio di ogni fascia; fuori dalle righe vale la tariffa base.</span></td></tr>'
-			. '<tr><th>Pagamento</th><td><select name="pay_mode">' . Ui::options( ResourceRules::pay_modes(), $v( 'pay_mode', ResourceRules::PAY_DESK ) ) . '</select><br><span class="description">Chi prenota online con pagamento in anticipo tiene la fascia riservata solo ' . (int) ResourceRules::HOLD_MINUTES . ' minuti: se il pagamento non arriva si libera. Non ci sono tolleranze di giorni. La segreteria registra sempre le prenotazioni e gli incassi a mano. Il pagamento online richiede i pagamenti online attivi.</span></td></tr>'
+			. '<tr><th>Pagamento</th><td><select name="pay_mode">' . Ui::options( ResourceRules::pay_modes(), $v( 'pay_mode', ResourceRules::PAY_DESK ) ) . '</select><br><span class="description">Chi prenota online con pagamento in anticipo tiene la fascia riservata solo ' . (int) ResourceRules::HOLD_MINUTES . ' minuti: se il pagamento non arriva si libera. Non ci sono giorni di tolleranza. La segreteria può sempre registrare prenotazioni e incassi a mano. Il pagamento online richiede i pagamenti online attivi.</span></td></tr>'
 			. ( \AssociazioneSemplice\Edition::has( 'credits' ) ? '<tr><th>Crediti</th><td><input type="number" name="credit_cost" min="0" style="width:80px" value="' . (int) $v( 'credit_cost', 0 ) . '"> crediti ' . ( ResourceRules::ASSIGN === $v( 'mode', ResourceRules::SLOT ) ? 'per periodo' : 'per fascia' ) . '<br><span class="description">0 = non si paga in crediti. Con un costo in crediti il socio può pagare subito con i suoi crediti, oltre alle vie scelte sopra; annullando la prenotazione i crediti tornano al socio. Vale anche per gli ospiti ammessi: non c\'è un supplemento in crediti.</span></td></tr>' : '' )
 			. self::category_row( $res )
 			. self::reminder_row( $res )
 			. self::entry_row( $res )
 			. self::fund_row( $res )
-			. '<tr><th>Ospiti</th><td>fino a <input type="number" name="guests_max" min="0" max="50" style="width:60px" value="' . (int) $v( 'guests_max', 0 ) . '"> per prenotazione, supplemento <input type="text" name="guest_fee" size="6" value="' . esc_attr( Money::plain( (int) $v( 'guest_fee_cents', 0 ) ) ) . '"> € ciascuno<br><span class="description">0 = nessun ospite (posti auto, armadietti, posti barca). Gli ospiti sono solo un nome: non entrano in anagrafe.</span></td></tr>'
+			. '<tr><th>Ospiti</th><td>fino a <input type="number" name="guests_max" min="0" max="50" style="width:60px" value="' . (int) $v( 'guests_max', 0 ) . '"> per prenotazione, supplemento <input type="text" name="guest_fee" size="6" value="' . esc_attr( Money::plain( (int) $v( 'guest_fee_cents', 0 ) ) ) . '"> € ciascuno<br><span class="description">0 = nessun ospite (posti auto, armadietti, posti barca). Gli ospiti sono solo un nome: non vengono registrati tra le persone.</span></td></tr>'
 			. '<tr><th>Fasce orarie</th><td>aperta dalle <input type="time" name="open_time" value="' . esc_attr( (string) $v( 'open_time', '08:00' ) ) . '"> alle <input type="time" name="close_time" value="' . esc_attr( (string) $v( 'close_time', '22:00' ) ) . '"> · fascia di <input type="number" name="slot_minutes" min="5" max="720" style="width:70px" value="' . (int) $v( 'slot_minutes', 60 ) . '"> minuti<br>'
 			. 'da <input type="number" name="min_slots" min="1" style="width:60px" value="' . (int) $v( 'min_slots', 1 ) . '"> a <input type="number" name="max_slots" min="1" style="width:60px" value="' . (int) $v( 'max_slots', 1 ) . '"> fasce di seguito · si prenota al massimo <input type="number" name="advance_days" min="0" style="width:70px" value="' . (int) $v( 'advance_days', 0 ) . '"> giorni prima (0 = senza limite)<br><span class="description">Solo per le risorse a fasce.</span></td></tr>'
 			. '<tr><th>Limite per socio</th><td><input type="number" name="max_per_person" min="0" style="width:60px" value="' . (int) $v( 'max_per_person', 0 ) . '"> prenotazioni future insieme (0 = senza limite)</td></tr>'
@@ -343,7 +343,7 @@ final class ResourcesPage {
 			. '</table><p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
 		if ( $res ) {
-			echo '<p>' . Ui::confirm_button( 'asem_resource_delete', Ui::url( 'asem-resources' ), array( 'id' => $res['id'] ), 'Elimina la risorsa', 'Con prenotazioni future la risorsa viene solo disattivata. Confermi?' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<p>' . Ui::confirm_button( 'asem_resource_delete', Ui::url( 'asem-resources' ), array( 'id' => $res['id'] ), 'Elimina la risorsa', 'Eliminare la risorsa? Se ha prenotazioni future viene solo disattivata.' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</div>';
 	}
