@@ -205,9 +205,9 @@ final class Views {
 		$until  = ! MemberType::is_member( $p['type'] ) ? null : $people->active_until( (int) $p['id'] );
 		$active = MemberType::is_member( $p['type'] ) && $people->is_active_member( (int) $p['id'] ); // un socio sospeso o uscito non ha la tessera valida, come al controllo con il QR
 		$assoc  = (string) Settings::get( 'association_name' );
-		$valid  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? self::d( $until ) : '—' );
+		$valid  = MemberType::is_auto_renewed( $p['type'] ) ? 'Non va rinnovata' : ( $until ? self::d( $until ) : '—' );
 		if ( \AssociazioneSemplice\CardLayout::active() ) { // tessera su un'immagine dell'associazione, con i dati posizionati sopra
-			$when = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . self::d( $until ) : '' );
+			$when = MemberType::is_auto_renewed( $p['type'] ) ? 'Non va rinnovata' : ( $until ? 'Valida fino al ' . self::d( $until ) : '' );
 			return '<section class="asemf-section">'
 				. \AssociazioneSemplice\CardLayout::html( trim( $p['first_name'] . ' ' . $p['last_name'] ), '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '', $when, self::card_qr_svg( $p ), \AssociazioneSemplice\CardLayout::extras( $p ) )
 				. ( $active ? '' : '<p><span class="asemf-badge asemf-badge-bad">Tessera non valida</span></p>' ) // sulla tessera stampabile compare solo se non è in regola
@@ -888,7 +888,7 @@ final class Views {
 			$txt  .= ' · risulta registrato anche come ' . implode( '; ', $names ) . ': in tutto ' . $ov['total'];
 		}
 		if ( $ov['flag'] ) {
-			return '<div class="asemf-small asemf-bad">' . esc_html( $txt . ': invitalo a diventare socio' ) . '</div>';
+			return '<div class="asemf-small asemf-bad">' . esc_html( $txt . ': da invitare a diventare socio' ) . '</div>';
 		}
 		return '<div class="asemf-small ' . ( $ov['twins'] ? 'asemf-bad' : 'asemf-muted' ) . '">' . esc_html( $txt ) . '</div>';
 	}
@@ -1346,7 +1346,7 @@ final class Views {
 	public static function volunteer(): string {
 		return self::with_person(
 			function ( $p ) {
-				return MemberType::can_teach( $p['type'] ) ? self::section_volunteer( $p ) : self::notice( 'Quest\'area è riservata ai soci e volontari.' );
+				return MemberType::can_teach( $p['type'] ) ? self::section_volunteer( $p ) : self::notice( 'Quest\'area è riservata ai soci volontari.' );
 			}
 		);
 	}

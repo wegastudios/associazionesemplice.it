@@ -72,7 +72,7 @@ final class WizardPage {
 	public static function render(): void {
 		$s    = Settings::all();
 		Ui::header( 'Configurazione guidata' );
-		echo '<p style="font-size:15px"><strong>Descrivi il tuo ente e scegli in 4 sezioni veloci i servizi che vuoi gestire.</strong><br><span class="description">Le voci «Più dettagli» sono facoltative: ciò che non scegli resta spento e si accende dopo, dalle impostazioni o riaprendo questa procedura dagli Strumenti.</span></p>';
+		echo '<p style="font-size:15px"><strong>Descrivi il tuo ente e scegli, in 4 brevi sezioni, che cosa vuoi gestire.</strong><br><span class="description">Le voci «Più dettagli» sono facoltative: ciò che non scegli resta spento e si accende dopo, dalle impostazioni o riaprendo la configurazione guidata dagli Strumenti.</span></p>';
 		Ui::form_open( 'asem_wizard_save', Ui::url( 'asem-wizard' ), false, 'asem-wizard' );
 	echo wp_kses( self::stepper(), Html::allowed() );
 
@@ -88,10 +88,10 @@ final class WizardPage {
 		do_action( 'asem_wizard_entity_rows', $s ); // le estensioni aggiungono qui le loro domande
 		do_action( 'asem_wizard_more_rows', $s ); // ... e quelle secondarie
 		echo '</tbody></table>';
-		echo wp_kses( self::yes_no( 'guests_enabled', 'Accettate ospiti, cioè persone che partecipano senza essere iscritte?', Settings::guests_enabled() ), Html::allowed() );
+		echo wp_kses( self::yes_no( 'guests_enabled', 'L\'ente accetta ospiti, cioè persone che partecipano senza essere socie?', Settings::guests_enabled() ), Html::allowed() );
 		echo '<p class="asem-wiz-q"><strong>Chi può iscriversi</strong><br>'
 			. '<label><input type="radio" name="join_mode" value="request"' . checked( 'invite' !== $jm, true, false ) . '> Chiunque può chiedere di iscriversi</label> <span class="description">(la richiesta arriva alla segreteria, che approva; si apre la domanda online nella pagina «Diventa socio»)</span><br>'
-			. '<label><input type="radio" name="join_mode" value="invite"' . checked( 'invite' === $jm, true, false ) . '> Solo su presentazione</label> <span class="description">(le iscrizioni le fa la segreteria)</span></p>';
+			. '<label><input type="radio" name="join_mode" value="invite"' . checked( 'invite' === $jm, true, false ) . '> Solo tramite la segreteria</label> <span class="description">(i nuovi soci li registra la segreteria)</span></p>';
 		self::end_step();
 
 		do_action( 'asem_wizard_steps_entity', $s ); // le estensioni aggiungono qui i loro passi
@@ -113,11 +113,11 @@ final class WizardPage {
 
 
 		// 3. Quota associativa
-		self::step( 'Quota associativa', 'Quanto costa iscriversi: vale per tutti i soci. Tipi di socio diversi e sconti si aggiungono sotto, solo se servono.', '', 'pagamenti' );
+		self::step( 'Quota associativa', 'Quanto costa iscriversi: vale per tutti i soci. Livelli di socio diversi e sconti si aggiungono sotto, solo se servono.', '', 'pagamenti' );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Quota associativa</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
 		echo '</tbody></table>';
-		echo '<details class="asem-wiz-more"><summary>Più dettagli: altri tipi di socio e sconti</summary><table class="form-table"><tbody>';
+		echo '<details class="asem-wiz-more"><summary>Più dettagli: altri livelli di socio e sconti</summary><table class="form-table"><tbody>';
 		do_action( 'asem_wizard_levels_rows', $s );
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
 		echo '</tbody></table></details>';

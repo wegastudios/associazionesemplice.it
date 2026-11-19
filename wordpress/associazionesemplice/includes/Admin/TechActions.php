@@ -84,24 +84,24 @@ final class TechActions {
 		if ( $r['same_dir'] ) {
 			return array( $back, \AssociazioneSemplice\Texts::t( 'La cartella indicata in wp-config.php è la stessa cartella predefinita, vista da un altro percorso: non è stato spostato né cancellato nulla. Indica una cartella diversa.' ) );
 		}
-		$msg = \AssociazioneSemplice\Texts::t( 'Spostati {n} file.', array( 'n' => $r['moved'] ) );
+		$msg = \AssociazioneSemplice\Texts::n( (int) $r['moved'], 'Spostato un file.', 'Spostati {n} file.' );
 		if ( $r['copied'] ) {
-			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Copiati {n} file nella nuova cartella: la vecchia resta in uso finché non sono stati copiati tutti.', array( 'n' => $r['copied'] ) );
+			$msg .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['copied'], 'Copiato un file nella nuova cartella: la vecchia resta in uso finché non sono stati copiati tutti.', 'Copiati {n} file nella nuova cartella: la vecchia resta in uso finché non sono stati copiati tutti.' );
 		}
 		if ( $r['switched'] ) {
 			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Tutti i file sono stati copiati: da ora è in uso la nuova cartella.' );
 		}
 		if ( $r['same'] ) {
-			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} file sono lo stesso file nella nuova cartella (una sottocartella collegata): non sono stati cancellati.', array( 'n' => $r['same'] ) );
+			$msg .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['same'], 'Un file è lo stesso file nella nuova cartella (una sottocartella collegata): non è stato cancellato.', '{n} file sono lo stesso file nella nuova cartella (una sottocartella collegata): non sono stati cancellati.' );
 		}
 		if ( $r['failed'] ) {
-			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} non si sono potuti spostare (controlla i permessi): sono rimasti dove stavano.', array( 'n' => $r['failed'] ) );
+			$msg .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['failed'], 'Un file non si è potuto spostare (controlla i permessi): è rimasto dove stava.', '{n} non si sono potuti spostare (controlla i permessi): sono rimasti dove stavano.' );
 		}
 		if ( $r['conflict'] ) {
-			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} esistono già nella nuova cartella con un contenuto diverso: sono rimasti dove stavano e vanno controllati a mano.', array( 'n' => $r['conflict'] ) );
+			$msg .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['conflict'], 'Un file esiste già nella nuova cartella con un contenuto diverso: è rimasto dove stava e va controllato a mano.', '{n} esistono già nella nuova cartella con un contenuto diverso: sono rimasti dove stavano e vanno controllati a mano.' );
 		}
 		if ( $r['left'] > $r['conflict'] + $r['failed'] + $r['same'] ) {
-			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Ne restano ancora {n}: premi di nuovo.', array( 'n' => $r['left'] ) );
+			$msg .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['left'], 'Ne resta ancora uno: premi di nuovo.', 'Ne restano ancora {n}: premi di nuovo.' );
 		}
 		return array( $back, $msg );
 	}
@@ -114,12 +114,12 @@ final class TechActions {
 		if ( ! empty( $r['busy'] ) ) {
 			return \AssociazioneSemplice\Texts::t( 'Un altro lotto è già in corso: attendi qualche secondo e riprova.' );
 		}
-		$msg = \AssociazioneSemplice\Texts::t( 'Cifrati {n} file in questo lotto.', array( 'n' => (int) $r['done'] + (int) $r['already'] ) );
+		$msg = \AssociazioneSemplice\Texts::n( (int) $r['done'] + (int) $r['already'], 'Cifrato un file in questo lotto.', 'Cifrati {n} file in questo lotto.' );
 		if ( $r['failed'] ) {
-			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} non si sono potuti cifrare: sono rimasti in chiaro, dove stavano.', array( 'n' => (int) $r['failed'] ) );
+			$msg .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['failed'], 'Un file non si è potuto cifrare: è rimasto in chiaro, dove stava.', '{n} non si sono potuti cifrare: sono rimasti in chiaro, dove stavano.' );
 		}
 		if ( $r['missing'] ) {
-			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} non sono stati trovati sul disco.', array( 'n' => (int) $r['missing'] ) );
+			$msg .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['missing'], 'Un file non è stato trovato sul disco.', '{n} non sono stati trovati sul disco.' );
 		}
 		$msg .= ' ' . ( $r['finished'] ? \AssociazioneSemplice\Texts::t( 'Il lavoro è finito.' ) : \AssociazioneSemplice\Texts::t( 'Ne restano altri: il lavoro prosegue da solo, un lotto al minuto.' ) );
 		return $msg;

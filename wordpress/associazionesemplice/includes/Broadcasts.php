@@ -291,7 +291,7 @@ final class Broadcasts {
 			if ( 1 !== (int) $db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => 'sending', 'sent_at' => Db::now() ), array( 'id' => (int) $r['id'], 'status' => 'queued' ) ) ) { // sent_at ricorda da quando è «in invio»
 				continue;
 			}
-			$ok = Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $b['subject'], self::text_for( $b['body'], $r['name'] ) );
+			$ok = Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( $b['subject'] ), self::text_for( $b['body'], $r['name'] ) );
 			$first = (string) strtok( (string) $r['name'], ' ' );
 			Push::notify_email( (string) $r['email'], (string) $b['subject'], strtr( (string) $b['body'], array( '{nome}' => $first, '{associazione}' => $assoc ) ) ); // anche sul telefono, se ha attivato le notifiche
 			$db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => $ok ? 'sent' : 'failed', 'sent_at' => Db::now(), 'error' => $ok ? null : 'invio non riuscito' ), array( 'id' => (int) $r['id'] ) );

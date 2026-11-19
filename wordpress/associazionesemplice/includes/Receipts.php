@@ -1026,7 +1026,7 @@ final class Receipts {
 			$assoc = (string) Settings::get( 'association_name' );
 			$ok    = \AssociazioneSemplice\Texts::mail(
 				$to,
-				'Ricevuta n. ' . $r['number'] . ( '' !== $assoc ? ' — ' . $assoc : '' ),
+				\AssociazioneSemplice\Texts::subject( 'Ricevuta n. ' . $r['number'] ),
 				'Ciao ' . ( $payer ? $payer['first_name'] : '' ) . ",\n\nin allegato la ricevuta n. " . $r['number'] . " del tuo pagamento.\n\nGrazie!",
 				array(),
 				array( $dst )

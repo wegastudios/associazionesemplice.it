@@ -674,7 +674,7 @@ class PaymentService extends OfflinePayments {
 		}
 		$assoc   = (string) Settings::get( 'association_name' );
 		$assoc   = '' !== $assoc ? $assoc : Texts::t( 'l\'associazione' );
-		$subject = Texts::t( 'Rimborso del tuo pagamento · {associazione}', array( 'associazione' => $assoc ) );
+		$subject = \AssociazioneSemplice\Texts::subject( Texts::t( 'Rimborso del tuo pagamento' ) );
 		$tpl     = 'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L\'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria. — {associazione}';
 		if ( Contacts::complete() ) { // con i contatti della segreteria la chiusa li riporta (e Texts::mail aggiunge il Reply-To); senza, resta la frase generica
 			$tpl = str_replace( 'scrivi alla segreteria. —', 'scrivi alla segreteria: {email}, tel. {telefono}. —', $tpl );
@@ -1133,6 +1133,6 @@ class PaymentService extends OfflinePayments {
 		}, $items );
 		$body  = 'Ciao ' . $payer['first_name'] . ",\n\nabbiamo ricevuto il tuo pagamento online" . ( '' !== $assoc ? ' per ' . $assoc : '' ) . ".\n\n" . implode( "\n", $lines )
 			. "\n\nTotale: " . Money::format( (int) $p['amount_cents'] ) . "\nData: " . ( new \DateTimeImmutable( (string) $p['paid_at'] ) )->format( 'd/m/Y' ) . "\nRiferimento: " . $p['public_id'] . "\n\nGrazie!";
-		\AssociazioneSemplice\Texts::mail( $payer['email'], ( '' !== $assoc ? $assoc . ' · ' : '' ) . 'Conferma del pagamento', $body );
+		\AssociazioneSemplice\Texts::mail( $payer['email'], \AssociazioneSemplice\Texts::subject( 'Conferma del pagamento' ), $body );
 	}
 }

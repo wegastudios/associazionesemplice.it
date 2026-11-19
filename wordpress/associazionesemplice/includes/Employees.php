@@ -440,7 +440,7 @@ final class Employees {
 		$link  = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ), 'login' );
 		$text  = 'Ciao ' . $user->first_name . ",\n\nè stato creato per te l'accesso come dipendente" . ( '' !== $assoc ? ' di ' . $assoc : '' ) . ":\n\n" . $link
 			. "\n\nApri il link, scegli la tua password e poi entra con questa email. Il link vale 24 ore: se scade, usa «Password dimenticata» nella pagina di accesso.\n\nSe non te lo aspettavi, ignora questo messaggio.";
-		return (bool) Texts::mail( $user->user_email, 'Il tuo accesso come dipendente' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		return (bool) Texts::mail( $user->user_email, \AssociazioneSemplice\Texts::subject( 'Il tuo accesso come dipendente' ), $text );
 	}
 
 	/** Cambia il periodo di servizio. @throws \InvalidArgumentException */

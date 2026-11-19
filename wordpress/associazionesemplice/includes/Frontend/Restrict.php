@@ -177,7 +177,7 @@ final class Restrict {
 		} elseif ( Visibility::ACTIVITY === $rule && $activity_ids ) {
 			$text = 'Contenuto riservato ai soci iscritti a: ' . implode( ', ', self::activity_names( $activity_ids ) ) . '.';
 		} elseif ( Visibility::VOLUNTEERS === $rule ) {
-			$text = 'Contenuto riservato ai soci e volontari.';
+			$text = 'Contenuto riservato ai soci volontari.';
 		} else {
 			$text = 'Contenuto riservato ai soci.';
 		}

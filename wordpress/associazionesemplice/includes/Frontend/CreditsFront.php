@@ -197,7 +197,7 @@ final class CreditsFront {
 				. '<div style="max-width:320px;margin:12px auto">' . QrCode::svg( Credits::url( (string) $c['code'] ), 4, 'QR per pagare ' . self::crediti( (int) $c['credits'] ) ) . '</div>' // phpcs:ignore WordPress.Security.EscapeOutput -- SVG generato dal plugin
 				. '<div class="asemf-credit-status" style="font-weight:700">' . esc_html( 'paid' === $state ? 'Incassato' : ( 'ok' === $state ? 'In attesa del socio…' : CreditRules::charge_message( $state ) ) ) . '</div>'
 				. '<p class="asemf-small asemf-muted">Il socio inquadra il QR con la fotocamera e conferma. Il QR vale ' . (int) CreditRules::CHARGE_MINUTES . ' minuti.</p>'
-				. ( 'ok' === $state ? self::form( 'asem_front_credit_cancel', self::hidden( 'charge', $cid ), 'Annulla addebito', 'asemf-inline', 'Annullare l\'addebito?' ) : '' ) . ' '
+				. ( 'ok' === $state ? self::form( 'asem_front_credit_cancel', self::hidden( 'charge', $cid ), 'Annulla addebito', 'asemf-inline', 'Annullare l\'addebito? Il QR non varrà più.' ) : '' ) . ' '
 				. '<a class="asemf-btn" href="' . esc_url( remove_query_arg( array( 'asem_charge', 'asemf_ok', 'asemf_err', 'asemf_sig' ) ) ) . '">Nuovo addebito</a></div>';
 			return $html . '</section>';
 		}

@@ -70,4 +70,20 @@ PHP;
 		$this->assertSame( 'a & b', TextsEngine::plain( 'a & b', array() ) );
 		$this->assertSame( '', TextsEngine::plain( '', $map ) );
 	}
+
+	public function test_email_subject_has_one_format(): void {
+		$this->assertSame( 'Associazione Rossi · Ricevuta n. 5', \AssociazioneSemplice\Texts::with_name( 'Associazione Rossi', 'Ricevuta n. 5' ) );
+		$this->assertSame( 'Ricevuta n. 5', \AssociazioneSemplice\Texts::with_name( '', 'Ricevuta n. 5' ) );
+		$this->assertSame( 'Ricevuta n. 5', \AssociazioneSemplice\Texts::with_name( '  ', 'Ricevuta n. 5' ) );
+	}
+
+	public function test_a_message_with_a_number_has_singular_and_plural(): void {
+		$one  = 'Un file non è stato trovato.';
+		$many = '{n} file non sono stati trovati.';
+		$this->assertSame( 'Un file non è stato trovato.', \AssociazioneSemplice\Texts::n( 1, $one, $many ) );
+		$this->assertSame( '2 file non sono stati trovati.', \AssociazioneSemplice\Texts::n( 2, $one, $many ) );
+		$this->assertSame( '0 file non sono stati trovati.', \AssociazioneSemplice\Texts::n( 0, $one, $many ) );
+		$this->assertSame( '5000+ file non sono stati trovati.', \AssociazioneSemplice\Texts::n( 5000, $one, $many, array( 'n' => '5000+' ) ) );
+		$this->assertSame( 'Su 9: un file.', \AssociazioneSemplice\Texts::n( 1, 'Su {tot}: un file.', 'Su {tot}: {n} file.', array( 'tot' => 9 ) ) );
+	}
 }

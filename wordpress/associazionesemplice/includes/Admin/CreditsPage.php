@@ -60,7 +60,7 @@ final class CreditsPage {
 		if ( $packs && $accounts ) {
 			$map = array();
 			foreach ( $packs as $p ) {
-				$map[ $p['credits'] ] = $p['credits'] . ' crediti — ' . Money::format( (int) $p['price_cents'] );
+				$map[ $p['credits'] ] = $p['credits'] . ( 1 === (int) $p['credits'] ? ' credito — ' : ' crediti — ' ) . Money::format( (int) $p['price_cents'] );
 			}
 			echo '<div class="asem-card"><h2>Vendi un pacchetto in segreteria</h2>';
 			Ui::form_open( 'asem_credit_sell', $back );

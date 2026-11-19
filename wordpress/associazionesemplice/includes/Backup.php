@@ -248,7 +248,7 @@ final class Backup {
 
 	/** Il LEGGIMI che sta dentro ogni copia. */
 	private static function readme( int $plain_files = 0 ): string {
-		$plain_line = $plain_files > 0 ? str_replace( '{n}', (string) $plain_files, "{n} file sono inclusi in chiaro perché non erano ancora cifrati.\n" ) : ''; // il LEGGIMI della copia è un testo fisso in italiano, come il resto del file
+		$plain_line = $plain_files > 0 ? ( 1 === $plain_files ? "Un file è incluso in chiaro perché non era ancora cifrato.\n" : str_replace( '{n}', (string) $plain_files, "{n} file sono inclusi in chiaro perché non erano ancora cifrati.\n" ) ) : ''; // il LEGGIMI della copia è un testo fisso in italiano, come il resto del file
 		return "Copia di sicurezza di Associazione Semplice.\n"
 			. "Contiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati. La cartella documenti/ contiene i PDF definitivi già emessi (ad esempio le ricevute) con l'indice delle loro impronte SHA-256 (documenti/indice.json).\n"
 			. "Il manifest (manifest.json) elenca l'impronta SHA-256 di ogni file della copia ed è firmato con i codici di sicurezza del sito che l'ha fatta. Sullo stesso sito una copia modificata dopo essere stata fatta viene rifiutata; su un altro sito il ripristino chiede una conferma scritta e la password dell'amministratore, e resta scritto nel registro delle azioni.\n"

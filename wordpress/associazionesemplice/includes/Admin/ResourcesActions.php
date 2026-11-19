@@ -123,10 +123,10 @@ final class ResourcesActions {
 		$to  = $rid ? self::detail( $rid ) : Ui::url( 'asem-resources' );
 		if ( ! empty( $p['series'] ) ) { // questa e le successive della serie
 			$n = Resources::cancel_series( (int) ( $p['id'] ?? 0 ) );
-			return array( $to, $n . ( 1 === $n ? ' prenotazione annullata.' : ' prenotazioni annullate (questa e le successive).' ) . ' Gli eventuali incassi restano in prima nota: l\'eventuale rimborso è a mano.' );
+			return array( $to, $n . ( 1 === $n ? ' prenotazione annullata.' : ' prenotazioni annullate (questa e le successive).' ) . ' Gli incassi già registrati restano in prima nota: se devi rimborsare, fallo a mano.' );
 		}
 		Resources::cancel( (int) ( $p['id'] ?? 0 ), true );
-		return array( $to, 'Prenotazione annullata. Gli eventuali incassi restano in prima nota: l\'eventuale rimborso è a mano.' );
+		return array( $to, 'Prenotazione annullata. Gli incassi già registrati restano in prima nota: se devi rimborsare, fallo a mano.' );
 	}
 
 	public static function wait_remove( array $p ): array {

@@ -100,7 +100,7 @@ final class DeleteActivityPage {
 
 		echo '<h3>Cosa verrà eliminato</h3><ul style="list-style:disc;margin-left:20px">'
 			. '<li>' . (int) $p['sessions'] . ( 1 === $p['sessions'] ? ' data' : ' date' ) . ' e tutte le prenotazioni (' . (int) $p['bookings'] . ' attive), la lista d\'attesa e le presenze</li>'
-			. '<li>' . (int) $p['enrollments'] . ' iscrizioni in corso e ' . (int) $p['staff'] . ' persone dello staff</li>'
+			. '<li>' . (int) $p['enrollments'] . ' iscrizioni in corso e ' . (int) $p['staff'] . ( 1 === (int) $p['staff'] ? ' persona dello staff</li>' : ' persone dello staff</li>' )
 			. '<li>' . (int) $p['notices'] . ' avvisi inviati e i collegamenti (WooCommerce, pagine riservate)</li>'
 			. ( $p['fund_cents'] > 0 ? '<li>le somme accantonate per il rimborso del referente (' . esc_html( Money::format( (int) $p['fund_cents'] ) ) . ')</li>' : '' )
 			. '</ul>';
@@ -121,7 +121,7 @@ final class DeleteActivityPage {
 			Ui::form_open( 'asem_delete_activity', $back );
 			echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 			if ( $p['recipients'] > 0 ) {
-				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email le ' . (int) $p['recipients'] . ' persone prenotate o iscritte con un indirizzo email</label></p>';
+				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email ' . ( 1 === (int) $p['recipients'] ? 'la persona prenotata o iscritta' : 'le ' . (int) $p['recipients'] . ' persone prenotate o iscritte' ) . ' con un indirizzo email</label></p>';
 			}
 			echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina l\'evento</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
 			Ui::form_close();
@@ -147,7 +147,7 @@ final class DeleteActivityPage {
 			echo '<p style="margin-left:24px"><label><input type="checkbox" name="void_costs" value="1"> Annulla anche le spese registrate per questo evento <span class="description">(solo con «Annulla gli incassi»; di norma le spese sono costi veri e restano)</span></label></p>';
 		}
 		if ( $p['recipients'] > 0 ) {
-			echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email le ' . (int) $p['recipients'] . ' persone prenotate o iscritte con un indirizzo email</label></p>';
+			echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email ' . ( 1 === (int) $p['recipients'] ? 'la persona prenotata o iscritta' : 'le ' . (int) $p['recipients'] . ' persone prenotate o iscritte' ) . ' con un indirizzo email</label></p>';
 		}
 		echo '<p><button class="button button-primary">Continua</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p></form>';
 	}

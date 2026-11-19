@@ -35,7 +35,7 @@ final class PrivateFolderPanel {
 		if ( '' !== $st['error'] ) {
 			echo '<div class="notice notice-error inline"><p><strong>' . esc_html( Texts::t( 'Il percorso indicato in wp-config.php non è utilizzabile.' ) ) . '</strong> <code>' . esc_html( $st['configured'] ) . '</code> ' . esc_html( PrivateFolder::error_text( $st['error'] ) ) . ' ' . esc_html( Texts::t( 'Finché non viene sistemato, i nuovi file vengono salvati nella cartella predefinita dentro wp-content/uploads.' ) ) . '</p></div>';
 		} elseif ( $st['custom'] && ! $st['active'] ) {
-			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::t( 'Il percorso è indicato in wp-config.php (ASEM_PRIVATE_DIR) ma la nuova cartella non è ancora in uso: ci passa il sito quando tutti i file della cartella predefinita sono stati copiati con «Sposta i file». Fino ad allora i file restano dove sono e il sito li legge da lì.' ) ) . '</p></div>';
+			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::t( 'Il percorso è indicato in wp-config.php (ASEM_PRIVATE_DIR) ma la nuova cartella non è ancora in uso: il sito ci passa quando hai copiato tutti i file con «Sposta i file». Fino ad allora i file restano dove sono e il sito li legge da lì.' ) ) . '</p></div>';
 		} elseif ( $st['custom'] && ! $st['in_web'] ) {
 			echo '<p>' . esc_html( Texts::t( 'Il percorso è indicato in wp-config.php (ASEM_PRIVATE_DIR): per quanto risulta al sito la cartella sta fuori dalla parte pubblica e non ha un indirizzo web.' ) ) . '</p>';
 		} elseif ( $st['custom'] ) {
@@ -51,7 +51,7 @@ final class PrivateFolderPanel {
 			echo '<div class="notice ' . esc_attr( $cls ) . ' inline"><p>' . esc_html( Texts::t( 'Ultimo controllo: {data}. Esito:', array( 'data' => wp_date( 'd/m/Y H:i', $last['at'] ) ) ) ) . ' ' . esc_html( PrivateFolder::outcome_text( $last ) ) . '</p></div>';
 		}
 		Ui::form_open( 'asem_private_check', $back, false, 'asem-inline' );
-		echo '<button class="button">' . esc_html( Texts::t( 'Controlla ora' ) ) . '</button> <span class="description">' . esc_html( Texts::t( 'Il controllo crea tre piccoli file di prova, senza dati, fatti come quelli veri (e un quarto in una cartella pubblica, per capire se la prova può funzionare), prova a scaricarli dall\'indirizzo web del sito e li cancella subito. Si ripete da solo circa una volta a settimana.' ) ) . '</span>';
+		echo '<button class="button">' . esc_html( Texts::t( 'Controlla ora' ) ) . '</button> <span class="description">' . esc_html( Texts::t( 'Il controllo crea alcuni piccoli file di prova, senza dati, tenta di scaricarli da internet e li cancella subito. Si ripete da solo circa una volta a settimana.' ) ) . '</span>';
 		Ui::form_close();
 
 		self::what_to_do( $st, null !== $last && PrivateFolderRules::EXPOSED === $last['state'] );
@@ -91,7 +91,7 @@ final class PrivateFolderPanel {
 			echo '<p>' . esc_html( Texts::t( 'Nella cartella predefinita non resta nessun file da spostare.' ) ) . '</p>';
 			return;
 		}
-		echo '<p>' . esc_html( Texts::t( 'Nella cartella predefinita ci sono ancora {n} file da portare nella nuova cartella. Si procede a lotti di {lotto} file: prima ogni file viene copiato e controllato con la sua impronta, senza toccare l\'originale; quando sono stati copiati tutti, la nuova cartella entra in uso e i file vecchi vengono cancellati uno alla volta, solo se la copia è identica. Se ne restano, premi di nuovo.', array( 'n' => $left >= 5000 ? '5000+' : $left, 'lotto' => PrivateFolder::BATCH ) ) ) . '</p>';
+		echo '<p>' . esc_html( Texts::n( (int) $left, 'Nella cartella predefinita resta un file da spostare. Viene prima copiato e controllato, senza toccare l\'originale; poi la nuova cartella entra in uso e l\'originale viene cancellato, solo se la copia è identica. Se non basta, premi di nuovo.', 'Nella cartella predefinita restano {n} file da spostare, {lotto} alla volta. Ogni file viene prima copiato e controllato, senza toccare l\'originale; quando sono stati copiati tutti, la nuova cartella entra in uso e gli originali vengono cancellati, solo se la copia è identica. Se ne restano, premi di nuovo.', array( 'n' => $left >= 5000 ? '5000+' : $left, 'lotto' => PrivateFolder::BATCH ) ) ) . '</p>';
 		echo '<p><strong>' . esc_html( Texts::t( 'Prima di spostare i file fai una copia di sicurezza.' ) ) . '</strong> <a href="' . esc_url( \AssociazioneSemplice\Backup::download_link( true ) ) . '">' . esc_html( Texts::t( 'Scarica la copia con gli allegati' ) ) . '</a></p>';
 		Ui::form_open( 'asem_private_move', $back, false, 'asem-inline' );
 		echo '<button class="button button-primary" data-confirm="' . esc_attr( Texts::t( 'Spostare i file nella nuova cartella?' ) ) . '">' . esc_html( Texts::t( 'Sposta i file' ) ) . '</button>';

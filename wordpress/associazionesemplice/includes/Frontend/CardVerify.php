@@ -80,7 +80,7 @@ final class CardVerify {
 		list( $title, $color ) = $map[ $r['status'] ];
 		if ( $r['person'] ) {
 			$p     = $r['person'];
-			$until = MemberType::is_auto_renewed( $p['type'] ) && 'valid' === $r['status'] ? 'Sempre rinnovata' : ( $r['until'] ? ( new \DateTimeImmutable( $r['until'] ) )->format( 'd/m/Y' ) : '—' );
+			$until = MemberType::is_auto_renewed( $p['type'] ) && 'valid' === $r['status'] ? 'Non va rinnovata' : ( $r['until'] ? ( new \DateTimeImmutable( $r['until'] ) )->format( 'd/m/Y' ) : '—' );
 			$body  = '<div class="n">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div><div class="t">' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</div>'
 				. '<dl><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div><div><dt>Valida fino al</dt><dd>' . esc_html( $until ) . '</dd></div></dl>';
 		} elseif ( 'invalid' === $r['status'] ) {

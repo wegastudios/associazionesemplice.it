@@ -75,7 +75,7 @@ final class Application {
 			if ( ! empty( $post['website'] ) ) {
 				$sent = true; // il campo esca è compilato: stessa risposta, nessuna domanda
 			} elseif ( $n >= Limits::get( 'apply_per_ip' ) ) {
-				$errors[] = 'Troppi tentativi: riprova tra qualche minuto.';
+				$errors[] = 'Troppi tentativi: riprova tra un\'ora.';
 			} else {
 				$token = self::check_token( (string) ( $post['t'] ?? '' ), time() );
 				if ( 'invalid' === $token ) {
@@ -200,7 +200,7 @@ final class Application {
 		$key   = 'asem_ap_pay_' . md5( ClientIp::get() );
 		$n     = (int) get_transient( $key );
 		if ( $n >= Limits::get( 'apply_per_ip' ) * 2 ) {
-			self::stop( 'Troppi tentativi: riprova tra qualche minuto.' );
+			self::stop( 'Troppi tentativi: riprova tra un\'ora.' );
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 		$r = Applications::resolve_pay( $param );

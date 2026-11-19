@@ -136,7 +136,7 @@ final class MemberLogin {
 			$subject = 'Il tuo accesso';
 		}
 		$to      = (string) $p['email'];
-		$subject = $subject . ( '' !== $assoc ? ' — ' . $assoc : '' );
+		$subject = \AssociazioneSemplice\Texts::subject( $subject );
 		if ( ResponseMail::deferring() ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
 			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 			return ResponseMail::send( $to, $subject, $text );

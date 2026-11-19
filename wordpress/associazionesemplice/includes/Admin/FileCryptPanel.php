@@ -36,7 +36,7 @@ final class FileCryptPanel {
 			if ( $s['done'] + $s['already'] + $s['failed'] + $s['missing'] <= 0 ) {
 				return array( 'type' => 'info', 'key' => '', 'days' => 0, 'link' => 'stato', 'body' => Texts::t( 'Si fa da sola, mentre usi il programma: non serve premere nulla.' ) . ' ' . $ex, 'title' => Texts::t( 'La cifratura dei certificati medici è partita.' ) );
 			}
-			return array( 'type' => 'info', 'key' => '', 'days' => 0, 'link' => 'stato', 'body' => Texts::t( 'Il lavoro prosegue da solo, un po\' alla volta.' ) . ' ' . $ex, 'title' => Texts::t( 'Cifratura dei certificati medici in corso: restano {n}.', array( 'n' => FileMigration::certs_left() ) ) );
+			return array( 'type' => 'info', 'key' => '', 'days' => 0, 'link' => 'stato', 'body' => Texts::t( 'Il lavoro prosegue da solo, un po\' alla volta.' ) . ' ' . $ex, 'title' => Texts::n( (int) FileMigration::certs_left(), 'Cifratura dei certificati medici in corso: ne resta uno.', 'Cifratura dei certificati medici in corso: restano {n}.' ) );
 		}
 		if ( 'done' === $s['status'] && $s['finished'] > 0 ) {
 			if ( $s['failed'] > 0 || $s['missing'] > 0 ) {
@@ -206,7 +206,7 @@ final class FileCryptPanel {
 		if ( $c['valid'] ) {
 			echo '<div class="notice notice-success inline"><p><strong>' . esc_html( Texts::t( 'Chiave valida.' ) ) . '</strong> ' . esc_html( Texts::t( 'La chiave di cifratura funziona: i file cifrati si leggono.' ) ) . '</p></div>';
 		} elseif ( 'ok' === $c['state'] ) {
-			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::t( 'La chiave attuale è valida, ma {n} chiavi più vecchie su {t} non si aprono: i file cifrati con quelle non sono leggibili.', array( 'n' => $c['locked'], 't' => $c['total'] ) ) ) . '</p></div>';
+			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::n( (int) $c['locked'], 'La chiave attuale è valida, ma una chiave più vecchia su {t} non si apre: i file cifrati con quella non sono leggibili.', 'La chiave attuale è valida, ma {n} chiavi più vecchie su {t} non si aprono: i file cifrati con quelle non sono leggibili.', array( 't' => $c['total'] ) ) ) . '</p></div>';
 		} else {
 			echo '<div class="notice notice-error inline"><p><strong>' . esc_html( Texts::t( 'Chiave non valida su questo sito.' ) ) . '</strong> ' . esc_html( Texts::t( 'La chiave salvata non si apre con quella di questo sito (codici di sicurezza di wp-config.php o costante ASEM_ENC_KEY cambiati, oppure database copiato da un altro sito). I file cifrati non sono leggibili e i nuovi non si salvano finché non viene sistemata.' ) ) . '</p></div>';
 		}
@@ -330,7 +330,7 @@ final class FileCryptPanel {
 		$can   = 'encrypt' === FileKey::mode();
 		echo '<h3>' . esc_html( Texts::t( 'File già caricati' ) ) . '</h3>';
 		if ( 0 === $n['pending'] && 0 === $n['fields'] ) {
-			echo '<p>' . esc_html( Texts::t( 'Tutti i file riservati sono cifrati ({n} file).', array( 'n' => $n['encrypted'] ) ) ) . '</p>';
+			echo '<p>' . esc_html( Texts::n( (int) $n['encrypted'], 'Tutti i file riservati sono cifrati (un file).', 'Tutti i file riservati sono cifrati ({n} file).' ) ) . '</p>';
 		} else {
 			echo '<p>' . esc_html( Texts::t( 'Ci sono ancora {n} file e {m} campi (nomi dei medici e dei file dei certificati) da cifrare.', array( 'n' => $n['pending'], 'm' => $n['fields'] ) ) ) . '</p>';
 			if ( ! $can ) {
@@ -338,7 +338,7 @@ final class FileCryptPanel {
 			} else {
 				if ( $state['running'] ) {
 					echo '<div class="notice notice-info inline"><p><strong>' . esc_html( Texts::t( 'Cifratura in corso.' ) ) . '</strong> '
-						. esc_html( Texts::t( 'Cifrati finora {n} file. Il lavoro prosegue da solo, un po\' alla volta: puoi chiudere la pagina.', array( 'n' => $state['done'] + $state['already'] ) ) ) . ' '
+						. esc_html( Texts::n( (int) $state['done'] + (int) $state['already'], 'Cifrato finora un file. Il lavoro prosegue da solo, un po\' alla volta: puoi chiudere la pagina.', 'Cifrati finora {n} file. Il lavoro prosegue da solo, un po\' alla volta: puoi chiudere la pagina.' ) ) . ' '
 						. esc_html( Texts::t( 'Finché questa pagina resta aperta il lavoro va avanti più in fretta.' ) ) . '</p></div>';
 				} else {
 					echo '<p><strong>' . esc_html( Texts::t( 'Prima di cominciare fai una copia di sicurezza.' ) ) . '</strong> <a href="' . esc_url( Backup::download_link( true ) ) . '">' . esc_html( Texts::t( 'Scarica la copia con gli allegati' ) ) . '</a></p>';

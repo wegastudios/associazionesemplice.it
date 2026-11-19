@@ -428,7 +428,7 @@ final class Actions {
 		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
 		$msg .= $s['expenses_voided'] ? ' Annullate ' . (int) $s['expenses_voided'] . ' spese.' : '';
 		$msg .= $s['kept_count'] ? ' ' . ( 1 === (int) $s['kept_count'] ? 'Un incasso' : (int) $s['kept_count'] . ' incassi' ) . ' (' . Money::format( (int) $s['kept_cents'] ) . ') di date o mesi già svolti ' . ( 1 === (int) $s['kept_count'] ? 'resta' : 'restano' ) . ' in prima nota, senza restituzione.' : '';
-		$msg .= $s['notified'] ? ' Avvisate ' . (int) $s['notified'] . ' persone.' : '';
+		$msg .= $s['notified'] ? ( 1 === (int) $s['notified'] ? ' Avvisata 1 persona.' : ' Avvisate ' . (int) $s['notified'] . ' persone.' ) : '';
 		return array( Ui::url( 'asem-activities' ), $msg );
 	}
 
@@ -887,7 +887,7 @@ final class Actions {
 		$aid = (int) ( $p['activity_id'] ?? 0 );
 		\AssociazioneSemplice\Contacts::assert_can_write(); // invio manuale: servono i contatti della segreteria
 		$r   = \AssociazioneSemplice\Notices::send( $aid, ! empty( $p['session_id'] ) ? (int) $p['session_id'] : null, (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ) );
-		return array( Ui::url( 'asem-activity', array( 'id' => $aid ) ), 'Avviso inviato a ' . $r['recipients'] . ' persone (' . $r['emailed'] . ' email inviate).' );
+		return array( Ui::url( 'asem-activity', array( 'id' => $aid ) ), 'Avviso inviato a ' . $r['recipients'] . ( 1 === (int) $r['recipients'] ? ' persona (' : ' persone (' ) . $r['emailed'] . ( 1 === (int) $r['emailed'] ? ' email inviata).' : ' email inviate).' ) );
 	}
 
 	private static function access_done( array $p ): array {
@@ -1030,10 +1030,10 @@ final class Actions {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'La copia era stata fatta su un altro sito: l\'hai ripristinata con la tua conferma e questo resta scritto nel registro delle azioni.' );
 		}
 		if ( ! empty( $r['skipped'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non sono collegati a nessun dato e non sono stati rimessi sul sito.', array( 'n' => (int) $r['skipped'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['skipped'], 'Attenzione: un file della copia non è collegato a nessun dato e non è stato rimesso sul sito.', 'Attenzione: {n} file della copia non sono collegati a nessun dato e non sono stati rimessi sul sito.' );
 		}
 		if ( ! empty( $r['closed'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} documenti riservati sono sul sito ma restano chiusi. Per aprirli usa «Riapri la chiave con la frase», qui in Copia di sicurezza.', array( 'n' => (int) $r['closed'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['closed'], 'Attenzione: un documento riservato è sul sito ma resta chiuso. Per aprirlo usa «Riapri la chiave con la frase», qui in Copia di sicurezza.', 'Attenzione: {n} documenti riservati sono sul sito ma restano chiusi. Per aprirli usa «Riapri la chiave con la frase», qui in Copia di sicurezza.' );
 		}
 		if ( ! empty( $r['keys_failed'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: le chiavi dei documenti riservati non si sono potute rimettere sul sito (un\'altra operazione era in corso): rifai il ripristino della stessa copia.' );
@@ -1045,13 +1045,13 @@ final class Actions {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le sessioni aperte e le notifiche dei soci non fanno parte del ripristino: i soci dovranno entrare di nuovo.' );
 		}
 		if ( ! empty( $r['bad'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia risultano alterati (o non si aprono con la chiave) e non sono stati rimessi sul sito.', array( 'n' => (int) $r['bad'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['bad'], 'Attenzione: un file della copia risulta alterato (o non si apre con la chiave) e non è stato rimesso sul sito.', 'Attenzione: {n} file della copia risultano alterati (o non si aprono con la chiave) e non sono stati rimessi sul sito.' );
 		}
 		if ( ! empty( $d['restored'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Rimessi sul sito {n} PDF definitivi.', array( 'n' => (int) $d['restored'] ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) $d['restored'], 'Rimesso sul sito un PDF definitivo.', 'Rimessi sul sito {n} PDF definitivi.' );
 		}
 		if ( ! empty( $d['missing'] ) || ! empty( $d['bad'] ) ) {
-			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} PDF definitivi mancano o risultano alterati: controllali da «Verifica delle ricevute».', array( 'n' => (int) ( $d['missing'] ?? 0 ) + (int) ( $d['bad'] ?? 0 ) ) );
+			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) ( $d['missing'] ?? 0 ) + (int) ( $d['bad'] ?? 0 ), 'Attenzione: un PDF definitivo manca o risulta alterato: controllalo da «Verifica delle ricevute».', 'Attenzione: {n} PDF definitivi mancano o risultano alterati: controllali da «Verifica delle ricevute».' );
 		}
 		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '.' . $docs . ' Lo stato precedente non è stato conservato sul sito: se ti serve, scarica una copia prima di ripristinare.' );
 	}
@@ -1589,11 +1589,11 @@ final class Actions {
 	}
 
 	private static function wpai_retry( array $p ): array {
-		return array( Ui::url( 'asem-wpai' ), \AssociazioneSemplice\WpAllImport::retry() . ' elementi rimessi in coda: premi "Elabora adesso".' );
+		return array( Ui::url( 'asem-wpai' ), ( $wpai_n = (int) \AssociazioneSemplice\WpAllImport::retry() ) . ( 1 === $wpai_n ? ' elemento rimesso in coda: premi «Elabora adesso».' : ' elementi rimessi in coda: premi «Elabora adesso».' ) );
 	}
 
 	private static function wpai_clear( array $p ): array {
-		return array( Ui::url( 'asem-wpai' ), \AssociazioneSemplice\WpAllImport::clear_errors() . ' elementi con errori eliminati.' );
+		return array( Ui::url( 'asem-wpai' ), ( $wpai_n = (int) \AssociazioneSemplice\WpAllImport::clear_errors() ) . ( 1 === $wpai_n ? ' elemento con errori eliminato.' : ' elementi con errori eliminati.' ) );
 	}
 
 	private static function import_apply( array $p ): array {

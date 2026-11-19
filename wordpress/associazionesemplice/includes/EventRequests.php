@@ -230,7 +230,7 @@ final class EventRequests {
 			}
 			$id    = (int) $s['id'];
 			$rows .= '<label class="asemf-check"><input type="radio" name="session_id" value="' . $id . '"' . checked( $sel === $id || ( 0 === $sel && '' === $rows ), true, false ) . '> '
-				. esc_html( Frontend\Views::date_long( (string) $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . $s['start_time'] : '' ) . ( null !== $free ? ' · ' . $free . ' posti liberi' : '' ) ) . '</label>';
+				. esc_html( Frontend\Views::date_long( (string) $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . $s['start_time'] : '' ) . ( null !== $free ? ' · ' . $free . ( 1 === (int) $free ? ' posto libero' : ' posti liberi' ) : '' ) ) . '</label>';
 		}
 		if ( '' === $rows ) {
 			return $html . '<p class="asemf-small asemf-muted">I posti per le date in programma sono esauriti.</p>';
@@ -249,7 +249,7 @@ final class EventRequests {
 		$ui = min( $cap, 6 ); // nel modulo al massimo 5 accompagnatori: oltre si passa dalla segreteria
 		if ( $ui > 1 ) {
 			$form .= '<details class="asemf-more"><summary>Prenoti anche per altre persone?</summary>';
-			$form .= '<p class="asemf-small">Scrivi (fino a ' . (int) ( $ui - 1 ) . ' persone) i loro dati: per ognuna serve un posto. Se sono minorenni, ci pensi tu come genitore o tutore.</p>';
+			$form .= '<p class="asemf-small">Scrivi (fino a ' . (int) ( $ui - 1 ) . ( 2 === (int) $ui ? ' persona' : ' persone' ) . ') i loro dati: per ognuna serve un posto. Se sono minorenni, ci pensi tu come genitore o tutore.</p>';
 			for ( $i = 1; $i < $ui; $i++ ) {
 				$c      = isset( $post['c'][ $i ] ) && is_array( $post['c'][ $i ] ) ? $post['c'][ $i ] : array();
 				$form  .= '<details' . ( ! empty( $c['first_name'] ) ? ' open' : '' ) . '><summary>Accompagnatore ' . (int) $i . '</summary><div class="asemf-fields">';
@@ -281,7 +281,7 @@ final class EventRequests {
 		$key = 'asem_evq_ip_' . md5( ClientIp::get() );
 		$n   = (int) get_transient( $key );
 		if ( $n >= Limits::get( 'apply_per_ip' ) ) {
-			$out['errors'][] = 'Troppi tentativi: riprova tra qualche minuto.';
+			$out['errors'][] = 'Troppi tentativi: riprova tra un\'ora.';
 			return $out;
 		}
 		$token = Application::check_token( (string) ( $post['t'] ?? '' ), time() );
@@ -396,7 +396,7 @@ final class EventRequests {
 		$id = (int) self::db()->insert_id;
 		Texts::mail(
 			$email,
-			'Conferma la tua richiesta: ' . $activity['name'] . self::assoc_suffix(),
+			\AssociazioneSemplice\Texts::subject( 'Conferma la tua richiesta: ' . $activity['name'] ),
 			'Ciao ' . $people[0]['first_name'] . ",\n\nhai chiesto " . count( $people ) . ( 1 === count( $people ) ? ' posto' : ' posti' ) . ' per «' . $activity['name'] . '» di ' . Frontend\Views::date_words( (string) $s['session_date'] ) . ".\n\n"
 			. 'Per confermare che l\'indirizzo è tuo apri questo link entro ' . self::CONFIRM_H . " ore:\n" . self::confirm_url( $id, $token ) . "\n\n"
 			. 'Se non sei stato tu, ignora questo messaggio: la richiesta non avrà seguito.'
@@ -452,7 +452,7 @@ final class EventRequests {
 		$key = 'asem_evq_cf_' . md5( ClientIp::get() );
 		$n   = (int) get_transient( $key );
 		if ( $n >= Limits::get( 'apply_per_ip' ) * 2 ) {
-			self::stop( 'Conferma della richiesta', 'Troppi tentativi: riprova tra qualche minuto.', '#b32d2e' );
+			self::stop( 'Conferma della richiesta', 'Troppi tentativi: riprova tra un\'ora.', '#b32d2e' );
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 		$r = self::submit_confirm( $param, sanitize_text_field( wp_unslash( $_POST['_asem_nonce'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification -- verificato in submit_confirm
@@ -541,7 +541,7 @@ final class EventRequests {
 			self::set( (int) $row['id'], array( 'status' => 'approval' ) );
 			Texts::mail(
 				self::staff_recipients( (int) $a['id'] ),
-				'Richiesta di iscrizione da approvare: ' . $a['name'] . self::assoc_suffix(),
+				\AssociazioneSemplice\Texts::subject( 'Richiesta di iscrizione da approvare: ' . $a['name'] ),
 				'È arrivata una richiesta di iscrizione al corso «' . $a['name'] . "».\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
 			);
 			return array( 'ok' => true, 'message' => 'Email confermata. La segreteria esamina la richiesta di iscrizione e ti scrive appena è approvata, spiegandoti come pagare.' );
@@ -550,8 +550,8 @@ final class EventRequests {
 			self::set( (int) $row['id'], array( 'status' => 'approval' ) );
 			Texts::mail(
 				self::staff_recipients( (int) $a['id'] ),
-				'Richiesta di partecipazione da approvare: ' . $a['name'] . self::assoc_suffix(),
-				'È arrivata una richiesta di partecipazione a «' . $a['name'] . '» (' . (int) $row['seats'] . ' posti).' . "\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
+				\AssociazioneSemplice\Texts::subject( 'Richiesta di partecipazione da approvare: ' . $a['name'] ),
+				'È arrivata una richiesta di partecipazione a «' . $a['name'] . '» (' . (int) $row['seats'] . ( 1 === (int) $row['seats'] ? ' posto).' : ' posti).' ) . "\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
 			);
 			return array( 'ok' => true, 'message' => self::REVIEW );
 		}
@@ -587,7 +587,7 @@ final class EventRequests {
 		self::set( (int) $row['id'], array( 'status' => $status, 'data' => null ) );
 		$to = self::recipient( $row );
 		if ( '' !== $to ) {
-			Texts::mail( $to, $subject ?? 'Richiesta non accolta' . self::assoc_suffix(), $mail_text );
+			Texts::mail( $to, $subject ?? \AssociazioneSemplice\Texts::subject( 'Richiesta non accolta' ), $mail_text );
 		}
 		return array( 'ok' => false, 'message' => $mail_text );
 	}
@@ -648,7 +648,7 @@ final class EventRequests {
 		);
 		Audit::log( 'event_request.member', 'activity', (int) $s['activity_id'], array( 'person_id' => $person_id ) );
 		$a = Plugin::activities()->get( (int) $s['activity_id'] );
-		Texts::mail( self::staff_recipients( (int) $s['activity_id'] ), 'Richiesta di partecipazione da approvare' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "È arrivata una richiesta di partecipazione di un socio.\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $s['activity_id'] ) );
+		Texts::mail( self::staff_recipients( (int) $s['activity_id'] ), \AssociazioneSemplice\Texts::subject( 'Richiesta di partecipazione da approvare' . ( $a ? ': ' . $a['name'] : '' ) ), "È arrivata una richiesta di partecipazione di un socio.\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $s['activity_id'] ) );
 	}
 
 	/** Prenota un socio la cui richiesta è stata approvata (contributo e blocco posti come per ogni prenotazione). */
@@ -668,7 +668,7 @@ final class EventRequests {
 		self::set( (int) $row['id'], array( 'status' => 'booked', 'data' => null ) );
 		$to = self::recipient( $row );
 		if ( '' !== $to ) {
-			Texts::mail( $to, 'Richiesta accolta: ' . $a['name'] . self::assoc_suffix(), 'La tua richiesta di partecipazione a «' . $a['name'] . '» di ' . Frontend\Views::date_words( (string) $s['session_date'] ) . ' è stata accolta: il posto è prenotato. Lo trovi nella tua area, tra le prenotazioni.' );
+			Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Richiesta accolta: ' . $a['name'] ), 'La tua richiesta di partecipazione a «' . $a['name'] . '» di ' . Frontend\Views::date_words( (string) $s['session_date'] ) . ' è stata accolta: il posto è prenotato. Lo trovi nella tua area, tra le prenotazioni.' );
 		}
 		return array( 'ok' => true, 'message' => 'Richiesta accolta: il socio è prenotato.' );
 	}
@@ -766,7 +766,7 @@ final class EventRequests {
 				. ( Bank::enabled() ? Bank::text_block() . "\n\n" : '' );
 		}
 		$text .= 'Per disdire scrivi alla segreteria (' . Applications::notify_email() . ').';
-		Texts::mail( $row['email'], 'Prenotazione: ' . $a['name'] . self::assoc_suffix(), $text );
+		Texts::mail( $row['email'], \AssociazioneSemplice\Texts::subject( 'Prenotazione: ' . $a['name'] ), $text );
 		return array( 'ok' => true, 'message' => $fee > 0 ? 'Prenotazione registrata. Ti abbiamo scritto come pagare con bonifico istantaneo: manda la ricevuta del bonifico alla segreteria entro ' . self::pay_hours() . ' ore, altrimenti il posto torna libero.' : 'Prenotazione confermata: ti abbiamo scritto un\'email di riepilogo.' );
 	}
 
@@ -787,7 +787,7 @@ final class EventRequests {
 		self::review_notice( $row, $activity );
 		Texts::mail(
 			self::staff_recipients( (int) $activity['id'] ),
-			'Richiesta di partecipazione da verificare: ' . $activity['name'] . self::assoc_suffix(),
+			\AssociazioneSemplice\Texts::subject( 'Richiesta di partecipazione da verificare: ' . $activity['name'] ),
 			'È arrivata una richiesta di partecipazione a «' . $activity['name'] . '» (' . (int) $row['seats'] . " posti) con un codice fiscale già presente in anagrafica ma con nome, cognome o data di nascita diversi dalla scheda esistente (" . implode( ', ', $names ) . ").\n\nNon è stata prenotata. Se i dati sono della stessa persona approvala (si userà la scheda esistente), altrimenti rifiutala: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $activity['id'] )
 		);
 		return array( 'ok' => true, 'message' => self::REVIEW );
@@ -797,7 +797,7 @@ final class EventRequests {
 	private static function review_notice( array $row, array $activity ): void {
 		$to = self::recipient( $row );
 		if ( '' !== $to ) {
-			Texts::mail( $to, 'Richiesta ricevuta: ' . $activity['name'] . self::assoc_suffix(), 'Abbiamo confermato la tua richiesta per «' . $activity['name'] . "». La segreteria la esamina e ti scrive appena è approvata.\n\nPer qualsiasi dubbio scrivi alla segreteria (" . Applications::notify_email() . ').' );
+			Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Richiesta ricevuta: ' . $activity['name'] ), 'Abbiamo confermato la tua richiesta per «' . $activity['name'] . "». La segreteria la esamina e ti scrive appena è approvata.\n\nPer qualsiasi dubbio scrivi alla segreteria (" . Applications::notify_email() . ').' );
 		}
 	}
 
@@ -820,8 +820,8 @@ final class EventRequests {
 		Audit::log( 'event_request.member_tax_code', 'activity', (int) $activity['id'], array( 'person_id' => (int) $member['id'], 'name' => $name ) );
 		Texts::mail(
 			self::staff_recipients( (int) $activity['id'] ),
-			'Richiesta di partecipazione da verificare: ' . $activity['name'] . self::assoc_suffix(),
-			'È arrivata una richiesta di partecipazione a «' . $activity['name'] . '» (' . (int) $row['seats'] . ' posti) con il codice fiscale del socio ' . $name . ".\n\nNon è stata prenotata e a chi l'ha inviata non è stato detto il motivo. Rifiutala, oppure contatta il socio: i soci prenotano dalla propria area. " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $activity['id'] )
+			\AssociazioneSemplice\Texts::subject( 'Richiesta di partecipazione da verificare: ' . $activity['name'] ),
+			'È arrivata una richiesta di partecipazione a «' . $activity['name'] . '» (' . (int) $row['seats'] . ( 1 === (int) $row['seats'] ? ' posto)' : ' posti)' ) . ' con il codice fiscale del socio ' . $name . ".\n\nNon è stata prenotata e a chi l'ha inviata non è stato detto il motivo. Rifiutala, oppure contatta il socio: i soci prenotano dalla propria area. " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $activity['id'] )
 		);
 		self::review_notice( $row, $activity );
 		return array( 'ok' => true, 'message' => self::REVIEW );
@@ -906,7 +906,7 @@ final class EventRequests {
 			array( 'activity_id' => $activity_id, 'session_id' => 0, 'person_id' => $person_id, 'seats' => 1, 'status' => 'approval', 'token_hash' => hash( 'sha256', wp_generate_password( 32, false, false ) ), 'created_at' => $now, 'updated_at' => $now )
 		);
 		Audit::log( 'event_request.course_member', 'activity', $activity_id, array( 'person_id' => $person_id ) );
-		Texts::mail( self::staff_recipients( $activity_id ), 'Richiesta di iscrizione da approvare: ' . $a['name'] . self::assoc_suffix(), "È arrivata la richiesta di iscrizione di un socio al corso «" . $a['name'] . "».\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . $activity_id ) );
+		Texts::mail( self::staff_recipients( $activity_id ), \AssociazioneSemplice\Texts::subject( 'Richiesta di iscrizione da approvare: ' . $a['name'] ), "È arrivata la richiesta di iscrizione di un socio al corso «" . $a['name'] . "».\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . $activity_id ) );
 	}
 
 	/** Modulo del non socio per chiedere l'iscrizione a un corso (o l'esito, dopo l'invio). */
@@ -1008,7 +1008,7 @@ final class EventRequests {
 		$id = (int) self::db()->insert_id;
 		Texts::mail(
 			$email,
-			'Conferma la tua richiesta: ' . $activity['name'] . self::assoc_suffix(),
+			\AssociazioneSemplice\Texts::subject( 'Conferma la tua richiesta: ' . $activity['name'] ),
 			'Ciao ' . $p['first_name'] . ",\n\nhai chiesto di iscriverti al corso «" . $activity['name'] . "».\n\n"
 			. 'Per confermare che l\'indirizzo è tuo apri questo link entro ' . self::CONFIRM_H . " ore:\n" . self::confirm_url( $id, $token ) . "\n\n"
 			. 'Se non sei stato tu, ignora questo messaggio: la richiesta non avrà seguito.'
@@ -1040,7 +1040,7 @@ final class EventRequests {
 			self::set( (int) $row['id'], array( 'status' => 'booked', 'data' => null ) );
 			$to = self::recipient( $row );
 			if ( '' !== $to ) {
-				Texts::mail( $to, 'Iscrizione accolta: ' . $a['name'] . self::assoc_suffix(), 'La tua richiesta di iscrizione al corso «' . $a['name'] . '» è stata accolta: sei iscritto dal mese corrente. Trovi il corso nella tua area.' );
+				Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Iscrizione accolta: ' . $a['name'] ), 'La tua richiesta di iscrizione al corso «' . $a['name'] . '» è stata accolta: sei iscritto dal mese corrente. Trovi il corso nella tua area.' );
 			}
 			return array( 'ok' => true, 'message' => 'Richiesta accolta: il socio è iscritto al corso.' );
 		}
@@ -1069,7 +1069,7 @@ final class EventRequests {
 				. ( Bank::enabled() ? Bank::text_block() . "\n\n" : '' );
 		}
 		$text .= 'Per ritirarti o per qualsiasi dubbio scrivi alla segreteria.';
-		Texts::mail( $row['email'], 'Iscrizione: ' . $a['name'] . self::assoc_suffix(), $text );
+		Texts::mail( $row['email'], \AssociazioneSemplice\Texts::subject( 'Iscrizione: ' . $a['name'] ), $text );
 		return array( 'ok' => true, 'message' => $fee > 0 ? 'Iscrizione registrata. Ti abbiamo scritto come pagare con bonifico istantaneo: manda la ricevuta del bonifico alla segreteria entro ' . self::pay_hours() . ' ore, altrimenti l\'iscrizione viene annullata.' : 'Iscrizione registrata: ti abbiamo scritto un\'email di riepilogo.' );
 	}
 
@@ -1154,7 +1154,7 @@ final class EventRequests {
 			$a = $svc->get( (int) $r['activity_id'] );
 			Audit::log( 'event_request.released', 'activity', (int) $r['activity_id'], array( 'seats' => count( $list ) ) );
 			if ( is_email( (string) $r['email'] ) ) {
-				Texts::mail( $r['email'], 'Posto liberato' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "Il pagamento non è arrivato entro il termine, quindi il posto è tornato libero.\n\nSe hai già pagato, scrivi subito alla segreteria. Se vuoi ancora partecipare, prenota di nuovo dalla pagina dell'evento (se ci sono posti) oppure scrivi alla segreteria." );
+				Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( 'Posto liberato' . ( $a ? ': ' . $a['name'] : '' ) ), "Il pagamento non è arrivato entro il termine, quindi il posto è tornato libero.\n\nSe hai già pagato, scrivi subito alla segreteria. Se vuoi ancora partecipare, prenota di nuovo dalla pagina dell'evento (se ci sono posti) oppure scrivi alla segreteria." );
 			}
 		}
 		$db->query( $db->prepare( "DELETE FROM $t WHERE status = 'new' AND created_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::CONFIRM_H * HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati; le richieste mai confermate spariscono quando il link scade
@@ -1185,7 +1185,7 @@ final class EventRequests {
 		self::set( (int) $r['id'], array( 'status' => 'expired', 'deadline' => null ) );
 		$a = $svc->get( (int) $r['activity_id'] );
 		if ( is_email( (string) $r['email'] ) ) {
-			Texts::mail( $r['email'], 'Iscrizione annullata' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "Il pagamento non è arrivato entro il termine, quindi l'iscrizione al corso è stata annullata.\n\nSe vuoi ancora iscriverti, chiedilo di nuovo dalla pagina del corso oppure scrivi alla segreteria." );
+			Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( 'Iscrizione annullata' . ( $a ? ': ' . $a['name'] : '' ) ), "Il pagamento non è arrivato entro il termine, quindi l'iscrizione al corso è stata annullata.\n\nSe vuoi ancora iscriverti, chiedilo di nuovo dalla pagina del corso oppure scrivi alla segreteria." );
 		}
 	}
 
@@ -1200,7 +1200,7 @@ final class EventRequests {
 		$h      = '<div class="asem-card"><h2>' . ( $course ? 'Richieste di iscrizione' : 'Richieste di partecipazione' ) . '</h2><p class="description">'
 			. ( $course ? 'Persone che hanno chiesto l\'iscrizione al corso (i non soci dopo aver confermato l\'email). Approvando si iscrivono dal mese corrente; chi non è socio è registrato come ospite e deve pagare in anticipo con bonifico entro il termine.' : 'Persone che hanno chiesto un posto dalla pagina pubblica e confermato l\'email. Approvando si registrano come ospiti e si prenotano.' ) . '</p><ul>';
 		foreach ( $rows as $r ) {
-			$h .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . ( $course ? '' : (int) $r['seats'] . ' posti, ' ) . esc_html( mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
+			$h .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . ( $course ? '' : (int) $r['seats'] . ( 1 === (int) $r['seats'] ? ' posto, ' : ' posti, ' ) ) . esc_html( mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
 				. ( $r['members'] ? '' : self::admin_form( 'asem_event_request_approve', (int) $r['id'], $back, 'Approva' ) . ' ' ) . self::admin_form( 'asem_event_request_reject', (int) $r['id'], $back, 'Rifiuta' )
 				. ( $r['members'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è quello del socio ' . implode( ', ', $r['members'] ) . ': non si può prenotare come ospite. Rifiuta la richiesta (chi l\'ha inviata riceve il solito messaggio) o contatta il socio.' ) . '</span>' : '' )
 				. ( $r['differs'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è già in anagrafica con altri dati (' . implode( ', ', $r['differs'] ) . '). Approvando si usa la scheda esistente.' ) . '</span>' : '' ) . '</li>';

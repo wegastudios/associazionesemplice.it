@@ -174,7 +174,7 @@ final class Applications {
 		$who  = ApplicationRules::mail_name( $d['first_name'] ) . ' ' . ApplicationRules::mail_name( $d['last_name'] );
 		$text = "È arrivata una nuova domanda di adesione.\n\n" . $who . ' (' . ( $minor ? 'minorenne, con un genitore indicato' : MemberType::label( $d['type'] ) ) . ")\n\n"
 			. 'Approvala o rifiutala dalla Bacheca: ' . admin_url( 'admin.php?page=asem' );
-		ResponseMail::send( self::notify_email(), 'Nuova domanda di adesione' . self::assoc_suffix(), $text );
+		ResponseMail::send( self::notify_email(), \AssociazioneSemplice\Texts::subject( 'Nuova domanda di adesione' ), $text );
 	}
 
 	/** Conferma a chi ha chiesto di iscriversi (per un minore, al genitore): cosa succede adesso e come pagare la quota. */
@@ -191,7 +191,7 @@ final class Applications {
 			}
 		}
 		$text .= 'Se non sei stato tu a chiederlo, ignora questo messaggio.';
-		ResponseMail::send( $to, 'Domanda di adesione ricevuta' . self::assoc_suffix(), $text );
+		ResponseMail::send( $to, \AssociazioneSemplice\Texts::subject( 'Domanda di adesione ricevuta' ), $text );
 	}
 
 	// ---------- Pagamento della quota ----------
@@ -359,7 +359,7 @@ final class Applications {
 			$to = (string) $person['email'];
 		}
 		if ( '' !== $to && is_email( $to ) ) {
-			Texts::mail( $to, 'Domanda di adesione approvata' . self::assoc_suffix(), $text );
+			Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Domanda di adesione approvata' ), $text );
 		}
 	}
 
@@ -392,7 +392,7 @@ final class Applications {
 		if ( '' !== $to && is_email( $to ) ) {
 			$text = 'Ciao ' . $name . ",\n\npurtroppo la domanda di adesione" . ( $gd ? ' di ' . ApplicationRules::mail_name( (string) $row['first_name'] ) : '' ) . ' non è stata accettata.'
 				. ( $refund > 0 ? "\n\nLa quota che hai pagato online ti sarà restituita." : '' ) . "\n\nPer chiarimenti rivolgiti alla segreteria.";
-			Texts::mail( $to, 'Domanda di adesione' . self::assoc_suffix(), $text );
+			Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Domanda di adesione' ), $text );
 		}
 		return 'Domanda rifiutata.' . ( $refund > 0 ? ' Il pagamento online risulta «da rimborsare» nei Pagamenti online.' : '' );
 	}

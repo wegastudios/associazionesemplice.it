@@ -1091,7 +1091,7 @@ asem_ok( false !== strpos( $as( 1, '[associazionesemplice_area_soci]' ), 'ammini
 asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_tessera]' ), 'asemf-memcard' ), 'shortcode tessera' );
 asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_tessera]' ), 'asemf-print-card' ), 'tessera: pulsante per stamparla' );
 asem_ok( false !== strpos( $as( $u_vol, '[associazionesemplice_area_volontari]' ), 'Yoga' ), 'shortcode area volontari (volontario)' );
-asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_area_volontari]' ), 'riservata ai soci e volontari' ), 'shortcode area volontari (socio semplice)' );
+asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_area_volontari]' ), 'riservata ai soci volontari' ), 'shortcode area volontari (socio semplice)' );
 
 // Elenco attività pubblico e prenotazioni
 $html = $as( 0, '[associazionesemplice_attivita]' );
@@ -1612,7 +1612,7 @@ asem_wizard( array( 'privacy_url' => 'https://example.com/privacy', 'privacy_ret
 asem_ok( 'https://example.com/privacy' === Settings::get( 'privacy_url' ) && 7 === (int) Settings::get( 'privacy_retention_years' ), 'configurazione guidata: privacy e ricevute' );
 Settings::update( array( 'privacy_url' => '', 'privacy_retention_years' => 5, 'receipt_footer' => '' ) );
 $wz_html2 = $wz_html;
-asem_ok( false !== strpos( $wz_html2, 'Cosa ti serve' ) && false !== strpos( $wz_html2, 'Solo su presentazione' ) && false !== strpos( $wz_html2, 'name="mod[ledger]"' ) && false !== strpos( $wz_html2, 'data-if="mod[ledger]=1"' ), 'configurazione guidata: domande per parte e blocchi condizionati dalle risposte' );
+asem_ok( false !== strpos( $wz_html2, 'Cosa ti serve' ) && false !== strpos( $wz_html2, 'Solo tramite la segreteria' ) && false !== strpos( $wz_html2, 'name="mod[ledger]"' ) && false !== strpos( $wz_html2, 'data-if="mod[ledger]=1"' ), 'configurazione guidata: domande per parte e blocchi condizionati dalle risposte' );
 // procedura guidata: partita IVA, sede e adempimenti
 asem_ok( null !== asem_throws( function () { asem_wizard( array( 'has_vat' => '1', 'vat_number' => '12345678901' ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'pec' => 'non-una-pec' ) ); } ), 'procedura: partita IVA o PEC non valide si rifiutano' );
 asem_wizard( array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'fiscal_regime' => 'ordinario', 'vat_default_rate' => '10', 'vat_prices_mode' => 'escl', 'vat_membership_rate' => '22', 'legal_address' => 'Via Verdi 3', 'legal_zip' => '10100', 'legal_city' => 'Torino', 'legal_province' => 'TO', 'pec' => 'ente@pec.example.com' ) );
@@ -1656,7 +1656,7 @@ asem_ok( false !== strpos( $wz_html3, 'privacy_page_id' ) && false === strpos( $
 $wz_steps = preg_match_all( '/<section class="asem-wiz-step"/', $wz_html3 );
 asem_ok( $wz_steps <= 8, 'procedura: al massimo otto passi (' . $wz_steps . ')' );
 asem_ok( false !== strpos( $wz_html3, 'name="member_wp_users" value="0"' ) && false !== strpos( $wz_html3, 'name="wpusers_present"' ), 'procedura: la scelta su come entrano i soci è nel passo «Cosa ti serve», senza un passo in più' );
-asem_ok( false !== strpos( $wz_html3, 'Descrivi il tuo ente e scegli in 4 sezioni veloci i servizi che vuoi gestire' ) && 4 === preg_match_all( '/<li data-group="/', $wz_html3 ) && false !== strpos( $wz_html3, '>Ente<' ) && false !== strpos( $wz_html3, '>Gestione<' ) && false !== strpos( $wz_html3, '>Pagamenti<' ) && false !== strpos( $wz_html3, '>Aspetto<' ), 'procedura: indicatore di sezione (Ente, Gestione, Pagamenti, Aspetto) al posto del conteggio delle pagine' );
+asem_ok( false !== strpos( $wz_html3, 'Descrivi il tuo ente e scegli, in 4 brevi sezioni, che cosa vuoi gestire' ) && 4 === preg_match_all( '/<li data-group="/', $wz_html3 ) && false !== strpos( $wz_html3, '>Ente<' ) && false !== strpos( $wz_html3, '>Gestione<' ) && false !== strpos( $wz_html3, '>Pagamenti<' ) && false !== strpos( $wz_html3, '>Aspetto<' ), 'procedura: indicatore di sezione (Ente, Gestione, Pagamenti, Aspetto) al posto del conteggio delle pagine' );
 asem_ok( 2 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="ente"/', $wz_html3 ) && (int) preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="pagamenti"/', $wz_html3 ) >= 2 && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="gestione"/', $wz_html3 ) && (int) preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="aspetto"/', $wz_html3 ) >= 1 && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="optional"/', $wz_html3 ) && false === strpos( $wz_html3, 'Passo "' ), 'procedura: l\'ente occupa tre schermate di una sola sezione, l\'elenco dei soci è facoltativo e non si conta' );
 asem_ok( 5 === (int) Settings::get( 'privacy_retention_years' ), 'anonimizzazione: di default 5 anni di inattività' );
 // pagina privacy preselezionata solo alla prima configurazione; nome dell'ente mancante segnalato in Bacheca; partecipanti dei corsi chiusi di default
@@ -3914,7 +3914,7 @@ asem_ok( Settings::has_secret( 'wallet_apple_key_pem' ) && false === strpos( $ra
 // tessera Apple: socio fondatore (sempre rinnovata) e socio con scadenza
 $pk1 = $read_pkpass( Wallet::apple_pass( $founder ) );
 $f1 = $pk1['files'];sort( $f1 );asem_ok( array( 'icon.png', 'icon@2x.png', 'icon@3x.png', 'manifest.json', 'pass.json', 'signature' ) === $f1, 'tessera Apple: contiene pass.json, icone, manifesto e firma' );
-asem_ok( 'asem-' . $founder === $pk1['pass']['serialNumber'] && 'pass.test.asem' === $pk1['pass']['passTypeIdentifier'] && 'Sempre rinnovata' === $pk1['pass']['generic']['auxiliaryFields'][0]['value'] && ! isset( $pk1['pass']['expirationDate'] ), 'tessera Apple: dati del socio fondatore, senza scadenza' );
+asem_ok( 'asem-' . $founder === $pk1['pass']['serialNumber'] && 'pass.test.asem' === $pk1['pass']['passTypeIdentifier'] && 'Non va rinnovata' === $pk1['pass']['generic']['auxiliaryFields'][0]['value'] && ! isset( $pk1['pass']['expirationDate'] ), 'tessera Apple: dati del socio fondatore, senza scadenza' );
 asem_ok( 'PKBarcodeFormatQR' === $pk1['pass']['barcodes'][0]['format'] && false !== strpos( $pk1['pass']['barcodes'][0]['message'], 'asem_card=' ), 'tessera Apple: con il QR della tessera attivo contiene il suo codice di verifica' );
 $pk2 = $read_pkpass( Wallet::apple_pass( $tre_p ) );
 asem_ok( ! empty( $pk2['pass']['expirationDate'] ) && preg_match( '#^\d{2}/\d{2}/\d{4}$#', $pk2['pass']['generic']['auxiliaryFields'][0]['value'] ), 'tessera Apple: un socio con scadenza ha la data di scadenza' );
@@ -4015,7 +4015,7 @@ $gz   = $people->create( array( 'type' => 'guest', 'first_name' => 'Zeno', 'last
 $list = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Occasionale', array( 'type' => 'guest', 'at_limit' => '1' ) );
 asem_ok( false !== strpos( $list, 'da invitare a iscriversi' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a iscriversi"' );
 $ev = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Open day yoga', array( 'id' => $e1 ) );
-asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'da invitare a iscriversi' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
+asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'da invitare a diventare socio' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Ospiti da invitare a diventare soci' );
 $front_g = $as( $u_f, '[associazionesemplice_ospiti]' );
 asem_ok( false !== strpos( $front_g, 'Partecipazioni: 2' ) && false !== strpos( $front_g, 'Open day yoga' ) && false === strpos( $front_g, 'iscriversi come socio' ) && false === strpos( $front_g, 'segreteria' ), 'area soci: il socio vede a cosa sono venuti i suoi ospiti, senza segnalazioni' );
@@ -4024,7 +4024,7 @@ $wpdb->update( Db::t( 'sessions' ), array( 'session_date' => $today ), array( 'i
 $_GET['asem_session'] = (string) $gs1;
 $det = $as( $u_tre, '[associazionesemplice_ingressi]' );
 unset( $_GET['asem_session'] );
-asem_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== strpos( $det, 'risulta registrato anche come' ) && false !== strpos( $det, 'invitalo a diventare socio' ), 'lista prenotati all\'ingresso: chi gestisce vede quante volte è venuto e se risulta registrato anche con altri nomi' );
+asem_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== strpos( $det, 'risulta registrato anche come' ) && false !== strpos( $det, 'da invitare a diventare socio' ), 'lista prenotati all\'ingresso: chi gestisce vede quante volte è venuto e se risulta registrato anche con altri nomi' );
 asem_ok( false === strpos( $det, '333 5555552' ) && false === strpos( $det, 'wa.me' ), 'lista prenotati all\'ingresso: nessun cellulare mostrato a chi gestisce l\'evento' );
 $set_html = asem_render( array( Admin\SettingsPage::class, 'render' ), 'Ospiti: soglia di segnalazione' );
 asem_ok( 4 === substr_count( $set_html, 'class="asem-section asem-card"' ) && 1 === substr_count( $set_html, 'asem-card" open' ), 'impostazioni: quattro sezioni richiudibili, solo la prima aperta' );
@@ -5477,9 +5477,9 @@ $wpdb->delete( Db::t( 'funds' ), array( 'id' => $rs_fund ) );
 $wpdb->delete( Db::t( 'people' ), array( 'id' => $rs_p ) );
 asem_ok( null === \AssociazioneSemplice\FiscalYears::last_closed(), 'rendiconto fotografato: prove ripulite, nessun esercizio chiuso' );
 
-asem_render( array( Admin\YearsPage::class, 'render' ), 'Crea anno fiscale' );
-$rep_html = asem_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e liquidità' );
-asem_ok( strpos( $rep_html, 'Conti e liquidità' ) < strpos( $rep_html, 'Anno delle attività' ) && strpos( $rep_html, 'Anno delle attività' ) < strpos( $rep_html, 'Anno fiscale (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );
+asem_render( array( Admin\YearsPage::class, 'render' ), 'Apri un nuovo anno fiscale' );
+$rep_html = asem_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e disponibilità' );
+asem_ok( strpos( $rep_html, 'Conti e disponibilità' ) < strpos( $rep_html, 'Anno delle attività' ) && strpos( $rep_html, 'Anno delle attività' ) < strpos( $rep_html, 'Anno fiscale (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );
 asem_render( array( Admin\ReportsPage::class, 'render' ), 'Fondi per anno fiscale', array( 'mode' => 'solar' ) );
 
 // ---------- Soci sospesi (inattivi) ----------
@@ -5598,7 +5598,7 @@ $recent_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Appen
 $people->set_membership( $recent_a, (string) ( $cy - 1 ), true, 'manual' );
 $stale_ids = array_column( $people->expired_for_months( 8 ), 'id' );
 asem_ok( in_array( (string) $old_a, array_map( 'strval', $stale_ids ), true ), 'sospensione in blocco: chi è scaduto da anni è tra i candidati' );
-$list_btn = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Sospendi soci scaduti da oltre 8 mesi' );
+$list_btn = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Sospendi i soci con tessera scaduta da oltre 8 mesi' );
 asem_ok( false !== strpos( $list_btn, 'asem_suspend_expired' ), 'elenco soci: pulsante "sospendi soci scaduti da oltre 8 mesi"' );
 $n_susp = $people->suspend_expired( 8 );
 asem_ok( $n_susp >= 1 && $people->is_suspended( $old_a ), 'sospensione in blocco: i soci scaduti da molto diventano inattivi' );
@@ -6625,7 +6625,7 @@ asem_ok( false !== strpos( $pn_html, 'Referente per la privacy' ) && false !== s
 asem_ok( false !== strpos( $pn_html, 'cookie tecnici di autenticazione di WordPress' ) && false === strpos( $pn_html, 'asem_s' ), 'informativa privacy: con gli utenti WordPress parla dei cookie di WordPress' );
 Settings::update( array( 'member_wp_users' => 0 ) );
 $pn_own = \AssociazioneSemplice\PrivacyNotice::html();
-asem_ok( false !== strpos( $pn_own, 'asem_s' ) && false !== strpos( $pn_own, 'impronta cifrata' ) && false !== strpos( $pn_own, '15 minuti' ) && false !== strpos( $pn_own, 'Accesso all&#039;area riservata e cookie' ) || false !== strpos( $pn_own, 'Accesso all\'area riservata e cookie' ), 'informativa privacy: con l\'accesso proprio dichiara il cookie asem_s, la password cifrata e i codici' );
+asem_ok( false !== strpos( $pn_own, 'asem_s' ) && false !== strpos( $pn_own, 'impronta cifrata' ) && false !== strpos( $pn_own, '15 minuti' ) && false !== strpos( $pn_own, 'Accesso all&#039;area soci e cookie' ) || false !== strpos( $pn_own, 'Accesso all\'area soci e cookie' ), 'informativa privacy: con l\'accesso proprio dichiara il cookie asem_s, la password cifrata e i codici' );
 Settings::update( array( 'privacy_extra_cookies' => "_ga — statistiche anonime\n<b>mappa</b> — cartina del sito\n\n" ) );
 $pn_ck_hook = function ( $c ) {
 	$c[] = 'cookie_estensione — prova di un\'estensione';
@@ -10122,7 +10122,7 @@ asem_ok( 'stripe' === $rf_calls[0]['gw'] && '/v1/refunds' === substr( $rf_calls[
 asem_ok( 'pi_rf_1' === $rf_b['payment_intent'] && '300' === $rf_b['amount'] && $rf_p['public_id'] === $rf_b['metadata']['asem_payment'] && 'Bearer sk_test_51Smoke1' === $rf_calls[0]['auth'] && 'refund-' . $rf_p['public_id'] . '-0-300' === $rf_calls[0]['key'], 'rimborso Stripe: PaymentIntent, importo, chiave segreta e chiave di idempotenza' );
 asem_ok( $rf_snap === $rf_txs() && $rf_bal === $balance_of( 'Stripe' ), 'rimborso di un pagamento mai registrato: la prima nota non cambia' );
 $rf_m = $ap_mail_to( 'paolo.paga@example.com' );
-asem_ok( count( $ap_mails ) === $rf_mail + 1 && 0 === strpos( (string) $rf_m['subject'], 'Rimborso del tuo pagamento · ' ) && 0 === strpos( (string) $rf_m['message'], 'Ciao, abbiamo restituito 3,00 € del pagamento che hai fatto il ' ) && false !== strpos( (string) $rf_m['message'], 'Motivo: Motivo di prova.' ) && false !== strpos( (string) $rf_m['message'], 'scrivi alla segreteria: segreteria@example.org, tel. 011 1234567. — ' ), 'rimborso: email al socio con importo, data e motivo' );
+asem_ok( count( $ap_mails ) === $rf_mail + 1 && false !== strpos( (string) $rf_m['subject'], 'Rimborso del tuo pagamento' ) && 0 === strpos( (string) $rf_m['message'], 'Ciao, abbiamo restituito 3,00 € del pagamento che hai fatto il ' ) && false !== strpos( (string) $rf_m['message'], 'Motivo: Motivo di prova.' ) && false !== strpos( (string) $rf_m['message'], 'scrivi alla segreteria: segreteria@example.org, tel. 011 1234567. — ' ), 'rimborso: email al socio con importo, data e motivo' );
 asem_ok( false !== strpos( (string) $rf_try_noreason( $rf_a ), 'motivo' ) && 1 === count( $rf_calls ), 'rimborso: senza il motivo non parte nulla' );
 asem_ok( 'Restituiti 3,00 € al socio.' === $rf_row( $rf_a )['error'], 'rimborso: nel motivo del pagamento «Restituiti X,XX € al socio.»' );
 asem_ok( false !== strpos( (string) $rf_try( $rf_a, 300, 0 ), 'è cambiato' ) && 1 === count( $rf_calls ), 'rimborso: lo stesso invio ripetuto (doppio clic) non rimborsa due volte' );
@@ -10338,7 +10338,7 @@ if ( $rf_fy ) {
 // la pagina: stato «Rimborsato / restituiti X,XX €», modulo «Rimborsa», testo di aiuto aggiornato
 $rf_open = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
 $rf_html = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'asem_payment_refund' );
-asem_ok( false !== strpos( $rf_html, 'Quanto restituire al socio (massimo 10,00 €)? I soldi tornano sul suo metodo di pagamento e non si può annullare.' ) && false !== strpos( $rf_html, 'name="ack"' ) && false !== strpos( $rf_html, 'name="expected"' ), 'pagamenti online: modulo di rimborso con la domanda e la spunta' );
+asem_ok( false !== strpos( $rf_html, 'Quanto restituire al socio (massimo 10,00 €)? I soldi tornano sul suo metodo di pagamento e il rimborso non si può annullare.' ) && false !== strpos( $rf_html, 'name="ack"' ) && false !== strpos( $rf_html, 'name="expected"' ), 'pagamenti online: modulo di rimborso con la domanda e la spunta' );
 asem_ok( false !== strpos( $rf_html, 'Rimborsato' ) && false !== strpos( $rf_html, 'restituiti 10,00 €' ) && false !== strpos( $rf_html, 'Rimborsato in parte' ) && false !== strpos( $rf_html, 'restituiti 8,00 €' ), 'pagamenti online: la pagina mostra «Rimborsato» e «restituiti X,XX €» (anche in parte)' );
 asem_ok( false === strpos( $rf_html, 'si registrano come spesa' ) && false !== strpos( $rf_html, 'Rimborsa' ), 'pagamenti online: il testo di aiuto non dice più di rimborsare dal gateway e registrare una spesa' );
 Settings::update( array( 'payment_provider' => 'stripe' ) );
@@ -12001,7 +12001,7 @@ $er_hmail   = '';
 foreach ( array_slice( $er_mails, $er_mails_before ) as $m ) {
 	$er_hmail .= ( is_array( $m['to'] ) ? implode( ',', $m['to'] ) : $m['to'] ) . '|' . $m['subject'] . '|' . $m['message'] . "\n";
 }
-asem_ok( 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_hold_id ) ) && false !== strpos( $er_hmail, 'da verificare' ) && 2 === substr_count( $er_hmail, 'marta.altra@example.com|' ) && false !== strpos( $er_hmail, 'marta.altra@example.com|Richiesta ricevuta' ), 'ospite esistente: la richiesta resta per la segreteria con un avviso, e a chi scrive arrivano solo il link e un avviso neutro' );
+asem_ok( 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_hold_id ) ) && false !== strpos( $er_hmail, 'da verificare' ) && 2 === substr_count( $er_hmail, 'marta.altra@example.com|' ) && false !== strpos( $er_hmail, 'Richiesta ricevuta' ), 'ospite esistente: la richiesta resta per la segreteria con un avviso, e a chi scrive arrivano solo il link e un avviso neutro' );
 $er_hw = $er::awaiting( $er_e );
 asem_ok( 1 === count( $er_hw ) && ! empty( $er_hw[0]['differs'] ) && false !== strpos( $er::admin_box( $er_e, 'http://example.test/' ), 'Attenzione: il codice fiscale è già in anagrafica' ), 'ospite esistente: la scheda dell\'attività avverte che i dati non coincidono' );
 $er::reject( $er_hold_id );
@@ -12381,7 +12381,7 @@ asem_ok( false !== strpos( $ru_html, 'o con il tuo commercialista' ) && false !=
 $ru_emp = array( \AssociazioneSemplice\Employees::class, 'runts_workers' );
 remove_filter( 'asem_runts_workers_count', $ru_emp, 10 );
 $ru_html0 = asem_render( array( \AssociazioneSemplice\Admin\RuntsPage::class, 'render' ), 'Dati per il RUNTS' );
-asem_ok( null === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ) && false !== strpos( $ru_html0, 'Il programma non li conta ancora' ) && false === strpos( $ru_html0, 'in servizio a quella data' ), 'RUNTS lavoratori: se nessuno risponde al filtro la pagina scrive «—» e dice che il programma non li conta, non uno 0 finto' );
+asem_ok( null === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ) && false !== strpos( $ru_html0, 'Qui non vengono ancora contati' ) && false === strpos( $ru_html0, 'in servizio a quella data' ), 'RUNTS lavoratori: se nessuno risponde al filtro la pagina scrive «—» e dice che non vengono ancora contati, non uno 0 finto' );
 add_filter( 'asem_runts_workers_count', $ru_wf = function () { return 5; } );
 asem_ok( 5 === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ), 'RUNTS lavoratori: il numero arriva dal filtro asem_runts_workers_count' );
 remove_filter( 'asem_runts_workers_count', $ru_wf );
@@ -12608,7 +12608,7 @@ asem_ok( null === $em_with( array( 'tools' ), 'admin.php', array( 'page' => 'ase
 wp_set_current_user( $em_uid );
 \AssociazioneSemplice\Employees::reset_cache();
 $em_book_html = asem_render( array( Admin\RegistersPage::class, 'render_book' ), 'Libro soci' );
-asem_ok( false !== strpos( $em_book_html, esc_html( 'Il libro soci è dell\'area «Anagrafica soci», che non hai.' ) ) && false === strpos( $em_book_html, 'matricola' ), 'Registri: senza Anagrafica il libro soci non mostra i soci, solo il messaggio' );
+asem_ok( false !== strpos( $em_book_html, esc_html( 'Per il libro soci serve il permesso «Anagrafica soci», che non hai.' ) ) && false === strpos( $em_book_html, 'matricola' ), 'Registri: senza Anagrafica il libro soci non mostra i soci, solo il messaggio' );
 wp_set_current_user( 1 );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'tools' ) );
 wp_set_current_user( $em_uid );
@@ -13294,8 +13294,8 @@ asem_ok( (int) $pf_nm === (int) $pf_k1['number'] && \AssociazioneSemplice\Receip
 $pf_msg = Admin\ReceiptCheckPage::fix_nodata( array( 'year' => $pf_fy ) );
 $pf_k2n = \AssociazioneSemplice\Receipts::record( $pf_key[5800] );
 $pf_k3  = \AssociazioneSemplice\Receipts::record( $pf_key[5900] );
-asem_ok( 'ok' === \AssociazioneSemplice\ReceiptFiles::state( $pf_k2n, 'issued' ) && \AssociazioneSemplice\Receipts::data_intact( $pf_k2n ) && false !== strpos( $pf_msg[1], 'Fissate con i dati di oggi' ) && 0 === \AssociazioneSemplice\ReceiptFiles::nodata_count( $pf_fy ), 'ricevute senza dati: l\'azione della pagina fissa le restanti e il conteggio si azzera' );
-asem_ok( 1 <= \AssociazioneSemplice\ReceiptFiles::nodata_voided_count( $pf_fy ) && false !== strpos( $pf_msg[1], 'rimaste sono ricevute annullate: restano come sono.' ) && false === strpos( $pf_msg[1], 'premi di nuovo' ), 'ricevute senza dati: se restano solo annullate lo dice, senza invitare a premere di nuovo' );
+asem_ok( 'ok' === \AssociazioneSemplice\ReceiptFiles::state( $pf_k2n, 'issued' ) && \AssociazioneSemplice\Receipts::data_intact( $pf_k2n ) && false !== strpos( $pf_msg[1], 'con i dati di oggi' ) && 0 === \AssociazioneSemplice\ReceiptFiles::nodata_count( $pf_fy ), 'ricevute senza dati: l\'azione della pagina fissa le restanti e il conteggio si azzera' );
+asem_ok( 1 <= \AssociazioneSemplice\ReceiptFiles::nodata_voided_count( $pf_fy ) && ( false !== strpos( $pf_msg[1], 'rimaste sono ricevute annullate: restano come sono.' ) || false !== strpos( $pf_msg[1], 'La ricevuta rimasta è annullata' ) ) && false === strpos( $pf_msg[1], 'premi di nuovo' ), 'ricevute senza dati: se restano solo annullate lo dice, senza invitare a premere di nuovo' );
 asem_ok( empty( $pf_k3['data'] ) && null === $pf_k3['pdf_path'] && null !== $pf_k3['voided_at'] && 0 === \AssociazioneSemplice\ReceiptFiles::complete_nodata( $pf_fy, 0, 500 )['done'], 'ricevute senza dati: le annullate restano come sono (nessun dato, nessun PDF)' );
 asem_ok( in_array( 'receipt.nodata_fixed_today', array_column( \AssociazioneSemplice\Audit::recent( 30, 'receipt.' ), 'action' ), true ), 'ricevute senza dati: l\'operazione è nel registro azioni' );
 $wpdb->update( Db::t( 'people' ), array( 'tax_code' => 'FSSPIA80A41H501V' ), array( 'id' => $pf_p ) );

@@ -171,7 +171,7 @@ final class DashboardPage {
 			echo '<h2>Attività</h2><div class="asem-grid">';
 			foreach ( $r['activities'] as $a ) {
 				echo wp_kses( '<div class="asem-card"><h3><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $a['activity']['id'] ) ) ) . '">' . esc_html( $a['activity']['name'] ) . '</a></h3>'
-					. '<p>' . (int) $a['participants'] . ' iscritti · resta ' . Ui::money( $a['margin'] ) . '</p></div>', Html::allowed() );
+					. '<p>' . (int) $a['participants'] . ( 1 === (int) $a['participants'] ? ' iscritto · resta ' : ' iscritti · resta ' ) . Ui::money( $a['margin'] ) . '</p></div>', Html::allowed() );
 			}
 			echo '</div>';
 		}
