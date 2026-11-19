@@ -50,3 +50,16 @@ it('rifiuta di pubblicare un catalogo non valido', function (): void {
 
     expect(fn () => app(Catalog::class)->published())->toThrow(InvalidArgumentException::class);
 });
+
+it('espone i giorni di conservazione dalla configurazione del gestionale, una sola fonte per il portale', function (): void {
+    config(['saas.portal.retention_days' => 180, 'saas.portal.trial_purge_days' => 7]);
+    $doc = json_decode((string) $this->get('/api/catalogo/v1')->getContent(), true, 32, JSON_THROW_ON_ERROR);
+
+    expect($doc['terms']['lifecycle'])->toBe(['retention_days' => 180, 'trial_purge_days' => 7])
+        ->and($doc['terms']['trial'])->not->toHaveKey('purge_days');
+
+    config(['saas.portal.retention_days' => 90, 'saas.portal.trial_purge_days' => 14]);
+    $doc = json_decode((string) $this->get('/api/catalogo/v1')->getContent(), true, 32, JSON_THROW_ON_ERROR);
+
+    expect($doc['terms']['lifecycle'])->toBe(['retention_days' => 90, 'trial_purge_days' => 14]);
+});

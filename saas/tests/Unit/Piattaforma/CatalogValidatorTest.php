@@ -140,7 +140,7 @@ it('ha condizioni di partenza neutre: IVA standard, nessuna commissione, prova s
     expect($doc['terms']['vat']['mode'])->toBe('standard')
         ->and($doc['terms']['vat']['note'])->toBe('')
         ->and($doc['terms']['payments'])->toBe(['own_gateway_percent' => 0, 'collected_by_us_percent' => 0])
-        ->and($doc['terms']['trial'])->toBe(['exports' => false, 'accountant_access' => false, 'end_discount_percent' => 0, 'purge_days' => 7])
+        ->and($doc['terms']['trial'])->toBe(['exports' => false, 'accountant_access' => false, 'end_discount_percent' => 0])
         ->and($doc['terms']['members'])->toBe(['warn_percent' => 80, 'full_percent' => 100, 'tolerance_percent' => 10, 'tolerance_days' => 15, 'guests_free_percent' => 10]);
 
     // Un catalogo senza condizioni (le revisioni precedenti) vale come i valori di partenza, con IVA.
@@ -161,7 +161,6 @@ it('tiene pronti lo sconto di fine prova e i pacchetti di soci, nascosti finché
     $addons = collect($doc['addons'])->keyBy('code');
 
     expect($doc['terms']['trial']['end_discount_percent'])->toBe(0)
-        ->and($doc['terms']['trial']['purge_days'])->toBe(7)
         ->and($addons['members_500']['visible'])->toBeFalse()
         ->and($addons['members_500']['prices'][0]['amount_cents'])->toBe(1700)
         ->and($addons['members_500']['prices'][1]['amount_cents'])->toBe(17000)
@@ -172,9 +171,6 @@ it('tiene pronti lo sconto di fine prova e i pacchetti di soci, nascosti finché
 
     $bad = seedCatalog();
     $bad['terms']['trial']['end_discount_percent'] = 101;
-    expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
-    $bad = seedCatalog();
-    $bad['terms']['trial']['purge_days'] = 0;
     expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
 });
 

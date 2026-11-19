@@ -57,13 +57,14 @@ final class CatalogValidator
      * Condizioni generali di vendita, uguali per tutti i piani: IVA, commissione sui pagamenti online e cosa non è
      * disponibile durante la prova. I cataloghi che non le dicono hanno i valori di partenza.
      *
-     * @return array{vat: array{mode: string, note: string}, payments: array{own_gateway_percent: int, collected_by_us_percent: int}, trial: array{exports: bool, accountant_access: bool, end_discount_percent: int, purge_days: int}, members: array{warn_percent: int, full_percent: int, tolerance_percent: int, tolerance_days: int, guests_free_percent: int}}
+     * @return array{vat: array{mode: string, note: string}, payments: array{own_gateway_percent: int, collected_by_us_percent: int}, trial: array{exports: bool, accountant_access: bool, end_discount_percent: int}, members: array{warn_percent: int, full_percent: int, tolerance_percent: int, tolerance_days: int, guests_free_percent: int}}
      */
     private static function terms(mixed $value): array
     {
         $terms = self::object($value, 'terms', ['vat', 'payments', 'trial', 'members']);
         $vat = self::object($terms['vat'] ?? [], 'terms.vat', ['mode', 'note']);
         $payments = self::object($terms['payments'] ?? [], 'terms.payments', ['own_gateway_percent', 'collected_by_us_percent']);
+        // «purge_days» è ancora ammesso per i cataloghi già salvati, ma non si riscrive né si espone più: vale terms.lifecycle (config del gestionale).
         $trial = self::object($terms['trial'] ?? [], 'terms.trial', ['exports', 'accountant_access', 'end_discount_percent', 'purge_days']);
 
         $members = self::object($terms['members'] ?? [], 'terms.members', ['warn_percent', 'full_percent', 'tolerance_percent', 'tolerance_days', 'guests_free_percent']);
@@ -88,7 +89,6 @@ final class CatalogValidator
                 'exports' => self::bool($trial['exports'] ?? false, 'terms.trial.exports'),
                 'accountant_access' => self::bool($trial['accountant_access'] ?? false, 'terms.trial.accountant_access'),
                 'end_discount_percent' => self::int($trial['end_discount_percent'] ?? 0, 'terms.trial.end_discount_percent', 0, 100),
-                'purge_days' => self::int($trial['purge_days'] ?? 7, 'terms.trial.purge_days', 1, 90),
             ],
             'members' => [
                 'warn_percent' => $warn,

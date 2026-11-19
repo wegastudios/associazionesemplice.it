@@ -21,7 +21,7 @@ final readonly class CatalogController
     public function __invoke(Request $request): Response
     {
         $published = $this->catalog->published();
-        $body = $published->json();
+        $body = $this->withLifecycle($published->document);
         $hash = hash('sha256', $body);
         $headers = [
             'ETag' => '"'.$hash.'"',
@@ -34,6 +34,26 @@ final readonly class CatalogController
         }
 
         return new Response($body, 200, $headers + ['Content-Type' => 'application/json; charset=utf-8']);
+    }
+
+    /**
+     * I giorni di conservazione hanno una sola fonte, la configurazione di questo gestionale (è lui a eseguire la
+     * cancellazione): il catalogo li espone in `terms.lifecycle` e il portale li legge da qui, senza tenerne una copia.
+     * `retention_days`: l'ultimo giorno in cui i dati ci sono è la scadenza più questi giorni. `trial_purge_days`: lo
+     * stesso per la prova, dalla sua fine. Un vecchio `terms.trial.purge_days` salvato nel catalogo non si espone più.
+     *
+     * @param  array<string, mixed>  $document
+     */
+    private function withLifecycle(array $document): string
+    {
+        $terms = is_array($document['terms'] ?? null) ? $document['terms'] : [];
+        if (is_array($terms['trial'] ?? null)) {
+            unset($terms['trial']['purge_days']);
+        }
+        $terms['lifecycle'] = ['retention_days' => $this->config->retentionDays(), 'trial_purge_days' => $this->config->trialPurgeDays()];
+        $document['terms'] = $terms;
+
+        return json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
     private function signature(int $rev, string $hash): string
