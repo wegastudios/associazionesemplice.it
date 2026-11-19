@@ -351,8 +351,9 @@ final class SaasCheckout {
 	}
 
 	/**
-	 * Lavoro giornaliero (bin/cron.php): avviso «scade e non si rinnova» entro i giorni di preavviso delle impostazioni (solo per le disdette)
-	 * e avviso «sospeso» dal giorno dopo la scadenza. Una email per scadenza (colonne reminded_for / suspended_for). @return int email inviate
+	 * Lavoro giornaliero (bin/cron.php): avviso «scade e non si rinnova» entro i giorni di preavviso delle impostazioni (solo per le disdette).
+	 * Una email per scadenza (colonna reminded_for). Gli avvisi su dati e accesso (sospensione, promemoria prima dell'eliminazione, fine prova) li manda il
+	 * gestionale: il portale scrive solo di soldi. @return int email inviate
 	 */
 	public static function sendLifecycleMails( Db $db, ?int $now = null ): int {
 		$now   = $now ?? time();
@@ -366,28 +367,7 @@ final class SaasCheckout {
 				continue;
 			}
 			$org = array( 'org_id' => $o['org_id'], 'name' => $o['org_name'] );
-			if ( $until < $today ) {
-				// Avvisi prima della cancellazione dei dati (180 giorni dalla sospensione): 15 giorni prima e il giorno prima, una volta ciascuno,
-				// nel giorno previsto o il giorno dopo se il lavoro è saltato. Solo finché il gestionale non è stato rinnovato (`until` resta quello).
-				$del  = strtotime( $until . ' UTC +181 days' );
-				$last = explode( ':', (string) $o['purge_notice'] . ':' );
-				foreach ( array( 15, 1 ) as $k ) {
-					$due = gmdate( 'Y-m-d', $del - $k * 86400 );
-					if ( $today < $due || $today > gmdate( 'Y-m-d', strtotime( $due . ' UTC +1 day' ) ) || ( $last[0] === $until && '' !== $last[1] && (int) $last[1] <= $k ) ) {
-						continue;
-					}
-					$db->run( 'UPDATE orders SET purge_notice = ? WHERE id = ?', array( $until . ':' . $k, $o['id'] ) );
-					$sent += self::mail( $db, 'saas_purge_' . $k, $o, $org, $now ) ? 1 : 0;
-					break;
-				}
-				if ( $until < gmdate( 'Y-m-d', $now - 3 * 86400 ) ) {
-					continue; // scaduto da tempo (dati di prova o già gestito a mano): niente email di sospensione a sorpresa
-				}
-				if ( $o['suspended_for'] !== $until ) {
-					$db->run( 'UPDATE orders SET suspended_for = ? WHERE id = ?', array( $until, $o['id'] ) );
-					$sent += self::mail( $db, 'saas_suspended', $o, $org, $now ) ? 1 : 0;
-				}
-			} elseif ( $days > 0 && (int) $o['cancel_at_period_end'] && $until <= gmdate( 'Y-m-d', $now + $days * 86400 ) && $o['reminded_for'] !== $until ) {
+			if ( $until >= $today && $days > 0 && (int) $o['cancel_at_period_end'] && $until <= gmdate( 'Y-m-d', $now + $days * 86400 ) && $o['reminded_for'] !== $until ) {
 				$db->run( 'UPDATE orders SET reminded_for = ? WHERE id = ?', array( $until, $o['id'] ) );
 				$sent += self::mail( $db, 'saas_expiring', $o, $org, $now ) ? 1 : 0;
 			}
@@ -395,63 +375,25 @@ final class SaasCheckout {
 		return $sent;
 	}
 
-	/** Giorni (rispetto alla fine della prova) in cui parte ciascuna email P1…P6; P6 a `purge_days` dalla fine. */
-	private static function trialDue( string $trialEnds, int $purge ): array {
-		$d = function ( int $days ) use ( $trialEnds ) {
-			return gmdate( 'Y-m-d', strtotime( $trialEnds . ' UTC ' . ( $days >= 0 ? '+' : '' ) . $days . ' days' ) );
-		};
-		return array( 1 => $d( -7 ), 2 => $d( -2 ), 3 => $d( 0 ), 4 => $d( 3 ), 5 => $d( $purge - 1 ), 6 => $d( $purge ) );
-	}
-
 	/**
-	 * Lavoro giornaliero (bin/cron.php): la sequenza di email della prova che finisce senza un piano (P1 sette giorni prima… P6 a cancellazione
-	 * fatta), e la chiusura dell'ordine alla cancellazione dei dati. Dopo la fine NON si manda «suspended» (per il SaaS sarebbe un abbonamento scaduto, con 180 giorni):
-	 * resta «trial» con `until` = fine prova, e la sospensione (sola lettura) e la cancellazione dopo `purge_days` le fa il SaaS da sé.
-	 * Ogni email parte una volta sola e solo nel giorno previsto (o il giorno dopo, se il lavoro è saltato): niente arretrati. Lo sconto compare solo
-	 * se è impostato nel catalogo (`terms.trial.end_discount_percent`) e c'è il codice da usare (`saas_trial_promo` in config).
-	 * @return int email inviate
+	 * Lavoro giornaliero (bin/cron.php): chiude l'ordine di una prova finita senza un piano quando il gestionale ne elimina i dati (`purge_days` dalla fine).
+	 * Dopo la fine NON si manda «suspended» (per il SaaS sarebbe un abbonamento scaduto, con 180 giorni): resta «trial» con `until` = fine prova, e la
+	 * sospensione (sola lettura) e l'eliminazione le fa il gestionale da sé, avvisi compresi. @return int ordini chiusi
 	 */
-	public static function sendTrialMails( Db $db, ?int $now = null ): int {
-		$now   = $now ?? time();
-		$today = gmdate( 'Y-m-d', $now );
+	public static function closeEndedTrials( Db $db, ?int $now = null ): int {
+		$now    = $now ?? time();
+		$today  = gmdate( 'Y-m-d', $now );
 		$stored = Catalog::stored( $db, $now );
-		$terms = Catalog::terms( $stored ? $stored['doc'] : array() );
-		$purge = $terms['trial_purge_days'];
-		$pct   = $terms['trial_end_discount_percent'];
-		$code  = trim( (string) Config::get( 'saas_trial_promo', '' ) );
-		$sent  = 0;
-		$rows  = $db->all( "SELECT o.*, g.org_id, g.name AS org_name FROM orders o JOIN saas_orgs g ON g.ref = o.org_ref WHERE o.product = 'saas' AND o.status = 'trial' AND o.trial_ends IS NOT NULL AND g.org_id IS NOT NULL" );
+		$purge  = Catalog::terms( $stored ? $stored['doc'] : array() )['trial_purge_days'];
+		$closed = 0;
+		$rows   = $db->all( "SELECT o.* FROM orders o JOIN saas_orgs g ON g.ref = o.org_ref WHERE o.product = 'saas' AND o.status = 'trial' AND o.trial_ends IS NOT NULL AND g.org_id IS NOT NULL" );
 		foreach ( $rows as $o ) {
-			$org  = array( 'org_id' => $o['org_id'], 'name' => $o['org_name'] );
-			$end  = (string) $o['trial_ends'];
-			$del  = gmdate( 'Y-m-d', strtotime( $end . ' UTC +' . $purge . ' days' ) );
-			$base = rtrim( (string) Config::get( 'base_url' ), '/' );
-			$vars = array(
-				'fine_prova' => date_it( $end . ' 00:00:00' ), 'data_cancellazione_prova' => date_it( $del . ' 00:00:00' ), 'piani_url' => $base . '/account#gestionale', 'acquista_url' => $base . '/saas/acquista',
-				'sconto' => $pct . '%', 'codice_sconto' => $code, 'scadenza_sconto' => date_it( $del . ' 00:00:00' ),
-			);
-			$offer = $pct > 0 && '' !== $code ? array(
-				3 => 'Se scegli un piano entro il {scadenza_sconto} hai uno sconto del {sconto} sul primo pagamento: usa il codice {codice_sconto} al momento dell\'acquisto.',
-				4 => 'Lo sconto del {sconto} con il codice {codice_sconto} vale fino a quel giorno.',
-				5 => 'Il codice {codice_sconto} ({sconto} di sconto) vale fino a domani.',
-			) : array();
-			foreach ( self::trialDue( $end, $purge ) as $step => $due ) {
-				if ( $step <= (int) $o['trial_step'] || $today < $due ) {
-					continue;
-				}
-				$db->run( 'UPDATE orders SET trial_step = ? WHERE id = ?', array( $step, $o['id'] ) );
-				if ( $today > gmdate( 'Y-m-d', strtotime( $due . ' UTC +1 day' ) ) ) {
-					continue; // arretrato: il lavoro non è girato in quel giorno, l'avviso non ha più senso
-				}
-				$vars['offerta'] = isset( $offer[ $step ] ) ? Emails::render( $offer[ $step ], $vars ) : '';
-				$sent += self::mail( $db, 'saas_trial_p' . $step, $o, $org, $now, $vars ) ? 1 : 0;
-			}
-			// Cancellazione dei dati (la fa il SaaS): l'ordine di prova si chiude qui.
-			if ( $today >= $del ) {
+			if ( $today >= gmdate( 'Y-m-d', strtotime( (string) $o['trial_ends'] . ' UTC +' . $purge . ' days' ) ) ) {
 				$db->run( "UPDATE orders SET status = 'trial_purged', updated_at = ? WHERE id = ?", array( gmdate( 'Y-m-d H:i:s', $now ), $o['id'] ) );
+				++$closed;
 			}
 		}
-		return $sent;
+		return $closed;
 	}
 
 	/**
