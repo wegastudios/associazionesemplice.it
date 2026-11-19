@@ -303,7 +303,7 @@ final class Receipts {
 		}
 		$st = ReceiptFiles::state( $rec, $kind );
 		if ( 'locked' === $st ) {
-			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è cifrato e la chiave di questo sito non lo apre: non viene rifatto, per non perdere il file. Sistema prima la chiave da Impostazioni → Copia di sicurezza → «Cifratura dei file riservati».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è cifrato e la chiave di questo sito non lo apre: non viene rifatto, per non perdere il file. Sistema prima la chiave da Strumenti → Copia di sicurezza → «Cifratura dei file riservati».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! in_array( $st, array( 'missing', 'altered' ), true ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è a posto: non serve rifarlo.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html

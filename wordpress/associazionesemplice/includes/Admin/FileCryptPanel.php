@@ -31,7 +31,7 @@ final class FileCryptPanel {
 	 */
 	public static function cert_parts(): ?array {
 		$s  = FileMigration::state( FileMigration::CERT_OPT );
-		$ex = Texts::t( 'Lo stato si vede in Impostazioni → Copia di sicurezza → «Cifratura dei file riservati».' );
+		$ex = Texts::t( 'Lo stato si vede in Strumenti → Copia di sicurezza → «Cifratura dei file riservati».' );
 		if ( 'running' === $s['status'] ) {
 			if ( $s['done'] + $s['already'] + $s['failed'] + $s['missing'] <= 0 ) {
 				return array( 'type' => 'info', 'key' => '', 'days' => 0, 'link' => 'stato', 'body' => Texts::t( 'Si fa da sola, mentre usi il programma: non serve premere nulla.' ) . ' ' . $ex, 'title' => Texts::t( 'La cifratura dei certificati medici è partita.' ) );
@@ -40,7 +40,7 @@ final class FileCryptPanel {
 		}
 		if ( 'done' === $s['status'] && $s['finished'] > 0 ) {
 			if ( $s['failed'] > 0 || $s['missing'] > 0 ) {
-				return array( 'type' => 'warning', 'key' => 'cert-crypt-done', 'days' => 365, 'link' => 'stato', 'title' => Texts::t( 'La cifratura dei certificati medici è finita, ma {f} non si sono potuti cifrare e {m} non sono stati trovati sul server.', array( 'f' => $s['failed'], 'm' => $s['missing'] ) ), 'body' => Texts::t( 'I certificati non cifrati sono rimasti dove stavano: l\'elenco è in Impostazioni → Copia di sicurezza → «Cifratura dei file riservati». Apri l\'elenco e premi «Riprova»; se il file non si trova, elimina il certificato dalla pagina Certificati e caricalo di nuovo, oppure ripristina una copia di sicurezza.' ) );
+				return array( 'type' => 'warning', 'key' => 'cert-crypt-done', 'days' => 365, 'link' => 'stato', 'title' => Texts::t( 'La cifratura dei certificati medici è finita, ma {f} non si sono potuti cifrare e {m} non sono stati trovati sul server.', array( 'f' => $s['failed'], 'm' => $s['missing'] ) ), 'body' => Texts::t( 'I certificati non cifrati sono rimasti dove stavano: l\'elenco è in Strumenti → Copia di sicurezza → «Cifratura dei file riservati». Apri l\'elenco e premi «Riprova»; se il file non si trova, elimina il certificato dalla pagina Certificati e caricalo di nuovo, oppure ripristina una copia di sicurezza.' ) );
 			}
 			return array( 'type' => 'success', 'key' => 'cert-crypt-done', 'days' => 365, 'link' => 'stato', 'title' => Texts::t( 'La cifratura dei certificati medici è finita.' ), 'body' => Texts::t( 'Tutti i certificati già caricati sono ora cifrati sul disco.' ) . ' ' . $ex );
 		}
@@ -48,7 +48,7 @@ final class FileCryptPanel {
 			return array( 'type' => 'error', 'key' => 'cert-crypt-nosodium', 'days' => 7, 'link' => 'sodium', 'title' => Texts::t( 'I certificati medici già caricati restano in chiaro: su questo server manca la libreria di cifratura (sodium).' ), 'body' => Texts::t( 'La cifratura parte da sola appena l\'estensione sodium di PHP è attiva. Chiedi a chi gestisce il server o l\'hosting di attivarla.' ) );
 		}
 		if ( 'nokey' === $s['status'] ) {
-			return array( 'type' => 'error', 'key' => 'cert-crypt-nokey', 'days' => 3, 'link' => 'chiave', 'title' => Texts::t( 'La cifratura dei certificati medici è ferma: la chiave non si apre su questo sito.' ), 'body' => Texts::t( 'I certificati già caricati restano in chiaro e non viene toccato nulla. Va sistemata la chiave (Impostazioni → Copia di sicurezza → «Cifratura dei file riservati» → «Sistemare la chiave»): poi la cifratura riparte da sola.' ) );
+			return array( 'type' => 'error', 'key' => 'cert-crypt-nokey', 'days' => 3, 'link' => 'chiave', 'title' => Texts::t( 'La cifratura dei certificati medici è ferma: la chiave non si apre su questo sito.' ), 'body' => Texts::t( 'I certificati già caricati restano in chiaro e non viene toccato nulla. Va sistemata la chiave (Strumenti → Copia di sicurezza → «Cifratura dei file riservati» → «Sistemare la chiave»): poi la cifratura riparte da sola.' ) );
 		}
 		return null;
 	}

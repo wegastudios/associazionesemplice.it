@@ -7,7 +7,7 @@ use AssociazioneSemplice\Texts;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Impostazioni → Copia di sicurezza. */
+/** Strumenti → Copia di sicurezza. */
 final class BackupPage {
 
 	public static function render(): void {
