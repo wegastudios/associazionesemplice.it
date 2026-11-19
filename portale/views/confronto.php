@@ -126,7 +126,7 @@ $fragment = ! empty( $fragment );
 <?php return; endif; ?>
 <section class="page"><div class="wrap cmp-page" style="max-width:920px">
 	<span class="eyebrow">Cosa cambia tra i piani</span>
-	<h1>Confronto tra le versioni</h1>
+	<h1>Confronto tra i piani</h1>
 	<?php if ( $promoName ) : ?><p><span class="promo-tag" style="margin:0"><?php echo e( $promoName ); ?></span> <b>Prezzi in promozione fino al <?php echo e( date( 'd/m/Y', strtotime( $promoEnd ) ) ); ?></b>: nell'intestazione di ogni piano trovi il prezzo in vigore e il listino barrato.</p><?php endif; ?>
 	<div data-confronto-inline data-cmp="<?php echo $cmpData; ?>"><?php echo $html; ?></div>
 	<script src="/assets/confronto.js" defer></script>

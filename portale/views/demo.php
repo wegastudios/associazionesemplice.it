@@ -5,13 +5,13 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 	<div class="section-head" style="text-align:left;margin-bottom:28px">
 		<span class="eyebrow">Demo pubblica</span>
 		<h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prova Associazione Semplice</h1>
-		<p>Un sito WordPress vero con il plugin gratuito e il Pro già installati e pieno di dati inventati. Serve soprattutto a provare le funzioni Pro. Clicca, inserisci, cancella: non rompi niente. Non scrivere dati veri, perché tutto si azzera ogni notte alle 4, non partono email e le password non si possono cambiare.</p>
+		<p>Un sito WordPress vero, con il plugin gratuito e il Pro già installati e dati inventati. Clicca, inserisci, cancella: non rompi niente. Non scrivere dati veri: la demo è pubblica e si azzera ogni notte alle 4. Non partono email e le password non si cambiano.</p>
 		<p><a class="btn big" href="<?php echo e( $url( '/' ) ); ?>">Apri la demo</a></p>
 	</div>
 
 	<h2>Come entrare</h2>
 	<p class="muted">Tre accessi di prova: scegli il ruolo che vuoi vedere. Per cambiare ruolo usa «Esci» nella barra blu in fondo alla pagina e poi entra con un altro.</p>
-	<p class="feature" style="margin:0 0 20px"><b>Vuoi provare per più giorni?</b> La demo si azzera ogni notte alle 4, ma con l'accesso «amministratore del plugin» puoi scaricare una copia dei tuoi dati da <i>Copia di sicurezza</i> («Scarica la copia dei dati») e ricaricarla il giorno dopo con «Ripristina dalla copia»: ritrovi tutto com'era.</p>
+	<p class="feature" style="margin:0 0 20px"><b>Vuoi provare per più giorni?</b> Entra come «amministratore del plugin», apri <i>Copia di sicurezza</i> e premi «Scarica la copia dei dati». Il giorno dopo la ricarichi con «Ripristina dalla copia» e ritrovi tutto.</p>
 	<div class="grid-3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-bottom:12px">
 	<?php foreach ( $accounts as $a ) : ?>
 		<div class="feature">
@@ -53,7 +53,7 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 
 <section class="section alt"><div class="wrap" style="max-width:960px">
 	<h2>Dove andare</h2>
-	<p class="muted">I collegamenti sono tutti nella demo. Quelli «come socio» e «come segreteria» chiedono di aver fatto l'accesso con il ruolo giusto.</p>
+	<p class="muted">I collegamenti aprono la demo. Per quelli «come socio» e «come segreteria» entra prima con quel ruolo.</p>
 	<?php foreach ( $links as $group => $rows ) : ?>
 		<h3 style="margin-top:22px"><?php echo e( $group ); ?></h3>
 		<div class="tbl-wrap"><table class="tbl"><tbody>

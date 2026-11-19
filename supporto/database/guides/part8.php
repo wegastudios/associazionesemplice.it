@@ -73,10 +73,12 @@ Se chi compila la domanda risulta minorenne dalla data di nascita, il modulo chi
 
 ### Se il genitore è già in anagrafica
 
-Se l'email del genitore o tutore è già quella di una persona in anagrafica, approvare la domanda non basta: prima il genitore deve **confermare**. Solo allora nascono il collegamento con il minore e le accettazioni date a nome del minore (regolamento, informativa privacy, scelta sulle immagini). Se il genitore è nuovo, non serve nessuna conferma.
+Quando approvi la domanda di un minore, il plugin guarda l'email del genitore o tutore indicata nella domanda. Se non è ancora in anagrafica, il genitore viene registrato e collegato subito al minore, senza nessuna conferma. Se è già in anagrafica, il collegamento con il minore e le accettazioni date a suo nome (regolamento, informativa privacy, scelta sulle immagini) non si attribuiscono da soli: prima il genitore deve **confermare**.
 
 1. All'approvazione il genitore riceve, **all'indirizzo già registrato**, l'email **«Conferma del genitore o tutore»** con un link che vale **7 giorni**.
 2. Il link apre la pagina **«Conferma del genitore o tutore»** con il pulsante **«Confermo»**: **aprire il link non basta**, la conferma c'è solo premendo il pulsante. Poi compare **«Grazie, confermato.»**
+
+Il collegamento tra genitore e minore nasce solo dopo la conferma.
 
 **In segreteria**, nella scheda del minore (riquadro **Privacy**) vedi **«In attesa della conferma del genitore»**, con il nome del genitore, la data dell'email e la scritta «Il genitore non ha ancora confermato: il collegamento si crea quando conferma». Puoi **approvare la domanda anche prima** della conferma. Con **«Rimanda l'email di conferma»** il messaggio riparte (**al massimo 3 volte all'ora**: dopo compare «Hai già rimandato il messaggio più volte: riprova tra un'ora.»).
 

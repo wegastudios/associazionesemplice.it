@@ -4,17 +4,17 @@ $euro = function ( $c ) { return number_format( $c / 100, ( $c % 100 ) ? 2 : 0, 
 // Testi di vetrina: si possono sostituire da config.php (plans.<codice>.tagline / features).
 $copy = array(
 	'free' => array( 'tagline' => 'Per partire subito, senza costi e senza scadenza.', 'lead' => '', 'features' => array(
-		'Libro soci con nuovi iscritti, schede e numerazione',
+		'Libro soci con schede e numerazione progressiva',
 		'Tessera digitale e stampabile con QR',
 		'Corsi ed eventi: iscrizioni, posti e lista d\'attesa',
 		'Prima nota con cassa unica, spese e donazioni PayPal',
-		'Anni solari: apertura e chiusura',
+		'Anni fiscali: apertura e chiusura',
 		'Verbali, informativa privacy e consensi',
 		'Area riservata dei soci e ruoli della segreteria',
 		'Importazione ed esportazione degli elenchi',
 		'Copia di sicurezza dei dati',
 	) ),
-	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte fiscale.', 'tag' => 'Per gli incassi online', 'lead' => 'Tutto il Free, più:', 'features' => array(
+	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte fiscale.', 'tag' => 'Per gli incassi online', 'lead' => 'Tutto il gratuito, più:', 'features' => array(
 		'Pagamenti online con carta, PayPal e WooCommerce',
 		'Più livelli di socio, quote diverse e nucleo familiare',
 		'Conti multipli, fondi e giroconti',
@@ -39,7 +39,7 @@ $copy = array(
 <?php if ( Portale\SaasSale::on() ) : ?><nav class="product-nav" aria-label="Prodotti"><a href="#prezzi">Plugin per WordPress</a><a href="#prezzi-saas">Gestionale SaaS</a></nav><?php endif; ?>
 <section class="section pricing" id="prezzi" data-period="year"><div class="wrap">
 	<span class="eyebrow">Plugin per WordPress</span>
-	<div class="section-head"><h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prezzi chiari, disdici quando vuoi</h1><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli, ogni mese o ogni anno, e si disdicono quando vuoi dall'area riservata.</p></div>
+	<div class="section-head"><h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prezzi chiari, disdici quando vuoi</h1><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli, ogni mese o ogni anno, e li disdici quando vuoi dall'area riservata.</p></div>
 	<div class="seg" role="group" aria-label="Periodo di fatturazione">
 		<button type="button" data-period="month" aria-pressed="false">Mensile</button>
 		<button type="button" data-period="year" aria-pressed="true">Annuale</button>
@@ -72,7 +72,7 @@ $copy = array(
 			<?php if ( 'free' === $code ) : ?>
 				<a class="btn alt block" href="/free">Inizia gratis</a>
 			<?php else : ?>
-				<?php if ( ! \Portale\Billing::paymentsOn() ) : ?><a class="btn alt block" href="/free">Avvisami quando si può acquistare</a><?php else : ?>
+				<?php if ( ! \Portale\Billing::paymentsOn() ) : ?><a class="btn alt block" href="/free">Intanto parti dal gratuito</a><?php else : ?>
 				<?php if ( $m ) : ?><a class="btn<?php echo $hot ? '' : ' alt'; ?> block only-month" href="/acquista?plan=<?php echo e( \Portale\Site::slug( $code ) ); ?>&amp;period=month">Scegli <?php echo e( $p['label'] ); ?></a><?php endif; ?>
 				<?php if ( $y ) : ?><a class="btn<?php echo $hot ? '' : ' alt'; ?> block only-year" href="/acquista?plan=<?php echo e( \Portale\Site::slug( $code ) ); ?>&amp;period=year">Scegli <?php echo e( $p['label'] ); ?></a><?php endif; ?>
 				<?php endif; ?>
@@ -81,6 +81,6 @@ $copy = array(
 	<?php endforeach; ?>
 	</div>
 	<?php if ( ! empty( $trial ) ) : ?><p class="fine" style="font-weight:600;color:var(--fg)">Hai già la licenza gratuita? Prova gratis <?php echo e( (string) \Portale\Config::get( 'plans.' . \Portale\Config::get( 'trial_plan', 'full' ) . '.label', 'il piano Pro' ) ); ?> per <?php echo (int) $trial; ?> giorni dall'area riservata, una volta sola: nessuna carta, nessun addebito alla fine.</p><?php endif; ?>
-	<p class="fine"><a href="/confronto">Confronta tutte le funzioni delle tre versioni</a>. <?php $vl = Portale\Settings::vatLine( true ); echo e( '' !== $vl ? $vl : 'Prezzi in euro.' ); ?> Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
+	<p class="fine"><a href="/confronto">Confronta tutte le funzioni dei tre piani</a>. <?php $vl = Portale\Settings::vatLine( true ); echo e( '' !== $vl ? $vl : 'Prezzi in euro.' ); ?> Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
 </div></section>
 <?php if ( Portale\SaasSale::on() ) { $show_table = false; include __DIR__ . "/_catalog_saas.php"; } ?>
