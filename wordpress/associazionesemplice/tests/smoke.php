@@ -8651,6 +8651,14 @@ wp_update_post( array( 'ID' => $pb_p, 'post_status' => 'draft' ) );
 asem_ok( array( $pb_a => $pb_p ) === \AssociazioneSemplice\PublicEvents::draft_pages( array( $pb_a ) ), 'pubblica collettivo: la pagina in bozza è riconosciuta' );
 asem_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Pubblica le pagine selezionate' );
 asem_ok( 1 === \AssociazioneSemplice\PublicEvents::publish_pages( array( $pb_a, 0 ) ) && 'publish' === get_post_status( $pb_p ) && ! \AssociazioneSemplice\PublicEvents::draft_pages( array( $pb_a ) ) && 0 === \AssociazioneSemplice\PublicEvents::publish_pages( array( $pb_a ) ), 'pubblica collettivo: pubblica le bozze scelte e non tocca le già pubblicate' );
+// salvataggio dei dati dell'ente con il cambio del mese dell'anno fiscale: prima l'anteprima, poi la conferma (i messaggi usano Texts: un nome di classe sbagliato qui è un errore fatale)
+if ( ! \AssociazioneSemplice\FiscalYears::start_month_locked() ) {
+	$ra_ent  = array_merge( asem_wz_entity(), array( 'fiscal_start_month' => '7' ) );
+	$ra_sv1  = Admin\TechActions::save_entity( $ra_ent );
+	asem_ok( is_array( $ra_sv1 ) && false !== strpos( (string) $ra_sv1[1], 'Dati dell\'ente salvati.' ) && false !== strpos( (string) $ra_sv1[1], 'non è cambiato' ) && 1 === (int) Settings::get( 'fiscal_start_month' ), 'dati dell\'ente: il cambio del mese senza conferma salva il resto e spiega cosa succede alle tessere' );
+	$ra_sv2  = Admin\TechActions::save_entity( array_merge( $ra_ent, array( 'confirm_card_realign' => '1' ) ) );
+	asem_ok( false !== strpos( (string) $ra_sv2[1], 'Tessere riallineate' ) || false !== strpos( (string) $ra_sv2[1], 'copia di sicurezza non è riuscita' ), 'dati dell\'ente: il cambio del mese confermato dice l\'esito del riallineamento' );
+}
 foreach ( (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) as $ra_bk ) {
 	wp_delete_file( $ra_bk ); // la copia di prova non resta
 }
