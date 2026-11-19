@@ -96,7 +96,7 @@ cancellazione deve ammettere questa sola operazione, solo al ruolo proprietario 
 ## 8. Fine della prova senza un piano (decisione della titolare, 13/11/2026)
 
 Chi non sceglie un piano alla fine dei 30 giorni di prova non ha avuto un abbonamento: i dati della prova si
-cancellano **7 giorni dopo la fine della prova** (`terms.trial.purge_days`), non dopo 180. Prima partono email di avviso,
+cancellano **7 giorni dopo la fine della prova** (`terms.lifecycle.trial_purge_days`, dalla configurazione del gestionale), non dopo 180. Prima partono email di avviso,
 con una proposta scontata che dà il portale (`terms.trial.end_discount_percent`, partenza 0), perché solo il portale conosce il codice sconto: gli avvisi del gestionale non nominano lo sconto. Non si
 esporta (la prova non esporta). La cancellazione usa gli stessi passi di §3–4 con la scadenza della prova al posto di
 `until`; chi sceglie un piano prima, la ferma. Sequenza degli avvisi da definire con l'audit (per esempio al giorno

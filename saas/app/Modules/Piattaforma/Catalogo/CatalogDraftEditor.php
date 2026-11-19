@@ -360,7 +360,6 @@ final readonly class CatalogDraftEditor
                 'exports' => ($input['trial_exports'] ?? null) === '1',
                 'accountant_access' => ($input['trial_accountant_access'] ?? null) === '1',
                 'end_discount_percent' => CatalogForm::int($input['end_discount_percent'] ?? null),
-                'purge_days' => CatalogForm::int($input['purge_days'] ?? null),
             ],
             'members' => [
                 'warn_percent' => CatalogForm::int($input['warn_percent'] ?? null),

@@ -151,7 +151,8 @@ Il portale lo legge dal catalogo come il resto e **applica** le regole, non le r
 | `terms.trial.exports` | bool (partenza `false`) | Con `false` durante la prova sono vietate le esportazioni (dati, contabilità, libro soci). |
 | `terms.trial.accountant_access` | bool (partenza `false`) | Con `false` durante la prova non si può collegare un commercialista. |
 | `terms.trial.end_discount_percent` | intero 0–100 (partenza 0) | Sconto proposto nelle email di fine prova a chi non ha ancora scelto un piano. Con 0 non si propone nulla. Lo imposta la titolare. |
-| `terms.trial.purge_days` | intero 1–90 (partenza 7) | Giorni dopo la fine della prova (senza piano) dopo i quali i dati della prova si cancellano; prima partono le email di avviso. |
+| `terms.lifecycle.retention_days` | intero, solo lettura (180) | Non si imposta dal pannello: lo scrive il SaaS dalla sua configurazione (`saas.portal.retention_days`) a ogni risposta. Giorni dalla scadenza: l'ultimo giorno in cui i dati ci sono è la scadenza più questi giorni; poi si eliminano. Il portale li legge da qui, senza copia propria. |
+| `terms.lifecycle.trial_purge_days` | intero, solo lettura (7) | Come sopra, per i dati della prova senza piano, dalla fine della prova (`saas.portal.trial_purge_days`). Sostituisce il vecchio `terms.trial.purge_days`. |
 | `terms.members.warn_percent` | intero 1–100 (partenza 80) | Il SaaS avvisa il titolare quando i soci arrivano a questa percentuale del limite del piano (limite = soci del piano + pacchetti di soci). |
 | `terms.members.full_percent` | intero 1–100, non sotto `warn_percent` (partenza 100) | Secondo avviso, con la data in cui scade la tolleranza. |
 | `terms.members.tolerance_percent` | intero 0–50 (partenza 10) | Si può superare il limite fino a questa percentuale. |
