@@ -33,7 +33,7 @@ final class LicensePolicyTest extends TestCase {
 		$r = P::evaluate( P::STATUS_UNLICENSED, '2026-10-01', '2026-10-20' );
 		$this->assertSame( P::POPUP_LOCKED, $r['popup'] );
 		$this->assertSame( License::FEATURES, $r['blocked'] );
-		$this->assertStringContainsString( 'associato', P::message( P::STATUS_UNLICENSED ) );
+		$this->assertStringContainsString( 'licenza valida', P::message( P::STATUS_UNLICENSED ) );
 		$this->assertStringContainsString( 'pagamento', P::message( P::STATUS_UNPAID ) );
 	}
 

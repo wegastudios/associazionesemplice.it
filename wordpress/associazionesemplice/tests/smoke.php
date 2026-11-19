@@ -540,7 +540,7 @@ $lic_sign_on = false;
 $lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
 $lic_plan0   = License::state()['plan'];
 $lic_r       = License::sync( true );
-asem_ok( ! $lic_r['ok'] && false !== strpos( $lic_r['message'], 'firma' ) && License::state()['plan'] === $lic_plan0, 'verifica: una licenza valida senza firma non viene accettata e lo stato resta com\'era' );
+asem_ok( ! $lic_r['ok'] && false !== strpos( $lic_r['message'], 'verificare la risposta' ) && License::state()['plan'] === $lic_plan0, 'verifica: una licenza valida senza firma non viene accettata e lo stato resta com\'era' );
 $lic_sign_on = true;
 $lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => $pl_att( array( 'plan' => 'lite' ) ) );
 License::sync( true );
