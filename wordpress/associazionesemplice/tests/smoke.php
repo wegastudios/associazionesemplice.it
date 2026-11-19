@@ -5546,7 +5546,7 @@ try {
 	$threw = true;
 }
 asem_ok( $threw, 'scollega telefono: non per gli ospiti' );
-$dash_links = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Area soci' );
+$dash_links = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Area riservata' );
 asem_ok( false !== strpos( $dash_links, 'https://associazionesemplice.it/account' ) && false !== strpos( $dash_links, 'https://associazionesemplice.it/supporto/accedi' ) && false !== strpos( $dash_links, '>Supporto</a>' ), 'bacheca: collegamenti all\'area riservata e al supporto di associazionesemplice.it' );
 
 // avviso «ci sono aggiornamenti»
