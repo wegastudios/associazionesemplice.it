@@ -19,7 +19,7 @@ final class Discrepancies {
 		'unattached'        => 'spesa con beneficiario non attribuita a nessun fondo',
 		'alert'             => 'sbilancio di fine anno oltre le soglie',
 		'budget'            => 'voce fuori preventivo',
-		'uncategorized'     => 'movimento senza una categoria vera',
+		'uncategorized'     => 'movimento senza una voce precisa',
 	);
 
 	private static function db(): \wpdb {
