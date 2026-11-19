@@ -139,7 +139,7 @@ it('controlla attività e iscrizioni', function (): void {
 
         $yoga = course();
         expect(fn () => $s->enroll($yoga->id, $guardian->id))->toThrow(ActivityError::class, 'genitore')
-            ->and(fn () => $s->enroll($yoga->id, $member->id, '1999-01'))->toThrow(ActivityError::class, 'fuori dall\'anno di questa attività');
+            ->and(fn () => $s->enroll($yoga->id, $member->id, '1999-01'))->toThrow(ActivityError::class, 'anno delle attività');
         $s->archive($yoga->id, true);
         expect(fn () => $s->enroll($yoga->id, $member->id))->toThrow(ActivityError::class, 'archiviata')
             ->and(app(ActivityService::class)->options())->toHaveCount(1);
