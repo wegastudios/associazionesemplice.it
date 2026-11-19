@@ -112,7 +112,7 @@ final class Refunds {
 					$row['enc_ver']     = $saved['enc_ver'];
 				}
 				if ( ! self::db()->insert( Db::t( 'refunds' ), $row ) ) {
-					throw new \InvalidArgumentException( 'Impossibile salvare la richiesta (errore del database).' );
+					throw new \InvalidArgumentException( 'La richiesta non è stata salvata per un errore tecnico: riprova.' );
 				}
 				$id = (int) self::db()->insert_id;
 				Audit::log( 'refund.requested', 'refund', $id, array( 'kind' => $kind, 'cents' => $cents ) );
@@ -184,7 +184,7 @@ final class Refunds {
 
 	private static function guard_self( array $r ): void {
 		if ( RefundRules::self_approval_blocked( self::actor_person_id(), (int) $r['person_id'], self::self_approval_allowed() ) ) {
-			throw new \InvalidArgumentException( 'Non puoi approvare o pagare un rimborso a tuo nome: lo fa un altro membro della segreteria o del direttivo (oppure attiva l\'opzione nelle impostazioni dei rimborsi).' );
+			throw new \InvalidArgumentException( 'Non puoi approvare o pagare un rimborso a tuo nome: deve farlo un\'altra persona della segreteria o del direttivo. Per permetterlo, attiva l\'opzione nelle impostazioni dei rimborsi.' );
 		}
 	}
 
@@ -216,7 +216,7 @@ final class Refunds {
 				}
 				self::db()->update( Db::t( 'refunds' ), array( 'status' => RefundRules::APPROVED, 'decided_by' => $user_id, 'decided_on' => Db::today(), 'reject_reason' => null, 'updated_at' => Db::now() ), array( 'id' => $id ) );
 				Audit::log( 'refund.approved', 'refund', $id );
-				self::notify( $r, 'refund_approved', 'Rimborso approvato', 'la tua richiesta di rimborso ' . self::summary( $r ) . ' è stata approvata. Ti sarà pagato dalla segreteria.' );
+				self::notify( $r, 'refund_approved', 'Rimborso approvato', 'la tua richiesta di rimborso ' . self::summary( $r ) . ' è stata approvata. La segreteria ti pagherà il rimborso.' );
 			}
 		);
 	}
@@ -234,7 +234,7 @@ final class Refunds {
 				self::guard_self( $r );
 				self::db()->update( Db::t( 'refunds' ), array( 'status' => RefundRules::REJECTED, 'decided_by' => $user_id, 'decided_on' => Db::today(), 'reject_reason' => $reason, 'updated_at' => Db::now() ), array( 'id' => $id ) );
 				Audit::log( 'refund.rejected', 'refund', $id );
-				self::notify( $r, 'refund_rejected', 'Rimborso non accolto', 'la tua richiesta di rimborso ' . self::summary( $r ) . ' non è stata accolta. Motivo: ' . $reason );
+				self::notify( $r, 'refund_rejected', 'Rimborso rifiutato', 'la tua richiesta di rimborso ' . self::summary( $r ) . ' è stata rifiutata. Motivo: ' . $reason );
 			}
 		);
 	}
@@ -268,7 +268,7 @@ final class Refunds {
 				$ledger = Plugin::ledger();
 				$cat    = $ledger->category_id_of_kind( 'member_reimbursement' );
 				if ( ! $cat ) {
-					throw new \InvalidArgumentException( 'In prima nota manca la categoria «Rimborso spese socio/volontario»: creala dalle categorie.' );
+					throw new \InvalidArgumentException( 'In prima nota manca la voce «Rimborso spese socio/volontario»: creala tra le voci di prima nota.' );
 				}
 				$date = '' === $date ? Db::today() : $date;
 				$tx   = $ledger->record_expense(

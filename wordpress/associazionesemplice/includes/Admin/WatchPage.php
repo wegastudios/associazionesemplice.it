@@ -13,7 +13,7 @@ use AssociazioneSemplice\Plugin;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Contabilità → Bilancio provvisorio: l'anno fiscale in corso aggiornato al mese concluso, il mese in corso, gli avvisi sulla tendenza e lo
+ * Contabilità → Rendiconto provvisorio: l'anno fiscale in corso aggiornato al mese concluso, il mese in corso, gli avvisi sulla tendenza e lo
  * storico mensile; più i due elenchi dei fondi (spese documentate non rimborsate, fondi accantonati non documentati).
  */
 final class WatchPage {
@@ -35,11 +35,11 @@ final class WatchPage {
 		}
 		$s = BalanceWatch::status();
 		foreach ( $s['alerts'] as $a ) {
-			echo Dismiss::html( 'watch-' . $a['kind'] . '-' . $s['year'] . '-' . substr( $s['today'], 0, 7 ), 'warning', '<strong>' . esc_html( BalanceWatchRules::title( $a['kind'] ) ) . '.</strong> ' . esc_html( BalanceWatchRules::message( $a ) ) . ' <a href="' . esc_url( Ui::url( 'asem-watch' ) ) . '">Apri il bilancio provvisorio</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
+			echo Dismiss::html( 'watch-' . $a['kind'] . '-' . $s['year'] . '-' . substr( $s['today'], 0, 7 ), 'warning', '<strong>' . esc_html( BalanceWatchRules::title( $a['kind'] ) ) . '.</strong> ' . esc_html( BalanceWatchRules::message( $a ) ) . ' <a href="' . esc_url( Ui::url( 'asem-watch' ) ) . '">Apri il rendiconto provvisorio</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 		}
 	}
 
-	/** Schede della Bacheca: bilancio provvisorio e fondi da documentare. */
+	/** Schede della Bacheca: rendiconto provvisorio e fondi da documentare. */
 	public static function dashboard_cards(): void {
 		if ( ! Edition::has( 'watch' ) || ! current_user_can( Plugin::CAP_OPS ) ) {
 			return;
@@ -67,9 +67,9 @@ final class WatchPage {
 
 	// ---------- Il bilancio ----------
 
-	/** Bilancio provvisorio + mese in corso + tendenza. */
+	/** Rendiconto provvisorio + mese in corso + tendenza. */
 	private static function box( array $s, bool $link ): void {
-		echo '<h2>Bilancio dell\'anno fiscale ' . esc_html( $s['label'] ) . '</h2>';
+		echo '<h2>Rendiconto dell\'anno fiscale ' . esc_html( $s['label'] ) . '</h2>';
 		echo '<p class="description">Dal ' . esc_html( self::date( $s['from'] ) ) . ' al ' . esc_html( self::date( $s['to'] ) ) . '. Prima nota, senza giroconti né movimenti annullati; i fondi accantonati per i rimborsi contano come uscite.</p>';
 		if ( $s['provisional'] ) {
 			$p = $s['provisional'];
@@ -83,7 +83,7 @@ final class WatchPage {
 				echo '<p class="description">Non c\'è un preventivo per quest\'anno: <a href="' . esc_url( Ui::url( 'asem-budget', array( 'new' => 1 ) ) ) . '">crealo</a> per mettere a confronto previsto e speso.</p>';
 			}
 		} else {
-			echo '<p class="description">Il primo mese dell\'anno fiscale non è ancora concluso: il bilancio provvisorio compare a fine mese.</p>';
+			echo '<p class="description">Il primo mese dell\'anno fiscale non è ancora concluso: il rendiconto provvisorio compare a fine mese.</p>';
 		}
 		$mo = $s['month'];
 		echo '<h3>Mese in corso (dal ' . esc_html( self::date( $mo['from'] ) ) . ' a oggi)</h3><p>Entrate ' . self::m( $mo['income'] ) . ' · uscite ' . self::m( $mo['expense'] ) . ' · <strong>risultato ' . self::m( $mo['result'] ) . '</strong></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -99,7 +99,7 @@ final class WatchPage {
 	}
 
 	public static function render(): void {
-		Ui::header( 'Bilancio provvisorio' );
+		Ui::header( 'Rendiconto provvisorio' );
 		\AssociazioneSemplice\YearEndCheck::show();
 		$s = BalanceWatch::status();
 		foreach ( $s['alerts'] as $a ) {

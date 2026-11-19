@@ -80,7 +80,7 @@ final class ResourceRules {
 		$min = max( 1, (int) ( $res['min_slots'] ?? 1 ) );
 		$max = max( $min, (int) ( $res['max_slots'] ?? $min ) );
 		if ( $slots < $min || $slots > $max ) {
-			throw new \InvalidArgumentException( $min === $max ? 'Si prenota per ' . $min . ' ' . ( 1 === $min ? 'fascia' : 'fasce' ) . '.' : 'Si prenotano da ' . $min . ' a ' . $max . ' fasce di seguito.' );
+			throw new \InvalidArgumentException( $min === $max ? 'Puoi prenotare ' . $min . ' ' . ( 1 === $min ? 'fascia' : 'fasce' ) . '.' : 'Puoi prenotare da ' . $min . ' a ' . $max . ' fasce di seguito.' );
 		}
 		if ( $from < $open || ( $from - $open ) % $step !== 0 ) {
 			throw new \InvalidArgumentException( 'L\'orario di inizio non corrisponde alle fasce della risorsa.' );
@@ -97,7 +97,7 @@ final class ResourceRules {
 			}
 			$days = (int) ( $res['advance_days'] ?? 0 );
 			if ( $days > 0 && $date > gmdate( 'Y-m-d', strtotime( substr( $now, 0, 10 ) . ' +' . $days . ' days' ) ) ) {
-				throw new \InvalidArgumentException( 'Si può prenotare al massimo ' . $days . ' ' . ( 1 === $days ? 'giorno' : 'giorni' ) . ' prima.' );
+				throw new \InvalidArgumentException( 'Puoi prenotare al massimo ' . $days . ' ' . ( 1 === $days ? 'giorno' : 'giorni' ) . ' prima.' );
 			}
 		}
 		return array( $starts, $ends );

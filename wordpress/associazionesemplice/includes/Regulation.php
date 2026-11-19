@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Regulation {
 
-	const SOURCES = array( 'web' => 'Sul sito', 'paper' => 'Modulo cartaceo', 'verbal' => 'A voce / altro', 'import' => 'Importato' );
+	const SOURCES = array( 'web' => 'Sul sito', 'paper' => 'Modulo cartaceo', 'verbal' => 'A voce o altro', 'import' => 'Importato' );
 
 	public static function enabled(): bool {
 		return ! empty( Settings::get( 'rules_enabled' ) ) && ( '' !== trim( (string) Settings::get( 'rules_text' ) ) || '' !== (string) Settings::get( 'rules_url' ) );

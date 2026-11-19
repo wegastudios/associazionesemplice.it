@@ -64,7 +64,7 @@ final class ResourceGate {
 			case 'ok':
 				return 'Prenotazione valida';
 			case 'used':
-				return 'Già entrato';
+				return 'Ingresso già registrato';
 			case 'early':
 				return 'Troppo presto';
 			case 'late':

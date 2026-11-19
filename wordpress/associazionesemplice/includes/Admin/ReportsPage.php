@@ -19,7 +19,7 @@ final class ReportsPage {
 		$fiscal = \AssociazioneSemplice\Edition::has( 'fiscal' ); // l'anno fiscale per il commercialista è della licenza fiscale
 		$mode   = in_array( $mode, array( 'social', 'solar' ), true ) && ( $fiscal || 'solar' !== $mode ) ? $mode : 'liquidity';
 		Ui::header( 'Report' );
-		WatchPage::box_html(); // bilancio provvisorio e avvisi (Pro Fiscale)
+		WatchPage::box_html(); // rendiconto provvisorio e avvisi (Pro Fiscale)
 		$tabs = array( 'liquidity' => 'Conti e disponibilità', 'social' => 'Anno delle attività' ) + ( $fiscal ? array( 'solar' => 'Anno fiscale (commercialista)' ) : array() );
 		echo '<h2 class="nav-tab-wrapper">';
 		foreach ( $tabs as $key => $label ) {

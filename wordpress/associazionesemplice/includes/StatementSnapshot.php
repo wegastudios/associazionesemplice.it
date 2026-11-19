@@ -100,7 +100,7 @@ final class StatementSnapshot {
 			)
 		);
 		if ( false === $ok ) {
-			throw new \InvalidArgumentException( $retroactive ? 'Il rendiconto definitivo non è stato emesso (errore del database): non è stato salvato nulla. Riprova; se succede ancora scrivi all\'assistenza.' : 'Il rendiconto definitivo non è stato emesso (errore del database): la chiusura non è avvenuta. Riprova; se succede ancora scrivi all\'assistenza.' );
+			throw new \InvalidArgumentException( $retroactive ? 'Il rendiconto definitivo non è stato emesso per un errore tecnico: non è stato salvato nulla. Riprova; se succede ancora scrivi al supporto.' : 'Il rendiconto definitivo non è stato emesso per un errore tecnico: la chiusura non è avvenuta. Riprova; se succede ancora scrivi al supporto.' );
 		}
 		return (int) $db->insert_id;
 	}
@@ -183,7 +183,7 @@ final class StatementSnapshot {
 	public static function document( array $row ): array {
 		$bin = base64_decode( (string) $row['pdf_b64'], true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- rilegge il PDF salvato come testo
 		if ( false === $bin || ! hash_equals( (string) $row['pdf_sha256'], hash( 'sha256', $bin ) ) ) {
-			throw new \InvalidArgumentException( 'Il PDF emesso risulta cambiato dopo l\'emissione: per sicurezza non si può scaricare. Scrivi all\'assistenza.' );
+			throw new \InvalidArgumentException( 'Il PDF risulta modificato dopo l\'emissione: per sicurezza non si può scaricare. Scrivi al supporto.' );
 		}
 		return array( 'body' => $bin, 'filename' => 'rendiconto-' . (int) $row['year'] . '-n' . (int) $row['number'] . '.pdf', 'mime' => 'application/pdf' );
 	}
@@ -256,8 +256,8 @@ final class StatementSnapshot {
 			$missing
 		);
 		echo '<div class="asem-card"><h2>Emetti il rendiconto definitivo degli anni già chiusi</h2>';
-		echo '<p>Il rendiconto di questi anni fiscali chiusi non è ancora definitivo: i numeri che si vedono sono quelli di oggi e possono cambiare. Anni: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Emetterlo ora lo <strong>ricostruisce dai dati di oggi</strong> (le cifre dei movimenti sono quelle registrate, ma le voci per area sono quelle attuali) e ne emette il PDF con numero e data. '
-			. 'Porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
+		echo '<p>Il rendiconto di questi anni fiscali chiusi non è ancora definitivo: i numeri sono quelli di oggi e possono cambiare. Anni: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Se lo emetti ora, viene <strong>ricostruito dai dati di oggi</strong>: gli importi dei movimenti sono quelli registrati, le voci per area quelle attuali. Il PDF avrà numero, data e la dicitura '
+			. '«Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» L\'operazione resta nello storico e non si può annullare.</p>';
 		Admin\Ui::form_open( 'asem_statement_backfill', Admin\Ui::url( 'asem-years' ), false, 'asem-inline' );
 		echo wp_kses( '<label><input type="checkbox" name="confirm_retro" value="1"> Ho capito: i dati sono ricostruiti, non ripresi alla chiusura.</label> <button class="button" data-confirm="Emettere ora il rendiconto definitivo degli anni fiscali già chiusi con i dati di oggi? Non si può annullare.">Emetti il rendiconto definitivo</button>', Html::allowed() );
 		Admin\Ui::form_close();

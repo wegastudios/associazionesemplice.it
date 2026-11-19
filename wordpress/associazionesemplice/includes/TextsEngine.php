@@ -424,7 +424,7 @@ final class TextsEngine {
 			}
 		);
 		if ( null === $h ) {
-			throw new \InvalidArgumentException( 'Il file non ha le colonne "Originale" e "Personalizzato": usa il file esportato da qui.' );
+			throw new \InvalidArgumentException( 'Il file non ha le colonne «Originale» e «Personalizzato»: usa il file esportato da qui.' );
 		}
 		$head = SheetReader::normalize_header( $rows[ $h ] );
 		$co   = SheetReader::col( $head, array( 'originale', 'testooriginale' ) );

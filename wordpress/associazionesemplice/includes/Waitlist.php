@@ -159,14 +159,14 @@ final class Waitlist {
 			return;
 		}
 		$a    = Plugin::activities()->get( (int) $session['activity_id'] );
-		$who  = '' !== $to['about'] ? 'per ' . $to['about'] . ' ' : '';
+		$who  = '' !== $to['about'] ? 'di ' . $to['about'] . ' ' : '';
 		$when = ( new \DateTimeImmutable( $session['session_date'] ) )->format( 'd/m/Y' ) . ( $session['start_time'] ? ' alle ' . $session['start_time'] : '' );
 		$assoc = (string) Settings::get( 'association_name' );
-		do_action( 'asem_notify_email', (string) $to['email'], 'Posto disponibile: ' . ( $a ? $a['name'] : 'evento' ), 'Si è liberato un posto e la prenotazione ' . $who . 'del ' . $when . ' è stata registrata.' ); // notifica sul telefono, se un'estensione la gestisce
+		do_action( 'asem_notify_email', (string) $to['email'], 'Posto disponibile: ' . ( $a ? $a['name'] : 'evento' ), 'Si è liberato un posto: la prenotazione ' . $who . 'del ' . $when . ' è confermata.' ); // notifica sul telefono, se un'estensione la gestisce
 		Texts::mail(
 			$to['email'],
-			'Posto disponibile: ' . ( $a ? $a['name'] : 'evento' ),
-			'Ciao ' . $to['name'] . ",\n\nsi è liberato un posto e la prenotazione " . $who . 'per «' . ( $a ? $a['name'] : 'evento' ) . '» del ' . $when . " è stata registrata automaticamente.\n\n"
+			Texts::subject( 'Posto disponibile: ' . ( $a ? $a['name'] : 'evento' ) ),
+			'Ciao ' . $to['name'] . ",\n\nsi è liberato un posto: la prenotazione " . $who . 'per «' . ( $a ? $a['name'] : 'evento' ) . '» del ' . $when . " è confermata.\n\n"
 			. "Se non puoi più partecipare, annulla dall'area soci: " . Gatekeeper::area_url() . ( '' !== $assoc ? "\n\n—\n" . $assoc : '' )
 		);
 	}

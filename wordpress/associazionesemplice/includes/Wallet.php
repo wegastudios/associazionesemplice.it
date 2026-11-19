@@ -81,7 +81,7 @@ final class Wallet {
 		if ( null !== $wwdr_bytes && '' !== $wwdr_bytes ) {
 			$pem = WalletCredentials::to_pem( $wwdr_bytes );
 			if ( ! @openssl_x509_read( $pem ) ) {
-				throw new \InvalidArgumentException( 'Il certificato intermedio WWDR non è valido (serve il file .cer di Apple, "Worldwide Developer Relations").' );
+				throw new \InvalidArgumentException( 'Il certificato intermedio WWDR non è valido (serve il file .cer di Apple, «Worldwide Developer Relations»).' );
 			}
 			$set['wallet_apple_wwdr_pem'] = $pem;
 			$note[]                       = 'certificato WWDR caricato';
