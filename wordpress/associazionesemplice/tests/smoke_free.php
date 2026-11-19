@@ -286,7 +286,7 @@ free_ok( $bb_throws( function () use ( $bb_item, $bb_a, $bb_today ) { \Associazi
 free_ok( $bb_throws( function () use ( $bb_item, $bb_g, $bb_today ) { \AssociazioneSemplice\Inventory::lend( $bb_item, $bb_g, 1, $bb_today, $bb_today ); } ), 'inventario: si presta solo a soci e volontari' );
 $bb_late = \AssociazioneSemplice\Inventory::overdue();
 free_ok( 1 === count( $bb_late ) && 3 === $bb_late[0]['days_late'], 'prestiti: il rientro scaduto compare tra quelli da recuperare' );
-free_ok( in_array( 'prestito con il rientro scaduto', array_column( \AssociazioneSemplice\Admin\WpDashboard::todo_items(), 1 ), true ), 'prestiti: riquadro «Da lavorare»' );
+free_ok( in_array( 'prestito con il rientro scaduto', array_column( \AssociazioneSemplice\Admin\WpDashboard::todo_items(), 1 ), true ), 'prestiti: riquadro «Da fare»' );
 free_ok( $bb_throws( function () use ( $bb_a ) { \AssociazioneSemplice\Privacy::anonymize( $bb_a ); } ), 'privacy: non si anonimizza chi ha un bene in prestito' );
 Settings::update( array( 'reminders_enabled' => 1, 'reminders_loans' => 1 ) );
 add_filter( 'pre_wp_mail', '__return_true' );

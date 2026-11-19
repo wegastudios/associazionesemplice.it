@@ -48,7 +48,7 @@ final class WatchActions {
 
 	private static function snapshot( array $p ): array {
 		$n = BalanceWatch::take_missing();
-		return array( Ui::url( 'asem-watch' ), 0 === $n ? 'Le foto dei mesi conclusi ci sono già tutte.' : $n . ( 1 === $n ? ' foto salvata.' : ' foto salvate.' ) );
+		return array( Ui::url( 'asem-watch' ), 0 === $n ? 'La situazione dei mesi conclusi è già tutta salvata.' : $n . ( 1 === $n ? ' situazione salvata.' : ' situazioni salvate.' ) );
 	}
 
 	private static function approve( array $p ): array {

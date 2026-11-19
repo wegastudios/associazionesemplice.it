@@ -19,8 +19,8 @@ defined( 'ABSPATH' ) || exit;
 final class FirstAccess {
 
 	const MAX_PER_HOUR = 10;
-	const MESSAGE_OWN  = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il link per entrare (controlla anche la posta indesiderata). Altrimenti ti contatta la segreteria su WhatsApp.';
-	const MESSAGE      = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il messaggio e scegli la tua password (controlla anche la posta indesiderata). Altrimenti ti contatta la segreteria su WhatsApp.';
+	const MESSAGE_OWN  = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il link per entrare (controlla anche la posta indesiderata). Altrimenti la segreteria riceve la tua richiesta e ti risponde appena può.';
+	const MESSAGE      = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il messaggio e scegli la tua password (controlla anche la posta indesiderata). Altrimenti la segreteria riceve la tua richiesta e ti risponde appena può.';
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
@@ -184,7 +184,7 @@ final class FirstAccess {
 		};
 		$body = ( '' !== $message ? '<div class="w" style="color:#1a7f37">' . esc_html( $message ) . '</div>' : '' )
 			. ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
-			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'ti mandiamo il link per entrare e scegliere la tua password. ' : 'ti mandiamo il link per scegliere la password. ' ) . ( 'invite' === Settings::get( 'join_mode' ) ? 'L\'accesso è riservato a chi è già socio: si diventa soci su presentazione, rivolgendosi alla segreteria.' : 'Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti scrive su WhatsApp.' ) . '</p>'
+			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'ti mandiamo il link per entrare e scegliere la tua password. ' : 'ti mandiamo il link per scegliere la password. ' ) . ( 'invite' === Settings::get( 'join_mode' ) ? 'L\'accesso è riservato a chi è già socio: si diventa soci su presentazione, rivolgendosi alla segreteria.' : 'Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti risponde appena può.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( self::url() ) . '">' . MemberLoginPage::sign_field( 'first_access' ) . '<input type="hidden" name="asem_first_go" value="1">'
 			. $field( 'Nome e cognome', 'name', 'text', 'name' ) . $field( 'La tua email', 'email', 'email', 'email' ) . $field( 'Il tuo cellulare', 'phone', 'tel', 'tel' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . esc_attr( $accent ) . ';color:#fff">Mandami il link</button></form>'

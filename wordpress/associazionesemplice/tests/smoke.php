@@ -4013,7 +4013,7 @@ $html = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Partecipa
 asem_ok( false !== strpos( $html, 'Potrebbe essere la stessa persona' ) && false !== strpos( $html, 'Pinuccio' ) && false !== strpos( $html, 'stesso cellulare' ) && false !== strpos( $html, 'Corso di prova ospiti' ) && false !== strpos( $html, 'wa.me/393335555552' ) && false !== strpos( $html, 'Iscrivi come socio' ), 'scheda ospite: a cosa è venuto, le registrazioni gemelle, WhatsApp e iscrizione come socio' );
 $gz   = $people->create( array( 'type' => 'guest', 'first_name' => 'Zeno', 'last_name' => 'Zerovolte', 'phone' => '333 5555553', 'host_person_id' => $founder ) );
 $list = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Occasionale', array( 'type' => 'guest', 'at_limit' => '1' ) );
-asem_ok( false !== strpos( $list, 'da invitare a iscriversi' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a iscriversi"' );
+asem_ok( false !== strpos( $list, 'da invitare a diventare soci' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a diventare soci"' );
 $ev = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Open day yoga', array( 'id' => $e1 ) );
 asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'da invitare a diventare socio' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Ospiti da invitare a diventare soci' );
@@ -9694,7 +9694,7 @@ $people->update( $mn_kid, array( 'image_consent' => '0' ) );
 asem_ok( '0' === (string) $people->get( $mn_kid )['image_consent'] && (int) $people->get( $mn_kid )['image_consent_by'] === $mn_mum, 'liberatoria foto di un minore: ne risponde il tutore che opera sul sito' );
 asem_ok( false !== strpos( Admin\Exports::people()[1], 'Atleta' ) && false !== strpos( Admin\Exports::people()[1], 'Tipo di tesseramento' ), 'esportazione soci: tipo di tesseramento e foto' );
 $mn_inc = array_map( 'intval', array_column( array_column( \AssociazioneSemplice\IncompleteCards::all(), 'person' ), 'id' ) );
-asem_ok( in_array( $mn_kid, $mn_inc, true ) && false !== strpos( wp_json_encode( Admin\WpDashboard::todo_items() ), 'da completare' ), 'schede incomplete: il socio senza codice fiscale compare tra quelle da completare e nel riquadro «Da lavorare»' );
+asem_ok( in_array( $mn_kid, $mn_inc, true ) && false !== strpos( wp_json_encode( Admin\WpDashboard::todo_items() ), 'da completare' ), 'schede incomplete: il socio senza codice fiscale compare tra quelle da completare e nel riquadro «Da fare»' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Schede da completare' );
 
 // importazione con data di nascita e tutore
@@ -9775,7 +9775,7 @@ asem_ok( 1 === \AssociazioneSemplice\Applications::pending_count(), 'tempi di ri
 asem_ok( 'emailed' !== \AssociazioneSemplice\Frontend\FirstAccess::submit( 'Aldo Adesioni', 'aldo.adesioni@example.com', '333 1010101' ) && ! get_user_by( 'email', 'aldo.adesioni@example.com' ), 'domanda: con il «Primo accesso» chi non è ancora approvato non entra' );
 $ap_html = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Domande di adesione' );
 asem_ok( false !== strpos( $ap_html, 'Aldo Adesioni' ) && false !== strpos( $ap_html, 'asem_application_approve' ) && false !== strpos( $ap_html, 'asem_application_reject' ), 'dashboard: la domanda con Approva e Rifiuta' );
-asem_ok( false !== strpos( wp_json_encode( Admin\WpDashboard::todo_items() ), 'domanda di adesione da approvare' ), 'riquadro «Da lavorare»: la domanda c\'è' );
+asem_ok( false !== strpos( wp_json_encode( Admin\WpDashboard::todo_items() ), 'domanda di adesione da approvare' ), 'riquadro «Da fare»: la domanda c\'è' );
 asem_ok( null !== asem_throws( function () use ( $ap_aldo ) { \AssociazioneSemplice\Applications::approve( $ap_aldo, 'mn1' ); } ), 'approvazione: una tessera già assegnata è rifiutata' );
 $ap_msg = \AssociazioneSemplice\Applications::approve( $ap_aldo, 'ap100' );
 $ap_row = $people->get( $ap_aldo );
