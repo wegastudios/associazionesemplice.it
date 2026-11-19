@@ -47,7 +47,7 @@ it('mostra gli errori della prima nota senza registrare nulla', function (): voi
     $this->actingAs($user)->post('/gestionale/prima-nota/incassi', [
         'date' => now()->toDateString(), 'account_id' => $cash,
         'lines' => [['category_id' => $cost, 'amount' => '10']],
-    ])->assertSessionHasErrors(['ledger' => 'Voce 1: categoria non valida per un incasso.']);
+    ])->assertSessionHasErrors(['ledger' => 'Riga 1: voce non valida per un incasso.']);
 
     $this->post('/gestionale/prima-nota/spese', [
         'date' => now()->toDateString(), 'account_id' => $cash, 'category_id' => $cost, 'amount' => 'dieci',

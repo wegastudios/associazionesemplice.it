@@ -77,7 +77,7 @@ const label = 'space-y-1 text-sm';
             <span v-if="activity?.archived" class="rounded bg-surface px-2 py-0.5 text-sm">archiviata</span>
         </div>
 
-        <section v-if="activity" class="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Bilancio dell'attività">
+        <section v-if="activity" class="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Rendiconto dell'attività">
             <div class="card p-4"><p class="text-sm text-muted">Entrate</p><p class="text-xl font-bold tabular-nums">{{ activity.totals.income }}</p></div>
             <div class="card p-4"><p class="text-sm text-muted">Uscite</p><p class="text-xl font-bold tabular-nums">{{ activity.totals.expense }}</p></div>
             <div class="card p-4"><p class="text-sm text-muted">Risultato</p><p class="text-xl font-bold tabular-nums" :class="activity.totals.negative ? 'text-danger' : ''">{{ activity.totals.balance }}</p></div>
