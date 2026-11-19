@@ -46,34 +46,9 @@ class ArticleBody
                 }
                 $out[] = '<blockquote><p>'.self::inline(implode(' ', $text)).'</p></blockquote>';
             } elseif (preg_match('/^(\d+)\.\s+/', $line)) {
-                $items = [];
-                while ($i < $n && preg_match('/^\d+\.\s+(.*)$/', rtrim($lines[$i]), $m)) {
-                    $items[] = '<li>'.self::inline($m[1]).'</li>';
-                    $i++;
-                }
-                $out[] = '<ol>'.implode('', $items).'</ol>';
+                $out[] = self::list($lines, $i, $n, true);
             } elseif (preg_match('/^-\s+/', $line)) {
-                $items = [];
-                while ($i < $n && preg_match('/^-\s+(.*)$/', rtrim($lines[$i]), $m)) {
-                    $li = self::inline($m[1]);
-                    $i++;
-                    // passi rientrati (anche dopo una riga vuota) sotto la voce: elenco numerato dentro la voce
-                    $j = $i;
-                    while ($j < $n && trim($lines[$j]) === '') {
-                        $j++;
-                    }
-                    if ($j < $n && preg_match('/^\s+\d+\.\s+/', $lines[$j])) {
-                        $sub = [];
-                        while ($j < $n && preg_match('/^\s+\d+\.\s+(.*)$/', rtrim($lines[$j]), $sm)) {
-                            $sub[] = '<li>'.self::inline($sm[1]).'</li>';
-                            $j++;
-                        }
-                        $li .= '<ol>'.implode('', $sub).'</ol>';
-                        $i = $j;
-                    }
-                    $items[] = '<li>'.$li.'</li>';
-                }
-                $out[] = '<ul>'.implode('', $items).'</ul>';
+                $out[] = self::list($lines, $i, $n, false);
             } else {
                 $text = [];
                 while ($i < $n && trim($lines[$i]) !== '' && ! preg_match('/^(#{2,3}\s|\||>|\d+\.\s|-\s)/', $lines[$i])) {
@@ -85,6 +60,59 @@ class ArticleBody
         }
 
         return implode("\n", $out);
+    }
+
+    /**
+     * Un elenco numerato o puntato. Sotto una voce possono stare, rientrati (anche dopo una riga vuota),
+     * capoversi, sotto-elenchi e passi numerati: appartengono alla voce e l'elenco continua con la voce dopo.
+     *
+     * @param  array<int, string>  $lines
+     */
+    private static function list(array $lines, int &$i, int $n, bool $ordered): string
+    {
+        $marker = $ordered ? '/^(\d+)\.\s+(.*)$/' : '/^()-\s+(.*)$/';
+        $items = [];
+        $start = null;
+
+        while ($i < $n && preg_match($marker, rtrim($lines[$i]), $m)) {
+            $start ??= (int) $m[1];
+            $li = self::inline($m[2]);
+            $i++;
+
+            $block = [];
+            $j = $i;
+            while ($j < $n) {
+                if (trim($lines[$j]) === '') {
+                    $block[] = '';
+                    $j++;
+
+                    continue;
+                }
+                if (! preg_match('/^\s+\S/', $lines[$j])) {
+                    break;
+                }
+                $block[] = rtrim($lines[$j]);
+                $j++;
+            }
+
+            // le righe vuote in coda non fanno parte della voce
+            while ($block !== [] && end($block) === '') {
+                array_pop($block);
+            }
+            if ($block !== []) {
+                $indent = min(array_map(fn ($l) => strlen($l) - strlen(ltrim($l)), array_filter($block, fn ($l) => $l !== '')));
+                $li .= self::html(implode("\n", array_map(fn ($l) => $l === '' ? '' : substr($l, $indent), $block)));
+                $i += count($block);
+            }
+
+            $items[] = '<li>'.$li.'</li>';
+        }
+
+        if (! $ordered) {
+            return '<ul>'.implode('', $items).'</ul>';
+        }
+
+        return '<ol'.($start > 1 ? ' start="'.$start.'"' : '').'>'.implode('', $items).'</ol>';
     }
 
     /** Testo semplice per riassunti, anteprime e meta description: senza segni di formattazione né HTML. */

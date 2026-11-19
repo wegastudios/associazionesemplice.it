@@ -36,6 +36,16 @@ class ArticleBodyTest extends SiteTestCase
         $this->assertStringContainsString('<li>Voce, per sanarla:<ol><li>primo passo</li><li>secondo passo</li></ol></li><li>Altra voce</li>', $html);
     }
 
+    public function test_numbered_steps_continue_after_indented_paragraphs_and_bullets(): void
+    {
+        $html = ArticleBody::html("1. Primo\n\n   Dettaglio del primo.\n2. Secondo:\n   - **Tipo**: uno;\n   - **Data**: due.\n3. Terzo");
+
+        $this->assertSame(
+            '<ol><li>Primo<p>Dettaglio del primo.</p></li><li>Secondo:<ul><li><strong>Tipo</strong>: uno;</li><li><strong>Data</strong>: due.</li></ul></li><li>Terzo</li></ol>',
+            $html,
+        );
+    }
+
     public function test_plain_text_has_no_formatting_marks(): void
     {
         $plain = ArticleBody::plain("## Titolo\n\nIl *changelog* è **utile**, vedi [la guida](guida:x) e `codice`.\n\n- voce *una*\n1. passo");
