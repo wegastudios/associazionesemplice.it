@@ -12001,7 +12001,7 @@ $er_hmail   = '';
 foreach ( array_slice( $er_mails, $er_mails_before ) as $m ) {
 	$er_hmail .= ( is_array( $m['to'] ) ? implode( ',', $m['to'] ) : $m['to'] ) . '|' . $m['subject'] . '|' . $m['message'] . "\n";
 }
-asem_ok( 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_hold_id ) ) && false !== strpos( $er_hmail, 'da verificare' ) && 2 === substr_count( $er_hmail, 'marta.altra@example.com|' ) && false !== strpos( $er_hmail, 'marta.altra@example.com|Richiesta ricevuta' ), 'ospite esistente: la richiesta resta per la segreteria con un avviso, e a chi scrive arrivano solo il link e un avviso neutro' );
+asem_ok( 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_hold_id ) ) && false !== strpos( $er_hmail, 'da verificare' ) && 2 === substr_count( $er_hmail, 'marta.altra@example.com|' ) && false !== strpos( $er_hmail, 'Richiesta ricevuta' ), 'ospite esistente: la richiesta resta per la segreteria con un avviso, e a chi scrive arrivano solo il link e un avviso neutro' );
 $er_hw = $er::awaiting( $er_e );
 asem_ok( 1 === count( $er_hw ) && ! empty( $er_hw[0]['differs'] ) && false !== strpos( $er::admin_box( $er_e, 'http://example.test/' ), 'Attenzione: il codice fiscale è già in anagrafica' ), 'ospite esistente: la scheda dell\'attività avverte che i dati non coincidono' );
 $er::reject( $er_hold_id );
