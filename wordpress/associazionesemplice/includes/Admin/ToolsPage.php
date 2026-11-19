@@ -23,7 +23,7 @@ final class ToolsPage {
 				array( 'asem-wpai', 'WP All Import', 'Importazione continua da WP All Import (soci e pagamenti).', true, 'import' ),
 			),
 			'Esportare' => array(
-				array( 'asem-exports', 'Esportazioni CSV', 'Libro soci e prima nota in CSV, per il commercialista o per i tuoi archivi (con le funzioni avanzate anche rendiconto e report).', false, '' ),
+				array( 'asem-exports', 'Esportazioni CSV', 'Libro soci e prima nota in CSV, per il commercialista o per i tuoi archivi (con Associazione Semplice Pro anche rendiconto e report).', false, '' ),
 			),
 			'Calendari' => array(
 				array( 'asem-calendar', 'Calendario di corsi ed eventi', 'Calendario interno di tutte le attività e indirizzo del calendario pubblicato (Google Calendar e simili).', false, 'activities' ),

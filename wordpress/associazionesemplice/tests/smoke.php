@@ -1612,7 +1612,7 @@ asem_wizard( array( 'privacy_url' => 'https://example.com/privacy', 'privacy_ret
 asem_ok( 'https://example.com/privacy' === Settings::get( 'privacy_url' ) && 7 === (int) Settings::get( 'privacy_retention_years' ), 'configurazione guidata: privacy e ricevute' );
 Settings::update( array( 'privacy_url' => '', 'privacy_retention_years' => 5, 'receipt_footer' => '' ) );
 $wz_html2 = $wz_html;
-asem_ok( false !== strpos( $wz_html2, 'Cosa ti serve' ) && false !== strpos( $wz_html2, 'Solo su presentazione' ) && false !== strpos( $wz_html2, 'name="mod[ledger]"' ) && false !== strpos( $wz_html2, 'data-if="mod[ledger]=1"' ), 'configurazione guidata: domande per parte e blocchi condizionati dalle risposte' );
+asem_ok( false !== strpos( $wz_html2, 'Cosa ti serve' ) && false !== strpos( $wz_html2, 'Solo tramite la segreteria' ) && false !== strpos( $wz_html2, 'name="mod[ledger]"' ) && false !== strpos( $wz_html2, 'data-if="mod[ledger]=1"' ), 'configurazione guidata: domande per parte e blocchi condizionati dalle risposte' );
 // procedura guidata: partita IVA, sede e adempimenti
 asem_ok( null !== asem_throws( function () { asem_wizard( array( 'has_vat' => '1', 'vat_number' => '12345678901' ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'pec' => 'non-una-pec' ) ); } ), 'procedura: partita IVA o PEC non valide si rifiutano' );
 asem_wizard( array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'fiscal_regime' => 'ordinario', 'vat_default_rate' => '10', 'vat_prices_mode' => 'escl', 'vat_membership_rate' => '22', 'legal_address' => 'Via Verdi 3', 'legal_zip' => '10100', 'legal_city' => 'Torino', 'legal_province' => 'TO', 'pec' => 'ente@pec.example.com' ) );
@@ -5477,7 +5477,7 @@ $wpdb->delete( Db::t( 'funds' ), array( 'id' => $rs_fund ) );
 $wpdb->delete( Db::t( 'people' ), array( 'id' => $rs_p ) );
 asem_ok( null === \AssociazioneSemplice\FiscalYears::last_closed(), 'rendiconto fotografato: prove ripulite, nessun esercizio chiuso' );
 
-asem_render( array( Admin\YearsPage::class, 'render' ), 'Crea anno fiscale' );
+asem_render( array( Admin\YearsPage::class, 'render' ), 'Apri un nuovo anno fiscale' );
 $rep_html = asem_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e disponibilità' );
 asem_ok( strpos( $rep_html, 'Conti e disponibilità' ) < strpos( $rep_html, 'Anno delle attività' ) && strpos( $rep_html, 'Anno delle attività' ) < strpos( $rep_html, 'Anno fiscale (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );
 asem_render( array( Admin\ReportsPage::class, 'render' ), 'Fondi per anno fiscale', array( 'mode' => 'solar' ) );

@@ -55,7 +55,7 @@ final class WpDashboard {
 		}
 		$ren = self::renewals();
 		if ( $ren > 0 ) {
-			$items[] = array( $ren, 1 === $ren ? 'socio da rinnovare' : 'soci da rinnovare', Ui::url( 'asem' ) );
+			$items[] = array( $ren, 1 === $ren ? 'tessera da rinnovare' : 'tessere da rinnovare', Ui::url( 'asem' ) );
 		}
 		$inv = count( Plugin::people()->guests_to_invite() );
 		if ( $inv > 0 ) {
