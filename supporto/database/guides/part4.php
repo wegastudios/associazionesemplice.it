@@ -8,7 +8,7 @@ return [
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale} (cassa per più persone e IVA: Pro)
 
-Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra nella **prima nota**. Importi e voci vengono sempre ricalcolati dal sistema.
+Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra nella **prima nota**. Il plugin ricalcola sempre importi e voci.
 
 ## Cosa fare
 
@@ -26,7 +26,7 @@ Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra ne
 
 ## Se hai sbagliato
 
-I movimenti della prima nota **non si modificano**: si **annullano** (resta traccia dell'annullamento) e si registra quello giusto. Un incasso annullato sparisce da saldi, report e ricevute. Se annulli un incasso della quota, la **tessera resta** quando c'è **un altro incasso valido** della stessa quota per lo stesso socio e lo stesso anno (per esempio se era stata incassata due volte); se era l'unico incasso, la tessera non è più valida.
+I movimenti della prima nota **non si modificano**: si **annullano** (resta traccia dell'annullamento) e si registra quello giusto. Un incasso annullato sparisce da saldi, report e ricevute. Se annulli l'incasso di una quota, la tessera non è più valida, a meno che ci sia **un altro incasso valido** della stessa quota per lo stesso socio e anno (per esempio se era stata incassata due volte).
 
 > Un incasso può avere una ricevuta in PDF (vedi [Ricevute in PDF](guida:ricevute-in-pdf), funzione Pro).
 MD,
@@ -55,7 +55,7 @@ Per aggiungere altri allegati più tardi apri la **Prima nota**, trova il movime
 
 ## Dove finiscono i file
 
-Non vanno nella libreria media del sito: stanno in una cartella privata e si aprono solo da un indirizzo del plugin, con controllo dei permessi. **Togli** non cancella il file: l'allegato esce dall'elenco e l'operazione resta nel registro azioni.
+Non vanno nella libreria media del sito: stanno in una cartella privata e li apre solo chi ne ha il permesso. **Togli** non cancella il file: l'allegato esce dall'elenco e l'operazione resta nel registro azioni.
 MD,
     ],
     [
@@ -64,7 +64,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-L'**anno fiscale** (l'«esercizio», per il commercialista) è l'anno della contabilità: la prima nota si organizza per anno fiscale, e l'apertura e la chiusura sono disponibili in tutte le versioni. Solo gli amministratori possono aprire, chiudere e riaprire un anno fiscale. Di partenza l'anno fiscale coincide con l'anno solare; il mese di inizio si sceglie in **Dati dell'ente** (vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale)).
+L'**anno fiscale** (l'«esercizio», per il commercialista) è l'anno della contabilità: la prima nota è divisa per anno fiscale. Solo gli amministratori possono aprirlo, chiuderlo e riaprirlo. Di partenza coincide con l'anno solare; il mese di inizio si sceglie in **Dati dell'ente** (vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale)).
 
 ## Aprire l'anno fiscale nuovo
 
@@ -75,19 +75,28 @@ Da settembre la **Bacheca** ti ricorda di aprire l'anno fiscale nuovo. L'avviso 
 
 ## Chiudere un anno fiscale
 
-1. Nella stessa pagina premi **Chiudi l'anno** accanto all'anno fiscale.
-2. Gli anni fiscali si chiudono **in ordine, dal più vecchio**. L'anno fiscale in corso non si chiude finché non è finito.
-3. Per chiudere un anno fiscale non devono restare fondi non rimborsati (funzione Pro).
+Prima di chiudere:
 
-Si può incassare, spendere e girare denaro solo negli anni fiscali **aperti**. Se provi a modificare un anno chiuso, un messaggio ti dice che per modificarlo va riaperto dalla pagina «Anni fiscali» (si può riaprire solo l'ultimo anno chiuso). Un anno fiscale chiuso non si modifica più: nemmeno allegati, saldi iniziali, cessazioni dei soci. Si bloccano anche **assemblee** (anche non svolte), **votazioni**, **sondaggi** e **verbali** di quell'anno, la **relazione del rendiconto**, la **cessione del posto** e l'eliminazione di eventi e iscrizioni con incassi in quell'anno, l'accantonamento e il rilascio dei **fondi**; il **nome e il tipo di un conto** con movimenti in quell'anno non si cambiano (commissione, chiusura e riapertura del conto sì).
+- gli anni fiscali si chiudono **in ordine, dal più vecchio**, e l'anno in corso non si chiude finché non è finito;
+- con Pro, non devono restare fondi non rimborsati.
+
+Poi, nella stessa pagina, premi **Chiudi l'anno** accanto all'anno fiscale.
+
+Si può incassare, spendere e fare giroconti solo negli anni fiscali **aperti**. Un anno chiuso non si modifica più, nemmeno negli allegati, nei saldi iniziali e nelle cessazioni dei soci: se ci provi, un messaggio ti rimanda alla pagina «Anni fiscali», dove si può riaprire solo l'ultimo anno chiuso. In un anno chiuso si bloccano anche:
+
+- **assemblee** (anche non svolte), **votazioni**, **sondaggi** e **verbali**;
+- la **relazione del rendiconto**;
+- la **cessione del posto** e l'eliminazione di eventi e iscrizioni con incassi in quell'anno;
+- l'accantonamento e il rilascio dei **fondi**;
+- il **nome e il tipo di un conto** con movimenti in quell'anno (commissione, chiusura e riapertura del conto si possono cambiare).
 
 ## Anno passato ancora aperto e in disavanzo ({piano_fiscale})
 
-Se un anno fiscale passato è ancora aperto e le uscite superano le entrate, il programma te lo segnala in **Bacheca** e in **Cassa** con un avviso fisso: **«Anno fiscale 2025 in disavanzo.»** (con l'anno giusto). L'avviso sparisce quando il risultato torna a zero o più, o quando chiudi l'anno. Se mancano delle entrate, registrale in **Prima nota** con una data dentro quell'anno; se invece i conti sono giusti, controllali e poi chiudi l'anno: il programma te lo fa confermare con la spunta **«chiudo anche se l'anno è in disavanzo di …»** (con l'importo). Non blocca nulla.
+Se un anno fiscale passato è ancora aperto e le uscite superano le entrate, il programma te lo segnala in **Bacheca** e in **Cassa** con un avviso fisso: **«Anno fiscale 2025 in disavanzo.»** (con l'anno giusto). L'avviso sparisce quando il risultato torna a zero o più, o quando chiudi l'anno. Se mancano delle entrate, registrale in **Prima nota** con una data dentro quell'anno. Se invece i conti sono giusti, chiudi l'anno confermando con la spunta **«chiudo anche se l'anno è in disavanzo di …»** (con l'importo). L'avviso non blocca nulla.
 
 ## Il libro soci dell'anno fiscale
 
-Alla chiusura il **libro soci** di quell'anno fiscale diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più. Prima della chiusura è una **bozza**: i numeri sono quelli di oggi e possono cambiare. Si scarica in PDF e in CSV (vedi [Il libro soci completo](guida:libro-soci-completo)). Per gli anni fiscali chiusi prima di questa funzione compare **«Emetti i documenti definitivi degli anni già chiusi»**: ogni documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» Non si può annullare.
+Alla chiusura il **libro soci** di quell'anno fiscale diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più. Prima della chiusura è una **bozza**: i numeri sono quelli di oggi e possono cambiare. Si scarica in PDF e in CSV (vedi [Il libro soci completo](guida:libro-soci-completo)). Per gli anni chiusi che non hanno ancora il libro soci definitivo compare **«Emetti i documenti definitivi degli anni già chiusi»**: ogni documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» L'emissione non si può annullare.
 
 ## Riaprire un anno fiscale
 
@@ -127,7 +136,7 @@ I file usano il punto e virgola come separatore e la virgola come decimale, pron
 - Date nei formati `15/01/2024` o `2024-01-15`; importi come `1.234,56` o `1234.56`.
 - I conti che non esistono si creano. Le voci non riconosciute usano «Altra entrata» o «Costo generale» e il nome originale resta nella descrizione.
 - **Doppioni**: un movimento uguale a uno già presente viene saltato, quindi puoi ricaricare lo stesso file senza duplicare.
-- Per gli anni passati, l'opzione **Non cambiare i saldi attuali** (attiva di default) aggiusta il saldo iniziale dei conti esistenti: il saldo di oggi resta com'è e la storia si completa.
+- Per gli anni passati, l'opzione **Non cambiare i saldi attuali** (attiva di partenza) aggiusta il saldo iniziale dei conti esistenti: il saldo di oggi resta com'è e la storia si completa.
 - I movimenti importati si annullano uno per uno dalla Prima nota.
 MD,
     ],
@@ -137,7 +146,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Il modulo donazioni porta chi dona sulla pagina di donazione di PayPal. Dal tuo server non parte nessuna richiesta verso PayPal: il pulsante si apre direttamente nel browser del visitatore.
+Il modulo donazioni porta chi dona sulla pagina di donazione di PayPal. Il tuo sito non comunica con PayPal: la pagina si apre nel browser di chi dona.
 
 ## Attivarle
 
@@ -171,7 +180,7 @@ Se in **Impostazioni → Cassa → Pagamenti online** compare un avviso sulle **
 ## Cosa fare
 
 1. Vai in **Impostazioni → Cassa → Pagamenti online**.
-2. Scegli il gateway: Stripe, PayPal, SumUp (anche combinati), WooCommerce (in alternativa) oppure solo bonifico. Per SumUp vedi [Attivare i pagamenti online con SumUp](guida:attivare-sumup).
+2. Scegli il fornitore di pagamento: Stripe, PayPal, SumUp (anche insieme), WooCommerce (in alternativa) oppure solo bonifico. Per SumUp vedi [Attivare i pagamenti online con SumUp](guida:attivare-sumup).
 3. Incolla le chiavi. Vengono salvate **cifrate** e legate al sito: se lo copi su un altro dominio vanno reinserite.
 4. Per Stripe, crea nel pannello Stripe (**Sviluppatori → Webhook**) un **webhook** verso l'indirizzo mostrato nella pagina del plugin e aggiungi questi **cinque eventi**: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`, `charge.refunded` e `charge.dispute.created`. **Se il webhook c'è già**, aggiungi solo gli ultimi due (`charge.refunded` e `charge.dispute.created`): servono per gli avvisi sui rimborsi e sulle contestazioni fatti dal pannello di Stripe.
 5. Salva e fai un **pagamento di prova** con un importo minimo.
@@ -183,7 +192,7 @@ Se in **Impostazioni → Cassa → Pagamenti online** compare un avviso sulle **
 3. La conferma torna al sito per tre strade (ritorno del socio, webhook e controllo orario), tutte senza rischio di doppio conteggio.
 4. L'incasso entra in prima nota sul conto **Stripe** o **PayPal** (creato in automatico) e il socio riceve la ricevuta via email.
 
-> **Rimborsi e contestazioni su Stripe.** Con i due eventi `charge.refunded` e `charge.dispute.created` nel webhook, un rimborso o una contestazione fatti dal **pannello di Stripe** mettono il pagamento **«da controllare»** e compare in Bacheca l'avviso **«Pagamenti online da controllare»**. Il plugin **non rimborsa e non annulla nulla da solo**, e la prima nota **non cambia**: controlla dal pannello di Stripe e, se serve, **storna** il movimento in prima nota. Per **PayPal** questi avvisi non arrivano.
+> **Rimborsi e contestazioni su Stripe.** Con i due eventi `charge.refunded` e `charge.dispute.created` nel webhook, un rimborso o una contestazione fatti dal **pannello di Stripe** mettono il pagamento **«da controllare»** e compare in Bacheca l'avviso **«Pagamenti online da controllare»**. Il plugin **non rimborsa e non annulla nulla da solo**, e la prima nota **non cambia**: controlla dal pannello di Stripe e, se serve, **annulla** il movimento in prima nota. Per **PayPal** questi avvisi non arrivano.
 >
 > Commissioni, trasferimenti sul conto corrente e rimborsi si registrano a mano (una spesa e un giroconto). I rimborsi si fanno dal pannello del fornitore.
 MD,
@@ -226,7 +235,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale}
 
-Ogni gateway trattiene una commissione su ciascun pagamento. Il plugin ti aiuta a tenerne conto in prima nota e, se vuoi, a ribaltarla su chi paga.
+Ogni fornitore di pagamento trattiene una commissione su ciascun pagamento. Il plugin ti aiuta a tenerne conto in prima nota e, se vuoi, a ribaltarla su chi paga.
 
 ## Indicare la commissione
 
@@ -242,11 +251,11 @@ I campi partono già compilati con le **tariffe standard**:
 | SumUp | 2,5% |
 | Satispay | 0,20 € fissi, 0% |
 
-Sono valori di partenza: **modificali** se il tuo contratto ha condizioni diverse, oppure **svuota** i campi se non vuoi stimare la commissione. Le tariffe applicate dal gateway possono cambiare: controlla sempre il tuo contratto.
+Sono valori di partenza: **modificali** se il tuo contratto ha condizioni diverse, oppure **svuota** i campi se non vuoi stimare la commissione. Le tariffe applicate dal fornitore di pagamento possono cambiare: controlla sempre il tuo contratto.
 
 ## Registrarla come spesa
 
-Con l'opzione **«Registra come spesa la commissione stimata»**, a ogni pagamento confermato entra in prima nota una spesa chiamata **«Commissione di incasso (stima)»**. È una **stima**: confrontala con l'estratto conto del gateway e correggila quando serve.
+Con l'opzione **«Registra come spesa la commissione stimata»**, a ogni pagamento confermato entra in prima nota una spesa chiamata **«Commissione di incasso (stima)»**. È una **stima**: confrontala con l'estratto conto del fornitore di pagamento e correggila quando serve.
 
 ## Ribaltarla su chi paga
 
@@ -261,7 +270,7 @@ MD,
     ],
     [
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'controllare-un-pagamento-non-abbinato',
-        'title' => 'Controllare un pagamento «da controllare» o non abbinato',
+        'title' => 'Sistemare un pagamento online «da controllare» o non abbinato',
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale}
 
@@ -273,7 +282,7 @@ A volte un pagamento online non coincide con quello che il sistema si aspettava,
 2. Trova i pagamenti con lo stato **da controllare**.
 3. Confronta importo e riferimento con quello che trovi nel pannello del fornitore.
 4. Se la persona ha pagato più o meno del dovuto, correggi a mano: annulla il movimento e registra l'incasso corretto, oppure registra la differenza.
-5. Se il pagamento è «da controllare» perché **rimborsato o contestato da Stripe** (compare l'avviso «Pagamenti online da controllare» in Bacheca), il plugin non ha cambiato nulla: guarda nel pannello di Stripe com'è andata e, se serve, **storna** il movimento in prima nota. Questo avviso arriva solo se nel webhook ci sono `charge.refunded` e `charge.dispute.created`, e solo per Stripe.
+5. Se il pagamento è «da controllare» perché **rimborsato o contestato su Stripe**, il plugin non ha cambiato nulla: guarda nel pannello di Stripe com'è andata e, se serve, **annulla** il movimento in prima nota. L'avviso arriva solo per Stripe e solo con i due eventi `charge.refunded` e `charge.dispute.created` nel webhook.
 6. Se il pagamento era per una prenotazione annullata, decidi se **rimborsare**: con Stripe o PayPal si fa dal programma (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)), con gli altri metodi dal pannello del fornitore.
 
 ## Se un pagamento non compare
@@ -282,7 +291,14 @@ Premi il pulsante di controllo nella pagina **Pagamenti online**: il plugin inte
 
 ## Con WooCommerce
 
-Se usi WooCommerce, l'incasso entra in prima nota una sola volta. Se un passo successivo all'incasso non riesce, il plugin lo dice: «Incasso registrato, ma un passo successivo non è riuscito (…): controlla il pagamento.» L'incasso è già in prima nota: controlla soltanto il resto. Con **carta e PayPal** entra quando l'ordine passa a «in lavorazione» o «completato». Con **bonifico, assegno o contrassegno** la quota risulta pagata solo quando metti l'ordine su **«Completato»**: finché l'ordine non è «Completato» la quota resta da pagare, quindi controlla di averla ricevuta e poi completa l'ordine; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
+Con WooCommerce l'incasso entra in prima nota una sola volta:
+
+- con **carta e PayPal**, quando l'ordine passa a «in lavorazione» o «completato»;
+- con **bonifico, assegno o contrassegno**, solo quando metti l'ordine su **«Completato»**: prima controlla di aver ricevuto i soldi.
+
+Se l'importo è diverso, entra come «non abbinato». Un **secondo ordine** per lo stesso pagamento non si incassa due volte: finisce in **«da controllare»**. Gli ordini senza voci di Associazione Semplice non vengono toccati.
+
+Se leggi «Incasso registrato, ma un passo successivo non è riuscito (…): controlla il pagamento.», l'incasso è già in prima nota: controlla soltanto il resto.
 MD,
     ],
     [
@@ -314,14 +330,14 @@ Il **PDF di una ricevuta si crea una volta sola**, quando viene emessa, e si sal
 
 Le ricevute emesse con le versioni precedenti del plugin sono state fissate in automatico: il loro PDF ha i dati dell'emissione ma i testi di oggi (i tuoi testi personalizzati, le parole scelte per il tipo di ente, la grafica).
 
-Le ricevute emesse molto tempo fa, prima che il sito salvasse i dati, non hanno ancora un PDF fisso. Dalla pagina **«Verifica delle ricevute»**, sotto **«Emesse prima che si salvassero i dati»**, l'**amministratore** può fissarle con il pulsante **«Fissa anche queste con i dati di oggi»** (a gruppi di 100), senza aprirle una per una. Il programma avvisa: **«I dati sono quelli di oggi, non quelli dell'emissione.»** Il PDF usa quindi i dati di oggi e da quel momento non cambia più. Conviene farlo prima di una copia di sicurezza. Le ricevute annullate restano come sono: il programma dice «Le … rimaste sono ricevute annullate: restano come sono.»
+Le ricevute più vecchie, emesse quando il sito non salvava ancora i dati, non hanno un PDF fisso. Dalla pagina **«Verifica delle ricevute»**, sotto **«Emesse prima che si salvassero i dati»**, l'amministratore le fissa a gruppi di 100 con **«Fissa anche queste con i dati di oggi»**: il PDF usa i dati di oggi, non quelli dell'emissione, e da quel momento non cambia più. Conviene farlo prima di una copia di sicurezza. Le ricevute annullate restano come sono.
 
 ## La pagina «Verifica delle ricevute»
 
 È solo per gli **amministratori**. La apri dai riquadri **«PDF definitivi delle ricevute»** (pagina **Anni fiscali**) e **«Ricevute: PDF definitivi»** (pagina **Copia di sicurezza**). Scegli l'**anno fiscale**: vedi quante ricevute sono «A posto», «PDF ancora da fissare», «Emesse prima che si salvassero i dati», «File mancanti» e «File diversi da quando sono stati emessi».
 
 - **«Fissa i prossimi PDF»** fissa le ricevute ancora da fissare a gruppi di 100: se ne restano, premilo ancora.
-- **«Rifai dai dati salvati»** (per un file mancante o diverso) rifà il PDF dai dati salvati all'emissione. Prima chiede conferma: «Rifare questo PDF dai dati salvati all'emissione? Un file diverso resta messo da parte e l'operazione viene scritta nel registro azioni.» Poi compare «PDF rifatto dai dati salvati all'emissione. L'operazione è scritta nel registro azioni.»
+- **«Rifai dai dati salvati»** (per un file mancante o diverso) rifà il PDF dai dati salvati all'emissione, dopo una conferma. Il file diverso resta messo da parte e l'operazione resta nel registro azioni.
 - Il file si può anche **ripristinare da una copia di sicurezza**, che contiene sempre i PDF delle ricevute.
 - **«Scarica i PDF di questo anno fiscale (ZIP)»** li scarica tutti insieme.
 
@@ -329,7 +345,7 @@ Finché un PDF non coincide con quello emesso, **scaricare quella ricevuta dà u
 
 ## Se annulli un incasso
 
-L'**annullo** di un incasso annulla subito la ricevuta già emessa, ma **non libera il suo numero**. La ricevuta annullata non si vede più nell'**area soci** (il socio la chiede alla segreteria); alla segreteria resta, con il PDF **«RICEVUTA ANNULLATA»**.
+Se annulli un incasso, anche la ricevuta già emessa viene annullata, ma il suo **numero non si libera**. La ricevuta annullata non si vede più nell'**area soci** (il socio la chiede alla segreteria); alla segreteria resta, con il PDF **«RICEVUTA ANNULLATA»**.
 
 Se serve una nuova ricevuta, dopo l'annullo premi **«Emetti la ricevuta sostitutiva»**: prende un **numero nuovo** e la **data di oggi**, e vale solo per le voci rimaste. Non si può emettere se l'incasso o la sua data cadono in un anno fiscale chiuso.
 
@@ -345,7 +361,7 @@ Dalla scheda persona (o dall'area soci) si può ottenere l'**attestazione annual
 
 ## Area soci
 
-Con lo shortcode `[associazionesemplice_ricevute]` (già incluso nell'area soci) il socio vede l'elenco e scarica le ricevute. Le vedono solo chi ha pagato e gli amministratori. La ricevuta o il rendiconto di un **ospite** lo scaricano solo l'ospite, il suo tutore e la segreteria, **non** chi lo ospita; le ricevute dei pagamenti fatti dall'ospitante restano sue.
+Con lo shortcode `[associazionesemplice_ricevute]` (già incluso nell'area soci) il socio vede l'elenco e scarica le ricevute. Le vede solo chi ha pagato, oltre agli amministratori. La ricevuta o il rendiconto di un **ospite** lo scaricano solo l'ospite, il suo tutore e la segreteria, **non** chi lo ospita; le ricevute dei pagamenti fatti dall'ospitante restano sue.
 
 ## Impostazioni
 

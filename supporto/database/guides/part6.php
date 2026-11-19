@@ -17,7 +17,7 @@ Il plugin gratuito contiene tutto il nucleo per gestire una piccola associazione
 - **Attività**: corsi ed eventi con iscrizioni, posti limitati, lista d'attesa, calendario e registrazione degli ingressi.
 - **Cassa e conti**: prima nota con una cassa unica, spese con allegati e donazioni tramite PayPal.
 - **Registri e privacy**: verbali, informativa privacy, consensi, anonimizzazione e download dei dati personali.
-- **Area riservata** per i soci, con avvisi, regolamento, tessera, eventi e corsi, e **domanda di adesione online** per chi vuole iscriversi (con minori e genitori o tutori).
+- **Area soci**, con avvisi, regolamento, tessera, eventi e corsi, e **domanda di adesione online** per chi vuole iscriversi (con minori e genitori o tutori).
 - **Ruoli**: presidente, vicepresidente, tesoriere, consiglieri e segreteria, con permessi separati.
 - **Copia di sicurezza** e azzeramento dei dati.
 
@@ -56,7 +56,7 @@ MD,
 
 L'apertura e la chiusura degli anni fiscali sono incluse anche nel piano gratuito.
 
-Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, {piano_contabile} è di solito sufficiente. Puoi passare da un piano all'altro dall'area riservata, senza reinstallare nulla.
+Se la tua associazione non ha la partita IVA né un commercialista che chiede questi documenti, di solito basta {piano_contabile}. Puoi passare da un piano all'altro dall'area riservata, senza reinstallare nulla.
 MD,
     ],
     [
@@ -86,7 +86,7 @@ Il plugin torna alle **funzioni di base**. Se la licenza non risulta più valida
 - **I dati non vengono toccati**: soci, prima nota, registri restano al loro posto.
 - Le quote diverse dei soci non si applicano più (vale la quota unica).
 - I soci, i volontari e le esportazioni di base non si bloccano mai.
-- I pagamenti online già avviati si chiudono comunque, così gli incassi in arrivo si registrano.
+- I pagamenti online già avviati arrivano comunque a buon fine e l'incasso viene registrato.
 
 Quando rinnovi, tutto torna come prima. Vedi [Inserire la chiave e controllarne lo stato](guida:inserire-e-controllare-la-chiave).
 MD,
@@ -107,9 +107,9 @@ MD,
 Il plugin funziona da solo. Contatta un servizio esterno solo in questi casi opzionali:
 
 - **Verifica della licenza**: se inserisci una chiave, una volta al giorno invia al server delle licenze solo la chiave e il nome del dominio. Mai dati dei soci.
-- **Aggiornamenti dal sito associazionesemplice.it**: per mostrarti gli aggiornamenti in Bacheca → Aggiornamenti, il plugin contatta il sito associazionesemplice.it e gli invia **solo il nome del prodotto e la versione installata** (di solito una volta al giorno, anche senza chiave). Non invia la chiave, il dominio né dati dei soci. Si spegne da **Impostazioni → Limiti e soglie**, togliendo il segno da «Aggiornamenti diretti»; il testo completo è in **Strumenti → Privacy**. Con Pro attivo la richiesta porta anche la chiave e il dominio.
+- **Aggiornamenti dal sito associazionesemplice.it**: per mostrarti gli aggiornamenti in Bacheca → Aggiornamenti, il plugin contatta il sito associazionesemplice.it, di solito una volta al giorno e anche senza chiave, e gli invia **solo il nome del prodotto e la versione installata**; con Pro attivo, anche la chiave e il dominio. Mai dati dei soci. Si spegne da **Impostazioni → Limiti e soglie**, togliendo la spunta da «Aggiornamenti diretti»; il testo completo è in **Strumenti → Privacy**.
 - **Donazioni PayPal**: il pulsante apre la pagina di donazione di PayPal nel browser del visitatore; dal tuo server non parte nulla.
-- **Ricerca dei luoghi con Google**: spenta di default; se la attivi con la tua chiave, il testo scritto nel campo «Luogo» arriva a Google dal browser dell'amministratore.
+- **Ricerca dei luoghi con Google**: spenta di partenza; se la attivi con la tua chiave, il testo scritto nel campo «Luogo» arriva a Google dal browser dell'amministratore.
 
 Sui siti locali nessuna di queste verifiche parte.
 MD,
@@ -118,7 +118,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'cosa-succede-ai-dati-se-elimino-il-plugin',
         'title' => 'Cosa succede ai dati se elimino il plugin?',
         'body' => <<<'MD'
-Di default **restano nel database** del sito, anche se disattivi o elimini il plugin. Se lo reinstalli li ritrovi.
+**Restano sul sito**, anche se disattivi o elimini il plugin, a meno che tu scelga di cancellarli. Se lo reinstalli li ritrovi.
 
 Se vuoi che vengano cancellati definitivamente quando elimini il plugin, devi scegliere questa opzione nelle impostazioni prima di eliminarlo. Se invece vuoi solo ripartire da zero con il plugin installato, usa l'[azzeramento dei dati](guida:azzerare-i-dati-e-ripartire). In entrambi i casi **scarica prima una copia di sicurezza** ([guida](guida:copia-di-sicurezza-e-ripristino)).
 MD,
@@ -156,9 +156,9 @@ MD,
         'body' => <<<'MD'
 La tessera segue l'**anno fiscale**, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**, alla domanda «Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?»). Con gennaio vale da gennaio a dicembre, scade il 31/12 e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2025/2026**». I soci fondatori hanno la tessera sempre rinnovata.
 
-Negli **ultimi giorni prima della scadenza** (quelli dell'avviso di scadenza, **30** di partenza) si può **rinnovare in anticipo**. L'anno fiscale è anche quello delle **quote** e degli **incassi**, iscrizioni comprese; l'**anno delle attività** è invece solo il calendario di corsi ed eventi e non c'entra con la tessera.
+Negli ultimi giorni prima della scadenza (30, se non hai cambiato i giorni dell'avviso) si può **rinnovare in anticipo**. L'**anno delle attività** (corsi ed eventi) non c'entra con la tessera.
 
-Se **cambi il mese dell'anno fiscale** (finché non hai chiuso il primo anno), compare il riquadro **«Cosa succede alle tessere»**: le tessere degli anni fiscali ancora aperti che hanno un **pagamento registrato** si riallineano al nuovo anno fiscale, **non si accorciano mai** e quelle degli **anni chiusi** non si toccano. Le tessere omaggio, onorarie e a quota zero restano come sono. Due tessere dello stesso anno non possono convivere: resta la più recente e l'altra risulta **«sostituita»** (resta registrata e i pagamenti non cambiano; lo vedi solo nella scheda del socio). Per cambiare il mese devi spuntare **«Ho letto cosa succede alle tessere e voglio cambiare il mese dell'anno fiscale.»** e prima del cambio il plugin salva una **copia di sicurezza** dei dati, che resta sul sito per **7 giorni**. Vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale).
+Per il rinnovo e per cosa succede alle tessere se cambi il mese dell'anno fiscale vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale).
 
 Un socio con la tessera scaduta non può prenotare gli eventi dal sito, nemmeno quelli gratuiti, finché non rinnova. Dalla Bacheca vedi i **Soci da rinnovare** e puoi incassare con un clic.
 MD,
@@ -178,7 +178,7 @@ MD,
         'body' => <<<'MD'
 Sì, con **Pro** (Contabile o Fiscale): i pagamenti online funzionano con **Stripe**, **PayPal**, **SumUp** (anche insieme) o, in alternativa, con **WooCommerce**. Il socio paga dall'area soci e l'incasso entra da solo in prima nota, con la ricevuta.
 
-Nel **plugin gratuito** puoi comunque indicare le coordinate del bonifico, che le modificano solo gli amministratori: ogni modifica, anche con un ripristino di copia, è scritta nel registro azioni (con l'IBAN mascherato) e avvisata per email a tutti gli amministratori; registrare a mano contanti e bonifici e ricevere **donazioni** con un modulo che porta alla pagina di PayPal. Vedi [Attivare i pagamenti online](guida:attivare-stripe-o-paypal).
+Nel **plugin gratuito** puoi comunque indicare le coordinate del bonifico, registrare a mano contanti e bonifici e ricevere **donazioni** con un modulo che porta alla pagina di PayPal. Le coordinate le modificano solo gli amministratori: ogni modifica resta nel registro azioni e viene segnalata per email a tutti gli amministratori. Vedi [Attivare i pagamenti online](guida:attivare-stripe-o-paypal).
 MD,
     ],
     [
@@ -212,7 +212,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'come-emettere-una-ricevuta',
         'title' => 'Come emetto una ricevuta per un pagamento?',
         'body' => <<<'MD'
-Con **{piano_contabile}** o **{piano_fiscale}** ogni incasso ha una **ricevuta in PDF**, numerata per anno fiscale (N/AAAA) e con il nome dell'associazione. La trovi in **Cassa → Prima nota**: puoi scaricarla o inviarla per email a chi ha pagato. Con i pagamenti online il socio la riceve da solo.
+Con **{piano_contabile}** o **{piano_fiscale}** ogni incasso ha una **ricevuta in PDF**, numerata per anno fiscale (N/AAAA) e con il nome dell'associazione. La trovi in **Cassa → Prima nota**: puoi scaricarla o inviarla per email a chi ha pagato. Con i pagamenti online il socio la riceve in automatico.
 
 Vedi [Ricevute in PDF e attestazione annuale](guida:ricevute-in-pdf).
 MD,

@@ -21,13 +21,13 @@ Un corso ha lezioni che si ripetono ogni settimana. Gli iscritti pagano **ogni m
 
 ## Riproporre un'attività
 
-Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco delle attività** usa il collegamento **«Riproponi»**: apre la sezione **«Riproponi»** della scheda dell'attività. Crea una **nuova edizione** con gli stessi dati: contributi, referente, regole, note, luogo e staff. **Iscrizioni, prenotazioni e incassi non si copiano**: la nuova attività parte vuota.
+Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco delle attività** premi **«Riproponi»**. La nuova edizione ha gli stessi dati (contributi, referente, regole, note, luogo e staff) ma parte vuota: iscrizioni, prenotazioni e incassi non si copiano.
 
 ## Sport e disciplina
 
 Ogni attività ha uno **sport** e una **disciplina**, entrambi **facoltativi**. Valgono per **tutti i tipi di attività**: corsi, eventi e ricorrenti.
 
-1. Compili la riga **«Sport e disciplina»** nel modulo **«Nuova attività»** (da **Corsi ed eventi**) oppure, per un'attività esistente, nella scheda **«Dati dell'attività»**.
+1. Compila la riga **«Sport e disciplina»** nel modulo **«Nuova attività»** (da **Corsi ed eventi**) oppure, per un'attività esistente, nella scheda **«Dati dell'attività»**.
 2. Nel menu **«Sport»** scegli dall'**elenco di sport basato sull'elenco CONI** (o lascia «— nessuno —»).
 3. In **«Disciplina secondo l'ente»** scrivi a mano la disciplina dell'ente (per esempio «Ginnastica dolce»), fino a 120 caratteri.
 4. Salva.
@@ -41,15 +41,15 @@ L'elenco lo gestisce l'**amministratore** (non la segreteria), dal riquadro **«
 - **togliere** uno sport dal menu: le attività che già lo usano lo tengono;
 - **ripristinare** l'elenco di base.
 
-Inoltre un'attività accetta **qualsiasi sport scritto in modo sensato**, non solo quelli dell'elenco. L'elenco di base resta «basato sull'elenco CONI».
+Un'attività accetta anche uno sport che non è nell'elenco.
 
-Con Pro questi dati finiscono nel file per i portali degli enti: le colonne **Sport** e **Disciplina** sono ricavate dai corsi a cui la persona è iscritta in quel momento e dagli eventi a cui ha una prenotazione, separati da «;» se sono più di uno (vedi [Gestire le affiliazioni agli enti](guida:affiliazioni-agli-enti)).
+Con Pro, sport e disciplina compaiono nel file per i portali degli enti: nelle colonne **Sport** e **Disciplina** trovi quelli dei corsi a cui la persona è iscritta e degli eventi a cui è prenotata, separati da «;» (vedi [Gestire le affiliazioni agli enti](guida:affiliazioni-agli-enti)).
 
 ## Come funzionano i pagamenti
 
-- **Rinnovo mensile**: il corso si rinnova da solo ogni mese finché l'iscritto non viene «disdetto». La mensilità è dovuta dalla prima lezione del mese; prima risulta «in arrivo», poi «da pagare». Senza giorno indicato è dovuta dal 1°.
-- **Pagamento unico**: la quota è il totale (per esempio «10 incontri a 120 €»), dovuta all'iscrizione e versabile anche a rate. Se l'iscrizione viene cancellata prima di qualunque pagamento, non è dovuto nulla.
-- **Pagamento trimestrale**: oltre a «una tantum» e «rinnovo mensile» puoi scegliere il pagamento del corso a trimestre. I **promemoria mensili** saltano i corsi trimestrali.
+- **Rinnovo mensile**: il corso si rinnova da solo ogni mese finché non disdici il rinnovo dell'iscritto. La mensilità è dovuta dalla prima lezione del mese; prima risulta «in arrivo», poi «da pagare». Senza giorno indicato è dovuta dal 1°.
+- **Pagamento unico**: il contributo è il totale (per esempio «10 incontri a 120 €»), dovuto all'iscrizione e versabile anche a rate. Se elimini l'iscrizione prima di qualunque pagamento, non è dovuto nulla.
+- **Pagamento trimestrale**: il contributo si paga ogni trimestre. I **promemoria mensili** saltano questi corsi.
 
 ## Varianti del contributo
 
@@ -72,9 +72,9 @@ Il prezzo vale per **ogni periodo di pagamento** del corso: il mese, il trimestr
 
 Dopo, nell'elenco degli iscritti, accanto a ogni persona trovi lo stesso menu con la nota e il pulsante **Salva**: puoi **cambiare la variante quando vuoi**. Nell'elenco leggi «· Nome variante» e la nota tra parentesi. Il cambio resta nel registro azioni.
 
-### Cosa succede alla quota
+### Cosa succede al contributo
 
-- La quota dell'iscritto segue la variante in **«Pagamenti da incassare»**, nell'incasso già compilato (l'importo proposto) e nei pagamenti online del socio.
+- Il contributo dell'iscritto segue la variante in **«Pagamenti da incassare»**, nell'incasso già compilato e nei pagamenti online del socio.
 - Chi si iscrive da solo dall'**area soci** paga sempre la **quota base**. L'iscritto non vede il nome della variante, vede solo l'importo che deve; il nome lo vede la segreteria.
 - L'incasso resta una normale quota del corso per il mese di competenza, senza il nome della variante.
 
@@ -82,7 +82,7 @@ Dopo, nell'elenco degli iscritti, accanto a ogni persona trovi lo stesso menu co
 
 ## Quando un iscritto smette di venire
 
-Chi smette di venire a un corso ha già usufruito del periodo che ha pagato: **non si restituisce nulla**. Nella scheda del corso, accanto all'iscrizione attiva, c'è il pulsante **«Non rinnova»**:
+Chi smette di venire ha già frequentato il periodo pagato: **non si restituisce nulla**. Nella scheda del corso, accanto all'iscrizione attiva, c'è il pulsante **«Non rinnova»**:
 
 - l'iscritto **resta nel corso** fino alla fine del periodo già pagato (o del mese in corso);
 - poi **non deve più nulla**, nemmeno i rinnovi successivi;
@@ -92,9 +92,9 @@ Chi smette di venire a un corso ha già usufruito del periodo che ha pagato: **n
 
 ## Quando è l'associazione a non poter più tenere il corso
 
-Si restituisce ciò che non è stato ancora fatto quando è l'associazione a non poter più tenere l'attività (per esempio l'insegnante non può più fare il corso). Eliminando il corso:
+In questo caso (per esempio se l'insegnante non può più tenere il corso) si restituisce ciò che non è stato ancora fatto. Eliminando il corso:
 
-- un mese pagato per intero ma fatto a metà: si rende la quota delle **lezioni non ancora tenute**. Esempio: mese da 60 €, 4 lezioni, 2 già tenute: si rendono **30 €**;
+- di un mese pagato per intero ma fatto a metà si restituisce la parte delle **lezioni non ancora tenute**. Esempio: mese da 60 €, 4 lezioni, 2 già tenute: si restituiscono **30 €**;
 - i mesi **già svolti per intero** restano incassati;
 - i mesi **senza lezioni svolte** si rendono per intero;
 - con **«annulla gli incassi»** un mese fatto a metà **resta com'è**: si può rendere solo con la **restituzione**.
@@ -118,7 +118,11 @@ Sotto trovi **«Lezioni cambiate»**, con quelle annullate o spostate, il motivo
 
 ## Gli iscritti
 
-Nella scheda del corso gli iscritti stanno sotto il modulo di iscrizione. Accanto a chi deve versare c'è **Paga**, che apre l'incasso già compilato. Nel modulo di iscrizione hai due pulsanti in più: **«Salva e prossimo inserimento»** iscrive la persona e resta sulla stessa pagina, pronta per iscrivere quella dopo; **«Iscrivi e vai alla cassa»** la iscrive e apre l'incasso già compilato, se c'è qualcosa da pagare (altrimenti resta lì). Per togliere chi non è più iscritto usa **Togli dall'elenco** (solo chi non ha incassi registrati).
+Nella scheda del corso gli iscritti stanno sotto il modulo di iscrizione. Accanto a chi deve versare c'è **Paga**, che apre l'incasso già compilato. Nel modulo di iscrizione e nell'elenco trovi anche:
+
+- **«Salva e prossimo inserimento»**: iscrive la persona e resta sulla pagina, pronta per la successiva.
+- **«Iscrivi e vai alla cassa»**: iscrive la persona e, se c'è qualcosa da pagare, apre l'incasso già compilato.
+- **Togli dall'elenco**: toglie chi non è più iscritto, solo se non ha incassi registrati.
 MD,
     ],
     [
@@ -141,7 +145,7 @@ Un evento ha una o più date e, se vuoi, posti limitati e un contributo.
 
 ## Regole utili
 
-- Tutte le date di un evento devono cadere nell'**anno delle attività** (ogni attività ne ha uno solo), altrimenti il salvataggio viene rifiutato e non resta nulla a metà.
+- Tutte le date di un evento devono cadere nello stesso **anno delle attività**: altrimenti l'evento non viene salvato.
 - Se un incasso di un corso o di un evento cade in un **anno fiscale chiuso**, non si possono eliminare l'evento o l'iscrizione né cedere il posto: va prima riaperto l'ultimo anno chiuso.
 - Le date già presenti non si duplicano.
 - Per più date, usa l'evento ricorrente. In un evento ricorrente puoi aggiungere o togliere date con **«Aggiungi o elimina date»**.
@@ -154,17 +158,17 @@ Nella pagina dell'evento trovi il **Calendario dell'evento**. Lo vedi per **Mese
 
 Nella scheda c'è **Gestori dell'evento**: i soci o volontari indicati possono, dall'area soci, vedere i prenotati e registrare gli ingressi solo per quell'evento (vedi [Registrare gli ingressi a un evento](guida:registrare-gli-ingressi)).
 
-## Cancellare un evento
+## Eliminare un evento
 
 Solo gli amministratori possono eliminare un evento, dal pulsante **Elimina l'evento** nella scheda. Se ci sono incassi la procedura chiede cosa fare delle somme (restituirle o annullarle) e una doppia conferma; se non ci sono, basta una conferma semplice.
 
 Eliminando un **evento** o un **corso**, il rimborso o l'annullamento riguardano **solo ciò che non è ancora stato fatto**. Gli incassi di **date già svolte**, o di **mesi con almeno una lezione già svolta**, restano in prima nota: non vengono restituiti né annullati. Per esempio, per un corso tenuto a ottobre e annullato a novembre, ottobre resta e novembre si restituisce. La pagina di eliminazione ti mostra **quanti incassi restano**.
 
-Vale lo stesso se cancelli una **singola iscrizione** (a una data di un evento o a un corso): si restituisce o si annulla solo ciò che non è ancora stato fatto. Gli incassi di date passate, o di mesi con almeno una lezione svolta, restano in prima nota. Per la parte già fatta la pagina e il messaggio finale ti dicono **quanto manca** (da incassare) oppure **quanto avanza** (da restituire a mano).
+Vale lo stesso se elimini una **singola iscrizione** (a una data di un evento o a un corso). Per la parte già fatta la pagina e il messaggio finale ti dicono **quanto manca** (da incassare) oppure **quanto avanza** (da restituire a mano).
 
 ## Annullare una data di un evento ricorrente
 
-Negli eventi ricorrenti, accanto a **«Annulla solo questa data»** c'è **«Annulla questa data e le successive»**. Le **date passate non si toccano**. L'annullamento di una data **non registra rimborsi**: le somme si restituiscono a mano, come prima.
+Negli eventi ricorrenti, accanto a **«Annulla solo questa data»** c'è **«Annulla questa data e le successive»**. Le **date passate non si toccano**. L'annullamento di una data **non registra rimborsi**: le somme si restituiscono a mano.
 MD,
     ],
     [
@@ -175,10 +179,10 @@ MD,
 
 ## Lista d'attesa
 
-Quando i posti sono finiti, l'evento mostra **«Posti esauriti · lista d'attesa»**. Il socio (o chi ospita) può mettere sé stesso o un ospite in coda dall'elenco eventi, vede la posizione e può uscire dalla lista.
+Quando i posti sono finiti, l'evento mostra **«Posti esauriti · lista d'attesa»**. Dall'elenco eventi il socio può mettere in lista sé stesso o un suo ospite, vedere la posizione e uscire dalla lista.
 
 - Se qualcuno annulla, o se aumenti i posti, entra automaticamente il primo della lista e riceve una email. **Non vale per gli eventi su richiesta**: lì non c'è lista d'attesa e prenota la segreteria.
-- Se l'attività ha dei **listini**, chi si mette in lista **sceglie la tariffa**: il plugin la ricorda e, quando il posto si libera, prenota con quella. Una persona in coda **senza tariffa valida** (per esempio perché si è messa in lista prima) **non entra da sola**: nella scheda dell'evento compare «manca la tariffa scelta: non entra da solo, prenotalo a mano scegliendo il listino».
+- Se l'attività ha dei **listini**, chi si mette in lista **sceglie il listino**: quando il posto si libera, il plugin prenota con quello. Una persona in lista **senza un listino valido** (per esempio perché si è messa in lista prima) **non entra da sola**: nella scheda dell'evento compare «manca la tariffa scelta: non entra da solo, prenotalo a mano scegliendo il listino».
 - Chi nel frattempo ha la tessera scaduta, è sospeso o non ha accettato il regolamento viene saltato.
 - La coda è visibile e modificabile nella scheda dell'evento.
 
@@ -189,7 +193,7 @@ Per gli eventi con posti limitati e un contributo puoi indicare, alla creazione,
 1. Nella scheda dell'evento, imposta le ore di tolleranza.
 2. Salva.
 
-Scaduto il termine senza alcun pagamento, il posto si libera, la persona riceve una email e subentra il primo della lista d'attesa. Il controllo gira ogni ora e a ogni nuova prenotazione.
+Scaduto il termine senza alcun pagamento, il posto si libera, la persona riceve una email e subentra il primo della lista d'attesa. Il controllo avviene ogni ora e a ogni nuova prenotazione.
 
 > Non si libera mai il posto di chi ha già versato (anche in parte), di chi sta pagando online, di chi ha già l'ingresso registrato o di una data passata.
 MD,
@@ -216,7 +220,7 @@ Un evento su più giorni compare in **ognuno dei suoi giorni**, con l'indicazion
 2. In Google Calendar apri **Altri calendari › Da URL** e incolla l'indirizzo.
 3. Lo stesso indirizzo funziona con Apple Calendar e Outlook.
 
-L'indirizzo è spento di default e si può rigenerare quando vuoi: rigenerandolo, quello vecchio smette di funzionare.
+L'indirizzo è spento di partenza e si può rigenerare quando vuoi: rigenerandolo, quello vecchio smette di funzionare.
 MD,
     ],
     [
@@ -229,7 +233,7 @@ Ogni evento e ogni corso può avere una **pagina pubblica** sul tuo sito, con lo
 
 ## Come nasce la pagina
 
-La pagina è del tipo **«Eventi sul sito»** e nasce da sola dall'attività. Resta in **bozza** finché non la pubblichi: nessuno la vede prima.
+La pagina nasce da sola dall'attività e la trovi tra gli **«Eventi sul sito»**. Resta in **bozza** finché non la pubblichi: nessuno la vede prima.
 
 - Nella pagina scrivi la **descrizione**, carichi la **locandina** e scegli la **categoria**.
 - **Data, luogo, contributo e posti** non si scrivono lì: arrivano dall'attività e restano sempre aggiornati.
@@ -247,7 +251,7 @@ Nella loro pagina si legge **«Si è svolto…»** con la data (oppure «Si è s
 
 ## Date su più giorni
 
-Una data può avere anche una **data di fine**, nel campo **«fino al»**: serve per una gara di più giorni o per una serata che finisce dopo mezzanotte (per esempio dalle **21:30** all'**01:00** del giorno dopo). Lo trovi nella sezione **«Quando»** del modulo di creazione, su ogni **data unica**, e anche quando modifichi una data. Se lo lasci vuoto, la data finisce lo stesso giorno, come prima.
+Una data può avere anche una **data di fine**, nel campo **«fino al»**: serve per una gara di più giorni o per una serata che finisce dopo mezzanotte (per esempio dalle **21:30** all'**01:00** del giorno dopo). Lo trovi nella sezione **«Quando»** del modulo di creazione, su ogni **data unica**, e anche quando modifichi una data. Se lo lasci vuoto, la data finisce lo stesso giorno.
 
 Nelle **date ricorrenti** questo campo non c'è: lì **«fino al»** indica fino a quando la data si ripete, non quando finisce.
 
@@ -283,15 +287,17 @@ La pagina ha un'impaginazione automatica. Per comporla come vuoi, inserisci nel 
 
 ## WhatsApp della segreteria
 
-Il pulsante fisso **«Scrivici su WhatsApp»** usa il **telefono della segreteria** che hai indicato nei **Dati dell'ente** e compare sul sito **solo se accendi la casella «Pulsante WhatsApp»** (in **Impostazioni → Soci e quote**). Accendila solo se è un **cellulare su cui usate WhatsApp**: il telefono della segreteria, che è obbligatorio, può anche essere un fisso. Il pulsante compare anche sulle pagine degli eventi, accanto ai contatti. Un numero diverso, scelto per un singolo evento, resta com'era.
+Il pulsante **«Scrivici su WhatsApp»** usa il telefono della segreteria indicato nei **Dati dell'ente** e compare sul sito, anche nelle pagine degli eventi, solo se accendi la casella **«Pulsante WhatsApp»** in **Impostazioni → Soci e quote**. Accendila solo se quel numero è un cellulare con WhatsApp. Se per un evento hai scelto un numero diverso, vale quello.
 
 ## Se arrivi da The Events Calendar
 
-Con **Importa da The Events Calendar** si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento. Le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di default) pubblica solo quelle con una data futura.
+Con **Importa da The Events Calendar** si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento. Le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di partenza) pubblica solo quelle con una data futura. Gli eventi che si ripetono diventano **un solo evento ricorrente**. Si importa anche la **data di fine**, quindi gli eventi su più giorni restano su più giorni. Se l'evento dura più di 31 giorni, le date restano scritte nelle note. Rilanciando l'importazione non nascono doppioni e una pagina già scritta non viene toccata.
 
-Le pagine rimaste in bozza le trovi nell'elenco **Attività**, nella scheda **«Pagine in bozza: non si vedono ancora sul sito»**: ogni riga ha il nome e la data (con **«(annullato)»** se tutte le date sono annullate) e le caselle sono **vuote** all'apertura; **«Seleziona tutte»** le spunta in un colpo. Premi **«Pubblica le pagine selezionate»** e conferma «Pubblicare le pagine selezionate? Compariranno subito sul sito.»: a fine lavoro leggi «Pagine pubblicate: N. Ora si vedono sul sito.» Se non hai spuntato niente, «Spunta almeno una pagina da pubblicare.»
+## Pubblicare le pagine in bozza
 
-Le pagine le può pubblicare **chi ha l'area della pagina**: **Eventi** per le pagine degli eventi, **Corsi** per quelle dei corsi. Gli **amministratori** e la **segreteria** le possono pubblicare **tutte**. Gli eventi che si ripetono diventano **un solo evento ricorrente**. Si importa anche la **data di fine**, quindi gli eventi su più giorni restano su più giorni. Se l'evento dura più di 31 giorni, le date restano scritte nelle note. Rilanciando l'importazione non nascono doppioni e una pagina già scritta non viene toccata.
+Le pagine rimaste in bozza le trovi nell'elenco **Attività**, nella scheda **«Pagine in bozza: non si vedono ancora sul sito»**. Spunta quelle da pubblicare (o **«Seleziona tutte»**), premi **«Pubblica le pagine selezionate»** e conferma: compaiono subito sul sito.
+
+Le pagine le pubblica chi ha il permesso per quell'area: **Eventi** per le pagine degli eventi, **Corsi** per quelle dei corsi. Amministratori e segreteria le pubblicano tutte.
 
 Se usi una cache delle pagine, **svuotala** dopo aver pubblicato o modificato un evento. Per prenotare e iscriversi dalla pagina leggi [Prenotarsi a un evento o a un corso dal sito](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito).
 MD,
@@ -313,11 +319,13 @@ Il socio **prenota con un clic**, entrando con il suo accesso: il modulo e le re
 ## Chi non è socio
 
 Chi non è socio compila un **modulo breve** e riceve una email con un collegamento da aprire **entro 24 ore** per confermare l'indirizzo. Il collegamento **mostra la richiesta** con il pulsante **«Conferma»**: **aprirlo non basta**, la richiesta è confermata solo premendo il pulsante (così un'anteprima della posta non conferma da sola). Prenota sempre un adulto, che risponde dei minori indicati come accompagnati.
-**Dopo la conferma** il non socio vede «Email confermata. La segreteria esamina la richiesta e ti scrive appena è approvata.» (per i corsi: «Email confermata. La segreteria esamina la richiesta di iscrizione e ti scrive appena è approvata, spiegandoti come pagare.»). Gli arriva anche un'email, **«Richiesta ricevuta: …»**: «Abbiamo confermato la tua richiesta per «…». La segreteria la esamina e ti scrive appena è approvata. Per qualsiasi dubbio scrivi alla segreteria.»
+**Dopo la conferma** legge che la segreteria esaminerà la richiesta e gli scriverà appena è approvata (per i corsi, spiegando anche come pagare). Lo stesso gli arriva per email, con oggetto **«Richiesta ricevuta: …»**.
 
-**Richieste non confermate:** se il non socio non conferma l'email **entro 24 ore**, la richiesta **si cancella da sola**.
+Se non conferma entro 24 ore, la richiesta si cancella da sola.
 
-**Se il codice fiscale è già in anagrafica**, chi chiede **non vede né il nome né lo stato della persona**: la richiesta passa alla segreteria. **Se il codice fiscale è già in anagrafica con dati diversi**, la segreteria riceve un'email **«Richiesta di partecipazione da verificare: …»**. Se i dati sono della **stessa persona**, la approva e si usa la scheda che c'è già; altrimenti la **rifiuta**.
+Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
+
+**Se il codice fiscale è già registrato**, chi chiede non vede né il nome né lo stato di quella persona: la richiesta passa alla segreteria. Se i dati sono diversi, la segreteria riceve l'email **«Richiesta di partecipazione da verificare: …»**: approva se è la stessa persona (si usa la scheda che c'è già), altrimenti rifiuta.
 
 ## I tetti alle richieste
 
@@ -327,13 +335,11 @@ Per non riempire il sito di richieste inutili ci sono tre limiti, che cambi in *
 - **«Posti chiedibili con lo stesso indirizzo email, in 24 ore»**: di partenza **20** (da 10 a 200);
 - **«Posti chiedibili dalla stessa connessione, in 24 ore»**: di partenza **40** (da 10 a 500).
 
-**Quando il tetto è raggiunto**, chi scrive vede «In questo momento non possiamo ricevere altre richieste per questa attività: riprova più tardi o scrivi alla segreteria (indirizzo).» (l'indirizzo compare solo se la segreteria ne ha uno). Tu trovi in **Bacheca** l'avviso **«Le richieste di evento e di corso sono al limite»**, con quante richieste ci sono in attesa, il limite e, se ce ne sono, quante nuove sono state scartate negli ultimi giorni. Per far posto **approva o rifiuta** le richieste in attesa dalla scheda delle attività, oppure **alza il limite** da **Limiti e soglie**.
+**Quando il limite è raggiunto**, chi scrive legge che per ora non si ricevono altre richieste e che può riprovare più tardi o scrivere alla segreteria. Tu trovi in **Bacheca** l'avviso **«Le richieste di evento e di corso sono al limite»**, con il numero di richieste in attesa e di quelle scartate. Per far posto **approva o rifiuta** le richieste in attesa dalla scheda delle attività, oppure **alza il limite** da **Limiti e soglie**.
 
-**Se il limite è per email o per connessione**, chi scrive vede, per l'email, «Con questo indirizzo email sono già stati chiesti molti posti nelle ultime 24 ore: per altri posti scrivi alla segreteria (indirizzo).» e, per la connessione, «Da questa connessione sono già stati chiesti molti posti nelle ultime 24 ore: riprova più tardi o scrivi alla segreteria (indirizzo).» (l'indirizzo compare solo se la segreteria ne ha uno). Vale per eventi e corsi. La richiesta **non viene registrata** e **non parte nessuna email**. Se nell'ultima settimana ce ne sono state di respinte, nell'avviso in Bacheca trovi una riga in più: «N richieste sono state respinte perché una email o una connessione aveva già chiesto molti posti (il limite si cambia da Limiti e soglie).»
+**Se il limite è per email o per connessione**, chi scrive legge che da quell'indirizzo o da quella connessione sono già stati chiesti molti posti nelle ultime 24 ore, con l'invito a scrivere alla segreteria. La richiesta **non viene registrata** e non parte nessuna email. L'avviso in Bacheca conta anche le richieste respinte nell'ultima settimana.
 
 **La segreteria non ha questi limiti** quando prenota.
-
-Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
 
 ## Le scelte per ogni evento
 
@@ -354,7 +360,7 @@ Nella pagina del corso trovi **«Come iscriversi»**: il socio con la tessera va
 
 ## Protezioni
 
-Il modulo ha un campo trappola, un gettone firmato e un limite di richieste per indirizzo, senza CAPTCHA di terzi. Chi non è socio non ha un pannello: le disdette le gestisce la segreteria.
+Il modulo si protegge da solo dalle richieste automatiche, senza CAPTCHA di terzi. Chi non è socio non ha un'area personale: per annullare la prenotazione scrive alla segreteria.
 MD,
     ],
     [
@@ -368,7 +374,7 @@ Con i **listini** la stessa attività può avere prezzi diversi, per esempio *In
 ## Creare i listini
 
 1. Apri la **scheda dell'attività** (evento o corso a date) da **Attività**.
-2. Nella riga **Listini** aggiungi un prezzo per ogni listino con **nome**, **prezzo** e numero di **ingressi**. Premi **«+ Aggiungi un prezzo»** per averne altri: uno o più prezzi, quanti ne servono.
+2. Nella riga **Listini** indica **nome**, **prezzo** e numero di **ingressi** di ogni listino. Per aggiungerne un altro premi **«+ Aggiungi un prezzo»**.
 3. Salva.
 
 Un listino con un solo ingresso è una prenotazione normale; un listino con più ingressi è un **pacchetto**.
@@ -382,7 +388,7 @@ Un listino con un solo ingresso è una prenotazione normale; un listino con più
 
 1. Il pacchetto si **paga sulla prima prenotazione**.
 2. Le altre date si prenotano con **usa pacchetto**: non c'è altro da pagare.
-3. Gli ingressi del pacchetto si consumano a ogni prenotazione. Nel modulo **«Prenota»** di un evento, scelto il socio, la casella dice quale pacchetto ha e quanti ingressi restano: l'ingresso si scala già alla prenotazione.
+3. Ogni prenotazione consuma un ingresso del pacchetto. Nel modulo **«Prenota»** di un evento, scelto il socio, la casella dice quale pacchetto ha e quanti ingressi restano.
 
 Per vedere a chi restano ingressi:
 
@@ -421,7 +427,7 @@ Con **Pro**, se per l'evento è **abilitato l'incasso**, lo **staff dell'evento*
 
 - L'ingresso si registra **nel giorno dell'evento**. Gli amministratori possono farlo anche in un altro giorno dalla scheda dell'evento.
 - Togliere una persona dai gestori la esclude subito.
-- Con lo **staff dell'evento** abilitato, si può anche incassare il biglietto sul posto (funzione Pro).
+- Con **Pro**, se per l'evento è **abilitato l'incasso**, lo **staff dell'evento** può incassare il contributo sul posto e **addebitare crediti** al socio con il QR, anche se il socio non ha un utente WordPress.
 MD,
     ],
     [
@@ -472,13 +478,13 @@ Le Comunicazioni inviano un messaggio email a un gruppo, con anteprima dei desti
 
 ## Come partono
 
-Ognuno riceve la **propria** email: nessun indirizzo è visibile agli altri. I primi 25 partono subito, il resto continua in background (circa 25 al minuto). Gli ospiti senza email ricevono tramite il socio che li ospita.
+Ognuno riceve la **propria** email: nessun indirizzo è visibile agli altri. I primi 25 partono subito, gli altri poco dopo (circa 25 al minuto). Gli ospiti senza email la ricevono tramite il socio che li ospita.
 
 ## Dopo l'invio
 
 Lo **storico** mostra chi l'ha ricevuta e chi no, con il pulsante **Riprova le non partite**. Se i dispositivi dei soci hanno le notifiche attive, il messaggio arriva anche come notifica.
 
-> C'è un limite di 20 comunicazioni nelle 24 ore, per proteggere la reputazione del tuo indirizzo di posta.
+> Puoi inviare al massimo 20 comunicazioni in 24 ore: così le tue email non finiscono nello spam.
 MD,
     ],
 ];
