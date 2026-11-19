@@ -61,6 +61,9 @@ final readonly class SociExtrasController
             'expires_on' => ['required', 'date_format:Y-m-d'],
             'doctor' => ['nullable', 'string', 'max:190'],
             'file' => ['nullable', 'file', 'max:10240', 'mimetypes:'.implode(',', CertificateService::MIMES)],
+        ], [
+            'file.max' => 'Il file non può superare 10 MB.',
+            'file.mimetypes' => 'Carica un PDF o un\'immagine (JPG o PNG).',
         ]));
         $file = $request->file('file');
 

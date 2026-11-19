@@ -93,7 +93,7 @@ final readonly class OrgMembers
 
     public function changeRole(Org $org, string $userId, OrgRole $role, Operator $by, ?string $customRoleId = null): void
     {
-        $current = $this->memberships->find($userId, $org->id) ?? throw new InvalidArgumentException('Operatore inesistente.');
+        $current = $this->memberships->find($userId, $org->id) ?? throw new InvalidArgumentException('Operatore non trovato.');
         $this->authorize($org, $current->role, $by);
         $this->authorize($org, $role, $by);
         $customRoleId = $this->customRole($org, $role, $customRoleId);
@@ -124,9 +124,9 @@ final readonly class OrgMembers
      */
     public function setDeniedAbilities(Org $org, string $userId, array $denied, Operator $by): void
     {
-        $current = $this->memberships->find($userId, $org->id) ?? throw new InvalidArgumentException('Operatore inesistente.');
+        $current = $this->memberships->find($userId, $org->id) ?? throw new InvalidArgumentException('Operatore non trovato.');
         if ($by->orgId !== $org->id || ! $by->role->canAssign(OrgRole::Employee)) {
-            throw new AuthorizationException('Non puoi cambiare i permessi di un dipendente.');
+            throw new AuthorizationException('Non hai il permesso per questa operazione: chiedilo a un amministratore.');
         }
         if ($current->role !== OrgRole::Employee) {
             throw new InvalidArgumentException('I permessi si tolgono solo a chi ha il ruolo Dipendente.');
@@ -225,7 +225,7 @@ final readonly class OrgMembers
             $action = 'role.created';
         } else {
             if (! Str::isUuid($roleId) || $table->where('org_id', $org->id)->where('id', $roleId)->update(['name' => $name, 'abilities' => $array, 'updated_at' => now()]) === 0) {
-                throw new InvalidArgumentException('Ruolo inesistente.');
+                throw new InvalidArgumentException('Ruolo non trovato.');
             }
             $action = 'role.updated';
         }
@@ -238,13 +238,13 @@ final readonly class OrgMembers
     {
         $this->authorize($org, OrgRole::Custom, $by);
         if (! Str::isUuid($roleId)) {
-            throw new InvalidArgumentException('Ruolo inesistente.');
+            throw new InvalidArgumentException('Ruolo non trovato.');
         }
         if ($this->db->connection('pgsql')->table('core.org_users')->where('org_id', $org->id)->where('custom_role_id', $roleId)->exists()) {
             throw new InvalidArgumentException('Qualcuno ha ancora questo ruolo: dagli prima un altro ruolo.');
         }
         if ($this->db->connection('pgsql')->table('core.org_roles')->where('org_id', $org->id)->where('id', $roleId)->delete() === 0) {
-            throw new InvalidArgumentException('Ruolo inesistente.');
+            throw new InvalidArgumentException('Ruolo non trovato.');
         }
         $this->audit($org, 'role.deleted', $by->userId, ['role_id' => $roleId]);
     }
@@ -265,7 +265,7 @@ final readonly class OrgMembers
 
     public function remove(Org $org, string $userId, Operator $by): void
     {
-        $current = $this->memberships->find($userId, $org->id) ?? throw new InvalidArgumentException('Operatore inesistente.');
+        $current = $this->memberships->find($userId, $org->id) ?? throw new InvalidArgumentException('Operatore non trovato.');
         if ($userId === $by->userId) {
             throw new InvalidArgumentException('Non puoi toglierti da solo: chiedilo a un altro titolare o amministratore.');
         }
@@ -302,7 +302,7 @@ final readonly class OrgMembers
         $table = $this->db->connection('pgsql')->table('core.org_users as m')->where('m.org_id', $org->id)->where('m.role', '!=', OrgRole::Accountant->value);
         $already = $email !== null && (clone $table)->join('core.users as u', 'u.id', '=', 'm.user_id')->where('u.email', $email)->exists();
         if (! $already && $table->count() >= $this->entitlements->for($org->id)->operators) {
-            throw new OperatorLimitReached('Hai raggiunto il numero di operatori del tuo abbonamento: aggiungine uno dal portale.');
+            throw new OperatorLimitReached('L\'abbonamento non comprende altri operatori: aggiungi un posto dal portale, poi ripeti l\'invito.');
         }
     }
 

@@ -105,7 +105,7 @@ it('con l\'archivio alterato la ricevuta non si scarica e lo dice chiaro', funct
     expect($res->getContent())->toContain('è nell\'archivio dell\'anno fiscale '.$this->year)->toContain('non si apre');
     // Rimettere i file con un archivio rovinato non cambia niente.
     $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/rimetti")
-        ->assertSessionHasErrors(['archive' => 'L\'archivio non si apre o le impronte non coincidono: nessun file è stato rimesso.']);
+        ->assertSessionHasErrors(['archive' => 'L\'archivio non si apre o non supera il controllo: nessun file è stato rimesso.']);
     expect((int) archiveRow($this->org->id, $this->receipt)->archived_year)->toBe($this->year);
 });
 
@@ -250,7 +250,7 @@ it('senza i dati salvati all\'emissione la ricostruzione non cambia niente e lo 
     $this->orgContext()->run($this->org->id, fn () => DB::table('app.receipt_files')->update(['snapshot' => null]));
 
     $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}/ricostruisci")
-        ->assertSessionHasErrors(['archive' => 'Per 1 ricevute mancano i dati salvati all\'emissione: non è cambiato nulla. Scrivi all\'assistenza di Associazione Semplice.']);
+        ->assertSessionHasErrors(['archive' => 'Per 1 ricevuta mancano i dati salvati all\'emissione: non è cambiato nulla. Scrivi all\'assistenza di Associazione Semplice.']);
     expect((int) archiveRow($this->org->id, $this->receipt)->archived_year)->toBe($this->year)
         ->and($this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->count()))->toBe(1);
 });

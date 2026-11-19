@@ -21,12 +21,12 @@ final class TwoFactorResetNoticeNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('La verifica in due passaggi è stata tolta')
+            ->subject('Associazione Semplice · La verifica in due passaggi è stata tolta')
             ->greeting("Ciao {$this->name},")
             ->line($this->bySupport
-                ? 'la verifica in due passaggi del tuo accesso è stata tolta dal supporto di Associazione Semplice, su tua richiesta.'
+                ? 'la verifica in due passaggi del tuo accesso è stata tolta dall\'assistenza di Associazione Semplice, su tua richiesta.'
                 : 'la verifica in due passaggi del tuo accesso è stata tolta tramite un link ricevuto per email.')
             ->line('Al prossimo accesso riattivala subito, con il telefono nuovo.')
-            ->line('Se non sei stato tu, cambia subito la password.');
+            ->line('Se non l\'hai chiesto tu, cambia subito la password.');
     }
 }

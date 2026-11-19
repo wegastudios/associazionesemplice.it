@@ -212,7 +212,7 @@ final readonly class LedgerController
         $data = Input::of($request->validate(['reason' => ['required', 'string', 'max:255']]));
 
         return $this->attempt(fn (): string => $this->ledger->void($transaction, Input::string($data, 'reason')) > 1
-            ? 'Movimento stornato insieme alle righe collegate.'
+            ? 'Movimento stornato insieme ai movimenti collegati.'
             : 'Movimento stornato.');
     }
 

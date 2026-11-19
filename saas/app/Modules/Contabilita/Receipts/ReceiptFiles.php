@@ -282,13 +282,13 @@ final readonly class ReceiptFiles
             if ($e->getMessage() === 'File inesistente.') {
                 throw new ReceiptFileProblem(self::missingText($number), ReceiptFileProblem::MISSING);
             }
-            throw new ReceiptFileProblem('Il PDF della ricevuta n. '.$number.' risulta diverso da quando è stato emesso: per sicurezza non viene scaricato. Un amministratore può controllarlo da «Verifica delle ricevute»; se non si riesce a rifarlo, scrivi all\'assistenza di Associazione Semplice.', ReceiptFileProblem::ALTERED);
+            throw new ReceiptFileProblem('Il PDF della ricevuta n. '.$number.' risulta diverso da quando è stato emesso: per sicurezza non viene scaricato. Un amministratore può controllarlo da «Verifica delle ricevute»; se non ci riesce, scrivi all\'assistenza di Associazione Semplice.', ReceiptFileProblem::ALTERED);
         }
     }
 
     private static function missingText(string $number): string
     {
-        return 'Il PDF della ricevuta n. '.$number.' non si trova più sul sito. Non viene rifatto in automatico: un amministratore può provare a rifarlo da «Verifica delle ricevute»; se non si riesce a rifarlo, scrivi all\'assistenza di Associazione Semplice.';
+        return 'Il PDF della ricevuta n. '.$number.' non si trova più. Non viene rifatto in automatico: un amministratore può provare a rifarlo da «Verifica delle ricevute»; se non ci riesce, scrivi all\'assistenza di Associazione Semplice.';
     }
 
     /**

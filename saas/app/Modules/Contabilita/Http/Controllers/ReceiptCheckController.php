@@ -16,7 +16,7 @@ use Inertia\Response;
 /** Verifica delle ricevute: per esercizio, quali PDF sono a posto, da fissare, mancanti o alterati. Solo amministratori. */
 final readonly class ReceiptCheckController
 {
-    private const LABELS = ['ok' => 'A posto', 'unfixed' => 'Da fissare', 'missing' => 'Mancante', 'altered' => 'Alterato', 'voided' => 'Annullata', 'archived' => 'In archivio'];
+    private const LABELS = ['ok' => 'A posto', 'unfixed' => 'Da fissare', 'missing' => 'Mancante', 'altered' => 'Diverso dall\'emissione', 'voided' => 'Annullata', 'archived' => 'In archivio'];
 
     public function __construct(
         private ReceiptFiles $files,
@@ -44,7 +44,7 @@ final readonly class ReceiptCheckController
     {
         $r = $this->files->fixNext(100);
 
-        return back()->with('status', $r['fixed'].' ricevute fissate.'.($r['left'] > 0 ? ' Ne restano '.$r['left'].': premi ancora «Fissa i prossimi PDF».' : ''));
+        return back()->with('status', ($r['fixed'] === 1 ? '1 ricevuta fissata.' : $r['fixed'].' ricevute fissate.').($r['left'] > 0 ? ' Ne restano '.$r['left'].': premi ancora «Fissa i prossimi PDF».' : ''));
     }
 
     public function rebuild(string $receipt): RedirectResponse

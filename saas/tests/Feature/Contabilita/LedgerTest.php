@@ -89,7 +89,7 @@ it('rifiuta categorie, importi, conti e persone non validi', function (): void {
     $income = ($this->cat)(CategoryKind::Membership);
     $expense = ($this->cat)(CategoryKind::GeneralCost);
 
-    expect(fn () => $this->ledger->recordIncome(income($this->cash->id, [])))->toThrow(LedgerError::class, 'almeno una voce')
+    expect(fn () => $this->ledger->recordIncome(income($this->cash->id, [])))->toThrow(LedgerError::class, 'almeno una riga')
         ->and(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine($expense, 100)])))->toThrow(LedgerError::class, 'voce non valida')
         ->and(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine($income, 0)])))->toThrow(LedgerError::class, 'importo')
         ->and(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine($income, 100, '', '2026-13')])))->toThrow(LedgerError::class, 'competenza')
@@ -210,7 +210,7 @@ it('non tocca i movimenti di un\'altra associazione', function (): void {
     $other = $this->createOrg('Circolo Beta');
 
     $this->orgContext()->run($other->id, function () use ($id): void {
-        expect(fn () => app(Ledger::class)->void($id, 'x'))->toThrow(LedgerError::class, 'inesistente')
+        expect(fn () => app(Ledger::class)->void($id, 'x'))->toThrow(LedgerError::class, 'non trovato')
             ->and(fn () => app(Ledger::class)->recordExpense(new Expense(now()->toDateString(), $this->cash->id, Category::query()->where('kind', 'general_cost')->sole()->id, 100)))
             ->toThrow(LedgerError::class, 'Conto non valido');
     });

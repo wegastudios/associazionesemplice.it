@@ -27,7 +27,7 @@ final readonly class CoreDataExport implements DataExport
         $org = Org::query()->findOrFail($operator->orgId);
         $files = [];
         if ($operator->can(Ability::ManageOperators)) {
-            $files['operatori.csv'] = Csv::build(['Nome', 'Email', 'Ruolo', 'Accesso attivato'], array_map(
+            $files['operatori.csv'] = Csv::build(['Nome', 'Email', 'Ruolo', 'Verifica in due passaggi'], array_map(
                 static fn (array $o): array => [$o['name'], $o['email'], $o['role_label'], $o['two_factor'] ? 'sì' : 'no'],
                 $this->members->operators($org),
             ));

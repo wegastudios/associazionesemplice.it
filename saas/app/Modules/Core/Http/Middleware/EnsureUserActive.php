@@ -33,6 +33,6 @@ final class EnsureUserActive
             abort(403, 'Utente disattivato.');
         }
 
-        return redirect('/accesso')->withErrors(['email' => 'Questo utente è disattivato: contatta l\'amministrazione.']);
+        return redirect('/accesso')->withErrors(['email' => 'Questo accesso è stato disattivato: scrivi all\'assistenza di Associazione Semplice.']);
     }
 }

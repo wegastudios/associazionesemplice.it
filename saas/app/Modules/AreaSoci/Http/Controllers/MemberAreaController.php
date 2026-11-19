@@ -70,7 +70,7 @@ final readonly class MemberAreaController
 
     public function updateProfile(Request $request): RedirectResponse
     {
-        $data = Input::of($request->validate(['phone' => ['nullable', 'string', 'max:40'], 'address' => ['nullable', 'string', 'max:255']]));
+        $data = Input::of($request->validate(['phone' => ['nullable', 'string', 'max:40'], 'address' => ['nullable', 'string', 'max:255']], [], ['phone' => 'telefono']));
         try {
             $this->profiles->updateContacts($this->current->active(), Input::optionalString($data, 'phone'), Input::optionalString($data, 'address'));
         } catch (PeopleError $e) {

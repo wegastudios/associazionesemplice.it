@@ -30,7 +30,7 @@ const field = 'field';
                 <p class="text-sm text-muted">{{ a.type }} · saldo iniziale {{ a.opening }}</p>
                 <form v-if="canEdit" class="flex flex-wrap items-center gap-2 text-sm" @submit.prevent="saveFee(a)">
                     <span class="w-full font-semibold">Commissione trattenuta a ogni incasso</span>
-                    <input v-model="fee(a).fee_fixed" inputmode="decimal" :class="field" class="w-24" aria-label="Quota fissa in euro" placeholder="0,00" /> € +
+                    <input v-model="fee(a).fee_fixed" inputmode="decimal" :class="field" class="w-24" aria-label="Parte fissa in euro" placeholder="0,00" /> € +
                     <input v-model="fee(a).fee_percent" inputmode="decimal" :class="field" class="w-20" aria-label="Percentuale" placeholder="0" /> %
                     <button type="submit" class="btn btn-secondary btn-sm">Salva</button>
                 </form>
@@ -50,7 +50,7 @@ const field = 'field';
                         <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ a.balance }}</td>
                         <td class="px-4 py-3">
                             <form v-if="canEdit" class="flex flex-wrap items-center gap-1" @submit.prevent="saveFee(a)">
-                                <input v-model="fee(a).fee_fixed" inputmode="decimal" :class="field" class="w-20" aria-label="Quota fissa in euro" placeholder="0,00" /> € +
+                                <input v-model="fee(a).fee_fixed" inputmode="decimal" :class="field" class="w-20" aria-label="Parte fissa in euro" placeholder="0,00" /> € +
                                 <input v-model="fee(a).fee_percent" inputmode="decimal" :class="field" class="w-16" aria-label="Percentuale" placeholder="0" /> %
                                 <button type="submit" class="ml-1 font-semibold text-accent hover:underline">Salva</button>
                             </form>

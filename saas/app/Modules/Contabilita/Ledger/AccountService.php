@@ -79,7 +79,7 @@ final readonly class AccountService
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > 120) {
-            throw new LedgerError('Il nome del conto è obbligatorio (al massimo 120 caratteri).');
+            throw new LedgerError('Dai un nome al conto (al massimo 120 caratteri).');
         }
 
         return $name;

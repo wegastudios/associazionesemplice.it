@@ -75,7 +75,7 @@ final readonly class YearsController
             'confirm_year' => ['required', 'integer', 'in:'.$year],
         ], ['confirm_year.in' => 'Per confermare scrivi l\'anno fiscale che riapri.', 'confirm_year.required' => 'Per confermare scrivi l\'anno fiscale che riapri.']));
 
-        return $this->attempt(fn () => $this->years->reopen($year, Input::string($data, 'reason')), "Anno fiscale {$year} riaperto: tornano bozze.");
+        return $this->attempt(fn () => $this->years->reopen($year, Input::string($data, 'reason')), "Anno fiscale {$year} riaperto: rendiconto e libro soci tornano in bozza. Il motivo resta registrato.");
     }
 
     /** @param  callable(): mixed  $action */

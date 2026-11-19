@@ -24,11 +24,11 @@ final class EmailChangeNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Conferma il nuovo indirizzo email')
+            ->subject('Associazione Semplice · Conferma il nuovo indirizzo email')
             ->greeting("Ciao {$this->name},")
             ->line('hai chiesto di usare questo indirizzo per accedere al gestionale di Associazione Semplice.')
             ->line('Per confermare apri il link: vale 60 minuti. Finché non lo apri, l\'email di accesso non cambia.')
             ->action('Conferma l\'indirizzo', $this->url)
-            ->line('Se non sei stato tu, ignora questo messaggio: non succede nulla.');
+            ->line('Se non l\'hai chiesto tu, ignora questo messaggio: non succede nulla.');
     }
 }

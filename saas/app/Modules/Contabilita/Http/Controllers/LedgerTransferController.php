@@ -38,7 +38,7 @@ final readonly class LedgerTransferController
             'file' => ['required', 'file', 'max:5120', 'extensions:csv,txt,xlsx'],
             'default_account_id' => ['nullable', 'uuid'],
             'apply' => ['boolean'],
-        ]);
+        ], ['file.max' => 'Il file non può superare 5 MB.']);
         $file = $request->file('file');
         if (! $file instanceof UploadedFile) {
             throw ValidationException::withMessages(['file' => 'Scegli il file.']);
@@ -52,7 +52,7 @@ final readonly class LedgerTransferController
             return $this->page(null, $this->import->apply($preview['plan']));
         }
 
-        $labels = ['create' => 'nuovo', 'transfer' => 'giroconto', 'paired' => 'giroconto', 'duplicate' => 'doppione', 'skip' => 'saltato', 'error' => 'errore'];
+        $labels = ['create' => 'Nuovo', 'transfer' => 'Giroconto', 'paired' => 'Giroconto', 'duplicate' => 'Già presente', 'skip' => 'Saltato', 'error' => 'Errore'];
 
         return $this->page([
             'summary' => $preview['summary'],

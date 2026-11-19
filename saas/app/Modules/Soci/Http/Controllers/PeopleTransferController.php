@@ -45,7 +45,7 @@ final readonly class PeopleTransferController
             'mark_current' => ['boolean'],
             'confirm_years' => ['boolean'],
             'apply' => ['boolean'],
-        ]);
+        ], ['file.max' => 'Il file non può superare 5 MB.']);
         $file = $request->file('file');
         if (! $file instanceof UploadedFile) {
             throw ValidationException::withMessages(['file' => 'Scegli il file.']);

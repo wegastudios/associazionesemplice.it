@@ -75,6 +75,6 @@ final readonly class DashboardController
     {
         $h = (int) now('Europe/Rome')->format('G');
 
-        return $h < 6 ? 'Buona notte' : ($h < 13 ? 'Buongiorno' : ($h < 18 ? 'Buon pomeriggio' : 'Buonasera'));
+        return $h >= 6 && $h < 13 ? 'Buongiorno' : ($h >= 13 && $h < 18 ? 'Buon pomeriggio' : 'Buonasera');
     }
 }
