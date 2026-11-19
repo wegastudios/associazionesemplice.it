@@ -1,16 +1,8 @@
-# Le guide si riseminano da sole quando i testi (database/guides o il seeder) sono diversi da quelli già sul server;
-# --seed-guide le riserva comunque. L'impronta dell'ultimo seme sta in storage/app/guide-content.sha.
-SUM="$(cat database/guides/*.php database/seeders/GuideContentSeeder.php | sha256sum | cut -c1-64)"
-SUMFILE="$REMOTE_DIR/storage/app/guide-content.sha"
-if [ "$("${SSH[@]}" "cat $SUMFILE 2>/dev/null || true")" != "$SUM" ]; then SEED=1; fi
-if [ $SEED = 1 ]; then echo "  Le guide sono cambiate: le riseminerò."; fi
-
-echo "3/4 Aggiorno il server"
-"${SSH[@]}" "cd $REMOTE_DIR && $PHP artisan migrate --force && { [ $SEED = 0 ] || { $PHP artisan db:seed --class=GuideContentSeeder --force && echo $SUM > $SUMFILE; }; } && $PHP artisan view:clear && $PHP artisan config:clear"#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Rilascio del sito di supporto (supporto.associazionesemplice.it) sul server di Associazione Semplice.
 #
 # Uso, dalla cartella supporto/ del repository, dopo che i test sono verdi e la PR è unita:
-#   SUPPORTO_DEPLOY_KEY=/percorso/della/chiave ./scripts/deploy.sh [--seed-guide]   (le guide si riseminano da sole se i testi sono cambiati)
+#   SUPPORTO_DEPLOY_KEY=/percorso/della/chiave ./scripts/deploy.sh [--seed-guide]
 #
 # Regole di sicurezza (storia: il 19/11/2026 copiare public/ ha sostituito il .htaccess del server,
 # che contiene il gestore PHP 8.4 di cPanel, e il sito è andato in errore 500):
