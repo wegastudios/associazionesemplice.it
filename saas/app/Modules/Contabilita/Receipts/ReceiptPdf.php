@@ -182,10 +182,10 @@ final readonly class ReceiptPdf
             $what = self::str($r['what'] ?? '');
             $activity = is_string($r['activity'] ?? null) ? $r['activity'] : null;
             if ($activity !== null && ! str_contains($what, $activity)) {
-                $what .= ' — '.$activity;
+                $what .= ', '.$activity;
             }
             if ($holder !== null && $ward !== null && self::str($ward['id'] ?? '') !== self::str($holder['id'] ?? '') && $minorLines === []) {
-                $what .= ' — per '.trim(self::str($ward['first_name'] ?? '').' '.self::str($ward['last_name'] ?? ''));
+                $what .= ', per '.trim(self::str($ward['first_name'] ?? '').' '.self::str($ward['last_name'] ?? ''));
             }
             foreach (Pdf::wrap($what, $w - 210, 11) as $i => $l) {
                 $pdf->text(56, $y, $l, 11);

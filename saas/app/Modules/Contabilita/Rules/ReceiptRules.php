@@ -48,11 +48,11 @@ final class ReceiptRules
         $lines = [];
         foreach ($guardians as $g) {
             if ($g['id'] !== $holder['id']) {
-                $lines[] = 'Altro genitore o tutore: '.trim($g['first_name'].' '.$g['last_name']).' — C.F. '.$cf($g);
+                $lines[] = 'Altro genitore o tutore: '.trim($g['first_name'].' '.$g['last_name']).', C.F. '.$cf($g);
             }
         }
         $birth = (string) ($ward['birth_date'] ?? '');
-        $lines[] = 'Per conto di '.trim($ward['first_name'].' '.$ward['last_name']).' — C.F. '.$cf($ward).', nato/a il '.(new DateTimeImmutable($birth))->format('d/m/Y');
+        $lines[] = 'Per conto di '.trim($ward['first_name'].' '.$ward['last_name']).', C.F. '.$cf($ward).', nato/a il '.(new DateTimeImmutable($birth))->format('d/m/Y');
         $note = '';
         if ($years >= 5 && array_intersect($kinds, ['activity_fee', 'membership']) !== []) {
             $note = in_array($method, self::TRACKED_METHODS, true)

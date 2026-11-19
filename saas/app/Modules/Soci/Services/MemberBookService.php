@@ -186,8 +186,8 @@ final readonly class MemberBookService
             ['Tessera', 52, 'L'], ['Ammissione', 80, 'L'], ['Cessazione', 100, 'L'], ['Ultima quota', 70, 'R'],
         ];
         $title = 'Libro soci'.match ($filter) {
-            self::IN_FORCE => ' — soci in carica',
-            self::LEFT => ' — soci cessati',
+            self::IN_FORCE => ': soci in carica',
+            self::LEFT => ': soci cessati',
             default => '',
         };
         $page = 1;

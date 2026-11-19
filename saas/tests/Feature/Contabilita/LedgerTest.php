@@ -229,7 +229,7 @@ it('registra la commissione di incasso del conto come costo generale, solo se il
 
     expect($fee->amount_cents)->toBe(175)
         ->and($fee->account_id)->toBe($this->bank->id)
-        ->and($fee->description)->toBe('Commissione di incasso (stima) — Conto corrente')
+        ->and($fee->description)->toBe('Commissione di incasso (stima): Conto corrente')
         ->and(Category::query()->find($fee->category_id)->kind->value)->toBe('general_cost');
 
     // L'import dello storico non aggiunge commissioni.
