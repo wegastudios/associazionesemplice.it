@@ -7,7 +7,6 @@ use App\Modules\Core\Auth\TwoFactorEmailResetNotification;
 use App\Modules\Core\Models\User;
 use Illuminate\Support\Facades\Lang;
 
-
 it('ogni regola di validazione usata nel codice ha la sua traduzione', function (): void {
     $known = ['accepted', 'accepted_if', 'active_url', 'after', 'after_or_equal', 'alpha', 'alpha_dash', 'alpha_num', 'array', 'before', 'before_or_equal', 'between', 'boolean', 'confirmed',
         'current_password', 'date', 'date_equals', 'date_format', 'decimal', 'declined', 'different', 'digits', 'digits_between', 'distinct', 'email', 'ends_with', 'enum', 'exists', 'extensions',
