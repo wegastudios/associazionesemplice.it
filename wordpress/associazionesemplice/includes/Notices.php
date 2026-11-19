@@ -135,7 +135,7 @@ final class Notices {
 		$db  = self::db();
 		$day = $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'notices' ) . ' WHERE activity_id = %d AND created_at >= %s', $activity_id, gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -1 day' ) ) ) );
 		if ( (int) $day >= Limits::get( 'notice_per_day' ) ) {
-			throw new \InvalidArgumentException( 'Per questa attività sono già stati inviati ' . Limits::get( 'notice_per_day' ) . ' avvisi nelle ultime 24 ore: aspetta un po\'.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Per questa attività sono già stati inviati ' . Limits::get( 'notice_per_day' ) . ' avvisi nelle ultime 24 ore: riprova più tardi.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$rcpt = self::recipients( $activity_id, $session_id );
 		$user = wp_get_current_user();
@@ -154,7 +154,7 @@ final class Notices {
 		$sent  = 0;
 		foreach ( $rcpt as $r ) {
 			$text = 'Ciao ' . $r['name'] . ",\n\n" . $body . "\n\n—\nAvviso di " . $by . ' per «' . $a['name'] . '»' . $when . ( '' !== $assoc ? ' — ' . $assoc : '' )
-				. ".\nPer rispondere rivolgiti alla segreteria dell'associazione.";
+				. ".\nPer rispondere scrivi alla segreteria.";
 			if ( \AssociazioneSemplice\Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( $a['name'] . ': ' . $subject ), $text ) ) {
 				$sent++;
 			}
