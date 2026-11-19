@@ -2031,7 +2031,7 @@ $tx = Portale\Catalog::terms( $xdoc );
 check( 'condizioni: commissione fuori da 0–30 torna al valore di partenza, prova con esportazioni', 1 === $tx['own_gateway_percent'] && 3 === $tx['collected_by_us_percent'] && true === $tx['trial_exports'] );
 $xdoc['terms']['vat']['note'] = '';
 check( 'condizioni: «exempt» senza dicitura non si applica (resta l\'IVA)', 'standard' === Portale\Catalog::terms( $xdoc )['vat_mode'] && 4026 + 732 === Quote::build( $xdoc, 'gestionale', 'month', 150, array( 'operators_extra' => 2 ) )['total'] );
-check( 'condizioni: frase sulla prova dalle regole del catalogo', 'tutto tranne le esportazioni e l\'accesso del commercialista' === Portale\Catalog::trialLimits( $qdoc ) );
+check( 'condizioni: frase sulla prova dalle regole del catalogo', 'tutto tranne le copie di sicurezza e l\'accesso del commercialista' === Portale\Catalog::trialLimits( $qdoc ) );
 check( 'preventivo: annuale = 10 mensilità, piano o addon sconosciuti rifiutati', 33000 === Quote::build( $qdoc, 'gestionale', 'year', 150 )['net'] && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'altro', 'month', 10 ); } ) && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'gestionale', 'month', 10, array( 'zzz' => 1 ) ); } ) );
 
 $oseed = str_repeat( 'o', 32 );
