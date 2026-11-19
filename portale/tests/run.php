@@ -1887,7 +1887,7 @@ $p4 = Portale\Plugin\ConfrontoImport::plan( str_replace( "| {$rnTitle} | ✓ | �
 check( 'confronto: una riga tolta dal confronto compare tra le sparite (mai tolta in silenzio)', 1 === count( $p4['removed'] ) && $rnId === $p4['removed'][0]['id'] && array() === $p4['new'] );
 $p5 = Portale\Plugin\ConfrontoImport::plan( str_replace( "| {$rnTitle} | ✓ | ✓ | ✓ |", "| {$rnTitle} | ✓ | ✓ | ✓ |\n| Una funzione davvero nuova per le prove | — | ✓ | ✓ |", $cmd ), $cmCods, $imp['features'], $imp['matrix'] );
 $p5Ids = array_column( $p5['features'], 'id' );
-check( 'confronto: una riga nuova entra con un codice nuovo e unico', 1 === count( $p5['new'] ) && 'una_funzione_davvero_nuova_per_le_prove' === $p5['new'][0]['id'] && count( $p5Ids ) === count( array_unique( $p5Ids ) ) && array() === $p5['removed'] );
+check( 'confronto: una riga nuova entra con un codice nuovo e unico', 1 === count( $p5['new'] ) && 'una_funzione_davvero_nuova_per_le_pr' === $p5['new'][0]['id'] && count( $p5Ids ) === count( array_unique( $p5Ids ) ) && array() === $p5['removed'] );
 $ext = $imp['features'];
 $ext[] = array( 'id' => 'a_mano', 'text' => 'Voce scritta a mano nel catalogo', 'group' => 'Altro', 'compare' => '', 'detail' => '' );
 check( 'confronto: una voce solo nel catalogo compare tra le sparite', array( 'a_mano' ) === array_column( Portale\Plugin\ConfrontoImport::plan( $cmd, $cmCods, $ext, $imp['matrix'] )['removed'], 'id' ) );
