@@ -26,7 +26,7 @@ final class BankPage {
 			$rows[] = array(); // una riga vuota per aggiungere un altro conto
 		}
 		echo '<div class="asem-card"><h2>Bonifico bancario</h2>';
-		echo '<p class="description">Mostra ai soci, nell\'area riservata e accanto a ciò che devono pagare, l\'IBAN dell\'associazione (o gli IBAN, se più di uno) con una causale già pronta, e permette di farselo mandare per email. '
+		echo '<p class="description">Mostra ai soci l\'IBAN dell\'associazione (anche più di uno) con la causale già pronta: nell\'area riservata e accanto a ciò che devono pagare. Possono anche farselo mandare per email.'
 			. 'Funziona da solo (con i pagamenti online disattivati) o insieme a Stripe e PayPal. <strong>Spento di default.</strong> '
 			. 'Per mostrare gli IBAN anche a chi non è socio (ad esempio per le donazioni) usa lo shortcode <code>[associazionesemplice_bonifico]</code>.</p>';
 		Ui::form_open( 'asem_save_bank', Ui::url( 'asem-bank' ) );
@@ -45,8 +45,8 @@ final class BankPage {
 				. '<input type="text" name="bank[' . (int) $i . '][note]" value="' . esc_attr( (string) ( $a['note'] ?? '' ) ) . '" placeholder="Nota (facoltativa, es. «solo per le quote»)" maxlength="200" class="large-text">'
 				. '</td></tr>';
 		}
-		echo '<tr><th>Sicurezza</th><td><p class="description">Le coordinate le modificano solo gli amministratori. Ogni modifica viene scritta nel registro azioni (con l\'IBAN mascherato) e <strong>avvisata per email a tutti gli amministratori</strong>: se un accesso viene rubato e il conto sostituito, ci si accorge subito. '
-			. 'L\'email con le coordinate parte sempre e solo all\'indirizzo del socio. Lascia vuoto l\'IBAN di un conto per toglierlo.</p></td></tr>';
+		echo '<tr><th>Sicurezza</th><td><p class="description">Le coordinate le modificano solo gli amministratori. Ogni modifica resta nel registro azioni (con l\'IBAN in parte nascosto) e <strong>viene segnalata per email a tutti gli amministratori</strong>: se qualcuno ruba un accesso e cambia il conto, te ne accorgi subito. '
+			. 'L\'email con le coordinate arriva solo all\'indirizzo del socio. Lascia vuoto l\'IBAN di un conto per toglierlo.</p></td></tr>';
 		echo '</tbody></table>';
 		submit_button( 'Salva le coordinate' );
 		Ui::form_close();

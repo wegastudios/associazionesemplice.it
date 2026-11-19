@@ -30,7 +30,7 @@ final class LicensePanel {
 		} elseif ( ! $lic['enabled'] ) {
 			echo '<p>La verifica della licenza non è ancora attiva su questo sito: tutte le funzioni installate sono disponibili.</p>';
 		} else {
-			echo '<p><strong>Livello:</strong> ' . esc_html( $lic['plan_label'] ) . ' · ' . esc_html( $lic['note'] ) . '</p>';
+			echo '<p><strong>Piano:</strong> ' . esc_html( $lic['plan_label'] ) . ' · ' . esc_html( $lic['note'] ) . '</p>';
 			if ( '' !== $lic['reason'] && LicensePolicy::STATUS_ACTIVE !== $lic['status'] ) {
 				echo '<p>' . esc_html( $lic['reason'] ) . '</p>';
 			}

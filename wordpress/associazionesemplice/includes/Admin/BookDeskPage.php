@@ -108,7 +108,7 @@ final class BookDeskPage {
 		$person = $pid ? Plugin::people()->get( $pid ) : null;
 		$sy     = Settings::social_year( $date );
 		Ui::header( 'Prenota' );
-		echo '<p class="description">Scegli la persona e poi la data (vedi cosa è disponibile quel giorno) oppure la cosa (vedi le date disponibili). Dopo la prenotazione si passa all\'incasso già compilato: se la persona versa solo una parte, riduci l\'importo e il resto resta come acconto.</p>';
+		echo '<p class="description">Scegli la persona e poi la data (vedi cosa è disponibile quel giorno) oppure l\'attività (vedi le date disponibili). Dopo la prenotazione si passa all\'incasso già compilato: se la persona versa solo una parte, riduci l\'importo: il resto resta da pagare.</p>';
 
 		// Cose prenotabili: eventi e corsi dell'anno sociale, più quelle aggiunte da un'estensione
 		$groups = array( 'Eventi' => array(), 'Corsi' => array() );
@@ -124,7 +124,7 @@ final class BookDeskPage {
 			. ' <a href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">+ nuovo socio</a></p>'
 			. '<p><label><input type="radio" name="mode" value="date"' . checked( 'date' === $mode, true, false ) . '> <strong>Parto dalla data</strong></label> '
 			. '<input type="date" name="date" value="' . esc_attr( $date ) . '"> &nbsp; '
-			. '<label><input type="radio" name="mode" value="item"' . checked( 'item' === $mode, true, false ) . '> <strong>Parto dalla cosa</strong></label> <select name="item"><option value="">— scegli —</option>', Html::allowed() );
+			. '<label><input type="radio" name="mode" value="item"' . checked( 'item' === $mode, true, false ) . '> <strong>Parto dall\'attività</strong></label> <select name="item"><option value="">— scegli —</option>', Html::allowed() );
 		foreach ( $groups as $label => $opts ) {
 			if ( ! $opts ) {
 				continue;
@@ -165,7 +165,7 @@ final class BookDeskPage {
 		if ( 'date' === $mode ) {
 			echo '<h2>Disponibile il ' . esc_html( Docs::d( $date ) ) . '</h2><h3>Eventi</h3>';
 			self::sessions_table( Plugin::activities()->sessions_on( $date ), $person, false );
-			echo '<h3>Corsi (anno ' . esc_html( $sy->label() ) . ')</h3>';
+			echo '<h3>Corsi (anno delle attività ' .esc_html( $sy->label() ) . ')</h3>';
 			$courses = array_filter(
 				Plugin::activities()->for_year( $sy->label() ),
 				function ( $a ) {
@@ -184,7 +184,7 @@ final class BookDeskPage {
 			}
 			self::extra_table( 'Risorse', (array) apply_filters( 'asem_bookdesk_date', array(), $date, $person ) );
 		} elseif ( '' === $item ) {
-			echo '<p class="description">Scegli una cosa dall\'elenco per vedere le date disponibili.</p>';
+			echo '<p class="description">Scegli un\'attività dall\'elenco per vedere le date disponibili.</p>';
 		} elseif ( 0 === strpos( $item, 'a:' ) ) {
 			$a = Plugin::activities()->get( (int) substr( $item, 2 ) );
 			if ( $a && ActivityKind::COURSE === $a['kind'] ) {

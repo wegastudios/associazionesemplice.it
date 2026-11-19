@@ -91,7 +91,7 @@ final class AppearancePage {
 			. '<input type="hidden" name="logo_id" id="asem-logo-id" value="' . (int) $own_id . '">'
 			. '<button type="button" class="button" id="asem-logo-pick">Scegli dalla libreria</button> '
 			. '<button type="button" class="button" id="asem-logo-clear"' . ( $own_id ? '' : ' style="display:none"' ) . '>Usa il logo del sito</button></div>'
-			. '<p class="description">' . ( $own_id ? 'Stai usando il logo scelto qui.' : 'Stai usando il logo del sito' . ( '' === $logo ? ' (non ne è stato trovato uno: scegline uno).' : '.' ) )
+			. '<p class="description">' . ( $own_id ? 'Stai usando il logo scelto qui.' : ( '' === $logo ? 'Il sito non ha un logo: scegline uno qui.' : 'Stai usando il logo del sito.' ) )
 			. ' Compare sulla tessera e nelle pagine di verifica.</p></td></tr>';
 
 		echo '<tr><th>Colore principale</th><td><label><input type="checkbox" name="primary_custom" value="1"' . checked( $p_own, true, false ) . '> Personalizza</label> '

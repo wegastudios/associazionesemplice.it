@@ -18,7 +18,7 @@ final class DocumentsPage {
 		}
 		$cat = Ui::get_str( 'category' );
 		Ui::header( 'Documenti', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-documents', array( 'new' => 1 ) ) ) . '">Carica un documento</a>' );
-		echo '<p class="description">L\'archivio dei documenti dell\'associazione. I file non hanno un indirizzo pubblico: si aprono solo con il controllo dei permessi. Per mostrare i documenti «Pubblico» sul sito usa lo shortcode <code>[associazionesemplice_documenti]</code>.</p>';
+		echo '<p class="description">L\'archivio dei documenti dell\'associazione. I file non hanno un indirizzo pubblico: li apre solo chi ha il permesso di vederli. Per mostrare i documenti «Pubblico» sul sito usa lo shortcode <code>[associazionesemplice_documenti]</code>.</p>';
 		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-documents"><select name="category">' . Ui::options( array_combine( Documents::categories(), Documents::categories() ), $cat, 'Tutte le categorie' ) . '</select> <button class="button">Filtra</button></form>', Html::allowed() );
 		echo '<table class="widefat striped"><thead><tr><th>Titolo</th><th>Categoria</th><th>Data</th><th>Chi lo vede</th><th>File</th></tr></thead><tbody>';
 		$rows = Documents::all( $cat );

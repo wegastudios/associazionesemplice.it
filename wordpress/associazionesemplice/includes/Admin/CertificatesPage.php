@@ -39,8 +39,8 @@ final class CertificatesPage {
 		Ui::header( 'Certificati medici' );
 		FileCryptPanel::alerts(); // libreria di cifratura mancante, chiave che non si apre, codici di sicurezza deboli
 		echo wp_kses_post( FileCryptPanel::status_line() ); // «chiave valida» (blocco di prova)
-		echo '<p class="description">Il certificato medico sportivo dei soci: tipo, date di rilascio e di scadenza, medico o struttura e il file. È un dato sanitario: lo vede solo lo staff e il registro delle azioni ricorda soltanto che è stato aperto, mai cosa contiene. '
-			. 'Per ogni attività si può indicare che richiede il certificato (nel modulo dell\'attività): qui compaiono i suoi iscritti, con chi è scaduto, in scadenza o senza certificato.</p>';
+		echo '<p class="description">Il certificato medico sportivo dei soci: tipo, date di rilascio e di scadenza, medico o struttura e il file. È un dato sanitario: lo vede solo la segreteria e il registro azioni ricorda soltanto che è stato aperto, mai cosa contiene. '
+			. 'Per ogni attività si può indicare che richiede il certificato (nel modulo dell\'attività): qui compaiono i suoi iscritti, con chi ha il certificato scaduto, in scadenza o mancante.</p>';
 
 		$counts = Certificates::counts();
 		echo '<p>';
@@ -60,7 +60,7 @@ final class CertificatesPage {
 		if ( $limited ) {
 			$all        = false;
 			$activities = array_intersect_key( $activities, array_flip( Certificates::scoped_activity_ids() ) );
-			echo '<p class="description">' . esc_html( Texts::t( 'Vedi lo stato e apri il certificato solo di chi è iscritto alle tue attività. Ogni apertura del file resta scritta nel registro azioni.' ) ) . ' ' . esc_html( Texts::t( 'Chi ha l\'area Corsi o Eventi vede i certificati degli iscritti alle attività di cui è istruttore e di quelle senza istruttore.' ) ) . '</p>';
+			echo '<p class="description">' . esc_html( Texts::t( 'Vedi lo stato e apri il certificato solo di chi è iscritto alle tue attività. Ogni apertura del file resta scritta nel registro azioni.' ) ) . ' ' . esc_html( Texts::t( 'Chi ha l\'area Corsi o Eventi vede i certificati degli iscritti alle attività di cui è referente e a quelle senza referente.' ) ) . '</p>';
 		}
 		$args = array( 'filter' => $filter, 'activity' => $act, 'all' => $all ? 1 : '' );
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-medical">'
@@ -150,7 +150,7 @@ final class CertificatesPage {
 			. '<h3>Registra un certificato</h3><p><select name="kind">' . Ui::options( CertificateRules::kinds(), CertificateRules::NON_AGONISTIC ) . '</select> '
 			. 'rilasciato il <input type="date" name="issued_on" value="' . esc_attr( Db::today() ) . '" required> scade il <input type="date" name="expires_on" value="' . esc_attr( ExpiryRules::plus_year( Db::today() ) ) . '" required></p>'
 			. '<p><input type="text" name="doctor" class="regular-text" maxlength="190" placeholder="Medico o struttura (facoltativo)"> <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png"></p>'
-			. '<p class="description">Il file (PDF o foto) resta in una cartella privata e lo scarica solo lo staff. La scadenza proposta è un anno dopo il rilascio: correggila con quella scritta sul certificato.</p>'
+			. '<p class="description">Il file (PDF o foto) resta in una cartella privata e lo scarica solo la segreteria. La scadenza proposta è un anno dopo il rilascio: correggila con quella scritta sul certificato.</p>'
 			. '<p><button class="button button-primary">Registra il certificato</button></p>';
 		Ui::form_close();
 		echo '</div>';
@@ -160,7 +160,7 @@ final class CertificatesPage {
 	public static function activity_row( ?int $activity_id ): string {
 		$on = $activity_id && Certificates::is_required( $activity_id );
 		return '<tr><th>Certificato medico</th><td><input type="hidden" name="cert_required_present" value="1"><label><input type="checkbox" name="cert_required" value="1"' . checked( (bool) $on, true, false ) . '> richiede il certificato medico sportivo</label>'
-			. '<p class="description">Gli iscritti compaiono nell\'elenco <em>Registri → Certificati medici</em>, con chi è scaduto, in scadenza o senza certificato.</p></td></tr>';
+			. '<p class="description">Gli iscritti compaiono nell\'elenco <em>Registri → Certificati medici</em>, con chi ha il certificato scaduto, in scadenza o mancante.</p></td></tr>';
 	}
 
 	/** Avviso in Bacheca per lo staff. */

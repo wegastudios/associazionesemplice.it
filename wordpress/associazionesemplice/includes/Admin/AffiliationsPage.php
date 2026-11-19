@@ -152,7 +152,7 @@ final class AffiliationsPage {
 		Ui::form_open( 'asem_save_aff_settings', Ui::url( 'asem-affiliations' ) );
 		echo '<table class="form-table"><tr><th>Preavviso</th><td><input type="number" name="aff_warn_days" min="1" max="365" style="width:80px" value="' . (int) Affiliations::warn_days() . '"> giorni prima della scadenza un\'affiliazione o una tessera risulta «In scadenza».</td></tr>'
 			. '<tr><th>Promemoria automatici</th><td><label><input type="checkbox" name="aff_reminders" value="1"' . checked( ! empty( Settings::get( 'aff_reminders' ) ), true, false ) . '> avvisa della scadenza di affiliazioni e tessere</label>'
-			. '<p class="description">Il socio (o il suo tutore) riceve un\'email per la sua tessera; la segreteria riceve un\'unica email con l\'elenco di affiliazioni e tessere. Una sola volta per ogni scadenza e tipo di avviso, una volta al giorno.</p></td></tr></table>'
+			. '<p class="description">Il socio (o il suo tutore) riceve un\'email per la sua tessera; la segreteria riceve un\'unica email con l\'elenco di affiliazioni e tessere. Ogni avviso parte una volta sola. Il controllo si fa una volta al giorno.</p></td></tr></table>'
 			. '<p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
 		echo '</div>';

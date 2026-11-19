@@ -48,7 +48,7 @@ final class EntityPage {
 		$mail = trim( (string) ( $s['secretary_email'] ?? '' ) );
 		$tel  = trim( (string) ( $s['secretary_phone'] ?? '' ) );
 		return '<tr id="asem-contacts"><th><label for="asem-secretary-email">' . esc_html( Texts::t( 'Email della segreteria' ) ) . ' *</label></th><td><input type="email" id="asem-secretary-email" name="secretary_email" value="' . esc_attr( $mail ) . '" class="regular-text" required autocomplete="off" placeholder="segreteria@…">'
-			. '<p class="description">' . esc_html( Texts::t( 'Li leggono i soci nelle email e nell\'informativa sulla privacy: usa un recapito che qualcuno controlla davvero.' ) ) . '</p></td></tr>'
+			. '<p class="description">' . esc_html( Texts::t( 'Email e telefono compaiono nelle email ai soci e nell\'informativa sulla privacy: usa recapiti che qualcuno controlla davvero.' ) ) . '</p></td></tr>'
 			. '<tr><th><label for="asem-secretary-phone">' . esc_html( Texts::t( 'Telefono della segreteria' ) ) . ' *</label></th><td><input type="tel" id="asem-secretary-phone" name="secretary_phone" value="' . esc_attr( $tel ) . '" class="regular-text" required maxlength="30" autocomplete="off" placeholder="+39 333 1234567"></td></tr>';
 	}
 
