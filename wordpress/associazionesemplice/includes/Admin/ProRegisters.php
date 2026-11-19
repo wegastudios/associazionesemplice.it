@@ -236,7 +236,7 @@ final class ProRegisters {
 		$year  = in_array( $year, $years, true ) ? $year : $years[0];
 		Ui::header( 'Rendiconto per cassa (Mod. D)' );
 		echo '<p class="description">Il rendiconto dell\'anno fiscale costruito dalla prima nota: entrate e uscite per area, confronto con l\'anno precedente, avanzo o disavanzo, cassa e conti. '
-			. 'Le aree seguono la «voce di rendiconto» di ogni categoria. Stampa il PDF, aggiungi la relazione e fai firmare tesoriere e presidente; il commercialista può verificarlo prima dell\'approvazione.</p>';
+			. 'Le aree seguono la «voce di rendiconto» di ogni voce. Stampa il PDF, aggiungi la relazione e fai firmare tesoriere e presidente; il commercialista può verificarlo prima dell\'approvazione.</p>';
 		$labels  = array();
 		foreach ( $years as $y ) {
 			$labels[ $y ] = FiscalYears::label( $y );

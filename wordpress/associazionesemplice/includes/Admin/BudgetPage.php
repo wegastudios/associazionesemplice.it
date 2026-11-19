@@ -22,7 +22,7 @@ final class BudgetPage {
 		}
 		Ui::header( 'Bilancio preventivo', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-budget', array( 'new' => 1 ) ) ) . '">Nuovo preventivo</a>' );
 		WatchPage::box_html(); // rendiconto provvisorio e avvisi (Pro Fiscale)
-		echo '<p class="description">Per ogni anno scrivi quanto prevedi di incassare e di spendere per categoria; il confronto con il consuntivo si aggiorna da solo con i movimenti della prima nota (i giroconti e i movimenti annullati non contano).</p>';
+		echo '<p class="description">Per ogni anno scrivi quanto prevedi di incassare e di spendere per voce; il confronto con il consuntivo si aggiorna da solo con i movimenti della prima nota (i giroconti e i movimenti annullati non contano).</p>';
 		echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Preventivo</th><th>Stato</th><th>Entrate previste</th><th>Uscite previste</th></tr></thead><tbody>';
 		$rows = Budget::all();
 		if ( ! $rows ) {
@@ -109,10 +109,10 @@ final class BudgetPage {
 		foreach ( Budget::lines( $id ) as $l ) {
 			$saved[ (int) $l['category_id'] ] = $l;
 		}
-		echo '<h2>Voci</h2><p class="description">Scrivi l\'importo previsto per ogni categoria; lascia vuoto dove non prevedi nulla.</p>';
+		echo '<h2>Voci</h2><p class="description">Scrivi l\'importo previsto per ogni voce; lascia vuoto dove non prevedi nulla.</p>';
 		Ui::form_open( 'asem_budget_lines', self::back( $id ) );
 		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<table class="widefat striped" style="max-width:760px"><thead><tr><th>Categoria</th><th>Tipo</th><th>Importo previsto (€)</th><th>Nota</th></tr></thead><tbody>';
+		echo '<table class="widefat striped" style="max-width:760px"><thead><tr><th>Voce</th><th>Tipo</th><th>Importo previsto (€)</th><th>Nota</th></tr></thead><tbody>';
 		foreach ( Budget::categories() as $cid => $c ) {
 			echo '<tr><td>' . esc_html( $c[0] ) . '</td><td>' . ( BudgetRules::INCOME === $c[1] ? 'Entrata' : 'Uscita' ) . '</td><td><input type="text" inputmode="decimal" name="amount[' . (int) $cid . ']" value="'
 				. esc_attr( isset( $saved[ $cid ] ) ? Money::plain( (int) $saved[ $cid ]['planned_cents'] ) : '' ) . '" style="width:120px"></td><td><input type="text" name="note[' . (int) $cid . ']" maxlength="255" value="'

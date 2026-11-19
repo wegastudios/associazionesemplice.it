@@ -5582,7 +5582,7 @@ Settings::update( array( 'license_key' => 'ASEM-TEST-KEY', 'limits' => array() )
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
 asem_ok( false !== strpos( \AssociazioneSemplice\UpdateCheck::summary(), 'disponibile Associazione Semplice Pro 99.0.0' ), 'aggiornamenti: la frase di riepilogo indica la nuova versione' );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => 'senza rete', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
-asem_ok( false !== strpos( \AssociazioneSemplice\UpdateCheck::summary(), 'non riuscito (senza rete)' ), 'aggiornamenti: il riepilogo mostra l\'errore dell\'ultimo controllo' );
+asem_ok( false !== strpos( \AssociazioneSemplice\UpdateCheck::summary(), 'non è riuscito. Riprova più tardi.' ), 'aggiornamenti: il riepilogo mostra l\'errore dell\'ultimo controllo' );
 ob_start();
 Admin\LicensePanel::render();
 asem_ok( false !== strpos( (string) ob_get_clean(), 'cerca nuove versioni' ), 'pannello licenza: «Controlla adesso» cerca anche le nuove versioni' );

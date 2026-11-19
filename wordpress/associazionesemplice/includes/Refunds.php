@@ -268,7 +268,7 @@ final class Refunds {
 				$ledger = Plugin::ledger();
 				$cat    = $ledger->category_id_of_kind( 'member_reimbursement' );
 				if ( ! $cat ) {
-					throw new \InvalidArgumentException( 'In prima nota manca la voce «Rimborso spese socio/volontario»: creala tra le voci di prima nota.' );
+					throw new \InvalidArgumentException( 'Manca la voce «Rimborso spese socio/volontario» in prima nota e non si ricrea da sola: scrivi all\'assistenza.' );
 				}
 				$date = '' === $date ? Db::today() : $date;
 				$tx   = $ledger->record_expense(
