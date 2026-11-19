@@ -6,7 +6,7 @@ use App\Models\Article;
 
 /**
  * Testo degli articoli: un sottoinsieme di Markdown, sempre con l'HTML del testo reso innocuo.
- * Titoli (## e ###), elenchi puntati (- ) e numerati (1. ), citazioni (> ), tabelle con |, **grassetto**, `codice` e collegamenti
+ * Titoli (## e ###), elenchi puntati (- ) e numerati (1. ), citazioni (> ), tabelle con |, **grassetto**, *corsivo*, `codice` e collegamenti
  * [testo](https://...) o [testo](/percorso). Qualsiasi altro codice HTML scritto nel testo compare come testo.
  */
 class ArticleBody
@@ -55,8 +55,23 @@ class ArticleBody
             } elseif (preg_match('/^-\s+/', $line)) {
                 $items = [];
                 while ($i < $n && preg_match('/^-\s+(.*)$/', rtrim($lines[$i]), $m)) {
-                    $items[] = '<li>'.self::inline($m[1]).'</li>';
+                    $li = self::inline($m[1]);
                     $i++;
+                    // passi rientrati (anche dopo una riga vuota) sotto la voce: elenco numerato dentro la voce
+                    $j = $i;
+                    while ($j < $n && trim($lines[$j]) === '') {
+                        $j++;
+                    }
+                    if ($j < $n && preg_match('/^\s+\d+\.\s+/', $lines[$j])) {
+                        $sub = [];
+                        while ($j < $n && preg_match('/^\s+\d+\.\s+(.*)$/', rtrim($lines[$j]), $sm)) {
+                            $sub[] = '<li>'.self::inline($sm[1]).'</li>';
+                            $j++;
+                        }
+                        $li .= '<ol>'.implode('', $sub).'</ol>';
+                        $i = $j;
+                    }
+                    $items[] = '<li>'.$li.'</li>';
                 }
                 $out[] = '<ul>'.implode('', $items).'</ul>';
             } else {
@@ -100,6 +115,7 @@ class ArticleBody
     {
         $text = e($text);
         $text = preg_replace('/\*\*(.+?)\*\*/u', '<strong>$1</strong>', $text) ?? $text;
+        $text = preg_replace('/(?<![*\w])\*(?![*\s])([^*]+?)(?<![*\s])\*(?![*\w])/u', '<em>$1</em>', $text) ?? $text;
         $text = preg_replace('/`([^`]+)`/u', '<code>$1</code>', $text) ?? $text;
 
         return preg_replace_callback('/\[([^\]]+)\]\(((?:https?:\/\/|\/|guida:)[^\s)]+)\)/u', function (array $m): string {
