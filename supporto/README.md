@@ -9,7 +9,7 @@ Sito di supporto clienti di Associazione Semplice (https://supporto.associazione
 
 ## Rilascio sul server
 
-Si rilascia solo con `scripts/deploy.sh` (da `supporto/`, con `SUPPORTO_DEPLOY_KEY` che punta alla chiave SSH; `--seed-guide` rilancia anche il seeder delle guide), dopo che le prove della PR sono verdi e la PR è unita.
+Si rilascia solo con `scripts/deploy.sh` (da `supporto/`, con `SUPPORTO_DEPLOY_KEY` che punta alla chiave SSH; le guide si riseminano da sole quando i testi in `database/guides` o il seeder sono cambiati rispetto all'ultimo rilascio; `--seed-guide` le riserva comunque. Senza il seme i testi nuovi non compaiono sul sito), dopo che le prove della PR sono verdi e la PR è unita.
 
 - **`public/` non si copia mai.** Il suo `.htaccess` sul server contiene il blocco di cPanel con il gestore PHP 8.4: se lo si sovrascrive il sito gira con PHP 8.3 e risponde 500. Lo script copia solo `app bootstrap config database resources routes`. Il `.htaccess` del repository resta quello standard di Laravel e non va allineato a quello del server: è cPanel che lo scrive.
 - Lo script salva il `.htaccess` del server in `storage/app/htaccess.prima-deploy-…`, aggiorna il codice, esegue `migrate`, svuota le cache e controlla `/up` e la home. Se una delle due non risponde 200 rimette da solo il `.htaccess` salvato, ricontrolla ed esce con errore.

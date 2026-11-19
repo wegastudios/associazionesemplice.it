@@ -62,15 +62,15 @@ La prova dura 30 giorni e non chiede la carta. Puoi provare quasi tutto il gesti
 
 I piani sono {piano_piccola}, {piano_media} e {piano_grande}. Si distinguono per il numero di soci, il numero di operatori e le funzioni incluse; per esempio i pagamenti online dei soci e la fattura elettronica partono da {piano_media}, le comunicazioni e la vita associativa da {piano_grande}. Alcune funzioni si aggiungono a parte (per esempio il sito, le risorse e prenotazioni, lo sport, il dominio personalizzato, il database dedicato). Limiti e prezzi aggiornati sono nella pagina dei prezzi di associazionesemplice.it.
 
-{piano_piccola} e {piano_media} non hanno pacchetti: se superi il numero di soci previsto, passi al piano successivo. Solo con {piano_grande} puoi aggiungere i pacchetti «500 soci in più» e «1.000 soci in più».
+{piano_piccola} e {piano_media} non hanno pacchetti: se superi il numero di soci previsto, hai 15 giorni di tolleranza: poi non si possono più inserire nuovi soci, mentre quelli già inseriti restano. Per continuare passi al piano successivo. Solo con {piano_grande} puoi aggiungere i pacchetti «500 soci in più» e «1.000 soci in più».
 
 ## Se non scegli un piano
 
-Finita la prova hai ancora 7 giorni: puoi entrare e consultare tutto, ma non inserire né modificare. Se in quei giorni scegli un piano, riprendi da dove eri arrivato. Dopo 7 giorni i dati della prova vengono cancellati. Prima ricevi alcune email di avviso.
+Finita la prova hai ancora 7 giorni: puoi entrare e consultare tutto, ma non inserire né modificare. Se in quei giorni scegli un piano, riprendi da dove eri arrivato. Dopo 7 giorni i dati della prova vengono cancellati. Prima ricevi alcune email di avviso; se a fine prova è attiva un'offerta, la trovi nell'email.
 
 ## Se un piano scade
 
-Se un piano a pagamento non viene rinnovato, il gestionale si sospende il giorno dopo la scadenza e i tuoi dati vengono conservati per 180 giorni: rinnovando, riparti da dove eri. Prima della scadenza ti conviene scaricare una copia di sicurezza (vedi [Copie di sicurezza e documenti da consegnare](guida:gestionale-esportare-i-dati)).
+Se un pagamento non riesce, viene riprovato in automatico: con la carta da Stripe, con PayPal da PayPal. Se un piano a pagamento non viene rinnovato, il gestionale si sospende il giorno dopo la scadenza e i tuoi dati vengono conservati per 180 giorni: rinnovando, riparti da dove eri. Prima della scadenza ti conviene scaricare una copia di sicurezza (vedi [Copie di sicurezza e documenti da consegnare](guida:gestionale-esportare-i-dati)).
 
 ## Il commercialista
 
