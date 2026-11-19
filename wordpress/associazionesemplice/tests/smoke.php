@@ -1358,8 +1358,8 @@ asem_ok( '' === trim( (string) ob_get_clean() ), 'contatti: compilati i due camp
 // invii manuali: senza contatti completi si rifiutano; le email automatiche partono comunque
 Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
 $ct_blk = (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write(); } );
-asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare messaggi ai soci.' === $ct_blk, 'contatti: invio manuale senza contatti rifiutato con la frase chiara' );
-asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare messaggi ai soci. Intanto scarica la ricevuta e consegnala a mano.' === (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write( true ); } ), 'contatti: per la ricevuta si aggiunge «scarica e consegna a mano»' );
+asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni → Ente): senza, la segreteria non può inviare messaggi ai soci.' === $ct_blk, 'contatti: invio manuale senza contatti rifiutato con la frase chiara' );
+asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni → Ente): senza, la segreteria non può inviare messaggi ai soci. Intanto scarica la ricevuta e consegnala a mano.' === (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write( true ); } ), 'contatti: per la ricevuta si aggiunge «scarica e consegna a mano»' );
 $ct_rb = new ReflectionMethod( Admin\ProActions::class, 'receipt_email' );
 asem_ok( 0 === strpos( (string) asem_throws( function () use ( $ct_rb ) { $ct_rb->invoke( null, array( 'key' => 'x' ) ); } ), 'Prima inserisci email e telefono' ), 'contatti: la ricevuta inviata a mano è bloccata senza contatti' );
 $ct_rb2 = new ReflectionMethod( Admin\ProActions::class, 'broadcast_send' );
@@ -2204,7 +2204,7 @@ asem_ok( 800 === (int) $bk[ $nico ]['fee_due_cents'] && 500 === $bk[ $nico ]['pa
 asem_ok( ! $bk[ $founder ]['active'] && 'transferred' === $bk[ $founder ]['status'] && 0 === $bk[ $founder ]['paid'], 'la prenotazione del socio risulta trasferita' );
 asem_ok( 1 === (int) $acts->sessions( $paid_ev )[0]['booked_count'], 'i posti occupati non cambiano' );
 asem_ok( 500 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT SUM(amount_cents) FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = %d AND person_id = %d AND voided_at IS NULL', $paid_s, $nico ) ), 'il pagamento è intestato al nuovo partecipante' );
-asem_ok( false !== strpos( (string) $wpdb->get_var( $wpdb->prepare( 'SELECT description FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = %d AND person_id = %d LIMIT 1', $paid_s, $nico ) ), 'intestato da' ), 'nota di trasferimento nella descrizione del pagamento' );
+asem_ok( false !== strpos( (string) $wpdb->get_var( $wpdb->prepare( 'SELECT description FROM ' . Db::t( 'transactions' ) . ' WHERE session_id = %d AND person_id = %d LIMIT 1', $paid_s, $nico ) ), 'posto ceduto da' ), 'nota di trasferimento nella descrizione del pagamento' );
 
 // ...e poi a un nuovo ospite indicato per nome (resta lo stesso contributo, niente da integrare)
 $msg = $front::do_transfer_booking( array( 'session_id' => $paid_s, 'person_id' => $nico, 'new_first_name' => 'Nuovo', 'new_last_name' => 'Amico', 'new_phone' => '333 9999991' ) );
@@ -6931,7 +6931,7 @@ $empty_s = $first_session( $mkev( 'Evento senza prenotati', 0, null ) );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $empty_s ) { \AssociazioneSemplice\Broadcasts::create( 'Oggetto', 'testo', 'session', $empty_s ); } ), 'Nessun destinatario' ), 'comunicazioni: un gruppo senza destinatari viene rifiutato' );
 $bc_mail = array();
 \AssociazioneSemplice\Broadcasts::send_test( 'Oggetto prova', 'Testo di prova' );
-asem_ok( 1 === count( $bc_mail ) && 0 === strpos( $bc_mail[0]['subject'], '[Prova] ' ), 'comunicazioni: la prova va solo all\'utente collegato' );
+asem_ok( 1 === count( $bc_mail ) && false !== strpos( $bc_mail[0]['subject'], '[Prova] ' ), 'comunicazioni: la prova va solo all\'utente collegato' );
 // pagine e azioni
 $bc_send = new ReflectionMethod( Admin\ProActions::class, 'broadcast_send' );
 Settings::update( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567' ) ); // le comunicazioni sono invii manuali: servono i contatti della segreteria
@@ -9068,7 +9068,7 @@ $zt->open( $bk_tz_plain );
 $zt->addFromString( 'documenti/' . $bk_rc[0]['pdf_path'], '%PDF-1.4 manomesso' ); // manomesso senza rifare la firma: la copia si ferma prima
 $zt->close();
 $bk_e_tz = asem_throws( function () use ( $bk_tz_plain ) { \AssociazioneSemplice\Backup::restore( $bk_tz_plain ); } );
-asem_ok( null !== $bk_e_tz && false !== strpos( $bk_e_tz, 'è stata modificata dopo essere stata fatta' ), 'ripristino: un PDF cambiato dopo la firma ferma tutta la copia, prima di toccare i dati' );
+asem_ok( null !== $bk_e_tz && false !== strpos( $bk_e_tz, 'è stata modificata dopo la creazione' ), 'ripristino: un PDF cambiato dopo la firma ferma tutta la copia, prima di toccare i dati' );
 wp_delete_file( $bk_tz_plain );
 asem_bk_reseal( $bk_tz, function ( $z ) use ( $bk_rc ) { $z->addFromString( 'documenti/' . $bk_rc[0]['pdf_path'], '%PDF-1.4 manomesso' ); } ); // rifirmata: il controllo delle impronte nel database lo fa la ricevuta
 wp_delete_file( $bk_pa );
@@ -9093,7 +9093,7 @@ try {
 	$err = $e->getMessage();
 }
 unlink( $broken );
-asem_ok( false !== strpos( $err, 'Nessun dato è stato cambiato' ) && $before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'ripristino: se qualcosa non va non cambia nulla' );
+asem_ok( false !== strpos( $err, 'Non è stato cambiato nulla' ) && $before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ), 'ripristino: se qualcosa non va non cambia nulla' );
 
 // ---------- Firma, altro sito, tetti, ripristini insieme ----------
 $bk_cnt  = function () use ( $wpdb ): int {
@@ -9116,7 +9116,7 @@ $zt1->open( $bk_t1 );
 $zt1->addFromString( 'tabelle/asem_people.jsonl', (string) $zt1->getFromName( 'tabelle/asem_people.jsonl' ) . "{\"id\":999999,\"type\":\"member\"}\n" );
 $zt1->close();
 $bk_e1 = asem_throws( function () use ( $bk_t1 ) { \AssociazioneSemplice\Backup::restore( $bk_t1 ); } );
-asem_ok( null !== $bk_e1 && false !== strpos( $bk_e1, 'è stata modificata dopo essere stata fatta' ) && false !== strpos( $bk_e1, 'Non è stato cambiato nulla' ) && $bk_cnt() === $bk_people0, 'firma: una riga cambiata in un file della copia (stesso sito) la fa rifiutare e non cambia nulla' );
+asem_ok( null !== $bk_e1 && false !== strpos( $bk_e1, 'è stata modificata dopo la creazione' ) && false !== strpos( $bk_e1, 'Non è stato cambiato nulla' ) && $bk_cnt() === $bk_people0, 'firma: una riga cambiata in un file della copia (stesso sito) la fa rifiutare e non cambia nulla' );
 // 2. una voce che l'elenco non cita (un allegato aggiunto)
 $bk_t2 = $bk_fresh();
 $zt2   = new ZipArchive();
@@ -9124,7 +9124,7 @@ $zt2->open( $bk_t2 );
 $zt2->addFromString( 'allegati/' . str_repeat( 'b', 32 ), 'contenuto in più' );
 $zt2->close();
 $bk_e2 = asem_throws( function () use ( $bk_t2 ) { \AssociazioneSemplice\Backup::restore( $bk_t2 ); } );
-asem_ok( null !== $bk_e2 && false !== strpos( $bk_e2, 'è stata modificata dopo essere stata fatta' ) && ! is_file( Attachments::dir() . '/' . str_repeat( 'b', 32 ) ), 'firma: una voce che l\'elenco non cita (stesso sito) fa rifiutare la copia' );
+asem_ok( null !== $bk_e2 && false !== strpos( $bk_e2, 'è stata modificata dopo la creazione' ) && ! is_file( Attachments::dir() . '/' . str_repeat( 'b', 32 ) ), 'firma: una voce che l\'elenco non cita (stesso sito) fa rifiutare la copia' );
 // 3. firma sbagliata con i codici del sito: il manifest cambiato dopo la firma
 $bk_t3 = $bk_fresh();
 asem_bk_edit_manifest( $bk_t3, function ( $m ) { $m['created_at'] = '2000-01-01 00:00:00'; return $m; } );
@@ -9166,7 +9166,7 @@ $zt6->open( $bk_t6 );
 $zt6->addFromString( 'tabelle/asem_people.jsonl', (string) $zt6->getFromName( 'tabelle/asem_people.jsonl' ) . "{\"id\":999998}\n" );
 $zt6->close();
 $bk_e6 = asem_throws( function () use ( $bk_t6 ) { \AssociazioneSemplice\Backup::restore( $bk_t6, '', true ); } );
-asem_ok( null !== $bk_e6 && false !== strpos( $bk_e6, 'è stata modificata dopo essere stata fatta' ) && $bk_cnt() === $bk_people0, 'altro sito: anche con la conferma, un contenuto che non coincide con l\'elenco delle impronte fa rifiutare la copia' );
+asem_ok( null !== $bk_e6 && false !== strpos( $bk_e6, 'è stata modificata dopo la creazione' ) && $bk_cnt() === $bk_people0, 'altro sito: anche con la conferma, un contenuto che non coincide con l\'elenco delle impronte fa rifiutare la copia' );
 wp_delete_file( $bk_t5 );
 wp_delete_file( $bk_t6 );
 
@@ -10581,7 +10581,7 @@ $bd_inc  = (int) $cat['donation'];
 $bd_gen  = (int) $cat['general_cost'];
 $bd_before_exp = ( \AssociazioneSemplice\Budget::actuals( $bd_year )[ $bd_gen ] ?? 0 );
 $bd_b = \AssociazioneSemplice\Budget::save( 0, array( 'year' => $bd_year + 5, 'title' => '' ), 1 );
-asem_ok( 'Bilancio preventivo ' . ( $bd_year + 5 ) === \AssociazioneSemplice\Budget::get( $bd_b )['title'], 'preventivo: titolo di default' );
+asem_ok( 'Preventivo ' . ( $bd_year + 5 ) === \AssociazioneSemplice\Budget::get( $bd_b )['title'], 'preventivo: titolo di default' );
 try {
 	\AssociazioneSemplice\Budget::save( 0, array( 'year' => $bd_year + 5 ), 1 );
 	asem_ok( false, 'preventivo: un solo preventivo per anno' );

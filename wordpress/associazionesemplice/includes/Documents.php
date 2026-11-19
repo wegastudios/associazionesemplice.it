@@ -112,7 +112,7 @@ final class Documents {
 		$d['enc_ver']     = $saved['enc_ver'];
 		$d['file_size']   = $file['size'];
 		if ( ! $db->insert( Db::t( 'documents' ), $d + array( 'uploaded_by' => $user_id, 'created_at' => Db::now(), 'updated_at' => Db::now() ) ) ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare il documento (errore del database).' );
+			throw new \InvalidArgumentException( 'Documento non salvato: riprova.' );
 		}
 		$id = (int) $db->insert_id;
 		Audit::log( 'document.created', 'document', $id, array( 'visibility' => $vis ) );

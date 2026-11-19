@@ -72,6 +72,6 @@ final class BrevoSms implements SmsProvider {
 		if ( in_array( (int) $r['code'], array( 401, 403 ), true ) ) {
 			return array( 'ok' => false, 'message' => 'Brevo: la chiave API non è valida.', 'credits' => null );
 		}
-		return array( 'ok' => false, 'message' => 'Brevo: risposta inattesa (' . (int) $r['code'] . ').', 'credits' => null );
+		return array( 'ok' => false, 'message' => 'Brevo non ha risposto come previsto (codice ' . (int) $r['code'] . '): riprova più tardi.', 'credits' => null );
 	}
 }

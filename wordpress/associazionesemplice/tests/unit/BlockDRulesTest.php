@@ -98,7 +98,7 @@ final class BlockDRulesTest extends TestCase {
 
 	public function test_summary_line(): void {
 		$q = AssemblyRules::quorum( 10, 3, 0, 50 );
-		$this->assertStringContainsString( 'NON raggiunge', AssemblyRules::summary_line( 10, 3, 0, $q, 1 ) );
+		$this->assertStringContainsString( 'non raggiunge', AssemblyRules::summary_line( 10, 3, 0, $q, 1 ) );
 		$q = AssemblyRules::quorum( 10, 6, 0, 50 );
 		$this->assertStringContainsString( 'validamente costituita', AssemblyRules::summary_line( 10, 6, 0, $q, 2 ) );
 	}

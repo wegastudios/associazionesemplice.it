@@ -84,7 +84,7 @@ final class Attachments {
 		foreach ( $n['files'] as $f ) {
 			$path = $f['tmp_name'];
 			if ( '' === $path || ! is_readable( $path ) ) {
-				throw new \InvalidArgumentException( 'Caricamento di "' . AttachmentRules::display_name( $f['name'] ) . '" non riuscito: riprova.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( 'Caricamento di «' . AttachmentRules::display_name( $f['name'] ) . '» non riuscito: riprova.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$size = (int) filesize( $path );
 			$mime = self::real_mime( $path );
@@ -94,7 +94,7 @@ final class Attachments {
 			}
 			$hash = (string) hash_file( 'sha256', $path );
 			if ( in_array( $hash, $existing, true ) || isset( $seen[ $hash ] ) ) {
-				throw new \InvalidArgumentException( 'Il file "' . AttachmentRules::display_name( $f['name'] ) . '" è già allegato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( 'Il file «' . AttachmentRules::display_name( $f['name'] ) . '» è già allegato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$seen[ $hash ] = true;
 			$out[]         = array( 'name' => AttachmentRules::display_name( $f['name'] ), 'tmp_name' => $path, 'size' => $size, 'mime' => $mime, 'sha256' => $hash );
@@ -121,7 +121,7 @@ final class Attachments {
 			$stored = AttachmentRules::stored_name( bin2hex( random_bytes( 16 ) ) );
 			$saved  = self::store_file( $f, $dir, $stored );
 			if ( null === $saved ) {
-				throw new \InvalidArgumentException( 'Impossibile salvare "' . $f['name'] . '".' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( 'Impossibile salvare «' . $f['name'] . '».' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			chmod( $saved['path'], 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
 			self::db()->insert(
@@ -204,7 +204,7 @@ final class Attachments {
 		$stored = AttachmentRules::stored_name( bin2hex( random_bytes( 16 ) ) );
 		$saved  = self::store_file( $f, $dir, $stored, $strict );
 		if ( null === $saved ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare "' . AttachmentRules::display_name( (string) $f['name'] ) . '".' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Impossibile salvare «' . AttachmentRules::display_name( (string) $f['name'] ) . '».' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		chmod( $saved['path'], 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
 		return array( 'stored' => $stored, 'sha256' => $saved['sha256'], 'enc_ver' => $saved['enc_ver'] );

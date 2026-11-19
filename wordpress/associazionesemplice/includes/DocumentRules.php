@@ -84,14 +84,14 @@ final class DocumentRules {
 	public static function check( string $name, int $size, string $real_mime, int $max_bytes = self::MAX_BYTES, ?string $head = null ): ?string {
 		$shown = AttachmentRules::display_name( $name );
 		if ( $size <= 0 ) {
-			return 'Il file "' . $shown . '" è vuoto.';
+			return 'Il file «' . $shown . '» è vuoto.';
 		}
 		if ( $size > $max_bytes ) {
-			return 'Il file "' . $shown . '" supera i ' . (int) ( $max_bytes / 1048576 ) . ' MB.';
+			return 'Il file «' . $shown . '» supera i ' . (int) ( $max_bytes / 1048576 ) . ' MB.';
 		}
 		$ext = AttachmentRules::extension( $name );
 		if ( ! isset( self::TYPES[ $ext ] ) || ! in_array( $real_mime, self::TYPES[ $ext ], true ) || ( null !== $head && ! self::signature_ok( $ext, $head ) ) ) {
-			return 'Il file "' . $shown . '" non è ammesso: si accettano PDF, foto (JPG, PNG, WebP), testi e fogli (Word, Excel, LibreOffice).';
+			return 'Il file «' . $shown . '» non è ammesso: si accettano PDF, foto (JPG, PNG, WebP), testi e fogli (Word, Excel, LibreOffice).';
 		}
 		return null;
 	}

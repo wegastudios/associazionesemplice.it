@@ -116,7 +116,7 @@ final class Contacts {
 		if ( self::complete() ) {
 			return;
 		}
-		$msg = Texts::t( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare messaggi ai soci.' );
+		$msg = Texts::t( 'Prima inserisci email e telefono della segreteria (Impostazioni → Ente): senza, la segreteria non può inviare messaggi ai soci.' );
 		if ( $receipt ) {
 			$msg .= ' ' . Texts::t( 'Intanto scarica la ricevuta e consegnala a mano.' );
 		}

@@ -63,7 +63,7 @@ final class AssocPolicies {
 			)
 		);
 		if ( ! $ok ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare la polizza (errore del database).' );
+			throw new \InvalidArgumentException( 'Polizza non salvata: riprova.' );
 		}
 		$id = (int) self::db()->insert_id;
 		Audit::log( 'policy.added', 'policy', $id, array( 'kind' => $kind, 'to' => $t ) );

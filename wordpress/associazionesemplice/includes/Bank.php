@@ -240,9 +240,9 @@ final class Bank {
 		$who   = self::acting_user();
 		$to    = self::admin_recipients();
 		$text = "Le coordinate bancarie mostrate ai soci sono state modificate da " . $who . ".\n\nPrima: " . ( implode( ', ', $mask( $old ) ) ?: 'nessuna' ) . "\nDopo: " . ( implode( ', ', $mask( $new ) ) ?: 'nessuna' )
-			. "\n\nSe non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni dei pagamenti.";
+			. "\n\nSe non l'hai fatto tu, cambia subito le password degli amministratori e controlla le impostazioni dei pagamenti.";
 		foreach ( $to as $addr ) {
-			Texts::mail( $addr, 'Modificate le coordinate bancarie dell\'associazione', $text );
+			Texts::mail( $addr, Texts::subject( 'Modificate le coordinate bancarie dell\'associazione' ), $text );
 		}
 	}
 }
