@@ -87,6 +87,19 @@ class ArticleBody
         return implode("\n", $out);
     }
 
+    /** Testo semplice per riassunti, anteprime e meta description: senza segni di formattazione né HTML. */
+    public static function plain(string $body): string
+    {
+        $t = preg_replace('/\[([^\]]+)\]\([^)\s]+\)/u', '$1', $body) ?? $body; // [testo](indirizzo) → testo
+        $t = strip_tags($t);
+        $t = preg_replace('/^\s*(?:#{1,6}|>|-|\d+\.)\s+/mu', '', $t) ?? $t; // titoli, citazioni, elenchi
+        $t = str_replace(['**', '__', '`'], '', $t);
+        $t = str_replace('|', ' ', $t);
+        $t = preg_replace('/(?<![*\w])\*(?![*\s])([^*]+?)(?<![*\s])\*(?![*\w])/u', '$1', $t) ?? $t;
+
+        return trim((string) preg_replace('/\s+/u', ' ', $t));
+    }
+
     /** @param  array<int, array<int, string>>  $rows  la prima riga è l'intestazione; una seconda riga di soli trattini si salta */
     private static function table(array $rows): string
     {

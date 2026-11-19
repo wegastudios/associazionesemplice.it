@@ -1,6 +1,6 @@
 @extends('site.layout')
 @section('title', $article->title)
-@section('description', \Illuminate\Support\Str::limit(trim((string) preg_replace('/\s+/', ' ', strip_tags(str_replace(['**', '__', '#', '`', '|'], ' ', \App\Support\SaasGuides::cleanBody((string) $article->body))))), 155))
+@section('description', \Illuminate\Support\Str::limit(\App\Support\ArticleBody::plain(\App\Support\SaasGuides::cleanBody((string) $article->body)), 155))
 
 @section('content')
     <p><a href="{{ route('help.topic', $article->section->topic->slug) }}">← {{ $article->section->topic->name }}</a></p>
