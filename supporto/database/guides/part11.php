@@ -1,6 +1,6 @@
 <?php
 
-// Guide: anno fiscale, spese e fondi, bilancio provvisorio e verifiche di fine anno ({piano_fiscale}, Pro 1.1.38).
+// Guide: anno fiscale, spese e fondi, rendiconto provvisorio e verifiche di fine anno ({piano_fiscale}, Pro 1.1.38).
 return [
     [
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'inizio-dell-anno-fiscale',
@@ -86,7 +86,7 @@ La regola vale **solo per le spese documentate**, cioè con scontrino o fattura 
 
 ## Controllare e correggere
 
-In **Contabilità → Bilancio provvisorio** (in breve in **Bacheca**, e per intero anche in **Cassa → Conti e fondi**) trovi:
+In **Contabilità → Rendiconto provvisorio** (in breve in **Bacheca**, e per intero anche in **Cassa → Conti e fondi**) trovi:
 
 - **Spese documentate non rimborsate**: ogni riga ha il menu **«— scegli il fondo —»** e il pulsante **Attribuisci**, per attribuire a mano;
 - **Fondi accantonati non documentati**, con le colonne Fondo, Stato, Accantonato, Documentato e Da documentare;
@@ -105,26 +105,26 @@ MD,
     ],
     [
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'bilancio-provvisorio-e-avvisi-di-bilancio',
-        'title' => 'Bilancio provvisorio, avvisi di bilancio e storico mensile',
+        'title' => 'Rendiconto provvisorio, avvisi e storico mensile',
         'body' => <<<'MD'
 > Disponibile in: {piano_fiscale} (aggiorna insieme gratuito e Pro)
 
 Con il {piano_fiscale} hai sempre sott'occhio come sta andando l'anno fiscale.
 
-## Il bilancio provvisorio
+## Il rendiconto provvisorio
 
-Vai in **Contabilità → Bilancio provvisorio**. Il titolo è **«Bilancio dell'anno fiscale …»**. La pagina mostra:
+Vai in **Contabilità → Rendiconto provvisorio**. Il titolo è **«Rendiconto dell'anno fiscale …»**. La pagina mostra:
 
-- il bilancio **aggiornato all'ultimo mese concluso**, con il preventivo in proporzione ai mesi conclusi;
+- il rendiconto **aggiornato all'ultimo mese concluso**, con il preventivo in proporzione ai mesi conclusi;
 - l'andamento del **mese in corso**;
 - la **stima di fine anno**;
 - la tabella **«Voce per voce, contro il preventivo»**, con Previsto per i mesi conclusi, Consuntivo e Differenza a favore.
 
 Lo stesso riquadro compare in **Bacheca**, **Contabilità**, **Report** e **Preventivo**.
 
-## Gli avvisi di bilancio
+## Gli avvisi sull'andamento del rendiconto
 
-Compaiono **solo quando c'è qualcosa che non va**: se tutto è a posto non c'è nessun messaggio verde. In **Bacheca** la riga si può chiudere; il riquadro compare anche in **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Bilancio provvisorio**.
+Compaiono **solo quando c'è qualcosa che non va**: se tutto è a posto non c'è nessun messaggio verde. In **Bacheca** la riga si può chiudere; il riquadro compare anche in **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Rendiconto provvisorio**.
 
 - **«Spese non coperte»**: la stima di fine anno delle uscite supera le entrate di più di una soglia, di partenza **10%**.
 - **«Utile eccessivo»**: le entrate superano le uscite di più del **20%** delle uscite.
@@ -133,16 +133,16 @@ Non scattano nei **primi 3 mesi** dell'anno fiscale.
 
 ## Lo storico mensile
 
-Sempre in **Bilancio provvisorio**, la sezione **«Storico mensile»** ti fa scegliere l'anno fiscale e mostra i mesi uno per uno, con **Esporta CSV** (e PDF). A ogni fine mese il programma **salva da solo una foto** del consuntivo contro il preventivo, che poi **non cambia**. Se ne mancano, il pulsante **«Salva ora le foto dei mesi conclusi mancanti»** le recupera. Non parte nessuna email.
+Sempre in **Rendiconto provvisorio**, la sezione **«Storico mensile»** ti fa scegliere l'anno fiscale e mostra i mesi uno per uno, con **Esporta CSV** (e PDF). A ogni fine mese il programma **salva da solo la situazione** del consuntivo contro il preventivo, che poi **non cambia**. Se ne mancano, il pulsante **«Salva ora le foto dei mesi conclusi mancanti»** le recupera. Non parte nessuna email.
 
 ## Le impostazioni
 
 In **Impostazioni → Limiti e soglie**, gruppo **«Preventivo, avvisi e fondi»**:
 
-- **«Avvisi sulla tendenza del bilancio»**: sì o no;
+- **«Avvisi sull'andamento del rendiconto»**: sì o no;
 - **«Spese non coperte: soglia»** e **«Utile eccessivo: soglia»**, in percentuale;
 - **«Mesi trascorsi prima di fare la stima»**;
-- **«Istantanea mensile del bilancio»**;
+- **«Situazione mensile del rendiconto»**;
 - **«Attribuzione automatica delle spese ai fondi»** (vedi [Spese documentate e fondi](guida:spese-documentate-e-fondi-dei-rimborsi)).
 MD,
     ],
@@ -159,7 +159,7 @@ Prima della fine dell'anno fiscale il plugin ti avvisa se ci sono **discrepanze*
 1. **Preavviso**: di partenza compare **3 mesi prima** dell'avviso fisso e lo puoi **chiudere**: resta chiuso solo per te e ricompare il lunedì.
 2. **Avviso fisso**: **non si può chiudere**. Di partenza compare dal **penultimo mese** dell'anno fiscale: il 1° novembre se l'anno va da gennaio a dicembre, il 1° luglio se inizia a settembre.
 
-Lo vedono amministratori, segreteria, tesorieri, presidente e vicepresidente, in **Bacheca** e nelle pagine **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Bilancio provvisorio**.
+Lo vedono amministratori, segreteria, tesorieri, presidente e vicepresidente, in **Bacheca** e nelle pagine **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Rendiconto provvisorio**.
 
 L'avviso elenca, con il link per correggere:
 
@@ -176,7 +176,7 @@ L'avviso elenca, con il link per correggere:
 
 Le discrepanze si vedono **una per una**, con **tipo**, **voce** e **importo**. Se una la ritieni accettabile puoi **approvarla a mano**, con una **nota facoltativa**, per portarla al nuovo anno.
 
-1. Vai in **Contabilità → Bilancio provvisorio → «Discrepanze da verificare»**.
+1. Vai in **Contabilità → Rendiconto provvisorio → «Discrepanze da verificare»**.
 2. Nella riga della discrepanza, se vuoi, compila il campo **«Nota (facoltativa)»**.
 3. Premi **«Approva»** e conferma **«Approvare questa discrepanza e portarla al nuovo anno?»**.
 

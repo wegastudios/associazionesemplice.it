@@ -131,7 +131,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Anno fiscale con verifiche: Verifiche prima della chiusura dell'anno fiscale del rendiconto per cassa | — | — | ✓ |
 | Rendiconto definitivo: Alla chiusura dell'anno fiscale il rendiconto diventa definitivo, con un PDF numerato (n. 1/2026) che non cambia più; prima è una bozza | — | — | ✓ |
 | Spese documentate sui fondi dei rimborsi: Attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
-| Bilancio provvisorio e storico mensile: Con avvisi di bilancio e storico mensile in CSV | — | — | ✓ |
+| Rendiconto provvisorio e storico mensile: Con avvisi sull'andamento e storico mensile in CSV | — | — | ✓ |
 | Prospetto dei rimborsi per persona: Per persona, con CSV e PDF | — | — | ✓ |
 | Verifiche di fine anno: La chiusura si blocca se mancano le spese documentate dei rimborsi | — | — | ✓ |
 | Avviso di disavanzo: Avviso se un anno fiscale passato ancora aperto è in disavanzo (non blocca la chiusura) | — | — | ✓ |
