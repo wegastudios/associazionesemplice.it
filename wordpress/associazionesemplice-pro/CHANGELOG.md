@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.18 – 2026-11-19
+- Nuovo: nella riga del Pro in Plugin c'è il link «Controlla aggiornamenti», e nell'avviso di incompatibilità con Associazione Semplice il pulsante «Aggiorna il Pro». «Controlla di nuovo» di WordPress controlla subito anche il Pro.
+- Altro: corretto un errore che bloccava «Conferma e paga» quando si pagano i crediti dal QR.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.17 – 2026-11-18
 - Altro: allineato al plugin gratuito 1.3.30.
 - Altro: nella finestra «Visualizza i dettagli» di WordPress il changelog compare sempre, anche dopo l'aggiornamento.
