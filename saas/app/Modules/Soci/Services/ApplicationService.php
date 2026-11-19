@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Soci\Services;
 
 use App\Modules\Audit\Contracts\AuditLog;
+use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Contracts\ConsentChannel;
@@ -285,10 +286,11 @@ final readonly class ApplicationService
             return;
         }
         $of = $c['about'] !== '' ? " di {$c['about']}" : '';
+        $office = (new OrgContacts($this->settings))->all();
         [$subject, $body] = match ($kind) {
-            'received' => ['Abbiamo ricevuto la domanda di adesione', 'abbiamo ricevuto la domanda di adesione'.($c['about'] !== '' ? " per {$c['about']}" : '').'. La segreteria la esamina e ti risponde al più presto.'],
+            'received' => ['Domanda di adesione ricevuta', 'la domanda di adesione'.($c['about'] !== '' ? " per {$c['about']}" : '').' è stata ricevuta. La segreteria la esamina e ti risponde al più presto.'],
             'accepted' => ['Domanda di adesione accolta', "la domanda di adesione{$of} è stata accolta: benvenuto! Per la tessera e la quota rivolgiti alla segreteria."],
-            'rejected' => ['Domanda di adesione non accolta', "la domanda di adesione{$of} non è stata accolta. Per chiarimenti rivolgiti alla segreteria."],
+            'rejected' => ['Domanda di adesione non accolta', "la domanda di adesione{$of} non è stata accolta. Per chiarimenti rivolgiti alla segreteria".($office === null ? '.' : ': '.OrgContacts::line($office['email'], $office['phone']).'.')],
             default => [null, null],
         };
         if ($subject === null || $body === null) {

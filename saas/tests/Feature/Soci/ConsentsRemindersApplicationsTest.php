@@ -330,3 +330,19 @@ it('la conferma della domanda va in coda con soli identificativi e parte con ind
     }
     Notification::assertSentOnDemand(MemberNotification::class, fn (MemberNotification $n, array $channels, object $notifiable) => $notifiable->routes['mail'] === 'mario@example.com' && $n->greeting === 'Ciao Mario,');
 });
+
+it('l\'email di una domanda non accolta riporta i recapiti della segreteria e l\'oggetto parte dal nome dell\'associazione', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        app(OrgSettings::class)->set('ente.email', 'segreteria@example.com');
+        app(OrgSettings::class)->set('ente.phone', '011 1234567');
+        app(ApplicationService::class)->submit(adultApplication(), 'Polisportiva Alfa');
+        $id = Application::query()->value('id');
+
+        app(ApplicationService::class)->sendMail((string) $id, 'rejected', 'Polisportiva Alfa');
+    });
+
+    Notification::assertSentOnDemand(MemberNotification::class, function (MemberNotification $n, array $channels, object $notifiable): bool {
+        return $n->toMail($notifiable)->subject === 'Polisportiva Alfa · Domanda di adesione non accolta'
+            && str_contains($n->body, 'Segreteria: segreteria@example.com · tel. 011 1234567');
+    });
+});

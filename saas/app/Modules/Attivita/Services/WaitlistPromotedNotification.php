@@ -26,7 +26,7 @@ final class WaitlistPromotedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)->subject('Si è liberato un posto · '.$this->orgName)->greeting($this->greeting)->line($this->body);
+        $mail = (new MailMessage)->subject($this->orgName.' · Si è liberato un posto')->greeting($this->greeting)->line($this->body);
         if ($this->payLine !== null) {
             $mail->line($this->payLine);
         }

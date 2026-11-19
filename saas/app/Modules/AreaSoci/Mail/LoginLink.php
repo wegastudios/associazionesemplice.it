@@ -26,7 +26,7 @@ final class LoginLink extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Il tuo accesso all\'area soci · '.$this->orgName, replyTo: $this->contactEmail === null ? [] : [new Address($this->contactEmail, $this->orgName)]);
+        return new Envelope(subject: $this->orgName.' · Il tuo accesso all\'area soci', replyTo: $this->contactEmail === null ? [] : [new Address($this->contactEmail, $this->orgName)]);
     }
 
     public function content(): Content

@@ -28,7 +28,7 @@ final class PaymentRefunded extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Rimborso del tuo pagamento · '.$this->orgName, replyTo: $this->contactEmail === null ? [] : [new Address($this->contactEmail, $this->orgName)]);
+        return new Envelope(subject: $this->orgName.' · Rimborso del tuo pagamento', replyTo: $this->contactEmail === null ? [] : [new Address($this->contactEmail, $this->orgName)]);
     }
 
     public function content(): Content
