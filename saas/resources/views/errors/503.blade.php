@@ -1,4 +1,4 @@
 @extends('errors.layout')
-@section('title', 'Torniamo subito')
-@section('heading', 'Torniamo subito')
-@section('message', 'Stiamo facendo una manutenzione. Riprova tra qualche minuto.')
+@section('title', 'Manutenzione in corso')
+@section('heading', 'Manutenzione in corso')
+@section('message', 'Il servizio è in manutenzione. Riprova tra qualche minuto.')

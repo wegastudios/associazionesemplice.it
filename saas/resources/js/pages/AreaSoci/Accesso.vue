@@ -14,7 +14,7 @@ const field = 'field';
             <p class="mb-6 text-center text-lg font-bold">{{ orgName }}</p>
             <section class="card p-5 sm:p-6 shadow-sm sm:p-8" aria-labelledby="t">
                 <h1 id="t" class="mb-2 text-xl font-bold">Entra nell'area soci</h1>
-                <p class="mb-6 text-sm text-muted">Niente password: ti mandiamo per email un link e un codice.</p>
+                <p class="mb-6 text-sm text-muted">Niente password: ricevi per email un link e un codice.</p>
                 <p v-if="message" class="mb-4 rounded-lg border border-salvia/40 bg-salvia/10 px-3 py-2 text-sm" role="status">{{ message }}</p>
                 <form v-if="step !== 'code'" class="space-y-4" @submit.prevent="ask.post('/area/accesso')">
                     <label class="block space-y-1 text-sm"><span class="font-semibold">La tua email</span>

@@ -41,7 +41,7 @@ final readonly class TwoFactorEmailResetController
         $id = $request->session()->get('login.id');
         $user = is_string($id) || is_int($id) ? User::query()->find($id) : null;
         // La stessa risposta in ogni caso: niente si capisce da fuori.
-        $reply = back()->with('status', 'Se serve, ti abbiamo scritto all\'indirizzo del tuo account: apri il link entro 15 minuti.');
+        $reply = back()->with('status', 'Se serve, è partita un\'email all\'indirizzo del tuo account: apri il link entro 15 minuti.');
         if (! $user instanceof User || ! $user->hasConfirmedTwoFactor() || $this->demo->enabled()) {
             return $reply;
         }
