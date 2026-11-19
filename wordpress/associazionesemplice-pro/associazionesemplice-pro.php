@@ -56,6 +56,38 @@ function asem_pro_updater(): void {
 	\AssociazioneSemplice\Updater::register();
 }
 
+/**
+ * Con un gratuito incompatibile le classi del Pro non si caricano, quindi mancano i suoi collegamenti con l'aggiornatore (chiave di licenza e dominio):
+ * qui ne bastano due minimi, che leggono la chiave salvata, perché proprio in quel caso il Pro deve poter chiedere il suo aggiornamento.
+ */
+function asem_pro_updater_basics(): void {
+	add_filter(
+		'asem_portal_license_key',
+		function ( $key ) {
+			if ( '' !== (string) $key || ! class_exists( 'AssociazioneSemplice\Settings' ) || ! class_exists( 'AssociazioneSemplice\Secrets' ) ) {
+				return $key;
+			}
+			$opt = get_option( \AssociazioneSemplice\Settings::OPTION, array() );
+			$raw = is_array( $opt ) && isset( $opt['license_key'] ) ? (string) $opt['license_key'] : '';
+			if ( '' !== $raw && \AssociazioneSemplice\Secrets::is_encrypted( $raw ) ) {
+				$plain = \AssociazioneSemplice\Secrets::decrypt( $raw, wp_salt( 'auth' ) );
+				return null === $plain ? '' : $plain;
+			}
+			return $raw;
+		}
+	);
+	add_filter(
+		'asem_portal_domain',
+		function ( $domain ) {
+			if ( '' !== (string) $domain ) {
+				return $domain;
+			}
+			$host = strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+			return 0 === strpos( $host, 'www.' ) ? substr( $host, 4 ) : $host;
+		}
+	);
+}
+
 /** Pulsante dell'avviso di incompatibilità: «Aggiorna il Pro» se il portale ne ha uno nuovo, altrimenti «Controlla aggiornamenti». */
 function asem_pro_notice_button(): string {
 	if ( ! current_user_can( 'update_plugins' ) || ! class_exists( 'AssociazioneSemplice\Updater' ) || ! \AssociazioneSemplice\Updater::enabled() ) {
@@ -91,6 +123,9 @@ add_action(
 	function () {
 		asem_pro_updater();
 		$problem = asem_pro_problem();
+		if ( '' !== $problem && defined( 'ASEM_API' ) && ASEM_API !== ASEM_PRO_API ) {
+			asem_pro_updater_basics(); // livello di compatibilità diverso: le classi del Pro non si caricano, ma l'aggiornamento deve funzionare
+		}
 		if ( '' !== $problem ) {
 			add_action(
 				'admin_notices',

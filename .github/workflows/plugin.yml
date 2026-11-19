@@ -123,9 +123,53 @@ jobs:
         working-directory: wordpress/dist
         run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
 
+  combos:
+    name: Updates of the Pro in the free + Pro combinations (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { id: a, wporg: "0", kind: portal, proapi: "", label: "a: portal free + Pro" }
+          - { id: b, wporg: "1", kind: wporg, proapi: "", label: "b: WordPress.org free + Pro" }
+          - { id: c, wporg: "1", kind: wporg, proapi: "17", label: "c: WordPress.org free + incompatible Pro" }
+          - { id: c, wporg: "0", kind: portal, proapi: "17", label: "c: portal free + incompatible Pro" }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+      - name: Build the packages (free as for the portal or for WordPress.org)
+        run: |
+          if [ "${{ matrix.wporg }}" = "1" ]; then export ASEM_WPORG=1; fi
+          bash wordpress/build.sh wordpress/dist
+          if [ -n "${{ matrix.proapi }}" ]; then
+            # Pro con un livello di compatibilità diverso da quello del gratuito
+            sed -i -E "s/(define\( 'ASEM_PRO_API', )[0-9]+/\1${{ matrix.proapi }}/" wordpress/dist/pro/associazionesemplice-pro/associazionesemplice-pro.php
+            grep -q "ASEM_PRO_API', ${{ matrix.proapi }}" wordpress/dist/pro/associazionesemplice-pro/associazionesemplice-pro.php
+          fi
+      - name: Start WordPress with free + Pro and run the combination test
+        working-directory: wordpress/dist
+        run: |
+          mkdir -p free/associazionesemplice/tests/ci
+          cp ../associazionesemplice/tests/ci/prova-aggiornatore-combinazioni.php free/associazionesemplice/tests/ci/
+          cat > .wp-env.json <<'JSON'
+          {
+            "phpVersion": "8.1",
+            "plugins": [ "./free/associazionesemplice", "./pro/associazionesemplice-pro" ],
+            "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
+          }
+          JSON
+          npx --yes @wordpress/env start
+          npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/ci/prova-aggiornatore-combinazioni.php ${{ matrix.id }} ${{ matrix.kind }}
+      - name: Debug log
+        if: failure()
+        working-directory: wordpress/dist
+        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
+
   package:
     name: Installable zips (WordPress.org and Pro)
-    needs: [unit, free, split]
+    needs: [unit, free, split, combos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -142,6 +186,7 @@ jobs:
           grep -q '^ \* Update URI: *https://associazionesemplice.it/$' wordpress/dist/free/associazionesemplice/associazionesemplice.php
           if grep -qi 'Update URI' wordpress/dist-wporg/free/associazionesemplice/associazionesemplice.php; then echo "Il pacchetto WordPress.org dichiara Update URI" >&2; exit 1; fi
           if grep -rIl 'api/plugin/update' wordpress/dist-wporg/free/associazionesemplice; then echo "Il pacchetto WordPress.org cita il contatto col portale" >&2; exit 1; fi
+          if grep -rIlE 'asem_check_updates|asem_updater_|asem_pro_updater' wordpress/dist-wporg/free/associazionesemplice; then echo "Il pacchetto WordPress.org contiene tracce dell'aggiornatore" >&2; exit 1; fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: associazionesemplice-packages
