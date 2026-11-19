@@ -2257,6 +2257,18 @@ $cdb->run( "UPDATE orders SET status = 'trial', trial_ends = '2030-01-31', org_r
 $tAt   = function ( string $d ) { return strtotime( $d . ' 12:00:00 UTC' ); };
 $mails = array();
 check( 'prova: il portale non manda email di fine prova, in nessun giorno', 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-01-24' ) ) && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-01-31' ) ) && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-03' ) ) && array() === $mails );
+$offDoc = json_decode( (string) json_encode( array( 'terms' => array( 'trial' => array( 'end_discount_percent' => 20, 'purge_days' => 7 ) ) ) ), true );
+check( 'offerta: senza sconto o senza codice non parte nulla', 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ) ) && ( Config::set( 'saas_trial_promo', 'FINEPROVA' ) || true ) && 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ) ) && ( Config::set( 'saas_trial_promo', '' ) || true ) && 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ), $offDoc ) && array() === $mails );
+Config::set( 'saas_trial_promo', 'FINEPROVA' );
+check( 'offerta: prima della fine non parte nulla', 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-30' ), $offDoc ) && array() === $mails );
+check( 'offerta: il giorno della fine una email sola, solo sull\'offerta, senza date di accesso o cancellazione', 1 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ), $offDoc ) && 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-01-31' ), $offDoc ) && 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-02-01' ), $offDoc ) && 1 === count( $mails ) && false !== strpos( $mails[0][1], '20%' ) && false !== strpos( $mails[0][2], 'FINEPROVA' ) && false !== strpos( $mails[0][2], '07/02/2030' ) && false === stripos( $mails[0][2], 'sola lettura' ) && false === stripos( $mails[0][2], 'elimin' ) && false === strpos( $mails[0][2], '{' ) );
+$cdb->run( "UPDATE orders SET trial_step = 0 WHERE id = ?", array( $tOrd['id'] ) );
+$mails = array();
+check( 'offerta: se il lavoro non è girato il giorno della fine, quello dopo parte; poi niente arretrati', 1 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-02-01' ), $offDoc ) && 1 === count( $mails ) );
+$cdb->run( "UPDATE orders SET trial_step = 0 WHERE id = ?", array( $tOrd['id'] ) );
+$mails = array();
+check( 'offerta: in ritardo di più di un giorno non parte', 0 === SaasCheckout::sendTrialOffers( $cdb, $tAt( '2030-02-05' ), $offDoc ) && array() === $mails );
+Config::set( 'saas_trial_promo', '' );
 check( 'prova: dopo la fine non si manda «suspended» al SaaS (resta «trial»: la sospensione e la sola lettura le fa il SaaS)', '' === Portale\SaasAccount::stateOf( $cdb, 'orgT' ) && 0 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) )['n'] );
 check( 'prova: all\'eliminazione dei dati l\'ordine si chiude, una volta sola, senza email', 'trial' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 1 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-07' ) ) && 'trial_purged' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-08' ) ) && array() === $mails );
 $cdb->run( 'DELETE FROM orders WHERE id = ?', array( $tOrd['id'] ) );

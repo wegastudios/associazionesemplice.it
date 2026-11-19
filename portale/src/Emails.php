@@ -117,6 +117,12 @@ final class Emails {
 				'subject' => 'La prova di {associazione} è partita: hai tempo fino al {fine_prova}',
 				'body' => "Ciao {nome},\nla prova gratuita del gestionale di {associazione} è partita. Dura {giorni} giorni, fino al {fine_prova}, e non ti chiediamo la carta.\n\nPer entrare scegli la tua password da qui:\n{link_password}\nSi apre una pagina: scrivi {email} e ti mandiamo il link per scegliere la password.\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nDurante la prova usi tutto il gestionale. Due cose si sbloccano solo con un piano: scaricare i dati e dare l'accesso al commercialista.\n\nAlla fine della prova non ti addebitiamo nulla. Se non scegli un piano, per 7 giorni puoi ancora entrare e consultare, poi i dati della prova vengono eliminati. Ti avvisiamo prima.\n\nPer vedere i piani: {piani_url}",
 			),
+			// Offerta di fine prova (soldi: la manda il portale). Parte solo se lo sconto del catalogo è > 0 e c'è il codice `saas_trial_promo`; parla solo dell'offerta.
+			'saas_trial_offer' => array(
+				'label' => 'Prova gestionale: offerta di fine prova', 'when' => 'Il giorno in cui finisce la prova, senza un piano, solo se lo sconto di fine prova è impostato.', 'vars' => array( 'nome', 'associazione', 'sconto', 'codice_sconto', 'scadenza_sconto', 'piani_url', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Uno sconto del {sconto} sul gestionale di {associazione}',
+				'body' => "Ciao {nome},\nse scegli un piano entro il {scadenza_sconto} hai uno sconto del {sconto} sul primo pagamento.\n\nUsa il codice {codice_sconto} al momento dell'acquisto. Scegli il piano da {piani_url}.\n\nSe non ti serve, non devi fare nulla.",
+			),
 			'saas_cancelled' => array(
 				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Disdetta registrata: il gestionale resta attivo fino al {scadenza}',

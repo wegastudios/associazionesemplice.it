@@ -375,6 +375,43 @@ final class SaasCheckout {
 		return $sent;
 	}
 
+	/** In `trial_step`: 3 = l'offerta di fine prova è già stata valutata (l'email parte una volta sola, il giorno della fine). */
+	const OFFER_STEP = 3;
+
+	/**
+	 * Lavoro giornaliero (bin/cron.php): l'email con l'offerta di fine prova, l'unica email sulla prova che scrive il portale (le altre, su dati e
+	 * accesso, le manda il gestionale). Una volta sola, il giorno in cui la prova finisce senza un piano (o il giorno dopo, se il lavoro è saltato:
+	 * poi niente arretrati), e solo se lo sconto del catalogo (`terms.trial.end_discount_percent`) è > 0 e il codice (`saas_trial_promo` in config)
+	 * è impostato. Vale fino a `trial_purge_days` dopo la fine. `$doc`: catalogo da usare al posto di quello salvato (per i test). @return int email inviate
+	 */
+	public static function sendTrialOffers( Db $db, ?int $now = null, ?array $doc = null ): int {
+		$now    = $now ?? time();
+		$today  = gmdate( 'Y-m-d', $now );
+		$stored = Catalog::stored( $db, $now );
+		$terms  = Catalog::terms( $doc ?? ( $stored ? $stored['doc'] : array() ) );
+		$pct    = $terms['trial_end_discount_percent'];
+		$code   = trim( (string) Config::get( 'saas_trial_promo', '' ) );
+		if ( $pct <= 0 || '' === $code ) {
+			return 0;
+		}
+		$base = rtrim( (string) Config::get( 'base_url' ), '/' );
+		$sent = 0;
+		$rows = $db->all( "SELECT o.*, g.org_id, g.name AS org_name FROM orders o JOIN saas_orgs g ON g.ref = o.org_ref WHERE o.product = 'saas' AND o.status = 'trial' AND o.trial_ends IS NOT NULL AND o.trial_step < " . self::OFFER_STEP . ' AND g.org_id IS NOT NULL' );
+		foreach ( $rows as $o ) {
+			$end = (string) $o['trial_ends'];
+			if ( $today < $end ) {
+				continue;
+			}
+			$db->run( 'UPDATE orders SET trial_step = ? WHERE id = ?', array( self::OFFER_STEP, $o['id'] ) );
+			if ( $today > gmdate( 'Y-m-d', strtotime( $end . ' UTC +1 day' ) ) ) {
+				continue; // arretrato: il lavoro non è girato in quel giorno, l'offerta non ha più senso
+			}
+			$until = date_it( gmdate( 'Y-m-d', strtotime( $end . ' UTC +' . $terms['trial_purge_days'] . ' days' ) ) . ' 00:00:00' );
+			$sent += self::mail( $db, 'saas_trial_offer', $o, array( 'org_id' => $o['org_id'], 'name' => $o['org_name'] ), $now, array( 'sconto' => $pct . '%', 'codice_sconto' => $code, 'scadenza_sconto' => $until, 'piani_url' => $base . '/account#gestionale' ) ) ? 1 : 0;
+		}
+		return $sent;
+	}
+
 	/**
 	 * Lavoro giornaliero (bin/cron.php): chiude l'ordine di una prova finita senza un piano quando il gestionale ne elimina i dati (`purge_days` dalla fine).
 	 * Dopo la fine NON si manda «suspended» (per il SaaS sarebbe un abbonamento scaduto, con 180 giorni): resta «trial» con `until` = fine prova, e la
