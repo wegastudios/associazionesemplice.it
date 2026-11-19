@@ -90,7 +90,7 @@ it('rifiuta categorie, importi, conti e persone non validi', function (): void {
     $expense = ($this->cat)(CategoryKind::GeneralCost);
 
     expect(fn () => $this->ledger->recordIncome(income($this->cash->id, [])))->toThrow(LedgerError::class, 'almeno una voce')
-        ->and(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine($expense, 100)])))->toThrow(LedgerError::class, 'categoria non valida')
+        ->and(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine($expense, 100)])))->toThrow(LedgerError::class, 'voce non valida')
         ->and(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine($income, 0)])))->toThrow(LedgerError::class, 'importo')
         ->and(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine($income, 100, '', '2026-13')])))->toThrow(LedgerError::class, 'competenza')
         ->and(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine($income, 100)], (string) Str::uuid7())))->toThrow(LedgerError::class, 'Persona')

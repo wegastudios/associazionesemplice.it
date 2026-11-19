@@ -257,7 +257,7 @@ const label = 'block space-y-1.5 text-sm';
                 </div>
                 <fieldset v-for="(line, i) in income.lines" :key="i" class="space-y-3 rounded-xl border border-line p-3">
                     <legend class="px-1 text-sm font-semibold">{{ income.lines.length > 1 ? `Voce ${i + 1}` : 'Cosa incassi' }}</legend>
-                    <select v-model="line.category_id" class="field" aria-label="Categoria"><option v-for="c in incomeCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select>
+                    <select v-model="line.category_id" class="field" aria-label="Voce"><option v-for="c in incomeCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select>
                     <input v-model="line.amount" inputmode="decimal" :placeholder="fiscal?.hasVat && !fiscal.includesVat ? 'Importo senza IVA, es. 30,00' : 'Importo, es. 30,00'" class="field" aria-label="Importo" required />
                     <select v-if="fiscal?.hasVat" v-model="line.vat_rate" class="field" aria-label="Aliquota IVA"><option v-for="o in rateOptions" :key="o.value" :value="o.value">{{ o.label }}</option></select>
                     <p v-if="grossText(line.amount, line.vat_rate)" class="text-sm font-semibold">Totale con IVA: {{ grossText(line.amount, line.vat_rate) }}</p>
@@ -293,7 +293,7 @@ ${E//FORM/income}
                 <label v-if="fiscal?.hasVat" :class="label"><span class="font-semibold">Aliquota IVA della spesa</span>
                     <select v-model="expense.vat_rate" class="field"><option v-for="o in expenseRateOptions" :key="o.value" :value="o.value">{{ o.label }}</option></select></label>
                 <p v-if="grossText(expense.amount, expense.vat_rate)" class="text-sm font-semibold">Totale con IVA: {{ grossText(expense.amount, expense.vat_rate) }}</p>
-                <label :class="label"><span class="font-semibold">Categoria</span>
+                <label :class="label"><span class="font-semibold">Voce</span>
                     <select v-model="expense.category_id" class="field"><option v-for="c in expenseCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Da quale conto</span>
                     <select v-model="expense.account_id" class="field"><option v-for="a in openAccounts" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>

@@ -68,7 +68,7 @@ final readonly class LedgerService implements Ledger
             $n = $i + 1;
             $kind = $this->categoryKind($line->categoryId);
             if ($kind === null || ! $kind->isIncome() || $kind === CategoryKind::Adjustment) {
-                throw new LedgerError("Voce {$n}: categoria non valida per un incasso.");
+                throw new LedgerError("Riga {$n}: voce non valida per un incasso.");
             }
             if ($line->amountCents <= 0) {
                 throw new LedgerError("Voce {$n}: importo non valido.");
@@ -180,7 +180,7 @@ final readonly class LedgerService implements Ledger
         $method = $this->method($expense->accountId, $expense->method);
         $kind = $this->categoryKind($expense->categoryId);
         if ($kind === null || ! $kind->isExpense() || $kind === CategoryKind::Adjustment) {
-            throw new LedgerError('Categoria non valida per una spesa.');
+            throw new LedgerError('Voce non valida per una spesa.');
         }
         if ($expense->amountCents <= 0) {
             throw new LedgerError('Importo non valido.');
@@ -230,7 +230,7 @@ final readonly class LedgerService implements Ledger
         $in = $this->method($toAccountId, null);
         $category = $this->connection()->table('app.categories')->where('kind', CategoryKind::Adjustment->value)->whereNull('deleted_at')->value('id');
         if (! is_string($category)) {
-            throw new LedgerError('Manca la categoria «Rettifica di cassa», usata per i giroconti.');
+            throw new LedgerError('Manca la voce «Rettifica di cassa», usata per i giroconti.');
         }
 
         return $this->transaction(function () use ($date, $fromAccountId, $toAccountId, $cents, $description, $out, $in, $category): string {
