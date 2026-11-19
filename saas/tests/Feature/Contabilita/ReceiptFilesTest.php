@@ -116,7 +116,7 @@ it('al socio con il file mancante dice di avvisare la segreteria', function (): 
 
         return '';
     });
-    expect($msg)->toContain('Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria');
+    expect($msg)->toBe('Al momento questa ricevuta non è disponibile. Scrivi alla segreteria.');
 });
 
 it('il lavoro programmato scorre le associazioni e non trova niente da fissare', function (): void {

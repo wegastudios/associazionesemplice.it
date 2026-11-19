@@ -26,7 +26,7 @@ final class MemberNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject($this->subject.' · '.$this->orgName)
+            ->subject($this->orgName.' · '.$this->subject)
             ->greeting($this->greeting)
             ->line($this->body)
             ->salutation('A presto, '.$this->orgName);

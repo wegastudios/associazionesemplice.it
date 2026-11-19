@@ -25,7 +25,7 @@ final class ReceiptMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Ricevuta n. '.$this->number.' · '.$this->orgName, replyTo: [new Address($this->contactEmail, $this->orgName)]);
+        return new Envelope(subject: $this->orgName.' · Ricevuta n. '.$this->number, replyTo: [new Address($this->contactEmail, $this->orgName)]);
     }
 
     public function content(): Content
