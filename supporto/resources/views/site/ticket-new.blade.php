@@ -15,14 +15,14 @@
         </div>
         <div class="row">
             <div><label for="product">Quale prodotto usi?</label>
-                <select id="product" name="product" required><option value="">—</option>@foreach ($products as $key => $label)<option value="{{ $key }}" @selected(old('product') === $key)>{{ $label }}</option>@endforeach</select></div>
+                <select id="product" name="product" required><option value="">Scegli…</option>@foreach ($products as $key => $label)<option value="{{ $key }}" @selected(old('product') === $key)>{{ $label }}</option>@endforeach</select></div>
             @if ($topics->isNotEmpty())
                 <div><label for="topic_id">Argomento</label>
-                    <select id="topic_id" name="topic_id"><option value="">—</option>@foreach (['plugin' => 'Plugin WordPress', 'saas' => 'Gestionale', '' => 'Per tutti'] as $key => $label)@if ($topics->where('product', $key === '' ? null : $key)->isNotEmpty())<optgroup label="{{ $label }}">@foreach ($topics->where('product', $key === '' ? null : $key) as $t)<option value="{{ $t->id }}" @selected(old('topic_id') == $t->id)>{{ $t->name }}</option>@endforeach</optgroup>@endif @endforeach</select></div>
+                    <select id="topic_id" name="topic_id"><option value="">Scegli…</option>@foreach (['plugin' => 'Plugin WordPress', 'saas' => 'Gestionale', '' => 'Per tutti'] as $key => $label)@if ($topics->where('product', $key === '' ? null : $key)->isNotEmpty())<optgroup label="{{ $label }}">@foreach ($topics->where('product', $key === '' ? null : $key) as $t)<option value="{{ $t->id }}" @selected(old('topic_id') == $t->id)>{{ $t->name }}</option>@endforeach</optgroup>@endif @endforeach</select></div>
             @endif
             @if ($plans->isNotEmpty())
                 @if (! empty($customer))<div><label for="plan_name">Il tuo piano</label><input id="plan_name" value="{{ $plans->firstWhere("id", $customer["plan_id"] ?? 0)?->name ?? "Nessun piano attivo" }}" readonly tabindex="-1"><input type="hidden" name="plan_id" value="{{ $customer["plan_id"] ?? "" }}"></div>@else<div><label for="plan_id">Il tuo piano</label>
-                    <select id="plan_id" name="plan_id"><option value="">—</option>@foreach ($plans as $p)<option value="{{ $p->id }}" @selected(old('plan_id') == $p->id)>{{ $p->name }}</option>@endforeach</select></div>@endif
+                    <select id="plan_id" name="plan_id"><option value="">Scegli…</option>@foreach ($plans as $p)<option value="{{ $p->id }}" @selected(old('plan_id') == $p->id)>{{ $p->name }}</option>@endforeach</select></div>@endif
             @endif
         </div>
         <label for="subject">Oggetto</label>

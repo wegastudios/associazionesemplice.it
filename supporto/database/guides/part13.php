@@ -15,9 +15,9 @@ La pagina **Registri → Dati per il RUNTS** raccoglie i numeri da copiare nel p
 Scegli l'anno e premi **Mostra**: i numeri valgono al **31 dicembre** di quell'anno, anche se il tuo anno fiscale inizia in un altro mese. Conta come socio chi quel giorno aveva la tessera valida (e i fondatori già ammessi), esclusi quelli già usciti. È lo stesso criterio del libro soci.
 
 - **Soci persone fisiche con diritto di voto**: vota chi era maggiorenne a quella data e ha diritto di voto (con {piano_contabile} e {piano_fiscale} dipende dal livello di socio). Se a qualcuno manca la data di nascita, il programma lo conta come maggiorenne e te lo segnala: completa le schede per un numero sicuro. I numeri usano le impostazioni di voto **di oggi**: se le hai cambiate dopo il 31 dicembre, ricontrolla.
-- **Soci che sono enti**: il numero, con l'elenco di denominazione e codice fiscale e se sono iscritti al RUNTS nella tua stessa sezione (vedi [Soci che sono enti](guida:soci-che-sono-enti)).
-- **Volontari iscritti nel registro dei volontari**: il programma non tiene quel registro. Il numero lo scrivi tu in **Impostazioni → Dati dell'ente** (con l'anno di riferimento); a titolo di aiuto la pagina mostra quanti soci di tipo «Socio e volontario» c'erano.
-- **Lavoratori**: sono gli utenti **«Dipendente»** in servizio a quella data (vedi [Il dipendente e i suoi permessi](guida:il-dipendente-e-i-suoi-permessi)).
+- **Soci che sono enti**: il numero, con l'elenco di denominazione e codice fiscale e se sono iscritti al RUNTS nella tua stessa sezione (vedi [Registrare come socio un ente](guida:soci-che-sono-enti)).
+- **Volontari iscritti nel registro dei volontari**: il programma non tiene quel registro. Il numero lo scrivi tu in **Impostazioni → Dati dell'ente** (con l'anno di riferimento); come aiuto, la pagina mostra quanti soci di tipo «Socio e volontario» c'erano.
+- **Lavoratori**: sono gli utenti **«Dipendente»** in servizio a quella data (vedi [Creare un dipendente e scegliere cosa può fare](guida:il-dipendente-e-i-suoi-permessi)).
 
 ## Scadenze e minimo di soci
 
@@ -30,7 +30,7 @@ MD,
     ],
     [
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'soci-che-sono-enti',
-        'title' => 'Soci che sono enti (associazioni, società, enti pubblici)',
+        'title' => 'Registrare come socio un ente (associazione, società, ente pubblico)',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
@@ -47,7 +47,14 @@ Un ente non ha nome e cognome: il nome resta vuoto.
 
 ## Importarli da CSV
 
-Nel file di [importazione dei soci](guida:importare-i-soci-da-excel-o-csv) aggiungi la colonna **Tipo soggetto** (*persona* oppure *ente*), la **Denominazione** al posto di Nome e Cognome, il **Codice fiscale** dell'ente (11 cifre, oppure 16 caratteri) e, se serve, **Stessa sezione RUNTS** (sì o no). Per un ente basta uno tra Codice fiscale, Email, Cellulare e Numero tessera.
+Nel file di [importazione dei soci](guida:importare-i-soci-da-excel-o-csv) aggiungi queste colonne:
+
+- **Tipo soggetto**: «persona» oppure «ente»;
+- **Denominazione**, al posto di Nome e Cognome;
+- **Codice fiscale** dell'ente (11 cifre, oppure 16 caratteri);
+- **Stessa sezione RUNTS** (sì o no), se serve.
+
+Per un ente basta uno tra Codice fiscale, Email, Cellulare e Numero tessera.
 
 ## Dove compaiono
 
@@ -56,11 +63,11 @@ MD,
     ],
     [
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'il-dipendente-e-i-suoi-permessi',
-        'title' => 'Il dipendente e i suoi permessi',
+        'title' => 'Creare un dipendente e scegliere cosa può fare',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Il **Dipendente** è un tipo di utente a parte: è un utente del sito che **parte con gli stessi permessi della segreteria**, ma **non è un socio**. Non è nel libro soci, non ha la tessera e non conta per le assemblee. Si gestisce da **Rubrica soci → Dipendenti**.
+Il **Dipendente** è un utente del sito che **parte con gli stessi permessi della segreteria**, ma **non è un socio**. Non è nel libro soci, non ha la tessera e non conta per le assemblee. Si gestisce da **Rubrica soci → Dipendenti**.
 
 ## Creare un dipendente
 
@@ -110,13 +117,13 @@ Senza «Anagrafica soci», i campi che scelgono una persona (chi paga, chi iscri
 
 ## Che cosa resta solo agli amministratori
 
-Il dipendente **non lo ha mai**, qualunque spunta abbia: tutte le **impostazioni** (dati dell'ente, soci e quote, aspetto, bonifico, donazioni, tessera e QR, privacy e regolamento, limiti e soglie, testi e lingua, pagamenti online), gli **anni fiscali e le chiusure**, la **copia di sicurezza e il ripristino**, il **registro azioni**, le **integrazioni**, la **procedura guidata**, l'**azzeramento dei dati**, l'**eliminazione definitiva** di attività e iscrizioni, la **cifratura e la cartella riservata**, l'**anonimizzazione dei dati** e la **gestione dei dipendenti**. Restano fuori anche le azioni personali di ciascuno (chiudere un avviso, la guida iniziale, le notifiche del proprio dispositivo) e quelle dell'area soci.
+Queste funzioni il dipendente **non le ha mai**, qualunque spunta abbia: tutte le **impostazioni** (dati dell'ente, soci e quote, aspetto, bonifico, donazioni, tessera e QR, privacy e regolamento, limiti e soglie, testi e lingua, pagamenti online), gli **anni fiscali e le chiusure**, la **copia di sicurezza e il ripristino**, il **registro azioni**, le **integrazioni**, la **procedura guidata**, l'**azzeramento dei dati**, l'**eliminazione definitiva** di attività e iscrizioni, la **cifratura e la cartella riservata**, l'**anonimizzazione dei dati** e la **gestione dei dipendenti**. Restano fuori anche le azioni personali di ciascuno (chiudere un avviso, la guida iniziale, le notifiche del proprio dispositivo) e quelle dell'area soci.
 
 ## Chi entra nel pannello
 
 - **Gli amministratori di WordPress hanno tutto** e **non si possono mai togliere né limitare dal plugin**: se un utente è anche amministratore del sito, vede e fa tutto anche con il ruolo Dipendente.
 - **Gli altri entrano nel pannello solo** con il ruolo **Segreteria** o **Dipendente** (si assegnano dalla scheda del socio e da **Rubrica soci → Dipendenti**) o come **presidente o vicepresidente in regola**.
-- **I ruoli standard di WordPress** (Editore, Autore, Collaboratore, Sottoscrittore) **non danno accesso al plugin**: non c'è più una pagina «Ruoli e accessi» per darglielo.
+- **I ruoli standard di WordPress** (Editore, Autore, Collaboratore, Sottoscrittore) **non danno accesso al plugin**.
 
 Se prima qualcuno entrava con un ruolo di WordPress, agli amministratori compare in Bacheca l'avviso **«Alcuni utenti entravano nel pannello con un ruolo di WordPress (per esempio Editore): ora non entrano più. Se servono, dagli il ruolo Segreteria o Dipendente.»**, con l'elenco delle persone e il link **«Apri i dipendenti»**. L'avviso non si chiude da solo: sparisce quando un amministratore apre la pagina **Dipendenti**.
 
@@ -124,9 +131,9 @@ Se prima qualcuno entrava con un ruolo di WordPress, agli amministratori compare
 
 Senza date il dipendente è sempre in servizio. **Fuori dal periodo** non può usare il pannello di amministrazione del plugin e non conta tra i lavoratori dei [Dati per il RUNTS](guida:dati-per-il-runts).
 
-## Se prima aveva dei permessi tolti
+## L'avviso «Rivedi i permessi dei dipendenti»
 
-Quando i permessi sono passati all'assegnazione per area, in Bacheca compare a chi può gestire i dipendenti l'avviso **«Rivedi i permessi dei dipendenti: ora si danno per area.»** (solo se esiste almeno un dipendente). Non si chiude da solo: sparisce quando apri la pagina **Dipendenti**. Serve a controllare chi aveva dei permessi tolti prima.
+Chi gestisce i dipendenti può trovare in Bacheca l'avviso **«Rivedi i permessi dei dipendenti: ora si danno per area.»** Controlla i permessi di ciascuno nella pagina **Dipendenti**: aprendola, l'avviso sparisce.
 
 ## Se è anche socio
 

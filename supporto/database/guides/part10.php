@@ -8,7 +8,7 @@ return [
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale} (non nel plugin gratuito)
 
-Con le assemblee convochi i soci, registri chi c'è, gestisci le deleghe, controlli il **numero legale** e ottieni il verbale già compilato. Lo trovi in **Registri → Assemblee**. Lo usano segreteria, presidente, vicepresidente e amministratori. Senza Pro, o con la licenza non in regola, la voce sparisce; i dati restano.
+Con le assemblee convochi i soci, registri chi c'è, gestisci le deleghe, controlli il **numero legale** e ottieni il verbale già compilato. Le trovi in **Registri → Assemblee**. Le gestiscono segreteria, presidente, vicepresidente e amministratori. Senza Pro, o con la licenza non in regola, la voce sparisce; i dati restano.
 
 ## Creare e convocare
 
@@ -30,7 +30,9 @@ I soci con la **tessera in regola**, non sospesi e non usciti. Tutori e ospiti n
 - Il socio sceglie un altro socio dalla sua **area soci**, sezione **«Assemblee»** (anche con lo shortcode `[associazionesemplice_assemblee]`).
 - Oppure la segreteria registra una **delega scritta** ricevuta.
 
-Le regole: ogni socio può dare **una sola delega** per assemblea e riceverne **al massimo 3** (5 se i soci sono almeno 500). Chi riceve una delega non può delegare, e chi ha delegato non può riceverne. Non si delega a chi non è socio in regola. **Dall'area soci**, se il socio scelto non può ricevere la delega, il socio vede sempre lo stesso messaggio, «Non puoi scegliere questo socio come delegato: scegline un altro.»: non gli si dice come sta l'altro socio (se è iscritto, se ha già delegato, se ha già troppe deleghe). La **segreteria**, invece, vede il motivo preciso.
+Le regole: ogni socio può dare **una sola delega** per assemblea e riceverne **al massimo 3** (5 se i soci sono almeno 500). Chi riceve una delega non può delegare, e chi ha delegato non può riceverne. Non si delega a chi non è socio in regola. 
+
+Dall'**area soci**, se il socio scelto non può ricevere la delega compare sempre lo stesso messaggio: «Non puoi scegliere questo socio come delegato: scegline un altro.» Il motivo (non è socio in regola, ha già delegato, ha già troppe deleghe) lo vede solo la **segreteria**.
 
 ## Presenze e numero legale
 
@@ -41,7 +43,7 @@ Il numero legale si scrive **assemblea per assemblea**, in percentuale degli ave
 
 ## Chiudere e creare il verbale
 
-1. Premi **«Chiudi: svolta in prima (o seconda) convocazione»**. Servono almeno una presenza e il numero legale raggiunto. Dopo la chiusura l'assemblea **non si modifica più**. Anche le assemblee (anche quelle non svolte) di un **anno fiscale chiuso** non si modificano: per cambiarle va riaperto l'ultimo anno chiuso dalla pagina «Anni fiscali».
+1. Premi **«Chiudi: svolta in prima (o seconda) convocazione»**. Servono almeno una presenza e il numero legale raggiunto. Dopo la chiusura l'assemblea **non si modifica più**. Nemmeno le assemblee di un **anno fiscale chiuso** si modificano, svolte o no: per cambiarle riapri l'ultimo anno chiuso dalla pagina «Anni fiscali».
 2. Premi **Crea il verbale**: nasce il verbale in **Registri → Verbali**, già compilato con presenti, rappresentati per delega, numero legale e ordine del giorno. Resta da scrivere lo svolgimento. C'è un verbale per assemblea. Il verbale ha un **numero fisso** alla creazione (progressivo per anno fiscale della riunione), che non cambia e non viene mai riassegnato.
 3. **Foglio presenze (CSV)** scarica l'elenco di tutti i soci con presente, delegato o assente.
 
@@ -52,15 +54,15 @@ MD,
     ],
     [
         'topic' => 'plugin-pro', 'section' => 'Conti e fondi', 'slug' => 'bilancio-preventivo',
-        'title' => 'Preparare il bilancio preventivo e confrontarlo con la prima nota',
+        'title' => 'Preparare il preventivo e confrontarlo con la prima nota',
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale}
 
-Il preventivo ti fa scrivere quanto prevedi di incassare e spendere nell'anno e vedere, voce per voce, come va rispetto ai movimenti reali. Si trova in **Contabilità → Preventivo**. Senza Pro, o con la licenza non in regola, la voce sparisce; i dati restano.
+Nel preventivo scrivi quanto prevedi di incassare e spendere nell'anno e vedi, voce per voce, come va rispetto ai movimenti reali. Si trova in **Contabilità → Preventivo**. Senza Pro, o con la licenza non in regola, la voce sparisce; i dati restano.
 
 ## Creare il preventivo
 
-1. Premi **Nuovo preventivo** e scegli l'**anno** (ne hai uno per anno) e il titolo.
+1. Premi **Nuovo preventivo** e scegli l'**anno** (c'è un solo preventivo per anno) e il titolo.
 2. Nella tabella scrivi l'**importo previsto** per ogni categoria di entrata e di uscita. Le righe vuote non si salvano.
 3. In alternativa premi **Parti dall'anno prima**: copia le voci dal preventivo o dal consuntivo dell'anno precedente, con una **variazione in percentuale**. Attenzione: sostituisce le voci già scritte.
 
@@ -94,7 +96,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale}
 
-I rimborsi ti fanno gestire le richieste dei volontari dall'approvazione al pagamento, con registrazione in prima nota. Li trovi in **Cassa → Rimborsi**. Senza Pro, o con la licenza non in regola, la voce sparisce; i dati restano.
+Qui gestisci le richieste di rimborso dei volontari, dall'approvazione al pagamento, che finisce da solo in prima nota. Li trovi in **Cassa → Rimborsi**. Senza Pro, o con la licenza non in regola, la voce sparisce; i dati restano.
 
 ## Chi chiede il rimborso
 
@@ -103,7 +105,7 @@ Il **volontario** lo chiede dall'**area soci**, sezione **«Rimborsi spese»** (
 ## I tre tipi
 
 - **Spesa documentata**: serve lo scontrino o la fattura, in PDF o foto. **Non ha un tetto**: i limiti qui sotto riguardano solo l'autocertificazione.
-- **Autocertificazione**: fino a **10 € al giorno** e **150 € al mese** per volontario (sono i limiti di legge, fissi nel plugin). I limiti valgono **anche se più richieste arrivano nello stesso momento**. Se in quel momento ne sta arrivando un'altra, compare «Un'altra operazione è in corso: riprova tra qualche secondo.»: basta riprovare. Vale solo se l'**assemblea ha deliberato** i tipi di spesa.
+- **Autocertificazione**: fino a **10 € al giorno** e **150 € al mese** per volontario (sono i limiti di legge, fissi nel plugin). Vale solo se l'**assemblea ha deliberato** i tipi di spesa. Se compare «Un'altra operazione è in corso: riprova tra qualche secondo.», riprova: il programma sta controllando un'altra richiesta.
 - **Chilometrico**: compare solo se in **Cassa → Rimborsi → Impostazioni** hai indicato la **tariffa al chilometro**. L'importo si calcola da solo.
 
 ## Approvare, rifiutare, pagare

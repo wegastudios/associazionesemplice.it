@@ -128,7 +128,7 @@ Nel menu **Registri** trovi gli elenchi da tenere in ordine. Gli elenchi si scar
 
 ## Assicurazioni
 
-Dalle **Impostazioni → Assicurazioni** puoi accendere, separatamente:
+Da **Registri → Assicurazioni** puoi accendere, separatamente:
 
 - il **registro delle assicurazioni dei volontari**: per ogni volontario le polizze (compagnia, numero, periodo) e lo stato (in regola, in scadenza entro 30 giorni, scaduta, nessuna polizza). In Bacheca compare un avviso se qualcuno è scoperto;
 - le **polizze dell'associazione**: responsabilità civile, infortuni e altre coperture, con premio e massimale. Se la responsabilità civile è scoperta, scaduta o in scadenza, compare un avviso.
@@ -155,7 +155,7 @@ Con il plugin gratuito c'è una sola quota (con l'opzione socio fondatore). Con 
 
 ## Creare i livelli
 
-1. Vai in **Impostazioni → Livelli di socio**.
+1. Vai in **Impostazioni → Soci e quote**, sezione **«Livelli di socio»**.
 2. Aggiungi una riga per ogni livello e indica:
    - il **nome** (compare su tessera, elenchi ed esportazioni);
    - la **base**: fondatore, ordinario, socio o volontario, che decide il comportamento (tessera, attività, cariche);

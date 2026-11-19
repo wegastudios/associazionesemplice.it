@@ -14,14 +14,14 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 
 - Una riga di intestazione con i nomi delle colonne. Può stare anche sotto qualche riga di titolo.
 - Colonne riconosciute per **soci e ospiti**: *Numero tessera, Tipo, Nome, Cognome, Email, Telefono, Codice fiscale* e, per gli ospiti, *Ospite di* (tessera, email o nome e cognome del socio).
-- Per i **soci che sono enti** ci sono colonne in più (*Tipo soggetto*, *Denominazione*…): vedi [Soci che sono enti](guida:soci-che-sono-enti).
+- Per i **soci che sono enti** ci sono colonne in più (*Tipo soggetto*, *Denominazione*…): vedi [Registrare come socio un ente](guida:soci-che-sono-enti).
 - Se il file Excel ha più fogli (per esempio «Soci», «Ospiti», «Prima nota»), il plugin li legge tutti e capisce da solo a cosa serve ciascuno. I fogli non riconosciuti vengono ignorati.
 - I vecchi file `.xls` vanno salvati prima come `.xlsx` o CSV.
 - Un foglio con più di 16.384 colonne viene rifiutato: controlla di aver scelto il file giusto.
 
 ## Importa
 
-1. Vai in **Soci → Importa da Excel/CSV**.
+1. Vai in **Strumenti → Importa da Excel/CSV**.
 2. Carica il file.
 3. Controlla l'**anteprima**: gli eventuali errori indicano il numero di riga del foglio.
 4. Conferma l'importazione.
@@ -108,7 +108,7 @@ Un ospite può partecipare solo poche volte: poi, anche per ragioni assicurative
 
 ## Cosa fare
 
-1. Per impostare la soglia vai in **Impostazioni → Ospiti** (0 = nessuna segnalazione).
+1. Per impostare la soglia vai in **Impostazioni → Soci e quote** (0 = nessuna segnalazione).
 2. Nell'elenco persone usa il filtro **Solo ospiti da invitare a iscriversi**.
 3. Apri la scheda dell'ospite: vedi a cosa è già venuto e puoi scrivergli su WhatsApp con un messaggio d'invito già pronto.
 4. Per trasformarlo in socio premi **Iscrivi come socio** (serve l'email). La scheda resta la stessa: eventi, corsi e pagamenti già registrati restano collegati.

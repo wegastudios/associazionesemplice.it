@@ -12,30 +12,31 @@ Chi vuole iscriversi compila un modulo sul tuo sito e la segreteria lo **approva
 
 ## Attivare il modulo
 
-1. Vai in **Impostazioni → Soci e quote → Domanda di adesione online** e attivala (è spenta di partenza). Se invece usi la [configurazione guidata](guida:completare-la-configurazione-guidata), la accende da sola scegliendo **«Chiunque può chiedere di iscriversi»** (e la spegne con **«Solo su presentazione»**): chi ha già configurato non cambia nulla finché non riapre la procedura.
-2. Indica, se vuoi, l'indirizzo per l'**Avviso alla segreteria**, a cui arriva un'email a ogni nuova domanda (se non lo indichi, va all'indirizzo di amministrazione del sito).
+1. Vai in **Impostazioni → Soci e quote → Domanda di adesione online** e attivala (è spenta di partenza). Nella [configurazione guidata](guida:completare-la-configurazione-guidata) la domanda si accende scegliendo **«Chiunque può chiedere di iscriversi»** e si spegne con **«Solo su presentazione»**.
+2. Se vuoi, in **Avviso alla segreteria** scrivi l'indirizzo che riceve un'email a ogni nuova domanda. Se lo lasci vuoto, l'email va all'amministratore del sito.
 3. Inserisci il modulo in una pagina con lo shortcode `[associazionesemplice_adesione]`, con il blocco o con il widget Elementor **Associazione Semplice → Pubblico · Domanda di adesione online**. La pagina **«Diventa socio»** si crea da **Pagine del sito**.
 
 ## Cosa chiede il modulo
 
-Nome, cognome, data di nascita, **luogo di nascita e residenza**, codice fiscale (con controllo di forma e di carattere finale), email, cellulare, tipo di socio (ordinario, e «socio e volontario» se lo hai acceso) la **liberatoria per foto e video** (per i minori risponde il tutore che opera) e l'accettazione del **regolamento** e dell'**informativa privacy**.
+Nome, cognome, data di nascita, **luogo di nascita e residenza**, codice fiscale (il modulo controlla che sia scritto bene), email, cellulare, tipo di socio (ordinario, e «socio e volontario» se lo hai acceso), la **liberatoria per foto e video** (per i minori risponde il genitore o tutore) e l'accettazione del **regolamento** e dell'**informativa privacy**.
 
 Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del genitore o tutore (vedi [Minori con genitori o tutori](guida:minori-con-genitori-o-tutori)).
 
-**Nome e cognome** (anche del genitore o tutore) vanno da **1 a 60 caratteri**, con solo **lettere, spazi, apostrofi e trattini**. Altrimenti compare «Nome non valido: usa solo lettere, spazi, apostrofi e trattini.»
+**Nome e cognome** (anche del genitore o tutore) possono avere fino a **60 caratteri**: solo **lettere, spazi, apostrofi e trattini**. Altrimenti compare «Nome non valido: usa solo lettere, spazi, apostrofi e trattini.»
 
 ## Cosa succede dopo l'invio
 
-- La domanda entra con stato **«richiesta»**: non compare in rubrica, libro soci, esportazioni, tessere né nei conti, non ha tessera né utente WordPress e non può usare il «Primo accesso».
+- Finché non la approvi, la domanda resta in stato **«richiesta»**: la persona non compare in rubrica, libro soci, esportazioni e conti, non ha la tessera né un accesso al sito e non può usare il «Primo accesso».
 - La segreteria riceve un'email e chi ha scritto riceve una conferma.
 - La domanda si vede nella **Bacheca** di Associazione Semplice (riquadro **Domande di adesione**) e nel riquadro **Da lavorare** della Bacheca di WordPress.
 
 ## Approvare o rifiutare
 
 1. Apri la domanda dalla Bacheca.
-2. Premi **Approva** e scegli il **numero di tessera**: ti viene proposto il successivo libero, controllando che non sia già assegnato. Oppure premi **Rifiuta**.
-3. Con l'approvazione la persona entra nel **libro soci** e al richiedente parte un'email con il **link per scegliere email e password**.
-4. Con il rifiuto la domanda sparisce e a chi l'aveva inviata arriva un breve avviso. Se non c'è stato un pagamento, non resta alcun dato personale.
+2. Premi **Approva** e conferma il **numero di tessera** (il programma propone il successivo libero). Oppure premi **Rifiuta**.
+
+- **Se approvi**, la persona entra nel **libro soci** e riceve un'email con il **link per scegliere email e password**.
+- **Se rifiuti**, la domanda sparisce e chi l'aveva inviata riceve un breve avviso. Se non c'è stato un pagamento, non resta alcun dato personale.
 
 ## Controllo dei doppioni e protezioni
 
@@ -45,7 +46,7 @@ Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del
 
 ## La tessera e la quota
 
-- L'iscrizione all'anno fiscale **non si registra all'approvazione**: la tessera diventa valida **con l'incasso della quota**. La quota resta tra le voci da pagare, in sede o online dall'area soci.
+- Approvare non basta: la tessera diventa valida **quando incassi la quota**. Fino ad allora la quota resta tra le voci da pagare, in sede o online dall'area soci.
 - Se la quota è stata già pagata online con la domanda, o è zero, la tessera vale **subito**.
 - Il **pagamento online della quota alla domanda** funziona solo con **Stripe o PayPal** (Pro), non con WooCommerce. Se rifiuti la domanda, il pagamento resta **«da rimborsare»**: il rimborso con Stripe o PayPal si fa dal programma (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)).
 MD,
@@ -56,19 +57,19 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Un minore si registra con **uno o due genitori o tutori**, anche non soci e senza email. Sul sito però **opera uno solo, il primo**: è lui che gestisce per il minore tessera, prenotazioni, pagamenti e avvisi. Per i minori già registrati resta operativo il primo tutore già collegato. Nel **libro soci** il minore eredita le date (domanda, delibera) del tutore che opera.
+Un minore si registra con **uno o due genitori o tutori**, anche non soci e senza email. Sul sito però **agisce solo il primo**: gestisce per il minore tessera, prenotazioni, pagamenti e avvisi. Per i minori già registrati vale il primo tutore già collegato. Nel **libro soci** il minore prende le date (domanda, delibera) di questo tutore.
 
 ## Registrare un minore
 
 1. Nella scheda della persona inserisci la **data di nascita**: è obbligatoria per chi ha un tutore.
-2. Scegli **uno o due tutori**: un socio o una persona di tipo **«genitore o tutore»**, anche **senza email**. Un tutore deve essere maggiorenne (se la sua data è nota). Un ospite non può essere tutore. Se ne indichi due, sul sito **opera solo il primo**.
+2. Scegli **uno o due tutori**: soci o persone di tipo **«genitore o tutore»**, maggiorenni, anche **senza email**. Un ospite non può essere tutore.
 3. Salva.
 
-Il genitore o tutore di tipo **«Genitore o tutore (non socio)»** **non è socio**: non compare nel libro soci, non ha la tessera, non paga la quota, non riceve i promemoria di rinnovo e non vota. Può invece entrare nell'area soci per seguire il minore: riceve l'invito per scegliere la password, gli avvisi e i promemoria del minore. Il minore può anche non avere né email né utente WordPress, e può usare l'email del genitore.
+Chi è registrato come **«Genitore o tutore (non socio)»** non compare nel libro soci, non ha la tessera, non paga la quota, non riceve i promemoria di rinnovo e non vota. Può invece entrare nell'area soci per seguire il minore: riceve l'invito per scegliere la password, gli avvisi e i promemoria del minore. Il minore può non avere né email né un accesso suo, oppure usare l'email del genitore.
 
 ## Da una domanda di adesione online
 
-Se chi compila la domanda risulta minorenne dalla data di nascita, il modulo chiede anche nome, cognome, email e cellulare del genitore o tutore (il codice fiscale è facoltativo), e lo fa dichiarare come tale. Email e cellulare del minore diventano facoltativi. Vedi [Ricevere le domande di adesione online](guida:domanda-di-adesione-online).
+Se chi compila la domanda risulta minorenne dalla data di nascita, il modulo chiede anche nome, cognome, email e cellulare del genitore o tutore (il codice fiscale è facoltativo) e gli fa dichiarare di esserlo. Email e cellulare del minore diventano facoltativi. Vedi [Ricevere le domande di adesione online](guida:domanda-di-adesione-online).
 
 ### Se il genitore è già in anagrafica
 
@@ -98,11 +99,11 @@ Nella Bacheca e in **Da lavorare** compare **«Maggiorenni da invitare»** con i
 
 **A 18 anni il genitore o tutore collegato smette di agire per il ragazzo**, anche se questo non ha ancora un accesso suo: non lo vede più nell'area soci, non prenota né paga per lui e non riceve più le sue email. Il **collegamento resta registrato** e si toglie dalla scheda.
 
-Se preferisci che il tutore continui anche dopo i 18 anni, come nelle versioni precedenti, spegni in **Impostazioni → Limiti e soglie** l'opzione **«Il tutore smette di agire per chi compie 18 anni»** (è **accesa** di partenza).
+Se preferisci che il tutore continui anche dopo i 18 anni, spegni in **Impostazioni → Limiti e soglie** l'opzione **«Il tutore smette di agire per chi compie 18 anni»** (è **accesa** di partenza).
 
 ## Importare minori
 
-Nel file Excel o CSV puoi usare le colonne facoltative **Data di nascita** (per esempio 31/12/2010) e **Tutore** (numero di tessera, email o nome e cognome; per indicarlo serve la data di nascita). Un tutore non trovato o ambiguo viene segnalato senza fermare le altre righe. Il libro soci e le esportazioni hanno le colonne *Data di nascita* e *Tutore*.
+Nel file Excel o CSV puoi usare le colonne facoltative **Data di nascita** (per esempio 31/12/2010) e **Tutore** (numero di tessera, email o nome e cognome; per indicarlo serve la data di nascita). Un tutore non trovato o ambiguo viene segnalato senza fermare le altre righe. Il libro soci e le esportazioni hanno le colonne **Data di nascita** e **Tutore**.
 MD,
     ],
 ];

@@ -323,7 +323,7 @@ Chi non è socio compila un **modulo breve** e riceve una email con un collegame
 
 Se non conferma entro 24 ore, la richiesta si cancella da sola.
 
-Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
+Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti e soglie** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
 
 **Se il codice fiscale è già registrato**, chi chiede non vede né il nome né lo stato di quella persona: la richiesta passa alla segreteria. Se i dati sono diversi, la segreteria riceve l'email **«Richiesta di partecipazione da verificare: …»**: approva se è la stessa persona (si usa la scheda che c'è già), altrimenti rifiuta.
 

@@ -21,9 +21,9 @@ Con le votazioni i soci decidono, o danno un parere, senza fogli e riunioni. La 
 
 ## Chi può votare
 
-Tutti i soci in regola con la tessera, oppure solo gli iscritti a una certa attività.
+Per ogni votazione scegli: tutti i soci in regola con la tessera, oppure solo gli iscritti a un'attività.
 
-Il **diritto di voto** ce l'hanno **tutti i soci maggiorenni**. Con {piano_contabile} e {piano_fiscale} si decide invece **per ogni livello di socio** (sì o no), in **Impostazioni → Livelli di socio**. La stessa regola vale per le votazioni, per il numero legale delle assemblee e per i [Dati per il RUNTS](guida:dati-per-il-runts).
+In ogni caso vota solo chi ha il **diritto di voto**, cioè **tutti i soci maggiorenni**. Con {piano_contabile} e {piano_fiscale} si decide invece **per ogni livello di socio** (sì o no), in **Impostazioni → Soci e quote**, sezione **«Livelli di socio»**. La stessa regola vale per le votazioni, per il numero legale delle assemblee e per i [Dati per il RUNTS](guida:dati-per-il-runts).
 
 **Non votano**: i minorenni (qualunque sia il livello), genitori e tutori che non sono soci, ospiti, soci sospesi, soci usciti e soci con la tessera scaduta. Non si vota per delega: ogni socio vota dal proprio accesso.
 
@@ -72,14 +72,16 @@ MD,
 
 L'**Inventario** è il registro di ciò che l'associazione possiede (casse, proiettore, tavoli…) e ti dice chi ha cosa in prestito. Lo trovi in **Registri → Inventario**.
 
-> Non è il sistema delle **Risorse** prenotabili (sale, campi, armadietti, solo Pro): qui si tiene l'elenco dei beni.
+> Non confonderlo con le **Risorse** prenotabili (sale, campi, armadietti: solo Pro): qui tieni solo l'elenco dei beni.
 
 ## Registrare un bene
 
 1. Vai in **Registri → Inventario** e premi **Nuovo bene**.
 2. Compila **nome**, **categoria**, **quantità**, **stato** e **ubicazione**. Il **codice** è facoltativo, ma se lo inserisci deve essere unico.
 3. Se vuoi, aggiungi **valore**, **data d'acquisto** e una **foto o un allegato**.
-4. Salva. Con l'esportazione in **CSV** scarichi l'elenco completo.
+4. Salva.
+
+Con **Esporta (CSV)** scarichi l'elenco completo.
 
 ## Prestare un bene a un socio
 
@@ -125,7 +127,7 @@ L'**Archivio documenti** raccoglie in un posto solo statuto, regolamenti, verbal
 3. Scegli il **file**.
 4. Scegli **chi lo vede** (vedi sotto) e salva.
 
-**File ammessi**: PDF, foto (JPG, PNG, WebP), Word, Excel, LibreOffice e testo, fino al limite **«Peso massimo di un allegato»** (10 MB di norma). Word, Excel e LibreOffice si accettano **solo se il contenuto del file corrisponde al formato**: un file rinominato non passa. I documenti già caricati restano apribili.
+**File ammessi**: PDF, foto (JPG, PNG, WebP), Word, Excel, LibreOffice e testo, fino al limite **«Peso massimo di un allegato»** (10 MB di norma). Word, Excel e LibreOffice si accettano **solo se il file è davvero di quel formato**: un file a cui è stata solo cambiata l'estensione viene rifiutato.
 
 ## Chi lo vede
 
@@ -135,9 +137,9 @@ L'**Archivio documenti** raccoglie in un posto solo statuto, regolamenti, verbal
 
 ## Sicurezza
 
-I file stanno in una **cartella protetta** e non hanno un indirizzo diretto: ogni apertura passa da un controllo dei permessi. Chi non ne ha diritto vede un errore; chi non ha fatto l'accesso viene mandato al login, tranne per i documenti pubblici.
+I file stanno in una **cartella protetta** e non hanno un indirizzo diretto: ogni apertura passa da un controllo dei permessi. Chi non ne ha diritto vede un errore; chi non ha fatto l'accesso viene mandato alla pagina di accesso, tranne che per i documenti pubblici.
 
-Se limiti **un contenuto del sito** (pagina o articolo) ai soci, chi non può leggerlo **non lo trova nemmeno cercando una parola del suo testo** e non vede i **commenti**, gli **allegati collegati** né le **descrizioni** che i plugin SEO mostrano nei motori di ricerca e nelle anteprime social. **Attenzione:** l'indirizzo diretto di un file messo nella Libreria media di WordPress resta raggiungibile da chi lo conosce. Per i file riservati usa questo **Archivio documenti**, che controlla i permessi a ogni apertura.
+Se limiti ai soci **una pagina o un articolo del sito**, chi non può leggerlo non lo trova con la ricerca e non ne vede commenti, allegati e descrizioni (quelle che i plugin SEO mostrano nei motori di ricerca e nelle anteprime social). **Attenzione:** un file caricato nella Libreria media di WordPress resta raggiungibile da chi ne conosce l'indirizzo. Per i file riservati usa l'**Archivio documenti**.
 
 ## Sostituire o eliminare
 
@@ -186,7 +188,7 @@ Nelle stesse impostazioni puoi attivare **«Il socio vede nella sua area la scad
 
 ## Privacy
 
-- Il certificato è un **dato sanitario**: lo vede solo la segreteria, con i suoi stessi permessi. Il file non ha un indirizzo pubblico e si scarica solo dal sito da chi è autorizzato.
+- Il certificato è un **dato sanitario**: lo vede solo la segreteria. Il file non ha un indirizzo pubblico: lo scarica solo chi è autorizzato, dopo l'accesso.
 - Nel [registro azioni](guida:registro-azioni-e-spazio-occupato) resta scritto che un certificato è stato aggiunto, aperto o eliminato, mai cosa conteneva.
 - I certificati compaiono nell'esportazione dei dati della persona. Se la persona viene anonimizzata, certificati e file vengono cancellati.
 - Genitori e tutori non sono soci: non hanno certificati.
@@ -200,7 +202,7 @@ MD,
 
 In **Registri → Affiliazioni** tieni i codici di affiliazione dell'associazione agli enti di promozione sportiva, le tessere dei soci e i file da caricare sui portali degli enti.
 
-Gli enti disponibili sono **CONI/RAS** e i **16 enti di promozione sportiva riconosciuti dal CONI** (ACSI, AICS, ASC, ASI, CNS Libertas, CSAIN, CSEN, CSI, ENDAS, MSP, OPES, PGS, UISP, US ACLI, USSA, VSS), oppure **«Altro ente»** con il nome scritto a mano (elenco aggiornato dal Pro 1.1.37).
+Gli enti disponibili sono **CONI/RAS** e i **16 enti di promozione sportiva riconosciuti dal CONI** (ACSI, AICS, ASC, ASI, CNS Libertas, CSAIN, CSEN, CSI, ENDAS, MSP, OPES, PGS, UISP, US ACLI, USSA, VSS), oppure **«Altro ente»** con il nome scritto a mano.
 
 ## Registrare l'affiliazione dell'associazione
 
@@ -261,21 +263,27 @@ Il socio riceve un'email con data, ora, ospiti e quanto resta da pagare. L'email
 
 ## Voce di prima nota per risorsa
 
-Nella scheda della risorsa puoi scegliere la **voce di entrata** su cui registrare gli incassi, in segreteria e online. La quota associativa non è tra le voci scelte. Se non scegli nulla, gli incassi vanno su «Altra entrata». Nei report e nel rendiconto le risorse si vedono separate. Con i **crediti** l'entrata è la vendita dei crediti, non la singola prenotazione.
+Nella scheda della risorsa puoi scegliere la **voce di entrata** su cui registrare gli incassi, in segreteria e online. Tra le voci non c'è la quota associativa. Se non scegli nulla, gli incassi vanno su «Altra entrata». Nei report e nel rendiconto le risorse si vedono separate. Con i **crediti** l'entrata è la vendita dei crediti, non la singola prenotazione.
 
 ## Report di occupazione
 
 1. Vai in **Risorse → Occupazione**.
 2. Scegli il **periodo**.
 
-Per ogni risorsa a fasce vedi le ore **disponibili** (tra apertura e chiusura), **prenotate dai soci**, **occupate da corsi ed eventi**, **in allestimento** e **bloccate**, la **percentuale di occupazione** (allestimenti e blocchi si vedono a parte), gli incassi del periodo e i crediti spesi. Per le risorse assegnate a periodo vedi le assegnazioni in corso e gli incassi.
+Per ogni risorsa a fasce vedi:
+
+- le ore **disponibili** (tra apertura e chiusura), **prenotate dai soci**, **occupate da corsi ed eventi**, **in allestimento** e **bloccate**;
+- la **percentuale di occupazione** (allestimenti e blocchi si vedono a parte);
+- gli incassi del periodo e i crediti spesi.
+
+Per le risorse assegnate a periodo vedi le assegnazioni in corso e gli incassi.
 
 ## Richieste di assegnazione dei soci
 
 Per i posti auto, gli armadietti e i posti barca:
 
 - se la risorsa è **libera**, il socio la **chiede** dalla sua area;
-- se è **occupata**, il socio si mette in coda come prima.
+- se è **occupata**, il socio si mette in lista d'attesa.
 
 Come segreteria apri la risorsa e vai in **«Richieste e lista d'attesa»**. Premi **Assegna** per approvare la richiesta, oppure toglila.
 
@@ -296,7 +304,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Le **convenzioni** raccolgono in un posto solo gli sconti e i vantaggi che negozi, palestre, teatri e altri enti partner riservano ai soci, e li mostrano ai soci giusti nell'area riservata. Le trovi in **Associazione Semplice → Registri → Convenzioni**. Le gestiscono segreteria, presidente, vicepresidente e amministratori. Non ci sono impostazioni da attivare.
+Le **convenzioni** raccolgono in un posto solo gli sconti e i vantaggi che negozi, palestre, teatri e altri enti partner riservano ai soci, e li mostrano ai soci giusti nell'area soci. Le trovi in **Associazione Semplice → Registri → Convenzioni**. Le gestiscono segreteria, presidente, vicepresidente e amministratori. Non ci sono impostazioni da attivare.
 
 ## Creare una convenzione
 
@@ -309,17 +317,17 @@ Le **convenzioni** raccolgono in un posto solo gli sconti e i vantaggi che negoz
 7. Indica **valida dal / al** (facoltative). L'ultimo giorno è compreso. Senza data di fine la convenzione non scade.
 8. Salva.
 
-Dalla scheda puoi anche **archiviare** la convenzione (esce dall'area soci ma resta in elenco, e puoi **riportarla in elenco**) oppure **eliminarla**.
+Dalla scheda puoi anche **archiviare** la convenzione: esce dall'area soci ma non si perde, e con **Riporta in elenco** torna attiva. Oppure puoi **eliminarla**.
 
 ## Quando è visibile
 
-Una convenzione è «in corso» se non è archiviata, è già iniziata e non è finita. **Solo quelle in corso** si vedono ai soci e sul sito. Passato l'ultimo giorno sparisce da sola dall'area soci, ma resta nella pagina di amministrazione con lo stato **«Scaduta»** (puoi filtrare per stato). Per riattivarla sposta o togli la data di fine.
+Una convenzione è «in corso» se non è archiviata, è già iniziata e non è finita. **Solo quelle in corso** le vedono i soci e il pubblico. Passato l'ultimo giorno sparisce da sola dall'area soci, ma resta nella pagina di amministrazione con lo stato **«Scaduta»** (puoi filtrare per stato). Per riattivarla sposta o togli la data di fine.
 
 In **Bacheca** il riquadro **«Convenzioni in scadenza»** mostra quelle che finiscono nei prossimi 30 giorni.
 
 ## Cosa vedono i soci
 
-Nell'**area riservata**, sezione **Convenzioni** (o con lo shortcode `[associazionesemplice_convenzioni_soci]` in una pagina). Vedono le convenzioni in corso che spettano a loro e possono filtrarle per categoria. Serve una **tessera valida oggi** e il tipo di socio previsto.
+Nell'**area soci**, sezione **Convenzioni** (o con lo shortcode `[associazionesemplice_convenzioni_soci]` in una pagina). Vedono le convenzioni in corso che spettano a loro e possono filtrarle per categoria. Serve una **tessera valida oggi** e il tipo di socio previsto.
 
 **Non le vedono**: soci sospesi, con tessera scaduta o usciti, ospiti, e genitori o tutori che non sono soci (nemmeno per i figli minori).
 
@@ -329,16 +337,16 @@ Aprendo **«Come usarla»** il socio trova il codice (se c'è), le condizioni, i
 
 Lo shortcode `[associazionesemplice_convenzioni]` mostra a tutti le convenzioni segnate «visibile anche al pubblico» e in corso: nome, logo, categoria e vantaggio in breve. Per una sola categoria usa `[associazionesemplice_convenzioni categoria="Sport e benessere"]`. L'elenco pubblico **non mostra mai** codice, condizioni né contatti.
 
-Le pagine con questi shortcode non finiscono nella cache di pagina, così le convenzioni scadute non restano visibili.
+Le pagine con questi shortcode sono sempre aggiornate: una convenzione scaduta sparisce subito.
 
 ## Avvisare i soci
 
 Nella scheda della convenzione, il pulsante **«Avvisa i soci della nuova convenzione»** manda un'email a tutti i soci a cui spetta (tessera valida e tipo previsto) con il vantaggio e il rimando all'area soci. Prima dell'invio la pagina dice quanti soci hanno un indirizzo email.
 
 - Funziona solo se la convenzione è **in corso** e ogni socio riceve l'email **una volta sola**.
-- Non dipende dall'interruttore «Promemoria attivi» di Impostazioni → Privacy e regolamento.
+- Parte anche con i promemoria spenti («Promemoria attivi» in **Impostazioni → Privacy e regolamento**).
 - Per un minore l'email va al tutore.
-- **Una volta partito, l'avviso non si può rimandare.** Se invece non parte nessuna email (per esempio mancano gli indirizzi o la posta non funziona), l'avviso non risulta usato e puoi **riprovare**. Per un'altra comunicazione usa le comunicazioni ai soci.
+- **Una volta partito, l'avviso non si può inviare di nuovo.** Se invece non parte nessuna email (per esempio mancano gli indirizzi o la posta non funziona), l'avviso non risulta usato e puoi **riprovare**. Per scrivere ancora ai soci usa **Rubrica soci → Comunicazioni**.
 
 ## Esportare e salvare i dati
 
@@ -358,14 +366,14 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
-Oltre alle email puoi scrivere ai soci per **SMS**, con il fornitore che preferisci. Il costo degli SMS è quello del fornitore scelto.
+Oltre alle email puoi scrivere ai soci per **SMS**, con Brevo o Twilio. Gli SMS li paghi al fornitore.
 
 ## Prima di tutto: il consenso
 
 Per scrivere a qualcuno per SMS, o per iscriverlo alla newsletter, serve il suo **consenso**. Lo registri in due modi:
 
 - nella **scheda della persona**, riquadro **«Consensi SMS e newsletter»**, se il consenso è su modulo cartaceo o a voce;
-- oppure lo dà il socio da solo, nell'**area riservata**, sezione **«Le mie comunicazioni»**.
+- oppure lo dà il socio da solo, nell'**area soci**, sezione **«Le mie comunicazioni»**.
 
 Si può **revocare quando si vuole**: da quel momento non parte più nulla. I consensi sono compresi nell'**esportazione dei dati** della persona.
 
@@ -388,7 +396,7 @@ Nella scheda della comunicazione vedi chi ha ricevuto l'SMS. Se un invio non rie
 
 ## Avvisi automatici anche per SMS
 
-I promemoria di scadenza, gli avvisi sulle attività e quelli della lista d'attesa possono partire anche per SMS. In **Integrazioni** attiva **«Manda anche per SMS gli avvisi automatici»**: è **spento** di partenza.
+I promemoria di scadenza, gli avvisi sulle attività e quelli della lista d'attesa possono partire anche per SMS. In **Integrazioni** attiva **«Manda anche per SMS gli avvisi automatici»** (di partenza è spenta).
 
 ## Un SMS non è partito
 
@@ -439,13 +447,13 @@ Due metodi in più per i pagamenti online. Il resto della configurazione è in [
 
 1. In **Satispay Business** genera un **codice di attivazione**.
 2. In **Impostazioni → Cassa → Pagamenti online** scegli **Satispay** (da solo o con gli altri metodi).
-3. Incolla il codice in **«Collega Satispay»** e premi il pulsante. Il sito crea e conserva da solo la **chiave di firma**.
+3. Incolla il codice in **«Collega Satispay»** e premi il pulsante. Al resto pensa il programma.
 4. Premi **Verifica connessione Satispay** per controllare che tutto funzioni.
 
 Il socio paga nell'**app Satispay**; l'incasso entra da solo in prima nota sul conto **«Satispay»**.
 
 - Se cambi **modalità** (prova o reale) devi **ricollegare**.
-- In modalità reale il sito deve essere in **https**.
+- In modalità reale l'indirizzo del sito deve iniziare con **https**.
 
 ## Klarna
 
@@ -458,7 +466,7 @@ Funziona **con Stripe attivo**.
 Cose da sapere:
 
 - Si propone **solo per pagamenti in euro da 35 € a 10.000 €** e a chi ha un'**email**; altrimenti resta la sola carta.
-- Con Klarna acceso il sito **elenca a mano** i metodi (carta e Klarna): gli altri metodi attivati nel pannello di Stripe, come **Link**, **non compaiono**.
+- Con Klarna acceso il socio sceglie solo tra carta e Klarna: gli altri metodi attivati nel pannello di Stripe, come **Link**, **non compaiono**.
 MD,
     ],
     [
@@ -480,11 +488,13 @@ Lo scarichi in **PDF** e in **CSV**.
 
 ## Un libro per ogni anno fiscale
 
-Il libro soci **segue l'anno fiscale**. Quando [chiudi l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) il libro diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più (prima della chiusura è una **bozza**): lo trovi in **Registri → Libro soci**, scegliendo l'anno, e lo scarichi in PDF e in CSV. Ogni socio ha una **matricola fissa** e ogni riga un **numero**. Per gli anni fiscali chiusi prima di questa funzione, **«Emetti i documenti definitivi degli anni già chiusi»** (nella pagina Anni fiscali) li emette ora, con la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.»
+Il libro soci **segue l'anno fiscale**. Finché l'anno è aperto il libro è una **bozza**; quando [chiudi l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) diventa **definitivo** e non cambia più. Per vedere un anno, sceglilo in **Registri → Libro soci**. Ogni socio ha una **matricola fissa** e ogni riga un **numero**.
+
+Per gli anni chiusi quando il libro definitivo non c'era ancora, premi **«Emetti i documenti definitivi degli anni già chiusi»** nella pagina Anni fiscali: il libro esce con la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.»
 
 L'**esportazione dei dati personali** di un socio comprende anche i libri soci chiusi in cui compare.
 
-Per i soci che sono **enti** vedi [Soci che sono enti](guida:soci-che-sono-enti): nel libro hanno la colonna **«Tipo»**.
+Per i soci che sono **enti** vedi [Registrare come socio un ente](guida:soci-che-sono-enti): nel libro hanno la colonna **«Tipo»**.
 
 Nella scheda del socio trovi anche il **tipo di tesseramento** (atleta, istruttore, dirigente…), che compare nell'**esportazione dei soci**, e la **liberatoria per foto e video**. In **Bacheca** e nel riquadro **Da lavorare** l'avviso **«Schede da completare»** ti ricorda i soci a cui mancano dei dati.
 
@@ -492,11 +502,11 @@ Nella scheda del socio trovi anche il **tipo di tesseramento** (atleta, istrutto
 
 1. Compila questi dati nella **scheda del socio**.
 2. Se i soci arrivano dalla **domanda di adesione online**, il modulo chiede già luogo di nascita e residenza (vedi [Ricevere le domande di adesione online](guida:domanda-di-adesione-online)). Quando approvi la domanda, controlla la data della delibera.
-3. Per i soci che escono, registra la cessazione dalla scheda: restano nel libro con la data del recesso.
+3. Per i soci che escono, registra il recesso dalla scheda: restano nel libro con quella data.
 
 ## I minori
 
-Per un minore il libro riporta il tutore. Un minore può avere fino a due genitori o tutori, ma sul sito **opera solo il primo**: nel libro soci il minore eredita le date del tutore che opera (vedi [Iscrivere i minori con genitori o tutori](guida:minori-con-genitori-o-tutori)).
+Per un minore il libro riporta il tutore che agisce per lui e ne prende le date (vedi [Iscrivere i minori con genitori o tutori](guida:minori-con-genitori-o-tutori)).
 MD,
     ],
     [
@@ -505,7 +515,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Il **registro azioni** tiene traccia di ciò che si fa nel plugin (chi ha cambiato cosa e quando). Col tempo occupa spazio nel database: ora puoi vedere quanto e liberarlo.
+Il **registro azioni** tiene traccia di ciò che si fa nel plugin (chi ha cambiato cosa e quando). Col tempo occupa spazio sul sito: qui vedi quanto, e come liberarlo.
 
 ## Vedere lo spazio occupato
 
@@ -521,7 +531,7 @@ Il pulsante **elimina tutto ciò che non appartiene all'anno solare in corso**. 
 
 ## Pulizia automatica
 
-Ogni giorno il plugin cancella da solo le righe **più vecchie di 18 mesi**. Per cambiare il limite vai in **Limiti e soglie** e scegli un valore da **6 a 120 mesi**.
+Ogni giorno il plugin cancella da solo le righe **più vecchie di 18 mesi**. Per cambiare il limite vai in **Impostazioni → Limiti e soglie** e scegli un valore da **6 a 120 mesi**.
 MD,
     ],
 ];
