@@ -124,7 +124,7 @@ Dopo il controllo compaiono nel menu le funzioni incluse nel tuo piano.
 
 ## Aggiornare
 
-Quando esce una nuova versione compare in Bacheca l'avviso «È disponibile la versione …». Se gli **aggiornamenti diretti** sono attivi, l'avviso dice **«Installalo da Bacheca → Aggiornamenti: i dati restano.»** e ha il pulsante **«Vai agli aggiornamenti»**: l'aggiornamento si installa da lì, come per gli altri plugin. Altrimenti l'avviso ti porta a scaricare il file dall'area riservata, da caricare in **Plugin → Aggiungi nuovo**: i dati restano.
+Quando esce una nuova versione compare in Bacheca l'avviso «È disponibile la versione …». Se gli **aggiornamenti diretti** sono attivi, l'avviso dice **«Installala da Bacheca → Aggiornamenti: i dati restano.»** e ha il pulsante **«Vai agli aggiornamenti»**: l'aggiornamento si installa da lì, come per gli altri plugin. Altrimenti l'avviso ti porta a scaricare il file dall'area riservata, da caricare in **Plugin → Aggiungi nuovo**: i dati restano.
 
 Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro; se il sito segnala che i due non sono compatibili, aggiorna entrambi all'ultima versione.
 

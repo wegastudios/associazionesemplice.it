@@ -176,7 +176,7 @@ Su alcuni server manca la libreria che serve a cifrare: il programma lo dice e t
 Trovi la frase in **Strumenti → Copia di sicurezza → «Frase per riaprire i documenti»**. Serve a **riaprire i documenti** se il sito viene spostato o riparato, se i codici di sicurezza del sito cambiano e per **ripristinare una copia di sicurezza su un altro sito**. **Conservala fuori dal sito**, su carta o in un gestore di password: se perdi il sito, altrimenti non la ritrovi.
 
 - Nel **gratuito** il programma te la mostra così: «La frase è la data e l'ora in cui è stata creata la chiave dei file, in UTC: {data}. Non è la data di installazione del plugin. Va scritta esattamente così, spazi e trattini compresi.» (c'è il pulsante **«Stampa»**).
-- Con la **licenza** è il **codice di licenza**, che ritrovi nell'area clienti di Associazione Semplice; il codice di licenza apre sempre i documenti.
+- Con la **licenza** è il **codice di licenza**, che ritrovi nell'area riservata di Associazione Semplice; il codice di licenza apre sempre i documenti.
 
 **Cambiare la frase non cambia la chiave dei file**: le copie fatte prima si aprono ancora con la frase di allora, e con quella si aprono anche i file salvati dopo. Le copie vecchie conservale con cura o cancellale, e fai una **copia nuova**.
 

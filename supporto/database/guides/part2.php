@@ -109,7 +109,7 @@ Un ospite può partecipare solo poche volte: poi, anche per ragioni assicurative
 ## Cosa fare
 
 1. Per impostare la soglia vai in **Impostazioni → Soci e quote** (0 = nessuna segnalazione).
-2. Nell'elenco persone usa il filtro **Solo ospiti da invitare a iscriversi**.
+2. Nell'elenco persone usa il filtro **Solo ospiti da invitare a diventare soci**.
 3. Apri la scheda dell'ospite: vedi a cosa è già venuto e puoi scrivergli su WhatsApp con un messaggio d'invito già pronto.
 4. Per trasformarlo in socio premi **Iscrivi come socio** (serve l'email). La scheda resta la stessa: eventi, corsi e pagamenti già registrati restano collegati.
 
