@@ -10,7 +10,7 @@ $copy = array(
 		'Prima nota con cassa unica, spese e donazioni PayPal',
 		'Anni fiscali: apertura e chiusura',
 		'Verbali, informativa privacy e consensi',
-		'Area riservata dei soci e ruoli della segreteria',
+		'Area soci e ruoli della segreteria',
 		'Importazione ed esportazione degli elenchi',
 		'Copia di sicurezza dei dati',
 	) ),
