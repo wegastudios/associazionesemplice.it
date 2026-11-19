@@ -108,10 +108,10 @@ final class SaasProxy {
 		$query  = (string) ( $server['QUERY_STRING'] ?? '' );
 		$plain  = rawurldecode( $path );
 		if ( ! self::handles( $path ) || preg_match( '#(^|/)\.\.?(/|$)#', $plain ) || false !== strpos( $plain, "\0" ) || false !== strpos( $plain, '\\' ) ) {
-			return array( 400, array( array( 'Content-Type', 'text/plain; charset=utf-8', true ) ), 'Richiesta non valida.' );
+			return array( 400, array( array( 'Content-Type', 'text/plain; charset=utf-8', true ) ), 'Questa pagina non esiste: torna indietro e riprova.' );
 		}
 		if ( ! in_array( $method, array( 'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS' ), true ) ) {
-			return array( 405, array( array( 'Content-Type', 'text/plain; charset=utf-8', true ) ), 'Metodo non consentito.' );
+			return array( 405, array( array( 'Content-Type', 'text/plain; charset=utf-8', true ) ), 'Questa pagina non esiste: torna indietro e riprova.' );
 		}
 		$url     = self::upstream() . $path . ( '' !== $query ? '?' . $query : '' );
 		$headers = self::requestHeaders( $server, $clientIp, $portalSession );
@@ -150,7 +150,7 @@ final class SaasProxy {
 		if ( ! in_array( strtoupper( (string) ( $server['REQUEST_METHOD'] ?? 'GET' ) ), array( 'GET', 'HEAD' ), true ) ) {
 			if ( (int) ( $server['CONTENT_LENGTH'] ?? 0 ) > self::MAX_BODY ) {
 				http_response_code( 413 );
-				exit( 'Richiesta troppo grande.' );
+				exit( 'Il file o il testo inviato è troppo grande: riducilo e riprova.' );
 			}
 			$body = (string) file_get_contents( 'php://input', false, null, 0, self::MAX_BODY );
 		}

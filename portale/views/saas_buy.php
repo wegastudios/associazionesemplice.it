@@ -20,7 +20,7 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 <section class="page"><div class="wrap page-grid">
 	<div class="panel">
 		<span class="eyebrow">Gestionale SaaS</span>
-		<h1><?php echo ! empty( $convert ) ? "Scegli il piano per " . e( $v["org_name"] ) : "Prendi il gestionale"; ?></h1>
+		<h1><?php echo ! empty( $convert ) ? "Scegli il piano per " . e( $v["org_name"] ) : "Attiva il gestionale"; ?></h1>
 		<?php if ( ! $doc || ! $plans ) : ?>
 			<p class="muted">Il listino non è disponibile in questo momento: riprova tra poco o <a href="mailto:info@associazionesemplice.it">scrivici</a>.</p>
 		<?php else : ?>
@@ -32,15 +32,15 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 			<select id="plan" name="plan">
 				<?php foreach ( $plans as $p ) : ?><option value="<?php echo e( $p['code'] ); ?>"<?php echo $v['plan'] === $p['code'] ? ' selected' : ''; ?>><?php echo e( $p['name'] ?? $p['code'] ); ?></option><?php endforeach; ?>
 			</select>
-			<label>Fatturazione</label>
+			<label>Rinnovo</label>
 			<div class="choice">
 				<label><input type="radio" name="period" value="month"<?php echo $year ? '' : ' checked'; ?>><span>Mensile</span></label>
 				<label><input type="radio" name="period" value="year"<?php echo $year ? ' checked' : ''; ?>><span>Annuale</span></label>
 			</div>
-			<label for="members">Quanti soci avete (anche in previsione)?</label>
+			<label for="members">Quanti soci ha l'associazione (anche in previsione)?</label>
 			<input id="members" type="number" name="members" min="1" max="100000" inputmode="numeric" value="<?php echo (int) $v['members']; ?>">
 			<?php if ( $addons ) : ?>
-				<label>Componenti in più</label>
+				<label>Pacchetti in più</label>
 				<?php foreach ( $addons as $a ) : $why = Portale\Catalog::addonBlock( $doc, (string) $v['plan'], $a ); ?>
 					<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0"><label for="ad-<?php echo e( $a['code'] ); ?>" style="font-weight:400"><?php echo e( $a['name'] ?? $a['code'] ); ?><?php echo null !== $why ? '<br><small class="muted">' . e( $why ) . '</small>' : ''; ?></label>
 					<input id="ad-<?php echo e( $a['code'] ); ?>" type="number" name="addons[<?php echo e( $a['code'] ); ?>]" min="0" max="1000" inputmode="numeric" value="<?php echo null !== $why ? 0 : (int) ( $v['addons'][ $a['code'] ] ?? 0 ); ?>"<?php echo null !== $why ? ' disabled' : ''; ?> style="max-width:6rem"></div>
@@ -63,7 +63,7 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 				<div class="summary"><span>IVA <?php echo (int) $quote['vat_percent']; ?>%</span><b><?php echo e( money( $quote['vat'] ) ); ?></b></div>
 				<div class="summary"><span><strong>Totale <?php echo $year ? 'all\'anno' : 'al mese'; ?></strong> (IVA inclusa)</span><b><?php echo e( money( $quote['total'] ) ); ?></b></div>
 				<?php endif; ?>
-				<p class="hint">Si rinnova da solo <?php echo $year ? 'ogni anno' : 'ogni mese'; ?> allo stesso prezzo: disdici quando vuoi dall'area clienti.</p>
+				<p class="hint">Si rinnova da solo <?php echo $year ? 'ogni anno' : 'ogni mese'; ?> allo stesso prezzo: disdici quando vuoi dall'area riservata.</p>
 			</div>
 
 			<h2 style="margin-top:1.4rem">I tuoi dati</h2>
@@ -100,11 +100,11 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 		<h2>Cosa succede dopo</h2>
 		<ul>
 			<li>Paghi in modo sicuro su Stripe o PayPal: noi non vediamo i dati della carta.</li>
-			<li>Appena il pagamento è confermato creiamo il gestionale della tua associazione e ti scriviamo per entrare.</li>
+			<li>Appena il pagamento è confermato creiamo il gestionale della tua associazione e ti scriviamo come entrare.</li>
 			<?php if ( $doc && 'exempt' === Portale\Catalog::terms( $doc )['vat_mode'] ) : ?>
 			<li>I prezzi sono senza IVA: il totale che vedi è quello che paghi.</li>
 			<?php else : ?>
-			<li>I prezzi sono IVA esclusa nel listino; qui sopra vedi il totale con IVA.</li>
+			<li>Nel listino i prezzi sono senza IVA; nel riepilogo vedi il totale con l'IVA.</li>
 			<?php endif; ?>
 		</ul>
 	</div>

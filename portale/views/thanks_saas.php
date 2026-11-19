@@ -2,7 +2,7 @@
 $app = rtrim( (string) Portale\Config::get( 'saas_app_url', 'https://app.associazionesemplice.it/gestionale' ), '/' );
 ?>
 <section class="page"><div class="wrap" style="max-width:640px">
-	<h1><?php echo ! empty( $trial ) ? 'Fatto! La prova di ' . e( $org ) . ' è partita' : 'Grazie! L\'ordine per ' . e( $org ) . ' è registrato'; ?></h1>
+	<h1><?php echo ! empty( $trial ) ? 'La prova di ' . e( $org ) . ' è partita' : 'Grazie: l\'ordine per ' . e( $org ) . ' è registrato'; ?></h1>
 	<ol class="steps-list">
 		<li><b>Controlla la posta.</b> Ti abbiamo scritto a <b><?php echo e( $email ); ?></b> con le indicazioni per scegliere la password.</li>
 		<li><b>Tra pochi minuti il gestionale è pronto.</b> Te lo diciamo con una seconda email.</li>

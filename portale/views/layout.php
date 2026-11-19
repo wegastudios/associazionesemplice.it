@@ -58,7 +58,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <?php endif; ?></main>
 <footer class="site-footer"><div class="wrap">
 	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice<?php $fl = Portale\Legal::footerLine(); echo '' !== $fl ? '<br><small>' . e( $fl ) . '</small>' : ''; ?></div>
-	<div><a href="/free">Licenza gratuita</a><?php if ( $sale ) : ?><a href="/saas">Gestionale SaaS</a><?php endif; ?><a href="/wordpress">Plugin WordPress</a><a href="/plugin">Cos'è il plugin</a><a href="/confronto">Confronto versioni</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="<?php echo e( $area ); ?>"><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a><a href="/privacy">Privacy</a><a href="/termini">Termini</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
+	<div><a href="/free">Licenza gratuita</a><?php if ( $sale ) : ?><a href="/saas">Gestionale SaaS</a><?php endif; ?><a href="/wordpress">Plugin WordPress</a><a href="/plugin">Cos'è il plugin</a><a href="/confronto">Confronto dei piani</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="<?php echo e( $area ); ?>"><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a><a href="/privacy">Privacy</a><a href="/termini">Termini</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
 </div></footer>
 <?php if ( $bar ) : ?>
 <nav class="bar" aria-label="Scorciatoie"><a class="btn" href="<?php echo e( $bar[0][1] ); ?>"><?php echo e( $bar[0][0] ); ?></a><a class="btn alt" href="<?php echo e( $bar[1][1] ); ?>"><?php echo e( $bar[1][0] ); ?></a></nav>

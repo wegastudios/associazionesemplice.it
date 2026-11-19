@@ -108,7 +108,7 @@ final class SaasAccount {
 	/** Parole italiane per le ragioni di rifiuto del dominio. */
 	public static function domainReason( string $reason ): string {
 		return array(
-			'invalid' => 'L\'indirizzo non sembra valido: scrivilo come www.tuaassociazione.it.', 'taken' => 'Questo indirizzo è già usato da un\'altra associazione.',
+			'invalid' => 'Il dominio non sembra valido: scrivilo come tuaassociazione.it, senza «https://».', 'taken' => 'Questo indirizzo è già usato da un\'altra associazione.',
 			'reserved' => 'Questo indirizzo non si può usare.', 'no_package' => 'Il tuo abbonamento non comprende il dominio personalizzato.',
 		)[ $reason ] ?? 'Questo indirizzo non si può usare.';
 	}
@@ -136,7 +136,7 @@ final class SaasAccount {
 		} elseif ( 'paypal' === $order['provider'] && ! empty( $order['provider_ref'] ) ) {
 			PayPal::cancel( (string) $order['provider_ref'] );
 		} else {
-			throw new UserError( 'Questo abbonamento non si può disdire da qui: scrivici.' );
+			throw new UserError( 'Questo abbonamento non si può disdire da qui: scrivici dal supporto.' );
 		}
 		$db->run( 'UPDATE orders SET cancel_at_period_end = 1, updated_at = ? WHERE id = ?', array( Db::now(), $order['id'] ) );
 		$org = $db->one( 'SELECT * FROM saas_orgs WHERE ref = ?', array( $order['org_ref'] ?? '' ) );
