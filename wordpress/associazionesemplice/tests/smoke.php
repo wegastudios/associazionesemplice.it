@@ -6798,7 +6798,7 @@ $wl_guest_to = array();
 foreach ( $wl_mail as $m ) {
 	$wl_guest_to[] = implode( ',', (array) $m['to'] ) . '|' . $m['message'];
 }
-asem_ok( $acts->has_active_booking( $wl_s4, $wl_g ) && 1 === count( $wl_guest_to ) && 0 === strpos( $wl_guest_to[0], 'carla.attesa@example.com|' ) && false !== strpos( $wl_guest_to[0], 'per Gigi Inattesa' ), 'lista d\'attesa: un ospite in coda entra e la email va al socio che lo ospita' );
+asem_ok( $acts->has_active_booking( $wl_s4, $wl_g ) && 1 === count( $wl_guest_to ) && 0 === strpos( $wl_guest_to[0], 'carla.attesa@example.com|' ) && false !== strpos( $wl_guest_to[0], 'di Gigi Inattesa' ), 'lista d\'attesa: un ospite in coda entra e la email va al socio che lo ospita' );
 remove_all_filters( 'pre_wp_mail' );
 // Lista d'attesa e listini: si sceglie la tariffa, la promozione prenota con quella; senza una tariffa valida non entra da sola.
 $wp_ev = $mkev( 'Serata a listino in coda', 0, null, array( 'session' => array( 'session_date' => $wl_date, 'capacity' => 1 ), 'price_lists' => array( array( 'label' => 'Individuale', 'cents' => 4000, 'entries' => 1 ), array( 'label' => 'Di gruppo', 'cents' => 2500, 'entries' => 1 ) ) ) );
