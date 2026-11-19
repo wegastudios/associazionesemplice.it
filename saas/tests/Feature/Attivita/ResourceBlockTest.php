@@ -14,6 +14,7 @@ use App\Modules\Risorse\Services\ResourceService;
 
 // Dati di prova inventati.
 beforeEach(function (): void {
+    $this->travelTo('2026-03-10 10:00:00');
     $this->org = $this->createOrg('Circolo Nautico');
     app()->instance(Entitlements::class, new class implements Entitlements
     {
