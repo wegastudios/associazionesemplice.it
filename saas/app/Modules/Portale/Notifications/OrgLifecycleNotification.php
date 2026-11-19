@@ -31,8 +31,8 @@ final class OrgLifecycleNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $days = $this->days;
-        $when = $days <= 0 ? "oggi" : ($days === 1 ? "domani" : "tra {$days} giorni");
-        $keep = $days <= 0 ? "solo fino a oggi" : "per {$days} ".($days === 1 ? "giorno" : "giorni");
+        $when = $days <= 0 ? 'oggi' : ($days === 1 ? 'domani' : "tra {$days} giorni");
+        $keep = $days <= 0 ? 'solo fino a oggi' : "per {$days} ".($days === 1 ? 'giorno' : 'giorni');
         $mail = (new MailMessage)->greeting('Buongiorno,');
         [$subject, $lines, $button] = match (true) {
             str_starts_with($this->kind, 'expiry') => [

@@ -43,7 +43,7 @@ it('ogni regola di validazione usata nel codice ha la sua traduzione', function 
         }
         if (in_array($rule, $sized, true) && is_array($text)) {
             foreach (['numeric', 'string', 'file', 'array'] as $type) {
-                if (! isset($text[$type])) {
+                if (isset($text[$type]) === false) {
                     $missing[] = "{$rule}.{$type}";
                 }
             }
