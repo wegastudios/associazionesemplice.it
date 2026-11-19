@@ -103,7 +103,7 @@ Un ospite può partecipare solo poche volte: poi, anche per ragioni assicurative
 ## Cosa fa il plugin
 
 - Chiede il **cellulare** per ogni ospite: è il dato migliore per riconoscerlo e scrivergli su WhatsApp.
-- Conta le partecipazioni (prenotazioni a eventi e iscrizioni a corsi). Raggiunta la **soglia** (di norma 2) l'ospite compare come **«da invitare a iscriversi»**.
+- Conta le partecipazioni (prenotazioni a eventi e iscrizioni a corsi). Raggiunta la **soglia** (di norma 2) l'ospite compare come **«da invitare a diventare socio»**.
 - Riconosce le schede «gemelle», cioè con lo stesso cellulare, la stessa email o lo stesso nome, e ne **somma** le partecipazioni.
 
 ## Cosa fare
@@ -296,7 +296,7 @@ La pagina di accesso è **una sola schermata**: il socio sceglie se entrare con 
 
 Il **link** o il **codice** ricevuto per email restano come opzione, per entrare senza password. Valgono **12 ore**; il tempo si cambia da **Impostazioni → Limiti e soglie**. Per questo **la posta del sito deve funzionare**: link, codici e recupero password arrivano per email. Prova l'invio prima di aprire l'area ai soci.
 
-Se il socio lascia aperta troppo a lungo la pagina di accesso, di attivazione o di «Primo accesso», oppure invia il modulo da un altro browser, legge «Il modulo deve partire dalla pagina di accesso, oppure è scaduto: ricarica la pagina e riprova.» Basta **ricaricare la pagina** e riprovare.
+Se il socio lascia aperta troppo a lungo la pagina di accesso, di attivazione o di «Primo accesso», oppure invia il modulo da un altro browser, legge «La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.» Basta **ricaricare la pagina** e riprovare.
 
 ## Password dimenticata
 

@@ -29,7 +29,7 @@ A operazione fatta compare «Rimborso di X,XX € inviato al socio.» e, se il s
 
 ## Cosa fa e cosa non fa
 
-- I soldi tornano sul **metodo di pagamento del socio**: in genere entro **pochi giorni lavorativi, fino a 10**, a seconda della banca. L'email al socio («Rimborso del tuo pagamento · nome dell'associazione») riporta importo, data del pagamento, motivo e questi tempi, e chiude con i contatti della segreteria.
+- I soldi tornano sul **metodo di pagamento del socio**: in genere entro **pochi giorni lavorativi, fino a 10**, a seconda della banca. L'email al socio (oggetto «nome dell'associazione · Rimborso del tuo pagamento») riporta importo, data del pagamento, motivo e questi tempi, e chiude con i contatti della segreteria.
 - **Non scrive nulla in prima nota.**
 - Restituisce **solo i soldi**: iscrizioni, prenotazioni e crediti collegati al pagamento **restano come sono**. Se vanno tolti, sistemali a mano.
 - Se hai già restituito i soldi dal pannello di Stripe o PayPal, **non rimborsare di nuovo da qui**: segna il pagamento con **«Rimborsato»**.
