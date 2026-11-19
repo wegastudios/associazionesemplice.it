@@ -21,17 +21,17 @@ final class ProPage {
 				array( 'pwa', 'App e notifiche', 'L\'area soci come app installabile sul telefono, con notifiche per avvisi, promemoria e posti liberati.' ),
 				array( 'wallet', 'Tessera nel telefono', 'La tessera in Apple Wallet e Google Wallet.' ),
 				array( 'door_sales', 'Incasso sul posto', 'Chi gestisce un evento incassa all\'ingresso e registra subito la presenza.' ),
-				array( 'texts', 'Personalizzazione dei testi', 'Ogni frase che i soci vedono, nelle email e nei PDF si può cambiare; più lingue, tipo di ente e termini (associazione o comitato, socio o tesserato) con gli articoli giusti.' ),
+				array( 'texts', 'Personalizzazione dei testi', 'Ogni frase che i soci vedono sul sito, nelle email e nei PDF si può cambiare; più lingue, tipo di ente e termini (associazione o comitato, socio o tesserato) con gli articoli giusti.' ),
 				array( 'insurance', 'Assicurazioni e presenze', 'Registro delle polizze di volontari e associazione, con scadenze, e registro delle presenze ai corsi.' ),
 			),
 			'Contabilità e fiscale (si aggiunge a tutto il resto)' => array(
 				array( 'funds', 'Conti, fondi e cassa per più persone', 'Più conti (cassa, banca, POS), giroconti, fondi per i rimborsi ai volontari e un\'unica cassa per chi paga per più soci.' ),
-				array( 'reports', 'Report di gestione', 'Saldi e liquidità reale, risultato per attività e anno delle attività.' ),
+				array( 'reports', 'Report di gestione', 'Saldi e disponibilità reale, risultato per attività e per anno delle attività.' ),
 				array( 'receipts', 'Ricevute e attestazioni', 'Ricevute in PDF numerate (per gli eventi valgono anche da biglietto) e attestazione annuale dei versamenti per soci e donatori.' ),
 				array( 'vat', 'IVA', 'Aliquote su quote, attività e incassi, importi con IVA compresa o esclusa e IVA contenuta in ogni movimento.' ),
 				array( 'fivepm', '5 per mille', 'Messaggio con il codice fiscale, contributi ricevuti e scadenze del rendiconto sull\'utilizzo.' ),
 				array( 'fiscal', 'Anni fiscali e rendiconto', 'Apertura e chiusura degli anni fiscali, rendiconto per cassa e prima nota per il commercialista.' ),
-				array( 'watch', 'Controllo di bilancio e fondi', 'Bilancio provvisorio sempre aggiornato al mese concluso, avvisi su spese non coperte e utile eccessivo, storico mensile, spese documentate attribuite ai fondi dei volontari e inizio dell\'anno fiscale a scelta.' ),
+				array( 'watch', 'Controllo di bilancio e fondi', 'Bilancio provvisorio aggiornato al mese concluso, avvisi su spese non coperte e avanzo eccessivo, storico mensile, spese documentate attribuite ai fondi dei volontari, inizio dell\'anno fiscale a scelta.' ),
 			),
 		);
 	}
@@ -50,7 +50,7 @@ final class ProPage {
 
 	public static function render(): void {
 		Ui::header( 'Associazione Semplice Pro' );
-		echo '<p>Associazione Semplice resta gratuito per la gestione di base di un\'associazione. <strong>Associazione Semplice Pro</strong> è un plugin a parte che si affianca a questo e aggiunge le funzioni qui sotto, in due gruppi di funzioni, a seconda del piano scelto. I dati restano gli stessi: attivandolo non si perde né si ricarica niente.</p>';
+		echo '<p>Associazione Semplice resta gratuito per la gestione di base di un\'associazione. <strong>Associazione Semplice Pro</strong> è un plugin a parte che si affianca a questo e aggiunge le funzioni qui sotto, divise in due gruppi a seconda del piano scelto. I dati restano gli stessi: attivandolo non si perde né si ricarica niente.</p>';
 		foreach ( self::catalog() as $level => $rows ) {
 			echo '<div class="asem-card"><h2>' . esc_html( $level ) . '</h2><table class="widefat striped"><tbody>';
 			foreach ( $rows as $r ) {

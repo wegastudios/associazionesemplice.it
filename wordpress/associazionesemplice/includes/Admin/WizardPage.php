@@ -113,11 +113,11 @@ final class WizardPage {
 
 
 		// 3. Quota associativa
-		self::step( 'Quota associativa', 'Quanto costa iscriversi: vale per tutti i soci. Tipi di socio diversi e sconti si aggiungono sotto, solo se servono.', '', 'pagamenti' );
+		self::step( 'Quota associativa', 'Quanto costa iscriversi: vale per tutti i soci. Livelli di socio diversi e sconti si aggiungono sotto, solo se servono.', '', 'pagamenti' );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Quota associativa</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
 		echo '</tbody></table>';
-		echo '<details class="asem-wiz-more"><summary>Più dettagli: altri tipi di socio e sconti</summary><table class="form-table"><tbody>';
+		echo '<details class="asem-wiz-more"><summary>Più dettagli: altri livelli di socio e sconti</summary><table class="form-table"><tbody>';
 		do_action( 'asem_wizard_levels_rows', $s );
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
 		echo '</tbody></table></details>';

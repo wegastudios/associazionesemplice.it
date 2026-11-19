@@ -20,7 +20,7 @@ final class PollsPage {
 			return;
 		}
 		Ui::header( 'Votazioni e sondaggi', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-polls', array( 'new' => 1 ) ) ) . '">Nuova votazione</a>' );
-		echo '<p class="description">La segreteria crea una votazione o un sondaggio per tutti i soci in regola o per gli iscritti di un\'attività. I soci votano dall\'area soci, una volta sola. I genitori e i tutori che non sono soci non votano.</p>';
+		echo '<p class="description">Crea una votazione o un sondaggio per tutti i soci in regola o per gli iscritti a un\'attività. I soci votano una volta sola, dall\'area soci. Genitori e tutori che non sono soci non votano.</p>';
 		$labels = PollRules::status_labels();
 		echo '<table class="widefat striped"><thead><tr><th>Titolo</th><th>Tipo</th><th>Apertura</th><th>Chiusura</th><th>Stato</th><th>Hanno votato</th></tr></thead><tbody>';
 		$rows = Polls::all();
@@ -73,7 +73,7 @@ final class PollsPage {
 		echo '<tr><th>Domanda o spiegazione</th><td><textarea name="question" rows="4" class="large-text">' . esc_textarea( $v( 'question' ) ) . '</textarea></td></tr>';
 		echo wp_kses( '<tr><th>Risposte *</th><td><textarea name="options" rows="5" class="large-text"' . $dis . '>' . esc_textarea( $opts ) . '</textarea><p class="description">Una risposta per riga (da 2 a ' . (int) PollRules::MAX_OPTIONS . '). Per sì o no: «Favorevole», «Contrario», «Astenuto».</p></td></tr>', Html::allowed() );
 		echo wp_kses( '<tr><th>Scelta</th><td><label><input type="checkbox" name="multiple" value="1"' . checked( ! empty( $p['multiple'] ), true, false ) . $dis . '> Si possono scegliere più risposte</label> '
-			. '— al massimo <input type="number" min="0" max="' . (int) PollRules::MAX_OPTIONS . '" name="max_choices" value="' . (int) $v( 'max_choices', '0' ) . '" style="width:70px"' . $dis . '> (0 = senza limite)</td></tr>', Html::allowed() );
+			. 'Al massimo <input type="number" min="0" max="' . (int) PollRules::MAX_OPTIONS . '" name="max_choices" value="' . (int) $v( 'max_choices', '0' ) . '" style="width:70px"' . $dis . '> risposte (0 = senza limite)</td></tr>', Html::allowed() );
 		echo wp_kses( '<tr><th>Voto segreto</th><td><label><input type="checkbox" name="secret" value="1"' . checked( ! empty( $p['secret'] ), true, false ) . $dis . '> Si registra chi ha votato ma non cosa</label></td></tr>', Html::allowed() );
 		echo wp_kses( '<tr><th>Chi può votare</th><td><select name="audience"' . $dis . '>' . Ui::options( PollRules::audiences(), $v( 'audience', PollRules::AUDIENCE_MEMBERS ) ) . '</select> '
 			. '<select name="activity_id"' . $dis . '>' . Ui::options( $acts, $v( 'activity_id' ), 'Attività (se scelti gli iscritti)' ) . '</select><p class="description">Votano solo i soci con la tessera valida: non i sospesi, non gli usciti, non i genitori o tutori che non sono soci.</p></td></tr>', Html::allowed() );
@@ -107,7 +107,7 @@ final class PollsPage {
 		}
 		echo '<table class="widefat striped" style="max-width:720px"><thead><tr><th>Risposta</th><th>Voti</th><th>%</th></tr></thead><tbody>';
 		foreach ( $res['options'] as $o ) {
-			echo '<tr><td>' . esc_html( $o['label'] ) . ( in_array( $o['id'], $res['winners'], true ) ? ' <strong>— più votata</strong>' : '' )
+			echo '<tr><td>' . esc_html( $o['label'] ) . ( in_array( $o['id'], $res['winners'], true ) ? ' <strong>(più votata)</strong>' : '' )
 				. ( $o['names'] ? '<br><span class="description">' . esc_html( implode( ', ', $o['names'] ) ) . '</span>' : '' )
 				. '</td><td>' . (int) $o['count'] . '</td><td>' . (int) $o['percent'] . '%</td></tr>';
 		}
