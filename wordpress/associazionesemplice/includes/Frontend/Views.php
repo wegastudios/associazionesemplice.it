@@ -888,7 +888,7 @@ final class Views {
 			$txt  .= ' · risulta registrato anche come ' . implode( '; ', $names ) . ': in tutto ' . $ov['total'];
 		}
 		if ( $ov['flag'] ) {
-			return '<div class="asemf-small asemf-bad">' . esc_html( $txt . ': invitalo a diventare socio' ) . '</div>';
+			return '<div class="asemf-small asemf-bad">' . esc_html( $txt . ': da invitare a diventare socio' ) . '</div>';
 		}
 		return '<div class="asemf-small ' . ( $ov['twins'] ? 'asemf-bad' : 'asemf-muted' ) . '">' . esc_html( $txt ) . '</div>';
 	}

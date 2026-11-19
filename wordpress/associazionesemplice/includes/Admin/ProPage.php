@@ -17,7 +17,7 @@ final class ProPage {
 			'Gestione e comunicazione' => array(
 				array( 'payments', 'Pagamenti online', 'I soci pagano quote, mensilità ed eventi con carta (Stripe), PayPal o il checkout di WooCommerce; l\'incasso entra da solo in prima nota.' ),
 				array( 'levels', 'Quote diverse per i soci', 'Più livelli di socio (ridotto, sostenitore, onorario…) ognuno con la sua quota.' ),
-				array( 'broadcasts', 'Comunicazioni a gruppi', 'Email a tutti i soci, a chi ha la tessera in scadenza o agli iscritti di un\'attività, inviate in background.' ),
+				array( 'broadcasts', 'Comunicazioni a gruppi', 'Email a tutti i soci, a chi ha la tessera in scadenza o agli iscritti di un\'attività.' ),
 				array( 'pwa', 'App e notifiche', 'L\'area soci come app installabile sul telefono, con notifiche per avvisi, promemoria e posti liberati.' ),
 				array( 'wallet', 'Tessera nel telefono', 'La tessera in Apple Wallet e Google Wallet.' ),
 				array( 'door_sales', 'Incasso sul posto', 'Chi gestisce un evento incassa all\'ingresso e registra subito la presenza.' ),

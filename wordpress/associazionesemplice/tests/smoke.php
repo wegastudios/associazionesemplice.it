@@ -4015,7 +4015,7 @@ $gz   = $people->create( array( 'type' => 'guest', 'first_name' => 'Zeno', 'last
 $list = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Occasionale', array( 'type' => 'guest', 'at_limit' => '1' ) );
 asem_ok( false !== strpos( $list, 'da invitare a iscriversi' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a iscriversi"' );
 $ev = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Open day yoga', array( 'id' => $e1 ) );
-asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'da invitare a iscriversi' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
+asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'da invitare a diventare socio' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Ospiti da invitare a diventare soci' );
 $front_g = $as( $u_f, '[associazionesemplice_ospiti]' );
 asem_ok( false !== strpos( $front_g, 'Partecipazioni: 2' ) && false !== strpos( $front_g, 'Open day yoga' ) && false === strpos( $front_g, 'iscriversi come socio' ) && false === strpos( $front_g, 'segreteria' ), 'area soci: il socio vede a cosa sono venuti i suoi ospiti, senza segnalazioni' );
@@ -4024,7 +4024,7 @@ $wpdb->update( Db::t( 'sessions' ), array( 'session_date' => $today ), array( 'i
 $_GET['asem_session'] = (string) $gs1;
 $det = $as( $u_tre, '[associazionesemplice_ingressi]' );
 unset( $_GET['asem_session'] );
-asem_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== strpos( $det, 'risulta registrato anche come' ) && false !== strpos( $det, 'invitalo a diventare socio' ), 'lista prenotati all\'ingresso: chi gestisce vede quante volte è venuto e se risulta registrato anche con altri nomi' );
+asem_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== strpos( $det, 'risulta registrato anche come' ) && false !== strpos( $det, 'da invitare a diventare socio' ), 'lista prenotati all\'ingresso: chi gestisce vede quante volte è venuto e se risulta registrato anche con altri nomi' );
 asem_ok( false === strpos( $det, '333 5555552' ) && false === strpos( $det, 'wa.me' ), 'lista prenotati all\'ingresso: nessun cellulare mostrato a chi gestisce l\'evento' );
 $set_html = asem_render( array( Admin\SettingsPage::class, 'render' ), 'Ospiti: soglia di segnalazione' );
 asem_ok( 4 === substr_count( $set_html, 'class="asem-section asem-card"' ) && 1 === substr_count( $set_html, 'asem-card" open' ), 'impostazioni: quattro sezioni richiudibili, solo la prima aperta' );
@@ -5598,7 +5598,7 @@ $recent_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Appen
 $people->set_membership( $recent_a, (string) ( $cy - 1 ), true, 'manual' );
 $stale_ids = array_column( $people->expired_for_months( 8 ), 'id' );
 asem_ok( in_array( (string) $old_a, array_map( 'strval', $stale_ids ), true ), 'sospensione in blocco: chi è scaduto da anni è tra i candidati' );
-$list_btn = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Sospendi soci scaduti da oltre 8 mesi' );
+$list_btn = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Sospendi i soci con tessera scaduta da oltre 8 mesi' );
 asem_ok( false !== strpos( $list_btn, 'asem_suspend_expired' ), 'elenco soci: pulsante "sospendi soci scaduti da oltre 8 mesi"' );
 $n_susp = $people->suspend_expired( 8 );
 asem_ok( $n_susp >= 1 && $people->is_suspended( $old_a ), 'sospensione in blocco: i soci scaduti da molto diventano inattivi' );
@@ -10338,7 +10338,7 @@ if ( $rf_fy ) {
 // la pagina: stato «Rimborsato / restituiti X,XX €», modulo «Rimborsa», testo di aiuto aggiornato
 $rf_open = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
 $rf_html = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'asem_payment_refund' );
-asem_ok( false !== strpos( $rf_html, 'Quanto restituire al socio (massimo 10,00 €)? I soldi tornano sul suo metodo di pagamento e non si può annullare.' ) && false !== strpos( $rf_html, 'name="ack"' ) && false !== strpos( $rf_html, 'name="expected"' ), 'pagamenti online: modulo di rimborso con la domanda e la spunta' );
+asem_ok( false !== strpos( $rf_html, 'Quanto restituire al socio (massimo 10,00 €)? I soldi tornano sul suo metodo di pagamento e il rimborso non si può annullare.' ) && false !== strpos( $rf_html, 'name="ack"' ) && false !== strpos( $rf_html, 'name="expected"' ), 'pagamenti online: modulo di rimborso con la domanda e la spunta' );
 asem_ok( false !== strpos( $rf_html, 'Rimborsato' ) && false !== strpos( $rf_html, 'restituiti 10,00 €' ) && false !== strpos( $rf_html, 'Rimborsato in parte' ) && false !== strpos( $rf_html, 'restituiti 8,00 €' ), 'pagamenti online: la pagina mostra «Rimborsato» e «restituiti X,XX €» (anche in parte)' );
 asem_ok( false === strpos( $rf_html, 'si registrano come spesa' ) && false !== strpos( $rf_html, 'Rimborsa' ), 'pagamenti online: il testo di aiuto non dice più di rimborsare dal gateway e registrare una spesa' );
 Settings::update( array( 'payment_provider' => 'stripe' ) );
