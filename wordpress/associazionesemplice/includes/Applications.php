@@ -291,7 +291,7 @@ final class Applications {
 		}
 		$msg = 'Domanda approvata: tessera n. ' . $card . '. ' . ( $guardian ? 'È arrivata l\'email al genitore.' : 'Al nuovo socio è arrivato il link per scegliere la password.' );
 		if ( $confirm ) {
-			$msg .= ' Il genitore è già in anagrafica: gli è arrivata un\'email per confermare di aver accettato lui, a nome del minore, regolamento, privacy e immagini. Il genitore non ha ancora confermato: il collegamento si crea quando conferma, e finché non lo fa queste accettazioni non gli vengono attribuite (lo vedi nella scheda del minore).';
+			$msg .= ' Il genitore è già in anagrafica: gli è arrivata un\'email per confermare che ha accettato lui, a nome del minore, regolamento, privacy e immagini. Finché non conferma, il collegamento con il minore non si crea e le accettazioni non risultano a suo nome (lo vedi nella scheda del minore).';
 		}
 		if ( $due > 0 ) {
 			$msg .= ' Quota da incassare: ' . Money::format( $due ) . ' (in sede o dall\'area riservata); la tessera diventa valida all\'incasso.';

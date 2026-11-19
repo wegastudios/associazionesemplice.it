@@ -1110,7 +1110,7 @@ final class PublicEvents {
 			}
 			if ( $n >= 3 && self::is_weekly( $list ) ) {
 				$first                 = $list[0];
-				$first['series_label'] = 'Tutti i ' . wp_date( 'l', (int) strtotime( (string) $first['session_date'] . ' 12:00:00' ) ) . ' · e così via';
+				$first['series_label'] = 'Ogni ' . wp_date( 'l', (int) strtotime( (string) $first['session_date'] . ' 12:00:00' ) );
 				$keep[]                = $first;
 				continue;
 			}

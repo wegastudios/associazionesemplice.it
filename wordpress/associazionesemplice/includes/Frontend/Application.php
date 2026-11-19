@@ -79,7 +79,7 @@ final class Application {
 			} else {
 				$token = self::check_token( (string) ( $post['t'] ?? '' ), time() );
 				if ( 'invalid' === $token ) {
-					$errors[] = 'Sessione scaduta: ricarica la pagina e riprova.';
+					$errors[] = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 				} else {
 					set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 					if ( 'early' === $token ) {

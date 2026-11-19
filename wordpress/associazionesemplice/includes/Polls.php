@@ -328,7 +328,7 @@ final class Polls {
 		$area = Gatekeeper::area_url();
 		return array(
 			( 'poll' === $poll['kind'] ? 'Nuovo sondaggio: ' : 'Votazione aperta: ' ) . $poll['title'],
-			'è aperta ' . ( 'poll' === $poll['kind'] ? 'un sondaggio' : 'una votazione' ) . ' per i soci: «' . $poll['title'] . '». Puoi rispondere fino al ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $poll['closes_at'] ) . ' dall\'area riservata: ' . $area . ( $poll['secret'] ? "\nIl voto è segreto." : '' ),
+			( 'poll' === $poll['kind'] ? 'è aperto un sondaggio' : 'è aperta una votazione' ) . ' per i soci: «' . $poll['title'] . '». Puoi rispondere fino al ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $poll['closes_at'] ) . ' dall\'area soci: ' . $area . ( $poll['secret'] ? "\nIl voto è segreto." : '' ),
 		);
 	}
 

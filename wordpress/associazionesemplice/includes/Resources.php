@@ -420,7 +420,7 @@ final class Resources {
 			return '';
 		}
 		$over = self::dates_overlaps( $activity_id, array( array( 'date' => $s['session_date'], 'end_date' => $s['end_date'] ?? null, 'start' => $s['start_time'] ?: null, 'end' => $s['end_time'] ?: null ) ) );
-		return $over ? 'Questa fascia non è disponibile: la risorsa è già occupata da ' . implode( '; ', array_slice( $over, 0, 3 ) ) . '.' : '';
+		return $over ? 'Questa fascia non è disponibile. La risorsa è già occupata: ' . implode( '; ', array_slice( $over, 0, 3 ) ) . '.' : '';
 	}
 
 	/** La griglia di un giorno: per ogni fascia, libera oppure la prenotazione (o l'attività) che la occupa. */

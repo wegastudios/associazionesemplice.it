@@ -229,7 +229,7 @@ final class FileCryptPanel {
 		echo '<p>' . esc_html( Texts::t( 'La chiave dei documenti è custodita dal sito ed è protetta anche da una frase. La frase serve a riaprire i documenti se il sito viene spostato o riparato, se i codici di sicurezza cambiano e per ripristinare una copia di sicurezza su un altro sito.' ) ) . '</p>';
 		echo '<p><strong>' . esc_html( self::phrase_line() ) . '</strong></p>';
 		if ( 'timestamp' === $kind ) {
-			echo '<p>' . esc_html( Texts::t( 'Conservala fuori dal sito (su carta o in un gestore di password): se perdi il sito, altrimenti non la ritrovi.' ) ) . ' ';
+			echo '<p>' . esc_html( Texts::t( 'Conservala fuori dal sito (su carta o in un gestore di password): altrimenti, se perdi il sito, non la ritrovi.' ) ) . ' ';
 			echo '<button type="button" class="button" id="asem-frase-stampa" data-text="' . esc_attr( Texts::t( 'Associazione Semplice: frase per riaprire i documenti riservati' ) . "\n\n" . self::timestamp_text( FileKey::activated_at() ) ) . '">' . esc_html( Texts::t( 'Stampa' ) ) . '</button></p>';
 			Ui::inline_js( 'document.getElementById("asem-frase-stampa").addEventListener("click",function(){var w=window.open("","_blank","width=520,height=360");if(!w){return;}var p=w.document.createElement("pre");p.style.fontSize="18px";p.textContent=this.getAttribute("data-text");w.document.body.appendChild(p);w.focus();w.print();});' );
 		}

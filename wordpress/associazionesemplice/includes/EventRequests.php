@@ -286,7 +286,7 @@ final class EventRequests {
 		}
 		$token = Application::check_token( (string) ( $post['t'] ?? '' ), time() );
 		if ( 'invalid' === $token ) {
-			$out['errors'][] = 'Sessione scaduta: ricarica la pagina e riprova.';
+			$out['errors'][] = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 			return $out;
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );

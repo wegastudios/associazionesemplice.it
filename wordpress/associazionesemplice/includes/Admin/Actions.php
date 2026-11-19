@@ -398,7 +398,7 @@ final class Actions {
 		$on = ! empty( $p['enabled'] );
 		\AssociazioneSemplice\Access::set_entity_staff( (int) $person['wp_user_id'], $on );
 		Audit::log( $on ? 'staff.granted' : 'staff.revoked', 'person', (int) $person['id'] );
-		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora fa parte dello staff: verifica gli accessi a tutti gli eventi.' : 'Non fa più parte dello staff dell\'ente.' . self::release_hint( $person ) );
+		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora fa parte dello staff: registra gli ingressi a tutti gli eventi.' : 'Non fa più parte dello staff dell\'ente.' . self::release_hint( $person ) );
 	}
 
 	/** Eliminazione completa di un evento, con la sorte delle somme incassate. Conferma scritta obbligatoria. */
@@ -1094,7 +1094,7 @@ final class Actions {
 
 	private static function cancel_enrollment( array $p ): array {
 		Plugin::activities()->cancel( (int) $p['activity_id'], (int) $p['person_id'], (string) $p['last_month'] );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Cancellazione registrata: i mesi successivi non sono più dovuti.' );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Rinnovo disdetto: i mesi successivi non sono più dovuti.' );
 	}
 
 	// ---------- Movimenti ----------

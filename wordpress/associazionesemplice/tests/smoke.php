@@ -822,7 +822,7 @@ foreach ( array( 0, 7, 14 ) as $i ) { // corso: solo la prossima
 $pe_out = $pe_trim->invoke( null, $pe_rows );
 asem_ok( 5 === count( $pe_out ), 'elenco eventi: serie regolare = 1 scheda, 2 date sole = 2, evento = 1, corso = 1' );
 $pe_series = array_values( array_filter( $pe_out, function ( $s ) { return 9 === (int) $s['activity_id']; } ) );
-asem_ok( 1 === count( $pe_series ) && false !== strpos( (string) ( $pe_series[0]['series_label'] ?? '' ), 'Tutti i' ), 'elenco eventi: la serie regolare porta la dicitura «Tutti i …»' );
+asem_ok( 1 === count( $pe_series ) && false !== strpos( (string) ( $pe_series[0]['series_label'] ?? '' ), 'Ogni ' ), 'elenco eventi: la serie regolare porta la dicitura «Tutti i …»' );
 wp_set_current_user( $pe_prev );
 $pe_a = $acts->get( $event );
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::when_text( $pe_a ), 'ore 21:00' ) && 'Sede' === \AssociazioneSemplice\PublicEvents::where_text( $pe_a ) && false !== strpos( \AssociazioneSemplice\PublicEvents::price_text( $pe_a ), 'Ospiti' ), 'pagina pubblica: data, luogo e contributo vengono dall\'attività' );
@@ -9908,7 +9908,7 @@ asem_ok( false !== strpos( $ap_out2, 'Domanda ricevuta' ) && \AssociazioneSempli
 $ap_out3 = $ap_post( array_merge( $ap_ok_post, array( 'email' => 'pia.postale3@example.com', 't' => $AP::make_token( time() ) ) ) );
 asem_ok( false !== strpos( $ap_out3, 'Domanda ricevuta' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1, 'modulo: compilato troppo in fretta = stessa risposta ma nessuna domanda' );
 $ap_out4 = $ap_post( array_merge( $ap_ok_post, array( 'email' => 'pia.postale4@example.com', 't' => 'falso' ) ) );
-asem_ok( false !== strpos( $ap_out4, 'Sessione scaduta' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1, 'modulo: gettone falso rifiutato' );
+asem_ok( false !== strpos( $ap_out4, 'troppo a lungo' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1, 'modulo: gettone falso rifiutato' );
 $ap_out5 = $ap_post( array_merge( $ap_ok_post, array( 'email' => 'pia.postale5@example.com', 'tax_code' => 'SBAGLIATO' ) ) );
 asem_ok( false !== strpos( $ap_out5, 'codice fiscale' ) && false !== strpos( $ap_out5, 'value="Pia"' ), 'modulo: errori mostrati e dati già scritti mantenuti' );
 Settings::update( array( 'limits' => array_merge( (array) Settings::get( 'limits' ), array( 'apply_per_ip' => 1 ) ) ) );
@@ -11674,7 +11674,7 @@ unset( $_COOKIE[ $ps_name ] );
 asem_ok( ! $ps_cls::from_login_page( $ps_sign ), 'accesso soci: l\'invio senza cookie è rifiutato anche con un segno copiato dalla pagina' );
 $_COOKIE[ $ps_name ] = ( time() - 3 * HOUR_IN_SECONDS ) . '.' . SessionToken::generate();
 asem_ok( ! $ps_cls::from_login_page( \AssociazioneSemplice\PreSession::token( $_COOKIE[ $ps_name ], 'member_login', MemberSession::secret() ) ), 'accesso soci: un cookie scaduto non vale' );
-asem_ok( false !== strpos( $ps_cls::NOT_FROM_PAGE, 'pagina di accesso' ) && false === stripos( $ps_cls::NOT_FROM_PAGE, 'nonce' ), 'accesso soci: il messaggio di rifiuto è chiaro e neutro' );
+asem_ok( false !== strpos( $ps_cls::NOT_FROM_PAGE, 'troppo a lungo' ) && false === stripos( $ps_cls::NOT_FROM_PAGE, 'nonce' ), 'accesso soci: il messaggio di rifiuto è chiaro e neutro' );
 delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
 MemberLogin::request( $pw_addr );
 list( $ps_tok ) = $ml_pull();
@@ -11711,7 +11711,7 @@ $ac_src = (string) file_get_contents( ASEM_DIR . 'includes/Frontend/Activation.p
 $fa_end = '/Views::no_cache\(\);[^\r\n]*\s*MemberLoginPage::ensure_pre_session\(\);\s*CardVerify::send_headers\(\);\s*header\( \'Cache-Control: no-store, max-age=0\' \);\s*CardVerify::output\( self::page\(/';
 asem_ok( 1 === preg_match( $fa_end, $fa_src ) && 1 === preg_match( $fa_end, $ac_src ), 'primo accesso e attivazione: le pagine non finiscono nella cache e danno il cookie prima di scrivere la pagina' );
 asem_ok( false !== strpos( $fa_src, "'first_access' )" ) && false !== strpos( $ac_src, "'activation' ) ) {" ) && false !== strpos( $ac_src, "sign_field( 'activation' )" ) && false === strpos( $fa_src . $ac_src, 'wp_verify_nonce' ) && false === strpos( $fa_src . $ac_src, 'wp_nonce_field' ), 'primo accesso e attivazione: l\'invio passa dal controllo del cookie e non dal nonce' );
-asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Activation::NOT_FROM_PAGE, 'dalla sua pagina' ) && false === stripos( \AssociazioneSemplice\Frontend\Activation::NOT_FROM_PAGE, 'nonce' ), 'attivazione e primo accesso: il messaggio di rifiuto è chiaro e neutro' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Activation::NOT_FROM_PAGE, 'troppo a lungo' ) && false === stripos( \AssociazioneSemplice\Frontend\Activation::NOT_FROM_PAGE, 'nonce' ), 'attivazione e primo accesso: il messaggio di rifiuto è chiaro e neutro' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'name="password"' ) && false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'Password dimenticata' ), 'password: il modulo dell\'area soci è email e password, con il recupero' );
 unset( $_COOKIE[ $pw_cookie ] );
 $ms_fake->setValue( null, null );
