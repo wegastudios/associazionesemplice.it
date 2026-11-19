@@ -145,7 +145,7 @@ final class CreditsFront {
 		$form    = '';
 		if ( $enough ) {
 			$form = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin-top:14px"><input type="hidden" name="action" value="asem_front_credit_pay">'
-				. '<input type="hidden" name="code" value="' . esc_attr( $code ) . '"><input type="hidden" name="_back" value="' . esc_url( Credits::url( $code ) ) . '">' . AssociazioneSempliceCsrf::field( 'asem_front_credit_pay' )
+				. '<input type="hidden" name="code" value="' . esc_attr( $code ) . '"><input type="hidden" name="_back" value="' . esc_url( Credits::url( $code ) ) . '">' . \AssociazioneSemplice\Csrf::field( 'asem_front_credit_pay' )
 				. '<button style="width:100%;font-size:20px;padding:14px;border:0;border-radius:10px;background:#1a7f37;color:#fff;font-weight:700">Conferma e paga</button></form>';
 		} else {
 			$form = '<div class="w" style="color:#b32d2e">Crediti insufficienti. <a href="' . esc_url( home_url( '/' ) ) . '">Ricarica dalla tua area</a> e inquadra di nuovo il QR.</div>';
