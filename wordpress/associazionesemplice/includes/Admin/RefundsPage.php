@@ -24,7 +24,7 @@ final class RefundsPage {
 
 	public static function render(): void {
 		if ( ! Refunds::can_manage() ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$view = Ui::get_int( 'view' );
 		if ( $view ) {

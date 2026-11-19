@@ -806,7 +806,7 @@ final class Backup {
 
 	public static function handle_download(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$back = Admin\Ui::url( 'asem-backup' );
 		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // un vecchio indirizzo diretto porta alla pagina, dove si scrive la password
@@ -873,7 +873,7 @@ final class Backup {
 
 	public static function handle_saved(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		$back = Admin\Ui::url( 'asem-backup' );
 		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // un vecchio indirizzo diretto porta alla pagina, dove si scrive la password

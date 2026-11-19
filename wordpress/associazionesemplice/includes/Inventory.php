@@ -25,7 +25,7 @@ final class Inventory {
 	public static function handle_file(): void {
 		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_item_file_' . $id );
 		$item = self::item( $id );

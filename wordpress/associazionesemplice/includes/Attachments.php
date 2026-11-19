@@ -378,7 +378,7 @@ final class Attachments {
 		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		$a  = self::get( $id );
 		if ( ! self::can_open( $a ) ) {
-			wp_die( 'Non autorizzato.', 403 );
+			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
 		check_admin_referer( 'asem_attachment_' . $id );
 		$path = $a ? self::path_of( $a ) : '';
