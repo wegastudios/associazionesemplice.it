@@ -428,7 +428,7 @@ final class Actions {
 		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
 		$msg .= $s['expenses_voided'] ? ' Annullate ' . (int) $s['expenses_voided'] . ' spese.' : '';
 		$msg .= $s['kept_count'] ? ' ' . ( 1 === (int) $s['kept_count'] ? 'Un incasso' : (int) $s['kept_count'] . ' incassi' ) . ' (' . Money::format( (int) $s['kept_cents'] ) . ') di date o mesi già svolti ' . ( 1 === (int) $s['kept_count'] ? 'resta' : 'restano' ) . ' in prima nota, senza restituzione.' : '';
-		$msg .= $s['notified'] ? ' Avvisate ' . (int) $s['notified'] . ' persone.' : '';
+		$msg .= $s['notified'] ? ( 1 === (int) $s['notified'] ? ' Avvisata 1 persona.' : ' Avvisate ' . (int) $s['notified'] . ' persone.' ) : '';
 		return array( Ui::url( 'asem-activities' ), $msg );
 	}
 
@@ -887,7 +887,7 @@ final class Actions {
 		$aid = (int) ( $p['activity_id'] ?? 0 );
 		\AssociazioneSemplice\Contacts::assert_can_write(); // invio manuale: servono i contatti della segreteria
 		$r   = \AssociazioneSemplice\Notices::send( $aid, ! empty( $p['session_id'] ) ? (int) $p['session_id'] : null, (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ) );
-		return array( Ui::url( 'asem-activity', array( 'id' => $aid ) ), 'Avviso inviato a ' . $r['recipients'] . ' persone (' . $r['emailed'] . ' email inviate).' );
+		return array( Ui::url( 'asem-activity', array( 'id' => $aid ) ), 'Avviso inviato a ' . $r['recipients'] . ( 1 === (int) $r['recipients'] ? ' persona (' : ' persone (' ) . $r['emailed'] . ( 1 === (int) $r['emailed'] ? ' email inviata).' : ' email inviate).' ) );
 	}
 
 	private static function access_done( array $p ): array {
@@ -1589,11 +1589,11 @@ final class Actions {
 	}
 
 	private static function wpai_retry( array $p ): array {
-		return array( Ui::url( 'asem-wpai' ), \AssociazioneSemplice\WpAllImport::retry() . ' elementi rimessi in coda: premi "Elabora adesso".' );
+		return array( Ui::url( 'asem-wpai' ), ( $wpai_n = (int) \AssociazioneSemplice\WpAllImport::retry() ) . ( 1 === $wpai_n ? ' elemento rimesso in coda: premi «Elabora adesso».' : ' elementi rimessi in coda: premi «Elabora adesso».' ) );
 	}
 
 	private static function wpai_clear( array $p ): array {
-		return array( Ui::url( 'asem-wpai' ), \AssociazioneSemplice\WpAllImport::clear_errors() . ' elementi con errori eliminati.' );
+		return array( Ui::url( 'asem-wpai' ), ( $wpai_n = (int) \AssociazioneSemplice\WpAllImport::clear_errors() ) . ( 1 === $wpai_n ? ' elemento con errori eliminato.' : ' elementi con errori eliminati.' ) );
 	}
 
 	private static function import_apply( array $p ): array {

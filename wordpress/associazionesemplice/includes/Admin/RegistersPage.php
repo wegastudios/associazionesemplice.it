@@ -74,7 +74,7 @@ final class RegistersPage {
 		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><input type="hidden" name="filter" value="' . esc_attr( $filter ) . '">'
 			. '<strong>Tessere in PDF</strong> (fogli A4 da stampare e ritagliare; i posti che restano sono modelli vuoti): per foglio <select name="per">' . Ui::options( $opts, isset( $opts[ $per ] ) ? $per : 0 ) . '</select> <button class="button">Applica</button> '
 			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0 ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>', Html::allowed() );
-		echo '<p class="description">' . count( $rows ) . ' soci.</p>';
+		echo '<p class="description">' . count( $rows ) . ( 1 === count( $rows ) ? ' socio.</p>' : ' soci.</p>' );
 		if ( $snap ) { // la fotografia ha solo i dati minimi: recapiti, domanda, quota e tutore non ci sono
 			echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Matricola</th><th>Cognome e nome</th><th>Tipo</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza</th><th>Categoria</th><th>Delibera</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
 		} else {

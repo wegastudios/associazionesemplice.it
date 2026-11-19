@@ -230,7 +230,7 @@ final class EventRequests {
 			}
 			$id    = (int) $s['id'];
 			$rows .= '<label class="asemf-check"><input type="radio" name="session_id" value="' . $id . '"' . checked( $sel === $id || ( 0 === $sel && '' === $rows ), true, false ) . '> '
-				. esc_html( Frontend\Views::date_long( (string) $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . $s['start_time'] : '' ) . ( null !== $free ? ' · ' . $free . ' posti liberi' : '' ) ) . '</label>';
+				. esc_html( Frontend\Views::date_long( (string) $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . $s['start_time'] : '' ) . ( null !== $free ? ' · ' . $free . ( 1 === (int) $free ? ' posto libero' : ' posti liberi' ) : '' ) ) . '</label>';
 		}
 		if ( '' === $rows ) {
 			return $html . '<p class="asemf-small asemf-muted">I posti per le date in programma sono esauriti.</p>';
@@ -249,7 +249,7 @@ final class EventRequests {
 		$ui = min( $cap, 6 ); // nel modulo al massimo 5 accompagnatori: oltre si passa dalla segreteria
 		if ( $ui > 1 ) {
 			$form .= '<details class="asemf-more"><summary>Prenoti anche per altre persone?</summary>';
-			$form .= '<p class="asemf-small">Scrivi (fino a ' . (int) ( $ui - 1 ) . ' persone) i loro dati: per ognuna serve un posto. Se sono minorenni, ci pensi tu come genitore o tutore.</p>';
+			$form .= '<p class="asemf-small">Scrivi (fino a ' . (int) ( $ui - 1 ) . ( 2 === (int) $ui ? ' persona' : ' persone' ) . ') i loro dati: per ognuna serve un posto. Se sono minorenni, ci pensi tu come genitore o tutore.</p>';
 			for ( $i = 1; $i < $ui; $i++ ) {
 				$c      = isset( $post['c'][ $i ] ) && is_array( $post['c'][ $i ] ) ? $post['c'][ $i ] : array();
 				$form  .= '<details' . ( ! empty( $c['first_name'] ) ? ' open' : '' ) . '><summary>Accompagnatore ' . (int) $i . '</summary><div class="asemf-fields">';
@@ -551,7 +551,7 @@ final class EventRequests {
 			Texts::mail(
 				self::staff_recipients( (int) $a['id'] ),
 				'Richiesta di partecipazione da approvare: ' . $a['name'] . self::assoc_suffix(),
-				'È arrivata una richiesta di partecipazione a «' . $a['name'] . '» (' . (int) $row['seats'] . ' posti).' . "\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
+				'È arrivata una richiesta di partecipazione a «' . $a['name'] . '» (' . (int) $row['seats'] . ( 1 === (int) $row['seats'] ? ' posto).' : ' posti).' ) . "\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
 			);
 			return array( 'ok' => true, 'message' => self::REVIEW );
 		}
@@ -821,7 +821,7 @@ final class EventRequests {
 		Texts::mail(
 			self::staff_recipients( (int) $activity['id'] ),
 			'Richiesta di partecipazione da verificare: ' . $activity['name'] . self::assoc_suffix(),
-			'È arrivata una richiesta di partecipazione a «' . $activity['name'] . '» (' . (int) $row['seats'] . ' posti) con il codice fiscale del socio ' . $name . ".\n\nNon è stata prenotata e a chi l'ha inviata non è stato detto il motivo. Rifiutala, oppure contatta il socio: i soci prenotano dalla propria area. " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $activity['id'] )
+			'È arrivata una richiesta di partecipazione a «' . $activity['name'] . '» (' . (int) $row['seats'] . ( 1 === (int) $row['seats'] ? ' posto)' : ' posti)' ) . ' con il codice fiscale del socio ' . $name . ".\n\nNon è stata prenotata e a chi l'ha inviata non è stato detto il motivo. Rifiutala, oppure contatta il socio: i soci prenotano dalla propria area. " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $activity['id'] )
 		);
 		self::review_notice( $row, $activity );
 		return array( 'ok' => true, 'message' => self::REVIEW );
@@ -1200,7 +1200,7 @@ final class EventRequests {
 		$h      = '<div class="asem-card"><h2>' . ( $course ? 'Richieste di iscrizione' : 'Richieste di partecipazione' ) . '</h2><p class="description">'
 			. ( $course ? 'Persone che hanno chiesto l\'iscrizione al corso (i non soci dopo aver confermato l\'email). Approvando si iscrivono dal mese corrente; chi non è socio è registrato come ospite e deve pagare in anticipo con bonifico entro il termine.' : 'Persone che hanno chiesto un posto dalla pagina pubblica e confermato l\'email. Approvando si registrano come ospiti e si prenotano.' ) . '</p><ul>';
 		foreach ( $rows as $r ) {
-			$h .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . ( $course ? '' : (int) $r['seats'] . ' posti, ' ) . esc_html( mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
+			$h .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . ( $course ? '' : (int) $r['seats'] . ( 1 === (int) $r['seats'] ? ' posto, ' : ' posti, ' ) ) . esc_html( mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
 				. ( $r['members'] ? '' : self::admin_form( 'asem_event_request_approve', (int) $r['id'], $back, 'Approva' ) . ' ' ) . self::admin_form( 'asem_event_request_reject', (int) $r['id'], $back, 'Rifiuta' )
 				. ( $r['members'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è quello del socio ' . implode( ', ', $r['members'] ) . ': non si può prenotare come ospite. Rifiuta la richiesta (chi l\'ha inviata riceve il solito messaggio) o contatta il socio.' ) . '</span>' : '' )
 				. ( $r['differs'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è già in anagrafica con altri dati (' . implode( ', ', $r['differs'] ) . '). Approvando si usa la scheda esistente.' ) . '</span>' : '' ) . '</li>';

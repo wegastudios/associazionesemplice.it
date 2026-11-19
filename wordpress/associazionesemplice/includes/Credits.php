@@ -193,7 +193,7 @@ final class Credits {
 		foreach ( self::packs() as $p ) {
 			$i                = array(
 				'type' => PaymentItems::CREDITS, 'person_id' => (int) $actor['id'], 'person_name' => trim( $actor['first_name'] . ' ' . $actor['last_name'] ),
-				'credits' => (int) $p['credits'], 'amount_cents' => (int) $p['price_cents'], 'label' => $p['credits'] . ' crediti',
+				'credits' => (int) $p['credits'], 'amount_cents' => (int) $p['price_cents'], 'label' => $p['credits'] . ( 1 === (int) $p['credits'] ? ' credito' : ' crediti' ),
 			);
 			$i['key']         = PaymentItems::key( $i );
 			$out[ $i['key'] ] = $i;
