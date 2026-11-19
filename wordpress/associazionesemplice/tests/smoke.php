@@ -6625,7 +6625,7 @@ asem_ok( false !== strpos( $pn_html, 'Referente per la privacy' ) && false !== s
 asem_ok( false !== strpos( $pn_html, 'cookie tecnici di autenticazione di WordPress' ) && false === strpos( $pn_html, 'asem_s' ), 'informativa privacy: con gli utenti WordPress parla dei cookie di WordPress' );
 Settings::update( array( 'member_wp_users' => 0 ) );
 $pn_own = \AssociazioneSemplice\PrivacyNotice::html();
-asem_ok( false !== strpos( $pn_own, 'asem_s' ) && false !== strpos( $pn_own, 'impronta cifrata' ) && false !== strpos( $pn_own, '15 minuti' ) && false !== strpos( $pn_own, 'Accesso all&#039;area riservata e cookie' ) || false !== strpos( $pn_own, 'Accesso all\'area riservata e cookie' ), 'informativa privacy: con l\'accesso proprio dichiara il cookie asem_s, la password cifrata e i codici' );
+asem_ok( false !== strpos( $pn_own, 'asem_s' ) && false !== strpos( $pn_own, 'impronta cifrata' ) && false !== strpos( $pn_own, '15 minuti' ) && false !== strpos( $pn_own, 'Accesso all&#039;area soci e cookie' ) || false !== strpos( $pn_own, 'Accesso all\'area soci e cookie' ), 'informativa privacy: con l\'accesso proprio dichiara il cookie asem_s, la password cifrata e i codici' );
 Settings::update( array( 'privacy_extra_cookies' => "_ga — statistiche anonime\n<b>mappa</b> — cartina del sito\n\n" ) );
 $pn_ck_hook = function ( $c ) {
 	$c[] = 'cookie_estensione — prova di un\'estensione';

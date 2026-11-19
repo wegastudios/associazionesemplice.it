@@ -137,14 +137,14 @@ final class PrivacyNotice {
 
 		$ext_note = (string) apply_filters( 'asem_privacy_transfer_note', '', $u );
 
-		// Accesso all'area riservata: con l'accesso proprio dei soci (senza utente WordPress) cambiano i dati trattati e il cookie usato.
+		// Accesso all'area soci: con l'accesso proprio dei soci (senza utente WordPress) cambiano i dati trattati e il cookie usato.
 		$own_access = MemberSession::enabled() && ! Settings::member_wp_users();
 		$cookies = Settings::cookie_lines( (string) Settings::get( 'privacy_extra_cookies' ) );
 		$cookies = array_values( array_filter( array_map( 'strval', (array) apply_filters( 'asem_privacy_cookies', $cookies ) ) ) ); // le estensioni aggiungono i loro cookie
 		$access  = $own_access
 			? array(
-				'Per entrare nell\'area riservata si usano l\'indirizzo email e una password scelta da ciascun socio. La password non è conservata in chiaro: se ne salva solo un\'impronta cifrata, dalla quale non si può risalire alla password.',
-				'Il sito usa un solo cookie, tecnico e di prima parte («asem_s»): serve a mantenere l\'accesso dopo l\'ingresso, non è usato per profilare né per statistiche o pubblicità e per questo non richiede il consenso. Dura al più 30 giorni senza utilizzo e comunque non oltre 90 giorni, e si cancella uscendo dall\'area riservata.',
+				'Per entrare nell\'area soci si usano l\'indirizzo email e una password scelta da ciascun socio. La password non è conservata in chiaro: se ne salva solo un\'impronta cifrata, dalla quale non si può risalire alla password.',
+				'Il sito usa un solo cookie, tecnico e di prima parte («asem_s»): serve a mantenere l\'accesso dopo l\'ingresso, non è usato per profilare né per statistiche o pubblicità e per questo non richiede il consenso. Dura al più 30 giorni senza utilizzo e comunque non oltre 90 giorni, e si cancella uscendo dall\'area soci.',
 				array(
 					'ul' => array(
 						'per la sicurezza dell\'accesso si conservano, solo come impronte non reversibili, l\'indirizzo IP e il programma di navigazione usati;',
@@ -155,7 +155,7 @@ final class PrivacyNotice {
 				'Sessioni, password e codici di accesso si cancellano quando la persona è eliminata o resa anonima e non sono incluse nelle copie di sicurezza.',
 			)
 			: array(
-				'Per entrare nell\'area riservata il sito usa i cookie tecnici di autenticazione di WordPress, necessari a mantenere l\'accesso: non servono a profilare e non richiedono il consenso.',
+				'Per entrare nell\'area soci il sito usa i cookie tecnici di autenticazione di WordPress, necessari a mantenere l\'accesso: non servono a profilare e non richiedono il consenso.',
 			);
 		if ( $cookies ) {
 			$access[] = 'Il sito usa inoltre questi altri cookie, indicati dall\'Associazione:';
@@ -189,7 +189,7 @@ final class PrivacyNotice {
 							'dati dell\'iscrizione: tipo di socio, numero e scadenza della tessera, data di ingresso e di cessazione, eventuali cariche;',
 							'dati di partecipazione: prenotazioni, iscrizioni a corsi ed eventi, presenze e ingressi registrati;',
 							'dati dei versamenti: importi, date e modalità di pagamento di quote e contributi, ricevute emesse (i dati completi delle carte di pagamento non sono conservati dall\'Associazione);',
-							'dati dell\'accesso all\'area riservata: indirizzo email, nome utente, registro delle operazioni svolte.',
+							'dati dell\'accesso all\'area soci: indirizzo email, nome utente, registro delle operazioni svolte.',
 						),
 					),
 					'Non sono richiesti dati appartenenti a categorie particolari (art. 9 GDPR). L\'appartenenza all\'Associazione è trattata ai sensi dell\'art. 9, par. 2, lett. d), del GDPR, esclusivamente per le finalità dell\'ente e senza comunicazione all\'esterno.',
@@ -247,7 +247,7 @@ final class PrivacyNotice {
 				),
 			),
 			array(
-				'Accesso all\'area riservata e cookie',
+				'Accesso all\'area soci e cookie',
 				$access,
 			),
 			array(
@@ -260,7 +260,7 @@ final class PrivacyNotice {
 				'I diritti dell\'interessato',
 				array(
 					'Ogni persona può chiedere all\'Associazione l\'accesso ai propri dati, la rettifica, la cancellazione, la limitazione del trattamento, la portabilità e può opporsi al trattamento (artt. 15-22 GDPR); può inoltre revocare in ogni momento il consenso, senza pregiudicare la liceità del trattamento già avvenuto.',
-					'Chi ha l\'accesso all\'area riservata può scaricare i propri dati dalla sezione «Il mio profilo». Per le altre richieste basta scrivere ai recapiti indicati sopra: si risponde entro un mese.',
+					'Chi ha l\'accesso all\'area soci può scaricare i propri dati dalla sezione «Il mio profilo». Per le altre richieste basta scrivere ai recapiti indicati sopra: si risponde entro un mese.',
 					'Se ritiene che il trattamento violi la normativa, l\'interessato può proporre reclamo al Garante per la protezione dei dati personali (www.garanteprivacy.it).',
 				),
 			),
