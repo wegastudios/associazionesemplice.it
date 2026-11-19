@@ -120,7 +120,7 @@ final class Emails {
 			// Offerta di fine prova (soldi: la manda il portale). Parte solo se lo sconto del catalogo è > 0 e c'è il codice `saas_trial_promo`; parla solo dell'offerta.
 			'saas_trial_offer' => array(
 				'label' => 'Prova gestionale: offerta di fine prova', 'when' => 'Il giorno in cui finisce la prova, senza un piano, solo se lo sconto di fine prova è impostato.', 'vars' => array( 'nome', 'associazione', 'sconto', 'codice_sconto', 'scadenza_sconto', 'piani_url', 'account_url', 'supporto_url', 'email' ),
-				'subject' => 'Uno sconto del {sconto} sul gestionale di {associazione}',
+				'subject' => '{associazione} · Sconto del {sconto} sul gestionale',
 				'body' => "Ciao {nome},\nse scegli un piano entro il {scadenza_sconto} hai uno sconto del {sconto} sul primo pagamento.\n\nUsa il codice {codice_sconto} al momento dell'acquisto. Scegli il piano da {piani_url}.\n\nSe non ti serve, non devi fare nulla.",
 			),
 			'saas_cancelled' => array(

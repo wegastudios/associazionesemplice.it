@@ -100,6 +100,7 @@ final class SaasCheckout {
 
 		$cat   = Orders::catalog( $db, $now );
 		$base  = Quote::build( $cat['doc'], $plan, $period, $members, $addons );
+		self::checkTrialPromo( $db, (string) $cust['id'], (string) ( $in['promo'] ?? '' ), $now );
 		$promo = self::promo( (string) ( $in['promo'] ?? '' ), $plan, $base['plan_version'], $period );
 		$order = Orders::open( $db, $cust['id'], $plan, $period, $members, $addons, $promo, $now );
 		$seen  = isset( $in['seen_total'] ) && '' !== $in['seen_total'] ? (int) $in['seen_total'] : null;
@@ -378,11 +379,33 @@ final class SaasCheckout {
 	/** In `trial_step`: 3 = l'offerta di fine prova è già stata valutata (l'email parte una volta sola, il giorno della fine). */
 	const OFFER_STEP = 3;
 
+	/** Giorni, dalla fine della prova, in cui vale il codice dell'offerta di fine prova (scritti nell'email e fatti rispettare al checkout). */
+	const OFFER_DAYS = 7;
+
+	/**
+	 * Il codice dell'offerta di fine prova (`saas_trial_promo`) vale solo per chi ha fatto la prova e solo fino a OFFER_DAYS giorni dopo la fine:
+	 * la scadenza scritta nell'email è quella che si applica. Gli altri codici non passano da qui.
+	 * @throws UserError
+	 */
+	public static function checkTrialPromo( Db $db, string $customerId, string $code, ?int $now = null ): void {
+		$promo = strtoupper( trim( (string) Config::get( 'saas_trial_promo', '' ) ) );
+		if ( '' === $promo || strtoupper( trim( $code ) ) !== $promo ) {
+			return;
+		}
+		$end = $db->one( "SELECT MAX(trial_ends) AS e FROM orders WHERE customer_id = ? AND product = 'saas' AND trial_ends IS NOT NULL", array( $customerId ) );
+		if ( empty( $end['e'] ) ) {
+			throw new UserError( 'Questo codice è riservato a chi ha provato il gestionale.' );
+		}
+		if ( gmdate( 'Y-m-d', $now ?? time() ) > gmdate( 'Y-m-d', strtotime( (string) $end['e'] . ' UTC +' . self::OFFER_DAYS . ' days' ) ) ) {
+			throw new UserError( 'Questo codice è scaduto.' );
+		}
+	}
+
 	/**
 	 * Lavoro giornaliero (bin/cron.php): l'email con l'offerta di fine prova, l'unica email sulla prova che scrive il portale (le altre, su dati e
 	 * accesso, le manda il gestionale). Una volta sola, il giorno in cui la prova finisce senza un piano (o il giorno dopo, se il lavoro è saltato:
 	 * poi niente arretrati), e solo se lo sconto del catalogo (`terms.trial.end_discount_percent`) è > 0 e il codice (`saas_trial_promo` in config)
-	 * è impostato. Vale fino a `trial_purge_days` dopo la fine. `$doc`: catalogo da usare al posto di quello salvato (per i test). @return int email inviate
+	 * è impostato. Vale fino a OFFER_DAYS giorni dopo la fine (lo fa rispettare `checkTrialPromo`). `$doc`: catalogo da usare al posto di quello salvato (per i test). @return int email inviate
 	 */
 	public static function sendTrialOffers( Db $db, ?int $now = null, ?array $doc = null ): int {
 		$now    = $now ?? time();
@@ -406,7 +429,7 @@ final class SaasCheckout {
 			if ( $today > gmdate( 'Y-m-d', strtotime( $end . ' UTC +1 day' ) ) ) {
 				continue; // arretrato: il lavoro non è girato in quel giorno, l'offerta non ha più senso
 			}
-			$until = date_it( gmdate( 'Y-m-d', strtotime( $end . ' UTC +' . $terms['trial_purge_days'] . ' days' ) ) . ' 00:00:00' );
+			$until = date_it( gmdate( 'Y-m-d', strtotime( $end . ' UTC +' . self::OFFER_DAYS . ' days' ) ) . ' 00:00:00' );
 			$sent += self::mail( $db, 'saas_trial_offer', $o, array( 'org_id' => $o['org_id'], 'name' => $o['org_name'] ), $now, array( 'sconto' => $pct . '%', 'codice_sconto' => $code, 'scadenza_sconto' => $until, 'piani_url' => $base . '/account#gestionale' ) ) ? 1 : 0;
 		}
 		return $sent;
