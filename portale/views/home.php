@@ -5,8 +5,8 @@
 		<h1>Soci, eventi e cassa della tua associazione, finalmente in ordine.</h1>
 		<p class="lead">Libro soci, tessere, iscrizioni a corsi ed eventi, prima nota e privacy.<?php echo Portale\SaasSale::on() ? ' Lo usi dentro il tuo sito WordPress oppure online, senza installare niente.' : ' Lo usi dentro il tuo sito WordPress.'; ?></p>
 		<div class="hero-cta">
-			<a class="btn big" href="/wordpress">Hai già un sito WordPress? Plugin</a>
-			<?php if ( Portale\SaasSale::on() ) : ?><a class="btn alt big" href="/saas">Non hai un sito? Gestionale SaaS</a><?php else : ?><a class="btn alt big" href="/prova">Prova la demo del plugin</a><?php endif; ?>
+			<a class="btn big" href="/wordpress">Ho un sito WordPress: vedi il plugin</a>
+			<?php if ( Portale\SaasSale::on() ) : ?><a class="btn alt big" href="/saas">Non ho un sito: vedi il gestionale SaaS</a><?php else : ?><a class="btn alt big" href="/prova">Prova la demo del plugin</a><?php endif; ?>
 		</div>
 		<p class="fine"><a href="/prova">Prova la demo del plugin</a> · <?php if ( Portale\SaasSale::on() && '' !== Portale\SaasDemo::url() ) : ?><a href="/prova#gestionale">Prova la demo del gestionale</a> · <?php endif; ?><a href="/free">Inizia gratis con il plugin</a></p>
 		<ul class="ticks"><li>Plugin gratuito per cominciare</li><li>In italiano, con le regole del Terzo Settore</li><li>I dati restano tuoi</li></ul>
@@ -40,7 +40,7 @@
 </div></section>
 
 <section class="section alt"><div class="wrap">
-	<div class="section-head"><h2>Tre piani, parti da quello gratuito</h2><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli e si disdicono in autonomia.</p></div>
+	<div class="section-head"><h2>Tre piani, parti da quello gratuito</h2><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli e li disdici quando vuoi.</p></div>
 	<?php include __DIR__ . '/_plans.php'; ?>
 </div></section>
 

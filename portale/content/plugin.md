@@ -4,13 +4,13 @@ Associazione Semplice è un plugin per WordPress pensato per le piccole associaz
 Il plugin segue le regole del terzo settore (APS, ETS, registri, regole fiscali), perciò l'interfaccia e i testi sono in italiano. Un pacchetto di testi in inglese è incluso nel Pro e si sceglie dalle impostazioni.
 
 ## Provalo subito
-C'è una demo con il plugin gratuito e il Pro già installati e piena di dati inventati. Gli accessi di prova (segreteria e socio), i collegamenti e i ruoli del plugin sono nella pagina [Prova la demo](/prova).
+La demo ha il plugin gratuito e il Pro già installati, con dati inventati. Accessi di prova, collegamenti e ruoli sono nella pagina [Prova la demo](/prova).
 
 ## Il plugin gratuito
 Si scarica da WordPress.org e funziona da solo, senza chiave e senza contattare servizi esterni.
 - **Libro soci:** schede dei soci, quota associativa unica (con socio fondatore), tessere con QR, ospiti, importazione da CSV o Excel, esportazione del libro.
 - **Corsi ed eventi:** iscrizioni, posti limitati con lista d'attesa, tolleranza sul pagamento per bonifico e contanti, elenchi dei partecipanti, calendario.
-- **Cassa:** entrate e uscite in una cassa unica, coordinate bancarie per i soci, anni solari, esportazione della prima nota.
+- **Cassa:** entrate e uscite in una cassa unica, coordinate bancarie per i soci, anni fiscali, esportazione della prima nota.
 - **Registri e privacy:** libro dei verbali, informativa, consensi, anonimizzazione e download dei dati personali.
 - **Area riservata dei soci** sul tuo sito, con avvisi, regolamento da accettare, tessera, eventi e corsi, tramite blocchi, shortcode e widget Elementor.
 - **Ruoli:** presidente, vicepresidente, tesoriere, consiglieri e segreteria, con permessi separati.
@@ -23,7 +23,7 @@ Si scarica da WordPress.org e funziona da solo, senza chiave e senza contattare 
 - risorse prenotabili, assicurazioni e presenze, testi personalizzabili e lingue;
 - con {piano_fiscale} anche IVA, 5 per mille e rendiconto per cassa.
 
-Il confronto completo, funzione per funzione, è nella pagina [Confronto tra le versioni](/confronto).
+Il confronto completo, funzione per funzione, è nella pagina [Confronto tra i piani](/confronto).
 
 ## Cosa contatta il plugin
 Il gratuito non invia dati dei soci né dell'associazione. Se lo scarichi da WordPress.org si aggiorna da lì e a noi non arriva nulla; se lo scarichi da questo sito, una volta al giorno chiede se c'è una versione nuova, inviando solo il nome del plugin e la versione (si può spegnere dalle impostazioni). Il Pro verifica la licenza una volta al giorno e controlla gli aggiornamenti di norma una volta al giorno con questo sito, inviando solo chiave, dominio e versione: i dettagli sono nell'[informativa sulla privacy](/privacy) e nei [termini di utilizzo](/termini).

@@ -85,7 +85,7 @@ $csrf = Portale\App::csrf();
 			<?php endif; ?>
 		<?php endforeach; ?>
 		<p class="hint"><b>Aggiorna sempre insieme il plugin gratuito e il Pro:</b> se ne aggiorni uno solo, WordPress mostra un avviso finché non aggiorni anche l'altro. Il gratuito si aggiorna caricando lo zip da qui; il Pro si aggiorna direttamente da WordPress.</p>
-		<p class="hint">I pacchetti si scaricano solo da qui, con la licenza in regola. Carica lo zip da WordPress: Plugin → Aggiungi nuovo → Carica plugin. Per tornare indietro disattiva e sostituisci il plugin con la versione precedente (i dati restano).</p>
+		<p class="hint">I file del plugin si scaricano solo da qui, con la licenza in regola. Li carichi da WordPress: <b>Plugin → Aggiungi nuovo → Carica plugin</b>. Per tornare a una versione precedente carichi il suo zip: i dati restano.</p>
 	</div>
 	<?php endif; ?>
 	<?php foreach ( $subs as $s ) :
@@ -150,7 +150,7 @@ $csrf = Portale\App::csrf();
 
 		<div class="actions">
 			<?php $lockUntil = $key ? Portale\Billing::domainUnlockAt( $s ) : null; if ( $key && $lockUntil ) : ?>
-			<p class="hint" style="margin:0">Dominio cambiato il <?php echo e( date_it( $s["domain_changed_at"] ) ); ?>: potrai cambiarlo di nuovo dal <?php echo e( date_it( $lockUntil ) ); ?>. Per un cambio sito vero prima di quella data, scrivi all'assistenza.</p>
+			<p class="hint" style="margin:0">Dominio cambiato il <?php echo e( date_it( $s["domain_changed_at"] ) ); ?>: potrai cambiarlo di nuovo dal <?php echo e( date_it( $lockUntil ) ); ?>. Se devi cambiarlo prima, scrivici dal supporto.</p>
 			<?php elseif ( $key ) : ?>
 			<form class="domain-form" method="post" action="/account/dominio">
 				<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>">
