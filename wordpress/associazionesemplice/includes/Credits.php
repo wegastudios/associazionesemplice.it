@@ -169,7 +169,7 @@ final class Credits {
 		self::assert_member( $person_id );
 		$cat = Plugin::ledger()->category_id_of_kind( 'other_income' );
 		if ( ! $cat ) {
-			throw new \InvalidArgumentException( 'Manca la voce «Altra entrata» in prima nota.' );
+			throw new \InvalidArgumentException( 'Manca la voce «Altre entrate» in prima nota e non si ricrea da sola: scrivi all\'assistenza.' );
 		}
 		Plugin::ledger()->record_receipt(
 			array(

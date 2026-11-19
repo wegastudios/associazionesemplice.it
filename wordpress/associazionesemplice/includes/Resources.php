@@ -1417,7 +1417,7 @@ final class Resources {
 		$res = self::get( (int) $r['resource_id'] );
 		$cat = self::income_category_for( $reservation_id );
 		if ( ! $cat ) {
-			throw new \InvalidArgumentException( 'Manca la voce «Altra entrata» in prima nota.' );
+			throw new \InvalidArgumentException( 'Manca la voce «Altre entrate» in prima nota e non si ricrea da sola: scrivi all\'assistenza.' );
 		}
 		Plugin::ledger()->record_receipt(
 			array(
