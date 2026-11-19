@@ -319,17 +319,17 @@ final class TechActions {
 			delete_transient( 'asem_fiscal_pending_' . get_current_user_id() );
 			$n = \AssociazioneSemplice\Install::realign_memberships_to_fiscal();
 			if ( $n < 0 ) {
-				$note = ' ' . AssociazioneSempliceTexts::t( 'Le tessere non sono state riallineate perché la copia di sicurezza non è riuscita: riprova più tardi dalla stessa pagina.' );
+				$note = ' ' . \AssociazioneSemplice\Texts::t( 'Le tessere non sono state riallineate perché la copia di sicurezza non è riuscita: riprova più tardi dalla stessa pagina.' );
 			} else {
 				$nt   = (array) get_option( \AssociazioneSemplice\Install::NOTICE_OPTION, array() );
-				$note = ' ' . sprintf( AssociazioneSempliceTexts::t( 'Tessere riallineate: %1$d. Tessere sostituite: %2$d.' ), (int) ( $nt['changed'] ?? 0 ), (int) ( $nt['replaced'] ?? 0 ) );
+				$note = ' ' . sprintf( \AssociazioneSemplice\Texts::t( 'Tessere riallineate: %1$d. Tessere sostituite: %2$d.' ), (int) ( $nt['changed'] ?? 0 ), (int) ( $nt['replaced'] ?? 0 ) );
 			}
 		} elseif ( ! $pending ) {
 			delete_transient( 'asem_fiscal_pending_' . get_current_user_id() );
 		}
 		Audit::log( 'entity.saved', 'settings', 0, array( 'has_vat' => $vals['has_vat'] ?? 0 ) );
 		$warn = \AssociazioneSemplice\EntityRules::mismatch_warning( (string) Settings::get( 'entity_form' ), (string) Settings::get( 'runts_section' ) );
-		return array( Ui::url( 'asem-entity' ), 'Dati dell\'ente salvati.' . ( $pending ? ' ' . AssociazioneSempliceTexts::t( 'Il mese dell\'anno fiscale non è cambiato: leggi «Cosa succede alle tessere» qui sotto, spunta la conferma e salva di nuovo.' ) : '' ) . $note . ( '' !== $warn ? ' ' . $warn : '' ) );
+		return array( Ui::url( 'asem-entity' ), 'Dati dell\'ente salvati.' . ( $pending ? ' ' . \AssociazioneSemplice\Texts::t( 'Il mese dell\'anno fiscale non è cambiato: leggi «Cosa succede alle tessere» qui sotto, spunta la conferma e salva di nuovo.' ) : '' ) . $note . ( '' !== $warn ? ' ' . $warn : '' ) );
 	}
 
 	/** Configurazione guidata: applica le scelte e porta dove serve ancora qualcosa (chiavi dei pagamenti, IBAN). */

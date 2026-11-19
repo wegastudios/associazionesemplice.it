@@ -8197,6 +8197,20 @@ $cr_screen = \AssociazioneSemplice\Frontend\CreditsFront::staff_section( $people
 unset( $_GET['asem_charge'] );
 asem_ok( false !== strpos( $cr_screen, 'data-asemf-credit-poll' ) && false !== strpos( $cr_screen, '<svg' ) && false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::staff_section( $people->get( $cr_m2 ) ), 'Mostra il QR' ), 'crediti: lo staff vede il QR e lo stato che si aggiorna da solo' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::section( $people->get( $cr_m ) ), 'I miei crediti' ), 'crediti: il socio vede il saldo nella sua area' );
+// la pagina del QR con saldo sufficiente disegna il modulo «Conferma e paga» (con il controllo di sicurezza), senza errori fatali
+$cr_front_ch = $CR::create_charge( $cr_m2, 1, 'Pagina QR', null );
+$cr_front_u  = wp_insert_user( array( 'user_login' => 'crediti_qr_prova', 'user_pass' => wp_generate_password(), 'user_email' => 'crediti-qr-prova@example.com' ) );
+$wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => (int) $cr_front_u ), array( 'id' => $cr_m ) );
+$cr_front_old = get_current_user_id();
+wp_set_current_user( (int) $cr_front_u );
+$CR::adjust( $cr_m, 10, 'Prova pagina QR' );
+$cr_front_rm = new ReflectionMethod( \AssociazioneSemplice\Frontend\CreditsFront::class, 'scan_page' );
+$cr_front_rm->setAccessible( true );
+$cr_front_html = (string) $cr_front_rm->invoke( null, $cr_front_ch['code'], array( 'err' => '', 'ok' => '' ) );
+asem_ok( false !== strpos( $cr_front_html, 'Conferma e paga' ) && false !== strpos( $cr_front_html, 'name="action" value="asem_front_credit_pay"' ) && false !== strpos( $cr_front_html, '_wpnonce' ), 'crediti: la pagina del QR con saldo sufficiente mostra «Conferma e paga» con il controllo di sicurezza' );
+wp_set_current_user( $cr_front_old );
+$wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => null ), array( 'id' => $cr_m ) );
+wp_delete_user( (int) $cr_front_u );
 asem_render( array( Admin\CreditsPage::class, 'render' ), 'Pacchetti in vendita' );
 asem_render( array( Admin\CreditsPage::class, 'render' ), 'Ultimi movimenti' );
 
@@ -8713,6 +8727,14 @@ wp_update_post( array( 'ID' => $pb_p, 'post_status' => 'draft' ) );
 asem_ok( array( $pb_a => $pb_p ) === \AssociazioneSemplice\PublicEvents::draft_pages( array( $pb_a ) ), 'pubblica collettivo: la pagina in bozza è riconosciuta' );
 asem_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Pubblica le pagine selezionate' );
 asem_ok( 1 === \AssociazioneSemplice\PublicEvents::publish_pages( array( $pb_a, 0 ) ) && 'publish' === get_post_status( $pb_p ) && ! \AssociazioneSemplice\PublicEvents::draft_pages( array( $pb_a ) ) && 0 === \AssociazioneSemplice\PublicEvents::publish_pages( array( $pb_a ) ), 'pubblica collettivo: pubblica le bozze scelte e non tocca le già pubblicate' );
+// salvataggio dei dati dell'ente con il cambio del mese dell'anno fiscale: prima l'anteprima, poi la conferma (i messaggi usano Texts: un nome di classe sbagliato qui è un errore fatale)
+if ( ! \AssociazioneSemplice\FiscalYears::start_month_locked() ) {
+	$ra_ent  = array_merge( asem_wz_entity(), array( 'fiscal_start_month' => '7' ) );
+	$ra_sv1  = Admin\TechActions::save_entity( $ra_ent );
+	asem_ok( is_array( $ra_sv1 ) && false !== strpos( (string) $ra_sv1[1], 'Dati dell\'ente salvati.' ) && false !== strpos( (string) $ra_sv1[1], 'non è cambiato' ) && 1 === (int) Settings::get( 'fiscal_start_month' ), 'dati dell\'ente: il cambio del mese senza conferma salva il resto e spiega cosa succede alle tessere' );
+	$ra_sv2  = Admin\TechActions::save_entity( array_merge( $ra_ent, array( 'confirm_card_realign' => '1' ) ) );
+	asem_ok( false !== strpos( (string) $ra_sv2[1], 'Tessere riallineate' ) || false !== strpos( (string) $ra_sv2[1], 'copia di sicurezza non è riuscita' ), 'dati dell\'ente: il cambio del mese confermato dice l\'esito del riallineamento' );
+}
 foreach ( (array) glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-riallineamento-delle-tessere-*.zip' ) as $ra_bk ) {
 	wp_delete_file( $ra_bk ); // la copia di prova non resta
 }
