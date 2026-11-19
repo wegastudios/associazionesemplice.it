@@ -56,3 +56,4 @@ includes/WalletCredentials.php	WordPress.PHP.NoSilencedErrors.Discouraged	5
 includes/WebPush.php	WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode	1
 includes/WebPush.php	WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode	2
 includes/WebPush.php	WordPress.WP.AlternativeFunctions.json_encode_json_encode	2
+updater/Updater.php	WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode	1
