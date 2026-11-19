@@ -23,7 +23,7 @@ Con le votazioni i soci decidono, o danno un parere, senza fogli e riunioni. La 
 
 Tutti i soci in regola con la tessera, oppure solo gli iscritti a una certa attività.
 
-Il **diritto di voto** ce l'hanno **tutti i soci maggiorenni**. Con {piano_contabile} e {piano_fiscale} si decide invece **per ogni livello di socio** (sì o no), in **Impostazioni → Livelli di socio**. La stessa regola vale per le votazioni, per il numero legale delle assemblee e per i [Dati per il RUNTS](guida:dati-per-il-runts).
+Il **diritto di voto** ce l'hanno **tutti i soci maggiorenni**. Con {piano_contabile} e {piano_fiscale} si decide invece **per ogni livello di socio** (sì o no), in **Impostazioni → Soci e quote**, sezione **«Livelli di socio»**. La stessa regola vale per le votazioni, per il numero legale delle assemblee e per i [Dati per il RUNTS](guida:dati-per-il-runts).
 
 **Non votano**: i minorenni (qualunque sia il livello), genitori e tutori che non sono soci, ospiti, soci sospesi, soci usciti e soci con la tessera scaduta. Non si vota per delega: ogni socio vota dal proprio accesso.
 

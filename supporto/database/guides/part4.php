@@ -118,7 +118,7 @@ I file usano il punto e virgola come separatore e la virgola come decimale, pron
 
 ## Importare movimenti già registrati
 
-1. Vai in **Soci → Importa da Excel/CSV** e carica il file.
+1. Vai in **Strumenti → Importa da Excel/CSV** e carica il file.
 2. Colonne necessarie: **Data** e **Importo** (oppure *Entrata* e *Uscita*). Facoltative: *Tipo, Conto, Modalità, Voce, Descrizione, Riferimento, N. tessera, Persona, Attività, Competenza*.
 3. Controlla l'anteprima e conferma.
 
