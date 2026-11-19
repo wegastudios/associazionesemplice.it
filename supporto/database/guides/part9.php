@@ -177,10 +177,10 @@ Il registro dei **certificati medici** ti dice chi ha il certificato in regola, 
 
 Sono **spenti** di partenza. Li accendi in **Registri → Certificati medici → Impostazioni → Promemoria automatici**.
 
-- Una volta al giorno il socio, o il suo tutore se è minorenne, riceve un'email quando il certificato sta per scadere e, una volta, quando è scaduto da poco.
+- Il socio, o il suo tutore se è minorenne, riceve un'email quando il certificato sta per scadere e un'altra quando è appena scaduto.
 - La segreteria riceve un'unica email con l'elenco.
 - Ogni avviso parte una sola volta per certificato.
-- **Preavviso**: i giorni prima della scadenza in cui il certificato risulta «in scadenza» (di partenza 30).
+- **Preavviso**: quanti giorni prima della scadenza il certificato diventa «in scadenza» (di partenza 30).
 
 Nelle stesse impostazioni puoi attivare **«Il socio vede nella sua area la scadenza del proprio certificato»**: il socio vede stato e scadenza, non il file né il medico. Le impostazioni le cambia solo l'amministratore.
 
