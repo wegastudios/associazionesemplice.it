@@ -28,6 +28,7 @@ final class EmployeeActionsCoverageTest extends TestCase {
 			'Interfaccia dell\'utente stesso (avvisi chiusi, guida, notifiche del proprio dispositivo)' => $g( 'asem_dismiss_notice asem_guide_dismiss asem_push_subscribe asem_push_unsubscribe' ),
 			'Area soci: scarico del socio con il proprio controllo (ricevuta, rendiconto personale, dati personali, tessera Wallet)' => $g( 'asem_privacy_export asem_receipt asem_statement asem_wallet_apple' ),
 			'Controlla da sé l\'area (corsi o eventi) di ogni pagina che riceve: chi ha una sola area pubblica solo quelle' => $g( 'asem_publish_pages' ),
+				'Aggiornamento dei plugin: lo decide il permesso update_plugins di WordPress (amministratore), non i permessi per area' => $g( 'asem_check_updates' ),
 		);
 	}
 

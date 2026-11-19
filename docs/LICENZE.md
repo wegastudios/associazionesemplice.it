@@ -101,3 +101,19 @@ Ordine: prima il server licenze (nome del piano e scadenza), poi il database loc
 ## Downgrade bloccato dai limiti
 
 Decisione 10/11/2026: downgrade e disdetta a **fine periodo** (già così: `PlanChange::scheduleDowngrade`), e il downgrade è **bloccato se l'uso supera i limiti** del piano di arrivo. Per il plugin il limite del catalogo è «siti ammessi» (`limits.sites`, si imposta in `/wordpress/admin/catalogo`): `Plugin\Downgrade::blockers()` conta le licenze **attive** (non scadute, non annullate) del cliente con il piano attuale; se sono più dei siti ammessi dal piano di arrivo, la programmazione del passaggio viene rifiutata con un messaggio che dice quanti siti ci sono e quanti ne ammette il nuovo piano (e `PlanChange::options()` lo riporta nel campo `blocked` delle opzioni di downgrade). Un piano di arrivo senza limite di siti non blocca mai. Il blocco guarda il catalogo **pubblicato**: finché non si pubblica un limite, il comportamento è quello di prima.
+
+## Aggiornamento del Pro con il gratuito da WordPress.org: controlli e regole di rilascio
+
+**Chi aggiorna cosa.** Il gratuito dal portale e il Pro si aggiornano dal portale (`Updater`). Il gratuito di WordPress.org non ha `Updater` (si aggiorna da WordPress.org): per questo la costruzione (`build.sh`) mette nel Pro una copia identica, `updater/Updater.php` (un solo sorgente: `includes/Updater.php`). Il Pro la carica solo se il gratuito non ha la sua (`asem_pro_updater()`, prima del controllo di compatibilità, perché serve proprio quando il Pro non è compatibile). `register()` è idempotente. Con il gratuito di WordPress.org l'aggiornatore tratta solo il Pro (`products()`: il gratuito compare solo se porta il proprio `Updater.php`).
+
+**Controlli forzati** (al più uno al minuto per sito, `FORCE_OPT`):
+- link «Controlla aggiornamenti» nella riga del Pro in Plugin (admin-post `asem_check_updates`, nonce, permesso `update_plugins`): chiede subito il Pro al portale, sostituisce ciò che si sapeva e torna alla pagina con l'esito (aggiornamento / nessun aggiornamento / portale non risponde / troppo presto / chiave mancante / licenza non riconosciuta / aggiornamenti spenti);
+- «Controlla di nuovo» di WordPress (`force-check`) ignora le 12 ore anche per il Pro;
+- se cambia la versione del gratuito (`upgrader_process_complete` o confronto con `asem_updater_free_version` a ogni caricamento dell'area amministrativa, quindi anche da WordPress.org o a mano) il lavoro in background ricontrolla il portale subito.
+Nessun ping dal portale verso i siti.
+
+**Avviso di incompatibilità** (gratuito e Pro con livello `ASEM_API` diverso): ha il pulsante «Aggiorna il Pro» se il portale ha un aggiornamento (indirizzo di aggiornamento di WordPress con nonce), altrimenti «Controlla aggiornamenti».
+
+**Regole di compatibilità e di rilascio**
+1. Il gratuito deve funzionare con il Pro della versione precedente almeno per una versione, mostrando un avviso e senza bloccare. Il livello `ASEM_API` si alza solo quando proprio non si può fare altrimenti, e non nello stesso rilascio in cui lo si introduce senza il Pro pronto.
+2. Il Pro compatibile con il nuovo gratuito esce sul portale prima del gratuito su WordPress.org, oppure insieme: mai dopo. Nella procedura di pubblicazione: caricare il Pro sul portale, verificare che il portale lo offra (canale reale), solo dopo pubblicare il gratuito su WordPress.org.
