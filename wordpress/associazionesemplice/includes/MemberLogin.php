@@ -130,10 +130,10 @@ final class MemberLogin {
 				. "\n\nValgono 15 minuti e si usano una volta sola. Se non l'hai chiesto tu, ignora questo messaggio: la tua password non cambia.";
 			$subject = 'Reimposta la password';
 		} else {
-			$text    = 'Ciao ' . $p['first_name'] . ",\n\nper entrare" . ( '' !== $assoc ? ' in ' . $assoc : '' ) . " apri questo link:\n\n" . $link
+			$text    = 'Ciao ' . $p['first_name'] . ",\n\nper entrare nell'area soci" . ( '' !== $assoc ? ' di ' . $assoc : '' ) . " apri questo link:\n\n" . $link
 				. "\n\noppure scrivi questo codice nella pagina di accesso: " . $code
-				. "\n\nValgono 15 minuti e si usano una volta sola. Se non hai chiesto tu questo messaggio, ignoralo: nessuno può entrare senza.";
-			$subject = 'Il tuo accesso';
+				. "\n\nValgono 15 minuti e si usano una volta sola. Se non l'hai chiesto tu, ignora questo messaggio: senza link o codice nessuno può entrare.";
+			$subject = 'Il tuo link per entrare';
 		}
 		$to      = (string) $p['email'];
 		$subject = \AssociazioneSemplice\Texts::subject( $subject );
@@ -283,7 +283,7 @@ final class MemberLogin {
 		}
 		$p = Plugin::people()->get( $person_id );
 		if ( ! MemberSession::person_allowed( $p ) || '' === (string) $p['email'] ) {
-			return 'Non è possibile impostare la password per questo accesso.';
+			return 'Non è possibile impostare la password per questo accesso. Scrivi alla segreteria.';
 		}
 		$db    = Db::db();
 		$tbl   = Db::t( 'member_auth' );

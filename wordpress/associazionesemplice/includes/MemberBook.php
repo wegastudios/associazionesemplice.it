@@ -33,7 +33,7 @@ final class MemberBook {
 	public static function set_left( int $person_id, string $date, string $reason = '' ): void {
 		$p = Plugin::people()->get( $person_id );
 		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
-			throw new \InvalidArgumentException( 'La cessazione si registra per un socio.' );
+			throw new \InvalidArgumentException( 'La cessazione si registra solo per i soci.' );
 		}
 		$date = trim( $date );
 		YearLock::assert_date_open( (string) ( $p['left_on'] ?? '' ) ); // togliere o cambiare una cessazione già in un anno fiscale chiuso non si può
@@ -334,7 +334,7 @@ final class MemberBook {
 				$values[] = '(' . $db->prepare( '%d,%d,%d', $closure_id, (int) $r['n'], (int) $r['id'] ) . ',' . ( (int) $r['matricola'] > 0 ? (string) (int) $r['matricola'] : 'NULL' ) . ',' . $db->prepare( '%s', (string) wp_json_encode( $data, JSON_UNESCAPED_UNICODE ) ) . ')';
 			}
 			if ( false === $db->query( 'INSERT INTO ' . $tbl . ' (closure_id, n, person_id, matricola, data) VALUES ' . implode( ',', $values ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno, valori già passati da prepare()
-				throw new \InvalidArgumentException( $closing ? 'Il libro soci definitivo non è stato emesso (errore del database): la chiusura non è avvenuta. Riprova; se succede ancora scrivi all\'assistenza.' : 'Il libro soci definitivo non è stato emesso (errore del database): non è stato salvato nulla. Riprova; se succede ancora scrivi all\'assistenza.' );
+				throw new \InvalidArgumentException( $closing ? 'Il libro soci definitivo non è stato emesso: la chiusura non è avvenuta. Riprova; se succede ancora scrivi all\'assistenza.' : 'Il libro soci definitivo non è stato emesso: non è stato salvato nulla. Riprova; se succede ancora scrivi all\'assistenza.' );
 			}
 		}
 		return count( $rows );
@@ -429,10 +429,10 @@ final class MemberBook {
 		if ( $cl && 'complete' === $cl['snapshot_state'] ) {
 			$when = self::dmy( (string) ( $cl['snapshotted_at'] ?: $cl['closed_at'] ) );
 			return array(
-				'title'   => 'Libro soci definitivo — anno fiscale ' . $label . ' (emesso il ' . $when . ( ! empty( $cl['retroactive'] ) ? ' per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura' : '' ) . $ver . ')',
+				'title'   => 'Libro soci definitivo — anno fiscale ' . $label . ' (emesso il ' . $when . ( ! empty( $cl['retroactive'] ) ? ' per un anno già chiuso' : '' ) . $ver . ')',
 				'state'   => 'snapshot',
 				'closure' => $cl,
-				'note'    => ! empty( $cl['retroactive'] ) ? 'Emesso il ' . $when . ' per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura. Chi era già stato cancellato non compare e i dati anagrafici sono quelli attuali.' : 'Emesso e bloccato alla chiusura dell\'anno fiscale ' . $label . ': non cambia più, anche se poi un socio viene modificato, cancellato o reso anonimo.',
+				'note'    => ! empty( $cl['retroactive'] ) ? 'Emesso il ' . $when . ' per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura. Chi era già stato eliminato non compare e i dati anagrafici sono quelli attuali.' : 'Emesso e bloccato alla chiusura dell\'anno fiscale ' . $label . ': non cambia più, anche se poi un socio viene modificato, eliminato o reso anonimo.',
 			);
 		}
 		if ( $cl ) {

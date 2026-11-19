@@ -100,7 +100,7 @@ final class PeopleCsv {
 		}
 		$hi = SheetReader::find_header( $table, array( __CLASS__, 'accepts_header' ) );
 		if ( null === $hi ) {
-			return array( 'error' => 'Nella prima riga servono almeno le colonne "Nome" e "Cognome" (per un file di soli enti basta "Denominazione"). Trovate: ' . implode( ', ', $table[0] ) );
+			return array( 'error' => 'Nella prima riga servono almeno le colonne «Nome» e «Cognome» (per un file di soli enti basta «Denominazione»). Trovate: ' . implode( ', ', $table[0] ) );
 		}
 		$header = SheetReader::normalize_header( $table[ $hi ] );
 		$col    = array();
@@ -470,7 +470,7 @@ final class PeopleCsv {
 				$msg = 'Socio esistente (' . $how . ')';
 				$act = 'update';
 			} else {
-				$msg = null === $card ? 'Senza tessera: assegnabile dopo' : null;
+				$msg = null === $card ? 'Senza tessera: potrai assegnarla dopo' : null;
 				$act = 'create';
 			}
 			if ( null !== $card ) {
@@ -488,7 +488,7 @@ final class PeopleCsv {
 					$lab     = ( 1 === preg_match( '/^\d{4}$/', (string) $yc ) ) ? MembershipRules::import_label( (string) $yc, Settings::membership_start_month() ) : '';
 					$shown[] = ( '' !== $lab && $lab !== (string) $yc ) ? 'Anno ' . $yc . ' → tessera ' . $lab : str_replace( array( '@current', '@previous' ), array( 'anno corrente', 'anno scorso' ), (string) $yc );
 				}
-				$msg = ( null === $msg ? '' : $msg . ' · ' ) . 'Iscritto: ' . implode( ', ', $shown );
+				$msg = ( null === $msg ? '' : $msg . ' · ' ) . 'Tessera: ' . implode( ', ', $shown );
 			}
 			$plans[] = array( 'row' => $r, 'type' => $type, 'type_given' => null !== $r['type_text'], 'action' => $act, 'message' => $msg, 'matched_id' => $match ? $match['id'] : null );
 		}
@@ -518,7 +518,7 @@ final class PeopleCsv {
 				};
 				$host = null === $r['host'] ? '' : trim( $r['host'] );
 				if ( '' === $host && $need_host ) {
-					$plans[ $idx ] = $err( 'Ospite senza l\'indicazione del socio ospitante (colonna "Ospite di": tessera, email o nome e cognome). Per importare ospiti senza ospitante spegni la regola in Impostazioni → Limiti e soglie' );
+					$plans[ $idx ] = $err( 'Manca il socio che ospita (colonna «Ospite di»: tessera, email o nome e cognome). Per importare ospiti senza ospitante spegni la regola in Impostazioni → Limiti e soglie' );
 					continue;
 				}
 				if ( null !== $r['email'] && ! filter_var( $r['email'], FILTER_VALIDATE_EMAIL ) ) {
@@ -573,7 +573,7 @@ final class PeopleCsv {
 					continue;
 				}
 				if ( $found > 1 ) {
-					$plans[ $idx ] = $err( 'Socio ospitante ambiguo: "' . $host . '" (indica la tessera)' );
+					$plans[ $idx ] = $err( 'Più soci corrispondono a «' . $host . '»: indica la tessera' );
 					continue;
 				}
 				$host_id   = $existing_ids ? (int) array_keys( $existing_ids )[0] : 0;

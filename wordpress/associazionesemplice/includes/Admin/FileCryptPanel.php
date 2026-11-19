@@ -263,7 +263,7 @@ final class FileCryptPanel {
 	public static function phrase_line(): string {
 		$kind = FileKey::phrase_kind();
 		if ( 'license' === $kind ) {
-			return Texts::t( 'La frase è il codice di licenza: lo ritrovi nell\'area clienti di Associazione Semplice.' );
+			return Texts::t( 'La frase è il codice di licenza: lo ritrovi nell\'area riservata di Associazione Semplice.' );
 		}
 		if ( 'custom' === $kind ) {
 			return '' !== FileKey::license_code()

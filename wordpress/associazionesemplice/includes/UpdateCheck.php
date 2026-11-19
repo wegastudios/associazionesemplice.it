@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
  * (`GET /api/plugin/latest`, risposta `{"free":{"version":"1.1.13","url":"…"},"pro":{…}}`) e la confronta con quella installata.
  * Non manda niente al portale (nessuna chiave, nessun dato del sito): la risposta è la stessa per tutti. Funziona solo con una chiave di
  * licenza inserita (anche gratuita), mai sui siti locali, e si spegne da Impostazioni → Limiti e soglie. Il Pro e, finché non è su
- * WordPress.org, anche il gratuito si scaricano dall'area clienti: WordPress da solo non li aggiorna.
+ * WordPress.org, anche il gratuito si scaricano dall'area riservata: WordPress da solo non li aggiorna.
  */
 final class UpdateCheck {
 
@@ -130,7 +130,7 @@ final class UpdateCheck {
 		return 'Aggiornamenti: sei all\'ultima versione. Controllato il ' . $when . '.';
 	}
 
-	/** Dove si scarica: l'indirizzo indicato dal portale solo se è https e del sito del portale, altrimenti l'area clienti. */
+	/** Dove si scarica: l'indirizzo indicato dal portale solo se è https e del sito del portale, altrimenti l'area riservata. */
 	public static function download_url( array $u ): string {
 		$home = 'https://associazionesemplice.it/accedi';
 		$host = strtolower( (string) wp_parse_url( $u['url'], PHP_URL_HOST ) );

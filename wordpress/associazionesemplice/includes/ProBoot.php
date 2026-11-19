@@ -230,7 +230,7 @@ final class ProBoot {
 			switch ( License::plan() ) {
 				case License::PLAN_FREE:
 					return LicensePolicy::STATUS_NOKEY === License::state()['status']
-						? 'Questa funzione fa parte di Associazione Semplice Pro: inserisci la chiave di licenza in Impostazioni per usarla.'
+						? 'Questa funzione fa parte di Associazione Semplice Pro: inserisci la chiave di licenza in Impostazioni → Licenza per usarla.'
 						: 'Questa funzione è compresa nei piani a pagamento di Associazione Semplice. Ora stai usando la licenza gratuita.';
 				case License::PLAN_LITE:
 					return 'Questa funzione è compresa in un piano più completo di Associazione Semplice. Il tuo piano è «' . License::plan_label( License::PLAN_LITE ) . '», senza la parte contabile.';
@@ -238,7 +238,7 @@ final class ProBoot {
 			return 'Questa funzione non è compresa nella tua licenza di Associazione Semplice Pro.';
 		}
 		if ( License::degraded() ) {
-			return 'La licenza di Associazione Semplice Pro non è in regola: questa funzione è sospesa. Quando la licenza torna in regola, la funzione si riattiva da sola; intanto il resto funziona e i dati restano tutti.';
+			return 'La licenza di Associazione Semplice Pro non è in regola: questa funzione è sospesa. Quando la licenza torna in regola, la funzione si riattiva da sola; intanto il resto funziona e i dati sono al sicuro.';
 		}
 		return $default;
 	}
@@ -252,7 +252,7 @@ final class ProBoot {
 		$url = License::payment_url();
 		return $out . ( $url
 			? '<p><a class="button button-primary" href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Regolarizza la licenza</a></p>'
-			: '<p>Scrivi ad Associazione Semplice dall\'area riservata di associazionesemplice.it per regolarizzare la licenza, poi inseriscila in Impostazioni → Soci e quote → Licenza.</p>' );
+			: '<p>Scrivi ad Associazione Semplice dall\'area riservata di associazionesemplice.it per regolarizzare la licenza, poi inseriscila in Impostazioni → Licenza.</p>' );
 	}
 
 	// ---------- Impostazioni e limiti ----------
@@ -283,10 +283,10 @@ final class ProBoot {
 			'update_notice', 'comunicazioni', 'Avviso «ci sono aggiornamenti» di Associazione Semplice', 'flag', 1, 0, 1,
 			'Con una chiave di licenza inserita (anche la gratuita), il plugin chiede al portale di Associazione Semplice qual è l\'ultima versione e mostra un avviso chiudibile alla segreteria e agli amministratori quando ne esiste una più recente. Non invia la chiave né dati del sito.',
 			'Il sito fa una richiesta al portale di tanto in tanto (solo per leggere l\'ultima versione, senza inviare dati) e mostra l\'avviso: rischi trascurabili.',
-			'Se lo disattivi il plugin non contatta più il portale per le versioni e non vedrai l\'avviso: dovrai controllare a mano nell\'area clienti, con il rischio di restare su versioni vecchie, senza correzioni di sicurezza.'
+			'Se lo disattivi, il plugin non contatta più il portale per le versioni e non vedrai l\'avviso: dovrai controllare a mano nell\'area riservata, con il rischio di restare su versioni vecchie e senza correzioni di sicurezza.'
 		);
 		$add(
-			'license_offline_days', 'accesso', 'Giorni senza controllo della licenza riuscito, prima di sospendere le funzioni Pro', 'giorni', 7, 1, 60,
+			'license_offline_days', 'accesso', 'Giorni senza un controllo riuscito della licenza prima di sospendere le funzioni Pro', 'giorni', 7, 1, 60,
 			'La conferma della licenza vale circa due giorni; se il sito non riesce a rinnovarla (portale irraggiungibile, chiamate bloccate) si aspettano questi giorni in più prima di sospendere le funzioni Pro.',
 			'Chi blocca le chiamate verso il portale tiene il piano più a lungo, anche se la licenza nel frattempo è scaduta o revocata. Alzalo se il tuo hosting ha spesso problemi di rete.',
 			'Un problema di rete o del portale sospende le funzioni Pro (e l\'accesso dei soci) più in fretta.'

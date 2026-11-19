@@ -163,7 +163,7 @@ final class PaymentConfig {
 	public static function validate( array $c ): array {
 		$provider = (string) ( $c['payment_provider'] ?? self::NONE );
 		if ( ! self::is_valid( $provider ) ) {
-			return array( 'errors' => array( 'Gateway di pagamento non valido.' ), 'warnings' => array() );
+			return array( 'errors' => array( 'Metodo di pagamento non valido: sceglilo dall\'elenco.' ), 'warnings' => array() );
 		}
 		$errors   = array();
 		$warnings = array();
@@ -203,15 +203,15 @@ final class PaymentConfig {
 				$errors[] = 'Stripe: la chiave segreta non corrisponde alla modalità ' . ( 'live' === $mode ? 'reale (live)' : 'di prova (test)' ) . '.';
 			}
 			if ( '' === $wh ) {
-				$warnings[] = 'Stripe: manca il segreto del webhook (whsec_…): senza di esso i pagamenti non possono essere confermati automaticamente.';
+				$warnings[] = 'Stripe: manca il segreto del webhook (whsec_…): senza, i pagamenti non si confermano da soli.';
 			} elseif ( 0 !== strpos( $wh, 'whsec_' ) ) {
 				$errors[] = 'Stripe: il segreto del webhook deve iniziare con whsec_.';
 			}
 			if ( 'live' === $mode && ! $https ) {
-				$errors[] = 'Stripe in modalità reale richiede che il sito sia servito in https: oggi l\'indirizzo del sito è http. Attiva https e aggiorna l\'indirizzo del sito, oppure usa la modalità di prova.';
+				$errors[] = 'Stripe in modalità reale funziona solo se il sito usa https: oggi l\'indirizzo del sito è http. Attiva https e aggiorna l\'indirizzo del sito, oppure usa la modalità di prova.';
 			}
 			if ( 'live' === $mode && empty( $errors ) ) {
-				$warnings[] = 'Stripe è in modalità REALE: i pagamenti saranno veri.';
+				$warnings[] = 'Stripe è in modalità reale: i pagamenti sono veri.';
 			}
 		}
 		if ( self::PAYPAL === $gateway ) {
@@ -229,10 +229,10 @@ final class PaymentConfig {
 				$errors[] = 'PayPal: il Client Secret non sembra valido.';
 			}
 			if ( 'live' === $mode && ! $https ) {
-				$errors[] = 'PayPal in modalità reale richiede che il sito sia servito in https: oggi l\'indirizzo del sito è http. Attiva https e aggiorna l\'indirizzo del sito, oppure usa la modalità sandbox.';
+				$errors[] = 'PayPal in modalità reale funziona solo se il sito usa https: oggi l\'indirizzo del sito è http. Attiva https e aggiorna l\'indirizzo del sito, oppure usa la modalità di prova.';
 			}
 			if ( 'live' === $mode && empty( $errors ) ) {
-				$warnings[] = 'PayPal è in modalità REALE: i pagamenti saranno veri.';
+				$warnings[] = 'PayPal è in modalità reale: i pagamenti sono veri.';
 			}
 		}
 		if ( self::SUMUP === $gateway ) {
@@ -249,7 +249,7 @@ final class PaymentConfig {
 				$errors[] = 'SumUp: il codice commerciante non sembra valido (solo lettere e cifre).';
 			}
 			if ( ! $https ) {
-				$warnings[] = 'SumUp: l\'indirizzo del sito è http. Per i pagamenti veri il sito deve essere servito in https: il ritorno dal pagamento potrebbe non funzionare.';
+				$warnings[] = 'SumUp: l\'indirizzo del sito è http. Per i pagamenti veri il sito deve usare https: il ritorno dal pagamento potrebbe non funzionare.';
 			}
 			if ( empty( $errors ) ) {
 				$warnings[] = 'SumUp non ha una modalità di prova separata sul sito: con una chiave di un account reale i pagamenti sono veri (per provare usa un account di prova SumUp).';

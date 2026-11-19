@@ -391,7 +391,7 @@ final class Applications {
 		Audit::log( 'application.rejected', 'person', $id, array( 'refund' => $refund ) );
 		if ( '' !== $to && is_email( $to ) ) {
 			$text = 'Ciao ' . $name . ",\n\npurtroppo la domanda di adesione" . ( $gd ? ' di ' . ApplicationRules::mail_name( (string) $row['first_name'] ) : '' ) . ' non è stata accettata.'
-				. ( $refund > 0 ? "\n\nLa quota che hai pagato online ti sarà restituita." : '' ) . "\n\nPer chiarimenti rivolgiti alla segreteria.";
+				. ( $refund > 0 ? "\n\nLa quota che hai pagato online ti sarà restituita." : '' ) . "\n\nPer chiarimenti scrivi alla segreteria: i recapiti sono in fondo a questa email.";
 			Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Esito della domanda di adesione' ), $text );
 		}
 		return 'Domanda rifiutata.' . ( $refund > 0 ? ' Il pagamento online risulta «da rimborsare» nei Pagamenti online.' : '' );

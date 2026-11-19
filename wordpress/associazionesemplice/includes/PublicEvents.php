@@ -449,9 +449,9 @@ final class PublicEvents {
 		wp_nonce_field( 'asem_event_options', '_asem_ev_nonce' );
 		echo '<p><label><input type="checkbox" name="asem_ev_guests" value="1"' . checked( $o['guests'], true, false ) . '> Anche chi non è socio può chiedere un posto dalla pagina</label></p>';
 		echo '<p><label><input type="checkbox" name="asem_ev_approval" value="1"' . checked( $o['approval'], true, false ) . '> Richiesta di partecipazione: la segreteria approva ogni richiesta (altrimenti la prenotazione è automatica)</label></p>';
-		echo '<p><label>Posti al massimo per richiesta (0 = nessun limite)<br><input type="number" min="0" max="50" name="asem_ev_max_seats" value="' . (int) $o['max_seats'] . '" style="width:5em"></label></p>';
+		echo '<p><label>Numero massimo di posti per richiesta (0 = nessun limite)<br><input type="number" min="0" max="50" name="asem_ev_max_seats" value="' . (int) $o['max_seats'] . '" style="width:5em"></label></p>';
 		echo '<p><label><input type="checkbox" name="asem_ev_hide_cancelled" value="1"' . checked( $o['hide_cancelled'], true, false ) . '> Se l\'evento viene annullato, nascondi la pagina (altrimenti resta con l\'avviso «annullato»)</label></p>';
-		echo '<p class="description">I soci prenotano sempre dal loro accesso. I non soci pagano in anticipo con bonifico e inviano la ricevuta alla segreteria.</p>';
+		echo '<p class="description">I soci prenotano sempre dall\'area soci. I non soci pagano in anticipo con bonifico e inviano la ricevuta alla segreteria.</p>';
 	}
 
 	public static function save_options( $post_id ): void {
@@ -504,7 +504,7 @@ final class PublicEvents {
 		echo '<p>' . ( '' !== $where ? esc_html( $where ) : '<em>Luogo non indicato</em>' ) . '</p>';
 		echo '<p>' . esc_html( self::price_text( $a ) ) . '</p>';
 		echo '<p class="description">Date, luogo, contributo e posti si cambiano nella scheda dell\'attività: la pagina li mostra sempre aggiornati. Qui scrivi la descrizione, scegli la locandina e il riassunto.</p>';
-		echo '<p class="description"><strong>Impaginazione tua:</strong> la pagina ha un\'impaginazione automatica. Per comporla a piacere (con Gutenberg, Elementor o shortcode) inserisci nel contenuto i pezzi «Associazione Semplice» con vista <em>evento_locandina</em>, <em>evento_dati</em>, <em>evento_prenotazione</em>, <em>evento_dove</em>, <em>evento_navigazione</em> o <em>evento_condividi</em> (shortcode <code>[associazionesemplice_evento_dati]</code> e simili): da quel momento la pagina mostra solo ciò che hai scritto.</p>';
+		echo '<p class="description"><strong>Impaginazione personalizzata:</strong> la pagina si impagina da sola. Per comporla come vuoi (con Gutenberg, Elementor o shortcode) inserisci nel contenuto i pezzi «Associazione Semplice» con vista <em>evento_locandina</em>, <em>evento_dati</em>, <em>evento_prenotazione</em>, <em>evento_dove</em>, <em>evento_navigazione</em> o <em>evento_condividi</em> (shortcode <code>[associazionesemplice_evento_dati]</code> e simili): da quel momento la pagina mostra solo ciò che hai scritto.</p>';
 		echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=asem-activity&id=' . $aid ) ) . '">Apri l\'attività</a></p>';
 	}
 
@@ -686,7 +686,7 @@ final class PublicEvents {
 			array( (int) $post->ID ),
 			function () use ( $a, $post ) {
 				$all = self::list_page_url();
-				return '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">'
+				return '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">← Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">'
 					. self::poster_html( $post ) . self::facts_html( $a ) . '</div>';
 			}
 		);
@@ -807,7 +807,7 @@ final class PublicEvents {
 						break;
 					case 'navigazione':
 						$all = self::list_page_url();
-						$h   = ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . self::prev_next_html( $post );
+						$h   = ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">← Tutti gli eventi</a></p>' : '' ) . self::prev_next_html( $post );
 						break;
 					default:
 						$h = self::share_html( $post );
