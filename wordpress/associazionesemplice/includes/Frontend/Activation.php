@@ -190,7 +190,7 @@ final class Activation {
 			$rl_key  = 'asem_act_' . md5( \AssociazioneSemplice\ClientIp::get() );
 			$tries   = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'activation_per_ip' ) ) {
-				$error = 'Troppi tentativi: riprova tra qualche minuto.';
+				$error = 'Troppi tentativi: riprova tra un\'ora.';
 			} elseif ( ! $parsed || ! MemberLoginPage::from_page( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'activation' ) ) {
 				$error = self::NOT_FROM_PAGE;
 			} else {

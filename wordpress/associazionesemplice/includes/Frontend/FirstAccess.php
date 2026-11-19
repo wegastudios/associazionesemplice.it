@@ -204,7 +204,7 @@ final class FirstAccess {
 			$rl_key = 'asem_fa_' . md5( \AssociazioneSemplice\ClientIp::get() );
 			$tries  = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'first_access_per_ip' ) ) {
-				$error = 'Troppi tentativi: riprova tra qualche minuto.';
+				$error = 'Troppi tentativi: riprova tra un\'ora.';
 			} elseif ( ! MemberLoginPage::from_page( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'first_access' ) ) {
 				$error = Activation::NOT_FROM_PAGE;
 			} else {

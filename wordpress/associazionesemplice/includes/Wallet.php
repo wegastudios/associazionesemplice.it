@@ -147,7 +147,7 @@ final class Wallet {
 			'name'        => trim( $person['first_name'] . ' ' . $person['last_name'] ),
 			'type'        => Levels::label( $person ),
 			'card_number' => (string) ( $person['card_number'] ?: '—' ),
-			'until_text'  => MemberType::is_auto_renewed( $person['type'] ) ? 'Sempre rinnovata' : ( $until ? ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '—' ),
+			'until_text'  => MemberType::is_auto_renewed( $person['type'] ) ? 'Non va rinnovata' : ( $until ? ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '—' ),
 			'expires_iso' => $exp,
 			'org'         => '' !== $org ? $org : 'Associazione',
 			'color'       => Frontend\Assets::accent( '#2271b1' ),

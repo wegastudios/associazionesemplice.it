@@ -1091,7 +1091,7 @@ asem_ok( false !== strpos( $as( 1, '[associazionesemplice_area_soci]' ), 'ammini
 asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_tessera]' ), 'asemf-memcard' ), 'shortcode tessera' );
 asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_tessera]' ), 'asemf-print-card' ), 'tessera: pulsante per stamparla' );
 asem_ok( false !== strpos( $as( $u_vol, '[associazionesemplice_area_volontari]' ), 'Yoga' ), 'shortcode area volontari (volontario)' );
-asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_area_volontari]' ), 'riservata ai soci e volontari' ), 'shortcode area volontari (socio semplice)' );
+asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_area_volontari]' ), 'riservata ai soci volontari' ), 'shortcode area volontari (socio semplice)' );
 
 // Elenco attività pubblico e prenotazioni
 $html = $as( 0, '[associazionesemplice_attivita]' );
@@ -3914,7 +3914,7 @@ asem_ok( Settings::has_secret( 'wallet_apple_key_pem' ) && false === strpos( $ra
 // tessera Apple: socio fondatore (sempre rinnovata) e socio con scadenza
 $pk1 = $read_pkpass( Wallet::apple_pass( $founder ) );
 $f1 = $pk1['files'];sort( $f1 );asem_ok( array( 'icon.png', 'icon@2x.png', 'icon@3x.png', 'manifest.json', 'pass.json', 'signature' ) === $f1, 'tessera Apple: contiene pass.json, icone, manifesto e firma' );
-asem_ok( 'asem-' . $founder === $pk1['pass']['serialNumber'] && 'pass.test.asem' === $pk1['pass']['passTypeIdentifier'] && 'Sempre rinnovata' === $pk1['pass']['generic']['auxiliaryFields'][0]['value'] && ! isset( $pk1['pass']['expirationDate'] ), 'tessera Apple: dati del socio fondatore, senza scadenza' );
+asem_ok( 'asem-' . $founder === $pk1['pass']['serialNumber'] && 'pass.test.asem' === $pk1['pass']['passTypeIdentifier'] && 'Non va rinnovata' === $pk1['pass']['generic']['auxiliaryFields'][0]['value'] && ! isset( $pk1['pass']['expirationDate'] ), 'tessera Apple: dati del socio fondatore, senza scadenza' );
 asem_ok( 'PKBarcodeFormatQR' === $pk1['pass']['barcodes'][0]['format'] && false !== strpos( $pk1['pass']['barcodes'][0]['message'], 'asem_card=' ), 'tessera Apple: con il QR della tessera attivo contiene il suo codice di verifica' );
 $pk2 = $read_pkpass( Wallet::apple_pass( $tre_p ) );
 asem_ok( ! empty( $pk2['pass']['expirationDate'] ) && preg_match( '#^\d{2}/\d{2}/\d{4}$#', $pk2['pass']['generic']['auxiliaryFields'][0]['value'] ), 'tessera Apple: un socio con scadenza ha la data di scadenza' );

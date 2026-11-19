@@ -50,7 +50,7 @@ final class BlockBViews {
 				foreach ( Polls::options( $id ) as $o ) {
 					$fields .= '<label class="asemf-check"><input type="' . $type . '" name="choice[]" value="' . (int) $o['id'] . '"> ' . esc_html( $o['label'] ) . '</label> ';
 				}
-				$html .= Views::form( 'asem_front_vote', $fields, 'Vota', 'Confermare il voto?' );
+				$html .= Views::form( 'asem_front_vote', $fields, 'Vota', 'Confermare il voto? Dopo non potrai cambiarlo.' );
 			} elseif ( $poll['voted'] ) {
 				$html .= '<div class="asemf-small"><strong>Hai già votato.</strong></div>';
 			}

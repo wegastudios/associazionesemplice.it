@@ -445,7 +445,7 @@
   "Contenuto" : "Content",
   "Contenuto riservato" : "Restricted content",
   "Contenuto riservato (Associazione Semplice)" : "Restricted content (Associazione Semplice)",
-  "Contenuto riservato ai soci e volontari." : "Content reserved for members and volunteers.",
+  "Contenuto riservato ai soci volontari." : "Content reserved for volunteer members.",
   "Contenuto riservato ai soci iscritti a:" : "Content reserved for members enrolled in:",
   "Contenuto riservato ai soci." : "Content reserved for members.",
   "Contenuto riservato." : "Restricted content.",
@@ -1346,7 +1346,7 @@
   "Quando" : "When",
   "Quando *" : "When *",
   "Quando modifichi il regolamento cambia la versione (ad esempio 2): tutti i soci dovranno accettarlo di nuovo." : "When you change the regulation the version changes (for example 2): all members will have to accept it again.",
-  "Quest'area è riservata ai soci e volontari." : "This area is reserved for members and volunteers.",
+  "Quest'area è riservata ai soci volontari." : "This area is reserved for volunteer members.",
   "Questa data dell'evento è stata annullata." : "This event date has been cancelled.",
   "Questa email è già registrata sul sito: usa \"Password dimenticata\" oppure scrivi alla segreteria." : "This email is already registered on the site: use \"Forgot password\" or write to the office.",
   "Questa pagina è riservata al tesoriere." : "This page is reserved for the treasurer.",
@@ -1617,12 +1617,11 @@
   "Solo se sospetti che siano state esposte." : "Only if you suspect they have been exposed.",
   "Solo soci" : "Members only",
   "Solo soci (tessera valida)" : "Members only (valid card)",
-  "Solo soci e volontari" : "Members and volunteers only",
+  "Solo soci volontari" : "Volunteer members only",
   "Solo un amministratore può attivare il 5 per mille." : "Only an administrator can turn on the 5x1000.",
   "Solo un ospite può essere iscritto come socio da qui." : "Only a guest can be registered as a member from here.",
   "Solo un socio con accesso al sito può far parte della segreteria." : "Only a member with website access can be part of the office team.",
   "Solo un socio o volontario con accesso al sito può essere tesoriere." : "Only a member or volunteer with website access can be treasurer.",
-  "Solo volontari" : "Volunteers only",
   "Somma accantonata" : "Amount set aside",
   "Somma accantonata nel fondo." : "Amount set aside in the fund.",
   "Somma già accantonata" : "Amount already set aside",
@@ -2811,6 +2810,10 @@
   "Cifrato finora un file. Il lavoro prosegue da solo, un po' alla volta: puoi chiudere la pagina." : "One file encrypted so far. The work goes on by itself, little by little: you can close the page.",
   "C'è ancora un file da spostare nella cartella indicata in wp-config.php." : "One file still has to be moved to the folder set in wp-config.php.",
   "Nella cartella predefinita resta un file da spostare. Viene prima copiato e controllato, senza toccare l'originale; poi la nuova cartella entra in uso e l'originale viene cancellato, solo se la copia è identica. Se non basta, premi di nuovo." : "One file is left in the default folder to move. It is first copied and checked, without touching the original; then the new folder comes into use and the original is deleted, only if the copy is identical. If that is not enough, press again.",
-  "Nell'ultima copia un campo riservato (ad esempio il medico nei certificati) non è cifrato, perché su questo sito non si può ancora cifrare: controlla «Documenti riservati» qui sotto. Nessun dato è andato perso." : "In the last backup one confidential field (for example the doctor in the certificates) is not encrypted, because it cannot yet be encrypted on this site: check «Confidential documents» below. No data was lost."
+  "Nell'ultima copia un campo riservato (ad esempio il medico nei certificati) non è cifrato, perché su questo sito non si può ancora cifrare: controlla «Documenti riservati» qui sotto. Nessun dato è andato perso." : "In the last backup one confidential field (for example the doctor in the certificates) is not encrypted, because it cannot yet be encrypted on this site: check «Confidential documents» below. No data was lost.",
+  "Non va rinnovata" : "Does not need renewal",
+  "Confermare il voto? Dopo non potrai cambiarlo." : "Confirm the vote? You will not be able to change it afterwards.",
+  "Annullare l'addebito? Il QR non varrà più." : "Cancel the charge? The QR code will no longer be valid.",
+  "Troppi tentativi: riprova tra un'ora." : "Too many attempts: try again in an hour."
  }
 }
