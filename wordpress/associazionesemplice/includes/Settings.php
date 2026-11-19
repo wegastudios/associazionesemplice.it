@@ -13,7 +13,7 @@ final class Settings {
 		return function_exists( 'apply_filters' ) ? (array) apply_filters( 'asem_secret_keys', array() ) : array();
 	}
 
-	const DEFAULT_PAYMENT_HINT = 'Il pagamento si effettua in sede presso la segreteria.';
+	const DEFAULT_PAYMENT_HINT = 'Puoi pagare in sede, in segreteria.';
 
 	/** @var array|null valori predefiniti, costruiti una sola volta per richiesta (non dipendono da nulla che cambi) */
 	private static $defaults_cache = null;

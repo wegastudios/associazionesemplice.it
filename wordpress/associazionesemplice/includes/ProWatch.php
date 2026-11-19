@@ -40,10 +40,10 @@ final class ProWatch {
 			$d[ $key ] = array( 'group' => 'bilancio', 'label' => $label, 'unit' => $unit, 'default' => $default, 'min' => $min, 'max' => $max, 'what' => $what, 'raise' => $raise, 'lower' => $lower );
 		};
 		$add(
-			'watch_alerts', 'Avvisi sulla tendenza del bilancio', 'flag', 1, 0, 1,
+			'watch_alerts', 'Avvisi sull'andamento del rendiconto', 'flag', 1, 0, 1,
 			'Nella Bacheca e nelle pagine di report e preventivo compare un avviso (chiudibile) quando, di questo passo, l\'anno fiscale si chiude con spese non coperte o con un avanzo troppo alto. Si ricalcola a ogni apertura, sui movimenti della prima nota.',
 			'Acceso: è il comportamento consigliato. Gli avvisi sono stime fatte sui mesi già trascorsi e possono sbagliare se le entrate e le uscite sono concentrate in pochi periodi dell\'anno (quote a settembre, eventi estivi).',
-			'Spento: nessun avviso, ma restano visibili il bilancio provvisorio e la tendenza. Un disavanzo o un avanzo fuori misura si scoprirebbero solo a fine anno.'
+			'Spento: nessun avviso, ma restano visibili il rendiconto provvisorio e la tendenza. Un disavanzo o un avanzo fuori misura si scoprirebbero solo a fine anno.'
 		);
 		$add(
 			'watch_over_pct', 'Spese non coperte: soglia', '%', 10, 1, 100,
@@ -70,10 +70,10 @@ final class ProWatch {
 			'Spento: più controllo, ma ogni spesa richiede una scelta in più e chi la dimentica lascia la spesa senza beneficiario.'
 		);
 		$add(
-			'watch_snapshots', 'Istantanea mensile del bilancio', 'flag', 1, 0, 1,
+			'watch_snapshots', 'Situazione mensile del rendiconto', 'flag', 1, 0, 1,
 			'Un lavoro automatico salva, a ogni fine mese, il consuntivo dell\'anno contro il preventivo, e ne conserva lo storico mese per mese (consultabile ed esportabile). Non invia email.',
 			'Acceso: ogni mese una riga in più in archivio, trascurabile.',
-			'Spento: non si forma lo storico; il bilancio provvisorio resta visibile, ma ricalcolato ogni volta sui dati di oggi.'
+			'Spento: non si forma lo storico; il rendiconto provvisorio resta visibile, ma ricalcolato ogni volta sui dati di oggi.'
 		);
 		$add(
 			'watch_auto_attribute', 'Attribuzione automatica delle spese ai fondi', 'flag', 1, 0, 1,

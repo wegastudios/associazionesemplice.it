@@ -325,7 +325,7 @@ Le ricevute emesse molto tempo fa, prima che il sito salvasse i dati, non hanno 
 - Il file si può anche **ripristinare da una copia di sicurezza**, che contiene sempre i PDF delle ricevute.
 - **«Scarica i PDF di questo anno fiscale (ZIP)»** li scarica tutti insieme.
 
-Finché un PDF non coincide con quello emesso, **scaricare quella ricevuta dà un errore**: non viene mai rifatta di nascosto. Il **socio** che prova a scaricarla dall'area soci legge: «Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria: {email}, tel. {telefono}.» con i contatti che hai inserito nei Dati dell'ente.
+Finché un PDF non coincide con quello emesso, **scaricare quella ricevuta dà un errore**: non viene mai rifatta di nascosto. Il **socio** che prova a scaricarla dall'area soci legge: «Al momento questa ricevuta non è disponibile. Scrivi alla segreteria: {email}, tel. {telefono}.» con i contatti che hai inserito nei Dati dell'ente.
 
 ## Se annulli un incasso
 

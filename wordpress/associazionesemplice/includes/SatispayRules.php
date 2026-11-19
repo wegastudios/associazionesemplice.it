@@ -86,10 +86,10 @@ final class SatispayRules {
 		$https    = ! array_key_exists( 'site_https', $c ) || ! empty( $c['site_https'] );
 		$mode     = 'live' === ( $c['satispay_mode'] ?? 'sandbox' ) ? 'live' : 'sandbox';
 		if ( '' === trim( (string) ( $c['satispay_key_id'] ?? '' ) ) || '' === trim( (string) ( $c['satispay_private_key'] ?? '' ) ) ) {
-			$errors[] = 'Satispay: non è ancora collegato. Inserisci il codice di attivazione che trovi nell\'area Satispay Business e premi «Collega Satispay».';
+			$errors[] = 'Satispay non è ancora collegato. Inserisci il codice di attivazione che trovi nell\'area Satispay Business e premi «Collega Satispay».';
 		}
 		if ( ! $https ) {
-			$msg = 'Satispay richiede che il sito sia servito in https: oggi l\'indirizzo del sito è http (serve per la conferma automatica dei pagamenti).';
+			$msg = 'Satispay funziona solo se l\'indirizzo del sito inizia con https (oggi inizia con http): serve per la conferma automatica dei pagamenti.';
 			if ( 'live' === $mode ) {
 				$errors[] = $msg;
 			} else {
@@ -97,7 +97,7 @@ final class SatispayRules {
 			}
 		}
 		if ( 'live' === $mode && ! $errors ) {
-			$warnings[] = 'Satispay è in modalità REALE: i pagamenti saranno veri.';
+			$warnings[] = 'Satispay è in modalità reale: i pagamenti sono veri.';
 		}
 		return array( 'errors' => $errors, 'warnings' => $warnings );
 	}

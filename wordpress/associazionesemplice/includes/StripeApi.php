@@ -65,7 +65,7 @@ final class StripeApi {
 	public static function create_session( callable $http, string $secret, array $params, string $idempotency_key ): array {
 		$d = self::call( $http, 'POST', '/v1/checkout/sessions', $secret, $params, array( 'Idempotency-Key' => $idempotency_key ) );
 		if ( empty( $d['id'] ) || empty( $d['url'] ) ) {
-			throw new \RuntimeException( 'Stripe: risposta senza indirizzo di pagamento.' );
+			throw new \RuntimeException( 'Stripe non ha avviato il pagamento: riprova tra qualche minuto.' );
 		}
 		return array( 'id' => (string) $d['id'], 'url' => (string) $d['url'] );
 	}

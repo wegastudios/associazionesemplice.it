@@ -48,11 +48,11 @@ final class SumUpApi {
 	public static function create_checkout( callable $http, string $key, array $payload ): array {
 		$d = self::call( $http, 'POST', '/v0.1/checkouts', $key, $payload );
 		if ( empty( $d['id'] ) || empty( $d['hosted_checkout_url'] ) ) {
-			throw new \RuntimeException( 'SumUp: risposta senza indirizzo di pagamento.' );
+			throw new \RuntimeException( 'SumUp non ha avviato il pagamento: riprova tra qualche minuto.' );
 		}
 		$url = (string) $d['hosted_checkout_url'];
 		if ( 0 !== strpos( $url, 'https://' ) ) {
-			throw new \RuntimeException( 'SumUp: indirizzo di pagamento non sicuro.' );
+			throw new \RuntimeException( 'SumUp non ha avviato il pagamento: riprova tra qualche minuto.' );
 		}
 		return array( 'id' => (string) $d['id'], 'url' => $url );
 	}

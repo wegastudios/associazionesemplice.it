@@ -21,7 +21,7 @@ final class BudgetPage {
 			return;
 		}
 		Ui::header( 'Bilancio preventivo', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-budget', array( 'new' => 1 ) ) ) . '">Nuovo preventivo</a>' );
-		WatchPage::box_html(); // bilancio provvisorio e avvisi (Pro Fiscale)
+		WatchPage::box_html(); // rendiconto provvisorio e avvisi (Pro Fiscale)
 		echo '<p class="description">Per ogni anno scrivi quanto prevedi di incassare e di spendere per categoria; il confronto con il consuntivo si aggiorna da solo con i movimenti della prima nota (i giroconti e i movimenti annullati non contano).</p>';
 		echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Preventivo</th><th>Stato</th><th>Entrate previste</th><th>Uscite previste</th></tr></thead><tbody>';
 		$rows = Budget::all();

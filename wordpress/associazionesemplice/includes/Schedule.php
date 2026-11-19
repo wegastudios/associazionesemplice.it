@@ -104,7 +104,7 @@ final class Schedule {
 					throw new \InvalidArgumentException( "Riga $n: indica la data di fine." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( $to < $from ) {
-					throw new \InvalidArgumentException( "Riga $n: la data di fine è prima di quella di inizio." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \InvalidArgumentException( "Riga $n: la data di fine non può essere prima dell'inizio." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				foreach ( $days as $day ) {
 					foreach ( self::weekly_dates( $from, $to, $day ) as $date ) {
