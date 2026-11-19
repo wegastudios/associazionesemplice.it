@@ -74,13 +74,15 @@ La regola vale **solo per le spese documentate**, cioè con scontrino o fattura 
 
 - Un **beneficiario scelto esplicitamente** vale sempre.
 - Dall'**area soci** non c'è la scelta del beneficiario né del fondo: il beneficiario è **chi registra** la spesa.
-- Il **volontario** va **solo sui suoi fondi**. Ciò che supera resta **in credito**. Il credito si chiude da solo con i futuri incassi dei suoi corsi; per sanarlo subito:
-
-  1. vai in **Cassa → Conti e fondi** e trova il fondo del volontario;
-  2. apri **«Accantona una somma»** (aggiunge soldi al fondo e li sottrae dalla disponibilità reale);
-  3. scrivi l'importo nel campo **«0,00 €»** e premi **«Accantona»**.
+- Le spese di un volontario vanno solo sui suoi fondi. La parte che li supera resta in credito e si chiude da sola con i prossimi incassi dei suoi corsi.
 - L'elenco **«Volontari in credito»** si trova in **Cassa → Conti e fondi** e in **Bacheca**.
 - L'attribuzione automatica si accende e si spegne con l'impostazione **«Attribuzione automatica delle spese ai fondi»** in Limiti e soglie: è **accesa** di partenza.
+
+### Chiudere subito il credito di un volontario
+
+1. Vai in **Cassa → Conti e fondi** e trova il fondo del volontario.
+2. Apri **«Accantona una somma»** (aggiunge soldi al fondo e li sottrae dalla disponibilità reale).
+3. Scrivi l'importo nel campo **«0,00 €»** e premi **«Accantona»**.
 
 ## Controllare e correggere
 

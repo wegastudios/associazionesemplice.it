@@ -12,7 +12,7 @@ Si scarica da WordPress.org e funziona da solo, senza chiave e senza contattare 
 - **Corsi ed eventi:** iscrizioni, posti limitati con lista d'attesa, tolleranza sul pagamento per bonifico e contanti, elenchi dei partecipanti, calendario.
 - **Cassa:** entrate e uscite in una cassa unica, coordinate bancarie per i soci, anni fiscali, esportazione della prima nota.
 - **Registri e privacy:** libro dei verbali, informativa, consensi, anonimizzazione e download dei dati personali.
-- **Area riservata dei soci** sul tuo sito, con avvisi, regolamento da accettare, tessera, eventi e corsi, tramite blocchi, shortcode e widget Elementor.
+- **Area soci** sul tuo sito, con avvisi, regolamento da accettare, tessera, eventi e corsi, tramite blocchi, shortcode e widget Elementor.
 - **Ruoli:** presidente, vicepresidente, tesoriere, consiglieri e segreteria, con permessi separati.
 - **Donazioni con PayPal** e **copia di sicurezza** dei dati.
 
@@ -26,7 +26,13 @@ Si scarica da WordPress.org e funziona da solo, senza chiave e senza contattare 
 Il confronto completo, funzione per funzione, è nella pagina [Confronto tra i piani](/confronto).
 
 ## Cosa contatta il plugin
-Il gratuito non invia dati dei soci né dell'associazione. Se lo scarichi da WordPress.org si aggiorna da lì e a noi non arriva nulla; se lo scarichi da questo sito, una volta al giorno chiede se c'è una versione nuova, inviando solo il nome del plugin e la versione (si può spegnere dalle impostazioni). Il Pro verifica la licenza una volta al giorno e controlla gli aggiornamenti di norma una volta al giorno con questo sito, inviando solo chiave, dominio e versione: i dettagli sono nell'[informativa sulla privacy](/privacy) e nei [termini di utilizzo](/termini).
+Il plugin gratuito non invia dati dei soci né dell'associazione.
+
+- **Scaricato da WordPress.org:** si aggiorna da lì e a noi non arriva nulla.
+- **Scaricato da questo sito:** una volta al giorno chiede se c'è una versione nuova, inviando solo nome del plugin e versione. Si può spegnere dalle impostazioni.
+- **Il Pro:** di norma una volta al giorno verifica la licenza e cerca aggiornamenti, inviando solo chiave, dominio e versione.
+
+I dettagli sono nell'[informativa sulla privacy](/privacy) e nei [termini di utilizzo](/termini).
 
 ## Per iniziare
 - [Ottieni la licenza gratuita](/free)

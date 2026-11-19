@@ -11,7 +11,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Soci che sono enti :: Scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
-| Addebito crediti con il QR dello staff :: Addebito di crediti con il QR da parte dello staff di un evento con incasso abilitato, anche senza utente WordPress | — | ✓ | ✓ |
+| Addebito crediti con il QR dello staff :: Lo staff di un evento con incasso abilitato addebita i crediti con il QR, anche senza utente WordPress | — | ✓ | ✓ |
 | Accesso dei soci semplificato :: Una sola schermata: email e password oppure un link via email, con «Ricordami» per 30 giorni. Ai soci non serve un utente WordPress | ✓ | ✓ | ✓ |
 | Quota associativa unica e socio fondatore | ✓ | ✓ | ✓ |
 | Quota associativa a rate: residuo in scheda, saldo da incassare e tessera valida solo a quota saldata | ✓ | ✓ | ✓ |
@@ -19,7 +19,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Più livelli di socio :: Ognuno con la sua quota | — | ✓ | ✓ |
 | Nucleo familiare :: Con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
-| Ospiti con quote ripartite e rimborso al volontario :: Ospiti dell'associazione e del volontario con quote ripartite e rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
+| Ospiti con quote ripartite e rimborso al volontario :: Quote ripartite tra gli ospiti dell'associazione e del volontario, con rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
 | Domanda di adesione online con modulo sul sito (shortcode) | ✓ | ✓ | ✓ |
 | Minori con genitori o tutori (non soci), con tessera valida dal pagamento | ✓ | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
@@ -30,16 +30,17 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | QR della tessera con verifica in diretta | ✓ | ✓ | ✓ |
 | Tessera in PDF da stampare, con testo libero, tipologia e incarichi | ✓ | ✓ | ✓ |
 | Tessera in Apple Wallet e Google Wallet | — | ✓ | ✓ |
+| Quota già pagata nell'anno :: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
 
-## Area riservata e permessi
+## Area soci e permessi
 
 | Funzione | {free_name} | {lite_name} | {full_name} |
 |---|---|---|---|
-| Area riservata dei soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
-| App sul telefono :: App installabile e notifiche, con icona dell'associazione, pagina offline con «Riprova» e invito a installarla sotto la tessera | — | ✓ | ✓ |
+| Area soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
+| App sul telefono :: Installabile, con notifiche e icona dell'associazione; pagina offline con «Riprova» e invito a installarla sotto la tessera | — | ✓ | ✓ |
 | Primo accesso e approvazione della segreteria | ✓ | ✓ | ✓ |
 | Domanda di adesione online per chi non è ancora socio, con approvazione, tessera e link per la password | ✓ | ✓ | ✓ |
-| Minori con uno o due genitori o tutori: area riservata del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
+| Minori con uno o due genitori o tutori: area soci del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
 | Liberatoria per foto e video nella scheda e nel modulo di domanda online, con il tutore per i minori | ✓ | ✓ | ✓ |
 | Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione soci | ✓ | ✓ | ✓ |
 | Avviso «Schede da completare» in Bacheca e in «Da lavorare» | ✓ | ✓ | ✓ |
@@ -75,8 +76,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Incasso sul posto agli eventi | — | ✓ | ✓ |
 | Prenotazione di campi e sale :: Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
 | Posti auto, armadietti e posti barca :: Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
-| Richieste di assegnazione delle risorse :: Richieste di assegnazione dei soci per le risorse libere | — | ✓ | ✓ |
-| Promemoria delle prenotazioni :: Promemoria prima della prenotazione di una risorsa | — | ✓ | ✓ |
+| Richieste di assegnazione delle risorse :: I soci chiedono le risorse libere | — | ✓ | ✓ |
+| Promemoria delle prenotazioni :: Un avviso prima della prenotazione di una risorsa | — | ✓ | ✓ |
 | Ingresso con il QR della prenotazione | — | ✓ | ✓ |
 | Report di occupazione delle risorse | — | ✓ | ✓ |
 | Risorse per corsi ed eventi :: Un corso o un evento occupa la sua sala o il suo campo, con i tempi di allestimento; può anche essere «fuori sede» | — | ✓ | ✓ |
@@ -96,28 +97,28 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
 | Anni fiscali :: Apertura e chiusura (solo amministratori), con mese di inizio a scelta. Si chiudono in ordine; dopo la prima chiusura il mese di inizio non si cambia più | ✓ | ✓ | ✓ |
 | Riapertura dell'ultimo anno fiscale :: Si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
-| Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
+| Cassa «Prenota» :: Prenoti per conto di un socio o ospite, per data o per attività | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online :: Con Stripe, PayPal, SumUp, Satispay o WooCommerce | — | ✓ | ✓ |
-| Rimborso dei pagamenti online :: Rimborso dei pagamenti online Stripe e PayPal dal programma, totale o parziale, con motivo obbligatorio ed email al socio | — | ✓ | ✓ |
+| Rimborso dei pagamenti online :: Per Stripe e PayPal, dal programma, totale o parziale, con motivo obbligatorio ed email al socio | — | ✓ | ✓ |
 | Klarna: paga dopo o a rate :: Klarna (paga dopo o a rate) tra i metodi di pagamento di Stripe | — | ✓ | ✓ |
-| SMS ai soci :: SMS ai soci dalle comunicazioni e, a scelta, dai promemoria (Brevo o Twilio), con consenso, crediti, registro e nuovi tentativi | — | ✓ | ✓ |
-| Newsletter (Brevo, Mailchimp, MailPoet) :: Newsletter: sincronizzazione dei soci con consenso verso Brevo, Mailchimp o MailPoet | — | ✓ | ✓ |
-| Commissioni di incasso :: Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
+| SMS ai soci :: Dalle comunicazioni e, a scelta, dai promemoria (Brevo o Twilio), con consenso, crediti, registro e nuovi tentativi | — | ✓ | ✓ |
+| Newsletter (Brevo, Mailchimp, MailPoet) :: Sincronizzazione dei soci con consenso verso Brevo, Mailchimp o MailPoet | — | ✓ | ✓ |
+| Commissioni di incasso :: Per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
 | Quota online dalla domanda di adesione :: Pagamento online della quota dalla domanda di adesione | — | ✓ | ✓ |
-| Conti multipli e cassa condivisa :: Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
+| Conti multipli e cassa condivisa :: Più conti con giroconti, e una cassa usata da più persone | — | ✓ | ✓ |
 | Commissione di incasso :: Sul conto, fissa più percentuale, per esempio POS: a ogni incasso la spesa va in prima nota | — | ✓ | ✓ |
 | Fondi accantonati :: Somme già destinate a qualcosa, per esempio i rimborsi ai volontari | — | ✓ | ✓ |
 | Quota di risorsa accantonata in un fondo :: Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
-| Voce di prima nota per risorsa :: Voce di prima nota per ogni risorsa, separata nei report | — | ✓ | ✓ |
-| Disponibilità reale dei fondi :: Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
+| Voce di prima nota per risorsa :: Una voce per ogni risorsa, separata nei report | — | ✓ | ✓ |
+| Disponibilità reale dei fondi :: Quanto resta davvero dei fondi, con liberazione ed estinzione | — | ✓ | ✓ |
 | Fondi da rimborsare per anno :: Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
 | Ricevute numerate per anno fiscale :: Ogni ricevuta ha un numero che riparte a ogni anno fiscale; si può annullare e sostituire con «Emetti la ricevuta sostitutiva»; le ricevute annullate non si vedono più ai soci | — | ✓ | ✓ |
-| Ricevute dei minori intestate al genitore :: Ricevute dei minori intestate al genitore, con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
+| Ricevute dei minori intestate al genitore :: Con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
 | Report di gestione :: Report di gestione (conti e liquidità, anno fiscale) | — | ✓ | ✓ |
-| Bilancio preventivo :: Bilancio preventivo per categoria con confronto con il consuntivo della prima nota | — | ✓ | ✓ |
+| Bilancio preventivo :: Per categoria, con il confronto con il consuntivo della prima nota | — | ✓ | ✓ |
 | Rimborsi ai volontari :: Richiesta, approvazione, pagamento e registrazione in prima nota | — | ✓ | ✓ |
 
 ## Parte fiscale
@@ -125,14 +126,14 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | {free_name} | {lite_name} | {full_name} |
 |---|---|---|---|
 | IVA :: Su quote, attività, incassi e spese | — | — | ✓ |
-| 5 per mille :: 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
+| 5 per mille :: Con il rendiconto sull'utilizzo | — | — | ✓ |
 | Rendiconto per cassa :: Pronto per il commercialista | — | — | ✓ |
-| Anno fiscale con verifiche :: Anno fiscale del rendiconto per cassa e verifiche prima della chiusura | — | — | ✓ |
+| Anno fiscale con verifiche :: Verifiche prima della chiusura dell'anno fiscale del rendiconto per cassa | — | — | ✓ |
 | Rendiconto definitivo :: Alla chiusura dell'anno fiscale il rendiconto diventa definitivo, con un PDF numerato (n. 1/2026) che non cambia più; prima è una bozza | — | — | ✓ |
-| Spese documentate sui fondi dei rimborsi :: Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
-| Bilancio provvisorio e storico mensile :: Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
-| Prospetto dei rimborsi per persona :: Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
-| Verifiche di fine anno :: Verifiche di fine anno e blocco della chiusura se mancano le spese documentate dei rimborsi | — | — | ✓ |
+| Spese documentate sui fondi dei rimborsi :: Attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
+| Bilancio provvisorio e storico mensile :: Con avvisi di bilancio e storico mensile in CSV | — | — | ✓ |
+| Prospetto dei rimborsi per persona :: Per persona, con CSV e PDF | — | — | ✓ |
+| Verifiche di fine anno :: La chiusura si blocca se mancano le spese documentate dei rimborsi | — | — | ✓ |
 | Avviso di disavanzo :: Avviso se un anno fiscale passato ancora aperto è in disavanzo (non blocca la chiusura) | — | — | ✓ |
 
 ## Registri e privacy
@@ -150,10 +151,10 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Convenzioni per i soci: sconti dei partner con codice, validità, destinatari per tipo di socio, elenco pubblico, avviso per email e CSV | ✓ | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
 | Anonimizzazione e download dei dati personali, con i libri soci chiusi | ✓ | ✓ | ✓ |
-| Assicurazioni dei volontari :: Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
-| Registro delle presenze :: Registro delle presenze a corsi ed eventi, anche in vista a calendario | — | ✓ | ✓ |
-| Certificato medico sportivo :: Certificato medico sportivo dei soci: scadenze, attività che lo richiedono, promemoria ed esportazione | — | ✓ | ✓ |
-| Affiliazioni agli enti sportivi :: Affiliazioni agli enti (CONI/RAS e enti di promozione sportiva), tessere dei soci anche in blocco e file CSV per i portali degli enti con sport e disciplina | — | ✓ | ✓ |
+| Assicurazioni dei volontari :: Con le polizze dell'associazione | — | ✓ | ✓ |
+| Registro delle presenze :: A corsi ed eventi, anche in vista a calendario | — | ✓ | ✓ |
+| Certificato medico sportivo :: Scadenze, attività che lo richiedono, promemoria ed esportazione | — | ✓ | ✓ |
+| Affiliazioni agli enti sportivi :: Agli enti (CONI/RAS e enti di promozione sportiva), tessere dei soci anche in blocco e file CSV per i portali degli enti con sport e disciplina | — | ✓ | ✓ |
 
 ## Comunicazione
 
@@ -162,7 +163,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Avvisi agli iscritti di un'attività | ✓ | ✓ | ✓ |
 | Promemoria automatici per email (tessera, corsi, eventi) | ✓ | ✓ | ✓ |
 | Registro della posta in uscita e invio di una email di prova | ✓ | ✓ | ✓ |
-| Comunicazioni a gruppi di soci :: Comunicazioni a gruppi di soci con storico degli invii | — | ✓ | ✓ |
+| Comunicazioni a gruppi di soci :: Con lo storico degli invii | — | ✓ | ✓ |
 
 ## Personalizzazione e sicurezza dei dati
 
@@ -171,13 +172,12 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Colori e logo dell'associazione | ✓ | ✓ | ✓ |
 | Novità di ogni versione in italiano semplice (changelog) | ✓ | ✓ | ✓ |
 | Aggiornamenti diretti dal sito :: Aggiornamenti dalla Bacheca di WordPress (Bacheca → Aggiornamenti), con le novità in italiano in «Visualizza i dettagli», anche per il plugin gratuito finché non è su WordPress.org | ✓ | ✓ | ✓ |
-| Testi personalizzabili :: Testi personalizzabili, tipo di ente e termini | — | ✓ | ✓ |
+| Testi personalizzabili :: Con tipo di ente e termini | — | ✓ | ✓ |
 | Lingue aggiuntive :: Inglese incluso | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
 | Copie di sicurezza firmate :: Una copia modificata viene rifiutata; una copia di un altro sito si ripristina con conferma scritta e password | ✓ | ✓ | ✓ |
-| Quota già pagata nell'anno :: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
 | Cifratura dei file riservati :: Documenti e scansioni, allegati dei movimenti e foto dell'inventario si cifrano, con la frase per riaprirli | ✓ | ✓ | ✓ |
-| Cifratura di certificati, giustificativi e ricevute :: Cifratura anche di certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
+| Cifratura di certificati, giustificativi e ricevute :: Anche per certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
 | Controllo della cartella dei file riservati :: Controlla che la cartella dei file riservati non sia raggiungibile da internet | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
 | Registro azioni con spazio occupato, «Libera spazio» e pulizia automatica | ✓ | ✓ | ✓ |
@@ -190,7 +190,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Prova gratuita del Pro | ✓ | — | — |
 | Prezzo | 0 € per sempre | {lite_month} al mese o {lite_year} all'anno | {full_month} al mese o {full_year} all'anno |
 
-> I prezzi e i piani sono sempre aggiornati nella sezione **Prezzi** della home. Se la licenza non è in regola restano le funzioni del piano gratuito: i dati non si toccano.
+> I prezzi e i piani sono sempre aggiornati nella pagina **Prezzi**. Se la licenza non è in regola restano le funzioni del piano gratuito: i dati non si toccano.
 
 ## Passare da una versione all'altra
 

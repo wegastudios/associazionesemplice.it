@@ -21,7 +21,7 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 
 ## Importa
 
-1. Vai in **Soci → Importa da Excel/CSV**.
+1. Vai in **Strumenti → Importa da Excel/CSV**.
 2. Carica il file.
 3. Controlla l'**anteprima**: gli eventuali errori indicano il numero di riga del foglio.
 4. Conferma l'importazione.
@@ -108,7 +108,7 @@ Ai non soci è consentito partecipare solo poche volte: oltre, anche per ragioni
 
 ## Cosa fare
 
-1. Per impostare la soglia vai in **Impostazioni → Ospiti** (0 = nessuna segnalazione).
+1. Per impostare la soglia vai in **Impostazioni → Soci e quote** (0 = nessuna segnalazione).
 2. Nell'elenco persone usa il filtro **Solo ospiti da invitare a iscriversi**.
 3. Apri la scheda dell'ospite: vedi a cosa è già venuto e puoi scrivergli su WhatsApp con un messaggio d'invito già pronto.
 4. Per trasformarlo in socio premi **Iscrivi come socio** (serve l'email). La scheda resta la stessa: eventi, corsi e pagamenti già registrati restano collegati.

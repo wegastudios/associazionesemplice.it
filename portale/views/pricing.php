@@ -10,7 +10,7 @@ $copy = array(
 		'Prima nota con cassa unica, spese e donazioni PayPal',
 		'Anni fiscali: apertura e chiusura',
 		'Verbali, informativa privacy e consensi',
-		'Area riservata dei soci e ruoli della segreteria',
+		'Area soci e ruoli della segreteria',
 		'Importazione ed esportazione degli elenchi',
 		'Copia di sicurezza dei dati',
 	) ),
@@ -72,7 +72,7 @@ $copy = array(
 			<?php if ( 'free' === $code ) : ?>
 				<a class="btn alt block" href="/free">Inizia gratis</a>
 			<?php else : ?>
-				<?php if ( ! \Portale\Billing::paymentsOn() ) : ?><a class="btn alt block" href="/free">Avvisami quando si può acquistare</a><?php else : ?>
+				<?php if ( ! \Portale\Billing::paymentsOn() ) : ?><a class="btn alt block" href="/free">Intanto parti dal gratuito</a><?php else : ?>
 				<?php if ( $m ) : ?><a class="btn<?php echo $hot ? '' : ' alt'; ?> block only-month" href="/acquista?plan=<?php echo e( \Portale\Site::slug( $code ) ); ?>&amp;period=month">Scegli <?php echo e( $p['label'] ); ?></a><?php endif; ?>
 				<?php if ( $y ) : ?><a class="btn<?php echo $hot ? '' : ' alt'; ?> block only-year" href="/acquista?plan=<?php echo e( \Portale\Site::slug( $code ) ); ?>&amp;period=year">Scegli <?php echo e( $p['label'] ); ?></a><?php endif; ?>
 				<?php endif; ?>
