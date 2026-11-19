@@ -10,7 +10,7 @@ const send = (apply) => {
     form.post('/gestionale/soci/importa', { forceFormData: true, preserveState: true, preserveScroll: true });
 };
 const badge = { create: 'bg-salvia/15', update: 'bg-surface', error: 'bg-danger/15 text-danger' };
-const label = { create: 'nuova', update: 'aggiorna', error: 'errore' };
+const label = { create: 'nuova', update: 'da aggiornare', error: 'errore' };
 const field = 'field';
 </script>
 
@@ -21,8 +21,8 @@ const field = 'field';
         <h1 class="mb-4 text-2xl font-bold">Importa soci da Excel o CSV</h1>
 
         <section v-if="result" class="mb-6 card p-4 sm:p-5" role="status">
-            <h2 class="mb-2 text-lg font-bold">Import completato</h2>
-            <p>{{ result.created }} schede nuove, {{ result.updated }} aggiornate, {{ result.memberships }} tessere registrate, {{ result.guardians }} tutori collegati.</p>
+            <h2 class="mb-2 text-lg font-bold">Importazione completata</h2>
+            <p>{{ result.created }} {{ result.created === 1 ? 'scheda nuova' : 'schede nuove' }}, {{ result.updated }} {{ result.updated === 1 ? 'aggiornata' : 'aggiornate' }}, {{ result.memberships }} {{ result.memberships === 1 ? 'tessera registrata' : 'tessere registrate' }}, {{ result.guardians }} {{ result.guardians === 1 ? 'tutore collegato' : 'tutori collegati' }}.</p>
             <template v-if="result.failed.length">
                 <p class="mt-3 font-semibold text-danger">Righe non importate:</p>
                 <ul class="list-disc pl-5 text-sm"><li v-for="f in result.failed" :key="f">{{ f }}</li></ul>
@@ -44,14 +44,14 @@ const field = 'field';
                 <label class="space-y-1"><span class="block font-semibold">Tipo se la colonna «Tipo» manca</span>
                     <select v-model="form.default_type" :class="field"><option v-for="t in types" :key="t.value" :value="t.value">{{ t.label }}</option></select>
                 </label>
-                <label class="flex items-center gap-2 self-end"><input v-model="form.mark_current" type="checkbox" /> Registra a tutti i soci la tessera dell'anno in corso (senza incasso)</label>
+                <label class="flex items-center gap-2 self-end"><input v-model="form.mark_current" type="checkbox" /> Registra a tutti i soci la tessera dell'anno fiscale in corso (senza incasso)</label>
                 <div class="sm:col-span-2"><button type="submit" class="btn btn-secondary" :disabled="!form.file || form.processing">Mostra l'anteprima</button></div>
             </form>
         </section>
 
         <section v-if="preview" class="mt-6 card p-4 sm:p-5" aria-labelledby="preview-title">
             <h2 id="preview-title" class="mb-2 text-lg font-bold">Anteprima</h2>
-            <p class="mb-3 text-sm">{{ preview.create }} nuove · {{ preview.update }} da aggiornare · {{ preview.error }} con errori<template v-if="preview.sheets.length > 1"> · fogli: {{ preview.sheets.join(', ') }}</template></p>
+            <p class="mb-3 text-sm">{{ preview.create }} {{ preview.create === 1 ? 'nuova' : 'nuove' }} · {{ preview.update }} da aggiornare · {{ preview.error }} {{ preview.error === 1 ? 'con errore' : 'con errori' }}<template v-if="preview.sheets.length > 1"> · fogli: {{ preview.sheets.join(', ') }}</template></p>
             <div class="max-h-[28rem] overflow-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="sticky top-0 bg-card"><tr class="text-muted"><th class="py-1 pr-3">Riga</th><th class="pr-3">Nome</th><th class="pr-3">Tipo</th><th class="pr-3">Esito</th><th>Note</th></tr></thead>
@@ -70,7 +70,7 @@ const field = 'field';
                 <label class="mt-2 flex items-start gap-2"><input v-model="form.confirm_years" type="checkbox" class="mt-1" /><span>Ho letto cosa succede alle tessere e voglio importarle così.</span></label>
             </div>
             <button type="button" class="mt-4 btn btn-primary" :disabled="form.processing || !(preview.create + preview.update) || (preview.years && !form.confirm_years)" @click="send(true)">
-                Importa {{ preview.create + preview.update }} righe
+                {{ preview.create + preview.update === 1 ? 'Importa 1 riga' : `Importa ${preview.create + preview.update} righe` }}
             </button>
             <p v-if="preview.error" class="mt-2 text-sm text-muted">Le righe con errori si saltano: correggile nel file e ricaricalo quando vuoi.</p>
         </section>

@@ -159,7 +159,7 @@ const label = 'block space-y-1.5 text-sm';
                             <span :class="['grid size-10 shrink-0 place-items-center rounded-full', tints[kind(r)]]"><component :is="icons[kind(r)]" class="size-5" aria-hidden="true" /></span>
                             <span class="min-w-0 flex-1">
                                 <span class="line-clamp-2 font-semibold" :class="r.voided ? 'line-through' : ''">{{ r.description || r.type_label }}</span>
-                                <span class="caption block truncate">{{ r.category }} – {{ r.account }}<template v-if="r.activity"> – {{ r.activity }}</template><template v-if="r.vat"> – {{ r.vat }}</template></span>
+                                <span class="caption block truncate">{{ r.category }} · {{ r.account }}<template v-if="r.activity"> · {{ r.activity }}</template><template v-if="r.vat"> · {{ r.vat }}</template></span>
                             </span>
                             <span class="shrink-0 text-right">
                                 <span class="block font-bold tabular-nums" :class="[kind(r) === 'in' ? 'text-ok-ink' : '', r.voided ? 'line-through' : '']">{{ r.amount }}</span>
@@ -214,7 +214,7 @@ const label = 'block space-y-1.5 text-sm';
         </Sheet>
 
         <!-- Dettaglio di un movimento -->
-        <Sheet v-model="showDetail" :title="detail?.description || detail?.type_label || 'Movimento'" :description="detail ? `${detail.date} – ${detail.category}` : null">
+        <Sheet v-model="showDetail" :title="detail?.description || detail?.type_label || 'Movimento'" :description="detail ? `${detail.date} · ${detail.category}` : null">
             <template v-if="detail">
                 <p class="mb-4 text-3xl font-bold tabular-nums" :class="[kind(detail) === 'in' ? 'text-ok-ink' : '', detail.voided ? 'line-through' : '']">{{ detail.amount }}</p>
                 <dl class="mb-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
@@ -222,7 +222,7 @@ const label = 'block space-y-1.5 text-sm';
                     <dt class="text-muted">Modalità</dt><dd class="font-semibold">{{ detail.method }}</dd>
                     <template v-if="detail.vat"><dt class="text-muted">IVA</dt><dd class="font-semibold">{{ detail.vat }}</dd></template>
                     <template v-if="detail.activity"><dt class="text-muted">Attività</dt><dd class="font-semibold">{{ detail.activity }}</dd></template>
-                    <template v-if="detail.voided"><dt class="text-muted">Stornato</dt><dd class="font-semibold">{{ detail.void_reason }}</dd></template>
+                    <template v-if="detail.voided"><dt class="text-muted">Motivo dello storno</dt><dd class="font-semibold">{{ detail.void_reason }}</dd></template>
                 </dl>
                 <div v-if="detail.receipt && !detail.voided" class="mb-4 flex flex-wrap gap-2">
                     <a :href="`/gestionale/ricevute/${detail.receipt_id}.pdf`" target="_blank" class="btn btn-secondary flex-1"><FileText class="size-5" aria-hidden="true" />Ricevuta {{ detail.receipt }}</a>

@@ -40,7 +40,7 @@ const field = 'field';
         </section>
         <section v-if="own" class="card p-4 sm:p-5 text-sm">
             <h2 class="mb-2 text-lg font-bold">Accessi</h2>
-            <p class="mb-3 text-muted">Hai perso il telefono o sei entrato da un computer non tuo? Esci da tutti i dispositivi.</p>
+            <p class="mb-3 text-muted">Hai perso il telefono o hai usato un computer non tuo? Esci da tutti i dispositivi.</p>
             <Link href="/area/esci-ovunque" method="post" as="button" class="btn btn-danger">Esci da tutti i dispositivi</Link>
         </section>
     </MemberLayout>

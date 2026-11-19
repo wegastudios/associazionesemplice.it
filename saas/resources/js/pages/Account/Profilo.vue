@@ -76,7 +76,7 @@ const when = (iso) => new Date(iso).toLocaleString('it-IT', { dateStyle: 'medium
 
             <section class="card p-4 sm:p-5 space-y-3" aria-labelledby="p-2fa">
                 <h2 id="p-2fa" class="text-lg font-bold">Verifica in due passaggi</h2>
-                <p class="text-muted">{{ props.twoFactor ? 'È attiva: a ogni accesso ti chiediamo un codice dall’app sul telefono.' : 'Non è ancora attiva.' }}</p>
+                <p class="text-muted">{{ props.twoFactor ? 'È attiva: a ogni accesso ti viene chiesto un codice dall’app sul telefono.' : 'Non è ancora attiva.' }}</p>
                 <Link href="/account/verifica-in-due-passaggi" class="btn btn-secondary">{{ props.twoFactor ? 'Gestisci' : 'Attivala' }}</Link>
             </section>
 

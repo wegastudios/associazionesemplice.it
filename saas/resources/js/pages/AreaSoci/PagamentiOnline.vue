@@ -30,13 +30,13 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
     <Head title="Pagamenti online" />
     <AppLayout>
         <h1 class="mb-1 text-2xl font-bold">Pagamenti online</h1>
-        <p class="mb-6 text-sm text-muted">I soci pagano dall'area soci con il conto Stripe o PayPal dell'associazione: i soldi arrivano a voi, senza commissioni nostre. Ogni pagamento va da solo in prima nota con la ricevuta.</p>
+        <p class="mb-6 text-sm text-muted">I soci pagano dall'area soci con il conto Stripe o PayPal dell'associazione: i soldi arrivano direttamente all'associazione. Ogni pagamento va da solo in prima nota con la ricevuta.</p>
 
         <form v-if="canSettings" class="mb-6 card p-4 sm:p-5" @submit.prevent="save">
             <h2 class="mb-3 text-lg font-bold">Conti</h2>
             <label class="mb-4 block max-w-sm space-y-1 text-sm"><span class="font-semibold">Conto della prima nota per gli incassi online</span>
                 <select v-model="form.account_id" :class="field"><option value="">scegli</option><option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option></select>
-                <span class="text-muted">Di solito un conto «Stripe» o «PayPal» di tipo banca, da girocontare quando arrivano i bonifici.</span></label>
+                <span class="text-muted">Di solito un conto «Stripe» o «PayPal» di tipo banca: quando arriva il bonifico, registra un giroconto verso la banca.</span></label>
             <div class="grid gap-6 lg:grid-cols-2">
                 <fieldset class="space-y-3 rounded-lg border border-line p-4 text-sm">
                     <legend class="px-1 font-bold">Stripe (carte)</legend>
@@ -54,7 +54,7 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                     <label class="flex items-center gap-2"><input v-model="form.paypal_enabled" type="checkbox" /> Attivo</label>
                     <label class="block space-y-1"><span class="font-semibold">Client ID</span><input v-model="form.paypal_client_id" autocomplete="off" :class="field" /></label>
                     <label class="block space-y-1"><span class="font-semibold">Segreto</span><input v-model="form.paypal_secret" type="password" autocomplete="off" :class="field" :placeholder="s.paypal_secret_set ? 'impostato: scrivi per cambiarlo' : ''" /></label>
-                    <label class="flex items-center gap-2"><input v-model="form.paypal_live" type="checkbox" /> Conto reale (togli per la prova «sandbox»)</label>
+                    <label class="flex items-center gap-2"><input v-model="form.paypal_live" type="checkbox" /> Conto reale (togli la spunta per fare prove)</label>
                     <div class="flex flex-wrap gap-3">
                         <button type="button" class="rounded-lg border border-line px-3 py-1.5 font-semibold" @click="test('paypal')">Prova le chiavi</button>
                         <label v-if="s.paypal_secret_set" class="flex items-center gap-1 text-danger"><input v-model="form.forget" type="checkbox" value="paypal_secret" /> togli il segreto</label>
@@ -72,7 +72,7 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
             <h2 id="l" class="mb-3 text-lg font-bold">Pagamenti dei soci</h2>
             <p v-if="!payments.length" class="text-sm text-muted">Nessun pagamento online.</p>
             <table v-else class="w-full text-sm">
-                <thead class="text-left text-muted"><tr><th class="py-2 pr-3">Data</th><th class="pr-3">Socio</th><th class="pr-3">Voci</th><th class="pr-3">Importo</th><th class="pr-3">Stato</th><th>Ricevute</th></tr></thead>
+                <thead class="text-left text-muted"><tr><th class="py-2 pr-3">Data</th><th class="pr-3">Socio</th><th class="pr-3">Cosa ha pagato</th><th class="pr-3">Importo</th><th class="pr-3">Stato</th><th>Ricevute</th></tr></thead>
                 <tbody>
                     <tr v-for="p in payments" :key="p.id" class="border-t border-line align-top">
                         <td class="whitespace-nowrap py-2 pr-3 tabular-nums">{{ p.date }}</td>
@@ -80,10 +80,10 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                         <td class="pr-3">{{ p.items }}<p v-if="p.error" class="text-xs text-danger">{{ p.error }}</p></td>
                         <td class="whitespace-nowrap pr-3 tabular-nums">{{ p.amount }} <span class="text-muted">{{ p.provider }}</span></td>
                         <td class="whitespace-nowrap pr-3"><span :class="p.status === 'review' ? 'font-semibold text-danger' : ''">{{ states[p.status] ?? p.status }}</span>
-                            <button v-if="p.status === 'review' && canAccounting" type="button" class="ml-2 text-accent hover:underline" @click="reviewed(p)">controllato</button></td>
+                            <button v-if="p.status === 'review' && canAccounting" type="button" class="ml-2 text-accent hover:underline" @click="reviewed(p)">Segna come controllato</button>
                             <button v-if="p.status === 'review' && canRefund && p.refundable > 0" type="button" class="ml-2 text-accent hover:underline" @click="refund(p)">rimborsa</button>
                             <button v-if="canRefund && p.voidable" type="button" class="ml-2 text-accent hover:underline" @click="refundVoid(p)">rimborsa e storna</button>
-                            <p v-if="p.refunded !== '0,00 €' && p.refunded !== '0,00'" class="text-xs text-muted">restituiti {{ p.refunded }}</p>
+                            <p v-if="p.refunded !== '0,00 €' && p.refunded !== '0,00'" class="text-xs text-muted">restituiti {{ p.refunded }}</p></td>
                         <td>{{ p.receipts }}</td>
                     </tr>
                 </tbody>

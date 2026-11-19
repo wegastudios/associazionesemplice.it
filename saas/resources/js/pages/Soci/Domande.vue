@@ -43,7 +43,7 @@ const field = 'field';
         <section v-if="canSettings" class="mt-6 card p-4 sm:p-5" aria-labelledby="settings-title">
             <h2 id="settings-title" class="mb-3 text-lg font-bold">Domande online e promemoria</h2>
             <form class="grid gap-4 text-sm sm:grid-cols-2" @submit.prevent="saveSettings">
-                <label class="flex items-center gap-2 sm:col-span-2"><input v-model="settingsForm.applications_enabled" type="checkbox" /> Accetta domande di adesione online</label>
+                <label class="flex items-center gap-2 sm:col-span-2"><input v-model="settingsForm.applications_enabled" type="checkbox" /> Ricevi le domande di adesione online</label>
                 <p v-if="formUrl && settingsForm.applications_enabled" class="sm:col-span-2 text-muted">Indirizzo del modulo da pubblicare sul sito: <a :href="formUrl" class="font-semibold text-accent hover:underline" target="_blank" rel="noopener">{{ formUrl }}</a></p>
                 <label class="flex items-center gap-2 sm:col-span-2"><input v-model="settingsForm.applications_rules" type="checkbox" /> Chiedi di accettare il regolamento</label>
                 <label class="space-y-1"><span class="block font-semibold">Indirizzo dell'informativa privacy</span><input v-model="settingsForm.privacy_url" type="url" placeholder="https://" :class="field" /><span v-if="settingsForm.errors.privacy_url" class="text-danger">{{ settingsForm.errors.privacy_url }}</span></label>

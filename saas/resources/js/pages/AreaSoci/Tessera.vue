@@ -33,8 +33,8 @@ defineProps({ card: Object, qr: String, member: Object, due: { type: Object, def
                 <div v-if="qr" class="mx-auto mt-5 w-full max-w-60 rounded-2xl bg-white p-3" v-html="qr" />
                 <p class="mt-3 text-center text-[13px] text-white/80">Mostra il codice all'ingresso: chi lo legge vede se la tessera è valida.</p>
             </template>
-            <p v-else class="mt-4 text-sm text-white/85">Non è una tessera da socio: qui trovi eventi, quote e ricevute.</p>
-            <p v-if="card.left" class="mt-3 rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold">Risulti uscito dall'associazione.</p>
+            <p v-else class="mt-4 text-sm text-white/85">Questa scheda non ha la tessera: qui trovi eventi, quote e ricevute.</p>
+            <p v-if="card.left" class="mt-3 rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold">Non fai più parte dell'associazione.</p>
         </section>
     </MemberLayout>
 </template>

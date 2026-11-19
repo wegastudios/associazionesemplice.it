@@ -24,7 +24,7 @@ const invite = useForm({ email: '', name: '', choice: 'operator' });
 const sendInvite = () => invite.transform((d) => ({ email: d.email, name: d.name, ...split(d.choice) }))
     .post('/gestionale/operatori', { preserveScroll: true, onSuccess: () => invite.reset() });
 const changeRole = (o, v) => router.put(`/gestionale/operatori/${o.user_id}`, split(v), { preserveScroll: true });
-const remove = (o) => { if (confirm(`Togliere ${o.name} dall'associazione?`)) router.delete(`/gestionale/operatori/${o.user_id}`, { preserveScroll: true }); };
+const remove = (o) => { if (confirm(`Togliere ${o.name} dagli operatori? Non potrà più entrare nel gestionale di questa associazione.`)) router.delete(`/gestionale/operatori/${o.user_id}`, { preserveScroll: true }); };
 
 const editing = ref(null);
 const role = useForm({ name: '', abilities: [] });
@@ -78,11 +78,12 @@ const field = 'field';
                 </li>
             </ul>
             <form class="mt-4 grid gap-3 border-t border-line pt-4 text-sm sm:grid-cols-[2fr_2fr_2fr_auto]" @submit.prevent="sendInvite">
+                <p class="font-semibold sm:col-span-4">Invita un operatore: riceverà un'email di invito.</p>
                 <label class="space-y-1"><span class="block font-semibold">Nome</span><input v-model="invite.name" :class="field" required maxlength="120" /></label>
                 <label class="space-y-1"><span class="block font-semibold">Email</span><input v-model="invite.email" type="email" :class="field" required /></label>
                 <label class="space-y-1"><span class="block font-semibold">Ruolo</span>
                     <select v-model="invite.choice" :class="field"><option v-for="c in choices" :key="c.value" :value="c.value">{{ c.label }}</option></select></label>
-                <button type="submit" class="self-end btn btn-primary" :disabled="invite.processing">Invita</button>
+                <button type="submit" class="self-end btn btn-primary" :disabled="invite.processing">Manda l'invito</button>
                 <p v-if="invite.errors.email" class="text-danger sm:col-span-4">{{ invite.errors.email }}</p>
             </form>
         </section>
@@ -92,7 +93,7 @@ const field = 'field';
                 <h2 id="roles-title" class="text-lg font-bold">Ruoli dell'associazione</h2>
                 <button v-if="editing === null" type="button" class="btn btn-secondary btn-sm" @click="startRole(null)">Nuovo ruolo</button>
             </div>
-            <p class="mb-3 text-sm text-muted">Per segretari, consiglieri, tesorieri… con i permessi che scegli. Abbonamento, impostazioni e operatori restano a titolare e amministratore.</p>
+            <p class="mb-3 text-sm text-muted">Ruoli su misura (segretario, consigliere, tesoriere…) con i permessi che scegli. Abbonamento, impostazioni e operatori restano a titolare e amministratore.</p>
 
             <form v-if="editing !== null" class="mb-4 space-y-3 rounded-lg border border-line p-4 text-sm" @submit.prevent="saveRole">
                 <label class="block max-w-md space-y-1"><span class="font-semibold">Nome del ruolo</span><input v-model="role.name" :class="field" required maxlength="60" placeholder="es. Consigliere" /></label>
@@ -107,7 +108,7 @@ const field = 'field';
                 </div>
             </form>
 
-            <p v-if="!roles.length && editing === null" class="text-sm text-muted">Nessun ruolo personalizzato.</p>
+            <p v-if="!roles.length && editing === null" class="text-sm text-muted">Nessun ruolo dell'associazione.</p>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="r in roles" :key="r.id" class="py-3">
                     <div class="flex flex-wrap items-center gap-3">

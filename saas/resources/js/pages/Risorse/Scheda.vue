@@ -138,8 +138,8 @@ const label = 'space-y-1 text-sm';
                     <label v-if="resource.typology === 'hourly'" :class="label"><span class="font-semibold">Fasce</span>
                         <select v-model="book.units" :class="field"><option v-for="n in resource.max_slots" :key="n" :value="n" :disabled="n < resource.min_slots">{{ n }}</option></select></label>
                     <label v-if="resource.typology === 'daily'" :class="label"><span class="font-semibold">Giorni</span><input v-model.number="book.units" type="number" min="1" max="31" :class="field" /></label>
-                    <label v-if="resource.typology === 'hourly'" :class="label"><span class="font-semibold">Ogni settimana per</span>
-                        <select v-model="book.weeks" :class="field"><option :value="1">solo questa volta</option><option v-for="n in [2, 4, 8, 12, 16, 26, 52]" :key="n" :value="n">{{ n }} settimane</option></select></label>
+                    <label v-if="resource.typology === 'hourly'" :class="label"><span class="font-semibold">Si ripete</span>
+                        <select v-model="book.weeks" :class="field"><option :value="1">no, solo questa volta</option><option v-for="n in [2, 4, 8, 12, 16, 26, 52]" :key="n" :value="n">ogni settimana, per {{ n }} settimane</option></select></label>
                     <label v-if="resource.guests_max > 0" :class="[label, 'sm:col-span-2']"><span class="font-semibold">Ospiti (massimo {{ resource.guests_max }})</span><input v-model="book.guests" :class="field" placeholder="nomi separati da virgola" /></label>
                     <div v-if="resource.service_list.length" :class="[label, 'sm:col-span-2']"><span class="font-semibold">Servizi aggiuntivi</span>
                         <div class="flex flex-wrap gap-3 pt-1"><label v-for="s in resource.service_list" :key="s.name" class="flex items-center gap-1"><input v-model="book.services" type="checkbox" :value="s.name" /> {{ s.label }}</label></div>
@@ -157,7 +157,7 @@ const label = 'space-y-1 text-sm';
 
         <section v-if="resource" class="mb-6 card p-4 sm:p-5" aria-labelledby="next-title">
             <h2 id="next-title" class="mb-3 text-lg font-bold">{{ resource.typology === 'seasonal' ? 'Assegnazioni' : 'Prossime prenotazioni' }}</h2>
-            <p v-if="!resource.upcoming.length" class="text-sm text-muted">Nessuna.</p>
+            <p v-if="!resource.upcoming.length" class="text-sm text-muted">{{ resource.typology === 'seasonal' ? 'Nessuna assegnazione.' : 'Nessuna prenotazione.' }}</p>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="b in resource.upcoming" :key="b.id" class="py-3">
                     <div class="flex flex-wrap items-center gap-3">
@@ -172,8 +172,8 @@ const label = 'space-y-1 text-sm';
                         </template>
                         <span class="ml-auto flex gap-3">
                             <button v-if="canEdit && canAccounting && !b.block && b.due > 0" type="button" class="font-semibold text-accent hover:underline" @click="startPay(b)">Incassa</button>
-                            <button v-if="canEdit" type="button" class="text-danger hover:underline" @click="cancel(b)">Annulla</button>
-                            <button v-if="canEdit && b.series" type="button" class="text-danger hover:underline" @click="cancel(b, true)">Annulla le successive</button>
+                            <button v-if="canEdit" type="button" class="text-danger hover:underline" @click="cancel(b)">Annulla prenotazione</button>
+                            <button v-if="canEdit && b.series" type="button" class="text-danger hover:underline" @click="cancel(b, true)">Annulla questa e le successive</button>
                         </span>
                     </div>
                     <p v-if="b.guests || b.services || (b.note && !b.block)" class="mt-1 text-xs text-muted">
@@ -209,7 +209,7 @@ const label = 'space-y-1 text-sm';
                 <label class="space-y-1 text-sm"><span class="block font-semibold">Note</span><input v-model="wait.note" :class="field" maxlength="255" placeholder="es. barca 8 m" /></label>
                 <button type="submit" class="btn btn-secondary" :disabled="!wait.person_id || wait.processing">Aggiungi</button>
             </form>
-            <p class="mt-2 text-xs text-muted">Quando la risorsa viene assegnata a chi è in lista, esce dalla lista da sola.</p>
+            <p class="mt-2 text-xs text-muted">Chi riceve la risorsa esce dalla lista in automatico.</p>
         </section>
 
         <section v-if="resource && canEdit && !resource.archived" class="mb-6 card p-4 sm:p-5" aria-labelledby="block-title">
@@ -235,8 +235,8 @@ const label = 'space-y-1 text-sm';
                     <label :class="label"><span class="font-semibold">Apre alle</span><input v-model="form.open_time" type="time" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Chiude alle</span><input v-model="form.close_time" type="time" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Minuti per fascia</span><input v-model.number="form.slot_minutes" type="number" min="5" max="1440" :class="field" /></label>
-                    <label :class="label"><span class="font-semibold">Fasce minime di seguito</span><input v-model.number="form.min_slots" type="number" min="1" max="48" :class="field" /></label>
-                    <label :class="label"><span class="font-semibold">Fasce massime di seguito</span><input v-model.number="form.max_slots" type="number" min="1" max="48" :class="field" /></label>
+                    <label :class="label"><span class="font-semibold">Minimo di fasce per prenotazione</span><input v-model.number="form.min_slots" type="number" min="1" max="48" :class="field" /></label>
+                    <label :class="label"><span class="font-semibold">Massimo di fasce per prenotazione</span><input v-model.number="form.max_slots" type="number" min="1" max="48" :class="field" /></label>
                 </template>
                 <label v-if="!seasonal" :class="label"><span class="font-semibold">Anticipo massimo (giorni)</span><input v-model.number="form.advance_days" type="number" min="0" max="730" :class="field" /><span class="text-muted">0 = nessun limite; vale per le prenotazioni dei soci</span></label>
                 <template v-if="!seasonal">
@@ -256,9 +256,9 @@ const label = 'space-y-1 text-sm';
                     <span v-if="form.with_vat && !fiscal.includesVat && form.vat_rate > 0" class="text-muted">Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.</span>
                     <span v-else-if="form.with_vat" class="text-muted">Gli importi che scrivi sono finali, con l'IVA compresa.</span>
                 </div>
-                <label v-if="hourly" :class="[label, 'sm:col-span-3']"><span class="font-semibold">Tariffe a fasce</span>
+                <label v-if="hourly" :class="[label, 'sm:col-span-3']"><span class="font-semibold">Tariffe per orario</span>
                     <textarea v-model="form.rates" rows="2" :class="field" placeholder="feriali 18:00-22:00 15,00&#10;weekend 08:00-22:00 20" />
-                    <span class="text-muted">Una per riga: giorni (tutti, feriali, weekend), orario, prezzo a fascia per i soci. Fuori dalle fasce vale la tariffa soci.</span></label>
+                    <span class="text-muted">Una per riga: giorni (tutti, feriali, weekend), orario, prezzo a fascia per i soci. Fuori da questi orari vale la tariffa soci.</span></label>
                 <label v-if="!seasonal" :class="[label, 'sm:col-span-3']"><span class="font-semibold">Servizi aggiuntivi</span>
                     <textarea v-model="form.services" rows="2" :class="field" placeholder="Aperitivo 5,00&#10;Allestimento 30" />
                     <span class="text-muted">Uno per riga, nome e prezzo: si scelgono alla prenotazione.</span></label>
@@ -266,7 +266,7 @@ const label = 'space-y-1 text-sm';
             </fieldset>
             <div v-if="canEdit" class="mt-4 flex flex-wrap gap-3">
                 <button type="submit" class="btn btn-primary" :disabled="form.processing">{{ resource ? 'Salva' : 'Crea la risorsa' }}</button>
-                <button v-if="resource" type="button" class="btn btn-secondary" @click="archive(!resource.archived)">{{ resource.archived ? 'Riattiva' : 'Archivia' }}</button>
+                <button v-if="resource" type="button" class="btn btn-secondary" @click="archive(!resource.archived)">{{ resource.archived ? 'Riapri' : 'Archivia' }}</button>
             </div>
         </form>
     </AppLayout>
