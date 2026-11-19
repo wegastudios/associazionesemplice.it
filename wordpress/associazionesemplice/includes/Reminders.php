@@ -158,7 +158,7 @@ final class Reminders {
 		if ( $with_bank && Bank::enabled() && ! empty( Settings::get( 'bank_in_reminders' ) ) ) {
 			$body .= "\n\n" . Bank::text_block(); // le coordinate per il bonifico, se l'associazione le ha attivate
 		}
-		$text  = 'Ciao ' . $to['name'] . ",\n\n" . $body . "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area riservata: ' . Gatekeeper::area_url() . "\nPer informazioni rivolgiti alla segreteria.";
+		$text  = 'Ciao ' . $to['name'] . ",\n\n" . $body . "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area soci: ' . Gatekeeper::area_url() . "\nPer informazioni rivolgiti alla segreteria.";
 		$ok = (bool) \AssociazioneSemplice\Texts::mail( $to['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $subject, $text );
 		do_action( 'asem_notify_email', (string) $to['email'], $subject, $body ); // notifica sul telefono, se un'estensione la gestisce
 		return $ok;
@@ -241,7 +241,7 @@ final class Reminders {
 			if ( $until >= $today && $until <= $soon ) {
 				$kind = 'membership_soon';
 				$subj = 'La tua tessera sta per scadere';
-				$body = 'la tua tessera associativa scade il ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) . '. Puoi rinnovarla in segreteria o, se attivi, online dall\'area riservata.';
+				$body = 'la tua tessera associativa scade il ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) . '. Puoi rinnovarla in segreteria o, se attivi, online dall\'area soci.';
 			} elseif ( $until < $today && $until >= $ago ) {
 				$kind = 'membership_expired';
 				$subj = 'La tua tessera è scaduta';
@@ -325,7 +325,7 @@ final class Reminders {
 				}
 				$who  = '' !== $to['about'] ? 'per ' . $to['about'] . ' ' : '';
 				$body = 'il corso «' . $a['name'] . '» si rinnova all\'inizio di ' . self::month_name( $target ) . ': ' . $who . 'la mensilità è di ' . Money::format( $fee - $paid )
-					. ( $paid > 0 ? ' (resta da versare)' : '' ) . ". Puoi pagare in segreteria o, se attivo, online dall'area riservata.\nSe non vuoi più frequentare, comunicalo alla segreteria prima dell'inizio del mese. Se hai già pagato, ignora questo messaggio.";
+					. ( $paid > 0 ? ' (resta da versare)' : '' ) . ". Puoi pagare in segreteria o, se attivo, online dall'area soci.\nSe non vuoi più frequentare, comunicalo alla segreteria prima dell'inizio del mese. Se hai già pagato, ignora questo messaggio.";
 				if ( $send && ! self::deliver( $to, (int) $p['id'], 'dues', $ref, 'Rinnovo del corso ' . $a['name'], $body ) ) {
 					continue;
 				}
@@ -365,7 +365,7 @@ final class Reminders {
 			}
 			$who  = '' !== $to['about'] ? 'per ' . $to['about'] . ' ' : '';
 			$body = 'ti ricordiamo la prenotazione ' . $who . 'per «' . $r['activity_name'] . '» domani, ' . ( new \DateTimeImmutable( $r['session_date'] ) )->format( 'd/m/Y' )
-				. ( $r['start_time'] ? ' alle ' . $r['start_time'] : '' ) . ( $r['location'] ? ' — ' . $r['location'] : '' ) . '. Se non puoi venire, annulla dall\'area riservata (se l\'evento lo permette).';
+				. ( $r['start_time'] ? ' alle ' . $r['start_time'] : '' ) . ( $r['location'] ? ' — ' . $r['location'] : '' ) . '. Se non puoi venire, annulla dall\'area soci (se l\'evento lo permette).';
 			if ( $send && ! self::deliver( $to, (int) $p['id'], 'event', (string) $r['session_id'], 'Domani: ' . $r['activity_name'], $body ) ) {
 				continue;
 			}

@@ -452,7 +452,7 @@ final class Actions {
 		return 'Nessun ingresso da annullare per ' . $name . '.';
 	}
 
-	/** Iscrizione di un nuovo socio ordinario dall'area riservata (tesoriere): bastano nome e cognome, il resto si completa dopo. */
+	/** Iscrizione di un nuovo socio ordinario dall'area soci (tesoriere): bastano nome e cognome, il resto si completa dopo. */
 	public static function do_new_member( array $post ): string {
 		self::require_cap( 'asem_register_member', 0 );
 		$first = trim( sanitize_text_field( (string) ( $post['first_name'] ?? '' ) ) );
@@ -483,7 +483,7 @@ final class Actions {
 		return 'Socio registrato: ' . Plugin::people()->full_name( $p ) . ( ! empty( $p['card_number'] ) ? ' (tessera n. ' . $p['card_number'] . ')' : '' ) . '. Ora puoi incassare la quota associativa.';
 	}
 
-	/** Incasso del tesoriere dall'area riservata. */
+	/** Incasso del tesoriere dall'area soci. */
 	public static function do_collect( array $post ): string {
 		self::require_cap( 'asem_collect', 0 );
 		$ledger = Plugin::ledger();

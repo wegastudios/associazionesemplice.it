@@ -153,7 +153,7 @@ final class AssembliesPage {
 		} else {
 			echo '<p>Nessuna delega.</p>';
 		}
-		echo '<p class="description">Ogni socio può avere al massimo ' . (int) AssemblyRules::max_proxies( count( $people ) ) . ' deleghe. I soci possono delegare anche dalla loro area riservata; qui registri una delega scritta ricevuta in segreteria.</p>';
+		echo '<p class="description">Ogni socio può avere al massimo ' . (int) AssemblyRules::max_proxies( count( $people ) ) . ' deleghe. I soci possono delegare anche dalla loro area soci; qui registri una delega scritta ricevuta in segreteria.</p>';
 		Ui::form_open( 'asem_assembly_proxy_add', self::back( $id ) );
 		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p>Chi delega ' . Ui::person_select( 'delegator_id', $people, null, '— scegli —', 'asem-delegator' ) . ' delega ' . Ui::person_select( 'delegate_id', $people, null, '— scegli —', 'asem-delegate' ) . ' '; // phpcs:ignore WordPress.Security.EscapeOutput

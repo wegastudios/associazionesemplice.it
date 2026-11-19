@@ -8,7 +8,7 @@ use AssociazioneSemplice\Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Viste delle convenzioni: per i soci in regola (area riservata, `[associazionesemplice_convenzioni_soci]`) e l'elenco pubblico (`[associazionesemplice_convenzioni]`). */
+/** Viste delle convenzioni: per i soci in regola (area soci, `[associazionesemplice_convenzioni_soci]`) e l'elenco pubblico (`[associazionesemplice_convenzioni]`). */
 final class BlockFViews {
 
 	public static function register(): void {

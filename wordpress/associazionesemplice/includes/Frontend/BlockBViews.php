@@ -8,7 +8,7 @@ use AssociazioneSemplice\Polls;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Viste per i soci: votazioni e documenti (nell'area riservata); elenco pubblico dei documenti. */
+/** Viste per i soci: votazioni e documenti (nell'area soci); elenco pubblico dei documenti. */
 final class BlockBViews {
 
 	public static function register(): void {

@@ -20,7 +20,7 @@ final class MemberAccessChoice {
 	public static function html(): string {
 		$wp   = Settings::member_wp_users();
 		$html = '<input type="hidden" name="wpusers_present" value="1">'
-			. '<p class="asem-wiz-q"><strong>Come entrano i soci nell\'area riservata?</strong></p>'
+			. '<p class="asem-wiz-q"><strong>Come entrano i soci nell\'area soci?</strong></p>'
 			. '<p><label><input type="radio" name="member_wp_users" value="0"' . checked( ! $wp, true, false ) . '> <strong>Con un accesso proprio del plugin, senza utente WordPress</strong> (consigliato)</label></p>'
 			. '<ul style="margin:0 0 12px 22px;list-style:disc">'
 			. '<li><strong>Vantaggi.</strong> I soci entrano con email e password proprie, che scelgono alla prima entrata e restano nel plugin: non sono utenti del tuo sito, quindi non hanno una pagina di accesso di WordPress da attaccare, non compaiono nell\'elenco utenti e non possono toccare niente fuori dall\'area soci. Le password del sito restano solo di chi lo gestisce. Chi dimentica la password riceve per email un link che gli fa scegliere una nuova password, e chi preferisce può entrare con un link o un codice senza password.</li>'

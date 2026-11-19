@@ -198,7 +198,7 @@ final class ActivitiesPage {
 		}
 		$on = $a && ! empty( $a['booking_qr'] );
 		return '<tr class="' . esc_attr( $row_class ) . '"><th>Biglietto QR</th><td><label><input type="checkbox" name="booking_qr" value="1"' . checked( $on, true, false ) . '> Genera un QR per ogni prenotazione</label>'
-			. '<p class="description">Chi prenota (e ogni suo ospite) trova nell\'area riservata un QR: scansionandolo all\'ingresso si vede subito se la prenotazione è valida, per quale data e se il contributo è stato versato. Facoltativo, scelta per singolo evento.</p></td></tr>';
+			. '<p class="description">Chi prenota (e ogni suo ospite) trova nell\'area soci un QR: scansionandolo all\'ingresso si vede subito se la prenotazione è valida, per quale data e se il contributo è stato versato. Facoltativo, scelta per singolo evento.</p></td></tr>';
 	}
 
 	/** "Contributo 5,00 € a evento · ospiti 8,00 €" oppure "Gratuito". */
@@ -988,12 +988,12 @@ final class ActivitiesPage {
 		Ui::form_close();
 	}
 
-	/** Avvisi agli iscritti: modulo di invio e ultimi avvisi (i volontari li inviano dall'area riservata). */
+	/** Avvisi agli iscritti: modulo di invio e ultimi avvisi (i volontari li inviano dall'area soci). */
 	private static function notices_card( array $activity, string $back ): void {
 		$id    = (int) $activity['id'];
 		$count = count( \AssociazioneSemplice\Notices::recipients( $id ) );
-		echo '<div class="asem-card"><h2>Avvisi agli iscritti</h2><p class="description">Arrivano per email a chi è iscritto (ora ' . (int) $count . ' persone) e restano nella bacheca dell\'area riservata. '
-			. 'Il referente e lo staff dell\'evento li inviano dalla propria area riservata.</p>';
+		echo '<div class="asem-card"><h2>Avvisi agli iscritti</h2><p class="description">Arrivano per email a chi è iscritto (ora ' . (int) $count . ' persone) e restano nella bacheca dell\'area soci. '
+			. 'Il referente e lo staff dell\'evento li inviano dalla propria area soci.</p>';
 		Ui::form_open( 'asem_send_notice', $back );
 		echo wp_kses( Ui::hidden( 'activity_id', $id )
 			. '<p><input type="text" name="subject" class="large-text" maxlength="' . \AssociazioneSemplice\Notices::MAX_SUBJECT . '" placeholder="Titolo" required></p>'
@@ -1011,14 +1011,14 @@ final class ActivitiesPage {
 		echo '</div>';
 	}
 
-	/** Soci abilitati a gestire l'evento (lista prenotati e registrazione ingressi dall'area riservata), oltre al referente. */
+	/** Soci abilitati a gestire l'evento (lista prenotati e registrazione ingressi dall'area soci), oltre al referente. */
 	private static function staff_card( array $activity, string $back ): void {
 		$id    = (int) $activity['id'];
 		$svc   = Plugin::activities();
 		$staff = $svc->staff( $id );
 		$in    = array();
 		echo '<div class="asem-card"><h2>Staff dell\'evento (ingressi e cassa)</h2>';
-		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. Con «può incassare sul posto» fanno anche pagare il contributo a chi arriva senza prenotazione (se c\'è posto) e ne registrano l\'ingresso. Il referente e gli amministratori possono già fare tutto questo.</p>';
+		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area soci, solo per questo evento. Con «può incassare sul posto» fanno anche pagare il contributo a chi arriva senza prenotazione (se c\'è posto) e ne registrano l\'ingresso. Il referente e gli amministratori possono già fare tutto questo.</p>';
 		if ( $staff ) {
 			echo '<ul>';
 			foreach ( $staff as $m ) {

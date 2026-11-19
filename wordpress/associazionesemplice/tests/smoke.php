@@ -299,12 +299,12 @@ asem_ok( 404 === asem_rest( $u_admin, '/associazionesemplice/v1/activities/99999
 asem_ok( 200 === asem_rest( $u_ord, "/associazionesemplice/v1/people/$ord" )->get_status() && 403 === asem_rest( $u_ord, "/associazionesemplice/v1/people/$vol" )->get_status(), 'REST people: solo la propria scheda' );
 wp_set_current_user( 1 );
 
-// ---------- Area riservata: i soci restano fuori da wp-admin ----------
+// ---------- Area soci: i soci restano fuori da wp-admin ----------
 wp_set_current_user( $u_ord );
 asem_ok( false === apply_filters( 'show_admin_bar', true ), 'barra di amministrazione nascosta ai soci' );
 wp_set_current_user( 1 );
 asem_ok( true === apply_filters( 'show_admin_bar', true ), 'barra di amministrazione visibile agli amministratori' );
-asem_ok( Gatekeeper::area_url() === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( $u_ord ) ), 'dopo il login il socio va all\'area riservata' );
+asem_ok( Gatekeeper::area_url() === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( $u_ord ) ), 'dopo il login il socio va all\'area soci' );
 asem_ok( '/wp-admin/' === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( 1 ) ), 'l\'amministratore non viene dirottato' );
 asem_ok( '/wp-admin/' === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( $existing_user ) ), 'chi ha altri ruoli non viene dirottato' );
 
@@ -1070,7 +1070,7 @@ asem_ok( class_exists( $ar_bl ), 'aree: blocchi presenti' );
 $as = function ( int $user, string $shortcode, string $pane = '' ) {
 	wp_set_current_user( $user );
 	if ( '' !== $pane ) {
-		$_GET['asemf_vista'] = $pane; // la parte dell'area riservata scelta dal menu laterale
+		$_GET['asemf_vista'] = $pane; // la parte dell'area soci scelta dal menu laterale
 	}
 	$out = do_shortcode( $shortcode );
 	unset( $_GET['asemf_vista'] );
@@ -1532,9 +1532,9 @@ asem_ok( isset( $wz_p2['segreteria'], $wz_p2['tesoriere'], $wz_p2['ingressi'] ) 
 $nm_id   = (int) wp_create_nav_menu( 'Menu prova area' );
 $nm_page = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Pagina area prova' ) );
 set_theme_mod( 'nav_menu_locations', array( 'primary' => $nm_id ) );
-asem_ok( \AssociazioneSemplice\Pages::add_to_menu( $nm_page ) && \AssociazioneSemplice\Pages::add_to_menu( $nm_page ), 'menu del sito: la voce «Area riservata» si aggiunge' );
+asem_ok( \AssociazioneSemplice\Pages::add_to_menu( $nm_page ) && \AssociazioneSemplice\Pages::add_to_menu( $nm_page ), 'menu del sito: la voce «Area soci» si aggiunge' );
 $nm_items = wp_get_nav_menu_items( $nm_id );
-asem_ok( 1 === count( $nm_items ) && 'Area riservata' === $nm_items[0]->title && (int) $nm_items[0]->object_id === $nm_page, 'menu del sito: una sola voce «Area riservata», verso la pagina dell\'area' );
+asem_ok( 1 === count( $nm_items ) && 'Area soci' === $nm_items[0]->title && (int) $nm_items[0]->object_id === $nm_page, 'menu del sito: una sola voce «Area soci», verso la pagina dell\'area' );
 $nm_id2   = (int) wp_create_nav_menu( 'Menu telefono prova' );
 $nm_page2 = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Pagina area telefono' ) );
 wp_update_nav_menu_item( $nm_id2, 0, array( 'menu-item-title' => 'Area', 'menu-item-object' => 'page', 'menu-item-object-id' => $nm_page2, 'menu-item-type' => 'post_type', 'menu-item-status' => 'publish' ) );
@@ -3047,7 +3047,7 @@ foreach ( array( $pdf1, $png1, $png2, $fake ) as $f ) {
 	@unlink( $f );
 }
 
-// ---------- Tesoriere: registra spese dall'area riservata ----------
+// ---------- Tesoriere: registra spese dall'area soci ----------
 wp_set_current_user( 1 );
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $tre_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tina', 'last_name' => 'Tesoriera', 'email' => 'tina.tesoriera@example.com' ) );$u_tre = (int) $people->get( $tre_p )['wp_user_id'];
@@ -3760,10 +3760,10 @@ asem_ok( ! user_can( $u_vol, 'asem_manage_event', $tev ), 'un volontario qualsia
 $acts->update( $tev, array( 'instructor_person_id' => $vol ) );
 asem_ok( user_can( $u_vol, 'asem_manage_event', $tev ) && null !== asem_throws( function () use ( $acts, $tev, $vol ) { $acts->add_staff( $tev, $vol ); } ), 'l\'istruttore gestisce l\'evento per definizione' );
 
-// area riservata: elenco degli eventi e lista dei prenotati
+// area soci: elenco degli eventi e lista dei prenotati
 $list = $as( $u_tre, '[associazionesemplice_ingressi]' );
-asem_ok( false !== strpos( $list, 'Concerto con QR' ) && false !== strpos( $list, 'oggi' ) && false !== strpos( $list, 'asem_session=' ), 'area riservata: il gestore vede i suoi eventi con le date (oggi evidenziato)' );
-asem_ok( false !== strpos( $as( $uq, '[associazionesemplice_ingressi]' ), 'Non gestisci nessun evento' ) && false === strpos( $as( $uq, '[associazionesemplice_area_soci]' ), 'Ingressi agli eventi' ), 'area riservata: chi non gestisce eventi non vede la sezione' );
+asem_ok( false !== strpos( $list, 'Concerto con QR' ) && false !== strpos( $list, 'oggi' ) && false !== strpos( $list, 'asem_session=' ), 'area soci: il gestore vede i suoi eventi con le date (oggi evidenziato)' );
+asem_ok( false !== strpos( $as( $uq, '[associazionesemplice_ingressi]' ), 'Non gestisci nessun evento' ) && false === strpos( $as( $uq, '[associazionesemplice_area_soci]' ), 'Ingressi agli eventi' ), 'area soci: chi non gestisce eventi non vede la sezione' );
 $_GET['asem_session'] = (string) $tev_s;
 $det = $as( $u_tre, '[associazionesemplice_ingressi]' );
 asem_ok( false !== strpos( $det, $guest_row['first_name'] ) && false !== strpos( $det, 'Registra ingresso' ) && false !== strpos( $det, 'data-asemf-scan' ) && false !== strpos( $det, 'Prenotati' ) && false !== strpos( $det, 'Da versare' ), 'lista prenotati: nomi, contributo, pulsante di ingresso e scansione del QR' );
@@ -4122,9 +4122,9 @@ for ( $i = 0; $i < 4; $i++ ) {
 }
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $front, $nc ) { $front::do_notice( array( 'activity_id' => $nc, 'subject' => 'Troppi', 'body' => 'testo' ) ); } ), 'ultime 24 ore' ) && count( $mails ) === $n_before + 12, 'avvisi: oltre 5 al giorno per attività si ferma (contro gli abusi)' );
 
-// bacheca e moduli nell'area riservata
+// bacheca e moduli nell'area soci
 $board = $as( $uq, '[associazionesemplice_area_soci]' );
-asem_ok( false !== strpos( $board, 'Cambio di orario' ) && false !== strpos( $board, 'Laboratorio avvisi' ) && false !== strpos( $board, 'Portate l' ), 'bacheca: l\'iscritto trova l\'avviso nell\'area riservata' );
+asem_ok( false !== strpos( $board, 'Cambio di orario' ) && false !== strpos( $board, 'Laboratorio avvisi' ) && false !== strpos( $board, 'Portate l' ), 'bacheca: l\'iscritto trova l\'avviso nell\'area soci' );
 asem_ok( false !== strpos( $as( $u_f, '[associazionesemplice_avvisi]' ), 'Cambio di orario' ), 'bacheca: il socio vede anche gli avvisi delle attività dei suoi ospiti' );
 asem_ok( false !== strpos( $as( (int) $ida['wp_user_id'], '[associazionesemplice_avvisi]' ), 'Nessun avviso recente' ), 'bacheca: chi non è iscritto non vede avvisi' );
 $vol_html = $as( $u_vol, '[associazionesemplice_area_soci]', 'corsi' ) . $as( $u_vol, '[associazionesemplice_area_soci]', 'eventi' );
@@ -4187,17 +4187,17 @@ $np2 = $people->get( $nm );
 asem_ok( $res['ok'] && $u && 'nora.senzamail@example.com' === $u->user_email && in_array( Plugin::ROLE_MEMBER, (array) $u->roles, true ) && (int) $np2['wp_user_id'] === (int) $u->ID && 'nora.senzamail@example.com' === $np2['email'], 'attivazione: nasce l\'utente WordPress (ruolo socio) con l\'email scelta, collegato al socio' );
 asem_ok( wp_check_password( 'Segreta123!', $u->user_pass, $u->ID ), 'attivazione: la password è quella scelta dal socio' );
 asem_ok( 'done' === $Act::resolve( $param )['status'] && false !== strpos( $Act::page( $param ), 'Attivazione non disponibile' ), 'attivazione: il link non serve più dopo l\'uso' );
-asem_ok( false !== strpos( $as( (int) $u->ID, '[associazionesemplice_tessera]' ), 'Nora' ), 'attivazione: il socio vede subito la sua area riservata' );
+asem_ok( false !== strpos( $as( (int) $u->ID, '[associazionesemplice_tessera]' ), 'Nora' ), 'attivazione: il socio vede subito la sua area soci' );
 asem_ok( in_array( 'person.activated', array_column( Audit::recent( 500 ), 'action' ), true ), 'registro azioni: attivazione tracciata' );
 
 // amministrazione: elenco, filtro e scheda
 wp_set_current_user( 1 );
 $list = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Soloturnessera', array( 'status' => 'noaccess' ) );
 asem_ok( false !== strpos( $list, 'Non è ancora entrato' ) && false === strpos( $list, 'Senzamail' ), 'elenco soci: il filtro "Non è ancora entrato nell\'area soci" mostra chi non si è ancora attivato (non chi l\'ha fatto)' );
-$ed = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Accesso all\'area riservata', array( 'id' => $cm ) );
+$ed = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Accesso all\'area soci', array( 'id' => $cm ) );
 asem_ok( false !== strpos( $ed, 'asem_activate=' ) && false !== strpos( $ed, 'Senza cellulare' ), 'scheda socio senza cellulare: il link da copiare' );
 $people->update( $cm, array( 'phone' => '335 7654321' ) );
-$ed2 = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Accesso all\'area riservata', array( 'id' => $cm ) );
+$ed2 = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Accesso all\'area soci', array( 'id' => $cm ) );
 asem_ok( false !== strpos( $ed2, 'https://wa.me/393357654321?text=' ), 'scheda socio: pulsante WhatsApp con il messaggio di invito' );
 $list2 = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Invia link', array( 'status' => 'noaccess' ) );
 asem_ok( false !== strpos( $list2, 'wa.me/393357654321' ), 'elenco soci: pulsante "Invia link" su WhatsApp accanto a chi è senza accesso' );
@@ -4309,7 +4309,7 @@ $done->setAccessible( true );
 $done->invoke( null, array( 'id' => $unk[0]['id'] ) );
 asem_ok( ! isset( $AR::all()[ $unk[0]['id'] ] ), 'riepilogo: "fatto" chiude la richiesta' );
 asem_ok( false !== strpos( (string) apply_filters( 'login_message', '' ), 'Primo accesso' ) && false !== strpos( (string) apply_filters( 'login_message', '' ), 'asem_first_access=1' ), 'primo accesso: il link compare nella pagina di accesso di WordPress' );
-asem_ok( false !== strpos( $as( 0, '[associazionesemplice_area_soci]' ), 'Primo accesso' ), 'primo accesso: il link compare anche nell\'area riservata, prima di "Password dimenticata"' );
+asem_ok( false !== strpos( $as( 0, '[associazionesemplice_area_soci]' ), 'Primo accesso' ), 'primo accesso: il link compare anche nell\'area soci, prima di "Password dimenticata"' );
 remove_all_filters( 'pre_wp_mail' );
 wp_set_current_user( 1 );
 
@@ -5546,7 +5546,7 @@ try {
 	$threw = true;
 }
 asem_ok( $threw, 'scollega telefono: non per gli ospiti' );
-$dash_links = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Area riservata' );
+$dash_links = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Area soci' );
 asem_ok( false !== strpos( $dash_links, 'https://associazionesemplice.it/account' ) && false !== strpos( $dash_links, 'https://associazionesemplice.it/supporto/accedi' ) && false !== strpos( $dash_links, '>Supporto</a>' ), 'bacheca: collegamenti all\'area riservata e al supporto di associazionesemplice.it' );
 
 // avviso «ci sono aggiornamenti»
@@ -6030,10 +6030,10 @@ foreach ( \AssociazioneSemplice\Levels::all( true ) as $nm_l ) {
 wp_set_current_user( $u_tre );
 $nm_msg = \AssociazioneSemplice\Frontend\Actions::do_new_member( array( 'first_name' => 'Nino', 'last_name' => 'Nuovoiscritto', 'level_id' => (string) $nm_lv ) );
 $nm_found = $people->search( array( 'q' => 'Nuovoiscritto' ) );
-asem_ok( false !== strpos( $nm_msg, 'Socio registrato' ) && 1 === count( $nm_found ) && 'ordinary' === $nm_found[0]['type'], 'tesoriere: iscrive un nuovo socio dall\'area riservata con solo nome e cognome' );
+asem_ok( false !== strpos( $nm_msg, 'Socio registrato' ) && 1 === count( $nm_found ) && 'ordinary' === $nm_found[0]['type'], 'tesoriere: iscrive un nuovo socio dall\'area soci con solo nome e cognome' );
 asem_ok( null !== asem_throws( function () use ( $nm_fl ) { \AssociazioneSemplice\Frontend\Actions::do_new_member( array( 'first_name' => 'Fausto', 'last_name' => 'Fondatore', 'level_id' => (string) $nm_fl ) ); } ) && null !== asem_throws( function () use ( $nm_lv ) { \AssociazioneSemplice\Frontend\Actions::do_new_member( array( 'first_name' => '', 'last_name' => 'Senza', 'level_id' => (string) $nm_lv ) ); } ), 'tesoriere: non crea fondatori né persone senza nome' );
 wp_set_current_user( $stf_u );
-asem_ok( null !== asem_throws( function () use ( $nm_lv ) { \AssociazioneSemplice\Frontend\Actions::do_new_member( array( 'first_name' => 'Abusivo', 'last_name' => 'Test', 'level_id' => (string) $nm_lv ) ); } ), 'iscrizione dall\'area riservata: chi non è tesoriere non può' );
+asem_ok( null !== asem_throws( function () use ( $nm_lv ) { \AssociazioneSemplice\Frontend\Actions::do_new_member( array( 'first_name' => 'Abusivo', 'last_name' => 'Test', 'level_id' => (string) $nm_lv ) ); } ), 'iscrizione dall\'area soci: chi non è tesoriere non può' );
 wp_set_current_user( 1 );
 Access::set_treasurer( $u_tre, false );
 $vol_b =$people->create( array( 'type' => 'volunteer', 'first_name' => 'Vera', 'last_name' => 'Volontaria', 'email' => 'vera.volontaria@example.com' ) );
@@ -6625,7 +6625,7 @@ asem_ok( false !== strpos( $pn_html, 'Referente per la privacy' ) && false !== s
 asem_ok( false !== strpos( $pn_html, 'cookie tecnici di autenticazione di WordPress' ) && false === strpos( $pn_html, 'asem_s' ), 'informativa privacy: con gli utenti WordPress parla dei cookie di WordPress' );
 Settings::update( array( 'member_wp_users' => 0 ) );
 $pn_own = \AssociazioneSemplice\PrivacyNotice::html();
-asem_ok( false !== strpos( $pn_own, 'asem_s' ) && false !== strpos( $pn_own, 'impronta cifrata' ) && false !== strpos( $pn_own, '15 minuti' ) && false !== strpos( $pn_own, 'Accesso all&#039;area riservata e cookie' ) || false !== strpos( $pn_own, 'Accesso all\'area riservata e cookie' ), 'informativa privacy: con l\'accesso proprio dichiara il cookie asem_s, la password cifrata e i codici' );
+asem_ok( false !== strpos( $pn_own, 'asem_s' ) && false !== strpos( $pn_own, 'impronta cifrata' ) && false !== strpos( $pn_own, '15 minuti' ) && false !== strpos( $pn_own, 'Accesso all&#039;area soci e cookie' ) || false !== strpos( $pn_own, 'Accesso all\'area soci e cookie' ), 'informativa privacy: con l\'accesso proprio dichiara il cookie asem_s, la password cifrata e i codici' );
 Settings::update( array( 'privacy_extra_cookies' => "_ga — statistiche anonime\n<b>mappa</b> — cartina del sito\n\n" ) );
 $pn_ck_hook = function ( $c ) {
 	$c[] = 'cookie_estensione — prova di un\'estensione';
@@ -11300,7 +11300,7 @@ wp_set_current_user( 0 ); // qui si prova l'accesso senza utente WordPress
 asem_ok( MemberSession::enabled() && ! MemberSession::wp_users_wanted(), 'accesso proprio: acceso di default, senza utente WordPress per i soci' );
 Settings::update( array( 'limits' => array( 'member_sessions' => 0 ) ) );
 $ms_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Sessione', 'last_name' => 'Prova' ) );
-$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $ms_p, 'login_email' => 'sessione@example.org', 'pass_hash' => MemberPassword::make( 'una password lunga' ), 'created_at' => gmdate( 'Y-m-d H:i:s' ) ) ); // la password è obbligatoria: senza, la sessione non vede l'area riservata
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $ms_p, 'login_email' => 'sessione@example.org', 'pass_hash' => MemberPassword::make( 'una password lunga' ), 'created_at' => gmdate( 'Y-m-d H:i:s' ) ) ); // la password è obbligatoria: senza, la sessione non vede l'area soci
 $ms_raw2 = MemberSession::start( $ms_p );
 asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d AND token_hash = %s', $ms_p, SessionToken::hash( $ms_raw2 ) ) ), 'accesso proprio: la sessione è salvata con l\'impronta del token' );
 asem_ok( null === MemberSession::current(), 'accesso proprio: da spento il cookie non viene letto' );
@@ -11627,7 +11627,7 @@ MemberLogin::request( $pw_addr );
 list( $pw_tok ) = $ml_pull();
 asem_ok( 'none' === MemberLogin::password_state( $pw_p ) && $pw_p === MemberLogin::login_with_token( $pw_tok ), 'password: chi non l\'ha ancora scelta può entrare con il link' );
 $ms_fake->setValue( null, null );
-asem_ok( null === MemberSession::session_person() && 'none' === ( MemberSession::pending_setup()['state'] ?? '' ) && ! current_user_can( 'asem_edit_own_profile', $pw_p ) && ! MemberSession::logged_in(), 'password: senza password scelta non si vede l\'area riservata, si può solo sceglierla' );
+asem_ok( null === MemberSession::session_person() && 'none' === ( MemberSession::pending_setup()['state'] ?? '' ) && ! current_user_can( 'asem_edit_own_profile', $pw_p ) && ! MemberSession::logged_in(), 'password: senza password scelta non si vede l\'area soci, si può solo sceglierla' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::with_person( function ( $p ) { return 'segreto'; } ), 'Scegli la password' ), 'password: la pagina dei soci chiede di scegliere la password' );
 asem_ok( '' !== MemberLogin::set_password( $pw_p, 'corta' ) && '' === MemberLogin::set_password( $pw_p, 'Prima password 1' ), 'password: la scelta rispetta la lunghezza minima' );
 $ms_fake->setValue( null, null );
@@ -11840,7 +11840,7 @@ asem_ok( ! MemberLogin::request( $ml_addr ) && null === MemberLogin::login_with_
 remove_filter( 'pre_wp_mail', $ml_hook, 10 );
 unset( $_COOKIE[ MemberSession::COOKIE ] );
 $ms_fake->setValue( null, null );
-asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::with_person( function ( $p ) { return 'segreto'; } ), 'Area riservata ai soci' ), 'accesso proprio: senza accesso la pagina dei soci chiede di entrare' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::with_person( function ( $p ) { return 'segreto'; } ), 'Area soci' ), 'accesso proprio: senza accesso la pagina dei soci chiede di entrare' );
 Settings::update( array( 'limits' => array() ) );
 Settings::update( array( 'member_wp_users' => 1 ) ); // fine del blocco: i controlli che seguono presuppongono un utente WordPress per ogni socio
 $ms_fake->setValue( null, null );
@@ -12527,14 +12527,14 @@ asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_add_se
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'collect', 'courses', 'events' ) );
 asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_person_context' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_quick_person' ) ), 'dipendente senza incassi, corsi ed eventi: i suggerimenti sulle persone si chiudono' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'events' ) );
-// elenchi e area riservata: ciò che non si può fare non si vede
+// elenchi e area soci: ciò che non si può fare non si vede
 wp_set_current_user( $em_uid );
 \AssociazioneSemplice\Employees::reset_cache();
 asem_ok( ! in_array( $em_course, array_map( 'intval', array_column( $acts->for_year( $em_sy ), 'id' ) ), true ) && ! in_array( $em_event, array_map( 'intval', array_column( $acts->for_year( $em_sy ), 'id' ) ), true ), 'dipendente senza corsi né eventi: l\'elenco delle attività è vuoto di entrambi' );
-asem_ok( ! Access::user_can( $em_uid, 'asem_view_activity', $em_course ) && ! Access::user_can( $em_uid, 'asem_manage_event', $em_event ) && ! Access::user_can( $em_uid, 'asem_view_participants', $em_event ), 'dipendente senza corsi né eventi: nemmeno le capability dell\'area riservata e della REST' );
+asem_ok( ! Access::user_can( $em_uid, 'asem_view_activity', $em_course ) && ! Access::user_can( $em_uid, 'asem_manage_event', $em_event ) && ! Access::user_can( $em_uid, 'asem_view_participants', $em_event ), 'dipendente senza corsi né eventi: nemmeno le capability dell\'area soci e della REST' );
 wp_set_current_user( 1 );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'collect', 'expenses' ) );
-asem_ok( ! Access::user_can( $em_uid, 'asem_collect', 0 ) && ! Access::user_can( $em_uid, 'asem_door_cash', $em_event ) && ! Access::user_can( $em_uid, 'asem_add_expense', 0 ), 'dipendente senza incassi né spese: nemmeno dall\'area riservata' );
+asem_ok( ! Access::user_can( $em_uid, 'asem_collect', 0 ) && ! Access::user_can( $em_uid, 'asem_door_cash', $em_event ) && ! Access::user_can( $em_uid, 'asem_add_expense', 0 ), 'dipendente senza incassi né spese: nemmeno dall\'area soci' );
 asem_ok( Access::user_can( $em_uid, 'asem_register_member', 0 ) && Access::user_can( $em_uid, 'asem_view_activity', $em_course ), 'dipendente: l\'iscrizione dei soci e le attività restano come alla segreteria' );
 // la Bacheca non mostra saldi senza il permesso
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'funds' ) );

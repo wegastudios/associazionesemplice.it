@@ -65,7 +65,7 @@ final class ProWatch {
 		);
 		$add(
 			'watch_auto_default', 'Spunta «attribuzione automatica» accesa di partenza nel modulo spese', 'flag', 1, 0, 1,
-			'Nel modulo di una nuova spesa (amministrazione e area riservata del tesoriere) la spunta «Attribuzione automatica» parte accesa: la spesa va ai fondi di chi la registra se ne ha con documentazione da coprire, altrimenti si distribuisce da sola (un volontario resta sempre sui propri fondi). Spegnendo questo limite la spunta parte spenta e chi registra sceglie ogni volta chi ha anticipato e il fondo.',
+			'Nel modulo di una nuova spesa (amministrazione e area soci del tesoriere) la spunta «Attribuzione automatica» parte accesa: la spesa va ai fondi di chi la registra se ne ha con documentazione da coprire, altrimenti si distribuisce da sola (un volontario resta sempre sui propri fondi). Spegnendo questo limite la spunta parte spenta e chi registra sceglie ogni volta chi ha anticipato e il fondo.',
 			'Acceso: più veloce, ma una spesa registrata di fretta può finire a un fondo sbagliato (si annulla da Cassa → Conti e fondi).',
 			'Spento: più controllo, ma ogni spesa richiede una scelta in più e chi la dimentica lascia la spesa senza beneficiario.'
 		);

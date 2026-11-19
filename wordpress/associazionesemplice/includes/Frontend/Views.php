@@ -18,7 +18,7 @@ use AssociazioneSemplice\Text;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Viste del front-end (area riservata e pagine pubbliche). Ogni vista restituisce HTML già escapato,
+ * Viste del front-end (area soci e pagine pubbliche). Ogni vista restituisce HTML già escapato,
  * con classi `asemf-*` stilate da assets/frontend.css che eredita font e colori del tema.
  * Le scelte di layout (colonne, spazi) sono dei builder (Gutenberg, Elementor): qui solo il contenuto.
  */
@@ -140,7 +140,7 @@ final class Views {
 			$back = Restrict::current_url();
 			$own  = MemberLoginPage::url();
 			return self::wrap(
-				'<div class="asemf-card"><h3>Area riservata ai soci</h3><p>Accedi per vedere la tessera, le tue attività e prenotarti agli eventi.</p>'
+				'<div class="asemf-card"><h3>Area soci</h3><p>Accedi per vedere la tessera, le tue attività e prenotarti agli eventi.</p>'
 				. MemberLoginPage::inline_login( $back )
 				. '<p class="asemf-small"><a href="' . esc_url( add_query_arg( array( 'asem_ml_reset' => '1', '_back' => rawurlencode( $back ) ), $own ) ) . '">Password dimenticata?</a> · <a href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), $own ) ) . '">Entra con un link via email</a> · <strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong></p>'
 				. '<p class="asemf-small">Segreteria e staff: <a href="' . esc_url( wp_login_url( $back ) ) . '">accedi da qui</a>.</p></div>'
@@ -148,7 +148,7 @@ final class Views {
 		}
 		$form = wp_login_form( array( 'echo' => false, 'redirect' => Restrict::current_url(), 'label_username' => 'Email o nome utente', 'label_log_in' => 'Accedi' ) );
 		return self::wrap(
-			'<div class="asemf-card"><h3>Area riservata ai soci</h3><p>Accedi per vedere la tua tessera, le tue attività e prenotarti agli eventi.</p>'
+			'<div class="asemf-card"><h3>Area soci</h3><p>Accedi per vedere la tua tessera, le tue attività e prenotarti agli eventi.</p>'
 			. $form . '<p class="asemf-small"><strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong> (non hai ancora una password) · <a href="' . esc_url( wp_lostpassword_url( Restrict::current_url() ) ) . '">Password dimenticata?</a></p>'
 			. ( \AssociazioneSemplice\MemberSession::enabled() ? '<p class="asemf-small"><strong><a href="' . esc_url( MemberLoginPage::url() ) . '">Entra con un link via email</a></strong>, senza password.</p>' : '' ) . '</div>'
 		);
@@ -699,7 +699,7 @@ final class Views {
 		if ( ! $missing ) {
 			return '';
 		}
-		return '<section class="asemf-section asemf-complete"><h3>Completa i tuoi dati</h3><p>Per usare l\'area riservata mancano ancora: <strong>' . esc_html( implode( ', ', $missing ) ) . '</strong>.'
+		return '<section class="asemf-section asemf-complete"><h3>Completa i tuoi dati</h3><p>Per usare l\'area soci mancano ancora: <strong>' . esc_html( implode( ', ', $missing ) ) . '</strong>.'
 			. ( Limits::flag( 'profile_gate' ) ? ' Finché non li inserisci non puoi prenotare né pagare online.' : '' ) . ' Li trovi nel riquadro «Il mio profilo» qui sotto.</p></section>';
 	}
 
@@ -1056,7 +1056,7 @@ final class Views {
 
 	// ---------- Viste complete (usate da shortcode, blocchi, widget) ----------
 
-	/** Le parti dell'area riservata: chiave => titolo. La prima è quella del socio; le altre compaiono solo a chi ha quel ruolo. */
+	/** Le parti dell'area soci: chiave => titolo. La prima è quella del socio; le altre compaiono solo a chi ha quel ruolo. */
 	const PANES = array(
 		'mio'         => 'Il mio spazio',
 		'segreteria'  => 'Segreteria',
@@ -1194,7 +1194,7 @@ final class Views {
 		return $nav . '</ul></nav>' . $html;
 	}
 
-	/** L'area riservata con il piccolo menu laterale: «Il mio spazio» e, per chi ha il ruolo, Segreteria, Gestione corsi e Gestione eventi. */
+	/** L'area soci con il piccolo menu laterale: «Il mio spazio» e, per chi ha il ruolo, Segreteria, Gestione corsi e Gestione eventi. */
 	private static function area_with_menu( array $p ): string {
 		$panes = self::panes_for( $p );
 		$pane  = isset( $_GET['asemf_vista'] ) ? sanitize_key( wp_unslash( $_GET['asemf_vista'] ) ) : 'mio'; // phpcs:ignore WordPress.Security.NonceVerification
@@ -1204,7 +1204,7 @@ final class Views {
 		$base = remove_query_arg( array( 'asemf_vista', 'asem_session', 'asemf_ok', 'asemf_err', 'asemf_sig' ), Restrict::current_url() );
 		$nav  = '';
 		if ( count( $panes ) > 1 ) {
-			$nav = '<nav class="asemf-sidenav" aria-label="Area riservata"><ul>';
+			$nav = '<nav class="asemf-sidenav" aria-label="Area soci"><ul>';
 			foreach ( $panes as $key => $title ) {
 				$nav .= '<li><a href="' . esc_url( 'mio' === $key ? $base : add_query_arg( 'asemf_vista', $key, $base ) ) . '"' . ( $key === $pane ? ' class="is-active" aria-current="page"' : '' ) . '>' . esc_html( $title ) . '</a></li>';
 			}

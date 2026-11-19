@@ -234,7 +234,7 @@ final class PeoplePage {
 		echo '<tr class="asem-row-lastname"><th>Cognome *</th><td><input type="text" name="last_name" value="' . esc_attr( $val( 'last_name' ) ) . '" class="regular-text" required></td></tr>';
 		self::form_section( 'Contatti' );
 		echo '<tr><th>Email</th><td><input type="email" name="email" id="asem-email" value="' . esc_attr( $val( 'email' ) ) . '" class="regular-text">'
-			. '<p class="description asem-email-note">Facoltativa: con l\'email il socio ha subito il suo accesso all\'area riservata. Senza email il socio si registra lo stesso (meglio se con cellulare o numero di tessera) e si attiva dopo con un link da mandare su WhatsApp.</p></td></tr>';
+			. '<p class="description asem-email-note">Facoltativa: con l\'email il socio ha subito il suo accesso all\'area soci. Senza email il socio si registra lo stesso (meglio se con cellulare o numero di tessera) e si attiva dopo con un link da mandare su WhatsApp.</p></td></tr>';
 		echo '<tr><th>' . ( MemberType::GUEST === $type ? 'Cellulare' : 'Telefono' ) . '</th><td><input type="text" name="phone" value="' . esc_attr( $val( 'phone' ) ) . '" class="regular-text"' . ( MemberType::GUEST === $type ? ' required placeholder="333 1234567"' : '' ) . '>' . ( MemberType::GUEST === $type ? '<p class="description">Obbligatorio per gli ospiti: è il dato che serve a riconoscerli (anche se si registrano da soci diversi) e a contattarli su WhatsApp.</p>' : '' ) . '</td></tr>';
 		self::form_section( 'Dati anagrafici' );
 		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"><p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria. Se lo scrivi, chi attiva da solo il proprio accesso dovrà riscriverlo uguale (un controllo in più sull\'identità).</p></td></tr>';
@@ -255,7 +255,7 @@ final class PeoplePage {
 				echo wp_kses( Ui::person_select( 'guardian_ids[]', $cands, isset( $guardians[ $i ] ) ? (int) $guardians[ $i ]['id'] : 0, $i ? '— secondo genitore (facoltativo) —' : '— nessun tutore —', 'asem-guardian-' . $i )
 					. ' <label><input type="radio" name="guardian_operative" value="' . (int) $i . '"' . checked( $is_op, true, false ) . '> opera sul sito</label><br>', Html::allowed() );
 			}
-			echo '<p class="description">Per un minorenne: i due genitori oppure un tutore legale, già registrati (con email): compaiono tutti nel libro soci, nelle ricevute e nei consensi. Uno solo «opera sul sito» e si prende la responsabilità verso l\'altro genitore di tutto ciò che riguarda il minore (anche liberatorie e consensi). Chi opera vede la tessera, le prenotazioni e i pagamenti del minore dalla sua area riservata, paga per lui e riceve le sue email; il minore può non avere né email né accesso. Il collegamento resta anche dopo i 18 anni finché non lo togli qui. Serve la data di nascita.</p>';
+			echo '<p class="description">Per un minorenne: i due genitori oppure un tutore legale, già registrati (con email): compaiono tutti nel libro soci, nelle ricevute e nei consensi. Uno solo «opera sul sito» e si prende la responsabilità verso l\'altro genitore di tutto ciò che riguarda il minore (anche liberatorie e consensi). Chi opera vede la tessera, le prenotazioni e i pagamenti del minore dalla sua area soci, paga per lui e riceve le sue email; il minore può non avere né email né accesso. Il collegamento resta anche dopo i 18 anni finché non lo togli qui. Serve la data di nascita.</p>';
 			echo '<p><strong>Genitore non ancora in anagrafica?</strong> Inseriscilo qui (non serve che sia socio): <input type="text" name="new_guardian_first_name" placeholder="Nome" size="14"> <input type="text" name="new_guardian_last_name" placeholder="Cognome" size="16"> <input type="text" name="new_guardian_tax_code" placeholder="Codice fiscale" size="18" maxlength="16"> <input type="email" name="new_guardian_email" placeholder="Email (se opera sul sito)" size="22"></p>';
 			if ( $id ) {
 				$wards =\AssociazioneSemplice\Guardians::dependents_of( $id );
@@ -353,7 +353,7 @@ final class PeoplePage {
 		$people = Plugin::people();
 		echo '<div class="asem-card"><h2>Tessera e iscrizione</h2>';
 		if ( MemberType::GUARDIAN === $p['type'] ) {
-			echo '<p>Genitore o tutore: non è un socio e non ha tessera né quota. Ha l\'accesso all\'area riservata per seguire i figli (si collegano dalla loro scheda). Per iscriverlo come socio cambia il tipo qui sopra.</p></div>';
+			echo '<p>Genitore o tutore: non è un socio e non ha tessera né quota. Ha l\'accesso all\'area soci per seguire i figli (si collegano dalla loro scheda). Per iscriverlo come socio cambia il tipo qui sopra.</p></div>';
 			return;
 		}
 		if ( MemberType::GUEST === $p['type'] ) {
@@ -442,12 +442,12 @@ final class PeoplePage {
 		Ui::form_close();
 	}
 
-	/** Accesso all'area riservata di un socio: attivo, oppure link di attivazione da mandare (WhatsApp o copia). */
+	/** Accesso all'area soci di un socio: attivo, oppure link di attivazione da mandare (WhatsApp o copia). */
 	private static function panel_access( array $p ): void {
 		if ( ! MemberType::is_member( $p['type'] ) ) {
 			return;
 		}
-		echo '<div class="asem-card"><h2>Accesso all\'area riservata</h2>';
+		echo '<div class="asem-card"><h2>Accesso all\'area soci</h2>';
 		if ( \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 			echo '<p><strong class="asem-ok">Accesso attivo</strong> · email ' . esc_html( (string) $p['email'] ) . ( empty( $p['wp_user_id'] ) ? ' · entra con un link o un codice che riceve per email' : '' ) . '</p>';
 			self::detach_buttons( $p );
@@ -476,7 +476,7 @@ final class PeoplePage {
 		$back = Ui::url( 'asem-person', array( 'id' => $p['id'] ) );
 		if ( ! empty( $p['email'] ) || ! empty( $p['wp_user_id'] ) ) {
 			Ui::form_open( 'asem_detach_email', $back, false, 'asem-inline' );
-			echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Scollegare l\'email? Il socio perde l\'accesso all\'area riservata e si riparte senza email; lo storico resta.">Scollega email</button> <span class="description">Il socio perde l\'accesso e può riattivarlo col link; lo storico resta. L\'utente del sito non viene cancellato: per riattivarsi il socio dovrà usare un\'altra email.</span></p>', Html::allowed() );
+			echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Scollegare l\'email? Il socio perde l\'accesso all\'area soci e si riparte senza email; lo storico resta.">Scollega email</button> <span class="description">Il socio perde l\'accesso e può riattivarlo col link; lo storico resta. L\'utente del sito non viene cancellato: per riattivarsi il socio dovrà usare un\'altra email.</span></p>', Html::allowed() );
 			Ui::form_close();
 		}
 		if ( ! empty( $p['phone'] ) ) {
@@ -541,12 +541,12 @@ final class PeoplePage {
 			. '<p>Email (facoltativa) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '"> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> '
 			. 'n. tessera (facoltativo) <input type="text" name="card_number" class="small-text"></p>'
 			. '<p><label><input type="checkbox" name="membership" value="1" checked> Segna la quota del ' . esc_html( \AssociazioneSemplice\Settings::membership_year()->label() ) . ' come pagata</label> <button class="button button-primary">Iscrivi come socio</button></p>'
-			. '<p class="description">La scheda resta la stessa: tutte le partecipazioni e i pagamenti già registrati restano collegati. Si crea l\'utente per l\'area riservata.</p></details>', Html::allowed() );
+			. '<p class="description">La scheda resta la stessa: tutte le partecipazioni e i pagamenti già registrati restano collegati. Si crea l\'utente per l\'area soci.</p></details>', Html::allowed() );
 		Ui::form_close();
 		echo '</div>';
 	}
 
-	/** QR di verifica della tessera: si può stampare o girare al socio (è lo stesso che vede nella sua area riservata). */
+	/** QR di verifica della tessera: si può stampare o girare al socio (è lo stesso che vede nella sua area soci). */
 	private static function panel_card_qr( array $p ): void {
 		if ( ! MemberType::is_member( $p['type'] ) ) {
 			return;
@@ -555,7 +555,7 @@ final class PeoplePage {
 		if ( \AssociazioneSemplice\Settings::card_qr_enabled() ) {
 			$url   = \AssociazioneSemplice\Settings::card_url( (int) $p['id'] );
 			$html .= '<h3>QR della tessera</h3><div style="max-width:170px">' . \AssociazioneSemplice\QrCode::svg( $url, 4, 'QR della tessera' ) . '</div>'
-				. '<p class="description"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la pagina di verifica</a> · stesso codice che il socio vede nella sua area riservata.</p>';
+				. '<p class="description"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la pagina di verifica</a> · stesso codice che il socio vede nella sua area soci.</p>';
 		}
 		echo wp_kses( $html . '</div>', Html::allowed() );
 	}
@@ -669,19 +669,19 @@ final class PeoplePage {
 		echo '<p class="description">La segreteria accede all\'amministrazione per gestire soci, attività, incassi e spese, comunicazioni e ricevute. Non vede Impostazioni, pagamenti online, privacy (anonimizzazione), testi personalizzati e anni fiscali.</p></div>';
 	}
 
-	/** Permesso di registrare spese dall'area riservata (per chi non usa l'amministrazione del sito). */
+	/** Permesso di registrare spese dall'area soci (per chi non usa l'amministrazione del sito). */
 	private static function panel_treasurer( array $p ): void {
 		if ( MemberType::GUEST === $p['type'] || ! \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 			return;
 		}
 		$on = \AssociazioneSemplice\Access::is_treasurer( (int) ( $p['wp_user_id'] ?? 0 ) );
 		echo '<div class="asem-card"><h2>Tesoriere</h2>';
-		echo '<p>' . ( $on ? '<strong class="asem-ok">È tesoriere: dall\'area riservata può incassare quote e contributi, registrare spese, iscrivere nuovi soci e incassare gli eventi.</strong>' : 'Non è tesoriere: dall\'area riservata non può incassare, registrare spese né iscrivere soci.' ) . '</p>';
+		echo '<p>' . ( $on ? '<strong class="asem-ok">È tesoriere: dall\'area soci può incassare quote e contributi, registrare spese, iscrivere nuovi soci e incassare gli eventi.</strong>' : 'Non è tesoriere: dall\'area soci non può incassare, registrare spese né iscrivere soci.' ) . '</p>';
 		Ui::form_open( 'asem_set_treasurer', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
 		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) )
-			. '<button class="button"' . ( $on ? '' : ' data-confirm="' . esc_attr( 'Nominare ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) . ' tesoriere? Potrà incassare denaro, registrare spese e iscrivere nuovi soci dall\'area riservata.' ) . '"' ) . '>' . ( $on ? 'Togli l\'incarico di tesoriere' : 'Nomina tesoriere' ) . '</button>', Html::allowed() );
+			. '<button class="button"' . ( $on ? '' : ' data-confirm="' . esc_attr( 'Nominare ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) . ' tesoriere? Potrà incassare denaro, registrare spese e iscrivere nuovi soci dall\'area soci.' ) . '"' ) . '>' . ( $on ? 'Togli l\'incarico di tesoriere' : 'Nomina tesoriere' ) . '</button>', Html::allowed() );
 		Ui::form_close();
-		echo '<p class="description">Con il permesso, nell\'area riservata compare la pagina «Area tesoriere»: incassa, scatta lo scontrino e registra la spesa. Vede solo gli incassi e le spese che ha registrato personalmente e non i saldi dei conti.</p></div>';
+		echo '<p class="description">Con il permesso, nell\'area soci compare la pagina «Area tesoriere»: incassa, scatta lo scontrino e registra la spesa. Vede solo gli incassi e le spese che ha registrato personalmente e non i saldi dei conti.</p></div>';
 	}
 
 	/** Staff dell'ente: verifica gli accessi a tutti gli eventi. Per l'incasso sul posto serve inoltre l'abilitazione sul singolo evento. */

@@ -29,7 +29,7 @@ class ViewWidget extends Widget_Base {
 	}
 
 	public function get_keywords() {
-		return array( 'associazionesemplice', 'soci', 'tessera', 'attività', 'eventi', 'area riservata' );
+		return array( 'associazionesemplice', 'soci', 'tessera', 'attività', 'eventi', 'area soci' );
 	}
 
 	protected function register_controls() {

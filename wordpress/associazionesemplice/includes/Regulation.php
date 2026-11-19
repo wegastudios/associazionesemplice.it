@@ -72,6 +72,6 @@ final class Regulation {
 		if ( ! self::applies_to( $actor ) || self::accepted( $actor ) || empty( Settings::get( 'rules_block_booking' ) ) ) {
 			return '';
 		}
-		return 'Per prenotare devi prima accettare il ' . mb_strtolower( self::title(), 'UTF-8' ) . ': lo trovi in cima alla tua area riservata.';
+		return 'Per prenotare devi prima accettare il ' . mb_strtolower( self::title(), 'UTF-8' ) . ': lo trovi in cima alla tua area soci.';
 	}
 }

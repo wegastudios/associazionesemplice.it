@@ -177,7 +177,7 @@ final class Assemblies {
 			$text .= 'Seconda convocazione: ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $a['second_call_at'] ) . ".\n";
 		}
 		$text .= "\nOrdine del giorno:\n" . $a['agenda'] . "\n\n"
-			. 'Se non puoi partecipare puoi delegare un altro socio dall\'area riservata: ' . Gatekeeper::area_url();
+			. 'Se non puoi partecipare puoi delegare un altro socio dall\'area soci: ' . Gatekeeper::area_url();
 		return array( 'Convocazione: ' . $a['title'], $text );
 	}
 
@@ -281,7 +281,7 @@ final class Assemblies {
 		} );
 	}
 
-	/** @param bool $staff true: la segreteria registra una delega scritta anche su un'assemblea in bozza; false: il socio dall'area riservata, solo su un'assemblea convocata */
+	/** @param bool $staff true: la segreteria registra una delega scritta anche su un'assemblea in bozza; false: il socio dall'area soci, solo su un'assemblea convocata */
 	private static function add_proxy_locked( int $id, int $delegator, int $delegate, bool $staff ): void {
 		$a = self::get( $id );
 		if ( ! $a ) {

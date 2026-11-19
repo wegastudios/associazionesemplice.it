@@ -4,7 +4,7 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pagamento con bonifico: l'IBAN (o gli IBAN) dell'associazione si mostrano ai soci nell'area riservata, si possono mandare per email al socio
+ * Pagamento con bonifico: l'IBAN (o gli IBAN) dell'associazione si mostrano ai soci nell'area soci, si possono mandare per email al socio
  * e (se si vuole) si aggiungono ai promemoria di pagamento. Funziona da solo o insieme ai pagamenti online. Spento di default.
  *
  * Sicurezza: le coordinate si modificano solo dagli amministratori (Impostazioni → Pagamenti online); ogni modifica finisce nel registro azioni

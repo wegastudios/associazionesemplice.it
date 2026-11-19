@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Convenzioni per i soci: sconti e vantaggi di esercenti ed enti partner. La segreteria le gestisce in «Convenzioni»;
- * i soci in regola vedono quelle valide oggi nell'area riservata; quelle segnate «pubbliche» compaiono anche sul sito (senza codice né condizioni).
+ * i soci in regola vedono quelle valide oggi nell'area soci; quelle segnate «pubbliche» compaiono anche sul sito (senza codice né condizioni).
  * Le regole pure (validità, chi ha diritto) stanno in {@see ConventionRules}.
  */
 final class Conventions {
@@ -263,7 +263,7 @@ final class Conventions {
 		$subject = 'Nuova convenzione: ' . $c['name'];
 		$body    = 'abbiamo una nuova convenzione per i soci: ' . $c['name'] . ".\nVantaggio: " . $c['benefit']
 			. ( $c['valid_to'] ? "\nValida fino al " . ( new \DateTimeImmutable( (string) $c['valid_to'] ) )->format( 'd/m/Y' ) . '.' : '' )
-			. "\nCodice, condizioni e istruzioni per farti riconoscere sono nell'area riservata, sezione «Convenzioni»: " . Gatekeeper::area_url();
+			. "\nCodice, condizioni e istruzioni per farti riconoscere sono nell'area soci, sezione «Convenzioni»: " . Gatekeeper::area_url();
 		$ref = (string) $id;
 		$n   = 0;
 		foreach ( self::recipients( $c ) as $p ) {

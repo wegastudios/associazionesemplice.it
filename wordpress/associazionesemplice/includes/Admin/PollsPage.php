@@ -20,7 +20,7 @@ final class PollsPage {
 			return;
 		}
 		Ui::header( 'Votazioni e sondaggi', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-polls', array( 'new' => 1 ) ) ) . '">Nuova votazione</a>' );
-		echo '<p class="description">La segreteria crea una votazione o un sondaggio per tutti i soci in regola o per gli iscritti di un\'attività. I soci votano dall\'area riservata, una volta sola. I genitori e i tutori che non sono soci non votano.</p>';
+		echo '<p class="description">La segreteria crea una votazione o un sondaggio per tutti i soci in regola o per gli iscritti di un\'attività. I soci votano dall\'area soci, una volta sola. I genitori e i tutori che non sono soci non votano.</p>';
 		$labels = PollRules::status_labels();
 		echo '<table class="widefat striped"><thead><tr><th>Titolo</th><th>Tipo</th><th>Apertura</th><th>Chiusura</th><th>Stato</th><th>Hanno votato</th></tr></thead><tbody>';
 		$rows = Polls::all();

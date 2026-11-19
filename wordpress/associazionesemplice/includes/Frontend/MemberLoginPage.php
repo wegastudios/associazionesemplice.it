@@ -36,7 +36,7 @@ final class MemberLoginPage {
 		return add_query_arg( 'asem_member_login', '1', home_url( '/' ) );
 	}
 
-	/** Dove si va dopo l'accesso: la pagina da cui si veniva (se è del sito), altrimenti l'area riservata o la pagina «Il tuo accesso». */
+	/** Dove si va dopo l'accesso: la pagina da cui si veniva (se è del sito), altrimenti l'area soci o la pagina «Il tuo accesso». */
 	private static function after_url( string $back ): string {
 		$back = '' !== $back ? wp_validate_redirect( esc_url_raw( $back ), '' ) : '';
 		if ( '' !== $back ) {
@@ -253,7 +253,7 @@ final class MemberLoginPage {
 			. '<button type="submit" class="asemf-btn asemf-btn-ghost wp-element-button">Esci</button></form>';
 	}
 
-	/** Modulo email e password per l'area riservata (quando non si è entrati): quello predefinito dei soci senza utente WordPress. */
+	/** Modulo email e password per l'area soci (quando non si è entrati): quello predefinito dei soci senza utente WordPress. */
 	public static function inline_login( string $back ): string {
 		Views::no_cache(); // il modulo porta il cookie e il segno di chi lo apre: la pagina non va conservata
 		if ( ! self::ensure_pre_session() ) { // niente cookie di pre-sessione (la pagina è già partita): si passa dalla pagina di accesso, che lo dà

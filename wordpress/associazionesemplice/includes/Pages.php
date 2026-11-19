@@ -108,13 +108,13 @@ final class Pages {
 			Settings::update( array( 'privacy_url' => (string) get_permalink( (int) $have['privacy'] ) ) ); // l'informativa creata diventa quella richiesta a chi attiva l'accesso
 		}
 		if ( in_array( 'Area soci', $made, true ) ) {
-			self::add_to_menu( (int) $have['area'] ); // la voce «Area riservata» compare nel menu del sito
+			self::add_to_menu( (int) $have['area'] ); // la voce «Area soci» compare nel menu del sito
 		}
 		return $made;
 	}
 
 	/**
-	 * Aggiunge al menu di navigazione del sito la voce «Area riservata» che porta all'area soci (con le funzioni nella versione per il sito,
+	 * Aggiunge al menu di navigazione del sito la voce «Area soci» che porta all'area soci (con le funzioni nella versione per il sito,
 	 * non quella di amministrazione). Sceglie il menu della posizione principale; non duplica la voce.
 	 *
 	 * @return bool true se la voce c'è (già presente o aggiunta), false se il sito non ha un menu a cui aggiungerla
@@ -153,7 +153,7 @@ final class Pages {
 			$menu_id,
 			0,
 			array(
-				'menu-item-title'     => 'Area riservata',
+				'menu-item-title'     => 'Area soci',
 				'menu-item-object'    => 'page',
 				'menu-item-object-id' => $page_id,
 				'menu-item-type'      => 'post_type',

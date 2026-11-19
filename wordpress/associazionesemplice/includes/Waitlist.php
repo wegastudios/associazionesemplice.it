@@ -167,7 +167,7 @@ final class Waitlist {
 			$to['email'],
 			'Posto disponibile: ' . ( $a ? $a['name'] : 'evento' ),
 			'Ciao ' . $to['name'] . ",\n\nsi è liberato un posto e la prenotazione " . $who . 'per «' . ( $a ? $a['name'] : 'evento' ) . '» del ' . $when . " è stata registrata automaticamente.\n\n"
-			. "Se non puoi più partecipare, annulla dall'area riservata: " . Gatekeeper::area_url() . ( '' !== $assoc ? "\n\n—\n" . $assoc : '' )
+			. "Se non puoi più partecipare, annulla dall'area soci: " . Gatekeeper::area_url() . ( '' !== $assoc ? "\n\n—\n" . $assoc : '' )
 		);
 	}
 }

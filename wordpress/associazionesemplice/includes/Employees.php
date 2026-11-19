@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * I permessi che si possono togliere sono quelli di {@see EmployeeRules} e si tolgono per singolo utente (user meta). Il controllo è in tre punti:
  *  1. {@see Employees::gate()} su `admin_init`: pagine di amministrazione, admin-post (moduli, esportazioni, download) e admin-ajax;
- *  2. {@see Access::user_can()}: le capability «asem_*» (area riservata, REST) per incassi, spese, eventi e corsi;
+ *  2. {@see Access::user_can()}: le capability «asem_*» (area soci, REST) per incassi, spese, eventi e corsi;
  *  3. gli elenchi (attività, schede, riquadri della Bacheca) che mostrano solo ciò che resta permesso.
  */
 final class Employees {
@@ -314,7 +314,7 @@ final class Employees {
 		wp_die( esc_html( $msg ), 'Permesso non disponibile', array( 'response' => 403, 'back_link' => true ) );
 	}
 
-	/** Le capability «asem_*» (area riservata e REST): il dipendente senza il permesso non ha nemmeno quella. */
+	/** Le capability «asem_*» (area soci e REST): il dipendente senza il permesso non ha nemmeno quella. */
 	public static function ability_denied( int $user_id, string $ability, int $object_id ): bool {
 		$denied = self::denied_for( $user_id );
 		if ( ! $denied ) {

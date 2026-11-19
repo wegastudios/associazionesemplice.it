@@ -57,9 +57,9 @@ final class Limits {
 		);
 		$add(
 			'notice_board_days', 'comunicazioni', 'Durata degli avvisi nella bacheca', 'giorni', 45, 7, 365,
-			'Per quanto tempo un avviso resta visibile nella bacheca dell\'area riservata.',
+			'Per quanto tempo un avviso resta visibile nella bacheca dell\'area soci.',
 			'Gli avvisi vecchi restano a lungo e possono confondere (orari cambiati, eventi già passati).',
-			'Chi non entra spesso nell\'area riservata potrebbe non vedere gli avvisi.'
+			'Chi non entra spesso nell\'area soci potrebbe non vedere gli avvisi.'
 		);
 		$add(
 			'notice_links', 'comunicazioni', 'Link e coordinate bancarie negli avvisi dei volontari', 'flag', 0, 0, 1,
@@ -126,7 +126,7 @@ final class Limits {
 		);
 		$add(
 			'member_session_hours', 'accesso', 'Durata dell\'accesso dei soci senza «Ricordami»', 'ore', 12, 1, 168,
-			'Per quante ore, senza usare l\'area riservata, resta aperto l\'accesso di un socio che è entrato con un link, con un codice o con la password senza spuntare «Ricordami». Chi spunta «Ricordami» (solo con la password) resta entrato 30 giorni.',
+			'Per quante ore, senza usare l\'area soci, resta aperto l\'accesso di un socio che è entrato con un link, con un codice o con la password senza spuntare «Ricordami». Chi spunta «Ricordami» (solo con la password) resta entrato 30 giorni.',
 			'Più comodo, ma su un dispositivo condiviso o lasciato aperto un\'altra persona può restare dentro all\'area del socio più a lungo.',
 			'Più sicuro sui dispositivi condivisi, ma i soci dovranno rifare l\'accesso più spesso.'
 		);
@@ -215,7 +215,7 @@ final class Limits {
 			'bank_email_per_hour', 'pagamenti', 'Invii delle coordinate bancarie per email, per utente, in un\'ora', 'invii', 3, 1, 20,
 			'Quante volte un socio può farsi mandare per email le coordinate del bonifico. Le coordinate vanno sempre e solo all\'indirizzo del socio.',
 			'Un valore alto permette di generare molte email con un solo account (spam verso la casella del socio o consumo del servizio di posta).',
-			'Un valore basso può costringere a riprovare più tardi chi non ha trovato l\'email: le coordinate restano comunque visibili nell\'area riservata.'
+			'Un valore basso può costringere a riprovare più tardi chi non ha trovato l\'email: le coordinate restano comunque visibili nell\'area soci.'
 		);
 
 		// ---------- Dati ----------

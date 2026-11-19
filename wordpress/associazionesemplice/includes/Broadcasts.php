@@ -177,7 +177,7 @@ final class Broadcasts {
 	private static function text_for( string $body, string $name ): string {
 		$assoc = (string) Settings::get( 'association_name' );
 		return str_replace( array( '{nome}', '{associazione}' ), array( $name, $assoc ), $body )
-			. "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area riservata: ' . Gatekeeper::area_url() . "\nComunicazione di servizio ai soci e ai partecipanti.";
+			. "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area soci: ' . Gatekeeper::area_url() . "\nComunicazione di servizio ai soci e ai partecipanti.";
 	}
 
 	/**
