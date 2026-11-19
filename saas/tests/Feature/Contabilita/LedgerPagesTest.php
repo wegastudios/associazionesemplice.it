@@ -105,3 +105,20 @@ it('crea e chiude i conti dal gestionale', function (): void {
     $this->post("/gestionale/conti/{$bank->id}/chiudi")->assertSessionHasErrors(['ledger']);
     $this->get('/gestionale/conti')->assertInertia(fn (Assert $page) => $page->component('Contabilita/Conti')->has('accounts', 2)->where('accounts.1.balance', '1.500,00 €'));
 });
+
+it('i fogli della prima nota mostrano l\'errore del server dentro il foglio, per incasso, spesa e giroconto', function (): void {
+    [$org, $user, $cash, $membership, $cost] = operatorOf(OrgRole::Operator);
+
+    // L'errore del server arriva alla pagina come errore «ledger» (condiviso da Inertia con la prima nota).
+    $this->actingAs($user)->from('/gestionale/prima-nota')->post('/gestionale/prima-nota/incassi', [
+        'date' => now()->toDateString(), 'account_id' => $cash,
+        'lines' => [['category_id' => $cost, 'amount' => '10']],
+    ])->assertRedirect('/gestionale/prima-nota')->assertSessionHasErrors(['ledger' => 'Riga 1: voce non valida per un incasso.']);
+
+    // E la pagina lo mostra in tutti e tre i fogli: niente segnaposto lasciati nel sorgente.
+    $source = (string) file_get_contents(base_path('resources/js/pages/Contabilita/PrimaNota.vue'));
+    expect($source)->not->toContain('E//FORM')
+        ->and($source)->toContain('{{ sheetError(income) }}')
+        ->and($source)->toContain('{{ sheetError(expense) }}')
+        ->and($source)->toContain('{{ sheetError(transfer) }}');
+});

@@ -65,7 +65,7 @@ final readonly class PortalOrgServices
         try {
             $resolved = $this->limits->resolve($plan, $version, $addons, $members);
         } catch (AddonNotAllowed $e) {
-            return ['allowed' => false, 'blockers' => ["Il pacchetto «{$e->addon}» che hai non è disponibile nel piano scelto: toglilo prima di cambiare"], 'effects' => []];
+            return ['allowed' => false, 'blockers' => ["Il pacchetto «{$this->packageName($e->addon)}» che hai non è disponibile nel piano scelto: toglilo prima di cambiare"], 'effects' => []];
         }
 
         $blockers = [];
@@ -260,7 +260,7 @@ final readonly class PortalOrgServices
     {
         foreach (is_array($this->catalog->published()->document['addons'] ?? null) ? $this->catalog->published()->document['addons'] : [] as $addon) {
             $grants = is_array($addon) && is_array($addon['grants'] ?? null) ? $addon['grants'] : [];
-            if (is_array($addon) && ($grants['package'] ?? null) === $code && is_string($addon['name'] ?? null)) {
+            if (is_array($addon) && (($grants['package'] ?? null) === $code || ($addon['code'] ?? null) === $code) && is_string($addon['name'] ?? null)) {
                 return $addon['name'];
             }
         }

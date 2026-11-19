@@ -277,7 +277,7 @@ const label = 'block space-y-1.5 text-sm';
                         <label class="flex items-center gap-3"><input v-model="income.receipt" type="checkbox" />Emetti la ricevuta</label>
                     </div>
                 </details>
-${E//FORM/income}
+                <p v-if="sheetError(income)" class="text-sm font-semibold text-danger" role="alert">{{ sheetError(income) }}</p>
                 <button type="submit" class="btn btn-primary btn-block" :disabled="income.processing">Registra l'incasso</button>
             </form>
         </Sheet>
@@ -308,7 +308,7 @@ ${E//FORM/income}
                             <select v-model="expense.activity_id" class="field"><option value="">Nessuna</option><option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
                     </div>
                 </details>
-${E//FORM/expense}
+                <p v-if="sheetError(expense)" class="text-sm font-semibold text-danger" role="alert">{{ sheetError(expense) }}</p>
                 <button type="submit" class="btn btn-primary btn-block" :disabled="expense.processing">Registra la spesa</button>
             </form>
         </Sheet>
@@ -325,7 +325,7 @@ ${E//FORM/expense}
                 <label :class="label"><span class="font-semibold">A</span>
                     <select v-model="transfer.to_account_id" class="field"><option v-for="a in openAccounts" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Descrizione <span class="font-medium text-muted">(facoltativa)</span></span><input v-model="transfer.description" class="field" /></label>
-${E//FORM/transfer}
+                <p v-if="sheetError(transfer)" class="text-sm font-semibold text-danger" role="alert">{{ sheetError(transfer) }}</p>
                 <button type="submit" class="btn btn-primary btn-block" :disabled="transfer.processing">Registra il giroconto</button>
             </form>
         </Sheet>

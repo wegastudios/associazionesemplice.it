@@ -31,16 +31,18 @@ final class OrgLifecycleNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $days = $this->days;
+        $when = $days <= 0 ? 'oggi' : ($days === 1 ? 'domani' : "tra {$days} giorni");
+        $keep = $days <= 0 ? 'solo fino a oggi' : "per {$days} ".($days === 1 ? 'giorno' : 'giorni');
         $mail = (new MailMessage)->greeting('Buongiorno,');
         [$subject, $lines, $button] = match (true) {
             str_starts_with($this->kind, 'expiry') => [
                 "L'abbonamento di {$this->orgName} sta per scadere",
-                ["l'abbonamento di {$this->orgName} scade tra {$days} giorni e non risulta un pagamento in corso.", 'Dopo la scadenza il gestionale si sospende e non potrai più esportare i tuoi dati: se vuoi conservarli, esportali adesso.'],
+                ["l'abbonamento di {$this->orgName} scade {$when} e non risulta un pagamento in corso.", 'Dopo la scadenza il gestionale si sospende e non potrai più esportare i tuoi dati: se vuoi conservarli, esportali adesso.'],
                 'Gestisci l\'abbonamento',
             ],
             $this->kind === 'suspended' => [
                 "{$this->orgName}: gestionale sospeso",
-                ["l'abbonamento di {$this->orgName} è scaduto e il gestionale è sospeso.", "I dati restano conservati per {$days} giorni; poi vengono cancellati in modo definitivo. Per riattivare tutto basta rinnovare: nulla va perso."],
+                ["l'abbonamento di {$this->orgName} è scaduto e il gestionale è sospeso.", "I dati restano conservati {$keep}; poi vengono cancellati in modo definitivo. Per riattivare tutto basta rinnovare: nulla va perso."],
                 'Riattiva il gestionale',
             ],
             str_starts_with($this->kind, 'purge') => [
@@ -49,9 +51,9 @@ final class OrgLifecycleNotification extends Notification
                 'Riattiva il gestionale',
             ],
             default => [
-                $days >= 0 ? "La prova di {$this->orgName} finisce tra {$days} giorni" : "La prova di {$this->orgName} è finita",
+                $days >= 0 ? "La prova di {$this->orgName} finisce {$when}" : "La prova di {$this->orgName} è finita",
                 $days >= 0
-                    ? ["la prova gratuita di {$this->orgName} finisce tra {$days} giorni.", 'Scegli un piano per continuare: se non lo fai, i dati della prova vengono cancellati pochi giorni dopo la fine.']
+                    ? ["la prova gratuita di {$this->orgName} finisce {$when}.", 'Scegli un piano per continuare: se non lo fai, i dati della prova vengono cancellati pochi giorni dopo la fine.']
                     : ["la prova gratuita di {$this->orgName} è finita.", 'Scegli un piano per continuare: i dati della prova stanno per essere cancellati.'],
                 'Scegli un piano',
             ],

@@ -65,9 +65,11 @@ final readonly class MemberLimit
         }
         if ($full) {
             $until = $blockOn !== null ? CarbonImmutable::parse($blockOn)->format('d/m/Y') : '';
+            $untilText = $until !== '' ? ", fino al {$until}" : '';
+            $dayWord = $rules['tolerance_days'] === 1 ? 'giorno' : 'giorni';
 
             return ['limit' => $limit, 'count' => $count, 'state' => 'tolerance', 'tolerated' => $tolerated, 'block_on' => $blockOn,
-                'message' => "Hai raggiunto i {$limit} soci del piano {$name}. Puoi continuare ad aggiungerne fino a {$tolerated} per {$rules['tolerance_days']} giorni, fino al {$until}. Poi serve {$nextText}."] + $plan;
+                'message' => "Hai raggiunto i {$limit} soci del piano {$name}. Puoi continuare ad aggiungerne fino a {$tolerated} per {$rules['tolerance_days']} {$dayWord}{$untilText}. Poi serve {$nextText}."] + $plan;
         }
         if ($count * 100 >= $limit * $rules['warn_percent']) {
             return ['limit' => $limit, 'count' => $count, 'state' => 'warn', 'tolerated' => $tolerated, 'block_on' => null,
