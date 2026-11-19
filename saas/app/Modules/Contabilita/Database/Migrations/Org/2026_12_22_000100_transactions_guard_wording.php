@@ -6,7 +6,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Solo i testi della guardia dei movimenti: «si eliminano» al posto di «si cancellano», e dove si riapre un anno
+ * Solo i testi della guardia dei movimenti e dello storno: «si eliminano» al posto di «si cancellano», e dove si riapre un anno
  * fiscale chiuso (dal Rendiconto, solo l'ultimo anno chiuso). La logica è identica a quella della migrazione precedente.
  */
 return new class extends Migration
@@ -69,10 +69,42 @@ return new class extends Migration
             END
             $$;
         SQL);
+
+        // Storno: stessa funzione della prima migrazione (permessi e proprietario restano), cambia solo il testo dell'errore.
+        DB::unprepared(<<<'SQL'
+            CREATE OR REPLACE FUNCTION app.void_transaction(p_id uuid, p_reason text, p_by uuid) RETURNS integer
+            LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+            DECLARE
+                org uuid := NULLIF(current_setting('app.org_id', true), '')::uuid;
+                tx app.transactions%ROWTYPE;
+                reason text := left(coalesce(NULLIF(btrim(p_reason), ''), 'Stornato'), 255);
+                n integer;
+            BEGIN
+                SELECT * INTO tx FROM app.transactions WHERE org_id = org AND id = p_id FOR UPDATE;
+                IF NOT FOUND OR tx.voided_at IS NOT NULL THEN
+                    RAISE EXCEPTION 'Movimento non trovato o già stornato.';
+                END IF;
+
+                UPDATE app.transactions SET voided_at = now(), void_reason = reason, voided_by = p_by
+                WHERE org_id = org AND voided_at IS NULL AND (
+                    id = p_id
+                    OR (tx.transfer_id IS NOT NULL AND transfer_id = tx.transfer_id)
+                    OR (tx.receipt_id IS NOT NULL AND receipt_id = tx.receipt_id)
+                );
+                GET DIAGNOSTICS n = ROW_COUNT;
+
+                IF tx.receipt_id IS NOT NULL THEN
+                    UPDATE app.receipts SET voided_at = now(), void_reason = reason WHERE org_id = org AND id = tx.receipt_id;
+                END IF;
+
+                RETURN n;
+            END
+            $$;
+        SQL);
     }
 
     public function down(): void
     {
-        // La guardia precedente resta quella dell'ultima migrazione che la definisce: non si ripristina qui.
+        // Le funzioni precedenti restano quelle dell'ultima migrazione che le definisce: non si ripristinano qui.
     }
 };

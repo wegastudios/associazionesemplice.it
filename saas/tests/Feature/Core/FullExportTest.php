@@ -65,7 +65,7 @@ it('esporta tutti i dati in un archivio per il titolare', function (): void {
         ->and($files[$d.'contabilita/prima-nota.csv'])->toContain('Quota associativa')
         ->and($files[$d.'operatori.csv'])->toContain('own@example.com')
         ->and($files['LEGGIMI.txt'])->toContain('Polisportiva Alfa')->toContain('I certificati medici non sono in questa copia.')
-        ->toContain('I PDF si aprono con qualsiasi lettore PDF');
+        ->toContain('i PDF con qualsiasi lettore PDF');
     $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'backup.downloaded')->exists())->toBeTrue());
 });
 
