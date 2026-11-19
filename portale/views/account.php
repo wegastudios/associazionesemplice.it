@@ -84,7 +84,7 @@ $csrf = Portale\App::csrf();
 			</details>
 			<?php endif; ?>
 		<?php endforeach; ?>
-		<p class="hint"><b>Aggiorna sempre insieme il plugin gratuito e il Pro:</b> se ne aggiorni uno solo, WordPress mostra un avviso finché non aggiorni anche l'altro. Il gratuito si aggiorna caricando lo zip da qui; il Pro si aggiorna direttamente da WordPress.</p>
+		<p class="hint"><b>Aggiorna sempre insieme il plugin gratuito e il Pro:</b> se ne aggiorni uno solo, WordPress mostra un avviso finché non aggiorni anche l'altro. Entrambi si aggiornano da WordPress (Bacheca → Aggiornamenti); da qui scarichi lo zip se vuoi installarli a mano.</p>
 		<p class="hint">I file del plugin si scaricano solo da qui, con la licenza in regola. Li carichi da WordPress: <b>Plugin → Aggiungi nuovo → Carica plugin</b>. Per tornare a una versione precedente carichi il suo zip: i dati restano.</p>
 	</div>
 	<?php endif; ?>

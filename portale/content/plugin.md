@@ -26,7 +26,13 @@ Si scarica da WordPress.org e funziona da solo, senza chiave e senza contattare 
 Il confronto completo, funzione per funzione, è nella pagina [Confronto tra i piani](/confronto).
 
 ## Cosa contatta il plugin
-Il gratuito non invia dati dei soci né dell'associazione. Se lo scarichi da WordPress.org si aggiorna da lì e a noi non arriva nulla; se lo scarichi da questo sito, una volta al giorno chiede se c'è una versione nuova, inviando solo il nome del plugin e la versione (si può spegnere dalle impostazioni). Il Pro verifica la licenza una volta al giorno e controlla gli aggiornamenti di norma una volta al giorno con questo sito, inviando solo chiave, dominio e versione: i dettagli sono nell'[informativa sulla privacy](/privacy) e nei [termini di utilizzo](/termini).
+Il plugin gratuito non invia dati dei soci né dell'associazione.
+
+- **Scaricato da WordPress.org:** si aggiorna da lì e a noi non arriva nulla.
+- **Scaricato da questo sito:** una volta al giorno chiede se c'è una versione nuova, inviando solo nome del plugin e versione. Si può spegnere dalle impostazioni.
+- **Il Pro:** di norma una volta al giorno verifica la licenza e cerca aggiornamenti, inviando solo chiave, dominio e versione.
+
+I dettagli sono nell'[informativa sulla privacy](/privacy) e nei [termini di utilizzo](/termini).
 
 ## Per iniziare
 - [Ottieni la licenza gratuita](/free)
