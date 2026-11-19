@@ -12,7 +12,7 @@ namespace App\Modules\Portale\Contracts;
 interface LifecyclePolicy
 {
     /** Messaggio al cliente quando una funzione è riservata a chi sceglie un piano. */
-    public const CHOOSE_A_PLAN = 'Disponibile scegliendo un piano.';
+    public const CHOOSE_A_PLAN = 'Durante la prova questa funzione non è attiva: si sblocca scegliendo un piano.';
 
     public function exportsAllowed(string $orgId): bool;
 

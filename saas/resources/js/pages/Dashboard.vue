@@ -92,7 +92,7 @@ const dateLabel = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'nume
                     <h2 id="people-title" class="sr-only">Anagrafica</h2>
                     <Link href="/gestionale/soci" class="card flex items-center gap-3 p-4 hover:bg-surface">
                         <span class="text-3xl font-bold tabular-nums">{{ peopleCount }}</span>
-                        <span class="min-w-0 flex-1 text-muted">schede in anagrafica</span>
+                        <span class="min-w-0 flex-1 text-muted">{{ peopleCount === 1 ? 'scheda in anagrafica' : 'schede in anagrafica' }}</span>
                         <ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" />
                     </Link>
                 </section>

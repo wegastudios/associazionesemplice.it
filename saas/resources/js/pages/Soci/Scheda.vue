@@ -46,7 +46,7 @@ const memberPost = async (what) => {
         method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf() },
     });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) accessError.value = json.error ?? 'Non è stato possibile.';
+    if (!res.ok) accessError.value = json.error ?? 'Operazione non riuscita: riprova.';
     else if (what === 'link') accessLink.value = json.link;
     else accessDone.value = `Accessi chiusi: ${json.closed}.`;
 };
@@ -58,9 +58,9 @@ const renew = useForm({ account_id: props.accounts[0]?.id ?? '', amount: p.fee ?
 const submitRenew = () => renew.post(`/gestionale/soci/${props.person.id}/tessera`, { preserveScroll: true });
 const grant = useForm({ social_year: props.socialYear.current, reason: '' });
 const submitGrant = () => grant.post(`/gestionale/soci/${props.person.id}/tessera-manuale`, { preserveScroll: true, onSuccess: () => grant.reset('reason') });
-const revoke = (id) => window.confirm('Togliere la tessera di questo anno fiscale?') && router.post(`/gestionale/tessere/${id}/togli`, {}, { preserveScroll: true });
+const revoke = (id) => window.confirm('Togliere la tessera di questo anno fiscale? Da quel momento non risulta più valida.') && router.post(`/gestionale/tessere/${id}/togli`, {}, { preserveScroll: true });
 const leave = useForm({ date: today, reason: '' });
-const submitLeave = () => window.confirm(`Registrare l'uscita di ${props.person.first_name} ${props.person.last_name} dall'associazione?`) && leave.post(`/gestionale/soci/${props.person.id}/uscita`, { preserveScroll: true });
+const submitLeave = () => window.confirm(`Registrare l'uscita di ${props.person.first_name} ${props.person.last_name} dall'associazione? Da quel momento non risulta più tra i soci attivi; la scheda e lo storico restano.`) && leave.post(`/gestionale/soci/${props.person.id}/uscita`, { preserveScroll: true });
 const settingsForm = useForm({ start_month: props.settings.start_month, fee: props.settings.fee, warn_days: props.settings.warn_days });
 
 const guardianForm = useForm({ guardian_id: '' });
@@ -71,7 +71,7 @@ const unlinkGuardian = (g) => window.confirm(`Scollegare ${g.name}? Non vedrà p
 const nextYear = (d) => { const x = new Date(d); x.setFullYear(x.getFullYear() + 1); return x.toISOString().slice(0, 10); };
 const certForm = useForm({ kind: 'non_agonistic', issued_on: today, expires_on: nextYear(today), doctor: '', file: null });
 const addCert = () => certForm.post(`/gestionale/soci/${props.person.id}/certificati`, { preserveScroll: true, forceFormData: true, onSuccess: () => certForm.reset() });
-const deleteCert = (c) => window.confirm('Cancellare questo certificato medico? Il file allegato viene eliminato.') && router.delete(`/gestionale/certificati/${c.id}`, { preserveScroll: true });
+const deleteCert = (c) => window.confirm('Eliminare questo certificato medico? Il certificato e il file allegato vengono eliminati per sempre.') && router.delete(`/gestionale/certificati/${c.id}`, { preserveScroll: true });
 const certBadge = { valid: 'bg-salvia/15', expiring: 'bg-giallo/25', expired: 'bg-danger/15 text-danger', none: 'bg-surface' };
 const consentForm = useForm({ channel: '', granted: true, source: 'paper', given_by: '' });
 const setConsent = (channel, granted) => {
@@ -123,7 +123,7 @@ const label = 'space-y-1 text-sm';
                 <label :class="label"><span class="font-semibold">Email</span><input v-model="form.email" type="email" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Cellulare</span><input v-model="form.phone" type="tel" :class="field" /></label>
                 <label v-if="!isGuest" :class="label">
-                    <span class="font-semibold">Tessera</span>
+                    <span class="font-semibold">Numero di tessera</span>
                     <span class="flex gap-2"><input v-model="form.card_number" :class="field" />
                         <button type="button" class="whitespace-nowrap text-sm font-semibold text-accent" @click="form.card_number = firstFreeCard">Primo libero ({{ firstFreeCard }})</button></span>
                 </label>
@@ -161,7 +161,7 @@ const label = 'space-y-1 text-sm';
                     <li v-for="m in person.memberships" :key="m.id" class="list-row" :class="m.valid ? '' : 'opacity-60'">
                         <span class="min-w-0 flex-1">
                             <span class="block font-semibold" :class="m.valid ? '' : 'line-through'">Tessera {{ m.social_year }}</span>
-                            <span class="caption block">fino al {{ m.valid_to }} – {{ { payment: 'quota incassata', manual: 'senza incasso', import: 'importata', founder: 'fondatore' }[m.source] }}</span>
+                            <span class="caption block">fino al {{ m.valid_to }} · {{ { payment: 'quota incassata', manual: 'senza incasso', import: 'importata', founder: 'fondatore' }[m.source] }}</span>
                             <span v-if="m.replaced_by" class="caption block">Sostituita dalla tessera {{ m.replaced_by }}: resta registrata e i pagamenti non cambiano.</span>
                         </span>
                         <span v-if="m.valid" class="badge badge-ok">Valida</span><span v-else-if="m.replaced_by" class="badge badge-neutral">Sostituita</span><span v-else class="badge badge-neutral">Annullata</span>
@@ -169,7 +169,7 @@ const label = 'space-y-1 text-sm';
                     </li>
                 </ul>
                 <form v-if="canEdit && person.type !== 'founder' && !person.left_on" class="grid gap-3 sm:grid-cols-4" @submit.prevent="submitRenew">
-                    <p class="text-sm sm:col-span-4"><span class="font-semibold">Tessera che si incassa: {{ renewal.year }}</span><template v-if="renewal.free"> ({{ renewal.free }} in omaggio, perché si iscrive negli ultimi giorni dell’anno fiscale)</template>. La sceglie il programma: chi chiede di essere socio, o di rinnovare, prende l’anno in corso; negli ultimi giorni dell’anno fiscale chi ha già la tessera prende quella dell’anno dopo.</p>
+                    <p class="text-sm sm:col-span-4"><span class="font-semibold">Tessera di questo incasso: {{ renewal.year }}</span><template v-if="renewal.free"> ({{ renewal.free }} in omaggio, perché si iscrive negli ultimi giorni dell’anno fiscale)</template>. L'anno lo sceglie il programma: di norma è quello in corso; negli ultimi giorni dell’anno fiscale chi ha già la tessera prende quella dell’anno dopo.</p>
                     <label :class="label"><span class="font-semibold">Quota</span><input v-model="renew.amount" inputmode="decimal" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Data</span><input v-model="renew.date" type="date" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Conto</span>
@@ -196,7 +196,7 @@ const label = 'space-y-1 text-sm';
                             <td class="py-2">{{ c.kind }}</td><td class="py-2">{{ c.doctor ?? '' }}</td><td class="py-2">{{ c.issued_on }}</td><td class="py-2">{{ c.expires_on }}</td>
                             <td class="space-x-3 py-2 text-right">
                                 <a v-if="c.has_file" :href="`/gestionale/certificati/${c.id}/file`" class="text-accent hover:underline">Scarica</a>
-                                <button v-if="canEdit" type="button" class="text-danger hover:underline" @click="deleteCert(c)">Togli</button>
+                                <button v-if="canEdit" type="button" class="text-danger hover:underline" @click="deleteCert(c)">Elimina</button>
                             </td>
                         </tr>
                     </tbody>
@@ -216,14 +216,14 @@ const label = 'space-y-1 text-sm';
 
             <section v-if="person.minor || person.guardians.length" v-show="tab === 'famiglia'" class="mb-4 card p-4 sm:p-5">
                 <h2 class="mb-3 text-lg font-bold">Genitori o tutori</h2>
-                <p v-if="!person.guardians.length" class="mb-3 text-sm text-muted">Nessun genitore o tutore collegato. Collegane uno: sarà lui a entrare nell’area soci per il minore.</p>
+                <p v-if="!person.guardians.length" class="mb-3 text-sm text-muted">Nessun genitore o tutore collegato. Collegane uno: entrerà nell'area soci al posto del minore.</p>
                 <ul class="mb-4 space-y-2 text-sm">
                     <li v-for="g in person.guardians" :key="g.id" class="flex flex-wrap items-center gap-3">
                         <Link :href="`/gestionale/soci/${g.id}`" class="font-semibold text-accent hover:underline">{{ g.name }}</Link>
                         <span class="text-muted">{{ g.email ?? 'senza email' }}</span>
                         <span v-if="g.operative" class="rounded bg-salvia/15 px-2 py-0.5">entra nell’area soci</span>
                         <template v-if="canEdit">
-                            <button v-if="!g.operative" type="button" class="text-accent hover:underline" @click="makeOperative(g)">Fai entrare lui nell’area soci</button>
+                            <button v-if="!g.operative" type="button" class="text-accent hover:underline" @click="makeOperative(g)">Dai a questa persona l'accesso all'area soci</button>
                             <button type="button" class="text-danger hover:underline" @click="unlinkGuardian(g)">Scollega</button>
                         </template>
                     </li>
@@ -294,7 +294,7 @@ const label = 'space-y-1 text-sm';
         </template>
 
         <section v-if="canSettings && !person" class="mt-6 card p-4 sm:p-5">
-            <h2 class="mb-3 text-lg font-bold">Impostazioni del tesseramento</h2>
+            <h2 class="mb-3 text-lg font-bold">Impostazioni di soci e attività</h2>
             <form class="flex flex-wrap items-end gap-3" @submit.prevent="submitSettings">
                 <label :class="label"><span class="font-semibold">Da che mese iniziano corsi ed eventi (anno delle attività)?</span>
                     <select v-model="settingsForm.start_month" :class="field"><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select><span class="block text-sm text-muted">La tessera, le quote e gli incassi seguono invece l'anno fiscale.</span></label>

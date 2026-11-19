@@ -25,13 +25,13 @@ const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.
                     <div class="flex flex-col items-end gap-2 text-sm">
                         <template v-if="e.booking_id">
                             <span class="rounded-full bg-salvia/15 px-3 py-1 font-semibold">Prenotato</span>
-                            <span v-if="e.due > 0" class="text-xs text-muted">{{ online ? 'da pagare in segreteria o in «Quote»' : 'da pagare in segreteria' }}</span>
-                            <button v-if="e.cancellable" type="button" class="text-danger hover:underline" @click="cancel(e)">Annulla</button>
+                            <span v-if="e.due > 0" class="text-xs text-muted">{{ online ? 'da pagare in segreteria o da «Quote»' : 'da pagare in segreteria' }}</span>
+                            <button v-if="e.cancellable" type="button" class="text-danger hover:underline" @click="cancel(e)">Annulla prenotazione</button>
                             <span v-else class="text-xs text-muted">per annullare scrivi alla segreteria</span>
                         </template>
                         <span v-else-if="e.closed_label" class="max-w-56 text-right text-xs text-muted">{{ e.closed_label }}</span>
                         <span v-else-if="e.waiting" class="rounded-full bg-surface px-3 py-1">In lista d'attesa</span>
-                        <button v-else-if="e.free === 0" type="button" class="btn btn-secondary" @click="post(`/area/eventi/${e.session_id}/attesa`)">Lista d'attesa</button>
+                        <button v-else-if="e.free === 0" type="button" class="btn btn-secondary" @click="post(`/area/eventi/${e.session_id}/attesa`)">Mettiti in lista d'attesa</button>
                         <button v-else type="button" class="btn btn-primary" @click="post(`/area/eventi/${e.session_id}/prenota`)">Prenota</button>
                     </div>
                 </div>

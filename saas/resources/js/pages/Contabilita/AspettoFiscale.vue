@@ -13,7 +13,7 @@ const label = 'space-y-1 text-sm';
     <Head title="Aspetto fiscale" />
     <AppLayout>
         <h1 class="mb-1 text-2xl font-bold">Aspetto fiscale</h1>
-        <p v-if="!hasVat" class="card p-4 text-sm sm:p-5">Senza partita IVA l'IVA non si applica: incassi e spese si registrano con il loro importo, senza aliquote. Se l'associazione ha la partita IVA, indicala in Altro › Configurazione guidata › Dati dell'ente: qui compariranno le aliquote.</p>
+        <p v-if="!hasVat" class="card p-4 text-sm sm:p-5">Senza partita IVA l'IVA non si applica: incassi e spese si registrano con il loro importo, senza aliquote. Se l'associazione ha la partita IVA, indicala in «Configurazione guidata», tra i dati dell'ente: qui compariranno le aliquote.</p>
         <form v-else class="card space-y-5 p-4 sm:p-5" novalidate @submit.prevent="save">
             <label :class="label"><span class="font-semibold">Aliquote IVA che usi</span>
                 <input v-model="form.rates" class="field" inputmode="numeric" placeholder="es. 22, 10, 5, 4" />

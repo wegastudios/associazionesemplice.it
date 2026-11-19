@@ -25,7 +25,7 @@ const longDays = computed(() => {
     const n = Math.round((Date.parse(edit.end_date) - Date.parse(props.session.date)) / 86400000) + 1;
     return n > 7 ? n : 0;
 });
-const cancelSession = (future) => confirm(future ? 'Annullare questa data e tutte le successive?' : 'Annullare questa data?')
+const cancelSession = (future) => confirm(future ? 'Annullare questa data e tutte le successive? Le prenotazioni e gli incassi già registrati non vengono toccati.' : 'Annullare questa data? Le prenotazioni e gli incassi già registrati non vengono toccati.')
     && router.post(`/gestionale/attivita/date/${props.session.id}/annulla`, { future }, { preserveScroll: true });
 
 const paying = ref(null);
@@ -49,7 +49,7 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
         </div>
         <p v-if="session.span_label" class="mb-2 text-sm first-letter:uppercase">{{ session.span_label }}</p>
         <p class="mb-6 text-sm text-muted">
-            {{ session.taken }} prenotati<template v-if="session.capacity"> su {{ session.capacity }} posti</template><template v-else> (posti senza limite)</template><template v-if="session.location"> · {{ session.location }}</template>
+            {{ session.taken }} {{ session.taken === 1 ? 'prenotato' : 'prenotati' }}<template v-if="session.capacity"> su {{ session.capacity }} posti</template><template v-else> (posti senza limite)</template><template v-if="session.location"> · {{ session.location }}</template>
             · <Link :href="`/gestionale/attivita/${activity.id}/presenze?mese=${session.date.slice(0, 7)}&giorno=${session.date}`" class="font-semibold text-accent hover:underline">presenze</Link>
         </p>
 
@@ -67,7 +67,7 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
                         <span v-if="b.active && b.due > 0" class="rounded bg-danger/15 px-2 py-0.5 text-danger">da incassare {{ b.due_label }}</span>
                         <span v-if="b.active" class="ml-auto flex gap-3">
                             <button v-if="canEdit && canAccounting && b.due > 0" type="button" class="font-semibold text-accent hover:underline" @click="paying = b.id">Incassa</button>
-                            <button v-if="canEdit" type="button" class="text-danger hover:underline" @click="cancelBooking(b)">Annulla</button>
+                            <button v-if="canEdit" type="button" class="text-danger hover:underline" @click="cancelBooking(b)">Annulla prenotazione</button>
                         </span>
                     </div>
                     <form v-if="paying === b.id" class="mt-3 grid gap-3 rounded-lg border border-line p-3 sm:grid-cols-4" @submit.prevent="submitPay">
@@ -112,9 +112,9 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
         <section v-if="canEdit && !session.cancelled" class="card p-4 sm:p-5" aria-labelledby="ed-title">
             <h2 id="ed-title" class="mb-3 text-lg font-bold">Modifica la data</h2>
             <form class="grid gap-3 sm:grid-cols-4" @submit.prevent="submitEdit">
-                <label :class="label"><span class="font-semibold">Finisce il (facoltativo)</span><input v-model="edit.end_date" type="date" :min="session.date" :class="field" />
-                    <span class="block text-xs text-muted">Se lo lasci vuoto la data finisce lo stesso giorno.</span></label>
-                <label v-if="longDays" class="flex items-center gap-2 self-end pb-2 text-sm sm:col-span-2"><input v-model="edit.confirm_long" type="checkbox" /> Questa data dura {{ longDays }} giorni: è giusto? Confermo la durata (oltre 7 giorni)</label>
+                <label :class="label"><span class="font-semibold">Ultimo giorno, se dura più giorni</span><input v-model="edit.end_date" type="date" :min="session.date" :class="field" />
+                    <span class="block text-xs text-muted">Vuoto = un giorno solo.</span></label>
+                <label v-if="longDays" class="flex items-center gap-2 self-end pb-2 text-sm sm:col-span-2"><input v-model="edit.confirm_long" type="checkbox" /> Confermo: questa data dura {{ longDays }} giorni.</label>
                 <label :class="label"><span class="font-semibold">Dalle</span><input v-model="edit.start" type="time" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Alle</span><input v-model="edit.end" type="time" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Posti</span><input v-model="edit.capacity" type="number" min="1" :class="field" placeholder="senza limite" /></label>

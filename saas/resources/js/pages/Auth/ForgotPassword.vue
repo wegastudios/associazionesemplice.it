@@ -15,7 +15,7 @@ const submit = () => form.post('/password-dimenticata');
 <template>
     <Head title="Password dimenticata" />
     <GuestLayout title="Password dimenticata">
-        <p class="mb-5 text-muted">Scrivi la tua email: riceverai un link per sceglierne una nuova.</p>
+        <p class="mb-5 text-muted">Scrivi la tua email: riceverai un link per scegliere una nuova password.</p>
         <StatusMessage :message="status" class="mb-4" />
         <form class="space-y-5" novalidate @submit.prevent="submit">
             <FormField id="email" label="Email" :error="form.errors.email">

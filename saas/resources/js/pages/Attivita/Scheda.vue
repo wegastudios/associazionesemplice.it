@@ -45,7 +45,7 @@ const longDays = computed(() => {
 const enroll = useForm({ person_id: '', start_month: '' });
 const submitEnroll = () => enroll.transform((d) => ({ ...d, start_month: d.start_month || null }))
     .post(`/gestionale/attivita/${props.activity.id}/iscrizioni`, { preserveScroll: true, onSuccess: () => enroll.reset() });
-const unenroll = (e) => window.confirm(`Chiudere l'iscrizione di ${e.name ?? 'questa persona'}?`) && router.post(`/gestionale/attivita/${props.activity.id}/iscrizioni/${e.person_id}/chiudi`, {}, { preserveScroll: true });
+const unenroll = (e) => window.confirm(`Chiudere l'iscrizione di ${e.name ?? 'questa persona'}? I pagamenti già registrati restano in prima nota.`) && router.post(`/gestionale/attivita/${props.activity.id}/iscrizioni/${e.person_id}/chiudi`, {}, { preserveScroll: true });
 
 const paying = ref(null);
 const pay = useForm({ person_id: '', account_id: props.accounts[0]?.id ?? '', date: today, months: [], amount: '', method: '' });
@@ -108,11 +108,11 @@ const label = 'space-y-1 text-sm';
                 <div v-if="isCourse" :class="[label, 'sm:col-span-2']">
                     <span class="font-semibold">Giorni delle lezioni</span>
                     <div class="flex flex-wrap gap-3 pt-1"><label v-for="(d, i) in days" :key="d" class="flex items-center gap-1"><input v-model="form.weekdays" type="checkbox" :value="i + 1" /> {{ d }}</label></div>
-                    <span class="text-muted">Il mese è dovuto dalla prima lezione del mese.</span>
+                    <span class="text-muted">La mensilità di un mese è dovuta dalla sua prima lezione.</span>
                 </div>
                 <label :class="label"><span class="font-semibold">Luogo</span><input v-model="form.location" :class="field" maxlength="190" /></label>
                 <div :class="[label, 'sm:col-span-2']">
-                    <label class="flex flex-col gap-1"><span class="font-semibold">Dove si svolge (risorsa)</span>
+                    <label class="flex flex-col gap-1"><span class="font-semibold">Risorsa occupata</span>
                         <select v-model="form.resource" :class="field" required>
                             <option value="" disabled>Scegli…</option>
                             <option value="none">Nessuna (fuori sede)</option>
@@ -122,8 +122,8 @@ const label = 'space-y-1 text-sm';
                     <span v-if="form.errors.resource" class="text-danger">{{ form.errors.resource }}</span>
                     <div v-if="form.errors.resource && form.errors.resource_movable !== undefined" class="flex flex-wrap gap-3 pt-1">
                         <button type="button" class="btn" @click="keepResource">Lascia tutto invariato</button>
-                        <button v-if="form.errors.resource_movable === '1'" type="button" class="btn btn-primary" @click="saveMoving">Sposta gli slot occupati sulla risorsa che si libera</button>
-                        <span v-if="form.errors.resource_movable === '1'" class="text-muted basis-full">Si spostano solo le prenotazioni e le attività future, non il passato; i blocchi della risorsa non si spostano. Una attività in conflitto passa per intero sulla risorsa di prima.</span>
+                        <button v-if="form.errors.resource_movable === '1'" type="button" class="btn btn-primary" @click="saveMoving">Sposta le fasce occupate sulla risorsa che si libera</button>
+                        <span v-if="form.errors.resource_movable === '1'" class="text-muted basis-full">Si spostano solo le prenotazioni e le attività future; i blocchi della risorsa restano dove sono. Un'attività che si sovrappone passa per intero sulla risorsa di prima.</span>
                         <span v-else class="text-muted basis-full">Con un blocco della risorsa in mezzo non si può spostare: togli il blocco o lascia tutto invariato.</span>
                     </div>
                 </div>
@@ -148,7 +148,7 @@ const label = 'space-y-1 text-sm';
                 </div>
                 <label v-if="isBookable" :class="[label, 'sm:col-span-3']"><span class="font-semibold">Listini</span>
                     <textarea v-model="form.price_lists" rows="2" :class="field" placeholder="Ingresso singolo 10,00&#10;Carnet 5 ingressi 40 x5" />
-                    <span class="text-muted">Facoltativi, uno per riga: nome e prezzo; per un carnet «x» e gli ingressi. Senza listino vale l'importo per i soci o per gli ospiti.</span>
+                    <span class="text-muted">Facoltativi, uno per riga: nome e prezzo. Per un carnet aggiungi «x» e il numero di ingressi. Senza listino vale l'importo per i soci o per gli ospiti.</span>
                     <span v-if="form.errors.price_lists" class="text-danger">{{ form.errors.price_lists }}</span></label>
                 <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Note</span><textarea v-model="form.notes" rows="2" :class="field" maxlength="2000" /></label>
             </fieldset>
@@ -165,7 +165,7 @@ const label = 'space-y-1 text-sm';
 
         <section v-if="activity && activity.bookable && activity.packages.length" class="mt-6 card p-4 sm:p-5" aria-labelledby="packs-title">
             <h2 id="packs-title" class="mb-1 text-lg font-bold">Carnet con ingressi da usare</h2>
-            <p class="mb-3 text-sm text-muted">Carnet già pagati con ingressi ancora da usare. Per scalarne uno, prenota la persona a una data scegliendo «Un ingresso dal carnet».</p>
+            <p class="mb-3 text-sm text-muted">Per scalare un ingresso, prenota la persona a una data scegliendo «Un ingresso dal carnet già pagato».</p>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="p in activity.packages" :key="p.id" class="flex flex-wrap items-center gap-3 py-2">
                     <Link :href="`/gestionale/soci/${p.person_id}`" class="font-semibold text-accent hover:underline">{{ p.name }}</Link>
@@ -182,7 +182,7 @@ const label = 'space-y-1 text-sm';
                 <li v-for="d in activity.sessions" :key="d.id" class="flex flex-wrap items-center gap-3 py-2" :class="d.cancelled ? 'text-muted line-through' : ''">
                     <Link :href="`/gestionale/attivita/date/${d.id}`" class="font-semibold text-accent hover:underline">{{ d.label }}<template v-if="d.start"> · {{ d.start }}<template v-if="d.end">–{{ d.end }}</template></template></Link>
                     <span v-if="d.location" class="text-muted">{{ d.location }}</span>
-                    <span v-if="!d.cancelled" :class="['rounded px-2 py-0.5', d.free === 0 ? 'bg-danger/15 text-danger' : 'bg-surface']">{{ d.taken }} prenotati<template v-if="d.capacity"> su {{ d.capacity }}</template></span>
+                    <span v-if="!d.cancelled" :class="['rounded px-2 py-0.5', d.free === 0 ? 'bg-danger/15 text-danger' : 'bg-surface']">{{ d.taken }} {{ d.taken === 1 ? 'prenotato' : 'prenotati' }}<template v-if="d.capacity"> su {{ d.capacity }}</template></span>
                     <span v-if="d.waiting" class="text-muted">{{ d.waiting }} in attesa</span>
                     <span v-if="d.cancelled">annullata</span>
                     <span v-else-if="d.ongoing" class="rounded bg-salvia/15 px-2 py-0.5 font-semibold">In corso</span>
@@ -192,9 +192,9 @@ const label = 'space-y-1 text-sm';
                 <label :class="label"><span class="font-semibold">Data</span><input v-model="dates.from" type="date" :class="field" required /></label>
                 <label class="flex items-center gap-2 self-end pb-2 text-sm"><input v-model="dates.weekly" type="checkbox" /> ogni settimana</label>
                 <label v-if="dates.weekly" :class="label"><span class="font-semibold">Fino al</span><input v-model="dates.to" type="date" :class="field" required /></label>
-                <label :class="label"><span class="font-semibold">Finisce il (facoltativo)</span><input v-model="dates.end_date" type="date" :min="dates.from" :class="field" />
-                    <span class="block text-xs text-muted">Se lo lasci vuoto la data finisce lo stesso giorno.</span></label>
-                <label v-if="longDays" class="flex items-center gap-2 self-end pb-2 text-sm sm:col-span-2"><input v-model="dates.confirm_long" type="checkbox" /> Questa data dura {{ longDays }} giorni: è giusto? Confermo la durata (oltre 7 giorni)</label>
+                <label :class="label"><span class="font-semibold">Ultimo giorno, se dura più giorni</span><input v-model="dates.end_date" type="date" :min="dates.from" :class="field" />
+                    <span class="block text-xs text-muted">Vuoto = un giorno solo.</span></label>
+                <label v-if="longDays" class="flex items-center gap-2 self-end pb-2 text-sm sm:col-span-2"><input v-model="dates.confirm_long" type="checkbox" /> Confermo: questa data dura {{ longDays }} giorni.</label>
                 <label :class="label"><span class="font-semibold">Dalle</span><input v-model="dates.start" type="time" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Alle</span><input v-model="dates.end" type="time" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Posti</span><input v-model="dates.capacity" type="number" min="1" :class="field" placeholder="senza limite" /></label>

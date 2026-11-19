@@ -1,10 +1,10 @@
 Ciao,
 
-ti sono stati restituiti {{ $amount }} del pagamento che hai fatto il {{ $paidOn }} a {{ $orgName }}.
+ti abbiamo restituito {{ $amount }} del pagamento del {{ $paidOn }} a {{ $orgName }}.
 
 Motivo: {{ $reason }}
 
-L'accredito arriva sullo stesso metodo di pagamento, di solito in pochi giorni lavorativi (fino a 10, secondo la banca).
+L'accredito arriva di solito in pochi giorni lavorativi (fino a 10, secondo la banca o il metodo di pagamento).
 @foreach ($stays as $line)
 
 {{ $line }}

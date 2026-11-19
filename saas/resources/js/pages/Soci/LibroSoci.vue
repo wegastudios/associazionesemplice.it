@@ -64,8 +64,8 @@ const q = () => { const s = new URLSearchParams(params()).toString(); return s ?
         </div>
         <nav v-if="pages > 1" class="mt-4 flex items-center justify-between text-sm" aria-label="Pagine">
             <button v-if="page > 1" type="button" class="btn btn-secondary" @click="go(page - 1)">← Precedenti</button><span v-else />
-            <span class="text-muted">Pagina {{ page }} di {{ pages }} · {{ total }} soci</span>
-            <button v-if="page < pages" type="button" class="btn btn-secondary" @click="go(page + 1)">Successive →</button><span v-else />
+            <span class="text-muted">Pagina {{ page }} di {{ pages }} · {{ total === 1 ? "1 socio" : `${total} soci` }}</span>
+            <button v-if="page < pages" type="button" class="btn btn-secondary" @click="go(page + 1)">Successivi →</button><span v-else />
         </nav>
     </AppLayout>
 </template>

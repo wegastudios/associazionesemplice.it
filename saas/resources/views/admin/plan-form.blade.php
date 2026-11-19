@@ -7,7 +7,7 @@
 
     @if (! $isNew)
         <p class="muted">Stai guardando la versione {{ $version }} della bozza.
-            @if ($willCreateVersion)<strong>Questa versione è già in vigore: se salvi, nasce la versione {{ $version + 1 }}</strong> e la attuale resta com'è per chi l'ha comprata.@endif</p>
+            @if ($willCreateVersion)<strong>Questa versione è già in vigore: se salvi, nasce la versione {{ $version + 1 }}</strong> e l'attuale resta com'è per chi l'ha comprata.@endif</p>
     @endif
 
     @if (! $isNew && count($preview) > 0)

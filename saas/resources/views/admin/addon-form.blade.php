@@ -26,7 +26,7 @@
                 @endforeach
             </select>
         @else
-            <p class="muted">Tipo: <strong>{{ $values['kind'] }}</strong> (non si può cambiare: cambierebbe cosa ha comprato chi lo ha già).</p>
+            <p class="muted">Tipo: <strong>{{ ['package' => 'Pacchetto di funzioni', 'operators' => 'Operatori', 'members' => 'Soci in più', 'storage' => 'Spazio file', 'domain' => 'Dominio personalizzato', 'dedicated_db' => 'Database dedicato', 'recharge' => 'Ricarica'][$values['kind']] ?? $values['kind'] }}</strong> (non si può cambiare: cambierebbe cosa ha comprato chi lo ha già).</p>
         @endif
 
         <label for="name">Nome</label>

@@ -6,7 +6,7 @@ per entrare nell'area soci di {{ $orgName }} apri questo link:
 
 oppure scrivi il codice {{ $code }} nella pagina di accesso.
 
-Link e codice valgono {{ $minutes }} minuti e una volta sola. Se non hai chiesto tu l'accesso, ignora questa email.
+Link e codice valgono {{ $minutes }} minuti e si usano una volta sola. Se non l'hai chiesto tu, ignora questa email.
 
 —
 {{ $orgName }}

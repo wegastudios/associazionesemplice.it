@@ -62,13 +62,13 @@ const submit = () => form.post(`/adesione/${props.org.slug}`, { preserveScroll: 
 
             <fieldset v-if="minor" class="grid gap-4 sm:grid-cols-2">
                 <legend class="mb-2 font-bold">Genitore o tutore</legend>
-                <p class="text-sm text-muted sm:col-span-2">Chi ha meno di 18 anni si iscrive con un genitore o tutore: le comunicazioni arrivano a lui.</p>
+                <p class="text-sm text-muted sm:col-span-2">Chi ha meno di 18 anni fa domanda con un genitore o tutore, che riceve le comunicazioni.</p>
                 <FormField id="guardian_first_name" label="Nome"><TextInput id="guardian_first_name" v-model="form.guardian_first_name" required /></FormField>
                 <FormField id="guardian_last_name" label="Cognome"><TextInput id="guardian_last_name" v-model="form.guardian_last_name" required /></FormField>
                 <FormField id="guardian_email" label="Email"><TextInput id="guardian_email" v-model="form.guardian_email" type="email" required /></FormField>
                 <FormField id="guardian_phone" label="Cellulare"><TextInput id="guardian_phone" v-model="form.guardian_phone" type="tel" required /></FormField>
                 <FormField id="guardian_tax_code" label="Codice fiscale (facoltativo)"><TextInput id="guardian_tax_code" v-model="form.guardian_tax_code" maxlength="16" /></FormField>
-                <label class="flex items-start gap-2 text-sm sm:col-span-2"><input v-model="form.guardian_ok" type="checkbox" class="mt-1" /> Dichiaro di essere il genitore o il tutore e di presentare la domanda per suo conto.</label>
+                <label class="flex items-start gap-2 text-sm sm:col-span-2"><input v-model="form.guardian_ok" type="checkbox" class="mt-1" /> Dichiaro di essere il genitore o il tutore e di presentare la domanda per conto del minore.</label>
             </fieldset>
 
             <fieldset class="space-y-3 text-sm">

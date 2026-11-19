@@ -8,12 +8,12 @@ const res = computed(() => props.resources.find((r) => r.id === props.chosen));
 const go = (q) => router.get('/area/risorse', { risorsa: props.chosen, giorno: props.date, ...q }, { preserveScroll: true });
 const form = useForm({ date: props.date, start: '', units: 1, guests: '' });
 const book = (start) => {
-    if (start && !window.confirm(`Prenotare dalle ${start}?`)) return;
+    if (start && !window.confirm(`Prenotare ${res.value?.name ?? 'la risorsa'} il ${new Date(`${props.date}T00:00`).toLocaleDateString('it-IT')} dalle ${start}?`)) return;
     form.date = props.date;
     form.start = start ?? '';
     form.post(`/area/risorse/${props.chosen}/prenota`, { preserveScroll: true, onSuccess: () => form.reset('guests') });
 };
-const cancel = (x) => confirm(`Annullare ${x.resource} (${x.when})?`) && router.post(`/area/risorse/prenotazioni/${x.id}/annulla`, {}, { preserveScroll: true });
+const cancel = (x) => confirm(`Annullare la prenotazione di ${x.resource} (${x.when})?`) && router.post(`/area/risorse/prenotazioni/${x.id}/annulla`, {}, { preserveScroll: true });
 const field = 'field w-auto';
 </script>
 
@@ -51,16 +51,16 @@ const field = 'field w-auto';
                 <span :class="dayFree ? '' : 'text-danger'">{{ dayFree ? 'Libera in questo giorno' : 'Occupata in questo giorno' }}</span>
                 <button v-if="dayFree" type="button" class="btn btn-primary" :disabled="form.processing" @click="book(null)">Prenota il giorno</button>
             </div>
-            <p class="mt-3 text-xs text-muted">Tocca una fascia libera per prenotarla. Il prezzo è quello dei soci con la tessera valida.</p>
+            <p class="mt-3 text-xs text-muted"><template v-if="res.typology === 'hourly'">Tocca una fascia libera per prenotarla. </template>Il prezzo è quello dei soci con la tessera valida.</p>
         </section>
         <section class="card p-4" aria-labelledby="m">
             <h2 id="m" class="mb-2 text-lg font-bold">Le tue prenotazioni</h2>
-            <p v-if="!mine.length" class="text-sm text-muted">Nessuna.</p>
+            <p v-if="!mine.length" class="text-sm text-muted">Nessuna prenotazione.</p>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="x in mine" :key="x.id" class="flex flex-wrap items-center gap-3 py-2">
                     <span class="font-semibold">{{ x.resource }}</span><span>{{ x.when }}</span><span class="text-muted">{{ x.fee_label }}</span>
                     <span v-if="x.due > 0" class="text-xs text-danger">da pagare</span>
-                    <button v-if="x.cancellable" type="button" class="ml-auto text-danger hover:underline" @click="cancel(x)">Annulla</button>
+                    <button v-if="x.cancellable" type="button" class="ml-auto text-danger hover:underline" @click="cancel(x)">Annulla prenotazione</button>
                 </li>
             </ul>
         </section>

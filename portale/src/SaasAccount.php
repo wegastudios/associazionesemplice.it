@@ -65,7 +65,7 @@ final class SaasAccount {
 		}
 		return array(
 			'total'     => $total, 'since' => $until,
-			'delete_on' => '' !== $until ? gmdate( 'Y-m-d', strtotime( $until . ' UTC +181 days' ) ) : '',
+			'delete_on' => '' !== $until ? gmdate( 'Y-m-d', strtotime( $until . ' UTC +180 days' ) ) : '',
 			'pay_now'   => $payNow,
 		);
 	}
@@ -73,7 +73,7 @@ final class SaasAccount {
 	public static function stateLabel( string $state ): array {
 		return array(
 			'pending'   => array( 'In attivazione', 'warn' ), 'active' => array( 'Attivo', 'ok' ), 'trial' => array( 'In prova', 'ok' ),
-			'past_due'  => array( 'Pagamento non riuscito', 'warn' ), 'suspended' => array( 'Sospeso', 'warn' ), 'cancelled' => array( 'Annullato', 'warn' ),
+			'past_due'  => array( 'Pagamento non riuscito', 'warn' ), 'suspended' => array( 'Sospeso', 'warn' ), 'cancelled' => array( 'Disdetto', 'warn' ),
 		)[ $state ] ?? array( $state, '' );
 	}
 
@@ -108,8 +108,8 @@ final class SaasAccount {
 	/** Parole italiane per le ragioni di rifiuto del dominio. */
 	public static function domainReason( string $reason ): string {
 		return array(
-			'invalid' => 'Il dominio non sembra valido: scrivilo come tuaassociazione.it, senza «https://».', 'taken' => 'Questo indirizzo è già usato da un\'altra associazione.',
-			'reserved' => 'Questo indirizzo non si può usare.', 'no_package' => 'Il tuo abbonamento non comprende il dominio personalizzato.',
+			'invalid' => 'L\'indirizzo non sembra valido: scrivilo come tuaassociazione.it, senza «https://».', 'taken' => 'Questo indirizzo è già usato da un\'altra associazione.',
+			'reserved' => 'Questo indirizzo non si può usare.', 'no_package' => 'Il tuo abbonamento non comprende l\'indirizzo personalizzato.',
 		)[ $reason ] ?? 'Questo indirizzo non si può usare.';
 	}
 

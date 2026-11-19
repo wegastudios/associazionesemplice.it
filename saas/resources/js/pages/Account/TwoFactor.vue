@@ -40,7 +40,7 @@ const disable = () => window.confirm('Disattivare la verifica in due passaggi? P
 
         <div v-if="!props.enabled" class="space-y-5">
             <p class="text-muted">
-                A ogni accesso, oltre alla password, ti chiederemo un codice generato da un'app sul telefono
+                A ogni accesso, oltre alla password, ti viene chiesto un codice generato da un'app sul telefono
                 (per esempio Google Authenticator, Microsoft Authenticator, 1Password).
             </p>
             <PrimaryButton type="button" @click="enable">Attiva la verifica</PrimaryButton>
@@ -67,7 +67,7 @@ const disable = () => window.confirm('Disattivare la verifica in due passaggi? P
             <div v-if="props.recoveryCodes" class="space-y-2">
                 <p class="text-sm text-muted">
                     Salva questi codici di recupero in un posto sicuro (per esempio nel gestore delle password). Servono se
-                    perdi il telefono; ognuno vale una sola volta. Non li mostreremo di nuovo.
+                    perdi il telefono; ognuno vale una sola volta. Non verranno mostrati di nuovo.
                 </p>
                 <ul class="grid grid-cols-2 gap-2 rounded-lg bg-surface p-3 font-mono text-sm">
                     <li v-for="code in props.recoveryCodes" :key="code">{{ code }}</li>

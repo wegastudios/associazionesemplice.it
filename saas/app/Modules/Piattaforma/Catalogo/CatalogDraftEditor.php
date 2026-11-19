@@ -33,9 +33,9 @@ final readonly class CatalogDraftEditor
         $published = CatalogValidator::input($this->catalog->published()->document);
         $out = [];
 
-        foreach (['name' => 'Nome del catalogo', 'description' => 'Descrizione del catalogo'] as $key => $label) {
+        foreach (['name' => 'Nome del catalogo cambiato.', 'description' => 'Descrizione del catalogo cambiata.'] as $key => $message) {
             if (($draft[$key] ?? null) !== ($published[$key] ?? null)) {
-                $out[] = "{$label} cambiato.";
+                $out[] = $message;
             }
         }
         if (self::canonical($draft['features'] ?? []) !== self::canonical($published['features'] ?? [])) {
@@ -53,7 +53,7 @@ final readonly class CatalogDraftEditor
             if (! isset($old[$key])) {
                 $out[] = "Piano «{$name}»: nuova versione {$version}, ".self::summary($plan, $this->previousPlan($published, $plan)).'.';
             } elseif (self::canonical($old[$key]) !== self::canonical($plan)) {
-                $out[] = "Piano «{$name}» versione {$version}: modificata, ma è già in vigore e non si può cambiare (non si potrà pubblicare).";
+                $out[] = "Piano «{$name}» versione {$version}: è già in vigore e non si può modificare. Così la bozza non si pubblica: crea la versione successiva.";
             }
         }
 
