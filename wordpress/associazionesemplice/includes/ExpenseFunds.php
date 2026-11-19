@@ -374,7 +374,7 @@ final class ExpenseFunds {
 		if ( $parts ) {
 			return $note . ' Attribuita al fondo: ' . implode( ' + ', $parts ) . '. Per cambiarla: Cassa → Conti e fondi → Attribuzioni recenti.';
 		}
-		return $note . ( self::enabled() ? ' Non è ancora attribuita a nessun fondo: succede da sola quando la spesa ha un documento allegato e un fondo con documentazione da coprire.' : '' );
+		return $note . ( self::enabled() ? ' Non è ancora attribuita a un fondo: succede in automatico quando alleghi un documento e c\'è un fondo ancora da documentare.' : '' );
 	}
 
 	// ---------- Privacy ----------

@@ -563,7 +563,7 @@ $lic_r    = License::sync( true );
 asem_ok( ! $lic_r['ok'] && 'fiscal' === License::plan(), 'piano del portale: una prova non valida non si accetta e lo stato resta com\'era' );
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'fiscal' ) ), 'portal_attestation' => '' );
 $lic_r    = License::sync( true );
-asem_ok( ! $lic_r['ok'] && false !== strpos( $lic_r['message'], 'piano firmato' ) && 'fiscal' === License::plan(), 'piano del portale: una licenza valida senza la prova del portale non si accetta e lo stato resta com\'era' );
+asem_ok( ! $lic_r['ok'] && false !== strpos( $lic_r['message'], 'non ha confermato il tuo piano' ) && 'fiscal' === License::plan(), 'piano del portale: una licenza valida senza la prova del portale non si accetta e lo stato resta com\'era' );
 // esito verificato ricordato per 12 ore: nessuna seconda chiamata, scade, errori e risposte senza firma non si ricordano, il resto delle regole non cambia
 $lic_pre_state = get_option( License::OPT_STATE );
 $lic_calls_n   = function () use ( &$lic_calls ) {

@@ -36,7 +36,7 @@ final class Guardians {
 			$errors[] = 'Per collegare un tutore serve la data di nascita del minore.';
 		}
 		if ( $operative && ! MemberType::can_login( (string) ( $guardian['type'] ?? '' ) ) ) { // chi opera sul sito deve poter entrare; l'altro genitore basta che sia censito
-			$errors[] = 'Il tutore deve poter entrare nell\'area soci: un socio o una persona registrata come genitore o tutore (un ospite non può).';
+			$errors[] = 'Il tutore deve poter entrare nell\'area soci: scegli un socio o una persona registrata come «genitore o tutore» (un ospite non può).';
 		}
 		$email = trim( (string) ( $guardian['email'] ?? '' ) );
 		if ( $operative && ( '' === $email || ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) ) {

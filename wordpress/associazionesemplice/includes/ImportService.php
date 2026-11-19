@@ -49,11 +49,11 @@ final class ImportService {
 		}
 		if ( ! $people_rows && ! $ledger_rows ) {
 			throw new \InvalidArgumentException(
-				'Non sono stati trovati né soci né movimenti. Per i soci servono le colonne "Nome" e "Cognome"; per la prima nota "Data" e "Importo" (oppure "Entrata" e "Uscita"). Fogli letti: ' . ( $ignored ? implode( ', ', $ignored ) : 'nessuno' ) . '.' // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				'Non sono stati trovati né soci né movimenti. Per i soci servono le colonne «Nome» e «Cognome»; per la prima nota «Data» e «Importo» (oppure «Entrata» e «Uscita»). Fogli letti: ' . ( $ignored ? implode( ', ', $ignored ) : 'nessuno' ) . '.' // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			);
 		}
 		if ( count( $people_rows ) > Limits::get( 'import_max_rows' ) || count( $ledger_rows ) > Limits::get( 'import_max_rows' ) ) {
-			throw new \InvalidArgumentException( 'Il file ha più di ' . Limits::get( 'import_max_rows' ) . ' righe per tipo: dividilo in più file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Il file ha più di ' . Limits::get( 'import_max_rows' ) . ' righe di soci o di movimenti: dividilo in più file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$out = array( 'people' => null, 'ledger' => null, 'ignored' => $ignored );
 		if ( $people_rows ) {
@@ -276,7 +276,7 @@ final class ImportService {
 			if ( 1 === $pass ) {
 				$host = ! empty( $row['host_id'] ) ? (int) $row['host_id'] : self::find_host( (string) $row['host_text'] );
 				if ( ! $host && ( '' !== trim( (string) $row['host_text'] ) || Limits::flag( 'guest_host_required' ) ) ) {
-					throw new \InvalidArgumentException( 'socio ospitante "' . $row['host_text'] . '" non trovato' );
+					throw new \InvalidArgumentException( 'socio ospitante «' . $row['host_text'] . '» non trovato' );
 				}
 				$data['host_person_id'] = $host ?: '';
 			}
@@ -363,7 +363,7 @@ final class ImportService {
 		try {
 			$g = Guardians::find_by_ref( $link[1] );
 			if ( ! $g ) {
-				throw new \InvalidArgumentException( 'tutore "' . $link[1] . '" non trovato o ambiguo (indica la tessera o l\'email)' );
+				throw new \InvalidArgumentException( 'tutore «' . $link[1] . '» non trovato o ambiguo (indica la tessera o l\'email)' );
 			}
 			$pair = array( (int) $link[0], (int) $g['id'] );
 			if ( ! Guardians::is_guardian_of( (int) $g['id'], (int) $link[0] ) ) {
@@ -586,10 +586,10 @@ final class ImportService {
 	public static function undo( int $batch_id ): array {
 		$b = self::batch( $batch_id );
 		if ( ! $b || ImportJob::is_running( $batch_id ) ) { // un import ancora a giri non si annulla: prima si finisce o si ferma
-			throw new \InvalidArgumentException( 'Import non trovato.' );
+			throw new \InvalidArgumentException( 'Importazione non trovata.' );
 		}
 		if ( ! empty( $b['undone_at'] ) ) {
-			throw new \InvalidArgumentException( 'Questo import è già stato annullato.' );
+			throw new \InvalidArgumentException( 'Questa importazione è già stata annullata.' );
 		}
 		if ( 'tribe' === (string) ( $b['data']['kind'] ?? '' ) ) {
 			return TribeImport::undo( $b ); // eventi e corsi di The Events Calendar: stesso elenco e stesso pulsante, annullamento sul loro contenuto
@@ -599,7 +599,7 @@ final class ImportService {
 		$people = Plugin::people();
 		$data   = $b['data'];
 		$res    = array( 'voided' => 0, 'shifts_undone' => 0, 'accounts_removed' => 0, 'memberships_removed' => 0, 'people_restored' => 0, 'people_removed' => 0, 'people_kept' => array(), 'users_removed' => 0 );
-		$reason = 'Annullamento import n. ' . $batch_id;
+		$reason = 'Annullamento importazione n. ' . $batch_id;
 
 		// 1. Prima nota: tutto o niente
 		$ledger->in_batch(

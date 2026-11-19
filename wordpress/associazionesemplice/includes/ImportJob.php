@@ -213,7 +213,7 @@ final class ImportJob {
 		$plan = get_option( self::OPT_PLAN, null );
 		if ( ! is_array( $plan ) ) {
 			self::finish( $batch, $job, $track ); // il piano non c'è più: si chiude con quello che è già entrato
-			throw new \InvalidArgumentException( 'L\'anteprima è scaduta: ricarica il file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'anteprima è scaduta: carica di nuovo il file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( null === $budget ) {
 			$budget = (float) apply_filters( 'asem_import_budget_seconds', self::default_budget() );
@@ -507,7 +507,7 @@ final class ImportJob {
 	private static function write_state( int $batch, array $job, array $track ): void {
 		$json = wp_json_encode( $track + array( 'job' => $job ) );
 		if ( ! is_string( $json ) || false === Db::db()->update( Db::t( 'import_batches' ), array( 'data' => $json ), array( 'id' => $batch ) ) ) {
-			throw new \RuntimeException( 'Impossibile salvare lo stato dell\'importazione (errore del database).' );
+			throw new \RuntimeException( 'Stato dell\'importazione non salvato: riprova.' );
 		}
 	}
 

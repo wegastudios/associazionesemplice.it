@@ -57,7 +57,7 @@ final class Holds {
 				Texts::mail(
 					$person['email'],
 					Texts::subject( 'Posto liberato: ' . $b['activity_name'] ),
-					'Ciao ' . $person['first_name'] . ",\n\nil tuo posto per «" . $b['activity_name'] . '» di ' . Frontend\Views::date_words( (string) $b['session_date'] ) . ' è stato liberato perché il contributo non è arrivato entro ' . (int) $b['hold_hours'] . ' ore dalla prenotazione. Se hai già pagato, scrivi subito alla segreteria.'
+					'Ciao ' . $person['first_name'] . ",\n\nil tuo posto per «" . $b['activity_name'] . '» di ' . Frontend\Views::date_words( (string) $b['session_date'] ) . ' è stato liberato perché il contributo non è arrivato entro ' . Texts::n( (int) $b['hold_hours'], '{n} ora', '{n} ore' ) . ' dalla prenotazione. Se hai già pagato, scrivi subito alla segreteria.'
 					. "\n\nSe vuoi partecipare, prenota di nuovo (se ci sono ancora posti) o mettiti in lista d'attesa."
 				);
 			}

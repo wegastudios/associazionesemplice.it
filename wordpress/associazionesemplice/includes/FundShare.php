@@ -11,7 +11,7 @@ final class FundShare {
 	const PERCENT = 'percent';
 
 	public static function modes(): array {
-		return array( self::NONE => 'Nessuna quota', self::FIXED => 'Importo fisso per ogni pagamento', self::PERCENT => 'Percentuale di ogni pagamento' );
+		return array( self::NONE => 'Nessun accantonamento', self::FIXED => 'Importo fisso per ogni pagamento', self::PERCENT => 'Percentuale di ogni pagamento' );
 	}
 
 	/**
@@ -38,14 +38,14 @@ final class FundShare {
 		}
 		$errors = array();
 		if ( ! in_array( $mode, array( self::FIXED, self::PERCENT ), true ) ) {
-			$errors[] = 'Quota per il rimborso non valida.';
+			$errors[] = 'Valore per il rimborso non valido.';
 		} elseif ( $value <= 0 ) {
-			$errors[] = 'Indica la quota per il rimborso (importo o percentuale maggiori di zero).';
+			$errors[] = 'Indica quanto accantonare per il rimborso (importo o percentuale maggiori di zero).';
 		} elseif ( self::PERCENT === $mode && $value > 10000 ) {
 			$errors[] = 'La percentuale per il rimborso non può superare il 100%.';
 		}
 		if ( ! $has_volunteer ) {
-			$errors[] = 'Per accantonare una quota di rimborso indica il referente (il volontario da rimborsare).';
+			$errors[] = 'Per accantonare il rimborso indica il referente (il volontario da rimborsare).';
 		}
 		return $errors;
 	}
