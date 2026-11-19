@@ -137,7 +137,7 @@ Sempre in **Bilancio provvisorio**, la sezione **«Storico mensile»** ti fa sce
 
 ## Le impostazioni
 
-In **Impostazioni → Limiti e soglie**, gruppo **«Bilancio, avvisi e fondi»**:
+In **Impostazioni → Limiti e soglie**, gruppo **«Preventivo, avvisi e fondi»**:
 
 - **«Avvisi sulla tendenza del bilancio»**: sì o no;
 - **«Spese non coperte: soglia»** e **«Utile eccessivo: soglia»**, in percentuale;
@@ -196,7 +196,7 @@ Dopo la chiusura le regolarizzazioni si fanno da prima nota.
 
 ## Le impostazioni
 
-In **Impostazioni → Limiti e soglie**, gruppo **«Bilancio, avvisi e fondi»**:
+In **Impostazioni → Limiti e soglie**, gruppo **«Preventivo, avvisi e fondi»**:
 
 - **«Mesi di preavviso chiudibile prima dell'avviso fisso»**: di partenza 3, **0** = nessun preavviso, massimo 11;
 - **«Mesi di avviso fisso delle verifiche di fine anno fiscale»**: di partenza 1, da 1 a 3;
