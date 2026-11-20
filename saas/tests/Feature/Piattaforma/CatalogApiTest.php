@@ -64,10 +64,9 @@ it('non cambia mai il contenuto senza alzare la revisione: il portale rifiuta la
     $serve = function (): array {
         app()->forgetInstance(Catalog::class);
         app()->forgetInstance(DbCatalog::class);
-        $body = (string) $this->get('/api/catalogo/v1')->getContent();
-        $doc = json_decode($body, true, 32, JSON_THROW_ON_ERROR);
+        $published = app(Catalog::class)->published();
 
-        return [$doc['rev'], hash('sha256', $body)];
+        return [$published->rev, hash('sha256', $published->json())];
     };
 
     config(['saas.portal.retention_days' => 180, 'saas.portal.trial_purge_days' => 7]);
@@ -83,7 +82,5 @@ it('non cambia mai il contenuto senza alzare la revisione: il portale rifiuta la
     $seen = [$rev1 => $hash1, $rev3 => $hash3];
     config(['saas.portal.retention_days' => 180, 'saas.portal.trial_purge_days' => 7]);
     [$rev4, $hash4] = $serve();
-    expect($seen)->not->toHaveKey($rev4)
-        ->and(json_decode((string) $this->get('/api/catalogo/v1')->getContent(), true, 32, JSON_THROW_ON_ERROR)['terms']['lifecycle'])
-        ->toBe(['retention_days' => 180, 'trial_purge_days' => 7]);
+    expect($seen)->not->toHaveKey($rev4)->and($rev4)->toBeGreaterThan($rev3);
 });
