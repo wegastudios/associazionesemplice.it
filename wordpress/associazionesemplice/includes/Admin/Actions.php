@@ -205,6 +205,9 @@ final class Actions {
 			}
 		}
 		$id = (int) ( $p['id'] ?? 0 );
+		if ( $id && \AssociazioneSemplice\Employees::sensitive_hidden() ) {
+			unset( $data['tax_code'], $data['notes'] ); // la scheda non li mostra a chi non ha «Vedere dati riservati ed esportare»: salvando non si toccano
+		}
 		if ( $id ) {
 			$before = Plugin::people()->get( $id );
 			Plugin::people()->update( $id, $data );

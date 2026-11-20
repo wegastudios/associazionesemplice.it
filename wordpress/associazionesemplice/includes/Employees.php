@@ -100,6 +100,22 @@ final class Employees {
 		return ! EmployeeRules::has( self::denied_for( get_current_user_id() ), EmployeeRules::HEALTH );
 	}
 
+	/** L'utente corrente è un dipendente a cui è stato tolto «Vedere dati riservati ed esportare»? Allora codice fiscale e note dei soci non gli si mostrano. */
+	public static function sensitive_hidden(): bool {
+		return ! EmployeeRules::has( self::denied_for( get_current_user_id() ), EmployeeRules::SENSITIVE );
+	}
+
+	/** Una lettura dei dati riservati (scheda, libro soci, RUNTS) finisce nel registro azioni, per chiunque la faccia: una riga per tipo e persona in ogni richiesta. */
+	public static function log_sensitive_read( string $what, int $person_id = 0 ): void {
+		static $done = array();
+		$key = $what . '|' . $person_id;
+		if ( isset( $done[ $key ] ) ) {
+			return;
+		}
+		$done[ $key ] = true;
+		Audit::log( 'sensitive.read', 'person', $person_id > 0 ? $person_id : null, array( 'what' => $what ) );
+	}
+
 	/** Un'attività (riga con «kind») è tra quelle che il dipendente corrente può gestire, secondo i permessi «Corsi» ed «Eventi». */
 	public static function activity_allowed( array $activity ): bool {
 		return EmployeeRules::has( self::denied_for( get_current_user_id() ), EmployeeRules::activity_key( (string) ( $activity['kind'] ?? ActivityKind::EVENT ) ) );

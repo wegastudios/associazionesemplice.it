@@ -4,12 +4,12 @@ use PHPUnit\Framework\TestCase;
 
 final class EmployeeRulesTest extends TestCase {
 
-	public function test_the_removable_permissions_are_exactly_these_fifteen_areas(): void {
+	public function test_the_removable_permissions_are_exactly_these_sixteen_areas(): void {
 		$this->assertSame(
-			array( 'people', 'health', 'courses', 'events', 'resources', 'collect', 'expenses', 'refunds', 'funds', 'comms', 'documents', 'assemblies', 'inventory', 'conventions', 'tools' ),
+			array( 'people', 'sensitive', 'health', 'courses', 'events', 'resources', 'collect', 'expenses', 'refunds', 'funds', 'comms', 'documents', 'assemblies', 'inventory', 'conventions', 'tools' ),
 			EmployeeRules::keys()
 		);
-		$this->assertCount( 15, EmployeeRules::labels() );
+		$this->assertCount( 16, EmployeeRules::labels() );
 		foreach ( EmployeeRules::keys() as $k ) {
 			$this->assertTrue( EmployeeRules::is_removable( $k ) );
 			$this->assertNotSame( '', EmployeeRules::label( $k ) );
@@ -33,8 +33,8 @@ final class EmployeeRulesTest extends TestCase {
 	public function test_enforced_and_pending_areas_split_the_list_without_overlap(): void {
 		$enforced = EmployeeRules::enforced_keys();
 		$pending  = EmployeeRules::pending_keys();
-		$this->assertSame( array( 'people', 'health', 'courses', 'events', 'resources', 'collect', 'expenses', 'refunds', 'funds', 'comms', 'documents', 'assemblies', 'inventory', 'conventions', 'tools' ), $enforced );
-		$this->assertSame( array(), $pending, 'tutte le quindici aree hanno le loro porte: l\'avviso in Bacheca si accende' );
+		$this->assertSame( array( 'people', 'sensitive', 'health', 'courses', 'events', 'resources', 'collect', 'expenses', 'refunds', 'funds', 'comms', 'documents', 'assemblies', 'inventory', 'conventions', 'tools' ), $enforced );
+		$this->assertSame( array(), $pending, 'tutte le sedici aree hanno le loro porte: l\'avviso in Bacheca si accende' );
 		$this->assertSame( array(), array_intersect( $enforced, $pending ) );
 		$this->assertEqualsCanonicalizing( EmployeeRules::keys(), array_merge( $enforced, $pending ) );
 	}
@@ -111,6 +111,20 @@ final class EmployeeRulesTest extends TestCase {
 		}
 		$this->assertSame( 'tools', EmployeeRules::blocked_by( array( 'tools' ), EmployeeRules::export_need( 'qualcosa' ) ), 'qualunque altra esportazione' );
 		$this->assertNull( EmployeeRules::blocked_by( array( 'people', 'funds' ), EmployeeRules::export_need( 'qualcosa' ) ) );
+	}
+
+	public function test_every_export_needs_the_sensitive_permission_too(): void {
+		foreach ( array( 'people', 'ledger', 'period', 'social', 'qualcosa' ) as $what ) {
+			$need = EmployeeRules::export_need( $what );
+			$this->assertSame( 'sensitive', EmployeeRules::blocked_by( array( 'sensitive' ), $need ), $what );
+		}
+		foreach ( array( 'asem_aff_csv', 'asem_cert_csv', 'asem_refunds_csv', 'asem_assembly_csv', 'asem_conventions_csv', 'asem_watch_csv', 'asem_budget_csv' ) as $csv ) {
+			$this->assertSame( 'sensitive', EmployeeRules::blocked_by( array( 'sensitive' ), EmployeeRules::action_need( $csv ) ), $csv );
+		}
+		$this->assertSame( 'sensitive', EmployeeRules::blocked_by( array( 'sensitive' ), EmployeeRules::doc_need( 'book' ) ), 'il libro soci porta il codice fiscale' );
+		$this->assertNull( EmployeeRules::blocked_by( array( 'sensitive' ), EmployeeRules::doc_need( 'cards' ) ), 'le tessere non portano dati riservati' );
+		$this->assertNull( EmployeeRules::blocked_by( array( 'sensitive' ), EmployeeRules::page_need( 'asem-people' ) ), 'la lista dei soci resta aperta: nasconde solo i dati' );
+		$this->assertNull( EmployeeRules::blocked_by( array( 'courses', 'people' ), EmployeeRules::export_need( 'qualcosa' ) ), 'chi non ha tolto i dati riservati esporta come prima' );
 	}
 
 	public function test_documents_follow_the_area_of_their_content(): void {
