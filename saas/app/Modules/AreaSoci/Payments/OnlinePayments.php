@@ -600,7 +600,8 @@ final readonly class OnlinePayments
         $clean = [];
         foreach (is_array($items) ? $items : [] as $i) {
             if (is_array($i) && is_string($i['key'] ?? null) && is_string($i['person_id'] ?? null) && is_string($i['label'] ?? null) && is_int($i['amount_cents'] ?? null)) {
-                $clean[] = ['key' => $i['key'], 'person_id' => $i['person_id'], 'group' => is_string($i['group'] ?? null) ? $i['group'] : '', 'label' => $i['label'], 'amount_cents' => $i['amount_cents']];
+                $clean[] = ['key' => $i['key'], 'person_id' => $i['person_id'], 'group' => is_string($i['group'] ?? null) ? $i['group'] : '', 'label' => $i['label'], 'amount_cents' => $i['amount_cents'],
+                    'donation' => ($i['donation'] ?? false) === true, 'public' => ($i['public'] ?? false) === true];
             }
         }
 
