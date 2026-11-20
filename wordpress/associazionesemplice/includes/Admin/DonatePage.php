@@ -8,7 +8,7 @@ use AssociazioneSemplice\Html;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Donazioni con PayPal. Il conto PayPal e la raccolta generale si impostano qui; ogni raccolta ha il suo shortcode, già pronto da incollare
+ * Donazioni. La raccolta generale (e, senza pagamenti online, il conto PayPal) si impostano qui; ogni raccolta ha il suo shortcode, già pronto da incollare
  * dove si vuole nel sito. Il donatore paga sul sito di PayPal: il sito non tratta nessun dato di pagamento. Solo amministratori.
  */
 final class DonatePage {
@@ -22,21 +22,24 @@ final class DonatePage {
 	public static function render(): void {
 		$s    = Settings::all();
 		$edit = Donations::campaign( Ui::get_int( 'campaign' ) );
-		Ui::header( 'Impostazioni: donazioni con PayPal' );
+		Ui::header( 'Impostazioni: donazioni' );
 		if ( ! Donations::enabled() ) {
-			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html( Donations::disclaimer() ) . '</strong> Inserisci il conto PayPal qui sotto e accendi la raccolta.</p></div>';
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html( Donations::disclaimer() ) . '</strong> Accendi la raccolta qui sotto.</p></div>';
 		} else {
 			echo '<p class="description">' . esc_html( Donations::disclaimer() ) . '</p>';
 		}
-		echo '<p class="description">Ogni raccolta mostra gli importi proposti e un pulsante «Dona con PayPal»: il donatore paga sul sito di PayPal, il sito non tratta nessun dato di pagamento. '
-			. 'Le donazioni arrivano sul tuo conto PayPal: registrale a mano in Prima nota da «<a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a>», con la categoria «Erogazione liberale».</p>';
+		if ( 'paypal' === Donations::mode() ) {
+			echo '<p class="description">Non c\'è un metodo di pagamento attivo: le raccolte mostrano il pulsante «Dona con PayPal». Le donazioni arrivano sul tuo conto PayPal e non si registrano da sole: registrale in Prima nota da «<a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a>», con la categoria «Erogazione liberale». Attiva un metodo in Pagamenti online per farle registrare in automatico.</p>';
+		} else {
+			echo '<p class="description">Ogni raccolta mostra gli importi proposti e un modulo aperto a tutti, anche a chi non è socio: chi dona sceglie l\'importo e il metodo di pagamento e paga sul sito del gestore. Quando il pagamento è confermato, la donazione si registra da sola in <a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Prima nota</a> come «Erogazione liberale», con la sua ricevuta; la commissione non si ribalta sul donatore.</p>';
+		}
 
 		Ui::form_open( 'asem_save_donate', Ui::url( 'asem-donate' ) );
 		echo '<h2>Conto e raccolta generale</h2><table class="form-table"><tbody>';
 		echo '<tr><th>Raccolta donazioni</th><td><label><input type="checkbox" name="donate_enabled" value="1"' . checked( ! empty( $s['donate_enabled'] ), true, false ) . '> Accendi le donazioni</label>'
 			. '<p class="description">All\'inizio è spento: finché resta spento, sul sito non compare nessun modulo di donazione.</p></td></tr>';
 		echo '<tr><th>Conto PayPal</th><td><input type="text" name="donate_paypal" value="' . esc_attr( (string) $s['donate_paypal'] ) . '" class="regular-text" autocomplete="off">'
-			. '<p class="description">L\'email del conto PayPal dell\'associazione, oppure il suo ID commerciante (13 caratteri, lo trovi nel profilo PayPal). Serve un conto Business abilitato a ricevere donazioni.</p></td></tr>';
+			. '<p class="description">Serve solo se non hai un metodo di pagamento attivo: con Stripe, PayPal, SumUp o Satispay attivi le donazioni passano dal pagamento del sito e questo campo non si usa. L\'email del conto PayPal dell\'associazione, oppure il suo ID commerciante (13 caratteri, lo trovi nel profilo PayPal); serve un conto Business abilitato a ricevere donazioni.</p></td></tr>';
 		echo '<tr><th>Importi proposti</th><td><input type="text" name="donate_amounts" value="' . esc_attr( (string) $s['donate_amounts'] ) . '" class="regular-text">'
 			. '<p class="description">In euro, separati da punto e virgola (al massimo 8), ad esempio <code>5;10;20;50</code>. Valgono per la raccolta generale e per le raccolte senza importi propri. Chi vuole può sempre scegliere un altro importo su PayPal.</p></td></tr>';
 		echo '<tr><th>Causale generale</th><td><input type="text" name="donate_purpose" value="' . esc_attr( (string) $s['donate_purpose'] ) . '" class="regular-text" maxlength="120">'

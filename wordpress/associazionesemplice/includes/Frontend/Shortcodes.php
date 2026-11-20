@@ -52,7 +52,7 @@ final class Shortcodes {
 		'evento_navigazione' => 'Evento: «Tutti gli eventi» e precedente/successivo',
 		'evento_condividi' => 'Evento: pulsanti di condivisione',
 		'bonifico'        => 'Coordinate per il bonifico (pubblico, se attivo)',
-		'donazioni'       => 'Donazioni con PayPal (pubblico, se attive)',
+		'donazioni'       => 'Donazioni (pubblico, se attive)',
 		'privacy'         => 'Informativa privacy (pubblico, compilata con i dati dell\'ente)',
 		'accesso'         => 'Accesso / login',
 	);

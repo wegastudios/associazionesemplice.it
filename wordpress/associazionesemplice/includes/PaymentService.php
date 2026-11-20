@@ -358,6 +358,58 @@ class PaymentService extends OfflinePayments {
 		return $res['url'];
 	}
 
+	/**
+	 * Donazione dalla pagina pubblica (anche di chi non è socio): una sola voce «Donazione», senza commissione ribaltata. Il pagamento nasce senza utente
+	 * collegato (come quello di una domanda di adesione): il ritorno dal gateway e la registrazione in prima nota con la ricevuta avvengono a pagamento confermato.
+	 *
+	 * @param array  $donor   persona che dona (socio o contatto creato per la ricevuta)
+	 * @param string $purpose causale mostrata sul pagamento e sulla ricevuta (vuoto = «Donazione a <ente>»)
+	 */
+	public function donation_checkout( array $donor, int $cents, string $purpose, string $back_url, string $provider = '' ): string {
+		$available = array_values( array_diff( $this->providers(), array( PaymentConfig::WOOCOMMERCE ) ) );
+		if ( ! $available || ! Edition::has( 'payments' ) ) {
+			throw new \InvalidArgumentException( 'I pagamenti online non sono attivi.' );
+		}
+		if ( '' === $provider ) {
+			$provider = $available[0];
+		} elseif ( ! in_array( $provider, $available, true ) ) {
+			throw new \InvalidArgumentException( 'Questo metodo di pagamento non è disponibile.' );
+		}
+		if ( $cents < PaymentDonation::MIN_CENTS || $cents > PaymentDonation::MAX_CENTS ) {
+			throw new \InvalidArgumentException( 'La donazione deve essere tra ' . Money::format( PaymentDonation::MIN_CENTS ) . ' e ' . Money::format( PaymentDonation::MAX_CENTS ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$tbl  = Db::t( 'payments' );
+		$open = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE payer_person_id = %d AND created_at >= %s", (int) $donor['id'], gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - HOUR_IN_SECONDS ) ) );
+		if ( $open >= 5 ) {
+			throw new \InvalidArgumentException( 'Hai avviato molti pagamenti in poco tempo: aspetta un po\' prima di riprovare.' );
+		}
+		$item        = PaymentDonation::item( $donor, $cents, $purpose ) + array( 'public' => true, 'as_donation' => true );
+		$item['key'] = PaymentItems::key( $item );
+		$items       = array( $item );
+		$public      = PaymentItems::new_public_id();
+		$now         = Db::now();
+		$this->db()->insert(
+			$tbl,
+			array(
+				'public_id' => $public, 'provider' => $provider, 'status' => 'created', 'amount_cents' => $cents, 'currency' => 'EUR',
+				'payer_person_id' => (int) $donor['id'], 'payer_user_id' => 0, 'items' => wp_json_encode( $items ), 'created_at' => $now, 'updated_at' => $now,
+			)
+		);
+		$id      = (int) $this->db()->insert_id;
+		$success = add_query_arg( array( 'asem_pay' => $public, 'asem_ret' => 'ok' ), $back_url );
+		$cancel  = add_query_arg( array( 'asem_pay' => $public, 'asem_ret' => 'cancel' ), $back_url );
+		try {
+			$res = $this->gateway_session( $provider, $items, $public, (string) ( $donor['email'] ?? '' ), $success, $cancel, ProSettings::payment_config(), (string) Settings::get( 'association_name' ) );
+		} catch ( \RuntimeException $e ) {
+			$this->update( $id, array( 'status' => 'failed', 'error' => mb_substr( $e->getMessage(), 0, 250 ) ) );
+			Audit::log( 'payment.failed', 'payment', $id, array( 'provider' => $provider ) );
+			throw new \InvalidArgumentException( 'Il servizio di pagamento non risponde in questo momento. Riprova più tardi.' );
+		}
+		$this->update( $id, array( 'status' => 'pending', 'provider_ref' => $res['id'] ) );
+		Audit::log( 'payment.created', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'items' => 1, 'donation' => 1 ) );
+		return $res['url'];
+	}
+
 	/** Pagamenti della domanda già incassati dal gateway e non ancora registrati in prima nota né restituiti. @return array[] */
 	private function application_payments( int $person_id ): array {
 		$rows = $this->db()->get_results(
@@ -739,7 +791,13 @@ class PaymentService extends OfflinePayments {
 
 	/** Messaggio al socio a pagamento ricevuto: se il pagamento resta da controllare lo sa, senza dettagli. */
 	private function received_message( ?array $p ): string {
-		return $p && ! empty( $p['review'] ) ? Texts::t( 'Pagamento ricevuto: la segreteria lo sta controllando.' ) : 'Pagamento ricevuto, grazie.';
+		if ( $p && ! empty( $p['review'] ) ) {
+			return Texts::t( 'Pagamento ricevuto: la segreteria lo sta controllando.' );
+		}
+		if ( $p && PaymentDonation::is_public( (array) json_decode( (string) $p['items'], true ) ) ) {
+			return 'Donazione ricevuta, grazie! Ti abbiamo scritto un\'email con la ricevuta.';
+		}
+		return 'Pagamento ricevuto, grazie.';
 	}
 
 	/** Ritorno del socio dalla pagina del gateway. @return string messaggio per l'utente */
@@ -1082,7 +1140,12 @@ class PaymentService extends OfflinePayments {
 		$this->update( (int) $p['id'], array( 'status' => 'paid', 'paid_at' => Db::now(), 'provider_payment_id' => mb_substr( $provider_payment_id, 0, 120 ), 'allocated_cents' => $allocated, 'review' => $review ? 1 : 0, 'error' => $error ) );
 		Audit::log( 'payment.paid', 'payment', (int) $p['id'], array( 'provider' => $p['provider'], 'cents' => $paid_cents, 'review' => $review ) );
 		$this->book_fee( $p, $paid_cents, $method, $account, $ref ); // spesa «commissioni di incasso» (stima), se l'amministratore l'ha scelta
-		$this->send_receipt_email( $this->get( (int) $p['id'] ), $items );
+		$row = $this->get( (int) $p['id'] );
+		if ( PaymentDonation::is_public( $items ) ) {
+			PaymentDonation::thank( $row, $items ); // ringraziamento con la ricevuta, a chi non è socio come a chi lo è
+		} else {
+			$this->send_receipt_email( $row, $items );
+		}
 		return true;
 	}
 
@@ -1126,6 +1189,9 @@ class PaymentService extends OfflinePayments {
 			case PaymentItems::RESERVATION:
 				return array( 'category_id' => Resources::income_category_for( (int) $i['reservation_id'] ), 'amount_cents' => (int) $i['amount_cents'], 'reservation_id' => (int) $i['reservation_id'], 'description' => mb_substr( $note . ' — ' . ( $i['label'] ?? '' ), 0, 255 ) );
 			case PaymentItems::DONATION:
+				if ( ! empty( $i['public'] ) ) { // donazione dalla pagina pubblica
+					return array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Donazione · ' . trim( (string) ( $i['label'] ?? '' ) ) . ' · ' . $note, 0, 255 ) );
+				}
 				return array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Donazione aggiunta al pagamento · ' . $note, 0, 255 ) );
 			case PaymentItems::FEE:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Commissione di incasso a carico di chi paga — ' . $note, 0, 255 ) );
