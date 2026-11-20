@@ -118,7 +118,7 @@ it('storna un giroconto intero e una ricevuta intera, senza riusare il numero', 
         ->and(Transaction::query()->whereNull('voided_at')->count())->toBe(0)
         ->and(Transaction::query()->where('transfer_id', $transfer)->pluck('void_reason')->unique()->all())->toBe(['Stornato'])
         ->and($this->ledger->balances())->toEqual([$this->cash->id => 0, $this->bank->id => 100000])
-        ->and(fn () => $this->ledger->void($leg->id, 'di nuovo'))->toThrow(LedgerError::class, 'già annullato');
+        ->and(fn () => $this->ledger->void($leg->id, 'di nuovo'))->toThrow(LedgerError::class, 'già stornato');
 
     $next = $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine(($this->cat)(CategoryKind::Donation), 500)]));
     expect($next['receipt'])->toBe("2/{$year}");
