@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Cifratura\Console;
 
+use App\Modules\Cifratura\Keys\KeyAudit;
 use App\Modules\Cifratura\Keys\KeyRing;
 use Illuminate\Console\Command;
 use Illuminate\Database\DatabaseManager;
@@ -20,7 +21,7 @@ final class DestroyOrgKeysCommand extends Command
 
     protected $description = 'Distrugge le chiavi di un\'associazione cancellata (irreversibile)';
 
-    public function handle(DatabaseManager $db, KeyRing $keys): int
+    public function handle(DatabaseManager $db, KeyRing $keys, KeyAudit $audit): int
     {
         $orgId = (string) $this->argument('org');
         $owner = $db->connection('pgsql_owner');
@@ -38,6 +39,8 @@ final class DestroyOrgKeysCommand extends Command
 
         $deleted = $owner->table('core.org_keys')->where('org_id', $orgId)->delete();
         $keys->forget($orgId);
+        // Resta traccia di chi ha distrutto le chiavi e quando (nel registro della piattaforma): solo numeri, mai chiavi.
+        $audit->record(KeyAudit::ORG_DESTROYED, ['keys' => $deleted], $orgId);
 
         $this->info("Chiavi distrutte: {$deleted}.");
 

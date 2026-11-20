@@ -39,6 +39,9 @@ final class BackupRestoreTestCommand extends Command
         }
 
         $this->info("Ripristino riuscito: {$r['path']} · {$r['tables']} tabelle · {$r['rows']} righe · {$r['seconds']} s");
+        if ($r['legacy']) {
+            $this->warn('Backup nel vecchio formato: non dice di che database e di che ora è, e non si può controllare. I nuovi backup lo dicono.');
+        }
 
         return self::SUCCESS;
     }

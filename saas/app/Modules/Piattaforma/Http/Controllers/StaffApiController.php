@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Piattaforma\Http\Controllers;
 
 use App\Modules\Piattaforma\Identity\AreaRequestVerifier;
+use App\Modules\Piattaforma\Identity\LogSubject;
 use App\Modules\Piattaforma\Identity\StaffAreas;
 use App\Modules\Piattaforma\Identity\StaffDirectory;
 use App\Modules\Piattaforma\Identity\StaffIdentityConfig;
@@ -49,7 +50,7 @@ final readonly class StaffApiController
 
         $key = 'staff-login|'.mb_strtolower($email).'|'.$ip;
         if (RateLimiter::tooManyAttempts($key, self::MAX_FAILED_LOGINS)) {
-            $this->directory->audit('staff.login_blocked', null, mb_strtolower($email), ['area' => $area], $ip);
+            $this->directory->audit('staff.login_blocked', null, LogSubject::email($email), ['area' => $area], $ip);
 
             return $this->denied(429);
         }
@@ -58,7 +59,7 @@ final readonly class StaffApiController
         $areas = $person === null ? [] : $this->directory->areas($person);
         if ($person === null || ! isset($areas[$area])) {
             RateLimiter::hit($key, 60);
-            $this->directory->audit('staff.login_failed', $person?->id, mb_strtolower($email), ['area' => $area], $ip);
+            $this->directory->audit('staff.login_failed', $person?->id, LogSubject::email($email), ['area' => $area], $ip);
 
             return $this->denied(401);
         }

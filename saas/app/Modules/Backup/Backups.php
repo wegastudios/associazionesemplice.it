@@ -47,7 +47,12 @@ final readonly class Backups
 
             $in = fopen($plain, 'rb') ?: throw new RuntimeException('Dump non leggibile.');
             $out = fopen($encrypted, 'wb') ?: throw new RuntimeException('File cifrato non scrivibile.');
-            BackupCipher::encrypt($in, $out, $this->config->publicKey());
+            // Database, ora e ambiente entrano nel dato autenticato: un dump non si può spacciare per un altro.
+            BackupCipher::encrypt($in, $out, $this->config->publicKey(), [
+                'created_at' => $at->utc()->format('Y-m-d\TH:i:s\Z'),
+                'database' => $name,
+                'env' => $this->config->prefix(),
+            ]);
             fclose($in);
             fclose($out);
 
@@ -86,11 +91,15 @@ final readonly class Backups
      * Scarica un dump, lo decifra, lo ripristina nel database di prova (che viene svuotato) e confronta il numero di
      * righe di ogni tabella con quello registrato al momento del dump.
      *
-     * @return array{path: string, tables: int, rows: int, seconds: float}
+     * Prima di toccare il database di prova controlla che non sia uno di quelli veri e, per i dump nel formato nuovo,
+     * che database, ora e ambiente scritti nel dato autenticato corrispondano a ciò che ci si aspetta.
+     *
+     * @return array{path: string, tables: int, rows: int, seconds: float, legacy: bool}
      */
     public function restoreTest(string $name, ?string $path = null): array
     {
         $started = microtime(true);
+        $this->assertRestoreTargetIsSeparate($name);
         $path ??= $this->latest($name) ?? throw new RuntimeException("Nessun backup di {$name}.");
         $manifest = json_decode((string) $this->disk->get($path.'.json'), true, 8, JSON_THROW_ON_ERROR);
         if (! is_array($manifest) || ! is_array($manifest['tables'] ?? null) || ! is_string($manifest['sha256'] ?? null)) {
@@ -110,9 +119,12 @@ final readonly class Backups
 
             $in = fopen($encrypted, 'rb') ?: throw new RuntimeException('Backup non leggibile.');
             $out = fopen($plain, 'wb') ?: throw new RuntimeException('File temporaneo non scrivibile.');
-            BackupCipher::decrypt($in, $out, $this->config->keyPair());
+            $opened = BackupCipher::decrypt($in, $out, $this->config->keyPair());
             fclose($in);
             fclose($out);
+            if (! $opened['legacy']) {
+                $this->assertMatchesManifest($opened['meta'], $manifest, $name, $path);
+            }
 
             $target = $this->db->connection('pgsql_restore');
             foreach (['sites', 'audit', 'app', 'core', 'portal'] as $schema) {
@@ -137,10 +149,71 @@ final readonly class Backups
                 throw new RuntimeException('Righe ripristinate diverse dal dump: '.implode(', ', array_slice($diff, 0, 10)));
             }
 
-            return ['path' => $path, 'tables' => count($restored), 'rows' => array_sum($restored), 'seconds' => round(microtime(true) - $started, 1)];
+            return ['path' => $path, 'tables' => count($restored), 'rows' => array_sum($restored), 'seconds' => round(microtime(true) - $started, 1), 'legacy' => $opened['legacy']];
         } finally {
             @unlink($plain);
             @unlink($encrypted);
+        }
+    }
+
+    /**
+     * Il database di prova si svuota a ogni ripristino: non deve mai essere uno di quelli veri (stesso server, stessa
+     * porta e stesso nome).
+     */
+    private function assertRestoreTargetIsSeparate(string $name): void
+    {
+        $target = $this->where('pgsql_restore');
+        $real = ['pgsql', 'pgsql_owner', $this->databases->backupConnection($name)];
+        foreach ($this->databases->names() as $other) {
+            $real[] = $this->databases->backupConnection($other);
+            $real[] = $this->databases->ownerConnection($other);
+        }
+        foreach (array_unique($real) as $connection) {
+            if ($this->where($connection) === $target) {
+                throw new RuntimeException('Il database di prova coincide con uno di quelli veri: ripristino rifiutato.');
+            }
+        }
+    }
+
+    /** Server, porta e nome del database di una connessione, per confrontare due connessioni. */
+    private function where(string $connection): string
+    {
+        $s = $this->settings($connection);
+        $host = strtolower($s['host']);
+
+        return (in_array($host, ['', 'localhost', '127.0.0.1', '::1'], true) ? 'localhost' : $host).'|'.($s['port'] === '' ? '5432' : $s['port']).'|'.$s['database'];
+    }
+
+    /**
+     * @param  array<string, string>  $meta  intestazione autenticata dentro il file cifrato
+     * @param  array<mixed>  $manifest  descrizione accanto al file (non autenticata)
+     */
+    private function assertMatchesManifest(array $meta, array $manifest, string $name, string $path): void
+    {
+        $created = $meta['created_at'] ?? '';
+        $atInName = preg_match('/-(\d{8}T\d{6}Z)\.dump\.enc$/', $path, $m) === 1
+            ? CarbonImmutable::createFromFormat('Ymd\THis\Z', $m[1], 'UTC')
+            : false;
+        $declared = $manifest['created_at'] ?? null;
+        $inside = preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $created) === 1
+            ? CarbonImmutable::createFromFormat('Y-m-d\TH:i:s\Z', $created, 'UTC')
+            : false;
+
+        $declaredDatabase = $manifest['database'] ?? $name;
+        if (($meta['database'] ?? null) !== $name || $declaredDatabase !== $name) {
+            throw new RuntimeException('Il backup è di un altro database: non corrisponde a quello atteso.');
+        }
+        if (($meta['env'] ?? null) !== explode('/', $path)[0]) {
+            throw new RuntimeException('Il backup è di un altro ambiente: non corrisponde a quello atteso.');
+        }
+        if ($inside === false || $atInName === false || ! $inside->equalTo($atInName)) {
+            throw new RuntimeException('L\'ora del backup non corrisponde a quella del nome del file: possibile scambio con un backup vecchio.');
+        }
+        if (is_string($declared) && ! $inside->equalTo(CarbonImmutable::parse($declared)->utc())) {
+            throw new RuntimeException('L\'ora del backup non corrisponde alla descrizione registrata.');
+        }
+        if ($inside->gt(CarbonImmutable::now('UTC')->addMinutes(5))) {
+            throw new RuntimeException('L\'ora del backup è nel futuro.');
         }
     }
 

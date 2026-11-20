@@ -33,9 +33,10 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
 | ogni minuto | `queue:work --stop-when-empty --max-time=50` (code su Postgres) |
 | ogni 5 minuti | `saas:keys:monitor` (solo con `SAAS_KEY_VAULT=remote`; email all'amministrazione, una per guasto) |
 | ogni ora, :07 | `saas:backup:dump` (produzione e staging) |
-| ogni giorno | `saas:audit:verify` 03:37 · `saas:portal:usage` 04:23 · `saas:backup:prune` 05:11 · `saas:portal:suspend-expired` 00:41 · `queue:prune-failed` 05:47 (falliti oltre 7 giorni) |
+| ogni giorno | `saas:audit:heads:copy` 03:17 (testa del registro nello spazio dei backup) · `saas:audit:verify` 03:37 · `saas:portal:usage` 04:23 · `saas:backup:prune` 05:11 · `saas:portal:suspend-expired` 00:41 · `queue:prune-failed` 05:47 (falliti oltre 7 giorni) |
 | ogni mese, il 1° | `saas:audit:partitions` 02:13 |
-| ogni settimana, lunedì | `saas:backup:restore-test` 06:17 (solo staging, con la chiave privata dei backup) |
+| ogni settimana, lunedì | `saas:backup:restore-test` 06:17 (solo staging, con la chiave privata dei backup) · `saas:audit:prune-security` 03:27 (accessi di operatori e staff oltre 18 mesi) |
+| ogni 15 minuti | `saas:tmp:purge --minutes=60` (dump in chiaro e archivi dell'esportazione rimasti in `storage/app/tmp`) |
 
 ### Impostazioni tecniche
 
@@ -111,6 +112,10 @@ dei file, spazio dei backup). Dall'esterno: `https://app.associazionesemplice.it
 - I file temporanei passano da `shared/storage/app/tmp` (0700), mai da `/tmp`, che su un hosting condiviso può essere
   comune ad altri account.
 - Accanto a ogni dump c'è un file `.json` con impronta e numero di righe per tabella (nessun dato).
+- **Database, ora e ambiente stanno dentro il file cifrato** (formato 2, dato associato di ogni blocco): la prova di
+  ripristino rifiuta un dump il cui database, ambiente o ora non corrispondono a nome del file e descrizione, o con l'ora
+  nel futuro. I dump nel formato 1 (fino a questa versione) si leggono ancora, con un avviso: non si può controllare di che
+  database e di che ora sono. Si rifiuta anche se il database di prova coincide con uno dei veri.
 - Conservazione: tutti i dump delle ultime 48 ore, poi il primo di ogni giorno per 30 giorni.
 - **Prova di ripristino** (`saas:backup:restore-test`, ogni settimana sullo staging): scarica l'ultimo dump di
   produzione, ne controlla l'impronta, lo decifra, lo ripristina nel database di prova (che viene svuotato) e

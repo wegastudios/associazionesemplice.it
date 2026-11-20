@@ -191,6 +191,14 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   della stessa associazione.
 - **Verifica**: `saas:audit:verify` (ogni notte da cron) ricalcola la catena e indica il primo punto rotto: riga
   modificata, tolta, aggiunta o testa non corrispondente.
+- **Copia della testa fuori dal database**: ogni giorno `saas:audit:heads:copy` salva nello spazio dei backup numero e
+  sigillo di testa (e dell'ancora) di ogni associazione, in un file firmato con una chiave derivata da quella
+  dell'applicazione. La verifica li confronta: una coda tagliata o un'ancora riscritta insieme alla testa non tornano.
+  Se la copia si ferma per più di 3 giorni, la verifica esce con errore.
+- **Registri di sicurezza** (accessi degli operatori, accessi dello staff): senza dati personali liberi (un accesso
+  fallito salva l'email solo se ha forma di indirizzo, altrimenti una sigla) e, oltre 18 mesi, si cancellano
+  (`saas:audit:prune-security`). `saas:audit:prune --before=…` a mano chiede conferma (o `--force`) e non scende sotto il
+  limite di conservazione.
 - **Cosa si registra**: creazione, modifica, cancellazione e ripristino delle schede (`Audit\Contracts\Audited`, con
   i nomi dei campi), inviti e ruoli degli operatori, apertura dell'associazione da parte di un operatore, e **le
   letture** dei dati sanitari (campi `Encrypted::class.':health'`, una riga per scheda e campo in ogni richiesta).

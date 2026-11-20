@@ -24,14 +24,19 @@ final readonly class KeyAudit
 
     public function __construct(private DatabaseManager $db) {}
 
-    /** @param  array<string, scalar|list<string>|null>  $details */
-    public function record(string $action, array $details = []): void
+    public const ORG_DESTROYED = 'keys.org_destroyed';
+
+    /**
+     * @param  array<string, scalar|list<string>|null>  $details
+     * @param  string|null  $subject  di chi o di cosa si tratta (vuoto = la chiave principale)
+     */
+    public function record(string $action, array $details = [], ?string $subject = null): void
     {
         $this->db->connection('pgsql')->table('core.platform_audit')->insert([
             'id' => (string) Str::uuid7(),
             'staff_id' => null,
             'action' => $action,
-            'subject' => 'chiave principale',
+            'subject' => $subject ?? 'chiave principale',
             'details' => json_encode($details, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
             'ip' => null,
             'created_at' => now(),

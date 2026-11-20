@@ -126,6 +126,17 @@ it('risponde allo stesso modo a password sbagliata, email sconosciuta e persona 
         ->and(DB::table('core.staff_sessions')->count())->toBe(0);
 });
 
+it('nel registro degli accessi falliti salva l\'email solo se è un indirizzo, altrimenti una sigla', function (): void {
+    idpLogin($this, ['email' => 'Nessuno@Example.Test'])->assertUnauthorized();
+    idpLogin($this, ['email' => 'la mia password digitata qui per errore'])->assertUnauthorized();
+
+    $subjects = DB::table('core.staff_audit')->where('action', 'staff.login_failed')->orderBy('created_at')->orderBy('id')->pluck('subject')->all();
+
+    expect($subjects[0])->toBe('nessuno@example.test')
+        ->and($subjects[1])->toMatch('/^impronta:[0-9a-f]{32}$/')
+        ->and((string) json_encode(DB::table('core.staff_audit')->get()))->not->toContain('digitata');
+});
+
 it('non fa entrare in un\'area dove la persona non ha un ruolo', function (): void {
     idpPerson('persona@example.test', ['saas' => 'admin']);
 
