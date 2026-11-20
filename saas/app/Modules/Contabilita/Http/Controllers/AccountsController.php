@@ -75,7 +75,7 @@ final readonly class AccountsController
         }
         $percentRaw = Input::optionalString($data, 'fee_percent');
         $percent = $percentRaw === null ? 0.0 : (is_numeric(str_replace(',', '.', $percentRaw)) ? (float) str_replace(',', '.', $percentRaw) : null);
-        if ($percent === null) {
+        if ($percent === null || $percent < 0 || $percent > 100) {
             throw ValidationException::withMessages(['fee_percent' => 'Percentuale non valida.']);
         }
 
