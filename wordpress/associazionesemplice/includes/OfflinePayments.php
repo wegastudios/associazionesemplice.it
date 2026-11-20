@@ -47,7 +47,7 @@ class OfflinePayments {
 	public function dues_for( array $actor ): array {
 		$people  = Plugin::people();
 		$acts    = Plugin::activities();
-		$persons = array_merge( array( $actor ), $people->managed_by( (int) $actor['id'] ) ); // lui, i suoi ospiti e le persone di cui è tutore
+		$persons = array_merge( MemberSession::is_out( $actor ) ? array() : array( $actor ), $people->managed_by( (int) $actor['id'] ) ); // lui, i suoi ospiti e le persone di cui è tutore (l'ex socio tutore: solo i figli)
 		$dependents = array_map( 'intval', array_column( $people->dependents_of( (int) $actor['id'] ), 'id' ) );
 		$items   = array();
 		foreach ( $persons as $p ) {

@@ -44,12 +44,33 @@ final class MemberSession {
 
 	/** Può entrare con l'accesso proprio? Come per l'attivazione: tipo di socio che può accedere e domanda di adesione già approvata. */
 	public static function person_allowed( ?array $p ): bool {
-		return $p && empty( $p['deleted_at'] ) && empty( $p['anonymized_at'] ) && empty( $p['application_status'] ) && ! self::is_out( $p ) && MemberType::can_login( (string) $p['type'] );
+		return $p && empty( $p['deleted_at'] ) && empty( $p['anonymized_at'] ) && empty( $p['application_status'] ) && ( ! self::is_out( $p ) || self::guardian_only( $p ) ) && MemberType::can_login( (string) $p['type'] );
 	}
 
 	/** Fuori dall'associazione o sospeso: chi ha lasciato (data di cessazione già arrivata) o è stato sospeso non entra nell'area soci. */
 	public static function is_out( array $p ): bool {
-		return ! empty( $p['suspended_at'] ) || ( ! empty( $p['left_on'] ) && (string) $p['left_on'] <= Db::today() );
+		return ! empty( $p['suspended_at'] ) || self::has_left( $p );
+	}
+
+	/** Ha lasciato l'associazione: la data di cessazione è già arrivata (la sospensione messa a mano non conta). */
+	public static function has_left( array $p ): bool {
+		return ! empty( $p['left_on'] ) && (string) $p['left_on'] <= Db::today();
+	}
+
+	/**
+	 * Un ex socio che è tutore operativo di un minorenne ancora socio entra nell'area soci solo per lui: vede, paga e prenota per il figlio, per sé niente.
+	 * Vale per chi ha lasciato, non per chi è stato sospeso a mano; finisce quando nessun figlio minorenne è più socio.
+	 */
+	public static function guardian_only( array $p ): bool {
+		if ( empty( $p['id'] ) || ! self::has_left( $p ) ) {
+			return false;
+		}
+		foreach ( Plugin::people()->dependents_of( (int) $p['id'] ) as $w ) {
+			if ( MemberType::is_member( (string) $w['type'] ) && ! self::is_out( $w ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Dopo quanto senza usarla scade la sessione: 30 giorni con «Ricordami», altrimenti la durata breve dei Limiti (ore). */
