@@ -359,6 +359,17 @@ A volte un pagamento online non coincide con quello che il sistema si aspettava,
 5. Se il pagamento è «da controllare» perché **rimborsato o contestato su Stripe**, il plugin non ha cambiato nulla: guarda nel pannello di Stripe com'è andata e, se serve, **annulla** il movimento in prima nota. L'avviso arriva solo per Stripe e solo con i due eventi `charge.refunded` e `charge.dispute.created` nel webhook.
 6. Se il pagamento era per una prenotazione annullata, decidi se **rimborsare**: con Stripe o PayPal si fa dal programma (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)), con gli altri metodi dal pannello del fornitore.
 
+## Una voce già pagata o un corso terminato
+
+Il pagamento finisce **da controllare**, con il motivo scritto sotto il nome nella colonna Voci, in questi casi:
+
+- la persona paga online una **voce già pagata**;
+- paga un **mese di corso** ma la sua iscrizione è già terminata.
+
+L'incasso è **già in prima nota**: non devi registrarlo. Il socio, invece, non riceve subito la conferma: l'**email** e la **ricevuta** partono solo quando la segreteria segna il pagamento come **«controllato»**. Se il pagamento viene **rimborsato**, la conferma non parte mai.
+
+Cosa fare: leggi il motivo, decidi se tenere l'incasso o **rimborsare** (vedi [Restituire un pagamento online al socio](guida:restituire-un-pagamento-online-al-socio)), poi segna il pagamento come «controllato».
+
 ## Se un pagamento non compare
 
 Premi il pulsante di controllo nella pagina **Pagamenti online**: il plugin interroga il fornitore. Il controllo gira comunque ogni ora.
