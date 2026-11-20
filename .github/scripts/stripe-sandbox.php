@@ -186,7 +186,7 @@ try {
 
 	// ---------- Regola: l'incasso va annullato prima del rimborso ----------
 	$msg = throws_msg( function () use ( $ps, $id, $amt ) { $ps->refund( $id, $amt, 0, 'Prova sandbox' ); } );
-	ok( null !== $msg && false !== strpos( $msg, 'annullalo prima' ), 'rimborso con l\'incasso ancora valido: rifiutato dal plugin (' . $msg . ')' );
+	ok( null !== $msg && false !== strpos( $msg, 'annullalo lì' ),'rimborso con l\'incasso ancora valido: rifiutato dal plugin (' . $msg . ')' );
 	$list = stripe( 'GET', '/v1/refunds?payment_intent=' . rawurlencode( $pi_id ) );
 	ok( 0 === count( $list['data'] ), 'su Stripe non è partito nessun rimborso' );
 
