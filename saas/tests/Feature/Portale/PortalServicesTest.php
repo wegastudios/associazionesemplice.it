@@ -157,7 +157,7 @@ it('controlla e imposta il dominio personalizzato, con le istruzioni per il DNS'
             ['type' => 'NS', 'name' => 'www.polisportivaalfa.it', 'value' => 'ns1.example.test'],
             ['type' => 'NS', 'name' => 'www.polisportivaalfa.it', 'value' => 'ns2.example.test'],
         ],
-        'message' => 'In attesa: il dominio non usa ancora i nameserver indicati.',
+        'message' => 'In attesa: l\'indirizzo personalizzato non usa ancora i nameserver indicati.',
     ]);
     $set('non un dominio')->assertStatus(409)->assertExactJson(['ok' => false, 'reason' => 'invalid']);
 

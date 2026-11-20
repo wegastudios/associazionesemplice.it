@@ -214,7 +214,7 @@ final readonly class MembershipService implements Members
         $membership = Membership::query()->whereNull('voided_at')->find($membershipId)
             ?? throw new PeopleError(['Tessera inesistente o già tolta.']);
         if ($membership->source === 'payment') {
-            throw new PeopleError(['Questa tessera nasce da un incasso: storna la quota in prima nota.']);
+            throw new PeopleError(['Questa tessera nasce da un incasso: annulla la quota in prima nota.']);
         }
         $this->connection()->table('app.memberships')->where('id', $membership->id)->update(['voided_at' => now()]);
         $this->audit->record('membership.revoked', 'app.memberships', $membership->id, ['social_year' => $membership->social_year]);

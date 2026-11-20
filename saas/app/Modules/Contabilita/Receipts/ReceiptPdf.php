@@ -67,7 +67,7 @@ final readonly class ReceiptPdf
             throw new LedgerError('Ricevuta non trovata.');
         }
         if (($receipt->voided_at ?? null) !== null) {
-            throw new LedgerError('La ricevuta è annullata: l\'incasso è stato stornato.');
+            throw new LedgerError('La ricevuta è annullata: l\'incasso è stato annullato.');
         }
         $rows = $this->connection()->table('app.transactions as t')->join('app.categories as c', 'c.id', '=', 't.category_id')
             ->where('t.receipt_id', $receiptId)->whereNull('t.voided_at')->orderBy('t.created_at')->orderBy('t.id')

@@ -257,7 +257,7 @@ it('lascia accogliere le domande alla segreteria, non al commercialista', functi
 
     $this->actingAs($op)->get('/gestionale/domande')->assertInertia(fn (Assert $page) => $page->component('Soci/Domande')->has('pending', 1)->where('canSettings', false));
     $this->get("/gestionale/domande/{$id}")->assertInertia(fn (Assert $page) => $page->component('Soci/Domanda')->where('application.data.tax_code', 'RSSMRA80A01H501U'));
-    $this->post("/gestionale/domande/{$id}/accogli", ['card_number' => '12'])->assertRedirect()->assertSessionHas('status', 'Domanda accolta: scheda creata.');
+    $this->post("/gestionale/domande/{$id}/accogli", ['card_number' => '12'])->assertRedirect()->assertSessionHas('status', 'Domanda approvata: scheda creata.');
     $this->post("/gestionale/domande/{$id}/respingi", ['reason' => 'x'])->assertSessionHasErrors('ledger');
 });
 

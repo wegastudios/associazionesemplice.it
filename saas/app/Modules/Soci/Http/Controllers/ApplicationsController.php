@@ -91,7 +91,7 @@ final readonly class ApplicationsController
             throw ValidationException::withMessages(['ledger' => implode(' ', $e->messages)]);
         }
 
-        return redirect()->route('people.show', $personId)->with('status', 'Domanda accolta: scheda creata.');
+        return redirect()->route('people.show', $personId)->with('status', 'Domanda approvata: scheda creata.');
     }
 
     public function reject(Request $request, string $application): RedirectResponse
@@ -104,7 +104,7 @@ final readonly class ApplicationsController
             throw ValidationException::withMessages(['ledger' => implode(' ', $e->messages)]);
         }
 
-        return redirect()->route('applications')->with('status', 'Domanda respinta.');
+        return redirect()->route('applications')->with('status', 'Domanda rifiutata.');
     }
 
     public function settings(Request $request): RedirectResponse

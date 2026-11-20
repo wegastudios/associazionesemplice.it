@@ -16,7 +16,7 @@ beforeEach(function (): void {
 });
 
 it('mostra le impostazioni del dominio e le salva, con i valori che entrano nella configurazione', function (): void {
-    $this->get('/saas/admin/impostazioni')->assertOk()->assertSee('Dominio personalizzato')->assertSee('Nameserver a cui il cliente delega');
+    $this->get('/saas/admin/impostazioni')->assertOk()->assertSee('Indirizzo personalizzato')->assertSee('Nameserver a cui il cliente delega');
 
     $this->post('/saas/admin/impostazioni', ['settings' => [
         'domains_nameservers' => 'ns1.associazionesemplice.it, ns2.associazionesemplice.it.',

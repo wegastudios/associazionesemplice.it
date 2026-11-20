@@ -40,7 +40,7 @@ final readonly class AdminConsoleController
             'newOrgs' => $db->table('core.orgs')->whereNull('deleted_at')->where('created_at', '>=', now()->subDays(30))->count(),
             'draft' => $db->table('core.catalog_draft')->exists(),
             'recent' => $recent,
-            'statuses' => ['trial' => 'In prova', 'active' => 'Attivo', 'past_due' => 'Pagamento in ritardo', 'suspended' => 'Sospeso', 'cancelled' => 'Disdetto'],
+            'statuses' => ['trial' => 'In prova', 'active' => 'Attivo', 'past_due' => 'Pagamento non riuscito', 'suspended' => 'Sospeso', 'cancelled' => 'Disdetto'],
         ]);
     }
 

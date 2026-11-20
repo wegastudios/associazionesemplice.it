@@ -155,6 +155,6 @@ final readonly class PaymentSettingsController
         // Dopo lo storno, prenotazioni e iscrizioni restano e tornano da pagare: lo si dice chiaro, senza lasciarlo indovinare.
         $stays = $before === null ? '' : OnlinePayments::staysNote($before['items']);
 
-        return back()->with('status', ($cents === null ? 'Rimborsato e stornato: ricevute e tessere annullate. ' : 'Rimborso di '.Money::format($cents).' inviato al socio. ').($stays !== '' ? $stays.' ' : '').$notice);
+        return back()->with('status', ($cents === null ? 'Rimborsato e annullato: ricevute e tessere comprese.' : 'Rimborso di '.Money::format($cents).' inviato al socio. ').($stays !== '' ? $stays.' ' : '').$notice);
     }
 }

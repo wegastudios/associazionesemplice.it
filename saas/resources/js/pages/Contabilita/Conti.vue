@@ -27,20 +27,20 @@ const field = 'field';
                     <p class="font-semibold">{{ a.name }}<span v-if="!a.open" class="ml-2 text-xs">(chiuso)</span></p>
                     <p class="text-lg font-bold tabular-nums">{{ a.balance }}</p>
                 </div>
-                <p class="text-sm text-muted">{{ a.type }} · saldo iniziale {{ a.opening }}</p>
+                <p class="text-sm text-muted">{{ a.type }} · saldo di partenza {{ a.opening }}</p>
                 <form v-if="canEdit" class="flex flex-wrap items-center gap-2 text-sm" @submit.prevent="saveFee(a)">
                     <span class="w-full font-semibold">Commissione trattenuta a ogni incasso</span>
                     <input v-model="fee(a).fee_fixed" inputmode="decimal" :class="field" class="w-24" aria-label="Parte fissa in euro" placeholder="0,00" /> € +
                     <input v-model="fee(a).fee_percent" inputmode="decimal" :class="field" class="w-20" aria-label="Percentuale" placeholder="0" /> %
                     <button type="submit" class="btn btn-secondary btn-sm">Salva</button>
                 </form>
-                <button v-if="canEdit" type="button" class="btn btn-ghost btn-sm" @click="toggle(a)">{{ a.open ? 'Chiudi il conto' : 'Riapri il conto' }}</button>
+                <button v-if="canEdit" type="button" class="btn btn-ghost btn-sm" @click="toggle(a)">{{ a.open ? 'Chiudi il conto' : 'Riattiva il conto' }}</button>
             </li>
         </ul>
         <div class="mb-8 hidden card overflow-x-auto sm:block">
             <table class="w-full text-sm">
                 <thead class="text-left text-muted">
-                    <tr><th class="px-4 py-3">Conto</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3 text-right">Saldo iniziale</th><th class="px-4 py-3 text-right">Saldo</th><th class="px-4 py-3">Commissione trattenuta a ogni incasso (es. POS)</th><th class="px-4 py-3"><span class="sr-only">Azioni</span></th></tr>
+                    <tr><th class="px-4 py-3">Conto</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3 text-right">Saldo di partenza</th><th class="px-4 py-3 text-right">Saldo</th><th class="px-4 py-3">Commissione trattenuta a ogni incasso (es. POS)</th><th class="px-4 py-3"><span class="sr-only">Azioni</span></th></tr>
                 </thead>
                 <tbody>
                     <tr v-for="a in accounts" :key="a.id" class="border-t border-line" :class="a.open ? '' : 'text-muted'">
@@ -56,7 +56,7 @@ const field = 'field';
                             </form>
                             <span v-else>{{ a.fee_fixed }} € + {{ a.fee_percent }}%</span>
                         </td>
-                        <td class="px-4 py-3 text-right"><button v-if="canEdit" type="button" class="font-semibold text-accent hover:underline" @click="toggle(a)">{{ a.open ? 'Chiudi' : 'Riapri' }}</button></td>
+                        <td class="px-4 py-3 text-right"><button v-if="canEdit" type="button" class="font-semibold text-accent hover:underline" @click="toggle(a)">{{ a.open ? 'Chiudi' : 'Riattiva' }}</button></td>
                     </tr>
                 </tbody>
             </table>
@@ -67,7 +67,7 @@ const field = 'field';
                 <label class="space-y-1 text-sm"><span class="font-semibold">Nome</span><input v-model="form.name" required :class="field" /></label>
                 <label class="space-y-1 text-sm"><span class="font-semibold">Tipo</span>
                     <select v-model="form.type" :class="field"><option v-for="t in types" :key="t.value" :value="t.value">{{ t.label }}</option></select></label>
-                <label class="space-y-1 text-sm"><span class="font-semibold">Saldo iniziale</span><input v-model="form.opening" inputmode="decimal" placeholder="0,00" :class="field" /></label>
+                <label class="space-y-1 text-sm"><span class="font-semibold">Saldo di partenza</span><input v-model="form.opening" inputmode="decimal" placeholder="0,00" :class="field" /></label>
             </div>
             <p v-if="form.errors.name || form.errors.opening" class="text-sm text-danger">{{ form.errors.name || form.errors.opening }}</p>
             <button type="submit" class="btn btn-primary" :disabled="form.processing">Crea il conto</button>

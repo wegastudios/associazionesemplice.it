@@ -64,7 +64,7 @@ it('chiede il motivo per stornare', function (): void {
     $id = $this->orgContext()->run($org->id, fn () => Transaction::query()->sole()->id);
 
     $this->post("/gestionale/prima-nota/{$id}/storno", ['reason' => ''])->assertSessionHasErrors('reason');
-    $this->post("/gestionale/prima-nota/{$id}/storno", ['reason' => 'Doppia'])->assertSessionHas('status', 'Movimento stornato.');
+    $this->post("/gestionale/prima-nota/{$id}/storno", ['reason' => 'Doppia'])->assertSessionHas('status', 'Movimento annullato.');
 
     expect($this->orgContext()->run($org->id, fn () => Transaction::query()->sole()->void_reason))->toBe('Doppia');
 });

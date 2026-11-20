@@ -5,7 +5,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 const props = defineProps({ years: Array, statement: Object, source: String, version: Number, versions: Array, canClose: Boolean });
 
 const reopen = useForm({ reason: '', confirm_year: '' });
-const close = () => window.confirm(`Emettere il rendiconto definitivo dell'anno fiscale ${props.statement.year}? Non potrai più registrare né stornare movimenti con date di quell'anno finché non lo riapri.`) && router.post(`/gestionale/esercizi/${props.statement.year}/chiudi`, {}, { preserveScroll: true });
+const close = () => window.confirm(`Emettere il rendiconto definitivo dell'anno fiscale ${props.statement.year}? Non potrai più registrare né annullare movimenti con date di quell'anno finché non lo riapri.`) && router.post(`/gestionale/esercizi/${props.statement.year}/chiudi`, {}, { preserveScroll: true });
 const submitReopen = () => reopen.post(`/gestionale/esercizi/${props.statement.year}/riapri`, { preserveScroll: true, onSuccess: () => reopen.reset() });
 const print = () => window.print();
 const go = (year) => router.get(`/gestionale/rendiconto/${year}`);
@@ -78,7 +78,7 @@ const field = 'field';
         <section v-if="canClose" class="mt-6 card p-4 sm:p-5 print:hidden">
             <h2 class="mb-3 text-lg font-bold">Chiusura dell'anno fiscale</h2>
             <template v-if="statement.status === 'open'">
-                <p class="mb-3 text-sm text-muted">Dopo l'approvazione dell'assemblea, emetti il rendiconto definitivo. Da quel momento non si registrano né si stornano movimenti con date di quell’anno; se serve, si può riaprire.</p>
+                <p class="mb-3 text-sm text-muted">Dopo l'approvazione dell'assemblea, emetti il rendiconto definitivo. Da quel momento non si registrano né si annullano movimenti con date di quell’anno; se serve, si può riaprire.</p>
                 <button type="button" class="btn btn-secondary" @click="close">Emetti il rendiconto definitivo {{ statement.year }}</button>
             </template>
             <form v-else class="flex flex-wrap items-end gap-3" @submit.prevent="submitReopen">

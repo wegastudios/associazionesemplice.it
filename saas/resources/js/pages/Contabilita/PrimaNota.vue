@@ -163,7 +163,7 @@ const label = 'block space-y-1.5 text-sm';
                             </span>
                             <span class="shrink-0 text-right">
                                 <span class="block font-bold tabular-nums" :class="[kind(r) === 'in' ? 'text-ok-ink' : '', r.voided ? 'line-through' : '']">{{ r.amount }}</span>
-                                <span v-if="r.voided" class="badge badge-neutral">Stornato</span>
+                                <span v-if="r.voided" class="badge badge-neutral">Annullato</span>
                                 <span v-else-if="r.receipt" class="caption block">ricevuta {{ r.receipt }}</span>
                             </span>
                         </button>
@@ -196,9 +196,9 @@ const label = 'block space-y-1.5 text-sm';
                         <option value="">Tutti i conti</option>
                         <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
                     </select></label>
-                <label v-if="activities.length" :class="label"><span class="font-semibold">Attività</span>
+                <label v-if="activities.length" :class="label"><span class="font-semibold">Corso o evento</span>
                     <select class="field" :value="activity" @change="filter({ attivita: $event.target.value })">
-                        <option value="">Tutte le attività</option>
+                        <option value="">Tutti i corsi ed eventi</option>
                         <option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option>
                     </select></label>
                 <button type="button" class="btn btn-primary btn-block" @click="showFilters = false">Mostra i movimenti</button>
@@ -221,23 +221,23 @@ const label = 'block space-y-1.5 text-sm';
                     <dt class="text-muted">Conto</dt><dd class="font-semibold">{{ detail.account }}</dd>
                     <dt class="text-muted">Modalità</dt><dd class="font-semibold">{{ detail.method }}</dd>
                     <template v-if="detail.vat"><dt class="text-muted">IVA</dt><dd class="font-semibold">{{ detail.vat }}</dd></template>
-                    <template v-if="detail.activity"><dt class="text-muted">Attività</dt><dd class="font-semibold">{{ detail.activity }}</dd></template>
-                    <template v-if="detail.voided"><dt class="text-muted">Motivo dello storno</dt><dd class="font-semibold">{{ detail.void_reason }}</dd></template>
+                    <template v-if="detail.activity"><dt class="text-muted">Corso o evento</dt><dd class="font-semibold">{{ detail.activity }}</dd></template>
+                    <template v-if="detail.voided"><dt class="text-muted">Motivo dell'annullamento</dt><dd class="font-semibold">{{ detail.void_reason }}</dd></template>
                 </dl>
                 <div v-if="detail.receipt && !detail.voided" class="mb-4 flex flex-wrap gap-2">
                     <a :href="`/gestionale/ricevute/${detail.receipt_id}.pdf`" target="_blank" class="btn btn-secondary flex-1"><FileText class="size-5" aria-hidden="true" />Ricevuta {{ detail.receipt }}</a>
                     <button v-if="canEdit" type="button" class="btn btn-secondary flex-1" @click="sendReceipt(detail)">Invia per email</button>
                 </div>
-                <label v-if="canEdit && !detail.voided && (detail.type === 'income' || detail.type === 'expense') && activities.length" :class="[label, 'mb-4']"><span class="font-semibold">Attività del movimento</span>
+                <label v-if="canEdit && !detail.voided && (detail.type === 'income' || detail.type === 'expense') && activities.length" :class="[label, 'mb-4']"><span class="font-semibold">Corso o evento del movimento</span>
                     <select class="field" :value="detail.activity_id ?? ''" @change="setActivity(detail, $event.target.value)">
-                        <option value="">Nessuna attività</option><option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        <option value="">Nessun corso o evento</option><option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option>
                     </select></label>
                 <template v-if="canEdit && !detail.voided">
-                    <button v-if="!confirmVoid" type="button" class="btn btn-danger btn-block" @click="confirmVoid = true">Storna il movimento</button>
+                    <button v-if="!confirmVoid" type="button" class="btn btn-danger btn-block" @click="confirmVoid = true">Annulla il movimento</button>
                     <form v-else class="space-y-3 rounded-xl border border-danger/30 bg-danger-soft p-4" @submit.prevent="submitVoid(detail.id)">
-                        <p class="text-sm font-semibold text-danger">Il movimento resta in elenco ma non conta più. Scrivi perché lo storni.</p>
-                        <input v-model="voidReason" required maxlength="190" class="field" placeholder="Motivo dello storno" aria-label="Motivo dello storno" data-autofocus />
-                        <div class="flex gap-2"><button type="button" class="btn btn-secondary flex-1" @click="confirmVoid = false">Lascia com'è</button><button type="submit" class="btn btn-danger flex-1">Storna</button></div>
+                        <p class="text-sm font-semibold text-danger">Il movimento resta in elenco ma non conta più. Scrivi perché lo annulli.</p>
+                        <input v-model="voidReason" required maxlength="190" class="field" placeholder="Motivo dell'annullamento" aria-label="Motivo dell'annullamento" data-autofocus />
+                        <div class="flex gap-2"><button type="button" class="btn btn-secondary flex-1" @click="confirmVoid = false">Lascia com'è</button><button type="submit" class="btn btn-danger flex-1">Annulla</button></div>
                     </form>
                 </template>
             </template>
@@ -272,7 +272,7 @@ const label = 'block space-y-1.5 text-sm';
                     <div class="mt-3 space-y-4">
                         <label :class="label"><span class="font-semibold">Modalità di pagamento</span>
                             <select v-model="income.method" class="field"><option value="">Quella del conto</option><option v-for="m in methods" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
-                        <label v-if="activities.length" :class="label"><span class="font-semibold">Attività</span>
+                        <label v-if="activities.length" :class="label"><span class="font-semibold">Corso o evento</span>
                             <select v-model="income.activity_id" class="field"><option value="">Nessuna</option><option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
                         <label class="flex items-center gap-3"><input v-model="income.receipt" type="checkbox" />Emetti la ricevuta</label>
                     </div>
@@ -304,7 +304,7 @@ const label = 'block space-y-1.5 text-sm';
                         <label :class="label"><span class="font-semibold">Documento</span><input v-model="expense.document_ref" placeholder="n. fattura o scontrino" class="field" /></label>
                         <label :class="label"><span class="font-semibold">Modalità di pagamento</span>
                             <select v-model="expense.method" class="field"><option value="">Quella del conto</option><option v-for="m in methods" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
-                        <label v-if="activities.length" :class="label"><span class="font-semibold">Attività</span>
+                        <label v-if="activities.length" :class="label"><span class="font-semibold">Corso o evento</span>
                             <select v-model="expense.activity_id" class="field"><option value="">Nessuna</option><option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
                     </div>
                 </details>

@@ -63,7 +63,7 @@ final readonly class SetupController
 
         $notice = session()->pull('setup_notice');
 
-        return redirect()->route('dashboard')->with('status', (is_string($notice) ? $notice.' ' : '').'Configurazione salvata. Puoi riaprirla quando vuoi da Altro › Configurazione guidata.');
+        return redirect()->route('dashboard')->with('status', (is_string($notice) ? $notice.' ' : '').'Configurazione salvata. Puoi tornarci quando vuoi da Altro › Configurazione guidata.');
     }
 
     public function skip(): RedirectResponse
@@ -73,7 +73,7 @@ final readonly class SetupController
         }
         $this->wizard->skip();
 
-        return redirect()->route('dashboard')->with('status', 'Configurazione rimandata: la riapri quando vuoi da Altro › Configurazione guidata.');
+        return redirect()->route('dashboard')->with('status', 'Configurazione rimandata: ci torni quando vuoi da Altro › Configurazione guidata.');
     }
 
     private function operator(): Operator

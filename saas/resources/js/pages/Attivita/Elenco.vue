@@ -7,11 +7,11 @@ const field = 'field';
 </script>
 
 <template>
-    <Head title="Attività" />
+    <Head title="Corsi ed eventi" />
     <AppLayout>
         <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-bold">Attività</h1>
+                <h1 class="text-2xl font-bold">Corsi ed eventi</h1>
                 <p class="text-sm text-muted">Corsi ed eventi: ognuno raccoglie i suoi incassi e le sue spese.</p>
             </div>
             <div class="flex flex-wrap items-end gap-3 text-sm">
@@ -19,12 +19,12 @@ const field = 'field';
                     <select :class="field" :value="year" @change="router.get('/gestionale/attivita', { anno: $event.target.value })"><option v-for="y in years" :key="y" :value="y">{{ y }}</option></select>
                 </label>
                 <Link href="/gestionale/calendario" class="btn btn-secondary">Calendario</Link>
-                <Link v-if="canEdit" href="/gestionale/attivita/nuova" class="btn btn-primary">Nuova attività</Link>
+                <Link v-if="canEdit" href="/gestionale/attivita/nuova" class="btn btn-primary">Nuovo corso o evento</Link>
             </div>
         </div>
 
         <div class="sm:hidden">
-            <p v-if="!rows.length" class="card p-4 text-center text-sm text-muted">Ancora nessun corso o evento per questo anno delle attività. Crea il primo con «Nuova attività».</p>
+            <p v-if="!rows.length" class="card p-4 text-center text-sm text-muted">Ancora nessun corso o evento per questo anno delle attività. Crea il primo con «Nuovo corso o evento».</p>
             <ul v-else class="space-y-3">
                 <li v-for="r in rows" :key="r.id" class="card space-y-2 p-4" :class="r.archived ? 'text-muted' : ''">
                     <Link :href="`/gestionale/attivita/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link>
@@ -40,7 +40,7 @@ const field = 'field';
             <table class="w-full text-sm">
                 <thead class="text-left text-muted">
                     <tr>
-                        <th class="px-4 py-3 font-semibold">Attività</th>
+                        <th class="px-4 py-3 font-semibold">Corso o evento</th>
                         <th class="px-4 py-3 font-semibold">Partecipanti</th>
                         <th class="px-4 py-3 text-right font-semibold">Entrate</th>
                         <th class="px-4 py-3 text-right font-semibold">Uscite</th>
@@ -48,7 +48,7 @@ const field = 'field';
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-if="!rows.length"><td colspan="5" class="px-4 py-6 text-center text-muted">Ancora nessun corso o evento per questo anno delle attività. Crea il primo con «Nuova attività».</td></tr>
+                    <tr v-if="!rows.length"><td colspan="5" class="px-4 py-6 text-center text-muted">Ancora nessun corso o evento per questo anno delle attività. Crea il primo con «Nuovo corso o evento».</td></tr>
                     <tr v-for="r in rows" :key="r.id" class="border-t border-line" :class="r.archived ? 'text-muted' : ''">
                         <td class="px-4 py-3">
                             <Link :href="`/gestionale/attivita/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link>

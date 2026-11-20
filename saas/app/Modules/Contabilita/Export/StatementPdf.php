@@ -43,7 +43,7 @@ final class StatementPdf
         $pdf->text(50, $y, 'Conti', 12, true);
         $y += 18;
         $pdf->text(56, $y, 'Conto', 9, true);
-        $pdf->text($w - 160, $y, 'Saldo iniziale', 9, true, 'R');
+        $pdf->text($w - 160, $y, 'Saldo di partenza', 9, true, 'R');
         $pdf->text($w - 56, $y, 'Saldo finale', 9, true, 'R');
         $y += 14;
         foreach ($s['accounts'] as $a) {

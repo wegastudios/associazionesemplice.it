@@ -6,7 +6,7 @@ const props = defineProps({ pending: Array, decided: Array, firstFreeCard: Strin
 
 const settingsForm = useForm({ ...props.settings });
 const saveSettings = () => settingsForm.post('/gestionale/domande/impostazioni', { preserveScroll: true });
-const status = { approved: 'accolta', rejected: 'respinta' };
+const status = { approved: 'approvata', rejected: 'rifiutata' };
 const field = 'field';
 </script>
 

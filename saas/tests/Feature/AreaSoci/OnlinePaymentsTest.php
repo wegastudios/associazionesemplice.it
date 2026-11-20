@@ -256,7 +256,7 @@ it('rimborsa e storna in un gesto solo un pagamento già registrato, e se il rim
 
     Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::sequence()->push(['error' => ['message' => 'no']], 422)->push(['id' => 're_9'])]);
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
-    expect(session('errors')->first('ledger'))->toContain('Nulla è stato stornato');
+    expect(session('errors')->first('ledger'))->toContain('Nulla è stato annullato');
     $this->orgContext()->run($this->org->id, function () use ($tessera): void {
         expect(app(MembershipService::class)->isActive($this->anna->id))->toBeTrue()
             ->and(DB::table('app.transactions')->count())->toBe(1)
@@ -358,7 +358,7 @@ it('se il gestore non risponde non annulla in silenzio il rimborso: non storna n
     ]);
 
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
-    expect(session('errors')->first('ledger'))->toContain('non si sa se il rimborso')->toContain('nulla è stato stornato');
+    expect(session('errors')->first('ledger'))->toContain('non si sa se il rimborso')->toContain('nulla è stato annullato');
     $this->orgContext()->run($this->org->id, function () use ($id): void {
         $row = DB::table('app.online_payments')->where('id', $id)->first();
         expect((int) $row->refund_pending_cents)->toBe(2500)

@@ -14,11 +14,11 @@ const reviewed = (p) => router.post(`/gestionale/pagamenti-online/${p.id}/contro
 const comma = (c) => (c / 100).toFixed(2).replace('.', ',');
 const askReason = () => window.prompt('Motivo del rimborso (lo leggerà il socio nell’email):');
 const refund = (p) => {
-    const amount = window.prompt(`Quanto restituire al socio (massimo ${comma(p.refundable)} €)? I soldi tornano sul suo metodo di pagamento e non si può annullare.${p.has_receipts ? ' Le voci già registrate in prima nota vanno stornate a parte, oppure usa «rimborsa e storna».' : ''}`, p.has_receipts ? '' : comma(p.refundable));
+    const amount = window.prompt(`Quanto restituire al socio (massimo ${comma(p.refundable)} €)? I soldi tornano sul suo metodo di pagamento e non si può annullare.${p.has_receipts ? ' Le voci già registrate in prima nota vanno annullate a parte, oppure usa «rimborsa e annulla».' : ''}`, p.has_receipts ? '' : comma(p.refundable));
     const reason = amount ? askReason() : null;
     if (amount && reason) { router.post(`/gestionale/pagamenti-online/${p.id}/rimborso`, { amount, reason }, { preserveScroll: true }); }
 };
-const refundVoid = (p) => {    if (!window.confirm(`Restituire al socio tutto il pagamento e stornare in prima nota le sue ricevute? Le tessere collegate vengono annullate e i soldi tornano sul suo metodo di pagamento: non si può annullare. Se l’anno fiscale dell’incasso è chiuso l’operazione non parte: né rimborso né storno.${p.stays_note ? " " + p.stays_note : ""}`)) { return; }
+const refundVoid = (p) => {    if (!window.confirm(`Restituire al socio tutto il pagamento e annullare in prima nota le sue ricevute? Le tessere collegate vengono annullate e i soldi tornano sul suo metodo di pagamento: non si può annullare. Se l’anno fiscale dell’incasso è chiuso l’operazione non parte: né rimborso né annullamento.${p.stays_note ? " " + p.stays_note : ""}`)) { return; }
     const reason = askReason();
     if (reason) { router.post(`/gestionale/pagamenti-online/${p.id}/rimborso`, { reason }, { preserveScroll: true }); }
 };
@@ -82,7 +82,7 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                         <td class="whitespace-nowrap pr-3"><span :class="p.status === 'review' ? 'font-semibold text-danger' : ''">{{ states[p.status] ?? p.status }}</span>
                             <button v-if="p.status === 'review' && canAccounting" type="button" class="ml-2 text-accent hover:underline" @click="reviewed(p)">Segna come controllato</button>
                             <button v-if="p.status === 'review' && canRefund && p.refundable > 0" type="button" class="ml-2 text-accent hover:underline" @click="refund(p)">rimborsa</button>
-                            <button v-if="canRefund && p.voidable" type="button" class="ml-2 text-accent hover:underline" @click="refundVoid(p)">rimborsa e storna</button>
+                            <button v-if="canRefund && p.voidable" type="button" class="ml-2 text-accent hover:underline" @click="refundVoid(p)">rimborsa e annulla</button>
                             <p v-if="p.refunded !== '0,00 €' && p.refunded !== '0,00'" class="text-xs text-muted">restituiti {{ p.refunded }}</p></td>
                         <td>{{ p.receipts }}</td>
                     </tr>

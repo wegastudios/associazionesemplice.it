@@ -21,12 +21,12 @@
             <input id="code" name="code" value="{{ $values['code'] }}" maxlength="40" required>
             <label for="kind">Tipo (non si può cambiare dopo)</label>
             <select id="kind" name="kind">
-                @foreach (['package' => 'Pacchetto di funzioni', 'operators' => 'Operatori', 'members' => 'Soci in più', 'storage' => 'Spazio file', 'domain' => 'Dominio personalizzato', 'dedicated_db' => 'Database dedicato', 'recharge' => 'Ricarica'] as $v => $label)
+                @foreach (['package' => 'Pacchetto di funzioni', 'operators' => 'Operatori', 'members' => 'Soci in più', 'storage' => 'Spazio file', 'domain' => 'Indirizzo personalizzato', 'dedicated_db' => 'Database dedicato', 'recharge' => 'Ricarica'] as $v => $label)
                     <option value="{{ $v }}" @selected($values['kind'] === $v)>{{ $label }}</option>
                 @endforeach
             </select>
         @else
-            <p class="muted">Tipo: <strong>{{ ['package' => 'Pacchetto di funzioni', 'operators' => 'Operatori', 'members' => 'Soci in più', 'storage' => 'Spazio file', 'domain' => 'Dominio personalizzato', 'dedicated_db' => 'Database dedicato', 'recharge' => 'Ricarica'][$values['kind']] ?? $values['kind'] }}</strong> (non si può cambiare: cambierebbe cosa ha comprato chi lo ha già).</p>
+            <p class="muted">Tipo: <strong>{{ ['package' => 'Pacchetto di funzioni', 'operators' => 'Operatori', 'members' => 'Soci in più', 'storage' => 'Spazio file', 'domain' => 'Indirizzo personalizzato', 'dedicated_db' => 'Database dedicato', 'recharge' => 'Ricarica'][$values['kind']] ?? $values['kind'] }}</strong> (non si può cambiare: cambierebbe cosa ha comprato chi lo ha già).</p>
         @endif
 
         <label for="name">Nome</label>

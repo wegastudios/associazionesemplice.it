@@ -69,15 +69,15 @@ const label = 'space-y-1 text-sm';
 </script>
 
 <template>
-    <Head :title="activity ? activity.name : 'Nuova attività'" />
+    <Head :title="activity ? activity.name : 'Nuovo corso o evento'" />
     <AppLayout>
-        <p class="mb-2 text-sm"><Link href="/gestionale/attivita" class="text-accent hover:underline">← Attività</Link></p>
+        <p class="mb-2 text-sm"><Link href="/gestionale/attivita" class="text-accent hover:underline">← Corsi ed eventi</Link></p>
         <div class="mb-4 flex flex-wrap items-center gap-3">
-            <h1 class="text-2xl font-bold">{{ activity ? activity.name : 'Nuova attività' }}</h1>
+            <h1 class="text-2xl font-bold">{{ activity ? activity.name : 'Nuovo corso o evento' }}</h1>
             <span v-if="activity?.archived" class="rounded bg-surface px-2 py-0.5 text-sm">archiviata</span>
         </div>
 
-        <section v-if="activity" class="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Rendiconto dell'attività">
+        <section v-if="activity" class="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Rendiconto del corso o evento">
             <div class="card p-4"><p class="text-sm text-muted">Entrate</p><p class="text-xl font-bold tabular-nums">{{ activity.totals.income }}</p></div>
             <div class="card p-4"><p class="text-sm text-muted">Uscite</p><p class="text-xl font-bold tabular-nums">{{ activity.totals.expense }}</p></div>
             <div class="card p-4"><p class="text-sm text-muted">Risultato</p><p class="text-xl font-bold tabular-nums" :class="activity.totals.negative ? 'text-danger' : ''">{{ activity.totals.balance }}</p></div>
@@ -147,13 +147,13 @@ const label = 'space-y-1 text-sm';
                     <PersonPicker v-else id="instructor" v-model="form.instructor_person_id" />
                 </div>
                 <label v-if="isBookable" :class="[label, 'sm:col-span-3']"><span class="font-semibold">Listini</span>
-                    <textarea v-model="form.price_lists" rows="2" :class="field" placeholder="Ingresso singolo 10,00&#10;Carnet 5 ingressi 40 x5" />
-                    <span class="text-muted">Facoltativi, uno per riga: nome e prezzo. Per un carnet aggiungi «x» e il numero di ingressi. Senza listino vale l'importo per i soci o per gli ospiti.</span>
+                    <textarea v-model="form.price_lists" rows="2" :class="field" placeholder="Ingresso singolo 10,00&#10;Pacchetto da 5 ingressi 40 x5" />
+                    <span class="text-muted">Facoltativi, uno per riga: nome e prezzo. Per un pacchetto di ingressi aggiungi «x» e il numero di ingressi. Senza listino vale l'importo per i soci o per gli ospiti.</span>
                     <span v-if="form.errors.price_lists" class="text-danger">{{ form.errors.price_lists }}</span></label>
                 <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Note</span><textarea v-model="form.notes" rows="2" :class="field" maxlength="2000" /></label>
             </fieldset>
             <div v-if="canEdit" class="mt-4 flex flex-wrap gap-3">
-                <button type="submit" class="btn btn-primary" :disabled="form.processing">{{ activity ? 'Salva' : 'Crea l\'attività' }}</button>
+                <button type="submit" class="btn btn-primary" :disabled="form.processing">{{ activity ? 'Salva' : 'Crea il corso o evento' }}</button>
                 <button v-if="activity" type="button" class="btn btn-secondary" @click="archive(!activity.archived)">{{ activity.archived ? 'Riattiva' : 'Archivia' }}</button>
             </div>
         </form>
@@ -164,8 +164,8 @@ const label = 'space-y-1 text-sm';
         </p>
 
         <section v-if="activity && activity.bookable && activity.packages.length" class="mt-6 card p-4 sm:p-5" aria-labelledby="packs-title">
-            <h2 id="packs-title" class="mb-1 text-lg font-bold">Carnet con ingressi da usare</h2>
-            <p class="mb-3 text-sm text-muted">Per scalare un ingresso, prenota la persona a una data scegliendo «Un ingresso dal carnet già pagato».</p>
+            <h2 id="packs-title" class="mb-1 text-lg font-bold">Pacchetti di ingressi da usare</h2>
+            <p class="mb-3 text-sm text-muted">Per scalare un ingresso, prenota la persona a una data scegliendo «Un ingresso dal pacchetto già pagato».</p>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="p in activity.packages" :key="p.id" class="flex flex-wrap items-center gap-3 py-2">
                     <Link :href="`/gestionale/soci/${p.person_id}`" class="font-semibold text-accent hover:underline">{{ p.name }}</Link>
@@ -233,7 +233,7 @@ const label = 'space-y-1 text-sm';
                             <label :class="label"><span class="font-semibold">Modalità</span><select v-model="pay.method" :class="field"><option value="">Quella del conto</option><option v-for="m in methods" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
                             <div class="flex gap-3 sm:col-span-4">
                                 <button type="submit" class="btn btn-primary" :disabled="pay.processing">Incassa con ricevuta</button>
-                                <button type="button" class="btn btn-secondary" @click="paying = null">Annulla</button>
+                                <button type="button" class="btn btn-secondary" @click="paying = null">Chiudi</button>
                             </div>
                         </form>
                     </li>

@@ -363,10 +363,10 @@ final readonly class OnlinePayments
             // ripetendo lo stesso importo la chiave identica evita un secondo rimborso.
             $this->table()->where('id', $paymentId)->update(['error' => mb_substr(trim(($p['error'] ?? '').' Rimborso di '.self::euro($amount).': il gestore non ha risposto, esito da verificare.'), 0, 1000), 'updated_at' => now()]);
             $this->audit->record('payment.refund_unknown', 'app.online_payments', $paymentId, ['cents' => $amount, 'provider' => $p['provider']]);
-            throw new MemberAccessError('Il gestore dei pagamenti non ha risposto: non si sa se il rimborso di '.self::euro($amount).' è partito, e nulla è stato stornato. Controlla sul pannello di '.($p['provider'] === 'stripe' ? 'Stripe' : 'PayPal').': se non risulta, ripeti il rimborso con lo stesso importo (non viene fatto due volte).');
+            throw new MemberAccessError('Il gestore dei pagamenti non ha risposto: non si sa se il rimborso di '.self::euro($amount).' è partito, e nulla è stato annullato. Controlla sul pannello di '.($p['provider'] === 'stripe' ? 'Stripe' : 'PayPal').': se non risulta, ripeti il rimborso con lo stesso importo (non viene fatto due volte).');
         } catch (RuntimeException $e) {
             $this->table()->where('id', $paymentId)->update(['refund_pending_cents' => null, 'refund_key' => null, 'updated_at' => now()]);
-            throw new MemberAccessError('Rimborso non riuscito: '.$e->getMessage().($void ? ' Nulla è stato stornato: ricevute e tessere sono come prima.' : ''));
+            throw new MemberAccessError('Rimborso non riuscito: '.$e->getMessage().($void ? ' Nulla è stato annullato: ricevute e tessere sono come prima.' : ''));
         }
 
         // 3. Registrazione: storno delle ricevute (se richiesto), importo restituito, registro azioni.
@@ -384,7 +384,7 @@ final readonly class OnlinePayments
                     $voidError = $e->getMessage();
                 }
             }
-            $note = 'Restituiti '.self::euro($amount).' al socio.'.($voidError !== null ? ' Lo storno in prima nota non è riuscito: fallo a mano.' : '');
+            $note = 'Restituiti '.self::euro($amount).' al socio.'.($voidError !== null ? ' L\'annullamento in prima nota non è riuscito: fallo a mano.' : '');
             $update = ['refunded_cents' => $done + $amount, 'refunded_at' => now(), 'updated_at' => now(), 'refund_pending_cents' => null, 'refund_key' => null,
                 'error' => mb_substr(trim(($p['error'] ?? '').' '.$note), 0, 1000)];
             if ($p['status'] === 'settled' || $p['receipts'] !== []) {
@@ -401,7 +401,7 @@ final readonly class OnlinePayments
         }
         $mailed = $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName, $sent['stays']);
         if ($voidError !== null) {
-            throw new MemberAccessError('Il rimborso di '.self::euro($amount).' è stato fatto'.($mailed ? ' e il socio è stato avvisato' : '').', ma lo storno in prima nota no: '.$voidError.' Stornalo a mano dalla prima nota.'
+            throw new MemberAccessError('Il rimborso di '.self::euro($amount).' è stato fatto'.($mailed ? ' e il socio è stato avvisato' : '').', ma l\'annullamento in prima nota no: '.$voidError.' Annullalo a mano dalla prima nota.'
                 .($mailed ? '' : ' Il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu.'));
         }
 
@@ -427,7 +427,7 @@ final readonly class OnlinePayments
                 ->join('app.fiscal_years as f', static fn (JoinClause $j) => $j->on('f.org_id', '=', 't.org_id')->on('f.year', '=', 't.fiscal_year'))
                 ->where('t.receipt_id', $receipt->id)->whereNull('t.voided_at')->where('f.status', 'closed')->value('f.year');
             if ($closed !== null) {
-                throw new MemberAccessError('Non si può stornare la ricevuta '.$label.': l\'anno fiscale '.(is_numeric($closed) ? (int) $closed : '').' è chiuso, va riaperto. Il rimborso non è stato fatto.');
+                throw new MemberAccessError('Non si può annullare la ricevuta '.$label.': l\'anno fiscale '.(is_numeric($closed) ? (int) $closed : '').' è chiuso, va riaperto. Il rimborso non è stato fatto.');
             }
         }
     }
@@ -454,7 +454,7 @@ final readonly class OnlinePayments
             try {
                 $this->ledger->void($tx, mb_substr('Rimborso del pagamento online: '.$reason, 0, 255));
             } catch (LedgerError $e) {
-                throw new MemberAccessError('Non si può stornare la ricevuta '.$label.': '.$e->getMessage().' Il rimborso non è stato fatto.');
+                throw new MemberAccessError('Non si può annullare la ricevuta '.$label.': '.$e->getMessage().' Il rimborso non è stato fatto.');
             }
         }
     }

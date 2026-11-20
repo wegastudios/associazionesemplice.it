@@ -116,7 +116,7 @@ final readonly class PortalOrgServices
         if (($claims['domain'] ?? null) === null) {
             $connection->table('core.org_domains')->where('org_id', $orgId)->delete();
 
-            return ['domain' => null, 'state' => 'removed', 'dns' => [], 'message' => 'Dominio personalizzato tolto.'];
+            return ['domain' => null, 'state' => 'removed', 'dns' => [], 'message' => 'Indirizzo personalizzato tolto.'];
         }
 
         $domain = self::domain($claims['domain']);
@@ -190,9 +190,9 @@ final readonly class PortalOrgServices
             'state' => $row->state,
             'dns' => array_map(static fn (string $ns): array => ['type' => 'NS', 'name' => $name, 'value' => $ns], $this->config->nameservers()),
             'message' => is_string($row->message) && $row->message !== '' ? $row->message : match ($row->state) {
-                'active' => 'Il dominio è attivo.',
-                'error' => 'I nameserver del dominio non sono ancora quelli indicati.',
-                default => 'In attesa: il dominio non usa ancora i nameserver indicati.',
+                'active' => 'L\'indirizzo personalizzato è attivo.',
+                'error' => 'I nameserver dell\'indirizzo personalizzato non sono ancora quelli indicati.',
+                default => 'In attesa: l\'indirizzo personalizzato non usa ancora i nameserver indicati.',
             },
         ];
     }

@@ -95,7 +95,7 @@
             <a href="{{ $portal }}/wordpress/admin">Gestisci Plugin</a>
             <a href="{{ route('platform.home') }}" aria-current="page">Gestisci SaaS</a>
         @endauth
-        <a class="nav-area" href="{{ $portal }}/account">Il mio account</a>
+        <a class="nav-area" href="{{ $portal }}/account">Il tuo account</a>
     </nav>
     <details class="menu">
         <summary aria-label="Menu"><span>Menu</span></summary>
@@ -104,7 +104,7 @@
             @auth('platform')
                 <a href="{{ $portal }}/wordpress/admin">Gestisci Plugin</a><a href="{{ route('platform.home') }}">Gestisci SaaS</a>
             @endauth
-            <a class="menu-area" href="{{ $portal }}/account">Il mio account</a>
+            <a class="menu-area" href="{{ $portal }}/account">Il tuo account</a>
         </div>
     </details>
 </div></header>
@@ -119,7 +119,7 @@
             @else
                 <form method="post" action="{{ route('platform.logout') }}" style="display:inline">@csrf<button type="submit" class="linklike">Esci</button></form>
             @endif
-            · <a href="{{ $portal }}/account">Il mio account</a></span></div>
+            · <a href="{{ $portal }}/account">Il tuo account</a></span></div>
         <nav class="tabs" aria-label="Gestione">
             @foreach ($sections as $key => $section)
                 <a href="{{ array_values($section[1])[0][0] }}"@if ($key === $current) aria-current="page"@endif>{{ $section[0] }}</a>

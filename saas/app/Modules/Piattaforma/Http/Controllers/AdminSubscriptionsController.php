@@ -18,7 +18,7 @@ final readonly class AdminSubscriptionsController
 {
     private const PER_PAGE = 50;
 
-    private const STATUSES = ['trial' => 'In prova', 'active' => 'Attivo', 'past_due' => 'Pagamento in ritardo', 'suspended' => 'Sospeso', 'cancelled' => 'Disdetto'];
+    private const STATUSES = ['trial' => 'In prova', 'active' => 'Attivo', 'past_due' => 'Pagamento non riuscito', 'suspended' => 'Sospeso', 'cancelled' => 'Disdetto'];
 
     public function __construct(private DatabaseManager $db) {}
 

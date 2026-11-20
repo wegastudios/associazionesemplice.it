@@ -30,7 +30,7 @@ final readonly class SociHome implements HomeWidget
         $out = [];
         $pending = $this->applications->enabled() ? $this->applications->pendingCount() : 0;
         if ($pending > 0) {
-            $out[] = HomeItem::todo($pending === 1 ? '1 domanda di adesione da esaminare' : $pending.' domande di adesione da esaminare', '/gestionale/domande', 'warn', 'Accogli o respingi', 10);
+            $out[] = HomeItem::todo($pending === 1 ? '1 domanda di adesione da esaminare' : $pending.' domande di adesione da esaminare', '/gestionale/domande', 'warn', 'Approva o rifiuta', 10);
         }
 
         // I certificati sono dati sanitari: li conta solo chi può vederli.

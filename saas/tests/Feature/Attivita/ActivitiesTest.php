@@ -115,7 +115,7 @@ it('lascia cambiare solo l\'attività di un movimento, non il resto', function (
             ->and(fn () => DB::transaction(fn () => DB::table('app.transactions')->where('id', $id)->update(['description' => 'altro'])))->toThrow(QueryException::class);
 
         $ledger->void($id, 'errore');
-        expect(fn () => $ledger->assignActivity($id, $yoga->id))->toThrow(LedgerError::class, 'stornato')
+        expect(fn () => $ledger->assignActivity($id, $yoga->id))->toThrow(LedgerError::class, 'annullato')
             ->and(fn () => DB::transaction(fn () => DB::table('app.transactions')->where('id', $id)->update(['activity_id' => $yoga->id])))->toThrow(QueryException::class);
 
         $other = Account::create(['name' => 'Banca', 'type' => 'bank']);
@@ -155,7 +155,7 @@ it('mostra le pagine e rispetta i permessi', function (): void {
     $year = now()->format('Y');
 
     $this->actingAs($op)->post('/gestionale/attivita', ['name' => 'Yoga', 'kind' => 'course', 'social_year' => $year, 'billing' => 'monthly', 'fee' => '30,00', 'weekdays' => [2], 'resource' => 'none'])
-        ->assertRedirect()->assertSessionHas('status', 'Attività creata.');
+        ->assertRedirect()->assertSessionHas('status', 'Corso o evento creato.');
     $id = $this->orgContext()->run($this->org->id, fn () => Activity::query()->sole()->id);
 
     $this->post("/gestionale/attivita/{$id}/iscrizioni", ['person_id' => $anna])->assertSessionHas('status', 'Iscrizione registrata.');
@@ -186,7 +186,7 @@ it('registra in prima nota incassi e spese con l\'attività e la cambia', functi
     $tx = $this->orgContext()->run($this->org->id, fn () => (string) DB::table('app.transactions')->where('activity_id', $yoga)->value('id'));
     expect($tx)->not->toBe('');
 
-    $this->post("/gestionale/prima-nota/{$tx}/attivita", ['activity_id' => null])->assertSessionHas('status', 'Attività del movimento aggiornata.');
+    $this->post("/gestionale/prima-nota/{$tx}/attivita", ['activity_id' => null])->assertSessionHas('status', 'Corso o evento del movimento aggiornato.');
     $this->orgContext()->run($this->org->id, fn () => expect(DB::table('app.transactions')->where('id', $tx)->value('activity_id'))->toBeNull());
     $this->get('/gestionale/prima-nota')->assertInertia(fn (Assert $page) => $page->has('activities', 1));
 });

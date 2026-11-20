@@ -46,7 +46,7 @@ const toggle = (a, on) => {
 const saveRole = () => (editing.value === 'new'
     ? role.post('/gestionale/ruoli', { preserveScroll: true, onSuccess: () => { editing.value = null; } })
     : role.put(`/gestionale/ruoli/${editing.value}`, { preserveScroll: true, onSuccess: () => { editing.value = null; } }));
-const deleteRole = (r) => window.confirm(`Eliminare il ruolo «${r.name}»?`) && router.delete(`/gestionale/ruoli/${r.id}`, { preserveScroll: true });
+const deleteRole = (r) => window.confirm(`Eliminare il ruolo «${r.name}»? È definitivo: non si può recuperare.`) && router.delete(`/gestionale/ruoli/${r.id}`, { preserveScroll: true });
 const abilityLabel = (v) => props.abilities.find((a) => a.value === v)?.label ?? v;
 
 const field = 'field';
@@ -104,7 +104,7 @@ const field = 'field';
                 </fieldset>
                 <div class="flex gap-3">
                     <button type="submit" class="btn btn-primary" :disabled="role.processing">Salva il ruolo</button>
-                    <button type="button" class="btn btn-secondary" @click="editing = null">Annulla</button>
+                    <button type="button" class="btn btn-secondary" @click="editing = null">Chiudi</button>
                 </div>
             </form>
 

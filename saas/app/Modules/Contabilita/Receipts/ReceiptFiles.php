@@ -96,7 +96,7 @@ final readonly class ReceiptFiles
                 throw new LedgerError('Ricevuta non trovata.');
             }
             if (($receipt->voided_at ?? null) !== null) {
-                throw new LedgerError('La ricevuta è annullata: l\'incasso è stato stornato.');
+                throw new LedgerError('La ricevuta è annullata: l\'incasso è stato annullato.');
             }
             $number = is_string($saved['number'] ?? null) ? $saved['number'] : '';
             $name = is_string($row->original_name ?? null) ? $row->original_name : (is_string($saved['filename'] ?? null) ? $saved['filename'] : 'ricevuta.pdf');
