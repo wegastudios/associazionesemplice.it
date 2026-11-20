@@ -178,9 +178,11 @@ try {
 	$pay  = $wpdb->get_row( "SELECT * FROM $tbl WHERE id = $id", ARRAY_A );
 	$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, type, amount_cents, voided_at FROM $tx WHERE document_ref = %s", $ref ), ARRAY_A );
 	ok( 'paid' === $pay['status'] && $pi_id === $pay['provider_payment_id'] && 0 === (int) $pay['review'] && $amt === (int) $pay['allocated_cents'], 'pagamento: incassato, riferimento al PaymentIntent, nessun controllo da fare' );
-	WP_CLI::log( scrub( 'info - righe di prima nota con questo riferimento: ' . wp_json_encode( $rows ) . ' (attesi ' . $amt . ' centesimi)' ) );
-	ok( 1 === count( $rows ) && 'income' === $rows[0]['type'] && $amt === (int) $rows[0]['amount_cents'] && null === $rows[0]['voided_at'], 'prima nota: un solo incasso di 10,00 € (l\'evento ripetuto non lo ha raddoppiato)' );
-	$tx_id = (int) $rows[0]['id'];
+	// Col pagamento entra l'incasso e, se l'ente ha scelto di stimarla, la spesa «commissioni di incasso» con lo stesso riferimento: ognuna una sola volta.
+	$incomes  = array_values( array_filter( $rows, function ( $r ) { return 'income' === $r['type']; } ) );
+	$expenses = array_values( array_filter( $rows, function ( $r ) { return 'expense' === $r['type']; } ) );
+	ok( 1 === count( $incomes ) && $amt === (int) $incomes[0]['amount_cents'] && null === $incomes[0]['voided_at'] && count( $expenses ) <= 1 && count( $rows ) === count( $incomes ) + count( $expenses ), 'prima nota: un solo incasso di 10,00 € e al più una commissione (l\'evento ripetuto non ha raddoppiato niente)' );
+	$tx_id = (int) $incomes[0]['id'];
 
 	// ---------- Regola: l'incasso va annullato prima del rimborso ----------
 	$msg = throws_msg( function () use ( $ps, $id, $amt ) { $ps->refund( $id, $amt, 0, 'Prova sandbox' ); } );
