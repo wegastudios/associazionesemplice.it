@@ -46,7 +46,7 @@ final class DonatePage {
 			. '<p class="description">Il titolo del modulo e il motivo che compare su PayPal. Vuoto = «Donazione a» e il nome dell\'ente.</p></td></tr>';
 		echo wp_kses( '<tr><th>Shortcode della raccolta generale</th><td>' . self::copy_field( Donations::shortcode() ) . '</td></tr>', Html::allowed() );
 		echo '</tbody></table>';
-		echo '<h2>Invito a donare</h2><p class="description">Una riga con il link alla tua pagina delle donazioni. Dove c\'è un evento o un corso (pagina dell\'evento e conferma dell\'iscrizione) dice «Non puoi partecipare? Sostienici con una donazione»; nell\'area soci e nelle email dice «Vuoi sostenere» e il nome dell\'associazione, poi «Fai una donazione». Scegli tu dove farla comparire: all\'inizio è spenta ovunque.</p><table class="form-table"><tbody>';
+		echo '<h2>Invito a donare</h2><p class="description">Una riga con il link alla tua pagina delle donazioni. Sulla pagina dell\'evento o del corso dice «Non puoi partecipare? Sostienici con una donazione»; nella conferma dopo l\'iscrizione, nell\'area soci e nelle email dice «Vuoi sostenere» e il nome dell\'associazione, poi «Fai una donazione». Scegli tu dove farla comparire: all\'inizio è spenta ovunque.</p><table class="form-table"><tbody>';
 		$places = array(
 			'donate_invite_event'   => 'Sulla pagina dell\'evento o del corso (utile soprattutto quando è pieno o già passato)',
 			'donate_invite_confirm' => 'Nella conferma dopo l\'iscrizione o la prenotazione',

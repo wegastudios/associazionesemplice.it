@@ -48,8 +48,8 @@ final class DonationInvite {
 		return empty( Settings::get( 'donation_deductible' ) ) ? '' : 'È anche detraibile.';
 	}
 
-	/** I posti dove c'è un evento o un corso («Non puoi partecipare?»); negli altri l'invito è generale. */
-	const EVENT_PLACES = array( 'event', 'confirm' );
+	/** Dove c'è un evento o un corso da cui chiamarsi fuori («Non puoi partecipare?»): solo la pagina dell'evento; negli altri posti, conferma compresa, l'invito è generale. */
+	const EVENT_PLACES = array( 'event' );
 
 	/** Le frasi dell'invito: [testo prima del link, testo del link, coda]. */
 	private static function parts( string $place ): array {

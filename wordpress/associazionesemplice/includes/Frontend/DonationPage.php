@@ -199,7 +199,7 @@ final class DonationPage {
 			. self::field( 'Nome', 'first_name', 'text', $post, 'given-name', true, ' maxlength="120"' ) . self::field( 'Cognome', 'last_name', 'text', $post, 'family-name', true, ' maxlength="120"' )
 			. self::field( 'Email', 'email', 'email', $post, 'email', true, ' maxlength="190"' )
 			. self::field( 'Codice fiscale (facoltativo)', 'tax_code', 'text', $post, 'off', false, ' maxlength="16"' )
-			. '</div><p class="asemf-small asemf-muted">Il codice fiscale serve per la ricevuta valida ai fini fiscali.</p>'
+			. '</div><p class="asemf-small asemf-muted">Scrivilo se vuoi che compaia nella ricevuta.</p>'
 			. '<div class="asemf-fields">'
 			. self::field( 'Indirizzo (facoltativo)', 'address', 'text', $post, 'street-address', false, ' maxlength="190"' ) . self::field( 'CAP', 'zip', 'text', $post, 'postal-code', false, ' maxlength="12"' ) . self::field( 'Comune', 'city', 'text', $post, 'address-level2', false, ' maxlength="100"' )
 			. '</div>';
@@ -213,7 +213,7 @@ final class DonationPage {
 			$form .= '<input type="hidden" name="method" value="' . esc_attr( $providers[0] ) . '">';
 		}
 		$url   = trim( (string) Settings::get( 'privacy_url' ) );
-		$form .= '<p class="asemf-small asemf-muted">Inviando il modulo dichiari di aver letto ' . ( '' !== $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">l\'informativa sulla privacy</a>' : 'l\'informativa sulla privacy (qui sotto)' ) . '.</p>';
+		$form .= '<p class="asemf-small asemf-muted">Inviando il modulo dichiari di aver letto ' . ( '' !== $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">l\'informativa sulla privacy</a>' : 'l\'informativa sulla privacy (qui sotto)' ) . '. I dati servono a emettere la ricevuta della donazione e per gli obblighi contabili.</p>';
 		if ( '' === $url ) {
 			$form .= '<details class="asemf-details"><summary>Informativa sulla privacy</summary>' . PrivacyNotice::html() . '</details>';
 		}

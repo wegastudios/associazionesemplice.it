@@ -52,7 +52,7 @@ final class PaymentDonation {
 
 	/**
 	 * La persona a cui intestare la donazione. Se l'email è già nel gestionale (socio o contatto) la donazione si lega alla sua scheda, che non si tocca;
-	 * altrimenti nasce un contatto («ospite», non socio) con i dati scritti nel modulo, solo per la ricevuta.
+	 * altrimenti nasce un contatto («sostenitore», non socio) con i dati scritti nel modulo, solo per la ricevuta.
 	 *
 	 * @param array $d first_name, last_name, email, tax_code?, address?, zip?, city?
 	 */
@@ -71,7 +71,7 @@ final class PaymentDonation {
 		$ok  = $db->insert(
 			Db::t( 'people' ),
 			array(
-				'type'       => MemberType::GUEST,
+				'type'       => MemberType::SUPPORTER,
 				'first_name' => mb_substr( trim( (string) $d['first_name'] ), 0, 120 ),
 				'last_name'  => mb_substr( trim( (string) $d['last_name'] ), 0, 120 ),
 				'email'      => $email,
@@ -79,7 +79,6 @@ final class PaymentDonation {
 				'address'    => $nul( mb_substr( (string) ( $d['address'] ?? '' ), 0, 190 ) ),
 				'zip'        => $nul( mb_substr( (string) ( $d['zip'] ?? '' ), 0, 12 ) ),
 				'city'       => $nul( mb_substr( (string) ( $d['city'] ?? '' ), 0, 100 ) ),
-				'joined_on'  => Db::today(),
 				'created_at' => $now,
 				'updated_at' => $now,
 			)
@@ -88,7 +87,7 @@ final class PaymentDonation {
 			throw new \InvalidArgumentException( 'Non è stato possibile registrare i tuoi dati: riprova più tardi.' );
 		}
 		$id = (int) $db->insert_id;
-		Audit::log( 'person.created', 'person', $id, array( 'type' => MemberType::GUEST, 'via' => 'donation' ) );
+		Audit::log( 'person.created', 'person', $id, array( 'type' => MemberType::SUPPORTER, 'via' => 'donation' ) );
 		$person = Plugin::people()->get( $id );
 		if ( ! $person ) {
 			throw new \InvalidArgumentException( 'Non è stato possibile registrare i tuoi dati: riprova più tardi.' );

@@ -10,6 +10,7 @@ defined( 'ABSPATH' ) || exit;
  *  - ordinary  Socio ordinario: tessera valida per un anno sociale (con gennaio, l'anno solare), rinnovata con la quota.
  *  - volunteer Socio e volontario: come l'ordinario, e può tenere le attività.
  *  - guest     Ospite di un socio: non è socio, partecipa alle attività tramite un socio.
+ *  - supporter Sostenitore (non socio): ha fatto una donazione dal sito, esiste solo per la ricevuta; fuori dal libro soci e dal RUNTS.
  */
 final class MemberType {
 	const FOUNDER   = 'founder';
@@ -17,6 +18,7 @@ final class MemberType {
 	const VOLUNTEER = 'volunteer';
 	const GUEST     = 'guest';
 	const GUARDIAN  = 'guardian';
+	const SUPPORTER = 'supporter';
 
 	public static function labels(): array {
 		return array(
@@ -25,6 +27,7 @@ final class MemberType {
 			self::VOLUNTEER => 'Socio e volontario',
 			self::GUEST     => 'Ospite di un socio',
 			self::GUARDIAN  => 'Genitore o tutore (non socio)',
+			self::SUPPORTER => 'Sostenitore (non socio)',
 		);
 	}
 
