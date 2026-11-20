@@ -37,7 +37,8 @@ final readonly class AuthenticateMember
         }
         $profiles = $this->profiles->profiles($session['person_id']);
         $wanted = $request->session()->get(self::ACTIVE);
-        $active = is_string($wanted) && in_array($wanted, array_column($profiles, 'id'), true) ? $wanted : $session['person_id'];
+        // Senza scheda propria (chi ha lasciato l'associazione e segue un figlio) si apre la prima scheda disponibile.
+        $active = is_string($wanted) && in_array($wanted, array_column($profiles, 'id'), true) ? $wanted : ($profiles[0]['id'] ?? $session['person_id']);
         $this->current->set(['session' => $session['id'], 'person' => $session['person_id'], 'active' => $active, 'profiles' => $profiles,
             'org_name' => is_string($org['name'] ?? null) ? $org['name'] : '', 'org_slug' => is_string($org['slug'] ?? null) ? $org['slug'] : '']);
         $this->acting->set($session['person_id']);
