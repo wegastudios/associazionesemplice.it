@@ -1591,6 +1591,7 @@ ob_start();
 Admin\WizardPage::render();
 $wz_html = (string) ob_get_clean();
 asem_ok( false !== strpos( $wz_html, 'docs.stripe.com/keys' ) && false !== strpos( $wz_html, 'target="_blank"' ) && false !== strpos( $wz_html, 'rel="noopener noreferrer"' ) && false !== strpos( $wz_html, 'Applica la configurazione' ), 'configurazione guidata: pagina con i tutorial in una nuova finestra' );
+asem_ok( ! \AssociazioneSemplice\Edition::has( 'payments' ) || ( false !== strpos( $wz_html, 'dashboard.stripe.com/apikeys' ) && false !== strpos( $wz_html, 'developer.paypal.com/dashboard' ) && false !== strpos( $wz_html, 'name="stripe_secret_key"' ) ), 'configurazione guidata: passi per incollare le chiavi, con i link ai pannelli di Stripe e PayPal' );
 asem_ok( in_array( 'asem-wizard', Admin\Admin::admin_only(), true ) && isset( Admin\TechActions::ACTIONS['asem_wizard_save'] ), 'configurazione guidata: riservata agli amministratori' );
 // ... a domande: parti del gestionale, iscrizione su presentazione, altri tipi di socio
 asem_ok( ! in_array( 'asem-ledger', Admin\Admin::disabled_pages(), true ) && \AssociazioneSemplice\Modules::on( 'accounts' ), 'moduli: prima della configurazione è tutto acceso' );

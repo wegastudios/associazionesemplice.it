@@ -3,10 +3,13 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Edition;
 use AssociazioneSemplice\Fiscal;
+use AssociazioneSemplice\Gateways;
 use AssociazioneSemplice\Levels;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PaymentConfig;
+use AssociazioneSemplice\PaymentSetup;
+use AssociazioneSemplice\ProSettings;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\Terms;
 use AssociazioneSemplice\WooBridge;
@@ -132,8 +135,90 @@ final class ProWizard {
 		}
 	}
 
+	/** Pagine dei pannelli dei gestori dove si prendono le chiavi (aperte in una nuova finestra). */
+	public static function keys_page( string $provider ): array {
+		return PaymentConfig::STRIPE === $provider
+			? array( 'Apri la pagina delle chiavi di Stripe', 'https://dashboard.stripe.com/apikeys' )
+			: array( 'Apri il pannello sviluppatori di PayPal', 'https://developer.paypal.com/dashboard/' );
+	}
+
+	/** Passi in cui si incollano le chiavi di Stripe e di PayPal: compaiono solo per chi ha scelto quel metodo (anche «insieme»). */
+	private static function key_steps( array $s ): void {
+		if ( ! Edition::has( 'payments' ) ) {
+			return;
+		}
+		$cfg = ProSettings::payment_config();
+		foreach ( array( PaymentConfig::STRIPE => array( PaymentConfig::STRIPE, PaymentConfig::BOTH ), PaymentConfig::PAYPAL => array( PaymentConfig::PAYPAL, PaymentConfig::BOTH ) ) as $provider => $choices ) {
+			foreach ( $choices as $choice ) {
+				self::key_step( $provider, 'payment_choice=' . $choice, $cfg );
+			}
+		}
+	}
+
+	private static function key_step( string $provider, string $if, array $cfg ): void {
+		$page  = self::keys_page( $provider );
+		$link  = '<a href="' . esc_url( $page[1] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $page[0] ) . ' ↗</a>';
+		$saved = static function ( string $k ) use ( $cfg ): string {
+			return '' !== trim( (string) ( $cfg[ $k ] ?? '' ) ) ? ' (già salvata: lascia vuoto per tenerla)' : '';
+		};
+		if ( PaymentConfig::STRIPE === $provider ) {
+			WizardPage::step( 'Collega Stripe', 'Incolla le chiavi del tuo account Stripe: il plugin controlla subito che funzionino e prepara da solo il collegamento che gli permette di sapere quando un pagamento è riuscito. Puoi anche lasciare i campi vuoti e compilarli dopo in Pagamenti online.', $if, 'pagamenti' );
+			echo '<p>' . $link . '<br><span class="description">Nella pagina trovi la chiave pubblicabile (inizia con pk_) e crei la chiave segreta (sk_, oppure rk_ se vuoi una chiave con restrizioni). Con una chiave con restrizioni, perché il plugin crei da solo il collegamento, aggiungile il permesso di scrittura sui webhook.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<table class="form-table"><tbody>';
+			echo '<tr><th>Modalità</th><td><select name="stripe_mode">' . Ui::options( array( 'test' => 'Prova (test)', 'live' => 'Reale (live)' ), 'live' === ( $cfg['stripe_mode'] ?? 'test' ) ? 'live' : 'test' ) . '</select><p class="description">Comincia dalla prova: nessun pagamento è vero. Passi alla modalità reale quando sei pronto, con le chiavi reali.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<tr><th>Chiave pubblicabile</th><td><input type="text" name="stripe_publishable_key" value="' . esc_attr( (string) ( $cfg['stripe_publishable_key'] ?? '' ) ) . '" class="regular-text" autocomplete="off" placeholder="pk_test_… / pk_live_…"></td></tr>';
+			echo '<tr><th>Chiave segreta</th><td><input type="password" name="stripe_secret_key" value="" class="regular-text" autocomplete="new-password" placeholder="sk_test_… / sk_live_… / rk_…"><span class="description">' . esc_html( $saved( 'stripe_secret_key' ) ) . '</span></td></tr>';
+			echo '<tr><th>Conferma dei pagamenti</th><td><label><input type="checkbox" name="stripe_make_webhook" value="1" checked> Crea da solo il collegamento con Stripe (webhook)</label><p class="description">Stripe avvisa il sito quando un pagamento è riuscito. Se non riesco a crearlo, ti dico perché e puoi farlo a mano.</p></td></tr>';
+			echo '</tbody></table>';
+		} else {
+			WizardPage::step( 'Collega PayPal', 'Incolla le credenziali dell\'app PayPal: il plugin controlla subito che funzionino. Puoi anche lasciare i campi vuoti e compilarli dopo in Pagamenti online.', $if, 'pagamenti' );
+			echo '<p>' . $link . '<br><span class="description">Nel pannello apri «Apps &amp; Credentials», scegli l\'app (o creane una) e copia il Client ID e il Secret.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<table class="form-table"><tbody>';
+			echo '<tr><th>Modalità</th><td><select name="paypal_mode">' . Ui::options( array( 'sandbox' => 'Prova (sandbox)', 'live' => 'Reale (live)' ), 'live' === ( $cfg['paypal_mode'] ?? 'sandbox' ) ? 'live' : 'sandbox' ) . '</select><p class="description">Le credenziali di prova e quelle reali sono diverse: usa quelle della modalità scelta.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<tr><th>Client ID</th><td><input type="text" name="paypal_client_id" value="' . esc_attr( (string) ( $cfg['paypal_client_id'] ?? '' ) ) . '" class="regular-text" autocomplete="off"></td></tr>';
+			echo '<tr><th>Secret</th><td><input type="password" name="paypal_client_secret" value="" class="regular-text" autocomplete="new-password"><span class="description">' . esc_html( $saved( 'paypal_client_secret' ) ) . '</span></td></tr>';
+			echo '</tbody></table>';
+		}
+		WizardPage::end_step();
+	}
+
+	/**
+	 * Prova le chiavi incollate nella procedura e, per Stripe, crea il webhook. Se una prova non riesce il metodo non viene attivato.
+	 *
+	 * @param array $vals valori da salvare (si aggiungono chiavi e segreti)
+	 */
+	private static function connect_keys( array $vals, array $p ): array {
+		$choice = (string) ( $p['payment_choice'] ?? '' );
+		$want   = array();
+		if ( in_array( $choice, array( PaymentConfig::STRIPE, PaymentConfig::BOTH ), true ) ) {
+			$want[] = PaymentConfig::STRIPE;
+		}
+		if ( in_array( $choice, array( PaymentConfig::PAYPAL, PaymentConfig::BOTH ), true ) ) {
+			$want[] = PaymentConfig::PAYPAL;
+		}
+		if ( ! $want || ! Edition::has( 'payments' ) ) {
+			return $vals;
+		}
+		$saved  = ProSettings::payment_config();
+		$failed = false;
+		foreach ( $want as $provider ) {
+			$r = PaymentSetup::connect( $provider, $p, $saved, array( Gateways::class, 'wp_http' ), rest_url( 'associazionesemplice/v1/webhooks/stripe' ), ! empty( $p['stripe_make_webhook'] ) );
+			if ( null === $r['ok'] ) {
+				continue;
+			}
+			$vals          = array_merge( $vals, $r['values'] );
+			self::$notes   = array_merge( self::$notes, $r['notes'] );
+			$failed        = $failed || ! $r['ok'];
+		}
+		if ( $failed ) {
+			unset( $vals['payment_provider'] ); // chiavi che non funzionano: il metodo resta com'era
+		}
+		return $vals;
+	}
+
 	/** Prodotti di WooCommerce da collegare. */
 	public static function steps_payments( array $s ): void {
+		self::key_steps( $s );
 		$woo  = Edition::has( 'payments' ) && WooBridge::active();
 		$euro = $woo && WooBridge::currency_is_euro();
 		if ( $euro ) {
@@ -255,6 +340,7 @@ final class ProWizard {
 			}
 			$vals['payment_provider'] = 'none' === $choice ? PaymentConfig::NONE : $choice;
 			self::$woo_products       = PaymentConfig::WOOCOMMERCE === $choice ? $p : array();
+			$vals                     = self::connect_keys( $vals, $p ); // prova le chiavi incollate e, per Stripe, crea il webhook
 		}
 		$new_levels = Edition::has( 'levels' ) ? self::parse_levels( (string) ( $p['extra_levels'] ?? '' ) ) : array();
 		if ( $new_levels ) {

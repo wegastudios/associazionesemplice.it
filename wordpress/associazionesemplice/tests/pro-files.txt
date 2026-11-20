@@ -6,6 +6,7 @@ LevelVoting.php
 PaymentService.php
 Gateways.php
 StripeApi.php
+PaymentSetup.php
 StripeWebhook.php
 PayPalApi.php
 SumUpApi.php
