@@ -10223,6 +10223,28 @@ asem_ok( 'Rimborso di 2,00 € inviato al socio. Il socio è stato avvisato per 
 wp_set_current_user( 1 );
 asem_ok( false !== strpos( implode( ',', \AssociazioneSemplice\ProBoot::ACTIONS['payments'] ), 'asem_payment_refund' ), 'rimborso: l\'azione si blocca senza la funzione pagamenti' );
 
+// importazione delle chiavi dai plugin di WooCommerce: solo ciò che si spunta e che supera i controlli; il metodo di incasso non cambia
+$wi_keys   = array( 'payment_provider', 'stripe_mode', 'stripe_publishable_key', 'stripe_secret_key', 'stripe_webhook_secret', 'sumup_merchant_code', 'sumup_api_key' );
+$wi_before = array();
+foreach ( $wi_keys as $wi_k ) {
+	$wi_before[ $wi_k ] = Settings::get( $wi_k );
+}
+asem_ok( false === strpos( asem_render( array( Admin\PaymentsPage::class, 'render' ), 'asem_save_payment_settings' ), 'asem_import_woo_payments' ), 'importa da WooCommerce: senza chiavi nei plugin del negozio il riquadro non compare' );
+update_option( 'woocommerce_stripe_settings', array( 'testmode' => 'yes', 'test_publishable_key' => 'pk_test_51SmokeWoo', 'test_secret_key' => 'sk_test_51SmokeWoo', 'test_webhook_secret' => 'whsec_delnegozio' ) );
+update_option( 'woocommerce_sumup_settings', array( 'api_key' => 'corta', 'merchant_id' => 'MSMOKE1' ) );
+$wi_html = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'asem_import_woo_payments' );
+asem_ok( false !== strpos( $wi_html, 'WooCommerce Stripe Gateway' ) && false !== strpos( $wi_html, '••••eWoo' ) && false === strpos( $wi_html, 'sk_test_51SmokeWoo' ) && false === strpos( $wi_html, 'whsec_delnegozio' ), 'importa da WooCommerce: il riquadro mostra da dove arrivano le chiavi, mascherate, e mai il segreto del webhook' );
+asem_ok( Plugin::CAP === Admin\Actions::required_cap( 'asem_import_woo_payments' ) && in_array( 'asem_import_woo_payments', \AssociazioneSemplice\ProBoot::ACTIONS['payments'], true ), 'importa da WooCommerce: solo l\'amministratore, e si blocca senza la funzione pagamenti' );
+asem_ok( null !== asem_throws( function () { Admin\ProActions::import_woo_payments( array() ); } ) && null !== asem_throws( function () { Admin\ProActions::import_woo_payments( array( 'gateways' => array( 'paypal' ) ) ); } ), 'importa da WooCommerce: senza spunte, o con un metodo non trovato, non importa nulla' );
+$wi = Admin\ProActions::import_woo_payments( array( 'gateways' => array( 'stripe', 'sumup' ) ) );
+asem_ok( 'sk_test_51SmokeWoo' === Settings::secret( 'stripe_secret_key' ) && 'pk_test_51SmokeWoo' === Settings::get( 'stripe_publishable_key' ) && 'test' === Settings::get( 'stripe_mode' ) && Secrets::is_encrypted( (string) Settings::get( 'stripe_secret_key' ) ), 'importa da WooCommerce: le chiavi di Stripe arrivano nelle impostazioni, quella segreta cifrata' );
+asem_ok( $wi_before['stripe_webhook_secret'] === Settings::get( 'stripe_webhook_secret' ) && $wi_before['payment_provider'] === Settings::get( 'payment_provider' ) && $wi_before['sumup_api_key'] === Settings::get( 'sumup_api_key' ) && $wi_before['sumup_merchant_code'] === Settings::get( 'sumup_merchant_code' ) && false !== strpos( $wi[1], 'SumUp non importato' ) && false !== strpos( $wi[1], 'webhook' ), 'importa da WooCommerce: webhook e metodo di incasso restano com\'erano; una chiave che non supera i controlli non entra e il messaggio lo dice' );
+asem_ok( 'payments.woo_imported' === $wpdb->get_var( 'SELECT action FROM ' . Db::t( 'audit_log' ) . ' ORDER BY id DESC LIMIT 1' ) && false === strpos( (string) $wpdb->get_var( 'SELECT details FROM ' . Db::t( 'audit_log' ) . ' ORDER BY id DESC LIMIT 1' ), 'SmokeWoo' ), 'importa da WooCommerce: nel registro azioni c\'è l\'importazione, mai le chiavi' );
+delete_option( 'woocommerce_stripe_settings' );
+delete_option( 'woocommerce_sumup_settings' );
+Settings::clear_secret( 'stripe_secret_key' );
+Settings::update( $wi_before ); // com'era prima: le chiavi cifrate tornano uguali
+
 // l'azione dell'amministrazione: importo scritto e spunta «non si può annullare»
 $rf_c  = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
 $rf_n0 = count( $rf_calls );
