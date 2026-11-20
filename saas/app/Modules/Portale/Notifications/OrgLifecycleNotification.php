@@ -51,7 +51,7 @@ final class OrgLifecycleNotification extends Notification
                 "{$org} · Gestionale sospeso",
                 [
                     "il gestionale di {$org} è sospeso perché l'abbonamento è scaduto.",
-                    "I dati restano conservati per {$this->keepDays} giorni dalla scadenza, fino al {$last}; poi vengono eliminati per sempre.",
+                    "I dati restano conservati per {$this->keepDays} giorni dalla scadenza, fino al {$last}; poi vengono eliminati dal gestionale; le copie di sicurezza scadono da sole entro 30 giorni.",
                     "Se rinnovi entro il {$last} ritrovi tutti i dati come li hai lasciati.",
                 ],
                 'Riattiva il gestionale',
@@ -59,7 +59,7 @@ final class OrgLifecycleNotification extends Notification
             str_starts_with($this->kind, 'purge') => [
                 $left <= 1 ? "{$org} · Ultimo giorno per riattivare: {$in}" : "{$org} · I dati vengono eliminati dopo il {$last}",
                 [
-                    "i dati di {$org} saranno eliminati per sempre dopo il {$last} ({$in}).",
+                    "i dati di {$org} saranno eliminati dal gestionale dopo il {$last} ({$in}); le copie di sicurezza scadono da sole entro i 30 giorni successivi.",
                     "L'eliminazione non si può annullare. Fino al {$last} puoi riattivare il gestionale rinnovando l'abbonamento.",
                 ],
                 'Riattiva il gestionale',
@@ -68,7 +68,7 @@ final class OrgLifecycleNotification extends Notification
                 "{$org} · La prova finisce ".self::when($this->days),
                 [
                     "la prova gratuita di {$org} finisce ".self::when($this->days).'.',
-                    "Scegli un piano per continuare: senza un piano i dati della prova saranno eliminati per sempre dopo il {$last}.",
+                    "Scegli un piano per continuare: senza un piano i dati della prova saranno eliminati dal gestionale dopo il {$last}; le copie di sicurezza scadono da sole entro i 30 giorni successivi.",
                 ],
                 'Scegli un piano',
             ],
@@ -76,7 +76,7 @@ final class OrgLifecycleNotification extends Notification
                 "{$org} · La prova è finita",
                 [
                     "la prova gratuita di {$org} è finita.",
-                    "Scegli un piano per continuare: i dati della prova saranno eliminati per sempre dopo il {$last} ({$in}).",
+                    "Scegli un piano per continuare: i dati della prova saranno eliminati dal gestionale dopo il {$last} ({$in}); le copie di sicurezza scadono da sole entro i 30 giorni successivi.",
                 ],
                 'Scegli un piano',
             ],
