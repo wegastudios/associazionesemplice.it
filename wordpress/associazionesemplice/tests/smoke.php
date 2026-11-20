@@ -12639,7 +12639,7 @@ foreach ( $em_keys as $em_k ) {
 			if ( in_array( $em_k, array( 'courses', 'events' ), true ) && in_array( $em_o, array( 'courses', 'events' ), true ) ) {
 				continue; // corsi ed eventi sono due permessi distinti: sotto
 			}
-			if ( 'sensitive' === $em_k && ( 'asem_export' === ( $em_c[1]['action'] ?? '' ) || '_csv' === substr( (string) ( $em_c[1]['action'] ?? '' ), -4 ) ) ) {
+			if ( 'sensitive' === $em_k && ( 'book' === ( $em_c[1]['what'] ?? '' ) || 'asem_export' === ( $em_c[1]['action'] ?? '' ) || '_csv' === substr( (string) ( $em_c[1]['action'] ?? '' ), -4 ) ) ) {
 				continue; // esportare chiede anche i dati riservati: senza, le esportazioni si chiudono in ogni area
 			}
 			asem_ok( null === $em_blocked( $em_c[0], $em_c[1] ), "dipendente senza $em_k: la porta $em_i di $em_o resta aperta" );
