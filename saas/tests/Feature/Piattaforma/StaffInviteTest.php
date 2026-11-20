@@ -87,8 +87,8 @@ it('l\'invito non riattiva né cambia la password di chi ha già un accesso o è
     DB::table('core.staff_people')->insert(['id' => (string) Str::uuid7(), 'email' => 'spenta@example.test', 'name' => 'Spenta', 'password' => null, 'active' => false]);
     DB::table('core.staff_people')->insert(['id' => (string) Str::uuid7(), 'email' => 'importata@example.test', 'name' => 'Importata', 'password' => null, 'active' => true]);
 
-    $this->post('/saas/staff/invito/'.$code, ['password' => 'una-password-lunga-1', 'password_confirmation' => 'una-password-lunga-1'])->assertSee('Invito non valido');
-    $this->post('/saas/staff/invito/'.$deactivated, ['password' => 'una-password-lunga-1', 'password_confirmation' => 'una-password-lunga-1'])->assertSee('Invito non valido');
+    $this->post('/saas/staff/invito/'.$code, ['password' => 'una-password-lunga-1', 'password_confirmation' => 'una-password-lunga-1'])->assertSee('non è più valido');
+    $this->post('/saas/staff/invito/'.$deactivated, ['password' => 'una-password-lunga-1', 'password_confirmation' => 'una-password-lunga-1'])->assertSee('non è più valido');
 
     expect(Hash::check('password-gia-scelta-1', (string) DB::table('core.staff_people')->where('email', 'vecchia@example.test')->value('password')))->toBeTrue()
         ->and(DB::table('core.staff_people')->where('email', 'spenta@example.test')->value('active'))->toBeFalse()
