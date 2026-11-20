@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.21 – 2026-11-20
+- Altro: se un pagamento online riguarda un corso già terminato, l'incasso si registra comunque e il pagamento resta «da controllare», con il motivo; finché è da controllare, il socio non riceve la ricevuta: parte quando lo segni a posto.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.20 – 2026-11-20
 - Altro: se un pagamento online arriva per una voce già pagata, l'incasso si registra comunque e il pagamento resta «da controllare», con il motivo.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog

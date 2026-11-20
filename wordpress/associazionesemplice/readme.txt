@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.33
+Stable tag: 1.3.34
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,6 +61,11 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 
 == Changelog ==
 
+= 1.3.34 =
+* Sicurezza: la domanda di adesione fatta dal sito si conferma dall'email: arriva alla segreteria solo dopo il clic sul link (vale 48 ore; un invio all'ora per indirizzo).
+* Altro: le domande mai confermate si cancellano dopo 30 giorni; di una domanda respinta con quota pagata, dopo 90 giorni restano solo nome e cognome (i movimenti contabili restano).
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 = 1.3.33 =
 * Sicurezza: chi è sospeso o ha lasciato l'associazione non entra più nell'area soci. Un ex socio tutore di un minorenne ancora socio entra solo per il figlio: lo vede, prenota e paga per lui.
 * Sicurezza: nuovo permesso dei dipendenti «Vedere dati riservati ed esportare»: senza, non si vedono codice fiscale e note dei soci e non si esporta. I dipendenti già presenti restano come sono.
@@ -98,13 +103,6 @@ Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/change
 = 1.3.28 =
 * Nuovo: eventi su più giorni (una regata, un torneo) o che finiscono dopo mezzanotte, con il campo «fino al» nella data. Online si prenotano fino al giorno prima, poi ci pensa la segreteria; gli eventi di un giorno restano come prima.
 * Nuovo: l'elenco degli eventi si sfoglia mese per mese, anche all'indietro, e gli eventi già svolti restano visibili con le loro date.
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.27 =
-* Ottimizzazione: Bacheca, elenco e schede di corsi ed eventi, rendiconto, calendario, elenco soci, Prima nota ed esportazioni molto più rapidi, con gli stessi risultati di prima
-* Ottimizzazione: «Soci e ospiti» a 50 righe per pagina e Prima nota a 100, con i totali sempre dell'anno intero
-* Ottimizzazione: le pagine pubbliche degli eventi restano in memoria per i visitatori e si aggiornano a ogni prenotazione o modifica
-* Nuovo: l'importazione di file grandi procede a piccoli giri, con avanzamento e pulsanti per riprendere o fermare
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 
