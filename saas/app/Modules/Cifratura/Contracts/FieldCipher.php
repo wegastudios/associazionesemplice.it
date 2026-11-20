@@ -12,9 +12,11 @@ use SensitiveParameter;
  */
 interface FieldCipher
 {
-    public function encrypt(string $orgId, string $field, #[SensitiveParameter] string $plain): string;
+    /** Con l'id della riga il testo è legato anche a quella riga; senza, resta il formato storico. */
+    public function encrypt(string $orgId, string $field, #[SensitiveParameter] string $plain, ?string $rowId = null): string;
 
-    public function decrypt(string $orgId, string $field, string $cipher): string;
+    /** Legge entrambi i formati; il testo legato a una riga richiede il suo id. */
+    public function decrypt(string $orgId, string $field, string $cipher, ?string $rowId = null): string;
 
     /** Impronta per la ricerca esatta e l'unicità (blind index): stesso valore normalizzato, stessa impronta. */
     public function blindIndex(string $orgId, string $field, #[SensitiveParameter] string $normalized): string;
