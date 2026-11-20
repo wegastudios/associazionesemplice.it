@@ -36,12 +36,12 @@ final class InvitationNotification extends Notification
         if ($this->token === null) {
             return $message
                 ->line('Accedi con la tua email e la tua password di sempre.')
-                ->action('Accedi', route('login'));
+                ->action('Accedi', AppLink::route('login'));
         }
 
         return $message
             ->line('Per iniziare scegli la tua password. Il link vale 60 minuti; se scade, usa «Password dimenticata».')
-            ->action('Scegli la password', route('password.reset', ['token' => $this->token, 'email' => $notifiable->email]))
+            ->action('Scegli la password', AppLink::route('password.reset', ['token' => $this->token, 'email' => $notifiable->email]))
             ->line('Al primo accesso dovrai attivare la verifica in due passaggi.');
     }
 }
