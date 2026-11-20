@@ -27,6 +27,8 @@ final class GuardianRules
         }
         if ($minor['birth_date'] === null || $minor['birth_date'] === '') {
             $errors[] = 'Per collegare un tutore serve la data di nascita del minore.';
+        } elseif (! Age::isMinor($minor['birth_date'], $today)) {
+            $errors[] = 'Un tutore si collega solo a una persona minorenne.';
         }
         if ($guardian['type'] === MemberType::Guest) {
             $errors[] = 'Un ospite non può fare da tutore: cambia il tipo della sua scheda in «Genitore o tutore (non socio)».';

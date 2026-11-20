@@ -66,8 +66,22 @@ it('mostra, stampa ed esporta il libro soci secondo i permessi', function (): vo
     expect($csv)->toContain('Uscito Gino')->not->toContain('Rossi Anna');
     $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'member_book.exported')->count())->toBe(2));
 
-    $this->actingAs($acc)->get('/gestionale/soci/libro')->assertOk()->assertInertia(fn (Assert $page) => $page->where('canExport', false));
+    // Chi può esportare vede le colonne complete e la lettura va nel registro; gli altri solo numero, nome, tessera e date.
+    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'member_book.viewed')->count())->toBe(1));
+    $this->actingAs($acc)->get('/gestionale/soci/libro')->assertOk()->assertInertia(fn (Assert $page) => $page->where('canExport', false)->where('full', false)
+        ->where('rows.0.name', 'Fondatore Franco')->missing('rows.0.tax_code')->missing('rows.0.residence')->missing('rows.0.fee'));
+    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'member_book.viewed')->count())->toBe(1));
     $this->get('/gestionale/soci/libro.pdf')->assertForbidden();
+});
+
+it('limita la frequenza con cui si apre il libro soci completo', function (): void {
+    $op = $this->createUser('seg@example.com', twoFactor: true);
+    $this->addOperator($this->org, $op, OrgRole::Operator);
+
+    foreach (range(1, 10) as $_) {
+        $this->actingAs($op)->get('/gestionale/soci/libro')->assertOk();
+    }
+    $this->get('/gestionale/soci/libro')->assertStatus(429);
 });
 
 it('va a capo di pagina con molti soci', function (): void {

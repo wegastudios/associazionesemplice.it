@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Soci\Http\Controllers;
 
+use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\Money;
@@ -46,6 +47,7 @@ final readonly class PeopleController
         private CertificateService $certificates,
         private ConsentService $consents,
         private MemberLimit $limit,
+        private AuditLog $audit,
     ) {}
 
     /** @return array{state: string, message: string}|null avviso sul limite di soci, solo da quando serve */
@@ -252,9 +254,15 @@ final readonly class PeopleController
     private function form(?Person $person, Request $request): Response
     {
         $year = $this->memberships->membershipYear();
+        // Codice fiscale, IBAN e note si aprono solo con il permesso di esportare l'anagrafica, e la lettura va nel registro.
+        $sensitive = $request->user()?->can('people.export') === true;
+        if ($person !== null && $sensitive) {
+            $this->audit->record('person.sensitive_read', 'app.people', $person->id, ['fields' => ['tax_code', 'iban', 'notes']]);
+        }
 
         return Inertia::render('Soci/Scheda', [
             'person' => $person === null ? null : [
+                'sensitive' => $sensitive,
                 'id' => $person->id,
                 'type' => $person->type->value,
                 'is_entity' => $person->is_entity,
@@ -264,12 +272,12 @@ final readonly class PeopleController
                 'email' => $person->email,
                 'phone' => $person->phone,
                 'card_number' => $person->card_number,
-                'tax_code' => $person->tax_code,
+                'tax_code' => $sensitive ? $person->tax_code : null,
                 'birth_date' => $person->birth_date?->format('Y-m-d'),
                 'birth_place' => $person->birth_place,
                 'address' => is_array($person->address) && is_string($person->address['text'] ?? null) ? $person->address['text'] : '',
-                'iban' => $person->iban,
-                'notes' => $person->notes,
+                'iban' => $sensitive ? $person->iban : null,
+                'notes' => $sensitive ? $person->notes : null,
                 'level_id' => $person->level_id,
                 'joined_on' => $person->joined_on?->format('Y-m-d'),
                 'left_on' => $person->left_on?->format('d/m/Y'),

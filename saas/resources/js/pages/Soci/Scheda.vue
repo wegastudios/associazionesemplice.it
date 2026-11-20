@@ -51,7 +51,9 @@ const memberPost = async (what) => {
     else accessDone.value = `Accessi chiusi: ${json.closed}.`;
 };
 const copyLink = () => navigator.clipboard?.writeText(accessLink.value);
-const save = () => (props.person ? form.put(`/gestionale/soci/${props.person.id}`, { preserveScroll: true }) : form.post('/gestionale/soci'));
+// Senza il permesso sui dati riservati la scheda non li riceve: non si rimandano al salvataggio, così restano come sono.
+const hidden = props.person?.sensitive === false;
+const save = () => (props.person ? form.transform((d) => { if (!hidden) return d; const { tax_code, iban, notes, ...rest } = d; return rest; }).put(`/gestionale/soci/${props.person.id}`, { preserveScroll: true }) : form.post('/gestionale/soci'));
 
 const today = new Date().toISOString().slice(0, 10);
 const renew = useForm({ account_id: props.accounts[0]?.id ?? '', amount: p.fee ?? '', date: today, method: '' });
@@ -138,13 +140,13 @@ const label = 'space-y-1 text-sm';
 
             <fieldset :disabled="!canEdit" class="grid gap-4 sm:grid-cols-3">
                 <legend class="mb-1 text-lg font-bold">Dati riservati</legend>
-                <p class="text-sm text-muted sm:col-span-3">Dati protetti: li vede solo chi ha il permesso di aprire le schede.</p>
-                <label :class="label"><span class="font-semibold">Codice fiscale</span><input v-model="form.tax_code" autocomplete="off" class="uppercase" :class="field" /></label>
+                <p class="text-sm text-muted sm:col-span-3">Dati protetti: codice fiscale, IBAN e note li vede solo chi può esportare l'anagrafica, e ogni lettura finisce nel registro.</p>
+                <label v-if="!hidden" :class="label"><span class="font-semibold">Codice fiscale</span><input v-model="form.tax_code" autocomplete="off" class="uppercase" :class="field" /></label>
                 <label v-if="!form.is_entity" :class="label"><span class="font-semibold">Data di nascita</span><input v-model="form.birth_date" type="date" :class="field" /></label>
                 <label v-if="!form.is_entity" :class="label"><span class="font-semibold">Luogo di nascita</span><input v-model="form.birth_place" :class="field" /></label>
                 <label :class="label" class="sm:col-span-2"><span class="font-semibold">Indirizzo</span><input v-model="form.address" placeholder="Via, CAP, comune, provincia" :class="field" /></label>
-                <label :class="label"><span class="font-semibold">IBAN</span><input v-model="form.iban" autocomplete="off" :class="field" /></label>
-                <label :class="label" class="sm:col-span-3"><span class="font-semibold">Note</span><textarea v-model="form.notes" rows="3" :class="field" /></label>
+                <label v-if="!hidden" :class="label"><span class="font-semibold">IBAN</span><input v-model="form.iban" autocomplete="off" :class="field" /></label>
+                <label v-if="!hidden" :class="label" class="sm:col-span-3"><span class="font-semibold">Note</span><textarea v-model="form.notes" rows="3" :class="field" /></label>
             </fieldset>
 
             <ul v-if="Object.keys(form.errors).length" class="space-y-1 text-sm font-semibold text-danger" role="alert">

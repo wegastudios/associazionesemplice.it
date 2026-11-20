@@ -71,6 +71,76 @@ function asMember(object $test, string $cookie): object
     return $test->withUnencryptedCookie('as_socio', $cookie);
 }
 
+/** Il codice dell'ultima email di accesso inviata. */
+function lastLoginCode(): string
+{
+    $mail = Mail::sent(LoginLink::class)->last();
+
+    return $mail instanceof LoginLink ? $mail->code : '';
+}
+
+function wrongCode(string $code): string
+{
+    return $code === '111111' ? '222222' : '111111';
+}
+
+it('blocca il codice dopo cinque errori, anche se poi è quello giusto', function (): void {
+    Mail::fake();
+    $this->post($this->base.'/accesso', ['email' => 'mario@example.com']);
+    $code = lastLoginCode();
+
+    foreach (range(1, 5) as $_) {
+        $this->post($this->base.'/accesso/codice', ['email' => 'mario@example.com', 'code' => wrongCode($code)])->assertSessionHasErrors('code');
+    }
+    $this->post($this->base.'/accesso/codice', ['email' => 'mario@example.com', 'code' => $code])->assertSessionHasErrors('code');
+    $this->orgContext()->run($this->org->id, fn () => expect((int) DB::table('app.member_login_tokens')->value('attempts'))->toBe(5));
+});
+
+it('non azzera il limite dei codici sbagliati chiedendo un codice nuovo', function (): void {
+    Mail::fake();
+    foreach (range(1, 2) as $_) {
+        $this->post($this->base.'/accesso', ['email' => 'mario@example.com']);
+        foreach (range(1, 5) as $__) {
+            $this->post($this->base.'/accesso/codice', ['email' => 'mario@example.com', 'code' => wrongCode(lastLoginCode())])->assertSessionHasErrors('code');
+        }
+    }
+    // Dieci errori sulla stessa email: nemmeno il codice nuovo e giusto entra, finché non passa la finestra.
+    $this->post($this->base.'/accesso', ['email' => 'mario@example.com']);
+    $this->post($this->base.'/accesso/codice', ['email' => 'mario@example.com', 'code' => lastLoginCode()])->assertSessionHasErrors('code');
+});
+
+it('non fa esaurire a un estraneo le richieste di codice di un socio', function (): void {
+    Mail::fake();
+    foreach (range(1, 6) as $_) {
+        $this->post($this->base.'/accesso', ['email' => 'mario@example.com']);
+    }
+    Mail::assertSent(LoginLink::class, 5);
+
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.9'])->post($this->base.'/accesso', ['email' => 'mario@example.com']);
+    Mail::assertSent(LoginLink::class, 6);
+});
+
+it('non fa entrare chi è uscito dall\'associazione o è sospeso, con lo stesso messaggio di chi non è socio', function (): void {
+    $cookie = memberLogin($this);
+    asMember($this, $cookie)->get($this->base)->assertOk();
+
+    $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->mario->id)->update(['suspended_at' => now()]));
+    // La sessione già aperta viene respinta alla richiesta dopo.
+    asMember($this, $cookie)->get($this->base)->assertRedirect('/area/accesso');
+
+    Mail::fake();
+    $unknown = $this->post($this->base.'/accesso', ['email' => 'nessuno@example.com'])->assertRedirect('/area/accesso')->getSession()->get('member_login_message');
+    $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso')->assertSessionHas('member_login_message', $unknown);
+    Mail::assertNothingSent();
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        Person::query()->whereKey($this->mario->id)->update(['suspended_at' => null]);
+        Person::query()->whereKey($this->mario->id)->update(['left_on' => now()->toDateString()]);
+    });
+    $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso');
+    Mail::assertNothingSent();
+});
+
 it('fa entrare il socio con il codice per email, e solo una volta', function (): void {
     Mail::fake();
     // Email sconosciuta: stessa risposta, nessuna email.
@@ -94,7 +164,7 @@ it('fa entrare il socio con il codice per email, e solo una volta', function ():
     $this->post($this->base.'/accesso/codice', ['email' => 'mario@example.com', 'code' => $mail->code])->assertSessionHasErrors('code');
 
     // Usato il codice, il link della stessa email non vale più; un link nuovo vale una volta sola.
-    $this->get($this->base.'/entra/'.substr($mail->link, strrpos($mail->link, '/') + 1))->assertRedirect('/area/accesso');
+    $this->post($this->base.'/entra/'.substr($mail->link, strrpos($mail->link, '/') + 1))->assertRedirect('/area/accesso');
     $this->post($this->base.'/accesso', ['email' => 'mario@example.com']);
     $links = [];
     Mail::assertSent(LoginLink::class, function (LoginLink $m) use (&$links): bool {
@@ -103,8 +173,11 @@ it('fa entrare il socio con il codice per email, e solo una volta', function ():
         return true;
     });
     $token = substr((string) end($links), strrpos((string) end($links), '/') + 1);
-    $this->get($this->base.'/entra/'.$token)->assertRedirect('/area');
-    $this->get($this->base.'/entra/'.$token)->assertRedirect('/area/accesso');
+    // Aprire il link (come fanno i controlli della posta) non lo consuma: la pagina ha il pulsante, il POST fa entrare.
+    $this->get($this->base.'/entra/'.$token)->assertOk()->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Entra')->where('token', $token));
+    $this->get($this->base.'/entra/'.$token)->assertOk();
+    $this->post($this->base.'/entra/'.$token)->assertRedirect('/area');
+    $this->post($this->base.'/entra/'.$token)->assertRedirect('/area/accesso');
 
     asMember($this, (string) $cookie->getValue())->get($this->base)->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Tessera')->where('card.card_number', '7')->where('card.active', true)
@@ -193,7 +266,8 @@ it('lascia alla segreteria il link d\'accesso per chi non ha email', function ()
     $this->postJson('/gestionale/soci/'.$guest->id.'/area-soci/link')->assertStatus(422);
 
     $path = substr($link, strlen('http://'.$this->org->slug.'.associazionesemplice.it'));
-    $cookie = (string) $this->get('http://'.$this->org->slug.'.associazionesemplice.it'.$path)->assertRedirect('/area')->getCookie('as_socio', false)?->getValue();
+    $this->get('http://'.$this->org->slug.'.associazionesemplice.it'.$path)->assertOk();
+    $cookie = (string) $this->post('http://'.$this->org->slug.'.associazionesemplice.it'.$path)->assertRedirect('/area')->getCookie('as_socio', false)?->getValue();
     asMember($this, $cookie)->get($this->base)->assertInertia(fn (Assert $page) => $page->where('card.first_name', 'Anna')->where('card.active', false));
 
     $this->actingAs($op)->postJson('/gestionale/soci/'.$anna->id.'/area-soci/esci')->assertJson(['closed' => 1]);
@@ -252,7 +326,8 @@ it('il link d\'accesso preparato dalla segreteria usa il dominio proprio se veri
     DB::table('core.org_domains')->where('org_id', $this->org->id)->update(['state' => 'active']);
     $link = (string) $this->postJson('/gestionale/soci/'.$anna->id.'/area-soci/link')->assertOk()->json('link');
     expect($link)->toStartWith('http://soci.alfa-sport.it/area/entra/');
-    $this->get($link)->assertRedirect('/area');
+    $this->get($link)->assertOk();
+    $this->post($link)->assertRedirect('/area');
 });
 
 it('il link di verifica della tessera resta sul dominio proprio quando il socio è entrato da lì', function (): void {

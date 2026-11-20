@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Cifratura\Contracts\Bytea;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Soci\Contracts\MemberProfiles;
 use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Models\MedicalCertificate;
 use App\Modules\Soci\Models\Person;
@@ -42,6 +43,25 @@ it('collega fino a due tutori, il primo operativo, e passa l\'operativo all\'alt
     $g->unlink($this->minor->id, $this->mamma->id);
     expect($g->of($this->minor->id))->toBe([['id' => $this->papa->id, 'name' => 'Marco Rossi', 'email' => null, 'operative' => false]])
         ->and(DB::table('audit.log')->whereIn('action', ['guardian.linked', 'guardian.unlinked'])->count())->toBe(3);
+});
+
+it('lascia gestire nell\'area soci solo i collegamenti operativi con minorenni', function (): void {
+    $g = app(GuardianService::class);
+    $g->link($this->minor->id, $this->mamma->id);
+    $g->link($this->minor->id, $this->papa->id); // secondo genitore, non operativo
+    $profiles = app(MemberProfiles::class);
+
+    expect(array_column($profiles->profiles($this->mamma->id), 'id'))->toBe([$this->mamma->id, $this->minor->id])
+        ->and(array_column($profiles->profiles($this->papa->id), 'id'))->toBe([$this->papa->id])
+        ->and($g->dependentsOf($this->papa->id))->toHaveCount(1);
+
+    // Compiuti i 18 anni la scheda non è più gestibile dal genitore.
+    Person::query()->findOrFail($this->minor->id)->update(['birth_date' => now()->subYears(20)->toDateString()]);
+    expect(array_column($profiles->profiles($this->mamma->id), 'id'))->toBe([$this->mamma->id]);
+});
+
+it('rifiuta il collegamento di un tutore a un adulto', function (): void {
+    expect(fn () => app(GuardianService::class)->link($this->mamma->id, $this->papa->id))->toThrow(PeopleError::class, 'minorenne');
 });
 
 it('rifiuta ospiti come tutori e minori senza data di nascita', function (): void {

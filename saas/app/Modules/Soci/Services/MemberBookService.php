@@ -276,6 +276,12 @@ final readonly class MemberBookService
         $this->audit->record('member_book.exported', 'app.people', null, ['format' => $format, 'rows' => $rows]);
     }
 
+    /** Lettura a video con le colonne complete: una riga per pagina aperta. */
+    public function logView(int $rows, int $page): void
+    {
+        $this->audit->record('member_book.viewed', 'app.people', null, ['rows' => $rows, 'page' => $page]);
+    }
+
     /** @return array<string, array{submitted: string, decided: string}> domande accolte, per persona */
     private function applications(): array
     {

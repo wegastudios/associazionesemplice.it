@@ -26,7 +26,7 @@ final readonly class MemberProfilesService implements MemberProfiles
         }
         $found = Person::query()->where('email', $email)->whereNull('anonymized_at')->orderBy('created_at')->get();
 
-        return array_values($found->filter(static fn (Person $p): bool => $p->type->canLogin())
+        return array_values($found->filter(static fn (Person $p): bool => self::mayEnter($p))
             ->sortBy(static fn (Person $p): int => $p->type->isMember() ? 0 : 1)->map(static fn (Person $p): string => $p->id)->all());
     }
 
@@ -34,7 +34,7 @@ final readonly class MemberProfilesService implements MemberProfiles
     {
         $p = $this->find($personId);
 
-        return $p !== null && $p->type->canLogin();
+        return $p !== null && self::mayEnter($p);
     }
 
     public function profiles(string $personId): array
@@ -44,7 +44,7 @@ final readonly class MemberProfilesService implements MemberProfiles
             return [];
         }
         $out = [['id' => $p->id, 'name' => $p->fullName(), 'own' => true]];
-        foreach ($this->guardians->dependentsOf($p->id) as $d) {
+        foreach ($this->guardians->manageableDependentsOf($p->id) as $d) {
             $out[] = ['id' => $d['id'], 'name' => $d['name'], 'own' => false];
         }
 
@@ -94,6 +94,12 @@ final readonly class MemberProfilesService implements MemberProfiles
         $this->find($personId) ?? throw new PeopleError(['Persona non trovata.']);
         $address = $address === null || trim($address) === '' ? null : ['text' => mb_substr(trim($address), 0, 255)];
         $this->people->update($personId, ['phone' => $phone, 'address' => $address]);
+    }
+
+    /** Entrano nell'area soci solo le persone ammesse: né chi è uscito dall'associazione né chi è sospeso. */
+    private static function mayEnter(Person $p): bool
+    {
+        return $p->type->canLogin() && $p->left_on === null && $p->suspended_at === null;
     }
 
     private function find(string $id): ?Person
