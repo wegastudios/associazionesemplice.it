@@ -208,7 +208,7 @@ final class Access {
 	 * collegato, 0 per chi è entrato con l'accesso proprio: tesoriere e staff dell'ente sono scelte sull'utente WordPress, quindi senza utente non valgono.
 	 */
 	public static function person_can( ?array $actor, int $user_id, string $ability, int $object_id ): bool {
-		if ( ! $actor ) {
+		if ( ! $actor || MemberSession::is_out( $actor ) ) { // un socio sospeso o uscito non agisce dall'area soci, nemmeno con un utente WordPress
 			return false;
 		}
 		$ctx = array( 'person_id' => $object_id );
