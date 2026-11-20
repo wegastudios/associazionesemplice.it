@@ -2714,7 +2714,7 @@ $ev3_l->record_receipt( array( 'date' => Db::today(), 'account_id' => $ev3_l->on
 $stripe_sessions[ $row['provider_ref'] ]['paid'] = true;
 $ps->handle_return( $row['public_id'], 'ok', $u_pm );
 $p4 = $ps->get_by_public( $row['public_id'] );
-asem_ok( 'paid' === $p4['status'] && 1 === (int) $p4['review'] && 500 === (int) $p4['allocated_cents'] && false !== strpos( (string) $p4['error'], 'già pagata' ), 'voce già pagata: incasso registrato lo stesso e pagamento segnato «da controllare» con il motivo' );
+asem_ok( 'paid' === $p4['status'] && 1 === (int) $p4['review'] && 500 === (int) $p4['allocated_cents'] && false !== strpos( (string) $p4['error'], 'Già pagata: ' ), 'voce già pagata: incasso registrato lo stesso e pagamento segnato «da controllare» con il motivo' );
 asem_ok( 500 === $sum_tx( "document_ref = '" . esc_sql( $row['provider_ref'] ) . "'" ), 'voce già pagata: i soldi arrivati restano in prima nota, nessun rimborso automatico' );
 $ps->mark_reviewed( (int) $p4['id'] );
 

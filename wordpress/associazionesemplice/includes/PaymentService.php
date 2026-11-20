@@ -1117,7 +1117,7 @@ class PaymentService extends OfflinePayments {
 					$allocated += PaymentItems::total( $group );
 					if ( $dups ) {
 						$review = true;
-						$error  = $error ?? mb_substr( Texts::t( 'Voce già pagata ({voce}): incasso registrato lo stesso, da controllare.', array( 'voce' => implode( ', ', $dups ) ) ), 0, 250 );
+						$error  = $error ?? mb_substr( Texts::t( 1 === count( $dups ) ? 'Già pagata: {voce}. L\'incasso è stato registrato comunque: controlla se va restituito.' : 'Già pagate: {voce}. L\'incasso è stato registrato comunque: controlla se va restituito.', array( 'voce' => implode( ', ', $dups ) ) ), 0, 250 );
 						Audit::log( 'payment.item_already_paid', 'payment', (int) $p['id'], array( 'items' => count( $dups ) ) );
 					}
 					foreach ( $group as $i ) { // l'incasso è già in prima nota: se un passo successivo non riesce il pagamento resta «da controllare», senza riscrivere l'incasso
