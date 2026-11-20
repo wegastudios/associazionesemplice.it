@@ -25,7 +25,7 @@ final class ResetPasswordNotification extends Notification
             ->subject('Associazione Semplice · Reimposta la password')
             ->greeting("Ciao {$notifiable->name},")
             ->line('hai chiesto di reimpostare la password del tuo accesso.')
-            ->action('Reimposta la password', route('password.reset', ['token' => $this->token, 'email' => $notifiable->email]))
+            ->action('Reimposta la password', rtrim((string) config('app.url'), '/').route('password.reset', ['token' => $this->token, 'email' => $notifiable->email], false))
             ->line('Il link vale 60 minuti. Se non hai chiesto tu di reimpostare la password, ignora questo messaggio.');
     }
 }
