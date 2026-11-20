@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Raccolta di donazioni, aperta anche a chi non è socio. Con un metodo di pagamento attivo (Stripe, PayPal, SumUp, Satispay) la donazione passa dal
- * pagamento del sito: a pagamento confermato si registra da sola in prima nota come «Erogazione liberale», con la sua ricevuta (vedi la classe Pro DonationPage).
+ * pagamento del sito: a pagamento confermato si registra da sola in prima nota come «Erogazione liberale», con la sua ricevuta.
  * Senza un metodo attivo resta il pulsante «Dona» di PayPal (paypal.com/donate, già compilato con conto, causale e importo): il pagamento avviene tutto
  * su PayPal e non lascia traccia nel gestionale (nessun webhook né IPN): si registra a mano in prima nota («Nuovo incasso», categoria «Erogazione liberale»).
  */
