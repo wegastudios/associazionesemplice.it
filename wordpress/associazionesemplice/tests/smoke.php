@@ -11719,6 +11719,17 @@ for ( $ml_i = 0; $ml_i < MemberPassword::MAX_FAILED; $ml_i++ ) {
 asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'una password lunga' ), 'accesso proprio: dopo gli errori di fila l\'account si blocca anche con la password giusta' );
 $wpdb->update( Db::t( 'member_auth' ), array( 'failed_count' => 0, 'locked_until' => null, 'pass_hash' => password_hash( 'vecchia password', PASSWORD_BCRYPT, array( 'cost' => 4 ) ) ), array( 'person_id' => $ml_p ) );
 asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && ! MemberPassword::needs_rehash( (string) $wpdb->get_var( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ml_p ) ), 'accesso proprio: un\'impronta con un costo vecchio vale e viene rifatta con quello di oggi' );
+// Ex soci e sospesi non entrano nell'area soci: né con password, né con link o codice, né col recupero; la sessione aperta cade
+$wpdb->update( Db::t( 'people' ), array( 'suspended_at' => Db::now() ), array( 'id' => $ml_p ) );
+asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'sospeso: con la password giusta non entra' );
+$ml_before = count( $ml_mail );
+asem_ok( ! MemberLogin::request( $ml_addr ) && ! MemberLogin::request( $ml_addr, 'reset' ) && count( $ml_mail ) === $ml_before, 'sospeso: né il link né il recupero della password gli mandano qualcosa' );
+asem_ok( 'invalid' === \AssociazioneSemplice\Frontend\Activation::resolve( (string) substr( (string) strstr( \AssociazioneSemplice\Frontend\Activation::url( $ml_p ), 'asem_activate=' ), 14 ) )['status'], 'sospeso: il link di attivazione non vale' );
+$wpdb->update( Db::t( 'people' ), array( 'suspended_at' => null, 'left_on' => gmdate( 'Y-m-d', time() - DAY_IN_SECONDS ) ), array( 'id' => $ml_p ) );
+asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'ex socio (data di cessazione passata): non entra' );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => gmdate( 'Y-m-d', time() + 5 * DAY_IN_SECONDS ) ), array( 'id' => $ml_p ) );
+asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'cessazione ancora nel futuro: entra come prima' );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => null ), array( 'id' => $ml_p ) );
 // Separazione: con l'accesso proprio acceso i soci semplici non hanno un utente WordPress
 asem_ok( empty( Plugin::people()->get( $ml_p )['wp_user_id'] ) && ! get_user_by( 'email', $ml_addr ) && \AssociazioneSemplice\PeopleService::has_access( Plugin::people()->get( $ml_p ) ), 'separazione: un nuovo socio con email non ha un utente WordPress ma ha un accesso' );
 $sp_mails = count( $ml_mail );
