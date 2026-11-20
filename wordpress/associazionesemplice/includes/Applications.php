@@ -15,6 +15,11 @@ final class Applications {
 	const REQUESTED = 'requested';
 	const REJECTED  = 'rejected';
 	const PAY_DAYS  = 7;
+	/** Domanda arrivata dal modulo ma non ancora confermata via email da chi l'ha scritta: non compare in segreteria e non produce altre email. */
+	const UNCONFIRMED       = 'unconfirmed';
+	const CONFIRM_HOURS     = 48; // validità del link di conferma
+	const UNCONFIRMED_DAYS  = 30; // dopo tanti giorni una domanda mai confermata si cancella
+	const REJECTED_DAYS     = 90; // dopo tanti giorni dalla risposta una domanda respinta con quota pagata perde tutti i dati tranne il nome
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -107,10 +112,13 @@ final class Applications {
 		$people = Plugin::people();
 		// Tre controlli, tutti eseguiti sempre (nessuno salta gli altri): già nell'anagrafica o in coda per email o codice fiscale, oppure coda piena.
 		// Per chi scrive l'esito è lo stesso, e anche il lavoro fatto lo è (vedi decoy_submit).
+		$to         = strtolower( (string) ( $chk['minor'] ? $d['guardian']['email'] : $d['email'] ) );
+		self::drop_stale_unconfirmed( $d ); // una domanda mai confermata da oltre un'ora non blocca chi riprova: si riscrive e si manda un link nuovo
 		$known_mail = '' !== $d['email'] && (bool) $people->find_by_email( $d['email'] );
 		$known_tax  = (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s', $d['tax_code'] ) ) > 0;
-		$queue_full = self::pending_count() >= Limits::get( 'applications_max' );
-		if ( $known_mail || $known_tax || $queue_full ) {
+		$queue_full = self::pending_count() >= Limits::get( 'applications_max' ) || self::unconfirmed_count() >= Limits::get( 'applications_max' );
+		$too_soon   = false !== get_transient( self::confirm_limit_key( $to ) ); // una sola email l'ora allo stesso indirizzo
+		if ( $known_mail || $known_tax || $queue_full || $too_soon ) {
 			self::decoy_submit();
 			return array( 'status' => 'ok', 'errors' => array() );
 		}
@@ -133,7 +141,7 @@ final class Applications {
 				'city'               => '' === $d['city'] ? null : $d['city'],
 				'province'           => '' === $d['province'] ? null : $d['province'],
 				'joined_on'          => Db::today(),
-				'application_status' => self::REQUESTED,
+				'application_status' => self::UNCONFIRMED,
 				'application_at'     => $now,
 				'application_data'   => $chk['minor'] ? wp_json_encode( array( 'guardian' => $d['guardian'] ) ) : null,
 				'created_at'         => $now,
@@ -149,9 +157,117 @@ final class Applications {
 			Regulation::accept( $id, 'web' ); // con la versione in vigore
 		}
 		Audit::log( 'application.received', 'person', $id, array( 'minor' => $chk['minor'] ? 1 : 0 ) );
-		self::mail_secretary( $d, $chk['minor'] );
-		self::mail_applicant( $id, $d, $chk['minor'] );
+		set_transient( self::confirm_limit_key( $to ), 1, HOUR_IN_SECONDS );
+		self::mail_confirm( $id, $d, $chk['minor'] ); // la segreteria la vede solo dopo il clic sul link (vedi confirm())
 		return array( 'status' => 'ok', 'errors' => array() );
+	}
+
+	// ---------- Conferma via email ----------
+
+	private static function confirm_limit_key( string $to ): string {
+		return 'asem_apc_' . md5( $to );
+	}
+
+	public static function unconfirmed_count(): int {
+		return (int) self::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status = 'unconfirmed'" );
+	}
+
+	/** Toglie le domande ancora da confermare, scritte da oltre un'ora, con la stessa email o lo stesso codice fiscale della nuova. */
+	private static function drop_stale_unconfirmed( array $d ): void {
+		$db = self::db();
+		$db->query(
+			$db->prepare(
+				'DELETE FROM ' . Db::t( 'people' ) . " WHERE application_status = 'unconfirmed' AND application_at < %s AND ( ( %s <> '' AND tax_code = %s ) OR ( %s <> '' AND email = %s ) )",
+				gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - HOUR_IN_SECONDS ),
+				(string) $d['tax_code'],
+				(string) $d['tax_code'],
+				(string) $d['email'],
+				(string) $d['email']
+			)
+		);
+	}
+
+	private static function confirm_secret(): string {
+		return wp_salt( 'auth' ) . '|apply-confirm';
+	}
+
+	public static function confirm_param( int $person_id ): string {
+		return ActivationToken::param( $person_id, time() + self::CONFIRM_HOURS * HOUR_IN_SECONDS, self::confirm_secret(), 'applyconfirm' );
+	}
+
+	public static function confirm_url( int $person_id ): string {
+		return add_query_arg( 'asem_apply_confirm', self::confirm_param( $person_id ), home_url( '/' ) );
+	}
+
+	/** @return array{status:string,person:?array} status: ok | invalid | expired | closed (già confermata o non più presente) */
+	public static function resolve_confirm( string $param ): array {
+		$state = ActivationToken::check( $param, self::confirm_secret(), time(), 'applyconfirm' );
+		if ( 'ok' !== $state ) {
+			return array( 'status' => $state, 'person' => null );
+		}
+		$row = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE id = %d AND deleted_at IS NULL AND application_status = 'unconfirmed'", (int) ActivationToken::parse( $param )[0] ), ARRAY_A );
+		return $row ? array( 'status' => 'ok', 'person' => $row ) : array( 'status' => 'closed', 'person' => null );
+	}
+
+	/**
+	 * Chi ha scritto la domanda conferma dal link ricevuto: da qui la domanda è in segreteria e a chi l'ha scritta va la ricevuta (con il link per pagare la quota).
+	 * Il link vale una volta sola e per CONFIRM_HOURS ore. @return bool false se il link non vale (scaduto, già usato, inventato)
+	 */
+	public static function confirm( string $param ): bool {
+		$r = self::resolve_confirm( $param );
+		if ( 'ok' !== $r['status'] ) {
+			return false;
+		}
+		$p   = $r['person'];
+		$now = Db::now();
+		$n   = self::db()->update( Db::t( 'people' ), array( 'application_status' => self::REQUESTED, 'application_at' => $now, 'updated_at' => $now ), array( 'id' => (int) $p['id'], 'application_status' => self::UNCONFIRMED ) );
+		if ( 1 !== (int) $n ) {
+			return false; // un altro clic, in contemporanea, l'ha già confermata
+		}
+		$g = self::guardian_data( $p );
+		$d = array( 'type' => (string) $p['type'], 'first_name' => (string) $p['first_name'], 'last_name' => (string) $p['last_name'], 'email' => (string) $p['email'], 'guardian' => $g );
+		Audit::log( 'application.confirmed', 'person', (int) $p['id'], array() );
+		self::mail_secretary( $d, null !== $g );
+		self::mail_applicant( (int) $p['id'], $d, null !== $g );
+		return true;
+	}
+
+	/** Email con il link di conferma: saluto e frasi sono sempre gli stessi (nessun testo scelto da chi compila il modulo). */
+	private static function mail_confirm( int $id, array $d, bool $minor ): void {
+		$to   = $minor ? $d['guardian']['email'] : $d['email'];
+		$text = "Ciao,\n\nè arrivata una domanda di adesione che indica questo indirizzo email. Per mandarla alla segreteria devi confermarla: il link vale " . self::CONFIRM_HOURS . " ore.\n\nConferma la domanda:\n" . self::confirm_url( $id ) . "\n\nSe la domanda non l'hai fatta tu, ignora questo messaggio: non succede nulla.";
+		ResponseMail::send( $to, \AssociazioneSemplice\Texts::subject( 'Conferma la domanda di adesione' ), $text );
+	}
+
+	/**
+	 * Pulizia giornaliera: le domande mai confermate da UNCONFIRMED_DAYS giorni spariscono; le respinte con quota pagata, da REJECTED_DAYS giorni dalla risposta,
+	 * perdono ogni dato tranne il nome (resta sui movimenti di prima nota, che si conservano per legge: incasso e rimborso).
+	 */
+	public static function purge(): void {
+		$db  = self::db();
+		$t   = Db::t( 'people' );
+		$now = Db::now();
+		$unconfirmed = 0;
+		foreach ( $db->get_col( $db->prepare( "SELECT id FROM $t WHERE application_status = 'unconfirmed' AND application_at < %s", gmdate( 'Y-m-d H:i:s', strtotime( $now ) - self::UNCONFIRMED_DAYS * DAY_IN_SECONDS ) ) ) as $id ) {
+			$db->delete( $t, array( 'id' => (int) $id ) );
+			$unconfirmed++;
+		}
+		$rejected = 0;
+		foreach ( $db->get_col( $db->prepare( "SELECT id FROM $t WHERE application_status = 'rejected' AND anonymized_at IS NULL AND deleted_at < %s", gmdate( 'Y-m-d H:i:s', strtotime( $now ) - self::REJECTED_DAYS * DAY_IN_SECONDS ) ) ) as $id ) {
+			$db->update(
+				$t,
+				array(
+					'email' => null, 'phone' => null, 'tax_code' => null, 'birth_date' => null, 'birth_place' => null, 'address' => null, 'zip' => null, 'city' => null, 'province' => null,
+					'application_data' => null, 'image_consent' => 0, 'image_consent_at' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null,
+					'rules_accepted_version' => null, 'rules_accepted_source' => null, 'anonymized_at' => $now, 'updated_at' => $now,
+				),
+				array( 'id' => (int) $id )
+			);
+			$rejected++;
+		}
+		if ( $unconfirmed + $rejected > 0 ) {
+			Audit::log( 'application.purged', 'person', 0, array( 'unconfirmed' => $unconfirmed, 'rejected' => $rejected ) );
+		}
 	}
 
 	/**

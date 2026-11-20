@@ -73,6 +73,7 @@ final class Plugin {
 			'asem_file_crypt_certs_check' => array( 'hourly', 1000, 'FileMigration', 'auto_certs', '' ), // se la cifratura dei certificati si è fermata o è andata persa, riparte
 			'asem_purge_audit'            => array( 'daily', 1800, 'Audit', 'purge_old', '' ),
 			'asem_purge_member_sessions'  => array( 'daily', 2400, 'MemberSession', 'purge_expired', '' ),
+			'asem_purge_applications'     => array( 'daily', 3300, 'Applications', 'purge', '' ), // domande mai confermate (30 giorni) e respinte con quota pagata (90 giorni dalla risposta)
 		);
 		$jobs = (array) apply_filters( 'asem_scheduled_jobs', $jobs ); // un'estensione aggiunge i suoi lavori periodici
 		if ( is_admin() ) {
