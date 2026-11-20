@@ -48,6 +48,8 @@ final class PiattaformaServiceProvider extends ServiceProvider
             Limit::perMinute(5)->by(Str::lower($request->string('email')->toString()).'|'.$request->ip()),
             Limit::perMinute(20)->by('platform-ip|'.$request->ip()),
         ]);
+        // API dello staff: un secchio suo, così le richieste firmate del portale (API dei diritti) non si contendono il limite.
+        RateLimiter::for('staff-api', static fn (Request $request): Limit => Limit::perMinute(120)->by('staff-api|'.$request->ip()));
         RateLimiter::for('platform-code', static function (Request $request): Limit {
             $id = $request->session()->get('platform.pending');
 
