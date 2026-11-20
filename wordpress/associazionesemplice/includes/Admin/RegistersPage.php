@@ -74,6 +74,10 @@ final class RegistersPage {
 		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><input type="hidden" name="filter" value="' . esc_attr( $filter ) . '">'
 			. '<strong>Tessere in PDF</strong> (fogli A4 da stampare e ritagliare; i posti che restano sono modelli vuoti): per foglio <select name="per">' . Ui::options( $opts, isset( $opts[ $per ] ) ? $per : 0 ) . '</select> <button class="button">Applica</button> '
 			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0 ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>', Html::allowed() );
+		$hide_cf = \AssociazioneSemplice\Employees::sensitive_hidden(); // senza «Vedere dati riservati ed esportare» il codice fiscale non si mostra
+		if ( ! $hide_cf ) {
+			\AssociazioneSemplice\Employees::log_sensitive_read( 'book' ); // ogni lettura dei dati riservati è nel registro
+		}
 		echo '<p class="description">' . count( $rows ) . ( 1 === count( $rows ) ? ' socio.</p>' : ' soci.</p>' );
 		if ( $snap ) { // la fotografia ha solo i dati minimi: recapiti, domanda, quota e tutore non ci sono
 			echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Matricola</th><th>Cognome e nome</th><th>Tipo</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza</th><th>Categoria</th><th>Delibera</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
@@ -91,7 +95,7 @@ final class RegistersPage {
 			$middle = $snap
 				? '<td>' . esc_html( $r['residence'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['approved_on'] ) . '</td><td>' . self::date( $r['joined_on'] ) . '</td>'
 				: '<td>' . esc_html( trim( $r['residence'] . ' ' . $r['email'] . ' ' . $r['phone'] ) ) . '</td><td>' . self::date( $r['applied_on'] ) . '</td><td>' . self::date( $r['approved_on'] ) . '</td><td>' . ( $r['fee_cents'] > 0 ? esc_html( \AssociazioneSemplice\Money::format( $r['fee_cents'] ) . ' ' . $r['fee_year'] ) : '' ) . '</td><td>' . esc_html( $r['guardian'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['joined_on'] ) . '</td>';
-			echo wp_kses( '<tr><td>' . (int) $r['n'] . '</td><td>' . esc_html( $matr ) . '</td><td>' . $name . '</td><td>' . esc_html( \AssociazioneSemplice\MemberBook::kind_label( (string) $r['kind'] ) ) . '</td><td>' . esc_html( $r['tax_code'] ) . '</td><td>' . $born . '</td>' . $middle . '<td>' . $left . '</td></tr>', Html::allowed() );
+			echo wp_kses( '<tr><td>' . (int) $r['n'] . '</td><td>' . esc_html( $matr ) . '</td><td>' . $name . '</td><td>' . esc_html( \AssociazioneSemplice\MemberBook::kind_label( (string) $r['kind'] ) ) . '</td><td>' . esc_html( $hide_cf ? '—' : $r['tax_code'] ) . '</td><td>' . $born . '</td>' . $middle . '<td>' . $left . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table>';
 		Ui::footer();

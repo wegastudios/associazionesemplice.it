@@ -188,6 +188,10 @@ final class PeoplePage {
 			return $p ? (string) ( $p[ $k ] ?? '' ) : '';
 		};
 		$host_id = $p ? (int) $p['host_person_id'] : Ui::get_int( 'host' );
+		$sx = $p && \AssociazioneSemplice\Employees::sensitive_hidden(); // senza «Vedere dati riservati ed esportare» codice fiscale e note non si mostrano
+		if ( $p && ! $sx ) {
+			\AssociazioneSemplice\Employees::log_sensitive_read( 'card', (int) $p['id'] ); // ogni lettura dei dati riservati è nel registro
+		}
 		$back    = Ui::url( 'asem-person', $id ? array( 'id' => $id ) : array( 'type' => $type ) );
 		$hosts   = array_values( array_filter( $people->search_light(), function ( $x ) use ( $id ) {
 			return MemberType::is_member( $x['type'] ) && (int) $x['id'] !== $id;
@@ -237,7 +241,11 @@ final class PeoplePage {
 			. '<p class="description asem-email-note">Facoltativa: con l\'email il socio ha subito il suo accesso all\'area soci. Senza email il socio si registra lo stesso (meglio se con cellulare o numero di tessera) e si attiva dopo con un link da mandare su WhatsApp.</p></td></tr>';
 		echo '<tr><th>' . ( MemberType::GUEST === $type ? 'Cellulare' : 'Telefono' ) . '</th><td><input type="text" name="phone" value="' . esc_attr( $val( 'phone' ) ) . '" class="regular-text"' . ( MemberType::GUEST === $type ? ' required placeholder="333 1234567"' : '' ) . '>' . ( MemberType::GUEST === $type ? '<p class="description">Obbligatorio per gli ospiti: è il dato che serve a riconoscerli (anche se si registrano da soci diversi) e a contattarli su WhatsApp.</p>' : '' ) . '</td></tr>';
 		self::form_section( 'Dati anagrafici' );
-		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"><p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria. Se lo scrivi, chi attiva da solo il proprio accesso dovrà riscriverlo uguale (un controllo in più sull\'identità).</p></td></tr>';
+		if ( $sx ) {
+			echo '<tr><th>Codice fiscale</th><td><span class="description">Visibile solo con il permesso «Vedere dati riservati ed esportare».</span></td></tr>';
+		} else {
+			echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"><p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria. Se lo scrivi, chi attiva da solo il proprio accesso dovrà riscriverlo uguale (un controllo in più sull\'identità).</p></td></tr>';
+		}
 		$birth = $val( 'birth_date' );
 		$minor = '' !== $birth && \AssociazioneSemplice\Age::is_minor( $birth, current_time( 'Y-m-d' ) );
 		echo '<tr><th>Data di nascita</th><td><input type="date" name="birth_date" value="' . esc_attr( $birth ) . '" max="' . esc_attr( current_time( 'Y-m-d' ) ) . '">'
@@ -307,7 +315,11 @@ final class PeoplePage {
 		}
 		echo '<tr class="asem-row-host"><th>Partecipazioni precedenti</th><td><input type="number" name="prior_visits" min="0" max="9999" value="' . (int) $val( 'prior_visits' ) . '" class="small-text"><p class="description">Quante volte è già venuto prima di usare il programma: si somma alle partecipazioni registrate qui e conta per la soglia dell\'invito a iscriversi. Gli eventi passati puoi segnarli nelle note.</p></td></tr>';
 		self::form_section( 'Note' );
-		echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
+		if ( $sx ) {
+			echo '<tr><th>Note</th><td><span class="description">Visibile solo con il permesso «Vedere dati riservati ed esportare».</span></td></tr>';
+		} else {
+			echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
+		}
 		echo '</tbody></table>';
 		submit_button( $p ? 'Salva' : 'Crea' );
 		Ui::form_close();

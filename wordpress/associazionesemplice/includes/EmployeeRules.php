@@ -7,12 +7,12 @@ defined( 'ABSPATH' ) || exit;
  * Regole del tipo di utente «Dipendente» (parte pura, senza WordPress: si prova con i test unitari).
  *
  * Il dipendente parte con gli stessi permessi della segreteria. Chi ha titolo (amministratori, presidente, vicepresidente)
- * può togliergli, area per area, i permessi di questo elenco chiuso (15 aree); tutto il resto resta solo amministratore.
+ * può togliergli, area per area, i permessi di questo elenco chiuso (16 aree); tutto il resto resta solo amministratore.
  * Si memorizza l'elenco dei permessi TOLTI: chi non ha niente di tolto ha tutto, come la segreteria.
  *
  * Ogni pagina, azione o esportazione che dipende da uno di quei permessi è scritta qui, in una tabella sola:
  * il controllo è unico ({@see Employees::gate()}), così un permesso tolto vale ovunque.
- * Tutte e quindici le aree hanno i loro controlli (vedi {@see EmployeeRules::enforced_keys()}).
+ * Tutte e sedici le aree hanno i loro controlli (vedi {@see EmployeeRules::enforced_keys()}).
  */
 final class EmployeeRules {
 
@@ -24,6 +24,7 @@ final class EmployeeRules {
 	const FUNDS    = 'funds';
 
 	const PEOPLE      = 'people';
+	const SENSITIVE   = 'sensitive'; // vedere i dati riservati dei soci (codice fiscale, note) ed esportare: senza, restano nascosti e le esportazioni si chiudono
 	const HEALTH      = 'health';
 	const RESOURCES   = 'resources';
 	const COMMS       = 'comms';
@@ -33,10 +34,11 @@ final class EmployeeRules {
 	const CONVENTIONS = 'conventions';
 	const TOOLS       = 'tools';
 
-	/** @return array<string,string> i permessi che si possono togliere (le 15 aree), con il nome che si legge, nell'ordine della pagina */
+	/** @return array<string,string> i permessi che si possono togliere (le 16 aree), con il nome che si legge, nell'ordine della pagina */
 	public static function labels(): array {
 		return array(
 			self::PEOPLE      => 'Anagrafica soci (schede, rubrica, libro soci, RUNTS, tessere, affiliazioni, polizze)',
+			self::SENSITIVE   => 'Vedere dati riservati ed esportare',
 			self::HEALTH      => 'Certificati medici',
 			self::COURSES     => 'Corsi',
 			self::EVENTS      => 'Eventi',
@@ -54,10 +56,15 @@ final class EmployeeRules {
 		);
 	}
 
-	/** Le aree che hanno già i loro controlli su pagine e azioni: ora sono tutte e quindici. @return string[] */
+	/** @return array<string,string> la riga di spiegazione sotto il nome di un permesso, dove serve */
+	public static function hints(): array {
+		return array( self::SENSITIVE => 'Codice fiscale e note dei soci, e tutte le esportazioni.' );
+	}
+
+	/** Le aree che hanno già i loro controlli su pagine e azioni: ora sono tutte e sedici. @return string[] */
 	public static function enforced_keys(): array {
 		return array(
-			self::PEOPLE, self::HEALTH, self::COURSES, self::EVENTS, self::RESOURCES, self::COLLECT, self::EXPENSES, self::REFUNDS, self::FUNDS,
+			self::PEOPLE, self::SENSITIVE, self::HEALTH, self::COURSES, self::EVENTS, self::RESOURCES, self::COLLECT, self::EXPENSES, self::REFUNDS, self::FUNDS,
 			self::COMMS, self::DOCUMENTS, self::ASSEMBLIES, self::INVENTORY, self::CONVENTIONS, self::TOOLS,
 		);
 	}
@@ -218,6 +225,11 @@ final class EmployeeRules {
 			$add( array( 'asem_convention_announce' ), array( 'all' => array( self::CONVENTIONS, self::COMMS ) ) );
 			$add( array( 'asem_import_apply', 'asem_import_continue', 'asem_import_preview', 'asem_import_stop', 'asem_import_undo' ), array( 'all' => array( self::TOOLS, self::PEOPLE, self::FUNDS ) ) );
 			$add( array( 'asem_tec_import' ), array( 'all' => array( self::TOOLS, self::COURSES, self::EVENTS ) ) );
+			foreach ( array_keys( $map ) as $a ) { // ogni esportazione in CSV: serve anche «Vedere dati riservati ed esportare»
+				if ( '_csv' === substr( $a, -4 ) ) {
+					$map[ $a ]['all'] = array_values( array_unique( array_merge( (array) ( $map[ $a ]['all'] ?? array() ), array( self::SENSITIVE ) ) ) );
+				}
+			}
 		}
 		return $map[ $action ] ?? null;
 	}
@@ -225,12 +237,12 @@ final class EmployeeRules {
 	/** Cosa serve per un'esportazione dell'azione «asem_export» (parametro «what»). @return array{all?:string[],any?:string[]}|null */
 	public static function export_need( string $what ): ?array {
 		if ( 'people' === $what ) { // l'elenco dei soci: «Importa ed esporta dati» e l'anagrafica
-			return array( 'all' => array( self::TOOLS, self::PEOPLE ) );
+			return array( 'all' => array( self::TOOLS, self::PEOPLE, self::SENSITIVE ) );
 		}
 		if ( in_array( $what, array( 'ledger', 'period', 'social' ), true ) ) { // prima nota, rendiconto e report: «Importa ed esporta dati» e i fondi
-			return array( 'all' => array( self::TOOLS, self::FUNDS ) );
+			return array( 'all' => array( self::TOOLS, self::FUNDS, self::SENSITIVE ) );
 		}
-		return array( 'all' => array( self::TOOLS ) ); // qualunque altra esportazione è un'esportazione
+		return array( 'all' => array( self::TOOLS, self::SENSITIVE ) ); // qualunque altra esportazione è un'esportazione: serve anche il permesso dei dati riservati
 	}
 
 	/**
@@ -241,7 +253,10 @@ final class EmployeeRules {
 	 * @return array{all?:string[],any?:string[]}|null
 	 */
 	public static function doc_need( string $what ): ?array {
-		if ( in_array( $what, array( 'book', 'cards', 'volunteers' ), true ) ) {
+		if ( 'book' === $what ) { // il libro soci porta il codice fiscale: è un documento da esportare
+			return array( 'all' => array( self::PEOPLE, self::SENSITIVE ) );
+		}
+		if ( in_array( $what, array( 'cards', 'volunteers' ), true ) ) {
 			return array( 'all' => array( self::PEOPLE ) );
 		}
 		if ( in_array( $what, array( 'minute', 'poll' ), true ) ) {

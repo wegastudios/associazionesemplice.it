@@ -11719,6 +11719,27 @@ for ( $ml_i = 0; $ml_i < MemberPassword::MAX_FAILED; $ml_i++ ) {
 asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'una password lunga' ), 'accesso proprio: dopo gli errori di fila l\'account si blocca anche con la password giusta' );
 $wpdb->update( Db::t( 'member_auth' ), array( 'failed_count' => 0, 'locked_until' => null, 'pass_hash' => password_hash( 'vecchia password', PASSWORD_BCRYPT, array( 'cost' => 4 ) ) ), array( 'person_id' => $ml_p ) );
 asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && ! MemberPassword::needs_rehash( (string) $wpdb->get_var( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ml_p ) ), 'accesso proprio: un\'impronta con un costo vecchio vale e viene rifatta con quello di oggi' );
+// Gettone monouso dei moduli di prima nota: il primo invio passa, il secondo trova l'esito del primo
+$once_claim = new \ReflectionMethod( \AssociazioneSemplice\Admin\Actions::class, 'once_claim' );
+$once_key   = new \ReflectionMethod( \AssociazioneSemplice\Admin\Actions::class, 'once_key' );
+$once_claim->setAccessible( true );
+$once_key->setAccessible( true );
+$once_tok = 'asem_once_prova_' . substr( md5( (string) microtime( true ) ), 0, 8 );
+asem_ok( '' === $once_key->invoke( null, array() ) && '' === $once_key->invoke( null, array( '_once' => 'non valido' ) ) && '' !== $once_key->invoke( null, array( '_once' => wp_generate_uuid4() ) ), 'gettone: un modulo senza gettone o con un gettone malformato passa come prima' );
+asem_ok( false === $once_claim->invoke( null, $once_tok ), 'gettone: il primo invio prende il gettone' );
+asem_ok( array( '', '' ) === $once_claim->invoke( null, $once_tok ), 'gettone: il secondo invio, col primo ancora al lavoro, aspetta' );
+set_transient( $once_tok, array( 'https://example.org/prima-nota', 'Incasso registrato.' ), 60 );
+asem_ok( array( 'https://example.org/prima-nota', 'Incasso registrato.' ) === $once_claim->invoke( null, $once_tok ), 'gettone: a registrazione finita il secondo invio trova lo stesso esito e non registra' );
+delete_transient( $once_tok );
+asem_ok( false === $once_claim->invoke( null, $once_tok ), 'gettone: se il primo invio fallisce il gettone si libera e si può riprovare' );
+delete_transient( $once_tok );
+ob_start();
+\AssociazioneSemplice\Admin\Ui::form_open( 'asem_save_income', 'https://example.org/' );
+$once_form = ob_get_clean();
+ob_start();
+\AssociazioneSemplice\Admin\Ui::form_open( 'asem_save_person', 'https://example.org/' );
+$once_other = ob_get_clean();
+asem_ok( 1 === preg_match( '/name="_once" value="[0-9a-f-]{36}"/', $once_form ) && false === strpos( $once_other, '_once' ), 'gettone: i moduli di incasso, spesa e giroconto lo portano, gli altri no' );
 // Ex soci e sospesi non entrano nell'area soci: né con password, né con link o codice, né col recupero; la sessione aperta cade
 $wpdb->update( Db::t( 'people' ), array( 'suspended_at' => Db::now() ), array( 'id' => $ml_p ) );
 asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'sospeso: con la password giusta non entra' );
@@ -11746,6 +11767,28 @@ $wpdb->update( Db::t( 'people' ), array( 'left_on' => gmdate( 'Y-m-d', time() - 
 $wpdb->update( Db::t( 'people' ), array( 'suspended_at' => Db::now() ), array( 'id' => $gx_kid ) );
 $gx = Plugin::people()->get( $gx_par );
 asem_ok( ! \AssociazioneSemplice\MemberSession::guardian_only( $gx ) && ! \AssociazioneSemplice\MemberSession::person_allowed( $gx ), 'ha lasciato, ma il figlio non è più socio attivo: non entra' );
+// Incasso a mano: non si incassa più del dovuto (corso, evento, quota), sconti e voci dello stesso incasso compresi
+$du_cat  = (int) $ledger->category_id_of_kind( 'activity_fee' );
+$du_c    = $acts->create( array( 'name' => 'Corso del residuo', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000 ) );
+$du_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Resto', 'last_name' => 'Dovuto', 'email' => 'resto.dovuto@example.org' ) );
+$acts->enroll( $du_c, $du_p, $month );
+$du_rec  = function ( int $cents, int $discount = 0, int $lines = 1 ) use ( $ledger, $today, $cash, $du_cat, $du_c, $du_p, $month ) {
+	$l = array();
+	for ( $i = 0; $i < $lines; $i++ ) {
+		$l[] = array( 'category_id' => $du_cat, 'amount_cents' => $cents, 'discount_cents' => $discount, 'activity_id' => $du_c, 'competence_month' => $month );
+	}
+	return $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $du_p, 'check_due' => true, 'lines' => $l ) );
+};
+$du_msg = asem_throws( function () use ( $du_rec ) { $du_rec( 2500 ); } );
+asem_ok( null !== $du_msg && false !== strpos( (string) $du_msg, 'Restano' ) && false !== strpos( (string) $du_msg, '20,00' ), 'residuo: un corso da 20 € non si incassa a 25 €, il messaggio dice quanto resta' );
+asem_ok( null !== asem_throws( function () use ( $du_rec ) { $du_rec( 1500, 0, 2 ); } ), 'residuo: due voci dello stesso incasso sullo stesso mese contano insieme' );
+asem_ok( 1 === $du_rec( 1500, 500 ), 'residuo: lo sconto conta nel dovuto (15 € + 5 € di sconto coprono 20 €)' );
+$du_msg = asem_throws( function () use ( $du_rec ) { $du_rec( 100 ); } );
+asem_ok( null !== $du_msg && false !== strpos( (string) $du_msg, 'già pagata' ), 'residuo: una voce già pagata per intero non si incassa di nuovo' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $du_p, 'lines' => array( array( 'category_id' => $du_cat, 'amount_cents' => 100, 'activity_id' => $du_c, 'competence_month' => $month ) ) ) );
+asem_ok( true, 'residuo: senza il controllo (pagamenti automatici, importazioni) la registrazione passa come prima' );
+$du_free = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Senza', 'last_name' => 'Iscrizione', 'email' => 'senza.iscrizione@example.org' ) );
+asem_ok( 1 === $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $du_free, 'check_due' => true, 'lines' => array( array( 'category_id' => $du_cat, 'amount_cents' => 9900, 'activity_id' => $du_c, 'competence_month' => $month ) ) ) ), 'residuo: dove non si sa cosa sia dovuto (nessuna iscrizione) non si blocca nulla' );
 // Separazione: con l'accesso proprio acceso i soci semplici non hanno un utente WordPress
 asem_ok( empty( Plugin::people()->get( $ml_p )['wp_user_id'] ) && ! get_user_by( 'email', $ml_addr ) && \AssociazioneSemplice\PeopleService::has_access( Plugin::people()->get( $ml_p ) ), 'separazione: un nuovo socio con email non ha un utente WordPress ma ha un accesso' );
 $sp_mails = count( $ml_mail );
@@ -12546,7 +12589,7 @@ foreach ( array_merge( $ru_ids, array( $ru_adult, $ru_minor, $ru_volun ) ) as $r
 // ---------- Dipendenti ----------
 wp_set_current_user( 1 );
 add_filter( 'pre_wp_mail', '__return_true' ); // nessuna email vera: l'invito parte «a vuoto»
-$em_keys = \AssociazioneSemplice\EmployeeRules::enforced_keys(); // le aree con le porte: tutte e quindici
+$em_keys = \AssociazioneSemplice\EmployeeRules::enforced_keys(); // le aree con le porte: tutte e sedici
 asem_ok( null !== get_role( Plugin::ROLE_EMPLOYEE ) && 'Dipendente' === wp_roles()->role_names[ Plugin::ROLE_EMPLOYEE ], 'dipendente: il ruolo esiste e si chiama «Dipendente»' );
 asem_ok( get_role( Plugin::ROLE_EMPLOYEE )->capabilities === get_role( Plugin::ROLE_SECRETARY )->capabilities, 'dipendente: il ruolo parte con le stesse capability della segreteria' );
 $em_sy     = Settings::social_year()->label();
@@ -12585,6 +12628,10 @@ foreach ( $em_abilities as $em_ab => $em_obj ) {
 }
 wp_set_current_user( $em_uid );
 foreach ( $em_keys as $em_k ) {
+	if ( 'sensitive' === $em_k ) { // un dipendente nuovo parte senza i dati riservati: va dato apposta
+		asem_ok( ! \AssociazioneSemplice\Employees::can( $em_k ) && \AssociazioneSemplice\Employees::sensitive_hidden(), 'dipendente: all\'inizio non ha «Vedere dati riservati ed esportare»' );
+		continue;
+	}
 	asem_ok( \AssociazioneSemplice\Employees::can( $em_k ), "dipendente: all'inizio ha il permesso $em_k" );
 }
 foreach ( array( 'asem-income', 'asem-expense', 'asem-refunds', 'asem-money', 'asem-ledger', 'asem-activities', 'asem-bookdesk', 'asem-calendar' ) as $em_pg ) {
@@ -12637,6 +12684,7 @@ $em_cases['assemblies']  = array( array( 'admin.php', array( 'page' => 'asem-ass
 $em_cases['inventory']   = array( array( 'admin.php', array( 'page' => 'asem-inventory' ) ), array( 'admin-post.php', array( 'action' => 'asem_item_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_loan_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'items' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'loans' ) ) );
 $em_cases['conventions'] = array( array( 'admin.php', array( 'page' => 'asem-conventions' ) ), array( 'admin-post.php', array( 'action' => 'asem_convention_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_conventions_csv' ) ) );
 $em_cases['tools']       = array( array( 'admin.php', array( 'page' => 'asem-exports' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'altro' ) ) );
+$em_cases['sensitive']   = array( array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'altro' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'people' ) ), array( 'admin-post.php', array( 'action' => 'asem_conventions_csv' ) ) ); // senza i dati riservati si chiudono tutte le esportazioni
 $em_always = array( array( 'admin.php', array( 'page' => 'asem' ) ) );
 foreach ( $em_keys as $em_k ) {
 	\AssociazioneSemplice\Employees::set_denied( $em_uid, array( $em_k ) );
@@ -12645,10 +12693,13 @@ foreach ( $em_keys as $em_k ) {
 		$em_msg = $em_blocked( $em_c[0], $em_c[1] );
 		asem_ok( null !== $em_msg && false !== strpos( $em_msg, esc_html( \AssociazioneSemplice\EmployeeRules::label( $em_k ) ) ), "dipendente senza $em_k: la porta $em_i si chiude con un messaggio che dice quale permesso manca" );
 	}
-	foreach ( array_diff( $em_keys, array( $em_k ) ) as $em_o ) { // le porte degli altri permessi restano aperte
+	foreach ( array_diff( $em_keys, array( $em_k, 'sensitive' ) ) as $em_o ) { // le porte degli altri permessi restano aperte (i dati riservati chiudono solo le esportazioni, che chiedono anche l'area dei loro dati)
 		foreach ( $em_cases[ $em_o ] as $em_i => $em_c ) {
 			if ( in_array( $em_k, array( 'courses', 'events' ), true ) && in_array( $em_o, array( 'courses', 'events' ), true ) ) {
 				continue; // corsi ed eventi sono due permessi distinti: sotto
+			}
+			if ( 'sensitive' === $em_k && ( 'book' === ( $em_c[1]['what'] ?? '' ) || 'asem_export' === ( $em_c[1]['action'] ?? '' ) || '_csv' === substr( (string) ( $em_c[1]['action'] ?? '' ), -4 ) ) ) {
+				continue; // esportare chiede anche i dati riservati: senza, le esportazioni si chiudono in ogni area
 			}
 			asem_ok( null === $em_blocked( $em_c[0], $em_c[1] ), "dipendente senza $em_k: la porta $em_i di $em_o resta aperta" );
 		}
@@ -12667,6 +12718,18 @@ asem_ok( null !== $em_blocked( 'admin.php', array( 'page' => 'asem-activities' )
 asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_add_session' ) ), 'dipendente: un\'azione sulle attività di cui non si capisce il tipo si nega nel dubbio' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'collect', 'courses', 'events' ) );
 asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_person_context' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_quick_person' ) ), 'dipendente senza incassi, corsi ed eventi: i suggerimenti sulle persone si chiudono' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'events' ) );
+// dati riservati: senza «Vedere dati riservati ed esportare» codice fiscale e note non si mostrano; ogni lettura di chi li vede va nel registro
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'sensitive' ) );
+\AssociazioneSemplice\Employees::reset_cache();
+wp_set_current_user( $em_uid );
+asem_ok( \AssociazioneSemplice\Employees::sensitive_hidden(), 'dati riservati: al dipendente senza il permesso restano nascosti' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( ! \AssociazioneSemplice\Employees::sensitive_hidden(), 'dati riservati: l\'amministratore li vede sempre' );
+\AssociazioneSemplice\Employees::log_sensitive_read( 'card', 987654 );
+$sr_log = Audit::recent( 1, 'sensitive.read' );
+asem_ok( ! empty( $sr_log ) && 987654 === (int) $sr_log[0]['object_id'], 'dati riservati: la lettura finisce nel registro azioni' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'events' ) );
 // elenchi e area soci: ciò che non si può fare non si vede
 wp_set_current_user( $em_uid );
@@ -12707,9 +12770,9 @@ wp_set_current_user( 1 );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
 remove_filter( 'wp_die_handler', $em_die );
 
-// si tolgono solo le 15 aree dell'elenco; solo chi ha titolo le toglie
+// si tolgono solo le 16 aree dell'elenco; solo chi ha titolo le toglie
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'asem_manage', 'comms', 'asem_operate', 'members' ) );
-asem_ok( array( 'courses', 'comms' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 15 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 15 === count( $em_keys ), 'dipendente: si tolgono solo le 15 aree dell\'elenco, gli altri nomi si ignorano' );
+asem_ok( array( 'courses', 'comms' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 16 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 16 === count( $em_keys ), 'dipendente: si tolgono solo le 16 aree dell\'elenco, gli altri nomi si ignorano' );
 add_filter( 'wp_die_handler', $em_die ); // le porte chiuse lanciano l'eccezione della prova
 asem_ok( null !== $em_blocked( 'admin.php', array( 'page' => 'asem-messages' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_broadcast_send' ) ), 'dipendente senza Comunicazioni: pagina e invii si chiudono' );
 asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipendente: togliere un\'area resta nel registro azioni' );
