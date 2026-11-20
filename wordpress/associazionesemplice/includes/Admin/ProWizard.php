@@ -166,7 +166,6 @@ final class ProWizard {
 		return array(
 			PaymentConfig::STRIPE => array( 'Stripe per i non profit', 'https://stripe.com/it/industries/nonprofits' ),
 			PaymentConfig::PAYPAL => array( 'PayPal: tariffa per gli enti benefici', 'https://www.paypal.com/it/cshelp/article/come-faccio-a-richiedere-la-tariffa-per-enti-benefici-help221' ),
-			PaymentConfig::SUMUP  => array( 'SumUp per le associazioni', 'https://www.sumup.com/it-it/tipi-di-attivita/organizzazioni-associative/' ),
 		);
 	}
 
