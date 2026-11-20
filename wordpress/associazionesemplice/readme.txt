@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.31
+Stable tag: 1.3.32
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,11 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `assets/fonts/OFL.txt`) and icons from Lucide (ISC license, https://lucide.dev), both bundled with the plugin; nothing is loaded from external servers.
 
 == Changelog ==
+
+= 1.3.32 =
+* Nuovo: invito a donare («Non puoi partecipare? Sostienici con una donazione»), da accendere dove serve: pagina dell'evento o del corso, conferma dell'iscrizione, area soci, email ai soci.
+* Altro: la pagina Donazioni spiega meglio come ricevere le donazioni con PayPal, mandare la ricevuta e registrarle in Prima nota.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.31 =
 * Ottimizzazione: rivisti tutti i testi del plugin, più chiari e coerenti: «area soci», messaggi di errore che dicono cosa fare, singolare e plurale giusti, un solo formato per l'oggetto delle email, «rendiconto» al posto di «bilancio».
