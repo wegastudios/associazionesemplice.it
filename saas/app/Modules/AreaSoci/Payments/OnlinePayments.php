@@ -128,7 +128,7 @@ final readonly class OnlinePayments
             'amount_cents' => $total, 'items' => json_encode($items, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)]);
         $success = rtrim($baseUrl, '/').'/area/pagamenti/'.$id.'/esito';
         $cancel = rtrim($baseUrl, '/').'/area/pagamenti/'.$id.'/annullato';
-        $lines = array_map(static fn (array $i): array => ['label' => $i['label'], 'amount_cents' => $i['amount_cents']], $items);
+        $lines = array_map(static fn (array $i): array => ['label' => $i['label'], 'amount_cents' => $i['amount_cents'], 'donation' => $i['donation'] ?? false], $items);
         try {
             if ($provider === 'stripe') {
                 $res = $this->stripe->createSession((string) $settings->stripe_secret, StripeGateway::checkoutParams($lines, $id, $email, $success.'?session_id={CHECKOUT_SESSION_ID}', $cancel), $id);

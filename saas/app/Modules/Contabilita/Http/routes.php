@@ -38,6 +38,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
     Route::middleware('can:org.settings')->group(function (): void {
         Route::get('/aspetto-fiscale', [FiscalSettingsController::class, 'show'])->name('fiscal.settings');
         Route::put('/aspetto-fiscale', [FiscalSettingsController::class, 'update'])->name('fiscal.settings.update');
+        Route::put('/aspetto-fiscale/erogazioni-liberali', [FiscalSettingsController::class, 'donations'])->name('fiscal.settings.donations');
         Route::get('/verifica-ricevute', [ReceiptCheckController::class, 'show'])->name('receipts.check');
         Route::post('/verifica-ricevute/fissa', [ReceiptCheckController::class, 'fix'])->name('receipts.check.fix');
         Route::post('/verifica-ricevute/{receipt}/rifai', [ReceiptCheckController::class, 'rebuild'])->whereUuid('receipt')->name('receipts.check.rebuild');

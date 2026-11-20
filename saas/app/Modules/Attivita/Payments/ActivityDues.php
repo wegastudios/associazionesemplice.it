@@ -45,12 +45,14 @@ final readonly class ActivityDues implements PayableDues
                     foreach ($s['summary']['unpaid_months'] as $m) {
                         if ($m['missing'] > 0) {
                             $out[] = ['key' => 'm:'.$a->id.':'.$s['person_id'].':'.$m['month'], 'person_id' => $s['person_id'], 'group' => 'Corsi',
-                                'label' => $a->name.' · '.ActivityService::monthLabel($m['month']).' · '.$s['name'], 'amount_cents' => $m['missing']];
+                                'label' => $a->name.' · '.ActivityService::monthLabel($m['month']).' · '.$s['name'], 'amount_cents' => $m['missing'],
+                                'donation' => $this->activities->paysAsDonation($s['person_id'])];
                         }
                     }
                 } elseif (! $s['summary']['regular'] && $s['summary']['balance'] < 0) {
                     $out[] = ['key' => 'e:'.$a->id.':'.$s['person_id'], 'person_id' => $s['person_id'], 'group' => 'Corsi ed eventi',
-                        'label' => $a->name.' · '.$s['name'], 'amount_cents' => -$s['summary']['balance']];
+                        'label' => $a->name.' · '.$s['name'], 'amount_cents' => -$s['summary']['balance'],
+                        'donation' => $this->activities->paysAsDonation($s['person_id'])];
                 }
             }
         }
@@ -66,7 +68,8 @@ final readonly class ActivityDues implements PayableDues
                 $date = $b->getAttribute('session_date');
                 $out[] = ['key' => 'b:'.$b->id, 'person_id' => $b->person_id, 'group' => 'Eventi',
                     'label' => self::str($b->getAttribute('activity_name')).' · '.(is_string($date) ? date('d/m/Y', (int) strtotime($date)) : '').' · '
-                        .trim(self::str($b->getAttribute('first_name')).' '.self::str($b->getAttribute('last_name'))), 'amount_cents' => $due];
+                        .trim(self::str($b->getAttribute('first_name')).' '.self::str($b->getAttribute('last_name'))), 'amount_cents' => $due,
+                    'donation' => $this->activities->paysAsDonation($b->person_id)];
             }
         }
 

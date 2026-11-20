@@ -70,6 +70,37 @@ final class StripeApi {
 		return array( 'id' => (string) $d['id'], 'url' => (string) $d['url'] );
 	}
 
+	/** Eventi che il plugin ascolta: gli stessi che la pagina Pagamenti online chiede di spuntare a mano. */
+	public static function webhook_events(): array {
+		return array( 'checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.expired', 'charge.refunded', 'charge.dispute.created' );
+	}
+
+	/** Il webhook con questo indirizzo esiste già nell'account? @return array|null l'endpoint (id, url, …) @throws \RuntimeException */
+	public static function find_webhook( callable $http, string $secret, string $url ): ?array {
+		$d = self::call( $http, 'GET', '/v1/webhook_endpoints?limit=100', $secret );
+		foreach ( (array) ( $d['data'] ?? array() ) as $e ) {
+			if ( is_array( $e ) && isset( $e['url'] ) && (string) $e['url'] === $url ) {
+				return $e;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Crea il webhook sull'account: la risposta contiene il segreto di firma (whsec_…) solo ora, alla creazione.
+	 * Con una chiave con restrizioni serve il permesso di scrittura sui webhook.
+	 *
+	 * @return array ['id' => we_…, 'secret' => whsec_…]
+	 * @throws \RuntimeException
+	 */
+	public static function create_webhook( callable $http, string $secret, string $url, array $events ): array {
+		$d = self::call( $http, 'POST', '/v1/webhook_endpoints', $secret, array( 'url' => $url, 'enabled_events' => array_values( $events ), 'description' => 'Associazione Semplice' ) );
+		if ( empty( $d['id'] ) || empty( $d['secret'] ) ) {
+			throw new \RuntimeException( 'Stripe non ha indicato il segreto del collegamento: copialo a mano dalla pagina dei webhook di Stripe.' );
+		}
+		return array( 'id' => (string) $d['id'], 'secret' => (string) $d['secret'] );
+	}
+
 	public static function retrieve_session( callable $http, string $secret, string $session_id ): array {
 		return self::call( $http, 'GET', '/v1/checkout/sessions/' . rawurlencode( $session_id ), $secret );
 	}

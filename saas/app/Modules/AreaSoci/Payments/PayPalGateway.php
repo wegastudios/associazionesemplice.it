@@ -44,7 +44,11 @@ final readonly class PayPalGateway
         $total = 0;
         foreach ($lines as $l) {
             $total += $l['amount_cents'];
-            $items[] = ['name' => mb_substr($l['label'], 0, 127), 'quantity' => '1', 'unit_amount' => ['currency_code' => 'EUR', 'value' => self::decimal($l['amount_cents'])]];
+            $item = ['name' => mb_substr($l['label'], 0, 127), 'quantity' => '1', 'unit_amount' => ['currency_code' => 'EUR', 'value' => self::decimal($l['amount_cents'])]];
+            if (($l['donation'] ?? false) === true) {
+                $item['category'] = 'DONATION';
+            }
+            $items[] = $item;
         }
         $value = self::decimal($total);
 

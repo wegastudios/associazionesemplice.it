@@ -10,7 +10,7 @@ use RuntimeException;
 /**
  * Stripe Checkout (dallo StripeApi del plugin): il socio paga su una pagina di Stripe, noi non vediamo mai la carta.
  *
- * @phpstan-type Line array{label: string, amount_cents: int}
+ * @phpstan-type Line array{label: string, amount_cents: int, donation?: bool}
  */
 final readonly class StripeGateway
 {
@@ -90,6 +90,31 @@ final readonly class StripeGateway
     public function test(string $secret): void
     {
         $this->call('GET', '/v1/balance', $secret);
+    }
+
+    /**
+     * Crea il webhook che avvisa del pagamento arrivato e restituisce il suo segreto di firma. Se sull'indirizzo c'è già un
+     * webhook non si tocca (il segreto di uno esistente Stripe non lo restituisce più): restituisce null.
+     * Con una chiave limitata serve il permesso di scrittura sui webhook.
+     *
+     * @return array{id: string, secret: string}|null
+     */
+    public function createWebhook(string $secret, string $url): ?array
+    {
+        $existing = $this->call('GET', '/v1/webhook_endpoints?limit=100', $secret);
+        foreach (is_array($existing['data'] ?? null) ? $existing['data'] : [] as $endpoint) {
+            if (is_array($endpoint) && ($endpoint['url'] ?? null) === $url) {
+                return null;
+            }
+        }
+        $d = $this->call('POST', '/v1/webhook_endpoints', $secret, ['url' => $url, 'enabled_events' => ['checkout.session.completed'], 'description' => 'Associazione Semplice: pagamenti dei soci']);
+        $id = $d['id'] ?? null;
+        $signing = $d['secret'] ?? null;
+        if (! is_string($id) || ! is_string($signing) || preg_match('/^whsec_[A-Za-z0-9]+$/', $signing) !== 1) {
+            throw new RuntimeException('Stripe: webhook creato senza segreto di firma.');
+        }
+
+        return ['id' => $id, 'secret' => $signing];
     }
 
     /** @param  array<string, mixed>  $session */
