@@ -15,7 +15,7 @@ const form = useForm({
     stripe_enabled: s.stripe_enabled, stripe_secret: '', stripe_webhook: '', paypal_enabled: s.paypal_enabled, paypal_client_id: s.paypal_client_id,
     paypal_secret: '', paypal_live: s.paypal_live, account_id: s.account_id || '', forget: [],
 });
-const give = useForm({ checkout: props.donations.checkout, deductible: props.donations.deductible, amount: props.donations.amount });
+const give = useForm({ checkout: props.donations.checkout, deductible: props.donations.deductible, invite_event: props.donations.invite_event, invite_confirm: props.donations.invite_confirm, invite_area: props.donations.invite_area, invite_email: props.donations.invite_email, amount: props.donations.amount });
 const saveGive = () => give.put('/gestionale/pagamenti-online/donazioni', { preserveScroll: true });
 const save = () => form.transform((d) => ({ ...d, account_id: d.account_id || null })).put('/gestionale/pagamenti-online', { preserveScroll: true, onSuccess: () => form.reset('stripe_secret', 'stripe_webhook', 'paypal_secret', 'forget') });
 const test = (p) => router.post(`/gestionale/pagamenti-online/prova/${p}`, {}, { preserveScroll: true });
@@ -102,6 +102,13 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
             <label class="flex items-start gap-2"><input v-model="give.deductible" type="checkbox" class="mt-1" />
                 <span>Donazioni detraibili: a chi dona mostra «È anche detraibile.»
                     <span class="block text-muted">Verifica con il tuo commercialista se la tua associazione ne ha diritto.</span></span></label>
+            <fieldset class="space-y-2"><legend class="font-semibold">Invito a donare</legend>
+                <p class="text-muted">L'invito compare solo se la spunta qui sopra è accesa e un metodo di pagamento è attivo. Ogni posto ha il suo interruttore.</p>
+                <label class="flex items-center gap-2"><input v-model="give.invite_event" type="checkbox" /> Pagina di eventi e corsi: «Non puoi partecipare? Sostienici con una donazione.»</label>
+                <label class="flex items-center gap-2"><input v-model="give.invite_confirm" type="checkbox" /> Conferma dopo l'iscrizione: «Vuoi sostenere {{ '{associazione}' }}? Fai una donazione.»</label>
+                <label class="flex items-center gap-2"><input v-model="give.invite_area" type="checkbox" /> Area soci: «Vuoi sostenere {{ '{associazione}' }}? Fai una donazione.»</label>
+                <label class="flex items-center gap-2"><input v-model="give.invite_email" type="checkbox" /> Piede delle email ai soci: «Vuoi sostenere {{ '{associazione}' }}? Fai una donazione.»</label>
+            </fieldset>
             <button type="submit" class="btn btn-primary" :disabled="give.processing">Salva</button>
         </form>
 

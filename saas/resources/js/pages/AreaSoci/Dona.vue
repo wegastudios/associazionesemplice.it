@@ -23,11 +23,11 @@ const submit = () => form.post(`/dona/${props.org.slug}`, { preserveScroll: true
             <fieldset class="grid gap-4 sm:grid-cols-2">
                 <legend class="mb-2 font-bold">Chi dona</legend>
                 <FormField id="first_name" label="Nome" :error="form.errors.first_name"><TextInput id="first_name" v-model="form.first_name" autocomplete="given-name" required /></FormField>
-                <FormField id="last_name" label="Cognome" :error="form.errors.last_name"><TextInput id="last_name" v-model="form.last_name" autocomplete="family-name" required /></FormField>
+                <FormField id="last_name" label="Cognome" :error="form.errors.first_name ? undefined : form.errors.last_name"><TextInput id="last_name" v-model="form.last_name" autocomplete="family-name" required /></FormField>
                 <div class="sm:col-span-2"><FormField id="email" label="Email" :error="form.errors.email"><TextInput id="email" v-model="form.email" type="email" autocomplete="email" required /></FormField>
                     <p class="caption mt-1">Ti mandiamo qui la ricevuta.</p></div>
                 <div class="sm:col-span-2"><FormField id="tax_code" label="Codice fiscale (facoltativo)" :error="form.errors.tax_code"><TextInput id="tax_code" v-model="form.tax_code" maxlength="16" autocomplete="off" /></FormField>
-                    <p class="caption mt-1">Serve per la ricevuta valida ai fini fiscali.</p></div>
+                    <p class="caption mt-1">Scrivilo se vuoi che compaia nella ricevuta.</p></div>
             </fieldset>
 
             <fieldset class="space-y-3">
@@ -44,7 +44,7 @@ const submit = () => form.post(`/dona/${props.org.slug}`, { preserveScroll: true
 
             <div class="space-y-2 text-sm">
                 <label class="flex items-start gap-2"><input v-model="form.privacy_ok" type="checkbox" class="mt-1" /> <span>Ho letto l'informativa sul trattamento dei dati personali di {{ org.name }}. <a v-if="privacyUrl" :href="privacyUrl" target="_blank" rel="noopener" class="font-semibold text-accent hover:underline">Leggi l'informativa</a></span></label>
-                <p class="caption">I dati servono solo a emettere la ricevuta della donazione.</p>
+                <p class="caption">I dati servono a emettere la ricevuta della donazione e per gli obblighi contabili.</p>
                 <p v-if="form.errors.privacy_ok" class="font-semibold text-danger" role="alert">{{ form.errors.privacy_ok }}</p>
                 <p v-if="contacts" class="caption">Per esercitare i tuoi diritti sui dati scrivi a {{ contacts.email }} o chiama {{ contacts.phone }}.</p>
             </div>

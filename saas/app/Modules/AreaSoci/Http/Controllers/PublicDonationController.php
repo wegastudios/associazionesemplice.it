@@ -74,22 +74,22 @@ final readonly class PublicDonationController
             'provider' => ['required', Rule::in(['stripe', 'paypal'])],
             'privacy_ok' => ['accepted'],
         ], [
-            'first_name.required' => 'Scrivi il tuo nome.', 'last_name.required' => 'Scrivi il tuo cognome.',
-            'email.required' => 'Scrivi la tua email: ti mandiamo la ricevuta.', 'email.email' => 'L\'email non è valida.',
-            'amount.required' => 'Scrivi l\'importo.', 'provider.required' => 'Scegli come pagare.', 'provider.in' => 'Scegli come pagare.',
+            'first_name.required' => 'Scrivi nome e cognome.', 'last_name.required' => 'Scrivi nome e cognome.',
+            'email.required' => 'Scrivi un indirizzo email valido: ci serve per mandarti la ricevuta.', 'email.email' => 'Scrivi un indirizzo email valido: ci serve per mandarti la ricevuta.',
+            'amount.required' => 'Scegli un importo tra 1,00 € e 1.000,00 €.', 'provider.required' => 'Scegli come pagare.', 'provider.in' => 'Scegli come pagare.',
             'privacy_ok.accepted' => 'Per donare serve aver letto l\'informativa.',
         ]));
         $raw = str_replace(',', '.', trim(Input::string($data, 'amount')));
         $cents = is_numeric($raw) ? (int) round((float) $raw * 100) : 0;
         if ($cents < OrgDonations::MIN_CENTS || $cents > OrgDonations::MAX_CENTS) {
-            throw ValidationException::withMessages(['amount' => 'L\'importo va da 1 € a 1.000 €.']);
+            throw ValidationException::withMessages(['amount' => 'Scegli un importo tra 1,00 € e 1.000,00 €.']);
         }
 
         // Pochi tentativi per la stessa email, oltre al limite per indirizzo e per associazione della rotta.
         $email = Str::lower(trim(Input::string($data, 'email')));
         $key = 'donation-email|'.$org['id'].'|'.hash('sha256', $email);
         if (RateLimiter::tooManyAttempts($key, self::PER_EMAIL)) {
-            throw ValidationException::withMessages(['email' => 'Hai provato molte volte: riprova tra un po\'.']);
+            throw ValidationException::withMessages(['email' => 'Troppi tentativi: riprova più tardi.']);
         }
         RateLimiter::hit($key, 3600);
 
@@ -97,7 +97,7 @@ final readonly class PublicDonationController
             $person = $this->supporters->personFor(Input::string($data, 'first_name'), Input::string($data, 'last_name'), $email, Input::optionalString($data, 'tax_code'));
             $url = $this->payments->checkout($person, [], [], Input::string($data, 'provider'), $email, $request->getSchemeAndHttpHost(), $org['name'], $cents, $slug);
         } catch (PeopleError $e) {
-            throw ValidationException::withMessages(['tax_code' => implode(' ', $e->messages)]);
+            throw ValidationException::withMessages(['tax_code' => 'Il codice fiscale non sembra corretto: controllalo oppure lascialo vuoto.']);
         } catch (MemberAccessError $e) {
             throw ValidationException::withMessages(['provider' => $e->getMessage()]);
         }
@@ -121,7 +121,7 @@ final readonly class PublicDonationController
         $this->enter($slug);
         $this->payments->cancelPublic($payment);
 
-        return redirect()->route('donation.form', $slug)->with('status', 'Donazione annullata: non ti è stato addebitato nulla.');
+        return redirect()->route('donation.form', $slug)->with('status', 'Pagamento annullato: non è stato addebitato nulla.');
     }
 
     /** @return array{id: string, name: string} */

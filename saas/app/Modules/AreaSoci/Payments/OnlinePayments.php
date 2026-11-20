@@ -277,7 +277,7 @@ final readonly class OnlinePayments
             }
         });
         if ($mailTo !== null) {
-            $this->mailDonationReceipts($paymentId, $mailTo[0], $mailTo[1]);
+            $this->mailDonationReceipts($paymentId, $mailTo[0], $mailTo[1], $paidCents);
         }
     }
 
@@ -287,7 +287,7 @@ final readonly class OnlinePayments
      *
      * @param  list<string>  $numbers  «numero/anno»
      */
-    private function mailDonationReceipts(string $paymentId, string $personId, array $numbers): void
+    private function mailDonationReceipts(string $paymentId, string $personId, array $numbers, int $cents): void
     {
         $email = $this->profiles->details($personId)['email'] ?? null;
         if (! is_string($email) || $email === '') {
@@ -312,7 +312,7 @@ final readonly class OnlinePayments
             }
             $contacts = $this->app->make(OrgContacts::class)->all();
             $org = $this->connection()->table('app.orgs')->value('name');
-            $this->app->make(Mailer::class)->to($email)->send(new DonationReceiptMail(is_string($org) ? $org : '', implode(', ', $numbers), $files, $contacts['email'] ?? null, $contacts['phone'] ?? null));
+            $this->app->make(Mailer::class)->to($email)->send(new DonationReceiptMail(is_string($org) ? $org : '', $this->profiles->card($personId)['first_name'] ?? '', self::euro($cents), implode(', ', $numbers), $files, $contacts['email'] ?? null, $contacts['phone'] ?? null));
             $this->audit->record('payment.receipt_mail_sent', 'app.online_payments', $paymentId, []);
         } catch (Throwable $e) {
             $this->audit->record('payment.receipt_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'send_failed', 'error' => mb_substr($e->getMessage(), 0, 200)]);

@@ -13,6 +13,7 @@ use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Models\Category;
 use App\Modules\Contabilita\Models\Transaction;
+use App\Modules\Core\Contracts\DonationInvites;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDonations;
 use App\Modules\Core\Contracts\OrgRole;
@@ -597,4 +598,23 @@ it('la stessa email può provare solo poche volte l\'ora', function (): void {
     }
 
     publicDonate($this)->assertSessionHasErrors('email');
+});
+
+it('l\'invito a donare compare solo nei posti accesi e solo se c\'è un modo per donare', function (): void {
+    $cookie = memberCookie($this, $this->anna->id);
+    $member = fn () => $this->withUnencryptedCookie('as_socio', $cookie);
+    $invite = fn (): array => $this->orgContext()->run($this->org->id, fn () => array_map(app(DonationInvites::class)->enabled(...), DonationInvites::SPOTS));
+
+    // tutto spento di default
+    expect($invite())->toBe([false, false, false, false]);
+
+    // posti accesi ma nessun metodo di pagamento e spunta spenta: l'invito non compare
+    $this->actingAs($this->owner)->put('/gestionale/pagamenti-online/donazioni', ['checkout' => false, 'amount' => '5', 'invite_area' => true, 'invite_event' => true])->assertSessionHasNoErrors();
+    expect($invite())->toBe([false, false, false, false]);
+
+    // con la spunta e un metodo attivo compaiono solo i posti accesi
+    saveStripe($this);
+    $this->actingAs($this->owner)->put('/gestionale/pagamenti-online/donazioni', ['checkout' => true, 'amount' => '5', 'invite_area' => true, 'invite_event' => true])->assertSessionHasNoErrors();
+    expect($invite())->toBe([true, false, true, false]);
+    $member()->get($this->host.'/area')->assertInertia(fn (Assert $page) => $page->where('member.invite.area', true)->where('member.invite.event', true));
 });
