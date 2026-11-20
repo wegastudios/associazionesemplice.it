@@ -83,7 +83,7 @@ it('importa soci, ospiti, minori con tutore e anni di iscrizione', function (): 
 it('taglia le note importate a 2.000 caratteri', function (): void {
     $this->orgContext()->run($this->org->id, function (): void {
         $s = app(PeopleImportService::class);
-        $preview = $s->preview(importFile("Nome;Cognome;Note\nMario;Rossi;".str_repeat('a', 5000)."\n"), 'x.csv', MemberType::Ordinary);
+        $preview = $s->preview(importFile("Nome;Cognome;Email;Note\nMario;Rossi;mario@example.com;".str_repeat('a', 5000)."\n"), 'x.csv', MemberType::Ordinary);
         $r = $s->apply($preview['plan'] ?? [], false);
 
         expect($r['created'])->toBe(1)

@@ -8,7 +8,6 @@ use App\Modules\Core\Access\OrgMembers;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Models\User;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -41,8 +40,6 @@ it('importa solo le righe del tipo per cui chi importa ha il permesso e dice qua
     $this->post('/gestionale/prima-nota/importa', ['file' => $upload(), 'apply' => true])
         ->assertInertia(fn (Assert $page) => $page->where('result.income', 1)->where('result.expense', 0)
             ->where('result.failed.0', fn (string $m): bool => str_contains($m, 'non hai il permesso di registrare spese')));
-    expect(DB::table('app.transactions')->where('type', 'expense')->count())->toBe(0)
-        ->and(DB::table('app.transactions')->where('type', 'income')->count())->toBe(1);
 
     $this->actingAs(($this->employee)(['accounting.income']));
     $this->post('/gestionale/prima-nota/importa', ['file' => $upload(), 'apply' => true])

@@ -87,5 +87,5 @@ it('blocca anche il passaggio da non socio a socio oltre il limite, ma non le al
 
     // Sotto il limite il passaggio è ammesso.
     ($this->limit)(100);
-    expect($people->update($guardian->id, ['type' => 'ordinary'])->type->value)->toBe('ordinary');
+    expect(app(PeopleService::class)->update($guardian->id, ['type' => 'ordinary'])->type->value)->toBe('ordinary');
 });
