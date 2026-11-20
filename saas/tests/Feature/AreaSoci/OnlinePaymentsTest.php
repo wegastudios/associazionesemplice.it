@@ -308,6 +308,24 @@ it('mix: una voce normale e una di chi non è più iscritto, tutte e due in prim
     });
 });
 
+it('se i soldi sono già stati restituiti prima del controllo, la ricevuta non nasce mai', function (): void {
+    saveStripe($this);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $payments = app(OnlinePayments::class);
+        $m = collect($payments->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
+        DB::table('app.enrollments')->where('person_id', $this->anna->id)->delete();
+        $id = pendingPayment($this, [$m], 'cs_back');
+        $payments->settle($id, $m['amount_cents']);
+        DB::table('app.online_payments')->where('id', $id)->update(['refunded_cents' => $m['amount_cents']]);
+
+        $before = DB::table('app.receipts')->count();
+        $payments->markReviewed($id);
+        expect($payments->find($id)['status'])->toBe('settled')->and($payments->find($id)['receipts'])->toBe([])->and($payments->find($id)['held'])->toBe([])
+            ->and(DB::table('app.receipts')->count())->toBe($before)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->whereNotNull('receipt_id')->count())->toBe(0);
+    });
+});
+
 it('un pagamento in ordine emette le ricevute subito', function (): void {
     saveStripe($this);
     $this->orgContext()->run($this->org->id, function (): void {

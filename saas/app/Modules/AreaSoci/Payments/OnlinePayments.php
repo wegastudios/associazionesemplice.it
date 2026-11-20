@@ -274,10 +274,19 @@ final readonly class OnlinePayments
                         }
                         // Il movimento entra subito in prima nota, la ricevuta si emette dopo: subito se il pagamento è in ordine, altrimenti
                         // quando la segreteria lo segna «controllato».
-                        $ids = $this->connection()->transaction(fn (): array => ReceiptHold::run(fn (): ?string => $module->settle($item['key'], $item['amount_cents'], (string) $settings->account_id,
-                            now('Europe/Rome')->toDateString(), $p['provider'], ! str_starts_with($item['key'], 'd:'))));
-                        if ($ids !== []) {
-                            $held[] = $ids;
+                        // La donazione dalla pagina pubblica resta com'era: ricevuta subito, senza attendere il controllo.
+                        $now = now('Europe/Rome')->toDateString();
+                        $anyway = ! str_starts_with($item['key'], 'd:');
+                        if ($item['public']) {
+                            $receipt = $this->connection()->transaction(fn (): ?string => $module->settle($item['key'], $item['amount_cents'], (string) $settings->account_id, $now, $p['provider'], $anyway));
+                            if ($receipt !== null) {
+                                $receipts[] = $receipt;
+                            }
+                        } else {
+                            $ids = $this->connection()->transaction(fn (): array => ReceiptHold::run(fn (): ?string => $module->settle($item['key'], $item['amount_cents'], (string) $settings->account_id, $now, $p['provider'], $anyway)));
+                            if ($ids !== []) {
+                                $held[] = $ids;
+                            }
                         }
                     } catch (Throwable $e) {
                         $errors[] = $item['label'].': '.($e instanceof InvalidArgumentException ? $e->getMessage() : 'non registrata');
@@ -310,8 +319,8 @@ final readonly class OnlinePayments
                 'held_transactions' => json_encode($held, JSON_THROW_ON_ERROR),
             ]);
             $this->audit->record($notes === [] ? 'payment.settled' : 'payment.review', 'app.online_payments', $paymentId, ['cents' => $paidCents, 'receipts' => count($receipts)]);
-            // Chi ha donato dalla pagina pubblica non ha l'area soci: la ricevuta gli arriva per email, ma solo se il pagamento è in ordine.
-            if ($notes === [] && $receipts !== [] && in_array(true, array_column($p['items'], 'public'), true)) {
+            // Chi ha donato dalla pagina pubblica non ha l'area soci: la ricevuta gli arriva per email (come prima: contano solo gli errori veri).
+            if ($errors === [] && $receipts !== [] && in_array(true, array_column($p['items'], 'public'), true)) {
                 $mailTo = [$p['person_id'], array_values(array_unique($receipts))];
             }
         });
@@ -659,18 +668,19 @@ final readonly class OnlinePayments
 
     /**
      * La segreteria ha controllato un pagamento «da controllare»: nascono le ricevute dei movimenti in attesa (una per voce),
-     * una volta sola. Se la ricevuta non si può emettere (anno fiscale chiuso) il pagamento resta da controllare.
+     * una volta sola, ma solo se il pagamento è pagato, non rimborsato e senza un rimborso da fare: se i soldi sono stati
+     * restituiti prima la ricevuta non nasce mai. Se non si può emettere (anno fiscale chiuso) il pagamento resta da controllare.
      */
     public function markReviewed(string $paymentId): void
     {
-        $mailTo = null;
-        $this->connection()->transaction(function () use ($paymentId, &$mailTo): void {
-            $this->table()->where('id', $paymentId)->lockForUpdate()->first(['id']);
-            $p = $this->find($paymentId);
-            if ($p === null || $p['status'] !== 'review') {
+        $this->connection()->transaction(function () use ($paymentId): void {
+            $row = $this->table()->where('id', $paymentId)->lockForUpdate()->first();
+            $p = $row === null ? null : $this->find($paymentId);
+            if ($row === null || $p === null || $p['status'] !== 'review') {
                 throw new MemberAccessError('Pagamento non trovato o già controllato.');
             }
-            [$issued, $left, $failure] = $this->issueReceipts($p['held']);
+            $returned = $p['refunded_cents'] > 0 || ($row->refund_pending_cents ?? null) !== null || $p['paid_cents'] === null || $p['paid_cents'] <= 0;
+            [$issued, $left, $failure] = $returned ? [[], [], null] : $this->issueReceipts($p['held']);
             if ($failure !== null) {
                 throw new MemberAccessError('La ricevuta non si può emettere: '.$failure);
             }
@@ -678,15 +688,8 @@ final readonly class OnlinePayments
                 'status' => 'settled', 'reviewed_at' => now(), 'updated_at' => now(), 'held_transactions' => json_encode($left, JSON_THROW_ON_ERROR),
                 'receipts' => json_encode(array_values(array_unique([...$p['receipts'], ...$issued])), JSON_THROW_ON_ERROR),
             ]);
-            $this->audit->record('payment.reviewed', 'app.online_payments', $paymentId, ['receipts' => count($issued)]);
-            // Chi ha donato dalla pagina pubblica riceve ora la ricevuta per email (non prima: il pagamento era da controllare).
-            if ($issued !== [] && $p['paid_cents'] !== null && in_array(true, array_column($p['items'], 'public'), true)) {
-                $mailTo = [$p['person_id'], array_values(array_unique($issued)), $p['paid_cents']];
-            }
+            $this->audit->record('payment.reviewed', 'app.online_payments', $paymentId, ['receipts' => count($issued), 'returned' => $returned]);
         });
-        if ($mailTo !== null) {
-            $this->mailDonationReceipts($paymentId, $mailTo[0], $mailTo[1], $mailTo[2]);
-        }
     }
 
     /** @return Payment|null */
