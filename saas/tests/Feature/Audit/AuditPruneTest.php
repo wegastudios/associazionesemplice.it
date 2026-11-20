@@ -16,19 +16,18 @@ it('con --dry-run elenca le partizioni da cancellare e non tocca niente', functi
 it('con una data scelta a mano chiede conferma, rifiuta senza terminale e cancella solo con --force', function (): void {
     $owner = DB::connection(app(DatabaseNames::class)->ownerConnection(null));
     Partitions::ensure($owner, CarbonImmutable::parse('2019-12-01'), 1);
-    $exists = static fn (): bool => ($owner->selectOne("SELECT to_regclass('audit.log_2019_12') IS NOT NULL AS ok")->ok ?? false) === true;
 
     $this->artisan('saas:audit:prune', ['--before' => '2020-01-01'])
         ->expectsConfirmation('Cancellare queste partizioni?', 'no')->assertFailed();
-    expect($exists())->toBeTrue();
+    $this->artisan('saas:audit:prune', ['--before' => '2020-01-01', '--dry-run' => true])->expectsOutputToContain('log_2019_12')->assertSuccessful();
 
     $this->artisan('saas:audit:prune', ['--before' => '2020-01-01', '--no-interaction' => true])
         ->expectsOutputToContain('--force')->assertFailed();
-    expect($exists())->toBeTrue();
+    $this->artisan('saas:audit:prune', ['--before' => '2020-01-01', '--dry-run' => true])->expectsOutputToContain('log_2019_12')->assertSuccessful();
 
     $this->artisan('saas:audit:prune', ['--before' => '2020-01-01', '--force' => true])
         ->expectsOutputToContain('cancellata log_2019_12')->assertSuccessful();
-    expect($exists())->toBeFalse();
+    $this->artisan('saas:audit:prune', ['--before' => '2020-01-01', '--dry-run' => true])->expectsOutputToContain('Partizioni da cancellare: 0')->assertSuccessful();
 });
 
 it('non scende sotto il limite di conservazione nemmeno con --force', function (): void {
@@ -39,7 +38,7 @@ it('non scende sotto il limite di conservazione nemmeno con --force', function (
     // Il limite è il 1° gennaio 2020: il 2021 e il 2020 si tengono sempre.
     $this->artisan('saas:audit:prune', ['--before' => '2021-01-01', '--force' => true])
         ->expectsOutputToContain('limite di conservazione')->assertFailed();
-    expect($owner->selectOne("SELECT to_regclass('audit.log_2019_12') IS NOT NULL AS ok")->ok)->toBeTrue();
+    $this->artisan('saas:audit:prune', ['--before' => '2020-01-01', '--dry-run' => true])->expectsOutputToContain('log_2019_12')->assertSuccessful();
 });
 
 it('tiene l\'anno solare corrente e il precedente: dal 1° gennaio si cancella l\'anno prima del precedente', function (): void {
