@@ -130,7 +130,7 @@ class PaymentService extends OfflinePayments {
 	 * @param string[] $keys      chiavi delle voci scelte (si accettano solo quelle realmente dovute da lui o dai suoi ospiti)
 	 * @param string   $back_url  pagina del sito a cui tornare dopo il pagamento
 	 */
-	public function create_checkout( array $actor, int $user_id, array $keys, string $back_url, string $provider = '' ): string {
+	public function create_checkout( array $actor, int $user_id, array $keys, string $back_url, string $provider = '', int $donation_cents = 0 ): string {
 		$available = $this->providers();
 		if ( ! $available || ! Edition::has( 'payments' ) ) {
 			throw new \InvalidArgumentException( 'I pagamenti online non sono attivi.' );
@@ -158,6 +158,15 @@ class PaymentService extends OfflinePayments {
 		}
 		if ( ! $items ) {
 			throw new \InvalidArgumentException( 'Scegli almeno una voce da pagare.' );
+		}
+		if ( $donation_cents > 0 ) { // donazione aggiunta da chi paga: voce a sé, mai col checkout di WooCommerce
+			if ( ! PaymentDonation::enabled() || PaymentConfig::WOOCOMMERCE === $provider ) {
+				throw new \InvalidArgumentException( 'La donazione non è disponibile con questo metodo di pagamento.' );
+			}
+			if ( $donation_cents < PaymentDonation::MIN_CENTS || $donation_cents > PaymentDonation::MAX_CENTS ) {
+				throw new \InvalidArgumentException( 'La donazione deve essere tra ' . Money::format( PaymentDonation::MIN_CENTS ) . ' e ' . Money::format( PaymentDonation::MAX_CENTS ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+			$items[] = PaymentDonation::item( $actor, $donation_cents );
 		}
 		$total = PaymentItems::total( $items );
 		$min = Limits::get( 'pay_min_cents' );
@@ -237,7 +246,9 @@ class PaymentService extends OfflinePayments {
 		if ( ! $pass || ( 0 === $fixed && 0 === $bp ) ) {
 			return $items;
 		}
-		$base = PaymentItems::total( $items );
+		$base = PaymentItems::total( array_filter( $items, function ( $i ) {
+			return PaymentItems::DONATION !== $i['type']; // sulla donazione non si ribalta la commissione
+		} ) );
 		$fee  = PaymentConfig::gross_up( $base, $fixed, $bp ) - $base;
 		if ( $fee > 0 ) {
 			$items[] = array( 'type' => PaymentItems::FEE, 'person_id' => $person_id, 'person_name' => $person_name, 'amount_cents' => $fee, 'label' => 'Commissione di incasso' );
@@ -1026,7 +1037,7 @@ class PaymentService extends OfflinePayments {
 				$error       = 'Importo pagato (' . Money::format( $paid_cents ) . ') diverso da quello atteso (' . Money::format( (int) $p['amount_cents'] ) . ').';
 				$unallocated = $paid_cents;
 			} else {
-				foreach ( PaymentItems::group_by_person( $items ) as $person_id => $group ) {
+				foreach ( PaymentItems::receipt_batches( $items ) as list( $person_id, $group ) ) { // la donazione ha una ricevuta sua
 					$lines = array();
 					foreach ( $group as $i ) {
 						$lines[] = $this->line_for( $i, $note, $ledger );
@@ -1114,6 +1125,8 @@ class PaymentService extends OfflinePayments {
 				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Acquisto crediti: ' . (int) $i['credits'] . ' — ' . $note, 0, 255 ) );
 			case PaymentItems::RESERVATION:
 				return array( 'category_id' => Resources::income_category_for( (int) $i['reservation_id'] ), 'amount_cents' => (int) $i['amount_cents'], 'reservation_id' => (int) $i['reservation_id'], 'description' => mb_substr( $note . ' — ' . ( $i['label'] ?? '' ), 0, 255 ) );
+			case PaymentItems::DONATION:
+				return array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Donazione aggiunta al pagamento — ' . $note, 0, 255 ) );
 			case PaymentItems::FEE:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Commissione di incasso a carico di chi paga — ' . $note, 0, 255 ) );
 			default:

@@ -2810,6 +2810,27 @@ $row = $latest();
 $paypal_orders[ $row['provider_ref'] ]['status'] = 'APPROVED';
 $res = $ps->check_pending( true );
 asem_ok( $res['registered'] >= 1 && 'paid' === $ps->get_by_public( $row['public_id'] )['status'] && 1300 === $balance_of( 'PayPal' ), 'PayPal: l\'utente non è tornato, il controllo periodico cattura e registra' );
+
+// Donazione aggiunta al pagamento: voce a sé, ricevuta sua, spenta di default
+asem_ok( ! \AssociazioneSemplice\PaymentDonation::enabled(), 'donazione al pagamento: spenta di default' );
+wp_set_current_user( 1 );
+$ev5   = $mkev( 'Gita', 600, null );
+$ev5_s = $first_session( $ev5 );
+$acts->book( $ev5_s, $pm );
+wp_set_current_user( $u_pm );
+asem_ok( null !== asem_throws( function () use ( $ps, $pmp, $u_pm, $ev5_s, $pm ) { $ps->create_checkout( $pmp, $u_pm, array( "b:$ev5_s:$pm" ), home_url( '/area/' ), '', 500 ); } ), 'donazione: rifiutata se l\'opzione è spenta' );
+Settings::update( array( 'donation_on' => 1, 'donation_amount_cents' => 500 ) );
+asem_ok( \AssociazioneSemplice\PaymentDonation::enabled() && 500 === \AssociazioneSemplice\PaymentDonation::suggested_cents(), 'donazione al pagamento: accesa con importo proposto 5,00' );
+asem_ok( null !== asem_throws( function () use ( $ps, $pmp, $u_pm, $ev5_s, $pm ) { $ps->create_checkout( $pmp, $u_pm, array( "b:$ev5_s:$pm" ), home_url( '/area/' ), '', 50 ); } ), 'donazione: sotto 1,00 € rifiutata' );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$ev5_s:$pm" ), home_url( '/area/' ), '', 500 );
+$row = $latest();
+asem_ok( 1100 === (int) $row['amount_cents'] && false !== strpos( (string) $row['items'], '"type":"donation"' ), 'donazione: il pagamento vale 6,00 + 5,00 e la donazione è una voce a sé' );
+$paypal_orders[ $row['provider_ref'] ]['status'] = 'APPROVED';
+$ps->check_pending( true );
+$don_receipts = (int) $wpdb->get_var( 'SELECT COUNT(DISTINCT receipt_id) FROM ' . Db::t( 'transactions' ) . " WHERE document_ref = '" . esc_sql( $row['provider_ref'] ) . "'" );
+asem_ok( 'paid' === $ps->get_by_public( $row['public_id'] )['status'] && 2 === $don_receipts, 'donazione: registrata con una ricevuta sua, separata da quella dell\'evento' );
+asem_ok( 500 === $sum_tx( "document_ref = '" . esc_sql( $row['provider_ref'] ) . "' AND category_id = " . (int) $ledger->category_id_of_kind( 'donation' ) ), 'donazione: in prima nota va come erogazione liberale' );
+Settings::update( array( 'donation_on' => 0 ) );
 asem_ok( false === strpos( $as( $uq, '[associazionesemplice_pagamenti]' ), 'Paga con carta' ), 'area soci: con PayPal non compare "Paga con carta"' );
 
 // Stripe e PayPal insieme, con diciture personalizzabili

@@ -23,6 +23,7 @@ final class PaymentItems {
 	const CREDITS      = 'credits';
 	const APPLICATION  = 'application';
 	const FEE          = 'fee';          // commissione di incasso a carico di chi paga (solo se il metodo la ribalta)
+	const DONATION     = 'donation';     // donazione aggiunta da chi paga (voce a sé, con ricevuta sua)
 
 	/** Importo minimo accettato dai gateway (Stripe: 0,50 €). */
 	const MIN_TOTAL_CENTS = 50;
@@ -46,6 +47,8 @@ final class PaymentItems {
 				return 'r:' . (int) $i['reservation_id'] . ':' . (int) $i['person_id'];
 			case self::APPLICATION:
 				return 'a:' . (int) $i['person_id'] . ':' . $i['social_year'];
+			case self::DONATION:
+				return 'd:' . (int) $i['person_id'] . ':' . (int) $i['amount_cents'];
 			case self::FEE:
 				return 'f:' . (int) $i['person_id'];
 			case self::CREDITS:
@@ -81,6 +84,9 @@ final class PaymentItems {
 
 	/** Questa voce si incassa come erogazione liberale? Solo eventi e corsi pagati da un socio e solo con l'opzione fiscale accesa (la stessa regola della prima nota). */
 	public static function is_donation( array $i, array $payer ): bool {
+		if ( self::DONATION === (string) $i['type'] ) {
+			return true; // la donazione aggiunta è sempre un'erogazione liberale
+		}
 		return in_array( (string) $i['type'], array( self::COURSE_MONTH, self::BOOKING ), true ) && Fiscal::member_events_donation() && MemberType::is_member( (string) ( $payer['type'] ?? '' ) );
 	}
 
@@ -95,6 +101,26 @@ final class PaymentItems {
 		$out = array();
 		foreach ( $items as $i ) {
 			$out[ (int) $i['person_id'] ][] = $i;
+		}
+		return $out;
+	}
+
+	/** Voci da registrare insieme, una ricevuta per gruppo: per ogni persona le sue voci e, a parte, l'eventuale donazione. @return array<int,array{0:int,1:array}> */
+	public static function receipt_batches( array $items ): array {
+		$out = array();
+		foreach ( self::group_by_person( $items ) as $person_id => $group ) {
+			$gift = array_values( array_filter( $group, function ( $i ) {
+				return self::DONATION === $i['type'];
+			} ) );
+			$rest = array_values( array_filter( $group, function ( $i ) {
+				return self::DONATION !== $i['type'];
+			} ) );
+			if ( $rest ) {
+				$out[] = array( (int) $person_id, $rest );
+			}
+			if ( $gift ) {
+				$out[] = array( (int) $person_id, $gift );
+			}
 		}
 		return $out;
 	}

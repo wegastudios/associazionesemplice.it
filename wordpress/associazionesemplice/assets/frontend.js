@@ -40,12 +40,18 @@
 		form.querySelectorAll('input[type="checkbox"][data-cents]').forEach(function (c) {
 			if (c.checked) { total += parseInt(c.getAttribute('data-cents'), 10) || 0; any = true; }
 		});
+		var gift = form.querySelector('input[type="checkbox"][data-donation]');
+		if (gift && gift.checked) { // la donazione si somma al totale ma da sola non basta per pagare
+			var g = form.querySelector('input[name="donation_amount"]');
+			var v = g ? Math.round(parseFloat(String(g.value).replace(',', '.')) * 100) : 0;
+			if (v >= 100 && v <= 100000) { total += v; }
+		}
 		var out = form.querySelector('.asemf-pay-total'); if (out) { out.textContent = euro(total); }
 		form.querySelectorAll('button[type="submit"]').forEach(function (btn) { btn.disabled = !any; });
 	}
 	document.addEventListener('change', function (e) {
 		var form = e.target && e.target.closest ? e.target.closest('.asemf-pay form') : null;
-		if (form && e.target.matches('input[type="checkbox"][data-cents]')) { updateTotal(form); }
+		if (form && e.target.matches('input[type="checkbox"][data-cents], input[type="checkbox"][data-donation], input[name="donation_amount"]')) { updateTotal(form); }
 	});
 
 	// Documenti del tesoriere: le foto si riducono sul telefono prima dell'invio (max 1600 px, JPEG).
