@@ -277,7 +277,7 @@ final readonly class OnlinePayments
                         // La donazione dalla pagina pubblica resta com'era: ricevuta subito, senza attendere il controllo.
                         $now = now('Europe/Rome')->toDateString();
                         $anyway = ! str_starts_with($item['key'], 'd:');
-                        if ($item['public']) {
+                        if ($item['public'] ?? false) {
                             $receipt = $this->connection()->transaction(fn (): ?string => $module->settle($item['key'], $item['amount_cents'], (string) $settings->account_id, $now, $p['provider'], $anyway));
                             if ($receipt !== null) {
                                 $receipts[] = $receipt;
