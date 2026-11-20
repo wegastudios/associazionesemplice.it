@@ -31,8 +31,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Tessera in PDF da stampare, con testo libero, tipologia e incarichi | ✓ | ✓ | ✓ |
 | Tessera in Apple Wallet e Google Wallet | — | ✓ | ✓ |
 | Quota già pagata nell'anno: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
-| Incassi a mano entro il residuo: non si registra più di quanto resta da pagare | ✓ | ✓ | ✓ |
-| Segnale «voce già pagata»: nei pagamenti online avvisa quando una voce risulta già pagata | — | ✓ | ✓ |
+| Incassi a mano entro il residuo: per quota, corsi ed eventi non si registra più di quanto resta da pagare | ✓ | ✓ | ✓ |
+| Pagamento online su una voce già pagata: l'incasso si registra comunque e il pagamento resta «da controllare», con il motivo; vale per quota, corsi ed eventi | — | ✓ | ✓ |
 
 ## Area soci e permessi
 
@@ -48,7 +48,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Avviso «Schede da completare» in Bacheca e in «Da fare» | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
 | Utente «Dipendente»: Permessi per 16 aree che si possono togliere, compreso «Vedere dati riservati ed esportare» (senza, niente codice fiscale e note dei soci e nessuna esportazione; i dipendenti nuovi partono senza), periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
-| Area soci chiusa ai soci sospesi o usciti, con eccezione del tutore che entra per la scheda del figlio | ✓ | ✓ | ✓ |
+| Area soci chiusa ai soci sospesi o usciti, con eccezione del tutore di un minorenne ancora socio, che entra solo per il figlio (lo vede, prenota e paga per lui) | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |
 | Riquadri «Da fare» e «Eventi e corsi della settimana» nella Bacheca di WordPress | ✓ | ✓ | ✓ |
