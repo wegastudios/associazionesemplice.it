@@ -22,7 +22,7 @@ final class RestrictToAppHost
     public function handle(Request $request, Closure $next): Response
     {
         if (! $this->isAppHost($request->getHost()) && ! $request->is(self::MEMBER_PATHS)) {
-            abort(404);
+            abort(404, 'HOSTDBG '.$request->getHost().' '.config('app.url'));
         }
 
         return $next($request);
