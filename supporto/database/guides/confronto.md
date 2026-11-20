@@ -31,6 +31,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Tessera in PDF da stampare, con testo libero, tipologia e incarichi | ✓ | ✓ | ✓ |
 | Tessera in Apple Wallet e Google Wallet | — | ✓ | ✓ |
 | Quota già pagata nell'anno: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
+| Incassi a mano entro il residuo: non si registra più di quanto resta da pagare | ✓ | ✓ | ✓ |
+| Segnale «voce già pagata»: nei pagamenti online avvisa quando una voce risulta già pagata | — | ✓ | ✓ |
 
 ## Area soci e permessi
 
@@ -45,7 +47,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione soci | ✓ | ✓ | ✓ |
 | Avviso «Schede da completare» in Bacheca e in «Da fare» | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
-| Utente «Dipendente»: Permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
+| Utente «Dipendente»: Permessi per 16 aree che si possono togliere, compreso «Vedere dati riservati ed esportare» (senza, niente codice fiscale e note dei soci e nessuna esportazione; i dipendenti nuovi partono senza), periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
+| Area soci chiusa ai soci sospesi o usciti, con eccezione del tutore che entra per la scheda del figlio | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |
 | Riquadri «Da fare» e «Eventi e corsi della settimana» nella Bacheca di WordPress | ✓ | ✓ | ✓ |
