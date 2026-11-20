@@ -789,7 +789,27 @@ Nella pagina, sotto i conti, c'è la scheda **Donazioni**. È spenta di partenza
 - La donazione va in prima nota come «Erogazione liberale» e ha una ricevuta a parte, con la stessa numerazione delle altre. Chi paga non versa commissioni in più.
 - **Donazioni detraibili**: se la accendi, a chi dona viene mostrato «È anche detraibile.». Verifica con il tuo commercialista se la tua associazione ne ha diritto.
 
+- **Invito a donare**: un interruttore per ogni posto. L'invito compare solo se la spunta «Al pagamento online proponi…» è accesa e un metodo di pagamento è attivo:
+  - pagina di eventi e corsi: «Non puoi partecipare? Sostienici con una donazione.»;
+  - conferma dopo l'iscrizione, area soci e piede delle email ai soci: «Vuoi sostenere {associazione}? Fai una donazione.».
+
 Premi **Salva** nella scheda Donazioni per confermare.
+
+## La pagina pubblica per donare
+
+Con la spunta «Al pagamento online proponi…» accesa e almeno un metodo di pagamento attivo, l'associazione ha anche una pagina di donazione aperta a tutti, soci e non soci, senza accesso: `/dona/` seguito dal nome breve dell'associazione (lo stesso che compare nell'indirizzo dell'area soci). Se la spunta è spenta o non c'è un metodo attivo, la pagina non esiste.
+
+Chi dona scrive nome, cognome ed email (la ricevuta arriva lì), il codice fiscale solo se lo vuole nella ricevuta, l'importo (da 1 € a 1.000 €, senza commissioni in più) e sceglie **Carta** o **PayPal**. Deve anche spuntare «Ho letto l'informativa sul trattamento dei dati personali…», con il link all'informativa privacy indicata nelle impostazioni delle domande di adesione. Premendo **Dona** paga sulla pagina sicura del servizio scelto.
+
+Dopo il pagamento:
+
+- compare «Donazione ricevuta, grazie!» e arriva un'email «Grazie per la tua donazione» con la ricevuta in allegato;
+- la donazione va in prima nota come «Erogazione liberale» con la sua ricevuta;
+- se il pagamento è in revisione, la pagina dice che la segreteria sta controllando e scriverà per la ricevuta;
+- se il pagamento non riesce o viene annullato, non viene addebitato nulla e si può riprovare.
+
+Chi dona senza essere già nel gestionale diventa «Sostenitore (non socio)»: esiste solo per la ricevuta e non conta tra i soci. Pochi invii per indirizzo email e per associazione sono consentiti: oltre il limite compare «Troppi tentativi: riprova più tardi.»
+
 
 In fondo, in «Pagamenti dei soci», trovi ogni pagamento con il suo stato.
 
