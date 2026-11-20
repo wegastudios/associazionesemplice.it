@@ -418,9 +418,18 @@ class LedgerService {
 					$quota_years[ $free_key ] = true; // una riga successiva sullo stesso anno in omaggio è rifiutata
 				}
 			}
-			// IVA: esplicita se indicata, altrimenti quella della quota associativa o dell'attività (solo se l'ente applica l'IVA)
+			// Opzione fiscale (spenta di default): eventi e corsi pagati da un socio si incassano come erogazione liberale; i non soci restano contributi
+			$as_donation = false;
+			if ( 'activity_fee' === $cat['kind'] && $activity && $payer && Fiscal::member_events_donation() && MemberType::is_member( (string) $payer['type'] ) ) {
+				$donation = $this->category( $this->category_id_of_kind( 'donation' ) );
+				if ( $donation ) {
+					$cat         = $donation;
+					$as_donation = true;
+				}
+			}
+			// IVA: esplicita se indicata, altrimenti quella della quota associativa o dell'attività (solo se l'ente applica l'IVA); un'erogazione liberale resta fuori campo IVA
 				$vat_rate = null;
-				if ( Fiscal::vat_applies() ) {
+				if ( Fiscal::vat_applies() && ! $as_donation ) {
 					if ( array_key_exists( 'vat_rate', $l ) ) {
 						$vat_rate = Fiscal::clean_rate( $l['vat_rate'] );
 					} elseif ( 'membership' === $cat['kind'] ) {

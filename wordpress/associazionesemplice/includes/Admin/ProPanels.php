@@ -115,6 +115,12 @@ final class ProPanels {
 
 	/** Partita IVA nella scheda dei dati dell'ente. */
 	public static function entity_sections( array $s ): void {
+		echo '<h2>Erogazioni liberali</h2><table class="form-table"><tbody>';
+		echo '<tr><th>Eventi e corsi dei soci</th><td><input type="hidden" name="member_events_donation_form" value="1"><label><input type="checkbox" name="member_events_donation" value="1"' . checked( ! empty( $s['member_events_donation'] ), true, false ) . '> Incassa come erogazione liberale gli eventi e i corsi pagati dai soci</label>'
+			. '<p class="description">Spenta, gli eventi e i corsi pagati dai soci sono contributi, come sempre. Accesa, da quel momento la ricevuta scrive «Erogazione liberale per l\'evento…» o «…per il corso…», il rendiconto li conta tra le erogazioni liberali, con PayPal la voce è indicata come donazione e, se l\'ente applica l\'IVA, restano fuori campo IVA. '
+			. 'Non cambia nulla per i pagamenti dei non soci, che restano contributi, e per le quote associative, che restano sempre escluse. I movimenti già registrati non cambiano. '
+			. '<strong>Prima di accenderla, chiedi al tuo commercialista:</strong> questa impostazione non garantisce alcun vantaggio fiscale a chi paga.</p></td></tr>';
+		echo '</tbody></table>';
 		if ( ! \AssociazioneSemplice\Edition::has( 'vat' ) ) {
 			return;
 		}

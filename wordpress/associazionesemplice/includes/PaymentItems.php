@@ -79,6 +79,11 @@ final class PaymentItems {
 		return null;
 	}
 
+	/** Questa voce si incassa come erogazione liberale? Solo eventi e corsi pagati da un socio e solo con l'opzione fiscale accesa (la stessa regola della prima nota). */
+	public static function is_donation( array $i, array $payer ): bool {
+		return in_array( (string) $i['type'], array( self::COURSE_MONTH, self::BOOKING ), true ) && Fiscal::member_events_donation() && MemberType::is_member( (string) ( $payer['type'] ?? '' ) );
+	}
+
 	public static function total( array $items ): int {
 		return (int) array_sum( array_map( function ( $i ) {
 			return (int) $i['amount_cents'];

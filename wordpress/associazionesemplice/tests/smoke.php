@@ -974,8 +974,25 @@ $pay = function ( int $person, int $cents, ?int $session, ?int $activity = null 
 asem_ok( null !== asem_throws( function () use ( $pay, $founder ) { $pay( $founder, 500, null ); } ), 'contributo evento senza la data: rifiutato' );
 asem_ok( null !== asem_throws( function () use ( $pay, $vol, $sid ) { $pay( $vol, 500, $sid ); } ), 'contributo di chi non è prenotato: rifiutato' );
 asem_ok( null !== asem_throws( function () use ( $pay, $ord, $sid, $yoga ) { $pay( $ord, 500, $sid, $yoga ); } ), 'un corso non accetta la data di un evento' );
+// Opzione fiscale «eventi e corsi dei soci come erogazione liberale»: spenta di default; accesa vale solo per i soci
+$kind_of_last = function () use ( $wpdb ) {
+	return (string) $wpdb->get_var( 'SELECT c.kind FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . ' c ON c.id = t.category_id ORDER BY t.id DESC LIMIT 1' );
+};
+asem_ok( ! \AssociazioneSemplice\Fiscal::member_events_donation(), 'erogazione liberale: opzione spenta di default' );
+$don_on = \AssociazioneSemplice\Edition::has( 'vat' ); // l'opzione sta nelle impostazioni del Pro
+if ( $don_on ) {
+	Settings::update( array( 'member_events_donation' => 1 ) );
+	asem_ok( \AssociazioneSemplice\Fiscal::member_events_donation(), 'erogazione liberale: opzione accesa' );
+}
 $pay( $founder, 500, $sid );
+if ( $don_on ) {
+	asem_ok( 'donation' === $kind_of_last(), 'erogazione liberale: l\'evento pagato da un socio è registrato come erogazione liberale' );
+}
 $pay( $guest, 300, $sid );
+if ( $don_on ) {
+	asem_ok( 'activity_fee' === $kind_of_last(), 'erogazione liberale: chi non è socio resta contributo' );
+	Settings::update( array( 'member_events_donation' => 0 ) );
+}
 $bk = $by_person( $sid );
 asem_ok( 'paid' === $bk[ $founder ]['state'] && 'partial' === $bk[ $guest ]['state'] && 500 === $bk[ $guest ]['remaining'], 'pagamenti evento: socio pagato, ospite parziale (resta 5,00)' );
 $unpaid = $acts->unpaid_bookings_for_person( $guest );

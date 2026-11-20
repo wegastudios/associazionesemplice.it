@@ -454,6 +454,9 @@ final class ProData {
 			$vals['entity_type'] = $ent;
 			$vals['member_term'] = $mem;
 		}
+		if ( array_key_exists( 'member_events_donation_form', $p ) ) { // opzione fiscale: la casella spenta non invia nulla, quindi si legge il campo nascosto
+			$vals['member_events_donation'] = ! empty( $p['member_events_donation'] ) ? 1 : 0;
+		}
 		if ( $has( 'has_vat' ) ) { // la partita IVA e tutto ciò che ne dipende si legge insieme
 			$on = ! empty( $p['has_vat'] );
 			$vat = Fiscal::normalize_vat( (string) ( $vals['vat_number'] ?? Settings::get( 'vat_number' ) ) ); // la partita IVA è un dato dell'ente (core): qui serve solo per accendere l'IVA

@@ -68,6 +68,11 @@ final class Fiscal {
 		return is_numeric( $rate ) && (int) $rate >= 0 && (int) $rate <= 30;
 	}
 
+	/** Opzione fiscale (spenta di default): eventi e corsi pagati dai soci si incassano come erogazione liberale. I non soci e le quote associative non cambiano. */
+	public static function member_events_donation(): bool {
+		return ! empty( Settings::get( 'member_events_donation' ) );
+	}
+
 	/** L'ente applica l'IVA? Solo con la partita IVA e fuori dal regime forfettario. */
 	public static function vat_applies(): bool {
 		return Edition::has( 'vat' ) && ! empty( Settings::get( 'has_vat' ) ) && self::FLAT !== (string) Settings::get( 'fiscal_regime' );

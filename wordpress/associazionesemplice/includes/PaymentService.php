@@ -195,7 +195,7 @@ class PaymentService extends OfflinePayments {
 		$cfg       = ProSettings::payment_config();
 		$brand     = (string) Settings::get( 'association_name' );
 		try {
-			$res = $this->gateway_session( $provider, $items, $public, (string) $actor['email'], $success, $cancel, $cfg, $brand );
+			$res = $this->gateway_session( $provider, array_map( function ( $i ) use ( $actor ) { return PaymentItems::is_donation( $i, $actor ) ? $i + array( 'as_donation' => true ) : $i; }, $items ), $public, (string) $actor['email'], $success, $cancel, $cfg, $brand );
 		} catch ( \RuntimeException $e ) {
 			$this->update( $id, array( 'status' => 'failed', 'error' => mb_substr( $e->getMessage(), 0, 250 ) ) );
 			Audit::log( 'payment.failed', 'payment', $id, array( 'provider' => $provider ) );

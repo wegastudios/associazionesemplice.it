@@ -124,7 +124,11 @@ final class ProWizard {
 			foreach ( PaymentConfig::BOTH === $val ? array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ) : ( in_array( $val, array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::WOOCOMMERCE ), true ) ? array( $val ) : array() ) as $pv ) {
 				$links .= ' ' . self::tutorial_links( $pv );
 			}
+			$links .= self::nonprofit_links( PaymentConfig::BOTH === $val ? array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ) : array( $val ) );
 			echo '<p><label><input type="radio" name="payment_choice" value="' . esc_attr( $val ) . '"' . checked( $current === $val, true, false ) . disabled( $off, true, false ) . '> <strong>' . esc_html( $c[0] ) . '</strong></label><br><span class="description">' . esc_html( $c[1] ) . '</span>' . $note . $links . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		if ( $pay_choices ) {
+			echo '<p class="description">Le chiavi per collegare Stripe o PayPal si inseriscono dopo, in Pagamenti online: qui scegli soltanto come vuoi incassare. Alcuni gestori hanno condizioni particolari per le associazioni senza scopo di lucro: i link «non profit» portano alle loro pagine. Le condizioni le decide il gestore e possono cambiare: chiedi sempre a lui.</p>';
 		}
 	}
 
@@ -157,6 +161,26 @@ final class ProWizard {
 		return $out ? '<span class="description asem-wiz-links">Guide: ' . implode( ' · ', $out ) . '</span>' : '';
 	}
 
+	/** Pagine dei gestori che parlano di condizioni per i non profit (nessuna cifra nostra: le condizioni le decide il gestore). @return array<string,array{0:string,1:string}> */
+	public static function nonprofit_pages(): array {
+		return array(
+			PaymentConfig::STRIPE => array( 'Stripe per i non profit', 'https://stripe.com/it/industries/nonprofits' ),
+			PaymentConfig::PAYPAL => array( 'PayPal: tariffa per gli enti benefici', 'https://www.paypal.com/it/cshelp/article/come-faccio-a-richiedere-la-tariffa-per-enti-benefici-help221' ),
+		);
+	}
+
+	/** Link alle pagine non profit dei gestori indicati, in una nuova finestra. @param string[] $providers */
+	public static function nonprofit_links( array $providers ): string {
+		$out = array();
+		foreach ( $providers as $p ) {
+			$l = self::nonprofit_pages()[ $p ] ?? null;
+			if ( $l ) {
+				$out[] = '<a href="' . esc_url( $l[1] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $l[0] ) . ' ↗</a>';
+			}
+		}
+		return $out ? '<br><span class="description asem-wiz-nonprofit">Se sei un\'associazione senza scopo di lucro: ' . implode( ' · ', $out ) . '</span>' : '';
+	}
+
 	private static function product_select( string $name, int $current, array $products ): string {
 		$opts = array( '' => $current ? 'Lascia il collegamento attuale' : 'Non collegare adesso', 'new' => 'Crea un prodotto nuovo' );
 		foreach ( $products as $id => $label ) {
@@ -170,11 +194,11 @@ final class ProWizard {
 	/** Scelte di pagamento: valore => [etichetta, descrizione]. */
 	public static function payment_choices(): array {
 		return array(
-			'none'                    => array( 'Nessun pagamento online', 'I pagamenti si registrano a mano (contanti, POS, bonifico).' ),
-			PaymentConfig::STRIPE     => array( 'Carta con Stripe', 'Il socio paga con carta direttamente dal sito.' ),
-			PaymentConfig::PAYPAL     => array( 'PayPal', 'Il socio paga con PayPal (anche a rate, se il tuo account lo prevede).' ),
-			PaymentConfig::BOTH       => array( 'Stripe e PayPal insieme', 'Il socio sceglie come pagare; le diciture dei pulsanti si personalizzano in Pagamenti online.' ),
-			PaymentConfig::WOOCOMMERCE => array( 'Checkout di WooCommerce', 'I pagamenti passano dal carrello e dal checkout del tuo negozio.' ),
+			'none'                    => array( 'Nessun pagamento online', 'I soci non pagano dal sito: registri tu i pagamenti a mano (contanti, POS, bonifico).' ),
+			PaymentConfig::STRIPE     => array( 'Carta con Stripe', 'Il socio paga con carta su una pagina sicura di Stripe e il pagamento entra da solo in prima nota.' ),
+			PaymentConfig::PAYPAL     => array( 'PayPal', 'Il socio paga dal suo conto PayPal o con carta, su una pagina di PayPal (anche a rate, se il tuo account lo prevede); il pagamento entra da solo in prima nota.' ),
+			PaymentConfig::BOTH       => array( 'Stripe e PayPal insieme', 'Il socio sceglie tra i due; le scritte dei pulsanti si cambiano in Pagamenti online.' ),
+			PaymentConfig::WOOCOMMERCE => array( 'Checkout di WooCommerce', 'Il socio paga dal carrello del tuo negozio WooCommerce, con i metodi che hai già attivato lì.' ),
 		);
 	}
 
@@ -182,9 +206,9 @@ final class ProWizard {
 	public static function tutorials(): array {
 		return array(
 			PaymentConfig::STRIPE      => array(
-				array( 'Creare un account Stripe', 'https://dashboard.stripe.com/register' ),
-				array( 'Dove trovare le chiavi API', 'https://docs.stripe.com/keys' ),
-				array( 'Configurare un webhook', 'https://docs.stripe.com/webhooks' ),
+				array( 'Creare un account (Stripe)', 'https://dashboard.stripe.com/register' ),
+				array( 'Dove trovi le chiavi (guida di Stripe)', 'https://docs.stripe.com/keys' ),
+				array( 'Collegare Stripe al sito: il webhook (guida di Stripe)', 'https://docs.stripe.com/webhooks' ),
 			),
 			PaymentConfig::PAYPAL      => array(
 				array( 'Creare un\'app PayPal e ottenere le credenziali', 'https://developer.paypal.com/api/rest/' ),
