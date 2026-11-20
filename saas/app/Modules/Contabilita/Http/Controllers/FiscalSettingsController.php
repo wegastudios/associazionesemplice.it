@@ -32,7 +32,17 @@ final readonly class FiscalSettingsController
             'rates' => implode(', ', $this->fiscal->rates()),
             'includesVat' => $this->fiscal->includesVat(),
             'membershipRate' => $this->fiscal->membershipRate() ?? 0,
+            'memberEventsDonation' => $this->fiscal->memberEventsDonation(),
         ]);
+    }
+
+    /** Opzione fiscale (spenta di default): eventi e corsi pagati dai soci incassati come erogazione liberale. */
+    public function donations(Request $request): RedirectResponse
+    {
+        $data = Input::of($request->validate(['member_events_donation' => ['boolean']]));
+        $this->settings->set(OrgFiscal::MEMBER_EVENTS_DONATION, Input::bool($data, 'member_events_donation', false));
+
+        return back()->with('status', 'Erogazioni liberali salvate.');
     }
 
     public function update(Request $request): RedirectResponse

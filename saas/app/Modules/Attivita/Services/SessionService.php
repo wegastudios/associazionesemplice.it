@@ -51,6 +51,7 @@ final readonly class SessionService
         private ActivityVat $vat,
         private Entitlements $entitlements,
         private People $people,
+        private MemberFeeOption $memberFees,
     ) {}
 
     /**
@@ -583,12 +584,14 @@ final readonly class SessionService
         if ($cents <= 0) {
             throw new ActivityError('Non c\'è niente da incassare: indica l\'importo.');
         }
-        $category = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Quota attività / corso» in prima nota.');
+        $fee = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Quota attività / corso» in prima nota.');
+        // Opzione fiscale (spenta di default): il contributo di un socio si incassa come erogazione liberale, senza IVA.
+        ['category' => $category, 'donation' => $donation] = $this->memberFees->category($fee, $this->person($b->person_id)['type'] ?? '');
         $list = $b->price_list === null ? null : SessionRules::findList($activity->price_lists, $b->price_list);
-        $description = mb_substr('Contributo '.$activity->name.' '.$s->session_date->format('d/m/Y').($list !== null ? ' · '.$list['label'] : ''), 0, 255);
+        $description = mb_substr(MemberFeeOption::description($donation, $activity->kind, $activity->name, $s->session_date->format('d/m/Y')).($list !== null ? ' · '.$list['label'] : ''), 0, 255);
 
-        return $this->connection()->transaction(function () use ($b, $s, $activity, $accountId, $date, $cents, $method, $category, $description): ?string {
-            $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, $s->session_date->format('Y-m'), $this->vat->rate($activity))], $method, $b->person_id, true, null, $activity->id));
+        return $this->connection()->transaction(function () use ($b, $s, $activity, $accountId, $date, $cents, $method, $category, $description, $donation): ?string {
+            $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, $s->session_date->format('Y-m'), $donation ? null : $this->vat->rate($activity))], $method, $b->person_id, true, null, $activity->id));
             foreach ($out['transactions'] as $tx) {
                 $this->connection()->table('app.booking_payments')->insert(['org_id' => $this->context->require()->id, 'transaction_id' => $tx, 'booking_id' => $b->id]);
             }

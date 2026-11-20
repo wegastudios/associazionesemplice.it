@@ -10,7 +10,7 @@ use RuntimeException;
 /**
  * Stripe Checkout (dallo StripeApi del plugin): il socio paga su una pagina di Stripe, noi non vediamo mai la carta.
  *
- * @phpstan-type Line array{label: string, amount_cents: int}
+ * @phpstan-type Line array{label: string, amount_cents: int, donation?: bool}
  */
 final readonly class StripeGateway
 {
