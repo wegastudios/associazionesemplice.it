@@ -145,7 +145,7 @@ it('non salva il file di un certificato se lo spazio del piano è esaurito', fun
     $data = ['kind' => 'other', 'issued_on' => now()->toDateString(), 'expires_on' => now()->addYear()->toDateString()];
 
     expect(fn () => app(CertificateService::class)->add($this->minor->id, $data, UploadedFile::fake()->createWithContent('c.pdf', '%PDF-1.4 certificato')))
-        ->toThrow(PeopleError::class, 'Lo spazio del tuo piano è esaurito.')
+        ->toThrow(PeopleError::class, 'Lo spazio del piano è esaurito: il certificato non è stato salvato.')
         ->and(MedicalCertificate::query()->count())->toBe(0);
     // Senza file il certificato si registra comunque: lo spazio riguarda solo i file.
     expect(app(CertificateService::class)->add($this->minor->id, $data)->id)->toBeString();

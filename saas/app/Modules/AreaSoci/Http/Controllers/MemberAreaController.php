@@ -90,7 +90,7 @@ final readonly class MemberAreaController
             throw ValidationException::withMessages(['card' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'Codice rigenerato: il vecchio non vale più.');
+        return back()->with('status', 'Codice rigenerato: quello vecchio non vale più.');
     }
 
     public function payments(): Response

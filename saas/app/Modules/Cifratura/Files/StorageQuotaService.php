@@ -24,7 +24,7 @@ final readonly class StorageQuotaService implements StorageQuota
             return;
         }
         if ($this->files->usedBytes($orgId) + max(0, $incomingBytes) > $limitGb * 1024 ** 3) {
-            throw new StorageFull('Lo spazio del tuo piano è esaurito.');
+            throw new StorageFull('Lo spazio del piano è esaurito.');
         }
     }
 }

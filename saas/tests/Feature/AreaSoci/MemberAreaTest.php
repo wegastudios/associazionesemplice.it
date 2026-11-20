@@ -398,7 +398,7 @@ it('rigenerando il codice della tessera il vecchio QR non vale più', function (
     $this->get($old)->assertInertia(fn (Assert $page) => $page->where('card.name', 'Mario R.'));
     $this->get($legacy)->assertInertia(fn (Assert $page) => $page->where('card.name', 'Mario R.'));
 
-    asMember($this, $cookie)->post($this->base.'/tessera/rigenera')->assertSessionHas('status', 'Codice rigenerato: il vecchio non vale più.');
+    asMember($this, $cookie)->post($this->base.'/tessera/rigenera')->assertSessionHas('status', 'Codice rigenerato: quello vecchio non vale più.');
 
     $this->get($old)->assertInertia(fn (Assert $page) => $page->where('card', null));
     $this->get($legacy)->assertInertia(fn (Assert $page) => $page->where('card', null));

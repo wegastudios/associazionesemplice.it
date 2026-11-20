@@ -64,8 +64,8 @@ final readonly class CertificateService
             $orgId = $this->context->require()->id;
             try {
                 $this->quota->assertRoom($orgId, (int) $file->getSize());
-            } catch (StorageFull $e) {
-                throw new PeopleError([$e->getMessage()]);
+            } catch (StorageFull) {
+                throw new PeopleError(['Lo spazio del piano è esaurito: il certificato non è stato salvato.']);
             }
             $stored = $this->files->store($orgId, (string) $file->getRealPath(), $file->getClientOriginalName(), $mime);
         }

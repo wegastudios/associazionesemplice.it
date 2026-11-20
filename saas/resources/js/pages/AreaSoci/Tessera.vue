@@ -5,7 +5,7 @@ import { ChevronRight, CreditCard } from '../../components/ui/icons.js';
 
 defineProps({ card: Object, qr: String, member: Object, due: { type: Object, default: null } });
 
-const regenerate = () => window.confirm('Rigenerare il codice della tessera? Quello attuale smette di valere subito e dovrai usare quello nuovo.') && router.post('/area/tessera/rigenera', {}, { preserveScroll: true });
+const regenerate = () => window.confirm('Rigenerare il codice della tessera? Quello attuale smette subito di valere, anche sulla tessera stampata: se ne hai una, chiedi alla segreteria di ristamparla.') && router.post('/area/tessera/rigenera', {}, { preserveScroll: true });
 </script>
 
 <template>
