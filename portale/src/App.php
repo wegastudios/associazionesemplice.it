@@ -32,7 +32,10 @@ final class App {
 				echo $ok ? '{"ok":true}' : '{"error":"invalid_token"}';
 				if ( $ok ) {
 					$this->after[] = function () {
-						Catalog::refresh( $this->db );
+						// L'esito resta nel log: «unchanged» o un errore dopo un avviso vanno spiegati (di norma il SaaS serve ancora l'etag vecchio).
+						$r  = Catalog::refresh( $this->db );
+						$st = Catalog::stored( $this->db );
+						error_log( '[portale] avviso catalogo: ' . $r . ' (rev salvata ' . ( $st ? $st['rev'] : '-' ) . ')' );
 					};
 					$this->finish();
 				}
