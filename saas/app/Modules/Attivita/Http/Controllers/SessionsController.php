@@ -151,7 +151,7 @@ final readonly class SessionsController
     {
         $data = Input::of($request->validate([
             'account_id' => ['required', 'uuid'],
-            'date' => ['required', 'date_format:Y-m-d'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:'.now()->addYears(10)->toDateString()],
             'amount' => ['nullable', 'string', 'max:20'],
             'method' => ['nullable', Rule::in(PaymentMethod::values())],
         ]));
@@ -235,8 +235,8 @@ final readonly class SessionsController
     public function saveAttendance(Request $request, string $activity): RedirectResponse
     {
         $data = Input::of($request->validate([
-            'date' => ['required', 'date_format:Y-m-d'],
-            'present' => ['array'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:'.now()->addYears(10)->toDateString()],
+            'present' => ['array', 'max:1000'],
             'present.*' => ['uuid'],
         ]));
         $user = $request->user()?->getAuthIdentifier();

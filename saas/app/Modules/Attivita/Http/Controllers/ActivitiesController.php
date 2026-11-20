@@ -141,7 +141,7 @@ final readonly class ActivitiesController
         $data = Input::of($request->validate([
             'person_id' => ['required', 'uuid'],
             'account_id' => ['required', 'uuid'],
-            'date' => ['required', 'date_format:Y-m-d'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:'.now()->addYears(10)->toDateString()],
             'months' => ['array', 'max:12'],
             'months.*' => ['date_format:Y-m'],
             'amount' => ['nullable', 'string', 'max:20'],
@@ -162,7 +162,7 @@ final readonly class ActivitiesController
     {
         $data = Input::of($request->validate([
             'account_id' => ['required', 'uuid'],
-            'date' => ['required', 'date_format:Y-m-d'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:'.now()->addYears(10)->toDateString()],
             'amount' => ['required', 'string', 'max:20'],
             'description' => ['nullable', 'string', 'max:255'],
             'method' => ['nullable', Rule::in(PaymentMethod::values())],

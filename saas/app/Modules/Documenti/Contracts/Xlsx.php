@@ -22,6 +22,9 @@ final class Xlsx
     /** 15 MB di XML decompresso per parte (circa 20.000 righe piene): difesa dai file «bomba» e dalla memoria. */
     public const MAX_ENTRY_SIZE = 15728640;
 
+    /** 60 MB in tutto: tetto alla somma delle parti decompresse (fogli, stringhe condivise, stili). */
+    public const MAX_TOTAL_SIZE = 62914560;
+
     private const NS_MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
     private const NS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
@@ -36,6 +39,7 @@ final class Xlsx
             throw new InvalidArgumentException('Il file non è un Excel (.xlsx) valido.');
         }
         $files = [];
+        $total = 0;
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $st = $zip->statIndex($i);
             if ($st === false) {
@@ -46,6 +50,11 @@ final class Xlsx
                 continue;
             }
             if ($st['size'] > self::MAX_ENTRY_SIZE) {
+                $zip->close();
+                throw new InvalidArgumentException('Il file Excel è troppo grande: dividilo in più file o salvalo come CSV.');
+            }
+            $total += $st['size'];
+            if ($total > self::MAX_TOTAL_SIZE) {
                 $zip->close();
                 throw new InvalidArgumentException('Il file Excel è troppo grande: dividilo in più file o salvalo come CSV.');
             }

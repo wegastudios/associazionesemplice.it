@@ -84,13 +84,15 @@ final readonly class LedgerImportService
 
     /**
      * @param  list<Plan>  $plan
+     * @param  bool  $canIncome  chi importa può registrare entrate
+     * @param  bool  $canExpense  chi importa può registrare spese
      * @return array{income: int, expense: int, transfer: int, accounts: int, failed: list<string>}
      */
-    public function apply(array $plan): array
+    public function apply(array $plan, bool $canIncome = true, bool $canExpense = true): array
     {
         $res = ['income' => 0, 'expense' => 0, 'transfer' => 0, 'accounts' => 0, 'failed' => []];
 
-        $this->connection()->transaction(function () use ($plan, &$res): void {
+        $this->connection()->transaction(function () use ($plan, $canIncome, $canExpense, &$res): void {
             $created = [];
             $account = function (mixed $id, mixed $new, mixed $type) use (&$created, &$res): string {
                 if (is_string($id)) {
@@ -112,6 +114,12 @@ final readonly class LedgerImportService
                     continue;
                 }
                 $where = ($p['row']['sheet'] !== '' ? $p['row']['sheet'].' ' : '').'riga '.$p['row']['line'];
+                // Le righe di un tipo per cui chi importa non ha il permesso non si registrano (e non creano nemmeno conti).
+                if ($p['action'] === 'create' && ! ($d['type'] === 'income' ? $canIncome : $canExpense)) {
+                    $res['failed'][] = $where.': non hai il permesso di registrare '.($d['type'] === 'income' ? 'entrate' : 'spese').'.';
+
+                    continue;
+                }
                 try {
                     $date = (string) $str($d['date']);
                     $cents = is_int($d['cents']) ? $d['cents'] : 0;

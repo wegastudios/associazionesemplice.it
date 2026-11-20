@@ -18,7 +18,7 @@ final readonly class AccountingHome implements HomeWidget
 
     public function items(Operator $operator): array
     {
-        if (! $operator->can(Ability::ViewAccounting)) {
+        if (! $operator->can(Ability::ViewAccounting) || ! $operator->can(Ability::ViewFunds)) {
             return [];
         }
         $balances = $this->ledger->balances();

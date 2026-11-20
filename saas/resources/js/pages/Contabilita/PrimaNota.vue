@@ -21,7 +21,7 @@ const props = defineProps({
     rows: Array,
     next: String,
     prev: String,
-    balances: Object,
+    balances: { type: Object, default: null },
     canEdit: Boolean,
 });
 
@@ -135,7 +135,7 @@ const label = 'block space-y-1.5 text-sm';
             </template>
         </PageHeader>
 
-        <ul class="-mx-4 mb-4 flex gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0" aria-label="Saldi dei conti">
+        <ul v-if="balances" class="-mx-4 mb-4 flex gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0" aria-label="Saldi dei conti">
             <li v-for="a in accounts" :key="a.id" class="card min-w-40 flex-1 p-4">
                 <p class="caption truncate">{{ a.name }}</p>
                 <p class="mt-0.5 text-xl font-bold tabular-nums">{{ balances[a.id] ?? '0,00 €' }}</p>

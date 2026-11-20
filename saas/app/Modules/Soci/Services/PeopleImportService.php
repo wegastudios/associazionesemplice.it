@@ -207,7 +207,8 @@ final readonly class PeopleImportService
         }
         foreach (['email' => 'email', 'phone' => 'phone', 'tax' => 'tax_code', 'notes' => 'notes', 'since' => 'joined_on', 'birth' => 'birth_date'] as $from => $to) {
             if (is_string($r[$from] ?? null) && $r[$from] !== '') {
-                $data[$to] = $r[$from];
+                // Le note stanno entro 2.000 caratteri, come nella scheda a mano.
+                $data[$to] = $to === 'notes' ? mb_substr($r[$from], 0, 2000) : $r[$from];
             }
         }
         if ($withCard && is_string($r['card'] ?? null)) {

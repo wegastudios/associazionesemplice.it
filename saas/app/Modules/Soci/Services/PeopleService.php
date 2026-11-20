@@ -48,7 +48,13 @@ final readonly class PeopleService
     public function update(string $id, array $data): Person
     {
         $person = Person::query()->findOrFail($id);
-        $person->fill($this->clean($data, $person));
+        $clean = $this->clean($data, $person);
+        // Passare da non socio a socio conta nel limite del piano come un nuovo socio: stesso blocco di create().
+        $type = MemberType::tryFrom(is_string($clean['type'] ?? null) ? $clean['type'] : '');
+        if ($type?->isMember() === true && ! $person->type->isMember() && ($blocked = $this->limit->blockMessage()) !== null) {
+            throw new PeopleError([$blocked]);
+        }
+        $person->fill($clean);
 
         return $this->save($person);
     }

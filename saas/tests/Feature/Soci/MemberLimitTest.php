@@ -6,6 +6,7 @@ use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\OrgEntitlements;
 use App\Modules\Soci\Contracts\PeopleError;
+use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MemberLimit;
 use App\Modules\Soci\Services\PeopleService;
 use Carbon\CarbonImmutable;
@@ -69,4 +70,22 @@ it('blocca i nuovi soci appena superato il +10% e libera tutto se si scende sott
     ($this->limit)(100);
     expect(app(MemberLimit::class)->status()['state'])->toBe('ok')
         ->and(app(OrgSettings::class)->get(MemberLimit::REACHED_ON))->toBeNull();
+});
+
+it('blocca anche il passaggio da non socio a socio oltre il limite, ma non le altre modifiche', function (): void {
+    ($this->limit)(10);
+    ($this->add)(11);
+    $people = app(PeopleService::class);
+    $guardian = $people->create(['first_name' => 'Tutore', 'last_name' => 'Prova', 'type' => 'guardian']);
+
+    expect(fn () => $people->update($guardian->id, ['type' => 'ordinary']))->toThrow(PeopleError::class, 'Hai raggiunto i 10 soci del piano Piccola');
+    expect($guardian->fresh()?->type->value)->toBe('guardian');
+
+    // Chi è già socio può essere modificato, anche cambiando tipo tra soci.
+    $member = Person::query()->where('type', 'ordinary')->firstOrFail();
+    expect($people->update($member->id, ['type' => 'volunteer'])->type->value)->toBe('volunteer');
+
+    // Sotto il limite il passaggio è ammesso.
+    ($this->limit)(100);
+    expect(app(PeopleService::class)->update($guardian->id, ['type' => 'ordinary'])->type->value)->toBe('ordinary');
 });

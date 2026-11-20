@@ -95,7 +95,8 @@ final readonly class LedgerController
             ])->values(),
             'next' => $page->nextPageUrl(),
             'prev' => $page->previousPageUrl(),
-            'balances' => collect($this->ledger->balances())->map(fn (int $c): string => Money::format($c)),
+            // Saldi solo a chi può vedere fondi e conti.
+            'balances' => ($request->user()?->can('accounting.funds') ?? false) ? collect($this->ledger->balances())->map(fn (int $c): string => Money::format($c)) : null,
             'canEdit' => $request->user()?->can('accounting.edit') ?? false,
             // Aliquote scelte in Aspetto fiscale: senza partita IVA non c'è nessuna scelta.
             'fiscal' => ['hasVat' => $this->fiscal->hasVat(), 'includesVat' => $this->fiscal->includesVat(), 'rates' => $this->fiscal->rates()],
@@ -105,7 +106,7 @@ final readonly class LedgerController
     public function income(Request $request): RedirectResponse
     {
         $data = Input::of($request->validate([
-            'date' => ['required', 'date_format:Y-m-d'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:'.now()->addYears(10)->toDateString()],
             'account_id' => ['required', 'uuid'],
             'method' => ['nullable', Rule::in(PaymentMethod::values())],
             'receipt' => ['boolean'],
@@ -151,7 +152,7 @@ final readonly class LedgerController
     public function expense(Request $request): RedirectResponse
     {
         $data = Input::of($request->validate([
-            'date' => ['required', 'date_format:Y-m-d'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:'.now()->addYears(10)->toDateString()],
             'account_id' => ['required', 'uuid'],
             'category_id' => ['required', 'uuid'],
             'amount' => ['required', 'string', 'max:20'],
@@ -187,7 +188,7 @@ final readonly class LedgerController
     public function transfer(Request $request): RedirectResponse
     {
         $data = Input::of($request->validate([
-            'date' => ['required', 'date_format:Y-m-d'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:'.now()->addYears(10)->toDateString()],
             'from_account_id' => ['required', 'uuid'],
             'to_account_id' => ['required', 'uuid'],
             'amount' => ['required', 'string', 'max:20'],

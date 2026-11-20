@@ -81,3 +81,22 @@ it('rifiuta un foglio con più di 15 MB di XML decompresso', function (): void {
         @unlink($path);
     }
 });
+
+it('rifiuta un file le cui parti decompresse superano il tetto complessivo', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'xlsx');
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::OVERWRITE);
+    // Ogni parte è sotto il limite singolo, ma la somma lo supera.
+    $part = str_repeat(' ', (int) (Xlsx::MAX_ENTRY_SIZE * 0.9));
+    for ($i = 1; $i <= 5; $i++) {
+        $zip->addFromString("xl/worksheets/sheet{$i}.xml", $part);
+    }
+    $zip->close();
+
+    try {
+        expect(strlen($part) * 5)->toBeGreaterThan(Xlsx::MAX_TOTAL_SIZE)
+            ->and(fn () => Xlsx::read($path))->toThrow(InvalidArgumentException::class, 'troppo grande');
+    } finally {
+        @unlink($path);
+    }
+});

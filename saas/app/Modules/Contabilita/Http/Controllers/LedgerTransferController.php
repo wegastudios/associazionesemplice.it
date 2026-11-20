@@ -49,7 +49,7 @@ final readonly class LedgerTransferController
             throw ValidationException::withMessages(['file' => $preview['error']]);
         }
         if ($request->boolean('apply')) {
-            return $this->page(null, $this->import->apply($preview['plan']));
+            return $this->page(null, $this->import->apply($preview['plan'], $request->user()?->can('accounting.income') ?? false, $request->user()?->can('accounting.expense') ?? false));
         }
 
         $labels = ['create' => 'Nuovo', 'transfer' => 'Giroconto', 'paired' => 'Giroconto', 'duplicate' => 'Già presente', 'skip' => 'Saltato', 'error' => 'Errore'];

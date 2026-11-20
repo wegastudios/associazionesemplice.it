@@ -139,7 +139,7 @@ final readonly class PeopleController
         $data = Input::of($request->validate([
             'account_id' => ['required', 'uuid'],
             'amount' => ['required', 'string', 'max:20'],
-            'date' => ['required', 'date_format:Y-m-d'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:'.now()->addYears(10)->toDateString()],
             'method' => ['nullable', Rule::in(PaymentMethod::values())],
         ]));
         $amount = Money::parse(Input::string($data, 'amount'));
@@ -202,7 +202,7 @@ final readonly class PeopleController
     public function leave(Request $request, string $person): RedirectResponse
     {
         $data = Input::of($request->validate([
-            'date' => ['required', 'date_format:Y-m-d'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:'.now()->addYears(10)->toDateString()],
             'reason' => ['nullable', 'string', 'max:190'],
         ]));
 
