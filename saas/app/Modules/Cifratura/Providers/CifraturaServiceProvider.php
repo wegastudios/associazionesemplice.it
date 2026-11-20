@@ -16,9 +16,11 @@ use App\Modules\Cifratura\Contracts\FieldCipher;
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Cifratura\Contracts\OrgKeys;
 use App\Modules\Cifratura\Contracts\Sealer;
+use App\Modules\Cifratura\Contracts\StorageQuota;
 use App\Modules\Cifratura\Crypto\HmacSealer;
 use App\Modules\Cifratura\Crypto\SodiumFieldCipher;
 use App\Modules\Cifratura\Files\SecretStreamFiles;
+use App\Modules\Cifratura\Files\StorageQuotaService;
 use App\Modules\Cifratura\Keys\KeyCache;
 use App\Modules\Cifratura\Keys\KeyRing;
 use App\Modules\Cifratura\Keys\VaultFactory;
@@ -42,6 +44,7 @@ final class CifraturaServiceProvider extends ServiceProvider
             Storage::disk('org_files'),
             $app->make(KeyRing::class),
         ));
+        $this->app->singleton(StorageQuota::class, StorageQuotaService::class);
     }
 
     public function boot(): void

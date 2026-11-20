@@ -35,6 +35,14 @@ Le password dello script sono di sviluppo e valgono solo in locale e in CI. I te
 Sul server i due ruoli sono due utenti PostgreSQL creati da cPanel; il proprietario va reso proprietario del
 database. Il ruolo dell'applicazione non legge nemmeno la tabella `migrations`.
 
+**Credenziali del proprietario e dei backup.** Le password di `pgsql_owner` (`DB_OWNER_*`) e `pgsql_backup`
+(`DB_BACKUP_*`) servono solo ai comandi da console (migrazioni, backup, ripristino): le richieste web non le
+usano. Le tiene lo stesso `.env` dell'applicazione. Caricarle solo da console non si può fare in modo pulito:
+`php artisan optimize` (a ogni rilascio) salva la configurazione in cache, e quella cache è la stessa che legge
+il web, con dentro i valori calcolati da console. La regola è quindi organizzativa: queste credenziali stanno
+solo nel `.env` del server (permessi `600`, fuori dalla cartella pubblica), mai in altri file, log o messaggi, e
+nel `.env` dello staging e della demo non c'è il proprietario del database di produzione.
+
 ## 3. Moduli
 
 ```

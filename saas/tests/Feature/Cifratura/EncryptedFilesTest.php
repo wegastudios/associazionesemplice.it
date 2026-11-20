@@ -36,6 +36,20 @@ it('cifra e rilegge file di ogni dimensione', function (int $size): void {
         ->and(files()->read($org->id, $stored))->toBe($contents);
 })->with([0, 10, 65536, 65537, 300000]);
 
+it('conta lo spazio occupato da ogni associazione, senza mescolarle', function (): void {
+    $alfa = $this->createOrg('Polisportiva Alfa');
+    $beta = $this->createOrg('Circolo Beta');
+    expect(files()->usedBytes($alfa->id))->toBe(0);
+
+    files()->store($alfa->id, tempFileWith(random_bytes(1000)), 'a.bin', 'application/octet-stream');
+    files()->store($alfa->id, tempFileWith(random_bytes(2000)), 'b.bin', 'application/octet-stream');
+    files()->store($beta->id, tempFileWith(random_bytes(500)), 'c.bin', 'application/octet-stream');
+
+    // Il file cifrato è un po' più grande dell'originale (intestazione e controllo di ogni blocco).
+    expect(files()->usedBytes($alfa->id))->toBeGreaterThan(3000)->toBeLessThan(3300)
+        ->and(files()->usedBytes($beta->id))->toBeGreaterThan(500)->toBeLessThan(600);
+});
+
 it('sul disco il file non è leggibile', function (): void {
     $org = $this->createOrg('Polisportiva Alfa');
     $contents = str_repeat('Certificato medico di Mario Rossi. ', 100);

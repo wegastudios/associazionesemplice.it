@@ -49,6 +49,16 @@ final class DemoResetGuard
                 }
             }
         }
+        // Un'associazione con un piano vero (non quello della demo) non si cancella, anche se ha lo stesso nome.
+        if (DB::scalar("SELECT to_regclass('core.org_entitlements')") !== null) {
+            $real = DB::table('core.org_entitlements as e')->join('core.orgs as o', 'o.id', '=', 'e.org_id')
+                ->where('e.token', '<>', 'demo')->pluck('o.slug')->all();
+            foreach ($real as $found) {
+                if (is_string($found)) {
+                    $slugs[] = $found.' (piano vero)';
+                }
+            }
+        }
         $expected = config('saas.demo.database');
         $slug = config('saas.demo.org_slug');
         $marker = config('saas.demo.path_marker');

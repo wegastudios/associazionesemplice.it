@@ -55,6 +55,7 @@ return [
         ],
 
         // Proprietario delle tabelle: solo migrazioni (php artisan saas:migrate). Mai nelle richieste.
+        // Le sue credenziali e quelle dei backup servono solo da console: vedi docs/SVILUPPO.md, sezione 2.
         'pgsql_owner' => [
             'driver' => 'pgsql',
             'url' => env('DB_OWNER_URL'),

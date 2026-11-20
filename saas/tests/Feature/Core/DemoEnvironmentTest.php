@@ -93,3 +93,12 @@ it('mostra gli accessi di prova con la password solo sulla demo', function (): v
     app()->detectEnvironment(fn (): string => 'production');
     $this->get('/accesso')->assertInertia(fn (Assert $page) => $page->has('demoAccounts', 0));
 });
+
+it('legge l\'interruttore della demo come un valore vero o falso, non come testo', function (): void {
+    foreach (['false', '0', 'off', 'no', '', false] as $off) {
+        config(['saas.demo.enabled' => $off]);
+        expect(app(DemoEnvironment::class)->enabled())->toBeFalse();
+    }
+    config(['saas.demo.enabled' => 'true']);
+    expect(app(DemoEnvironment::class)->enabled())->toBeTrue();
+});

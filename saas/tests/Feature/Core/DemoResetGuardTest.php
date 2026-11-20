@@ -57,3 +57,14 @@ it('non tocca i file se la radice non sta sotto la cartella della demo', functio
 
     File::deleteDirectory(dirname($root, 2));
 });
+
+it('rifiuta se un\'associazione ha un piano vero, anche con lo stesso nome della demo', function (): void {
+    $org = $this->createOrg('Associazione Vera');
+    DB::table('core.org_entitlements')->insert([
+        'org_id' => $org->id, 'rev' => 1, 'status' => 'active', 'until' => '2027-03-31',
+        'claims' => json_encode(['members' => 100]), 'token' => 'token-vero',
+    ]);
+    config(['saas.demo.org_slug' => $org->slug]);
+
+    expect(DemoResetGuard::check())->toContain('piano vero');
+});

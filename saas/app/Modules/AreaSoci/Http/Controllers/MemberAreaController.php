@@ -48,8 +48,8 @@ final readonly class MemberAreaController
         // Il link del codice della tessera resta sullo stesso indirizzo da cui il socio è entrato (anche il dominio proprio).
         $custom = str_starts_with((string) $request->route()?->getName(), 'custom.');
         $verify = $card['member'] ? ($custom
-            ? URL::signedRoute('custom.member.verify', ['host' => $request->getHost(), 'person' => $card['id']])
-            : URL::signedRoute('member.verify', ['org' => $this->current->require()['org_slug'], 'person' => $card['id']])) : null;
+            ? URL::signedRoute('custom.member.verify', ['host' => $request->getHost(), 'person' => $card['id'], 'v' => $card['qr_version']])
+            : URL::signedRoute('member.verify', ['org' => $this->current->require()['org_slug'], 'person' => $card['id'], 'v' => $card['qr_version']])) : null;
 
         $dues = $this->payments->dues($this->current->ids());
 
@@ -80,6 +80,17 @@ final readonly class MemberAreaController
         }
 
         return back()->with('status', 'Recapiti aggiornati.');
+    }
+
+    public function regenerateCard(): RedirectResponse
+    {
+        try {
+            $this->profiles->regenerateCardCode($this->current->active());
+        } catch (PeopleError $e) {
+            throw ValidationException::withMessages(['card' => $e->getMessage()]);
+        }
+
+        return back()->with('status', 'Codice rigenerato: il vecchio non vale più.');
     }
 
     public function payments(): Response
@@ -142,6 +153,11 @@ final readonly class MemberAreaController
     public function verify(Request $request, string $person): Response
     {
         $card = $this->profiles->card($person);
+        // Il codice vale solo se porta la versione attuale: chi l'ha rigenerato ha invalidato quello vecchio (senza versione = la prima).
+        $given = $request->query('v');
+        if ($card !== null && (is_string($given) ? (int) $given : 1) !== $card['qr_version']) {
+            $card = null;
+        }
         $org = AccessController::org($request);
 
         return Inertia::render('AreaSoci/Verifica', [
