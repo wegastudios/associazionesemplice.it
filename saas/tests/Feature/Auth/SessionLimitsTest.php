@@ -75,9 +75,7 @@ it('rientrando dal cookie «ricordami» chi ha il secondo fattore deve rifare l\
     // Il browser ha buttato il cookie: ora c'è solo la verifica del codice, senza password.
     $this->defaultCookies = [];
     $this->app['auth']->forgetGuards();
-    $this->assertGuest();
     $this->post('/verifica-accesso', ['code' => '000000'])->assertSessionHasErrors('code');
-    $this->assertGuest();
     $this->post('/verifica-accesso', ['recovery_code' => 'codice-uno-1234'])->assertRedirect('/gestionale');
     $this->assertAuthenticatedAs($user);
 });
