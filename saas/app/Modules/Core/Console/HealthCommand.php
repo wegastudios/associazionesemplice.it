@@ -158,7 +158,7 @@ final class HealthCommand extends Command
             ORDER BY 1 LIMIT 5
         SQL);
         if ($bad !== []) {
-            $names = array_map(static fn (object $row): string => is_string($row->name ?? null) ? $row->name : '?', $bad);
+            $names = array_map(static fn (mixed $row): string => is_object($row) && is_string($row->name ?? null) ? $row->name : '?', $bad);
             throw new RuntimeException('RLS non attiva o non forzata, senza policy o proprietario sbagliato: '.implode(', ', $names));
         }
     }
