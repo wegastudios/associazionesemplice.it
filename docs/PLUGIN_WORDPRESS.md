@@ -479,6 +479,12 @@ Due interruttori, entrambi spenti di default; la scheda **Assicurazioni** in Reg
 - Quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota (conto «WooCommerce», ricevuta e tessera rinnovata) **una sola volta**; se l'importo pagato è diverso da quello atteso entra come «non abbinato» e il pagamento va controllato. Ordini annullati o falliti chiudono il pagamento in attesa. Gli ordini senza voci Associazione Semplice non vengono toccati; i rimborsi si registrano a mano.
 - Database v31: tabella `woo_links`; impostazioni `woo_default_product`, `card_enabled`, `reports_enabled`.
 
+**Importa da WooCommerce** (Impostazioni → Pagamenti online, solo amministratore): per chi ha usato il negozio e vuole incassare direttamente, senza la compatibilità.
+- `WooImport` legge le chiavi già salvate dai plugin ufficiali del negozio: WooCommerce Stripe Gateway (`woocommerce_stripe_settings`, chiavi della modalità in uso), WooCommerce PayPal Payments (`woocommerce-ppcp-data-common`, prima `woocommerce-ppcp-settings`), SumUp Payment Gateway for WooCommerce (`woocommerce_sumup_settings`). Nomi verificati sul sorgente dei plugin il 20/11/2026: se un plugin cambia dove salva le chiavi, il riquadro non le trova più e basta.
+- Il riquadro compare solo se trova qualcosa (anche con WooCommerce spento: le opzioni restano). Mostra plugin di provenienza, modalità e chiavi mascherate; l'azione `asem_import_woo_payments` copia solo i metodi spuntati che superano `PaymentConfig::validate_gateway()`, cifra i segreti come sempre e scrive `payments.woo_imported` nel registro azioni (mai le chiavi).
+- **Non cambia** il metodo scelto in «Come incassare online» e **non importa** il segreto del webhook di Stripe (vale solo per l'indirizzo del negozio: va creato nuovo).
+- Non importabili, con spiegazione a schermo: Stripe collegato come app (chiave che scade dopo un'ora), WooPayments (nessuna chiave sul sito), PayPal Standard (solo email). Le chiavi nate dal collegamento «Connetti» si importano con un avviso: possono smettere di funzionare scollegando il negozio.
+
 ## App installabile (PWA) e notifiche push
 
 Impostazioni → Tecniche → **App e notifiche** (spenta di default; gli interruttori sono anche nell'elenco delle funzioni di «Generale»).

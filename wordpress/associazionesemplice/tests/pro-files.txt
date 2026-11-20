@@ -11,6 +11,7 @@ PayPalApi.php
 SumUpApi.php
 WooBridge.php
 WooLinks.php
+WooImport.php
 Frontend/PayReturn.php
 Admin/PaymentsPage.php
 Admin/AccountsPage.php
