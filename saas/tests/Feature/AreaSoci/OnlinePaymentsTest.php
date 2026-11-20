@@ -13,6 +13,7 @@ use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Models\Category;
 use App\Modules\Contabilita\Models\Transaction;
+use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDonations;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
@@ -521,7 +522,7 @@ it('la spunta della donazione si imposta nei pagamenti online, con l\'importo pr
 function publicDonationOn(object $test): void
 {
     saveStripe($test);
-    $test->orgContext()->run($test->org->id, fn () => app(OrgSettings::class)->set(OrgDonations::CHECKOUT, true));
+    app(OrgContext::class)->run($test->org->id, fn () => app(OrgSettings::class)->set(OrgDonations::CHECKOUT, true));
 }
 
 function publicDonate(object $test, array $over = []): object

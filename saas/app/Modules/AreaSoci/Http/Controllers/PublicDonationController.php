@@ -87,7 +87,7 @@ final readonly class PublicDonationController
 
         // Pochi tentativi per la stessa email, oltre al limite per indirizzo e per associazione della rotta.
         $email = Str::lower(trim(Input::string($data, 'email')));
-        $key = 'donation-email|'.$org['id'].'|'.sha1($email);
+        $key = 'donation-email|'.$org['id'].'|'.hash('sha256', $email);
         if (RateLimiter::tooManyAttempts($key, self::PER_EMAIL)) {
             throw ValidationException::withMessages(['email' => 'Hai provato molte volte: riprova tra un po\'.']);
         }
