@@ -39,6 +39,7 @@ final class HealthCommand extends Command
             'file delle associazioni' => fn () => $this->roundTrip('org_files'),
             'spazio dei backup' => fn () => $this->roundTrip('backups'),
             'configurazione di produzione' => $this->productionConfig(...),
+            'chiave principale in produzione' => $this->productionVault(...),
             'ruolo dell\'applicazione' => fn () => $this->appRole($db->connection('pgsql')),
             'tabelle delle associazioni' => fn () => $this->orgTables($db->connection('pgsql')),
             'permessi dell\'applicazione' => fn () => $this->appPrivileges($db->connection('pgsql')),
@@ -67,14 +68,22 @@ final class HealthCommand extends Command
             }
         }
 
+        // Controlli «morbidi»: finché SAAS_HEALTH_STRICT è spento (sviluppo, dati inventati) un problema è un avviso e non ferma il rilascio.
+        $soft = ['chiave principale in produzione', 'permessi dell\'applicazione'];
+        $strict = config('saas.health_strict') === true;
         $failed = 0;
         foreach ($checks as $name => $check) {
             try {
                 $check();
                 $this->line("ok    {$name}");
             } catch (Throwable $e) {
+                if (! $strict && in_array($name, $soft, true)) {
+                    $this->warn("AVVISO {$name}: ".mb_substr($e->getMessage(), 0, 300));
+
+                    continue;
+                }
                 $failed++;
-                $this->error("ERRORE {$name}: ".mb_substr($e->getMessage(), 0, 200));
+                $this->error("ERRORE {$name}: ".mb_substr($e->getMessage(), 0, 300));
             }
         }
 
@@ -115,17 +124,20 @@ final class HealthCommand extends Command
             $problems[] = 'impronta dell\'host SFTP dei backup mancante (SAAS_BACKUP_SFTP_FINGERPRINT)';
         }
 
-        if (config('app.env') === 'production') {
-            if (config('saas.crypto.vault') !== 'remote') {
-                $problems[] = 'chiave principale locale: serve il servizio chiavi (SAAS_KEY_VAULT=remote)';
-            }
-            if (in_array(config('mail.default'), ['log', 'array'], true)) {
-                $problems[] = 'posta non configurata: le email finirebbero nel log';
-            }
+        if (config('app.env') === 'production' && in_array(config('mail.default'), ['log', 'array'], true)) {
+            $problems[] = 'posta non configurata: le email finirebbero nel log';
         }
 
         if ($problems !== []) {
             throw new RuntimeException(implode('; ', $problems));
+        }
+    }
+
+    /** In produzione la chiave principale non può essere quella locale: serve il servizio chiavi. */
+    private function productionVault(): void
+    {
+        if (config('app.env') === 'production' && config('saas.crypto.vault') !== 'remote') {
+            throw new RuntimeException('chiave principale locale: serve il servizio chiavi (SAAS_KEY_VAULT=remote, con indirizzo e chiave del servizio)');
         }
     }
 
@@ -183,7 +195,18 @@ final class HealthCommand extends Command
               AND has_table_privilege(current_user, to_regclass('public.migrations'), 'SELECT')
         SQL);
         if ($schemas !== [] || $tables !== [] || $migrations !== []) {
-            throw new RuntimeException('permessi eccessivi (CREATE su schemi, TRUNCATE/REFERENCES/TRIGGER su tabelle o lettura di public.migrations)');
+            $names = static fn (array $rows): string => implode(', ', array_map(static fn (mixed $row): string => is_object($row) && is_string($row->name ?? null) ? $row->name : '?', $rows));
+            $found = [];
+            if ($schemas !== []) {
+                $found[] = 'CREATE sugli schemi '.$names($schemas);
+            }
+            if ($tables !== []) {
+                $found[] = 'TRUNCATE/REFERENCES/TRIGGER sulle tabelle '.$names($tables);
+            }
+            if ($migrations !== []) {
+                $found[] = 'lettura di public.migrations';
+            }
+            throw new RuntimeException('permessi eccessivi: '.implode('; ', $found));
         }
     }
 

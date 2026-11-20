@@ -15,13 +15,22 @@ it('controlla ruolo, tabelle, permessi e connessione dell\'applicazione sul data
         ->assertSuccessful();
 });
 
-it('in produzione la chiave principale locale fa fallire il controllo di salute', function (): void {
+it('in produzione la chiave principale locale fa fallire il controllo di salute con SAAS_HEALTH_STRICT', function (): void {
     app(KeyVault::class);
-    config(['app.env' => 'production', 'saas.crypto.vault' => 'local', 'mail.default' => 'smtp']);
+    config(['app.env' => 'production', 'saas.crypto.vault' => 'local', 'mail.default' => 'smtp', 'saas.health_strict' => true]);
 
     $this->artisan('saas:health', ['--skip-migrations' => true])
         ->expectsOutputToContain('chiave principale locale')
         ->assertFailed();
+});
+
+it('senza SAAS_HEALTH_STRICT la chiave principale locale in produzione è solo un avviso', function (): void {
+    app(KeyVault::class);
+    config(['app.env' => 'production', 'saas.crypto.vault' => 'local', 'mail.default' => 'smtp', 'saas.health_strict' => false]);
+
+    $this->artisan('saas:health', ['--skip-migrations' => true])
+        ->expectsOutputToContain('AVVISO chiave principale in produzione')
+        ->assertSuccessful();
 });
 
 it('in produzione la posta nel log o in memoria fa fallire il controllo di salute', function (string $mailer): void {
