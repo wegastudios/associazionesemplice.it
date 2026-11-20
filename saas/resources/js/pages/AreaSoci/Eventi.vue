@@ -37,6 +37,7 @@ const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.
                 </div>
             </li>
         </ul>
-        <p v-if="justBooked || member.invite.event" class="mt-4 text-sm">Non puoi partecipare? <Link href="/area/paga" class="font-semibold text-accent hover:underline">Sostienici con una donazione</Link>.</p>
+        <p v-if="justBooked" class="mt-4 text-sm">Vuoi sostenere {{ member.org }}? <Link href="/area/paga" class="font-semibold text-accent hover:underline">Fai una donazione</Link>.</p>
+        <p v-else-if="member.invite.event" class="mt-4 text-sm">Non puoi partecipare? <Link href="/area/paga" class="font-semibold text-accent hover:underline">Sostienici con una donazione</Link>.</p>
     </MemberLayout>
 </template>

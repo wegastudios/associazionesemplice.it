@@ -103,9 +103,9 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                 <span>Donazioni detraibili: a chi dona mostra «È anche detraibile.»
                     <span class="block text-muted">Verifica con il tuo commercialista se la tua associazione ne ha diritto.</span></span></label>
             <fieldset class="space-y-2"><legend class="font-semibold">Invito a donare</legend>
-                <p class="text-muted">L'invito compare solo se la spunta qui sopra è accesa e un metodo di pagamento è attivo. Ogni posto si accende da solo.</p>
+                <p class="text-muted">L'invito compare solo se la spunta qui sopra è accesa e un metodo di pagamento è attivo. Ogni posto ha il suo interruttore.</p>
                 <label class="flex items-center gap-2"><input v-model="give.invite_event" type="checkbox" /> Pagina di eventi e corsi: «Non puoi partecipare? Sostienici con una donazione.»</label>
-                <label class="flex items-center gap-2"><input v-model="give.invite_confirm" type="checkbox" /> Conferma dopo l'iscrizione: «Non puoi partecipare? Sostienici con una donazione.»</label>
+                <label class="flex items-center gap-2"><input v-model="give.invite_confirm" type="checkbox" /> Conferma dopo l'iscrizione: «Vuoi sostenere {{ '{associazione}' }}? Fai una donazione.»</label>
                 <label class="flex items-center gap-2"><input v-model="give.invite_area" type="checkbox" /> Area soci: «Vuoi sostenere {{ '{associazione}' }}? Fai una donazione.»</label>
                 <label class="flex items-center gap-2"><input v-model="give.invite_email" type="checkbox" /> Piede delle email ai soci: «Vuoi sostenere {{ '{associazione}' }}? Fai una donazione.»</label>
             </fieldset>
