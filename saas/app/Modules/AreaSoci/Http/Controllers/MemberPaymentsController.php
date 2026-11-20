@@ -38,7 +38,7 @@ final readonly class MemberPaymentsController
     {
         return Inertia::render('AreaSoci/Paga', [
             'member' => $this->memberPage->props(),
-            'donation' => ['enabled' => $this->donations->checkout(), 'amount_cents' => $this->donations->amountCents(), 'deductible' => $this->donations->deductible(),'org' => $this->current->require()['org_name']],
+            'donation' => ['enabled' => $this->donations->checkout(), 'amount_cents' => $this->donations->amountCents(), 'deductible' => $this->donations->deductible(), 'org' => $this->current->require()['org_name']],
             'providers' => $this->payments->providers(),
             'dues' => array_map(static fn (array $d): array => $d + ['amount_label' => Money::format($d['amount_cents'])], $this->payments->dues($this->current->ids())),
             'history' => array_map(static fn (array $p): array => [

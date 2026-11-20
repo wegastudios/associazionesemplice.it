@@ -89,7 +89,7 @@ jobs:
           php artisan key:generate --no-interaction
 
       - name: Pint
-        run: vendor/bin/pint --test -v
+        run: vendor/bin/pint --test
 
       - name: PHPStan
         run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress

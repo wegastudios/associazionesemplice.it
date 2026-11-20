@@ -71,7 +71,7 @@ final readonly class PaymentSettingsController
                 'paypal_enabled' => $s->paypal_enabled ?? false, 'paypal_client_id' => $s->paypal_client_id ?? '', 'paypal_secret_set' => $s?->paypal_secret !== null,
                 'paypal_live' => $s->paypal_live ?? false, 'account_id' => $s->account_id ?? '', 'ready' => $s?->providers() ?? [],
             ],
-            'donations' => ['checkout' => $this->donations->checkout(), 'deductible' => $this->donations->deductible(),'amount' => number_format($this->donations->amountCents() / 100, 2, ',', '')],
+            'donations' => ['checkout' => $this->donations->checkout(), 'deductible' => $this->donations->deductible(), 'amount' => number_format($this->donations->amountCents() / 100, 2, ',', '')],
             'webhookUrl' => $this->webhookUrl(),
             'accounts' => $this->ledger->openAccounts(),
             'payments' => array_map(static fn (array $p): array => [
