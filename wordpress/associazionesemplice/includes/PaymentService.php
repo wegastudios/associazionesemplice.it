@@ -119,6 +119,27 @@ class PaymentService extends OfflinePayments {
 			$this->update( $id, array( 'refund_pending_cents' => 0 ) );
 		}
 		Audit::log( 'payment.reviewed', 'payment', $id );
+		if ( $p && self::held_receipts( $id, false ) && 'paid' === $p['status'] && 0 === (int) $p['refunded_cents'] && empty( $p['refund_due'] ) ) { // controllato senza restituire: la ricevuta parte ora
+			$this->send_receipt_email( $this->get( $id ), (array) json_decode( (string) $p['items'], true ) );
+		}
+	}
+
+	/**
+	 * Pagamenti «da controllare» a cui la conferma al socio non è ancora partita. Con $add true il pagamento si aggiunge all'elenco; con false si toglie
+	 * e si dice se c'era (cioè se la conferma è in attesa). L'elenco sta in un'opzione, senza toccare lo schema del database.
+	 *
+	 * @return bool true se il pagamento era in attesa
+	 */
+	private static function held_receipts( int $id, bool $add ): bool {
+		$list = array_map( 'intval', (array) get_option( 'asem_receipts_held', array() ) );
+		$has  = in_array( $id, $list, true );
+		if ( $add && ! $has ) {
+			$list[] = $id;
+			update_option( 'asem_receipts_held', array_slice( $list, -500 ), false );
+		} elseif ( ! $add && $has ) {
+			update_option( 'asem_receipts_held', array_values( array_diff( $list, array( $id ) ) ), false );
+		}
+		return $has;
 	}
 
 	// ---------- Creazione del pagamento ----------
@@ -477,6 +498,7 @@ class PaymentService extends OfflinePayments {
 	/** Il rimborso è stato fatto dal gateway. */
 	public function mark_refunded( int $id ): void {
 		$this->update( $id, array( 'refund_due' => 0 ) );
+		self::held_receipts( $id, false ); // restituito: nessuna ricevuta da mandare
 		Audit::log( 'payment.refunded', 'payment', $id );
 	}
 
@@ -1096,10 +1118,14 @@ class PaymentService extends OfflinePayments {
 				$unallocated = $paid_cents;
 			} else {
 				foreach ( PaymentItems::receipt_batches( $items ) as list( $person_id, $group ) ) { // la donazione ha una ricevuta sua
-					$dups = array(); // voci già pagate per intero prima di questo incasso: l'incasso si registra lo stesso, ma il pagamento va controllato
+					$dups  = array(); // voci già pagate per intero prima di questo incasso: l'incasso si registra lo stesso, ma il pagamento va controllato
+					$ended = array(); // mesi di corso a cui la persona non è più iscritta: stessa cosa
 					foreach ( $group as $i ) {
 						if ( $this->item_already_paid( $i ) ) {
 							$dups[] = (string) ( $i['label'] ?? $i['type'] );
+						}
+						if ( PaymentItems::COURSE_MONTH === $i['type'] && Plugin::activities()->enrollment_ended( (int) $i['activity_id'], (int) $i['person_id'], (string) $i['month'] ) ) {
+							$ended[ (int) $i['activity_id'] ] = (string) ( Plugin::activities()->get( (int) $i['activity_id'] )['name'] ?? $i['label'] ?? '' );
 						}
 					}
 					$lines = array();
@@ -1115,10 +1141,18 @@ class PaymentService extends OfflinePayments {
 						continue;
 					}
 					$allocated += PaymentItems::total( $group );
-					if ( $dups ) {
+					if ( $dups || $ended ) {
+						$notes = array();
+						if ( $dups ) {
+							$notes[] = Texts::t( 1 === count( $dups ) ? 'Già pagata: {voce}. L\'incasso è stato registrato comunque: controlla se va restituito.' : 'Già pagate: {voce}. L\'incasso è stato registrato comunque: controlla se va restituito.', array( 'voce' => implode( ', ', $dups ) ) );
+							Audit::log( 'payment.item_already_paid', 'payment', (int) $p['id'], array( 'items' => count( $dups ) ) );
+						}
+						if ( $ended ) {
+							$notes[] = Texts::t( 1 === count( $ended ) ? 'Iscrizione terminata: {corso}. L\'incasso è stato registrato comunque: controlla se va restituito.' : 'Iscrizioni terminate: {corso}. L\'incasso è stato registrato comunque: controlla se va restituito.', array( 'corso' => implode( ', ', $ended ) ) );
+							Audit::log( 'payment.enrollment_ended', 'payment', (int) $p['id'], array( 'items' => count( $ended ) ) );
+						}
 						$review = true;
-						$error  = $error ?? mb_substr( Texts::t( 1 === count( $dups ) ? 'Già pagata: {voce}. L\'incasso è stato registrato comunque: controlla se va restituito.' : 'Già pagate: {voce}. L\'incasso è stato registrato comunque: controlla se va restituito.', array( 'voce' => implode( ', ', $dups ) ) ), 0, 250 );
-						Audit::log( 'payment.item_already_paid', 'payment', (int) $p['id'], array( 'items' => count( $dups ) ) );
+						$error  = $error ?? mb_substr( implode( ' ', $notes ), 0, 250 );
 					}
 					foreach ( $group as $i ) { // l'incasso è già in prima nota: se un passo successivo non riesce il pagamento resta «da controllare», senza riscrivere l'incasso
 						try {
@@ -1154,6 +1188,8 @@ class PaymentService extends OfflinePayments {
 		$row = $this->get( (int) $p['id'] );
 		if ( PaymentDonation::is_public( $items ) ) {
 			PaymentDonation::thank( $row, $items ); // ringraziamento con la ricevuta, a chi non è socio come a chi lo è
+		} elseif ( $review ) {
+			self::held_receipts( (int) $p['id'], true ); // pagamento da controllare: niente ricevuta né email finché la segreteria non segna «controllato» (se i soldi si restituiscono non resta nulla da annullare)
 		} else {
 			$this->send_receipt_email( $row, $items );
 		}
