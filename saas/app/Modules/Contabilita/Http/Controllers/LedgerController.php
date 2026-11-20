@@ -238,7 +238,7 @@ final readonly class LedgerController
      * ricorda l'esito; un secondo invio con lo stesso gettone (doppio clic, ripetizione del browser) non registra niente e
      * risponde con lo stesso messaggio. Se l'invio fallisce il gettone si libera, così dopo la correzione si può riprovare.
      *
-     * @param  array<string, mixed>  $data
+     * @param  array<mixed>  $data
      * @param  Closure(): string  $action
      */
     private function once(Request $request, array $data, Closure $action): RedirectResponse
