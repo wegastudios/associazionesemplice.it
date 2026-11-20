@@ -63,6 +63,13 @@ return [
     // indirizzi scritti dal SaaS in quelle pagine partono da qui, mai dalle intestazioni della richiesta. Vuoto = nessuno.
     'public_url' => env('SAAS_PUBLIC_URL', ''),
 
+    // Risorse prenotate dai soci dall'area soci (la segreteria non ha questi limiti): prenotazioni ancora da usare per
+    // persona, e anticipo massimo in giorni quando la risorsa non ne indica uno (anticipo a zero).
+    'resources' => [
+        'member_max_active' => (int) env('SAAS_MEMBER_MAX_ACTIVE_BOOKINGS', 10),
+        'member_default_advance_days' => (int) env('SAAS_MEMBER_DEFAULT_ADVANCE_DAYS', 30),
+    ],
+
     // Promemoria delle scadenze: vanno in coda, un'email per lavoro. Massimo di email al minuto per ogni associazione e in
     // totale (oltre, il lavoro riparte più tardi): si regola dal .env senza toccare il codice. Valori prudenti (20 al minuto =
     // 1.200 all'ora) per i limiti orari dell'hosting condiviso: con un SMTP dedicato si possono alzare.

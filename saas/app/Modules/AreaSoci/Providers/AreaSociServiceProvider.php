@@ -35,6 +35,20 @@ final class AreaSociServiceProvider extends ServiceProvider
         $router->aliasMiddleware('member', AuthenticateMember::class);
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');
 
+        // Azioni dei soci collegati, ogni 10 minuti: per socio (dal cookie di sessione, in impronta) e per indirizzo IP.
+        //   member-book: prenota (eventi, risorse) e lista d'attesa; member-cancel: annulla; member-profile: recapiti;
+        //   member-receipt: PDF delle ricevute; member-pay-result: esito dei pagamenti.
+        foreach (['member-book' => [20, 60], 'member-cancel' => [20, 60], 'member-profile' => [10, 30], 'member-receipt' => [30, 100], 'member-pay-result' => [60, 200]] as $name => [$perMember, $perIp]) {
+            RateLimiter::for($name, static function (Request $request) use ($name, $perMember, $perIp): array {
+                $cookie = $request->cookie(AuthenticateMember::COOKIE);
+
+                return [
+                    Limit::perMinutes(10, $perMember)->by($name.'|'.(is_string($cookie) && $cookie !== '' ? hash('sha256', $cookie) : 'ip-'.$request->ip())),
+                    Limit::perMinutes(10, $perIp)->by($name.'-ip|'.$request->ip()),
+                ];
+            });
+        }
+
         // Donazioni dalla pagina pubblica: 10 al minuto dallo stesso indirizzo, 100 all'ora per associazione.
         RateLimiter::for('donations', static function (Request $request): array {
             $slug = $request->route('slug');

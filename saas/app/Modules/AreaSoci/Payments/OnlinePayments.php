@@ -17,6 +17,7 @@ use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDonations;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Soci\Contracts\MemberProfiles;
+use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Database\ConnectionInterface;
@@ -54,7 +55,11 @@ final readonly class OnlinePayments
 
     public const MAX_PER_HOUR = 10;
 
+    /** Secondi tra due richieste al servizio di pagamento per lo stesso pagamento ancora in attesa. */
+    public const CHECK_SECONDS = 15;
+
     public function __construct(
+        private Cache $cache,
         private DatabaseManager $db,
         private OrgContext $context,
         private Container $app,
@@ -164,7 +169,9 @@ final readonly class OnlinePayments
     }
 
     /**
-     * Il socio torna dal pagamento: si chiede al servizio se è andato a buon fine e, se sì, si registra.
+     * Il socio torna dal pagamento: si chiede al servizio se è andato a buon fine e, se sì, si registra. Un pagamento già
+     * definitivo si legge solo dal database; uno ancora in attesa si chiede al servizio al massimo ogni 15 secondi
+     * (aperture ravvicinate della pagina mostrano lo stato di prima).
      *
      * @return Payment|null
      */
@@ -175,6 +182,9 @@ final readonly class OnlinePayments
             return null;
         }
         if ($p['status'] !== 'pending' || $p['provider_ref'] === null) {
+            return $p;
+        }
+        if (! $this->cache->add('online-payment-check|'.$p['id'], true, self::CHECK_SECONDS)) {
             return $p;
         }
         $settings = $this->settings();

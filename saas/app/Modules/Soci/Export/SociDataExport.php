@@ -69,7 +69,7 @@ final readonly class SociDataExport implements DataExport
         $files['soci/livelli.csv'] = Csv::build(['Livello', 'Tipo', 'Quota', 'Attivo'], $rows);
 
         $rows = [];
-        foreach (Application::query()->orderBy('submitted_at')->get() as $a) {
+        foreach (Application::query()->where('unconfirmed', false)->orderBy('submitted_at')->get() as $a) {
             $d = $a->data;
             $t = static fn (string $k): string => is_scalar($d[$k] ?? null) ? (string) $d[$k] : '';
             $g = is_array($d['guardian'] ?? null) ? $d['guardian'] : [];

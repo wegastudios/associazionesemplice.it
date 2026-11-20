@@ -188,7 +188,13 @@ operatori e nessun pacchetto finché non ne ricevono.
   `/adesione/{indirizzo}` solo se l'associazione è attiva e le ha accese; 5 invii al minuto per indirizzo IP e 50
   all'ora per associazione, campo trappola `website`, stessa risposta qualunque sia il dato. I dati del modulo sono
   cifrati in `app.applications.data_enc`. Accogliendo nasce la scheda (con il genitore, cercato per codice fiscale o
-  email) e si registrano i consensi del modulo come «Online»; respingendo serve un motivo.
+  email) e si registrano i consensi del modulo come «Online»; respingendo serve un motivo. La domanda nasce «da
+  confermare» (`unconfirmed`): all'indirizzo indicato va un'email con un link (`/adesione/{indirizzo}/conferma/{link}`:
+  una pagina con un pulsante, la conferma è il POST; vale 48 ore e una volta sola, nel database c'è solo l'impronta
+  sha256). Finché non è confermata non compare in segreteria e non produce altre email; confermata, arriva in
+  segreteria e a chi l'ha scritta va la ricevuta. A uno stesso indirizzo si scrive una sola volta l'ora; nelle email
+  saluto e frasi sono sempre gli stessi, mai testo scelto da chi compila il modulo. Il comando `saas:applications:prune`
+  (ogni notte alle 03:41) cancella le domande mai confermate da 30 giorni e quelle respinte da 90; le accolte restano.
 - Import (`PeopleImportService`, lettura e piano in `Soci/Import`, portati dal plugin con i loro test): `.xlsx` o CSV
   (`;`, `,` o tabulazione, UTF-8 o Windows-1252), al massimo 5 MB e 5000 righe. Prima l'anteprima, poi lo stesso file
   si applica: chi c'è già si riconosce per tessera, email, cellulare, codice fiscale o nome e si aggiorna con i soli
@@ -282,6 +288,12 @@ l'operatore può vedere.
   password, elenco con `accounting.view`). Nei test Stripe e PayPal sono simulati con `Http::fake`.
 - Risorse Web: il socio prenota dall'area soci le risorse a ore e a giornata delle tipologie che il pacchetto ha con
   `web: true` (`Risorse\Contracts\MemberResources`), con anticipo e niente passato; annulla le sue future non pagate.
+  Limiti di chi prenota da solo (`config/saas.php`, `resources`): al massimo 10 prenotazioni ancora da usare per persona
+  (`SAAS_MEMBER_MAX_ACTIVE_BOOKINGS`) e, se la risorsa ha l'anticipo a zero, un anticipo massimo di 30 giorni
+  (`SAAS_MEMBER_DEFAULT_ADVANCE_DAYS`); la segreteria non ha questi limiti. Prenota, annulla, lista d'attesa, recapiti,
+  PDF delle ricevute ed esito dei pagamenti hanno un limite di frequenza per socio e per indirizzo (limiti nominati
+  `member-*` in `AreaSociServiceProvider`); l'esito di un pagamento in attesa interroga Stripe o PayPal al massimo
+  ogni 15 secondi.
 - Prossimo passo: app installabile (PWA), notifiche e tessera nel wallet.
 
 ## 9 ter. Documenti e ricevute

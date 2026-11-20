@@ -12,6 +12,7 @@ use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Core\Contracts\ReadableExport;
 use App\Modules\Core\Contracts\SetupStep;
+use App\Modules\Soci\Console\PruneApplicationsCommand;
 use App\Modules\Soci\Console\SendRemindersCommand;
 use App\Modules\Soci\Contracts\MemberProfiles;
 use App\Modules\Soci\Contracts\Members;
@@ -75,6 +76,9 @@ final class SociServiceProvider extends ServiceProvider
             ];
         });
 
+        // Conferma della domanda dal link ricevuto per email: 10 al minuto dallo stesso indirizzo.
+        RateLimiter::for('applications-confirm', static fn (Request $request): Limit => Limit::perMinute(10)->by('application-confirm-ip|'.$request->ip()));
+
         // Promemoria in coda: frequenza massima per associazione e in totale (regolabile da configurazione).
         RateLimiter::for('reminder-mail', static function (object $job): array {
             $org = $job instanceof SendReminderEmail ? $job->orgId : '';
@@ -86,10 +90,12 @@ final class SociServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendRemindersCommand::class]);
+            $this->commands([SendRemindersCommand::class, PruneApplicationsCommand::class]);
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 // Il comando si limita ad accodare: se si inchioda, il blocco di sovrapposizione si libera dopo 30 minuti.
                 $schedule->command('saas:reminders:send')->dailyAt('08:23')->withoutOverlapping(30);
+                // Domande mai confermate (30 giorni) o respinte (90 giorni): si cancellano ogni notte.
+                $schedule->command('saas:applications:prune')->dailyAt('03:41')->withoutOverlapping(30);
             });
         }
     }
