@@ -132,7 +132,7 @@ extra_step( 'prima nota', function () use ( $ledger ) {
 		array( 70, 7500, 'Erogazione liberale di un socio', 'donation', 'bank' ),
 		array( 41, 2500, 'Offerta al banchetto', 'donation', 'cash' ),
 		array( 3, 4000, 'Offerta alla serata di giochi', 'donation', 'cash' ),
-		array( 45, 9000, 'Quote del corso di fotografia', 'activity_fee', 'cash' ),
+		array( 45, 9000, 'Contributi del corso di fotografia', 'activity_fee', 'cash' ),
 		array( 18, 8500, 'Incasso del mercatino di autunno', 'other_income', 'cash' ),
 	);
 	foreach ( $income as $d ) {

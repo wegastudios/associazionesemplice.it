@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '71'; // dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '72'; // dalla 72 la voce «Quota attività / corso» si chiama «Contributo attività / corso» (si rinomina una volta, solo dove ha ancora il nome originale); dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	/**
 	 * Tutti i lavori periodici e programmati del plugin e delle sue estensioni (nomi dei punti di aggancio di WP-Cron).
@@ -126,6 +126,9 @@ final class Install {
 			if ( '' !== $old && version_compare( $old, '71', '<' ) ) {
 				update_option( self::REALIGN_OPTION, '0', false ); // la tessera segue l'anno fiscale: riallineamento delle tessere esistenti (dopo una copia di sicurezza)
 				self::maybe_realign_memberships();
+			}
+			if ( '' !== $old && version_compare( $old, '72', '<' ) ) {
+				self::migrate_activity_fee_name();
 			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
@@ -314,6 +317,16 @@ final class Install {
 	 * Dalla v64 il pulsante WhatsApp è una scelta a parte (`whatsapp_button`): il telefono della segreteria è obbligatorio e può essere un fisso.
 	 * Chi aveva già un numero compilato (che prima accendeva il pulsante) lo tiene acceso. Si può rilanciare senza effetti. @return bool true se è stato acceso
 	 */
+	/**
+	 * La voce degli incassi di attività e corsi si chiama «Contributo attività / corso» (prima «Quota attività / corso»). Si rinomina solo la voce di tipo
+	 * «activity_fee» che ha ancora il nome originale: chi l'ha chiamata in altro modo la ritrova com'era. Gli anni fiscali chiusi hanno il rendiconto
+	 * fotografato (testo salvato alla chiusura): non si toccano. @return int voci rinominate
+	 */
+	public static function migrate_activity_fee_name(): int {
+		$db = Db::db();
+		return (int) $db->query( $db->prepare( 'UPDATE ' . Db::t( 'categories' ) . ' SET name = %s WHERE kind = %s AND name = %s', 'Contributo attività / corso', 'activity_fee', 'Quota attività / corso' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- tabella del plugin, valori preparati
+	}
+
 	public static function migrate_whatsapp_button(): bool {
 		$saved = get_option( Settings::OPTION, array() );
 		if ( ! is_array( $saved ) || array_key_exists( 'whatsapp_button', $saved ) || '' === trim( (string) ( $saved['secretary_phone'] ?? '' ) ) ) {
@@ -1261,7 +1274,7 @@ final class Install {
 			$uscite   = 'Uscite da attività di interesse generale';
 			$seed     = array(
 				array( 'Quota associativa', 'membership', 'Entrate da quote associative' ),
-				array( 'Quota attività / corso', 'activity_fee', $entrate ),
+				array( 'Contributo attività / corso', 'activity_fee', $entrate ),
 				array( 'Erogazione liberale', 'donation', 'Erogazioni liberali' ),
 				array( 'Altre entrate', 'other_income', 'Altre entrate' ),
 				array( 'Rimborso spese socio/volontario', 'member_reimbursement', $uscite ),

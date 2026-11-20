@@ -23,7 +23,7 @@ final class Labels {
 	public static function category_kinds(): array {
 		return array(
 			'membership'               => array( 'Quota associativa', true, false ),
-			'activity_fee'             => array( 'Quota attività / corso', true, false ),
+			'activity_fee'             => array( 'Contributo attività / corso', true, false ),
 			'donation'                 => array( 'Erogazione liberale', true, false ),
 			'other_income'             => array( 'Altra entrata', true, false ),
 			'member_reimbursement'     => array( 'Rimborso spese socio/volontario', false, true ),

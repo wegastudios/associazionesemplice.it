@@ -533,7 +533,7 @@ final class Receipts {
 				if ( ! empty( $r['session_date'] ) ) {
 					$what = 'Contributo evento: ' . $r['activity_name'] . ' (' . self::d( $r['session_date'] ) . ')';
 				} elseif ( ! empty( $r['competence_month'] ) ) {
-					$what = 'Quota corso: ' . $r['activity_name'] . ' — ' . self::month_label( $r['competence_month'] );
+					$what = 'Contributo corso: ' . $r['activity_name'] . ' — ' . self::month_label( $r['competence_month'] );
 				} else {
 					$what = 'Contributo: ' . ( $r['activity_name'] ?: $r['category_name'] );
 				}
