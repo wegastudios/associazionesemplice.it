@@ -1096,6 +1096,12 @@ class PaymentService extends OfflinePayments {
 				$unallocated = $paid_cents;
 			} else {
 				foreach ( PaymentItems::receipt_batches( $items ) as list( $person_id, $group ) ) { // la donazione ha una ricevuta sua
+					$dups = array(); // voci già pagate per intero prima di questo incasso: l'incasso si registra lo stesso, ma il pagamento va controllato
+					foreach ( $group as $i ) {
+						if ( $this->item_already_paid( $i ) ) {
+							$dups[] = (string) ( $i['label'] ?? $i['type'] );
+						}
+					}
 					$lines = array();
 					foreach ( $group as $i ) {
 						$lines[] = $this->line_for( $i, $note, $ledger );
@@ -1109,6 +1115,11 @@ class PaymentService extends OfflinePayments {
 						continue;
 					}
 					$allocated += PaymentItems::total( $group );
+					if ( $dups ) {
+						$review = true;
+						$error  = $error ?? mb_substr( Texts::t( 'Voce già pagata ({voce}): incasso registrato lo stesso, da controllare.', array( 'voce' => implode( ', ', $dups ) ) ), 0, 250 );
+						Audit::log( 'payment.item_already_paid', 'payment', (int) $p['id'], array( 'items' => count( $dups ) ) );
+					}
 					foreach ( $group as $i ) { // l'incasso è già in prima nota: se un passo successivo non riesce il pagamento resta «da controllare», senza riscrivere l'incasso
 						try {
 							if ( PaymentItems::RESERVATION === $i['type'] ) {
@@ -1176,6 +1187,28 @@ class PaymentService extends OfflinePayments {
 			$this->update( (int) $p['id'], array( 'status' => 'cancelled' ) );
 			Audit::log( 'payment.cancelled', 'payment', (int) $p['id'], array( 'provider' => 'woocommerce' ) );
 		}
+	}
+
+	/**
+	 * La voce di un pagamento online risulta già pagata per intero (da un altro incasso, per esempio in segreteria)? Si guarda prima di registrare:
+	 * serve solo a segnare il pagamento «da controllare», senza bloccare l'incasso né restituire nulla. Voce non verificabile: no.
+	 */
+	private function item_already_paid( array $i ): bool {
+		$pid = (int) ( $i['person_id'] ?? 0 );
+		if ( $pid <= 0 ) {
+			return false;
+		}
+		switch ( $i['type'] ) {
+			case PaymentItems::MEMBERSHIP:
+				$people = Plugin::people();
+				$person = $people->get( $pid );
+				return $person && $people->has_membership( $pid, (string) $i['social_year'] ) && $people->membership_missing( $person, (string) $i['social_year'] ) <= 0;
+			case PaymentItems::COURSE_MONTH:
+				return 0 === Plugin::activities()->enrollment_left( (int) $i['activity_id'], $pid, (string) $i['month'] );
+			case PaymentItems::BOOKING:
+				return 0 === Plugin::activities()->booking_left( (int) $i['session_id'], $pid );
+		}
+		return false;
 	}
 
 	private function line_for( array $i, string $note, LedgerService $ledger ): array {
