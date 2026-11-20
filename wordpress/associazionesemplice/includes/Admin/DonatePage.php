@@ -29,7 +29,7 @@ final class DonatePage {
 			echo '<p class="description">' . esc_html( Donations::disclaimer() ) . '</p>';
 		}
 		echo '<p class="description">Ogni raccolta mostra gli importi proposti e un pulsante «Dona con PayPal»: il donatore paga sul sito di PayPal, il sito non tratta nessun dato di pagamento. '
-			. 'Le donazioni arrivano direttamente sul tuo conto PayPal e si registrano in prima nota come «Erogazione liberale» (<a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a>).</p>';
+			. 'Le donazioni arrivano sul tuo conto PayPal: registrale a mano in Prima nota da «<a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a>», con la categoria «Erogazione liberale».</p>';
 
 		Ui::form_open( 'asem_save_donate', Ui::url( 'asem-donate' ) );
 		echo '<h2>Conto e raccolta generale</h2><table class="form-table"><tbody>';
@@ -43,7 +43,7 @@ final class DonatePage {
 			. '<p class="description">Il titolo del modulo e il motivo che compare su PayPal. Vuoto = «Donazione a» e il nome dell\'ente.</p></td></tr>';
 		echo wp_kses( '<tr><th>Shortcode della raccolta generale</th><td>' . self::copy_field( Donations::shortcode() ) . '</td></tr>', Html::allowed() );
 		echo '</tbody></table>';
-		echo '<h2>Invito «Non puoi partecipare?»</h2><p class="description">Una riga «Non puoi partecipare? Sostienici con una donazione» con il link alla tua pagina delle donazioni. Scegli tu dove farla comparire: all\'inizio è spenta ovunque.</p><table class="form-table"><tbody>';
+		echo '<h2>Invito a donare</h2><p class="description">Una riga con il link alla tua pagina delle donazioni. Dove c\'è un evento o un corso (pagina dell\'evento e conferma dell\'iscrizione) dice «Non puoi partecipare? Sostienici con una donazione»; nell\'area soci e nelle email dice «Vuoi sostenere» e il nome dell\'associazione, poi «Fai una donazione». Scegli tu dove farla comparire: all\'inizio è spenta ovunque.</p><table class="form-table"><tbody>';
 		$places = array(
 			'donate_invite_event'   => 'Sulla pagina dell\'evento o del corso (utile soprattutto quando è pieno o già passato)',
 			'donate_invite_confirm' => 'Nella conferma dopo l\'iscrizione o la prenotazione',

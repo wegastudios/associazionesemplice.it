@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Raccolta di donazioni con PayPal. Il sito non parla con PayPal: mostra un modulo che porta il donatore alla pagina di donazione di
  * PayPal (paypal.com/donate) già compilata con il conto dell'ente, la causale e l'importo scelto. Il pagamento avviene tutto su PayPal.
- * Le donazioni ricevute si registrano in prima nota come «Erogazione liberale».
+ * Le donazioni arrivano sul conto PayPal e non lasciano traccia nel gestionale: si registrano a mano in prima nota («Nuovo incasso», categoria «Erogazione liberale»); nessun webhook né IPN.
  */
 final class Donations {
 

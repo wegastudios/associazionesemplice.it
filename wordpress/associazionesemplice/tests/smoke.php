@@ -3388,8 +3388,14 @@ Settings::update( array( 'donate_invite_area' => 1, 'donate_invite_mail' => 1, '
 asem_ok( '' === \AssociazioneSemplice\DonationInvite::html( 'area' ), 'invito donazione: senza una pagina delle donazioni non compare' );
 Settings::update( array( 'donate_invite_page' => 'https://example.org/dona/' ) );
 $di_html = \AssociazioneSemplice\DonationInvite::html( 'area' );
-asem_ok( false !== strpos( $di_html, 'Non puoi partecipare? ' ) && false !== strpos( $di_html, 'href="https://example.org/dona/"' ) && false !== strpos( $di_html, 'Sostienici con una donazione' ), 'invito donazione: testo e link alla pagina' );
-asem_ok( false === strpos( $di_html, 'detraibile' ), 'invito donazione: «È anche detraibile» solo se l\'ente lo accende' );
+$di_ev   = \AssociazioneSemplice\DonationInvite::html( 'event' );
+asem_ok( false !== strpos( $di_ev, 'Non puoi partecipare? ' ) && false !== strpos( $di_ev, 'href="https://example.org/dona/"' ) && false !== strpos( $di_ev, 'Sostienici con una donazione' ), 'invito donazione: sulla pagina dell\'evento «Non puoi partecipare?» con il link' );
+asem_ok( false !== strpos( $di_html, 'Vuoi sostenere ' ) && false !== strpos( $di_html, 'Fai una donazione' ) && false === strpos( $di_html, 'Non puoi partecipare' ), 'invito donazione: area soci ed email dicono «Vuoi sostenere … Fai una donazione»' );
+asem_ok( false === strpos( $di_ev, 'detraibile' ), 'invito donazione: «È anche detraibile» solo se l\'ente lo accende' );
+Settings::update( array( 'donation_deductible' => 1 ) );
+$di_ded = \AssociazioneSemplice\DonationInvite::html( 'event' );
+asem_ok( false !== strpos( $di_ded, 'È anche detraibile.' ) && false === strpos( $di_ded, 'commercialista' ), 'invito donazione: chi dona vede «È anche detraibile.» senza la frase per il commercialista' );
+Settings::update( array( 'donation_deductible' => 0 ) );
 Settings::update( array( 'donate_invite_area' => 0 ) );
 asem_ok( '' === \AssociazioneSemplice\DonationInvite::html( 'area' ) && '' !== \AssociazioneSemplice\DonationInvite::html( 'event' ), 'invito donazione: ogni posto si accende da solo' );
 asem_ok( \AssociazioneSemplice\DonationInvite::is_confirmation( 'Prenotazione registrata per Anna.' ) && ! \AssociazioneSemplice\DonationInvite::is_confirmation( 'Impostazioni salvate.' ), 'invito donazione: solo dopo iscrizione o prenotazione' );

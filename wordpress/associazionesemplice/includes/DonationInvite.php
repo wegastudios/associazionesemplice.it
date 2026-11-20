@@ -43,14 +43,21 @@ final class DonationInvite {
 		return $found ? (string) get_permalink( (int) $found[0] ) : '';
 	}
 
-	/** «È anche detraibile.» solo se l'associazione ha acceso la sua opzione fiscale (spenta di default), con l'invito a sentire il commercialista. */
+	/** «È anche detraibile.» solo se l'associazione ha acceso la sua opzione fiscale (spenta di default); la raccomandazione al commercialista sta solo nelle impostazioni. */
 	public static function deductible_text(): string {
-		return empty( Settings::get( 'donation_deductible' ) ) ? '' : 'È anche detraibile. Verifica con il tuo commercialista se la tua associazione ne ha diritto.';
+		return empty( Settings::get( 'donation_deductible' ) ) ? '' : 'È anche detraibile.';
 	}
 
+	/** I posti dove c'è un evento o un corso («Non puoi partecipare?»); negli altri l'invito è generale. */
+	const EVENT_PLACES = array( 'event', 'confirm' );
+
 	/** Le frasi dell'invito: [testo prima del link, testo del link, coda]. */
-	private static function parts(): array {
-		return array( 'Non puoi partecipare? ', 'Sostienici con una donazione', self::deductible_text() );
+	private static function parts( string $place ): array {
+		if ( in_array( $place, self::EVENT_PLACES, true ) ) {
+			return array( 'Non puoi partecipare? ', 'Sostienici con una donazione', self::deductible_text() );
+		}
+		$name = trim( (string) Settings::get( 'association_name' ) );
+		return array( 'Vuoi sostenere ' . ( '' !== $name ? $name : 'la nostra associazione' ) . '? ', 'Fai una donazione', self::deductible_text() );
 	}
 
 	/** Il blocco per le pagine del sito (vuoto se il posto è spento o manca la pagina). */
@@ -59,7 +66,7 @@ final class DonationInvite {
 		if ( '' === $url ) {
 			return '';
 		}
-		list( $before, $link, $tail ) = self::parts();
+		list( $before, $link, $tail ) = self::parts( $place );
 		return '<p class="asemf-donate-invite">' . esc_html( $before ) . '<a href="' . esc_url( $url ) . '">' . esc_html( $link ) . '</a>.'
 			. ( '' !== $tail ? ' ' . esc_html( $tail ) : '' ) . '</p>';
 	}
@@ -70,7 +77,7 @@ final class DonationInvite {
 		if ( '' === $url ) {
 			return '';
 		}
-		list( $before, $link, $tail ) = self::parts();
+		list( $before, $link, $tail ) = self::parts( 'mail' );
 		return $before . $link . ': ' . $url . ( '' !== $tail ? "\n" . $tail : '' );
 	}
 
