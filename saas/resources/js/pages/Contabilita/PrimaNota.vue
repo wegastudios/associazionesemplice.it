@@ -58,7 +58,10 @@ const grossText = (amount, rate) => {
 };
 const rateOptions = computed(() => [...(props.fiscal?.rates ?? []).map((r) => ({ value: r, label: `IVA ${r}%` })), { value: 0, label: 'IVA esente' }, { value: 'none', label: 'Fuori campo IVA' }]);
 const expenseRateOptions = computed(() => [...rateOptions.value, { value: 'reverse_charge', label: 'Reverse charge' }]);
+// Gettone monouso del modulo: un secondo invio con lo stesso gettone non registra un secondo movimento.
+const newToken = () => (globalThis.crypto?.randomUUID?.() ?? '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (Number(c) ^ (Math.random() * 16) >> Number(c) / 4).toString(16)));
 const income = useForm({
+    submission: newToken(),
     date: today,
     account_id: openAccounts.value[0]?.id ?? '',
     method: '',
@@ -72,6 +75,7 @@ const addLine = () => income.lines.push({ category_id: incomeCategories.value[0]
 const removeLine = (i) => income.lines.splice(i, 1);
 
 const expense = useForm({
+    submission: newToken(),
     date: today,
     account_id: openAccounts.value[0]?.id ?? '',
     category_id: expenseCategories.value[0]?.id ?? '',
@@ -83,6 +87,7 @@ const expense = useForm({
     activity_id: '',
 });
 const transfer = useForm({
+    submission: newToken(),
     date: today,
     from_account_id: openAccounts.value[0]?.id ?? '',
     to_account_id: openAccounts.value[1]?.id ?? '',
@@ -90,7 +95,7 @@ const transfer = useForm({
     description: '',
 });
 
-const done = (form) => ({ preserveScroll: true, onSuccess: () => { form.reset(); mode.value = null; } });
+const done = (form) => ({ preserveScroll: true, onSuccess: () => { form.reset(); form.submission = newToken(); mode.value = null; } });
 // Un errore del server (anno fiscale chiuso, conto chiuso, dati non validi) si legge dentro al foglio, non sotto il velo.
 const sheetError = (form) => usePage().props.errors?.ledger ?? Object.values(form.errors)[0] ?? null;
 const noEmpty = (d) => ({ ...d, activity_id: d.activity_id || null });

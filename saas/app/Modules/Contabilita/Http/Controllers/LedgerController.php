@@ -23,6 +23,7 @@ use App\Modules\Core\Contracts\OrgFiscal;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -119,9 +120,10 @@ final readonly class LedgerController
             'lines.*.description' => ['nullable', 'string', 'max:255'],
             'lines.*.competence_month' => ['nullable', 'date_format:Y-m'],
             'lines.*.vat_rate' => ['nullable'],
+            'submission' => ['nullable', 'uuid'],
         ]));
 
-        return $this->attempt(function () use ($data): string {
+        return $this->once($request, $data, function () use ($data): string {
             $lines = [];
             foreach (Input::rows($data, 'lines') as $i => $line) {
                 $rate = Vat::cleanRate(Input::raw($line, 'vat_rate'));
@@ -161,9 +163,10 @@ final readonly class LedgerController
             'document_ref' => ['nullable', 'string', 'max:80'],
             'vat_rate' => ['nullable'],
             'activity_id' => ['nullable', 'uuid'],
+            'submission' => ['nullable', 'uuid'],
         ]));
 
-        return $this->attempt(function () use ($data): string {
+        return $this->once($request, $data, function () use ($data): string {
             $method = Input::optionalString($data, 'method');
             $reverse = Input::raw($data, 'vat_rate') === 'reverse_charge';
             $rate = Vat::cleanRate(Input::raw($data, 'vat_rate'));
@@ -193,9 +196,10 @@ final readonly class LedgerController
             'to_account_id' => ['required', 'uuid'],
             'amount' => ['required', 'string', 'max:20'],
             'description' => ['nullable', 'string', 'max:255'],
+            'submission' => ['nullable', 'uuid'],
         ]));
 
-        return $this->attempt(function () use ($data): string {
+        return $this->once($request, $data, function () use ($data): string {
             $this->ledger->recordTransfer(
                 Input::string($data, 'date'),
                 Input::string($data, 'from_account_id'),
@@ -227,6 +231,44 @@ final readonly class LedgerController
 
             return 'Corso o evento del movimento aggiornato.';
         });
+    }
+
+    /**
+     * Gettone monouso del modulo: il form ne genera uno all'apertura e lo manda con ogni invio. Il primo invio registra e
+     * ricorda l'esito; un secondo invio con lo stesso gettone (doppio clic, ripetizione del browser) non registra niente e
+     * risponde con lo stesso messaggio. Se l'invio fallisce il gettone si libera, così dopo la correzione si può riprovare.
+     *
+     * @param  array<mixed>  $data
+     * @param  Closure(): string  $action
+     */
+    private function once(Request $request, array $data, Closure $action): RedirectResponse
+    {
+        $token = Input::optionalString($data, 'submission');
+        if ($token === null) {
+            return $this->attempt($action);
+        }
+        $user = $request->user()?->getAuthIdentifier();
+        $key = 'ledger-submission:'.(is_string($user) || is_int($user) ? (string) $user : '').':'.$token;
+        if (! Cache::add($key, '', 600)) {
+            $outcome = Cache::get($key);
+
+            return back()->with('status', is_string($outcome) && $outcome !== '' ? $outcome : 'Registrazione già inviata: attendi un momento.');
+        }
+        $done = false;
+        try {
+            $message = 'Registrato.';
+            $response = $this->attempt(function () use ($action, &$message): string {
+                return $message = $action();
+            });
+            Cache::put($key, $message, 600);
+            $done = true;
+
+            return $response;
+        } finally {
+            if (! $done) {
+                Cache::forget($key);
+            }
+        }
     }
 
     /** @param  Closure(): string  $action */

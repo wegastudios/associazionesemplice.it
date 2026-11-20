@@ -125,10 +125,13 @@ it('incassa in prima nota con ricevuta e tiene conto degli storni', function ():
             ->and(fn () => $s->book($hall->id, ['person_id' => $p->id, 'date' => $this->day, 'services' => ['Torta']], null))->toThrow(ResourceError::class, 'non previsto');
 
         $cash = Account::query()->sole()->id;
+        // Oltre quanto manca non si incassa.
+        expect(fn () => $s->collect($id, $cash, now()->toDateString(), 45001, PaymentMethod::Cash))->toThrow(ResourceError::class, 'supera quanto manca');
         $receipt = $s->collect($id, $cash, now()->toDateString(), 10000, PaymentMethod::Cash);
         expect($receipt)->not->toBeNull()->and($s->paid([$id])[$id])->toBe(10000);
         $s->collect($id, $cash, now()->toDateString(), null, null);
         expect($s->paid([$id])[$id])->toBe(45000)
+            ->and(fn () => $s->collect($id, $cash, now()->toDateString(), 100, PaymentMethod::Cash))->toThrow(ResourceError::class, 'già pagata')
             ->and(fn () => $s->collect($id, $cash, now()->toDateString(), null, null))->toThrow(ResourceError::class, 'niente da incassare')
             ->and(DB::table('app.transactions')->where('description', 'like', 'Sala feste%')->count())->toBe(2);
 

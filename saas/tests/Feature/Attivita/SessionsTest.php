@@ -102,6 +102,7 @@ it('vende pacchetti di ingressi e incassa con ricevuta', function (): void {
         expect($receipt)->not->toBeNull()
             ->and($s->paid([$pack->id])[$pack->id])->toBe(4000)
             ->and(fn () => $s->collect($pack->id, $cash, now()->toDateString(), null, null))->toThrow(ActivityError::class, 'niente da incassare')
+            ->and(fn () => $s->collect($pack->id, $cash, now()->toDateString(), 100, null))->toThrow(ActivityError::class, 'già pagata')
             ->and(app(Ledger::class)->activityTotals([$a->id])[$a->id]['income'])->toBe(4000);
         app(Ledger::class)->void((string) DB::table('app.booking_payments')->value('transaction_id'), 'errore');
         expect($s->paid([$pack->id]))->toBe([]);

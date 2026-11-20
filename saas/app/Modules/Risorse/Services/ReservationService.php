@@ -10,6 +10,7 @@ use App\Modules\Contabilita\Contracts\CategoryKind;
 use App\Modules\Contabilita\Contracts\Income;
 use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
+use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Risorse\Contracts\ResourceError;
@@ -202,6 +203,9 @@ final readonly class ReservationService
         if ($r->kind !== 'booking') {
             throw new ResourceError('Un blocco non si incassa.');
         }
+        if ($r->status !== 'booked') {
+            throw new ResourceError('La prenotazione è annullata.');
+        }
         $res = $this->resources->find($r->resource_id);
         $cents ??= max(0, $r->fee_due_cents - ($this->paid([$r->id])[$r->id] ?? 0));
         if ($cents <= 0) {
@@ -214,6 +218,15 @@ final readonly class ReservationService
         $description = mb_substr($res->name.' · '.$when.($r->holder_name !== null ? ' · '.$r->holder_name : ''), 0, 255);
 
         return $this->connection()->transaction(function () use ($r, $accountId, $date, $cents, $method, $category, $description, $vatRate): ?string {
+            // Con la prenotazione bloccata si ricalcola quanto manca: due incassi insieme sulla stessa voce non passano entrambi.
+            $locked = Reservation::query()->whereKey($r->id)->lockForUpdate()->first();
+            if ($locked === null || $locked->status !== 'booked') {
+                throw new ResourceError('La prenotazione è annullata.');
+            }
+            $left = max(0, $locked->fee_due_cents - ($this->paid([$r->id])[$r->id] ?? 0));
+            if ($cents > $left) {
+                throw new ResourceError($left <= 0 ? 'Questa prenotazione risulta già pagata.' : 'L\'importo supera quanto manca da incassare ('.Money::format($left).').');
+            }
             $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, null, $vatRate)], $method, $r->person_id, $r->person_id !== null));
             foreach ($out['transactions'] as $tx) {
                 $this->connection()->table('app.reservation_payments')->insert(['org_id' => $this->context->require()->id, 'transaction_id' => $tx, 'reservation_id' => $r->id]);
