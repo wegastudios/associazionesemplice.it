@@ -330,14 +330,14 @@ Se il socio ha già la tessera di quell'anno, il gestionale non registra la quot
 
 Se il socio paga online una voce già pagata (una quota, un mese di corso o una prenotazione a un evento), oppure un mese di corso con l'iscrizione terminata, il gestionale registra comunque l'incasso in prima nota e segna il pagamento «da controllare», con il motivo. Al ritorno dal pagamento il socio legge «Pagamento ricevuto: la segreteria lo sta controllando.».
 
-La ricevuta nasce, e la conferma al socio parte, solo quando premi **controllato**. Se il pagamento viene rimborsato, la conferma non parte mai. I soldi sono arrivati sul conto Stripe o PayPal dell'associazione. Cosa fare:
+La ricevuta nasce, e la conferma al socio parte, solo quando premi **Segna come controllato**. Se il pagamento viene rimborsato, la conferma non parte mai. I soldi sono arrivati sul conto Stripe o PayPal dell'associazione. Cosa fare:
 
 1. Apri **Pagamenti online**, sezione **«Pagamenti dei soci»**, e leggi il motivo, scritto in rosso sotto il nome nella colonna Voci.
 2. Se è una voce già pagata, premi **rimborsa** e scrivi quanto restituire: tutto o una parte (minimo 0,50 €), anche in più volte.
 3. Scrivi la tua password e il motivo del rimborso: il motivo arriva al socio così com'è, quindi scrivilo chiaro e gentile.
 4. Dopo l'invio compare «Rimborso di X,XX € inviato al socio. Il socio è stato avvisato per email.» e sotto lo stato leggi «restituiti X,XX €».
 5. Stripe o PayPal di solito non restituiscono la loro commissione: chiedi al tuo commercialista se e come registrarla.
-6. Premi **controllato** accanto allo stato: segna che hai visto e sistemato, non rimborsa nulla. Se non hai rimborsato, da quel momento parte la conferma al socio con la ricevuta. Il pulsante lo vede chi ha il permesso di contabilità.
+6. Premi **Segna come controllato** accanto allo stato: segna che hai visto e sistemato, non rimborsa nulla. Se i soldi non sono già tornati al socio, da quel momento nasce la ricevuta e parte la conferma. Se l'anno fiscale è chiuso, il passaggio non riesce e leggi «La ricevuta non si può emettere: …» con il motivo. Il pulsante lo vede chi ha il permesso di contabilità.
 
 I soldi tornano sul metodo di pagamento del socio e il rimborso non si può annullare. Non vedi **rimborsa**? Serve il permesso «Emettere rimborsi»: chiedilo a chi amministra il gestionale. Se il pagamento era già stato registrato, vedi sotto.
 
