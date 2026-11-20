@@ -208,8 +208,14 @@ final class Access {
 	 * collegato, 0 per chi è entrato con l'accesso proprio: tesoriere e staff dell'ente sono scelte sull'utente WordPress, quindi senza utente non valgono.
 	 */
 	public static function person_can( ?array $actor, int $user_id, string $ability, int $object_id ): bool {
-		if ( ! $actor || MemberSession::is_out( $actor ) ) { // un socio sospeso o uscito non agisce dall'area soci, nemmeno con un utente WordPress
+		if ( ! $actor ) {
 			return false;
+		}
+		if ( MemberSession::is_out( $actor ) ) { // un socio sospeso o uscito non agisce dall'area soci, nemmeno con un utente WordPress
+			// Unica eccezione: l'ex socio tutore di un minorenne ancora socio vede, paga e prenota per il figlio, e basta.
+			if ( ! in_array( $ability, array( 'asem_view_person', 'asem_view_payments', 'asem_book_for' ), true ) || $object_id === (int) $actor['id'] || ! MemberSession::guardian_only( $actor ) || ! Guardians::is_guardian_of( (int) $actor['id'], $object_id ) ) {
+				return false;
+			}
 		}
 		$ctx = array( 'person_id' => $object_id );
 		if ( in_array( $ability, array( 'asem_view_person', 'asem_view_payments', 'asem_book_for' ), true ) ) {

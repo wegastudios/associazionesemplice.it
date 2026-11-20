@@ -11730,6 +11730,22 @@ asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'vecchia password'
 $wpdb->update( Db::t( 'people' ), array( 'left_on' => gmdate( 'Y-m-d', time() + 5 * DAY_IN_SECONDS ) ), array( 'id' => $ml_p ) );
 asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'cessazione ancora nel futuro: entra come prima' );
 $wpdb->update( Db::t( 'people' ), array( 'left_on' => null ), array( 'id' => $ml_p ) );
+// Ex socio tutore di un minorenne ancora socio: entra solo per il figlio. Sospeso a mano: non entra.
+$gx_par = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Gina', 'last_name' => 'Genitrice', 'email' => 'gina.genitrice@example.org', 'birth_date' => '1980-05-05' ) );
+$gx_kid = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Gigi', 'last_name' => 'Figlio', 'birth_date' => gmdate( 'Y-m-d', strtotime( '-9 years' ) ) ) );
+\AssociazioneSemplice\Guardians::link( $gx_kid, $gx_par );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => gmdate( 'Y-m-d', time() - DAY_IN_SECONDS ), 'suspended_at' => Db::now() ), array( 'id' => $gx_par ) );
+$gx = Plugin::people()->get( $gx_par );
+asem_ok( \AssociazioneSemplice\MemberSession::guardian_only( $gx ) && \AssociazioneSemplice\MemberSession::person_allowed( $gx ), 'ha lasciato, figlio minorenne ancora socio: entra' );
+asem_ok( Access::person_can( $gx, 0, 'asem_view_person', $gx_kid ) && Access::person_can( $gx, 0, 'asem_view_payments', $gx_kid ) && Access::person_can( $gx, 0, 'asem_book_for', $gx_kid ), 'ha lasciato: per il figlio vede, paga e prenota' );
+asem_ok( ! Access::person_can( $gx, 0, 'asem_view_person', $gx_par ) && ! Access::person_can( $gx, 0, 'asem_view_payments', $gx_par ) && ! Access::person_can( $gx, 0, 'asem_edit_own_profile', $gx_par ) && ! Access::person_can( $gx, 0, 'asem_book_for', $gx_par ), 'ha lasciato: per sé non ha niente' );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => null ), array( 'id' => $gx_par ) );
+$gx = Plugin::people()->get( $gx_par );
+asem_ok( ! \AssociazioneSemplice\MemberSession::guardian_only( $gx ) && ! \AssociazioneSemplice\MemberSession::person_allowed( $gx ) && ! Access::person_can( $gx, 0, 'asem_view_person', $gx_kid ), 'sospeso a mano: non entra, nemmeno per il figlio' );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => gmdate( 'Y-m-d', time() - DAY_IN_SECONDS ) ), array( 'id' => $gx_par ) );
+$wpdb->update( Db::t( 'people' ), array( 'suspended_at' => Db::now() ), array( 'id' => $gx_kid ) );
+$gx = Plugin::people()->get( $gx_par );
+asem_ok( ! \AssociazioneSemplice\MemberSession::guardian_only( $gx ) && ! \AssociazioneSemplice\MemberSession::person_allowed( $gx ), 'ha lasciato, ma il figlio non è più socio attivo: non entra' );
 // Separazione: con l'accesso proprio acceso i soci semplici non hanno un utente WordPress
 asem_ok( empty( Plugin::people()->get( $ml_p )['wp_user_id'] ) && ! get_user_by( 'email', $ml_addr ) && \AssociazioneSemplice\PeopleService::has_access( Plugin::people()->get( $ml_p ) ), 'separazione: un nuovo socio con email non ha un utente WordPress ma ha un accesso' );
 $sp_mails = count( $ml_mail );

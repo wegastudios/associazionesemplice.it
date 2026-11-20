@@ -1072,6 +1072,10 @@ final class Views {
 
 	/** Sezioni dell'area soci, nell'ordine in cui compaiono (un'estensione aggiunge le sue con il filtro `asem_my_sections`). */
 	private static function my_sections(): array {
+		$me = Access::current_person();
+		if ( $me && \AssociazioneSemplice\MemberSession::is_out( $me ) ) { // ex socio tutore: nell'area soci compaiono solo i figli e i loro pagamenti
+			return array( 'minori', 'pagamenti' );
+		}
 		return (array) apply_filters( 'asem_my_sections', self::MY_SECTIONS );
 	}
 
