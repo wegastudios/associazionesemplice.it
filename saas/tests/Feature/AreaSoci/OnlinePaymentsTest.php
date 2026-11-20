@@ -205,6 +205,30 @@ function reviewPayment(object $test, string $provider = 'stripe'): string
     return $id;
 }
 
+it('un secondo pagamento sulla stessa voce già pagata va da controllare e non registra un secondo incasso', function (): void {
+    saveStripe($this);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $payments = app(OnlinePayments::class);
+        $due = collect($payments->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
+        $ids = [];
+        foreach (['cs_a', 'cs_b'] as $ref) {
+            $ids[] = $id = (string) Illuminate\Support\Str::uuid7();
+            DB::table('app.online_payments')->insert([
+                'org_id' => $this->org->id, 'id' => $id, 'person_id' => $this->anna->id, 'provider' => 'stripe', 'status' => 'pending',
+                'amount_cents' => $due['amount_cents'], 'items' => json_encode([$due]), 'provider_ref' => $ref,
+            ]);
+        }
+
+        $payments->settle($ids[0], $due['amount_cents']);
+        $payments->settle($ids[1], $due['amount_cents']);
+
+        expect($payments->find($ids[0])['status'])->toBe('settled')
+            ->and($payments->find($ids[1])['status'])->toBe('review')
+            ->and($payments->find($ids[1])['error'])->toContain('non è più dovuta')
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->count())->toBe(1);
+    });
+});
+
 it('rimborsa un pagamento da controllare su Stripe, una parte alla volta, senza superare l\'incassato', function (): void {
     Mail::fake();
     $id = reviewPayment($this);

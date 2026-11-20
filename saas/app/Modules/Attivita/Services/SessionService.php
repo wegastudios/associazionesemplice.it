@@ -17,6 +17,7 @@ use App\Modules\Contabilita\Contracts\CategoryKind;
 use App\Modules\Contabilita\Contracts\Income;
 use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
+use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\DonationInvites;
 use App\Modules\Core\Contracts\OrgContext;
@@ -594,7 +595,16 @@ final readonly class SessionService
         $description = mb_substr(MemberFeeOption::description($donation, $activity->kind, $activity->name, $s->session_date->format('d/m/Y')).($list !== null ? ' · '.$list['label'] : ''), 0, 255);
 
         return $this->connection()->transaction(function () use ($b, $s, $activity, $accountId, $date, $cents, $method, $category, $description, $donation): ?string {
-            $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, $s->session_date->format('Y-m'), $donation ? null : $this->vat->rate($activity))], $method, $b->person_id, true, null, $activity->id));
+            // Con la prenotazione bloccata si ricalcola quanto manca: due incassi insieme sulla stessa voce non passano entrambi.
+            $locked = SessionBooking::query()->whereKey($b->id)->lockForUpdate()->first();
+            if ($locked === null || $locked->status !== 'booked') {
+                throw new ActivityError('La prenotazione è annullata.');
+            }
+            $left = Pricing::remaining($locked->fee_due_cents, $this->paid([$b->id])[$b->id] ?? 0);
+            if ($cents > $left) {
+                throw new ActivityError($left <= 0 ? 'Questa prenotazione risulta già pagata.' : 'L\'importo supera quanto manca da incassare ('.Money::format($left).').');
+            }
+            $out =$this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, $s->session_date->format('Y-m'), $donation ? null : $this->vat->rate($activity))], $method, $b->person_id, true, null, $activity->id));
             foreach ($out['transactions'] as $tx) {
                 $this->connection()->table('app.booking_payments')->insert(['org_id' => $this->context->require()->id, 'transaction_id' => $tx, 'booking_id' => $b->id]);
             }

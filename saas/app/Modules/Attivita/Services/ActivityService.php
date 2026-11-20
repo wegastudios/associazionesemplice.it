@@ -23,6 +23,7 @@ use App\Modules\Contabilita\Contracts\Expense;
 use App\Modules\Contabilita\Contracts\Income;
 use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
+use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgFiscal;
@@ -590,7 +591,19 @@ final readonly class ActivityService implements Activities
      */
     public function collect(string $activityId, string $personId, string $accountId, string $date, array $months, ?int $amountCents = null, ?PaymentMethod $method = null): ?string
     {
+        return $this->connection()->transaction(fn (): ?string => $this->collectLocked($activityId, $personId, $accountId, $date, $months, $amountCents, $method));
+    }
+
+    /**
+     * Con l'attività bloccata si ricalcola quanto manca: due incassi insieme sulla stessa voce non passano entrambi, e un
+     * importo oltre il residuo del mese (o della quota) si rifiuta.
+     *
+     * @param  list<string>  $months
+     */
+    private function collectLocked(string $activityId, string $personId, string $accountId, string $date, array $months, ?int $amountCents, ?PaymentMethod $method): ?string
+    {
         $activity = $this->find($activityId);
+        Activity::query()->whereKey($activity->id)->lockForUpdate()->value('id');
         $row = null;
         foreach ($this->status($activity) as $s) {
             if ($s['person_id'] === $personId) {
@@ -612,6 +625,7 @@ final readonly class ActivityService implements Activities
             if ($months === []) {
                 throw new ActivityError('Scegli almeno un mese.');
             }
+            $byMonth = $this->ledger->activityPayments($activity->id)[$personId] ?? [];
             foreach ($months as $m) {
                 if (! in_array($m, $year['months'], true)) {
                     throw new ActivityError('Il mese '.(preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $m) === 1 ? self::monthLabel($m) : $m).' è fuori dall\'anno di questa attività.');
@@ -620,12 +634,28 @@ final readonly class ActivityService implements Activities
                 if ($cents <= 0) {
                     throw new ActivityError('Indica l\'importo.');
                 }
+                $left = $row['fee'];
+                foreach ($row['summary']['months'] as $x) {
+                    if ($x['month'] === $m) {
+                        $left = $x['missing'];
+                    }
+                }
+                if ($left === $row['fee']) {
+                    $left = Pricing::remaining($row['fee'], $byMonth[$m] ?? 0);
+                }
+                if ($cents > $left) {
+                    throw new ActivityError($left <= 0 ? self::monthLabel($m).' risulta già pagato.' : 'Per '.self::monthLabel($m).' mancano '.Money::format($left).': l\'importo è troppo alto.');
+                }
                 $lines[] = new IncomeLine($category, $cents, MemberFeeOption::description($donation, $activity->kind, $activity->name, self::monthLabel($m)), $m, $vatRate);
             }
         } else {
             $cents = $amountCents ?? Pricing::remaining($row['summary']['total_due'] > 0 ? $row['summary']['total_due'] : $row['fee'], $row['summary']['total_paid']);
             if ($cents <= 0) {
                 throw new ActivityError('Non c\'è niente da incassare: indica l\'importo.');
+            }
+            $left = Pricing::remaining($row['summary']['total_due'] > 0 ? $row['summary']['total_due'] : $row['fee'], $row['summary']['total_paid']);
+            if ($cents > $left) {
+                throw new ActivityError($left <= 0 ? 'Questa iscrizione risulta già pagata.' : 'L\'importo supera quanto manca da incassare ('.Money::format($left).').');
             }
             $lines[] = new IncomeLine($category, $cents, MemberFeeOption::description($donation, $activity->kind, $activity->name), $row['start_month'], $vatRate);
         }

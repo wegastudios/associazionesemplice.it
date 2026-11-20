@@ -58,6 +58,8 @@ it('iscrive a un corso, incassa i mesi con ricevuta e ne calcola la situazione',
             ->and(DB::table('app.transactions')->where('activity_id', $yoga->id)->value('competence_month'))->not->toBeNull();
 
         // Chi non è iscritto non paga, i mesi fuori dall'anno non si incassano.
+        expect(fn () => $s->collect($yoga->id, $anna->id, $cash, now()->toDateString(), [$first]))->toThrow(ActivityError::class, 'già pagato')
+            ->and(fn () => $s->collect($yoga->id, $anna->id, $cash, now()->toDateString(), [$month], 99999))->toThrow(ActivityError::class);
         $other = Person::create(['first_name' => 'Eva', 'last_name' => 'Verdi']);
         expect(fn () => $s->collect($yoga->id, $other->id, $cash, now()->toDateString(), [$month]))->toThrow(ActivityError::class, 'non è iscritta')
             ->and(fn () => $s->collect($yoga->id, $anna->id, $cash, now()->toDateString(), ['1999-01']))->toThrow(ActivityError::class, 'fuori dall\'anno di questa attività');

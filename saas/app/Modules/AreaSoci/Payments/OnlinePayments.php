@@ -256,6 +256,10 @@ final readonly class OnlinePayments
                         if ($module === null) {
                             throw new InvalidArgumentException('Voce non riconosciuta.');
                         }
+                        // Se nel frattempo la voce è già stata pagata (o annullata) non si registra un secondo incasso: il pagamento va da controllare.
+                        if (! str_starts_with($item['key'], 'd:') && ! self::stillDue($module, $item)) {
+                            throw new InvalidArgumentException('non è più dovuta (già pagata o annullata)');
+                        }
                         $receipt = $this->connection()->transaction(fn (): ?string => $module->settle($item['key'], $item['amount_cents'], (string) $settings->account_id,
                             now('Europe/Rome')->toDateString(), $p['provider']));
                         if ($receipt !== null) {
@@ -626,6 +630,22 @@ final readonly class OnlinePayments
         }
 
         return $out;
+    }
+
+    /**
+     * La voce è ancora dovuta, per almeno l'importo pagato?
+     *
+     * @param  Due  $item
+     */
+    private static function stillDue(PayableDues $module, array $item): bool
+    {
+        foreach ($module->dues([$item['person_id']]) as $due) {
+            if ($due['key'] === $item['key']) {
+                return $due['amount_cents'] >= $item['amount_cents'];
+            }
+        }
+
+        return false;
     }
 
     private function owner(string $key): ?PayableDues

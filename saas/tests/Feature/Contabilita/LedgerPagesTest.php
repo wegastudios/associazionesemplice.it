@@ -41,6 +41,28 @@ it('registra un incasso dal gestionale e lo mostra in prima nota con la ricevuta
         ->where('canEdit', true));
 });
 
+it('un secondo invio dello stesso modulo non registra un secondo movimento e dà lo stesso esito', function (): void {
+    [$org, $user, $cash, $membership, $cost] = operatorOf(OrgRole::Operator);
+    $token = (string) Illuminate\Support\Str::uuid();
+    $income = ['submission' => $token, 'date' => now()->toDateString(), 'account_id' => $cash, 'receipt' => true, 'lines' => [['category_id' => $membership, 'amount' => '30,00']]];
+    $count = fn (): int => $this->orgContext()->run($org->id, fn () => Transaction::query()->count());
+
+    $this->actingAs($user)->post('/gestionale/prima-nota/incassi', $income)->assertSessionHas('status', 'Incasso registrato: ricevuta n. 1/'.now()->format('Y').'.');
+    $this->post('/gestionale/prima-nota/incassi', $income)->assertSessionHasNoErrors()->assertSessionHas('status', 'Incasso registrato: ricevuta n. 1/'.now()->format('Y').'.');
+    expect($count())->toBe(1);
+
+    $expense = ['submission' => (string) Illuminate\Support\Str::uuid(), 'date' => now()->toDateString(), 'account_id' => $cash, 'category_id' => $cost, 'amount' => '5,00'];
+    $this->post('/gestionale/prima-nota/spese', $expense)->assertSessionHas('status', 'Spesa registrata.');
+    $this->post('/gestionale/prima-nota/spese', $expense)->assertSessionHasNoErrors()->assertSessionHas('status', 'Spesa registrata.');
+    expect($count())->toBe(2);
+
+    // Un invio che fallisce non brucia il gettone: dopo la correzione si può riprovare.
+    $bad = ['submission' => (string) Illuminate\Support\Str::uuid(), 'date' => now()->toDateString(), 'account_id' => $cash, 'category_id' => $membership, 'amount' => '5,00'];
+    $this->post('/gestionale/prima-nota/spese', $bad)->assertSessionHasErrors('ledger');
+    $this->post('/gestionale/prima-nota/spese', ['category_id' => $cost] + $bad)->assertSessionHas('status', 'Spesa registrata.');
+    expect($count())->toBe(3);
+});
+
 it('mostra gli errori della prima nota senza registrare nulla', function (): void {
     [$org, $user, $cash, $membership, $cost] = operatorOf(OrgRole::Operator);
 
