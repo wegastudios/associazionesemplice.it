@@ -120,8 +120,8 @@ it('l\'importazione dei soci cifra con l\'id della riga e si rilegge', function 
 
         $this->orgContext()->run($this->org->id, function () use ($bound, $suffix): void {
             $csv = "Tessera;Tipo;Nome;Cognome;Email;Cellulare;Codice fiscale;Data di nascita\n"
-                .($bound ? '11' : '1').";ordinario;Mario;Rossi;mario{$suffix}@example.com;333 1234567;".($bound ? 'RSSMRA80A01H501U;01/01/1980' : ';')."\n"
-                .($bound ? '12' : '2').";ordinario;Anna;Verdi;anna{$suffix}@example.com;339 7654321;;\n";
+                .($bound ? '11' : '1').";ordinario;Mario;Rossi;mario{$suffix}@example.com;333 1234567;".($bound ? 'RSSMRA80A01H501U;01/01/1980' : ';01/01/1980')."\n"
+                .($bound ? '12' : '2').";ordinario;Anna;Verdi;anna{$suffix}@example.com;339 7654321;;06/05/1985\n";
 
             $r = rowFmtImport($csv);
             expect($r['created'])->toBe(2)->and($r['failed'])->toBe([]);
