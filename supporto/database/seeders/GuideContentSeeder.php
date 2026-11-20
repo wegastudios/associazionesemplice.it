@@ -31,7 +31,7 @@ class GuideContentSeeder extends Seeder
     public const SAAS_TOPICS = ['gestionale'];
 
     /** Sezioni rinominate: [argomento, vecchio slug, nuovo nome]. Si rinominano sul posto, senza ricreare gli articoli. */
-    private const SECTION_RENAMES = [['soci-e-tessere', 'area-riservata', 'Area soci']];
+    private const SECTION_RENAMES = [['soci-e-tessere', 'area-riservata', 'Area soci'], ['gestionale', 'attivita', 'Corsi ed eventi']];
 
     /** @var array<string, string> articoli rinominati: lo slug vecchio si elimina, cosi non restano doppioni */
     public const RENAMED = ['anni-solari-e-rendiconto' => 'rendiconto-per-cassa-e-report'];

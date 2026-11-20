@@ -45,7 +45,7 @@ Finché manca qualche dato dell'ente, in cima a ogni pagina c'è una banda fissa
 
 ## Dove trovi le cose
 
-Il menu è diviso in quattro gruppi: **Persone** (Soci, Domande di adesione), **Attività e risorse** (Attività, Calendario, Risorse), **Cassa e conti** (Prima nota, Conti, Rendiconto, Pagamenti online) e **Gestione** (Abbonamento e pacchetti, Operatori e ruoli, Aspetto fiscale, Verifica delle ricevute, Copie di sicurezza, Configurazione guidata). Sul telefono trovi tutti i gruppi in **Altro**. Il pulsante **Nuovo** crea una scheda socio, un incasso, una spesa, un'attività o una risorsa. Alcune voci compaiono solo se il tuo piano le include o se il tuo ruolo lo permette.
+Il menu è diviso in quattro gruppi: **Persone** (Soci, Domande di adesione), **Corsi, eventi e risorse** (Corsi ed eventi, Calendario, Risorse), **Cassa e conti** (Prima nota, Conti, Rendiconto, Pagamenti online) e **Gestione** (Abbonamento e pacchetti, Operatori e ruoli, Aspetto fiscale, Verifica delle ricevute, Copie di sicurezza, Configurazione guidata). Sul telefono trovi tutti i gruppi in **Altro**. Il pulsante **Nuovo** crea una scheda socio, un incasso, una spesa, un corso o evento o una risorsa. Alcune voci compaiono solo se il tuo piano le include o se il tuo ruolo lo permette.
 MD,
     ],
     [
@@ -116,9 +116,9 @@ Nelle impostazioni della pagina trovi l'indirizzo del modulo da pubblicare sul s
 
 ## Esaminare una domanda
 
-Apri la domanda dall'elenco «Da esaminare», controlla i dati e decidi. La domanda decisa passa tra le «Decise di recente»; se non ce ne sono da esaminare, la pagina dice «Nessuna domanda in attesa».
+Apri la domanda dall'elenco «Da esaminare», controlla i dati e decidi: **Approva e crea la scheda** oppure **Rifiuta** (per rifiutare serve scrivere il motivo). La domanda decisa passa tra le «Decise di recente»; se non ce ne sono da esaminare, la pagina dice «Nessuna domanda in attesa».
 
-Chi ha fatto la domanda riceve un'email quando la domanda è ricevuta, accolta o non accolta; se non è accolta, l'email riporta i recapiti della segreteria.
+Chi ha fatto la domanda riceve un'email quando la domanda è ricevuta, approvata o rifiutata; se è rifiutata, l'email riporta i recapiti della segreteria.
 MD,
     ],
     [
@@ -149,7 +149,7 @@ Il menu in basso (o in alto sul computer) ha queste voci:
 - **Tessera**: il nome e un codice da mostrare all'ingresso; chi lo legge vede se la tessera è valida. Se la scheda non ha la tessera, il gestionale dice «Questa scheda non ha la tessera: qui trovi eventi, quote e ricevute.»; se è uscita dall'associazione, «Risulti uscito dall'associazione.».
 - **Eventi**: gli eventi dei prossimi due mesi, con **Prenota**. Se l'evento è pieno compare **Lista d'attesa**: quando si libera un posto entra il primo in lista e, se ha un'email, viene avvisato (per un minore, il genitore o tutore). La prenotazione vale anche senza email: il socio la trova in **Eventi**. Il socio annulla da solo fino al giorno prima, se la prenotazione non è già pagata e non fa parte di un pacchetto o di un listino; altrimenti scrive alla segreteria.
 - **Prenota** (solo se l'associazione ha il pacchetto **Risorse**, con la prenotazione dall'area soci attiva, e almeno una risorsa a ore o a giornata): il socio sceglie il giorno e tocca una fascia libera. Le risorse stagionali non compaiono: le assegna la segreteria. Vedi [Creare le risorse e gestire le prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni).
-- **Quote**: corsi e attività con **«Dovuto finora … · versato …»** e **«in regola»** oppure **«da versare …»**, il pulsante **«Paga online»** (se l'associazione ha attivato i pagamenti online: vedi [Pagamenti online dei soci](guida:gestionale-pagamenti-online-dei-soci)) e le ricevute da scaricare in PDF. Le ricevute annullate non compaiono.
+- **Quote**: corsi ed eventi con **«Dovuto finora … · versato …»** e **«in regola»** oppure **«da versare …»**, il pulsante **«Paga online»** (se l'associazione ha attivato i pagamenti online: vedi [Pagamenti online dei soci](guida:gestionale-pagamenti-online-dei-soci)) e le ricevute da scaricare in PDF. Le ricevute annullate non compaiono.
 - **Profilo**: i suoi dati (nome, email e codice fiscale non si cambiano da qui: «Per correggere nome, email o codice fiscale scrivi alla segreteria.»), telefono e indirizzo che può correggere da solo, le tessere degli anni e il pulsante **«Esci da tutti i dispositivi»**.
 
 ## I minori
@@ -320,7 +320,7 @@ MD,
         'body' => <<<'MD'
 > Vale per il gestionale online. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
-Dalla scheda del socio, nel riquadro **Tesseramento** della scheda **Tessera**, premi **«Incassa e rinnova»**: l'incasso va in prima nota con la ricevuta, e la tessera viene rinnovata. La tessera segue l'anno fiscale: se l'anno comincia a gennaio è la «Tessera 2026» e scade il 31/12; se comincia in un altro mese è, per esempio, la «2025/2026». L'anno della tessera lo decide il gestionale in base alla data dell'incasso. Se storni quell'incasso, la tessera non vale più; dopo lo storno puoi ripetere la quota.
+Dalla scheda del socio, nel riquadro **Tesseramento** della scheda **Tessera**, premi **«Incassa e rinnova»**: l'incasso va in prima nota con la ricevuta, e la tessera viene rinnovata. La tessera segue l'anno fiscale: se l'anno comincia a gennaio è la «Tessera 2026» e scade il 31/12; se comincia in un altro mese è, per esempio, la «2025/2026». L'anno della tessera lo decide il gestionale in base alla data dell'incasso. Se annulli quell'incasso, la tessera non vale più; dopo l'annullamento puoi ripetere la quota.
 
 ## Se il socio ha già la tessera
 
@@ -345,21 +345,21 @@ Il socio riceve un'email con oggetto «Nome associazione · Rimborso del tuo pag
 
 ## Restituire un pagamento già registrato
 
-Se il pagamento era già stato registrato (c'è la ricevuta in Prima nota e la tessera), premi **«rimborsa e storna»**. In un gesto solo:
+Se il pagamento era già stato registrato (c'è la ricevuta in Prima nota e la tessera), premi **«rimborsa e annulla»**. In un gesto solo:
 
 - restituisce tutto il pagamento;
-- storna le ricevute in Prima nota;
+- annulla le ricevute in Prima nota;
 - annulla le tessere collegate.
 
-Ti chiede la password e il motivo del rimborso, che il socio leggerà nell'email. Restituisce sempre tutto il pagamento: qui non si può restituire solo una parte. Non si può annullare. A operazione finita compare «Rimborsato e stornato: ricevute e tessere annullate. Il socio è stato avvisato per email.».
+Ti chiede la password e il motivo del rimborso, che il socio leggerà nell'email. Restituisce sempre tutto il pagamento: qui non si può restituire solo una parte. Non si può annullare. A operazione finita compare «Rimborsato e annullato: ricevute e tessere comprese.» e il socio riceve l'email.
 
-Se l'anno fiscale dell'incasso è chiuso, l'operazione non parte: né rimborso né storno. Il gestionale dice: «Non si può stornare la ricevuta N/AAAA: l'anno fiscale AAAA è chiuso, va riaperto. Il rimborso non è stato fatto.» Se il rimborso non riesce, non cambia nulla: ricevute e tessere restano come prima. Caso raro: se il rimborso è stato fatto ma lo storno in prima nota no, il gestionale lo dice e ti chiede di stornarlo a mano dalla prima nota. Serve lo stesso permesso **«Emettere rimborsi»**. Il rimborso parziale c'è solo per i soldi non registrati, con «rimborsa».
+Se l'anno fiscale dell'incasso è chiuso, l'operazione non parte: né rimborso né annullamento. Il gestionale dice: «Non si può annullare la ricevuta N/AAAA: l'anno fiscale AAAA è chiuso, va riaperto. Il rimborso non è stato fatto.» Se il rimborso non riesce, non cambia nulla: ricevute e tessere restano come prima. Caso raro: se il rimborso è stato fatto ma l'annullamento in prima nota no, il gestionale lo dice e ti chiede di annullarlo a mano dalla prima nota. Serve lo stesso permesso **«Emettere rimborsi»**. Il rimborso parziale c'è solo per i soldi non registrati, con «rimborsa».
 
 Se il pagamento comprendeva una prenotazione di una risorsa o l'iscrizione a un'attività o a un evento, quella voce resta valida e torna da pagare: il gestionale non la annulla. Lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» oppure «L'iscrizione resta e il contributo torna da pagare: se non serve più, chiudi l'iscrizione dalla scheda dell'attività.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.» (o «La tua iscrizione resta attiva e il contributo risulta da pagare: …»). Per le quote associative non c'è questa riga, perché la tessera si annulla.
 
 ## Se il gestore dei pagamenti non risponde
 
-Se Stripe o PayPal non rispondono mentre fai un rimborso, il gestionale non sa se è partito. Non storna nulla e ti dice di controllare sul pannello di Stripe o PayPal e, se il rimborso non risulta, di ripetere lo stesso rimborso con lo stesso importo: non viene fatto due volte. Se provi con un importo diverso, il gestionale ti ricorda che c'è un rimborso di cui non si sa l'esito e ti chiede di ripetere quello stesso importo, senza cambiarlo.
+Se Stripe o PayPal non rispondono mentre fai un rimborso, il gestionale non sa se è partito. Non annulla nulla e ti dice di controllare sul pannello di Stripe o PayPal e, se il rimborso non risulta, di ripetere lo stesso rimborso con lo stesso importo: non viene fatto due volte. Se provi con un importo diverso, il gestionale ti ricorda che c'è un rimborso di cui non si sa l'esito e ti chiede di ripetere quello stesso importo, senza cambiarlo.
 
 ## Se l'importo pagato è diverso
 
@@ -378,7 +378,7 @@ Tutti i movimenti stanno nella **Prima nota**: l'elenco di entrate e uscite in o
 ## Registrare
 
 1. Dal pulsante **Nuovo** (o dalla **Prima nota**) scegli **«Registra un incasso»** o **«Registra una spesa»**.
-2. Scegli il conto, l'importo, la data e, se serve, l'attività collegata. Puoi dividere il movimento in più voci con **Aggiungi un'altra voce** e **Togli questa riga**.
+2. Scegli il conto, l'importo, la data e, se serve, il corso o evento collegato. Puoi dividere il movimento in più voci con **Aggiungi un'altra voce** e **Togli questa riga**.
 3. Salva. L'incasso dà la ricevuta; con **«Invia per email»** la mandi alla persona. Se l'associazione ha la partita IVA, ogni voce ha anche la sua aliquota IVA (vedi [Impostare l'IVA](guida:gestionale-iva-e-aspetto-fiscale)).
 
 ### Perché non riesco a inviare la ricevuta per email?
@@ -410,11 +410,11 @@ Dopo **Rifai il PDF** il gestionale dice se il nuovo file è identico a quello e
 
 ## Cercare e filtrare
 
-In **Prima nota** filtra per conto, per attività e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica: vedi [Importare la prima nota da Excel o CSV](guida:gestionale-importare-la-prima-nota).
+In **Prima nota** filtra per conto, per corso o evento e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica: vedi [Importare la prima nota da Excel o CSV](guida:gestionale-importare-la-prima-nota).
 
 ## Correggere un errore
 
-Un movimento sbagliato non si cancella: si storna con **«Storna il movimento»**. Scrivi perché: il movimento resta in elenco ma non conta più.
+Un movimento sbagliato non si cancella: si annulla con **Annulla il movimento**. Scrivi perché lo annulli: il movimento resta in elenco ma non conta più.
 
 Per spostare soldi da un conto all'altro (per esempio contanti versati in banca) usa **Giroconto tra conti**, dal pulsante con i tre puntini della Prima nota: non è né un incasso né una spesa.
 MD,
@@ -457,42 +457,27 @@ L'IVA compare nel dettaglio del movimento. Sulla ricevuta in PDF vedi, per ogni 
 
 Se togli un'aliquota dall'elenco, i movimenti già registrati con quella aliquota non cambiano. Se togli l'aliquota usata per la quota associativa, la pagina non si salva e ti dice: «Prima cambia l'aliquota della quota associativa: deve essere «IVA esente» o una di quelle dell'elenco. I movimenti già registrati restano come sono.»
 
-## IVA su attività, corsi ed eventi
+## IVA su corsi, eventi e risorse
 
-Con la partita IVA, nella scheda di un'attività (un corso o un evento) trovi la casella **«Con IVA»**:
+Con la partita IVA, nella scheda di un corso o evento e in quella di una risorsa (un salone, un campo, un'aula…) trovi la casella **«Con IVA»**:
 
-- senza la spunta, gli incassi di quell'attività si registrano come **«Fuori campo IVA»**;
+- senza la spunta, gli incassi si registrano come **«Fuori campo IVA»**; nella scheda della risorsa la scritta è «Senza la spunta, gli incassi di questa risorsa si registrano come «Fuori campo IVA».»;
 - con la spunta, scegli dal menu **«IVA esente»** oppure una delle aliquote che hai indicato in Aspetto fiscale («IVA 22%», «IVA 10%»…).
 
-Sotto il menu la scheda ti ricorda come leggere gli importi **«Importo per i soci»** e **«Importo per gli ospiti»**:
+Sotto il menu la scheda ti ricorda come leggere gli importi (nei corsi e negli eventi **«Importo per i soci»** e **«Importo per gli ospiti»**):
 
 - se in Aspetto fiscale hai scelto i prezzi senza IVA: «Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.» Per esempio, un corso da **100,00 €** con IVA 22%: chi paga vede **122,00 €**;
 - se hai scelto i prezzi finali: «Gli importi che scrivi sono finali, con l'IVA compresa.»
 
-Gli incassi di corsi, eventi e prenotazioni nascono in prima nota con l'aliquota dell'attività. Se non sai se un'attività va con IVA, esente o fuori campo, chiedi al tuo commercialista.
+Gli incassi di corsi, eventi e prenotazioni nascono in prima nota con l'aliquota del corso, dell'evento o della risorsa. Con i prezzi senza IVA, chi prenota una risorsa vede e paga il prezzo con l'IVA aggiunta, in elenco, nella griglia, nell'anteprima e nell'area dei soci. Per esempio, una sala da **50,00 € l'ora** con IVA 22%: chi prenota vede **61,00 €**. Una prenotazione già fatta si incassa con l'aliquota e l'importo di quando è stata creata, anche se poi cambi l'IVA della risorsa. Se non sai se una voce va con IVA, esente o fuori campo, chiedi al tuo commercialista. Come funzionano le risorse è spiegato in [Creare le risorse e gestire le prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni).
 
 Il gestionale ti avvisa se qualcosa non torna:
 
-- se provi a togliere da Aspetto fiscale un'aliquota usata da qualche attività: «Alcune attività usano l'aliquota X%: prima cambia l'IVA di quelle attività, poi toglila dall'elenco.»;
-- se nei Dati dell'ente spunti «L'associazione non ha la partita IVA» e ci sono attività con l'IVA: «Hai N attività con l'IVA: senza partita IVA l'IVA non si applica più a nessuna. I movimenti già registrati non cambiano.»;
-- in scheda, un avviso rosso: «L'aliquota di questa attività non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa attività si registrano senza IVA.»
-
-## IVA su risorse e prenotazioni di spazi
-
-Come funzionano le risorse è spiegato in [Creare le risorse e gestire le prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni). Con la partita IVA, anche nella scheda di una risorsa (un salone, un campo, un'aula…) trovi la casella **«Con IVA»**, che funziona come quella delle attività:
-
-- senza la spunta: «Senza la spunta, gli incassi di questa risorsa si registrano come «Fuori campo IVA».»;
-- con la spunta, scegli **«IVA esente»** oppure una delle aliquote che hai indicato in Aspetto fiscale («IVA 22%», «IVA 10%»…).
-
-Sotto il menu vedi come leggere gli importi: con i prezzi senza IVA, «Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.»; con i prezzi finali, «Gli importi che scrivi sono finali, con l'IVA compresa.»
-
-Con i prezzi senza IVA, chi prenota vede e paga il prezzo con l'IVA aggiunta, in elenco, nella griglia, nell'anteprima e nell'area dei soci. Per esempio, una sala da **50,00 € l'ora** con IVA 22%: chi prenota vede **61,00 €**. Una prenotazione già fatta si incassa con l'aliquota e l'importo di quando è stata creata, anche se poi cambi l'IVA della risorsa. Se non sai quale voce scegliere, chiedi al tuo commercialista.
-
-Il gestionale ti avvisa se qualcosa non torna:
-
-- se provi a togliere da Aspetto fiscale un'aliquota usata da qualche risorsa: «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.»; se sono usate anche da qualche attività, il messaggio dice «Alcune attività o risorse usano l'aliquota X%: prima cambia l'IVA di quelle attività o risorse, poi toglila dall'elenco.»;
+- se provi a togliere da Aspetto fiscale un'aliquota usata da qualche corso, evento o risorsa: «Alcune attività usano l'aliquota X%: prima cambia l'IVA di quelle attività, poi toglila dall'elenco.», «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.» oppure, se sono usate da entrambi, «Alcune attività o risorse usano l'aliquota X%: prima cambia l'IVA di quelle attività o risorse, poi toglila dall'elenco.»;
 - se l'aliquota è usata da prenotazioni non ancora finite: «Alcune prenotazioni non ancora finite usano l'aliquota X%: togli l'aliquota dall'elenco quando saranno finite o annullate.»;
-- in scheda, un avviso rosso: «L'aliquota di questa risorsa non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa risorsa si registrano senza IVA.»
+- se nei Dati dell'ente spunti «L'associazione non ha la partita IVA» e ci sono attività con l'IVA: «Hai N attività con l'IVA: senza partita IVA l'IVA non si applica più a nessuna. I movimenti già registrati non cambiano.»;
+- in scheda, un avviso rosso: «L'aliquota di questa attività non è più nell'elenco di Aspetto fiscale: scegline un'altra.» (per una risorsa «di questa risorsa») oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa attività si registrano senza IVA.» (per una risorsa «di questa risorsa»).
+
 MD,
     ],
     [
@@ -550,7 +535,7 @@ Controlla anche i saldi iniziali dei conti. L'importazione registra solo movimen
 
 ## Correggere un'importazione sbagliata
 
-I movimenti importati si correggono come gli altri: non si cancellano, si stornano uno per uno dalla Prima nota (vedi [Registrare un incasso e una spesa](guida:gestionale-registrare-un-incasso-e-una-spesa)). L'importazione viene scritta nel registro delle azioni.
+I movimenti importati si correggono come gli altri: non si cancellano, si annullano uno per uno dalla Prima nota (vedi [Registrare un incasso e una spesa](guida:gestionale-registrare-un-incasso-e-una-spesa)). L'importazione viene scritta nel registro delle azioni.
 
 **Nella demo il caricamento dei file è spento**: l'importazione si prova sul gestionale vero.
 MD,
@@ -563,11 +548,13 @@ MD,
 
 In **Conti** dichiari dove stanno i soldi dell'associazione: la cassa, il conto in banca, il conto PayPal. Ogni incasso e ogni spesa passa da uno di questi.
 
-1. Premi **«Nuovo conto»**, dagli un nome e indica il saldo iniziale.
+1. Premi **«Nuovo conto»**, dagli un nome e indica il saldo di partenza.
 2. Per un POS puoi indicare la commissione: a ogni incasso il gestionale registra da solo la spesa in prima nota.
 3. Premi **«Crea il conto»**.
 
 Per spostare soldi tra due conti usa il **Giroconto tra conti** dalla **Prima nota**.
+
+Un conto che non usi più si chiude con **Chiudi il conto**: finché è chiuso non puoi registrarci movimenti, e lo riapri con **Riattiva il conto**.
 MD,
     ],
     [
@@ -586,7 +573,7 @@ Prima della chiusura il rendiconto è una bozza: i numeri sono quelli di oggi e 
 
 Nella stessa pagina vedi inizio e fine dell'anno fiscale.
 
-1. Quando il rendiconto è approvato, premi **Emetti il rendiconto definitivo** (con l'anno). Da quel momento non si registrano né si stornano movimenti con date di quell'anno.
+1. Quando il rendiconto è approvato, premi **Emetti il rendiconto definitivo** (con l'anno). Da quel momento non si registrano né si annullano movimenti con date di quell'anno.
 2. Per correggere qualcosa premi **Riapri l'anno fiscale**, scrivi il motivo e l'anno per confermare. Il motivo resta registrato.
 
 Se le ricevute di quell'anno sono nell'archivio, prima rimettile con **Rimetti i file** in **Copie di sicurezza**: altrimenti la riapertura viene rifiutata. Se riapri e richiudi l'anno, nasce una nuova versione del rendiconto; le precedenti restano elencate.
@@ -599,7 +586,7 @@ La sezione «Rendiconti emessi alla chiusura» elenca i rendiconti definitivi: u
 MD,
     ],
     [
-        'topic' => 'gestionale', 'section' => 'Attività', 'slug' => 'gestionale-risorse-e-prenotazioni',
+        'topic' => 'gestionale', 'section' => 'Corsi ed eventi', 'slug' => 'gestionale-risorse-e-prenotazioni',
         'title' => 'Creare le risorse e gestire le prenotazioni di spazi',
         'body' => <<<'MD'
 > Vale per il gestionale online. Le risorse sono un pacchetto in più (**«Risorse»**) rispetto al piano: si aggiungono da **Abbonamento e pacchetti**.
@@ -649,10 +636,10 @@ Nell'area soci, in **Prenota**, il socio con accesso sceglie il giorno e tocca u
 
 Sono due gesti distinti: annullando una prenotazione già pagata i soldi non tornano da soli al socio e l'incasso resta in prima nota.
 
-Dopo «rimborsa e storna» la prenotazione c'è ancora e risulta da pagare: se il socio non userà la risorsa, annullala. Il gestionale lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.»
+Dopo «rimborsa e annulla» la prenotazione c'è ancora e risulta da pagare: se il socio non userà la risorsa, annullala. Il gestionale lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.»
 
-- Se la prenotazione è stata pagata online dall'area soci, apri **Pagamenti online** e usa **«rimborsa e storna»**: i soldi tornano sul metodo di pagamento del socio, l'incasso in prima nota viene stornato e la prenotazione, che resta valida, torna **«da pagare»**; se non vuoi più la prenotazione, annullala tu. Chiede il motivo, che il socio legge. Serve il permesso **«Emettere rimborsi»**. Se l'anno fiscale è chiuso, lo storno non si può fare e non si rimborsa nulla. Come funziona è spiegato in [Rinnovare una tessera e incassare la quota](guida:gestionale-rinnovare-una-tessera), sezione «Restituire un pagamento già registrato».
-- Se è stata pagata in un altro modo (contanti, bonifico…): storni l'incasso in prima nota e restituisci i soldi fuori dal programma.
+- Se la prenotazione è stata pagata online dall'area soci, apri **Pagamenti online** e usa **«rimborsa e annulla»**: i soldi tornano sul metodo di pagamento del socio, l'incasso in prima nota viene annullato e la prenotazione, che resta valida, torna **«da pagare»**; se non vuoi più la prenotazione, annullala tu. Chiede il motivo, che il socio legge. Serve il permesso **«Emettere rimborsi»**. Se l'anno fiscale è chiuso, l'annullamento non si può fare e non si rimborsa nulla. Come funziona è spiegato in [Rinnovare una tessera e incassare la quota](guida:gestionale-rinnovare-una-tessera), sezione «Restituire un pagamento già registrato».
+- Se è stata pagata in un altro modo (contanti, bonifico…): annulli l'incasso in prima nota e restituisci i soldi fuori dal programma.
 
 ## Bloccare una risorsa
 
@@ -685,41 +672,41 @@ Una risorsa che non usi più si archivia; le archiviate si vedono con **«Vedi l
 MD,
     ],
     [
-        'topic' => 'gestionale', 'section' => 'Attività', 'slug' => 'gestionale-creare-un-corso-o-un-evento',
+        'topic' => 'gestionale', 'section' => 'Corsi ed eventi', 'slug' => 'gestionale-creare-un-corso-o-un-evento',
         'title' => 'Creare un corso o un evento',
         'body' => <<<'MD'
 > Vale per il gestionale online. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
-In **Attività** trovi i corsi e gli eventi dell'anno delle attività: ognuno raccoglie i suoi incassi e le sue spese.
+In **Corsi ed eventi** trovi i corsi e gli eventi dell'anno delle attività: ognuno raccoglie i suoi incassi e le sue spese.
 
-1. Premi **«Nuova attività»** (o **Nuovo → Nuova attività**).
+1. Premi **Nuovo corso o evento** (o **Nuovo → Nuovo corso o evento**).
 2. Compila nome, importo per i soci e importo per gli ospiti. Per un corso scegli i giorni delle lezioni: il mese è dovuto dalla prima lezione del mese.
-3. Facoltativi: il referente (un socio volontario) e un listino (uno per riga: nome e prezzo; per un carnet «x» e gli ingressi). Senza listino vale l'importo per i soci o per gli ospiti.
+3. Facoltativi: il referente (un socio volontario) e un listino (uno per riga: nome e prezzo; per un pacchetto di ingressi aggiungi «x» e il numero di ingressi). Senza listino vale l'importo per i soci o per gli ospiti.
 4. Con il pacchetto **Risorse** puoi indicare dove si svolge; più attività sulla stessa risorsa ne condividono il calendario.
 
 Se l'associazione ha la partita IVA, nella scheda trovi anche la casella **«Con IVA»**: vedi [Impostare l'IVA](guida:gestionale-iva-e-aspetto-fiscale).
 
-Nella scheda vedi gli iscritti, il registro presenze e i carnet con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date: vedi [Consultare il calendario e registrare le presenze](guida:gestionale-calendario-e-presenze).
+Nella scheda vedi gli iscritti, il registro presenze e i pacchetti di ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date: vedi [Consultare il calendario e registrare le presenze](guida:gestionale-calendario-e-presenze).
 MD,
     ],
     [
-        'topic' => 'gestionale', 'section' => 'Attività', 'slug' => 'gestionale-calendario-e-presenze',
+        'topic' => 'gestionale', 'section' => 'Corsi ed eventi', 'slug' => 'gestionale-calendario-e-presenze',
         'title' => 'Consultare il calendario e registrare le presenze',
         'body' => <<<'MD'
 > Vale per il gestionale online. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
-Due strumenti ti dicono cosa c'è in programma e chi c'era: il **Calendario** delle attività e il **Registro presenze** di ogni attività.
+Due strumenti ti dicono cosa c'è in programma e chi c'era: il **Calendario** di corsi ed eventi e il **Registro presenze** di ogni corso o evento.
 
 ## Il calendario
 
-Lo apri dal menu, in **Attività e risorse → Calendario**. Mostra le lezioni dei corsi, gli eventi e le date con prenotazione, tranne quelle delle attività archiviate.
+Lo apri dal menu, in **Corsi, eventi e risorse → Calendario**. Mostra le lezioni dei corsi, gli eventi e le date con prenotazione, tranne quelle delle attività archiviate.
 
 - In alto scegli la vista: **Giorno**, **Settimana** (parte dal giorno scelto e va avanti di sette giorni) o **Mese**. Di partenza vedi la settimana.
 - Le frecce **←** e **→** spostano di un giorno, di sette giorni o di un mese, secondo la vista. Con il campo data salti a un giorno preciso.
 - Ogni riga riporta l'orario (per le date con prenotazione), il nome dell'attività (cliccandolo la apri), il tipo, il luogo e, per le date con prenotazione, quanti sono prenotati su quanti posti.
 - Il collegamento **«presenze»** ti porta al registro di quel giorno.
 
-Questo calendario mostra le attività. Le prenotazioni degli spazi hanno un calendario a parte, in **Risorse**: vedi [Creare le risorse e gestire le prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni).
+Questo calendario mostra corsi ed eventi. Le prenotazioni degli spazi hanno un calendario a parte, in **Risorse**: vedi [Creare le risorse e gestire le prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni).
 
 ## Il registro presenze
 
@@ -746,7 +733,7 @@ Cose da sapere:
 
 Per registrare le presenze servono due caselle insieme in **Operatori e ruoli**: **«Modificare l'anagrafica, tesseramento, attività»** e **«Gestire i corsi»**. Valgono anche per gli eventi: «Gestire gli eventi» da solo non basta. Per vedere il registro e il riepilogo basta **«Vedere l'anagrafica»**: chi ha solo quella casella non può modificare nulla.
 
-Per creare le attività e iscrivere le persone vedi [Creare un corso o un evento](guida:gestionale-creare-un-corso-o-un-evento).
+Per creare corsi ed eventi e iscrivere le persone vedi [Creare un corso o un evento](guida:gestionale-creare-un-corso-o-un-evento).
 MD,
     ],
     [
@@ -778,7 +765,7 @@ Questa guida è per chi lavora nel gestionale: nome, email, password, verifica i
 
 ## Dove si trova
 
-Apri il menu **Profilo e accesso**: sul computer premi il tuo nome nel menu a lato, sul telefono premi **Altro**. Qui scegli **Il tuo profilo**; nello stesso menu c'è **Sicurezza**, che porta alla verifica in due passaggi.
+Apri il menu **Il tuo account**: sul computer premi il tuo nome nel menu a lato, sul telefono premi **Altro**. Qui scegli **Il tuo profilo**; nello stesso menu c'è **Sicurezza**, che porta alla verifica in due passaggi.
 
 ## Nome e password
 
@@ -884,10 +871,10 @@ Ogni riga è un'azione. Tra le più comuni:
 
 - **Accessi**: entrata e uscita di operatori e soci, tentativi falliti, password reimpostata, verifica in due passaggi (attivata, codice sbagliato, codice di recupero usato, nuovi codici generati);
 - **Soci**: modifica di una scheda, importazione dell'elenco, tutori collegati o scollegati, tessere assegnate o revocate a mano, domande di adesione;
-- **Prima nota**: incassi, spese, giroconti, movimenti stornati, importazioni;
+- **Prima nota**: incassi, spese, giroconti, movimenti annullati, importazioni;
 - **Ricevute**: emesse, inviate, rifatte o fissate;
 - **Pagamenti online**: creati, falliti, rimborsati, controllati;
-- **Attività**: date aggiunte, cambiate o annullate, prenotazioni, liste d'attesa, presenze registrate;
+- **Corsi ed eventi**: date aggiunte, cambiate o annullate, prenotazioni, liste d'attesa, presenze registrate;
 - **Anni fiscali**: creati, chiusi, riaperti, cambio del mese di inizio;
 - **Dati riservati**: ogni lettura di un file sulla salute (per esempio il download di un certificato medico), le esportazioni, i download della copia di sicurezza, l'archivio degli anni chiusi;
 - **Configurazione guidata**: completata o rimandata.
@@ -923,7 +910,7 @@ I codici sono scritti in inglese, con un punto in mezzo. I più frequenti:
 | `people.imported` | è stato importato un elenco di soci |
 | `ledger.income` / `ledger.expense` | incasso / spesa registrati |
 | `ledger.transfer` | giroconto |
-| `ledger.voided` | movimento stornato |
+| `ledger.voided` | movimento annullato |
 | `ledger.imported` | prima nota importata da un file |
 | `receipt.sent` | ricevuta inviata |
 | `payment.refunded` | pagamento online rimborsato |
