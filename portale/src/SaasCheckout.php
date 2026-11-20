@@ -199,7 +199,7 @@ final class SaasCheckout {
 		}
 		$o = (array) Orders::get( $db, (string) $order['id'] );
 		self::push( $db, $o, $org, 'trial', $end, $now );
-		self::mail( $db, 'saas_trial_started', $o, $org, $now, array( 'giorni' => (string) $days, 'fine_prova' => date_it( $end . ' 00:00:00' ), 'piani_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account#gestionale' ) );
+		self::mail( $db, 'saas_trial_started', $o, $org, $now, array( 'giorni' => (string) $days, 'fine_prova' => date_it( $end . ' 00:00:00' ), 'dopo_prova' => self::trialAfterSentence( Catalog::terms( $cat['doc'] ), $end ), 'piani_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account#gestionale' ) );
 		self::mail( $db, 'saas_ready', $o, $org, $now );
 		return (string) $cust['email'];
 	}
@@ -314,6 +314,34 @@ final class SaasCheckout {
 	}
 
 	/**
+	 * Frasi e date sul ciclo di vita dei dati, dai numeri del catalogo (`terms.lifecycle`, decisi dal gestionale). Se il catalogo non li dice, le frasi
+	 * restano vuote e la data non c'è: niente numeri di riserva.
+	 * @param array  $terms risultato di Catalog::terms()
+	 * @param string $until ultimo giorno di abbonamento (Y-m-d)
+	 * @return array{data_cancellazione:string,conservazione:string}
+	 */
+	public static function lifecycleVars( array $terms, string $until ): array {
+		$days = $terms['retention_days'] ?? null;
+		if ( null === $days ) {
+			return array( 'data_cancellazione' => '', 'conservazione' => '' );
+		}
+		$last = date_it( gmdate( 'Y-m-d', strtotime( $until . ' UTC +' . $days . ' days' ) ) . ' 00:00:00' );
+		return array(
+			'data_cancellazione' => $last,
+			'conservazione'      => "\n\nDopo il " . date_it( $until . ' 00:00:00' ) . ' i dati restano conservati fino al ' . $last . ', poi vengono eliminati.',
+		);
+	}
+
+	/** Frase dell'email di avvio della prova sui giorni di consultazione dopo la fine, dal catalogo; vuota se il catalogo non li dice. */
+	public static function trialAfterSentence( array $terms, string $end ): string {
+		$days = $terms['trial_purge_days'] ?? null;
+		if ( null === $days ) {
+			return '';
+		}
+		return ' Se non scegli un piano, fino al ' . date_it( gmdate( 'Y-m-d', strtotime( $end . ' UTC +' . $days . ' days' ) ) . ' 00:00:00' ) . ' puoi ancora entrare e consultare, poi i dati della prova vengono eliminati. Ti avvisiamo prima.';
+	}
+
+	/**
 	 * Email del gestionale al cliente dell'ordine (rispetta i modelli e l'interruttore del pannello). Mai un'eccezione: la posta non blocca i pagamenti.
 	 * Il link per scegliere la password porta alla pagina «Scegli o recupera la password» (la email con il link la manda il sistema di accesso).
 	 */
@@ -338,12 +366,12 @@ final class SaasCheckout {
 			$vars  = array(
 				'nome' => $name,'associazione' => (string) ( $org['name'] ?? '' ), 'piano' => $plan,
 				'periodo' => 'year' === $order['period'] ? 'annuale' : 'mensile', 'scadenza' => date_it( $until . ' 00:00:00' ),
-				// Sospeso il giorno dopo la scadenza; l'ultimo giorno con i dati è scadenza + 180 giorni (il gestionale elimina quando sono passati) (decisione della titolare, 13/11/2026).
-				'data_cancellazione' => date_it( gmdate( 'Y-m-d', strtotime( $until . ' UTC +180 days' ) ) . ' 00:00:00' ),
+				// Sospeso il giorno dopo la scadenza; l'ultimo giorno con i dati è scadenza + retention_days (il gestionale elimina quando sono passati): il numero viene dal catalogo.
 				'importo' => money( $total ) . ( 'exempt' === ( $q['vat_mode'] ?? '' ) ? ' (senza IVA)' : ' (IVA inclusa)' ),
 				'gestionale_url' => rtrim( (string) Config::get( 'saas_app_url', 'https://app.associazionesemplice.it/gestionale' ), '/' ),
 				'link_password' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/accedi/password-dimenticata',
 			);
+			$vars += self::lifecycleVars( Catalog::terms( $stored ? $stored['doc'] : array() ), $until );
 			return Emails::send( $db, $event, (string) $cust['email'], $extra + $vars );
 		} catch ( \Throwable $e ) {
 			error_log( '[portale] email ' . $event . ' non inviata (' . $e->getMessage() . ')' );
@@ -436,16 +464,20 @@ final class SaasCheckout {
 	}
 
 	/**
-	 * Lavoro giornaliero (bin/cron.php): chiude l'ordine di una prova finita senza un piano quando il gestionale ne elimina i dati (`purge_days` dalla fine).
+	 * Lavoro giornaliero (bin/cron.php): chiude l'ordine di una prova finita senza un piano quando il gestionale ne elimina i dati (`terms.lifecycle.trial_purge_days`
+	 * del catalogo dopo la fine; se il catalogo non lo dice non chiude nulla). `$doc`: catalogo da usare al posto di quello salvato (per i test).
 	 * Dopo la fine NON si manda «suspended» (per il SaaS sarebbe un abbonamento scaduto, con 180 giorni): resta «trial» con `until` = fine prova, e la
 	 * sospensione (sola lettura) e l'eliminazione le fa il gestionale da sé, avvisi compresi. @return int ordini chiusi
 	 */
-	public static function closeEndedTrials( Db $db, ?int $now = null ): int {
+	public static function closeEndedTrials( Db $db, ?int $now = null, ?array $doc = null ): int {
 		$now    = $now ?? time();
 		$today  = gmdate( 'Y-m-d', $now );
 		$stored = Catalog::stored( $db, $now );
-		$purge  = Catalog::terms( $stored ? $stored['doc'] : array() )['trial_purge_days'];
+		$purge  = Catalog::terms( $doc ?? ( $stored ? $stored['doc'] : array() ) )['trial_purge_days'];
 		$closed = 0;
+		if ( null === $purge ) {
+			return 0;
+		}
 		$rows   = $db->all( "SELECT o.* FROM orders o JOIN saas_orgs g ON g.ref = o.org_ref WHERE o.product = 'saas' AND o.status = 'trial' AND o.trial_ends IS NOT NULL AND g.org_id IS NOT NULL" );
 		foreach ( $rows as $o ) {
 			if ( $today >= gmdate( 'Y-m-d', strtotime( (string) $o['trial_ends'] . ' UTC +' . $purge . ' days' ) ) ) {

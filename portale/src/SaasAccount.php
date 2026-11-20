@@ -42,13 +42,16 @@ final class SaasAccount {
 	 * @param array $g riga di forCustomer()
 	 * @return array|null null se non serve; altrimenti total (centesimi), since (scadenza), delete_on (fine conservazione dati), pay_now (si paga con il metodo già salvato)
 	 */
-	public static function reactivation( array $g, ?Db $db = null, ?int $now = null ): ?array {
+	public static function reactivation( array $g, ?Db $db = null, ?int $now = null, ?array $doc = null ): ?array {
 		$now   = $now ?? time();
 		$until = (string) $g['until'];
 		$lapsed = '' !== $until && $until < gmdate( 'Y-m-d', $now );
 		if ( 'pending' === $g['state'] || 'active' !== ( $g['status'] ?? '' ) || ! ( $lapsed || in_array( $g['state'], array( 'past_due', 'suspended' ), true ) ) ) {
 			return null;
 		}
+		// Giorni di conservazione dal catalogo (decisi dal gestionale); senza, niente data (`$doc`: catalogo da usare al posto di quello salvato, per i test).
+		$cstored   = $db ? Catalog::stored( $db, $now ) : null;
+		$retention = Catalog::terms( $doc ?? ( $cstored ? $cstored['doc'] : array() ) )['retention_days'];
 		$payNow = 'stripe' === $g['provider'] && 'past_due' === $g['state'];
 		$total  = (int) $g['total'];
 		if ( ! $payNow && $db ) {
@@ -65,7 +68,7 @@ final class SaasAccount {
 		}
 		return array(
 			'total'     => $total, 'since' => $until,
-			'delete_on' => '' !== $until ? gmdate( 'Y-m-d', strtotime( $until . ' UTC +180 days' ) ) : '',
+			'delete_on' => '' !== $until && null !== $retention ? gmdate( 'Y-m-d', strtotime( $until . ' UTC +' . $retention . ' days' ) ) : '',
 			'pay_now'   => $payNow,
 		);
 	}
