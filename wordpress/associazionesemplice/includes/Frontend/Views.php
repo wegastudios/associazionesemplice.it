@@ -418,11 +418,7 @@ final class Views {
 					. '<strong>' . esc_html( Money::format( (int) $i['amount_cents'] ) ) . '</strong></li>';
 			}
 			$fields .= '</ul>';
-			if ( \AssociazioneSemplice\PaymentDonation::enabled() ) { // donazione aggiunta al pagamento: spunta con importo proposto, modificabile
-				$assoc   = trim( (string) Settings::get( 'association_name' ) );
-				$fields .= '<p class="asemf-donate"><label><input type="checkbox" name="donation" value="1" data-donation="1"> Aggiungi <input type="text" name="donation_amount" value="' . esc_attr( Money::plain( \AssociazioneSemplice\PaymentDonation::suggested_cents() ) ) . '" size="6" inputmode="decimal" aria-label="Importo della donazione in euro"> € per una donazione' . ( '' !== $assoc ? ' a ' . esc_html( $assoc ) : '' ) . '</label>'
-					. ( '' !== \AssociazioneSemplice\PaymentDonation::deductible_note() ? ' <span class="asemf-small">' . esc_html( \AssociazioneSemplice\PaymentDonation::deductible_note() ) . '</span>' : '' ) . '</p>';
-			}
+			$fields .= (string) apply_filters( 'asem_pay_form_extra', '' ); // la Pro aggiunge qui la donazione al pagamento (spunta con importo modificabile)
 			$fields .= '<p class="asemf-paytotal">Totale: <strong class="asemf-pay-total">' . esc_html( Money::format( $total ) ) . '</strong></p>';
 			$all      = Settings::all();
 			$buttons  = array();

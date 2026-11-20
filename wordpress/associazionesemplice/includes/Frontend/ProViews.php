@@ -18,6 +18,7 @@ final class ProViews {
 		add_filter( 'asem_shortcode_views', array( __CLASS__, 'shortcode_views' ) );
 		add_filter( 'asem_render_view', array( __CLASS__, 'render_view' ), 10, 3 );
 		add_filter( 'asem_areas', array( __CLASS__, 'areas' ) );
+		add_filter( 'asem_pay_form_extra', array( __CLASS__, 'pay_form_extra' ) );
 		add_filter( 'asem_page_defs', array( __CLASS__, 'page_defs' ) );
 		add_filter( 'asem_page_areas', array( __CLASS__, 'page_areas' ) );
 		add_filter( 'asem_view_available', array( __CLASS__, 'view_available' ), 10, 2 );
@@ -27,6 +28,18 @@ final class ProViews {
 		add_filter( 'asem_after_card', array( __CLASS__, 'install_tip' ) );
 		add_filter( 'asem_checkin_extra', array( __CLASS__, 'checkin_extra' ), 10, 3 );
 		add_filter( 'asem_treasurer_sections', array( __CLASS__, 'treasurer_sections' ) );
+	}
+
+	/** La donazione aggiunta al pagamento, nel modulo «Paga»: spunta con importo proposto, modificabile (solo se l'ente l'ha accesa). */
+	public static function pay_form_extra( $html ) {
+		$html = (string) $html;
+		if ( ! \AssociazioneSemplice\PaymentDonation::enabled() ) {
+			return $html;
+		}
+		$assoc   = trim( (string) Settings::get( 'association_name' ) );
+		$html .= '<p class="asemf-donate"><label><input type="checkbox" name="donation" value="1" data-donation="1"> Aggiungi <input type="text" name="donation_amount" value="' . esc_attr( Money::plain( \AssociazioneSemplice\PaymentDonation::suggested_cents() ) ) . '" size="6" inputmode="decimal" aria-label="Importo della donazione in euro"> € per una donazione' . ( '' !== $assoc ? ' a ' . esc_html( $assoc ) : '' ) . '</label>'
+			. ( '' !== \AssociazioneSemplice\PaymentDonation::deductible_note() ? ' <span class="asemf-small">' . esc_html( \AssociazioneSemplice\PaymentDonation::deductible_note() ) . '</span>' : '' ) . '</p>';
+		return $html;
 	}
 
 	/** Le aree del sito con le viste delle funzioni aggiuntive. */
