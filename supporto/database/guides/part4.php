@@ -142,25 +142,50 @@ MD,
     ],
     [
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'donazioni-con-paypal',
-        'title' => 'Ricevere donazioni con PayPal',
+        'title' => 'Ricevere donazioni dal sito',
         'body' => <<<'MD'
-> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+> Disponibile in: Free (con il pulsante PayPal), {piano_contabile} e {piano_fiscale} (anche con il pagamento del sito)
 
-Il modulo donazioni porta chi dona sulla pagina di donazione di PayPal. Il tuo sito non comunica con PayPal: la pagina si apre nel browser di chi dona.
+Le donazioni si raccolgono in due modi, a seconda che tu abbia o no un metodo di pagamento attivo.
+
+- **Con un metodo di pagamento attivo** (Stripe, PayPal, SumUp o Satispay, in **Pagamenti online**; non il checkout di WooCommerce): il modulo è aperto a tutti, anche a chi non è socio, e la donazione si registra da sola.
+- **Senza un metodo attivo**: il modulo mostra il pulsante «Dona con PayPal» e le donazioni vanno registrate a mano.
 
 ## Attivarle
 
-1. Vai nelle impostazioni delle **donazioni** del plugin e attivale.
-2. Indica l'**account PayPal** a cui devono andare, lo scopo e gli importi proposti.
-3. Inserisci il modulo in una pagina con lo shortcode dedicato (o il blocco **Associazione Semplice**).
+1. Apri la pagina **Donazioni** del plugin e accendi la raccolta con **Accendi le donazioni**. All'inizio è spenta: finché resta spenta, sul sito non compare nessun modulo.
+2. Indica gli **Importi proposti** (in euro, separati da punto e virgola, al massimo 8) e la **Causale generale**, il titolo del modulo e il motivo che compare sul pagamento.
+3. Inserisci il modulo in una pagina con lo shortcode che trovi in **Shortcode della raccolta generale** (o con il blocco **Associazione Semplice**).
+4. Il campo **Conto PayPal** serve solo se non hai un metodo di pagamento attivo: scrivi l'email del conto PayPal dell'associazione oppure il suo ID commerciante (13 caratteri, nel profilo PayPal). Serve un conto Business abilitato a ricevere donazioni.
 
-## Dopo una donazione
+Se manca sia un metodo attivo sia il conto PayPal, la raccolta resta «In attesa: manca un metodo di pagamento attivo o il conto PayPal» e il modulo non compare ai visitatori.
 
-Le donazioni vanno direttamente sul tuo account PayPal. Il plugin non le vede e non le registra da solo: la pagina **Donazioni** lo ricorda. Registrale a mano in prima nota da **Nuovo incasso**, con la categoria «Erogazione liberale». Se vuoi, per ogni versamento puoi emettere una ricevuta.
+## Con il pagamento del sito
+
+Chi dona sceglie l'importo tra quelli proposti oppure scrive un altro importo, da 1 € a 1.000 €. Scrive nome, cognome ed email; il codice fiscale e l'indirizzo sono facoltativi e servono solo se vuole che compaiano nella ricevuta. Poi sceglie come pagare e paga sul sito del gestore.
+
+A pagamento confermato, in automatico:
+
+- la donazione va in **Prima nota** come «Erogazione liberale», con la sua ricevuta; la commissione non si ribalta sul donatore;
+- chi ha donato riceve un'email «Grazie per la tua donazione» con la ricevuta in allegato;
+- se l'email è già nel gestionale (socio o contatto), la donazione si lega alla sua scheda e la scheda non cambia. Altrimenti nasce un contatto «Sostenitore (non socio)» con i dati del modulo: serve solo per la ricevuta, e resta fuori dal libro soci e dal RUNTS.
+
+Il modulo si difende da solo da spam e abusi, senza servizi esterni: c'è un limite ai tentativi per connessione e per email, e se si superano compare per esempio «Troppi tentativi: riprova tra un'ora.»
+
+Il titolo «Ricevuta di erogazione liberale» compare in automatico sulle ricevute che contengono solo donazioni.
+
+## Con il pulsante PayPal «Dona»
+
+Il pulsante porta chi dona sulla pagina di donazione di PayPal: il tuo sito non comunica con PayPal e la pagina si apre nel browser di chi dona. I soldi vanno direttamente sul tuo account PayPal. Il plugin non le vede e non le registra da solo: la pagina **Donazioni** lo ricorda. Registrale a mano in Prima nota da **Nuovo incasso**, con la categoria «Erogazione liberale». Se vuoi, per ogni versamento puoi emettere una ricevuta. Per farle registrare in automatico attiva un metodo di pagamento in **Pagamenti online**.
+
+L'account PayPal lo cambiano solo gli amministratori. Ogni modifica, anche con il ripristino di una copia, resta nel registro azioni (con l'account mascherato) e viene segnalata per email a tutti gli amministratori. Se non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni.
 
 ## Invitare a donare
 
-Nella stessa pagina **Donazioni**, la sezione **Invito a donare** aggiunge una riga con il link alla tua pagina delle donazioni. Dove c'è un evento o un corso (pagina dell'evento e conferma dell'iscrizione) dice «Non puoi partecipare? Sostienici con una donazione»; nell'area soci e nelle email dice «Vuoi sostenere» e il nome dell'associazione, poi «Fai una donazione».
+Nella pagina **Donazioni**, la sezione **Invito a donare** aggiunge una riga con il link alla tua pagina delle donazioni:
+
+- sulla pagina dell'evento o del corso dice «Non puoi partecipare? Sostienici con una donazione»;
+- nella conferma dopo l'iscrizione, nell'area soci e nelle email dice «Vuoi sostenere» e il nome dell'associazione, poi «Fai una donazione».
 
 All'inizio è spenta ovunque. In **Dove mostrarlo** scegli tu dove farla comparire:
 
@@ -169,13 +194,9 @@ All'inizio è spenta ovunque. In **Dove mostrarlo** scegli tu dove farla compari
 - nell'area soci;
 - in fondo alle email ai soci.
 
-In **Pagina delle donazioni** scrivi l'indirizzo della pagina dove hai messo il modulo. Se lo lasci vuoto il plugin usa la prima pagina del sito che contiene lo shortcode; se non c'è nessuna pagina, l'invito non compare. Se hai acceso «Donazioni detraibili» (Pro, in **Dati dell'ente**) accanto all'invito compare «È anche detraibile.».
-
-
-L'account PayPal lo cambiano solo gli amministratori. Ogni modifica, anche con il ripristino di una copia, resta nel registro azioni (con l'account mascherato) e viene segnalata per email a tutti gli amministratori. Se non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni.
-
-> Il titolo «Ricevuta di erogazione liberale» compare in automatico sulle ricevute che contengono solo donazioni (funzione Pro).
+In **Pagina delle donazioni** scrivi l'indirizzo della pagina dove hai messo il modulo. Se lo lasci vuoto il plugin usa la prima pagina del sito che contiene lo shortcode; se non c'è nessuna pagina, l'invito non compare. Se hai acceso **Donazioni detraibili** (in **Dati dell'ente**, solo Pro) accanto all'invito compare «È anche detraibile.».
 MD,
+
     ],
     [
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-stripe-o-paypal',

@@ -95,7 +95,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
-| Invito a donare: Una riga con il link alla pagina delle donazioni, sulla pagina dell'evento o del corso, nella conferma dell'iscrizione, nell'area soci e in fondo alle email ai soci; spenta di partenza, si sceglie dove mostrarla | ✓ | ✓ | ✓ |
+| Donazioni dal pagamento del sito, anche per i non soci: Con Stripe, PayPal, SumUp o Satispay attivi il modulo è aperto a tutti; la donazione si registra da sola in prima nota come «Erogazione liberale», con ricevuta ed email di ringraziamento. Chi non è socio diventa «Sostenitore (non socio)», fuori dal libro soci | — | ✓ | ✓ |
+| Invito a donare: Una riga con il link alla pagina delle donazioni: sulla pagina dell'evento «Non puoi partecipare? Sostienici con una donazione»; nella conferma dell'iscrizione, nell'area soci e nelle email «Vuoi sostenere … ? Fai una donazione». Spenta di partenza, si sceglie dove mostrarla | ✓ | ✓ | ✓ |
 | Anni fiscali: Apertura e chiusura (solo amministratori), con mese di inizio a scelta. Si chiudono in ordine; dopo la prima chiusura il mese di inizio non si cambia più | ✓ | ✓ | ✓ |
 | Riapertura dell'ultimo anno fiscale: Si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
 | Cassa «Prenota»: Prenoti per conto di un socio o ospite, per data o per attività | ✓ | ✓ | ✓ |
