@@ -36,5 +36,6 @@ defineProps({ card: Object, qr: String, member: Object, due: { type: Object, def
             <p v-else class="mt-4 text-sm text-white/85">Questa scheda non ha la tessera: qui trovi eventi, quote e ricevute.</p>
             <p v-if="card.left" class="mt-3 rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold">Non fai più parte dell'associazione.</p>
         </section>
+        <p v-if="member.invite.area" class="mt-4 text-center text-sm">Vuoi sostenere {{ member.org }}? <Link href="/area/paga" class="font-semibold text-accent hover:underline">Fai una donazione</Link>.</p>
     </MemberLayout>
 </template>

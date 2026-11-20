@@ -1,8 +1,8 @@
 <script setup>
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import MemberLayout from '../../layouts/MemberLayout.vue';
 
-defineProps({ events: Array, member: Object, online: Boolean });
+defineProps({ events: Array, member: Object, online: Boolean, justBooked: Boolean });
 const post = (url) => router.post(url, {}, { preserveScroll: true });
 const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.label}?`) && post(`/area/prenotazioni/${e.booking_id}/annulla`);
 </script>
@@ -37,5 +37,6 @@ const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.
                 </div>
             </li>
         </ul>
+        <p v-if="justBooked || member.invite.event" class="mt-4 text-sm">Non puoi partecipare? <Link href="/area/paga" class="font-semibold text-accent hover:underline">Sostienici con una donazione</Link>.</p>
     </MemberLayout>
 </template>

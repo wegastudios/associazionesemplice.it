@@ -8,7 +8,9 @@ use App\Modules\AreaSoci\Home\PaymentsHome;
 use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
 use App\Modules\AreaSoci\Http\Middleware\IdentifyMemberOrg;
 use App\Modules\AreaSoci\Services\CurrentMember;
+use App\Modules\AreaSoci\Services\MemberDonationInvites;
 use App\Modules\AreaSoci\Setup\MemberAreaAddressStep;
+use App\Modules\Core\Contracts\DonationInvites;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\SetupStep;
 use Illuminate\Routing\Router;
@@ -21,6 +23,7 @@ final class AreaSociServiceProvider extends ServiceProvider
         $this->app->tag([PaymentsHome::class], HomeWidget::TAG);
         $this->app->tag([MemberAreaAddressStep::class], SetupStep::TAG);
         $this->app->scoped(CurrentMember::class);
+        $this->app->bind(DonationInvites::class, MemberDonationInvites::class);
     }
 
     public function boot(Router $router): void
