@@ -7,6 +7,7 @@ use App\Modules\AreaSoci\Mail\DonationReceiptMail;
 use App\Modules\AreaSoci\Mail\PaymentRefunded;
 use App\Modules\AreaSoci\Payments\OnlinePayments;
 use App\Modules\AreaSoci\Payments\StripeWebhook;
+use App\Modules\AreaSoci\Services\MemberAccessError;
 use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
@@ -233,10 +234,118 @@ it('una voce già pagata si registra comunque in prima nota: pagamento da contro
         $p = $payments->find($id);
         expect($p['status'])->toBe('review')
             ->and($p['error'])->toBe('Già pagata: '.$q['label'].'. L\'incasso è stato registrato comunque: controlla se va restituito.')
-            ->and($p['receipts'])->toHaveCount(1)
+            ->and($p['receipts'])->toBe([]) // in review la ricevuta non c'è: nasce quando la segreteria segna «controllato»
+            ->and($p['held'])->toHaveCount(1)
             ->and($p['paid_cents'])->toBe(2500)
             ->and(DB::table('app.transactions')->where('method', 'stripe')->whereNull('voided_at')->count())->toBe(1)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->whereNotNull('receipt_id')->count())->toBe(0)
             ->and(DB::table('audit.log')->where('action', 'payment.item_already_paid')->count())->toBe(1);
+
+        $before = DB::table('app.receipts')->count();
+        $payments->markReviewed($id);
+        $p = $payments->find($id);
+        expect($p['status'])->toBe('settled')->and($p['receipts'])->toHaveCount(1)->and($p['held'])->toBe([])
+            ->and(DB::table('app.receipts')->count())->toBe($before + 1)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->whereNotNull('receipt_id')->count())->toBe(1);
+        expect(fn () => $payments->markReviewed($id))->toThrow(MemberAccessError::class); // secondo «controllato»: nessuna seconda ricevuta
+        expect(DB::table('app.receipts')->count())->toBe($before + 1);
+    });
+});
+
+it('chi non risulta più iscritto al corso: l\'incasso va comunque sul contributo, pagamento da controllare, testo esatto, mai doppio, ricevuta solo dopo il controllo', function (): void {
+    saveStripe($this);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $payments = app(OnlinePayments::class);
+        $m = collect($payments->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
+        app(ActivityService::class)->unenroll($this->yoga->id, $this->anna->id);
+        $id = pendingPayment($this, [$m], 'cs_gone');
+
+        $payments->settle($id, $m['amount_cents']);
+        $payments->settle($id, $m['amount_cents']); // webhook doppio
+
+        $p = $payments->find($id);
+        $tx = DB::table('app.transactions')->where('method', 'stripe')->whereNull('voided_at')->get();
+        expect($p['status'])->toBe('review')
+            ->and($p['error'])->toBe('Iscrizione terminata: Yoga. L\'incasso è stato registrato comunque: controlla se va restituito.')
+            ->and($p['receipts'])->toBe([])
+            ->and($tx)->toHaveCount(1)
+            ->and($tx[0]->amount_cents)->toBe($m['amount_cents'])
+            ->and($tx[0]->person_id)->toBe($this->anna->id)
+            ->and($tx[0]->activity_id)->toBe($this->yoga->id)
+            ->and($tx[0]->receipt_id)->toBeNull()
+            ->and($tx[0]->category_id)->toBe(DB::table('app.categories')->where('kind', 'activity_fee')->value('id'))
+            ->and(DB::table('audit.log')->where('action', 'payment.item_not_enrolled')->count())->toBe(1)
+            ->and(DB::table('audit.log')->where('action', 'payment.item_already_paid')->count())->toBe(0);
+
+        $payments->markReviewed($id);
+        expect($payments->find($id)['receipts'])->toHaveCount(1)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->whereNotNull('receipt_id')->count())->toBe(1);
+    });
+});
+
+it('mix: una voce normale e una di chi non è più iscritto, tutte e due in prima nota; con anche «già pagata» i motivi si sommano', function (): void {
+    saveStripe($this);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $payments = app(OnlinePayments::class);
+        $dues = $payments->dues([$this->anna->id]);
+        $q = collect($dues)->first(fn (array $d): bool => str_starts_with($d['key'], 'q:'));
+        $m = collect($dues)->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
+        app(ActivityService::class)->unenroll($this->yoga->id, $this->anna->id);
+        $mix = pendingPayment($this, [$q, $m], 'cs_mix1');
+        $payments->settle($mix, $q['amount_cents'] + $m['amount_cents']);
+        expect($payments->find($mix)['status'])->toBe('review')
+            ->and($payments->find($mix)['error'])->toBe('Iscrizione terminata: Yoga. L\'incasso è stato registrato comunque: controlla se va restituito.')
+            ->and($payments->find($mix)['held'])->toHaveCount(2)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->count())->toBe(2)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->whereNotNull('receipt_id')->count())->toBe(0);
+
+        // La quota ora è pagata (la tessera l'ha data il primo pagamento): la seconda volta è «già pagata».
+        $both = pendingPayment($this, [$q, $m], 'cs_mix2');
+        $payments->settle($both, $q['amount_cents'] + $m['amount_cents']);
+        expect($payments->find($both)['error'])->toBe('Iscrizione terminata: Yoga. L\'incasso è stato registrato comunque: controlla se va restituito. Già pagata: '.$q['label'].'. L\'incasso è stato registrato comunque: controlla se va restituito.');
+
+        $payments->markReviewed($mix);
+        expect($payments->find($mix)['receipts'])->toHaveCount(2);
+    });
+});
+
+it('se i soldi sono già stati restituiti prima del controllo, la ricevuta non nasce mai', function (): void {
+    saveStripe($this);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $payments = app(OnlinePayments::class);
+        $m = collect($payments->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
+        app(ActivityService::class)->unenroll($this->yoga->id, $this->anna->id);
+        $id = pendingPayment($this, [$m], 'cs_back');
+        $payments->settle($id, $m['amount_cents']);
+        DB::table('app.online_payments')->where('id', $id)->update(['refunded_cents' => $m['amount_cents']]);
+
+        $before = DB::table('app.receipts')->count();
+        $payments->markReviewed($id);
+        expect($payments->find($id)['status'])->toBe('settled')->and($payments->find($id)['receipts'])->toBe([])->and($payments->find($id)['held'])->toBe([])
+            ->and(DB::table('app.receipts')->count())->toBe($before)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->whereNotNull('receipt_id')->count())->toBe(0);
+    });
+});
+
+it('un pagamento in ordine emette le ricevute subito', function (): void {
+    saveStripe($this);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $payments = app(OnlinePayments::class);
+        $m = collect($payments->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
+        $id = pendingPayment($this, [$m], 'cs_ok');
+        $payments->settle($id, $m['amount_cents']);
+        expect($payments->find($id)['status'])->toBe('settled')->and($payments->find($id)['receipts'])->toHaveCount(1)->and($payments->find($id)['held'])->toBe([]);
+    });
+});
+
+it('l\'incasso manuale a una persona non iscritta resta rifiutato', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $m = collect(app(OnlinePayments::class)->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
+        $eva = Person::create(['first_name' => 'Eva', 'last_name' => 'Neri', 'email' => 'eva2@example.com']); // mai iscritta
+        [, $act, , $month] = explode(':', $m['key']);
+        $person = $eva->id;
+        expect(fn () => app(ActivityService::class)->collect($act, $person, $this->cash, now()->toDateString(), [$month], $m['amount_cents']))
+            ->toThrow(ActivityError::class);
     });
 });
 
@@ -255,13 +364,14 @@ it('più voci già pagate: testo al plurale; mix di pagate e non pagate: tutte i
         $payments->settle($mix, $q['amount_cents'] + $m['amount_cents']);
         expect($payments->find($mix)['status'])->toBe('review')
             ->and($payments->find($mix)['error'])->toBe('Già pagata: '.$q['label'].'. L\'incasso è stato registrato comunque: controlla se va restituito.')
-            ->and($payments->find($mix)['receipts'])->toHaveCount(2)
+            ->and($payments->find($mix)['receipts'])->toBe([])
+            ->and($payments->find($mix)['held'])->toHaveCount(2)
             ->and(DB::table('app.transactions')->where('method', 'stripe')->count())->toBe(2);
 
         // Ora anche il mese è pagato: due voci già pagate.
         $payments->settle($both, $q['amount_cents'] + $m['amount_cents']);
         expect($payments->find($both)['error'])->toBe('Già pagate: '.$q['label'].', '.$m['label'].'. L\'incasso è stato registrato comunque: controlla se va restituito.')
-            ->and($payments->find($both)['receipts'])->toHaveCount(2)
+            ->and($payments->find($both)['receipts'])->toBe([])
             ->and(DB::table('app.transactions')->where('method', 'stripe')->count())->toBe(4);
     });
 });

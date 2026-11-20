@@ -33,7 +33,7 @@ final class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'demo_uploads_off' => DemoScale::uploadsOff(),
             'auth' => [
-                'user' => $user instanceof User ? ['name' => $user->name, 'email' => $user->email, 'platform_admin' => $user->platform_admin] : null,
+                'user' => $user instanceof User ? ['name' => $user->name, 'email' => $user->email] : null,
             ],
             // Funzione: si valuta quando la pagina viene preparata, dopo che il gestionale ha scelto l'associazione.
             'org' => static function (): ?array {

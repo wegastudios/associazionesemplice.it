@@ -32,8 +32,8 @@ perso (le esportazioni tornano disponibili).
 ## 3. Cosa si cancella e cosa resta
 
 **Si cancella (tutto, insieme):**
-1. La chiave dati dell'associazione (`saas:keys:destroy`): i campi cifrati e i file non si aprono più, **anche nei
-   backup**.
+1. La chiave dati dell'associazione (`saas:keys:destroy`): da quel momento il servizio non apre più i campi cifrati e i
+   file dell'associazione. **I backup già fatti no**: restano apribili fino alla loro scadenza, entro 30 giorni (§3 bis).
 2. Le righe dell'associazione nelle tabelle dell'applicazione (soci, prima nota, attività, risorse, messaggi, ecc.).
 3. I file allegati sul disco `org_files`.
 4. Il database dedicato, se c'è (`DROP DATABASE`, dopo aver tolto la voce dal registro).
@@ -46,6 +46,26 @@ perso (le esportazioni tornano disponibili).
   riusare lo stesso indirizzo e a dimostrare quando è stata fatta.
 - Il registro dello staff (`core.platform_audit`): chi ha fatto cosa su quale identificatore, mai dati dei soci.
 - Le nostre fatture e i pagamenti dell'abbonamento: stanno nel portale, con la nostra contabilità.
+
+## 3 bis. Cosa succede ai backup (decisione del titolare, 20/11/2026)
+
+La distruzione della chiave non rende illeggibili i backup già fatti. Le regole, da usare in ogni testo che parla di
+cancellazione:
+
+- Le **chiavi** dell'associazione si distruggono **subito**, alla cancellazione.
+- I **backup già fatti** restano apribili fino alla loro scadenza, **entro 30 giorni** (dump orari delle ultime 48 ore,
+  poi uno al giorno per 30 giorni; il JetBackup del fornitore è a parte, 30 giorni). Un dump contiene la chiave
+  dell'associazione avvolta con la chiave principale, che non cambia: chi ha il dump, la chiave privata dei backup e
+  l'accesso al servizio chiavi lo riapre fino a quando il dump esiste.
+- **Nomi, email e contabilità non sono cifrati per campo**: nei backup restano leggibili fino alla scadenza anche senza
+  la chiave.
+- La chiave già sbloccata può restare **in memoria fino a 5 minuti** (`saas.crypto.cache_ttl`, 300 secondi) dopo la
+  distruzione.
+- L'**elenco delle associazioni distrutte**, con cui il servizio chiavi rifiuterebbe l'apertura anche dai backup, **non è
+  stato ancora costruito**. Se lo si costruisce, l'elenco si distrugge dopo la scadenza dell'ultimo backup che precede la
+  cancellazione, cioè entro 30 giorni; non ha effetto su ciò che non è cifrato per campo.
+- Non si promette quindi «illeggibili subito»: si promette che le chiavi sono distrutte subito e che le copie scadono da
+  sole entro 30 giorni.
 
 ## 4. Come si cancella
 
@@ -78,7 +98,7 @@ cancellazione deve ammettere questa sola operazione, solo al ruolo proprietario 
 | `saas:orgs:purge` con guardia e ripresa dei passi | Core |
 | Un servizio di cancellazione per modulo, registrato nel contratto del Core (come le esportazioni `*DataExport`) | tutti i moduli |
 | Scadenza del registro per anno con ancora della catena | Audit |
-| Test: la riattivazione azzera le date; una cancellazione non tocca altre associazioni (RLS); il pagamento arrivato all'ultimo momento ferma la cancellazione; i backup non si aprono dopo la distruzione della chiave | tutti |
+| Test: la riattivazione azzera le date; una cancellazione non tocca altre associazioni (RLS); il pagamento arrivato all'ultimo momento ferma la cancellazione; dopo la distruzione della chiave l'associazione non si apre più dal servizio; i backup già fatti restano apribili fino alla scadenza (§3 bis) | tutti |
 
 ## 7. Ancora aperto
 
@@ -88,10 +108,10 @@ cancellazione deve ammettere questa sola operazione, solo al ruolo proprietario 
    nell'informativa, con l'esportazione prima della scadenza come strada indicata.
 2. **Avvisi sull'esportazione prima della scadenza:** la regola 2 funziona solo se chi sta per scadere lo sa. I testi dei
    due avvisi (30 e 7 giorni prima) li scrive l'audit.
-3. **Backup:** le copie esistenti scadono da sole; la chiave distrutta le rende illeggibili subito. Da provare con
-   `saas:backup:restore-test` su un'associazione di prova.
+3. **Backup:** le copie esistenti scadono da sole, entro 30 giorni; fino ad allora restano apribili (§3 bis). Da provare
+   con `saas:backup:restore-test` su un'associazione di prova.
 4. **Termini e informativa** (portale): regola dei 180 giorni dalla scadenza, nessuna esportazione dopo la scadenza,
-   cancellazione automatica e non recuperabile.
+   cancellazione automatica e non recuperabile dal gestionale; chiavi distrutte subito e copie di sicurezza che scadono da sole entro 30 giorni (§3 bis).
 
 ## 8. Fine della prova senza un piano (decisione della titolare, 13/11/2026)
 
@@ -106,7 +126,7 @@ esporta (la prova non esporta). La cancellazione usa gli stessi passi di §3–4
 
 - Lo sconto di fine prova si imposta in Condizioni (`terms.trial.end_discount_percent`, partenza 0). Con 0 le email non hanno il paragrafo dell'offerta. Vale sul primo pagamento, dalla fine della prova fino alla cancellazione dei dati.
 - Nei 7 giorni dopo la prova il gestionale è in **sola lettura** e si può acquistare un piano (realizzazione nell'app: «Sviluppo SaaS in locale»).
-- Commercialista: i termini di legge di conservazione non sono un problema nostro. Backup legati al servizio: distrutta la chiave, i dati non si aprono più.
+- Commercialista: i termini di legge di conservazione non sono un problema nostro. Backup legati al servizio: distrutta la chiave, il servizio non apre più i dati; i backup già fatti scadono da soli entro 30 giorni e fino ad allora restano apribili (correzione del 20/11/2026, §3 bis).
 - Pacchetti di soci (decisione definitiva 13/11): «500 soci in più» 17 €/mese (170 €/anno) e «1.000 soci in più» 30 €/mese (300 €/anno), IVA esclusa, solo sopra il piano Grande, nascosti finché la titolare non li mette in vendita. Piccola e Media non li hanno. Da chiederle: si sommano e si comprano più volte? Cosa succede se si supera il limite senza cambiare piano?
 
 ## 10. Le condizioni della cancellazione automatica (16/11/2026)

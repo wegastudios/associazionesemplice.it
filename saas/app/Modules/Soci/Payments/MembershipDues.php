@@ -43,6 +43,11 @@ final readonly class MembershipDues implements PayableDues
         return str_starts_with($key, 'q:');
     }
 
+    public function notEnrolled(string $key): ?string
+    {
+        return null;
+    }
+
     public function settle(string $key, int $cents, string $accountId, string $date, string $method, bool $anyway = false): ?string
     {
         if (preg_match('#^q:([0-9a-f-]{36}):(\d{4}(?:/\d{4})?)$#', $key, $m) !== 1) {

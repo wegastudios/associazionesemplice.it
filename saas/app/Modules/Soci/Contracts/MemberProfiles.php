@@ -8,7 +8,7 @@ namespace App\Modules\Soci\Contracts;
  * Le persone viste dall'area soci: chi può entrare, le schede che un socio può vedere (la sua e quelle dei minori di cui
  * è tutore), la tessera, i dati personali e i recapiti che il socio può correggere da sé.
  *
- * @phpstan-type MemberCard array{id: string, first_name: string, last_name: string, type: string, type_label: string, card_number: string|null, member: bool, active: bool, year: string, valid_to: string|null, joined_on: string|null, left: bool, suspended: bool}
+ * @phpstan-type MemberCard array{id: string, first_name: string, last_name: string, type: string, type_label: string, card_number: string|null, member: bool, active: bool, year: string, valid_to: string|null, joined_on: string|null, left: bool, suspended: bool, qr_version: int}
  * @phpstan-type MemberDetails array{email: string|null, phone: string|null, tax_code: string|null, birth_date: string|null, birth_place: string|null, address: string|null, guardians: list<string>, memberships: list<array{social_year: string, valid_to: string, valid: bool}>}
  */
 interface MemberProfiles
@@ -29,4 +29,7 @@ interface MemberProfiles
 
     /** Il socio corregge telefono e indirizzo. Errori come PeopleError. */
     public function updateContacts(string $personId, ?string $phone, ?string $address): void;
+
+    /** Il socio rigenera il codice QR della tessera: quello vecchio smette di valere. Errori come PeopleError. */
+    public function regenerateCardCode(string $personId): void;
 }

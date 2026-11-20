@@ -81,6 +81,15 @@ final readonly class ActivityDues implements PayableDues
         return preg_match('/^[meb]:/', $key) === 1;
     }
 
+    public function notEnrolled(string $key): ?string
+    {
+        if (preg_match('/^m:([0-9a-f-]{36}):([0-9a-f-]{36}):\d{4}-\d{2}$/', $key, $m) !== 1) {
+            return null;
+        }
+
+        return $this->activities->nameIfNotEnrolled($m[1], $m[2]);
+    }
+
     public function settle(string $key, int $cents, string $accountId, string $date, string $method, bool $anyway = false): ?string
     {
         $pm = PaymentMethod::from($method);

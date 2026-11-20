@@ -13,6 +13,14 @@ interface Ledger
     /** @return array{receipt_id: string|null, receipt: string|null, transactions: list<string>} */
     public function recordIncome(Income $income): array;
 
+    /**
+     * Emette la ricevuta (una sola) per incassi già registrati senza ricevuta (vedi ReceiptHold). Ripetuta non emette una seconda ricevuta.
+     *
+     * @param  list<string>  $transactionIds
+     * @return string|null «numero/anno», o null se non c'era niente da emettere
+     */
+    public function issueReceipt(array $transactionIds): ?string;
+
     /** @return string id del movimento */
     public function recordExpense(Expense $expense): string;
 

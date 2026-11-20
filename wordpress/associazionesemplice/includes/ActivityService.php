@@ -1042,6 +1042,12 @@ class ActivityService {
 
 	// ---------- Quanto si può ancora incassare ----------
 
+	/** La persona non è (più) iscritta al corso nel mese indicato: iscrizione assente o terminata prima di quel mese. */
+	public function enrollment_ended( int $activity_id, int $person_id, string $month ): bool {
+		$enr = $this->db()->get_row( $this->db()->prepare( 'SELECT end_month FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d', $activity_id, $person_id ), ARRAY_A );
+		return ! $enr || ( ! empty( $enr['end_month'] ) && (string) $enr['end_month'] < $month );
+	}
+
 	/**
 	 * Quanto manca da incassare per un'iscrizione a un corso nel mese (o nel periodo, per la quota a trimestre) indicato: contributo dell'iscritto
 	 * (variante di listino compresa) meno ciò che è già stato versato, sconti compresi. Con la quota unica vale per tutta l'iscrizione.

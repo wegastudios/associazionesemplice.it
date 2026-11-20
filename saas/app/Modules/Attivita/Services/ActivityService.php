@@ -611,6 +611,10 @@ final readonly class ActivityService implements Activities
             }
         }
         if ($row === null) {
+            // Pagamento online già incassato da chi non risulta più iscritto: i soldi si registrano comunque sul contributo del corso.
+            if ($anyway && $months !== [] && $activity->kind === ActivityKind::Course && $activity->billing !== Billing::Once && $amountCents !== null && $amountCents > 0) {
+                return $this->collectUnenrolled($activity, $personId, $accountId, $date, $months, $amountCents, $method);
+            }
             throw new ActivityError('La persona non è iscritta a questa attività.');
         }
         $fee = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Contributo attività / corso» in prima nota.');
@@ -658,6 +662,46 @@ final readonly class ActivityService implements Activities
                 throw new ActivityError($left <= 0 ? 'Questa iscrizione risulta già pagata.' : 'L\'importo supera quanto manca da incassare ('.Money::format($left).').');
             }
             $lines[] = new IncomeLine($category, $cents, MemberFeeOption::description($donation, $activity->kind, $activity->name), $row['start_month'], $vatRate);
+        }
+
+        return $this->ledger->recordIncome(new Income($date, $accountId, $lines, $method, $personId, true, null, $activity->id))['receipt'];
+    }
+
+    /** Il nome del corso se la persona non risulta più iscritta (nessuna iscrizione trovata), altrimenti null. */
+    public function nameIfNotEnrolled(string $activityId, string $personId): ?string
+    {
+        $activity = Str::isUuid($activityId) ? Activity::query()->find($activityId) : null;
+        if (! $activity instanceof Activity) {
+            return null;
+        }
+        foreach ($this->status($activity) as $s) {
+            if ($s['person_id'] === $personId && $s['active']) {
+                return null;
+            }
+        }
+
+        return $activity->name;
+    }
+
+    /**
+     * Soldi già arrivati da chi non risulta più iscritto: si registrano comunque come entrata sul contributo del corso, con
+     * la stessa voce e lo stesso IVA di un incasso normale.
+     *
+     * @param  list<string>  $months
+     * @return string|null il numero di ricevuta
+     */
+    private function collectUnenrolled(Activity $activity, string $personId, string $accountId, string $date, array $months, int $cents, ?PaymentMethod $method): ?string
+    {
+        $fee = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Contributo attività / corso» in prima nota.');
+        ['category' => $category, 'donation' => $donation] = $this->memberFees->category($fee, $this->person($personId)['type'] ?? '');
+        $vatRate = $donation ? null : $this->vat->rate($activity);
+        $year = $this->year($activity);
+        $lines = [];
+        foreach (array_values(array_unique($months)) as $m) {
+            if (! in_array($m, $year['months'], true)) {
+                throw new ActivityError('Il mese '.(preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $m) === 1 ? self::monthLabel($m) : $m).' è fuori dall\'anno di questa attività.');
+            }
+            $lines[] = new IncomeLine($category, $cents, MemberFeeOption::description($donation, $activity->kind, $activity->name, self::monthLabel($m)), $m, $vatRate);
         }
 
         return $this->ledger->recordIncome(new Income($date, $accountId, $lines, $method, $personId, true, null, $activity->id))['receipt'];

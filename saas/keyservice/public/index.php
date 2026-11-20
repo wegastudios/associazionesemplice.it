@@ -9,9 +9,15 @@ declare(strict_types=1);
 
 use KeyService\Config;
 use KeyService\FileNonceStore;
+use KeyService\FileRateCounter;
 use KeyService\KeyWrap;
 use KeyService\Protocol;
+use KeyService\RotatingLog;
 use KeyService\Service;
+
+// Mai errori a schermo: avvisi e percorsi non devono finire nella risposta.
+ini_set('display_errors', '0');
+ini_set('html_errors', '0');
 
 spl_autoload_register(static function (string $class): void {
     if (str_starts_with($class, 'KeyService\\')) {
@@ -36,26 +42,42 @@ try {
     return;
 }
 
-$service = new Service(
-    new KeyWrap($config->masterKey),
-    $config->clientPublicKey,
-    $config->allowedIps,
-    new FileNonceStore($config->nonceDir),
-    static function (string $line) use ($config): void {
-        file_put_contents($config->logFile, gmdate('c').' '.$line."\n", FILE_APPEND | LOCK_EX);
-    },
-);
+try {
+    $log = new RotatingLog($config->logFile, $config->logMaxBytes, $config->logKeep);
 
-$server = static fn (string $key): ?string => isset($_SERVER[$key]) && is_string($_SERVER[$key]) ? $_SERVER[$key] : null;
-$body = file_get_contents('php://input', length: 8192);
+    $service = new Service(
+        new KeyWrap($config->masterKey),
+        $config->clientPublicKey,
+        $config->allowedIps,
+        new FileNonceStore($config->nonceDir),
+        static function (string $line) use ($log): void {
+            $log->write($line);
+        },
+        new FileRateCounter($config->rateDir),
+        $config->unwrapAlarm,
+        $config->unwrapLimit,
+        static function (string $message) use ($config): void {
+            if ($config->alarmEmail !== '') {
+                @mail($config->alarmEmail, 'Servizio chiavi: allarme', $message);
+            }
+        },
+    );
 
-$result = $service->handle(
-    $server('REQUEST_METHOD') ?? 'GET',
-    $body === false ? '' : $body,
-    $server('HTTP_'.strtoupper(str_replace('-', '_', Protocol::SIGNATURE_HEADER))),
-    $server('REMOTE_ADDR') ?? '',
-    time(),
-);
+    $server = static fn (string $key): ?string => isset($_SERVER[$key]) && is_string($_SERVER[$key]) ? $_SERVER[$key] : null;
+    $body = file_get_contents('php://input', length: 8192);
 
-http_response_code($result['status']);
-echo json_encode($result['body'], JSON_THROW_ON_ERROR);
+    $result = $service->handle(
+        $server('REQUEST_METHOD') ?? 'GET',
+        $body === false ? '' : $body,
+        $server('HTTP_'.strtoupper(str_replace('-', '_', Protocol::SIGNATURE_HEADER))),
+        $server('REMOTE_ADDR') ?? '',
+        time(),
+    );
+
+    http_response_code($result['status']);
+    echo json_encode($result['body'], JSON_THROW_ON_ERROR);
+} catch (Throwable) {
+    // Errore fuori dal servizio (file mancanti, memoria, ...): risposta generica, mai percorsi né messaggi.
+    http_response_code(500);
+    echo '{"error":"errore interno"}';
+}

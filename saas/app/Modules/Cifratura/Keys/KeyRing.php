@@ -7,10 +7,12 @@ namespace App\Modules\Cifratura\Keys;
 use App\Modules\Cifratura\Contracts\Bytea;
 use App\Modules\Cifratura\Contracts\DecryptionFailed;
 use App\Modules\Cifratura\Contracts\KeyVault;
+use App\Modules\Cifratura\Contracts\OrgKeyMissing;
 use App\Modules\Cifratura\Contracts\OrgKeys;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
-use RuntimeException;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Chiavi dati delle associazioni. Nel database (core.org_keys) stanno solo cifrate con la chiave principale; in chiaro
@@ -49,9 +51,10 @@ final class KeyRing implements OrgKeys
     {
         $version = $this->latestVersion($orgId);
         if ($version === null) {
-            $this->create($orgId);
-            $version = $this->readLatest($orgId) ?? throw new RuntimeException('Chiave dell\'associazione non creata.');
-            $this->latest[$orgId] = [$version, time()];
+            // La chiave nasce solo con l'associazione (create). Se manca, ricrearla renderebbe illeggibili i dati
+            // già cifrati: si segnala e non si scrive.
+            $this->reportMissing($orgId);
+            throw new OrgKeyMissing('Chiave dati dell\'associazione mancante: scrittura rifiutata.');
         }
 
         try {
@@ -90,6 +93,18 @@ final class KeyRing implements OrgKeys
     {
         unset($this->latest[$orgId]);
         $this->cache->forget($orgId);
+    }
+
+    /** Allarme nel log di sistema e riga nel registro della piattaforma (solo l'identificativo, mai chiavi né dati). */
+    private function reportMissing(string $orgId): void
+    {
+        Log::critical('Chiave dati di un\'associazione mancante', ['org' => $orgId]);
+
+        try {
+            (new KeyAudit($this->db))->record(KeyAudit::ORG_KEY_MISSING, ['org' => $orgId], $orgId);
+        } catch (Throwable) {
+            // Il log di sistema resta: il registro non deve nascondere l'errore vero.
+        }
     }
 
     private function latestVersion(string $orgId): ?int

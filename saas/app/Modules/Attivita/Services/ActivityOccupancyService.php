@@ -6,6 +6,8 @@ namespace App\Modules\Attivita\Services;
 
 use App\Modules\Attivita\Contracts\ActivityOccupancy;
 use App\Modules\Attivita\Rules\SessionRules;
+use App\Modules\Core\Contracts\OrgContext;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\JoinClause;
@@ -20,7 +22,12 @@ final readonly class ActivityOccupancyService implements ActivityOccupancy
     /** Giorni al massimo da guardare per i corsi (una prenotazione senza fine arriva fino al 9999). */
     private const COURSE_HORIZON_DAYS = 3660;
 
-    public function __construct(private DatabaseManager $db) {}
+    public function __construct(private DatabaseManager $db, private OrgContext $context) {}
+
+    private function connection(): ConnectionInterface
+    {
+        return $this->db->connection($this->context->require()->connection);
+    }
 
     public function busy(string $resourceId, string $from, string $to, ?string $exceptSessionId = null, ?string $exceptActivityId = null, ?string $exceptBlock = null): array
     {
@@ -57,7 +64,7 @@ final readonly class ActivityOccupancyService implements ActivityOccupancy
         if (! Str::isUuid($resourceId)) {
             return [];
         }
-        $q = $this->db->connection('pgsql')->table('app.activity_sessions as s')
+        $q = $this->connection()->table('app.activity_sessions as s')
             ->join('app.activities as a', static fn (JoinClause $j) => $j->on('a.org_id', '=', 's.org_id')->on('a.id', '=', 's.activity_id'))
             ->where('a.resource_id', $resourceId)->whereNotNull('a.resource_block')->where('a.occupy_on_booking', false)->whereNull('a.archived_at')->whereNull('s.cancelled_at');
         if ($key !== null) {
@@ -111,7 +118,7 @@ final readonly class ActivityOccupancyService implements ActivityOccupancy
     /** @return list<array{id: string, activity_id: string, from: string, to: string, label: string}> */
     private function sessions(string $resourceId, string $from, string $to, ?string $exceptSessionId, ?string $exceptActivityId): array
     {
-        $q = $this->db->connection('pgsql')->table('app.activity_sessions as s')
+        $q = $this->connection()->table('app.activity_sessions as s')
             ->join('app.activities as a', static fn (JoinClause $j) => $j->on('a.org_id', '=', 's.org_id')->on('a.id', '=', 's.activity_id'))
             ->where('a.resource_id', $resourceId)->whereNull('a.archived_at')->whereNull('s.cancelled_at')
             ->whereRaw("(s.session_date + coalesce(s.start_time, '00:00')::time) < ?::timestamp", [$to])
@@ -145,7 +152,7 @@ final readonly class ActivityOccupancyService implements ActivityOccupancy
         if ($last < $first) {
             return [];
         }
-        $q = $this->db->connection('pgsql')->table('app.activities')
+        $q = $this->connection()->table('app.activities')
             ->where('kind', 'course')->where('resource_id', $resourceId)->whereNull('archived_at')->whereNotNull('starts_on')
             ->where('starts_on', '<=', $last)->where(static fn (Builder $w) => $w->whereNull('ends_on')->orWhere('ends_on', '>=', $first));
         if ($exceptActivityId !== null && Str::isUuid($exceptActivityId)) {

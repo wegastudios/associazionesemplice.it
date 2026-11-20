@@ -12,3 +12,17 @@ allowed_ips = ""
 
 ; log_file = "/home/account/keyservice/storage/keyservice.log"
 ; nonce_dir = "/home/account/keyservice/storage/nonces"
+
+; Registro: oltre questa dimensione (byte) passa a keyservice.log.1, .2, ... e se ne tengono log_keep oltre a quello in
+; corso. Valori di partenza: 5 MiB e 3 file.
+; log_max_bytes = 5242880
+; log_keep = 3
+
+; Aperture di chiavi (operazione unwrap) al minuto. Oltre unwrap_alarm_per_minute il servizio scrive «ALLARME» nel
+; registro (e manda un'email ad alarm_email, se c'è); oltre unwrap_limit_per_minute risponde 429 e non apre nulla.
+; Con molte associazioni (dopo un riavvio dell'applicazione ogni associazione chiede la sua chiave una volta) o con
+; `saas:keys:rewrap` su tutte, alzare le soglie per il tempo necessario. 0 spegne il limite o l'allarme.
+; unwrap_alarm_per_minute = 100
+; unwrap_limit_per_minute = 200
+; alarm_email = ""
+; rate_dir = "/home/account/keyservice/storage/rate"
