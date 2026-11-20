@@ -325,6 +325,17 @@ case "$ACTION" in
     echo "== Controllo =="
     "$PHP" artisan saas:health --skip-migrations | grep -E "permessi|ruolo|ERRORE|AVVISO" || true
     ;;
+  prova-ip)
+    # Sola lettura: quante richieste ha contato il limite dell'API dello staff per l'indirizzo dato (secondo argomento, pg_bin_dir).
+    # Serve a provare che dietro il proxy del portale il SaaS vede l'indirizzo vero del visitatore e non quello del server.
+    [[ "$ARG" =~ ^[0-9a-fA-F:.]{3,45}$ ]] || { echo "Indirizzo IP non valido." >&2; exit 1; }
+    cd "$BASE/current"
+    PROVA_IP="$ARG" "$PHP" artisan tinker --execute='
+      $ip = getenv("PROVA_IP");
+      $k = "staff-api|".$ip;
+      echo "IP ", $ip, ": richieste contate = ", max(Illuminate\Support\Facades\RateLimiter::attempts(md5("staff-api".$k)), Illuminate\Support\Facades\RateLimiter::attempts("staff-api".$k)), PHP_EOL;
+    '
+    ;;
   permessi-diagnosi)
     # Sola lettura: da dove arrivano i permessi (ACL di uno schema e di una tabella, ruoli di cui fa parte il ruolo applicativo).
     cd "$BASE/current"
