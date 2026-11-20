@@ -144,3 +144,4 @@ Discrepancies.php
 Admin/ReceiptReplacePage.php
 Admin/ReceiptCheckPage.php
 ReceiptFiles.php
+Frontend/DonationPage.php

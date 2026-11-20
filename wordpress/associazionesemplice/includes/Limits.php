@@ -210,6 +210,18 @@ final class Limits {
 			'Un valore alto permette abusi che riempiono l\'elenco dei pagamenti e consumano richieste al servizio di pagamento.',
 			'Un socio che ricomincia più volte il pagamento potrebbe dover aspettare.'
 		);
+		$add(
+			'donate_per_ip', 'pagamenti', 'Donazioni avviate dalla stessa connessione in un\'ora', 'donazioni', 10, 1, 200,
+			'La pagina delle donazioni è aperta a tutti: questo limite impedisce a un programma automatico di creare migliaia di pagamenti in sospeso.',
+			'Se il sito è dietro un servizio di protezione (CDN, proxy) tutti i visitatori possono apparire con lo stesso indirizzo: in quel caso va alzato. Un valore alto facilita gli abusi.',
+			'Chi prova più volte a donare dalla stessa connessione potrebbe dover aspettare.'
+		);
+		$add(
+			'donate_per_email', 'pagamenti', 'Donazioni avviate con lo stesso indirizzo email in un\'ora', 'donazioni', 5, 1, 100,
+			'Impedisce di creare molti pagamenti in sospeso a nome della stessa persona.',
+			'Un valore alto facilita gli abusi.',
+			'Chi riprova più volte con lo stesso indirizzo potrebbe dover aspettare.'
+		);
 
 		$add(
 			'bank_email_per_hour', 'pagamenti', 'Invii delle coordinate bancarie per email, per utente, in un\'ora', 'invii', 3, 1, 20,

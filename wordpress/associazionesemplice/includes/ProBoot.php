@@ -132,6 +132,7 @@ final class ProBoot {
 		Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione
 		Frontend\ProViews::register(); // sezioni e viste del sito
 		Frontend\ProActions::register(); // azioni dei moduli del sito
+		Frontend\DonationPage::register(); // donazioni dal pagamento del sito, aperte anche a chi non è socio
 		add_filter( 'asem_features_suspended', array( __CLASS__, 'suspended' ) );
 		add_filter( 'asem_feature_available', array( __CLASS__, 'available' ), 10, 2 );
 		add_filter( 'asem_feature_unavailable_message', array( __CLASS__, 'message' ), 10, 2 );

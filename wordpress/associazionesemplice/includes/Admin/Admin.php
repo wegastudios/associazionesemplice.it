@@ -128,7 +128,7 @@ final class Admin {
 			array( 'asem-card', 'Tessera e QR', array( CardPage::class, 'render' ) ),
 			array( 'asem-look', 'Aspetto', array( AppearancePage::class, 'render' ) ),
 			array( 'asem-bank', 'Bonifico bancario', array( BankPage::class, 'render' ) ),
-			array( 'asem-donate', 'Donazioni con PayPal', array( DonatePage::class, 'render' ) ),
+			array( 'asem-donate', 'Donazioni', array( DonatePage::class, 'render' ) ),
 			array( 'asem-backup', 'Copia di sicurezza', array( BackupPage::class, 'render' ) ),
 			array( 'asem-comms', 'Privacy e regolamento', array( CommsPage::class, 'render' ) ),
 			array( 'asem-audit', 'Registro azioni', array( AuditPage::class, 'render' ) ),

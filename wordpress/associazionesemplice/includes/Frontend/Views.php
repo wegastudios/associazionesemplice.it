@@ -59,7 +59,7 @@ final class Views {
 	}
 
 	/** Esito dell'ultima azione (una sola volta per pagina, anche con più viste). */
-	private static function flash(): string {
+	public static function flash(): string {
 		static $printed = false;
 		if ( $printed ) {
 			return '';
@@ -1320,6 +1320,9 @@ final class Views {
 		Assets::enqueue();
 		$amounts = $c ? \AssociazioneSemplice\Donations::campaign_amounts( $c ) : \AssociazioneSemplice\Donations::amounts();
 		$purpose = $c ? \AssociazioneSemplice\Donations::campaign_purpose( $c ) : \AssociazioneSemplice\Donations::purpose();
+		if ( 'checkout' === \AssociazioneSemplice\Donations::mode() ) { // con un metodo di pagamento attivo si dona dal nostro pagamento (la Pro disegna il modulo)
+			return (string) apply_filters( 'asem_donation_page', '', array( 'campaign' => $c, 'amounts' => $amounts, 'purpose' => $purpose, 'note' => $c ? (string) $c['note'] : '' ) );
+		}
 		$select  = '<label>Importo <select name="amount">';
 		foreach ( $amounts as $a ) {
 			$select .= '<option value="' . esc_attr( \AssociazioneSemplice\Donations::paypal_amount( $a ) ) . '">' . esc_html( $a ) . ' €</option>';

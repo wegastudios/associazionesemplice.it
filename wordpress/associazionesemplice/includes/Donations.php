@@ -4,9 +4,10 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Raccolta di donazioni con PayPal. Il sito non parla con PayPal: mostra un modulo che porta il donatore alla pagina di donazione di
- * PayPal (paypal.com/donate) già compilata con il conto dell'ente, la causale e l'importo scelto. Il pagamento avviene tutto su PayPal.
- * Le donazioni arrivano sul conto PayPal e non lasciano traccia nel gestionale: si registrano a mano in prima nota («Nuovo incasso», categoria «Erogazione liberale»); nessun webhook né IPN.
+ * Raccolta di donazioni, aperta anche a chi non è socio. Con un metodo di pagamento attivo (Stripe, PayPal, SumUp, Satispay) la donazione passa dal
+ * pagamento del sito: a pagamento confermato si registra da sola in prima nota come «Erogazione liberale», con la sua ricevuta.
+ * Senza un metodo attivo resta il pulsante «Dona» di PayPal (paypal.com/donate, già compilato con conto, causale e importo): il pagamento avviene tutto
+ * su PayPal e non lascia traccia nel gestionale (nessun webhook né IPN): si registra a mano in prima nota («Nuovo incasso», categoria «Erogazione liberale»).
  */
 final class Donations {
 
@@ -84,8 +85,27 @@ final class Donations {
 		}
 	}
 
+	/**
+	 * Come si dona: «checkout» = il pagamento del sito (Stripe, PayPal, SumUp o Satispay: la donazione si registra da sola in prima nota con la sua ricevuta);
+	 * «paypal» = il pulsante «Dona» di PayPal, solo per chi non ha un metodo di pagamento attivo (niente movimento né ricevuta); vuoto = nessuna donazione.
+	 */
+	public static function mode(): string {
+		if ( empty( Settings::get( 'donate_enabled' ) ) ) {
+			return '';
+		}
+		if ( self::checkout_available() ) {
+			return 'checkout';
+		}
+		return '' !== self::account() ? 'paypal' : '';
+	}
+
+	/** C'è un metodo di pagamento online con cui far donare dal sito? (lo dice la Pro: nella versione gratuita no) */
+	public static function checkout_available(): bool {
+		return (bool) apply_filters( 'asem_donation_checkout_available', false );
+	}
+
 	public static function enabled(): bool {
-		return ! empty( Settings::get( 'donate_enabled' ) ) && '' !== self::account();
+		return '' !== self::mode();
 	}
 
 	/** Causale: quella scelta, altrimenti «Donazione a <ente>». */
@@ -191,6 +211,6 @@ final class Donations {
 
 	/** Avviso sempre uguale: le donazioni esistono solo con PayPal configurato. */
 	public static function disclaimer(): string {
-		return 'Le donazioni sono disponibili solo se PayPal è configurato: serve il conto PayPal dell\'associazione e la raccolta accesa. Senza, gli shortcode non mostrano nulla ai visitatori.';
+		return 'Le donazioni sono disponibili solo con la raccolta accesa e un metodo di pagamento attivo (Pagamenti online) oppure, senza, il conto PayPal dell\'associazione. Senza, gli shortcode non mostrano nulla ai visitatori.';
 	}
 }
