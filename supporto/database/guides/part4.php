@@ -142,26 +142,61 @@ MD,
     ],
     [
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'donazioni-con-paypal',
-        'title' => 'Ricevere donazioni con PayPal',
+        'title' => 'Ricevere donazioni dal sito',
         'body' => <<<'MD'
-> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+> Disponibile in: Free (con il pulsante PayPal), {piano_contabile} e {piano_fiscale} (anche con il pagamento del sito)
 
-Il modulo donazioni porta chi dona sulla pagina di donazione di PayPal. Il tuo sito non comunica con PayPal: la pagina si apre nel browser di chi dona.
+Le donazioni si raccolgono in due modi, a seconda che tu abbia o no un metodo di pagamento attivo.
+
+- **Con un metodo di pagamento attivo** (Stripe, PayPal, SumUp o Satispay, in **Pagamenti online**; non il checkout di WooCommerce): il modulo è aperto a tutti, anche a chi non è socio, e la donazione si registra da sola.
+- **Senza un metodo attivo**: il modulo mostra il pulsante «Dona con PayPal» e le donazioni vanno registrate a mano.
 
 ## Attivarle
 
-1. Vai nelle impostazioni delle **donazioni** del plugin e attivale.
-2. Indica l'**account PayPal** a cui devono andare, lo scopo e gli importi proposti.
-3. Inserisci il modulo in una pagina con lo shortcode dedicato (o il blocco **Associazione Semplice**).
+1. Apri la pagina **Donazioni** del plugin e accendi la raccolta con **Accendi le donazioni**. All'inizio è spenta: finché resta spenta, sul sito non compare nessun modulo.
+2. Indica gli **Importi proposti** (in euro, separati da punto e virgola, al massimo 8) e la **Causale generale**, il titolo del modulo e il motivo che compare sul pagamento.
+3. Inserisci il modulo in una pagina con lo shortcode che trovi in **Shortcode della raccolta generale** (o con il blocco **Associazione Semplice**).
+4. Il campo **Conto PayPal** serve solo se non hai un metodo di pagamento attivo: scrivi l'email del conto PayPal dell'associazione oppure il suo ID commerciante (13 caratteri, nel profilo PayPal). Serve un conto Business abilitato a ricevere donazioni.
 
-## Dopo una donazione
+Se manca sia un metodo attivo sia il conto PayPal, la raccolta resta «In attesa: manca un metodo di pagamento attivo o il conto PayPal» e il modulo non compare ai visitatori.
 
-Le donazioni vanno direttamente sul tuo account PayPal. Il plugin non le vede: le registri tu in prima nota, con un incasso. Se vuoi, per ogni versamento puoi emettere una ricevuta.
+## Con il pagamento del sito
+
+Chi dona sceglie l'importo tra quelli proposti oppure scrive un altro importo, da 1 € a 1.000 €. Scrive nome, cognome ed email; il codice fiscale e l'indirizzo sono facoltativi e servono solo se vuole che compaiano nella ricevuta. Poi sceglie come pagare e paga sul sito del gestore.
+
+A pagamento confermato, in automatico:
+
+- la donazione va in **Prima nota** come «Erogazione liberale», con la sua ricevuta; la commissione non si ribalta sul donatore;
+- chi ha donato riceve un'email «Grazie per la tua donazione» con la ricevuta in allegato;
+- se l'email è già nel gestionale (socio o contatto), la donazione si lega alla sua scheda e la scheda non cambia. Altrimenti nasce un contatto «Sostenitore (non socio)» con i dati del modulo: serve solo per la ricevuta, e resta fuori dal libro soci e dal RUNTS.
+
+Il modulo si difende da solo da spam e abusi, senza servizi esterni: c'è un limite ai tentativi per connessione e per email, e se si superano compare per esempio «Troppi tentativi: riprova tra un'ora.»
+
+Il titolo «Ricevuta di erogazione liberale» compare in automatico sulle ricevute che contengono solo donazioni.
+
+## Con il pulsante PayPal «Dona»
+
+Il pulsante porta chi dona sulla pagina di donazione di PayPal: il tuo sito non comunica con PayPal e la pagina si apre nel browser di chi dona. Le donazioni arrivano sul tuo conto PayPal e il plugin non le registra da solo. Per mandare una ricevuta a chi dona, attivala nelle impostazioni del tuo conto PayPal: la ricevuta la manda PayPal, non il plugin. Registra le donazioni in Prima nota da **Nuovo incasso**, con la categoria «Erogazione liberale»; se vuoi, per ogni versamento puoi emettere anche una ricevuta tua. Per farle registrare in automatico, e avere la ricevuta del plugin, serve il pagamento del sito (Pro): attiva un metodo in **Pagamenti online**.
 
 L'account PayPal lo cambiano solo gli amministratori. Ogni modifica, anche con il ripristino di una copia, resta nel registro azioni (con l'account mascherato) e viene segnalata per email a tutti gli amministratori. Se non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni.
 
-> Il titolo «Ricevuta di erogazione liberale» compare in automatico sulle ricevute che contengono solo donazioni (funzione Pro).
+## Invitare a donare
+
+Nella pagina **Donazioni**, la sezione **Invito a donare** aggiunge una riga con il link alla tua pagina delle donazioni:
+
+- sulla pagina dell'evento o del corso dice «Non puoi partecipare? Sostienici con una donazione»;
+- nella conferma dopo l'iscrizione, nell'area soci e nelle email dice «Vuoi sostenere» e il nome dell'associazione, poi «Fai una donazione».
+
+All'inizio è spenta ovunque. In **Dove mostrarlo** scegli tu dove farla comparire:
+
+- sulla pagina dell'evento o del corso (utile soprattutto quando è pieno o già passato);
+- nella conferma dopo l'iscrizione o la prenotazione;
+- nell'area soci;
+- in fondo alle email ai soci.
+
+In **Pagina delle donazioni** scrivi l'indirizzo della pagina dove hai messo il modulo. Se lo lasci vuoto il plugin usa la prima pagina del sito che contiene lo shortcode; se non c'è nessuna pagina, l'invito non compare. Se hai acceso **Donazioni detraibili** (in **Dati dell'ente**, solo Pro) accanto all'invito compare «È anche detraibile.».
 MD,
+
     ],
     [
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-stripe-o-paypal',
@@ -185,9 +220,48 @@ Se in **Impostazioni → Cassa → Pagamenti online** compare un avviso sulle **
 4. Per Stripe, crea nel pannello Stripe (**Sviluppatori → Webhook**) un **webhook** verso l'indirizzo mostrato nella pagina del plugin e aggiungi questi **cinque eventi**: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`, `charge.refunded` e `charge.dispute.created`. **Se il webhook c'è già**, aggiungi solo gli ultimi due (`charge.refunded` e `charge.dispute.created`): servono per gli avvisi sui rimborsi e sulle contestazioni fatti dal pannello di Stripe.
 5. Salva e fai un **pagamento di prova** con un importo minimo.
 
+Se l'associazione è senza scopo di lucro, Stripe e PayPal possono avere condizioni particolari: nella pagina trovi i link «Stripe per i non profit» e «PayPal: tariffa per gli enti benefici». Le condizioni le decide il gestore e possono cambiare: chiedi sempre a lui.
+
+## Con la configurazione guidata
+
+Nella **Configurazione guidata** i passi **Collega Stripe** e **Collega PayPal** fanno il collegamento al posto tuo. Puoi anche lasciare i campi vuoti e compilarli dopo in **Pagamenti online**.
+
+- **Stripe**: apri «Apri la pagina delle chiavi di Stripe» e copia la chiave pubblicabile (inizia con `pk_`); crea la chiave segreta (`sk_`, oppure `rk_` se vuoi una chiave con restrizioni). Una chiave limitata deve poter scrivere su «Checkout Sessions», «Refunds» e «Webhook Endpoints». Scegli la modalità, **Prova (test)** o **Reale (live)**: comincia dalla prova.
+- **PayPal**: apri «Apri la pagina delle credenziali di PayPal», crea un'app e copia il «Client ID» e il «Client Secret». Per la prova apri la scheda «Sandbox» della stessa pagina e scegli la modalità **Prova (sandbox)**: le credenziali di prova e quelle reali sono diverse.
+- **Prova della connessione**: appena incolli le chiavi, il plugin controlla che funzionino. Se la prova non riesce, le chiavi restano salvate ma il metodo non viene attivato: il messaggio dice di correggerle in **Pagamenti online**.
+- **Conferma dei pagamenti**: con Stripe la casella «Crea da solo il collegamento con Stripe (webhook)» è già spuntata. Il plugin crea il webhook con gli eventi giusti e salva il suo segreto. Se non ci riesce lo dice, con il motivo, e puoi crearlo a mano come al passo 4. Il webhook si crea da solo solo se il sito è raggiungibile da internet con https; se in Stripe esiste già, Stripe non mostra più il segreto: copialo dalla pagina dei webhook di Stripe e incollalo in **Pagamenti online**.
+
+## Importare le chiavi da WooCommerce
+
+Se sul sito ci sono già i plugin di pagamento di WooCommerce, in **Pagamenti online** compare la scheda **Importa da WooCommerce**. Elenca i metodi trovati, dove sono e in che modalità; spunta quelli che vuoi e premi **Importa le chiavi spuntate**. Le chiavi restano anche in WooCommerce; qui si salvano cifrate e sostituiscono quelle già salvate per lo stesso metodo (Stripe, PayPal o SumUp). Il metodo scelto in «Come incassare online» non cambia finché non lo cambi tu.
+
+Dopo l'importazione premi **Verifica connessione**, chiudi gli ordini del negozio ancora in attesa, scegli il metodo in «Come incassare online» e salva. Gli incassi già registrati in prima nota restano come sono. Per Stripe crea un webhook nuovo con l'indirizzo che trovi nella pagina: quello di WooCommerce non vale per questo plugin.
+
+Alcune chiavi non si importano:
+
+- Stripe collegato a WooCommerce con il pulsante «Connetti»: la chiave salvata vale per un'ora sola. Crea una chiave tua in Stripe (Sviluppatori → Chiavi API).
+- WooPayments non ha chiavi da importare: apri un conto Stripe dell'associazione e inserisci le sue chiavi.
+- PayPal Standard, il vecchio metodo di WooCommerce, non ha le credenziali che servono: crea Client ID e Client Secret su developer.paypal.com.
+
+## Proporre una donazione al pagamento
+
+In **Pagamenti online** la riga **Donazione al pagamento** è spenta di partenza. Accendila con «Proponi ai soci di aggiungere una donazione quando pagano»: sotto l'elenco di ciò che c'è da pagare compare la spunta «Aggiungi … € per una donazione a …».
+
+- **Importo proposto**: chi paga può cambiarlo, da 1 € a 1.000 €. Se è fuori da questi limiti compare «Scrivi un importo per la donazione tra … e …, oppure togli la spunta.»
+- La donazione è una voce di pagamento a sé: va in prima nota come «Erogazione liberale» e ha una ricevuta sua. Sulla donazione non si ribalta la commissione.
+- Funziona con Stripe, PayPal, SumUp e Satispay, non con il checkout di WooCommerce. Su PayPal la voce è indicata come donazione.
+- **Donazioni detraibili**, in **Dati dell'ente**: se la accendi, accanto alla richiesta compare «È anche detraibile.». Verifica con il tuo commercialista se la tua associazione ne ha diritto: spenta, la frase non compare mai, perché il plugin non può sapere se le donazioni al tuo ente danno un beneficio fiscale.
+
+## Eventi e corsi dei soci come erogazione liberale
+
+In **Dati dell'ente**, nella sezione **Erogazioni liberali**, c'è la casella «Incassa come erogazione liberale gli eventi e i corsi pagati dai soci». È spenta di partenza: gli eventi e i corsi pagati dai soci sono contributi, come sempre.
+
+Accesa, da quel momento la ricevuta scrive «Erogazione liberale per l'evento…» o «…per il corso…», il rendiconto li conta tra le erogazioni liberali, con PayPal la voce è indicata come donazione e, se l'ente applica l'IVA, restano fuori campo IVA. Non cambia nulla per i pagamenti dei non soci, che restano contributi, e per le quote associative, che restano sempre escluse. I movimenti già registrati non cambiano. Prima di accenderla chiedi al tuo commercialista: questa impostazione non garantisce alcun vantaggio fiscale a chi paga.
+
 ## Come funziona
 
-1. Nell'area soci, sezione **Pagamenti**, il socio vede cosa deve (quota, mensilità, contributi, anche per i suoi ospiti).
+1. Nell'area soci, sezione **Pagamenti**
+, il socio vede cosa deve (quota, mensilità, contributi, anche per i suoi ospiti).
 2. Il sito crea il pagamento e porta il socio alla pagina del fornitore.
 3. La conferma torna al sito per tre strade (ritorno del socio, webhook e controllo orario), tutte senza rischio di doppio conteggio.
 4. L'incasso entra in prima nota sul conto **Stripe** o **PayPal** (creato in automatico) e il socio riceve la ricevuta via email.
