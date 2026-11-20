@@ -69,7 +69,7 @@ final class DonationPage {
 		$ip_key = 'asem_don_ip_' . md5( ClientIp::get() );
 		$ip_n   = (int) get_transient( $ip_key );
 		if ( $ip_n >= Limits::get( 'donate_per_ip' ) ) {
-			self::fail( array( 'Troppi tentativi: riprova tra un\'ora.' ), $post );
+			self::fail( array( 'Troppi tentativi: riprova più tardi.' ), $post );
 			return;
 		}
 		set_transient( $ip_key, $ip_n + 1, HOUR_IN_SECONDS );
@@ -108,7 +108,7 @@ final class DonationPage {
 		$em_key = 'asem_don_em_' . md5( $email );
 		$em_n   = (int) get_transient( $em_key );
 		if ( $em_n >= Limits::get( 'donate_per_email' ) ) {
-			self::fail( array( 'Con questo indirizzo email sono già stati avviati molti pagamenti: riprova tra un\'ora.' ), $post );
+			self::fail( array( 'Con questo indirizzo email sono già stati avviati molti pagamenti: riprova più tardi.' ), $post );
 			return;
 		}
 		set_transient( $em_key, $em_n + 1, HOUR_IN_SECONDS );
@@ -219,7 +219,7 @@ final class DonationPage {
 		}
 		$note  = PaymentDonation::deductible_note();
 		$form .= '<p><button type="submit" class="asemf-btn wp-element-button">Dona</button></p>'
-			. '<p class="asemf-small asemf-muted">Paghi sul sito del gestore del pagamento: qui non passa nessun dato di carta.' . ( '' !== $note ? ' ' . esc_html( $note ) : '' ) . '</p></form>';
+			. '<p class="asemf-small asemf-muted">Paghi sulla pagina sicura del servizio scelto: l\'associazione non vede i dati della carta.' . ( '' !== $note ? ' ' . esc_html( $note ) : '' ) . '</p></form>';
 		return $out . $form . '</section>';
 	}
 }
