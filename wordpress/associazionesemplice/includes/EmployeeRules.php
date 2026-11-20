@@ -38,7 +38,7 @@ final class EmployeeRules {
 	public static function labels(): array {
 		return array(
 			self::PEOPLE      => 'Anagrafica soci (schede, rubrica, libro soci, RUNTS, tessere, affiliazioni, polizze)',
-			self::SENSITIVE   => 'Vedere dati riservati ed esportare (codice fiscale e note dei soci, tutte le esportazioni)',
+			self::SENSITIVE   => 'Vedere dati riservati ed esportare',
 			self::HEALTH      => 'Certificati medici',
 			self::COURSES     => 'Corsi',
 			self::EVENTS      => 'Eventi',
@@ -54,6 +54,11 @@ final class EmployeeRules {
 			self::CONVENTIONS => 'Convenzioni',
 			self::TOOLS       => 'Importa ed esporta dati',
 		);
+	}
+
+	/** @return array<string,string> la riga di spiegazione sotto il nome di un permesso, dove serve */
+	public static function hints(): array {
+		return array( self::SENSITIVE => 'Codice fiscale e note dei soci, e tutte le esportazioni.' );
 	}
 
 	/** Le aree che hanno già i loro controlli su pagine e azioni: ora sono tutte e sedici. @return string[] */

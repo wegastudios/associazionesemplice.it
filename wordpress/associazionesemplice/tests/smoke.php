@@ -12569,6 +12569,10 @@ foreach ( $em_abilities as $em_ab => $em_obj ) {
 }
 wp_set_current_user( $em_uid );
 foreach ( $em_keys as $em_k ) {
+	if ( 'sensitive' === $em_k ) { // un dipendente nuovo parte senza i dati riservati: va dato apposta
+		asem_ok( ! \AssociazioneSemplice\Employees::can( $em_k ) && \AssociazioneSemplice\Employees::sensitive_hidden(), 'dipendente: all\'inizio non ha «Vedere dati riservati ed esportare»' );
+		continue;
+	}
 	asem_ok( \AssociazioneSemplice\Employees::can( $em_k ), "dipendente: all'inizio ha il permesso $em_k" );
 }
 foreach ( array( 'asem-income', 'asem-expense', 'asem-refunds', 'asem-money', 'asem-ledger', 'asem-activities', 'asem-bookdesk', 'asem-calendar' ) as $em_pg ) {

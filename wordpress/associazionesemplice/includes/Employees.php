@@ -438,6 +438,7 @@ final class Employees {
 		}
 		$uid = (int) $uid;
 		self::save_period( $uid, $from, $to );
+		update_user_meta( $uid, self::META_DENIED, array( EmployeeRules::SENSITIVE ) ); // un dipendente nuovo parte senza «Vedere dati riservati ed esportare»: va dato apposta
 		Audit::log( 'employee.created', 'user', $uid, array( 'from' => (string) $from, 'to' => (string) $to ) );
 		return $uid;
 	}
