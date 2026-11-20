@@ -52,7 +52,7 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                     <ol class="list-decimal space-y-2 pl-5 text-muted">
                         <li>Ti serve un conto Stripe dell'associazione. Se è un ente non profit, guarda le condizioni che Stripe riserva agli enti: <a :href="links.stripeNonprofit" class="text-accent hover:underline" target="_blank" rel="noopener">Stripe per i non profit</a>.</li>
                         <li><a :href="links.stripeKeys" class="text-accent hover:underline" target="_blank" rel="noopener">Apri la pagina delle chiavi di Stripe</a> e crea una chiave segreta. Se scegli una chiave limitata, deve poter scrivere su «Checkout Sessions», «Refunds» e «Webhook Endpoints».</li>
-                        <li>Incolla la chiave qui sotto e premi «Salva»: verifico subito che funzioni e creo da solo il webhook, cioè l'avviso con cui Stripe ci dice che il pagamento è arrivato.</li>
+                        <li>Incolla la chiave qui sotto e premi «Salva»: la connessione viene verificata subito e il webhook, cioè l'avviso con cui Stripe comunica che il pagamento è arrivato, si crea da solo.</li>
                     </ol>
                     <label class="block space-y-1"><span class="font-semibold">Chiave segreta</span><input v-model="form.stripe_secret" type="password" autocomplete="off" :class="field" :placeholder="s.stripe_secret_set ? 'impostata: scrivi per cambiarla' : 'sk_live_…'" /></label>
                     <p v-if="s.stripe_webhook_set" class="text-muted">Il webhook è impostato.</p>
@@ -70,11 +70,11 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                     <label class="flex items-center gap-2"><input v-model="form.paypal_enabled" type="checkbox" /> Attivo</label>
                     <ol class="list-decimal space-y-2 pl-5 text-muted">
                         <li>Ti serve un conto PayPal Business dell'associazione. Se è un ente non profit, guarda la tariffa che PayPal riserva agli enti benefici: <a :href="links.paypalNonprofit" class="text-accent hover:underline" target="_blank" rel="noopener">PayPal: tariffa per gli enti benefici</a>.</li>
-                        <li><a :href="links.paypalKeys" class="text-accent hover:underline" target="_blank" rel="noopener">Apri la pagina delle credenziali di PayPal</a>, crea un'app e copia il «Client ID» e il «Segreto».</li>
-                        <li>Incollali qui sotto e premi «Salva»: verifico subito che funzionino.</li>
+                        <li><a :href="links.paypalKeys" class="text-accent hover:underline" target="_blank" rel="noopener">Apri la pagina delle credenziali di PayPal</a>, crea un'app e copia il «Client ID» e il «Client Secret». Per la prova apri la scheda «Sandbox» della stessa pagina.</li>
+                        <li>Incollali qui sotto e premi «Salva»: la connessione viene verificata subito.</li>
                     </ol>
                     <label class="block space-y-1"><span class="font-semibold">Client ID</span><input v-model="form.paypal_client_id" autocomplete="off" :class="field" /></label>
-                    <label class="block space-y-1"><span class="font-semibold">Segreto</span><input v-model="form.paypal_secret" type="password" autocomplete="off" :class="field" :placeholder="s.paypal_secret_set ? 'impostato: scrivi per cambiarlo' : ''" /></label>
+                    <label class="block space-y-1"><span class="font-semibold">Client Secret</span><input v-model="form.paypal_secret" type="password" autocomplete="off" :class="field" :placeholder="s.paypal_secret_set ? 'impostato: scrivi per cambiarlo' : ''" /></label>
                     <label class="flex items-center gap-2"><input v-model="form.paypal_live" type="checkbox" /> Conto reale (togli la spunta per fare prove)</label>
                     <div class="flex flex-wrap gap-3">
                         <button type="button" class="rounded-lg border border-line px-3 py-1.5 font-semibold" @click="test('paypal')">Prova di nuovo la connessione</button>

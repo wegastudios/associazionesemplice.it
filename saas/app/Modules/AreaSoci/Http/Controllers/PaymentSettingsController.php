@@ -144,7 +144,7 @@ final readonly class PaymentSettingsController
         try {
             $webhook = $this->stripe->createWebhook((string) $s->stripe_secret, $this->webhookUrl());
         } catch (Throwable $e) {
-            return [false, 'Non sono riuscito a creare il webhook di Stripe da solo ('.$e->getMessage().'): aggiungilo a mano come indicato sotto.'];
+            return [false, 'Il webhook di Stripe non si è creato da solo ('.$e->getMessage().'): aggiungilo a mano come indicato sotto.'];
         }
         if ($webhook === null) {
             return [false, "Su Stripe c'è già un webhook per questo indirizzo: Stripe non mostra più il suo segreto, copialo a mano dal pannello di Stripe."];
