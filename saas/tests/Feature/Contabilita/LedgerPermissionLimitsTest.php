@@ -34,7 +34,7 @@ it('importa solo le righe del tipo per cui chi importa ha il permesso e dice qua
     $csv = "Data;Tipo;Conto;Voce;Importo;Descrizione\n"
         ."10/01/{$y};Entrata;Cassa contanti;Quota associativa;30,00;Quota\n"
         ."12/01/{$y};Uscita;Cassa contanti;Affitto sala;20,00;Sala\n";
-    $upload = fn () => UploadedFile::fake()->createWithContent('pn.csv', $csv);
+    $upload = fn (string $text = '') => UploadedFile::fake()->createWithContent('pn.csv', str_replace('30,00;Quota', '30,00;Quota'.$text, $csv));
 
     $this->actingAs(($this->employee)(['accounting.expense']));
     $this->post('/gestionale/prima-nota/importa', ['file' => $upload(), 'apply' => true])
@@ -42,7 +42,8 @@ it('importa solo le righe del tipo per cui chi importa ha il permesso e dice qua
             ->where('result.failed.0', fn (string $m): bool => str_contains($m, 'non hai il permesso di registrare spese')));
 
     $this->actingAs(($this->employee)(['accounting.income']));
-    $this->post('/gestionale/prima-nota/importa', ['file' => $upload(), 'apply' => true])
+    // Descrizione diversa: la riga d'entrata non è un doppione della prima importazione.
+    $this->post('/gestionale/prima-nota/importa', ['file' => $upload(' bis'), 'apply' => true])
         ->assertInertia(fn (Assert $page) => $page->where('result.expense', 1)->where('result.income', 0)
             ->where('result.failed.0', fn (string $m): bool => str_contains($m, 'non hai il permesso di registrare entrate')));
 });
