@@ -13,6 +13,8 @@ use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Core\Contracts\Input;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgDonations;
+use App\Modules\Core\Contracts\OrgSettings;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,7 +34,25 @@ final readonly class PaymentSettingsController
         private PayPalGateway $paypal,
         private OrgContext $context,
         private DatabaseManager $db,
+        private OrgDonations $donations,
+        private OrgSettings $orgSettings,
     ) {}
+
+    /** La spunta «Aggiungi X € per una donazione» al pagamento (spenta di default) e l'importo che l'associazione propone. */
+    public function donations(Request $request): RedirectResponse
+    {
+        $data = Input::of($request->validate(['checkout' => ['boolean'], 'deductible' => ['boolean'], 'amount' => ['nullable', 'string', 'max:12']]));
+        $raw = str_replace(',', '.', trim(Input::optionalString($data, 'amount') ?? ''));
+        $cents = $raw === '' ? OrgDonations::DEFAULT_AMOUNT : (is_numeric($raw) ? (int) round((float) $raw * 100) : 0);
+        if ($cents < OrgDonations::MIN_CENTS || $cents > OrgDonations::MAX_CENTS) {
+            throw ValidationException::withMessages(['amount' => 'L\'importo proposto va da 1 € a 1.000 €.']);
+        }
+        $this->orgSettings->set(OrgDonations::CHECKOUT, Input::bool($data, 'checkout', false));
+        $this->orgSettings->set(OrgDonations::DEDUCTIBLE, Input::bool($data, 'deductible', false));
+        $this->orgSettings->set(OrgDonations::AMOUNT, $cents);
+
+        return back()->with('status', 'Donazioni salvate.');
+    }
 
     public function index(Request $request): Response
     {
@@ -51,6 +71,7 @@ final readonly class PaymentSettingsController
                 'paypal_enabled' => $s->paypal_enabled ?? false, 'paypal_client_id' => $s->paypal_client_id ?? '', 'paypal_secret_set' => $s?->paypal_secret !== null,
                 'paypal_live' => $s->paypal_live ?? false, 'account_id' => $s->account_id ?? '', 'ready' => $s?->providers() ?? [],
             ],
+            'donations' => ['checkout' => $this->donations->checkout(), 'deductible' => $this->donations->deductible(), 'amount' => number_format($this->donations->amountCents() / 100, 2, ',', '')],
             'webhookUrl' => $this->webhookUrl(),
             'accounts' => $this->ledger->openAccounts(),
             'payments' => array_map(static fn (array $p): array => [

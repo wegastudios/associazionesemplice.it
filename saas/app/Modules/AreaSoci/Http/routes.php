@@ -66,6 +66,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator', 'package:member_area
 Route::middleware(['web', 'auth', 'two-factor', 'operator', 'package:member_area'])->prefix('gestionale')->group(function (): void {
     Route::get('/pagamenti-online', [PaymentSettingsController::class, 'index'])->middleware('can:accounting.view')->name('payments.online');
     Route::put('/pagamenti-online', [PaymentSettingsController::class, 'update'])->middleware(['can:org.settings', 'password.confirm'])->name('payments.online.update');
+    Route::put('/pagamenti-online/donazioni', [PaymentSettingsController::class, 'donations'])->middleware('can:org.settings')->name('payments.online.donations');
     Route::post('/pagamenti-online/prova/{provider}', [PaymentSettingsController::class, 'test'])->whereIn('provider', ['stripe', 'paypal'])->middleware('can:org.settings')->name('payments.online.test');
     Route::post('/pagamenti-online/{payment}/controllato', [PaymentSettingsController::class, 'reviewed'])->whereUuid('payment')->middleware('can:accounting.edit')->name('payments.online.reviewed');
     Route::post('/pagamenti-online/{payment}/rimborso', [PaymentSettingsController::class, 'refund'])->whereUuid('payment')->middleware(['can:accounting.refund', 'password.confirm'])->name('payments.online.refund');

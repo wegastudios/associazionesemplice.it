@@ -10,6 +10,7 @@ use App\Modules\AreaSoci\Services\MemberAccessError;
 use App\Modules\AreaSoci\Services\MemberPage;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Core\Contracts\Input;
+use App\Modules\Core\Contracts\OrgDonations;
 use App\Modules\Soci\Contracts\MemberProfiles;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,13 +31,14 @@ final readonly class MemberPaymentsController
         private CurrentMember $current,
         private MemberPage $memberPage,
         private MemberProfiles $profiles,
+        private OrgDonations $donations,
     ) {}
 
     public function index(): Response
     {
-
         return Inertia::render('AreaSoci/Paga', [
             'member' => $this->memberPage->props(),
+            'donation' => ['enabled' => $this->donations->checkout(), 'amount_cents' => $this->donations->amountCents(), 'deductible' => $this->donations->deductible(), 'org' => $this->current->require()['org_name']],
             'providers' => $this->payments->providers(),
             'dues' => array_map(static fn (array $d): array => $d + ['amount_label' => Money::format($d['amount_cents'])], $this->payments->dues($this->current->ids())),
             'history' => array_map(static fn (array $p): array => [
@@ -50,15 +52,17 @@ final readonly class MemberPaymentsController
     public function checkout(Request $request): SymfonyResponse
     {
         $data = Input::of($request->validate([
-            'keys' => ['required', 'array', 'min:1', 'max:50'],
+            'keys' => ['array', 'max:50'],
             'keys.*' => ['string', 'max:120'],
+            'donation_cents' => ['nullable', 'integer', 'min:0', 'max:'.OrgDonations::MAX_CENTS],
             'provider' => ['required', Rule::in(['stripe', 'paypal'])],
         ]));
         $m = $this->current->require();
         $keys = array_values(array_filter(is_array($data['keys'] ?? null) ? $data['keys'] : [], is_string(...)));
         try {
             $url = $this->payments->checkout($m['person'], $this->current->ids(), $keys, Input::string($data, 'provider'),
-                $this->profiles->details($m['person'])['email'] ?? null, $request->getSchemeAndHttpHost(), $m['org_name']);
+                $this->profiles->details($m['person'])['email'] ?? null, $request->getSchemeAndHttpHost(), $m['org_name'],
+                is_numeric($data['donation_cents'] ?? null) ? (int) $data['donation_cents'] : 0);
         } catch (MemberAccessError $e) {
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
