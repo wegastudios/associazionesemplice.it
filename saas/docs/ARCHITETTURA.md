@@ -124,7 +124,9 @@ saas/app/Modules/
 - Se il servizio non risponde, i dati cifrati restano chiusi: l'errore non contiene dettagli.
 - Ripiego (`SAAS_KEY_VAULT=local`): chiave principale nel file d'ambiente fuori dalla cartella pubblica. Protegge i dump
   del database, non chi entra nell'account del SaaS. Si usa in sviluppo e nei test.
-- Le chiavi si generano con `php artisan saas:keys:generate`; della chiave principale va tenuta una copia offline.
+- Le chiavi si generano con `php artisan saas:keys:generate`; della chiave principale va tenuta una copia offline
+  (`saas:keys:recovery`, cifrata con una frase segreta). Passaggio dalla chiave locale al servizio, ritorno e
+  controllo ogni 5 minuti (`saas:keys:monitor`): [CHIAVE_REMOTA.md](CHIAVE_REMOTA.md).
 
 ## 8. File
 

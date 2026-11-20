@@ -11,4 +11,5 @@ cifrato.
 
 Il SaaS usa la stessa classe `KeyWrap` per il ripiego locale (`SAAS_KEY_VAULT=local`). I test sono in
 `tests/Unit/KeyService`. Dettagli in [../docs/DATABASE.md](../docs/DATABASE.md) §5 e
-[../docs/SVILUPPO.md](../docs/SVILUPPO.md).
+[../docs/SVILUPPO.md](../docs/SVILUPPO.md); passaggio dalla chiave locale al servizio, copia di recupero e controllo
+in [../docs/CHIAVE_REMOTA.md](../docs/CHIAVE_REMOTA.md).
