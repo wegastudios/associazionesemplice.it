@@ -188,8 +188,8 @@ it('non fa entrare l\'ex socio che non è tutore operativo di un minorenne socio
     $this->post($this->base.'/accesso', ['email' => 'anna@example.com'])->assertRedirect('/area/accesso');
     Mail::assertNothingSent();
 
-    // Il figlio è maggiorenne, oppure non è più socio: il tutore ex socio resta fuori.
-    $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->luca->id)->update(['birth_date' => now()->subYears(20)->toDateString()]));
+    // Il figlio non è più socio: il tutore ex socio resta fuori.
+    $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->luca->id)->update(['left_on' => now()->toDateString()]));
     $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso');
     Mail::assertNothingSent();
 });
