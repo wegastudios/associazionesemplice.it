@@ -114,7 +114,9 @@ dei file, spazio dei backup). Dall'esterno: `https://app.associazionesemplice.it
 - Accanto a ogni dump c'è un file `.json` con impronta e numero di righe per tabella (nessun dato).
 - **Database, ora e ambiente stanno dentro il file cifrato** (formato 2, dato associato di ogni blocco): la prova di
   ripristino rifiuta un dump il cui database, ambiente o ora non corrispondono a nome del file e descrizione, o con l'ora
-  nel futuro. I dump nel formato 1 (fino a questa versione) si leggono ancora, con un avviso: non si può controllare di che
+  nel futuro. **I dump in formato 2 si aprono solo con il codice nuovo**: prima di tornare a una versione precedente del
+  gestionale (`rollback.sh`) si conserva una copia del codice attuale (o almeno del comando di ripristino) da usare per
+  ripristinare, perché il codice vecchio non sa leggerli. I dump nel formato 1 (fino a questa versione) si leggono ancora, con un avviso: non si può controllare di che
   database e di che ora sono. Si rifiuta anche se il database di prova coincide con uno dei veri.
 - Conservazione: tutti i dump delle ultime 48 ore, poi il primo di ogni giorno per 30 giorni.
 - **Prova di ripristino** (`saas:backup:restore-test`, ogni settimana sullo staging): scarica l'ultimo dump di
