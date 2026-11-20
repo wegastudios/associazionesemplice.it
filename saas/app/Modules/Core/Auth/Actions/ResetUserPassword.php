@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Auth\Actions;
 
+use App\Modules\Core\Auth\DeviceSessions;
 use App\Modules\Core\Auth\PasswordRules;
 use App\Modules\Core\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -23,6 +24,9 @@ final class ResetUserPassword implements ResetsUserPasswords
             // Chi apre il link dell'email ne ha dimostrato il possesso.
             'email_verified_at' => $user->email_verified_at ?? now(),
         ])->save();
+
+        // Chi ha reimpostato la password non vuole altri accessi aperti, nemmeno con «ricordami».
+        DeviceSessions::closeOthers($user, null);
     }
 
     private static function string(mixed $value): string

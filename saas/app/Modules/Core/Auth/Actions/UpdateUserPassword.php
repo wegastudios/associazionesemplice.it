@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Auth\Actions;
 
+use App\Modules\Core\Auth\DeviceSessions;
 use App\Modules\Core\Auth\PasswordRules;
 use App\Modules\Core\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -24,6 +25,7 @@ final class UpdateUserPassword implements UpdatesUserPasswords
         ])->validateWithBag('updatePassword');
 
         $user->forceFill(['password' => Hash::make(self::string($data['password']))])->save();
+        DeviceSessions::closeOthers($user, request()->hasSession() ? request()->session()->getId() : null);
     }
 
     private static function string(mixed $value): string
