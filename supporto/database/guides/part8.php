@@ -26,8 +26,9 @@ Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del
 
 ## Cosa succede dopo l'invio
 
-- Finché non la approvi, la domanda resta in stato **«richiesta»**: la persona non compare in rubrica, libro soci, esportazioni e conti, non ha la tessera né un accesso al sito e non può usare il «Primo accesso».
-- La segreteria riceve un'email e chi ha scritto riceve una conferma.
+- Chi ha compilato il modulo riceve subito un'email con un **link di conferma, valido 48 ore**. La domanda arriva alla segreteria **solo dopo il clic** sul link: prima non compare in Bacheca e la segreteria non riceve l'avviso.
+- Dopo il clic, finché non la approvi la domanda resta in stato **«richiesta»**: la persona non compare in rubrica, libro soci, esportazioni e conti, non ha la tessera né un accesso al sito e non può usare il «Primo accesso».
+- La segreteria riceve un'email a ogni domanda confermata.
 - La domanda si vede nella **Bacheca** di Associazione Semplice (riquadro **Domande di adesione**) e nel riquadro **Da fare** della Bacheca di WordPress.
 
 ## Approvare o rifiutare
@@ -42,7 +43,13 @@ Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del
 
 - La domanda viene confrontata con le persone già presenti, e con quelle in coda, per **email** e **codice fiscale**.
 - A chi compila il modulo la risposta è sempre la stessa («Domanda ricevuta…»), qualunque cosa succeda: così non si scopre chi è già socio.
-- Ci sono limiti contro l'uso scorretto: al massimo 5 domande l'ora per connessione e 200 domande in attesa.
+- Ci sono limiti contro l'uso scorretto: al massimo 5 domande l'ora per connessione, **un invio l'ora per indirizzo email** e 200 domande in attesa.
+
+## Domande non confermate e dati conservati
+
+- Le domande **mai confermate** (il link non è stato aperto) vengono **cancellate dopo 30 giorni**.
+- Una domanda **confermata** resta in coda finché non la approvi o la rifiuti: **non scade**.
+- Se rifiuti una domanda con la **quota già pagata**, dopo **90 giorni** restano solo **nome e cognome**.
 
 ## La tessera e la quota
 
