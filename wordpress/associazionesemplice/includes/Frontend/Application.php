@@ -26,9 +26,11 @@ final class Application {
 
 	const MIN_SECONDS = 3;
 	const TOKEN_DAYS  = 7;
-	const MESSAGE     = 'Domanda ricevuta: la segreteria la esamina e ti risponde. Intanto ti abbiamo scritto all\'email indicata (controlla anche la posta indesiderata).';
+	const MESSAGE     = 'Ultimo passo: controlla la posta. Ti è arrivata un\'email con un link: aprilo e premi il pulsante, così la domanda arriva alla segreteria. Il link vale 48 ore. Se non la trovi, guarda nella posta indesiderata; se non arriva, riprova tra un\'ora.';
+	const LINK_BAD    = 'Il link non vale più: è scaduto o è già stato usato. Se vuoi, compila di nuovo il modulo.';
 
 	public static function register(): void {
+		add_action( 'template_redirect', array( __CLASS__, 'handle_confirm' ), 1 );
 		add_action( 'template_redirect', array( __CLASS__, 'handle_pay' ), 1 );
 		add_action( 'template_redirect', array( \AssociazioneSemplice\GuardianConsent::class, 'handle' ), 1 ); // conferma del genitore di un minore già in anagrafica
 	}
@@ -103,7 +105,7 @@ final class Application {
 			$inner .= '<div class="asemf-notice asemf-ok" role="status">' . esc_html( $msg['ok'] ) . '</div>';
 		}
 		if ( $sent ) {
-			$inner .= '<div class="asemf-notice asemf-ok" role="status">' . esc_html( self::MESSAGE . self::fee_note() ) . '</div>';
+			$inner .= '<div class="asemf-notice asemf-ok" role="status">' . esc_html( self::MESSAGE ) . '</div>';
 			return Texts::html( '<div class="asemf asemf-apply">' . $inner . '</div>' );
 		}
 		if ( $errors ) {
@@ -116,6 +118,7 @@ final class Application {
 		return Texts::html( '<div class="asemf asemf-apply">' . $inner . self::form( $post ) . '</div>' );
 	}
 
+
 	/** Frase sulla quota, uguale per tutti (non dipende da chi scrive). */
 	private static function fee_note(): string {
 		$fee = Applications::fee_cents( \AssociazioneSemplice\MemberType::ORDINARY );
@@ -123,7 +126,7 @@ final class Application {
 			return '';
 		}
 		return Applications::online_payment()
-			? ' Nell\'email trovi anche il link per pagare subito la quota online; se la domanda non è accettata, riavrai la quota.'
+			? ' Dopo la conferma della domanda ti arriva un\'email con il link per pagare subito la quota online; se la domanda non è accettata, riavrai la quota.'
 			: ' La quota associativa si paga in sede, alla segreteria.';
 	}
 
@@ -189,6 +192,47 @@ final class Application {
 		CardVerify::send_headers();
 		CardVerify::output( CardVerify::layout( 'Pagamento della quota', Assets::accent( '#2271b1' ), '<p>' . esc_html( $text ) . '</p><p><a href="' . esc_url( home_url( '/' ) ) . '">← Torna al sito</a></p>' ) );
 		exit;
+	}
+
+	/** Pagina semplice con un titolo, un testo e, se serve, un pulsante (modulo con il solo indirizzo di conferma). */
+	private static function confirm_page( string $title, string $text, string $button_url = '' ): void {
+		CardVerify::send_headers();
+		$body = '<p>' . esc_html( $text ) . '</p>';
+		if ( '' !== $button_url ) {
+			$body .= '<form method="post" action="' . esc_url( $button_url ) . '"><p><button type="submit" style="padding:.7em 1.4em;font-size:1em;cursor:pointer">Conferma la domanda</button></p></form>';
+		} else {
+			$body .= '<p><a href="' . esc_url( home_url( '/' ) ) . '">← Torna al sito</a></p>';
+		}
+		CardVerify::output( CardVerify::layout( $title, Assets::accent( '#2271b1' ), $body ) );
+		exit;
+	}
+
+	/**
+	 * Dal link ricevuto per email: una pagina con un pulsante. La conferma vera è l'invio del modulo (POST), così i controlli automatici della posta
+	 * che aprono i link non la consumano. Il link vale una volta sola e per 48 ore.
+	 */
+	public static function handle_confirm(): void {
+		if ( ! isset( $_GET['asem_apply_confirm'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+			return;
+		}
+		$param = sanitize_text_field( wp_unslash( $_GET['asem_apply_confirm'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+		$key   = 'asem_ap_cf_' . md5( ClientIp::get() );
+		$n     = (int) get_transient( $key );
+		if ( $n >= Limits::get( 'apply_per_ip' ) * 2 ) {
+			self::confirm_page( 'Domanda di adesione', 'Troppi tentativi: riprova tra un\'ora.' );
+		}
+		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
+		$posted = 'POST' === ( isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '' );
+		if ( $posted ) {
+			if ( Applications::confirm( $param ) ) {
+				self::confirm_page( 'Domanda confermata', 'La segreteria la esamina e ti risponde per email.' );
+			}
+			self::confirm_page( 'Domanda di adesione', self::LINK_BAD );
+		}
+		if ( 'ok' !== Applications::resolve_confirm( $param )['status'] ) {
+			self::confirm_page( 'Domanda di adesione', self::LINK_BAD );
+		}
+		self::confirm_page( 'Conferma la domanda', 'Premi il pulsante per mandare la domanda alla segreteria.', add_query_arg( 'asem_apply_confirm', $param, home_url( '/' ) ) );
 	}
 
 	/** Dal link ricevuto per email porta alla pagina di pagamento del gateway. */

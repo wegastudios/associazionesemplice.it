@@ -26,6 +26,7 @@ final class Install {
 		'asem_receipt_pdfs_batch',
 		'asem_purge_audit',
 		'asem_purge_member_sessions',
+		'asem_purge_applications',
 		'asem_sms_hourly',
 		'asem_sms_queue',
 		'asem_newsletter_sync',

@@ -48,6 +48,22 @@ function asem_ok( $cond, string $msg ): void {
 	WP_CLI::log( 'ok - ' . $msg );
 }
 
+/** Invia una domanda di adesione e, come farebbe chi la scrive, conferma dal link ricevuto (le domande nascono «da confermare»). */
+function asem_ap_confirm_all(): void {
+	global $wpdb;
+	foreach ( $wpdb->get_col( 'SELECT id FROM ' . Db::t( 'people' ) . " WHERE application_status = 'unconfirmed'" ) as $id ) {
+		\AssociazioneSemplice\Applications::confirm( \AssociazioneSemplice\Applications::confirm_param( (int) $id ) );
+	}
+}
+function asem_ap_submit( array $in ): array {
+	foreach ( array( 'email', 'guardian_email' ) as $k ) { // un solo invio l'ora per destinatario: qui si prova la domanda, non il limite (che ha il suo test)
+		delete_transient( 'asem_apc_' . md5( strtolower( trim( (string) ( $in[ $k ] ?? '' ) ) ) ) );
+	}
+	$res = \AssociazioneSemplice\Applications::submit( $in );
+	asem_ap_confirm_all();
+	return $res;
+}
+
 /** Prova: porta il mese dell'anno fiscale dove serve senza passare dal blocco «dopo la prima chiusura» (lo storico delle chiusure resta). */
 function asem_set_fiscal_month( int $m ): void {
 	$s                       = (array) get_option( Settings::OPTION, array() );
@@ -9848,57 +9864,60 @@ $ap_in = array(
 	'first_name' => 'Aldo', 'last_name' => 'Adesioni', 'email' => 'Aldo.Adesioni@example.com', 'phone' => '333 1010101', 'tax_code' => 'RSSMRA79A01H501B',
 	'birth_date' => '1980-01-01', 'birth_place' => 'Roma', 'address' => 'Via Dante 2', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm', 'type' => 'ordinary', 'rules_ok' => '1', 'privacy_ok' => '1',
 );
-asem_ok( 'off' === \AssociazioneSemplice\Applications::submit( $ap_in )['status'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: spenta di default, non registra nulla' );
+asem_ok( 'off' === asem_ap_submit( $ap_in )['status'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: spenta di default, non registra nulla' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Application::form_html(), 'non sono attive' ), 'domanda: il modulo dice che non è attiva' );
 Settings::update( array( 'apply_enabled' => 1, 'rules_enabled' => 1, 'rules_text' => 'Regole di prova', 'rules_version' => '3', 'rules_title' => 'Regolamento' ) );
 $ap_form = \AssociazioneSemplice\Frontend\Application::form_html();
 asem_ok( false !== strpos( $ap_form, 'name="birth_date"' ) && false !== strpos( $ap_form, 'name="tax_code"' ) && false !== strpos( $ap_form, 'name="rules_ok"' ) && false !== strpos( $ap_form, 'name="privacy_ok"' ) && false !== strpos( $ap_form, 'data-asemf-guardian' ) && false !== strpos( $ap_form, 'name="website"' ), 'domanda: il modulo ha i campi, il blocco del genitore e il campo esca' );
-$ap_bad = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'tax_code' => 'XXX' ) ) );
+$ap_bad = asem_ap_submit( array_merge( $ap_in, array( 'tax_code' => 'XXX' ) ) );
 asem_ok( 'invalid' === $ap_bad['status'] && $ap_bad['errors'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: dati sbagliati rifiutati con il motivo' );
 foreach ( array( "Aldo\nBcc: x@example.com", 'Visita http://example.com', 'Aldo2', str_repeat( 'a', 61 ) ) as $ap_badname ) {
-	$ap_nb = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => $ap_badname ) ) );
+	$ap_nb = asem_ap_submit( array_merge( $ap_in, array( 'first_name' => $ap_badname ) ) );
 	asem_ok( 'invalid' === $ap_nb['status'] && in_array( 'Nome non valido: usa solo lettere, spazi, apostrofi e trattini.', $ap_nb['errors'], true ) && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: un nome con a capo, link, cifre o troppo lungo è rifiutato con un errore chiaro' );
 }
-$ap_nb = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'last_name' => 'Rossi <script>' ) ) );
+$ap_nb = asem_ap_submit( array_merge( $ap_in, array( 'last_name' => 'Rossi <script>' ) ) );
 asem_ok( 'invalid' === $ap_nb['status'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: lo stesso vale per il cognome' );
 $ap_nn = count( $ap_mails );
-$ap_real = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Zoë Maria', 'last_name' => "D'Angelo-Nguyễn", 'email' => 'zoe.nguyen@example.com', 'tax_code' => 'RSSMRA79A09H501W' ) ) );
+$ap_real = asem_ap_submit( array_merge( $ap_in, array( 'first_name' => 'Zoë Maria', 'last_name' => "D'Angelo-Nguyễn", 'email' => 'zoe.nguyen@example.com', 'tax_code' => 'RSSMRA79A09H501W' ) ) );
 $ap_rid  = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE tax_code = %s', 'RSSMRA79A09H501W' ) );
 asem_ok( 'ok' === $ap_real['status'] && $ap_rid > 0 && "D'Angelo-Nguyễn" === $people->get( $ap_rid )['last_name'] && false !== strpos( (string) $ap_mail_to( 'zoe.nguyen@example.com' )['message'], 'Ciao Zoë Maria,' ), 'domanda: i nomi veri (accenti, apostrofo, trattino, nome doppio) passano e finiscono nell\'email' );
 \AssociazioneSemplice\Applications::reject( $ap_rid );
 $wpdb->query( 'ALTER TABLE ' . Db::t( 'people' ) . ' AUTO_INCREMENT = ' . ( 1 + (int) $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL -- prova: la persona di prova non sposta i numeri delle prove successive
 asem_ok( 0 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) > $ap_nn, 'domanda: la prova con i nomi veri non lascia domande in coda' );
 $ap_mn = count( $ap_mails );
-asem_ok( 'ok' === \AssociazioneSemplice\Applications::submit( $ap_in )['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: registrata' );
+asem_ok( 'ok' === asem_ap_submit( $ap_in )['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: registrata' );
 $ap_list = \AssociazioneSemplice\Applications::pending();
 $ap_aldo = (int) $ap_list[0]['id'];
 $ap_row  = $people->get( $ap_aldo );
 asem_ok( 'requested' === $ap_row['application_status'] && 'aldo.adesioni@example.com' === $ap_row['email'] && '1980-01-01' === $ap_row['birth_date'] && empty( $ap_row['wp_user_id'] ) && empty( $ap_row['card_number'] ) && ! get_user_by( 'email', 'aldo.adesioni@example.com' ), 'domanda: stato «richiesta», nessuna tessera né utente' );
 asem_ok( ! empty( $ap_row['privacy_consent_at'] ) && 'web' === $ap_row['privacy_consent_source'] && '3' === $ap_row['rules_accepted_version'] && ! empty( $ap_row['rules_accepted_at'] ), 'domanda: consenso privacy e versione del regolamento registrati' );
 asem_ok( array() === array_filter( $people->search( array( 'q' => 'Adesioni' ) ), function ( $x ) { return 'Aldo' === $x['first_name']; } ) && array() === array_filter( \AssociazioneSemplice\MemberBook::rows(), function ( $x ) use ( $ap_aldo ) { return (int) $x['id'] === $ap_aldo; } ) && false === strpos( Admin\Exports::people()[1], 'aldo.adesioni' ), 'domanda: fuori da elenco soci, libro soci ed esportazione' );
-asem_ok( count( $ap_mails ) === $ap_mn + 2 && null !== $ap_mail_to( 'segreteria.adesioni@example.com' ) && null !== $ap_mail_to( 'aldo.adesioni@example.com' ), 'domanda: email alla segreteria e conferma a chi l\'ha inviata' );
+asem_ok( count( $ap_mails ) === $ap_mn + 3 && null !== $ap_mail_to( 'segreteria.adesioni@example.com' ) && null !== $ap_mail_to( 'aldo.adesioni@example.com' ), 'domanda: email alla segreteria e conferma a chi l\'ha inviata' );
 asem_ok( false !== strpos( (string) $ap_mail_to( 'aldo.adesioni@example.com' )['message'], 'si paga in sede' ), 'domanda: senza pagamento online la quota si paga in sede' );
 $ap_log = (array) get_option( \AssociazioneSemplice\MailLog::OPTION, array() );
 asem_ok( count( $ap_log ) >= 2 && false !== strpos( wp_json_encode( $ap_log ), 'Nuova domanda di adesione' ), 'domanda: le email passano dal registro della posta' );
 $ap_n    = count( $ap_mails );
-$ap_dup1 = \AssociazioneSemplice\Applications::submit( $ap_in );
-$ap_dup2 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'email' => 'marta.madre@example.com' ) ) );
-$ap_dup3 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'email' => 'altra.email@example.com' ) ) );
+$ap_dup1 = asem_ap_submit( $ap_in );
+$ap_dup2 = asem_ap_submit( array_merge( $ap_in, array( 'email' => 'marta.madre@example.com' ) ) );
+$ap_dup3 = asem_ap_submit( array_merge( $ap_in, array( 'email' => 'altra.email@example.com' ) ) );
 asem_ok( 'ok' === $ap_dup3['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: lo stesso codice fiscale già in coda ha la stessa risposta e non crea nulla' );
 asem_ok( 'ok' === $ap_dup1['status'] && 'ok' === $ap_dup2['status'] && 1 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) === $ap_n, 'domanda: doppioni e email di soci esistenti hanno la stessa risposta e non creano nulla' );
 // tempi di risposta uguali: dal modulo pubblico le email sono in coda; doppione e domanda nuova hanno la stessa risposta e lavoro simile
 \AssociazioneSemplice\ResponseMail::defer( true );
 $tr_n   = count( $ap_mails );
 $tr_q   = $wpdb->num_queries;
+delete_transient( 'asem_apc_' . md5( 'tina.tempi@example.com' ) );
 $tr_new = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Tina', 'last_name' => 'Tempi', 'email' => 'tina.tempi@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
 $tr_dn  = $wpdb->num_queries - $tr_q;
-asem_ok( 'ok' === $tr_new['status'] && count( $ap_mails ) === $tr_n && 2 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: la domanda nuova mette in coda le due email e non le manda nella richiesta' );
+asem_ok( 'ok' === $tr_new['status'] && count( $ap_mails ) === $tr_n && 1 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: la domanda nuova mette in coda la email di conferma e non la manda nella richiesta' );
 \AssociazioneSemplice\ResponseMail::flush();
-asem_ok( count( $ap_mails ) === $tr_n + 2 && 0 === \AssociazioneSemplice\ResponseMail::pending() && null !== $ap_mail_to( 'tina.tempi@example.com' ), 'tempi di risposta: a risposta consegnata le due email partono' );
+asem_ok( count( $ap_mails ) === $tr_n + 1 && 0 === \AssociazioneSemplice\ResponseMail::pending() && null !== $ap_mail_to( 'tina.tempi@example.com' ), 'tempi di risposta: a risposta consegnata la email di conferma parte' );
+asem_ap_confirm_all();
+\AssociazioneSemplice\ResponseMail::flush();
 $tr_q   = $wpdb->num_queries;
-$tr_dup = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Tina', 'last_name' => 'Tempi', 'email' => 'tina.tempi@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
+$tr_dup = asem_ap_submit( array_merge( $ap_in, array( 'first_name' => 'Tina', 'last_name' => 'Tempi', 'email' => 'tina.tempi@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
 $tr_dd  = $wpdb->num_queries - $tr_q;
-asem_ok( $tr_dup === $tr_new && 0 === \AssociazioneSemplice\ResponseMail::pending() && count( $ap_mails ) === $tr_n + 2, 'tempi di risposta: la domanda già presente ha la stessa risposta, nessuna email e nessuna riga in più' );
+asem_ok( $tr_dup === $tr_new && 0 === \AssociazioneSemplice\ResponseMail::pending() && count( $ap_mails ) === $tr_n + 3, 'tempi di risposta: la domanda già presente ha la stessa risposta, nessuna email e nessuna riga in più' );
 WP_CLI::log( 'tempi di risposta: richieste al database per la domanda, nuova ' . $tr_dn . ', doppione ' . $tr_dd );
 asem_ok( abs( $tr_dn - $tr_dd ) <= 2, 'tempi di risposta: il doppione fa sul database lo stesso lavoro (controlli e scritture finte) di una domanda nuova' );
 \AssociazioneSemplice\ResponseMail::defer( false );
@@ -9930,7 +9949,7 @@ $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['i
 asem_ok( $people->is_active_member( $ap_aldo ), 'incassata la quota in sede: la tessera diventa valida' );
 
 // rifiuto
-\AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Rita', 'last_name' => 'Rifiuti', 'email' => 'rita.rifiuti@example.com', 'tax_code' => 'RSSMRA79A03H501I' ) ) );
+asem_ap_submit( array_merge( $ap_in, array( 'first_name' => 'Rita', 'last_name' => 'Rifiuti', 'email' => 'rita.rifiuti@example.com', 'tax_code' => 'RSSMRA79A03H501I' ) ) );
 $ap_rita = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
 \AssociazioneSemplice\Applications::reject( $ap_rita );
 asem_ok( null === $people->get( $ap_rita ) && 0 === \AssociazioneSemplice\Applications::pending_count() && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $ap_rita ) ), 'rifiuto: senza pagamento la domanda sparisce, nessun dato personale resta' );
@@ -9942,8 +9961,8 @@ $ap_kid_in = array(
 	'rules_ok' => '1', 'privacy_ok' => '1', 'guardian_ok' => '1', 'guardian_first_name' => 'Gianna', 'guardian_last_name' => 'Giovane',
 	'guardian_email' => 'gianna.giovane@example.com', 'guardian_phone' => '339 2020202',
 );
-asem_ok( 'invalid' === \AssociazioneSemplice\Applications::submit( array_merge( $ap_kid_in, array( 'guardian_email' => '' ) ) )['status'], 'minorenne: senza i dati del genitore la domanda non passa' );
-asem_ok( 'ok' === \AssociazioneSemplice\Applications::submit( $ap_kid_in )['status'] && null !== $ap_mail_to( 'gianna.giovane@example.com' ), 'minorenne: domanda con il genitore, la conferma va al genitore' );
+asem_ok( 'invalid' === asem_ap_submit( array_merge( $ap_kid_in, array( 'guardian_email' => '' ) ) )['status'], 'minorenne: senza i dati del genitore la domanda non passa' );
+asem_ok( 'ok' === asem_ap_submit( $ap_kid_in )['status'] && null !== $ap_mail_to( 'gianna.giovane@example.com' ), 'minorenne: domanda con il genitore, la conferma va al genitore' );
 $ap_kid = \AssociazioneSemplice\Applications::pending()[0];
 asem_ok( 'Gianna' === $ap_kid['guardian']['first_name'] && 'Gianni' === $ap_kid['first_name'], 'minorenne: la domanda porta i dati del genitore' );
 $ap_kid_id = (int) $ap_kid['id'];
@@ -9968,7 +9987,7 @@ asem_ok( array() === array_filter( $ap_g_due, function ( $k ) use ( $ap_g ) { re
 asem_ok( null !== asem_throws( function () use ( $ap_g ) { Plugin::people()->set_membership( (int) $ap_g['id'], Settings::membership_year()->label(), true ); } ), 'il genitore non può avere un\'iscrizione da socio' );
 
 // minorenne con genitore già socio
-\AssociazioneSemplice\Applications::submit( array_merge( $ap_kid_in, array( 'first_name' => 'Mia', 'last_name' => 'Madre', 'tax_code' => 'BNCGNN12B03F205L', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
+asem_ap_submit( array_merge( $ap_kid_in, array( 'first_name' => 'Mia', 'last_name' => 'Madre', 'tax_code' => 'BNCGNN12B03F205L', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
 $ap_mia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
 $ap_ppl = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
 \AssociazioneSemplice\Applications::approve( $ap_mia, 'ap201' );
@@ -9995,7 +10014,7 @@ $ap_mia_row = $people->get( $ap_mia );
 asem_ok( (int) $ap_mia_row['privacy_consent_by'] === $mn_mum && (int) $ap_mia_row['image_consent_by'] === $mn_mum && (int) $ap_mia_row['rules_accepted_by'] === $mn_mum && null === $GC::pending( $ap_mia_row ) && '' === (string) $ap_mia_row['application_data'], 'conferma del genitore: dopo la conferma i consensi sono attribuiti a lui e l\'attesa sparisce' );
 asem_ok( ! $GC::submit( $ap_gparam, $ap_gnonce )['ok'] && false !== strpos( $GC::confirm_page( $ap_gparam ), 'non è valido' ), 'conferma del genitore: il link si usa una volta sola' );
 // link scaduto, nuovo invio dalla segreteria (il vecchio link non vale più), limite di invii
-\AssociazioneSemplice\Applications::submit( array_merge( $ap_kid_in, array( 'first_name' => 'Nia', 'last_name' => 'Madre', 'tax_code' => 'BNCGNN12B04F205N', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
+asem_ap_submit( array_merge( $ap_kid_in, array( 'first_name' => 'Nia', 'last_name' => 'Madre', 'tax_code' => 'BNCGNN12B04F205N', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
 $ap_nia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
 \AssociazioneSemplice\Applications::approve( $ap_nia, 'ap202' );
 preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np );
@@ -10035,11 +10054,13 @@ $ap_ok_post = array_merge( $ap_in, array( 'first_name' => 'Pia', 'last_name' => 
 delete_transient( 'asem_ap_' . md5( \AssociazioneSemplice\ClientIp::get() ) );
 $ap_pn  = \AssociazioneSemplice\Applications::pending_count();
 $ap_out = $ap_post( $ap_ok_post );
-asem_ok( false !== strpos( $ap_out, 'Domanda ricevuta' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1, 'modulo: l\'invio registra la domanda e mostra la risposta' );
+asem_ok( false !== strpos( $ap_out, 'Ultimo passo: controlla la posta' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn && 1 === \AssociazioneSemplice\Applications::unconfirmed_count(), 'modulo: l\'invio registra la domanda «da confermare» e chiede di controllare la posta (la segreteria non la vede ancora)' );
+asem_ap_confirm_all();
+asem_ok( \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1 && 0 === \AssociazioneSemplice\Applications::unconfirmed_count(), 'modulo: dopo il clic sul link la domanda è in segreteria' );
 $ap_out2 = $ap_post( array_merge( $ap_ok_post, array( 'email' => 'pia.postale2@example.com', 'website' => 'http://spam.example' ) ) );
-asem_ok( false !== strpos( $ap_out2, 'Domanda ricevuta' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1, 'modulo: campo esca compilato = stessa risposta ma nessuna domanda' );
+asem_ok( false !== strpos( $ap_out2, 'Ultimo passo' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1, 'modulo: campo esca compilato = stessa risposta ma nessuna domanda' );
 $ap_out3 = $ap_post( array_merge( $ap_ok_post, array( 'email' => 'pia.postale3@example.com', 't' => $AP::make_token( time() ) ) ) );
-asem_ok( false !== strpos( $ap_out3, 'Domanda ricevuta' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1, 'modulo: compilato troppo in fretta = stessa risposta ma nessuna domanda' );
+asem_ok( false !== strpos( $ap_out3, 'Ultimo passo' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1, 'modulo: compilato troppo in fretta = stessa risposta ma nessuna domanda' );
 $ap_out4 = $ap_post( array_merge( $ap_ok_post, array( 'email' => 'pia.postale4@example.com', 't' => 'falso' ) ) );
 asem_ok( false !== strpos( $ap_out4, 'troppo a lungo' ) && \AssociazioneSemplice\Applications::pending_count() === $ap_pn + 1, 'modulo: gettone falso rifiutato' );
 $ap_out5 = $ap_post( array_merge( $ap_ok_post, array( 'email' => 'pia.postale5@example.com', 'tax_code' => 'SBAGLIATO' ) ) );
@@ -10060,8 +10081,8 @@ $ap_ps->set_http( $fake_gateway );
 asem_ok( $ap_ps->enabled() && $ap_ps->application_online() && \AssociazioneSemplice\Applications::online_payment(), 'quota online: attiva con Stripe e l\'impostazione accesa' );
 $ap_fee = \AssociazioneSemplice\Applications::fee_cents( 'ordinary' );
 asem_ok( $ap_fee >= 50, 'la quota proposta permette il pagamento online' );
-\AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Paolo', 'last_name' => 'Paga', 'email' => 'paolo.paga@example.com', 'tax_code' => 'RSSMRA79A05H501O' ) ) );
-\AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Rosa', 'last_name' => 'Rimborsi', 'email' => 'rosa.rimborsi@example.com', 'tax_code' => 'RSSMRA79A06H501Q' ) ) );
+asem_ap_submit( array_merge( $ap_in, array( 'first_name' => 'Paolo', 'last_name' => 'Paga', 'email' => 'paolo.paga@example.com', 'tax_code' => 'RSSMRA79A05H501O' ) ) );
+asem_ap_submit( array_merge( $ap_in, array( 'first_name' => 'Rosa', 'last_name' => 'Rimborsi', 'email' => 'rosa.rimborsi@example.com', 'tax_code' => 'RSSMRA79A06H501Q' ) ) );
 $ap_paolo = 0;
 $ap_rosa  = 0;
 foreach ( \AssociazioneSemplice\Applications::pending() as $ap_x ) {
@@ -10142,6 +10163,51 @@ asem_ok( 500 === $sum_tx( "type = 'income' AND method = 'stripe' AND document_re
 $ap_ps->handle_stripe_event( $ap_cr_ev );
 asem_ok( 500 === $sum_tx( "type = 'income' AND method = 'stripe' AND document_ref = 'cs_ccr_1'" ), 'pagamento online: lo stesso evento ripetuto non scrive un secondo incasso' );
 asem_ok( 0 === (int) $ap_ps->get_by_public( $ap_rrow['public_id'] )['refund_due'], 'pagamenti online: rimborso segnato come fatto' );
+
+// Conferma via email: la domanda nasce «da confermare», il link vale una volta sola, un invio l'ora per indirizzo, la pulizia cancella
+$AppsX    = \AssociazioneSemplice\Applications::class;
+$cf_in    = array_merge( $ap_in, array( 'first_name' => 'Carla', 'last_name' => 'Conferme', 'email' => 'carla.conferme@example.com', 'tax_code' => 'RSSMRA79A03H501I' ) );
+$cf_limit = 'asem_apc_' . md5( 'carla.conferme@example.com' );
+$cf_pn    = $AppsX::pending_count();
+$cf_mn    = count( $ap_mails );
+delete_transient( $cf_limit );
+$AppsX::submit( $cf_in );
+$cf_id1 = (int) $wpdb->get_var( "SELECT id FROM " . Db::t( 'people' ) . " WHERE email = 'carla.conferme@example.com'" );
+asem_ok( $cf_id1 > 0 && 'unconfirmed' === $wpdb->get_var( 'SELECT application_status FROM ' . Db::t( 'people' ) . ' WHERE id = ' . $cf_id1 ) && $AppsX::pending_count() === $cf_pn && 1 === $AppsX::unconfirmed_count(), 'conferma: la domanda nasce «da confermare» e la segreteria non la vede' );
+$cf_subjects = array_map( function ( $m ) { return (string) $m['subject']; }, array_slice( $ap_mails, $cf_mn ) );
+$cf_mail     = $ap_mail_to( 'carla.conferme@example.com' );
+asem_ok( 1 === count( $cf_subjects ) && false !== strpos( $cf_subjects[0], 'Conferma la domanda di adesione' ) && false !== strpos( (string) $cf_mail['message'], 'asem_apply_confirm=' ) && false !== strpos( (string) $cf_mail['message'], '48 ore' ) && false !== strpos( (string) $cf_mail['message'], 'ignora questo messaggio' ), 'conferma: parte solo l\'email col link (48 ore), niente alla segreteria' );
+$AppsX::submit( array_merge( $cf_in, array( 'first_name' => 'Carlo' ) ) );
+asem_ok( 1 === $AppsX::unconfirmed_count() && $cf_id1 === (int) $wpdb->get_var( "SELECT id FROM " . Db::t( 'people' ) . " WHERE email = 'carla.conferme@example.com'" ) && count( $ap_mails ) === $cf_mn + 1, 'conferma: un solo invio l\'ora allo stesso indirizzo (stessa risposta, nessun nuovo link)' );
+$wpdb->update( Db::t( 'people' ), array( 'application_at' => gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - 2 * HOUR_IN_SECONDS ) ), array( 'id' => $cf_id1 ) );
+delete_transient( $cf_limit );
+$AppsX::submit( $cf_in );
+$cf_id2 = (int) $wpdb->get_var( "SELECT id FROM " . Db::t( 'people' ) . " WHERE email = 'carla.conferme@example.com'" );
+asem_ok( $cf_id2 > 0 && $cf_id2 !== $cf_id1 && 1 === $AppsX::unconfirmed_count() && count( $ap_mails ) === $cf_mn + 2, 'conferma: passata un\'ora chi riprova ottiene un link nuovo e la vecchia domanda non confermata sparisce' );
+asem_ok( false === $AppsX::confirm( $AppsX::confirm_param( $cf_id1 ) ) && false === $AppsX::confirm( 'inventato' ), 'conferma: un link vecchio o inventato non vale' );
+$wpdb->update( Db::t( 'people' ), array( 'application_at' => gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - 31 * DAY_IN_SECONDS ) ), array( 'id' => $cf_id2 ) );
+$AppsX::purge();
+asem_ok( 0 === $AppsX::unconfirmed_count() && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = ' . $cf_id2 ), 'pulizia: una domanda mai confermata da 30 giorni si cancella' );
+delete_transient( $cf_limit );
+$AppsX::submit( $cf_in );
+$cf_id3 = (int) $wpdb->get_var( "SELECT id FROM " . Db::t( 'people' ) . " WHERE email = 'carla.conferme@example.com'" );
+$cf_mn3 = count( $ap_mails );
+asem_ok( true === $AppsX::confirm( $AppsX::confirm_param( $cf_id3 ) ) && $AppsX::pending_count() === $cf_pn + 1 && 0 === $AppsX::unconfirmed_count(), 'conferma: dal link la domanda arriva in segreteria' );
+$cf_after = array_map( function ( $m ) { return (string) $m['subject']; }, array_slice( $ap_mails, $cf_mn3 ) );
+asem_ok( 2 === count( $cf_after ) && 1 === count( array_filter( $cf_after, function ( $s ) { return false !== strpos( $s, 'Nuova domanda di adesione' ); } ) ) && 1 === count( array_filter( $cf_after, function ( $s ) { return false !== strpos( $s, 'Domanda di adesione ricevuta' ); } ) ), 'conferma: solo ora partono l\'avviso alla segreteria e la ricevuta a chi ha scritto' );
+asem_ok( false === $AppsX::confirm( $AppsX::confirm_param( $cf_id3 ) ), 'conferma: il link vale una volta sola' );
+$AppsX::reject( $cf_id3 );
+asem_ok( $AppsX::pending_count() === $cf_pn, 'conferma: prova ripulita' );
+// respinte con quota pagata: dopo 90 giorni dalla risposta restano solo nome e cognome (i movimenti si conservano)
+$cf_rosa = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE id = ' . (int) $ap_rosa, ARRAY_A );
+asem_ok( 'rejected' === $cf_rosa['application_status'] && 'rosa.rimborsi@example.com' === $cf_rosa['email'], 'pulizia: la domanda respinta con quota pagata resta con l\'email (per il rimborso)' );
+$wpdb->update( Db::t( 'people' ), array( 'deleted_at' => gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - 89 * DAY_IN_SECONDS ) ), array( 'id' => (int) $ap_rosa ) );
+$AppsX::purge();
+asem_ok( 'rosa.rimborsi@example.com' === $wpdb->get_var( 'SELECT email FROM ' . Db::t( 'people' ) . ' WHERE id = ' . (int) $ap_rosa ), 'pulizia: a 89 giorni dalla risposta non si tocca niente' );
+$wpdb->update( Db::t( 'people' ), array( 'deleted_at' => gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - 91 * DAY_IN_SECONDS ) ), array( 'id' => (int) $ap_rosa ) );
+$AppsX::purge();
+$cf_rosa = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE id = ' . (int) $ap_rosa, ARRAY_A );
+asem_ok( null === $cf_rosa['email'] && null === $cf_rosa['address'] && null === $cf_rosa['phone'] && null === $cf_rosa['tax_code'] && 'Rosa' === $cf_rosa['first_name'] && 'Rimborsi' === $cf_rosa['last_name'] && ! empty( $cf_rosa['anonymized_at'] ), 'pulizia: a 91 giorni dalla risposta restano solo nome e cognome (anche l\'email)' );
 
 // ---------- Rimborso dei pagamenti online dal gateway (Stripe e PayPal) ----------
 Settings::update( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567' ) );
@@ -10920,6 +10986,10 @@ asem_ok( ! \AssociazioneSemplice\Gateways::test( 'satispay', array( 'satispay_mo
 $ps->set_http( $be_sat );
 $be_ev = $mkev( 'Cena Satispay', 1000, 1000 );
 $be_s  = $first_session( $be_ev );
+// il ripristino di fabbrica più su ha cancellato Pia: un socio nuovo, collegato allo stesso utente (prima la prova si appoggiava a un numero di scheda rimasto per caso)
+$pm = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pia', 'last_name' => 'Pagante', 'email' => 'pia.pagante@example.com' ) );
+$wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => $u_pm ), array( 'id' => $pm ) );
+$pmp = $people->get( $pm );
 $acts->book( $be_s, $pm );
 wp_set_current_user( $u_pm );
 $be_url = $ps->create_checkout( $pmp, $u_pm, array( "b:$be_s:$pm" ), home_url( '/area/' ) );
@@ -11516,6 +11586,7 @@ MemberSession::start( $ms_p );
 MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
 asem_ok( wp_next_scheduled( 'asem_purge_member_sessions' ) > 0, 'accesso proprio: pulizia giornaliera programmata' );
+asem_ok( wp_next_scheduled( 'asem_purge_applications' ) > 0, 'domande di adesione: pulizia giornaliera programmata' );
 
 // ---------- Cache di pagina: pagine con sessione socio valida e contenuti riservati ----------
 $nc_hits  = 0;
