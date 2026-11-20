@@ -308,6 +308,19 @@ case "$ACTION" in
       foreach (["app", "audit", "sites", "core"] as $schema) { $db->statement("REVOKE TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA {$schema} FROM {$r}"); }
       if ($db->selectOne("select to_regclass(?) as t", ["public.migrations"])->t !== null) { $db->statement("REVOKE ALL ON public.migrations FROM {$r}"); }
       echo "Permessi ridotti per il ruolo ", $role, PHP_EOL;
+      // I poteri in più arrivano dal ruolo di cui il ruolo applicativo fa parte (eredita CREATE, TRUNCATE, ecc.):
+      // NOINHERIT li toglie senza toccare i permessi diretti. Se la applicazione non legge più le sue tabelle, si torna indietro da soli.
+      file_put_contents($file, "ALTER ROLE {$r} INHERIT;\n", FILE_APPEND);
+      $db->statement("ALTER ROLE {$r} NOINHERIT");
+      try {
+        $app = DB::connection("pgsql");
+        $app->purge();
+        foreach (["app.orgs", "core.users", "core.sessions"] as $table) { $app->selectOne("select 1 from {$table} limit 1"); }
+        echo "NOINHERIT applicato, l\u{0027}applicazione legge ancora le sue tabelle", PHP_EOL;
+      } catch (Throwable $e) {
+        $db->statement("ALTER ROLE {$r} INHERIT");
+        echo "NOINHERIT annullato: ", substr($e->getMessage(), 0, 200), PHP_EOL;
+      }
     '
     echo "== Controllo =="
     "$PHP" artisan saas:health --skip-migrations | grep -E "permessi|ruolo|ERRORE|AVVISO" || true
