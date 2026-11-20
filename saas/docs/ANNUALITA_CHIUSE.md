@@ -9,7 +9,7 @@ Decisioni della titolare, 13/11/2026. Stato al 14/11/2026: **costruito** libro s
 3. Alla chiusura si fotografano: libro soci (righe e numero progressivo), cifre del rendiconto con la voce di ogni categoria, PDF emesso con data.
 4. Nessuna cancellazione da un dato fiscale: chi è in una fotografia chiusa ci resta anche se la persona viene poi cancellata o anonimizzata. La cancellazione dell'intera associazione (7 e 180 giorni) non cambia.
 5. Su un esercizio chiuso non si modifica niente, categorie e conti compresi: o si riapre o resta così.
-6. Riapertura solo dell'esercizio chiuso più recente, con conferma esplicita e motivo obbligatorio; la fotografia precedente si conserva come versione; la traccia resta per sempre. Si chiude un esercizio solo se i precedenti sono chiusi (deduzione dalla regola: da far vedere alla titolare).
+6. Riapertura solo dell'esercizio chiuso più recente, con conferma esplicita e motivo obbligatorio; la fotografia precedente si conserva come versione; la traccia resta per sempre. Si chiude un esercizio solo se i precedenti sono chiusi, anche quelli senza movimenti (deduzione dalla regola: da far vedere alla titolare). Dopo una chiusura non si registrano movimenti con data in un anno precedente a uno chiuso (lo rifiutano il servizio e il database), l'anno mancante non si crea da sé e un conto nuovo non nasce con un saldo iniziale: si carica con un incasso o un giroconto.
 7. Le fotografie entrano nell'esportazione completa.
 
 **Da decidere (non deciso da noi):** con anno sociale e fiscale sfalsati, quale tessera fa entrare nel libro. Proposta: una tessera valida almeno un giorno dell'esercizio (`valid_from <= fine esercizio` e `valid_to >= inizio`). I fondatori (tessera sempre rinnovata) ci sono sempre.

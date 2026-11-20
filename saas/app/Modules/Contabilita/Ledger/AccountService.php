@@ -14,10 +14,19 @@ use Illuminate\Database\QueryException;
 /** Conti (cassa, banca, POS…). Un conto con saldo diverso da zero non si chiude: prima un giroconto. */
 final readonly class AccountService
 {
-    public function __construct(private LedgerService $ledger) {}
+    public function __construct(private LedgerService $ledger, private FiscalYearService $years) {}
+
+    /** Un saldo iniziale cambierebbe i saldi di un anno già chiuso: dopo una chiusura il conto nasce a zero e si carica con un incasso o un giroconto. */
+    private function assertOpeningAllowed(int $changeCents): void
+    {
+        if ($changeCents !== 0 &&$this->years->hasClosedNow()) {
+            throw new LedgerError('C\'è un anno fiscale chiuso: un saldo iniziale cambierebbe i suoi saldi. Crea il conto a zero e registra il saldo con un incasso o un giroconto.');
+        }
+    }
 
     public function create(string $name, AccountType $type, int $openingCents): Account
     {
+        $this->assertOpeningAllowed($openingCents);
         $account = new Account([
             'name' => self::name($name),
             'type' => $type->value,
@@ -32,6 +41,7 @@ final readonly class AccountService
     public function update(string $id, string $name, AccountType $type, int $openingCents): Account
     {
         $account = Account::query()->findOrFail($id);
+        $this->assertOpeningAllowed($openingCents - $account->opening_cents);
         $account->fill(['name' => self::name($name), 'type' => $type->value, 'opening_cents' => $openingCents]);
         try {
             $account->save();
