@@ -56,7 +56,7 @@ final readonly class SodiumFieldCipher implements FieldCipher
 
     public function blindIndex(string $orgId, string $field, #[SensitiveParameter] string $normalized): string
     {
-        $this->keys->current($orgId); // crea la chiave se l'associazione non ce l'ha ancora
+        $this->keys->current($orgId); // errore se l'associazione non ha la chiave: non si ricrea in silenzio
 
         return sodium_crypto_generichash($field."\0".$normalized, $this->keys->version($orgId, 1)->indexKey(), 32);
     }

@@ -27,10 +27,35 @@ final readonly class Service
         private array $allowedIps,
         private NonceStore $nonces,
         private Closure $log,
+        private ?RateCounter $counter = null,
+        private int $unwrapAlarm = 0,
+        private int $unwrapLimit = 0,
+        private ?Closure $alarm = null,
     ) {}
 
-    /** @return array{status: int, body: array<string, string>} */
+    /**
+     * Qualunque errore imprevisto (cartella non scrivibile, file mancante, ...) esce come una risposta generica: i
+     * dettagli, che possono contenere percorsi, non lasciano mai il servizio. Nel registro va solo il tipo dell'errore.
+     *
+     * @return array{status: int, body: array<string, string>}
+     */
     public function handle(string $method, string $body, ?string $signature, string $ip, int $now): array
+    {
+        try {
+            return $this->process($method, $body, $signature, $ip, $now);
+        } catch (Throwable $e) {
+            try {
+                ($this->log)('errore-interno tipo='.$e::class);
+            } catch (Throwable) {
+                // anche il registro può non funzionare: la risposta resta generica
+            }
+
+            return self::error(500, 'errore interno');
+        }
+    }
+
+    /** @return array{status: int, body: array<string, string>} */
+    private function process(string $method, string $body, ?string $signature, string $ip, int $now): array
     {
         if ($method !== 'POST') {
             return self::error(405, 'metodo non ammesso');
@@ -74,6 +99,24 @@ final readonly class Service
             return self::error(400, 'richiesta non valida');
         }
 
+        $name = is_string($op) ? $op : '?';
+
+        if ($op === 'unwrap' && $this->counter !== null) {
+            $count = $this->counter->hit('unwrap', $now);
+            $over = $this->unwrapLimit > 0 && $count > $this->unwrapLimit;
+            if (($this->unwrapAlarm > 0 && $count === $this->unwrapAlarm) || ($this->unwrapLimit > 0 && $count === $this->unwrapLimit + 1)) {
+                ($this->log)("ALLARME aperture={$count} al minuto limite={$this->unwrapLimit} allarme={$this->unwrapAlarm}");
+                if ($this->alarm !== null) {
+                    ($this->alarm)("Aperture di chiavi in questo minuto: {$count} (soglia di allarme {$this->unwrapAlarm}, limite {$this->unwrapLimit}).");
+                }
+            }
+            if ($over) {
+                ($this->log)("rifiutato ip={$ip} motivo=limite aperture={$count}");
+
+                return self::error(429, 'troppe richieste');
+            }
+        }
+
         try {
             $result = match ($op) {
                 'wrap' => ['wrapped' => base64_encode($this->wrap->wrap($orgId, $version, self::binary($request['key'] ?? null)))],
@@ -81,7 +124,7 @@ final readonly class Service
                 default => null,
             };
         } catch (Throwable) {
-            ($this->log)("errore ip={$ip} op={$op} org={$orgId} v={$version}");
+            ($this->log)("errore ip={$ip} op={$name} org={$orgId} v={$version}");
 
             return self::error(422, 'operazione non riuscita');
         }
@@ -90,7 +133,7 @@ final readonly class Service
             return self::error(400, 'operazione sconosciuta');
         }
 
-        ($this->log)("ok ip={$ip} op={$op} org={$orgId} v={$version}");
+        ($this->log)("ok ip={$ip} op={$name} org={$orgId} v={$version}");
 
         return ['status' => 200, 'body' => $result];
     }
