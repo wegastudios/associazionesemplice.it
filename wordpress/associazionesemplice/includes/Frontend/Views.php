@@ -417,7 +417,9 @@ final class Views {
 					. '<span><strong>' . esc_html( $i['label'] ) . '</strong><span class="asemf-small"> · ' . esc_html( $i['person_name'] ) . '</span></span></label>'
 					. '<strong>' . esc_html( Money::format( (int) $i['amount_cents'] ) ) . '</strong></li>';
 			}
-			$fields .= '</ul><p class="asemf-paytotal">Totale: <strong class="asemf-pay-total">' . esc_html( Money::format( $total ) ) . '</strong></p>';
+			$fields .= '</ul>';
+			$fields .= (string) apply_filters( 'asem_pay_form_extra', '' ); // la Pro aggiunge qui la donazione al pagamento (spunta con importo modificabile)
+			$fields .= '<p class="asemf-paytotal">Totale: <strong class="asemf-pay-total">' . esc_html( Money::format( $total ) ) . '</strong></p>';
 			$all      = Settings::all();
 			$buttons  = array();
 			$notes    = array();

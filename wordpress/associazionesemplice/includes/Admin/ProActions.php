@@ -388,6 +388,8 @@ final class ProActions {
 		Settings::update(
 			$fees + array(
 				'payment_provider'        => $txt( 'payment_provider' ),
+				'donation_on'             => ! empty( $p['donation_on'] ) ? 1 : 0,
+				'donation_amount_cents'   => Money::parse( $txt( 'donation_amount' ) ) ?? 500,
 				'sumup_api_key'           => $txt( 'sumup_api_key' ),
 				'sumup_merchant_code'     => $txt( 'sumup_merchant_code' ),
 				'pay_label_sumup'         => $txt( 'pay_label_sumup' ),

@@ -7,6 +7,7 @@ PaymentService.php
 Gateways.php
 StripeApi.php
 PaymentSetup.php
+PaymentDonation.php
 StripeWebhook.php
 PayPalApi.php
 SumUpApi.php
