@@ -99,7 +99,7 @@ Possono farlo **solo gli amministratori del sito e il presidente e il vicepresid
 | **Assemblee, verbali e votazioni** | Convocazione, presenze, deleghe, chiusura, verbali, votazioni; verbali e votazioni in PDF e CSV. | Convocare e annunciare una votazione mandano un avviso: serve anche «Comunicazioni». |
 | **Inventario e prestiti** | Beni e prestiti: schede, file allegati, registrare prestito e rientro, elenchi in CSV. In Bacheca i prestiti scaduti. | — |
 | **Convenzioni** | Schede, categorie, archivio, elenco in CSV. In Bacheca quelle in scadenza. | Annunciare una convenzione ai soci chiede anche «Comunicazioni». |
-| **Vedere dati riservati ed esportare** | Codice fiscale e note dei soci, libro soci e registri che contengono i codici fiscali, e tutte le esportazioni, anche in CSV. Ogni lettura resta scritta nel registro azioni. | Senza questo permesso le esportazioni sono chiuse anche a chi ha l'area di partenza (per esempio «Importa ed esporta dati»). Vedi la regola più sotto. |
+| **Vedere dati riservati ed esportare** | Codice fiscale e note dei soci (senza, nel libro soci e nei registri compare «—» al posto del codice fiscale) e tutte le esportazioni, comprese le stampe del libro soci e i file CSV. Ogni lettura resta scritta nel registro azioni. | Senza questo permesso le esportazioni sono chiuse anche a chi ha l'area di partenza (per esempio «Importa ed esporta dati»). Vedi la regola più sotto. |
 | **Importa ed esporta dati** | Pagina Esportazioni, panoramica Strumenti, tutte le esportazioni in CSV. | Esportare i soci chiede anche «Anagrafica soci»; prima nota, rendiconto e report chiedono anche «Fondi, casse e conti». Importare da Excel o CSV chiede anche «Anagrafica soci» e «Fondi»; importare da The Events Calendar chiede anche «Corsi» ed «Eventi». |
 
 Qualche regola in più:
@@ -110,7 +110,7 @@ Qualche regola in più:
 
 ### Dati riservati ed esportazioni
 
-Senza «Vedere dati riservati ed esportare» il dipendente non vede il **codice fiscale** e le **note** dei soci, né il **libro soci** e i registri che riportano i codici fiscali, e **tutte le esportazioni**, anche in CSV, gli sono chiuse. Ogni lettura di dati riservati resta scritta nel registro azioni. Gli amministratori del sito vedono sempre tutto.
+Senza «Vedere dati riservati ed esportare» il dipendente non vede il **codice fiscale** e le **note** dei soci: nel libro soci e nei registri al posto del codice fiscale compare «—». Gli sono chiuse anche **tutte le esportazioni**, comprese le stampe del libro soci e i file CSV. Ogni lettura di dati riservati resta scritta nel registro azioni. Li vedono sempre gli amministratori del sito e anche il presidente e il vicepresidente.
 
 Questo permesso **non si dà da solo**: un dipendente nuovo parte senza, e va attivato apposta nella pagina **Dipendenti**. I dipendenti già presenti restano come sono.
 
