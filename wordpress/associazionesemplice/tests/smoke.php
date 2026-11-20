@@ -9090,6 +9090,7 @@ asem_ok( null !== asem_throws( function () use ( $RS, $lf_res, $rs_m1, $lf_day )
 $RS::cancel( $lf_id, true );
 asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'ingresso con il QR della prenotazione', array( 'id' => $gt_res ) );
 
+WP_CLI::log( 'DIAG@9093 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );
@@ -9406,6 +9407,7 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Backup::download_url( true ), '
 asem_render( array( Admin\BackupPage::class, 'render' ), 'Ripristino' );
 asem_render( array( Admin\BackupPage::class, 'render' ), 'Ricevute: PDF definitivi' );
 
+WP_CLI::log( 'DIAG@9409 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 // ---------- Azzeramento dei dati (ultimo: cancella tutto) ----------
 // un amministratore con una password nota (wp_set_current_user non ricarica l'utente già in uso: se ne crea uno nuovo)
 $rs_admin = wp_insert_user( array( 'user_login' => 'azzeratore', 'user_pass' => 'Azzera-Pass-123', 'user_email' => 'azzeratore@example.com', 'role' => 'administrator' ) );
@@ -9531,6 +9533,7 @@ update_option( 'asem_pages', array( 'area' => 1 ) );
 $rs_msg2 = Admin\TechActions::reset_all( array_merge( $rs_ok, array( 'mode' => 'factory', 'users' => '' ) ) );
 asem_ok( '' === (string) Settings::get( 'association_name' ) && '' === (string) Settings::get( 'tax_code' ) && false === get_option( 'asem_pages', false ) && \AssociazioneSemplice\Wizard::pending() && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) < $rs_audit0 && in_array( 'system.reset', array_column( Audit::recent( 10 ), 'action' ), true ) && false !== strpos( $rs_msg2[1], 'Ripristino di fabbrica completato' ) && false !== strpos( $rs_msg2[0], 'asem-wizard' ), 'ripristino di fabbrica: impostazioni, pagine, registro azioni cancellati e configurazione guidata riaperta' );
 
+WP_CLI::log( 'DIAG@9534 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 // ---------- Tessere: PDF singolo e fogli A4 con più tessere ----------
 $cd_grid = \AssociazioneSemplice\CardLayout::sheet_grid();
 asem_ok( $cd_grid['max'] >= 1 && $cd_grid['max'] === $cd_grid['cols'] * $cd_grid['rows'], 'tessere PDF: la griglia del foglio A4 è calcolata dalle misure (' . $cd_grid['max'] . ' per foglio)' );
@@ -9666,6 +9669,7 @@ asem_render( array( Admin\WpDashboard::class, 'todo' ), 'Apri la Bacheca di Asso
 asem_render( array( Admin\WpDashboard::class, 'week' ), 'Serata prenotabile dalla cassa' );
 asem_ok( isset( Admin\WpDashboard::week_days()[ $bd_ev_date ] ), 'bacheca WordPress: la settimana elenca l\'evento dei prossimi giorni, raggruppato per data' );
 
+WP_CLI::log( 'DIAG@9669 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 // ---------- Domanda di adesione online e minori con tutori ----------
 wp_set_current_user( 1 );
 $ap_mails = array();
@@ -9859,6 +9863,7 @@ asem_ok( $mn_gigi && '1990-04-03' === $mn_gigi['birth_date'], 'import: la data d
 ImportService::undo( (int) $mn_res['batch_id'] );
 asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, (int) $mn_lia['id'] ), 'import annullato: anche il collegamento al tutore' );
 
+WP_CLI::log( 'DIAG@9862 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 // ---------- Domanda di adesione ----------
 $ap_in = array(
 	'first_name' => 'Aldo', 'last_name' => 'Adesioni', 'email' => 'Aldo.Adesioni@example.com', 'phone' => '333 1010101', 'tax_code' => 'RSSMRA79A01H501B',
@@ -9902,6 +9907,7 @@ $ap_dup2 = asem_ap_submit( array_merge( $ap_in, array( 'email' => 'marta.madre@e
 $ap_dup3 = asem_ap_submit( array_merge( $ap_in, array( 'email' => 'altra.email@example.com' ) ) );
 asem_ok( 'ok' === $ap_dup3['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: lo stesso codice fiscale già in coda ha la stessa risposta e non crea nulla' );
 asem_ok( 'ok' === $ap_dup1['status'] && 'ok' === $ap_dup2['status'] && 1 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) === $ap_n, 'domanda: doppioni e email di soci esistenti hanno la stessa risposta e non creano nulla' );
+WP_CLI::log( 'DIAG@9905 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 // tempi di risposta uguali: dal modulo pubblico le email sono in coda; doppione e domanda nuova hanno la stessa risposta e lavoro simile
 \AssociazioneSemplice\ResponseMail::defer( true );
 $tr_n   = count( $ap_mails );
@@ -9948,6 +9954,7 @@ asem_ok( ! empty( $ap_act['ok'] ) && ! empty( $people->get( $ap_aldo )['wp_user_
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $ap_aldo, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => 1000 ) ) ) );
 asem_ok( $people->is_active_member( $ap_aldo ), 'incassata la quota in sede: la tessera diventa valida' );
 
+WP_CLI::log( 'DIAG@9951 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 // rifiuto
 asem_ap_submit( array_merge( $ap_in, array( 'first_name' => 'Rita', 'last_name' => 'Rifiuti', 'email' => 'rita.rifiuti@example.com', 'tax_code' => 'RSSMRA79A03H501I' ) ) );
 $ap_rita = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
@@ -10013,6 +10020,7 @@ asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_mia ) && 
 $ap_mia_row = $people->get( $ap_mia );
 asem_ok( (int) $ap_mia_row['privacy_consent_by'] === $mn_mum && (int) $ap_mia_row['image_consent_by'] === $mn_mum && (int) $ap_mia_row['rules_accepted_by'] === $mn_mum && null === $GC::pending( $ap_mia_row ) && '' === (string) $ap_mia_row['application_data'], 'conferma del genitore: dopo la conferma i consensi sono attribuiti a lui e l\'attesa sparisce' );
 asem_ok( ! $GC::submit( $ap_gparam, $ap_gnonce )['ok'] && false !== strpos( $GC::confirm_page( $ap_gparam ), 'non è valido' ), 'conferma del genitore: il link si usa una volta sola' );
+WP_CLI::log( 'DIAG@10016 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 // link scaduto, nuovo invio dalla segreteria (il vecchio link non vale più), limite di invii
 asem_ap_submit( array_merge( $ap_kid_in, array( 'first_name' => 'Nia', 'last_name' => 'Madre', 'tax_code' => 'BNCGNN12B04F205N', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
 $ap_nia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
@@ -10035,6 +10043,7 @@ asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_nia ) &
 preg_match( '/asem_guardian_cf=(\d+\.[A-Za-z0-9]{32})/', (string) $ap_mail_to( 'marta.madre@example.com' )['message'], $ap_np3 );
 asem_ok( $GC::submit( $ap_np3[1], wp_create_nonce( 'asem_gcf_' . $ap_nia ) )['ok'] && ( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $ap_nia ) || in_array( $mn_mum, array_map( 'intval', array_column( \AssociazioneSemplice\Guardians::of( $ap_nia ), 'id' ) ), true ) ), 'conferma del genitore: l\'ultimo link vale e crea il collegamento anche per la domanda già approvata' );
 
+WP_CLI::log( 'DIAG@10038 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 // modulo: invio, esca, tempo minimo, gettone, limite
 $AP = '\AssociazioneSemplice\Frontend\Application';
 asem_ok( 'ok' === $AP::check_token( $AP::make_token( time() - 30 ), time() ) && 'early' === $AP::check_token( $AP::make_token( time() ), time() ) && 'invalid' === $AP::check_token( $AP::make_token( time() - 30 ) . 'x', time() ) && 'invalid' === $AP::check_token( '', time() ) && 'invalid' === $AP::check_token( $AP::make_token( time() - 30 * DAY_IN_SECONDS ), time() ), 'modulo: gettone firmato, tempo minimo e scadenza' );
@@ -10116,6 +10125,7 @@ foreach ( \AssociazioneSemplice\Applications::pending() as $ap_x ) {
 	}
 }
 asem_ok( $ap_paid_seen, 'dashboard: la domanda risulta pagata online' );
+WP_CLI::log( 'DIAG@10119 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 \AssociazioneSemplice\Applications::approve( $ap_paolo, 'ap300' );
 $ap_prow = $ap_ps->get_by_public( $ap_prow['public_id'] );
 asem_ok( $ap_stripe_before + $ap_fee === $balance_of( 'Stripe' ) && $ap_fee === (int) $ap_prow['allocated_cents'] && null === $ap_ps->application_paid( $ap_paolo ) && $people->is_active_member( $ap_paolo ), 'quota online: approvando entra in prima nota (conto Stripe) con l\'iscrizione' );
@@ -10987,6 +10997,7 @@ $ps->set_http( $be_sat );
 $be_ev = $mkev( 'Cena Satispay', 1000, 1000 );
 $be_s  = $first_session( $be_ev );
 WP_CLI::log( 'DIAG pm=' . $pm . ' ' . wp_json_encode( $wpdb->get_row( $wpdb->prepare( 'SELECT id, first_name, last_name, application_status, deleted_at, anonymized_at FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $pm ), ARRAY_A ) ) . ' get=' . wp_json_encode( null === Plugin::people()->get( (int) $pm ) ) . ' sess=' . wp_json_encode( $be_s ) . ' act=' . wp_json_encode( $acts->session( (int) $be_s ) ) . ' actget=' . wp_json_encode( null === $acts->get( (int) ( $acts->session( (int) $be_s )['activity_id'] ?? 0 ) ) ) );
+WP_CLI::log( 'DIAG@10990 ' . $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = 33' ) . ' max=' . $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'people' ) ) );
 $acts->book( $be_s, $pm );
 wp_set_current_user( $u_pm );
 $be_url = $ps->create_checkout( $pmp, $u_pm, array( "b:$be_s:$pm" ), home_url( '/area/' ) );
