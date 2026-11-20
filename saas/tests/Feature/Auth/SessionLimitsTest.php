@@ -4,14 +4,6 @@ declare(strict_types=1);
 
 use App\Modules\Core\Http\Middleware\EnforceSessionLimits;
 
-function operatorWithOrg(object $test, bool $twoFactor = true): object
-{
-    $user = $test->createUser('anna@example.com', twoFactor: $twoFactor);
-    $test->addOperator($test->createOrg('Polisportiva Alfa'), $user);
-
-    return $user;
-}
-
 it('scrive l\'orario dell\'accesso quando si entra', function (): void {
     $this->createUser('anna@example.com');
 
@@ -22,7 +14,8 @@ it('scrive l\'orario dell\'accesso quando si entra', function (): void {
 });
 
 it('fa uscire dopo 12 ore dall\'accesso anche se si è lavorato fino a un attimo prima', function (): void {
-    $user = operatorWithOrg($this);
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
     $this->actingAs($user)
         ->withSession([EnforceSessionLimits::STARTED_AT => now()->subHours(11)->getTimestamp()])
@@ -35,7 +28,8 @@ it('fa uscire dopo 12 ore dall\'accesso anche se si è lavorato fino a un attimo
 });
 
 it('alla scadenza risponde 401 alle richieste JSON', function (): void {
-    $user = operatorWithOrg($this);
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
     $this->actingAs($user)
         ->withSession([EnforceSessionLimits::STARTED_AT => now()->subHours(13)->getTimestamp()])
@@ -43,7 +37,8 @@ it('alla scadenza risponde 401 alle richieste JSON', function (): void {
 });
 
 it('non butta fuori chi era già collegato prima del controllo: la prima richiesta scrive l\'orario', function (): void {
-    $user = operatorWithOrg($this);
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
     $this->actingAs($user)->get('/gestionale')->assertOk()->assertSessionHas(EnforceSessionLimits::STARTED_AT);
     $this->assertAuthenticatedAs($user);
@@ -54,7 +49,8 @@ it('con «ricordami» dura 14 giorni', function (): void {
 });
 
 it('rientrando dal cookie «ricordami» chi ha il secondo fattore deve rifare l\'accesso', function (): void {
-    $user = operatorWithOrg($this);
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
     $this->post('/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD, 'remember' => true]);
     $login = $this->post('/verifica-accesso', ['code' => $this->totp($user)])->assertRedirect('/gestionale');
@@ -76,7 +72,8 @@ it('rientrando dal cookie «ricordami» chi ha il secondo fattore deve rifare l\
 });
 
 it('chi non ha il secondo fattore rientra con «ricordami» senza altro', function (): void {
-    $user = operatorWithOrg($this, twoFactor: false);
+    $user = $this->createUser('anna@example.com');
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
     $login = $this->post('/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD, 'remember' => true]);
     $name = collect($login->headers->getCookies())->first(static fn ($c): bool => str_starts_with($c->getName(), 'remember_'))?->getName();
