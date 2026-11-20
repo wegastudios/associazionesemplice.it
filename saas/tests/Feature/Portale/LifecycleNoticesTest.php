@@ -95,6 +95,6 @@ it('i testi dicono la data vera e il giusto singolare o plurale', function (): v
         ->and($text('trial_0', 0))->toContain('La prova finisce oggi')
         ->and($text('trial_3', -3))->toContain('La prova è finita')
         ->and($text('trial_3', -3))->not->toContain('sconto')
-        ->and($text('trial_3', -3))->not->toMatch('/(^|s)0 giorni/')
-        ->and($text('trial_3', -3))->not->toMatch('/(^|s)1 giorni/');
+        ->and($text('trial_3', -3))->not->toMatch('/(^|\s)0 giorni/')
+        ->and($text('trial_3', -3))->not->toMatch('/(^|\s)1 giorni/');
 });
