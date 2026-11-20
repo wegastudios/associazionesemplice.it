@@ -75,11 +75,11 @@ Il **Dipendente** è un utente del sito che **parte con gli stessi permessi dell
 2. Nel modulo in fondo scrivi **nome**, **cognome** e **email**; facoltativi il **primo e l'ultimo giorno di servizio**.
 3. Salva: al dipendente arriva l'**invito per scegliere la password**. Se l'email non parte, controlla la posta del sito e usa **«Rimanda l'invito»**.
 
-Un dipendente nuovo ha **tutti i permessi**.
+Un dipendente nuovo ha **tutti i permessi tranne uno**: «Vedere dati riservati ed esportare», che va dato apposta (vedi più sotto).
 
 ## Togliere dei permessi, area per area
 
-Per ogni dipendente puoi **togliere la spunta** a una o più delle **15 aree** qui sotto. Togliendola, le pagine e le azioni di quell'area si chiudono: nel menu e nelle schede compaiono solo le pagine che il dipendente può aprire, e chi prova a fare ciò che non può legge «Non puoi farlo con il tuo accesso: ti è stato tolto il permesso «…». Se ti serve, chiedi al presidente, al vicepresidente o a un amministratore del sito di ridartelo.»
+Per ogni dipendente puoi **togliere la spunta** a una o più delle **16 aree** qui sotto. Togliendola, le pagine e le azioni di quell'area si chiudono: nel menu e nelle schede compaiono solo le pagine che il dipendente può aprire, e chi prova a fare ciò che non può legge «Non puoi farlo con il tuo accesso: ti è stato tolto il permesso «…». Se ti serve, chiedi al presidente, al vicepresidente o a un amministratore del sito di ridartelo.»
 
 Possono farlo **solo gli amministratori del sito e il presidente e il vicepresidente con la tessera in regola** (soci attivi, con la carica indicata nella scheda e collegati al loro utente del sito): la segreteria, il dipendente stesso e i soci non vedono nemmeno la pagina. Ogni cambio resta scritto nel registro azioni, e dalla pagina puoi vedere chi ha tolto o dato permessi, e quando.
 
@@ -99,6 +99,7 @@ Possono farlo **solo gli amministratori del sito e il presidente e il vicepresid
 | **Assemblee, verbali e votazioni** | Convocazione, presenze, deleghe, chiusura, verbali, votazioni; verbali e votazioni in PDF e CSV. | Convocare e annunciare una votazione mandano un avviso: serve anche «Comunicazioni». |
 | **Inventario e prestiti** | Beni e prestiti: schede, file allegati, registrare prestito e rientro, elenchi in CSV. In Bacheca i prestiti scaduti. | — |
 | **Convenzioni** | Schede, categorie, archivio, elenco in CSV. In Bacheca quelle in scadenza. | Annunciare una convenzione ai soci chiede anche «Comunicazioni». |
+| **Vedere dati riservati ed esportare** | Codice fiscale e note dei soci, libro soci e registri che contengono i codici fiscali, e tutte le esportazioni, anche in CSV. Ogni lettura resta scritta nel registro azioni. | Senza questo permesso le esportazioni sono chiuse anche a chi ha l'area di partenza (per esempio «Importa ed esporta dati»). Vedi la regola più sotto. |
 | **Importa ed esporta dati** | Pagina Esportazioni, panoramica Strumenti, tutte le esportazioni in CSV. | Esportare i soci chiede anche «Anagrafica soci»; prima nota, rendiconto e report chiedono anche «Fondi, casse e conti». Importare da Excel o CSV chiede anche «Anagrafica soci» e «Fondi»; importare da The Events Calendar chiede anche «Corsi» ed «Eventi». |
 
 Qualche regola in più:
@@ -106,6 +107,12 @@ Qualche regola in più:
 - **«Registri»** si apre a chi ha almeno una tra Anagrafica, Assemblee, Inventario, Documenti e Convenzioni. Senza Anagrafica, nel libro soci si legge un messaggio e restano gli altri registri.
 - **«Strumenti»** si apre a chi ha «Importa ed esporta dati», Corsi o Eventi, e mostra solo ciò che si può aprire (per esempio il calendario).
 - I **pulsanti di esportazione** che trovi in altre pagine funzionano solo con «Importa ed esporta dati». Il registro presenze in PDF o CSV chiede invece Corsi o Eventi.
+
+### Dati riservati ed esportazioni
+
+Senza «Vedere dati riservati ed esportare» il dipendente non vede il **codice fiscale** e le **note** dei soci, né il **libro soci** e i registri che riportano i codici fiscali, e **tutte le esportazioni**, anche in CSV, gli sono chiuse. Ogni lettura di dati riservati resta scritta nel registro azioni. Gli amministratori del sito vedono sempre tutto.
+
+Questo permesso **non si dà da solo**: un dipendente nuovo parte senza, e va attivato apposta nella pagina **Dipendenti**. I dipendenti già presenti restano come sono.
 
 ### Certificati medici senza l'area
 
