@@ -288,6 +288,59 @@ class LedgerService {
 		}
 	}
 
+	/**
+	 * Ogni voce di un incasso a mano non può superare quanto resta da pagare (quota associativa, contributo del corso nel mese, contributo dell'evento
+	 * per quella data): ciò che è già stato incassato, sconti compresi, e le altre voci dello stesso incasso contano. Dove non si sa cosa sia dovuto
+	 * (nessuna iscrizione o prenotazione, contributo non definito) non si blocca nulla. Va chiamato dentro la transazione: le righe delle attività si
+	 * bloccano, così due incassi insieme sulla stessa voce non passano entrambi.
+	 *
+	 * @throws \InvalidArgumentException con quanto resta da pagare
+	 */
+	private function assert_within_due( array $prepared, string $date ): void {
+		$db = $this->db();
+		foreach ( $prepared as $p ) {
+			if ( $p['activity_id'] ) {
+				$db->get_var( $db->prepare( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE id = %d FOR UPDATE', (int) $p['activity_id'] ) );
+			}
+		}
+		$added = array(); // già in questo incasso, per voce
+		foreach ( $prepared as $i => $p ) {
+			$person = $p['person'];
+			if ( ! $person ) {
+				continue;
+			}
+			$pid  = (int) $person['id'];
+			$key  = '';
+			$left = null;
+			if ( 'membership' === $p['cat']['kind'] ) {
+				$fee = Levels::fee_for( $person );
+				if ( $fee > 0 ) {
+					$key  = 'q|' . $pid . '|' . $p['social_year'];
+					$left = max( 0, $fee - Plugin::people()->membership_paid( $pid, (string) $p['social_year'] ) );
+				}
+			} elseif ( $p['activity_id'] && $p['session_id'] ) {
+				$key  = 'e|' . $p['session_id'] . '|' . $pid;
+				$left = Plugin::activities()->booking_left( (int) $p['session_id'], $pid );
+			} elseif ( $p['activity_id'] ) {
+				$month = ! empty( $p['line']['competence_month'] ) ? (string) $p['line']['competence_month'] : substr( $date, 0, 7 );
+				$key   = 'c|' . $p['activity_id'] . '|' . $pid . '|' . $month;
+				$left  = Plugin::activities()->enrollment_left( (int) $p['activity_id'], $pid, $month );
+			}
+			if ( null === $left ) {
+				continue;
+			}
+			$left  -= (int) ( $added[ $key ] ?? 0 );
+			$total  = (int) $p['cents'] + (int) $p['discount'];
+			$added[ $key ] = (int) ( $added[ $key ] ?? 0 ) + $total;
+			if ( $total > $left ) {
+				if ( $left <= 0 ) {
+					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: questa voce risulta già pagata per intero.', array( 'n' => $i + 1 ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: l\'importo supera quanto resta da pagare. Restano {resto}: incassa al massimo quella somma.', array( 'n' => $i + 1, 'resto' => Money::format( $left ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+		}
+	}
+
 	private function in_transaction( callable $fn ) {
 		if ( $this->tx_depth > 0 ) {
 			return $fn();
@@ -447,6 +500,9 @@ class LedgerService {
 		$receipt_id = wp_generate_uuid4();
 		return $this->in_transaction(
 			function () use ( $prepared, $d, $date, $payer, $receipt_id ) {
+					if ( ! empty( $d['check_due'] ) ) {
+						$this->assert_within_due( $prepared, $date ); // incasso a mano: non si incassa più del dovuto
+					}
 				foreach ( $prepared as $i => $p ) { // la tessera si ricontrolla qui, con la persona bloccata: due richieste insieme non incassano la quota due volte
 					if ( 'membership' === $p['cat']['kind'] && $p['person'] ) {
 						$this->lock_membership_year( (int) $p['person']['id'], (string) $p['social_year'], (int) $i + 1 );

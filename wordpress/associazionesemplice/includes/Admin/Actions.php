@@ -1123,6 +1123,7 @@ final class Actions {
 				'method'       => (string) ( $p['method'] ?? '' ),
 				'person_id'    => (int) ( $p['person_id'] ?? 0 ),
 				'document_ref' => $p['document_ref'] ?? '',
+				'check_due'    => true, // incasso a mano: non si incassa più di quanto resta da pagare
 				'lines'        => $lines,
 			)
 		);
