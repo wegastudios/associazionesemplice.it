@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Backup\Backups;
+use App\Modules\Backup\Crypto\BackupCipher;
 use App\Modules\Soci\Models\Person;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
@@ -53,7 +54,7 @@ it('fa un dump cifrato e lo ripristina con le stesse righe', function (): void {
     expect($manifest['tables']['app.people'])->toBe(3)
         ->and($manifest['tables']['app.orgs'])->toBe(2)
         ->and($manifest['tables']['audit.log_default'] + array_sum(array_filter($manifest['tables'], fn ($n, $t) => str_starts_with($t, 'audit.log_2'), ARRAY_FILTER_USE_BOTH)))->toBeGreaterThan(0)
-        ->and($stored)->toStartWith("ASBK\x01")
+        ->and($stored)->toStartWith("ASBK\x02")
         ->and($stored)->not->toContain('Rossi')
         ->and($stored)->not->toContain('PGDMP');
 
@@ -75,6 +76,97 @@ it('si accorge di un backup alterato e non ripristina', function (): void {
     $disk->put($path, $bytes);
 
     expect(fn () => $backups->restoreTest('shared'))->toThrow(RuntimeException::class, 'Impronta');
+});
+
+/**
+ * Mette nello spazio dei backup un file cifrato con l'intestazione data (non un vero dump: servono solo i controlli
+ * che precedono il ripristino) e la sua descrizione.
+ *
+ * @param  array<string, string>  $meta
+ * @param  array<string, mixed>  $declared
+ */
+function plantBackup(string $path, array $meta, array $declared = []): void
+{
+    $in = fopen('php://memory', 'w+b');
+    fwrite($in, 'non e un dump');
+    rewind($in);
+    $out = fopen('php://memory', 'w+b');
+    BackupCipher::encrypt($in, $out, (string) base64_decode((string) config('saas.backup.public_key'), true), $meta);
+    rewind($out);
+    $bytes = (string) stream_get_contents($out);
+
+    $disk = Storage::disk('backups');
+    $disk->put($path, $bytes);
+    $disk->put($path.'.json', (string) json_encode($declared + ['database' => 'shared', 'sha256' => hash('sha256', $bytes), 'tables' => []]));
+}
+
+it('rifiuta un dump vecchio spacciato per uno recente', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    $backups = app(Backups::class);
+    $old = $backups->dump('shared', CarbonImmutable::now()->subHours(5));
+    $new = $backups->dump('shared', CarbonImmutable::now());
+
+    // Chi scrive sullo spazio dei backup mette il file vecchio sotto il nome del nuovo e aggiorna l'impronta.
+    $disk = Storage::disk('backups');
+    $disk->put($new['path'], (string) $disk->get($old['path']));
+    $manifest = json_decode((string) $disk->get($new['path'].'.json'), true);
+    $manifest['sha256'] = $old['sha256'];
+    $disk->put($new['path'].'.json', (string) json_encode($manifest));
+
+    expect(fn () => $backups->restoreTest('shared'))->toThrow(RuntimeException::class, 'ora del backup');
+});
+
+it('rifiuta un dump di un altro database, di un altro ambiente o con l\'ora sbagliata', function (array $meta, array $declared, string $message): void {
+    $at = CarbonImmutable::parse('2026-11-20 10:00:00', 'UTC');
+    $path = 'testing/shared/2026/11/shared-'.$at->format('Ymd\THis\Z').'.dump.enc';
+    plantBackup($path, $meta + ['created_at' => $at->format('Y-m-d\TH:i:s\Z'), 'database' => 'shared', 'env' => 'testing'], $declared);
+
+    expect(fn () => app(Backups::class)->restoreTest('shared', $path))->toThrow(RuntimeException::class, $message);
+})->with([
+    'altro database' => [['database' => 'dedicato'], [], 'altro database'],
+    'altro ambiente' => [['env' => 'production'], [], 'altro ambiente'],
+    'ora diversa dal nome' => [['created_at' => '2026-11-19T10:00:00Z'], [], 'ora del backup'],
+    'ora diversa dalla descrizione' => [[], ['created_at' => '2026-11-20T09:00:00Z'], 'descrizione'],
+    'descrizione di un altro database' => [[], ['database' => 'dedicato'], 'altro database'],
+]);
+
+it('rifiuta un dump con l\'ora nel futuro', function (): void {
+    $at = CarbonImmutable::now('UTC')->addDay();
+    $path = 'testing/shared/2026/11/shared-'.$at->format('Ymd\THis\Z').'.dump.enc';
+    plantBackup($path, ['created_at' => $at->format('Y-m-d\TH:i:s\Z'), 'database' => 'shared', 'env' => 'testing']);
+
+    expect(fn () => app(Backups::class)->restoreTest('shared', $path))->toThrow(RuntimeException::class, 'futuro');
+});
+
+it('legge ancora i backup del formato vecchio, senza controllare database e ora', function (): void {
+    $pair = (string) base64_decode((string) config('saas.backup.secret_key'), true);
+    $public = sodium_crypto_box_publickey($pair);
+    $fileKey = sodium_crypto_secretstream_xchacha20poly1305_keygen();
+    [$state, $header] = sodium_crypto_secretstream_xchacha20poly1305_init_push($fileKey);
+    $bytes = "ASBK\x01".sodium_crypto_box_seal($fileKey, $public).$header
+        .sodium_crypto_secretstream_xchacha20poly1305_push($state, 'non e un dump', "ASBK\x01", SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_TAG_FINAL);
+
+    $path = 'testing/shared/2026/11/shared-20261120T100000Z.dump.enc';
+    $disk = Storage::disk('backups');
+    $disk->put($path, $bytes);
+    $disk->put($path.'.json', (string) json_encode(['database' => 'shared', 'sha256' => hash('sha256', $bytes), 'tables' => []]));
+
+    // Supera i controlli sul contenuto e si ferma solo perché non è un vero dump per pg_restore.
+    expect(fn () => app(Backups::class)->restoreTest('shared', $path))->toThrow(RuntimeException::class, 'pg_restore');
+});
+
+it('rifiuta la prova di ripristino se il database di prova è quello principale', function (): void {
+    foreach (['host', 'port', 'database'] as $key) {
+        config(["database.connections.pgsql_restore.{$key}" => config("database.connections.pgsql.{$key}")]);
+    }
+    DB::purge('pgsql_restore');
+
+    $this->createOrg('Polisportiva Alfa');
+    $backups = app(Backups::class);
+    $backups->dump('shared', CarbonImmutable::now());
+
+    expect(fn () => $backups->restoreTest('shared'))->toThrow(RuntimeException::class, 'coincide');
+    expect(DB::table('core.orgs')->count())->toBe(1);
 });
 
 it('il ruolo dei backup legge tutto ma non scrive nulla', function (): void {

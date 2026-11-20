@@ -92,7 +92,16 @@ final readonly class CertificateService
     public function delete(string $id): void
     {
         $cert = MedicalCertificate::query()->findOrFail($id);
+        $file = $cert->file_path !== null && $cert->file_sha256 !== null
+            ? new StoredFile($cert->file_path, (string) ($cert->file_name ?? 'certificato'), (string) $cert->file_mime, (int) $cert->file_size, $cert->file_sha256)
+            : null;
+
+        // Togliere un certificato toglie anche il file: dal disco e dal riferimento (la riga resta solo come traccia).
+        $cert->forceFill(['file_path' => null, 'file_name' => null, 'file_mime' => null, 'file_size' => null, 'file_sha256' => null])->save();
         $cert->delete();
+        if ($file !== null) {
+            $this->files->delete($this->context->require()->id, $file);
+        }
     }
 
     public function download(string $id): StreamedResponse

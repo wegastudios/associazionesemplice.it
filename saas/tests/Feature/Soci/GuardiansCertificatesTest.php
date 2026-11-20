@@ -103,6 +103,30 @@ it('salva il certificato cifrato, con il file cifrato, e annota ogni lettura', f
         ->and(DB::table('audit.log')->where('action', 'health.read')->where('details->fields', json_encode(['file']))->count())->toBe(1);
 });
 
+it('con «Togli» il certificato non è più visibile e il suo file cifrato sparisce dal disco', function (): void {
+    $service = app(CertificateService::class);
+    $withFile = $service->add($this->minor->id, [
+        'kind' => 'agonistic', 'issued_on' => now()->subMonth()->toDateString(), 'expires_on' => now()->addMonths(11)->toDateString(),
+    ], UploadedFile::fake()->createWithContent('certificato.pdf', '%PDF-1.4 certificato di Luca Rossi'));
+    $withoutFile = $service->add($this->minor->id, [
+        'kind' => 'non_agonistic', 'issued_on' => now()->subYear()->toDateString(), 'expires_on' => now()->subMonth()->toDateString(),
+    ]);
+    $path = (string) $withFile->file_path;
+    expect(Storage::disk('org_files')->exists($path))->toBeTrue();
+
+    $service->delete($withFile->id);
+    $service->delete($withoutFile->id);
+
+    $row = DB::table('app.medical_certs')->where('id', $withFile->id)->first();
+    expect(Storage::disk('org_files')->exists($path))->toBeFalse()
+        ->and(Storage::disk('org_files')->allFiles())->toBe([])
+        ->and($service->forPerson($this->minor->id)['items'])->toBe([])
+        ->and($row->deleted_at)->not->toBeNull()
+        ->and($row->file_path)->toBeNull()
+        ->and($row->file_sha256)->toBeNull()
+        ->and($row->file_name_enc)->toBeNull();
+});
+
 it('mostra le scadenze senza aprire i dati sanitari', function (): void {
     $s = app(CertificateService::class);
     $s->add($this->mamma->id, ['kind' => 'non_agonistic', 'issued_on' => now()->subYear()->toDateString(), 'expires_on' => now()->addDays(10)->toDateString()]);

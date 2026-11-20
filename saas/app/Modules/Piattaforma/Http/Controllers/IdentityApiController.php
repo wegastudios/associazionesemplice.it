@@ -6,6 +6,7 @@ namespace App\Modules\Piattaforma\Http\Controllers;
 
 use App\Modules\Piattaforma\Identity\AreaRequestVerifier;
 use App\Modules\Piattaforma\Identity\IdentityService;
+use App\Modules\Piattaforma\Identity\LogSubject;
 use App\Modules\Piattaforma\Identity\OperatorEntry;
 use App\Modules\Piattaforma\Identity\StaffAccess;
 use App\Modules\Piattaforma\Identity\StaffAreas;
@@ -91,7 +92,7 @@ final readonly class IdentityApiController
         }
         $key = 'staff-login|'.mb_strtolower($email).'|'.($ip ?? '');
         if (RateLimiter::tooManyAttempts($key, self::MAX_FAILED)) {
-            $this->directory->audit('staff.login_blocked', null, mb_strtolower($email), [], $ip);
+            $this->directory->audit('staff.login_blocked', null, LogSubject::email($email), [], $ip);
 
             return $this->denied(429);
         }

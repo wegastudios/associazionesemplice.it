@@ -18,7 +18,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 #[AsCommand(name: 'saas:audit:prune')]
 final class AuditPruneCommand extends Command
 {
-    protected $signature = 'saas:audit:prune {--before= : Data (AAAA-MM-GG) prima della quale cancellare; vuoto = 1 gennaio dell\'anno precedente} {--dry-run : Elenca soltanto}';
+    protected $signature = 'saas:audit:prune {--before= : Data (AAAA-MM-GG) prima della quale cancellare; vuoto = 1 gennaio dell\'anno precedente} {--dry-run : Elenca soltanto} {--force : Senza conferma (uso non interattivo con --before)}';
 
     protected $description = 'Cancella le partizioni del registro più vecchie dell\'anno precedente, lasciando l\'ancora della catena';
 
@@ -40,6 +40,30 @@ final class AuditPruneCommand extends Command
         $this->info('Partizioni da cancellare: '.count($old).($old === [] ? '' : ' ('.implode(', ', $old).')'));
         if ($old === [] || $this->option('dry-run')) {
             return self::SUCCESS;
+        }
+
+        // Il limite di conservazione (anno corrente e precedente) non si accorcia nemmeno a mano.
+        $legal = CarbonImmutable::now('UTC')->subYear()->startOfYear();
+        if ($cutoff->gt($legal)) {
+            $this->error('La data è più recente del limite di conservazione ('.$legal->format('d/m/Y').'): non si cancella.');
+
+            return self::FAILURE;
+        }
+
+        // Con una data scelta a mano si può cancellare tutto il registro: serve una conferma esplicita (o --force).
+        // Il lavoro pianificato usa la data di legge, senza opzioni, e non la chiede.
+        if (is_string($before) && $before !== '' && $this->option('force') !== true) {
+            if (! $this->input->isInteractive()) {
+                $this->error('Con --before la cancellazione chiede conferma: per l\'uso non interattivo aggiungi --force.');
+
+                return self::FAILURE;
+            }
+            $this->warn('Si cancellano per sempre le partizioni del registro delle azioni prima del '.$cutoff->format('d/m/Y').': '.count($old).' ('.implode(', ', $old).'). Restano solo ultimo numero e sigillo di ogni associazione.');
+            if (! $this->confirm('Cancellare queste partizioni?', false)) {
+                $this->line('Niente cancellato.');
+
+                return self::FAILURE;
+            }
         }
 
         // Prima le ancore, una associazione per volta (la RLS vale anche per il proprietario), poi le partizioni.

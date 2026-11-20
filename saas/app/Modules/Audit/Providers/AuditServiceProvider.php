@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Audit\Providers;
 
+use App\Modules\Audit\Console\AuditHeadsCopyCommand;
 use App\Modules\Audit\Console\AuditPartitionsCommand;
 use App\Modules\Audit\Console\AuditPruneCommand;
+use App\Modules\Audit\Console\SecurityLogPruneCommand;
 use App\Modules\Audit\Console\VerifyAuditCommand;
 use App\Modules\Audit\Contracts\ActingMember;
 use App\Modules\Audit\Contracts\AuditLog;
@@ -15,6 +17,7 @@ use App\Modules\Audit\Listeners\RecordSecurityEvents;
 use App\Modules\Audit\Listeners\RecordSensitiveReads;
 use App\Modules\Audit\Log\ChainedAuditLog;
 use App\Modules\Audit\Log\DatabaseSecurityLog;
+use App\Modules\Audit\Log\HeadCopies;
 use App\Modules\Cifratura\Contracts\SensitiveFieldRead;
 use App\Modules\Core\Contracts\DataExport;
 use Illuminate\Console\Scheduling\Schedule;
@@ -28,6 +31,7 @@ final class AuditServiceProvider extends ServiceProvider
         $this->app->tag([AuditDataExport::class], DataExport::TAG);
         $this->app->singleton(AuditLog::class, ChainedAuditLog::class);
         $this->app->singleton(ActingMember::class);
+        $this->app->singleton(HeadCopies::class);
         $this->app->singleton(SecurityLog::class, DatabaseSecurityLog::class);
         $this->app->scoped(RecordSensitiveReads::class);
     }
@@ -38,12 +42,16 @@ final class AuditServiceProvider extends ServiceProvider
         Event::listen(SensitiveFieldRead::class, [RecordSensitiveReads::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([VerifyAuditCommand::class, AuditPartitionsCommand::class, AuditPruneCommand::class]);
+            $this->commands([VerifyAuditCommand::class, AuditPartitionsCommand::class, AuditPruneCommand::class, AuditHeadsCopyCommand::class, SecurityLogPruneCommand::class]);
 
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('saas:audit:partitions')->monthlyOn(1, '02:13')->withoutOverlapping();
                 // Tiene l'anno corrente e il precedente: parte solo con l'interruttore acceso (saas.audit_prune_enabled).
                 $schedule->command('saas:audit:prune')->monthlyOn(1, '02:43')->withoutOverlapping()->when(static fn (): bool => config('saas.audit_prune_enabled') === true);
+                // Ogni giorno, prima della verifica: numero e sigillo di testa fuori dal database, per vedere la coda tagliata.
+                $schedule->command('saas:audit:heads:copy')->dailyAt('03:17')->withoutOverlapping();
+                // Registri di sicurezza (accessi operatori e staff): 18 mesi.
+                $schedule->command('saas:audit:prune-security')->weeklyOn(1, '03:27')->withoutOverlapping();
                 $schedule->command('saas:audit:verify')->dailyAt('03:37')->withoutOverlapping();
                 // La domenica la verifica ripercorre l'intera catena, senza ripartire dal punto di controllo.
                 $schedule->command('saas:audit:verify --full')->weeklyOn(0, '03:57')->withoutOverlapping();

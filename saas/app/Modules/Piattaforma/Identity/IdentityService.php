@@ -56,7 +56,7 @@ final readonly class IdentityService
     {
         $person = $this->directory->authenticate($email, $password);
         if ($person === null) {
-            $this->directory->audit('staff.login_failed', null, mb_strtolower($email), [], $ip);
+            $this->directory->audit('staff.login_failed', null, LogSubject::email($email), [], $ip);
 
             return null;
         }

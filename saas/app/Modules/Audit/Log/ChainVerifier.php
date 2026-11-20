@@ -20,6 +20,7 @@ final readonly class ChainVerifier
         private DatabaseManager $db,
         private OrgContext $context,
         private Sealer $sealer,
+        private HeadCopies $copies,
     ) {}
 
     /** @return array{ok: bool, checked: int, broken_at: int|null, reason: string|null} */
@@ -94,6 +95,19 @@ final readonly class ChainVerifier
             // Una riga con un numero già usato verrebbe saltata dalla lettura per numero: si contano tutte.
             if ($connection->table('audit.log')->where('org_id', $orgId)->count() !== $headSeq - $anchorSeq) {
                 return self::result(false, $expected - 1, null, 'righe in più nella catena');
+            }
+
+            // Testa e ancora si confrontano con l'ultima copia fatta fuori dal database: una coda tagliata o un'ancora
+            // riscritta insieme alla testa, che dentro il database tornerebbero, qui si vedono.
+            $conflict = $this->copies->conflict(
+                $orgId,
+                $connection,
+                $headSeq,
+                $headHash,
+                $anchor === null ? null : ['seq' => $anchorSeq, 'hash' => Bytea::decode($anchor->hash)],
+            );
+            if ($conflict !== null) {
+                return self::result(false, $expected - 1, null, $conflict);
             }
 
             // Catena giusta: il punto di controllo avanza alla testa (per le associazioni senza righe nuove non cambia).

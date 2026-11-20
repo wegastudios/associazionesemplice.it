@@ -24,6 +24,8 @@ final readonly class KeyAudit
 
     public const ORG_KEY_MISSING = 'keys.org_key_missing';
 
+    public const ORG_DESTROYED = 'keys.org_destroyed';
+
     public function __construct(private DatabaseManager $db) {}
 
     /** @param  array<string, scalar|list<string>|null>  $details */

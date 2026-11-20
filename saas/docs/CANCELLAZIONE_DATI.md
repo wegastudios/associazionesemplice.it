@@ -88,6 +88,17 @@ partenza della catena, quindi prima di eliminare una partizione si salva il suo 
 progressivo e sigillo, senza dati personali) e `saas:audit:verify` parte da quell'ancora. Il trigger che oggi vieta ogni
 cancellazione deve ammettere questa sola operazione, solo al ruolo proprietario e solo sulle partizioni.
 
+### Registri di sicurezza (accessi)
+
+I registri di sicurezza, cioè gli accessi falliti o bloccati e il registro degli accessi dello staff
+(`core.security_events`, `core.staff_audit`), si conservano **18 mesi** (minimo 12) e poi si cancellano da soli, ogni
+settimana (`saas:audit:prune-security`). Prima non avevano scadenza. Il registro delle azioni del gestionale per
+associazione (`audit.log`) resta con la sua regola: anno in corso e precedente (sopra).
+
+L'email scritta in questi registri si conserva solo se ha la forma di un indirizzo valido; altrimenti resta soltanto
+una sigla (impronta con chiave dell'applicazione), così una password digitata per errore nel campo email non finisce
+nel registro.
+
 ## 6. Cosa serve costruire
 
 | Pezzo | Dove |
