@@ -263,3 +263,65 @@ it('gli esercizi si chiudono in ordine e si riapre solo l\'ultimo chiuso', funct
     $years->reopen($old, 'Correzione');
     expect(DB::table('app.fiscal_years')->where('status', 'open')->count())->toBe(2);
 });
+
+it('non registra movimenti con data in un anno precedente a uno chiuso e non crea da sé quell\'anno', function (): void {
+    $years = app(FiscalYearService::class);
+    $current = (int) now()->format('Y');
+    $old = $current - 1;
+    $years->close($current);
+    $rows = DB::table('app.fiscal_years')->count();
+
+    expect(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine(($this->cat)(CategoryKind::Donation), 100)], date: "{$old}-06-10")))
+        ->toThrow(LedgerError::class, 'precede l\'anno fiscale')
+        ->and(fn () => $this->ledger->recordExpense(new Expense("{$old}-06-10", $this->cash->id, ($this->cat)(CategoryKind::GeneralCost), 100)))
+        ->toThrow(LedgerError::class, 'già chiuso')
+        ->and(fn () => $this->ledger->recordTransfer("{$old}-06-10", $this->cash->id, $this->bank->id, 100))
+        ->toThrow(LedgerError::class, 'già chiuso')
+        ->and(fn () => $years->create($old, "{$old}-01-01"))->toThrow(LedgerError::class, 'già chiuso')
+        ->and(DB::table('app.fiscal_years')->count())->toBe($rows)
+        ->and(DB::table('app.transactions')->count())->toBe(0);
+
+    // Riaperto l'ultimo anno, si torna a registrare.
+    $years->reopen($current, 'Correzione');
+    $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine(($this->cat)(CategoryKind::Donation), 100)], date: "{$old}-06-10"));
+    expect(DB::table('app.transactions')->count())->toBe(1);
+});
+
+it('il database rifiuta un movimento in un anno vuoto che precede un anno chiuso', function (): void {
+    $years = app(FiscalYearService::class);
+    $current = (int) now()->format('Y');
+    $old = $current - 1;
+    $years->close($current);
+    DB::table('app.fiscal_years')->insert(['org_id' => $this->org->id, 'year' => $old, 'starts_on' => "{$old}-01-01", 'ends_on' => "{$old}-12-31"]);
+
+    expect(fn () => DB::transaction(fn () => DB::table('app.transactions')->insert([
+        'org_id' => $this->org->id, 'id' => (string) Str::uuid7(), 'tx_date' => "{$old}-06-10", 'fiscal_year' => $old,
+        'type' => 'income', 'amount_cents' => 100, 'account_id' => $this->cash->id, 'method' => 'cash',
+        'category_id' => ($this->cat)(CategoryKind::Donation),
+    ])))->toThrow(QueryException::class, 'precede un anno già chiuso');
+});
+
+it('alla chiusura pretende chiusi tutti gli anni precedenti, anche vuoti', function (): void {
+    $years = app(FiscalYearService::class);
+    $current = (int) now()->format('Y');
+    $years->create($current - 1, ($current - 1).'-01-01');
+
+    expect(fn () => $years->close($current))->toThrow(LedgerError::class, 'chiudi il '.($current - 1));
+    $years->close($current - 1);
+    $years->close($current);
+    expect(DB::table('app.fiscal_years')->where('status', 'closed')->count())->toBe(2);
+});
+
+it('dopo la chiusura di un anno un conto nuovo non nasce con un saldo iniziale', function (): void {
+    $accounts = app(AccountService::class);
+    $years = app(FiscalYearService::class);
+    $current = (int) now()->format('Y');
+    $years->close($current);
+
+    expect(fn () => $accounts->create('Cassa nuova', AccountType::Cash, 5000))->toThrow(LedgerError::class, 'anno fiscale chiuso')
+        ->and(fn () => $accounts->update($this->bank->id, 'Conto corrente', AccountType::Bank, 1))->toThrow(LedgerError::class, 'anno fiscale chiuso')
+        ->and($accounts->create('Cassa nuova', AccountType::Cash, 0)->opening_cents)->toBe(0);
+
+    $years->reopen($current, 'Correzione');
+    expect($accounts->create('Cassa due', AccountType::Cash, 5000)->opening_cents)->toBe(5000);
+});

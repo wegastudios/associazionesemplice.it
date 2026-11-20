@@ -15,7 +15,6 @@ use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Database\Query\Builder;
 
 /**
  * Esercizi dell'associazione. Di norma coincidono con l'anno solare; un esercizio diverso (per esempio da settembre ad
@@ -102,17 +101,46 @@ final readonly class FiscalYearService
             ->where('starts_on', '<=', $day->toDateString())->where('ends_on', '>=', $day->toDateString())
             ->first(['year']);
         if ($row !== null && is_numeric($row->year)) {
+            $this->assertNotBeforeClosed($day, (int) $row->year);
+
             return (int) $row->year;
         }
+        $this->assertNotBeforeClosed($day, null);
         $start = self::startFor($day, $this->startMonth());
 
         return $this->create($start->year, $start->toDateString());
+    }
+
+    /** C'è un anno fiscale chiuso? (Uno riaperto non conta: è di nuovo aperto.) */
+    public function hasClosedNow(): bool
+    {
+        return $this->connection()->table('app.fiscal_years')->where('status', 'closed')->exists();
+    }
+
+    /**
+     * Il chiuso è chiuso: una data che precede un anno fiscale già chiuso non riceve movimenti, e l'anno mancante non si crea
+     * da sé. Fa eccezione un anno aperto che ha già movimenti (esisteva prima della chiusura). Gli anni chiusi che contengono
+     * la data li rifiuta il database con il suo messaggio.
+     */
+    private function assertNotBeforeClosed(CarbonImmutable $day, ?int $year): void
+    {
+        $closed = $this->connection()->table('app.fiscal_years')->where('status', 'closed')
+            ->where('starts_on', '>', $day->toDateString())
+            ->orderBy('starts_on')->value('year');
+        if (! is_numeric($closed)) {
+            return;
+        }
+        if ($year !== null && $this->connection()->table('app.transactions')->where('fiscal_year', $year)->exists()) {
+            return;
+        }
+        throw new LedgerError("La data {$day->format('d/m/Y')} precede l'anno fiscale {$closed}, che è già chiuso: non si registrano movimenti in un anno precedente a uno chiuso. Per correggere il {$closed} riaprilo dal Rendiconto.");
     }
 
     public function create(int $year, string $startsOn, bool $audit = true): int
     {
         $start = self::date($startsOn);
         $end = $start->addYear()->subDay();
+        $this->assertNotBeforeClosed($start, null);
         $overlap = $this->connection()->table('app.fiscal_years')
             ->where('starts_on', '<=', $end->toDateString())->where('ends_on', '>=', $start->toDateString())
             ->orWhere('year', $year)
@@ -136,10 +164,9 @@ final readonly class FiscalYearService
 
     public function close(int $year): void
     {
-        // Gli esercizi si chiudono in ordine: un esercizio precedente ancora aperto (e con movimenti) va chiuso prima.
+        // Gli esercizi si chiudono in ordine: ogni esercizio precedente ancora aperto, con o senza movimenti, va chiuso prima.
         $starts = $this->connection()->table('app.fiscal_years')->where('year', $year)->value('starts_on');
         $earlier = is_string($starts) ? $this->connection()->table('app.fiscal_years as f')->where('f.starts_on', '<', $starts)->where('f.status', 'open')
-            ->whereExists(fn (Builder $q) => $q->selectRaw('1')->from('app.transactions as t')->whereColumn('t.fiscal_year', 'f.year'))
             ->orderBy('f.starts_on')->value('f.year') : null;
         if (is_numeric($earlier)) {
             throw new LedgerError("Prima di chiudere il {$year} chiudi il {$earlier}.");
