@@ -465,7 +465,7 @@ it('salva comunque le chiavi se la prova non riesce e lo dice', function (): voi
 
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->put('/gestionale/pagamenti-online', [
         'stripe_enabled' => true, 'stripe_secret' => 'sk_test_finta123', 'account_id' => $this->cash,
-    ])->assertSessionHasErrors(['ledger' => fn (string $m) => str_contains($m, 'prova della connessione con Stripe non è riuscita')]);
+    ])->assertSessionHasErrors(['ledger' => 'La prova della connessione con Stripe non è riuscita: Stripe: chiave non valida']);
 
     $this->orgContext()->run($this->org->id, fn () => expect(app(OnlinePayments::class)->settings()?->stripe_secret)->toBe('sk_test_finta123'));
 });
@@ -478,5 +478,5 @@ it('se su Stripe c\'è già il webhook non lo duplica e chiede il segreto a mano
 
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->put('/gestionale/pagamenti-online', [
         'stripe_enabled' => true, 'stripe_secret' => 'sk_test_finta123', 'account_id' => $this->cash,
-    ])->assertSessionHasErrors(['ledger' => fn (string $m) => str_contains($m, 'c\'è già un webhook')]);
+    ])->assertSessionHasErrors(['ledger' => "Su Stripe c'è già un webhook per questo indirizzo: Stripe non mostra più il suo segreto, copialo a mano dal pannello di Stripe."]);
 });
