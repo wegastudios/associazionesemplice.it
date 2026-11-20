@@ -86,7 +86,10 @@ final class DbCatalog implements Catalog
                 'published_at' => now(),
             ]);
 
-            return $next;
+            // Si serve ciò che è salvato (jsonb ordina le chiavi): i byte non cambiano tra la prima richiesta e le successive.
+            $saved = $connection->table('core.catalog_revisions')->where('rev', $next->rev)->first(['rev', 'document']);
+
+            return $saved === null ? $next : self::fromRow($saved->rev, $saved->document);
         });
     }
 
