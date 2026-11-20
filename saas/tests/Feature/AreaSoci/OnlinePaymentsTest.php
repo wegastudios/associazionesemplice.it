@@ -22,6 +22,7 @@ use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\OrgEntitlements;
+use App\Modules\Risorse\Contracts\MemberResources;
 use App\Modules\Risorse\Contracts\ResourceError;
 use App\Modules\Risorse\Payments\ReservationDues;
 use App\Modules\Risorse\Services\ReservationService;
@@ -822,4 +823,75 @@ it('l\'invito a donare compare solo nei posti accesi e solo se c\'è un modo per
     $this->actingAs($this->owner)->put('/gestionale/pagamenti-online/donazioni', ['checkout' => true, 'amount' => '5', 'invite_area' => true, 'invite_event' => true])->assertSessionHasNoErrors();
     expect($invite())->toBe([true, false, true, false]);
     $member()->get($this->host.'/area')->assertInertia(fn (Assert $page) => $page->where('member.invite.area', true)->where('member.invite.event', true));
+});
+
+it('un socio non tiene più di un certo numero di prenotazioni da usare', function (): void {
+    config(['saas.resources.member_max_active' => 2]);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $court = app(ResourceService::class)->save(null, ['name' => 'Campo 1', 'category' => 'court', 'typology' => 'hourly', 'open_time' => '08:00', 'close_time' => '22:00',
+            'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000, 'advance_days' => 14]);
+        $resources = app(MemberResources::class);
+        $day = now('Europe/Rome')->addDays(2)->toDateString();
+
+        $first = $resources->book($court->id, $this->anna->id, ['date' => $day, 'start' => '10:00']);
+        $resources->book($court->id, $this->anna->id, ['date' => $day, 'start' => '11:00']);
+        expect(fn () => $resources->book($court->id, $this->anna->id, ['date' => $day, 'start' => '12:00']))->toThrow(ResourceError::class, 'Hai già 2 prenotazioni da usare');
+
+        // Annullandone una si libera un posto.
+        $resources->cancel($first, $this->anna->id);
+        $resources->book($court->id, $this->anna->id, ['date' => $day, 'start' => '12:00']);
+        expect($resources->mine([$this->anna->id]))->toHaveCount(2);
+    });
+});
+
+it('con l\'anticipo a zero nessun limite di anticipo, anche per il socio; se la risorsa lo indica vale quello', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $court = app(ResourceService::class)->save(null, ['name' => 'Campo 1', 'category' => 'court', 'typology' => 'hourly', 'open_time' => '08:00', 'close_time' => '22:00',
+            'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000, 'advance_days' => 0]);
+        $resources = app(MemberResources::class);
+        $far = now('Europe/Rome')->addDays(11)->toDateString();
+
+        expect($resources->book($court->id, $this->anna->id, ['date' => $far, 'start' => '10:00']))->toBeString();
+
+        // Se la risorsa indica un anticipo, vale quello.
+        $short = app(ResourceService::class)->save(null, ['name' => 'Campo 2', 'category' => 'court', 'typology' => 'hourly', 'open_time' => '08:00', 'close_time' => '22:00',
+            'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000, 'advance_days' => 3]);
+        expect(fn () => $resources->book($short->id, $this->anna->id, ['date' => now('Europe/Rome')->addDays(5)->toDateString(), 'start' => '10:00']))->toThrow(ResourceError::class, 'al massimo 3 giorni');
+    });
+});
+
+it('prenota, annulla, lista d\'attesa, recapiti e ricevute hanno un limite di frequenza per socio e per indirizzo', function (): void {
+    foreach (['member-book' => [20, 60], 'member-cancel' => [20, 60], 'member-profile' => [10, 30], 'member-receipt' => [30, 100], 'member-pay-result' => [60, 200]] as $name => [$perMember, $perIp]) {
+        $one = Illuminate\Support\Facades\RateLimiter::limiter($name)(Illuminate\Http\Request::create('/', 'GET', [], ['as_socio' => 'uno']));
+        $two = Illuminate\Support\Facades\RateLimiter::limiter($name)(Illuminate\Http\Request::create('/', 'GET', [], ['as_socio' => 'due']));
+        expect(array_map(static fn ($l) => $l->maxAttempts, $one))->toBe([$perMember, $perIp])
+            ->and($one[0]->key)->not->toBe($two[0]->key)->and($one[1]->key)->toBe($two[1]->key)
+            ->and($one[0]->key)->not->toContain('uno');
+    }
+});
+
+it('i recapiti si cambiano al massimo dieci volte ogni dieci minuti', function (): void {
+    $cookie = memberCookie($this, $this->anna->id);
+    foreach (range(1, 10) as $i) {
+        expect($this->withUnencryptedCookie('as_socio', $cookie)->put($this->host.'/area/profilo', ['phone' => '333 000000'.$i])->getStatusCode())->not->toBe(429);
+    }
+    $this->withUnencryptedCookie('as_socio', $cookie)->put($this->host.'/area/profilo', ['phone' => '333 0000099'])->assertStatus(429);
+});
+
+it('l\'esito di un pagamento ancora in attesa non chiama il gestore a ogni apertura', function (): void {
+    saveStripe($this);
+    $cookie = memberCookie($this, $this->anna->id);
+    $member = fn () => $this->withUnencryptedCookie('as_socio', $cookie);
+    $key = $this->orgContext()->run($this->org->id, fn () => app(OnlinePayments::class)->dues([$this->anna->id])[0]['key']);
+    Http::fake([
+        'api.stripe.com/v1/checkout/sessions/cs_test_7' => Http::response(['id' => 'cs_test_7', 'payment_status' => 'unpaid']),
+        'api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_test_7', 'url' => 'https://checkout.stripe.com/c/pay/cs_test_7']),
+    ]);
+    $member()->post($this->host.'/area/paga', ['keys' => [$key], 'provider' => 'stripe'])->assertRedirect('https://checkout.stripe.com/c/pay/cs_test_7');
+    $id = $this->orgContext()->run($this->org->id, fn () => app(OnlinePayments::class)->list(null)[0]['id']);
+
+    foreach (range(1, 5) as $_) {
+        $member()->get($this->host.'/area/pagamenti/'.$id.'/esito')->assertInertia(fn (Assert $page) => $page->where('payment.status', 'pending'));
+    }
+    expect(Http::recorded(static fn (HttpRequest $r): bool => $r->method() === 'GET' && str_contains($r->url(), 'cs_test_7'))->count())->toBe(1);
 });

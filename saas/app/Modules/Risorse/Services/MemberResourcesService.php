@@ -75,6 +75,7 @@ final readonly class MemberResourcesService implements MemberResources
     public function book(string $resourceId, string $personId, array $in): string
     {
         $r = $this->resource($resourceId);
+        $this->assertWithinLimits($personId);
 
         return $this->reservations->book($r->id, ['person_id' => $personId, 'date' => $in['date'], 'start' => $in['start'] ?? '', 'units' => $in['units'] ?? 1,
             'guests' => $in['guests'] ?? []], null, true)[0];
@@ -110,6 +111,29 @@ final readonly class MemberResourcesService implements MemberResources
             throw new ResourceError('La prenotazione è già pagata: per annullarla scrivi alla segreteria.');
         }
         $this->reservations->cancel($x->id);
+    }
+
+    /**
+     * Il limite di chi prenota da solo (la segreteria non lo ha): un tetto di prenotazioni ancora da usare per persona,
+     * in `config/saas.php` (`resources`). L'anticipo massimo è solo quello della risorsa (a zero: nessun limite).
+     */
+    private function assertWithinLimits(string $personId): void
+    {
+        $max = self::setting('saas.resources.member_max_active', 10);
+        $now = ReservationService::now();
+        $active = Reservation::query()->where('person_id', $personId)->where('kind', 'booking')->where('status', 'booked')
+            ->where(static fn ($w) => $w->whereNull('ends_at')->orWhere('ends_at', '>', $now))->count();
+        if ($active >= $max) {
+            throw new ResourceError("Hai già {$max} prenotazioni da usare: aspetta che passino o annullane una, oppure scrivi alla segreteria.");
+        }
+    }
+
+    /** Un intero positivo dalla configurazione, altrimenti quello di base. */
+    private static function setting(string $key, int $default): int
+    {
+        $value = config($key, $default);
+
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 
     /** @return list<string> le tipologie che il pacchetto ha in versione Web (a ore e a giornata) */

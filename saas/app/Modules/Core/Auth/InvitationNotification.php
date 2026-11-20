@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Auth;
 
+use App\Modules\Core\Contracts\MailText;
 use App\Modules\Core\Models\User;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -28,10 +29,11 @@ final class InvitationNotification extends Notification
 
     public function toMail(User $notifiable): MailMessage
     {
+        // Saluto neutro e nome dell'associazione ripulito: nell'email non entra testo libero che diventi un collegamento.
         $message = (new MailMessage)
-            ->subject("{$this->orgName} · Invito a lavorare nel gestionale")
-            ->greeting("Ciao {$notifiable->name},")
-            ->line("ti hanno invitato a lavorare nel gestionale di {$this->orgName}.");
+            ->subject(MailText::plain($this->orgName).' · Invito a lavorare nel gestionale')
+            ->greeting('Ciao,')
+            ->line('ti hanno invitato a lavorare nel gestionale di '.MailText::plain($this->orgName).'.');
 
         if ($this->token === null) {
             return $message

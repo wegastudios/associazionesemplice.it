@@ -87,6 +87,30 @@ final readonly class PublicApplicationController
         return $back->with('application_sent', $slug);
     }
 
+    /** Il link ricevuto per email: una pagina con un pulsante. La conferma vera è il POST, così i controlli automatici della posta non la consumano. */
+    public function confirmPage(Request $request, string $slug, string $token): Response
+    {
+        $org = $this->enter($slug);
+
+        return Inertia::render('Soci/AdesioneConferma', [
+            'org' => ['name' => $org['name'], 'slug' => $slug],
+            'token' => $token,
+            'done' => $request->session()->get('application_confirmed') === $slug,
+        ]);
+    }
+
+    public function confirm(Request $request, string $slug, string $token): RedirectResponse
+    {
+        $org = $this->enter($slug);
+        $back = redirect()->route('application.confirm', ['slug' => $slug, 'token' => $token]);
+
+        if (! $this->applications->confirm($token, $org['name'])) {
+            return $back->withErrors(['confirm' => 'Il link non vale più: è scaduto o è già stato usato. Se vuoi, compila di nuovo il modulo.']);
+        }
+
+        return $back->with('application_confirmed', $slug);
+    }
+
     /** @return array{id: string, name: string} */
     private function enter(string $slug): array
     {

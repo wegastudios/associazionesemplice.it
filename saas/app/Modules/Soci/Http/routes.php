@@ -74,4 +74,6 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
 Route::middleware('web')->group(function (): void {
     Route::get('/adesione/{slug}', [PublicApplicationController::class, 'show'])->name('application.form');
     Route::post('/adesione/{slug}', [PublicApplicationController::class, 'store'])->middleware('throttle:applications')->name('application.submit');
+    Route::get('/adesione/{slug}/conferma/{token}', [PublicApplicationController::class, 'confirmPage'])->where('token', '[A-Za-z0-9_-]{43}')->name('application.confirm');
+    Route::post('/adesione/{slug}/conferma/{token}', [PublicApplicationController::class, 'confirm'])->where('token', '[A-Za-z0-9_-]{43}')->middleware('throttle:applications-confirm')->name('application.confirm.submit');
 });

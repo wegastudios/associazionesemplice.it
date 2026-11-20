@@ -44,6 +44,12 @@ function minorApplication(array $over = []): array
     ];
 }
 
+/** Come se chi ha scritto le domande avesse aperto il link di conferma (da dentro l'associazione). */
+function confirmApplications(): void
+{
+    DB::table('app.applications')->where('unconfirmed', true)->update(['unconfirmed' => false, 'confirmed_at' => now(), 'confirm_hash' => null, 'confirm_expires_at' => null]);
+}
+
 beforeEach(function (): void {
     Notification::fake();
     $this->org = $this->createOrg('Polisportiva Alfa');
@@ -164,6 +170,12 @@ it('accoglie la domanda di un maggiorenne con i consensi del modulo', function (
             ->and(DB::table('app.applications')->whereRaw("encode(data_enc, 'escape') LIKE '%RSSMRA%'")->exists())->toBeFalse();
         Notification::assertSentTimes(MemberNotification::class, 1);
 
+        // Finché non è confermata la segreteria non la vede e non può deciderla.
+        expect($s->pending())->toBe([])->and($s->pendingCount())->toBe(0)
+            ->and(fn () => $s->approve($a->id, null, 'Polisportiva Alfa'))->toThrow(App\Modules\Soci\Contracts\PeopleError::class, 'Domanda non trovata')
+            ->and(fn () => $s->details($a->id))->toThrow(App\Modules\Soci\Contracts\PeopleError::class);
+        confirmApplications();
+
         $personId = $s->approve($a->id, null, 'Polisportiva Alfa');
         $p = Person::query()->findOrFail($personId);
         expect($p->tax_code)->toBe('RSSMRA80A01H501U')->and($p->card_number)->toBe('1')->and($p->joined_on?->toDateString())->toBe(now()->toDateString())
@@ -183,6 +195,7 @@ it('accoglie la domanda di un minore collegando il genitore che ha già una sche
         expect($s->submit(minorApplication(), 'Polisportiva Alfa'))->toBe([]);
         Notification::assertSentTo(new AnonymousNotifiable, MemberNotification::class, fn ($n, $c, $notifiable) => $notifiable->routes['mail'] === 'anna@example.com');
 
+        confirmApplications();
         $id = $s->approve(Application::query()->sole()->id, '7', 'Polisportiva Alfa');
         $guardians = app(GuardianService::class)->of($id);
         expect($guardians)->toHaveCount(1)->and($guardians[0]['id'])->toBe($mamma->id)->and($guardians[0]['operative'])->toBeTrue()
@@ -197,6 +210,7 @@ it('crea la scheda del genitore se non c\'è e respinge con un motivo', function
         $s = app(ApplicationService::class);
         $s->submit(minorApplication(), 'X');
         $s->submit(adultApplication(), 'X');
+        confirmApplications();
         [$first, $second] = Application::query()->orderBy('submitted_at')->orderBy('id')->get()->all();
 
         $id = $s->approve($first->id, null, 'X');
@@ -248,6 +262,7 @@ it('lascia accogliere le domande alla segreteria, non al commercialista', functi
     $this->addOperator($this->org, $acc, OrgRole::Accountant);
     $id = $this->orgContext()->run($this->org->id, function (): string {
         app(ApplicationService::class)->submit(adultApplication(), 'X');
+        confirmApplications();
 
         return Application::query()->sole()->id;
     });
@@ -315,7 +330,7 @@ it('il limite di frequenza dei promemoria si regola da configurazione', function
     expect(array_map(static fn ($l) => $l->maxAttempts, $limits))->toBe([5, 2]);
 });
 
-it('la conferma della domanda va in coda con soli identificativi e parte con indirizzo e testo ricavati dopo', function (): void {
+it('l\'email con il link di conferma va in coda con soli identificativi e parte con indirizzo e testo ricavati dopo', function (): void {
     Queue::fake();
     $this->orgContext()->run($this->org->id, function (): void {
         expect(app(ApplicationService::class)->submit(adultApplication(), 'Polisportiva Alfa'))->toBe([]);
@@ -328,7 +343,118 @@ it('la conferma della domanda va in coda con soli identificativi e parte con ind
     foreach (Queue::pushed(SendApplicationEmail::class) as $job) {
         $job->handle(app(OrgContext::class));
     }
-    Notification::assertSentOnDemand(MemberNotification::class, fn (MemberNotification $n, array $channels, object $notifiable) => $notifiable->routes['mail'] === 'mario@example.com' && $n->greeting === 'Ciao Mario,');
+    // Saluto neutro (niente nome scelto da chi scrive) e un link di conferma che parte dall'indirizzo configurato.
+    Notification::assertSentOnDemand(MemberNotification::class, fn (MemberNotification $n, array $channels, object $notifiable) => $notifiable->routes['mail'] === 'mario@example.com'
+        && $n->greeting === 'Ciao,' && ! str_contains($n->body, 'Mario') && str_starts_with((string) $n->actionUrl, rtrim((string) config('app.url'), '/').'/adesione/'.$this->org->slug.'/conferma/'));
+});
+
+/** Il link di conferma dell'ultima email mandata (solo il percorso). */
+function lastConfirmPath(): string
+{
+    $url = '';
+    Notification::assertSentOnDemand(MemberNotification::class, function (MemberNotification $n) use (&$url): bool {
+        $url = (string) $n->actionUrl;
+
+        return $n->actionUrl !== null;
+    });
+
+    return (string) parse_url($url, PHP_URL_PATH);
+}
+
+it('la domanda resta da confermare finché non si apre il link: poi arriva in segreteria, una volta sola', function (): void {
+    $slug = $this->org->slug;
+    $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set(ApplicationService::ENABLED, true));
+    $this->post("/adesione/{$slug}", adultApplication())->assertRedirect("/adesione/{$slug}");
+    $path = lastConfirmPath();
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(app(ApplicationService::class)->pending())->toBe([])->and(Application::query()->sole()->unconfirmed)->toBeTrue();
+    });
+    Notification::assertSentTimes(MemberNotification::class, 1); // solo il link: niente ricevuta prima della conferma
+
+    // Aprire il link (anche un controllo automatico della posta) non conferma nulla: serve il pulsante.
+    $this->get($path)->assertOk()->assertInertia(fn (Assert $page) => $page->component('Soci/AdesioneConferma')->where('done', false));
+    $this->orgContext()->run($this->org->id, fn () => expect(Application::query()->sole()->unconfirmed)->toBeTrue());
+
+    $this->post($path)->assertRedirect($path)->assertSessionHas('application_confirmed', $slug);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $a = Application::query()->sole();
+        expect($a->unconfirmed)->toBeFalse()->and(app(ApplicationService::class)->pending())->toHaveCount(1)
+            ->and(DB::table('app.applications')->whereNotNull('confirm_hash')->exists())->toBeFalse();
+    });
+    Notification::assertSentTimes(MemberNotification::class, 2); // link + ricevuta
+
+    // Un link già usato non vale più.
+    $this->post($path)->assertSessionHasErrors('confirm');
+    Notification::assertSentTimes(MemberNotification::class, 2);
+});
+
+it('un link di conferma scaduto o inventato non conferma nulla', function (): void {
+    $slug = $this->org->slug;
+    $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set(ApplicationService::ENABLED, true));
+    $this->post("/adesione/{$slug}", adultApplication());
+    $path = lastConfirmPath();
+
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.applications')->update(['confirm_expires_at' => now()->subMinute()]));
+    $this->post($path)->assertSessionHasErrors('confirm');
+    $this->post("/adesione/{$slug}/conferma/".str_repeat('a', 43))->assertSessionHasErrors('confirm');
+    $this->post("/adesione/{$slug}/conferma/corto")->assertNotFound();
+    $this->orgContext()->run($this->org->id, fn () => expect(Application::query()->sole()->unconfirmed)->toBeTrue());
+});
+
+it('a uno stesso indirizzo si scrive una sola volta l\'ora, senza che la risposta cambi', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $s = app(ApplicationService::class);
+        expect($s->submit(adultApplication(), 'X'))->toBe([])->and($s->submit(adultApplication(['first_name' => 'Altro']), 'X'))->toBe([])
+            ->and(Application::query()->count())->toBe(1);
+        // Un altro indirizzo non è toccato dal limite.
+        expect($s->submit(adultApplication(['email' => 'luisa@example.com']), 'X'))->toBe([])->and(Application::query()->count())->toBe(2);
+    });
+    Notification::assertSentTimes(MemberNotification::class, 2);
+});
+
+it('il nome scritto nel modulo non entra nelle email: saluto e frasi sono sempre gli stessi', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $s = app(ApplicationService::class);
+        $s->submit(adultApplication(['first_name' => '[clicca qui](https://esempio.test)']), 'Polisportiva Alfa');
+        confirmApplications();
+        foreach (['received', 'accepted', 'rejected'] as $kind) {
+            $s->sendMail((string) Application::query()->value('id'), $kind, 'Polisportiva Alfa');
+        }
+    });
+
+    Notification::assertSentTimes(MemberNotification::class, 4);
+    $sent = Notification::sent(new AnonymousNotifiable, MemberNotification::class);
+    foreach ($sent as $n) {
+        expect($n->greeting)->toBe('Ciao,')->and($n->body)->not->toContain('clicca')->and($n->subject)->not->toContain('clicca');
+    }
+});
+
+it('la pulizia notturna toglie le domande mai confermate da 30 giorni e le respinte da 90, non le altre', function (): void {
+    // Righe scritte a mano con le date volute (il contenuto cifrato non serve alla pulizia): mai confermata da 31 e da 29
+    // giorni, respinta da 91 e da 89, in attesa e confermata da 200.
+    $row = function (array $over): string {
+        $id = (string) Illuminate\Support\Str::uuid7();
+        $this->orgContext()->run($this->org->id, fn () => DB::table('app.applications')->insert($over + [
+            'org_id' => $this->org->id, 'id' => $id, 'status' => 'pending', 'first_name' => 'Mario', 'last_name' => 'Rossi', 'minor' => false,
+            'data_enc' => DB::raw("decode('00', 'hex')"), 'unconfirmed' => false, 'submitted_at' => now()->subDays(200),
+        ]));
+
+        return $id;
+    };
+    $old = $row(['unconfirmed' => true, 'submitted_at' => now()->subDays(31)]);
+    $recent = $row(['unconfirmed' => true, 'submitted_at' => now()->subDays(29)]);
+    $rejectedOld = $row(['status' => 'rejected', 'decided_at' => now()->subDays(91), 'reason' => 'x']);
+    $rejectedRecent = $row(['status' => 'rejected', 'decided_at' => now()->subDays(89), 'reason' => 'x']);
+    $pending = $row([]);
+
+    $this->artisan('saas:applications:prune')->assertSuccessful();
+
+    $this->orgContext()->run($this->org->id, function () use ($old, $recent, $rejectedOld, $rejectedRecent, $pending): void {
+        $left = Application::query()->pluck('id')->all();
+        expect($left)->not->toContain($old)->and($left)->toContain($recent)->and($left)->not->toContain($rejectedOld)
+            ->and($left)->toContain($rejectedRecent)->and($left)->toContain($pending);
+    });
 });
 
 it('l\'email di una domanda non accolta riporta i recapiti della segreteria e l\'oggetto parte dal nome dell\'associazione', function (): void {
@@ -336,6 +462,7 @@ it('l\'email di una domanda non accolta riporta i recapiti della segreteria e l\
         app(OrgSettings::class)->set('ente.email', 'segreteria@example.com');
         app(OrgSettings::class)->set('ente.phone', '011 1234567');
         app(ApplicationService::class)->submit(adultApplication(), 'Polisportiva Alfa');
+        confirmApplications();
         $id = Application::query()->value('id');
 
         app(ApplicationService::class)->sendMail((string) $id, 'rejected', 'Polisportiva Alfa');

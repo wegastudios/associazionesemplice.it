@@ -17,6 +17,7 @@ use Carbon\CarbonImmutable;
  * @property string $first_name
  * @property string $last_name
  * @property bool $minor
+ * @property bool $unconfirmed
  * @property array<string, mixed> $data
  * @property CarbonImmutable $submitted_at
  * @property CarbonImmutable|null $decided_at
@@ -30,10 +31,10 @@ final class Application extends OrgModel
     protected $table = 'app.applications';
 
     /** @var list<string> */
-    protected $fillable = ['first_name', 'last_name', 'minor', 'data'];
+    protected $fillable = ['first_name', 'last_name', 'minor', 'unconfirmed', 'data'];
 
     /** @var list<string> */
-    protected $hidden = ['data_enc'];
+    protected $hidden = ['data_enc', 'confirm_hash'];
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -41,6 +42,7 @@ final class Application extends OrgModel
         return [
             'data' => Encrypted::class.':json',
             'minor' => 'boolean',
+            'unconfirmed' => 'boolean',
             'submitted_at' => 'immutable_datetime',
             'decided_at' => 'immutable_datetime',
         ];

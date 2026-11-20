@@ -7,6 +7,7 @@ namespace App\Modules\Soci\Services;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Contracts\ConsentChannel;
 use App\Modules\Soci\Contracts\ConsentSource;
@@ -16,6 +17,7 @@ use App\Modules\Soci\Jobs\SendApplicationEmail;
 use App\Modules\Soci\Models\Application;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Rules\ApplicationRules;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -24,8 +26,11 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Domande di adesione online (dall'Applications del plugin). La domanda resta in attesa finché la segreteria non la
- * accoglie (nasce la scheda, con il genitore se è un minore, e i consensi dati nel modulo) o la respinge con un motivo.
+ * Domande di adesione online (dall'Applications del plugin). Chi compila il modulo riceve un'email con un link: finché
+ * non lo apre la domanda è «da confermare», non compare in segreteria e non produce altre email (a un indirizzo scritto
+ * da chiunque va una sola email l'ora). Confermata, resta in attesa finché la segreteria non la accoglie (nasce la scheda,
+ * con il genitore se è un minore, e i consensi dati nel modulo) o la respinge con un motivo. Le domande mai confermate
+ * si cancellano dopo 30 giorni, le respinte dopo 90 (`saas:applications:prune`).
  */
 final readonly class ApplicationService
 {
@@ -36,9 +41,20 @@ final readonly class ApplicationService
     /** Tipi di socio che si possono chiedere online. */
     public const TYPES = ['ordinary', 'volunteer'];
 
+    /** Ore di validità del link di conferma. */
+    public const CONFIRM_HOURS = 48;
+
+    /** Giorni dopo i quali una domanda mai confermata si cancella. */
+    public const UNCONFIRMED_DAYS = 30;
+
+    /** Giorni dopo i quali una domanda respinta si cancella. */
+    public const REJECTED_DAYS = 90;
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
+        private OrgDirectory $directory,
+        private RateLimiter $limiter,
         private OrgSettings $settings,
         private PeopleService $people,
         private GuardianService $guardians,
@@ -58,8 +74,9 @@ final readonly class ApplicationService
     }
 
     /**
-     * Domanda dal modulo pubblico. Restituisce gli errori di compilazione; se non ce ne sono la domanda è salvata e
-     * chi l'ha mandata riceve una conferma per email.
+     * Domanda dal modulo pubblico. Restituisce gli errori di compilazione; se non ce ne sono la domanda è salvata «da
+     * confermare» e all'indirizzo indicato va un'email con il link di conferma. A uno stesso indirizzo si scrive una sola
+     * volta l'ora: se è già successo la domanda non si salva e la risposta a chi scrive è la stessa.
      *
      * @param  array<mixed>  $input
      * @return list<string>
@@ -75,24 +92,72 @@ final readonly class ApplicationService
             'rules_ok' => ! empty($input['rules_ok']),
         ];
 
+        $to = mb_strtolower($this->contactEmail($data, $check['minor']));
+        if (! $this->limiter->attempt('application-confirm|'.hash('sha256', $to), 1, static fn (): bool => true, 3600)) {
+            return [];
+        }
+
         $application = new Application([
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
             'minor' => $check['minor'],
+            'unconfirmed' => true,
             'data' => $data,
         ]);
         $application->save();
         $this->audit->record('application.submitted', 'app.applications', $application->id, ['minor' => $check['minor']]);
 
-        $this->queueMail($application->id, 'received', $orgName);
+        $this->queueMail($application->id, 'confirm', $orgName);
 
         return [];
+    }
+
+    /**
+     * Chi ha ricevuto il link lo apre: da quel momento la domanda è in segreteria e a chi l'ha scritta va la ricevuta.
+     * Il link vale una volta sola e per 48 ore. Restituisce false se non vale (scaduto, già usato, inventato).
+     */
+    public function confirm(string $token, string $orgName): bool
+    {
+        if (preg_match('/^[A-Za-z0-9_-]{43}$/', $token) !== 1) {
+            return false;
+        }
+        $hash = hash('sha256', $token);
+        $table = $this->connection()->table('app.applications');
+        $id = $table->where('confirm_hash', $hash)->where('unconfirmed', true)->where('status', 'pending')->where('confirm_expires_at', '>', now())->value('id');
+        if (! is_string($id)) {
+            return false;
+        }
+        $updated = $this->connection()->table('app.applications')->where('id', $id)->where('confirm_hash', $hash)->where('unconfirmed', true)
+            ->update(['unconfirmed' => false, 'confirmed_at' => now(), 'confirm_hash' => null, 'confirm_expires_at' => null]);
+        if ($updated !== 1) {
+            return false;
+        }
+        $this->audit->record('application.confirmed', 'app.applications', $id);
+        $this->queueMail($id, 'received', $orgName);
+
+        return true;
+    }
+
+    /**
+     * Cancella le domande mai confermate da 30 giorni e quelle respinte da 90 (le accolte non si toccano: hanno dato
+     * vita a una scheda). Restituisce quante ne ha cancellate.
+     *
+     * @return array{unconfirmed: int, rejected: int}
+     */
+    public function prune(): array
+    {
+        $unconfirmed = $this->connection()->table('app.applications')->where('unconfirmed', true)->where('status', 'pending')
+            ->where('submitted_at', '<', now()->subDays(self::UNCONFIRMED_DAYS))->delete();
+        $rejected = $this->connection()->table('app.applications')->where('status', 'rejected')
+            ->where('decided_at', '<', now()->subDays(self::REJECTED_DAYS))->delete();
+
+        return ['unconfirmed' => $unconfirmed, 'rejected' => $rejected];
     }
 
     /** @return list<array{id: string, name: string, minor: bool, submitted: string}> */
     public function pending(): array
     {
-        return array_values(Application::query()->where('status', 'pending')->orderBy('submitted_at')
+        return array_values(Application::query()->where('status', 'pending')->where('unconfirmed', false)->orderBy('submitted_at')
             ->get(['id', 'first_name', 'last_name', 'minor', 'submitted_at'])
             ->map(static fn (Application $a): array => [
                 'id' => $a->id,
@@ -104,7 +169,7 @@ final readonly class ApplicationService
 
     public function pendingCount(): int
     {
-        return Application::query()->where('status', 'pending')->count();
+        return Application::query()->where('status', 'pending')->where('unconfirmed', false)->count();
     }
 
     /** @return list<array{id: string, name: string, status: string, decided: string, reason: string|null, person_id: string|null}> */
@@ -191,16 +256,12 @@ final readonly class ApplicationService
      * A chi scrivere: al socio, o per un minore al genitore del modulo.
      *
      * @param  array<mixed>  $data
-     * @return array{email: string, name: string, about: string}
      */
-    private function contact(array $data, bool $minor): array
+    private function contactEmail(array $data, bool $minor): string
     {
         $g = $data['guardian'] ?? null;
-        if ($minor && is_array($g)) {
-            return ['email' => $this->text($g, 'email'), 'name' => $this->text($g, 'first_name'), 'about' => $this->text($data, 'first_name')];
-        }
 
-        return ['email' => $this->text($data, 'email'), 'name' => $this->text($data, 'first_name'), 'about' => ''];
+        return $minor && is_array($g) ? $this->text($g, 'email') : $this->text($data, 'email');
     }
 
     /**
@@ -246,7 +307,8 @@ final readonly class ApplicationService
 
     private function find(string $id, bool $pending = false): Application
     {
-        $q = Application::query();
+        // Una domanda ancora da confermare non esiste per la segreteria: non si apre, non si accoglie, non si respinge.
+        $q = Application::query()->where('unconfirmed', false);
         if ($pending) {
             $q->where('status', 'pending');
         }
@@ -272,23 +334,26 @@ final readonly class ApplicationService
     }
 
     /**
-     * Manda l'email di una domanda (dal lavoro in coda): $kind è received, accepted o rejected. Indirizzo e testo si
-     * ricavano adesso dalla domanda; un errore di posta si rilancia, così il lavoro riprova.
+     * Manda l'email di una domanda (dal lavoro in coda): $kind è confirm (il link di conferma), received, accepted o
+     * rejected. Indirizzo e testo si ricavano adesso dalla domanda; un errore di posta si rilancia, così il lavoro riprova.
+     * Nelle email non entra testo scritto da chi compila il modulo: saluto e frasi sono sempre gli stessi. Tutto tranne la
+     * conferma parte solo a domanda confermata.
      */
     public function sendMail(string $applicationId, string $kind, string $orgName): void
     {
         $application = Str::isUuid($applicationId) ? Application::query()->find($applicationId) : null;
-        if ($application === null) {
+        if ($application === null || $application->unconfirmed !== ($kind === 'confirm')) {
             return;
         }
-        $c = $this->contact($application->data, $application->minor);
-        if (filter_var($c['email'], FILTER_VALIDATE_EMAIL) === false) {
+        $email = $this->contactEmail($application->data, $application->minor);
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             return;
         }
-        $of = $c['about'] !== '' ? " di {$c['about']}" : '';
+        $of = $application->minor ? ' del minore indicato nel modulo' : '';
         $office = (new OrgContacts($this->settings))->all();
         [$subject, $body] = match ($kind) {
-            'received' => ['Domanda di adesione ricevuta', 'la domanda di adesione'.($c['about'] !== '' ? " per {$c['about']}" : '').' è stata ricevuta. La segreteria la esamina e ti risponde al più presto.'],
+            'confirm' => ['Conferma la domanda di adesione', 'è arrivata una domanda di adesione che indica questo indirizzo email. Per mandarla alla segreteria devi confermarla: il link vale '.self::CONFIRM_HOURS.' ore. Se la domanda non l\'hai fatta tu, ignora questo messaggio: non succede nulla.'],
+            'received' => ['Domanda di adesione ricevuta', 'la domanda di adesione'.($application->minor ? ' per il minore indicato nel modulo' : '').' è stata ricevuta. La segreteria la esamina e ti risponde al più presto.'],
             'accepted' => ['Domanda di adesione accolta', "la domanda di adesione{$of} è stata accolta. Per la tessera e la quota rivolgiti alla segreteria."],
             'rejected' => ['Domanda di adesione non accolta', "la domanda di adesione{$of} non è stata accolta. Per chiarimenti rivolgiti alla segreteria".($office === null ? '.' : ': '.OrgContacts::line($office['email'], $office['phone']).'.')],
             default => [null, null],
@@ -296,9 +361,34 @@ final readonly class ApplicationService
         if ($subject === null || $body === null) {
             return;
         }
+        $link = null;
+        if ($kind === 'confirm') {
+            $link = $this->confirmLink($application->id);
+            if ($link === null) {
+                return;
+            }
+        }
 
         // Siamo già dentro un lavoro in coda: la posta parte subito, senza accodarla una seconda volta.
-        Notification::route('mail', $c['email'])->notifyNow(new MemberNotification($subject, "Ciao {$c['name']},", $body, $orgName));
+        Notification::route('mail', $email)->notifyNow(new MemberNotification($subject, 'Ciao,', $body, $orgName, $link === null ? null : 'Conferma la domanda', $link));
+    }
+
+    /**
+     * Prepara un link di conferma nuovo (valido una volta, per 48 ore; nel database resta solo l'impronta). Il lavoro in
+     * coda non porta il link: nasce qui, al momento dell'invio. L'indirizzo parte da quello configurato dell'app.
+     */
+    private function confirmLink(string $applicationId): ?string
+    {
+        $slug = $this->directory->slug($this->context->require()->id);
+        if ($slug === null) {
+            return null;
+        }
+        $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        $this->connection()->table('app.applications')->where('id', $applicationId)->where('unconfirmed', true)
+            ->update(['confirm_hash' => hash('sha256', $token), 'confirm_expires_at' => now()->addHours(self::CONFIRM_HOURS)]);
+        $base = config('app.url');
+
+        return rtrim(is_string($base) ? $base : '', '/').route('application.confirm', ['slug' => $slug, 'token' => $token], false);
     }
 
     private function connection(): ConnectionInterface
