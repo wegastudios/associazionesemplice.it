@@ -332,6 +332,21 @@ case "$ACTION" in
     refresh
     echo "SAAS_TRUSTED_PROXIES = [$(get SAAS_TRUSTED_PROXIES)]"
     ;;
+  prova-recupero)
+    # Prova che sull'hosting Argon2id con i parametri della copia di recupero funziona (memoria, tempo): cifra e riapre in memoria
+    # un contenuto di prova con una frase di prova. Non scrive file, non tocca chiavi vere, non stampa segreti.
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $t = microtime(true);
+      $frase = "frase di prova soltanto per questa verifica";
+      $sealed = App\Modules\Cifratura\Keys\RecoveryFile::seal(["service_url" => "https://prova.invalid"], $frase);
+      $open = App\Modules\Cifratura\Keys\RecoveryFile::open($sealed, $frase);
+      $ok = ($open["items"]["service_url"] ?? null) === "https://prova.invalid";
+      echo "Cifratura e riapertura di prova: ", $ok ? "riuscite" : "FALLITE", " in ", round(microtime(true) - $t, 2), " s; memory_limit PHP = ", ini_get("memory_limit"), "; picco ", round(memory_get_peak_usage(true) / 1048576), " MiB", PHP_EOL;
+      try { App\Modules\Cifratura\Keys\RecoveryFile::open($sealed, "altra frase sbagliata di prova"); echo "ERRORE: frase sbagliata accettata", PHP_EOL; } catch (Throwable $e) { echo "Frase sbagliata rifiutata come previsto", PHP_EOL; }
+    '
+    mkdir -p "$HOME/recupero" && chmod 700 "$HOME/recupero" && echo "Cartella recupero pronta nella home (permessi 700, fuori dalla cartella web)."
+    ;;
   prova-ip)
     # Sola lettura: quante richieste ha contato il limite dell'API dello staff per l'indirizzo dato (secondo argomento, pg_bin_dir).
     # Serve a provare che dietro il proxy del portale il SaaS vede l'indirizzo vero del visitatore e non quello del server.
