@@ -64,7 +64,7 @@ function memberCookie(object $test, string $personId): string
     $link = (string) $test->actingAs($test->owner)->withSession(['auth.password_confirmed_at' => time()])->postJson("/gestionale/soci/{$personId}/area-soci/link")->json('link');
     $path = substr($link, strlen(StaffLinkController::baseUrl($test->org->slug)));
 
-    return (string) $test->get($test->host.$path)->getCookie('as_socio', false)?->getValue();
+    return (string) $test->post($test->host.$path)->getCookie('as_socio', false)?->getValue();
 }
 
 function saveStripe(object $test): void

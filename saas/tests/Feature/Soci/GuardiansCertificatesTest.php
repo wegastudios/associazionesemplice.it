@@ -56,7 +56,7 @@ it('lascia gestire nell\'area soci solo i collegamenti operativi con minorenni',
         ->and($g->dependentsOf($this->papa->id))->toHaveCount(1);
 
     // Compiuti i 18 anni la scheda non è più gestibile dal genitore.
-    Person::query()->whereKey($this->minor->id)->update(['birth_date' => now()->subYears(20)->toDateString()]);
+    Person::query()->findOrFail($this->minor->id)->update(['birth_date' => now()->subYears(20)->toDateString()]);
     expect(array_column($profiles->profiles($this->mamma->id), 'id'))->toBe([$this->mamma->id]);
 });
 
