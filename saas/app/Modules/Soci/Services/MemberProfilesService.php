@@ -26,7 +26,7 @@ final readonly class MemberProfilesService implements MemberProfiles
         }
         $found = Person::query()->where('email', $email)->whereNull('anonymized_at')->orderBy('created_at')->get();
 
-        return array_values($found->filter(static fn (Person $p): bool => self::mayEnter($p))
+        return array_values($found->filter(fn (Person $p): bool => $this->mayEnter($p))
             ->sortBy(static fn (Person $p): int => $p->type->isMember() ? 0 : 1)->map(static fn (Person $p): string => $p->id)->all());
     }
 
@@ -34,7 +34,7 @@ final readonly class MemberProfilesService implements MemberProfiles
     {
         $p = $this->find($personId);
 
-        return $p !== null && self::mayEnter($p);
+        return $p !== null && $this->mayEnter($p);
     }
 
     public function profiles(string $personId): array
@@ -43,8 +43,9 @@ final readonly class MemberProfilesService implements MemberProfiles
         if ($p === null) {
             return [];
         }
-        $out = [['id' => $p->id, 'name' => $p->fullName(), 'own' => true]];
-        foreach ($this->guardians->manageableDependentsOf($p->id) as $d) {
+        // Chi ha lasciato l'associazione non ha una scheda propria: vede solo quelle dei figli ancora soci.
+        $out = $p->left_on === null ? [['id' => $p->id, 'name' => $p->fullName(), 'own' => true]] : [];
+        foreach ($this->activeDependents($p->id) as $d) {
             $out[] = ['id' => $d['id'], 'name' => $d['name'], 'own' => false];
         }
 
@@ -96,10 +97,34 @@ final readonly class MemberProfilesService implements MemberProfiles
         $this->people->update($personId, ['phone' => $phone, 'address' => $address]);
     }
 
-    /** Entrano nell'area soci solo le persone ammesse: né chi è uscito dall'associazione né chi è sospeso. */
-    private static function mayEnter(Person $p): bool
+    /**
+     * Entrano nell'area soci solo le persone ammesse: non chi è sospeso, e non chi è uscito dall'associazione, salvo che sia
+     * tutore operativo di un minorenne ancora socio (in quel caso entra solo per la scheda del figlio).
+     */
+    private function mayEnter(Person $p): bool
     {
-        return $p->type->canLogin() && $p->left_on === null && $p->suspended_at === null;
+        if (! $p->type->canLogin() || $p->suspended_at !== null) {
+            return false;
+        }
+
+        return $p->left_on === null || $this->activeDependents($p->id) !== [];
+    }
+
+    /**
+     * Le schede dei figli che il tutore può gestire e che sono ancora socie (non uscite né sospese).
+     *
+     * @return list<array{id: string, name: string}>
+     */
+    private function activeDependents(string $guardianId): array
+    {
+        $dependents = $this->guardians->manageableDependentsOf($guardianId);
+        if ($dependents === []) {
+            return [];
+        }
+        $active = Person::query()->whereIn('id', array_column($dependents, 'id'))->whereNull('left_on')->whereNull('suspended_at')->whereNull('anonymized_at')->get()
+            ->filter(static fn (Person $d): bool => $d->type->isMember())->pluck('id')->all();
+
+        return array_values(array_filter($dependents, static fn (array $d): bool => in_array($d['id'], $active, true)));
     }
 
     private function find(string $id): ?Person

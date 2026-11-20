@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
 use App\Modules\AreaSoci\Mail\LoginLink;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Attivita\Services\SessionService;
@@ -137,6 +138,59 @@ it('non fa entrare chi è uscito dall\'associazione o è sospeso, con lo stesso 
         Person::query()->whereKey($this->mario->id)->update(['suspended_at' => null]);
         Person::query()->whereKey($this->mario->id)->update(['left_on' => now()->toDateString()]);
     });
+    $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso');
+    Mail::assertNothingSent();
+});
+
+it('fa entrare l\'ex socio tutore operativo di un minorenne socio, solo per la scheda del figlio', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        Person::query()->whereKey($this->luca->id)->update(['type' => 'ordinary']);
+        Person::query()->whereKey($this->mario->id)->update(['left_on' => now()->toDateString()]);
+    });
+
+    $cookie = memberLogin($this);
+    asMember($this, $cookie)->get($this->base)->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->has('member.profiles', 1)->where('member.profiles.0.id', $this->luca->id)->where('member.profiles.0.own', false)
+            ->where('member.active', $this->luca->id)->where('card.id', $this->luca->id));
+    // Il proprio profilo non si apre: resta la scheda del figlio.
+    asMember($this, $cookie)->get($this->base.'/profilo')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('card.id', $this->luca->id));
+    asMember($this, $cookie)->withSession([AuthenticateMember::ACTIVE => $this->mario->id])->get($this->base.'/profilo')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('card.id', $this->luca->id));
+
+    // Se il figlio lascia l'associazione, l'ex socio non entra più (la sessione aperta viene respinta).
+    $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->luca->id)->update(['left_on' => now()->toDateString()]));
+    asMember($this, $cookie)->get($this->base)->assertRedirect('/area/accesso');
+});
+
+it('non fa entrare il tutore sospeso, nemmeno se gestisce un figlio socio', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        Person::query()->whereKey($this->luca->id)->update(['type' => 'ordinary']);
+        Person::query()->whereKey($this->mario->id)->update(['left_on' => now()->toDateString(), 'suspended_at' => now()]);
+    });
+    Mail::fake();
+    $unknown = $this->post($this->base.'/accesso', ['email' => 'nessuno@example.com'])->assertRedirect('/area/accesso')->getSession()->get('member_login_message');
+    $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso')->assertSessionHas('member_login_message', $unknown);
+    Mail::assertNothingSent();
+
+    // Anche da socio (non uscito) ma sospeso.
+    $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->mario->id)->update(['left_on' => null]));
+    $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso');
+    Mail::assertNothingSent();
+});
+
+it('non fa entrare l\'ex socio che non è tutore operativo di un minorenne socio', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        Person::query()->whereKey($this->luca->id)->update(['type' => 'ordinary']);
+        Person::query()->whereKey($this->mario->id)->update(['left_on' => now()->toDateString()]);
+        Person::create(['first_name' => 'Anna', 'last_name' => 'Bianchi', 'email' => 'anna@example.com', 'birth_date' => '1985-05-05', 'left_on' => now()->toDateString()]);
+    });
+    Mail::fake();
+    $this->post($this->base.'/accesso', ['email' => 'anna@example.com'])->assertRedirect('/area/accesso');
+    Mail::assertNothingSent();
+
+    // Il figlio è maggiorenne, oppure non è più socio: il tutore ex socio resta fuori.
+    $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->luca->id)->update(['birth_date' => now()->subYears(20)->toDateString()]));
     $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso');
     Mail::assertNothingSent();
 });
