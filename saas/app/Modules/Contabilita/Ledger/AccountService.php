@@ -22,7 +22,7 @@ final readonly class AccountService
     /** Un saldo iniziale cambierebbe i saldi di un anno già chiuso: dopo una chiusura il conto nasce a zero e si carica con un incasso o un giroconto. */
     private function assertOpeningAllowed(int $changeCents): void
     {
-        if ($changeCents !== 0 &&$this->years->hasClosedNow()) {
+        if ($changeCents !== 0 && $this->years->hasClosedNow()) {
             throw new LedgerError('C\'è un anno fiscale chiuso: un saldo iniziale cambierebbe i suoi saldi. Crea il conto a zero e registra il saldo con un incasso o un giroconto.');
         }
     }
