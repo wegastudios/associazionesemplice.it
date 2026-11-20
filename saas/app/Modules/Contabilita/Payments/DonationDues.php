@@ -31,7 +31,7 @@ final readonly class DonationDues implements PayableDues
         return str_starts_with($key, 'd:');
     }
 
-    public function settle(string $key, int $cents, string $accountId, string $date, string $method): ?string
+    public function settle(string $key, int $cents, string $accountId, string $date, string $method, bool $anyway = false): ?string
     {
         if (preg_match('#^d:([0-9a-f-]{36})$#', $key, $m) !== 1 || $cents <= 0) {
             throw new InvalidArgumentException('Voce non valida.');

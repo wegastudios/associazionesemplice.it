@@ -161,7 +161,7 @@ final readonly class MembershipService implements Members
      *
      * @return array{membership_id: string, receipt: string|null, social_year: string}
      */
-    public function renewWithPayment(string $personId, string $accountId, ?int $amountCents = null, ?string $date = null, ?string $socialYear = null, ?PaymentMethod $method = null): array
+    public function renewWithPayment(string $personId, string $accountId, ?int $amountCents = null, ?string $date = null, ?string $socialYear = null, ?PaymentMethod $method = null, bool $anyway = false): array
     {
         $person = $this->member($personId);
         $plan = $socialYear === null ? $this->renewalPlan($person->id, $date) : ['year' => $socialYear, 'free' => null];
@@ -171,6 +171,13 @@ final readonly class MembershipService implements Members
             throw new PeopleError(['Indica l\'importo della quota (o imposta la quota associativa).']);
         }
         $category = $this->ledger->categoryFor(CategoryKind::Membership) ?? throw new PeopleError(['Manca la voce «Quota associativa» in prima nota.']);
+        if ($anyway && $this->holds($person->id, $year->label())) {
+            // Pagamento online già incassato per una tessera che il socio ha già: il movimento si registra, la tessera resta quella.
+            $income = $this->ledger->recordIncome(new Income($date ?? now()->toDateString(), $accountId,
+                [new IncomeLine($category, $amount, 'Quota associativa '.$year->label(), null, $this->fiscal->membershipRate())], $method, $person->id));
+
+            return ['membership_id' => '', 'receipt' => $income['receipt'], 'social_year' => $year->label()];
+        }
         $this->assertNoMembership($person->id, $year->label());
         $free = $plan['free'] === null || $this->holds($person->id, $plan['free']) ? null : SocialYear::fromLabel($plan['free'], $this->startMonth());
 

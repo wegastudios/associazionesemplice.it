@@ -197,13 +197,13 @@ final readonly class ReservationService
      *
      * @return string|null il numero di ricevuta
      */
-    public function collect(string $reservationId, string $accountId, string $date, ?int $cents, ?PaymentMethod $method): ?string
+    public function collect(string $reservationId, string $accountId, string $date, ?int $cents, ?PaymentMethod $method, bool $anyway = false): ?string
     {
         $r = $this->find($reservationId);
         if ($r->kind !== 'booking') {
             throw new ResourceError('Un blocco non si incassa.');
         }
-        if ($r->status !== 'booked') {
+        if (! $anyway && $r->status !== 'booked') {
             throw new ResourceError('La prenotazione è annullata.');
         }
         $res = $this->resources->find($r->resource_id);
@@ -217,14 +217,14 @@ final readonly class ReservationService
         $vatRate = $this->vat->usable($r->vat_rate);
         $description = mb_substr($res->name.' · '.$when.($r->holder_name !== null ? ' · '.$r->holder_name : ''), 0, 255);
 
-        return $this->connection()->transaction(function () use ($r, $accountId, $date, $cents, $method, $category, $description, $vatRate): ?string {
+        return $this->connection()->transaction(function () use ($r, $accountId, $date, $cents, $method, $category, $description, $vatRate, $anyway): ?string {
             // Con la prenotazione bloccata si ricalcola quanto manca: due incassi insieme sulla stessa voce non passano entrambi.
             $locked = Reservation::query()->whereKey($r->id)->lockForUpdate()->first();
-            if ($locked === null || $locked->status !== 'booked') {
+            if ($locked === null || (! $anyway && $locked->status !== 'booked')) {
                 throw new ResourceError('La prenotazione è annullata.');
             }
             $left = max(0, $locked->fee_due_cents - ($this->paid([$r->id])[$r->id] ?? 0));
-            if ($cents > $left) {
+            if (! $anyway && $cents > $left) {
                 throw new ResourceError($left <= 0 ? 'Questa prenotazione risulta già pagata.' : 'L\'importo supera quanto manca da incassare ('.Money::format($left).').');
             }
             $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, null, $vatRate)], $method, $r->person_id, $r->person_id !== null));

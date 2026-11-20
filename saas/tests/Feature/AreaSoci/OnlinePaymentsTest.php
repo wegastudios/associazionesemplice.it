@@ -7,6 +7,7 @@ use App\Modules\AreaSoci\Mail\DonationReceiptMail;
 use App\Modules\AreaSoci\Mail\PaymentRefunded;
 use App\Modules\AreaSoci\Payments\OnlinePayments;
 use App\Modules\AreaSoci\Payments\StripeWebhook;
+use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
@@ -205,7 +206,77 @@ function reviewPayment(object $test, string $provider = 'stripe'): string
     return $id;
 }
 
-it('un secondo pagamento sulla stessa voce già pagata va da controllare e non registra un secondo incasso', function (): void {
+/** @param list<array<string, mixed>> $items */
+function pendingPayment(object $test, array $items, string $ref): string
+{
+    $id = (string) Illuminate\Support\Str::uuid7();
+    DB::table('app.online_payments')->insert([
+        'org_id' => $test->org->id, 'id' => $id, 'person_id' => $test->anna->id, 'provider' => 'stripe', 'status' => 'pending',
+        'amount_cents' => array_sum(array_column($items, 'amount_cents')), 'items' => json_encode($items), 'provider_ref' => $ref,
+    ]);
+
+    return $id;
+}
+
+it('una voce già pagata si registra comunque in prima nota: pagamento da controllare, testo esatto, riga nel registro, mai doppia', function (): void {
+    saveStripe($this);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $payments = app(OnlinePayments::class);
+        $q = collect($payments->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'q:'));
+        $id = pendingPayment($this, [$q], 'cs_x');
+        app(MembershipService::class)->renewWithPayment($this->anna->id, $this->cash, 2500);
+
+        $payments->settle($id, $q['amount_cents']);
+        $payments->settle($id, $q['amount_cents']); // webhook doppio
+
+        $p = $payments->find($id);
+        expect($p['status'])->toBe('review')
+            ->and($p['error'])->toBe('Già pagata: '.$q['label'].'. L\'incasso è stato registrato comunque: controlla se va restituito.')
+            ->and($p['receipts'])->toHaveCount(1)
+            ->and($p['paid_cents'])->toBe(2500)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->whereNull('voided_at')->count())->toBe(1)
+            ->and(DB::table('audit.log')->where('action', 'payment.item_already_paid')->count())->toBe(1);
+    });
+});
+
+it('più voci già pagate: testo al plurale; mix di pagate e non pagate: tutte in prima nota, il testo cita solo le pagate', function (): void {
+    saveStripe($this);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $payments = app(OnlinePayments::class);
+        $dues = $payments->dues([$this->anna->id]);
+        $q = collect($dues)->first(fn (array $d): bool => str_starts_with($d['key'], 'q:'));
+        $m = collect($dues)->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
+        $mix = pendingPayment($this, [$q, $m], 'cs_mix');
+        $both = pendingPayment($this, [$q, $m], 'cs_both');
+
+        // Solo la quota è già pagata.
+        app(MembershipService::class)->renewWithPayment($this->anna->id, $this->cash, 2500);
+        $payments->settle($mix, $q['amount_cents'] + $m['amount_cents']);
+        expect($payments->find($mix)['status'])->toBe('review')
+            ->and($payments->find($mix)['error'])->toBe('Già pagata: '.$q['label'].'. L\'incasso è stato registrato comunque: controlla se va restituito.')
+            ->and($payments->find($mix)['receipts'])->toHaveCount(2)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->count())->toBe(2);
+
+        // Ora anche il mese è pagato: due voci già pagate.
+        $payments->settle($both, $q['amount_cents'] + $m['amount_cents']);
+        expect($payments->find($both)['error'])->toBe('Già pagate: '.$q['label'].', '.$m['label'].'. L\'incasso è stato registrato comunque: controlla se va restituito.')
+            ->and($payments->find($both)['receipts'])->toHaveCount(2)
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->count())->toBe(4);
+    });
+});
+
+it('l\'incasso manuale oltre il residuo resta rifiutato', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $payments = app(OnlinePayments::class);
+        $m = collect($payments->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
+        [, $act, $person, $month] = explode(':', $m['key']);
+        app(ActivityService::class)->collect($act, $person, $this->cash, now()->toDateString(), [$month], $m['amount_cents']);
+        expect(fn () => app(ActivityService::class)->collect($act, $person, $this->cash, now()->toDateString(), [$month], $m['amount_cents']))
+            ->toThrow(ActivityError::class);
+    });
+});
+
+it('un secondo pagamento sulla stessa voce già pagata si registra comunque ma va da controllare', function (): void {
     saveStripe($this);
     $this->orgContext()->run($this->org->id, function (): void {
         $payments = app(OnlinePayments::class);
@@ -224,8 +295,8 @@ it('un secondo pagamento sulla stessa voce già pagata va da controllare e non r
 
         expect($payments->find($ids[0])['status'])->toBe('settled')
             ->and($payments->find($ids[1])['status'])->toBe('review')
-            ->and($payments->find($ids[1])['error'])->toContain('non è più dovuta')
-            ->and(DB::table('app.transactions')->where('method', 'stripe')->count())->toBe(1);
+            ->and($payments->find($ids[1])['error'])->toStartWith('Già pagata: ')
+            ->and(DB::table('app.transactions')->where('method', 'stripe')->count())->toBe(2);
     });
 });
 

@@ -50,13 +50,13 @@ final readonly class ReservationDues implements PayableDues
         return str_starts_with($key, 'r:');
     }
 
-    public function settle(string $key, int $cents, string $accountId, string $date, string $method): ?string
+    public function settle(string $key, int $cents, string $accountId, string $date, string $method, bool $anyway = false): ?string
     {
         if (preg_match('/^r:([0-9a-f-]{36})$/', $key, $m) !== 1) {
             throw new InvalidArgumentException('Voce non valida.');
         }
         try {
-            return $this->reservations->collect($m[1], $accountId, $date, $cents, PaymentMethod::from($method));
+            return $this->reservations->collect($m[1], $accountId, $date, $cents, PaymentMethod::from($method), $anyway);
         } catch (ResourceError|LedgerError $e) {
             throw new InvalidArgumentException($e->getMessage(), 0, $e);
         }

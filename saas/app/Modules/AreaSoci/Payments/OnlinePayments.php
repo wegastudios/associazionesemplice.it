@@ -244,6 +244,7 @@ final readonly class OnlinePayments
             $settings = $this->settings();
             $errors = [];
             $receipts = [];
+            $already = [];
             if ($paidCents !== $p['amount_cents']) {
                 $errors[] = 'Incassati '.self::euro($paidCents).' invece di '.self::euro($p['amount_cents']).': da controllare.';
             } elseif ($settings?->account_id === null) {
@@ -256,12 +257,15 @@ final readonly class OnlinePayments
                         if ($module === null) {
                             throw new InvalidArgumentException('Voce non riconosciuta.');
                         }
-                        // Se nel frattempo la voce è già stata pagata (o annullata) non si registra un secondo incasso: il pagamento va da controllare.
-                        if (! str_starts_with($item['key'], 'd:') && ! self::stillDue($module, $item)) {
-                            throw new InvalidArgumentException('non è più dovuta (già pagata o annullata)');
+                        // I soldi sono già arrivati sul conto del gestore: ogni voce si registra SEMPRE in prima nota (cassa e conto devono tornare).
+                        // Se nel frattempo era già pagata o annullata (controllo solo per quota, mese di corso e prenotazione a evento) si segnala:
+                        // il pagamento va da controllare e la segreteria decide se restituire.
+                        if (preg_match('/^[qmb]:/', $item['key']) === 1 && ! self::stillDue($module, $item)) {
+                            $already[$item['person_id']][] = $item['label'];
+                            $this->audit->record('payment.item_already_paid', 'app.online_payments', $paymentId, ['key' => $item['key'], 'cents' => $item['amount_cents']]);
                         }
                         $receipt = $this->connection()->transaction(fn (): ?string => $module->settle($item['key'], $item['amount_cents'], (string) $settings->account_id,
-                            now('Europe/Rome')->toDateString(), $p['provider']));
+                            now('Europe/Rome')->toDateString(), $p['provider'], ! str_starts_with($item['key'], 'd:')));
                         if ($receipt !== null) {
                             $receipts[] = $receipt;
                         }
@@ -270,12 +274,20 @@ final readonly class OnlinePayments
                     }
                 }
             }
+            // Il testo elenca le voci già pagate del primo gruppo (per persona) che ne ha; gli altri gruppi non aggiungono voci, ma il pagamento resta da controllare.
+            $first = array_values($already)[0] ?? [];
+            $notes = $errors;
+            if ($first !== []) {
+                $notes[] = (count($first) === 1 ? 'Già pagata: ' : 'Già pagate: ').implode(', ', $first).'. L\'incasso è stato registrato comunque: controlla se va restituito.';
+            }
             $this->table()->where('id', $paymentId)->update([
-                'status' => $errors === [] ? 'settled' : 'review', 'paid_cents' => $paidCents, 'paid_at' => now(), 'updated_at' => now(),
-                'receipts' => json_encode(array_values(array_unique($receipts)), JSON_THROW_ON_ERROR), 'error' => $errors === [] ? null : mb_substr(implode(' ', $errors), 0, 1000),
+                'status' => $notes === [] ? 'settled' : 'review', 'paid_cents' => $paidCents, 'paid_at' => now(), 'updated_at' => now(),
+                'receipts' => json_encode(array_values(array_unique($receipts)), JSON_THROW_ON_ERROR), 'error' => $notes === [] ? null : mb_substr(implode(' ', $notes), 0, 1000),
             ]);
-            $this->audit->record($errors === [] ? 'payment.settled' : 'payment.review', 'app.online_payments', $paymentId, ['cents' => $paidCents, 'receipts' => count($receipts)]);
+            $this->audit->record($notes === [] ? 'payment.settled' : 'payment.review', 'app.online_payments', $paymentId, ['cents' => $paidCents, 'receipts' => count($receipts)]);
             // Chi ha donato dalla pagina pubblica non ha l'area soci: la ricevuta gli arriva per email.
+            // PUNTO DELLA RICEVUTA: qui si decide se la mail parte anche con voci «già pagate» (oggi sì: contano solo gli errori veri).
+            // Per bloccarla nei pagamenti da controllare basta cambiare `$errors === []` in `$notes === []`.
             if ($errors === [] && $receipts !== [] && in_array(true, array_column($p['items'], 'public'), true)) {
                 $mailTo = [$p['person_id'], array_values(array_unique($receipts))];
             }

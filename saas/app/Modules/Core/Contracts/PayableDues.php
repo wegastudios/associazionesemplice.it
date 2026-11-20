@@ -29,10 +29,10 @@ interface PayableDues
     public function owns(string $key): bool;
 
     /**
-     * Registra l'incasso di una voce (già pagata online) in prima nota. Errore se la voce non è più dovuta.
+     * Registra l'incasso di una voce (già pagata online) in prima nota. Con $anyway i soldi sono già arrivati sul conto del gestore: la voce si registra comunque, anche se nel frattempo è stata pagata o annullata (la verifica è di chi chiama).
      *
      * @param  string  $method  valore di Contabilita\Contracts\PaymentMethod (stripe, paypal)
      * @return string|null il numero di ricevuta
      */
-    public function settle(string $key, int $cents, string $accountId, string $date, string $method): ?string;
+    public function settle(string $key, int $cents, string $accountId, string $date, string $method, bool $anyway = false): ?string;
 }
