@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
 use App\Modules\AreaSoci\Mail\LoginLink;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Attivita\Services\SessionService;
@@ -155,7 +154,7 @@ it('fa entrare l\'ex socio tutore operativo di un minorenne socio, solo per la s
     // Il proprio profilo non si apre: resta la scheda del figlio.
     asMember($this, $cookie)->get($this->base.'/profilo')->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('card.id', $this->luca->id));
-    asMember($this, $cookie)->withSession([AuthenticateMember::ACTIVE => $this->mario->id])->get($this->base.'/profilo')->assertOk()
+    asMember($this, $cookie)->withSession(['member_active_profile' => $this->mario->id])->get($this->base.'/profilo')->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('card.id', $this->luca->id));
 
     // Se il figlio lascia l'associazione, l'ex socio non entra più (la sessione aperta viene respinta).
