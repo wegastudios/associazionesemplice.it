@@ -31,6 +31,7 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
 | Quando | Cosa |
 |---|---|
 | ogni minuto | `queue:work --stop-when-empty --max-time=50` (code su Postgres) |
+| ogni 5 minuti | `saas:keys:monitor` (solo con `SAAS_KEY_VAULT=remote`; email all'amministrazione, una per guasto) |
 | ogni ora, :07 | `saas:backup:dump` (produzione e staging) |
 | ogni giorno | `saas:audit:verify` 03:37 · `saas:portal:usage` 04:23 · `saas:backup:prune` 05:11 · `saas:portal:suspend-expired` 00:41 · `queue:prune-failed` 05:47 (falliti oltre 7 giorni) |
 | ogni mese, il 1° | `saas:audit:partitions` 02:13 |

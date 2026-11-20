@@ -154,7 +154,9 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
   - ogni associazione ha la sua chiave, anche con il database dedicato (la chiave resta nel database centrale);
   - il ruolo dell'applicazione legge e aggiunge chiavi, non le modifica né le cancella;
   - cancellare un'associazione = distruggere la sua chiave (`saas:keys:destroy`, solo per associazioni già
-    cancellate, con il ruolo proprietario): i dati cifrati, anche nei backup, non si aprono più.
+    cancellate, con il ruolo proprietario): i dati cifrati, anche nei backup, non si aprono più;
+  - passare dalla chiave principale locale al servizio chiavi (o tornare) riavvolge le chiavi dati senza cambiarle
+    (`saas:keys:rewrap`, con il ruolo proprietario): [CHIAVE_REMOTA.md](CHIAVE_REMOTA.md).
 - **File allegati**: fuori dal database e fuori dalla cartella pubblica (disco `org_files`), cifrati con la chiave
   dell'associazione e legati al loro percorso. Nel database restano nome, dimensione, tipo e impronta SHA-256, che si
   ricontrolla alla lettura. Si scaricano solo come allegato, senza cache.
