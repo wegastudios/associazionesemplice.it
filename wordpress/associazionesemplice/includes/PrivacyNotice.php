@@ -135,7 +135,7 @@ final class PrivacyNotice {
 			? 'Se si sceglie di pagare con bonifico o di fare una donazione, l\'istituto di credito o il servizio di pagamento scelto tratta i dati necessari all\'operazione come titolare autonomo.'
 			: '';
 
-		$donors = ! empty( Settings::get( 'donate_enabled' ) ); // la pagina delle donazioni è aperta anche a chi non è socio
+		$donors = 'checkout' === Donations::mode(); // il sito raccoglie i dati di chi dona (anche non soci) solo col pagamento del sito; col pulsante PayPal no
 		$ext_note = (string) apply_filters( 'asem_privacy_transfer_note', '', $u );
 
 		// Accesso all'area soci: con l'accesso proprio dei soci (senza utente WordPress) cambiano i dati trattati e il cookie usato.
