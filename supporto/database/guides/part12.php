@@ -478,10 +478,24 @@ Il gestionale ti avvisa se qualcosa non torna:
 - se nei Dati dell'ente spunti «L'associazione non ha la partita IVA» e ci sono attività con l'IVA: «Hai N attività con l'IVA: senza partita IVA l'IVA non si applica più a nessuna. I movimenti già registrati non cambiano.»;
 - in scheda, un avviso rosso: «L'aliquota di questa attività non è più nell'elenco di Aspetto fiscale: scegline un'altra.» (per una risorsa «di questa risorsa») oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa attività si registrano senza IVA.» (per una risorsa «di questa risorsa»).
 
+## Eventi e corsi pagati dai soci come erogazione liberale
+
+In **Aspetto fiscale**, nella scheda **Erogazioni liberali**, c'è la spunta «Incassa come erogazione liberale gli eventi e i corsi pagati dai soci». È spenta di partenza: gli eventi e i corsi pagati dai soci sono contributi, come sempre.
+
+Accesa, da quel momento:
+
+- la ricevuta scrive «Erogazione liberale per l'evento…» o «…per il corso…»;
+- il rendiconto conta quegli incassi tra le erogazioni liberali;
+- con PayPal la voce è indicata come donazione;
+- se l'associazione applica l'IVA, restano fuori campo IVA.
+
+Non cambia nulla per i pagamenti dei non soci, che restano contributi, e per le quote associative, che restano sempre escluse. I movimenti già registrati non cambiano. Premi **Salva** nella scheda. Prima di accenderla chiedi al tuo commercialista: questa impostazione non garantisce alcun vantaggio fiscale a chi paga.
+
 MD,
     ],
     [
-        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-importare-la-prima-nota',
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-importare-la-prima-nota'
+,
         'title' => 'Importare la prima nota da Excel o CSV',
         'body' => <<<'MD'
 > Vale per il gestionale online. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
@@ -746,9 +760,36 @@ I soci pagano dall'area soci con il conto Stripe o PayPal dell'associazione: i s
 
 1. Apri **Pagamenti online**.
 2. Scegli il conto della prima nota per gli incassi online: di solito un conto «Stripe» o «PayPal» di tipo banca: quando i soldi arrivano sul conto corrente, registri un giroconto.
-3. Per **Stripe (carte)** inserisci la **Chiave segreta** e il **Segreto del webhook**, poi nel pannello di Stripe aggiungi il webhook con l'indirizzo indicato nella pagina.
-4. Per **PayPal** inserisci le chiavi e, quando sei pronto, passa alla modalità reale.
-5. Premi **Prova le chiavi**: la pagina ti dice se funzionano.
+3. Collega Stripe o PayPal, o tutti e due: i passi sono scritti nella pagina, sotto i titoli **Stripe (carte)** e **PayPal**.
+4. Premi **Salva**: la pagina prova subito la connessione e ti dice se funziona.
+
+## Collegare Stripe
+
+1. Ti serve un conto Stripe dell'associazione. Se è un ente non profit, la pagina rimanda a «Stripe per i non profit», dove Stripe spiega le condizioni che riserva agli enti.
+2. Apri la pagina delle chiavi di Stripe (il link «Apri la pagina delle chiavi di Stripe» è nella pagina) e crea una chiave segreta. Se scegli una chiave limitata, deve poter scrivere su «Checkout Sessions», «Refunds» e «Webhook Endpoints».
+3. Incolla la chiave in **Chiave segreta** e premi **Salva**. Il gestionale verifica la connessione e crea da solo il webhook, cioè l'avviso con cui Stripe comunica che il pagamento è arrivato. Se tutto va bene leggi «La connessione con Stripe funziona.» e «Il webhook di Stripe è stato creato.».
+
+Se il webhook non si crea da solo, il gestionale te lo dice: «Il webhook di Stripe non si è creato da solo (…): aggiungilo a mano come indicato sotto.» Apri allora «Se il webhook non si crea da solo»: nel pannello di Stripe aggiungi il webhook con l'indirizzo mostrato, per l'evento «checkout.session.completed», e copia il suo segreto di firma in **Segreto del webhook**. Se su Stripe c'è già un webhook per quell'indirizzo, Stripe non mostra più il segreto: copialo a mano dal pannello di Stripe.
+
+## Collegare PayPal
+
+1. Ti serve un conto PayPal Business dell'associazione. Se è un ente non profit, la pagina rimanda a «PayPal: tariffa per gli enti benefici».
+2. Apri la pagina delle credenziali di PayPal, crea un'app e copia il «Client ID» e il «Client Secret». Per fare prove apri la scheda «Sandbox» della stessa pagina e lascia senza spunta **Conto reale**.
+3. Incolla i due valori e premi **Salva**: la connessione viene verificata subito («La connessione con PayPal funziona.»).
+
+## Se la prova non riesce
+
+Le chiavi restano salvate, ma il metodo non si attiva: leggi «La prova della connessione con Stripe non è riuscita: …» (o «…con PayPal…») e correggi la chiave. Per riprovare senza reinserire nulla premi **Prova di nuovo la connessione**.
+
+## Proporre una donazione al pagamento
+
+Nella pagina, sotto i conti, c'è la scheda **Donazioni**. È spenta di partenza. Con la spunta «Al pagamento online proponi «Aggiungi X € per una donazione a …»» chi paga dall'area soci vede, sopra i pulsanti **Paga con carta** e **Paga con PayPal**, la spunta «Aggiungi X € per una donazione a …».
+
+- **Importo proposto (€)**: da 1 € a 1.000 €. Chi paga può cambiarlo, sempre tra 1 € e 1.000 €.
+- La donazione va in prima nota come «Erogazione liberale» e ha una ricevuta a parte, con la stessa numerazione delle altre. Chi paga non versa commissioni in più.
+- **Donazioni detraibili**: se la accendi, a chi dona viene mostrato «È anche detraibile.». Verifica con il tuo commercialista se la tua associazione ne ha diritto.
+
+Premi **Salva** nella scheda Donazioni per confermare.
 
 In fondo, in «Pagamenti dei soci», trovi ogni pagamento con il suo stato.
 
