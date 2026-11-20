@@ -2617,6 +2617,8 @@
   "Pagamenti online da controllare:" : "Online payments to check:",
   "Apri i pagamenti" : "Open the payments",
   "Incasso registrato, ma un passo successivo non è riuscito ({voce}): controlla il pagamento." : "Payment recorded, but a later step did not complete ({voce}): please check the payment.",
+  "Già pagata: {voce}. L'incasso è stato registrato comunque: controlla se va restituito." : "Already paid: {voce}. The payment was recorded anyway: check whether it should be refunded.",
+  "Già pagate: {voce}. L'incasso è stato registrato comunque: controlla se va restituito." : "Already paid: {voce}. The payment was recorded anyway: check whether it should be refunded.",
   "La firma del pacchetto ha una data nel futuro: non è stato installato. Controlla data e ora del server." : "The package signature is dated in the future: it was not installed. Check the server date and time.",
   "Installala da Bacheca → Aggiornamenti: i dati restano." : "Install it from Dashboard → Updates: your data is kept.",
   "Vai agli aggiornamenti" : "Go to updates",

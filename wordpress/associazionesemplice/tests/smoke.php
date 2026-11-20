@@ -2700,6 +2700,24 @@ asem_ok( 2 === count( $review_list ), 'elenco "da controllare": i due pagamenti 
 $ps->mark_reviewed( (int) $review_list[0]['id'] );
 asem_ok( 1 === count( $ps->list( array( 'review' => 1 ) ) ), 'segnare un pagamento come controllato' );
 
+// voce già pagata (in segreteria) mentre il socio pagava online: l'incasso si registra lo stesso, il pagamento va «da controllare», nessun blocco
+wp_set_current_user( 1 );
+$ev3   = $mkev( 'Evento già pagato in segreteria', 500, null );
+$ev3_s = $first_session( $ev3 );
+$acts->book( $ev3_s, $pm );
+wp_set_current_user( $u_pm );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$ev3_s:$pm" ), home_url( '/area/' ) );
+$row = $latest();
+wp_set_current_user( 1 );
+$ev3_l = Plugin::ledger();
+$ev3_l->record_receipt( array( 'date' => Db::today(), 'account_id' => $ev3_l->online_account( 'stripe' ), 'method' => 'stripe', 'person_id' => $pm, 'lines' => array( array( 'category_id' => $ev3_l->category_id_of_kind( 'activity_fee' ), 'amount_cents' => 500, 'activity_id' => $ev3, 'session_id' => $ev3_s ) ) ) );
+$stripe_sessions[ $row['provider_ref'] ]['paid'] = true;
+$ps->handle_return( $row['public_id'], 'ok', $u_pm );
+$p4 = $ps->get_by_public( $row['public_id'] );
+asem_ok( 'paid' === $p4['status'] && 1 === (int) $p4['review'] && 500 === (int) $p4['allocated_cents'] && false !== strpos( (string) $p4['error'], 'Già pagata: ' ), 'voce già pagata: incasso registrato lo stesso e pagamento segnato «da controllare» con il motivo' );
+asem_ok( 500 === $sum_tx( "document_ref = '" . esc_sql( $row['provider_ref'] ) . "'" ), 'voce già pagata: i soldi arrivati restano in prima nota, nessun rimborso automatico' );
+$ps->mark_reviewed( (int) $p4['id'] );
+
 // quota associativa online
 asem_ok( ! $people->is_active_member( $pm ), 'prima del pagamento il socio non ha la tessera valida' );
 wp_set_current_user( $u_pm );
