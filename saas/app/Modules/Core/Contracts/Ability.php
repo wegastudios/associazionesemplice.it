@@ -50,7 +50,7 @@ enum Ability: string
             self::ManageOperators => 'Operatori e ruoli',
             self::ViewPeople => 'Vedere l\'anagrafica',
             self::EditPeople => 'Modificare anagrafica, tessere e attività',
-            self::ExportPeople => 'Esportare l\'anagrafica',
+            self::ExportPeople => 'Esportare l\'anagrafica e vedere codice fiscale, IBAN e note',
             self::ViewHealth => 'Vedere i certificati medici',
             self::ViewAccounting => 'Vedere la contabilità',
             self::EditAccounting => 'Registrare in prima nota',

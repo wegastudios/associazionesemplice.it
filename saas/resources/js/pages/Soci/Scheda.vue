@@ -140,7 +140,7 @@ const label = 'space-y-1 text-sm';
 
             <fieldset :disabled="!canEdit" class="grid gap-4 sm:grid-cols-3">
                 <legend class="mb-1 text-lg font-bold">Dati riservati</legend>
-                <p class="text-sm text-muted sm:col-span-3">Dati protetti: codice fiscale, IBAN e note li vede solo chi può esportare l'anagrafica, e ogni lettura finisce nel registro.</p>
+                <p class="text-sm text-muted sm:col-span-3">Codice fiscale, IBAN e note li vede solo chi può esportare l'anagrafica. Ogni lettura resta nel registro delle azioni.</p>
                 <label v-if="!hidden" :class="label"><span class="font-semibold">Codice fiscale</span><input v-model="form.tax_code" autocomplete="off" class="uppercase" :class="field" /></label>
                 <label v-if="!form.is_entity" :class="label"><span class="font-semibold">Data di nascita</span><input v-model="form.birth_date" type="date" :class="field" /></label>
                 <label v-if="!form.is_entity" :class="label"><span class="font-semibold">Luogo di nascita</span><input v-model="form.birth_place" :class="field" /></label>
