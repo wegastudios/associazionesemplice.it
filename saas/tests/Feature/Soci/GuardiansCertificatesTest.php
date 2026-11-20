@@ -3,7 +3,12 @@
 declare(strict_types=1);
 
 use App\Modules\Cifratura\Contracts\Bytea;
+use App\Modules\Cifratura\Contracts\EncryptedFiles;
+use App\Modules\Cifratura\Contracts\StorageQuota;
+use App\Modules\Cifratura\Files\StorageQuotaService;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Portale\Contracts\Entitlements;
+use App\Modules\Portale\Contracts\OrgEntitlements;
 use App\Modules\Soci\Contracts\MemberProfiles;
 use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Models\MedicalCertificate;
@@ -116,6 +121,41 @@ it('rifiuta file che non sono PDF o foto', function (): void {
 
     expect(fn () => app(CertificateService::class)->add($this->minor->id, ['kind' => 'other', 'issued_on' => now()->toDateString(), 'expires_on' => now()->addYear()->toDateString()], $exe))
         ->toThrow(PeopleError::class, 'PDF');
+});
+
+/** Piano con $storageGb di spazio e $usedBytes già occupati dai file. */
+function storagePlan(int $storageGb, int $usedBytes): void
+{
+    $entitlements = new class($storageGb) implements Entitlements
+    {
+        public function __construct(private int $gb) {}
+
+        public function for(string $orgId): OrgEntitlements
+        {
+            return new OrgEntitlements(1, 'active', null, null, 150, 3, $this->gb, [], null);
+        }
+    };
+    $files = Mockery::mock(EncryptedFiles::class);
+    $files->shouldReceive('usedBytes')->andReturn($usedBytes);
+    app()->instance(StorageQuota::class, new StorageQuotaService($entitlements, $files));
+}
+
+it('non salva il file di un certificato se lo spazio del piano è esaurito', function (): void {
+    storagePlan(1, 1024 ** 3 - 5);
+    $data = ['kind' => 'other', 'issued_on' => now()->toDateString(), 'expires_on' => now()->addYear()->toDateString()];
+
+    expect(fn () => app(CertificateService::class)->add($this->minor->id, $data, UploadedFile::fake()->createWithContent('c.pdf', '%PDF-1.4 certificato')))
+        ->toThrow(PeopleError::class, 'Lo spazio del piano è esaurito: il certificato non è stato salvato.')
+        ->and(MedicalCertificate::query()->count())->toBe(0);
+    // Senza file il certificato si registra comunque: lo spazio riguarda solo i file.
+    expect(app(CertificateService::class)->add($this->minor->id, $data)->id)->toBeString();
+});
+
+it('senza limite di spazio nei diritti non blocca nessun file', function (): void {
+    storagePlan(0, PHP_INT_MAX - 1000);
+    $data = ['kind' => 'other', 'issued_on' => now()->toDateString(), 'expires_on' => now()->addYear()->toDateString()];
+
+    expect(app(CertificateService::class)->add($this->minor->id, $data, UploadedFile::fake()->createWithContent('c.pdf', '%PDF-1.4 x'))->file_name)->toBe('c.pdf');
 });
 
 it('non fa vedere i certificati al commercialista', function (): void {

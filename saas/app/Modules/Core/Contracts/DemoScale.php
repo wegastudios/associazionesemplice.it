@@ -58,6 +58,6 @@ final class DemoScale
     /** Nella demo (mai in produzione) i visitatori non caricano file: è pubblica e i file finirebbero sul disco del server. */
     public static function uploadsOff(): bool
     {
-        return (bool) config('saas.demo.enabled') && ! app()->environment('production');
+        return filter_var(config('saas.demo.enabled'), FILTER_VALIDATE_BOOLEAN) && ! app()->environment('production');
     }
 }

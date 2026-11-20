@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Risorse\Services;
 
+use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Risorse\Contracts\ResourceBookings;
 use App\Modules\Risorse\Contracts\ResourceError;
 use App\Modules\Risorse\Models\Reservation;
 use App\Modules\Risorse\Models\Resource;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
@@ -17,7 +19,12 @@ final readonly class ResourceBookingsService implements ResourceBookings
 {
     public const FAR = '9999-12-31 00:00:00';
 
-    public function __construct(private DatabaseManager $db) {}
+    public function __construct(private DatabaseManager $db, private OrgContext $context) {}
+
+    private function connection(): ConnectionInterface
+    {
+        return $this->db->connection($this->context->require()->connection);
+    }
 
     public function options(): array
     {
@@ -70,7 +77,7 @@ final readonly class ResourceBookingsService implements ResourceBookings
         if ($ids === []) {
             return;
         }
-        $this->db->connection('pgsql')->transaction(function () use ($ids, $toResourceId): void {
+        $this->connection()->transaction(function () use ($ids, $toResourceId): void {
             try {
                 foreach (Reservation::query()->whereIn('id', $ids)->where('status', 'booked')->get() as $r) {
                     foreach ($this->busy($toResourceId, self::text($r->starts_at), $r->ends_at === null ? self::FAR : self::text($r->ends_at)) as $other) {

@@ -44,7 +44,11 @@ final readonly class AuthenticateMember
         $this->acting->set($session['person_id']);
 
         try {
-            return $next($request);
+            $response = $next($request);
+            // Pagine con dati personali del socio: né il browser né i proxy le tengono in cache.
+            $response->headers->set('Cache-Control', 'no-store, private');
+
+            return $response;
         } finally {
             $this->current->set(null);
             $this->acting->set(null);

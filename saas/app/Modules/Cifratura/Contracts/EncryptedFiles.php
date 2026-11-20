@@ -23,4 +23,7 @@ interface EncryptedFiles
     public function download(string $orgId, StoredFile $file): StreamedResponse;
 
     public function delete(string $orgId, StoredFile $file): void;
+
+    /** Spazio occupato sul disco dai file cifrati dell'associazione, in byte. */
+    public function usedBytes(string $orgId): int;
 }

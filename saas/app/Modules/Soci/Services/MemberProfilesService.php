@@ -72,6 +72,7 @@ final readonly class MemberProfilesService implements MemberProfiles
             'card_number' => $p->card_number, 'member' => $p->type->isMember(), 'active' => $p->type->isMember() && $this->memberships->isActive($p->id),
             'year' => $year, 'valid_to' => $current['valid_to'] ?? null, 'joined_on' => $p->joined_on?->format('d/m/Y'),
             'left' => $p->left_on !== null, 'suspended' => $p->suspended_at !== null,
+            'qr_version' => max(1, $this->qrVersion($p)),
         ];
     }
 
@@ -125,6 +126,19 @@ final readonly class MemberProfilesService implements MemberProfiles
             ->filter(static fn (Person $d): bool => $d->type->isMember())->pluck('id')->all();
 
         return array_values(array_filter($dependents, static fn (array $d): bool => in_array($d['id'], $active, true)));
+    }
+
+    public function regenerateCardCode(string $personId): void
+    {
+        $this->find($personId) ?? throw new PeopleError(['Persona non trovata.']);
+        Person::query()->whereKey($personId)->increment('card_qr_version');
+    }
+
+    private function qrVersion(Person $p): int
+    {
+        $v = $p->getAttribute('card_qr_version');
+
+        return is_int($v) ? $v : 1;
     }
 
     private function find(string $id): ?Person

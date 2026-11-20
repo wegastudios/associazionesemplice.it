@@ -390,3 +390,28 @@ it('il link di verifica della tessera resta sul dominio proprio quando il socio 
     expect($verify)->toStartWith('http://soci.alfa-sport.it/area/verifica/');
     $this->get($verify)->assertOk()->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Verifica'));
 });
+
+it('rigenerando il codice della tessera il vecchio QR non vale più', function (): void {
+    $cookie = memberLogin($this);
+    $old = URL::signedRoute('member.verify', ['org' => $this->org->slug, 'person' => $this->mario->id, 'v' => 1]);
+    $legacy = URL::signedRoute('member.verify', ['org' => $this->org->slug, 'person' => $this->mario->id]);
+    $this->get($old)->assertInertia(fn (Assert $page) => $page->where('card.name', 'Mario R.'));
+    $this->get($legacy)->assertInertia(fn (Assert $page) => $page->where('card.name', 'Mario R.'));
+
+    asMember($this, $cookie)->post($this->base.'/tessera/rigenera')->assertSessionHas('status', 'Codice rigenerato: quello vecchio non vale più.');
+
+    $this->get($old)->assertInertia(fn (Assert $page) => $page->where('card', null));
+    $this->get($legacy)->assertInertia(fn (Assert $page) => $page->where('card', null));
+    $new = URL::signedRoute('member.verify', ['org' => $this->org->slug, 'person' => $this->mario->id, 'v' => 2]);
+    $this->get($new)->assertInertia(fn (Assert $page) => $page->where('card.name', 'Mario R.'));
+});
+
+it('le pagine dell\'area soci non restano nella cache', function (): void {
+    $cookie = memberLogin($this);
+
+    asMember($this, $cookie)->get($this->base.'/profilo')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+});
+
+it('senza accesso non si rigenera il codice di nessuno', function (): void {
+    $this->post($this->base.'/tessera/rigenera')->assertRedirect('/area/accesso');
+});
