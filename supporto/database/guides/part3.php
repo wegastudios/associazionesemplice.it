@@ -76,7 +76,7 @@ Dopo, nell'elenco degli iscritti, accanto a ogni persona trovi lo stesso menu co
 
 - Il contributo dell'iscritto segue la variante in **«Pagamenti da incassare»**, nell'incasso già compilato e nei pagamenti online del socio.
 - Chi si iscrive da solo dall'area soci paga sempre la **quota base**. L'iscritto non vede il nome della variante, vede solo l'importo che deve; il nome lo vede la segreteria.
-- L'incasso resta una normale quota del corso per il mese di competenza, senza il nome della variante.
+- L'incasso resta una normale contributo del corso per il mese di competenza, senza il nome della variante.
 
 > **Se cambi variante**, il dovuto si **ricalcola per tutta l'iscrizione** con il prezzo della nuova variante, anche per i mesi già passati. I versamenti già registrati restano come sono e il saldo è «dovuto meno versato»: con un prezzo più basso può comparire un credito, con uno più alto una differenza da incassare. Nei corsi a rinnovo mensile o trimestrale ogni periodo successivo usa il nuovo prezzo.
 
