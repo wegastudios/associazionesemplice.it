@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\AreaSoci\Http\Controllers\StaffLinkController;
+use App\Modules\AreaSoci\Mail\DonationReceiptMail;
 use App\Modules\AreaSoci\Mail\PaymentRefunded;
 use App\Modules\AreaSoci\Payments\OnlinePayments;
 use App\Modules\AreaSoci\Payments\StripeWebhook;
@@ -515,4 +516,84 @@ it('la spunta della donazione si imposta nei pagamenti online, con l\'importo pr
     $this->orgContext()->run($this->org->id, function (): void {
         expect(app(OrgDonations::class)->checkout())->toBeTrue()->and(app(OrgDonations::class)->deductible())->toBeTrue()->and(app(OrgDonations::class)->amountCents())->toBe(1550);
     });
+});
+
+function publicDonationOn(object $test): void
+{
+    saveStripe($test);
+    $test->orgContext()->run($test->org->id, fn () => app(OrgSettings::class)->set(OrgDonations::CHECKOUT, true));
+}
+
+function publicDonate(object $test, array $over = []): object
+{
+    return $test->post('/dona/'.$test->org->slug, $over + ['first_name' => 'Luisa', 'last_name' => 'Neri', 'email' => 'luisa@example.com', 'tax_code' => '',
+        'amount' => '12,50', 'provider' => 'stripe', 'privacy_ok' => true, 'website' => '']);
+}
+
+it('la pagina pubblica di donazione esiste solo con la spunta accesa e un metodo attivo', function (): void {
+    $this->get('/dona/'.$this->org->slug)->assertNotFound();
+    publicDonationOn($this);
+    $this->get('/dona/'.$this->org->slug)->assertOk()->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Dona')->where('amount', '5,00')->where('providers', ['stripe', 'paypal']));
+    $this->get('/dona/slug-che-non-esiste')->assertNotFound();
+});
+
+it('chi non è socio dona senza login: nasce un sostenitore, l\'incasso è un\'erogazione liberale e la ricevuta arriva per email', function (): void {
+    publicDonationOn($this);
+    Mail::fake();
+    Http::fake(['api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_pub_1', 'url' => 'https://checkout.stripe.com/c/pay/cs_pub_1'])]);
+
+    publicDonate($this)->assertRedirect('https://checkout.stripe.com/c/pay/cs_pub_1');
+    Http::assertSent(fn (HttpRequest $r) => str_contains($r->body(), '/dona/'.$this->org->slug.'/') && str_contains($r->body(), 'unit_amount') && str_contains($r->body(), '1250'));
+
+    $payload = (string) json_encode(['type' => 'checkout.session.completed', 'data' => ['object' => ['id' => 'cs_pub_1', 'payment_status' => 'paid', 'amount_total' => 1250, 'currency' => 'eur']]]);
+    $sign = ['HTTP_STRIPE_SIGNATURE' => StripeWebhook::header($payload, 'whsec_finto456', time()), 'CONTENT_TYPE' => 'application/json'];
+    $this->call('POST', $this->host.'/area/webhook/stripe', [], [], [], $sign, $payload)->assertOk();
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        $donor = Person::query()->where('email', 'luisa@example.com')->sole();
+        $tx = Transaction::query()->where('method', 'stripe')->sole();
+        expect($donor->type->value)->toBe('supporter')->and($tx->person_id)->toBe($donor->id)->and($tx->amount_cents)->toBe(1250)
+            ->and(Category::query()->findOrFail($tx->category_id)->kind->value)->toBe('donation')
+            ->and(app(OnlinePayments::class)->list(null)[0]['status'])->toBe('settled');
+    });
+    Mail::assertSent(DonationReceiptMail::class, fn (DonationReceiptMail $m) => $m->hasTo('luisa@example.com'));
+    $id = $this->orgContext()->run($this->org->id, fn () => app(OnlinePayments::class)->list(null)[0]['id']);
+    $this->get('/dona/'.$this->org->slug.'/'.$id.'/esito')->assertOk()->assertInertia(fn (Assert $page) => $page->component('AreaSoci/DonaEsito')->where('payment.status', 'settled'));
+});
+
+it('se l\'email è di un socio la donazione va sulla sua scheda e non nasce nessun sostenitore', function (): void {
+    publicDonationOn($this);
+    Http::fake(['api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_pub_2', 'url' => 'https://checkout.stripe.com/c/pay/cs_pub_2'])]);
+
+    publicDonate($this, ['email' => 'Anna@Example.com', 'first_name' => 'Altro', 'last_name' => 'Nome'])->assertRedirect('https://checkout.stripe.com/c/pay/cs_pub_2');
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(Person::query()->where('type', 'supporter')->count())->toBe(0)
+            ->and(app(OnlinePayments::class)->list(null)[0]['person_id'])->toBe($this->anna->id);
+    });
+});
+
+it('la donazione pubblica rifiuta importi fuori limite, la casella dell\'informativa mancante e la trappola dei programmi automatici', function (): void {
+    publicDonationOn($this);
+    Http::fake();
+
+    publicDonate($this, ['amount' => '0,50'])->assertSessionHasErrors('amount');
+    publicDonate($this, ['amount' => '1000,01'])->assertSessionHasErrors('amount');
+    publicDonate($this, ['privacy_ok' => false])->assertSessionHasErrors('privacy_ok');
+    publicDonate($this, ['email' => 'non-una-email'])->assertSessionHasErrors('email');
+    publicDonate($this, ['website' => 'http://spam.example'])->assertRedirect('/dona/'.$this->org->slug);
+
+    Http::assertNothingSent();
+    $this->orgContext()->run($this->org->id, fn () => expect(app(OnlinePayments::class)->list(null))->toBe([])->and(Person::query()->where('type', 'supporter')->count())->toBe(0));
+});
+
+it('la stessa email può provare solo poche volte l\'ora', function (): void {
+    publicDonationOn($this);
+    Http::fake(['api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_pub_3', 'url' => 'https://checkout.stripe.com/c/pay/cs_pub_3'])]);
+
+    foreach (range(1, 5) as $i) {
+        publicDonate($this)->assertRedirect();
+    }
+
+    publicDonate($this)->assertSessionHasErrors('email');
 });

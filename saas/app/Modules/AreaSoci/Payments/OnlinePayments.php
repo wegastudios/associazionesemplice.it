@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Payments;
 
+use App\Modules\AreaSoci\Mail\DonationReceiptMail;
 use App\Modules\AreaSoci\Mail\PaymentRefunded;
 use App\Modules\AreaSoci\Models\PaymentSettings;
 use App\Modules\AreaSoci\Services\MemberAccessError;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
+use App\Modules\Contabilita\Contracts\MemberReceipts;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDonations;
@@ -97,7 +99,7 @@ final readonly class OnlinePayments
      * @param  list<string>  $personIds  le schede che il socio può pagare (la sua e quelle dei figli)
      * @param  list<string>  $keys
      */
-    public function checkout(string $payerId, array $personIds, array $keys, string $provider, ?string $email, string $baseUrl, string $brand, int $donationCents = 0): string
+    public function checkout(string $payerId, array $personIds, array $keys, string $provider, ?string $email, string $baseUrl, string $brand, int $donationCents = 0, ?string $publicSlug = null): string
     {
         $settings = $this->settings();
         if ($settings === null || ! in_array($provider, $settings->providers(), true)) {
@@ -125,7 +127,7 @@ final readonly class OnlinePayments
             if ($donationCents < OrgDonations::MIN_CENTS || $donationCents > OrgDonations::MAX_CENTS) {
                 throw new MemberAccessError('La donazione può andare da 1 € a 1.000 €.');
             }
-            $items[] = ['key' => 'd:'.$payerId, 'person_id' => $payerId, 'group' => 'Donazione', 'label' => 'Donazione a '.$brand, 'amount_cents' => $donationCents, 'donation' => true];
+            $items[] = ['key' => 'd:'.$payerId, 'person_id' => $payerId, 'group' => 'Donazione', 'label' => 'Donazione a '.$brand, 'amount_cents' => $donationCents, 'donation' => true, 'public' => $publicSlug !== null];
         }
         if ($items === []) {
             throw new MemberAccessError('Scegli almeno una voce da pagare.');
@@ -138,8 +140,10 @@ final readonly class OnlinePayments
         $id = Str::uuid7()->toString();
         $this->table()->insert(['org_id' => $this->context->require()->id, 'id' => $id, 'person_id' => $payerId, 'provider' => $provider,
             'amount_cents' => $total, 'items' => json_encode($items, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)]);
-        $success = rtrim($baseUrl, '/').'/area/pagamenti/'.$id.'/esito';
-        $cancel = rtrim($baseUrl, '/').'/area/pagamenti/'.$id.'/annullato';
+        // Dalla pagina pubblica di donazione chi paga non ha l'area soci: torna a una pagina pubblica.
+        $prefix = $publicSlug === null ? '/area/pagamenti/'.$id : '/dona/'.$publicSlug.'/'.$id;
+        $success = rtrim($baseUrl, '/').$prefix.'/esito';
+        $cancel = rtrim($baseUrl, '/').$prefix.'/annullato';
         $lines = array_map(static fn (array $i): array => ['label' => $i['label'], 'amount_cents' => $i['amount_cents'], 'donation' => $i['donation'] ?? false], $items);
         try {
             if ($provider === 'stripe') {
@@ -230,7 +234,8 @@ final readonly class OnlinePayments
      */
     public function settle(string $paymentId, int $paidCents): void
     {
-        $this->connection()->transaction(function () use ($paymentId, $paidCents): void {
+        $mailTo = null;
+        $this->connection()->transaction(function () use ($paymentId, $paidCents, &$mailTo): void {
             $this->table()->where('id', $paymentId)->lockForUpdate()->first(['id']);
             $p = $this->find($paymentId);
             if ($p === null || ! in_array($p['status'], ['created', 'pending', 'cancelled', 'failed'], true)) {
@@ -266,7 +271,76 @@ final readonly class OnlinePayments
                 'receipts' => json_encode(array_values(array_unique($receipts)), JSON_THROW_ON_ERROR), 'error' => $errors === [] ? null : mb_substr(implode(' ', $errors), 0, 1000),
             ]);
             $this->audit->record($errors === [] ? 'payment.settled' : 'payment.review', 'app.online_payments', $paymentId, ['cents' => $paidCents, 'receipts' => count($receipts)]);
+            // Chi ha donato dalla pagina pubblica non ha l'area soci: la ricevuta gli arriva per email.
+            if ($errors === [] && $receipts !== [] && in_array(true, array_column($p['items'], 'public'), true)) {
+                $mailTo = [$p['person_id'], array_values(array_unique($receipts))];
+            }
         });
+        if ($mailTo !== null) {
+            $this->mailDonationReceipts($paymentId, $mailTo[0], $mailTo[1]);
+        }
+    }
+
+    /**
+     * La ricevuta della donazione pubblica in PDF, a chi ha donato. Se l'email non c'è o non parte resta nel registro azioni:
+     * la segreteria la manda a mano dalla ricevuta.
+     *
+     * @param  list<string>  $numbers  «numero/anno»
+     */
+    private function mailDonationReceipts(string $paymentId, string $personId, array $numbers): void
+    {
+        $email = $this->profiles->details($personId)['email'] ?? null;
+        if (! is_string($email) || $email === '') {
+            $this->audit->record('payment.receipt_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'no_email']);
+
+            return;
+        }
+        try {
+            $files = [];
+            foreach ($numbers as $label) {
+                if (preg_match('#^(\d+)/(\d{4})$#', $label, $m) !== 1) {
+                    continue;
+                }
+                $id = $this->connection()->table('app.receipts')->where('number', (int) $m[1])->where('year', (int) $m[2])->value('id');
+                $pdf = is_string($id) ? $this->app->make(MemberReceipts::class)->pdf($id, [$personId]) : null;
+                if ($pdf !== null) {
+                    $files[] = $pdf;
+                }
+            }
+            if ($files === []) {
+                throw new RuntimeException('Ricevuta non trovata.');
+            }
+            $contacts = $this->app->make(OrgContacts::class)->all();
+            $org = $this->connection()->table('app.orgs')->value('name');
+            $this->app->make(Mailer::class)->to($email)->send(new DonationReceiptMail(is_string($org) ? $org : '', implode(', ', $numbers), $files, $contacts['email'] ?? null, $contacts['phone'] ?? null));
+            $this->audit->record('payment.receipt_mail_sent', 'app.online_payments', $paymentId, []);
+        } catch (Throwable $e) {
+            $this->audit->record('payment.receipt_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'send_failed', 'error' => mb_substr($e->getMessage(), 0, 200)]);
+        }
+    }
+
+    /**
+     * Pagina pubblica di ritorno dalla donazione: si chiede al servizio com'è andata, come per il socio.
+     *
+     * @return Payment|null
+     */
+    public function confirmPublic(string $paymentId): ?array
+    {
+        $p = Str::isUuid($paymentId) ? $this->find($paymentId) : null;
+        if ($p === null || ! in_array(true, array_column($p['items'], 'public'), true)) {
+            return null;
+        }
+
+        return $this->confirm($paymentId, $p['person_id']);
+    }
+
+    /** Il donatore ha rinunciato sulla pagina del servizio. */
+    public function cancelPublic(string $paymentId): void
+    {
+        $p = Str::isUuid($paymentId) ? $this->find($paymentId) : null;
+        if ($p !== null && in_array(true, array_column($p['items'], 'public'), true)) {
+            $this->cancel($paymentId, $p['person_id']);
+        }
     }
 
     /**

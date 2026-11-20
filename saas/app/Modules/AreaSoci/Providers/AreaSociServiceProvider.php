@@ -11,7 +11,10 @@ use App\Modules\AreaSoci\Services\CurrentMember;
 use App\Modules\AreaSoci\Setup\MemberAreaAddressStep;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\SetupStep;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 final class AreaSociServiceProvider extends ServiceProvider
@@ -28,5 +31,15 @@ final class AreaSociServiceProvider extends ServiceProvider
         $router->aliasMiddleware('member-org', IdentifyMemberOrg::class);
         $router->aliasMiddleware('member', AuthenticateMember::class);
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');
+
+        // Donazioni dalla pagina pubblica: 10 al minuto dallo stesso indirizzo, 100 all'ora per associazione.
+        RateLimiter::for('donations', static function (Request $request): array {
+            $slug = $request->route('slug');
+
+            return [
+                Limit::perMinute(10)->by('donation|'.$request->ip()),
+                Limit::perHour(100)->by('donation-org|'.(is_string($slug) ? $slug : '')),
+            ];
+        });
     }
 }
