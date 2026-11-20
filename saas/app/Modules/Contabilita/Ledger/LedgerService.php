@@ -174,7 +174,7 @@ final readonly class LedgerService implements Ledger
                 return null;
             }
             $first = $rows->first();
-            $date = is_object($first) && is_string($first->tx_date ?? null) ? $first->tx_date : now()->toDateString();
+            $date = is_string($first->tx_date ?? null) ? $first->tx_date : now()->toDateString();
             $year = $this->years->yearFor($date);
             $number = $this->nextNumber('receipt', $year);
             $receiptId = Str::uuid7()->toString();
@@ -182,7 +182,7 @@ final readonly class LedgerService implements Ledger
             foreach ($rows as $r) {
                 $total += is_numeric($r->amount_cents ?? null) ? (int) $r->amount_cents : 0;
             }
-            $person = is_object($first) && is_string($first->person_id ?? null) ? $first->person_id : null;
+            $person = is_string($first->person_id ?? null) ? $first->person_id : null;
             $this->connection()->table('app.receipts')->insert([
                 'org_id' => $this->orgId(), 'id' => $receiptId, 'year' => $year, 'number' => $number, 'issued_on' => $date,
                 'payer_person_id' => $person, 'total_cents' => $total, 'created_by' => $this->userId(),
