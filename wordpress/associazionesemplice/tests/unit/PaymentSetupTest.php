@@ -57,7 +57,7 @@ final class PaymentSetupTest extends TestCase {
 		$this->assertArrayNotHasKey( 'stripe_webhook_secret', $r['values'] );
 		$text = implode( ' ', $r['notes'] );
 		$this->assertStringContainsString( 'non si è creato da solo', $text );
-		$this->assertStringContainsString( 'permesso di scrittura sui webhook', $text );
+		$this->assertStringContainsString( 'Webhook Endpoints', $text );
 	}
 
 	public function test_stripe_invalid_key_is_not_activated_and_no_webhook_is_asked(): void {
