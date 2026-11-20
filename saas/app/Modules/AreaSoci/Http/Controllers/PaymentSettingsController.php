@@ -112,7 +112,12 @@ final readonly class PaymentSettingsController
                 $this->stripe->test($s->stripe_secret);
                 $done[] = 'La connessione con Stripe funziona.';
                 if (! is_string($s->stripe_webhook) || $s->stripe_webhook === '') {
-                    $this->createStripeWebhook($s, $done, $problems);
+                    [$ok, $text] = $this->createStripeWebhook($s);
+                    if ($ok) {
+                        $done[] = $text;
+                    } else {
+                        $problems[] = $text;
+                    }
                 }
             } catch (Throwable $e) {
                 $problems[] = 'La prova della connessione con Stripe non è riuscita: '.$e->getMessage();
@@ -132,27 +137,21 @@ final readonly class PaymentSettingsController
         return $problems === [] ? $back : $back->withErrors(['ledger' => implode(' ', $problems)]);
     }
 
-    /**
-     * @param  list<string>  $done
-     * @param  list<string>  $problems
-     */
-    private function createStripeWebhook(PaymentSettings $s, array &$done, array &$problems): void
+    /** @return array{0: bool, 1: string} se è riuscito e cosa dire */
+    private function createStripeWebhook(PaymentSettings $s): array
     {
         try {
             $webhook = $this->stripe->createWebhook((string) $s->stripe_secret, $this->webhookUrl());
         } catch (Throwable $e) {
-            $problems[] = 'Non sono riuscito a creare il webhook di Stripe da solo ('.$e->getMessage().'): aggiungilo a mano come indicato sotto.';
-
-            return;
+            return [false, 'Non sono riuscito a creare il webhook di Stripe da solo ('.$e->getMessage().'): aggiungilo a mano come indicato sotto.'];
         }
         if ($webhook === null) {
-            $problems[] = 'Su Stripe c\'è già un webhook per questo indirizzo: Stripe non mostra più il suo segreto, copialo a mano dal pannello di Stripe.';
-
-            return;
+            return [false, "Su Stripe c'è già un webhook per questo indirizzo: Stripe non mostra più il suo segreto, copialo a mano dal pannello di Stripe."];
         }
         $s->stripe_webhook = $webhook['secret'];
         $s->save();
-        $done[] = 'Il webhook di Stripe è stato creato.';
+
+        return [true, 'Il webhook di Stripe è stato creato.'];
     }
 
     private function webhookUrl(): string
