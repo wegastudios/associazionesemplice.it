@@ -3382,6 +3382,25 @@ asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Donations::sa
 Settings::update( array( 'limits' => array( 'donate_max_campaigns' => 2 ) ) );
 asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Donations::save_campaign( 0, array( 'name' => 'Di troppo' ) ); } ), 'donazioni: il numero di raccolte ha un limite configurabile' );
 Settings::update( array( 'limits' => array(), 'donate_enabled' => 0, 'donate_paypal' => '' ) );
+// invito «Non puoi partecipare? Sostienici con una donazione»: spento di default, senza pagina non compare
+asem_ok( '' === \AssociazioneSemplice\DonationInvite::html( 'area' ) && '' === \AssociazioneSemplice\DonationInvite::mail_line(), 'invito donazione: spento di default' );
+Settings::update( array( 'donate_invite_area' => 1, 'donate_invite_mail' => 1, 'donate_invite_confirm' => 1, 'donate_invite_event' => 1 ) );
+asem_ok( '' === \AssociazioneSemplice\DonationInvite::html( 'area' ), 'invito donazione: senza una pagina delle donazioni non compare' );
+Settings::update( array( 'donate_invite_page' => 'https://example.org/dona/' ) );
+$di_html = \AssociazioneSemplice\DonationInvite::html( 'area' );
+$di_ev   = \AssociazioneSemplice\DonationInvite::html( 'event' );
+asem_ok( false !== strpos( $di_ev, 'Non puoi partecipare? ' ) && false !== strpos( $di_ev, 'href="https://example.org/dona/"' ) && false !== strpos( $di_ev, 'Sostienici con una donazione' ), 'invito donazione: sulla pagina dell\'evento «Non puoi partecipare?» con il link' );
+asem_ok( false !== strpos( $di_html, 'Vuoi sostenere ' ) && false !== strpos( $di_html, 'Fai una donazione' ) && false === strpos( $di_html, 'Non puoi partecipare' ), 'invito donazione: area soci ed email dicono «Vuoi sostenere … Fai una donazione»' );
+asem_ok( false === strpos( $di_ev, 'detraibile' ), 'invito donazione: «È anche detraibile» solo se l\'ente lo accende' );
+Settings::update( array( 'donation_deductible' => 1 ) );
+$di_ded = \AssociazioneSemplice\DonationInvite::html( 'event' );
+asem_ok( false !== strpos( $di_ded, 'È anche detraibile.' ) && false === strpos( $di_ded, 'commercialista' ), 'invito donazione: chi dona vede «È anche detraibile.» senza la frase per il commercialista' );
+Settings::update( array( 'donation_deductible' => 0 ) );
+Settings::update( array( 'donate_invite_area' => 0 ) );
+asem_ok( '' === \AssociazioneSemplice\DonationInvite::html( 'area' ) && '' !== \AssociazioneSemplice\DonationInvite::html( 'event' ), 'invito donazione: ogni posto si accende da solo' );
+asem_ok( \AssociazioneSemplice\DonationInvite::is_confirmation( 'Prenotazione registrata per Anna.' ) && ! \AssociazioneSemplice\DonationInvite::is_confirmation( 'Impostazioni salvate.' ), 'invito donazione: solo dopo iscrizione o prenotazione' );
+asem_ok( false !== strpos( \AssociazioneSemplice\DonationInvite::mail_line(), 'https://example.org/dona/' ), 'invito donazione: riga per le email ai soci' );
+Settings::update( array( 'donate_invite_event' => 0, 'donate_invite_confirm' => 0, 'donate_invite_mail' => 0, 'donate_invite_page' => '' ) );
 delete_option( \AssociazioneSemplice\Donations::OPT_CAMPAIGNS );
 delete_option( \AssociazioneSemplice\Donations::OPT_NEXT_ID );
 

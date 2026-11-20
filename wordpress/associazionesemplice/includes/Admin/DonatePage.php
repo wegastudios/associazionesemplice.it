@@ -29,7 +29,7 @@ final class DonatePage {
 			echo '<p class="description">' . esc_html( Donations::disclaimer() ) . '</p>';
 		}
 		echo '<p class="description">Ogni raccolta mostra gli importi proposti e un pulsante «Dona con PayPal»: il donatore paga sul sito di PayPal, il sito non tratta nessun dato di pagamento. '
-			. 'Le donazioni arrivano direttamente sul tuo conto PayPal e si registrano in prima nota come «Erogazione liberale» (<a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a>).</p>';
+			. 'Le donazioni arrivano sul tuo conto PayPal: registrale a mano in Prima nota da «<a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a>», con la categoria «Erogazione liberale».</p>';
 
 		Ui::form_open( 'asem_save_donate', Ui::url( 'asem-donate' ) );
 		echo '<h2>Conto e raccolta generale</h2><table class="form-table"><tbody>';
@@ -42,6 +42,21 @@ final class DonatePage {
 		echo '<tr><th>Causale generale</th><td><input type="text" name="donate_purpose" value="' . esc_attr( (string) $s['donate_purpose'] ) . '" class="regular-text" maxlength="120">'
 			. '<p class="description">Il titolo del modulo e il motivo che compare su PayPal. Vuoto = «Donazione a» e il nome dell\'ente.</p></td></tr>';
 		echo wp_kses( '<tr><th>Shortcode della raccolta generale</th><td>' . self::copy_field( Donations::shortcode() ) . '</td></tr>', Html::allowed() );
+		echo '</tbody></table>';
+		echo '<h2>Invito a donare</h2><p class="description">Una riga con il link alla tua pagina delle donazioni. Dove c\'è un evento o un corso (pagina dell\'evento e conferma dell\'iscrizione) dice «Non puoi partecipare? Sostienici con una donazione»; nell\'area soci e nelle email dice «Vuoi sostenere» e il nome dell\'associazione, poi «Fai una donazione». Scegli tu dove farla comparire: all\'inizio è spenta ovunque.</p><table class="form-table"><tbody>';
+		$places = array(
+			'donate_invite_event'   => 'Sulla pagina dell\'evento o del corso (utile soprattutto quando è pieno o già passato)',
+			'donate_invite_confirm' => 'Nella conferma dopo l\'iscrizione o la prenotazione',
+			'donate_invite_area'    => 'Nell\'area soci',
+			'donate_invite_mail'    => 'In fondo alle email ai soci',
+		);
+		echo '<tr><th>Dove mostrarlo</th><td>';
+		foreach ( $places as $name => $label ) {
+			echo '<label style="display:block"><input type="checkbox" name="' . esc_attr( $name ) . '" value="1"' . checked( ! empty( $s[ $name ] ), true, false ) . '> ' . esc_html( $label ) . '</label>';
+		}
+		echo '</td></tr>';
+		echo '<tr><th>Pagina delle donazioni</th><td><input type="url" name="donate_invite_page" value="' . esc_attr( (string) $s['donate_invite_page'] ) . '" class="regular-text" placeholder="https://">'
+			. '<p class="description">L\'indirizzo della pagina dove hai messo il modulo delle donazioni. Se lo lasci vuoto usiamo la prima pagina del sito che contiene lo shortcode. Se non c\'è nessuna pagina, l\'invito non compare.</p></td></tr>';
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();

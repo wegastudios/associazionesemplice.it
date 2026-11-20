@@ -119,6 +119,11 @@ final class Settings {
 			'donate_paypal'           => '',        // email PayPal o ID commerciante che riceve le donazioni
 			'donate_amounts'          => '5;10;20;50', // importi proposti (euro), separati da punto e virgola
 			'donate_purpose'          => '',        // causale mostrata a chi dona (vuoto = nome dell'ente)
+			'donate_invite_event'     => 0,         // invito «Non puoi partecipare? Sostienici con una donazione»: pagina dell'evento o del corso
+			'donate_invite_confirm'   => 0,         // … conferma dopo l'iscrizione o la prenotazione
+			'donate_invite_area'      => 0,         // … area soci
+			'donate_invite_mail'      => 0,         // … piede delle email ai soci
+			'donate_invite_page'      => '',        // pagina delle donazioni a cui porta l'invito (vuoto = la prima con il modulo)
 			'places_enabled'          => 0,         // ricerca dei luoghi con Google nei campi «Luogo»: spenta di default
 			'places_key'              => '',        // chiave API di Google Maps (per il browser, limitata ai siti dell'ente)
 			'bank_title'              => '',        // titolo del riquadro (vuoto = «Pagamento con bonifico»)
@@ -276,6 +281,10 @@ final class Settings {
 		$clean['donate_paypal']           = Donations::clean_account( (string) $clean['donate_paypal'] );
 		$clean['donate_amounts']          = Donations::clean_amounts( (string) $clean['donate_amounts'] );
 		$clean['donate_purpose']          = mb_substr( trim( (string) $clean['donate_purpose'] ), 0, 120 );
+		foreach ( DonationInvite::PLACES as $invite_key ) {
+			$clean[ $invite_key ] = empty( $clean[ $invite_key ] ) ? 0 : 1;
+		}
+		$clean['donate_invite_page']      = esc_url_raw( trim( (string) $clean['donate_invite_page'] ) );
 		$clean['places_enabled']          = empty( $clean['places_enabled'] ) ? 0 : 1;
 		$clean['places_key']              = Places::clean_key( (string) $clean['places_key'] );
 		$clean['bank_in_reminders']       = empty( $clean['bank_in_reminders'] ) ? 0 : 1;

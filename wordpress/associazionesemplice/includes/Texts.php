@@ -82,6 +82,12 @@ final class Texts {
 		MailLog::begin();
 		$subject = self::plain( $subject );
 		$message = self::plain( $message );
+		if ( DonationInvite::place_on( 'mail' ) && DonationInvite::is_member_address( $to ) ) {
+			$invite = DonationInvite::mail_line(); // «Non puoi partecipare? Sostienici con una donazione» (solo ai soci, spento di default)
+			if ( '' !== $invite ) {
+				$message .= "\n\n" . $invite;
+			}
+		}
 		$line    = Contacts::line(); // contatti della segreteria: risposta alla segreteria e riga in calce (se mancano, nessuna delle due)
 		if ( '' !== $line ) {
 			$message .= "\n\n--\n" . $line;
