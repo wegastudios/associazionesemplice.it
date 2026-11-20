@@ -11,7 +11,7 @@ namespace App\Modules\Core\Contracts;
  * Il browser manda solo le chiavi scelte: importi e descrizioni si ricalcolano sempre qui. All'incasso settle()
  * registra il pagamento in prima nota con la ricevuta, come se lo facesse la segreteria.
  *
- * @phpstan-type Due array{key: string, person_id: string, group: string, label: string, amount_cents: int, donation?: bool}
+ * @phpstan-type Due array{key: string, person_id: string, group: string, label: string, amount_cents: int, donation?: bool, public?: bool}
  */
 interface PayableDues
 {

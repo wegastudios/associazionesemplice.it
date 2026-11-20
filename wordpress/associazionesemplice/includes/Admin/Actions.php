@@ -1470,8 +1470,8 @@ final class Actions {
 	private static function save_donate( array $p ): array {
 		$account = \AssociazioneSemplice\Donations::clean_account( (string) ( $p['donate_paypal'] ?? '' ) );
 		$on      = ! empty( $p['donate_enabled'] );
-		if ( $on && '' === $account ) {
-			throw new \InvalidArgumentException( 'Per accendere le donazioni scrivi l\'email del conto PayPal oppure il suo ID commerciante.' );
+		if ( $on && '' === $account && ! \AssociazioneSemplice\Donations::checkout_available() ) {
+			throw new \InvalidArgumentException( 'Per accendere le donazioni attiva prima un metodo di pagamento in Pagamenti online, oppure scrivi l\'email del conto PayPal o il suo ID commerciante.' );
 		}
 		$upd = array(
 			'donate_enabled'     => $on ? 1 : 0,

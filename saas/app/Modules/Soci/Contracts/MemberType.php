@@ -11,7 +11,8 @@ namespace App\Modules\Soci\Contracts;
  * - ordinario: tessera per anno sociale, rinnovata con la quota;
  * - volontario: come l'ordinario, e può tenere le attività;
  * - ospite di un socio: non è socio, partecipa tramite il socio che lo ospita;
- * - genitore o tutore: non è socio, segue i figli minori.
+ * - genitore o tutore: non è socio, segue i figli minori;
+ * - sostenitore: non è socio, ha donato dalla pagina pubblica (serve alla ricevuta).
  */
 enum MemberType: string
 {
@@ -20,6 +21,7 @@ enum MemberType: string
     case Volunteer = 'volunteer';
     case Guest = 'guest';
     case Guardian = 'guardian';
+    case Supporter = 'supporter';
 
     public function label(): string
     {
@@ -29,6 +31,7 @@ enum MemberType: string
             self::Volunteer => 'Socio e volontario',
             self::Guest => 'Ospite di un socio',
             self::Guardian => 'Genitore o tutore (non socio)',
+            self::Supporter => 'Sostenitore (non socio)',
         };
     }
 

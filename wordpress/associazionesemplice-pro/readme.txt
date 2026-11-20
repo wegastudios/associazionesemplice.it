@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.18
+Stable tag: 1.3.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,13 @@ The Apple Wallet pass is built on your server and downloaded by the member: the 
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.3.19 =
+* Nuovo: pagina pubblica delle donazioni, aperta anche ai non soci. Si paga con Stripe, PayPal, SumUp o Satispay e la donazione entra da sola in Prima nota, con la sua ricevuta.
+* Nuovo: al pagamento c'è la spunta «Aggiungi X € per una donazione».
+* Nuovo: procedura guidata dei pagamenti più semplice, con prova della connessione e webhook di Stripe creato da solo. Le chiavi si possono importare da WooCommerce.
+* Nuovo: opzione per incassare come erogazione liberale eventi e corsi pagati dai soci (spenta di partenza) e frase «È anche detraibile» per gli enti che lo dichiarano.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.18 =
 * Nuovo: nella pagina Plugin c'è il link «Controlla aggiornamenti». Il Pro ricontrolla da solo quando il plugin gratuito si aggiorna, anche da WordPress.org, e nell'avviso di incompatibilità c'è il pulsante per aggiornarlo.

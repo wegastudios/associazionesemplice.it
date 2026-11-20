@@ -296,6 +296,9 @@ final class Privacy {
 			if ( '' !== self::blocker( (int) $r['id'] ) ) {
 				continue;
 			}
+			if ( MemberType::SUPPORTER === $r['type'] && $r['last_seen'] >= gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' -' . PrivacyNotice::ACCOUNTING_YEARS . ' years' ) ) ) {
+				continue; // chi ha donato resta finché dura l'obbligo di conservare la ricevuta, non solo per gli anni di inattività dei soci
+			}
 			$out[] = array( 'id' => (int) $r['id'], 'name' => trim( $r['first_name'] . ' ' . $r['last_name'] ), 'type' => $r['type'], 'last_seen' => $r['last_seen'] );
 			if ( count( $out ) >= $limit ) {
 				break;

@@ -135,6 +135,7 @@ final class PrivacyNotice {
 			? 'Se si sceglie di pagare con bonifico o di fare una donazione, l\'istituto di credito o il servizio di pagamento scelto tratta i dati necessari all\'operazione come titolare autonomo.'
 			: '';
 
+		$donors = 'checkout' === Donations::mode(); // il sito raccoglie i dati di chi dona (anche non soci) solo col pagamento del sito; col pulsante PayPal no
 		$ext_note = (string) apply_filters( 'asem_privacy_transfer_note', '', $u );
 
 		// Accesso all'area soci: con l'accesso proprio dei soci (senza utente WordPress) cambiano i dati trattati e il cookie usato.
@@ -194,6 +195,7 @@ final class PrivacyNotice {
 					),
 					'Non sono richiesti dati appartenenti a categorie particolari (art. 9 GDPR). L\'appartenenza all\'Associazione è trattata ai sensi dell\'art. 9, par. 2, lett. d), del GDPR, esclusivamente per le finalità dell\'ente e senza comunicazione all\'esterno.',
 					'Per le persone ospitate dai soci (non soci) sono trattati i dati necessari alla partecipazione: nome, cognome, recapito e partecipazioni a corsi ed eventi.',
+					$donors ? 'Per chi fa una donazione senza essere socio sono trattati nome, cognome, indirizzo email e, se forniti, codice fiscale e indirizzo, necessari a emettere la ricevuta e per gli adempimenti contabili e fiscali (art. 6, par. 1, lett. c); i dati di pagamento sono trattati dal gestore del pagamento scelto come titolare autonomo. I dati della ricevuta sono conservati per il tempo previsto dagli obblighi contabili.' : '',
 				),
 			),
 			array(
@@ -237,12 +239,12 @@ final class PrivacyNotice {
 				'Per quanto tempo conserviamo i dati',
 				array(
 					array(
-						'ul' => array(
+						'ul' => array_values( array_filter( array(
 							'i dati dei soci sono conservati per tutta la durata dell\'iscrizione; il libro soci e i verbali sono conservati per tutta la vita dell\'Associazione;',
 							'dopo la cessazione, i dati sono conservati per ' . max( 1, $years ) . ' ' . ( 1 === max( 1, $years ) ? 'anno' : 'anni' ) . ' di inattività, poi sono resi anonimi, salvo che la legge ne imponga la conservazione;',
 							'i documenti contabili e fiscali (prima nota, ricevute, rendiconti) sono conservati per ' . self::ACCOUNTING_YEARS . ' anni (art. 2220 del codice civile) e i movimenti contabili restano registrati anche dopo l\'anonimizzazione dei dati personali;',
-							'i dati delle persone non socie che partecipano a corsi ed eventi sono conservati per ' . max( 1, $years ) . ' ' . ( 1 === max( 1, $years ) ? 'anno' : 'anni' ) . ' dall\'ultima partecipazione.',
-						),
+							'i dati delle persone non socie che partecipano a corsi ed eventi sono conservati per ' . max( 1, $years ) . ' ' . ( 1 === max( 1, $years ) ? 'anno' : 'anni' ) . ' dall\'ultima partecipazione' . ( $donors ? ' (la regola non vale per chi ha fatto una donazione: i dati della ricevuta restano per il tempo previsto dagli obblighi contabili).' : '.' ),
+						) ) ),
 					),
 				),
 			),

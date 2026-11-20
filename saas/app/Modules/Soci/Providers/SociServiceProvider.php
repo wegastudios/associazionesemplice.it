@@ -17,6 +17,7 @@ use App\Modules\Soci\Contracts\MemberProfiles;
 use App\Modules\Soci\Contracts\Members;
 use App\Modules\Soci\Contracts\MembershipRealignment;
 use App\Modules\Soci\Contracts\People;
+use App\Modules\Soci\Contracts\Supporters;
 use App\Modules\Soci\Demo\DemoMembers;
 use App\Modules\Soci\Export\SociDataExport;
 use App\Modules\Soci\Export\SociReadableExport;
@@ -28,6 +29,7 @@ use App\Modules\Soci\Services\MemberProfilesService;
 use App\Modules\Soci\Services\MembershipRealigner;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleDirectory;
+use App\Modules\Soci\Services\SupporterService;
 use App\Modules\Soci\Setup\ApplicationsStep;
 use App\Modules\Soci\Setup\MembershipStep;
 use App\Modules\Soci\Setup\SocialYearStep;
@@ -52,6 +54,7 @@ final class SociServiceProvider extends ServiceProvider
         $this->app->bind(MembershipRealignment::class, MembershipRealigner::class);
         $this->app->bind(People::class, PeopleDirectory::class);
         $this->app->bind(MemberProfiles::class, MemberProfilesService::class);
+        $this->app->bind(Supporters::class, SupporterService::class);
     }
 
     public function boot(): void

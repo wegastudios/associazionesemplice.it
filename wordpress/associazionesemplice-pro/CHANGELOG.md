@@ -2,6 +2,13 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.19 – 2026-11-20
+- Nuovo: pagina pubblica delle donazioni, aperta anche ai non soci. Si paga con Stripe, PayPal, SumUp o Satispay e la donazione entra da sola in Prima nota, con la sua ricevuta.
+- Nuovo: al pagamento c'è la spunta «Aggiungi X € per una donazione».
+- Nuovo: procedura guidata dei pagamenti più semplice, con prova della connessione e webhook di Stripe creato da solo. Le chiavi si possono importare da WooCommerce.
+- Nuovo: opzione per incassare come erogazione liberale eventi e corsi pagati dai soci (spenta di partenza) e frase «È anche detraibile» per gli enti che lo dichiarano.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.18 – 2026-11-19
 - Nuovo: nella pagina Plugin c'è il link «Controlla aggiornamenti». Il Pro ricontrolla da solo quando il plugin gratuito si aggiorna, anche da WordPress.org, e nell'avviso di incompatibilità c'è il pulsante per aggiornarlo.
 - Ottimizzazione: rivisti i testi del Pro.

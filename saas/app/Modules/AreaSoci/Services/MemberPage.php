@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Services;
 
+use App\Modules\Core\Contracts\DonationInvites;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Risorse\Contracts\MemberResources;
 
@@ -14,13 +15,15 @@ final readonly class MemberPage
         private CurrentMember $current,
         private MemberResources $resources,
         private OrgContacts $contacts,
+        private DonationInvites $invites,
     ) {}
 
-    /** @return array{org: string, active: string, profiles: list<array{id: string, name: string, own: bool}>, resources: bool, contacts: array{email: string, phone: string}|null} */
+    /** @return array{org: string, active: string, profiles: list<array{id: string, name: string, own: bool}>, resources: bool, contacts: array{email: string, phone: string}|null, invite: array{event: bool, area: bool}} */
     public function props(): array
     {
         $m = $this->current->require();
 
-        return ['org' => $m['org_name'], 'active' => $m['active'], 'profiles' => $m['profiles'], 'resources' => $this->resources->available() !== [], 'contacts' => $this->contacts->all()];
+        return ['org' => $m['org_name'], 'active' => $m['active'], 'profiles' => $m['profiles'], 'resources' => $this->resources->available() !== [], 'contacts' => $this->contacts->all(),
+            'invite' => ['event' => $this->invites->enabled(DonationInvites::EVENT), 'area' => $this->invites->enabled(DonationInvites::AREA)]];
     }
 }

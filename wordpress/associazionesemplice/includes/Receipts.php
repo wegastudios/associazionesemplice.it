@@ -999,7 +999,7 @@ final class Receipts {
 	// ---------- Invio per email ----------
 
 	/** Manda la ricevuta in PDF all'email di chi ha pagato. @throws \InvalidArgumentException */
-	public static function email( string $key ): void {
+	public static function email( string $key, ?callable $compose = null ): void {
 		$r = self::build( $key );
 		if ( ! empty( $r['voided'] ) ) {
 			throw new \InvalidArgumentException( 'La ricevuta è annullata: non si può inviare. Se restano voci, emetti la ricevuta sostitutiva.' );
@@ -1030,14 +1030,12 @@ final class Receipts {
 			if ( false === file_put_contents( $dst, $r['pdf'] ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- allegato temporaneo, tolto subito dopo
 				throw new \InvalidArgumentException( Texts::t( 'Email non inviata: il PDF non si può salvare. Controlla lo spazio e i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
-			$assoc = (string) Settings::get( 'association_name' );
-			$ok    = \AssociazioneSemplice\Texts::mail(
-				$to,
-				\AssociazioneSemplice\Texts::subject( 'Ricevuta n. ' . $r['number'] ),
-				'Ciao ' . ( $payer ? $payer['first_name'] : '' ) . ",\n\nin allegato trovi la ricevuta n. " . $r['number'] . " del tuo pagamento.\n\nGrazie.",
-				array(),
-				array( $dst )
-			);
+			$subject = \AssociazioneSemplice\Texts::subject( 'Ricevuta n. ' . $r['number'] );
+			$body    = 'Ciao ' . ( $payer ? $payer['first_name'] : '' ) . ",\n\nin allegato trovi la ricevuta n. " . $r['number'] . " del tuo pagamento.\n\nGrazie.";
+			if ( $compose ) { // testo diverso dal solito (ad esempio il ringraziamento per una donazione): [oggetto, messaggio]
+				list( $subject, $body ) = $compose( $r );
+			}
+			$ok = \AssociazioneSemplice\Texts::mail( $to, $subject, $body, array(), array( $dst ) );
 		} finally { // anche se l'invio lancia un errore il PDF in chiaro non resta sul disco
 			wp_delete_file( $dst );
 			@rmdir( $dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir

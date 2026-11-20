@@ -211,7 +211,7 @@ final class EventRequests {
 			$sent   = self::$handled['sent'];
 		}
 		if ( $sent ) {
-			return '<div class="asemf-notice asemf-ok" role="status">' . esc_html( self::MESSAGE ) . '</div>';
+			return '<div class="asemf-notice asemf-ok" role="status">' . esc_html( self::MESSAGE ) . DonationInvite::html( 'confirm' ) . '</div>';
 		}
 		$html = '';
 		if ( $errors ) {
@@ -929,7 +929,7 @@ final class EventRequests {
 			$sent   = self::$handled['sent'];
 		}
 		if ( $sent ) {
-			return '<div class="asemf-notice asemf-ok" role="status">' . esc_html( self::MESSAGE ) . '</div>';
+			return '<div class="asemf-notice asemf-ok" role="status">' . esc_html( self::MESSAGE ) . DonationInvite::html( 'confirm' ) . '</div>';
 		}
 		$html = '';
 		if ( $errors ) {

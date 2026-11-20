@@ -2830,6 +2830,30 @@ $ps->check_pending( true );
 $don_receipts = (int) $wpdb->get_var( 'SELECT COUNT(DISTINCT receipt_id) FROM ' . Db::t( 'transactions' ) . " WHERE document_ref = '" . esc_sql( $row['provider_ref'] ) . "'" );
 asem_ok( 'paid' === $ps->get_by_public( $row['public_id'] )['status'] && 2 === $don_receipts, 'donazione: registrata con una ricevuta sua, separata da quella dell\'evento' );
 asem_ok( 500 === $sum_tx( "document_ref = '" . esc_sql( $row['provider_ref'] ) . "' AND category_id = " . (int) $ledger->category_id_of_kind( 'donation' ) ), 'donazione: in prima nota va come erogazione liberale' );
+// Donazione dalla pagina pubblica, anche di chi non è socio: dal nostro pagamento, movimento e ricevuta da soli
+Settings::update( array( 'donate_enabled' => 1, 'donate_amounts' => '5;10' ) );
+asem_ok( 'checkout' === \AssociazioneSemplice\Donations::mode(), 'donazioni: con un metodo di pagamento attivo si dona dal pagamento del sito' );
+wp_set_current_user( 0 );
+$don_html = do_shortcode( '[associazionesemplice_donazioni]' );
+asem_ok( false !== strpos( $don_html, 'name="asem_donate_go"' ) && false !== strpos( $don_html, 'value="1000"' ) && false !== strpos( $don_html, 'name="website"' ) && false === strpos( $don_html, 'paypal.com/donate' ), 'donazioni: il modulo pubblico ha importi, campo esca e niente pulsante «Dona» di PayPal' );
+asem_ok( false !== strpos( \AssociazioneSemplice\PrivacyNotice::html(), 'Per chi fa una donazione senza essere socio' ) && false !== strpos( \AssociazioneSemplice\PrivacyNotice::html(), 'la regola non vale per chi ha fatto una donazione' ), 'privacy: l\'informativa copre chi dona senza essere socio, con l\'eccezione alla conservazione' );
+asem_ok( false !== strpos( $don_html, 'I dati servono a emettere la ricevuta della donazione e per gli obblighi contabili.' ) && false !== strpos( $don_html, 'Scrivilo se vuoi che compaia nella ricevuta.' ), 'donazioni: nel modulo le frasi su ricevuta e dati' );
+$dd = \AssociazioneSemplice\PaymentDonation::donor( array( 'first_name' => 'Dora', 'last_name' => 'Donatrice', 'email' => 'Dora.Donatrice@example.com', 'tax_code' => 'DNTDRO80A41H501Z' ) );
+asem_ok( 'supporter' === $dd['type'] && 'dora.donatrice@example.com' === $dd['email'] && 'DNTDRO80A41H501Z' === $dd['tax_code'], 'donazioni: chi non è socio diventa un «Sostenitore (non socio)» per la ricevuta' );
+asem_ok( (int) $dd['id'] === (int) \AssociazioneSemplice\PaymentDonation::donor( array( 'first_name' => 'Altro', 'last_name' => 'Nome', 'email' => 'dora.donatrice@example.com' ) )['id'], 'donazioni: la stessa email è la stessa persona' );
+$dd_member = \AssociazioneSemplice\PaymentDonation::donor( array( 'first_name' => 'X', 'last_name' => 'Y', 'email' => (string) $people->get( $pm )['email'] ) );
+asem_ok( (int) $pm === (int) $dd_member['id'], 'donazioni: se l\'email è di un socio la donazione si lega alla sua scheda' );
+asem_ok( null !== asem_throws( function () use ( $ps, $dd ) { $ps->donation_checkout( $dd, 50, '', home_url( '/dona/' ), 'paypal' ); } ) && null !== asem_throws( function () use ( $ps, $dd ) { $ps->donation_checkout( $dd, 200000, '', home_url( '/dona/' ), 'paypal' ); } ), 'donazioni: importo tra 1 € e 1.000 €' );
+$ps->donation_checkout( $dd, 2500, 'Per il tetto', home_url( '/dona/' ), 'paypal' );
+$row = $latest();
+asem_ok( 2500 === (int) $row['amount_cents'] && 0 === (int) $row['payer_user_id'] && (int) $dd['id'] === (int) $row['payer_person_id'], 'donazioni: pagamento senza utente, intestato a chi dona, senza commissione' );
+$paypal_orders[ $row['provider_ref'] ]['status'] = 'APPROVED';
+$ps->check_pending( true );
+$dn_tx = $wpdb->get_row( 'SELECT person_id, description, amount_cents FROM ' . Db::t( 'transactions' ) . " WHERE document_ref = '" . esc_sql( $row['provider_ref'] ) . "' AND category_id = " . (int) $ledger->category_id_of_kind( 'donation' ), ARRAY_A );
+asem_ok( 'paid' === $ps->get_by_public( $row['public_id'] )['status'] && $dn_tx && 2500 === (int) $dn_tx['amount_cents'] && (int) $dd['id'] === (int) $dn_tx['person_id'] && 0 === strpos( (string) $dn_tx['description'], 'Donazione · Per il tetto' ), 'donazioni: a pagamento confermato è «Erogazione liberale» in prima nota, con la causale' );
+asem_ok( \AssociazioneSemplice\PaymentDonation::is_public( (array) json_decode( (string) $row['items'], true ) ) && false !== strpos( do_shortcode( '[associazionesemplice_donazioni]' ), 'asem_donate_go' ), 'donazioni: la voce è riconosciuta come donazione pubblica' );
+Settings::update( array( 'donate_enabled' => 0, 'donate_amounts' => '5;10;20;50' ) );
+wp_set_current_user( $u_pm );
 Settings::update( array( 'donation_on' => 0 ) );
 asem_ok( false === strpos( $as( $uq, '[associazionesemplice_pagamenti]' ), 'Paga con carta' ), 'area soci: con PayPal non compare "Paga con carta"' );
 
@@ -3353,13 +3377,14 @@ asem_ok( $pos( $o3 ) !== $pos( $o4 ) && strpos( $pos( $o3 ), 'Alfa' ) !== strpos
 asem_ok( false !== strpos( $o1, 'orderby=card' ) && false !== strpos( $o1, 'order=desc' ) && false !== strpos( $o1, 'Tessera ▲' ), 'rubrica: le intestazioni sono cliccabili e mostrano il verso' );
 
 // donazioni: ogni raccolta ha il suo shortcode e il pulsante PayPal già configurato
+Settings::update( array( 'payment_provider' => 'none' ) ); // senza un metodo di pagamento attivo: il pulsante «Dona» di PayPal
 Settings::update( array( 'donate_enabled' => 0, 'donate_paypal' => '', 'donate_amounts' => '5;10', 'donate_purpose' => '' ) );
-$dn_page = asem_render( array( Admin\DonatePage::class, 'render' ), 'solo se PayPal è configurato' );
+$dn_page = asem_render( array( Admin\DonatePage::class, 'render' ), 'un metodo di pagamento attivo' );
 asem_ok( false !== strpos( $dn_page, 'notice-warning' ), 'donazioni: senza PayPal l\'avviso è ben visibile nella pagina' );
 $dn_id = \AssociazioneSemplice\Donations::save_campaign( 0, array( 'name' => 'Restauro del tetto', 'purpose' => 'Per il tetto', 'amounts' => '15; 30', 'note' => 'Ci serve il tuo aiuto.', 'active' => 1 ) );
 asem_ok( $dn_id > 0 && '[associazionesemplice_donazioni id="' . $dn_id . '"]' === \AssociazioneSemplice\Donations::shortcode( $dn_id ), 'donazioni: ogni raccolta ha il suo shortcode' );
 $dn_page = asem_render( array( Admin\DonatePage::class, 'render' ), 'Restauro del tetto' );
-asem_ok( false !== strpos( $dn_page, '[associazionesemplice_donazioni id=&quot;' . $dn_id . '&quot;]' ) && false !== strpos( $dn_page, 'In attesa: PayPal non è configurato' ), 'donazioni: l\'elenco mostra lo shortcode e che la raccolta aspetta PayPal' );
+asem_ok( false !== strpos( $dn_page, '[associazionesemplice_donazioni id=&quot;' . $dn_id . '&quot;]' ) && false !== strpos( $dn_page, 'In attesa: manca un metodo di pagamento attivo o il conto PayPal' ), 'donazioni: l\'elenco mostra lo shortcode e che la raccolta aspetta PayPal' );
 $dn_cur = get_current_user_id();
 wp_set_current_user( 0 );
 asem_ok( '' === do_shortcode( \AssociazioneSemplice\Donations::shortcode( $dn_id ) ), 'donazioni: senza PayPal i visitatori non vedono niente' );
@@ -3370,6 +3395,10 @@ $dn_html = do_shortcode( \AssociazioneSemplice\Donations::shortcode( $dn_id ) );
 asem_ok( false !== strpos( $dn_html, 'Per il tetto' ) && false !== strpos( $dn_html, 'Ci serve il tuo aiuto.' ) && false !== strpos( $dn_html, 'value="cassa@example.org"' ) && false !== strpos( $dn_html, 'value="15.00"' ) && false !== strpos( $dn_html, 'value="30.00"' ) && false === strpos( $dn_html, 'value="5.00"' ) && false !== strpos( $dn_html, 'Dona con PayPal' ), 'donazioni: modulo della raccolta con conto PayPal, causale, testo e importi suoi' );
 $dn_gen = do_shortcode( \AssociazioneSemplice\Donations::shortcode() );
 asem_ok( false !== strpos( $dn_gen, 'value="5.00"' ) && false === strpos( $dn_gen, 'Per il tetto' ), 'donazioni: la raccolta generale resta com\'era' );
+asem_ok( 'paypal' === \AssociazioneSemplice\Donations::mode(), 'donazioni: col solo conto PayPal la modalità è «paypal»' );
+$dn_pp = asem_render( array( Admin\DonatePage::class, 'render' ), 'Dona con PayPal' );
+asem_ok( false !== strpos( $dn_pp, 'Per mandare una ricevuta a chi dona, attivala nelle impostazioni del tuo conto PayPal.' ) && false !== strpos( $dn_pp, 'Registra le donazioni in Prima nota da' ), 'donazioni: col pulsante PayPal la pagina spiega ricevuta e registrazione a mano' );
+asem_ok( false === strpos( \AssociazioneSemplice\PrivacyNotice::html(), 'Per chi fa una donazione senza essere socio' ), 'privacy: col solo pulsante PayPal il sito non raccoglie dati dei donatori, niente paragrafo' );
 \AssociazioneSemplice\Donations::save_campaign( $dn_id, array( 'name' => 'Restauro del tetto', 'active' => 0 ) );
 wp_set_current_user( 0 );
 asem_ok( '' === do_shortcode( \AssociazioneSemplice\Donations::shortcode( $dn_id ) ), 'donazioni: raccolta spenta, niente modulo' );
@@ -3391,6 +3420,9 @@ $di_html = \AssociazioneSemplice\DonationInvite::html( 'area' );
 $di_ev   = \AssociazioneSemplice\DonationInvite::html( 'event' );
 asem_ok( false !== strpos( $di_ev, 'Non puoi partecipare? ' ) && false !== strpos( $di_ev, 'href="https://example.org/dona/"' ) && false !== strpos( $di_ev, 'Sostienici con una donazione' ), 'invito donazione: sulla pagina dell\'evento «Non puoi partecipare?» con il link' );
 asem_ok( false !== strpos( $di_html, 'Vuoi sostenere ' ) && false !== strpos( $di_html, 'Fai una donazione' ) && false === strpos( $di_html, 'Non puoi partecipare' ), 'invito donazione: area soci ed email dicono «Vuoi sostenere … Fai una donazione»' );
+Settings::update( array( 'donate_invite_confirm' => 1 ) );
+asem_ok( false !== strpos( \AssociazioneSemplice\DonationInvite::html( 'confirm' ), 'Vuoi sostenere ' ) && false === strpos( \AssociazioneSemplice\DonationInvite::html( 'confirm' ), 'Non puoi partecipare' ), 'invito donazione: nella conferma dopo l\'iscrizione non c\'è «Non puoi partecipare?»' );
+Settings::update( array( 'donate_invite_confirm' => 0 ) );
 asem_ok( false === strpos( $di_ev, 'detraibile' ), 'invito donazione: «È anche detraibile» solo se l\'ente lo accende' );
 Settings::update( array( 'donation_deductible' => 1 ) );
 $di_ded = \AssociazioneSemplice\DonationInvite::html( 'event' );
@@ -6429,7 +6461,8 @@ $rc1 = \AssociazioneSemplice\Receipts::build( $rc_list[0]['key'] );
 $rc1b = \AssociazioneSemplice\Receipts::build( $rc_list[0]['key'] );
 $yr   = substr( $today, 0, 4 );
 asem_ok( 0 === strpos( $rc1['pdf'], '%PDF-1.4' ) && false !== strpos( $rc1['pdf'], 'RICEVUTA DI PAGAMENTO' ) && false !== strpos( $rc1['pdf'], 'Rosa Ricevuta' ) && false !== strpos( $rc1['pdf'], 'RCVRSO80A41H501X' ) && false !== strpos( $rc1['pdf'], 'Quota associativa' ) && false !== strpos( $rc1['pdf'], 'progetto estate' ) && false !== strpos( $rc1['pdf'], '15,00' ) && false !== strpos( $rc1['pdf'], 'Operazione di prova' ), 'ricevute: il PDF contiene chi, cosa, quanto e la riga in fondo' );
-asem_ok( $rc1['number'] === $rc1b['number'] && 1 === preg_match( '#^1/' . $yr . '$#', $rc1['number'] ), 'ricevute: il numero progressivo si assegna una volta e resta' );
+asem_ok( $rc1['number'] === $rc1b['number'] && 1 === preg_match( '#^[0-9]+/' . $yr . '$#', $rc1['number'] ), 'ricevute: il numero progressivo si assegna una volta e resta' );
+$rc_n1 = (int) $rc1['number']; // il numero di partenza dipende da quante ricevute i test precedenti hanno già emesso
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $rc_p, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => 2000, 'description' => 'Offerta' ) ) ) );
 $rc_list2 = \AssociazioneSemplice\Receipts::list_for_payer( $rc_p );
 $don_key  = '';
@@ -6439,7 +6472,7 @@ foreach ( $rc_list2 as $r ) {
 	}
 }
 $rc2 = \AssociazioneSemplice\Receipts::build( $don_key );
-asem_ok( 2 === count( $rc_list2 ) && 1 === preg_match( '#^2/' . $yr . '$#', $rc2['number'] ) && false !== strpos( $rc2['pdf'], 'EROGAZIONE LIBERALE' ), 'ricevute: la seconda ha il numero successivo; solo donazioni = ricevuta di erogazione liberale' );
+asem_ok( 2 === count( $rc_list2 ) && 1 === preg_match( '#^' . ( $rc_n1 + 1 ) . '/' . $yr . '$#', $rc2['number'] ) && false !== strpos( $rc2['pdf'], 'EROGAZIONE LIBERALE' ), 'ricevute: la seconda ha il numero successivo; solo donazioni = ricevuta di erogazione liberale' );
 $st = \AssociazioneSemplice\Receipts::statement( $rc_p, (int) $yr );
 asem_ok( 3500 === $st['total_cents'] && false !== strpos( $st['pdf'], 'ATTESTAZIONE DEI VERSAMENTI' ) && false !== strpos( $st['pdf'], 'Erogazioni liberali' ) && null !== asem_throws( function () use ( $rc_p ) { \AssociazioneSemplice\Receipts::statement( $rc_p, 1999 ); } ), 'ricevute: attestazione annuale con i totali; un anno senza versamenti non si emette' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Receipts::url( 'abc' ), 'action=asem_receipt' ) && false !== strpos( \AssociazioneSemplice\Receipts::statement_url( $rc_p, 2026 ), 'action=asem_statement' ), 'ricevute: indirizzi di scarico con controllo' );
@@ -9382,7 +9415,8 @@ $lk_save->invoke( null, array( 'card_present' => '1', 'card_mode' => 'standard',
 asem_ok( ! \AssociazioneSemplice\CardLayout::active(), 'tessera: si torna alla tessera standard' );
 wp_delete_attachment( $cl_att, true );
 wp_delete_attachment( $lk_att, true );
-// donazioni con PayPal
+// donazioni con PayPal (senza un metodo di pagamento attivo: il pulsante «Dona»)
+Settings::update( array( 'payment_provider' => 'none' ) );
 asem_ok( '' === \AssociazioneSemplice\Donations::clean_account( 'non una mail' ) && 'abc@example.com' === \AssociazioneSemplice\Donations::clean_account( ' ABC@Example.com ' ) && 'AB12CD34EF56G' === \AssociazioneSemplice\Donations::clean_account( 'AB12CD34EF56G' ), 'donazioni: conto PayPal valido solo se email o ID commerciante' );
 asem_ok( '5;7,50;10' === \AssociazioneSemplice\Donations::clean_amounts( '10; 5 7,50;0;abc;10' ) && '' === \AssociazioneSemplice\Donations::clean_amounts( 'niente' ), 'donazioni: gli importi si ripuliscono, ordinano e senza doppioni' );
 Settings::update( array( 'donate_enabled' => 1, 'donate_paypal' => '' ) );
