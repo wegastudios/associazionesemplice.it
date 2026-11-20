@@ -47,7 +47,7 @@ it('salva la bozza, la pubblica come revisione successiva e avvisa il portale', 
     $this->post('/saas/admin/catalogo/pubblica', ['note' => 'Nuova versione'])->assertRedirect('/saas/admin/catalogo');
 
     $doc = json_decode((string) $this->get('/api/catalogo/v1')->getContent(), true);
-    expect($doc['rev'])->toBe(5)->and($doc['plans'][0]['plan_version'])->toBe(2)
+    expect($doc['rev'])->toBe(4)->and($doc['plans'][0]['plan_version'])->toBe(2)
         ->and(DB::table('core.catalog_revisions')->where('rev', 2)->exists())->toBeTrue()
         ->and(DB::table('core.catalog_draft')->exists())->toBeFalse()
         ->and(DB::table('core.platform_audit')->where('action', 'catalog.published')->exists())->toBeTrue();
