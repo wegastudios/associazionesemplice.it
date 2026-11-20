@@ -14,11 +14,13 @@ final readonly class OrgDonations
 
     public const CHECKOUT = 'donations.checkout';
 
-    public const DEFAULT_AMOUNT = 1000;
+    public const DEDUCTIBLE = 'donations.deductible';
+
+    public const DEFAULT_AMOUNT = 500;
 
     public const MIN_CENTS = 100;
 
-    public const MAX_CENTS = 1_000_000;
+    public const MAX_CENTS = 100_000;
 
     public function __construct(private OrgSettings $settings) {}
 
@@ -28,6 +30,12 @@ final readonly class OrgDonations
         $v = $this->settings->get(self::AMOUNT);
 
         return is_int($v) && $v >= self::MIN_CENTS && $v <= self::MAX_CENTS ? $v : self::DEFAULT_AMOUNT;
+    }
+
+    /** Chi dona vede «È anche detraibile.»? Solo se l'associazione lo ha acceso (spento di default). */
+    public function deductible(): bool
+    {
+        return $this->settings->get(self::DEDUCTIBLE) === true;
     }
 
     /** La spunta «Aggiungi X € per una donazione» compare al pagamento online? */

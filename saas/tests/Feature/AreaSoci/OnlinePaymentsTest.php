@@ -493,7 +493,7 @@ it('aggiunge una donazione al pagamento: voce a parte, erogazione liberale con l
     // spenta di default: la donazione non si accetta
     $member()->post($this->host.'/area/paga', ['keys' => [], 'donation_cents' => 500, 'provider' => 'stripe'])->assertSessionHasErrors('ledger');
     $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set(OrgDonations::CHECKOUT, true));
-    $member()->get($this->host.'/area/paga')->assertInertia(fn (Assert $page) => $page->where('donation.enabled', true)->where('donation.amount_cents', 1000));
+    $member()->get($this->host.'/area/paga')->assertInertia(fn (Assert $page) => $page->where('donation.enabled', true)->where('donation.amount_cents', 500));
     $member()->post($this->host.'/area/paga', ['keys' => [], 'donation_cents' => 50, 'provider' => 'stripe'])->assertSessionHasErrors('ledger');
     $member()->post($this->host.'/area/paga', ['keys' => [], 'donation_cents' => 500, 'provider' => 'stripe'])->assertRedirect('https://checkout.stripe.com/c/pay/cs_test_d');
 
@@ -510,9 +510,9 @@ it('aggiunge una donazione al pagamento: voce a parte, erogazione liberale con l
 });
 
 it('la spunta della donazione si imposta nei pagamenti online, con l\'importo proposto', function (): void {
-    $this->actingAs($this->owner)->put('/gestionale/pagamenti-online/donazioni', ['checkout' => true, 'amount' => '15,50'])->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->put('/gestionale/pagamenti-online/donazioni', ['checkout' => true, 'deductible' => true, 'amount' => '15,50'])->assertSessionHasNoErrors();
     $this->actingAs($this->owner)->put('/gestionale/pagamenti-online/donazioni', ['checkout' => true, 'amount' => '0,10'])->assertSessionHasErrors('amount');
     $this->orgContext()->run($this->org->id, function (): void {
-        expect(app(OrgDonations::class)->checkout())->toBeTrue()->and(app(OrgDonations::class)->amountCents())->toBe(1550);
+        expect(app(OrgDonations::class)->checkout())->toBeTrue()->and(app(OrgDonations::class)->deductible())->toBeTrue()->and(app(OrgDonations::class)->amountCents())->toBe(1550);
     });
 });

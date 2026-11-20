@@ -123,7 +123,7 @@ final readonly class OnlinePayments
                 throw new MemberAccessError('La donazione non è attiva.');
             }
             if ($donationCents < OrgDonations::MIN_CENTS || $donationCents > OrgDonations::MAX_CENTS) {
-                throw new MemberAccessError('La donazione può andare da 1 € a '.self::euro(OrgDonations::MAX_CENTS).'.');
+                throw new MemberAccessError('La donazione può andare da 1 € a 1.000 €.');
             }
             $items[] = ['key' => 'd:'.$payerId, 'person_id' => $payerId, 'group' => 'Donazione', 'label' => 'Donazione a '.$brand, 'amount_cents' => $donationCents, 'donation' => true];
         }

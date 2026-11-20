@@ -15,7 +15,7 @@ const form = useForm({
     stripe_enabled: s.stripe_enabled, stripe_secret: '', stripe_webhook: '', paypal_enabled: s.paypal_enabled, paypal_client_id: s.paypal_client_id,
     paypal_secret: '', paypal_live: s.paypal_live, account_id: s.account_id || '', forget: [],
 });
-const give = useForm({ checkout: props.donations.checkout, amount: props.donations.amount });
+const give = useForm({ checkout: props.donations.checkout, deductible: props.donations.deductible, amount: props.donations.amount });
 const saveGive = () => give.put('/gestionale/pagamenti-online/donazioni', { preserveScroll: true });
 const save = () => form.transform((d) => ({ ...d, account_id: d.account_id || null })).put('/gestionale/pagamenti-online', { preserveScroll: true, onSuccess: () => form.reset('stripe_secret', 'stripe_webhook', 'paypal_secret', 'forget') });
 const test = (p) => router.post(`/gestionale/pagamenti-online/prova/${p}`, {}, { preserveScroll: true });
@@ -99,6 +99,9 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                 <input v-model="give.amount" class="field" inputmode="decimal" />
                 <span class="block text-muted">Chi paga può cambiarlo. La donazione va in prima nota come «Erogazione liberale» e ha una ricevuta a parte, con la stessa numerazione delle altre. Non paga commissioni in più.</span>
                 <span v-if="give.errors.amount" class="block font-semibold text-danger" role="alert">{{ give.errors.amount }}</span></label>
+            <label class="flex items-start gap-2"><input v-model="give.deductible" type="checkbox" class="mt-1" />
+                <span>Donazioni detraibili: a chi dona mostra «È anche detraibile.»
+                    <span class="block text-muted">Verifica con il tuo commercialista se la tua associazione ne ha diritto.</span></span></label>
             <button type="submit" class="btn btn-primary" :disabled="give.processing">Salva</button>
         </form>
 

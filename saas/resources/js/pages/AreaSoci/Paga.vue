@@ -11,7 +11,7 @@ const giveCents = computed(() => {
     const n = Number(String(giveEuro.value).replace(',', '.'));
     return give.value && Number.isFinite(n) ? Math.round(n * 100) : 0;
 });
-const giveValid = computed(() => !give.value || (giveCents.value >= 100 && giveCents.value <= 1000000));
+const giveValid = computed(() => !give.value || (giveCents.value >= 100 && giveCents.value <= 100000));
 const canPay = computed(() => (form.keys.length > 0 || giveCents.value > 0) && giveValid.value && !form.processing);
 const groups = computed(() => {
     const out = {};
@@ -46,9 +46,10 @@ const pay = (provider) => {
                 <section v-if="donation.enabled && providers.length" class="card p-4 text-sm">
                     <label class="flex items-center gap-3"><input v-model="give" type="checkbox" />
                         <span>Aggiungi <strong>{{ euro(donation.amount_cents) }}</strong> per una donazione a {{ donation.org }}</span></label>
+                    <p v-if="donation.deductible" class="mt-1 pl-7 text-xs text-muted">È anche detraibile.</p>
                     <label v-if="give" class="mt-3 block space-y-1"><span class="font-semibold">Importo della donazione (€)</span>
                         <input v-model="giveEuro" class="field w-40" inputmode="decimal" aria-describedby="give-hint" />
-                        <span id="give-hint" class="block text-xs" :class="giveValid ? 'text-muted' : 'text-danger'">Da 1 € a 10.000 €. Non paghi commissioni in più: la donazione ha una ricevuta a parte.</span></label>
+                        <span id="give-hint" class="block text-xs" :class="giveValid ? 'text-muted' : 'text-danger'">Da 1 € a 1.000 €. Non paghi commissioni in più: la donazione ha una ricevuta a parte.</span></label>
                 </section>
                 <div v-if="providers.length" class="sticky bottom-16 card p-4 shadow-sm sm:bottom-2">
                     <p class="mb-3 flex justify-between text-lg font-bold"><span>Totale</span><span class="tabular-nums">{{ euro(total) }}</span></p>
