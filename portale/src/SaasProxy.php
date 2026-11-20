@@ -50,7 +50,7 @@ final class SaasProxy {
 		return implode( '; ', $keep );
 	}
 
-	/** Intestazioni da mandare al SaaS: solo quelle dell'elenco, più le X-Forwarded-* decise dal portale. */
+	/** Intestazioni da mandare al SaaS: solo quelle dell'elenco, più X-Forwarded-For/-Proto decisi dal portale e il segreto del proxy. */
 	public static function requestHeaders( array $server, string $clientIp, string $portalSession ): array {
 		$map = array(
 			'CONTENT_TYPE' => 'Content-Type', 'HTTP_ACCEPT' => 'Accept', 'HTTP_ACCEPT_LANGUAGE' => 'Accept-Language', 'HTTP_USER_AGENT' => 'User-Agent',
@@ -67,10 +67,13 @@ final class SaasProxy {
 		if ( '' !== $cookie && ! preg_match( '/[\r\n]/', $cookie ) ) {
 			$out[] = 'Cookie: ' . $cookie;
 		}
-		$host  = (string) parse_url( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), PHP_URL_HOST );
-		$out[] = 'X-Forwarded-Host: ' . $host;
 		$out[] = 'X-Forwarded-Proto: https';
 		$out[] = 'X-Forwarded-For: ' . $clientIp;
+		// Il SaaS legge l'IP da X-Forwarded-For solo con questo segreto (`saas_proxy.secret`, almeno 32 caratteri): senza, l'intestazione non parte.
+		$secret = (string) Config::get( 'saas_proxy.secret', '' );
+		if ( strlen( $secret ) >= 32 && ! preg_match( '/[\r\n]/', $secret ) ) {
+			$out[] = 'X-Saas-Proxy-Secret: ' . $secret;
+		}
 		return $out;
 	}
 

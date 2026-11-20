@@ -2560,7 +2560,13 @@ list( $pst, $phd, $pbody ) = SaasProxy::handle( $srv, 'a=1', '203.0.113.9' );
 check( 'proxy: stesso metodo, percorso, query e corpo verso il SaaS', 'POST' === $pseen[0] && 'https://app.associazionesemplice.it/saas/admin/login?x=1' === $pseen[1] && 'a=1' === $pseen[3] );
 check( 'proxy: il cookie di sessione del portale non esce, quello del SaaS passa', in_array( 'Cookie: laravel_session=zzz', $pseen[2], true ) && ! in_array( 'Cookie: PHPSESSID=abc; laravel_session=zzz', $pseen[2], true ) );
 $ph = implode( "\n", $pseen[2] );
-check( 'proxy: X-Forwarded-* decisi dal portale, quelli del client scartati', false !== strpos( $ph, 'X-Forwarded-For: 203.0.113.9' ) && false === strpos( $ph, '6.6.6.6' ) && false === strpos( $ph, 'evil.test' ) && false !== strpos( $ph, 'X-Forwarded-Host: portale.test' ) && false !== strpos( $ph, 'X-Forwarded-Proto: https' ) );
+check( 'proxy: X-Forwarded-* decisi dal portale, quelli del client scartati', false !== strpos( $ph, 'X-Forwarded-For: 203.0.113.9' ) && false === strpos( $ph, '6.6.6.6' ) && false === strpos( $ph, 'evil.test' ) && false === strpos( $ph, 'X-Forwarded-Host' ) && false !== strpos( $ph, 'X-Forwarded-Proto: https' ) );
+check( 'proxy: senza segreto l\'intestazione X-Saas-Proxy-Secret non parte', false === strpos( $ph, 'X-Saas-Proxy-Secret' ) );
+Config::set( 'saas_proxy.secret', 'corto' );
+check( 'proxy: un segreto sotto i 32 caratteri non viene mandato', false === strpos( implode( "\n", SaasProxy::requestHeaders( $srv, '203.0.113.9', '' ) ), 'X-Saas-Proxy-Secret' ) );
+Config::set( 'saas_proxy.secret', str_repeat( 's', 32 ) );
+check( 'proxy: con il segreto l\'intestazione parte, una volta sola; l\'X-Saas-Proxy-Secret del client non passa', 1 === count( array_filter( SaasProxy::requestHeaders( $srv + array( 'HTTP_X_SAAS_PROXY_SECRET' => 'finto' ), '203.0.113.9', '' ), function ( $h ) { return 0 === strpos( $h, 'X-Saas-Proxy-Secret: ' . str_repeat( 's', 32 ) ); } ) ) && false === strpos( implode( "\n", SaasProxy::requestHeaders( $srv + array( 'HTTP_X_SAAS_PROXY_SECRET' => 'finto' ), '203.0.113.9', '' ) ), 'finto' ) );
+Config::set( 'saas_proxy.secret', '' );
 $hn = array();
 foreach ( $phd as $h ) {
 	$hn[ strtolower( $h[0] ) ][] = $h[1];

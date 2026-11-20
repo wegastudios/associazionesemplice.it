@@ -81,7 +81,7 @@ return array(
 		// 'saas'   => array( 'cmd' => array( '/usr/bin/env', 'HOME=/home/UTENTE', '/usr/bin/timeout', '--kill-after=30', '1800', '/bin/bash', '/home/UTENTE/saas-demo/reset.sh' ), 'requires' => '/home/UTENTE/saas-demo/current', 'note' => 'Azzera il database della demo del gestionale.' ), // «requires»: finché il percorso non esiste il tasto dice «non ancora installata»
 	),
 	// Proxy verso il SaaS: /saas/admin, /saas/staff, /saas/api e /saas/vai si servono dal gestionale restando su questo dominio. Spento = come prima (rinvio di /saas/admin a saas_admin_url).
-	'saas_proxy' => array( 'enabled' => false, 'upstream' => 'https://app.associazionesemplice.it' ),
+	'saas_proxy' => array( 'enabled' => false, 'upstream' => 'https://app.associazionesemplice.it', 'secret' => '' ), // secret: almeno 32 caratteri, uguale a SAAS_PROXY_SECRET del SaaS; vuoto = intestazione X-Saas-Proxy-Secret non inviata
 	// Accesso unico (saas/docs/IDENTITA_API.md): /accedi, /twofactor, /account/esci e il reset password parlano col SaaS con richieste firmate (chiave staff_area_sign_key). Spento = accesso come prima.
 	'identity' => array( 'enabled' => false ),
 	// Pagina «Gestisci» nell'area clienti (stato, dominio, controllo cambio piano): accendere solo quando il SaaS ha in produzione gli endpoint v2 (promo, plan-change, domain, status).
