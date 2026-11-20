@@ -6,7 +6,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 const links = {
     stripeNonprofit: 'https://stripe.com/it/industries/nonprofits',
     stripeKeys: 'https://dashboard.stripe.com/apikeys',
-    paypalNonprofit: 'https://www.paypal.com/it/business/nonprofit',
+    paypalNonprofit: 'https://www.paypal.com/it/cshelp/article/come-faccio-a-richiedere-la-tariffa-per-enti-benefici-help221',
     paypalKeys: 'https://developer.paypal.com/dashboard/applications/live',
 };
 const props = defineProps({ settings: Object, webhookUrl: String, accounts: Array, payments: Array, canSettings: Boolean, canAccounting: Boolean, canRefund: Boolean });
@@ -37,7 +37,8 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
     <Head title="Pagamenti online" />
     <AppLayout>
         <h1 class="mb-1 text-2xl font-bold">Pagamenti online</h1>
-        <p class="mb-6 text-sm text-muted">I soci pagano dall'area soci con il conto Stripe o PayPal dell'associazione: i soldi arrivano direttamente all'associazione. Ogni pagamento va da solo in prima nota con la ricevuta.</p>
+        <p class="mb-2 text-sm text-muted">I soci pagano dall'area soci con il conto Stripe o PayPal dell'associazione: i soldi arrivano direttamente all'associazione. Ogni pagamento va da solo in prima nota con la ricevuta.</p>
+        <p class="mb-6 text-sm text-muted">Associazione senza scopo di lucro? Stripe e PayPal possono avere condizioni particolari: le pagine dei gestori sono nei passi qui sotto. Le condizioni le decide il gestore e possono cambiare: chiedi sempre a lui.</p>
 
         <form v-if="canSettings" class="mb-6 card p-4 sm:p-5" @submit.prevent="save">
             <h2 class="mb-3 text-lg font-bold">Conti</h2>
@@ -49,7 +50,7 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                     <legend class="px-1 font-bold">Stripe (carte)</legend>
                     <label class="flex items-center gap-2"><input v-model="form.stripe_enabled" type="checkbox" /> Attivo</label>
                     <ol class="list-decimal space-y-2 pl-5 text-muted">
-                        <li>Ti serve un conto Stripe dell'associazione. Se è un ente non profit, guarda le condizioni che Stripe riserva agli enti: <a :href="links.stripeNonprofit" class="text-accent hover:underline" target="_blank" rel="noopener">Stripe per il non profit</a>.</li>
+                        <li>Ti serve un conto Stripe dell'associazione. Se è un ente non profit, guarda le condizioni che Stripe riserva agli enti: <a :href="links.stripeNonprofit" class="text-accent hover:underline" target="_blank" rel="noopener">Stripe per i non profit</a>.</li>
                         <li><a :href="links.stripeKeys" class="text-accent hover:underline" target="_blank" rel="noopener">Apri la pagina delle chiavi di Stripe</a> e crea una chiave segreta. Se scegli una chiave limitata, deve poter scrivere su «Checkout Sessions», «Refunds» e «Webhook Endpoints».</li>
                         <li>Incolla la chiave qui sotto e premi «Salva»: verifico subito che funzioni e creo da solo il webhook, cioè l'avviso con cui Stripe ci dice che il pagamento è arrivato.</li>
                     </ol>
@@ -68,7 +69,7 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                     <legend class="px-1 font-bold">PayPal</legend>
                     <label class="flex items-center gap-2"><input v-model="form.paypal_enabled" type="checkbox" /> Attivo</label>
                     <ol class="list-decimal space-y-2 pl-5 text-muted">
-                        <li>Ti serve un conto PayPal Business dell'associazione. Se è un ente non profit, guarda la tariffa che PayPal riserva agli enti benefici: <a :href="links.paypalNonprofit" class="text-accent hover:underline" target="_blank" rel="noopener">PayPal per il non profit</a>.</li>
+                        <li>Ti serve un conto PayPal Business dell'associazione. Se è un ente non profit, guarda la tariffa che PayPal riserva agli enti benefici: <a :href="links.paypalNonprofit" class="text-accent hover:underline" target="_blank" rel="noopener">PayPal: tariffa per gli enti benefici</a>.</li>
                         <li><a :href="links.paypalKeys" class="text-accent hover:underline" target="_blank" rel="noopener">Apri la pagina delle credenziali di PayPal</a>, crea un'app e copia il «Client ID» e il «Segreto».</li>
                         <li>Incollali qui sotto e premi «Salva»: verifico subito che funzionino.</li>
                     </ol>
