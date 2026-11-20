@@ -277,7 +277,7 @@ final readonly class LedgerService implements Ledger
                 ? $this->connection()->table('app.transactions')->where('id', $transactionId)->whereNull('voided_at')->lockForUpdate()->first(['id', 'type', 'activity_id'])
                 : null;
             if ($tx === null) {
-                throw new LedgerError('Movimento non trovato o già stornato.');
+                throw new LedgerError('Movimento non trovato o già annullato.');
             }
             if (! in_array($tx->type ?? null, [TxType::Income->value, TxType::Expense->value], true)) {
                 throw new LedgerError('Un giroconto non si assegna a un\'attività.');
@@ -489,7 +489,7 @@ final readonly class LedgerService implements Ledger
             throw new LedgerError('Conto non valido.');
         }
         if (($account->closed_at ?? null) !== null) {
-            throw new LedgerError('Il conto è chiuso: riaprilo per registrare movimenti.');
+            throw new LedgerError('Il conto è chiuso: riattivalo per registrare movimenti.');
         }
 
         return $method ?? AccountType::from(is_string($account->type ?? null) ? $account->type : 'other')->defaultMethod();

@@ -40,12 +40,12 @@ final class VerifyDomainsCommand extends Command
                 $active++;
             } elseif ($row->state === 'active') {
                 // Era attivo ma non punta più a noi (scaduto, passato ad altri, certificato perso): l'area soci su questo dominio si ferma.
-                [$state, $message] = ['pending', 'Il dominio non risulta più collegato: finché non torna a posto, l\'area soci non si apre da questo indirizzo. Controlla i nameserver indicati.'];
+                [$state, $message] = ['pending', 'L\'indirizzo personalizzato non risulta più collegato: finché non torna a posto, l\'area soci non si apre da questo indirizzo. Controlla i nameserver indicati.'];
             } elseif ($delegated) {
                 [$state, $message] = ['pending', 'Nameserver corretti: il certificato HTTPS è in preparazione.'];
             } else {
                 $list = implode(', ', $expected);
-                [$state, $message] = [$late ? 'error' : 'pending', "Imposta sul dominio {$row->domain} i nameserver {$list}."];
+                [$state, $message] = [$late ? 'error' : 'pending', "Imposta per l'indirizzo {$row->domain} i nameserver {$list}."];
             }
             $db->connection('pgsql')->table('core.org_domains')->where('org_id', $row->org_id)->update(['state' => $state, 'message' => $message, 'checked_at' => now()]);
         }

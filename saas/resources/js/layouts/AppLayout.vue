@@ -22,8 +22,8 @@ const groups = [
         { href: '/gestionale/soci', label: 'Soci', icon: Users, can: 'people.view' },
         { href: '/gestionale/domande', label: 'Domande di adesione', short: 'Domande', icon: UserPlus, can: 'people.view' },
     ] },
-    { label: 'Attività e risorse', items: [
-        { href: '/gestionale/attivita', label: 'Attività', icon: BookOpen, can: 'people.view' },
+    { label: 'Corsi, eventi e risorse', items: [
+        { href: '/gestionale/attivita', label: 'Corsi ed eventi', icon: BookOpen, can: 'people.view' },
         { href: '/gestionale/calendario', label: 'Calendario', icon: CalendarDays, can: 'people.view' },
         { href: '/gestionale/risorse', label: 'Risorse', icon: MapPin, can: 'people.view', pkg: 'resources' },
     ] },
@@ -50,7 +50,7 @@ const creates = computed(() => [
     { href: '/gestionale/soci/nuovo', label: 'Nuova scheda socio', hint: 'Anagrafica e tessera', icon: UserPlus, can: 'people.edit' },
     { href: '/gestionale/prima-nota?nuovo=incasso', label: 'Registra un incasso', hint: 'Quote, contributi, donazioni', icon: Banknote, can: 'accounting.edit' },
     { href: '/gestionale/prima-nota?nuovo=spesa', label: 'Registra una spesa', hint: 'Affitto, materiali, utenze', icon: Receipt, can: 'accounting.edit' },
-    { href: '/gestionale/attivita/nuova', label: 'Nuova attività', hint: 'Corso o evento', icon: BookOpen, can: 'people.edit' },
+    { href: '/gestionale/attivita/nuova', label: 'Nuovo corso o evento', hint: 'Lezioni, serate, gite', icon: BookOpen, can: 'people.edit' },
     { href: '/gestionale/risorse/nuova', label: 'Nuova risorsa', hint: 'Campo, sala, posto barca', icon: MapPin, can: 'people.edit', pkg: 'resources' },
 ].filter(allowed));
 
@@ -73,7 +73,7 @@ const showAccount = ref(false);
 
 <template>
     <div class="min-h-full pt-14 lg:pl-64">
-        <!-- Barra comune a portale, supporto e gestionale (docs/GRAFICA_UX.md §2): logo, nome del posto, Il mio account. -->
+        <!-- Barra comune a portale, supporto e gestionale (docs/GRAFICA_UX.md §2): logo, nome del posto, Il tuo account. -->
         <div class="print:hidden fixed inset-x-0 top-0 z-40 h-14 border-b border-line bg-card">
             <div class="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
                 <a href="https://associazionesemplice.it/" class="flex shrink-0 items-center" aria-label="Associazione Semplice, vai alla home">
@@ -84,7 +84,7 @@ const showAccount = ref(false);
                     <img src="/assets/brand/simbolo-colore.svg" alt="" class="size-8 sm:hidden" />
                 </a>
                 <span class="min-w-0 flex-1 truncate border-l border-line pl-3 text-[15px] font-bold">Gestionale</span>
-                <a href="https://associazionesemplice.it/account" class="inline-flex min-h-11 shrink-0 items-center rounded-xl px-2 text-[15px] font-semibold text-accent hover:bg-surface">Il mio account</a>
+                <a href="https://associazionesemplice.it/account" class="inline-flex min-h-11 shrink-0 items-center rounded-xl px-2 text-[15px] font-semibold text-accent hover:bg-surface">Il tuo account</a>
             </div>
         </div>
         <!-- Barra laterale: da 1024 px -->
@@ -112,7 +112,7 @@ const showAccount = ref(false);
             <div class="border-t border-line p-3">
                 <button v-if="user" type="button" class="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left hover:bg-surface" @click="showAccount = true">
                     <Avatar :name="user.name" size="sm" />
-                    <span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold">{{ user.name }}</span><span class="caption block">Profilo e accesso</span></span>
+                    <span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold">{{ user.name }}</span><span class="caption block">Il tuo account</span></span>
                     <ChevronRight class="size-4 shrink-0 text-muted" aria-hidden="true" />
                 </button>
             </div>
@@ -172,7 +172,7 @@ const showAccount = ref(false);
             </ul>
         </Sheet>
 
-        <Sheet v-model="showAccount" title="Profilo e accesso" :description="user?.email">
+        <Sheet v-model="showAccount" title="Il tuo account" :description="user?.email">
             <ul class="list-group">
                 <li><Link href="/gestionale/profilo" class="list-row" @click="showAccount = false"><UserRound class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Il tuo profilo</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/account/verifica-in-due-passaggi" class="list-row" @click="showAccount = false"><ShieldCheck class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Sicurezza</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
@@ -194,7 +194,7 @@ const showAccount = ref(false);
                     </li>
                 </ul>
             </div>
-            <p class="caption mb-1.5 px-1 font-semibold">Profilo e accesso</p>
+            <p class="caption mb-1.5 px-1 font-semibold">Il tuo account</p>
             <ul class="list-group">
                 <li><Link href="/gestionale/profilo" class="list-row" @click="showMore = false"><UserRound class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Il tuo profilo</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/account/verifica-in-due-passaggi" class="list-row" @click="showMore = false"><ShieldCheck class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Sicurezza</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>

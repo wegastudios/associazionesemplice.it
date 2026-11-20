@@ -12,9 +12,9 @@ const nextLabel = computed(() => ({ giorno: 'Giorno dopo', settimana: 'Settimana
 </script>
 
 <template>
-    <Head title="Calendario delle attività" />
+    <Head title="Calendario di corsi ed eventi" />
     <AppLayout>
-        <p class="mb-2 text-sm"><Link href="/gestionale/attivita" class="text-accent hover:underline">← Attività</Link></p>
+        <p class="mb-2 text-sm"><Link href="/gestionale/attivita" class="text-accent hover:underline">← Corsi ed eventi</Link></p>
         <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold">Calendario</h1>

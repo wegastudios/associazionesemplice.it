@@ -14,7 +14,7 @@ use Illuminate\Database\Query\Builder;
 /** Prima nota in CSV con le colonne che l'import riconosce: si può aprire in Excel e ricaricare altrove. */
 final readonly class LedgerExport
 {
-    public const HEADER = ['Data', 'Tipo', 'Conto', 'Modalità', 'Voce', 'Attività', 'N. tessera', 'Persona', 'Descrizione', 'Competenza', 'Riferimento', 'Entrata', 'Uscita', 'Ricevuta', 'Stornato'];
+    public const HEADER = ['Data', 'Tipo', 'Conto', 'Modalità', 'Voce', 'Attività', 'N. tessera', 'Persona', 'Descrizione', 'Competenza', 'Riferimento', 'Entrata', 'Uscita', 'Ricevuta', 'Annullato'];
 
     public function __construct(
         private DatabaseManager $db,

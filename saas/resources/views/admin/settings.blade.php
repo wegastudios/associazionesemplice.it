@@ -7,8 +7,8 @@
 
     <form method="post" action="{{ route('platform.settings.save') }}" class="card">
         @csrf
-        <h2>Dominio personalizzato</h2>
-        <p class="muted">Il cliente delega il suo dominio ai nostri nameserver; poi il dominio si associa in cPanel all'associazione e il certificato lo emette AutoSSL. Questi sono i nameserver che il cliente vede nelle istruzioni. Lasciando un campo vuoto vale il valore del file d'ambiente del server.</p>
+        <h2>Indirizzo personalizzato</h2>
+        <p class="muted">Il cliente delega il suo indirizzo ai nostri nameserver; poi l'indirizzo si associa in cPanel all'associazione e il certificato lo emette AutoSSL. Questi sono i nameserver che il cliente vede nelle istruzioni. Lasciando un campo vuoto vale il valore del file d'ambiente del server.</p>
         @foreach ($fields as $key => $field)
             @php $name = 'settings['.str_replace('.', '_', $key).']'; $id = 's-'.str_replace('.', '-', $key); @endphp
             <label for="{{ $id }}">{{ $field['label'] }}</label>

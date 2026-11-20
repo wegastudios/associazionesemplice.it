@@ -212,8 +212,8 @@ final readonly class LedgerController
         $data = Input::of($request->validate(['reason' => ['required', 'string', 'max:255']]));
 
         return $this->attempt(fn (): string => $this->ledger->void($transaction, Input::string($data, 'reason')) > 1
-            ? 'Movimento stornato insieme ai movimenti collegati.'
-            : 'Movimento stornato.');
+            ? 'Movimento annullato insieme ai movimenti collegati.'
+            : 'Movimento annullato.');
     }
 
     /** Cambia l'attività (centro di costo) di un movimento. */
@@ -224,7 +224,7 @@ final readonly class LedgerController
         return $this->attempt(function () use ($transaction, $data): string {
             $this->ledger->assignActivity($transaction, Input::optionalString($data, 'activity_id'));
 
-            return 'Attività del movimento aggiornata.';
+            return 'Corso o evento del movimento aggiornato.';
         });
     }
 

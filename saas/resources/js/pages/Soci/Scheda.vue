@@ -175,7 +175,7 @@ const label = 'space-y-1 text-sm';
                     <label :class="label"><span class="font-semibold">Conto</span>
                         <select v-model="renew.account_id" :class="field"><option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
                     <div class="flex items-end"><button type="submit" class="btn-block btn btn-primary" :disabled="renew.processing">Incassa e rinnova</button></div>
-                    <p class="text-sm text-muted sm:col-span-5">L'incasso va in prima nota con la ricevuta; stornandolo la tessera non vale più.</p>
+                    <p class="text-sm text-muted sm:col-span-5">L'incasso va in prima nota con la ricevuta; annullandolo la tessera non vale più.</p>
                 </form>
                 <form v-if="canEdit && person.type !== 'founder' && !person.left_on" class="mt-4 flex flex-wrap items-end gap-3 border-t border-line pt-4" @submit.prevent="submitGrant">
                     <label :class="label" class="min-w-64 flex-1"><span class="font-semibold">Tessera senza incasso: motivo</span><input v-model="grant.reason" required placeholder="es. socio onorario" :class="field" /></label>

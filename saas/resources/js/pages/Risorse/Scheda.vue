@@ -186,7 +186,7 @@ const label = 'space-y-1 text-sm';
                         <label :class="label"><span class="font-semibold">Modalità</span><select v-model="pay.method" :class="field"><option value="">Quella del conto</option><option v-for="m in methods" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
                         <div class="flex gap-3 sm:col-span-4">
                             <button type="submit" class="btn btn-primary" :disabled="pay.processing">Registra l'incasso</button>
-                            <button type="button" class="btn btn-secondary" @click="paying = null">Annulla</button>
+                            <button type="button" class="btn btn-secondary" @click="paying = null">Chiudi</button>
                             <span class="self-center text-sm text-muted">Va in prima nota, con ricevuta se chi paga è in anagrafica.</span>
                         </div>
                     </form>
@@ -266,7 +266,7 @@ const label = 'space-y-1 text-sm';
             </fieldset>
             <div v-if="canEdit" class="mt-4 flex flex-wrap gap-3">
                 <button type="submit" class="btn btn-primary" :disabled="form.processing">{{ resource ? 'Salva' : 'Crea la risorsa' }}</button>
-                <button v-if="resource" type="button" class="btn btn-secondary" @click="archive(!resource.archived)">{{ resource.archived ? 'Riapri' : 'Archivia' }}</button>
+                <button v-if="resource" type="button" class="btn btn-secondary" @click="archive(!resource.archived)">{{ resource.archived ? 'Riattiva' : 'Archivia' }}</button>
             </div>
         </form>
     </AppLayout>

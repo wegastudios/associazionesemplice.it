@@ -52,7 +52,7 @@ final readonly class MemberAreaAddressStep implements SetupStep
         $custom = $this->db->connection('pgsql')->table('core.org_domains')->where('org_id', $orgId)->where('state', 'active')->value('domain');
         $urls = [['label' => 'Indirizzo dell\'area soci', 'url' => StaffLinkController::baseUrl(is_string($slug) ? $slug : '').'/area']];
         if (is_string($custom) && $custom !== '') {
-            $urls[] = ['label' => 'Indirizzo con il tuo dominio', 'url' => StaffLinkController::baseUrl(is_string($slug) ? $slug : '', $custom).'/area'];
+            $urls[] = ['label' => 'Indirizzo personalizzato (un indirizzo tuo, per esempio soci.tuaassociazione.it)', 'url' => StaffLinkController::baseUrl(is_string($slug) ? $slug : '', $custom).'/area'];
         }
 
         return ['urls' => $urls];

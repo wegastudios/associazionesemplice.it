@@ -8,7 +8,7 @@
         <div class="stat"><b>{{ $counts['active'] ?? 0 }}</b><span>Abbonamenti attivi</span></div>
         <div class="stat"><b>{{ $counts['trial'] ?? 0 }}</b><span>Prove in corso</span></div>
         <div class="stat {{ $expiring > 0 ? 'warn' : '' }}"><b>{{ $expiring }}</b><span>In scadenza (30 giorni)</span></div>
-        <div class="stat {{ ($counts['past_due'] ?? 0) > 0 ? 'bad' : '' }}"><b>{{ $counts['past_due'] ?? 0 }}</b><span>Pagamenti in ritardo</span></div>
+        <div class="stat {{ ($counts['past_due'] ?? 0) > 0 ? 'bad' : '' }}"><b>{{ $counts['past_due'] ?? 0 }}</b><span>Pagamenti non riusciti</span></div>
         <div class="stat"><b>{{ $counts['suspended'] ?? 0 }}</b><span>Sospesi</span></div>
         <div class="stat"><b>{{ $newOrgs }}</b><span>Nuove associazioni (30 giorni)</span></div>
     </div>

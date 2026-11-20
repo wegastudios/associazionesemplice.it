@@ -39,24 +39,24 @@ const field = 'field';
                     <div><dt class="text-muted">Email</dt><dd>{{ g.email }}</dd></div>
                     <div><dt class="text-muted">Cellulare</dt><dd>{{ g.phone }}</dd></div>
                 </dl>
-                <p class="mt-2 text-sm text-muted">Accogliendo la domanda il genitore viene collegato al minore: se ha già una scheda (stesso codice fiscale o email) si usa quella.</p>
+                <p class="mt-2 text-sm text-muted">Approvando la domanda il genitore viene collegato al minore: se ha già una scheda (stesso codice fiscale o email) si usa quella.</p>
             </template>
         </section>
 
         <div v-if="application.status === 'pending' && canEdit" class="mt-6 grid gap-6 sm:grid-cols-2">
             <form class="space-y-3 card p-4 sm:p-5 text-sm" @submit.prevent="approve">
-                <h2 class="text-lg font-bold">Accogli</h2>
+                <h2 class="text-lg font-bold">Approva</h2>
                 <label class="block space-y-1"><span class="font-semibold">Numero di tessera</span><input v-model="approveForm.card_number" :class="field" maxlength="40" /></label>
-                <button type="submit" class="btn btn-primary" :disabled="approveForm.processing">Accogli e crea la scheda</button>
+                <button type="submit" class="btn btn-primary" :disabled="approveForm.processing">Approva e crea la scheda</button>
             </form>
             <form class="space-y-3 card p-4 sm:p-5 text-sm" @submit.prevent="reject">
-                <h2 class="text-lg font-bold">Respingi</h2>
+                <h2 class="text-lg font-bold">Rifiuta</h2>
                 <label class="block space-y-1"><span class="font-semibold">Motivo <span class="font-normal text-muted">(resta nel gestionale: a chi ha fatto domanda arriva solo un avviso)</span></span><input v-model="rejectForm.reason" :class="field" maxlength="200" required /></label>
                 <p v-if="rejectForm.errors.reason" class="text-danger">{{ rejectForm.errors.reason }}</p>
-                <button type="submit" class="btn btn-danger" :disabled="rejectForm.processing || !rejectForm.reason.trim()">Respingi</button>
+                <button type="submit" class="btn btn-danger" :disabled="rejectForm.processing || !rejectForm.reason.trim()">Rifiuta</button>
             </form>
         </div>
-        <p v-else-if="application.status !== 'pending'" class="mt-6 text-sm">Domanda {{ application.status === 'approved' ? 'accolta' : 'respinta' }}<template v-if="application.reason">: {{ application.reason }}</template>.
+        <p v-else-if="application.status !== 'pending'" class="mt-6 text-sm">Domanda {{ application.status === 'approved' ? 'approvata' : 'rifiutata' }}<template v-if="application.reason">: {{ application.reason }}</template>.
             <Link v-if="application.person_id" :href="`/gestionale/soci/${application.person_id}`" class="font-semibold text-accent hover:underline">Apri la scheda</Link>
         </p>
     </AppLayout>

@@ -33,7 +33,7 @@ final readonly class SubscriptionSsoController
         if (! is_string($email)) {
             abort(401);
         }
-        $ref = $this->orgs->portalRef($operator->orgId) ?? abort(404, 'Questa associazione non ha un abbonamento da gestire sul portale: se ti serve una modifica, scrivi al supporto.');
+        $ref = $this->orgs->portalRef($operator->orgId) ?? abort(404, 'Questa associazione non ha un abbonamento da gestire sul portale: se ti serve una modifica, scrivi all\'assistenza.');
         $now = time();
 
         $token = EdDsaJwt::sign([

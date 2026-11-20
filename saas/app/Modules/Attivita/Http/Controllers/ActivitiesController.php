@@ -89,7 +89,7 @@ final readonly class ActivitiesController
         return $this->attempt(function () use ($data): RedirectResponse {
             $a = $this->activities->save(null, $data);
 
-            return redirect()->route('activities.show', $a->id)->with('status', 'Attività creata.');
+            return redirect()->route('activities.show', $a->id)->with('status', 'Corso o evento creato.');
         });
     }
 
@@ -104,7 +104,7 @@ final readonly class ActivitiesController
                 $saved = $this->activities->save($activity, $data, $move);
                 $period = $this->activities->blockPeriod($saved);
 
-                return back()->with('status', 'Attività salvata.'.($period === null ? '' : ' Risorsa tenuta occupata '.SessionRules::blockLabel($period['from'], $period['to']).'.'));
+                return back()->with('status', 'Corso o evento salvato.'.($period === null ? '' : ' Risorsa tenuta occupata '.SessionRules::blockLabel($period['from'], $period['to']).'.'));
             });
         } catch (ResourceChangeConflict $e) {
             // Il modulo mostra l'elenco e propone: lasciare tutto com'è, oppure (se si può) spostare gli slot occupati sulla risorsa che si libera.
@@ -116,7 +116,7 @@ final readonly class ActivitiesController
     {
         $archived = $request->boolean('archived');
 
-        return $this->attempt(fn (): RedirectResponse => $this->done(fn () => $this->activities->archive($activity, $archived), $archived ? 'Attività archiviata.' : 'Attività riattivata.'));
+        return $this->attempt(fn (): RedirectResponse => $this->done(fn () => $this->activities->archive($activity, $archived), $archived ? 'Corso o evento archiviato.' : 'Corso o evento riattivato.'));
     }
 
     public function enroll(Request $request, string $activity): RedirectResponse
