@@ -70,7 +70,7 @@ final class DonatePage {
 		if ( $list ) {
 			echo '<table class="widefat striped"><thead><tr><th>Raccolta</th><th>Shortcode</th><th>Stato</th><th></th></tr></thead><tbody>';
 			foreach ( $list as $c ) {
-				$state = ! $c['active'] ? 'Spenta' : ( Donations::enabled() ? '<span class="asem-ok">Attiva</span>' : '<span class="asem-warn">In attesa: PayPal non è configurato</span>' );
+				$state = ! $c['active'] ? 'Spenta' : ( Donations::enabled() ? '<span class="asem-ok">Attiva</span>' : '<span class="asem-warn">In attesa: manca un metodo di pagamento attivo o il conto PayPal</span>' );
 				echo wp_kses( '<tr><td><strong>' . esc_html( $c['name'] ) . '</strong>' . ( '' !== $c['purpose'] ? '<br><span class="description">' . esc_html( $c['purpose'] ) . '</span>' : '' ) . '</td>'
 					. '<td>' . self::copy_field( Donations::shortcode( $c['id'] ) ) . '</td><td>' . $state . '</td><td>'
 					. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-donate', array( 'campaign' => $c['id'] ) ) ) . '#asem-campaign">Modifica</a> ', Html::allowed() );

@@ -3375,13 +3375,14 @@ asem_ok( $pos( $o3 ) !== $pos( $o4 ) && strpos( $pos( $o3 ), 'Alfa' ) !== strpos
 asem_ok( false !== strpos( $o1, 'orderby=card' ) && false !== strpos( $o1, 'order=desc' ) && false !== strpos( $o1, 'Tessera ▲' ), 'rubrica: le intestazioni sono cliccabili e mostrano il verso' );
 
 // donazioni: ogni raccolta ha il suo shortcode e il pulsante PayPal già configurato
+Settings::update( array( 'payment_provider' => 'none' ) ); // senza un metodo di pagamento attivo: il pulsante «Dona» di PayPal
 Settings::update( array( 'donate_enabled' => 0, 'donate_paypal' => '', 'donate_amounts' => '5;10', 'donate_purpose' => '' ) );
-$dn_page = asem_render( array( Admin\DonatePage::class, 'render' ), 'solo se PayPal è configurato' );
+$dn_page = asem_render( array( Admin\DonatePage::class, 'render' ), 'un metodo di pagamento attivo' );
 asem_ok( false !== strpos( $dn_page, 'notice-warning' ), 'donazioni: senza PayPal l\'avviso è ben visibile nella pagina' );
 $dn_id = \AssociazioneSemplice\Donations::save_campaign( 0, array( 'name' => 'Restauro del tetto', 'purpose' => 'Per il tetto', 'amounts' => '15; 30', 'note' => 'Ci serve il tuo aiuto.', 'active' => 1 ) );
 asem_ok( $dn_id > 0 && '[associazionesemplice_donazioni id="' . $dn_id . '"]' === \AssociazioneSemplice\Donations::shortcode( $dn_id ), 'donazioni: ogni raccolta ha il suo shortcode' );
 $dn_page = asem_render( array( Admin\DonatePage::class, 'render' ), 'Restauro del tetto' );
-asem_ok( false !== strpos( $dn_page, '[associazionesemplice_donazioni id=&quot;' . $dn_id . '&quot;]' ) && false !== strpos( $dn_page, 'In attesa: PayPal non è configurato' ), 'donazioni: l\'elenco mostra lo shortcode e che la raccolta aspetta PayPal' );
+asem_ok( false !== strpos( $dn_page, '[associazionesemplice_donazioni id=&quot;' . $dn_id . '&quot;]' ) && false !== strpos( $dn_page, 'In attesa: manca un metodo di pagamento attivo o il conto PayPal' ), 'donazioni: l\'elenco mostra lo shortcode e che la raccolta aspetta PayPal' );
 $dn_cur = get_current_user_id();
 wp_set_current_user( 0 );
 asem_ok( '' === do_shortcode( \AssociazioneSemplice\Donations::shortcode( $dn_id ) ), 'donazioni: senza PayPal i visitatori non vedono niente' );
