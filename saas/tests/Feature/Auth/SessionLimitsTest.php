@@ -65,8 +65,8 @@ it('rientrando dal cookie «ricordami» chi ha il secondo fattore deve rifare l\
     $this->app['auth']->forgetGuards();
     $this->withCookie($name, (string) $recaller?->getValue());
 
-    $this->get('/gestionale')->assertRedirect('/accesso');
-    $this->assertGuest();
+    // Va all'accesso e il cookie «ricordami» viene tolto: la richiesta dopo è da ospite.
+    $this->get('/gestionale')->assertRedirect('/accesso')->assertCookieExpired($name);
     // Il token degli altri dispositivi resta com'è.
     expect($user->refresh()->remember_token)->toBe($token);
 });
