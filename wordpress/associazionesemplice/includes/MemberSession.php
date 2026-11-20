@@ -44,7 +44,12 @@ final class MemberSession {
 
 	/** Può entrare con l'accesso proprio? Come per l'attivazione: tipo di socio che può accedere e domanda di adesione già approvata. */
 	public static function person_allowed( ?array $p ): bool {
-		return $p && empty( $p['deleted_at'] ) && empty( $p['anonymized_at'] ) && empty( $p['application_status'] ) && MemberType::can_login( (string) $p['type'] );
+		return $p && empty( $p['deleted_at'] ) && empty( $p['anonymized_at'] ) && empty( $p['application_status'] ) && ! self::is_out( $p ) && MemberType::can_login( (string) $p['type'] );
+	}
+
+	/** Fuori dall'associazione o sospeso: chi ha lasciato (data di cessazione già arrivata) o è stato sospeso non entra nell'area soci. */
+	public static function is_out( array $p ): bool {
+		return ! empty( $p['suspended_at'] ) || ( ! empty( $p['left_on'] ) && (string) $p['left_on'] <= Db::today() );
 	}
 
 	/** Dopo quanto senza usarla scade la sessione: 30 giorni con «Ricordami», altrimenti la durata breve dei Limiti (ore). */
