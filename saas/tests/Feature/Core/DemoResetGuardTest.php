@@ -64,7 +64,8 @@ it('rifiuta se un\'associazione ha un piano vero, anche con lo stesso nome della
         'org_id' => $org->id, 'rev' => 1, 'status' => 'active', 'until' => '2027-03-31',
         'claims' => json_encode(['members' => 100]), 'token' => 'token-vero',
     ]);
-    config(['saas.demo.org_slug' => $org->slug]);
+    // Database atteso e cartella giusti, così a fermare l'azzeramento resta solo il piano vero.
+    config(['saas.demo.org_slug' => $org->slug, 'saas.demo.database' => DB::connection()->getDatabaseName(), 'saas.demo.path_marker' => basename(base_path())]);
 
     expect(DemoResetGuard::check())->toContain('piano vero');
 });
