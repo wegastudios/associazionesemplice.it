@@ -60,7 +60,7 @@ function ledgerCtx(array $over = []): array
     return array_merge([
         'accounts' => [['id' => 'a1', 'name' => 'Cassa contanti', 'type' => 'cash'], ['id' => 'a2', 'name' => 'Conto corrente', 'type' => 'bank']],
         'categories' => [
-            ['id' => 'c10', 'name' => 'Quota associativa', 'kind' => 'membership'], ['id' => 'c11', 'name' => 'Quota attività / corso', 'kind' => 'activity_fee'],
+            ['id' => 'c10', 'name' => 'Quota associativa', 'kind' => 'membership'], ['id' => 'c11', 'name' => 'Contributo attività / corso', 'kind' => 'activity_fee'],
             ['id' => 'c12', 'name' => 'Altra entrata', 'kind' => 'other_income'], ['id' => 'c13', 'name' => 'Costo generale', 'kind' => 'general_cost'],
             ['id' => 'c14', 'name' => 'Rettifica', 'kind' => 'adjustment'],
         ],
@@ -126,4 +126,18 @@ it('riassume totali e periodo', function (): void {
     ]), ['a1' => 'Cassa contanti']);
     expect($s)->toMatchArray(['income' => 1000, 'expense' => 450, 'from' => '2024-01-15', 'to' => '2024-02-16', 'new_accounts' => ['Banca Etica']])
         ->and($s['per_account']['Banca Etica'])->toBe(-450);
+});
+
+it('riconosce la voce delle attività sia col nome nuovo sia col vecchio', function (): void {
+    $p = ledgerPlan([
+        ['16/01/2024', 'Entrata', 'Cassa contanti', '', 'Contributo attività / corso', '30', '', '', '', '', '', ''],
+        ['17/01/2024', 'Entrata', 'Cassa contanti', '', 'Quota attività / corso', '30', '', '', '', '', '', ''],
+    ]);
+    expect($p[0]['data']['category_id'] ?? null)->toBe('c11')->and($p[1]['data']['category_id'] ?? null)->toBe('c11');
+
+    // L'associazione ha ancora la voce col nome vecchio (anno chiuso): il file col nome nuovo la trova per natura.
+    $q = ledgerPlan([['17/01/2024', 'Entrata', 'Cassa contanti', '', 'Contributo attività / corso', '30', '', '', '', '', '', '']], [
+        'categories' => [['id' => 'x1', 'name' => 'Quota attività / corso', 'kind' => 'activity_fee']],
+    ]);
+    expect($q[0]['data']['category_id'] ?? null)->toBe('x1');
 });

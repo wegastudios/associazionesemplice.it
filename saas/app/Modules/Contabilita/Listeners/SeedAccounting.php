@@ -25,7 +25,7 @@ final readonly class SeedAccounting
     /** @var list<array{string, CategoryKind, string}> */
     private const CATEGORIES = [
         ['Quota associativa', CategoryKind::Membership, 'Entrate da quote associative'],
-        ['Quota attività / corso', CategoryKind::ActivityFee, self::GENERAL_INCOME],
+        ['Contributo attività / corso', CategoryKind::ActivityFee, self::GENERAL_INCOME],
         ['Erogazione liberale', CategoryKind::Donation, 'Erogazioni liberali'],
         ['Altre entrate', CategoryKind::OtherIncome, 'Altre entrate'],
         ['Rimborso spese socio/volontario', CategoryKind::MemberReimbursement, self::GENERAL_EXPENSE],

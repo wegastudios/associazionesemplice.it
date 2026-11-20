@@ -44,7 +44,7 @@ final class LedgerSheet
     /** Parole nel nome della voce → natura della categoria. */
     private const KEYWORDS = [
         'membership' => ['quotaassoc', 'quotasoc', 'tessera', 'iscrizione'],
-        'activity_fee' => ['corso', 'attivita', 'lezione', 'quotacorso', 'contributo'],
+        'activity_fee' => ['corso', 'attivita', 'quotaattivita', 'lezione', 'quotacorso', 'contributo'],
         'donation' => ['donazion', 'erogazion', 'liberal', 'offert'],
         'member_reimbursement' => ['rimborso', 'compens', 'istrutt', 'docent', 'insegnant'],
     ];

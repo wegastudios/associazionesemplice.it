@@ -571,7 +571,7 @@ final readonly class SessionService
     }
 
     /**
-     * Incassa una prenotazione in prima nota (quota attività, con ricevuta), legata all'attività. Senza importo quanto manca.
+     * Incassa una prenotazione in prima nota (contributo attività, con ricevuta), legata all'attività. Senza importo quanto manca.
      *
      * @return string|null il numero di ricevuta
      */
@@ -587,7 +587,7 @@ final readonly class SessionService
         if ($cents <= 0) {
             throw new ActivityError('Non c\'è niente da incassare: indica l\'importo.');
         }
-        $fee = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Quota attività / corso» in prima nota.');
+        $fee = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Contributo attività / corso» in prima nota.');
         // Opzione fiscale (spenta di default): il contributo di un socio si incassa come erogazione liberale, senza IVA.
         ['category' => $category, 'donation' => $donation] = $this->memberFees->category($fee, $this->person($b->person_id)['type'] ?? '');
         $list = $b->price_list === null ? null : SessionRules::findList($activity->price_lists, $b->price_list);
