@@ -544,7 +544,7 @@ it('chi non è socio dona senza login: nasce un sostenitore, l\'incasso è un\'e
     Http::fake(['api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_pub_1', 'url' => 'https://checkout.stripe.com/c/pay/cs_pub_1'])]);
 
     publicDonate($this)->assertRedirect('https://checkout.stripe.com/c/pay/cs_pub_1');
-    Http::assertSent(fn (HttpRequest $r) => str_contains($r->body(), '/dona/'.$this->org->slug.'/') && str_contains($r->body(), 'unit_amount') && str_contains($r->body(), '1250'));
+    Http::assertSent(fn (HttpRequest $r) => str_contains(urldecode($r->body()), '/dona/'.$this->org->slug.'/') && str_contains($r->body(), 'unit_amount') && str_contains($r->body(), '1250'));
 
     $payload = (string) json_encode(['type' => 'checkout.session.completed', 'data' => ['object' => ['id' => 'cs_pub_1', 'payment_status' => 'paid', 'amount_total' => 1250, 'currency' => 'eur']]]);
     $sign = ['HTTP_STRIPE_SIGNATURE' => StripeWebhook::header($payload, 'whsec_finto456', time()), 'CONTENT_TYPE' => 'application/json'];
@@ -590,7 +590,7 @@ it('la donazione pubblica rifiuta importi fuori limite, la casella dell\'informa
 
 it('la stessa email può provare solo poche volte l\'ora', function (): void {
     publicDonationOn($this);
-    Http::fake(['api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_pub_3', 'url' => 'https://checkout.stripe.com/c/pay/cs_pub_3'])]);
+    Http::fake(['api.stripe.com/v1/checkout/sessions' => fn () => Http::response(['id' => 'cs_pub_'.bin2hex(random_bytes(4)), 'url' => 'https://checkout.stripe.com/c/pay/x'])]);
 
     foreach (range(1, 5) as $i) {
         publicDonate($this)->assertRedirect();
