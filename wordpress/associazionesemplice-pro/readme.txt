@@ -47,7 +47,8 @@ The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, 
 == Changelog ==
 
 = 1.3.21 =
-* Altro: se un pagamento online riguarda un corso già terminato, l'incasso si registra comunque e il pagamento resta «da controllare», con il motivo; finché è da controllare, il socio non riceve la ricevuta: parte quando lo segni a posto.
+* Altro: se un pagamento online riguarda un mese di corso con l'iscrizione terminata, l'incasso si registra comunque e il pagamento resta «da controllare», con il motivo.
+* Altro: finché un pagamento online è «da controllare», il socio non riceve la conferma: parte quando lo segni «controllato», e non parte se lo rimborsi.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.20 =
