@@ -6,6 +6,7 @@ use App\Modules\Piattaforma\Identity\StaffInvites;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 /*
  * Inviti dello staff (docs/UTENTI_E_ACCESSI.md §4): la persona sceglie da sé la password dal link; l'invito vale una volta
