@@ -22,16 +22,18 @@ final readonly class KeyAudit
 
     public const RECOVERY_RESTORED = 'keys.recovery_restored';
 
+    public const ORG_KEY_MISSING = 'keys.org_key_missing';
+
     public function __construct(private DatabaseManager $db) {}
 
     /** @param  array<string, scalar|list<string>|null>  $details */
-    public function record(string $action, array $details = []): void
+    public function record(string $action, array $details = [], string $subject = 'chiave principale'): void
     {
         $this->db->connection('pgsql')->table('core.platform_audit')->insert([
             'id' => (string) Str::uuid7(),
             'staff_id' => null,
             'action' => $action,
-            'subject' => 'chiave principale',
+            'subject' => $subject,
             'details' => json_encode($details, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
             'ip' => null,
             'created_at' => now(),
