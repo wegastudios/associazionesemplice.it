@@ -20,6 +20,7 @@ final readonly class Service
     /**
      * @param  list<string>  $allowedIps
      * @param  Closure(string): void  $log
+     * @param  ?Closure(string): void  $alarm
      */
     public function __construct(
         private KeyWrap $wrap,
