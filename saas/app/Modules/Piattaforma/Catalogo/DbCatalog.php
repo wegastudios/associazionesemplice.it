@@ -39,9 +39,11 @@ final class DbCatalog implements Catalog
      */
     private function withLifecycle(PublishedCatalog $current, bool $stored): PublishedCatalog
     {
+        $retention = config('saas.portal.retention_days', 180);
+        $trial = config('saas.portal.trial_purge_days', 7);
         $lifecycle = [
-            'retention_days' => (int) config('saas.portal.retention_days'),
-            'trial_purge_days' => (int) config('saas.portal.trial_purge_days'),
+            'retention_days' => is_int($retention) && $retention > 0 ? $retention : 180,
+            'trial_purge_days' => is_int($trial) && $trial > 0 ? $trial : 7,
         ];
         if (self::hasLifecycle($current, $lifecycle)) {
             return $current;
