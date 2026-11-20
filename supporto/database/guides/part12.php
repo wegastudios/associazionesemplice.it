@@ -41,7 +41,7 @@ I dati dell'ente compaiono sulle ricevute e sul modulo di adesione. L'email e il
 
 ## Perché vedo una banda in alto?
 
-Finché manca qualche dato dell'ente, in cima a ogni pagina c'è una banda fissa (non si chiude): «Mancano dei dati dell'associazione», con l'elenco di quello che manca. Chi amministra preme **Completali ora** e arriva alla **Configurazione guidata**, al passo **Dati dell'ente**. Chi non amministra legge «Chiedi a chi amministra di completarli.». Se l'associazione non ha partita IVA, numero RUNTS o PEC, metti la spunta corrispondente (per esempio «L'associazione non ha una PEC»). La banda sparisce da sola quando è tutto compilato.
+Finché manca qualche dato dell'ente, in cima a ogni pagina c'è una banda fissa (non si chiude): «Mancano dei dati dell'associazione», con l'elenco di quello che manca. Chi amministra preme **Completali ora** e arriva alla **Configurazione guidata**, al passo **Dati dell'ente**. Chi non amministra legge «Chiedi a un amministratore di completarli.». Se l'associazione non ha partita IVA, numero RUNTS o PEC, metti la spunta corrispondente (per esempio «L'associazione non ha una PEC»). La banda sparisce da sola quando è tutto compilato.
 
 ## Dove trovi le cose
 
@@ -112,7 +112,7 @@ La pagina **Domande di adesione** ha tre parti: le domande da esaminare, quelle 
 
 ## Pubblicare il modulo
 
-Nelle impostazioni della pagina trovi l'indirizzo del modulo da pubblicare sul sito, l'indirizzo dell'informativa privacy, quello del regolamento e i giorni di preavviso per la tessera (quanti giorni prima della scadenza avvisare il socio). Per far arrivare le domande spunta **«Accetta domande di adesione online»**: compare l'indirizzo del modulo.
+Nelle impostazioni della pagina trovi l'indirizzo del modulo da pubblicare sul sito, l'indirizzo dell'informativa privacy, quello del regolamento e i giorni di preavviso per la tessera (quanti giorni prima della scadenza avvisare il socio). Per far arrivare le domande spunta **Ricevi le domande di adesione online**: compare l'indirizzo del modulo.
 
 ## Esaminare una domanda
 
@@ -146,7 +146,7 @@ Se il socio sbaglia o chiede troppi link, vede «Troppi tentativi: riprova tra q
 
 Il menu in basso (o in alto sul computer) ha queste voci:
 
-- **Tessera**: il nome e un codice da mostrare all'ingresso; chi lo legge vede se la tessera è valida. Se la persona non è socia, il gestionale dice «Non è una tessera da socio: qui trovi eventi, quote e ricevute.»; se è uscita dall'associazione, «Risulti uscito dall'associazione.».
+- **Tessera**: il nome e un codice da mostrare all'ingresso; chi lo legge vede se la tessera è valida. Se la scheda non ha la tessera, il gestionale dice «Questa scheda non ha la tessera: qui trovi eventi, quote e ricevute.»; se è uscita dall'associazione, «Risulti uscito dall'associazione.».
 - **Eventi**: gli eventi dei prossimi due mesi, con **Prenota**. Se l'evento è pieno compare **Lista d'attesa**: quando si libera un posto entra il primo in lista e, se ha un'email, viene avvisato (per un minore, il genitore o tutore). La prenotazione vale anche senza email: il socio la trova in **Eventi**. Il socio annulla da solo fino al giorno prima, se la prenotazione non è già pagata e non fa parte di un pacchetto o di un listino; altrimenti scrive alla segreteria.
 - **Prenota** (solo se l'associazione ha il pacchetto **Risorse**, con la prenotazione dall'area soci attiva, e almeno una risorsa a ore o a giornata): il socio sceglie il giorno e tocca una fascia libera. Le risorse stagionali non compaiono: le assegna la segreteria. Vedi [Creare le risorse e gestire le prenotazioni di spazi](guida:gestionale-risorse-e-prenotazioni).
 - **Quote**: corsi e attività con **«Dovuto finora … · versato …»** e **«in regola»** oppure **«da versare …»**, il pulsante **«Paga online»** (se l'associazione ha attivato i pagamenti online: vedi [Pagamenti online dei soci](guida:gestionale-pagamenti-online-dei-soci)) e le ricevute da scaricare in PDF. Le ricevute annullate non compaiono.
@@ -280,7 +280,7 @@ Il certificato è un dato sulla salute, quindi riservato. Lo vedono titolare, am
 
 Nella scheda vedi l'elenco dei certificati del socio, con il tipo, il medico e le date. Il certificato valido oggi è in grassetto: è quello, tra i già rilasciati, che scade più tardi. Per aprire il file premi **«Scarica»**.
 
-Se ti sei sbagliato, premi **Togli**: il gestionale chiede «Cancellare questo certificato medico? Il file allegato viene eliminato.» e, se confermi, il certificato e il suo file spariscono. Per rinnovare un certificato non serve toglierlo: registra il nuovo, e il vecchio resta nell'elenco.
+Se ti sei sbagliato, premi **Elimina**: il gestionale chiede conferma e, se confermi, il certificato e il suo file vengono eliminati per sempre. Per rinnovare un certificato non serve toglierlo: registra il nuovo, e il vecchio resta nell'elenco.
 
 Per registrare, togliere e scaricare servono i permessi di modificare i soci e di vedere i dati sulla salute.
 
@@ -299,7 +299,7 @@ L'elenco comprende i soci in corso (fondatori, ordinari e volontari): i soci usc
 
 ## Il preavviso
 
-Quanti giorni prima della scadenza un certificato risulta «in scadenza» si decide nelle **«Impostazioni del tesseramento»** (campo **«Preavviso certificati (giorni)»**, da 1 a 365), in fondo alla pagina **Nuova scheda socio**. Solo il titolare e gli amministratori possono modificarlo.
+Quanti giorni prima della scadenza un certificato risulta «in scadenza» si decide nelle **Impostazioni di soci e attività** (campo **«Preavviso certificati (giorni)»**, da 1 a 365), in fondo alla pagina **Nuova scheda socio**. Solo il titolare e gli amministratori possono modificarlo.
 
 ## I promemoria per email
 
@@ -328,7 +328,7 @@ Se il socio ha già la tessera di quell'anno, il gestionale non registra la quot
 
 ## Se il socio ha già pagato online
 
-Se il socio paga online una quota che risulta già incassata, il gestionale non la registra una seconda volta e segna il pagamento «da controllare». Il socio vede «Pagamento ricevuto: la segreteria lo sta controllando.». Se nello stesso pagamento ci sono altre voci (per esempio un'attività), quelle si registrano.
+Se il socio paga online una quota che risulta già incassata, il gestionale non la registra una seconda volta e segna il pagamento «da controllare». Il socio legge che la segreteria sta controllando il pagamento. Se nello stesso pagamento ci sono altre voci (per esempio un'attività), quelle si registrano.
 
 I soldi sono arrivati sul conto Stripe o PayPal dell'associazione, ma per quella quota non ci sono né movimento né ricevuta nel gestionale. Cosa fare:
 
@@ -355,7 +355,7 @@ Ti chiede la password e il motivo del rimborso, che il socio leggerà nell'email
 
 Se l'anno fiscale dell'incasso è chiuso, l'operazione non parte: né rimborso né storno. Il gestionale dice: «Non si può stornare la ricevuta N/AAAA: l'anno fiscale AAAA è chiuso, va riaperto. Il rimborso non è stato fatto.» Se il rimborso non riesce, non cambia nulla: ricevute e tessere restano come prima. Caso raro: se il rimborso è stato fatto ma lo storno in prima nota no, il gestionale lo dice e ti chiede di stornarlo a mano dalla prima nota. Serve lo stesso permesso **«Emettere rimborsi»**. Il rimborso parziale c'è solo per i soldi non registrati, con «rimborsa».
 
-Se il pagamento comprendeva una prenotazione di una risorsa o l'iscrizione a un'attività o a un evento, quella voce resta valida e torna da pagare: il gestionale non la annulla. Lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» oppure «L'iscrizione resta e il contributo torna da pagare: se non serve più, togli l'iscrizione dalla scheda dell'attività.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.» (o «La tua iscrizione resta attiva e il contributo risulta da pagare: …»). Per le quote associative non c'è questa riga, perché la tessera si annulla.
+Se il pagamento comprendeva una prenotazione di una risorsa o l'iscrizione a un'attività o a un evento, quella voce resta valida e torna da pagare: il gestionale non la annulla. Lo dice nella conferma e a operazione finita: «La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.» oppure «L'iscrizione resta e il contributo torna da pagare: se non serve più, chiudi l'iscrizione dalla scheda dell'attività.» Anche l'email al socio lo spiega: «La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.» (o «La tua iscrizione resta attiva e il contributo risulta da pagare: …»). Per le quote associative non c'è questa riga, perché la tessera si annulla.
 
 ## Se il gestore dei pagamenti non risponde
 
@@ -378,7 +378,7 @@ Tutti i movimenti stanno nella **Prima nota**: l'elenco di entrate e uscite in o
 ## Registrare
 
 1. Dal pulsante **Nuovo** (o dalla **Prima nota**) scegli **«Registra un incasso»** o **«Registra una spesa»**.
-2. Scegli il conto, l'importo, la data e, se serve, l'attività collegata. Puoi dividere il movimento in più voci con **«Aggiungi un'altra voce»** e **«Togli questa voce»**.
+2. Scegli il conto, l'importo, la data e, se serve, l'attività collegata. Puoi dividere il movimento in più voci con **Aggiungi un'altra voce** e **Togli questa riga**.
 3. Salva. L'incasso dà la ricevuta; con **«Invia per email»** la mandi alla persona. Se l'associazione ha la partita IVA, ogni voce ha anche la sua aliquota IVA (vedi [Impostare l'IVA](guida:gestionale-iva-e-aspetto-fiscale)).
 
 ### Perché non riesco a inviare la ricevuta per email?
@@ -403,7 +403,7 @@ La trovi in **Gestione → Verifica delle ricevute** (sul telefono: **Altro**), 
 
 - «A posto»: il file è quello emesso;
 - «Da fissare»: ricevuta più vecchia, non ancora fissata; il pulsante **Fissa i prossimi PDF** le fissa a gruppi (se ne restano, premilo ancora);
-- «Mancante» e «Alterato»: il file non c'è più o non coincide con quello emesso. Il pulsante **Rifai il PDF**, dopo una conferma, lo rifà dai dati salvati all'emissione;
+- «Mancante» e «Diverso dall'emissione»: il file non c'è più o non coincide con quello emesso. Il pulsante **Rifai il PDF**, dopo una conferma, lo rifà dai dati salvati all'emissione;
 - «Annullata»: il file emesso resta conservato ma non si scarica più.
 
 Dopo **Rifai il PDF** il gestionale dice se il nuovo file è identico a quello emesso oppure è stato rifatto con gli stessi dati ma con testi o grafica aggiornati. Le ricevute più vecchie si rifanno solo se il risultato è identico: altrimenti non cambia nulla e conviene scrivere al supporto di Associazione Semplice. L'operazione resta scritta nel registro delle azioni.
@@ -429,7 +429,7 @@ Questa guida serve solo se l'associazione ha la partita IVA. Senza, incassi e sp
 
 ## Se non hai la partita IVA
 
-In **Aspetto fiscale** trovi solo un promemoria: «Se l'associazione ha la partita IVA, indicala in Altro › Configurazione guidata › Dati dell'ente: qui compariranno le aliquote.»
+In **Aspetto fiscale** trovi solo un promemoria: «Se l'associazione ha la partita IVA, indicala in «Configurazione guidata», tra i dati dell'ente: qui compariranno le aliquote.»
 
 ## Se hai la partita IVA
 
@@ -511,7 +511,7 @@ Chi può farlo: chi ha il permesso «Registrare in prima nota» (titolare, ammin
 2. Scegli il file: `.xlsx` o `.csv`, al massimo 5 MB e **10.000 movimenti** (se sono di più, dividilo in più file).
 3. Se nel file ci sono righe senza il conto, scegli il **«Conto per le righe senza conto»**. Se non lo scegli, quelle righe risultano errori.
 4. Premi **«Mostra l'anteprima»**.
-5. Controlla l'anteprima e premi **«Importa N movimenti»**. A fine importazione trovi **«Import completato»** con quanti movimenti sono stati registrati e il collegamento **«Vai alla prima nota»**.
+5. Controlla l'anteprima e premi **«Importa N movimenti»**. A fine importazione trovi «Importazione completata» con quanti movimenti sono stati registrati e il collegamento **«Vai alla prima nota»**.
 
 ## Come deve essere fatto il file
 
@@ -591,9 +591,9 @@ Nella stessa pagina vedi inizio e fine dell'anno fiscale.
 
 Se le ricevute di quell'anno sono nell'archivio, prima rimettile con **Rimetti i file** in **Copie di sicurezza**: altrimenti la riapertura viene rifiutata. Se riapri e richiudi l'anno, nasce una nuova versione del rendiconto; le precedenti restano elencate.
 
-## Rendiconti pubblicati alla chiusura
+## Rendiconti emessi alla chiusura
 
-La sezione «Rendiconti pubblicati alla chiusura» elenca i rendiconti definitivi: un anno chiuso si legge sempre da lì, anche se poi voci e conti cambiano. Per ogni versione vedi la data e se è «in uso» o «superata dopo una riapertura».
+La sezione «Rendiconti emessi alla chiusura» elenca i rendiconti definitivi: un anno chiuso si legge sempre da lì, anche se poi voci e conti cambiano. Per ogni versione vedi la data e se è «in uso» o «superata dopo una riapertura».
 
 > Chiudi l'anno fiscale solo dopo aver controllato la prima nota e il rendiconto.
 MD,
@@ -625,11 +625,11 @@ Nell'elenco vedi, per ogni risorsa, come si prenota, la tariffa e lo stato di og
 5. Scegli la **«Voce di entrata»** in cui finiranno gli incassi (di partenza «Altre entrate») e, se hai la partita IVA, la casella **«Con IVA»** (vedi [Impostare l'IVA](guida:gestionale-iva-e-aspetto-fiscale)).
 6. Salva.
 
-**Tariffe a fasce**: una per riga, con giorni (tutti, feriali, weekend), orario e prezzo per fascia; per esempio «feriali 18:00-22:00 15,00». Fuori dalle fasce vale la tariffa soci. **Servizi aggiuntivi**: uno per riga, nome e prezzo («Aperitivo 5,00»): si scelgono quando si prenota.
+**Tariffe per orario**: una per riga, con giorni (tutti, feriali, weekend), orario e prezzo per fascia; per esempio «feriali 18:00-22:00 15,00». Fuori dalle fasce vale la tariffa soci. **Servizi aggiuntivi**: uno per riga, nome e prezzo («Aperitivo 5,00»): si scelgono quando si prenota.
 
 ## Prenotare dalla segreteria
 
-Nella scheda della risorsa scegli **«Chi prenota»**: una persona dell'anagrafica oppure, per un esterno, scrivi il **«Nome di chi prenota»** (per esempio «Torneo» o «azienda»); non serve la scheda. L'esterno paga la tariffa non soci, se l'hai impostata. Per le prenotazioni a ore puoi ripetere **«Ogni settimana per»** fino a 52 settimane; per ogni prenotazione puoi aggiungere ospiti, servizi e note.
+Nella scheda della risorsa scegli **«Chi prenota»**: una persona dell'anagrafica oppure, per un esterno, scrivi il **«Nome di chi prenota»** (per esempio «Torneo» o «azienda»); non serve la scheda. L'esterno paga la tariffa non soci, se l'hai impostata. Per le prenotazioni a ore puoi ripetere la prenotazione scegliendo **Si ripete → ogni settimana, per** fino a 52 settimane; per ogni prenotazione puoi aggiungere ospiti, servizi e note.
 
 Il **«Calendario»** (in alto nella pagina Risorse) mostra le fasce di oggi, i giorni liberi dei prossimi 14 e le stagioni.
 
@@ -778,7 +778,7 @@ Questa guida è per chi lavora nel gestionale: nome, email, password, verifica i
 
 ## Dove si trova
 
-Apri il menu **«Il tuo account»**: sul computer premi il tuo nome nel menu a lato, sul telefono premi **Altro** e scegli **«Il tuo profilo»**. Nello stesso menu c'è **«Sicurezza»**, che porta alla verifica in due passaggi.
+Apri il menu **Profilo e accesso**: sul computer premi il tuo nome nel menu a lato, sul telefono premi **Altro**. Qui scegli **Il tuo profilo**; nello stesso menu c'è **Sicurezza**, che porta alla verifica in due passaggi.
 
 ## Nome e password
 
@@ -809,7 +809,7 @@ A ogni accesso, oltre alla password, serve un codice di 6 cifre generato da un'a
 
 **Attivarla:**
 
-1. Da **«Sicurezza»** (o dal profilo, **«Attivala»**) premi **«Attiva la verifica»**. Il gestionale può chiederti di riscrivere la password.
+1. Da **Sicurezza** (o dal profilo, **«Attivala»**) premi **«Attiva la verifica»**. Il gestionale può chiederti di riscrivere la password.
 2. **Inquadra il QR** con l'app. Se non riesci, inserisci a mano la chiave scritta sotto.
 3. Scrivi il codice di 6 cifre che vedi nell'app e premi **«Conferma»**.
 4. Compaiono i codici di recupero: salvali subito in un posto sicuro (per esempio in un gestore di password). Non vengono mostrati di nuovo.
@@ -857,7 +857,7 @@ In **Operatori e ruoli** decidi chi entra nel gestionale e cosa può fare.
 
 ## Invitare un operatore
 
-Nella sezione **Operatori** scrivi nome ed email, scegli il ruolo e premi **«Invita»**: la persona riceve un'email ed entra con il suo account Associazione Semplice, lo stesso per portale, supporto e gestionale. Se la persona ha già un accesso a questa associazione, l'invito non ne cambia il ruolo: il gestionale dice «Questa persona ha già un accesso a questa associazione: il ruolo si cambia dall'elenco degli operatori.»
+Nella sezione **Operatori** scrivi nome ed email, scegli il ruolo e premi **Manda l'invito**: la persona riceve un'email ed entra con il suo account Associazione Semplice, lo stesso per portale, supporto e gestionale. Se la persona ha già un accesso a questa associazione, l'invito non ne cambia il ruolo: il gestionale dice «Questa persona ha già un accesso a questa associazione: il ruolo si cambia dall'elenco degli operatori.»
 
 ## I ruoli
 
@@ -994,7 +994,7 @@ Se il PDF di una ricevuta manca o risulta diverso da quando è stato emesso, que
 
 ## I certificati medici
 
-Di partenza non ci sono. Se hai il permesso sui dati sulla salute, vedi la casella **«Includi i certificati medici (dati sulla salute) in chiaro»**: spuntandola, nella cartella **Certificati medici** trovi un file per ogni certificato (nome «Cognome Nome - tipo - scade» con la data). Il gestionale avvisa: «Sono dati sulla salute, in chiaro, senza protezione: conservali con cura e consegnali solo a chi ne ha titolo.»
+Di partenza non ci sono. Se hai il permesso sui dati sulla salute, vedi la casella **Includi i certificati medici**: spuntandola, nella cartella **Certificati medici** trovi un file per ogni certificato (nome «Cognome Nome - tipo - scade» con la data). Il gestionale avvisa: «Sono dati sulla salute e nella copia non sono protetti: conservali con cura e consegnali solo a chi ne ha titolo.»
 
 ## Attenzione ai dati personali
 
