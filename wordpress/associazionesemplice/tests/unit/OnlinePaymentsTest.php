@@ -189,6 +189,16 @@ final class PayPalApiTest extends TestCase {
 		PayPalApi::access_token( $this->seq( array( array( 'code' => 401, 'body' => '{"error_description":"Client Authentication failed"}' ) ) ), false, 'ID', 'SEC' );
 	}
 
+	public function test_order_payload_marks_donation_items_only(): void {
+		$items    = $this->items;
+		$items[0] = $items[0] + array( 'as_donation' => true );
+		$p        = PayPalApi::order_payload( $items, 'PUB-1', 'https://s.it/ok', 'https://s.it/ko', 'APS Prova' );
+		$this->assertSame( 'DONATION', $p['purchase_units'][0]['items'][0]['category'] );
+		$this->assertArrayNotHasKey( 'category', $p['purchase_units'][0]['items'][1] );
+		$plain = PayPalApi::order_payload( $this->items, 'PUB-1', 'https://s.it/ok', 'https://s.it/ko', 'APS Prova' );
+		$this->assertArrayNotHasKey( 'category', $plain['purchase_units'][0]['items'][0] );
+	}
+
 	public function test_order_payload_totals_match(): void {
 		$p    = PayPalApi::order_payload( $this->items, 'PUB-1', 'https://s.it/ok', 'https://s.it/ko', 'APS Prova' );
 		$unit = $p['purchase_units'][0];

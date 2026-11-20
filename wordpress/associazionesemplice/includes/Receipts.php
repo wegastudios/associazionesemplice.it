@@ -538,6 +538,13 @@ final class Receipts {
 					$what = 'Contributo: ' . ( $r['activity_name'] ?: $r['category_name'] );
 				}
 				break;
+			case 'donation':
+				if ( ! empty( $r['activity_name'] ) ) { // evento o corso di un socio incassato come erogazione liberale (opzione fiscale): resta chiaro a cosa si riferisce
+					$for  = ! empty( $r['session_date'] ) ? 'evento ' . $r['activity_name'] . ' (' . self::d( $r['session_date'] ) . ')' : ( ! empty( $r['competence_month'] ) ? 'corso ' . $r['activity_name'] . ' — ' . self::month_label( $r['competence_month'] ) : $r['activity_name'] );
+					$what = $r['category_name'] . ' per ' . $for;
+					break;
+				}
+				// no break: l'erogazione liberale senza attività si descrive come le altre entrate
 			default:
 				$what = $r['category_name'] . ( in_array( $r['category_kind'], array( 'donation', 'other_income' ), true ) && '' !== trim( (string) $r['description'] ) ? ' — ' . $r['description'] : '' );
 		}

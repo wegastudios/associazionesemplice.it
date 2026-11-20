@@ -52,11 +52,15 @@ final class PayPalApi {
 		foreach ( $items as $i ) {
 			$cents   = (int) $i['amount_cents'];
 			$total  += $cents;
-			$lines[] = array(
+			$line    = array(
 				'name'        => PaymentItems::line_name( $i ),
 				'quantity'    => '1',
 				'unit_amount' => array( 'currency_code' => 'EUR', 'value' => PaymentItems::decimal( $cents ) ),
 			);
+			if ( ! empty( $i['as_donation'] ) ) {
+				$line['category'] = 'DONATION'; // purchase_units[].items[].category (Orders v2): solo per le voci incassate come erogazione liberale
+			}
+			$lines[] = $line;
 		}
 		$value = PaymentItems::decimal( $total );
 		return array(
