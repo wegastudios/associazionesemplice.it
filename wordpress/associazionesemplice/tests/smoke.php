@@ -6452,7 +6452,8 @@ $rc1 = \AssociazioneSemplice\Receipts::build( $rc_list[0]['key'] );
 $rc1b = \AssociazioneSemplice\Receipts::build( $rc_list[0]['key'] );
 $yr   = substr( $today, 0, 4 );
 asem_ok( 0 === strpos( $rc1['pdf'], '%PDF-1.4' ) && false !== strpos( $rc1['pdf'], 'RICEVUTA DI PAGAMENTO' ) && false !== strpos( $rc1['pdf'], 'Rosa Ricevuta' ) && false !== strpos( $rc1['pdf'], 'RCVRSO80A41H501X' ) && false !== strpos( $rc1['pdf'], 'Quota associativa' ) && false !== strpos( $rc1['pdf'], 'progetto estate' ) && false !== strpos( $rc1['pdf'], '15,00' ) && false !== strpos( $rc1['pdf'], 'Operazione di prova' ), 'ricevute: il PDF contiene chi, cosa, quanto e la riga in fondo' );
-asem_ok( $rc1['number'] === $rc1b['number'] && 1 === preg_match( '#^1/' . $yr . '$#', $rc1['number'] ), 'ricevute: il numero progressivo si assegna una volta e resta' );
+asem_ok( $rc1['number'] === $rc1b['number'] && 1 === preg_match( '#^[0-9]+/' . $yr . '$#', $rc1['number'] ), 'ricevute: il numero progressivo si assegna una volta e resta' );
+$rc_n1 = (int) $rc1['number']; // il numero di partenza dipende da quante ricevute i test precedenti hanno già emesso
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $rc_p, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => 2000, 'description' => 'Offerta' ) ) ) );
 $rc_list2 = \AssociazioneSemplice\Receipts::list_for_payer( $rc_p );
 $don_key  = '';
@@ -6462,7 +6463,7 @@ foreach ( $rc_list2 as $r ) {
 	}
 }
 $rc2 = \AssociazioneSemplice\Receipts::build( $don_key );
-asem_ok( 2 === count( $rc_list2 ) && 1 === preg_match( '#^2/' . $yr . '$#', $rc2['number'] ) && false !== strpos( $rc2['pdf'], 'EROGAZIONE LIBERALE' ), 'ricevute: la seconda ha il numero successivo; solo donazioni = ricevuta di erogazione liberale' );
+asem_ok( 2 === count( $rc_list2 ) && 1 === preg_match( '#^' . ( $rc_n1 + 1 ) . '/' . $yr . '$#', $rc2['number'] ) && false !== strpos( $rc2['pdf'], 'EROGAZIONE LIBERALE' ), 'ricevute: la seconda ha il numero successivo; solo donazioni = ricevuta di erogazione liberale' );
 $st = \AssociazioneSemplice\Receipts::statement( $rc_p, (int) $yr );
 asem_ok( 3500 === $st['total_cents'] && false !== strpos( $st['pdf'], 'ATTESTAZIONE DEI VERSAMENTI' ) && false !== strpos( $st['pdf'], 'Erogazioni liberali' ) && null !== asem_throws( function () use ( $rc_p ) { \AssociazioneSemplice\Receipts::statement( $rc_p, 1999 ); } ), 'ricevute: attestazione annuale con i totali; un anno senza versamenti non si emette' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Receipts::url( 'abc' ), 'action=asem_receipt' ) && false !== strpos( \AssociazioneSemplice\Receipts::statement_url( $rc_p, 2026 ), 'action=asem_statement' ), 'ricevute: indirizzi di scarico con controllo' );
