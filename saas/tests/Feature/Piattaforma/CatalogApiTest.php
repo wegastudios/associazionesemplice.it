@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Portale\Jwt\EdDsaJwt;
-use IlluminateSupportFacadesHttp;
+use Illuminate\Support\Facades\Http;
 
 require_once dirname(__DIR__).'/Portale/PortalHelpers.php';
 
