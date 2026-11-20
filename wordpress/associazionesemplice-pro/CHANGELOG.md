@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.20 – 2026-11-20
+- Altro: se un pagamento online arriva per una voce già pagata, l'incasso si registra comunque e il pagamento resta «da controllare», con il motivo.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.19 – 2026-11-20
 - Nuovo: pagina pubblica delle donazioni, aperta anche ai non soci. Si paga con Stripe, PayPal, SumUp o Satispay e la donazione entra da sola in Prima nota, con la sua ricevuta.
 - Nuovo: al pagamento c'è la spunta «Aggiungi X € per una donazione».

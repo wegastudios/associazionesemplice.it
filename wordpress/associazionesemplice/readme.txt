@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.32
+Stable tag: 1.3.33
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,6 +61,15 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 
 == Changelog ==
 
+= 1.3.33 =
+* Sicurezza: chi è sospeso o ha lasciato l'associazione non entra più nell'area soci. Un ex socio tutore di un minorenne ancora socio entra solo per il figlio: lo vede, prenota e paga per lui.
+* Sicurezza: nuovo permesso dei dipendenti «Vedere dati riservati ed esportare»: senza, non si vedono codice fiscale e note dei soci e non si esporta. I dipendenti già presenti restano come sono.
+* Sicurezza: un incasso registrato a mano non può superare quanto resta da pagare, e un doppio clic non lo registra due volte.
+* Altro: «Quota attività / corso» ora si chiama «Contributo attività / corso».
+Da fare dopo l'aggiornamento:
+* I dipendenti che aggiungi da ora partono senza il permesso «Vedere dati riservati ed esportare»: dallo a chi deve vedere i codici fiscali o esportare.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 = 1.3.32 =
 * Nuovo: invito a donare («Non puoi partecipare? Sostienici con una donazione»), da accendere dove serve: pagina dell'evento o del corso, conferma dell'iscrizione, area soci, email ai soci.
 * Altro: la pagina Donazioni spiega meglio come ricevere le donazioni con PayPal, mandare la ricevuta e registrarle in Prima nota.
@@ -96,20 +105,6 @@ Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/change
 * Ottimizzazione: «Soci e ospiti» a 50 righe per pagina e Prima nota a 100, con i totali sempre dell'anno intero
 * Ottimizzazione: le pagine pubbliche degli eventi restano in memoria per i visitatori e si aggiornano a ogni prenotazione o modifica
 * Nuovo: l'importazione di file grandi procede a piccoli giri, con avanzamento e pulsanti per riprendere o fermare
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.26 =
-* Nuovo: permessi dei dipendenti per area. I certificati medici hanno un permesso a parte, e chi non ha l'anagrafica cerca i soci per nome o tessera
-* Nuovo: negli eventi su richiesta prenota solo la segreteria; la lista d'attesa ricorda la tariffa scelta
-* Nuovo: l'adesione di un minore aspetta la conferma del genitore già registrato
-* Nuovo: limiti alle richieste dei non soci, regolabili in Limiti e soglie
-* Sicurezza: password per scaricare le copie di sicurezza, aggiornamenti solo firmati, chiave di licenza cifrata
-* Sicurezza: dopo un ripristino i soci scelgono una nuova password; i ruoli standard di WordPress non danno più accesso al plugin
-* Sicurezza: i contenuti riservati non compaiono più in ricerca, commenti e anteprime
-* Altro: con bonifico, assegno o contrassegno la quota risulta pagata a ordine «completato»; gli errori imprevisti mostrano un codice per il supporto
-Da fare dopo l'aggiornamento:
-* Stripe: aggiungi al webhook gli eventi charge.refunded e charge.dispute.created
-* Se sposti il sito, reinserisci la chiave di licenza in Impostazioni → Licenza
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 
