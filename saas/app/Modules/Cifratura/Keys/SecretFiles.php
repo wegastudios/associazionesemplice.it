@@ -55,7 +55,7 @@ final class SecretFiles
         }
         chmod($target, 0600);
 
-        if ($written !== strlen($data)) {
+        if ($written === false || $written !== strlen($data)) {
             @unlink($target);
             throw new RuntimeException('Scrittura del file non riuscita.');
         }

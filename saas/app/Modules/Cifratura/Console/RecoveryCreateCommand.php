@@ -102,9 +102,13 @@ final class RecoveryCreateCommand extends Command
             }
             self::checkServiceMaster($vaults, $master);
 
+            $signing = $vaults->signingKey();
+            if ($signing === '') {
+                throw new RuntimeException('SAAS_KEY_SERVICE_SIGNING_KEY non valida.');
+            }
             $ips = $this->ask('Indirizzi del SaaS ammessi dal servizio (allowed_ips, separati da virgole)');
             $items['service_master_key'] = base64_encode($master);
-            $items['service_client_public_key'] = base64_encode(sodium_crypto_sign_publickey_from_secretkey($vaults->signingKey()));
+            $items['service_client_public_key'] = base64_encode(sodium_crypto_sign_publickey_from_secretkey($signing));
             $items['service_allowed_ips'] = is_string($ips) ? trim($ips) : '';
             sodium_memzero($master);
         }
