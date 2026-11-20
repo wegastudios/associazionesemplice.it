@@ -17,7 +17,8 @@ return [
     'auth' => [
         // Verifica in due passaggi obbligatoria per chi è operatore. Si spegne SOLO in sviluppo, con dati inventati
         // (SAAS_REQUIRE_TWO_FACTOR=false nel file d'ambiente): saas:health lo segnala finché è spenta.
-        'require_two_factor' => (bool) env('SAAS_REQUIRE_TWO_FACTOR', true),
+        // Si spegne solo con un «no» esplicito (false, 0, off, no): un valore vuoto o sconosciuto lascia la verifica accesa.
+        'require_two_factor' => env('SAAS_REQUIRE_TWO_FACTOR', true) === '' ? true : (filter_var(env('SAAS_REQUIRE_TWO_FACTOR', true), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true),
         // Durata massima del gestionale dall'accesso (minuti), anche se si lavora di continuo: 12 ore.
         'session_max_minutes' => (int) env('SAAS_SESSION_MAX_MINUTES', 720),
     ],
@@ -74,7 +75,7 @@ return [
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
     // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.
     'demo' => [
-        'enabled' => (bool) env('SAAS_DEMO', false),
+        'enabled' => filter_var(env('SAAS_DEMO', false), FILTER_VALIDATE_BOOLEAN),
         // Nome del database della demo: l'azzeramento si rifiuta se il database collegato è un altro (obbligatorio).
         'database' => env('SAAS_DEMO_DATABASE', ''),
         // L'applicazione e i suoi file devono stare in una cartella con questo nome: altrimenti niente azzeramento.
@@ -91,14 +92,14 @@ return [
     // Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md): /saas/admin si apre con il token `staff_sso` del portale.
     // Spento finché SAAS_STAFF_SSO non è true; spento resta l'accesso locale dello staff.
     'staff_sso' => [
-        'enabled' => (bool) env('SAAS_STAFF_SSO', false),
+        'enabled' => filter_var(env('SAAS_STAFF_SSO', false), FILTER_VALIDATE_BOOLEAN),
         // Dove mandare chi non ha sessione (vuoto = <portale>/staff/accedi?area=saas).
         'login_url' => env('SAAS_STAFF_LOGIN_URL'),
     ],
 
     // Il SaaS come fornitore di identità dello staff (docs/UTENTI_E_ACCESSI.md): spento finché SAAS_STAFF_ISSUER non è true.
     'staff_issuer' => [
-        'enabled' => (bool) env('SAAS_STAFF_ISSUER', false),
+        'enabled' => filter_var(env('SAAS_STAFF_ISSUER', false), FILTER_VALIDATE_BOOLEAN),
         'issuer' => env('SAAS_STAFF_ISSUER_URL', 'https://associazionesemplice.it/saas'),
         'request_issuer' => env('SAAS_STAFF_REQUEST_ISSUER', 'https://associazionesemplice.it'),
         // Seme Ed25519 (base64, 32 byte) della chiave staff-… che firma gli staff_sso.
@@ -114,13 +115,13 @@ return [
     // Accesso unico dello staff (docs/LOGIN_UNICO_E_DATABASE.md): l'accesso è /accedi del portale; acceso, i vecchi moduli
     // di /saas/admin rinviano lì. Spento finché SAAS_UNIFIED_LOGIN non è true.
     'unified_login' => [
-        'enabled' => (bool) env('SAAS_UNIFIED_LOGIN', false),
+        'enabled' => filter_var(env('SAAS_UNIFIED_LOGIN', false), FILTER_VALIDATE_BOOLEAN),
         // Anche gli operatori delle associazioni entrano nel gestionale da /accedi (passo 6); spento finché SAAS_UNIFIED_OPERATORS non è true.
-        'operators' => (bool) env('SAAS_UNIFIED_OPERATORS', false),
+        'operators' => filter_var(env('SAAS_UNIFIED_OPERATORS', false), FILTER_VALIDATE_BOOLEAN),
     ],
 
     // Registro delle azioni: cancellare le partizioni più vecchie dell'anno precedente (saas:audit:prune). Spento finché non si accende.
-    'audit_prune_enabled' => (bool) env('SAAS_AUDIT_PRUNE_ENABLED', false),
+    'audit_prune_enabled' => filter_var(env('SAAS_AUDIT_PRUNE_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
 
     // Contratto con il portale (docs/CONTRATTO_PORTALE.md).
     'portal' => [
@@ -138,9 +139,9 @@ return [
         // Giorni dopo la fine della prova, senza un piano, prima di cancellare i dati della prova (decisione del 13/11/2026).
         'trial_purge_days' => 7,
         // Avvisi sul ciclo di vita (scadenza, sospensione, cancellazione, fine prova): spenti finché non si accendono.
-        'notices_enabled' => env('SAAS_NOTICES_ENABLED', false),
+        'notices_enabled' => filter_var(env('SAAS_NOTICES_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
         // Interruttore della cancellazione notturna: spento finché la titolare non dà il via.
-        'purge_enabled' => (bool) env('SAAS_PURGE_ENABLED', false),
+        'purge_enabled' => filter_var(env('SAAS_PURGE_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
         // Se in una notte i candidati sono di più la cancellazione non parte e avvisa: un errore di data non cancella tutto.
         'purge_max_per_night' => 5,
     ],

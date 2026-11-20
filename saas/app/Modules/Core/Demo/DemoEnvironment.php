@@ -41,7 +41,7 @@ final readonly class DemoEnvironment
      */
     public static function credentials(): array
     {
-        if (! (bool) config('saas.demo.enabled') || app()->environment('production')) {
+        if (! filter_var(config('saas.demo.enabled'), FILTER_VALIDATE_BOOLEAN) || app()->environment('production')) {
             return [];
         }
         $password = config('saas.demo.password');
@@ -64,7 +64,7 @@ final readonly class DemoEnvironment
 
     public function enabled(): bool
     {
-        return (bool) config('saas.demo.enabled') && ! $this->app->environment('production');
+        return filter_var(config('saas.demo.enabled'), FILTER_VALIDATE_BOOLEAN) && ! $this->app->environment('production');
     }
 
     /** Email pubblica dell'utente di prova per quel ruolo. */

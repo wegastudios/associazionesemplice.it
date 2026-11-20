@@ -12,6 +12,7 @@ use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
+use App\Modules\Contabilita\Contracts\ReceiptHold;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDonations;
@@ -36,7 +37,7 @@ use Throwable;
  *
  * @phpstan-import-type Due from PayableDues
  *
- * @phpstan-type Payment array{id: string, person_id: string, provider: string, status: string, amount_cents: int, paid_cents: int|null, items: list<Due>, receipts: list<string>, provider_ref: string|null, error: string|null, refunded_cents: int, created_at: string}
+ * @phpstan-type Payment array{id: string, person_id: string, provider: string, status: string, amount_cents: int, paid_cents: int|null, items: list<Due>, receipts: list<string>, held: list<list<string>>, provider_ref: string|null, error: string|null, refunded_cents: int, created_at: string}
  */
 final readonly class OnlinePayments
 {
@@ -244,7 +245,9 @@ final readonly class OnlinePayments
             $settings = $this->settings();
             $errors = [];
             $receipts = [];
+            $held = [];
             $already = [];
+            $gone = [];
             if ($paidCents !== $p['amount_cents']) {
                 $errors[] = 'Incassati '.self::euro($paidCents).' invece di '.self::euro($p['amount_cents']).': da controllare.';
             } elseif ($settings?->account_id === null) {
@@ -260,14 +263,30 @@ final readonly class OnlinePayments
                         // I soldi sono già arrivati sul conto del gestore: ogni voce si registra SEMPRE in prima nota (cassa e conto devono tornare).
                         // Se nel frattempo era già pagata o annullata (controllo solo per quota, mese di corso e prenotazione a evento) si segnala:
                         // il pagamento va da controllare e la segreteria decide se restituire.
-                        if (preg_match('/^[qmb]:/', $item['key']) === 1 && ! self::stillDue($module, $item)) {
+                        // Chi paga un mese di corso e non risulta più iscritto: i soldi vanno comunque in prima nota sul contributo del corso.
+                        $course = $module->notEnrolled($item['key']);
+                        if ($course !== null) {
+                            $gone[] = $course;
+                            $this->audit->record('payment.item_not_enrolled', 'app.online_payments', $paymentId, ['key' => $item['key'], 'cents' => $item['amount_cents']]);
+                        } elseif (preg_match('/^[qmb]:/', $item['key']) === 1 && ! self::stillDue($module, $item)) {
                             $already[$item['person_id']][] = $item['label'];
                             $this->audit->record('payment.item_already_paid', 'app.online_payments', $paymentId, ['key' => $item['key'], 'cents' => $item['amount_cents']]);
                         }
-                        $receipt = $this->connection()->transaction(fn (): ?string => $module->settle($item['key'], $item['amount_cents'], (string) $settings->account_id,
-                            now('Europe/Rome')->toDateString(), $p['provider'], ! str_starts_with($item['key'], 'd:')));
-                        if ($receipt !== null) {
-                            $receipts[] = $receipt;
+                        // Il movimento entra subito in prima nota, la ricevuta si emette dopo: subito se il pagamento è in ordine, altrimenti
+                        // quando la segreteria lo segna «controllato».
+                        // La donazione dalla pagina pubblica resta com'era: ricevuta subito, senza attendere il controllo.
+                        $now = now('Europe/Rome')->toDateString();
+                        $anyway = ! str_starts_with($item['key'], 'd:');
+                        if ($item['public'] ?? false) {
+                            $receipt = $this->connection()->transaction(fn (): ?string => $module->settle($item['key'], $item['amount_cents'], (string) $settings->account_id, $now, $p['provider'], $anyway));
+                            if ($receipt !== null) {
+                                $receipts[] = $receipt;
+                            }
+                        } else {
+                            $ids = $this->connection()->transaction(fn (): array => ReceiptHold::run(fn (): ?string => $module->settle($item['key'], $item['amount_cents'], (string) $settings->account_id, $now, $p['provider'], $anyway)));
+                            if ($ids !== []) {
+                                $held[] = $ids;
+                            }
                         }
                     } catch (Throwable $e) {
                         $errors[] = $item['label'].': '.($e instanceof InvalidArgumentException ? $e->getMessage() : 'non registrata');
@@ -277,17 +296,30 @@ final readonly class OnlinePayments
             // Il testo elenca le voci già pagate del primo gruppo (per persona) che ne ha; gli altri gruppi non aggiungono voci, ma il pagamento resta da controllare.
             $first = array_values($already)[0] ?? [];
             $notes = $errors;
+            if ($gone !== []) {
+                $courses = array_values(array_unique($gone));
+                $notes[] = (count($courses) === 1 ? 'Iscrizione terminata: ' : 'Iscrizioni terminate: ').implode(', ', $courses).'. L\'incasso è stato registrato comunque: controlla se va restituito.';
+            }
             if ($first !== []) {
                 $notes[] = (count($first) === 1 ? 'Già pagata: ' : 'Già pagate: ').implode(', ', $first).'. L\'incasso è stato registrato comunque: controlla se va restituito.';
+            }
+            // Pagamento in ordine: le ricevute si emettono subito. Da controllare: i movimenti restano in prima nota senza ricevuta
+            // e la ricevuta nasce quando la segreteria segna il pagamento «controllato».
+            if ($notes === [] && $held !== []) {
+                [$issued, $left, $failure] = $this->issueReceipts($held);
+                $receipts = [...$receipts, ...$issued];
+                $held = $left;
+                if ($failure !== null) {
+                    $notes[] = 'Ricevuta non emessa: '.$failure;
+                }
             }
             $this->table()->where('id', $paymentId)->update([
                 'status' => $notes === [] ? 'settled' : 'review', 'paid_cents' => $paidCents, 'paid_at' => now(), 'updated_at' => now(),
                 'receipts' => json_encode(array_values(array_unique($receipts)), JSON_THROW_ON_ERROR), 'error' => $notes === [] ? null : mb_substr(implode(' ', $notes), 0, 1000),
+                'held_transactions' => json_encode($held, JSON_THROW_ON_ERROR),
             ]);
             $this->audit->record($notes === [] ? 'payment.settled' : 'payment.review', 'app.online_payments', $paymentId, ['cents' => $paidCents, 'receipts' => count($receipts)]);
-            // Chi ha donato dalla pagina pubblica non ha l'area soci: la ricevuta gli arriva per email.
-            // PUNTO DELLA RICEVUTA: qui si decide se la mail parte anche con voci «già pagate» (oggi sì: contano solo gli errori veri).
-            // Per bloccarla nei pagamenti da controllare basta cambiare `$errors === []` in `$notes === []`.
+            // Chi ha donato dalla pagina pubblica non ha l'area soci: la ricevuta gli arriva per email (come prima: contano solo gli errori veri).
             if ($errors === [] && $receipts !== [] && in_array(true, array_column($p['items'], 'public'), true)) {
                 $mailTo = [$p['person_id'], array_values(array_unique($receipts))];
             }
@@ -295,6 +327,29 @@ final readonly class OnlinePayments
         if ($mailTo !== null) {
             $this->mailDonationReceipts($paymentId, $mailTo[0], $mailTo[1], $paidCents);
         }
+    }
+
+    /**
+     * Emette le ricevute dei movimenti in attesa, una per gruppo (una per voce). Si ferma al primo errore.
+     *
+     * @param  list<list<string>>  $groups
+     * @return array{0: list<string>, 1: list<list<string>>, 2: string|null} ricevute emesse, gruppi ancora in attesa, errore
+     */
+    private function issueReceipts(array $groups): array
+    {
+        $issued = [];
+        foreach ($groups as $i => $group) {
+            try {
+                $label = $this->ledger->issueReceipt($group);
+            } catch (LedgerError $e) {
+                return [$issued, array_values(array_slice($groups, $i)), $e->getMessage()];
+            }
+            if ($label !== null) {
+                $issued[] = $label;
+            }
+        }
+
+        return [$issued, [], null];
     }
 
     /**
@@ -431,7 +486,7 @@ final readonly class OnlinePayments
             }
             $done = is_numeric($row->refunded_cents ?? null) ? (int) $row->refunded_cents : 0;
             $left = $p['paid_cents'] - $done;
-            if ($void && $p['receipts'] === []) {
+            if ($void && $p['receipts'] === [] && $p['held'] === []) {
                 throw new MemberAccessError('Questo pagamento non ha voci registrate: usa «rimborsa» con l\'importo.');
             }
             $amount = $void ? $left : (int) $cents;
@@ -443,7 +498,7 @@ final readonly class OnlinePayments
                 throw new MemberAccessError('C\'è un rimborso di '.self::euro($pending).' di cui non si sa l\'esito: controlla sul pannello di '.($p['provider'] === 'stripe' ? 'Stripe' : 'PayPal').' e ripeti quello stesso importo, senza cambiarlo.');
             }
             if ($void) {
-                $this->assertVoidable($p['receipts']);
+                $this->assertVoidable($p['receipts'], $p['held']);
             }
             $key = 'refund-'.$paymentId.'-'.$done.'-'.$amount;
             $this->table()->where('id', $paymentId)->update(['refund_pending_cents' => $amount, 'refund_key' => $key, 'updated_at' => now()]);
@@ -481,7 +536,7 @@ final readonly class OnlinePayments
             }
             if ($void) {
                 try {
-                    $this->voidReceipts($p['receipts'], $reason);
+                    $this->voidReceipts($p['receipts'], $p['held'], $reason);
                 } catch (MemberAccessError $e) {
                     $voidError = $e->getMessage();
                 }
@@ -489,8 +544,11 @@ final readonly class OnlinePayments
             $note = 'Restituiti '.self::euro($amount).' al socio.'.($voidError !== null ? ' L\'annullamento in prima nota non è riuscito: fallo a mano.' : '');
             $update = ['refunded_cents' => $done + $amount, 'refunded_at' => now(), 'updated_at' => now(), 'refund_pending_cents' => null, 'refund_key' => null,
                 'error' => mb_substr(trim(($p['error'] ?? '').' '.$note), 0, 1000)];
-            if ($p['status'] === 'settled' || $p['receipts'] !== []) {
+            if ($p['status'] === 'settled' || $p['receipts'] !== [] || $p['held'] !== []) {
                 $update += ['status' => 'settled', 'reviewed_at' => now()];
+            }
+            if ($void && $voidError === null) {
+                $update += ['held_transactions' => '[]']; // i movimenti in attesa di ricevuta sono stati stornati
             }
             $this->table()->where('id', $paymentId)->update($update);
             $this->audit->record('payment.refunded', 'app.online_payments', $paymentId, ['cents' => $amount, 'provider' => $p['provider'], 'refund' => $refundId, 'voided' => $void && $voidError === null]);
@@ -514,9 +572,19 @@ final readonly class OnlinePayments
      * Prima di toccare il gestore: lo storno delle ricevute deve essere possibile (anno fiscale aperto).
      *
      * @param  list<string>  $receipts
+     * @param  list<list<string>>  $held  movimenti ancora senza ricevuta
      */
-    private function assertVoidable(array $receipts): void
+    private function assertVoidable(array $receipts, array $held): void
     {
+        $heldIds = array_merge(...$held);
+        if ($heldIds !== []) {
+            $closed = $this->connection()->table('app.transactions as t')
+                ->join('app.fiscal_years as f', static fn (JoinClause $j) => $j->on('f.org_id', '=', 't.org_id')->on('f.year', '=', 't.fiscal_year'))
+                ->whereIn('t.id', $heldIds)->whereNull('t.voided_at')->where('f.status', 'closed')->value('f.year');
+            if ($closed !== null) {
+                throw new MemberAccessError('Non si può annullare l\'incasso: l\'anno fiscale '.(is_numeric($closed) ? (int) $closed : '').' è chiuso, va riaperto. Il rimborso non è stato fatto.');
+            }
+        }
         foreach ($receipts as $label) {
             if (preg_match('#^(\d+)/(\d{4})$#', $label, $m) !== 1) {
                 continue;
@@ -538,9 +606,20 @@ final readonly class OnlinePayments
      * Storna in prima nota gli incassi delle ricevute indicate («numero/anno»): annullano anche le tessere.
      *
      * @param  list<string>  $receipts
+     * @param  list<list<string>>  $held  movimenti ancora senza ricevuta: si stornano anche questi
      */
-    private function voidReceipts(array $receipts, string $reason): void
+    private function voidReceipts(array $receipts, array $held, string $reason): void
     {
+        foreach (array_merge(...$held) as $txId) {
+            if ($this->connection()->table('app.transactions')->where('id', $txId)->whereNull('voided_at')->doesntExist()) {
+                continue;
+            }
+            try {
+                $this->ledger->void($txId, mb_substr('Rimborso del pagamento online: '.$reason, 0, 255));
+            } catch (LedgerError $e) {
+                throw new MemberAccessError('Non si può annullare l\'incasso: '.$e->getMessage().' Il rimborso non è stato fatto.');
+            }
+        }
         foreach ($receipts as $label) {
             if (preg_match('#^(\d+)/(\d{4})$#', $label, $m) !== 1) {
                 continue;
@@ -587,14 +666,30 @@ final readonly class OnlinePayments
         }
     }
 
-    /** La segreteria ha controllato un pagamento «da controllare». */
+    /**
+     * La segreteria ha controllato un pagamento «da controllare»: nascono le ricevute dei movimenti in attesa (una per voce),
+     * una volta sola, ma solo se il pagamento è pagato, non rimborsato e senza un rimborso da fare: se i soldi sono stati
+     * restituiti prima la ricevuta non nasce mai. Se non si può emettere (anno fiscale chiuso) il pagamento resta da controllare.
+     */
     public function markReviewed(string $paymentId): void
     {
-        $n = $this->table()->where('id', $paymentId)->where('status', 'review')->update(['status' => 'settled', 'reviewed_at' => now(), 'updated_at' => now()]);
-        if ($n === 0) {
-            throw new MemberAccessError('Pagamento non trovato o già controllato.');
-        }
-        $this->audit->record('payment.reviewed', 'app.online_payments', $paymentId);
+        $this->connection()->transaction(function () use ($paymentId): void {
+            $row = $this->table()->where('id', $paymentId)->lockForUpdate()->first();
+            $p = $row === null ? null : $this->find($paymentId);
+            if ($row === null || $p === null || $p['status'] !== 'review') {
+                throw new MemberAccessError('Pagamento non trovato o già controllato.');
+            }
+            $returned = $p['refunded_cents'] > 0 || ($row->refund_pending_cents ?? null) !== null || $p['paid_cents'] === null || $p['paid_cents'] <= 0;
+            [$issued, $left, $failure] = $returned ? [[], [], null] : $this->issueReceipts($p['held']);
+            if ($failure !== null) {
+                throw new MemberAccessError('La ricevuta non si può emettere: '.$failure);
+            }
+            $this->table()->where('id', $paymentId)->update([
+                'status' => 'settled', 'reviewed_at' => now(), 'updated_at' => now(), 'held_transactions' => json_encode($left, JSON_THROW_ON_ERROR),
+                'receipts' => json_encode(array_values(array_unique([...$p['receipts'], ...$issued])), JSON_THROW_ON_ERROR),
+            ]);
+            $this->audit->record('payment.reviewed', 'app.online_payments', $paymentId, ['receipts' => count($issued), 'returned' => $returned]);
+        });
     }
 
     /** @return Payment|null */
@@ -613,6 +708,14 @@ final readonly class OnlinePayments
         }
         $items = json_decode($r->items, true);
         $receipts = json_decode($r->receipts, true);
+        $heldRaw = json_decode(is_string($r->held_transactions ?? null) ? $r->held_transactions : '[]', true);
+        $held = [];
+        foreach (is_array($heldRaw) ? $heldRaw : [] as $group) {
+            $ids = array_values(array_filter(is_array($group) ? $group : [], is_string(...)));
+            if ($ids !== []) {
+                $held[] = $ids;
+            }
+        }
         $clean = [];
         foreach (is_array($items) ? $items : [] as $i) {
             if (is_array($i) && is_string($i['key'] ?? null) && is_string($i['person_id'] ?? null) && is_string($i['label'] ?? null) && is_int($i['amount_cents'] ?? null)) {
@@ -624,7 +727,7 @@ final readonly class OnlinePayments
         return [
             'id' => $r->id, 'person_id' => $r->person_id, 'provider' => is_string($r->provider ?? null) ? $r->provider : '', 'status' => is_string($r->status ?? null) ? $r->status : '',
             'amount_cents' => is_numeric($r->amount_cents ?? null) ? (int) $r->amount_cents : 0, 'paid_cents' => is_numeric($r->paid_cents ?? null) ? (int) $r->paid_cents : null,
-            'items' => $clean, 'receipts' => array_values(array_filter(is_array($receipts) ? $receipts : [], is_string(...))),
+            'items' => $clean, 'receipts' => array_values(array_filter(is_array($receipts) ? $receipts : [], is_string(...))), 'held' => $held,
             'provider_ref' => is_string($r->provider_ref ?? null) ? $r->provider_ref : null, 'error' => is_string($r->error ?? null) ? $r->error : null,
             'refunded_cents' => is_numeric($r->refunded_cents ?? null) ? (int) $r->refunded_cents : 0,
             'created_at' => is_string($r->created_at ?? null) ? $r->created_at : '',

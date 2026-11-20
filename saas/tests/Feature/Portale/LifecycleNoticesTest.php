@@ -79,7 +79,7 @@ it('i testi dicono la data vera e il giusto singolare o plurale', function (): v
 
     $suspended = $text('suspended', 0);
     expect($suspended)->toContain('Circolo Alfa · Gestionale sospeso')
-        ->and($suspended)->toContain('per 180 giorni dalla scadenza, fino al 10/12/2026; poi vengono eliminati per sempre')
+        ->and($suspended)->toContain('per 180 giorni dalla scadenza, fino al 10/12/2026; poi vengono eliminati dal gestionale; le copie di sicurezza scadono da sole entro 30 giorni.')
         ->and($suspended)->toContain('Se rinnovi entro il 10/12/2026 ritrovi tutti i dati come li hai lasciati.')
         ->and($suspended)->toContain('Riattiva il gestionale');
 
@@ -95,6 +95,6 @@ it('i testi dicono la data vera e il giusto singolare o plurale', function (): v
         ->and($text('trial_0', 0))->toContain('La prova finisce oggi')
         ->and($text('trial_3', -3))->toContain('La prova è finita')
         ->and($text('trial_3', -3))->not->toContain('sconto')
-        ->and($text('trial_3', -3))->not->toContain('0 giorni')
-        ->and($text('trial_3', -3))->not->toContain('1 giorni');
+        ->and($text('trial_3', -3))->not->toMatch('/(^|\s)0 giorni/')
+        ->and($text('trial_3', -3))->not->toMatch('/(^|\s)1 giorni/');
 });

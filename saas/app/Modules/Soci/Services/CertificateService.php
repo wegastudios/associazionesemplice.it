@@ -6,6 +6,8 @@ namespace App\Modules\Soci\Services;
 
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Cifratura\Contracts\EncryptedFiles;
+use App\Modules\Cifratura\Contracts\StorageFull;
+use App\Modules\Cifratura\Contracts\StorageQuota;
 use App\Modules\Cifratura\Contracts\StoredFile;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgSettings;
@@ -34,6 +36,7 @@ final readonly class CertificateService
         private OrgContext $context,
         private OrgSettings $settings,
         private EncryptedFiles $files,
+        private StorageQuota $quota,
         private AuditLog $audit,
         private Auth $auth,
     ) {}
@@ -58,7 +61,13 @@ final readonly class CertificateService
             if (! in_array($mime, self::MIMES, true)) {
                 throw new PeopleError(['Il file deve essere un PDF o una foto (JPG, PNG).']);
             }
-            $stored = $this->files->store($this->context->require()->id, (string) $file->getRealPath(), $file->getClientOriginalName(), $mime);
+            $orgId = $this->context->require()->id;
+            try {
+                $this->quota->assertRoom($orgId, (int) $file->getSize());
+            } catch (StorageFull) {
+                throw new PeopleError(['Lo spazio del piano è esaurito: il certificato non è stato salvato.']);
+            }
+            $stored = $this->files->store($orgId, (string) $file->getRealPath(), $file->getClientOriginalName(), $mime);
         }
 
         $userId = $this->auth->guard()->id();

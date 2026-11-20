@@ -123,6 +123,16 @@ final readonly class SecretStreamFiles implements EncryptedFiles
         $this->disk->delete($file->path);
     }
 
+    public function usedBytes(string $orgId): int
+    {
+        $total = 0;
+        foreach ($this->disk->allFiles($orgId) as $path) {
+            $total += $this->disk->size($path);
+        }
+
+        return $total;
+    }
+
     /** @param  callable(string): void  $emit */
     private function decrypt(string $orgId, StoredFile $file, callable $emit): void
     {

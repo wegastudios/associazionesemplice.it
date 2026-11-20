@@ -9,6 +9,18 @@ use RuntimeException;
 /** Configurazione del servizio chiavi, da un file INI fuori dalla cartella pubblica. */
 final readonly class Config
 {
+    /** Dimensione oltre la quale il registro passa al file successivo (5 MiB). */
+    public const LOG_MAX_BYTES = 5242880;
+
+    /** Quanti registri vecchi si tengono oltre a quello in corso. */
+    public const LOG_KEEP = 3;
+
+    /** Aperture al minuto che fanno scattare l'allarme. */
+    public const UNWRAP_ALARM = 100;
+
+    /** Aperture al minuto oltre le quali il servizio rifiuta (429). 0 = nessun limite. */
+    public const UNWRAP_LIMIT = 200;
+
     /** @param  list<string>  $allowedIps */
     private function __construct(
         public string $masterKey,
@@ -16,6 +28,12 @@ final readonly class Config
         public array $allowedIps,
         public string $logFile,
         public string $nonceDir,
+        public int $logMaxBytes,
+        public int $logKeep,
+        public string $rateDir,
+        public int $unwrapAlarm,
+        public int $unwrapLimit,
+        public string $alarmEmail,
     ) {}
 
     public static function load(string $file, string $base): self
@@ -35,6 +53,21 @@ final readonly class Config
 
             return $raw !== false && strlen($raw) === $bytes ? $raw : throw new RuntimeException("Configurazione non valida: {$name}.");
         };
+        $number = static function (string $name, int $default, int $min) use ($ini): int {
+            $value = $ini[$name] ?? null;
+            if ($value === null || $value === '') {
+                return $default;
+            }
+
+            return is_string($value) && preg_match('/^\d{1,9}$/', $value) === 1 && (int) $value >= $min
+                ? (int) $value
+                : throw new RuntimeException("Configurazione non valida: {$name}.");
+        };
+
+        $email = $ini['alarm_email'] ?? '';
+        if (! is_string($email) || ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
+            throw new RuntimeException('Configurazione non valida: alarm_email.');
+        }
 
         return new self(
             $binary('master_key', KeyWrap::KEY_BYTES),
@@ -42,6 +75,12 @@ final readonly class Config
             array_values(array_filter(array_map('trim', explode(',', $text('allowed_ips'))))),
             $text('log_file', $base.'/storage/keyservice.log'),
             $text('nonce_dir', $base.'/storage/nonces'),
+            $number('log_max_bytes', self::LOG_MAX_BYTES, 1024),
+            $number('log_keep', self::LOG_KEEP, 0),
+            $text('rate_dir', $base.'/storage/rate'),
+            $number('unwrap_alarm_per_minute', self::UNWRAP_ALARM, 0),
+            $number('unwrap_limit_per_minute', self::UNWRAP_LIMIT, 0),
+            $email,
         );
     }
 }

@@ -50,6 +50,11 @@ final readonly class ReservationDues implements PayableDues
         return str_starts_with($key, 'r:');
     }
 
+    public function notEnrolled(string $key): ?string
+    {
+        return null;
+    }
+
     public function settle(string $key, int $cents, string $accountId, string $date, string $method, bool $anyway = false): ?string
     {
         if (preg_match('/^r:([0-9a-f-]{36})$/', $key, $m) !== 1) {

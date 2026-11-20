@@ -11,7 +11,7 @@ use Illuminate\Database\DatabaseManager;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * Distrugge le chiavi di un'associazione già cancellata: i suoi dati cifrati, anche nei backup, non si aprono più.
+ * Distrugge le chiavi di un'associazione già cancellata: da quel momento il servizio non apre più i suoi dati cifrati; i backup già fatti restano apribili fino alla scadenza, entro 30 giorni.
  * Irreversibile. Passa dal ruolo proprietario: il ruolo dell'applicazione non può cancellare le chiavi.
  */
 #[AsCommand(name: 'saas:keys:destroy')]

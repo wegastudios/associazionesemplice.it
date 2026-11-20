@@ -44,6 +44,15 @@ it('apre il gestionale dell\'unica associazione e mostra solo i suoi dati', func
     expect($this->orgSetting())->toBe('');
 });
 
+it('nelle pagine passa solo nome ed email dell\'utente, senza il ruolo di piattaforma', function (): void {
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $alfa = $this->createOrg('Polisportiva Alfa');
+    $this->addOperator($alfa, $user);
+
+    $this->actingAs($user)->get('/gestionale')
+        ->assertInertia(fn (Assert $page) => $page->where('auth.user', ['name' => 'Utente di prova', 'email' => 'anna@example.com']));
+});
+
 it('con più associazioni chiede quale aprire e apre solo le proprie', function (): void {
     $user = $this->createUser('commercialista@example.com', twoFactor: true);
     $alfa = $this->createOrg('Polisportiva Alfa');

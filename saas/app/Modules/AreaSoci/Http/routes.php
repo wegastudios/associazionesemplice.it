@@ -27,6 +27,7 @@ $memberArea = function (): void {
     Route::middleware('member')->group(function (): void {
         Route::get('/', [MemberAreaController::class, 'card'])->name('member.home');
         Route::get('/profilo', [MemberAreaController::class, 'profile'])->name('member.profile');
+        Route::post('/tessera/rigenera', [MemberAreaController::class, 'regenerateCard'])->middleware('throttle:10,10')->name('member.card.regenerate');
         Route::put('/profilo', [MemberAreaController::class, 'updateProfile'])->name('member.profile.update');
         Route::get('/quote', [MemberAreaController::class, 'payments'])->name('member.payments');
         Route::get('/ricevute/{receipt}.pdf', [MemberAreaController::class, 'receipt'])->whereUuid('receipt')->name('member.receipt');

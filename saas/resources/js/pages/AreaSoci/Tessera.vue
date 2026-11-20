@@ -1,9 +1,11 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import MemberLayout from '../../layouts/MemberLayout.vue';
 import { ChevronRight, CreditCard } from '../../components/ui/icons.js';
 
 defineProps({ card: Object, qr: String, member: Object, due: { type: Object, default: null } });
+
+const regenerate = () => window.confirm('Rigenerare il codice della tessera? Quello attuale smette subito di valere, anche sulla tessera stampata: se ne hai una, chiedi alla segreteria di ristamparla.') && router.post('/area/tessera/rigenera', {}, { preserveScroll: true });
 </script>
 
 <template>
@@ -36,6 +38,10 @@ defineProps({ card: Object, qr: String, member: Object, due: { type: Object, def
             <p v-else class="mt-4 text-sm text-white/85">Questa scheda non ha la tessera: qui trovi eventi, quote e ricevute.</p>
             <p v-if="card.left" class="mt-3 rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold">Non fai più parte dell'associazione.</p>
         </section>
+        <p v-if="card.member && qr" class="mt-4 text-center text-sm">
+            Hai perso il telefono o hai condiviso il codice?
+            <button type="button" class="font-semibold text-accent hover:underline" @click="regenerate">Rigenera il codice</button>
+        </p>
         <p v-if="member.invite.area" class="mt-4 text-center text-sm">Vuoi sostenere {{ member.org }}? <Link href="/area/paga" class="font-semibold text-accent hover:underline">Fai una donazione</Link>.</p>
     </MemberLayout>
 </template>
