@@ -83,9 +83,9 @@ it('l\'invito non riattiva né cambia la password di chi ha già un accesso o è
     $deactivated = $invites->create('spenta@example.test', 'Spenta', ['saas' => 'admin']);
     $fresh = $invites->create('importata@example.test', 'Importata', ['saas' => 'admin']);
     // Nel frattempo la prima ha già una password, la seconda è stata disattivata, la terza è un'importata senza password.
-    DB::table('core.staff_people')->insert(['id' => (string) Illuminate\Support\Str::uuid7(), 'email' => 'vecchia@example.test', 'name' => 'Vecchia', 'password' => Hash::make('password-gia-scelta-1'), 'active' => true]);
-    DB::table('core.staff_people')->insert(['id' => (string) Illuminate\Support\Str::uuid7(), 'email' => 'spenta@example.test', 'name' => 'Spenta', 'password' => null, 'active' => false]);
-    DB::table('core.staff_people')->insert(['id' => (string) Illuminate\Support\Str::uuid7(), 'email' => 'importata@example.test', 'name' => 'Importata', 'password' => null, 'active' => true]);
+    DB::table('core.staff_people')->insert(['id' => (string) Str::uuid7(), 'email' => 'vecchia@example.test', 'name' => 'Vecchia', 'password' => Hash::make('password-gia-scelta-1'), 'active' => true]);
+    DB::table('core.staff_people')->insert(['id' => (string) Str::uuid7(), 'email' => 'spenta@example.test', 'name' => 'Spenta', 'password' => null, 'active' => false]);
+    DB::table('core.staff_people')->insert(['id' => (string) Str::uuid7(), 'email' => 'importata@example.test', 'name' => 'Importata', 'password' => null, 'active' => true]);
 
     $this->post('/saas/staff/invito/'.$code, ['password' => 'una-password-lunga-1', 'password_confirmation' => 'una-password-lunga-1'])->assertSee('Invito non valido');
     $this->post('/saas/staff/invito/'.$deactivated, ['password' => 'una-password-lunga-1', 'password_confirmation' => 'una-password-lunga-1'])->assertSee('Invito non valido');
