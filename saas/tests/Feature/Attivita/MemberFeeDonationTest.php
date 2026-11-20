@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-use AppModulesAreaSociPaymentsPayPalGateway;
+use App\Modules\AreaSoci\Payments\PayPalGateway;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Payments\ActivityDues;
 use App\Modules\Attivita\Services\ActivityService;
-use App\Modules\AreaSoci\Payments\PayPalGateway;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Models\Category;
 use App\Modules\Contabilita\Models\Transaction;
