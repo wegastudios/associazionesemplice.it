@@ -37,12 +37,13 @@ final class EnforceSessionLimits
             return $next($request);
         }
 
-        // Sessione nuova nata dal cookie «ricordami»: con il secondo fattore si ripassa dall'accesso. Il cookie si
-        // toglie senza cambiare il token, così gli altri dispositivi non perdono il loro.
+        // Sessione nuova nata dal cookie «ricordami»: chi ha il secondo fattore deve rimettere il codice. La sessione
+        // si chiude e si riparte dalla verifica di Fortify (login.id e login.remember, come dopo la password); il
+        // cookie si toglie senza cambiare il token, così gli altri dispositivi non perdono il loro.
         if ($guard->viaRemember() && $user->hasConfirmedTwoFactor()) {
             Cookie::queue(Cookie::forget($guard->getRecallerName()));
 
-            return $this->leave($request, 'Per sicurezza accedi di nuovo con la password e il codice.');
+            return $this->leave($request, 'Per sicurezza inserisci il codice dell\'app di autenticazione.', $user);
         }
 
         $startedAt = $request->session()->get(self::STARTED_AT);
@@ -57,13 +58,14 @@ final class EnforceSessionLimits
         if (is_int($maxMinutes) && $maxMinutes > 0 && $now - $startedAt >= $maxMinutes * 60) {
             $guard->logout();
 
-            return $this->leave($request, 'La sessione è scaduta: accedi di nuovo.');
+            return $this->leave($request, 'Per sicurezza accedi di nuovo con la password e il codice.');
         }
 
         return $next($request);
     }
 
-    private function leave(Request $request, string $message): Response
+    /** @param  User|null  $challenge  se c'è, si va alla verifica del codice invece che all'accesso completo */
+    private function leave(Request $request, string $message, ?User $challenge = null): Response
     {
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -71,10 +73,16 @@ final class EnforceSessionLimits
         if ($request->expectsJson()) {
             return response()->json(['message' => $message], 401);
         }
-        if ($request->header('X-Inertia') !== null) {
-            return Inertia::location('/accesso');
+
+        // Il messaggio sta in sessione (vale per un solo passaggio) e le pagine di accesso e di verifica lo mostrano.
+        $request->session()->flash('status', $message);
+        $target = '/accesso';
+        if ($challenge !== null) {
+            $request->session()->put('login.id', $challenge->getKey());
+            $request->session()->put('login.remember', true);
+            $target = route('two-factor.login', absolute: false);
         }
 
-        return redirect('/accesso')->withErrors(['email' => $message]);
+        return $request->header('X-Inertia') !== null ? Inertia::location($target) : redirect($target);
     }
 }

@@ -23,7 +23,7 @@ it('fa uscire dopo 12 ore dall\'accesso anche se si è lavorato fino a un attimo
 
     $this->actingAs($user)
         ->withSession([EnforceSessionLimits::STARTED_AT => now()->subHours(12)->subMinute()->getTimestamp()])
-        ->get('/gestionale')->assertRedirect('/accesso')->assertSessionHasErrors('email');
+        ->get('/gestionale')->assertRedirect('/accesso')->assertSessionHas('status', 'Per sicurezza accedi di nuovo con la password e il codice.');
     $this->assertGuest();
 });
 
@@ -65,10 +65,21 @@ it('rientrando dal cookie «ricordami» chi ha il secondo fattore deve rifare l\
     $this->app['auth']->forgetGuards();
     $this->withCookie($name, (string) $recaller?->getValue());
 
-    // Va all'accesso e il cookie «ricordami» viene tolto: la richiesta dopo è da ospite.
-    $this->get('/gestionale')->assertRedirect('/accesso')->assertCookieExpired($name);
+    // Chiede solo il codice: la sessione è chiusa, il cookie «ricordami» tolto, si riparte dalla verifica di Fortify.
+    $this->get('/gestionale')->assertRedirect('/verifica-accesso')->assertCookieExpired($name)
+        ->assertSessionHas('login.id', $user->id)->assertSessionHas('login.remember', true)
+        ->assertSessionHas('status', 'Per sicurezza inserisci il codice dell\'app di autenticazione.');
     // Il token degli altri dispositivi resta com'è.
     expect($user->refresh()->remember_token)->toBe($token);
+
+    // Il browser ha buttato il cookie: ora c'è solo la verifica del codice, senza password.
+    $this->defaultCookies = [];
+    $this->app['auth']->forgetGuards();
+    $this->assertGuest();
+    $this->post('/verifica-accesso', ['code' => '000000'])->assertSessionHasErrors('code');
+    $this->assertGuest();
+    $this->post('/verifica-accesso', ['recovery_code' => 'codice-uno-1234'])->assertRedirect('/gestionale');
+    $this->assertAuthenticatedAs($user);
 });
 
 it('chi non ha il secondo fattore rientra con «ricordami» senza altro', function (): void {
