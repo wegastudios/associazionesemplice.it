@@ -818,3 +818,12 @@ extra_step( 'anno fiscale scorso in disavanzo', function () {
 		throw new \RuntimeException( 'cassa negativa nell\'anno fiscale scorso' );
 	}
 } );
+
+// Pagina pubblica delle donazioni (anche per chi non è socio): raccolta accesa e pagina con lo shortcode. Nella demo non ci sono chiavi di pagamento:
+// il modulo ricade sul pulsante «Dona» di PayPal, qui con un indirizzo di prova (example.org) che non è un conto vero.
+extra_step( 'pagina delle donazioni', function () {
+	if ( ! get_page_by_path( 'donazioni' ) ) {
+		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Sostienici con una donazione', 'post_name' => 'donazioni', 'post_content' => '[associazionesemplice_donazioni]' ) );
+	}
+	\AssociazioneSemplice\Settings::update( array( 'donate_enabled' => 1, 'donate_paypal' => 'donazioni@example.org', 'donate_amounts' => '5;10;20;50', 'donate_purpose' => 'Sostegno all\'attività dell\'associazione' ) );
+} );
