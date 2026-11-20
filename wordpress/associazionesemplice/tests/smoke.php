@@ -11719,6 +11719,27 @@ for ( $ml_i = 0; $ml_i < MemberPassword::MAX_FAILED; $ml_i++ ) {
 asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'una password lunga' ), 'accesso proprio: dopo gli errori di fila l\'account si blocca anche con la password giusta' );
 $wpdb->update( Db::t( 'member_auth' ), array( 'failed_count' => 0, 'locked_until' => null, 'pass_hash' => password_hash( 'vecchia password', PASSWORD_BCRYPT, array( 'cost' => 4 ) ) ), array( 'person_id' => $ml_p ) );
 asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && ! MemberPassword::needs_rehash( (string) $wpdb->get_var( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ml_p ) ), 'accesso proprio: un\'impronta con un costo vecchio vale e viene rifatta con quello di oggi' );
+// Gettone monouso dei moduli di prima nota: il primo invio passa, il secondo trova l'esito del primo
+$once_claim = new \ReflectionMethod( \AssociazioneSemplice\Admin\Actions::class, 'once_claim' );
+$once_key   = new \ReflectionMethod( \AssociazioneSemplice\Admin\Actions::class, 'once_key' );
+$once_claim->setAccessible( true );
+$once_key->setAccessible( true );
+$once_tok = 'asem_once_prova_' . substr( md5( (string) microtime( true ) ), 0, 8 );
+asem_ok( '' === $once_key->invoke( null, array() ) && '' === $once_key->invoke( null, array( '_once' => 'non valido' ) ) && '' !== $once_key->invoke( null, array( '_once' => wp_generate_uuid4() ) ), 'gettone: un modulo senza gettone o con un gettone malformato passa come prima' );
+asem_ok( false === $once_claim->invoke( null, $once_tok ), 'gettone: il primo invio prende il gettone' );
+asem_ok( array( '', '' ) === $once_claim->invoke( null, $once_tok ), 'gettone: il secondo invio, col primo ancora al lavoro, aspetta' );
+set_transient( $once_tok, array( 'https://example.org/prima-nota', 'Incasso registrato.' ), 60 );
+asem_ok( array( 'https://example.org/prima-nota', 'Incasso registrato.' ) === $once_claim->invoke( null, $once_tok ), 'gettone: a registrazione finita il secondo invio trova lo stesso esito e non registra' );
+delete_transient( $once_tok );
+asem_ok( false === $once_claim->invoke( null, $once_tok ), 'gettone: se il primo invio fallisce il gettone si libera e si può riprovare' );
+delete_transient( $once_tok );
+ob_start();
+\AssociazioneSemplice\Admin\Ui::form_open( 'asem_save_income', 'https://example.org/' );
+$once_form = ob_get_clean();
+ob_start();
+\AssociazioneSemplice\Admin\Ui::form_open( 'asem_save_person', 'https://example.org/' );
+$once_other = ob_get_clean();
+asem_ok( 1 === preg_match( '/name="_once" value="[0-9a-f-]{36}"/', $once_form ) && false === strpos( $once_other, '_once' ), 'gettone: i moduli di incasso, spesa e giroconto lo portano, gli altri no' );
 // Separazione: con l'accesso proprio acceso i soci semplici non hanno un utente WordPress
 asem_ok( empty( Plugin::people()->get( $ml_p )['wp_user_id'] ) && ! get_user_by( 'email', $ml_addr ) && \AssociazioneSemplice\PeopleService::has_access( Plugin::people()->get( $ml_p ) ), 'separazione: un nuovo socio con email non ha un utente WordPress ma ha un accesso' );
 $sp_mails = count( $ml_mail );
