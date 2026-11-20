@@ -111,7 +111,7 @@ final readonly class PaymentSettingsController
             try {
                 $this->stripe->test($s->stripe_secret);
                 $done[] = 'La connessione con Stripe funziona.';
-                if (! is_string($s->stripe_webhook) || $s->stripe_webhook === '') {
+                if (($s->stripe_webhook ?? '') === '') {
                     [$ok, $text] = $this->createStripeWebhook($s);
                     if ($ok) {
                         $done[] = $text;
