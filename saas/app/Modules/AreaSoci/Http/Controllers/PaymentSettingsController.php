@@ -44,6 +44,7 @@ final readonly class PaymentSettingsController
                 $names[$p->id] = trim((is_string($p->last_name ?? null) ? $p->last_name : '').' '.(is_string($p->first_name ?? null) ? $p->first_name : ''));
             }
         }
+
         return Inertia::render('AreaSoci/PagamentiOnline', [
             'settings' => [
                 'stripe_enabled' => $s->stripe_enabled ?? false, 'stripe_secret_set' => $s?->stripe_secret !== null, 'stripe_webhook_set' => $s?->stripe_webhook !== null,
