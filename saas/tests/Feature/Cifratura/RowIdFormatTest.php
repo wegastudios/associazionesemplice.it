@@ -24,6 +24,9 @@ function rowFmtImport(string $csv): array
     $s = app(PeopleImportService::class);
     $preview = $s->preview($path, 'soci.csv', MemberType::Ordinary);
 
+    expect($preview['error'] ?? null)->toBeNull()
+        ->and(array_column($preview['plan'] ?? [], 'message'))->toBe([null, null]);
+
     return $s->apply($preview['plan'] ?? [], false);
 }
 
