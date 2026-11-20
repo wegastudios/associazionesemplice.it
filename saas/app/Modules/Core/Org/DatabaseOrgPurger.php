@@ -64,7 +64,7 @@ final readonly class DatabaseOrgPurger implements OrgPurger
             $owner->delete('DELETE FROM core.jobs WHERE position(? in payload) > 0', [$orgId]);
             $owner->delete('DELETE FROM core.failed_jobs WHERE position(? in payload) > 0', [$orgId]);
 
-            // Per ultima la chiave: senza, i campi cifrati e i file rimasti nei backup non si aprono più.
+            // Per ultima la chiave: senza, il servizio non apre più i campi cifrati e i file; i backup già fatti scadono da soli entro 30 giorni.
             $owner->table('core.orgs')->where('id', $orgId)->update(['status' => 'closed', 'deleted_at' => now()]);
             $owner->table('core.org_keys')->where('org_id', $orgId)->delete();
         });
