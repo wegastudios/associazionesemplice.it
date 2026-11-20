@@ -110,6 +110,10 @@ final readonly class CatalogPublisher
             $input['rev'] = $next;
             $input['published_at'] = now()->toDateString();
             $document = $this->validated($input);
+            // I giorni di conservazione sono già in questa revisione: così una pubblicazione è una sola revisione.
+            $terms = is_array($document['terms'] ?? null) ? $document['terms'] : [];
+            $terms['lifecycle'] = DbCatalog::lifecycle();
+            $document['terms'] = $terms;
 
             $this->assertVersionsImmutable($document);
 

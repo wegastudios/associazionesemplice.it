@@ -37,14 +37,25 @@ final class DbCatalog implements Catalog
      * della configurazione (o la vecchia chiave `terms.trial.purge_days`) non coincidono con l'ultima revisione, se ne
      * pubblica una nuova, con `rev` + 1, e quella è la sola che si serve.
      */
-    private function withLifecycle(PublishedCatalog $current, bool $stored): PublishedCatalog
+    /**
+     * I giorni di conservazione della configurazione: gli stessi che una pubblicazione scrive in `terms.lifecycle`.
+     *
+     * @return array{retention_days: int, trial_purge_days: int}
+     */
+    public static function lifecycle(): array
     {
         $retention = config('saas.portal.retention_days', 180);
         $trial = config('saas.portal.trial_purge_days', 7);
-        $lifecycle = [
+
+        return [
             'retention_days' => is_int($retention) && $retention > 0 ? $retention : 180,
             'trial_purge_days' => is_int($trial) && $trial > 0 ? $trial : 7,
         ];
+    }
+
+    private function withLifecycle(PublishedCatalog $current, bool $stored): PublishedCatalog
+    {
+        $lifecycle = self::lifecycle();
         if (self::hasLifecycle($current, $lifecycle)) {
             return $current;
         }
