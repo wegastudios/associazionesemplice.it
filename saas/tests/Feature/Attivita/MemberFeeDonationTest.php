@@ -63,7 +63,8 @@ it('accesa: la persona che non è socia paga ancora un contributo', function ():
     app(OrgSettings::class)->set(OrgFiscal::MEMBER_EVENTS_DONATION, true);
     $s = app(ActivityService::class);
     $e = donationEvent();
-    $marco = Person::create(['type' => 'guardian', 'first_name' => 'Marco', 'last_name' => 'Rossi']);
+    $anna = Person::create(['type' => 'ordinary', 'first_name' => 'Anna', 'last_name' => 'Rossi']);
+    $marco = Person::create(['type' => 'guest', 'first_name' => 'Marco', 'last_name' => 'Rossi', 'host_person_id' => $anna->id]);
     $s->enroll($e->id, $marco->id, now()->format('Y-m'));
     expect($s->paysAsDonation($marco->id))->toBeFalse();
     $s->collect($e->id, $marco->id, $this->cash, now()->toDateString(), []);
@@ -95,8 +96,11 @@ it('le voci da pagare dei soci portano il segno della donazione solo con l\'opzi
 
 it('l\'opzione si accende e si spegne dall\'aspetto fiscale', function (): void {
     $this->actingAs($this->owner)->put('/gestionale/aspetto-fiscale/erogazioni-liberali', ['member_events_donation' => true])->assertRedirect();
+    $this->orgContext()->enter($this->org->id);
     expect(app(OrgFiscal::class)->memberEventsDonation())->toBeTrue();
     $this->actingAs($this->owner)->put('/gestionale/aspetto-fiscale/erogazioni-liberali', ['member_events_donation' => false])->assertRedirect();
+
+    $this->orgContext()->enter($this->org->id);
 
     expect(app(OrgFiscal::class)->memberEventsDonation())->toBeFalse();
 });
