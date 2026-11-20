@@ -112,7 +112,7 @@ final class Encrypted implements CastsAttributes
 
         $orgId = self::orgId($attributes);
         $field = self::field($model, $key);
-        $columns[$key.'_enc'] = Bytea::encode(self::cipher()->encrypt($orgId, $field, $plain, $this->bindsRow() ?$rowId : null));
+        $columns[$key.'_enc'] = Bytea::encode(self::cipher()->encrypt($orgId, $field, $plain, $this->bindsRow() ? $rowId : null));
         if ($this->index !== null) {
             $columns[$key.'_bidx'] = Bytea::encode(self::cipher()->blindIndex($orgId, $field, $this->index->apply($plain)));
         }
