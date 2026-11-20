@@ -206,7 +206,7 @@ final readonly class ReservationService
         if ($r->status !== 'booked') {
             throw new ResourceError('La prenotazione è annullata.');
         }
-        $res =$this->resources->find($r->resource_id);
+        $res = $this->resources->find($r->resource_id);
         $cents ??= max(0, $r->fee_due_cents - ($this->paid([$r->id])[$r->id] ?? 0));
         if ($cents <= 0) {
             throw new ResourceError('Non c\'è niente da incassare: indica l\'importo.');
@@ -227,7 +227,7 @@ final readonly class ReservationService
             if ($cents > $left) {
                 throw new ResourceError($left <= 0 ? 'Questa prenotazione risulta già pagata.' : 'L\'importo supera quanto manca da incassare ('.Money::format($left).').');
             }
-            $out =$this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, null, $vatRate)], $method, $r->person_id, $r->person_id !== null));
+            $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, null, $vatRate)], $method, $r->person_id, $r->person_id !== null));
             foreach ($out['transactions'] as $tx) {
                 $this->connection()->table('app.reservation_payments')->insert(['org_id' => $this->context->require()->id, 'transaction_id' => $tx, 'reservation_id' => $r->id]);
             }

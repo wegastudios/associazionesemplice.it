@@ -604,7 +604,7 @@ final readonly class SessionService
             if ($cents > $left) {
                 throw new ActivityError($left <= 0 ? 'Questa prenotazione risulta già pagata.' : 'L\'importo supera quanto manca da incassare ('.Money::format($left).').');
             }
-            $out =$this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, $s->session_date->format('Y-m'), $donation ? null : $this->vat->rate($activity))], $method, $b->person_id, true, null, $activity->id));
+            $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, $s->session_date->format('Y-m'), $donation ? null : $this->vat->rate($activity))], $method, $b->person_id, true, null, $activity->id));
             foreach ($out['transactions'] as $tx) {
                 $this->connection()->table('app.booking_payments')->insert(['org_id' => $this->context->require()->id, 'transaction_id' => $tx, 'booking_id' => $b->id]);
             }
