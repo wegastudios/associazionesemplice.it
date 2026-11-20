@@ -1040,6 +1040,53 @@ class ActivityService {
 		) ?: array();
 	}
 
+	// ---------- Quanto si può ancora incassare ----------
+
+	/**
+	 * Quanto manca da incassare per un'iscrizione a un corso nel mese (o nel periodo, per la quota a trimestre) indicato: contributo dell'iscritto
+	 * (variante di listino compresa) meno ciò che è già stato versato, sconti compresi. Con la quota unica vale per tutta l'iscrizione.
+	 * Null se la persona non è iscritta o il contributo non è definito: allora non si sa cosa sia dovuto e non si blocca nulla.
+	 */
+	public function enrollment_left( int $activity_id, int $person_id, string $month ): ?int {
+		$activity = $this->get( $activity_id );
+		$person   = Plugin::people()->get( $person_id );
+		$enr      = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d', $activity_id, $person_id ), ARRAY_A );
+		if ( ! $activity || ! $person || ! $enr ) {
+			return null;
+		}
+		$fee = $this->fee_for( $activity, (string) $person['type'] );
+		if ( ! empty( $enr['price_list'] ) ) {
+			$list = PriceLists::find( $activity, (string) $enr['price_list'] );
+			$fee  = $list ? (int) $list['cents'] : $fee;
+		}
+		if ( $fee <= 0 ) {
+			return null;
+		}
+		$paid = $this->paid_map( array( $activity_id ) )[ $activity_id ][ $person_id ] ?? array();
+		if ( 'once' === ( $activity['billing'] ?? 'monthly' ) ) {
+			return max( 0, $fee - (int) array_sum( $paid ) );
+		}
+		$step = 'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1;
+		if ( $step > 1 ) {
+			$paid  = PaymentCalc::group_by_period( $paid, (string) $enr['start_month'], $step );
+			$keys  = array_keys( PaymentCalc::group_by_period( array( $month => 1 ), (string) $enr['start_month'], $step ) );
+			$month = (string) reset( $keys );
+		}
+		return max( 0, $fee - (int) ( $paid[ $month ] ?? 0 ) );
+	}
+
+	/** Quanto manca da incassare per la prenotazione a una data di un evento (contributo dovuto meno il versato, sconti compresi). Null se non c'è una prenotazione con un contributo. */
+	public function booking_left( int $session_id, int $person_id ): ?int {
+		$b = $this->booking( $session_id, $person_id );
+		if ( ! $b || (int) $b['fee_due_cents'] <= 0 ) {
+			return null;
+		}
+		$paid = (int) $this->db()->get_var(
+			$this->db()->prepare( 'SELECT COALESCE(SUM(amount_cents + discount_cents), 0) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id = %d AND person_id = %d", $session_id, $person_id )
+		);
+		return max( 0, (int) $b['fee_due_cents'] - $paid );
+	}
+
 	// ---------- Cancellazione e cambio di nominativo ----------
 
 	/** Riga di prenotazione grezza (anche annullata o trasferita). */
