@@ -14,11 +14,14 @@ use App\Modules\Core\Auth\SamePasswordResetLinkResponse;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Demo\DemoEnvironment;
+use App\Modules\Core\Http\Middleware\EnforceSessionLimits;
 use App\Modules\Core\Models\User;
 use Illuminate\Auth\Events\Lockout;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -80,6 +83,29 @@ final class AuthServiceProvider extends ServiceProvider
             $id = $request->session()->get('login.id');
 
             return Limit::perMinute(5)->by('2fa|'.(is_string($id) ? $id : $request->ip()))->response(self::lockout(...));
+        });
+
+        // «Password dimenticata»: 5 al minuto per email e indirizzo, 20 al minuto per indirizzo.
+        RateLimiter::for('password-reset', static function (Request $request): array {
+            $email = Str::lower($request->string(Fortify::email())->toString());
+
+            return [
+                Limit::perMinute(5)->by('reset|'.$email.'|'.$request->ip())->response(self::lockout(...)),
+                Limit::perMinute(20)->by('reset-ip|'.$request->ip())->response(self::lockout(...)),
+            ];
+        });
+        // Conferma e cambio della password: 10 al minuto per persona (o per indirizzo se non si è collegati).
+        RateLimiter::for('password-confirm', static function (Request $request): Limit {
+            $id = $request->user()?->getAuthIdentifier();
+
+            return Limit::perMinute(10)->by('confirm|'.(is_string($id) ? $id : $request->ip()))->response(self::lockout(...));
+        });
+
+        // L'orario dell'accesso: da qui si conta la durata massima della sessione (EnforceSessionLimits).
+        Event::listen(Login::class, static function (Login $event): void {
+            if ($event->guard === 'web') {
+                session()->put(EnforceSessionLimits::STARTED_AT, now()->getTimestamp());
+            }
         });
 
         // Permessi degli operatori nell'associazione corrente: Gate::allows('people.edit').
