@@ -61,7 +61,8 @@ final class CatalogValidator
      */
     private static function terms(mixed $value): array
     {
-        $terms = self::object($value, 'terms', ['vat', 'payments', 'trial', 'members']);
+        // «lifecycle» è del gestionale (DbCatalog): in una bozza si accetta ma non si tiene.
+        $terms = self::object($value, 'terms', ['vat', 'payments', 'trial', 'members', 'lifecycle']);
         $vat = self::object($terms['vat'] ?? [], 'terms.vat', ['mode', 'note']);
         $payments = self::object($terms['payments'] ?? [], 'terms.payments', ['own_gateway_percent', 'collected_by_us_percent']);
         // «purge_days» è ancora ammesso per i cataloghi già salvati, ma non si riscrive né si espone più: vale terms.lifecycle (config del gestionale).
@@ -110,6 +111,10 @@ final class CatalogValidator
     public static function input(array $document): array
     {
         unset($document['schema'], $document['product']);
+        // I giorni di conservazione li scrive il gestionale dalla sua configurazione (DbCatalog): non fanno parte della bozza.
+        if (is_array($document['terms'] ?? null)) {
+            unset($document['terms']['lifecycle']);
+        }
 
         return $document;
     }

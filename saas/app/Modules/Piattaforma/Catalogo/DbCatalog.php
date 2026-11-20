@@ -24,10 +24,82 @@ final class DbCatalog implements Catalog
     {
         if ($this->cache === null) {
             $row = $this->db->connection('pgsql')->table('core.catalog_revisions')->orderByDesc('rev')->first(['rev', 'document']);
-            $this->cache = $row === null ? $this->initial->published() : self::fromRow($row->rev, $row->document);
+            $current = $row === null ? $this->initial->published() : self::fromRow($row->rev, $row->document);
+            $this->cache = $this->withLifecycle($current, $row !== null);
         }
 
         return $this->cache;
+    }
+
+    /**
+     * I giorni di conservazione hanno una sola fonte, la configurazione del gestionale, e il catalogo li espone in
+     * `terms.lifecycle`. Il corpo servito non deve mai cambiare con la stessa `rev` (il portale lo rifiuta): se i numeri
+     * della configurazione (o la vecchia chiave `terms.trial.purge_days`) non coincidono con l'ultima revisione, se ne
+     * pubblica una nuova, con `rev` + 1, e quella è la sola che si serve.
+     */
+    private function withLifecycle(PublishedCatalog $current, bool $stored): PublishedCatalog
+    {
+        $retention = config('saas.portal.retention_days', 180);
+        $trial = config('saas.portal.trial_purge_days', 7);
+        $lifecycle = [
+            'retention_days' => is_int($retention) && $retention > 0 ? $retention : 180,
+            'trial_purge_days' => is_int($trial) && $trial > 0 ? $trial : 7,
+        ];
+        if (self::hasLifecycle($current, $lifecycle)) {
+            return $current;
+        }
+
+        $connection = $this->db->connection('pgsql');
+
+        return $connection->transaction(function () use ($connection, $current, $stored, $lifecycle): PublishedCatalog {
+            // Una sola scrittura alla volta: chi arriva dopo rilegge e trova la revisione già pubblicata.
+            $connection->statement('SELECT pg_advisory_xact_lock(?)', [7_301_024]);
+            $row = $connection->table('core.catalog_revisions')->orderByDesc('rev')->first(['rev', 'document']);
+            if ($row !== null) {
+                $latest = self::fromRow($row->rev, $row->document);
+                if (self::hasLifecycle($latest, $lifecycle)) {
+                    return $latest;
+                }
+                $current = $latest;
+            } elseif (! $stored) {
+                $connection->table('core.catalog_revisions')->insert([
+                    'rev' => $current->rev,
+                    'document' => $current->json(),
+                    'note' => 'Contenuto iniziale',
+                    'published_at' => now(),
+                ]);
+            }
+
+            $document = $current->document;
+            $terms = is_array($document['terms'] ?? null) ? $document['terms'] : [];
+            if (is_array($terms['trial'] ?? null)) {
+                unset($terms['trial']['purge_days']);
+            }
+            $terms['lifecycle'] = $lifecycle;
+            $document['terms'] = $terms;
+            $document['rev'] = $current->rev + 1;
+            $next = new PublishedCatalog($current->rev + 1, $document);
+            $connection->table('core.catalog_revisions')->insert([
+                'rev' => $next->rev,
+                'document' => $next->json(),
+                'note' => 'Giorni di conservazione dalla configurazione',
+                'published_at' => now(),
+            ]);
+
+            // Si serve ciò che è salvato (jsonb ordina le chiavi): i byte non cambiano tra la prima richiesta e le successive.
+            $saved = $connection->table('core.catalog_revisions')->where('rev', $next->rev)->first(['rev', 'document']);
+
+            return $saved === null ? $next : self::fromRow($saved->rev, $saved->document);
+        });
+    }
+
+    /** @param  array{retention_days: int, trial_purge_days: int}  $lifecycle */
+    private static function hasLifecycle(PublishedCatalog $catalog, array $lifecycle): bool
+    {
+        $terms = is_array($catalog->document['terms'] ?? null) ? $catalog->document['terms'] : [];
+        $legacy = is_array($terms['trial'] ?? null) && array_key_exists('purge_days', $terms['trial']);
+
+        return ! $legacy && ($terms['lifecycle'] ?? null) === $lifecycle;
     }
 
     public function plan(string $code, int $version): ?array
