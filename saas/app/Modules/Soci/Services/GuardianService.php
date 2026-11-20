@@ -145,7 +145,7 @@ final readonly class GuardianService
         $ids = $this->table()->where('guardian_person_id', $guardianId)->where('is_operative', true)->pluck('person_id');
         $today = now()->toDateString();
 
-        return array_values(Person::query()->whereIn('id', $ids)->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'birth_date'])
+        return array_values(Person::query()->whereIn('id', $ids)->orderBy('last_name')->get()
             ->filter(static fn (Person $p): bool => Age::isMinor($p->birth_date?->format('Y-m-d'), $today))
             ->map(static fn (Person $p): array => ['id' => $p->id, 'name' => $p->fullName()])->all());
     }
