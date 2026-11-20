@@ -35,4 +35,9 @@ interface PayableDues
      * @return string|null il numero di ricevuta
      */
     public function settle(string $key, int $cents, string $accountId, string $date, string $method, bool $anyway = false): ?string;
+
+    /**
+     * Se la voce è di una persona che non risulta più iscritta (mese di corso), il nome leggibile del corso; altrimenti null. Con $anyway quei soldi si registrano comunque sul contributo del corso.
+     */
+    public function notEnrolled(string $key): ?string;
 }

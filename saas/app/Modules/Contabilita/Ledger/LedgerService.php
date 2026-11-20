@@ -12,6 +12,7 @@ use App\Modules\Contabilita\Contracts\Income;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
+use App\Modules\Contabilita\Contracts\ReceiptHold;
 use App\Modules\Contabilita\Contracts\ReceiptIssued;
 use App\Modules\Contabilita\Contracts\TxType;
 use App\Modules\Contabilita\Models\Account;
@@ -88,7 +89,9 @@ final readonly class LedgerService implements Ledger
             $receiptId = null;
             $receiptLabel = null;
 
-            if ($income->receipt) {
+            // Con ReceiptHold l'incasso si registra subito ma la ricevuta si emette dopo (issueReceipt).
+            $held = $income->receipt && ReceiptHold::active();
+            if ($income->receipt && ! $held) {
                 $number = $this->nextNumber('receipt', $year);
                 $receiptId = Str::uuid7()->toString();
                 $this->connection()->table('app.receipts')->insert([
@@ -125,6 +128,11 @@ final readonly class LedgerService implements Ledger
                 ]);
             }
 
+            if ($held) {
+                foreach ($ids as $id) {
+                    ReceiptHold::note($id);
+                }
+            }
             $this->audit->record('ledger.income', 'app.transactions', $ids[0], [
                 'lines' => count($ids),
                 'cents' => array_sum(array_map(static fn ($l): int => $l->amountCents, $lines)),
@@ -143,6 +151,53 @@ final readonly class LedgerService implements Ledger
         }
 
         return $result;
+    }
+
+    /**
+     * Emette la ricevuta (una sola) per movimenti di incasso già registrati senza ricevuta (vedi ReceiptHold). I movimenti
+     * già con ricevuta o annullati si saltano: ripetere la chiamata non emette una seconda ricevuta.
+     *
+     * @param  list<string>  $transactionIds
+     * @return string|null «numero/anno», o null se non c'era niente da emettere
+     */
+    public function issueReceipt(array $transactionIds): ?string
+    {
+        $ids = array_values(array_filter($transactionIds, static fn (string $id): bool => Str::isUuid($id)));
+        if ($ids === []) {
+            return null;
+        }
+        /** @var array{id: string, label: string}|null $result */
+        $result = $this->transaction(function () use ($ids): ?array {
+            $rows = $this->connection()->table('app.transactions')->whereIn('id', $ids)->where('type', TxType::Income->value)
+                ->whereNull('receipt_id')->whereNull('voided_at')->orderBy('tx_date')->lockForUpdate()->get(['id', 'tx_date', 'person_id', 'amount_cents']);
+            if ($rows->isEmpty()) {
+                return null;
+            }
+            $first = $rows->first();
+            $date = is_string($first->tx_date ?? null) ? $first->tx_date : now()->toDateString();
+            $year = $this->years->yearFor($date);
+            $number = $this->nextNumber('receipt', $year);
+            $receiptId = Str::uuid7()->toString();
+            $total = 0;
+            foreach ($rows as $r) {
+                $total += is_numeric($r->amount_cents ?? null) ? (int) $r->amount_cents : 0;
+            }
+            $person = is_string($first->person_id ?? null) ? $first->person_id : null;
+            $this->connection()->table('app.receipts')->insert([
+                'org_id' => $this->orgId(), 'id' => $receiptId, 'year' => $year, 'number' => $number, 'issued_on' => $date,
+                'payer_person_id' => $person, 'total_cents' => $total, 'created_by' => $this->userId(),
+            ]);
+            $this->connection()->table('app.transactions')->whereIn('id', $rows->pluck('id')->all())->update(['receipt_id' => $receiptId]);
+            $this->audit->record('ledger.receipt_issued', 'app.receipts', $receiptId, ['transactions' => $rows->count(), 'cents' => $total, 'receipt' => $number.'/'.$year]);
+
+            return ['id' => $receiptId, 'label' => $number.'/'.$year];
+        });
+        if ($result === null) {
+            return null;
+        }
+        Event::dispatch(new ReceiptIssued($result['id']));
+
+        return $result['label'];
     }
 
     /**
