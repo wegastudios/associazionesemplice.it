@@ -29,7 +29,8 @@ final class DonatePage {
 			echo '<p class="description">' . esc_html( Donations::disclaimer() ) . '</p>';
 		}
 		if ( 'paypal' === Donations::mode() ) {
-			echo '<p class="description">Non c\'è un metodo di pagamento attivo: le raccolte mostrano il pulsante «Dona con PayPal». Le donazioni arrivano sul tuo conto PayPal e non si registrano da sole: registrale in Prima nota da «<a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a>», con la categoria «Erogazione liberale». Attiva un metodo in Pagamenti online per farle registrare in automatico.</p>';
+			echo '<p class="description">Le raccolte mostrano il pulsante «Dona con PayPal». Le donazioni arrivano sul tuo conto PayPal. Per mandare una ricevuta a chi dona, attivala nelle impostazioni del tuo conto PayPal. Registra le donazioni in Prima nota da «<a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a>», con la categoria «Erogazione liberale».'
+				. ( has_filter( 'asem_donation_checkout_available' ) ? ' Attiva un metodo in Pagamenti online per farle registrare in automatico.' : '' ) . '</p>';
 		} else {
 			echo '<p class="description">Ogni raccolta mostra gli importi proposti e un modulo aperto a tutti, anche a chi non è socio: chi dona sceglie l\'importo e il metodo di pagamento e paga sul sito del gestore. Quando il pagamento è confermato, la donazione si registra da sola in <a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Prima nota</a> come «Erogazione liberale», con la sua ricevuta; la commissione non si ribalta sul donatore.</p>';
 		}
