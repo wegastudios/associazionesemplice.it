@@ -15,6 +15,7 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\Fortify;
@@ -30,6 +31,13 @@ final readonly class IdentityService
     public const TICKET_SECONDS = 300;
 
     private const TICKET_ATTEMPTS = 5;
+
+    /** Codici sbagliati per persona, a prescindere dal biglietto: troppi errori in 15 minuti bloccano i codici per un'ora. */
+    private const PERSON_CODE_ERRORS = 10;
+
+    private const PERSON_CODE_WINDOW = 900;
+
+    private const PERSON_CODE_LOCK = 3600;
 
     public function __construct(
         private DatabaseManager $db,
@@ -73,8 +81,20 @@ final readonly class IdentityService
         if ($person === null) {
             return null;
         }
+        $count = 'identity-code-errors|'.hash('sha256', $person->id);
+        $lock = 'identity-code-lock|'.hash('sha256', $person->id);
+        if (Cache::has($lock)) {
+            // Stesso aspetto di un codice sbagliato: dall'esterno non si distingue il blocco.
+            return null;
+        }
         if (! $this->access->codeIsValid($person, $code)) {
             $this->directory->audit('staff.code_failed', $person->id, null, [], $ip);
+            RateLimiter::hit($count, self::PERSON_CODE_WINDOW);
+            if (RateLimiter::attempts($count) >= self::PERSON_CODE_ERRORS) {
+                Cache::put($lock, true, self::PERSON_CODE_LOCK);
+                RateLimiter::clear($count);
+                $this->directory->audit('staff.code_locked', $person->id, null, ['minutes' => self::PERSON_CODE_LOCK / 60], $ip);
+            }
             if ($tries + 1 >= self::TICKET_ATTEMPTS) {
                 Cache::forget($key);
             } else {
@@ -84,6 +104,7 @@ final readonly class IdentityService
             return null;
         }
         Cache::forget($key);
+        RateLimiter::clear($count);
 
         return $this->open($person, $ip);
     }

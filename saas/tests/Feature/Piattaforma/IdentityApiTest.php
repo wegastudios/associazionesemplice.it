@@ -290,3 +290,66 @@ it('rifiuta un biglietto contraffatto o con l\'ingresso spento', function (): vo
     config(['saas.unified_login.operators' => false]);
     $this->get('/accesso-unico?t=x')->assertRedirect('https://associazionesemplice.it/account');
 });
+
+/* Codici sbagliati contati per persona, non per biglietto. */
+
+function idEnableTwoFactor(Tests\TestCase $test): Closure
+{
+    $sid = idLogin($test);
+    $secret = (string) idCall($test, '2fa-start', ['sid' => $sid, 'password' => ID_PASSWORD])->json('secret');
+    $otp = static function () use ($secret): string {
+        $code = (new Google2FA)->getCurrentOtp($secret);
+        Cache::forget('fortify.2fa_codes.'.md5($code));
+
+        return $code;
+    };
+    idCall($test, '2fa-confirm', ['sid' => $sid, 'code' => $otp()])->assertOk();
+
+    return $otp;
+}
+
+/** Accede con la password e sbaglia il codice $errors volte sullo stesso biglietto. */
+function idWrongCodes(Tests\TestCase $test, int $errors): void
+{
+    $ticket = idCall($test, 'login', ['email' => 'persona@example.test', 'password' => ID_PASSWORD])->json('ticket');
+    for ($i = 0; $i < $errors; $i++) {
+        idCall($test, 'code', ['ticket' => $ticket, 'code' => '000000'])->assertUnauthorized();
+    }
+}
+
+function idCodeWith(Tests\TestCase $test, string $code): Illuminate\Testing\TestResponse
+{
+    $ticket = idCall($test, 'login', ['email' => 'persona@example.test', 'password' => ID_PASSWORD])->json('ticket');
+
+    return idCall($test, 'code', ['ticket' => $ticket, 'code' => $code]);
+}
+
+it('troppi codici sbagliati su biglietti diversi bloccano i codici della persona per un\'ora', function (): void {
+    $id = idPerson();
+    $otp = idEnableTwoFactor($this);
+
+    idWrongCodes($this, 5);
+    idWrongCodes($this, 5);
+    expect(DB::table('core.staff_audit')->where('action', 'staff.code_locked')->where('person_id', $id)->count())->toBe(1);
+
+    // Biglietto nuovo e codice giusto: stesso rifiuto di un errore normale, e il login con password non sblocca.
+    idCodeWith($this, $otp())->assertUnauthorized()->assertExactJson(['error' => 'denied']);
+
+    $this->travel(61)->minutes();
+    idCodeWith($this, $otp())->assertOk()->assertJsonPath('status', 'ok');
+});
+
+it('il codice giusto azzera gli errori della persona, il login con password no', function (): void {
+    idPerson();
+    $otp = idEnableTwoFactor($this);
+
+    // 9 errori su due biglietti: i login con password in mezzo non li azzerano.
+    idWrongCodes($this, 5);
+    idWrongCodes($this, 4);
+    idCodeWith($this, $otp())->assertOk();
+
+    // Il codice giusto ha azzerato: altri 9 errori non bloccano.
+    idWrongCodes($this, 5);
+    idWrongCodes($this, 4);
+    idCodeWith($this, $otp())->assertOk();
+});

@@ -50,6 +50,8 @@ final readonly class StaffInvites
         }
 
         $code = bin2hex(random_bytes(24));
+        // Un invito rimandato annulla i precedenti ancora aperti della stessa email: resta un solo link valido.
+        $db->table('core.staff_invites')->where('email', $email)->whereNull('used_at')->update(['used_at' => now()]);
         $db->table('core.staff_invites')->insert([
             'id' => (string) Str::uuid7(),
             'token_hash' => hash('sha256', $code),
@@ -102,7 +104,13 @@ final readonly class StaffInvites
             $name = is_string($invite->name ?? null) ? $invite->name : '';
             $roles = json_decode(is_string($invite->roles ?? null) ? $invite->roles : '{}', true);
 
-            $person = $db->table('core.staff_people')->where('email', $email)->first(['id']);
+            $person = $db->table('core.staff_people')->where('email', $email)->first(['id', 'password', 'active']);
+            if (is_object($person) && ((is_string($person->password ?? null) && $person->password !== '') || ($person->active ?? null) !== true)) {
+                // Persona che ha già una password o è disattivata: l'invito non serve più e si consuma, senza toccare nulla.
+                $db->table('core.staff_invites')->where('id', $invite->id)->update(['used_at' => now()]);
+
+                return ['Questo invito non è più valido: chiedine uno nuovo.'];
+            }
             $id = is_object($person) && is_string($person->id ?? null) ? $person->id : (string) Str::uuid7();
             $fields = ['name' => $name, 'password' => $this->hasher->make($password), 'active' => true];
             if (is_object($person)) {
