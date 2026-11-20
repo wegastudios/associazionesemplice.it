@@ -11,6 +11,7 @@ use App\Modules\AreaSoci\Payments\StripeGateway;
 use App\Modules\AreaSoci\Services\MemberAccessError;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\Money;
+use App\Modules\Core\Contracts\DonationInvites;
 use App\Modules\Core\Contracts\Input;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDonations;
@@ -41,7 +42,8 @@ final readonly class PaymentSettingsController
     /** La spunta «Aggiungi X € per una donazione» al pagamento (spenta di default) e l'importo che l'associazione propone. */
     public function donations(Request $request): RedirectResponse
     {
-        $data = Input::of($request->validate(['checkout' => ['boolean'], 'deductible' => ['boolean'], 'amount' => ['nullable', 'string', 'max:12']]));
+        $data = Input::of($request->validate(['checkout' => ['boolean'], 'deductible' => ['boolean'], 'amount' => ['nullable', 'string', 'max:12'],
+            'invite_event' => ['boolean'], 'invite_confirm' => ['boolean'], 'invite_area' => ['boolean'], 'invite_email' => ['boolean']]));
         $raw = str_replace(',', '.', trim(Input::optionalString($data, 'amount') ?? ''));
         $cents = $raw === '' ? OrgDonations::DEFAULT_AMOUNT : (is_numeric($raw) ? (int) round((float) $raw * 100) : 0);
         if ($cents < OrgDonations::MIN_CENTS || $cents > OrgDonations::MAX_CENTS) {
@@ -50,6 +52,9 @@ final readonly class PaymentSettingsController
         $this->orgSettings->set(OrgDonations::CHECKOUT, Input::bool($data, 'checkout', false));
         $this->orgSettings->set(OrgDonations::DEDUCTIBLE, Input::bool($data, 'deductible', false));
         $this->orgSettings->set(OrgDonations::AMOUNT, $cents);
+        foreach (DonationInvites::SPOTS as $spot) {
+            $this->orgSettings->set(OrgDonations::INVITE_PREFIX.$spot, Input::bool($data, 'invite_'.$spot, false));
+        }
 
         return back()->with('status', 'Donazioni salvate.');
     }
@@ -71,7 +76,9 @@ final readonly class PaymentSettingsController
                 'paypal_enabled' => $s->paypal_enabled ?? false, 'paypal_client_id' => $s->paypal_client_id ?? '', 'paypal_secret_set' => $s?->paypal_secret !== null,
                 'paypal_live' => $s->paypal_live ?? false, 'account_id' => $s->account_id ?? '', 'ready' => $s?->providers() ?? [],
             ],
-            'donations' => ['checkout' => $this->donations->checkout(), 'deductible' => $this->donations->deductible(), 'amount' => number_format($this->donations->amountCents() / 100, 2, ',', '')],
+            'donations' => ['checkout' => $this->donations->checkout(), 'deductible' => $this->donations->deductible(),
+                'invite_event' => $this->donations->invite(DonationInvites::EVENT), 'invite_confirm' => $this->donations->invite(DonationInvites::CONFIRM),
+                'invite_area' => $this->donations->invite(DonationInvites::AREA), 'invite_email' => $this->donations->invite(DonationInvites::EMAIL), 'amount' => number_format($this->donations->amountCents() / 100, 2, ',', '')],
             'webhookUrl' => $this->webhookUrl(),
             'accounts' => $this->ledger->openAccounts(),
             'payments' => array_map(static fn (array $p): array => [

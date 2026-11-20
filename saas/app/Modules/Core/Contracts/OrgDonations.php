@@ -16,6 +16,9 @@ final readonly class OrgDonations
 
     public const DEDUCTIBLE = 'donations.deductible';
 
+    /** Impostazione di ogni posto dell'invito: donations.invite_event, _confirm, _area, _email. */
+    public const INVITE_PREFIX = 'donations.invite_';
+
     public const DEFAULT_AMOUNT = 500;
 
     public const MIN_CENTS = 100;
@@ -30,6 +33,12 @@ final readonly class OrgDonations
         $v = $this->settings->get(self::AMOUNT);
 
         return is_int($v) && $v >= self::MIN_CENTS && $v <= self::MAX_CENTS ? $v : self::DEFAULT_AMOUNT;
+    }
+
+    /** Questo posto dell'invito è acceso (spento di default)? */
+    public function invite(string $spot): bool
+    {
+        return $this->settings->get(self::INVITE_PREFIX.$spot) === true;
     }
 
     /** Chi dona vede «È anche detraibile.»? Solo se l'associazione lo ha acceso (spento di default). */

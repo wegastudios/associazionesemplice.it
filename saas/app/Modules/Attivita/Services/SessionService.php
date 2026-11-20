@@ -18,6 +18,7 @@ use App\Modules\Contabilita\Contracts\Income;
 use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
+use App\Modules\Core\Contracts\DonationInvites;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\Package;
@@ -52,6 +53,7 @@ final readonly class SessionService
         private Entitlements $entitlements,
         private People $people,
         private MemberFeeOption $memberFees,
+        private DonationInvites $invites,
     ) {}
 
     /**
@@ -549,6 +551,7 @@ final readonly class SessionService
             $toPay ? $payLine : null,
             $area,
             is_string($org->name ?? null) ? $org->name : '',
+            $area !== null && $this->invites->enabled(DonationInvites::EMAIL) ? $area.'/paga' : null,
         ));
     }
 

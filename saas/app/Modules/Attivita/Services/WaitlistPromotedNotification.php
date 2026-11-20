@@ -16,6 +16,7 @@ final class WaitlistPromotedNotification extends Notification
         public readonly ?string $payLine,
         public readonly ?string $areaUrl,
         public readonly string $orgName,
+        public readonly ?string $donateUrl = null,
     ) {}
 
     /** @return list<string> */
@@ -32,6 +33,10 @@ final class WaitlistPromotedNotification extends Notification
         }
         if ($this->areaUrl !== null) {
             $mail->action('Apri l\'area soci', $this->areaUrl);
+        }
+
+        if ($this->donateUrl !== null) {
+            $mail->line('Vuoi sostenere '.$this->orgName.'? [Fai una donazione]('.$this->donateUrl.').');
         }
 
         return $mail->salutation('A presto, '.$this->orgName);

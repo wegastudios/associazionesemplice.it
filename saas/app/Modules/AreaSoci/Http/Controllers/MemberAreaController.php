@@ -12,6 +12,7 @@ use App\Modules\Attivita\Contracts\MemberActivities;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
 use App\Modules\Contabilita\Contracts\Money;
+use App\Modules\Core\Contracts\DonationInvites;
 use App\Modules\Core\Contracts\Input;
 use App\Modules\Documenti\Contracts\QrCode;
 use App\Modules\Soci\Contracts\MemberProfiles;
@@ -38,6 +39,7 @@ final readonly class MemberAreaController
         private MemberReceipts $receipts,
         private MemberActivities $activities,
         private OnlinePayments $payments,
+        private DonationInvites $invites,
     ) {}
 
     public function card(Request $request): Response
@@ -111,6 +113,7 @@ final readonly class MemberAreaController
     {
         return $this->page('AreaSoci/Eventi', [
             'online' => $this->payments->providers() !== [],
+            'justBooked' => session()->pull('invite_after_booking') === true && $this->invites->enabled(DonationInvites::CONFIRM),
             'events' => array_map(fn (array $e): array => $e + [
                 'label' => $this->rangeLabel($e['date'], $e['end_date']), 'closed_label' => $e['closed'] ? 'Prenotazioni online chiuse: per questa data rivolgiti alla segreteria.' : null, 'fee_label' => Money::format($e['fee']), 'due' => max(0, $e['fee'] - $e['paid']),
             ], $this->activities->upcoming($this->current->active())),
@@ -119,7 +122,10 @@ final readonly class MemberAreaController
 
     public function book(string $session): RedirectResponse
     {
-        return $this->attempt(fn () => $this->activities->book($session, $this->current->active()), $this->payments->providers() === [] ? 'Prenotazione registrata: il contributo si paga in segreteria.' : 'Prenotazione registrata: il contributo si paga in segreteria o da «Quote».');
+        $done = $this->attempt(fn () => $this->activities->book($session, $this->current->active()), $this->payments->providers() === [] ? 'Prenotazione registrata: il contributo si paga in segreteria.' : 'Prenotazione registrata: il contributo si paga in segreteria o da «Quote».');
+
+        // Se la prenotazione è riuscita (altrimenti attempt() ha già fermato tutto), la pagina può invitare a donare.
+        return $done->with('invite_after_booking', true);
     }
 
     public function cancel(string $booking): RedirectResponse
