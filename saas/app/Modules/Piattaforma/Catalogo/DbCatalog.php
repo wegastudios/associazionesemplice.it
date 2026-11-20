@@ -6,6 +6,7 @@ namespace App\Modules\Piattaforma\Catalogo;
 
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PublishedCatalog;
+use App\Modules\Portale\Contracts\PortalNotifier;
 use Illuminate\Database\DatabaseManager;
 use stdClass;
 
@@ -18,7 +19,7 @@ final class DbCatalog implements Catalog
 {
     private ?PublishedCatalog $cache = null;
 
-    public function __construct(private readonly DatabaseManager $db, private readonly ConfigCatalog $initial) {}
+    public function __construct(private readonly DatabaseManager $db, private readonly ConfigCatalog $initial, private readonly PortalNotifier $notifier) {}
 
     public function published(): PublishedCatalog
     {
@@ -31,12 +32,6 @@ final class DbCatalog implements Catalog
         return $this->cache;
     }
 
-    /**
-     * I giorni di conservazione hanno una sola fonte, la configurazione del gestionale, e il catalogo li espone in
-     * `terms.lifecycle`. Il corpo servito non deve mai cambiare con la stessa `rev` (il portale lo rifiuta): se i numeri
-     * della configurazione (o la vecchia chiave `terms.trial.purge_days`) non coincidono con l'ultima revisione, se ne
-     * pubblica una nuova, con `rev` + 1, e quella è la sola che si serve.
-     */
     /**
      * I giorni di conservazione della configurazione: gli stessi che una pubblicazione scrive in `terms.lifecycle`.
      *
@@ -53,6 +48,13 @@ final class DbCatalog implements Catalog
         ];
     }
 
+    /**
+     * I giorni di conservazione hanno una sola fonte, la configurazione del gestionale, e il catalogo li espone in
+     * `terms.lifecycle`. Il corpo servito non deve mai cambiare con la stessa `rev` (il portale lo rifiuta): se i numeri
+     * della configurazione (o la vecchia chiave `terms.trial.purge_days`) non coincidono con l'ultima revisione, se ne
+     * pubblica una nuova, con `rev` + 1, e quella è la sola che si serve. Ogni revisione nuova avvisa il portale, come
+     * una pubblicazione dal pannello: il portale ricarica il catalogo solo da quell'avviso.
+     */
     private function withLifecycle(PublishedCatalog $current, bool $stored): PublishedCatalog
     {
         $lifecycle = self::lifecycle();
@@ -61,8 +63,9 @@ final class DbCatalog implements Catalog
         }
 
         $connection = $this->db->connection('pgsql');
+        $created = false;
 
-        return $connection->transaction(function () use ($connection, $current, $stored, $lifecycle): PublishedCatalog {
+        $published = $connection->transaction(function () use ($connection, $current, $stored, $lifecycle, &$created): PublishedCatalog {
             // Una sola scrittura alla volta: chi arriva dopo rilegge e trova la revisione già pubblicata.
             $connection->statement('SELECT pg_advisory_xact_lock(?)', [7_301_024]);
             $row = $connection->table('core.catalog_revisions')->orderByDesc('rev')->first(['rev', 'document']);
@@ -99,9 +102,17 @@ final class DbCatalog implements Catalog
 
             // Si serve ciò che è salvato (jsonb ordina le chiavi): i byte non cambiano tra la prima richiesta e le successive.
             $saved = $connection->table('core.catalog_revisions')->where('rev', $next->rev)->first(['rev', 'document']);
+            $created = true;
 
             return $saved === null ? $next : self::fromRow($saved->rev, $saved->document);
         });
+
+        if ($created) {
+            // Se il portale non risponde ricarica comunque da sé quando si apre il listino o si compra.
+            $this->notifier->catalogChanged($published->rev);
+        }
+
+        return $published;
     }
 
     /** @param  array{retention_days: int, trial_purge_days: int}  $lifecycle */
