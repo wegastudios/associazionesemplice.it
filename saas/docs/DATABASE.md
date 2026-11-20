@@ -108,6 +108,14 @@ proprietario compreso (`FORCE`): le operazioni del proprietario impostano `app.o
 
 (Prova della RLS con `FORCE` e `set_config` fatta sul server SupportHost il 2026-11-02: funziona.)
 
+**Vincolo sulle connessioni: niente pooler in modalità transazione.** L'associazione corrente è impostata a livello di
+sessione (`set_config('app.org_id', …, false)`, in `DatabaseOrgContext`). Con un pooler in modalità transazione (per
+esempio PgBouncer con `pool_mode = transaction`) due istruzioni di fila possono arrivare a connessioni diverse e
+l'impostazione andrebbe all'associazione sbagliata o mancherebbe. Si usa una connessione diretta a PostgreSQL, o un
+pooler in modalità sessione. `saas:health` lo verifica a ogni rilascio (imposta e rilegge `app.org_id` su istruzioni
+consecutive) e controlla anche ruolo dell'applicazione, RLS attiva e forzata su `app.*`, `audit.*` e `sites.*`, e
+permessi del ruolo (sul database condiviso: i database dedicati si controllano dai test di schema).
+
 ## 4. Tipi di dato e indici
 
 - **Importi**: `bigint` in centesimi con `CHECK`. Mai `numeric` o `float` per il denaro.

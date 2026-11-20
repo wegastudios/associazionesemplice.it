@@ -38,7 +38,7 @@ final class CifraturaServiceProvider extends ServiceProvider
                     self::base64($config->get('saas.crypto.signing_key'), 'SAAS_KEY_SERVICE_SIGNING_KEY', SODIUM_CRYPTO_SIGN_SECRETKEYBYTES),
                     self::number($config->get('saas.crypto.timeout', 3), 'SAAS_KEY_SERVICE_TIMEOUT'),
                 ),
-                'local' => new LocalKeyVault(self::base64($config->get('saas.crypto.master_key'), 'SAAS_MASTER_KEY', 32)),
+                'local' => new LocalKeyVault(self::localMasterKey($config->get('saas.crypto.master_key'), $config->get('app.env'))),
                 default => throw new RuntimeException('SAAS_KEY_VAULT deve essere remote o local.'),
             };
         });
@@ -61,6 +61,17 @@ final class CifraturaServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([GenerateKeysCommand::class, DestroyOrgKeysCommand::class]);
         }
+    }
+
+    /** La chiave di prova pubblicata nei test non protegge nulla: fuori da sviluppo e test non si accetta. */
+    private static function localMasterKey(mixed $value, mixed $environment): string
+    {
+        $raw = self::base64($value, 'SAAS_MASTER_KEY', 32);
+        if (hash_equals(LocalKeyVault::TEST_MASTER_KEY, base64_encode($raw)) && ! in_array($environment, ['local', 'testing'], true)) {
+            throw new RuntimeException('SAAS_MASTER_KEY è la chiave di prova: generane una con saas:keys:generate.');
+        }
+
+        return $raw;
     }
 
     private static function string(mixed $value, string $name): string

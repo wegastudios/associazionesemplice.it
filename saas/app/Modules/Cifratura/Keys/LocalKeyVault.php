@@ -14,6 +14,9 @@ use SensitiveParameter;
  */
 final readonly class LocalKeyVault implements KeyVault
 {
+    /** Chiave principale dei test, pubblicata in phpunit.xml: mai ammessa fuori da sviluppo e test. */
+    public const TEST_MASTER_KEY = 'dGVzdC1zb2xvLXBlci1pLXRlc3QtMzItYnl0ZXMtISE=';
+
     private KeyWrap $wrap;
 
     public function __construct(#[SensitiveParameter] string $masterKey)
