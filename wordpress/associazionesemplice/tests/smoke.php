@@ -10986,6 +10986,7 @@ asem_ok( ! \AssociazioneSemplice\Gateways::test( 'satispay', array( 'satispay_mo
 $ps->set_http( $be_sat );
 $be_ev = $mkev( 'Cena Satispay', 1000, 1000 );
 $be_s  = $first_session( $be_ev );
+WP_CLI::log( 'DIAG pm=' . $pm . ' ' . wp_json_encode( $wpdb->get_row( $wpdb->prepare( 'SELECT id, first_name, last_name, application_status, deleted_at, anonymized_at FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $pm ), ARRAY_A ) ) . ' get=' . wp_json_encode( null === Plugin::people()->get( (int) $pm ) ) . ' sess=' . wp_json_encode( $be_s ) . ' act=' . wp_json_encode( $acts->session( (int) $be_s ) ) . ' actget=' . wp_json_encode( null === $acts->get( (int) ( $acts->session( (int) $be_s )['activity_id'] ?? 0 ) ) ) );
 $acts->book( $be_s, $pm );
 wp_set_current_user( $u_pm );
 $be_url = $ps->create_checkout( $pmp, $u_pm, array( "b:$be_s:$pm" ), home_url( '/area/' ) );
