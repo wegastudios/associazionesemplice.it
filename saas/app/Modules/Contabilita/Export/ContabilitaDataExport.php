@@ -57,7 +57,7 @@ final readonly class ContabilitaDataExport implements DataExport
         foreach ($this->db()->table('app.receipts as r')->leftJoin('app.people as p', 'p.id', '=', 'r.payer_person_id')->orderBy('r.year')->orderBy('r.number')
             ->get(['r.number', 'r.year', 'r.issued_on', 'p.last_name', 'p.first_name', 'r.total_cents', 'r.voided_at', 'r.void_reason']) as $r) {
             $rows[] = [$s($r->number ?? '').'/'.$s($r->year ?? ''), $s($r->issued_on ?? ''), trim($s($r->last_name ?? '').' '.$s($r->first_name ?? '')), $money($r->total_cents ?? null),
-                ($r->voided_at ?? null) !== null ? 'annullata: '.$s($r->void_reason ?? '') : ''];
+                ($r->voided_at ?? null) !== null ? 'annullata: '.$s($r->void_reason === 'Stornato' ? 'Annullato' : ($r->void_reason ?? '')) : ''];
         }
         $files['contabilita/ricevute.csv'] = Csv::build(['Numero', 'Data', 'Ricevuto da', 'Totale', 'Annullata'], $rows);
 
