@@ -431,28 +431,22 @@ it('il nome scritto nel modulo non entra nelle email: saluto e frasi sono sempre
 });
 
 it('la pulizia notturna toglie le domande mai confermate da 30 giorni e le respinte da 90, non le altre', function (): void {
-    $ids = $this->orgContext()->run($this->org->id, function (): array {
-        $s = app(ApplicationService::class);
-        foreach (['Aaa', 'Bbb', 'Ccc', 'Ddd', 'Eee'] as $n) {
-            $s->submit(adultApplication(['first_name' => $n, 'email' => mb_strtolower($n).'@example.com']), 'X');
-        }
+    // Righe scritte a mano con le date volute (il contenuto cifrato non serve alla pulizia): mai confermata da 31 e da 29
+    // giorni, respinta da 91 e da 89, in attesa e confermata da 200.
+    $row = function (array $over): string {
+        $id = (string) Illuminate\Support\Str::uuid7();
+        $this->orgContext()->run($this->org->id, fn () => DB::table('app.applications')->insert($over + [
+            'org_id' => $this->org->id, 'id' => $id, 'status' => 'pending', 'first_name' => 'Mario', 'last_name' => 'Rossi', 'minor' => false,
+            'data_enc' => DB::raw("decode('00', 'hex')"), 'unconfirmed' => false, 'submitted_at' => now()->subDays(200),
+        ]));
 
-        return Application::query()->orderBy('first_name')->pluck('id')->all();
-    });
-    [$old, $recent, $rejectedOld, $rejectedRecent, $pending] = $ids;
-
-    // Le date si cambiano con il proprietario (l'applicazione non può): Aaa mai confermata da 31 giorni, Bbb da 29,
-    // Ccc e Ddd respinte da 91 e 89 giorni, Eee confermata e ancora in attesa da 200.
-    $owner = DB::connection('pgsql_owner');
-    $owner->transaction(function () use ($owner, $old, $recent, $rejectedOld, $rejectedRecent, $pending): void {
-        $owner->statement("SELECT set_config('app.org_id', ?, true)", [$this->org->id]);
-        $table = static fn (string $id) => $owner->table('app.applications')->where('id', $id);
-        $table($old)->update(['submitted_at' => now()->subDays(31)]);
-        $table($recent)->update(['submitted_at' => now()->subDays(29)]);
-        $table($rejectedOld)->update(['unconfirmed' => false, 'submitted_at' => now()->subDays(200), 'status' => 'rejected', 'decided_at' => now()->subDays(91), 'reason' => 'x']);
-        $table($rejectedRecent)->update(['unconfirmed' => false, 'submitted_at' => now()->subDays(200), 'status' => 'rejected', 'decided_at' => now()->subDays(89), 'reason' => 'x']);
-        $table($pending)->update(['unconfirmed' => false, 'submitted_at' => now()->subDays(200)]);
-    });
+        return $id;
+    };
+    $old = $row(['unconfirmed' => true, 'submitted_at' => now()->subDays(31)]);
+    $recent = $row(['unconfirmed' => true, 'submitted_at' => now()->subDays(29)]);
+    $rejectedOld = $row(['status' => 'rejected', 'decided_at' => now()->subDays(91), 'reason' => 'x']);
+    $rejectedRecent = $row(['status' => 'rejected', 'decided_at' => now()->subDays(89), 'reason' => 'x']);
+    $pending = $row([]);
 
     $this->artisan('saas:applications:prune')->assertSuccessful();
 
