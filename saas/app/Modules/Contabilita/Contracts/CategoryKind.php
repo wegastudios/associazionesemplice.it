@@ -20,7 +20,7 @@ enum CategoryKind: string
     {
         return match ($this) {
             self::Membership => 'Quota associativa',
-            self::ActivityFee => 'Quota attività / corso',
+            self::ActivityFee => 'Contributo attività / corso',
             self::Donation => 'Erogazione liberale',
             self::OtherIncome => 'Altra entrata',
             self::MemberReimbursement => 'Rimborso spese socio/volontario',

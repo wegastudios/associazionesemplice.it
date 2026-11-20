@@ -502,7 +502,7 @@ final readonly class ActivityService implements Activities
         $activity->save();
     }
 
-    /** Iscrive (o riattiva): per un corso le quote sono dovute da $startMonth, per un evento dalla sua data. */
+    /** Iscrive (o riattiva): per un corso i contributi sono dovuti da $startMonth, per un evento dalla sua data. */
     public function enroll(string $activityId, string $personId, ?string $startMonth = null): Enrollment
     {
         $activity = $this->find($activityId);
@@ -600,7 +600,7 @@ final readonly class ActivityService implements Activities
         if ($row === null) {
             throw new ActivityError('La persona non è iscritta a questa attività.');
         }
-        $fee = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Quota attività / corso» in prima nota.');
+        $fee = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Contributo attività / corso» in prima nota.');
         // Opzione fiscale (spenta di default): il contributo di un socio si incassa come erogazione liberale, senza IVA.
         ['category' => $category, 'donation' => $donation] = $this->memberFees->category($fee, $this->person($personId)['type'] ?? '');
         $vatRate = $donation ? null : $this->vat->rate($activity);

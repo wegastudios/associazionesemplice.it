@@ -41,7 +41,7 @@ final class PaymentCalc
     }
 
     /**
-     * Corso a pagamento unico, o evento: la quota è dovuta per intero dall'iscrizione, anche a rate. Se l'iscrizione
+     * Corso a pagamento unico, o evento: il contributo è dovuto per intero dall'iscrizione, anche a rate. Se l'iscrizione
      * è cancellata prima di qualunque pagamento, non è dovuto nulla.
      *
      * @param  array<string, int>  $paidByMonth
