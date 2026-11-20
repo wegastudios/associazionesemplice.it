@@ -1126,7 +1126,7 @@ class PaymentService extends OfflinePayments {
 			case PaymentItems::RESERVATION:
 				return array( 'category_id' => Resources::income_category_for( (int) $i['reservation_id'] ), 'amount_cents' => (int) $i['amount_cents'], 'reservation_id' => (int) $i['reservation_id'], 'description' => mb_substr( $note . ' — ' . ( $i['label'] ?? '' ), 0, 255 ) );
 			case PaymentItems::DONATION:
-				return array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Donazione aggiunta al pagamento — ' . $note, 0, 255 ) );
+				return array( 'category_id' => $ledger->category_id_of_kind( 'donation' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Donazione aggiunta al pagamento · ' . $note, 0, 255 ) );
 			case PaymentItems::FEE:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Commissione di incasso a carico di chi paga — ' . $note, 0, 255 ) );
 			default:
