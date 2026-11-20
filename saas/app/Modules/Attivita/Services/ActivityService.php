@@ -589,9 +589,9 @@ final readonly class ActivityService implements Activities
      * @param  list<string>  $months
      * @return string|null il numero di ricevuta
      */
-    public function collect(string $activityId, string $personId, string $accountId, string $date, array $months, ?int $amountCents = null, ?PaymentMethod $method = null): ?string
+    public function collect(string $activityId, string $personId, string $accountId, string $date, array $months, ?int $amountCents = null, ?PaymentMethod $method = null, bool $anyway = false): ?string
     {
-        return $this->connection()->transaction(fn (): ?string => $this->collectLocked($activityId, $personId, $accountId, $date, $months, $amountCents, $method));
+        return $this->connection()->transaction(fn (): ?string => $this->collectLocked($activityId, $personId, $accountId, $date, $months, $amountCents, $method, $anyway));
     }
 
     /**
@@ -600,7 +600,7 @@ final readonly class ActivityService implements Activities
      *
      * @param  list<string>  $months
      */
-    private function collectLocked(string $activityId, string $personId, string $accountId, string $date, array $months, ?int $amountCents, ?PaymentMethod $method): ?string
+    private function collectLocked(string $activityId, string $personId, string $accountId, string $date, array $months, ?int $amountCents, ?PaymentMethod $method, bool $anyway): ?string
     {
         $activity = $this->find($activityId);
         Activity::query()->whereKey($activity->id)->lockForUpdate()->value('id');
@@ -643,7 +643,7 @@ final readonly class ActivityService implements Activities
                 if ($left === $row['fee']) {
                     $left = Pricing::remaining($row['fee'], $byMonth[$m] ?? 0);
                 }
-                if ($cents > $left) {
+                if (! $anyway && $cents > $left) {
                     throw new ActivityError($left <= 0 ? self::monthLabel($m).' risulta già pagato.' : 'Per '.self::monthLabel($m).' mancano '.Money::format($left).': l\'importo è troppo alto.');
                 }
                 $lines[] = new IncomeLine($category, $cents, MemberFeeOption::description($donation, $activity->kind, $activity->name, self::monthLabel($m)), $m, $vatRate);
@@ -654,7 +654,7 @@ final readonly class ActivityService implements Activities
                 throw new ActivityError('Non c\'è niente da incassare: indica l\'importo.');
             }
             $left = Pricing::remaining($row['summary']['total_due'] > 0 ? $row['summary']['total_due'] : $row['fee'], $row['summary']['total_paid']);
-            if ($cents > $left) {
+            if (! $anyway && $cents > $left) {
                 throw new ActivityError($left <= 0 ? 'Questa iscrizione risulta già pagata.' : 'L\'importo supera quanto manca da incassare ('.Money::format($left).').');
             }
             $lines[] = new IncomeLine($category, $cents, MemberFeeOption::description($donation, $activity->kind, $activity->name), $row['start_month'], $vatRate);

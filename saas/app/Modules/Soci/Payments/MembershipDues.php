@@ -43,13 +43,13 @@ final readonly class MembershipDues implements PayableDues
         return str_starts_with($key, 'q:');
     }
 
-    public function settle(string $key, int $cents, string $accountId, string $date, string $method): ?string
+    public function settle(string $key, int $cents, string $accountId, string $date, string $method, bool $anyway = false): ?string
     {
         if (preg_match('#^q:([0-9a-f-]{36}):(\d{4}(?:/\d{4})?)$#', $key, $m) !== 1) {
             throw new InvalidArgumentException('Voce non valida.');
         }
         try {
-            return $this->memberships->renewWithPayment($m[1], $accountId, $cents, $date, null, PaymentMethod::from($method))['receipt'];
+            return $this->memberships->renewWithPayment($m[1], $accountId, $cents, $date, $anyway && $this->memberships->holds($m[1], $m[2]) ? $m[2] : null, PaymentMethod::from($method), $anyway)['receipt'];
         } catch (PeopleError $e) {
             throw new InvalidArgumentException($e->getMessage(), 0, $e);
         }

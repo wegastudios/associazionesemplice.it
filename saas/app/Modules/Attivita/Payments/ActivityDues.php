@@ -81,18 +81,18 @@ final readonly class ActivityDues implements PayableDues
         return preg_match('/^[meb]:/', $key) === 1;
     }
 
-    public function settle(string $key, int $cents, string $accountId, string $date, string $method): ?string
+    public function settle(string $key, int $cents, string $accountId, string $date, string $method, bool $anyway = false): ?string
     {
         $pm = PaymentMethod::from($method);
         try {
             if (preg_match('/^m:([0-9a-f-]{36}):([0-9a-f-]{36}):(\d{4}-\d{2})$/', $key, $m) === 1) {
-                return $this->activities->collect($m[1], $m[2], $accountId, $date, [$m[3]], $cents, $pm);
+                return $this->activities->collect($m[1], $m[2], $accountId, $date, [$m[3]], $cents, $pm, $anyway);
             }
             if (preg_match('/^e:([0-9a-f-]{36}):([0-9a-f-]{36})$/', $key, $m) === 1) {
-                return $this->activities->collect($m[1], $m[2], $accountId, $date, [], $cents, $pm);
+                return $this->activities->collect($m[1], $m[2], $accountId, $date, [], $cents, $pm, $anyway);
             }
             if (preg_match('/^b:([0-9a-f-]{36})$/', $key, $m) === 1) {
-                return $this->sessions->collect($m[1], $accountId, $date, $cents, $pm);
+                return $this->sessions->collect($m[1], $accountId, $date, $cents, $pm, $anyway);
             }
         } catch (ActivityError|LedgerError $e) {
             throw new InvalidArgumentException($e->getMessage(), 0, $e);
