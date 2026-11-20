@@ -12,6 +12,7 @@ use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgDonations;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Soci\Contracts\MemberProfiles;
 use Illuminate\Contracts\Container\Container;
@@ -60,6 +61,7 @@ final readonly class OnlinePayments
         private AuditLog $audit,
         private Ledger $ledger,
         private MemberProfiles $profiles,
+        private OrgDonations $donations,
     ) {}
 
     public function settings(): ?PaymentSettings
@@ -95,7 +97,7 @@ final readonly class OnlinePayments
      * @param  list<string>  $personIds  le schede che il socio può pagare (la sua e quelle dei figli)
      * @param  list<string>  $keys
      */
-    public function checkout(string $payerId, array $personIds, array $keys, string $provider, ?string $email, string $baseUrl, string $brand): string
+    public function checkout(string $payerId, array $personIds, array $keys, string $provider, ?string $email, string $baseUrl, string $brand, int $donationCents = 0): string
     {
         $settings = $this->settings();
         if ($settings === null || ! in_array($provider, $settings->providers(), true)) {
@@ -114,6 +116,16 @@ final readonly class OnlinePayments
             if (isset($dues[$k])) {
                 $items[] = $dues[$k];
             }
+        }
+        if ($donationCents > 0) {
+            // «Aggiungi X € per una donazione»: importo scelto da chi paga, voce a parte (erogazione liberale, senza commissioni a suo carico).
+            if (! $this->donations->checkout()) {
+                throw new MemberAccessError('La donazione non è attiva.');
+            }
+            if ($donationCents < OrgDonations::MIN_CENTS || $donationCents > OrgDonations::MAX_CENTS) {
+                throw new MemberAccessError('La donazione può andare da 1 € a '.self::euro(OrgDonations::MAX_CENTS).'.');
+            }
+            $items[] = ['key' => 'd:'.$payerId, 'person_id' => $payerId, 'group' => 'Donazione', 'label' => 'Donazione a '.$brand, 'amount_cents' => $donationCents, 'donation' => true];
         }
         if ($items === []) {
             throw new MemberAccessError('Scegli almeno una voce da pagare.');

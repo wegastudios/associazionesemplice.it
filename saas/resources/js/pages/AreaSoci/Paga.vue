@@ -1,19 +1,28 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import MemberLayout from '../../layouts/MemberLayout.vue';
 
-const props = defineProps({ member: Object, providers: Array, dues: Array, history: Array });
-const form = useForm({ keys: props.dues.map((d) => d.key), provider: '' });
+const props = defineProps({ member: Object, providers: Array, dues: Array, history: Array, donation: Object });
+const form = useForm({ keys: props.dues.map((d) => d.key), provider: '', donation_cents: 0 });
+const give = ref(false);
+const giveEuro = ref(String(props.donation.amount_cents / 100).replace('.', ','));
+const giveCents = computed(() => {
+    const n = Number(String(giveEuro.value).replace(',', '.'));
+    return give.value && Number.isFinite(n) ? Math.round(n * 100) : 0;
+});
+const giveValid = computed(() => !give.value || (giveCents.value >= 100 && giveCents.value <= 1000000));
+const canPay = computed(() => (form.keys.length > 0 || giveCents.value > 0) && giveValid.value && !form.processing);
 const groups = computed(() => {
     const out = {};
     for (const d of props.dues) (out[d.group] ??= []).push(d);
     return out;
 });
-const total = computed(() => props.dues.filter((d) => form.keys.includes(d.key)).reduce((s, d) => s + d.amount_cents, 0));
+const total = computed(() => props.dues.filter((d) => form.keys.includes(d.key)).reduce((s, d) => s + d.amount_cents, 0) + giveCents.value);
 const euro = (c) => (c / 100).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 const pay = (provider) => {
     form.provider = provider;
+    form.donation_cents = giveCents.value;
     form.post('/area/paga');
 };
 </script>
@@ -22,7 +31,7 @@ const pay = (provider) => {
     <Head title="Paga online" />
     <MemberLayout>
         <h1 class="mb-4 text-2xl font-bold">Paga online</h1>
-        <p v-if="!dues.length" class="mb-6 card p-5 sm:p-6 text-center text-muted">Non hai niente da pagare.</p>
+        <p v-if="!dues.length && !donation.enabled" class="mb-6 card p-5 sm:p-6 text-center text-muted">Non hai niente da pagare.</p>
         <template v-else>
             <p v-if="!providers.length" class="mb-4 field w-auto text-sm">L'associazione non ha ancora attivato i pagamenti online: puoi pagare in segreteria.</p>
             <form class="mb-6 space-y-4" @submit.prevent>
@@ -34,11 +43,18 @@ const pay = (provider) => {
                         <span class="font-semibold tabular-nums">{{ d.amount_label }}</span>
                     </label>
                 </section>
+                <section v-if="donation.enabled && providers.length" class="card p-4 text-sm">
+                    <label class="flex items-center gap-3"><input v-model="give" type="checkbox" />
+                        <span>Aggiungi <strong>{{ euro(donation.amount_cents) }}</strong> per una donazione a {{ donation.org }}</span></label>
+                    <label v-if="give" class="mt-3 block space-y-1"><span class="font-semibold">Importo della donazione (€)</span>
+                        <input v-model="giveEuro" class="field w-40" inputmode="decimal" aria-describedby="give-hint" />
+                        <span id="give-hint" class="block text-xs" :class="giveValid ? 'text-muted' : 'text-danger'">Da 1 € a 10.000 €. Non paghi commissioni in più: la donazione ha una ricevuta a parte.</span></label>
+                </section>
                 <div v-if="providers.length" class="sticky bottom-16 card p-4 shadow-sm sm:bottom-2">
                     <p class="mb-3 flex justify-between text-lg font-bold"><span>Totale</span><span class="tabular-nums">{{ euro(total) }}</span></p>
                     <div class="flex flex-wrap gap-3">
-                        <button v-if="providers.includes('stripe')" type="button" class="flex-1 rounded-lg bg-accent px-4 py-3 font-semibold text-accent-ink" :disabled="!form.keys.length || form.processing" @click="pay('stripe')">Paga con carta</button>
-                        <button v-if="providers.includes('paypal')" type="button" class="flex-1 rounded-lg border border-line px-4 py-3 font-semibold" :disabled="!form.keys.length || form.processing" @click="pay('paypal')">Paga con PayPal</button>
+                        <button v-if="providers.includes('stripe')" type="button" class="flex-1 rounded-lg bg-accent px-4 py-3 font-semibold text-accent-ink" :disabled="!canPay" @click="pay('stripe')">Paga con carta</button>
+                        <button v-if="providers.includes('paypal')" type="button" class="flex-1 rounded-lg border border-line px-4 py-3 font-semibold" :disabled="!canPay" @click="pay('paypal')">Paga con PayPal</button>
                     </div>
                     <p class="mt-2 text-xs text-muted">Paghi sulla pagina sicura del servizio scelto: l'associazione non vede i dati della carta. La ricevuta la trovi in «Quote».</p>
                 </div>

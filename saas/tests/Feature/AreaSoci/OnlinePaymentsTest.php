@@ -10,6 +10,9 @@ use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
+use App\Modules\Contabilita\Models\Category;
+use App\Modules\Contabilita\Models\Transaction;
+use App\Modules\Core\Contracts\OrgDonations;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Portale\Contracts\Entitlements;
@@ -479,4 +482,37 @@ it('se su Stripe c\'è già il webhook non lo duplica e chiede il segreto a mano
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->put('/gestionale/pagamenti-online', [
         'stripe_enabled' => true, 'stripe_secret' => 'sk_test_finta123', 'account_id' => $this->cash,
     ])->assertSessionHasErrors(['ledger' => "Su Stripe c'è già un webhook per questo indirizzo: Stripe non mostra più il suo segreto, copialo a mano dal pannello di Stripe."]);
+});
+
+it('aggiunge una donazione al pagamento: voce a parte, erogazione liberale con la sua ricevuta', function (): void {
+    saveStripe($this);
+    $cookie = memberCookie($this, $this->anna->id);
+    $member = fn () => $this->withUnencryptedCookie('as_socio', $cookie);
+    Http::fake(['api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_test_d', 'url' => 'https://checkout.stripe.com/c/pay/cs_test_d'])]);
+
+    // spenta di default: la donazione non si accetta
+    $member()->post($this->host.'/area/paga', ['keys' => [], 'donation_cents' => 500, 'provider' => 'stripe'])->assertSessionHasErrors('ledger');
+    $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set(OrgDonations::CHECKOUT, true));
+    $member()->get($this->host.'/area/paga')->assertInertia(fn (Assert $page) => $page->where('donation.enabled', true)->where('donation.amount_cents', 1000));
+    $member()->post($this->host.'/area/paga', ['keys' => [], 'donation_cents' => 50, 'provider' => 'stripe'])->assertSessionHasErrors('ledger');
+    $member()->post($this->host.'/area/paga', ['keys' => [], 'donation_cents' => 500, 'provider' => 'stripe'])->assertRedirect('https://checkout.stripe.com/c/pay/cs_test_d');
+
+    $payload = (string) json_encode(['type' => 'checkout.session.completed', 'data' => ['object' => ['id' => 'cs_test_d', 'payment_status' => 'paid', 'amount_total' => 500, 'currency' => 'eur']]]);
+    $sign = ['HTTP_STRIPE_SIGNATURE' => StripeWebhook::header($payload, 'whsec_finto456', time()), 'CONTENT_TYPE' => 'application/json'];
+    $this->call('POST', $this->host.'/area/webhook/stripe', [], [], [], $sign, $payload)->assertOk();
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        $p = app(OnlinePayments::class)->list(null)[0];
+        $tx = Transaction::query()->where('method', 'stripe')->sole();
+        expect($p['status'])->toBe('settled')->and($p['receipts'])->toHaveCount(1)->and($tx->amount_cents)->toBe(500)->and($tx->vat_rate)->toBeNull()
+            ->and(Category::query()->findOrFail($tx->category_id)->kind->value)->toBe('donation');
+    });
+});
+
+it('la spunta della donazione si imposta nei pagamenti online, con l\'importo proposto', function (): void {
+    $this->actingAs($this->owner)->put('/gestionale/pagamenti-online/donazioni', ['checkout' => true, 'amount' => '15,50'])->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->put('/gestionale/pagamenti-online/donazioni', ['checkout' => true, 'amount' => '0,10'])->assertSessionHasErrors('amount');
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(app(OrgDonations::class)->checkout())->toBeTrue()->and(app(OrgDonations::class)->amountCents())->toBe(1550);
+    });
 });

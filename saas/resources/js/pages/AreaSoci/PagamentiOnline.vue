@@ -9,12 +9,14 @@ const links = {
     paypalNonprofit: 'https://www.paypal.com/it/cshelp/article/come-faccio-a-richiedere-la-tariffa-per-enti-benefici-help221',
     paypalKeys: 'https://developer.paypal.com/dashboard/applications/live',
 };
-const props = defineProps({ settings: Object, webhookUrl: String, accounts: Array, payments: Array, canSettings: Boolean, canAccounting: Boolean, canRefund: Boolean });
+const props = defineProps({ donations: Object, settings: Object, webhookUrl: String, accounts: Array, payments: Array, canSettings: Boolean, canAccounting: Boolean, canRefund: Boolean });
 const s = props.settings;
 const form = useForm({
     stripe_enabled: s.stripe_enabled, stripe_secret: '', stripe_webhook: '', paypal_enabled: s.paypal_enabled, paypal_client_id: s.paypal_client_id,
     paypal_secret: '', paypal_live: s.paypal_live, account_id: s.account_id || '', forget: [],
 });
+const give = useForm({ checkout: props.donations.checkout, amount: props.donations.amount });
+const saveGive = () => give.put('/gestionale/pagamenti-online/donazioni', { preserveScroll: true });
 const save = () => form.transform((d) => ({ ...d, account_id: d.account_id || null })).put('/gestionale/pagamenti-online', { preserveScroll: true, onSuccess: () => form.reset('stripe_secret', 'stripe_webhook', 'paypal_secret', 'forget') });
 const test = (p) => router.post(`/gestionale/pagamenti-online/prova/${p}`, {}, { preserveScroll: true });
 const reviewed = (p) => router.post(`/gestionale/pagamenti-online/${p.id}/controllato`, {}, { preserveScroll: true });
@@ -87,6 +89,17 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                 <button type="submit" class="btn btn-primary" :disabled="form.processing">Salva</button>
                 <span class="text-sm text-muted">Pronti per i soci: {{ s.ready.length ? s.ready.join(', ') : 'nessuno' }}. Le chiavi salvate non si possono rileggere: per cambiarle, scrivile di nuovo.</span>
             </div>
+        </form>
+
+        <form v-if="canSettings" class="mb-6 card space-y-3 p-4 text-sm sm:p-5" novalidate @submit.prevent="saveGive">
+            <h2 class="text-lg font-bold">Donazioni</h2>
+            <label class="flex items-start gap-2"><input v-model="give.checkout" type="checkbox" class="mt-1" />
+                <span>Al pagamento online proponi «Aggiungi X € per una donazione a {{ '{associazione}' }}»</span></label>
+            <label class="block max-w-xs space-y-1"><span class="font-semibold">Importo proposto (€)</span>
+                <input v-model="give.amount" class="field" inputmode="decimal" />
+                <span class="block text-muted">Chi paga può cambiarlo. La donazione va in prima nota come «Erogazione liberale» e ha una ricevuta a parte, con la stessa numerazione delle altre. Non paga commissioni in più.</span>
+                <span v-if="give.errors.amount" class="block font-semibold text-danger" role="alert">{{ give.errors.amount }}</span></label>
+            <button type="submit" class="btn btn-primary" :disabled="give.processing">Salva</button>
         </form>
 
         <section class="card overflow-x-auto p-5" aria-labelledby="l">

@@ -22,6 +22,7 @@ use App\Modules\Contabilita\Ledger\LedgerService;
 use App\Modules\Contabilita\Ledger\StatementSnapshots;
 use App\Modules\Contabilita\Listeners\FixReceiptFile;
 use App\Modules\Contabilita\Listeners\SeedAccounting;
+use App\Modules\Contabilita\Payments\DonationDues;
 use App\Modules\Contabilita\Receipts\MemberReceiptsService;
 use App\Modules\Contabilita\Setup\AccountsStep;
 use App\Modules\Contabilita\Setup\EntityStep;
@@ -30,6 +31,7 @@ use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\DemoSeeder;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\OrgCreated;
+use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Core\Contracts\ReadableExport;
 use App\Modules\Core\Contracts\SetupStep;
 use App\Modules\Core\Contracts\YearArchives;
@@ -42,6 +44,7 @@ final class ContabilitaServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->tag([AccountingHome::class], HomeWidget::TAG);
+        $this->app->tag([DonationDues::class], PayableDues::TAG);
         $this->app->tag([ContabilitaDataExport::class], DataExport::TAG);
         $this->app->tag([ContabilitaReadableExport::class], ReadableExport::TAG);
         $this->app->tag([DemoFiscalYear::class, DemoLedger::class], DemoSeeder::TAG);
