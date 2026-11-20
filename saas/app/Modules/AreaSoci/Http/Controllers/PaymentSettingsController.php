@@ -20,6 +20,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
+use Throwable;
 
 /** Gestionale: i conti Stripe e PayPal dell'associazione e l'elenco dei pagamenti online dei soci. */
 final readonly class PaymentSettingsController
@@ -43,7 +44,6 @@ final readonly class PaymentSettingsController
                 $names[$p->id] = trim((is_string($p->last_name ?? null) ? $p->last_name : '').' '.(is_string($p->first_name ?? null) ? $p->first_name : ''));
             }
         }
-        $slug = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->value('slug');
 
         return Inertia::render('AreaSoci/PagamentiOnline', [
             'settings' => [
@@ -51,7 +51,7 @@ final readonly class PaymentSettingsController
                 'paypal_enabled' => $s->paypal_enabled ?? false, 'paypal_client_id' => $s->paypal_client_id ?? '', 'paypal_secret_set' => $s?->paypal_secret !== null,
                 'paypal_live' => $s->paypal_live ?? false, 'account_id' => $s->account_id ?? '', 'ready' => $s?->providers() ?? [],
             ],
-            'webhookUrl' => StaffLinkController::baseUrl(is_string($slug) ? $slug : '').'/area/webhook/stripe',
+            'webhookUrl' => $this->webhookUrl(),
             'accounts' => $this->ledger->openAccounts(),
             'payments' => array_map(static fn (array $p): array => [
                 'id' => $p['id'], 'date' => date('d/m/Y H:i', (int) strtotime($p['created_at'])), 'person' => $names[$p['person_id']] ?? '', 'person_id' => $p['person_id'],
@@ -85,6 +85,8 @@ final readonly class PaymentSettingsController
             throw ValidationException::withMessages(['account_id' => 'Conto non valido.']);
         }
         $s = $this->payments->settings() ?? new PaymentSettings;
+        $newStripe = Input::optionalString($data, 'stripe_secret') !== null;
+        $newPaypal = Input::optionalString($data, 'paypal_secret') !== null || (Input::optionalString($data, 'paypal_client_id') ?? '') !== (is_string($s->paypal_client_id ?? null) ? $s->paypal_client_id : '');
         $s->fill([
             'stripe_enabled' => Input::bool($data, 'stripe_enabled', false), 'paypal_enabled' => Input::bool($data, 'paypal_enabled', false),
             'paypal_client_id' => Input::optionalString($data, 'paypal_client_id'), 'paypal_live' => Input::bool($data, 'paypal_live', false), 'account_id' => $account,
@@ -103,7 +105,61 @@ final readonly class PaymentSettingsController
         }
         $s->save();
 
-        return back()->with('status', 'Impostazioni dei pagamenti salvate.');
+        // Subito dopo le chiavi nuove: prova della connessione e, per Stripe, webhook creato da solo.
+        $done = [];
+        $problems = [];
+        if ($newStripe && is_string($s->stripe_secret) && $s->stripe_secret !== '') {
+            try {
+                $this->stripe->test($s->stripe_secret);
+                $done[] = 'La connessione con Stripe funziona.';
+                if (($s->stripe_webhook ?? '') === '') {
+                    [$ok, $text] = $this->createStripeWebhook($s);
+                    if ($ok) {
+                        $done[] = $text;
+                    } else {
+                        $problems[] = $text;
+                    }
+                }
+            } catch (Throwable $e) {
+                $problems[] = 'La prova della connessione con Stripe non è riuscita: '.$e->getMessage();
+            }
+        }
+        if ($newPaypal && is_string($s->paypal_client_id) && $s->paypal_client_id !== '' && is_string($s->paypal_secret) && $s->paypal_secret !== '') {
+            try {
+                $this->paypal->token($s->paypal_live ?? false, $s->paypal_client_id, $s->paypal_secret);
+                $done[] = 'La connessione con PayPal funziona.';
+            } catch (Throwable $e) {
+                $problems[] = 'La prova della connessione con PayPal non è riuscita: '.$e->getMessage();
+            }
+        }
+
+        $back = back()->with('status', trim('Impostazioni dei pagamenti salvate. '.implode(' ', $done)));
+
+        return $problems === [] ? $back : $back->withErrors(['ledger' => implode(' ', $problems)]);
+    }
+
+    /** @return array{0: bool, 1: string} se è riuscito e cosa dire */
+    private function createStripeWebhook(PaymentSettings $s): array
+    {
+        try {
+            $webhook = $this->stripe->createWebhook((string) $s->stripe_secret, $this->webhookUrl());
+        } catch (Throwable $e) {
+            return [false, 'Il webhook di Stripe non si è creato da solo ('.$e->getMessage().'): aggiungilo a mano come indicato sotto.'];
+        }
+        if ($webhook === null) {
+            return [false, "Su Stripe c'è già un webhook per questo indirizzo: Stripe non mostra più il suo segreto, copialo a mano dal pannello di Stripe."];
+        }
+        $s->stripe_webhook = $webhook['secret'];
+        $s->save();
+
+        return [true, 'Il webhook di Stripe è stato creato.'];
+    }
+
+    private function webhookUrl(): string
+    {
+        $slug = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->value('slug');
+
+        return StaffLinkController::baseUrl(is_string($slug) ? $slug : '').'/area/webhook/stripe';
     }
 
     public function test(string $provider): RedirectResponse

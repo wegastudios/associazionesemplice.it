@@ -63,6 +63,7 @@ function memberCookie(object $test, string $personId): string
 
 function saveStripe(object $test): void
 {
+    Http::preventStrayRequests(); // il salvataggio prova le chiavi: senza risposte finte la prova fallisce, e va bene
     $test->actingAs($test->owner)->withSession(['auth.password_confirmed_at' => time()])->put('/gestionale/pagamenti-online', [
         'stripe_enabled' => true, 'stripe_secret' => 'sk_test_finta123', 'stripe_webhook' => 'whsec_finto456', 'account_id' => $test->cash,
         'paypal_enabled' => true, 'paypal_client_id' => 'client-finto', 'paypal_secret' => 'segreto-finto', 'paypal_live' => false,
@@ -442,4 +443,40 @@ it('se lo storno non è possibile (anno fiscale chiuso) rifiuta prima di chiamar
     expect(session('errors')->first('ledger'))->toContain('è chiuso')->toContain('Il rimborso non è stato fatto');
     Http::assertNothingSent();
     $this->orgContext()->run($this->org->id, fn () => expect(DB::table('app.online_payments')->where('id', $id)->value('refund_pending_cents'))->toBeNull());
+});
+
+it('prova le chiavi appena inserite e crea da solo il webhook di Stripe', function (): void {
+    Http::fake([
+        'api.stripe.com/v1/balance' => Http::response(['object' => 'balance']),
+        'api.stripe.com/v1/webhook_endpoints?limit=100' => Http::response(['data' => []]),
+        'api.stripe.com/v1/webhook_endpoints' => Http::response(['id' => 'we_1', 'secret' => 'whsec_creato789']),
+    ]);
+
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->put('/gestionale/pagamenti-online', [
+        'stripe_enabled' => true, 'stripe_secret' => 'sk_test_finta123', 'account_id' => $this->cash,
+    ])->assertSessionHas('status', fn (string $m) => str_contains($m, 'Stripe funziona') && str_contains($m, 'webhook di Stripe è stato creato'))->assertSessionHasNoErrors();
+
+    $this->orgContext()->run($this->org->id, fn () => expect(app(OnlinePayments::class)->settings()?->stripe_webhook)->toBe('whsec_creato789'));
+    Http::assertSent(fn ($request) => $request->method() === 'POST' && str_ends_with($request->url(), '/v1/webhook_endpoints') && $request['enabled_events'] === ['checkout.session.completed'] && str_ends_with((string) $request['url'], '/area/webhook/stripe'));
+});
+
+it('salva comunque le chiavi se la prova non riesce e lo dice', function (): void {
+    Http::fake(['api.stripe.com/*' => Http::response(['error' => ['message' => 'chiave non valida']], 401)]);
+
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->put('/gestionale/pagamenti-online', [
+        'stripe_enabled' => true, 'stripe_secret' => 'sk_test_finta123', 'account_id' => $this->cash,
+    ])->assertSessionHasErrors(['ledger' => 'La prova della connessione con Stripe non è riuscita: Stripe: chiave non valida']);
+
+    $this->orgContext()->run($this->org->id, fn () => expect(app(OnlinePayments::class)->settings()?->stripe_secret)->toBe('sk_test_finta123'));
+});
+
+it('se su Stripe c\'è già il webhook non lo duplica e chiede il segreto a mano', function (): void {
+    Http::fake([
+        'api.stripe.com/v1/balance' => Http::response(['object' => 'balance']),
+        'api.stripe.com/v1/webhook_endpoints?limit=100' => fn ($request) => Http::response(['data' => [['url' => StaffLinkController::baseUrl($this->org->slug).'/area/webhook/stripe']]]),
+    ]);
+
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->put('/gestionale/pagamenti-online', [
+        'stripe_enabled' => true, 'stripe_secret' => 'sk_test_finta123', 'account_id' => $this->cash,
+    ])->assertSessionHasErrors(['ledger' => "Su Stripe c'è già un webhook per questo indirizzo: Stripe non mostra più il suo segreto, copialo a mano dal pannello di Stripe."]);
 });
