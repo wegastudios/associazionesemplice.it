@@ -21,6 +21,7 @@ use LogicException;
  *   'birth_date' => Encrypted::class.':date',
  *   'address'    => Encrypted::class.':json',
  *   'diagnosis'  => Encrypted::class.':health',          // dato sanitario: anche le letture vanno nel registro
+ *   'iban'       => Encrypted::class.':bound',           // scritto legato alla riga (0x02) se l'interruttore globale è acceso
  *
  * Il testo in chiaro non tocca mai il database. Si cerca con HasEncryptedFields::scopeWhereEncrypted().
  *
@@ -34,11 +35,15 @@ final class Encrypted implements CastsAttributes
 
     private bool $health = false;
 
+    private bool $bound = false;
+
     public function __construct(string ...$options)
     {
         foreach ($options as $option) {
             if (str_starts_with($option, 'index=')) {
                 $this->index = Normalizer::from(substr($option, 6));
+            } elseif ($option === 'bound') {
+                $this->bound = true;
             } elseif ($option === 'health') {
                 $this->health = true;
             } elseif (in_array($option, ['string', 'date', 'json'], true)) {
@@ -107,7 +112,7 @@ final class Encrypted implements CastsAttributes
 
         $orgId = self::orgId($attributes);
         $field = self::field($model, $key);
-        $columns[$key.'_enc'] = Bytea::encode(self::cipher()->encrypt($orgId, $field, $plain, self::bindsRow() ? $rowId : null));
+        $columns[$key.'_enc'] = Bytea::encode(self::cipher()->encrypt($orgId, $field, $plain, $this->bindsRow() ? $rowId : null));
         if ($this->index !== null) {
             $columns[$key.'_bidx'] = Bytea::encode(self::cipher()->blindIndex($orgId, $field, $this->index->apply($plain)));
         }
@@ -115,10 +120,13 @@ final class Encrypted implements CastsAttributes
         return $columns;
     }
 
-    /** Il formato legato alla riga (0x02) è acceso? In produzione resta spento finché non lo si accende di proposito. */
-    public static function bindsRow(): bool
+    /**
+     * Questo campo si scrive legato alla riga (0x02)? Servono l'opzione `bound` sul campo e l'interruttore globale
+     * `saas.crypto.row_bound_format` acceso (spento: le nuove scritture tornano a 0x01). La lettura apre sempre entrambi.
+     */
+    public function bindsRow(): bool
     {
-        return config('saas.crypto.row_bound_format') === true;
+        return $this->bound && config('saas.crypto.row_bound_format') === true;
     }
 
     /** @param  array<string, mixed>  $attributes */

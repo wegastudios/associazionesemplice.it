@@ -9,6 +9,7 @@ use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Models\Application;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\PeopleImportService;
+use App\Modules\Soci\Services\PeopleService;
 use Illuminate\Support\Facades\DB;
 
 // Dati di prova inventati.
@@ -28,6 +29,27 @@ function rowFmtImport(string $csv): array
         ->and(array_column($preview['plan'] ?? [], 'message'))->toBe([null, null]);
 
     return $s->apply($preview['plan'] ?? [], false);
+}
+
+/** @return array<string, mixed> */
+function rowFmtPersonData(): array
+{
+    return [
+        'first_name' => 'Mario', 'last_name' => 'Rossi', 'tax_code' => 'RSSMRA80A01H501U', 'birth_date' => '1980-01-01', 'birth_place' => 'Roma',
+        'address' => ['text' => 'Via Roma 1'], 'phone' => '333 1234567', 'iban' => 'IT60X0542811101000000123456', 'notes' => 'Nota finta',
+    ];
+}
+
+function rowFmtPersonCheck(string $id, string $format): void
+{
+    foreach (['tax_code', 'birth_date', 'birth_place', 'address', 'phone', 'iban', 'notes'] as $field) {
+        expect(rowFmtByte('app.people', $field.'_enc', $id))->toBe($format, "campo {$field}");
+    }
+    $p = Person::query()->findOrFail($id);
+    expect($p->tax_code)->toBe('RSSMRA80A01H501U')->and($p->birth_date?->format('Y-m-d'))->toBe('1980-01-01')->and($p->birth_place)->toBe('Roma')
+        ->and($p->address)->toBe(['text' => 'Via Roma 1'])->and($p->phone)->toBe('333 1234567')->and($p->iban)->toBe('IT60X0542811101000000123456')
+        ->and($p->notes)->toBe('Nota finta')
+        ->and(Person::query()->whereEncrypted('tax_code', 'RSSMRA80A01H501U')->sole()->id)->toBe($id);
 }
 
 beforeEach(function (): void {
@@ -50,51 +72,96 @@ it('assegna l\'id della riga prima di salvare', function (): void {
     });
 });
 
-it('di default scrive ancora il formato storico 0x01', function (): void {
-    expect(config('saas.crypto.row_bound_format'))->toBeFalse();
+it('di default scrive 0x02 per i campi dei soci e dei pagamenti e li rilegge', function (): void {
+    expect(config('saas.crypto.row_bound_format'))->toBeTrue();
 
     $this->orgContext()->run($this->org->id, function (): void {
-        $person = Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'tax_code' => 'RSSMRA80A01H501U', 'phone' => '333 1234567']);
-        $settings = PaymentSettings::create(['stripe_secret' => 'sk_test_finta']);
+        $person = Person::create(rowFmtPersonData());
+        rowFmtPersonCheck($person->id, '02');
 
-        expect(rowFmtByte('app.people', 'phone_enc', $person->id))->toBe('01')
-            ->and(rowFmtByte('app.people', 'tax_code_enc', $person->id))->toBe('01')
-            ->and(rowFmtByte('app.payment_settings', 'stripe_secret_enc', $settings->id))->toBe('01')
-            ->and(Person::query()->findOrFail($person->id)->phone)->toBe('333 1234567');
+        $settings = PaymentSettings::create(['stripe_secret' => 'sk_test_finta', 'stripe_webhook' => 'whsec_finto', 'paypal_secret' => 'segreto-finto']);
+        foreach (['stripe_secret', 'stripe_webhook', 'paypal_secret'] as $field) {
+            expect(rowFmtByte('app.payment_settings', $field.'_enc', $settings->id))->toBe('02', "campo {$field}");
+        }
+        $fresh = PaymentSettings::query()->findOrFail($settings->id);
+        expect($fresh->stripe_secret)->toBe('sk_test_finta')->and($fresh->stripe_webhook)->toBe('whsec_finto')->and($fresh->paypal_secret)->toBe('segreto-finto');
+
+        // Dopo una modifica restano 0x02 con lo stesso id e si rileggono.
+        $fresh->fill(['stripe_secret' => 'sk_test_nuova'])->save();
+        expect(rowFmtByte('app.payment_settings', 'stripe_secret_enc', $settings->id))->toBe('02')
+            ->and(PaymentSettings::query()->findOrFail($settings->id)->stripe_secret)->toBe('sk_test_nuova')
+            ->and(PaymentSettings::query()->findOrFail($settings->id)->paypal_secret)->toBe('segreto-finto');
+
+        $person->fill(['phone' => '339 7654321', 'address' => ['text' => 'Via Milano 2']])->save();
+        expect(rowFmtByte('app.people', 'phone_enc', $person->id))->toBe('02')
+            ->and(Person::query()->findOrFail($person->id)->phone)->toBe('339 7654321')
+            ->and(Person::query()->findOrFail($person->id)->address)->toBe(['text' => 'Via Milano 2'])
+            ->and(Person::query()->findOrFail($person->id)->iban)->toBe('IT60X0542811101000000123456');
     });
 });
 
-it('con il formato legato alla riga acceso scrive 0x02 e rilegge', function (): void {
-    config(['saas.crypto.row_bound_format' => true]);
+it('con l\'interruttore spento scrive ancora 0x01', function (): void {
+    config(['saas.crypto.row_bound_format' => false]);
 
     $this->orgContext()->run($this->org->id, function (): void {
-        $person = Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'tax_code' => 'RSSMRA80A01H501U', 'birth_date' => '1980-01-01', 'address' => ['text' => 'Via Roma 1'], 'phone' => '333 1234567']);
-        $settings = PaymentSettings::create(['stripe_secret' => 'sk_test_finta', 'paypal_secret' => 'segreto-finto']);
+        $person = Person::create(rowFmtPersonData());
+        $settings = PaymentSettings::create(['stripe_secret' => 'sk_test_finta']);
+
+        rowFmtPersonCheck($person->id, '01');
+        expect(rowFmtByte('app.payment_settings', 'stripe_secret_enc', $settings->id))->toBe('01')
+            ->and(PaymentSettings::query()->findOrFail($settings->id)->stripe_secret)->toBe('sk_test_finta');
+    });
+});
+
+it('non lega alla riga i campi degli altri modelli: restano 0x01', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
         $application = new Application(['first_name' => 'Anna', 'last_name' => 'Verdi', 'minor' => false, 'unconfirmed' => true, 'data' => ['tax_code' => 'VRDNNA85A41H501Z']]);
         $application->save();
 
-        expect(rowFmtByte('app.people', 'phone_enc', $person->id))->toBe('02')
-            ->and(rowFmtByte('app.people', 'tax_code_enc', $person->id))->toBe('02')
-            ->and(rowFmtByte('app.payment_settings', 'paypal_secret_enc', $settings->id))->toBe('02')
-            ->and(rowFmtByte('app.applications', 'data_enc', $application->id))->toBe('02');
-
-        $fresh = Person::query()->findOrFail($person->id);
-        expect($fresh->phone)->toBe('333 1234567')->and($fresh->tax_code)->toBe('RSSMRA80A01H501U')
-            ->and($fresh->birth_date?->format('Y-m-d'))->toBe('1980-01-01')->and($fresh->address)->toBe(['text' => 'Via Roma 1'])
-            ->and(Person::query()->whereEncrypted('tax_code', 'RSSMRA80A01H501U')->sole()->id)->toBe($person->id)
-            ->and(PaymentSettings::query()->findOrFail($settings->id)->stripe_secret)->toBe('sk_test_finta')
+        expect(rowFmtByte('app.applications', 'data_enc', $application->id))->toBe('01')
             ->and(Application::query()->findOrFail($application->id)->data)->toBe(['tax_code' => 'VRDNNA85A41H501Z']);
+    });
+});
 
-        // Una modifica riscrive il campo nello stesso formato, con lo stesso id.
-        $fresh->fill(['phone' => '339 7654321'])->save();
+it('una riga vecchia 0x01 passa a 0x02 al salvataggio del campo e si rilegge', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        config(['saas.crypto.row_bound_format' => false]);
+        $person = Person::create(rowFmtPersonData());
+        $settings = PaymentSettings::create(['stripe_secret' => 'sk_test_finta', 'paypal_secret' => 'segreto-finto']);
+        config(['saas.crypto.row_bound_format' => true]);
+
+        $person = Person::query()->findOrFail($person->id);
+        $person->fill(['phone' => '339 7654321'])->save();
+        // Solo il campo toccato si riscrive; gli altri restano 0x01 e si aprono comunque.
         expect(rowFmtByte('app.people', 'phone_enc', $person->id))->toBe('02')
-            ->and(Person::query()->findOrFail($person->id)->phone)->toBe('339 7654321');
+            ->and(rowFmtByte('app.people', 'iban_enc', $person->id))->toBe('01')
+            ->and(Person::query()->findOrFail($person->id)->phone)->toBe('339 7654321')
+            ->and(Person::query()->findOrFail($person->id)->iban)->toBe('IT60X0542811101000000123456')
+            ->and(Person::query()->findOrFail($person->id)->tax_code)->toBe('RSSMRA80A01H501U');
+
+        $settings = PaymentSettings::query()->findOrFail($settings->id);
+        $settings->fill(['stripe_secret' => 'sk_test_nuova'])->save();
+        expect(rowFmtByte('app.payment_settings', 'stripe_secret_enc', $settings->id))->toBe('02')
+            ->and(rowFmtByte('app.payment_settings', 'paypal_secret_enc', $settings->id))->toBe('01')
+            ->and(PaymentSettings::query()->findOrFail($settings->id)->stripe_secret)->toBe('sk_test_nuova')
+            ->and(PaymentSettings::query()->findOrFail($settings->id)->paypal_secret)->toBe('segreto-finto');
+    });
+});
+
+it('le schede create e aggiornate dal servizio dei soci sono 0x02 e si rileggono', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $service = app(PeopleService::class);
+        $data = ['first_name' => 'Anna', 'last_name' => 'Verdi', 'type' => MemberType::Ordinary->value, 'phone' => '339 7654321'];
+        $person = $service->create($data);
+        expect(rowFmtByte('app.people', 'phone_enc', $person->id))->toBe('02');
+
+        $service->update($person->id, ['phone' => '338 1112233'] + $data);
+        expect(Person::query()->findOrFail($person->id)->phone)->toBe('338 1112233')
+            ->and(rowFmtByte('app.people', 'phone_enc', $person->id))->toBe('02');
     });
 });
 
 it('non apre un campo 0x02 copiato su un\'altra riga', function (): void {
-    config(['saas.crypto.row_bound_format' => true]);
-
     $this->orgContext()->run($this->org->id, function (): void {
         $a = Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'iban' => 'IT60X0542811101000000123456']);
         $b = Person::create(['first_name' => 'Luigi', 'last_name' => 'Verdi', 'iban' => 'IT00A0000000000000000000000']);
@@ -103,16 +170,6 @@ it('non apre un campo 0x02 copiato su un\'altra riga', function (): void {
 
         expect(fn () => Person::query()->findOrFail($b->id)->iban)->toThrow(DecryptionFailed::class)
             ->and(Person::query()->findOrFail($a->id)->iban)->toBe('IT60X0542811101000000123456');
-    });
-});
-
-it('legge le righe vecchie 0x01 anche con il formato acceso', function (): void {
-    $this->orgContext()->run($this->org->id, function (): void {
-        $old = Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'phone' => '333 1234567']);
-        config(['saas.crypto.row_bound_format' => true]);
-
-        expect(rowFmtByte('app.people', 'phone_enc', $old->id))->toBe('01')
-            ->and(Person::query()->findOrFail($old->id)->phone)->toBe('333 1234567');
     });
 });
 

@@ -71,13 +71,13 @@ final class Person extends OrgModel
     protected function casts(): array
     {
         return [
-            'tax_code' => Encrypted::class.':index=taxcode',
-            'birth_date' => Encrypted::class.':date',
-            'birth_place' => Encrypted::class,
-            'address' => Encrypted::class.':json',
-            'phone' => Encrypted::class,
-            'iban' => Encrypted::class,
-            'notes' => Encrypted::class,
+            'tax_code' => Encrypted::class.':index=taxcode,bound',
+            'birth_date' => Encrypted::class.':date,bound',
+            'birth_place' => Encrypted::class.':bound',
+            'address' => Encrypted::class.':json,bound',
+            'phone' => Encrypted::class.':bound',
+            'iban' => Encrypted::class.':bound',
+            'notes' => Encrypted::class.':bound',
             'type' => MemberType::class,
             'is_entity' => 'boolean',
             'entity_same_section' => 'boolean',
