@@ -41,8 +41,8 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
-            // «Ricordami su questo dispositivo»: 30 giorni (in minuti). Senza la spunta l'accesso finisce con il browser.
-            'remember' => 60 * 24 * 30,
+            // «Ricordami su questo dispositivo»: 14 giorni (in minuti). Senza la spunta l'accesso finisce con il browser.
+            'remember' => 60 * 24 * 14,
         ],
         // Staff dell'amministrazione della piattaforma: altra tabella, altra sessione, niente «ricordami».
         'platform' => [

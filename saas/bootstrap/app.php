@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Core\Http\Middleware\DemoRestrictions;
+use App\Modules\Core\Http\Middleware\EnforceSessionLimits;
 use App\Modules\Core\Http\Middleware\EnsureTwoFactorConfirmed;
 use App\Modules\Core\Http\Middleware\EnsureUserActive;
 use App\Modules\Core\Http\Middleware\HandleInertiaRequests;
@@ -11,6 +12,7 @@ use App\Modules\Core\Http\Middleware\ResetOrgContext;
 use App\Modules\Core\Http\Middleware\ResolveProxyClient;
 use App\Modules\Core\Http\Middleware\RestrictToAppHost;
 use App\Modules\Core\Http\Middleware\SecurityHeaders;
+use App\Modules\Core\Http\Middleware\ThrottleAccountSecurity;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
 use App\Modules\Piattaforma\Http\Middleware\UsePublicStaffUrl;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -36,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(SecurityHeaders::class);
 
         // Sotto il percorso dell'amministrazione la sessione ha cookie, percorso e guardia propri: va prima di tutto.
-        $middleware->web(prepend: [UsePlatformSession::class], append: [EnsureUserActive::class, DemoRestrictions::class, HandleInertiaRequests::class]);
+        $middleware->web(prepend: [UsePlatformSession::class], append: [EnforceSessionLimits::class, ThrottleAccountSecurity::class, EnsureUserActive::class, DemoRestrictions::class, HandleInertiaRequests::class]);
         $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: UsePlatformSession::class);
         $middleware->encryptCookies();
         $middleware->redirectGuestsTo('/accesso');
