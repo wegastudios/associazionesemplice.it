@@ -93,8 +93,11 @@ final class BackupCipher
         if (! $legacy) {
             $length = unpack('n', str_pad((string) fread($in, 2), 2, "\0"));
             $size = is_array($length) && is_int($length[1] ?? null) ? $length[1] : self::MAX_META + 1;
-            $json = $size > self::MAX_META || $size === 0 ? '' : (string) fread($in, $size);
-            if ($size > self::MAX_META || strlen($json) !== $size) {
+            if ($size < 1 || $size > self::MAX_META) {
+                throw new RuntimeException('Backup non valido o di un\'altra chiave.');
+            }
+            $json = (string) fread($in, $size);
+            if (strlen($json) !== $size) {
                 throw new RuntimeException('Backup non valido o di un\'altra chiave.');
             }
         }

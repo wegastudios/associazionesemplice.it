@@ -193,11 +193,11 @@ final readonly class Backups
         $created = $meta['created_at'] ?? '';
         $atInName = preg_match('/-(\d{8}T\d{6}Z)\.dump\.enc$/', $path, $m) === 1
             ? CarbonImmutable::createFromFormat('Ymd\THis\Z', $m[1], 'UTC')
-            : false;
+            : null;
         $declared = $manifest['created_at'] ?? null;
         $inside = preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $created) === 1
             ? CarbonImmutable::createFromFormat('Y-m-d\TH:i:s\Z', $created, 'UTC')
-            : false;
+            : null;
 
         $declaredDatabase = $manifest['database'] ?? $name;
         if (($meta['database'] ?? null) !== $name || $declaredDatabase !== $name) {
@@ -206,7 +206,7 @@ final readonly class Backups
         if (($meta['env'] ?? null) !== explode('/', $path)[0]) {
             throw new RuntimeException('Il backup è di un altro ambiente: non corrisponde a quello atteso.');
         }
-        if ($inside === false || $atInName === false || ! $inside->equalTo($atInName)) {
+        if (! $inside instanceof CarbonImmutable || ! $atInName instanceof CarbonImmutable || ! $inside->equalTo($atInName)) {
             throw new RuntimeException('L\'ora del backup non corrisponde a quella del nome del file: possibile scambio con un backup vecchio.');
         }
         if (is_string($declared) && ! $inside->equalTo(CarbonImmutable::parse($declared)->utc())) {
