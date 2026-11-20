@@ -54,6 +54,7 @@ final readonly class ActivityService implements Activities
         private ActivityOccupancy $occupancy,
         private ActivityVat $vat,
         private OrgFiscal $fiscal,
+        private MemberFeeOption $memberFees,
     ) {}
 
     public function options(): array
@@ -599,7 +600,10 @@ final readonly class ActivityService implements Activities
         if ($row === null) {
             throw new ActivityError('La persona non è iscritta a questa attività.');
         }
-        $category = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Quota attività / corso» in prima nota.');
+        $fee = $this->ledger->categoryFor(CategoryKind::ActivityFee) ?? throw new ActivityError('Manca la voce «Quota attività / corso» in prima nota.');
+        // Opzione fiscale (spenta di default): il contributo di un socio si incassa come erogazione liberale, senza IVA.
+        ['category' => $category, 'donation' => $donation] = $this->memberFees->category($fee, $this->person($personId)['type'] ?? '');
+        $vatRate = $donation ? null : $this->vat->rate($activity);
 
         $lines = [];
         if ($activity->kind === ActivityKind::Course && $activity->billing !== Billing::Once) {
@@ -616,14 +620,14 @@ final readonly class ActivityService implements Activities
                 if ($cents <= 0) {
                     throw new ActivityError('Indica l\'importo.');
                 }
-                $lines[] = new IncomeLine($category, $cents, 'Contributo '.$activity->name.' '.self::monthLabel($m), $m, $this->vat->rate($activity));
+                $lines[] = new IncomeLine($category, $cents, MemberFeeOption::description($donation, $activity->kind, $activity->name, self::monthLabel($m)), $m, $vatRate);
             }
         } else {
             $cents = $amountCents ?? Pricing::remaining($row['summary']['total_due'] > 0 ? $row['summary']['total_due'] : $row['fee'], $row['summary']['total_paid']);
             if ($cents <= 0) {
                 throw new ActivityError('Non c\'è niente da incassare: indica l\'importo.');
             }
-            $lines[] = new IncomeLine($category, $cents, 'Contributo '.$activity->name, $row['start_month'], $this->vat->rate($activity));
+            $lines[] = new IncomeLine($category, $cents, MemberFeeOption::description($donation, $activity->kind, $activity->name), $row['start_month'], $vatRate);
         }
 
         return $this->ledger->recordIncome(new Income($date, $accountId, $lines, $method, $personId, true, null, $activity->id))['receipt'];
@@ -673,6 +677,12 @@ final readonly class ActivityService implements Activities
         $candidate = max(now()->format('Y-m'), $activity->firstMonth() ?? $months[0]);
 
         return in_array($candidate, $months, true) ? $candidate : $months[0];
+    }
+
+    /** Il contributo di questa persona si incassa come erogazione liberale (opzione fiscale accesa e persona socia)? */
+    public function paysAsDonation(string $personId): bool
+    {
+        return $this->memberFees->applies($this->person($personId)['type'] ?? '');
     }
 
     /** @return array{id: string, name: string, type: string}|null */

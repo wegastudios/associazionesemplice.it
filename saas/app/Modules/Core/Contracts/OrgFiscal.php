@@ -17,6 +17,9 @@ final readonly class OrgFiscal
 
     public const MEMBERSHIP_RATE = 'fiscal.membership_vat_rate';
 
+    /** Opzione fiscale, spenta di default: eventi e corsi pagati dai soci si incassano come erogazione liberale. */
+    public const MEMBER_EVENTS_DONATION = 'fiscal.member_events_donation';
+
     /** Mese da cui parte l'anno fiscale (la tessera di socio lo segue); senza scelta è gennaio. */
     public const FISCAL_START_MONTH = 'contabilita.fiscal_year_start_month';
 
@@ -54,6 +57,12 @@ final readonly class OrgFiscal
     public function includesVat(): bool
     {
         return $this->settings->get(self::INCLUDES_VAT) !== false;
+    }
+
+    /** Eventi e corsi pagati dai soci come erogazione liberale? Spento finché l'associazione non lo accende. */
+    public function memberEventsDonation(): bool
+    {
+        return $this->settings->get(self::MEMBER_EVENTS_DONATION) === true;
     }
 
     /** Aliquota della quota associativa: null senza partita IVA; con la partita IVA 0 («IVA esente») se non scelta. */

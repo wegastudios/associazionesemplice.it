@@ -2,7 +2,9 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ hasVat: Boolean, rates: String, includesVat: Boolean, membershipRate: Number });
+const props = defineProps({ hasVat: Boolean, rates: String, includesVat: Boolean, membershipRate: Number, memberEventsDonation: Boolean });
+const donation = useForm({ member_events_donation: props.memberEventsDonation });
+const saveDonation = () => donation.put('/gestionale/aspetto-fiscale/erogazioni-liberali', { preserveScroll: true });
 const form = useForm({ rates: props.rates, includes_vat: props.includesVat, membership_rate: props.membershipRate });
 const save = () => form.put('/gestionale/aspetto-fiscale', { preserveScroll: true });
 const parsed = () => [...new Set(form.rates.split(/[\s,;]+/).map((r) => Number(r)).filter((r) => Number.isInteger(r) && r >= 1 && r <= 30))].sort((a, b) => b - a);
@@ -26,6 +28,13 @@ const label = 'space-y-1 text-sm';
                 <select v-model.number="form.membership_rate" class="field"><option :value="0">IVA esente</option><option v-for="r in parsed()" :key="r" :value="r">IVA {{ r }}%</option></select>
                 <span v-if="form.errors.membership_rate" class="block font-semibold text-danger" role="alert">{{ form.errors.membership_rate }}</span></label>
             <button type="submit" class="btn btn-primary" :disabled="form.processing">Salva</button>
+        </form>
+        <form class="card mt-4 space-y-3 p-4 sm:p-5" novalidate @submit.prevent="saveDonation">
+            <h2 class="text-lg font-semibold">Erogazioni liberali</h2>
+            <label class="flex items-start gap-2 text-sm"><input v-model="donation.member_events_donation" type="checkbox" class="mt-1" />
+                <span>Incassa come erogazione liberale gli eventi e i corsi pagati dai soci</span></label>
+            <p class="text-sm text-muted">Spenta, gli eventi e i corsi pagati dai soci sono contributi, come sempre. Accesa, da quel momento la ricevuta scrive «Erogazione liberale per l'evento…» o «…per il corso…», il rendiconto li conta tra le erogazioni liberali, con PayPal la voce è indicata come donazione e, se l'ente applica l'IVA, restano fuori campo IVA. Non cambia nulla per i pagamenti dei non soci, che restano contributi, e per le quote associative, che restano sempre escluse. I movimenti già registrati non cambiano. <strong>Prima di accenderla, chiedi al tuo commercialista:</strong> questa impostazione non garantisce alcun vantaggio fiscale a chi paga.</p>
+            <button type="submit" class="btn btn-primary" :disabled="donation.processing">Salva</button>
         </form>
     </AppLayout>
 </template>
