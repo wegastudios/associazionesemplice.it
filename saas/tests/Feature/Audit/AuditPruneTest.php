@@ -15,7 +15,7 @@ it('con --dry-run elenca le partizioni da cancellare e non tocca niente', functi
 
 it('con una data scelta a mano chiede conferma, rifiuta senza terminale e cancella solo con --force', function (): void {
     $owner = DB::connection(app(DatabaseNames::class)->ownerConnection(null));
-    Partitions::ensure($owner, CarbonImmutable::parse('2019-12-01'), 1);
+    Partitions::ensure($owner, CarbonImmutable::parse('2019-12-01', 'UTC'), 1);
 
     $this->artisan('saas:audit:prune', ['--before' => '2020-01-01'])
         ->expectsConfirmation('Cancellare queste partizioni?', 'no')->assertFailed();
@@ -32,7 +32,7 @@ it('con una data scelta a mano chiede conferma, rifiuta senza terminale e cancel
 
 it('non scende sotto il limite di conservazione nemmeno con --force', function (): void {
     $owner = DB::connection(app(DatabaseNames::class)->ownerConnection(null));
-    Partitions::ensure($owner, CarbonImmutable::parse('2019-12-01'), 1);
+    Partitions::ensure($owner, CarbonImmutable::parse('2019-12-01', 'UTC'), 1);
     $this->travelTo(CarbonImmutable::parse('2021-03-10 03:00', 'UTC'));
 
     // Il limite è il 1° gennaio 2020: il 2021 e il 2020 si tengono sempre.
