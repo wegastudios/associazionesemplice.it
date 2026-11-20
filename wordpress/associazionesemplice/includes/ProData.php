@@ -456,6 +456,7 @@ final class ProData {
 		}
 		if ( array_key_exists( 'member_events_donation_form', $p ) ) { // opzione fiscale: la casella spenta non invia nulla, quindi si legge il campo nascosto
 			$vals['member_events_donation'] = ! empty( $p['member_events_donation'] ) ? 1 : 0;
+			$vals['donation_deductible']    = ! empty( $p['donation_deductible'] ) ? 1 : 0;
 		}
 		if ( $has( 'has_vat' ) ) { // la partita IVA e tutto ciò che ne dipende si legge insieme
 			$on = ! empty( $p['has_vat'] );

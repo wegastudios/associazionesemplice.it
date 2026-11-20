@@ -33,7 +33,15 @@ final class ProActions {
 		Actions::assert_profile( $actor );
 		Actions::require_cap( 'asem_view_payments', (int) $actor['id'] );
 		$back = remove_query_arg( array( 'asemf_ok', 'asemf_err', 'asemf_sig', 'asem_pay', 'asem_ret', 'token', 'PayerID' ), Actions::back_url( $post ) );
-		return Plugin::payments()->create_checkout( $actor, \AssociazioneSemplice\MemberSession::actor_key(), (array) ( $post['items'] ?? array() ), $back, sanitize_key( (string) ( $post['provider'] ?? '' ) ) );
+		$gift = 0;
+		if ( ! empty( $post['donation'] ) ) { // «Aggiungi … € per una donazione»: l'importo scritto da chi paga, entro i limiti
+			$amount = \AssociazioneSemplice\PaymentDonation::parse_amount( (string) ( $post['donation_amount'] ?? '' ) );
+			if ( null === $amount ) {
+				throw new \InvalidArgumentException( 'Scrivi un importo per la donazione tra ' . \AssociazioneSemplice\Money::format( \AssociazioneSemplice\PaymentDonation::MIN_CENTS ) . ' e ' . \AssociazioneSemplice\Money::format( \AssociazioneSemplice\PaymentDonation::MAX_CENTS ) . ', oppure togli la spunta.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+			$gift = $amount;
+		}
+		return Plugin::payments()->create_checkout( $actor, \AssociazioneSemplice\MemberSession::actor_key(), (array) ( $post['items'] ?? array() ), $back, sanitize_key( (string) ( $post['provider'] ?? '' ) ), $gift );
 	}
 
 	/** Cassa per più persone del tesoriere (stesse regole degli amministratori). */

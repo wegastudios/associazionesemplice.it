@@ -120,6 +120,8 @@ final class ProPanels {
 			. '<p class="description">Spenta, gli eventi e i corsi pagati dai soci sono contributi, come sempre. Accesa, da quel momento la ricevuta scrive «Erogazione liberale per l\'evento…» o «…per il corso…», il rendiconto li conta tra le erogazioni liberali, con PayPal la voce è indicata come donazione e, se l\'ente applica l\'IVA, restano fuori campo IVA. '
 			. 'Non cambia nulla per i pagamenti dei non soci, che restano contributi, e per le quote associative, che restano sempre escluse. I movimenti già registrati non cambiano. '
 			. '<strong>Prima di accenderla, chiedi al tuo commercialista:</strong> questa impostazione non garantisce alcun vantaggio fiscale a chi paga.</p></td></tr>';
+		echo '<tr><th>Donazioni detraibili</th><td><label><input type="checkbox" name="donation_deductible" value="1"' . checked( ! empty( $s['donation_deductible'] ), true, false ) . '> Nelle richieste di donazione scrivi «È anche detraibile»</label>'
+			. '<p class="description"><strong>Verifica con il tuo commercialista se la tua associazione ne ha diritto.</strong> Spenta, la frase non compare mai: il plugin non può sapere se le donazioni al tuo ente danno diritto a un beneficio fiscale.</p></td></tr>';
 		echo '</tbody></table>';
 		if ( ! \AssociazioneSemplice\Edition::has( 'vat' ) ) {
 			return;

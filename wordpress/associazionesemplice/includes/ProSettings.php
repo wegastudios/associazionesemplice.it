@@ -137,6 +137,9 @@ final class ProSettings {
 			'wallet_google_key_pem'   => '',    // cifrata
 			'has_vat'                 => 0,         // l'ente ha la partita IVA: spento di default, senza non compaiono aliquote e importi IVA
 			'member_events_donation'  => 0,         // eventi e corsi pagati dai soci incassati come erogazione liberale: spento di default (opzione fiscale)
+			'donation_on'             => 0,         // spunta «Aggiungi X € per una donazione» al pagamento: spenta di default
+			'donation_amount_cents'   => 500,       // importo proposto per la donazione (modificabile da chi paga)
+			'donation_deductible'     => 0,         // «è anche detraibile» compare solo se l'ente lo dichiara (spenta di default)
 			'vat_default_rate'        => 22,        // aliquota IVA proposta (%)
 			'vat_prices_mode'         => 'incl',    // importi inseriti IVA compresa ('incl') o esclusa ('escl')
 			'vat_membership_rate'     => '',        // aliquota IVA delle quote associative: vuoto = fuori campo IVA
@@ -174,6 +177,9 @@ final class ProSettings {
 		}
 		$clean['has_vat']                 = empty( $clean['has_vat'] ) ? 0 : 1;
 		$clean['member_events_donation']  = empty( $clean['member_events_donation'] ) ? 0 : 1;
+		$clean['donation_on']             = empty( $clean['donation_on'] ) ? 0 : 1;
+		$clean['donation_amount_cents']   = max( 100, min( 100000, (int) $clean['donation_amount_cents'] ) );
+		$clean['donation_deductible']     = empty( $clean['donation_deductible'] ) ? 0 : 1;
 		$clean['vat_default_rate']        = max( 0, min( 30, (int) $clean['vat_default_rate'] ) );
 		$clean['vat_membership_rate']     = null === Fiscal::clean_rate( $clean['vat_membership_rate'] ) ? '' : Fiscal::clean_rate( $clean['vat_membership_rate'] );
 		$clean['vat_prices_mode']       = Fiscal::EXCLUDED === (string) $clean['vat_prices_mode'] ? Fiscal::EXCLUDED : Fiscal::INCLUDED;
