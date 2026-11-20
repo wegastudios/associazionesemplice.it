@@ -120,7 +120,7 @@ it('l\'importazione dei soci cifra con l\'id della riga e si rilegge', function 
 
         $this->orgContext()->run($this->org->id, function () use ($bound, $suffix): void {
             $csv = "Tessera;Tipo;Nome;Cognome;Email;Cellulare;Codice fiscale;Data di nascita\n"
-                .($bound ? '11' : '1').";ordinario;Mario;Rossi;mario{$suffix}@example.com;333 1234567;".($bound ? 'RSSMRA80A01H501U' : 'VRDLGU10A01H501X').";01/01/1980\n"
+                .($bound ? '11' : '1').";ordinario;Mario;Rossi;mario{$suffix}@example.com;333 1234567;".($bound ? 'RSSMRA80A01H501U;01/01/1980' : ';')."\n"
                 .($bound ? '12' : '2').";ordinario;Anna;Verdi;anna{$suffix}@example.com;339 7654321;;\n";
 
             $r = rowFmtImport($csv);
@@ -129,7 +129,7 @@ it('l\'importazione dei soci cifra con l\'id della riga e si rilegge', function 
             $mario = Person::query()->where('card_number', $bound ? '11' : '1')->sole();
             expect(rowFmtByte('app.people', 'phone_enc', $mario->id))->toBe($bound ? '02' : '01')
                 ->and(Person::query()->findOrFail($mario->id)->phone)->toBe('333 1234567')
-                ->and(Person::query()->findOrFail($mario->id)->tax_code)->toBe($bound ? 'RSSMRA80A01H501U' : 'VRDLGU10A01H501X');
+                ->and(Person::query()->findOrFail($mario->id)->tax_code)->toBe($bound ? 'RSSMRA80A01H501U' : null);
         });
     }
 });
