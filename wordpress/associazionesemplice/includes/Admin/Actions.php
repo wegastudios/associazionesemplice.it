@@ -162,17 +162,56 @@ final class Actions {
 					check_admin_referer( $action );
 					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 					$back = ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : Ui::url( 'asem' );
+					$once = in_array( $action, Ui::ONCE_ACTIONS, true ) ? self::once_key( $post ) : '';
+					if ( '' !== $once ) {
+						$seen = self::once_claim( $once );
+						if ( $seen ) { // lo stesso modulo è già stato inviato (doppio clic, ripetizione del browser): non si registra due volte
+							Ui::redirect( $seen[0] ?: $back, $seen[1] ?: 'Registrazione già inviata: attendi un momento.' );
+							return;
+						}
+					}
 					try {
 						$res = is_string( $method ) ? self::$method( $post ) : call_user_func( $method, $post );
+						if ( '' !== $once ) {
+							set_transient( $once, array( (string) $res[0], (string) $res[1] ), 10 * MINUTE_IN_SECONDS );
+						}
 						Ui::redirect( $res[0], $res[1] );
 					} catch ( \InvalidArgumentException $e ) {
+						'' !== $once && delete_transient( $once ); // l'invio non è riuscito: dopo la correzione si può riprovare
 						Ui::redirect( $back, '', $e->getMessage() );
 					} catch ( \Throwable $e ) {
+						'' !== $once && delete_transient( $once );
 						Ui::redirect( $back, '', \AssociazioneSemplice\UnexpectedError::report( $e ) );
 					}
 				}
 			);
 		}
+	}
+
+	/** Chiave del gettone monouso del modulo (vuota se il modulo non ne ha uno: un invio senza gettone passa come prima). */
+	private static function once_key( array $post ): string {
+		$t = isset( $post['_once'] ) ? (string) $post['_once'] : '';
+		return 1 === preg_match( '/^[0-9a-f-]{36}$/', $t ) ? 'asem_once_' . get_current_user_id() . '_' . substr( md5( $t ), 0, 24 ) : '';
+	}
+
+	/**
+	 * Prenota il gettone. Chi arriva per primo lo prende e procede (false); chi arriva dopo trova l'esito del primo (array url, messaggio)
+	 * oppure, se il primo è ancora al lavoro, un invito ad attendere (array vuoti). Il controllo è sotto blocco: due invii insieme non passano entrambi.
+	 *
+	 * @return array|false
+	 */
+	private static function once_claim( string $key ) {
+		return \AssociazioneSemplice\Db::with_lock(
+			'asem_once',
+			function () use ( $key ) {
+				$seen = get_transient( $key );
+				if ( false !== $seen ) {
+					return is_array( $seen ) ? $seen : array( '', '' );
+				}
+				set_transient( $key, '', 10 * MINUTE_IN_SECONDS ); // preso: l'esito si scrive a registrazione finita
+				return false;
+			}
+		);
 	}
 
 	private static function opt( array $a, string $k ): ?string {
@@ -1126,6 +1165,7 @@ final class Actions {
 				'method'       => (string) ( $p['method'] ?? '' ),
 				'person_id'    => (int) ( $p['person_id'] ?? 0 ),
 				'document_ref' => $p['document_ref'] ?? '',
+				'check_due'    => true, // incasso a mano: non si incassa più di quanto resta da pagare
 				'lines'        => $lines,
 			)
 		);

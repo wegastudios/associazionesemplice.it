@@ -11719,6 +11719,27 @@ for ( $ml_i = 0; $ml_i < MemberPassword::MAX_FAILED; $ml_i++ ) {
 asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'una password lunga' ), 'accesso proprio: dopo gli errori di fila l\'account si blocca anche con la password giusta' );
 $wpdb->update( Db::t( 'member_auth' ), array( 'failed_count' => 0, 'locked_until' => null, 'pass_hash' => password_hash( 'vecchia password', PASSWORD_BCRYPT, array( 'cost' => 4 ) ) ), array( 'person_id' => $ml_p ) );
 asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && ! MemberPassword::needs_rehash( (string) $wpdb->get_var( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ml_p ) ), 'accesso proprio: un\'impronta con un costo vecchio vale e viene rifatta con quello di oggi' );
+// Gettone monouso dei moduli di prima nota: il primo invio passa, il secondo trova l'esito del primo
+$once_claim = new \ReflectionMethod( \AssociazioneSemplice\Admin\Actions::class, 'once_claim' );
+$once_key   = new \ReflectionMethod( \AssociazioneSemplice\Admin\Actions::class, 'once_key' );
+$once_claim->setAccessible( true );
+$once_key->setAccessible( true );
+$once_tok = 'asem_once_prova_' . substr( md5( (string) microtime( true ) ), 0, 8 );
+asem_ok( '' === $once_key->invoke( null, array() ) && '' === $once_key->invoke( null, array( '_once' => 'non valido' ) ) && '' !== $once_key->invoke( null, array( '_once' => wp_generate_uuid4() ) ), 'gettone: un modulo senza gettone o con un gettone malformato passa come prima' );
+asem_ok( false === $once_claim->invoke( null, $once_tok ), 'gettone: il primo invio prende il gettone' );
+asem_ok( array( '', '' ) === $once_claim->invoke( null, $once_tok ), 'gettone: il secondo invio, col primo ancora al lavoro, aspetta' );
+set_transient( $once_tok, array( 'https://example.org/prima-nota', 'Incasso registrato.' ), 60 );
+asem_ok( array( 'https://example.org/prima-nota', 'Incasso registrato.' ) === $once_claim->invoke( null, $once_tok ), 'gettone: a registrazione finita il secondo invio trova lo stesso esito e non registra' );
+delete_transient( $once_tok );
+asem_ok( false === $once_claim->invoke( null, $once_tok ), 'gettone: se il primo invio fallisce il gettone si libera e si può riprovare' );
+delete_transient( $once_tok );
+ob_start();
+\AssociazioneSemplice\Admin\Ui::form_open( 'asem_save_income', 'https://example.org/' );
+$once_form = ob_get_clean();
+ob_start();
+\AssociazioneSemplice\Admin\Ui::form_open( 'asem_save_person', 'https://example.org/' );
+$once_other = ob_get_clean();
+asem_ok( 1 === preg_match( '/name="_once" value="[0-9a-f-]{36}"/', $once_form ) && false === strpos( $once_other, '_once' ), 'gettone: i moduli di incasso, spesa e giroconto lo portano, gli altri no' );
 // Ex soci e sospesi non entrano nell'area soci: né con password, né con link o codice, né col recupero; la sessione aperta cade
 $wpdb->update( Db::t( 'people' ), array( 'suspended_at' => Db::now() ), array( 'id' => $ml_p ) );
 asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'sospeso: con la password giusta non entra' );
@@ -11730,6 +11751,28 @@ asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'vecchia password'
 $wpdb->update( Db::t( 'people' ), array( 'left_on' => gmdate( 'Y-m-d', time() + 5 * DAY_IN_SECONDS ) ), array( 'id' => $ml_p ) );
 asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'cessazione ancora nel futuro: entra come prima' );
 $wpdb->update( Db::t( 'people' ), array( 'left_on' => null ), array( 'id' => $ml_p ) );
+// Incasso a mano: non si incassa più del dovuto (corso, evento, quota), sconti e voci dello stesso incasso compresi
+$du_cat  = (int) $ledger->category_id_of_kind( 'activity_fee' );
+$du_c    = $acts->create( array( 'name' => 'Corso del residuo', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000 ) );
+$du_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Resto', 'last_name' => 'Dovuto', 'email' => 'resto.dovuto@example.org' ) );
+$acts->enroll( $du_c, $du_p, $month );
+$du_rec  = function ( int $cents, int $discount = 0, int $lines = 1 ) use ( $ledger, $today, $cash, $du_cat, $du_c, $du_p, $month ) {
+	$l = array();
+	for ( $i = 0; $i < $lines; $i++ ) {
+		$l[] = array( 'category_id' => $du_cat, 'amount_cents' => $cents, 'discount_cents' => $discount, 'activity_id' => $du_c, 'competence_month' => $month );
+	}
+	return $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $du_p, 'check_due' => true, 'lines' => $l ) );
+};
+$du_msg = asem_throws( function () use ( $du_rec ) { $du_rec( 2500 ); } );
+asem_ok( null !== $du_msg && false !== strpos( (string) $du_msg, 'Restano' ) && false !== strpos( (string) $du_msg, '20,00' ), 'residuo: un corso da 20 € non si incassa a 25 €, il messaggio dice quanto resta' );
+asem_ok( null !== asem_throws( function () use ( $du_rec ) { $du_rec( 1500, 0, 2 ); } ), 'residuo: due voci dello stesso incasso sullo stesso mese contano insieme' );
+asem_ok( 1 === $du_rec( 1500, 500 ), 'residuo: lo sconto conta nel dovuto (15 € + 5 € di sconto coprono 20 €)' );
+$du_msg = asem_throws( function () use ( $du_rec ) { $du_rec( 100 ); } );
+asem_ok( null !== $du_msg && false !== strpos( (string) $du_msg, 'già pagata' ), 'residuo: una voce già pagata per intero non si incassa di nuovo' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $du_p, 'lines' => array( array( 'category_id' => $du_cat, 'amount_cents' => 100, 'activity_id' => $du_c, 'competence_month' => $month ) ) ) );
+asem_ok( true, 'residuo: senza il controllo (pagamenti automatici, importazioni) la registrazione passa come prima' );
+$du_free = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Senza', 'last_name' => 'Iscrizione', 'email' => 'senza.iscrizione@example.org' ) );
+asem_ok( 1 === $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $du_free, 'check_due' => true, 'lines' => array( array( 'category_id' => $du_cat, 'amount_cents' => 9900, 'activity_id' => $du_c, 'competence_month' => $month ) ) ) ), 'residuo: dove non si sa cosa sia dovuto (nessuna iscrizione) non si blocca nulla' );
 // Separazione: con l'accesso proprio acceso i soci semplici non hanno un utente WordPress
 asem_ok( empty( Plugin::people()->get( $ml_p )['wp_user_id'] ) && ! get_user_by( 'email', $ml_addr ) && \AssociazioneSemplice\PeopleService::has_access( Plugin::people()->get( $ml_p ) ), 'separazione: un nuovo socio con email non ha un utente WordPress ma ha un accesso' );
 $sp_mails = count( $ml_mail );

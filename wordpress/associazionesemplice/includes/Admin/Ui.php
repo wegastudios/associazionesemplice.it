@@ -113,7 +113,13 @@ final class Ui {
 		echo '<input type="hidden" name="action" value="' . esc_attr( $action ) . '">';
 		echo '<input type="hidden" name="_back" value="' . esc_url( $back_url ) . '">';
 		wp_nonce_field( $action );
+		if ( in_array( $action, self::ONCE_ACTIONS, true ) ) {
+			echo '<input type="hidden" name="_once" value="' . esc_attr( wp_generate_uuid4() ) . '">'; // gettone monouso: un secondo invio dello stesso modulo non registra due volte
+		}
 	}
+
+	/** Moduli di prima nota che portano un gettone monouso. */
+	const ONCE_ACTIONS = array( 'asem_save_income', 'asem_save_expense', 'asem_save_transfer' );
 
 	/**
 	 * Pulsante che invia subito un'azione dopo una sola conferma del browser (per le operazioni che non toccano la prima nota).
