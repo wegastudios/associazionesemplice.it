@@ -1473,14 +1473,17 @@ final class Actions {
 		if ( $on && '' === $account ) {
 			throw new \InvalidArgumentException( 'Per accendere le donazioni scrivi l\'email del conto PayPal oppure il suo ID commerciante.' );
 		}
-		Settings::update(
-			array(
-				'donate_enabled' => $on ? 1 : 0,
-				'donate_paypal'  => $account,
-				'donate_amounts' => (string) ( $p['donate_amounts'] ?? '' ),
-				'donate_purpose' => (string) ( $p['donate_purpose'] ?? '' ),
-			)
+		$upd = array(
+			'donate_enabled'     => $on ? 1 : 0,
+			'donate_paypal'      => $account,
+			'donate_amounts'     => (string) ( $p['donate_amounts'] ?? '' ),
+			'donate_purpose'     => (string) ( $p['donate_purpose'] ?? '' ),
+			'donate_invite_page' => (string) ( $p['donate_invite_page'] ?? '' ),
 		);
+		foreach ( \AssociazioneSemplice\DonationInvite::PLACES as $invite_key ) {
+			$upd[ $invite_key ] = empty( $p[ $invite_key ] ) ? 0 : 1;
+		}
+		Settings::update( $upd );
 		return array( Ui::url( 'asem-donate' ), $on ? 'Donazioni attive: inserisci [associazionesemplice_donazioni] dove vuoi il modulo.' : 'Impostazioni salvate: le donazioni sono spente.' );
 	}
 

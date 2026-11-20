@@ -698,7 +698,7 @@ final class PublicEvents {
 			}
 		);
 		// la prenotazione (moduli, posti, stato di chi guarda) non si conserva mai: si disegna a ogni visita
-		return $head . '<div class="asemf-event-text">' . $content . '</div>' . self::booking_html( $a, $post ) . $tail . '</div>';
+		return $head . '<div class="asemf-event-text">' . $content . '</div>' . self::booking_html( $a, $post ) . DonationInvite::html( 'event' ) . $tail . '</div>';
 	}
 
 	/** Pezzi della pagina evento, ognuno una vista (shortcode `associazionesemplice_evento_*`, blocco e widget «Associazione Semplice»). */

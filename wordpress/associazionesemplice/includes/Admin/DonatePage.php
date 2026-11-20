@@ -43,6 +43,21 @@ final class DonatePage {
 			. '<p class="description">Il titolo del modulo e il motivo che compare su PayPal. Vuoto = «Donazione a» e il nome dell\'ente.</p></td></tr>';
 		echo wp_kses( '<tr><th>Shortcode della raccolta generale</th><td>' . self::copy_field( Donations::shortcode() ) . '</td></tr>', Html::allowed() );
 		echo '</tbody></table>';
+		echo '<h2>Invito «Non puoi partecipare?»</h2><p class="description">Una riga «Non puoi partecipare? Sostienici con una donazione» con il link alla tua pagina delle donazioni. Scegli tu dove farla comparire: all\'inizio è spenta ovunque.</p><table class="form-table"><tbody>';
+		$places = array(
+			'donate_invite_event'   => 'Sulla pagina dell\'evento o del corso (utile soprattutto quando è pieno o già passato)',
+			'donate_invite_confirm' => 'Nella conferma dopo l\'iscrizione o la prenotazione',
+			'donate_invite_area'    => 'Nell\'area soci',
+			'donate_invite_mail'    => 'In fondo alle email ai soci',
+		);
+		echo '<tr><th>Dove mostrarlo</th><td>';
+		foreach ( $places as $name => $label ) {
+			echo '<label style="display:block"><input type="checkbox" name="' . esc_attr( $name ) . '" value="1"' . checked( ! empty( $s[ $name ] ), true, false ) . '> ' . esc_html( $label ) . '</label>';
+		}
+		echo '</td></tr>';
+		echo '<tr><th>Pagina delle donazioni</th><td><input type="url" name="donate_invite_page" value="' . esc_attr( (string) $s['donate_invite_page'] ) . '" class="regular-text" placeholder="https://">'
+			. '<p class="description">L\'indirizzo della pagina dove hai messo il modulo delle donazioni. Se lo lasci vuoto usiamo la prima pagina del sito che contiene lo shortcode. Se non c\'è nessuna pagina, l\'invito non compare.</p></td></tr>';
+		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
 

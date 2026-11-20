@@ -79,7 +79,8 @@ final class Views {
 			}
 			return '<div class="asemf-notice asemf-err" role="alert">' . $safe . '</div>';
 		}
-		return '' !== $err ? '<div class="asemf-notice asemf-err" role="alert">' . esc_html( $err ) . '</div>' : '<div class="asemf-notice asemf-ok" role="status">' . esc_html( $ok ) . '</div>';
+		$invite = \AssociazioneSemplice\DonationInvite::is_confirmation( $ok ) ? \AssociazioneSemplice\DonationInvite::html( 'confirm' ) : ''; // «Non puoi partecipare? Sostienici…» (spento di default)
+		return '' !== $err ? '<div class="asemf-notice asemf-err" role="alert">' . esc_html( $err ) . '</div>' : '<div class="asemf-notice asemf-ok" role="status">' . esc_html( $ok ) . $invite . '</div>';
 	}
 
 	private static function notice( string $text, string $kind = '' ): string {
@@ -1217,7 +1218,7 @@ final class Views {
 	/** In fondo all'area soci: «Segreteria: email · telefono» (niente se i contatti mancano). */
 	private static function contacts_footer(): string {
 		$line = \AssociazioneSemplice\Contacts::line();
-		return '' !== $line ? '<p class="asemf-small asemf-muted asemf-contacts">' . esc_html( $line ) . '</p>' : '';
+		return \AssociazioneSemplice\DonationInvite::html( 'area' ) . ( '' !== $line ? '<p class="asemf-small asemf-muted asemf-contacts">' . esc_html( $line ) . '</p>' : '' );
 	}
 
 	public static function area( array $atts = array() ): string {
