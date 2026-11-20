@@ -52,7 +52,7 @@ final class EmployeeRulesTest extends TestCase {
 		foreach ( $pages as $key => $slugs ) {
 			foreach ( $slugs as $slug ) {
 				$this->assertSame( $key, EmployeeRules::blocked_by( array( $key ), EmployeeRules::page_need( $slug ) ), "$key / $slug" );
-				foreach ( array_diff( EmployeeRules::keys(), array( $key ) ) as $other ) {
+				foreach ( array_diff( EmployeeRules::keys(), array( $key, EmployeeRules::SENSITIVE ) ) as $other ) { // «Vedere dati riservati» si somma a ogni esportazione
 					$this->assertNull( EmployeeRules::blocked_by( array( $other ), EmployeeRules::page_need( $slug ) ), "$other / $slug" );
 				}
 			}
@@ -71,7 +71,7 @@ final class EmployeeRulesTest extends TestCase {
 		foreach ( $actions as $key => $list ) {
 			foreach ( $list as $action ) {
 				$this->assertSame( $key, EmployeeRules::blocked_by( array( $key ), EmployeeRules::action_need( $action ) ), $action );
-				foreach ( array_diff( EmployeeRules::keys(), array( $key ) ) as $other ) {
+				foreach ( array_diff( EmployeeRules::keys(), array( $key, EmployeeRules::SENSITIVE ) ) as $other ) { // «Vedere dati riservati» si somma a ogni esportazione
 					$this->assertNull( EmployeeRules::blocked_by( array( $other ), EmployeeRules::action_need( $action ) ), "$other / $action" );
 				}
 			}
@@ -196,7 +196,7 @@ final class EmployeeRulesTest extends TestCase {
 		foreach ( $pages as $key => $slugs ) {
 			foreach ( $slugs as $slug ) {
 				$this->assertSame( $key, EmployeeRules::blocked_by( array( $key ), EmployeeRules::page_need( $slug ) ), "$key / $slug" );
-				foreach ( array_diff( EmployeeRules::keys(), array( $key ) ) as $other ) {
+				foreach ( array_diff( EmployeeRules::keys(), array( $key, EmployeeRules::SENSITIVE ) ) as $other ) { // «Vedere dati riservati» si somma a ogni esportazione
 					$this->assertNull( EmployeeRules::blocked_by( array( $other ), EmployeeRules::page_need( $slug ) ), "$other / $slug" );
 				}
 			}
@@ -227,7 +227,7 @@ final class EmployeeRulesTest extends TestCase {
 		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::action_need( 'asem_cash_count' ) ) );
 		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::export_need( 'ledger' ) ) );
 		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::export_need( 'period' ) ) );
-		$this->assertSame( array( 'all' => array( 'tools' ) ), EmployeeRules::export_need( 'minutes' ), 'le altre esportazioni dipendono da «Importa ed esporta dati»' );
+		$this->assertSame( array( 'all' => array( 'tools', EmployeeRules::SENSITIVE ) ), EmployeeRules::export_need( 'minutes' ), 'le altre esportazioni dipendono da «Importa ed esporta dati»' );
 		$this->assertNull( EmployeeRules::action_need( 'asem_save_activity' ) );
 		$this->assertContains( 'asem_save_activity', EmployeeRules::activity_actions() );
 	}
@@ -245,7 +245,7 @@ final class EmployeeRulesTest extends TestCase {
 		foreach ( $by as $key => $actions ) {
 			foreach ( $actions as $action ) {
 				$this->assertSame( $key, EmployeeRules::blocked_by( array( $key ), EmployeeRules::action_need( $action ) ), $action );
-				foreach ( array_diff( EmployeeRules::keys(), array( $key ) ) as $other ) {
+				foreach ( array_diff( EmployeeRules::keys(), array( $key, EmployeeRules::SENSITIVE ) ) as $other ) { // «Vedere dati riservati» si somma a ogni esportazione
 					$this->assertNull( EmployeeRules::blocked_by( array( $other ), EmployeeRules::action_need( $action ) ), "$other / $action" );
 				}
 			}
