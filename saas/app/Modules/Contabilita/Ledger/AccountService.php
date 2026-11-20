@@ -14,7 +14,10 @@ use Illuminate\Database\QueryException;
 /** Conti (cassa, banca, POS…). Un conto con saldo diverso da zero non si chiude: prima un giroconto. */
 final readonly class AccountService
 {
-    public function __construct(private LedgerService $ledger, private FiscalYearService $years) {}
+    public function __construct(
+        private LedgerService $ledger,
+        private FiscalYearService $years,
+    ) {}
 
     /** Un saldo iniziale cambierebbe i saldi di un anno già chiuso: dopo una chiusura il conto nasce a zero e si carica con un incasso o un giroconto. */
     private function assertOpeningAllowed(int $changeCents): void
