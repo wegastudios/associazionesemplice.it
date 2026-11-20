@@ -312,6 +312,19 @@ case "$ACTION" in
     echo "== Controllo =="
     "$PHP" artisan saas:health --skip-migrations | grep -E "permessi|ruolo|ERRORE|AVVISO" || true
     ;;
+  permessi-diagnosi)
+    # Sola lettura: da dove arrivano i permessi (ACL di uno schema e di una tabella, ruoli di cui fa parte il ruolo applicativo).
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $db = DB::connection("pgsql_owner");
+      $role = DB::connection("pgsql")->selectOne("select current_user as u")->u;
+      echo "ruolo: ", $role, PHP_EOL;
+      foreach ($db->select("select p.rolname from pg_auth_members m join pg_roles r on r.oid = m.member join pg_roles p on p.oid = m.roleid where r.rolname = ?", [$role]) as $x) { echo "membro di: ", $x->rolname, PHP_EOL; }
+      foreach ($db->select("select nspname, nspacl::text as acl from pg_namespace where nspname in (?, ?, ?, ?, ?)", ["public", "app", "audit", "sites", "core"]) as $x) { echo "schema ", $x->nspname, ": ", $x->acl, PHP_EOL; }
+      foreach ($db->select("select n.nspname || ? || c.relname as t, c.relacl::text as acl from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = ? and c.relkind = ? limit 2", [".", "app", "r"]) as $x) { echo $x->t, ": ", $x->acl, PHP_EOL; }
+      foreach ($db->select("select pg_get_userbyid(defaclrole) as chi, defaclnamespace::regnamespace::text as schema, defaclobjtype as tipo, defaclacl::text as acl from pg_default_acl") as $x) { echo "default: ", $x->chi, " ", $x->schema, " ", $x->tipo, " ", $x->acl, PHP_EOL; }
+    '
+    ;;
   ripristina-permessi)
     # Rimette i permessi dall'ultimo file grants-backup-*.sql (comando di ritorno per permessi-db).
     cd "$BASE/current"
