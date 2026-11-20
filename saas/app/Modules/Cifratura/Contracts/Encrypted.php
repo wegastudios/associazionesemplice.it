@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cifratura\Contracts;
 
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgModel;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
@@ -62,7 +63,7 @@ final class Encrypted implements CastsAttributes
         }
 
         $orgId = self::orgId($attributes);
-        $plain = self::cipher()->decrypt($orgId, self::field($model, $key), Bytea::decode($stored));
+        $plain = self::cipher()->decrypt($orgId, self::field($model, $key), Bytea::decode($stored), self::rowId($model, $attributes));
 
         if ($this->health) {
             $id = $attributes['id'] ?? null;
@@ -90,6 +91,14 @@ final class Encrypted implements CastsAttributes
             return $columns;
         }
 
+        // L'id della riga è noto prima di cifrare: se la riga è nuova lo si assegna ora (lo stesso che `creating`
+        // avrebbe assegnato dopo) e lo si restituisce tra le colonne, perché il modello lo tenga.
+        $rowId = self::rowId($model, $attributes);
+        if ($rowId === null && ! $model->exists && $model instanceof OrgModel) {
+            $rowId = (string) $model->newUniqueId();
+            $columns[$model->getKeyName()] = $rowId;
+        }
+
         $plain = match ($this->type) {
             'date' => $value instanceof DateTimeInterface ? $value->format('Y-m-d') : CarbonImmutable::parse(self::text($value))->format('Y-m-d'),
             'json' => json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
@@ -98,12 +107,26 @@ final class Encrypted implements CastsAttributes
 
         $orgId = self::orgId($attributes);
         $field = self::field($model, $key);
-        $columns[$key.'_enc'] = Bytea::encode(self::cipher()->encrypt($orgId, $field, $plain));
+        $columns[$key.'_enc'] = Bytea::encode(self::cipher()->encrypt($orgId, $field, $plain, self::bindsRow() ? $rowId : null));
         if ($this->index !== null) {
             $columns[$key.'_bidx'] = Bytea::encode(self::cipher()->blindIndex($orgId, $field, $this->index->apply($plain)));
         }
 
         return $columns;
+    }
+
+    /** Il formato legato alla riga (0x02) è acceso? In produzione resta spento finché non lo si accende di proposito. */
+    public static function bindsRow(): bool
+    {
+        return config('saas.crypto.row_bound_format') === true;
+    }
+
+    /** @param  array<string, mixed>  $attributes */
+    private static function rowId(Model $model, array $attributes): ?string
+    {
+        $id = $attributes[$model->getKeyName()] ?? $model->getKey();
+
+        return is_string($id) && $id !== '' ? $id : null;
     }
 
     public static function field(Model $model, string $key): string

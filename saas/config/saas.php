@@ -33,6 +33,9 @@ return [
         'timeout' => env('SAAS_KEY_SERVICE_TIMEOUT', '3'),
         // Quanto resta in memoria (APCu) una chiave sbloccata, in secondi.
         'cache_ttl' => 300,
+        // Formato dei campi cifrati legato alla riga (0x02, con l'id della riga). Spento: si scrive 0x01 come sempre;
+        // la lettura apre già entrambi i formati.
+        'row_bound_format' => false,
     ],
 
     // Area soci: https://<slug>.<members_domain>/area (docs/ARCHITETTURA.md §3). In locale si usa per esempio
