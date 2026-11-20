@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Portale\Jwt\EdDsaJwt;
+use IlluminateSupportFacadesHttp;
 
 require_once dirname(__DIR__).'/Portale/PortalHelpers.php';
 
@@ -83,4 +84,37 @@ it('non cambia mai il contenuto senza alzare la revisione: il portale rifiuta la
     config(['saas.portal.retention_days' => 180, 'saas.portal.trial_purge_days' => 7]);
     [$rev4, $hash4] = $serve();
     expect($seen)->not->toHaveKey($rev4)->and($rev4)->toBeGreaterThan($rev3);
+});
+
+it('avvisa il portale ogni volta che nasce una revisione nuova: revisione nuova, avviso inviato', function (): void {
+    Http::fake(['*' => Http::response([], 200)]);
+    config(['saas.portal.retention_days' => 180, 'saas.portal.trial_purge_days' => 7]);
+    app()->forgetInstance(Catalog::class);
+    app()->forgetInstance(DbCatalog::class);
+
+    $rev = app(Catalog::class)->published()->rev;
+
+    Http::assertSent(fn ($request) => str_ends_with($request->url(), '/api/saas/v1/catalog-changed') && is_string($request['token'] ?? null));
+    Http::assertSentCount(1);
+
+    // Con la stessa configurazione non nasce nessuna revisione e non parte nessun avviso.
+    app()->forgetInstance(Catalog::class);
+    app()->forgetInstance(DbCatalog::class);
+    expect(app(Catalog::class)->published()->rev)->toBe($rev);
+    Http::assertSentCount(1);
+
+    // Cambiano i numeri: revisione nuova, secondo avviso.
+    config(['saas.portal.retention_days' => 90]);
+    app()->forgetInstance(Catalog::class);
+    app()->forgetInstance(DbCatalog::class);
+    expect(app(Catalog::class)->published()->rev)->toBe($rev + 1);
+    Http::assertSentCount(2);
+});
+
+it('rimanda l\'avviso della revisione in vigore con il comando', function (): void {
+    Http::fake(['*' => Http::response([], 200)]);
+
+    $this->artisan('saas:catalog:notify-portal')->expectsOutputToContain('consegnato')->assertSuccessful();
+
+    Http::assertSent(fn ($request) => str_ends_with($request->url(), '/api/saas/v1/catalog-changed'));
 });

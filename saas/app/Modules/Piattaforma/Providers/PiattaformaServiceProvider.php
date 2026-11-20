@@ -59,7 +59,7 @@ final class PiattaformaServiceProvider extends ServiceProvider
         Route::group([], __DIR__.'/../Http/operator_sso_routes.php');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class, PrepareTiersDraftCommand::class]);
+            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class, PrepareTiersDraftCommand::class, NotifyPortalCatalogCommand::class]);
         }
     }
 }
