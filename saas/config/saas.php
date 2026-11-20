@@ -43,6 +43,10 @@ return [
     // portale sarà `saas/admin`, con `ASSET_URL` e `APP_URL` coerenti.
     'admin_path' => env('SAAS_ADMIN_PATH', 'saas/admin'),
 
+    // Segreto condiviso con il proxy del portale (almeno 32 caratteri): solo con questo l'indirizzo del visitatore si legge da
+    // X-Forwarded-For. Quando c'è, SAAS_TRUSTED_PROXIES non si usa più.
+    'proxy_secret' => env('SAAS_PROXY_SECRET', ''),
+
     // Indirizzi da cui fidarsi degli X-Forwarded-* (il proxy del portale), separati da virgole; vuoto = nessuno.
     'trusted_proxies' => env('SAAS_TRUSTED_PROXIES', ''),
 

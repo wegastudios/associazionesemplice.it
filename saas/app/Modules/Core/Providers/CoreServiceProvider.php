@@ -23,6 +23,7 @@ use App\Modules\Core\Contracts\PlatformSettingsStore;
 use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Export\CoreDataExport;
+use App\Modules\Core\Http\Middleware\ResolveProxyClient;
 use App\Modules\Core\Org\DatabaseOrgContext;
 use App\Modules\Core\Org\DatabaseOrgDirectory;
 use App\Modules\Core\Org\DatabaseOrgPurger;
@@ -58,11 +59,17 @@ final class CoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Dietro il proxy del portale gli X-Forwarded-* valgono solo da questi indirizzi (SAAS_TRUSTED_PROXIES); vuoto = nessuno.
+        // Dietro il proxy del portale: con il segreto condiviso (SAAS_PROXY_SECRET) l'indirizzo del visitatore lo legge
+        // ResolveProxyClient e nessun indirizzo è «fidato». Senza segreto valgono ancora gli indirizzi di SAAS_TRUSTED_PROXIES
+        // (vuoto = nessuno; «*» non è accettato; l'host inoltrato non si legge mai: gli indirizzi sono quelli configurati).
+        $secret = config('saas.proxy_secret');
         $proxies = config('saas.trusted_proxies');
-        if (is_string($proxies) && $proxies !== '') {
-            TrustProxies::at(array_values(array_filter(array_map('trim', explode(',', $proxies)), static fn (string $p): bool => $p !== '')));
-            TrustProxies::withHeaders(Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_HOST | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO);
+        if (! (is_string($secret) && strlen($secret) >= ResolveProxyClient::MIN_LENGTH) && is_string($proxies) && $proxies !== '') {
+            $list = array_values(array_filter(array_map('trim', explode(',', $proxies)), static fn (string $p): bool => $p !== '' && $p !== '*' && $p !== '0.0.0.0/0'));
+            if ($list !== []) {
+                TrustProxies::at($list);
+                TrustProxies::withHeaders(Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO);
+            }
         }
 
         // Impostazioni della piattaforma (posta, backup, servizio chiavi, cache) al posto del file d'ambiente, con i ripieghi.

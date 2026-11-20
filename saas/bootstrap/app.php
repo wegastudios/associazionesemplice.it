@@ -8,6 +8,7 @@ use App\Modules\Core\Http\Middleware\EnsureUserActive;
 use App\Modules\Core\Http\Middleware\HandleInertiaRequests;
 use App\Modules\Core\Http\Middleware\IdentifyOperatorOrg;
 use App\Modules\Core\Http\Middleware\ResetOrgContext;
+use App\Modules\Core\Http\Middleware\ResolveProxyClient;
 use App\Modules\Core\Http\Middleware\RestrictToAppHost;
 use App\Modules\Core\Http\Middleware\SecurityHeaders;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
@@ -28,6 +29,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(ResetOrgContext::class);
         // Accesso, gestionale, amministrazione e API solo sugli indirizzi dell'app: sugli altri host solo area soci e moduli pubblici.
         $middleware->prepend(RestrictToAppHost::class);
+        // Indirizzo del visitatore dietro il proxy del portale: solo con il segreto condiviso (va prima dei limiti di frequenza).
+        $middleware->prepend(ResolveProxyClient::class);
         // Le pagine di /saas/admin e /saas/staff scrivono gli indirizzi del portale (SAAS_PUBLIC_URL), non quello dell'app.
         $middleware->prepend(UsePublicStaffUrl::class);
         $middleware->append(SecurityHeaders::class);
