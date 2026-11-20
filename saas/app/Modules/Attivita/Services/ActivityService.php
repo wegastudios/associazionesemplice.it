@@ -675,7 +675,7 @@ final readonly class ActivityService implements Activities
             return null;
         }
         foreach ($this->status($activity) as $s) {
-            if ($s['person_id'] === $personId) {
+            if ($s['person_id'] === $personId && $s['active']) {
                 return null;
             }
         }

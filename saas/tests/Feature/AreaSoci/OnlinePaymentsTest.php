@@ -256,7 +256,7 @@ it('chi non risulta più iscritto al corso: l\'incasso va comunque sul contribut
     $this->orgContext()->run($this->org->id, function (): void {
         $payments = app(OnlinePayments::class);
         $m = collect($payments->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
-        DB::table('app.enrollments')->where('person_id', $this->anna->id)->delete();
+        app(ActivityService::class)->unenroll($this->yoga->id, $this->anna->id);
         $id = pendingPayment($this, [$m], 'cs_gone');
 
         $payments->settle($id, $m['amount_cents']);
@@ -289,7 +289,7 @@ it('mix: una voce normale e una di chi non è più iscritto, tutte e due in prim
         $dues = $payments->dues([$this->anna->id]);
         $q = collect($dues)->first(fn (array $d): bool => str_starts_with($d['key'], 'q:'));
         $m = collect($dues)->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
-        DB::table('app.enrollments')->where('person_id', $this->anna->id)->delete();
+        app(ActivityService::class)->unenroll($this->yoga->id, $this->anna->id);
         $mix = pendingPayment($this, [$q, $m], 'cs_mix1');
         $payments->settle($mix, $q['amount_cents'] + $m['amount_cents']);
         expect($payments->find($mix)['status'])->toBe('review')
@@ -313,7 +313,7 @@ it('se i soldi sono già stati restituiti prima del controllo, la ricevuta non n
     $this->orgContext()->run($this->org->id, function (): void {
         $payments = app(OnlinePayments::class);
         $m = collect($payments->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
-        DB::table('app.enrollments')->where('person_id', $this->anna->id)->delete();
+        app(ActivityService::class)->unenroll($this->yoga->id, $this->anna->id);
         $id = pendingPayment($this, [$m], 'cs_back');
         $payments->settle($id, $m['amount_cents']);
         DB::table('app.online_payments')->where('id', $id)->update(['refunded_cents' => $m['amount_cents']]);
@@ -340,9 +340,10 @@ it('un pagamento in ordine emette le ricevute subito', function (): void {
 it('l\'incasso manuale a una persona non iscritta resta rifiutato', function (): void {
     $this->orgContext()->run($this->org->id, function (): void {
         $m = collect(app(OnlinePayments::class)->dues([$this->anna->id]))->first(fn (array $d): bool => str_starts_with($d['key'], 'm:'));
-        DB::table('app.enrollments')->where('person_id', $this->anna->id)->delete();
-        [, $act, $person, $month] = explode(':', $m['key']);
-        expect(fn () => app(ActivityService::class)->collect($act, $person, $this->cash, now()->toDateString(), [$month], $m['amount_cents']))
+        $eva = Person::create(['first_name' => 'Eva', 'last_name' => 'Neri', 'email' => 'eva2@example.com']); // mai iscritta
+        [, $act, , $month] = explode(':', $m['key']);
+        $person = $eva->id;
+        expect(fn () => app(ActivityService::class)->collect($act, $person,$this->cash, now()->toDateString(), [$month], $m['amount_cents']))
             ->toThrow(ActivityError::class);
     });
 });
