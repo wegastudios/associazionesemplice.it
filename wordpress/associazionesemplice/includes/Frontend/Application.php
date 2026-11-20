@@ -195,11 +195,13 @@ final class Application {
 	}
 
 	/** Pagina semplice con un titolo, un testo e, se serve, un pulsante (modulo con il solo indirizzo di conferma). */
-	private static function confirm_page( string $title, string $text, string $button_url = '' ): void {
+	private static function confirm_page( string $title, string $text, string $button_url = '', bool $again = false ): void {
 		CardVerify::send_headers();
 		$body = '<p>' . esc_html( $text ) . '</p>';
 		if ( '' !== $button_url ) {
 			$body .= '<form method="post" action="' . esc_url( $button_url ) . '"><p><button type="submit" style="padding:.7em 1.4em;font-size:1em;cursor:pointer">Conferma la domanda</button></p></form>';
+		} elseif ( $again ) {
+			$body .= '<p><a href="' . esc_url( self::back_url() ) . '">Compila il modulo</a></p>';
 		} else {
 			$body .= '<p><a href="' . esc_url( home_url( '/' ) ) . '">← Torna al sito</a></p>';
 		}
@@ -225,12 +227,12 @@ final class Application {
 		$posted = 'POST' === ( isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '' );
 		if ( $posted ) {
 			if ( Applications::confirm( $param ) ) {
-				self::confirm_page( 'Domanda confermata', 'La segreteria la esamina e ti risponde per email.' );
+				self::confirm_page( 'Domanda confermata.', 'La segreteria la esamina e ti risponde per email.' );
 			}
-			self::confirm_page( 'Domanda di adesione', self::LINK_BAD );
+			self::confirm_page( 'Domanda di adesione', self::LINK_BAD, '', true );
 		}
 		if ( 'ok' !== Applications::resolve_confirm( $param )['status'] ) {
-			self::confirm_page( 'Domanda di adesione', self::LINK_BAD );
+			self::confirm_page( 'Domanda di adesione', self::LINK_BAD, '', true );
 		}
 		self::confirm_page( 'Conferma la domanda', 'Premi il pulsante per mandare la domanda alla segreteria.', add_query_arg( 'asem_apply_confirm', $param, home_url( '/' ) ) );
 	}
