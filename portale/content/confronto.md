@@ -95,12 +95,18 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
+| Donazioni dal pagamento del sito, anche per i non soci :: Con Stripe, PayPal, SumUp o Satispay attivi il modulo è aperto a tutti; la donazione si registra da sola in prima nota come «Erogazione liberale», con ricevuta ed email di ringraziamento. Chi non è socio diventa «Sostenitore (non socio)», fuori dal libro soci | — | ✓ | ✓ |
+| Invito a donare :: Una riga con il link alla pagina delle donazioni: sulla pagina dell'evento «Non puoi partecipare? Sostienici con una donazione»; nella conferma dell'iscrizione, nell'area soci e nelle email «Vuoi sostenere … ? Fai una donazione». Spenta di partenza, si sceglie dove mostrarla | ✓ | ✓ | ✓ |
 | Anni fiscali :: Apertura e chiusura (solo amministratori), con mese di inizio a scelta. Si chiudono in ordine; dopo la prima chiusura il mese di inizio non si cambia più | ✓ | ✓ | ✓ |
 | Riapertura dell'ultimo anno fiscale :: Si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
 | Cassa «Prenota» :: Prenoti per conto di un socio o ospite, per data o per attività | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online :: Con Stripe, PayPal, SumUp, Satispay o WooCommerce | — | ✓ | ✓ |
+| Configurazione guidata dei pagamenti :: Passi «Collega Stripe» e «Collega PayPal» con i link alle pagine delle chiavi, prova della connessione subito dopo l'incolla e webhook di Stripe creato da solo | — | ✓ | ✓ |
+| Importazione delle chiavi da WooCommerce :: Copia le chiavi di Stripe, PayPal e SumUp già inserite nei plugin di WooCommerce, per incassare senza passare dal negozio | — | ✓ | ✓ |
+| Donazione al pagamento :: Sotto ciò che c'è da pagare compare «Aggiungi … € per una donazione a …», con voce e ricevuta proprie in categoria «Erogazione liberale» e senza commissione ribaltata; non con il checkout di WooCommerce | — | ✓ | ✓ |
+| Erogazione liberale per eventi e corsi dei soci e «Donazioni detraibili» :: Due opzioni in Dati dell'ente, spente di partenza | — | ✓ | ✓ |
 | Rimborso dei pagamenti online :: Per Stripe e PayPal, dal programma, totale o parziale, con motivo obbligatorio ed email al socio | — | ✓ | ✓ |
 | Klarna: paga dopo o a rate :: Klarna (paga dopo o a rate) tra i metodi di pagamento di Stripe | — | ✓ | ✓ |
 | SMS ai soci :: Dalle comunicazioni e, a scelta, dai promemoria (Brevo o Twilio), con consenso, crediti, registro e nuovi tentativi | — | ✓ | ✓ |
