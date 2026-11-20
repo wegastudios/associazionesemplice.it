@@ -55,6 +55,11 @@ Ripieghi automatici (`saas:health` li mostra come note):
 | server SFTP dei backup | i dump restano in `shared/storage/app/backups` |
 | servizio chiavi (indirizzo e chiave di firma) | chiave principale locale (`SAAS_MASTER_KEY`): piattaforma **di prova**, il portale riceve 503 `key_service_not_configured` e non crea associazioni; quelle di prova si creano con `saas:org:create` |
 
+In `APP_ENV=production` i ripieghi sulla posta (log) e sulla chiave principale locale **non sono ammessi**: `saas:health`
+fallisce e il rilascio torna alla versione precedente. Con il driver `sftp` dei backup l'impronta dell'host
+(`SAAS_BACKUP_SFTP_FINGERPRINT`) è obbligatoria in ogni ambiente. La chiave principale di prova dei test non si accetta
+fuori da `local` e `testing`.
+
 ## 2. Rilascio
 
 `.github/workflows/saas-deploy.yml`:

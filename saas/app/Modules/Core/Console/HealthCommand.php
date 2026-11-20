@@ -7,6 +7,7 @@ namespace App\Modules\Core\Console;
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Core\Contracts\DatabaseNames;
 use Illuminate\Console\Command;
+use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -37,6 +38,11 @@ final class HealthCommand extends Command
             },
             'file delle associazioni' => fn () => $this->roundTrip('org_files'),
             'spazio dei backup' => fn () => $this->roundTrip('backups'),
+            'configurazione di produzione' => $this->productionConfig(...),
+            'ruolo dell\'applicazione' => fn () => $this->appRole($db->connection('pgsql')),
+            'tabelle delle associazioni' => fn () => $this->orgTables($db->connection('pgsql')),
+            'permessi dell\'applicazione' => fn () => $this->appPrivileges($db->connection('pgsql')),
+            'connessione senza pooler' => fn () => $this->sessionSettings($db->connection('pgsql')),
         ];
 
         if (! $this->option('skip-migrations')) {
@@ -98,6 +104,107 @@ final class HealthCommand extends Command
         }
 
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    /** In produzione niente chiave locale, niente posta nel log; con SFTP l'impronta dell'host è obbligatoria. */
+    private function productionConfig(): void
+    {
+        $problems = [];
+        $disk = config('filesystems.disks.backups');
+        if (is_array($disk) && ($disk['driver'] ?? null) === 'sftp' && (! is_string($disk['hostFingerprint'] ?? null) || trim($disk['hostFingerprint']) === '')) {
+            $problems[] = 'impronta dell\'host SFTP dei backup mancante (SAAS_BACKUP_SFTP_FINGERPRINT)';
+        }
+
+        if (config('app.env') === 'production') {
+            if (config('saas.crypto.vault') !== 'remote') {
+                $problems[] = 'chiave principale locale: serve il servizio chiavi (SAAS_KEY_VAULT=remote)';
+            }
+            if (in_array(config('mail.default'), ['log', 'array'], true)) {
+                $problems[] = 'posta non configurata: le email finirebbero nel log';
+            }
+        }
+
+        if ($problems !== []) {
+            throw new RuntimeException(implode('; ', $problems));
+        }
+    }
+
+    /** Il ruolo dell'applicazione non ha poteri speciali né fa parte di ruoli che li hanno. */
+    private function appRole(Connection $connection): void
+    {
+        $special = $connection->select(<<<'SQL'
+            SELECT r.rolname FROM pg_roles r
+            WHERE r.rolname = current_user AND (r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb)
+            UNION ALL
+            SELECT p.rolname FROM pg_auth_members m
+            JOIN pg_roles r ON r.oid = m.member JOIN pg_roles p ON p.oid = m.roleid
+            WHERE r.rolname = current_user AND (p.rolsuper OR p.rolbypassrls OR p.rolcreaterole OR p.rolcreatedb)
+        SQL);
+        if ($special !== []) {
+            throw new RuntimeException('il ruolo ha poteri speciali (superuser, BYPASSRLS, creazione di ruoli o database) o li eredita');
+        }
+    }
+
+    /** Su ogni tabella di app, audit e sites: RLS attiva e forzata, almeno una policy, proprietario diverso dal ruolo. */
+    private function orgTables(Connection $connection): void
+    {
+        $bad = $connection->select(<<<'SQL'
+            SELECT n.nspname || '.' || c.relname AS name
+            FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname IN ('app', 'audit', 'sites') AND c.relkind IN ('r', 'p')
+              AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity
+                   OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid)
+                   OR pg_get_userbyid(c.relowner) = current_user)
+            ORDER BY 1 LIMIT 5
+        SQL);
+        if ($bad !== []) {
+            $names = array_map(static fn (object $row): string => is_string($row->name ?? null) ? $row->name : '?', $bad);
+            throw new RuntimeException('RLS non attiva o non forzata, senza policy o proprietario sbagliato: '.implode(', ', $names));
+        }
+    }
+
+    /** Nessuna creazione di oggetti negli schemi, nessun TRUNCATE/REFERENCES/TRIGGER, nessuna lettura delle migrazioni. */
+    private function appPrivileges(Connection $connection): void
+    {
+        $schemas = $connection->select(<<<'SQL'
+            SELECT n.nspname AS name FROM pg_namespace n
+            WHERE n.nspname IN ('app', 'audit', 'sites', 'core', 'public') AND has_schema_privilege(current_user, n.oid, 'CREATE')
+        SQL);
+        $tables = $connection->select(<<<'SQL'
+            SELECT n.nspname || '.' || c.relname AS name
+            FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname IN ('core', 'app', 'audit', 'sites') AND c.relkind IN ('r', 'p')
+              AND (has_table_privilege(current_user, c.oid, 'TRUNCATE') OR has_table_privilege(current_user, c.oid, 'REFERENCES')
+                   OR has_table_privilege(current_user, c.oid, 'TRIGGER'))
+            ORDER BY 1 LIMIT 5
+        SQL);
+        $migrations = $connection->select(<<<'SQL'
+            SELECT 1 AS found WHERE to_regclass('public.migrations') IS NOT NULL
+              AND has_table_privilege(current_user, to_regclass('public.migrations'), 'SELECT')
+        SQL);
+        if ($schemas !== [] || $tables !== [] || $migrations !== []) {
+            throw new RuntimeException('permessi eccessivi (CREATE su schemi, TRUNCATE/REFERENCES/TRIGGER su tabelle o lettura di public.migrations)');
+        }
+    }
+
+    /**
+     * L'associazione corrente è un'impostazione di sessione (set_config senza «local»): con un pooler in modalità
+     * transazione due istruzioni di fila possono cadere su connessioni diverse e l'isolamento salta.
+     */
+    private function sessionSettings(Connection $connection): void
+    {
+        try {
+            for ($i = 0; $i < 3; $i++) {
+                $value = '00000000-0000-7000-8000-'.bin2hex(random_bytes(6));
+                $connection->select("SELECT set_config('app.org_id', ?, false)", [$value]);
+                $read = $connection->selectOne("SELECT current_setting('app.org_id', true) AS value");
+                if (! is_object($read) || ($read->value ?? null) !== $value) {
+                    throw new RuntimeException('l\'impostazione di sessione non resta tra due istruzioni: pooler in modalità transazione? Non è ammesso (docs/DATABASE.md)');
+                }
+            }
+        } finally {
+            $connection->select("SELECT set_config('app.org_id', '', false)");
+        }
     }
 
     private function roundTrip(string $disk): void

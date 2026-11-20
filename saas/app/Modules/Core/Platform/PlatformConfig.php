@@ -127,6 +127,10 @@ final readonly class PlatformConfig
             $c->set('saas.crypto.vault', 'local');
             $c->set('saas.crypto.trial', true);
             $warnings[] = 'Servizio chiavi non configurato: chiave principale locale, solo per associazioni di prova.';
+        } elseif ($c->get('saas.crypto.vault') !== 'remote' && $c->get('app.env') === 'production') {
+            // In produzione la chiave locale (scelta a mano o per variabile assente) vale come «di prova».
+            $c->set('saas.crypto.trial', true);
+            $warnings[] = 'Chiave principale locale in produzione: piattaforma di prova, il portale non crea associazioni.';
         }
 
         $c->set('saas.platform_warnings', $warnings);
