@@ -119,6 +119,17 @@ final class Application {
 	}
 
 
+	/** Frase sulla quota, uguale per tutti (non dipende da chi scrive). */
+	private static function fee_note(): string {
+		$fee = Applications::fee_cents( \AssociazioneSemplice\MemberType::ORDINARY );
+		if ( $fee <= 0 ) {
+			return '';
+		}
+		return Applications::online_payment()
+			? ' Dopo la conferma della domanda ti arriva un\'email con il link per pagare subito la quota online; se la domanda non è accettata, riavrai la quota.'
+			: ' La quota associativa si paga in sede, alla segreteria.';
+	}
+
 	private static function form( array $post ): string {
 		$types = Applications::types();
 		$fee   = Applications::fee_cents( \AssociazioneSemplice\MemberType::ORDINARY );
