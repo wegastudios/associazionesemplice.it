@@ -8,6 +8,7 @@ use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Models\Person;
+use App\Modules\Soci\Rules\Age;
 use App\Modules\Soci\Rules\GuardianRules;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -131,6 +132,21 @@ final readonly class GuardianService
         $ids = $this->table()->where('guardian_person_id', $guardianId)->pluck('person_id');
 
         return array_values(Person::query()->whereIn('id', $ids)->orderBy('last_name')->get(['id', 'first_name', 'last_name'])
+            ->map(static fn (Person $p): array => ['id' => $p->id, 'name' => $p->fullName()])->all());
+    }
+
+    /**
+     * Le schede che il tutore può gestire nell'area soci: solo i collegamenti operativi con una persona ancora minorenne.
+     *
+     * @return list<array{id: string, name: string}>
+     */
+    public function manageableDependentsOf(string $guardianId): array
+    {
+        $ids = $this->table()->where('guardian_person_id', $guardianId)->where('is_operative', true)->pluck('person_id');
+        $today = now()->toDateString();
+
+        return array_values(Person::query()->whereIn('id', $ids)->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'birth_date'])
+            ->filter(static fn (Person $p): bool => Age::isMinor($p->birth_date?->format('Y-m-d'), $today))
             ->map(static fn (Person $p): array => ['id' => $p->id, 'name' => $p->fullName()])->all());
     }
 

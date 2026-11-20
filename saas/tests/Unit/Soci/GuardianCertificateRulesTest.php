@@ -20,6 +20,12 @@ function parentData(array $over = []): array
     return $over + ['id' => 'p', 'type' => MemberType::Ordinary, 'email' => 'mamma@example.com', 'birth_date' => '1980-01-01'];
 }
 
+it('rifiuta il tutore di una persona ormai maggiorenne', function (): void {
+    $errors = GuardianRules::validate(minorData(['birth_date' => '2000-05-10']), parentData(), 0, '2026-10-26');
+
+    expect(implode(' ', $errors))->toContain('minorenne');
+});
+
 it('collega un tutore normale senza errori', function (): void {
     expect(GuardianRules::validate(minorData(), parentData(), 0, '2026-10-26'))->toBe([])
         ->and(GuardianRules::validate(minorData(), parentData(['birth_date' => null]), 1, '2026-10-26'))->toBe([]);

@@ -2,7 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ filter: String, rows: Array, page: { type: Number, default: 1 }, pages: { type: Number, default: 1 }, total: { type: Number, default: 0 }, year: Number, source: String, years: Array, versions: { type: Array, default: () => [] }, canExport: Boolean });
+const props = defineProps({ filter: String, rows: Array, page: { type: Number, default: 1 }, pages: { type: Number, default: 1 }, total: { type: Number, default: 0 }, year: Number, source: String, years: Array, versions: { type: Array, default: () => [] }, canExport: Boolean, full: Boolean });
 const filters = [{ value: '', label: 'Tutti' }, { value: 'in_force', label: 'In carica' }, { value: 'left', label: 'Cessati' }];
 const params = (over = {}) => { const p = { ...(props.filter ? { stato: props.filter } : {}), ...(props.year ? { anno: props.year } : {}), ...over }; return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== '' && v != null)); };
 const go = (page) => router.get('/gestionale/soci/libro', params({ pagina: page > 1 ? page : '' }), { preserveScroll: true });
@@ -33,31 +33,32 @@ const q = () => { const s = new URLSearchParams(params()).toString(); return s ?
             </div>
         </div>
 
+        <p v-if="!full" class="mb-3 text-sm text-muted">Con il tuo ruolo vedi numero, nome, tessera e date. Codice fiscale, nascita, residenza e quote li vede chi può esportare l'anagrafica.</p>
         <div class="card overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="text-left text-muted">
                     <tr>
                         <th class="px-3 py-3 text-right font-semibold">N. e matricola</th>
                         <th class="px-3 py-3 font-semibold">Socio</th>
-                        <th class="px-3 py-3 font-semibold">Nascita</th>
-                        <th class="px-3 py-3 font-semibold">Residenza</th>
+                        <th v-if="full" class="px-3 py-3 font-semibold">Nascita</th>
+                        <th v-if="full" class="px-3 py-3 font-semibold">Residenza</th>
                         <th class="px-3 py-3 font-semibold">Tessera</th>
                         <th class="px-3 py-3 font-semibold">Ammissione</th>
                         <th class="px-3 py-3 font-semibold">Cessazione</th>
-                        <th class="px-3 py-3 text-right font-semibold">Ultima quota</th>
+                        <th v-if="full" class="px-3 py-3 text-right font-semibold">Ultima quota</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-if="!rows.length"><td colspan="8" class="px-3 py-6 text-center text-muted">Nessun socio.</td></tr>
+                    <tr v-if="!rows.length"><td :colspan="full ? 8 : 5" class="px-3 py-6 text-center text-muted">Nessun socio.</td></tr>
                     <tr v-for="r in rows" :key="r.id" class="border-t border-line align-top" :class="r.in_force ? '' : 'text-muted'">
                         <td class="px-3 py-2 text-right tabular-nums">{{ r.n }}<span v-if="r.matricola" class="block text-xs text-muted">matr. {{ r.matricola }}</span></td>
-                        <td class="px-3 py-2"><Link :href="`/gestionale/soci/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link><span class="block text-xs text-muted">{{ r.tax_code }}</span></td>
-                        <td class="px-3 py-2">{{ r.birth }}</td>
-                        <td class="px-3 py-2">{{ r.residence }}<span v-if="r.guardian" class="block text-xs text-muted">Tutore: {{ r.guardian }}</span></td>
+                        <td class="px-3 py-2"><Link :href="`/gestionale/soci/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link><span v-if="full" class="block text-xs text-muted">{{ r.tax_code }}</span></td>
+                        <td v-if="full" class="px-3 py-2">{{ r.birth }}</td>
+                        <td v-if="full" class="px-3 py-2">{{ r.residence }}<span v-if="r.guardian" class="block text-xs text-muted">Tutore: {{ r.guardian }}</span></td>
                         <td class="px-3 py-2">{{ r.card }}<span v-if="r.level" class="block text-xs text-muted">{{ r.level }}</span></td>
                         <td class="whitespace-nowrap px-3 py-2">{{ r.approved_on }}<span v-if="r.applied_on !== r.approved_on" class="block text-xs text-muted">domanda {{ r.applied_on }}</span></td>
                         <td class="px-3 py-2">{{ r.left_on }}<span v-if="r.left_reason" class="block text-xs text-muted">{{ r.left_reason }}</span></td>
-                        <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums">{{ r.fee }}<span v-if="r.fee_year" class="block text-xs text-muted">{{ r.fee_year }}</span></td>
+                        <td v-if="full" class="whitespace-nowrap px-3 py-2 text-right tabular-nums">{{ r.fee }}<span v-if="r.fee_year" class="block text-xs text-muted">{{ r.fee_year }}</span></td>
                     </tr>
                 </tbody>
             </table>

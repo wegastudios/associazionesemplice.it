@@ -20,7 +20,8 @@ $memberArea = function (): void {
     Route::get('/accesso', [AccessController::class, 'show'])->name('member.login');
     Route::post('/accesso', [AccessController::class, 'request'])->name('member.login.request');
     Route::post('/accesso/codice', [AccessController::class, 'code'])->name('member.login.code');
-    Route::get('/entra/{token}', [AccessController::class, 'link'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.login.link');
+    Route::get('/entra/{token}', [AccessController::class, 'linkPage'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.login.link');
+    Route::post('/entra/{token}', [AccessController::class, 'link'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.login.link.enter');
     Route::get('/verifica/{person}', [MemberAreaController::class, 'verify'])->whereUuid('person')->middleware('signed')->name('member.verify');
 
     Route::middleware('member')->group(function (): void {

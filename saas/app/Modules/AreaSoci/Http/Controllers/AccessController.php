@@ -42,8 +42,11 @@ final readonly class AccessController
         $data = Input::of($request->validate(['email' => ['required', 'email:rfc', 'max:254']]));
         $email = mb_strtolower(Input::string($data, 'email'));
         $this->throttle('member-mail:'.$request->ip(), 10, 600);
-        // Per email: una richiesta ogni minuto, cinque all'ora. La risposta è comunque la stessa.
-        if ($this->limiter->attempt('member-mail:'.hash('sha256', $email), 5, static fn (): bool => true, 3600)) {
+        // Cinque all'ora per email e indirizzo: un estraneo non esaurisce le richieste di chi ha davvero bisogno del codice.
+        // Per la sola email un tetto più largo contro gli invii a raffica. La risposta è comunque la stessa.
+        $byPair = $this->limiter->attempt('member-mail:'.hash('sha256', $email.'|'.$request->ip()), 5, static fn (): bool => true, 3600) === true;
+        $byEmail = $this->limiter->attempt('member-mail-all:'.hash('sha256', $email), 30, static fn (): bool => true, 3600) === true;
+        if ($byPair && $byEmail) {
             $this->access->requestEmail($email, $request->getSchemeAndHttpHost(), self::org($request)['name']);
         }
 
@@ -61,6 +64,12 @@ final readonly class AccessController
         }
 
         return $this->enter($request, $person, mb_strtolower(Input::string($data, 'email')));
+    }
+
+    /** Il link ricevuto per email si apre qui senza consumarlo (i controlli della posta lo aprono per verificarlo): si entra con il pulsante. */
+    public function linkPage(Request $request, string $token): Response
+    {
+        return Inertia::render('AreaSoci/Entra', ['orgName' => self::org($request)['name'], 'token' => $token]);
     }
 
     public function link(Request $request, string $token): RedirectResponse

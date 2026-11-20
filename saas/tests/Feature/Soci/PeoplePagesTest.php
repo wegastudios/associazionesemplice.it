@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Soci\Models\Person;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 function sociOperator(OrgRole $role): array
@@ -69,4 +70,24 @@ it('non apre la scheda di un\'altra associazione', function (): void {
     $id = $this->orgContext()->run($other->id, fn () => Person::create(['first_name' => 'Bruno', 'last_name' => 'Bianchi'])->id);
 
     $this->actingAs($user)->get("/gestionale/soci/{$id}")->assertNotFound();
+});
+
+it('mostra codice fiscale, IBAN e note solo a chi può esportare, e annota la lettura', function (): void {
+    [$org, $user] = sociOperator(OrgRole::Operator);
+    $acc = $this->createUser('contabile@example.com', twoFactor: true);
+    $this->addOperator($org, $acc, OrgRole::Accountant);
+    $id = $this->orgContext()->run($org->id, fn () => Person::create(['first_name' => 'Anna', 'last_name' => 'Rossi', 'tax_code' => 'VRDGPP75B10F205B', 'notes' => 'Nota riservata'])->id);
+    $reads = fn (): int => $this->orgContext()->run($org->id, fn (): int => DB::table('audit.log')->where('action', 'person.sensitive_read')->count());
+
+    $this->actingAs($user)->get("/gestionale/soci/{$id}")->assertInertia(fn (Assert $page) => $page->where('person.sensitive', true)
+        ->where('person.tax_code', 'VRDGPP75B10F205B')->where('person.notes', 'Nota riservata'));
+    expect($reads())->toBe(1);
+
+    $this->actingAs($acc)->get("/gestionale/soci/{$id}")->assertOk()->assertInertia(fn (Assert $page) => $page->where('person.sensitive', false)
+        ->where('person.tax_code', null)->where('person.iban', null)->where('person.notes', null));
+    expect($reads())->toBe(1);
+
+    // Salvando senza i campi riservati, restano come sono.
+    $this->actingAs($user)->put("/gestionale/soci/{$id}", ['type' => 'ordinary', 'first_name' => 'Anna', 'last_name' => 'Rossi', 'phone' => '333 1234567'])->assertRedirect();
+    $this->orgContext()->run($org->id, fn () => expect(Person::query()->findOrFail($id)->notes)->toBe('Nota riservata'));
 });

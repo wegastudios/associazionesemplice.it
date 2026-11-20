@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Soci\Http\Controllers;
 
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Portale\Contracts\LifecyclePolicy;
 use App\Modules\Soci\Services\MemberBookService;
 use App\Modules\Soci\Services\MemberBookSnapshots;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -28,6 +30,8 @@ final readonly class MemberBookController
         private MemberBookSnapshots $snapshots,
         private DatabaseManager $db,
         private OrgContext $context,
+        private LifecyclePolicy $policy,
+        private RateLimiter $limiter,
     ) {}
 
     public function index(Request $request): Response
@@ -39,10 +43,17 @@ final readonly class MemberBookController
         $total = count($result['rows']);
         $pages = max(1, (int) ceil($total / self::PAGE_SIZE));
         $page = min($pages, max(1, (int) $request->integer('pagina', 1)));
+        $slice = array_slice($result['rows'], ($page - 1) * self::PAGE_SIZE, self::PAGE_SIZE);
+        // Le colonne complete (codice fiscale, nascita, residenza, quote) valgono come l'esportazione: permesso, piano, limite di frequenza e registro.
+        $full = $this->mayReadFull($request);
+        if ($full) {
+            $this->book->logView(count($slice), $page);
+        }
 
         return Inertia::render('Soci/LibroSoci', [
             'filter' => $filter,
-            'rows' => array_slice($result['rows'], ($page - 1) * self::PAGE_SIZE, self::PAGE_SIZE),
+            'rows' => $full ? $slice : array_map(self::basic(...), $slice),
+            'full' => $full,
             'page' => $page,
             'pages' => $pages,
             'total' => $total,
@@ -80,6 +91,36 @@ final readonly class MemberBookController
             'Content-Disposition' => 'attachment; filename="libro-soci-'.now()->format('Y-m-d').'.csv"',
             'Cache-Control' => 'no-store, private',
         ]);
+    }
+
+    private function mayReadFull(Request $request): bool
+    {
+        $user = $request->user();
+        if ($user === null || ! $user->can('people.export') || ! $this->policy->exportsAllowed($this->context->require()->id)) {
+            return false;
+        }
+        $id = $user->getAuthIdentifier();
+        $key = 'member-book-view:'.(is_string($id) || is_int($id) ? $id : (string) $request->ip());
+        if ($this->limiter->tooManyAttempts($key, 10)) {
+            abort(429);
+        }
+        $this->limiter->hit($key, 60);
+
+        return true;
+    }
+
+    /**
+     * Senza il permesso di esportare: solo numero, nome, tessera e date.
+     *
+     * @param  Row  $r
+     * @return array<string, bool|int|string>
+     */
+    private static function basic(array $r): array
+    {
+        return [
+            'n' => $r['n'], 'matricola' => $r['matricola'], 'id' => $r['id'], 'name' => $r['name'], 'card' => $r['card'], 'level' => $r['level'],
+            'applied_on' => $r['applied_on'], 'approved_on' => $r['approved_on'], 'joined_on' => $r['joined_on'], 'left_on' => $r['left_on'], 'in_force' => $r['in_force'],
+        ];
     }
 
     /** @return array{rows: list<Row>, source: string} */

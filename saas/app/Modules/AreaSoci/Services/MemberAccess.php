@@ -9,6 +9,7 @@ use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Soci\Contracts\MemberProfiles;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -29,6 +30,9 @@ final readonly class MemberAccess
 
     public const MAX_ATTEMPTS = 5;
 
+    /** Codici sbagliati per email nella finestra di validità del codice. */
+    public const MAX_FAILED_PER_EMAIL = 10;
+
     public const IDLE_DAYS = 30;
 
     public const MAX_DAYS = 90;
@@ -40,6 +44,7 @@ final readonly class MemberAccess
         private Mailer $mailer,
         private AuditLog $audit,
         private OrgContacts $contacts,
+        private RateLimiter $limiter,
     ) {}
 
     /** Manda link e codice se l'email è di qualcuno che può entrare; la risposta per chi chiede è sempre la stessa. */
@@ -58,26 +63,44 @@ final readonly class MemberAccess
             'org_id' => $this->org(), 'id' => $id, 'kind' => 'email', 'email' => $email, 'link_hash' => self::hash($link),
             'code_hash' => self::hash($id.':'.$code), 'expires_at' => now()->addMinutes(self::CODE_MINUTES),
         ]);
-        $this->mailer->to($email)->send(new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES, $contacts['email'] ?? null, $contacts['phone'] ?? null));
         $this->audit->record('member.login_requested', null, null, ['kind' => 'email']);
+        // L'invio parte dopo la risposta: i tempi sono gli stessi per chi è socio e per chi non lo è. Una volta sola, anche se la chiusura viene richiamata.
+        $mail = new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES, $contacts['email'] ?? null, $contacts['phone'] ?? null);
+        $sent = false;
+        app()->terminating(function () use ($email, $mail, &$sent): void {
+            if (! $sent) {
+                $sent = true;
+                $this->mailer->to($email)->send($mail);
+            }
+        });
     }
 
     /** Il codice ricevuto per email: la persona che entra, o null. */
     public function verifyCode(string $email, string $code): ?string
     {
         $email = Str::lower(trim($email));
-        $row = $this->table('app.member_login_tokens')->where('kind', 'email')->where('email', $email)->whereNull('used_at')
-            ->where('expires_at', '>', now())->orderByDesc('created_at')->first(['id', 'code_hash', 'attempts']);
-        if ($row === null || ! is_string($row->id ?? null) || ! is_string($row->code_hash ?? null)) {
+        // Codici sbagliati per email: il conto non riparte quando arriva un codice nuovo.
+        $failKey = 'member-code-fail:'.$this->org().':'.self::hash($email);
+        if ($this->limiter->tooManyAttempts($failKey, self::MAX_FAILED_PER_EMAIL)) {
             return null;
         }
-        $attempts = is_numeric($row->attempts ?? null) ? (int) $row->attempts : 0;
-        if ($attempts >= self::MAX_ATTEMPTS || ! hash_equals($row->code_hash, self::hash($row->id.':'.trim($code)))) {
-            $this->table('app.member_login_tokens')->where('id', $row->id)->update(['attempts' => min(100, $attempts + 1)]);
+        $row = $this->table('app.member_login_tokens')->where('kind', 'email')->where('email', $email)->whereNull('used_at')
+            ->where('expires_at', '>', now())->orderByDesc('created_at')->first(['id', 'code_hash']);
+        if ($row === null || ! is_string($row->id ?? null) || ! is_string($row->code_hash ?? null)) {
+            $this->limiter->hit($failKey, self::CODE_MINUTES * 60);
 
             return null;
         }
-        $this->table('app.member_login_tokens')->where('id', $row->id)->update(['used_at' => now()]);
+        // Il tentativo si conta prima del confronto, con un solo aggiornamento: richieste in parallelo non aggirano il limite.
+        $claimed = $this->table('app.member_login_tokens')->where('id', $row->id)->whereNull('used_at')->where('attempts', '<', self::MAX_ATTEMPTS)->increment('attempts');
+        if ($claimed !== 1 || ! hash_equals($row->code_hash, self::hash($row->id.':'.trim($code)))) {
+            $this->limiter->hit($failKey, self::CODE_MINUTES * 60);
+
+            return null;
+        }
+        if ($this->table('app.member_login_tokens')->where('id', $row->id)->whereNull('used_at')->update(['used_at' => now()]) !== 1) {
+            return null;
+        }
 
         return $this->profiles->loginCandidates($email)[0] ?? null;
     }
