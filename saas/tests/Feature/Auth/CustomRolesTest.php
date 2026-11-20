@@ -88,7 +88,7 @@ it('non accetta ruoli di un\'altra associazione né operatori senza titolo', fun
 });
 
 it('gestisce operatori e ruoli dalla pagina', function (): void {
-    $this->actingAs($this->owner);
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
 
     $this->post('/gestionale/ruoli', ['name' => 'Consigliere', 'abilities' => ['people.view', 'health.view']])->assertSessionHas('status', 'Ruolo creato.');
     $roleId = (string) DB::table('core.org_roles')->value('id');

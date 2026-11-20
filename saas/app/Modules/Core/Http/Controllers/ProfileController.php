@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Http\Controllers;
 
+use App\Modules\Core\Auth\DeviceSessions;
 use App\Modules\Core\Auth\EmailChangeNoticeNotification;
 use App\Modules\Core\Auth\EmailChangeNotification;
 use App\Modules\Core\Models\User;
@@ -103,7 +104,7 @@ final readonly class ProfileController
         $request->validate(['password' => ['required', 'string', 'current_password:web']], ['password.current_password' => 'La password non è corretta.']);
         $user = $request->user();
         if ($user instanceof User) {
-            DB::table('core.sessions')->where('user_id', $user->id)->where('id', '!=', $request->session()->getId())->delete();
+            DeviceSessions::closeOthers($user, $request->session()->getId());
         }
 
         return back()->with('status', 'Gli altri dispositivi sono stati scollegati.');
