@@ -734,18 +734,14 @@ it('un socio non tiene più di un certo numero di prenotazioni da usare', functi
     });
 });
 
-it('con l\'anticipo a zero il socio ha comunque un anticipo massimo di partenza; la segreteria no', function (): void {
-    config(['saas.resources.member_default_advance_days' => 10]);
+it('con l\'anticipo a zero nessun limite di anticipo, anche per il socio; se la risorsa lo indica vale quello', function (): void {
     $this->orgContext()->run($this->org->id, function (): void {
         $court = app(ResourceService::class)->save(null, ['name' => 'Campo 1', 'category' => 'court', 'typology' => 'hourly', 'open_time' => '08:00', 'close_time' => '22:00',
             'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000, 'advance_days' => 0]);
         $resources = app(MemberResources::class);
         $far = now('Europe/Rome')->addDays(11)->toDateString();
 
-        expect(fn () => $resources->book($court->id, $this->anna->id, ['date' => $far, 'start' => '10:00']))->toThrow(ResourceError::class, 'al massimo 10 giorni')
-            ->and($resources->book($court->id, $this->anna->id, ['date' => now('Europe/Rome')->addDays(10)->toDateString(), 'start' => '10:00']))->toBeString()
-            // La segreteria prenota dove vuole.
-            ->and(app(ReservationService::class)->book($court->id, ['person_id' => $this->anna->id, 'date' => $far, 'start' => '10:00', 'units' => 1], null))->toHaveCount(1);
+        expect($resources->book($court->id, $this->anna->id, ['date' => $far, 'start' => '10:00']))->toBeString();
 
         // Se la risorsa indica un anticipo, vale quello.
         $short = app(ResourceService::class)->save(null, ['name' => 'Campo 2', 'category' => 'court', 'typology' => 'hourly', 'open_time' => '08:00', 'close_time' => '22:00',

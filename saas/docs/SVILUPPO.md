@@ -194,7 +194,7 @@ operatori e nessun pacchetto finché non ne ricevono.
   sha256). Finché non è confermata non compare in segreteria e non produce altre email; confermata, arriva in
   segreteria e a chi l'ha scritta va la ricevuta. A uno stesso indirizzo si scrive una sola volta l'ora; nelle email
   saluto e frasi sono sempre gli stessi, mai testo scelto da chi compila il modulo. Il comando `saas:applications:prune`
-  (ogni notte alle 03:41) cancella le domande mai confermate da 30 giorni e quelle respinte da 90; le accolte restano.
+  (ogni notte alle 03:41) cancella le domande mai confermate da 30 giorni e quelle respinte da 90 (decisione del titolare, 20/11/2026; vedi CANCELLAZIONE_DATI.md §11); le accolte restano.
 - Import (`PeopleImportService`, lettura e piano in `Soci/Import`, portati dal plugin con i loro test): `.xlsx` o CSV
   (`;`, `,` o tabulazione, UTF-8 o Windows-1252), al massimo 5 MB e 5000 righe. Prima l'anteprima, poi lo stesso file
   si applica: chi c'è già si riconosce per tessera, email, cellulare, codice fiscale o nome e si aggiorna con i soli
@@ -289,8 +289,8 @@ l'operatore può vedere.
 - Risorse Web: il socio prenota dall'area soci le risorse a ore e a giornata delle tipologie che il pacchetto ha con
   `web: true` (`Risorse\Contracts\MemberResources`), con anticipo e niente passato; annulla le sue future non pagate.
   Limiti di chi prenota da solo (`config/saas.php`, `resources`): al massimo 10 prenotazioni ancora da usare per persona
-  (`SAAS_MEMBER_MAX_ACTIVE_BOOKINGS`) e, se la risorsa ha l'anticipo a zero, un anticipo massimo di 30 giorni
-  (`SAAS_MEMBER_DEFAULT_ADVANCE_DAYS`); la segreteria non ha questi limiti. Prenota, annulla, lista d'attesa, recapiti,
+  (`SAAS_MEMBER_MAX_ACTIVE_BOOKINGS`); l'anticipo massimo è solo quello indicato dalla risorsa (a zero: nessun limite);
+  la segreteria non ha questi limiti. Prenota, annulla, lista d'attesa, recapiti,
   PDF delle ricevute ed esito dei pagamenti hanno un limite di frequenza per socio e per indirizzo (limiti nominati
   `member-*` in `AreaSociServiceProvider`); l'esito di un pagamento in attesa interroga Stripe o PayPal al massimo
   ogni 15 secondi.

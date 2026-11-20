@@ -75,7 +75,7 @@ final readonly class MemberResourcesService implements MemberResources
     public function book(string $resourceId, string $personId, array $in): string
     {
         $r = $this->resource($resourceId);
-        $this->assertWithinLimits($r, $personId, $in['date']);
+        $this->assertWithinLimits($personId);
 
         return $this->reservations->book($r->id, ['person_id' => $personId, 'date' => $in['date'], 'start' => $in['start'] ?? '', 'units' => $in['units'] ?? 1,
             'guests' => $in['guests'] ?? []], null, true)[0];
@@ -114,11 +114,10 @@ final readonly class MemberResourcesService implements MemberResources
     }
 
     /**
-     * I limiti di chi prenota da solo (la segreteria non li ha): un tetto di prenotazioni ancora da usare per persona e un
-     * anticipo massimo. Con l'anticipo della risorsa a zero («nessun limite» per la segreteria) il socio ha comunque un
-     * anticipo di partenza, così non occupa le fasce per mesi senza pagare. Valori in `config/saas.php` (`resources`).
+     * Il limite di chi prenota da solo (la segreteria non lo ha): un tetto di prenotazioni ancora da usare per persona,
+     * in `config/saas.php` (`resources`). L'anticipo massimo è solo quello della risorsa (a zero: nessun limite).
      */
-    private function assertWithinLimits(Resource $r, string $personId, string $date): void
+    private function assertWithinLimits(string $personId): void
     {
         $max = self::setting('saas.resources.member_max_active', 10);
         $now = ReservationService::now();
@@ -126,11 +125,6 @@ final readonly class MemberResourcesService implements MemberResources
             ->where(static fn ($w) => $w->whereNull('ends_at')->orWhere('ends_at', '>', $now))->count();
         if ($active >= $max) {
             throw new ResourceError("Hai già {$max} prenotazioni da usare: aspetta che passino o annullane una, oppure scrivi alla segreteria.");
-        }
-
-        $days = $r->advance_days > 0 ? $r->advance_days : self::setting('saas.resources.member_default_advance_days', 30);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1 && $date > date('Y-m-d', (int) strtotime(substr($now, 0, 10).' +'.$days.' days'))) {
-            throw new ResourceError('Si può prenotare al massimo '.$days.' '.($days === 1 ? 'giorno' : 'giorni').' prima.');
         }
     }
 

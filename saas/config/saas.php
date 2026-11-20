@@ -64,10 +64,9 @@ return [
     'public_url' => env('SAAS_PUBLIC_URL', ''),
 
     // Risorse prenotate dai soci dall'area soci (la segreteria non ha questi limiti): prenotazioni ancora da usare per
-    // persona, e anticipo massimo in giorni quando la risorsa non ne indica uno (anticipo a zero).
+    // persona. L'anticipo massimo è solo quello indicato dalla risorsa (a zero: nessun limite).
     'resources' => [
         'member_max_active' => (int) env('SAAS_MEMBER_MAX_ACTIVE_BOOKINGS', 10),
-        'member_default_advance_days' => (int) env('SAAS_MEMBER_DEFAULT_ADVANCE_DAYS', 30),
     ],
 
     // Promemoria delle scadenze: vanno in coda, un'email per lavoro. Massimo di email al minuto per ogni associazione e in

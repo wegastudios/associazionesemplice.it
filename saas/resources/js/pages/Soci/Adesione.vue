@@ -33,7 +33,7 @@ const submit = () => form.post(`/adesione/${props.org.slug}`, { preserveScroll: 
 
         <section v-if="sent" class="card p-5 sm:p-6" role="status">
             <h2 class="mb-2 text-lg font-bold">Ultimo passo: controlla la posta.</h2>
-            <p>Ti abbiamo scritto un'email con un link: aprilo e premi il pulsante, così la domanda arriva alla segreteria. Il link vale 48 ore. Se non trovi l'email, guarda nella posta indesiderata; se non arriva, riprova tra un'ora.</p>
+            <p>Ti è arrivata un'email con un link: aprilo e premi il pulsante, così la domanda arriva alla segreteria. Il link vale 48 ore. Se non la trovi, guarda nella posta indesiderata; se non arriva, riprova tra un'ora.</p>
         </section>
 
         <form v-else class="space-y-6 card p-5 sm:p-6" novalidate @submit.prevent="submit">
