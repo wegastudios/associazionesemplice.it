@@ -2,6 +2,13 @@
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
+// Le pagine ufficiali dei gestori: nessuna cifra nostra, ogni gestore dice le sue condizioni.
+const links = {
+    stripeNonprofit: 'https://stripe.com/it/industries/nonprofits',
+    stripeKeys: 'https://dashboard.stripe.com/apikeys',
+    paypalNonprofit: 'https://www.paypal.com/it/business/nonprofit',
+    paypalKeys: 'https://developer.paypal.com/dashboard/applications/live',
+};
 const props = defineProps({ settings: Object, webhookUrl: String, accounts: Array, payments: Array, canSettings: Boolean, canAccounting: Boolean, canRefund: Boolean });
 const s = props.settings;
 const form = useForm({
@@ -41,22 +48,35 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                 <fieldset class="space-y-3 rounded-lg border border-line p-4 text-sm">
                     <legend class="px-1 font-bold">Stripe (carte)</legend>
                     <label class="flex items-center gap-2"><input v-model="form.stripe_enabled" type="checkbox" /> Attivo</label>
+                    <ol class="list-decimal space-y-2 pl-5 text-muted">
+                        <li>Ti serve un conto Stripe dell'associazione. Se è un ente non profit, guarda le condizioni che Stripe riserva agli enti: <a :href="links.stripeNonprofit" class="text-accent hover:underline" target="_blank" rel="noopener">Stripe per il non profit</a>.</li>
+                        <li><a :href="links.stripeKeys" class="text-accent hover:underline" target="_blank" rel="noopener">Apri la pagina delle chiavi di Stripe</a> e crea una chiave segreta. Se scegli una chiave limitata, deve poter scrivere su «Checkout Sessions», «Refunds» e «Webhook Endpoints».</li>
+                        <li>Incolla la chiave qui sotto e premi «Salva»: verifico subito che funzioni e creo da solo il webhook, cioè l'avviso con cui Stripe ci dice che il pagamento è arrivato.</li>
+                    </ol>
                     <label class="block space-y-1"><span class="font-semibold">Chiave segreta</span><input v-model="form.stripe_secret" type="password" autocomplete="off" :class="field" :placeholder="s.stripe_secret_set ? 'impostata: scrivi per cambiarla' : 'sk_live_…'" /></label>
-                    <label class="block space-y-1"><span class="font-semibold">Segreto del webhook</span><input v-model="form.stripe_webhook" type="password" autocomplete="off" :class="field" :placeholder="s.stripe_webhook_set ? 'impostato: scrivi per cambiarlo' : 'whsec_…'" /></label>
-                    <p class="text-muted">Nel pannello di Stripe aggiungi il webhook <code class="break-all rounded bg-surface px-1">{{ webhookUrl }}</code> per l'evento «checkout.session.completed».</p>
+                    <p v-if="s.stripe_webhook_set" class="text-muted">Il webhook è impostato.</p>
+                    <details class="text-muted"><summary class="cursor-pointer font-semibold">Se il webhook non si crea da solo</summary>
+                        <p class="mt-2">Nel pannello di Stripe aggiungi il webhook <code class="break-all rounded bg-surface px-1">{{ webhookUrl }}</code> per l'evento «checkout.session.completed», poi copia qui il suo segreto di firma.</p>
+                        <label class="mt-2 block space-y-1"><span class="font-semibold">Segreto del webhook</span><input v-model="form.stripe_webhook" type="password" autocomplete="off" :class="field" :placeholder="s.stripe_webhook_set ? 'impostato: scrivi per cambiarlo' : 'whsec_…'" /></label>
+                    </details>
                     <div class="flex flex-wrap gap-3">
-                        <button type="button" class="rounded-lg border border-line px-3 py-1.5 font-semibold" @click="test('stripe')">Prova le chiavi</button>
+                        <button type="button" class="rounded-lg border border-line px-3 py-1.5 font-semibold" @click="test('stripe')">Prova di nuovo la connessione</button>
                         <label v-if="s.stripe_secret_set" class="flex items-center gap-1 text-danger"><input v-model="form.forget" type="checkbox" value="stripe_secret" /> togli la chiave</label>
                     </div>
                 </fieldset>
                 <fieldset class="space-y-3 rounded-lg border border-line p-4 text-sm">
                     <legend class="px-1 font-bold">PayPal</legend>
                     <label class="flex items-center gap-2"><input v-model="form.paypal_enabled" type="checkbox" /> Attivo</label>
+                    <ol class="list-decimal space-y-2 pl-5 text-muted">
+                        <li>Ti serve un conto PayPal Business dell'associazione. Se è un ente non profit, guarda la tariffa che PayPal riserva agli enti benefici: <a :href="links.paypalNonprofit" class="text-accent hover:underline" target="_blank" rel="noopener">PayPal per il non profit</a>.</li>
+                        <li><a :href="links.paypalKeys" class="text-accent hover:underline" target="_blank" rel="noopener">Apri la pagina delle credenziali di PayPal</a>, crea un'app e copia il «Client ID» e il «Segreto».</li>
+                        <li>Incollali qui sotto e premi «Salva»: verifico subito che funzionino.</li>
+                    </ol>
                     <label class="block space-y-1"><span class="font-semibold">Client ID</span><input v-model="form.paypal_client_id" autocomplete="off" :class="field" /></label>
                     <label class="block space-y-1"><span class="font-semibold">Segreto</span><input v-model="form.paypal_secret" type="password" autocomplete="off" :class="field" :placeholder="s.paypal_secret_set ? 'impostato: scrivi per cambiarlo' : ''" /></label>
                     <label class="flex items-center gap-2"><input v-model="form.paypal_live" type="checkbox" /> Conto reale (togli la spunta per fare prove)</label>
                     <div class="flex flex-wrap gap-3">
-                        <button type="button" class="rounded-lg border border-line px-3 py-1.5 font-semibold" @click="test('paypal')">Prova le chiavi</button>
+                        <button type="button" class="rounded-lg border border-line px-3 py-1.5 font-semibold" @click="test('paypal')">Prova di nuovo la connessione</button>
                         <label v-if="s.paypal_secret_set" class="flex items-center gap-1 text-danger"><input v-model="form.forget" type="checkbox" value="paypal_secret" /> togli il segreto</label>
                     </div>
                 </fieldset>
