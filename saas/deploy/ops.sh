@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|coda|avvisa-catalogo> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -269,6 +269,60 @@ case "$ACTION" in
     set_var SAAS_PG_DUMP "$ARG/pg_dump"; set_var SAAS_PG_RESTORE "$ARG/pg_restore"
     echo "Impostati $ARG/pg_dump e $ARG/pg_restore."
     refresh
+    ;;
+  imposta-segreto-proxy)
+    # Segreto condiviso con il portale (D9): il portale scrive il valore in shared/proxy-secret.txt (600) via SSH; qui lo si valida,
+    # lo si mette in SAAS_PROXY_SECRET, si cancella il file. Si stampa solo l'esito e la lunghezza, mai il valore.
+    SECRET_FILE="$BASE/shared/proxy-secret.txt"
+    [ -f "$SECRET_FILE" ] || { echo "Manca $SECRET_FILE: il portale deve scriverlo prima (permessi 600)." >&2; exit 1; }
+    value="$(tr -d '\r\n' < "$SECRET_FILE")"
+    [[ "$value" =~ ^[A-Za-z0-9+/=_-]{32,200}$ ]] || { rm -f "$SECRET_FILE"; echo "Segreto non valido (32-200 caratteri alfanumerici, + / = _ -). File cancellato." >&2; exit 1; }
+    set_var SAAS_PROXY_SECRET "$value"
+    rm -f "$SECRET_FILE"
+    refresh
+    echo "SAAS_PROXY_SECRET impostata (${#value} caratteri). File temporaneo cancellato."
+    echo "SAAS_TRUSTED_PROXIES = [$(get SAAS_TRUSTED_PROXIES)] (con il segreto non si usa più: si può svuotare dopo la prova)"
+    ;;
+  permessi-db)
+    # Riduce i permessi del ruolo applicativo. Prima salva i permessi attuali in shared/grants-backup-<data>.sql
+    # (ripristino: azione ripristina-permessi); poi toglie CREATE sugli schemi, TRUNCATE/REFERENCES/TRIGGER sulle tabelle e la lettura di public.migrations.
+    cd "$BASE/current"
+    GRANTS_BACKUP="$BASE/shared/grants-backup-$(date -u +%Y%m%d%H%M%S).sql" "$PHP" artisan tinker --execute='
+      $db = DB::connection("pgsql_owner");
+      $role = DB::connection("pgsql")->selectOne("select current_user as u")->u;
+      $r = "\"".str_replace("\"", "\"\"", $role)."\"";
+      $lines = [];
+      foreach (["public", "app", "audit", "sites", "core"] as $schema) {
+        if ($db->selectOne("select has_schema_privilege(?, ?, ?) as h", [$role, $schema, "CREATE"])->h) { $lines[] = "GRANT CREATE ON SCHEMA {$schema} TO {$r}"; }
+      }
+      $rows = $db->select("select table_schema, table_name, privilege_type from information_schema.role_table_grants where grantee = ? and privilege_type in (?, ?, ?, ?)", [$role, "TRUNCATE", "REFERENCES", "TRIGGER", "SELECT"]);
+      foreach ($rows as $row) {
+        if ($row->privilege_type === "SELECT" && !($row->table_schema === "public" && $row->table_name === "migrations")) { continue; }
+        $lines[] = "GRANT {$row->privilege_type} ON {$row->table_schema}.{$row->table_name} TO {$r}";
+      }
+      $file = getenv("GRANTS_BACKUP");
+      file_put_contents($file, implode(";\n", $lines).(count($lines) ? ";\n" : ""));
+      chmod($file, 0600);
+      echo "Permessi attuali salvati in ", $file, " (", count($lines), " righe)", PHP_EOL;
+      foreach (["public", "app", "audit", "sites", "core"] as $schema) { $db->statement("REVOKE CREATE ON SCHEMA {$schema} FROM {$r}"); }
+      foreach (["app", "audit", "sites", "core"] as $schema) { $db->statement("REVOKE TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA {$schema} FROM {$r}"); }
+      if ($db->selectOne("select to_regclass(?) as t", ["public.migrations"])->t !== null) { $db->statement("REVOKE ALL ON public.migrations FROM {$r}"); }
+      echo "Permessi ridotti per il ruolo ", $role, PHP_EOL;
+    '
+    echo "== Controllo =="
+    "$PHP" artisan saas:health --skip-migrations | grep -E "permessi|ruolo|ERRORE|AVVISO" || true
+    ;;
+  ripristina-permessi)
+    # Rimette i permessi dall'ultimo file grants-backup-*.sql (comando di ritorno per permessi-db).
+    cd "$BASE/current"
+    latest="$(ls -1t "$BASE"/shared/grants-backup-*.sql 2>/dev/null | head -1)"
+    [ -n "$latest" ] || { echo "Nessun file grants-backup trovato." >&2; exit 1; }
+    GRANTS_BACKUP="$latest" "$PHP" artisan tinker --execute='
+      $db = DB::connection("pgsql_owner");
+      $n = 0;
+      foreach (array_filter(array_map("trim", explode(";\n", (string) file_get_contents(getenv("GRANTS_BACKUP"))))) as $sql) { $db->statement($sql); $n++; }
+      echo "Ripristinate ", $n, " concessioni da ", basename(getenv("GRANTS_BACKUP")), PHP_EOL;
+    '
     ;;
   *) echo "Azione sconosciuta: $ACTION" >&2; exit 1 ;;
 esac
