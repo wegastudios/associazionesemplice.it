@@ -12573,7 +12573,7 @@ foreach ( array_merge( $ru_ids, array( $ru_adult, $ru_minor, $ru_volun ) ) as $r
 // ---------- Dipendenti ----------
 wp_set_current_user( 1 );
 add_filter( 'pre_wp_mail', '__return_true' ); // nessuna email vera: l'invito parte «a vuoto»
-$em_keys = \AssociazioneSemplice\EmployeeRules::enforced_keys(); // le aree con le porte: tutte e quindici
+$em_keys = \AssociazioneSemplice\EmployeeRules::enforced_keys(); // le aree con le porte: tutte e sedici
 asem_ok( null !== get_role( Plugin::ROLE_EMPLOYEE ) && 'Dipendente' === wp_roles()->role_names[ Plugin::ROLE_EMPLOYEE ], 'dipendente: il ruolo esiste e si chiama «Dipendente»' );
 asem_ok( get_role( Plugin::ROLE_EMPLOYEE )->capabilities === get_role( Plugin::ROLE_SECRETARY )->capabilities, 'dipendente: il ruolo parte con le stesse capability della segreteria' );
 $em_sy     = Settings::social_year()->label();
@@ -12612,6 +12612,10 @@ foreach ( $em_abilities as $em_ab => $em_obj ) {
 }
 wp_set_current_user( $em_uid );
 foreach ( $em_keys as $em_k ) {
+	if ( 'sensitive' === $em_k ) { // un dipendente nuovo parte senza i dati riservati: va dato apposta
+		asem_ok( ! \AssociazioneSemplice\Employees::can( $em_k ) && \AssociazioneSemplice\Employees::sensitive_hidden(), 'dipendente: all\'inizio non ha «Vedere dati riservati ed esportare»' );
+		continue;
+	}
 	asem_ok( \AssociazioneSemplice\Employees::can( $em_k ), "dipendente: all'inizio ha il permesso $em_k" );
 }
 foreach ( array( 'asem-income', 'asem-expense', 'asem-refunds', 'asem-money', 'asem-ledger', 'asem-activities', 'asem-bookdesk', 'asem-calendar' ) as $em_pg ) {
@@ -12664,6 +12668,7 @@ $em_cases['assemblies']  = array( array( 'admin.php', array( 'page' => 'asem-ass
 $em_cases['inventory']   = array( array( 'admin.php', array( 'page' => 'asem-inventory' ) ), array( 'admin-post.php', array( 'action' => 'asem_item_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_loan_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'items' ) ), array( 'admin-post.php', array( 'action' => 'asem_doc', 'what' => 'loans' ) ) );
 $em_cases['conventions'] = array( array( 'admin.php', array( 'page' => 'asem-conventions' ) ), array( 'admin-post.php', array( 'action' => 'asem_convention_save' ) ), array( 'admin-post.php', array( 'action' => 'asem_conventions_csv' ) ) );
 $em_cases['tools']       = array( array( 'admin.php', array( 'page' => 'asem-exports' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'altro' ) ) );
+$em_cases['sensitive']   = array( array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'altro' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'people' ) ), array( 'admin-post.php', array( 'action' => 'asem_conventions_csv' ) ) ); // senza i dati riservati si chiudono tutte le esportazioni
 $em_always = array( array( 'admin.php', array( 'page' => 'asem' ) ) );
 foreach ( $em_keys as $em_k ) {
 	\AssociazioneSemplice\Employees::set_denied( $em_uid, array( $em_k ) );
@@ -12672,10 +12677,13 @@ foreach ( $em_keys as $em_k ) {
 		$em_msg = $em_blocked( $em_c[0], $em_c[1] );
 		asem_ok( null !== $em_msg && false !== strpos( $em_msg, esc_html( \AssociazioneSemplice\EmployeeRules::label( $em_k ) ) ), "dipendente senza $em_k: la porta $em_i si chiude con un messaggio che dice quale permesso manca" );
 	}
-	foreach ( array_diff( $em_keys, array( $em_k ) ) as $em_o ) { // le porte degli altri permessi restano aperte
+	foreach ( array_diff( $em_keys, array( $em_k, 'sensitive' ) ) as $em_o ) { // le porte degli altri permessi restano aperte (i dati riservati chiudono solo le esportazioni, che chiedono anche l'area dei loro dati)
 		foreach ( $em_cases[ $em_o ] as $em_i => $em_c ) {
 			if ( in_array( $em_k, array( 'courses', 'events' ), true ) && in_array( $em_o, array( 'courses', 'events' ), true ) ) {
 				continue; // corsi ed eventi sono due permessi distinti: sotto
+			}
+			if ( 'sensitive' === $em_k && ( 'book' === ( $em_c[1]['what'] ?? '' ) || 'asem_export' === ( $em_c[1]['action'] ?? '' ) || '_csv' === substr( (string) ( $em_c[1]['action'] ?? '' ), -4 ) ) ) {
+				continue; // esportare chiede anche i dati riservati: senza, le esportazioni si chiudono in ogni area
 			}
 			asem_ok( null === $em_blocked( $em_c[0], $em_c[1] ), "dipendente senza $em_k: la porta $em_i di $em_o resta aperta" );
 		}
@@ -12694,6 +12702,18 @@ asem_ok( null !== $em_blocked( 'admin.php', array( 'page' => 'asem-activities' )
 asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_add_session' ) ), 'dipendente: un\'azione sulle attività di cui non si capisce il tipo si nega nel dubbio' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'collect', 'courses', 'events' ) );
 asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_person_context' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_quick_person' ) ), 'dipendente senza incassi, corsi ed eventi: i suggerimenti sulle persone si chiudono' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'events' ) );
+// dati riservati: senza «Vedere dati riservati ed esportare» codice fiscale e note non si mostrano; ogni lettura di chi li vede va nel registro
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'sensitive' ) );
+\AssociazioneSemplice\Employees::reset_cache();
+wp_set_current_user( $em_uid );
+asem_ok( \AssociazioneSemplice\Employees::sensitive_hidden(), 'dati riservati: al dipendente senza il permesso restano nascosti' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( ! \AssociazioneSemplice\Employees::sensitive_hidden(), 'dati riservati: l\'amministratore li vede sempre' );
+\AssociazioneSemplice\Employees::log_sensitive_read( 'card', 987654 );
+$sr_log = Audit::recent( 1, 'sensitive.read' );
+asem_ok( ! empty( $sr_log ) && 987654 === (int) $sr_log[0]['object_id'], 'dati riservati: la lettura finisce nel registro azioni' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'events' ) );
 // elenchi e area soci: ciò che non si può fare non si vede
 wp_set_current_user( $em_uid );
@@ -12734,9 +12754,9 @@ wp_set_current_user( 1 );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
 remove_filter( 'wp_die_handler', $em_die );
 
-// si tolgono solo le 15 aree dell'elenco; solo chi ha titolo le toglie
+// si tolgono solo le 16 aree dell'elenco; solo chi ha titolo le toglie
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'asem_manage', 'comms', 'asem_operate', 'members' ) );
-asem_ok( array( 'courses', 'comms' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 15 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 15 === count( $em_keys ), 'dipendente: si tolgono solo le 15 aree dell\'elenco, gli altri nomi si ignorano' );
+asem_ok( array( 'courses', 'comms' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 16 === count( \AssociazioneSemplice\EmployeeRules::keys() ) && 16 === count( $em_keys ), 'dipendente: si tolgono solo le 16 aree dell\'elenco, gli altri nomi si ignorano' );
 add_filter( 'wp_die_handler', $em_die ); // le porte chiuse lanciano l'eccezione della prova
 asem_ok( null !== $em_blocked( 'admin.php', array( 'page' => 'asem-messages' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_broadcast_send' ) ), 'dipendente senza Comunicazioni: pagina e invii si chiudono' );
 asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipendente: togliere un\'area resta nel registro azioni' );

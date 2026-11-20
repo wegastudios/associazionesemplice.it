@@ -15,7 +15,7 @@ final class EmployeeActionsCoverageTest extends TestCase {
 	const NOT_ACTION_FILES = array( 'WpAllImport.php', 'PaymentService.php', 'WooBridge.php', 'SatispayRules.php', 'StripeApi.php', 'PublicEvents.php', 'RowClean.php' );
 
 	/**
-	 * Motivo => azioni. Qui entra solo ciò che non dipende da nessuna delle quindici aree (tutte hanno le loro porte).
+	 * Motivo => azioni. Qui entra solo ciò che non dipende da nessuna delle sedici aree (tutte hanno le loro porte).
 	 *
 	 * @return array<string,string[]>
 	 */

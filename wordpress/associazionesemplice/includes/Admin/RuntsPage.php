@@ -103,8 +103,12 @@ final class RuntsPage {
 
 		if ( $c['entities'] ) {
 			echo '<h3>Soci che sono enti</h3><table class="widefat striped" style="max-width:820px"><thead><tr><th>Denominazione</th><th>Codice fiscale</th><th>Stessa sezione del RUNTS</th></tr></thead><tbody>';
+			$hide_cf = \AssociazioneSemplice\Employees::sensitive_hidden(); // senza «Vedere dati riservati ed esportare» il codice fiscale non si mostra
+			if ( ! $hide_cf ) {
+				\AssociazioneSemplice\Employees::log_sensitive_read( 'runts' ); // ogni lettura dei dati riservati è nel registro
+			}
 			foreach ( $c['entities'] as $e ) {
-				echo '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $e['id'] ) ) ) . '">' . esc_html( $e['name'] ) . '</a></td><td>' . esc_html( $e['tax_code'] ) . '</td><td>' . ( true === $e['same'] ? 'Sì' : ( false === $e['same'] ? 'No' : '<span class="description">da indicare</span>' ) ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- valori protetti sopra
+				echo '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $e['id'] ) ) ) . '">' . esc_html( $e['name'] ) . '</a></td><td>' . esc_html( $hide_cf ? '—' : $e['tax_code'] ) . '</td><td>' . ( true === $e['same'] ? 'Sì' : ( false === $e['same'] ? 'No' : '<span class="description">da indicare</span>' ) ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- valori protetti sopra
 			}
 			echo '</tbody></table>';
 		}

@@ -97,9 +97,11 @@ final class EmployeesPage {
 				. '<span class="description">Facoltativi: senza date è in servizio. Fuori dal periodo non può usare il gestionale e non conta tra i lavoratori del RUNTS.</span></p>';
 			echo '<fieldset><legend><strong>Permessi</strong> <span class="description">(togli la spunta alle aree che non gli servono)</span></legend>';
 			echo '<p class="description">' . esc_html( \AssociazioneSemplice\Texts::t( 'Chi ha l\'area Corsi o Eventi vede i certificati degli iscritti alle attività di cui è referente e a quelle senza referente.' ) ) . '</p>';
+			echo '<p class="description">' . esc_html( \AssociazioneSemplice\Texts::t( 'I dipendenti nuovi partono senza il permesso «Vedere dati riservati ed esportare»: va dato apposta a chi ne ha bisogno. Quelli già presenti restano come sono.' ) ) . '</p>';
+			$hints = EmployeeRules::hints();
 			foreach ( EmployeeRules::labels() as $key => $label ) {
 				$soon = in_array( $key, EmployeeRules::pending_keys(), true ); // l'area non ha ancora i suoi controlli: spunta disattivata
-				echo '<p style="margin:2px 0"><label><input type="checkbox" name="perm[]" value="' . esc_attr( $key ) . '"' . checked( ! in_array( $key, $e['denied'], true ), true, false ) . ( $soon ? ' disabled' : '' ) . '> ' . esc_html( $label ) . ( $soon ? ' <span class="description">' . esc_html( \AssociazioneSemplice\Texts::t( '(in arrivo)' ) ) . '</span>' : '' ) . '</label></p>';
+				echo '<p style="margin:2px 0"><label><input type="checkbox" name="perm[]" value="' . esc_attr( $key ) . '"' . checked( ! in_array( $key, $e['denied'], true ), true, false ) . ( $soon ? ' disabled' : '' ) . '> ' . esc_html( $label ) . ( $soon ? ' <span class="description">' . esc_html( \AssociazioneSemplice\Texts::t( '(in arrivo)' ) ) . '</span>' : '' ) . '</label>' . ( isset( $hints[ $key ] ) ? '<br><span class="description" style="margin-left:24px">' . esc_html( $hints[ $key ] ) . '</span>' : '' ) . '</p>';
 			}
 			echo '</fieldset><p><button class="button button-primary">Salva</button></p>';
 			Ui::form_close();
