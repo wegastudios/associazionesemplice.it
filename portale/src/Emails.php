@@ -86,7 +86,7 @@ final class Emails {
 				'body' => "Ciao,\nIl dominio della licenza {piano} è passato da {vecchio_dominio} a {dominio}.\nIl vecchio dominio smette di funzionare al prossimo controllo.\n\nSe non hai fatto tu questa richiesta, scrivici subito.\n{account_url}",
 			),
 			// Gestionale SaaS (acquisto dal portale). Testi dell'audit del 13/11/2026. Regole della titolare (13/11/2026): nuovi tentativi per 7 giorni (3 al giorno
-			// nei primi 2, poi 1), dati conservati 180 giorni. Gli avvisi su dati e accesso li manda il gestionale.
+			// nei primi 2, poi 1), dati conservati per i giorni che dice il gestionale (catalogo). Gli avvisi su dati e accesso li manda il gestionale.
 			'saas_welcome' => array(
 				'label' => 'Gestionale: benvenuto', 'when' => 'Subito dopo il pagamento dell\'ordine del gestionale SaaS.', 'vars' => array( 'nome', 'associazione', 'piano', 'periodo', 'gestionale_url', 'link_password', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Scegli la password per il gestionale di {associazione}',
@@ -113,9 +113,9 @@ final class Emails {
 				'body' => "Ciao {nome},\nil piano {piano} di {associazione} scade il {scadenza} e non si rinnova da solo.\n\nPer continuare a usare il gestionale rinnovalo da {account_url}. Se non lo rinnovi, dal giorno dopo il gestionale viene sospeso: i dati restano conservati, ma tu e i soci non potrete entrare.\n\nScarica i tuoi dati prima del {scadenza}, da «Gestione → Copie di sicurezza»: da sospeso non si può più scaricare.",
 			),
 			'saas_trial_started' => array(
-				'label' => 'Prova gestionale: benvenuto', 'when' => 'Subito dopo l\'avvio della prova gratuita del gestionale (testo scritto dal portale, da rivedere con l\'audit).', 'vars' => array( 'nome', 'associazione', 'giorni', 'fine_prova', 'gestionale_url', 'link_password', 'piani_url', 'account_url', 'supporto_url', 'email' ),
+				'label' => 'Prova gestionale: benvenuto', 'when' => 'Subito dopo l\'avvio della prova gratuita del gestionale (testo scritto dal portale, da rivedere con l\'audit).', 'vars' => array( 'nome', 'associazione', 'giorni', 'fine_prova', 'dopo_prova', 'gestionale_url', 'link_password', 'piani_url', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'La prova di {associazione} è partita: hai tempo fino al {fine_prova}',
-				'body' => "Ciao {nome},\nla prova gratuita del gestionale di {associazione} è partita. Dura {giorni} giorni, fino al {fine_prova}, e non ti chiediamo la carta.\n\nPer entrare scegli la tua password da qui:\n{link_password}\nSi apre una pagina: scrivi {email} e ti mandiamo il link per scegliere la password.\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nDurante la prova usi tutto il gestionale. Due cose si sbloccano solo con un piano: scaricare i dati e dare l'accesso al commercialista.\n\nAlla fine della prova non ti addebitiamo nulla. Se non scegli un piano, per 7 giorni puoi ancora entrare e consultare, poi i dati della prova vengono eliminati. Ti avvisiamo prima.\n\nPer vedere i piani: {piani_url}",
+				'body' => "Ciao {nome},\nla prova gratuita del gestionale di {associazione} è partita. Dura {giorni} giorni, fino al {fine_prova}, e non ti chiediamo la carta.\n\nPer entrare scegli la tua password da qui:\n{link_password}\nSi apre una pagina: scrivi {email} e ti mandiamo il link per scegliere la password.\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nDurante la prova usi tutto il gestionale. Due cose si sbloccano solo con un piano: scaricare i dati e dare l'accesso al commercialista.\n\nAlla fine della prova non ti addebitiamo nulla.{dopo_prova}\n\nPer vedere i piani: {piani_url}",
 			),
 			// Offerta di fine prova (soldi: la manda il portale). Parte solo se lo sconto del catalogo è > 0 e c'è il codice `saas_trial_promo`; parla solo dell'offerta.
 			'saas_trial_offer' => array(
@@ -124,9 +124,9 @@ final class Emails {
 				'body' => "Ciao {nome},\nse scegli un piano entro il {scadenza_sconto} hai uno sconto del {sconto} sul primo pagamento.\n\nUsa il codice {codice_sconto} al momento dell'acquisto. Scegli il piano da {piani_url}.\n\nSe non ti serve, non devi fare nulla.",
 			),
 			'saas_cancelled' => array(
-				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
+				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'conservazione', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Disdetta registrata: il gestionale resta attivo fino al {scadenza}',
-				'body' => "Ciao {nome},\nabbiamo registrato la disdetta del piano {piano} di {associazione}. Non ci saranno altri addebiti.\n\nIl gestionale resta attivo fino al {scadenza}.\n\nScarica i tuoi dati prima di quella data, da «Gestione → Copie di sicurezza»: dopo la scadenza il gestionale è sospeso e non si può più scaricare.\n\nHai cambiato idea? Scrivici da {supporto_url}.\n\nDopo il {scadenza} i dati restano conservati per 180 giorni, poi vengono eliminati.",
+				'body' => "Ciao {nome},\nabbiamo registrato la disdetta del piano {piano} di {associazione}. Non ci saranno altri addebiti.\n\nIl gestionale resta attivo fino al {scadenza}.\n\nScarica i tuoi dati prima di quella data, da «Gestione → Copie di sicurezza»: dopo la scadenza il gestionale è sospeso e non si può più scaricare.\n\nHai cambiato idea? Scrivici da {supporto_url}.{conservazione}",
 			),
 		);
 	}

@@ -251,13 +251,20 @@ final class Catalog {
 		$pct    = function ( $v, int $default ): int {
 			return is_int( $v ) && $v >= 0 && $v <= 30 ? $v : $default;
 		};
+		// Ciclo di vita: i giorni li decide il gestionale (`terms.lifecycle`, presi dalla sua configurazione). Qui non c'è nessun valore di riserva:
+		// se mancano, chi li usa non scrive date né chiude nulla invece di inventare un numero.
+		$life = is_array( $t['lifecycle'] ?? null ) ? $t['lifecycle'] : array();
+		$days = function ( $v ): ?int {
+			return is_int( $v ) && $v >= 1 && $v <= 3650 ? $v : null;
+		};
 		return array(
 			'vat_mode' => $exempt ? 'exempt' : 'standard', 'vat_note' => $exempt ? $note : '',
 			'own_gateway_percent' => $pct( $pay['own_gateway_percent'] ?? null, 0 ), 'collected_by_us_percent' => $pct( $pay['collected_by_us_percent'] ?? null, 3 ),
 			'trial_exports' => true === ( $try['exports'] ?? false ), 'trial_accountant_access' => true === ( $try['accountant_access'] ?? false ),
-			// Fine prova senza piano: sconto proposto nelle email (0 = niente offerta) e giorni dopo i quali i dati della prova si cancellano.
+			// Fine prova senza piano: sconto proposto nell'email di offerta (0 = niente offerta).
 			'trial_end_discount_percent' => is_int( $try['end_discount_percent'] ?? null ) && $try['end_discount_percent'] >= 0 && $try['end_discount_percent'] <= 100 ? $try['end_discount_percent'] : 0,
-			'trial_purge_days' => is_int( $try['purge_days'] ?? null ) && $try['purge_days'] >= 1 && $try['purge_days'] <= 90 ? $try['purge_days'] : 7,
+			// Giorni dalla scadenza dopo i quali il gestionale elimina i dati (ultimo giorno con i dati = scadenza + retention_days) e giorni dalla fine della prova; null se il catalogo non li dice.
+			'retention_days' => $days( $life['retention_days'] ?? null ), 'trial_purge_days' => $days( $life['trial_purge_days'] ?? null ),
 		);
 	}
 
