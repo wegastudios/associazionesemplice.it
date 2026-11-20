@@ -41,10 +41,10 @@ final class PaymentSettings extends OrgModel
     {
         return [
             'stripe_enabled' => 'boolean',
-            'stripe_secret' => Encrypted::class,
-            'stripe_webhook' => Encrypted::class,
+            'stripe_secret' => Encrypted::class.':bound',
+            'stripe_webhook' => Encrypted::class.':bound',
             'paypal_enabled' => 'boolean',
-            'paypal_secret' => Encrypted::class,
+            'paypal_secret' => Encrypted::class.':bound',
             'paypal_live' => 'boolean',
         ];
     }

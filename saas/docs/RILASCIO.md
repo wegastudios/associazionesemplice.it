@@ -118,6 +118,12 @@ dei file, spazio dei backup). Dall'esterno: `https://app.associazionesemplice.it
   gestionale (`rollback.sh`) si conserva una copia del codice attuale (o almeno del comando di ripristino) da usare per
   ripristinare, perché il codice vecchio non sa leggerli. I dump nel formato 1 (fino a questa versione) si leggono ancora, con un avviso: non si può controllare di che
   database e di che ora sono. Si rifiuta anche se il database di prova coincide con uno dei veri.
+- **Campi cifrati legati alla riga (`0x02`)**: da questa versione i campi dei soci e delle impostazioni di pagamento si
+  scrivono nel formato legato alla riga. **Il codice precedente alla lettura doppia non apre le righe `0x02`**: per i dati
+  scritti o modificati dopo questo rilascio il ritorno (`rollback.sh`) a una versione precedente non è più possibile senza
+  perdere l'accesso a quei campi. I dump fatti prima, con righe `0x01`, si aprono con il codice nuovo. In caso di
+  emergenza, `SAAS_ROW_BOUND_FORMAT=false` riporta le nuove scritture a `0x01` (le righe già `0x02` restano leggibili solo
+  dal codice nuovo).
 - Conservazione: tutti i dump delle ultime 48 ore, poi il primo di ogni giorno per 30 giorni.
 - **Prova di ripristino** (`saas:backup:restore-test`, ogni settimana sullo staging): scarica l'ultimo dump di
   produzione, ne controlla l'impronta, lo decifra, lo ripristina nel database di prova (che viene svuotato) e

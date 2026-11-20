@@ -141,6 +141,12 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
 - **Ogni testo cifrato è legato** all'associazione, al campo (`app.people.tax_code`) e alla versione della chiave
   (dato autenticato): copiato in un'altra associazione o in un altro campo non si apre. Formato: `0x01` · versione della
   chiave · nonce · testo cifrato. Due cifrature dello stesso valore sono diverse.
+- **Formato legato alla riga** (`0x02`): stesso schema, con l'id della riga nel dato autenticato (non nel testo: si ricava
+  dalla riga alla lettura). Un testo copiato su un'altra riga non si apre. Si scrive per i campi di `app.people` e delle
+  impostazioni di pagamento (opzione `bound` del cast `Encrypted`); gli altri campi cifrati restano `0x01`. L'interruttore
+  `SAAS_ROW_BOUND_FORMAT` (`saas.crypto.row_bound_format`, acceso di default) riporta le nuove scritture a `0x01`. La lettura
+  apre sempre entrambi i formati: le righe vecchie restano `0x01` finché il campo non viene riscritto. Le impronte di
+  ricerca non cambiano.
 - **Ricerca esatta sui campi cifrati**: accanto al valore cifrato (`tax_code_enc bytea`) si salva un **blind index**
   (`tax_code_bidx bytea`, impronta del valore normalizzato con una chiave dell'associazione). Serve per cercare un codice
   fiscale esatto e per `UNIQUE (org_id, tax_code_bidx)`. Lo stesso codice fiscale ha impronte diverse in associazioni

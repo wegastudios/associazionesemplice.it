@@ -82,7 +82,8 @@ Ma una rotazione completa richiede cose che oggi non ci sono:
 Per questo oggi ruotare la chiave principale (§3) **non cambia le chiavi dati**: chi ha la chiave principale vecchia e un
 dump fatto prima della rotazione apre ancora i dati di quel dump. Vale finché quei dump esistono (30 giorni); i dati
 cifrati sul database vivo restano apribili con le stesse chiavi dati. Una ricifratura vera si valuta caso per caso con lo
-sviluppo e va progettata insieme al formato che lega il testo cifrato alla riga.
+sviluppo. Il formato che lega il testo cifrato alla riga (`0x02`, vedi DATABASE.md) è già in scrittura per soci e
+impostazioni di pagamento: una ricifratura futura dovrà leggere entrambi i formati e scrivere con l'id della riga.
 
 ## 7. Dopo ogni rotazione
 

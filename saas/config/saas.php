@@ -33,9 +33,10 @@ return [
         'timeout' => env('SAAS_KEY_SERVICE_TIMEOUT', '3'),
         // Quanto resta in memoria (APCu) una chiave sbloccata, in secondi.
         'cache_ttl' => 300,
-        // Formato dei campi cifrati legato alla riga (0x02, con l'id della riga). Spento: si scrive 0x01 come sempre;
-        // la lettura apre già entrambi i formati.
-        'row_bound_format' => false,
+        // Formato dei campi cifrati legato alla riga (0x02, con l'id della riga) per i campi che lo dichiarano (soci e
+        // impostazioni di pagamento). Interruttore d'emergenza: con SAAS_ROW_BOUND_FORMAT=false le nuove scritture
+        // tornano a 0x01; la lettura apre sempre entrambi i formati.
+        'row_bound_format' => (bool) env('SAAS_ROW_BOUND_FORMAT', true),
     ],
 
     // Area soci: https://<slug>.<members_domain>/area (docs/ARCHITETTURA.md §3). In locale si usa per esempio
