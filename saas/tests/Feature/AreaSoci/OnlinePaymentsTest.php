@@ -343,7 +343,7 @@ it('l\'incasso manuale a una persona non iscritta resta rifiutato', function ():
         $eva = Person::create(['first_name' => 'Eva', 'last_name' => 'Neri', 'email' => 'eva2@example.com']); // mai iscritta
         [, $act, , $month] = explode(':', $m['key']);
         $person = $eva->id;
-        expect(fn () => app(ActivityService::class)->collect($act, $person,$this->cash, now()->toDateString(), [$month], $m['amount_cents']))
+        expect(fn () => app(ActivityService::class)->collect($act, $person, $this->cash, now()->toDateString(), [$month], $m['amount_cents']))
             ->toThrow(ActivityError::class);
     });
 });
