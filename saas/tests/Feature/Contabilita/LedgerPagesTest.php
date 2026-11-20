@@ -56,7 +56,7 @@ it('mostra gli errori della prima nota senza registrare nulla', function (): voi
     expect($this->orgContext()->run($org->id, fn () => Transaction::query()->count()))->toBe(0);
 });
 
-it('chiede il motivo per stornare', function (): void {
+it('chiede il motivo per annullare', function (): void {
     [$org, $user, $cash, , $cost] = operatorOf(OrgRole::Operator);
     $this->actingAs($user)->post('/gestionale/prima-nota/spese', [
         'date' => now()->toDateString(), 'account_id' => $cash, 'category_id' => $cost, 'amount' => '12,50',

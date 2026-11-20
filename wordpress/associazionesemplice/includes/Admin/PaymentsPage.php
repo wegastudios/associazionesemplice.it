@@ -129,6 +129,52 @@ final class PaymentsPage {
 		echo '</div>';
 	}
 
+	/**
+	 * Riquadro «Importa da WooCommerce»: compare solo se su questo sito ci sono chiavi di Stripe, PayPal o SumUp salvate dai plugin di WooCommerce.
+	 * Mostra da quale plugin arrivano e le chiavi mascherate; si importa solo ciò che l'amministratore spunta.
+	 */
+	private static function woo_import_card(): void {
+		$found = \AssociazioneSemplice\WooImport::found();
+		$other = \AssociazioneSemplice\WooImport::not_importable();
+		if ( ! $found && ! $other ) {
+			return;
+		}
+		echo '<div class="asem-card"><h2>Importa da WooCommerce</h2>';
+		if ( ! $found ) {
+			foreach ( $other as $line ) {
+				echo '<p class="description">' . esc_html( $line ) . '</p>';
+			}
+			echo '</div>';
+			return;
+		}
+		echo '<p class="description">Su questo sito ci sono chiavi di pagamento già inserite nei plugin di WooCommerce. Puoi copiarle qui per incassare direttamente con Stripe, PayPal o SumUp, senza passare dal negozio. Le chiavi restano anche in WooCommerce; qui si salvano cifrate e sostituiscono quelle già salvate per lo stesso metodo. Il metodo scelto in «Come incassare online» non cambia finché non lo cambi tu.</p>';
+		Ui::form_open( 'asem_import_woo_payments', Ui::url( 'asem-payments' ) );
+		echo '<table class="widefat striped"><thead><tr><th></th><th>Metodo</th><th>Trovato in</th><th>Modalità</th><th>Chiavi</th></tr></thead><tbody>';
+		foreach ( $found as $g => $row ) {
+			$keys = array();
+			foreach ( $row['values'] as $k => $v ) {
+				if ( isset( \AssociazioneSemplice\WooImport::KEY_NAMES[ $k ] ) ) {
+					$keys[] = \AssociazioneSemplice\WooImport::KEY_NAMES[ $k ] . ' ' . \AssociazioneSemplice\Secrets::mask( (string) $v );
+				}
+			}
+			echo '<tr><td><input type="checkbox" name="gateways[]" value="' . esc_attr( $g ) . '" id="asem-woo-import-' . esc_attr( $g ) . '"></td>'
+				. '<td><label for="asem-woo-import-' . esc_attr( $g ) . '"><strong>' . esc_html( $row['name'] ) . '</strong></label></td><td>' . esc_html( $row['source'] ) . '</td><td>' . esc_html( $row['mode'] ) . '</td>'
+				. '<td>' . esc_html( implode( '; ', $keys ) );
+			foreach ( $row['notes'] as $note ) {
+				echo '<br><span class="asem-warn">ℹ ' . esc_html( $note ) . '</span>';
+			}
+			echo '</td></tr>';
+		}
+		echo '</tbody></table>';
+		foreach ( $other as $line ) {
+			echo '<p class="description">' . esc_html( $line ) . '</p>';
+		}
+		echo '<p class="description">Dopo l\'importazione: premi «Verifica connessione», chiudi gli ordini del negozio ancora in attesa, scegli il metodo in «Come incassare online» e salva. Gli incassi già registrati in prima nota restano come sono.</p>';
+		echo '<p><button class="button">Importa le chiavi spuntate</button></p>';
+		Ui::form_close();
+		echo '</div>';
+	}
+
 	/** Modulo «Rimborsa»: importo scritto a mano (mai precompilato) e spunta «non si può annullare». Si vede solo se il pagamento si può restituire da qui. */
 	private static function refund_form( array $r, array $info ): string {
 		ob_start();
@@ -157,6 +203,7 @@ final class PaymentsPage {
 		Ui::header( $admin ? 'Impostazioni: pagamenti online' : 'Pagamenti online' );
 		if ( $admin ) {
 			self::settings_card();
+			self::woo_import_card();
 			BankPage::card();
 		}
 		echo '<h2>Pagamenti ricevuti</h2>';

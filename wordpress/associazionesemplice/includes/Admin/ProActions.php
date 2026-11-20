@@ -33,6 +33,7 @@ final class ProActions {
 	const MAP = array(
 		'asem_save_payment_settings' => array( 'save_payment_settings', 'payments', true ),
 		'asem_test_gateway' => array( 'test_gateway', 'payments', true ),
+		'asem_import_woo_payments' => array( 'import_woo_payments', 'payments', true ),
 		'asem_check_payments' => array( 'check_payments', 'payments', false ),
 		'asem_payment_reviewed' => array( 'payment_reviewed', 'payments', false ),
 		'asem_payment_refunded' => array( 'payment_refunded', 'payments', false ),
@@ -432,6 +433,39 @@ final class ProActions {
 			throw new \InvalidArgumentException( $res['message'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return array( Ui::url( 'asem-payments' ), $res['message'] );
+	}
+
+	/**
+	 * Copia nelle impostazioni le chiavi di Stripe, PayPal o SumUp già inserite nei plugin di WooCommerce di questo sito.
+	 * Importa solo i metodi spuntati e solo se le chiavi superano i controlli; il metodo di incasso scelto non cambia.
+	 */
+	public static function import_woo_payments( array $p ): array {
+		$found = \AssociazioneSemplice\WooImport::found();
+		$pick  = array_values( array_intersect( array_keys( $found ), array_map( 'strval', (array) ( $p['gateways'] ?? array() ) ) ) );
+		if ( ! $pick ) {
+			throw new \InvalidArgumentException( 'Spunta almeno un metodo da importare.' );
+		}
+		$https   = 0 === strpos( home_url(), 'https://' ) ? 1 : 0;
+		$done    = array();
+		$skipped = array();
+		foreach ( $pick as $g ) {
+			$check = PaymentConfig::validate_gateway( $found[ $g ]['values'] + array( 'site_https' => $https ), $g );
+			if ( $check['errors'] ) {
+				$skipped[] = $found[ $g ]['name'] . ' non importato. ' . implode( ' ', $check['errors'] );
+				continue;
+			}
+			Settings::update( $found[ $g ]['values'] );
+			$done[] = $found[ $g ]['name'];
+		}
+		Audit::log( 'payments.woo_imported', 'settings', null, array( 'imported' => implode( ', ', $done ), 'skipped' => count( $skipped ) ) );
+		if ( ! $done ) {
+			throw new \InvalidArgumentException( implode( ' ', $skipped ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$msg = 'Chiavi importate da WooCommerce: ' . implode( ', ', $done ) . '. Ora premi «Verifica connessione», poi scegli il metodo in «Come incassare online» e salva.';
+		if ( in_array( 'Stripe', $done, true ) ) {
+			$msg .= ' Per Stripe crea un webhook nuovo con l\'indirizzo che trovi in questa pagina, nella sezione di Stripe: quello di WooCommerce non vale per questo plugin.';
+		}
+		return array( Ui::url( 'asem-payments' ), $msg . ( $skipped ? ' ' . implode( ' ', $skipped ) : '' ) );
 	}
 
 	/** Salva la chiave di licenza e la verifica subito con il server. */

@@ -87,7 +87,7 @@ final readonly class LedgerController
                 'receipt' => $t->receipt_id !== null && isset($receipts[$t->receipt_id]) ? $receipts[$t->receipt_id]->label() : null,
                 'receipt_id' => $t->receipt_id,
                 'voided' => $t->voided_at !== null,
-                'void_reason' => $t->void_reason,
+                'void_reason' => $t->void_reason === 'Stornato' ? 'Annullato' : $t->void_reason, // i motivi salvati prima del cambio di nome si leggono con il nome nuovo
                 'activity_id' => $t->activity_id,
                 'activity' => $t->activity_id !== null ? ($activityNames[$t->activity_id] ?? null) : null,
                 // Solo con la partita IVA: senza, un movimento è solo un importo e nessuna dicitura IVA compare.
