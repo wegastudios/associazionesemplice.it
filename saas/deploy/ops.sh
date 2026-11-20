@@ -325,6 +325,13 @@ case "$ACTION" in
     echo "== Controllo =="
     "$PHP" artisan saas:health --skip-migrations | grep -E "permessi|ruolo|ERRORE|AVVISO" || true
     ;;
+  svuota-proxy-fidati)
+    # Solo con SAAS_PROXY_SECRET impostata: l'elenco dei proxy fidati non serve più (conta il segreto condiviso).
+    [ -n "$(get SAAS_PROXY_SECRET)" ] || { echo "SAAS_PROXY_SECRET è vuota: non svuoto l'elenco." >&2; exit 1; }
+    set_var SAAS_TRUSTED_PROXIES ""
+    refresh
+    echo "SAAS_TRUSTED_PROXIES = [$(get SAAS_TRUSTED_PROXIES)]"
+    ;;
   prova-ip)
     # Sola lettura: quante richieste ha contato il limite dell'API dello staff per l'indirizzo dato (secondo argomento, pg_bin_dir).
     # Serve a provare che dietro il proxy del portale il SaaS vede l'indirizzo vero del visitatore e non quello del server.
