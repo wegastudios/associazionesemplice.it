@@ -334,9 +334,9 @@ class LedgerService {
 			$added[ $key ] = (int) ( $added[ $key ] ?? 0 ) + $total;
 			if ( $total > $left ) {
 				if ( $left <= 0 ) {
-					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: questa voce risulta già pagata per intero.', array( 'n' => $i + 1 ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: risulta già pagata per intero.', array( 'n' => $i + 1 ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
-				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: l\'importo supera quanto resta da pagare. Restano {resto}: incassa al massimo quella somma.', array( 'n' => $i + 1, 'resto' => Money::format( $left ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: l\'importo supera quanto resta da pagare. Restano da pagare {resto}.', array( 'n' => $i + 1, 'resto' => Money::format( $left ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
 	}
