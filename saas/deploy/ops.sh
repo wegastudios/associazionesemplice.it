@@ -309,7 +309,7 @@ case "$ACTION" in
       if ($db->selectOne("select to_regclass(?) as t", ["public.migrations"])->t !== null) { $db->statement("REVOKE ALL ON public.migrations FROM {$r}"); }
       echo "Permessi ridotti per il ruolo ", $role, PHP_EOL;
       // I poteri in più arrivano dal ruolo di cui il ruolo applicativo fa parte (eredita CREATE, TRUNCATE, ecc.):
-      // NOINHERIT li toglie senza toccare i permessi diretti. Se l'applicazione non legge più le sue tabelle, si torna indietro da soli.
+      // NOINHERIT li toglie senza toccare i permessi diretti. Se la applicazione non legge più le sue tabelle, si torna indietro da soli.
       file_put_contents($file, "ALTER ROLE {$r} INHERIT;\n", FILE_APPEND);
       $db->statement("ALTER ROLE {$r} NOINHERIT");
       try {
