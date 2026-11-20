@@ -176,7 +176,7 @@ Il titolo «Ricevuta di erogazione liberale» compare in automatico sulle ricevu
 
 ## Con il pulsante PayPal «Dona»
 
-Il pulsante porta chi dona sulla pagina di donazione di PayPal: il tuo sito non comunica con PayPal e la pagina si apre nel browser di chi dona. I soldi vanno direttamente sul tuo account PayPal. Il plugin non le vede e non le registra da solo: la pagina **Donazioni** lo ricorda. Registrale a mano in Prima nota da **Nuovo incasso**, con la categoria «Erogazione liberale». Se vuoi, per ogni versamento puoi emettere una ricevuta. Per farle registrare in automatico attiva un metodo di pagamento in **Pagamenti online**.
+Il pulsante porta chi dona sulla pagina di donazione di PayPal: il tuo sito non comunica con PayPal e la pagina si apre nel browser di chi dona. Le donazioni arrivano sul tuo conto PayPal e il plugin non le registra da solo. Per mandare una ricevuta a chi dona, attivala nelle impostazioni del tuo conto PayPal: la ricevuta la manda PayPal, non il plugin. Registra le donazioni in Prima nota da **Nuovo incasso**, con la categoria «Erogazione liberale»; se vuoi, per ogni versamento puoi emettere anche una ricevuta tua. Per farle registrare in automatico, e avere la ricevuta del plugin, serve il pagamento del sito (Pro): attiva un metodo in **Pagamenti online**.
 
 L'account PayPal lo cambiano solo gli amministratori. Ogni modifica, anche con il ripristino di una copia, resta nel registro azioni (con l'account mascherato) e viene segnalata per email a tutti gli amministratori. Se non sei stato tu, cambia subito le password degli amministratori e controlla le impostazioni delle donazioni.
 
