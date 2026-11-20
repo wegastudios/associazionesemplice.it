@@ -131,7 +131,7 @@ molti_step( 'prima nota abbondante', function () use ( $ledger, $q, $pick ) {
 	$last_m = substr( $r[1], 0, 7 ); // ultimo mese dell'anno fiscale scorso
 	$today  = gmdate( 'Y-m-d' );
 	$in     = array(
-		array( 'activity_fee', 'Quote del corso', 2500, 9000 ), array( 'donation', 'Offerta di un socio', 1000, 12000 ), array( 'activity_fee', 'Iscrizione all\'evento', 800, 3000 ),
+		array( 'activity_fee', 'Contributi del corso', 2500, 9000 ), array( 'donation', 'Offerta di un socio', 1000, 12000 ), array( 'activity_fee', 'Iscrizione all\'evento', 800, 3000 ),
 		array( 'other_income', 'Incasso del banchetto', 2000, 15000 ), array( 'donation', 'Offerta alla serata', 1500, 6000 ),
 	);
 	$out = array(

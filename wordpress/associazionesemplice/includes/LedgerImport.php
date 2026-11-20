@@ -34,7 +34,7 @@ final class LedgerImport {
 	/** Parole chiave (nel nome della voce) => tipo di voce del plugin. */
 	const KEYWORDS = array(
 		'membership'               => array( 'quotaassoc', 'quotasoc', 'tessera', 'iscrizione' ),
-		'activity_fee'             => array( 'corso', 'attivita', 'lezione', 'quotacorso', 'contributo' ),
+		'activity_fee'             => array( 'corso', 'attivita', 'lezione', 'quotacorso', 'quotaattivita', 'contributo' ),
 		'donation'                 => array( 'donazion', 'erogazion', 'liberal', 'offert' ),
 		'member_reimbursement'     => array( 'rimborso', 'compens', 'istrutt', 'docent', 'insegnant' ),
 	);

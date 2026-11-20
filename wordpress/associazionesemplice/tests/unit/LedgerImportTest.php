@@ -103,7 +103,7 @@ final class LedgerImportTest extends TestCase {
 			array(
 				'accounts'           => array( array( 'id' => 1, 'name' => 'Cassa contanti', 'type' => 'cash' ), array( 'id' => 2, 'name' => 'Conto corrente', 'type' => 'bank' ) ),
 				'categories'         => array(
-					array( 'id' => 10, 'name' => 'Quota associativa', 'kind' => 'membership' ), array( 'id' => 11, 'name' => 'Quota attività / corso', 'kind' => 'activity_fee' ),
+					array( 'id' => 10, 'name' => 'Quota associativa', 'kind' => 'membership' ), array( 'id' => 11, 'name' => 'Contributo attività / corso', 'kind' => 'activity_fee' ),
 					array( 'id' => 12, 'name' => 'Altra entrata', 'kind' => 'other_income' ), array( 'id' => 13, 'name' => 'Costo generale', 'kind' => 'general_cost' ),
 					array( 'id' => 14, 'name' => 'Rettifica', 'kind' => 'adjustment' ),
 				),
@@ -141,6 +141,18 @@ final class LedgerImportTest extends TestCase {
 		$this->assertSame( 3, $b['data']['activity_id'] );
 		$this->assertSame( '2024-01', $b['data']['month'] );
 		$this->assertSame( 'bank_transfer', $b['data']['method'], 'modalità dedotta dal tipo di conto' );
+	}
+
+	public function test_old_activity_fee_name_in_exported_files_still_resolves(): void {
+		// File esportati prima del cambio di nome: «Quota attività / corso» deve finire nella voce «Contributo attività / corso» (e anche il nome nuovo).
+		$p = $this->plan(
+			array(
+				array( '16/01/2024', 'Entrata', 'Conto corrente', '', 'Quota attività / corso', '30', '', '', '', '', 'yoga', 'gennaio 2024' ),
+				array( '17/01/2024', 'Entrata', 'Conto corrente', '', 'Contributo attività / corso', '30', '', '', '', '', 'yoga', 'gennaio 2024' ),
+			)
+		);
+		$this->assertSame( 11, $p[0]['data']['category_id'], 'nome vecchio' );
+		$this->assertSame( 11, $p[1]['data']['category_id'], 'nome nuovo' );
 	}
 
 	public function test_plan_fallbacks_new_accounts_and_errors(): void {

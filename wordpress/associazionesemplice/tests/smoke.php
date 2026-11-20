@@ -13632,7 +13632,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '71' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 71' );
+asem_ok( '72' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 72' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
 	foreach ( array_keys( $ix_list ) as $ix_n ) {
@@ -13648,8 +13648,18 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '71' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
+asem_ok( '72' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
+// Voce degli incassi di corsi ed eventi: «Contributo attività / corso»; dove si chiama ancora «Quota attività / corso» (installazioni vecchie) l'aggiornamento la rinomina una volta, altrimenti non tocca nulla.
+$af_t  = Db::t( 'categories' );
+$af_id = (int) $wpdb->get_var( "SELECT id FROM $af_t WHERE kind = 'activity_fee' ORDER BY id LIMIT 1" );
+asem_ok( 'Contributo attività / corso' === \AssociazioneSemplice\Labels::category_kinds()['activity_fee'][0] && 'Contributo attività / corso' === (string) $wpdb->get_var( "SELECT name FROM $af_t WHERE id = $af_id" ), 'voce attività: nelle installazioni nuove si chiama «Contributo attività / corso»' );
+$wpdb->update( $af_t, array( 'name' => 'Quota attività / corso' ), array( 'id' => $af_id ) );
+asem_ok( 1 === \AssociazioneSemplice\Install::migrate_activity_fee_name() && 'Contributo attività / corso' === (string) $wpdb->get_var( "SELECT name FROM $af_t WHERE id = $af_id" ), 'voce attività: il nome vecchio diventa «Contributo attività / corso»' );
+asem_ok( 0 === \AssociazioneSemplice\Install::migrate_activity_fee_name(), 'voce attività: rilanciare non cambia nulla' );
+$wpdb->update( $af_t, array( 'name' => 'Corsi e laboratori' ), array( 'id' => $af_id ) );
+asem_ok( 0 === \AssociazioneSemplice\Install::migrate_activity_fee_name() && 'Corsi e laboratori' === (string) $wpdb->get_var( "SELECT name FROM $af_t WHERE id = $af_id" ), 'voce attività: se l\'ente l\'ha chiamata in un altro modo non si tocca' );
+$wpdb->update( $af_t, array( 'name' => 'Contributo attività / corso' ), array( 'id' => $af_id ) );
 $ix_plan = static function ( string $sql ) use ( $wpdb ): string {
 	return strtolower( implode( ' ', array_map( static fn( $r ) => (string) ( $r['key'] ?? $r['Key'] ?? '' ), (array) $wpdb->get_results( 'EXPLAIN ' . $sql, ARRAY_A ) ) ) );
 };
