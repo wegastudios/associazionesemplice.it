@@ -27,6 +27,7 @@ define( 'ASEM_TESTING', true );
 $keyfile = __DIR__ . '/.stripe-key';
 $SK      = is_readable( $keyfile ) ? trim( (string) file_get_contents( $keyfile ) ) : '';
 @unlink( $keyfile ); // phpcs:ignore
+$GLOBALS['SK'] = $SK; // wp eval-file esegue lo script dentro una funzione: senza questa riga le funzioni sotto non vedrebbero la chiave (global $SK)
 if ( ! preg_match( '/^sk_test_[A-Za-z0-9]+$/', $SK ) ) {
 	WP_CLI::error( 'La chiave non è una chiave segreta di prova (sk_test_…): mi fermo senza chiamare Stripe.' );
 }
