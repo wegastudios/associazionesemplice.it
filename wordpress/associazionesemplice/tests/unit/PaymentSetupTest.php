@@ -39,7 +39,7 @@ final class PaymentSetupTest extends TestCase {
 		$this->assertSame( 'sk_test_1', $r['values']['stripe_secret_key'] );
 		$this->assertSame( 'POST', $log[2]['method'] );
 		$this->assertStringContainsString( 'enabled_events%5B0%5D=checkout.session.completed', (string) $log[2]['body'] );
-		$this->assertStringContainsString( 'ho creato il collegamento', implode( ' ', $r['notes'] ) );
+		$this->assertStringContainsString( 'è stato creato', implode( ' ', $r['notes'] ) );
 	}
 
 	public function test_stripe_existing_webhook_is_left_alone(): void {
@@ -56,7 +56,7 @@ final class PaymentSetupTest extends TestCase {
 		$this->assertTrue( $r['ok'], 'la prova delle chiavi è riuscita: solo il webhook non si è creato' );
 		$this->assertArrayNotHasKey( 'stripe_webhook_secret', $r['values'] );
 		$text = implode( ' ', $r['notes'] );
-		$this->assertStringContainsString( 'non sono riuscito a creare il collegamento', $text );
+		$this->assertStringContainsString( 'non si è creato da solo', $text );
 		$this->assertStringContainsString( 'permesso di scrittura sui webhook', $text );
 	}
 

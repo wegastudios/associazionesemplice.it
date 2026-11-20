@@ -139,7 +139,7 @@ final class ProWizard {
 	public static function keys_page( string $provider ): array {
 		return PaymentConfig::STRIPE === $provider
 			? array( 'Apri la pagina delle chiavi di Stripe', 'https://dashboard.stripe.com/apikeys' )
-			: array( 'Apri il pannello sviluppatori di PayPal', 'https://developer.paypal.com/dashboard/' );
+			: array( 'Apri la pagina delle credenziali di PayPal', 'https://developer.paypal.com/dashboard/applications/live' );
 	}
 
 	/** Passi in cui si incollano le chiavi di Stripe e di PayPal: compaiono solo per chi ha scelto quel metodo (anche «insieme»). */
@@ -163,20 +163,20 @@ final class ProWizard {
 		};
 		if ( PaymentConfig::STRIPE === $provider ) {
 			WizardPage::step( 'Collega Stripe', 'Incolla le chiavi del tuo account Stripe: il plugin controlla subito che funzionino e prepara da solo il collegamento che gli permette di sapere quando un pagamento è riuscito. Puoi anche lasciare i campi vuoti e compilarli dopo in Pagamenti online.', $if, 'pagamenti' );
-			echo '<p>' . $link . '<br><span class="description">Nella pagina trovi la chiave pubblicabile (inizia con pk_) e crei la chiave segreta (sk_, oppure rk_ se vuoi una chiave con restrizioni). Con una chiave con restrizioni, perché il plugin crei da solo il collegamento, aggiungile il permesso di scrittura sui webhook.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<p>' . $link . '<br><span class="description">Nella pagina trovi la chiave pubblicabile (inizia con pk_) e crei la chiave segreta (sk_, oppure rk_ se vuoi una chiave con restrizioni). Se scegli una chiave limitata, deve poter scrivere su «Checkout Sessions», «Refunds» e «Webhook Endpoints».</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<table class="form-table"><tbody>';
 			echo '<tr><th>Modalità</th><td><select name="stripe_mode">' . Ui::options( array( 'test' => 'Prova (test)', 'live' => 'Reale (live)' ), 'live' === ( $cfg['stripe_mode'] ?? 'test' ) ? 'live' : 'test' ) . '</select><p class="description">Comincia dalla prova: nessun pagamento è vero. Passi alla modalità reale quando sei pronto, con le chiavi reali.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<tr><th>Chiave pubblicabile</th><td><input type="text" name="stripe_publishable_key" value="' . esc_attr( (string) ( $cfg['stripe_publishable_key'] ?? '' ) ) . '" class="regular-text" autocomplete="off" placeholder="pk_test_… / pk_live_…"></td></tr>';
 			echo '<tr><th>Chiave segreta</th><td><input type="password" name="stripe_secret_key" value="" class="regular-text" autocomplete="new-password" placeholder="sk_test_… / sk_live_… / rk_…"><span class="description">' . esc_html( $saved( 'stripe_secret_key' ) ) . '</span></td></tr>';
-			echo '<tr><th>Conferma dei pagamenti</th><td><label><input type="checkbox" name="stripe_make_webhook" value="1" checked> Crea da solo il collegamento con Stripe (webhook)</label><p class="description">Stripe avvisa il sito quando un pagamento è riuscito. Se non riesco a crearlo, ti dico perché e puoi farlo a mano.</p></td></tr>';
+			echo '<tr><th>Conferma dei pagamenti</th><td><label><input type="checkbox" name="stripe_make_webhook" value="1" checked> Crea da solo il collegamento con Stripe (webhook)</label><p class="description">Stripe avvisa il sito quando un pagamento è riuscito. Se non si riesce a crearlo, compare il motivo e puoi farlo a mano.</p></td></tr>';
 			echo '</tbody></table>';
 		} else {
 			WizardPage::step( 'Collega PayPal', 'Incolla le credenziali dell\'app PayPal: il plugin controlla subito che funzionino. Puoi anche lasciare i campi vuoti e compilarli dopo in Pagamenti online.', $if, 'pagamenti' );
-			echo '<p>' . $link . '<br><span class="description">Nel pannello apri «Apps &amp; Credentials», scegli l\'app (o creane una) e copia il Client ID e il Secret.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<p>' . $link . '<br><span class="description">Crea un\'app e copia il «Client ID» e il «Client Secret». Per la prova, apri la scheda «Sandbox» della stessa pagina (l\'indirizzo termina con /sandbox).</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<table class="form-table"><tbody>';
 			echo '<tr><th>Modalità</th><td><select name="paypal_mode">' . Ui::options( array( 'sandbox' => 'Prova (sandbox)', 'live' => 'Reale (live)' ), 'live' === ( $cfg['paypal_mode'] ?? 'sandbox' ) ? 'live' : 'sandbox' ) . '</select><p class="description">Le credenziali di prova e quelle reali sono diverse: usa quelle della modalità scelta.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			echo '<tr><th>Client ID</th><td><input type="text" name="paypal_client_id" value="' . esc_attr( (string) ( $cfg['paypal_client_id'] ?? '' ) ) . '" class="regular-text" autocomplete="off"></td></tr>';
-			echo '<tr><th>Secret</th><td><input type="password" name="paypal_client_secret" value="" class="regular-text" autocomplete="new-password"><span class="description">' . esc_html( $saved( 'paypal_client_secret' ) ) . '</span></td></tr>';
+			echo '<tr><th>Client Secret</th><td><input type="password" name="paypal_client_secret" value="" class="regular-text" autocomplete="new-password"><span class="description">' . esc_html( $saved( 'paypal_client_secret' ) ) . '</span></td></tr>';
 			echo '</tbody></table>';
 		}
 		WizardPage::end_step();

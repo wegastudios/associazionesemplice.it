@@ -58,7 +58,7 @@ final class PaymentSetup {
 	/** Crea il webhook di Stripe se serve; restituisce la frase da mostrare e aggiunge il segreto ai valori. */
 	private static function make_webhook( string $secret, string $url, string $have_secret, callable $http, array &$values ): string {
 		if ( '' !== $have_secret ) {
-			return 'Stripe: il segreto del collegamento per la conferma dei pagamenti (webhook) è già inserito, non l\'ho cambiato.';
+			return 'Stripe: il segreto del collegamento per la conferma dei pagamenti (webhook) è già inserito e resta quello.';
 		}
 		if ( 0 !== strpos( $url, 'https://' ) ) {
 			return 'Stripe: il collegamento per la conferma dei pagamenti (webhook) si crea solo su un sito raggiungibile da internet con https. Crealo a mano come spiegato in Pagamenti online.';
@@ -69,9 +69,9 @@ final class PaymentSetup {
 			}
 			$w                              = StripeApi::create_webhook( $http, $secret, $url, StripeApi::webhook_events() );
 			$values['stripe_webhook_secret'] = $w['secret'];
-			return 'Stripe: ho creato il collegamento per la conferma dei pagamenti (webhook) e salvato il suo segreto.';
+			return 'Stripe: il collegamento per la conferma dei pagamenti (webhook) è stato creato e il suo segreto è salvato.';
 		} catch ( \RuntimeException $e ) {
-			return 'Stripe: non sono riuscito a creare il collegamento per la conferma dei pagamenti (webhook): ' . $e->getMessage() . ' Se usi una chiave con restrizioni, aggiungile il permesso di scrittura sui webhook e riprova; altrimenti crealo a mano come spiegato in Pagamenti online. I pagamenti si confermano comunque quando il socio torna sul sito e con il controllo automatico ogni ora.';
+			return 'Stripe: il collegamento per la conferma dei pagamenti (webhook) non si è creato da solo: ' . $e->getMessage() . ' Se usi una chiave con restrizioni, la chiave deve poter scrivere su «Checkout Sessions», «Refunds» e «Webhook Endpoints»: correggi e riprova; altrimenti crealo a mano come spiegato in Pagamenti online. I pagamenti si confermano comunque quando il socio torna sul sito e con il controllo automatico ogni ora.';
 		}
 	}
 
