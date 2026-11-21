@@ -16,6 +16,15 @@ final class PageCache {
 
 	const GEN_OPTION = 'asem_pc_gen';
 
+	/** Tra due svuotamenti delle cache di pagina esterne passano almeno tanti secondi. */
+	const EXTERNAL_GAP = 300;
+
+	const EXTERNAL_LAST = 'asem_pc_ext_last';
+
+	const EXTERNAL_HOOK = 'asem_pc_flush_external';
+
+	const EXTERNAL_ALL = 'asem_pc_ext_all';
+
 	/** Tabelle che, se scritte, cambiano ciò che le pagine pubbliche mostrano (date, posti, tariffe, prenotazioni, richieste dei non soci). */
 	const TABLES = 'activities|sessions|bookings|event_requests';
 
@@ -34,11 +43,21 @@ final class PageCache {
 	/** @var bool lo svuotamento delle cache esterne è già programmato */
 	private static $scheduled = false;
 
+	/** @var bool una scrittura eseguita da {@see self::write()}: lo svuotamento lo decide il numero di righe toccate, non il testo */
+	private static $muted = false;
+
+	/** @var bool tra le scritture di questa richiesta ce n'è una che non si sa legare a un singolo evento: svuotamento totale */
+	private static $full = false;
+
+	/** @var array<int,bool> contenuti «Evento» cambiati in questa richiesta (id => true) */
+	private static $posts = array();
+
 	public static function register(): void {
 		add_filter( 'query', array( __CLASS__, 'on_query' ) );
+		add_action( self::EXTERNAL_HOOK, array( __CLASS__, 'flush_external' ) );
 		add_action( 'update_option_' . Settings::OPTION, array( __CLASS__, 'purge' ) );
 		add_action( 'add_option_' . Settings::OPTION, array( __CLASS__, 'purge' ) );
-		foreach ( array( 'save_post', 'deleted_post', 'trashed_post', 'untrashed_post', 'edit_attachment', 'delete_attachment' ) as $hook ) {
+		foreach ( array( 'save_post', 'deleted_post', 'trashed_post', 'untrashed_post', 'add_attachment', 'edit_attachment', 'delete_attachment' ) as $hook ) {
 			add_action( $hook, array( __CLASS__, 'on_post' ) );
 		}
 		foreach ( array( 'added_post_meta', 'updated_post_meta', 'deleted_post_meta' ) as $hook ) {
@@ -161,6 +180,20 @@ final class PageCache {
 
 	/** Le copie conservate non valgono più; le cache di pagina esterne si svuotano a fine richiesta, a scrittura conclusa. */
 	public static function purge(): void {
+		self::$full = true;
+		self::arm();
+	}
+
+	/**
+	 * Cambia qualcosa in un solo contenuto «Evento»: la generazione interna cambia, e le cache di LiteSpeed e WP Rocket perdono solo la pagina
+	 * dell'evento e quella che li elenca (le altre cache di pagina, che non hanno una chiamata per indirizzo, seguono lo svuotamento totale limitato a uno ogni 5 minuti).
+	 */
+	public static function purge_event( int $post_id ): void {
+		self::$posts[ $post_id ] = true;
+		self::arm();
+	}
+
+	private static function arm(): void {
 		self::bump();
 		if ( ! self::$scheduled ) {
 			self::$scheduled = true;
@@ -182,9 +215,82 @@ final class PageCache {
 		self::$bumped    = false;
 		self::bump();
 		do_action( 'asem_public_pages_changed' ); // per chi ha una cache propria
-		do_action( 'litespeed_purge_all' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- azione di LiteSpeed Cache
-		if ( function_exists( 'rocket_clean_domain' ) ) {
-			rocket_clean_domain(); // WP Rocket
+		$full  = self::$full;
+		$posts = array_keys( self::$posts );
+		self::$full  = false;
+		self::$posts = array();
+		$urls = $full ? array() : self::event_urls( $posts );
+		if ( $urls ) {
+			self::purge_urls( $urls ); // subito: costa poco e le pagine dell'evento restano giuste
+		}
+		self::flush_external_throttled( ! $urls ); // senza indirizzi noti, o per le cache che non sanno svuotare un solo indirizzo
+	}
+
+	/** Gli indirizzi delle pagine pubbliche che un cambio ai contenuti evento può aver reso vecchie: l'evento stesso e la pagina con l'elenco. */
+	private static function event_urls( array $post_ids ): array {
+		$urls = array();
+		foreach ( $post_ids as $id ) {
+			$u = (string) get_permalink( (int) $id );
+			if ( '' !== $u ) {
+				$urls[] = $u;
+			}
+		}
+		if ( ! $urls ) {
+			return array();
+		}
+		$list = PublicEvents::list_page_url();
+		if ( '' !== $list ) {
+			$urls[] = $list;
+		}
+		return array_values( array_unique( $urls ) );
+	}
+
+	/** LiteSpeed Cache e WP Rocket sanno svuotare un solo indirizzo. */
+	private static function purge_urls( array $urls ): void {
+		foreach ( $urls as $u ) {
+			do_action( 'litespeed_purge_url', $u ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- azione di LiteSpeed Cache
+		}
+		if ( function_exists( 'rocket_clean_files' ) ) {
+			rocket_clean_files( $urls ); // WP Rocket
+		}
+	}
+
+	/**
+	 * Le cache di pagina dei plugin esterni si svuotano per intero: al più una volta ogni {@see self::EXTERNAL_GAP} secondi.
+	 * Se ne arriva un'altra richiesta nell'attesa, lo svuotamento viene programmato per quando l'attesa finisce (i posti liberi mostrati
+	 * da quelle cache restano vecchi al massimo di pochi minuti). La generazione interna, invece, cambia sempre subito.
+	 */
+	private static function flush_external_throttled( bool $all ): void {
+		$last = get_transient( self::EXTERNAL_LAST );
+		if ( false === $last ) {
+			self::flush_external( $all );
+			return;
+		}
+		if ( $all ) {
+			set_transient( self::EXTERNAL_ALL, 1, self::EXTERNAL_GAP + HOUR_IN_SECONDS ); // nell'attesa è arrivato anche un cambio che chiede lo svuotamento totale
+		}
+		if ( false === wp_next_scheduled( self::EXTERNAL_HOOK ) ) {
+			wp_schedule_single_event( max( time() + 1, (int) $last + self::EXTERNAL_GAP ), self::EXTERNAL_HOOK );
+		}
+	}
+
+	/**
+	 * Svuota ora le cache di pagina dei plugin più diffusi e segna quando. Con $all vuoto (lo svuotamento programmato) lo svuotamento totale di
+	 * LiteSpeed e WP Rocket c'è solo se nell'attesa lo ha chiesto un cambio; le altre cache si svuotano sempre per intero, non sanno fare altrimenti.
+	 *
+	 * @param bool|null $all vero: tutto; falso: solo le cache senza chiamata per indirizzo; null: lo decide ciò che è arrivato durante l'attesa
+	 */
+	public static function flush_external( $all = null ): void {
+		set_transient( self::EXTERNAL_LAST, time(), self::EXTERNAL_GAP );
+		if ( null === $all ) {
+			$all = false !== get_transient( self::EXTERNAL_ALL );
+		}
+		delete_transient( self::EXTERNAL_ALL );
+		if ( $all ) {
+			do_action( 'litespeed_purge_all' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- azione di LiteSpeed Cache
+			if ( function_exists( 'rocket_clean_domain' ) ) {
+				rocket_clean_domain(); // WP Rocket
+			}
 		}
 		if ( function_exists( 'w3tc_flush_all' ) ) {
 			w3tc_flush_all(); // W3 Total Cache
@@ -201,7 +307,7 @@ final class PageCache {
 
 	/** Ogni scrittura sulle tabelle di date, posti, tariffe, prenotazioni e richieste svuota la cache, da qualunque parte arrivi (anche dal Pro e dai lavori programmati). */
 	public static function on_query( $query ) {
-		if ( is_string( $query ) && 1 === preg_match( '/^\s*(INSERT|UPDATE|DELETE|REPLACE)\b/i', $query ) ) {
+		if ( ! self::$muted && is_string( $query ) && 1 === preg_match( '/^\s*(INSERT|UPDATE|DELETE|REPLACE)\b/i', $query ) ) {
 			if ( 1 === preg_match( '/\b' . preg_quote( Db::db()->prefix . 'asem_', '/' ) . '(' . self::TABLES . ')\b/', $query ) ) {
 				self::purge();
 			}
@@ -209,22 +315,47 @@ final class PageCache {
 		return $query;
 	}
 
+	/**
+	 * Una scrittura (già preparata) su queste tabelle che svuota la cache solo se ha toccato almeno una riga: per i lavori periodici
+	 * che il più delle volte non trovano niente da fare. Restituisce le righe toccate.
+	 */
+	public static function write( string $sql ): int {
+		$db          = Db::db();
+		self::$muted = true;
+		try {
+			$db->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- già preparata da chi chiama
+		} finally {
+			self::$muted = false;
+		}
+		$n = (int) $db->rows_affected;
+		if ( $n > 0 ) {
+			self::purge();
+		}
+		return $n;
+	}
+
 	private static function is_event_content( int $post_id ): bool {
 		return PublicEvents::POST_TYPE === get_post_type( $post_id );
 	}
 
-	/** Un contenuto «Evento» o un allegato (la locandina) è stato salvato, spostato nel cestino o eliminato. */
+	/** Un contenuto «Evento» o un allegato di un evento (la locandina) è stato salvato, spostato nel cestino o eliminato: le altre immagini della libreria non contano. */
 	public static function on_post( $post_id ): void {
-		$type = get_post_type( (int) $post_id );
-		if ( PublicEvents::POST_TYPE === $type || 'attachment' === $type ) {
-			self::purge();
+		$id   = (int) $post_id;
+		$type = get_post_type( $id );
+		if ( PublicEvents::POST_TYPE === $type ) {
+			self::purge_event( $id );
+		} elseif ( 'attachment' === $type ) {
+			$parent = (int) wp_get_post_parent_id( $id );
+			if ( self::is_event_content( $parent ) ) {
+				self::purge_event( $parent );
+			}
 		}
 	}
 
 	/** Un dato di un contenuto «Evento» (locandina, contatti, opzioni) è cambiato. */
 	public static function on_meta( $meta_id, $post_id ): void {
 		if ( self::is_event_content( (int) $post_id ) ) {
-			self::purge();
+			self::purge_event( (int) $post_id );
 		}
 	}
 
@@ -238,7 +369,11 @@ final class PageCache {
 	/** Le categorie di un evento sono cambiate. */
 	public static function on_object_terms( $object_id, $terms, $tt_ids, $taxonomy ): void {
 		if ( PublicEvents::TAXONOMY === $taxonomy ) {
-			self::purge();
+			if ( self::is_event_content( (int) $object_id ) ) {
+				self::purge_event( (int) $object_id );
+			} else {
+				self::purge();
+			}
 		}
 	}
 }
