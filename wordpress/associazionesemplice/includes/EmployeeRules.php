@@ -186,7 +186,7 @@ final class EmployeeRules {
 			$add(
 				array(
 					'asem_access_approve', 'asem_access_done', 'asem_adult_invite', 'asem_application_approve', 'asem_application_reject', 'asem_consent_set', 'asem_delete_person',
-					'asem_detach_email', 'asem_detach_phone', 'asem_member_left', 'asem_privacy_consent', 'asem_promote_guest', 'asem_reactivate_member', 'asem_save_person',
+					'asem_detach_email', 'asem_detach_phone', 'asem_member_left', 'asem_privacy_consent', 'asem_promote_guest', 'asem_reactivate_member', 'asem_regen_person_qr', 'asem_save_person',
 					'asem_set_membership', 'asem_set_staff', 'asem_suspend_expired', 'asem_suspend_member', 'asem_rules_record', 'asem_guardian_consent_resend',
 					'asem_aff_csv', 'asem_aff_delete', 'asem_aff_save', 'asem_card_add', 'asem_card_bulk', 'asem_card_delete', 'asem_card_pdf', 'asem_card_update',
 					'asem_insurance_add', 'asem_insurance_delete', 'asem_policy_add', 'asem_policy_delete',

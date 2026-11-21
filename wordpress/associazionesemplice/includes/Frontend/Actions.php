@@ -41,6 +41,7 @@ final class Actions {
 		'asem_front_notice'         => 'do_notice',
 		'asem_front_vote'           => 'do_vote',
 		'asem_front_bank_email'     => 'do_bank_email',
+		'asem_front_regen_qr'       => 'do_regen_qr',
 	);
 
 	/** @var array<string,array{0:callable,1:bool}> azioni aggiunte da un'estensione: [gestore, restituisce un indirizzo] */
@@ -380,6 +381,13 @@ final class Actions {
 
 
 	/** Il socio si fa mandare per email le coordinate del bonifico (con le voci da pagare e la causale): sempre e solo al suo indirizzo. */
+	/** Il socio rigenera il codice della propria tessera: il vecchio (anche stampato) smette subito di valere. */
+	public static function do_regen_qr( array $post ): string {
+		$actor = self::actor();
+		\AssociazioneSemplice\QrVersion::regenerate( (int) $actor['id'], (int) $actor['id'] );
+		return \AssociazioneSemplice\Texts::t( 'Codice rigenerato: quello vecchio non vale più.' );
+	}
+
 	public static function do_bank_email( array $post ): string {
 		$actor = self::actor();
 		self::require_cap( 'asem_view_payments', (int) $actor['id'] );
@@ -608,7 +616,7 @@ final class Actions {
 			$raw = (string) ( $q['asem_ticket'] ?? '' );
 		}
 		$t = CardToken::ticket_parse( $raw );
-		if ( ! $t || ! CardToken::ticket_valid( $t[0], $t[1], $t[2], Settings::card_secret() ) ) {
+		if ( ! $t || ! CardToken::ticket_valid( $t[0], $t[1], $t[2], Settings::card_secret_for( $t[1] ) ) ) {
 			throw new \InvalidArgumentException( 'QR non valido: non è un biglietto di questo sito.' );
 		}
 		$session = Plugin::activities()->session( $t[0] );

@@ -46,7 +46,7 @@ final class ResourcesGate {
 	public static function result( string $param ): array {
 		$none   = array( 'state' => 'invalid', 'r' => null, 'res' => null, 'person' => null );
 		$parsed = ResourceGate::parse( $param );
-		if ( ! $parsed || ! ResourceGate::valid( $parsed[0], $parsed[1], $parsed[2], Settings::card_secret() ) ) {
+		if ( ! $parsed || ! ResourceGate::valid( $parsed[0], $parsed[1], $parsed[2], Settings::card_secret_for( $parsed[1] ) ) ) {
 			return $none;
 		}
 		$r      = Resources::reservation( $parsed[0] );

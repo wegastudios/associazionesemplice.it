@@ -47,7 +47,7 @@ final class CardVerify {
 			return array( 'status' => 'disabled', 'person' => null, 'until' => null );
 		}
 		$parsed = CardToken::parse( $param );
-		if ( ! $parsed || ! CardToken::valid( $parsed[0], $parsed[1], Settings::card_secret() ) ) {
+		if ( ! $parsed || ! CardToken::valid( $parsed[0], $parsed[1], Settings::card_secret_for( $parsed[0] ) ) ) {
 			return array( 'status' => 'invalid', 'person' => null, 'until' => null );
 		}
 		if ( ! Edition::allows( 'member_area' ) ) {

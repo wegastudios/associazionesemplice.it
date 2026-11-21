@@ -319,6 +319,15 @@ final class Settings {
 		return wp_salt( 'auth' ) . '|' . $salt;
 	}
 
+	/**
+	 * Segreto dei QR di un socio: quello del sito più la versione del suo codice. Con la versione 0 è identico a card_secret(), così i QR già
+	 * stampati valgono finché il socio non rigenera il codice.
+	 */
+	public static function card_secret_for( int $person_id ): string {
+		$v = QrVersion::of( $person_id );
+		return self::card_secret() . ( $v > 0 ? '|qr' . $v : '' );
+	}
+
 	public static function regenerate_card_salt(): void {
 		update_option( self::CARD_SALT_OPTION, bin2hex( random_bytes( 16 ) ), false );
 		Audit::log( 'card.qr_regenerated', 'settings' );
@@ -334,12 +343,12 @@ final class Settings {
 
 	/** Indirizzo di verifica del biglietto di una prenotazione (quello che c'è scritto nel QR dell'evento). */
 	public static function ticket_url( int $session_id, int $person_id ): string {
-		return add_query_arg( 'asem_ticket', CardToken::ticket_param( $session_id, $person_id, self::card_secret() ), home_url( '/' ) );
+		return add_query_arg( 'asem_ticket', CardToken::ticket_param( $session_id, $person_id, self::card_secret_for( $person_id ) ), home_url( '/' ) );
 	}
 
 	/** Indirizzo di verifica della tessera di una persona (quello che c'è scritto nel QR). */
 	public static function card_url( int $person_id ): string {
-		return add_query_arg( 'asem_card', CardToken::param( $person_id, self::card_secret() ), home_url( '/' ) );
+		return add_query_arg( 'asem_card', CardToken::param( $person_id, self::card_secret_for( $person_id ) ), home_url( '/' ) );
 	}
 
 	public static function clear_secret( string $key ): void {

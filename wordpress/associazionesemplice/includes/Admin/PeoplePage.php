@@ -569,7 +569,13 @@ final class PeoplePage {
 			$html .= '<h3>QR della tessera</h3><div style="max-width:170px">' . \AssociazioneSemplice\QrCode::svg( $url, 4, 'QR della tessera' ) . '</div>'
 				. '<p class="description"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la pagina di verifica</a> · stesso codice che il socio vede nella sua area soci.</p>';
 		}
-		echo wp_kses( $html . '</div>', Html::allowed() );
+		echo wp_kses( $html, Html::allowed() );
+		if ( \AssociazioneSemplice\Settings::card_qr_enabled() ) {
+			Ui::form_open( 'asem_regen_person_qr', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ), false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'id', (int) $p['id'] ) . '<button class="button" data-confirm="' . esc_attr( \AssociazioneSemplice\Texts::t( 'Rigenerare il codice della tessera? Quello attuale smette subito di valere, anche sulla tessera stampata: se ne hai una, chiedi alla segreteria di ristamparla.' ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( 'Rigenera il codice' ) ) . '</button> <span class="description">' . esc_html( \AssociazioneSemplice\Texts::t( 'Hai perso il telefono o hai condiviso il codice?' ) ) . '</span>', Html::allowed() );
+			Ui::form_close();
+		}
+		echo '</div>';
 	}
 
 	/** Privacy: consenso registrato, scarico dei dati, anonimizzazione. */

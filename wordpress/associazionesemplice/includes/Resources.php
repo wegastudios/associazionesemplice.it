@@ -652,7 +652,7 @@ final class Resources {
 
 	/** L'indirizzo che sta nel QR di una prenotazione. */
 	public static function gate_url( array $r ): string {
-		return add_query_arg( 'asem_res', ResourceGate::param( (int) $r['id'], (int) $r['person_id'], Settings::card_secret() ), home_url( '/' ) );
+		return add_query_arg( 'asem_res', ResourceGate::param( (int) $r['id'], (int) $r['person_id'], Settings::card_secret_for( (int) $r['person_id'] ) ), home_url( '/' ) );
 	}
 
 	/** A che punto è la prenotazione all'ingresso (vedi {@see ResourceGate::state}). */
