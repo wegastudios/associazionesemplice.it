@@ -162,7 +162,7 @@ sviluppare nella sessione del portale.
 | Direzione | Cosa |
 |---|---|
 | portale → SaaS | creazione dell'associazione e invito del titolare (`POST /api/portale/v1/orgs`) |
-| portale → SaaS | diritti firmati (stato, scadenza, soci, operatori, pacchetti, partner) a ogni cambio (`PUT …/entitlements`) |
+| portale → SaaS | abbonamento firmato (stato, scadenza, piano e addon) a ogni cambio (`PUT /api/portale/v2/orgs/{id}/subscription`); la vecchia rotta `…/entitlements` risponde 410 |
 | SaaS → portale | consumi giornalieri: soci, operatori, fatture elettroniche (`POST /api/saas/v1/usage`) |
 | SaaS → portale | accesso unico «Gestisci abbonamento» per il titolare (`/saas/accedi?t=…`, 60 secondi) |
 | SaaS → portale | fatture elettroniche tramite il ponte SDI: fase 2 |
