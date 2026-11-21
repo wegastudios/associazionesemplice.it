@@ -1568,34 +1568,30 @@ check( 'elenco pubblico dei piani: il nome segue il pannello e gli slug restano'
 check( 'elenco pubblico dei piani: nessun prezzo né altri dati', array( 'slug', 'nome' ) === array_keys( $pp[0] ) );
 
 
-// Amministrazione della piattaforma SaaS: richieste firmate (contratto §2.3), su trasporto simulato.
+// Richieste firmate del portale al SaaS (contratto v2), su trasporto simulato.
 $prevTransport = Http::$transport;
 Config::set( 'saas_sign_key', '' );
 Config::set( 'saas_sign_key_file', '/nonesiste/saas.key' );
-check( 'saas: senza chiave di firma nessuna richiesta', ! Portale\SaasClient::enabled() && null !== throwsUser( function () { Portale\SaasClient::orgs( 'staff@esempio.it' ); } ) );
+$sid1 = '11111111-2222-3333-4444-555555555555';
+check( 'saas: senza chiave di firma nessuna richiesta', ! Portale\SaasClient::enabled() && null !== throwsUser( function () use ( $sid1 ) { Portale\SaasClient::orgStatus( $sid1, 'sub_1' ); } ) );
 Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
 $saasSeen = array();
 Http::$transport = function ( $m, $u, $h, $b ) use ( &$saasSeen ) {
 	$saasSeen = array( $m, $u, json_decode( (string) $b, true ) );
-	return array( 200, '{"page":1,"per_page":50,"total":0,"orgs":[]}' );
+	return array( 200, '{"status":"active"}' );
 };
-$r = Portale\SaasClient::orgs( 'staff@esempio.it', array( 'q' => ' alfa ', 'status' => 'active', 'page' => 0, 'per_page' => 999 ) );
+$r = Portale\SaasClient::orgStatus( $sid1, 'sub_1' );
 $parts = explode( '.', (string) $saasSeen[2]['token'] );
 $cl    = json_decode( (string) base64_decode( strtr( $parts[1], '-_', '+/' ) ), true );
 $hd    = json_decode( (string) base64_decode( strtr( $parts[0], '-_', '+/' ) ), true );
-check( 'saas: elenco con POST verso l\'indirizzo del contratto', 'POST' === $saasSeen[0] && 'https://app.associazionesemplice.it/api/portale/v1/admin/orgs' === $saasSeen[1] && 0 === $r['total'] );
-check( 'saas: token EdDSA con claim del contratto (aud, typ, scope read, act, vita 60 s, jti)', 'EdDSA' === $hd['alg'] && 'associazionesemplice-saas' === $cl['aud'] && 'admin_read' === $cl['typ'] && 'read' === $cl['scope'] && 'staff@esempio.it' === $cl['act'] && 60 === $cl['exp'] - $cl['iat'] && 32 === strlen( $cl['jti'] ) );
-check( 'saas: filtri ripuliti (q senza spazi, pagina almeno 1, massimo 100 per pagina)', 'alfa' === $cl['q'] && 'active' === $cl['status'] && 1 === $cl['page'] && 100 === $cl['per_page'] );
+check( 'saas: stato con POST verso l\'indirizzo v2 del contratto', 'POST' === $saasSeen[0] && 'https://app.associazionesemplice.it/api/portale/v2/orgs/' . $sid1 . '/status' === $saasSeen[1] && 200 === $r[0] );
+check( 'saas: token EdDSA con claim del contratto (aud, typ, vita 60 s, jti) e senza act/scope della v1', 'EdDSA' === $hd['alg'] && 'associazionesemplice-saas' === $cl['aud'] && 'org_status' === $cl['typ'] && 60 === $cl['exp'] - $cl['iat'] && 32 === strlen( $cl['jti'] ) && ! isset( $cl['act'] ) && ! isset( $cl['scope'] ) );
 $sigOk = sodium_crypto_sign_verify_detached( (string) base64_decode( strtr( $parts[2], '-_', '+/' ) ), $parts[0] . '.' . $parts[1], sodium_crypto_sign_publickey( sodium_crypto_sign_seed_keypair( str_repeat( 's', 32 ) ) ) );
 check( 'saas: la firma si verifica con la chiave pubblica del portale verso il SaaS', $sigOk && Portale\SaasClient::publicKey() === rtrim( strtr( base64_encode( sodium_crypto_sign_publickey( sodium_crypto_sign_seed_keypair( str_repeat( 's', 32 ) ) ) ), '+/', '-_' ), '=' ) );
-Portale\SaasClient::setUserDisabled( 'staff@esempio.it', '11111111-2222-3333-4444-555555555555', true, str_repeat( 'x', 300 ) );
-$wc = json_decode( (string) base64_decode( strtr( explode( '.', (string) $saasSeen[2]['token'] )[1], '-_', '+/' ) ), true );
-check( 'saas: disattivazione = token write, indirizzo dell\'utente, motivo troncato a 200', 'admin_write' === $wc['typ'] && 'write' === $wc['scope'] && true === $wc['disabled'] && 200 === strlen( $wc['reason'] ) && false !== strpos( $saasSeen[1], '/admin/users/11111111-2222-3333-4444-555555555555/state' ) );
-check( 'saas: identificativo non valido rifiutato (niente percorsi strani)', null !== throwsUser( function () { Portale\SaasClient::org( 'staff@esempio.it', '../../x' ); } ) );
-Http::$transport = function () { return array( 403, '{"error":"scope"}' ); };
-check( 'saas: errore del SaaS tradotto in messaggio chiaro', 'Questa operazione richiede il permesso di scrittura.' === throwsUser( function () { Portale\SaasClient::setUserDisabled( 'a@esempio.it', '11111111-2222-3333-4444-555555555555', true ); } ) );
+check( 'saas: identificativo non valido rifiutato (niente percorsi strani)', null !== throwsUser( function () { Portale\SaasClient::orgStatus( '../../x', 'sub_1' ); } ) );
+check( 'saas: le rotte v1 admin non ci sono più nel client', ! method_exists( 'Portale\SaasClient', 'orgs' ) && ! method_exists( 'Portale\SaasClient', 'operators' ) && ! method_exists( 'Portale\SaasClient', 'setUserDisabled' ) );
 Http::$transport = function () { return array( 0, '' ); };
-check( 'saas: SaaS non raggiungibile', 'Il SaaS non risponde: riprova tra poco.' === throwsUser( function () { Portale\SaasClient::orgs( 'a@esempio.it' ); } ) );
+check( 'saas: SaaS non raggiungibile → codice 0', 0 === Portale\SaasClient::orgStatus( $sid1, 'sub_1' )[0] );
 Http::$transport = $prevTransport;
 
 // --- Confine logico del plugin: /wordpress/admin (docs/ARCHITETTURA_DOMINI.md §3.2) ------------------------------------------------
@@ -2082,6 +2078,9 @@ Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 2, 'status' => 'a
 check( 'coda: errore 5xx → ritento dopo 1 minuto, non prima', array( 0, 1 ) === Outbox::run( $odb, 2000 ) && array( 0, 0 ) === Outbox::run( $odb, 2030 ) );
 Http::$transport = function () { return array( 409, '{"error":"stale_revision"}' ); };
 check( 'coda: 409 stale_revision = già applicata → chiusa', array( 1, 0 ) === Outbox::run( $odb, 2100 ) );
+Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 5000, 'status' => 'active', 'plan' => 'gestionale', 'plan_version' => 3 ), 2200 );
+Http::$transport = function () { return array( 422, '{"error":"revision_jump_too_large"}' ); };
+check( 'coda: 422 revision_jump_too_large = errore definitivo, non si ritenta', array( 0, 0 ) === Outbox::run( $odb, 2200 ) && array( 0, 0 ) === Outbox::run( $odb, 900000 ) && 'revision_jump_too_large' === $odb->one( 'SELECT last_error FROM saas_outbox WHERE rev = 5000' )['last_error'] && null !== $odb->one( 'SELECT done_at FROM saas_outbox WHERE rev = 5000' )['done_at'] );
 Config::set( 'saas_sign_key', '' );
 Config::set( 'saas_sign_key_file', '/nonesiste/saas.key' );
 Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 3 ), 3000 );
