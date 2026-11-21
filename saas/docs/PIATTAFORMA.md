@@ -66,11 +66,18 @@ test l'amministrazione sta su `/saas/admin` e il prefisso è una sola costante (
 - **Sessione propria**: sotto `config('saas.admin_path')` (`admin`; dietro il proxy `saas/admin`) il middleware
   `UsePlatformSession` usa il cookie `as_admin` (in produzione `__Secure-as_admin`) con `Path` uguale al percorso,
   `SameSite=Strict`, scadenza alla chiusura del browser e dopo 60 minuti, e la guardia `platform`.
-- **Accesso**: email e password, poi codice a due passaggi **obbligatorio per tutti** (alla prima volta si attiva con il QR).
+- **Accesso**: email e password. Decisione D38: il secondo fattore per lo staff e per gli amministratori della piattaforma
+  è **a scelta**. Con l'accesso unico (`SAAS_UNIFIED_LOGIN=true`, `/accedi` del portale, `StaffAccess`/`IdentityService`)
+  il codice si chiede solo a chi l'ha attivato. Il vecchio modulo di `/saas/admin` (`core.platform_staff`), finché
+  l'accesso unico è spento, **ancora lo impone** a ogni amministratore (alla prima volta si attiva con il QR): è un obbligo
+  residuo da allineare a D38 (si supera accendendo l'accesso unico o cambiando il codice).
   Finché il codice non è giusto la persona non è autenticata (sta «in attesa» nella sessione per 10 minuti). Il segreto
   confermato non si sostituisce dalla pagina. Dopo 8 ore la verifica si ripete. Limiti: 5 tentativi al minuto per
   email+indirizzo, 20 per indirizzo, 5 codici al minuto. Stesso messaggio per email sconosciuta, password sbagliata o
-  persona disattivata. Nemmeno in sviluppo si spegne (`SAAS_REQUIRE_TWO_FACTOR` riguarda solo gli operatori).
+  persona disattivata. Nel vecchio modulo l'obbligo non si spegne nemmeno in sviluppo: `SAAS_REQUIRE_TWO_FACTOR` riguarda
+  solo gli operatori delle associazioni (gestionale), per i quali resta obbligatorio (non si può disattivare dal profilo).
+  Chi dello staff entra nel gestionale di un'associazione con il primo legame al proprio utente operatore deve avere il
+  secondo livello su quell'utente.
 - **Staff**: nasce solo da riga di comando: `php artisan saas:admin:create email "Nome" --role=admin|readonly` (password
   casuale mostrata una volta); telefono perso: `php artisan saas:admin:reset-2fa email`.
 - **Gestione della vendita** (dal 12/11/2026), tutto sulla stessa bozza e con lo stesso validatore del JSON:
