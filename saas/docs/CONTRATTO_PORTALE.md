@@ -334,6 +334,10 @@ Dal gestionale il titolare (permesso `org.subscription`) va su
 minuti); controlla che `ref` sia un suo abbonamento e che `sub` sia l'intestatario (se no: accesso normale, senza dire
 perché); apre la sessione e porta alla pagina di quell'abbonamento. Destinazione fissa: niente indirizzi di ritorno dalla richiesta.
 
+Sessione dello staff (`staff_sso`, `staff_session_check`): il `sid` del token `staff_sso` è un riferimento per area, valido solo
+per il controllo di sessione di quell'area; l'identificativo vero della sessione resta al solo portale (vedi
+`IDENTITA_API.md` §2). Il formato dei campi non cambia: per le aree il `sid` è un valore opaco.
+
 ## 5. Passaggio tra le amministrazioni (`admin_hop`)
 
 Come ARCHITETTURA_DOMINI §8: JWT `typ: "admin_hop"`, 60 secondi, `jti` monouso, `sub` email, `mfa: true`, `from`/`aud`,

@@ -9,9 +9,11 @@ use App\Modules\Portale\Contracts\StaffJwt;
 /** Firma i token `staff_sso` (60 secondi, monouso) con la chiave `staff-…` del SaaS. */
 final readonly class StaffTokenIssuer
 {
-    public function __construct(private StaffIdentityConfig $config) {}
+    public function __construct(private StaffIdentityConfig $config, private StaffDirectory $directory) {}
 
     /**
+     * `$sid` è l'identificativo vero della sessione: nel token va solo un riferimento valido per quell'area.
+     *
      * @param  array<string, string>  $areas  area => livello di tutte le aree della persona (per il selettore «Vai a»)
      */
     public function issue(StaffPerson $person, string $area, string $sid, array $areas): string
@@ -30,7 +32,7 @@ final readonly class StaffTokenIssuer
             'level' => $areas[$area],
             // Il secondo fattore è facoltativo: per ora nessuno lo usa, e il token lo dice (mai un obbligo).
             'mfa' => false,
-            'sid' => $sid,
+            'sid' => $this->directory->issueAreaRef($sid, $area),
             'areas' => $areas,
         ], $this->config->signingSeed(), 'staff-');
     }

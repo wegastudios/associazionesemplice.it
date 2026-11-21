@@ -247,6 +247,29 @@ it('dà il token di un\'area solo se la persona ha quel ruolo', function (): voi
     idCall($this, 'token', ['sid' => $sid, 'to' => 'inventata'])->assertForbidden();
 });
 
+it('nel database c\'è solo l\'impronta del sid; ai token delle aree va un riferimento, valido solo per l\'area e non per il salto', function (): void {
+    idPerson(roles: ['saas' => 'vendita', 'supporto' => 'agente']);
+    $sid = idLogin($this);
+
+    expect(json_encode(DB::table('core.staff_sessions')->get()))->not->toContain($sid);
+
+    $claims = static fn (string $token): array => json_decode(EdDsaJwt::unb64(explode('.', $token)[1]), true);
+    $saas = $claims((string) idCall($this, 'token', ['sid' => $sid, 'to' => 'saas'])->assertOk()->json('token'));
+    $help = $claims((string) idCall($this, 'token', ['sid' => $sid, 'to' => 'supporto'])->assertOk()->json('token'));
+    expect($saas['sid'])->toMatch('/^[0-9a-f]{32}$/')->not->toBe($sid)->and($help['sid'])->not->toBe($saas['sid']);
+
+    // Un riferimento di area non serve per saltare, né per leggere il profilo: come una sessione inesistente.
+    idCall($this, 'token', ['sid' => $saas['sid'], 'to' => 'supporto'])->assertForbidden();
+    idCall($this, 'session', ['sid' => $saas['sid']])->assertJsonPath('valid', false);
+
+    // Il riferimento del SaaS vale per il SaaS e non per il supporto; con l'uscita cade anche quello.
+    $directory = app(App\Modules\Piattaforma\Identity\StaffDirectory::class);
+    expect($directory->personOfAreaRef($saas['sid'], 'saas'))->not->toBeNull()
+        ->and($directory->personOfAreaRef($saas['sid'], 'supporto'))->toBeNull();
+    idCall($this, 'logout', ['sid' => $sid])->assertOk();
+    expect($directory->personOfAreaRef($saas['sid'], 'saas'))->toBeNull();
+});
+
 /* Operatori delle associazioni nello stesso accesso (passo 6): il portale chiede il biglietto, il gestionale lo consuma. */
 
 it('l\'ingresso degli operatori è spento di default', function (): void {
