@@ -338,13 +338,13 @@ it('senza secondo livello superato in quella sessione manda alla sfida del gesti
     // Il codice sbagliato non entra e non lega.
     $link = session(App\Modules\Piattaforma\Identity\OperatorEntry::LINK_KEY);
     $this->withSession(['login.id' => $user->id, 'login.remember' => false, App\Modules\Piattaforma\Identity\OperatorEntry::LINK_KEY => $link])
-        ->post('/two-factor-challenge', ['code' => '000000']);
+        ->post('/verifica-accesso', ['code' => '000000']);
     $this->assertGuest();
     expect(DB::table('core.operator_links')->count())->toBe(0);
 
     // Il codice giusto entra e crea il legame.
     $this->withSession(['login.id' => $user->id, 'login.remember' => false, 'url.intended' => '/gestionale', App\Modules\Piattaforma\Identity\OperatorEntry::LINK_KEY => $link])
-        ->post('/two-factor-challenge', ['code' => $this->totp($user)])->assertRedirect('/gestionale');
+        ->post('/verifica-accesso', ['code' => $this->totp($user)])->assertRedirect('/gestionale');
     $this->assertAuthenticatedAs($user);
     expect(DB::table('core.operator_links')->where('user_id', $user->id)->value('person_id'))->toBe($personId)
         ->and(DB::table('core.staff_audit')->where('action', 'operator.linked')->count())->toBe(1);
@@ -441,7 +441,7 @@ it('con l\'ingresso spento il gestionale resta quello di prima: modulo di access
 
     $this->get('/accesso-unico')->assertRedirect('https://associazionesemplice.it/account');
     $this->post('/accesso-unico/conferma')->assertRedirect('/gestionale');
-    $this->get('/login')->assertOk();
+    $this->get('/accesso')->assertOk();
     $this->assertGuest();
 });
 
