@@ -75,11 +75,30 @@ it('applica solo revisioni crescenti, nella stessa serie dei diritti v1', functi
     ($this->put)(subscriptionClaims($this->orgId, 5))->assertOk();
     ($this->put)(subscriptionClaims($this->orgId, 5))->assertStatus(409)->assertJson(['error' => 'stale_revision', 'current_rev' => 5]);
     ($this->put)(subscriptionClaims($this->orgId, 4))->assertStatus(409);
-    $this->putJson("/api/portale/v1/orgs/{$this->orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($this->orgId, 'sub_123', 3))])
-        ->assertStatus(409);
     ($this->put)(subscriptionClaims($this->orgId, 6, ['status' => 'suspended']))->assertOk();
 
     expect(app(Entitlements::class)->for($this->orgId)->status)->toBe('suspended');
+});
+
+it('rifiuta con 422 un salto di revisione oltre il tetto, senza applicare nulla', function (): void {
+    ($this->put)(subscriptionClaims($this->orgId, 5))->assertOk();
+
+    // Oltre il tetto (+1000 sull'ultima accettata): errore non ritentabile, la serie resta com'era.
+    ($this->put)(subscriptionClaims($this->orgId, 1006))->assertStatus(422)->assertExactJson(['error' => 'revision_jump_too_large']);
+    ($this->put)(subscriptionClaims($this->orgId, PHP_INT_MAX))->assertStatus(422)->assertExactJson(['error' => 'revision_jump_too_large']);
+    expect(app(Entitlements::class)->for($this->orgId)->rev)->toBe(5);
+
+    // Il limite è incluso; il caso «vecchia o uguale» resta 409.
+    ($this->put)(subscriptionClaims($this->orgId, 1005))->assertOk();
+    ($this->put)(subscriptionClaims($this->orgId, 1005))->assertStatus(409)->assertJson(['error' => 'stale_revision', 'current_rev' => 1005]);
+    expect(app(Entitlements::class)->for($this->orgId)->rev)->toBe(1005);
+});
+
+it('vale il tetto anche per la prima revisione di un\'associazione', function (): void {
+    ($this->put)(subscriptionClaims($this->orgId, 1001))->assertStatus(422)->assertExactJson(['error' => 'revision_jump_too_large']);
+    expect(DB::table('core.org_entitlements')->where('org_id', $this->orgId)->exists())->toBeFalse();
+
+    ($this->put)(subscriptionClaims($this->orgId, 1000))->assertOk();
 });
 
 it('rifiuta firma, tipo, associazione e campi non validi', function (): void {

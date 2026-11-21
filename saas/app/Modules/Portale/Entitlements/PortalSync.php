@@ -55,8 +55,8 @@ final readonly class PortalSync
     }
 
     /**
-     * Applica i diritti firmati; una revisione vecchia o uguale non cambia nulla. $orgId è l'associazione
-     * dell'indirizzo chiamato: deve coincidere con quella firmata.
+     * Applica diritti firmati nel vecchio formato; una revisione vecchia o uguale non cambia nulla. Nessuna rotta li
+     * accetta più (rispondono 410): resta come ingresso dei test del ciclo di vita.
      */
     public function apply(string $token, ?string $orgId = null): int
     {
@@ -116,6 +116,9 @@ final readonly class PortalSync
         }
     }
 
+    /** Di quanto una revisione può superare l'ultima accettata: un salto enorme bloccherebbe per sempre gli aggiornamenti. */
+    public const MAX_REVISION_JUMP = 1000;
+
     /** Giorni oltre i quali una scadenza che arretra finisce nel registro con «until_back_days». */
     private const UNTIL_BACK_FLAG_DAYS = 30;
 
@@ -132,6 +135,9 @@ final readonly class PortalSync
             $current = $existing !== null && is_numeric($existing->rev ?? null) ? (int) $existing->rev : 0;
             if ($claims['rev'] <= $current) {
                 throw new StaleEntitlements($current);
+            }
+            if ($claims['rev'] - $current > self::MAX_REVISION_JUMP) {
+                throw new RevisionJumpTooLarge;
             }
             // Una scadenza che arretra di molto si segnala nel registro: da sola non basta mai a far cancellare i dati.
             if ($existing !== null && is_string($existing->until ?? null) && $existing->until !== '') {

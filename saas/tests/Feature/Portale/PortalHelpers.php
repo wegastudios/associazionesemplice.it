@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Portale\Entitlements\PortalSync;
 use App\Modules\Portale\Jwt\EdDsaJwt;
 use App\Modules\Portale\PortalConfig;
 
@@ -36,6 +37,17 @@ function portalToken(string $seed, string $type, array $claims, int $lifetime = 
         'exp' => $now + $lifetime,
         'jti' => bin2hex(random_bytes(8)),
     ] + $claims, $seed);
+}
+
+/**
+ * Diritti nel vecchio formato: nessuna rotta li accetta più, ma i test del ciclo di vita li usano per portare
+ * un'associazione in uno stato preciso.
+ *
+ * @param  array<string, mixed>  $claims
+ */
+function applyEntitlements(string $seed, array $claims, ?string $orgId = null): int
+{
+    return app(PortalSync::class)->apply(portalToken($seed, 'entitlements', $claims), $orgId);
 }
 
 /** @return array<string, mixed> */

@@ -19,8 +19,8 @@ dalla versione del piano. Nessun dato personale dei soci passa dal SaaS al porta
 |---|---|
 | §1 Token e chiavi | **invariati** (si aggiungono solo nuovi valori di `typ`, §1) |
 | §2.1 Creazione dell'associazione | **invariata** (`/api/portale/v1/orgs`) |
-| §2.2 Diritti calcolati dal portale (`entitlements`) | **sostituiti** da `subscription` (§3.2). L'endpoint v1 resta attivo come **transitorio** finché il portale non ha migrato; poi si toglie (§8) |
-| §2.3 Amministrazione dal portale (liste, disattivazione utenti) | **cancellata**: l'amministrazione sta in `/saas/admin`. Restano solo le letture dell'area clienti (§3.6). Le rotte `admin/*` della v1 si tolgono quando `/saas/admin` è in linea |
+| §2.2 Diritti calcolati dal portale (`entitlements`) | **sostituiti** da `subscription` (§3.2). L'endpoint v1 risponde `410 gone` (§8) |
+| §2.3 Amministrazione dal portale (liste, disattivazione utenti) | **cancellata**: l'amministrazione sta in `/saas/admin`. Restano solo le letture dell'area clienti (§3.6). Le rotte `admin/*` della v1 sono **tolte** (404) |
 | §3.1 Consumi | **invariati** |
 | §3.2 Accesso «Gestisci abbonamento» | invariato, cambia solo l'indirizzo di arrivo nel portale: `https://associazionesemplice.it/account/da-gestionale?t=<JWT>` (prima `/saas/accedi`) |
 | Nuovo | catalogo (§2), `promo.check` e `promo.redeem` (§3.3), `plan_change.check` (§3.4), `domain.check` e `domain.set` (§3.5), `catalogo.changed` (§4.2), `admin_hop` (§5) |
@@ -239,7 +239,7 @@ Subito dopo il portale manda `subscription` (§3.2). Finché non arriva, l'assoc
 | Campo | Significato |
 |---|---|
 | `sub`, `ref` | associazione e abbonamento: devono coincidere con l'indirizzo e con quanto creato in 3.1, altrimenti `404 unknown_org` |
-| `rev` | revisione **crescente per associazione**, la stessa numerazione dei diritti v1: si applica solo una `rev` maggiore dell'ultima (`409 stale_revision` con `current_rev`) |
+| `rev` | revisione **crescente per associazione**, la stessa numerazione dei diritti v1: si applica solo una `rev` maggiore dell'ultima (`409 stale_revision` con `current_rev`) e al massimo **1000 oltre** l'ultima accettata: oltre, `422 revision_jump_too_large` (non si ritenta, il portale corregge il numero) |
 | `status`, `until`, `trial_ends`, `partner` | **invariati rispetto alla v1** (stati `trial`, `active`, `past_due`, `suspended`, `cancelled`; dal giorno dopo `until` il SaaS sospende da sé (era `until` + 15 giorni; dal 13/11/2026 la tolleranza è 0)) |
 | `plan`, `plan_version` | codice e versione **del catalogo**. Se il SaaS non conosce quella versione: **`409 unknown_plan`, nulla viene applicato** (il portale deve ricaricare il catalogo e riprovare) |
 | `members` | fascia di soci acquistata (informativa: il prezzo lo calcola il portale dai consumi, §4.1) |
@@ -356,10 +356,10 @@ passaggi, nomi ed email degli operatori. Passano solo numeri (soci, operatori, s
 
 ## 8. Migrazione dalla v1
 
-1. SaaS: catalogo in linea (§2), `subscription` accettata (§3.2), `entitlements` v1 ancora accettato.
+1. SaaS: catalogo in linea (§2), `subscription` accettata (§3.2).
 2. Portale: legge il catalogo, manda `subscription` al posto di `entitlements`; scrive nel registro quando passa.
-3. SaaS: l'endpoint `entitlements` v1 risponde `410 gone` un mese dopo che il portale ha migrato **tutti** gli abbonamenti;
-   le rotte `admin/*` della v1 si tolgono quando `/saas/admin` è in linea.
+3. **Fatto**: l'endpoint `entitlements` v1 risponde `410 gone` (il portale manda solo `subscription`);
+   le rotte `admin/*` della v1 sono tolte.
 4. La `rev` è una sola serie per associazione, così un messaggio v1 vecchio non sovrascrive uno v2 nuovo.
 
 ## 9. Lista di lavoro per la sessione del portale

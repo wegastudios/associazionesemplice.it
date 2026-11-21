@@ -12,6 +12,8 @@ use App\Modules\Core\Models\Org;
 use App\Modules\Core\Models\User;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\Package;
+use App\Modules\Portale\Entitlements\StaleEntitlements;
+use App\Modules\Portale\Entitlements\UnknownOrg;
 use App\Modules\Portale\Jwt\EdDsaJwt;
 use App\Modules\Soci\Models\Person;
 use Illuminate\Http\Client\Request as HttpRequest;
@@ -61,11 +63,11 @@ it('rifiuta token non firmati dal portale, sottodomini occupati e dati non valid
 
 it('applica i diritti in ordine di revisione e li annota nel registro', function (): void {
     $orgId = ($this->provision)()->json('org_id');
-    $put = fn (array $claims) => $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', $claims)]);
+    $put = fn (array $claims): int => applyEntitlements($this->portal, $claims, $orgId);
 
-    $put(entitlementClaims($orgId, 'sub_123', 2))->assertOk()->assertJson(['rev' => 2]);
-    $put(entitlementClaims($orgId, 'sub_123', 2, ['operators' => 99]))->assertStatus(409)->assertJson(['current_rev' => 2]);
-    $put(entitlementClaims($orgId, 'sub_123', 1))->assertStatus(409);
+    expect($put(entitlementClaims($orgId, 'sub_123', 2)))->toBe(2)
+        ->and(fn () => $put(entitlementClaims($orgId, 'sub_123', 2, ['operators' => 99])))->toThrow(StaleEntitlements::class)
+        ->and(fn () => $put(entitlementClaims($orgId, 'sub_123', 1)))->toThrow(StaleEntitlements::class);
 
     $e = app(Entitlements::class)->for($orgId);
     expect($e->rev)->toBe(2)
@@ -79,16 +81,36 @@ it('applica i diritti in ordine di revisione e li annota nel registro', function
     expect($updates)->toBe(1)->and(app(ChainVerifier::class)->verify($orgId)['ok'])->toBeTrue();
 });
 
+it('la vecchia rotta dei diritti risponde 410 e non applica nulla', function (): void {
+    $orgId = ($this->provision)()->json('org_id');
+    $token = portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1));
+
+    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => $token])->assertStatus(410)->assertExactJson(['error' => 'gone']);
+    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", [])->assertStatus(410);
+
+    expect(app(Entitlements::class)->for($orgId)->rev)->toBe(0);
+});
+
+it('non espone più le rotte di amministrazione v1', function (): void {
+    $orgId = ($this->provision)()->json('org_id');
+    $body = ['token' => portalToken($this->portal, 'admin_read', ['act' => 'staff@example.com', 'scope' => 'read'])];
+
+    $this->postJson('/api/portale/v1/admin/orgs', $body)->assertNotFound();
+    $this->postJson("/api/portale/v1/admin/orgs/{$orgId}", $body)->assertNotFound();
+    $this->postJson("/api/portale/v1/admin/orgs/{$orgId}/operators", $body)->assertNotFound();
+    $this->postJson("/api/portale/v1/admin/users/{$orgId}/state", $body)->assertNotFound();
+});
+
 it('rifiuta diritti di un\'altra associazione, di un altro abbonamento o con campi sconosciuti', function (): void {
     $orgId = ($this->provision)()->json('org_id');
     $other = ($this->provision)(['ref' => 'sub_999', 'org' => ['name' => 'Beta', 'slug' => 'circolo-beta']])->json('org_id');
-    $put = fn (string $url, array $claims) => $this->putJson($url, ['token' => portalToken($this->portal, 'entitlements', $claims)]);
+    $put = fn (array $claims): int => applyEntitlements($this->portal, $claims, $orgId);
 
-    $put("/api/portale/v1/orgs/{$orgId}/entitlements", entitlementClaims($other, 'sub_999', 1))->assertNotFound();
-    $put("/api/portale/v1/orgs/{$orgId}/entitlements", entitlementClaims($orgId, 'sub_999', 1))->assertNotFound();
-    $put("/api/portale/v1/orgs/{$orgId}/entitlements", entitlementClaims($orgId, 'sub_123', 1, ['packages' => ['jackpot' => (object) []]]))->assertStatus(422);
-    $put("/api/portale/v1/orgs/{$orgId}/entitlements", entitlementClaims($orgId, 'sub_123', 1, ['packages' => ['einvoice' => ['yearly' => 50, 'unlimited' => true]]]))->assertStatus(422);
-    $put("/api/portale/v1/orgs/{$orgId}/entitlements", entitlementClaims($orgId, 'sub_123', 1, ['status' => 'gratis']))->assertStatus(422);
+    expect(fn () => $put(entitlementClaims($other, 'sub_999', 1)))->toThrow(UnknownOrg::class)
+        ->and(fn () => $put(entitlementClaims($orgId, 'sub_999', 1)))->toThrow(UnknownOrg::class)
+        ->and(fn () => $put(entitlementClaims($orgId, 'sub_123', 1, ['packages' => ['jackpot' => (object) []]])))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => $put(entitlementClaims($orgId, 'sub_123', 1, ['packages' => ['einvoice' => ['yearly' => 50, 'unlimited' => true]]])))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => $put(entitlementClaims($orgId, 'sub_123', 1, ['status' => 'gratis'])))->toThrow(InvalidArgumentException::class);
 
     expect(app(Entitlements::class)->for($orgId)->rev)->toBe(0);
 });
@@ -100,22 +122,22 @@ it('sospende e riapre l\'associazione secondo lo stato dell\'abbonamento', funct
         'two_factor_secret' => Laravel\Fortify\Fortify::currentEncrypter()->encrypt('JBSWY3DPEHPK3PXP'),
         'two_factor_confirmed_at' => now(),
     ])->save();
-    $put = fn (int $rev, string $status) => $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', $rev, ['status' => $status]))]);
+    $put = fn (int $rev, string $status): int => applyEntitlements($this->portal, entitlementClaims($orgId, 'sub_123', $rev, ['status' => $status]), $orgId);
 
-    $put(1, 'suspended')->assertOk();
+    $put(1, 'suspended');
     $this->actingAs($owner)->get('/gestionale')->assertRedirect('/associazione-sospesa');
 
-    $put(2, 'active')->assertOk();
+    $put(2, 'active');
     $this->get('/gestionale')->assertRedirect('/gestionale/configurazione'); // associazione nuova: la configurazione guidata
     $this->get('/gestionale')->assertRedirect('/gestionale/configurazione'); // finché anno sociale e anno fiscale non sono scelti si torna lì
 
-    $put(3, 'cancelled')->assertOk();
+    $put(3, 'cancelled');
     expect(Org::query()->findOrFail($orgId)->status)->toBe('closed');
 });
 
 it('sospende da sé le associazioni il giorno dopo la scadenza', function (): void {
     $orgId = ($this->provision)()->json('org_id');
-    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1, ['until' => now()->toDateString()]))])->assertOk();
+    applyEntitlements($this->portal, entitlementClaims($orgId, 'sub_123', 1, ['until' => now()->toDateString()]), $orgId);
 
     $this->artisan('saas:portal:suspend-expired')->assertSuccessful();
     expect(Org::query()->findOrFail($orgId)->status)->toBe('active');
@@ -135,7 +157,7 @@ it('blocca le funzioni dei pacchetti non attivi', function (): void {
 
     $this->actingAs($user)->get('/_test/area-soci')->assertForbidden();
 
-    $this->putJson("/api/portale/v1/orgs/{$org->id}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($org->id, 'sub_1', 1))])->assertOk();
+    applyEntitlements($this->portal, entitlementClaims($org->id, 'sub_1', 1), $org->id);
     $this->get('/_test/area-soci')->assertOk();
     $this->get('/_test/sito')->assertForbidden();
 });
@@ -150,7 +172,7 @@ it('limita gli inviti al numero di operatori dell\'abbonamento', function (): vo
     // Senza diritti ricevuti: solo il titolare.
     expect(fn () => $members->invite($org, 'op@example.com', 'Op', OrgRole::Operator, $by))->toThrow(OperatorLimitReached::class);
 
-    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1))])->assertOk();
+    applyEntitlements($this->portal, entitlementClaims($orgId, 'sub_123', 1), $orgId);
     $op = $members->invite($org, 'op@example.com', 'Op', OrgRole::Operator, $by);
     expect(fn () => $members->invite($org, 'op2@example.com', 'Op2', OrgRole::Operator, $by))->toThrow(OperatorLimitReached::class);
 
@@ -216,7 +238,7 @@ it('in prova non si esporta né si collega il commercialista; con un piano sì',
     $by = app(Memberships::class)->find($owner->id, $orgId);
     $rev = 0;
     $put = function (string $status) use ($orgId, &$rev): void {
-        $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', ++$rev, ['status' => $status, 'operators' => 5]))])->assertOk();
+        applyEntitlements($this->portal, entitlementClaims($orgId, 'sub_123', ++$rev, ['status' => $status, 'operators' => 5]), $orgId);
     };
     $user = $this->createUser('anna@example.com', twoFactor: true);
     $this->addOperator($org, $user);
@@ -237,7 +259,7 @@ it('non conta il commercialista tra gli operatori; l\'accesso completo sì', fun
     $owner = User::query()->where('email', 'titolare@example.com')->sole();
     $by = app(Memberships::class)->find($owner->id, $orgId);
     $members = app(OrgMembers::class);
-    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1, ['operators' => 1]))])->assertOk();
+    applyEntitlements($this->portal, entitlementClaims($orgId, 'sub_123', 1, ['operators' => 1]), $orgId);
 
     // Un solo posto, già del titolare: il commercialista fiscale entra lo stesso, uno completo no.
     $accountant = $members->invite($org, 'ct@example.com', 'Ct', OrgRole::Accountant, $by);
@@ -262,7 +284,7 @@ it('dopo la prova senza piano il gestionale resta in sola lettura, senza esporta
     $orgId = ($this->provision)()->json('org_id');
     $user = $this->createUser('anna@example.com', twoFactor: true);
     $this->addOperator(Org::query()->findOrFail($orgId), $user);
-    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1, ['status' => 'trial', 'trial_ends' => now()->subDays(2)->toDateString()]))])->assertOk();
+    applyEntitlements($this->portal, entitlementClaims($orgId, 'sub_123', 1, ['status' => 'trial', 'trial_ends' => now()->subDays(2)->toDateString()]), $orgId);
     DB::table('core.orgs')->where('id', $orgId)->update(['status' => 'suspended']);
 
     $this->actingAs($user)->get('/gestionale/profilo')->assertOk();

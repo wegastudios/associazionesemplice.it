@@ -8,6 +8,7 @@ use App\Modules\Piattaforma\Contracts\AddonNotAllowed;
 use App\Modules\Piattaforma\Contracts\UnknownAddon;
 use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use App\Modules\Portale\Entitlements\PortalSync;
+use App\Modules\Portale\Entitlements\RevisionJumpTooLarge;
 use App\Modules\Portale\Entitlements\SlugTaken;
 use App\Modules\Portale\Entitlements\StaleEntitlements;
 use App\Modules\Portale\Entitlements\UnknownOrg;
@@ -39,13 +40,10 @@ final readonly class PortalApiController
         });
     }
 
-    public function entitlements(Request $request, string $org): JsonResponse
+    /** I diritti v1 non si accettano più (CONTRATTO_PORTALE.md §8): il portale manda solo l'abbonamento v2. */
+    public function entitlements(): JsonResponse
     {
-        return $this->guard($request, function (string $token) use ($org): JsonResponse {
-            $rev = $this->sync->apply($token, $org);
-
-            return new JsonResponse(['org_id' => $org, 'rev' => $rev]);
-        });
+        return self::error(410, 'gone');
     }
 
     /** Abbonamento v2 (CONTRATTO_PORTALE.md §3.2): al posto dei diritti calcolati dal portale. */
@@ -72,6 +70,8 @@ final readonly class PortalApiController
             return self::error(401, 'invalid_token');
         } catch (StaleEntitlements $e) {
             return new JsonResponse(['error' => 'stale_revision', 'current_rev' => $e->current], 409);
+        } catch (RevisionJumpTooLarge) {
+            return self::error(422, 'revision_jump_too_large');
         } catch (SlugTaken) {
             return self::error(409, 'slug_taken');
         } catch (UnknownPlan) {
