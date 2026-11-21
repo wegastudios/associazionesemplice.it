@@ -106,6 +106,12 @@ function fmtUpSnapshot(string $orgId): array
     });
 }
 
+/** Un testo che sembra 0x01 ma non si apre: intestazione plausibile (versione della chiave data) e corpo casuale. */
+function fmtUpCorrupt(int $version): string
+{
+    return "\x01".pack('N', $version).random_bytes(72);
+}
+
 function fmtUpCall(string $command, array $options = []): array
 {
     $code = Artisan::call($command, $options);
@@ -278,7 +284,7 @@ it('con --dry-run non scrive nulla e stampa solo conteggi', function (): void {
 
 it('con --dry-run conta le righe già 0x02 e quelle che non si decifrano ed esce con errore', function (): void {
     $seed = fmtUpSeed($this->alfa->id);
-    fmtUpIn($this->alfa->id, static fn () => fmtUpDb()->table('app.people')->where('id', $seed['people'][1])->update(['iban_enc' => Bytea::encode("\x01".random_bytes(60))]));
+    fmtUpIn($this->alfa->id, static fn () => fmtUpDb()->table('app.people')->where('id', $seed['people'][1])->update(['iban_enc' => Bytea::encode(fmtUpCorrupt(4000000000))]));
     $before = fmtUpSnapshot($this->alfa->id);
 
     [$code, $output] = fmtUpCall('saas:crypt:upgrade-format', ['--org' => $this->alfa->id, '--dry-run' => true]);
@@ -291,7 +297,7 @@ it('annulla una associazione con un campo illeggibile senza toccare le altre, ed
     $alfa = fmtUpSeed($this->alfa->id);
     $beta = fmtUpSeed($this->beta->id, 1);
     $goodIban = fmtUpRaw($this->alfa->id, 'app.people', 'iban_enc', $alfa['people'][1]);
-    fmtUpIn($this->alfa->id, static fn () => fmtUpDb()->table('app.people')->where('id', $alfa['people'][1])->update(['iban_enc' => Bytea::encode("\x01".random_bytes(60))]));
+    fmtUpIn($this->alfa->id, static fn () => fmtUpDb()->table('app.people')->where('id', $alfa['people'][1])->update(['iban_enc' => Bytea::encode(fmtUpCorrupt(1))]));
     $alfaBefore = fmtUpSnapshot($this->alfa->id);
 
     [$code, $output] = fmtUpCall('saas:crypt:upgrade-format');

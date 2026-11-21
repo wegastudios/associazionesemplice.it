@@ -45,6 +45,9 @@ final readonly class FormatUpgrader
 
     private const CHUNK = 500;
 
+    /** Il numero di versione della chiave sta in una colonna intera a 32 bit con segno. */
+    private const MAX_KEY_VERSION = 2147483647;
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
@@ -336,6 +339,13 @@ final readonly class FormatUpgrader
     /** Decifra il vecchio testo, lo ricifra con l'id della riga e controlla che il nuovo si riapra identico. */
     private function reencrypt(string $orgId, string $field, string $old, string $rowId): string
     {
+        // La versione della chiave si cerca nel database come intero a 32 bit: un testo guasto con un numero più grande
+        // farebbe fallire la ricerca con un errore del database (e annullerebbe la transazione) invece di dirsi illeggibile.
+        $header = unpack('N', substr($old, 1, 4));
+        if (! is_array($header) || ! is_int($header[1] ?? null) || $header[1] > self::MAX_KEY_VERSION) {
+            throw new RuntimeException('Versione della chiave non valida.');
+        }
+
         $plain = $this->cipher->decrypt($orgId, $field, $old, $rowId);
         $new = $this->cipher->encrypt($orgId, $field, $plain, $rowId);
         if ($new[0] !== "\x02" || ! hash_equals($plain, $this->cipher->decrypt($orgId, $field, $new, $rowId))) {
