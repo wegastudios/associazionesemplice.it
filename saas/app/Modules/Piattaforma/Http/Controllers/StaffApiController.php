@@ -71,7 +71,10 @@ final readonly class StaffApiController
         return response()->json(['token' => $this->issuer->issue($person, $area, $sid, $areas)]);
     }
 
-    /** `staff_token`: «Vai a» un'altra area con la sessione centrale già aperta (`sid`, destinazione in `to`). */
+    /**
+     * `staff_token`: «Vai a» un'altra area con la sessione centrale già aperta (`sid`, destinazione in `to`). Accetta solo
+     * l'identificativo vero della sessione; un riferimento di area non lo trova e la risposta è quella di sessione non valida.
+     */
     public function token(Request $request): JsonResponse
     {
         $verified = $this->verified($request, 'staff_token');
@@ -103,7 +106,8 @@ final readonly class StaffApiController
 
         $sid = $verified['claims']['sid'] ?? null;
         $sid = is_string($sid) && preg_match('/^[0-9a-f]{32}$/', $sid) === 1 ? $sid : null;
-        $person = $sid === null ? null : $this->directory->personOfSession($sid);
+        // Vale solo il riferimento emesso per l'area che firma la richiesta: l'identificativo vero non passa di qui.
+        $person = $sid === null ? null : $this->directory->personOfAreaRef($sid, $verified['area']);
         $areas = $person === null ? [] : $this->directory->areas($person);
         $level = $areas[$verified['area']] ?? null;
         if ($person === null || $level === null) {

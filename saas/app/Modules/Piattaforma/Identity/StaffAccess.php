@@ -47,7 +47,13 @@ final readonly class StaffAccess
     /** Chiude la sessione centrale (uscita). */
     public function revokeSession(string $sid): void
     {
-        $this->db->connection('pgsql')->table('core.staff_sessions')->where('sid', $sid)->whereNull('revoked_at')->update(['revoked_at' => now()]);
+        $this->revokeStored(SessionFingerprint::ofSession($sid));
+    }
+
+    /** Chiude la sessione dalla sua impronta (quella che sta nel database). */
+    public function revokeStored(string $stored): void
+    {
+        $this->db->connection('pgsql')->table('core.staff_sessions')->where('sid', $stored)->whereNull('revoked_at')->update(['revoked_at' => now()]);
     }
 
     public function codeIsValid(StaffPerson $person, string $code): bool

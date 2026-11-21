@@ -130,7 +130,7 @@ final readonly class IdentityService
         $sessions = [];
         foreach ($this->db->connection('pgsql')->table('core.staff_sessions')->where('person_id', $person->id)->whereNull('revoked_at')->where('created_at', '>', now()->subSeconds(StaffDirectory::SESSION_MAX))->orderByDesc('last_used_at')->get(['sid', 'ip', 'created_at', 'last_used_at']) as $row) {
             $id = is_string($row->sid) ? $row->sid : '';
-            $sessions[] = ['id' => self::sessionRef($id), 'ip' => $row->ip, 'created_at' => $row->created_at, 'last_used_at' => $row->last_used_at, 'current' => $id === $sid];
+            $sessions[] = ['id' => self::sessionRef($id), 'ip' => $row->ip, 'created_at' => $row->created_at, 'last_used_at' => $row->last_used_at, 'current' => $id === SessionFingerprint::ofSession($sid)];
         }
 
         return ['person' => $this->card($person), 'areas' => $this->directory->areas($person), 'two_factor' => $this->access->hasTwoFactor($person), 'sessions' => $sessions];
@@ -148,7 +148,7 @@ final readonly class IdentityService
         }
         $db = $this->db->connection('pgsql');
         $db->table('core.staff_people')->where('id', $person->id)->update(['password' => $this->hasher->make($new)]);
-        $db->table('core.staff_sessions')->where('person_id', $person->id)->where('sid', '!=', $sid)->whereNull('revoked_at')->update(['revoked_at' => now()]);
+        $db->table('core.staff_sessions')->where('person_id', $person->id)->where('sid', '!=', SessionFingerprint::ofSession($sid))->whereNull('revoked_at')->update(['revoked_at' => now()]);
         $this->directory->audit('staff.password.changed', $person->id, null, [], $ip);
 
         return [];
@@ -268,7 +268,7 @@ final readonly class IdentityService
         $revoked = 0;
         foreach ($this->db->connection('pgsql')->table('core.staff_sessions')->where('person_id', $person->id)->whereNull('revoked_at')->pluck('sid') as $other) {
             if (is_string($other) && hash_equals(self::sessionRef($other), $ref)) {
-                $this->access->revokeSession($other);
+                $this->access->revokeStored($other);
                 $revoked++;
             }
         }
@@ -283,7 +283,7 @@ final readonly class IdentityService
 
     public function personOf(string $sid): ?StaffPerson
     {
-        return preg_match('/^[0-9a-f]{32}$/', $sid) === 1 ? $this->directory->personOfSession($sid) : null;
+        return $this->directory->personOfSession($sid);
     }
 
     private static function sessionRef(string $sid): string
