@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.21
+Stable tag: 1.3.22
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,10 @@ The Apple Wallet pass is built on your server and downloaded by the member: the 
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.3.22 =
+* Sicurezza: ogni socio può avere al massimo 10 prenotazioni di risorse ancora da usare (il numero si cambia in Limiti e soglie), con limiti di frequenza su prenotazioni, lista d'attesa, annullamenti, ricevute e rendiconti.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.21 =
 * Altro: se un pagamento online riguarda un mese di corso con l'iscrizione terminata, l'incasso si registra comunque e il pagamento resta «da controllare», con il motivo.

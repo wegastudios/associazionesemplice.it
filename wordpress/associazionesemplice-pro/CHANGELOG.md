@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.22 – 2026-11-21
+- Sicurezza: ogni socio può avere al massimo 10 prenotazioni di risorse ancora da usare (il numero si cambia in Limiti e soglie), con limiti di frequenza su prenotazioni, lista d'attesa, annullamenti, ricevute e rendiconti.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.21 – 2026-11-20
 - Altro: se un pagamento online riguarda un mese di corso con l'iscrizione terminata, l'incasso si registra comunque e il pagamento resta «da controllare», con il motivo.
 - Altro: finché un pagamento online è «da controllare», il socio non riceve la conferma: parte quando lo segni «controllato», e non parte se lo rimborsi.

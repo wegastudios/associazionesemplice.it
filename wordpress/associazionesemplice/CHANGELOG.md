@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.35 – 2026-11-21
+- Nuovo: «Rigenera il codice» della tessera QR, per il socio nell'area soci e per la segreteria dalla scheda. Il codice vecchio, anche stampato o nel Wallet, smette subito di valere.
+- Sicurezza: limiti di frequenza per socio su richieste, annullamenti, profilo, ricevute e rigenerazione del codice. I valori si cambiano in Limiti e soglie.
+- Altro: controlli contro gli errori di digitazione: note fino a 2.000 caratteri, date tra il 1900 e il 2100, al massimo 10.000.000 € e 200 voci per incasso.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.34 – 2026-11-20
 - Sicurezza: la domanda di adesione fatta dal sito si conferma dall'email: arriva alla segreteria solo dopo il clic sul link (vale 48 ore; un invio all'ora per indirizzo).
 - Altro: le domande mai confermate si cancellano dopo 30 giorni; di una domanda respinta con quota pagata, dopo 90 giorni restano solo nome e cognome (i movimenti contabili restano).
