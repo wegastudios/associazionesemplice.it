@@ -91,7 +91,13 @@ Decisione della titolare, che prevale su quanto sopra dove diverge:
 
 ## 12. Passo 6 — operatori delle associazioni nel login unico (12/11/2026)
 
-- **Fatto nel codice, spento di default** (`SAAS_UNIFIED_OPERATORS=false`): il portale chiede `identity_operator_entry` con la sessione centrale; il SaaS risponde con un indirizzo `<app>/accesso-unico?t=…` (biglietto `operator_sso`, 60 secondi, monouso). Il gestionale lo consuma, apre la sessione dell'utente con la stessa email (deve essere attivo e operatore di almeno un'associazione) e va a `/gestionale`. Nessuna password passa da lì.
-- **Secondo livello**: se all'accesso unico è stato verificato, il gestionale non lo richiede di nuovo (`operator.sso_mfa` in sessione); altrimenti vale la regola di sempre.
+- **Fatto nel codice, spento di default** (`SAAS_UNIFIED_OPERATORS=false`): il portale chiede `identity_operator_entry` con la sessione centrale; il SaaS risponde con un indirizzo `<app>/accesso-unico#t=…` (biglietto `operator_sso`, 60 secondi, monouso, nel frammento dell'indirizzo). Una pagina intermedia lo legge e lo manda in POST a `/accesso-unico`: non compare nelle richieste né nei log. Nessuna password passa da lì.
+- **Secondo livello**: il biglietto dice solo chi è la persona. Chi ha il secondo livello nel gestionale passa sempre dalla sfida del gestionale; chi non l'ha segue la regola degli operatori (attivarlo prima di tutto).
+- **Legame esplicito** (tabella `core.operator_links`, utente e persona): nasce al primo ingresso, dopo password e secondo livello. L'email può solo proporre il legame; se l'utente non ha il secondo livello, non viene legato. I super amministratori si riconoscono dall'identificativo della persona (`core.staff_super_admins`, comando `saas:staff:super-admin`), non dall'email.
+- **Cambio utente**: se nel browser c'è già la sessione di un altro utente, una pagina di conferma chiede prima di sostituirla.
+- **Condizioni prima di accendere `SAAS_UNIFIED_OPERATORS`**:
+  - il portale deve conservare il frammento `#t=` nel redirect verso l'indirizzo d'ingresso;
+  - va acceso `SAAS_REQUIRE_TWO_FACTOR`, così il caso «utente non legato senza secondo livello» sparisce;
+  - per chi non ha il secondo livello basta il messaggio «Chiedi aiuto al supporto».
 - **Con il flag acceso** la pagina di accesso del gestionale rinvia a `/accedi` del portale.
 - **Resta da fare (portale-vendita)**: «Apri il gestionale» in `/account` deve chiamare `operator_entry` e seguire l'indirizzo ricevuto. **Da decidere con la titolare** prima di accendere il flag: inviti e cambio password/email degli operatori (oggi nel gestionale) devono passare da `/account`; persone che sono insieme staff e operatori; obbligo del secondo livello per gli operatori.

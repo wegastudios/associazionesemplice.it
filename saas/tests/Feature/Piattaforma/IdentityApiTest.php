@@ -291,27 +291,181 @@ it('dà il biglietto solo a chi è operatore, lo accetta una volta sola e apre i
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
     $url = idCall($this, 'operator-entry', ['sid' => $sid])->assertOk()->json('url');
-    expect($url)->toBeString()->toContain('/accesso-unico?t=');
-    $path = (string) parse_url((string) $url, PHP_URL_PATH).'?'.(string) parse_url((string) $url, PHP_URL_QUERY);
+    // Il biglietto sta nel frammento (mai nelle richieste, quindi mai nei log), non nella query.
+    expect($url)->toBeString()->toContain('/accesso-unico#t=')->not->toContain('?t=');
+    $token = opTicket((string) $url);
 
-    $this->get($path)->assertRedirect('/gestionale');
-    $this->assertAuthenticatedAs($user);
-    expect(session('operator.sso_mfa'))->toBeFalse(); // la persona di prova non ha il secondo livello
+    $this->post('/accesso-unico', ['t' => $token])->assertRedirect(route('two-factor.login'));
+    $this->assertGuest(); // entrato nel gestionale solo dopo il secondo livello
+    expect(session('login.id'))->toBe($user->id);
 
     // Il biglietto non si riusa.
-    auth()->logout();
-    $this->get($path)->assertRedirect('https://associazionesemplice.it/account');
-    $this->assertGuest();
+    $this->post('/accesso-unico', ['t' => $token])->assertRedirect('https://associazionesemplice.it/account');
 });
 
 it('rifiuta un biglietto contraffatto o con l\'ingresso spento', function (): void {
     config(['saas.unified_login.operators' => true]);
 
-    $this->get('/accesso-unico?t=non-un-biglietto')->assertRedirect('https://associazionesemplice.it/account');
+    $this->post('/accesso-unico', ['t' => 'non-un-biglietto'])->assertRedirect('https://associazionesemplice.it/account');
     $this->assertGuest();
 
     config(['saas.unified_login.operators' => false]);
-    $this->get('/accesso-unico?t=x')->assertRedirect('https://associazionesemplice.it/account');
+    $this->post('/accesso-unico', ['t' => 'x'])->assertRedirect('https://associazionesemplice.it/account');
+    $this->get('/accesso-unico')->assertRedirect('https://associazionesemplice.it/account');
+});
+
+/** Il biglietto dell'indirizzo d'ingresso (sta nel frammento). */
+function opTicket(string $url): string
+{
+    parse_str((string) parse_url($url, PHP_URL_FRAGMENT), $parts);
+
+    return is_string($parts['t'] ?? null) ? $parts['t'] : '';
+}
+
+/** Persona centrale di prova entrata + biglietto d'ingresso nuovo. */
+function opNewTicket(Tests\TestCase $test, string $sid): string
+{
+    return opTicket((string) idCall($test, 'operator-entry', ['sid' => $sid])->assertOk()->json('url'));
+}
+
+it('il vecchio indirizzo con il biglietto in GET non entra e non lo consuma: c\'è solo la pagina intermedia', function (): void {
+    config(['saas.unified_login.operators' => true]);
+    idPerson();
+    $sid = idLogin($this);
+    $user = $this->createUser('persona@example.test', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+    $token = opNewTicket($this, $sid);
+
+    $this->get('/accesso-unico?t='.rawurlencode($token))->assertOk()->assertSee('Apertura del gestionale')->assertDontSee($token, false);
+    $this->assertGuest();
+    $this->get('/accesso-unico/inoltra.js')->assertOk()->assertHeader('Content-Type', 'application/javascript; charset=utf-8')->assertSee('location.hash', false);
+
+    // Il biglietto è ancora buono per il POST.
+    $this->post('/accesso-unico', ['t' => $token])->assertRedirect(route('two-factor.login'));
+});
+
+it('senza secondo livello superato in quella sessione manda alla sfida del gestionale, e il legame nasce dopo il codice giusto', function (): void {
+    config(['saas.unified_login.operators' => true]);
+    $personId = idPerson();
+    $sid = idLogin($this);
+    $user = $this->createUser('persona@example.test', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+
+    $this->post('/accesso-unico', ['t' => opNewTicket($this, $sid)])->assertRedirect(route('two-factor.login'));
+    $this->assertGuest();
+    expect(session('login.id'))->toBe($user->id)
+        ->and(session(App\Modules\Piattaforma\Identity\OperatorEntry::LINK_KEY.'.person'))->toBe($personId)
+        ->and(session('operator.sso_mfa'))->toBeNull()
+        ->and(DB::table('core.operator_links')->count())->toBe(0); // ancora nessun legame: manca il codice
+
+    // Il codice sbagliato non entra e non lega.
+    $link = session(App\Modules\Piattaforma\Identity\OperatorEntry::LINK_KEY);
+    $this->withSession(['login.id' => $user->id, 'login.remember' => false, App\Modules\Piattaforma\Identity\OperatorEntry::LINK_KEY => $link])
+        ->post('/verifica-accesso', ['code' => '000000']);
+    $this->assertGuest();
+    expect(DB::table('core.operator_links')->count())->toBe(0);
+
+    // Il codice giusto entra e crea il legame.
+    $this->withSession(['login.id' => $user->id, 'login.remember' => false, 'url.intended' => '/gestionale', App\Modules\Piattaforma\Identity\OperatorEntry::LINK_KEY => $link])
+        ->post('/verifica-accesso', ['code' => $this->totp($user)])->assertRedirect('/gestionale');
+    $this->assertAuthenticatedAs($user);
+    expect(DB::table('core.operator_links')->where('user_id', $user->id)->value('person_id'))->toBe($personId)
+        ->and(DB::table('core.staff_audit')->where('action', 'operator.linked')->count())->toBe(1);
+});
+
+it('l\'email da sola non basta: senza legame né secondo livello l\'utente non entra e non viene legato', function (): void {
+    config(['saas.unified_login.operators' => true]);
+    idPerson();
+    $sid = idLogin($this);
+    $user = $this->createUser('persona@example.test'); // senza secondo livello
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+
+    $this->post('/accesso-unico', ['t' => opNewTicket($this, $sid)])->assertOk()->assertSee('Accesso non collegato');
+    $this->assertGuest();
+    expect(DB::table('core.operator_links')->count())->toBe(0);
+});
+
+it('chi è già legato entra dalla sfida anche con un\'email diversa; un\'altra persona con quell\'email non prende il suo posto', function (): void {
+    config(['saas.unified_login.operators' => true]);
+    $personId = idPerson();
+    $sid = idLogin($this);
+    $org = $this->createOrg('Polisportiva Alfa');
+    $legata = $this->createUser('altra@example.test', twoFactor: true);
+    $omonima = $this->createUser('persona@example.test', twoFactor: true);
+    $this->addOperator($org, $legata);
+    $this->addOperator($org, $omonima);
+    DB::table('core.operator_links')->insert(['user_id' => $legata->id, 'person_id' => $personId]);
+
+    $this->post('/accesso-unico', ['t' => opNewTicket($this, $sid)])->assertRedirect(route('two-factor.login'));
+    expect(session('login.id'))->toBe($legata->id);
+
+    // L'utente con l'email della persona, legato a un'altra persona, non è proposto a nessun altro.
+    DB::table('core.operator_links')->where('user_id', $legata->id)->delete();
+    $altra = (string) Str::uuid7();
+    DB::table('core.staff_people')->insert(['id' => $altra, 'email' => 'terza@example.test', 'name' => 'Terza', 'password' => Hash::make(ID_PASSWORD), 'active' => true]);
+    DB::table('core.operator_links')->insert(['user_id' => $omonima->id, 'person_id' => $altra]);
+    expect(idCall($this, 'operator-entry', ['sid' => $sid])->status())->toBe(403);
+});
+
+it('un utente legato senza secondo livello segue la regola degli operatori: prima lo attiva', function (): void {
+    config(['saas.unified_login.operators' => true]);
+    $personId = idPerson();
+    $sid = idLogin($this);
+    $user = $this->createUser('persona@example.test');
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+    DB::table('core.operator_links')->insert(['user_id' => $user->id, 'person_id' => $personId]);
+
+    $this->post('/accesso-unico', ['t' => opNewTicket($this, $sid)])->assertRedirect('/gestionale');
+    $this->get('/gestionale')->assertRedirect(route('account.two-factor'));
+});
+
+it('se nel browser c\'è la sessione di un altro utente chiede conferma invece di sostituirla', function (): void {
+    config(['saas.unified_login.operators' => true]);
+    $personId = idPerson();
+    $sid = idLogin($this);
+    $org = $this->createOrg('Polisportiva Alfa');
+    $user = $this->createUser('persona@example.test', twoFactor: true);
+    $altro = $this->createUser('altro@example.test', twoFactor: true);
+    $this->addOperator($org, $user);
+    $this->addOperator($org, $altro);
+    DB::table('core.operator_links')->insert(['user_id' => $user->id, 'person_id' => $personId]);
+
+    $this->actingAs($altro)->post('/accesso-unico', ['t' => opNewTicket($this, $sid)])
+        ->assertOk()->assertSee('Stai per cambiare utente')->assertSee('altro@example.test')->assertSee('persona@example.test');
+    $this->assertAuthenticatedAs($altro); // la sessione dell'altro è intatta
+    expect(session('login.id'))->toBeNull();
+
+    // Conferma: si va alla sfida del nuovo utente; senza attesa in sessione non succede nulla.
+    $pending = session(App\Modules\Piattaforma\Identity\OperatorEntry::PENDING_KEY);
+    session()->forget(App\Modules\Piattaforma\Identity\OperatorEntry::PENDING_KEY);
+    $this->post('/accesso-unico/conferma')->assertRedirect('/gestionale');
+    $this->withSession([App\Modules\Piattaforma\Identity\OperatorEntry::PENDING_KEY => $pending])->post('/accesso-unico/conferma')->assertRedirect(route('two-factor.login'));
+    expect(session('login.id'))->toBe($user->id);
+
+    // Un'attesa scaduta non vale.
+    $pending['until'] = time() - 1;
+    $this->withSession([App\Modules\Piattaforma\Identity\OperatorEntry::PENDING_KEY => $pending])->post('/accesso-unico/conferma')->assertRedirect('/gestionale');
+});
+
+it('chi è già dentro come lo stesso utente va dritto al gestionale', function (): void {
+    config(['saas.unified_login.operators' => true]);
+    $personId = idPerson();
+    $sid = idLogin($this);
+    $user = $this->createUser('persona@example.test', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+    DB::table('core.operator_links')->insert(['user_id' => $user->id, 'person_id' => $personId]);
+
+    $this->actingAs($user)->post('/accesso-unico', ['t' => opNewTicket($this, $sid)])->assertRedirect('/gestionale');
+});
+
+it('con l\'ingresso spento il gestionale resta quello di prima: modulo di accesso proprio e nessun ingresso unico', function (): void {
+    idPerson();
+    $this->createUser('persona@example.test', twoFactor: true);
+
+    $this->get('/accesso-unico')->assertRedirect('https://associazionesemplice.it/account');
+    $this->post('/accesso-unico/conferma')->assertRedirect('/gestionale');
+    $this->get('/accesso')->assertOk();
+    $this->assertGuest();
 });
 
 /* Codici sbagliati contati per persona, non per biglietto. */

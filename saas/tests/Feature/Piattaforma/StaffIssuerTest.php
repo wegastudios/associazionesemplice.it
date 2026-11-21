@@ -155,8 +155,26 @@ it('non fa entrare in un\'area dove la persona non ha un ruolo', function (): vo
     idpLogin($this)->assertUnauthorized();
 });
 
-it('i super amministratori sono admin di tutte le aree senza ruoli assegnati', function (): void {
+it('l\'email in configurazione non basta a fare un super amministratore: conta l\'identificativo della persona', function (): void {
     idpPerson('titolare@example.test', []);
+
+    idpLogin($this, ['email' => 'titolare@example.test'])->assertUnauthorized();
+});
+
+it('il comando indica e toglie un super amministratore per identificativo', function (): void {
+    $id = idpPerson('titolare@example.test', []);
+
+    $this->artisan('saas:staff:super-admin', ['email' => 'titolare@example.test'])->assertSuccessful();
+    expect(DB::table('core.staff_super_admins')->where('person_id', $id)->exists())->toBeTrue();
+
+    $this->artisan('saas:staff:super-admin', ['email' => 'titolare@example.test', '--remove' => true])->assertSuccessful();
+    expect(DB::table('core.staff_super_admins')->count())->toBe(0);
+    $this->artisan('saas:staff:super-admin', ['email' => 'nessuno@example.test'])->assertFailed();
+});
+
+it('i super amministratori sono admin di tutte le aree senza ruoli assegnati', function (): void {
+    $id = idpPerson('titolare@example.test', []);
+    DB::table('core.staff_super_admins')->insert(['person_id' => $id]);
 
     $token = (string) idpLogin($this, ['email' => 'titolare@example.test'])->assertOk()->json('token');
     $claims = idpVerifyStaffToken($token, $this->staffPublic, 'associazionesemplice-portale');
