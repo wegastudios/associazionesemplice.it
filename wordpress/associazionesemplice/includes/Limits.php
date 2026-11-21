@@ -230,6 +230,43 @@ final class Limits {
 			'Un valore basso può costringere a riprovare più tardi chi non ha trovato l\'email: le coordinate restano comunque visibili nell\'area soci.'
 		);
 
+		$add(
+			'member_open_bookings_max', 'accesso', 'Prenotazioni di risorse ancora da usare, per socio, nell\'area soci', 'prenotazioni', 10, 1, 200,
+			'Quante prenotazioni di risorse (sale, campi, postazioni) un socio può avere ancora da usare, su tutte le risorse insieme. La segreteria non ha questo limite. Il massimo per ogni singola risorsa resta nelle impostazioni della risorsa.',
+			'Un valore alto permette a un solo socio di occupare per settimane tutte le fasce libere.',
+			'Un socio che usa molto le risorse dovrà aspettare che le prenotazioni passino o annullarne una.'
+		);
+		$add(
+			'member_book_per_10min', 'accesso', 'Prenotazioni e iscrizioni alla lista d\'attesa per socio, ogni 10 minuti', 'azioni', 20, 1, 500,
+			'Impedisce a un programma automatico di prenotare in massa dall\'area soci con un solo account.',
+			'Un valore alto permette di occupare molti posti in pochi minuti.',
+			'Chi prenota molte date insieme potrebbe dover aspettare qualche minuto.'
+		);
+		$add(
+			'member_cancel_per_10min', 'accesso', 'Annullamenti per socio, ogni 10 minuti', 'azioni', 20, 1, 500,
+			'Impedisce di prenotare e annullare in continuazione per tenere occupati i posti o riempire il registro.',
+			'Un valore alto permette cicli di prenota e annulla molto rapidi.',
+			'Chi annulla molte prenotazioni insieme potrebbe dover aspettare qualche minuto.'
+		);
+		$add(
+			'member_profile_per_10min', 'accesso', 'Modifiche del profilo per socio, ogni 10 minuti', 'azioni', 10, 1, 200,
+			'Limita le modifiche ripetute del profilo dall\'area soci.',
+			'Un valore alto permette molte scritture ravvicinate con un solo account.',
+			'Chi corregge più volte i propri dati potrebbe dover aspettare qualche minuto.'
+		);
+		$add(
+			'member_receipt_per_10min', 'accesso', 'Scarichi di ricevute e attestazioni PDF per socio, ogni 10 minuti', 'scarichi', 30, 1, 500,
+			'Evita che un account o un programma automatico faccia generare di continuo i PDF.',
+			'Un valore alto permette di caricare molto il sito con un solo account.',
+			'Chi scarica molte ricevute insieme potrebbe dover aspettare qualche minuto.'
+		);
+		$add(
+			'member_qr_per_10min', 'accesso', 'Rigenerazioni del codice della tessera per socio, ogni 10 minuti', 'azioni', 10, 1, 100,
+			'Limita le rigenerazioni ripetute del codice QR della tessera dall\'area soci o dalla scheda.',
+			'Un valore alto permette molte scritture ravvicinate.',
+			'Chi rigenera più volte il codice potrebbe dover aspettare qualche minuto.'
+		);
+
 		// ---------- Dati ----------
 		$add(
 			'import_max_rows', 'dati', 'Righe per tipo in un file di importazione', 'righe', 5000, 100, 50000,

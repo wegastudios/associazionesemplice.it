@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Frontend;
 
 use AssociazioneSemplice\Access;
 use AssociazioneSemplice\Edition;
+use AssociazioneSemplice\Limits;
 use AssociazioneSemplice\PaymentItems;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
@@ -68,6 +69,11 @@ final class ResourcesFront {
 	/** @return string|array messaggio, oppure ['url' => pagina del gateway] se si paga online */
 	public static function do_book( array $post ) {
 		$actor = self::actor();
+		\AssociazioneSemplice\MemberThrottle::hit( 'book', (int) $actor['id'], 'member_book_per_10min' );
+		$open = Resources::open_count( (int) $actor['id'] );
+		if ( $open >= Limits::get( 'member_open_bookings_max' ) ) { // tetto per scheda su tutte le risorse insieme; la segreteria prenota dal pannello, senza questo limite
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Hai già {N} prenotazioni da usare: aspetta che passino o annullane una, oppure scrivi alla segreteria.', array( 'N' => $open ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		if ( Plugin::people()->profile_blocks( $actor ) ) {
 			throw new \InvalidArgumentException( 'Prima di prenotare completa i tuoi dati (indirizzo e codice fiscale) nel riquadro «Il mio profilo».' );
 		}
@@ -121,12 +127,14 @@ final class ResourcesFront {
 
 	public static function do_cancel( array $post ): string {
 		$actor = self::actor();
+		\AssociazioneSemplice\MemberThrottle::hit( 'cancel', (int) $actor['id'], 'member_cancel_per_10min' );
 		Resources::cancel( (int) ( $post['id'] ?? 0 ), false, (int) $actor['id'] );
 		return 'Prenotazione annullata.';
 	}
 
 	public static function do_wait( array $post ): string {
 		$actor = self::actor();
+		\AssociazioneSemplice\MemberThrottle::hit( 'book', (int) $actor['id'], 'member_book_per_10min' );
 		$rid  = (int) ( $post['resource_id'] ?? 0 );
 		$free = ! Resources::between( $rid, current_time( 'Y-m-d H:i:s' ), gmdate( 'Y-m-d H:i:s', strtotime( current_time( 'Y-m-d H:i:s' ) . ' +1 second' ) ) );
 		Resources::waitlist_join( $rid, (int) $actor['id'] );
@@ -135,6 +143,7 @@ final class ResourcesFront {
 
 	public static function do_unwait( array $post ): string {
 		$actor = self::actor();
+		\AssociazioneSemplice\MemberThrottle::hit( 'cancel', (int) $actor['id'], 'member_cancel_per_10min' );
 		Resources::waitlist_leave( (int) ( $post['resource_id'] ?? 0 ), (int) $actor['id'] );
 		return 'Sei uscito dalla lista d\'attesa.';
 	}

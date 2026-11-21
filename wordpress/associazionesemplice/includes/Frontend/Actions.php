@@ -216,6 +216,7 @@ final class Actions {
 	/** Prenota sé stessi o un proprio ospite. @return string messaggio */
 	public static function do_book( array $post ): string {
 		$actor     = self::actor();
+		\AssociazioneSemplice\MemberThrottle::hit( 'book', (int) $actor['id'], 'member_book_per_10min' );
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
 		self::assert_profile( $actor );
 		self::require_cap( 'asem_book_for', $person_id );
@@ -247,6 +248,7 @@ final class Actions {
 	/** Mette in lista d'attesa sé stessi o un proprio ospite per una data senza più posti. */
 	public static function do_waitlist_join( array $post ): string {
 		$actor     = self::actor();
+		\AssociazioneSemplice\MemberThrottle::hit( 'book', (int) $actor['id'], 'member_book_per_10min' );
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
 		self::assert_profile( $actor );
 		self::require_cap( 'asem_book_for', $person_id );
@@ -311,6 +313,7 @@ final class Actions {
 	/** Annulla una prenotazione se la regola lo consente: gratis sempre; a pagamento solo se l'evento è cancellabile e nei termini. */
 	public static function do_cancel_booking( array $post ): string {
 		$actor     = self::actor();
+		\AssociazioneSemplice\MemberThrottle::hit( 'cancel', (int) $actor['id'], 'member_cancel_per_10min' );
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
 		self::require_cap( 'asem_book_for', $person_id );
 		$session_id = (int) ( $post['session_id'] ?? 0 );
@@ -671,6 +674,7 @@ final class Actions {
 
 	public static function do_profile( array $post ): string {
 		$actor = self::actor();
+		\AssociazioneSemplice\MemberThrottle::hit( 'profile', (int) $actor['id'], 'member_profile_per_10min' );
 		self::require_cap( 'asem_edit_own_profile', (int) $actor['id'] );
 		$people = Plugin::people();
 		$in     = array(
