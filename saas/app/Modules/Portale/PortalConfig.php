@@ -61,10 +61,14 @@ final readonly class PortalConfig
     public function runtimeKeys(): array
     {
         try {
-            $public = sodium_crypto_sign_publickey(sodium_crypto_sign_seed_keypair($this->signingSeed()));
+            $seed = $this->signingSeed();
         } catch (RuntimeException) {
             return [];
         }
+        if ($seed === '') {
+            return [];
+        }
+        $public = sodium_crypto_sign_publickey(sodium_crypto_sign_seed_keypair($seed));
 
         return [EdDsaJwt::kid($public, 'saas-') => EdDsaJwt::b64($public)];
     }

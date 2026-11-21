@@ -65,7 +65,11 @@ final readonly class WebRuntimeProbe
             $response = Http::timeout(5)->withoutRedirecting()->acceptJson()->post($this->config->saasUrl().'/api/portale/v2/runtime', ['token' => $token]);
             $body = $response->successful() ? $response->json() : null;
 
-            return is_array($body) && is_bool($body['apcu'] ?? null) && is_array($body['opcache'] ?? null) ? $body : null;
+            if (! is_array($body) || ! is_bool($body['apcu'] ?? null) || ! is_array($body['opcache'] ?? null)) {
+                return null;
+            }
+
+            return array_filter($body, is_string(...), ARRAY_FILTER_USE_KEY);
         } catch (Throwable) {
             return null;
         }
