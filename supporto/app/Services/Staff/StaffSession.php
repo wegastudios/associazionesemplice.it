@@ -52,7 +52,7 @@ class StaffSession
         return $user;
     }
 
-    /** Aree dove la persona ha un ruolo, per il selettore «Vai a»: solo saas e wordpress, con livello di sole lettere minuscole. */
+    /** Aree dove la persona ha un ruolo, per il menu (link al portale): solo saas e wordpress, con livello di sole lettere minuscole. */
     public static function areas(mixed $areas): array
     {
         $out = [];
