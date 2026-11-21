@@ -105,7 +105,7 @@ final class StaffSso {
 		if ( ! in_array( $c['level'] ?? null, self::LEVELS, true ) || ! is_string( $c['jti'] ?? null ) || '' === $c['jti'] || strlen( $c['jti'] ) > 64 ) {
 			return null;
 		}
-		if ( ! is_string( $c['sid'] ?? null ) || 1 !== preg_match( '/^[0-9a-f]{32}$/', $c['sid'] ) || ( isset( $c['mfa'] ) && ! is_bool( $c['mfa'] ) ) ) {
+		if ( ! is_string( $c['sid'] ?? null ) || 1 !== preg_match( '/^[A-Za-z0-9._-]{16,128}$/', $c['sid'] ) || ( isset( $c['mfa'] ) && ! is_bool( $c['mfa'] ) ) ) {
 			return null;
 		}
 		return $c;
