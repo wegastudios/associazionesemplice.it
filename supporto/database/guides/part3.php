@@ -343,7 +343,7 @@ Per non riempire il sito di richieste inutili ci sono tre limiti, che cambi in *
 
 ## Limiti per socio
 
-Oltre ai tetti sopra, ogni socio può fare un numero limitato di operazioni ogni **10 minuti**. I valori di partenza, che cambi in **Impostazioni → Limiti e soglie**, sono:
+Oltre ai tetti sopra, ogni socio può fare un numero limitato di operazioni ogni **10 minuti**. I valori di partenza, che cambi in **Impostazioni → Limiti e soglie → Accessi e sicurezza**, sono:
 
 - prenotarsi o mettersi in lista d'attesa: **20**;
 - annullare una prenotazione: **20**;

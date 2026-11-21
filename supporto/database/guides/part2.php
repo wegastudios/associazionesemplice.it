@@ -197,10 +197,10 @@ Il QR contiene solo un codice firmato, legato al tuo sito. **Rigenera tutti i QR
 
 Se un socio perde il telefono o condivide il suo codice, si può rigenerare solo il suo:
 
-- il **socio**, dall'area soci, nella sezione del codice, con **Rigenerare il codice**;
+- il **socio**, dall'area soci, nella sezione del codice, con **Rigenera il codice**;
 - la **segreteria**, dalla scheda della persona, nel pannello della tessera e del QR.
 
-Il vecchio codice **smette subito di valere**, anche sulla tessera stampata o nel Wallet. Finché non lo rigeneri, il codice già stampato resta valido. L'azione resta scritta nel registro azioni. Si può rigenerare un numero limitato di volte in poco tempo (vedi [Limiti per socio](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito)).
+Finché non si rigenera, il codice già stampato resta valido. Dopo, quello vecchio smette subito di valere, anche sulla tessera stampata o nel Wallet. L'azione resta scritta nel registro azioni. Si può rigenerare un numero limitato di volte in poco tempo (vedi [Limiti per socio](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito)).
 MD,
     ],
     [
