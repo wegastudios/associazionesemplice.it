@@ -11828,6 +11828,38 @@ asem_ok( 2 === $pc_purges, 'cache eventi: lo svuotamento programmato arriva e sv
 wp_clear_scheduled_hook( 'asem_pc_flush_external' );
 remove_action( 'sg_cachepress_purge_cache', $pc_cb );
 delete_transient( 'asem_pc_ext_last' );
+// L1: svuotamento mirato di LiteSpeed (e WP Rocket) per un solo evento
+$pc_urls = array();
+$pc_all  = 0;
+$pc_cb_u = function ( $u ) use ( &$pc_urls ) {
+	$pc_urls[] = $u;
+};
+$pc_cb_a = function () use ( &$pc_all ) {
+	++$pc_all;
+};
+add_action( 'litespeed_purge_url', $pc_cb_u );
+add_action( 'litespeed_purge_all', $pc_cb_a );
+PageCache::finish(); // chiude ciò che le prove precedenti hanno lasciato in sospeso
+$pc_urls = array();
+$pc_all  = 0;
+delete_transient( 'asem_pc_ext_last' );
+update_post_meta( $pc_post, '_asem_prova_l1', (string) microtime( true ) );
+PageCache::finish();
+asem_ok( in_array( get_permalink( $pc_post ), $pc_urls, true ), 'cache eventi: la modifica di un evento svuota la pagina di quell\'evento sulle cache che sanno farlo' );
+asem_ok( 0 === $pc_all, 'cache eventi: la modifica di un evento non svuota tutto LiteSpeed' );
+delete_post_meta( $pc_post, '_asem_prova_l1' );
+PageCache::finish();
+$pc_urls = array();
+$pc_all  = 0;
+delete_transient( 'asem_pc_ext_last' );
+PageCache::purge();
+PageCache::finish();
+asem_ok( 1 === $pc_all && ! $pc_urls, 'cache eventi: una scrittura non legata a un evento svuota tutto (con il limite dei 5 minuti)' );
+remove_action( 'litespeed_purge_url', $pc_cb_u );
+remove_action( 'litespeed_purge_all', $pc_cb_a );
+wp_clear_scheduled_hook( 'asem_pc_flush_external' );
+delete_transient( 'asem_pc_ext_last' );
+delete_transient( 'asem_pc_ext_all' );
 // nessuna pagina conservata porta un dato di chi ha prenotato
 $pc_blob = '';
 foreach ( $wpdb->get_col( "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_asem\\_pc\\_%'" ) as $pc_v ) {
