@@ -2,9 +2,9 @@
 namespace Portale;
 
 /**
- * Richieste firmate dal portale al SaaS per l'amministrazione della piattaforma (contratto: saas/docs/CONTRATTO_PORTALE.md §2.3).
+ * Richieste firmate dal portale al SaaS (contratto: saas/docs/CONTRATTO_PORTALE.md).
  * Il token è un JWT EdDSA con chiave propria del portale verso il SaaS (data/saas-sign.key o `saas_sign_key`), distinta da quella delle licenze.
- * Le letture usano scope «read», le scritture «write»; `act` dice chi ha chiesto (finisce nel registro del SaaS). Vita del token: 60 secondi.
+ * Vita del token: 60 secondi, `jti` monouso. Le rotte v1 `admin/*` non esistono più: restano solo la creazione dell'associazione (v1) e le rotte v2.
  */
 final class SaasClient {
 
@@ -36,32 +36,6 @@ final class SaasClient {
 
 	public static function kid(): string {
 		return PortalAttestation::kid( self::seed() );
-	}
-
-	/** Elenco delle associazioni. @param array $filters q, status, page, per_page */
-	public static function orgs( string $act, array $filters = array() ): array {
-		$extra = array();
-		foreach ( array( 'q', 'status' ) as $k ) {
-			if ( isset( $filters[ $k ] ) && '' !== trim( (string) $filters[ $k ] ) ) {
-				$extra[ $k ] = mb_substr( trim( (string) $filters[ $k ] ), 0, 120 );
-			}
-		}
-		$extra['page']     = max( 1, (int) ( $filters['page'] ?? 1 ) );
-		$extra['per_page'] = max( 1, min( 100, (int) ( $filters['per_page'] ?? 50 ) ) );
-		return self::call( 'admin/orgs', 'admin_read', 'read', $act, $extra );
-	}
-
-	public static function org( string $act, string $orgId ): array {
-		return self::call( 'admin/orgs/' . self::id( $orgId ), 'admin_read', 'read', $act );
-	}
-
-	public static function operators( string $act, string $orgId ): array {
-		return self::call( 'admin/orgs/' . self::id( $orgId ) . '/operators', 'admin_read', 'read', $act );
-	}
-
-	/** Disattiva o riattiva un utente (vale in tutte le associazioni in cui è operatore). */
-	public static function setUserDisabled( string $act, string $userId, bool $disabled, string $reason = '' ): array {
-		return self::call( 'admin/users/' . self::id( $userId ) . '/state', 'admin_write', 'write', $act, array( 'disabled' => $disabled, 'reason' => mb_substr( $reason, 0, 200 ) ) );
 	}
 
 	/**
@@ -138,41 +112,5 @@ final class SaasClient {
 			throw new UserError( 'Identificativo non valido.' );
 		}
 		return $id;
-	}
-
-	/** @return array risposta decodificata @throws UserError */
-	private static function call( string $path, string $typ, string $scope, string $act, array $extra = array(), ?int $now = null ): array {
-		if ( ! self::enabled() ) {
-			throw new UserError( 'Il collegamento con il SaaS non è ancora configurato sul portale (manca la chiave di firma verso il SaaS).' );
-		}
-		$now   = $now ?? time();
-		$token = PortalAttestation::sign( $extra + array(
-			'iss'   => rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ),
-			'aud'   => self::AUD,
-			'typ'   => $typ,
-			'iat'   => $now,
-			'exp'   => $now + 60,
-			'jti'   => bin2hex( random_bytes( 16 ) ),
-			'act'   => mb_substr( $act, 0, 190 ),
-			'scope' => $scope,
-		), self::seed() );
-		$res = Http::send( 'POST', self::baseUrl() . '/api/portale/v1/' . $path, array( 'Content-Type: application/json', 'Accept: application/json' ), (string) json_encode( array( 'token' => $token ) ) );
-		$out = json_decode( $res[1], true );
-		if ( 200 === $res[0] && is_array( $out ) ) {
-			return $out;
-		}
-		$code = is_array( $out ) ? (string) ( $out['error'] ?? '' ) : '';
-		$msg  = array(
-			'invalid_token'  => 'Il SaaS non riconosce la firma del portale: controlla le chiavi.',
-			'scope'          => 'Questa operazione richiede il permesso di scrittura.',
-			'unknown_org'    => 'Associazione non trovata.',
-			'unknown_user'   => 'Utente non trovato.',
-			'invalid_claims' => 'Richiesta non valida.',
-			'replayed'       => 'Richiesta già eseguita: riprova.',
-		);
-		if ( 0 === $res[0] ) {
-			throw new UserError( 'Il SaaS non risponde: riprova tra poco.' );
-		}
-		throw new UserError( $msg[ $code ] ?? ( 'Il SaaS ha risposto con un errore (' . $res[0] . ').' ) );
 	}
 }

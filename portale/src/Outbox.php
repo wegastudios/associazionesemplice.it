@@ -38,6 +38,12 @@ final class Outbox {
 				++$sent;
 				continue;
 			}
+			if ( 422 === $res[0] && 'revision_jump_too_large' === $err ) {
+				// Errore definitivo del SaaS (salto di revisione oltre il tetto): ritentare non serve, resta nel log per chi controlla.
+				$db->run( 'UPDATE saas_outbox SET done_at = ?, last_error = ? WHERE id = ?', array( gmdate( 'Y-m-d H:i:s', $now ), $err, $r['id'] ) );
+				error_log( '[portale] subscription rifiutata dal SaaS: ' . $err . ' (org ' . $r['org_id'] . ', rev ' . $r['rev'] . ')' );
+				continue;
+			}
 			if ( 409 === $res[0] && 'unknown_plan' === $err ) {
 				Catalog::refresh( $db, $now );
 			}
