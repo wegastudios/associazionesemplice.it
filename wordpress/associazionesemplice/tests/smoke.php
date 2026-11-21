@@ -8136,6 +8136,17 @@ asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { 
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '17:00', 2 ); } ), 'risorse: nemmeno con una prenotazione di 2 fasce che la sfiora' );
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '19:00', 1 ) > 0, 'risorse: la fascia subito dopo è libera' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } ), 'risorse: il limite di prenotazioni per socio vale per i soci' );
+// area soci: tetto di prenotazioni ancora da usare (su tutte le risorse) e limite di frequenza per socio
+asem_ok( \AssociazioneSemplice\Resources::open_count( $rs_m1 ) >= 1 && \AssociazioneSemplice\Resources::open_count( $rs_m1 ) === \AssociazioneSemplice\Resources::open_count( $rs_m1 ) && 0 === \AssociazioneSemplice\Resources::open_count( 999999 ), 'area soci: si contano le prenotazioni ancora da usare di una scheda' );
+$th_limits = (array) Settings::get( 'limits' );
+Settings::update( array( 'limits' => array_merge( $th_limits, array( 'member_book_per_10min' => 2, 'member_open_bookings_max' => 10 ) ) ) );
+delete_transient( 'asem_mt_book_' . $rs_m1 );
+\AssociazioneSemplice\MemberThrottle::hit( 'book', $rs_m1, 'member_book_per_10min' );
+\AssociazioneSemplice\MemberThrottle::hit( 'book', $rs_m1, 'member_book_per_10min' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $rs_m1 ) { \AssociazioneSemplice\MemberThrottle::hit( 'book', $rs_m1, 'member_book_per_10min' ); } ), 'troppe richieste' ), 'area soci: oltre il limite di frequenza si aspetta qualche minuto' );
+asem_ok( 10 === \AssociazioneSemplice\Limits::get( 'member_open_bookings_max' ) && 20 === \AssociazioneSemplice\Limits::default_of( 'member_book_per_10min' ) && 30 === \AssociazioneSemplice\Limits::default_of( 'member_receipt_per_10min' ), 'area soci: valori di partenza dei limiti (10 prenotazioni da usare, 20 azioni, 30 PDF)' );
+delete_transient( 'asem_mt_book_' . $rs_m1 );
+Settings::update( array( 'limits' => $th_limits ) );
 // Il massimo per persona si conta sotto lo stesso blocco della prenotazione: con il blocco occupato il conteggio non è nemmeno raggiunto
 Db::$lock_fake = '0';
 $rs_lk = asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } );
