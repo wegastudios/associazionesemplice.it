@@ -123,23 +123,26 @@ function addPaidPeople(string $orgId, int $count, int $offset = 0): void
 /** @param  array<string, string>  $pages */
 function assertQueriesDoNotGrow(object $test, array $pages): void
 {
-    $org = $test->createOrg('Polisportiva Alfa');
-    $user = $test->createUser('own@example.com', twoFactor: true);
-    $test->addOperator($org, $user, OrgRole::Owner);
-    $test->actingAs($user);
+    // Chiusura legata al test: createOrg e gli altri aiuti sono protetti.
+    (function () use ($pages): void {
+        $org = $this->createOrg('Polisportiva Alfa');
+        $user = $this->createUser('own@example.com', twoFactor: true);
+        $this->addOperator($org, $user, OrgRole::Owner);
+        $this->actingAs($user);
 
-    addPaidPeople($org->id, 5);
-    $few = [];
-    foreach ($pages as $label => $url) {
-        $test->get($url)->assertOk(); // la prima richiesta riempie le cache di processo
-        $few[$label] = queriesOf(fn () => $test->get($url)->assertOk());
-    }
+        addPaidPeople($org->id, 5);
+        $few = [];
+        foreach ($pages as $label => $url) {
+            $this->get($url)->assertOk(); // la prima richiesta riempie le cache di processo
+            $few[$label] = queriesOf(fn () => $this->get($url)->assertOk());
+        }
 
-    addPaidPeople($org->id, 20, 5);
-    foreach ($pages as $label => $url) {
-        $many = queriesOf(fn () => $test->get($url)->assertOk());
-        expect($many)->toBe($few[$label], $label.': le query crescono con i soci e i movimenti ('.$few[$label].' con 5, '.$many.' con 25)');
-    }
+        addPaidPeople($org->id, 20, 5);
+        foreach ($pages as $label => $url) {
+            $many = queriesOf(fn () => $this->get($url)->assertOk());
+            expect($many)->toBe($few[$label], $label.': le query crescono con i soci e i movimenti ('.$few[$label].' con 5, '.$many.' con 25)');
+        }
+    })->call($test);
 }
 
 it('prima nota e cruscotto eseguono lo stesso numero di query con 5 o con 25 soci', function (): void {
