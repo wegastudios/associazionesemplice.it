@@ -420,7 +420,7 @@ it('toglie le copie d\'appoggio dopo 30 giorni e lo scrive nel registro', functi
         fmtUpDb()->table(FMT_UP_BACKUPS)->where('column_name', 'tax_code_enc')->update(['created_at' => now()->subDays(29)]);
     });
     fmtUpIn($this->beta->id, static fn () => fmtUpDb()->table(FMT_UP_BACKUPS)->where('column_name', 'iban_enc')->update(['created_at' => now()->subDays(40)]));
-    expect(fmtUpBackupCount($this->alfa->id))->toBe(17)->and(fmtUpBackupCount($this->beta->id))->toBe(7);
+    expect(fmtUpBackupCount($this->alfa->id))->toBe(17)->and(fmtUpBackupCount($this->beta->id))->toBe(10);
 
     [$code, $output] = fmtUpCall('saas:crypt:upgrade-format:prune', ['--dry-run' => true]);
     expect($code)->toBe(0)->and($output)->toContain('Da togliere')->toContain(': 3')
@@ -429,7 +429,7 @@ it('toglie le copie d\'appoggio dopo 30 giorni e lo scrive nel registro', functi
     [$code, $output] = fmtUpCall('saas:crypt:upgrade-format:prune');
 
     expect($code)->toBe(0, $output)->and($output)->toContain('Tolte')->toContain(': 3')
-        ->and(fmtUpBackupCount($this->alfa->id))->toBe(15)->and(fmtUpBackupCount($this->beta->id))->toBe(6)
+        ->and(fmtUpBackupCount($this->alfa->id))->toBe(15)->and(fmtUpBackupCount($this->beta->id))->toBe(9)
         ->and(fmtUpAuditRows($this->alfa->id, 'crypto.format_pruned'))->toEqual([['days' => 30, 'fields_removed' => 2]])
         ->and(fmtUpAuditRows($this->beta->id, 'crypto.format_pruned'))->toEqual([['days' => 30, 'fields_removed' => 1]])
         ->and(DB::table('core.platform_audit')->where('action', 'crypto.format_prune')->count())->toBe(1);
