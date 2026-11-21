@@ -11,7 +11,7 @@ final class Age {
 	/** La data è scritta come AAAA-MM-GG ed esiste davvero? */
 	public static function is_valid_date( string $ymd ): bool {
 		$dt = \DateTime::createFromFormat( '!Y-m-d', $ymd );
-		return $dt && $dt->format( 'Y-m-d' ) === $ymd && (int) $dt->format( 'Y' ) >= 1900;
+		return $dt && $dt->format( 'Y-m-d' ) === $ymd && (int) $dt->format( 'Y' ) >= 1900 && (int) $dt->format( 'Y' ) <= 2100;
 	}
 
 	/** Riconosce una data di nascita scritta come 31/12/2010, 31-12-2010, 2010-12-31 o 31.12.2010. @return string|null AAAA-MM-GG, null se non è una data valida */
