@@ -228,8 +228,18 @@ class LedgerService {
 
 	private function assert_date( string $d ): void {
 		$dt = \DateTime::createFromFormat( 'Y-m-d', $d );
-		if ( ! $dt || $dt->format( 'Y-m-d' ) !== $d ) {
+		if ( ! $dt || $dt->format( 'Y-m-d' ) !== $d || (int) $dt->format( 'Y' ) < 1900 || (int) $dt->format( 'Y' ) > 2100 ) { // solo contro gli errori di digitazione
 			throw new \InvalidArgumentException( 'Data non valida.' );
+		}
+	}
+
+	/** Tetto di un importo (10 milioni di euro) e di righe per incasso: solo contro gli errori di digitazione. */
+	const MAX_CENTS = 1000000000;
+	const MAX_LINES = 200;
+
+	private function assert_amount_cap( int $cents ): void {
+		if ( $cents > self::MAX_CENTS ) {
+			throw new \InvalidArgumentException( Texts::t( 'L\'importo è troppo alto: controlla di non aver scritto uno zero in più.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -375,6 +385,9 @@ class LedgerService {
 		if ( ! $lines ) {
 			throw new \InvalidArgumentException( 'Aggiungi almeno una voce all\'incasso.' );
 		}
+		if ( count( $lines ) > self::MAX_LINES ) {
+			throw new \InvalidArgumentException( Texts::t( 'Troppe voci in un solo incasso: dividilo in più incassi.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		$payer = ! empty( $d['person_id'] ) ? Plugin::people()->get( (int) $d['person_id'] ) : null; // chi paga
 		if ( ! empty( $d['person_id'] ) && ! $payer ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
@@ -395,6 +408,7 @@ class LedgerService {
 			}
 			$cat  = $this->category( (int) ( $l['category_id'] ?? 0 ) );
 			$cents = (int) ( $l['amount_cents'] ?? 0 );
+			$this->assert_amount_cap( $cents );
 			if ( ! $cat || ! Labels::category_kinds()[ $cat['kind'] ][1] || 'adjustment' === $cat['kind'] ) {
 				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: categoria non valida per un incasso.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
@@ -572,6 +586,7 @@ class LedgerService {
 		if ( (int) ( $d['amount_cents'] ?? 0 ) <= 0 ) {
 			throw new \InvalidArgumentException( 'Importo non valido.' );
 		}
+		$this->assert_amount_cap( (int) $d['amount_cents'] );
 		if ( ! empty( $d['activity_id'] ) && ! Plugin::activities()->get( (int) $d['activity_id'] ) ) {
 			throw new \InvalidArgumentException( 'Attività non trovata.' );
 		}
@@ -609,6 +624,7 @@ class LedgerService {
 		if ( $cents <= 0 ) {
 			throw new \InvalidArgumentException( 'Importo non valido.' );
 		}
+		$this->assert_amount_cap( $cents );
 		$cat      = $this->category_id_of_kind( 'adjustment' ); // segnaposto neutro per le righe di giroconto
 		$transfer = wp_generate_uuid4();
 		$this->in_transaction(
