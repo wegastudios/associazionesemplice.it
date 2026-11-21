@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi|misure> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -389,6 +389,129 @@ case "$ACTION" in
       foreach (array_filter(array_map("trim", explode(";\n", (string) file_get_contents(getenv("GRANTS_BACKUP"))))) as $sql) { $db->statement($sql); $n++; }
       echo "Ripristinate ", $n, " concessioni da ", basename(getenv("GRANTS_BACKUP")), PHP_EOL;
     '
+    ;;
+  misure)
+    # Sola lettura (H1): solo numeri e impostazioni, mai dati delle associazioni né segreti (niente indirizzi, utenti o
+    # nomi dei database: i ruoli compaiono come app/owner/altro). Ogni sezione è a sé: se un dato non c'è o manca un
+    # permesso scrive «non disponibile» e va avanti. Le tabelle di sistema pg_stat_* si leggono con il ruolo proprietario
+    # (pgsql_owner, quello delle migrazioni); se non si apre si ripiega sul ruolo dell'app (pgsql).
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $sec = function (string $title, Closure $f): void {
+        echo PHP_EOL, "== ", $title, " ==", PHP_EOL;
+        try { $f(); } catch (Throwable $e) { echo "non disponibile (", get_class($e), ")", PHP_EOL; }
+      };
+      $mb = fn ($b): string => round(((float) $b) / 1048576, 1) . " MB";
+      $db = null; $dbName = "";
+      foreach (["pgsql_owner", "pgsql"] as $n) {
+        try { $c = DB::connection($n); $c->select("select 1"); $db = $c; $dbName = $n; break; } catch (Throwable $e) {}
+      }
+      $role = function (?string $u): string {
+        foreach (["pgsql" => "app", "pgsql_owner" => "owner"] as $n => $label) { if ($u !== null && $u === config("database.connections." . $n . ".username")) { return $label; } }
+        return "altro";
+      };
+
+      $sec("PHP (riga di comando)", function () {
+        echo "versione: ", PHP_VERSION, "  sapi: ", PHP_SAPI, PHP_EOL;
+        foreach (["memory_limit", "realpath_cache_size", "realpath_cache_ttl", "max_execution_time"] as $k) { echo $k, " = ", var_export(ini_get($k), true), PHP_EOL; }
+        foreach (["opcache", "apcu"] as $ext) { echo "estensione ", $ext, ": ", extension_loaded($ext) ? "caricata" : "assente", PHP_EOL; }
+        foreach (["opcache", "apcu"] as $ext) {
+          $all = extension_loaded($ext) ? ini_get_all($ext, false) : false;
+          if (! is_array($all)) { echo $ext, ".*: non disponibile", PHP_EOL; continue; }
+          ksort($all);
+          foreach ($all as $k => $v) { echo $k, " = ", var_export($v, true), PHP_EOL; }
+        }
+      });
+
+      $sec("PostgreSQL: impostazioni (connessione " . ($dbName ?: "nessuna") . ")", function () use ($db) {
+        foreach ($db->select("select name, setting, unit from pg_settings where name in (?,?,?,?,?,?,?,?,?,?,?,?) order by name", ["server_version", "max_connections", "shared_buffers", "work_mem", "effective_cache_size", "random_page_cost", "jit", "ssl", "autovacuum", "maintenance_work_mem", "max_wal_size", "track_activity_query_size"]) as $r) {
+          echo $r->name, " = ", $r->setting, $r->unit ? " " . $r->unit : "", PHP_EOL;
+        }
+      });
+
+      $sec("PostgreSQL: connessioni in uso per ruolo (solo conteggi)", function () use ($db, $role) {
+        $tot = 0;
+        foreach ($db->select("select usename, coalesce(state, ?) as state, count(*) as n from pg_stat_activity where datname = current_database() group by 1, 2 order by 3 desc", ["senza stato"]) as $r) { echo $role($r->usename), " / ", $r->state, ": ", $r->n, PHP_EOL; $tot += (int) $r->n; }
+        echo "totale su questo database: ", $tot, PHP_EOL;
+        echo "totale sul server: ", $db->selectOne("select count(*) as n from pg_stat_activity")->n, PHP_EOL;
+      });
+
+      $sec("PostgreSQL: dimensione delle tabelle (prime 25)", function () use ($db, $mb) {
+        foreach ($db->select("select n.nspname as s, c.relname as t, pg_total_relation_size(c.oid) as tot, pg_relation_size(c.oid) as tab, pg_indexes_size(c.oid) as idx from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relkind in (?, ?) and n.nspname not in (?, ?, ?) order by 3 desc limit 25", ["r", "p", "pg_catalog", "information_schema", "pg_toast"]) as $r) {
+          echo $r->s, ".", $r->t, ": totale ", $mb($r->tot), ", tabella ", $mb($r->tab), ", indici ", $mb($r->idx), PHP_EOL;
+        }
+      });
+
+      $sec("PostgreSQL: righe vive e morte, ultimo autovacuum (prime 25 per righe)", function () use ($db) {
+        foreach ($db->select("select schemaname as s, relname as t, n_live_tup as live, n_dead_tup as dead, last_autovacuum as av, last_autoanalyze as aa, autovacuum_count as avn from pg_stat_user_tables order by n_live_tup desc limit 25") as $r) {
+          echo $r->s, ".", $r->t, ": vive ", $r->live, ", morte ", $r->dead, ", autovacuum ", $r->av ?? "mai", " (", $r->avn, "), analyze ", $r->aa ?? "mai", PHP_EOL;
+        }
+      });
+
+      $sec("PostgreSQL: indici (i 40 piu grandi; idx_scan = letture dall ultimo azzeramento delle statistiche)", function () use ($db, $mb) {
+        echo "statistiche azzerate il: ", $db->selectOne("select coalesce(stats_reset::text, ?) as d from pg_stat_database where datname = current_database()", ["mai"])->d, PHP_EOL;
+        foreach ($db->select("select schemaname as s, relname as t, indexrelname as i, idx_scan as n, pg_relation_size(indexrelid) as b from pg_stat_user_indexes order by 5 desc limit 40") as $r) {
+          echo $r->s, ".", $r->i, " su ", $r->t, ": idx_scan ", $r->n, ", ", $mb($r->b), $r->n == 0 ? "  <-- mai letto" : "", PHP_EOL;
+        }
+      });
+
+      $sec("PostgreSQL: pg_stat_statements (prime 10 per tempo totale, solo SELECT/INSERT/UPDATE/DELETE/WITH)", function () use ($db) {
+        if (! $db->selectOne("select 1 as x from pg_extension where extname = ?", ["pg_stat_statements"])) { echo "estensione non installata", PHP_EOL; return; }
+        foreach ($db->select("select calls, round(total_exec_time::numeric, 1) as tot, round(mean_exec_time::numeric, 2) as mean, rows, left(regexp_replace(query, ?, ?, ?), 110) as q from pg_stat_statements where query ~* ? order by total_exec_time desc limit 10", ["\\s+", " ", "g", "^(select|insert|update|delete|with)"]) as $r) {
+          echo "chiamate ", $r->calls, ", totale ", $r->tot, " ms, medio ", $r->mean, " ms, righe ", $r->rows, ": ", $r->q, PHP_EOL;
+        }
+      });
+
+      $sec("Apertura di una connessione (10 aperture, media)", function () {
+        $cfg = config("database.connections.pgsql");
+        $host = (string) ($cfg["host"] ?? "");
+        $port = (string) ($cfg["port"] ?? "5432");
+        $kind = $host !== "" && $host[0] === "/" ? "socket" : (in_array($host, ["127.0.0.1", "localhost", "::1"], true) ? "locale" : "remoto");
+        echo "database: ", $kind, ", sslmode configurato: ", $cfg["sslmode"] ?? "prefer", PHP_EOL;
+        $time = function (string $label, string $dsnHost, string $ssl) use ($cfg, $port): void {
+          $ms = [];
+          try {
+            for ($i = 0; $i < 10; $i++) {
+              $t = hrtime(true);
+              $pdo = new PDO("pgsql:host=" . $dsnHost . ";port=" . $port . ";dbname=" . $cfg["database"] . ($ssl !== "" ? ";sslmode=" . $ssl : ""), $cfg["username"], $cfg["password"], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 5]);
+              $pdo->query("select 1");
+              $ms[] = (hrtime(true) - $t) / 1e6;
+              $pdo = null;
+            }
+            echo $label, ": media ", round(array_sum($ms) / count($ms), 2), " ms (min ", round(min($ms), 2), ", max ", round(max($ms), 2), ")", PHP_EOL;
+          } catch (Throwable $e) { echo $label, ": non disponibile (", get_class($e), ")", PHP_EOL; }
+        };
+        if ($kind === "socket") {
+          $time("socket locale", $host, "");
+        } else {
+          $time("TCP come configurato", $host, (string) ($cfg["sslmode"] ?? "prefer"));
+          if ($kind === "locale") { $time("TCP senza TLS (sslmode=disable)", $host, "disable"); }
+          $found = false;
+          foreach (["/var/run/postgresql", "/run/postgresql", "/tmp"] as $dir) {
+            if (@file_exists($dir . "/.s.PGSQL." . $port)) { $time("socket locale", $dir, ""); $found = true; break; }
+          }
+          if (! $found) { echo "socket locale: non trovato nelle cartelle comuni", PHP_EOL; }
+        }
+      });
+
+      $sec("Redis", function () {
+        $uses = [config("cache.default"), config("queue.default"), config("session.driver")];
+        echo "usato da cache/coda/sessione: ", in_array("redis", $uses, true) ? "si" : "no", PHP_EOL;
+        if (! in_array("redis", $uses, true) && empty(config("database.redis.default.host"))) { echo "non configurato", PHP_EOL; return; }
+        $con = Illuminate\Support\Facades\Redis::connection();
+        $info = $con->info();
+        $flat = [];
+        array_walk_recursive($info, function ($v, $k) use (&$flat) { $flat[$k] = $v; });
+        foreach (["used_memory", "maxmemory", "maxmemory_policy", "connected_clients"] as $k) { echo $k, " = ", $flat[$k] ?? "n.d.", PHP_EOL; }
+        echo "chiavi (dbsize) = ", $con->dbsize(), PHP_EOL;
+      });
+
+      $sec("Coda (core.jobs)", function () use ($db) {
+        $r = $db->selectOne("select count(*) as n, count(*) filter (where reserved_at is null) as waiting, min(created_at) as oldest from core.jobs");
+        echo "righe in core.jobs: ", $r->n, " (in attesa ", $r->waiting, ")", PHP_EOL;
+        echo "la piu vecchia da (minuti): ", $r->oldest === null ? "coda vuota" : max(0, intdiv(time() - (int) $r->oldest, 60)), PHP_EOL;
+      });
+    ' || true
     ;;
   *) echo "Azione sconosciuta: $ACTION" >&2; exit 1 ;;
 esac

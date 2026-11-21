@@ -21,10 +21,12 @@ use App\Modules\Portale\Entitlements\SystemDns;
 use App\Modules\Portale\Http\Controllers\CatalogController;
 use App\Modules\Portale\Http\Controllers\PortalApiController;
 use App\Modules\Portale\Http\Controllers\PortalServicesController;
+use App\Modules\Portale\Http\Controllers\RuntimeController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
 use App\Modules\Portale\Http\Middleware\RequireFullAccount;
 use App\Modules\Portale\Http\Middleware\RequirePackage;
 use App\Modules\Portale\Http\Middleware\ThrottlePortalApi;
+use App\Modules\Portale\Http\Middleware\ThrottleRuntimeApi;
 use App\Modules\Portale\Notifications\PortalNotifications;
 use App\Modules\Portale\Staff\PortalStaffAccess;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -77,6 +79,9 @@ final class PortaleServiceProvider extends ServiceProvider
             Route::post('orgs/{org}/domain/set', [PortalServicesController::class, 'domainSet'])->whereUuid('org');
             Route::post('orgs/{org}/status', [PortalServicesController::class, 'status'])->whereUuid('org');
         });
+
+        // Come gira il PHP web (SAPI, APCu, OPcache): token firmato dal SaaS stesso, ambito e tipo propri, nessun dato.
+        Route::post('api/portale/v2/runtime', RuntimeController::class)->middleware(ThrottleRuntimeApi::class);
 
         // Catalogo pubblico e firmato: piani, prezzi e promozioni che il portale legge (§2).
         Route::get('api/catalogo/v1', CatalogController::class)->middleware('throttle:portal-api');
