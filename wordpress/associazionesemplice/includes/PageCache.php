@@ -49,7 +49,7 @@ final class PageCache {
 		add_action( self::EXTERNAL_HOOK, array( __CLASS__, 'flush_external' ) );
 		add_action( 'update_option_' . Settings::OPTION, array( __CLASS__, 'purge' ) );
 		add_action( 'add_option_' . Settings::OPTION, array( __CLASS__, 'purge' ) );
-		foreach ( array( 'save_post', 'deleted_post', 'trashed_post', 'untrashed_post', 'edit_attachment', 'delete_attachment' ) as $hook ) {
+		foreach ( array( 'save_post', 'deleted_post', 'trashed_post', 'untrashed_post', 'add_attachment', 'edit_attachment', 'delete_attachment' ) as $hook ) {
 			add_action( $hook, array( __CLASS__, 'on_post' ) );
 		}
 		foreach ( array( 'added_post_meta', 'updated_post_meta', 'deleted_post_meta' ) as $hook ) {
