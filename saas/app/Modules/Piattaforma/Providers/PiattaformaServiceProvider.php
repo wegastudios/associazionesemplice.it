@@ -12,15 +12,19 @@ use App\Modules\Piattaforma\Console\InviteStaffCommand;
 use App\Modules\Piattaforma\Console\NotifyPortalCatalogCommand;
 use App\Modules\Piattaforma\Console\PrepareTiersDraftCommand;
 use App\Modules\Piattaforma\Console\ResetStaffTwoFactorCommand;
+use App\Modules\Piattaforma\Console\StaffSuperAdminCommand;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
 use App\Modules\Piattaforma\Http\Middleware\RequirePlatformStaff;
 use App\Modules\Piattaforma\Identity\IssuerStaffAccess;
+use App\Modules\Piattaforma\Identity\OperatorEntry;
 use App\Modules\Portale\Contracts\StaffAccess;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -61,8 +65,16 @@ final class PiattaformaServiceProvider extends ServiceProvider
         Route::group([], __DIR__.'/../Http/staff_invite_routes.php');
         Route::group([], __DIR__.'/../Http/operator_sso_routes.php');
 
+        // Il legame utente-persona nasce solo quando l'accesso al gestionale è completo (password e secondo livello).
+        Event::listen(Login::class, static function (Login $event): void {
+            if ($event->guard === 'web') {
+                $id = $event->user->getAuthIdentifier();
+                resolve(OperatorEntry::class)->completeLink(is_string($id) ? $id : '');
+            }
+        });
+
         if ($this->app->runningInConsole()) {
-            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class, PrepareTiersDraftCommand::class, NotifyPortalCatalogCommand::class]);
+            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class, StaffSuperAdminCommand::class, PrepareTiersDraftCommand::class, NotifyPortalCatalogCommand::class]);
         }
     }
 }

@@ -14,7 +14,7 @@ final readonly class StaffDirectory
     /** La sessione centrale dura al massimo 8 ore (UTENTI_E_ACCESSI §5). */
     public const SESSION_MAX = 8 * 3600;
 
-    public function __construct(private DatabaseManager $db, private StaffIdentityConfig $config, private Hasher $hasher) {}
+    public function __construct(private DatabaseManager $db, private Hasher $hasher) {}
 
     /** Email e password giuste e persona attiva; altrimenti nulla (senza dire quale delle due cose è sbagliata). */
     public function authenticate(string $email, string $password): ?StaffPerson
@@ -45,7 +45,7 @@ final readonly class StaffDirectory
      */
     public function areas(StaffPerson $person): array
     {
-        if (in_array($person->email, $this->config->superAdmins(), true)) {
+        if ($this->isSuperAdmin($person)) {
             return array_fill_keys(array_keys(StaffAreas::AUDIENCES), 'admin');
         }
 
@@ -55,6 +55,12 @@ final readonly class StaffDirectory
         }
 
         return $areas;
+    }
+
+    /** Super amministratore: lo dice l'identificativo della persona (tabella `core.staff_super_admins`), mai l'email. */
+    public function isSuperAdmin(StaffPerson $person): bool
+    {
+        return $this->db->connection('pgsql')->table('core.staff_super_admins')->where('person_id', $person->id)->exists();
     }
 
     public function openSession(StaffPerson $person, ?string $ip): string
