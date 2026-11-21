@@ -11803,7 +11803,7 @@ $pc_g0 = $pc_gen();
 asem_ok( 0 === PageCache::write( $wpdb->prepare( 'UPDATE ' . Db::t( 'sessions' ) . ' SET capacity = capacity WHERE id = %d', -1 ) ) && $pc_g0 === $pc_gen(), 'cache eventi: una scrittura che non tocca nessuna riga non svuota la cache' );
 asem_ok( 1 === PageCache::write( $wpdb->prepare( 'UPDATE ' . Db::t( 'sessions' ) . ' SET capacity = 10 WHERE id = %d', $pc_sid ) ) && $pc_g0 !== $pc_gen(), 'cache eventi: una scrittura che tocca una riga svuota la cache' );
 $pc_g0 = $pc_gen();
-AssociazioneSempliceventRequests::run();
+\AssociazioneSemplice\EventRequests::run();
 asem_ok( $pc_g0 === $pc_gen(), 'cache eventi: il lavoro orario delle richieste, se non c\'è niente da fare, non svuota la cache' );
 $pc_g0 = $pc_gen();
 $pc_att = wp_insert_attachment( array( 'post_title' => 'Immagine libera', 'post_mime_type' => 'image/png', 'post_status' => 'inherit' ), '', 0 );
