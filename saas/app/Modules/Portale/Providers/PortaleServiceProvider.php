@@ -18,7 +18,6 @@ use App\Modules\Portale\Entitlements\CatalogLifecyclePolicy;
 use App\Modules\Portale\Entitlements\DomainDns;
 use App\Modules\Portale\Entitlements\EntitlementReader;
 use App\Modules\Portale\Entitlements\SystemDns;
-use App\Modules\Portale\Http\Controllers\AdminApiController;
 use App\Modules\Portale\Http\Controllers\CatalogController;
 use App\Modules\Portale\Http\Controllers\PortalApiController;
 use App\Modules\Portale\Http\Controllers\PortalServicesController;
@@ -59,13 +58,8 @@ final class PortaleServiceProvider extends ServiceProvider
         // API per il portale: niente sessione, niente CSRF, solo token firmati.
         Route::prefix('api/portale/v1')->middleware('throttle:portal-api')->group(function (): void {
             Route::post('/orgs', [PortalApiController::class, 'provision']);
+            // Diritti v1: non più accettati, rispondono 410 (§8). Resta solo `subscription` v2.
             Route::put('/orgs/{org}/entitlements', [PortalApiController::class, 'entitlements'])->whereUuid('org');
-
-            // Amministrazione della piattaforma (§2.3): letture e disattivazione utenti.
-            Route::post('/admin/orgs', [AdminApiController::class, 'orgs']);
-            Route::post('/admin/orgs/{org}', [AdminApiController::class, 'org'])->whereUuid('org');
-            Route::post('/admin/orgs/{org}/operators', [AdminApiController::class, 'operators'])->whereUuid('org');
-            Route::post('/admin/users/{user}/state', [AdminApiController::class, 'userState'])->whereUuid('user');
         });
 
         // Abbonamento v2: il SaaS ricava i limiti dal piano (CONTRATTO_PORTALE.md §3.2).
