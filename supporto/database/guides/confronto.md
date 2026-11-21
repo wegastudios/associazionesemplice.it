@@ -27,7 +27,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
 | Tessera digitale e stampabile, con colori e logo | ✓ | ✓ | ✓ |
 | Tessera personalizzata su immagine propria | ✓ | ✓ | ✓ |
-| QR della tessera con verifica in diretta | ✓ | ✓ | ✓ |
+| QR della tessera con verifica in diretta: Il socio o la segreteria possono rigenerare il codice se il telefono si perde: quello vecchio smette subito di valere | ✓ | ✓ | ✓ |
 | Tessera in PDF da stampare, con testo libero, tipologia e incarichi | ✓ | ✓ | ✓ |
 | Tessera in Apple Wallet e Google Wallet | — | ✓ | ✓ |
 | Quota già pagata nell'anno: La quota già pagata nell'anno non si incassa due volte | ✓ | ✓ | ✓ |
