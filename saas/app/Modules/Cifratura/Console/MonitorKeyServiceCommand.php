@@ -101,7 +101,7 @@ final class MonitorKeyServiceCommand extends Command
     {
         $recipients = self::recipients($config, $db);
         if ($recipients === []) {
-            $this->warn('Nessun indirizzo di amministrazione configurato (SAAS_STAFF_SUPER_ADMINS o amministratori della piattaforma).');
+            $this->warn('Nessun indirizzo di amministrazione configurato (SAAS_STAFF_SUPER_ADMINS o super amministratori dello staff).');
             Log::error('Servizio chiavi: nessun indirizzo a cui mandare l\'avviso');
 
             return true;
@@ -127,7 +127,7 @@ final class MonitorKeyServiceCommand extends Command
         $configured = $config->get('saas.staff_issuer.super_admins', '');
         $emails = explode(',', is_string($configured) ? $configured : '');
         try {
-            foreach ($db->connection('pgsql')->table('core.users')->where('platform_admin', true)->pluck('email') as $email) {
+            foreach ($db->connection('pgsql')->table('core.staff_super_admins as a')->join('core.staff_people as p', 'p.id', '=', 'a.person_id')->where('p.active', true)->pluck('p.email') as $email) {
                 if (is_string($email)) {
                     $emails[] = $email;
                 }

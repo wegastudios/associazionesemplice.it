@@ -30,6 +30,10 @@ Priorità, in quest'ordine: **1. sicurezza dei dati personali e fiscali · 2. ve
 `app.people` collegate (`people.user_id`), che prende il posto di `wp_user_id`. I permessi restano derivati dai dati,
 come oggi in `Access`.
 
+**Colonna non più letta: `core.users.platform_admin`.** Dal passaggio D31 nessun codice la legge né la scrive (i super
+amministratori sono per identificativo della persona in `core.staff_super_admins`). La colonna resta nel database: da
+togliere con il sì del titolare (la rimozione è distruttiva).
+
 **`core` esiste solo nel database centrale.** I database dedicati contengono `app`, `audit` e `sites`, più una piccola
 tabella locale `app.orgs` con l'associazione stessa. Una chiave esterna non può attraversare due database, quindi:
 - le tabelle di `app`, `audit` e `sites` puntano a `app.orgs`, presente anche nel database condiviso;

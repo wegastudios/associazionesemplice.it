@@ -101,6 +101,23 @@ it('senza indirizzi di amministrazione lo dice una volta sola', function (): voi
     Notification::assertNothingSent();
 });
 
+it('avvisa i super amministratori dello staff per identificativo della persona, solo se attivi', function (): void {
+    $service = (new FakeKeyService)->install();
+    config(['saas.crypto.vault' => 'remote', 'saas.staff_issuer.super_admins' => '']);
+    $service->down = true;
+    foreach ([['super@example.test', true, true], ['sospeso@example.test', false, true], ['semplice@example.test', true, false]] as [$email, $active, $super]) {
+        $id = (string) Illuminate\Support\Str::uuid7();
+        Illuminate\Support\Facades\DB::table('core.staff_people')->insert(['id' => $id, 'email' => $email, 'name' => 'Persona', 'active' => $active]);
+        if ($super) {
+            Illuminate\Support\Facades\DB::table('core.staff_super_admins')->insert(['person_id' => $id]);
+        }
+    }
+
+    $this->artisan('saas:keys:monitor')->assertFailed();
+
+    Notification::assertSentOnDemand(KeyServiceAlertNotification::class, fn (KeyServiceAlertNotification $n, array $channels, AnonymousNotifiable $notifiable): bool => $notifiable->routes['mail'] === ['super@example.test']);
+});
+
 it('è nello scheduler ogni 5 minuti', function (): void {
     $events = collect(app(Schedule::class)->events())->filter(fn ($e) => str_contains((string) $e->command, 'saas:keys:monitor'));
 
