@@ -52,6 +52,23 @@ final readonly class PortalConfig
             : throw new RuntimeException('SAAS_PORTAL_SIGNING_KEY non valida.');
     }
 
+    /**
+     * Chiave pubblica con cui il SaaS riconosce i propri token interni (rotta del PHP web): quella della sua stessa
+     * chiave di firma, `kid` con prefisso `saas-`. Senza chiave di firma valida nessuno è ammesso.
+     *
+     * @return array<string, string> kid => chiave pubblica base64url
+     */
+    public function runtimeKeys(): array
+    {
+        try {
+            $public = sodium_crypto_sign_publickey(sodium_crypto_sign_seed_keypair($this->signingSeed()));
+        } catch (RuntimeException) {
+            return [];
+        }
+
+        return [EdDsaJwt::kid($public, 'saas-') => EdDsaJwt::b64($public)];
+    }
+
     /** @return list<string> i nameserver a cui il cliente delega il dominio personalizzato */
     public function nameservers(): array
     {

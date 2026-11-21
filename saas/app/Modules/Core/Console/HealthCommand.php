@@ -6,6 +6,7 @@ namespace App\Modules\Core\Console;
 
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Core\Contracts\DatabaseNames;
+use App\Modules\Portale\Contracts\WebRuntimeProbe;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
@@ -25,7 +26,7 @@ final class HealthCommand extends Command
 
     protected $description = 'Controlla database, migrazioni, servizio chiavi e spazi dei file';
 
-    public function handle(DatabaseManager $db, DatabaseNames $databases, KeyVault $vault): int
+    public function handle(DatabaseManager $db, DatabaseNames $databases, KeyVault $vault, WebRuntimeProbe $probe): int
     {
         $checks = [
             'database' => fn () => $db->connection('pgsql')->select('SELECT 1'),
@@ -97,15 +98,22 @@ final class HealthCommand extends Command
             $this->warn('nota  '.(is_string($warning) ? $warning : ''));
         }
 
-        // APCu: senza, ogni richiesta che cifra chiede la chiave al servizio chiavi (con il servizio remoto costa 50–150 ms).
-        if (! (extension_loaded('apcu') && filter_var(ini_get('apc.enabled'), FILTER_VALIDATE_BOOLEAN))) {
-            $remote = config('saas.crypto.vault') !== 'local';
-            $this->warn('nota  APCu non attivo'.($remote ? ': le chiavi si chiedono al servizio chiavi a ogni richiesta (più lento)' : '').'.');
-        }
-        // OPcache: senza, ogni richiesta rilegge e ricompila il codice.
-        $opcache = function_exists('opcache_get_status') ? @opcache_get_status(false) : false;
-        if (! is_array($opcache) || ($opcache['opcache_enabled'] ?? false) !== true) {
-            $this->warn('nota  OPcache non attivo: il codice si ricompila a ogni richiesta (più lento).');
+        // APCu e OPcache del PHP che serve le pagine (non quelli della riga di comando): li chiediamo al web con una
+        // chiamata firmata. Se non risponde è solo un avviso, mai un errore.
+        $web = $probe->fetch();
+        if ($web === null) {
+            $this->warn('nota  PHP web non raggiungibile con la rotta firmata: APCu e OPcache non verificati.');
+        } else {
+            // APCu: senza, ogni richiesta che cifra chiede la chiave al servizio chiavi (con il servizio remoto costa 50–150 ms).
+            if ($web['apcu'] !== true) {
+                $remote = config('saas.crypto.vault') !== 'local';
+                $this->warn('nota  APCu non attivo sul PHP web'.($remote ? ': le chiavi si chiedono al servizio chiavi a ogni richiesta (più lento)' : '').'.');
+            }
+            // OPcache: senza, ogni richiesta rilegge e ricompila il codice.
+            $opcache = $web['opcache'];
+            if (! is_array($opcache) || ($opcache['enabled'] ?? false) !== true) {
+                $this->warn('nota  OPcache non attivo sul PHP web: il codice si ricompila a ogni richiesta (più lento).');
+            }
         }
 
         if (config('saas.auth.require_two_factor') === false) {
