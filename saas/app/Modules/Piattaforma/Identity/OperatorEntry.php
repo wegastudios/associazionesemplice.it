@@ -135,7 +135,10 @@ final readonly class OperatorEntry
     {
         $row = $this->db->connection('pgsql')->table('core.users')->where('id', $userId)->first(['name', 'email']);
 
-        return ['name' => is_string($row->name ?? null) ? $row->name : '', 'email' => is_string($row->email ?? null) ? $row->email : ''];
+        $name = $row?->name;
+        $email = $row?->email;
+
+        return ['name' => is_string($name) ? $name : '', 'email' => is_string($email) ? $email : ''];
     }
 
     /** Vero se l'utente ha la verifica in due passaggi confermata. */

@@ -64,7 +64,7 @@ final readonly class OperatorSsoController
     }
 
     /** «Sì, cambia utente»: vale solo per l'ingresso messo in attesa poco prima in questa sessione. */
-    public function confirm(Request $request): Response|RedirectResponse
+    public function confirm(Request $request): RedirectResponse
     {
         $pending = $request->session()->pull(OperatorEntry::PENDING_KEY);
         if (! $this->entry->enabled() || ! is_array($pending) || ! is_int($pending['until'] ?? null) || $pending['until'] < time()
