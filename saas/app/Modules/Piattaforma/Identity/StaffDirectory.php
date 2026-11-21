@@ -6,7 +6,9 @@ namespace App\Modules\Piattaforma\Identity;
 
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /** L'elenco unico dello staff: persone, livelli per area, sessioni centrali e registro (tabelle `core.staff_*`). */
 final readonly class StaffDirectory
@@ -57,33 +59,80 @@ final readonly class StaffDirectory
         return $areas;
     }
 
+    /** Apre la sessione centrale: restituisce l'identificativo vero (da tenere solo lato portale); nel database va l'impronta. */
     public function openSession(StaffPerson $person, ?string $ip): string
     {
         $sid = bin2hex(random_bytes(16));
         $db = $this->db->connection('pgsql');
-        $db->table('core.staff_sessions')->insert(['sid' => $sid, 'person_id' => $person->id, 'ip' => $ip]);
+        $db->table('core.staff_sessions')->insert(['sid' => SessionFingerprint::ofSession($sid), 'person_id' => $person->id, 'ip' => $ip]);
         $db->table('core.staff_people')->where('id', $person->id)->update(['last_login_at' => now()]);
 
         return $sid;
     }
 
-    /** La persona di una sessione centrale ancora valida (non revocata, entro 8 ore, persona attiva). */
+    /** La persona di una sessione centrale ancora valida (non revocata, entro 8 ore, persona attiva), dal suo identificativo vero. */
     public function personOfSession(string $sid): ?StaffPerson
     {
-        $db = $this->db->connection('pgsql');
-        $row = $db->table('core.staff_sessions as s')
-            ->join('core.staff_people as p', 'p.id', '=', 's.person_id')
-            ->where('s.sid', $sid)
-            ->whereNull('s.revoked_at')
-            ->where('s.created_at', '>', now()->subSeconds(self::SESSION_MAX))
-            ->where('p.active', true)
-            ->first(['p.id', 'p.email', 'p.name']);
-        if ($row === null) {
+        if (! SessionFingerprint::isId($sid)) {
             return null;
         }
-        $db->table('core.staff_sessions')->where('sid', $sid)->update(['last_used_at' => now()]);
+        $stored = SessionFingerprint::ofSession($sid);
+        $person = $this->validPerson($this->sessionQuery()->where('s.sid', $stored));
+        if ($person !== null) {
+            $this->db->connection('pgsql')->table('core.staff_sessions')->where('sid', $stored)->update(['last_used_at' => now()]);
+        }
 
-        return new StaffPerson(self::text($row->id), self::text($row->email), self::text($row->name));
+        return $person;
+    }
+
+    /**
+     * Il riferimento che un'area riceve nel claim `sid` del suo token: casuale, per (sessione, area), salvato solo come
+     * impronta. Vale solo per il controllo di sessione di quell'area e finisce con la sessione.
+     */
+    public function issueAreaRef(string $sid, string $area): string
+    {
+        $stored = SessionFingerprint::ofSession($sid);
+        $db = $this->db->connection('pgsql');
+        if (! $db->table('core.staff_sessions')->where('sid', $stored)->exists()) {
+            throw new RuntimeException('Sessione inesistente.');
+        }
+        // I riferimenti di sessioni ormai scadute non servono più.
+        $db->table('core.staff_area_sessions')->where('created_at', '<', now()->subSeconds(self::SESSION_MAX + 3600))->delete();
+        $ref = bin2hex(random_bytes(16));
+        $db->table('core.staff_area_sessions')->insert(['ref_hash' => SessionFingerprint::ofAreaRef($ref), 'session_sid' => $stored, 'area' => $area]);
+
+        return $ref;
+    }
+
+    /** La persona di un riferimento di area, solo se è stato emesso per quell'area e la sessione è ancora valida. */
+    public function personOfAreaRef(string $ref, string $area): ?StaffPerson
+    {
+        if (! SessionFingerprint::isId($ref)) {
+            return null;
+        }
+
+        return $this->validPerson(
+            $this->sessionQuery()
+                ->join('core.staff_area_sessions as a', 'a.session_sid', '=', 's.sid')
+                ->where('a.ref_hash', SessionFingerprint::ofAreaRef($ref))
+                ->where('a.area', $area),
+        );
+    }
+
+    private function sessionQuery(): Builder
+    {
+        return $this->db->connection('pgsql')->table('core.staff_sessions as s')
+            ->join('core.staff_people as p', 'p.id', '=', 's.person_id')
+            ->whereNull('s.revoked_at')
+            ->where('s.created_at', '>', now()->subSeconds(self::SESSION_MAX))
+            ->where('p.active', true);
+    }
+
+    private function validPerson(Builder $query): ?StaffPerson
+    {
+        $row = $query->first(['p.id', 'p.email', 'p.name']);
+
+        return $row === null ? null : new StaffPerson(self::text($row->id), self::text($row->email), self::text($row->name));
     }
 
     /** @param  array<string, mixed>  $details  mai password, segreti o codici */

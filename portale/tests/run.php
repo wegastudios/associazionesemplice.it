@@ -2436,6 +2436,7 @@ $_SESSION = array();
 check( 'staff sso: spento di default, nessuna sessione', false === StaffSso::enabled() && false === StaffSso::receive( $ssdb, $ssTok(), $ssNow ) && ! isset( $_SESSION['staff_sso'] ) );
 Config::set( 'staff_sso', array( 'enabled' => true, 'issuer' => 'https://associazionesemplice.it/saas', 'api_url' => 'https://associazionesemplice.it/saas', 'keys' => array( $ssKid => Portale\PortalAttestation::publicKey( $ssSeed ) ) ) );
 check( 'staff sso: acceso con chiavi fissate', true === StaffSso::enabled() );
+check( 'staff sso: il riferimento di area (opaco, non per forza 32 esadecimali) è accettato', null !== StaffSso::verify( $ssTok( array( 'sid' => 'ar_' . str_repeat( 'Zk9-', 8 ) ) ), $ssNow ) );
 check( 'staff sso: token valido apre la sessione con livello, sid e aree (secondo fattore non richiesto)', true === StaffSso::receive( $ssdb, $ssTok(), $ssNow ) && 'vendita' === $_SESSION['staff_sso']['level'] && 'mario@esempio.it' === $_SESSION['staff_sso']['email'] && false === $_SESSION['staff_sso']['mfa'] && 'admin' === $_SESSION['staff_sso']['areas']['saas'] );
 $ssJ = $ssTok();
 check( 'staff sso: il jti vale una volta sola', true === StaffSso::receive( $ssdb, $ssJ, $ssNow ) && false === StaffSso::receive( $ssdb, $ssJ, $ssNow ) );
@@ -2450,6 +2451,7 @@ foreach ( array(
 	'livello sconosciuto'    => $ssTok( array( 'level' => 'super' ) ),
 	'email non minuscola'    => $ssTok( array( 'sub' => 'Mario@Esempio.it' ) ),
 	'sid non valido'         => $ssTok( array( 'sid' => 'xyz' ) ),
+	'sid con caratteri strani' => $ssTok( array( 'sid' => 'abcdefghijklmnop qrs' ) ),
 	'mfa non booleano'       => $ssTok( array( 'mfa' => 'si' ) ),
 ) as $ssWhy => $ssBad ) {
 	check( 'staff sso: rifiutato — ' . $ssWhy, null === StaffSso::verify( $ssBad, $ssNow ) );

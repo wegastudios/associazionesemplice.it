@@ -78,7 +78,8 @@ final readonly class IssuerStaffAccess implements StaffAccess
 
     public function check(string $sid): ?string
     {
-        $person = $this->directory->personOfSession($sid);
+        // `$sid` è il riferimento che il SaaS ha emesso per la propria area `saas`.
+        $person = $this->directory->personOfAreaRef($sid, 'saas');
         $level = $person === null ? null : ($this->directory->areas($person)['saas'] ?? null);
 
         return is_string($level) && in_array($level, self::LEVELS, true) ? $level : null;

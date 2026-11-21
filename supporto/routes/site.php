@@ -4,7 +4,6 @@ use App\Http\Controllers\Admin\Site\ArticleController;
 use App\Http\Controllers\Admin\Site\HubStatusController;
 use App\Http\Controllers\Admin\Site\PlanController;
 use App\Http\Controllers\Admin\Site\SectionController;
-use App\Http\Controllers\Admin\Site\StaffAreaController;
 use App\Http\Controllers\Admin\Site\StaffUsersController;
 use App\Http\Controllers\Admin\Site\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\Site\TopicController;
@@ -51,7 +50,6 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::post('/ticket/{ticket}/gestione', [AdminTicketController::class, 'manage'])->name('tickets.manage');
     Route::post('/ticket/{ticket}/registra', [AdminTicketController::class, 'register'])->name('tickets.register');
 
-    Route::post('/vai/{area}', [StaffAreaController::class, 'go'])->name('goto');
 
     // Il resto e dell'amministratore: l'agente risponde ai ticket e basta
     Route::middleware('admin.role')->group(function () {

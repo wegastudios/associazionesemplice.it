@@ -2574,6 +2574,11 @@ asem_ok( 'stripe' === $ps->provider() && $ps->enabled(), 'pagamenti online: Stri
 // dati dedicati: un socio senza tessera valida con un ospite, un corso e un evento
 $pm   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pia', 'last_name' => 'Pagante', 'email' => 'pia.pagante@example.com' ) );
 $pmp  = $people->get( $pm );
+// limiti contro gli errori di digitazione: note, date tra il 1900 e il 2100, importi e righe
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Nora', 'last_name' => 'Nota', 'notes' => str_repeat( 'a', 2001 ) ) ); } ), '2.000' ), 'limiti: le note oltre 2.000 caratteri sono rifiutate' );
+asem_ok( \AssociazioneSemplice\Age::is_valid_date( '2100-12-31' ) && ! \AssociazioneSemplice\Age::is_valid_date( '2101-01-01' ) && ! \AssociazioneSemplice\Age::is_valid_date( '1899-12-31' ), 'limiti: le date valgono tra il 1900 e il 2100' );
+asem_ok( null !== asem_throws( function () use ( $ledger, $cash, $bank ) { $ledger->record_transfer( '2101-01-01', (int) $cash['id'], (int) $bank['id'], 100, 'cash', 'prova' ); } ), 'limiti: un movimento oltre il 2100 è rifiutato' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $ledger, $cash, $bank, $today ) { $ledger->record_transfer( $today, (int) $cash['id'], (int) $bank['id'], 1000000001, 'cash', 'prova' ); } ), 'troppo alto' ), 'limiti: un importo oltre i 10 milioni è rifiutato' );
 $u_pm = (int) $pmp['wp_user_id'];
 $pg   = $people->create( array( 'type' => 'guest', 'first_name' => 'Gigi', 'last_name' => 'Pagante', 'phone' => '333 4444444', 'host_person_id' => $pm ) );
 $pcourse = $acts->create( array( 'name' => 'Ceramica', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'guest_fee_cents' => 1500 ) );

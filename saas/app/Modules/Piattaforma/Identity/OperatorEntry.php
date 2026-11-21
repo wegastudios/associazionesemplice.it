@@ -20,7 +20,7 @@ final readonly class OperatorEntry
 {
     private const AUDIENCE = 'associazionesemplice-gestionale';
 
-    public function __construct(private StaffIdentityConfig $identity, private StaffAccess $access, private IdentityService $sessions, private DatabaseManager $db, private Repository $config) {}
+    public function __construct(private StaffIdentityConfig $identity, private StaffAccess $access, private IdentityService $sessions, private StaffDirectory $directory, private DatabaseManager $db, private Repository $config) {}
 
     public function enabled(): bool
     {
@@ -51,7 +51,8 @@ final readonly class OperatorEntry
             'exp' => $now + 60,
             'jti' => bin2hex(random_bytes(16)),
             'sub' => $person->email,
-            'sid' => $sid,
+            // Nel biglietto, che passa dal browser, non va l'identificativo vero: un riferimento valido solo per questo ingresso.
+            'sid' => $this->directory->issueAreaRef($sid, 'operator'),
             'mfa' => $this->access->hasTwoFactor($person),
         ], $this->identity->signingSeed(), 'staff-');
 
@@ -83,7 +84,7 @@ final readonly class OperatorEntry
             return null;
         }
         // Monouso, e la sessione centrale deve essere ancora valida.
-        if (! Cache::add('operator-sso:'.$jti, 1, 180) || $this->sessions->personOf($sid) === null) {
+        if (! Cache::add('operator-sso:'.$jti, 1, 180) || $this->directory->personOfAreaRef($sid, 'operator') === null) {
             return null;
         }
         $user = $this->operatorUserId($email);

@@ -39,26 +39,6 @@ class StaffPortal
     }
 
     /**
-     * «Vai a» un'altra area: chiede al SaaS un token staff_sso per quell'area, per la stessa sessione centrale.
-     *
-     * @return string|null il token, oppure null (sessione chiusa, area non consentita, SaaS muto)
-     */
-    public function areaToken(string $sid, string $area): ?string
-    {
-        try {
-            $response = Http::asJson()->timeout(8)->post($this->url('token'), [
-                'token' => StaffJwt::sign('staff_token', ['sid' => $sid, 'area' => $area]),
-            ]);
-        } catch (\Throwable) {
-            return null;
-        }
-        $data = $response->json();
-        $token = is_array($data) ? ($data['token'] ?? null) : null;
-
-        return $response->ok() && is_string($token) ? $token : null;
-    }
-
-    /**
      * Riconferma la sessione centrale.
      *
      * @return array{valid: bool, level: ?string}|null null = il portale non risponde («non so»)
