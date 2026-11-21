@@ -7,10 +7,13 @@ namespace App\Modules\Cifratura\Providers;
 use App\Modules\Cifratura\Console\DestroyOrgKeysCommand;
 use App\Modules\Cifratura\Console\GenerateKeysCommand;
 use App\Modules\Cifratura\Console\MonitorKeyServiceCommand;
+use App\Modules\Cifratura\Console\PruneFormatBackupsCommand;
 use App\Modules\Cifratura\Console\RecoveryCheckCommand;
 use App\Modules\Cifratura\Console\RecoveryCreateCommand;
 use App\Modules\Cifratura\Console\RetireLocalKeyCommand;
 use App\Modules\Cifratura\Console\RewrapKeysCommand;
+use App\Modules\Cifratura\Console\UndoUpgradeFormatCommand;
+use App\Modules\Cifratura\Console\UpgradeFormatCommand;
 use App\Modules\Cifratura\Contracts\EncryptedFiles;
 use App\Modules\Cifratura\Contracts\FieldCipher;
 use App\Modules\Cifratura\Contracts\KeyVault;
@@ -58,12 +61,17 @@ final class CifraturaServiceProvider extends ServiceProvider
                 RewrapKeysCommand::class,
                 RetireLocalKeyCommand::class,
                 MonitorKeyServiceCommand::class,
+                UpgradeFormatCommand::class,
+                UndoUpgradeFormatCommand::class,
+                PruneFormatBackupsCommand::class,
             ]);
 
             // Il servizio chiavi si controlla ogni 5 minuti; con la chiave principale locale non c'è nulla da controllare.
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('saas:keys:monitor')->everyFiveMinutes()->withoutOverlapping(10)
                     ->when(static fn (): bool => config('saas.crypto.vault') === 'remote');
+                // Copie d'appoggio del passaggio di formato dei campi cifrati: 30 giorni, poi si tolgono.
+                $schedule->command('saas:crypt:upgrade-format:prune')->dailyAt('04:07')->withoutOverlapping();
             });
         }
     }

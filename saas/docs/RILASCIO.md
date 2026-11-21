@@ -33,7 +33,7 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
 | ogni minuto | `queue:work --stop-when-empty --max-time=50` (code su Postgres) |
 | ogni 5 minuti | `saas:keys:monitor` (solo con `SAAS_KEY_VAULT=remote`; email all'amministrazione, una per guasto) |
 | ogni ora, :07 | `saas:backup:dump` (produzione e staging) |
-| ogni giorno | `saas:audit:heads:copy` 03:17 (testa del registro nello spazio dei backup) · `saas:audit:verify` 03:37 · `saas:portal:usage` 04:23 · `saas:backup:prune` 05:11 · `saas:portal:suspend-expired` 00:41 · `queue:prune-failed` 05:47 (falliti oltre 7 giorni) |
+| ogni giorno | `saas:crypt:upgrade-format:prune` 04:07 (copie d'appoggio del passaggio di formato oltre 30 giorni) · `saas:audit:heads:copy` 03:17 (testa del registro nello spazio dei backup) · `saas:audit:verify` 03:37 · `saas:portal:usage` 04:23 · `saas:backup:prune` 05:11 · `saas:portal:suspend-expired` 00:41 · `queue:prune-failed` 05:47 (falliti oltre 7 giorni) |
 | ogni mese, il 1° | `saas:audit:partitions` 02:13 |
 | ogni settimana, lunedì | `saas:backup:restore-test` 06:17 (solo staging, con la chiave privata dei backup) · `saas:audit:prune-security` 03:27 (accessi di operatori e staff oltre 18 mesi) |
 | ogni 15 minuti | `saas:tmp:purge --minutes=60` (dump in chiaro e archivi dell'esportazione rimasti in `storage/app/tmp`) |
@@ -124,6 +124,30 @@ dei file, spazio dei backup). Dall'esterno: `https://app.associazionesemplice.it
   perdere l'accesso a quei campi. I dump fatti prima, con righe `0x01`, si aprono con il codice nuovo. In caso di
   emergenza, `SAAS_ROW_BOUND_FORMAT=false` riporta le nuove scritture a `0x01` (le righe già `0x02` restano leggibili solo
   dal codice nuovo).
+- **Passaggio delle righe vecchie a `0x02`** (`saas:crypt:upgrade-format`). Procedura:
+  1. **Prova**: azione `formato-dry-run` del workflow «SaaS · manutenzione server» (o `php artisan saas:crypt:upgrade-format
+     --dry-run`). Non scrive nulla e stampa solo conteggi per associazione e tabella: righe da convertire, già `0x02`,
+     campi che verrebbero salvati in appoggio, righe che non si decifrano (con tabella, id della riga e colonna, mai valori).
+     Esce con errore se anche un solo campo non si decifra: va chiarito prima del passaggio vero.
+  2. **Passaggio**: `php artisan saas:crypt:upgrade-format` (`--org=<id>` per una sola associazione). Una associazione per
+     volta, ognuna in una transazione sua con le righe bloccate (`FOR UPDATE`); si può ripetere (le righe già `0x02` si
+     saltano). Se in una associazione un campo non si decifra, quell'associazione non cambia, le altre vanno avanti e il
+     comando esce con errore. Per ogni campo decifra il vecchio testo, lo ricifra con l'id della riga, verifica che si
+     riapra identico e solo allora lo sostituisce. Le impronte di ricerca (`*_bidx`) non cambiano. Restano `0x01`
+     le fotografie del libro soci, le ricevute, gli anni chiusi, le richieste di adesione e i certificati.
+  3. **Copie d'appoggio**: prima di sostituire un campo, il vecchio testo cifrato (`0x01`) va in `app.crypt_format_backups`,
+     nello stesso database dell'associazione (stessa Row-Level Security delle altre tabelle di `app`; solo testo cifrato
+     e l'impronta SHA-256 del nuovo, nessun dato in chiaro). Si tengono **30 giorni**: ogni giorno alle 04:07
+     `saas:crypt:upgrade-format:prune` le toglie e scrive una riga nel registro delle azioni dell'associazione.
+  4. **Ritorno**: `php artisan saas:crypt:upgrade-format:undo` (`--org=`, `--dry-run`) rimette i vecchi `0x01` dalle copie,
+     ma solo dove la riga è ancora quella scritta dal passaggio (confronto con l'impronta salvata); un campo modificato nel
+     frattempo si salta e il comando lo dice. Dopo i 30 giorni non c'è più nulla da rimettere.
+  5. Ogni esecuzione vera scrive una riga nel registro delle azioni di ogni associazione (`crypto.format_upgraded`,
+     `crypto.format_failed`, `crypto.format_restored`, `crypto.format_pruned`: solo conteggi) e una nel registro della
+     piattaforma. Il comando usa la connessione dell'applicazione dentro il contesto di ogni associazione, non quella del
+     proprietario: lavora soltanto sulle righe dell'associazione corrente, sul database condiviso e sui dedicati.
+
+  Il passaggio vero si lancia a mano sul server dopo l'esito della prova; non ha un'azione propria nel workflow.
 - Conservazione: tutti i dump delle ultime 48 ore, poi il primo di ogni giorno per 30 giorni.
 - **Prova di ripristino** (`saas:backup:restore-test`, ogni settimana sullo staging): scarica l'ultimo dump di
   produzione, ne controlla l'impronta, lo decifra, lo ripristina nel database di prova (che viene svuotato) e
