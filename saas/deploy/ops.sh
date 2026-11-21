@@ -415,11 +415,9 @@ case "$ACTION" in
         echo "versione: ", PHP_VERSION, "  sapi: ", PHP_SAPI, PHP_EOL;
         foreach (["memory_limit", "realpath_cache_size", "realpath_cache_ttl", "max_execution_time"] as $k) { echo $k, " = ", var_export(ini_get($k), true), PHP_EOL; }
         foreach (["opcache", "apcu"] as $ext) { echo "estensione ", $ext, ": ", extension_loaded($ext) ? "caricata" : "assente", PHP_EOL; }
-        foreach (["opcache", "apcu"] as $ext) {
-          $all = extension_loaded($ext) ? ini_get_all($ext, false) : false;
-          if (! is_array($all)) { echo $ext, ".*: non disponibile", PHP_EOL; continue; }
-          ksort($all);
-          foreach ($all as $k => $v) { echo $k, " = ", var_export($v, true), PHP_EOL; }
+        foreach (["opcache.enable", "opcache.enable_cli", "opcache.memory_consumption", "opcache.max_accelerated_files", "opcache.validate_timestamps", "opcache.revalidate_freq", "opcache.jit", "opcache.interned_strings_buffer", "apc.enabled", "apc.shm_size", "apc.enable_cli"] as $k) {
+          $v = ini_get($k);
+          echo $k, " = ", $v === false ? "non disponibile" : $v, PHP_EOL;
         }
       });
 
@@ -457,7 +455,7 @@ case "$ACTION" in
 
       $sec("PostgreSQL: pg_stat_statements (prime 10 per tempo totale, solo SELECT/INSERT/UPDATE/DELETE/WITH)", function () use ($db) {
         if (! $db->selectOne("select 1 as x from pg_extension where extname = ?", ["pg_stat_statements"])) { echo "estensione non installata", PHP_EOL; return; }
-        foreach ($db->select("select calls, round(total_exec_time::numeric, 1) as tot, round(mean_exec_time::numeric, 2) as mean, rows, left(regexp_replace(query, ?, ?, ?), 110) as q from pg_stat_statements where query ~* ? order by total_exec_time desc limit 10", ["\\s+", " ", "g", "^(select|insert|update|delete|with)"]) as $r) {
+        foreach ($db->select("select calls, round(total_exec_time::numeric, 1) as tot, round(mean_exec_time::numeric, 2) as mean, rows, left(regexp_replace(query, ?, ?, ?), 110) as q from pg_stat_statements where dbid = (select oid from pg_database where datname = current_database()) and query ~* ? order by total_exec_time desc limit 10", ["\\s+", " ", "g", "^(select|insert|update|delete|with)"]) as $r) {
           echo "chiamate ", $r->calls, ", totale ", $r->tot, " ms, medio ", $r->mean, " ms, righe ", $r->rows, ": ", $r->q, PHP_EOL;
         }
       });
