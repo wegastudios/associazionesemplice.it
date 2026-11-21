@@ -164,6 +164,14 @@ return [
         'delegation_hours' => 72,
     ],
 
+    // API firmate (portale e staff): il limite scatta dopo il controllo della firma, con due secchi per indirizzo e per
+    // ambito. Richieste con firma valida: `valid_per_minute`; firma assente o non valida: `invalid_per_minute`, oltre
+    // il quale rispondono 429 senza altro lavoro. I due secchi non si toccano.
+    'signed_api' => [
+        'valid_per_minute' => (int) env('SAAS_SIGNED_API_VALID_PER_MINUTE', 120),
+        'invalid_per_minute' => (int) env('SAAS_SIGNED_API_INVALID_PER_MINUTE', 10),
+    ],
+
     // Dump orari cifrati (docs/RILASCIO.md). Sul server solo la chiave pubblica; la coppia completa solo dove si fa
     // la prova di ripristino (staging).
     'backup' => [

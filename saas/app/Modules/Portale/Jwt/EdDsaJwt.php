@@ -76,6 +76,33 @@ final class EdDsaJwt
         return $claims;
     }
 
+    /**
+     * Solo la firma, senza guardare il contenuto: serve a distinguere in fretta le richieste firmate da chi ha la chiave.
+     *
+     * @param  array<string, string>  $keys  kid => chiave pubblica in base64url
+     */
+    public static function hasValidSignature(string $token, array $keys): bool
+    {
+        $parts = explode('.', $token);
+        if (strlen($token) > 16384 || count($parts) !== 3) {
+            return false;
+        }
+        try {
+            $header = self::json($parts[0]);
+        } catch (InvalidToken) {
+            return false;
+        }
+        $kid = $header['kid'] ?? null;
+        if (($header['alg'] ?? null) !== 'EdDSA' || ! is_string($kid) || ! isset($keys[$kid])) {
+            return false;
+        }
+        $public = self::unb64($keys[$kid]);
+        $raw = self::unb64($parts[2]);
+
+        return strlen($public) === SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES && strlen($raw) === SODIUM_CRYPTO_SIGN_BYTES
+            && sodium_crypto_sign_verify_detached($raw, $parts[0].'.'.$parts[1], $public);
+    }
+
     /** kid di una chiave pubblica: come nel portale, prefisso e prime 8 cifre dell'impronta. */
     public static function kid(string $publicKey, string $prefix = 'portale-'): string
     {

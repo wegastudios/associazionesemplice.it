@@ -24,6 +24,7 @@ use App\Modules\Portale\Http\Controllers\PortalServicesController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
 use App\Modules\Portale\Http\Middleware\RequireFullAccount;
 use App\Modules\Portale\Http\Middleware\RequirePackage;
+use App\Modules\Portale\Http\Middleware\ThrottlePortalApi;
 use App\Modules\Portale\Notifications\PortalNotifications;
 use App\Modules\Portale\Staff\PortalStaffAccess;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -53,10 +54,11 @@ final class PortaleServiceProvider extends ServiceProvider
         $router->aliasMiddleware('package', RequirePackage::class);
         $router->aliasMiddleware('exports.allowed', RequireFullAccount::class);
 
+        // Solo il catalogo pubblico (senza firma); le API firmate hanno i due secchi di ThrottlePortalApi.
         RateLimiter::for('portal-api', static fn (Request $request): Limit => Limit::perMinute(120)->by('portal|'.$request->ip()));
 
         // API per il portale: niente sessione, niente CSRF, solo token firmati.
-        Route::prefix('api/portale/v1')->middleware('throttle:portal-api')->group(function (): void {
+        Route::prefix('api/portale/v1')->middleware(ThrottlePortalApi::class)->group(function (): void {
             Route::post('/orgs', [PortalApiController::class, 'provision']);
             // Diritti v1: non più accettati, rispondono 410 (§8). Resta solo `subscription` v2.
             Route::put('/orgs/{org}/entitlements', [PortalApiController::class, 'entitlements'])->whereUuid('org');
@@ -64,10 +66,10 @@ final class PortaleServiceProvider extends ServiceProvider
 
         // Abbonamento v2: il SaaS ricava i limiti dal piano (CONTRATTO_PORTALE.md §3.2).
         Route::put('api/portale/v2/orgs/{org}/subscription', [PortalApiController::class, 'subscription'])
-            ->whereUuid('org')->middleware('throttle:portal-api');
+            ->whereUuid('org')->middleware(ThrottlePortalApi::class);
 
         // Promozioni, cambio di piano, dominio e stato (§3.3-§3.6).
-        Route::prefix('api/portale/v2')->middleware('throttle:portal-api')->group(function (): void {
+        Route::prefix('api/portale/v2')->middleware(ThrottlePortalApi::class)->group(function (): void {
             Route::post('promo/check', [PortalServicesController::class, 'promoCheck']);
             Route::post('promo/redeem', [PortalServicesController::class, 'promoRedeem']);
             Route::post('orgs/{org}/plan-change/check', [PortalServicesController::class, 'planChangeCheck'])->whereUuid('org');
