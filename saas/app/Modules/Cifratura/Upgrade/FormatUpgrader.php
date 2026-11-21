@@ -299,8 +299,8 @@ final readonly class FormatUpgrader
     }
 
     /**
-     * @param  array<string, array{0: string, 1: string}>  $updates colonna => [vecchio, nuovo]
-     * @param  array<string, string>  $hashes colonna => SHA-256 del nuovo testo
+     * @param  array<string, array{0: string, 1: string}>  $updates  colonna => [vecchio, nuovo]
+     * @param  array<string, string>  $hashes  colonna => SHA-256 del nuovo testo
      */
     private function write(ConnectionInterface $conn, string $orgId, string $table, string $id, array $updates, array $hashes): void
     {
