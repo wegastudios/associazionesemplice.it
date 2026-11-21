@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.34
+Stable tag: 1.3.35
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,6 +61,12 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 
 == Changelog ==
 
+= 1.3.35 =
+* Nuovo: «Rigenera il codice» della tessera QR, per il socio nell'area soci e per la segreteria dalla scheda. Il codice vecchio, anche stampato o nel Wallet, smette subito di valere.
+* Sicurezza: limiti di frequenza per socio su richieste, annullamenti, profilo, ricevute e rigenerazione del codice. I valori si cambiano in Limiti e soglie.
+* Altro: controlli contro gli errori di digitazione: note fino a 2.000 caratteri, date tra il 1900 e il 2100, al massimo 10.000.000 € e 200 voci per incasso.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 = 1.3.34 =
 * Sicurezza: la domanda di adesione fatta dal sito si conferma dall'email: arriva alla segreteria solo dopo il clic sul link (vale 48 ore; un invio all'ora per indirizzo).
 * Altro: le domande mai confermate si cancellano dopo 30 giorni; di una domanda respinta con quota pagata, dopo 90 giorni restano solo nome e cognome (i movimenti contabili restano).
@@ -98,11 +104,6 @@ Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/change
 = 1.3.29 =
 * Nuovo: gli eventi su più giorni compaiono in ognuno dei loro giorni nei calendari, nella Bacheca e nel calendario dei soci, e l'importazione da The Events Calendar porta anche la data di fine.
 * Altro: passando l'anno sociale a gennaio, i corsi e gli eventi creati con l'anno a cavallo (per esempio 2025/2026) restano nell'elenco.
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.28 =
-* Nuovo: eventi su più giorni (una regata, un torneo) o che finiscono dopo mezzanotte, con il campo «fino al» nella data. Online si prenotano fino al giorno prima, poi ci pensa la segreteria; gli eventi di un giorno restano come prima.
-* Nuovo: l'elenco degli eventi si sfoglia mese per mese, anche all'indietro, e gli eventi già svolti restano visibili con le loro date.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 
