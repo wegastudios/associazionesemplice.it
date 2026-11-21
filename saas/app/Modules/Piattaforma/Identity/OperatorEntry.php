@@ -67,7 +67,8 @@ final readonly class OperatorEntry
             'jti' => bin2hex(random_bytes(16)),
             'sub' => $person->email,
             'pid' => $person->id,
-            'sid' => $sid,
+            // Nel biglietto, che passa dal browser, non va l'identificativo vero: un riferimento valido solo per questo ingresso.
+            'sid' => $this->directory->issueAreaRef($sid, 'operator'),
         ], $this->identity->signingSeed(), 'staff-');
 
         // Nel frammento (dopo il #): il browser non lo manda al server. La pagina intermedia lo rimanda in POST.
@@ -94,11 +95,11 @@ final readonly class OperatorEntry
         if (! is_string($pid) || ! is_string($sid) || ! is_string($jti) || $jti === '' || strlen($jti) > 100) {
             return null;
         }
-        // Monouso, e la sessione centrale deve essere ancora valida e della stessa persona.
+        // Monouso, e il riferimento deve valere ancora per la sessione centrale, della stessa persona.
         if (! Cache::add('operator-sso:'.$jti, 1, 180)) {
             return null;
         }
-        $person = $this->sessions->personOf($sid);
+        $person = $this->directory->personOfAreaRef($sid, 'operator');
 
         return $person !== null && $person->id === $pid ? $person : null;
     }

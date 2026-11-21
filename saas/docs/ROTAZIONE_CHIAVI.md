@@ -84,6 +84,8 @@ dump fatto prima della rotazione apre ancora i dati di quel dump. Vale finché q
 cifrati sul database vivo restano apribili con le stesse chiavi dati. Una ricifratura vera si valuta caso per caso con lo
 sviluppo. Il formato che lega il testo cifrato alla riga (`0x02`, vedi DATABASE.md) è già in scrittura per soci e
 impostazioni di pagamento: una ricifratura futura dovrà leggere entrambi i formati e scrivere con l'id della riga.
+Le righe scritte prima si portano a `0x02` con `saas:crypt:upgrade-format` (procedura, copie d'appoggio per 30 giorni e
+comando inverso in RILASCIO.md §3); il comando non cambia la chiave né la versione, solo il formato.
 
 ## 7. Dopo ogni rotazione
 

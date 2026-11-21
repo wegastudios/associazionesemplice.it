@@ -260,35 +260,12 @@ class StaffSsoTest extends SiteTestCase
             && StaffJwt::decode((string) $request['token'], ['supporto-test' => $this->ourPublic])['iss'] === 'https://supporto.test');
     }
 
-    public function test_area_selector_asks_the_saas_for_a_token_and_posts_it_to_the_other_area(): void
+    public function test_only_known_areas_are_kept_and_there_is_no_area_jump(): void
     {
         $this->staffLogin($this->token(['sub' => 'capo@example.it', 'level' => 'admin', 'areas' => ['supporto' => 'admin', 'wordpress' => 'vendita', 'altro' => 'admin']]));
         $this->assertSame(['wordpress' => 'vendita'], session('staff.areas'));
-        Http::fake(['portale.test/api/staff/v1/token' => Http::response(['token' => 'TOKEN-PER-WORDPRESS'])]);
 
-        $this->get('/admin/ticket')->assertDontSee('Vai a Portale WordPress')->assertDontSee('>Gestionale<', false);
-
-        $response = $this->post('/admin/vai/wordpress')->assertOk()
-            ->assertSee('action="https://portale.test/wordpress/admin/sso"', false)->assertSee('TOKEN-PER-WORDPRESS');
-        $this->assertStringContainsString("form-action 'self' https://portale.test;", $response->headers->get('Content-Security-Policy'));
-
-        Http::assertSent(function ($request) {
-            $c = StaffJwt::decode((string) $request['token'], ['supporto-test' => $this->ourPublic]);
-
-            return $c['typ'] === 'staff_token' && $c['area'] === 'wordpress' && $c['sid'] === session('staff.sid');
-        });
-
-        // Aree dove non si ha un ruolo, o sconosciute: niente
-        $this->post('/admin/vai/saas')->assertNotFound();
-        $this->post('/admin/vai/altro')->assertNotFound();
-    }
-
-    public function test_selector_fails_with_a_message_when_the_saas_refuses(): void
-    {
-        $this->staffLogin($this->token(['areas' => ['saas' => 'admin']]));
-        Http::fake(['portale.test/*' => Http::response(['error' => 'x'], 403)]);
-
-        $this->post('/admin/vai/saas')->assertSessionHasErrors('staff');
+        $this->post('/admin/vai/wordpress')->assertNotFound();
     }
 
     public function test_menu_links_to_the_saas_area_only_when_the_person_has_it(): void

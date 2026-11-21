@@ -26,6 +26,12 @@ final readonly class KeyAudit
 
     public const ORG_DESTROYED = 'keys.org_destroyed';
 
+    public const FORMAT_UPGRADE = 'crypto.format_upgrade';
+
+    public const FORMAT_UNDO = 'crypto.format_undo';
+
+    public const FORMAT_PRUNE = 'crypto.format_prune';
+
     public function __construct(private DatabaseManager $db) {}
 
     /** @param  array<string, scalar|list<string>|null>  $details */

@@ -159,6 +159,11 @@ final class Resources {
 		return $id;
 	}
 
+	/** Prenotazioni di risorse ancora da usare (non annullate, non finite) di una scheda, su tutte le risorse insieme. */
+	public static function open_count( int $person_id ): int {
+		return (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'reservations' ) . " WHERE person_id = %d AND status = 'booked' AND (ends_at IS NULL OR ends_at > %s)", $person_id, Db::now() ) );
+	}
+
 	/** Elimina la risorsa solo se non ha prenotazioni future; altrimenti si disattiva. @return bool true se eliminata */
 	public static function delete( int $id ): bool {
 		$res = self::get( $id );

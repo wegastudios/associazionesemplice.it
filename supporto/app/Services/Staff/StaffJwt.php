@@ -76,7 +76,7 @@ class StaffJwt
         return $claims;
     }
 
-    /** `areas` (area => livello) serve al selettore «Vai a»: solo coppie di testi brevi, mai altro. */
+    /** `areas` (area => livello) serve al menu, che manda al portale: solo coppie di testi brevi, mai altro. */
     private static function validAreas(mixed $areas): bool
     {
         if (! is_array($areas) || count($areas) > 10) {

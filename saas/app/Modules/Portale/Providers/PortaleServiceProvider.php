@@ -18,13 +18,13 @@ use App\Modules\Portale\Entitlements\CatalogLifecyclePolicy;
 use App\Modules\Portale\Entitlements\DomainDns;
 use App\Modules\Portale\Entitlements\EntitlementReader;
 use App\Modules\Portale\Entitlements\SystemDns;
-use App\Modules\Portale\Http\Controllers\AdminApiController;
 use App\Modules\Portale\Http\Controllers\CatalogController;
 use App\Modules\Portale\Http\Controllers\PortalApiController;
 use App\Modules\Portale\Http\Controllers\PortalServicesController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
 use App\Modules\Portale\Http\Middleware\RequireFullAccount;
 use App\Modules\Portale\Http\Middleware\RequirePackage;
+use App\Modules\Portale\Http\Middleware\ThrottlePortalApi;
 use App\Modules\Portale\Notifications\PortalNotifications;
 use App\Modules\Portale\Staff\PortalStaffAccess;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -54,26 +54,22 @@ final class PortaleServiceProvider extends ServiceProvider
         $router->aliasMiddleware('package', RequirePackage::class);
         $router->aliasMiddleware('exports.allowed', RequireFullAccount::class);
 
+        // Solo il catalogo pubblico (senza firma); le API firmate hanno i due secchi di ThrottlePortalApi.
         RateLimiter::for('portal-api', static fn (Request $request): Limit => Limit::perMinute(120)->by('portal|'.$request->ip()));
 
         // API per il portale: niente sessione, niente CSRF, solo token firmati.
-        Route::prefix('api/portale/v1')->middleware('throttle:portal-api')->group(function (): void {
+        Route::prefix('api/portale/v1')->middleware(ThrottlePortalApi::class)->group(function (): void {
             Route::post('/orgs', [PortalApiController::class, 'provision']);
+            // Diritti v1: non più accettati, rispondono 410 (§8). Resta solo `subscription` v2.
             Route::put('/orgs/{org}/entitlements', [PortalApiController::class, 'entitlements'])->whereUuid('org');
-
-            // Amministrazione della piattaforma (§2.3): letture e disattivazione utenti.
-            Route::post('/admin/orgs', [AdminApiController::class, 'orgs']);
-            Route::post('/admin/orgs/{org}', [AdminApiController::class, 'org'])->whereUuid('org');
-            Route::post('/admin/orgs/{org}/operators', [AdminApiController::class, 'operators'])->whereUuid('org');
-            Route::post('/admin/users/{user}/state', [AdminApiController::class, 'userState'])->whereUuid('user');
         });
 
         // Abbonamento v2: il SaaS ricava i limiti dal piano (CONTRATTO_PORTALE.md §3.2).
         Route::put('api/portale/v2/orgs/{org}/subscription', [PortalApiController::class, 'subscription'])
-            ->whereUuid('org')->middleware('throttle:portal-api');
+            ->whereUuid('org')->middleware(ThrottlePortalApi::class);
 
         // Promozioni, cambio di piano, dominio e stato (§3.3-§3.6).
-        Route::prefix('api/portale/v2')->middleware('throttle:portal-api')->group(function (): void {
+        Route::prefix('api/portale/v2')->middleware(ThrottlePortalApi::class)->group(function (): void {
             Route::post('promo/check', [PortalServicesController::class, 'promoCheck']);
             Route::post('promo/redeem', [PortalServicesController::class, 'promoRedeem']);
             Route::post('orgs/{org}/plan-change/check', [PortalServicesController::class, 'planChangeCheck'])->whereUuid('org');

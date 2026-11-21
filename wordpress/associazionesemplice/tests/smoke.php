@@ -2574,6 +2574,11 @@ asem_ok( 'stripe' === $ps->provider() && $ps->enabled(), 'pagamenti online: Stri
 // dati dedicati: un socio senza tessera valida con un ospite, un corso e un evento
 $pm   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pia', 'last_name' => 'Pagante', 'email' => 'pia.pagante@example.com' ) );
 $pmp  = $people->get( $pm );
+// limiti contro gli errori di digitazione: note, date tra il 1900 e il 2100, importi e righe
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'first_name' => 'Nora', 'last_name' => 'Nota', 'notes' => str_repeat( 'a', 2001 ) ) ); } ), '2.000' ), 'limiti: le note oltre 2.000 caratteri sono rifiutate' );
+asem_ok( \AssociazioneSemplice\Age::is_valid_date( '2100-12-31' ) && ! \AssociazioneSemplice\Age::is_valid_date( '2101-01-01' ) && ! \AssociazioneSemplice\Age::is_valid_date( '1899-12-31' ), 'limiti: le date valgono tra il 1900 e il 2100' );
+asem_ok( null !== asem_throws( function () use ( $ledger, $cash, $bank ) { $ledger->record_transfer( '2101-01-01', (int) $cash['id'], (int) $bank['id'], 100, 'cash', 'prova' ); } ), 'limiti: un movimento oltre il 2100 è rifiutato' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $ledger, $cash, $bank, $today ) { $ledger->record_transfer( $today, (int) $cash['id'], (int) $bank['id'], 1000000001, 'cash', 'prova' ); } ), 'troppo alto' ), 'limiti: un importo oltre i 10 milioni è rifiutato' );
 $u_pm = (int) $pmp['wp_user_id'];
 $pg   = $people->create( array( 'type' => 'guest', 'first_name' => 'Gigi', 'last_name' => 'Pagante', 'phone' => '333 4444444', 'host_person_id' => $pm ) );
 $pcourse = $acts->create( array( 'name' => 'Ceramica', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'guest_fee_cents' => 1500 ) );
@@ -8136,6 +8141,17 @@ asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { 
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '17:00', 2 ); } ), 'risorse: nemmeno con una prenotazione di 2 fasce che la sfiora' );
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '19:00', 1 ) > 0, 'risorse: la fascia subito dopo è libera' );
 asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } ), 'risorse: il limite di prenotazioni per socio vale per i soci' );
+// area soci: tetto di prenotazioni ancora da usare (su tutte le risorse) e limite di frequenza per socio
+asem_ok( \AssociazioneSemplice\Resources::open_count( $rs_m1 ) >= 1 && \AssociazioneSemplice\Resources::open_count( $rs_m1 ) === \AssociazioneSemplice\Resources::open_count( $rs_m1 ) && 0 === \AssociazioneSemplice\Resources::open_count( 999999 ), 'area soci: si contano le prenotazioni ancora da usare di una scheda' );
+$th_limits = (array) Settings::get( 'limits' );
+Settings::update( array( 'limits' => array_merge( $th_limits, array( 'member_book_per_10min' => 2, 'member_open_bookings_max' => 10 ) ) ) );
+delete_transient( 'asem_mt_book_' . $rs_m1 );
+\AssociazioneSemplice\MemberThrottle::hit( 'book', $rs_m1, 'member_book_per_10min' );
+\AssociazioneSemplice\MemberThrottle::hit( 'book', $rs_m1, 'member_book_per_10min' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $rs_m1 ) { \AssociazioneSemplice\MemberThrottle::hit( 'book', $rs_m1, 'member_book_per_10min' ); } ), 'troppe richieste' ), 'area soci: oltre il limite di frequenza si aspetta qualche minuto' );
+asem_ok( 10 === \AssociazioneSemplice\Limits::get( 'member_open_bookings_max' ) && 20 === \AssociazioneSemplice\Limits::default_of( 'member_book_per_10min' ) && 30 === \AssociazioneSemplice\Limits::default_of( 'member_receipt_per_10min' ), 'area soci: valori di partenza dei limiti (10 prenotazioni da usare, 20 azioni, 30 PDF)' );
+delete_transient( 'asem_mt_book_' . $rs_m1 );
+Settings::update( array( 'limits' => $th_limits ) );
 // Il massimo per persona si conta sotto lo stesso blocco della prenotazione: con il blocco occupato il conteggio non è nemmeno raggiunto
 Db::$lock_fake = '0';
 $rs_lk = asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } );

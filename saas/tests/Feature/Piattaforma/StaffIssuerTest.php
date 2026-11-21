@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Modules\Piattaforma\Identity\SessionFingerprint;
+use App\Modules\Piattaforma\Identity\StaffDirectory;
+use App\Modules\Piattaforma\Identity\StaffPerson;
 use App\Modules\Portale\Jwt\EdDsaJwt;
 use App\Modules\Portale\PortalConfig;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +71,12 @@ function idpPerson(string $email = 'persona@example.test', array $roles = ['word
     return $id;
 }
 
+/** Apre una sessione centrale come fa il portale con il login unico e ne restituisce l'identificativo vero. */
+function idpTrueSession(string $personId): string
+{
+    return app(StaffDirectory::class)->openSession(new StaffPerson($personId, 'persona@example.test', 'Persona'), '203.0.113.7');
+}
+
 /** @return array<string, mixed> */
 function idpVerifyStaffToken(string $token, string $public, string $audience): array
 {
@@ -109,7 +118,10 @@ it('fa entrare con email e password e dà un staff_sso per quell\'area, senza se
         ->and($claims)->not->toHaveKey('mfa_at')
         ->and($claims['exp'] - $claims['iat'])->toBe(60)
         ->and($claims['sid'])->toMatch('/^[0-9a-f]{32}$/');
-    expect(DB::table('core.staff_sessions')->where('sid', $claims['sid'])->where('person_id', $id)->count())->toBe(1)
+    // L'area riceve un riferimento, non l'identificativo di sessione: il database ha solo impronte.
+    expect(DB::table('core.staff_sessions')->where('sid', $claims['sid'])->count())->toBe(0)
+        ->and(DB::table('core.staff_sessions')->where('person_id', $id)->count())->toBe(1)
+        ->and(DB::table('core.staff_area_sessions')->where('ref_hash', SessionFingerprint::ofAreaRef($claims['sid']))->where('area', 'wordpress')->count())->toBe(1)
         ->and(DB::table('core.staff_audit')->where('action', 'staff.login')->where('person_id', $id)->count())->toBe(1);
 });
 
@@ -182,18 +194,82 @@ it('blocca dopo cinque password sbagliate, anche se poi è giusta', function ():
 });
 
 it('«Vai a»: dalla sessione aperta dà il token per un\'altra area, solo se la persona ci ha un ruolo', function (): void {
-    idpPerson('persona@example.test', ['wordpress' => 'admin', 'saas' => 'vendita']);
-    $first = idpVerifyStaffToken((string) idpLogin($this)->json('token'), $this->staffPublic, 'associazionesemplice-portale');
+    $id = idpPerson('persona@example.test', ['wordpress' => 'admin', 'saas' => 'vendita']);
+    $sid = idpTrueSession($id);
 
-    $go = fn (string $to) => $this->postJson('/saas/api/staff/v1/token', ['token' => idpRequest(
-        $this->wordpressSeed, 'staff_token', ['sid' => $first['sid'], 'to' => $to], 'wordpress', 'portale-wp',
+    $go = fn (string $to, ?string $with = null) => $this->postJson('/saas/api/staff/v1/token', ['token' => idpRequest(
+        $this->wordpressSeed, 'staff_token', ['sid' => $with ?? $sid, 'to' => $to], 'wordpress', 'portale-wp',
     )]);
 
     $claims = idpVerifyStaffToken((string) $go('saas')->assertOk()->json('token'), $this->staffPublic, 'associazionesemplice-saas');
-    expect($claims['area'])->toBe('saas')->and($claims['level'])->toBe('vendita')->and($claims['sid'])->toBe($first['sid']);
+    // Nel token va un riferimento per quell'area, mai l'identificativo vero.
+    expect($claims['area'])->toBe('saas')->and($claims['level'])->toBe('vendita')
+        ->and($claims['sid'])->toMatch('/^[0-9a-f]{32}$/')->and($claims['sid'])->not->toBe($sid);
 
     $go('supporto')->assertForbidden();
     $go('inesistente')->assertForbidden();
+});
+
+it('«Vai a» non accetta un riferimento di area al posto dell\'identificativo vero', function (): void {
+    $id = idpPerson('persona@example.test', ['wordpress' => 'admin', 'saas' => 'vendita']);
+    $sid = idpTrueSession($id);
+    $ref = idpVerifyStaffToken(app(App\Modules\Piattaforma\Identity\StaffTokenIssuer::class)->issue(new StaffPerson($id, 'persona@example.test', 'Persona'), 'wordpress', $sid, ['wordpress' => 'admin', 'saas' => 'vendita']), $this->staffPublic, 'associazionesemplice-portale')['sid'];
+
+    $denied = $this->postJson('/saas/api/staff/v1/token', ['token' => idpRequest($this->wordpressSeed, 'staff_token', ['sid' => $ref, 'to' => 'saas'], 'wordpress', 'portale-wp')])->assertForbidden();
+    $unknown = $this->postJson('/saas/api/staff/v1/token', ['token' => idpRequest($this->wordpressSeed, 'staff_token', ['sid' => bin2hex(random_bytes(16)), 'to' => 'saas'], 'wordpress', 'portale-wp')])->assertForbidden();
+
+    // Stessa risposta di una sessione che non esiste.
+    expect($denied->json())->toBe($unknown->json());
+});
+
+it('l\'identificativo vero non compare mai in chiaro nel database', function (): void {
+    $id = idpPerson('persona@example.test', ['wordpress' => 'admin', 'saas' => 'vendita']);
+    $sid = idpTrueSession($id);
+    app(App\Modules\Piattaforma\Identity\StaffTokenIssuer::class)->issue(new StaffPerson($id, 'persona@example.test', 'Persona'), 'saas', $sid, ['wordpress' => 'admin', 'saas' => 'vendita']);
+
+    $dump = json_encode([DB::table('core.staff_sessions')->get(), DB::table('core.staff_area_sessions')->get()]);
+    expect($dump)->not->toContain($sid)
+        ->and(DB::table('core.staff_sessions')->value('sid'))->toBe(SessionFingerprint::ofSession($sid));
+});
+
+it('il riferimento di area vale solo per il controllo di sessione della sua area', function (): void {
+    $id = idpPerson('persona@example.test', ['wordpress' => 'vendita', 'supporto' => 'agente']);
+    $person = new StaffPerson($id, 'persona@example.test', 'Persona');
+    $sid = idpTrueSession($id);
+    $areas = ['wordpress' => 'vendita', 'supporto' => 'agente'];
+    $issuer = app(App\Modules\Piattaforma\Identity\StaffTokenIssuer::class);
+    $wpRef = idpVerifyStaffToken($issuer->issue($person, 'wordpress', $sid, $areas), $this->staffPublic, 'associazionesemplice-portale')['sid'];
+
+    $check = fn (string $seed, string $kid, string $area, string $ref) => $this->postJson('/saas/api/staff/v1/session-check', ['token' => idpRequest(
+        $seed, 'staff_session_check', ['sid' => $ref], $area, $kid,
+    )]);
+
+    $check($this->wordpressSeed, 'portale-wp', 'wordpress', $wpRef)->assertOk()->assertJson(['valid' => true, 'level' => 'vendita']);
+    // La stessa stringa presentata dal supporto, o l'identificativo vero da chiunque, non valgono.
+    $check($this->supportSeed, 'supporto-sp', 'supporto', $wpRef)->assertOk()->assertJson(['valid' => false]);
+    $check($this->wordpressSeed, 'portale-wp', 'wordpress', $sid)->assertOk()->assertJson(['valid' => false]);
+    $check($this->supportSeed, 'supporto-sp', 'supporto', $sid)->assertOk()->assertJson(['valid' => false]);
+});
+
+it('uscire (o chiudere la sessione) revoca anche i riferimenti di area', function (): void {
+    $id = idpPerson('persona@example.test', ['wordpress' => 'vendita']);
+    $sid = idpTrueSession($id);
+    $ref = idpVerifyStaffToken(app(App\Modules\Piattaforma\Identity\StaffTokenIssuer::class)->issue(new StaffPerson($id, 'persona@example.test', 'Persona'), 'wordpress', $sid, ['wordpress' => 'vendita']), $this->staffPublic, 'associazionesemplice-portale')['sid'];
+    $check = fn () => $this->postJson('/saas/api/staff/v1/session-check', ['token' => idpRequest($this->wordpressSeed, 'staff_session_check', ['sid' => $ref], 'wordpress', 'portale-wp')]);
+
+    $check()->assertOk()->assertJson(['valid' => true]);
+    app(App\Modules\Piattaforma\Identity\StaffAccess::class)->revokeSession($sid);
+    $check()->assertOk()->assertJson(['valid' => false]);
+});
+
+it('una sessione dell\'epoca precedente (identificativo in chiaro nel database) non vale più', function (): void {
+    $id = idpPerson('persona@example.test', ['wordpress' => 'vendita']);
+    $old = bin2hex(random_bytes(16));
+    DB::table('core.staff_sessions')->insert(['sid' => $old, 'person_id' => $id]);
+
+    $check = fn (string $sid) => $this->postJson('/saas/api/staff/v1/session-check', ['token' => idpRequest($this->wordpressSeed, 'staff_session_check', ['sid' => $sid], 'wordpress', 'portale-wp')]);
+    $check($old)->assertOk()->assertJson(['valid' => false]);
+    $this->postJson('/saas/api/staff/v1/token', ['token' => idpRequest($this->wordpressSeed, 'staff_token', ['sid' => $old, 'to' => 'wordpress'], 'wordpress', 'portale-wp')])->assertForbidden();
 });
 
 it('il controllo di sessione dice se è valida e a che livello, e si accorge di revoca, ruolo tolto e persona spenta', function (): void {
@@ -213,7 +289,7 @@ it('il controllo di sessione dice se è valida e a che livello, e si accorge di 
     $check()->assertOk()->assertJson(['valid' => false, 'level' => null]);
 
     DB::table('core.staff_people')->where('id', $id)->update(['active' => true]);
-    DB::table('core.staff_sessions')->where('sid', $sid)->update(['revoked_at' => now()]);
+    DB::table('core.staff_sessions')->update(['revoked_at' => now()]);
     $check()->assertOk()->assertJson(['valid' => false]);
 });
 

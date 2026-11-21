@@ -318,7 +318,7 @@ final class PeoplePage {
 		if ( $sx ) {
 			echo '<tr><th>Note</th><td><span class="description">Visibile solo con il permesso «Vedere dati riservati ed esportare».</span></td></tr>';
 		} else {
-			echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
+			echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text" maxlength="2000">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
 		}
 		echo '</tbody></table>';
 		submit_button( $p ? 'Salva' : 'Crea' );
