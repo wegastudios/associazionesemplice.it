@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Modules\Portale\Entitlements\PortalSync;
 use App\Modules\Portale\Jwt\EdDsaJwt;
 use App\Modules\Portale\PortalConfig;
 
@@ -40,34 +39,47 @@ function portalToken(string $seed, string $type, array $claims, int $lifetime = 
 }
 
 /**
- * Diritti nel vecchio formato: nessuna rotta li accetta più, ma i test del ciclo di vita li usano per portare
- * un'associazione in uno stato preciso.
+ * Un abbonamento v2 come lo manda il portale. Piano «gestionale» con tre operatori (1 + 2 aggiuntivi), area soci e
+ * prenotazione risorse a ore; chi serve altro lo cambia con $overrides.
  *
- * @param  array<string, mixed>  $claims
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
  */
-function applyEntitlements(string $seed, array $claims, ?string $orgId = null): int
-{
-    return app(PortalSync::class)->apply(portalToken($seed, 'entitlements', $claims), $orgId);
-}
-
-/** @return array<string, mixed> */
-function entitlementClaims(string $orgId, string $ref, int $rev, array $overrides = []): array
+function subscriptionClaims(string $orgId, int $rev, array $overrides = []): array
 {
     return $overrides + [
         'sub' => $orgId,
-        'ref' => $ref,
+        'ref' => 'sub_123',
         'rev' => $rev,
         'status' => 'active',
         'until' => now()->addMonth()->toDateString(),
         'trial_ends' => null,
+        'plan' => 'gestionale',
+        'plan_version' => 1,
         'members' => 150,
-        'operators' => 2,
-        'storage_gb' => 5,
-        'packages' => [
-            'member_area' => (object) [],
-            'resources' => ['hourly' => ['tier' => 5, 'web' => true]],
-            'einvoice' => ['yearly' => 50],
-        ],
+        'addons' => [['code' => 'operators_extra', 'qty' => 2], ['code' => 'member_area', 'qty' => 1], ['code' => 'resources_hourly_web', 'qty' => 1]],
+        'promo' => 'PRIMAVERA',
+        'price_cents' => 29000,
         'partner' => null,
     ];
+}
+
+/**
+ * Manda l'abbonamento sulla rotta v2, firmato come dal portale, e restituisce la risposta.
+ *
+ * @param  array<string, mixed>  $claims
+ */
+function putSubscription(string $seed, array $claims, string $orgId): Illuminate\Testing\TestResponse
+{
+    return test()->putJson("/api/portale/v2/orgs/{$orgId}/subscription", ['token' => portalToken($seed, 'subscription', $claims)]);
+}
+
+/**
+ * Porta un'associazione in uno stato preciso: manda l'abbonamento e pretende che sia accettato.
+ *
+ * @param  array<string, mixed>  $claims
+ */
+function applySubscription(string $seed, array $claims, string $orgId): void
+{
+    putSubscription($seed, $claims, $orgId)->assertOk();
 }

@@ -26,7 +26,7 @@ beforeEach(function (): void {
         'org' => ['name' => $name, 'slug' => $slug],
         'owner' => ['email' => $email, 'name' => 'Titolare'],
     ])])->json('org_id');
-    $this->entitle = fn (string $orgId, string $ref, array $overrides) => applyEntitlements($this->portal, entitlementClaims($orgId, $ref, 1, $overrides), $orgId);
+    $this->entitle = fn (string $orgId, string $ref, array $overrides) => applySubscription($this->portal, subscriptionClaims($orgId, 1, ['ref' => $ref] + $overrides), $orgId);
     // «Maturo» per la cancellazione: sospeso dal SaaS da tempo e avviso finale partito da più di 24 ore.
     $this->ripen = function (string $orgId, string $until, int $suspendedDaysAgo = 400, int $noticeHoursAgo = 48, string $kind = 'purge_1'): void {
         $owner = DB::connection('pgsql_owner');
@@ -150,7 +150,7 @@ it('il momento della sospensione lo scrive il SaaS una volta sola e si azzera se
 it('una scadenza che arretra di molto finisce nel registro dell\'associazione', function (): void {
     $alfa = ($this->provision)('sub_a', 'Alfa', 'alfa-circolo', 'alfa@example.com');
     ($this->entitle)($alfa, 'sub_a', ['status' => 'active', 'until' => now()->addDays(300)->toDateString()]);
-    applyEntitlements($this->portal, entitlementClaims($alfa, 'sub_a', 2, ['status' => 'suspended', 'until' => now()->subDays(400)->toDateString()]), $alfa);
+    applySubscription($this->portal, subscriptionClaims($alfa, 2, ['ref' => 'sub_a', 'status' => 'suspended', 'until' => now()->subDays(400)->toDateString()]), $alfa);
 
     $owner = DB::connection('pgsql_owner');
     $details = $owner->transaction(function () use ($owner, $alfa): mixed {
