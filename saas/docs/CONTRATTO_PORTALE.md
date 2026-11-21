@@ -203,7 +203,7 @@ del portale.
 ## 3. Portale → SaaS
 
 Corpo sempre `{"token": "<JWT>"}`, `Content-Type: application/json`. Nessun cookie, nessuna sessione, nessun CSRF: vale
-solo la firma. Limite: 120 richieste al minuto per indirizzo. Errori: `{"error": "<codice>"}`; i token sono sempre in
+solo la firma. Limite dopo la verifica della firma, per indirizzo: 120 richieste al minuto con firma valida; 10 al minuto con firma assente o non valida (poi 429), in un secchio a parte. Errori: `{"error": "<codice>"}`; i token sono sempre in
 un `POST`/`PUT` col corpo, mai nell'indirizzo.
 
 Codici comuni: `400 missing_token` · `401 invalid_token` · `404 unknown_org` · `409 replayed` (`jti` già usato) ·

@@ -1061,12 +1061,29 @@ final class Receipts {
 		exit;
 	}
 
+	/** Il socio che scarica PDF ha un limite ogni 10 minuti; la segreteria no. */
+	private static function throttle_member(): void {
+		if ( current_user_can( Plugin::CAP_OPS ) ) {
+			return;
+		}
+		$me = Access::current_person();
+		if ( ! $me ) {
+			return;
+		}
+		try {
+			MemberThrottle::hit( 'pdf', (int) $me['id'], 'member_receipt_per_10min' );
+		} catch ( \InvalidArgumentException $e ) {
+			wp_die( esc_html( $e->getMessage() ), 429 );
+		}
+	}
+
 	public static function handle_receipt(): void {
 		$key = isset( $_GET['key'] ) ? self::clean_key( sanitize_text_field( wp_unslash( $_GET['key'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		Csrf::check( 'asem_receipt_' . $key );
 		if ( ! self::can_view( $key ) ) {
 			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
+		self::throttle_member();
 		try {
 			$r = self::build( $key );
 		} catch ( \InvalidArgumentException $e ) {
@@ -1126,6 +1143,7 @@ final class Receipts {
 		if ( ! self::can_statement( $pid ) ) {
 			wp_die( 'Non hai il permesso per questa operazione: chiedilo a un amministratore.', 403 );
 		}
+		self::throttle_member();
 		try {
 			$r = self::statement( $pid, $year );
 		} catch ( \InvalidArgumentException $e ) {

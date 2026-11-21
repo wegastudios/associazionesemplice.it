@@ -37,6 +37,16 @@ final class StaffJwt
         }
     }
 
+    /**
+     * Solo la firma, senza guardare il contenuto.
+     *
+     * @param  array<string, string>  $keys  kid => chiave pubblica base64url
+     */
+    public static function hasValidSignature(string $token, array $keys): bool
+    {
+        return EdDsaJwt::hasValidSignature($token, $keys);
+    }
+
     /** Il `kid` dell'intestazione, senza verificare nulla. */
     public static function kidOf(string $token): ?string
     {
