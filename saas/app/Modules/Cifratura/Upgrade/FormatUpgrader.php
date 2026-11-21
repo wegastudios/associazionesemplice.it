@@ -85,6 +85,7 @@ final readonly class FormatUpgrader
                 if ($dryRun) {
                     return $report;
                 }
+
                 throw new FormatUpgradeFailed($report);
             }
             if ($dryRun) {
@@ -260,6 +261,7 @@ final readonly class FormatUpgrader
                     if ($format === "\x02") {
                         continue;
                     }
+
                     try {
                         if ($format !== "\x01") {
                             throw new RuntimeException('Formato sconosciuto.');
@@ -314,7 +316,7 @@ final readonly class FormatUpgrader
             $values[] = Bytea::encode($new);
         }
 
-        if ($conn->update("UPDATE {$table} SET ".implode(', ', $set).' WHERE org_id = ? AND id = ?', [...$values, $orgId, $id]) !== 1) {
+        if ($conn->update("UPDATE {$table} SET ".implode(', ', $set).' WHERE org_id = ? AND id = ?', array_merge($values, [$orgId, $id])) !== 1) {
             throw new RuntimeException('Riga non aggiornata.');
         }
     }

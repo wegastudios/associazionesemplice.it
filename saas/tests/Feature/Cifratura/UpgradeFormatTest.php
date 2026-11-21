@@ -9,8 +9,9 @@ use App\Modules\Cifratura\Upgrade\FormatUpgrader;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Soci\Models\Person;
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -343,7 +344,7 @@ it('non scrive una copia d\'appoggio in un\'altra associazione nemmeno cercando 
         expect(fn () => fmtUpDb()->transaction(fn () => fmtUpDb()->table(FMT_UP_BACKUPS)->insert([
             'org_id' => $this->beta->id, 'id' => (string) Str::uuid7(), 'table_name' => 'app.people', 'row_id' => (string) Str::uuid7(),
             'column_name' => 'iban_enc', 'old_value' => Bytea::encode("\x01"), 'new_hash' => Bytea::encode(str_repeat('a', 32)),
-        ])))->toThrow(Illuminate\Database\QueryException::class);
+        ])))->toThrow(QueryException::class);
     });
 });
 
