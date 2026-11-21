@@ -313,7 +313,7 @@ it('il vecchio indirizzo con il biglietto in GET non entra e non lo consuma: c\'
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
     $token = opNewTicket($this, $sid);
 
-    $this->get('/accesso-unico?t='.rawurlencode($token))->assertOk()->assertSee('Apriamo il gestionale')->assertDontSee($token, false);
+    $this->get('/accesso-unico?t='.rawurlencode($token))->assertOk()->assertSee('Apertura del gestionale')->assertDontSee($token, false);
     $this->assertGuest();
     $this->get('/accesso-unico/inoltra.js')->assertOk()->assertHeader('Content-Type', 'application/javascript; charset=utf-8')->assertSee('location.hash', false);
 
@@ -357,7 +357,7 @@ it('l\'email da sola non basta: senza legame né secondo livello l\'utente non e
     $user = $this->createUser('persona@example.test'); // senza secondo livello
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
-    $this->post('/accesso-unico', ['t' => opNewTicket($this, $sid)])->assertOk()->assertSee('Non riusciamo a collegare il tuo accesso');
+    $this->post('/accesso-unico', ['t' => opNewTicket($this, $sid)])->assertOk()->assertSee('Accesso non collegato');
     $this->assertGuest();
     expect(DB::table('core.operator_links')->count())->toBe(0);
 });

@@ -1,8 +1,8 @@
 @extends('operator-sso.layout')
 @section('title', 'Apertura del gestionale')
 @section('content')
-    <h1>Apriamo il gestionale</h1>
-    <p>Un attimo, ti porto dentro.</p>
+    <h1>Apertura del gestionale</h1>
+    <p>Un attimo, stai per entrare.</p>
     <form id="sso" method="post" action="{{ route('operator.sso.enter') }}">
         @csrf
         <input type="hidden" name="t" value="">
