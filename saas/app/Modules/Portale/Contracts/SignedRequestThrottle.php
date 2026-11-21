@@ -29,7 +29,8 @@ final readonly class SignedRequestThrottle
         $valid = is_string($token) && StaffJwt::hasValidSignature($token, $keys);
 
         $key = ($valid ? 'signed-ok|' : 'signed-bad|').$scope.'|'.$request->ip();
-        $max = max(1, (int) config($valid ? 'saas.signed_api.valid_per_minute' : 'saas.signed_api.invalid_per_minute'));
+        $limit = config($valid ? 'saas.signed_api.valid_per_minute' : 'saas.signed_api.invalid_per_minute');
+        $max = is_int($limit) ? max(1, $limit) : 1;
 
         if ($this->limiter->tooManyAttempts($key, $max)) {
             return new JsonResponse(['error' => 'too_many_requests'], 429, ['Retry-After' => (string) $this->limiter->availableIn($key)]);
