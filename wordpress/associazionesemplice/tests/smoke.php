@@ -11794,6 +11794,40 @@ $pc_part();
 asem_ok( 'hit' === PageCache::last(), 'cache eventi: pezzo caldo prima del cambio delle impostazioni' );
 Settings::update( array( 'association_name' => 'Associazione di prova cache' ) );
 asem_ok( false !== strpos( $pc_part(), 'Associazione di prova cache' ) && 'miss' === PageCache::last(), 'cache eventi: un cambio delle impostazioni svuota la cache' );
+// L1: svuotamenti mirati (la cache non riparte da zero per scritture che non cambiano nulla)
+$pc_gen = function () use ( $pc_part ) {
+	$pc_part(); // la lettura della generazione fa ripartire il conteggio delle scritture di fila
+	return (string) get_option( PageCache::GEN_OPTION );
+};
+$pc_g0 = $pc_gen();
+asem_ok( 0 === PageCache::write( $wpdb->prepare( 'UPDATE ' . Db::t( 'sessions' ) . ' SET capacity = capacity WHERE id = %d', -1 ) ) && $pc_g0 === $pc_gen(), 'cache eventi: una scrittura che non tocca nessuna riga non svuota la cache' );
+asem_ok( 1 === PageCache::write( $wpdb->prepare( 'UPDATE ' . Db::t( 'sessions' ) . ' SET capacity = 10 WHERE id = %d', $pc_sid ) ) && $pc_g0 !== $pc_gen(), 'cache eventi: una scrittura che tocca una riga svuota la cache' );
+$pc_g0 = $pc_gen();
+\AssociazioneSemplice\EventRequests::run();
+asem_ok( $pc_g0 === $pc_gen(), 'cache eventi: il lavoro orario delle richieste, se non c\'è niente da fare, non svuota la cache' );
+$pc_g0 = $pc_gen();
+$pc_att = wp_insert_attachment( array( 'post_title' => 'Immagine libera', 'post_mime_type' => 'image/png', 'post_status' => 'inherit' ), '', 0 );
+asem_ok( $pc_g0 === $pc_gen(), 'cache eventi: un\'immagine caricata nella libreria, non di un evento, non svuota la cache' );
+$pc_att2 = wp_insert_attachment( array( 'post_title' => 'Locandina', 'post_mime_type' => 'image/png', 'post_status' => 'inherit' ), '', $pc_post );
+asem_ok( $pc_g0 !== $pc_gen(), 'cache eventi: un\'immagine allegata a un evento svuota la cache' );
+wp_delete_attachment( (int) $pc_att, true );
+wp_delete_attachment( (int) $pc_att2, true );
+$pc_purges = 0;
+$pc_cb     = function () use ( &$pc_purges ) {
+	++$pc_purges;
+};
+add_action( 'sg_cachepress_purge_cache', $pc_cb );
+delete_transient( 'asem_pc_ext_last' );
+PageCache::finish();
+PageCache::finish();
+PageCache::finish();
+asem_ok( 1 === $pc_purges, 'cache eventi: le cache esterne si svuotano al più una volta ogni 5 minuti' );
+asem_ok( false !== wp_next_scheduled( 'asem_pc_flush_external' ), 'cache eventi: lo svuotamento rimandato è programmato per quando finisce l\'attesa' );
+PageCache::flush_external();
+asem_ok( 2 === $pc_purges, 'cache eventi: lo svuotamento programmato arriva e svuota le cache esterne' );
+wp_clear_scheduled_hook( 'asem_pc_flush_external' );
+remove_action( 'sg_cachepress_purge_cache', $pc_cb );
+delete_transient( 'asem_pc_ext_last' );
 // nessuna pagina conservata porta un dato di chi ha prenotato
 $pc_blob = '';
 foreach ( $wpdb->get_col( "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_asem\\_pc\\_%'" ) as $pc_v ) {

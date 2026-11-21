@@ -1132,7 +1132,7 @@ final class EventRequests {
 		$t   = Db::t( 'event_requests' );
 		$svc = Plugin::activities();
 		// Una conferma interrotta a metà (richiesta rimasta «in lavorazione») torna alla segreteria, che la esamina a mano.
-		$db->query( $db->prepare( "UPDATE $t SET status = 'approval' WHERE status = %s AND updated_at < %s", self::WORKING, wp_date( 'Y-m-d H:i:s', time() - self::STUCK_H * HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
+		PageCache::write( $db->prepare( "UPDATE $t SET status = 'approval' WHERE status = %s AND updated_at < %s", self::WORKING, wp_date( 'Y-m-d H:i:s', time() - self::STUCK_H * HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
 		foreach ( $db->get_results( $db->prepare( "SELECT * FROM $t WHERE status = 'booked' AND deadline IS NOT NULL AND deadline <= %s", Db::now() ), ARRAY_A ) ?: array() as $r ) {
 			$d    = json_decode( (string) $r['data'], true );
 			if ( is_array( $d ) && ! empty( $d['enrollments'] ) ) { // iscrizione a un corso: se il contributo non è arrivato entro il termine l'iscrizione si annulla
@@ -1162,8 +1162,8 @@ final class EventRequests {
 				Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( 'Posto liberato' . ( $a ? ': ' . $a['name'] : '' ) ), "Il pagamento non è arrivato entro il termine, quindi il posto è tornato libero.\n\nSe hai già pagato, scrivi subito alla segreteria. Se vuoi ancora partecipare, prenota di nuovo dalla pagina dell'evento (se ci sono posti) oppure scrivi alla segreteria." );
 			}
 		}
-		$db->query( $db->prepare( "DELETE FROM $t WHERE status = 'new' AND created_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::CONFIRM_H * HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati; le richieste mai confermate spariscono quando il link scade
-		$db->query( $db->prepare( "DELETE FROM $t WHERE updated_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::KEEP_DAYS * DAY_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
+		PageCache::write( $db->prepare( "DELETE FROM $t WHERE status = 'new' AND created_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::CONFIRM_H * HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati; le richieste mai confermate spariscono quando il link scade
+		PageCache::write( $db->prepare( "DELETE FROM $t WHERE updated_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::KEEP_DAYS * DAY_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
 	}
 
 	/** Termine di pagamento scaduto per una richiesta di iscrizione a un corso: pagato resta, altrimenti l'iscrizione è annullata. */

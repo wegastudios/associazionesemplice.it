@@ -16,6 +16,13 @@ final class PageCache {
 
 	const GEN_OPTION = 'asem_pc_gen';
 
+	/** Tra due svuotamenti delle cache di pagina esterne passano almeno tanti secondi. */
+	const EXTERNAL_GAP = 300;
+
+	const EXTERNAL_LAST = 'asem_pc_ext_last';
+
+	const EXTERNAL_HOOK = 'asem_pc_flush_external';
+
 	/** Tabelle che, se scritte, cambiano ciò che le pagine pubbliche mostrano (date, posti, tariffe, prenotazioni, richieste dei non soci). */
 	const TABLES = 'activities|sessions|bookings|event_requests';
 
@@ -34,11 +41,15 @@ final class PageCache {
 	/** @var bool lo svuotamento delle cache esterne è già programmato */
 	private static $scheduled = false;
 
+	/** @var bool una scrittura eseguita da {@see self::write()}: lo svuotamento lo decide il numero di righe toccate, non il testo */
+	private static $muted = false;
+
 	public static function register(): void {
 		add_filter( 'query', array( __CLASS__, 'on_query' ) );
+		add_action( self::EXTERNAL_HOOK, array( __CLASS__, 'flush_external' ) );
 		add_action( 'update_option_' . Settings::OPTION, array( __CLASS__, 'purge' ) );
 		add_action( 'add_option_' . Settings::OPTION, array( __CLASS__, 'purge' ) );
-		foreach ( array( 'save_post', 'deleted_post', 'trashed_post', 'untrashed_post', 'edit_attachment', 'delete_attachment' ) as $hook ) {
+		foreach ( array( 'save_post', 'deleted_post', 'trashed_post', 'untrashed_post', 'add_attachment', 'edit_attachment', 'delete_attachment' ) as $hook ) {
 			add_action( $hook, array( __CLASS__, 'on_post' ) );
 		}
 		foreach ( array( 'added_post_meta', 'updated_post_meta', 'deleted_post_meta' ) as $hook ) {
@@ -182,6 +193,28 @@ final class PageCache {
 		self::$bumped    = false;
 		self::bump();
 		do_action( 'asem_public_pages_changed' ); // per chi ha una cache propria
+		self::flush_external_throttled();
+	}
+
+	/**
+	 * Le cache di pagina dei plugin esterni si svuotano per intero: al più una volta ogni {@see self::EXTERNAL_GAP} secondi.
+	 * Se ne arriva un'altra richiesta nell'attesa, lo svuotamento viene programmato per quando l'attesa finisce (i posti liberi mostrati
+	 * da quelle cache restano vecchi al massimo di pochi minuti). La generazione interna, invece, cambia sempre subito.
+	 */
+	private static function flush_external_throttled(): void {
+		$last = get_transient( self::EXTERNAL_LAST );
+		if ( false === $last ) {
+			self::flush_external();
+			return;
+		}
+		if ( false === wp_next_scheduled( self::EXTERNAL_HOOK ) ) {
+			wp_schedule_single_event( max( time() + 1, (int) $last + self::EXTERNAL_GAP ), self::EXTERNAL_HOOK );
+		}
+	}
+
+	/** Svuota ora le cache di pagina dei plugin più diffusi e segna quando. */
+	public static function flush_external(): void {
+		set_transient( self::EXTERNAL_LAST, time(), self::EXTERNAL_GAP );
 		do_action( 'litespeed_purge_all' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- azione di LiteSpeed Cache
 		if ( function_exists( 'rocket_clean_domain' ) ) {
 			rocket_clean_domain(); // WP Rocket
@@ -201,7 +234,7 @@ final class PageCache {
 
 	/** Ogni scrittura sulle tabelle di date, posti, tariffe, prenotazioni e richieste svuota la cache, da qualunque parte arrivi (anche dal Pro e dai lavori programmati). */
 	public static function on_query( $query ) {
-		if ( is_string( $query ) && 1 === preg_match( '/^\s*(INSERT|UPDATE|DELETE|REPLACE)\b/i', $query ) ) {
+		if ( ! self::$muted && is_string( $query ) && 1 === preg_match( '/^\s*(INSERT|UPDATE|DELETE|REPLACE)\b/i', $query ) ) {
 			if ( 1 === preg_match( '/\b' . preg_quote( Db::db()->prefix . 'asem_', '/' ) . '(' . self::TABLES . ')\b/', $query ) ) {
 				self::purge();
 			}
@@ -209,14 +242,34 @@ final class PageCache {
 		return $query;
 	}
 
+	/**
+	 * Una scrittura (già preparata) su queste tabelle che svuota la cache solo se ha toccato almeno una riga: per i lavori periodici
+	 * che il più delle volte non trovano niente da fare. Restituisce le righe toccate.
+	 */
+	public static function write( string $sql ): int {
+		$db          = Db::db();
+		self::$muted = true;
+		try {
+			$db->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- già preparata da chi chiama
+		} finally {
+			self::$muted = false;
+		}
+		$n = (int) $db->rows_affected;
+		if ( $n > 0 ) {
+			self::purge();
+		}
+		return $n;
+	}
+
 	private static function is_event_content( int $post_id ): bool {
 		return PublicEvents::POST_TYPE === get_post_type( $post_id );
 	}
 
-	/** Un contenuto «Evento» o un allegato (la locandina) è stato salvato, spostato nel cestino o eliminato. */
+	/** Un contenuto «Evento» o un allegato di un evento (la locandina) è stato salvato, spostato nel cestino o eliminato: le altre immagini della libreria non contano. */
 	public static function on_post( $post_id ): void {
-		$type = get_post_type( (int) $post_id );
-		if ( PublicEvents::POST_TYPE === $type || 'attachment' === $type ) {
+		$id   = (int) $post_id;
+		$type = get_post_type( $id );
+		if ( PublicEvents::POST_TYPE === $type || ( 'attachment' === $type && self::is_event_content( (int) wp_get_post_parent_id( $id ) ) ) ) {
 			self::purge();
 		}
 	}
