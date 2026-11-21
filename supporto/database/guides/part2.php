@@ -90,6 +90,10 @@ Se il socio deve pagare meno per un motivo preciso (una riduzione concordata), *
 
 - **Livelli di socio** e **nucleo familiare** (sconto per i familiari del capofamiglia): vedi [Livelli di socio e nucleo familiare](guida:livelli-di-socio-e-nucleo-familiare).
 - Un socio che esce (recesso, esclusione, decesso) si registra come **cessato** dalla sua scheda e resta nel libro soci.
+
+## Limiti dei campi
+
+Per evitare errori di battitura, la scheda della persona accetta **note fino a 2.000 caratteri** e **date solo tra il 1900 e il 2100**.
 MD,
     ],
     [
@@ -188,6 +192,15 @@ Scansionandolo si vede se la prenotazione è valida, per quale data, se è stata
 ## Sicurezza
 
 Il QR contiene solo un codice firmato, legato al tuo sito. **Rigenera tutti i QR** annulla tutti i codici in circolazione: usalo se pensi che siano stati diffusi.
+
+## Rigenerare il codice di una persona
+
+Se un socio perde il telefono o condivide il suo codice, si può rigenerare solo il suo:
+
+- il **socio**, dall'area soci, nella sezione del codice, con **Rigenera il codice**;
+- la **segreteria**, dalla scheda della persona, nel pannello della tessera e del QR.
+
+Finché non si rigenera, il codice già stampato resta valido. Dopo, quello vecchio smette subito di valere, anche sulla tessera stampata o nel Wallet. L'azione resta scritta nel registro azioni. Si può rigenerare un numero limitato di volte in poco tempo (vedi [Limiti per socio](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito)).
 MD,
     ],
     [

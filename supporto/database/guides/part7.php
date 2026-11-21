@@ -129,7 +129,8 @@ Un socio non può prenotare:
 
 - nei periodi occupati da **corsi ed eventi** collegati alla risorsa, **tempo di allestimento compreso**;
 - quando c'è un **blocco** sulla risorsa;
-- oltre i limiti della risorsa (prenotazioni massime per socio, anticipo massimo, fasce minime e massime).
+- oltre i limiti della risorsa (prenotazioni massime per socio, anticipo massimo, fasce minime e massime);
+- se ha già **10 prenotazioni ancora da usare**: legge «Hai già N prenotazioni da usare…». Il limite si cambia in **Impostazioni → Limiti e soglie → Accessi e sicurezza**, tra 1 e 200.
 
 ## Cosa fare se un socio ha un problema
 

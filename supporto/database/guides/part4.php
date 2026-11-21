@@ -24,6 +24,10 @@ Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra ne
 - Dalla **Bacheca**, il pulsante **Incassa** apre l'incasso già compilato con le mensilità dovute e i contributi non ancora pagati.
 - Se il tuo tesoriere lavora da telefono, può incassare dalla pagina **Tesoriere** dell'area soci.
 
+## Limiti dei dati
+
+Ogni voce può valere al massimo **10.000.000 €** e un incasso può avere al massimo **200 voci**.
+
 ## Se hai sbagliato
 
 I movimenti della prima nota **non si modificano**: si **annullano** (resta traccia dell'annullamento) e si registra quello giusto. Un incasso annullato sparisce da saldi, report e ricevute. Se annulli l'incasso di una quota, la tessera non è più valida, a meno che ci sia **un altro incasso valido** della stessa quota per lo stesso socio e anno (per esempio se era stata incassata due volte).

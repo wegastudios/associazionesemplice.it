@@ -341,6 +341,18 @@ Per non riempire il sito di richieste inutili ci sono tre limiti, che cambi in *
 
 **La segreteria non ha questi limiti** quando prenota.
 
+## Limiti per socio
+
+Oltre ai tetti sopra, ogni socio può fare un numero limitato di operazioni ogni **10 minuti**. I valori di partenza, che cambi in **Impostazioni → Limiti e soglie → Accessi e sicurezza**, sono:
+
+- prenotarsi o mettersi in lista d'attesa: **20**;
+- annullare una prenotazione: **20**;
+- modificare il proprio profilo: **10**;
+- scaricare ricevute e rendiconti: **30**;
+- rigenerare il proprio codice QR: **10**.
+
+Se li supera, il socio legge «Hai fatto troppe richieste in poco tempo…» e riprova dopo qualche minuto.
+
 ## Le scelte per ogni evento
 
 Nella pagina dell'evento, nel riquadro **«Prenotazione online»**, scegli:
