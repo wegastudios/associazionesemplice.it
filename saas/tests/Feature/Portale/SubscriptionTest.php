@@ -11,26 +11,6 @@ use Illuminate\Support\Facades\Notification;
 
 require_once __DIR__.'/PortalHelpers.php';
 
-/** @return array<string, mixed> */
-function subscriptionClaims(string $orgId, int $rev, array $overrides = []): array
-{
-    return $overrides + [
-        'sub' => $orgId,
-        'ref' => 'sub_123',
-        'rev' => $rev,
-        'status' => 'active',
-        'until' => now()->addMonth()->toDateString(),
-        'trial_ends' => null,
-        'plan' => 'gestionale',
-        'plan_version' => 1,
-        'members' => 150,
-        'addons' => [['code' => 'operators_extra', 'qty' => 2], ['code' => 'member_area', 'qty' => 1], ['code' => 'resources_hourly_web', 'qty' => 1]],
-        'promo' => 'PRIMAVERA',
-        'price_cents' => 29000,
-        'partner' => null,
-    ];
-}
-
 beforeEach(function (): void {
     Notification::fake();
     $this->portal = fakePortal();

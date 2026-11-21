@@ -40,7 +40,7 @@ manca e le scelte prese**; si aggiorna a ogni PR del modulo.
   dell'applicazione e un test che verifica che una tabella senza `org_id` stia in `core`, non in `app`. Da scrivere in
   DATABASE.md insieme alla prima migrazione.
 - **Staff della piattaforma separato dagli operatori**: tabella propria, guard proprio, cookie `as_admin` con percorso
-  proprio (`/saas/admin`), 2FA obbligatoria (nemmeno spenta in sviluppo: il segreto di prova si imposta con un comando).
+  proprio (`/saas/admin`), secondo fattore a scelta (nessun obbligo, decisione D38): si accende per tutti con `SAAS_REQUIRE_TWO_FACTOR` prima dei dati veri; il segreto di prova si imposta con un comando.
 
 ## 4. Prova di fattibilità: `associazionesemplice.it/saas/admin`
 

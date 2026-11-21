@@ -55,21 +55,6 @@ final readonly class PortalSync
     }
 
     /**
-     * Applica diritti firmati nel vecchio formato; una revisione vecchia o uguale non cambia nulla. Nessuna rotta li
-     * accetta più (rispondono 410): resta come ingresso dei test del ciclo di vita.
-     */
-    public function apply(string $token, ?string $orgId = null): int
-    {
-        $raw = $this->verify($token, 'entitlements');
-        $claims = ClaimsValidator::entitlements($raw);
-        $this->checkOrg($claims['sub'], $claims['ref'], $orgId);
-
-        $this->store($claims, $raw, $token, []);
-
-        return $claims['rev'];
-    }
-
-    /**
      * Applica un abbonamento v2: dal piano e dagli addon ricava operatori, spazio e pacchetti, e li salva come i diritti
      * v1 (stessa tabella, stessa serie di revisioni), così il resto del SaaS non cambia. Piano o addon sconosciuti
      * non applicano nulla.

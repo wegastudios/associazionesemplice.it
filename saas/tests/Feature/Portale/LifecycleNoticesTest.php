@@ -40,7 +40,7 @@ it('manda l\'avviso al titolare una sola volta per scadenza', function (): void 
     $orgId = (string) $this->postJson('/api/portale/v1/orgs', ['token' => portalToken($portal, 'provision', [
         'ref' => 'sub_n', 'org' => ['name' => 'Alfa', 'slug' => 'alfa-n'], 'owner' => ['email' => 'titolare@example.com', 'name' => 'Anna'],
     ])])->json('org_id');
-    applyEntitlements($portal, entitlementClaims($orgId, 'sub_n', 1, ['status' => 'suspended', 'until' => now()->subDays(31)->toDateString()]), $orgId);
+    applySubscription($portal, subscriptionClaims($orgId, 1, ['ref' => 'sub_n', 'status' => 'suspended', 'until' => now()->subDays(31)->toDateString()]), $orgId);
 
     $this->artisan('saas:portal:lifecycle-notices')->assertSuccessful();
     Notification::assertSentTimes(OrgLifecycleNotification::class, 1);
