@@ -11853,6 +11853,7 @@ $pc_urls = array();
 $pc_all  = 0;
 delete_transient( 'asem_pc_ext_last' );
 PageCache::purge();
+asem_ok( -1 === has_action( 'shutdown', array( PageCache::class, 'finish' ) ), 'cache eventi: lo svuotamento delle cache esterne parte prima che LiteSpeed chiuda le sue code (shutdown con priorità -1)' );
 PageCache::finish();
 asem_ok( 1 === $pc_all && ! $pc_urls, 'cache eventi: una scrittura non legata a un evento svuota tutto (con il limite dei 5 minuti)' );
 remove_action( 'litespeed_purge_url', $pc_cb_u );

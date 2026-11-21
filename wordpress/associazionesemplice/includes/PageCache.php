@@ -197,7 +197,7 @@ final class PageCache {
 		self::bump();
 		if ( ! self::$scheduled ) {
 			self::$scheduled = true;
-			add_action( 'shutdown', array( __CLASS__, 'finish' ) );
+			add_action( 'shutdown', array( __CLASS__, 'finish' ), -1 ); // prima della priorità 0 con cui LiteSpeed Cache chiude le sue code e manda le intestazioni: dopo, gli svuotamenti andrebbero persi
 		}
 	}
 
