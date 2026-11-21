@@ -255,7 +255,10 @@ final class Views {
 			return '';
 		}
 		return '<div class="asemf-memcard-qr">' . $svg . '<div class="asemf-small asemf-qr-note"><span>Mostra questo codice: chi lo scansiona vede subito se la tessera è valida.</span> '
-			. '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la verifica</a></div></div>';
+			. '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la verifica</a></div>'
+			. '<div class="asemf-small asemf-qr-regen"><p>' . esc_html( \AssociazioneSemplice\Texts::t( 'Hai perso il telefono o hai condiviso il codice?' ) ) . '</p>'
+			. self::form( 'asem_front_regen_qr', '', \AssociazioneSemplice\Texts::t( 'Rigenera il codice' ), \AssociazioneSemplice\Texts::t( 'Rigenerare il codice della tessera? Quello attuale smette subito di valere, anche sulla tessera stampata: se ne hai una, chiedi alla segreteria di ristamparla.' ), 'asemf-regen-form' )
+			. '</div></div>';
 	}
 
 	private static function pay_text( array $summary ): string {

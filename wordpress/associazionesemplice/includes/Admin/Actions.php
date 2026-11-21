@@ -66,6 +66,7 @@ final class Actions {
 			'asem_privacy_consent'    => 'privacy_consent',
 			'asem_rules_record'       => 'rules_record',
 			'asem_guardian_consent_resend' => 'guardian_consent_resend',
+			'asem_regen_person_qr'    => 'regen_person_qr',
 			'asem_privacy_anonymize'  => 'privacy_anonymize',
 			'asem_save_comms'         => 'save_comms',
 			'asem_create_privacy_page' => 'create_privacy_page',
@@ -308,6 +309,13 @@ final class Actions {
 	private static function guardian_consent_resend( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
 		return array( Ui::url( 'asem-person', array( 'id' => $id ) ), \AssociazioneSemplice\GuardianConsent::resend( $id ) );
+	}
+
+	/** La segreteria rigenera il codice QR di un socio (tessera, biglietti, ingresso alle risorse). */
+	private static function regen_person_qr( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		\AssociazioneSemplice\QrVersion::regenerate( $id, get_current_user_id() );
+		return array( Ui::url( 'asem-person', array( 'id' => $id ) ), \AssociazioneSemplice\Texts::t( 'Codice rigenerato: quello vecchio non vale più.' ) );
 	}
 
 	private static function rules_record( array $p ): array {

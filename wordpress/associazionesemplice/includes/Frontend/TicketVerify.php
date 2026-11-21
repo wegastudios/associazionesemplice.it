@@ -36,7 +36,7 @@ final class TicketVerify {
 	public static function result( string $param ): array {
 		$none   = array( 'person' => null, 'session' => null, 'activity' => null, 'booking' => null, 'today' => false );
 		$parsed = CardToken::ticket_parse( $param );
-		if ( ! $parsed || ! CardToken::ticket_valid( $parsed[0], $parsed[1], $parsed[2], Settings::card_secret() ) ) {
+		if ( ! $parsed || ! CardToken::ticket_valid( $parsed[0], $parsed[1], $parsed[2], Settings::card_secret_for( $parsed[1] ) ) ) {
 			return array_merge( $none, array( 'status' => 'invalid' ) );
 		}
 		if ( ! Edition::allows( 'member_area' ) ) {

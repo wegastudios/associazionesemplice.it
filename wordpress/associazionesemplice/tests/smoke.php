@@ -3947,6 +3947,25 @@ $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' 
 asem_ok( false !== strpos( $front::do_checkin_scan( array( 'ticket' => $gt ) ), 'Ingresso registrato' ), 'ingresso da QR: anche il solo codice' );
 $front::do_checkin( array( 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => '1' ) );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $front ) { $front::do_checkin_scan( array( 'ticket' => 'https://example.org/?asem_ticket=1.2.' . str_repeat( 'a', 20 ) ) ); } ), 'non valido' ) && null !== asem_throws( function () use ( $front ) { $front::do_checkin_scan( array( 'ticket' => '' ) ); } ), 'ingresso da QR: un QR di altro tipo o falso è rifiutato' );
+// QR per socio: rigenerando il codice, quello vecchio (tessera e biglietto) smette di valere; gli altri soci non cambiano
+$qr_id  = (int) $pm; // soci già presenti: nessuna scheda in più per le prove che contano le persone
+$qr_oth = (int) $g_id;
+parse_str( (string) wp_parse_url( Settings::card_url( $qr_id ), PHP_URL_QUERY ), $qr_q );
+$qr_old = \AssociazioneSemplice\CardToken::parse( (string) $qr_q['asem_card'] );
+parse_str( (string) wp_parse_url( Settings::card_url( $qr_oth ), PHP_URL_QUERY ), $qr_q2 );
+$qr_oth_t = \AssociazioneSemplice\CardToken::parse( (string) $qr_q2['asem_card'] );
+$qr_tk_old = Settings::ticket_url( 1, $qr_id );
+asem_ok( \AssociazioneSemplice\CardToken::valid( $qr_old[0], $qr_old[1], Settings::card_secret_for( $qr_id ) ) && \AssociazioneSemplice\CardToken::valid( $qr_old[0], $qr_old[1], Settings::card_secret() ), 'QR: con la versione 0 i codici già stampati valgono (stesso segreto di prima)' );
+delete_transient( 'asem_mt_qr_' . $qr_id );
+\AssociazioneSemplice\QrVersion::regenerate( $qr_id, 0 );
+asem_ok( ! \AssociazioneSemplice\CardToken::valid( $qr_old[0], $qr_old[1], Settings::card_secret_for( $qr_id ) ), 'QR: rigenerato il codice, la tessera di prima non vale più' );
+parse_str( (string) wp_parse_url( Settings::card_url( $qr_id ), PHP_URL_QUERY ), $qr_qn );
+$qr_new = \AssociazioneSemplice\CardToken::parse( (string) $qr_qn['asem_card'] );
+asem_ok( $qr_new[1] !== $qr_old[1] && \AssociazioneSemplice\CardToken::valid( $qr_new[0], $qr_new[1], Settings::card_secret_for( $qr_id ) ), 'QR: il codice nuovo vale' );
+asem_ok( \AssociazioneSemplice\CardToken::valid( $qr_oth_t[0], $qr_oth_t[1], Settings::card_secret_for( $qr_oth ) ) && Settings::ticket_url( 1, $qr_id ) !== $qr_tk_old, 'QR: gli altri soci non cambiano e il biglietto del socio è un altro' );
+delete_transient( 'asem_mt_qr_' . $qr_id );
+$wpdb->update( Db::t( 'people' ), array( 'qr_version' => 0 ), array( 'id' => $qr_id ) ); // la prova non lascia il socio con un codice diverso
+\AssociazioneSemplice\QrVersion::forget( $qr_id );
 $foreign = \AssociazioneSemplice\CardToken::ticket_param( $paid_s, $founder, Settings::card_secret() );
 asem_ok( null !== asem_throws( function () use ( $front, $foreign ) { $front::do_checkin_scan( array( 'ticket' => $foreign ) ); } ), 'ingresso da QR: un biglietto di un evento che non gestisci è rifiutato' );
 
@@ -13845,7 +13864,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '72' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 72' );
+asem_ok( '73' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 73' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
 	foreach ( array_keys( $ix_list ) as $ix_n ) {
@@ -13861,7 +13880,7 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '72' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
+asem_ok( '73' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
 // Voce degli incassi di corsi ed eventi: «Contributo attività / corso»; dove si chiama ancora «Quota attività / corso» (installazioni vecchie) l'aggiornamento la rinomina una volta, altrimenti non tocca nulla.
 $af_t  = Db::t( 'categories' );
