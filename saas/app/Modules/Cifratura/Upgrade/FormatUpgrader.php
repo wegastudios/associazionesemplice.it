@@ -12,6 +12,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use RuntimeException;
+use stdClass;
 use Throwable;
 
 /**
@@ -137,11 +138,11 @@ final readonly class FormatUpgrader
                 $allowed = array_map(static fn (string $f): string => $f.'_enc', $fields);
                 $last = null;
                 do {
-                    $rows = $conn->select(
+                    $rows = self::objects($conn->select(
                         'SELECT id, row_id, column_name, old_value, new_hash FROM '.self::BACKUPS.' WHERE org_id = ? AND table_name = ?'
                         .($last === null ? '' : ' AND id > ?').' ORDER BY id LIMIT '.self::CHUNK.($dryRun ? '' : ' FOR UPDATE'),
                         $last === null ? [$org->id, $table] : [$org->id, $table, $last],
-                    );
+                    ));
                     foreach ($rows as $backup) {
                         $backupId = is_string($backup->id) ? $backup->id : throw new RuntimeException('Copia non valida.');
                         $last = $backupId;
@@ -157,7 +158,7 @@ final readonly class FormatUpgrader
                             "SELECT {$column} AS value FROM {$table} WHERE org_id = ? AND id = ?".($dryRun ? '' : ' FOR UPDATE'),
                             [$org->id, $rowId],
                         );
-                        $currentValue = $current === null ? null : $current->value;
+                        $currentValue = $current instanceof stdClass ? $current->value : null;
                         if ($currentValue === null
                             || ! hash_equals(Bytea::decode($backup->new_hash), hash('sha256', Bytea::decode($currentValue), true))) {
                             $count['changed']++;
@@ -237,10 +238,10 @@ final readonly class FormatUpgrader
         $last = null;
 
         do {
-            $rows = $conn->select(
+            $rows = self::objects($conn->select(
                 $select.($last === null ? '' : ' AND id > ?').' ORDER BY id LIMIT '.self::CHUNK.($lock ? ' FOR UPDATE' : ''),
                 $last === null ? [$orgId] : [$orgId, $last],
-            );
+            ));
             foreach ($rows as $row) {
                 $id = is_string($row->id) ? $row->id : throw new RuntimeException('Riga senza identificativo.');
                 $last = $id;
@@ -319,6 +320,17 @@ final readonly class FormatUpgrader
         if ($conn->update("UPDATE {$table} SET ".implode(', ', $set).' WHERE org_id = ? AND id = ?', array_merge($values, [$orgId, $id])) !== 1) {
             throw new RuntimeException('Riga non aggiornata.');
         }
+    }
+
+    /**
+     * Le righe lette dal database come oggetti.
+     *
+     * @param  array<mixed>  $rows
+     * @return list<stdClass>
+     */
+    private static function objects(array $rows): array
+    {
+        return array_values(array_filter($rows, static fn (mixed $row): bool => $row instanceof stdClass));
     }
 
     /** Decifra il vecchio testo, lo ricifra con l'id della riga e controlla che il nuovo si riapra identico. */
