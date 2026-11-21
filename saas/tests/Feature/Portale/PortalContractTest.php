@@ -170,7 +170,7 @@ it('limita gli inviti al numero di operatori dell\'abbonamento', function (): vo
     expect(fn () => $members->invite($org, 'op@example.com', 'Op', OrgRole::Operator, $by))->toThrow(OperatorLimitReached::class);
 
     applySubscription($this->portal, subscriptionClaims($orgId, 1, ['addons' => [['code' => 'operators_extra', 'qty' => 1]]]), $orgId); // titolare + 1
-    $op =$members->invite($org, 'op@example.com', 'Op', OrgRole::Operator, $by);
+    $op = $members->invite($org, 'op@example.com', 'Op', OrgRole::Operator, $by);
     expect(fn () => $members->invite($org, 'op2@example.com', 'Op2', OrgRole::Operator, $by))->toThrow(OperatorLimitReached::class);
 
     // Cambiare il ruolo di chi è già operatore non conta come nuovo operatore.
