@@ -86,12 +86,14 @@ it('ha i limiti di frequenza delle altre rotte firmate, con secchi propri', func
     $this->postJson('/api/portale/v2/runtime', ['token' => runtimeToken()])->assertOk();
 });
 
-it('la salute usa la rotta e, se non risponde, avvisa senza fallire', function (): void {
+it('la salute, se la rotta non risponde, avvisa senza fallire', function (): void {
     Http::fake(['*' => Http::response('', 500)]);
     $this->artisan('saas:health', ['--skip-migrations' => true])
         ->expectsOutputToContain('PHP web non raggiungibile')
         ->assertSuccessful();
+});
 
+it('la salute usa la risposta del PHP web per APCu e OPcache', function (): void {
     Http::fake(['*' => Http::response(['sapi' => 'litespeed', 'php' => '8.4.0', 'apcu' => false, 'opcache' => ['enabled' => false]], 200)]);
     $this->artisan('saas:health', ['--skip-migrations' => true])
         ->expectsOutputToContain('APCu non attivo sul PHP web')
