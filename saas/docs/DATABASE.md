@@ -145,8 +145,13 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
   dalla riga alla lettura). Un testo copiato su un'altra riga non si apre. Si scrive per i campi di `app.people` e delle
   impostazioni di pagamento (opzione `bound` del cast `Encrypted`); gli altri campi cifrati restano `0x01`. L'interruttore
   `SAAS_ROW_BOUND_FORMAT` (`saas.crypto.row_bound_format`, acceso di default) riporta le nuove scritture a `0x01`. La lettura
-  apre sempre entrambi i formati: le righe vecchie restano `0x01` finché il campo non viene riscritto. Le impronte di
+  apre sempre entrambi i formati: le righe vecchie restano `0x01` finché il campo non viene riscritto, oppure finché non le
+  porta a `0x02` il comando `saas:crypt:upgrade-format` (procedura in [RILASCIO.md](RILASCIO.md) §3). Le impronte di
   ricerca non cambiano.
+- **Copie d'appoggio del passaggio** (`app.crypt_format_backups`): una riga per campo convertito, con l'associazione,
+  la tabella, la riga, la colonna, il vecchio testo cifrato `0x01`, l'impronta SHA-256 del nuovo e la data. Come ogni
+  tabella di `app`: `org_id`, RLS forzata, nessun dato in chiaro. Si tengono 30 giorni (`saas:crypt:upgrade-format:prune`,
+  ogni giorno) e servono al comando inverso `saas:crypt:upgrade-format:undo`.
 - **Ricerca esatta sui campi cifrati**: accanto al valore cifrato (`tax_code_enc bytea`) si salva un **blind index**
   (`tax_code_bidx bytea`, impronta del valore normalizzato con una chiave dell'associazione). Serve per cercare un codice
   fiscale esatto e per `UNIQUE (org_id, tax_code_bidx)`. Lo stesso codice fiscale ha impronte diverse in associazioni

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -218,6 +218,13 @@ case "$ACTION" in
     # Sola lettura: verifica la catena del registro delle azioni di tutte le associazioni e stampa l'esito (nessun dato personale).
     cd "$BASE/current"
     "$PHP" artisan saas:audit:verify --full || true
+    ;;
+  formato-dry-run)
+    # Sola lettura: prova del passaggio dei campi cifrati al formato legato alla riga (0x02). Non scrive nulla e stampa
+    # solo conteggi per associazione e tabella; esce con errore se qualche campo non si decifra. Il passaggio vero
+    # (saas:crypt:upgrade-format senza --dry-run) NON è tra queste azioni.
+    cd "$BASE/current"
+    "$PHP" artisan saas:crypt:upgrade-format --dry-run
     ;;
   coda)
     # Sola lettura: stato della coda dei lavori, senza dati personali (solo numeri). Se il lavoratore (cron ogni minuto)
