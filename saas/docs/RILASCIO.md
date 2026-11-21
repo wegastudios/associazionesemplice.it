@@ -96,6 +96,9 @@ anche per questo lo schema deve andare bene a entrambe.
 
 **Controllo di salute**: `php artisan saas:health` (database e migrazioni di tutti i database, servizio chiavi, spazio
 dei file, spazio dei backup). Dall'esterno: `https://app.associazionesemplice.it/up`.
+Durante il rilascio il log del workflow (pubblico) riporta solo l'esito e il numero di avvisi; l'uscita completa viene
+salvata sul server in `shared/health-<data>.txt` (permessi 600, ultimi 5 file) e si legge via SSH.
+Se `crontab` non è disponibile sul server, lo scheduler va configurato a mano con la riga indicata in questo documento.
 
 ## 3. Backup
 
