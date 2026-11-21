@@ -36,7 +36,7 @@ set_opt optm-html_min false
 set_opt cache-exc_cookies $'asem_s\nasem_ps'
 # Parametri dei link del plugin (accesso, pagamenti, tessere, biglietti, calendari, esiti dei moduli) e dei pagamenti esterni.
 set_opt cache-exc_qs $'asem_member_login\nasem_ml\nasem_ml_reset\nasem_first_access\nasem_activate\nasem_pay\nasem_ret\nasem_apply_pay\nasem_card\nasem_card_pdf\nasem_ticket\nasem_credit\nasem_charge\nasem_res\nasem_evreq\nasem_ical\nasem_ics\nasemf_ok\nasemf_err\nasemf_sig\ntoken\nPayerID\npaymentId\n_back\n_n'
-# Percorsi: richieste del plugin e pagine con accesso o moduli (relative alla cartella della demo).
-set_opt cache-exc $'/wp-json/associazionesemplice/\n/wp-admin/admin-post.php\n/wp-admin/admin-ajax.php\n/asem-manifest.webmanifest\n/asem-sw.js\n/asem-offline.html\n/area-soci\n/area-volontari\n/area-segreteria\n/area-tesoriere\n/calendario\n/calendario-eventi\n/ingressi-agli-eventi\n/diventa-socio\n/attivita-ed-eventi\n/eventi-in-programma'
+# Percorsi: richieste del plugin e pagine con accesso o moduli (relative alla cartella della demo). Le pagine con l'elenco degli eventi (eventi-in-programma, calendario-eventi) non sono escluse: il plugin le marca come pubbliche e le svuota da solo quando cambia un evento. «/calendario$» è solo la pagina che rimanda al calendario (con «$» non esclude calendario-eventi).
+set_opt cache-exc $'/wp-json/associazionesemplice/\n/wp-admin/admin-post.php\n/wp-admin/admin-ajax.php\n/asem-manifest.webmanifest\n/asem-sw.js\n/asem-offline.html\n/area-soci\n/area-volontari\n/area-segreteria\n/area-tesoriere\n/calendario$\n/ingressi-agli-eventi\n/diventa-socio\n/attivita-ed-eventi'
 wp litespeed-purge all >/dev/null 2>&1 || true
 echo "LiteSpeed Cache: attiva e configurata ($(wp plugin get "$SLUG" --field=version 2>/dev/null))."
