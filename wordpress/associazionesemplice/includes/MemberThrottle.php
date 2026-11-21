@@ -30,7 +30,7 @@ final class MemberThrottle {
 			$v = array( 0, $now );
 		}
 		if ( (int) $v[0] >= Limits::get( $limit_key ) ) {
-			throw new \InvalidArgumentException( Texts::t( 'Hai fatto troppe richieste in poco tempo: riprova tra qualche minuto.' ) );
+			throw new \InvalidArgumentException( Texts::t( 'Hai fatto troppe richieste in poco tempo: riprova tra qualche minuto.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		set_transient( $key, array( (int) $v[0] + 1, (int) $v[1] ), max( 1, (int) $v[1] + self::WINDOW - $now ) );
 	}

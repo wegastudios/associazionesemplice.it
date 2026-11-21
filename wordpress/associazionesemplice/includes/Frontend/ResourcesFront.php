@@ -72,7 +72,7 @@ final class ResourcesFront {
 		\AssociazioneSemplice\MemberThrottle::hit( 'book', (int) $actor['id'], 'member_book_per_10min' );
 		$open = Resources::open_count( (int) $actor['id'] );
 		if ( $open >= Limits::get( 'member_open_bookings_max' ) ) { // tetto per scheda su tutte le risorse insieme; la segreteria prenota dal pannello, senza questo limite
-			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Hai già {N} prenotazioni da usare: aspetta che passino o annullane una, oppure scrivi alla segreteria.', array( 'N' => $open ) ) );
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Hai già {N} prenotazioni da usare: aspetta che passino o annullane una, oppure scrivi alla segreteria.', array( 'N' => $open ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( Plugin::people()->profile_blocks( $actor ) ) {
 			throw new \InvalidArgumentException( 'Prima di prenotare completa i tuoi dati (indirizzo e codice fiscale) nel riquadro «Il mio profilo».' );
