@@ -133,7 +133,7 @@ final class MailBudget {
 			}
 			if ( class_exists( '\PHPMailer\PHPMailer\PHPMailer', false ) ) {
 				$pm = new \PHPMailer\PHPMailer\PHPMailer( true );
-				do_action_ref_array( 'phpmailer_init', array( &$pm ) ); // gli stessi ganci che WordPress esegue prima di ogni invio: un plugin SMTP imposta qui il suo server
+				do_action_ref_array( 'phpmailer_init', array( &$pm ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- hook di WordPress, non del plugin; gli stessi ganci che WordPress esegue prima di ogni invio: un plugin SMTP imposta qui il suo server
 				$mailer = (string) $pm->Mailer;
 				$host   = (string) $pm->Host;
 			}
