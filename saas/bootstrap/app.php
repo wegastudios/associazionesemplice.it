@@ -9,6 +9,7 @@ use App\Modules\Core\Http\Middleware\EnsureTwoFactorConfirmed;
 use App\Modules\Core\Http\Middleware\EnsureUserActive;
 use App\Modules\Core\Http\Middleware\HandleInertiaRequests;
 use App\Modules\Core\Http\Middleware\IdentifyOperatorOrg;
+use App\Modules\Core\Http\Middleware\LongDatabaseTimeouts;
 use App\Modules\Core\Http\Middleware\ResetOrgContext;
 use App\Modules\Core\Http\Middleware\ResolveProxyClient;
 use App\Modules\Core\Http\Middleware\RestrictToAppHost;
@@ -49,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'two-factor' => EnsureTwoFactorConfirmed::class,
             'operator' => IdentifyOperatorOrg::class,
+            'db.long' => LongDatabaseTimeouts::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

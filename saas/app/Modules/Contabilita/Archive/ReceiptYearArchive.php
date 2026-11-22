@@ -437,7 +437,7 @@ final readonly class ReceiptYearArchive implements YearArchives
             throw new ArchiveError(ArchiveLock::BUSY);
         }
         try {
-            return $this->context->withLongTimeouts($work);
+            return $work();
         } finally {
             $lock->release();
         }

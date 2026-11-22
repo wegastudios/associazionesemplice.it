@@ -33,7 +33,8 @@ interface OrgContext
 
     /**
      * Esegue $callback con i tempi massimi delle operazioni lunghe (config saas.database_timeouts.long) al posto di quelli
-     * delle richieste: importazioni, copie di sicurezza, chiusura dell'anno, archivio delle ricevute. Comandi e code li hanno già.
+     * delle richieste. Nelle rotte lunghe lo fa il middleware «db.long» (copie, importazioni, libro soci, esportazioni,
+     * rendiconto, verifica delle ricevute, chiusura dell'anno, archivio); comandi e code li hanno già per tutto il processo.
      *
      * @template T
      *

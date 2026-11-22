@@ -172,8 +172,7 @@ final readonly class FiscalYearService
             throw new LedgerError("Prima di chiudere il {$year} chiudi il {$earlier}.");
         }
 
-        // Le fotografie dell'anno (rendiconto, libro soci) si fanno nella transazione: tempi delle operazioni lunghe.
-        $this->context->withLongTimeouts(fn () => $this->connection()->transaction(function () use ($year): void {
+        $this->connection()->transaction(function () use ($year): void {
             $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'open')
                 ->update(['status' => 'closed', 'closed_at' => now(), 'closed_by' => $this->userId()]);
             if ($updated !== 1) {
@@ -185,7 +184,7 @@ final readonly class FiscalYearService
             $end = $fy?->ends_on;
             $this->events->dispatch(new FiscalYearClosed($year, is_string($start) ? $start : '', is_string($end) ? $end : ''));
             $this->audit->record('fiscal_year.closed', 'app.fiscal_years', null, ['year' => $year]);
-        }));
+        });
     }
 
     public function reopen(int $year, string $reason): void

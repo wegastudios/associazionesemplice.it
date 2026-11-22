@@ -66,7 +66,7 @@ return [
 
     // Tempi massimi sulla connessione dell'associazione (OrgContext::enter, nella stessa istruzione di app.org_id): attesa
     // di un blocco, durata di un'istruzione, transazione aperta e ferma. Scaduti, la richiesta risponde «riprova tra poco».
-    // «long»: comandi, code e operazioni lunghe dal gestionale (importazioni, copie di sicurezza, chiusura dell'anno, archivio).
+    // «long»: comandi, code e le rotte lunghe del gestionale con il middleware «db.long». Vedi docs/TEMPI_MASSIMI_DATABASE.md.
     // Le migrazioni e i backup usano le loro connessioni (proprietario, sola lettura) e non passano da qui.
     'database_timeouts' => [
         'web' => ['lock' => '5s', 'statement' => '30s', 'idle_in_transaction' => '60s'],

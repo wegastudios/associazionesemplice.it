@@ -25,7 +25,7 @@ final class DatabaseBusy
     public const HEADING = 'Riprova tra poco';
 
     /** Nella pagina, nella risposta JSON e nell'avviso sopra le pagine del gestionale e dell'area soci. */
-    public const MESSAGE = 'In questo momento c\'è un\'altra operazione in corso e la tua richiesta non è riuscita a finire. Aspetta qualche secondo e riprova.';
+    public const MESSAGE = 'Un\'altra operazione è in corso e la richiesta non è riuscita a finire. Aspetta qualche secondo e riprova.';
 
     /** Le richieste a cui gli errori si danno in JSON, anche quelli di Laravel (bootstrap/app.php). */
     public static function wantsJson(Request $request): bool
