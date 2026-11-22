@@ -704,7 +704,9 @@ License::forget_verified();
 License::set_native_sodium_override( true );
 asem_ok( 'active' === $lic_att_state( array() ) && false === get_option( License::OPT_VMEMO, false ), 'firma licenza: con sodium nativo non si ricorda niente' );
 License::set_native_sodium_override( false );
-asem_ok( 'active' === $lic_att_state( array( 'exp' => time() + 172900 ) ) && is_array( get_option( License::OPT_VMEMO ) ) && isset( get_option( License::OPT_VMEMO )['att'] ), 'firma licenza: senza sodium nativo l\'esito verificato si ricorda' );
+$lic_ok1 = 'active' === $lic_att_state( array( 'exp' => time() + 172900 ) );
+$lic_vmo = (array) get_option( License::OPT_VMEMO );
+asem_ok( $lic_ok1 && isset( $lic_vmo['att'] ), 'firma licenza: senza sodium nativo l\'esito verificato si ricorda' );
 $lic_vm = (array) get_option( License::OPT_VMEMO );
 asem_ok( $lic_vm['att']['until'] <= time() + DAY_IN_SECONDS && $lic_vm['att']['until'] > time() + DAY_IN_SECONDS - 60, 'firma licenza: la voce scade entro un giorno' );
 // una voce ritoccata a mano nel database (stessa impronta, firma della voce sbagliata) non vale: si verifica di nuovo
@@ -715,7 +717,8 @@ update_option( License::OPT_VMEMO, array( 'att' => array( 'f' => $lic_fp, 'at' =
 asem_ok( 'lite' === License::plan(), 'firma licenza: una voce ricordata ritoccata a mano non vale (la firma della voce non corrisponde)' );
 // una prova non valida non passa dalla memoria nemmeno se qualcuno scrive una voce con la sua impronta
 asem_ok( 'unverified' === $lic_att_state( array( 'exp' => time() - 30 * DAY_IN_SECONDS, 'nbf' => time() - 35 * DAY_IN_SECONDS ) ) && 'unverified' === License::policy()['status'], 'firma licenza: una prova scaduta oltre la tolleranza non passa dalla memoria' );
-asem_ok( false === get_option( License::OPT_VMEMO, false ) || ! isset( (array) get_option( License::OPT_VMEMO )['att'] ), 'firma licenza: un rifiuto non si ricorda' );
+$lic_vmo = (array) get_option( License::OPT_VMEMO, array() );
+asem_ok( ! isset( $lic_vmo['att'] ), 'firma licenza: un rifiuto non si ricorda' );
 // revoca: un nuovo stato (non attivo) svuota la memoria e la licenza non passa più
 $lic_att_state( array( 'exp' => time() + 173000 ) );
 asem_ok( is_array( get_option( License::OPT_VMEMO ) ), 'firma licenza: di nuovo ricordata' );
