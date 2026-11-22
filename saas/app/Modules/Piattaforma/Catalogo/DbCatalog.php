@@ -21,15 +21,29 @@ final class DbCatalog implements Catalog
 
     public function __construct(private readonly DatabaseManager $db, private readonly ConfigCatalog $initial, private readonly PortalNotifier $notifier) {}
 
+    /** Solo lettura: non scrive e non chiama il portale. Le revisioni nuove nascono in `align()` e alla pubblicazione. */
     public function published(): PublishedCatalog
     {
         if ($this->cache === null) {
             $row = $this->db->connection('pgsql')->table('core.catalog_revisions')->orderByDesc('rev')->first(['rev', 'document']);
-            $current = $row === null ? $this->initial->published() : self::fromRow($row->rev, $row->document);
-            $this->cache = $this->withLifecycle($current, $row !== null);
+            $this->cache = $row === null ? $this->initial->published() : self::fromRow($row->rev, $row->document);
         }
 
         return $this->cache;
+    }
+
+    /**
+     * Allinea il catalogo in vigore alla configurazione (giorni di conservazione), scrivendo una revisione nuova se
+     * serve e avvisando il portale. Si chiama al rilascio (`saas:catalog:align`) e prima di una pubblicazione, mai da
+     * una lettura.
+     */
+    public function align(): PublishedCatalog
+    {
+        $this->cache = null;
+        $row = $this->db->connection('pgsql')->table('core.catalog_revisions')->orderByDesc('rev')->first(['rev', 'document']);
+        $current = $row === null ? $this->initial->published() : self::fromRow($row->rev, $row->document);
+
+        return $this->cache = $this->withLifecycle($current, $row !== null);
     }
 
     /**

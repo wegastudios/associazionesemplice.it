@@ -42,6 +42,9 @@ final class DemoResetCommand extends Command
             return self::FAILURE;
         }
 
+        // Il catalogo si allinea alla configurazione qui, non alla prima lettura.
+        $this->call('saas:catalog:align');
+
         // I file cifrati dell'associazione precedente non servono più: senza questa pulizia crescono a ogni notte.
         $root = config('filesystems.disks.org_files.root');
         $marker = config('saas.demo.path_marker');

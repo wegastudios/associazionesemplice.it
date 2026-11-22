@@ -7,7 +7,6 @@ namespace App\Modules\Portale\Entitlements;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\LifecyclePolicy;
-use Illuminate\Database\DatabaseManager;
 
 /** Legge terms.trial dal catalogo pubblicato; se manca, in prova non si esporta e non si collega il commercialista. */
 final readonly class CatalogLifecyclePolicy implements LifecyclePolicy
@@ -15,7 +14,7 @@ final readonly class CatalogLifecyclePolicy implements LifecyclePolicy
     public function __construct(
         private Entitlements $entitlements,
         private Catalog $catalog,
-        private DatabaseManager $db,
+        private EntitlementReader $reader,
     ) {}
 
     public function exportsAllowed(string $orgId): bool
@@ -31,10 +30,7 @@ final readonly class CatalogLifecyclePolicy implements LifecyclePolicy
     /** Prova finita senza un piano: l'associazione è sospesa ma i dati restano consultabili fino alla cancellazione. */
     public function readOnly(string $orgId): bool
     {
-        return $this->db->connection('pgsql')->table('core.orgs as o')
-            ->join('core.org_entitlements as e', 'e.org_id', '=', 'o.id')
-            ->where('o.id', $orgId)->where('o.status', 'suspended')->where('e.status', 'trial')
-            ->exists();
+        return $this->reader->readOnly($orgId);
     }
 
     private function allowed(string $orgId, string $key): bool

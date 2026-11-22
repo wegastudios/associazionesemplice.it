@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Piattaforma\Catalogo\CatalogForm;
+use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
@@ -16,6 +17,8 @@ require_once dirname(__DIR__).'/Portale/PortalHelpers.php';
 beforeEach(function (): void {
     fakePortal();
     Http::fake(['*' => Http::response([], 200)]);
+    // Come dopo un rilascio: il catalogo è già allineato alla configurazione (la lettura non scrive).
+    app(DbCatalog::class)->align();
     $this->staff = makeStaff();
     loginStaff($this, $this->staff);
 });

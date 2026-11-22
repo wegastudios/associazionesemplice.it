@@ -47,7 +47,8 @@ final class CifraturaServiceProvider extends ServiceProvider
             Storage::disk('org_files'),
             $app->make(KeyRing::class),
         ));
-        $this->app->singleton(StorageQuota::class, StorageQuotaService::class);
+        // Tiene i diritti letti: una copia per richiesta o per lavoro in coda.
+        $this->app->scoped(StorageQuota::class, StorageQuotaService::class);
     }
 
     public function boot(): void
