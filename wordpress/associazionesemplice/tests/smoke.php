@@ -11879,6 +11879,32 @@ $pc_part();
 asem_ok( 'hit' === PageCache::last(), 'cache eventi: pezzo caldo prima del cambio delle impostazioni' );
 Settings::update( array( 'association_name' => 'Associazione di prova cache' ) );
 asem_ok( false !== strpos( $pc_part(), 'Associazione di prova cache' ) && 'miss' === PageCache::last(), 'cache eventi: un cambio delle impostazioni svuota la cache' );
+// L2: la pagina dell'evento per un anonimo è uguale per tutti (senza moduli né gettoni); date, posti e modulo arrivano con una piccola chiamata
+$pe_a = $acts->get( $pc_evt );
+$pe_p = get_post( $pc_post );
+$pe_s = \AssociazioneSemplice\PublicEvents::booking_part( $pe_a, $pe_p );
+asem_ok( false !== strpos( $pe_s, 'asemf-booking-slot' ) && false !== strpos( $pe_s, 'asem_event_slot' ) && false === strpos( $pe_s, '<form' ) && false === strpos( $pe_s, 'name="t"' ) && false === strpos( $pe_s, 'posti liberi' ), 'pagina evento: per un anonimo al posto della prenotazione c\'è solo il segnaposto, senza moduli, gettoni né posti' );
+asem_ok( false !== strpos( $pe_s, 'asem_vista=prenota' ), 'pagina evento: senza JavaScript un indirizzo apre la pagina con la prenotazione dentro' );
+$pe_f = \AssociazioneSemplice\PublicEvents::booking_fragment( $pe_p );
+asem_ok( false !== strpos( $pe_f, 'Date e prenotazione' ) && false !== strpos( $pe_f, 'posti liberi' ), 'pagina evento: la chiamata restituisce le date con i posti' );
+asem_ok( false === strpos( $pe_f, 'admin-ajax' ), 'pagina evento: nella risposta nessun indirizzo punta alla chiamata stessa (i link tornano alla pagina dell\'evento)' );
+$_GET['asem_vista'] = 'prenota';
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::booking_part( $pe_a, $pe_p ), 'Date e prenotazione' ), 'pagina evento: con «asem_vista=prenota» la prenotazione è nella pagina' );
+unset( $_GET['asem_vista'] );
+$_SERVER['REQUEST_METHOD'] = 'POST';
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::booking_part( $pe_a, $pe_p ), 'Date e prenotazione' ), 'pagina evento: un invio di modulo vede la prenotazione nella pagina, mai il segnaposto' );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+asem_ok( false !== strpos( $pe_s, 'data-full="' ) && false !== strpos( (string) file_get_contents( ASEM_DIR . 'assets/frontend.js' ), 'function fallback(slot)' ), 'pagina evento: se la chiamata fallisce il segnaposto si trasforma nel link «Vedi le date e prenota» verso la pagina con la prenotazione' );
+// evento solo per soci: un anonimo non ottiene nulla dalla chiamata, con o senza «asem_vista»
+update_post_meta( $pc_post, '_asem_access', 'members' );
+asem_ok( '' === \AssociazioneSemplice\PublicEvents::booking_fragment( get_post( $pc_post ) ), 'pagina evento: un evento solo per soci non esce dalla chiamata a un anonimo' );
+$_GET['asem_vista'] = 'prenota';
+asem_ok( ! \AssociazioneSemplice\Frontend\Restrict::can_view_post( $pc_post ) && '' === \AssociazioneSemplice\PublicEvents::booking_fragment( get_post( $pc_post ) ), 'pagina evento: con «asem_vista=prenota» valgono le stesse regole: un anonimo non vede l\'evento solo per soci' );
+unset( $_GET['asem_vista'] );
+delete_post_meta( $pc_post, '_asem_access' );
+wp_update_post( array( 'ID' => $pc_post, 'post_status' => 'draft' ) );
+asem_ok( '' === \AssociazioneSemplice\PublicEvents::booking_fragment( get_post( $pc_post ) ), 'pagina evento: la chiamata non risponde per un evento non pubblicato' );
+wp_update_post( array( 'ID' => $pc_post, 'post_status' => 'publish' ) );
 // L1: svuotamenti mirati (la cache non riparte da zero per scritture che non cambiano nulla)
 $pc_gen = function () use ( $pc_part ) {
 	$pc_part(); // la lettura della generazione fa ripartire il conteggio delle scritture di fila

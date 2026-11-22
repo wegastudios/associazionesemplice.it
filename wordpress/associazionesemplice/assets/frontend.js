@@ -242,3 +242,37 @@
 	});
 	if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 })();
+
+/* Pagina dell'evento per un anonimo: date, posti liberi e modulo arrivano con una piccola chiamata (la pagina è la stessa per tutti e sta in cache). */
+(function () {
+	'use strict';
+	var slots = document.querySelectorAll('.asemf-booking-slot[data-url]');
+	if (!slots.length || !window.fetch) { return; }
+	/* Se la chiamata non riesce (rete, errore, risposta vuota) il segnaposto non resta su «Caricamento»: compare il link alla pagina con la prenotazione dentro. */
+	function fallback(slot) {
+		var full = slot.getAttribute('data-full');
+		slot.removeAttribute('data-loaded');
+		if (!full) { return; }
+		var p = document.createElement('p'), a = document.createElement('a');
+		a.className = 'asemf-btn wp-element-button';
+		a.href = full;
+		a.textContent = 'Vedi le date e prenota';
+		p.appendChild(a);
+		slot.textContent = '';
+		slot.appendChild(p);
+	}
+	function load(slot) {
+		if (slot.getAttribute('data-loaded')) { return; }
+		slot.setAttribute('data-loaded', '1');
+		fetch(slot.getAttribute('data-url'), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (html) {
+			if (html) { slot.innerHTML = html; } else { fallback(slot); } // HTML già escapato dal server (le viste della prenotazione)
+		}).catch(function () { fallback(slot); });
+	}
+	Array.prototype.forEach.call(slots, function (slot) {
+		if (!('IntersectionObserver' in window)) { load(slot); return; }
+		var io = new IntersectionObserver(function (entries) {
+			entries.forEach(function (e) { if (e.isIntersecting) { io.disconnect(); load(slot); } });
+		}, { rootMargin: '300px' });
+		io.observe(slot);
+	});
+})();

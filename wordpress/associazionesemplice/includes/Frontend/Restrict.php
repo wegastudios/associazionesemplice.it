@@ -143,8 +143,19 @@ final class Restrict {
 	}
 
 
+	/** @var string|null indirizzo da usare al posto di quello della richiesta (una parte di pagina disegnata da una chiamata a parte, che deve tornare alla pagina vera) */
+	private static $url_override = null;
+
+	/** Per il resto di questa richiesta «la pagina corrente» è questo indirizzo del sito (vuoto: torna quello della richiesta). */
+	public static function use_url( string $url ): void {
+		self::$url_override = '' !== $url && 0 === strpos( $url, home_url( '/' ) ) ? $url : null; // solo un indirizzo del sito
+	}
+
 	/** Indirizzo della pagina corrente (per tornarci dopo il login). */
 	public static function current_url(): string {
+		if ( null !== self::$url_override ) {
+			return self::$url_override;
+		}
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 		$uri = '' !== $uri && '/' === $uri[0] && 0 !== strpos( $uri, '//' ) ? esc_url_raw( $uri ) : ''; // solo un percorso del sito
 		$p   = wp_parse_url( home_url( '/' ) );
