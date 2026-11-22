@@ -26,7 +26,7 @@ $ip_cash = (string) Plugin::ledger()->accounts()[0]['name'];
 $ip_year = gmdate( 'Y' );
 $ip_csv  = "Data;Tipo;Conto;Modalità;Voce;Importo;Descrizione;Riferimento;N. tessera;Attività;Competenza\r\n";
 for ( $i = 0; $i < 300; $i++ ) {
-	$ip_csv .= sprintf( '%02d/03/%s;%s;%s;;%s;%s;Prova veloce %d;PV-%d;;;', 1 + $i % 28, $ip_year, 0 === $i % 3 ? 'Uscita' : 'Entrata', $ip_cash, 0 === $i % 3 ? 'Costo generale' : 'Quota associativa', number_format( 5 + $i % 40, 2, ',', '' ), $i, $i ) . "\r\n";
+	$ip_csv .= sprintf( '%02d/03/%s;%s;%s;;%s;%s;Prova veloce %d;PV-%d;;;', 1 + $i % 28, $ip_year, 0 === $i % 3 ? 'Uscita' : 'Entrata', $ip_cash, 0 === $i % 3 ? 'Costo generale' : '', number_format( 5 + $i % 40, 2, ',', '' ), $i, $i ) . "\r\n";
 }
 for ( $i = 0; $i < 10; $i++ ) {
 	$ip_csv .= sprintf( '%02d/04/%s;Giroconto in uscita;%s;;Giroconto;100,00;Giro veloce %d;;;;', 1 + $i, $ip_year, $ip_cash, $i ) . "\r\n";
