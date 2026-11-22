@@ -4912,6 +4912,26 @@ asem_ok( false !== strpos( $one_url, '&a=' . $once_c ) && false === strpos( $all
 asem_ok( 0 === strpos( \AssociazioneSemplice\Calendar::webcal_url( 'https://sito.example/?asem_ical=x' ), 'webcal://' ) && 0 === strpos( \AssociazioneSemplice\Calendar::google_add_url( $all_url ), 'https://calendar.google.com/calendar/r?cid=webcal' ), 'calendario: link per Google, Apple e Outlook' );
 $ics_one = \AssociazioneSemplice\Calendar::ics( null, $once_c );
 asem_ok( false !== strpos( $ics_one, 'Scrittura creativa' ) && false === strpos( $ics_one, 'SUMMARY:Teatro doppio' ) && false !== strpos( \AssociazioneSemplice\Calendar::ics(), 'SUMMARY:Teatro doppio' ), 'calendario: il file di una sola attività contiene solo quella' );
+// calendario ricordato: stesso file e stesso ETag finché non cambia nulla, uno nuovo dopo ogni modifica; chi è collegato non lo riceve ricordato
+$ical_uid = get_current_user_id();
+wp_set_current_user( 0 );
+$feed_a = \AssociazioneSemplice\Calendar::feed_entry();
+$feed_b = \AssociazioneSemplice\Calendar::feed_entry();
+asem_ok( '' !== $feed_a['e'] && $feed_a['e'] === $feed_b['e'] && $feed_a['b'] === $feed_b['b'] && $feed_a['t'] === $feed_b['t'], 'calendario: finché non cambia nulla il file è lo stesso, con lo stesso ETag' );
+asem_ok( \AssociazioneSemplice\Calendar::not_modified( $feed_b['e'], $feed_b['t'], $feed_a['e'], '' ), 'calendario: il telefono che ha già questo ETag riceve «non modificato»' );
+$feed_one = \AssociazioneSemplice\Calendar::feed_entry( $once_c );
+asem_ok( $feed_one['e'] !== $feed_a['e'] && false === strpos( $feed_one['b'], 'SUMMARY:Teatro doppio' ), 'calendario: ogni attività ha il suo file e il suo ETag' );
+$wpdb->update( Db::t( 'activities' ), array( 'name' => 'Scrittura creativa 2' ), array( 'id' => $once_c ) );
+$feed_c = \AssociazioneSemplice\Calendar::feed_entry();
+asem_ok( $feed_c['e'] !== $feed_a['e'] && false !== strpos( $feed_c['b'], 'SUMMARY:Scrittura creativa 2' ) && ! \AssociazioneSemplice\Calendar::not_modified( $feed_c['e'], $feed_c['t'], $feed_a['e'], '' ), 'calendario: dopo una modifica il file e l\'ETag cambiano' );
+$wpdb->update( Db::t( 'activities' ), array( 'name' => 'Scrittura creativa' ), array( 'id' => $once_c ) );
+\AssociazioneSemplice\Calendar::feed_entry();
+wp_set_current_user( 1 );
+$feed_in = \AssociazioneSemplice\Calendar::feed_entry();
+asem_ok( '' === $feed_in['e'] && false !== strpos( $feed_in['b'], 'BEGIN:VCALENDAR' ), 'calendario: chi è collegato riceve sempre un file fresco, senza ETag' );
+wp_set_current_user( $ical_uid );
+$qr_a = \AssociazioneSemplice\QrCode::svg( 'https://sito.example/?asem_card=x', 4, 'QR di prova' );
+asem_ok( $qr_a === \AssociazioneSemplice\QrCode::svg( 'https://sito.example/?asem_card=x', 4, 'QR di prova' ) && $qr_a !== \AssociazioneSemplice\QrCode::svg( 'https://sito.example/?asem_card=y', 4, 'QR di prova' ) && 0 === strpos( $qr_a, '<svg' ), 'QR: lo stesso indirizzo dà lo stesso disegno, indirizzi diversi disegni diversi' );
 $det = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Solo questa attività', array( 'id' => $once_c ) );
 asem_ok( false !== strpos( $det, 'calendar.google.com' ) && false !== strpos( $det, 'Tutte le attività' ), 'scheda attività: link al suo calendario e a quello di tutte' );
 Settings::update( array( 'ical_enabled' => 0 ) );
@@ -11650,6 +11670,44 @@ asem_ok( $nc_count( function () use ( $show, $p_yoga, $u_ord ) { $show( $p_yoga,
 asem_ok( $nc_count( function () use ( $p_mem ) { get_the_excerpt( $p_mem ); } ) > 0 && 0 === $nc_count( function () use ( $p_pub ) { get_the_excerpt( $p_pub ); } ), 'cache: il riassunto di un contenuto riservato non si salva, quello pubblico sì' );
 wp_set_current_user( 0 );
 asem_ok( $nc_count( function () { do_shortcode( '[associazionesemplice_riservato accesso="soci"]x[/associazionesemplice_riservato]' ); } ) > 0, 'cache: una parte riservata di pagina non si salva' );
+// la scelta «in cache o no» si prende prima di disegnare, leggendo il contenuto della pagina
+$nc_page = function ( string $content ) {
+	return (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Prova cache ' . wp_generate_password( 6, false ), 'post_content' => $content ) );
+};
+$nc_p_area   = $nc_page( 'Ciao [associazionesemplice_area_soci] fine' );
+$nc_p_block  = $nc_page( '<!-- wp:associazionesemplice/vista {"vista":"tessera"} /-->' );
+$nc_p_dflt   = $nc_page( '<!-- wp:associazionesemplice/vista /-->' );
+$nc_p_form   = $nc_page( '[associazionesemplice_eventi] [associazionesemplice_evento_prenotazione]' );
+$nc_p_list   = $nc_page( '[associazionesemplice_eventi limite="5"] [associazionesemplice_prossimi_eventi]' );
+$nc_p_blist  = $nc_page( '<!-- wp:associazionesemplice/vista {"vista":"eventi","limite":"5"} /-->' );
+$nc_p_plain  = $nc_page( 'Una pagina qualunque, con [altro_shortcode] e senza il plugin.' );
+$nc_p_res    = $nc_page( '<!-- wp:associazionesemplice/riservato {"accesso":"soci"} --><p>x</p><!-- /wp:associazionesemplice/riservato -->' );
+$nc_p_elem   = $nc_page( 'Elementor' );
+update_post_meta( $nc_p_elem, '_elementor_data', '[{"elType":"widget","widgetType":"associazionesemplice_view","settings":{"view":"eventi"}}]' );
+$nc_p_elem2  = $nc_page( 'Elementor' );
+update_post_meta( $nc_p_elem2, '_elementor_data', '[{"elType":"widget","widgetType":"associazionesemplice_view","settings":[]}]' );
+$nc_p_unk    = $nc_page( '[associazionesemplice_vista_dell_estensione]' );
+asem_ok( $nc_count( function () use ( $nc_early, $nc_p_area ) { $nc_early( $nc_p_area ); } ) > 0, 'cache: una pagina con l\'area soci è fuori dalla cache già prima di disegnarla' );
+asem_ok( $nc_count( function () use ( $nc_early, $nc_p_block ) { $nc_early( $nc_p_block ); } ) > 0, 'cache: una pagina con il blocco della tessera è fuori dalla cache già prima di disegnarla' );
+asem_ok( $nc_count( function () use ( $nc_early, $nc_p_dflt ) { $nc_early( $nc_p_dflt ); } ) > 0, 'cache: il blocco senza scelta (area soci) è fuori dalla cache' );
+asem_ok( $nc_count( function () use ( $nc_early, $nc_p_form ) { $nc_early( $nc_p_form ); } ) > 0, 'cache: una pagina con la prenotazione (modulo) è fuori dalla cache' );
+asem_ok( $nc_count( function () use ( $nc_early, $nc_p_res ) { $nc_early( $nc_p_res ); } ) > 0, 'cache: una pagina con il blocco riservato è fuori dalla cache' );
+asem_ok( $nc_count( function () use ( $nc_early, $nc_p_elem2 ) { $nc_early( $nc_p_elem2 ); } ) > 0, 'cache: un widget Elementor senza scelta (area soci) è fuori dalla cache' );
+asem_ok( $nc_count( function () use ( $nc_early, $nc_p_unk ) { $nc_early( $nc_p_unk ); } ) > 0, 'cache: una vista sconosciuta vale come privata' );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $nc_p_list ) { $nc_early( $nc_p_list ); } ), 'cache: una pagina con soli elenchi pubblici di eventi non viene esclusa in anticipo' );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $nc_p_blist ) { $nc_early( $nc_p_blist ); } ), 'cache: il blocco con l\'elenco eventi non viene escluso in anticipo' );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $nc_p_elem ) { $nc_early( $nc_p_elem ); } ), 'cache: il widget Elementor con l\'elenco eventi non viene escluso in anticipo' );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $nc_p_plain ) { $nc_early( $nc_p_plain ); } ), 'cache: una pagina senza il plugin non viene toccata' );
+// gli stili del plugin si chiedono presto, solo dove serve
+wp_dequeue_style( 'asem-frontend' );
+$nc_early( $nc_p_plain );
+\AssociazioneSemplice\Frontend\Assets::early_enqueue();
+asem_ok( ! wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina senza il plugin non li carica' );
+$nc_early( $nc_p_list );
+\AssociazioneSemplice\Frontend\Assets::early_enqueue();
+asem_ok( wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina con una vista del plugin li chiede subito, per l\'intestazione' );
+wp_dequeue_style( 'asem-frontend' );
+wp_dequeue_script( 'asem-frontend' );
 $nc_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Cache', 'last_name' => 'Prova' ) );
 $wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $nc_p, 'login_email' => 'cache.prova@example.org', 'pass_hash' => MemberPassword::make( 'una password lunga' ), 'created_at' => gmdate( 'Y-m-d H:i:s' ) ) );
 $_COOKIE[ MemberSession::COOKIE ] = SessionToken::generate(); // cookie ben formato ma di nessuna sessione

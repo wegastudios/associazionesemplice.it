@@ -77,6 +77,10 @@ final class Restrict {
 		}
 		if ( \AssociazioneSemplice\CachePolicy::skip_page_cache( $rule, null !== \AssociazioneSemplice\MemberSession::session_person() ) ) {
 			Views::no_cache();
+			return;
+		}
+		if ( Assets::queried_uses()['private'] ) { // una vista che cambia con chi guarda (area soci, moduli, prenotazione): lo si sa già dal contenuto, prima che parta qualunque intestazione
+			Views::no_cache();
 		}
 	}
 
