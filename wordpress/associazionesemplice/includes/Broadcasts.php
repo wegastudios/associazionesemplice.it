@@ -287,7 +287,8 @@ final class Broadcasts {
 			return 0; // con la licenza non in regola l'invio resta fermo: riprende da solo quando torna in regola
 		}
 		self::recover_stuck( $id );
-		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' ORDER BY id LIMIT %d", $id, $batch ), ARRAY_A ) ?: array();
+		$batch = min( $batch, MailBudget::room_bulk() ); // tetto orario delle email del plugin: a tetto raggiunto non parte nulla e il resto riprende all'ora dopo
+		$rows  = $batch > 0 ? ( $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' ORDER BY id LIMIT %d", $id, $batch ), ARRAY_A ) ?: array() ) : array();
 		$assoc = (string) Settings::get( 'association_name' );
 		foreach ( $rows as $r ) {
 			// si prende in carico la riga: se un altro passaggio (cron e pagina insieme) sta mandando le stesse email, non si manda due volte
@@ -303,8 +304,9 @@ final class Broadcasts {
 		$sent = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'sent'", $id ) );
 		$fail = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'failed'", $id ) );
 		$db->update( Db::t( 'broadcasts' ), array( 'sent' => $sent, 'failed' => $fail, 'status' => $left > 0 ? 'sending' : 'done', 'finished_at' => $left > 0 ? null : Db::now() ), array( 'id' => $id ) );
+		MailBudget::flush(); // il conteggio dell'ora si scrive subito: un altro passaggio (cron o pagina) lo trova aggiornato
 		if ( $left > 0 && ! wp_next_scheduled( self::HOOK ) ) {
-			wp_schedule_single_event( time() + 60, self::HOOK );
+			wp_schedule_single_event( MailBudget::room_bulk() > 0 ? time() + 60 : MailBudget::resume_at(), self::HOOK ); // a tetto raggiunto si riprova all'ora piena dopo, non ogni minuto
 		}
 		return $left;
 	}

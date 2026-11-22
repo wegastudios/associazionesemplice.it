@@ -2864,6 +2864,10 @@
   "Connessione interrotta: riprovo tra qualche secondo." : "Connection lost: trying again in a few seconds.",
   "Vuoi annullare questo lavoro? Quello che non è ancora stato fatto non si farà." : "Do you want to cancel this job? What has not been done yet will not be done.",
   "Con questa pagina aperta il lavoro va più veloce; se la chiudi continua da solo, più lentamente." : "With this page open the job runs faster; if you close it, it carries on by itself, more slowly.",
-  "Nessun lavoro in corso." : "No job in progress."
+  "Nessun lavoro in corso." : "No job in progress.",
+  "Il tetto di {n} email all'ora è stato raggiunto: le comunicazioni in coda riprendono da sole alle {ora}." : "The limit of {n} emails per hour has been reached: the queued communications resume on their own at {ora}.",
+  "Cambia il tetto" : "Change the limit",
+  "La posta del sito passa da un servizio di invio esterno." : "The site's mail goes through an external sending service.",
+  "Di solito questi servizi permettono molte più di 200 email all'ora: controlla il limite orario del tuo piano e, se è più alto, alza qui il tetto (ad esempio a metà del limite del servizio, così resta posto per le conferme). Con 200 una comunicazione a 1.000 soci impiega circa 6 ore." : "These services usually allow far more than 200 emails per hour: check the hourly limit of your plan and, if it is higher, raise the limit here (for example to half of the service limit, so there is room left for confirmations). With 200, a communication to 1,000 members takes about 6 hours."
  }
 }
