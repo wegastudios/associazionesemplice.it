@@ -2,7 +2,7 @@
  "code" : "en",
  "name" : "English",
  "strings" : {
-  "Carico le date e i posti…" : "Loading dates and seats…",
+  "Caricamento di date e posti…" : "Loading dates and seats…",
   "Vedi le date e prenota" : "See the dates and book",
   "Ne restano {n} da sincronizzare: avvia di nuovo la sincronizzazione." : "{n} are left to sync: start the sync again.",
   "Ne resta {n} da sincronizzare: avvia di nuovo la sincronizzazione." : "{n} is left to sync: start the sync again.",

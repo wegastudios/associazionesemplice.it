@@ -11809,6 +11809,14 @@ unset( $_GET['asem_vista'] );
 $_SERVER['REQUEST_METHOD'] = 'POST';
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::booking_part( $pe_a, $pe_p ), 'Date e prenotazione' ), 'pagina evento: un invio di modulo vede la prenotazione nella pagina, mai il segnaposto' );
 $_SERVER['REQUEST_METHOD'] = 'GET';
+asem_ok( false !== strpos( $pe_s, 'data-full="' ) && false !== strpos( (string) file_get_contents( ASEM_DIR . 'assets/frontend.js' ), 'function fallback(slot)' ), 'pagina evento: se la chiamata fallisce il segnaposto si trasforma nel link «Vedi le date e prenota» verso la pagina con la prenotazione' );
+// evento solo per soci: un anonimo non ottiene nulla dalla chiamata, con o senza «asem_vista»
+update_post_meta( $pc_post, '_asem_access', 'members' );
+asem_ok( '' === \AssociazioneSemplice\PublicEvents::booking_fragment( get_post( $pc_post ) ), 'pagina evento: un evento solo per soci non esce dalla chiamata a un anonimo' );
+$_GET['asem_vista'] = 'prenota';
+asem_ok( ! \AssociazioneSemplice\Frontend\Restrict::can_view_post( $pc_post ) && '' === \AssociazioneSemplice\PublicEvents::booking_fragment( get_post( $pc_post ) ), 'pagina evento: con «asem_vista=prenota» valgono le stesse regole: un anonimo non vede l\'evento solo per soci' );
+unset( $_GET['asem_vista'] );
+delete_post_meta( $pc_post, '_asem_access' );
 wp_update_post( array( 'ID' => $pc_post, 'post_status' => 'draft' ) );
 asem_ok( '' === \AssociazioneSemplice\PublicEvents::booking_fragment( get_post( $pc_post ) ), 'pagina evento: la chiamata non risponde per un evento non pubblicato' );
 wp_update_post( array( 'ID' => $pc_post, 'post_status' => 'publish' ) );

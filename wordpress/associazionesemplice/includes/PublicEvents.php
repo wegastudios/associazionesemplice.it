@@ -728,7 +728,7 @@ final class PublicEvents {
 		$url  = add_query_arg( array( 'action' => 'asem_event_slot', 'e' => (int) $post->ID ), admin_url( 'admin-ajax.php' ) );
 		$full = add_query_arg( 'asem_vista', 'prenota', (string) get_permalink( $post ) );
 		return \AssociazioneSemplice\Texts::html(
-			'<div class="asemf-booking-slot" data-url="' . esc_url( $url ) . '"><p class="asemf-small asemf-muted">Carico le date e i posti…</p>'
+			'<div class="asemf-booking-slot" data-url="' . esc_url( $url ) . '" data-full="' . esc_url( $full ) . '"><p class="asemf-small asemf-muted">Caricamento di date e posti…</p>'
 			. '<noscript><p><a class="asemf-btn wp-element-button" href="' . esc_url( $full ) . '">Vedi le date e prenota</a></p></noscript></div>'
 		);
 	}
