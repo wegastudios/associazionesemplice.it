@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Piattaforma\Catalogo\CatalogPublisher;
+use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
 use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,8 @@ function draftWithNewVersion(string $name = 'Gestionale 2'): array
 beforeEach(function (): void {
     fakePortal();
     Http::fake(['*' => Http::response([], 200)]);
+    // Come dopo un rilascio: il catalogo è già allineato alla configurazione (la lettura non scrive).
+    app(DbCatalog::class)->align();
     $this->staff = makeStaff();
     loginStaff($this, $this->staff);
 });

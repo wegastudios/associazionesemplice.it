@@ -86,8 +86,7 @@ final readonly class CatalogPublisher
             // Una pubblicazione alla volta: la riga della bozza e l'ultima revisione fanno da blocco.
             $connection->table('core.catalog_draft')->where('id', 1)->lockForUpdate()->first();
             // Il catalogo in vigore si rilegge prima: se gli manca la sua revisione (giorni di conservazione) la scrive lui.
-            $this->catalog->refresh();
-            $this->catalog->published();
+            $this->catalog->align();
             $max = $connection->table('core.catalog_revisions')->max('rev');
             $current = is_numeric($max) ? (int) $max : 0;
             if ($current === 0) {

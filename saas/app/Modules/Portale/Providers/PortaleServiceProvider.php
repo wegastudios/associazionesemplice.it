@@ -45,7 +45,7 @@ final class PortaleServiceProvider extends ServiceProvider
         // Una copia per richiesta o per lavoro in coda: i diritti letti non restano in memoria oltre.
         $this->app->scoped(EntitlementReader::class);
         $this->app->scoped(Entitlements::class, static fn (Application $app): EntitlementReader => $app->make(EntitlementReader::class));
-        $this->app->singleton(LifecyclePolicy::class, CatalogLifecyclePolicy::class);
+        $this->app->scoped(LifecyclePolicy::class, CatalogLifecyclePolicy::class);
         $this->app->singleton(PortalNotifier::class, PortalNotifications::class);
         $this->app->singleton(StaffAccess::class, PortalStaffAccess::class);
         $this->app->singleton(DomainDns::class, SystemDns::class);

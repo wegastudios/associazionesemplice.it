@@ -30,7 +30,8 @@ final class AuditServiceProvider extends ServiceProvider
     {
         $this->app->tag([AuditDataExport::class], DataExport::TAG);
         $this->app->singleton(AuditLog::class, ChainedAuditLog::class);
-        $this->app->singleton(ActingMember::class);
+        // Il socio che agisce vale per la richiesta o il lavoro in corso: mai per il successivo nello stesso processo.
+        $this->app->scoped(ActingMember::class);
         $this->app->singleton(HeadCopies::class);
         $this->app->singleton(SecurityLog::class, DatabaseSecurityLog::class);
         $this->app->scoped(RecordSensitiveReads::class);

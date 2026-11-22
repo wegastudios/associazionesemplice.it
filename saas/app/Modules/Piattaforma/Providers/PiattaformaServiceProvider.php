@@ -9,6 +9,7 @@ use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use App\Modules\Piattaforma\Console\CreateStaffCommand;
 use App\Modules\Piattaforma\Console\ImportPortalCustomersCommand;
 use App\Modules\Piattaforma\Console\InviteStaffCommand;
+use App\Modules\Piattaforma\Console\AlignCatalogCommand;
 use App\Modules\Piattaforma\Console\NotifyPortalCatalogCommand;
 use App\Modules\Piattaforma\Console\PrepareTiersDraftCommand;
 use App\Modules\Piattaforma\Console\ResetStaffTwoFactorCommand;
@@ -34,9 +35,10 @@ final class PiattaformaServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(DbCatalog::class);
-        $this->app->singleton(Catalog::class, DbCatalog::class);
-        $this->app->singleton(PlanLimits::class, CatalogPlanLimits::class);
+        // Il catalogo letto vale per la richiesta o il lavoro in corso: una pubblicazione si vede dal successivo.
+        $this->app->scoped(DbCatalog::class);
+        $this->app->scoped(Catalog::class, DbCatalog::class);
+        $this->app->scoped(PlanLimits::class, CatalogPlanLimits::class);
 
         // Con l'accesso unico il SaaS è l'emittente dell'identità dello staff: l'ingresso di /saas/admin si controlla qui,
         // non più sul portale (docs/LOGIN_UNICO_E_DATABASE.md). Emittente spento = come prima.
@@ -72,7 +74,7 @@ final class PiattaformaServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class, StaffSuperAdminCommand::class, PrepareTiersDraftCommand::class, NotifyPortalCatalogCommand::class]);
+            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class, StaffSuperAdminCommand::class, PrepareTiersDraftCommand::class, NotifyPortalCatalogCommand::class, AlignCatalogCommand::class]);
         }
     }
 }

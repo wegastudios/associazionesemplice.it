@@ -58,6 +58,8 @@ health --skip-migrations
 "$PHP" artisan saas:audit:partitions
 "$PHP" artisan saas:tmp:purge --minutes=60 || true
 "$PHP" artisan optimize
+# Il catalogo non si scrive più da una lettura: i giorni di conservazione della nuova configurazione si allineano qui.
+"$PHP" artisan saas:catalog:align
 
 PREVIOUS="$(readlink "$BASE/current" 2>/dev/null || true)"
 ln -sfn "$RELEASE" "$BASE/current.new" && mv -Tf "$BASE/current.new" "$BASE/current"

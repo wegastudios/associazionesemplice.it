@@ -70,7 +70,7 @@ fuori da `local` e `testing`.
 2. **pacchetto** (`deploy/build.sh`): dipendenze senza quelle di sviluppo, CSS e JavaScript compilati (sul server
    non c'è Node), niente test, documenti, `.env` o dati; impronta SHA-256;
 3. **invio via SSH** nell'ambiente scelto e `deploy/remote.sh` sul server:
-   impronta → controllo di salute → `saas:migrate` → partizioni → cache (`optimize`) → **cambio del link `current`**
+   impronta → controllo di salute → `saas:migrate` → partizioni → cache (`optimize`) → `saas:catalog:align` (catalogo allineato alla configurazione) → **cambio del link `current`**
    → riavvio delle code → controllo di salute; se il controllo fallisce si torna da soli alla versione precedente.
 
 Quando parte: **solo a mano** (Actions → «SaaS · rilascio»), solo da `main`, con l'approvazione obbligatoria

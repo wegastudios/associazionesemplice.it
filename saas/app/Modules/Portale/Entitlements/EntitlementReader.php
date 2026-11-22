@@ -18,12 +18,27 @@ final class EntitlementReader implements Entitlements
     /** @var array<string, OrgEntitlements> */
     private array $loaded = [];
 
+    /** @var array<string, bool> */
+    private array $readOnly = [];
+
     public function __construct(private readonly DatabaseManager $db) {}
 
     /** Dimentica la copia letta (dopo una scrittura dei diritti). */
     public function forget(string $orgId): void
     {
-        unset($this->loaded[$orgId]);
+        unset($this->loaded[$orgId], $this->readOnly[$orgId]);
+    }
+
+    /**
+     * Prova finita senza un piano, nei giorni prima della cancellazione: l'associazione è sospesa ma i dati restano
+     * consultabili. Si calcola una volta sola per richiesta, come i diritti, e si dimentica con loro.
+     */
+    public function readOnly(string $orgId): bool
+    {
+        return $this->readOnly[$orgId] ??= $this->db->connection('pgsql')->table('core.orgs as o')
+            ->join('core.org_entitlements as e', 'e.org_id', '=', 'o.id')
+            ->where('o.id', $orgId)->where('o.status', 'suspended')->where('e.status', 'trial')
+            ->exists();
     }
 
     public function for(string $orgId): OrgEntitlements
