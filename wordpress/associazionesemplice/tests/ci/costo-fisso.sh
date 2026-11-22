@@ -10,9 +10,9 @@ body="$(mktemp)"
 fail=0
 table='| Richiesta | Risposta | File PHP del plugin | KB di PHP del plugin |'$'\n''|---|---:|---:|---:|'
 
-# misura <etichetta> <metodo> <percorso> <dati POST> <cookie: 0|1> <codici ammessi> <classi che non si devono caricare>
+# misura <etichetta> <metodo> <percorso> <dati POST> <cookie: 0|1> <codici ammessi> <classi che non si devono caricare> [classi che devono essersi caricate]
 misura() {
-	local label="$1" method="$2" path="$3" data="$4" auth="$5" codes="$6" forbidden="$7"
+	local label="$1" method="$2" path="$3" data="$4" auth="$5" codes="$6" forbidden="$7" required="${8:-}"
 	local args=( -s -o "$body" -w '%{http_code}' -H 'X-Asem-Costo: 1' )
 	if [ "$auth" = 1 ]; then
 		[ -n "$cookie" ] || { echo "::error::$label: manca il cookie dell'amministratore" >&2; fail=1; return; }
@@ -42,11 +42,23 @@ misura() {
 			fail=1
 		fi
 	done
+	for c in $required; do
+		if ! echo "$classes" | grep -qF " $c "; then
+			echo "::error::$label: la classe $c non si è caricata: la richiesta non è arrivata al suo gestore" >&2
+			fail=1
+		fi
+	done
 }
 
 # Pagina pubblica del sito, visitatore anonimo: niente amministrazione, aggiornatore, schema, né le pagine che rispondono a un parametro dell'indirizzo.
-PUBLIC_FORBIDDEN='Install Updater EventRequests GuardianConsent Frontend\CardVerify Frontend\CardPdf Frontend\TicketVerify Frontend\Activation Frontend\FirstAccess Frontend\MemberLoginPage Frontend\Application Admin\Admin Admin\Actions Admin\ProMenu'
+PUBLIC_FORBIDDEN='Install Updater EventRequests GuardianConsent Frontend\CardVerify Frontend\CardPdf Frontend\TicketVerify Frontend\Activation Frontend\FirstAccess Frontend\MemberLoginPage Frontend\Application Frontend\BlockBViews Frontend\BlockFViews Admin\Admin Admin\Actions'
+# ... e con il Pro: menu e avvisi di amministrazione, schema delle sue tabelle, ritorno dal pagamento
+PUBLIC_FORBIDDEN+=' Admin\ProMenu Admin\ProPanels Admin\ProWizard Admin\LicenseNotice Admin\UpdateNotice Admin\ReceiptCheckPage ProSchema Frontend\PayReturn'
 misura 'Pagina pubblica (visitatore)' GET '/' '' 0 '200' "$PUBLIC_FORBIDDEN"
+# I link con un parametro arrivano ancora al loro gestore (e solo quello si carica)
+misura 'Link: verifica di una tessera' GET '/?asem_card=prova' '' 0 '200 404' 'EventRequests Frontend\TicketVerify Install' 'Frontend\CardVerify'
+misura 'Link: conferma della prenotazione di un ospite' GET '/?asem_evreq=prova' '' 0 '200 400 403 404 410' 'Frontend\CardVerify Install' 'EventRequests'
+misura 'Link: calendario con un codice sbagliato' GET '/?asem_ical=prova' '' 0 '404' 'EventRequests Install' 'Calendar'
 
 echo
 echo "$table"

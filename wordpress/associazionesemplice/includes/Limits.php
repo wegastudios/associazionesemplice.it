@@ -369,7 +369,7 @@ final class Limits {
 			'Con intervalli lunghi l\'avviso arriva con qualche giorno di ritardo.',
 			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
 		);
-		if ( class_exists( __NAMESPACE__ . '\Updater' ) ) { // il limite c'è solo dove c'è l'aggiornatore dal portale: nel pacchetto per WordPress.org non esiste
+		if ( Plugin::has_updater() ) { // il limite c'è solo dove c'è l'aggiornatore dal portale: nel pacchetto per WordPress.org non esiste
 			$add(
 				'portal_updates', 'comunicazioni', 'Aggiornamenti diretti di Associazione Semplice e del Pro (Bacheca → Aggiornamenti)', 'flag', 1, 0, 1,
 				'Il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore, anche senza chiave di licenza, mai su un sito locale) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. La versione gratuita invia solo prodotto e versione: nessun dominio né dato dei soci. Il portale vede comunque l\'indirizzo IP del server e l\'indirizzo del sito, che WordPress aggiunge a ogni richiesta. Il Pro invia anche la chiave di licenza e il dominio.',

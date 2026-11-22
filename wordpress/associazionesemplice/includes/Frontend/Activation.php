@@ -18,10 +18,6 @@ final class Activation {
 	const MAX_ATTEMPTS_PER_HOUR = 15;
 	const NOT_FROM_PAGE         = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
-	}
-
 	private static function secret(): string {
 		return wp_salt( 'auth' ) . '|activate';
 	}

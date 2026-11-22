@@ -20,10 +20,21 @@ final class Plugin {
 	/** Ruolo WordPress dato ai nuovi utenti creati per i soci: nessun accesso all'area di amministrazione. */
 	const ROLE_MEMBER = 'asem_member';
 
+	/**
+	 * Versione dello schema del database (la storia dei cambi è accanto a {@see Install::DB_VERSION}, che vale questa).
+	 * Sta qui perché il confronto con quella salvata si fa a ogni richiesta: così la classe Install, grande, si carica solo quando c'è da aggiornare.
+	 */
+	const DB_VERSION = '74';
+
+	/** Opzione con la versione dello schema salvata (la stessa di {@see Install::DB_VERSION_OPTION}). */
+	const DB_VERSION_OPTION = 'asem_db_version';
+
 	private static $services = array();
 
 	public static function init(): void {
-		Install::maybe_upgrade();
+		if ( self::DB_VERSION !== (string) get_option( self::DB_VERSION_OPTION, '' ) ) {
+			Install::maybe_upgrade();
+		}
 		FiscalYears::maybe_open_current(); // il primo giorno dell'anno si apre il nuovo anno fiscale
 		Access::register();      // capability meta: asem_notify_activity, asem_view_person...
 		Employees::register();   // utenti «Dipendente»: permessi che si possono togliere, conteggio per il RUNTS
@@ -43,9 +54,7 @@ final class Plugin {
 		MailLog::register();     // registro dell'esito delle email spedite
 		PublicEvents::register(); // pagina pubblica di eventi e corsi (un contenuto collegato a ogni attività)
 		Frontend\WhatsappFloat::register(); // pulsante WhatsApp fisso (se c'è il numero della segreteria)
-		if ( class_exists( __NAMESPACE__ . '\Updater' ) ) { // aggiornamenti dal portale: nel pacchetto per WordPress.org non c'è (lì aggiorna WordPress.org)
-			Updater::register();
-		}
+		self::updater(); // aggiornamenti dal portale: nel pacchetto per WordPress.org non c'è (lì aggiorna WordPress.org)
 		self::schedule_jobs();   // lavori periodici: la classe si carica solo quando il lavoro parte
 		self::lazy_admin_post(); // download e azioni di admin-post: la classe si carica solo per quell'azione
 		// Parti che servono solo se la funzione è presente e in uso: altrimenti nemmeno si caricano.
@@ -54,6 +63,40 @@ final class Plugin {
 		}
 		if ( is_admin() ) {
 			Admin\Admin::init();
+		}
+	}
+
+	/** Richiesta della parte di gestione: bacheca (comprese admin-post.php e admin-ajax.php), WP-Cron o WP-CLI. Sul sito pubblico è falso. */
+	public static function backend(): bool {
+		return is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI );
+	}
+
+	/** Hook di WordPress con cui lavora l'aggiornatore anche fuori dalla bacheca (aggiornamenti chiesti da remoto, ad esempio da un servizio di gestione dei siti). */
+	const UPDATER_HOOKS = array( 'pre_set_site_transient_update_plugins', 'plugins_api', 'upgrader_pre_download', 'upgrader_process_complete' );
+
+	/** C'è l'aggiornatore dal portale (in questo pacchetto o nella copia del plugin aggiuntivo)? Lo dice senza caricarne la classe. */
+	public static function has_updater(): bool {
+		return class_exists( __NAMESPACE__ . '\Updater', false ) || is_readable( ASEM_DIR . 'includes/Updater.php' ) || ( defined( 'ASEM_PRO_DIR' ) && is_readable( ASEM_PRO_DIR . 'updater/Updater.php' ) );
+	}
+
+	/**
+	 * Aggiornatore dal portale: in bacheca, nel cron e in WP-CLI si registra subito; sul sito pubblico la sua classe nemmeno si legge,
+	 * e si carica solo se WordPress lavora davvero sugli aggiornamenti dei plugin (uno degli hook di UPDATER_HOOKS).
+	 */
+	private static function updater(): void {
+		if ( ! is_readable( ASEM_DIR . 'includes/Updater.php' ) ) {
+			return; // pacchetto per WordPress.org
+		}
+		if ( self::backend() ) {
+			Updater::register();
+			return;
+		}
+		$load = static function ( $value = null ) {
+			Updater::register(); // una volta sola: le chiamate successive non fanno nulla; i suoi hook si aggiungono mentre WordPress esegue quello in corso
+			return $value;
+		};
+		foreach ( self::UPDATER_HOOKS as $hook ) {
+			add_filter( $hook, $load, 1 );
 		}
 	}
 

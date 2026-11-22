@@ -15,10 +15,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class TicketVerify {
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
-	}
-
 	public static function handle(): void {
 		if ( ! isset( $_GET['asem_ticket'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return;

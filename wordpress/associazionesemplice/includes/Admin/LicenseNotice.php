@@ -13,10 +13,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class LicenseNotice {
 
-	public static function register(): void {
-		add_action( 'admin_notices', array( __CLASS__, 'print_notice' ) );
-	}
-
 	public static function print_notice(): void {
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		if ( 0 !== strpos( $page, 'asem' ) ) {
