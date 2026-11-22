@@ -40,7 +40,8 @@ final class Updater {
 	/** Un nuovo controllo è stato chiesto (il gratuito è cambiato): lo fa il lavoro in background, senza aspettare le 12 ore. */
 	const RECHECK_OPT = 'asem_updater_recheck';
 	/** Versione del gratuito vista l'ultima volta: se cambia (anche da WordPress.org) il Pro ricontrolla il portale. */
-	const FREE_VERSION_OPT = 'asem_updater_free_version';
+	const FREE_VERSION_OPT = 'asem_updater_free_version'; // la vecchia opzione (si legge una volta sola, poi vale il segnale riunito in BootState)
+	const FREE_VERSION_KEY = 'updater_free_version';
 	const FORCE_GAP        = 60;
 
 	private static $registered = false;
@@ -577,11 +578,11 @@ final class Updater {
 		if ( ! defined( 'ASEM_VERSION' ) ) {
 			return;
 		}
-		$saved = get_option( self::FREE_VERSION_OPT, null );
+		$saved = BootState::get( self::FREE_VERSION_KEY, self::FREE_VERSION_OPT, null ); // opzione riunita già in memoria: nessuna query a ogni pagina di amministrazione
 		if ( (string) ASEM_VERSION === $saved ) {
 			return;
 		}
-		update_option( self::FREE_VERSION_OPT, (string) ASEM_VERSION, false );
+		BootState::set( self::FREE_VERSION_KEY, (string) ASEM_VERSION );
 		if ( null !== $saved && self::enabled() ) {
 			self::queue_recheck();
 		}
