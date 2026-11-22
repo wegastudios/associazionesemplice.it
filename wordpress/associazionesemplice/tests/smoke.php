@@ -8348,7 +8348,7 @@ $pw_area  = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' =>
 $pw_other = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Altra pagina prova app', 'post_content' => 'altro' ) );
 $pw_area_before = (int) Settings::get( 'member_area_page_id' );
 Settings::update( array( 'member_area_page_id' => $pw_area ) );
-$pw_ms = new ReflectionProperty( MemberSession::class, 'current' );
+$pw_ms = new ReflectionProperty( \AssociazioneSemplice\MemberSession::class, 'current' );
 $pw_ms->setAccessible( true );
 $pw_query = function ( int $id ) {
 	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'p' => $id, 'post_type' => 'any', 'post_status' => 'publish' ) );
@@ -8363,7 +8363,7 @@ $pw_page = function ( int $id ) use ( $pw_query ) {
 	return array( 'head' => $head, 'script' => wp_script_is( 'asem-pwa', 'enqueued' ), 'on' => \AssociazioneSemplice\Pwa::should_register() );
 };
 wp_set_current_user( 0 );
-unset( $_COOKIE[ MemberSession::COOKIE ] );
+unset( $_COOKIE[ \AssociazioneSemplice\MemberSession::COOKIE ] );
 $pw_ms->setValue( null, null );
 $pw_v1 = $pw_page( $pw_other );
 asem_ok( ! $pw_v1['on'] && '' === $pw_v1['head'] && ! $pw_v1['script'], 'app: un visitatore su una pagina qualsiasi non carica né manifest né script (il service worker non si registra)' );
