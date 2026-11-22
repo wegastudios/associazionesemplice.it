@@ -106,7 +106,7 @@ saas/app/Modules/
 
 ## 6. Lavori in background
 
-- Code su **Postgres** (driver `database`). Redis (64 MB, rifiuta le scritture quando è pieno) solo per cache e
+- Code su **Postgres** (driver `database`). Redis (64 MB, politica `allkeys-lru`: quando è pieno toglie le chiavi meno usate; cache `failover`, se non risponde passa al database) solo per cache e
   limiti di frequenza, sempre con scadenza.
 - Cron ogni minuto: `/usr/local/bin/php artisan schedule:run` (da cron `php` è la versione CGI) e
   `queue:work --stop-when-empty --max-time=50`.

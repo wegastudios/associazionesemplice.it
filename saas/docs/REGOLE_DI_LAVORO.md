@@ -49,7 +49,7 @@ indicare chi vende (per esempio sulle fatture). Colori, logo e carattere sono in
 
 - Da cron si usa `/usr/local/bin/php`: `php` da solo è la versione CGI.
 - Sul server non c'è Node: CSS e JavaScript si compilano su GitHub Actions.
-- Redis ha 64 MB e rifiuta le scritture quando è pieno: solo cache e limiti di frequenza, sempre con scadenza.
+- Redis ha 64 MB con politica `allkeys-lru` (quando è pieno toglie le chiavi meno usate, non rifiuta): solo cache e limiti di frequenza, sempre con scadenza.
 - Creando database via cPanel UAPI, l'utente deve avere un **nome diverso dal database**.
 - Nel pannello, phpPgAdmin mostra solo l'esito dell'ultima istruzione: per le verifiche è meglio `psql` via SSH.
 

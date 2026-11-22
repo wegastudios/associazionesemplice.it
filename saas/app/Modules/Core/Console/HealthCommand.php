@@ -10,6 +10,7 @@ use App\Modules\Portale\Contracts\WebRuntimeProbe;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -45,6 +46,7 @@ final class HealthCommand extends Command
             'tabelle delle associazioni' => fn () => $this->orgTables($db->connection('pgsql')),
             'permessi dell\'applicazione' => fn () => $this->appPrivileges($db->connection('pgsql')),
             'connessione senza pooler' => fn () => $this->sessionSettings($db->connection('pgsql')),
+            'memoria di Redis' => $this->redisMemory(...),
         ];
 
         if (! $this->option('skip-migrations')) {
@@ -70,7 +72,7 @@ final class HealthCommand extends Command
         }
 
         // Controlli «morbidi»: finché SAAS_HEALTH_STRICT è spento (sviluppo, dati inventati) un problema è un avviso e non ferma il rilascio.
-        $soft = ['chiave principale in produzione', 'permessi dell\'applicazione'];
+        $soft = ['chiave principale in produzione', 'permessi dell\'applicazione', 'memoria di Redis'];
         $strict = config('saas.health_strict') === true;
         $failed = 0;
         foreach ($checks as $name => $check) {
@@ -121,6 +123,28 @@ final class HealthCommand extends Command
         }
 
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Oltre il 70% della memoria di Redis (politica allkeys-lru: toglie le chiavi meno usate, non rifiuta) è un avviso.
+     * Senza Redis in uso non c'è nulla da controllare; se non risponde, la cache passa già al database.
+     */
+    private function redisMemory(): void
+    {
+        if (! in_array(config('cache.default'), ['redis', 'failover'], true)) {
+            return;
+        }
+        try {
+            $info = Redis::connection('cache')->command('info', ['memory']);
+        } catch (Throwable) {
+            return;
+        }
+        $info = is_array($info) ? ($info['Memory'] ?? $info) : [];
+        $used = (int) ($info['used_memory'] ?? 0);
+        $max = (int) ($info['maxmemory'] ?? 0);
+        if ($max > 0 && $used / $max > 0.7) {
+            throw new RuntimeException(sprintf('Redis usa il %d%% della memoria (%d di %d byte): le chiavi meno usate vengono tolte', (int) round($used / $max * 100), $used, $max));
+        }
     }
 
     /** In produzione niente chiave locale, niente posta nel log; con SFTP l'impronta dell'host è obbligatoria. */
