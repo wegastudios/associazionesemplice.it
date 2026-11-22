@@ -162,32 +162,18 @@ final class ImportJob {
 		}
 	}
 
+	/** Lo stesso blocco con scadenza del motore dei lavori lunghi ({@see LongJob::acquire()}), con il suo nome. */
 	private static function lock(): bool {
-		$db  = Db::db();
-		$now = time();
-		if ( 1 === (int) $db->query( $db->prepare( 'INSERT IGNORE INTO ' . $db->options . " (option_name, option_value, autoload) VALUES (%s, %s, 'no')", self::OPT_LOCK, (string) $now ) ) ) {
-			return true;
-		}
-		$old = (string) $db->get_var( $db->prepare( 'SELECT option_value FROM ' . $db->options . ' WHERE option_name = %s', self::OPT_LOCK ) );
-		if ( '' !== $old && $now - (int) $old <= self::LOCK_SECONDS ) {
-			return false;
-		}
-		// scaduto (o appena liberato): lo prende uno solo, quello per cui la riga è ancora com'era
-		$won = '' === $old
-			? (int) $db->query( $db->prepare( 'INSERT IGNORE INTO ' . $db->options . " (option_name, option_value, autoload) VALUES (%s, %s, 'no')", self::OPT_LOCK, (string) $now ) )
-			: (int) $db->query( $db->prepare( 'UPDATE ' . $db->options . ' SET option_value = %s WHERE option_name = %s AND option_value = %s', (string) $now, self::OPT_LOCK, $old ) );
-		return 1 === $won;
+		return LongJob::acquire( self::OPT_LOCK, self::LOCK_SECONDS );
 	}
 
 	/** Il giro è ancora vivo: il blocco si rinnova. */
 	private static function beat(): void {
-		$db = Db::db();
-		$db->query( $db->prepare( 'UPDATE ' . $db->options . ' SET option_value = %s WHERE option_name = %s', (string) time(), self::OPT_LOCK ) );
+		LongJob::beat( self::OPT_LOCK );
 	}
 
 	private static function unlock(): void {
-		$db = Db::db();
-		$db->query( $db->prepare( 'DELETE FROM ' . $db->options . ' WHERE option_name = %s', self::OPT_LOCK ) );
+		LongJob::release( self::OPT_LOCK );
 	}
 
 	/** Questo import è quello in corso adesso (ancora a giri, non finito)? Finché lo è non compare tra i già fatti e non si annulla. */
@@ -564,8 +550,6 @@ final class ImportJob {
 
 	/** Quanto dura un giro: 20 secondi, o meno se il server ne concede pochi. */
 	private static function default_budget(): float {
-		$max    = (int) ini_get( 'max_execution_time' );
-		$budget = (float) self::BUDGET_SECONDS;
-		return $max > 0 ? min( $budget, max( 5.0, $max * 0.5 ) ) : $budget;
+		return LongJob::server_budget(); // BUDGET_SECONDS è lo stesso del motore: 20
 	}
 }

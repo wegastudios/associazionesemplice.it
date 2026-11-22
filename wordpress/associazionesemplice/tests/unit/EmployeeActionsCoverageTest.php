@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 final class EmployeeActionsCoverageTest extends TestCase {
 
 	/** Azioni decise dai dati della richiesta (vedi Employees::action_need()). */
-	const DYNAMIC = array( 'asem_export', 'asem_doc', 'asem_quick_cash' );
+	const DYNAMIC = array( 'asem_export', 'asem_doc', 'asem_quick_cash', 'asem_long_job' );
 
 	/** File dove le chiavi «asem_*» sono campi di dati o parametri di indirizzo, non azioni. */
 	const NOT_ACTION_FILES = array( 'WpAllImport.php', 'PaymentService.php', 'WooBridge.php', 'SatispayRules.php', 'StripeApi.php', 'PublicEvents.php', 'RowClean.php' );

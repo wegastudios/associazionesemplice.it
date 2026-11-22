@@ -28,6 +28,7 @@ final class Install {
 		'asem_purge_member_sessions',
 		'asem_purge_applications',
 		'asem_purge_broadcast_rcpt',
+		'asem_long_job_tick',
 		'asem_sms_hourly',
 		'asem_sms_queue',
 		'asem_newsletter_sync',
