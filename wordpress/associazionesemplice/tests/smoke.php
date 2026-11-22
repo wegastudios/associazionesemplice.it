@@ -8351,7 +8351,7 @@ Settings::update( array( 'member_area_page_id' => $pw_area ) );
 $pw_ms = new ReflectionProperty( \AssociazioneSemplice\MemberSession::class, 'current' );
 $pw_ms->setAccessible( true );
 $pw_query = function ( int $id ) {
-	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'p' => $id, 'post_type' => 'any', 'post_status' => 'publish' ) );
+	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'page_id' => $id, 'post_type' => 'page', 'post_status' => 'publish' ) );
 };
 $pw_page = function ( int $id ) use ( $pw_query ) {
 	$pw_query( $id );
