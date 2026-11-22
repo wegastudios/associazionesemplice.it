@@ -59,20 +59,62 @@ final class IncompleteCards {
 
 	/** I soci in carica con la scheda incompleta. @return array[] ['person' => socio, 'missing' => string[]] */
 	public static function all(): array {
-		$db   = Db::db();
-		$rows = $db->get_results(
-			'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND anonymized_at IS NULL AND left_on IS NULL AND type NOT IN ('guest','guardian') ORDER BY last_name, first_name",
-			ARRAY_A
-		) ?: array();
-		$map   = Guardians::map_for( array_column( $rows, 'id' ) );
+		return self::scan( -1 )['items'];
+	}
+
+	/** Quanti soci in carica hanno la scheda incompleta (conta senza tenere in memoria le schede). */
+	public static function count(): int {
+		return self::scan( 0 )['count'];
+	}
+
+	/**
+	 * Il conto di tutte le schede incomplete e le prime $keep (nello stesso ordine di {@see IncompleteCards::all()}): per le bacheche, che ne mostrano poche.
+	 *
+	 * @return array{count:int,items:array[]}
+	 */
+	public static function first( int $keep ): array {
+		return self::scan( max( 0, $keep ) );
+	}
+
+	/** Dimensione dei gruppi di soci letti per volta: la memoria non cresce con l'anagrafica. */
+	const CHUNK = 500;
+
+	/**
+	 * Legge i soci in carica a gruppi, applica {@see IncompleteCards::missing()} e tiene solo le schede incomplete (tutte con $keep = -1, le prime $keep altrimenti).
+	 *
+	 * @return array{count:int,items:array[]}
+	 */
+	private static function scan( int $keep ): array {
+		$db    = Db::db();
 		$today = Db::today();
-		$out   = array();
-		foreach ( $rows as $p ) {
-			$m = self::missing( $p, $map[ (int) $p['id'] ] ?? array(), $today );
-			if ( $m ) {
-				$out[] = array( 'person' => $p, 'missing' => $m );
+		$items = array();
+		$count = 0;
+		for ( $offset = 0; ; $offset += self::CHUNK ) {
+			$rows = $db->get_results(
+				$db->prepare(
+					'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND anonymized_at IS NULL AND left_on IS NULL AND type NOT IN ('guest','guardian') ORDER BY last_name, first_name, id LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
+					self::CHUNK,
+					$offset
+				),
+				ARRAY_A
+			) ?: array();
+			if ( ! $rows ) {
+				break;
+			}
+			$map = Guardians::map_for( array_column( $rows, 'id' ) );
+			foreach ( $rows as $p ) {
+				$m = self::missing( $p, $map[ (int) $p['id'] ] ?? array(), $today );
+				if ( $m ) {
+					$count++;
+					if ( $keep < 0 || count( $items ) < $keep ) {
+						$items[] = array( 'person' => $p, 'missing' => $m );
+					}
+				}
+			}
+			if ( count( $rows ) < self::CHUNK ) {
+				break;
 			}
 		}
-		return $out;
+		return array( 'count' => $count, 'items' => $items );
 	}
 }

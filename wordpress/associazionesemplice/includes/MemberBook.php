@@ -146,10 +146,17 @@ final class MemberBook {
 		return false;
 	}
 
-	/** Le tessere non cancellate di tutte le persone: person_id => [ [valid_from, valid_to], … ]. */
-	public static function cards_by_person(): array {
+	/**
+	 * Le tessere non cancellate (e non sostituite) per persona: person_id => [ [valid_from, valid_to], … ]. Con $from e $to solo quelle valide per
+	 * almeno un giorno del periodo (lo stesso confronto di {@see MemberBook::qualifies()}, fatto dal database): le altre non servono a chi decide chi entra.
+	 */
+	public static function cards_by_person( ?string $from = null, ?string $to = null ): array {
+		$sql = 'SELECT person_id, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL AND replaced_by IS NULL';
+		if ( null !== $from && null !== $to ) {
+			$sql = self::db()->prepare( $sql . ' AND valid_from <= %s AND valid_to >= %s', $to, $from ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
+		}
 		$out = array();
-		foreach ( self::db()->get_results( 'SELECT person_id, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL AND replaced_by IS NULL', ARRAY_A ) ?: array() as $r ) {
+		foreach ( self::db()->get_results( $sql, ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno, valori già passati da prepare()
 			$out[ (int) $r['person_id'] ][] = $r;
 		}
 		return $out;
@@ -198,9 +205,10 @@ final class MemberBook {
 	}
 
 	/** Per ogni persona la quota associativa dell'anno più recente per cui risulta incassata: person_id => [year, cents]. */
-	private static function last_fees(): array {
+	private static function last_fees( ?array $person_ids = null ): array {
+		$only = null === $person_ids ? '' : ' AND t.person_id IN (' . implode( ',', array_map( 'intval', $person_ids ?: array( 0 ) ) ) . ')'; // solo le persone che servono
 		$rows = self::db()->get_results(
-			'SELECT t.person_id, t.social_year, SUM(t.amount_cents + t.discount_cents) AS cents FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.person_id IS NOT NULL AND t.type = 'income' AND t.voided_at IS NULL AND c.kind = 'membership' GROUP BY t.person_id, t.social_year ORDER BY t.social_year", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni
+			'SELECT t.person_id, t.social_year, SUM(t.amount_cents + t.discount_cents) AS cents FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.person_id IS NOT NULL" . $only . " AND t.type = 'income' AND t.voided_at IS NULL AND c.kind = 'membership' GROUP BY t.person_id, t.social_year ORDER BY t.social_year", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni
 			ARRAY_A
 		) ?: array();
 		$out = array();
@@ -235,78 +243,139 @@ final class MemberBook {
 		if ( null === $year ) {
 			return self::live_rows( $filter, null );
 		}
-		$cl = null === $version ? FiscalYears::current_closure( $year ) : FiscalYears::closure_version( $year, $version );
+		list( $cl, $span ) = self::resolve( $year, $version );
 		if ( $cl && 'complete' === $cl['snapshot_state'] ) {
 			return self::snapshot_rows( (int) $cl['id'], $filter );
 		}
-		return self::live_rows( $filter, $cl && $cl['range_from'] && $cl['range_to'] ? array( (string) $cl['range_from'], (string) $cl['range_to'] ) : FiscalYears::range( $year ) );
+		return self::live_rows( $filter, $span );
+	}
+
+	/**
+	 * Una pagina del libro di un esercizio, con le stesse righe (stesso numero di riga, stesso ordine, stessi filtri) di {@see MemberBook::rows()}
+	 * ma leggendo dal database solo le persone di quella pagina.
+	 *
+	 * @return array{rows:array[],total:int} le righe della pagina e quante ne ha il libro (con il filtro) in tutto
+	 */
+	public static function page( string $filter, int $year, ?int $version, int $paged, int $per ): array {
+		$per    = max( 1, $per );
+		$offset = max( 0, ( max( 1, $paged ) - 1 ) * $per );
+		list( $cl, $span ) = self::resolve( $year, $version );
+		if ( $cl && 'complete' === $cl['snapshot_state'] ) {
+			if ( '' === $filter ) { // senza filtro la fotografia si legge a pagine dal database; con il filtro serve la causa di cessazione, dentro i dati
+				$t   = Db::t( 'member_book_snapshot' );
+				$tot = (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . $t . ' WHERE closure_id = %d', (int) $cl['id'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
+				$out = array();
+				foreach ( self::db()->get_results( self::db()->prepare( 'SELECT n, person_id, matricola, data FROM ' . $t . ' WHERE closure_id = %d ORDER BY n LIMIT %d OFFSET %d', (int) $cl['id'], $per, $offset ), ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
+					$out[] = self::snapshot_row( $r );
+				}
+				return array( 'rows' => $out, 'total' => $tot );
+			}
+			$all = self::snapshot_rows( (int) $cl['id'], $filter );
+			return array( 'rows' => array_slice( $all, $offset, $per ), 'total' => count( $all ) );
+		}
+		$index = self::live_index( $filter, $span );
+		return array( 'rows' => self::live_build( array_slice( $index, $offset, $per ) ), 'total' => count( $index ) );
+	}
+
+	/** La chiusura da leggere per un esercizio (null = dal vivo) e il suo periodo, che per un anno chiuso è quello fissato alla chiusura. @return array{0:?array,1:array{0:string,1:string}} */
+	private static function resolve( int $year, ?int $version ): array {
+		$cl   = null === $version ? FiscalYears::current_closure( $year ) : FiscalYears::closure_version( $year, $version );
+		$span = $cl && $cl['range_from'] && $cl['range_to'] ? array( (string) $cl['range_from'], (string) $cl['range_to'] ) : FiscalYears::range( $year );
+		return array( $cl, $span );
+	}
+
+	/** Chi può stare nel libro (non cancellato, non domanda in corso, non ospite né tutore): la condizione unica delle interrogazioni dal vivo. */
+	const BOOK_WHERE = "deleted_at IS NULL AND application_status IS NULL AND type NOT IN ('guest','guardian')";
+
+	/** Le sole colonne che una riga dal vivo del libro usa (le altre, note e consensi compresi, non servono). */
+	const BOOK_COLUMNS = 'id, type, matricola, subject_kind, last_name, first_name, tax_code, birth_date, birth_place, address, zip, city, province, email, phone, application_at, approved_on, joined_on, left_on, left_reason, anonymized_at, card_number, level_id';
+
+	/**
+	 * L'ordine del libro dal vivo: per ogni socio che entra (il criterio {@see MemberBook::qualifies()}) il suo numero di riga, che si conta prima del filtro
+	 * «in carica / cessati». Si leggono quattro colonne e le sole tessere del periodo: le righe intere si costruiscono dopo, solo per chi serve.
+	 *
+	 * @param array{0:string,1:string}|null $span primo e ultimo giorno dell'esercizio; null = tutti i soci
+	 * @return array<int,array{id:int,n:int}> in ordine di ingresso e di inserimento, già filtrato
+	 */
+	private static function live_index( string $filter, ?array $span ): array {
+		$rows  = self::db()->get_results( 'SELECT id, type, joined_on, left_on FROM ' . Db::t( 'people' ) . ' WHERE ' . self::BOOK_WHERE . ' ORDER BY joined_on, id', ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella e condizione interni
+		$cards = null === $span ? array() : self::cards_by_person( $span[0], $span[1] );
+		$out   = array();
+		$n     = 0;
+		foreach ( $rows as $p ) {
+			if ( null !== $span && ! self::qualifies( $p, $cards[ (int) $p['id'] ] ?? array(), $span[0], $span[1] ) ) {
+				continue;
+			}
+			$n++;
+			$gone = ! empty( $p['left_on'] );
+			if ( ( self::IN_FORCE === $filter && $gone ) || ( self::LEFT === $filter && ! $gone ) ) {
+				continue;
+			}
+			$out[] = array( 'id' => (int) $p['id'], 'n' => $n );
+		}
+		return $out;
+	}
+
+	/**
+	 * Le righe complete del libro dal vivo per le persone dell'indice dato, a gruppi (quota, tutori e date del tutore si leggono per il gruppo e non per tutti).
+	 *
+	 * @param array<int,array{id:int,n:int}> $index
+	 * @return array[]
+	 */
+	private static function live_build( array $index ): array {
+		$out = array();
+		foreach ( array_chunk( $index, 500 ) as $chunk ) {
+			$ids   = array_column( $chunk, 'id' );
+			$ops   = Guardians::operative_ids( $ids );
+			$want  = array_values( array_unique( array_merge( $ids, array_values( $ops ) ) ) );
+			$by_id = array();
+			foreach ( self::db()->get_results( 'SELECT ' . self::BOOK_COLUMNS . ' FROM ' . Db::t( 'people' ) . ' WHERE ' . self::BOOK_WHERE . ' AND id IN (' . implode( ',', array_map( 'intval', $want ) ) . ')', ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella e condizione interni, id interi
+				$by_id[ (int) $r['id'] ] = $r;
+			}
+			$tutori = Guardians::names_by_person( $ids );
+			$fees   = self::last_fees( $ids );
+			foreach ( $chunk as $i ) {
+				$p = $by_id[ $i['id'] ] ?? null;
+				if ( ! $p ) {
+					continue; // cancellato nel frattempo
+				}
+				$gone  = ! empty( $p['left_on'] );
+				$anon  = ! empty( $p['anonymized_at'] );
+				$src   = isset( $ops[ $i['id'] ], $by_id[ $ops[ $i['id'] ] ] ) ? $by_id[ $ops[ $i['id'] ] ] : $p; // un minore eredita le date (domanda, delibera, ingresso) del tutore che opera, se è socio
+				$out[] = array(
+					'n'           => $i['n'],
+					'id'          => (int) $p['id'],
+					'matricola'   => (int) $p['matricola'],
+					'kind'        => RuntsRules::kind( $p['subject_kind'] ?? '' ), // persona o ente
+					'name'        => $anon ? '(dati anonimizzati)' : trim( $p['last_name'] . ' ' . $p['first_name'] ),
+					'last_name'   => $anon ? '(dati anonimizzati)' : (string) $p['last_name'],
+					'first_name'  => $anon ? '' : (string) $p['first_name'],
+					'tax_code'    => $anon ? '' : (string) $p['tax_code'],
+					'birth_date'  => $anon ? '' : (string) $p['birth_date'],
+					'birth_place' => $anon ? '' : (string) $p['birth_place'],
+					'residence'   => $anon ? '' : self::residence( $p ),
+					'email'       => $anon ? '' : (string) $p['email'],
+					'phone'       => $anon ? '' : (string) $p['phone'],
+					'applied_on'  => substr( (string) ( $src['application_at'] ?: $src['joined_on'] ), 0, 10 ),
+					'approved_on' => (string) ( $src['approved_on'] ?: $src['joined_on'] ),
+					'fee_cents'   => (int) ( $fees[ (int) $p['id'] ]['cents'] ?? 0 ),
+					'fee_year'    => (string) ( $fees[ (int) $p['id'] ]['year'] ?? '' ),
+					'guardian'    => $anon ? '' : (string) ( $tutori[ (int) $p['id'] ] ?? '' ),
+					'card_number' => (string) $p['card_number'],
+					'level'       => Levels::label( $p ),
+					'joined_on'   => (string) $src['joined_on'],
+					'left_on'     => $gone ? (string) $p['left_on'] : '',
+					'left_reason' => (string) $p['left_reason'],
+					'status'      => $gone ? self::LEFT : self::IN_FORCE,
+				);
+			}
+		}
+		return $out;
 	}
 
 	/** @param array{0:string,1:string}|null $span primo e ultimo giorno dell'esercizio; null = tutti i soci */
 	private static function live_rows( string $filter, ?array $span ): array {
-		$rows = self::db()->get_results(
-			'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND type NOT IN ('guest','guardian') ORDER BY joined_on, id",
-			ARRAY_A
-		) ?: array();
-		$tutori = Guardians::names_by_person();
-		$fees   = self::last_fees();
-		$by_id  = array();
-		foreach ( $rows as $r ) {
-			$by_id[ (int) $r['id'] ] = $r;
-		}
-		if ( null !== $span ) {
-			$cards = self::cards_by_person();
-			$rows  = array_values(
-				array_filter(
-					$rows,
-					function ( $p ) use ( $cards, $span ) {
-						return self::qualifies( $p, $cards[ (int) $p['id'] ] ?? array(), $span[0], $span[1] );
-					}
-				)
-			);
-		}
-		$ops = Guardians::operative_ids();
-		$out = array();
-		$n   = 0;
-		foreach ( $rows as $p ) {
-			$n++;
-			$gone = ! empty( $p['left_on'] );
-			if ( self::IN_FORCE === $filter && $gone ) {
-				continue;
-			}
-			if ( self::LEFT === $filter && ! $gone ) {
-				continue;
-			}
-			$anon = ! empty( $p['anonymized_at'] );
-			$src  = isset( $ops[ (int) $p['id'] ], $by_id[ $ops[ (int) $p['id'] ] ] ) ? $by_id[ $ops[ (int) $p['id'] ] ] : $p; // un minore eredita le date (domanda, delibera, ingresso) del tutore che opera, se è socio
-			$out[] = array(
-				'n'           => $n,
-				'id'          => (int) $p['id'],
-				'matricola'   => (int) $p['matricola'],
-				'kind'        => RuntsRules::kind( $p['subject_kind'] ?? '' ), // persona o ente
-				'name'        => $anon ? '(dati anonimizzati)' : trim( $p['last_name'] . ' ' . $p['first_name'] ),
-				'last_name'   => $anon ? '(dati anonimizzati)' : (string) $p['last_name'],
-				'first_name'  => $anon ? '' : (string) $p['first_name'],
-				'tax_code'    => $anon ? '' : (string) $p['tax_code'],
-				'birth_date'  => $anon ? '' : (string) $p['birth_date'],
-				'birth_place' => $anon ? '' : (string) $p['birth_place'],
-				'residence'   => $anon ? '' : self::residence( $p ),
-				'email'       => $anon ? '' : (string) $p['email'],
-				'phone'       => $anon ? '' : (string) $p['phone'],
-				'applied_on'  => substr( (string) ( $src['application_at'] ?: $src['joined_on'] ), 0, 10 ),
-				'approved_on' => (string) ( $src['approved_on'] ?: $src['joined_on'] ),
-				'fee_cents'   => (int) ( $fees[ (int) $p['id'] ]['cents'] ?? 0 ),
-				'fee_year'    => (string) ( $fees[ (int) $p['id'] ]['year'] ?? '' ),
-				'guardian'    => $anon ? '' : (string) ( $tutori[ (int) $p['id'] ] ?? '' ),
-				'card_number' => (string) $p['card_number'],
-				'level'       => Levels::label( $p ),
-				'joined_on'   => (string) $src['joined_on'],
-				'left_on'     => $gone ? (string) $p['left_on'] : '',
-				'left_reason' => (string) $p['left_reason'],
-				'status'      => $gone ? self::LEFT : self::IN_FORCE,
-			);
-		}
-		return $out;
+		return self::live_build( self::live_index( $filter, $span ) );
 	}
 
 	/**

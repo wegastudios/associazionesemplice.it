@@ -1048,7 +1048,7 @@ final class ActivitiesPage {
 		$id       = (int) $activity['id'];
 		$sessions = Plugin::activities()->sessions( $id );
 		$all      = Plugin::people()->search_light();
-		$gov      = Plugin::people()->guest_overview();
+		$gov      = null; // il quadro degli ospiti si calcola solo alla prima prenotazione di un ospite
 		echo '<h2>' . ( ActivityKind::EVENT === $activity['kind'] ? 'Data e prenotazioni' : 'Date e prenotazioni' ) . '</h2>';
 		if ( ! $sessions ) {
 			echo '<p>Nessuna data. ' . ( ActivityKind::RECURRING === $activity['kind'] ? 'Aggiungine qui sopra.' : '' ) . '</p>';
@@ -1084,7 +1084,7 @@ final class ActivitiesPage {
 				echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Tipo</th><th>Contributo</th><th>Stato</th><th>Ingresso</th><th></th></tr></thead><tbody>';
 				foreach ( $bookings as $b ) {
 					$label = trim( ( $b['card_number'] ? 'n.' . $b['card_number'] . ' · ' : '' ) . $b['first_name'] . ' ' . $b['last_name'] );
-					echo wp_kses( '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . ( MemberType::GUEST === $b['type'] && $b['active'] ? '<br>' . PeoplePage::guest_badge( $gov[ (int) $b['person_id'] ] ?? null ) : '' ) . '</td>'
+					echo wp_kses( '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . ( MemberType::GUEST === $b['type'] && $b['active'] ? '<br>' . PeoplePage::guest_badge( ( $gov = null === $gov ? Plugin::people()->guest_overview() : $gov )[ (int) $b['person_id'] ] ?? null ) : '' ) . '</td>'
 						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="asem-warn">posto ceduto a un\'altra persona' : '<span class="asem-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>', Html::allowed() );
 					self::checkin_cell( $b, (int) $s['id'], $id, $back, $cancelled );
 					echo '</td><td>';

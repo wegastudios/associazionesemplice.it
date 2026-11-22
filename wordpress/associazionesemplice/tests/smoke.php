@@ -4221,6 +4221,33 @@ $front::do_add_guest( array( 'first_name' => 'Giovanni', 'last_name' => 'Altrui'
 $twins_now = $people->guest_overview();
 $gianni_id = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Giovanni' AND last_name = 'Altrui' AND host_person_id = $founder" );
 asem_ok( $gianni_id > 0 && ! empty( $twins_now[ $gianni_id ]['twins'] ), 'nuovo ospite: se il cellulare è di un altro ospite non si blocca, ma risulta gemello e lo si vede' );
+// L7: il quadro degli ospiti chiesto per pochi ospiti è identico a quello completo (gemelli compresi), e le liste leggere pure
+$l7_same = true;
+$l7_ids  = array_keys( $twins_now );
+foreach ( array( array( $gianni_id ), array_slice( $l7_ids, 0, 2 ), $l7_ids, array( 0, $gianni_id, 999999 ) ) as $l7_sub ) {
+	$l7_want = array();
+	foreach ( $twins_now as $l7_id => $l7_o ) {
+		if ( in_array( $l7_id, $l7_sub, true ) ) {
+			$l7_want[ $l7_id ] = $l7_o;
+		}
+	}
+	$l7_same = $l7_same && $people->guest_overview( $l7_sub ) === $l7_want;
+}
+asem_ok( $l7_same && array() === $people->guest_overview( array() ), 'ospiti L7: il quadro per un gruppo di ospiti è uguale alla parte corrispondente del quadro completo, gemelli compresi' );
+$l7_inv = $people->guests_to_invite();
+$l7_old = array();
+foreach ( $people->search( array( 'type' => 'guest' ) ) as $l7_g ) { // il vecchio calcolo: tutte le schede, poi il filtro sulla soglia
+	if ( ! empty( $twins_now[ (int) $l7_g['id'] ]['flag'] ) ) {
+		$l7_g['overview'] = $twins_now[ (int) $l7_g['id'] ];
+		$l7_old[]         = $l7_g;
+	}
+}
+asem_ok( $l7_inv === $l7_old && array_map( 'intval', array_column( $l7_inv, 'id' ) ) === $people->guest_ids_to_invite(), 'ospiti L7: da invitare = stesse schede e stesso ordine di prima; gli id per contarli sono gli stessi' );
+$l7_ic = \AssociazioneSemplice\IncompleteCards::all();
+$l7_f2 = \AssociazioneSemplice\IncompleteCards::first( 2 );
+asem_ok( \AssociazioneSemplice\IncompleteCards::count() === count( $l7_ic ) && $l7_f2['count'] === count( $l7_ic ) && $l7_f2['items'] === array_slice( $l7_ic, 0, 2 ) && array() === \AssociazioneSemplice\IncompleteCards::first( 0 )['items'], 'schede incomplete L7: il conto e le prime righe coincidono con l\'elenco intero' );
+$l7_ad = \AssociazioneSemplice\Guardians::adults_to_invite();
+asem_ok( \AssociazioneSemplice\Guardians::adults_to_invite_count() === count( $l7_ad ) && \AssociazioneSemplice\Guardians::adults_to_invite( 1 ) === array_slice( $l7_ad, 0, 1 ), 'maggiorenni da invitare L7: il conto dal database e le prime righe coincidono con l\'elenco intero' );
 wp_set_current_user( 1 );
 $walk2 = new ReflectionMethod( Admin\ProActions::class, 'walk_in' );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $walk2, $e1, $gs1, $founder ) { $walk2->invoke( null, array( 'activity_id' => $e1, 'session_id' => $gs1, 'new_first_name' => 'Senza', 'new_last_name' => 'Telefono', 'host_person_id' => $founder ) ); } ), 'cellulare' ), 'sul posto: un nuovo ospite richiede il cellulare' );
@@ -5407,8 +5434,146 @@ asem_set_fiscal_month( 1 );
 // il fondatore: ammesso entro la fine dell'esercizio e non cessato prima dell'inizio
 $mb_fnd = $mb_mk( 'founder', 'Ferdinando', 'Fondatore', ( $mb_y + 1 ) . '-03-01' );
 asem_ok( ! in_array( $mb_fnd, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && in_array( $mb_fnd, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ), 'libro per anno: il fondatore entra dall\'esercizio in cui è ammesso' );
+// L7: il libro soci riscritto (tessere filtrate in SQL, poche colonne, a pagine) deve dare ESATTAMENTE le righe di prima.
+// Il riferimento qui sotto è il vecchio calcolo, copiato così com'era (tutte le colonne, tutte le tessere, filtri in PHP).
+$mb_x = array(
+	'minor' => $mb_mk( 'ordinary', 'Mino', 'Tutelato', $mb_y . '-01-15' ),
+	'anon'  => $mb_mk( 'ordinary', 'Anonima', 'Persa', $mb_y . '-01-20' ),
+	'del'   => $mb_mk( 'ordinary', 'Cancellato', 'Prima', $mb_y . '-01-21' ),
+	'appl'  => $mb_mk( 'ordinary', 'Domanda', 'Aperta', $mb_y . '-01-22' ),
+	'guest' => $mb_mk( 'ordinary', 'Ospite', 'Estraneo', $mb_y . '-01-23' ),
+	'guard' => $mb_mk( 'ordinary', 'Tutore', 'Soltanto', $mb_y . '-01-24' ),
+	'old'   => $mb_mk( 'ordinary', 'Vecchio', 'Cessato', ( $mb_y - 4 ) . '-01-25' ),
+	'dcard' => $mb_mk( 'ordinary', 'Tessera', 'Cancellata', ( $mb_y - 2 ) . '-01-26' ),
+	'rcard' => $mb_mk( 'ordinary', 'Tessera', 'Sostituita', ( $mb_y - 2 ) . '-01-27' ),
+	'prev'  => $mb_mk( 'ordinary', 'Anno', 'Prima', ( $mb_y - 1 ) . '-01-28' ),
+);
+$wpdb->insert( Db::t( 'guardians' ), array( 'person_id' => $mb_x['minor'], 'guardian_person_id' => $mb_a, 'is_operative' => 1, 'created_at' => Db::now() ) );
+$wpdb->update( Db::t( 'people' ), array( 'birth_date' => ( $mb_y - 10 ) . '-03-03', 'address' => 'Via Prova 1', 'city' => 'Roma', 'zip' => '00100', 'province' => 'RM' ), array( 'id' => $mb_x['minor'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'anonymized_at' => Db::now() ), array( 'id' => $mb_x['anon'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'deleted_at' => Db::now() ), array( 'id' => $mb_x['del'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'application_status' => 'requested' ), array( 'id' => $mb_x['appl'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'type' => 'guest' ), array( 'id' => $mb_x['guest'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'type' => 'guardian' ), array( 'id' => $mb_x['guard'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => ( $mb_y - 2 ) . '-06-30', 'left_reason' => 'esclusione' ), array( 'id' => $mb_x['old'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => ( $mb_y - 1 ) . '-09-01', 'left_reason' => 'decesso' ), array( 'id' => $mb_x['prev'] ) );
+foreach ( array( 'minor', 'anon', 'del', 'appl', 'guest', 'guard' ) as $mb_k ) {
+	$mb_card( $mb_x[ $mb_k ], $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
+}
+$mb_card( $mb_x['old'], ( $mb_y - 4 ) . '-01-01', ( $mb_y - 4 ) . '-12-31', (string) ( $mb_y - 4 ) );
+$mb_card( $mb_x['prev'], ( $mb_y - 1 ) . '-01-01', ( $mb_y - 1 ) . '-12-31', (string) ( $mb_y - 1 ) );
+$mb_card( $mb_x['dcard'], $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
+$mb_card( $mb_x['rcard'], $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
+$wpdb->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => $mb_x['dcard'] ) );
+$wpdb->update( Db::t( 'memberships' ), array( 'replaced_by' => 999999 ), array( 'person_id' => $mb_x['rcard'] ) );
+$mb_ref = function ( string $filter, ?array $span ) use ( $wpdb ): array { // il vecchio live_rows, parola per parola
+	$fees_m = new \ReflectionMethod( \AssociazioneSemplice\MemberBook::class, 'last_fees' );
+	$fees_m->setAccessible( true );
+	$res_m = new \ReflectionMethod( \AssociazioneSemplice\MemberBook::class, 'residence' );
+	$res_m->setAccessible( true );
+	$rows   = $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND type NOT IN ('guest','guardian') ORDER BY joined_on, id", ARRAY_A ) ?: array();
+	$tutori = \AssociazioneSemplice\Guardians::names_by_person();
+	$fees   = $fees_m->invoke( null );
+	$by_id  = array();
+	foreach ( $rows as $r ) {
+		$by_id[ (int) $r['id'] ] = $r;
+	}
+	if ( null !== $span ) {
+		$cards = array();
+		foreach ( $wpdb->get_results( 'SELECT person_id, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL AND replaced_by IS NULL', ARRAY_A ) ?: array() as $r ) {
+			$cards[ (int) $r['person_id'] ][] = $r;
+		}
+		$rows = array_values(
+			array_filter(
+				$rows,
+				function ( $p ) use ( $cards, $span ) {
+					return \AssociazioneSemplice\MemberBook::qualifies( $p, $cards[ (int) $p['id'] ] ?? array(), $span[0], $span[1] );
+				}
+			)
+		);
+	}
+	$ops = \AssociazioneSemplice\Guardians::operative_ids();
+	$out = array();
+	$n   = 0;
+	foreach ( $rows as $p ) {
+		$n++;
+		$gone = ! empty( $p['left_on'] );
+		if ( 'in_force' === $filter && $gone ) {
+			continue;
+		}
+		if ( 'left' === $filter && ! $gone ) {
+			continue;
+		}
+		$anon  = ! empty( $p['anonymized_at'] );
+		$src   = isset( $ops[ (int) $p['id'] ], $by_id[ $ops[ (int) $p['id'] ] ] ) ? $by_id[ $ops[ (int) $p['id'] ] ] : $p;
+		$out[] = array(
+			'n'           => $n,
+			'id'          => (int) $p['id'],
+			'matricola'   => (int) $p['matricola'],
+			'kind'        => \AssociazioneSemplice\RuntsRules::kind( $p['subject_kind'] ?? '' ),
+			'name'        => $anon ? '(dati anonimizzati)' : trim( $p['last_name'] . ' ' . $p['first_name'] ),
+			'last_name'   => $anon ? '(dati anonimizzati)' : (string) $p['last_name'],
+			'first_name'  => $anon ? '' : (string) $p['first_name'],
+			'tax_code'    => $anon ? '' : (string) $p['tax_code'],
+			'birth_date'  => $anon ? '' : (string) $p['birth_date'],
+			'birth_place' => $anon ? '' : (string) $p['birth_place'],
+			'residence'   => $anon ? '' : $res_m->invoke( null, $p ),
+			'email'       => $anon ? '' : (string) $p['email'],
+			'phone'       => $anon ? '' : (string) $p['phone'],
+			'applied_on'  => substr( (string) ( $src['application_at'] ?: $src['joined_on'] ), 0, 10 ),
+			'approved_on' => (string) ( $src['approved_on'] ?: $src['joined_on'] ),
+			'fee_cents'   => (int) ( $fees[ (int) $p['id'] ]['cents'] ?? 0 ),
+			'fee_year'    => (string) ( $fees[ (int) $p['id'] ]['year'] ?? '' ),
+			'guardian'    => $anon ? '' : (string) ( $tutori[ (int) $p['id'] ] ?? '' ),
+			'card_number' => (string) $p['card_number'],
+			'level'       => \AssociazioneSemplice\Levels::label( $p ),
+			'joined_on'   => (string) $src['joined_on'],
+			'left_on'     => $gone ? (string) $p['left_on'] : '',
+			'left_reason' => (string) $p['left_reason'],
+			'status'      => $gone ? 'left' : 'in_force',
+		);
+	}
+	return $out;
+};
+$mb_same = true;
+$mb_cmp  = array();
+foreach ( array( '', 'in_force', 'left' ) as $mb_fl ) {
+	foreach ( array( null, $mb_y - 2, $mb_y - 1, $mb_y, $mb_y1 ) as $mb_yy ) {
+		$mb_span = null === $mb_yy ? null : \AssociazioneSemplice\FiscalYears::range( $mb_yy );
+		$mb_old  = $mb_ref( $mb_fl, $mb_span );
+		$mb_new  = \AssociazioneSemplice\MemberBook::rows( $mb_fl, $mb_yy );
+		if ( $mb_old !== $mb_new ) {
+			$mb_same = false;
+			$mb_cmp[] = $mb_fl . '/' . ( null === $mb_yy ? 'tutti' : $mb_yy ) . ': ' . count( $mb_old ) . ' vs ' . count( $mb_new );
+		}
+		if ( null !== $mb_yy ) { // le pagine rimesse una dopo l'altra danno lo stesso elenco, con lo stesso numero di riga e lo stesso totale
+			$mb_glued = array();
+			$mb_tot   = -1;
+			for ( $mb_pg = 1; $mb_pg <= max( 1, (int) ceil( count( $mb_old ) / 3 ) ); $mb_pg++ ) {
+				$mb_pp    = \AssociazioneSemplice\MemberBook::page( $mb_fl, $mb_yy, null, $mb_pg, 3 );
+				$mb_glued = array_merge( $mb_glued, $mb_pp['rows'] );
+				$mb_tot   = $mb_pp['total'];
+			}
+			if ( $mb_glued !== $mb_old || ( $mb_old && $mb_tot !== count( $mb_old ) ) ) {
+				$mb_same  = false;
+				$mb_cmp[] = 'pagine ' . $mb_fl . '/' . $mb_yy;
+			}
+		}
+	}
+}
+asem_ok( $mb_same, 'libro soci L7: righe identiche al vecchio calcolo, per ogni filtro e anno, anche a pagine (' . implode( '; ', $mb_cmp ) . ')' );
+$mb_chk = $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) );
+asem_ok( in_array( $mb_x['minor'], $mb_chk, true ) && in_array( $mb_x['anon'], $mb_chk, true ) && ! in_array( $mb_x['del'], $mb_chk, true ) && ! in_array( $mb_x['appl'], $mb_chk, true ) && ! in_array( $mb_x['guest'], $mb_chk, true ) && ! in_array( $mb_x['guard'], $mb_chk, true ) && ! in_array( $mb_x['old'], $mb_chk, true ) && ! in_array( $mb_x['dcard'], $mb_chk, true ) && ! in_array( $mb_x['rcard'], $mb_chk, true ) && ! in_array( $mb_x['prev'], $mb_chk, true ) && in_array( $mb_x['prev'], $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y - 1 ) ), true ), 'libro soci L7: il dataset di prova copre davvero i casi (cancellati, domande, ospiti, tessere cancellate o sostituite, cessati prima)' );
+$mb_dl = \AssociazioneSemplice\Docs::book( 'left', 'csv', $mb_y );
+asem_ok( false !== strpos( $mb_dl['body'], 'Cessato Dario' ) && false === strpos( $mb_dl['body'], 'Fondatrice' ), 'libro soci L7: il CSV filtrato sui cessati ha solo i cessati (letto una volta sola)' );
+foreach ( $mb_x as $mb_pid ) {
+	$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $mb_pid ) );
+	$wpdb->delete( Db::t( 'guardians' ), array( 'person_id' => $mb_pid ) );
+	$wpdb->delete( Db::t( 'people' ), array( 'id' => $mb_pid ) );
+}
+
 // campi della fotografia: solo i dati minimi, configurabili da un filtro
-$mb_f = \AssociazioneSemplice\MemberBook::snapshot_fields();
+$mb_f =\AssociazioneSemplice\MemberBook::snapshot_fields();
 asem_ok( array() === array_intersect( $mb_f, array( 'email', 'phone', 'card_number', 'fee_cents', 'fee_year', 'guardian', 'applied_on' ) ) && in_array( 'tax_code', $mb_f, true ) && in_array( 'left_reason', $mb_f, true ), 'fotografia: i campi sono solo i dati minimi (niente email, telefono, tessera, quote, tutore)' );
 $mb_flt = function ( $f ) {
 	return array_merge( $f, array( 'email', 'campo_inesistente' ) );

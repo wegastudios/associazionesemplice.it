@@ -808,14 +808,10 @@ class PeopleService {
 	 *
 	 * @return array<int,array> ospite => count, total (sue + dei gemelli), twins [id, name, host, count, why], flag (total ha raggiunto la soglia)
 	 */
-	public function guest_overview(): array {
+	public function guest_overview( ?array $only = null ): array {
 		$acts   = Plugin::activities();
-		$guests = $this->search( array( 'type' => MemberType::GUEST ) );
-		$counts = $acts->participation_counts( array_column( $guests, 'id' ) );
-		foreach ( $guests as $g ) { // le volte già venuto prima di usare il programma (da scheda o da importazione) si sommano a quelle registrate
-			$counts[ (int) $g['id'] ] = (int) ( $counts[ (int) $g['id'] ] ?? 0 ) + (int) ( $g['prior_visits'] ?? 0 );
-		}
-		$limit  = $acts->guest_limit();
+		$guests = $this->guests_light();
+		$wanted = null === $only ? null : array_flip( array_map( 'intval', $only ) );
 		$by_key = array();
 		foreach ( $guests as $g ) {
 			foreach ( array_keys( self::identity_keys( $g ) ) as $k ) {
@@ -826,9 +822,30 @@ class PeopleService {
 		foreach ( $guests as $g ) {
 			$by_id[ (int) $g['id'] ] = $g;
 		}
-		$out = array();
+		$need = array(); // di chi servono le partecipazioni: gli ospiti chiesti e le loro registrazioni gemelle
+		foreach ( $guests as $g ) {
+			$id = (int) $g['id'];
+			if ( null !== $wanted && ! isset( $wanted[ $id ] ) ) {
+				continue;
+			}
+			$need[ $id ] = true;
+			foreach ( array_keys( self::identity_keys( $g ) ) as $k ) {
+				foreach ( $by_key[ $k ] as $other ) {
+					$need[ $other ] = true;
+				}
+			}
+		}
+		$counts = $acts->participation_counts( array_keys( $need ) );
+		foreach ( $need as $id => $unused ) { // le volte già venuto prima di usare il programma (da scheda o da importazione) si sommano a quelle registrate
+			$counts[ $id ] = (int) ( $counts[ $id ] ?? 0 ) + (int) ( $by_id[ $id ]['prior_visits'] ?? 0 );
+		}
+		$limit = $acts->guest_limit();
+		$out   = array();
 		foreach ( $guests as $g ) {
 			$id    = (int) $g['id'];
+			if ( null !== $wanted && ! isset( $wanted[ $id ] ) ) {
+				continue;
+			}
 			$twins = array();
 			foreach ( self::identity_keys( $g ) as $k => $why ) {
 				foreach ( $by_key[ $k ] as $other ) {
@@ -852,13 +869,36 @@ class PeopleService {
 	public function guests_to_invite(): array {
 		$ov  = $this->guest_overview();
 		$out = array();
-		foreach ( $this->search( array( 'type' => MemberType::GUEST ) ) as $g ) {
-			if ( ! empty( $ov[ (int) $g['id'] ]['flag'] ) ) {
-				$g['overview'] = $ov[ (int) $g['id'] ];
-				$out[]         = $g;
+		$ids = array();
+		foreach ( $ov as $id => $o ) {
+			if ( ! empty( $o['flag'] ) ) {
+				$ids[] = (int) $id;
 			}
 		}
+		foreach ( $this->search_ids( $ids ) as $g ) { // le schede intere solo di chi ha raggiunto la soglia (stesso ordine di search())
+			$g['overview'] = $ov[ (int) $g['id'] ];
+			$out[]         = $g;
+		}
 		return $out;
+	}
+
+	/** Gli id degli ospiti di {@see PeopleService::guests_to_invite()}, senza leggere le loro schede (basta per contarli). @return int[] */
+	public function guest_ids_to_invite(): array {
+		$ids = array();
+		foreach ( $this->guest_overview() as $id => $o ) {
+			if ( ! empty( $o['flag'] ) ) {
+				$ids[] = (int) $id;
+			}
+		}
+		return $ids;
+	}
+
+	/** Gli ospiti con le sole colonne che servono al quadro delle partecipazioni, nello stesso ordine e con gli stessi filtri di {@see PeopleService::search()}. */
+	private function guests_light(): array {
+		$db  = $this->db();
+		$flt = $this->people_filter( array( 'type' => MemberType::GUEST ), Db::today() );
+		$sql = 'SELECT p.id, p.first_name, p.last_name, p.email, p.phone, p.prior_visits, CONCAT(h.first_name, " ", h.last_name) AS host_name FROM ' . Db::t( 'people' ) . ' p LEFT JOIN ' . Db::t( 'people' ) . ' h ON h.id = p.host_person_id WHERE ' . implode( ' AND ', $flt[0] ) . ' ORDER BY p.last_name, p.first_name, p.id';
+		return $db->get_results( $flt[1] ? $db->prepare( $sql, $flt[1] ) : $sql, ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni, valori già passati da prepare()
 	}
 	public function update( int $id, array $input ): void {
 		$current = $this->get( $id );
