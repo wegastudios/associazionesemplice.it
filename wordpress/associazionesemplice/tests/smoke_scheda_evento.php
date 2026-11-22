@@ -49,7 +49,7 @@ $se_sel = 0;
 $se_big = '';
 if ( preg_match_all( '~<select\b([^>]*)>(.*?)</select>~s', $se_html, $se_m, PREG_SET_ORDER ) ) {
 	foreach ( $se_m as $one ) {
-		if ( false !== strpos( $one[1], 'instructor_person_id' ) ) { // il referente (solo i volontari) è uno per pagina e non fa parte della prenotazione
+		if ( 1 !== preg_match( '~name="(person_id|to_person_id|host_person_id)"~', $one[1] ) ) { // solo le tendine di persone (non il referente, i conti, gli sport…)
 			continue;
 		}
 		$se_sel++;
