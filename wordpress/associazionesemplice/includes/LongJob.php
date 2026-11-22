@@ -128,7 +128,8 @@ final class LongJob {
 				throw new \InvalidArgumentException( Texts::t( 'Questo lavoro è già in corso: aspetta che finisca o annullalo.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			self::delete( self::STOP_PREFIX . $key );
-			$state = array( 'done' => 0, 'total' => 0, 'finished' => false ) + $state;
+			$state = $state + array( 'done' => 0, 'total' => 0 );
+			$state['finished'] = false;
 			$rec   = array(
 				'key'     => $key,
 				'status'  => 'running',

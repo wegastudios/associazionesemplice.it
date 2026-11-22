@@ -109,6 +109,10 @@ $lj_st = LongJob::run( $lj_key, INF );
 asem_ok( 'failed' === $lj_st['status'] && 'guasto di prova' === $lj_st['error'] && 3 === $lj_st['done'] && 3 === $GLOBALS['asem_lj_cleaned'] && ! $lj_cron() && ! $lj_lockrow(), 'lavori lunghi: un errore ferma il lavoro con il messaggio, pulisce e libera il blocco' );
 asem_ok( false !== strpos( $lj_st['message'], 'guasto di prova' ), 'lavori lunghi: l\'errore si legge nello stato [' . $lj_st['message'] . ']' );
 
+$lj_st = LongJob::start( $lj_key, array( 'total' => 40 ) );
+asem_ok( 'running' === $lj_st['status'] && 40 === $lj_st['total'] && 0 === $lj_st['percent'], 'lavori lunghi: il totale noto già all\'avvio si legge subito' );
+LongJob::cancel( $lj_key );
+
 // ---------- Richieste della pagina ----------
 LongJob::start( $lj_key, array() );
 $lj_st = LongJob::handle( $lj_key, 'run' );
