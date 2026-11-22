@@ -36,12 +36,14 @@ final class Holds {
 			$sql   .= ' AND b.session_id = %d';
 			$args[] = $session_id;
 		}
-		$n = 0;
-		foreach ( $db->get_results( $db->prepare( $sql, $args ), ARRAY_A ) ?: array() as $b ) {
+		$n    = 0;
+		$cand = $db->get_results( $db->prepare( $sql, $args ), ARRAY_A ) ?: array();
+		$read = $cand ? Plugin::activities()->bookings_for_sessions( array_map( 'intval', array_column( $cand, 'session_id' ) ) ) : array(); // prenotazioni e versamenti di tutte le date insieme, non due letture per posto
+		foreach ( $cand as $b ) {
 			$sid = (int) $b['session_id'];
 			$pid = (int) $b['person_id'];
 			$row = null;
-			foreach ( Plugin::activities()->bookings_for_session( $sid ) as $r ) {
+			foreach ( $read[ $sid ] ?? array() as $r ) {
 				if ( (int) $r['person_id'] === $pid ) {
 					$row = $r;
 					break;

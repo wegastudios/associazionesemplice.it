@@ -197,6 +197,27 @@ final class Receipts {
 	}
 
 	/**
+	 * Le righe di più ricevute insieme, come {@see record()} (stesse colonne) ma con una sola lettura.
+	 *
+	 * @param string[] $keys
+	 * @return array<string,?array> codice => riga (null se non è mai stata emessa)
+	 */
+	public static function records_for( array $keys ): array {
+		$keys = array_values( array_unique( array_map( 'strval', $keys ) ) );
+		$out  = array_fill_keys( $keys, null );
+		if ( ! $keys ) {
+			return $out;
+		}
+		$db  = Db::db();
+		$in  = implode( ',', array_fill( 0, count( $keys ), '%s' ) );
+		$sql = $db->prepare( 'SELECT * FROM ' . Db::t( 'receipts' ) . " WHERE receipt_key IN ($in)", $keys ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- segnaposto %s, uno per codice
+		foreach ( $db->get_results( $sql, ARRAY_A ) ?: array() as $r ) {
+			$out[ (string) $r['receipt_key'] ] = $r;
+		}
+		return $out;
+	}
+
+	/**
 	 * Segna come annullata la ricevuta emessa di un incasso. La riga e il numero restano: è un annullamento tracciato, non una cancellazione.
 	 *
 	 * @return bool true se la ricevuta c'era e non era già annullata

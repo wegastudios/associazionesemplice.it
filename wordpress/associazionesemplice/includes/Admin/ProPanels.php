@@ -22,6 +22,7 @@ final class ProPanels {
 		add_filter( 'asem_bookdesk_date', array( __CLASS__, 'bookdesk_date' ), 10, 3 );
 		add_filter( 'asem_bookdesk_item', array( __CLASS__, 'bookdesk_item' ), 10, 3 );
 		add_action( 'asem_person_receipts', array( __CLASS__, 'person_receipts' ) );
+		add_action( 'asem_ledger_rows', array( __CLASS__, 'ledger_rows' ) );
 		add_action( 'asem_ledger_row_actions', array( __CLASS__, 'ledger_row_actions' ), 10, 2 );
 		add_filter( 'asem_tx_void_result', array( __CLASS__, 'void_result' ), 10, 2 );
 	}
@@ -85,11 +86,37 @@ final class ProPanels {
 		echo '</div>';
 	}
 
+	/** @var array<string,?array> ricevute emesse delle righe della pagina, lette in una volta sola (vuoto fuori dalla prima nota) */
+	private static $pre_receipts = array();
+
+	/** Prima di disegnare le righe della prima nota: le ricevute emesse di tutti gli incassi della pagina, con una sola lettura. */
+	public static function ledger_rows( array $rows ): void {
+		self::$pre_receipts = array();
+		if ( ! \AssociazioneSemplice\Edition::has( 'receipts' ) ) {
+			return;
+		}
+		$keys = array();
+		foreach ( $rows as $r ) {
+			if ( 'income' === $r['type'] ) {
+				$keys[] = \AssociazioneSemplice\Receipts::key_of( $r );
+			}
+		}
+		if ( $keys ) {
+			self::$pre_receipts = \AssociazioneSemplice\Receipts::records_for( $keys );
+		}
+	}
+
 	/** Nella riga di un incasso: ricevuta PDF e invio per email. */
 	public static function ledger_row_actions( array $r, string $here ): void {
 			if ( 'income' === $r['type'] && \AssociazioneSemplice\Edition::has( 'receipts' ) ) {
-				$rkey = \AssociazioneSemplice\Receipts::effective_key( \AssociazioneSemplice\Receipts::key_of( $r ) ); // se la ricevuta è stata sostituita, vale l'ultima
-				$rrec = \AssociazioneSemplice\Receipts::record( $rkey );
+				$key0 = \AssociazioneSemplice\Receipts::key_of( $r );
+				if ( array_key_exists( $key0, self::$pre_receipts ) && ( ! self::$pre_receipts[ $key0 ] || null === self::$pre_receipts[ $key0 ]['voided_at'] ) ) { // la lettura comune basta: mai emessa, o emessa e valida
+					$rkey = $key0;
+					$rrec = self::$pre_receipts[ $key0 ];
+				} else { // annullata (si cerca l'eventuale sostitutiva) o riga non preparata: la lettura di sempre
+					$rkey = \AssociazioneSemplice\Receipts::effective_key( $key0 ); // se la ricevuta è stata sostituita, vale l'ultima
+					$rrec = \AssociazioneSemplice\Receipts::record( $rkey );
+				}
 				if ( $rrec && null !== $rrec['voided_at'] ) { // annullata e non ancora sostituita: si legge (ANNULLATA) e, se restano righe, si propone la sostitutiva
 					echo '<a class="button button-small" target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $rkey ) ) . '">Ricevuta annullata (PDF)</a> '
 						. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-receipt-replace', array( 'key' => $rkey, 'back' => $here ) ) ) . '">Emetti la ricevuta sostitutiva</a> ';

@@ -1133,7 +1133,18 @@ final class EventRequests {
 		$svc = Plugin::activities();
 		// Una conferma interrotta a metà (richiesta rimasta «in lavorazione») torna alla segreteria, che la esamina a mano.
 		PageCache::write( $db->prepare( "UPDATE $t SET status = 'approval' WHERE status = %s AND updated_at < %s", self::WORKING, wp_date( 'Y-m-d H:i:s', time() - self::STUCK_H * HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
-		foreach ( $db->get_results( $db->prepare( "SELECT * FROM $t WHERE status = 'booked' AND deadline IS NOT NULL AND deadline <= %s", Db::now() ), ARRAY_A ) ?: array() as $r ) {
+		$due  = $db->get_results( $db->prepare( "SELECT * FROM $t WHERE status = 'booked' AND deadline IS NOT NULL AND deadline <= %s", Db::now() ), ARRAY_A ) ?: array();
+		$sess = array(); // le date delle richieste scadute, lette tutte insieme invece di due letture per posto
+		foreach ( $due as $r ) {
+			$d = json_decode( (string) $r['data'], true );
+			if ( is_array( $d ) && empty( $d['enrollments'] ) && ! empty( $d['bookings'] ) ) {
+				foreach ( $d['bookings'] as $b ) {
+					$sess[] = (int) $b['session_id'];
+				}
+			}
+		}
+		$read = $sess ? $svc->bookings_for_sessions( $sess ) : array();
+		foreach ( $due as $r ) {
 			$d    = json_decode( (string) $r['data'], true );
 			if ( is_array( $d ) && ! empty( $d['enrollments'] ) ) { // iscrizione a un corso: se il contributo non è arrivato entro il termine l'iscrizione si annulla
 				self::release_enrollments( $r, $d['enrollments'] );
@@ -1142,7 +1153,7 @@ final class EventRequests {
 			$list = is_array( $d ) && ! empty( $d['bookings'] ) ? $d['bookings'] : array();
 			$paid = false;
 			foreach ( $list as $b ) {
-				foreach ( $svc->bookings_for_session( (int) $b['session_id'] ) as $x ) {
+				foreach ( $read[ (int) $b['session_id'] ] ?? array() as $x ) {
 					if ( (int) $x['person_id'] === (int) $b['person_id'] && (int) $x['paid'] > 0 ) {
 						$paid = true;
 					}

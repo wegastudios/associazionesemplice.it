@@ -67,6 +67,7 @@ final class LedgerPage {
 			echo '<tr><td colspan="6">Nessun movimento.</td></tr>';
 		}
 		$att = Attachments::map_for( array_column( $rows, 'id' ) );
+		do_action( 'asem_ledger_rows', $rows ); // le estensioni preparano in una volta le letture per riga
 		foreach ( $rows as $r ) {
 			$sign  = Labels::sign( $r['type'] ) > 0 ? '+' : '−';
 			$cls   = Labels::is_transfer( $r['type'] ) ? '' : ( Labels::sign( $r['type'] ) > 0 ? 'asem-ok' : 'asem-neg' );
