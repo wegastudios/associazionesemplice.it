@@ -86,9 +86,14 @@ final class Actions {
 	public static function register(): void {
 		// Azioni di un'estensione: la risposta è un messaggio oppure un indirizzo esterno (ad esempio la pagina del gateway di pagamento).
 		foreach ( self::$extra as $action => $h ) {
-			self::bind_extra( $action, $h[0], $h[1] );
+			if ( Plugin::wants_action( $action ) ) { // con un'azione chiesta si registra solo quella
+				self::bind_extra( $action, $h[0], $h[1] );
+			}
 		}
 		foreach ( self::MAP as $action => $method ) {
+			if ( ! Plugin::wants_action( $action ) ) {
+				continue;
+			}
 			$run = function () use ( $action, $method ) {
 				// Il profilo si salva solo con l'invio di un modulo: con un GET i campi arriverebbero vuoti e verrebbero cancellati.
 				if ( 'asem_front_profile' === $action && 'POST' !== strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput

@@ -134,6 +134,14 @@ final class ProBoot {
 		add_action( 'asem_reset_private_files', array( ReceiptFiles::class, 'delete_all' ) );
 	}
 
+	/**
+	 * Vanno aggiunti i gestori delle azioni (bacheca e moduli del sito)? Lo decide il gratuito (solo admin-post.php e admin-ajax.php con un'azione
+	 * asem_…, sempre in WP-CLI); con un gratuito di una versione precedente, che non lo sa dire, sempre come prima.
+	 */
+	public static function handlers_needed(): bool {
+		return ! method_exists( Plugin::class, 'action_handlers_needed' ) || Plugin::action_handlers_needed();
+	}
+
 	/** Si chiama una volta, dopo `Edition::add_dir()`, prima che Associazione Semplice si avvii. */
 	public static function init(): void {
 		if ( self::$done ) {
@@ -181,7 +189,9 @@ final class ProBoot {
 			Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione: sul sito pubblico non servono e non si caricano
 		}
 		Frontend\ProViews::register(); // sezioni e viste del sito
-		Frontend\ProActions::register(); // azioni dei moduli del sito
+		if ( self::handlers_needed() ) {
+			Frontend\ProActions::register(); // azioni dei moduli del sito: si aggiungono solo quando admin-post.php ne chiede una
+		}
 		Frontend\DonationPage::register(); // donazioni dal pagamento del sito, aperte anche a chi non è socio
 		add_filter( 'asem_features_suspended', array( __CLASS__, 'suspended' ) );
 		add_filter( 'asem_feature_available', array( __CLASS__, 'available' ), 10, 2 );
@@ -200,7 +210,7 @@ final class ProBoot {
 		add_action( 'asem_settings_page_end', array( Admin\LicensePanel::class, 'render' ) );
 
 		// Azioni di amministrazione della licenza.
-		if ( is_admin() ) { // le azioni passano da admin-post.php e admin-ajax.php (anche quelle dell'area soci): sulle pagine pubbliche non servono e le loro classi non si caricano
+		if ( is_admin() && self::handlers_needed() ) { // le azioni passano da admin-post.php e admin-ajax.php (anche quelle dell'area soci): sulle pagine pubbliche, sulle pagine della bacheca e per il battito non servono e le loro classi non si caricano
 			add_action( 'plugins_loaded', array( __CLASS__, 'handlers' ), 6 );
 		}
 

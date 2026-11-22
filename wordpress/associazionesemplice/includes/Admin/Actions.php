@@ -148,12 +148,19 @@ final class Actions {
 			if ( ! \AssociazioneSemplice\Edition::has( $feature ) ) {
 				$map = array_diff_key( $map, array_flip( $actions ) );
 				foreach ( $actions as $blocked ) {
-					\AssociazioneSemplice\Edition::block_action( $blocked );
+					if ( Plugin::wants_action( $blocked ) ) {
+						\AssociazioneSemplice\Edition::block_action( $blocked );
+					}
 				}
 			}
 		}
-		add_action( 'admin_post_asem_attachment', array( Attachments::class, 'handle_download' ) );
+		if ( Plugin::wants_action( 'asem_attachment' ) ) {
+			add_action( 'admin_post_asem_attachment', array( Attachments::class, 'handle_download' ) );
+		}
 		foreach ( $map as $action => $method ) {
+			if ( ! Plugin::wants_action( $action ) ) {
+				continue; // con un'azione chiesta si registra solo quella
+			}
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {

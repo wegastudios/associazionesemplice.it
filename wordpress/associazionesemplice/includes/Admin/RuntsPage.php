@@ -17,10 +17,6 @@ final class RuntsPage {
 
 	const CAUTION = 'Questi numeri ti aiutano a compilare il portale del RUNTS. Scadenze e regole le abbiamo prese da guide di professionisti, non dal testo di legge: prima di inviare i dati controlla sul portale del RUNTS o con il tuo commercialista.';
 
-	public static function register(): void {
-		add_action( 'asem_dashboard_alerts', array( __CLASS__, 'alerts' ) );
-	}
-
 	/** Bacheca: avviso se i soci scendono sotto il minimo (ODV e APS) e, da maggio a giugno, il promemoria dell'aggiornamento dei dati. */
 	public static function alerts(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {
