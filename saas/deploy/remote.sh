@@ -15,7 +15,25 @@ PHP="${SAAS_PHP:-/usr/local/bin/php}"   # da cron e da SSH: php da solo è la ve
 KEEP=5
 
 [ "$(sha256sum "$PACKAGE" | cut -d' ' -f1)" = "$EXPECTED" ] || { echo "Impronta del pacchetto diversa: rilascio annullato." >&2; exit 1; }
-[ -f "$BASE/shared/.env" ] || { echo "Manca $BASE/shared/.env: vedi docs/RILASCIO.md." >&2; exit 1; }
+[ -f "$BASE/shared/.env" ] || { echo "Manca il file di configurazione condiviso: vedi docs/RILASCIO.md." >&2; exit 1; }
+
+# Il log del workflow è pubblico: il dettaglio del controllo di salute (avvisi, permessi, configurazione) va solo in un
+# file riservato sul server (shared/health-<data>.txt, permessi 600, ultimi 5); nel log escono solo l'esito e il conteggio.
+health() {
+    local rc=0 stamp file warns
+    stamp="$(date -u +%Y%m%dT%H%M%S)"
+    file="$BASE/shared/health-$stamp.txt"
+    ( umask 077; "$PHP" artisan saas:health "$@" > "$file" 2>&1 ) || rc=$?
+    chmod 600 "$file" 2>/dev/null || true
+    warns="$(grep -c '^AVVISO' "$file" 2>/dev/null || true)"
+    if [ "$rc" -eq 0 ]; then
+        echo "controllo di salute: ok (${warns:-0} avvisi)"
+    else
+        echo "controllo di salute: ERRORE (dettaglio in shared/health-$stamp.txt, leggilo via ssh)"
+    fi
+    ls -1t "$BASE"/shared/health-*.txt 2>/dev/null | tail -n +6 | while read -r old; do rm -f "$old"; done
+    return "$rc"
+}
 
 REV="$(basename "$PACKAGE" .tar.gz | sed 's/^saas-//')"
 RELEASE="$BASE/releases/$(date -u +%Y%m%d%H%M%S)-$REV"
@@ -35,7 +53,7 @@ rm -rf "$RELEASE/storage" && ln -sfn "$BASE/shared/storage" "$RELEASE/storage"
 mkdir -p "$RELEASE/bootstrap/cache"
 
 cd "$RELEASE"
-"$PHP" artisan saas:health --skip-migrations
+health --skip-migrations
 "$PHP" artisan saas:migrate --force
 "$PHP" artisan saas:audit:partitions
 "$PHP" artisan saas:tmp:purge --minutes=60 || true
@@ -45,7 +63,7 @@ PREVIOUS="$(readlink "$BASE/current" 2>/dev/null || true)"
 ln -sfn "$RELEASE" "$BASE/current.new" && mv -Tf "$BASE/current.new" "$BASE/current"
 "$PHP" artisan queue:restart
 
-if ! "$PHP" artisan saas:health; then
+if ! health; then
     echo "Controllo di salute fallito dopo il cambio: torno alla versione precedente." >&2
     if [ -n "$PREVIOUS" ]; then
         ln -sfn "$PREVIOUS" "$BASE/current.new" && mv -Tf "$BASE/current.new" "$BASE/current"
@@ -63,7 +81,7 @@ LINE="* * * * * cd $BASE/current && $PHP artisan schedule:run >> $BASE/shared/st
 if command -v crontab >/dev/null; then
     ( crontab -l 2>/dev/null | grep -Fq "$BASE/current && $PHP artisan schedule:run" ) || ( crontab -l 2>/dev/null; echo "$LINE" ) | crontab -
 else
-    echo "Attenzione: crontab non disponibile, aggiungi a mano: $LINE" >&2
+    echo "Attenzione: crontab non disponibile, configura lo scheduler a mano (vedi docs/RILASCIO.md)." >&2
 fi
 
 # Si tengono le ultime versioni, mai quella in uso.
@@ -72,4 +90,4 @@ ls -1dt "$BASE"/releases/*/ | sed 's#/$##' | tail -n +$((KEEP + 1)) | while read
     [ "$old" = "$CURRENT" ] || rm -rf "$old"
 done
 
-echo "Rilasciata $(cat "$RELEASE/REVISION") in $RELEASE"
+echo "Rilasciata $(cat "$RELEASE/REVISION")"
