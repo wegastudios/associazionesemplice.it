@@ -294,6 +294,13 @@ final class LicenseClient {
 		return false === $r ? '' : $r;
 	}
 
+	/** La scadenza (`exp`) dichiarata in una prova, letta senza verificarla: si usa solo su una prova già verificata. 0 se manca. */
+	public static function jwt_expiry( string $jwt ): int {
+		$parts  = explode( '.', $jwt );
+		$claims = 3 === count( $parts ) ? json_decode( self::b64d( $parts[1] ), true ) : null;
+		return is_array( $claims ) && isset( $claims['exp'] ) ? (int) $claims['exp'] : 0;
+	}
+
 	/**
 	 * Verifica l'attestazione (JWT firmato EdDSA/Ed25519) senza contattare il server: firma, emittente, destinatario, scadenza e dominio.
 	 * Accetta solo EdDSA (mai «none» o HMAC).
