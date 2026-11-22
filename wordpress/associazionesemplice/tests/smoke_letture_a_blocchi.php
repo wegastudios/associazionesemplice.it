@@ -367,3 +367,111 @@ foreach ( $lb_pe_ids as $lb_i ) {
 }
 asem_ok( $lb_got === $lb_ref && $lb_ref[ $lb_ev1 ] === $lb_pe_ev1 && 0 === $lb_ref[987654] && $lb_ref[ $lb_ev3 ] > 0 && $lb_ref[ $lb_course ] > 0, 'elenco pubblico: il contenuto collegato a ogni attività, cercato in blocco, è lo stesso della ricerca una per una' );
 asem_ok( '' !== \AssociazioneSemplice\PublicEvents::page_url( $lb_ev1 ) && '' === \AssociazioneSemplice\PublicEvents::page_url( $lb_course ) && '' === \AssociazioneSemplice\PublicEvents::page_url( $lb_ev3 ) && '' === \AssociazioneSemplice\PublicEvents::page_url( 987654 ), 'elenco pubblico: la pagina si offre solo per i contenuti pubblicati (non per bozze, cestino o attività senza pagina)' );
+
+// ---------- Prima nota: le ricevute emesse delle righe della pagina lette in una volta sola ----------
+if ( class_exists( '\AssociazioneSemplice\Receipts' ) && class_exists( Admin\ProPanels::class ) && \AssociazioneSemplice\Edition::has( 'receipts' ) ) {
+	$lb_don = $lb_ledger->category_id_of_kind( 'donation' );
+	for ( $lb_i = 0; $lb_i < 6; $lb_i++ ) {
+		$lb_ledger->record_receipt( array( 'date' => $lb_today, 'account_id' => (int) $lb_cash['id'], 'method' => 'cash', 'person_id' => $lb_a, 'lines' => array( array( 'category_id' => $lb_don, 'amount_cents' => 500 + $lb_i ) ) ) );
+	}
+	$lb_rows = $lb_ledger->rows( $lb_today, $lb_today, null, false, 100, 0 );
+	$lb_inc  = array();
+	foreach ( $lb_rows as $lb_r ) {
+		if ( 'income' === $lb_r['type'] ) {
+			$lb_inc[] = \AssociazioneSemplice\Receipts::key_of( $lb_r );
+		}
+	}
+	\AssociazioneSemplice\Receipts::build( $lb_inc[0] ); // una ricevuta già emessa e valida
+	\AssociazioneSemplice\Receipts::build( $lb_inc[1] ); // una emessa e poi annullata
+	\AssociazioneSemplice\Receipts::mark_voided( $lb_inc[1], 'prova' );
+	$lb_draw = function ( array $rows ) {
+		ob_start();
+		foreach ( $rows as $r ) {
+			do_action( 'asem_ledger_row_actions', $r, 'asem-ledger' );
+		}
+		return (string) ob_get_clean();
+	};
+	Admin\ProPanels::ledger_rows( array() ); // senza lettura comune: una ricerca per ricevuta, come prima
+	$lb_q0   = $wpdb->num_queries;
+	$lb_old  = $lb_draw( $lb_rows );
+	$lb_qold = $wpdb->num_queries - $lb_q0;
+	$lb_q0   = $wpdb->num_queries;
+	Admin\ProPanels::ledger_rows( $lb_rows );
+	$lb_new  = $lb_draw( $lb_rows );
+	$lb_qnew = $wpdb->num_queries - $lb_q0;
+	Admin\ProPanels::ledger_rows( array() );
+	asem_ok( count( $lb_inc ) >= 6 && $lb_old === $lb_new && false !== strpos( $lb_new, 'Ricevuta annullata' ) && false !== strpos( $lb_new, 'Ricevuta PDF' ), 'prima nota: le azioni sulle ricevute di ogni riga, con la lettura comune, sono identiche a quelle di prima (valida, annullata, mai emessa)' );
+	asem_ok( $lb_qold >= 2 * ( count( $lb_inc ) - 1 ) && $lb_qnew <= 8, 'prima nota: le ricevute di tutte le righe non costano più due ricerche a riga (prima ' . $lb_qold . ', ora ' . $lb_qnew . ' per ' . count( $lb_inc ) . ' incassi)' );
+	WP_CLI::log( 'misura L14a: ' . count( $lb_inc ) . ' incassi, query per le ricevute prima ' . $lb_qold . ', dopo ' . $lb_qnew );
+}
+
+// ---------- Elenco corsi ed eventi: pagine in bozza cercate in blocco ----------
+$lb_dp_ids = array();
+for ( $lb_i = 0; $lb_i < 6; $lb_i++ ) {
+	$lb_dp_id = $lb_acts->create( array( 'name' => 'Bozza ' . $lb_i, 'social_year' => $lb_sy->label(), 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $lb_today, 'capacity' => 5 ) ) );
+	if ( $lb_i < 4 ) { // le ultime due restano senza pagina
+		$lb_pg = \AssociazioneSemplice\PublicEvents::ensure( $lb_dp_id );
+		if ( 3 === $lb_i ) {
+			wp_update_post( array( 'ID' => $lb_pg, 'post_status' => 'publish' ) ); // una pubblicata: non è una bozza
+		}
+	}
+	$lb_dp_ids[] = $lb_dp_id;
+}
+$lb_dp_ref = array();
+\AssociazioneSemplice\RequestMemo::forget();
+wp_cache_flush();
+foreach ( $lb_dp_ids as $lb_i ) {
+	$lb_pid = \AssociazioneSemplice\PublicEvents::post_of( $lb_i );
+	if ( $lb_pid && in_array( get_post_status( $lb_pid ), array( 'draft', 'pending' ), true ) ) {
+		$lb_dp_ref[ $lb_i ] = $lb_pid;
+	}
+}
+\AssociazioneSemplice\RequestMemo::forget();
+wp_cache_flush();
+$lb_q0  = $wpdb->num_queries;
+$lb_dp  = \AssociazioneSemplice\PublicEvents::draft_pages( $lb_dp_ids );
+$lb_qdp = $wpdb->num_queries - $lb_q0;
+asem_ok( 3 === count( $lb_dp ) && $lb_dp === $lb_dp_ref, 'elenco corsi ed eventi: le pagine in bozza, cercate in blocco, sono le stesse della ricerca una per una (pubblicata e senza pagina escluse)' );
+asem_ok( $lb_qdp <= 6, 'elenco corsi ed eventi: la ricerca delle pagine in bozza non fa una ricerca per attività (' . $lb_qdp . ' query per ' . count( $lb_dp_ids ) . ' attività)' );
+WP_CLI::log( 'misura L14b: ' . count( $lb_dp_ids ) . ' attività, query per le pagine in bozza ' . $lb_qdp );
+
+// ---------- Lavoro orario dei posti: le prenotazioni delle date scadute lette insieme ----------
+$lb_hd = $lb_acts->create( array( 'name' => 'Serata con tolleranza a blocchi', 'social_year' => $lb_sy->label(), 'kind' => 'event', 'fee_cents' => 1000, 'hold_hours' => 24, 'session' => array( 'session_date' => $lb_today, 'capacity' => 10 ) ) );
+$lb_hs = (int) $lb_acts->sessions( $lb_hd )[0]['id'];
+foreach ( array( $lb_a, $lb_b, $lb_f, $lb_h ) as $lb_p ) {
+	$lb_acts->book( $lb_hs, $lb_p );
+}
+$wpdb->query( $wpdb->prepare( 'UPDATE ' . Db::t( 'bookings' ) . ' SET created_at = %s WHERE session_id = %d', gmdate( 'Y-m-d H:i:s', time() - 48 * HOUR_IN_SECONDS ), $lb_hs ) );
+$lb_hq = array( 'bulk' => 0, 'single' => 0 );
+$lb_hf = function ( $sql ) use ( &$lb_hq ) {
+	if ( false !== strpos( $sql, 'GROUP BY session_id, person_id' ) ) {
+		$lb_hq['bulk']++;
+	} elseif ( false !== strpos( $sql, 'GROUP BY person_id' ) ) {
+		$lb_hq['single']++;
+	}
+	return $sql;
+};
+add_filter( 'query', $lb_hf );
+$lb_hn = \AssociazioneSemplice\Holds::release_expired( $lb_hs );
+remove_filter( 'query', $lb_hf );
+asem_ok( 4 === $lb_hn && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = %d AND status = 'booked'", $lb_hs ) ), 'posti non versati: scaduto il termine si liberano tutti e quattro (risultato come prima)' );
+asem_ok( 1 === $lb_hq['bulk'] && $lb_hq['single'] < $lb_hn, 'posti non versati: le prenotazioni e i versamenti si leggono in una volta sola, non una lettura per posto (insieme ' . $lb_hq['bulk'] . ', singole ' . $lb_hq['single'] . ' per ' . $lb_hn . ' posti)' );
+WP_CLI::log( 'misura L14g: ' . $lb_hn . ' posti liberati, letture delle prenotazioni ' . ( $lb_hq['bulk'] + $lb_hq['single'] ) . ' (prima ' . ( 2 * $lb_hn ) . ' query)' );
+
+// ---------- Numero di tessera: massimo calcolato dal database, ricerca che usa l'indice ----------
+foreach ( array( 'Zeta' => 'x7', 'Eta' => '0042', 'Teta' => 'AB-7' ) as $lb_first => $lb_card ) {
+	$lb_people->create( array( 'type' => 'ordinary', 'first_name' => $lb_first, 'last_name' => 'Tessera', 'card_number' => $lb_card ) );
+}
+$lb_old_max = 0;
+foreach ( $wpdb->get_col( 'SELECT card_number FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND card_number IS NOT NULL' ) as $lb_c1 ) {
+	if ( ctype_digit( trim( $lb_c1 ) ) ) {
+		$lb_old_max = max( $lb_old_max, (int) $lb_c1 );
+	}
+}
+asem_ok( (string) ( $lb_old_max + 1 ) === $lb_people->next_free_card() && $lb_old_max >= 42, 'tessere: il prossimo numero, con il massimo calcolato dal database, è quello di prima (le tessere non solo numeriche non contano)' );
+$lb_card_row = $lb_people->find_by_card( 'ab-7' );
+asem_ok( $lb_card_row && 'Teta' === $lb_card_row['first_name'] && null === $lb_people->find_by_card( 'AB-7', (int) $lb_card_row['id'] ) && null === $lb_people->find_by_card( 'ab-70' ), 'tessere: la ricerca per numero non distingue maiuscole e minuscole, come prima' );
+$lb_plan = strtolower( implode( ' ', array_map( static function ( $r ) {
+	return (string) ( $r['key'] ?? $r['Key'] ?? '' );
+}, (array) $wpdb->get_results( 'EXPLAIN SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND card_number = 'AB-7' AND id <> 0 LIMIT 1", ARRAY_A ) ) ) );
+asem_ok( false !== strpos( $lb_plan, 'card_number' ), 'tessere: la ricerca per numero usa l\'indice' );

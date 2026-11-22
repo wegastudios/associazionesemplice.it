@@ -516,6 +516,7 @@ final class PublicEvents {
 	 */
 	public static function draft_pages( array $activity_ids ): array {
 		$out = array();
+		self::prime_posts( $activity_ids ); // i contenuti collegati si cercano tutti insieme, non una ricerca per attività
 		foreach ( array_unique( array_map( 'intval', $activity_ids ) ) as $aid ) {
 			$pid = $aid > 0 ? self::post_of( $aid ) : 0;
 			if ( $pid && in_array( get_post_status( $pid ), array( 'draft', 'pending' ), true ) ) {

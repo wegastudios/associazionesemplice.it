@@ -40,7 +40,7 @@ class PeopleService {
 
 	public function find_by_card( string $card, ?int $except_id = null ): ?array {
 		$row = $this->db()->get_row(
-			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND UPPER(card_number) = UPPER(%s) AND id <> %d LIMIT 1', $card, (int) $except_id ),
+			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND card_number = %s AND id <> %d LIMIT 1', $card, (int) $except_id ), // il confronto del database non distingue maiuscole e minuscole: usa l'indice della tessera
 			ARRAY_A
 		);
 		return $row ?: null;
@@ -56,13 +56,7 @@ class PeopleService {
 
 	/** Prossimo numero libero: massimo tra le tessere puramente numeriche + 1. */
 	public function next_free_card(): string {
-		$cards = $this->db()->get_col( 'SELECT card_number FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND card_number IS NOT NULL' );
-		$max   = 0;
-		foreach ( $cards as $c ) {
-			if ( ctype_digit( trim( $c ) ) ) {
-				$max = max( $max, (int) $c );
-			}
-		}
+		$max = (int) $this->db()->get_var( 'SELECT MAX(CAST(card_number AS UNSIGNED)) FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND card_number REGEXP '^[0-9]{1,18}\$'" ); // il massimo lo calcola il database: niente elenco di tutte le tessere in memoria
 		return (string) ( $max + 1 );
 	}
 
