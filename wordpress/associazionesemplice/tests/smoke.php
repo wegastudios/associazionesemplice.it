@@ -9591,35 +9591,6 @@ for ( $i = 0; $i < 9; $i++ ) { // 9 soci su fogli da 4: 3 fogli, l'ultimo con 3 
 $cd_sheet = \AssociazioneSemplice\CardLayout::pdf_sheets( $cd_many, $cd_slots );
 asem_ok( 0 === strpos( $cd_sheet, '%PDF-1.4' ) && false !== strpos( $cd_sheet, '/Count 3' ), 'tessere PDF: 9 soci con 4 per foglio fanno 3 fogli' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Docs::cards( '', 6 )['mime'], 'pdf' ), 'tessere PDF: dal libro soci si genera il foglio delle tessere' );
-// molte tessere in una volta: i dati si leggono in blocco, le query non crescono con il numero dei soci
-Settings::update( array( 'card_qr_enabled' => 1 ) );
-$cd_50 = array();
-for ( $i = 0; $i < 50; $i++ ) {
-	$cd_id = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Massa' . $i, 'last_name' => 'Tessera' . $i ) );
-	Plugin::people()->set_membership( $cd_id, Settings::membership_year()->label(), true );
-	$cd_50[] = Plugin::people()->get( $cd_id );
-}
-$cd_q = $wpdb->num_queries;
-$cd_pdf10 = \AssociazioneSemplice\CardLayout::pdf_sheets( array_slice( $cd_50, 0, 10 ) );
-$cd_n10 = $wpdb->num_queries - $cd_q;
-$cd_q = $wpdb->num_queries;
-$cd_pdf50 = \AssociazioneSemplice\CardLayout::pdf_sheets( $cd_50 );
-$cd_n50 = $wpdb->num_queries - $cd_q;
-asem_ok( $cd_n50 <= 20 && $cd_n50 <= $cd_n10 + 2, 'tessere PDF: 50 tessere fanno ' . $cd_n50 . ' query (10 ne fanno ' . $cd_n10 . '): non una serie per ogni socio' );
-asem_ok( false !== strpos( $cd_pdf50, '/Filter /FlateDecode' ) && false !== strpos( $cd_pdf50, '/BitsPerComponent 1' ) && 0 === substr_count( $cd_pdf50, ' re f' ), 'tessere PDF: pagine compresse e QR come immagine a un bit, non come rettangoli' );
-$cd_data = \AssociazioneSemplice\CardLayout::card_data( array( $cd_50[0] ) );
-$cd_old  = array(
-	'valid' => ( $cd_u = Plugin::people()->active_until( (int) $cd_50[0]['id'] ) ) ? 'Valida fino al ' . ( new \DateTimeImmutable( $cd_u ) )->format( 'd/m/Y' ) : '',
-	'type'  => \AssociazioneSemplice\Levels::label( $cd_50[0] ),
-	'roles' => \AssociazioneSemplice\CardLayout::roles_text( $cd_50[0] ),
-);
-asem_ok( $cd_data[ (int) $cd_50[0]['id'] ]['valid'] === $cd_old['valid'] && $cd_data[ (int) $cd_50[0]['id'] ]['type'] === $cd_old['type'] && $cd_data[ (int) $cd_50[0]['id'] ]['roles'] === $cd_old['roles'], 'tessere PDF: scadenza, tipo e incarichi letti in blocco sono quelli di prima' );
-$cd_u0 = \AssociazioneSemplice\QrCode::matrix( Settings::card_url( (int) $cd_50[0]['id'] ) );
-asem_ok( count( $cd_u0 ) >= 21 && $cd_u0 === \AssociazioneSemplice\QrCode::matrix( Settings::card_url( (int) $cd_50[0]['id'] ) ), 'tessere PDF: il QR ha lo stesso contenuto di sempre (matrice dell\'indirizzo della tessera)' );
-// più di 500 soci: file a parti
-asem_ok( 1 === \AssociazioneSemplice\Docs::card_parts( 500 ) && 2 === \AssociazioneSemplice\Docs::card_parts( 501 ) && 5 === \AssociazioneSemplice\Docs::card_parts( 2100 ), 'tessere PDF: al più 500 tessere per file' );
-$cd_all  = \AssociazioneSemplice\Docs::card_ids( '' );
-asem_ok( count( $cd_all ) >= 51 && 'tessere.pdf' === \AssociazioneSemplice\Docs::cards( '', 6, 1 )['filename'], 'tessere PDF: con meno di 500 soci il file è uno solo' );
 Settings::update( array( 'card_enabled' => 1 ) );
 $cd_html = \AssociazioneSemplice\Frontend\Views::section_card( $cd_people[0] );
 asem_ok( false !== strpos( $cd_html, 'asem_card_pdf=' ), 'tessera: il socio ha il pulsante per scaricare il PDF' );
@@ -14004,6 +13975,7 @@ asem_ok( false !== strpos( $ix_plan( 'SELECT COUNT(*) FROM ' . Db::t( 'transacti
 require __DIR__ . '/smoke_import_blocks.php'; // importazione di soci a giri, con ripresa: stesso risultato della vecchia versione
 require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme del database identiche al calcolo di prima
 require __DIR__ . '/smoke_letture_a_blocchi.php'; // Bacheca, elenco e scheda di corsi ed eventi: letture a blocchi uguali a quelle una per una
+require __DIR__ . '/smoke_tessere_in_blocco.php'; // tessere in PDF per molti soci: query in blocco, QR a un bit, parti da 500
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 
