@@ -9059,7 +9059,7 @@ $RS::book_slot( $cp_res, $rs_m1, $cp_day( 0 ), '21:00', 1, array(), true );
 $cp_r3 = $RS::book_slot( $cp_res, $rs_m1, $cp_day( 1 ), '18:00', 1, array(), true );
 $RS::book_slot( $cp_res, $rs_m1, $cp_plus( $cp_day( 9 ), 1 ), '12:00', 1, array(), true );
 $RS::book_slot( $cp_res, $rs_m1, $cp_plus( $cp_day( 10 ), 1 ), '12:00', 1, array(), true );
-$RS::book_slot( $cp_res, $rs_m1, $cp_day( 5 ), '17:00', 2, array(), true );
+$RS::book_slot( $cp_res, $rs_m1, $cp_day( 5 ), '17:00', 1, array(), true );
 $RS::cancel( $cp_r3, true ); // annullata: non conta
 foreach ( array( $cp_a, $cp_b, $cp_c, $cp_e1, $cp_r, $cp_md, $cp_k1, $cp_k2, $cp_k3, $cp_sl ) as $cp_x ) {
 	$RS::link_activity( $cp_x, $cp_res ); // forzato, come se fosse già così
