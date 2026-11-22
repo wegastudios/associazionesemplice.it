@@ -30,6 +30,7 @@ final class Admin {
 		IncomePage::register_ajax();
 		PersonSearch::register();
 		Dismiss::register();
+		add_action( 'wp_ajax_asem_long_job', array( \AssociazioneSemplice\LongJob::class, 'ajax' ) ); // tappe dei lavori lunghi chieste dalla pagina (la classe si carica solo allora)
 		RegistersActions::register();
 		BlockBActions::register();
 		BlockFActions::register();

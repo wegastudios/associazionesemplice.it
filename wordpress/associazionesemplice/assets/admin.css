@@ -358,3 +358,6 @@
 	.asem.asem-ui table.asem-rows tbody td[data-label]::before { content: attr(data-label) ": "; color: var(--asem-muted); font-size: 13px; }
 	.asem.asem-ui table.asem-rows tbody td[colspan] { padding: 8px 0; }
 }
+
+/* Lavori lunghi: barra di avanzamento (LongJob::panel) */
+.asem-longjob-bar { width: 100%; max-width: 480px; height: 1.25em; }

@@ -2850,6 +2850,18 @@
   "Spunta almeno un metodo da importare." : "Tick at least one method to import.",
   "Chiavi importate da WooCommerce: " : "Keys imported from WooCommerce: ",
   ". Ora premi «Verifica connessione», poi scegli il metodo in «Come incassare online» e salva." : ". Now press “Check connection”, then choose the method in “How to collect online” and save.",
-  " Per Stripe crea un webhook nuovo con l'indirizzo che trovi in questa pagina, nella sezione di Stripe: quello di WooCommerce non vale per questo plugin." : " For Stripe, create a new webhook with the address you find on this page, in the Stripe section: the WooCommerce one does not work for this plugin."
+  " Per Stripe crea un webhook nuovo con l'indirizzo che trovi in questa pagina, nella sezione di Stripe: quello di WooCommerce non vale per questo plugin." : " For Stripe, create a new webhook with the address you find on this page, in the Stripe section: the WooCommerce one does not work for this plugin.",
+  "Questo lavoro non esiste più: ricarica la pagina." : "This job no longer exists: reload the page.",
+  "Questo lavoro è già in corso: aspetta che finisca o annullalo." : "This job is already running: wait for it to finish or cancel it.",
+  "Lavoro finito." : "Job finished.",
+  "Lavoro annullato." : "Job cancelled.",
+  "Il lavoro si è fermato per un errore: {error}" : "The job stopped because of an error: {error}",
+  "Annullamento richiesto: il lavoro si ferma appena finisce il pezzo in corso." : "Cancellation requested: the job stops as soon as the current piece is done.",
+  "In corso: {done} di {total} ({percent}%)." : "In progress: {done} of {total} ({percent}%).",
+  "In corso: preparazione." : "In progress: getting ready.",
+  "Connessione interrotta: riprovo tra qualche secondo." : "Connection lost: trying again in a few seconds.",
+  "Vuoi annullare questo lavoro? Quello che non è ancora stato fatto non si farà." : "Do you want to cancel this job? What has not been done yet will not be done.",
+  "Con questa pagina aperta il lavoro va più veloce; se la chiudi continua da solo, più lentamente." : "With this page open the job runs faster; if you close it, it carries on by itself, more slowly.",
+  "Nessun lavoro in corso." : "No job in progress."
  }
 }
