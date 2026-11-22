@@ -801,8 +801,7 @@ final class ReceiptFiles {
 		if ( ! class_exists( '\ZipArchive' ) ) {
 			throw new \RuntimeException( Texts::t( 'Questo server non può creare file ZIP: chiedi a chi gestisce il sito di attivare l\'estensione «zip» di PHP.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$db   = self::db();
-		$rows = $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND ( pdf_path IS NOT NULL OR void_pdf_path IS NOT NULL ) ORDER BY number', $year ), ARRAY_A ) ?: array();
+		$db = self::db();
 		if ( function_exists( 'set_time_limit' ) ) {
 			@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- con migliaia di PDF da decifrare il tempo di serie non basta
 		}
@@ -826,34 +825,21 @@ final class ReceiptFiles {
 			wp_delete_file( $path );
 			throw new \RuntimeException( Texts::t( 'Il file ZIP non è stato creato: riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		foreach ( $rows as $r ) {
-			foreach ( self::kinds() as $kind ) {
-				if ( 'ok' !== self::state( $r, $kind ) ) {
-					continue; // un file mancante, alterato o che non si apre non entra nell'archivio: lo segnala la verifica
+		$last = 0;
+		do { // a pagine per identificativo: le righe non stanno mai tutte in memoria, e solo le colonne che servono
+			$rows = $db->get_results( $db->prepare( 'SELECT id, year, number, pdf_path, pdf_sha256, pdf_enc_ver, void_pdf_path, void_pdf_sha256, void_pdf_enc_ver FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND id > %d AND ( pdf_path IS NOT NULL OR void_pdf_path IS NOT NULL ) ORDER BY id LIMIT 500', $year, $last ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome di tabella interno
+			foreach ( $rows as $r ) {
+				$last = (int) $r['id'];
+				foreach ( self::kinds() as $kind ) {
+					$src = self::zip_source( $r, $kind, $temp );
+					if ( '' === $src ) {
+						continue; // un file mancante, alterato o che non si apre non entra nell'archivio: lo segnala la verifica
+					}
+					$zip->addFile( $src, sprintf( 'ricevute-%d/ricevuta-%d-%d%s.pdf', $year, (int) $r['number'], (int) $r['year'], self::VOID === $kind ? '-annullata' : '' ) );
+					$n++;
 				}
-				$c    = self::columns( $kind );
-				$name = sprintf( 'ricevute-%d/ricevuta-%d-%d%s.pdf', $year, (int) $r['number'], (int) $r['year'], self::VOID === $kind ? '-annullata' : '' );
-				$src  = self::abs_path( (string) $r[ $c[0] ] );
-				if ( self::is_stored_encrypted( $src, $r[ self::enc_col( $kind ) ] ?? null ) ) { // lo scarico è per chi lo chiede: i PDF vanno DECIFRATI
-					try {
-						$plain = self::read( $r, $kind );
-					} catch ( \InvalidArgumentException $e ) {
-						continue;
-					}
-					$tmp = PrivateFolder::temp_file( 'ricevuta' );
-					if ( '' === $tmp ) {
-						continue;
-					}
-					$temp[] = $tmp; // registrato prima di scriverci: se la richiesta si interrompe, il PDF in chiaro lo toglie la chiusura
-					if ( false === file_put_contents( $tmp, $plain ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- file temporaneo dello scarico, cancellato appena lo ZIP è scritto
-						continue;
-					}
-					$src = $tmp;
-				}
-				$zip->addFile( $src, $name );
-				$n++;
 			}
-		}
+		} while ( count( $rows ) >= 500 );
 		$zip->addFromString( 'LEGGIMI.txt', "PDF definitivi delle ricevute dell'anno fiscale $year, così come sono stati emessi. I dati per controllare che i file non siano stati modificati sono nel sito (e nelle copie di sicurezza).\nI PDF in questo archivio non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura ed eliminalo quando non ti serve più.\n" );
 		$ok = $zip->close();
 		foreach ( $temp as $t ) {
@@ -864,6 +850,46 @@ final class ReceiptFiles {
 			throw new \RuntimeException( Texts::t( 'Il file ZIP non è stato creato: riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return array( 'path' => $path, 'count' => $n );
+	}
+
+	/**
+	 * Il file da mettere nell'archivio per un PDF fissato, controllato una volta sola: stesso esito di {@see state()} seguito da {@see read()}, ma senza
+	 * aprire due volte il file cifrato. Un PDF cifrato si decifra in un file temporaneo e la sua impronta si calcola MENTRE si scrive (la decifratura
+	 * stessa la dà), poi si confronta con quella del database; uno in chiaro si controlla con l'impronta del file.
+	 *
+	 * @param array    $r     riga con i percorsi, le impronte e la versione di cifratura
+	 * @param string[] $temp  elenco dei file temporanei da cancellare a fine lavoro (si aggiunge quello nuovo prima di scriverci)
+	 * @return string percorso del file da archiviare, vuoto se il PDF non c'è, non si apre o non coincide con l'impronta
+	 */
+	private static function zip_source( array $r, string $kind, array &$temp ): string {
+		$c   = self::columns( $kind );
+		$rel = (string) ( $r[ $c[0] ] ?? '' );
+		$abs = self::abs_path( $rel );
+		if ( '' === $abs || ! is_file( $abs ) || (int) filesize( $abs ) > self::MAX_SIZE + self::ENC_OVERHEAD ) {
+			return '';
+		}
+		$sha = (string) ( $r[ $c[1] ] ?? '' );
+		if ( ! self::is_stored_encrypted( $abs, $r[ self::enc_col( $kind ) ] ?? null ) ) {
+			return (int) filesize( $abs ) <= self::MAX_SIZE && hash_equals( $sha, (string) hash_file( 'sha256', $abs ) ) ? $abs : '';
+		}
+		$dir = PrivateFolder::temp_dir();
+		if ( '' === $dir ) {
+			return '';
+		}
+		$tmp    = $dir . '/ricevuta-' . bin2hex( random_bytes( 8 ) );
+		$temp[] = $tmp; // registrato prima di scriverci: se la richiesta si interrompe, il PDF in chiaro lo toglie la chiusura
+		try {
+			$d = FileCrypt::decrypt_file( $abs, $tmp, PrivateFiles::key_for(), PrivateFiles::ad( $rel ) ); // lo scarico è per chi lo chiede: i PDF vanno DECIFRATI
+		} catch ( FileCryptError $e ) {
+			wp_delete_file( $tmp );
+			return '';
+		}
+		if ( $d['bytes'] < 1 || $d['bytes'] > self::MAX_SIZE || ! hash_equals( strtolower( $sha ), $d['sha256'] ) ) {
+			wp_delete_file( $tmp );
+			return '';
+		}
+		@chmod( $tmp, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file temporaneo riservato
+		return $tmp;
 	}
 
 	// ---------- Copia di sicurezza e ripristino ----------
