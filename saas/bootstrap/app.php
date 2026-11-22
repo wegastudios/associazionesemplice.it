@@ -52,9 +52,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
-        );
+        $exceptions->shouldRenderJsonWhen(DatabaseBusy::wantsJson(...));
         // Blocco o istruzione scaduti (saas.database_timeouts): «riprova tra poco», non l'errore generico.
         $exceptions->report(static fn (QueryException $e): bool => DatabaseBusy::report($e));
         $exceptions->render(static fn (QueryException $e, Request $request) => DatabaseBusy::render($e, $request));

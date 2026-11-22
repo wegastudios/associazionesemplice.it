@@ -57,10 +57,10 @@ final class DatabaseOrgContext implements OrgContext
             }
         }
 
-        // Associazione e tempi massimi in un'unica istruzione: nessun giro di rete in più.
-        $this->db->connection($connection)->select(self::SET, [$orgId, ...$this->timeouts()]);
+        $current = new CurrentOrg($orgId, $connection);
+        $this->applyTimeouts($current);
 
-        return $this->current = new CurrentOrg($orgId, $connection);
+        return $this->current = $current;
     }
 
     public function leave(): void
@@ -114,13 +114,13 @@ final class DatabaseOrgContext implements OrgContext
 
         $this->long = true;
         try {
-            $this->applyTimeouts();
+            $this->applyTimeouts($this->current);
 
             return $callback();
         } finally {
             $this->long = false;
             try {
-                $this->applyTimeouts();
+                $this->applyTimeouts($this->current);
             } catch (Throwable) {
                 // Connessione caduta (per esempio chiusa da idle_in_transaction_session_timeout): si chiude e l'associazione
                 // si lascia, così nessuna query riparte su una connessione nuova senza associazione né tempi.
@@ -132,11 +132,11 @@ final class DatabaseOrgContext implements OrgContext
         }
     }
 
-    /** Reimposta i tempi sulla connessione dell'associazione corrente, se c'è: chi entra dopo li imposta da sé. */
-    private function applyTimeouts(): void
+    /** Associazione e tempi massimi in un'unica istruzione: nessun giro di rete in più. Senza associazione non c'è niente da fare. */
+    private function applyTimeouts(?CurrentOrg $org): void
     {
-        if ($this->current !== null) {
-            $this->db->connection($this->current->connection)->select(self::SET, [$this->current->id, ...$this->timeouts()]);
+        if ($org !== null) {
+            $this->db->connection($org->connection)->select(self::SET, [$org->id, ...$this->timeouts()]);
         }
     }
 

@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Http\DatabaseBusy;
+use App\Modules\Core\Org\DatabaseOrgContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -58,7 +61,7 @@ it('le operazioni lunghe hanno tempi più alti e alla fine tornano quelli normal
 
 it('comandi e code hanno i tempi delle operazioni lunghe', function (): void {
     $org = $this->createOrg('Polisportiva Alfa');
-    $console = new App\Modules\Core\Org\DatabaseOrgContext(app('db'), app(App\Modules\Core\Database\DatabaseRegistry::class), long: true);
+    $console = new DatabaseOrgContext(app('db'), app(DatabaseRegistry::class), long: true);
 
     $console->enter($org->id);
     $seen = dbTimeouts();
@@ -71,13 +74,7 @@ describe('blocco o istruzione scaduti', function (): void {
     beforeEach(function (): void {
         $org = $this->createOrg('Polisportiva Alfa');
         // Dentro una transazione (punto di salvataggio nei test): l'errore annulla solo lei.
-        Route::middleware('web')->post('/_test/occupato/{code}', function (string $code, OrgContext $context) use ($org) {
-            $context->enter($org->id);
-            DB::transaction(static fn () => DB::statement("DO \$\$ BEGIN RAISE EXCEPTION 'prova' USING ERRCODE = '{$code}'; END \$\$"));
-
-            return response('fatto');
-        })->whereAlphaNumeric('code');
-        Route::middleware('web')->get('/_test/occupato/{code}', function (string $code, OrgContext $context) use ($org) {
+        Route::middleware('web')->match(['get', 'post'], '/_test/occupato/{code}', function (string $code, OrgContext $context) use ($org) {
             $context->enter($org->id);
             DB::transaction(static fn () => DB::statement("DO \$\$ BEGIN RAISE EXCEPTION 'prova' USING ERRCODE = '{$code}'; END \$\$"));
 
@@ -94,14 +91,14 @@ describe('blocco o istruzione scaduti', function (): void {
     it('nelle pagine del gestionale (Inertia) torna indietro con l\'avviso «riprova tra poco»', function (string $code): void {
         $this->from('/gestionale')->post("/_test/occupato/{$code}", [], ['X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest'])
             ->assertRedirect('/gestionale')
-            ->assertSessionHasErrors(['ledger' => DatabaseBusy::NOTICE]);
+            ->assertSessionHasErrors(['ledger' => DatabaseBusy::MESSAGE]);
     })->with('codici di tempo scaduto');
 
     it('per le API risponde 503 con il messaggio e quando riprovare', function (string $code): void {
         $this->postJson("/_test/occupato/{$code}")
             ->assertStatus(503)
             ->assertHeader('Retry-After', '5')
-            ->assertExactJson(['message' => DatabaseBusy::NOTICE]);
+            ->assertExactJson(['message' => DatabaseBusy::MESSAGE]);
     })->with('codici di tempo scaduto');
 
     it('aprendo una pagina mostra la pagina «riprova tra poco»', function (string $code): void {
@@ -129,7 +126,7 @@ it('chi aspetta un blocco tenuto da un altro smette dopo il tempo massimo e rice
     });
 
     // Un'altra sessione tiene il blocco (come un'importazione in corso).
-    $other = DB::connection(app(App\Modules\Core\Contracts\DatabaseNames::class)->ownerConnection(null));
+    $other = DB::connection(app(DatabaseNames::class)->ownerConnection(null));
     $other->select('SELECT pg_advisory_lock(?)', [$key]);
     try {
         $start = microtime(true);
@@ -139,6 +136,6 @@ it('chi aspetta un blocco tenuto da un altro smette dopo il tempo massimo e rice
         $other->select('SELECT pg_advisory_unlock(?)', [$key]);
     }
 
-    $response->assertStatus(503)->assertExactJson(['message' => DatabaseBusy::NOTICE]);
+    $response->assertStatus(503)->assertExactJson(['message' => DatabaseBusy::MESSAGE]);
     expect($elapsed)->toBeLessThan(3.0);
 });

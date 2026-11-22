@@ -24,14 +24,18 @@ final class DatabaseBusy
 
     public const HEADING = 'Riprova tra poco';
 
+    /** Nella pagina, nella risposta JSON e nell'avviso sopra le pagine del gestionale e dell'area soci. */
     public const MESSAGE = 'In questo momento c\'è un\'altra operazione in corso e la tua richiesta non è riuscita a finire. Aspetta qualche secondo e riprova.';
 
-    /** L'avviso nelle pagine del gestionale e dell'area soci, sopra il contenuto. */
-    public const NOTICE = 'C\'è un\'altra operazione in corso e la tua richiesta non è riuscita a finire: aspetta qualche secondo e riprova.';
+    /** Le richieste a cui gli errori si danno in JSON, anche quelli di Laravel (bootstrap/app.php). */
+    public static function wantsJson(Request $request): bool
+    {
+        return $request->is('api/*') || $request->expectsJson();
+    }
 
     public static function matches(QueryException $e): bool
     {
-        return in_array($e->errorInfo[0] ?? $e->getCode(), self::CODES, true);
+        return in_array(self::sqlstate($e), self::CODES, true);
     }
 
     /**
@@ -43,7 +47,7 @@ final class DatabaseBusy
         if (! self::matches($e)) {
             return true;
         }
-        Log::warning('Tempo massimo scaduto sul database', ['sqlstate' => $e->errorInfo[0] ?? $e->getCode(), 'connection' => $e->connectionName, 'sql' => mb_substr($e->getSql(), 0, 1000)]);
+        Log::warning('Tempo massimo scaduto sul database', ['sqlstate' => self::sqlstate($e),'connection' => $e->connectionName, 'sql' => mb_substr($e->getSql(), 0, 1000)]);
 
         return false;
     }
@@ -54,12 +58,17 @@ final class DatabaseBusy
             return null;
         }
         if ($request->hasHeader('X-Inertia')) {
-            return back()->withErrors(['ledger' => self::NOTICE]);
+            return back()->withErrors(['ledger' => self::MESSAGE]);
         }
-        if ($request->is('api/*') || $request->expectsJson()) {
-            return response()->json(['message' => self::NOTICE], 503, ['Retry-After' => self::RETRY_AFTER]);
+        if (self::wantsJson($request)) {
+            return response()->json(['message' => self::MESSAGE], 503, ['Retry-After' => self::RETRY_AFTER]);
         }
 
         return response()->view('errors.busy', [], 503, ['Retry-After' => self::RETRY_AFTER]);
+    }
+
+    private static function sqlstate(QueryException $e): mixed
+    {
+        return $e->errorInfo[0] ?? $e->getCode();
     }
 }
