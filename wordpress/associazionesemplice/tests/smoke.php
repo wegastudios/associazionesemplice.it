@@ -7670,7 +7670,13 @@ asem_ok( ! \AssociazioneSemplice\Guide::dismissed( 1 ), 'guida: e rimostrare' );
 // lingue
 $lg = \AssociazioneSemplice\Languages::available();
 asem_ok( 'Italiano' === $lg['it'] && isset( $lg['en'] ) && 'it' === \AssociazioneSemplice\Languages::current() && 'Quota associativa' === \AssociazioneSemplice\Texts::plain( 'Quota associativa' ), 'lingue: l\'italiano è quella di partenza e il pacchetto inglese è incluso' );
+$lg_rp = new \ReflectionProperty( \AssociazioneSemplice\Languages::class, 'bundled' );
+$lg_rp->setAccessible( true );
+$lg_rp->setValue( null, null );
+asem_ok( in_array( 'en', \AssociazioneSemplice\Languages::bundled_codes(), true ) && ! in_array( 'it', \AssociazioneSemplice\Languages::bundled_codes(), true ), 'lingue: i pacchetti inclusi si riconoscono dai nomi dei file' );
+asem_ok( 'it' === \AssociazioneSemplice\Languages::current() && null === $lg_rp->getValue(), 'lingue: in italiano il pacchetto da centinaia di KB non viene letto' );
 Settings::update( array( 'language' => 'en' ) );
+asem_ok( 'en' === \AssociazioneSemplice\Languages::current() && null === $lg_rp->getValue(), 'lingue: scegliere l\'inglese non richiede di leggere i pacchetti' );
 \AssociazioneSemplice\Texts::flush();
 asem_ok( 'en' === \AssociazioneSemplice\Languages::current() && 'Membership fee' === \AssociazioneSemplice\Texts::plain( 'Quota associativa' ), 'lingue: i testi passano all\'inglese' );
 asem_ok( '<p>Save</p>' === \AssociazioneSemplice\Texts::html( '<p>Salva</p>' ) && '<p>Salvare il file</p>' === \AssociazioneSemplice\Texts::html( '<p>Salvare il file</p>' ) && '<p>Salvataggio</p>' === \AssociazioneSemplice\Texts::html( '<p>Salvataggio</p>' ), 'lingue: le parole brevi si traducono solo se sono il testo intero' );

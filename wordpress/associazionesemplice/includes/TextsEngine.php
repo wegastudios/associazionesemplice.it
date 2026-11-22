@@ -329,7 +329,7 @@ final class TextsEngine {
 			foreach ( $it as $f ) {
 				if ( 'php' === strtolower( $f->getExtension() ) ) {
 					$rel = ltrim( str_replace( '\\', '/', substr( $f->getPathname(), strlen( $dir ) ) ), '/' );
-					if ( ! in_array( $rel, self::SKIP_FILES, true ) ) {
+					if ( ! in_array( $rel, self::SKIP_FILES, true ) && 'classmap.php' !== $rel && 0 !== strpos( $rel, 'languages/' ) ) { // niente mappa delle classi né pacchetti lingua generati dalla build
 						$files[ $rel ] = $f->getPathname();
 						$sig          .= '|' . $rel . $f->getMTime();
 					}

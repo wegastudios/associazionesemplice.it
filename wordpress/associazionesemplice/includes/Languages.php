@@ -22,14 +22,43 @@ final class Languages {
 		return (bool) preg_match( '/^[a-z]{2,3}(_[A-Z]{2})?$/', $code );
 	}
 
+	/** @var array<int,string>|null codici dei pacchetti inclusi, ricavati dai nomi dei file (senza leggerli) */
+	private static $codes = null;
+
+	/** Codici dei pacchetti inclusi: bastano i nomi dei file, il contenuto (centinaia di KB) non si legge. @return array<int,string> */
+	public static function bundled_codes(): array {
+		if ( null === self::$codes ) {
+			self::$codes = array();
+			foreach ( glob( __DIR__ . '/languages/*.json' ) ?: array() as $file ) {
+				$c = basename( $file, '.json' );
+				if ( self::valid_code( $c ) && self::DEFAULT_CODE !== $c ) {
+					self::$codes[] = $c;
+				}
+			}
+		}
+		return self::$codes;
+	}
+
+	/** Contenuto di un pacchetto incluso: il file PHP generato dalla build se c'è e OPcache è attivo (resta compilato), altrimenti il JSON. */
+	private static function read_pack( string $code ) {
+		$php = __DIR__ . '/languages/' . $code . '.php';
+		if ( ini_get( 'opcache.enable' ) && is_file( $php ) ) {
+			$j = include $php;
+			if ( is_array( $j ) ) {
+				return $j;
+			}
+		}
+		return json_decode( (string) file_get_contents( __DIR__ . '/languages/' . $code . '.json' ), true );
+	}
+
 	/** Pacchetti inclusi nel plugin. @return array<string,array{name:string,strings:array}> */
 	public static function bundled(): array {
 		if ( null !== self::$bundled ) {
 			return self::$bundled;
 		}
 		self::$bundled = array();
-		foreach ( glob( __DIR__ . '/languages/*.json' ) ?: array() as $file ) {
-			$j = json_decode( (string) file_get_contents( $file ), true );
+		foreach ( self::bundled_codes() as $code ) {
+			$j = self::read_pack( $code );
 			if ( is_array( $j ) && isset( $j['code'], $j['strings'] ) && is_array( $j['strings'] ) && self::valid_code( (string) $j['code'] ) && self::DEFAULT_CODE !== $j['code'] ) {
 				self::$bundled[ (string) $j['code'] ] = array( 'name' => (string) ( $j['name'] ?? $j['code'] ), 'strings' => self::clean( $j['strings'] ) );
 			}
@@ -57,7 +86,10 @@ final class Languages {
 
 	public static function current(): string {
 		$c = (string) Settings::get( 'language' );
-		return isset( self::available()[ $c ] ) ? $c : self::DEFAULT_CODE;
+		if ( '' === $c || self::DEFAULT_CODE === $c ) {
+			return self::DEFAULT_CODE; // il caso comune: nessun pacchetto da leggere
+		}
+		return ( in_array( $c, self::bundled_codes(), true ) || isset( self::uploaded()[ $c ] ) ) ? $c : self::DEFAULT_CODE;
 	}
 
 	/** Traduzioni di una lingua (vuoto per l'italiano). Un pacchetto caricato ha la precedenza su quello incluso. @return array<string,string> */

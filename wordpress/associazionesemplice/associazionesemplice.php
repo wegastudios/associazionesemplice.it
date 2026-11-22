@@ -28,7 +28,20 @@ spl_autoload_register(
 		if ( 0 !== strpos( $class, $prefix ) ) {
 			return;
 		}
-		$rel  = str_replace( '\\', '/', substr( $class, strlen( $prefix ) ) ) . '.php';
+		// Pacchetto costruito: includes/classmap.php (generato dalla build, solo con le classi presenti nel pacchetto) dice subito dove sta il file, senza interrogare il disco.
+		// Nel codice sorgente non c'è e le classi mancanti (quelle del Pro) seguono la strada qui sotto.
+		static $map = null;
+		if ( null === $map ) {
+			$mf  = ASEM_DIR . 'includes/classmap.php';
+			$map = is_file( $mf ) ? include $mf : array();
+			$map = is_array( $map ) ? $map : array();
+		}
+		$name = substr( $class, strlen( $prefix ) );
+		if ( isset( $map[ $name ] ) ) {
+			require ASEM_DIR . 'includes/' . $map[ $name ];
+			return;
+		}
+		$rel  = str_replace( '\\', '/', $name ) . '.php';
 		$file = ASEM_DIR . 'includes/' . $rel;
 		if ( ! is_readable( $file ) && class_exists( 'AssociazioneSemplice\\Edition', false ) ) {
 			$file = (string) \AssociazioneSemplice\Edition::locate( $rel );
