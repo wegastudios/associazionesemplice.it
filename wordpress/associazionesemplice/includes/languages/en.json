@@ -2864,6 +2864,7 @@
   "Connessione interrotta: riprovo tra qualche secondo." : "Connection lost: trying again in a few seconds.",
   "Vuoi annullare questo lavoro? Quello che non è ancora stato fatto non si farà." : "Do you want to cancel this job? What has not been done yet will not be done.",
   "Con questa pagina aperta il lavoro va più veloce; se la chiudi continua da solo, più lentamente." : "With this page open the job runs faster; if you close it, it carries on by itself, more slowly.",
-  "Nessun lavoro in corso." : "No job in progress."
+  "Nessun lavoro in corso." : "No job in progress.",
+  "Associazione Semplice sta aggiornando il database: fatti {done} passaggi su {total}. Continua da solo; se una pagina del plugin sembra incompleta, riaprila tra un minuto." : "Associazione Semplice is updating the database: {done} of {total} steps done. It carries on by itself; if a plugin page looks incomplete, reopen it in a minute."
  }
 }

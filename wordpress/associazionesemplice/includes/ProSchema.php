@@ -20,6 +20,10 @@ final class ProSchema {
 	/** Se lo schema del Pro è cambiato (o è la prima volta) ricrea le tabelle mancanti. */
 	public static function maybe_upgrade(): void {
 		if ( self::VERSION !== (string) get_option( self::VERSION_OPTION, '' ) ) {
+			if ( ! Install::can_upgrade_here() ) { // una visita al sito non aspetta le tabelle: le sistema il cron o il primo amministratore
+				Install::schedule_upgrade();
+				return;
+			}
 			self::create();
 		}
 	}
