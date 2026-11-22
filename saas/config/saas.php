@@ -33,6 +33,10 @@ return [
         'timeout' => env('SAAS_KEY_SERVICE_TIMEOUT', '3'),
         // Quanto resta in memoria (APCu) una chiave sbloccata, in secondi.
         'cache_ttl' => 300,
+        // Pausa tra un'associazione e l'altra nei comandi che girano su tutte (millisecondi): con 500 al massimo 120
+        // associazioni al minuto, sotto il tetto della corsia dei comandi del servizio chiavi anche con due versioni di
+        // chiave ciascuna.
+        'batch_pause_ms' => env('SAAS_KEY_BATCH_PAUSE_MS', '500'),
         // Formato dei campi cifrati legato alla riga (0x02, con l'id della riga) per i campi che lo dichiarano (soci e
         // impostazioni di pagamento). Interruttore d'emergenza: con SAAS_ROW_BOUND_FORMAT=false le nuove scritture
         // tornano a 0x01; la lettura apre sempre entrambi i formati.

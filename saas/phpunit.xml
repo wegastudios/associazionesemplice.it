@@ -41,6 +41,8 @@
         <env name="TEST_DEDICATED_DATABASE" value="as_test_dedicato"/>
         <!-- Chiave principale finta, solo per i test. -->
         <env name="SAAS_KEY_VAULT" value="local"/>
+        <!-- Nessuna pausa tra le associazioni nei comandi: i test che la provano la impostano da soli. -->
+        <env name="SAAS_KEY_BATCH_PAUSE_MS" value="0"/>
         <env name="SAAS_MEMBERS_DOMAIN" value="associazionesemplice.it"/>
         <env name="APP_URL" value="http://localhost"/>
         <env name="SAAS_MASTER_KEY" value="dGVzdC1zb2xvLXBlci1pLXRlc3QtMzItYnl0ZXMtISE="/>
