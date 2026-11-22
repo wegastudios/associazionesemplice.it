@@ -71,9 +71,20 @@ final class RegistersPage {
 				$opts[ $n ] = (string) $n;
 			}
 		}
+		$n_cards  = count( Docs::card_ids( $filter ) );
+		$n_parts  = Docs::card_parts( $n_cards );
+		$part     = max( 1, min( $n_parts, Ui::get_int( 'part' ) ) );
+		$part_sel = '';
+		if ( $n_parts > 1 ) { // con tanti soci le tessere si dividono in più file, da generare una parte per volta
+			$popts = array();
+			for ( $i = 1; $i <= $n_parts; $i++ ) {
+				$popts[ $i ] = 'Parte ' . $i . ' di ' . $n_parts . ' (tessere ' . ( ( $i - 1 ) * Docs::CARDS_PER_FILE + 1 ) . '-' . min( $n_cards, $i * Docs::CARDS_PER_FILE ) . ')';
+			}
+			$part_sel = ' da generare <select name="part">' . Ui::options( $popts, $part ) . '</select>';
+		}
 		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><input type="hidden" name="filter" value="' . esc_attr( $filter ) . '">'
-			. '<strong>Tessere in PDF</strong> (fogli A4 da stampare e ritagliare; i posti che restano sono modelli vuoti): per foglio <select name="per">' . Ui::options( $opts, isset( $opts[ $per ] ) ? $per : 0 ) . '</select> <button class="button">Applica</button> '
-			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0 ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>', Html::allowed() );
+			. '<strong>Tessere in PDF</strong> (fogli A4 da stampare e ritagliare; i posti che restano sono modelli vuoti): per foglio <select name="per">' . Ui::options( $opts, isset( $opts[ $per ] ) ? $per : 0 ) . '</select>' . $part_sel . ' <button class="button">Applica</button> '
+			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0, 'part' => $part ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>', Html::allowed() );
 		$hide_cf = \AssociazioneSemplice\Employees::sensitive_hidden(); // senza «Vedere dati riservati ed esportare» il codice fiscale non si mostra
 		if ( ! $hide_cf ) {
 			\AssociazioneSemplice\Employees::log_sensitive_read( 'book' ); // ogni lettura dei dati riservati è nel registro
