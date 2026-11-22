@@ -200,6 +200,13 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
 - `audit.log` **solo in aggiunta**: l'applicazione ha solo `INSERT` e `SELECT`; un trigger rifiuta modifiche e
   cancellazioni anche al proprietario. Partizionato per mese (`audit.log_AAAA_MM`, più una partizione predefinita);
   le partizioni si preparano in anticipo con `saas:audit:partitions`, ogni mese da cron. Ogni partizione ha la sua RLS.
+  Il mese nuovo nasce come tabella a sé e poi si aggancia (`ATTACH PARTITION`: il registro resta scrivibile); la
+  partizione predefinita deve restare vuota, perché l'aggancio la rilegge con il blocco forte (`saas:health` lo controlla).
+- **Blocchi forti brevi**: migrazioni, partizioni e potatura del registro aspettano un blocco al massimo
+  `SAAS_DB_LOCK_TIMEOUT` (3 secondi) e riprovano tre volte (`Core\Contracts\ShortLocks`): il backup orario tiene un
+  blocco leggero su ogni tabella finché dura, e un'istruzione in fila dietro di lui fermerebbe tutte le query sulla
+  tabella. `saas:migrate` aspetta anche la fine di un backup in corso (al massimo 8 minuti) e, se un database non
+  riesce, migra gli altri e fallisce alla fine.
 - **Catena sigillata**: ogni riga ha un numero progressivo per associazione e il sigillo
   `HMAC(chiave del registro, sigillo precedente · forma canonica della riga)`. La chiave del registro è derivata da quella
   dell'associazione, quindi sta dietro il servizio chiavi: chi altera il database senza la chiave non riesce a

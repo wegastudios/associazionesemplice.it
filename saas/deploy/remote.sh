@@ -54,8 +54,11 @@ mkdir -p "$RELEASE/bootstrap/cache"
 
 cd "$RELEASE"
 health --skip-migrations
+# saas:migrate aspetta la fine del backup orario, se è in corso, e riprova le istruzioni che non ottengono un blocco.
 "$PHP" artisan saas:migrate --force
-"$PHP" artisan saas:audit:partitions
+# I mesi del registro sono pronti con tre mesi di anticipo: se ora non si riesce (backup in corso) il rilascio prosegue,
+# il controllo di salute lo segnala e ci riprova il lavoro mensile.
+"$PHP" artisan saas:audit:partitions || echo "Partizioni del registro non preparate ora: ci riprova il lavoro mensile." >&2
 "$PHP" artisan saas:tmp:purge --minutes=60 || true
 "$PHP" artisan optimize
 # Il catalogo non si scrive più da una lettura: i giorni di conservazione della nuova configurazione si allineano qui.
