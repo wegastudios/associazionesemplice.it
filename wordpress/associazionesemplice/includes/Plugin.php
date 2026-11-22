@@ -71,32 +71,15 @@ final class Plugin {
 		return is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI );
 	}
 
-	/** Hook di WordPress con cui lavora l'aggiornatore anche fuori dalla bacheca (aggiornamenti chiesti da remoto, ad esempio da un servizio di gestione dei siti). */
-	const UPDATER_HOOKS = array( 'pre_set_site_transient_update_plugins', 'plugins_api', 'upgrader_pre_download', 'upgrader_process_complete' );
-
 	/** C'è l'aggiornatore dal portale (in questo pacchetto o nella copia del plugin aggiuntivo)? Lo dice senza caricarne la classe. */
 	public static function has_updater(): bool {
 		return class_exists( __NAMESPACE__ . '\Updater', false ) || is_readable( ASEM_DIR . 'includes/Updater.php' ) || ( defined( 'ASEM_PRO_DIR' ) && is_readable( ASEM_PRO_DIR . 'updater/Updater.php' ) );
 	}
 
-	/**
-	 * Aggiornatore dal portale: in bacheca, nel cron e in WP-CLI si registra subito; sul sito pubblico la sua classe nemmeno si legge,
-	 * e si carica solo se WordPress lavora davvero sugli aggiornamenti dei plugin (uno degli hook di UPDATER_HOOKS).
-	 */
+	/** Aggiornatore dal portale (UpdaterBoot e Updater ci sono solo nel pacchetto del portale): in bacheca, cron e WP-CLI subito, sul sito pubblico solo se serve. */
 	private static function updater(): void {
-		if ( ! is_readable( ASEM_DIR . 'includes/Updater.php' ) ) {
-			return; // pacchetto per WordPress.org
-		}
-		if ( self::backend() ) {
-			Updater::register();
-			return;
-		}
-		$load = static function ( $value = null ) {
-			Updater::register(); // una volta sola: le chiamate successive non fanno nulla; i suoi hook si aggiungono mentre WordPress esegue quello in corso
-			return $value;
-		};
-		foreach ( self::UPDATER_HOOKS as $hook ) {
-			add_filter( $hook, $load, 1 );
+		if ( is_readable( ASEM_DIR . 'includes/UpdaterBoot.php' ) ) {
+			UpdaterBoot::register( self::backend() );
 		}
 	}
 

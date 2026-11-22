@@ -74,12 +74,17 @@ final class PublicRequestLoadTest extends TestCase {
 	/** L'aggiornatore si registra subito solo in bacheca, cron e WP-CLI; sul sito pubblico solo quando WordPress lavora sugli aggiornamenti. */
 	public function test_updater_is_not_loaded_on_public_requests(): void {
 		$plugin = self::src( 'Plugin.php' );
-		$this->assertSame( 2, substr_count( $plugin, 'Updater::register()' ) );
-		$this->assertMatchesRegularExpression( '/if \( self::backend\(\) \) \{\s*Updater::register\(\);\s*return;\s*\}/', $plugin );
+		$boot   = self::src( 'UpdaterBoot.php' );
+		$this->assertStringNotContainsString( 'Updater::register()', $plugin );
+		$this->assertStringContainsString( 'UpdaterBoot::register( self::backend() );', $plugin );
+		$this->assertMatchesRegularExpression( '/if \( \$backend \) \{\s*Updater::register\(\);\s*return;\s*\}/', $boot );
 		$this->assertStringNotContainsString( "class_exists( __NAMESPACE__ . '\\Updater' )", $plugin . self::src( 'Limits.php' ) );
+		// il pacchetto per WordPress.org non deve nominare gli hook degli aggiornamenti: stanno solo in UpdaterBoot, che lì non c'è
+		$this->assertStringNotContainsString( 'site_transient_update_plugins', $plugin );
+		$this->assertStringContainsString( 'includes/UpdaterBoot.php', (string) file_get_contents( dirname( __DIR__, 3 ) . '/build.sh' ) );
 		$pro = str_replace( "\r\n", "\n", (string) file_get_contents( dirname( __DIR__, 3 ) . '/associazionesemplice-pro/associazionesemplice-pro.php' ) );
 		$this->assertMatchesRegularExpression( '/if \( is_admin\(\) \|\| wp_doing_cron\(\) \|\| \( defined\( \'WP_CLI\' \) && WP_CLI \) \) \{\s*asem_pro_updater\(\);\s*\} else \{/', $pro );
-		foreach ( Plugin::UPDATER_HOOKS as $hook ) {
+		foreach ( \AssociazioneSemplice\UpdaterBoot::HOOKS as $hook ) {
 			$this->assertStringContainsString( "'$hook'", $pro, "il Pro carica l'aggiornatore anche con $hook" );
 		}
 	}
