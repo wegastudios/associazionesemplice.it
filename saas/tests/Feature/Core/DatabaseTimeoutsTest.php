@@ -24,7 +24,7 @@ function dbTimeouts(): array
 
 it('entrando in un\'associazione blocchi e istruzioni hanno un tempo massimo, senza query in più', function (): void {
     $org = $this->createOrg('Polisportiva Alfa');
-    $this->orgContext()->leave();
+    $open = count(array_filter(DB::getConnections(), static fn ($c): bool => $c->getDriverName() === 'pgsql'));
 
     $queries = 0;
     DB::listen(static function () use (&$queries): void {
@@ -33,8 +33,8 @@ it('entrando in un\'associazione blocchi e istruzioni hanno un tempo massimo, se
     $this->orgContext()->enter($org->id);
     $entered = $queries;
 
-    // Ricerca dell'associazione e una sola istruzione per associazione e tempi.
-    expect($entered)->toBe(2)
+    // L'azzeramento delle connessioni aperte, la ricerca dell'associazione e una sola istruzione per associazione e tempi.
+    expect($entered)->toBe($open + 2)
         ->and(dbTimeouts())->toBe(['lock' => '5s', 'statement' => '30s', 'idle' => '1min']);
 });
 
@@ -58,7 +58,7 @@ it('le operazioni lunghe hanno tempi più alti e alla fine tornano quelli normal
 
 it('comandi e code hanno i tempi delle operazioni lunghe', function (): void {
     $org = $this->createOrg('Polisportiva Alfa');
-    $console = new App\Modules\Core\Org\DatabaseOrgContext(app('db'), app(App\Modules\Core\Database\DatabaseRegistry::class), console: true);
+    $console = new App\Modules\Core\Org\DatabaseOrgContext(app('db'), app(App\Modules\Core\Database\DatabaseRegistry::class), long: true);
 
     $console->enter($org->id);
     $seen = dbTimeouts();
@@ -109,10 +109,36 @@ describe('blocco o istruzione scaduti', function (): void {
             ->assertStatus(503)
             ->assertHeader('Retry-After', '5')
             ->assertSee(DatabaseBusy::HEADING)
-            ->assertSee(DatabaseBusy::MESSAGE, false);
+            ->assertSee(DatabaseBusy::MESSAGE);
     })->with('codici di tempo scaduto');
 
     it('gli altri errori del database restano errori', function (): void {
         $this->postJson('/_test/occupato/22012')->assertStatus(500);
     });
+});
+
+it('chi aspetta un blocco tenuto da un altro smette dopo il tempo massimo e riceve «riprova tra poco»', function (): void {
+    config(['saas.database_timeouts.web.lock' => '300ms']);
+    $org = $this->createOrg('Polisportiva Alfa');
+    $key = random_int(1, PHP_INT_MAX);
+    Route::middleware('web')->post('/_test/blocco', function (OrgContext $context) use ($org, $key) {
+        $context->enter($org->id);
+        DB::transaction(static fn () => DB::select('SELECT pg_advisory_xact_lock(?)', [$key]));
+
+        return response('fatto');
+    });
+
+    // Un'altra sessione tiene il blocco (come un'importazione in corso).
+    $other = DB::connection(app(App\Modules\Core\Contracts\DatabaseNames::class)->ownerConnection(null));
+    $other->select('SELECT pg_advisory_lock(?)', [$key]);
+    try {
+        $start = microtime(true);
+        $response = $this->postJson('/_test/blocco');
+        $elapsed = microtime(true) - $start;
+    } finally {
+        $other->select('SELECT pg_advisory_unlock(?)', [$key]);
+    }
+
+    $response->assertStatus(503)->assertExactJson(['message' => DatabaseBusy::NOTICE]);
+    expect($elapsed)->toBeLessThan(3.0);
 });

@@ -30,4 +30,15 @@ interface OrgContext
      * @return T
      */
     public function run(string $orgId, callable $callback): mixed;
+
+    /**
+     * Esegue $callback con i tempi massimi delle operazioni lunghe (config saas.database_timeouts.long) al posto di quelli
+     * delle richieste: importazioni, copie di sicurezza, chiusura dell'anno, archivio delle ricevute. Comandi e code li hanno già.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function withLongTimeouts(callable $callback): mixed;
 }

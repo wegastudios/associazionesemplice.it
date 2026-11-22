@@ -109,7 +109,7 @@ final readonly class PeopleImportService
         $current = $this->memberships->membershipYear();
         $startMonth = $this->memberships->startMonth();
 
-        $this->db->connection($this->context->require()->connection)->transaction(function () use ($plan, $markCurrentYear, $current, $startMonth, &$res): void {
+        $import = function () use ($plan, $markCurrentYear, $current, $startMonth, &$res): void {
             $byPass = [0 => [], 1 => []];
             foreach ($plan as $p) {
                 if ($p['action'] !== 'error') {
@@ -185,7 +185,9 @@ final readonly class PeopleImportService
                 'created' => $res['created'], 'updated' => $res['updated'], 'memberships' => $res['memberships'],
                 'guardians' => $res['guardians'], 'failed' => count($res['failed']),
             ]);
-        });
+        };
+        // Tutto il file in una transazione: tempi delle operazioni lunghe.
+        $this->context->withLongTimeouts(fn () => $this->db->connection($this->context->require()->connection)->transaction($import));
 
         return $res;
     }

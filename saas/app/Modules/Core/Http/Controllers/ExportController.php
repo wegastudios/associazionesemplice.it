@@ -43,7 +43,7 @@ final readonly class ExportController
         $withCertificates = $request->boolean('certificati') && $operator->can(Ability::ViewHealth);
         $year = $request->filled('anno') ? $request->integer('anno') : null;
         try {
-            $file = $this->export->build($operator, $operator->orgName, $withCertificates, $year);
+            $file = $this->context->withLongTimeouts(fn (): array => $this->export->build($operator, $operator->orgName, $withCertificates, $year));
         } catch (ExportTooLarge $e) {
             return back()->withErrors(['export' => $e->getMessage()]);
         }

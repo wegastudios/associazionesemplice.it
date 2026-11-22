@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Http\DatabaseBusy;
 use App\Modules\Core\Http\Middleware\DemoRestrictions;
 use App\Modules\Core\Http\Middleware\EnforceSessionLimits;
 use App\Modules\Core\Http\Middleware\EnsureTwoFactorConfirmed;
@@ -16,6 +17,7 @@ use App\Modules\Core\Http\Middleware\ThrottleAccountSecurity;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
 use App\Modules\Piattaforma\Http\Middleware\UsePublicStaffUrl;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -53,4 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        // Blocco o istruzione scaduti (saas.database_timeouts): «riprova tra poco», non l'errore generico.
+        $exceptions->report(static fn (QueryException $e): bool => DatabaseBusy::report($e));
+        $exceptions->render(static fn (QueryException $e, Request $request) => DatabaseBusy::render($e, $request));
     })->create();

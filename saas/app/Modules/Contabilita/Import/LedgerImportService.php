@@ -92,7 +92,7 @@ final readonly class LedgerImportService
     {
         $res = ['income' => 0, 'expense' => 0, 'transfer' => 0, 'accounts' => 0, 'failed' => []];
 
-        $this->connection()->transaction(function () use ($plan, $canIncome, $canExpense, &$res): void {
+        $import = function () use ($plan, $canIncome, $canExpense, &$res): void {
             $created = [];
             $account = function (mixed $id, mixed $new, mixed $type) use (&$created, &$res): string {
                 if (is_string($id)) {
@@ -148,7 +148,9 @@ final readonly class LedgerImportService
             $this->audit->record('ledger.imported', 'app.transactions', null, [
                 'income' => $res['income'], 'expense' => $res['expense'], 'transfer' => $res['transfer'], 'accounts' => $res['accounts'], 'failed' => count($res['failed']),
             ]);
-        });
+        };
+        // Tutto il file in una transazione: tempi delle operazioni lunghe.
+        $this->context->withLongTimeouts(fn () => $this->connection()->transaction($import));
 
         return $res;
     }
