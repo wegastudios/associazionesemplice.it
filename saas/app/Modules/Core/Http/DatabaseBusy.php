@@ -47,7 +47,7 @@ final class DatabaseBusy
         if (! self::matches($e)) {
             return true;
         }
-        Log::warning('Tempo massimo scaduto sul database', ['sqlstate' => self::sqlstate($e),'connection' => $e->connectionName, 'sql' => mb_substr($e->getSql(), 0, 1000)]);
+        Log::warning('Tempo massimo scaduto sul database', ['sqlstate' => self::sqlstate($e), 'connection' => $e->connectionName, 'sql' => mb_substr($e->getSql(), 0, 1000)]);
 
         return false;
     }
