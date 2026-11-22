@@ -438,8 +438,8 @@ WP_CLI::log( 'misura L14b: ' . count( $lb_dp_ids ) . ' attività, query per le p
 // ---------- Lavoro orario dei posti: le prenotazioni delle date scadute lette insieme ----------
 $lb_hd = $lb_acts->create( array( 'name' => 'Serata con tolleranza a blocchi', 'social_year' => $lb_sy->label(), 'kind' => 'event', 'fee_cents' => 1000, 'hold_hours' => 24, 'session' => array( 'session_date' => $lb_today, 'capacity' => 10 ) ) );
 $lb_hs = (int) $lb_acts->sessions( $lb_hd )[0]['id'];
-foreach ( array( $lb_a, $lb_b, $lb_f, $lb_h ) as $lb_p ) {
-	$lb_acts->book( $lb_hs, $lb_p );
+foreach ( array( 'Hana', 'Hugo', 'Hera', 'Hans' ) as $lb_hname ) { // quattro soci nuovi (alcune variabili di prima sono state riusate)
+	$lb_acts->book( $lb_hs, $lb_mk( $lb_hname, true ) );
 }
 $wpdb->query( $wpdb->prepare( 'UPDATE ' . Db::t( 'bookings' ) . ' SET created_at = %s WHERE session_id = %d', gmdate( 'Y-m-d H:i:s', time() - 48 * HOUR_IN_SECONDS ), $lb_hs ) );
 $lb_hq = array( 'bulk' => 0, 'single' => 0 );
