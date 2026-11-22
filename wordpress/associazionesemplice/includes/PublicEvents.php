@@ -90,6 +90,8 @@ final class PublicEvents {
 		add_action( 'wp_head', array( __CLASS__, 'structured_data' ) );
 		add_action( 'wp_head', array( __CLASS__, 'social_meta' ), 5 );
 		add_action( 'template_redirect', array( __CLASS__, 'maybe_ics' ) );
+		add_action( 'wp_ajax_asem_event_slot', array( __CLASS__, 'ajax_slot' ) );
+		add_action( 'wp_ajax_nopriv_asem_event_slot', array( __CLASS__, 'ajax_slot' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'maybe_hide_cancelled' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		EventRequests::register(); // prenotazione dei non soci dalla pagina dell'evento
@@ -680,7 +682,12 @@ final class PublicEvents {
 		if ( self::has_custom_layout( $post ) ) { // chi ha composto la pagina con i pezzi (blocchi, widget, shortcode) decide da solo l'impaginazione
 			return $content;
 		}
-		Frontend\Views::no_cache();
+		$deferred = PageCache::eligible(); // un anonimo che apre l'indirizzo pulito: la pagina è uguale per tutti e può stare in cache
+		if ( $deferred ) {
+			PageCache::announce_public();
+		} else {
+			Frontend\Views::no_cache();
+		}
 		$head = PageCache::remember(
 			'event-head',
 			array( (int) $post->ID ),
@@ -698,7 +705,61 @@ final class PublicEvents {
 			}
 		);
 		// la prenotazione (moduli, posti, stato di chi guarda) non si conserva mai: si disegna a ogni visita
-		return $head . '<div class="asemf-event-text">' . $content . '</div>' . self::booking_html( $a, $post ) . DonationInvite::html( 'event' ) . $tail . '</div>';
+		return $head . '<div class="asemf-event-text">' . $content . '</div>' . self::booking_part( $a, $post ) . DonationInvite::html( 'event' ) . $tail . '</div>';
+	}
+
+	/**
+	 * La prenotazione di questa pagina evento: per un anonimo senza parametri personali è solo un segnaposto (la pagina intera è la stessa per tutti
+	 * e le cache di pagina la possono conservare); date, posti liberi e modulo, che cambiano a ogni visita e portano un gettone, arrivano con una
+	 * piccola chiamata quando il segnaposto compare sullo schermo. Per chi è collegato, ha cookie dei soci, invia un modulo o apre l'indirizzo con
+	 * `asem_vista=prenota` (anche senza JavaScript) la prenotazione è nella pagina, come prima.
+	 */
+	public static function booking_part( array $a, \WP_Post $post ): string {
+		if ( PageCache::eligible() ) {
+			return self::booking_slot( $post );
+		}
+		Frontend\Views::no_cache();
+		return self::booking_html( $a, $post );
+	}
+
+	private static function booking_slot( \WP_Post $post ): string {
+		Frontend\Assets::enqueue();
+		PageCache::bypass();
+		$url  = add_query_arg( array( 'action' => 'asem_event_slot', 'e' => (int) $post->ID ), admin_url( 'admin-ajax.php' ) );
+		$full = add_query_arg( 'asem_vista', 'prenota', (string) get_permalink( $post ) );
+		return \AssociazioneSemplice\Texts::html(
+			'<div class="asemf-booking-slot" data-url="' . esc_url( $url ) . '"><p class="asemf-small asemf-muted">Carico le date e i posti…</p>'
+			. '<noscript><p><a class="asemf-btn wp-element-button" href="' . esc_url( $full ) . '">Vedi le date e prenota</a></p></noscript></div>'
+		);
+	}
+
+	/** La risposta della chiamata del segnaposto: la prenotazione disegnata ora, con i posti di adesso e un gettone nuovo; vuota se l'evento non è visibile. */
+	public static function booking_fragment( \WP_Post $post ): string {
+		if ( self::POST_TYPE !== $post->post_type || 'publish' !== $post->post_status || ! Frontend\Restrict::can_view_post( (int) $post->ID ) ) {
+			return '';
+		}
+		$aid = self::activity_of( (int) $post->ID );
+		$a   = $aid ? Plugin::activities()->get( $aid ) : null;
+		if ( ! $a ) {
+			return '';
+		}
+		Frontend\Restrict::use_url( (string) get_permalink( $post ) ); // i link e il modulo tornano alla pagina dell'evento, non alla chiamata
+		try {
+			return self::booking_html( $a, $post );
+		} finally {
+			Frontend\Restrict::use_url( '' );
+		}
+	}
+
+	/** admin-ajax: `asem_event_slot&e=<id del contenuto>`. Mai in cache: posti e gettone sono di questo istante. */
+	public static function ajax_slot(): void {
+		$post = isset( $_GET['e'] ) ? get_post( absint( $_GET['e'] ) ) : null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lettura pubblica, nessuna modifica
+		Frontend\Views::no_cache();
+		header( 'Content-Type: text/html; charset=utf-8' );
+		if ( $post instanceof \WP_Post ) {
+			echo self::booking_fragment( $post ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già escapato dalle viste della prenotazione
+		}
+		wp_die( '', '', array( 'response' => 200 ) );
 	}
 
 	/** Pezzi della pagina evento, ognuno una vista (shortcode `associazionesemplice_evento_*`, blocco e widget «Associazione Semplice»). */
