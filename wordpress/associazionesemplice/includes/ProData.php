@@ -42,6 +42,7 @@ final class ProData {
 		add_action( 'asem_reservation_receipt', array( __CLASS__, 'reservation_receipt' ), 10, 4 );
 		add_filter( 'asem_vat_row', array( __CLASS__, 'vat_row' ), 10, 5 );
 		add_filter( 'asem_vat_input', array( __CLASS__, 'vat_input' ), 10, 2 );
+		Resources::register_overlaps_cache(); // l'esito delle sovrapposizioni già presenti si ricorda fino alla prossima modifica dei dati
 	}
 
 	/** Assicurazioni e presenze della persona nell'esportazione dei suoi dati. */

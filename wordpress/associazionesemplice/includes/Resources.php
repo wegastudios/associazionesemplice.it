@@ -10,6 +10,13 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Resources {
 
+	/**
+	 * Letture ricordate mentre si ricalcolano le sovrapposizioni già presenti (vedi {@see self::existing_overlaps()}): null = spento, e allora ogni funzione legge come sempre.
+	 *
+	 * @var array|null
+	 */
+	private static $memo = null;
+
 	private static function db(): \wpdb {
 		return Db::db();
 	}
@@ -17,7 +24,13 @@ final class Resources {
 	// ---------- Risorse ----------
 
 	public static function get( int $id ): ?array {
+		if ( null !== self::$memo && array_key_exists( $id, self::$memo['res'] ) ) {
+			return self::$memo['res'][ $id ];
+		}
 		$row = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'resources' ) . ' WHERE id = %d AND deleted_at IS NULL', $id ), ARRAY_A );
+		if ( null !== self::$memo ) {
+			self::$memo['res'][ $id ] = $row ?: null;
+		}
 		return $row ?: null;
 	}
 
@@ -230,6 +243,16 @@ final class Resources {
 
 	/** Prenotazioni attive di una risorsa nell'intervallo (la fine vuota = senza scadenza). */
 	public static function between( int $resource_id, string $from, string $to, bool $all_status = false ): array {
+		$pool = null !== self::$memo && ! $all_status ? ( self::$memo['bet'][ $resource_id ] ?? null ) : null;
+		if ( $pool && $from >= $pool['lo'] && $to <= $pool['hi'] ) { // le prenotazioni del periodo sono già state lette: stesso filtro della query, in memoria
+			return array_values( array_filter( $pool['rows'], function ( $r ) use ( $from, $to ) {
+				return $r['starts_at'] < $to && ( null === $r['ends_at'] || $r['ends_at'] > $from );
+			} ) );
+		}
+		return self::between_rows( $resource_id, $from, $to, $all_status );
+	}
+
+	private static function between_rows( int $resource_id, string $from, string $to, bool $all_status ): array {
 		$sql  = 'SELECT r.*, p.first_name, p.last_name FROM ' . Db::t( 'reservations' ) . ' r LEFT JOIN ' . Db::t( 'people' ) . ' p ON p.id = r.person_id '
 			. 'WHERE r.resource_id = %d AND r.starts_at < %s AND (r.ends_at IS NULL OR r.ends_at > %s)' . ( $all_status ? '' : " AND r.status = 'booked'" ) . ' ORDER BY r.starts_at';
 		$rows = self::db()->get_results( self::db()->prepare( $sql, $resource_id, $to, $from ), ARRAY_A ) ?: array();
@@ -245,12 +268,50 @@ final class Resources {
 	 * @return array[] starts, ends (con gli allestimenti), core_starts, core_ends (solo l'attività), title, activity_id (Y-m-d H:i:s)
 	 */
 	public static function activity_busy( int $resource_id, string $from, string $to ): array {
-		$res  = self::get( $resource_id );
+		$mk = null !== self::$memo ? $resource_id . '|' . $from . '|' . $to : '';
+		if ( '' !== $mk && isset( self::$memo['busy'][ $mk ] ) ) {
+			return self::$memo['busy'][ $mk ];
+		}
+		$out = self::compute_busy( $resource_id, $from, $to );
+		if ( '' !== $mk ) {
+			self::$memo['busy'][ $mk ] = $out;
+		}
+		return $out;
+	}
+
+	/** Le attività non eliminate collegate alla risorsa, con ciò che serve a calcolarne l'occupazione. @return array<int,array> */
+	private static function busy_activities( int $resource_id ): array {
+		if ( null !== self::$memo && isset( self::$memo['acts'][ $resource_id ] ) ) {
+			return self::$memo['acts'][ $resource_id ];
+		}
 		$acts = array();
 		foreach ( self::db()->get_results( self::db()->prepare( 'SELECT id, name, kind, setup_before_min, setup_after_min, occupy_on_booking, resource_block FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', $resource_id ), ARRAY_A ) ?: array() as $a ) {
 			$acts[ (int) $a['id'] ] = $a;
 		}
-		$out = array();
+		if ( null !== self::$memo ) {
+			self::$memo['acts'][ $resource_id ] = $acts;
+		}
+		return $acts;
+	}
+
+	/** Lezioni e date tra due giorni (incluse): dal calendario o, se è già stato calcolato un periodo più largo, da quell'elenco con le stesse regole di inclusione. */
+	private static function busy_occurrences( int $resource_id, string $lo, string $hi ): array {
+		$pool = null !== self::$memo ? ( self::$memo['pool'][ $resource_id ] ?? null ) : null;
+		if ( null === $pool || $lo < $pool['lo'] || $hi > $pool['hi'] ) {
+			return Calendar::occurrences( $lo, $hi );
+		}
+		return array_values( array_filter( $pool['rows'], function ( $o ) use ( $lo, $hi ) {
+			if ( (int) ( $o['session_id'] ?? 0 ) > 0 ) { // una data di evento: entra se il suo periodo tocca l'intervallo
+				return $o['date'] <= $hi && ( ! empty( $o['end_date'] ) ? $o['end_date'] : $o['date'] ) >= $lo;
+			}
+			return $o['date'] >= $lo && $o['date'] <= $hi; // lezione di un corso, anche spostata
+		} ) );
+	}
+
+	private static function compute_busy( int $resource_id, string $from, string $to ): array {
+		$res  = self::get( $resource_id );
+		$acts = self::busy_activities( $resource_id );
+		$out  = array();
 		if ( ! $acts || ! $res ) {
 			return $out;
 		}
@@ -266,7 +327,7 @@ final class Resources {
 		foreach ( $groups as $ids ) {
 			$in_group += array_fill_keys( $ids, true );
 		}
-		foreach ( Calendar::occurrences( gmdate( 'Y-m-d', strtotime( $from . ' -1 day' ) ), gmdate( 'Y-m-d', strtotime( $to . ' +1 day' ) ) ) as $o ) {
+		foreach ( self::busy_occurrences( $resource_id, gmdate( 'Y-m-d', strtotime( $from . ' -1 day' ) ), gmdate( 'Y-m-d', strtotime( $to . ' +1 day' ) ) ) as $o ) {
 			$a = $acts[ (int) $o['activity_id'] ] ?? null;
 			if ( ! $a || isset( $in_group[ (int) $o['activity_id'] ] ) ) { // le attività in un blocco occupano il periodo intero (sotto)
 				continue;
@@ -305,6 +366,17 @@ final class Resources {
 		if ( ! $res || '' === $key ) {
 			return ResourceRules::span( $extra );
 		}
+		if ( null !== self::$memo && ! $extra ) { // dentro il ricalcolo delle sovrapposizioni lo stesso blocco si legge una volta
+			$mk = $resource_id . '|' . $key;
+			if ( ! array_key_exists( $mk, self::$memo['span'] ) ) {
+				self::$memo['span'][ $mk ] = self::block_span_rows( $resource_id, $key, $res );
+			}
+			return self::$memo['span'][ $mk ];
+		}
+		return self::block_span_rows( $resource_id, $key, $res, $extra );
+	}
+
+	private static function block_span_rows( int $resource_id, string $key, array $res, array $extra = array() ): ?array {
 		$rows = self::db()->get_results(
 			self::db()->prepare(
 				'SELECT s.session_date, s.end_date, s.start_time, s.end_time, a.kind, a.setup_before_min, a.setup_after_min FROM ' . Db::t( 'sessions' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id '
@@ -325,6 +397,9 @@ final class Resources {
 
 	/** L'identificativo del blocco di eventi dell'attività (vuoto = nessun blocco). */
 	public static function activity_block( int $activity_id ): string {
+		if ( null !== self::$memo && isset( self::$memo['blk'][ $activity_id ] ) ) {
+			return self::$memo['blk'][ $activity_id ];
+		}
 		return (string) self::db()->get_var( self::db()->prepare( 'SELECT resource_block FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ) );
 	}
 
@@ -397,6 +472,16 @@ final class Resources {
 
 	/** Una data di un evento ha almeno una prenotazione valida. */
 	private static function session_has_bookings( int $session_id ): bool {
+		if ( null !== self::$memo ) {
+			if ( ! isset( self::$memo['bk'][ $session_id ] ) ) {
+				self::$memo['bk'][ $session_id ] = self::session_has_bookings_row( $session_id );
+			}
+			return self::$memo['bk'][ $session_id ];
+		}
+		return self::session_has_bookings_row( $session_id );
+	}
+
+	private static function session_has_bookings_row( int $session_id ): bool {
 		return (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = %d AND status = 'booked'", $session_id ) ) > 0;
 	}
 
@@ -1293,18 +1378,138 @@ final class Resources {
 		return $out;
 	}
 
-	/** Tutte le sovrapposizioni già presenti sulle risorse a fasce (prossimi 120 giorni), da sistemare a mano. @return string[] "Risorsa: descrizione" */
+	/** Opzione che conserva l'esito di {@see self::existing_overlaps()} fino alla prossima modifica dei dati da cui dipende. */
+	const OVERLAPS_OPTION = 'asem_res_overlaps';
+
+	/** «Generazione» dei dati da cui dipende l'esito: cambia a ogni scrittura sulle tabelle sotto. */
+	const OVERLAPS_GEN = 'asem_res_overlaps_gen';
+
+	/** Tabelle che, se scritte, possono cambiare le sovrapposizioni (prenotazioni, risorse, attività, date, iscrizioni alle fasce, lezioni annullate o spostate, nomi dei soci nel testo). */
+	const OVERLAPS_TABLES = 'reservations|resources|activities|sessions|bookings|lesson_exceptions|people';
+
+	/** @var bool la generazione è già cambiata e nessuno l'ha letta da allora */
+	private static $gen_bumped = false;
+
+	/** @var bool il secondo cambio, a fine richiesta, è già programmato */
+	private static $gen_scheduled = false;
+
+	/** Aggancia lo svuotamento dell'esito ricordato: ogni scrittura sulle tabelle da cui dipende, da qualunque parte arrivi, e il cambio delle impostazioni. */
+	public static function register_overlaps_cache(): void {
+		add_filter( 'query', array( __CLASS__, 'on_query' ) );
+		add_action( 'update_option_' . Settings::OPTION, array( __CLASS__, 'bump_overlaps' ) );
+		add_action( 'add_option_' . Settings::OPTION, array( __CLASS__, 'bump_overlaps' ) );
+	}
+
+	/** @param mixed $query */
+	public static function on_query( $query ) {
+		if ( ! self::$gen_bumped && is_string( $query ) && 1 === preg_match( '/^\s*(INSERT|UPDATE|DELETE|REPLACE)\b/i', $query ) && 1 === preg_match( '/\b' . preg_quote( Db::db()->prefix . 'asem_', '/' ) . '(' . self::OVERLAPS_TABLES . ')\b/', $query ) ) {
+			self::bump_overlaps();
+		}
+		return $query;
+	}
+
+	/** I dati sono cambiati: l'esito ricordato non vale più. Si cambia anche a fine richiesta, a scrittura conclusa, perché una lettura fatta nel frattempo non lo conservi. */
+	public static function bump_overlaps(): void {
+		if ( ! self::$gen_bumped ) {
+			update_option( self::OVERLAPS_GEN, sprintf( '%.6f-%d', microtime( true ), wp_rand() ), false );
+			self::$gen_bumped = true;
+		}
+		if ( ! self::$gen_scheduled ) {
+			self::$gen_scheduled = true;
+			add_action( 'shutdown', array( __CLASS__, 'bump_overlaps_late' ), -1 );
+		}
+	}
+
+	public static function bump_overlaps_late(): void {
+		self::$gen_scheduled = false;
+		update_option( self::OVERLAPS_GEN, sprintf( '%.6f-%d', microtime( true ), wp_rand() ), false );
+		self::$gen_bumped = false;
+	}
+
+	/** La generazione scritta ora nel database (lettura diretta: chi ha calcolato mentre un altro scriveva non conserva un esito vecchio). */
+	private static function stored_overlaps_gen(): string {
+		$db = self::db();
+		$v  = $db->get_var( $db->prepare( 'SELECT option_value FROM ' . $db->options . ' WHERE option_name = %s', self::OVERLAPS_GEN ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella di WordPress, valore preparato
+		return null === $v ? '0' : (string) $v;
+	}
+
+	/** Da cosa dipende l'esito oltre ai dati: il giorno (i 120 giorni) e i tipi di attività che l'utente può vedere (un dipendente a cui ne sono stati tolti vede meno date). */
+	private static function overlaps_signature(): string {
+		$kinds = array_column( Employees::only_allowed_kinds( array( array( 'kind' => ActivityKind::COURSE ), array( 'kind' => ActivityKind::EVENT ), array( 'kind' => ActivityKind::RECURRING ) ) ), 'kind' );
+		return Db::today() . '|' . implode( ',', $kinds );
+	}
+
+	/**
+	 * Tutte le sovrapposizioni già presenti sulle risorse a fasce (prossimi 120 giorni), da sistemare a mano. L'esito si ricorda fino alla prossima
+	 * modifica dei dati (o al cambio di giorno): la Bacheca non lo ricalcola a ogni apertura.
+	 *
+	 * @return string[] "Risorsa: descrizione"
+	 */
 	public static function existing_overlaps(): array {
-		$out = array();
-		foreach ( self::all() as $res ) {
-			if ( ResourceRules::SLOT !== $res['mode'] ) {
-				continue;
-			}
-			foreach ( self::db()->get_col( self::db()->prepare( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', (int) $res['id'] ) ) ?: array() as $aid ) {
-				foreach ( self::activity_overlaps( (int) $aid, (int) $res['id'] ) as $k => $text ) {
-					$out[ (int) $res['id'] . '|' . $aid . '|' . $k ] = $res['name'] . ': ' . $text;
+		$gen              = (string) get_option( self::OVERLAPS_GEN, '0' );
+		self::$gen_bumped = false;
+		$sig              = self::overlaps_signature();
+		$hit              = get_option( self::OVERLAPS_OPTION, false );
+		if ( is_array( $hit ) && ( $hit['gen'] ?? null ) === $gen && ( $hit['sig'] ?? null ) === $sig && is_array( $hit['out'] ?? null ) ) {
+			return $hit['out'];
+		}
+		$out = self::compute_existing_overlaps();
+		if ( self::stored_overlaps_gen() === $gen ) { // se nel frattempo i dati sono cambiati non si conserva un esito vecchio
+			update_option( self::OVERLAPS_OPTION, array( 'gen' => $gen, 'sig' => $sig, 'out' => $out ), false );
+		}
+		return $out;
+	}
+
+	/**
+	 * Il calcolo vero. Dentro, le letture si ricordano e il calendario si calcola una volta per risorsa (non una volta per ogni data di ogni attività):
+	 * le regole sono quelle di {@see self::activity_overlaps()}, che si usa com'è.
+	 */
+	private static function compute_existing_overlaps(): array {
+		$out        = array();
+		self::$memo = array( 'res' => array(), 'busy' => array(), 'acts' => array(), 'pool' => array(), 'bet' => array(), 'span' => array(), 'bk' => array(), 'blk' => array() );
+		try {
+			$today = Db::today();
+			$to    = gmdate( 'Y-m-d', strtotime( $today . ' +120 days' ) );
+			foreach ( self::all() as $res ) {
+				if ( ResourceRules::SLOT !== $res['mode'] ) {
+					continue;
+				}
+				$rid  = (int) $res['id'];
+				$ids  = self::db()->get_col( self::db()->prepare( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', $rid ) ) ?: array();
+				$busy = $ids ? self::activity_busy( $rid, $today, $to ) : array();
+				if ( ! $busy ) {
+					continue; // nessuna attività occupa la risorsa nel periodo: niente da confrontare
+				}
+				$with = array();
+				$lo_d = '9999-12-31';
+				$hi_d = '0000-01-01';
+				$lo_t = '9999-12-31 00:00:00';
+				$hi_t = '0000-01-01 00:00:00';
+				foreach ( $busy as $w ) {
+					$with[ (int) $w['activity_id'] ] = true;
+					$lo_d = min( $lo_d, substr( $w['starts'], 0, 10 ) );
+					$hi_d = max( $hi_d, substr( $w['ends'], 0, 10 ) );
+					$lo_t = min( $lo_t, $w['starts'] );
+					$hi_t = max( $hi_t, $w['ends'] );
+				}
+				foreach ( self::busy_activities( $rid ) as $aid => $a ) {
+					self::$memo['blk'][ $aid ] = (string) ( $a['resource_block'] ?? '' );
+				}
+				$plo                        = gmdate( 'Y-m-d', strtotime( $lo_d . ' -1 day' ) );
+				$phi                        = gmdate( 'Y-m-d', strtotime( $hi_d . ' +1 day' ) );
+				self::$memo['pool'][ $rid ] = array( 'lo' => $plo, 'hi' => $phi, 'rows' => Calendar::occurrences( $plo, $phi ) ); // il calendario di tutto il periodo, una volta
+				self::$memo['bet'][ $rid ]  = array( 'lo' => $lo_t, 'hi' => $hi_t, 'rows' => self::between_rows( $rid, $lo_t, $hi_t, false ) ); // e le prenotazioni dei soci
+				foreach ( $ids as $aid ) {
+					if ( empty( $with[ (int) $aid ] ) ) {
+						continue; // senza date nel periodo non c'è nulla che si possa sovrapporre
+					}
+					foreach ( self::activity_overlaps( (int) $aid, $rid ) as $k => $text ) {
+						$out[ $rid . '|' . $aid . '|' . $k ] = $res['name'] . ': ' . $text;
+					}
 				}
 			}
+		} finally {
+			self::$memo = null;
 		}
 		return array_values( $out );
 	}
