@@ -83,6 +83,35 @@ final class Plugin {
 	 * Si registra il nome dell'hook e il richiamo con il nome della classe: la classe viene caricata solo quando WP-Cron esegue il lavoro.
 	 */
 	private static function schedule_jobs(): void {
+		if ( is_admin() ) {
+			add_action( 'admin_init', array( __NAMESPACE__ . '\\FileMigration', 'auto_certs' ) ); // dopo l'aggiornamento i certificati medici già caricati partono da soli
+			add_action( 'admin_init', array( __NAMESPACE__ . '\\Install', 'maybe_realign_memberships' ) ); // la tessera segue l'anno fiscale: se la copia di sicurezza non era riuscita si riprova
+		}
+		foreach ( self::jobs() as $hook => $j ) {
+			add_action( $hook, array( __NAMESPACE__ . '\\' . $j[2], $j[3] ) ); // il lavoro resta un'azione con il suo nome: la esegue il giro dei lavori (o un evento singolo)
+		}
+		// I lavori periodici non hanno un evento ciascuno: girano in fila dentro due soli eventi, ogni ora e ogni giorno (Jobs).
+		add_action( self::JOBS_HOURLY, array( __NAMESPACE__ . '\\Jobs', 'hourly' ) );
+		add_action( self::JOBS_DAILY, array( __NAMESPACE__ . '\\Jobs', 'daily' ) );
+		if ( gmdate( 'Y-m-d' ) !== (string) BootState::get( self::JOBS_CHECKED ) ) { // la programmazione si controlla una volta al giorno (segnale già in memoria: nessuna domanda in più)
+			Jobs::ensure_scheduled();
+		}
+	}
+
+	/** Eventi di WP-Cron dei lavori periodici: uno ogni ora e uno ogni giorno. */
+	const JOBS_HOURLY = 'asem_cron_hourly';
+	const JOBS_DAILY  = 'asem_cron_daily';
+
+	/** Segnale (BootState) con il giorno dell'ultimo controllo della programmazione dei due eventi. */
+	const JOBS_CHECKED = 'jobs_checked';
+
+	/**
+	 * Lavori del plugin e delle estensioni presenti (filtro `asem_scheduled_jobs`): hook => [frequenza ('hourly', 'daily' o '' per i lotti
+	 * che si programmano da soli), secondi al primo giro, classe, metodo, funzione che li richiede].
+	 *
+	 * @return array<string,array{0:string,1:int,2:string,3:string,4:string}>
+	 */
+	public static function jobs(): array {
 		$jobs = array(
 			'asem_release_holds'          => array( 'hourly', 900, 'Holds', 'release_expired', '' ),
 			'asem_event_requests'         => array( 'hourly', 1500, 'EventRequests', 'run', '' ),
@@ -97,20 +126,13 @@ final class Plugin {
 			'asem_purge_applications'     => array( 'daily', 3300, 'Applications', 'purge', '' ), // domande mai confermate (30 giorni) e respinte con quota pagata (90 giorni dalla risposta)
 			'asem_long_job_tick'          => array( '', 0, 'LongJob', 'tick', '' ), // rete di sicurezza dei lavori lunghi: una tappa quando la pagina è chiusa (si programma da sola, un evento per volta)
 		);
-		$jobs = (array) apply_filters( 'asem_scheduled_jobs', $jobs ); // un'estensione aggiunge i suoi lavori periodici
-		if ( is_admin() ) {
-			add_action( 'admin_init', array( __NAMESPACE__ . '\\FileMigration', 'auto_certs' ) ); // dopo l'aggiornamento i certificati medici già caricati partono da soli
-			add_action( 'admin_init', array( __NAMESPACE__ . '\\Install', 'maybe_realign_memberships' ) ); // la tessera segue l'anno fiscale: se la copia di sicurezza non era riuscita si riprova
-		}
-		foreach ( $jobs as $hook => $j ) {
-			if ( '' !== $j[4] && ! Edition::installed( $j[4] ) ) {
-				continue;
-			}
-			add_action( $hook, array( __NAMESPACE__ . '\\' . $j[2], $j[3] ) );
-			if ( '' !== $j[0] && ! wp_next_scheduled( $hook ) ) {
-				wp_schedule_event( time() + $j[1], $j[0], $hook );
+		$out = array();
+		foreach ( (array) apply_filters( 'asem_scheduled_jobs', $jobs ) as $hook => $j ) { // un'estensione aggiunge i suoi lavori periodici
+			if ( is_array( $j ) && isset( $j[0], $j[1], $j[2], $j[3], $j[4] ) && ( '' === $j[4] || Edition::installed( $j[4] ) ) ) {
+				$out[ (string) $hook ] = $j;
 			}
 		}
+		return $out;
 	}
 
 	/** Azione di admin-post => classe che la gestisce. */

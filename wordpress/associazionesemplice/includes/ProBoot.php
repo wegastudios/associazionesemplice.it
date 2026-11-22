@@ -206,6 +206,9 @@ final class ProBoot {
 
 		// Avvisi, aggiornamenti diretti e lavori periodici.
 		add_action( 'plugins_loaded', array( __CLASS__, 'late' ), 11 );
+		if ( self::free_runs_jobs() ) {
+			add_filter( 'asem_scheduled_jobs', array( __CLASS__, 'jobs' ) ); // i lavori periodici del Pro girano con quelli del gratuito
+		}
 		add_action( 'asem_license_check', array( License::class, 'cron' ) );
 		add_action( 'asem_update_check', array( UpdateCheck::class, 'cron' ) );
 		add_action( 'asem_license_resync', array( License::class, 'resync' ) );
@@ -231,14 +234,34 @@ final class ProBoot {
 		if ( Edition::installed( 'payments' ) && class_exists( 'WooCommerce', false ) ) {
 			add_action( 'plugins_loaded', array( WooBridge::class, 'register' ), 20 ); // compatibilità con WooCommerce
 		}
-		ProBlockE::schedule();
 		License::maybe_resync();
-		if ( ! wp_next_scheduled( 'asem_license_check' ) ) {
-			wp_schedule_event( time() + 1800, 'daily', 'asem_license_check' );
+		if ( ! self::free_runs_jobs() ) { // gratuito di una versione precedente: ogni lavoro ha il suo evento, come prima
+			ProBlockE::schedule();
+			if ( ! wp_next_scheduled( 'asem_license_check' ) ) {
+				wp_schedule_event( time() + 1800, 'daily', 'asem_license_check' );
+			}
+			if ( ! wp_next_scheduled( 'asem_update_check' ) ) {
+				wp_schedule_event( time() + 2400, 'hourly', 'asem_update_check' );
+			}
 		}
-		if ( ! wp_next_scheduled( 'asem_update_check' ) ) {
-			wp_schedule_event( time() + 2400, 'hourly', 'asem_update_check' );
-		}
+	}
+
+	/** Il gratuito esegue i lavori periodici in fila dentro due soli eventi (Jobs)? Allora i lavori del Pro entrano nel suo elenco. */
+	public static function free_runs_jobs(): bool {
+		return defined( Plugin::class . '::JOBS_HOURLY' );
+	}
+
+	/**
+	 * Lavori periodici del Pro nel giro dei lavori del gratuito (filtro `asem_scheduled_jobs`): licenza, versioni, SMS e newsletter.
+	 * I gestori restano quelli registrati qui e in ProBlockE (stessi nomi delle azioni).
+	 */
+	public static function jobs( array $jobs ): array {
+		return $jobs + array(
+			'asem_license_check'   => array( 'daily', 1800, 'License', 'cron', '' ),
+			'asem_update_check'    => array( 'hourly', 2400, 'UpdateCheck', 'cron', '' ),
+			ProBlockE::SMS_JOB     => array( 'hourly', 900, 'Sms', 'job', 'sms' ),
+			'asem_newsletter_sync' => array( 'daily', 3000, 'Newsletter', 'job', 'newsletter' ),
+		);
 	}
 
 	/** Alla disattivazione si tolgono i lavori periodici. */

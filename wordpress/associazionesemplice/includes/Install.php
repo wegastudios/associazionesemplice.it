@@ -13,6 +13,8 @@ final class Install {
 	 * Alla disattivazione e alla disinstallazione si tolgono tutti, qualunque siano gli argomenti con cui erano stati programmati.
 	 */
 	const JOB_HOOKS = array(
+		'asem_cron_hourly', // i due eventi del giro dei lavori periodici (Plugin::JOBS_HOURLY e Plugin::JOBS_DAILY)
+		'asem_cron_daily',
 		'asem_send_reminders',
 		'asem_release_holds',
 		'asem_event_requests',
@@ -44,6 +46,7 @@ final class Install {
 		foreach ( self::JOB_HOOKS as $hook ) {
 			wp_unschedule_hook( $hook );
 		}
+		BootState::forget( Plugin::JOBS_CHECKED ); // alla riattivazione i due eventi del giro si riprogrammano subito
 	}
 
 	public static function activate(): void {
