@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Audit\Log\ChainVerifier;
+use App\Modules\Audit\Log\Partitions;
+use Carbon\CarbonImmutable;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Org\DatabaseOrgPurger;
 use App\Modules\Soci\Models\Person;
@@ -40,6 +42,7 @@ beforeEach(function (): void {
 
 afterEach(function (): void {
     DB::purge('pgsql_probe');
+    $this->owner->statement('DROP TABLE IF EXISTS audit.log_2019_12');
     $this->owner->statement('DROP TABLE IF EXISTS app.blocco_prova');
     $this->owner->statement('DROP FUNCTION IF EXISTS app.blocco_prova_fn()');
     $this->owner->statement('TRUNCATE app.people, app.orgs CASCADE');
@@ -48,15 +51,15 @@ afterEach(function (): void {
 });
 
 /** Prova una DELETE (o UPDATE) sul registro con associazione corrente e varco indicati: true se il trigger la rifiuta. */
-function auditChangeRefused(ConnectionInterface $connection, string $orgId, string $purging, string $sql): bool
+function auditChangeRefused(ConnectionInterface $connection, string $orgId, string $purging, string $sql, string $message = '/solo in aggiunta/'): bool
 {
     try {
         $connection->transaction(function () use ($connection, $orgId, $purging, $sql): void {
             $connection->select("SELECT set_config('app.org_id', ?, true), set_config('app.purging', ?, true)", [$orgId, $purging]);
-            $connection->statement($sql, [$orgId]);
+            $connection->statement($sql, str_contains($sql, '?') ? [$orgId] : []);
         });
     } catch (QueryException $e) {
-        return str_contains($e->getMessage(), 'solo in aggiunta');
+        return preg_match($message, $e->getMessage()) === 1;
     }
 
     return false;
@@ -128,7 +131,8 @@ it('nessun altro cancella righe del registro: senza varco, con il varco di un\'a
         // Nemmeno col varco giusto si modifica una riga.
         ->and(auditChangeRefused($this->owner, $this->alfa, $this->alfa, "UPDATE audit.log SET action = 'prova.cambiata' WHERE org_id = ?"))->toBeTrue();
 
-    // Un altro ruolo, anche col permesso DELETE (qui concesso solo per la prova) e col varco giusto: rifiutato dal trigger.
+    // Un altro ruolo col permesso DELETE (in produzione il ruolo dell'applicazione lo può ereditare; qui si concede per
+    // la prova) e col varco giusto: lo ferma il controllo su session_user del trigger, non il permesso.
     $appRole = config('database.connections.pgsql_owner.app_role');
     expect($appRole)->toBeString();
     $this->owner->statement('GRANT DELETE ON audit.log TO "'.$appRole.'"');
@@ -193,4 +197,34 @@ it('se i dati non si cancellano restano tutti, e la catena rimasta del registro 
         ->and(auditRowsOf($this->owner, 'audit.log', $this->alfa))->toBe(0)
         ->and(auditRowsOf($this->owner, 'audit.heads', $this->alfa))->toBe(1)
         ->and(app(ChainVerifier::class)->verify($this->alfa))->toMatchArray(['ok' => true]);
+});
+
+it('TRUNCATE è rifiutato al ruolo dell\'applicazione, anche col varco aperto: registro, sue partizioni (anche nuove) e movimenti', function (): void {
+    // Partizione creata dopo la migrazione: deve ricevere lo stesso rifiuto.
+    Partitions::ensure($this->owner, CarbonImmutable::parse('2019-12-01', 'UTC'), 1);
+
+    // In produzione il ruolo dell'applicazione può ereditare TRUNCATE su tutte le tabelle: qui lo si concede per la prova.
+    $appRole = config('database.connections.pgsql_owner.app_role');
+    expect($appRole)->toBeString();
+    $schemas = array_values(array_filter(['app', 'audit', 'sites', 'portal'], fn (string $s): bool => $this->owner->scalar('SELECT to_regnamespace(?) IS NOT NULL', [$s]) === true));
+    $grant = fn (string $verb): bool => $this->owner->statement($verb.' TRUNCATE ON ALL TABLES IN SCHEMA '.implode(', ', $schemas).($verb === 'GRANT' ? ' TO ' : ' FROM ').'"'.$appRole.'"');
+    $grant('GRANT');
+    try {
+        $app = DB::connection('pgsql');
+        foreach (['audit.log', 'audit.log_default', 'audit.log_'.now()->utc()->format('Y_m'), 'audit.log_2019_12'] as $table) {
+            expect(auditChangeRefused($app, $this->alfa, $this->alfa, "TRUNCATE {$table}"))->toBeTrue("TRUNCATE {$table}");
+        }
+        expect(auditChangeRefused($app, $this->alfa, $this->alfa, 'TRUNCATE app.transactions CASCADE', '/non si eliminano/'))->toBeTrue()
+            ->and(auditChangeRefused($app, $this->alfa, $this->alfa, 'TRUNCATE app.orgs CASCADE', '/solo in aggiunta|non si eliminano/'))->toBeTrue();
+    } finally {
+        $grant('REVOKE');
+    }
+
+    // Niente è stato tolto, e la cancellazione definitiva a blocchi funziona come prima.
+    $betaRows = auditRowsOf($this->owner, 'audit.log', $this->beta);
+    expect(auditRowsOf($this->owner, 'audit.log', $this->alfa))->toBeGreaterThan(20);
+    (new DatabaseOrgPurger(app(DatabaseManager::class), app(DatabaseNames::class), 10))->purge($this->alfa);
+    expect(auditRowsOf($this->owner, 'audit.log', $this->alfa))->toBe(0)
+        ->and(auditRowsOf($this->owner, 'audit.log', $this->beta))->toBe($betaRows)
+        ->and(app(ChainVerifier::class)->verify($this->beta)['ok'])->toBeTrue();
 });
