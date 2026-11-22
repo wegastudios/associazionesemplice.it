@@ -8333,13 +8333,66 @@ asem_ok( 200 === \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest
 asem_ok( 'asem-sw.js' === \AssociazioneSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/asem-sw.js' ), PHP_URL_PATH ) ) && 'asem-manifest.webmanifest' === \AssociazioneSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/asem-manifest.webmanifest?x=1' ), PHP_URL_PATH ) ) && null === \AssociazioneSemplice\Pwa::route_of( '/qualcosa-altro' ) && null === \AssociazioneSemplice\Pwa::route_of( '/asem-sw.js.php' ), 'app: gli indirizzi dell\'app si riconoscono (e solo quelli)' );
 $pw_sw = \AssociazioneSemplice\Pwa::response( 'asem-sw.js' );
 asem_ok( false !== strpos( $pw_sw['body'], "addEventListener('push'" ) && false !== strpos( $pw_sw['body'], "addEventListener('notificationclick'" ) && false !== strpos( $pw_sw['body'], 'asem-offline.html' ) && false !== strpos( $pw_sw['body'], 'const NAME = "Assoc App"' ) && false === strpos( $pw_sw['body'], '%VER%' ) && false === strpos( $pw_sw['body'], '%AREA%' ) && 0 === strpos( $pw_sw['type'], 'application/javascript' ), 'app: il service worker gestisce offline e notifiche' );
-asem_ok( false !== strpos( $pw_sw['body'], "indexOf('/wp-admin')" ), 'app: il service worker non tocca le pagine di wp-admin né il login di WordPress' );
+asem_ok( false !== strpos( $pw_sw['body'], 'url.pathname !== AREA_PATH' ) && false !== strpos( $pw_sw['body'], 'const AREA_PATH = ' . wp_json_encode( \AssociazioneSemplice\Pwa::area_path(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';' ) && false === strpos( $pw_sw['body'], '%AREA_PATH%' ), 'app: il service worker intercetta solo la pagina dell\'area soci (non wp-admin, non il login, non il resto del sito)' );
+$pw_e1 = \AssociazioneSemplice\Pwa::etag( $pw_sw );
+asem_ok( 1 === preg_match( '/^"[0-9a-f]{32}"$/', $pw_e1 ) && $pw_e1 === \AssociazioneSemplice\Pwa::etag( \AssociazioneSemplice\Pwa::response( 'asem-sw.js' ) ) && $pw_e1 !== \AssociazioneSemplice\Pwa::etag( \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest' ) ) && \AssociazioneSemplice\Calendar::not_modified( $pw_e1, 0, $pw_e1, '' ) && ! \AssociazioneSemplice\Calendar::not_modified( $pw_e1, 0, '"altro"', '' ), 'app: worker e manifest hanno un ETag stabile, e chi ha già la versione riceve 304' );
+asem_ok( '' === \AssociazioneSemplice\Pwa::etag( array( 'status' => 404, 'body' => 'Non disponibile.' ) ), 'app: una risposta d\'errore non ha ETag' );
 asem_ok( 0 === strpos( \AssociazioneSemplice\Pwa::response( 'asem-icon-192.png' )['body'], "\x89PNG" ) && false !== strpos( \AssociazioneSemplice\Pwa::response( 'asem-offline.html' )['body'], 'Sei offline' ), 'app: icona generata e pagina offline' );
 ob_start();
 \AssociazioneSemplice\Pwa::print_head();
 $pw_head = ob_get_clean();
 \AssociazioneSemplice\Pwa::enqueue();
 asem_ok( false !== strpos( $pw_head, 'rel="manifest"' ) && false !== strpos( $pw_head, 'theme-color' ) && false !== strpos( $pw_head, 'apple-touch-icon' ) && wp_script_is( 'asem-pwa', 'enqueued' ), 'app: le pagine del sito collegano manifest, colore e script' );
+// l'app si carica e si registra solo nell'area soci o con una sessione
+$pw_area  = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Area prova app', 'post_content' => 'area' ) );
+$pw_other = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Altra pagina prova app', 'post_content' => 'altro' ) );
+$pw_area_before = (int) Settings::get( 'member_area_page_id' );
+Settings::update( array( 'member_area_page_id' => $pw_area ) );
+$pw_ms = new ReflectionProperty( MemberSession::class, 'current' );
+$pw_ms->setAccessible( true );
+$pw_query = function ( int $id ) {
+	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'p' => $id, 'post_type' => 'any', 'post_status' => 'publish' ) );
+};
+$pw_page = function ( int $id ) use ( $pw_query ) {
+	$pw_query( $id );
+	wp_dequeue_script( 'asem-pwa' );
+	ob_start();
+	\AssociazioneSemplice\Pwa::print_head();
+	$head = ob_get_clean();
+	\AssociazioneSemplice\Pwa::enqueue();
+	return array( 'head' => $head, 'script' => wp_script_is( 'asem-pwa', 'enqueued' ), 'on' => \AssociazioneSemplice\Pwa::should_register() );
+};
+wp_set_current_user( 0 );
+unset( $_COOKIE[ MemberSession::COOKIE ] );
+$pw_ms->setValue( null, null );
+$pw_v1 = $pw_page( $pw_other );
+asem_ok( ! $pw_v1['on'] && '' === $pw_v1['head'] && ! $pw_v1['script'], 'app: un visitatore su una pagina qualsiasi non carica né manifest né script (il service worker non si registra)' );
+$pw_v2 = $pw_page( $pw_area );
+asem_ok( $pw_v2['on'] && false !== strpos( $pw_v2['head'], 'rel="manifest"' ) && $pw_v2['script'], 'app: nella pagina dell\'area soci manifest e script ci sono anche prima di entrare' );
+wp_set_current_user( 1 );
+$pw_v3 = $pw_page( $pw_other );
+asem_ok( $pw_v3['on'] && false !== strpos( $pw_v3['head'], 'rel="manifest"' ) && $pw_v3['script'], 'app: chi è entrato ha l\'app su qualsiasi pagina del sito' );
+Settings::update( array( 'pwa_enabled' => 0 ) );
+asem_ok( ! $pw_page( $pw_area )['on'], 'app: spenta, non si carica da nessuna parte' );
+Settings::update( array( 'pwa_enabled' => 1, 'member_area_page_id' => $pw_area_before ) );
+wp_delete_post( $pw_area, true );
+wp_delete_post( $pw_other, true );
+$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query();
+// l'icona generata è un file e non si ridisegna a ogni richiesta
+if ( '' === (string) get_site_icon_url( 192 ) && 0 === (int) Settings::get( 'pwa_icon_id' ) ) {
+	$pw_up   = wp_upload_dir( null, false );
+	$pw_ic1  = \AssociazioneSemplice\Pwa::icon_url( 192 );
+	$pw_path = $pw_up['basedir'] . '/asem-pwa/' . basename( $pw_ic1 );
+	asem_ok( 0 === strpos( $pw_ic1, $pw_up['baseurl'] . '/asem-pwa/icon-192-' ) && is_file( $pw_path ) && 0 === strpos( (string) file_get_contents( $pw_path ), "\x89PNG" ), 'app: l\'icona generata è un file nei caricamenti' );
+	touch( $pw_path, time() - 5000 );
+	clearstatcache();
+	$pw_mt = filemtime( $pw_path );
+	asem_ok( $pw_ic1 === \AssociazioneSemplice\Pwa::icon_url( 192 ) && $pw_mt === filemtime( $pw_path ) && file_get_contents( $pw_path ) === \AssociazioneSemplice\Pwa::response( 'asem-icon-192.png' )['body'], 'app: l\'icona non si riscrive a ogni richiesta e l\'indirizzo diretto serve lo stesso file' );
+	Settings::update( array( 'accent_color' => '#aa3300' ) );
+	$pw_ic2 = \AssociazioneSemplice\Pwa::icon_url( 192 );
+	asem_ok( $pw_ic2 !== $pw_ic1 && is_file( $pw_up['basedir'] . '/asem-pwa/' . basename( $pw_ic2 ) ) && ! is_file( $pw_path ), 'app: cambiando colore l\'icona si rifà e quella vecchia si toglie' );
+	Settings::update( array( 'accent_color' => '#336699' ) );
+}
 $pw_card = \AssociazioneSemplice\Frontend\ProViews::section_app( $people->get( $rg_p ) );
 asem_ok( false !== strpos( $pw_card, 'data-asem-install' ) && false !== strpos( $pw_card, 'data-asem-push-on' ), 'app: nell\'area soci compaiono installazione e notifiche' );
 Settings::update( array( 'push_enabled' => 0 ) );
