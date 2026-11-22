@@ -18,9 +18,42 @@ final class FiscalYears {
 		return self::db()->get_results( 'SELECT * FROM ' . Db::t( 'fiscal_years' ) . ' ORDER BY year DESC', ARRAY_A ) ?: array();
 	}
 
+	/** @var array<int,?array>|null righe lette durante {@see FiscalYears::memo()} (null = nessuna memoria attiva) */
+	private static $memo = null;
+
 	public static function get( int $year ): ?array {
+		if ( null !== self::$memo && array_key_exists( $year, self::$memo ) ) {
+			return self::$memo[ $year ];
+		}
 		$row = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'fiscal_years' ) . ' WHERE year = %d', $year ), ARRAY_A );
-		return $row ?: null;
+		$row = $row ?: null;
+		if ( null !== self::$memo ) {
+			self::$memo[ $year ] = $row;
+		}
+		return $row;
+	}
+
+	/**
+	 * Esegue $fn ricordando le righe degli anni già lette: un lavoro lungo (importazione, annullo di un'importazione) che controlla l'anno
+	 * di ogni movimento lo legge una volta per anno e non una volta per riga. La memoria si svuota a ogni creazione, chiusura o riapertura
+	 * e finisce con $fn.
+	 *
+	 * @return mixed
+	 */
+	public static function memo( callable $fn ) {
+		$prev       = self::$memo;
+		self::$memo = $prev ?? array();
+		try {
+			return $fn();
+		} finally {
+			self::$memo = $prev;
+		}
+	}
+
+	private static function forget_memo(): void {
+		if ( null !== self::$memo ) {
+			self::$memo = array();
+		}
 	}
 
 	/**
@@ -248,6 +281,7 @@ final class FiscalYears {
 			throw new \InvalidArgumentException( 'L\'anno fiscale ' . $year . ' esiste già.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		self::db()->insert( Db::t( 'fiscal_years' ), array( 'year' => $year, 'status' => 'open', 'created_at' => Db::now() ) );
+		self::forget_memo();
 		Audit::log( 'year.created', 'year', $year );
 	}
 
@@ -312,6 +346,7 @@ final class FiscalYears {
 		self::in_transaction(
 			function () use ( $year, $now, $gaps ) {
 				self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => $now ), array( 'year' => $year ) );
+				self::forget_memo();
 				$id   = self::record_closure( $year, $now, (int) get_current_user_id() );
 				$span = self::range( $year );
 				MemberBook::write_snapshot( $id, $span[0], $span[1] );
@@ -347,6 +382,7 @@ final class FiscalYears {
 		}
 		$c = self::current_closure( $year );
 		self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'open', 'closed_at' => null ), array( 'year' => $year ) );
+		self::forget_memo();
 		self::db()->update(
 			Db::t( 'fiscal_year_closures' ),
 			array( 'status' => 'superseded', 'reopened_at' => Db::now(), 'reopened_by' => get_current_user_id() ?: null, 'reopen_reason' => $reason ),

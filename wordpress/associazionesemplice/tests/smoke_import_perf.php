@@ -10,6 +10,8 @@ use AssociazioneSemplice\Plugin;
 
 global $wpdb;
 
+$GLOBALS['asem_ip_bounds'] = true; // i limiti di richieste a riga valgono (la prima versione di questo file misurava soltanto)
+
 /** Esegue $fn e dice quante richieste al database ha fatto. @return array{0:mixed,1:int} */
 function asem_ip_count( callable $fn ): array {
 	global $wpdb;

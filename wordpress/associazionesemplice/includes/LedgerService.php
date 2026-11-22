@@ -34,8 +34,33 @@ class LedgerService {
 
 	/** Un conto anche se chiuso. */
 	public function account_any( int $id ): ?array {
+		if ( null !== $this->bulk && isset( $this->bulk['acc'][ $id ] ) ) {
+			return $this->bulk['acc'][ $id ];
+		}
 		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'accounts' ) . ' WHERE id = %d AND deleted_at IS NULL', $id ), ARRAY_A );
+		if ( $row && null !== $this->bulk ) {
+			$this->bulk['acc'][ $id ] = $row;
+		}
 		return $row ?: null;
+	}
+
+	/** @var array|null conti e voci già lette durante {@see LedgerService::bulk()} (null = nessuna memoria attiva) */
+	private $bulk = null;
+
+	/**
+	 * Esegue $fn per un lavoro lungo su molti movimenti (importazione, annullo di un'importazione): conti, voci e anni fiscali già letti si
+	 * ricordano fino alla fine di $fn, invece di rileggerli a ogni movimento. Non vale per chi cambia conti o voci mentre lavora.
+	 *
+	 * @return mixed
+	 */
+	public function bulk( callable $fn ) {
+		$prev       = $this->bulk;
+		$this->bulk = $prev ?? array( 'acc' => array(), 'cat' => array() );
+		try {
+			return FiscalYears::memo( $fn );
+		} finally {
+			$this->bulk = $prev;
+		}
 	}
 
 	private function check_account_fields( string $name, string $type ): string {
@@ -169,12 +194,25 @@ class LedgerService {
 	}
 
 	private function category( int $id ): ?array {
+		if ( null !== $this->bulk && isset( $this->bulk['cat'][ $id ] ) ) {
+			return $this->bulk['cat'][ $id ];
+		}
 		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'categories' ) . ' WHERE id = %d AND deleted_at IS NULL', $id ), ARRAY_A );
+		if ( $row && null !== $this->bulk ) {
+			$this->bulk['cat'][ $id ] = $row;
+		}
 		return $row ?: null;
 	}
 
 	public function category_id_of_kind( string $kind ): int {
-		return (int) $this->db()->get_var( $this->db()->prepare( 'SELECT id FROM ' . Db::t( 'categories' ) . ' WHERE kind = %s AND deleted_at IS NULL LIMIT 1', $kind ) );
+		if ( null !== $this->bulk && isset( $this->bulk['kind'][ $kind ] ) ) {
+			return $this->bulk['kind'][ $kind ];
+		}
+		$id = (int) $this->db()->get_var( $this->db()->prepare( 'SELECT id FROM ' . Db::t( 'categories' ) . ' WHERE kind = %s AND deleted_at IS NULL LIMIT 1', $kind ) );
+		if ( $id && null !== $this->bulk ) {
+			$this->bulk['kind'][ $kind ] = $id;
+		}
+		return $id;
 	}
 
 	/** Conto più adatto alla modalità di pagamento: contanti->cassa, POS->conto POS, altro->banca. */

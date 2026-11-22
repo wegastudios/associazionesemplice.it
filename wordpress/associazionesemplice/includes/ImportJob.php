@@ -68,7 +68,7 @@ final class ImportJob {
 				$batch  = ImportService::open_batch( $source );
 				try {
 					self::write_state( $batch, $job, ImportService::empty_track() );
-					update_option( self::OPT_PLAN, $preview, false );
+					ImportPlans::save_plan( $preview ); // su file nella cartella riservata (un piano grande non sta in una riga del database)
 					update_option( self::OPT_JOB, array( 'batch' => $batch, 'source' => $source, 'user' => get_current_user_id(), 'started' => Db::now(), 'ts' => time() ) + self::numbers( $job ) + array( 'stage' => $job['stage'] ), false );
 				} catch ( \Throwable $e ) {
 					self::forget();
@@ -196,7 +196,7 @@ final class ImportJob {
 			throw new \InvalidArgumentException( Texts::t( 'Nessuna importazione in corso.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		list( $job, $track ) = $state;
-		$plan = get_option( self::OPT_PLAN, null );
+		$plan = ImportPlans::load_plan();
 		if ( ! is_array( $plan ) ) {
 			self::finish( $batch, $job, $track ); // il piano non c'è più: si chiude con quello che è già entrato
 			throw new \InvalidArgumentException( 'L\'anteprima è scaduta: carica di nuovo il file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -208,15 +208,19 @@ final class ImportJob {
 		$more     = false;
 		ImportService::reset_host_index();
 		try {
-			if ( 'people' === $job['stage'] ) {
-				$more = self::run_people( $batch, $plan, $job, $track, $deadline );
-			}
-			if ( ! $more && 'links' === $job['stage'] ) {
-				$more = self::run_links( $batch, $job, $track, $deadline );
-			}
-			if ( ! $more && 'ledger' === $job['stage'] ) {
-				self::run_ledger( $batch, $plan, $job, $track );
-			}
+			Plugin::ledger()->bulk( // conti, voci e anni fiscali si leggono una volta per giro, non una volta per riga
+				function () use ( $batch, $plan, &$job, &$track, $deadline, &$more ) {
+					if ( 'people' === $job['stage'] ) {
+						$more = self::run_people( $batch, $plan, $job, $track, $deadline );
+					}
+					if ( ! $more && 'links' === $job['stage'] ) {
+						$more = self::run_links( $batch, $job, $track, $deadline );
+					}
+					if ( ! $more && 'ledger' === $job['stage'] ) {
+						self::run_ledger( $batch, $plan, $job, $track );
+					}
+				}
+			);
 		} finally {
 			ImportService::reset_host_index();
 		}
@@ -375,7 +379,7 @@ final class ImportJob {
 		}
 		list( $job, $track ) = $state;
 		$flight = self::flight( $batch, 'people', (int) $job['cursor'] );
-		$plan   = get_option( self::OPT_PLAN, null );
+		$plan   = ImportPlans::load_plan();
 		if ( $flight && 'people' === $job['stage'] && is_array( $plan ) ) { // schede scritte da un giro interrotto: entrano nella traccia, così l'annullo le copre
 			$rows  = $plan['people']['plan'];
 			$seq   = ImportService::people_sequence( $rows );
@@ -544,7 +548,7 @@ final class ImportJob {
 
 	private static function forget(): void {
 		delete_option( self::OPT_JOB );
-		delete_option( self::OPT_PLAN );
+		ImportPlans::drop_plan();
 		delete_option( self::OPT_FLIGHT );
 	}
 
