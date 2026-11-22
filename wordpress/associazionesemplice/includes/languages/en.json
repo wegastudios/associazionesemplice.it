@@ -1,9 +1,9 @@
 {
  "code" : "en",
  "name" : "English",
- "Carico le date e i posti…" : "Loading dates and seats…",
- "Vedi le date e prenota" : "See the dates and book",
  "strings" : {
+  "Carico le date e i posti…" : "Loading dates and seats…",
+  "Vedi le date e prenota" : "See the dates and book",
   "Ne restano {n} da sincronizzare: avvia di nuovo la sincronizzazione." : "{n} are left to sync: start the sync again.",
   "Ne resta {n} da sincronizzare: avvia di nuovo la sincronizzazione." : "{n} is left to sync: start the sync again.",
   "Gli altri partono a gruppi nei prossimi minuti." : "The others are sent in batches over the next few minutes.",
