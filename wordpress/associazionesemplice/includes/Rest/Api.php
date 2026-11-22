@@ -20,10 +20,6 @@ final class Api {
 
 	const NS = 'associazionesemplice/v1';
 
-	public static function register(): void {
-		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
-	}
-
 	public static function routes(): void {
 		$logged_in = function () {
 			return self::guard();

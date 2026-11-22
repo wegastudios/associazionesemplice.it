@@ -1,6 +1,6 @@
 # Richieste del sito pubblico (letto da costo-fisso.sh).
 # Pagina pubblica del sito, visitatore anonimo: niente amministrazione, aggiornatore, schema, né le pagine che rispondono a un parametro dell'indirizzo.
-PUBLIC_FORBIDDEN='Install Updater EventRequests GuardianConsent Frontend\CardVerify Frontend\CardPdf Frontend\TicketVerify Frontend\Activation Frontend\FirstAccess Frontend\MemberLoginPage Frontend\Application Frontend\BlockBViews Frontend\BlockFViews Admin\Admin Admin\Actions'
+PUBLIC_FORBIDDEN='Install Updater EventRequests GuardianConsent Frontend\CardVerify Frontend\CardPdf Frontend\TicketVerify Frontend\Activation Frontend\FirstAccess Frontend\MemberLoginPage Frontend\Application Frontend\BlockBViews Frontend\BlockFViews Rest\Api Admin\Admin Admin\Actions'
 # ... e con il Pro: menu e avvisi di amministrazione, schema delle sue tabelle, ritorno dal pagamento
 PUBLIC_FORBIDDEN+=' Admin\ProMenu Admin\ProPanels Admin\ProWizard Admin\LicenseNotice Admin\UpdateNotice Admin\ReceiptCheckPage ProSchema Frontend\PayReturn'
 misura 'Pagina pubblica (visitatore)' GET '/' '' 0 '200' "$PUBLIC_FORBIDDEN"
