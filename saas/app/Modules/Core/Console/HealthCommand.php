@@ -140,8 +140,11 @@ final class HealthCommand extends Command
             return;
         }
         $info = is_array($info) ? ($info['Memory'] ?? $info) : [];
-        $used = (int) ($info['used_memory'] ?? 0);
-        $max = (int) ($info['maxmemory'] ?? 0);
+        $info = is_array($info) ? $info : [];
+        $usedRaw = $info['used_memory'] ?? 0;
+        $maxRaw = $info['maxmemory'] ?? 0;
+        $used = is_numeric($usedRaw) ? (int) $usedRaw : 0;
+        $max = is_numeric($maxRaw) ? (int) $maxRaw : 0;
         if ($max > 0 && $used / $max > 0.7) {
             throw new RuntimeException(sprintf('Redis usa il %d%% della memoria (%d di %d byte): le chiavi meno usate vengono tolte', (int) round($used / $max * 100), $used, $max));
         }
