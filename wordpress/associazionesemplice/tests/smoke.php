@@ -14076,12 +14076,25 @@ asem_ok( 'ok' === \AssociazioneSemplice\FileKey::state() && 0 === $bf_RF::pendin
 // verifica e archivio ZIP dell'anno
 $pf_v   = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 $pf_num = (int) \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['number'];
+$pf_s0  = \AssociazioneSemplice\FileCrypt::$streams;
 $pf_zip = \AssociazioneSemplice\ReceiptFiles::zip_year( $pf_fy );
+$pf_sn  = \AssociazioneSemplice\FileCrypt::$streams - $pf_s0;
+asem_ok( $pf_zip['count'] >= 5 && $pf_sn >= 1 && $pf_sn <= $pf_zip['count'], 'ricevute PDF: lo ZIP decifra ogni PDF una volta sola (' . $pf_sn . ' decifrature per ' . $pf_zip['count'] . ' PDF nell\'archivio)' );
 $pf_zz  = new ZipArchive();
 $pf_zz->open( $pf_zip['path'] );
 $pf_zv  = false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf', $pf_fy, $pf_num, $pf_fy ) ) && false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d-annullata.pdf', $pf_fy, (int) \AssociazioneSemplice\Receipts::record( $pf_key[5300] )['number'], $pf_fy ) );
 $pf_zc  = (string) $pf_zz->getFromName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf', $pf_fy, $pf_num, $pf_fy ) );
 $pf_zl  = (string) $pf_zz->getFromName( 'LEGGIMI.txt' );
+$pf_shas = array_merge( $wpdb->get_col( $wpdb->prepare( 'SELECT pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND pdf_sha256 IS NOT NULL', $pf_fy ) ), $wpdb->get_col( $wpdb->prepare( 'SELECT void_pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND void_pdf_sha256 IS NOT NULL', $pf_fy ) ) );
+$pf_zn   = 0;
+$pf_zok  = true;
+for ( $pf_zi = 0; $pf_zi < $pf_zz->numFiles; $pf_zi++ ) {
+	if ( 0 === strpos( (string) $pf_zz->getNameIndex( $pf_zi ), 'ricevute-' ) ) {
+		$pf_zn++;
+		$pf_zok = $pf_zok && in_array( hash( 'sha256', (string) $pf_zz->getFromIndex( $pf_zi ) ), $pf_shas, true );
+	}
+}
+asem_ok( $pf_zok && $pf_zn === $pf_zip['count'], 'ricevute PDF: ogni PDF nello ZIP ha l\'impronta registrata nel database (' . $pf_zn . ' file)' );
 $pf_zz->close();
 wp_delete_file( $pf_zip['path'] );
 $pf_tmpd = \AssociazioneSemplice\PrivateFolder::dir() . '/' . \AssociazioneSemplice\PrivateFolder::TEMP_DIR;
