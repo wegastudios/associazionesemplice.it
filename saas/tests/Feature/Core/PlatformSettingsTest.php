@@ -33,7 +33,7 @@ it('porta le impostazioni nella configurazione e applica i ripieghi', function (
         'mail.host' => 'mail.example.org', 'mail.port' => '465', 'mail.encryption' => 'ssl', 'mail.from_address' => 'noreply@example.org',
         'backup.sftp_host' => 'backup.example.org', 'backup.sftp_username' => 'u1', 'backup.sftp_root' => '/dump',
     ], [], null);
-    config(['mail.default' => 'log', 'cache.default' => 'redis', 'database.redis.default.host' => '/non/esiste.sock', 'saas.crypto.vault' => 'remote', 'saas.crypto.service_url' => null]);
+    config(['mail.default' => 'log', 'cache.default' => 'redis', 'database.redis.default.host' => '/non/esiste.sock', 'database.redis.cache.host' => '/non/esiste.sock', 'saas.crypto.vault' => 'remote', 'saas.crypto.service_url' => null]);
 
     $warnings = app(PlatformConfig::class)->apply();
 

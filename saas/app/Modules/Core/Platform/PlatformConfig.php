@@ -84,12 +84,14 @@ final readonly class PlatformConfig
             $c->set('saas.domains.delegation_hours', (int) $s['domains.delegation_hours']);
         }
 
-        // Cache.
-        $set('database.redis.default.host', $s['cache.redis_host'] ?? null);
-        if (isset($s['cache.redis_port'])) {
-            $c->set('database.redis.default.port', (int) $s['cache.redis_port']);
+        // Cache: lo stesso indirizzo vale per entrambe le connessioni Redis (generale e cache).
+        foreach (['default', 'cache'] as $connection) {
+            $set("database.redis.{$connection}.host", $s['cache.redis_host'] ?? null);
+            if (isset($s['cache.redis_port'])) {
+                $c->set("database.redis.{$connection}.port", (int) $s['cache.redis_port']);
+            }
+            $set("database.redis.{$connection}.password", $s['cache.redis_password'] ?? null);
         }
-        $set('database.redis.default.password', $s['cache.redis_password'] ?? null);
         $store = $s['cache.store'] ?? 'auto';
         if ($store !== 'auto') {
             $c->set('cache.default', $store);
@@ -104,9 +106,14 @@ final readonly class PlatformConfig
         $c = $this->config;
         $warnings = [];
 
-        if ($c->get('cache.default') === 'redis' && ! self::redisAvailable($c->get('database.redis.client'), $c->get('database.redis.default.host'))) {
-            $c->set('cache.default', 'database');
-            $warnings[] = 'Redis non disponibile: cache sul database.';
+        if (in_array($c->get('cache.default'), ['redis', 'failover'], true)) {
+            if (! self::redisAvailable($c->get('database.redis.client'), $c->get('database.redis.cache.host'))) {
+                $c->set('cache.default', 'database');
+                $warnings[] = 'Redis non disponibile: cache sul database.';
+            } else {
+                // Redis fermo o pieno non deve fermare accesso, cron e code: se non risponde si passa al database.
+                $c->set('cache.default', 'failover');
+            }
         }
 
         $disk = $c->get('filesystems.disks.backups');

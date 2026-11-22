@@ -99,12 +99,11 @@ return [
             'driver' => 'octane',
         ],
 
+        // Redis, poi il database se Redis non risponde (fermo, socket sparito): limiti di frequenza, blocchi dello
+        // scheduler e gettoni non vanno in errore. È lo store che la piattaforma usa quando la cache è «redis».
         'failover' => [
             'driver' => 'failover',
-            'stores' => [
-                'database',
-                'array',
-            ],
+            'stores' => ['redis', 'database'],
         ],
 
     ],

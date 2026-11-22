@@ -13,7 +13,7 @@ Priorità, in quest'ordine: **1. sicurezza dei dati personali e fiscali · 2. ve
 | Multi-tenant | Un database condiviso con `org_id` + Row-Level Security. **Database dedicato** (esclusivo dell'associazione, anche sullo stesso server Postgres) come opzione a pagamento. |
 | Hosting iniziale | Sub-account `associazionesemplice` del reseller Wega Studios su SupportHost (nodo in Finlandia, backup in UE). Per crescere: semidedicato o VPS. |
 | PostgreSQL | **16** (aggiornato da SupportHost dalla 13; è l'ultima che cPanel supporta, con aggiornamenti fino a novembre 2028). Estensioni `pgcrypto`, `pg_trgm`, `citext`, `uuid-ossp` installate. |
-| Redis | Istanza dedicata via socket, 64 MB, rifiuta le scritture quando è piena: **solo cache e limiti di frequenza, sempre con scadenza**. Code dei lavori su Postgres. |
+| Redis | Istanza dedicata via socket, 64 MB, politica `allkeys-lru` (piena: toglie le chiavi meno usate, non rifiuta; se non risponde la cache passa al database): **solo cache e limiti di frequenza, sempre con scadenza**. Code dei lavori su Postgres. |
 | Backup | JetBackup giornaliero (30 giorni) + **nostro dump orario cifrato** di ogni database su uno spazio esterno in UE. Perdita massima: un'ora. |
 | Creazione dei database | Via cPanel UAPI. L'utente Postgres deve avere un **nome diverso dal database** (cPanel lo vieta), poi `update_privileges`. |
 
