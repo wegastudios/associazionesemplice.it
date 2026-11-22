@@ -172,7 +172,8 @@ final class Actions {
 						}
 					}
 					try {
-						$res = is_string( $method ) ? self::$method( $post ) : call_user_func( $method, $post );
+						$post = PersonSearch::resolve_typed( $post, array( 'person_id', 'to_person_id', 'host_person_id' ) ); // senza JavaScript la persona può arrivare come nome scritto nel campo di ricerca
+						$res  = is_string( $method ) ? self::$method( $post ) : call_user_func( $method, $post );
 						if ( '' !== $once ) {
 							set_transient( $once, array( (string) $res[0], (string) $res[1] ), 10 * MINUTE_IN_SECONDS );
 						}

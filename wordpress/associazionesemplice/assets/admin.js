@@ -111,7 +111,10 @@
 	$$('.asem-minsearch').forEach(function (inp) {
 		var sel = $(inp.getAttribute('data-target'));
 		if (!sel || !window.ajaxurl) { return; }
-		var timer = null, seq = 0;
+		var timer = null, seq = 0, onlyMembers = inp.getAttribute('data-members-only') === '1';
+		inp.addEventListener('keydown', function (e) { /* con la tastiera: scrivi, premi Invio e la scelta passa all'elenco dei risultati (senza inviare il modulo) */
+			if (e.key === 'Enter') { e.preventDefault(); sel.focus(); }
+		});
 		inp.addEventListener('input', function () {
 			window.clearTimeout(timer);
 			var q = inp.value.trim();
@@ -124,13 +127,17 @@
 					var cur = sel.value, curOpt = sel.options[sel.selectedIndex], first = sel.options[0];
 					sel.innerHTML = '';
 					if (first && first.value === '') { sel.appendChild(first); }
+					var shown = 0;
 					(j.data.results || []).forEach(function (p) {
+						if (onlyMembers && p.type === 'guest') { return; }
+						shown++;
 						var o = el('option', { value: String(p.id), text: p.label + (p.quota ? ' — ' + p.quota : '') });
 						o.setAttribute('data-type', p.type || '');
 						if (String(p.id) === cur) { o.selected = true; }
 						sel.appendChild(o);
 					});
 					if (cur && !sel.querySelector('option[value="' + cur + '"]') && curOpt) { curOpt.selected = true; sel.appendChild(curOpt); }
+					if (!sel.value && shown === 1 && sel.options.length > 1) { sel.selectedIndex = 1; sel.dispatchEvent(new Event('change', { bubbles: true })); } /* un solo risultato: è già scelto */
 				});
 			}, 250);
 		});
@@ -503,7 +510,8 @@
 		function due() {
 			if (fixedFee === null) { return parseMoney(amountEl.value) || 0; }
 			if (payEl && !payEl.checked) { return 0; }
-			var guest = (newEl && newEl.value.trim() !== '') || (personEl && guestIds.indexOf(parseInt(personEl.value, 10)) > -1);
+			var chosen = personEl && personEl.options ? personEl.options[personEl.selectedIndex] : null; /* con la ricerca l'ospite si riconosce dal tipo scritto nella voce */
+			var guest = (newEl && newEl.value.trim() !== '') || (personEl && guestIds.indexOf(parseInt(personEl.value, 10)) > -1) || (chosen && chosen.getAttribute('data-type') === 'guest');
 			return parseInt(guest ? wrap.getAttribute('data-guest-fee') : fixedFee, 10) || 0;
 		}
 		function active() {

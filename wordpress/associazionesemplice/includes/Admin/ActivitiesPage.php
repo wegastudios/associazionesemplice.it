@@ -360,7 +360,9 @@ final class ActivitiesPage {
 		$today = current_time( 'Y-m-d' );
 		$by    = array();
 		$first = '';
-		foreach ( Plugin::activities()->sessions( $id ) as $s ) {
+		$all_s = Plugin::activities()->sessions( $id );
+		$shown = array_flip( array_map( 'intval', array_column( self::session_block( $all_s, $today, self::session_limit() )['shown'], 'id' ) ) ); // le date non ancora mostrate nell'elenco portano alla pagina con tutte
+		foreach ( $all_s as $s ) {
 			$by[ $s['session_date'] ][] = $s;
 			if ( '' === $first && empty( $s['cancelled_at'] ) && \AssociazioneSemplice\ActivityService::last_day( $s ) >= $today ) {
 				$first = $s['session_date']; // di partenza si mostra il periodo della prossima data
@@ -417,7 +419,7 @@ final class ActivitiesPage {
 				$seat   = Plugin::activities()->seats( (int) $s['id'] );
 				$count  = (int) $seat['taken'] . ( null === $seat['capacity'] ? '' : '/' . (int) $seat['capacity'] );
 				$full   = null !== $seat['free'] && 0 === $seat['free'];
-				$html  .= '<a class="asem-cal-s' . ( ! empty( $s['cancelled_at'] ) ? ' asem-cal-off' : ( $full ? ' asem-cal-full' : '' ) ) . '" href="#asem-sess-' . (int) $s['id'] . '">'
+				$html  .= '<a class="asem-cal-s' . ( ! empty( $s['cancelled_at'] ) ? ' asem-cal-off' : ( $full ? ' asem-cal-full' : '' ) ) . '" href="' . ( isset( $shown[ (int) $s['id'] ] ) ? '' : esc_url( Ui::url( 'asem-activity', array( 'id' => $id, 'sess_n' => 5000 ) ) ) ) . '#asem-sess-' . (int) $s['id'] . '">'
 					. esc_html( ( $s['start_time'] ? substr( (string) $s['start_time'], 0, 5 ) . ' ' : '' ) . $count ) . '</a>';
 			}
 			if ( 'day' === $view && empty( $by[ $key ] ) ) {
@@ -934,39 +936,43 @@ final class ActivitiesPage {
 	}
 
 	/** Prenotazione sul posto: chi si presenta senza aver prenotato. Prenota, incassa il contributo e registra l'ingresso in un colpo solo. */
-	private static function walk_in_form( array $activity, array $s, array $candidates, string $back ): void {
-		$ledger   = Plugin::ledger();
-		$accounts = array();
-		foreach ( $ledger->balances() as $a ) {
-			$accounts[ (int) $a['id'] ] = $a['name'];
+	private static function walk_in_form( array $activity, array $s, array $candidates, string $back, ?array &$ctx = null, bool $lazy = false ): void {
+		if ( null === $ctx ) { // i conti, il conto di cassa e i tipi si leggono una volta per pagina, non per ogni data
+			$ledger   = Plugin::ledger();
+			$accounts = array();
+			$types    = array();
+			foreach ( $ledger->accounts() as $a ) { // solo l'elenco dei conti: i saldi non servono qui
+				$accounts[ (int) $a['id'] ] = $a['name'];
+				$types[ (int) $a['id'] ]    = $a['type'];
+			}
+			$default = $ledger->default_account_for( 'cash' );
+			$members = array();
+			if ( ! $lazy ) {
+				$members = array_values( array_filter( Plugin::people()->search_light(), function ( $p ) {
+					return MemberType::is_member( $p['type'] );
+				} ) );
+			}
+			$ctx = array( 'accounts' => $accounts, 'types' => $types, 'default' => $default ? (int) $default['id'] : null, 'members' => $members );
 		}
-		$default = $ledger->default_account_for( 'cash' );
-		$members = array_values( array_filter( Plugin::people()->search_light(), function ( $p ) {
-			return MemberType::is_member( $p['type'] );
-		} ) );
 		$sid   = (int) $s['id'];
 		$fee   = (int) $activity['fee_cents'];
 		$guest = null === $activity['guest_fee_cents'] || '' === $activity['guest_fee_cents'] ? $fee : (int) $activity['guest_fee_cents'];
 		echo '<details class="asem-detail" style="margin-top:8px"><summary><strong>Ingresso senza prenotazione (sul posto)</strong></summary>';
-		$types     = array();
-		foreach ( $ledger->accounts() as $acc ) {
-			$types[ (int) $acc['id'] ] = $acc['type'];
-		}
 		$guest_ids = array();
-		foreach ( $candidates as $c ) {
+		foreach ( $candidates as $c ) { // con la ricerca non c'è l'elenco: l'ospite si riconosce dal tipo della voce scelta
 			if ( MemberType::GUEST === $c['type'] ) {
 				$guest_ids[] = (int) $c['id'];
 			}
 		}
 		Ui::form_open( 'asem_walk_in', $back );
 		echo wp_kses( Ui::hidden( 'activity_id', $activity['id'] ) . Ui::hidden( 'session_id', $sid ), Html::allowed() );
-		echo '<div data-asem-change data-fee="' . (int) $fee . '" data-guest-fee="' . (int) $guest . '" data-guest-ids="' . esc_attr( wp_json_encode( $guest_ids ) ) . '" data-types="' . esc_attr( wp_json_encode( $types ) ) . '">';
-		echo wp_kses( '<p>Persona già in anagrafica: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-walk-' . $sid ) . '</p>'
+		echo '<div data-asem-change data-fee="' . (int) $fee . '" data-guest-fee="' . (int) $guest . '" data-guest-ids="' . esc_attr( wp_json_encode( $guest_ids ) ) . '" data-types="' . esc_attr( wp_json_encode( $ctx['types'] ) ) . '">';
+		echo wp_kses( '<p>Persona già in anagrafica: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-walk-' . $sid, $lazy ) . '</p>'
 			. '<p><strong>oppure</strong> nuovo ospite: nome <input type="text" name="new_first_name"> cognome <input type="text" name="new_last_name"> cellulare <input type="text" name="new_phone" placeholder="333 1234567"> del socio '
-			. Ui::person_select( 'host_person_id', $members, null, '— socio che lo ospita —', 'asem-walkhost-' . $sid ) . '</p>'
+			. Ui::person_select( 'host_person_id', $ctx['members'], null, '— socio che lo ospita —', 'asem-walkhost-' . $sid, $lazy, true ) . '</p>'
 			. '<p><label><input type="checkbox" name="pay" value="1" checked> Incassa ora il contributo</label> (soci ' . esc_html( Money::format( $fee ) ) . ', ospiti ' . esc_html( Money::format( $guest ) ) . ') — '
 			. 'sul conto '
-			. '<select name="account_id">' . Ui::options( $accounts, $default ? (int) $default['id'] : null ) . '</select></p>'
+			. '<select name="account_id">' . Ui::options( $ctx['accounts'], $ctx['default'] ) . '</select></p>'
 			. '<div class="asem-cashbox" style="display:none"><p>Contanti ricevuti <input type="text" class="asem-tendered" inputmode="decimal" placeholder="importo esatto" size="8"> € <span class="asem-quick"></span></p><p class="asem-change-out"></p></div></div>'
 			. '<p><label><input type="checkbox" name="checkin" value="1" checked> Registra subito l\'ingresso</label> <button class="button button-primary">Prenota sul posto</button></p>'
 			. '<p class="description">Il nuovo ospite viene creato (il cellulare è obbligatorio: serve a riconoscerlo) e collegato al socio che lo ospita. L\'incasso entra in prima nota, sul conto scelto, con la data di oggi.</p>', Html::allowed() );
@@ -1035,31 +1041,66 @@ final class ActivitiesPage {
 			}
 			echo '</ul>';
 		}
-		$candidates = array_values( array_filter( Plugin::people()->search_light(), function ( $p ) use ( $in, $activity ) {
+		$lazy       = Ui::person_search_preferred( Plugin::people()->count_people() ); // con un'anagrafica grande non si porta in pagina l'elenco: si cerca
+		$candidates = $lazy ? array() : array_values( array_filter( Plugin::people()->search_light(), function ( $p ) use ( $in, $activity ) {
 			return MemberType::is_member( $p['type'] ) && ! in_array( (int) $p['id'], $in, true ) && (int) $p['id'] !== (int) $activity['instructor_person_id'];
 		} ) );
 		Ui::form_open( 'asem_event_staff_add', $back );
-		echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::person_select( 'person_id', $candidates, null, '— scegli un socio —', 'asem-staff-' . $id ) . ' <label><input type="checkbox" name="can_cash" value="1"> può incassare sul posto</label> <button class="button">Aggiungi</button>', Html::allowed() );
+		echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::person_select( 'person_id', $candidates, null, '— scegli un socio —', 'asem-staff-' . $id, $lazy, true ) . ' <label><input type="checkbox" name="can_cash" value="1"> può incassare sul posto</label> <button class="button">Aggiungi</button>', Html::allowed() );
 		Ui::form_close();
 		echo '</div>';
 	}
 
+	/** Quante date si mostrano per volta nella scheda di un'attività con molte date. */
+	const SESSION_BLOCK = 12;
+
+	/**
+	 * Le date da mostrare per prime: quelle che non sono ancora finite, dalla più vicina, poi le passate dalla più recente. Le altre restano fuori finché non si chiedono.
+	 *
+	 * @param array[] $sessions date nell'ordine del calendario
+	 * @return array{shown:array[],hidden:int}
+	 */
+	public static function session_block( array $sessions, string $today, int $limit ): array {
+		$next = array();
+		$past = array();
+		foreach ( $sessions as $s ) {
+			if ( ActivityService::last_day( $s ) >= $today ) {
+				$next[] = $s;
+			} else {
+				array_unshift( $past, $s );
+			}
+		}
+		$order = array_merge( $next, $past );
+		$limit = max( 1, $limit );
+		return array( 'shown' => array_slice( $order, 0, $limit ), 'hidden' => max( 0, count( $order ) - $limit ) );
+	}
+
+	/** Il numero di date da mostrare in questa richiesta (a blocchi: «Mostra altre date» aggiunge un blocco). */
+	private static function session_limit(): int {
+		return max( self::SESSION_BLOCK, min( 5000, Ui::get_int( 'sess_n', self::SESSION_BLOCK ) ) );
+	}
+
 	private static function sessions_list( array $activity, string $back ): void {
 		$id       = (int) $activity['id'];
+		$limit    = self::session_limit();
 		$sessions = Plugin::activities()->sessions( $id );
-		$all      = Plugin::people()->search_light();
-		$gov      = null; // il quadro degli ospiti si calcola solo alla prima prenotazione di un ospite
+		$block    = self::session_block( $sessions, current_time( 'Y-m-d' ), $limit );
+		$lazy     = Ui::person_search_preferred( Plugin::people()->count_people() ); // anagrafica grande: ricerca con completamento al posto delle tendine con tutti i nomi
+		$all      = $lazy ? array() : Plugin::people()->search_light();
+		$gov      = null; // gli ospiti con più prenotazioni si leggono solo se nella pagina c'è un ospite prenotato
+		$walk_ctx = null;
+		$by_sess  = Plugin::activities()->bookings_for_sessions( array_column( $block['shown'], 'id' ) ); // una lettura per tutte le date mostrate
 		echo '<h2>' . ( ActivityKind::EVENT === $activity['kind'] ? 'Data e prenotazioni' : 'Date e prenotazioni' ) . '</h2>';
 		if ( ! $sessions ) {
 			echo '<p>Nessuna data. ' . ( ActivityKind::RECURRING === $activity['kind'] ? 'Aggiungine qui sopra.' : '' ) . '</p>';
 		}
-		foreach ( $sessions as $s ) {
+		foreach ( $block['shown'] as $s ) {
 			$cancelled = ! empty( $s['cancelled_at'] );
-			$bookings  = Plugin::activities()->bookings_for_session( (int) $s['id'] );
-			$booked    = array();
+			$bookings  = $by_sess[ (int) $s['id'] ] ?? array();
+			$booked    = array(); // persona => true: si cerca per chiave, non scorrendo l'elenco
 			foreach ( $bookings as $b ) {
 				if ( $b['active'] ) {
-					$booked[] = (int) $b['person_id'];
+					$booked[ (int) $b['person_id'] ] = true;
 				}
 			}
 			$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
@@ -1093,13 +1134,10 @@ final class ActivitiesPage {
 						echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ), Html::allowed() );
 						echo '<button class="button button-small" data-confirm="Annullare la prenotazione? I pagamenti già fatti restano registrati: vanno rimborsati a mano.">Annulla prenotazione</button>';
 						Ui::form_close();
-						$others = array_values( array_filter( $all, function ( $x ) use ( $b, $booked ) {
-							return (int) $x['id'] !== (int) $b['person_id'] && ! in_array( (int) $x['id'], $booked, true );
-						} ) );
 						echo '<details style="margin-top:6px"><summary>Cedi il posto a un\'altra persona</summary>';
 						Ui::form_open( 'asem_transfer_booking', $back );
 						echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ), Html::allowed() );
-						Ui::echo_person_select( '', 'to_person_id', $others, null, '— scegli la nuova persona —', 'asem-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'], ' <button class="button button-small">Cedi il posto</button>' );
+						Ui::echo_person_select( '', 'to_person_id', array(), null, '— scegli la nuova persona —', 'asem-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'], ' <button class="button button-small">Cedi il posto</button>', true ); // sempre la ricerca: una tendina per ogni prenotato pesa troppo, e chi ha già il posto lo rifiuta il server
 						echo '<p class="description">Il pagamento già fatto passa alla nuova persona; se il suo contributo è maggiore (es. ospite) resta da pagare la differenza.</p>';
 						Ui::form_close();
 						echo '</details>';
@@ -1110,15 +1148,15 @@ final class ActivitiesPage {
 			}
 
 			if ( ! $cancelled ) {
-				$candidates = array_values( array_filter( $all, function ( $p ) use ( $booked ) {
-					return ! in_array( (int) $p['id'], $booked, true );
+				$candidates = $lazy ? array() : array_values( array_filter( $all, function ( $p ) use ( $booked ) {
+					return ! isset( $booked[ (int) $p['id'] ] );
 				} ) );
 				Ui::form_open( 'asem_book', $back );
 				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ), Html::allowed() );
-				Ui::echo_person_select( '<p>Prenota: ', 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-book-' . (int) $s['id'], ' ' . self::booking_fields( $activity, 0 ) . ' <button class="button button-primary">Prenota</button></p>' );
+				Ui::echo_person_select( '<p>Prenota: ', 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-book-' . (int) $s['id'], ' ' . self::booking_fields( $activity, 0 ) . ' <button class="button button-primary">Prenota</button></p>', $lazy );
 				Ui::form_close();
 				if ( \AssociazioneSemplice\Edition::has( 'door_sales' ) ) {
-					self::walk_in_form( $activity, $s, $candidates, $back );
+					self::walk_in_form( $activity, $s, $candidates, $back, $walk_ctx, $lazy );
 				}
 
 				Ui::form_open( 'asem_update_session', $back );
@@ -1139,6 +1177,11 @@ final class ActivitiesPage {
 				}
 			}
 			echo '</details>';
+		}
+		if ( $block['hidden'] > 0 ) { // le date oltre il blocco: prima le prossime, poi le passate
+			echo '<p><a class="button" href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $id, 'sess_n' => $limit + self::SESSION_BLOCK ) ) ) . '">'
+				. esc_html( Texts::t( 'Mostra altre {n} date', array( 'n' => min( self::SESSION_BLOCK, $block['hidden'] ) ) ) ) . '</a> <span class="description">'
+				. esc_html( Texts::t( 'Prima le prossime, poi le passate. Ne restano {n} da mostrare.', array( 'n' => $block['hidden'] ) ) ) . '</span></p>';
 		}
 	}
 }

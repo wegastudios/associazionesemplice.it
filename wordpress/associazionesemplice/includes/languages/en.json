@@ -4,6 +4,10 @@
  "strings" : {
   "Caricamento di date e posti…" : "Loading dates and seats…",
   "Vedi le date e prenota" : "See the dates and book",
+  "Mostra altre {n} date" : "Show {n} more dates",
+  "Prima le prossime, poi le passate. Ne restano {n} da mostrare." : "Upcoming dates first, then past ones. {n} left to show.",
+  "Più persone corrispondono a quel nome: scrivilo per intero o con il numero di tessera." : "More than one person matches that name: type it in full or use the card number.",
+  "Non ho trovato nessuna persona con quel nome: scrivine almeno tre lettere, o il numero di tessera." : "No person found with that name: type at least three letters, or the card number.",
   "Ne restano {n} da sincronizzare: avvia di nuovo la sincronizzazione." : "{n} are left to sync: start the sync again.",
   "Ne resta {n} da sincronizzare: avvia di nuovo la sincronizzazione." : "{n} is left to sync: start the sync again.",
   "Gli altri partono a gruppi nei prossimi minuti." : "The others are sent in batches over the next few minutes.",
