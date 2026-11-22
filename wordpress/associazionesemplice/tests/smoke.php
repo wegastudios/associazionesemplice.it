@@ -9003,6 +9003,118 @@ asem_ok( $ov_notes && false !== strpos( implode( '', $ov_notes ), 'sistemate a m
 asem_ok( false !== strpos( asem_render( array( Admin\ProDashboard::class, 'alerts' ), 'Risorse occupate due volte' ), 'Vanno sistemate a mano' ), 'sovrapposizioni: la bacheca avvisa' );
 $RS::link_activity( $ov_e, 0 );
 
+// ---------- Risorse: le sovrapposizioni già presenti si calcolano una volta e si ricordano; il risultato non cambia ----------
+wp_set_current_user( 1 );
+$cp_ref = function () use ( $RS, $wpdb ) { // il calcolo di sempre, attività per attività, come prima dell'ottimizzazione
+	$out = array();
+	foreach ( $RS::all() as $res ) {
+		if ( \AssociazioneSemplice\ResourceRules::SLOT !== $res['mode'] ) {
+			continue;
+		}
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', (int) $res['id'] ) ) ?: array() as $aid ) {
+			foreach ( $RS::activity_overlaps( (int) $aid, (int) $res['id'] ) as $k => $text ) {
+				$out[ (int) $res['id'] . '|' . $aid . '|' . $k ] = $res['name'] . ': ' . $text;
+			}
+		}
+	}
+	return array_values( $out );
+};
+$cp_res  = $RS::save( 0, array( 'name' => 'Sala confronto', 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0, 'setup_before' => '10 minuti', 'setup_after' => '' ) );
+$cp_base = gmdate( 'Y-m-d', strtotime( $today . ' +6 days' ) );
+$cp_dow  = (int) gmdate( 'N', strtotime( $cp_base ) );
+$cp_wd   = \AssociazioneSemplice\Calendar::weekly_dates( $cp_base, gmdate( 'Y-m-d', strtotime( $today . ' +110 days' ) ), $cp_dow );
+$cp_day  = function ( int $n ) use ( $cp_wd ) { return $cp_wd[ $n ]; };
+$cp_plus = function ( string $d, int $n ) { return gmdate( 'Y-m-d', strtotime( $d . ' +' . $n . ' days' ) ); };
+$cp_slots = function ( string $start, string $end ) use ( $cp_dow ) { return wp_json_encode( array( array( 'type' => 'weekly', 'day' => $cp_dow, 'start' => $start, 'end' => $end ) ) ); };
+$cp_course = function ( string $name, string $start, string $end ) use ( $acts, $sy, $sy_label, $cp_slots ) {
+	return $acts->create( array( 'name' => $name, 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 0, 'starts_on' => $sy->start()->format( 'Y-m-d' ), 'ends_on' => $sy->end()->format( 'Y-m-d' ), 'lesson_slots' => $cp_slots( $start, $end ) ) );
+};
+$cp_event = function ( string $name, string $kind, string $date, string $start, string $end, string $end_date = '' ) use ( $acts ) {
+	$s = array( 'session_date' => $date, 'start_time' => $start, 'end_time' => $end );
+	if ( '' !== $end_date ) {
+		$s['end_date'] = $end_date;
+	}
+	return $acts->create( array( 'name' => $name, 'social_year' => Settings::social_year( $date )->label(), 'kind' => $kind, 'fee_cents' => 0, 'session' => $s ) );
+};
+$cp_a  = $cp_course( 'Corso confronto A', '18:00', '19:00' );
+$cp_b  = $cp_course( 'Corso confronto B', '18:30', '19:30' );
+$cp_c  = $acts->create( array( 'name' => 'Corso confronto C', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 0, 'starts_on' => $sy->start()->format( 'Y-m-d' ), 'ends_on' => $sy->end()->format( 'Y-m-d' ), 'lesson_slots' => wp_json_encode( array( array( 'type' => 'single', 'date' => $cp_day( 4 ), 'start' => '18:15', 'end' => '18:45' ) ) ) ) );
+$cp_e1 = $cp_event( 'Evento confronto uno', 'event', $cp_day( 5 ), '17:30', '18:30' );
+$cp_r  = $acts->create( array( 'name' => 'Ricorrente confronto', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 0 ) );
+$acts->add_session( $cp_r, array( 'session_date' => $cp_day( 6 ), 'start_time' => '18:00', 'end_time' => '19:00' ) );
+$cp_s2 = $acts->add_session( $cp_r, array( 'session_date' => $cp_day( 7 ), 'start_time' => '20:00', 'end_time' => '21:00' ) );
+$acts->add_session( $cp_r, array( 'session_date' => $cp_plus( $cp_day( 8 ), 2 ), 'start_time' => '10:00', 'end_time' => '11:00' ) );
+$cp_md = $cp_event( 'Evento confronto tre giorni', 'event', $cp_day( 9 ), '09:00', '18:00', $cp_plus( $cp_day( 9 ), 2 ) );
+$cp_k1 = $cp_event( 'Blocco confronto uno', 'event', $cp_day( 10 ), '09:00', '12:00' );
+$cp_k2 = $cp_event( 'Blocco confronto due', 'event', $cp_plus( $cp_day( 10 ), 3 ), '09:00', '12:00' );
+$cp_k3 = $cp_event( 'In mezzo al blocco', 'event', $cp_plus( $cp_day( 10 ), 1 ), '15:00', '16:00' );
+$cp_sl = $cp_event( 'Fasce confronto', 'event', $cp_day( 11 ), '18:00', '19:00' );
+foreach ( array( $cp_e1, $cp_r, $cp_md, $cp_k1, $cp_k2, $cp_k3, $cp_sl ) as $cp_x ) {
+	$RS::set_activity_setup( $cp_x, 0, 0 );
+}
+$RS::set_activity_slot_mode( $cp_sl, true );
+// prenotazioni dei soci, prima di collegare le attività (poi il sistema non le farebbe più)
+$cp_r1 = $RS::book_slot( $cp_res, $rs_m1, $cp_day( 0 ), '18:00', 1, array(), true );
+$RS::book_slot( $cp_res, $rs_m1, $cp_day( 0 ), '21:00', 1, array(), true );
+$cp_r3 = $RS::book_slot( $cp_res, $rs_m1, $cp_day( 1 ), '18:00', 1, array(), true );
+$RS::book_slot( $cp_res, $rs_m1, $cp_plus( $cp_day( 9 ), 1 ), '12:00', 1, array(), true );
+$RS::book_slot( $cp_res, $rs_m1, $cp_plus( $cp_day( 10 ), 1 ), '12:00', 1, array(), true );
+$RS::book_slot( $cp_res, $rs_m1, $cp_day( 5 ), '17:00', 2, array(), true );
+$RS::cancel( $cp_r3, true ); // annullata: non conta
+foreach ( array( $cp_a, $cp_b, $cp_c, $cp_e1, $cp_r, $cp_md, $cp_k1, $cp_k2, $cp_k3, $cp_sl ) as $cp_x ) {
+	$RS::link_activity( $cp_x, $cp_res ); // forzato, come se fosse già così
+}
+$cp_key = $RS::new_block_key();
+$RS::set_activity_block( $cp_k1, $cp_key, 'Blocco di prova' );
+$RS::set_activity_block( $cp_k2, $cp_key, 'Blocco di prova' );
+\AssociazioneSemplice\LessonExceptions::cancel( $cp_b, $cp_day( 1 ), 'Festività' ); // una lezione annullata
+\AssociazioneSemplice\LessonExceptions::move( $cp_b, $cp_day( 2 ), $cp_plus( $cp_day( 2 ), 1 ), '18:00', '19:00', 'Spostata' ); // e una spostata a un altro giorno
+$cp_before = $wpdb->num_queries;
+$cp_old    = $cp_ref();
+$cp_q_old  = $wpdb->num_queries - $cp_before;
+$RS::bump_overlaps(); // niente esito ricordato: si ricalcola davvero
+$cp_before = $wpdb->num_queries;
+$cp_new    = $RS::existing_overlaps();
+$cp_q_new  = $wpdb->num_queries - $cp_before;
+$cp_txt    = implode( "\n", $cp_old );
+asem_ok( count( $cp_old ) >= 8 && false !== strpos( $cp_txt, 'Corso confronto A' ) && false !== strpos( $cp_txt, 'Corso confronto B' ) && false !== strpos( $cp_txt, 'Ricorrente confronto' ) && false !== strpos( $cp_txt, 'In mezzo al blocco' ) && false !== strpos( $cp_txt, 'la prenotazione di' ), 'sovrapposizioni (confronto): i dati di prova hanno sovrapposizioni vere tra corsi, eventi, blocchi e prenotazioni (' . count( $cp_old ) . ')' );
+asem_ok( $cp_new === $cp_old, 'sovrapposizioni (confronto): il calcolo nuovo dà lo stesso risultato del calcolo di sempre' );
+asem_ok( $cp_q_new * 3 < $cp_q_old, 'sovrapposizioni (confronto): molte meno query (prima ' . $cp_q_old . ', dopo ' . $cp_q_new . ')' );
+$cp_before = $wpdb->num_queries;
+$cp_again  = $RS::existing_overlaps();
+$cp_q_hit  = $wpdb->num_queries - $cp_before;
+asem_ok( $cp_again === $cp_old && $cp_q_hit <= 8, 'sovrapposizioni (confronto): alla seconda apertura l\'esito è quello ricordato (query ' . $cp_q_hit . ')' );
+$cp_check = function ( string $what, bool $must_change ) use ( $RS, $cp_ref, &$cp_old ) {
+	$got = $RS::existing_overlaps();
+	$ref = $cp_ref();
+	asem_ok( $got === $ref, 'sovrapposizioni (confronto): dopo «' . $what . '» l\'esito ricordato è quello vero' );
+	asem_ok( ! $must_change || $got !== $cp_old, 'sovrapposizioni (confronto): «' . $what . '» cambia l\'esito' );
+	$cp_old = $got;
+};
+$RS::cancel( $cp_r1, true );
+$cp_check( 'prenotazione annullata', true );
+\AssociazioneSemplice\LessonExceptions::cancel( $cp_a, $cp_day( 3 ), 'Festività' );
+$cp_check( 'lezione annullata', true );
+$acts->cancel_session( $cp_s2 );
+$cp_check( 'data di evento annullata', false );
+$wpdb->update( Db::t( 'sessions' ), array( 'session_date' => $cp_plus( $cp_day( 5 ), 2 ) ), array( 'activity_id' => $cp_e1 ) );
+$cp_check( 'data di evento spostata', true );
+$RS::save( $cp_res, array( 'name' => 'Sala confronto', 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0, 'setup_before' => '2 ore', 'setup_after' => '' ) );
+$cp_check( 'allestimento della risorsa cambiato', true );
+$cp_last = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT last_name FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $rs_m1 ) );
+$wpdb->update( Db::t( 'people' ), array( 'last_name' => 'Rinominato' ), array( 'id' => $rs_m1 ) );
+$cp_check( 'nome del socio cambiato', true );
+asem_ok( false !== strpos( implode( "\n", $RS::existing_overlaps() ), 'Rinominato' ), 'sovrapposizioni (confronto): il nome nuovo del socio compare nel testo' );
+$wpdb->update( Db::t( 'people' ), array( 'last_name' => $cp_last ), array( 'id' => $rs_m1 ) );
+$cp_check( 'nome del socio rimesso com\'era', true );
+$RS::link_activity( $cp_a, 0 );
+$cp_check( 'attività scollegata dalla risorsa', true );
+foreach ( array( $cp_b, $cp_c, $cp_e1, $cp_r, $cp_md, $cp_k1, $cp_k2, $cp_k3, $cp_sl ) as $cp_x ) {
+	$RS::link_activity( $cp_x, 0 ); // la prova non lascia sovrapposizioni agli altri controlli
+}
+$cp_check( 'tutte le attività scollegate', true );
+asem_ok( array() === array_values( array_filter( $RS::existing_overlaps(), function ( $t ) { return 0 === strpos( $t, 'Sala confronto:' ); } ) ), 'sovrapposizioni (confronto): scollegate le attività non resta nulla di questa risorsa' );
+
 // ---------- Risorse: promemoria prima della prenotazione e voce di prima nota ----------
 wp_set_current_user( 1 );
 $pm_m    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Paola', 'last_name' => 'Promemoria', 'email' => 'paola.promemoria@example.com' ) );
