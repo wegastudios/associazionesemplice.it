@@ -177,6 +177,15 @@ jobs:
         run: bash wordpress/build.sh wordpress/dist
       - name: The free package has no trace of the Pro functions
         run: bash wordpress/check-free-clean.sh --strict
+      - name: Front-end style sheet and script are minified in the package and still valid
+        run: |
+          for f in frontend.css frontend.js; do
+            a=$(wc -c < "wordpress/dist/free/associazionesemplice/assets/$f"); b=$(wc -c < "wordpress/associazionesemplice/assets/$f")
+            echo "$f: $b -> $a bytes"
+            [ "$a" -lt "$b" ] || { echo "$f non ridotto nel pacchetto" >&2; exit 1; }
+          done
+          node --check wordpress/dist/free/associazionesemplice/assets/frontend.js
+          grep -q 'asemf-form input\[type="tel"\]' wordpress/dist/free/associazionesemplice/assets/frontend.css
       - name: Only the portal package declares the portal contact (WordPress.org package does not)
         run: |
           grep -q 'associazionesemplice.it/api/plugin/update' wordpress/dist/free/associazionesemplice/readme.txt

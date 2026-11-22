@@ -201,6 +201,19 @@ final class Assets {
 		}
 	}
 
+	/**
+	 * Come si carica lo script: in fondo alla pagina e, da WordPress 6.3 (che sa farlo), con `defer`. Prima si resta al solo «in fondo alla pagina».
+	 * Lo script non ha bisogno di altro: lavora su eventi e controlla da sé che la pagina sia pronta.
+	 *
+	 * @return bool|array
+	 */
+	public static function script_args() {
+		if ( version_compare( (string) get_bloginfo( 'version' ), '6.3', '>=' ) ) {
+			return array( 'strategy' => 'defer', 'in_footer' => true );
+		}
+		return true;
+	}
+
 	public static function enqueue(): void {
 		if ( wp_style_is( 'asem-frontend', 'enqueued' ) ) {
 			return;
@@ -210,6 +223,6 @@ final class Assets {
 		if ( '' !== $css ) {
 			wp_add_inline_style( 'asem-frontend', $css );
 		}
-		wp_enqueue_script( 'asem-frontend', ASEM_URL . 'assets/frontend.js', array(), \AssociazioneSemplice\Plugin::asset_version( 'frontend.js' ), true );
+		wp_enqueue_script( 'asem-frontend', ASEM_URL . 'assets/frontend.js', array(), \AssociazioneSemplice\Plugin::asset_version( 'frontend.js' ), self::script_args() );
 	}
 }

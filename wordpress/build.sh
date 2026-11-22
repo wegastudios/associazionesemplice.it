@@ -86,6 +86,19 @@ if command -v php > /dev/null 2>&1; then
 		php -r '$a = json_decode( file_get_contents( $argv[1] ), true ); define( "ABSPATH", "/" ); $b = include $argv[2]; exit( $a === $b ? 0 : 1 );' "$j" "${j%.json}.php" || { echo "Il pacchetto lingua PHP non coincide col JSON: $j" >&2; exit 1; }
 	done
 fi
+# Foglio di stile e script del front-end ridotti (sono quelli che il visitatore scarica): nel repository restano leggibili, nel pacchetto si toglie il superfluo.
+# Se qui manca perl, o il controllo di coerenza dello strumento non passa (o node, se c'è, trova un errore di sintassi), nel pacchetto resta il sorgente com'è.
+for spec in css:frontend.css js:frontend.js; do
+	kind="${spec%%:*}"
+	asset="$out/free/associazionesemplice/assets/${spec#*:}"
+	[ -f "$asset" ] || { echo "Manca $asset" >&2; exit 1; }
+	if command -v perl > /dev/null 2>&1 && perl minify-assets.pl "$kind" "$asset" "$asset.min" && { [ "$kind" != "js" ] || ! command -v node > /dev/null 2>&1 || node --check "$asset.min"; }; then
+		mv "$asset.min" "$asset"
+	else
+		rm -f "$asset.min"
+		echo "Attenzione: ${spec#*:} resta com'è (non ridotto)" >&2
+	fi
+done
 # L'aggiornatore dal portale sta nel gratuito del portale; il Pro ne porta una copia identica (da qui, un solo sorgente) per aggiornarsi anche quando il gratuito viene da WordPress.org e non lo ha.
 mkdir -p "$out/pro/associazionesemplice-pro/updater"
 cp associazionesemplice/includes/Updater.php "$out/pro/associazionesemplice-pro/updater/Updater.php"
