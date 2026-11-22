@@ -18,11 +18,24 @@ allowed_ips = ""
 ; log_max_bytes = 5242880
 ; log_keep = 3
 
-; Aperture di chiavi (operazione unwrap) al minuto. Oltre unwrap_alarm_per_minute il servizio scrive «ALLARME» nel
-; registro (e manda un'email ad alarm_email, se c'è); oltre unwrap_limit_per_minute risponde 429 e non apre nulla.
-; Con molte associazioni (dopo un riavvio dell'applicazione ogni associazione chiede la sua chiave una volta) o con
-; `saas:keys:rewrap` su tutte, alzare le soglie per il tempo necessario. 0 spegne il limite o l'allarme.
-; unwrap_alarm_per_minute = 100
-; unwrap_limit_per_minute = 200
+; Aperture di chiavi (operazione unwrap) al minuto. Oltre la soglia di allarme il servizio scrive «ALLARME» nel registro
+; (e manda un'email ad alarm_email, se c'è); oltre il limite risponde 429 e non apre nulla. 0 spegne limite o allarme.
+;
+; Per ciascuna associazione: le richieste delle pagine e dei lavori di un'associazione contano solo su di lei, quindi
+; un'associazione non consuma il tetto delle altre. I nomi di prima, unwrap_alarm_per_minute e
+; unwrap_limit_per_minute, valgono ancora e hanno lo stesso significato (ora per associazione).
+; unwrap_alarm_per_org_per_minute = 100
+; unwrap_limit_per_org_per_minute = 200
+;
+; Corsia dei comandi che girano su tutte le associazioni (verifica del registro, promemoria, saas:keys:rewrap, ...):
+; un solo contatore per tutta la corsia. I comandi fanno una pausa tra un'associazione e l'altra
+; (SAAS_KEY_BATCH_PAUSE_MS nel SaaS, partenza 500 ms: al massimo 120 associazioni al minuto).
+; batch_unwrap_alarm_per_minute = 250
+; batch_unwrap_limit_per_minute = 300
+;
+; Tutte le aperture del minuto, di ogni associazione e corsia: allarme a 1000; il limite parte spento.
+; total_unwrap_alarm_per_minute = 1000
+; total_unwrap_limit_per_minute = 0
+;
 ; alarm_email = ""
 ; rate_dir = "/home/account/keyservice/storage/rate"

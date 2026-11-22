@@ -7,14 +7,18 @@ namespace KeyService;
 use InvalidArgumentException;
 use RuntimeException;
 
-/** Contatore su file, uno per nome e per minuto, in una cartella fuori dalla cartella pubblica. Incremento con blocco. */
+/**
+ * Contatore su file, uno per nome e per minuto, in una cartella fuori dalla cartella pubblica. Incremento con blocco.
+ * I file dei minuti passati si tolgono dopo 5 minuti (uno per associazione attiva nel minuto, più i totali).
+ */
 final class FileRateCounter implements RateCounter
 {
     public function __construct(private readonly string $directory) {}
 
     public function hit(string $name, int $now): int
     {
-        if (preg_match('/^[a-z]{1,16}$/', $name) !== 1) {
+        // Lettere, cifre e trattini: «unwrap», «batch», «org-<identificativo>». Mai punti né barre.
+        if (preg_match('/^[a-z][a-z0-9-]{0,63}$/', $name) !== 1) {
             throw new InvalidArgumentException('Nome del contatore non valido.');
         }
         if (! is_dir($this->directory) && ! mkdir($this->directory, 0700, true) && ! is_dir($this->directory)) {

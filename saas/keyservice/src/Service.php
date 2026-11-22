@@ -18,6 +18,9 @@ use Throwable;
 final readonly class Service
 {
     /**
+     * Soglie delle aperture al minuto (0 = spenta): $unwrapAlarm e $unwrapLimit per ciascuna associazione, $batch* per la
+     * corsia dei comandi che girano su tutte le associazioni (una sola, per tutta la corsia), $total* su tutto.
+     *
      * @param  list<string>  $allowedIps
      * @param  Closure(string): void  $log
      * @param  ?Closure(string): void  $alarm
@@ -32,6 +35,10 @@ final readonly class Service
         private int $unwrapAlarm = 0,
         private int $unwrapLimit = 0,
         private ?Closure $alarm = null,
+        private int $batchAlarm = 0,
+        private int $batchLimit = 0,
+        private int $totalAlarm = 0,
+        private int $totalLimit = 0,
     ) {}
 
     /**
@@ -100,22 +107,16 @@ final readonly class Service
             return self::error(400, 'richiesta non valida');
         }
 
+        // Senza corsia (client di prima) la richiesta conta sull'associazione.
+        $lane = $request['lane'] ?? Protocol::LANE_ORG;
+        if ($lane !== Protocol::LANE_ORG && $lane !== Protocol::LANE_BATCH) {
+            return self::error(400, 'richiesta non valida');
+        }
+
         $name = is_string($op) ? $op : '?';
 
-        if ($op === 'unwrap' && $this->counter !== null) {
-            $count = $this->counter->hit('unwrap', $now);
-            $over = $this->unwrapLimit > 0 && $count > $this->unwrapLimit;
-            if (($this->unwrapAlarm > 0 && $count === $this->unwrapAlarm) || ($this->unwrapLimit > 0 && $count === $this->unwrapLimit + 1)) {
-                ($this->log)("ALLARME aperture={$count} al minuto limite={$this->unwrapLimit} allarme={$this->unwrapAlarm}");
-                if ($this->alarm !== null) {
-                    ($this->alarm)("Aperture di chiavi in questo minuto: {$count} (soglia di allarme {$this->unwrapAlarm}, limite {$this->unwrapLimit}).");
-                }
-            }
-            if ($over) {
-                ($this->log)("rifiutato ip={$ip} motivo=limite aperture={$count}");
-
-                return self::error(429, 'troppe richieste');
-            }
+        if ($op === 'unwrap' && $this->counter !== null && ! $this->withinLimits($this->counter, $orgId, $lane === Protocol::LANE_BATCH, $ip, $now)) {
+            return self::error(429, 'troppe richieste');
         }
 
         try {
@@ -137,6 +138,43 @@ final readonly class Service
         ($this->log)("ok ip={$ip} op={$name} org={$orgId} v={$version}");
 
         return ['status' => 200, 'body' => $result];
+    }
+
+    /**
+     * Conta l'apertura sulla sua corsia (l'associazione, o la corsia dei comandi) e sul totale. Allarme quando un
+     * contatore tocca la soglia o supera il limite; rifiuto se un limite è superato.
+     */
+    private function withinLimits(RateCounter $counter, string $orgId, bool $batch, string $ip, int $now): bool
+    {
+        $checks = [
+            $batch ? ['batch', 'corsia=comandi', $this->batchAlarm, $this->batchLimit] : ['org-'.$orgId, "corsia=associazione org={$orgId}", $this->unwrapAlarm, $this->unwrapLimit],
+            ['unwrap', 'corsia=tutte', $this->totalAlarm, $this->totalLimit],
+        ];
+
+        $refused = null;
+        foreach ($checks as [$name, $label, $alarm, $limit]) {
+            if ($alarm === 0 && $limit === 0) {
+                continue;
+            }
+            $count = $counter->hit($name, $now);
+            if (($alarm > 0 && $count === $alarm) || ($limit > 0 && $count === $limit + 1)) {
+                ($this->log)("ALLARME aperture={$count} al minuto {$label} limite={$limit} allarme={$alarm}");
+                if ($this->alarm !== null) {
+                    ($this->alarm)("Aperture di chiavi in questo minuto ({$label}): {$count} (soglia di allarme {$alarm}, limite {$limit}).");
+                }
+            }
+            if ($refused === null && $limit > 0 && $count > $limit) {
+                $refused = "aperture={$count} {$label}";
+            }
+        }
+
+        if ($refused !== null) {
+            ($this->log)("rifiutato ip={$ip} motivo=limite {$refused}");
+
+            return false;
+        }
+
+        return true;
     }
 
     private static function binary(mixed $value): string
