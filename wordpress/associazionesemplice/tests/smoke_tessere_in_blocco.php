@@ -37,5 +37,7 @@ $cd_u0 = \AssociazioneSemplice\QrCode::matrix( Settings::card_url( (int) $cd_50[
 asem_ok( count( $cd_u0 ) >= 21 && $cd_u0 === \AssociazioneSemplice\QrCode::matrix( Settings::card_url( (int) $cd_50[0]['id'] ) ), 'tessere PDF: il QR ha lo stesso contenuto di sempre (matrice dell\'indirizzo della tessera)' );
 asem_ok( 1 === \AssociazioneSemplice\Docs::card_parts( 500 ) && 2 === \AssociazioneSemplice\Docs::card_parts( 501 ) && 5 === \AssociazioneSemplice\Docs::card_parts( 2100 ), 'tessere PDF: al più 500 tessere per file' );
 $cd_all = \AssociazioneSemplice\Docs::card_ids( '' );
-asem_ok( count( $cd_all ) >= 50 && 'tessere.pdf' === \AssociazioneSemplice\Docs::cards( '', 6, 1 )['filename'], 'tessere PDF: con meno di 500 soci il file è uno solo' );
+$cd_np  = \AssociazioneSemplice\Docs::card_parts( count( $cd_all ) );
+$cd_doc = \AssociazioneSemplice\Docs::cards( '', 6, 1 );
+asem_ok( count( $cd_all ) >= 50 && ( 1 === $cd_np ? 'tessere.pdf' : 'tessere-parte-1-di-' . $cd_np . '.pdf' ) === $cd_doc['filename'] && 0 === strpos( $cd_doc['body'], '%PDF-1.4' ), 'tessere PDF: ' . count( $cd_all ) . ' soci fanno ' . $cd_np . ' file; la parte 1 è un PDF con il nome giusto' );
 Settings::update( array( 'card_qr_enabled' => $cd_qr_before ) );
