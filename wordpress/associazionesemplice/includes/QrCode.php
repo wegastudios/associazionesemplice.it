@@ -384,6 +384,21 @@ final class QrCode {
 	 * @param int $quiet moduli bianchi intorno (almeno 4 per una lettura affidabile)
 	 */
 	public static function svg( string $data, int $quiet = 4, string $label = 'Codice QR' ): string {
+		$memo = function_exists( 'wp_cache_get' ) ? md5( $data . "\0" . $quiet . "\0" . $label ) : '';
+		if ( '' !== $memo ) { // lo stesso indirizzo si disegna una volta sola: per la richiesta, e tra le richieste dove il server ha una cache degli oggetti
+			$found = wp_cache_get( $memo, 'asem_qr' );
+			if ( is_string( $found ) && '' !== $found ) {
+				return $found;
+			}
+		}
+		$svg = self::draw_svg( $data, $quiet, $label );
+		if ( '' !== $memo ) {
+			wp_cache_set( $memo, $svg, 'asem_qr', DAY_IN_SECONDS );
+		}
+		return $svg;
+	}
+
+	private static function draw_svg( string $data, int $quiet, string $label ): string {
 		$m    = self::matrix( $data );
 		$n    = count( $m );
 		$full = $n + 2 * $quiet;

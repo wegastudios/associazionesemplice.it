@@ -9,6 +9,7 @@ final class Front {
 	public static function init(): void {
 		Shortcodes::register();
 		Restrict::register();
+		add_action( 'wp_enqueue_scripts', array( Assets::class, 'early_enqueue' ) ); // gli stili del plugin nell'intestazione, non nel piede
 		Actions::register();
 		BlockBViews::register();
 		BlockFViews::register();

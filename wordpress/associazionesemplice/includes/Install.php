@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '73'; // dalla 73 ogni socio ha la versione del suo codice QR (qr_version: 0 = come prima, i QR già stampati valgono finché il socio non rigenera il codice); dalla 72 la voce «Quota attività / corso» si chiama «Contributo attività / corso» (si rinomina una volta, solo dove ha ancora il nome originale); dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '74'; // dalla 74 hanno un indice anche i pagamenti online per riferimento del fornitore, i movimenti per chi li ha registrati, le richieste di prenotazione per persona e i destinatari delle comunicazioni per persona (si creano una volta, senza toccare i dati); dalla 73 ogni socio ha la versione del suo codice QR (qr_version: 0 = come prima, i QR già stampati valgono finché il socio non rigenera il codice); dalla 72 la voce «Quota attività / corso» si chiama «Contributo attività / corso» (si rinomina una volta, solo dove ha ancora il nome originale); dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	/**
 	 * Tutti i lavori periodici e programmati del plugin e delle sue estensioni (nomi dei punti di aggancio di WP-Cron).
@@ -27,6 +27,7 @@ final class Install {
 		'asem_purge_audit',
 		'asem_purge_member_sessions',
 		'asem_purge_applications',
+		'asem_purge_broadcast_rcpt',
 		'asem_sms_hourly',
 		'asem_sms_queue',
 		'asem_newsletter_sync',
@@ -152,11 +153,25 @@ final class Install {
 			'account_date'    => 'account_id, tx_date',
 			'payer_person_id' => 'payer_person_id',
 			'document_ref'    => 'document_ref',
+			'created_by'      => 'created_by',
 		),
 		'event_requests' => array(
 			'session_person' => 'session_id, person_id',
+			'person_id'      => 'person_id',
+		),
+		'payments'       => array( // tabelle dell'estensione: si creano solo dove esistono
+			'provider_payment_id' => 'provider_payment_id',
+		),
+		'broadcast_rcpt' => array(
+			'person_id' => 'person_id',
 		),
 	);
+
+	/** La tabella esiste? @param string $table nome completo con prefisso */
+	public static function table_exists( string $table ): bool {
+		$db = Db::db();
+		return $table === (string) $db->get_var( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $table ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- struttura del database
+	}
 
 	/** L'indice esiste già sulla tabella? @param string $table nome completo con prefisso */
 	public static function index_exists( string $table, string $index ): bool {
@@ -175,7 +190,7 @@ final class Install {
 		$created = array();
 		foreach ( self::INDEXES as $name => $indexes ) {
 			$table = Db::t( $name );
-			if ( $table !== (string) $db->get_var( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $table ) ) ) ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- struttura del database
+			if ( ! self::table_exists( $table ) ) {
 				continue;
 			}
 			foreach ( $indexes as $index => $columns ) {

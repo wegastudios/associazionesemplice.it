@@ -26,6 +26,7 @@ final class ProSchema {
 
 	public static function create(): void {
 		Install::create_tables();
+		Install::ensure_indexes(); // anche le tabelle di questa estensione hanno i loro indici (solo se mancano)
 		update_option( self::VERSION_OPTION, self::VERSION );
 	}
 

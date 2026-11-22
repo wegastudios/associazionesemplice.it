@@ -239,6 +239,55 @@ final class Calendar {
 		return Ics::calendar( ( '' !== $name ? $name . ' — ' : '' ) . $title, $events, $tz, gmdate( 'Ymd\THis\Z' ) );
 	}
 
+	/** Dopo quanti secondi il file ricordato si rifà comunque (oltre al cambio della generazione delle pagine pubbliche). */
+	const FEED_TTL = 3600;
+
+	/**
+	 * Il file del calendario ricordato: si rifà solo quando cambia qualcosa (la «generazione» delle pagine pubbliche, che ogni scrittura su
+	 * attività, date e lezioni spostate cambia), al cambio di giorno o dopo un'ora. Chi è collegato (ad esempio un dipendente a cui sono stati tolti
+	 * dei tipi di attività) riceve sempre un file fresco e mai uno ricordato.
+	 *
+	 * @return array{t:int,b:string,e:string} momento di creazione, testo, ETag
+	 */
+	public static function feed_entry( ?int $activity_id = null ): array {
+		if ( get_current_user_id() > 0 ) {
+			$now = time();
+			return array( 't' => $now, 'b' => self::ics( null, $activity_id ), 'e' => '' );
+		}
+		$gen     = PageCache::generation();
+		$version = md5( wp_json_encode( array( $gen, Db::today(), (int) $activity_id, home_url( '/' ), wp_timezone_string(), determine_locale() ) ) );
+		$key     = 'asem_ics_' . ( $activity_id ? 'a' . (int) $activity_id : 'all' );
+		$stored  = get_transient( $key );
+		if ( ! is_array( $stored ) || ( $stored['v'] ?? '' ) !== $version || ! isset( $stored['t'], $stored['b'] ) ) {
+			$stored = array( 'v' => $version, 't' => time(), 'b' => self::ics( null, $activity_id ) );
+			if ( PageCache::stored_generation() === $gen ) { // se nel frattempo i dati sono cambiati non si salva una copia vecchia
+				set_transient( $key, $stored, self::FEED_TTL );
+			}
+		}
+		return array( 't' => (int) $stored['t'], 'b' => (string) $stored['b'], 'e' => '"' . md5( $version . '|' . (int) $stored['t'] ) . '"' );
+	}
+
+	/** Il programma del telefono ha già questa versione? ETag o data di modifica uguali a quelle che ha inviato. */
+	public static function not_modified( string $etag, int $modified, string $if_none_match, string $if_modified_since ): bool {
+		if ( '' !== $if_none_match ) {
+			if ( '' === $etag ) {
+				return false;
+			}
+			foreach ( explode( ',', $if_none_match ) as $candidate ) {
+				$candidate = trim( $candidate );
+				if ( '*' === $candidate || ( 0 === strpos( $candidate, 'W/' ) ? substr( $candidate, 2 ) : $candidate ) === $etag ) {
+					return true;
+				}
+			}
+			return false;
+		}
+		if ( '' !== $if_modified_since && $modified > 0 ) {
+			$since = strtotime( $if_modified_since );
+			return false !== $since && $modified <= $since;
+		}
+		return false;
+	}
+
 	/** Risponde all'indirizzo segreto del calendario. */
 	public static function serve(): void {
 		if ( ! isset( $_GET[ self::QUERY_VAR ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
@@ -249,10 +298,21 @@ final class Calendar {
 			status_header( 404 );
 			exit;
 		}
+		$entry = self::feed_entry( isset( $_GET['a'] ) ? absint( $_GET['a'] ) : null ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- sola lettura pubblica, nessuna modifica
 		nocache_headers();
+		if ( '' !== $entry['e'] ) {
+			header( 'ETag: ' . $entry['e'] );
+			header( 'Last-Modified: ' . gmdate( 'D, d M Y H:i:s', $entry['t'] ) . ' GMT' );
+			$inm = isset( $_SERVER['HTTP_IF_NONE_MATCH'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_IF_NONE_MATCH'] ) ) : '';
+			$ims = isset( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ) : '';
+			if ( self::not_modified( $entry['e'], $entry['t'], $inm, $ims ) ) {
+				status_header( 304 );
+				exit;
+			}
+		}
 		header( 'Content-Type: text/calendar; charset=utf-8' );
 		header( 'Content-Disposition: inline; filename="associazionesemplice.ics"' );
-		Download::bytes( self::ics( null, isset( $_GET['a'] ) ? absint( $_GET['a'] ) : null ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- sola lettura pubblica, nessuna modifica
+		Download::bytes( $entry['b'] );
 		exit;
 	}
 }

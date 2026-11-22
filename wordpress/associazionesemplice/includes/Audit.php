@@ -76,14 +76,35 @@ final class Audit {
 		return $n;
 	}
 
-	/** @return array{rows:int,bytes:int,oldest:string} righe, spazio occupato nel database (dati e indici) e data della più vecchia */
+	/** Fino a questo numero di righe stimate il registro si conta davvero; oltre, basta la stima del database (contare milioni di righe a ogni apertura costa troppo). */
+	const EXACT_COUNT_UNDER = 20000;
+
+	/**
+	 * Numero di righe da mostrare: esatto se la stima è piccola, altrimenti la stima stessa.
+	 *
+	 * @param callable $count conta davvero le righe (si chiama solo se serve)
+	 * @return array{0:int,1:bool} righe e se il numero è esatto
+	 */
+	public static function pick_rows( int $estimate, callable $count ): array {
+		if ( $estimate < self::EXACT_COUNT_UNDER ) {
+			return array( (int) $count(), true );
+		}
+		return array( $estimate, false );
+	}
+
+	/** @return array{rows:int,bytes:int,oldest:string,exact:bool} righe (esatte se poche, altrimenti stimate dal database), spazio occupato (dati e indici) e data della più vecchia */
 	public static function stats(): array {
-		$db     = Db::db();
-		$table  = Db::t( 'audit_log' );
-		$rows   = (int) $db->get_var( 'SELECT COUNT(*) FROM ' . $table ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
+		$db    = Db::db();
+		$table = Db::t( 'audit_log' );
+		$info  = $db->get_row( $db->prepare( 'SELECT data_length + index_length AS bytes, table_rows AS est FROM information_schema.TABLES WHERE table_schema = DATABASE() AND table_name = %s', $table ), ARRAY_A );
+		list( $rows, $exact ) = self::pick_rows(
+			(int) ( $info['est'] ?? 0 ),
+			function () use ( $db, $table ) {
+				return (int) $db->get_var( 'SELECT COUNT(*) FROM ' . $table ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
+			}
+		);
 		$oldest = (string) $db->get_var( 'SELECT MIN(created_at) FROM ' . $table ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
-		$bytes  = (int) $db->get_var( $db->prepare( 'SELECT data_length + index_length FROM information_schema.TABLES WHERE table_schema = DATABASE() AND table_name = %s', $table ) );
-		return array( 'rows' => $rows, 'bytes' => $bytes, 'oldest' => $oldest );
+		return array( 'rows' => $rows, 'bytes' => (int) ( $info['bytes'] ?? 0 ), 'oldest' => $oldest, 'exact' => $exact );
 	}
 
 	/** @return array[] dal più recente */

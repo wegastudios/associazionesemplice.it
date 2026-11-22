@@ -58,6 +58,34 @@ while IFS= read -r f; do
 	rm "$out/free/associazionesemplice/includes/$f"
 	n=$((n + 1))
 done < "$list"
+# Mappa delle classi del pacchetto gratuito (includes/classmap.php): l'autoloader trova il file senza interrogare il disco.
+# Si genera DOPO aver tolto i file del Pro e l'aggiornatore, così contiene solo classi presenti; il Pro e il codice sorgente (senza mappa) usano la ricerca di sempre.
+inc="$out/free/associazionesemplice/includes"
+{
+	printf '<?php\n// Generato da wordpress/build.sh: non modificare. Classe (senza il prefisso AssociazioneSemplice\\\\) => file dentro includes/.\ndefined( '"'"'ABSPATH'"'"' ) || exit;\n\nreturn array(\n'
+	(cd "$inc" && find . -name '*.php' ! -path './languages/*' ! -name classmap.php | sed 's#^\./##' | LC_ALL=C sort) | while IFS= read -r f; do
+		cls="${f%.php}"
+		cls="${cls//\//\\\\}"
+		printf "\t'%s' => '%s',\n" "$cls" "$f"
+	done
+	printf ');\n'
+} > "$inc/classmap.php"
+mapn=$(grep -c "' => '" "$inc/classmap.php")
+filn=$(cd "$inc" && find . -name '*.php' ! -path './languages/*' ! -name classmap.php | wc -l)
+[ "$mapn" -gt 0 ] && [ "$mapn" -eq "$filn" ] || { echo "Mappa delle classi incompleta ($mapn su $filn file)" >&2; exit 1; }
+while IFS= read -r f; do
+	f="${f%$'\r'}"
+	case "$f" in ""|"#"*) continue ;; esac
+	if grep -qF "=> '$f'," "$inc/classmap.php"; then echo "La mappa delle classi cita un file del Pro: $f" >&2; exit 1; fi
+done < "$list"
+# Pacchetti lingua come file PHP (con OPcache restano compilati e non si decodifica il JSON a ogni richiesta). Se qui non c'è PHP resta il solo JSON, che il plugin sa leggere.
+if command -v php > /dev/null 2>&1; then
+	for j in "$inc"/languages/*.json; do
+		[ -f "$j" ] || continue
+		php -r '$j = json_decode( file_get_contents( $argv[1] ), true ); if ( ! is_array( $j ) ) { exit( 1 ); } file_put_contents( $argv[2], "<?php\n// Generato da wordpress/build.sh dal file JSON omonimo: non modificare.\ndefined( \"ABSPATH\" ) || exit;\n\nreturn " . var_export( $j, true ) . ";\n" );' "$j" "${j%.json}.php" || { echo "Pacchetto lingua non convertito: $j" >&2; exit 1; }
+		php -r '$a = json_decode( file_get_contents( $argv[1] ), true ); define( "ABSPATH", "/" ); $b = include $argv[2]; exit( $a === $b ? 0 : 1 );' "$j" "${j%.json}.php" || { echo "Il pacchetto lingua PHP non coincide col JSON: $j" >&2; exit 1; }
+	done
+fi
 # L'aggiornatore dal portale sta nel gratuito del portale; il Pro ne porta una copia identica (da qui, un solo sorgente) per aggiornarsi anche quando il gratuito viene da WordPress.org e non lo ha.
 mkdir -p "$out/pro/associazionesemplice-pro/updater"
 cp associazionesemplice/includes/Updater.php "$out/pro/associazionesemplice-pro/updater/Updater.php"
