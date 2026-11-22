@@ -7117,6 +7117,27 @@ $bq_ok = ( new ReflectionMethod( \AssociazioneSemplice\Broadcasts::class, 'queue
 $bq_rows = $wpdb->get_results( $wpdb->prepare( 'SELECT person_id, email, name, status FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE broadcast_id = %d ORDER BY id', 987654321 ), ARRAY_A );
 asem_ok( true === $bq_ok && 1203 === count( $bq_rows ) && 1 === (int) $bq_rows[0]['person_id'] && 1203 === (int) $bq_rows[1202]['person_id'] && 'Persona 600 100%' === $bq_rows[599]['name'] && 'queued' === $bq_rows[1202]['status'], 'comunicazioni: 1.203 destinatari in coda a blocchi, in ordine e con i caratteri speciali intatti' );
 $wpdb->delete( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => 987654321 ) );
+// destinatari: si cancellano 24 mesi dopo la fine dell'invio, solo di comunicazioni finite, e i totali restano
+$pg_ids = array();
+foreach ( array( 'vecchia' => array( 'done', 25 ), 'recente' => array( 'done', 23 ), 'incorso' => array( 'sending', 30 ) ) as $pg_k => $pg_v ) {
+	$wpdb->insert( Db::t( 'broadcasts' ), array( 'subject' => 'Pulizia ' . $pg_k, 'body' => 'x', 'audience' => 'members_all', 'status' => $pg_v[0], 'total' => 3, 'sent' => 2, 'failed' => 1, 'created_at' => gmdate( 'Y-m-d H:i:s', strtotime( '-' . $pg_v[1] . ' months' ) ), 'finished_at' => 'done' === $pg_v[0] ? gmdate( 'Y-m-d H:i:s', strtotime( '-' . $pg_v[1] . ' months' ) ) : null ) );
+	$pg_ids[ $pg_k ] = (int) $wpdb->insert_id;
+	foreach ( array( 'sent', 'sent', 'failed' ) as $pg_s ) {
+		$wpdb->insert( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => $pg_ids[ $pg_k ], 'person_id' => 1, 'email' => 'pulizia@example.com', 'name' => 'Pulizia', 'status' => $pg_s ) );
+	}
+}
+$pg_count = function ( $k ) use ( $wpdb, $pg_ids ) {
+	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE broadcast_id = %d', $pg_ids[ $k ] ) );
+};
+$pg_n = \AssociazioneSemplice\Broadcasts::purge_recipients();
+$pg_b = \AssociazioneSemplice\Broadcasts::get( $pg_ids['vecchia'] );
+asem_ok( $pg_n >= 3 && 0 === $pg_count( 'vecchia' ) && 3 === $pg_count( 'recente' ) && 3 === $pg_count( 'incorso' ), 'comunicazioni: i destinatari si cancellano dopo 24 mesi dalla fine, non prima e non se l\'invio è in corso' );
+asem_ok( 3 === (int) $pg_b['total'] && 2 === (int) $pg_b['sent'] && 1 === (int) $pg_b['failed'], 'comunicazioni: i totali restano dopo la cancellazione dei destinatari' );
+asem_ok( 0 === \AssociazioneSemplice\Broadcasts::purge_recipients() && 0 === \AssociazioneSemplice\Broadcasts::retry_failed( $pg_ids['vecchia'] ) && 3 === (int) \AssociazioneSemplice\Broadcasts::get( $pg_ids['vecchia'] )['total'], 'comunicazioni: rilanciare la pulizia non fa nulla e «riprova» su una vecchia non cambia i totali' );
+foreach ( $pg_ids as $pg_id ) {
+	$wpdb->delete( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => $pg_id ) );
+	$wpdb->delete( Db::t( 'broadcasts' ), array( 'id' => $pg_id ) );
+}
 // controlli
 asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Broadcasts::create( '', 'testo', 'members_all' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Broadcasts::create( 'Oggetto', 'testo', 'gruppo_inesistente' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Broadcasts::create( 'Oggetto', str_repeat( 'x', 6000 ), 'members_all' ); } ), 'comunicazioni: oggetto e testo obbligatori, gruppo valido, lunghezza limitata' );
 $empty_s = $first_session( $mkev( 'Evento senza prenotati', 0, null ) );
@@ -14000,13 +14021,17 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '73' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 73' );
+asem_ok( '74' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 74' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
+	if ( ! \AssociazioneSemplice\Install::table_exists( Db::t( $ix_t ) ) ) {
+		continue; // tabella di un'estensione non presente in questa edizione
+	}
 	foreach ( array_keys( $ix_list ) as $ix_n ) {
 		$ix_all = $ix_all && \AssociazioneSemplice\Install::index_exists( Db::t( $ix_t ), $ix_n );
 	}
 }
+asem_ok( isset( \AssociazioneSemplice\Install::INDEXES['transactions']['created_by'], \AssociazioneSemplice\Install::INDEXES['event_requests']['person_id'], \AssociazioneSemplice\Install::INDEXES['payments']['provider_payment_id'], \AssociazioneSemplice\Install::INDEXES['broadcast_rcpt']['person_id'] ), 'indici: ci sono anche quelli per chi ha registrato il movimento, la persona della richiesta, il pagamento online e il destinatario' );
 asem_ok( $ix_all, 'indici: dopo l\'installazione ci sono tutti' );
 asem_ok( array() === \AssociazioneSemplice\Install::ensure_indexes(), 'indici: rilanciare la creazione non fa nulla e non dà errori' );
 $ix_people_before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
@@ -14016,7 +14041,7 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '73' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
+asem_ok( '74' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
 // Voce degli incassi di corsi ed eventi: «Contributo attività / corso»; dove si chiama ancora «Quota attività / corso» (installazioni vecchie) l'aggiornamento la rinomina una volta, altrimenti non tocca nulla.
 $af_t  = Db::t( 'categories' );

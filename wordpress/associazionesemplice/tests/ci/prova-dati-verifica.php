@@ -16,6 +16,9 @@ dati_ok( (string) get_option( 'asem_db_version', '' ) === Install::DB_VERSION, '
 dati_ok( version_compare( $prima['db_version'], Install::DB_VERSION, '<=' ), 'lo schema non è mai tornato indietro' );
 $indici_ok = true;
 foreach ( Install::INDEXES as $t_ix => $lista_ix ) {
+	if ( ! Install::table_exists( \AssociazioneSemplice\Db::t( $t_ix ) ) ) {
+		continue; // tabella di un'estensione non presente in questa edizione
+	}
 	foreach ( array_keys( $lista_ix ) as $n_ix ) {
 		$indici_ok = $indici_ok && Install::index_exists( \AssociazioneSemplice\Db::t( $t_ix ), $n_ix );
 	}
