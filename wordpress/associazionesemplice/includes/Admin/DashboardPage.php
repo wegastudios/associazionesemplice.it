@@ -255,7 +255,7 @@ final class DashboardPage {
 			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">manca: ' . esc_html( implode( ', ', $x['missing'] ) ) . '</span></li>';
 		}
 		if ( $inc['count'] > 20 ) {
-			echo '<li class="description">…e altre ' . ( $inc['count'] - 20 ) . '.</li>';
+			echo '<li class="description">…e altre ' . (int) ( $inc['count'] - 20 ) . '.</li>';
 		}
 		echo '</ul></div>';
 	}
