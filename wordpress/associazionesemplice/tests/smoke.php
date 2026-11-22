@@ -699,6 +699,37 @@ asem_ok( 'active' === $lic_att_state( array() ), 'licenza: la prova firmata e re
 asem_ok( 'active' === $lic_att_state( array( 'exp' => time() - 3 * DAY_IN_SECONDS, 'nbf' => time() - 5 * DAY_IN_SECONDS ) ), 'licenza: prova scaduta da pochi giorni, dentro la tolleranza: resta attiva' );
 asem_ok( 'unverified' === $lic_att_state( array( 'exp' => time() - 30 * DAY_IN_SECONDS, 'nbf' => time() - 35 * DAY_IN_SECONDS ) ) && \AssociazioneSemplice\Edition::degraded(), 'licenza: prova scaduta oltre la tolleranza, le funzioni Pro si sospendono' );
 asem_ok( 'unverified' === $lic_att_state( array( 'bid' => 'altro-dominio.it' ) ), 'licenza: la prova di un altro dominio non vale' );
+// firma già verificata (senza sodium nativo): ricordata un giorno, solo se positiva, firmata con i codici del sito; la revoca e la scadenza non passano dalla memoria
+License::forget_verified();
+License::set_native_sodium_override( true );
+asem_ok( 'active' === $lic_att_state( array() ) && false === get_option( License::OPT_VMEMO, false ), 'firma licenza: con sodium nativo non si ricorda niente' );
+License::set_native_sodium_override( false );
+$lic_ok1 = 'active' === $lic_att_state( array( 'exp' => time() + 172900 ) );
+$lic_vmo = (array) get_option( License::OPT_VMEMO );
+asem_ok( $lic_ok1 && isset( $lic_vmo['att'] ), 'firma licenza: senza sodium nativo l\'esito verificato si ricorda' );
+$lic_vm = (array) get_option( License::OPT_VMEMO );
+asem_ok( $lic_vm['att']['until'] <= time() + DAY_IN_SECONDS && $lic_vm['att']['until'] > time() + DAY_IN_SECONDS - 60, 'firma licenza: la voce scade entro un giorno' );
+// una voce ritoccata a mano nel database (stessa impronta, firma della voce sbagliata) non vale: si verifica di nuovo
+$lic_att_new = $lic_att( array( 'exp' => time() + 172801 ) );
+update_option( License::OPT_STATE, array_merge( (array) get_option( License::OPT_STATE ), array( 'attestation' => $lic_att_new, 'product' => 'associazionesemplice' ) ) );
+$lic_fp = hash( 'sha256', md5( $lic_att_new . '|associazionesemplice|' . \AssociazioneSemplice\LicenseClient::normalize_domain( home_url() ) . '|' . \AssociazioneSemplice\Limits::get( 'license_offline_days' ) * DAY_IN_SECONDS ) );
+update_option( License::OPT_VMEMO, array( 'att' => array( 'f' => $lic_fp, 'at' => time(), 'until' => time() + 3600, 'r' => array( 'plan' => 'fiscal', 'exp' => time() + 3600 ), 'h' => str_repeat( 'a', 64 ) ) ), true );
+asem_ok( 'lite' === License::plan(), 'firma licenza: una voce ricordata ritoccata a mano non vale (la firma della voce non corrisponde)' );
+// una prova non valida non passa dalla memoria nemmeno se qualcuno scrive una voce con la sua impronta
+asem_ok( 'unverified' === $lic_att_state( array( 'exp' => time() - 30 * DAY_IN_SECONDS, 'nbf' => time() - 35 * DAY_IN_SECONDS ) ) && 'unverified' === License::policy()['status'], 'firma licenza: una prova scaduta oltre la tolleranza non passa dalla memoria' );
+$lic_vmo = (array) get_option( License::OPT_VMEMO, array() );
+asem_ok( ! isset( $lic_vmo['att'] ), 'firma licenza: un rifiuto non si ricorda' );
+// revoca: un nuovo stato (non attivo) svuota la memoria e la licenza non passa più
+$lic_att_state( array( 'exp' => time() + 173000 ) );
+asem_ok( is_array( get_option( License::OPT_VMEMO ) ), 'firma licenza: di nuovo ricordata' );
+License::set_state( 'unlicensed', null, null, 'free' );
+asem_ok( false === get_option( License::OPT_VMEMO, false ) && 'unlicensed' === License::policy()['status'], 'firma licenza: una revoca svuota la memoria e lo stato non è più attivo' );
+// una prova nuova (altro piano) non usa la voce della vecchia
+$lic_att_state( array( 'plan' => 'lite', 'exp' => time() + 173050 ) );
+$lic_att_state( array( 'plan' => 'fiscal', 'exp' => time() + 173100 ) );
+asem_ok( 'fiscal' === License::plan(), 'firma licenza: una prova nuova si verifica, non usa la voce della vecchia' );
+License::set_native_sodium_override( null );
+License::forget_verified();
 License::set_state( 'active', null, null, 'full' );
 asem_ok( 'unverified' === License::policy()['status'], 'licenza: uno stato «attivo» scritto a mano, senza la prova firmata, non vale' );
 delete_option( License::OPT_STATE );
