@@ -119,6 +119,7 @@ function auditChainConsistent(ConnectionInterface $probe, string $orgId): bool
 it('nessun altro cancella righe del registro: senza varco, con il varco di un\'altra associazione, con un altro ruolo; e nessuno le modifica', function (): void {
     $delete = 'DELETE FROM audit.log WHERE org_id = ?';
     $before = auditRowsOf($this->owner, 'audit.log', $this->alfa);
+    $betaRows = auditRowsOf($this->owner, 'audit.log', $this->beta);
 
     // Il proprietario senza varco, o con il varco aperto per un'altra associazione (in un verso e nell'altro).
     expect(auditChangeRefused($this->owner, $this->alfa, '', $delete))->toBeTrue()
@@ -138,7 +139,7 @@ it('nessun altro cancella righe del registro: senza varco, con il varco di un\'a
     }
 
     expect(auditRowsOf($this->owner, 'audit.log', $this->alfa))->toBe($before)
-        ->and(auditRowsOf($this->owner, 'audit.log', $this->beta))->toBe(3)
+        ->and(auditRowsOf($this->owner, 'audit.log', $this->beta))->toBe($betaRows)
         ->and(app(ChainVerifier::class)->verify($this->alfa)['ok'])->toBeTrue();
 });
 
@@ -146,6 +147,7 @@ it('cancella il registro a blocchi senza fermare le scritture delle altre associ
     config(['database.connections.pgsql_probe' => config('database.connections.pgsql')]);
     $probe = DB::connection('pgsql_probe');
     $alfaRows = auditRowsOf($this->owner, 'audit.log', $this->alfa);
+    $betaRows = auditRowsOf($this->owner, 'audit.log', $this->beta);
     expect($alfaRows)->toBeGreaterThan(20);
 
     // A ogni cancellazione nel registro, mentre la transazione del proprietario è ancora aperta, si guarda da fuori.
@@ -175,7 +177,7 @@ it('cancella il registro a blocchi senza fermare le scritture delle altre associ
         expect(auditRowsOf($this->owner, $table, $this->alfa))->toBe(0);
     }
     expect($done['rows'])->toBeGreaterThan($alfaRows)
-        ->and(auditRowsOf($this->owner, 'audit.log', $this->beta))->toBe(3)
+        ->and(auditRowsOf($this->owner, 'audit.log', $this->beta))->toBe($betaRows)
         ->and(app(ChainVerifier::class)->verify($this->beta)['ok'])->toBeTrue();
 });
 
