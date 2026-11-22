@@ -64,7 +64,7 @@ final class MinifyAssetsTest extends TestCase {
 
 	public function test_build_uses_the_tool_and_falls_back_to_the_source(): void {
 		$build = (string) file_get_contents( dirname( __DIR__, 3 ) . '/build.sh' );
-		$this->assertStringContainsString( 'perl minify-assets.pl "$kind" "$asset" "$asset.min"', $build );
+		$this->assertStringContainsString( 'perl minify-assets.pl "$kind" "$asset" "$asset.min.$kind"', $build );
 		$this->assertStringContainsString( 'resta com\'è (non ridotto)', $build, 'senza perl o con il controllo non superato resta il sorgente' );
 	}
 

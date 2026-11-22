@@ -92,10 +92,10 @@ for spec in css:frontend.css js:frontend.js; do
 	kind="${spec%%:*}"
 	asset="$out/free/associazionesemplice/assets/${spec#*:}"
 	[ -f "$asset" ] || { echo "Manca $asset" >&2; exit 1; }
-	if command -v perl > /dev/null 2>&1 && perl minify-assets.pl "$kind" "$asset" "$asset.min" && { [ "$kind" != "js" ] || ! command -v node > /dev/null 2>&1 || node --check "$asset.min"; }; then
-		mv "$asset.min" "$asset"
+	if command -v perl > /dev/null 2>&1 && perl minify-assets.pl "$kind" "$asset" "$asset.min.$kind" && { [ "$kind" != "js" ] || ! command -v node > /dev/null 2>&1 || node --check "$asset.min.$kind"; }; then
+		mv "$asset.min.$kind" "$asset"
 	else
-		rm -f "$asset.min"
+		rm -f "$asset.min.$kind"
 		echo "Attenzione: ${spec#*:} resta com'è (non ridotto)" >&2
 	fi
 done
