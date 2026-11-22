@@ -75,11 +75,10 @@ final class PersonSearch {
 			}
 			$found = self::find( $text );
 			if ( 1 !== count( $found ) ) {
-				throw new \InvalidArgumentException( // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-					$found
-						? \AssociazioneSemplice\Texts::t( 'Più persone corrispondono a quel nome: scrivilo per intero o con il numero di tessera.' )
-						: \AssociazioneSemplice\Texts::t( 'Non ho trovato nessuna persona con quel nome: scrivine almeno tre lettere, o il numero di tessera.' )
-				);
+				$msg = $found
+					? \AssociazioneSemplice\Texts::t( 'Più persone corrispondono a quel nome: scrivilo per intero o con il numero di tessera.' )
+					: \AssociazioneSemplice\Texts::t( 'Non ho trovato nessuna persona con quel nome: scrivine almeno tre lettere, o il numero di tessera.' );
+				throw new \InvalidArgumentException( $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$post[ $key ] = (string) $found[0]['id'];
 		}
