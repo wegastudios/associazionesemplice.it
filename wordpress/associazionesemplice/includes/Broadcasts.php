@@ -18,6 +18,9 @@ final class Broadcasts {
 	const MAX_PER_DAY = 20;
 	const QUEUE_CHUNK = 500; // destinatari scritti con una sola query
 	const STUCK_MIN   = 10;  // minuti dopo i quali una email «in invio» si considera rimasta a metà
+	const KEEP_RECIPIENTS_MONTHS = 24; // l'elenco di chi ha ricevuto una comunicazione si conserva 24 mesi dalla fine dell'invio, poi si cancella (i totali restano nella comunicazione); è una regola fissa, non un limite da cambiare
+	const PURGE_CHUNK            = 2000; // destinatari cancellati con una sola query
+	const PURGE_MAX_CHUNKS       = 25;   // al più 50.000 destinatari per passaggio giornaliero: il resto al giorno dopo
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -335,6 +338,35 @@ final class Broadcasts {
 
 	public static function recent( int $limit = 30 ): array {
 		return self::db()->get_results( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'broadcasts' ) . ' ORDER BY id DESC LIMIT %d', $limit ), ARRAY_A ) ?: array();
+	}
+
+	/** Data prima della quale l'invio di una comunicazione finita è abbastanza vecchio da cancellarne i destinatari (mai prima di {@see KEEP_RECIPIENTS_MONTHS} mesi). @param string $now data e ora attuali */
+	public static function recipients_cutoff( string $now ): string {
+		return gmdate( 'Y-m-d H:i:s', strtotime( '-' . self::KEEP_RECIPIENTS_MONTHS . ' months', strtotime( $now ) ) );
+	}
+
+	/**
+	 * Lavoro giornaliero: cancella, a blocchi, i destinatari delle comunicazioni finite da oltre 24 mesi (email e nomi). Le comunicazioni restano con i loro
+	 * totali (destinatari, inviate, non partite), che sono già salvati nella loro riga. Non tocca le comunicazioni ancora in corso.
+	 *
+	 * @return int destinatari cancellati
+	 */
+	public static function purge_recipients(): int {
+		$db      = self::db();
+		$cutoff  = self::recipients_cutoff( Db::now() );
+		$started = microtime( true );
+		$total   = 0;
+		for ( $i = 0; $i < self::PURGE_MAX_CHUNKS && microtime( true ) - $started < 15; $i++ ) {
+			$ids = $db->get_col( $db->prepare( 'SELECT r.id FROM ' . Db::t( 'broadcast_rcpt' ) . ' r JOIN ' . Db::t( 'broadcasts' ) . " b ON b.id = r.broadcast_id WHERE b.status = 'done' AND COALESCE(b.finished_at, b.created_at) < %s LIMIT %d", $cutoff, self::PURGE_CHUNK ) ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni
+			if ( ! $ids ) {
+				break;
+			}
+			$total += (int) $db->query( 'DELETE FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE id IN (' . implode( ',', array_map( 'intval', $ids ) ) . ')' ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno, identificativi interi
+			if ( count( $ids ) < self::PURGE_CHUNK ) {
+				break;
+			}
+		}
+		return $total;
 	}
 
 	public static function recipients_of( int $id ): array {

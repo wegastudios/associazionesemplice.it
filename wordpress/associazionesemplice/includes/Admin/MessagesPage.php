@@ -185,14 +185,18 @@ final class MessagesPage {
 		echo '<h2>' . esc_html( $b['subject'] ) . '</h2><p class="description">' . esc_html( mysql2date( 'd/m/Y H:i', $b['created_at'] ) ) . ' · ' . esc_html( Broadcasts::audience_label( $b ) ) . ' · '
 			. (int) $b['sent'] . ' inviate su ' . (int) $b['total'] . '</p>';
 		echo '<div class="asem-card" style="white-space:pre-wrap">' . esc_html( $b['body'] ) . '</div>';
-		if ( (int) $b['failed'] > 0 ) {
+		$rcpt = Broadcasts::recipients_of( $id );
+		if ( ! $rcpt && (int) $b['total'] > 0 && 'done' === $b['status'] ) {
+			echo '<p class="description">L\'elenco di chi l\'ha ricevuta si cancella dopo ' . (int) Broadcasts::KEEP_RECIPIENTS_MONTHS . ' mesi: restano i totali qui sopra.</p>';
+		}
+		if ( (int) $b['failed'] > 0 && $rcpt ) {
 			Ui::form_open( 'asem_broadcast_retry', Ui::url( 'asem-messages', array( 'view' => $id ) ), false, 'asem-inline' );
 			echo Ui::hidden( 'id', $id ) . '<p><button class="button">Riprova le ' . (int) $b['failed'] . ' non partite</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_close();
 		}
 		echo '<table class="widefat striped"><thead><tr><th>Destinatario</th><th>Email</th><th>Stato</th></tr></thead><tbody>';
 		$labels = array( 'sent' => 'Inviata', 'failed' => 'Non partita', 'queued' => 'In coda' );
-		foreach ( Broadcasts::recipients_of( $id ) as $r ) {
+		foreach ( $rcpt as $r ) {
 			echo '<tr><td>' . esc_html( $r['name'] ) . '</td><td>' . esc_html( $r['email'] ) . '</td><td>' . esc_html( $labels[ $r['status'] ] ?? $r['status'] ) . '</td></tr>';
 		}
 		echo '</tbody></table>';

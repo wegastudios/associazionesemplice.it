@@ -259,6 +259,7 @@ final class ProData {
 			'asem_resource_reminders'     => array( 'hourly', 1500, 'Resources', 'reminders_job', 'resources' ),
 			'asem_broadcast_batch'        => array( '', 0, 'Broadcasts', 'process_all', 'broadcasts' ),
 			'asem_check_pending_payments' => array( 'hourly', 300, 'PaymentService', 'check_pending_job', 'payments' ),
+			'asem_purge_broadcast_rcpt'   => array( 'daily', 3900, 'Broadcasts', 'purge_recipients', 'broadcasts' ), // destinatari delle comunicazioni finite da oltre 24 mesi
 		);
 	}
 

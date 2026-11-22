@@ -14,7 +14,7 @@ final class AuditPage {
 		$rows   = Audit::recent( 200, $prefix );
 		Ui::header( 'Registro azioni' );
 		$st = Audit::stats();
-		echo wp_kses( '<div class="asem-card"><p><strong>Spazio occupato dal registro:</strong> ' . esc_html( size_format( $st['bytes'], 1 ) ) . ' · ' . esc_html( number_format_i18n( $st['rows'] ) ) . ' righe'
+		echo wp_kses( '<div class="asem-card"><p><strong>Spazio occupato dal registro:</strong> ' . esc_html( size_format( $st['bytes'], 1 ) ) . ' · ' . ( $st['exact'] ? '' : 'circa ' ) . esc_html( number_format_i18n( $st['rows'] ) ) . ' righe'
 			. ( '' !== $st['oldest'] ? ' · la più vecchia è del ' . esc_html( mysql2date( 'd/m/Y', $st['oldest'] ) ) : '' ) . '.</p>'
 			. '<p class="description">Le righe più vecchie di ' . (int) \AssociazioneSemplice\Limits::get( 'audit_keep_months' ) . ' mesi si cancellano da sole ogni giorno (si cambia da Limiti e soglie). Per liberare spazio subito puoi eliminare tutto ciò che non è dell\'anno in corso.</p>'
 			. \AssociazioneSemplice\Admin\Ui::confirm_button( 'asem_audit_free', Ui::url( 'asem-audit' ), array(), 'Libera spazio', 'Eliminare dal registro tutte le azioni degli anni scorsi? Non si può annullare.' )
