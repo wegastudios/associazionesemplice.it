@@ -15,6 +15,8 @@ defined( 'ABSPATH' ) || exit;
 /** Registri: libro soci e verbali. */
 final class RegistersPage {
 
+	const BOOK_PER_PAGE = 100; // soci per pagina nel libro soci (i download PDF e CSV restano interi)
+
 	public static function date( ?string $ymd ): string {
 		return $ymd ? esc_html( ( new \DateTimeImmutable( $ymd ) )->format( 'd/m/Y' ) ) : '—';
 	}
@@ -45,7 +47,15 @@ final class RegistersPage {
 		$cap     = MemberBook::caption( $year, $version );
 		$snap    = 'snapshot' === $cap['state'];
 		Ui::header( $cap['title'] );
-		$rows = MemberBook::rows( $filter, $year, $version );
+		$pg    = MemberBook::page( $filter, $year, $version, Ui::get_int( 'paged', 1 ), self::BOOK_PER_PAGE ); // una pagina alla volta: le schede intere si leggono solo per le righe mostrate
+		$rows  = $pg['rows'];
+		$total = $pg['total'];
+		$pages = max( 1, (int) ceil( $total / self::BOOK_PER_PAGE ) );
+		$paged = max( 1, min( $pages, Ui::get_int( 'paged', 1 ) ) );
+		if ( $paged !== max( 1, Ui::get_int( 'paged', 1 ) ) ) { // pagina oltre l'ultima: si mostra l'ultima
+			$pg   = MemberBook::page( $filter, $year, $version, $paged, self::BOOK_PER_PAGE );
+			$rows = $pg['rows'];
+		}
 		echo '<p class="description">L\'elenco dei soci dell\'anno fiscale, con matricola, data di ingresso e, se c\'è stata, di cessazione (recesso, esclusione, decesso). Entra chi ha avuto una tessera valida per almeno un giorno dell\'anno fiscale (una tessera a cavallo di due anni fiscali compare in entrambi i libri). '
 			. 'Il numero di riga riparte da 1 ogni anno fiscale; la matricola invece resta la stessa per sempre. Gli ospiti non sono soci e non compaiono. La cessazione si registra dalla scheda del socio.</p>';
 		echo '<p class="description"><strong>' . esc_html( $cap['note'] ) . '</strong></p>';
@@ -78,7 +88,7 @@ final class RegistersPage {
 		if ( ! $hide_cf ) {
 			\AssociazioneSemplice\Employees::log_sensitive_read( 'book' ); // ogni lettura dei dati riservati è nel registro
 		}
-		echo '<p class="description">' . count( $rows ) . ( 1 === count( $rows ) ? ' socio.</p>' : ' soci.</p>' );
+		echo '<p class="description">' . (int) $total . ( 1 === $total ? ' socio.</p>' : ' soci.</p>' );
 		if ( $snap ) { // la fotografia ha solo i dati minimi: recapiti, domanda, quota e tutore non ci sono
 			echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Matricola</th><th>Cognome e nome</th><th>Tipo</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza</th><th>Categoria</th><th>Delibera</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
 		} else {
@@ -98,6 +108,18 @@ final class RegistersPage {
 			echo wp_kses( '<tr><td>' . (int) $r['n'] . '</td><td>' . esc_html( $matr ) . '</td><td>' . $name . '</td><td>' . esc_html( \AssociazioneSemplice\MemberBook::kind_label( (string) $r['kind'] ) ) . '</td><td>' . esc_html( $hide_cf ? '—' : $r['tax_code'] ) . '</td><td>' . $born . '</td>' . $middle . '<td>' . $left . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table>';
+		if ( $pages > 1 ) { // il libro si sfoglia a pagine; l'anno fiscale e il filtro scelti restano
+			$nav = array( 'year' => $year, 'filter' => $filter, 'version' => (int) $version );
+			echo '<p class="tablenav asem-pager">';
+			if ( $paged > 1 ) {
+				echo '<a class="button" href="' . esc_url( Ui::url( 'asem-book', array_merge( $nav, array( 'paged' => $paged - 1 ) ) ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( '← Precedenti' ) ) . '</a> ';
+			}
+			echo esc_html( \AssociazioneSemplice\Texts::t( 'Pagina {n} di {tot}', array( 'n' => $paged, 'tot' => $pages ) ) ) . ' ';
+			if ( $paged < $pages ) {
+				echo '<a class="button" href="' . esc_url( Ui::url( 'asem-book', array_merge( $nav, array( 'paged' => $paged + 1 ) ) ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( 'Successive →' ) ) . '</a>';
+			}
+			echo '</p>';
+		}
 		Ui::footer();
 	}
 

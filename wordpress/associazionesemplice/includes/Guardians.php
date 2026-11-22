@@ -105,9 +105,10 @@ final class Guardians {
 	}
 
 	/** Per l'elenco soci/libro soci: id persona => nomi dei tutori. @return array<int,string> */
-	public static function names_by_person(): array {
+	public static function names_by_person( ?array $person_ids = null ): array {
+		$only = null === $person_ids ? '' : ' AND g.person_id IN (' . implode( ',', array_map( 'intval', $person_ids ?: array( 0 ) ) ) . ')'; // solo per le persone indicate
 		$rows = self::db()->get_results(
-			'SELECT g.person_id, CONCAT(p.first_name, " ", p.last_name) AS name FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.guardian_person_id WHERE p.deleted_at IS NULL ORDER BY g.id',
+			'SELECT g.person_id, CONCAT(p.first_name, " ", p.last_name) AS name FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.guardian_person_id WHERE p.deleted_at IS NULL' . $only . ' ORDER BY g.id',
 			ARRAY_A
 		) ?: array();
 		$out  = array();
@@ -197,8 +198,9 @@ final class Guardians {
 	}
 
 	/** Per tutti i minori il tutore che opera sul sito: id minore => id tutore. @return array<int,int> */
-	public static function operative_ids(): array {
-		$rows = self::db()->get_results( 'SELECT person_id, guardian_person_id FROM ' . Db::t( 'guardians' ) . ' WHERE is_operative = 1', ARRAY_A ) ?: array();
+	public static function operative_ids( ?array $person_ids = null ): array {
+		$only = null === $person_ids ? '' : ' AND person_id IN (' . implode( ',', array_map( 'intval', $person_ids ?: array( 0 ) ) ) . ')'; // solo per le persone indicate
+		$rows = self::db()->get_results( 'SELECT person_id, guardian_person_id FROM ' . Db::t( 'guardians' ) . ' WHERE is_operative = 1' . $only, ARRAY_A ) ?: array();
 		$out  = array();
 		foreach ( $rows as $r ) {
 			$out[ (int) $r['person_id'] ] = (int) $r['guardian_person_id'];
@@ -275,23 +277,31 @@ final class Guardians {
 
 	// ---------- Diventare maggiorenni ----------
 
-	/** Ragazzi ancora collegati a un tutore che hanno compiuto 18 anni e non hanno ancora un accesso loro. @return array[] persone con 'adult_on' */
-	public static function adults_to_invite(): array {
-		$today = Db::today();
-		$limit = ( new \DateTimeImmutable( $today ) )->modify( '-' . Age::ADULT_AT . ' years' )->format( 'Y-m-d' );
-		$rows  = self::db()->get_results(
+	/** La condizione di {@see Guardians::adults_to_invite()}, con chi è già stato invitato escluso dal database. @return array{0:string,1:array} condizione e valori dei segnaposto */
+	private static function adults_filter(): array {
+		$limit   = ( new \DateTimeImmutable( Db::today() ) )->modify( '-' . Age::ADULT_AT . ' years' )->format( 'Y-m-d' );
+		$invited = array_values( array_unique( array_filter( array_map( 'intval', (array) get_option( self::INVITED_OPTION, array() ) ) ) ) );
+		$where   = 'p.deleted_at IS NULL AND p.anonymized_at IS NULL AND p.application_status IS NULL AND p.wp_user_id IS NULL AND p.type <> %s AND p.birth_date IS NOT NULL AND p.birth_date <= %s'
+			. ( $invited ? ' AND p.id NOT IN (' . implode( ',', $invited ) . ')' : '' );
+		return array( $where, array( MemberType::GUEST, $limit ) );
+	}
+
+	/** Quanti sono i ragazzi di {@see Guardians::adults_to_invite()}, contati dal database. */
+	public static function adults_to_invite_count(): int {
+		list( $where, $args ) = self::adults_filter();
+		return (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(DISTINCT p.id) FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE ' . $where, $args ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabelle interne, condizione costruita qui con segnaposto
+	}
+
+	/** Ragazzi ancora collegati a un tutore che hanno compiuto 18 anni e non hanno ancora un accesso loro (i primi $keep, se indicato). @return array[] persone con 'adult_on' */
+	public static function adults_to_invite( ?int $keep = null ): array {
+		list( $where, $args ) = self::adults_filter();
+		$rows = self::db()->get_results(
 			self::db()->prepare(
-				'SELECT DISTINCT p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id '
-				. 'WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL AND p.application_status IS NULL AND p.wp_user_id IS NULL AND p.type <> %s AND p.birth_date IS NOT NULL AND p.birth_date <= %s ORDER BY p.last_name, p.first_name',
-				MemberType::GUEST,
-				$limit
+				'SELECT DISTINCT p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE ' . $where . ' ORDER BY p.last_name, p.first_name' . ( null === $keep ? '' : ' LIMIT ' . max( 0, $keep ) ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabelle interne, condizione costruita qui con segnaposto
+				$args
 			),
 			ARRAY_A
 		) ?: array();
-		$invited = array_map( 'intval', (array) get_option( self::INVITED_OPTION, array() ) );
-		$rows    = array_values( array_filter( $rows, function ( $r ) use ( $invited ) {
-			return ! in_array( (int) $r['id'], $invited, true );
-		} ) );
 		foreach ( $rows as &$r ) {
 			$r['adult_on'] = Age::adult_on( (string) $r['birth_date'] );
 		}

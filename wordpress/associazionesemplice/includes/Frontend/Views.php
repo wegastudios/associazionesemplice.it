@@ -825,7 +825,9 @@ final class Views {
 		$unpaid   = 0;
 		$cancel   = 0;
 		$all_bookings = $svc->bookings_for_session( (int) $s['id'] );
-		$gov          = Plugin::people()->guest_overview();
+		$gov          = Plugin::people()->guest_overview( array_map( 'intval', array_column( array_filter( $all_bookings, function ( $b ) {
+			return MemberType::GUEST === $b['type'];
+		} ), 'person_id' ) ) ); // il quadro serve solo agli ospiti prenotati a questa data
 		foreach ( $all_bookings as $b ) {
 			if ( ! $b['active'] ) {
 				$cancel++;

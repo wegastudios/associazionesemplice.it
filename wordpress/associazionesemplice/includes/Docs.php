@@ -236,9 +236,22 @@ final class Docs {
 
 	/** @return array{body:string,filename:string,mime:string} */
 	public static function book( string $filter = '', string $format = 'pdf', ?int $year = null, ?int $version = null ): array {
-		$rows   = MemberBook::rows( $filter, $year, $version );
-		$all    = MemberBook::rows( '', $year, $version );
-		$active = count( MemberBook::rows( MemberBook::IN_FORCE, $year, $version ) );
+		$all    = MemberBook::rows( '', $year, $version ); // il libro si legge una volta sola: i due filtri si ricavano dallo stato di ogni riga
+		$rows   = $all;
+		if ( MemberBook::IN_FORCE === $filter || MemberBook::LEFT === $filter ) {
+			$rows = array_values(
+				array_filter(
+					$all,
+					function ( $r ) use ( $filter ) {
+						return $r['status'] === $filter;
+					}
+				)
+			);
+		}
+		$active = 0;
+		foreach ( $all as $r ) {
+			$active += MemberBook::LEFT === $r['status'] ? 0 : 1;
+		}
 		$cap    = null === $year ? null : MemberBook::caption( $year, $version );
 		$snap   = $cap && 'snapshot' === $cap['state'];
 		$name   = 'libro-soci' . ( null === $year ? '' : '-' . str_replace( '/', '-', FiscalYears::label( $year ) ) . ( $version ? '-chiusura-' . $version : '' ) );
