@@ -43,6 +43,7 @@ final class BootState {
 				self::set( $key, $old );
 				return $old;
 			}
+			self::set( $key, $default ); // nemmeno la vecchia opzione c'è: si ricorda il valore di partenza, così la vecchia non si cerca più a ogni richiesta
 		}
 		return $default;
 	}

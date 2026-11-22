@@ -3598,12 +3598,24 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	unset( $GLOBALS['current_screen'] );
 	// il gratuito cambia versione (anche da WordPress.org): il Pro ricontrolla il portale
 	delete_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT );
+	\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Updater::FREE_VERSION_KEY );
 	delete_option( \AssociazioneSemplice\Updater::RECHECK_OPT );
 	\AssociazioneSemplice\Updater::watch_free_version();
-	asem_ok( ASEM_VERSION === get_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT ) && ! get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ), 'cambio del gratuito: la prima volta si ricorda la versione senza ricontrollare' );
-	update_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT, '0.0.1', false );
+	asem_ok( ASEM_VERSION === \AssociazioneSemplice\BootState::get( \AssociazioneSemplice\Updater::FREE_VERSION_KEY ) && ! get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ), 'cambio del gratuito: la prima volta si ricorda la versione senza ricontrollare' );
+	$up_q = $wpdb->num_queries;
+	for ( $up_i = 0; $up_i < 10; $up_i++ ) {
+		\AssociazioneSemplice\Updater::watch_free_version();
+	}
+	asem_ok( 0 === $wpdb->num_queries - $up_q, 'cambio del gratuito: a ogni pagina di amministrazione il controllo non fa nessuna query (' . ( $wpdb->num_queries - $up_q ) . ')' );
+	\AssociazioneSemplice\BootState::set( \AssociazioneSemplice\Updater::FREE_VERSION_KEY, '0.0.1' );
 	\AssociazioneSemplice\Updater::watch_free_version();
-	asem_ok( (bool) get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ) && ASEM_VERSION === get_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT ), 'cambio del gratuito: una versione diversa chiede un nuovo controllo' );
+	asem_ok( (bool) get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ) && ASEM_VERSION === \AssociazioneSemplice\BootState::get( \AssociazioneSemplice\Updater::FREE_VERSION_KEY ), 'cambio del gratuito: una versione diversa chiede un nuovo controllo' );
+	update_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT, '0.0.2', false ); // sito aggiornato da una versione che usava ancora la vecchia opzione: si legge una volta, poi vale quella riunita
+	\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Updater::FREE_VERSION_KEY );
+	delete_option( \AssociazioneSemplice\Updater::RECHECK_OPT );
+	\AssociazioneSemplice\Updater::watch_free_version();
+	asem_ok( (bool) get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ) && ASEM_VERSION === \AssociazioneSemplice\BootState::get( \AssociazioneSemplice\Updater::FREE_VERSION_KEY ), 'cambio del gratuito: la versione ricordata dalla vecchia opzione vale ancora' );
+	delete_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT );
 	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
 	$up_calls = array();
 	\AssociazioneSemplice\Updater::refresh_in_background();
@@ -3627,6 +3639,7 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	wp_set_current_user( $up_old );
 	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
 	delete_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT );
+	\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Updater::FREE_VERSION_KEY );
 	Settings::update( array( 'limits' => array( 'portal_updates' => 0 ) ) );
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	asem_ok( empty( $up_tr->response ), 'aggiornamento diretto: spento dai limiti, niente aggiornamenti' );
@@ -8935,6 +8948,20 @@ asem_ok( '2026/2027' === $ra_row( $ra_b )['social_year'] && '2027-08-31' === $ra
 asem_ok( (int) $ra_e === (int) $ra_row( $ra_d )['replaced_by'] && null === $ra_row( $ra_e )['replaced_by'] && '2025/2026' === $ra_row( $ra_d )['social_year'], 'tessera e anno fiscale: due tessere dello stesso anno, resta la più recente e l\'altra è «sostituita» (non cancellata)' );
 asem_ok( in_array( 'membership.realigned', array_column( Audit::recent( 50 ), 'action' ), true ) && in_array( 'membership.replaced', array_column( Audit::recent( 50 ), 'action' ), true ), 'tessera e anno fiscale: ogni passo è nel registro azioni' );
 asem_ok( 0 === \AssociazioneSemplice\Install::realign_memberships_to_fiscal(), 'tessera e anno fiscale: rilanciare il riallineamento non cambia nulla' );
+// Il segnale «riallineamento da fare» sta nell'opzione riunita (nessuna query a ogni pagina); una vecchia opzione «0» si legge una volta sola
+\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Install::REALIGN_KEY );
+delete_option( \AssociazioneSemplice\Install::REALIGN_OPTION );
+\AssociazioneSemplice\Install::maybe_realign_memberships(); // la prima volta cerca anche la vecchia opzione e ricorda che non c'è
+$ra_q = $wpdb->num_queries;
+for ( $ra_i = 0; $ra_i < 10; $ra_i++ ) {
+	\AssociazioneSemplice\Install::maybe_realign_memberships();
+}
+asem_ok( 0 === $wpdb->num_queries - $ra_q, 'tessera e anno fiscale: senza riallineamento da fare il controllo di ogni pagina non fa query (' . ( $wpdb->num_queries - $ra_q ) . ')' );
+update_option( \AssociazioneSemplice\Install::REALIGN_OPTION, '0', false );
+\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Install::REALIGN_KEY );
+\AssociazioneSemplice\Install::maybe_realign_memberships();
+asem_ok( '1' === (string) \AssociazioneSemplice\BootState::get( \AssociazioneSemplice\Install::REALIGN_KEY ), 'tessera e anno fiscale: un riallineamento chiesto con la vecchia opzione si fa e si segna come fatto' );
+delete_option( \AssociazioneSemplice\Install::REALIGN_OPTION );
 $ra_nt = (array) get_option( \AssociazioneSemplice\Install::NOTICE_OPTION, array() );
 asem_ok( (int) ( $ra_nt['changed'] ?? 0 ) >= 1 && (int) ( $ra_nt['replaced'] ?? 0 ) >= 1, 'tessere e anno fiscale: l\'esito (riallineate e sostituite) resta per l\'avviso in Bacheca' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Tessere riallineate: ' . (int) $ra_nt['changed'] . '. Tessere sostituite: ' . (int) $ra_nt['replaced'] );
@@ -9652,6 +9679,23 @@ asem_render( array( Admin\BookDeskPage::class, 'render' ), 'prossime date', arra
 \AssociazioneSemplice\Texts::mail( 'prova@example.com', 'Prova registro', 'x' );
 $bd_log = \AssociazioneSemplice\MailLog::recent( 1 );
 asem_ok( $bd_log && 'Prova registro' === $bd_log[0]['what'] && 'p***@example.com' === $bd_log[0]['to'], 'posta: l\'esito resta nel registro con l\'indirizzo in parte nascosto' );
+// Registro della posta: una sola scrittura a fine richiesta, non una per ogni email; le letture vedono subito anche quelle non ancora scritte
+\AssociazioneSemplice\MailLog::flush();
+$ml_writes = 0;
+$ml_count  = static function ( $v ) use ( &$ml_writes ) {
+	++$ml_writes;
+	return $v;
+};
+add_filter( 'pre_update_option_' . \AssociazioneSemplice\MailLog::OPTION, $ml_count );
+for ( $ml_i = 1; $ml_i <= 6; $ml_i++ ) {
+	\AssociazioneSemplice\Texts::mail( 'registro' . $ml_i . '@example.com', 'Registro ' . $ml_i, 'x' );
+}
+asem_ok( 0 === $ml_writes && 'Registro 6' === \AssociazioneSemplice\MailLog::recent( 1 )[0]['what'] && 'Registro 1' === \AssociazioneSemplice\MailLog::recent( 6 )[5]['what'], 'posta: sei email non scrivono ancora nulla, ma il registro le mostra già tutte (' . $ml_writes . ' scritture)' );
+\AssociazioneSemplice\MailLog::flush();
+\AssociazioneSemplice\MailLog::flush();
+$ml_stored = (array) get_option( \AssociazioneSemplice\MailLog::OPTION, array() );
+asem_ok( 1 === $ml_writes && 'Registro 6' === end( $ml_stored )['what'] && count( $ml_stored ) <= \AssociazioneSemplice\MailLog::KEEP, 'posta: a fine richiesta una sola scrittura per tutte le email, e un secondo giro non riscrive nulla (' . $ml_writes . ' scritture)' );
+remove_filter( 'pre_update_option_' . \AssociazioneSemplice\MailLog::OPTION, $ml_count );
 // ---------- Listini, pacchetti e ospiti dell'associazione / del volontario ----------
 $pl_vol = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Livia', 'last_name' => 'Listino', 'email' => 'livia.listino@example.com' ) );
 $pl_a   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anna', 'last_name' => 'Listino', 'email' => 'anna.listino@example.com' ) );
@@ -9976,6 +10020,7 @@ asem_ok( ! empty( $ap_row['privacy_consent_at'] ) && 'web' === $ap_row['privacy_
 asem_ok( array() === array_filter( $people->search( array( 'q' => 'Adesioni' ) ), function ( $x ) { return 'Aldo' === $x['first_name']; } ) && array() === array_filter( \AssociazioneSemplice\MemberBook::rows(), function ( $x ) use ( $ap_aldo ) { return (int) $x['id'] === $ap_aldo; } ) && false === strpos( Admin\Exports::people()[1], 'aldo.adesioni' ), 'domanda: fuori da elenco soci, libro soci ed esportazione' );
 asem_ok( count( $ap_mails ) === $ap_mn + 3 && null !== $ap_mail_to( 'segreteria.adesioni@example.com' ) && null !== $ap_mail_to( 'aldo.adesioni@example.com' ), 'domanda: email alla segreteria e conferma a chi l\'ha inviata' );
 asem_ok( false !== strpos( (string) $ap_mail_to( 'aldo.adesioni@example.com' )['message'], 'si paga in sede' ), 'domanda: senza pagamento online la quota si paga in sede' );
+\AssociazioneSemplice\MailLog::flush(); // il registro si scrive a fine richiesta: qui si vuole leggerlo dall'opzione
 $ap_log = (array) get_option( \AssociazioneSemplice\MailLog::OPTION, array() );
 asem_ok( count( $ap_log ) >= 2 && false !== strpos( wp_json_encode( $ap_log ), 'Nuova domanda di adesione' ), 'domanda: le email passano dal registro della posta' );
 $ap_n    = count( $ap_mails );

@@ -126,7 +126,7 @@ final class Install {
 				self::migrate_wp_role_access();
 			}
 			if ( '' !== $old && version_compare( $old, '71', '<' ) ) {
-				update_option( self::REALIGN_OPTION, '0', false ); // la tessera segue l'anno fiscale: riallineamento delle tessere esistenti (dopo una copia di sicurezza)
+				BootState::set( self::REALIGN_KEY, '0' ); // la tessera segue l'anno fiscale: riallineamento delle tessere esistenti (dopo una copia di sicurezza)
 				self::maybe_realign_memberships();
 			}
 			if ( '' !== $old && version_compare( $old, '72', '<' ) ) {
@@ -420,7 +420,8 @@ final class Install {
 		return $n;
 	}
 
-	const REALIGN_OPTION = 'asem_memberships_realigned'; // vuoto = da fare, 1 = fatto
+	const REALIGN_OPTION = 'asem_memberships_realigned'; // la vecchia opzione (si legge una volta sola, poi vale il segnale riunito in BootState)
+	const REALIGN_KEY    = 'memberships_realigned';      // vuoto = niente da fare, 0 = da fare, 1 = fatto
 
 	/**
 	 * La tessera segue l'anno fiscale: le tessere già emesse con un altro anno (per esempio «2025/2026», settembre-agosto) si riallineano all'anno
@@ -528,11 +529,11 @@ final class Install {
 
 	/** Fa il riallineamento delle tessere una volta sola; se la copia non è riuscita si riprova al prossimo accesso al pannello. */
 	public static function maybe_realign_memberships(): void {
-		if ( '0' !== (string) get_option( self::REALIGN_OPTION, '' ) ) { // solo dopo un aggiornamento che l'ha chiesto («0»), e finché non è riuscito
+		if ( '0' !== (string) BootState::get( self::REALIGN_KEY, self::REALIGN_OPTION, '' ) ) { // solo dopo un aggiornamento che l'ha chiesto («0»), e finché non è riuscito
 			return;
 		}
 		if ( self::realign_memberships_to_fiscal() >= 0 ) {
-			update_option( self::REALIGN_OPTION, '1', false );
+			BootState::set( self::REALIGN_KEY, '1' );
 		}
 	}
 
