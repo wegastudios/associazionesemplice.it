@@ -26,7 +26,7 @@ final class PageCache {
 	const EXTERNAL_ALL = 'asem_pc_ext_all';
 
 	/** Tabelle che, se scritte, cambiano ciò che le pagine pubbliche mostrano (date, posti, tariffe, prenotazioni, richieste dei non soci). */
-	const TABLES = 'activities|sessions|bookings|event_requests';
+	const TABLES = 'activities|sessions|bookings|event_requests|lesson_exceptions';
 
 	/** @var int */
 	private static $hits = 0;
@@ -166,13 +166,13 @@ final class PageCache {
 	// ---------- Svuotamento ----------
 
 	/** La generazione corrente (parte della chiave di ogni voce). */
-	private static function generation(): string {
+	public static function generation(): string {
 		self::$bumped = false;
 		return (string) get_option( self::GEN_OPTION, '0' );
 	}
 
 	/** La generazione scritta ora nel database (una lettura diretta: chi ha disegnato mentre un altro scriveva non salva una copia vecchia). */
-	private static function stored_generation(): string {
+	public static function stored_generation(): string {
 		$db = Db::db();
 		$v  = $db->get_var( $db->prepare( 'SELECT option_value FROM ' . $db->options . ' WHERE option_name = %s', self::GEN_OPTION ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella di WordPress, valore preparato
 		return null === $v ? '0' : (string) $v;
