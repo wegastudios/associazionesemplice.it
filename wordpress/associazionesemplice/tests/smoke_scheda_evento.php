@@ -46,13 +46,21 @@ $se_q2   = $wpdb->num_queries;
 
 $se_max = 0;
 $se_sel = 0;
-if ( preg_match_all( '~<select\b[^>]*>(.*?)</select>~s', $se_html, $se_m ) ) {
-	foreach ( $se_m[1] as $body ) {
+$se_big = '';
+if ( preg_match_all( '~<select\b([^>]*)>(.*?)</select>~s', $se_html, $se_m, PREG_SET_ORDER ) ) {
+	foreach ( $se_m as $one ) {
+		if ( false !== strpos( $one[1], 'instructor_person_id' ) ) { // il referente (solo i volontari) è uno per pagina e non fa parte della prenotazione
+			continue;
+		}
 		$se_sel++;
-		$se_max = max( $se_max, substr_count( $body, '<option' ) );
+		$n = substr_count( $one[2], '<option' );
+		if ( $n > $se_max ) {
+			$se_max = $n;
+			$se_big = $one[1];
+		}
 	}
 }
-asem_ok( $se_sel > 0 && $se_max <= 40, 'scheda evento: nessuna tendina con più di 40 voci con ' . $se_peo->count_people() . ' persone (la più lunga ne ha ' . $se_max . ')' );
+asem_ok( $se_sel > 0 && $se_max <= 40, 'scheda evento: nessuna tendina con più di 40 voci con ' . $se_peo->count_people() . ' persone (la più lunga ne ha ' . $se_max . ': ' . $se_big . ')' );
 asem_ok( false === strpos( $se_html, 'Zeta0100' ), 'scheda evento: i nomi delle persone non prenotate non sono nella pagina' );
 asem_ok( substr_count( $se_html, 'asem-minsearch' ) >= 40, 'scheda evento: ogni prenotato ha la ricerca per cedere il posto' );
 asem_ok( false !== strpos( $se_html, 'name="to_person_id_q"' ) && false !== strpos( $se_html, 'name="person_id_q"' ), 'scheda evento: i campi di ricerca portano il testo anche senza JavaScript' );
