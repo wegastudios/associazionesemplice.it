@@ -100,6 +100,24 @@ Durante il rilascio il log del workflow (pubblico) riporta solo l'esito e il num
 salvata sul server in `shared/health-<data>.txt` (permessi 600, ultimi 5 file) e si legge via SSH.
 Se `crontab` non è disponibile sul server, lo scheduler va configurato a mano con la riga indicata in questo documento.
 
+**Saldi dei conti e input «ignora-saldi».** Il controllo notturno `saas:balances:verify` confronta il saldo di ogni
+conto con saldo di partenza più movimenti non stornati; se c'è un conto diverso, la voce «saldi dei conti» di
+`saas:health` è un ERRORE e ferma il rilascio (dettaglio di associazione e conto solo in `shared/saldi-<data>.txt`).
+Quando serve proprio un rilascio per correggere quel difetto:
+
+1. Actions → «SaaS · rilascio» → spuntare **ignora-saldi** (di norma è spento, e va lasciato spento per tutti gli
+   altri rilasci).
+2. Con l'input acceso `saas:health` gira con `--ignore-balances`: **solo** la voce «saldi dei conti» diventa un avviso;
+   ogni altro errore (database, migrazioni, servizio chiavi, configurazione…) continua a fermare il rilascio e a
+   riportare alla versione precedente.
+3. Il rilascio lo annota in due posti: nel log del workflow (avviso «Rilascio con ignora-saldi, lanciato da
+   `<utente GitHub>`» e, dal server, la riga «ATTENZIONE: controllo dei saldi dei conti IGNORATO per questo rilascio,
+   lanciato da `<utente>`») e nel registro dell'amministrazione (`core.platform_audit`, azione
+   `deploy.balances_check_ignored`, con utente e revisione), con `php artisan saas:deploy:ignore-balances <utente> <revisione>`.
+   Se l'annotazione non riesce, il rilascio si ferma prima di toccare qualcosa.
+4. Dopo il rilascio: `php artisan saas:balances:verify` sul server e poi `saas:health` senza opzioni, per vedere che
+   la voce sia tornata «ok». Niente si corregge da solo: la correzione la fa la versione rilasciata.
+
 ## 3. Backup
 
 | Livello | Cosa | Dove | Perdita massima |

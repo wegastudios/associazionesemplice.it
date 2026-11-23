@@ -14,6 +14,10 @@ on:
         type: choice
         options: [production, staging, demo]
         default: production
+      ignora-saldi:
+        description: "Solo per il rilascio che corregge un difetto dei saldi: «saldi dei conti» di saas:health diventa un avviso (annotato nel log e nel registro dell'amministrazione)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -100,14 +104,23 @@ jobs:
           PORT: ${{ secrets.SAAS_SSH_PORT || '22' }}
           SSH_USER: ${{ secrets.SAAS_SSH_USER }}
           TARGET: ${{ inputs.environment }}
+          IGNORE_BALANCES: ${{ inputs.ignora-saldi && 'true' || 'false' }}
+          ACTOR: ${{ github.actor }}
         run: |
+          # ignora-saldi: si annota chi l'ha chiesto (nome utente GitHub, controllato prima di passarlo al server).
+          if [ "$IGNORE_BALANCES" = true ]; then
+            [[ "$ACTOR" =~ ^[A-Za-z0-9][A-Za-z0-9-]{0,38}$ ]] || { echo "::error::Utente GitHub non valido per ignora-saldi."; exit 1; }
+            echo "::warning::Rilascio con ignora-saldi, lanciato da $ACTOR: il controllo «saldi dei conti» non ferma il rilascio, tutti gli altri sì."
+          else
+            ACTOR=-
+          fi
           # La demo può stare nello stesso account della produzione: cartella propria, mai ~/saas.
           DIR=saas; [ "$TARGET" = demo ] && DIR=saas-demo
           PKG="$(ls out/saas-*.tar.gz)"; NAME="$(basename "$PKG")"; SUM="$(cat "$PKG.sha256")"
           SSH=(ssh -i ~/.ssh/deploy -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$SSH_USER@$HOST")
           "${SSH[@]}" "mkdir -p ~/$DIR/incoming"
           "${SSH[@]}" "cat > ~/$DIR/incoming/$NAME" < "$PKG"
-          "${SSH[@]}" "SAAS_BASE=\"\$HOME/$DIR\" bash -s -- ~/$DIR/incoming/$NAME $SUM" < saas/deploy/remote.sh
+          "${SSH[@]}" "SAAS_BASE=\"\$HOME/$DIR\" SAAS_IGNORE_BALANCES=$IGNORE_BALANCES SAAS_DEPLOY_ACTOR=$ACTOR bash -s -- ~/$DIR/incoming/$NAME $SUM" < saas/deploy/remote.sh
       - name: Pulizia
         if: always()
         run: rm -f ~/.ssh/deploy
