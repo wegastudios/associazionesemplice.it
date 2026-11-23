@@ -83,9 +83,9 @@
     <a class="logo" href="{{ $portal }}/" aria-label="Associazione Semplice">
         <picture class="logo-full">
             <source media="(prefers-color-scheme: dark)" srcset="{{ asset('assets/brand/logo-orizzontale-negativo.svg') }}">
-            <img src="{{ asset('assets/brand/logo-orizzontale-colore.svg') }}" alt="Associazione Semplice" height="40">
+            <img src="{{ asset('assets/brand/logo-orizzontale-colore.svg') }}" alt="Associazione Semplice" width="109" height="40">
         </picture>
-        <picture class="logo-sym"><img src="{{ asset('assets/brand/simbolo-colore.svg') }}" alt="" height="40"></picture>
+        <picture class="logo-sym"><img src="{{ asset('assets/brand/simbolo-colore.svg') }}" alt="" width="41" height="40"></picture>
     </a>
     <nav class="nav" aria-label="Principale">
         <a href="{{ $portal }}/funzioni">Funzioni</a>

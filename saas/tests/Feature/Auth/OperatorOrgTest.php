@@ -38,7 +38,7 @@ it('apre il gestionale dell\'unica associazione e mostra solo i suoi dati', func
         ->assertInertia(fn (Assert $page) => $page->component('Dashboard')
             ->where('org.name', 'Polisportiva Alfa')
             ->where('org.role', 'Titolare')
-            ->where('peopleCount', 1));
+            ->loadDeferredProps('cruscotto', fn (Assert $reload) => $reload->where('peopleCount', 1)));
 
     // A fine richiesta l'associazione è azzerata.
     expect($this->orgSetting())->toBe('');

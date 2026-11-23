@@ -42,7 +42,10 @@ const showTools = ref(false);
 const detail = ref(null);
 
 const filtersActive = computed(() => (props.account ? 1 : 0) + (props.activity ? 1 : 0));
-const filter = (changes) => router.get('/gestionale/prima-nota', { anno: props.year, conto: props.account, attivita: props.activity, ...changes }, { preserveState: true, replace: true });
+// I filtri chiedono al server solo i movimenti: conti, categorie, attività, saldi e impostazioni restano quelli della pagina.
+const filter = (changes) => router.get('/gestionale/prima-nota', { anno: props.year, conto: props.account, attivita: props.activity, ...changes }, {
+    preserveState: true, replace: true, only: ['year', 'account', 'activity', 'rows', 'next', 'prev'],
+});
 const sendReceipt = (r) => router.post(`/gestionale/ricevute/${r.receipt_id}/invia`, {}, { preserveScroll: true });
 const setActivity = (r, id) => router.post(`/gestionale/prima-nota/${r.id}/attivita`, { activity_id: id || null }, { preserveScroll: true });
 

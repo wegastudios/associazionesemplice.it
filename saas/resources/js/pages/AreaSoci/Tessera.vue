@@ -20,7 +20,7 @@ const regenerate = () => window.confirm('Rigenerare il codice della tessera? Que
         <!-- La tessera: sempre su fondo indaco con testo bianco e QR su pannello bianco, leggibile anche con poca luce. -->
         <section class="mx-auto max-w-sm overflow-hidden rounded-3xl bg-indaco p-6 text-white" aria-labelledby="name">
             <div class="flex items-center gap-3">
-                <img src="/assets/brand/simbolo-negativo.svg" alt="" class="size-9 shrink-0" />
+                <img src="/assets/brand/simbolo-negativo.svg" alt="" width="36" height="36" class="size-9 shrink-0" />
                 <p class="min-w-0 flex-1 truncate text-sm font-semibold text-white/85">{{ member.org }}</p>
             </div>
             <h1 id="name" class="mt-6 text-2xl font-bold leading-tight">{{ card.first_name }} {{ card.last_name }}</h1>

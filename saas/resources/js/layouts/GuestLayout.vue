@@ -8,7 +8,7 @@ defineProps({ title: { type: String, required: true }, subtitle: { type: String,
             <div class="mb-8 flex flex-col items-center gap-3 text-center">
                 <picture>
                     <source srcset="/assets/brand/logo-orizzontale-negativo.svg" media="(prefers-color-scheme: dark)" />
-                    <img src="/assets/brand/logo-orizzontale-colore.svg" alt="Associazione Semplice" class="h-11 w-auto" />
+                    <img src="/assets/brand/logo-orizzontale-colore.svg" alt="Associazione Semplice" width="120" height="44" class="h-11 w-auto" />
                 </picture>
             </div>
             <section class="card p-5 sm:p-8" aria-labelledby="page-title">
