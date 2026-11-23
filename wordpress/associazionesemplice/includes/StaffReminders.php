@@ -32,7 +32,7 @@ final class StaffReminders {
 	/** Messaggio alla segreteria (stesso indirizzo degli avvisi di nuova adesione). */
 	public static function mail( string $subject, string $text ): bool {
 		$assoc = (string) Settings::get( 'association_name' );
-		return (bool) Texts::mail( Applications::notify_email(), \AssociazioneSemplice\Texts::subject( $subject ), $text );
+		return (bool) Texts::mail( Applications::notify_email(), \AssociazioneSemplice\Texts::subject( $subject ), $text, '', array(), false );
 	}
 
 	/**

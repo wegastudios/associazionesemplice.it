@@ -299,7 +299,7 @@ final class Broadcasts {
 			if ( 1 !== (int) $db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => 'sending', 'sent_at' => Db::now() ), array( 'id' => (int) $r['id'], 'status' => 'queued' ) ) ) { // sent_at ricorda da quando è «in invio»
 				continue;
 			}
-			$ok = Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( $b['subject'] ), self::text_for( $b['body'], $r['name'] ) );
+			$ok = Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( $b['subject'] ), self::text_for( $b['body'], $r['name'] ), '', array(), false ); // ha già la sua coda e i suoi nuovi tentativi
 			$first = (string) strtok( (string) $r['name'], ' ' );
 			Push::notify_email( (string) $r['email'], (string) $b['subject'], strtr( (string) $b['body'], array( '{nome}' => $first, '{associazione}' => $assoc ) ) ); // anche sul telefono, se ha attivato le notifiche
 			$tries = $ok ? 0 : 1 + ( 0 === strpos( (string) $r['error'], self::RETRY_MARK ) ? (int) substr( (string) $r['error'], strlen( self::RETRY_MARK ) ) : 0 );
@@ -343,7 +343,7 @@ final class Broadcasts {
 		if ( ! $u || ! is_email( $u->user_email ) ) {
 			throw new \InvalidArgumentException( 'Il tuo utente non ha un indirizzo email: aggiungilo nel tuo profilo.' );
 		}
-		return Texts::mail( $u->user_email, Texts::subject( '[Prova] ' . trim( $subject ) ), self::text_for( trim( $body ), (string) ( $u->first_name ?: $u->display_name ) ) );
+		return Texts::mail( $u->user_email, Texts::subject( '[Prova] ' . trim( $subject ) ), self::text_for( trim( $body ), (string) ( $u->first_name ?: $u->display_name ) ), '', array(), false );
 	}
 
 	// ---------- Storico ----------
