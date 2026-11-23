@@ -233,6 +233,40 @@ it('cifra a flusso nello stesso formato: il vecchio lettore apre il file a quals
     'pezzi molto piccoli' => [BackupEncryptor::CHUNK + 1000, 13],
 ]);
 
+/** Un finto pg_dump che stampa il messaggio dato sull'errore ed esce con 1. */
+function fakePgDump(string $message): string
+{
+    $path = (string) tempnam(sys_get_temp_dir(), 'pgdump');
+    file_put_contents($path, "#!/bin/sh\necho \"{$message}\" >&2\nexit 1\n");
+    chmod($path, 0755);
+
+    return $path;
+}
+
+it('se il pg_dump del server non sa fare zstd il backup usa gzip da solo e la salute avvisa', function (): void {
+    $fake = fakePgDump('pg_dump: error: this build does not support compression with ZSTD');
+    config(['saas.backup.pg_dump' => $fake]);
+    $this->app->forgetInstance(Backups::class);
+
+    expect(app(Backups::class)->compression())->toBe('gzip:6');
+    $this->artisan('saas:health', ['--skip-migrations' => true])
+        ->expectsOutputToContain('AVVISO copia dei dati: compressione zstd non disponibile, uso gzip')
+        ->assertSuccessful();
+    unlink($fake);
+});
+
+it('se il pg_dump sa fare zstd si usa zstd e la salute non avvisa', function (): void {
+    $fake = fakePgDump('pg_dump: error: connection to server at "127.0.0.1", port 1 failed: Connection refused');
+    config(['saas.backup.pg_dump' => $fake]);
+    $this->app->forgetInstance(Backups::class);
+
+    expect(app(Backups::class)->compression())->toBe('zstd:3');
+    $this->artisan('saas:health', ['--skip-migrations' => true])
+        ->expectsOutputToContain('ok    copia dei dati')
+        ->assertSuccessful();
+    unlink($fake);
+});
+
 it('un flusso cifrato troncato non si apre', function (): void {
     $pair = sodium_crypto_box_keypair();
     $encryptor = new BackupEncryptor(sodium_crypto_box_publickey($pair), []);

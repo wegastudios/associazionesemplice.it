@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Console;
 
 use App\Modules\AreaSoci\Contracts\PaymentWebhookHealth;
+use App\Modules\Backup\Contracts\BackupCompression;
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Contabilita\Contracts\BalanceCheck;
 use App\Modules\Core\Contracts\DatabaseNames;
@@ -50,7 +51,7 @@ final class HealthCommand extends Command
 
     protected $description = 'Controlla database, migrazioni, servizio chiavi e spazi dei file';
 
-    public function handle(DatabaseManager $db, DatabaseNames $databases, KeyVault $vault, WebRuntimeProbe $probe, BalanceCheck $balances): int
+    public function handle(DatabaseManager $db, DatabaseNames $databases, KeyVault $vault, WebRuntimeProbe $probe, BalanceCheck $balances, BackupCompression $compression): int
     {
         $checks = [
             'database' => fn () => $db->connection('pgsql')->select('SELECT 1'),
@@ -94,6 +95,11 @@ final class HealthCommand extends Command
             'lavori non riusciti' => fn () => $this->jobsFailed($db),
             'incassi online in coda' => PaymentWebhookHealth::check(...),
             'controllo notturno dei saldi' => fn () => $this->balancesRun($balances),
+            'copia dei dati' => function () use ($compression): void {
+                if ($compression->fellBackToGzip()) {
+                    throw new RuntimeException('compressione zstd non disponibile, uso gzip');
+                }
+            },
         ];
         $warnOnly = array_keys($alwaysWarn);
         if ($this->option('mail-warnings-only') === true) {

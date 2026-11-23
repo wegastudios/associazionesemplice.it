@@ -7,6 +7,7 @@ namespace App\Modules\Backup\Providers;
 use App\Modules\Backup\BackupConfig;
 use App\Modules\Backup\Backups;
 use App\Modules\Backup\Console\BackupDumpCommand;
+use App\Modules\Backup\Contracts\BackupCompression;
 use App\Modules\Backup\Console\BackupPruneCommand;
 use App\Modules\Backup\Console\BackupRestoreTestCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
@@ -26,6 +27,7 @@ final class BackupServiceProvider extends ServiceProvider
             $app->make(BackupConfig::class),
             Storage::disk('backups'),
         ));
+        $this->app->bind(BackupCompression::class, static fn (Application $app): Backups => $app->make(Backups::class));
     }
 
     public function boot(): void

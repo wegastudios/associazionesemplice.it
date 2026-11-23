@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Backup;
 
+use App\Modules\Backup\Contracts\BackupCompression;
 use App\Modules\Backup\Crypto\BackupCipher;
 use App\Modules\Backup\Crypto\BackupEncryptor;
 use App\Modules\Backup\Crypto\EncryptedPipe;
@@ -14,6 +15,7 @@ use Generator;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
@@ -26,7 +28,7 @@ use Throwable;
  * - il dump si cifra sul server con la chiave pubblica dei backup prima di uscire;
  * - accanto al dump un piccolo file JSON con impronta e numero di righe per tabella (nessun dato), per la prova.
  */
-final readonly class Backups
+final readonly class Backups implements BackupCompression
 {
     public function __construct(
         private DatabaseNames $databases,
@@ -34,6 +36,38 @@ final readonly class Backups
         private BackupConfig $config,
         private Filesystem $disk,
     ) {}
+
+    public function fellBackToGzip(): bool
+    {
+        return str_starts_with($this->config->compression(), 'zstd') && ! $this->zstdAvailable();
+    }
+
+    /** Compressione effettiva: quella configurata, ma gzip da solo se il pg_dump del server non sa fare zstd. */
+    public function compression(): string
+    {
+        return $this->fellBackToGzip() ? 'gzip:6' : $this->config->compression();
+    }
+
+    /**
+     * Prova a vuoto, una volta al giorno (in cache): pg_dump rifiuta zstd mentre legge le opzioni, prima di collegarsi.
+     * Qualunque altro esito (anche un errore di collegamento, o un programma che non parte) vale «c'è».
+     */
+    private function zstdAvailable(): bool
+    {
+        $binary = $this->config->binary('pg_dump');
+        $known = Cache::remember('backup:zstd:'.md5($binary), 86400, function () use ($binary): string {
+            $probe = new Process([$binary, '--compress=zstd:1', '--file='.(PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null'), '--no-password', '--host=127.0.0.1', '--port=1', '--dbname=prova'], null, ['PGCONNECT_TIMEOUT' => '2'], null, 15);
+            try {
+                $probe->run();
+            } catch (Throwable) {
+                return 'yes';
+            }
+
+            return preg_match('/does not support compression|invalid compression|unrecognized compression|unsupported compression/i', $probe->getErrorOutput()) === 1 ? 'no' : 'yes';
+        });
+
+        return $known !== 'no';
+    }
 
     /**
      * Un solo flusso: pg_dump → cifratura → spazio dei backup, senza file in chiaro né cifrati sul disco del server.
@@ -50,7 +84,7 @@ final readonly class Backups
 
         $process = new Process([
             ...$this->lowPriority(),
-            $this->config->binary('pg_dump'), '--format=custom', '--compress='.$this->config->compression(), '--no-password', '--enable-row-security',
+            $this->config->binary('pg_dump'), '--format=custom', '--compress='.$this->compression(), '--no-password', '--enable-row-security',
             '--host='.$settings['host'], '--port='.$settings['port'], '--username='.$settings['username'],
             '--dbname='.$settings['database'],
         ], null, ['PGPASSWORD' => $settings['password'], 'PGCONNECT_TIMEOUT' => '10'], null, 3600);
