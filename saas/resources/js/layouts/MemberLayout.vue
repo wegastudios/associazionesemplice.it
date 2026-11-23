@@ -24,7 +24,7 @@ const open = (id) => router.post(`/area/scheda/${id}`);
     <div class="min-h-full pb-24 sm:pb-8">
         <header class="sticky top-0 z-30 border-b border-line bg-card/95 pt-[env(safe-area-inset-top)] backdrop-blur">
             <div class="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4">
-                <img src="/assets/brand/simbolo-colore.svg" alt="" class="size-8 shrink-0" />
+                <img src="/assets/brand/simbolo-colore.svg" alt="" width="32" height="32" class="size-8 shrink-0" />
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-[15px] font-bold leading-5">{{ member?.org }}</p>
                     <p class="caption">Area soci</p>
