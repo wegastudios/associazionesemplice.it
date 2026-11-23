@@ -230,6 +230,10 @@ class LedgerService {
 	// ---------- Saldi ----------
 
 	private function deltas( ?string $up_to ): array {
+		$key = null === $up_to ? '' : $up_to;
+		if ( RequestMemo::has( 'ledger_deltas', $key ) ) { // la somma su tutta la storia dei movimenti si fa una volta per richiesta e data (si svuota da sola a ogni scrittura sui movimenti)
+			return (array) RequestMemo::get( 'ledger_deltas', $key );
+		}
 		$sql = "SELECT account_id, SUM(CASE WHEN type IN ('income','transfer_in') THEN amount_cents ELSE -amount_cents END) AS delta "
 			. 'FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL';
 		if ( null !== $up_to ) {
@@ -239,7 +243,7 @@ class LedgerService {
 		foreach ( $this->db()->get_results( $sql . ' GROUP BY account_id', ARRAY_A ) ?: array() as $r ) {
 			$out[ (int) $r['account_id'] ] = (int) $r['delta'];
 		}
-		return $out;
+		return (array) RequestMemo::put( 'ledger_deltas', $key, $out, array( Db::t( 'transactions' ) ) );
 	}
 
 	/** Conti con il saldo calcolato (a oggi, oppure fino a una data inclusa). */
@@ -751,8 +755,14 @@ class LedgerService {
 
 	// ---------- Lettura ----------
 
-	/** Prima nota con i nomi risolti. $asc = ordine cronologico (per gli export). */
-	public function rows( string $from, string $to, ?int $account_id = null, bool $asc = false, int $limit = 0, int $offset = 0 ): array {
+	/**
+	 * Prima nota con i nomi risolti. $asc = ordine cronologico (per gli export).
+	 * $after (solo in ordine cronologico) = [data, id] dell'ultimo movimento già letto: la pagina riparte subito dopo, senza scorrere quelli di prima
+	 * (con $limit si leggono le esportazioni a blocchi, ognuno costa quanto il suo numero di righe).
+	 *
+	 * @param array{0:string,1:int}|null $after
+	 */
+	public function rows( string $from, string $to, ?int $account_id = null, bool $asc = false, int $limit = 0, int $offset = 0, ?array $after = null ): array {
 		$sql  = 'SELECT t.*, a.name AS account_name, c.name AS category_name, CONCAT(p.first_name, " ", p.last_name) AS person_name, '
 			. 'p.card_number AS person_card, act.name AS activity_name, CONCAT(pp.first_name, " ", pp.last_name) AS payer_name FROM ' . Db::t( 'transactions' ) . ' t '
 			. 'JOIN ' . Db::t( 'accounts' ) . ' a ON a.id = t.account_id '
@@ -765,6 +775,12 @@ class LedgerService {
 		if ( $account_id ) {
 			$sql   .= ' AND t.account_id = %d';
 			$args[] = $account_id;
+		}
+		if ( $asc && null !== $after ) {
+			$sql   .= ' AND (t.tx_date > %s OR (t.tx_date = %s AND t.id > %d))';
+			$args[] = (string) $after[0];
+			$args[] = (string) $after[0];
+			$args[] = (int) $after[1];
 		}
 		$sql .= $asc ? ' ORDER BY t.tx_date, t.id' : ' ORDER BY t.tx_date DESC, t.id DESC';
 		if ( $limit > 0 ) { // una pagina: stesso ordine di sempre, solo una porzione
