@@ -123,7 +123,7 @@ final class ServerStatusRules {
 			return self::row( 'wp', $label, self::BAD, $value, Texts::t( 'Aggiorna WordPress: il plugin richiede almeno la versione 6.0.' ) );
 		}
 		if ( version_compare( $v, '6.5', '<' ) ) {
-			return self::row( 'wp', $label, self::WARN, $value, Texts::t( 'Aggiorna WordPress: dalle versioni recenti le pagine si caricano più in fretta.' ) );
+			return self::row( 'wp', $label, self::WARN, $value, Texts::t( 'Aggiorna WordPress: con le versioni recenti le pagine si caricano più in fretta.' ) );
 		}
 		return self::row( 'wp', $label, self::OK, $value );
 	}

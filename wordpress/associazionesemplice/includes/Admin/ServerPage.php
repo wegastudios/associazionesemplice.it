@@ -17,9 +17,9 @@ final class ServerPage {
 		$rows = ServerStatus::rows( true ); // i controlli si fanno solo ora, aprendo la scheda
 		$sum  = ServerStatusRules::summary( $rows );
 		if ( $sum['bad'] > 0 ) {
-			echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::n( $sum['bad'], 'Un controllo è sotto il minimo o ha una funzione spenta: vedi la riga in rosso.', '{n} controlli sono sotto il minimo o hanno una funzione spenta: vedi le righe in rosso.' ) ) . '</p></div>';
+			echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::n( $sum['bad'], 'Un controllo è sotto il minimo o ha una funzione spenta: vedi la riga «Da sistemare».', '{n} controlli sono sotto il minimo o hanno una funzione spenta: vedi le righe «Da sistemare».' ) ) . '</p></div>';
 		} elseif ( $sum['warn'] > 0 ) {
-			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::n( $sum['warn'], 'Tutto funziona. Un controllo può migliorare: vedi la riga in giallo.', 'Tutto funziona. {n} controlli possono migliorare: vedi le righe in giallo.' ) ) . '</p></div>';
+			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::n( $sum['warn'], 'Tutto funziona. Un controllo può migliorare: vedi la riga «Migliorabile».', 'Tutto funziona. {n} controlli possono migliorare: vedi le righe «Migliorabile».' ) ) . '</p></div>';
 		} else {
 			echo '<div class="notice notice-success inline"><p>' . esc_html( Texts::t( 'Il server è in regola: tutto come consigliato.' ) ) . '</p></div>';
 		}
@@ -36,7 +36,7 @@ final class ServerPage {
 				echo '<br><code>' . esc_html( $r['code'] ) . '</code>';
 			}
 			if ( ! empty( $r['page'] ) ) {
-				echo '<br><a href="' . esc_url( Ui::url( $r['page'] ) . '#' . $r['anchor'] ) . '">' . esc_html( Texts::t( 'Apri la copia di sicurezza e il motore del database' ) ) . '</a>';
+				echo '<br><a href="' . esc_url( Ui::url( $r['page'] ) . '#' . $r['anchor'] ) . '">' . esc_html( Texts::t( 'Vai alla copia di sicurezza e alla conversione del database' ) ) . '</a>';
 			}
 			echo '</td></tr>';
 		}
