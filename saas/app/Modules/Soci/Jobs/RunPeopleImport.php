@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Soci\Jobs;
 
 use App\Modules\Core\Contracts\ImportJobs;
+use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgScopedJob;
 use App\Modules\Core\Contracts\RunInOrgContext;
@@ -32,7 +33,10 @@ final class RunPeopleImport implements OrgScopedJob, ShouldQueue
     public function __construct(
         public readonly string $orgId,
         public readonly string $importId,
-    ) {}
+    ) {
+        // Fino a 600 s: coda dei lavori lunghi, che non riprende un giro mentre gira ancora (JobQueues).
+        $this->onQueue(JobQueues::LONG);
+    }
 
     public function orgId(): string
     {
