@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Backup\Backups;
 use App\Modules\Backup\Crypto\BackupCipher;
 use App\Modules\Backup\Crypto\BackupEncryptor;
+use App\Modules\Backup\PgDumpCompression;
 use App\Modules\Soci\Models\Person;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
@@ -248,7 +249,7 @@ it('se il pg_dump del server non sa fare zstd il backup usa gzip da solo e la sa
     config(['saas.backup.pg_dump' => $fake]);
     $this->app->forgetInstance(Backups::class);
 
-    expect(app(Backups::class)->compression())->toBe('gzip:6');
+    expect(app(PgDumpCompression::class)->effective())->toBe('gzip:6');
     $this->artisan('saas:health', ['--skip-migrations' => true])
         ->expectsOutputToContain('AVVISO copia dei dati: compressione zstd non disponibile, uso gzip')
         ->assertSuccessful();
@@ -260,7 +261,7 @@ it('se il pg_dump sa fare zstd si usa zstd e la salute non avvisa', function ():
     config(['saas.backup.pg_dump' => $fake]);
     $this->app->forgetInstance(Backups::class);
 
-    expect(app(Backups::class)->compression())->toBe('zstd:3');
+    expect(app(PgDumpCompression::class)->effective())->toBe('zstd:3');
     $this->artisan('saas:health', ['--skip-migrations' => true])
         ->expectsOutputToContain('ok    copia dei dati')
         ->assertSuccessful();
