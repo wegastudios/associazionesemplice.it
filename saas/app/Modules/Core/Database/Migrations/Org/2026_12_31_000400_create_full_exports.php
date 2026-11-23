@@ -27,7 +27,6 @@ return new class extends Migration
                 total             integer     NOT NULL DEFAULT 0,
                 files             integer     NOT NULL DEFAULT 0,
                 certificates      integer     NOT NULL DEFAULT 0,
-                error             text,
                 created_at        timestamptz NOT NULL DEFAULT now(),
                 started_at        timestamptz,
                 finished_at       timestamptz,

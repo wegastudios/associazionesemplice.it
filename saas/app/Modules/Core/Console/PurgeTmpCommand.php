@@ -39,7 +39,7 @@ final class PurgeTmpCommand extends Command
             Log::info("saas:tmp:purge: tolti {$removed} file temporanei più vecchi di {$minutes} minuti ({$oldBytes} byte)");
         }
         // Copie di sicurezza pronte e scadute (config saas.export.keep_hours): il file si toglie, la riga resta.
-        $expired = self::purge(FullExports::directory(), max(1, config()->integer('saas.export.keep_hours', 24)) * 60);
+        $expired = self::purge(FullExports::directory(), FullExports::keepHours() * 60);
         if ($expired > 0) {
             $this->line("Tolte {$expired} copie di sicurezza scadute.");
             Log::info("saas:tmp:purge: tolte {$expired} copie di sicurezza scadute");

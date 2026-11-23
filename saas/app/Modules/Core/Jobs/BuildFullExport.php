@@ -24,6 +24,10 @@ final class BuildFullExport implements OrgScopedJob, ShouldQueue
     /** Secondi massimi di lavoro; oltre, la copia risulta non riuscita (FullExports::STALE_AFTER). */
     public int $timeout = FullExports::TIMEOUT;
 
+    /**
+     * Non per riprovare (un lavoro interrotto resta «in preparazione» fino a STALE_AFTER): la coda sul database lo riprende
+     * dopo retry_after (90 s) mentre gira ancora, e quel giro deve finire subito senza contare come fallito.
+     */
     public int $tries = 3;
 
     public function __construct(public readonly string $org, public readonly string $exportId) {}

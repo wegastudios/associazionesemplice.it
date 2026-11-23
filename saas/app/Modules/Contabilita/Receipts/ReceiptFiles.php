@@ -41,10 +41,6 @@ final readonly class ReceiptFiles
     public const ALTERED = 'altered';
 
     public const ARCHIVED = 'archived';
-
-    /** Colonne di app.receipt_files (alias «f») che servono a exportPdf(). */
-    public const EXPORT_COLUMNS = ['f.receipt_id', 'f.path', 'f.original_name', 'f.size_bytes', 'f.sha256', 'f.archived_year', 'f.snapshot'];
-
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
@@ -119,21 +115,34 @@ final readonly class ReceiptFiles
     }
 
     /**
-     * Il PDF per la copia di sicurezza, dalla riga del file (EXPORT_COLUMNS) letta insieme alle altre ricevute non
-     * annullate dell'anno: nessuna query per ricevuta. Stessi byte di document()['pdf']; le ricevute mai fissate o
-     * fissate prima della fotografia dei dati passano da document().
+     * Le ricevute non annullate di un anno, con intestatario e file, in una sola query (per la copia di sicurezza): ogni
+     * riga va poi a exportPdf(), senza altre query.
+     *
+     * @return list<object>
+     */
+    public function exportRows(int $year): array
+    {
+        return array_values($this->connection()->table('app.receipts as r')->leftJoin('app.people as p', 'p.id', '=', 'r.payer_person_id')
+            ->leftJoin('app.receipt_files as f', 'f.receipt_id', '=', 'r.id')
+            ->where('r.year', $year)->whereNull('r.voided_at')->orderBy('r.number')
+            ->select(['r.id', 'r.number', 'r.year', 'p.last_name', 'p.first_name', 'f.receipt_id', 'f.path', 'f.original_name', 'f.size_bytes', 'f.sha256', 'f.archived_year'])
+            ->selectRaw('f.snapshot IS NOT NULL AS has_snapshot')->get()->all());
+    }
+
+    /**
+     * Il PDF di una riga di exportRows(): stessi byte di document()['pdf']. Le ricevute mai fissate o fissate prima della
+     * fotografia dei dati passano da document().
      *
      * @throws LedgerError
      * @throws ReceiptFileProblem
      */
-    public function exportPdf(string $receiptId, object $file): string
+    public function exportPdf(object $row): string
     {
-        $saved = ($file->receipt_id ?? null) === null ? null : $this->decodeSnapshot($file);
-        if ($saved === null) {
-            return $this->document($receiptId)['pdf'];
+        if (($row->receipt_id ?? null) === null || ($row->has_snapshot ?? false) !== true) {
+            return $this->document(is_string($row->id ?? null) ? $row->id : '')['pdf'];
         }
 
-        return $this->read($file, is_string($saved['number'] ?? null) ? $saved['number'] : '');
+        return $this->read($row, (is_scalar($row->number ?? null) ? (string) $row->number : '').'/'.(is_scalar($row->year ?? null) ? (string) $row->year : ''));
     }
 
     /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED */

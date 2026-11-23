@@ -17,8 +17,8 @@ use ZipArchive;
  * Copia di sicurezza: un archivio ZIP con due parti. «Dati per il programma» (un file CSV per tabella, per riportare i
  * dati nel plugin o nel gestionale) e «Documenti leggibili» (PDF e tabelle per anno fiscale, da consegnare). Contiene
  * quello che l'operatore può vedere. I certificati medici in chiaro solo se chi scarica lo chiede e può vedere i dati
- * sanitari. Si costruisce su disco un file alla volta: ogni FLUSH_EVERY file l'archivio si chiude e si riapre, così i
- * file di lavoro si tolgono subito e in memoria non resta niente. La prepara il lavoro in coda (FullExports).
+ * sanitari. Si costruisce su disco un file alla volta (in una cartella di lavoro accanto all'archivio, letta da ZipArchive
+ * alla chiusura): in memoria resta un file alla volta. La prepara il lavoro in coda (FullExports).
  */
 final readonly class FullExport
 {
@@ -28,20 +28,15 @@ final readonly class FullExport
 
     public const CERTIFICATES = 'Certificati medici';
 
-    private const FLUSH_EVERY = 200;
-
     public function __construct(private Container $container) {}
 
     /**
-     * Con $year la copia ha i documenti leggibili di quell'anno fiscale soltanto: il limite vale per tutti gli anni insieme.
+     * La copia di tutti gli anni insieme ha un limite di file «pesanti»; oltre si sceglie un anno fiscale.
      *
      * @throws ExportTooLarge
      */
-    public function assertFits(Operator $operator, bool $withCertificates = false, ?int $year = null): void
+    public function assertFits(Operator $operator, bool $withCertificates): void
     {
-        if ($year !== null) {
-            return;
-        }
         $heavy = 0;
         foreach ($this->container->tagged(ReadableExport::TAG) as $part) {
             $heavy += $part instanceof ReadableExport ? $part->weight($operator, $withCertificates, null) : 0;
@@ -91,7 +86,6 @@ final readonly class FullExport
         $done = 0;
         $count = 0;
         $certificates = 0;
-        $pending = [];
         try {
             if ($zip->open($path, ZipArchive::CREATE | ZipArchive::EXCL) !== true) {
                 throw new RuntimeException('Archivio non disponibile.');
@@ -111,14 +105,8 @@ final readonly class FullExport
                     if (preg_match('/\.(jpe?g|png|webp|gif|heic|zip)$/i', $name) === 1) {
                         $zip->setCompressionName($name, ZipArchive::CM_STORE);
                     }
-                    $pending[] = $file;
                     $count++;
                     $certificates += str_starts_with($name, self::READABLE.'/'.self::CERTIFICATES.'/') ? 1 : 0;
-                }
-                if (count($pending) >= self::FLUSH_EVERY) {
-                    $open = false;
-                    self::flush($zip, $path, $pending);
-                    $open = true;
                 }
                 if ($progress !== null) {
                     $progress($done, $total);
@@ -147,25 +135,6 @@ final readonly class FullExport
         }
 
         return ['files' => $count + 1, 'certificates' => $certificates];
-    }
-
-    /**
-     * Chiude l'archivio (i file aggiunti finiscono dentro), toglie i file di lavoro e lo riapre per i prossimi.
-     *
-     * @param  list<string>  $pending
-     */
-    private static function flush(ZipArchive $zip, string $path, array &$pending): void
-    {
-        if (! $zip->close()) {
-            throw new RuntimeException('Archivio non scritto.');
-        }
-        foreach ($pending as $file) {
-            @unlink($file);
-        }
-        $pending = [];
-        if ($zip->open($path) !== true) {
-            throw new RuntimeException('Archivio non disponibile.');
-        }
     }
 
     private static function readme(string $orgName, bool $withCertificates): string

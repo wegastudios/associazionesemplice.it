@@ -73,12 +73,11 @@ final readonly class ExportController
         // Con il web server configurato (config saas.export) il file lo consegna lui: PHP risponde subito.
         $header = config()->string('saas.export.web_server_header', '');
         if ($header !== '') {
-            $fallback = preg_replace('/[^A-Za-z0-9._-]/', '-', $file['name']) ?? 'copia-di-sicurezza.zip';
+            // Il nome è già solo lettere minuscole, cifre e trattini (FullExports::download).
+            $headers[$header] = rtrim(config()->string('saas.export.web_server_prefix', ''), '/').substr($file['path'], strlen(FullExports::directory()));
+            $headers['Content-Disposition'] = HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, $file['name']);
 
-            return response('', 200, $headers + [
-                $header => rtrim(config()->string('saas.export.web_server_prefix', ''), '/').substr($file['path'], strlen(FullExports::directory())),
-                'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, $file['name'], $fallback),
-            ]);
+            return response('', 200, $headers);
         }
 
         return response()->download($file['path'], $file['name'], $headers);
@@ -91,9 +90,8 @@ final readonly class ExportController
         if ($export === null) {
             return null;
         }
-        $expires = $export['expires_at'];
-        $export['url'] = $export['available'] && $expires !== null
-            ? URL::temporarySignedRoute('export.file', Carbon::parse($expires),['export' => $export['id']], absolute: false)
+        $export['url'] = $export['available']
+            ? URL::temporarySignedRoute('export.file', Carbon::parse((string) $export['expires_at']), ['export' => $export['id']], absolute: false)
             : null;
 
         return $export;
