@@ -13,9 +13,9 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 
 /*
- * Copia di sicurezza completa con i dati della demo (pochi soci: con piÃ¹ di 40 la preparazione in CI Ã¨ lentissima). Le
- * query non devono crescere con i soci: con il doppio dei soci, al massimo poche query in piÃ¹ (nessuna query per socio o
- * per ricevuta). Durata, query e le istruzioni piÃ¹ ripetute finiscono nel log di CI.
+ * Copia di sicurezza completa con i dati della demo (pochi soci: con più di 40 la preparazione in CI è lentissima). Le
+ * query non devono crescere con i soci: con il doppio dei soci, al massimo poche query in più (nessuna query per socio o
+ * per ricevuta). Durata, query e le istruzioni più ripetute finiscono nel log di CI.
  */
 
 function seedExportDemo(int $people): Org
@@ -71,7 +71,7 @@ test('copia completa con 40 soci: le query non crescono con i soci', function (a
 
     $large = measureFullExport($org, $user->id, 40);
     $perPerson = ($large['queries'] - $small['queries']) / 20;
-    fwrite(STDERR, "[H12 misure] query in piÃ¹ per socio aggiunto: {$perPerson}\n");
+    fwrite(STDERR, "[H12 misure] query in più per socio aggiunto: {$perPerson}\n");
 
     expect($perPerson)->toBeLessThan(0.5);
 })->depends('copia completa con 20 soci');
