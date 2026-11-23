@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Frontend;
 
 use AssociazioneSemplice\Audit;
 use AssociazioneSemplice\ClientIp;
+use AssociazioneSemplice\Counters;
 use AssociazioneSemplice\Edition;
 use AssociazioneSemplice\Limits;
 use AssociazioneSemplice\MemberLogin;
@@ -109,11 +110,11 @@ final class MemberLoginPage {
 	/** Troppi tentativi dalla stessa connessione? Conta ogni invio. */
 	private static function throttled(): bool {
 		$key   = 'asem_ml_ip_' . md5( ClientIp::get() );
-		$tries = (int) get_transient( $key );
+		$tries = (int) Counters::get( $key );
 		if ( $tries >= max( 20, 2 * Limits::get( 'first_access_per_ip' ) ) ) {
 			return true;
 		}
-		set_transient( $key, $tries + 1, HOUR_IN_SECONDS );
+		Counters::set( $key, $tries + 1, HOUR_IN_SECONDS );
 		return false;
 	}
 

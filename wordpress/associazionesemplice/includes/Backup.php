@@ -24,7 +24,7 @@ final class Backup {
 	const RESTORE_PHRASE_OTHER = 'RIPRISTINA DA ALTRO SITO';
 
 	/** Tabelle che il ripristino non riscrive: il registro azioni è la memoria di ciò che è successo (anche del ripristino stesso); sessioni, codici di accesso e notifiche push dei soci non tornano (le password sì, vedi {@see self::MEMBER_ACCESS}). */
-	const NOT_RESTORED = array( 'asem_audit_log', 'asem_push_subs', 'asem_member_sessions', 'asem_member_challenges' );
+	const NOT_RESTORED = array( 'asem_audit_log', 'asem_push_subs', 'asem_member_sessions', 'asem_member_challenges', 'asem_counters' );
 
 	/** Tabelle con le sessioni, i codici di accesso e le notifiche push dei soci: dopo un ripristino si svuotano (le password invece tornano, e ogni socio ne sceglie una nuova al primo accesso). */
 	const MEMBER_ACCESS = array( 'asem_member_sessions', 'asem_member_challenges', 'asem_push_subs' );
@@ -125,7 +125,7 @@ final class Backup {
 		$out    = array();
 		foreach ( $db->get_col( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $prefix ) . '%' ) ) ?: array() as $t ) {
 			$name = substr( (string) $t, strlen( $db->prefix ) );
-			if ( in_array( $name, array( 'asem_member_sessions', 'asem_member_challenges' ), true ) ) {
+			if ( in_array( $name, array( 'asem_member_sessions', 'asem_member_challenges', 'asem_counters' ), true ) ) {
 				continue; // sessioni e codici di accesso non vanno nelle copie: un ripristino non deve riaprire accessi già chiusi
 			}
 			$out[] = $name;
