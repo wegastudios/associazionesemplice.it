@@ -21,7 +21,7 @@ final class AttemptLimitWiringTest extends TestCase {
 		$this->assertStringNotContainsString( 'Backup::download_url(', $page );
 		$src  = (string) file_get_contents( dirname( __DIR__, 2 ) . '/includes/Backup.php' );
 		$post = strpos( $src, "'POST' !== \$_SERVER['REQUEST_METHOD']" );
-		$exp  = strpos( $src, '$path = self::export( $with );' );
+		$exp  = strpos( $src, '$st = self::start_job( $with );' );
 		$this->assertNotFalse( $post );
 		$this->assertLessThan( $exp, $post, 'senza modulo inviato non si crea la copia' );
 		$this->assertLessThan( $exp, (int) strpos( $src, 'self::require_password( $back );' ), 'la password si controlla prima di creare la copia' );

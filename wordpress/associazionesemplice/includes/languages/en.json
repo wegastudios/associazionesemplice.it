@@ -2864,6 +2864,14 @@
   "Connessione interrotta: riprovo tra qualche secondo." : "Connection lost: trying again in a few seconds.",
   "Vuoi annullare questo lavoro? Quello che non è ancora stato fatto non si farà." : "Do you want to cancel this job? What has not been done yet will not be done.",
   "Con questa pagina aperta il lavoro va più veloce; se la chiudi continua da solo, più lentamente." : "With this page open the job runs faster; if you close it, it carries on by itself, more slowly.",
-  "Nessun lavoro in corso." : "No job in progress."
+  "Nessun lavoro in corso." : "No job in progress.",
+  "Copia di sicurezza in preparazione" : "Backup being prepared",
+  "La copia di sicurezza è pronta ({size}). Dopo lo scarico non resta sul sito; se non la scarichi, si cancella da sola dopo {ore} ore." : "The backup is ready ({size}). Once downloaded it does not stay on the site; if you do not download it, it deletes itself after {ore} hours.",
+  "Scarica la copia pronta" : "Download the ready backup",
+  "Se i dati sono tanti la copia si prepara a pezzi: vedrai l'avanzamento in questa pagina e la scaricherai quando è pronta." : "If there is a lot of data the backup is prepared in parts: you will see the progress on this page and download it when it is ready.",
+  "La copia si sta preparando: segui l'avanzamento qui sotto. Quando è pronta la scarichi da questa pagina." : "The backup is being prepared: follow the progress below. When it is ready you can download it from this page.",
+  "La copia non è più disponibile: preparane una nuova." : "The backup is no longer available: prepare a new one.",
+  "Una copia di sicurezza è già in preparazione: aspetta che finisca o annullala." : "A backup is already being prepared: wait for it to finish or cancel it.",
+  "I file della copia in preparazione non ci sono più: fai una copia nuova." : "The files of the backup being prepared are gone: make a new backup."
  }
 }
