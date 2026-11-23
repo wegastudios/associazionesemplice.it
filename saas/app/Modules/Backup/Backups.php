@@ -49,9 +49,12 @@ final readonly class Backups
         $settings = $this->settings($connection);
         ['tables' => $tables, 'estimated' => $estimated] = $this->statCounts($this->db->connection($connection));
 
+        $fallback = $this->compression->fellBackToGzip();
+        $compression = $this->compression->effective();
+
         $process = new Process([
             ...$this->lowPriority(),
-            $this->config->binary('pg_dump'), '--format=custom', '--compress='.$this->compression->effective(), '--no-password', '--enable-row-security',
+            $this->config->binary('pg_dump'), '--format=custom', '--compress='.$compression, '--no-password', '--enable-row-security',
             '--host='.$settings['host'], '--port='.$settings['port'], '--username='.$settings['username'],
             '--dbname='.$settings['database'],
         ], null, ['PGPASSWORD' => $settings['password'], 'PGCONNECT_TIMEOUT' => '10'], null, 3600);
@@ -91,7 +94,10 @@ final readonly class Backups
             'created_at' => $at->utc()->toIso8601String(),
             'size' => $size,
             'sha256' => $sha256,
+            'compression' => $compression,
+            'compression_fallback' => $fallback,
             'tables' => $tables,
+            // Sempre presente, anche vuoto: l'assenza del campo vuol dire «descrizione vecchia», non «nessuna stimata».
             'estimated' => $estimated,
         ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
