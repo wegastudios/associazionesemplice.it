@@ -14571,6 +14571,7 @@ require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme de
 require __DIR__ . '/smoke_letture_a_blocchi.php'; // Bacheca, elenco e scheda di corsi ed eventi: letture a blocchi uguali a quelle una per una
 require __DIR__ . '/smoke_tessere_in_blocco.php'; // tessere in PDF per molti soci: query in blocco, QR a un bit, parti da 500
 require __DIR__ . '/smoke_scheda_evento.php'; // scheda di un evento con anagrafica grande: ricerca al posto delle tendine, date a blocchi
+require __DIR__ . '/smoke_db_engine.php'; // motore delle tabelle: controllo, avviso e conversione a tappe in InnoDB
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
