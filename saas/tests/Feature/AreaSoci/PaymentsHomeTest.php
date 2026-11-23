@@ -36,6 +36,6 @@ it('conta nel cruscotto tutti i pagamenti online da controllare, anche oltre i p
     $owner = $this->createUser('own@example.com', twoFactor: true);
     $this->addOperator($org, $owner, OrgRole::Owner);
 
-    $this->actingAs($owner)->get('/gestionale')->assertInertia(fn (Assert $page) => $page
-        ->where('todo', fn ($todo) => collect($todo)->pluck('title')->contains('10 pagamenti online da controllare')));
+    $this->actingAs($owner)->get('/gestionale')->assertInertia(fn (Assert $page) => $page->loadDeferredProps('cruscotto', fn (Assert $reload) => $reload
+        ->where('todo', fn ($todo) => collect($todo)->pluck('title')->contains('10 pagamenti online da controllare'))));
 });
