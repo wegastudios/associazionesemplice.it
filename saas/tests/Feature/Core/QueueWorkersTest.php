@@ -101,8 +101,51 @@ it('ogni lavoro finisce prima che la coda lo riprenda: i brevi sotto i 90 s, i l
     }
 });
 
-it('con 3 lavoratori: principale, lavori lunghi e posta urgente, ognuno con la sua esclusione', function (): void {
-    expect(JobQueues::maxWorkers())->toBe(3);
+/**
+ * Connessione e code di un comando queue:work (senza connessione: quella predefinita).
+ *
+ * @return array{string, list<string>}
+ */
+function qwParse(string $command): array
+{
+    $connection = preg_match('/^queue:work ([a-z][a-z-]*) /', $command, $m) === 1 ? $m[1] : (string) config('queue.default');
+    preg_match('/--queue=(\S+)/', $command, $q);
+
+    return [$connection, explode(',', $q[1] ?? '')];
+}
+
+it('con qualsiasi massimo, un codice di accesso non aspetta mai la ripresa dei lavori lunghi', function (): void {
+    config(['queue.default' => 'database']);
+
+    foreach ([0, 1, 2, 9] as $setting) {
+        config(['saas.queue.max_workers' => $setting]);
+        $workers = JobQueues::workers();
+        $connectionOf = [];
+        $urgentOnly = 0;
+        foreach ($workers as $w) {
+            [$connection, $queues] = qwParse($w['command']);
+            if ($queues === [MailQueue::URGENT]) {
+                $urgentOnly++;
+                // Lavoratore suo: ogni minuto, giro corto, esclusione propria di pochi minuti.
+                expect($w['command'])->toContain('--max-time=55')->and($w['mutex_minutes'])->toBeLessThanOrEqual(5)->and($w['only_if_queued'])->toBeNull();
+            }
+            foreach ($queues as $queue) {
+                // Ogni coda la prendono solo lavoratori della stessa connessione: il tempo di ripresa è uno solo.
+                expect($connectionOf[$queue] ?? $connection)->toBe($connection, "max {$setting}: {$queue} su due connessioni");
+                $connectionOf[$queue] = $connection;
+            }
+        }
+
+        expect($urgentOnly)->toBe(1, "max {$setting}: manca il lavoratore della posta urgente")
+            ->and(count($workers))->toBe(JobQueues::maxWorkers() + 1)
+            ->and($connectionOf[MailQueue::URGENT])->not->toBe(JobQueues::LONG_CONNECTION)
+            ->and(config('queue.connections.'.$connectionOf[MailQueue::URGENT].'.retry_after'))->toBeLessThanOrEqual(JobQueues::URGENT_MAX_RETRY)
+            ->and($connectionOf[JobQueues::LONG])->toBe(JobQueues::LONG_CONNECTION);
+    }
+});
+
+it('di base 2 lavoratori più quello della posta urgente, ognuno con la sua esclusione', function (): void {
+    expect(JobQueues::maxWorkers())->toBe(2);
 
     $workers = collect(app(Schedule::class)->events())->filter(static fn ($e): bool => str_contains((string) $e->command, 'queue:work'));
     $long = $workers->first(static fn ($e): bool => str_contains((string) $e->command, '--queue='.JobQueues::LONG.' ') || str_ends_with((string) $e->command, '--queue='.JobQueues::LONG));
@@ -118,7 +161,7 @@ it('con 3 lavoratori: principale, lavori lunghi e posta urgente, ognuno con la s
     // Con le code sul database (il server): il lungo sulla sua connessione, i brevi fermano un lavoro bloccato prima che
     // la coda lo riprenda.
     config(['queue.default' => 'database']);
-    foreach (JobQueues::workers(3) as $w) {
+    foreach (JobQueues::workers(2) as $w) {
         if (str_contains($w['command'], '--queue='.JobQueues::LONG.' ')) {
             expect($w['command'])->toStartWith('queue:work '.JobQueues::LONG_CONNECTION.' ')
                 ->and($w['mutex_minutes'] * 60)->toBeGreaterThanOrEqual(config('queue.connections.'.JobQueues::LONG_CONNECTION.'.retry_after'));
@@ -128,22 +171,21 @@ it('con 3 lavoratori: principale, lavori lunghi e posta urgente, ognuno con la s
     }
 });
 
-it('il massimo dei lavoratori si regola: con 2 niente lavoratore a parte per gli urgenti, con 1 uno solo per tutto', function (): void {
+it('con 1 un solo lavoratore per brevi e lunghi, sulla connessione lunga, oltre a quello degli urgenti', function (): void {
     config(['queue.default' => 'database']);
-    expect(JobQueues::workers(2))->toHaveCount(2)
-        ->and(array_column(JobQueues::workers(2), 'command'))->each->not->toContain('--queue='.MailQueue::URGENT.' ');
+    $workers = JobQueues::workers(1);
+    $other = $workers[1] ?? null;
 
-    $single = JobQueues::workers(1);
-    expect($single)->toHaveCount(1)
-        // Uno solo: sulla connessione lunga, così una copia completa non viene ripresa a metà; prima gli urgenti.
-        ->and($single[0]['command'])->toContain(' '.JobQueues::LONG_CONNECTION.' ')
-        ->toContain('--queue='.MailQueue::URGENT.',default,'.MailQueue::BULK.','.JobQueues::LONG)
-        ->and($single[0]['mutex_minutes'] * 60)->toBeGreaterThan(JobQueues::LONG_TIMEOUT);
+    expect($workers)->toHaveCount(2)
+        // Sulla connessione lunga, così una copia completa non viene ripresa a metà.
+        ->and($other['command'])->toStartWith('queue:work '.JobQueues::LONG_CONNECTION.' ')
+        ->toContain('--queue='.JobQueues::DEFAULT.','.MailQueue::BULK.','.JobQueues::LONG.' ')
+        ->and($other['mutex_minutes'] * 60)->toBeGreaterThan(JobQueues::LONG_TIMEOUT);
 
     config(['saas.queue.max_workers' => 0]);
     expect(JobQueues::maxWorkers())->toBe(1);
     config(['saas.queue.max_workers' => 9]);
-    expect(JobQueues::maxWorkers())->toBe(3);
+    expect(JobQueues::maxWorkers())->toBe(2);
 });
 
 it('il lavoratore dei lunghi parte solo se nella sua coda c\'è un lavoro', function (): void {

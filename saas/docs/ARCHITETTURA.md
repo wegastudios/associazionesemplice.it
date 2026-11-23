@@ -111,7 +111,7 @@ saas/app/Modules/
 - Cron ogni minuto: `/usr/local/bin/php artisan schedule:run` (da cron `php` è la versione CGI) e
   i lavoratori delle code (`queue:work --stop-when-empty`, al massimo `SAAS_QUEUE_MAX_WORKERS`): lavori brevi
   (`mail-urgent`, `default`, `mail-bulk`), lavori lunghi (`long`, connessione `database-long` con ripresa dopo 2100 s)
-  e posta urgente a parte. Code e lavoratori: `App\Modules\Core\Contracts\JobQueues`.
+  e posta urgente a parte (sempre, fuori dal massimo). Code e lavoratori: `App\Modules\Core\Contracts\JobQueues`.
 - Lavori: email, PDF delle ricevute, fatture elettroniche, import, generazione dei siti, dump orari, migrazioni sui
   database dedicati, verifica dei domini propri.
 

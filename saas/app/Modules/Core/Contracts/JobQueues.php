@@ -13,9 +13,13 @@ namespace App\Modules\Core\Contracts;
  *   lavoratore sulla connessione «database-long» (stessa tabella), che riprende un lavoro solo dopo un tempo più lungo
  *   del lavoro più lungo (LONG_TIMEOUT): un lavoro che gira non parte una seconda volta.
  *
- * Lavoratori, al massimo saas.queue.max_workers (1-3; il server ha 25 processi PHP in tutto, condivisi con il web):
- * 1 = uno solo per tutto; 2 = brevi + lunghi; 3 = in più uno per la sola posta urgente. Quello dei lunghi parte solo se
- * nella sua coda c'è qualcosa (`only_if_queued`).
+ * Il tempo di ripresa lo decide la connessione del lavoratore che prende il lavoro: ogni coda la prendono solo lavoratori
+ * della stessa connessione, e mail-urgent mai uno di «database-long».
+ *
+ * Lavoratori: quello della posta urgente (codici di accesso, link di conferma) c'è sempre, ogni minuto, e non conta nel
+ * massimo. Gli altri, al massimo saas.queue.max_workers (1-2; il server ha 25 processi PHP in tutto, condivisi con il
+ * web): 1 = uno per default, mail-bulk e long; 2 = brevi + lunghi. Quello dei lunghi parte solo se nella sua coda c'è
+ * qualcosa (`only_if_queued`).
  */
 final class JobQueues
 {
@@ -31,7 +35,11 @@ final class JobQueues
     /** Secondi massimi di un lavoro lungo; il retry_after di «database-long» è questo più 5 minuti. */
     public const LONG_TIMEOUT = 1800;
 
-    public const MAX_WORKERS = 3;
+    /** Ripresa massima (secondi) di un messaggio urgente rimasto a un lavoratore morto. */
+    public const URGENT_MAX_RETRY = 120;
+
+    /** Lavoratori oltre a quello della posta urgente. */
+    public const MAX_WORKERS = 2;
 
     /** Esclusione dei lavoratori brevi (minuti): fino a 50-55 s di giro più un lavoro breve. */
     private const SHORT_MUTEX_MINUTES = 5;
@@ -50,8 +58,8 @@ final class JobQueues
     }
 
     /**
-     * I lavoratori da lanciare ogni minuto, in ordine di importanza, con l'esclusione di ciascuno (minuti) e, per quello
-     * dei lunghi, la coda che deve avere qualcosa perché valga la pena avviarlo.
+     * I lavoratori da lanciare ogni minuto: quello della posta urgente più al massimo $max altri, con l'esclusione di
+     * ciascuno (minuti) e, per quello dei lunghi, la coda che deve avere qualcosa perché valga la pena avviarlo.
      *
      * @return list<array{command: string, mutex_minutes: int, only_if_queued: ?string}>
      */
@@ -63,17 +71,13 @@ final class JobQueues
         $retry = config('queue.connections.'.self::LONG_CONNECTION.'.retry_after');
         $longMutex = (int) ceil((is_numeric($retry) ? (int) $retry : self::LONG_TIMEOUT) / 60);
 
+        // Codici di accesso e link di conferma: sempre, mai dietro a un altro lavoro, sulla connessione a ripresa breve.
+        $workers = [self::worker(null, MailQueue::URGENT, 55, self::SHORT_TIMEOUT, self::SHORT_MUTEX_MINUTES)];
         if ($max === 1) {
-            return [self::worker($long, MailQueue::WORKER_QUEUES.','.self::LONG, 50, self::LONG_TIMEOUT, $longMutex)];
-        }
-
-        $workers = [
-            self::worker(null, MailQueue::WORKER_QUEUES, 50, self::SHORT_TIMEOUT, self::SHORT_MUTEX_MINUTES),
-            self::worker($long, self::LONG, 50, self::LONG_TIMEOUT, $longMutex, onlyIfQueued: true),
-        ];
-        if ($max >= 3) {
-            // Codici di accesso e link di conferma: mai dietro a un altro lavoro.
-            $workers[] = self::worker(null, MailQueue::URGENT, 55, self::SHORT_TIMEOUT, self::SHORT_MUTEX_MINUTES);
+            $workers[] = self::worker($long, self::DEFAULT.','.MailQueue::BULK.','.self::LONG, 50, self::LONG_TIMEOUT, $longMutex);
+        } else {
+            $workers[] = self::worker(null, MailQueue::WORKER_QUEUES, 50, self::SHORT_TIMEOUT, self::SHORT_MUTEX_MINUTES);
+            $workers[] = self::worker($long, self::LONG, 50, self::LONG_TIMEOUT, $longMutex, onlyIfQueued: true);
         }
 
         return $workers;
