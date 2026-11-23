@@ -156,12 +156,16 @@ asem_ok( '' === Backup::ready_file( 999999 ), 'copia a tappe: la copia pronta la
 $bj_left = glob( dirname( $bj_ready ) . '/*' ) ?: array();
 asem_ok( array( 'copia.zip' ) === array_values( array_diff( array_map( 'basename', $bj_left ), array( 'index.php' ) ) ),'copia a tappe: a lavoro finito nella cartella resta solo la copia (i file intermedi sono cancellati)' );
 $bj_html = asem_render( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ), 'asem_backup_get' );
-asem_ok( ! Backup::ready_needs_password() && 1 === substr_count( $bj_html, 'name="password"' ), 'copia a tappe: appena pronta, la copia si scarica senza riscrivere la password' );
+$bj_getform = function ( string $html ): string { // il solo modulo «Scarica la copia pronta»
+	$a = (int) strpos( $html, 'value="asem_backup_get"' );
+	return $a > 0 ? substr( $html, $a, (int) strpos( $html, '</form>', $a ) - $a ) : '';
+};
+asem_ok( ! Backup::ready_needs_password() && '' !== $bj_getform( $bj_html ) && false === strpos( $bj_getform( $bj_html ), 'name="password"' ),'copia a tappe: appena pronta, la copia si scarica senza riscrivere la password' );
 $bj_rec            = json_decode( $bj_raw(), true );
 $bj_rec['started'] = time() - 3 * HOUR_IN_SECONDS;
 $wpdb->update( $wpdb->options, array( 'option_value' => wp_json_encode( $bj_rec ) ), array( 'option_name' => $bj_opt ) );
 $bj_html = asem_render( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ), 'asem_backup_get' );
-asem_ok( Backup::ready_needs_password() && 2 === substr_count( $bj_html, 'name="password"' ) && false !== strpos( $bj_html, 'più di due ore fa' ), 'copia a tappe: avviata più di due ore fa, per scaricarla si chiede di nuovo la password' );
+asem_ok( Backup::ready_needs_password() && false !== strpos( $bj_getform( $bj_html ), 'name="password"' ) &&false !== strpos( $bj_html, 'più di due ore fa' ), 'copia a tappe: avviata più di due ore fa, per scaricarla si chiede di nuovo la password' );
 $bj_zm = new ZipArchive();
 $bj_zm->open( $bj_ready );
 $bj_mn = json_decode( (string) $bj_zm->getFromName( 'manifest.json' ), true );
