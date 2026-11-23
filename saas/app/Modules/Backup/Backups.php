@@ -362,7 +362,7 @@ final readonly class Backups
         return abs($restored - $expected) <= 5000 || ($restored * 2 >= $expected && $restored <= $expected * 2);
     }
 
-    /** @return \Generator<int, string> uscita di pg_dump, a pezzi; l'errore resta nel processo */
+    /** @return Generator<int, string> uscita di pg_dump, a pezzi; l'errore resta nel processo */
     private function dumpOutput(Process $process): Generator
     {
         foreach ($process->getIterator(Process::ITER_SKIP_ERR) as $chunk) {
