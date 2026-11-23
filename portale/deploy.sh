@@ -38,7 +38,9 @@ sed -i '/^# Sito non ancora pubblico/,$d;/^# Tutto ci/,$d' .htaccess
 sed -i 's/\r$//' .htaccess # niente fine riga Windows: il server web non applicherebbe le regole
 chmod 644 .htaccess # leggibile dal server web: con 600 LiteSpeed non applica le regole e tutte le pagine danno 404
 rm -f robots.txt
-( crontab -l 2>/dev/null | grep -q "portale/bin/cron.php" ) || ( crontab -l 2>/dev/null; echo "0 8 * * * /usr/local/bin/php $HOME/portale/bin/cron.php >> $HOME/logs/portale-cron.log 2>&1" ) | crontab -
+# Lavori giornalieri alle 10:47, non alle 08:00-08:30 (la posta ha un tetto orario per tutto l'account); una riga vecchia a un'altra ora si sostituisce.
+( crontab -l 2>/dev/null | grep -q "^47 10 .*portale/bin/cron.php" ) || ( crontab -l 2>/dev/null | grep -v "portale/bin/cron.php"; echo "47 10 * * * /usr/local/bin/php $HOME/portale/bin/cron.php >> $HOME/logs/portale-cron.log 2>&1" ) | crontab -
+( crontab -l 2>/dev/null | grep -q "portale/bin/mail-outbox.php" ) || ( crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/php $HOME/portale/bin/mail-outbox.php >> $HOME/logs/portale-mail-outbox.log 2>&1" ) | crontab -
 ( crontab -l 2>/dev/null | grep -q "portale/bin/saas-outbox.php" ) || ( crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/php $HOME/portale/bin/saas-outbox.php >> $HOME/logs/portale-saas-outbox.log 2>&1" ) | crontab -
 echo "Pubblicato."
 if [ "$migr" = 1 ]; then

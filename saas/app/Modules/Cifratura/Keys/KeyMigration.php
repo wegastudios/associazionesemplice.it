@@ -6,6 +6,7 @@ namespace App\Modules\Cifratura\Keys;
 
 use App\Modules\Cifratura\Contracts\Bytea;
 use App\Modules\Cifratura\Contracts\KeyVault;
+use App\Modules\Cifratura\Contracts\OrgBatch;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use RuntimeException;
@@ -25,9 +26,14 @@ final readonly class KeyMigration
     /** Associazione fittizia per le prove di avvolgimento (stesso formato degli identificativi veri). */
     public const PROBE_ORG = '00000000-0000-7000-8000-000000000000';
 
-    public function __construct(private DatabaseManager $db) {}
+    public function __construct(
+        private DatabaseManager $db,
+        private OrgBatch $pace,
+    ) {}
 
     /**
+     * Un'associazione per volta, con la pausa dei comandi su tutte le associazioni (OrgBatch).
+     *
      * @return array{orgs: int, rewrapped: int, already: int, failed: list<string>}
      */
     public function rewrap(KeyVault $from, KeyVault $to, bool $dryRun): array
@@ -35,7 +41,7 @@ final readonly class KeyMigration
         $owner = $this->db->connection('pgsql_owner');
         $result = ['orgs' => 0, 'rewrapped' => 0, 'already' => 0, 'failed' => []];
 
-        foreach ($this->orgIds($owner) as $orgId) {
+        foreach ($this->pace->paced($this->orgIds($owner)) as $orgId) {
             $result['orgs']++;
             $counts = [0, 0];
             try {

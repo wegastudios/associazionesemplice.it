@@ -61,6 +61,10 @@ try {
                 @mail($config->alarmEmail, 'Servizio chiavi: allarme', $message);
             }
         },
+        $config->batchAlarm,
+        $config->batchLimit,
+        $config->totalAlarm,
+        $config->totalLimit,
     );
 
     $server = static fn (string $key): ?string => isset($_SERVER[$key]) && is_string($_SERVER[$key]) ? $_SERVER[$key] : null;

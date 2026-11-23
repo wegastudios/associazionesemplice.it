@@ -197,8 +197,11 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
 
 ## 7. Registro delle azioni e GDPR
 
-- `audit.log` **solo in aggiunta**: l'applicazione ha solo `INSERT` e `SELECT`; un trigger rifiuta modifiche e
-  cancellazioni anche al proprietario. Partizionato per mese (`audit.log_AAAA_MM`, più una partizione predefinita);
+- `audit.log` **solo in aggiunta**: le migrazioni concedono all'applicazione solo `INSERT` e `SELECT`, ma la protezione
+  non dipende dai permessi (il ruolo dell'applicazione può ereditarne altri dall'hosting): un trigger rifiuta modifiche
+  e cancellazioni anche al proprietario, salvo la cancellazione definitiva di un'associazione (le sole sue righe, a
+  blocchi, con la stessa regola dei movimenti della prima nota), e un trigger di istruzione rifiuta `TRUNCATE`, sulla
+  tabella e su ogni partizione, a chi non è il proprietario. Lo stesso vale per `app.transactions`. Partizionato per mese (`audit.log_AAAA_MM`, più una partizione predefinita);
   le partizioni si preparano in anticipo con `saas:audit:partitions`, ogni mese da cron. Ogni partizione ha la sua RLS.
 - **Catena sigillata**: ogni riga ha un numero progressivo per associazione e il sigillo
   `HMAC(chiave del registro, sigillo precedente · forma canonica della riga)`. La chiave del registro è derivata da quella

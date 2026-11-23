@@ -6,6 +6,7 @@ namespace Tests\Fixtures;
 
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use KeyService\KeyWrap;
 use KeyService\MemoryNonceStore;
@@ -53,7 +54,7 @@ final class FakeKeyService
             if ($this->wrongSignature) {
                 $signature = Protocol::sign($request->body(), sodium_crypto_sign_secretkey(sodium_crypto_sign_keypair()));
             }
-            $result = $this->service->handle('POST', $request->body(), $signature, '127.0.0.1', time());
+            $result = $this->service->handle('POST', $request->body(), $signature, '127.0.0.1', Date::now()->getTimestamp());
 
             return Http::response($result['body'], $result['status']);
         }]);

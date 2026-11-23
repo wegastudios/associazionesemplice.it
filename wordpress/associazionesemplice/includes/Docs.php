@@ -13,6 +13,9 @@ final class Docs {
 	const RIGHT  = 545.0; // Pdf::W - 50
 	const BOTTOM = 790.0;
 
+	/** Tessere al più in ciascun file PDF: con più soci si generano più parti, da scegliere una per volta. */
+	const CARDS_PER_FILE = 500;
+
 	public static function register(): void {
 		add_action( 'admin_post_asem_doc', array( __CLASS__, 'handle' ) );
 	}
@@ -22,20 +25,54 @@ final class Docs {
 	 *
 	 * @param string $filter filtro del libro soci ('' = i soci in carica)
 	 * @param int    $per    tessere per foglio (0 = quante ne stanno)
+	 * @param int    $part   parte da generare quando i soci sono più di {@see Docs::CARDS_PER_FILE} (0 o 1 = la prima)
 	 * @throws \InvalidArgumentException
 	 */
-	public static function cards( string $filter = '', int $per = 0 ): array {
-		$people = array();
-		foreach ( MemberBook::rows( '' === $filter ? MemberBook::IN_FORCE : $filter ) as $r ) {
-			$p = Plugin::people()->get( (int) $r['id'] );
-			if ( $p && MemberType::is_member( $p['type'] ) ) {
-				$people[] = $p;
-			}
-		}
-		if ( ! $people ) {
+	public static function cards( string $filter = '', int $per = 0, int $part = 0 ): array {
+		$ids = self::card_ids( $filter );
+		if ( ! $ids ) {
 			throw new \InvalidArgumentException( 'Nessun socio per cui stampare la tessera.' );
 		}
-		return array( 'body' => CardLayout::pdf_sheets( $people, max( 0, $per ) ), 'filename' => 'tessere.pdf', 'mime' => 'application/pdf' );
+		$parts  = self::card_parts( count( $ids ) );
+		$part   = max( 1, min( $parts, $part ) );
+		$slice  = array_slice( $ids, ( $part - 1 ) * self::CARDS_PER_FILE, self::CARDS_PER_FILE );
+		$rows   = Plugin::people()->get_many( $slice ); // una lettura per tutte le persone del file
+		$people = array();
+		foreach ( $slice as $id ) {
+			if ( isset( $rows[ $id ] ) ) {
+				$people[] = $rows[ $id ];
+			}
+		}
+		unset( $rows );
+		return array( 'body' => CardLayout::pdf_sheets( $people, max( 0, $per ) ), 'filename' => $parts > 1 ? 'tessere-parte-' . $part . '-di-' . $parts . '.pdf' : 'tessere.pdf', 'mime' => 'application/pdf' );
+	}
+
+	/** In quanti file si dividono le tessere di $n soci (al più {@see Docs::CARDS_PER_FILE} per file). */
+	public static function card_parts( int $n ): int {
+		return max( 1, (int) ceil( $n / self::CARDS_PER_FILE ) );
+	}
+
+	/**
+	 * Gli id dei soci che hanno la tessera da stampare, nell'ordine del libro soci (senza ospiti e tutori): le schede si leggono a blocchi
+	 * e non si tengono in memoria.
+	 *
+	 * @return int[]
+	 */
+	public static function card_ids( string $filter = '' ): array {
+		$ids = array();
+		foreach ( MemberBook::rows( '' === $filter ? MemberBook::IN_FORCE : $filter ) as $r ) {
+			$ids[] = (int) $r['id'];
+		}
+		$out = array();
+		foreach ( array_chunk( $ids, 1000 ) as $chunk ) {
+			$mem = Plugin::people()->get_many( $chunk );
+			foreach ( $chunk as $id ) {
+				if ( isset( $mem[ $id ] ) && MemberType::is_member( $mem[ $id ]['type'] ) ) {
+					$out[] = $id;
+				}
+			}
+		}
+		return $out;
 	}
 
 	public static function url( string $what, array $args = array(), string $format = 'pdf' ): string {
@@ -429,7 +466,7 @@ final class Docs {
 					$doc = self::book( (string) ( $g['filter'] ?? '' ), $format, ! empty( $g['year'] ) ? (int) $g['year'] : null, ! empty( $g['version'] ) ? (int) $g['version'] : null );
 					break;
 				case 'cards':
-					$doc = self::cards( (string) ( $g['filter'] ?? '' ), (int) ( $g['per'] ?? 0 ) );
+					$doc = self::cards( (string) ( $g['filter'] ?? '' ), (int) ( $g['per'] ?? 0 ), (int) ( $g['part'] ?? 0 ) );
 					break;
 				case 'minute':
 					$doc = self::minute( (int) ( $g['id'] ?? 0 ) );

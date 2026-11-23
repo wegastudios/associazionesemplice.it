@@ -22,7 +22,10 @@ final readonly class DatabaseOrgPurger implements OrgPurger
     /** Schemi con i dati delle associazioni. `audit` ha la sua regola (registro solo in aggiunta), `core` è trattato a parte. */
     private const DATA_SCHEMAS = ['app', 'sites', 'portal'];
 
-    public function __construct(private DatabaseManager $db, private DatabaseNames $names) {}
+    /**
+     * @param  int<1, max>  $auditBatch  righe del registro cancellate per transazione
+     */
+    public function __construct(private DatabaseManager $db, private DatabaseNames $names, private int $auditBatch = 5000) {}
 
     public function purge(string $orgId): array
     {
@@ -36,16 +39,21 @@ final readonly class DatabaseOrgPurger implements OrgPurger
         }
 
         // Nessun accesso mentre si cancella: l'associazione è già sospesa o chiusa. Stato e file si toccano solo dopo il
-        // successo del database, così un errore a metà lascia tutto com'era e il giro successivo può riprovare.
-        $rows = 0;
+        // successo del database, così dopo un errore a metà il giro successivo può riprovare.
         $users = 0;
         // Il database dedicato, se c'è, si svuota qui; il database stesso lo toglie chi gestisce il server (vedi il registro dello staff).
         $data = is_string($org->database ?? null) && $org->database !== '' ? $this->db->connection($this->names->ownerConnection($org->database)) : $owner;
-        $data->transaction(function () use ($data, $orgId, &$rows): void {
-            $data->select("SELECT set_config('app.org_id', ?, true)", [$orgId]);
-            // Autorizza, in questa sola transazione, la cancellazione dei movimenti di questa associazione.
-            $data->select("SELECT set_config('app.purging', ?, true)", [$orgId]);
-            $rows = $this->deleteAuditRows($data, $orgId) + $this->deleteDataRows($data, $orgId);
+        // Prima il registro, a blocchi; poi, in una sola transazione, il resto del registro e i dati. Se i dati non si
+        // cancellano restano tutti, e del registro resta una catena che si verifica ancora (vedi deleteAuditLogInBatches).
+        $hadAnchor = $data->transaction(function () use ($data, $orgId): bool {
+            $this->enterPurge($data, $orgId);
+
+            return $data->table('audit.anchors')->where('org_id', $orgId)->exists();
+        });
+        $rows = $this->deleteAuditLogInBatches($data, $orgId);
+        $data->transaction(function () use ($data, $orgId, $hadAnchor, &$rows): void {
+            $this->enterPurge($data, $orgId);
+            $rows += $this->deleteAuditRows($data, $orgId, $hadAnchor) + $this->deleteDataRows($data, $orgId);
         });
 
         $owner->transaction(function () use ($owner, $orgId, &$users): void {
@@ -76,19 +84,65 @@ final readonly class DatabaseOrgPurger implements OrgPurger
     }
 
     /**
-     * Il registro delle azioni dell'associazione si cancella con lei (180 giorni dalla scadenza). Il trigger che lo rende
-     * «solo in aggiunta» si toglie soltanto dentro questa transazione, per questa sola operazione: col commit è di nuovo attivo.
+     * Il registro delle azioni dell'associazione si cancella con lei (180 giorni dalla scadenza), a blocchi, ognuno nella
+     * sua transazione: le scritture delle altre associazioni non aspettano. Si parte dalle righe più vecchie e a ogni
+     * blocco l'ultima riga tolta diventa l'ancora della catena (come nella pulizia delle partizioni vecchie): se ci si
+     * ferma a metà, la catena che resta si verifica ancora.
      */
-    private function deleteAuditRows(ConnectionInterface $owner, string $orgId): int
+    private function deleteAuditLogInBatches(ConnectionInterface $data, string $orgId): int
     {
-        $owner->statement('ALTER TABLE audit.log DISABLE TRIGGER log_append_only');
-        $rows = $owner->delete('DELETE FROM audit.log WHERE org_id = ?', [$orgId]);
-        $rows += $owner->delete('DELETE FROM audit.heads WHERE org_id = ?', [$orgId]);
-        $rows += $owner->delete('DELETE FROM audit.anchors WHERE org_id = ?', [$orgId]);
-        $rows += $owner->delete('DELETE FROM audit.verify_checkpoints WHERE org_id = ?', [$orgId]);
-        $owner->statement('ALTER TABLE audit.log ENABLE TRIGGER log_append_only');
+        $rows = 0;
+        while (true) {
+            $deleted = $data->transaction(function () use ($data, $orgId): int {
+                $this->enterPurge($data, $orgId);
+                $last = $data->scalar(
+                    'SELECT max(seq) FROM (SELECT seq FROM audit.log WHERE org_id = ? ORDER BY seq LIMIT ?) AS b',
+                    [$orgId, $this->auditBatch],
+                );
+                if (! is_int($last) && ! (is_string($last) && ctype_digit($last))) {
+                    return 0;
+                }
+                $last = (int) $last;
+                $data->insert(
+                    'INSERT INTO audit.anchors (org_id, seq, hash)
+                     SELECT org_id, seq, hash FROM audit.log WHERE org_id = ? AND seq = ? LIMIT 1
+                     ON CONFLICT (org_id) DO UPDATE SET seq = EXCLUDED.seq, hash = EXCLUDED.hash, anchored_at = now()
+                     WHERE audit.anchors.seq < EXCLUDED.seq',
+                    [$orgId, $last],
+                );
+
+                return $data->delete('DELETE FROM audit.log WHERE org_id = ? AND seq <= ?', [$orgId, $last]);
+            });
+            if ($deleted === 0) {
+                return $rows;
+            }
+            $rows += $deleted;
+        }
+    }
+
+    /**
+     * Quel che resta del registro, nella transazione finale. La testa si blocca per prima: una scrittura arrivata durante
+     * i blocchi è già finita (e la sua riga si cancella qui) o aspetta la fine. L'ancora messa dai blocchi non si conta.
+     */
+    private function deleteAuditRows(ConnectionInterface $data, string $orgId, bool $hadAnchor): int
+    {
+        $data->select('SELECT 1 FROM audit.heads WHERE org_id = ? FOR UPDATE', [$orgId]);
+        $rows = $data->delete('DELETE FROM audit.log WHERE org_id = ?', [$orgId]);
+        $rows += $data->delete('DELETE FROM audit.heads WHERE org_id = ?', [$orgId]);
+        $anchors = $data->delete('DELETE FROM audit.anchors WHERE org_id = ?', [$orgId]);
+        $rows += $hadAnchor ? $anchors : 0;
+        $rows += $data->delete('DELETE FROM audit.verify_checkpoints WHERE org_id = ?', [$orgId]);
 
         return $rows;
+    }
+
+    /**
+     * Associazione corrente e varco della cancellazione, in questa sola transazione: i trigger di sola aggiunta (registro
+     * delle azioni, movimenti) lasciano cancellare solo le righe di questa associazione, e solo al proprietario.
+     */
+    private function enterPurge(ConnectionInterface $data, string $orgId): void
+    {
+        $data->select("SELECT set_config('app.org_id', ?, true), set_config('app.purging', ?, true)", [$orgId, $orgId]);
     }
 
     private function deleteDataRows(ConnectionInterface $owner, string $orgId): int

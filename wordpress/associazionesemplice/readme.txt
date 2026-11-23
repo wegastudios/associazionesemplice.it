@@ -59,6 +59,8 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `assets/fonts/OFL.txt`) and icons from Lucide (ISC license, https://lucide.dev), both bundled with the plugin; nothing is loaded from external servers.
 
+The front-end style sheet and script (`assets/frontend.css` and `assets/frontend.js`) are shipped minified to load faster. The readable sources are in the public repository: https://github.com/wegastudios/associazionesemplice.it (folder `wordpress/associazionesemplice/assets`); the minification step is `wordpress/build.sh` with `wordpress/minify-assets.pl`.
+
 == Changelog ==
 
 = 1.3.35 =

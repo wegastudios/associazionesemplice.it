@@ -144,6 +144,10 @@ asem_ok( count( Plugin::ledger()->accounts() ) >= 2, 'conti iniziali' );
 asem_ok( count( Plugin::ledger()->categories() ) >= 8, 'categorie iniziali' );
 
 wp_set_current_user( 1 );
+function asem_test_mail_cap() {
+	return 1000000; // le prove mandano molte più email in pochi secondi di un sito vero: il tetto orario si prova a parte, con un tetto basso
+}
+add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
 // Le prove di chiusura più sotto lavorano su anni con movimenti di prova (anche in disavanzo): la conferma del disavanzo si riaccende solo per la sua prova, in fondo.
 remove_filter( 'asem_year_close_confirm', array( \AssociazioneSemplice\YearEndCheck::class, 'close_confirm' ), 5 );
 $people  = Plugin::people();
@@ -6650,6 +6654,30 @@ add_option( \AssociazioneSemplice\Reminders::OPT_LOCK, time(), '', 'no' ); // un
 $gi_busy = \AssociazioneSemplice\Reminders::run( $today );
 asem_ok( \AssociazioneSemplice\Reminders::was_busy() && array( 0, 0, 0, 0, 0 ) === array_values( $gi_busy ), 'promemoria: con un altro giro in corso non si manda due volte' );
 delete_option( \AssociazioneSemplice\Reminders::OPT_LOCK );
+// tetto orario delle email: a tetto raggiunto i promemoria automatici non partono e non si perdono; all'ora dopo arrivano una volta sola
+$mb_lim = Settings::get( 'limits' );
+Settings::update( array( 'limits' => array_merge( is_array( $mb_lim ) ? $mb_lim : array(), array( 'mail_per_hour' => 20 ) ) ) );
+remove_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' ); // da qui il tetto è quello dei Limiti (20)
+\AssociazioneSemplice\MailBudget::reset();
+$mb_mails = array();
+foreach ( array( 'Uma', 'Ugo' ) as $mb_n ) {
+	$mb_p = $people->create( array( 'type' => 'ordinary', 'first_name' => $mb_n, 'last_name' => 'Tettoorario', 'email' => strtolower( $mb_n ) . '.tettoorario@example.com' ) );
+	$people->set_membership( $mb_p, $ym_label, true );
+	$wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' +12 days' ) ) ), array( 'person_id' => $mb_p ) );
+	$mb_mails[] = strtolower( $mb_n ) . '.tettoorario@example.com';
+}
+\AssociazioneSemplice\MailBudget::count( 15 ); // con tetto 20 e 5 riservate alle email singole non resta posto per i promemoria
+wp_clear_scheduled_hook( 'asem_send_reminders' ); // così il giro programmato dopo è solo quello di questa prova
+$mb_run = \AssociazioneSemplice\Reminders::run( $today );
+asem_ok( 0 === $mb_run['membership'] && \AssociazioneSemplice\Reminders::more_pending() && 0 === $mails_to( $mb_mails[0] ) && 0 === $mails_to( $mb_mails[1] ) && 2 === \AssociazioneSemplice\Reminders::run( $today, false )['membership'], 'tetto email: a tetto raggiunto i promemoria restano da mandare, senza essere prenotati né persi' );
+asem_ok( false !== wp_next_scheduled( 'asem_send_reminders' ) && wp_next_scheduled( 'asem_send_reminders' ) >= \AssociazioneSemplice\MailBudget::resume_at() - 5, 'tetto email: il giro dopo è programmato all\'ora piena successiva, non tra due minuti' );
+\AssociazioneSemplice\MailBudget::$clock = time() + 3600; // l'ora dopo
+$mb_run2 = \AssociazioneSemplice\Reminders::run( $today );
+asem_ok( 2 === $mb_run2['membership'] && 1 === $mails_to( $mb_mails[0] ) && 1 === $mails_to( $mb_mails[1] ) && 0 === \AssociazioneSemplice\Reminders::run( $today )['membership'], 'tetto email: all\'ora dopo i promemoria arrivano, una volta sola ciascuno' );
+\AssociazioneSemplice\MailBudget::reset();
+Settings::update( array( 'limits' => is_array( $mb_lim ) ? $mb_lim : array() ) );
+add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
+asem_ok( is_bool( \AssociazioneSemplice\MailBudget::external_service() ) && 1000000 === \AssociazioneSemplice\MailBudget::cap(), 'tetto email: il riconoscimento del servizio esterno risponde sì o no, e un\'estensione può cambiare il tetto' );
 // corsi mensili: dopo l'ultima lezione del mese, promemoria a chi non ha pagato il mese dopo
 $cur_m = substr( $today, 0, 7 );
 $tgt_m = gmdate( 'Y-m', strtotime( $cur_m . '-01 +1 month' ) );
@@ -7317,6 +7345,37 @@ $wpdb->update( Db::t( 'broadcast_rcpt' ), array( 'sent_at' => gmdate( 'Y-m-d H:i
 \AssociazioneSemplice\Broadcasts::process( $b4 );
 $b4b = \AssociazioneSemplice\Broadcasts::get( $b4 );
 asem_ok( 'done' === $b4b['status'] && (int) $b4b['sent'] === $b4n && count( $bc_mail ) === $b4n && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status <> 'sent'", $b4 ) ), 'comunicazioni: la email rimasta a metà torna in coda e parte; ognuno riceve una sola email' );
+// tetto orario delle email (20: 5 riservate alle email singole, 15 per le comunicazioni): oltre il tetto la comunicazione aspetta l'ora piena dopo, nessuno la riceve due volte
+$mb_lim = Settings::get( 'limits' );
+Settings::update( array( 'limits' => array_merge( is_array( $mb_lim ) ? $mb_lim : array(), array( 'mail_per_hour' => 20 ) ) ) );
+remove_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
+\AssociazioneSemplice\MailBudget::reset();
+$bc_mail = array();
+$wpdb->query( 'UPDATE ' . Db::t( 'broadcasts' ) . " SET status = 'done' WHERE status = 'sending'" ); // nessun'altra comunicazione in coda davanti a questa
+wp_clear_scheduled_hook( \AssociazioneSemplice\Broadcasts::HOOK );
+$b6  = \AssociazioneSemplice\Broadcasts::create( 'Avviso sotto tetto', 'Un messaggio per tutti.', 'members_all' );
+$b6a = \AssociazioneSemplice\Broadcasts::get( $b6 );
+asem_ok( (int) $b6a['total'] > 30 && 'sending' === $b6a['status'] && 15 === (int) $b6a['sent'] && 15 === count( $bc_mail ), 'tetto email: la comunicazione parte solo per quanto resta del tetto (15 su ' . (int) $b6a['total'] . ')' );
+\AssociazioneSemplice\Broadcasts::process_all();
+asem_ok( 15 === (int) \AssociazioneSemplice\Broadcasts::get( $b6 )['sent'] && 15 === count( $bc_mail ), 'tetto email: a tetto raggiunto un altro giro non manda nulla' );
+asem_ok( false !== wp_next_scheduled( \AssociazioneSemplice\Broadcasts::HOOK ) && wp_next_scheduled( \AssociazioneSemplice\Broadcasts::HOOK ) >= \AssociazioneSemplice\MailBudget::resume_at() - 5, 'tetto email: il resto è programmato all\'ora piena dopo' );
+asem_ok( true === \AssociazioneSemplice\Texts::mail( 'singola.tetto@example.com', 'Conferma di prova', 'x' ) && in_array( 'singola.tetto@example.com', $bc_to(), true ), 'tetto email: un\'email singola parte anche a tetto raggiunto' );
+asem_ok( '' !== \AssociazioneSemplice\MailBudget::waiting_text() && false !== strpos( \AssociazioneSemplice\MailBudget::waiting_text(), '20' ), 'tetto email: la pagina delle comunicazioni dice che si aspetta l\'ora dopo' );
+\AssociazioneSemplice\MailBudget::$clock = time() + 3600; // l'ora dopo: altri 15
+\AssociazioneSemplice\Broadcasts::process_all();
+asem_ok( 30 === (int) \AssociazioneSemplice\Broadcasts::get( $b6 )['sent'], 'tetto email: all\'ora dopo riparte, altri 15' );
+Settings::update( array( 'limits' => is_array( $mb_lim ) ? $mb_lim : array() ) );
+add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
+for ( $i = 0; $i < 40 && 'sending' === \AssociazioneSemplice\Broadcasts::get( $b6 )['status']; $i++ ) {
+	\AssociazioneSemplice\Broadcasts::process_all();
+}
+$b6b   = \AssociazioneSemplice\Broadcasts::get( $b6 );
+$b6to  = array_values( array_filter( $bc_to(), function ( $a ) {
+	return 'singola.tetto@example.com' !== $a;
+} ) );
+asem_ok( 'done' === $b6b['status'] && (int) $b6b['sent'] === (int) $b6b['total'] && count( $b6to ) === (int) $b6b['total'], 'tetto email: alla fine tutti hanno ricevuto la comunicazione, una volta sola' );
+\AssociazioneSemplice\MailBudget::reset();
+$bc_mail = array();
 // destinatari scritti a blocchi: stessi destinatari, stesso ordine
 $bq_list = array();
 for ( $bq_i = 1; $bq_i <= 1203; $bq_i++ ) {
@@ -8274,13 +8333,66 @@ asem_ok( 200 === \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest
 asem_ok( 'asem-sw.js' === \AssociazioneSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/asem-sw.js' ), PHP_URL_PATH ) ) && 'asem-manifest.webmanifest' === \AssociazioneSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/asem-manifest.webmanifest?x=1' ), PHP_URL_PATH ) ) && null === \AssociazioneSemplice\Pwa::route_of( '/qualcosa-altro' ) && null === \AssociazioneSemplice\Pwa::route_of( '/asem-sw.js.php' ), 'app: gli indirizzi dell\'app si riconoscono (e solo quelli)' );
 $pw_sw = \AssociazioneSemplice\Pwa::response( 'asem-sw.js' );
 asem_ok( false !== strpos( $pw_sw['body'], "addEventListener('push'" ) && false !== strpos( $pw_sw['body'], "addEventListener('notificationclick'" ) && false !== strpos( $pw_sw['body'], 'asem-offline.html' ) && false !== strpos( $pw_sw['body'], 'const NAME = "Assoc App"' ) && false === strpos( $pw_sw['body'], '%VER%' ) && false === strpos( $pw_sw['body'], '%AREA%' ) && 0 === strpos( $pw_sw['type'], 'application/javascript' ), 'app: il service worker gestisce offline e notifiche' );
-asem_ok( false !== strpos( $pw_sw['body'], "indexOf('/wp-admin')" ), 'app: il service worker non tocca le pagine di wp-admin né il login di WordPress' );
+asem_ok( false !== strpos( $pw_sw['body'], 'url.pathname !== AREA_PATH' ) && false !== strpos( $pw_sw['body'], 'const AREA_PATH = ' . wp_json_encode( \AssociazioneSemplice\Pwa::area_path(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';' ) && false === strpos( $pw_sw['body'], '%AREA_PATH%' ), 'app: il service worker intercetta solo la pagina dell\'area soci (non wp-admin, non il login, non il resto del sito)' );
+$pw_e1 = \AssociazioneSemplice\Pwa::etag( $pw_sw );
+asem_ok( 1 === preg_match( '/^"[0-9a-f]{32}"$/', $pw_e1 ) && $pw_e1 === \AssociazioneSemplice\Pwa::etag( \AssociazioneSemplice\Pwa::response( 'asem-sw.js' ) ) && $pw_e1 !== \AssociazioneSemplice\Pwa::etag( \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest' ) ) && \AssociazioneSemplice\Calendar::not_modified( $pw_e1, 0, $pw_e1, '' ) && ! \AssociazioneSemplice\Calendar::not_modified( $pw_e1, 0, '"altro"', '' ), 'app: worker e manifest hanno un ETag stabile, e chi ha già la versione riceve 304' );
+asem_ok( '' === \AssociazioneSemplice\Pwa::etag( array( 'status' => 404, 'body' => 'Non disponibile.' ) ), 'app: una risposta d\'errore non ha ETag' );
 asem_ok( 0 === strpos( \AssociazioneSemplice\Pwa::response( 'asem-icon-192.png' )['body'], "\x89PNG" ) && false !== strpos( \AssociazioneSemplice\Pwa::response( 'asem-offline.html' )['body'], 'Sei offline' ), 'app: icona generata e pagina offline' );
 ob_start();
 \AssociazioneSemplice\Pwa::print_head();
 $pw_head = ob_get_clean();
 \AssociazioneSemplice\Pwa::enqueue();
 asem_ok( false !== strpos( $pw_head, 'rel="manifest"' ) && false !== strpos( $pw_head, 'theme-color' ) && false !== strpos( $pw_head, 'apple-touch-icon' ) && wp_script_is( 'asem-pwa', 'enqueued' ), 'app: le pagine del sito collegano manifest, colore e script' );
+// l'app si carica e si registra solo nell'area soci o con una sessione
+$pw_area  = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Area prova app', 'post_content' => 'area' ) );
+$pw_other = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Altra pagina prova app', 'post_content' => 'altro' ) );
+$pw_area_before = (int) Settings::get( 'member_area_page_id' );
+Settings::update( array( 'member_area_page_id' => $pw_area ) );
+$pw_ms = new ReflectionProperty( \AssociazioneSemplice\MemberSession::class, 'current' );
+$pw_ms->setAccessible( true );
+$pw_query = function ( int $id ) {
+	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'page_id' => $id, 'post_type' => 'page', 'post_status' => 'publish' ) );
+};
+$pw_page = function ( int $id ) use ( $pw_query ) {
+	$pw_query( $id );
+	wp_dequeue_script( 'asem-pwa' );
+	ob_start();
+	\AssociazioneSemplice\Pwa::print_head();
+	$head = ob_get_clean();
+	\AssociazioneSemplice\Pwa::enqueue();
+	return array( 'head' => $head, 'script' => wp_script_is( 'asem-pwa', 'enqueued' ), 'on' => \AssociazioneSemplice\Pwa::should_register() );
+};
+wp_set_current_user( 0 );
+unset( $_COOKIE[ \AssociazioneSemplice\MemberSession::COOKIE ] );
+$pw_ms->setValue( null, null );
+$pw_v1 = $pw_page( $pw_other );
+asem_ok( ! $pw_v1['on'] && '' === $pw_v1['head'] && ! $pw_v1['script'], 'app: un visitatore su una pagina qualsiasi non carica né manifest né script (il service worker non si registra)' );
+$pw_v2 = $pw_page( $pw_area );
+asem_ok( $pw_v2['on'] && false !== strpos( $pw_v2['head'], 'rel="manifest"' ) && $pw_v2['script'], 'app: nella pagina dell\'area soci manifest e script ci sono anche prima di entrare' );
+wp_set_current_user( 1 );
+$pw_v3 = $pw_page( $pw_other );
+asem_ok( $pw_v3['on'] && false !== strpos( $pw_v3['head'], 'rel="manifest"' ) && $pw_v3['script'], 'app: chi è entrato ha l\'app su qualsiasi pagina del sito' );
+Settings::update( array( 'pwa_enabled' => 0 ) );
+asem_ok( ! $pw_page( $pw_area )['on'], 'app: spenta, non si carica da nessuna parte' );
+Settings::update( array( 'pwa_enabled' => 1, 'member_area_page_id' => $pw_area_before ) );
+wp_delete_post( $pw_area, true );
+wp_delete_post( $pw_other, true );
+$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query();
+// l'icona generata è un file e non si ridisegna a ogni richiesta
+if ( '' === (string) get_site_icon_url( 192 ) && 0 === (int) Settings::get( 'pwa_icon_id' ) ) {
+	$pw_up   = wp_upload_dir( null, false );
+	$pw_ic1  = \AssociazioneSemplice\Pwa::icon_url( 192 );
+	$pw_path = $pw_up['basedir'] . '/asem-pwa/' . basename( $pw_ic1 );
+	asem_ok( 0 === strpos( $pw_ic1, $pw_up['baseurl'] . '/asem-pwa/icon-192-' ) && is_file( $pw_path ) && 0 === strpos( (string) file_get_contents( $pw_path ), "\x89PNG" ), 'app: l\'icona generata è un file nei caricamenti' );
+	touch( $pw_path, time() - 5000 );
+	clearstatcache();
+	$pw_mt = filemtime( $pw_path );
+	asem_ok( $pw_ic1 === \AssociazioneSemplice\Pwa::icon_url( 192 ) && $pw_mt === filemtime( $pw_path ) && file_get_contents( $pw_path ) === \AssociazioneSemplice\Pwa::response( 'asem-icon-192.png' )['body'], 'app: l\'icona non si riscrive a ogni richiesta e l\'indirizzo diretto serve lo stesso file' );
+	Settings::update( array( 'accent_color' => '#aa3300' ) );
+	$pw_ic2 = \AssociazioneSemplice\Pwa::icon_url( 192 );
+	asem_ok( $pw_ic2 !== $pw_ic1 && is_file( $pw_up['basedir'] . '/asem-pwa/' . basename( $pw_ic2 ) ) && ! is_file( $pw_path ), 'app: cambiando colore l\'icona si rifà e quella vecchia si toglie' );
+	Settings::update( array( 'accent_color' => '#336699' ) );
+}
 $pw_card = \AssociazioneSemplice\Frontend\ProViews::section_app( $people->get( $rg_p ) );
 asem_ok( false !== strpos( $pw_card, 'data-asem-install' ) && false !== strpos( $pw_card, 'data-asem-push-on' ), 'app: nell\'area soci compaiono installazione e notifiche' );
 Settings::update( array( 'push_enabled' => 0 ) );
@@ -12086,6 +12198,7 @@ asem_ok( ! wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina senza 
 $nc_early( $nc_p_list );
 \AssociazioneSemplice\Frontend\Assets::early_enqueue();
 asem_ok( wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina con una vista del plugin li chiede subito, per l\'intestazione' );
+asem_ok( wp_script_is( 'asem-frontend', 'enqueued' ) && ( version_compare( (string) get_bloginfo( 'version' ), '6.3', '<' ) || 'defer' === wp_scripts()->get_data( 'asem-frontend', 'strategy' ) ), 'script: quello del plugin è in fondo alla pagina e, da WordPress 6.3, con defer' );
 wp_dequeue_style( 'asem-frontend' );
 wp_dequeue_script( 'asem-frontend' );
 $nc_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Cache', 'last_name' => 'Prova' ) );
@@ -14443,6 +14556,8 @@ asem_ok( false !== strpos( $ix_plan( 'SELECT COUNT(*) FROM ' . Db::t( 'transacti
 require __DIR__ . '/smoke_import_blocks.php'; // importazione di soci a giri, con ripresa: stesso risultato della vecchia versione
 require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme del database identiche al calcolo di prima
 require __DIR__ . '/smoke_letture_a_blocchi.php'; // Bacheca, elenco e scheda di corsi ed eventi: letture a blocchi uguali a quelle una per una
+require __DIR__ . '/smoke_tessere_in_blocco.php'; // tessere in PDF per molti soci: query in blocco, QR a un bit, parti da 500
+require __DIR__ . '/smoke_scheda_evento.php'; // scheda di un evento con anagrafica grande: ricerca al posto delle tendine, date a blocchi
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_schema_e_export.php'; // esportazioni a blocchi, saldi una volta per richiesta, schema a tappe
 require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore

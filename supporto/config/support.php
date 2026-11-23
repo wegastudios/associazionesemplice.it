@@ -7,6 +7,8 @@ return [
     'role' => in_array(env('APP_ROLE'), ['hub', 'site'], true) ? env('APP_ROLE') : 'site',
 
     // Epoca degli id dei ticket: secondi trascorsi da questa data (UTC)
+    // Email del supporto messe in coda: massimo all'ora (tetto dell'account di hosting, di cui al supporto ne spettano 20)
+    'mail_per_hour' => (int) env('SUPPORT_MAIL_PER_HOUR', 20),
     'ticket_epoch' => env('SUPPORT_TICKET_EPOCH', '2023-12-27T00:00:00Z'),
 
     // Priorita centrale: 0 minima ... 4 massima

@@ -46,7 +46,7 @@ final class MonitorKeyServiceCommand extends Command
 
         $reason = null;
         try {
-            $vault = $vaults->remote();
+            $vault = $vaults->remote(breaker: false);
             KeyMigration::probe($vault);
             $this->checkRealKey($vault, $db);
         } catch (Throwable $e) {

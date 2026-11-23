@@ -12,6 +12,9 @@ use SensitiveParameter;
  *
  *   {"op": "wrap"|"unwrap", "org_id": "...", "version": 1, "key"|"wrapped": "<base64>", "ts": 1700000000, "nonce": "<hex>"}
  *
+ * con, facoltativo, "lane": "batch" per i comandi che girano su tutte le associazioni (senza: "org", la corsia
+ * dell'associazione). La corsia sceglie quale tetto di aperture al minuto si applica.
+ *
  * firmato con Ed25519 dal SaaS (intestazione X-AS-Signature, base64). Il servizio conosce solo la chiave pubblica:
  * chi lo compromettesse non potrebbe fingersi il SaaS verso un altro servizio.
  */
@@ -20,6 +23,12 @@ final class Protocol
     public const SIGNATURE_HEADER = 'X-AS-Signature';
 
     public const MAX_SKEW_SECONDS = 60;
+
+    /** Corsia di una associazione (anche quando la richiesta non dice la corsia). */
+    public const LANE_ORG = 'org';
+
+    /** Corsia dei comandi che girano su tutte le associazioni. */
+    public const LANE_BATCH = 'batch';
 
     /** @param  array<string, int|string>  $payload */
     public static function body(array $payload, int $now): string

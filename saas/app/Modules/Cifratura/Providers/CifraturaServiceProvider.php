@@ -17,6 +17,7 @@ use App\Modules\Cifratura\Console\UpgradeFormatCommand;
 use App\Modules\Cifratura\Contracts\EncryptedFiles;
 use App\Modules\Cifratura\Contracts\FieldCipher;
 use App\Modules\Cifratura\Contracts\KeyVault;
+use App\Modules\Cifratura\Contracts\OrgBatch;
 use App\Modules\Cifratura\Contracts\OrgKeys;
 use App\Modules\Cifratura\Contracts\Sealer;
 use App\Modules\Cifratura\Contracts\StorageQuota;
@@ -26,6 +27,7 @@ use App\Modules\Cifratura\Files\SecretStreamFiles;
 use App\Modules\Cifratura\Files\StorageQuotaService;
 use App\Modules\Cifratura\Keys\KeyCache;
 use App\Modules\Cifratura\Keys\KeyRing;
+use App\Modules\Cifratura\Keys\KeyServiceBreaker;
 use App\Modules\Cifratura\Keys\VaultFactory;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Foundation\Application;
@@ -36,6 +38,12 @@ final class CifraturaServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(KeyServiceBreaker::class);
+        $this->app->singleton(OrgBatch::class, static function (): OrgBatch {
+            $ms = config('saas.crypto.batch_pause_ms', '500');
+
+            return new OrgBatch(is_numeric($ms) ? max(0, (int) $ms) : 500);
+        });
         $this->app->singleton(VaultFactory::class);
         $this->app->singleton(KeyVault::class, static fn (Application $app): KeyVault => $app->make(VaultFactory::class)->configured());
         $this->app->singleton(KeyCache::class, static fn (Application $app): KeyCache => new KeyCache($app->make(VaultFactory::class)->cacheTtl()));
