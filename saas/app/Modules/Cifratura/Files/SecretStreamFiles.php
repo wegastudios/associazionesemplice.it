@@ -111,6 +111,19 @@ final readonly class SecretStreamFiles implements EncryptedFiles
         }
     }
 
+    public function quickCheck(string $orgId, StoredFile $file): string
+    {
+        $this->assertOwned($orgId, $file);
+        if (! $this->disk->exists($file->path)) {
+            return 'missing';
+        }
+        // Formato · versione · intestazione, poi un blocco ogni 64 KiB (almeno uno), ognuno con il suo controllo.
+        $blocks = max(1, intdiv($file->size + self::CHUNK - 1, self::CHUNK));
+        $expected = 5 + SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_HEADERBYTES + $file->size + $blocks * SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_ABYTES;
+
+        return $this->disk->size($file->path) === $expected ? 'ok' : 'altered';
+    }
+
     public function download(string $orgId, StoredFile $file): StreamedResponse
     {
         $this->assertOwned($orgId, $file);
