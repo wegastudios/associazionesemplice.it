@@ -126,7 +126,7 @@ final readonly class FullExports
             return;
         }
         $row = $this->table()->where('id', $id)->first();
-        $userId = self::str($row?->user_id ?? null) ?? '';
+        $userId = self::str($row->user_id ?? null) ?? '';
         $orgId = $this->context->require()->id;
         $operator = $this->memberships->find($userId, $orgId);
         $path = self::path($orgId, $id);
@@ -177,7 +177,7 @@ final readonly class FullExports
     public function download(string $id, Operator $operator): array
     {
         $row = Str::isUuid($id) ? $this->table()->where('id', $id)->where('user_id', $operator->userId)->where('status', 'ready')->first() : null;
-        $expires = self::str($row?->expires_at ?? null);
+        $expires = self::str($row->expires_at ?? null);
         $path = self::path($operator->orgId, $id);
         if ($row === null || $expires === null || now()->gte($expires) || ! is_file($path)) {
             throw new ExportUnavailable(self::GONE);
