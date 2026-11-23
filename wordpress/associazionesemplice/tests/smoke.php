@@ -2517,7 +2517,7 @@ $ps = Plugin::payments();
 Settings::update( array( 'payment_provider' => 'none', 'membership_fee_cents' => 1000 ) );
 asem_ok( '' === $ps->provider() && ! $ps->enabled(), 'pagamenti online: spenti finché non si sceglie un gateway' );
 asem_ok( isset( Labels::methods()['stripe'] ) && isset( Labels::methods()['paypal'] ), 'metodi di pagamento Stripe e PayPal disponibili' );
-asem_ok( false !== wp_next_scheduled( 'asem_check_pending_payments' ), 'controllo periodico dei pagamenti in sospeso pianificato' );
+asem_ok( \AssociazioneSemplice\Jobs::scheduled( 'asem_check_pending_payments' ), 'controllo periodico dei pagamenti in sospeso pianificato' );
 
 $mails = array();
 add_filter(
@@ -12132,8 +12132,8 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::page(
 MemberSession::start( $ms_p );
 MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
-asem_ok( wp_next_scheduled( 'asem_purge_member_sessions' ) > 0, 'accesso proprio: pulizia giornaliera programmata' );
-asem_ok( wp_next_scheduled( 'asem_purge_applications' ) > 0, 'domande di adesione: pulizia giornaliera programmata' );
+asem_ok( \AssociazioneSemplice\Jobs::scheduled( 'asem_purge_member_sessions' ), 'accesso proprio: pulizia giornaliera programmata' );
+asem_ok( \AssociazioneSemplice\Jobs::scheduled( 'asem_purge_applications' ), 'domande di adesione: pulizia giornaliera programmata' );
 
 // ---------- Cache di pagina: pagine con sessione socio valida e contenuti riservati ----------
 $nc_hits  = 0;
@@ -14572,8 +14572,11 @@ require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme de
 require __DIR__ . '/smoke_letture_a_blocchi.php'; // Bacheca, elenco e scheda di corsi ed eventi: letture a blocchi uguali a quelle una per una
 require __DIR__ . '/smoke_tessere_in_blocco.php'; // tessere in PDF per molti soci: query in blocco, QR a un bit, parti da 500
 require __DIR__ . '/smoke_scheda_evento.php'; // scheda di un evento con anagrafica grande: ricerca al posto delle tendine, date a blocchi
+require __DIR__ . '/smoke_lavori.php'; // lavori periodici: due soli eventi, giro in fila con tempo massimo, passaggio dai vecchi eventi
+require __DIR__ . '/smoke_azioni.php'; // azioni di admin-post e admin-ajax: con un'azione chiesta si registra solo la sua, e ognuna resta raggiungibile
 require __DIR__ . '/smoke_db_engine.php'; // motore delle tabelle: controllo, avviso e conversione a tappe in InnoDB
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
+require __DIR__ . '/smoke_schema_e_export.php'; // esportazioni a blocchi, saldi una volta per richiesta, schema a tappe
 require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 

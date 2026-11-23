@@ -14,11 +14,10 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Notification;
-use Throwable;
 
 /**
  * Un avviso del ciclo di vita (SendLifecycleNoticesCommand) ai titolari e agli amministratori di un'associazione, posta
- * massiva. La prenotazione (core.org_notices) si prende qui, al momento dell'invio, e si toglie se l'invio non riesce: un
+ * massiva. La prenotazione (core.org_notices) si prende qui, al momento dell'invio, e sparisce se l'invio non riesce: un
  * errore o un'attesa per i tetti non la consumano, così il lavoro (o il giro di domani) ci riprova. Gli indirizzi si
  * leggono all'invio: nella coda non ce n'è nessuno.
  */
@@ -59,11 +58,12 @@ final class SendLifecycleNotice implements ShouldQueue
     public function handle(DatabaseManager $db): void
     {
         $pgsql = $db->connection('pgsql');
-        $claim = ['org_id' => $this->orgId, 'kind' => $this->notification->kind, 'until' => $this->until];
-        if ($pgsql->table('core.org_notices')->insertOrIgnore($claim) === 0) {
-            return; // già mandato (da un altro lavoro per la stessa scadenza)
-        }
-        try {
+        // Prenotazione e invio nella stessa transazione: se l'invio non riesce la prenotazione sparisce con il rollback; un
+        // altro lavoro per la stessa scadenza aspetta la fine di questo e poi trova la riga.
+        $pgsql->transaction(function () use ($pgsql): void {
+            if ($pgsql->table('core.org_notices')->insertOrIgnore(['org_id' => $this->orgId, 'kind' => $this->notification->kind, 'until' => $this->until]) === 0) {
+                return; // già mandato
+            }
             $emails = $pgsql->table('core.users')->whereIn('id', $pgsql->table('core.org_users')
                 ->where('org_id', $this->orgId)->whereIn('role', ['owner', 'admin'])->select('user_id'))->pluck('email')->all();
             foreach ($emails as $email) {
@@ -71,10 +71,6 @@ final class SendLifecycleNotice implements ShouldQueue
                     Notification::route('mail', $email)->notifyNow($this->notification);
                 }
             }
-        } catch (Throwable $e) {
-            $pgsql->table('core.org_notices')->where($claim)->delete();
-
-            throw $e;
-        }
+        });
     }
 }

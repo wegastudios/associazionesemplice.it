@@ -8,6 +8,7 @@ use App\Modules\Core\Contracts\QueuedMail;
 use App\Modules\Core\Contracts\ThrottledMail;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Mail\Message;
+use Illuminate\Queue\SyncQueue;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -114,7 +115,8 @@ it('il codice non finisce nei log, nella coda né tra i lavori falliti', functio
         ->and(implode("\n", $logged))->not->toContain('CODICE-SEGRETO')->not->toContain('mario@example.com');
 
     // Quello che va nella coda (e, se fallisce, tra i lavori falliti) è cifrato.
-    $queue = app('queue')->connection('sync');
+    $queue = new SyncQueue;
+    $queue->setContainer(app());
     $payload = (fn () => $this->createPayload(mcRaw(), MailQueue::URGENT))->call($queue);
     expect(mcRaw())->toBeInstanceOf(Illuminate\Contracts\Queue\ShouldBeEncrypted::class)
         ->and($payload)->not->toContain('CODICE-SEGRETO')->not->toContain('mario@example.com');

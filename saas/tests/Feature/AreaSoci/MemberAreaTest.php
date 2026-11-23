@@ -136,6 +136,8 @@ it('non fa entrare chi è uscito dall\'associazione o è sospeso, con lo stesso 
     $this->orgContext()->run($this->org->id, function (): void {
         Person::query()->whereKey($this->mario->id)->update(['suspended_at' => null]);
         Person::query()->whereKey($this->mario->id)->update(['left_on' => now()->toDateString()]);
+        // Anche il figlio: l'ex socio tutore di un minore ancora nell'associazione entra (test qui sotto).
+        Person::query()->whereKey($this->luca->id)->update(['left_on' => now()->toDateString()]);
     });
     $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso');
     Mail::assertNothingSent();

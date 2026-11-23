@@ -30,7 +30,9 @@ final class Front {
 		Shortcodes::register();
 		Restrict::register();
 		add_action( 'wp_enqueue_scripts', array( Assets::class, 'early_enqueue' ) ); // gli stili del plugin nell'intestazione, non nel piede
-		Actions::register();
+		if ( \AssociazioneSemplice\Plugin::action_handlers_needed( 'asem_front_' ) ) { // i moduli del sito passano da admin-post.php: le loro azioni (asem_front_…) si registrano solo lì
+			Actions::register();
+		}
 		add_filter( 'asem_area_section', array( BlockBViews::class, 'area_section' ), 10, 3 ); // votazioni e documenti nell'area soci
 		add_filter( 'asem_area_section', array( BlockFViews::class, 'area_section' ), 10, 3 ); // convenzioni nell'area soci
 		do_action( 'asem_front_init' ); // le estensioni registrano qui le loro parti del sito
