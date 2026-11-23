@@ -9,11 +9,14 @@ use App\Modules\Cifratura\Keys\KeyMigration;
 use App\Modules\Cifratura\Keys\RemoteKeyVault;
 use App\Modules\Cifratura\Keys\VaultFactory;
 use App\Modules\Cifratura\Monitor\KeyServiceAlertNotification;
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\QueuedMail;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use RuntimeException;
@@ -107,8 +110,9 @@ final class MonitorKeyServiceCommand extends Command
             return true;
         }
 
+        // In coda come posta massiva: oltre il limite orario aspetta invece di perdersi, e conta un invio per indirizzo.
         try {
-            Notification::route('mail', $recipients)->notifyNow($notification);
+            Bus::dispatch(QueuedMail::notification(Notification::route('mail', $recipients), $notification, MailQueue::BULK, now()->addHours(MailQueue::BULK_RETRY_HOURS)));
         } catch (Throwable) {
             // Si riprova al prossimo controllo.
             $this->warn('Avviso non mandato: la posta non va. Si riprova al prossimo controllo.');
@@ -116,7 +120,7 @@ final class MonitorKeyServiceCommand extends Command
 
             return false;
         }
-        $this->line('Avviso mandato a '.count($recipients).' indirizzi.');
+        $this->line('Avviso in coda per '.count($recipients).' indirizzi.');
 
         return true;
     }

@@ -6,11 +6,12 @@ namespace App\Modules\AreaSoci\Services;
 
 use App\Modules\AreaSoci\Mail\LoginLink;
 use App\Modules\Audit\Contracts\AuditLog;
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\QueuedMail;
 use App\Modules\Soci\Contracts\MemberProfiles;
 use Illuminate\Cache\RateLimiter;
-use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
@@ -41,7 +42,6 @@ final readonly class MemberAccess
         private DatabaseManager $db,
         private OrgContext $context,
         private MemberProfiles $profiles,
-        private Mailer $mailer,
         private AuditLog $audit,
         private OrgContacts $contacts,
         private RateLimiter $limiter,
@@ -65,12 +65,14 @@ final readonly class MemberAccess
         ]);
         $this->audit->record('member.login_requested', null, null, ['kind' => 'email']);
         // L'invio parte dopo la risposta: i tempi sono gli stessi per chi è socio e per chi non lo è. Una volta sola, anche se la chiusura viene richiamata.
-        $mail = new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES, $contacts['email'] ?? null, $contacts['phone'] ?? null);
+        // Con la quota dell'ora finita o la posta ferma va in coda (cifrato) e si riprova finché il codice vale.
+        $mail = QueuedMail::mailable($email, new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES, $contacts['email'] ?? null, $contacts['phone'] ?? null),
+            MailQueue::URGENT, now()->addMinutes(self::CODE_MINUTES));
         $sent = false;
-        app()->terminating(function () use ($email, $mail, &$sent): void {
+        app()->terminating(static function () use ($mail, &$sent): void {
             if (! $sent) {
                 $sent = true;
-                $this->mailer->to($email)->send($mail);
+                MailQueue::sendNowOrQueue($mail);
             }
         });
     }

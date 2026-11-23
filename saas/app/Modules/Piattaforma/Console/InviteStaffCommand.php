@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Console;
 
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\QueuedMail;
 use App\Modules\Piattaforma\Identity\StaffInvites;
 use Illuminate\Console\Command;
-use Illuminate\Mail\Message;
-use Illuminate\Support\Facades\Mail;
 use InvalidArgumentException;
 use Throwable;
 
@@ -47,20 +47,18 @@ final class InviteStaffCommand extends Command
         }
 
         $to = mb_strtolower(trim((string) $this->argument('email')));
+        // Subito se c'è quota, altrimenti in coda (cifrato) finché l'invito vale.
         try {
-            Mail::raw(
-                "Ciao,\n\nsei stato invitato nello staff di Associazione Semplice. Scegli la tua password da questo link (vale 7 giorni e si usa una volta sola):\n\n{$link}\n\nSe non te lo aspettavi, ignora questa email.\n",
-                static function (Message $message) use ($to): void {
-                    $message->to($to)->subject('Il tuo invito nello staff di Associazione Semplice');
-                },
-            );
+            $now = MailQueue::sendNowOrQueue(QueuedMail::raw($to, 'Il tuo invito nello staff di Associazione Semplice',
+                "Ciao,\n\nsei stato invitato nello staff di Associazione Semplice. Scegli la tua password da questo link (vale ".StaffInvites::VALID_DAYS." giorni e si usa una volta sola):\n\n{$link}\n\nSe non te lo aspettavi, ignora questa email.\n",
+                MailQueue::URGENT, now()->addDays(StaffInvites::VALID_DAYS)));
         } catch (Throwable $e) {
             $this->error('Invio non riuscito: '.$e->getMessage());
 
             return self::FAILURE;
         }
 
-        $this->info("Invito mandato a {$to}.");
+        $this->info($now ? "Invito mandato a {$to}." : "Invito in coda per {$to}: la posta in uscita è in pausa o al limite dell'ora, parte da solo appena possibile.");
 
         return self::SUCCESS;
     }

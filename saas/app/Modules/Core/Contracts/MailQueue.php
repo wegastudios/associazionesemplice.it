@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Contracts;
 
+use Closure;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use LogicException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 /**
  * Posta in coda: due code e i tetti di invio, contati per mailer (il servizio che manda davvero la posta).
@@ -19,6 +24,9 @@ use Illuminate\Support\Facades\RateLimiter;
  * Tetti in config saas.mail_queue.mailers.<mailer>: per_second, per_minute, per_hour, per_day, per_month (30 giorni) per
  * il totale, gli stessi con «bulk_» davanti per i massivi. Un mailer senza voce propria usa i numeri di «smtp», contati a
  * parte. Lavori in coda: onQueue(URGENT o BULK) e ThrottledMail come middleware (i tetti seguono la coda del lavoro).
+ *
+ * Ogni messaggio partito si conta, un invio per destinatario (sent(), dall'evento MessageSent): anche quelli mandati
+ * fuori dalla coda. Chi aspetta un codice o un link passa da sendNowOrQueue (QueuedMail per un messaggio già pronto).
  */
 final class MailQueue
 {
@@ -36,6 +44,100 @@ final class MailQueue
     public const PROBE_SECONDS = 600;
 
     private const PERIODS = ['second' => 1, 'minute' => 60, 'hour' => 3600, 'day' => 86400, 'month' => 2592000];
+
+    /** Destinatari già contati da una prenotazione (reserve) per l'invio in corso: il conteggio dei partiti li salta. */
+    private static int $reserved = 0;
+
+    /** La coda dell'invio in corso: gli invii fuori da un lavoro di posta contano come urgenti (solo sul totale). */
+    private static string $current = self::URGENT;
+
+    /**
+     * Manda subito un lavoro di posta se la posta non è ferma e c'è quota (per non far aspettare il lavoratore a chi
+     * aspetta un codice), altrimenti lo mette in coda. Al rifiuto del server il messaggio va in coda e, salvo un problema
+     * del solo destinatario, la posta del mailer si ferma come per i lavori in coda. $now sostituisce l'invio del lavoro
+     * quando chi chiama ha già pronto il messaggio. true = partito subito, false = in coda.
+     *
+     * @param  (Closure(): mixed)|null  $now
+     */
+    public static function sendNowOrQueue(object $job, ?Closure $now = null): bool
+    {
+        $queue = property_exists($job, 'queue') && is_string($job->queue) ? $job->queue : self::URGENT;
+        $mailer = self::mailer();
+        if (self::reserve($queue, $mailer)) {
+            try {
+                self::reserved($queue, $now ?? static fn (): mixed => method_exists($job, 'handle') ? app()->call([$job, 'handle']) : throw new LogicException('Il lavoro di posta non ha handle().'));
+
+                return true;
+            } catch (TransportExceptionInterface $e) {
+                if (ThrottledMail::recipientOnly($e) === null) {
+                    $until = self::block($mailer);
+                    Log::warning('Server di posta: invio rifiutato, posta in coda ferma', ['mailer' => $mailer, 'code' => $e->getCode(), 'until' => date(DATE_ATOM, $until)]);
+                }
+            }
+        }
+        Bus::dispatch($job);
+
+        return false;
+    }
+
+    /**
+     * Prenota un invio sui tetti della coda (un messaggio a un destinatario): false se la posta è ferma o un tetto è pieno.
+     * Dopo la prenotazione l'invio va fatto dentro reserved(), così il destinatario prenotato non si conta due volte.
+     */
+    public static function reserve(string $queue, ?string $mailer = null): bool
+    {
+        $mailer ??= self::mailer();
+        if (self::blockedUntil($mailer) !== null) {
+            return false;
+        }
+        $limits = self::limits($queue, $mailer);
+        foreach ($limits as $limit) {
+            if (RateLimiter::tooManyAttempts(self::key($limit), $limit->maxAttempts)) {
+                return false;
+            }
+        }
+        foreach ($limits as $limit) {
+            RateLimiter::hit(self::key($limit), $limit->decaySeconds);
+        }
+
+        return true;
+    }
+
+    /**
+     * Esegue un invio già prenotato (un destinatario contato): i destinatari in più si contano quando il messaggio parte.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $send
+     * @return T
+     */
+    public static function reserved(string $queue, Closure $send): mixed
+    {
+        [$reserved, $current] = [self::$reserved, self::$current];
+        [self::$reserved, self::$current] = [1, $queue];
+        try {
+            return $send();
+        } finally {
+            [self::$reserved, self::$current] = [$reserved, $current];
+        }
+    }
+
+    /**
+     * Un messaggio partito (evento MessageSent): conta un invio per destinatario sui tetti del mailer che l'ha mandato,
+     * tolti quelli già prenotati. Così consumano la quota anche gli invii diretti e i messaggi a più destinatari.
+     */
+    public static function sent(int $recipients, ?string $mailer = null): void
+    {
+        $prepaid = min(self::$reserved, $recipients);
+        self::$reserved -= $prepaid;
+        $count = $recipients - $prepaid;
+        if ($count <= 0) {
+            return;
+        }
+        foreach (self::limits(self::$current, $mailer) as $limit) {
+            RateLimiter::increment(self::key($limit), $limit->decaySeconds, $count);
+        }
+    }
 
     /** Il mailer in uso: i tetti e l'interruttore valgono per lui solo. */
     public static function mailer(): string

@@ -6,15 +6,14 @@ namespace App\Modules\Contabilita\Http\Controllers;
 
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\LedgerError;
+use App\Modules\Contabilita\Jobs\SendReceiptMail;
 use App\Modules\Contabilita\Receipts\ReceiptFileProblem;
 use App\Modules\Contabilita\Receipts\ReceiptFiles;
-use App\Modules\Contabilita\Receipts\ReceiptMail;
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
-use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 /** Ricevute: il PDF da scaricare o stampare, e l'invio per email a chi ha pagato. */
@@ -23,7 +22,6 @@ final readonly class ReceiptsController
     public function __construct(
         private ReceiptFiles $receipts,
         private AuditLog $audit,
-        private DatabaseManager $db,
         private OrgContext $context,
         private OrgContacts $contacts,
     ) {}
@@ -60,10 +58,13 @@ final readonly class ReceiptsController
         if ($contacts === null) {
             throw ValidationException::withMessages(['ledger' => 'Per inviare la ricevuta per email servono email e telefono della segreteria: inseriscili in Altro › Configurazione guidata › Dati dell\'ente. Intanto scaricala e consegnala a mano.']);
         }
-        $org = $this->db->connection($this->context->require()->connection)->table('app.orgs')->value('name');
-        Mail::to($r['email'])->send(new ReceiptMail(is_string($org) ? $org : '', $r['number'], $r['holder'], $r['pdf'], $r['filename'], $contacts['email'], $contacts['phone']));
-        $this->audit->record('receipt.sent', 'app.receipts', $receipt, ['number' => $r['number']]);
+        // Subito, contando sulla quota dell'ora; con la posta ferma o la quota finita (o se il server rifiuta) va in coda.
+        $org = $this->context->require();
+        $to = $r['email'];
+        if (MailQueue::sendNowOrQueue(new SendReceiptMail($org->id, $receipt), static fn () => SendReceiptMail::send($receipt, $to, $r, $contacts, SendReceiptMail::orgName($org)))) {
+            return back()->with('status', 'Ricevuta n. '.$r['number'].' mandata a '.$to.'.');
+        }
 
-        return back()->with('status', 'Ricevuta n. '.$r['number'].' mandata a '.$r['email'].'.');
+        return back()->with('status', 'Ricevuta n. '.$r['number'].' in coda: la posta in uscita è in pausa o ha raggiunto il limite dell\'ora, parte da sola appena possibile a '.$to.'.');
     }
 }

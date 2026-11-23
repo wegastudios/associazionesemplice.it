@@ -77,7 +77,8 @@ final class ThrottledMail
         }
 
         try {
-            $result = $next($job);
+            // Il destinatario è già contato dai tetti qui sopra; gli altri, se il messaggio ne ha più d'uno, quando parte.
+            $result = MailQueue::reserved($queue, static fn (): mixed => $next($job));
         } catch (TransportExceptionInterface $e) {
             return $this->rejected($job, $mailer, $urgent, $e);
         }
@@ -92,13 +93,11 @@ final class ThrottledMail
     private function rejected(object $job, string $mailer, bool $urgent, TransportExceptionInterface $e): null
     {
         $code = $e->getCode();
-        // Limite orario dell'account (exim: «has exceeded the max emails per hour»): sempre l'interruttore, qualunque sia il
-        // codice esteso, e non conta come rifiuto del messaggio.
-        $hourLimit = preg_match('/max emails per hour|exceeded/i', $e->getMessage()) === 1;
-        // Codici estesi x.1.x (indirizzo) e x.2.1/x.2.2 (casella disattivata o piena): riguardano il solo destinatario.
-        $recipient = ! $hourLimit && preg_match('/\b([45])\.(?:1\.\d{1,3}|2\.[12])\b/', $e->getMessage(), $match) === 1;
+        // Il limite orario dell'account non conta come rifiuto del messaggio.
+        $hourLimit = self::hourLimit($e);
+        $recipient = self::recipientOnly($e);
 
-        if (($recipient && $match[1] === '5') || (! $hourLimit && $this->rejections($job) >= self::MAX_REJECTIONS)) {
+        if ($recipient === '5' || (! $hourLimit && $this->rejections($job) >= self::MAX_REJECTIONS)) {
             if (! method_exists($job, 'fail')) {
                 throw new LogicException('Il lavoro di posta deve usare InteractsWithQueue.');
             }
@@ -107,13 +106,33 @@ final class ThrottledMail
             return null;
         }
 
-        if (! $recipient) {
+        if ($recipient === null) {
             $until = MailQueue::block($mailer);
             Log::warning('Server di posta: invio rifiutato, posta in coda ferma', ['mailer' => $mailer, 'code' => $code, 'until' => date(DATE_ATOM, $until)]);
         }
 
         // Un urgente può fare da prova al prossimo turno; un massivo aspetta tutta la pausa.
         return $this->release($job, $urgent ? MailQueue::PROBE_SECONDS : MailQueue::blockedMinutes() * 60);
+    }
+
+    /**
+     * Il rifiuto riguarda il solo destinatario? '5' definitivo, '4' temporaneo, null no (server o account). Codici estesi
+     * x.1.x (indirizzo) e x.2.1/x.2.2 (casella disattivata o piena); mai il limite orario dell'account, anche se il server
+     * lo manda con un codice da destinatario.
+     */
+    public static function recipientOnly(TransportExceptionInterface $e): ?string
+    {
+        if (self::hourLimit($e) || preg_match('/\b([45])\.(?:1\.\d{1,3}|2\.[12])\b/', $e->getMessage(), $match) !== 1) {
+            return null;
+        }
+
+        return $match[1];
+    }
+
+    /** Limite orario dell'account (exim: «has exceeded the max emails per hour»): sempre l'interruttore. */
+    private static function hourLimit(TransportExceptionInterface $e): bool
+    {
+        return preg_match('/max emails per hour|exceeded/i', $e->getMessage()) === 1;
     }
 
     /** Quante volte il server ha rifiutato questo stesso lavoro (contato per identificativo, per tre giorni). */

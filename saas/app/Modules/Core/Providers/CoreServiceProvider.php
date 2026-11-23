@@ -36,6 +36,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -107,6 +108,13 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobProcessing::class, $reset);
         Event::listen(JobProcessed::class, $reset);
         Event::listen(JobFailed::class, $reset);
+
+        // Ogni messaggio partito consuma la quota del suo mailer, un invio per destinatario: anche gli invii diretti (fuori
+        // dalla coda) e i messaggi a più destinatari, così il limite orario dell'account non si supera senza saperlo.
+        Event::listen(static function (MessageSent $event): void {
+            $mailer = $event->data['mailer'] ?? null;
+            MailQueue::sent(count($event->sent->getSymfonySentMessage()->getEnvelope()->getRecipients()), is_string($mailer) && $mailer !== '' ? $mailer : null);
+        });
 
         if ($this->app->runningInConsole()) {
             $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class]);
