@@ -1103,6 +1103,9 @@ final class Actions {
 		if ( ! empty( $d['missing'] ) || ! empty( $d['bad'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) ( $d['missing'] ?? 0 ) + (int) ( $d['bad'] ?? 0 ), 'Attenzione: un PDF definitivo manca o risulta alterato: controllalo da «Verifica delle ricevute».', 'Attenzione: {n} PDF definitivi mancano o risultano alterati: controllali da «Verifica delle ricevute».' );
 		}
+		if ( ! empty( $r['orphans'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Backup::orphans_text( (array) $r['orphans'] );
+		}
 		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '.' . $docs . ' Lo stato precedente non è stato conservato sul sito: se ti serve, scarica una copia prima di ripristinare.' );
 	}
 

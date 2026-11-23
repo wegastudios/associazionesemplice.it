@@ -33,5 +33,15 @@ final class BackupJobWiringTest extends TestCase {
 	public function test_new_texts_with_placeholders_are_translated(): void {
 		$en = json_decode( self::src( 'includes/languages/en.json' ), true );
 		$this->assertArrayHasKey( 'La copia di sicurezza è pronta ({size}). Dopo lo scarico non resta sul sito; se non la scarichi, si cancella da sola dopo {ore} ore.', $en['strings'] );
+		$this->assertArrayHasKey( 'Attenzione: nella copia ci sono dati che rimandano a righe mancanti ({elenco}). Il ripristino è completo: controlla questi dati.', $en['strings'] );
+	}
+
+	public function test_small_copies_stay_in_one_request_and_old_ready_copies_ask_the_password(): void {
+		$b    = self::src( 'includes/Backup.php' );
+		$body = substr( $b, (int) strpos( $b, 'public static function handle_download' ) );
+		$this->assertLessThan( (int) strpos( $body, 'self::start_job( $with )' ), (int) strpos( $body, 'self::fits_one_request( $with )' ), 'sotto la soglia la copia si fa subito, prima di qualsiasi tappa' );
+		$get = substr( $b, (int) strpos( $b, 'public static function handle_get' ) );
+		$this->assertLessThan( (int) strpos( $get, 'self::deliver(' ), (int) strpos( $get, 'self::require_password( $back )' ) );
+		$this->assertStringContainsString( 'Mentre la copia si prepara, evita di registrare movimenti o incassi: quello che registri adesso potrebbe non entrare nella copia.', self::src( 'includes/Admin/BackupPage.php' ) );
 	}
 }

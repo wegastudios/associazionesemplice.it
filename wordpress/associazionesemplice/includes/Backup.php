@@ -246,6 +246,113 @@ final class Backup {
 		return wp_normalize_path( dirname( $path, 2 ) ) === wp_normalize_path( self::dir() ) && is_file( $path ) ? $path : '';
 	}
 
+	/** Fin qui la copia si fa in una richiesta sola, istantanea come prima: righe di tutte le tabelle (filtro `asem_backup_one_request_rows`). */
+	const ONE_REQUEST_ROWS = 20000;
+
+	/** E, con gli allegati, fin qui i byte dei file (filtro `asem_backup_one_request_bytes`). */
+	const ONE_REQUEST_BYTES = 268435456;
+
+	/** Dopo quanto tempo dall'avvio lo scarico della copia pronta chiede di nuovo la password. */
+	const READY_PASSWORD_AFTER = 7200;
+
+	/** Le righe di tutte le tabelle, con una query sola. */
+	private static function count_rows( array $tables ): int {
+		if ( ! $tables ) {
+			return 0;
+		}
+		$db    = Db::db();
+		$parts = array();
+		foreach ( $tables as $t ) {
+			$parts[] = '(SELECT COUNT(*) FROM `' . $db->prefix . $t . '`)';
+		}
+		return (int) $db->get_var( 'SELECT ' . implode( ' + ', $parts ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi delle tabelle del plugin
+	}
+
+	/**
+	 * La copia sta in una richiesta? Sotto la soglia di righe (e, con gli allegati, di byte) si fa tutta subito, in un istante, come prima;
+	 * sopra si fa a tappe, e la pagina mostra l'avanzamento.
+	 */
+	public static function fits_one_request( bool $with_files ): bool {
+		if ( self::count_rows( self::tables() ) > (int) apply_filters( 'asem_backup_one_request_rows', self::ONE_REQUEST_ROWS ) ) {
+			return false;
+		}
+		if ( ! $with_files ) {
+			return true;
+		}
+		$max   = (int) apply_filters( 'asem_backup_one_request_bytes', self::ONE_REQUEST_BYTES );
+		$bytes = 0;
+		foreach ( array_merge( glob( Attachments::dir() . '/*' ) ?: array(), PrivateFolder::left_behind() ) as $f ) {
+			$bytes += is_file( $f ) ? (int) filesize( $f ) : 0;
+			if ( $bytes > $max ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Lo scarico della copia pronta chiede di nuovo la password? Sì se sono passate più di due ore da quando è stata avviata. */
+	public static function ready_needs_password(): bool {
+		$st = LongJob::status( self::JOB );
+		return ! $st || time() - (int) $st['started'] > self::READY_PASSWORD_AFTER;
+	}
+
+	/** Riferimenti tra le tabelle che il ripristino controlla: tabella => [colonna, tabella a cui rimanda]. */
+	const REFERENCES = array(
+		array( 'memberships', 'person_id', 'people' ),
+		array( 'enrollments', 'person_id', 'people' ),
+		array( 'enrollments', 'activity_id', 'activities' ),
+		array( 'sessions', 'activity_id', 'activities' ),
+		array( 'bookings', 'person_id', 'people' ),
+		array( 'bookings', 'session_id', 'sessions' ),
+		array( 'transactions', 'account_id', 'accounts' ),
+		array( 'transactions', 'category_id', 'categories' ),
+		array( 'fund_entries', 'fund_id', 'funds' ),
+	);
+
+	/**
+	 * Righe che rimandano a una riga che non c'è (per esempio una tessera di un socio che manca): dopo un ripristino si segnalano, i dati restano.
+	 * Una copia fatta a tappe legge le tabelle in momenti diversi: un socio cancellato a metà copia lascia le sue tessere senza socio.
+	 *
+	 * @return array<string,int> «tabella.colonna» => righe
+	 */
+	public static function orphans(): array {
+		$db  = Db::db();
+		$out = array();
+		foreach ( self::REFERENCES as $r ) {
+			$child  = $db->prefix . 'asem_' . $r[0];
+			$parent = $db->prefix . 'asem_' . $r[2];
+			if ( ! $db->get_var( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $child ) ) ) || ! $db->get_var( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $parent ) ) ) ) {
+				continue;
+			}
+			$col = $r[1];
+			$n   = (int) $db->get_var( "SELECT COUNT(*) FROM `$child` c LEFT JOIN `$parent` p ON p.id = c.`$col` WHERE c.`$col` IS NOT NULL AND c.`$col` <> 0 AND p.id IS NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- nomi di tabelle e colonne del plugin
+			if ( $n > 0 ) {
+				$out[ 'asem_' . $r[0] . '.' . $col ] = $n;
+			}
+		}
+		return $out;
+	}
+
+	/** Le righe senza riferimento, in parole (per il messaggio dopo il ripristino). */
+	public static function orphans_text( array $orphans ): string {
+		$labels = array(
+			'asem_memberships.person_id'   => Texts::t( 'tessere di soci che non ci sono' ),
+			'asem_enrollments.person_id'   => Texts::t( 'iscrizioni di persone che non ci sono' ),
+			'asem_enrollments.activity_id' => Texts::t( 'iscrizioni a corsi o eventi che non ci sono' ),
+			'asem_sessions.activity_id'    => Texts::t( 'date di corsi o eventi che non ci sono' ),
+			'asem_bookings.person_id'      => Texts::t( 'prenotazioni di persone che non ci sono' ),
+			'asem_bookings.session_id'     => Texts::t( 'prenotazioni di date che non ci sono' ),
+			'asem_transactions.account_id' => Texts::t( 'movimenti su conti che non ci sono' ),
+			'asem_transactions.category_id' => Texts::t( 'movimenti con voci che non ci sono' ),
+			'asem_fund_entries.fund_id'    => Texts::t( 'movimenti di fondi che non ci sono' ),
+		);
+		$parts = array();
+		foreach ( $orphans as $k => $n ) {
+			$parts[] = (int) $n . ' ' . ( $labels[ $k ] ?? $k );
+		}
+		return $parts ? Texts::t( 'Attenzione: nella copia ci sono dati che rimandano a righe mancanti ({elenco}). Il ripristino è completo: controlla questi dati.', array( 'elenco' => implode( ', ', $parts ) ) ) : '';
+	}
+
 	private static function require_zip(): void {
 		if ( ! class_exists( '\ZipArchive' ) ) {
 			throw new \RuntimeException( 'Questo server non può creare file ZIP: chiedi al tuo hosting di attivare l\'estensione zip di PHP.' );
@@ -305,15 +412,12 @@ final class Backup {
 		$work   = self::work_dir( $job );
 		$total  = 0;
 		if ( $job ) { // per la barra di avanzamento: righe da scrivere e voci da mettere nello ZIP
-			$db = Db::db();
-			foreach ( $tables as $t ) {
-				$total += (int) $db->get_var( 'SELECT COUNT(*) FROM `' . $db->prefix . $t . '`' ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome di una tabella del plugin
-			}
-			$total += count( $tables ) + 1 + ( $with_files ? count( glob( Attachments::dir() . '/*' ) ?: array() ) : 0 );
+			$total = self::count_rows( $tables ) + count( $tables ) + 1 + ( $with_files ? count( glob( Attachments::dir() . '/*' ) ?: array() ) : 0 );
 		}
 		return array(
 			'v'           => 1,
 			'job'         => $job,
+			'started_at'  => $job ? Db::now() : '', // la copia a tappe lo scrive nel manifest, con l'ora di fine
 			'work'        => $work,
 			'out'         => '' !== $out ? $out : $work . '/copia.zip',
 			'files'       => $with_files,
@@ -662,6 +766,9 @@ final class Backup {
 			'entries' => $hashes,     // impronta SHA-256 di ogni voce dello ZIP (il manifest escluso)
 			'kfp' => BackupSeal::fingerprint( $key ), // impronta dei codici di sicurezza che hanno firmato (non li rivela)
 		);
+		if ( ! empty( $s['job'] ) ) { // fatta a tappe: le tabelle sono state lette tra queste due ore, non in un istante solo
+			$manifest['a_tappe'] = array( 'inizio' => (string) ( $s['started_at'] ?? '' ), 'fine' => Db::now() );
+		}
 		$manifest['sig'] = BackupSeal::signature( $manifest, $key ); // HMAC-SHA256 di tutto il manifest
 		$zip->addFromString( 'manifest.json', (string) wp_json_encode( $manifest, JSON_PRETTY_PRINT ) );
 		$ok = $zip->close();
@@ -1068,6 +1175,7 @@ final class Backup {
 		Install::migrate_year_closures(); // una copia fatta prima della traccia delle chiusure: gli anni chiusi ne ricevono la riga (idempotente)
 		Texts::flush();
 		$closed_all = $closed + (int) $documents['closed'];
+		$orphans    = self::orphans(); // righe che rimandano a righe che non ci sono: si segnalano, i dati restano
 		Audit::log(
 			'backup.restored',
 			'settings',
@@ -1083,6 +1191,7 @@ final class Backup {
 				'members_reset'     => $members_reset,
 				'passwords'         => $passwords,
 				'documents'         => $documents,
+				'orphans'           => $orphans,
 			)
 		);
 		wp_delete_file( $safety ); // ripristino riuscito: la copia con le tabelle in chiaro e le chiavi non resta sul disco (quelle che restassero per un'interruzione le toglie la pulizia oraria)
@@ -1100,6 +1209,7 @@ final class Backup {
 			'origin'        => $origin,
 			'safety'        => basename( $safety ),
 			'documents'     => $documents,
+			'orphans'       => $orphans,
 		);
 	}
 
@@ -1234,6 +1344,16 @@ final class Backup {
 		check_admin_referer( 'asem_backup' );
 		self::require_password( $back );
 		$with = isset( $_POST['files'] ) && 1 === absint( $_POST['files'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce controllato sopra
+		if ( self::fits_one_request( $with ) ) { // una copia che sta in una richiesta si fa tutta subito, in un istante, come prima
+			try {
+				$path = self::export( $with );
+			} catch ( \RuntimeException $e ) {
+				wp_die( esc_html( $e->getMessage() ), 500 );
+			}
+			self::mark_downloaded();
+			Audit::log( 'export.downloaded', 'export', 0, array( 'what' => $with ? 'backup_with_files' : 'backup' ) );
+			self::send_zip( $path, 'copia-associazionesemplice-' . gmdate( 'Y-m-d-His' ) . '.zip', true );
+		}
 		try {
 			$st = self::start_job( $with );
 			$st = LongJob::run( self::JOB );
@@ -1337,6 +1457,9 @@ final class Backup {
 			Admin\Ui::redirect( $back );
 		}
 		check_admin_referer( 'asem_backup_get' );
+		if ( self::ready_needs_password() ) { // avviata più di due ore fa: la password scritta all'avvio non basta più
+			self::require_password( $back );
+		}
 		$path = self::ready_file();
 		if ( '' === $path ) {
 			Admin\Ui::redirect( $back, '', Texts::t( 'La copia non è più disponibile: preparane una nuova.' ) );

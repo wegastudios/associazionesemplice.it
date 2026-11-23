@@ -276,7 +276,7 @@ if ( ! function_exists( 'asem_bk_reseal' ) ) {
 				$diff[] = 'impronta diversa nel manifest: ' . $n;
 			}
 		}
-		foreach ( array( 'created_at', 'sig', 'entries' ) as $k ) {
+		foreach ( array( 'created_at', 'sig', 'entries', 'a_tappe' ) as $k ) { // «a_tappe»: ore di inizio e fine della copia a tappe (la prova lo controlla a parte)
 			unset( $ma[ $k ], $mb[ $k ] );
 		}
 		foreach ( array_unique( array_merge( array_keys( $ma ), array_keys( $mb ) ) ) as $k ) {

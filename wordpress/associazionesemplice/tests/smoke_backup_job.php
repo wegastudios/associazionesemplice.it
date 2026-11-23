@@ -50,7 +50,56 @@ asem_ok( ! $bj_d, 'copia a tappe: fatta in una richiesta, la copia è uguale a q
 asem_ok( ! preg_grep( '/asem_(people|transactions|audit_log)`.*OFFSET/i', $bj_new_sql ), 'copia a tappe: le tabelle si leggono per chiave, senza OFFSET' );
 asem_ok( true, sprintf( 'copia a tappe, misura in una richiesta: prima %d query, %d ms, %s MB in più; ora %d query, %d ms, %s MB in più', $bj_old_q, $bj_old_ms, $bj_old_mb, $bj_new_q, $bj_new_ms, $bj_new_mb ) );
 asem_ok( ! $bj_work(), 'copia a tappe: in una richiesta non resta nessuna cartella di lavoro' );
+$bj_zm = new ZipArchive();
+$bj_zm->open( $bj_new );
+$bj_mn = json_decode( (string) $bj_zm->getFromName( 'manifest.json' ), true );
+$bj_zm->close();
+asem_ok( ! isset( $bj_mn['a_tappe'] ), 'copia a tappe: la copia fatta in una richiesta non porta il segno «a tappe»' );
 wp_delete_file( $bj_new );
+wp_delete_file( $bj_old );
+
+// ---------- Soglia: sotto si fa tutto in una richiesta, come prima ----------
+$bj_big = function () {
+	return PHP_INT_MAX;
+};
+add_filter( 'asem_backup_one_request_rows', $bj_big );
+add_filter( 'asem_backup_one_request_bytes', $bj_big );
+asem_ok( Backup::fits_one_request( true ) && Backup::fits_one_request( false ), 'copia a tappe: sotto la soglia la copia si fa in una richiesta sola' );
+remove_filter( 'asem_backup_one_request_rows', $bj_big );
+add_filter( 'asem_backup_one_request_rows', '__return_zero' );
+asem_ok( ! Backup::fits_one_request( false ), 'copia a tappe: sopra la soglia di righe si fa a tappe' );
+remove_filter( 'asem_backup_one_request_rows', '__return_zero' );
+remove_filter( 'asem_backup_one_request_bytes', $bj_big );
+add_filter( 'asem_backup_one_request_rows', $bj_big );
+add_filter( 'asem_backup_one_request_bytes', '__return_zero' );
+asem_ok( Backup::fits_one_request( false ) && ! Backup::fits_one_request( true ), 'copia a tappe: con gli allegati conta anche il loro peso' );
+remove_filter( 'asem_backup_one_request_rows', $bj_big );
+remove_filter( 'asem_backup_one_request_bytes', '__return_zero' );
+
+// ---------- Il ripristino segnala i riferimenti mancanti ----------
+$bj_ref = (int) $wpdb->get_var( 'SELECT m.person_id FROM ' . \AssociazioneSemplice\Db::t( 'memberships' ) . ' m JOIN ' . \AssociazioneSemplice\Db::t( 'people' ) . ' p ON p.id = m.person_id ORDER BY m.id LIMIT 1' );
+$bj_o0  = Backup::orphans();
+$bj_ok  = Backup::export( true );
+$bj_bad = wp_tempnam( 'asem-orfani' );
+copy( $bj_ok, $bj_bad );
+asem_bk_reseal( $bj_bad, function ( ZipArchive $z ) use ( $bj_ref ) { // nella copia manca il socio di una tessera
+	$keep = array();
+	foreach ( explode( "\n", (string) $z->getFromName( 'tabelle/asem_people.jsonl' ) ) as $line ) {
+		$r = json_decode( $line, true );
+		if ( '' !== $line && ( ! is_array( $r ) || (int) $r['id'] !== $bj_ref ) ) {
+			$keep[] = $line;
+		}
+	}
+	$z->addFromString( 'tabelle/asem_people.jsonl', implode( "\n", $keep ) . "\n" );
+} );
+$bj_rb = Backup::restore( $bj_bad );
+$bj_k  = 'asem_memberships.person_id';
+asem_ok( $bj_ref > 0 && (int) ( $bj_rb['orphans'][ $bj_k ] ?? 0 ) > (int) ( $bj_o0[ $bj_k ] ?? 0 ), 'copia a tappe: il ripristino segnala le tessere che rimandano a un socio che nella copia non c\'è (' . wp_json_encode( $bj_rb['orphans'] ?? null ) . ')' );
+asem_ok( false !== strpos( Backup::orphans_text( array( $bj_k => 2 ) ), '2 tessere di soci che non ci sono' ), 'copia a tappe: il messaggio dice quante righe e di che tipo' );
+$bj_rg = Backup::restore( $bj_ok );
+asem_ok( (int) ( $bj_rg['orphans'][ $bj_k ] ?? 0 ) === (int) ( $bj_o0[ $bj_k ] ?? 0 ), 'copia a tappe: una copia completa non porta riferimenti mancanti nuovi' );
+wp_delete_file( $bj_ok );
+wp_delete_file( $bj_bad );
 wp_delete_file( $bj_old );
 
 // ---------- A tappe, con una tappa interrotta in due punti ----------
@@ -61,7 +110,8 @@ $bj_st  = Backup::start_job( true );
 asem_ok( 'running' === $bj_st['status'] && $bj_st['total'] > 0 && 1 === count( $bj_work() ), 'copia a tappe: avviata, con il totale da fare e la sua cartella di lavoro' );
 asem_ok( null !== asem_throws( function () { Backup::start_job( false ); } ), 'copia a tappe: una seconda copia non parte mentre la prima è in corso' );
 $bj_html = asem_render( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ), 'data-asem-job="' . Backup::JOB . '"' );
-asem_ok( false !== strpos( $bj_html, 'asem-longjob-cancel' ) && false === strpos( $bj_html, 'name="files" value="1"' ), 'copia a tappe: la pagina mostra barra e «Annulla», non il modulo per un\'altra copia' );
+asem_ok( false !== strpos( $bj_html, 'Mentre la copia si prepara, evita di registrare movimenti o incassi: quello che registri adesso potrebbe non entrare nella copia.' ), 'copia a tappe: la pagina avvisa di non registrare movimenti mentre la copia si prepara' );
+asem_ok( false !== strpos( $bj_html, 'asem-longjob-cancel' ) && false === strpos( $bj_html, 'name="files" value="1"' ),'copia a tappe: la pagina mostra barra e «Annulla», non il modulo per un\'altra copia' );
 $bj_opt   = LongJob::OPT_PREFIX . Backup::JOB;
 $bj_raw   = function () use ( $wpdb, $bj_opt ): string {
 	return (string) $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $bj_opt ) );
@@ -105,7 +155,18 @@ asem_ok( ! $bj_d, 'copia a tappe: la copia fatta a tappe è uguale a quella di p
 asem_ok( '' === Backup::ready_file( 999999 ), 'copia a tappe: la copia pronta la scarica solo chi l\'ha chiesta' );
 $bj_left = glob( dirname( $bj_ready ) . '/*' ) ?: array();
 asem_ok( array( 'copia.zip' ) === array_values( array_diff( array_map( 'basename', $bj_left ), array( 'index.php' ) ) ),'copia a tappe: a lavoro finito nella cartella resta solo la copia (i file intermedi sono cancellati)' );
-asem_render( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ), 'asem_backup_get' );
+$bj_html = asem_render( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ), 'asem_backup_get' );
+asem_ok( ! Backup::ready_needs_password() && 1 === substr_count( $bj_html, 'name="password"' ), 'copia a tappe: appena pronta, la copia si scarica senza riscrivere la password' );
+$bj_rec            = json_decode( $bj_raw(), true );
+$bj_rec['started'] = time() - 3 * HOUR_IN_SECONDS;
+$wpdb->update( $wpdb->options, array( 'option_value' => wp_json_encode( $bj_rec ) ), array( 'option_name' => $bj_opt ) );
+$bj_html = asem_render( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ), 'asem_backup_get' );
+asem_ok( Backup::ready_needs_password() && 2 === substr_count( $bj_html, 'name="password"' ) && false !== strpos( $bj_html, 'più di due ore fa' ), 'copia a tappe: avviata più di due ore fa, per scaricarla si chiede di nuovo la password' );
+$bj_zm = new ZipArchive();
+$bj_zm->open( $bj_ready );
+$bj_mn = json_decode( (string) $bj_zm->getFromName( 'manifest.json' ), true );
+$bj_zm->close();
+asem_ok( isset( $bj_mn['a_tappe']['inizio'], $bj_mn['a_tappe']['fine'] ) && '' !== $bj_mn['a_tappe']['inizio'] && $bj_mn['a_tappe']['fine'] >= $bj_mn['a_tappe']['inizio'], 'copia a tappe: il manifest dice che la copia è fatta a tappe, con ora di inizio e di fine' );
 $bj_origin = '';
 Backup::inspect( $bj_ready, $bj_origin );
 asem_ok( 'same' === $bj_origin, 'copia a tappe: la copia si riconosce come fatta da questo sito (firma e impronte valide)' );
