@@ -28,6 +28,7 @@ class QueuedMailTest extends TestCase
 
     public function test_the_limiter_allows_twenty_mails_an_hour(): void
     {
+        config(['support.mail_per_hour' => 20]);
         $limit = RateLimiter::limiter('support-mail')();
 
         $this->assertSame(20, $limit->maxAttempts);
