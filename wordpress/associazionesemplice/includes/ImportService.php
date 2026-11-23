@@ -324,7 +324,9 @@ final class ImportService {
 			if ( ! empty( $r['guardian'] ) ) {
 				$job['links'][] = array( $id, (string) $r['guardian'], ( $r['sheet'] ? $r['sheet'] . ' ' : '' ) . 'riga ' . $r['line'] );
 			}
-			$person = $people->get( $id );
+			if ( 'create' !== $row['action'] ) { // una scheda appena creata (o ripresa) è già stata letta qui sopra e non è cambiata
+				$person = $people->get( $id );
+			}
 			if ( $mark && $person && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
 				$had = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $id, $year ) );
 				$people->set_membership( $id, $year, true, 'import' );
@@ -552,27 +554,47 @@ final class ImportService {
 		return $rows;
 	}
 
+	/** Un import, letto per numero (una sola riga: non l'elenco di tutti). */
 	public static function batch( int $id ): ?array {
-		foreach ( self::batches( 500 ) as $b ) {
-			if ( (int) $b['id'] === $id ) {
-				return $b;
-			}
+		$db  = Db::db();
+		$row = $db->get_row( $db->prepare( 'SELECT b.*, u.display_name FROM ' . Db::t( 'import_batches' ) . ' b LEFT JOIN ' . $db->users . ' u ON u.ID = b.user_id WHERE b.id = %d', $id ), ARRAY_A );
+		if ( ! $row ) {
+			return null;
 		}
-		return null;
+		$row['summary'] = (array) json_decode( (string) $row['summary'], true );
+		$row['data']    = (array) json_decode( (string) $row['data'], true );
+		return $row;
 	}
 
-	/** True se la persona non è usata altrove (nessuna iscrizione a un'attività, prenotazione, movimento, pagamento o iscrizione residua). */
-	private static function person_unused( int $id ): bool {
+	/**
+	 * Quali di queste persone sono usate altrove (iscrizione a un'attività, prenotazione, iscrizione residua, pagamento o movimento): cinque
+	 * letture per tutte, non cinque per persona.
+	 *
+	 * @param int[] $ids
+	 * @return array<int,true> gli id usati
+	 */
+	private static function people_in_use( array $ids ): array {
+		$ids = array_values( array_unique( array_map( 'intval', $ids ) ) );
+		$out = array();
+		if ( ! $ids ) {
+			return $out;
+		}
 		$db = Db::db();
-		foreach ( array(
-			'enrollments' => 'person_id', 'bookings' => 'person_id', 'memberships' => 'person_id', 'payments' => 'payer_person_id',
-		) as $table => $col ) {
-			$extra = 'memberships' === $table ? ' AND deleted_at IS NULL' : '';
-			if ( (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( $table ) . " WHERE $col = %d$extra", $id ) ) > 0 ) {
-				return false;
+		foreach ( array_chunk( $ids, 500 ) as $chunk ) {
+			$in = implode( ',', $chunk );
+			foreach ( array(
+				array( 'enrollments', 'person_id', '' ),
+				array( 'bookings', 'person_id', '' ),
+				array( 'memberships', 'person_id', ' AND deleted_at IS NULL' ),
+				array( 'payments', 'payer_person_id', '' ),
+				array( 'transactions', 'person_id', ' AND voided_at IS NULL' ),
+			) as $q ) {
+				foreach ( $db->get_col( 'SELECT DISTINCT ' . $q[1] . ' FROM ' . Db::t( $q[0] ) . ' WHERE ' . $q[1] . ' IN (' . $in . ')' . $q[2] ) ?: array() as $used ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi interni e id interi
+					$out[ (int) $used ] = true;
+				}
 			}
 		}
-		return 0 === (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = %d AND voided_at IS NULL', $id ) );
+		return $out;
 	}
 
 	/**
@@ -584,6 +606,14 @@ final class ImportService {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function undo( int $batch_id ): array {
+		return FiscalYears::memo(
+			function () use ( $batch_id ) { // gli anni fiscali si leggono una volta per anno, non una volta per tessera o movimento
+				return self::undo_now( $batch_id );
+			}
+		);
+	}
+
+	private static function undo_now( int $batch_id ): array {
 		$b = self::batch( $batch_id );
 		if ( ! $b || ImportJob::is_running( $batch_id ) ) { // un import ancora a giri non si annulla: prima si finisce o si ferma
 			throw new \InvalidArgumentException( 'Importazione non trovata.' );
@@ -602,27 +632,43 @@ final class ImportService {
 		$reason = 'Annullamento importazione n. ' . $batch_id;
 
 		// 1. Prima nota: tutto o niente
-		$ledger->in_batch(
+		$ledger->bulk(
 			function () use ( $db, $ledger, $batch_id, $data, $reason, &$res ) {
-				$ids = array_map( 'intval', $db->get_col( $db->prepare( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE import_batch = %d AND voided_at IS NULL ORDER BY id', $batch_id ) ) );
-				foreach ( $ids as $id ) {
-					$still = $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d AND voided_at IS NULL', $id ) );
-					if ( $still ) { // un giroconto si annulla con entrambe le righe: la seconda può essere già andata
-						$ledger->void( $id, $reason );
-						$res['voided']++;
+				$ledger->in_batch(
+					function () use ( $db, $ledger, $batch_id, $data, $reason, &$res ) {
+						$rows  = $db->get_results( $db->prepare( 'SELECT id, transfer_id FROM ' . Db::t( 'transactions' ) . ' WHERE import_batch = %d AND voided_at IS NULL ORDER BY id', $batch_id ), ARRAY_A ) ?: array();
+						$legs  = array(); // le righe di ogni giroconto dell'import
+						foreach ( $rows as $r ) {
+							if ( ! empty( $r['transfer_id'] ) ) {
+								$legs[ (string) $r['transfer_id'] ][] = (int) $r['id'];
+							}
+						}
+						$gone = array();
+						foreach ( $rows as $r ) {
+							$id = (int) $r['id'];
+							if ( isset( $gone[ $id ] ) ) { // un giroconto si annulla con entrambe le righe: la seconda è già andata
+								continue;
+							}
+							$ledger->void( $id, $reason );
+							$res['voided']++;
+							$gone[ $id ] = true;
+							foreach ( $legs[ (string) ( $r['transfer_id'] ?? '' ) ] ?? array() as $leg ) {
+								$gone[ $leg ] = true;
+							}
+						}
+						foreach ( (array) ( $data['shifts'] ?? array() ) as $acc => $shift ) {
+							$ledger->shift_opening( (int) $acc, -(int) $shift );
+							$res['shifts_undone']++;
+						}
+						foreach ( (array) ( $data['accounts_created'] ?? array() ) as $acc ) {
+							$used = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . ' WHERE account_id = %d AND voided_at IS NULL', (int) $acc ) );
+							if ( ! $used ) {
+								$db->update( Db::t( 'accounts' ), array( 'deleted_at' => Db::now() ), array( 'id' => (int) $acc ) );
+								$res['accounts_removed']++;
+							}
+						}
 					}
-				}
-				foreach ( (array) ( $data['shifts'] ?? array() ) as $acc => $shift ) {
-					$ledger->shift_opening( (int) $acc, -(int) $shift );
-					$res['shifts_undone']++;
-				}
-				foreach ( (array) ( $data['accounts_created'] ?? array() ) as $acc ) {
-					$used = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . ' WHERE account_id = %d AND voided_at IS NULL', (int) $acc ) );
-					if ( ! $used ) {
-						$db->update( Db::t( 'accounts' ), array( 'deleted_at' => Db::now() ), array( 'id' => (int) $acc ) );
-						$res['accounts_removed']++;
-					}
-				}
+				);
 			}
 		);
 
@@ -642,8 +688,9 @@ final class ImportService {
 		}
 
 		// 3. Soci aggiornati: si rimettono i dati di prima
+		$created_set = array_flip( array_map( 'intval', (array) ( $data['people_created'] ?? array() ) ) );
 		foreach ( (array) ( $data['people_updated'] ?? array() ) as $id => $before ) {
-			if ( in_array( (int) $id, array_map( 'intval', (array) ( $data['people_created'] ?? array() ) ), true ) ) {
+			if ( isset( $created_set[ (int) $id ] ) ) {
 				continue;
 			}
 			try {
@@ -656,21 +703,25 @@ final class ImportService {
 
 		// 4. Soci e ospiti creati: prima gli ospiti (altrimenti l'ospitante non si può togliere), solo se non usati
 		$created = array_map( 'intval', (array) ( $data['people_created'] ?? array() ) );
+		$cards   = array(); // le schede lette una volta sola (prima si rileggevano a ogni confronto dell'ordinamento)
+		$in_use  = array();
+		foreach ( array_chunk( $created, 500 ) as $chunk ) {
+			$cards  += $people->get_many( $chunk );
+			$in_use += self::people_in_use( $chunk );
+		}
 		usort(
 			$created,
-			function ( $a, $c ) use ( $people ) {
-				$pa = $people->get( $a );
-				$pc = $people->get( $c );
-				return ( $pa && MemberType::GUEST === $pa['type'] ? 0 : 1 ) <=> ( $pc && MemberType::GUEST === $pc['type'] ? 0 : 1 );
+			function ( $a, $c ) use ( $cards ) {
+				return ( isset( $cards[ $a ] ) && MemberType::GUEST === $cards[ $a ]['type'] ? 0 : 1 ) <=> ( isset( $cards[ $c ] ) && MemberType::GUEST === $cards[ $c ]['type'] ? 0 : 1 );
 			}
 		);
 		foreach ( $created as $id ) {
-			$p = $people->get( $id );
+			$p = $cards[ $id ] ?? null;
 			if ( ! $p ) {
 				continue;
 			}
 			$name = trim( $p['first_name'] . ' ' . $p['last_name'] );
-			if ( ! self::person_unused( $id ) ) {
+			if ( isset( $in_use[ $id ] ) ) {
 				$res['people_kept'][] = $name . ' (già usato)';
 				continue;
 			}
