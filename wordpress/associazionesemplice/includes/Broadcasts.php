@@ -18,6 +18,9 @@ final class Broadcasts {
 	const MAX_PER_DAY = 20;
 	const QUEUE_CHUNK = 500; // destinatari scritti con una sola query
 	const STUCK_MIN   = 10;  // minuti dopo i quali una email «in invio» si considera rimasta a metà
+	const MAX_TRIES   = 3;   // tentativi per ogni email: se il server la rifiuta resta in coda e si riprova all'ora dopo; al terzo rifiuto risulta non partita
+	const RETRY_MIN   = 50;  // minuti di attesa prima di un nuovo tentativo
+	const RETRY_MARK  = 'riprovo:'; // nel campo «error» di una email in attesa di un nuovo tentativo: quanti ne sono già andati male
 	const KEEP_RECIPIENTS_MONTHS = 24; // l'elenco di chi ha ricevuto una comunicazione si conserva 24 mesi dalla fine dell'invio, poi si cancella (i totali restano nella comunicazione); è una regola fissa, non un limite da cambiare
 	const PURGE_CHUNK            = 2000; // destinatari cancellati con una sola query
 	const PURGE_MAX_CHUNKS       = 25;   // al più 50.000 destinatari per passaggio giornaliero: il resto al giorno dopo
@@ -288,7 +291,8 @@ final class Broadcasts {
 		}
 		self::recover_stuck( $id );
 		$batch = min( $batch, MailBudget::room_bulk() ); // tetto orario delle email del plugin: a tetto raggiunto non parte nulla e il resto riprende all'ora dopo
-		$rows  = $batch > 0 ? ( $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' ORDER BY id LIMIT %d", $id, $batch ), ARRAY_A ) ?: array() ) : array();
+		$retry_at = gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - self::RETRY_MIN * 60 );
+		$rows  = $batch > 0 ? ( $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' AND (error IS NULL OR error NOT LIKE %s OR sent_at <= %s) ORDER BY id LIMIT %d", $id, $db->esc_like( self::RETRY_MARK ) . '%', $retry_at, $batch ), ARRAY_A ) ?: array() ) : array(); // chi aspetta un nuovo tentativo torna pronto dopo un'ora
 		$assoc = (string) Settings::get( 'association_name' );
 		foreach ( $rows as $r ) {
 			// si prende in carico la riga: se un altro passaggio (cron e pagina insieme) sta mandando le stesse email, non si manda due volte
@@ -298,6 +302,11 @@ final class Broadcasts {
 			$ok = Texts::mail( $r['email'], \AssociazioneSemplice\Texts::subject( $b['subject'] ), self::text_for( $b['body'], $r['name'] ) );
 			$first = (string) strtok( (string) $r['name'], ' ' );
 			Push::notify_email( (string) $r['email'], (string) $b['subject'], strtr( (string) $b['body'], array( '{nome}' => $first, '{associazione}' => $assoc ) ) ); // anche sul telefono, se ha attivato le notifiche
+			$tries = $ok ? 0 : 1 + ( 0 === strpos( (string) $r['error'], self::RETRY_MARK ) ? (int) substr( (string) $r['error'], strlen( self::RETRY_MARK ) ) : 0 );
+			if ( ! $ok && $tries < self::MAX_TRIES ) { // il server ha rifiutato: la email resta da mandare e si riprova nel giro dell'ora dopo
+				$db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => 'queued', 'sent_at' => Db::now(), 'error' => self::RETRY_MARK . $tries ), array( 'id' => (int) $r['id'] ) );
+				continue;
+			}
 			$db->update( Db::t( 'broadcast_rcpt' ), array( 'status' => $ok ? 'sent' : 'failed', 'sent_at' => Db::now(), 'error' => $ok ? null : 'invio non riuscito' ), array( 'id' => (int) $r['id'] ) );
 		}
 		$left = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status IN ('queued','sending')", $id ) ); // anche quelle in invio: la comunicazione non è finita finché una email è a metà
@@ -306,7 +315,13 @@ final class Broadcasts {
 		$db->update( Db::t( 'broadcasts' ), array( 'sent' => $sent, 'failed' => $fail, 'status' => $left > 0 ? 'sending' : 'done', 'finished_at' => $left > 0 ? null : Db::now() ), array( 'id' => $id ) );
 		MailBudget::flush(); // il conteggio dell'ora si scrive subito: un altro passaggio (cron o pagina) lo trova aggiornato
 		if ( $left > 0 && ! wp_next_scheduled( self::HOOK ) ) {
-			wp_schedule_single_event( MailBudget::room_bulk() > 0 ? time() + 60 : MailBudget::resume_at(), self::HOOK ); // a tetto raggiunto si riprova all'ora piena dopo, non ogni minuto
+			$ready = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status = 'queued' AND (error IS NULL OR error NOT LIKE %s)", $id, $db->esc_like( self::RETRY_MARK ) . '%' ) ); // pronte subito: le altre aspettano un nuovo tentativo
+			if ( $ready > 0 ) {
+				$when = MailBudget::room_bulk() > 0 ? time() + 60 : MailBudget::resume_at(); // a tetto raggiunto si riprova all'ora piena dopo, non ogni minuto
+			} else {
+				$when = max( time() + ( self::RETRY_MIN + 1 ) * 60, MailBudget::room_bulk() > 0 ? 0 : MailBudget::resume_at() ); // solo email in attesa di un nuovo tentativo: all'ora dopo
+			}
+			wp_schedule_single_event( $when, self::HOOK );
 		}
 		return $left;
 	}

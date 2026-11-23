@@ -149,10 +149,10 @@ it('prima nota e cruscotto eseguono lo stesso numero di query con 5 o con 25 soc
     assertQueriesDoNotGrow($this, ['prima nota' => '/gestionale/prima-nota', 'cruscotto' => '/gestionale']);
 });
 
-// Misurato: il libro soci a video fa più query al crescere dei soci (20 con 5 soci, 44 con 25). Si attiva insieme alla correzione.
+// H23: prima 20 query con 5 soci e 44 con 25 (una matricola per volta); ora pagine dal database e matricole in un'istruzione.
 it('il libro soci esegue lo stesso numero di query con 5 o con 25 soci', function (): void {
-    assertQueriesDoNotGrow($this, ['libro soci' => '/gestionale/soci/libro']);
-})->skip('Misurato: le query crescono con i soci (20 con 5, 44 con 25). Si attiva con la correzione.');
+    assertQueriesDoNotGrow($this, ['libro soci' => '/gestionale/soci/libro', 'libro soci in carica' => '/gestionale/soci/libro?stato=in_force']);
+});
 
 function measureMemberArea(): void
 {

@@ -3,24 +3,56 @@
 @source '../views/**/*.blade.php';
 @source '../js/**/*.vue';
 
-/* Montserrat (OFL), ospitato da noi: nessuna richiesta a servizi esterni. */
+/*
+ * Montserrat (OFL, resources/fonts/OFL.txt), ospitato da noi: nessuna richiesta a servizi esterni.
+ * WOFF2 generati da scripts/font-woff2.sh e passati da Vite (nome con impronta, cache lunga). Per ogni peso:
+ * - «latin» copre l'italiano e la punteggiatura: è l'unico file che si scarica di solito;
+ * - «esteso» (il carattere completo) si scarica solo se la pagina ha un carattere dei blocchi indicati
+ *   (latino esteso, cirillico, vietnamita). I due intervalli non si sovrappongono.
+ * L'intervallo di «latin» va tenuto uguale a LATIN in scripts/font-woff2.sh.
+ * Il peso del testo (500: il 400 non c'è e il browser usa il 500) è precaricato in views/app.blade.php.
+ */
 @font-face {
     font-family: 'Montserrat';
     font-weight: 500;
     font-display: swap;
-    src: url('/assets/fonts/Montserrat-Medium.ttf') format('truetype');
+    src: url('../fonts/montserrat-500-esteso.woff2') format('woff2');
+    unicode-range: U+0100-0130, U+0132-0151, U+0154-02BA, U+02BD-02C5, U+02C7-02D9, U+02DB, U+02DD-0303, U+0305-0307, U+0309-0328, U+032A-036F, U+0400-052F, U+1C80-1C8F, U+1D00-1DBF, U+1E00-1EFF, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+2DE0-2DFF, U+A640-A69F, U+A720-A7FF;
 }
 @font-face {
     font-family: 'Montserrat';
     font-weight: 600;
     font-display: swap;
-    src: url('/assets/fonts/Montserrat-SemiBold.ttf') format('truetype');
+    src: url('../fonts/montserrat-600-esteso.woff2') format('woff2');
+    unicode-range: U+0100-0130, U+0132-0151, U+0154-02BA, U+02BD-02C5, U+02C7-02D9, U+02DB, U+02DD-0303, U+0305-0307, U+0309-0328, U+032A-036F, U+0400-052F, U+1C80-1C8F, U+1D00-1DBF, U+1E00-1EFF, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+2DE0-2DFF, U+A640-A69F, U+A720-A7FF;
 }
 @font-face {
     font-family: 'Montserrat';
     font-weight: 700;
     font-display: swap;
-    src: url('/assets/fonts/Montserrat-Bold.ttf') format('truetype');
+    src: url('../fonts/montserrat-700-esteso.woff2') format('woff2');
+    unicode-range: U+0100-0130, U+0132-0151, U+0154-02BA, U+02BD-02C5, U+02C7-02D9, U+02DB, U+02DD-0303, U+0305-0307, U+0309-0328, U+032A-036F, U+0400-052F, U+1C80-1C8F, U+1D00-1DBF, U+1E00-1EFF, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+2DE0-2DFF, U+A640-A69F, U+A720-A7FF;
+}
+@font-face {
+    font-family: 'Montserrat';
+    font-weight: 500;
+    font-display: swap;
+    src: url('../fonts/montserrat-500-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Montserrat';
+    font-weight: 600;
+    font-display: swap;
+    src: url('../fonts/montserrat-600-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Montserrat';
+    font-weight: 700;
+    font-display: swap;
+    src: url('../fonts/montserrat-700-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 /* Colori del marchio (docs/brand/README.md) e del sistema (docs/DESIGN.md). */

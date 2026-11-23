@@ -20,6 +20,19 @@ final class Calendar {
 	 * @return array[] date, start, end, title, location, kind (course|event|recurring), activity_id, session_id
 	 */
 	public static function occurrences( string $from, string $to ): array {
+		$sm  = Settings::start_month(); // imposta anche SocialYear::$legacy_month: entrambi entrano nella chiave (sono impostazioni, non tabelle)
+		$all = SharedMemo::remember(
+			'calendar',
+			$from . '|' . $to . '|' . $sm . '|' . SocialYear::$legacy_month,
+			static function () use ( $from, $to ): array {
+				return self::read_occurrences( $from, $to );
+			}
+		);
+		return Employees::only_allowed_kinds( $all ); // un dipendente a cui sono stati tolti i corsi (o gli eventi) non li vede nel calendario: si filtra dopo, per chi guarda
+	}
+
+	/** Le date di {@see Calendar::occurrences()} lette dal database, uguali per chiunque guardi. */
+	private static function read_occurrences( string $from, string $to ): array {
 		$db   = Db::db();
 		$out  = array();
 		// Le lezioni vengono solo dai corsi: gli eventi non si leggono, e nemmeno i corsi già finiti prima di $from che non hanno date proprie o ripetizioni con una fine esplicita.
@@ -114,7 +127,7 @@ final class Calendar {
 				return strcmp( $x['date'] . ( $x['start'] ?: '00:00' ) . $x['title'], $y['date'] . ( $y['start'] ?: '00:00' ) . $y['title'] );
 			}
 		);
-		return Employees::only_allowed_kinds( $out ); // un dipendente a cui sono stati tolti i corsi (o gli eventi) non li vede nel calendario
+		return $out;
 	}
 
 	/**
