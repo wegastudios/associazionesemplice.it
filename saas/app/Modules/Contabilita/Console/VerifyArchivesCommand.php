@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Contabilita\Console;
 
+use App\Modules\Cifratura\Contracts\OrgBatch;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\YearArchives;
 use Illuminate\Console\Command;
@@ -23,7 +24,7 @@ final class VerifyArchivesCommand extends Command
 
     protected $description = 'Controlla che gli archivi delle ricevute si aprano e le impronte coincidano';
 
-    public function handle(OrgContext $context, YearArchives $archives, DatabaseManager $db): int
+    public function handle(OrgContext $context, YearArchives $archives, DatabaseManager $db, OrgBatch $pace): int
     {
         $org = $this->argument('org');
         $ids = is_string($org)
@@ -32,7 +33,7 @@ final class VerifyArchivesCommand extends Command
 
         $bad = 0;
         $checked = 0;
-        foreach ($ids as $id) {
+        foreach ($pace->paced($ids) as $id) {
             if (! is_string($id)) {
                 continue;
             }

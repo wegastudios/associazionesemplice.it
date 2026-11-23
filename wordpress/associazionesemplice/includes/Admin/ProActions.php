@@ -290,7 +290,8 @@ final class ProActions {
 			$parts[] = (int) $sc['sent'] . ' SMS inviati su ' . (int) array_sum( $sc );
 		}
 		$left = (int) $b['total'] - (int) $b['sent'] - (int) $b['failed'] + (int) $sc['queued'] + (int) $sc['sending'];
-		return array( Ui::url( 'asem-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . implode( ', ', $parts ) . ( $left > 0 ? ', gli altri partono da soli.' : '.' ) );
+		$wait = $left > 0 ? \AssociazioneSemplice\MailBudget::waiting_text() : '';
+		return array( Ui::url( 'asem-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . implode( ', ', $parts ) . ( $left > 0 ? ', gli altri partono da soli.' : '.' ) . ( '' !== $wait ? ' ' . $wait : '' ) );
 	}
 
 	public static function broadcast_test( array $p ): array {

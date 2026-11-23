@@ -26,6 +26,19 @@ final class QrVersion {
 		return self::$cache[ $person_id ];
 	}
 
+	/** Legge in blocco le versioni di molti soci (una query ogni 1.000), per chi stampa tante tessere in una volta. */
+	public static function preload( array $ids ): void {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ), function ( $i ) {
+			return $i > 0 && ! isset( self::$cache[ $i ] );
+		} ) ) );
+		$db = Db::db();
+		foreach ( array_chunk( $ids, 1000 ) as $chunk ) {
+			foreach ( $db->get_results( 'SELECT id, qr_version FROM ' . Db::t( 'people' ) . ' WHERE id IN (' . implode( ',', $chunk ) . ')', ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+				self::$cache[ (int) $r['id'] ] = (int) $r['qr_version'];
+			}
+		}
+	}
+
 	/** Dimentica la versione letta in questa richiesta (dopo una scrittura fatta altrove). */
 	public static function forget( int $person_id ): void {
 		unset( self::$cache[ $person_id ] );

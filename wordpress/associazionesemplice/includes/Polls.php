@@ -356,6 +356,9 @@ final class Polls {
 			if ( self::has_voted( $poll_id, (int) $p['id'] ) ) {
 				continue;
 			}
+			if ( $send && Reminders::budget_out() ) {
+				break; // tetto orario delle email raggiunto durante i promemoria automatici: gli altri riprendono all'ora piena dopo
+			}
 			if ( $send ? Reminders::notify( $p, $kind, $ref, $subject, $body ) : Reminders::pending( $p, $kind, $ref ) ) {
 				$n++;
 			}

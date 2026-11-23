@@ -6,6 +6,7 @@ namespace App\Modules\Audit\Console;
 
 use App\Modules\Audit\Log\ChainVerifier;
 use App\Modules\Audit\Log\HeadCopies;
+use App\Modules\Cifratura\Contracts\OrgBatch;
 use Illuminate\Console\Command;
 use Illuminate\Database\DatabaseManager;
 use RuntimeException;
@@ -22,7 +23,7 @@ final class VerifyAuditCommand extends Command
 
     protected $description = 'Verifica che il registro delle azioni non sia stato alterato';
 
-    public function handle(ChainVerifier $verifier, DatabaseManager $db, HeadCopies $copies): int
+    public function handle(ChainVerifier $verifier, DatabaseManager $db, HeadCopies $copies, OrgBatch $pace): int
     {
         $org = $this->argument('org');
         $ids = is_string($org)
@@ -30,7 +31,7 @@ final class VerifyAuditCommand extends Command
             : $db->connection('pgsql')->table('core.orgs')->whereNull('deleted_at')->orderBy('id')->pluck('id')->all();
 
         $broken = 0;
-        foreach ($ids as $id) {
+        foreach ($pace->paced($ids) as $id) {
             if (! is_string($id)) {
                 continue;
             }

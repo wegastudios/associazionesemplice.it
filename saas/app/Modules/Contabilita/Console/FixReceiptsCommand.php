@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Contabilita\Console;
 
+use App\Modules\Cifratura\Contracts\OrgBatch;
 use App\Modules\Contabilita\Receipts\ReceiptFiles;
 use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Console\Command;
@@ -19,7 +20,7 @@ final class FixReceiptsCommand extends Command
 
     protected $description = 'Fissa il PDF delle ricevute vecchie, a lotti';
 
-    public function handle(OrgContext $context, ReceiptFiles $files, DatabaseManager $db): int
+    public function handle(OrgContext $context, ReceiptFiles $files, DatabaseManager $db, OrgBatch $pace): int
     {
         $org = $this->argument('org');
         $ids = is_string($org)
@@ -28,7 +29,7 @@ final class FixReceiptsCommand extends Command
         $batch = max(1, (int) $this->option('batch'));
 
         $failed = 0;
-        foreach ($ids as $id) {
+        foreach ($pace->paced($ids) as $id) {
             if (! is_string($id)) {
                 continue;
             }

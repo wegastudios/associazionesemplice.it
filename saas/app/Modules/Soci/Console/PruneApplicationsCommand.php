@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Soci\Console;
 
+use App\Modules\Cifratura\Contracts\OrgBatch;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Soci\Services\ApplicationService;
@@ -22,10 +23,10 @@ final class PruneApplicationsCommand extends Command
 
     protected $description = 'Cancella le domande di adesione mai confermate o respinte da tempo';
 
-    public function handle(OrgDirectory $directory, OrgContext $context): int
+    public function handle(OrgDirectory $directory, OrgContext $context, OrgBatch $pace): int
     {
         $failed = 0;
-        foreach ($directory->activeIds() as $orgId) {
+        foreach ($pace->paced($directory->activeIds()) as $orgId) {
             try {
                 $counts = $context->run($orgId, static fn (): array => app(ApplicationService::class)->prune());
             } catch (Throwable $e) {

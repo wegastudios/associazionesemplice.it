@@ -22,12 +22,19 @@ in [../docs/CHIAVE_REMOTA.md](../docs/CHIAVE_REMOTA.md).
 - **Registro** (`log_file`): una riga per operazione (ora, indirizzo, operazione, associazione, versione), mai chiavi.
   Caratteri di controllo tolti, righe tagliate a 400 caratteri. Oltre `log_max_bytes` (partenza 5 MiB) passa a `.1`,
   `.2`, ... e se ne tengono `log_keep` (partenza 3) oltre a quello in corso: lo spazio occupato ha un tetto.
-- **Aperture al minuto**: ogni operazione `unwrap` (apertura di una chiave dati) è contata. Oltre
-  `unwrap_alarm_per_minute` (partenza 100) il registro riporta `ALLARME` e, se c'è `alarm_email`, parte un'email; oltre
-  `unwrap_limit_per_minute` (partenza 200) il servizio risponde `429` e non apre nulla fino al minuto dopo. Le soglie si
-  cambiano in `config.ini`; con molte associazioni (dopo un riavvio ogni associazione chiede la sua chiave una volta)
-  o durante `saas:keys:rewrap` su tutte vanno alzate per il tempo necessario. Se il contatore non si scrive, il
-  servizio risponde 500 e non apre nulla.
+- **Aperture al minuto**: ogni operazione `unwrap` (apertura di una chiave dati) è contata, su due corsie.
+  - **Per associazione** (le pagine e i lavori in coda): oltre `unwrap_alarm_per_org_per_minute` (partenza 100) il
+    registro riporta `ALLARME` e, se c'è `alarm_email`, parte un'email; oltre `unwrap_limit_per_org_per_minute`
+    (partenza 200) il servizio risponde `429` a quella associazione, e solo a lei, fino al minuto dopo. I nomi di prima
+    (`unwrap_alarm_per_minute`, `unwrap_limit_per_minute`) valgono ancora, con lo stesso significato.
+  - **Comandi su tutte le associazioni** (la richiesta firmata porta `"lane": "batch"`): un contatore per tutta la
+    corsia, `batch_unwrap_alarm_per_minute` (250) e `batch_unwrap_limit_per_minute` (300). Il SaaS fa una pausa tra
+    un'associazione e l'altra (`SAAS_KEY_BATCH_PAUSE_MS`, 500 ms: al massimo 120 associazioni al minuto) e resta
+    sotto il limite anche con due aperture per associazione. `saas:keys:rewrap` ne fa due per ogni versione di
+    chiave: con più versioni per associazione, alzare la pausa o il limite per il tempo del passaggio.
+  - **Totale**: allarme oltre `total_unwrap_alarm_per_minute` (1000); `total_unwrap_limit_per_minute` parte spento (0).
+
+  Le soglie si cambiano in `config.ini`. Se il contatore non si scrive, il servizio risponde 500 e non apre nulla.
 - Il controllo `saas:keys:monitor` del SaaS vede un `429` o un `500` come guasto e manda l'email di avviso.
 
 ## Cosa regge e cosa no

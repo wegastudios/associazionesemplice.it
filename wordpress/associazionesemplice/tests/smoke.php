@@ -144,6 +144,10 @@ asem_ok( count( Plugin::ledger()->accounts() ) >= 2, 'conti iniziali' );
 asem_ok( count( Plugin::ledger()->categories() ) >= 8, 'categorie iniziali' );
 
 wp_set_current_user( 1 );
+function asem_test_mail_cap() {
+	return 1000000; // le prove mandano molte più email in pochi secondi di un sito vero: il tetto orario si prova a parte, con un tetto basso
+}
+add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
 // Le prove di chiusura più sotto lavorano su anni con movimenti di prova (anche in disavanzo): la conferma del disavanzo si riaccende solo per la sua prova, in fondo.
 remove_filter( 'asem_year_close_confirm', array( \AssociazioneSemplice\YearEndCheck::class, 'close_confirm' ), 5 );
 $people  = Plugin::people();
@@ -6650,6 +6654,30 @@ add_option( \AssociazioneSemplice\Reminders::OPT_LOCK, time(), '', 'no' ); // un
 $gi_busy = \AssociazioneSemplice\Reminders::run( $today );
 asem_ok( \AssociazioneSemplice\Reminders::was_busy() && array( 0, 0, 0, 0, 0 ) === array_values( $gi_busy ), 'promemoria: con un altro giro in corso non si manda due volte' );
 delete_option( \AssociazioneSemplice\Reminders::OPT_LOCK );
+// tetto orario delle email: a tetto raggiunto i promemoria automatici non partono e non si perdono; all'ora dopo arrivano una volta sola
+$mb_lim = Settings::get( 'limits' );
+Settings::update( array( 'limits' => array_merge( is_array( $mb_lim ) ? $mb_lim : array(), array( 'mail_per_hour' => 20 ) ) ) );
+remove_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' ); // da qui il tetto è quello dei Limiti (20)
+\AssociazioneSemplice\MailBudget::reset();
+$mb_mails = array();
+foreach ( array( 'Uma', 'Ugo' ) as $mb_n ) {
+	$mb_p = $people->create( array( 'type' => 'ordinary', 'first_name' => $mb_n, 'last_name' => 'Tettoorario', 'email' => strtolower( $mb_n ) . '.tettoorario@example.com' ) );
+	$people->set_membership( $mb_p, $ym_label, true );
+	$wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' +12 days' ) ) ), array( 'person_id' => $mb_p ) );
+	$mb_mails[] = strtolower( $mb_n ) . '.tettoorario@example.com';
+}
+\AssociazioneSemplice\MailBudget::count( 15 ); // con tetto 20 e 5 riservate alle email singole non resta posto per i promemoria
+wp_clear_scheduled_hook( 'asem_send_reminders' ); // così il giro programmato dopo è solo quello di questa prova
+$mb_run = \AssociazioneSemplice\Reminders::run( $today );
+asem_ok( 0 === $mb_run['membership'] && \AssociazioneSemplice\Reminders::more_pending() && 0 === $mails_to( $mb_mails[0] ) && 0 === $mails_to( $mb_mails[1] ) && 2 === \AssociazioneSemplice\Reminders::run( $today, false )['membership'], 'tetto email: a tetto raggiunto i promemoria restano da mandare, senza essere prenotati né persi' );
+asem_ok( false !== wp_next_scheduled( 'asem_send_reminders' ) && wp_next_scheduled( 'asem_send_reminders' ) >= \AssociazioneSemplice\MailBudget::resume_at() - 5, 'tetto email: il giro dopo è programmato all\'ora piena successiva, non tra due minuti' );
+\AssociazioneSemplice\MailBudget::$clock = time() + 3600; // l'ora dopo
+$mb_run2 = \AssociazioneSemplice\Reminders::run( $today );
+asem_ok( 2 === $mb_run2['membership'] && 1 === $mails_to( $mb_mails[0] ) && 1 === $mails_to( $mb_mails[1] ) && 0 === \AssociazioneSemplice\Reminders::run( $today )['membership'], 'tetto email: all\'ora dopo i promemoria arrivano, una volta sola ciascuno' );
+\AssociazioneSemplice\MailBudget::reset();
+Settings::update( array( 'limits' => is_array( $mb_lim ) ? $mb_lim : array() ) );
+add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
+asem_ok( is_bool( \AssociazioneSemplice\MailBudget::external_service() ) && 1000000 === \AssociazioneSemplice\MailBudget::cap(), 'tetto email: il riconoscimento del servizio esterno risponde sì o no, e un\'estensione può cambiare il tetto' );
 // corsi mensili: dopo l'ultima lezione del mese, promemoria a chi non ha pagato il mese dopo
 $cur_m = substr( $today, 0, 7 );
 $tgt_m = gmdate( 'Y-m', strtotime( $cur_m . '-01 +1 month' ) );
@@ -7317,6 +7345,37 @@ $wpdb->update( Db::t( 'broadcast_rcpt' ), array( 'sent_at' => gmdate( 'Y-m-d H:i
 \AssociazioneSemplice\Broadcasts::process( $b4 );
 $b4b = \AssociazioneSemplice\Broadcasts::get( $b4 );
 asem_ok( 'done' === $b4b['status'] && (int) $b4b['sent'] === $b4n && count( $bc_mail ) === $b4n && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status <> 'sent'", $b4 ) ), 'comunicazioni: la email rimasta a metà torna in coda e parte; ognuno riceve una sola email' );
+// tetto orario delle email (20: 5 riservate alle email singole, 15 per le comunicazioni): oltre il tetto la comunicazione aspetta l'ora piena dopo, nessuno la riceve due volte
+$mb_lim = Settings::get( 'limits' );
+Settings::update( array( 'limits' => array_merge( is_array( $mb_lim ) ? $mb_lim : array(), array( 'mail_per_hour' => 20 ) ) ) );
+remove_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
+\AssociazioneSemplice\MailBudget::reset();
+$bc_mail = array();
+$wpdb->query( 'UPDATE ' . Db::t( 'broadcasts' ) . " SET status = 'done' WHERE status = 'sending'" ); // nessun'altra comunicazione in coda davanti a questa
+wp_clear_scheduled_hook( \AssociazioneSemplice\Broadcasts::HOOK );
+$b6  = \AssociazioneSemplice\Broadcasts::create( 'Avviso sotto tetto', 'Un messaggio per tutti.', 'members_all' );
+$b6a = \AssociazioneSemplice\Broadcasts::get( $b6 );
+asem_ok( (int) $b6a['total'] > 30 && 'sending' === $b6a['status'] && 15 === (int) $b6a['sent'] && 15 === count( $bc_mail ), 'tetto email: la comunicazione parte solo per quanto resta del tetto (15 su ' . (int) $b6a['total'] . ')' );
+\AssociazioneSemplice\Broadcasts::process_all();
+asem_ok( 15 === (int) \AssociazioneSemplice\Broadcasts::get( $b6 )['sent'] && 15 === count( $bc_mail ), 'tetto email: a tetto raggiunto un altro giro non manda nulla' );
+asem_ok( false !== wp_next_scheduled( \AssociazioneSemplice\Broadcasts::HOOK ) && wp_next_scheduled( \AssociazioneSemplice\Broadcasts::HOOK ) >= \AssociazioneSemplice\MailBudget::resume_at() - 5, 'tetto email: il resto è programmato all\'ora piena dopo' );
+asem_ok( true === \AssociazioneSemplice\Texts::mail( 'singola.tetto@example.com', 'Conferma di prova', 'x' ) && in_array( 'singola.tetto@example.com', $bc_to(), true ), 'tetto email: un\'email singola parte anche a tetto raggiunto' );
+asem_ok( '' !== \AssociazioneSemplice\MailBudget::waiting_text() && false !== strpos( \AssociazioneSemplice\MailBudget::waiting_text(), '20' ), 'tetto email: la pagina delle comunicazioni dice che si aspetta l\'ora dopo' );
+\AssociazioneSemplice\MailBudget::$clock = time() + 3600; // l'ora dopo: altri 15
+\AssociazioneSemplice\Broadcasts::process_all();
+asem_ok( 30 === (int) \AssociazioneSemplice\Broadcasts::get( $b6 )['sent'], 'tetto email: all\'ora dopo riparte, altri 15' );
+Settings::update( array( 'limits' => is_array( $mb_lim ) ? $mb_lim : array() ) );
+add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
+for ( $i = 0; $i < 40 && 'sending' === \AssociazioneSemplice\Broadcasts::get( $b6 )['status']; $i++ ) {
+	\AssociazioneSemplice\Broadcasts::process_all();
+}
+$b6b   = \AssociazioneSemplice\Broadcasts::get( $b6 );
+$b6to  = array_values( array_filter( $bc_to(), function ( $a ) {
+	return 'singola.tetto@example.com' !== $a;
+} ) );
+asem_ok( 'done' === $b6b['status'] && (int) $b6b['sent'] === (int) $b6b['total'] && count( $b6to ) === (int) $b6b['total'], 'tetto email: alla fine tutti hanno ricevuto la comunicazione, una volta sola' );
+\AssociazioneSemplice\MailBudget::reset();
+$bc_mail = array();
 // destinatari scritti a blocchi: stessi destinatari, stesso ordine
 $bq_list = array();
 for ( $bq_i = 1; $bq_i <= 1203; $bq_i++ ) {
@@ -12086,6 +12145,7 @@ asem_ok( ! wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina senza 
 $nc_early( $nc_p_list );
 \AssociazioneSemplice\Frontend\Assets::early_enqueue();
 asem_ok( wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina con una vista del plugin li chiede subito, per l\'intestazione' );
+asem_ok( wp_script_is( 'asem-frontend', 'enqueued' ) && ( version_compare( (string) get_bloginfo( 'version' ), '6.3', '<' ) || 'defer' === wp_scripts()->get_data( 'asem-frontend', 'strategy' ) ), 'script: quello del plugin è in fondo alla pagina e, da WordPress 6.3, con defer' );
 wp_dequeue_style( 'asem-frontend' );
 wp_dequeue_script( 'asem-frontend' );
 $nc_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Cache', 'last_name' => 'Prova' ) );
@@ -14443,6 +14503,7 @@ asem_ok( false !== strpos( $ix_plan( 'SELECT COUNT(*) FROM ' . Db::t( 'transacti
 require __DIR__ . '/smoke_import_blocks.php'; // importazione di soci a giri, con ripresa: stesso risultato della vecchia versione
 require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme del database identiche al calcolo di prima
 require __DIR__ . '/smoke_letture_a_blocchi.php'; // Bacheca, elenco e scheda di corsi ed eventi: letture a blocchi uguali a quelle una per una
+require __DIR__ . '/smoke_tessere_in_blocco.php'; // tessere in PDF per molti soci: query in blocco, QR a un bit, parti da 500
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore
 require __DIR__ . '/smoke_backup_job.php'; // copia di sicurezza a tappe: uguale a quella di prima, ripresa, ripristino, annullamento

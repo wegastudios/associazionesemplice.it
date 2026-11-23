@@ -15,11 +15,21 @@ final readonly class Config
     /** Quanti registri vecchi si tengono oltre a quello in corso. */
     public const LOG_KEEP = 3;
 
-    /** Aperture al minuto che fanno scattare l'allarme. */
+    /** Aperture al minuto di una stessa associazione che fanno scattare l'allarme. */
     public const UNWRAP_ALARM = 100;
 
-    /** Aperture al minuto oltre le quali il servizio rifiuta (429). 0 = nessun limite. */
+    /** Aperture al minuto di una stessa associazione oltre le quali il servizio rifiuta (429). 0 = nessun limite. */
     public const UNWRAP_LIMIT = 200;
+
+    /** Corsia dei comandi che girano su tutte le associazioni: allarme e limite al minuto, per tutta la corsia. */
+    public const BATCH_ALARM = 250;
+
+    public const BATCH_LIMIT = 300;
+
+    /** Tutte le aperture del minuto, di ogni associazione e corsia: allarme; il limite parte spento (0). */
+    public const TOTAL_ALARM = 1000;
+
+    public const TOTAL_LIMIT = 0;
 
     /** @param  list<string>  $allowedIps */
     private function __construct(
@@ -34,6 +44,10 @@ final readonly class Config
         public int $unwrapAlarm,
         public int $unwrapLimit,
         public string $alarmEmail,
+        public int $batchAlarm,
+        public int $batchLimit,
+        public int $totalAlarm,
+        public int $totalLimit,
     ) {}
 
     public static function load(string $file, string $base): self
@@ -53,8 +67,8 @@ final readonly class Config
 
             return $raw !== false && strlen($raw) === $bytes ? $raw : throw new RuntimeException("Configurazione non valida: {$name}.");
         };
-        $number = static function (string $name, int $default, int $min) use ($ini): int {
-            $value = $ini[$name] ?? null;
+        $number = static function (string $name, int $default, int $min, ?string $oldName = null) use ($ini): int {
+            $value = $ini[$name] ?? ($oldName !== null ? $ini[$oldName] ?? null : null);
             if ($value === null || $value === '') {
                 return $default;
             }
@@ -78,9 +92,14 @@ final readonly class Config
             $number('log_max_bytes', self::LOG_MAX_BYTES, 1024),
             $number('log_keep', self::LOG_KEEP, 0),
             $text('rate_dir', $base.'/storage/rate'),
-            $number('unwrap_alarm_per_minute', self::UNWRAP_ALARM, 0),
-            $number('unwrap_limit_per_minute', self::UNWRAP_LIMIT, 0),
+            // I nomi di prima (senza «_org») restano validi: stesse soglie, che ora valgono per ogni associazione.
+            $number('unwrap_alarm_per_org_per_minute', self::UNWRAP_ALARM, 0, 'unwrap_alarm_per_minute'),
+            $number('unwrap_limit_per_org_per_minute', self::UNWRAP_LIMIT, 0, 'unwrap_limit_per_minute'),
             $email,
+            $number('batch_unwrap_alarm_per_minute', self::BATCH_ALARM, 0),
+            $number('batch_unwrap_limit_per_minute', self::BATCH_LIMIT, 0),
+            $number('total_unwrap_alarm_per_minute', self::TOTAL_ALARM, 0),
+            $number('total_unwrap_limit_per_minute', self::TOTAL_LIMIT, 0),
         );
     }
 }

@@ -123,6 +123,9 @@ final class MessagesPage {
 
 		$recent = Broadcasts::recent();
 		echo '<h2>Storico</h2>';
+		if ( $recent && in_array( 'sending', array_column( $recent, 'status' ), true ) && '' !== \AssociazioneSemplice\MailBudget::waiting_text() ) { // le comunicazioni in coda aspettano l'ora piena dopo
+			echo '<div class="notice notice-info inline"><p>' . esc_html( \AssociazioneSemplice\MailBudget::waiting_text() ) . ' <a href="' . esc_url( Ui::url( 'asem-limits' ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( 'Cambia il tetto' ) ) . '</a></p></div>';
+		}
 		if ( ! $recent ) {
 			echo '<p class="description">Nessuna comunicazione inviata finora.</p>';
 		} else {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cifratura\Keys;
 
 use App\Modules\Cifratura\Contracts\KeyVault;
+use App\Modules\Cifratura\Contracts\OrgBatch;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Http\Client\Factory;
 use RuntimeException;
@@ -18,6 +19,8 @@ final readonly class VaultFactory
     public function __construct(
         private Repository $config,
         private Factory $http,
+        private KeyServiceBreaker $breaker,
+        private OrgBatch $batch,
     ) {}
 
     public function configured(): KeyVault
@@ -29,13 +32,16 @@ final readonly class VaultFactory
         };
     }
 
-    public function remote(): RemoteKeyVault
+    /** Il controllo del servizio (saas:keys:monitor) lo chiama senza interruttore: deve vedere lo stato vero. */
+    public function remote(bool $breaker = true): RemoteKeyVault
     {
         return new RemoteKeyVault(
             $this->http,
             self::string($this->config->get('saas.crypto.service_url'), 'SAAS_KEY_SERVICE_URL'),
             $this->signingKey(),
             self::number($this->config->get('saas.crypto.timeout', 3), 'SAAS_KEY_SERVICE_TIMEOUT'),
+            $breaker ? $this->breaker : null,
+            $this->batch,
         );
     }
 
