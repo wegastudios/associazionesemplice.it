@@ -33,6 +33,7 @@ final class ToolsPage {
 			),
 			'Copie e collegamenti' => array(
 				array( 'asem-backup', 'Copia di sicurezza', 'Scarica una copia dei dati e ripristinala.', true, '' ),
+				array( 'asem-server', 'Stato del server', 'Come è fatto il tuo hosting e cosa conviene chiedere di cambiare per avere più velocità.', true, '' ),
 				array( 'asem-tech', 'Integrazioni', 'WP All Import, Elementor e Gutenberg, più le integrazioni aggiunte da eventuali estensioni.', true, '' ),
 			),
 		);

@@ -299,7 +299,10 @@ l'operatore può vedere.
   (Attività), prenotazioni delle risorse (Risorse). Il browser manda solo le chiavi; importi ricalcolati sul server.
   `AreaSoci\Payments\OnlinePayments` crea il pagamento (Stripe Checkout o PayPal Orders v2, dal plugin) con le chiavi
   dell'associazione in `app.payment_settings` (cifrate con la sua chiave, mai rimandate al browser), conferma al
-  ritorno e con il webhook firmato di Stripe (`/area/webhook/stripe` sul sottodominio), registra ogni voce in prima
+  ritorno e con il webhook firmato di Stripe (`/area/webhook/stripe` sul sottodominio: verifica la firma, salva
+  l'evento una volta sola in `app.payment_webhook_events` e risponde; la registrazione la fa il lavoro in coda
+  `AreaSoci\Jobs\SettleOnlinePayment`, con ritentativi; evento ripetuto = nessun lavoro in più, evento di un lavoro
+  arreso = di nuovo in coda, H14), registra ogni voce in prima
   nota con la sua ricevuta una volta sola (riga bloccata); importo diverso o voce non più dovuta = «da controllare»
   per la segreteria. Gestionale: `/gestionale/pagamenti-online` (impostazioni con `org.settings` e conferma della
   password, elenco con `accounting.view`). Nei test Stripe e PayPal sono simulati con `Http::fake`.
