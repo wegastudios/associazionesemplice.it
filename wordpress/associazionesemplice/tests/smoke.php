@@ -4009,14 +4009,14 @@ parse_str( (string) wp_parse_url( Settings::card_url( $qr_oth ), PHP_URL_QUERY )
 $qr_oth_t = \AssociazioneSemplice\CardToken::parse( (string) $qr_q2['asem_card'] );
 $qr_tk_old = Settings::ticket_url( 1, $qr_id );
 asem_ok( \AssociazioneSemplice\CardToken::valid( $qr_old[0], $qr_old[1], Settings::card_secret_for( $qr_id ) ) && \AssociazioneSemplice\CardToken::valid( $qr_old[0], $qr_old[1], Settings::card_secret() ), 'QR: con la versione 0 i codici già stampati valgono (stesso segreto di prima)' );
-delete_transient( 'asem_mt_qr_' . $qr_id );
+\AssociazioneSemplice\Counters::delete( 'asem_mt_qr_' . $qr_id );
 \AssociazioneSemplice\QrVersion::regenerate( $qr_id, 0 );
 asem_ok( ! \AssociazioneSemplice\CardToken::valid( $qr_old[0], $qr_old[1], Settings::card_secret_for( $qr_id ) ), 'QR: rigenerato il codice, la tessera di prima non vale più' );
 parse_str( (string) wp_parse_url( Settings::card_url( $qr_id ), PHP_URL_QUERY ), $qr_qn );
 $qr_new = \AssociazioneSemplice\CardToken::parse( (string) $qr_qn['asem_card'] );
 asem_ok( $qr_new[1] !== $qr_old[1] && \AssociazioneSemplice\CardToken::valid( $qr_new[0], $qr_new[1], Settings::card_secret_for( $qr_id ) ), 'QR: il codice nuovo vale' );
 asem_ok( \AssociazioneSemplice\CardToken::valid( $qr_oth_t[0], $qr_oth_t[1], Settings::card_secret_for( $qr_oth ) ) && Settings::ticket_url( 1, $qr_id ) !== $qr_tk_old, 'QR: gli altri soci non cambiano e il biglietto del socio è un altro' );
-delete_transient( 'asem_mt_qr_' . $qr_id );
+\AssociazioneSemplice\Counters::delete( 'asem_mt_qr_' . $qr_id );
 $wpdb->update( Db::t( 'people' ), array( 'qr_version' => 0 ), array( 'id' => $qr_id ) ); // la prova non lascia il socio con un codice diverso
 \AssociazioneSemplice\QrVersion::forget( $qr_id );
 $foreign = \AssociazioneSemplice\CardToken::ticket_param( $paid_s, $founder, Settings::card_secret() );
@@ -8570,13 +8570,54 @@ asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { 
 asem_ok( \AssociazioneSemplice\Resources::open_count( $rs_m1 ) >= 1 && \AssociazioneSemplice\Resources::open_count( $rs_m1 ) === \AssociazioneSemplice\Resources::open_count( $rs_m1 ) && 0 === \AssociazioneSemplice\Resources::open_count( 999999 ), 'area soci: si contano le prenotazioni ancora da usare di una scheda' );
 $th_limits = (array) Settings::get( 'limits' );
 Settings::update( array( 'limits' => array_merge( $th_limits, array( 'member_book_per_10min' => 2, 'member_open_bookings_max' => 10 ) ) ) );
-delete_transient( 'asem_mt_book_' . $rs_m1 );
+\AssociazioneSemplice\Counters::delete( 'asem_mt_book_' . $rs_m1 );
 \AssociazioneSemplice\MemberThrottle::hit( 'book', $rs_m1, 'member_book_per_10min' );
 \AssociazioneSemplice\MemberThrottle::hit( 'book', $rs_m1, 'member_book_per_10min' );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $rs_m1 ) { \AssociazioneSemplice\MemberThrottle::hit( 'book', $rs_m1, 'member_book_per_10min' ); } ), 'troppe richieste' ), 'area soci: oltre il limite di frequenza si aspetta qualche minuto' );
 asem_ok( 10 === \AssociazioneSemplice\Limits::get( 'member_open_bookings_max' ) && 20 === \AssociazioneSemplice\Limits::default_of( 'member_book_per_10min' ) && 30 === \AssociazioneSemplice\Limits::default_of( 'member_receipt_per_10min' ), 'area soci: valori di partenza dei limiti (10 prenotazioni da usare, 20 azioni, 30 PDF)' );
-delete_transient( 'asem_mt_book_' . $rs_m1 );
+\AssociazioneSemplice\Counters::delete( 'asem_mt_book_' . $rs_m1 );
 Settings::update( array( 'limits' => $th_limits ) );
+// Contatori dei tentativi: stanno in una tabellina (senza cache degli oggetti i transient sarebbero righe di wp_options riscritte a ogni tentativo); i vecchi si ripuliscono nel giro orario.
+$ct_t = Db::t( 'counters' );
+asem_ok( \AssociazioneSemplice\Install::table_exists( $ct_t ), 'contatori: la tabella esiste' );
+asem_ok( \AssociazioneSemplice\Counters::uses_table() === ! wp_using_ext_object_cache(), 'contatori: senza cache degli oggetti si usa la tabella' );
+if ( \AssociazioneSemplice\Counters::uses_table() ) {
+	$ct_opts = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->options}" );
+	\AssociazioneSemplice\Counters::set( 'asem_t_ct_a', array( 'n' => 3, 't' => 100 ), 600 );
+	\AssociazioneSemplice\Counters::set( 'asem_t_ct_b', 7, 600 );
+	asem_ok( array( 'n' => 3, 't' => 100 ) === \AssociazioneSemplice\Counters::get( 'asem_t_ct_a' ) && 7 === \AssociazioneSemplice\Counters::get( 'asem_t_ct_b' ), 'contatori: numeri e liste tornano come sono stati scritti' );
+	asem_ok( null === \AssociazioneSemplice\Counters::get( 'asem_t_ct_zz' ), 'contatori: la chiave che non c\'è dà null' );
+	\AssociazioneSemplice\Counters::set( 'asem_t_ct_b', 8, 600 );
+	asem_ok( 8 === \AssociazioneSemplice\Counters::get( 'asem_t_ct_b' ) && 2 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $ct_t WHERE k IN ('asem_t_ct_a','asem_t_ct_b')" ), 'contatori: riscrivere la stessa chiave non crea un\'altra riga' );
+	asem_ok( $ct_opts === (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->options}" ), 'contatori: nessuna riga in wp_options' );
+	$wpdb->update( $ct_t, array( 'expires' => time() - 5 ), array( 'k' => 'asem_t_ct_a' ) );
+	asem_ok( null === \AssociazioneSemplice\Counters::get( 'asem_t_ct_a' ), 'contatori: scaduto = come se non ci fosse' );
+	asem_ok( \AssociazioneSemplice\Counters::purge() >= 1 && 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM $ct_t WHERE k = 'asem_t_ct_a'" ) && 8 === \AssociazioneSemplice\Counters::get( 'asem_t_ct_b' ), 'contatori: la pulizia toglie solo gli scaduti' );
+	\AssociazioneSemplice\Counters::delete( 'asem_t_ct_b' );
+	asem_ok( null === \AssociazioneSemplice\Counters::get( 'asem_t_ct_b' ), 'contatori: cancellato' );
+	asem_ok( isset( \AssociazioneSemplice\Plugin::jobs()['asem_purge_counters'] ) && 'hourly' === \AssociazioneSemplice\Plugin::jobs()['asem_purge_counters'][0] && in_array( 'asem_purge_counters', \AssociazioneSemplice\Install::JOB_HOOKS, true ), 'contatori: pulizia programmata ogni ora' );
+	asem_ok( ! in_array( 'asem_counters', \AssociazioneSemplice\Backup::tables(), true ), 'contatori: non entrano nelle copie di sicurezza' );
+	// Password errate di chi opera: lo stesso conteggio e lo stesso blocco di prima, ma nella tabella
+	$ct_keys = \AssociazioneSemplice\AttemptLimit::keys( 987654, '203.0.113.9' );
+	\AssociazioneSemplice\AttemptLimit::standard()->clear( $ct_keys );
+	$ct_lim = \AssociazioneSemplice\AttemptLimit::standard();
+	for ( $i = 0; $i < 4; $i++ ) {
+		$ct_lim->fail( $ct_keys );
+	}
+	asem_ok( ! \AssociazioneSemplice\AttemptLimit::standard()->is_locked( $ct_keys ), 'contatori: quattro errori non bloccano' );
+	asem_ok( true === \AssociazioneSemplice\AttemptLimit::standard()->fail( $ct_keys ) && \AssociazioneSemplice\AttemptLimit::standard()->is_locked( $ct_keys ), 'contatori: il quinto errore blocca (lo vede anche una richiesta nuova)' );
+	asem_ok( 2 === (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $ct_t WHERE k IN (%s,%s)", $ct_keys[0], $ct_keys[1] ) ), 'contatori: i tentativi sono righe della tabella, una per utente e una per connessione' );
+	\AssociazioneSemplice\AttemptLimit::standard()->clear( $ct_keys );
+	asem_ok( ! \AssociazioneSemplice\AttemptLimit::standard()->is_locked( $ct_keys ), 'contatori: password giusta, si riparte da zero' );
+	// Azioni del socio: la finestra e il limite restano quelli di prima
+	$ct_lim_opts = (array) Settings::get( 'limits' );
+	Settings::update( array( 'limits' => array_merge( $ct_lim_opts, array( 'member_book_per_10min' => 1 ) ) ) );
+	\AssociazioneSemplice\Counters::delete( 'asem_mt_ctp_1' );
+	\AssociazioneSemplice\MemberThrottle::hit( 'ctp', 1, 'member_book_per_10min' );
+	asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\MemberThrottle::hit( 'ctp', 1, 'member_book_per_10min' ); } ) && is_array( \AssociazioneSemplice\Counters::get( 'asem_mt_ctp_1' ) ), 'contatori: il limite del socio è nella tabella e blocca alla soglia' );
+	\AssociazioneSemplice\Counters::delete( 'asem_mt_ctp_1' );
+	Settings::update( array( 'limits' => $ct_lim_opts ) );
+}
 // Il massimo per persona si conta sotto lo stesso blocco della prenotazione: con il blocco occupato il conteggio non è nemmeno raggiunto
 Db::$lock_fake = '0';
 $rs_lk = asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } );
@@ -12526,11 +12567,11 @@ asem_ok( null === MemberLogin::login_with_code( $ml_addr, '000000' === $ml_code 
 asem_ok( $ml_p === MemberLogin::login_with_token( $ml_tok ), 'accesso proprio: il link fa entrare' );
 asem_ok( null === MemberLogin::login_with_token( $ml_tok ) && null === MemberLogin::login_with_code( $ml_addr, $ml_code ), 'accesso proprio: il link si usa una volta sola' );
 asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d', $ml_p ) ), 'accesso proprio: l\'ingresso apre una sessione' );
-delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $ml_addr ) );
 MemberLogin::request( $ml_addr );
 list( , $ml_code ) = $ml_pull();
 asem_ok( $ml_p === MemberLogin::login_with_code( $ml_addr, $ml_code ), 'accesso proprio: il codice fa entrare' );
-delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $ml_addr ) );
 MemberLogin::request( $ml_addr );
 list( $ml_tok, $ml_code ) = $ml_pull();
 $ml_bad = '000000' === $ml_code ? '111111' : '000000';
@@ -12621,7 +12662,7 @@ asem_ok( 1 === $ledger->record_receipt( array( 'date' => $today, 'account_id' =>
 // Separazione: con l'accesso proprio acceso i soci semplici non hanno un utente WordPress
 asem_ok( empty( Plugin::people()->get( $ml_p )['wp_user_id'] ) && ! get_user_by( 'email', $ml_addr ) && \AssociazioneSemplice\PeopleService::has_access( Plugin::people()->get( $ml_p ) ), 'separazione: un nuovo socio con email non ha un utente WordPress ma ha un accesso' );
 $sp_mails = count( $ml_mail );
-delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $ml_addr ) );
 asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $ml_addr ) && count( $ml_mail ) === $sp_mails + 1 && false !== strpos( (string) end( $ml_mail )['message'], 'asem_ml=' ), 'separazione: il «Primo accesso» manda il link di accesso, non il ripristino della password di WordPress' );
 $sp_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Attiva', 'last_name' => 'Prova' ) );
 asem_ok( null !== asem_throws( function () use ( $sp_p ) { Plugin::people()->activate( $sp_p, 'attiva.prova@example.org', '3331234567', '' ); } ), 'password: all\'attivazione la password è obbligatoria' );
@@ -12635,7 +12676,7 @@ asem_ok( $sp_uid === Plugin::people()->ensure_user( $sp_p ), 'separazione: dare 
 $pw_addr = 'pw.prova@example.org';
 $pw_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Password', 'last_name' => 'Prova', 'email' => $pw_addr ) );
 $pw_cookie = MemberSession::COOKIE;
-delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $pw_addr ) );
 MemberLogin::request( $pw_addr );
 list( $pw_tok ) = $ml_pull();
 asem_ok( 'none' === MemberLogin::password_state( $pw_p ) && $pw_p === MemberLogin::login_with_token( $pw_tok ), 'password: chi non l\'ha ancora scelta può entrare con il link' );
@@ -12648,7 +12689,7 @@ MemberSession::flush();
 asem_ok( 'ok' === MemberLogin::password_state( $pw_p ) && null !== MemberSession::session_person() && current_user_can( 'asem_edit_own_profile', $pw_p ), 'password: scelta la password si naviga' );
 $pw_pre = (string) $_COOKIE[ $pw_cookie ];
 // recupero: il link fa entrare ma obbliga a scegliere una nuova password
-delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $pw_addr ) );
 asem_ok( MemberLogin::request( $pw_addr, 'reset' ) && false !== strpos( (string) end( $ml_mail )['subject'], 'Reimposta' ), 'recupero: la richiesta manda un link per reimpostare la password' );
 list( $pw_tok2 ) = $ml_pull();
 asem_ok( $pw_p === MemberLogin::login_with_token( $pw_tok2 ) && 'reset' === MemberLogin::password_state( $pw_p ), 'recupero: aperto il link la password va reimpostata' );
@@ -12688,7 +12729,7 @@ asem_ok( ! $ps_cls::from_login_page( $ps_sign ), 'accesso soci: l\'invio senza c
 $_COOKIE[ $ps_name ] = ( time() - 3 * HOUR_IN_SECONDS ) . '.' . SessionToken::generate();
 asem_ok( ! $ps_cls::from_login_page( \AssociazioneSemplice\PreSession::token( $_COOKIE[ $ps_name ], 'member_login', MemberSession::secret() ) ), 'accesso soci: un cookie scaduto non vale' );
 asem_ok( false !== strpos( $ps_cls::NOT_FROM_PAGE, 'troppo a lungo' ) && false === stripos( $ps_cls::NOT_FROM_PAGE, 'nonce' ), 'accesso soci: il messaggio di rifiuto è chiaro e neutro' );
-delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $pw_addr ) );
 MemberLogin::request( $pw_addr );
 list( $ps_tok ) = $ml_pull();
 asem_ok( $pw_p === MemberLogin::login_with_token( $ps_tok ) && null === MemberLogin::login_with_token( $ps_tok ), 'accesso soci: il link resta monouso' );
@@ -12736,20 +12777,20 @@ asem_ok( MemberLogin::check_password( $pw_p, 'Seconda password 2' ) && ! MemberL
 asem_ok( null === MemberLogin::login_with_password( $pw_addr, str_repeat( 'a', 1500 ) ), 'sicurezza: una password enorme non viene nemmeno controllata' );
 // le email partono dopo la risposta
 $df_n = count( $ml_mail );
-delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $pw_addr ) );
 MemberLogin::defer( true );
 asem_ok( MemberLogin::request( $pw_addr ) && count( $ml_mail ) === $df_n, 'sicurezza: dalla pagina pubblica l\'email non parte prima della risposta' );
 MemberLogin::send_queued();
 MemberLogin::defer( false );
 asem_ok( count( $ml_mail ) === $df_n + 1, 'sicurezza: a risposta consegnata l\'email parte' );
 // tempi di risposta uguali: stessa coda per il «Primo accesso», limite per indirizzo ancora valido, indirizzo noto e ignoto fanno lo stesso lavoro
-delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $pw_addr ) );
 \AssociazioneSemplice\ResponseMail::defer( true );
 $tr_n = count( $ml_mail );
 asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $pw_addr ) && count( $ml_mail ) === $tr_n && 1 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: il «Primo accesso» mette l\'email in coda e non la manda nella richiesta' );
 \AssociazioneSemplice\ResponseMail::flush();
 asem_ok( 1 === count( $ml_mail ) - $tr_n && 0 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: a risposta consegnata l\'email del «Primo accesso» parte' );
-delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $pw_addr ) );
 $tr_lim = (int) \AssociazioneSemplice\Limits::get( 'first_access_per_email' );
 for ( $tr_i = 0; $tr_i < $tr_lim + 3; $tr_i++ ) {
 	MemberLogin::request( $pw_addr );
@@ -12759,7 +12800,7 @@ asem_ok( $tr_lim === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di ri
 asem_ok( $tr_lim === count( $ml_mail ) - $tr_n - 1, 'tempi di risposta: partono solo le email entro il limite' );
 $tr_known = null;
 $tr_other = null;
-delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $pw_addr ) );
 $tr_q = $wpdb->num_queries;
 MemberLogin::request( $pw_addr );
 $tr_known = $wpdb->num_queries - $tr_q;
@@ -12770,26 +12811,26 @@ $tr_other = $wpdb->num_queries - $tr_q;
 WP_CLI::log( 'tempi di risposta: richieste al database, indirizzo noto ' . $tr_known . ', ignoto ' . $tr_other );
 asem_ok( abs( $tr_known - $tr_other ) <= 1, 'tempi di risposta: indirizzo di un socio e indirizzo ignoto fanno lo stesso lavoro sul database' );
 \AssociazioneSemplice\ResponseMail::defer( false );
-delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $pw_addr ) );
 // chi riceve più email non perde il primo link, ma le richieste valide sono al massimo 3
 $cf_addr = 'codici.prova@example.org';
 $cf_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Codici', 'last_name' => 'Prova', 'email' => $cf_addr ) );
 $cf_tok  = array();
 $cf_code = array();
 for ( $cf_i = 0; $cf_i < 4; $cf_i++ ) {
-	delete_transient( 'asem_ml_m_' . md5( $cf_addr ) );
+	\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $cf_addr ) );
 	MemberLogin::request( $cf_addr );
 	list( $cf_tok[ $cf_i ], $cf_code[ $cf_i ] ) = $ml_pull();
 }
 asem_ok( 3 === (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $ml_ch WHERE person_id = %d", $cf_p ) ), 'sicurezza: al massimo tre richieste di accesso valide per persona' );
 asem_ok( $cf_p === MemberLogin::login_with_token( $cf_tok[1] ) && null === MemberLogin::login_with_token( $cf_tok[0] ), 'sicurezza: il link ricevuto prima vale ancora, solo il più vecchio decade' );
 // chiedere nuovi codici non azzera il conto degli errori
-delete_transient( 'asem_ml_cf_' . $cf_p );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_cf_' . $cf_p );
 $cf_bad = function ( $good ) {
 	return '000000' === $good ? '111111' : '000000';
 };
 for ( $cf_i = 0; $cf_i < 3; $cf_i++ ) {
-	delete_transient( 'asem_ml_m_' . md5( $cf_addr ) );
+	\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $cf_addr ) );
 	MemberLogin::request( $cf_addr );
 	list( , $cf_c ) = $ml_pull();
 	for ( $cf_j = 0; $cf_j < 4; $cf_j++ ) {
@@ -12797,7 +12838,7 @@ for ( $cf_i = 0; $cf_i < 3; $cf_i++ ) {
 	}
 }
 asem_ok( null === MemberLogin::login_with_code( $cf_addr, $cf_c ), 'sicurezza: dopo troppi codici sbagliati anche il codice giusto di una richiesta nuova non vale' );
-delete_transient( 'asem_ml_cf_' . $cf_p );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_cf_' . $cf_p );
 asem_ok( $cf_p === MemberLogin::login_with_code( $cf_addr, $cf_c ), 'sicurezza: passata l\'ora (o dopo un accesso riuscito) si riparte' );
 // iniezioni e HTML iniettato
 $sq_res = \AssociazioneSemplice\Affiliations::sports_by_person( array( '1); DROP TABLE x;--', 'abc' ) );
@@ -12848,7 +12889,7 @@ Plugin::people()->release_wp_user( $wu_p );
 asem_ok( empty( Plugin::people()->get( $wu_p )['wp_user_id'] ) && ! get_userdata( $wu_uid ) && $wu_p === (int) ( MemberLogin::person_by_email( 'utente.facoltativo@example.org' )['id'] ?? 0 ), 'passaggio all\'accesso con link: senza poteri l\'utente WordPress sparisce e il socio entra con il link' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Admin\MemberAccessChoice::html(), 'nome, cognome ed email' ) && false !== strpos( \AssociazioneSemplice\Admin\MemberAccessChoice::html(), 'name="member_wp_users" value="1"' ), 'impostazioni e configurazione guidata: la scelta spiega vantaggi, svantaggi e cosa passa a WordPress' );
 Settings::update( array( 'limits' => array( 'member_sessions' => 0 ) ) );
-delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
+\AssociazioneSemplice\Counters::delete( 'asem_ml_m_' . md5( $ml_addr ) );
 asem_ok( ! MemberLogin::request( $ml_addr ) && null === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && MemberSession::wp_users_wanted(), 'accesso proprio: da spento non si entra né si manda niente, e i soci tornano ad avere un utente WordPress' );
 remove_filter( 'pre_wp_mail', $ml_hook, 10 );
 unset( $_COOKIE[ MemberSession::COOKIE ] );
@@ -14564,7 +14605,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '75' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 75' );
+asem_ok( '76' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 76' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
 	if ( ! \AssociazioneSemplice\Install::table_exists( Db::t( $ix_t ) ) ) {
@@ -14584,7 +14625,7 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '75' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
+asem_ok( '76' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
 // Voce degli incassi di corsi ed eventi: «Contributo attività / corso»; dove si chiama ancora «Quota attività / corso» (installazioni vecchie) l'aggiornamento la rinomina una volta, altrimenti non tocca nulla.
 $af_t  = Db::t( 'categories' );

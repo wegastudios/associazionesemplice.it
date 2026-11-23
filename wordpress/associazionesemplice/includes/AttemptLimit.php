@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
  * Raggiunto il numero, per il resto del periodo la password non viene nemmeno controllata. Un esito corretto azzera il conteggio.
  * Lettura e scrittura dei transient non sono atomiche: richieste in parallelo possono superare di poco il numero di tentativi. Per azioni che
  * richiedono già una sessione da amministratore va bene così, senza un lock.
- * Il contatore sta in una memoria passata dal chiamante (di norma i transient), così si prova senza WordPress.
+ * Il contatore sta in una memoria passata dal chiamante (di norma i contatori in tabella, vedi {@see Counters}), così si prova senza WordPress.
  */
 final class AttemptLimit {
 
@@ -38,17 +38,17 @@ final class AttemptLimit {
 		$this->window = $window;
 	}
 
-	/** Con la memoria di WordPress (transient). */
+	/** Con la memoria dei contatori. */
 	public static function standard(): self {
 		return new self(
 			function ( string $k ) {
-				return get_transient( $k );
+				return Counters::get( $k );
 			},
 			function ( string $k, array $v, int $ttl ) {
-				set_transient( $k, $v, $ttl );
+				Counters::set( $k, $v, $ttl );
 			},
 			function ( string $k ) {
-				delete_transient( $k );
+				Counters::delete( $k );
 			},
 			'time'
 		);

@@ -24,7 +24,7 @@ final class Plugin {
 	 * Versione dello schema del database (la storia dei cambi è accanto a {@see Install::DB_VERSION}, che vale questa).
 	 * Sta qui perché il confronto con quella salvata si fa a ogni richiesta: così la classe Install, grande, si carica solo quando c'è da aggiornare.
 	 */
-	const DB_VERSION = '75';
+	const DB_VERSION = '76';
 
 	/** Opzione con la versione dello schema salvata (la stessa di {@see Install::DB_VERSION_OPTION}). */
 	const DB_VERSION_OPTION = 'asem_db_version';
@@ -171,6 +171,7 @@ final class Plugin {
 			'asem_event_requests'         => array( 'hourly', 1500, 'EventRequests', 'run', '' ),
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
+			'asem_purge_counters'         => array( 'hourly', 1100, 'Counters', 'purge', '' ), // contatori dei tentativi scaduti
 			'asem_private_folder_check'   => array( 'daily', 3000, 'PrivateFolder', 'cron', '' ),
 			'asem_db_engine_check'        => array( 'daily', 3600, 'DbEngine', 'cron', '' ),
 			'asem_file_crypt_migrate'     => array( '', 0, 'FileMigration', 'cron', '' ), // lotti programmati per cifrare i file già caricati (si programmano da soli, uno alla volta)
