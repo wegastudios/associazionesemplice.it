@@ -41,6 +41,7 @@ final readonly class ReceiptFiles
     public const ALTERED = 'altered';
 
     public const ARCHIVED = 'archived';
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
