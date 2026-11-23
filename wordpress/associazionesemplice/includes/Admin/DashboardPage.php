@@ -67,6 +67,7 @@ final class DashboardPage {
 			}
 		}
 		PrivateFolderPanel::alerts(); // cartella dei file riservati: percorso non utilizzabile o raggiungibile da internet (solo amministratori)
+		echo wp_kses( \AssociazioneSemplice\DbEngine::alerts_html(), Html::allowed() ); // tabelle senza transazioni (non InnoDB): solo amministratori, legge l'esito ricordato
 		FileCryptPanel::cert_alerts(); // cifratura automatica dei certificati medici già caricati: partita, in corso, finita o ferma (solo amministratori)
 		$mail_fail = current_user_can( \AssociazioneSemplice\Plugin::CAP ) ? \AssociazioneSemplice\MailLog::failures() : 0;
 		if ( $mail_fail > 0 ) {

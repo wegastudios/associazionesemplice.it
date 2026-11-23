@@ -68,6 +68,15 @@ return [
     // Registro delle query lente (millisecondi; 0 = spento). Scrive solo il testo della query con i segnaposto, mai i valori.
     'slow_query_ms' => (int) env('SAAS_SLOW_QUERY_MS', 200),
 
+    // Tempi massimi sulla connessione dell'associazione (OrgContext::enter, nella stessa istruzione di app.org_id): attesa
+    // di un blocco, durata di un'istruzione, transazione aperta e ferma. Scaduti, la richiesta risponde «riprova tra poco».
+    // «long»: comandi, code e le rotte lunghe del gestionale con il middleware «db.long». Vedi docs/TEMPI_MASSIMI_DATABASE.md.
+    // Le migrazioni e i backup usano le loro connessioni (proprietario, sola lettura) e non passano da qui.
+    'database_timeouts' => [
+        'web' => ['lock' => '5s', 'statement' => '30s', 'idle_in_transaction' => '60s'],
+        'long' => ['lock' => '30s', 'statement' => '900s', 'idle_in_transaction' => '300s'],
+    ],
+
     // Indirizzo pubblico di /saas/admin e /saas/staff dietro il proxy del portale (https://associazionesemplice.it): gli
     // indirizzi scritti dal SaaS in quelle pagine partono da qui, mai dalle intestazioni della richiesta. Vuoto = nessuno.
     'public_url' => env('SAAS_PUBLIC_URL', ''),

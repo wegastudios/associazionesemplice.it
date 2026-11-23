@@ -30,6 +30,7 @@ use App\Modules\Core\Org\DatabaseOrgPurger;
 use App\Modules\Core\Platform\PlatformConfig;
 use App\Modules\Core\Platform\PlatformSettings;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Http\Middleware\TrustProxies;
@@ -52,7 +53,11 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(OrgDirectory::class, DatabaseOrgDirectory::class);
         $this->app->singleton(OrgPurger::class, DatabaseOrgPurger::class);
         $this->app->singleton(PlatformSettingsStore::class, PlatformSettings::class);
-        $this->app->singleton(OrgContext::class, DatabaseOrgContext::class);
+        // Comandi e code (cron, lavoratore delle code) hanno per tutto il processo i tempi massimi delle operazioni lunghe.
+        $this->app->singleton(OrgContext::class, fn (): DatabaseOrgContext => new DatabaseOrgContext(
+            $this->app->make(DatabaseManager::class), $this->app->make(DatabaseRegistry::class),
+            long: $this->app->runningInConsole() && ! $this->app->runningUnitTests(),
+        ));
         $this->app->scoped(OrgSettings::class);
         $this->app->bind(StaffCount::class, EmployeeCounter::class);
     }

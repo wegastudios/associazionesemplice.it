@@ -5,7 +5,6 @@ namespace App\Mail;
 use App\Models\SupportTicket;
 use App\Models\TicketMessage;
 use App\Services\Site\CustomerLink;
-use App\Mail\Concerns\SupportQueuedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -16,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 /** Avviso al cliente di una nuova risposta dello staff. */
 class StaffReplied extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels, SupportQueuedMail;
+    use Queueable, SerializesModels;
 
     public function __construct(public SupportTicket $ticket, public TicketMessage $reply) {}
 
