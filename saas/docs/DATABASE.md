@@ -210,8 +210,9 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   della stessa associazione. Dentro una transazione le righe si raccolgono e si legano alla catena tutte insieme come
   ultima cosa prima della conferma (un blocco sulla testa, sempre dopo gli altri, e un inserimento multiplo); seguono
   la transazione: un punto di salvataggio annullato toglie le sue righe. Numero e ora si assegnano con la testa
-  bloccata, quindi nella catena l'ordine dei numeri resta quello delle ore. Fuori da una transazione la riga si scrive
-  subito.
+  bloccata, quindi nella catena l'ordine dei numeri resta quello delle ore; l'ora vera dell'azione resta nei dettagli
+  (`action_at`, coperta dal sigillo) e l'esportazione la mostra come «Quando». Fuori da una transazione la riga si
+  scrive subito e `occurred_at` è l'ora dell'azione.
 - **Verifica**: `saas:audit:verify` (ogni notte da cron) ricalcola la catena e indica il primo punto rotto: riga
   modificata, tolta, aggiunta o testa non corrispondente.
 - **Copia della testa fuori dal database**: ogni giorno `saas:audit:heads:copy` salva nello spazio dei backup numero e

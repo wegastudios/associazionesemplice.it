@@ -9,11 +9,15 @@ use App\Modules\Audit\Log\PendingEntries;
 use App\Modules\Cifratura\Contracts\Sealer;
 use App\Modules\Core\Contracts\CurrentOrg;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Soci\Models\Person;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 
 /*
  * Dentro una transazione le righe del registro si legano alla catena tutte insieme, come ultima cosa prima della
@@ -196,6 +200,62 @@ it('lega le righe di più associazioni nella stessa transazione, anche se alla c
         ->and(app(ChainVerifier::class)->verify($this->alfa)['ok'])->toBeTrue()
         ->and(app(ChainVerifier::class)->verify($beta)['ok'])->toBeTrue()
         ->and($this->orgSetting())->toBe('');
+});
+
+it('tiene l\'ora vera dell\'azione anche quando la riga si lega alla conferma, e le esportazioni mostrano quella', function (): void {
+    $start = CarbonImmutable::now('UTC')->startOfSecond();
+
+    $this->orgContext()->run($this->alfa, function () use ($start): void {
+        app(AuditLog::class)->record('prova.subito'); // fuori da una transazione: senza action_at, come le righe vecchie
+        DB::transaction(function () use ($start): void {
+            CarbonImmutable::setTestNow($start);
+            app(AuditLog::class)->record('prova.in_transazione');
+            CarbonImmutable::setTestNow($start->addMinutes(5)); // transazione lunga: la conferma arriva cinque minuti dopo
+        });
+    });
+    CarbonImmutable::setTestNow();
+
+    $rows = $this->orgContext()->run($this->alfa, fn () => DB::table('audit.log')->whereIn('action', ['prova.subito', 'prova.in_transazione'])->orderBy('seq')->get()->all());
+    $late = $rows[1];
+    $actionAt = json_decode($late->details, true)['action_at'];
+
+    expect($actionAt)->toBe(ChainedAuditLog::timestamp($start))
+        ->and(CarbonImmutable::parse($late->occurred_at)->gte(CarbonImmutable::parse($actionAt)))->toBeTrue()
+        ->and(CarbonImmutable::parse($late->occurred_at)->eq($start->addMinutes(5)))->toBeTrue()
+        ->and(ChainedAuditLog::actionTime($late->occurred_at, $late->details))->toBe($actionAt)
+        // Riga senza action_at (scritta subito, o di prima): vale occurred_at.
+        ->and(json_decode($rows[0]->details, true))->toBe([])
+        ->and(ChainedAuditLog::actionTime($rows[0]->occurred_at, $rows[0]->details))->toBe($rows[0]->occurred_at)
+        ->and(app(ChainVerifier::class)->verify($this->alfa)['ok'])->toBeTrue();
+});
+
+it('le connessioni che scrivono nel registro mandano gli eventi delle transazioni', function (): void {
+    $this->useDedicatedDatabase();
+    $gamma = $this->createOrg('Fondazione Gamma', $this::DEDICATED);
+    $registry = app(DatabaseRegistry::class);
+    $began = [];
+    Event::listen(TransactionBeginning::class, function (TransactionBeginning $e) use (&$began): void {
+        $began[] = $e->connectionName;
+    });
+
+    // Il registro scrive solo sulla connessione dell'applicazione del database dell'associazione: condiviso o dedicato.
+    $connections = [$registry->appConnection(null), $registry->appConnection($this::DEDICATED)];
+    foreach ($connections as $name) {
+        DB::connection($name)->transaction(fn () => null);
+    }
+    expect($began)->toBe($connections);
+
+    // Dedicato: dentro la transazione la riga si raccoglie e si lega alla conferma.
+    $this->orgContext()->run($gamma->id, function (): void {
+        $connection = DB::connection($this->orgContext()->require()->connection);
+        $before = $connection->table('audit.log')->count();
+        $connection->transaction(function () use ($connection, $before): void {
+            app(AuditLog::class)->record('prova.dedicato');
+            expect($connection->table('audit.log')->count())->toBe($before);
+        });
+        expect($connection->table('audit.log')->count())->toBe($before + 1);
+    });
+    expect(app(ChainVerifier::class)->verify($gamma->id)['ok'])->toBeTrue();
 });
 
 it('se le righe del registro non si legano, la transazione non si conferma e la connessione resta pulita', function (): void {

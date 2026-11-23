@@ -22,12 +22,16 @@ use Throwable;
  *
  * Dentro una transazione le righe si raccolgono (PendingEntries) e si legano tutte insieme come ultima cosa prima
  * della conferma: un solo blocco sulla testa, sempre dopo tutti gli altri, tenuto per il tempo di un inserimento.
- * Numero e ora si assegnano lì, con la testa bloccata: nella catena l'ordine dei numeri resta quello delle ore. Fuori
- * da una transazione la riga si scrive subito.
+ * Numero e ora (occurred_at) si assegnano lì, con la testa bloccata: nella catena l'ordine dei numeri resta quello
+ * delle ore. L'ora vera dell'azione, presa in record(), va nei dettagli (action_at), coperta dal sigillo. Fuori da una
+ * transazione la riga si scrive subito e occurred_at è l'ora dell'azione.
  */
 final readonly class ChainedAuditLog implements AuditLog
 {
     public const GENESIS = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+
+    /** Chiave dei dettagli con l'ora dell'azione, per le righe legate alla conferma di una transazione. */
+    public const ACTION_AT = 'action_at';
 
     /** Righe per istruzione di inserimento: resta sotto il limite di parametri di PostgreSQL. */
     private const CHUNK = 500;
@@ -48,19 +52,33 @@ final readonly class ChainedAuditLog implements AuditLog
 
         $org = $this->context->require();
         $actor = Actor::current($this->app);
-        $draft = new Draft($org->id, $actor->type, $actor->id, $action, $subjectType, $subjectId, $actor->ip, Entry::validDetails($details));
+        $details = Entry::validDetails($details);
         $connection = $this->db->connection($org->connection);
         // La chiave si carica adesso: una chiave mancante rifiuta la scrittura subito, come sempre, e alla conferma il
         // servizio chiavi non si chiama con la testa bloccata.
         $this->sealer->seal($org->id, '');
 
         if ($this->pending->defers($connection)) {
-            $this->pending->add($connection, $draft);
+            // occurred_at sarà l'ora del legame alla conferma: l'ora vera dell'azione resta nella riga, coperta dal sigillo.
+            $details[self::ACTION_AT] = self::timestamp(CarbonImmutable::now('UTC'));
+            $this->pending->add($connection, new Draft($org->id, $actor->type, $actor->id, $action, $subjectType, $subjectId, $actor->ip, $details));
 
             return;
         }
 
-        $this->appendInTransaction($connection, [$draft]);
+        $this->appendInTransaction($connection, [new Draft($org->id, $actor->type, $actor->id, $action, $subjectType, $subjectId, $actor->ip, $details)]);
+    }
+
+    /**
+     * Quando è stata fatta l'azione: action_at nei dettagli per le righe scritte dentro una transazione (legate alla
+     * conferma), altrimenti occurred_at. Per la lettura: schermate ed esportazioni.
+     */
+    public static function actionTime(mixed $occurredAt, mixed $details): string
+    {
+        $decoded = is_string($details) ? json_decode($details, true) : null;
+        $at = is_array($decoded) ? ($decoded[self::ACTION_AT] ?? null) : null;
+
+        return is_string($at) ? $at : (is_scalar($occurredAt) ? (string) $occurredAt : '');
     }
 
     /** Evento TransactionCommitting: lega le righe raccolte dentro la transazione che sta per confermarsi. */
