@@ -20,7 +20,9 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
  *
  *   public function middleware(): array { return [new ThrottledMail]; }
  *
- * - Posta ferma dopo un rifiuto del server: il lavoro riparte quando l'interruttore si spegne, senza provare.
+ * - Posta ferma dopo un rifiuto del server: i massivi ripartono quando l'interruttore si spegne, senza provare; degli
+ *   urgenti ne passa uno ogni 10 minuti come prova (MailQueue::startProbe): se parte, l'interruttore si chiude.
+ *   Il rifiuto per limite orario dell'account (testo «max emails per hour» o «exceeded») è sempre l'interruttore.
  * - Tetti della coda del lavoro (MailQueue::limits), più quelli di un limitatore del modulo se indicato (RateLimiter::for):
  *   oltre, il lavoro riparte più tardi. Le chiavi sono quelle dei tetti, così tutti i lavori contano sugli stessi.
  * - Rifiuto o errore del server di posta: il lavoro riparte tra un'ora e la posta del mailer si ferma per tutti (oltre il
@@ -47,12 +49,19 @@ final class ThrottledMail
         }
 
         $mailer = MailQueue::mailer();
+        $queue = property_exists($job, 'queue') && is_string($job->queue) ? $job->queue : MailQueue::URGENT;
+        $urgent = $queue !== MailQueue::BULK;
         $blocked = MailQueue::blockedUntil($mailer);
+        $probe = false;
         if ($blocked !== null) {
-            return $this->release($job, $blocked - now()->getTimestamp());
+            // Posta ferma: i massivi aspettano la fine; un solo urgente ogni PROBE_SECONDS prova se il server ha ripreso.
+            $left = $blocked - now()->getTimestamp();
+            if (! $urgent || ! MailQueue::startProbe($mailer)) {
+                return $this->release($job, $urgent ? min($left, MailQueue::PROBE_SECONDS) : $left);
+            }
+            $probe = true;
         }
 
-        $queue = property_exists($job, 'queue') && is_string($job->queue) ? $job->queue : MailQueue::URGENT;
         $limits = $this->limits($job, $queue, $mailer);
         $wait = null;
         foreach ($limits as $limit) {
@@ -68,19 +77,28 @@ final class ThrottledMail
         }
 
         try {
-            return $next($job);
+            $result = $next($job);
         } catch (TransportExceptionInterface $e) {
-            return $this->rejected($job, $mailer, $e);
+            return $this->rejected($job, $mailer, $urgent, $e);
         }
+        // La prova è passata: il server ha ripreso, la posta riparte per tutti.
+        if ($probe) {
+            MailQueue::unblock($mailer);
+        }
+
+        return $result;
     }
 
-    private function rejected(object $job, string $mailer, TransportExceptionInterface $e): null
+    private function rejected(object $job, string $mailer, bool $urgent, TransportExceptionInterface $e): null
     {
         $code = $e->getCode();
+        // Limite orario dell'account (exim: «has exceeded the max emails per hour»): sempre l'interruttore, qualunque sia il
+        // codice esteso, e non conta come rifiuto del messaggio.
+        $hourLimit = preg_match('/max emails per hour|exceeded/i', $e->getMessage()) === 1;
         // Codici estesi x.1.x (indirizzo) e x.2.1/x.2.2 (casella disattivata o piena): riguardano il solo destinatario.
-        $recipient = preg_match('/\b([45])\.(?:1\.\d{1,3}|2\.[12])\b/', $e->getMessage(), $match) === 1;
+        $recipient = ! $hourLimit && preg_match('/\b([45])\.(?:1\.\d{1,3}|2\.[12])\b/', $e->getMessage(), $match) === 1;
 
-        if (($recipient && $match[1] === '5') || $this->rejections($job) >= self::MAX_REJECTIONS) {
+        if (($recipient && $match[1] === '5') || (! $hourLimit && $this->rejections($job) >= self::MAX_REJECTIONS)) {
             if (! method_exists($job, 'fail')) {
                 throw new LogicException('Il lavoro di posta deve usare InteractsWithQueue.');
             }
@@ -94,7 +112,8 @@ final class ThrottledMail
             Log::warning('Server di posta: invio rifiutato, posta in coda ferma', ['mailer' => $mailer, 'code' => $code, 'until' => date(DATE_ATOM, $until)]);
         }
 
-        return $this->release($job, MailQueue::blockedMinutes() * 60);
+        // Un urgente può fare da prova al prossimo turno; un massivo aspetta tutta la pausa.
+        return $this->release($job, $urgent ? MailQueue::PROBE_SECONDS : MailQueue::blockedMinutes() * 60);
     }
 
     /** Quante volte il server ha rifiutato questo stesso lavoro (contato per identificativo, per tre giorni). */

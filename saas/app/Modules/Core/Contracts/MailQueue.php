@@ -32,6 +32,9 @@ final class MailQueue
     /** Fino a quando si riprovano i massivi (gli urgenti: fino alla scadenza del loro link o codice). */
     public const BULK_RETRY_HOURS = 48;
 
+    /** Con la posta ferma, ogni quanto un messaggio urgente prova se il server ha ripreso (secondi). */
+    public const PROBE_SECONDS = 600;
+
     private const PERIODS = ['second' => 1, 'minute' => 60, 'hour' => 3600, 'day' => 86400, 'month' => 2592000];
 
     /** Il mailer in uso: i tetti e l'interruttore valgono per lui solo. */
@@ -103,6 +106,21 @@ final class MailQueue
         Cache::put(self::blockKey($mailer), $until->getTimestamp(), $until);
 
         return $until->getTimestamp();
+    }
+
+    /**
+     * Con la posta ferma, prenota la prova di un messaggio urgente: una sola ogni PROBE_SECONDS per mailer, anche con più
+     * lavoratori (aggiunta atomica in cache). true = questo lavoro fa la prova.
+     */
+    public static function startProbe(string $mailer): bool
+    {
+        return Cache::add('smtp-probe:'.$mailer, now()->getTimestamp(), self::PROBE_SECONDS);
+    }
+
+    /** Riapre la posta del mailer (prova riuscita). */
+    public static function unblock(string $mailer): void
+    {
+        Cache::forget(self::blockKey($mailer));
     }
 
     public static function blockedMinutes(): int

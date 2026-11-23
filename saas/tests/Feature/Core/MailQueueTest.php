@@ -153,14 +153,48 @@ it('al rifiuto del server di posta il lavoro si rilascia per un\'ora e tutta la 
     $job->assertReleased(3600)->assertNotFailed();
     expect(MailQueue::blockedUntil('smtp'))->toBe(now()->addHour()->getTimestamp());
 
-    // Il lavoro dopo non prova nemmeno a mandare.
-    $next = mqUrgent();
+    // Il massivo dopo non prova nemmeno a mandare e aspetta tutta la pausa.
+    $next = mqBulk();
     expect(mqThrough($next))->toBeFalse();
-    $next->assertReleased();
+    $next->assertReleased(3600);
 
     // L'interruttore vale per un mailer solo.
     config(['mail.default' => 'emailit']);
-    expect(mqThrough(mqUrgent()))->toBeTrue();
+    expect(mqThrough(mqBulk()))->toBeTrue();
+});
+
+it('il rifiuto per limite orario dell\'account è sempre l\'interruttore, anche con un codice da destinatario', function (): void {
+    $this->freezeTime();
+    $job = mqBulk();
+    mqThrough($job, static fn () => throw new TransportException('Expected response code "250" but got code "550", with message "550 5.1.1 Domain example.org has exceeded the MAX EMAILS PER HOUR (140/140 (100%)) allowed. Message discarded.".', 550));
+
+    $job->assertReleased(3600)->assertNotFailed();
+    expect(MailQueue::blockedUntil('smtp'))->toBe(now()->addHour()->getTimestamp());
+});
+
+it('con la posta ferma passa un solo urgente ogni 10 minuti come prova; i massivi mai', function (): void {
+    MailQueue::block('smtp');
+
+    $bulk = mqBulk();
+    expect(mqThrough($bulk))->toBeFalse();
+    $bulk->assertReleased();
+
+    // La prova fallisce: l'interruttore resta, il messaggio riprova al turno dopo.
+    $probe = mqUrgent();
+    expect(mqThrough($probe, static fn () => throw new TransportException('Expected response code "250" but got code "421", with message "421 riprova più tardi".', 421)))->toBeTrue();
+    $probe->assertReleased(MailQueue::PROBE_SECONDS);
+    expect(MailQueue::blockedUntil('smtp'))->not->toBeNull();
+
+    // Nello stesso intervallo nessun altro urgente prova.
+    $second = mqUrgent();
+    expect(mqThrough($second))->toBeFalse();
+    $second->assertReleased();
+
+    // Dopo 10 minuti la prova successiva parte e riapre la posta per tutti.
+    $this->travel(MailQueue::PROBE_SECONDS + 1)->seconds();
+    expect(mqThrough(mqUrgent()))->toBeTrue()
+        ->and(MailQueue::blockedUntil('smtp'))->toBeNull()
+        ->and(mqThrough(mqBulk()))->toBeTrue();
 });
 
 it('un indirizzo rifiutato fa fallire solo quel messaggio, senza fermare la posta né lasciare l\'indirizzo tra i falliti', function (): void {
