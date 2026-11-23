@@ -816,6 +816,7 @@ $m_bal = function () use ( $ledger ) {
 $m_open_reads = $m_reads( $m_bal );
 m_run( 'Saldi dei conti, nessun anno chiuso (richiesta nuova)', $m_bal, 5, false );
 try {
+	FiscalYears::ensure( $fy - 1 ); // i movimenti dell'anno scorso sono scritti in blocco: l'anno va creato
 	FiscalYears::close( $fy - 1, true );
 	$m_closed_reads = $m_reads( $m_bal );
 	m_run( 'Saldi dei conti, anno scorso chiuso (richiesta nuova)', $m_bal, 5, false );
