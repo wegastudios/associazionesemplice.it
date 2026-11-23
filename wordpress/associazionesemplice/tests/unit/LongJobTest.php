@@ -41,9 +41,28 @@ final class LongJobTest extends TestCase {
 		$this->assertStringContainsString( "'asem_long_job'", self::src( 'assets/admin.js' ) );
 	}
 
+	public function test_screen_texts_say_operation_not_job(): void {
+		$src = self::src( 'includes/LongJob.php' );
+		$en  = json_decode( self::src( 'includes/languages/en.json' ), true );
+		foreach ( array( 'Operazione completata.', 'Operazione annullata.', 'Questa operazione non esiste più: ricarica la pagina.', 'Nessuna operazione in corso.', 'Connessione interrotta: nuovo tentativo tra qualche secondo.' ) as $k ) {
+			$this->assertStringContainsString( "'" . $k . "'", $src, $k );
+			$this->assertArrayHasKey( $k, $en['strings'], $k );
+		}
+		preg_match_all( "/Texts::t\( '((?:[^'\\\\]|\\\\.)*)'/", $src, $m );
+		foreach ( $m[1] as $t ) {
+			$this->assertDoesNotMatchRegularExpression( '/\blavor[oi]\b/i', $t, 'testo a schermo con «lavoro»: ' . $t );
+		}
+		$this->assertArrayNotHasKey( 'Lavoro finito.', $en['strings'] );
+		$this->assertStringNotContainsString( 'circa 6 ore', self::src( 'includes/Admin/LimitsPage.php' ) );
+		$this->assertStringContainsString( 'circa 5 ore', self::src( 'includes/Admin/LimitsPage.php' ) );
+		$this->assertStringContainsString( '250 email', self::src( 'includes/Admin/LimitsPage.php' ) );
+		$this->assertStringContainsString( 'Nessuna persona trovata con quel nome: scrivi almeno tre lettere o il numero di tessera.', self::src( 'includes/Admin/PersonSearch.php' ) );
+		$this->assertArrayNotHasKey( 'Non ho trovato nessuna persona con quel nome: scrivine almeno tre lettere, o il numero di tessera.', $en['strings'] );
+	}
+
 	public function test_new_texts_with_placeholders_are_translated(): void {
 		$en = json_decode( self::src( 'includes/languages/en.json' ), true );
-		foreach ( array( 'Il lavoro si è fermato per un errore: {error}', 'In corso: {done} di {total} ({percent}%).' ) as $k ) {
+		foreach ( array( "L'operazione si è fermata per un errore: {error}", 'In corso: {done} di {total} ({percent}%).' ) as $k ) {
 			$this->assertArrayHasKey( $k, $en['strings'], $k );
 		}
 	}

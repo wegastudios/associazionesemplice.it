@@ -9,6 +9,7 @@ use App\Modules\Cifratura\Contracts\EncryptedFiles;
 use App\Modules\Cifratura\Contracts\StoredFile;
 use App\Modules\Core\Access\Memberships;
 use App\Modules\Core\Contracts\Ability;
+use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Jobs\BuildFullExport;
@@ -33,8 +34,8 @@ use Throwable;
  */
 final readonly class FullExports
 {
-    /** Secondi massimi del lavoro in coda. */
-    public const TIMEOUT = 1800;
+    /** Secondi massimi del lavoro in coda: quelli di un lavoro lungo. */
+    public const TIMEOUT = JobQueues::LONG_TIMEOUT;
 
     /** Oltre questo tempo una copia «in preparazione» non finirà più (lavoro interrotto): risulta non riuscita. */
     public const STALE_AFTER = self::TIMEOUT + 300;

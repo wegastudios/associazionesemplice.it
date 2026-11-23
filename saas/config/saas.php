@@ -69,6 +69,19 @@ return [
     // Indirizzi da cui fidarsi degli X-Forwarded-* (il proxy del portale), separati da virgole; vuoto = nessuno.
     'trusted_proxies' => env('SAAS_TRUSTED_PROXIES', ''),
 
+    // Impostazioni della piattaforma lette all'avvio (PlatformConfig): si tengono, ancora cifrate, in questa cache per
+    // 5 minuti e si dimenticano a ogni salvataggio. «file» perché la cache generale dipende proprio da queste impostazioni.
+    'platform_settings_cache' => env('SAAS_PLATFORM_SETTINGS_CACHE', 'file'),
+
+    // Cache tra le richieste (H20, Core\Contracts\SharedCache): secondi di validità, 0 = spenta. Il catalogo si dimentica a
+    // ogni pubblicazione; i diritti di un'associazione a ogni scrittura dal portale e a ogni cambio di stato (sospensione).
+    'shared_cache' => [
+        'catalog' => (int) env('SAAS_CACHE_CATALOG_SECONDS', 300),
+        'entitlements' => (int) env('SAAS_CACHE_ENTITLEMENTS_SECONDS', 300),
+        // Stato dell'associazione e sola lettura: al massimo 60 secondi (SharedCache::MAX_SECONDS).
+        'status' => (int) env('SAAS_CACHE_STATUS_SECONDS', 60),
+    ],
+
     // Registro delle query lente (millisecondi; 0 = spento). Scrive solo il testo della query con i segnaposto, mai i valori.
     'slow_query_ms' => (int) env('SAAS_SLOW_QUERY_MS', 200),
 
@@ -98,6 +111,12 @@ return [
         'member_max_active' => (int) env('SAAS_MEMBER_MAX_ACTIVE_BOOKINGS', 10),
     ],
 
+    // Code: quanti lavoratori il cron tiene accesi insieme oltre a quello della posta urgente, che c'è sempre (1-2; il server
+    // ha 25 processi PHP in tutto, condivisi con il web). 2 = lavori brevi e lavori lunghi; 1 = uno per entrambi.
+    'queue' => [
+        'max_workers' => (int) env('SAAS_QUEUE_MAX_WORKERS', 2),
+    ],
+
     // Promemoria delle scadenze: vanno in coda come posta massiva, un'email per lavoro (tetti in mail_queue). In più, un
     // massimo di email al minuto per ogni associazione (oltre, il lavoro riparte più tardi).
     'reminders' => [
@@ -108,14 +127,27 @@ return [
     // Chiavi: per_second, per_minute, per_hour, per_day, per_month (30 giorni) sul totale; le stesse con «bulk_» davanti
     // sui massivi, che contano anche sul totale. Un mailer non elencato usa i numeri di «smtp».
     // smtp: quota del gestionale sul limite orario condiviso dell'account di posta (140, di cui 40 lasciati agli urgenti).
+    // per_day: giorno UTC, azzerato a mezzanotte UTC.
     'mail_queue' => [
         // Dopo un rifiuto del server di posta, per quanti minuti la posta in coda resta ferma.
         'blocked_minutes' => (int) env('SAAS_MAIL_BLOCKED_MINUTES', 60),
+        // Servizio di invio principale (Core\Mail\PrimaryMailer, docs/POSTA_EMAILIT.md): «cpanel» (di base) = solo il mailer
+        // di sempre; «emailit» = prima Emailit (con la chiave EMAILIT_PASSWORD), il mailer di sempre come ripiego.
+        'primary' => env('SAAS_MAIL_PRIMARY', 'cpanel'),
         'mailers' => [
             'smtp' => [
                 'per_hour' => (int) env('SAAS_MAIL_SMTP_PER_HOUR', 140),
                 'bulk_per_hour' => (int) env('SAAS_MAIL_SMTP_BULK_PER_HOUR', 100),
                 'bulk_per_minute' => (int) env('SAAS_MAIL_SMTP_BULK_PER_MINUTE', 3),
+            ],
+            // Quota del gestionale sul workspace Emailit condiviso (al giorno: gestionale 4.000, portale 500, supporto 200,
+            // margine 300); al mese il 90% dei crediti del piano.
+            'emailit' => [
+                'per_second' => (int) env('SAAS_MAIL_EMAILIT_PER_SECOND', 2),
+                'per_hour' => (int) env('SAAS_MAIL_EMAILIT_PER_HOUR', 900),
+                'per_day' => (int) env('SAAS_MAIL_EMAILIT_PER_DAY', 4000),
+                'bulk_per_day' => (int) env('SAAS_MAIL_EMAILIT_BULK_PER_DAY', 3500),
+                'per_month' => (int) env('SAAS_MAIL_EMAILIT_PER_MONTH', 900000),
             ],
         ],
     ],

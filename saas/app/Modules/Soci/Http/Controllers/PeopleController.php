@@ -233,6 +233,12 @@ final readonly class PeopleController
             ])->values());
     }
 
+    /** Il primo numero di tessera libero, chiesto dalla scheda di una persona già registrata. */
+    public function firstFreeCard(): JsonResponse
+    {
+        return new JsonResponse(['card' => $this->people->firstFreeCard()]);
+    }
+
     public function settings(Request $request): RedirectResponse
     {
         $data = Input::of($request->validate([
@@ -293,7 +299,8 @@ final readonly class PeopleController
                 // I dati sanitari si aprono (e si annotano nel registro) solo per chi li può vedere.
                 'certificates' => $request->user()?->can('health.view') === true ? $this->certificates->forPerson($person->id) : null,
             ],
-            'firstFreeCard' => $this->people->firstFreeCard(),
+            // Per una scheda nuova subito; per una esistente solo quando si preme «Primo libero» ({@see self::firstFreeCard()}).
+            'firstFreeCard' => $person === null ? $this->people->firstFreeCard() : null,
             'types' => self::types(),
             // Solo livelli attivi, più quello già assegnato a questo socio se nel frattempo è stato disattivato.
             'levels' => MemberLevel::query()->where(static fn (Builder $q) => $q->where('active', true)->orWhere('id', $person?->level_id))->orderBy('sort_order')->get(['id', 'name', 'active'])

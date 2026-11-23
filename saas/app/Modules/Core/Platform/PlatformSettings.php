@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Core\Platform;
 
 use App\Modules\Core\Contracts\PlatformSettingsStore;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\Encryption\Encrypter;
@@ -12,6 +14,7 @@ use Illuminate\Contracts\Encryption\StringEncrypter;
 use Illuminate\Database\DatabaseManager;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 
 /**
  * Impostazioni della piattaforma nel database centrale, cifrate con la chiave dell'applicazione. Ognuna, se c'è, prende
@@ -50,6 +53,10 @@ final readonly class PlatformSettings implements PlatformSettingsStore
         'domains.delegation_hours' => ['Ore di attesa della delega prima di segnalare un errore', false, 'hours'],
     ];
 
+    private const CACHE_KEY = 'saas:platform-settings:v1';
+
+    private const CACHE_SECONDS = 300;
+
     public function __construct(
         private DatabaseManager $db,
         private Container $container,
@@ -67,19 +74,75 @@ final readonly class PlatformSettings implements PlatformSettingsStore
     public function all(): array
     {
         $out = [];
-        foreach ($this->db->connection('pgsql')->table('core.platform_settings')->get(['key', 'value_enc']) as $row) {
-            if (! is_string($row->key ?? null) || ! is_string($row->value_enc ?? null) || ! isset(self::KEYS[$row->key])) {
-                continue;
-            }
+        foreach ($this->stored() as $key => $encrypted) {
             try {
-                $value = $this->encrypter()->decryptString($row->value_enc);
+                $out[$key] = $this->encrypter()->decryptString($encrypted);
             } catch (DecryptException) {
                 continue; // chiave dell'applicazione cambiata: il valore non vale più
             }
-            $out[$row->key] = $value;
         }
 
         return $out;
+    }
+
+    /**
+     * Le righe come sono nel database, ancora cifrate: si leggono a ogni avvio, quindi stanno in cache per qualche
+     * minuto (H17) e si dimenticano a ogni salvataggio. Una cache che non risponde vale come vuota: si legge il database.
+     *
+     * @return array<string, string> chiave => valore cifrato
+     */
+    private function stored(): array
+    {
+        $cache = $this->cache();
+        try {
+            $cached = $cache?->get(self::CACHE_KEY);
+        } catch (Throwable) {
+            [$cache, $cached] = [null, null];
+        }
+        $rows = [];
+        if (is_array($cached)) {
+            foreach ($cached as $key => $value) {
+                if (is_string($key) && is_string($value) && isset(self::KEYS[$key])) {
+                    $rows[$key] = $value;
+                }
+            }
+
+            return $rows;
+        }
+
+        foreach ($this->db->connection('pgsql')->table('core.platform_settings')->get(['key', 'value_enc']) as $row) {
+            if (is_string($row->key ?? null) && is_string($row->value_enc ?? null) && isset(self::KEYS[$row->key])) {
+                $rows[$row->key] = $row->value_enc;
+            }
+        }
+        try {
+            $cache?->put(self::CACHE_KEY, $rows, self::CACHE_SECONDS);
+        } catch (Throwable) {
+            // Cache non scrivibile: la prossima richiesta rilegge il database.
+        }
+
+        return $rows;
+    }
+
+    /** La cache delle righe, o null se non si può usare (cartella non scrivibile, archivio sconosciuto). */
+    private function cache(): ?CacheRepository
+    {
+        try {
+            $store = config('saas.platform_settings_cache');
+
+            return $this->container->make(CacheFactory::class)->store(is_string($store) && $store !== '' ? $store : 'file');
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function forget(): void
+    {
+        try {
+            $this->cache()?->forget(self::CACHE_KEY);
+        } catch (Throwable) {
+            // La cache non risponde: la copia scade da sola entro CACHE_SECONDS.
+        }
     }
 
     /**
@@ -123,20 +186,25 @@ final readonly class PlatformSettings implements PlatformSettingsStore
 
         $table = $this->db->connection('pgsql')->table('core.platform_settings');
         $changed = [];
-        foreach ($values as $key => $value) {
-            $value = trim((string) $value);
-            $secret = self::KEYS[$key][1];
-            if ($value === '') {
-                if (! $secret || in_array($key, $clear, true)) {
-                    if ((clone $table)->where('key', $key)->delete() > 0) {
-                        $changed[] = $key;
+        try {
+            foreach ($values as $key => $value) {
+                $value = trim((string) $value);
+                $secret = self::KEYS[$key][1];
+                if ($value === '') {
+                    if (! $secret || in_array($key, $clear, true)) {
+                        if ((clone $table)->where('key', $key)->delete() > 0) {
+                            $changed[] = $key;
+                        }
                     }
-                }
 
-                continue;
+                    continue;
+                }
+                (clone $table)->upsert([['key' => $key, 'value_enc' => $this->encrypter()->encryptString($value), 'updated_by' => $userId, 'updated_at' => now()]], ['key'], ['value_enc', 'updated_by', 'updated_at']);
+                $changed[] = $key;
             }
-            (clone $table)->upsert([['key' => $key, 'value_enc' => $this->encrypter()->encryptString($value), 'updated_by' => $userId, 'updated_at' => now()]], ['key'], ['value_enc', 'updated_by', 'updated_at']);
-            $changed[] = $key;
+        } finally {
+            // Anche se una scrittura fallisce a metà: la prossima lettura riparte dal database.
+            $this->forget();
         }
 
         return $changed;
