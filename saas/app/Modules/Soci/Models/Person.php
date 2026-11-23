@@ -65,6 +65,8 @@ final class Person extends OrgModel
     /** @var list<string> */
     protected $hidden = [
         'tax_code_enc', 'tax_code_bidx', 'birth_date_enc', 'birth_place_enc', 'address_enc', 'phone_enc', 'iban_enc', 'notes_enc',
+        // Riferimento interno all'importazione da cui è nata la scheda (per il registro): non va nelle pagine né nei file.
+        'import_id',
     ];
 
     /** @return array<string, string> */

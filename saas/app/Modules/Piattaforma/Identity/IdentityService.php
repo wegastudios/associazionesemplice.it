@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Identity;
 
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\QueuedMail;
 use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -12,9 +14,7 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
@@ -180,13 +180,11 @@ final readonly class IdentityService
         $db->table('core.staff_email_changes')->insert(['id' => (string) Str::uuid7(), 'token_hash' => hash('sha256', $code), 'person_id' => $person->id, 'new_email' => $newEmail, 'expires_at' => now()->addHour()]);
         $this->directory->audit('staff.email.change_requested', $person->id, null, [], $ip);
         $link = $linkPrefix.$code;
+        // Subito se c'è quota, altrimenti in coda (cifrato) finché il link vale.
         try {
-            Mail::raw(
+            MailQueue::sendNowOrQueue(QueuedMail::raw($newEmail, 'Conferma il nuovo indirizzo email',
                 "Ciao,\n\nper confermare il nuovo indirizzo email del tuo accesso ad Associazione Semplice apri questo link (vale un'ora e si usa una volta sola):\n\n{$link}\n\nSe non l'hai chiesto tu, ignora questa email.\n",
-                static function (Message $message) use ($newEmail): void {
-                    $message->to($newEmail)->subject('Conferma il nuovo indirizzo email');
-                },
-            );
+                MailQueue::URGENT, now()->addHour()));
         } catch (Throwable) {
             // Nessun errore a chi chiede: il resto della richiesta è già registrato.
         }

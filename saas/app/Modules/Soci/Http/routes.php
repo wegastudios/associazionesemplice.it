@@ -27,6 +27,8 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::get('/soci/nuovo', [PeopleController::class, 'create'])->name('people.create');
         Route::get('/soci/importa', [PeopleTransferController::class, 'form'])->name('people.import');
         Route::post('/soci/importa', [PeopleTransferController::class, 'import'])->middleware('db.long')->name('people.import.run');
+        Route::post('/soci/importa/{import}/annulla', [PeopleTransferController::class, 'cancel'])->whereUuid('import')->name('people.import.cancel');
+        Route::post('/soci/importa/{import}/riprendi', [PeopleTransferController::class, 'resume'])->whereUuid('import')->name('people.import.resume');
         Route::get('/soci/modello-import.csv', [PeopleTransferController::class, 'template'])->name('people.import.template');
         Route::post('/soci', [PeopleController::class, 'store'])->name('people.store');
         Route::put('/soci/{person}', [PeopleController::class, 'update'])->whereUuid('person')->name('people.update');

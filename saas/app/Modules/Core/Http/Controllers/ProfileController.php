@@ -7,6 +7,8 @@ namespace App\Modules\Core\Http\Controllers;
 use App\Modules\Core\Auth\DeviceSessions;
 use App\Modules\Core\Auth\EmailChangeNoticeNotification;
 use App\Modules\Core\Auth\EmailChangeNotification;
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\QueuedMail;
 use App\Modules\Core\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -72,8 +74,9 @@ final readonly class ProfileController
             // Stessa risposta se l'indirizzo è libero o già usato: chi scrive non scopre chi ha un accesso.
             if (! DB::table('core.users')->whereRaw('lower(email) = ?', [$new])->exists()) {
                 $url = URL::temporarySignedRoute('profile.email.confirm', now()->addMinutes(self::EMAIL_LINK_MINUTES), ['email' => $new, 'uid' => $user->id]);
-                Notification::route('mail', $new)->notify(new EmailChangeNotification($user->name, $url));
-                $user->notify(new EmailChangeNoticeNotification(EmailChangeNoticeNotification::mask($new)));
+                // Subito se c'è quota, altrimenti in coda (cifrato): il link finché vale, l'avviso al vecchio indirizzo per un giorno.
+                MailQueue::sendNowOrQueue(QueuedMail::notification(Notification::route('mail', $new), new EmailChangeNotification($user->name, $url), MailQueue::URGENT, now()->addMinutes(self::EMAIL_LINK_MINUTES)));
+                MailQueue::sendNowOrQueue(QueuedMail::notification($user, new EmailChangeNoticeNotification(EmailChangeNoticeNotification::mask($new)), MailQueue::URGENT, now()->addDay()));
             }
         }
 
