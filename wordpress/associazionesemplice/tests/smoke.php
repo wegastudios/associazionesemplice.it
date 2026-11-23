@@ -12086,6 +12086,7 @@ asem_ok( ! wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina senza 
 $nc_early( $nc_p_list );
 \AssociazioneSemplice\Frontend\Assets::early_enqueue();
 asem_ok( wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina con una vista del plugin li chiede subito, per l\'intestazione' );
+asem_ok( wp_script_is( 'asem-frontend', 'enqueued' ) && ( version_compare( (string) get_bloginfo( 'version' ), '6.3', '<' ) || 'defer' === wp_scripts()->get_data( 'asem-frontend', 'strategy' ) ), 'script: quello del plugin è in fondo alla pagina e, da WordPress 6.3, con defer' );
 wp_dequeue_style( 'asem-frontend' );
 wp_dequeue_script( 'asem-frontend' );
 $nc_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Cache', 'last_name' => 'Prova' ) );
