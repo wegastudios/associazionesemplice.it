@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Cifratura\Keys\LocalKeyVault;
+use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Platform\PlatformConfig;
 use App\Modules\Core\Platform\PlatformSettings;
@@ -214,6 +215,49 @@ it('segnala i messaggi non partiti nelle ultime 24 ore, non quelli più vecchi n
 
     $failed(MailQueue::URGENT, 2);
     $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ERRORE posta non partita: 1 ')->assertFailed();
+});
+
+/** Un lavoro pronto da $seconds secondi e mai preso (o preso da un lavoratore, con $reserved). */
+function healthWaitingJob(string $queue, int $seconds, bool $reserved = false): void
+{
+    DB::table('core.jobs')->insert([
+        'queue' => $queue, 'payload' => '{}', 'attempts' => 0,
+        'reserved_at' => $reserved ? now()->getTimestamp() : null,
+        'available_at' => now()->getTimestamp() - $seconds,
+        'created_at' => now()->getTimestamp() - $seconds,
+    ]);
+}
+
+it('segnala un lavoro pronto da più di 15 minuti che nessun lavoratore prende; al rilascio è solo un avviso', function (): void {
+    config(['queue.default' => 'database']);
+    healthWaitingJob('default', 14 * 60);
+    healthWaitingJob('default', 60 * 60, reserved: true);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ok    coda dei lavori')->assertSuccessful();
+
+    healthWaitingJob('default', 16 * 60);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ERRORE coda dei lavori: ')->assertFailed();
+    $this->artisan('saas:health', ['--skip-migrations' => true, '--mail-warnings-only' => true])
+        ->expectsOutputToContain('AVVISO coda dei lavori: ')
+        ->assertSuccessful();
+});
+
+it('per i lavori lunghi la soglia è un\'ora', function (): void {
+    config(['queue.default' => 'database']);
+    healthWaitingJob(JobQueues::LONG, 50 * 60);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ok    coda dei lavori lunghi')->assertSuccessful();
+
+    healthWaitingJob(JobQueues::LONG, 70 * 60);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ERRORE coda dei lavori lunghi')->assertFailed();
+});
+
+it('avvisa dei lavori non riusciti nelle ultime 24 ore fuori dalla posta, senza fermare il rilascio', function (): void {
+    DB::table('core.failed_jobs')->insert([
+        'uuid' => (string) Str::uuid(), 'connection' => 'database-long', 'queue' => JobQueues::LONG, 'payload' => '{}', 'exception' => 'x', 'failed_at' => now()->subHour(),
+    ]);
+
+    $this->artisan('saas:health', ['--skip-migrations' => true])
+        ->expectsOutputToContain('AVVISO lavori non riusciti: 1 ')
+        ->assertSuccessful();
 });
 
 it('avvisa quando gli invii dell\'ora superano il 90% del tetto totale', function (): void {
