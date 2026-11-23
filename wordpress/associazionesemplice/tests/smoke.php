@@ -10195,6 +10195,44 @@ asem_ok( 0 === $ml_writes && 'Registro 6' === \AssociazioneSemplice\MailLog::rec
 $ml_stored = (array) get_option( \AssociazioneSemplice\MailLog::OPTION, array() );
 asem_ok( 1 === $ml_writes && 'Registro 6' === end( $ml_stored )['what'] && count( $ml_stored ) <= \AssociazioneSemplice\MailLog::KEEP, 'posta: a fine richiesta una sola scrittura per tutte le email, e un secondo giro non riscrive nulla (' . $ml_writes . ' scritture)' );
 remove_filter( 'pre_update_option_' . \AssociazioneSemplice\MailLog::OPTION, $ml_count );
+// Email singole rifiutate dal server: coda breve con nuovi tentativi, mai perse in silenzio
+\AssociazioneSemplice\MailRetry::reset();
+$mr_fail = true;
+$mr_sent = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$mr_fail, &$mr_sent ) {
+		if ( $mr_fail ) {
+			return false;
+		}
+		$mr_sent[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+$mr_t = time();
+asem_ok( false === \AssociazioneSemplice\Texts::mail( 'ricevuta@example.com', 'Ricevuta di prova', 'Corpo della ricevuta' ), 'coda email: se il server rifiuta, la email singola risponde false' );
+asem_ok( 1 === \AssociazioneSemplice\MailRetry::pending() && false !== wp_next_scheduled( \AssociazioneSemplice\MailRetry::HOOK ), 'coda email: la email rifiutata è in coda e il nuovo tentativo è programmato' );
+\AssociazioneSemplice\Texts::mail( 'gruppo@example.com', 'Comunicazione', 'x', '', array(), false );
+\AssociazioneSemplice\Texts::mail( 'non-un-indirizzo', 'Sbagliata', 'x' );
+asem_ok( 1 === \AssociazioneSemplice\MailRetry::pending(), 'coda email: comunicazioni e promemoria (senza ripetizione) e indirizzi non validi non entrano in coda' );
+\AssociazioneSemplice\MailRetry::$clock = $mr_t + 60;
+asem_ok( 0 === \AssociazioneSemplice\MailRetry::run() && 1 === \AssociazioneSemplice\MailRetry::pending(), 'coda email: prima del tempo non si riprova' );
+\AssociazioneSemplice\MailRetry::$clock = $mr_t + 400;
+$mr_fail = false;
+asem_ok( 1 === \AssociazioneSemplice\MailRetry::run() && 0 === \AssociazioneSemplice\MailRetry::pending() && 1 === count( $mr_sent ) && 0 === strpos( (string) $mr_sent[0]['message'], 'Corpo della ricevuta' ), 'coda email: al nuovo tentativo la email parte e la coda si svuota' );
+$mr_fail = true;
+\AssociazioneSemplice\MailRetry::$clock = null;
+\AssociazioneSemplice\Texts::mail( 'codice@example.com', 'Codice di accesso', 'Il tuo codice' );
+$mr_t = time();
+foreach ( array( 400, 1700, 5400 ) as $mr_step ) {
+	\AssociazioneSemplice\MailRetry::$clock = $mr_t + $mr_step;
+	\AssociazioneSemplice\MailRetry::run();
+}
+asem_ok( 0 === \AssociazioneSemplice\MailRetry::pending() && 1 === \AssociazioneSemplice\MailRetry::lost(), 'coda email: dopo tre nuovi tentativi falliti la email si dà per non inviata e resta nell\'avviso' );
+\AssociazioneSemplice\MailRetry::reset();
+remove_all_filters( 'pre_wp_mail' );
 // ---------- Listini, pacchetti e ospiti dell'associazione / del volontario ----------
 $pl_vol = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Livia', 'last_name' => 'Listino', 'email' => 'livia.listino@example.com' ) );
 $pl_a   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anna', 'last_name' => 'Listino', 'email' => 'anna.listino@example.com' ) );

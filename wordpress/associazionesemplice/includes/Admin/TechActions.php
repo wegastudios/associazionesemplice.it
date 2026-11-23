@@ -219,7 +219,7 @@ final class TechActions {
 		if ( ! is_email( $to ) ) {
 			throw new \InvalidArgumentException( 'Il tuo utente non ha un indirizzo email valido.' );
 		}
-		if ( ! \AssociazioneSemplice\Texts::mail( $to, 'Prova di invio', "Questa è un'email di prova inviata da Associazione Semplice.\n\nSe la leggi, la posta del sito funziona." ) ) {
+		if ( ! \AssociazioneSemplice\Texts::mail( $to, 'Prova di invio', "Questa è un'email di prova inviata da Associazione Semplice.\n\nSe la leggi, la posta del sito funziona.", '', array(), false ) ) {
 			$last = \AssociazioneSemplice\MailLog::recent( 1 );
 			throw new \InvalidArgumentException( esc_html( 'Il server non ha accettato il messaggio' . ( $last && ! empty( $last[0]['error'] ) ? ': ' . $last[0]['error'] : '.' ) . ' Controlla la posta del sito (un plugin SMTP di solito risolve).' ) );
 		}

@@ -181,6 +181,7 @@ final class Plugin {
 			'asem_purge_member_sessions'  => array( 'daily', 2400, 'MemberSession', 'purge_expired', '' ),
 			'asem_purge_applications'     => array( 'daily', 3300, 'Applications', 'purge', '' ), // domande mai confermate (30 giorni) e respinte con quota pagata (90 giorni dalla risposta)
 			'asem_long_job_tick'          => array( '', 0, 'LongJob', 'tick', '' ), // rete di sicurezza dei lavori lunghi: una tappa quando la pagina è chiusa (si programma da sola, un evento per volta)
+			'asem_mail_retry'             => array( '', 0, 'MailRetry', 'run', '' ), // nuovo tentativo delle email singole rifiutate dal server di posta (si programma da solo, pochi minuti dopo)
 			'asem_schema_upgrade'         => array( '', 0, 'Install', 'maybe_upgrade', '' ), // aggiornamento dello schema rimasto a metà o rimandato perché la richiesta era di un visitatore (si programma da solo)
 		);
 		$out = array();

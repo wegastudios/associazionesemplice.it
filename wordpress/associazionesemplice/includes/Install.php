@@ -33,6 +33,7 @@ final class Install {
 		'asem_purge_applications',
 		'asem_purge_broadcast_rcpt',
 		'asem_long_job_tick',
+		'asem_mail_retry',
 		'asem_schema_upgrade',
 		'asem_sms_hourly',
 		'asem_sms_queue',

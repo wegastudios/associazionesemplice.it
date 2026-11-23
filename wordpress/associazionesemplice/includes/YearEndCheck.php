@@ -172,9 +172,7 @@ final class YearEndCheck {
 		$body = "Ciao,\n\nl'anno fiscale finisce il " . ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) . ". Conviene sistemare ora queste discrepanze, così non restano correzioni da fare dopo la chiusura:\n\n" . implode( "\n", $lines );
 		$n    = 0;
 		foreach ( self::recipients() as $to ) {
-			$sent = wp_mail( $to, Texts::subject( 'Verifiche di fine anno fiscale' ), $body );
-			MailBudget::count( 1 );
-			if ( $sent ) {
+			if ( Texts::mail( $to, Texts::subject( 'Verifiche di fine anno fiscale' ), $body ) ) { // passa dalla posta del plugin: conta nel tetto orario e, se il server la rifiuta, entra nella coda dei nuovi tentativi
 				$n++;
 			}
 		}
