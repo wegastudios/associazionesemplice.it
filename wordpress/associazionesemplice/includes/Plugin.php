@@ -62,6 +62,7 @@ final class Plugin {
 		Frontend\WhatsappFloat::register(); // pulsante WhatsApp fisso (se c'è il numero della segreteria)
 		self::updater(); // aggiornamenti dal portale: nel pacchetto per WordPress.org non c'è (lì aggiorna WordPress.org)
 		self::schedule_jobs();   // lavori periodici: la classe si carica solo quando il lavoro parte
+		add_filter( 'asem_long_jobs', array( __NAMESPACE__ . '\\Backup', 'long_jobs' ) ); // copia di sicurezza a tappe: la classe si carica solo quando un lavoro lungo parte o avanza
 		self::lazy_admin_post(); // download e azioni di admin-post: la classe si carica solo per quell'azione
 		// Parti che servono solo se la funzione è presente e in uso: altrimenti nemmeno si caricano.
 		if ( defined( 'PMXI_VERSION' ) || class_exists( 'PMXI_Plugin', false ) ) {
@@ -191,6 +192,7 @@ final class Plugin {
 	const ADMIN_POST = array(
 		'asem_backup'          => 'Backup',
 		'asem_backup_saved'    => 'Backup',
+		'asem_backup_get'      => 'Backup',
 		'asem_privacy_export'  => 'Privacy',
 		'asem_doc'             => 'Docs',
 		'asem_document'        => 'Documents',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Providers;
 
+use App\Modules\AreaSoci\Console\PruneMemberAccessCommand;
 use App\Modules\AreaSoci\Home\PaymentsHome;
 use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
 use App\Modules\AreaSoci\Http\Middleware\IdentifyMemberOrg;
@@ -14,6 +15,7 @@ use App\Modules\Core\Contracts\DonationInvites;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\SetupStep;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\RateLimiter;
@@ -58,5 +60,14 @@ final class AreaSociServiceProvider extends ServiceProvider
                 Limit::perHour(100)->by('donation-org|'.(is_string($slug) ? $slug : '')),
             ];
         });
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([PruneMemberAccessCommand::class]);
+            $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+                // Link, codici e sessioni scaduti da 30 giorni: la mattina presto, dopo i lavori della notte e prima
+                // che i soci entrino.
+                $schedule->command('saas:member-access:prune')->dailyAt('06:13')->withoutOverlapping(30);
+            });
+        }
     }
 }
