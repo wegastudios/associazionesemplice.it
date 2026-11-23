@@ -61,6 +61,11 @@ jobs:
 
       - run: composer install --no-interaction --no-progress --prefer-dist
 
+      # Come il pacchetto del server (deploy/build.sh, H21): autoloader «solo mappa». Una classe fuori dalla mappa
+      # (cartella non dichiarata in composer.json, file generati) fa fallire i test qui e non in produzione.
+      - name: Autoloader solo mappa
+        run: composer dump-autoload --classmap-authoritative --no-interaction
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
