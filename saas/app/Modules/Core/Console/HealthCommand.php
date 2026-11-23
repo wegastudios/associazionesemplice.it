@@ -237,17 +237,17 @@ final class HealthCommand extends Command
 
     private function jobs(DatabaseManager $db): Builder
     {
-        return $this->table($db, 'queue.connections.database.connection', 'queue.connections.database.table', 'core.jobs');
+        return $this->queueTable($db, 'queue.connections.database.connection', 'queue.connections.database.table', 'core.jobs');
     }
 
     /** Lavori falliti nelle ultime 24 ore. */
     private function failedLastDay(DatabaseManager $db): Builder
     {
-        return $this->table($db, 'queue.failed.database', 'queue.failed.table', 'core.failed_jobs')->where('failed_at', '>=', now()->subDay());
+        return $this->queueTable($db, 'queue.failed.database', 'queue.failed.table', 'core.failed_jobs')->where('failed_at', '>=', now()->subDay());
     }
 
     /** Una tabella delle code dalla configurazione (connessione e nome), con i ripieghi. */
-    private function table(DatabaseManager $db, string $connectionKey, string $tableKey, string $default): Builder
+    private function queueTable(DatabaseManager $db, string $connectionKey, string $tableKey, string $default): Builder
     {
         $connection = config($connectionKey);
         $table = config($tableKey);
