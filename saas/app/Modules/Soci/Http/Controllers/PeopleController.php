@@ -77,15 +77,16 @@ final readonly class PeopleController
             $query->whereNotNull('left_on');
         }
         $page = $query->cursorPaginate(50, ['id', 'first_name', 'last_name', 'email', 'card_number', 'type', 'left_on'])->withQueryString();
-        $year = $this->memberships->membershipYear();
         $active = $this->memberships->activeAmong(array_values(array_map(static fn (Person $p): string => $p->id, $page->items())));
 
+        // Ricerca e filtri ricaricano solo q, type, status, rows, next e prev (Elenco.vue): quello che non dipende dal
+        // filtro è una funzione, calcolata solo al caricamento intero della pagina.
         return Inertia::render('Soci/Elenco', [
             'q' => $q,
             'type' => $type,
             'status' => $status,
-            'types' => self::types(),
-            'year' => $year->label(),
+            'types' => self::types(...),
+            'year' => fn (): string => $this->memberships->membershipYear()->label(),
             'rows' => collect($page->items())->map(fn (Person $p): array => [
                 'id' => $p->id,
                 'name' => $p->last_name.' '.$p->first_name,
@@ -97,8 +98,8 @@ final readonly class PeopleController
             ])->values(),
             'next' => $page->nextPageUrl(),
             'prev' => $page->previousPageUrl(),
-            'activeCount' => $this->memberships->activeCount(),
-            'limit' => $this->limitNotice(),
+            'activeCount' => fn (): int => $this->memberships->activeCount(),
+            'limit' => $this->limitNotice(...),
             'canEdit' => $request->user()?->can('people.edit') ?? false,
             'canExport' => $request->user()?->can('people.export') ?? false,
         ]);

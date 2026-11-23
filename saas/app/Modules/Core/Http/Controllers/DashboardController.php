@@ -45,29 +45,44 @@ final readonly class DashboardController
             return redirect()->route('setup');
         }
 
-        $items = [];
-        foreach ($this->app->tagged(HomeWidget::TAG) as $widget) {
-            if ($widget instanceof HomeWidget) {
-                array_push($items, ...$widget->items($operator));
+        // Riquadri e contatori arrivano subito dopo la pagina, con una seconda richiesta (gruppo «cruscotto»): la pagina si
+        // apre senza aspettarli, e i numeri si calcolano a ogni apertura come prima, mai da una copia.
+        /** @var list<HomeItem>|null $items */
+        $items = null;
+        $in =function (string $section) use (&$items, $operator): array {
+            if ($items === null) {
+                $items = [];
+                foreach ($this->app->tagged(HomeWidget::TAG) as $widget) {
+                    if ($widget instanceof HomeWidget) {
+                        array_push($items, ...$widget->items($operator));
+                    }
+                }
             }
-        }
-        $in = static fn (string $section): array => array_values(array_filter($items, static fn (HomeItem $i): bool => $i->section === $section));
-        $todo = $in('todo');
-        usort($todo, static fn (HomeItem $a, HomeItem $b): int => $a->weight <=> $b->weight);
-        $today = $in('today');
-        usort($today, static fn (HomeItem $a, HomeItem $b): int => strcmp((string) $a->time, (string) $b->time));
+
+            return array_values(array_filter($items, static fn (HomeItem $i): bool => $i->section === $section));
+        };
         $toArray = static fn (HomeItem $i): array => $i->toArray();
 
         return Inertia::render('Dashboard', [
-            'todo' => array_map($toArray, $todo),
-            'today' => array_map($toArray, array_slice($today, 0, 12)),
-            'stats' => array_map($toArray, $in('stat')),
+            'todo' => Inertia::defer(static function () use ($in, $toArray): array {
+                $todo = $in('todo');
+                usort($todo, static fn (HomeItem $a, HomeItem $b): int => $a->weight <=> $b->weight);
+
+                return array_map($toArray, $todo);
+            }, 'cruscotto'),
+            'today' => Inertia::defer(static function () use ($in, $toArray): array {
+                $today = $in('today');
+                usort($today, static fn (HomeItem $a, HomeItem $b): int => strcmp((string) $a->time, (string) $b->time));
+
+                return array_map($toArray, array_slice($today, 0, 12));
+            }, 'cruscotto'),
+            'stats' => Inertia::defer(static fn (): array => array_map($toArray, $in('stat')), 'cruscotto'),
             'greeting' => $this->greeting(),
             'setupPending' => $setupPending,
             'canSetup' => $operator->can(Ability::ManageSettings),
             // Query senza filtro: la Row-Level Security mostra solo le schede di questa associazione.
-            'peopleCount' => $this->db->connection($this->context->require()->connection)
-                ->table('app.people')->whereNull('deleted_at')->count(),
+            'peopleCount' => Inertia::defer(fn (): int => $this->db->connection($this->context->require()->connection)
+                ->table('app.people')->whereNull('deleted_at')->count(), 'cruscotto'),
         ]);
     }
 
