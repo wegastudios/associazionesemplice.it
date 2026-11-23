@@ -57,7 +57,8 @@ Route::middleware('web')->group(function (): void {
                 Route::post('/configurazione/rimanda', [SetupController::class, 'skip'])->name('setup.skip');
                 Route::get('/esportazione', [ExportController::class, 'show'])->middleware('exports.allowed')->name('export');
                 // La copia si prepara in coda (Core\Export\FullExports); pronta, si scarica dal collegamento firmato.
-                Route::post('/esportazione.zip', [ExportController::class, 'start'])->middleware(['exports.allowed', 'password.confirm', 'throttle:3,1'])->name('export.download');
+                // La conferma della password la chiede ExportController::start, che poi fa partire la copia da solo.
+                Route::post('/esportazione.zip', [ExportController::class, 'start'])->middleware(['exports.allowed', 'throttle:3,1'])->name('export.download');
                 Route::get('/esportazione/{export}.zip', [ExportController::class, 'file'])->whereUuid('export')->middleware(['exports.allowed', 'signed:relative', 'password.confirm', 'throttle:10,1'])->name('export.file');
                 Route::post('/archivio/{year}', [ArchiveController::class, 'archive'])->whereNumber('year')->middleware(['exports.allowed', 'throttle:6,1', 'db.long'])->name('archive.create');
                 Route::post('/archivio/{year}/rimetti', [ArchiveController::class, 'restore'])->whereNumber('year')->middleware(['exports.allowed', 'throttle:6,1', 'db.long'])->name('archive.restore');

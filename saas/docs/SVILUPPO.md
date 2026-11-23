@@ -324,9 +324,10 @@ l'operatore può vedere.
   i suoi file con una classe che implementa `Core\Contracts\DataExport`, registrata con il tag `DataExport::TAG`;
   ciascuno esporta solo ciò che l'operatore può vedere. La copia si prepara in coda (`Core\Export\FullExports`,
   lavoro `BuildFullExport`, stato in `app.full_exports`, una alla volta per associazione): l'archivio si scrive su
-  disco a blocchi in `storage/app/exports/<associazione>/`, lo scarica solo chi l'ha chiesto dal collegamento firmato
-  (`/gestionale/esportazione/<id>.zip`) fino a `saas.export.keep_hours`, poi `saas:tmp:purge` lo toglie. Ogni scarico
-  finisce nel registro (`backup.downloaded`). Con `SAAS_EXPORT_WEB_SERVER_HEADER` il file lo consegna il web server.
+  disco un file alla volta in `storage/app/exports/<associazione>/`, poi si cifra con la chiave dell'associazione
+  (`EncryptedFiles`, come gli allegati) e la copia in chiaro si toglie. La scarica solo chi l'ha chiesta dal
+  collegamento firmato (`/gestionale/esportazione/<id>.zip`), decifrata da PHP mentre la manda, fino a
+  `saas.export.keep_hours` (6 ore); poi `saas:tmp:purge` la toglie. Ogni scarico finisce nel registro (`backup.downloaded`).
 
 ## 10. Nuova tabella di un'associazione
 

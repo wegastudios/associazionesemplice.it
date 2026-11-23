@@ -109,14 +109,11 @@ return [
         ],
     ],
 
-    // Copia di sicurezza completa (Core\Export\FullExports): si prepara in coda e resta scaricabile per keep_hours ore, poi
-    // il file si cancella (saas:tmp:purge). Con web_server_header (per esempio X-LiteSpeed-Location) il file lo consegna il
-    // web server: l'intestazione porta web_server_prefix seguito dal percorso sotto storage/app/exports, e il server deve
-    // servire quel prefisso solo come destinazione interna. Vuoto = lo consegna PHP.
+    // Copia di sicurezza completa (Core\Export\FullExports): si prepara in coda, a riposo è cifrata con la chiave
+    // dell'associazione e resta scaricabile per keep_hours ore (PHP la decifra mentre la manda); poi il file si cancella
+    // (saas:tmp:purge).
     'export' => [
-        'keep_hours' => (int) env('SAAS_EXPORT_KEEP_HOURS', 24),
-        'web_server_header' => env('SAAS_EXPORT_WEB_SERVER_HEADER', ''),
-        'web_server_prefix' => env('SAAS_EXPORT_WEB_SERVER_PREFIX', ''),
+        'keep_hours' => (int) env('SAAS_EXPORT_KEEP_HOURS', 6),
     ],
 
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.

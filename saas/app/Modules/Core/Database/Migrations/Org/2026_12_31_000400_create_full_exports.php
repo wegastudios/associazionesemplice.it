@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Copie di sicurezza complete chieste dagli operatori: si preparano in coda e si scaricano quando sono pronte. Qui solo
- * lo stato (chi l'ha chiesta, a che punto è, quanti file): nessun dato dei soci. L'archivio sta su disco, in una
- * cartella privata, e si cancella alla scadenza.
+ * lo stato (chi l'ha chiesta, a che punto è, quanti file) e dove sta l'archivio: nessun dato dei soci. L'archivio è
+ * cifrato con la chiave dell'associazione, come gli allegati (file_*), e si cancella alla scadenza.
  */
 return new class extends Migration
 {
@@ -27,6 +27,9 @@ return new class extends Migration
                 total             integer     NOT NULL DEFAULT 0,
                 files             integer     NOT NULL DEFAULT 0,
                 certificates      integer     NOT NULL DEFAULT 0,
+                file_path         text,
+                file_size         bigint,
+                file_sha256       text,
                 created_at        timestamptz NOT NULL DEFAULT now(),
                 started_at        timestamptz,
                 finished_at       timestamptz,

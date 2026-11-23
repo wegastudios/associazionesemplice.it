@@ -49,7 +49,7 @@ const day = (d) => (d ? d.split('-').reverse().join('/') : '');
                     <label class="flex items-center gap-2 font-semibold"><input v-model="withCertificates" type="checkbox" name="certificati" value="1">Includi i certificati medici</label>
                     <p class="mt-1 text-muted">Sono dati sulla salute e nella copia non sono protetti: conservali con cura e consegnali solo a chi ne ha titolo.</p>
                 </div>
-                <p class="text-muted">Prima ti viene chiesta la password: dopo averla scritta, premi di nuovo «Prepara la copia di sicurezza». La copia si prepara mentre fai altro: puoi chiudere la pagina e tornare qui a scaricarla quando è pronta.</p>
+                <p class="text-muted">Ti viene chiesta la password, poi la copia si prepara mentre fai altro: puoi chiudere la pagina e tornare qui a scaricarla quando è pronta.</p>
                 <button type="submit" class="btn btn-primary" :disabled="working">Prepara la copia di sicurezza</button>
             </form>
             <div v-if="backup" class="mt-4 border-t pt-4" role="status" aria-live="polite">

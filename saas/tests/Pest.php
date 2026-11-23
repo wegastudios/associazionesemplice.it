@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Inertia\Testing\AssertableInertia;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\FeatureTestCase;
 use Tests\TestCase;
 
@@ -18,7 +17,7 @@ pest()->extend(FeatureTestCase::class)->in('Feature');
  *
  * @param  array<string, mixed>  $form
  */
-function downloadFullExport(Authenticatable $user, array $form = []): BinaryFileResponse
+function downloadFullExport(Authenticatable $user, array $form = []): string
 {
     $test = test();
     $test->actingAs($user)->withSession(['auth.password_confirmed_at' => time()])
@@ -28,10 +27,9 @@ function downloadFullExport(Authenticatable $user, array $form = []): BinaryFile
         $backup = $page->toArray()['props']['backup'] ?? [];
     });
     expect($backup['status'] ?? null)->toBe('ready')->and($backup['url'] ?? null)->toBeString();
-    $response = $test->get($backup['url'])->assertOk()->assertHeader('content-type', 'application/zip')->baseResponse;
-    expect($response)->toBeInstanceOf(BinaryFileResponse::class);
 
-    return $response;
+    // Il file è cifrato su disco: PHP lo decifra mentre lo manda.
+    return $test->get($backup['url'])->assertOk()->assertHeader('content-type', 'application/zip')->streamedContent();
 }
 
 /**
@@ -39,16 +37,20 @@ function downloadFullExport(Authenticatable $user, array $form = []): BinaryFile
  *
  * @return array<string, string>
  */
-function zipContents(BinaryFileResponse $response): array
+function zipContents(string $bytes): array
 {
+    $path = storage_path('app/tmp/prova-'.bin2hex(random_bytes(8)).'.zip');
+    @mkdir(dirname($path), 0700, true);
+    file_put_contents($path, $bytes);
     $zip = new ZipArchive;
-    $zip->open($response->getFile()->getPathname());
+    $zip->open($path);
     $out = [];
     for ($i = 0; $i < $zip->numFiles; $i++) {
         $name = (string) $zip->getNameIndex($i);
         $out[$name] = (string) $zip->getFromIndex($i);
     }
     $zip->close();
+    @unlink($path);
 
     return $out;
 }

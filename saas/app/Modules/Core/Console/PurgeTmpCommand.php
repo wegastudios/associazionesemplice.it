@@ -38,8 +38,8 @@ final class PurgeTmpCommand extends Command
         if ($removed > 0) {
             Log::info("saas:tmp:purge: tolti {$removed} file temporanei più vecchi di {$minutes} minuti ({$oldBytes} byte)");
         }
-        // Copie di sicurezza pronte e scadute (config saas.export.keep_hours): il file si toglie, la riga resta.
-        $expired = self::purge(FullExports::directory(), FullExports::keepHours() * 60);
+        // Copie di sicurezza scadute (config saas.export.keep_hours): il file cifrato si toglie, la riga resta.
+        $expired = $this->laravel->make(FullExports::class)->purgeExpired();
         if ($expired > 0) {
             $this->line("Tolte {$expired} copie di sicurezza scadute.");
             Log::info("saas:tmp:purge: tolte {$expired} copie di sicurezza scadute");

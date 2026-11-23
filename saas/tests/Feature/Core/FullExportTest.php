@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 
 // Dati di prova inventati.
@@ -190,10 +191,20 @@ it('la copia pronta la scarica solo chi l\'ha chiesta, con il collegamento firma
     $this->addOperator($this->org, $owner, OrgRole::Owner);
     $admin = $this->createUser('admin@example.com', twoFactor: true);
     $this->addOperator($this->org, $admin, OrgRole::Admin);
-    downloadFullExport($owner);
-    $id = $this->orgContext()->run($this->org->id, fn (): string => (string) DB::table('app.full_exports')->value('id'));
-    $path = FullExports::path($this->org->id, $id);
-    expect(is_file($path))->toBeTrue()->and(fileperms($path) & 0777)->toBe(0600);
+    $downloaded = downloadFullExport($owner);
+    $row = $this->orgContext()->run($this->org->id, fn (): object => DB::table('app.full_exports')->first());
+    $id = (string) $row->id;
+
+    // Su disco la copia è cifrata (formato degli allegati): non è uno ZIP e non contiene i dati in chiaro; l'archivio in
+    // chiaro del lavoro non c'è più.
+    $raw = Storage::disk('org_files')->get((string) $row->file_path);
+    expect($raw)->not->toStartWith('PK')->not->toContain('RSSMRA80A01H501U')->not->toContain('LEGGIMI.txt')
+        ->and(is_file(FullExports::path($this->org->id, $id)))->toBeFalse()
+        ->and(hash('sha256', $downloaded))->toBe((string) $row->file_sha256);
+    // Scaricata, è lo ZIP di sempre: la ricevuta è lo stesso PDF dello scarico singolo.
+    $receipt = array_values(array_filter(zipContents($downloaded), fn (string $n): bool => str_contains($n, '/Ricevute/Ricevuta '), ARRAY_FILTER_USE_KEY));
+    $single = $this->orgContext()->run($this->org->id, fn (): string => app(ReceiptFiles::class)->document((string) DB::table('app.receipts')->value('id'))['pdf']);
+    expect($receipt)->toHaveCount(1)->and(hash('sha256', $receipt[0]))->toBe(hash('sha256', $single));
 
     // Senza firma, o con la firma di un'altra copia: niente.
     $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->get('/gestionale/esportazione/'.$id.'.zip')->assertForbidden();
@@ -201,12 +212,30 @@ it('la copia pronta la scarica solo chi l\'ha chiesta, con il collegamento firma
     $signed = URL::temporarySignedRoute('export.file', now()->addHour(), ['export' => $id], absolute: false);
     $this->actingAs($admin)->withSession(['auth.password_confirmed_at' => time()])->get($signed)->assertRedirect('/gestionale/esportazione')->assertSessionHasErrors(['export' => FullExports::GONE]);
 
-    // Scaduta: non si scarica più e la pulizia toglie il file.
-    $this->orgContext()->run($this->org->id, fn () => DB::table('app.full_exports')->where('id', $id)->update(['expires_at' => now()->subMinute()]));
-    $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->get($signed)->assertRedirect('/gestionale/esportazione')->assertSessionHasErrors(['export' => FullExports::GONE]);
-    touch($path, time() - 25 * 3600);
+    // Dopo 6 ore la pulizia toglie il file cifrato; la copia non si scarica più.
+    expect(FullExports::keepHours())->toBe(6);
+    touch(FullExports::marker($this->org->id, $id), time() - 5 * 3600);
     Artisan::call('saas:tmp:purge');
-    expect(is_file($path))->toBeFalse();
+    expect(Storage::disk('org_files')->exists((string) $row->file_path))->toBeTrue();
+    touch(FullExports::marker($this->org->id, $id), time() - 6 * 3600 - 60);
+    Artisan::call('saas:tmp:purge');
+    expect(Storage::disk('org_files')->exists((string) $row->file_path))->toBeFalse();
+    $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->get($signed)->assertRedirect('/gestionale/esportazione')->assertSessionHasErrors(['export' => FullExports::GONE]);
+});
+
+it('dopo la conferma della password la copia parte da sola', function (): void {
+    $owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $owner, OrgRole::Owner);
+    Queue::fake();
+
+    $this->actingAs($owner)->post('/gestionale/esportazione.zip', ['anno' => now()->format('Y')])->assertRedirect(route('password.confirm'));
+    Queue::assertNothingPushed();
+    // La conferma della password riporta alla pagina (url.intended): lì la copia chiesta parte senza premere di nuovo.
+    expect(session('url.intended'))->toBe(route('export'));
+    $this->withSession(['auth.password_confirmed_at' => time()])->get('/gestionale/esportazione')->assertRedirect('/gestionale/esportazione');
+    Queue::assertPushed(BuildFullExport::class, 1);
+    $this->get('/gestionale/esportazione')->assertOk()->assertInertia(fn ($page) => $page->where('backup.status', 'queued')->where('backup.year', (int) now()->format('Y')));
+    Queue::assertPushed(BuildFullExport::class, 1);
 });
 
 it('una copia ferma oltre il tempo massimo risulta non riuscita e se ne può chiedere un\'altra', function (): void {
