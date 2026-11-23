@@ -19,7 +19,7 @@ final class VerifyAuditCommand extends Command
     /** Giorni dopo i quali una copia esterna ferma è un errore. */
     private const COPY_MAX_DAYS = 3;
 
-    protected $signature = 'saas:audit:verify {org? : Identificativo dell\'associazione (vuoto = tutte)} {--full : Ripercorre tutta la catena invece di ripartire dal punto di controllo}';
+    protected $signature = 'saas:audit:verify {org? : Identificativo dell\'associazione (vuoto = tutte)} {--full : Ripercorre tutta la catena invece di ripartire dal punto di controllo} {--rotate : Dal punto di controllo, ma un settimo delle associazioni a notte ripercorre tutta la catena}';
 
     protected $description = 'Verifica che il registro delle azioni non sia stato alterato';
 
@@ -35,9 +35,10 @@ final class VerifyAuditCommand extends Command
             if (! is_string($id)) {
                 continue;
             }
-            $result = $verifier->verify($id, $this->option('full') !== true);
+            $full = $this->option('full') === true || ($this->option('rotate') === true && self::dayOf($id) === now()->dayOfWeek);
+            $result = $verifier->verify($id, ! $full);
             if ($result['ok']) {
-                $this->line("ok {$id}: {$result['checked']} righe");
+                $this->line("ok {$id}: {$result['checked']} righe".($full ? ' (catena intera)' : ''));
             } else {
                 $broken++;
                 $this->error("ROTTA {$id}: {$result['reason']} (dopo {$result['checked']} righe valide)");
@@ -60,5 +61,11 @@ final class VerifyAuditCommand extends Command
         }
 
         return $broken === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    /** Giorno della settimana (0 = domenica) in cui l'associazione fa la verifica dell'intera catena: un settimo per notte. */
+    public static function dayOf(string $orgId): int
+    {
+        return crc32($orgId) % 7;
     }
 }

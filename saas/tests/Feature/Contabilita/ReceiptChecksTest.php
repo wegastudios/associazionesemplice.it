@@ -116,10 +116,10 @@ it('il controllo leggero riconosce la dimensione di un file cifrato di ogni dime
     expect($files->quickCheck($this->org->id, $stored))->toBe('missing');
 })->with([0, 10, 65536, 65537, 300000]);
 
-it('la verifica completa delle ricevute gira ogni notte alle 02:23', function (): void {
+it('la verifica completa delle ricevute gira ogni notte alle 02:23, dentro i controlli notturni', function (): void {
     $events = array_values(array_filter(
         app(Schedule::class)->events(),
-        static fn ($event): bool => str_contains((string) $event->command, 'saas:receipts:verify'),
+        static fn ($event): bool => str_contains((string) $event->command, 'saas:night'),
     ));
 
     expect($events)->toHaveCount(1)->and($events[0]->expression)->toBe('23 2 * * *');
