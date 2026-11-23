@@ -32,7 +32,8 @@ final class EncryptedPipeStream
 
     public function stream_open(string $path, string $mode, int $options, ?string &$openedPath): bool
     {
-        $pipe = is_resource($this->context) ? (stream_context_get_options($this->context)[self::PROTOCOL]['pipe'] ?? null) : null;
+        $options = is_resource($this->context) ? (stream_context_get_options($this->context)[self::PROTOCOL] ?? null) : null;
+        $pipe = is_array($options) ? ($options['pipe'] ?? null) : null;
         $this->pipe = $pipe instanceof EncryptedPipe ? $pipe : null;
 
         return $this->pipe instanceof EncryptedPipe;
@@ -48,8 +49,8 @@ final class EncryptedPipeStream
         return ! $this->pipe instanceof EncryptedPipe || $this->pipe->atEnd();
     }
 
-    /** @return array<string, int>|false */
-    public function stream_stat(): array|false
+    /** Dimensione sconosciuta: il flusso si genera mentre si legge. */
+    public function stream_stat(): false
     {
         return false;
     }
