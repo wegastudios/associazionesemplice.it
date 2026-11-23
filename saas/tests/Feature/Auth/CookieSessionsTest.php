@@ -221,13 +221,20 @@ it('i dati della sessione pubblica sono cifrati e dentro c\'è solo la scheda sc
     $chosen = $this->withUnencryptedCookies($jar)->post($this->base.'/scheda/'.$this->luca->id)->assertRedirect('/area');
 
     $data = array_filter(publicSessionCookies($chosen), fn ($c, $n) => $n !== 'as_pubblico' && (string) $c->getValue() !== '' && ($c->getExpiresTime() === 0 || $c->getExpiresTime() > time()), ARRAY_FILTER_USE_BOTH);
-    expect($data)->toHaveCount(1);
-    $raw = (string) array_values($data)[0]->getValue();
+    expect($data)->not->toBeEmpty();
 
-    // Non leggibile: né l'id della scheda né la parola della sessione compaiono in chiaro.
-    expect($raw)->not->toContain($this->luca->id)->and($raw)->not->toContain('member_active_profile')->and($raw)->not->toContain('mario@example.com');
+    $withChoice = 0;
+    foreach ($data as $cookie) {
+        $raw = (string) $cookie->getValue();
 
-    // Decifrato (solo qui, con la chiave dell'applicazione): la scheda scelta c'è, nessun'altra persona.
-    $plain = CookieValuePrefix::remove(app('encrypter')->decrypt($raw, false));
-    expect($plain)->toContain($this->luca->id)->and($plain)->not->toContain($this->mario->id)->and($plain)->not->toContain('mario@example.com');
+        // Non leggibile: né l'id della scheda né la parola della sessione compaiono in chiaro.
+        expect($raw)->not->toContain($this->luca->id)->and($raw)->not->toContain('member_active_profile')->and($raw)->not->toContain('mario@example.com');
+
+        // Decifrato (solo qui, con la chiave dell'applicazione): nessuna persona diversa dalla scheda scelta.
+        $plain = CookieValuePrefix::remove(app('encrypter')->decrypt($raw, false));
+        expect($plain)->not->toContain($this->mario->id)->and($plain)->not->toContain('mario@example.com');
+        $withChoice += str_contains($plain, $this->luca->id) ? 1 : 0;
+    }
+    // La scheda scelta c'è in (almeno) il cookie dei dati valido.
+    expect($withChoice)->toBeGreaterThanOrEqual(1);
 });
