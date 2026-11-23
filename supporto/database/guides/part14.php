@@ -96,7 +96,7 @@ MD,
     ],
     [
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'quante-email-all-ora-puo-mandare-il-plugin',
-        'title' => 'Quante email all'ora può mandare il plugin?',
+        'title' => 'Quante email all\'ora può mandare il plugin?',
         'body' => <<<'MD'
 Molti hosting hanno un tetto di email all'ora. Nella pagina dei **Limiti**, gruppo delle comunicazioni, c'è **«Email del gestionale in un'ora»**: di partenza **200**, da **20** a **5000**. Le comunicazioni e i promemoria usano l'**80%** del limite. Le email singole (conferme, codici, ricevute) **non vengono mai bloccate** dal limite. Se il server di posta ne rifiuta una, il plugin la **riprova da solo dopo 5, 20 e 60 minuti**. Se non parte nemmeno dopo, resta nel registro posta come **«non inviata»** e compare un avviso nel cruscotto. In **Integrazioni**, sezione **Posta in uscita**, trovi i conteggi **«in attesa di un nuovo tentativo»** e **«non partite negli ultimi 7 giorni»**.
 MD,

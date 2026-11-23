@@ -27,12 +27,12 @@ class GuideContentTest extends SiteTestCase
         }
     }
 
-    public function test_there_are_exactly_32_faq_with_the_comparison_table(): void
+    public function test_there_are_exactly_34_faq_with_the_comparison_table(): void
     {
         $this->seedGuides();
 
         $faq = Article::query()->whereHas('section.topic', fn ($t) => $t->where('slug', 'domande-frequenti'))->get();
-        $this->assertCount(32, $faq);
+        $this->assertCount(34, $faq);
 
         $table = $faq->firstWhere('slug', 'free-pro-contabile-e-pro-fiscale-a-confronto');
         $this->assertNotNull($table);
