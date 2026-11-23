@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 /** Conferma al cliente con il numero del ticket e il link per seguirlo. */
 class TicketReceived extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels;
+    use Queueable, SerializesModels, SupportQueuedMail;
 
     public function __construct(public SupportTicket $ticket) {}
 

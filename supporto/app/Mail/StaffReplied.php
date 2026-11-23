@@ -15,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 /** Avviso al cliente di una nuova risposta dello staff. */
 class StaffReplied extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels;
+    use Queueable, SerializesModels, SupportQueuedMail;
 
     public function __construct(public SupportTicket $ticket, public TicketMessage $reply) {}
 
