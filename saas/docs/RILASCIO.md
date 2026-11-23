@@ -71,7 +71,9 @@ fuori da `local` e `testing`.
    non c'è Node), niente test, documenti, `.env` o dati; impronta SHA-256;
 3. **invio via SSH** nell'ambiente scelto e `deploy/remote.sh` sul server:
    impronta → controllo di salute → `saas:migrate` → partizioni → cache (`optimize`) → `saas:catalog:align` (catalogo allineato alla configurazione) → **cambio del link `current`**
-   → riavvio delle code → controllo di salute; se il controllo fallisce si torna da soli alla versione precedente.
+   → riavvio delle code → **`saas:web:refresh`** (OPcache e cache dei percorsi del PHP web azzerati con la rotta firmata
+   `POST /api/portale/v2/runtime/reset`, poi tre richieste di riscaldamento: `/up`, `/api/catalogo/v1`, `/accesso`; al meglio, se non
+   risponde il rilascio prosegue) → controllo di salute; se il controllo fallisce si torna da soli alla versione precedente.
 
 Quando parte: **solo a mano** (Actions → «SaaS · rilascio»), solo da `main`, con l'approvazione obbligatoria
 dell'ambiente. Per ora c'è **un solo ambiente**: finché non ci sono clienti operativi staging e produzione coincidono.
