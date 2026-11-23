@@ -169,7 +169,7 @@ Al ripristino il plugin controlla anche i **riferimenti orfani**, cioè i colleg
 
 ## Conversione del database a InnoDB
 
-Nel pannello dedicato della stessa pagina puoi convertire le tabelle del plugin al formato **InnoDB**, che è più sicuro. Per procedere devi spuntare **«Ho una copia recente»** e confermare. Fai prima la copia di sicurezza.
+Nel pannello dedicato della stessa pagina puoi convertire le tabelle del plugin al formato **InnoDB**, che non lascia dati a metà se un salvataggio si interrompe. Per procedere devi spuntare **«Ho una copia recente»** e confermare. Fai prima la copia di sicurezza.
 
 **La frase della copia.** Serve solo se la copia viene da un altro sito: è il codice di licenza o, nel gratuito, la data e l'ora in cui era stata creata la chiave dei file (in UTC, non la data di installazione del plugin). Se la lasci vuota, **soci e prima nota si ripristinano lo stesso**, ma i documenti cifrati restano chiusi finché non riapri la chiave con la frase.
 
@@ -188,7 +188,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-La voce di menu **Stato del server** del plugin dà consigli sul server che ospita il sito, in una tabella con le colonne **Controllo**, **Stato**, **Valore** e **Cosa fare**. Lo stato può essere:
+Negli **Strumenti** del plugin, la scheda **Stato del server** dà consigli sul server che ospita il sito, in una tabella con le colonne **Controllo**, **Stato**, **Valore** e **Cosa fare**. Lo stato può essere:
 
 - **«In regola»**: niente da fare;
 - **«Migliorabile»**: un consiglio che non blocca niente;

@@ -107,7 +107,7 @@ Un ospite può partecipare solo poche volte: poi, anche per ragioni assicurative
 ## Cosa fa il plugin
 
 - Chiede il **cellulare** per ogni ospite: è il dato migliore per riconoscerlo e scrivergli su WhatsApp.
-- Conta le partecipazioni (prenotazioni a eventi e iscrizioni a corsi). Raggiunta la **soglia** (di norma 2) l'ospite compare come **«da invitare a diventare socio»**.
+- Conta le partecipazioni (prenotazioni a eventi e iscrizioni a corsi). Raggiunta la **soglia** (di norma 2) l'ospite compare come **«da invitare ad associarsi»**.
 - Riconosce le schede «gemelle», cioè con lo stesso cellulare, la stessa email o lo stesso nome, e ne **somma** le partecipazioni.
 
 ## Cosa fare
