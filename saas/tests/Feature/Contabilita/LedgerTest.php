@@ -13,6 +13,7 @@ use App\Modules\Contabilita\Ledger\AccountService;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Ledger\LedgerService;
 use App\Modules\Contabilita\Ledger\StatementService;
+use App\Modules\Contabilita\Ledger\StatementSnapshots;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Models\Category;
 use App\Modules\Contabilita\Models\Receipt;
@@ -203,6 +204,48 @@ it('prepara il rendiconto per cassa senza storni né giroconti', function (): vo
             ['name' => 'Cassa contanti', 'opening' => 0, 'closing' => 13000],
             ['name' => 'Conto corrente', 'opening' => 100000, 'closing' => 90500],
         ]);
+});
+
+it('dà gli stessi saldi di inizio e fine anno della somma di tutti i movimenti, con l\'anno chiuso e con quello aperto', function (): void {
+    $year = (int) now()->format('Y');
+    $prev = $year - 1;
+    // Anno prima: entrate, uscite, giroconto e uno storno.
+    $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine(($this->cat)(CategoryKind::Donation), 4000)], null, false, "{$prev}-03-10"));
+    $this->ledger->recordExpense(new Expense("{$prev}-05-02", $this->bank->id, ($this->cat)(CategoryKind::GeneralCost), 1500));
+    $this->ledger->recordTransfer("{$prev}-07-01", $this->bank->id, $this->cash->id, 2000);
+    $gone = $this->ledger->recordIncome(income($this->bank->id, [new IncomeLine(($this->cat)(CategoryKind::Donation), 777)], null, false, "{$prev}-09-09"));
+    $this->ledger->void($gone['transactions'][0], 'Errore');
+    // Anno in corso.
+    $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine(($this->cat)(CategoryKind::Membership), 3000)]));
+    $this->ledger->recordExpense(new Expense($this->today, $this->bank->id, ($this->cat)(CategoryKind::GeneralCost), 900));
+
+    // Il calcolo di prima: saldo iniziale del conto più tutti i movimenti non stornati prima e fino alla fine dell'anno.
+    $legacy = function (int $y): array {
+        $fy = DB::table('app.fiscal_years')->where('year', $y)->first(['starts_on', 'ends_on']);
+        $rows = DB::select(<<<'SQL'
+            SELECT a.name,
+                   a.opening_cents + coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END) FILTER (WHERE t.tx_date < ?), 0) AS opening,
+                   a.opening_cents + coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END) FILTER (WHERE t.tx_date <= ?), 0) AS closing
+            FROM app.accounts a LEFT JOIN app.transactions t ON t.org_id = a.org_id AND t.account_id = a.id AND t.voided_at IS NULL
+            GROUP BY a.id, a.name, a.opening_cents, a.sort_order ORDER BY a.sort_order, a.name
+        SQL, [$fy->starts_on, $fy->ends_on]);
+
+        return array_map(static fn (object $r): array => ['name' => $r->name, 'opening' => (int) $r->opening, 'closing' => (int) $r->closing], $rows);
+    };
+    $statements = app(StatementService::class);
+    expect($statements->forYear($prev)['accounts'])->toBe($legacy($prev))
+        ->and($statements->forYear($year)['accounts'])->toBe($legacy($year));
+
+    // Chiuso l'anno prima, i saldi di inizio dell'anno aperto sono quelli di fine anno della fotografia; un conto nuovo
+    // (dopo una chiusura nasce a zero) parte da zero.
+    app(FiscalYearService::class)->close($prev);
+    $new = app(AccountService::class)->create('Conto nuovo', AccountType::Bank, 0);
+    $this->ledger->recordIncome(income($new->id, [new IncomeLine(($this->cat)(CategoryKind::Donation), 500)], null, false));
+    $closing = array_column(app(StatementSnapshots::class)->forYear($prev)['statement']['accounts'], 'closing', 'name');
+    $open = $statements->forYear($year)['accounts'];
+    expect($open)->toBe($legacy($year))
+        ->and(array_column($open, 'opening', 'name'))->toEqual([...$closing, 'Conto nuovo' => 0])
+        ->and(array_column($open, 'closing', 'name'))->toEqual(['Cassa contanti' => 9000, 'Conto corrente' => 95600, 'Conto nuovo' => 500]);
 });
 
 it('non tocca i movimenti di un\'altra associazione', function (): void {

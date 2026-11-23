@@ -121,8 +121,7 @@ final class Install {
 		}
 		if ( version_compare( $old, '71', '<' ) ) {
 			$steps['realign_memberships'] = function () {
-				BootState::set( self::REALIGN_KEY, '0' ); // la tessera segue l'anno fiscale: riallineamento delle tessere esistenti (dopo una copia di sicurezza)
-				self::maybe_realign_memberships();
+				BootState::set( self::REALIGN_KEY, '0' ); // la tessera segue l'anno fiscale: riallineamento delle tessere esistenti, dopo una copia di sicurezza; lo fa la prima pagina di amministrazione aperta da un amministratore, mai la richiesta di un visitatore
 			};
 		}
 		if ( version_compare( $old, '72', '<' ) ) {
@@ -663,6 +662,9 @@ final class Install {
 	/** Fa il riallineamento delle tessere una volta sola; se la copia non è riuscita si riprova al prossimo accesso al pannello. */
 	public static function maybe_realign_memberships(): void {
 		if ( '0' !== (string) BootState::get( self::REALIGN_KEY, self::REALIGN_OPTION, '' ) ) { // solo dopo un aggiornamento che l'ha chiesto («0»), e finché non è riuscito
+			return;
+		}
+		if ( ! current_user_can( Plugin::CAP ) || wp_doing_ajax() || wp_doing_cron() ) { // la copia di sicurezza che lo precede la paga una pagina dell'amministratore, non il battito, il cron o un altro utente
 			return;
 		}
 		if ( self::realign_memberships_to_fiscal() >= 0 ) {

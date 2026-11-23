@@ -127,14 +127,27 @@ return [
     // Chiavi: per_second, per_minute, per_hour, per_day, per_month (30 giorni) sul totale; le stesse con «bulk_» davanti
     // sui massivi, che contano anche sul totale. Un mailer non elencato usa i numeri di «smtp».
     // smtp: quota del gestionale sul limite orario condiviso dell'account di posta (140, di cui 40 lasciati agli urgenti).
+    // per_day: giorno UTC, azzerato a mezzanotte UTC.
     'mail_queue' => [
         // Dopo un rifiuto del server di posta, per quanti minuti la posta in coda resta ferma.
         'blocked_minutes' => (int) env('SAAS_MAIL_BLOCKED_MINUTES', 60),
+        // Servizio di invio principale (Core\Mail\PrimaryMailer, docs/POSTA_EMAILIT.md): «cpanel» (di base) = solo il mailer
+        // di sempre; «emailit» = prima Emailit (con la chiave EMAILIT_PASSWORD), il mailer di sempre come ripiego.
+        'primary' => env('SAAS_MAIL_PRIMARY', 'cpanel'),
         'mailers' => [
             'smtp' => [
                 'per_hour' => (int) env('SAAS_MAIL_SMTP_PER_HOUR', 140),
                 'bulk_per_hour' => (int) env('SAAS_MAIL_SMTP_BULK_PER_HOUR', 100),
                 'bulk_per_minute' => (int) env('SAAS_MAIL_SMTP_BULK_PER_MINUTE', 3),
+            ],
+            // Quota del gestionale sul workspace Emailit condiviso (al giorno: gestionale 4.000, portale 500, supporto 200,
+            // margine 300); al mese il 90% dei crediti del piano.
+            'emailit' => [
+                'per_second' => (int) env('SAAS_MAIL_EMAILIT_PER_SECOND', 2),
+                'per_hour' => (int) env('SAAS_MAIL_EMAILIT_PER_HOUR', 900),
+                'per_day' => (int) env('SAAS_MAIL_EMAILIT_PER_DAY', 4000),
+                'bulk_per_day' => (int) env('SAAS_MAIL_EMAILIT_BULK_PER_DAY', 3500),
+                'per_month' => (int) env('SAAS_MAIL_EMAILIT_PER_MONTH', 900000),
             ],
         ],
     ],
