@@ -73,9 +73,12 @@ final class Plugin {
 		}
 	}
 
-	/** Lo schema del database è pronto? (versione salvata = versione del codice; uguale a {@see Install::schema_ready()}, ma senza caricare quella classe) */
+	/**
+	 * Lo schema del database è pronto? (versione salvata = versione del codice; come {@see Install::schema_ready()}, ma senza caricare quella classe.)
+	 * Con un'estensione vale anche il suo schema: lo dice il filtro `asem_extension_schema_ready` (senza estensioni nessuno risponde e resta vero).
+	 */
 	public static function schema_ready(): bool {
-		return self::DB_VERSION === (string) get_option( self::DB_VERSION_OPTION, '' );
+		return self::DB_VERSION === (string) get_option( self::DB_VERSION_OPTION, '' ) && (bool) apply_filters( 'asem_extension_schema_ready', true );
 	}
 
 	/** Con lo schema a metà le scritture non partono: i moduli (admin-post, admin-ajax) e le chiamate REST del plugin rispondono «riprova tra un minuto». Le regole sono in {@see SchemaGuard}. */
