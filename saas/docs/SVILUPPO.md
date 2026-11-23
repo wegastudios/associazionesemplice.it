@@ -322,8 +322,11 @@ l'operatore può vedere.
   export), righe rifiutate elencate. `LedgerExport` scrive lo stesso formato (`/gestionale/prima-nota/esporta`).
 - Esportazione completa (`Core\Export\FullExport`, `/gestionale/esportazione`, `org.settings`): ogni modulo fornisce
   i suoi file con una classe che implementa `Core\Contracts\DataExport`, registrata con il tag `DataExport::TAG`;
-  ciascuno esporta solo ciò che l'operatore può vedere. L'archivio si crea in `storage/app/tmp` e si cancella dopo lo
-  scarico; nel registro `export.full`. Gli allegati dei certificati non ci sono.
+  ciascuno esporta solo ciò che l'operatore può vedere. La copia si prepara in coda (`Core\Export\FullExports`,
+  lavoro `BuildFullExport`, stato in `app.full_exports`, una alla volta per associazione): l'archivio si scrive su
+  disco a blocchi in `storage/app/exports/<associazione>/`, lo scarica solo chi l'ha chiesto dal collegamento firmato
+  (`/gestionale/esportazione/<id>.zip`) fino a `saas.export.keep_hours`, poi `saas:tmp:purge` lo toglie. Ogni scarico
+  finisce nel registro (`backup.downloaded`). Con `SAAS_EXPORT_WEB_SERVER_HEADER` il file lo consegna il web server.
 
 ## 10. Nuova tabella di un'associazione
 

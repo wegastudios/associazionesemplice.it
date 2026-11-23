@@ -36,7 +36,7 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
 | ogni giorno | `saas:crypt:upgrade-format:prune` 04:07 (copie d'appoggio del passaggio di formato oltre 30 giorni) · `saas:audit:heads:copy` 03:17 (testa del registro nello spazio dei backup) · `saas:audit:verify` 03:37 · `saas:portal:usage` 04:23 · `saas:backup:prune` 05:11 · `saas:portal:suspend-expired` 00:41 · `queue:prune-failed` 05:47 (falliti oltre 7 giorni) |
 | ogni mese, il 1° | `saas:audit:partitions` 02:13 |
 | ogni settimana, lunedì | `saas:backup:restore-test` 06:17 (solo staging, con la chiave privata dei backup) · `saas:audit:prune-security` 03:27 (accessi di operatori e staff oltre 18 mesi) |
-| ogni 15 minuti | `saas:tmp:purge --minutes=60` (dump in chiaro e archivi dell'esportazione rimasti in `storage/app/tmp`) |
+| ogni 15 minuti | `saas:tmp:purge --minutes=60` (dump in chiaro e archivi dell'esportazione rimasti in `storage/app/tmp`; copie di sicurezza pronte in `storage/app/exports` oltre `SAAS_EXPORT_KEEP_HOURS`, 24 ore) |
 
 ### Impostazioni tecniche
 

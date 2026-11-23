@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Console;
 
+use App\Modules\Core\Export\FullExports;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use RecursiveDirectoryIterator;
@@ -14,7 +15,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 /**
  * Toglie da storage/app/tmp i file di lavoro rimasti (copie, archivi e ricevute in preparazione) quando una richiesta
  * è stata interrotta. Tocca solo ciò che non è stato modificato da più del tempo indicato; con --count non cancella
- * niente e dice solo quanti sono e quanto pesano.
+ * niente e dice solo quanti sono e quanto pesano. Toglie anche le copie di sicurezza pronte (storage/app/exports) scadute.
  */
 #[AsCommand(name: 'saas:tmp:purge')]
 final class PurgeTmpCommand extends Command
@@ -36,6 +37,12 @@ final class PurgeTmpCommand extends Command
         $this->line("Tolti {$removed} file.");
         if ($removed > 0) {
             Log::info("saas:tmp:purge: tolti {$removed} file temporanei più vecchi di {$minutes} minuti ({$oldBytes} byte)");
+        }
+        // Copie di sicurezza pronte e scadute (config saas.export.keep_hours): il file si toglie, la riga resta.
+        $expired = self::purge(FullExports::directory(), max(1, config()->integer('saas.export.keep_hours', 24)) * 60);
+        if ($expired > 0) {
+            $this->line("Tolte {$expired} copie di sicurezza scadute.");
+            Log::info("saas:tmp:purge: tolte {$expired} copie di sicurezza scadute");
         }
 
         return self::SUCCESS;

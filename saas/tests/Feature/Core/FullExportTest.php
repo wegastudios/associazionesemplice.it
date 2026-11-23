@@ -9,13 +9,17 @@ use App\Modules\Contabilita\Receipts\ReceiptFiles;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\ReadableExport;
+use App\Modules\Core\Export\FullExports;
+use App\Modules\Core\Jobs\BuildFullExport;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\CertificateService;
 use App\Modules\Soci\Services\MembershipService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\URL;
 
 // Dati di prova inventati.
 beforeEach(function (): void {
@@ -27,30 +31,12 @@ beforeEach(function (): void {
     });
 });
 
-/** @return array<string, string> */
-function zipContents(BinaryFileResponse $response): array
-{
-    $zip = new ZipArchive;
-    $zip->open($response->getFile()->getPathname());
-    $out = [];
-    for ($i = 0; $i < $zip->numFiles; $i++) {
-        $name = (string) $zip->getNameIndex($i);
-        $out[$name] = (string) $zip->getFromIndex($i);
-    }
-    $zip->close();
-
-    return $out;
-}
-
 it('esporta tutti i dati in un archivio per il titolare', function (): void {
     $owner = $this->createUser('own@example.com', twoFactor: true);
     $this->addOperator($this->org, $owner, OrgRole::Owner);
 
     $this->orgContext()->run($this->org->id, fn () => app(FiscalYearService::class)->close((int) now()->format('Y')));
-    $response = $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')->assertOk()->assertHeader('content-type', 'application/zip');
-    $base = $response->baseResponse;
-    expect($base)->toBeInstanceOf(BinaryFileResponse::class);
-    $files = zipContents($base);
+    $files = zipContents(downloadFullExport($owner));
 
     $d = 'Dati per il programma/';
     expect(array_keys($files))->toContain(
@@ -66,7 +52,7 @@ it('esporta tutti i dati in un archivio per il titolare', function (): void {
         ->and($files[$d.'operatori.csv'])->toContain('own@example.com')
         ->and($files['LEGGIMI.txt'])->toContain('Polisportiva Alfa')->toContain('I certificati medici non sono in questa copia.')
         ->toContain('i PDF con qualsiasi lettore PDF');
-    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'backup.downloaded')->exists())->toBeTrue());
+    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'backup.downloaded')->where('actor_id', $owner->id)->exists())->toBeTrue());
 });
 
 it('mette nei documenti leggibili rendiconto, prima nota, libro soci e ricevute di ogni anno fiscale', function (): void {
@@ -75,7 +61,7 @@ it('mette nei documenti leggibili rendiconto, prima nota, libro soci e ricevute 
     $year = (int) now()->format('Y');
     $this->orgContext()->run($this->org->id, fn () => app(FiscalYearService::class)->close($year));
 
-    $files = zipContents($this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')->assertOk()->baseResponse);
+    $files = zipContents(downloadFullExport($owner));
     $r = 'Documenti leggibili/Anno fiscale '.$year.'/';
     expect(array_keys($files))->toContain($r.'Rendiconto.pdf', $r.'Prima nota.csv', $r.'Libro soci.pdf', $r.'Libro soci.csv');
     expect(str_starts_with($files[$r.'Rendiconto.pdf'], '%PDF'))->toBeTrue()
@@ -95,18 +81,19 @@ it('i certificati medici in chiaro ci sono solo con la casella spuntata', functi
         app(CertificateService::class)->add($p->id, ['kind' => 'agonistic', 'issued_on' => '2026-01-10', 'expires_on' => '2027-01-10', 'doctor' => 'Dr. Verdi'], UploadedFile::fake()->create('cert.pdf', 4, 'application/pdf'));
     });
 
-    $without = zipContents($this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')->assertOk()->baseResponse);
+    $without = zipContents(downloadFullExport($owner));
     expect(array_filter(array_keys($without), fn (string $n): bool => str_contains($n, 'Certificati medici/')))->toBe([]);
 
-    $with = zipContents($this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip', ['certificati' => 1])->assertOk()->baseResponse);
+    $with = zipContents(downloadFullExport($owner, ['certificati' => 1]));
     $certs = array_values(array_filter(array_keys($with), fn (string $n): bool => str_starts_with($n, 'Documenti leggibili/Certificati medici/')));
     expect($certs)->toHaveCount(1)->and($certs[0])->toContain('Rossi Mario - ')->toContain('scade 2027-01-10')
         ->and($with['LEGGIMI.txt'])->toContain('In «Certificati medici» ci sono i certificati in chiaro');
-    $counts = $this->orgContext()->run($this->org->id, fn (): array => array_map(
+    [$counts, $healthReader] = $this->orgContext()->run($this->org->id, fn (): array => [array_map(
         fn ($d): int => (int) (json_decode((string) $d, true)['certificates'] ?? -1),
         DB::table('audit.log')->where('action', 'backup.downloaded')->pluck('details')->all(),
-    ));
-    expect($counts)->toContain(0)->toContain(1);
+    ), DB::table('audit.log')->where('action', 'health.read')->value('actor_id')]);
+    // La lettura dei certificati la fa il lavoro in coda, ma nel registro resta chi ha chiesto la copia.
+    expect($counts)->toContain(0)->toContain(1)->and($healthReader)->toBe($owner->id);
 });
 
 it('non lascia l\'esportazione completa a segreteria e commercialista', function (): void {
@@ -128,7 +115,7 @@ it('le ricevute non ancora fissate entrano nella copia (si fissano al momento)',
         expect(app(ReceiptFiles::class)->unfixedCount())->toBe(1);
     });
 
-    $files = zipContents($this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')->assertOk()->baseResponse);
+    $files = zipContents(downloadFullExport($owner));
     expect(array_filter(array_keys($files), fn (string $n): bool => str_contains($n, '/Ricevute/Ricevuta ')))->toHaveCount(2)
         ->and(array_keys($files))->not->toContain('Documenti leggibili/Anno fiscale '.now()->format('Y').'/Ricevute/Ricevute non incluse.txt');
 });
@@ -138,9 +125,9 @@ it('con un anno scelto mette solo i documenti leggibili di quell\'anno', functio
     $this->addOperator($this->org, $owner, OrgRole::Owner);
     $year = (int) now()->format('Y');
 
-    $other = zipContents($this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip', ['anno' => $year - 5])->assertOk()->baseResponse);
+    $other = zipContents(downloadFullExport($owner, ['anno' => $year - 5]));
     expect(array_filter(array_keys($other), fn (string $n): bool => str_starts_with($n, 'Documenti leggibili/')))->toBe([]);
-    $mine = zipContents($this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip', ['anno' => $year])->assertOk()->baseResponse);
+    $mine = zipContents(downloadFullExport($owner, ['anno' => $year]));
     expect(array_keys($mine))->toContain('Documenti leggibili/Anno fiscale '.$year.'/Rendiconto.pdf');
 });
 
@@ -164,14 +151,72 @@ it('oltre la soglia la copia di tutti gli anni non parte e spiega di sceglierne 
 
     $this->from('/gestionale/esportazione')->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')
         ->assertRedirect('/gestionale/esportazione')->assertSessionHasErrors(['export' => 'Questa associazione ha molti documenti: una copia unica rischia di non finire. Scegli un anno fiscale e scarica una copia per anno.']);
-    $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip', ['anno' => now()->format('Y')])->assertOk();
+    downloadFullExport($owner, ['anno' => now()->format('Y')]);
 });
 
-it('la copia si scarica solo con un invio del modulo e dopo la conferma della password', function (): void {
+it('la copia si chiede solo con un invio del modulo e dopo la conferma della password', function (): void {
     $owner = $this->createUser('own@example.com', twoFactor: true);
     $this->addOperator($this->org, $owner, OrgRole::Owner);
 
     $this->actingAs($owner)->get('/gestionale/esportazione.zip')->assertStatus(405);
     $this->actingAs($owner)->post('/gestionale/esportazione.zip')->assertRedirect(route('password.confirm'));
-    $this->actingAs($owner)->get('/gestionale/esportazione')->assertOk()->assertInertia(fn ($page) => $page->has('csrf'));
+    $this->actingAs($owner)->get('/gestionale/esportazione')->assertOk()->assertInertia(fn ($page) => $page->has('csrf')->where('backup', null));
+});
+
+it('la copia si prepara in coda: la richiesta risponde subito e la pagina mostra lo stato', function (): void {
+    $owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $owner, OrgRole::Owner);
+    Queue::fake();
+
+    $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')->assertRedirect('/gestionale/esportazione');
+    Queue::assertPushed(BuildFullExport::class, fn (BuildFullExport $job): bool => $job->orgId() === $this->org->id);
+    $this->get('/gestionale/esportazione')->assertInertia(fn ($page) => $page->where('backup.status', 'queued')->where('backup.url', null));
+
+    // Una sola copia in preparazione per associazione.
+    $this->from('/gestionale/esportazione')->post('/gestionale/esportazione.zip')->assertSessionHasErrors(['export' => FullExports::BUSY]);
+    Queue::assertPushed(BuildFullExport::class, 1);
+
+    // Il lavoro gira: un secondo giro della coda sulla stessa copia non la rifà.
+    $job = Queue::pushed(BuildFullExport::class)->first();
+    $this->orgContext()->run($this->org->id, function () use ($job): void {
+        app(FullExports::class)->run($job->exportId);
+        app(FullExports::class)->run($job->exportId);
+    });
+    $this->get('/gestionale/esportazione')->assertInertia(fn ($page) => $page->where('backup.status', 'ready')->where('backup.url', fn (string $url): bool => str_contains($url, 'signature=')));
+});
+
+it('la copia pronta la scarica solo chi l\'ha chiesta, con il collegamento firmato e fino alla scadenza', function (): void {
+    $owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $owner, OrgRole::Owner);
+    $admin = $this->createUser('admin@example.com', twoFactor: true);
+    $this->addOperator($this->org, $admin, OrgRole::Admin);
+    downloadFullExport($owner);
+    $id = $this->orgContext()->run($this->org->id, fn (): string => (string) DB::table('app.full_exports')->value('id'));
+    $path = FullExports::path($this->org->id, $id);
+    expect(is_file($path))->toBeTrue()->and(fileperms($path) & 0777)->toBe(0600);
+
+    // Senza firma, o con la firma di un'altra copia: niente.
+    $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->get('/gestionale/esportazione/'.$id.'.zip')->assertForbidden();
+    // Un altro amministratore con il collegamento firmato: la copia non è sua.
+    $signed = URL::temporarySignedRoute('export.file', now()->addHour(), ['export' => $id], absolute: false);
+    $this->actingAs($admin)->withSession(['auth.password_confirmed_at' => time()])->get($signed)->assertRedirect('/gestionale/esportazione')->assertSessionHasErrors(['export' => FullExports::GONE]);
+
+    // Scaduta: non si scarica più e la pulizia toglie il file.
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.full_exports')->where('id', $id)->update(['expires_at' => now()->subMinute()]));
+    $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->get($signed)->assertRedirect('/gestionale/esportazione')->assertSessionHasErrors(['export' => FullExports::GONE]);
+    touch($path, time() - 25 * 3600);
+    Artisan::call('saas:tmp:purge');
+    expect(is_file($path))->toBeFalse();
+});
+
+it('una copia ferma oltre il tempo massimo risulta non riuscita e se ne può chiedere un\'altra', function (): void {
+    $owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $owner, OrgRole::Owner);
+    Queue::fake();
+    $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')->assertRedirect();
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.full_exports')->update(['status' => 'running', 'started_at' => now()->subSeconds(FullExports::STALE_AFTER + 60)]));
+
+    $this->get('/gestionale/esportazione')->assertInertia(fn ($page) => $page->where('backup.status', 'failed')->where('backup.error', FullExports::FAILED));
+    $this->post('/gestionale/esportazione.zip')->assertRedirect('/gestionale/esportazione')->assertSessionHasNoErrors();
+    Queue::assertPushed(BuildFullExport::class, 2);
 });

@@ -42,6 +42,9 @@ final readonly class ReceiptFiles
 
     public const ARCHIVED = 'archived';
 
+    /** Colonne di app.receipt_files (alias «f») che servono a exportPdf(). */
+    public const EXPORT_COLUMNS = ['f.receipt_id', 'f.path', 'f.original_name', 'f.size_bytes', 'f.sha256', 'f.archived_year', 'f.snapshot'];
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
@@ -113,6 +116,24 @@ final readonly class ReceiptFiles
         $name = is_string($row->original_name ?? null) ? $row->original_name : $meta['filename'];
 
         return ['pdf' => $this->read($row, $meta['number']), 'filename' => $name, 'number' => $meta['number'], 'email' => $meta['email'], 'holder' => $meta['holder']];
+    }
+
+    /**
+     * Il PDF per la copia di sicurezza, dalla riga del file (EXPORT_COLUMNS) letta insieme alle altre ricevute non
+     * annullate dell'anno: nessuna query per ricevuta. Stessi byte di document()['pdf']; le ricevute mai fissate o
+     * fissate prima della fotografia dei dati passano da document().
+     *
+     * @throws LedgerError
+     * @throws ReceiptFileProblem
+     */
+    public function exportPdf(string $receiptId, object $file): string
+    {
+        $saved = ($file->receipt_id ?? null) === null ? null : $this->decodeSnapshot($file);
+        if ($saved === null) {
+            return $this->document($receiptId)['pdf'];
+        }
+
+        return $this->read($file, is_string($saved['number'] ?? null) ? $saved['number'] : '');
     }
 
     /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED */

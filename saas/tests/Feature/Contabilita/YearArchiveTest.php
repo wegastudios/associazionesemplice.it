@@ -112,15 +112,9 @@ it('con l\'archivio alterato la ricevuta non si scarica e lo dice chiaro', funct
 it('la copia di sicurezza ha anche le ricevute degli anni archiviati', function (): void {
     $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
 
-    $zip = new ZipArchive;
-    $zip->open($this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->post('/gestionale/esportazione.zip')->assertOk()->baseResponse->getFile()->getPathname());
-    $names = [];
-    for ($i = 0; $i < $zip->numFiles; $i++) {
-        $names[] = (string) $zip->getNameIndex($i);
-    }
-    $pdfs = array_values(array_filter($names, fn (string $n): bool => str_contains($n, 'Anno fiscale '.$this->year.'/Ricevute/Ricevuta ')));
-    expect($pdfs)->toHaveCount(1)->and(str_starts_with((string) $zip->getFromName($pdfs[0]), '%PDF'))->toBeTrue();
-    $zip->close();
+    $files = zipContents(downloadFullExport($this->owner));
+    $pdfs = array_values(array_filter(array_keys($files), fn (string $n): bool => str_contains($n, 'Anno fiscale '.$this->year.'/Ricevute/Ricevuta ')));
+    expect($pdfs)->toHaveCount(1)->and(str_starts_with($files[$pdfs[0]], '%PDF'))->toBeTrue();
 });
 
 it('l\'archivio è solo per titolare e amministratore', function (): void {
