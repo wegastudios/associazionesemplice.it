@@ -38,6 +38,9 @@ final class Plugin {
 		if ( self::DB_VERSION !== (string) get_option( self::DB_VERSION_OPTION, '' ) ) {
 			Install::maybe_upgrade();
 		}
+		if ( ! self::schema_ready() ) { // aggiornamento dello schema rimasto a metà: le scritture aspettano, le letture proseguono
+			self::guard_writes();
+		}
 		FiscalYears::maybe_open_current(); // il primo giorno dell'anno si apre il nuovo anno fiscale
 		Access::register();      // capability meta: asem_notify_activity, asem_view_person...
 		Employees::register();   // utenti «Dipendente»: permessi che si possono togliere, conteggio per il RUNTS
@@ -68,6 +71,50 @@ final class Plugin {
 		if ( is_admin() ) {
 			Admin\Admin::init();
 		}
+	}
+
+	/** Lo schema del database è pronto? (versione salvata = versione del codice; uguale a {@see Install::schema_ready()}, ma senza caricare quella classe) */
+	public static function schema_ready(): bool {
+		return self::DB_VERSION === (string) get_option( self::DB_VERSION_OPTION, '' );
+	}
+
+	/** Con lo schema a metà le scritture non partono: i moduli (admin-post, admin-ajax) e le chiamate REST del plugin rispondono «riprova tra un minuto». Le regole sono in {@see SchemaGuard}. */
+	private static function guard_writes(): void {
+		add_action(
+			'admin_init',
+			function () {
+				$msg = self::write_refusal( self::requested_action() );
+				if ( '' === $msg ) {
+					return;
+				}
+				if ( wp_doing_ajax() ) {
+					wp_send_json_error( array( 'message' => $msg ), 503 );
+				}
+				wp_die( esc_html( $msg ), '', array( 'response' => 503, 'back_link' => true ) );
+			},
+			0
+		);
+		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'rest_guard' ), 10, 3 );
+	}
+
+	/** La risposta a una scrittura rifiutata per lo schema a metà; vuota se l'azione può andare avanti. */
+	public static function write_refusal( string $action ): string {
+		return SchemaGuard::action_blocked( $action, self::schema_ready() ) ? Texts::t( SchemaGuard::MESSAGE ) : '';
+	}
+
+	/**
+	 * Filtro `rest_pre_dispatch`: con lo schema a metà le chiamate REST del plugin che scrivono (compresi i segnali dei gestori di pagamento, che riprovano) ricevono un 503.
+	 *
+	 * @param mixed            $result
+	 * @param \WP_REST_Server  $server
+	 * @param \WP_REST_Request $request
+	 * @return mixed
+	 */
+	public static function rest_guard( $result, $server, $request ) {
+		if ( null === $result && $request instanceof \WP_REST_Request && SchemaGuard::rest_blocked( (string) $request->get_route(), (string) $request->get_method(), self::schema_ready() ) ) {
+			return new \WP_Error( 'asem_schema_upgrading', Texts::t( SchemaGuard::MESSAGE ), array( 'status' => 503 ) );
+		}
+		return $result;
 	}
 
 	/** Richiesta della parte di gestione: bacheca (comprese admin-post.php e admin-ajax.php), WP-Cron o WP-CLI. Sul sito pubblico è falso. */

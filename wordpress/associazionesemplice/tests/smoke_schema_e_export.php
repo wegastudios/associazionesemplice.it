@@ -106,6 +106,23 @@ update_option( Install::DB_VERSION_OPTION, '67' );
 Install::run_upgrade( '67', 0.0 ); // tempo finito subito: un passaggio solo
 $sx_prog = json_decode( (string) get_option( Install::PROGRESS_OPTION, '' ), true );
 asem_ok( '67' === (string) get_option( Install::DB_VERSION_OPTION ) && ! Install::schema_ready(), 'schema a tappe: a metà la versione resta quella vecchia (lo schema non è pronto)' );
+
+// Con lo schema a metà le scritture rispondono «riprova tra un minuto» invece di scrivere colonne che potrebbero non esserci; le letture proseguono.
+$sx_msg = 'Aggiornamento in corso, riprova tra un minuto.';
+asem_ok( ! Plugin::schema_ready() && $sx_msg === Plugin::write_refusal( 'asem_save_person' ) && $sx_msg === Plugin::write_refusal( 'asem_front_book' ) && $sx_msg === Plugin::write_refusal( 'asem_checkin' ) && $sx_msg === Plugin::write_refusal( 'asem_long_job' ), 'schema a metà: i moduli che scrivono rispondono «riprova tra un minuto»' );
+asem_ok( '' === Plugin::write_refusal( 'asem_export' ) && '' === Plugin::write_refusal( 'asem_cert_csv' ) && '' === Plugin::write_refusal( 'asem_person_search' ) && '' === Plugin::write_refusal( 'heartbeat' ), 'schema a metà: scaricare, cercare e le azioni degli altri plugin restano com\'erano' );
+$sx_old_page = $GLOBALS['pagenow'] ?? null;
+$sx_old_req  = $_REQUEST;
+$GLOBALS['pagenow'] = 'admin-post.php';
+$_REQUEST['action'] = 'asem_save_person';
+$sx_asked           = Plugin::requested_action();
+$GLOBALS['pagenow'] = $sx_old_page;
+$_REQUEST           = $sx_old_req;
+asem_ok( 'asem_save_person' === $sx_asked && $sx_msg === Plugin::write_refusal( $sx_asked ), 'schema a metà: una richiesta vera a admin-post con un\'azione del plugin viene rifiutata' );
+$sx_rest = Plugin::rest_guard( null, null, new WP_REST_Request( 'POST', '/associazionesemplice/v1/webhooks/stripe' ) );
+asem_ok( is_wp_error( $sx_rest ) && 503 === (int) ( $sx_rest->get_error_data()['status'] ?? 0 ) && $sx_msg === $sx_rest->get_error_message(), 'schema a metà: i segnali dei pagamenti ricevono 503 (chi li manda riprova)' );
+asem_ok( null === Plugin::rest_guard( null, null, new WP_REST_Request( 'GET', '/associazionesemplice/v1/me' ) ) && null === Plugin::rest_guard( null, null, new WP_REST_Request( 'POST', '/wp/v2/posts' ) ), 'schema a metà: le letture REST e le rotte degli altri plugin passano' );
+asem_ok( \AssociazioneSemplice\SchemaGuard::job_allowed( 'asem_schema_upgrade', Plugin::schema_ready() ) && ! \AssociazioneSemplice\SchemaGuard::job_allowed( 'asem_send_reminders', Plugin::schema_ready() ), 'schema a metà: dei lavori periodici gira solo quello che porta avanti l\'aggiornamento' );
 asem_ok( is_array( $sx_prog ) && '67' === $sx_prog['from'] && 1 === (int) $sx_prog['next'], 'schema a tappe: il punto raggiunto si salva con la versione di partenza' );
 asem_ok( false !== wp_next_scheduled( Install::CRON_HOOK ), 'schema a tappe: un evento di WP-Cron porta avanti il resto' );
 $sx_guard = 0;
@@ -114,4 +131,5 @@ while ( ! Install::schema_ready() && $sx_guard++ < 40 ) {
 }
 asem_ok( Install::schema_ready() && Install::DB_VERSION === (string) get_option( Install::DB_VERSION_OPTION ) && 10 === $sx_guard, 'schema a tappe: un passaggio per volta (il primo è già fatto sopra), poi la versione del codice [' . $sx_guard . ']' );
 asem_ok( '' === (string) get_option( Install::PROGRESS_OPTION, '' ), 'schema a tappe: finito, il punto raggiunto non resta' );
+asem_ok( Plugin::schema_ready() && '' === Plugin::write_refusal( 'asem_save_person' ) && null === Plugin::rest_guard( null, null, new WP_REST_Request( 'POST', '/associazionesemplice/v1/webhooks/stripe' ) ), 'schema pronto: le scritture tornano a passare' );
 wp_clear_scheduled_hook( Install::CRON_HOOK );

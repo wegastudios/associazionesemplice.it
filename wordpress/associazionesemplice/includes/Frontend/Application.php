@@ -219,6 +219,9 @@ final class Application {
 		}
 		set_transient( $key, $n + 1, HOUR_IN_SECONDS );
 		$posted = 'POST' === ( isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '' );
+		if ( $posted && ! \AssociazioneSemplice\Plugin::schema_ready() ) { // aggiornamento dello schema a metà: la conferma aspetta, il link resta valido
+			self::confirm_page( 'Domanda di adesione', \AssociazioneSemplice\Texts::t( \AssociazioneSemplice\SchemaGuard::MESSAGE ), add_query_arg( 'asem_apply_confirm', $param, home_url( '/' ) ) );
+		}
 		if ( $posted ) {
 			if ( Applications::confirm( $param ) ) {
 				self::confirm_page( 'Domanda confermata.', 'La segreteria la esamina e ti risponde per email.' );
