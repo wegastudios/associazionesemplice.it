@@ -25,8 +25,14 @@ final class FiscalYears {
 		if ( null !== self::$memo && array_key_exists( $year, self::$memo ) ) {
 			return self::$memo[ $year ];
 		}
-		$row = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'fiscal_years' ) . ' WHERE year = %d', $year ), ARRAY_A );
-		$row = $row ?: null;
+		$row = SharedMemo::remember( // con una cache degli oggetti persistente la riga vale anche per le richieste dopo, finché nessuno scrive gli anni
+			'fiscal_years',
+			(string) $year,
+			static function () use ( $year ): ?array {
+				$r = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'fiscal_years' ) . ' WHERE year = %d', $year ), ARRAY_A );
+				return $r ?: null;
+			}
+		);
 		if ( null !== self::$memo ) {
 			self::$memo[ $year ] = $row;
 		}

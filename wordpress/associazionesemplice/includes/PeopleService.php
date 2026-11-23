@@ -188,7 +188,13 @@ class PeopleService {
 			$args[] = (int) $f['limit'];
 			$args[] = max( 0, (int) ( $f['offset'] ?? 0 ) );
 		}
-		return $db->get_results( $args ? $db->prepare( $sql, $args ) : $sql, ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- senza segnaposto non c'è nulla da preparare
+		$sql = $args ? (string) $db->prepare( $sql, $args ) : $sql; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi di tabella interni, valori nei segnaposto
+		$run = static function () use ( $db, $sql ): array {
+			return $db->get_results( $sql, ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- già preparata sopra (senza segnaposto non c'è nulla da preparare)
+		};
+		// L'elenco leggero (tendine e scelte) con una cache degli oggetti persistente vale anche per le richieste dopo, finché nessuno scrive
+		// persone o tessere. La chiave è la query intera: contiene filtri, data di oggi e versione del regolamento. Non dipende da chi guarda.
+		return $light ? (array) SharedMemo::remember( 'people_light', $sql, $run ) : $run();
 	}
 
 	/** Quante persone ha {@see search()} con gli stessi filtri, contate dal database (senza portare in memoria le righe). */
