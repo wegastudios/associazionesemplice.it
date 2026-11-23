@@ -47,7 +47,8 @@ defined( 'ABSPATH' ) || exit;
  *                                         error, result, started, updated, cancelling (annullamento chiesto, la tappa in corso finisce il passo);
  *        LongJob::run( $key, $budget )    una tappa (la usano la pagina e il cron; nelle prove: 0 = un passo solo, INF = fino alla fine);
  *        LongJob::cancel( $key )          annulla (subito, o alla fine del passo se una tappa è in corso);
- *        LongJob::forget( $key )          toglie un lavoro concluso, quando il risultato è stato consegnato.
+ *        LongJob::forget( $key )          toglie un lavoro concluso, quando il risultato è stato consegnato;
+ *        LongJob::state( $key )           l'ultimo stato salvato dal passo (per il lavoro stesso, mai per la pagina).
  *    Un lavoro concluso resta leggibile finché non lo si toglie o non lo si riavvia.
  *
  * Le tappe della pagina arrivano all'azione ajax `asem_long_job` (campi what = chiave, op = run | cancel | status, nonce): permesso del lavoro
@@ -275,6 +276,18 @@ final class LongJob {
 			return null;
 		}
 		return self::view( $rec, 'running' === ( $rec['status'] ?? '' ) && self::stop_requested( $key ) );
+	}
+
+	/**
+	 * L'ultimo stato salvato dal passo (cursore, nomi di file): serve al lavoro stesso, per esempio a consegnare il file finito. Non va mai alla pagina:
+	 * la pagina legge solo status().
+	 *
+	 * @return array|null null se il lavoro non c'è
+	 */
+	public static function state( string $key ): ?array {
+		$key = self::clean_key( $key );
+		$rec = '' === $key ? null : self::read( self::OPT_PREFIX . $key );
+		return null === $rec ? null : (array) ( $rec['state'] ?? array() );
 	}
 
 	/** Percentuale intera da 0 a 100 (100 solo a lavoro finito, o se i pezzi fatti sono già tutti). */

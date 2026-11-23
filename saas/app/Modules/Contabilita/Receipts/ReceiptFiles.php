@@ -42,6 +42,9 @@ final readonly class ReceiptFiles
 
     public const ARCHIVED = 'archived';
 
+    /** Ricevute verificate per associazione a ogni giro notturno. */
+    public const VERIFY_BATCH = 500;
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
@@ -69,6 +72,10 @@ final readonly class ReceiptFiles
             'size_bytes' => $stored->size,
             'sha256' => $stored->sha256,
             'source' => $source,
+            // Appena scritto con la sua impronta: è la prima verifica completa.
+            'checked_path' => $stored->path,
+            'checked_status' => self::OK,
+            'checked_at' => now(),
             'snapshot' => Bytea::encode($this->cipher->encrypt($orgId, self::FIELD, json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE))),
         ]);
         $this->audit->record('receipt.fixed', 'app.receipts', $receiptId, ['number' => is_string($snapshot['number'] ?? null) ? $snapshot['number'] : '', 'source' => $source]);
@@ -146,10 +153,78 @@ final readonly class ReceiptFiles
         return $this->read($row, (is_scalar($row->number ?? null) ? (string) $row->number : '').'/'.(is_scalar($row->year ?? null) ? (string) $row->year : ''));
     }
 
-    /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED */
+    /**
+     * Verifica completa: legge e decifra il file e ne controlla l'impronta. L'esito resta salvato per «Verifica delle
+     * ricevute».
+     *
+     * @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED
+     */
     public function status(string $receiptId): string
     {
-        return $this->statusOf($this->row($receiptId));
+        $row = $this->row($receiptId);
+        $status = $this->statusOf($row);
+        if ($row !== null) {
+            $this->saveCheck($row, $status);
+        }
+
+        return $status;
+    }
+
+    /**
+     * Verifica completa delle prossime ricevute (ogni notte, saas:receipts:verify): prima quelle mai verificate o con un
+     * file nuovo, poi le verificate da più tempo; al massimo $limit.
+     *
+     * @return array{checked: int, missing: int, altered: int}
+     */
+    public function verifyNext(int $limit = self::VERIFY_BATCH): array
+    {
+        $rows = $this->connection()->table('app.receipt_files')->whereNull('archived_year')
+            ->orderByRaw('checked_path IS NOT DISTINCT FROM path')->orderByRaw('checked_at NULLS FIRST')->limit($limit)
+            ->get(['receipt_id', 'path', 'original_name', 'size_bytes', 'sha256', 'checked_path', 'checked_status']);
+        $out = ['checked' => 0, 'missing' => 0, 'altered' => 0];
+        foreach ($rows as $row) {
+            $status = $this->statusOf($row);
+            $this->saveCheck($row, $status);
+            $out['checked']++;
+            if ($status === self::MISSING || $status === self::ALTERED) {
+                $out[$status]++;
+            }
+        }
+
+        return $out;
+    }
+
+    /** Salva l'esito di una verifica completa (solo a posto, mancante o alterato), legato al file verificato. */
+    private function saveCheck(object $row, string $status): void
+    {
+        if (! in_array($status, [self::OK, self::MISSING, self::ALTERED], true) || ! is_string($row->receipt_id ?? null)) {
+            return;
+        }
+        $this->connection()->table('app.receipt_files')->where('receipt_id', $row->receipt_id)
+            ->update(['checked_path' => is_string($row->path ?? null) ? $row->path : null, 'checked_status' => $status, 'checked_at' => now()]);
+    }
+
+    /**
+     * Stato per l'elenco di «Verifica delle ricevute», senza leggere il file: c'è e ha la dimensione giusta? Il contenuto
+     * lo dice l'ultima verifica completa dello stesso file.
+     *
+     * @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED
+     */
+    private function quickStatusOf(?object $row): string
+    {
+        if ($row === null) {
+            return self::UNFIXED;
+        }
+        if (($row->archived_year ?? null) !== null) {
+            return self::ARCHIVED;
+        }
+        $quick = $this->files->quickCheck($this->context->require()->id, self::stored($row));
+        if ($quick !== self::OK) {
+            return $quick;
+        }
+        $sameFile = is_string($row->checked_path ?? null) && $row->checked_path === ($row->path ?? null);
+
+        return $sameFile && ($row->checked_status ?? null) === self::ALTERED ? self::ALTERED : self::OK;
     }
 
     /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED */
@@ -225,6 +300,7 @@ final readonly class ReceiptFiles
         $this->connection()->transaction(function () use ($receiptId, $stored, $row, $previous, $identical, $snapshot): void {
             $this->connection()->table('app.receipt_files')->where('receipt_id', $receiptId)->update([
                 'path' => $stored->path, 'size_bytes' => $stored->size, 'sha256' => $stored->sha256, 'source' => 'rifatta', 'fixed_at' => now(),
+                'checked_path' => $stored->path, 'checked_status' => self::OK, 'checked_at' => now(),
             ]);
             $this->audit->record('receipt.rebuilt', 'app.receipts', $receiptId, [
                 'previous_path' => is_string($row->path ?? null) ? $row->path : '',
@@ -278,17 +354,18 @@ final readonly class ReceiptFiles
     public function overview(int $year): array
     {
         $out = [];
-        // Una sola query per le ricevute dell'anno e i loro file (niente query per ogni ricevuta); resta il controllo del file.
+        // Una sola query per le ricevute dell'anno e i loro file (niente query per ogni ricevuta). Per ogni file solo il
+        // controllo leggero (c'è, dimensione giusta) e l'esito dell'ultima verifica completa: nessun file letto e decifrato.
         $rows = $this->connection()->table('app.receipts as r')->leftJoin('app.receipt_files as f', 'f.receipt_id', '=', 'r.id')
             ->where('r.year', $year)->orderBy('r.number')
-            ->get(['r.id', 'r.number', 'r.issued_on', 'r.voided_at', 'f.receipt_id', 'f.path', 'f.original_name', 'f.size_bytes', 'f.sha256', 'f.archived_year']);
+            ->get(['r.id', 'r.number', 'r.issued_on', 'r.voided_at', 'f.receipt_id', 'f.path', 'f.original_name', 'f.size_bytes', 'f.sha256', 'f.archived_year', 'f.checked_path', 'f.checked_status']);
         foreach ($rows as $r) {
             $id = is_string($r->id ?? null) ? $r->id : '';
             $out[] = [
                 'id' => $id,
                 'number' => (is_scalar($r->number ?? null) ? (string) $r->number : '').'/'.$year,
                 'issued_on' => is_scalar($r->issued_on ?? null) ? (string) $r->issued_on : '',
-                'status' => ($r->voided_at ?? null) !== null ? 'voided' : $this->statusOf($r->receipt_id === null ? null : $r),
+                'status' => ($r->voided_at ?? null) !== null ? 'voided' : $this->quickStatusOf($r->receipt_id === null ? null : $r),
             ];
         }
 
