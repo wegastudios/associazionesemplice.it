@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\AreaSoci\Payments;
 
 use App\Modules\AreaSoci\Jobs\SendPaymentMail;
+use App\Modules\AreaSoci\Jobs\SettleOnlinePayment;
 use App\Modules\AreaSoci\Mail\DonationReceiptMail;
 use App\Modules\AreaSoci\Mail\PaymentRefunded;
 use App\Modules\AreaSoci\Models\PaymentSettings;
@@ -60,6 +61,9 @@ final readonly class OnlinePayments
 
     /** Secondi tra due richieste al servizio di pagamento per lo stesso pagamento ancora in attesa. */
     public const CHECK_SECONDS = 15;
+
+    /** Stati da cui un pagamento si può ancora registrare (incasso confermato dal ritorno o dal webhook). */
+    private const SETTLEABLE = ['created', 'pending', 'cancelled', 'failed'];
 
     public function __construct(
         private Cache $cache,
@@ -220,26 +224,127 @@ final readonly class OnlinePayments
         $this->table()->where('id', $paymentId)->where('person_id', $personId)->where('status', 'pending')->update(['status' => 'cancelled', 'updated_at' => now()]);
     }
 
-    /** Webhook di Stripe: firma verificata con il segreto dell'associazione. @return bool la firma era valida */
-    public function stripeWebhook(string $payload, string $signature): bool
+    /**
+     * Webhook di Stripe (H14): firma verificata con il segreto dell'associazione, evento di un nostro pagamento salvato una
+     * volta sola (per il suo id) e incasso registrato in coda (SettleOnlinePayment). Risponde subito; gli eventi non
+     * pagati o di sessioni non nostre si ignorano. Stessa sessione con eventi diversi: settle registra una volta sola.
+     *
+     * @return int codice HTTP: 200 ricevuto, 400 firma non valida, 503 coda non disponibile (Stripe riprova)
+     */
+    public function stripeWebhook(string $payload, string $signature): int
     {
         $secret = $this->settings()?->stripe_webhook;
         if ($secret === null || ! StripeWebhook::verify($payload, $signature, $secret, time())) {
-            return false;
+            return 400;
         }
         $event = json_decode($payload, true);
         $session = is_array($event) && is_array($event['data'] ?? null) && is_array($event['data']['object'] ?? null) ? $event['data']['object'] : null;
         $type = is_array($event) ? ($event['type'] ?? '') : '';
-        if (in_array($type, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true) && $session !== null) {
-            $ref = is_string($session['id'] ?? null) ? $session['id'] : '';
-            $id = $this->table()->where('provider', 'stripe')->where('provider_ref', $ref)->value('id');
-            /** @var array<string, mixed> $session */
-            if (is_string($id) && StripeGateway::isPaid($session)) {
-                $this->settle($id, StripeGateway::paidCents($session));
+        /** @var array<string, mixed>|null $session */
+        if ($session === null || ! in_array($type, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true) || ! StripeGateway::isPaid($session)) {
+            return 200;
+        }
+        $ref = is_string($session['id'] ?? null) ? $session['id'] : '';
+        // Solo i nostri pagamenti ancora da registrare: per uno già registrato o da controllare non serve un lavoro.
+        $id = $this->table()->where('provider', 'stripe')->where('provider_ref', $ref)->whereIn('status', self::SETTLEABLE)->value('id');
+        if (! is_string($id)) {
+            return 200;
+        }
+        // Stripe dà sempre un id all'evento; senza, vale l'impronta del contenuto firmato.
+        $given = is_array($event) ? ($event['id'] ?? null) : null;
+        $eventId = is_string($given) && $given !== '' ? mb_substr($given, 0, 255) : 'sha256:'.hash('sha256', $payload);
+
+        return $this->queueSettlement('stripe', $eventId, $id, StripeGateway::paidCents($session)) ? 200 : 503;
+    }
+
+    /**
+     * Salva l'evento (una volta sola) e mette in coda la registrazione. Un evento già ricevuto non rifà nulla, salvo che
+     * il suo lavoro sia fallito del tutto: allora torna in coda. false = la coda non risponde (il gestore riproverà).
+     */
+    private function queueSettlement(string $provider, string $eventId, string $paymentId, int $cents): bool
+    {
+        $orgId = $this->context->require()->id;
+        $rowId = Str::uuid7()->toString();
+        $new = $this->events()->insertOrIgnore(['org_id' => $orgId, 'id' => $rowId, 'provider' => $provider, 'event_id' => $eventId,
+            'payment_id' => $paymentId, 'paid_cents' => $cents]);
+        if ($new === 0) {
+            $revived = $this->connection()->selectOne("UPDATE app.payment_webhook_events SET status = 'queued' WHERE provider = ? AND event_id = ? AND status = 'failed' RETURNING id", [$provider, $eventId]);
+            $failed = is_object($revived) ? ($revived->id ?? null) : null;
+            if (! is_string($failed)) {
+                return true;
             }
+            $rowId = $failed;
+        }
+        try {
+            Bus::dispatch(new SettleOnlinePayment($orgId, $rowId));
+        } catch (Throwable) {
+            $this->events()->where('id', $rowId)->update(['status' => 'failed']);
+
+            return false;
         }
 
         return true;
+    }
+
+    /**
+     * Dal lavoro in coda (anche rilanciato a mano dopo «failed»): registra l'incasso dell'evento e lo segna fatto. Un
+     * evento già fatto non rifà nulla.
+     */
+    public function settleEvent(string $eventId): void
+    {
+        $e = $this->events()->where('id', $eventId)->first(['payment_id', 'paid_cents', 'status']);
+        $paymentId = $e->payment_id ?? null;
+        $cents = $e->paid_cents ?? null;
+        if (! in_array($e->status ?? null, ['queued', 'failed'], true) || ! is_string($paymentId) || ! is_numeric($cents)) {
+            return;
+        }
+        $this->settle($paymentId, (int) $cents);
+        $this->events()->where('id', $eventId)->update(['status' => 'done', 'processed_at' => now()]);
+    }
+
+    /**
+     * Passata pianificata: gli eventi ancora «queued» da più di $afterMinutes senza un lavoro in coda (perso tra il
+     * salvataggio e la coda) tornano in coda; settle è una volta sola, quindi un doppione non registra due volte.
+     *
+     * @return array{requeued: int, stale: int} stale = eventi in coda da più di $alertMinutes
+     */
+    public function requeueStaleEvents(int $afterMinutes, int $alertMinutes): array
+    {
+        $orgId = $this->context->require()->id;
+        $queued = fn (): \Illuminate\Database\Query\Builder => $this->events()->where('status', 'queued');
+        $requeued = 0;
+        foreach ($queued()->where('received_at', '<', now()->subMinutes($afterMinutes))->orderBy('received_at')->limit(100)->pluck('id') as $id) {
+            if (is_string($id) && ! $this->jobWaiting($id)) {
+                Bus::dispatch(new SettleOnlinePayment($orgId, $id));
+                $requeued++;
+            }
+        }
+
+        return ['requeued' => $requeued, 'stale' => $queued()->where('received_at', '<', now()->subMinutes($alertMinutes))->count()];
+    }
+
+    /** C'è già un lavoro in coda (anche in attesa di un nuovo tentativo) per l'evento? Solo con la coda sul database. */
+    private function jobWaiting(string $eventId): bool
+    {
+        if (config('queue.default') !== 'database') {
+            return false;
+        }
+        $connection = config('queue.connections.database.connection');
+        $table = config('queue.connections.database.table');
+
+        return $this->db->connection(is_string($connection) && $connection !== '' ? $connection : null)
+            ->table(is_string($table) && $table !== '' ? $table : 'core.jobs')
+            ->where('payload', 'like', '%'.$eventId.'%')->exists();
+    }
+
+    /** Il lavoro si è arreso: l'evento resta «failed» e il registro azioni lo dice. */
+    public function eventFailed(string $eventId): void
+    {
+        $row = $this->connection()->selectOne("UPDATE app.payment_webhook_events SET status = 'failed' WHERE id = ? AND status = 'queued' RETURNING payment_id", [$eventId]);
+        $paymentId = is_object($row) ? ($row->payment_id ?? null) : null;
+        if (is_string($paymentId)) {
+            $this->audit->record('payment.webhook_failed', 'app.online_payments', $paymentId, []);
+        }
     }
 
     /**
@@ -251,7 +356,7 @@ final readonly class OnlinePayments
         $this->connection()->transaction(function () use ($paymentId, $paidCents, &$mailTo): void {
             $this->table()->where('id', $paymentId)->lockForUpdate()->first(['id']);
             $p = $this->find($paymentId);
-            if ($p === null || ! in_array($p['status'], ['created', 'pending', 'cancelled', 'failed'], true)) {
+            if ($p === null || ! in_array($p['status'], self::SETTLEABLE, true)) {
                 return;
             }
             $settings = $this->settings();
@@ -834,6 +939,11 @@ final readonly class OnlinePayments
     private function table(): \Illuminate\Database\Query\Builder
     {
         return $this->connection()->table('app.online_payments');
+    }
+
+    private function events(): \Illuminate\Database\Query\Builder
+    {
+        return $this->connection()->table('app.payment_webhook_events');
     }
 
     private function connection(): ConnectionInterface
