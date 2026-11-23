@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\SupportTicket;
 use App\Services\Site\CustomerLink;
+use App\Mail\Concerns\SupportQueuedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
