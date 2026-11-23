@@ -2,6 +2,7 @@
 namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Limits;
+use AssociazioneSemplice\Texts;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -29,6 +30,9 @@ final class LimitsPage {
 					continue;
 				}
 				self::row( $key, $d );
+				if ( 'mail_per_hour' === $key ) {
+					self::mail_hint();
+				}
 			}
 		}
 		submit_button( 'Salva i limiti' );
@@ -38,6 +42,16 @@ final class LimitsPage {
 		echo '<button class="button" data-confirm="Riportare tutti i limiti ai valori predefiniti?">Ripristina i valori predefiniti</button>';
 		Ui::form_close();
 		Ui::footer();
+	}
+
+	/** Sotto il tetto orario delle email: se la posta del sito passa da un servizio esterno, si propone di alzarlo. */
+	private static function mail_hint(): void {
+		if ( ! \AssociazioneSemplice\MailBudget::external_service() ) {
+			return;
+		}
+		echo '<div class="notice notice-info inline"><p><strong>' . esc_html( Texts::t( 'La posta del sito passa da un servizio di invio esterno.' ) ) . '</strong> '
+			. esc_html( Texts::t( 'Di solito questi servizi permettono molte più di 200 email all\'ora: controlla il limite orario del tuo piano e, se è più alto, alza qui il tetto (ad esempio a metà del limite del servizio, così resta posto per le conferme). Con 200 una comunicazione a 1.000 soci impiega circa 6 ore.' ) )
+			. '</p></div>';
 	}
 
 	/** Un limite: etichetta, campo, predefinito e intervallo, e il riquadro con i rischi. */

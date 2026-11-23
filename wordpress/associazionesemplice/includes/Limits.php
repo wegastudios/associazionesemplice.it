@@ -50,6 +50,13 @@ final class Limits {
 			'Gruppi piccoli sono molto prudenti con i limiti orari dell\'hosting, ma una comunicazione a molti soci impiega più tempo a completarsi.'
 		);
 		$add(
+			'mail_per_hour', 'comunicazioni', 'Email del gestionale in un\'ora', 'email', 200, 20, 5000,
+			'Il numero massimo di email che il gestionale manda in un\'ora (dalle :00 alle :59), tutte insieme: comunicazioni, promemoria, avvisi delle attività, conferme, ricevute, link di accesso, messaggi alla segreteria. Si conta ogni indirizzo di destinatario di ogni email, qualunque sia l\'esito; non si contano le email di WordPress e degli altri plugin del sito. Molti hosting condivisi bloccano la posta oltre 100-300 email all\'ora, e a quel punto non partirebbero più nemmeno le conferme. '
+				. 'Un quinto del tetto (almeno 5 email) resta sempre riservato alle email singole. Comunicazioni e promemoria usano il resto: quando è finito si fermano e riprendono da soli all\'ora dopo, senza perdere né ripetere nessuno. Le email singole (conferma di prenotazione o pagamento, ricevuta, link di accesso, avvisi alla segreteria e avvisi di un\'attività) non si fermano mai e non si perdono: contano, e se superano il tetto tolgono posto alle comunicazioni dell\'ora dopo.',
+			'Con un servizio di invio dedicato (SMTP di un fornitore, Brevo, Amazon SES e simili) il limite orario è molto più alto: chiedi al fornitore quante email consente all\'ora e alza questo valore di conseguenza. Con la posta del normale hosting un valore sopra il limite del fornitore fa rifiutare le email dal server, anche le conferme.',
+			'Più prudente con l\'hosting, ma una comunicazione a molti soci impiega più ore a completarsi (con 200 all\'ora, circa 160 comunicazioni e 40 email singole). I promemoria automatici lasciano il resto al giorno dopo.'
+		);
+		$add(
 			'notice_per_day', 'comunicazioni', 'Avvisi per attività nelle 24 ore', 'avvisi', 5, 1, 100,
 			'Quanti avvisi ufficiali può inviare, agli iscritti di una stessa attività, chi ne è referente o la gestisce.',
 			'Utile se un corso ha molte comunicazioni operative. Un valore alto espone gli iscritti a messaggi ripetuti e permette a chi ruba un accesso di inviarne molti prima di essere fermato.',
@@ -362,7 +369,7 @@ final class Limits {
 			'Con intervalli lunghi l\'avviso arriva con qualche giorno di ritardo.',
 			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
 		);
-		if ( class_exists( __NAMESPACE__ . '\Updater' ) ) { // il limite c'è solo dove c'è l'aggiornatore dal portale: nel pacchetto per WordPress.org non esiste
+		if ( class_exists( __NAMESPACE__ . '\Updater', false ) || is_readable( ASEM_DIR . 'includes/Updater.php' ) || ( defined( 'ASEM_PRO_DIR' ) && is_readable( ASEM_PRO_DIR . 'updater/Updater.php' ) ) ) { // senza caricare l'aggiornatore; il limite c'è solo dove c'è l'aggiornatore dal portale: nel pacchetto per WordPress.org non esiste
 			$add(
 				'portal_updates', 'comunicazioni', 'Aggiornamenti diretti di Associazione Semplice e del Pro (Bacheca → Aggiornamenti)', 'flag', 1, 0, 1,
 				'Il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore, anche senza chiave di licenza, mai su un sito locale) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. La versione gratuita invia solo prodotto e versione: nessun dominio né dato dei soci. Il portale vede comunque l\'indirizzo IP del server e l\'indirizzo del sito, che WordPress aggiunge a ogni richiesta. Il Pro invia anche la chiave di licenza e il dominio.',

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgRole;
@@ -19,6 +20,7 @@ use App\Modules\Soci\Services\GuardianService;
 use App\Modules\Soci\Services\MemberNotification;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\ReminderService;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -322,12 +324,19 @@ it('se il promemoria in coda non parte più, la prenotazione si toglie e il giro
     });
 });
 
-it('il limite di frequenza dei promemoria si regola da configurazione', function (): void {
-    config(['saas.reminders.per_org_per_minute' => 2, 'saas.reminders.per_minute' => 5]);
+it('i promemoria sono posta massiva con in più un limite per associazione da configurazione', function (): void {
+    config(['saas.reminders.per_org_per_minute' => 2]);
     $job = new SendReminderEmail($this->org->id, '00000000-0000-7000-8000-000000000001', 'cert_soon', now()->toDateString(), now()->toDateString());
-    $limits = RateLimiter::limiter('reminder-mail')($job);
+    $limit = RateLimiter::limiter('reminder-mail')($job);
 
-    expect(array_map(static fn ($l) => $l->maxAttempts, $limits))->toBe([5, 2]);
+    expect($job->queue)->toBe(MailQueue::BULK)
+        ->and([$limit->key, $limit->maxAttempts])->toBe(['reminder-mail|'.$this->org->id, 2]);
+});
+
+it('i promemoria partono alle 10:23', function (): void {
+    $events = collect(app(Schedule::class)->events())->filter(static fn ($e): bool => str_contains((string) $e->command, 'saas:reminders:send'));
+
+    expect($events)->toHaveCount(1)->and($events->first()->expression)->toBe('23 10 * * *');
 });
 
 it('l\'email con il link di conferma va in coda con soli identificativi e parte con indirizzo e testo ricavati dopo', function (): void {

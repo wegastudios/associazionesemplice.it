@@ -30,6 +30,14 @@ function asem_uninstall_secrets() {
 		}
 	}
 	delete_option( 'asem_vapid' );
+	delete_option( 'asem_license_vmemo' ); // le firme già verificate
+	$up = wp_upload_dir( null, false );
+	if ( empty( $up['error'] ) && ! empty( $up['basedir'] ) ) {
+		foreach ( glob( $up['basedir'] . '/asem-pwa/icon-*.png' ) ?: array() as $icon ) { // le icone dell'app generate dal plugin
+			wp_delete_file( $icon );
+		}
+		@rmdir( $up['basedir'] . '/asem-pwa' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- cartella vuota creata dal plugin
+	}
 	delete_option( 'asem_license_memo' ); // l'esito ricordato del controllo della licenza
 	// Permessi del plugin rimasti sui ruoli di WordPress altrui (Editore, Autore, ruoli di altri plugin): si tolgono sempre, anche se i dati restano.
 	// Il ruolo Amministratore e i tre ruoli del plugin non si toccano qui: se i dati restano, alla reinstallazione devono ritrovarsi com'erano.

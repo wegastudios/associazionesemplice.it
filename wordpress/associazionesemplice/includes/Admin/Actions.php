@@ -148,12 +148,19 @@ final class Actions {
 			if ( ! \AssociazioneSemplice\Edition::has( $feature ) ) {
 				$map = array_diff_key( $map, array_flip( $actions ) );
 				foreach ( $actions as $blocked ) {
-					\AssociazioneSemplice\Edition::block_action( $blocked );
+					if ( Plugin::wants_action( $blocked ) ) {
+						\AssociazioneSemplice\Edition::block_action( $blocked );
+					}
 				}
 			}
 		}
-		add_action( 'admin_post_asem_attachment', array( Attachments::class, 'handle_download' ) );
+		if ( Plugin::wants_action( 'asem_attachment' ) ) {
+			add_action( 'admin_post_asem_attachment', array( Attachments::class, 'handle_download' ) );
+		}
 		foreach ( $map as $action => $method ) {
+			if ( ! Plugin::wants_action( $action ) ) {
+				continue; // con un'azione chiesta si registra solo quella
+			}
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {
@@ -172,7 +179,8 @@ final class Actions {
 						}
 					}
 					try {
-						$res = is_string( $method ) ? self::$method( $post ) : call_user_func( $method, $post );
+						$post = PersonSearch::resolve_typed( $post, array( 'person_id', 'to_person_id', 'host_person_id' ) ); // senza JavaScript la persona può arrivare come nome scritto nel campo di ricerca
+						$res  = is_string( $method ) ? self::$method( $post ) : call_user_func( $method, $post );
 						if ( '' !== $once ) {
 							set_transient( $once, array( (string) $res[0], (string) $res[1] ), 10 * MINUTE_IN_SECONDS );
 						}
@@ -1467,7 +1475,7 @@ final class Actions {
 			array( 'default_type' => (string) ( $p['default_type'] ?? '' ), 'default_account_id' => (int) ( $p['default_account_id'] ?? 0 ) )
 		);
 		$token = sanitize_key( wp_generate_password( 16, false ) ); // minuscole: stessa forma con cui viene poi riletto
-		set_transient( 'asem_import_' . get_current_user_id() . '_' . $token, $prev, HOUR_IN_SECONDS );
+		\AssociazioneSemplice\ImportPlans::save_preview( get_current_user_id(), $token, $prev ); // su file nella cartella riservata: un'anteprima grande non sta in una riga del database
 		return array( Ui::url( 'asem-import', array( 'token' => $token ) ), 'File letto: controlla l\'anteprima prima di importare.' );
 	}
 
@@ -1651,13 +1659,13 @@ final class Actions {
 	}
 
 	private static function import_apply( array $p ): array {
-		$key  = 'asem_import_' . get_current_user_id() . '_' . sanitize_key( $p['token'] ?? '' );
-		$prev = get_transient( $key );
+		$tok  = sanitize_key( $p['token'] ?? '' );
+		$prev = \AssociazioneSemplice\ImportPlans::load_preview( get_current_user_id(), $tok );
 		if ( ! is_array( $prev ) ) {
 			throw new \InvalidArgumentException( 'L\'anteprima è scaduta: ricarica il file.' );
 		}
 		\AssociazioneSemplice\ImportJob::start( $prev, array( 'mark_members' => ! empty( $p['mark_members'] ), 'keep_balances' => ! empty( $p['keep_balances'] ), 'source' => (string) ( $prev['file'] ?? 'Import' ) ) );
-		delete_transient( $key ); // da qui il piano sta nell'importazione in corso: se il tempo finisce si riprende da dove si è arrivati
+		\AssociazioneSemplice\ImportPlans::drop_preview( get_current_user_id(), $tok ); // da qui il piano sta nell'importazione in corso: se il tempo finisce si riprende da dove si è arrivati
 		return self::import_step();
 	}
 

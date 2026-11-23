@@ -67,6 +67,7 @@ final class DashboardPage {
 			}
 		}
 		PrivateFolderPanel::alerts(); // cartella dei file riservati: percorso non utilizzabile o raggiungibile da internet (solo amministratori)
+		echo wp_kses( \AssociazioneSemplice\DbEngine::alerts_html(), Html::allowed() ); // tabelle senza transazioni (non InnoDB): solo amministratori, legge l'esito ricordato
 		FileCryptPanel::cert_alerts(); // cifratura automatica dei certificati medici già caricati: partita, in corso, finita o ferma (solo amministratori)
 		$mail_fail = current_user_can( \AssociazioneSemplice\Plugin::CAP ) ? \AssociazioneSemplice\MailLog::failures() : 0;
 		if ( $mail_fail > 0 ) {
@@ -244,29 +245,31 @@ final class DashboardPage {
 
 	/** Soci con la scheda incompleta: cosa manca, con il link per completarla. */
 	private static function incomplete_cards(): void {
-		$list = \AssociazioneSemplice\IncompleteCards::all();
-		if ( ! $list ) {
+		$inc  = \AssociazioneSemplice\IncompleteCards::first( 20 ); // il conto vero e le prime venti: la bacheca non tiene in memoria tutte le schede
+		$list = $inc['items'];
+		if ( ! $inc['count'] ) {
 			return;
 		}
-		echo '<div class="asem-card" id="asem-incomplete"><h2>Schede da completare (' . count( $list ) . ')</h2><p class="description">Mancano dati utili per il libro soci, le ricevute e le tessere degli enti di promozione. Apri la scheda per completarla.</p><ul>';
-		foreach ( array_slice( $list, 0, 20 ) as $x ) {
+		echo '<div class="asem-card" id="asem-incomplete"><h2>Schede da completare (' . (int) $inc['count'] . ')</h2><p class="description">Mancano dati utili per il libro soci, le ricevute e le tessere degli enti di promozione. Apri la scheda per completarla.</p><ul>';
+		foreach ( $list as $x ) {
 			$p = $x['person'];
 			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">manca: ' . esc_html( implode( ', ', $x['missing'] ) ) . '</span></li>';
 		}
-		if ( count( $list ) > 20 ) {
-			echo '<li class="description">…e altre ' . ( count( $list ) - 20 ) . '.</li>';
+		if ( $inc['count'] > 20 ) {
+			echo '<li class="description">…e altre ' . (int) ( $inc['count'] - 20 ) . '.</li>';
 		}
 		echo '</ul></div>';
 	}
 
 	/** Ragazzi ancora collegati a un tutore che hanno compiuto 18 anni: da invitare a creare il loro accesso. */
 	private static function adults_to_invite(): void {
-		$list = \AssociazioneSemplice\Guardians::adults_to_invite();
-		if ( ! $list ) {
+		$count = \AssociazioneSemplice\Guardians::adults_to_invite_count(); // il conto vero dal database, poi solo le prime venti righe
+		if ( ! $count ) {
 			return;
 		}
-		echo '<div class="asem-card"><h2>Maggiorenni da invitare (' . count( $list ) . ')</h2><p class="description">Hanno compiuto 18 anni e hanno ancora il tutore al loro posto. Invitali a creare il loro accesso (serve la loro email). Il collegamento col tutore resta finché non lo togli dalla scheda.</p><ul>';
-		foreach ( array_slice( $list, 0, 20 ) as $p ) {
+		$list = \AssociazioneSemplice\Guardians::adults_to_invite( 20 );
+		echo '<div class="asem-card"><h2>Maggiorenni da invitare (' . (int) $count . ')</h2><p class="description">Hanno compiuto 18 anni e hanno ancora il tutore al loro posto. Invitali a creare il loro accesso (serve la loro email). Il collegamento col tutore resta finché non lo togli dalla scheda.</p><ul>';
+		foreach ( $list as $p ) {
 			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">maggiorenne dal ' . esc_html( \AssociazioneSemplice\Age::display( (string) $p['adult_on'] ) ) . '</span> ';
 			if ( ! empty( $p['email'] ) ) {
 				Ui::form_open( 'asem_adult_invite', Ui::url( 'asem' ), false, 'asem-inline' );
@@ -504,13 +507,22 @@ final class DashboardPage {
 	/** Ospiti prenotati ai prossimi eventi che hanno già raggiunto la soglia: da invitare a diventare soci. */
 	private static function expected_guests(): void {
 		$acts = Plugin::activities();
-		$ov   = Plugin::people()->guest_overview();
 		$rows = array();
+		$seen = array(); // gli ospiti prenotati ai prossimi eventi: il quadro delle partecipazioni si calcola solo per loro
 		foreach ( $acts->upcoming_sessions( 5 ) as $s ) {
 			foreach ( $acts->bookings_for_session( (int) $s['id'] ) as $b ) {
-				if ( MemberType::GUEST === $b['type'] && 'booked' === $b['status'] && ! empty( $ov[ (int) $b['person_id'] ]['flag'] ) ) {
-					$rows[] = array( 'session' => $s, 'booking' => $b, 'overview' => $ov[ (int) $b['person_id'] ] );
+				if ( MemberType::GUEST === $b['type'] && 'booked' === $b['status'] ) {
+					$seen[] = array( $s, $b );
 				}
+			}
+		}
+		if ( ! $seen ) {
+			return;
+		}
+		$ov = Plugin::people()->guest_overview( array_map( 'intval', array_column( array_column( $seen, 1 ), 'person_id' ) ) );
+		foreach ( $seen as $sb ) {
+			if ( ! empty( $ov[ (int) $sb[1]['person_id'] ]['flag'] ) ) {
+				$rows[] = array( 'session' => $sb[0], 'booking' => $sb[1], 'overview' => $ov[ (int) $sb[1]['person_id'] ] );
 			}
 		}
 		if ( ! $rows ) {

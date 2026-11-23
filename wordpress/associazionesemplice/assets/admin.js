@@ -111,7 +111,10 @@
 	$$('.asem-minsearch').forEach(function (inp) {
 		var sel = $(inp.getAttribute('data-target'));
 		if (!sel || !window.ajaxurl) { return; }
-		var timer = null, seq = 0;
+		var timer = null, seq = 0, onlyMembers = inp.getAttribute('data-members-only') === '1';
+		inp.addEventListener('keydown', function (e) { /* con la tastiera: scrivi, premi Invio e la scelta passa all'elenco dei risultati (senza inviare il modulo) */
+			if (e.key === 'Enter') { e.preventDefault(); sel.focus(); }
+		});
 		inp.addEventListener('input', function () {
 			window.clearTimeout(timer);
 			var q = inp.value.trim();
@@ -124,13 +127,17 @@
 					var cur = sel.value, curOpt = sel.options[sel.selectedIndex], first = sel.options[0];
 					sel.innerHTML = '';
 					if (first && first.value === '') { sel.appendChild(first); }
+					var shown = 0;
 					(j.data.results || []).forEach(function (p) {
+						if (onlyMembers && p.type === 'guest') { return; }
+						shown++;
 						var o = el('option', { value: String(p.id), text: p.label + (p.quota ? ' — ' + p.quota : '') });
 						o.setAttribute('data-type', p.type || '');
 						if (String(p.id) === cur) { o.selected = true; }
 						sel.appendChild(o);
 					});
 					if (cur && !sel.querySelector('option[value="' + cur + '"]') && curOpt) { curOpt.selected = true; sel.appendChild(curOpt); }
+					if (!sel.value && shown === 1 && sel.options.length > 1) { sel.selectedIndex = 1; sel.dispatchEvent(new Event('change', { bubbles: true })); } /* un solo risultato: è già scelto */
 				});
 			}, 250);
 		});
@@ -503,7 +510,8 @@
 		function due() {
 			if (fixedFee === null) { return parseMoney(amountEl.value) || 0; }
 			if (payEl && !payEl.checked) { return 0; }
-			var guest = (newEl && newEl.value.trim() !== '') || (personEl && guestIds.indexOf(parseInt(personEl.value, 10)) > -1);
+			var chosen = personEl && personEl.options ? personEl.options[personEl.selectedIndex] : null; /* con la ricerca l'ospite si riconosce dal tipo scritto nella voce */
+			var guest = (newEl && newEl.value.trim() !== '') || (personEl && guestIds.indexOf(parseInt(personEl.value, 10)) > -1) || (chosen && chosen.getAttribute('data-type') === 'guest');
 			return parseInt(guest ? wrap.getAttribute('data-guest-fee') : fixedFee, 10) || 0;
 		}
 		function active() {
@@ -1164,5 +1172,46 @@ window.asemPlacesInit = function () {
 			return;
 		}
 		if (e.target.tagName === 'DIALOG' && e.target.classList.contains('asem-sheet')) { e.target.close(); }
+	});
+
+	/* Lavori lunghi (LongJob::panel): con la pagina aperta si chiedono le tappe una dopo l'altra; «Annulla» ferma il lavoro */
+	$$('.asem-longjob').forEach(function (box) {
+		if (!window.ajaxurl) { return; }
+		var bar = $('.asem-longjob-bar', box), msg = $('.asem-longjob-msg', box), btn = $('.asem-longjob-cancel', box), over = false;
+		function show(d) {
+			if (bar) { bar.value = d.percent; bar.textContent = d.percent + '%'; }
+			if (msg) { msg.textContent = d.message; }
+			if (d.status !== 'running') {
+				over = true;
+				box.setAttribute('data-asem-running', '0');
+				if (btn) { btn.hidden = true; }
+				var next = box.getAttribute('data-asem-done-url');
+				if (d.status === 'finished' && next) { window.location.href = next; }
+			}
+		}
+		function call(op, then) {
+			var body = new FormData();
+			body.append('action', 'asem_long_job'); body.append('what', box.getAttribute('data-asem-job') || ''); body.append('op', op); body.append('nonce', box.getAttribute('data-asem-nonce') || '');
+			fetch(window.ajaxurl, { method: 'POST', credentials: 'same-origin', body: body }).then(function (r) { return r.json(); }).then(function (j) {
+				if (!j || !j.success) { over = true; if (msg) { msg.textContent = j && typeof j.data === 'string' ? j.data : (box.getAttribute('data-asem-retry') || ''); } return; }
+				show(j.data);
+				if (then) { then(j.data); }
+			}).catch(function () {
+				if (msg) { msg.textContent = box.getAttribute('data-asem-retry') || ''; }
+				if (!over && op === 'run') { window.setTimeout(step, 5000); } // la rete è caduta: si riprova; intanto il lavoro va avanti con il cron
+			});
+		}
+		function step() {
+			if (over) { return; }
+			call('run', function (d) { if (d.status === 'running') { window.setTimeout(step, d.busy ? 3000 : 300); } });
+		}
+		if (btn) {
+			btn.addEventListener('click', function () {
+				if (!window.confirm(box.getAttribute('data-asem-confirm') || '')) { return; }
+				btn.disabled = true;
+				call('cancel', null);
+			});
+		}
+		if (box.getAttribute('data-asem-running') === '1') { step(); }
 	});
 }());

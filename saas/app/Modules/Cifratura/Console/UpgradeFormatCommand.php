@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Cifratura\Console;
 
+use App\Modules\Cifratura\Contracts\OrgBatch;
 use App\Modules\Cifratura\Keys\KeyAudit;
 use App\Modules\Cifratura\Upgrade\FormatReport;
 use App\Modules\Cifratura\Upgrade\FormatUpgradeFailed;
@@ -32,7 +33,7 @@ final class UpgradeFormatCommand extends Command
 
     protected $description = 'Porta i campi cifrati dei soci e dei pagamenti dal formato 0x01 al formato legato alla riga 0x02';
 
-    public function handle(FormatUpgrader $upgrader, OrgContext $context, KeyAudit $platform): int
+    public function handle(FormatUpgrader $upgrader, OrgContext $context, KeyAudit $platform, OrgBatch $pace): int
     {
         $dryRun = $this->option('dry-run') === true;
         $ids = $this->selectedOrgs($upgrader);
@@ -43,7 +44,7 @@ final class UpgradeFormatCommand extends Command
         $this->line(($dryRun ? 'Prova, nulla viene scritto. ' : '').'Associazioni: '.count($ids));
 
         $totals = ['orgs' => count($ids), 'rows_converted' => 0, 'fields_converted' => 0, 'rows_already' => 0, 'rows_unreadable' => 0, 'orgs_failed' => 0];
-        foreach ($ids as $id) {
+        foreach ($pace->paced($ids) as $id) {
             $this->line("associazione {$id}");
             try {
                 $report = $context->run($id, static fn (): FormatReport => $upgrader->upgrade($dryRun));

@@ -52,12 +52,13 @@ it('con un backup in corso la partizione nuova riprova tre volte, poi rinuncia s
         $dump->disconnect();
     }
 
-    // Finito il backup, la partizione si aggancia con RLS, chiave primaria e trigger di sola aggiunta del registro.
+    // Finito il backup, la partizione si aggancia con RLS, chiave primaria, trigger di sola aggiunta e rifiuto del TRUNCATE.
     $this->artisan('saas:audit:partitions', ['--months' => 1])->expectsOutputToContain('ok shared')->assertSuccessful();
     $partition = proprietarioCondiviso()->selectOne(<<<'SQL'
         SELECT c.relispartition AS attached, c.relforcerowsecurity AS rls, pg_get_expr(c.relpartbound, c.oid) AS bounds,
                EXISTS (SELECT 1 FROM pg_index i WHERE i.indrelid = c.oid AND i.indisprimary) AS pk,
                EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = c.oid AND t.tgname = 'log_append_only') AS append_only,
+               EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = c.oid AND t.tgname = 'log_no_truncate') AS no_truncate,
                EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid AND p.polname = 'backup_read') AS backup_read
         FROM pg_class c WHERE c.oid = 'audit.log_2040_01'::regclass
     SQL);
@@ -66,6 +67,7 @@ it('con un backup in corso la partizione nuova riprova tre volte, poi rinuncia s
         ->and($partition->bounds)->toContain('2040-01-01')->toContain('2040-02-01')
         ->and($partition->pk)->toBeTrue()
         ->and($partition->append_only)->toBeTrue()
+        ->and($partition->no_truncate)->toBeTrue()
         ->and($partition->backup_read)->toBeTrue();
 });
 
@@ -95,8 +97,7 @@ it('il controllo di salute avvisa se manca la partizione del mese', function ():
     $this->travelTo(CarbonImmutable::parse('2045-06-10 10:00', 'UTC'));
 
     $this->artisan('saas:health', ['--skip-migrations' => true])
-        ->expectsOutputToContain('AVVISO partizioni del registro')
-        ->expectsOutputToContain('audit.log_2045_06')
+        ->expectsOutputToContain('manca audit.log_2045_06')
         ->assertSuccessful();
 });
 
@@ -113,8 +114,7 @@ it('il controllo di salute avvisa se la partizione predefinita ha righe', functi
 
     try {
         $this->artisan('saas:health', ['--skip-migrations' => true])
-            ->expectsOutputToContain('AVVISO partizioni del registro')
-            ->expectsOutputToContain('partizione predefinita')
+            ->expectsOutputToContain('righe nella partizione predefinita')
             ->assertSuccessful();
     } finally {
         $owner->statement('TRUNCATE audit.log_default');

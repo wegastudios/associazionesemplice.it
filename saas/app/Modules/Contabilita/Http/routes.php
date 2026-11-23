@@ -14,15 +14,15 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale')->group(function (): void {
     Route::middleware('can:accounting.view')->group(function (): void {
         Route::get('/prima-nota', [LedgerController::class, 'index'])->name('ledger');
-        Route::get('/prima-nota/esporta', [LedgerTransferController::class, 'export'])->middleware(['exports.allowed', 'throttle:10,1'])->name('ledger.export');
+        Route::get('/prima-nota/esporta', [LedgerTransferController::class, 'export'])->middleware(['exports.allowed', 'throttle:10,1', 'db.long'])->name('ledger.export');
         Route::get('/conti', [AccountsController::class, 'index'])->middleware('can:accounting.funds')->name('accounts');
         Route::get('/ricevute/{receipt}.pdf', [ReceiptsController::class, 'pdf'])->whereUuid('receipt')->name('receipts.pdf');
-        Route::get('/rendiconto/{year?}', [YearsController::class, 'statement'])->whereNumber('year')->name('statement');
+        Route::get('/rendiconto/{year?}', [YearsController::class, 'statement'])->whereNumber('year')->middleware('db.long')->name('statement');
     });
 
     Route::middleware('can:accounting.edit')->group(function (): void {
         Route::get('/prima-nota/importa', [LedgerTransferController::class, 'form'])->name('ledger.import');
-        Route::post('/prima-nota/importa', [LedgerTransferController::class, 'import'])->name('ledger.import.run');
+        Route::post('/prima-nota/importa', [LedgerTransferController::class, 'import'])->middleware('db.long')->name('ledger.import.run');
         Route::post('/prima-nota/incassi', [LedgerController::class, 'income'])->middleware('can:accounting.income')->name('ledger.income');
         Route::post('/prima-nota/spese', [LedgerController::class, 'expense'])->middleware('can:accounting.expense')->name('ledger.expense');
         Route::post('/prima-nota/giroconti', [LedgerController::class, 'transfer'])->name('ledger.transfer');
@@ -39,13 +39,13 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::get('/aspetto-fiscale', [FiscalSettingsController::class, 'show'])->name('fiscal.settings');
         Route::put('/aspetto-fiscale', [FiscalSettingsController::class, 'update'])->name('fiscal.settings.update');
         Route::put('/aspetto-fiscale/erogazioni-liberali', [FiscalSettingsController::class, 'donations'])->name('fiscal.settings.donations');
-        Route::get('/verifica-ricevute', [ReceiptCheckController::class, 'show'])->name('receipts.check');
-        Route::post('/verifica-ricevute/fissa', [ReceiptCheckController::class, 'fix'])->name('receipts.check.fix');
-        Route::post('/verifica-ricevute/{receipt}/rifai', [ReceiptCheckController::class, 'rebuild'])->whereUuid('receipt')->name('receipts.check.rebuild');
+        Route::get('/verifica-ricevute', [ReceiptCheckController::class, 'show'])->middleware('db.long')->name('receipts.check');
+        Route::post('/verifica-ricevute/fissa', [ReceiptCheckController::class, 'fix'])->middleware('db.long')->name('receipts.check.fix');
+        Route::post('/verifica-ricevute/{receipt}/rifai', [ReceiptCheckController::class, 'rebuild'])->whereUuid('receipt')->middleware('db.long')->name('receipts.check.rebuild');
     });
 
     Route::middleware('can:accounting.close')->group(function (): void {
-        Route::post('/esercizi/{year}/chiudi', [YearsController::class, 'close'])->whereNumber('year')->name('years.close');
+        Route::post('/esercizi/{year}/chiudi', [YearsController::class, 'close'])->whereNumber('year')->middleware('db.long')->name('years.close');
         Route::post('/esercizi/{year}/riapri', [YearsController::class, 'reopen'])->whereNumber('year')->name('years.reopen');
     });
 });

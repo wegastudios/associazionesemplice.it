@@ -30,4 +30,16 @@ interface OrgContext
      * @return T
      */
     public function run(string $orgId, callable $callback): mixed;
+
+    /**
+     * Esegue $callback con i tempi massimi delle operazioni lunghe (config saas.database_timeouts.long) al posto di quelli
+     * delle richieste. Nelle rotte lunghe lo fa il middleware «db.long» (copie, importazioni, libro soci, esportazioni,
+     * rendiconto, verifica delle ricevute, chiusura dell'anno, archivio); comandi e code li hanno già per tutto il processo.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function withLongTimeouts(callable $callback): mixed;
 }

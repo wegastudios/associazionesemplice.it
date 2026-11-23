@@ -31,7 +31,7 @@ final class SchemaUpgradeLockTest extends TestCase {
 		$this->assertStringContainsString( 'Db::with_lock(', $src );
 		$this->assertStringContainsString( 'self::UPGRADE_LOCK', $src );
 		// dentro il blocco la versione si rilegge dal database, non dalla cache delle opzioni
-		$this->assertMatchesRegularExpression( '/function \\(\\) use \\( &\\$started \\) \\{.*SELECT option_value FROM .*self::run_upgrade\\( \\$fresh \\)/s', $src );
+		$this->assertMatchesRegularExpression( '/function \\(\\) use \\( &\\$started, \\$budget \\) \\{.*SELECT option_value FROM .*self::run_upgrade\\( \\$fresh, /s', $src );
 	}
 
 	public function test_a_lock_not_obtained_does_not_stop_the_site(): void {

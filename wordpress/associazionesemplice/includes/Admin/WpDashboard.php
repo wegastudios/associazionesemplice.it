@@ -13,10 +13,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class WpDashboard {
 
-	public static function register(): void {
-		add_action( 'wp_dashboard_setup', array( __CLASS__, 'setup' ) );
-	}
-
 	public static function setup(): void {
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			return;
@@ -41,11 +37,11 @@ final class WpDashboard {
 		if ( $apps > 0 ) {
 			$items[] = array( $apps, 1 === $apps ? 'domanda di adesione da approvare' : 'domande di adesione da approvare', Ui::url( 'asem' ) . '#asem-applications' );
 		}
-		$adults = count( \AssociazioneSemplice\Guardians::adults_to_invite() );
+		$adults = \AssociazioneSemplice\Guardians::adults_to_invite_count(); // solo il conto, dal database
 		if ( $adults > 0 ) {
 			$items[] = array( $adults, 1 === $adults ? 'maggiorenne da invitare a creare il suo accesso' : 'maggiorenni da invitare a creare il loro accesso', Ui::url( 'asem' ) );
 		}
-		$inc = count( \AssociazioneSemplice\IncompleteCards::all() );
+		$inc = \AssociazioneSemplice\IncompleteCards::count();
 		if ( $inc > 0 ) {
 			$items[] = array( $inc, 1 === $inc ? 'scheda socio da completare' : 'schede soci da completare', Ui::url( 'asem' ) . '#asem-incomplete' );
 		}
@@ -57,7 +53,7 @@ final class WpDashboard {
 		if ( $ren > 0 ) {
 			$items[] = array( $ren, 1 === $ren ? 'tessera da rinnovare' : 'tessere da rinnovare', Ui::url( 'asem' ) );
 		}
-		$inv = count( Plugin::people()->guests_to_invite() );
+		$inv = count( Plugin::people()->guest_ids_to_invite() ); // solo gli id: le schede intere degli ospiti non servono a contare
 		if ( $inv > 0 ) {
 			$items[] = array( $inv, 1 === $inv ? 'ospite da invitare a diventare socio' : 'ospiti da invitare a diventare soci', Ui::url( 'asem-people', array( 'type' => 'guest', 'at_limit' => 1 ) ) );
 		}

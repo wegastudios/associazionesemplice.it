@@ -21,21 +21,31 @@ final class Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_filter( 'parent_file', array( __CLASS__, 'menu_parent' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
+		add_action( 'asem_dashboard_alerts', array( YearsPage::class, 'alert' ) ); // avvisi della Bacheca: le classi si leggono solo lì
+		add_action( 'asem_dashboard_alerts', array( RuntsPage::class, 'alerts' ) );
+		add_action( 'wp_dashboard_setup', array( WpDashboard::class, 'setup' ) );
+		if ( Plugin::action_handlers_needed() ) { // solo admin-post.php e admin-ajax.php con un'azione del plugin: niente per le pagine e per il battito
+			self::handlers();
+		}
+		if ( ! wp_doing_ajax() ) {
+			add_action( 'admin_init', array( \AssociazioneSemplice\Wizard::class, 'maybe_redirect' ) ); // invito alla configurazione guidata (mai nelle chiamate ajax)
+		}
+	}
+
+	/** Gestori delle azioni di admin-post.php e admin-ajax.php (ognuno registra solo l'azione chiesta, vedi Plugin::wants_action()). */
+	public static function handlers(): void {
 		EmployeesPage::register(); // prima di Actions::register(): aggiunge le sue azioni
 		Actions::register();
-		YearsPage::register();
-		RuntsPage::register();
-		WpDashboard::register();
 		Exports::register();
 		IncomePage::register_ajax();
 		PersonSearch::register();
 		Dismiss::register();
+		add_action( 'wp_ajax_asem_long_job', array( \AssociazioneSemplice\LongJob::class, 'ajax' ) ); // tappe dei lavori lunghi chieste dalla pagina (la classe si carica solo allora)
 		RegistersActions::register();
 		BlockBActions::register();
 		BlockFActions::register();
 		TechActions::register();
 		do_action( 'asem_admin_init' ); // le estensioni registrano qui le loro azioni
-		\AssociazioneSemplice\Wizard::register();
 	}
 
 	/** Voce di menu => [titolo, schede]. Le schede sono pagine nascoste dal menu, raggiungibili dalla barra in cima. */

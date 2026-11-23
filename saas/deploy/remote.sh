@@ -19,11 +19,12 @@ KEEP=5
 
 # Il log del workflow è pubblico: il dettaglio del controllo di salute (avvisi, permessi, configurazione) va solo in un
 # file riservato sul server (shared/health-<data>.txt, permessi 600, ultimi 5); nel log escono solo l'esito e il conteggio.
+# I problemi della posta in coda qui sono avvisi: non dipendono dalla versione e non devono annullare il rilascio.
 health() {
     local rc=0 stamp file warns
     stamp="$(date -u +%Y%m%dT%H%M%S)"
     file="$BASE/shared/health-$stamp.txt"
-    ( umask 077; "$PHP" artisan saas:health "$@" > "$file" 2>&1 ) || rc=$?
+    ( umask 077; "$PHP" artisan saas:health --mail-warnings-only "$@" > "$file" 2>&1 ) || rc=$?
     chmod 600 "$file" 2>/dev/null || true
     warns="$(grep -c '^AVVISO' "$file" 2>/dev/null || true)"
     if [ "$rc" -eq 0 ]; then

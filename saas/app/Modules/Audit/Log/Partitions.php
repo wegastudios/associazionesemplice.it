@@ -27,6 +27,7 @@ final class Partitions
             ShortLocks::run($owner, static function () use ($owner): void {
                 $owner->statement('CREATE TABLE audit.log_default PARTITION OF audit.log DEFAULT');
                 OrgSchema::secure($owner, 'audit.log_default');
+                self::guardTruncate($owner, 'audit.log_default');
             });
         }
 
@@ -41,6 +42,7 @@ final class Partitions
             ShortLocks::run($owner, static function () use ($owner, $table, $bounds): void {
                 $owner->statement("CREATE TABLE {$table} (LIKE audit.log INCLUDING DEFAULTS INCLUDING CONSTRAINTS)");
                 OrgSchema::secure($owner, $table);
+                self::guardTruncate($owner, $table);
                 $owner->statement("ALTER TABLE audit.log ATTACH PARTITION {$table} {$bounds}");
             });
         }
@@ -51,5 +53,17 @@ final class Partitions
         $exists = $owner->selectOne('SELECT to_regclass(?) IS NOT NULL AS ok', [$table]);
 
         return is_object($exists) && ($exists->ok ?? false) === true;
+    }
+
+    /**
+     * TRUNCATE di una partizione da sola: lo stesso rifiuto della tabella (la funzione arriva con una migrazione
+     * successiva alla creazione del registro; le partizioni già esistenti le aggancia quella migrazione).
+     */
+    private static function guardTruncate(ConnectionInterface $owner, string $table): void
+    {
+        $guard = $owner->selectOne("SELECT to_regprocedure('audit.reject_truncate()') IS NOT NULL AS ok");
+        if (is_object($guard) && ($guard->ok ?? false) === true) {
+            $owner->statement("CREATE OR REPLACE TRIGGER log_no_truncate BEFORE TRUNCATE ON {$table} FOR EACH STATEMENT EXECUTE FUNCTION audit.reject_truncate()");
+        }
     }
 }

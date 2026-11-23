@@ -34,10 +34,15 @@ final class PeoplePage {
 		$pages  = max( 1, (int) ceil( $total / self::PER_PAGE ) );
 		$paged  = max( 1, min( $pages, Ui::get_int( 'paged', 1 ) ) );
 		$shown  = Plugin::people()->search_ids( array_column( array_slice( $rows, ( $paged - 1 ) * self::PER_PAGE, self::PER_PAGE ), 'id' ) );
-		foreach ( $shown as $s ) {
-			if ( null === $gov && MemberType::GUEST === $s['type'] ) {
-				$gov = Plugin::people()->guest_overview();
-				break;
+		if ( null === $gov ) { // il quadro serve solo agli ospiti di questa pagina
+			$shown_guests = array();
+			foreach ( $shown as $s ) {
+				if ( MemberType::GUEST === $s['type'] ) {
+					$shown_guests[] = (int) $s['id'];
+				}
+			}
+			if ( $shown_guests ) {
+				$gov = Plugin::people()->guest_overview( $shown_guests );
 			}
 		}
 		$gov    = (array) $gov;
@@ -519,7 +524,7 @@ final class PeoplePage {
 			return;
 		}
 		$st = Plugin::activities()->guest_status( (int) $p['id'] );
-		$ov = Plugin::people()->guest_overview()[ (int) $p['id'] ] ?? null;
+		$ov = Plugin::people()->guest_overview( array( (int) $p['id'] ) )[ (int) $p['id'] ] ?? null;
 		echo wp_kses( '<div class="asem-card"><h2>Partecipazioni come ospite</h2><p>' . self::guest_badge( $ov ) . '</p>', Html::allowed() );
 		if ( $ov && $ov['flag'] ) {
 			echo '<p class="asem-neg">Ha raggiunto la soglia di partecipazioni per gli ospiti' . ( $ov['twins'] ? ' (sommando le altre registrazioni)' : '' ) . ': conviene invitarlo a iscriversi come socio, anche per l\'assicurazione. Nessun blocco automatico: decidi tu.</p>';

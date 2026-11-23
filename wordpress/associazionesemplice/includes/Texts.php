@@ -102,6 +102,7 @@ final class Texts {
 		}
 		$ok      = (bool) wp_mail( $to, $subject, $message, $headers, $attachments );
 		MailLog::record( $to, $subject, $ok );
+		MailBudget::count( MailBudgetRules::recipients( $to ) ); // tetto orario delle email del plugin: ogni destinatario conta, qualunque sia l'esito
 		return $ok;
 	}
 }

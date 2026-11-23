@@ -144,6 +144,10 @@ asem_ok( count( Plugin::ledger()->accounts() ) >= 2, 'conti iniziali' );
 asem_ok( count( Plugin::ledger()->categories() ) >= 8, 'categorie iniziali' );
 
 wp_set_current_user( 1 );
+function asem_test_mail_cap() {
+	return 1000000; // le prove mandano molte più email in pochi secondi di un sito vero: il tetto orario si prova a parte, con un tetto basso
+}
+add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
 // Le prove di chiusura più sotto lavorano su anni con movimenti di prova (anche in disavanzo): la conferma del disavanzo si riaccende solo per la sua prova, in fondo.
 remove_filter( 'asem_year_close_confirm', array( \AssociazioneSemplice\YearEndCheck::class, 'close_confirm' ), 5 );
 $people  = Plugin::people();
@@ -699,6 +703,37 @@ asem_ok( 'active' === $lic_att_state( array() ), 'licenza: la prova firmata e re
 asem_ok( 'active' === $lic_att_state( array( 'exp' => time() - 3 * DAY_IN_SECONDS, 'nbf' => time() - 5 * DAY_IN_SECONDS ) ), 'licenza: prova scaduta da pochi giorni, dentro la tolleranza: resta attiva' );
 asem_ok( 'unverified' === $lic_att_state( array( 'exp' => time() - 30 * DAY_IN_SECONDS, 'nbf' => time() - 35 * DAY_IN_SECONDS ) ) && \AssociazioneSemplice\Edition::degraded(), 'licenza: prova scaduta oltre la tolleranza, le funzioni Pro si sospendono' );
 asem_ok( 'unverified' === $lic_att_state( array( 'bid' => 'altro-dominio.it' ) ), 'licenza: la prova di un altro dominio non vale' );
+// firma già verificata (senza sodium nativo): ricordata un giorno, solo se positiva, firmata con i codici del sito; la revoca e la scadenza non passano dalla memoria
+License::forget_verified();
+License::set_native_sodium_override( true );
+asem_ok( 'active' === $lic_att_state( array() ) && false === get_option( License::OPT_VMEMO, false ), 'firma licenza: con sodium nativo non si ricorda niente' );
+License::set_native_sodium_override( false );
+$lic_ok1 = 'active' === $lic_att_state( array( 'exp' => time() + 172900 ) );
+$lic_vmo = (array) get_option( License::OPT_VMEMO );
+asem_ok( $lic_ok1 && isset( $lic_vmo['att'] ), 'firma licenza: senza sodium nativo l\'esito verificato si ricorda' );
+$lic_vm = (array) get_option( License::OPT_VMEMO );
+asem_ok( $lic_vm['att']['until'] <= time() + DAY_IN_SECONDS && $lic_vm['att']['until'] > time() + DAY_IN_SECONDS - 60, 'firma licenza: la voce scade entro un giorno' );
+// una voce ritoccata a mano nel database (stessa impronta, firma della voce sbagliata) non vale: si verifica di nuovo
+$lic_att_new = $lic_att( array( 'exp' => time() + 172801 ) );
+update_option( License::OPT_STATE, array_merge( (array) get_option( License::OPT_STATE ), array( 'attestation' => $lic_att_new, 'product' => 'associazionesemplice' ) ) );
+$lic_fp = hash( 'sha256', md5( $lic_att_new . '|associazionesemplice|' . \AssociazioneSemplice\LicenseClient::normalize_domain( home_url() ) . '|' . \AssociazioneSemplice\Limits::get( 'license_offline_days' ) * DAY_IN_SECONDS ) );
+update_option( License::OPT_VMEMO, array( 'att' => array( 'f' => $lic_fp, 'at' => time(), 'until' => time() + 3600, 'r' => array( 'plan' => 'fiscal', 'exp' => time() + 3600 ), 'h' => str_repeat( 'a', 64 ) ) ), true );
+asem_ok( 'lite' === License::plan(), 'firma licenza: una voce ricordata ritoccata a mano non vale (la firma della voce non corrisponde)' );
+// una prova non valida non passa dalla memoria nemmeno se qualcuno scrive una voce con la sua impronta
+asem_ok( 'unverified' === $lic_att_state( array( 'exp' => time() - 30 * DAY_IN_SECONDS, 'nbf' => time() - 35 * DAY_IN_SECONDS ) ) && 'unverified' === License::policy()['status'], 'firma licenza: una prova scaduta oltre la tolleranza non passa dalla memoria' );
+$lic_vmo = (array) get_option( License::OPT_VMEMO, array() );
+asem_ok( ! isset( $lic_vmo['att'] ), 'firma licenza: un rifiuto non si ricorda' );
+// revoca: un nuovo stato (non attivo) svuota la memoria e la licenza non passa più
+$lic_att_state( array( 'exp' => time() + 173000 ) );
+asem_ok( is_array( get_option( License::OPT_VMEMO ) ), 'firma licenza: di nuovo ricordata' );
+License::set_state( 'unlicensed', null, null, 'free' );
+asem_ok( false === get_option( License::OPT_VMEMO, false ) && 'unlicensed' === License::policy()['status'], 'firma licenza: una revoca svuota la memoria e lo stato non è più attivo' );
+// una prova nuova (altro piano) non usa la voce della vecchia
+$lic_att_state( array( 'plan' => 'lite', 'exp' => time() + 173050 ) );
+$lic_att_state( array( 'plan' => 'fiscal', 'exp' => time() + 173100 ) );
+asem_ok( 'fiscal' === License::plan(), 'firma licenza: una prova nuova si verifica, non usa la voce della vecchia' );
+License::set_native_sodium_override( null );
+License::forget_verified();
 License::set_state( 'active', null, null, 'full' );
 asem_ok( 'unverified' === License::policy()['status'], 'licenza: uno stato «attivo» scritto a mano, senza la prova firmata, non vale' );
 delete_option( License::OPT_STATE );
@@ -2482,7 +2517,7 @@ $ps = Plugin::payments();
 Settings::update( array( 'payment_provider' => 'none', 'membership_fee_cents' => 1000 ) );
 asem_ok( '' === $ps->provider() && ! $ps->enabled(), 'pagamenti online: spenti finché non si sceglie un gateway' );
 asem_ok( isset( Labels::methods()['stripe'] ) && isset( Labels::methods()['paypal'] ), 'metodi di pagamento Stripe e PayPal disponibili' );
-asem_ok( false !== wp_next_scheduled( 'asem_check_pending_payments' ), 'controllo periodico dei pagamenti in sospeso pianificato' );
+asem_ok( \AssociazioneSemplice\Jobs::scheduled( 'asem_check_pending_payments' ), 'controllo periodico dei pagamenti in sospeso pianificato' );
 
 $mails = array();
 add_filter(
@@ -3598,12 +3633,24 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	unset( $GLOBALS['current_screen'] );
 	// il gratuito cambia versione (anche da WordPress.org): il Pro ricontrolla il portale
 	delete_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT );
+	\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Updater::FREE_VERSION_KEY );
 	delete_option( \AssociazioneSemplice\Updater::RECHECK_OPT );
 	\AssociazioneSemplice\Updater::watch_free_version();
-	asem_ok( ASEM_VERSION === get_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT ) && ! get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ), 'cambio del gratuito: la prima volta si ricorda la versione senza ricontrollare' );
-	update_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT, '0.0.1', false );
+	asem_ok( ASEM_VERSION === \AssociazioneSemplice\BootState::get( \AssociazioneSemplice\Updater::FREE_VERSION_KEY ) && ! get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ), 'cambio del gratuito: la prima volta si ricorda la versione senza ricontrollare' );
+	$up_q = $wpdb->num_queries;
+	for ( $up_i = 0; $up_i < 10; $up_i++ ) {
+		\AssociazioneSemplice\Updater::watch_free_version();
+	}
+	asem_ok( 0 === $wpdb->num_queries - $up_q, 'cambio del gratuito: a ogni pagina di amministrazione il controllo non fa nessuna query (' . ( $wpdb->num_queries - $up_q ) . ')' );
+	\AssociazioneSemplice\BootState::set( \AssociazioneSemplice\Updater::FREE_VERSION_KEY, '0.0.1' );
 	\AssociazioneSemplice\Updater::watch_free_version();
-	asem_ok( (bool) get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ) && ASEM_VERSION === get_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT ), 'cambio del gratuito: una versione diversa chiede un nuovo controllo' );
+	asem_ok( (bool) get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ) && ASEM_VERSION === \AssociazioneSemplice\BootState::get( \AssociazioneSemplice\Updater::FREE_VERSION_KEY ), 'cambio del gratuito: una versione diversa chiede un nuovo controllo' );
+	update_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT, '0.0.2', false ); // sito aggiornato da una versione che usava ancora la vecchia opzione: si legge una volta, poi vale quella riunita
+	\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Updater::FREE_VERSION_KEY );
+	delete_option( \AssociazioneSemplice\Updater::RECHECK_OPT );
+	\AssociazioneSemplice\Updater::watch_free_version();
+	asem_ok( (bool) get_option( \AssociazioneSemplice\Updater::RECHECK_OPT ) && ASEM_VERSION === \AssociazioneSemplice\BootState::get( \AssociazioneSemplice\Updater::FREE_VERSION_KEY ), 'cambio del gratuito: la versione ricordata dalla vecchia opzione vale ancora' );
+	delete_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT );
 	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
 	$up_calls = array();
 	\AssociazioneSemplice\Updater::refresh_in_background();
@@ -3627,6 +3674,7 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	wp_set_current_user( $up_old );
 	delete_option( \AssociazioneSemplice\Updater::FORCE_OPT );
 	delete_option( \AssociazioneSemplice\Updater::FREE_VERSION_OPT );
+	\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Updater::FREE_VERSION_KEY );
 	Settings::update( array( 'limits' => array( 'portal_updates' => 0 ) ) );
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	asem_ok( empty( $up_tr->response ), 'aggiornamento diretto: spento dai limiti, niente aggiornamenti' );
@@ -4221,6 +4269,33 @@ $front::do_add_guest( array( 'first_name' => 'Giovanni', 'last_name' => 'Altrui'
 $twins_now = $people->guest_overview();
 $gianni_id = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Giovanni' AND last_name = 'Altrui' AND host_person_id = $founder" );
 asem_ok( $gianni_id > 0 && ! empty( $twins_now[ $gianni_id ]['twins'] ), 'nuovo ospite: se il cellulare è di un altro ospite non si blocca, ma risulta gemello e lo si vede' );
+// L7: il quadro degli ospiti chiesto per pochi ospiti è identico a quello completo (gemelli compresi), e le liste leggere pure
+$l7_same = true;
+$l7_ids  = array_keys( $twins_now );
+foreach ( array( array( $gianni_id ), array_slice( $l7_ids, 0, 2 ), $l7_ids, array( 0, $gianni_id, 999999 ) ) as $l7_sub ) {
+	$l7_want = array();
+	foreach ( $twins_now as $l7_id => $l7_o ) {
+		if ( in_array( $l7_id, $l7_sub, true ) ) {
+			$l7_want[ $l7_id ] = $l7_o;
+		}
+	}
+	$l7_same = $l7_same && $people->guest_overview( $l7_sub ) === $l7_want;
+}
+asem_ok( $l7_same && array() === $people->guest_overview( array() ), 'ospiti L7: il quadro per un gruppo di ospiti è uguale alla parte corrispondente del quadro completo, gemelli compresi' );
+$l7_inv = $people->guests_to_invite();
+$l7_old = array();
+foreach ( $people->search( array( 'type' => 'guest' ) ) as $l7_g ) { // il vecchio calcolo: tutte le schede, poi il filtro sulla soglia
+	if ( ! empty( $twins_now[ (int) $l7_g['id'] ]['flag'] ) ) {
+		$l7_g['overview'] = $twins_now[ (int) $l7_g['id'] ];
+		$l7_old[]         = $l7_g;
+	}
+}
+asem_ok( $l7_inv === $l7_old && array_map( 'intval', array_column( $l7_inv, 'id' ) ) === $people->guest_ids_to_invite(), 'ospiti L7: da invitare = stesse schede e stesso ordine di prima; gli id per contarli sono gli stessi' );
+$l7_ic = \AssociazioneSemplice\IncompleteCards::all();
+$l7_f2 = \AssociazioneSemplice\IncompleteCards::first( 2 );
+asem_ok( \AssociazioneSemplice\IncompleteCards::count() === count( $l7_ic ) && $l7_f2['count'] === count( $l7_ic ) && $l7_f2['items'] === array_slice( $l7_ic, 0, 2 ) && array() === \AssociazioneSemplice\IncompleteCards::first( 0 )['items'], 'schede incomplete L7: il conto e le prime righe coincidono con l\'elenco intero' );
+$l7_ad = \AssociazioneSemplice\Guardians::adults_to_invite();
+asem_ok( \AssociazioneSemplice\Guardians::adults_to_invite_count() === count( $l7_ad ) && \AssociazioneSemplice\Guardians::adults_to_invite( 1 ) === array_slice( $l7_ad, 0, 1 ), 'maggiorenni da invitare L7: il conto dal database e le prime righe coincidono con l\'elenco intero' );
 wp_set_current_user( 1 );
 $walk2 = new ReflectionMethod( Admin\ProActions::class, 'walk_in' );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $walk2, $e1, $gs1, $founder ) { $walk2->invoke( null, array( 'activity_id' => $e1, 'session_id' => $gs1, 'new_first_name' => 'Senza', 'new_last_name' => 'Telefono', 'host_person_id' => $founder ) ); } ), 'cellulare' ), 'sul posto: un nuovo ospite richiede il cellulare' );
@@ -5407,8 +5482,146 @@ asem_set_fiscal_month( 1 );
 // il fondatore: ammesso entro la fine dell'esercizio e non cessato prima dell'inizio
 $mb_fnd = $mb_mk( 'founder', 'Ferdinando', 'Fondatore', ( $mb_y + 1 ) . '-03-01' );
 asem_ok( ! in_array( $mb_fnd, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && in_array( $mb_fnd, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ), 'libro per anno: il fondatore entra dall\'esercizio in cui è ammesso' );
+// L7: il libro soci riscritto (tessere filtrate in SQL, poche colonne, a pagine) deve dare ESATTAMENTE le righe di prima.
+// Il riferimento qui sotto è il vecchio calcolo, copiato così com'era (tutte le colonne, tutte le tessere, filtri in PHP).
+$mb_x = array(
+	'minor' => $mb_mk( 'ordinary', 'Mino', 'Tutelato', $mb_y . '-01-15' ),
+	'anon'  => $mb_mk( 'ordinary', 'Anonima', 'Persa', $mb_y . '-01-20' ),
+	'del'   => $mb_mk( 'ordinary', 'Cancellato', 'Prima', $mb_y . '-01-21' ),
+	'appl'  => $mb_mk( 'ordinary', 'Domanda', 'Aperta', $mb_y . '-01-22' ),
+	'guest' => $mb_mk( 'ordinary', 'Ospite', 'Estraneo', $mb_y . '-01-23' ),
+	'guard' => $mb_mk( 'ordinary', 'Tutore', 'Soltanto', $mb_y . '-01-24' ),
+	'old'   => $mb_mk( 'ordinary', 'Vecchio', 'Cessato', ( $mb_y - 4 ) . '-01-25' ),
+	'dcard' => $mb_mk( 'ordinary', 'Tessera', 'Cancellata', ( $mb_y - 2 ) . '-01-26' ),
+	'rcard' => $mb_mk( 'ordinary', 'Tessera', 'Sostituita', ( $mb_y - 2 ) . '-01-27' ),
+	'prev'  => $mb_mk( 'ordinary', 'Anno', 'Prima', ( $mb_y - 1 ) . '-01-28' ),
+);
+$wpdb->insert( Db::t( 'guardians' ), array( 'person_id' => $mb_x['minor'], 'guardian_person_id' => $mb_a, 'is_operative' => 1, 'created_at' => Db::now() ) );
+$wpdb->update( Db::t( 'people' ), array( 'birth_date' => ( $mb_y - 10 ) . '-03-03', 'address' => 'Via Prova 1', 'city' => 'Roma', 'zip' => '00100', 'province' => 'RM' ), array( 'id' => $mb_x['minor'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'anonymized_at' => Db::now() ), array( 'id' => $mb_x['anon'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'deleted_at' => Db::now() ), array( 'id' => $mb_x['del'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'application_status' => 'requested' ), array( 'id' => $mb_x['appl'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'type' => 'guest' ), array( 'id' => $mb_x['guest'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'type' => 'guardian' ), array( 'id' => $mb_x['guard'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => ( $mb_y - 2 ) . '-06-30', 'left_reason' => 'esclusione' ), array( 'id' => $mb_x['old'] ) );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => ( $mb_y - 1 ) . '-09-01', 'left_reason' => 'decesso' ), array( 'id' => $mb_x['prev'] ) );
+foreach ( array( 'minor', 'anon', 'del', 'appl', 'guest', 'guard' ) as $mb_k ) {
+	$mb_card( $mb_x[ $mb_k ], $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
+}
+$mb_card( $mb_x['old'], ( $mb_y - 4 ) . '-01-01', ( $mb_y - 4 ) . '-12-31', (string) ( $mb_y - 4 ) );
+$mb_card( $mb_x['prev'], ( $mb_y - 1 ) . '-01-01', ( $mb_y - 1 ) . '-12-31', (string) ( $mb_y - 1 ) );
+$mb_card( $mb_x['dcard'], $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
+$mb_card( $mb_x['rcard'], $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
+$wpdb->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => $mb_x['dcard'] ) );
+$wpdb->update( Db::t( 'memberships' ), array( 'replaced_by' => 999999 ), array( 'person_id' => $mb_x['rcard'] ) );
+$mb_ref = function ( string $filter, ?array $span ) use ( $wpdb ): array { // il vecchio live_rows, parola per parola
+	$fees_m = new \ReflectionMethod( \AssociazioneSemplice\MemberBook::class, 'last_fees' );
+	$fees_m->setAccessible( true );
+	$res_m = new \ReflectionMethod( \AssociazioneSemplice\MemberBook::class, 'residence' );
+	$res_m->setAccessible( true );
+	$rows   = $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND type NOT IN ('guest','guardian') ORDER BY joined_on, id", ARRAY_A ) ?: array();
+	$tutori = \AssociazioneSemplice\Guardians::names_by_person();
+	$fees   = $fees_m->invoke( null );
+	$by_id  = array();
+	foreach ( $rows as $r ) {
+		$by_id[ (int) $r['id'] ] = $r;
+	}
+	if ( null !== $span ) {
+		$cards = array();
+		foreach ( $wpdb->get_results( 'SELECT person_id, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL AND replaced_by IS NULL', ARRAY_A ) ?: array() as $r ) {
+			$cards[ (int) $r['person_id'] ][] = $r;
+		}
+		$rows = array_values(
+			array_filter(
+				$rows,
+				function ( $p ) use ( $cards, $span ) {
+					return \AssociazioneSemplice\MemberBook::qualifies( $p, $cards[ (int) $p['id'] ] ?? array(), $span[0], $span[1] );
+				}
+			)
+		);
+	}
+	$ops = \AssociazioneSemplice\Guardians::operative_ids();
+	$out = array();
+	$n   = 0;
+	foreach ( $rows as $p ) {
+		$n++;
+		$gone = ! empty( $p['left_on'] );
+		if ( 'in_force' === $filter && $gone ) {
+			continue;
+		}
+		if ( 'left' === $filter && ! $gone ) {
+			continue;
+		}
+		$anon  = ! empty( $p['anonymized_at'] );
+		$src   = isset( $ops[ (int) $p['id'] ], $by_id[ $ops[ (int) $p['id'] ] ] ) ? $by_id[ $ops[ (int) $p['id'] ] ] : $p;
+		$out[] = array(
+			'n'           => $n,
+			'id'          => (int) $p['id'],
+			'matricola'   => (int) $p['matricola'],
+			'kind'        => \AssociazioneSemplice\RuntsRules::kind( $p['subject_kind'] ?? '' ),
+			'name'        => $anon ? '(dati anonimizzati)' : trim( $p['last_name'] . ' ' . $p['first_name'] ),
+			'last_name'   => $anon ? '(dati anonimizzati)' : (string) $p['last_name'],
+			'first_name'  => $anon ? '' : (string) $p['first_name'],
+			'tax_code'    => $anon ? '' : (string) $p['tax_code'],
+			'birth_date'  => $anon ? '' : (string) $p['birth_date'],
+			'birth_place' => $anon ? '' : (string) $p['birth_place'],
+			'residence'   => $anon ? '' : $res_m->invoke( null, $p ),
+			'email'       => $anon ? '' : (string) $p['email'],
+			'phone'       => $anon ? '' : (string) $p['phone'],
+			'applied_on'  => substr( (string) ( $src['application_at'] ?: $src['joined_on'] ), 0, 10 ),
+			'approved_on' => (string) ( $src['approved_on'] ?: $src['joined_on'] ),
+			'fee_cents'   => (int) ( $fees[ (int) $p['id'] ]['cents'] ?? 0 ),
+			'fee_year'    => (string) ( $fees[ (int) $p['id'] ]['year'] ?? '' ),
+			'guardian'    => $anon ? '' : (string) ( $tutori[ (int) $p['id'] ] ?? '' ),
+			'card_number' => (string) $p['card_number'],
+			'level'       => \AssociazioneSemplice\Levels::label( $p ),
+			'joined_on'   => (string) $src['joined_on'],
+			'left_on'     => $gone ? (string) $p['left_on'] : '',
+			'left_reason' => (string) $p['left_reason'],
+			'status'      => $gone ? 'left' : 'in_force',
+		);
+	}
+	return $out;
+};
+$mb_same = true;
+$mb_cmp  = array();
+foreach ( array( '', 'in_force', 'left' ) as $mb_fl ) {
+	foreach ( array( null, $mb_y - 2, $mb_y - 1, $mb_y, $mb_y1 ) as $mb_yy ) {
+		$mb_span = null === $mb_yy ? null : \AssociazioneSemplice\FiscalYears::range( $mb_yy );
+		$mb_old  = $mb_ref( $mb_fl, $mb_span );
+		$mb_new  = \AssociazioneSemplice\MemberBook::rows( $mb_fl, $mb_yy );
+		if ( $mb_old !== $mb_new ) {
+			$mb_same = false;
+			$mb_cmp[] = $mb_fl . '/' . ( null === $mb_yy ? 'tutti' : $mb_yy ) . ': ' . count( $mb_old ) . ' vs ' . count( $mb_new );
+		}
+		if ( null !== $mb_yy ) { // le pagine rimesse una dopo l'altra danno lo stesso elenco, con lo stesso numero di riga e lo stesso totale
+			$mb_glued = array();
+			$mb_tot   = -1;
+			for ( $mb_pg = 1; $mb_pg <= max( 1, (int) ceil( count( $mb_old ) / 3 ) ); $mb_pg++ ) {
+				$mb_pp    = \AssociazioneSemplice\MemberBook::page( $mb_fl, $mb_yy, null, $mb_pg, 3 );
+				$mb_glued = array_merge( $mb_glued, $mb_pp['rows'] );
+				$mb_tot   = $mb_pp['total'];
+			}
+			if ( $mb_glued !== $mb_old || ( $mb_old && $mb_tot !== count( $mb_old ) ) ) {
+				$mb_same  = false;
+				$mb_cmp[] = 'pagine ' . $mb_fl . '/' . $mb_yy;
+			}
+		}
+	}
+}
+asem_ok( $mb_same, 'libro soci L7: righe identiche al vecchio calcolo, per ogni filtro e anno, anche a pagine (' . implode( '; ', $mb_cmp ) . ')' );
+$mb_chk = $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) );
+asem_ok( in_array( $mb_x['minor'], $mb_chk, true ) && in_array( $mb_x['anon'], $mb_chk, true ) && ! in_array( $mb_x['del'], $mb_chk, true ) && ! in_array( $mb_x['appl'], $mb_chk, true ) && ! in_array( $mb_x['guest'], $mb_chk, true ) && ! in_array( $mb_x['guard'], $mb_chk, true ) && ! in_array( $mb_x['old'], $mb_chk, true ) && ! in_array( $mb_x['dcard'], $mb_chk, true ) && ! in_array( $mb_x['rcard'], $mb_chk, true ) && ! in_array( $mb_x['prev'], $mb_chk, true ) && in_array( $mb_x['prev'], $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y - 1 ) ), true ), 'libro soci L7: il dataset di prova copre davvero i casi (cancellati, domande, ospiti, tessere cancellate o sostituite, cessati prima)' );
+$mb_dl = \AssociazioneSemplice\Docs::book( 'left', 'csv', $mb_y );
+asem_ok( false !== strpos( $mb_dl['body'], 'Cessato Dario' ) && false === strpos( $mb_dl['body'], 'Fondatrice' ), 'libro soci L7: il CSV filtrato sui cessati ha solo i cessati (letto una volta sola)' );
+foreach ( $mb_x as $mb_pid ) {
+	$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $mb_pid ) );
+	$wpdb->delete( Db::t( 'guardians' ), array( 'person_id' => $mb_pid ) );
+	$wpdb->delete( Db::t( 'people' ), array( 'id' => $mb_pid ) );
+}
+
 // campi della fotografia: solo i dati minimi, configurabili da un filtro
-$mb_f = \AssociazioneSemplice\MemberBook::snapshot_fields();
+$mb_f =\AssociazioneSemplice\MemberBook::snapshot_fields();
 asem_ok( array() === array_intersect( $mb_f, array( 'email', 'phone', 'card_number', 'fee_cents', 'fee_year', 'guardian', 'applied_on' ) ) && in_array( 'tax_code', $mb_f, true ) && in_array( 'left_reason', $mb_f, true ), 'fotografia: i campi sono solo i dati minimi (niente email, telefono, tessera, quote, tutore)' );
 $mb_flt = function ( $f ) {
 	return array_merge( $f, array( 'email', 'campo_inesistente' ) );
@@ -6441,6 +6654,30 @@ add_option( \AssociazioneSemplice\Reminders::OPT_LOCK, time(), '', 'no' ); // un
 $gi_busy = \AssociazioneSemplice\Reminders::run( $today );
 asem_ok( \AssociazioneSemplice\Reminders::was_busy() && array( 0, 0, 0, 0, 0 ) === array_values( $gi_busy ), 'promemoria: con un altro giro in corso non si manda due volte' );
 delete_option( \AssociazioneSemplice\Reminders::OPT_LOCK );
+// tetto orario delle email: a tetto raggiunto i promemoria automatici non partono e non si perdono; all'ora dopo arrivano una volta sola
+$mb_lim = Settings::get( 'limits' );
+Settings::update( array( 'limits' => array_merge( is_array( $mb_lim ) ? $mb_lim : array(), array( 'mail_per_hour' => 20 ) ) ) );
+remove_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' ); // da qui il tetto è quello dei Limiti (20)
+\AssociazioneSemplice\MailBudget::reset();
+$mb_mails = array();
+foreach ( array( 'Uma', 'Ugo' ) as $mb_n ) {
+	$mb_p = $people->create( array( 'type' => 'ordinary', 'first_name' => $mb_n, 'last_name' => 'Tettoorario', 'email' => strtolower( $mb_n ) . '.tettoorario@example.com' ) );
+	$people->set_membership( $mb_p, $ym_label, true );
+	$wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' +12 days' ) ) ), array( 'person_id' => $mb_p ) );
+	$mb_mails[] = strtolower( $mb_n ) . '.tettoorario@example.com';
+}
+\AssociazioneSemplice\MailBudget::count( 15 ); // con tetto 20 e 5 riservate alle email singole non resta posto per i promemoria
+wp_clear_scheduled_hook( 'asem_send_reminders' ); // così il giro programmato dopo è solo quello di questa prova
+$mb_run = \AssociazioneSemplice\Reminders::run( $today );
+asem_ok( 0 === $mb_run['membership'] && \AssociazioneSemplice\Reminders::more_pending() && 0 === $mails_to( $mb_mails[0] ) && 0 === $mails_to( $mb_mails[1] ) && 2 === \AssociazioneSemplice\Reminders::run( $today, false )['membership'], 'tetto email: a tetto raggiunto i promemoria restano da mandare, senza essere prenotati né persi' );
+asem_ok( false !== wp_next_scheduled( 'asem_send_reminders' ) && wp_next_scheduled( 'asem_send_reminders' ) >= \AssociazioneSemplice\MailBudget::resume_at() - 5, 'tetto email: il giro dopo è programmato all\'ora piena successiva, non tra due minuti' );
+\AssociazioneSemplice\MailBudget::$clock = time() + 3600; // l'ora dopo
+$mb_run2 = \AssociazioneSemplice\Reminders::run( $today );
+asem_ok( 2 === $mb_run2['membership'] && 1 === $mails_to( $mb_mails[0] ) && 1 === $mails_to( $mb_mails[1] ) && 0 === \AssociazioneSemplice\Reminders::run( $today )['membership'], 'tetto email: all\'ora dopo i promemoria arrivano, una volta sola ciascuno' );
+\AssociazioneSemplice\MailBudget::reset();
+Settings::update( array( 'limits' => is_array( $mb_lim ) ? $mb_lim : array() ) );
+add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
+asem_ok( is_bool( \AssociazioneSemplice\MailBudget::external_service() ) && 1000000 === \AssociazioneSemplice\MailBudget::cap(), 'tetto email: il riconoscimento del servizio esterno risponde sì o no, e un\'estensione può cambiare il tetto' );
 // corsi mensili: dopo l'ultima lezione del mese, promemoria a chi non ha pagato il mese dopo
 $cur_m = substr( $today, 0, 7 );
 $tgt_m = gmdate( 'Y-m', strtotime( $cur_m . '-01 +1 month' ) );
@@ -7108,6 +7345,37 @@ $wpdb->update( Db::t( 'broadcast_rcpt' ), array( 'sent_at' => gmdate( 'Y-m-d H:i
 \AssociazioneSemplice\Broadcasts::process( $b4 );
 $b4b = \AssociazioneSemplice\Broadcasts::get( $b4 );
 asem_ok( 'done' === $b4b['status'] && (int) $b4b['sent'] === $b4n && count( $bc_mail ) === $b4n && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . " WHERE broadcast_id = %d AND status <> 'sent'", $b4 ) ), 'comunicazioni: la email rimasta a metà torna in coda e parte; ognuno riceve una sola email' );
+// tetto orario delle email (20: 5 riservate alle email singole, 15 per le comunicazioni): oltre il tetto la comunicazione aspetta l'ora piena dopo, nessuno la riceve due volte
+$mb_lim = Settings::get( 'limits' );
+Settings::update( array( 'limits' => array_merge( is_array( $mb_lim ) ? $mb_lim : array(), array( 'mail_per_hour' => 20 ) ) ) );
+remove_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
+\AssociazioneSemplice\MailBudget::reset();
+$bc_mail = array();
+$wpdb->query( 'UPDATE ' . Db::t( 'broadcasts' ) . " SET status = 'done' WHERE status = 'sending'" ); // nessun'altra comunicazione in coda davanti a questa
+wp_clear_scheduled_hook( \AssociazioneSemplice\Broadcasts::HOOK );
+$b6  = \AssociazioneSemplice\Broadcasts::create( 'Avviso sotto tetto', 'Un messaggio per tutti.', 'members_all' );
+$b6a = \AssociazioneSemplice\Broadcasts::get( $b6 );
+asem_ok( (int) $b6a['total'] > 30 && 'sending' === $b6a['status'] && 15 === (int) $b6a['sent'] && 15 === count( $bc_mail ), 'tetto email: la comunicazione parte solo per quanto resta del tetto (15 su ' . (int) $b6a['total'] . ')' );
+\AssociazioneSemplice\Broadcasts::process_all();
+asem_ok( 15 === (int) \AssociazioneSemplice\Broadcasts::get( $b6 )['sent'] && 15 === count( $bc_mail ), 'tetto email: a tetto raggiunto un altro giro non manda nulla' );
+asem_ok( false !== wp_next_scheduled( \AssociazioneSemplice\Broadcasts::HOOK ) && wp_next_scheduled( \AssociazioneSemplice\Broadcasts::HOOK ) >= \AssociazioneSemplice\MailBudget::resume_at() - 5, 'tetto email: il resto è programmato all\'ora piena dopo' );
+asem_ok( true === \AssociazioneSemplice\Texts::mail( 'singola.tetto@example.com', 'Conferma di prova', 'x' ) && in_array( 'singola.tetto@example.com', $bc_to(), true ), 'tetto email: un\'email singola parte anche a tetto raggiunto' );
+asem_ok( '' !== \AssociazioneSemplice\MailBudget::waiting_text() && false !== strpos( \AssociazioneSemplice\MailBudget::waiting_text(), '20' ), 'tetto email: la pagina delle comunicazioni dice che si aspetta l\'ora dopo' );
+\AssociazioneSemplice\MailBudget::$clock = time() + 3600; // l'ora dopo: altri 15
+\AssociazioneSemplice\Broadcasts::process_all();
+asem_ok( 30 === (int) \AssociazioneSemplice\Broadcasts::get( $b6 )['sent'], 'tetto email: all\'ora dopo riparte, altri 15' );
+Settings::update( array( 'limits' => is_array( $mb_lim ) ? $mb_lim : array() ) );
+add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
+for ( $i = 0; $i < 40 && 'sending' === \AssociazioneSemplice\Broadcasts::get( $b6 )['status']; $i++ ) {
+	\AssociazioneSemplice\Broadcasts::process_all();
+}
+$b6b   = \AssociazioneSemplice\Broadcasts::get( $b6 );
+$b6to  = array_values( array_filter( $bc_to(), function ( $a ) {
+	return 'singola.tetto@example.com' !== $a;
+} ) );
+asem_ok( 'done' === $b6b['status'] && (int) $b6b['sent'] === (int) $b6b['total'] && count( $b6to ) === (int) $b6b['total'], 'tetto email: alla fine tutti hanno ricevuto la comunicazione, una volta sola' );
+\AssociazioneSemplice\MailBudget::reset();
+$bc_mail = array();
 // destinatari scritti a blocchi: stessi destinatari, stesso ordine
 $bq_list = array();
 for ( $bq_i = 1; $bq_i <= 1203; $bq_i++ ) {
@@ -8065,13 +8333,66 @@ asem_ok( 200 === \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest
 asem_ok( 'asem-sw.js' === \AssociazioneSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/asem-sw.js' ), PHP_URL_PATH ) ) && 'asem-manifest.webmanifest' === \AssociazioneSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/asem-manifest.webmanifest?x=1' ), PHP_URL_PATH ) ) && null === \AssociazioneSemplice\Pwa::route_of( '/qualcosa-altro' ) && null === \AssociazioneSemplice\Pwa::route_of( '/asem-sw.js.php' ), 'app: gli indirizzi dell\'app si riconoscono (e solo quelli)' );
 $pw_sw = \AssociazioneSemplice\Pwa::response( 'asem-sw.js' );
 asem_ok( false !== strpos( $pw_sw['body'], "addEventListener('push'" ) && false !== strpos( $pw_sw['body'], "addEventListener('notificationclick'" ) && false !== strpos( $pw_sw['body'], 'asem-offline.html' ) && false !== strpos( $pw_sw['body'], 'const NAME = "Assoc App"' ) && false === strpos( $pw_sw['body'], '%VER%' ) && false === strpos( $pw_sw['body'], '%AREA%' ) && 0 === strpos( $pw_sw['type'], 'application/javascript' ), 'app: il service worker gestisce offline e notifiche' );
-asem_ok( false !== strpos( $pw_sw['body'], "indexOf('/wp-admin')" ), 'app: il service worker non tocca le pagine di wp-admin né il login di WordPress' );
+asem_ok( false !== strpos( $pw_sw['body'], 'url.pathname !== AREA_PATH' ) && false !== strpos( $pw_sw['body'], 'const AREA_PATH = ' . wp_json_encode( \AssociazioneSemplice\Pwa::area_path(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';' ) && false === strpos( $pw_sw['body'], '%AREA_PATH%' ), 'app: il service worker intercetta solo la pagina dell\'area soci (non wp-admin, non il login, non il resto del sito)' );
+$pw_e1 = \AssociazioneSemplice\Pwa::etag( $pw_sw );
+asem_ok( 1 === preg_match( '/^"[0-9a-f]{32}"$/', $pw_e1 ) && $pw_e1 === \AssociazioneSemplice\Pwa::etag( \AssociazioneSemplice\Pwa::response( 'asem-sw.js' ) ) && $pw_e1 !== \AssociazioneSemplice\Pwa::etag( \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest' ) ) && \AssociazioneSemplice\Calendar::not_modified( $pw_e1, 0, $pw_e1, '' ) && ! \AssociazioneSemplice\Calendar::not_modified( $pw_e1, 0, '"altro"', '' ), 'app: worker e manifest hanno un ETag stabile, e chi ha già la versione riceve 304' );
+asem_ok( '' === \AssociazioneSemplice\Pwa::etag( array( 'status' => 404, 'body' => 'Non disponibile.' ) ), 'app: una risposta d\'errore non ha ETag' );
 asem_ok( 0 === strpos( \AssociazioneSemplice\Pwa::response( 'asem-icon-192.png' )['body'], "\x89PNG" ) && false !== strpos( \AssociazioneSemplice\Pwa::response( 'asem-offline.html' )['body'], 'Sei offline' ), 'app: icona generata e pagina offline' );
 ob_start();
 \AssociazioneSemplice\Pwa::print_head();
 $pw_head = ob_get_clean();
 \AssociazioneSemplice\Pwa::enqueue();
 asem_ok( false !== strpos( $pw_head, 'rel="manifest"' ) && false !== strpos( $pw_head, 'theme-color' ) && false !== strpos( $pw_head, 'apple-touch-icon' ) && wp_script_is( 'asem-pwa', 'enqueued' ), 'app: le pagine del sito collegano manifest, colore e script' );
+// l'app si carica e si registra solo nell'area soci o con una sessione
+$pw_area  = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Area prova app', 'post_content' => 'area' ) );
+$pw_other = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Altra pagina prova app', 'post_content' => 'altro' ) );
+$pw_area_before = (int) Settings::get( 'member_area_page_id' );
+Settings::update( array( 'member_area_page_id' => $pw_area ) );
+$pw_ms = new ReflectionProperty( \AssociazioneSemplice\MemberSession::class, 'current' );
+$pw_ms->setAccessible( true );
+$pw_query = function ( int $id ) {
+	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'page_id' => $id, 'post_type' => 'page', 'post_status' => 'publish' ) );
+};
+$pw_page = function ( int $id ) use ( $pw_query ) {
+	$pw_query( $id );
+	wp_dequeue_script( 'asem-pwa' );
+	ob_start();
+	\AssociazioneSemplice\Pwa::print_head();
+	$head = ob_get_clean();
+	\AssociazioneSemplice\Pwa::enqueue();
+	return array( 'head' => $head, 'script' => wp_script_is( 'asem-pwa', 'enqueued' ), 'on' => \AssociazioneSemplice\Pwa::should_register() );
+};
+wp_set_current_user( 0 );
+unset( $_COOKIE[ \AssociazioneSemplice\MemberSession::COOKIE ] );
+$pw_ms->setValue( null, null );
+$pw_v1 = $pw_page( $pw_other );
+asem_ok( ! $pw_v1['on'] && '' === $pw_v1['head'] && ! $pw_v1['script'], 'app: un visitatore su una pagina qualsiasi non carica né manifest né script (il service worker non si registra)' );
+$pw_v2 = $pw_page( $pw_area );
+asem_ok( $pw_v2['on'] && false !== strpos( $pw_v2['head'], 'rel="manifest"' ) && $pw_v2['script'], 'app: nella pagina dell\'area soci manifest e script ci sono anche prima di entrare' );
+wp_set_current_user( 1 );
+$pw_v3 = $pw_page( $pw_other );
+asem_ok( $pw_v3['on'] && false !== strpos( $pw_v3['head'], 'rel="manifest"' ) && $pw_v3['script'], 'app: chi è entrato ha l\'app su qualsiasi pagina del sito' );
+Settings::update( array( 'pwa_enabled' => 0 ) );
+asem_ok( ! $pw_page( $pw_area )['on'], 'app: spenta, non si carica da nessuna parte' );
+Settings::update( array( 'pwa_enabled' => 1, 'member_area_page_id' => $pw_area_before ) );
+wp_delete_post( $pw_area, true );
+wp_delete_post( $pw_other, true );
+$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query();
+// l'icona generata è un file e non si ridisegna a ogni richiesta
+if ( '' === (string) get_site_icon_url( 192 ) && 0 === (int) Settings::get( 'pwa_icon_id' ) ) {
+	$pw_up   = wp_upload_dir( null, false );
+	$pw_ic1  = \AssociazioneSemplice\Pwa::icon_url( 192 );
+	$pw_path = $pw_up['basedir'] . '/asem-pwa/' . basename( $pw_ic1 );
+	asem_ok( 0 === strpos( $pw_ic1, $pw_up['baseurl'] . '/asem-pwa/icon-192-' ) && is_file( $pw_path ) && 0 === strpos( (string) file_get_contents( $pw_path ), "\x89PNG" ), 'app: l\'icona generata è un file nei caricamenti' );
+	touch( $pw_path, time() - 5000 );
+	clearstatcache();
+	$pw_mt = filemtime( $pw_path );
+	asem_ok( $pw_ic1 === \AssociazioneSemplice\Pwa::icon_url( 192 ) && $pw_mt === filemtime( $pw_path ) && file_get_contents( $pw_path ) === \AssociazioneSemplice\Pwa::response( 'asem-icon-192.png' )['body'], 'app: l\'icona non si riscrive a ogni richiesta e l\'indirizzo diretto serve lo stesso file' );
+	Settings::update( array( 'accent_color' => '#aa3300' ) );
+	$pw_ic2 = \AssociazioneSemplice\Pwa::icon_url( 192 );
+	asem_ok( $pw_ic2 !== $pw_ic1 && is_file( $pw_up['basedir'] . '/asem-pwa/' . basename( $pw_ic2 ) ) && ! is_file( $pw_path ), 'app: cambiando colore l\'icona si rifà e quella vecchia si toglie' );
+	Settings::update( array( 'accent_color' => '#336699' ) );
+}
 $pw_card = \AssociazioneSemplice\Frontend\ProViews::section_app( $people->get( $rg_p ) );
 asem_ok( false !== strpos( $pw_card, 'data-asem-install' ) && false !== strpos( $pw_card, 'data-asem-push-on' ), 'app: nell\'area soci compaiono installazione e notifiche' );
 Settings::update( array( 'push_enabled' => 0 ) );
@@ -8935,6 +9256,20 @@ asem_ok( '2026/2027' === $ra_row( $ra_b )['social_year'] && '2027-08-31' === $ra
 asem_ok( (int) $ra_e === (int) $ra_row( $ra_d )['replaced_by'] && null === $ra_row( $ra_e )['replaced_by'] && '2025/2026' === $ra_row( $ra_d )['social_year'], 'tessera e anno fiscale: due tessere dello stesso anno, resta la più recente e l\'altra è «sostituita» (non cancellata)' );
 asem_ok( in_array( 'membership.realigned', array_column( Audit::recent( 50 ), 'action' ), true ) && in_array( 'membership.replaced', array_column( Audit::recent( 50 ), 'action' ), true ), 'tessera e anno fiscale: ogni passo è nel registro azioni' );
 asem_ok( 0 === \AssociazioneSemplice\Install::realign_memberships_to_fiscal(), 'tessera e anno fiscale: rilanciare il riallineamento non cambia nulla' );
+// Il segnale «riallineamento da fare» sta nell'opzione riunita (nessuna query a ogni pagina); una vecchia opzione «0» si legge una volta sola
+\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Install::REALIGN_KEY );
+delete_option( \AssociazioneSemplice\Install::REALIGN_OPTION );
+\AssociazioneSemplice\Install::maybe_realign_memberships(); // la prima volta cerca anche la vecchia opzione e ricorda che non c'è
+$ra_q = $wpdb->num_queries;
+for ( $ra_i = 0; $ra_i < 10; $ra_i++ ) {
+	\AssociazioneSemplice\Install::maybe_realign_memberships();
+}
+asem_ok( 0 === $wpdb->num_queries - $ra_q, 'tessera e anno fiscale: senza riallineamento da fare il controllo di ogni pagina non fa query (' . ( $wpdb->num_queries - $ra_q ) . ')' );
+update_option( \AssociazioneSemplice\Install::REALIGN_OPTION, '0', false );
+\AssociazioneSemplice\BootState::forget( \AssociazioneSemplice\Install::REALIGN_KEY );
+\AssociazioneSemplice\Install::maybe_realign_memberships();
+asem_ok( '1' === (string) \AssociazioneSemplice\BootState::get( \AssociazioneSemplice\Install::REALIGN_KEY ), 'tessera e anno fiscale: un riallineamento chiesto con la vecchia opzione si fa e si segna come fatto' );
+delete_option( \AssociazioneSemplice\Install::REALIGN_OPTION );
 $ra_nt = (array) get_option( \AssociazioneSemplice\Install::NOTICE_OPTION, array() );
 asem_ok( (int) ( $ra_nt['changed'] ?? 0 ) >= 1 && (int) ( $ra_nt['replaced'] ?? 0 ) >= 1, 'tessere e anno fiscale: l\'esito (riallineate e sostituite) resta per l\'avviso in Bacheca' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Tessere riallineate: ' . (int) $ra_nt['changed'] . '. Tessere sostituite: ' . (int) $ra_nt['replaced'] );
@@ -9764,6 +10099,23 @@ asem_render( array( Admin\BookDeskPage::class, 'render' ), 'prossime date', arra
 \AssociazioneSemplice\Texts::mail( 'prova@example.com', 'Prova registro', 'x' );
 $bd_log = \AssociazioneSemplice\MailLog::recent( 1 );
 asem_ok( $bd_log && 'Prova registro' === $bd_log[0]['what'] && 'p***@example.com' === $bd_log[0]['to'], 'posta: l\'esito resta nel registro con l\'indirizzo in parte nascosto' );
+// Registro della posta: una sola scrittura a fine richiesta, non una per ogni email; le letture vedono subito anche quelle non ancora scritte
+\AssociazioneSemplice\MailLog::flush();
+$ml_writes = 0;
+$ml_count  = static function ( $v ) use ( &$ml_writes ) {
+	++$ml_writes;
+	return $v;
+};
+add_filter( 'pre_update_option_' . \AssociazioneSemplice\MailLog::OPTION, $ml_count );
+for ( $ml_i = 1; $ml_i <= 6; $ml_i++ ) {
+	\AssociazioneSemplice\Texts::mail( 'registro' . $ml_i . '@example.com', 'Registro ' . $ml_i, 'x' );
+}
+asem_ok( 0 === $ml_writes && 'Registro 6' === \AssociazioneSemplice\MailLog::recent( 1 )[0]['what'] && 'Registro 1' === \AssociazioneSemplice\MailLog::recent( 6 )[5]['what'], 'posta: sei email non scrivono ancora nulla, ma il registro le mostra già tutte (' . $ml_writes . ' scritture)' );
+\AssociazioneSemplice\MailLog::flush();
+\AssociazioneSemplice\MailLog::flush();
+$ml_stored = (array) get_option( \AssociazioneSemplice\MailLog::OPTION, array() );
+asem_ok( 1 === $ml_writes && 'Registro 6' === end( $ml_stored )['what'] && count( $ml_stored ) <= \AssociazioneSemplice\MailLog::KEEP, 'posta: a fine richiesta una sola scrittura per tutte le email, e un secondo giro non riscrive nulla (' . $ml_writes . ' scritture)' );
+remove_filter( 'pre_update_option_' . \AssociazioneSemplice\MailLog::OPTION, $ml_count );
 // ---------- Listini, pacchetti e ospiti dell'associazione / del volontario ----------
 $pl_vol = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Livia', 'last_name' => 'Listino', 'email' => 'livia.listino@example.com' ) );
 $pl_a   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anna', 'last_name' => 'Listino', 'email' => 'anna.listino@example.com' ) );
@@ -10088,6 +10440,7 @@ asem_ok( ! empty( $ap_row['privacy_consent_at'] ) && 'web' === $ap_row['privacy_
 asem_ok( array() === array_filter( $people->search( array( 'q' => 'Adesioni' ) ), function ( $x ) { return 'Aldo' === $x['first_name']; } ) && array() === array_filter( \AssociazioneSemplice\MemberBook::rows(), function ( $x ) use ( $ap_aldo ) { return (int) $x['id'] === $ap_aldo; } ) && false === strpos( Admin\Exports::people()[1], 'aldo.adesioni' ), 'domanda: fuori da elenco soci, libro soci ed esportazione' );
 asem_ok( count( $ap_mails ) === $ap_mn + 3 && null !== $ap_mail_to( 'segreteria.adesioni@example.com' ) && null !== $ap_mail_to( 'aldo.adesioni@example.com' ), 'domanda: email alla segreteria e conferma a chi l\'ha inviata' );
 asem_ok( false !== strpos( (string) $ap_mail_to( 'aldo.adesioni@example.com' )['message'], 'si paga in sede' ), 'domanda: senza pagamento online la quota si paga in sede' );
+\AssociazioneSemplice\MailLog::flush(); // il registro si scrive a fine richiesta: qui si vuole leggerlo dall'opzione
 $ap_log = (array) get_option( \AssociazioneSemplice\MailLog::OPTION, array() );
 asem_ok( count( $ap_log ) >= 2 && false !== strpos( wp_json_encode( $ap_log ), 'Nuova domanda di adesione' ), 'domanda: le email passano dal registro della posta' );
 $ap_n    = count( $ap_mails );
@@ -11779,8 +12132,8 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::page(
 MemberSession::start( $ms_p );
 MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
-asem_ok( wp_next_scheduled( 'asem_purge_member_sessions' ) > 0, 'accesso proprio: pulizia giornaliera programmata' );
-asem_ok( wp_next_scheduled( 'asem_purge_applications' ) > 0, 'domande di adesione: pulizia giornaliera programmata' );
+asem_ok( \AssociazioneSemplice\Jobs::scheduled( 'asem_purge_member_sessions' ), 'accesso proprio: pulizia giornaliera programmata' );
+asem_ok( \AssociazioneSemplice\Jobs::scheduled( 'asem_purge_applications' ), 'domande di adesione: pulizia giornaliera programmata' );
 
 // ---------- Cache di pagina: pagine con sessione socio valida e contenuti riservati ----------
 $nc_hits  = 0;
@@ -11845,6 +12198,7 @@ asem_ok( ! wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina senza 
 $nc_early( $nc_p_list );
 \AssociazioneSemplice\Frontend\Assets::early_enqueue();
 asem_ok( wp_style_is( 'asem-frontend', 'enqueued' ), 'stili: una pagina con una vista del plugin li chiede subito, per l\'intestazione' );
+asem_ok( wp_script_is( 'asem-frontend', 'enqueued' ) && ( version_compare( (string) get_bloginfo( 'version' ), '6.3', '<' ) || 'defer' === wp_scripts()->get_data( 'asem-frontend', 'strategy' ) ), 'script: quello del plugin è in fondo alla pagina e, da WordPress 6.3, con defer' );
 wp_dequeue_style( 'asem-frontend' );
 wp_dequeue_script( 'asem-frontend' );
 $nc_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Cache', 'last_name' => 'Prova' ) );
@@ -13835,12 +14189,25 @@ asem_ok( 'ok' === \AssociazioneSemplice\FileKey::state() && 0 === $bf_RF::pendin
 // verifica e archivio ZIP dell'anno
 $pf_v   = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 $pf_num = (int) \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['number'];
+$pf_s0  = \AssociazioneSemplice\FileCrypt::$streams;
 $pf_zip = \AssociazioneSemplice\ReceiptFiles::zip_year( $pf_fy );
+$pf_sn  = \AssociazioneSemplice\FileCrypt::$streams - $pf_s0;
+asem_ok( $pf_zip['count'] >= 5 && $pf_sn >= 1 && $pf_sn <= $pf_zip['count'], 'ricevute PDF: lo ZIP decifra ogni PDF una volta sola (' . $pf_sn . ' decifrature per ' . $pf_zip['count'] . ' PDF nell\'archivio)' );
 $pf_zz  = new ZipArchive();
 $pf_zz->open( $pf_zip['path'] );
 $pf_zv  = false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf', $pf_fy, $pf_num, $pf_fy ) ) && false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d-annullata.pdf', $pf_fy, (int) \AssociazioneSemplice\Receipts::record( $pf_key[5300] )['number'], $pf_fy ) );
 $pf_zc  = (string) $pf_zz->getFromName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf', $pf_fy, $pf_num, $pf_fy ) );
 $pf_zl  = (string) $pf_zz->getFromName( 'LEGGIMI.txt' );
+$pf_shas = array_merge( $wpdb->get_col( $wpdb->prepare( 'SELECT pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND pdf_sha256 IS NOT NULL', $pf_fy ) ), $wpdb->get_col( $wpdb->prepare( 'SELECT void_pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND void_pdf_sha256 IS NOT NULL', $pf_fy ) ) );
+$pf_zn   = 0;
+$pf_zok  = true;
+for ( $pf_zi = 0; $pf_zi < $pf_zz->numFiles; $pf_zi++ ) {
+	if ( 0 === strpos( (string) $pf_zz->getNameIndex( $pf_zi ), 'ricevute-' ) ) {
+		$pf_zn++;
+		$pf_zok = $pf_zok && in_array( hash( 'sha256', (string) $pf_zz->getFromIndex( $pf_zi ) ), $pf_shas, true );
+	}
+}
+asem_ok( $pf_zok && $pf_zn === $pf_zip['count'], 'ricevute PDF: ogni PDF nello ZIP ha l\'impronta registrata nel database (' . $pf_zn . ' file)' );
 $pf_zz->close();
 wp_delete_file( $pf_zip['path'] );
 $pf_tmpd = \AssociazioneSemplice\PrivateFolder::dir() . '/' . \AssociazioneSemplice\PrivateFolder::TEMP_DIR;
@@ -14200,9 +14567,17 @@ asem_ok( in_array( 'account_date', $ix_cols, true ) && in_array( 'document_ref',
 asem_ok( false !== strpos( $ix_plan( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE document_ref = 'xyz-nessuno' AND method = 'cash' AND type = 'income'" ), 'document_ref' ), 'indici: la ricerca per riferimento del documento usa l\'indice' );
 
 require __DIR__ . '/smoke_import_blocks.php'; // importazione di soci a giri, con ripresa: stesso risultato della vecchia versione
+require __DIR__ . '/smoke_import_perf.php'; // importazione e annullo: richieste al database per riga, anteprima e piano su file
 require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme del database identiche al calcolo di prima
 require __DIR__ . '/smoke_letture_a_blocchi.php'; // Bacheca, elenco e scheda di corsi ed eventi: letture a blocchi uguali a quelle una per una
+require __DIR__ . '/smoke_tessere_in_blocco.php'; // tessere in PDF per molti soci: query in blocco, QR a un bit, parti da 500
+require __DIR__ . '/smoke_scheda_evento.php'; // scheda di un evento con anagrafica grande: ricerca al posto delle tendine, date a blocchi
+require __DIR__ . '/smoke_lavori.php'; // lavori periodici: due soli eventi, giro in fila con tempo massimo, passaggio dai vecchi eventi
+require __DIR__ . '/smoke_azioni.php'; // azioni di admin-post e admin-ajax: con un'azione chiesta si registra solo la sua, e ognuna resta raggiungibile
+require __DIR__ . '/smoke_db_engine.php'; // motore delle tabelle: controllo, avviso e conversione a tappe in InnoDB
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
+require __DIR__ . '/smoke_schema_e_export.php'; // esportazioni a blocchi, saldi una volta per richiesta, schema a tappe
+require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );

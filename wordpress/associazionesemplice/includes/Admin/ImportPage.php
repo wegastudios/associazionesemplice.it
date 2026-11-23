@@ -21,7 +21,7 @@ final class ImportPage {
 	public static function render(): void {
 		Ui::header( 'Importa da Excel o CSV', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-people' ) ) . '">← Soci</a>' );
 		$token = Ui::get_str( 'token' );
-		$prev  = '' !== $token ? get_transient( 'asem_import_' . get_current_user_id() . '_' . sanitize_key( $token ) ) : null;
+		$prev  = '' !== $token ? \AssociazioneSemplice\ImportPlans::load_preview( get_current_user_id(), $token ) : null;
 		$job   = \AssociazioneSemplice\ImportJob::current();
 		if ( $job ) { // un'importazione a metà: prima si finisce o si ferma, poi si carica un altro file
 			self::progress( $job );

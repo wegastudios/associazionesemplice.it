@@ -24,6 +24,9 @@ final class License {
 	const OPT_MEMO        = 'asem_license_memo';
 	/** Per quanto si ricorda un esito verificato: 12 ore, cioè al massimo due controlli al giorno. */
 	const MEMO_TTL        = 12 * HOUR_IN_SECONDS;
+	/** Firme già verificate (solo senza sodium nativo, dove ogni verifica costa decine di millisecondi): ricordate per un giorno, firmate con i codici di sicurezza del sito. */
+	const OPT_VMEMO       = 'asem_license_vmemo';
+	const VMEMO_TTL       = DAY_IN_SECONDS;
 
 	/** Funzioni avanzate che si bloccano se la licenza a pagamento non è in regola (solo con il plugin Pro installato). */
 	const FEATURES = array(
@@ -139,6 +142,7 @@ final class License {
 
 	/** Lo scrive la verifica con il server (e i test). */
 	public static function set_state( string $status, ?string $since = null, ?string $payment_url = null, ?string $plan = null, array $extra = array() ): void {
+		self::forget_verified(); // uno stato nuovo (revoca, scadenza, prova rinnovata) riparte dalla verifica vera
 		update_option(
 			self::OPT_STATE,
 			array( 'status' => $status, 'since' => $since, 'checked_at' => Db::now(), 'url' => $payment_url, 'plan' => $plan ) + $extra
@@ -189,6 +193,65 @@ final class License {
 		return (string) $s['status'];
 	}
 
+	/** @var bool|null */
+	private static $native_sodium = null;
+
+	/** Prova per i test: true/false forza «sodium nativo sì/no», null torna al controllo vero. */
+	public static function set_native_sodium_override( ?bool $v ): void {
+		self::$native_sodium = $v;
+	}
+
+	/** Con l'estensione sodium di PHP la verifica della firma costa pochi microsecondi: non serve ricordarne l'esito. */
+	private static function native_sodium(): bool {
+		return null !== self::$native_sodium ? self::$native_sodium : extension_loaded( 'sodium' );
+	}
+
+	/** Firma di una voce ricordata: senza i codici di sicurezza del sito (wp-config.php) non si falsifica scrivendo nel database. */
+	private static function vmemo_mac( string $tag, string $fp, int $at, int $until, $result ): string {
+		return hash_hmac( 'sha256', (string) wp_json_encode( array( $tag, $fp, $at, $until, $result ) ), wp_salt( 'auth' ) );
+	}
+
+	/**
+	 * Esegue la verifica di una firma e, senza sodium nativo, ne ricorda per un giorno l'esito POSITIVO (mai un rifiuto). L'impronta lega l'esito alla
+	 * prova esatta, al prodotto, al dominio del sito e alla tolleranza; la voce vale al massimo fino alla scadenza della prova stessa (più la tolleranza)
+	 * e porta una firma fatta con i codici di sicurezza del sito. Una revoca, una scadenza o una prova nuova cambiano l'impronta o svuotano la memoria.
+	 *
+	 * @param callable $verify la verifica vera: restituisce null se la firma non regge
+	 * @return mixed il risultato della verifica
+	 */
+	private static function verified_once( string $tag, string $fingerprint, string $jwt, int $leeway, callable $verify ) {
+		if ( self::native_sodium() || '' === $jwt ) {
+			return $verify();
+		}
+		$fp  = hash( 'sha256', $fingerprint );
+		$now = time();
+		$all = get_option( self::OPT_VMEMO, array() );
+		$all = is_array( $all ) ? $all : array();
+		$e   = $all[ $tag ] ?? null;
+		if ( is_array( $e ) && isset( $e['f'], $e['at'], $e['until'], $e['h'] ) && array_key_exists( 'r', $e ) && is_string( $e['f'] ) && is_int( $e['at'] ) && is_int( $e['until'] ) && is_string( $e['h'] )
+			&& $e['f'] === $fp && $e['until'] > $now && $e['at'] <= $now + 60 && $e['until'] <= $e['at'] + self::VMEMO_TTL
+			&& hash_equals( self::vmemo_mac( $tag, $fp, $e['at'], $e['until'], $e['r'] ), $e['h'] ) ) {
+			return $e['r'];
+		}
+		$result = $verify();
+		if ( null === $result ) {
+			return null;
+		}
+		$until = min( $now + self::VMEMO_TTL, LicenseClient::jwt_expiry( $jwt ) + $leeway );
+		if ( $until > $now ) {
+			$all[ $tag ] = array( 'f' => $fp, 'at' => $now, 'until' => $until, 'r' => $result, 'h' => self::vmemo_mac( $tag, $fp, $now, $until, $result ) );
+			update_option( self::OPT_VMEMO, $all, true ); // pochi byte: caricata con le altre opzioni, senza una query in più
+		}
+		return $result;
+	}
+
+	/** Svuota le firme ricordate. */
+	public static function forget_verified(): void {
+		if ( false !== get_option( self::OPT_VMEMO, false ) ) {
+			delete_option( self::OPT_VMEMO );
+		}
+	}
+
 	/** Il livello della licenza dalla prova firmata dal portale (salvata nello stato), se regge; altrimenti null. (Si calcola una volta per richiesta.) */
 	private static function portal_plan( array $s ): ?string {
 		static $memo = array();
@@ -199,7 +262,10 @@ final class License {
 		$leeway = Limits::get( 'license_offline_days' ) * DAY_IN_SECONDS;
 		$key    = md5( $s['portal_attestation'] . '|' . $s['product'] . '|' . $domain . '|' . $leeway );
 		if ( ! array_key_exists( $key, $memo ) ) {
-			$memo[ $key ] = LicenseClient::portal_plan( $s['portal_attestation'], $s['product'], $domain, null, $leeway );
+			$att          = (string) $s['portal_attestation'];
+			$memo[ $key ] = self::verified_once( 'portal', $key, $att, $leeway, function () use ( $att, $s, $domain, $leeway ) {
+				return LicenseClient::portal_plan( $att, $s['product'], $domain, null, $leeway );
+			} );
 		}
 		return $memo[ $key ];
 	}
@@ -216,7 +282,10 @@ final class License {
 		$leeway = Limits::get( 'license_offline_days' ) * DAY_IN_SECONDS;
 		$key    = md5( $s['attestation'] . '|' . $s['product'] . '|' . $domain . '|' . $leeway );
 		if ( ! array_key_exists( $key, $memo ) ) {
-			$memo[ $key ] = '' === $s['attestation'] ? null : LicenseClient::verify_attestation( $s['attestation'], LicenseClient::jwks(), LicenseClient::ISSUER, $s['product'], $domain, null, $leeway );
+			$att          = (string) $s['attestation'];
+			$memo[ $key ] = '' === $att ? null : self::verified_once( 'att', $key, $att, $leeway, function () use ( $att, $s, $domain, $leeway ) {
+				return LicenseClient::verify_attestation( $att, LicenseClient::jwks(), LicenseClient::ISSUER, $s['product'], $domain, null, $leeway );
+			} );
 		}
 		return $memo[ $key ];
 	}
@@ -380,6 +449,7 @@ final class License {
 
 	/** Svuota la memoria dell'esito: chiave nuova o tolta, chiave illeggibile, dominio cambiato, disattivazione, disinstallazione. */
 	public static function forget(): void {
+		self::forget_verified();
 		if ( false !== get_option( self::OPT_MEMO, false ) ) {
 			delete_option( self::OPT_MEMO );
 		}

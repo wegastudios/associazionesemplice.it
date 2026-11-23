@@ -197,8 +197,11 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
 
 ## 7. Registro delle azioni e GDPR
 
-- `audit.log` **solo in aggiunta**: l'applicazione ha solo `INSERT` e `SELECT`; un trigger rifiuta modifiche e
-  cancellazioni anche al proprietario. Partizionato per mese (`audit.log_AAAA_MM`, più una partizione predefinita);
+- `audit.log` **solo in aggiunta**: le migrazioni concedono all'applicazione solo `INSERT` e `SELECT`, ma la protezione
+  non dipende dai permessi (il ruolo dell'applicazione può ereditarne altri dall'hosting): un trigger rifiuta modifiche
+  e cancellazioni anche al proprietario, salvo la cancellazione definitiva di un'associazione (le sole sue righe, a
+  blocchi, con la stessa regola dei movimenti della prima nota), e un trigger di istruzione rifiuta `TRUNCATE`, sulla
+  tabella e su ogni partizione, a chi non è il proprietario. Lo stesso vale per `app.transactions`. Partizionato per mese (`audit.log_AAAA_MM`, più una partizione predefinita);
   le partizioni si preparano in anticipo con `saas:audit:partitions`, ogni mese da cron. Ogni partizione ha la sua RLS.
   Il mese nuovo nasce come tabella a sé e poi si aggancia (`ATTACH PARTITION`: il registro resta scrivibile); la
   partizione predefinita deve restare vuota, perché l'aggancio la rilegge con il blocco forte (`saas:health` lo controlla).
@@ -211,7 +214,12 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   `HMAC(chiave del registro, sigillo precedente · forma canonica della riga)`. La chiave del registro è derivata da quella
   dell'associazione, quindi sta dietro il servizio chiavi: chi altera il database senza la chiave non riesce a
   ricostruire una catena valida. `audit.heads` tiene la testa e, bloccata con `FOR UPDATE`, serializza le scritture
-  della stessa associazione.
+  della stessa associazione. Dentro una transazione le righe si raccolgono e si legano alla catena tutte insieme come
+  ultima cosa prima della conferma (un blocco sulla testa, sempre dopo gli altri, e un inserimento multiplo); seguono
+  la transazione: un punto di salvataggio annullato toglie le sue righe. Numero e ora si assegnano con la testa
+  bloccata, quindi nella catena l'ordine dei numeri resta quello delle ore; l'ora vera dell'azione resta nei dettagli
+  (`action_at`, coperta dal sigillo) e l'esportazione la mostra come «Quando». Fuori da una transazione la riga si
+  scrive subito e `occurred_at` è l'ora dell'azione.
 - **Verifica**: `saas:audit:verify` (ogni notte da cron) ricalcola la catena e indica il primo punto rotto: riga
   modificata, tolta, aggiunta o testa non corrispondente.
 - **Copia della testa fuori dal database**: ogni giorno `saas:audit:heads:copy` salva nello spazio dei backup numero e

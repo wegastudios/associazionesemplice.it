@@ -8,6 +8,7 @@ use App\Modules\Cifratura\Keys\RemoteKeyVault;
 use App\Modules\Soci\Models\Person;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use KeyService\KeyWrap;
 use KeyService\MemoryNonceStore;
@@ -29,7 +30,7 @@ beforeEach(function (): void {
         if ($this->down) {
             return Http::response(['error' => 'non disponibile'], 503);
         }
-        $result = $service->handle('POST', $request->body(), $request->header(Protocol::SIGNATURE_HEADER)[0] ?? null, '127.0.0.1', time());
+        $result = $service->handle('POST', $request->body(), $request->header(Protocol::SIGNATURE_HEADER)[0] ?? null, '127.0.0.1', Date::now()->getTimestamp());
 
         return Http::response($result['body'], $result['status']);
     }]);

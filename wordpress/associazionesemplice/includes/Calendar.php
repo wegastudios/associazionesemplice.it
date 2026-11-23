@@ -12,10 +12,6 @@ final class Calendar {
 	const SALT_OPTION = 'asem_ical_salt';
 	const QUERY_VAR   = 'asem_ical';
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'serve' ), 1 );
-	}
-
 	// ---------- Date ----------
 
 	/**

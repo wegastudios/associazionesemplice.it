@@ -79,12 +79,19 @@ jobs:
         with:
           node-version: 20
       - name: Start WordPress (wp-env)
-        run: npx --yes @wordpress/env start
+        run: |
+          # misura del costo fisso per richiesta (tests/ci/costo-fisso.sh): un mu-plugin che lavora solo con l'intestazione X-Asem-Costo
+          echo '{ "mappings": { "wp-content/mu-plugins": "./associazionesemplice/tests/ci/mu" } }' > .wp-env.override.json
+          npx --yes @wordpress/env start
       - name: Remove the advanced files
         run: |
           grep -v '^#' associazionesemplice/tests/pro-files.txt | grep -v '^$' | while read -r f; do rm -v "associazionesemplice/includes/$f"; done
       - name: Run the free edition smoke test
         run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/smoke_free.php
+      - name: Fixed cost per request (PHP files of the plugin read, classes loaded)
+        run: |
+          ck="$(npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/ci/costo-fisso-cookie.php 2>/dev/null | grep '^ASEMCOOKIE=' | sed 's/^ASEMCOOKIE=//' | tr -d '\r')"
+          bash associazionesemplice/tests/ci/costo-fisso.sh http://localhost:8888 "$ck"
       - name: Debug log
         if: failure()
         run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
@@ -113,11 +120,17 @@ jobs:
               "https://downloads.wordpress.org/plugin/wp-all-import.latest-stable.zip",
               "https://downloads.wordpress.org/plugin/woocommerce.latest-stable.zip"
             ],
+            "mappings": { "wp-content/mu-plugins": "./free/associazionesemplice/tests/ci/mu" },
             "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
           }
           JSON
           npx --yes @wordpress/env start
           npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/smoke.php
+      - name: Fixed cost per request (PHP files of the plugin read, classes loaded)
+        working-directory: wordpress/dist
+        run: |
+          ck="$(npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/ci/costo-fisso-cookie.php 2>/dev/null | grep '^ASEMCOOKIE=' | sed 's/^ASEMCOOKIE=//' | tr -d '\r')"
+          bash free/associazionesemplice/tests/ci/costo-fisso.sh http://localhost:8888 "$ck"
       - name: Debug log
         if: failure()
         working-directory: wordpress/dist
@@ -177,6 +190,15 @@ jobs:
         run: bash wordpress/build.sh wordpress/dist
       - name: The free package has no trace of the Pro functions
         run: bash wordpress/check-free-clean.sh --strict
+      - name: Front-end style sheet and script are minified in the package and still valid
+        run: |
+          for f in frontend.css frontend.js; do
+            a=$(wc -c < "wordpress/dist/free/associazionesemplice/assets/$f"); b=$(wc -c < "wordpress/associazionesemplice/assets/$f")
+            echo "$f: $b -> $a bytes"
+            [ "$a" -lt "$b" ] || { echo "$f non ridotto nel pacchetto" >&2; exit 1; }
+          done
+          node --check wordpress/dist/free/associazionesemplice/assets/frontend.js
+          grep -q 'asemf-form input\[type="tel"\]' wordpress/dist/free/associazionesemplice/assets/frontend.css
       - name: Only the portal package declares the portal contact (WordPress.org package does not)
         run: |
           grep -q 'associazionesemplice.it/api/plugin/update' wordpress/dist/free/associazionesemplice/readme.txt

@@ -29,12 +29,6 @@ final class Application {
 	const MESSAGE     = 'Ultimo passo: controlla la posta. Ti è arrivata un\'email con un link: aprilo e premi il pulsante, così la domanda arriva alla segreteria. Il link vale 48 ore. Se non la trovi, guarda nella posta indesiderata; se non arriva, riprova tra un\'ora.';
 	const LINK_BAD    = 'Il link non vale più: è scaduto o è già stato usato. Se vuoi, compila di nuovo il modulo.';
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'handle_confirm' ), 1 );
-		add_action( 'template_redirect', array( __CLASS__, 'handle_pay' ), 1 );
-		add_action( 'template_redirect', array( \AssociazioneSemplice\GuardianConsent::class, 'handle' ), 1 ); // conferma del genitore di un minore già in anagrafica
-	}
-
 	// ---------- Gettone del modulo ----------
 
 	public static function make_token( int $now ): string {

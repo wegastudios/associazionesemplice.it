@@ -121,7 +121,18 @@ register_activation_hook(
 add_action(
 	'plugins_loaded',
 	function () {
-		asem_pro_updater();
+		if ( is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+			asem_pro_updater();
+		} else {
+			// Sul sito pubblico l'aggiornatore non si legge nemmeno: si carica solo se WordPress lavora sugli aggiornamenti dei plugin (ad esempio chiesti da remoto).
+			$load = static function ( $value = null ) {
+				asem_pro_updater(); // si registra una volta sola; i suoi hook si aggiungono mentre WordPress esegue quello in corso
+				return $value;
+			};
+			foreach ( array( 'pre_set_site_transient_update_plugins', 'plugins_api', 'upgrader_pre_download', 'upgrader_process_complete' ) as $hook ) {
+				add_filter( $hook, $load, 1 );
+			}
+		}
 		$problem = asem_pro_problem();
 		if ( '' !== $problem && defined( 'ASEM_API' ) && ASEM_API !== ASEM_PRO_API ) {
 			asem_pro_updater_basics(); // livello di compatibilità diverso: le classi del Pro non si caricano, ma l'aggiornamento deve funzionare
