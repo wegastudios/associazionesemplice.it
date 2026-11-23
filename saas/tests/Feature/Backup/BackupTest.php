@@ -204,7 +204,7 @@ it('tiene 48 ore di dump orari e poi uno al giorno per 30 giorni', function (): 
 
 it('cifra a flusso nello stesso formato: il vecchio lettore apre il file a qualsiasi dimensione e pezzatura', function (int $size, int $feed): void {
     $pair = sodium_crypto_box_keypair();
-    $plain = random_bytes($size);
+    $plain = $size === 0 ? '' : random_bytes($size);
     $meta = ['created_at' => '2026-11-20T10:00:00Z', 'database' => 'shared', 'env' => 'testing'];
 
     $encryptor = new BackupEncryptor(sodium_crypto_box_publickey($pair), $meta);
