@@ -79,11 +79,15 @@ health --skip-migrations
 PREVIOUS="$(readlink "$BASE/current" 2>/dev/null || true)"
 ln -sfn "$RELEASE" "$BASE/current.new" && mv -Tf "$BASE/current.new" "$BASE/current"
 "$PHP" artisan queue:restart
+# Il PHP web riparte dal codice nuovo: OPcache e cache dei percorsi azzerati con la rotta firmata, poi due richieste di
+# riscaldamento. Al meglio: se non risponde si prosegue (il controllo dei file ogni 2 secondi porta comunque il codice nuovo).
+"$PHP" artisan saas:web:refresh || echo "Azzeramento di OPcache non riuscito: si prosegue." >&2
 
 if ! health; then
     echo "Controllo di salute fallito dopo il cambio: torno alla versione precedente." >&2
     if [ -n "$PREVIOUS" ]; then
         ln -sfn "$PREVIOUS" "$BASE/current.new" && mv -Tf "$BASE/current.new" "$BASE/current"
+        ( cd "$PREVIOUS" && "$PHP" artisan saas:web:refresh --no-warm ) || true
     fi
     exit 1
 fi

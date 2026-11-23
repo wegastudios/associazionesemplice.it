@@ -6,9 +6,11 @@ use App\Modules\Portale\Http\Controllers\CatalogController;
 use App\Modules\Portale\Http\Controllers\PortalApiController;
 use App\Modules\Portale\Http\Controllers\PortalServicesController;
 use App\Modules\Portale\Http\Controllers\RuntimeController;
+use App\Modules\Portale\Http\Controllers\RuntimeResetController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
 use App\Modules\Portale\Http\Middleware\ThrottlePortalApi;
 use App\Modules\Portale\Http\Middleware\ThrottleRuntimeApi;
+use App\Modules\Portale\Http\Middleware\ThrottleRuntimeResetApi;
 use Illuminate\Support\Facades\Route;
 
 // API per il portale: niente sessione, niente CSRF, solo token firmati.
@@ -34,6 +36,9 @@ Route::prefix('api/portale/v2')->middleware(ThrottlePortalApi::class)->group(fun
 
 // Come gira il PHP web (SAPI, APCu, OPcache): token firmato dal SaaS stesso, ambito e tipo propri, nessun dato.
 Route::post('api/portale/v2/runtime', RuntimeController::class)->middleware(ThrottleRuntimeApi::class);
+
+// Dopo il rilascio: azzera OPcache e la cache dei percorsi del PHP web (H22). Stessa firma, tipo e destinatario propri, nessun parametro.
+Route::post('api/portale/v2/runtime/reset', RuntimeResetController::class)->middleware(ThrottleRuntimeResetApi::class);
 
 // Catalogo pubblico e firmato: piani, prezzi e promozioni che il portale legge (§2).
 Route::get('api/catalogo/v1', CatalogController::class)->middleware('throttle:portal-api');
