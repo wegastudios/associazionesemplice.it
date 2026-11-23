@@ -49,13 +49,14 @@ $memberArea = function (): void {
 };
 
 Route::domain('{org}.'.(is_string($domain) ? $domain : 'associazionesemplice.it'))->where(['org' => '[a-z0-9-]{3,40}'])
-    ->middleware(['web', 'member-org'])->prefix('area')->group($memberArea);
+    ->middleware(['web', 'cookie-session', 'member-org'])->prefix('area')->group($memberArea);
 
 Route::name('custom.')->domain('{host}')->where(['host' => '[a-z0-9]([a-z0-9.-]{2,251}[a-z0-9])?'])
-    ->middleware(['web', 'member-org'])->prefix('area')->group($memberArea);
+    ->middleware(['web', 'cookie-session', 'member-org'])->prefix('area')->group($memberArea);
 
 // Donazione pubblica, senza accesso e aperta anche ai non soci: pochi invii per indirizzo e per associazione.
-Route::middleware('web')->group(function (): void {
+// Come l'area soci, sessione nel cookie (marchio «cookie-session»): niente riga nel database per ogni visita.
+Route::middleware(['web', 'cookie-session'])->group(function (): void {
     Route::get('/dona/{slug}', [PublicDonationController::class, 'show'])->name('donation.form');
     Route::post('/dona/{slug}', [PublicDonationController::class, 'store'])->middleware('throttle:donations')->name('donation.submit');
     Route::get('/dona/{slug}/{payment}/esito', [PublicDonationController::class, 'result'])->whereUuid('payment')->name('donation.result');

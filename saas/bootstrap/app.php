@@ -15,6 +15,7 @@ use App\Modules\Core\Http\Middleware\ResolveProxyClient;
 use App\Modules\Core\Http\Middleware\RestrictToAppHost;
 use App\Modules\Core\Http\Middleware\SecurityHeaders;
 use App\Modules\Core\Http\Middleware\ThrottleAccountSecurity;
+use App\Modules\Core\Http\Middleware\UseCookieSession;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
 use App\Modules\Piattaforma\Http\Middleware\UsePublicStaffUrl;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -41,7 +42,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(SecurityHeaders::class);
 
         // Sotto il percorso dell'amministrazione la sessione ha cookie, percorso e guardia propri: va prima di tutto.
-        $middleware->web(prepend: [UsePlatformSession::class], append: [EnforceSessionLimits::class, ThrottleAccountSecurity::class, EnsureUserActive::class, DemoRestrictions::class, HandleInertiaRequests::class]);
+        // Area soci e moduli pubblici (rotte con il marchio «cookie-session»): sessione nel cookie, non nel database (H19).
+        $middleware->web(prepend: [UsePlatformSession::class, UseCookieSession::class], append: [EnforceSessionLimits::class, ThrottleAccountSecurity::class, EnsureUserActive::class, DemoRestrictions::class, HandleInertiaRequests::class]);
         $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: UsePlatformSession::class);
         $middleware->encryptCookies();
         $middleware->redirectGuestsTo('/accesso');
@@ -51,6 +53,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'two-factor' => EnsureTwoFactorConfirmed::class,
             'operator' => IdentifyOperatorOrg::class,
             'db.long' => LongDatabaseTimeouts::class,
+            UseCookieSession::MARKER => UseCookieSession::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
