@@ -22,7 +22,8 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
  *
  * - Posta ferma dopo un rifiuto del server: i massivi ripartono quando l'interruttore si spegne, senza provare; degli
  *   urgenti ne passa uno ogni 10 minuti come prova (MailQueue::startProbe): se parte, l'interruttore si chiude.
- *   Il rifiuto per limite orario dell'account (testo «max emails per hour» o «exceeded») è sempre l'interruttore.
+ *   Il rifiuto per limite orario dell'account (testo «max emails per hour», o «exceeded» accanto a «per hour» o «emails per») è sempre
+ *   l'interruttore.
  * - Tetti della coda del lavoro (MailQueue::limits), più quelli di un limitatore del modulo se indicato (RateLimiter::for):
  *   oltre, il lavoro riparte più tardi. Le chiavi sono quelle dei tetti, così tutti i lavori contano sugli stessi.
  * - Rifiuto o errore del server di posta: il lavoro riparte tra un'ora e la posta del mailer si ferma per tutti (oltre il
@@ -93,8 +94,9 @@ final class ThrottledMail
     {
         $code = $e->getCode();
         // Limite orario dell'account (exim: «has exceeded the max emails per hour»): sempre l'interruttore, qualunque sia il
-        // codice esteso, e non conta come rifiuto del messaggio.
-        $hourLimit = preg_match('/max emails per hour|exceeded/i', $e->getMessage()) === 1;
+        // codice esteso, e non conta come rifiuto del messaggio. «exceeded» da solo no («quota exceeded» è la casella piena
+        // del destinatario): serve accanto a «per hour» o «emails per».
+        $hourLimit = preg_match('/max emails per hour|exceeded.{0,80}?(?:per hour|emails per)|(?:per hour|emails per).{0,80}?exceeded/i', $e->getMessage()) === 1;
         // Codici estesi x.1.x (indirizzo) e x.2.1/x.2.2 (casella disattivata o piena): riguardano il solo destinatario.
         $recipient = ! $hourLimit && preg_match('/\b([45])\.(?:1\.\d{1,3}|2\.[12])\b/', $e->getMessage(), $match) === 1;
 
