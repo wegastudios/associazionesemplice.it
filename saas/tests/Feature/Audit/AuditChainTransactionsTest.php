@@ -203,8 +203,10 @@ it('se le righe del registro non si legano, la transazione non si conferma e la 
     $before = $this->orgContext()->run($this->alfa, fn () => Person::query()->count());
 
     // Un'altra connessione tiene la testa: alla conferma il blocco scade.
+    // L'associazione si reimposta qui: l'ingresso nell'associazione qui sopra la azzera su tutte le connessioni aperte.
     $probe->beginTransaction();
-    $probe->select('SELECT 1 FROM audit.heads WHERE org_id = ? FOR UPDATE', [$this->alfa]);
+    $probe->select("SELECT set_config('app.org_id', ?, true)", [$this->alfa]);
+    expect($probe->select('SELECT 1 FROM audit.heads WHERE org_id = ? FOR UPDATE', [$this->alfa]))->toHaveCount(1);
     try {
         $this->orgContext()->run($this->alfa, function (): void {
             expect(fn () => DB::transaction(function (): void {
