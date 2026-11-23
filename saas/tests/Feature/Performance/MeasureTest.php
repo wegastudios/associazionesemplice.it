@@ -232,6 +232,8 @@ it('le query tipiche su movimenti e date degli eventi leggono da un indice, non 
         'transactions per socio' => ['SELECT * FROM app.transactions WHERE org_id = ? AND person_id = ?', [$a->id, $nil]],
         'transactions per attivita' => ['SELECT * FROM app.transactions WHERE org_id = ? AND activity_id = ?', [$a->id, $nil]],
         'transactions per ricevuta' => ['SELECT * FROM app.transactions WHERE org_id = ? AND receipt_id = ?', [$a->id, $nil]],
+        'rendiconto: entrate e uscite dell\'anno' => ["SELECT type, category_id, sum(amount_cents) FROM app.transactions WHERE org_id = ? AND fiscal_year = ? AND voided_at IS NULL AND type IN ('income', 'expense') GROUP BY type, category_id", [$a->id, $year]],
+        'rendiconto: movimenti di un conto da inizio anno' => ['SELECT sum(amount_cents) FROM app.transactions WHERE org_id = ? AND account_id = ? AND voided_at IS NULL AND tx_date >= ?', [$a->id, $nil, $year.'-01-01']],
         'activity_sessions prossime date' => ['SELECT * FROM app.activity_sessions WHERE org_id = ? AND session_date >= ? ORDER BY session_date LIMIT 50', [$a->id, now()->toDateString()]],
         'activity_sessions per attivita' => ['SELECT * FROM app.activity_sessions WHERE org_id = ? AND activity_id = ? ORDER BY session_date', [$a->id, $nil]],
         'activity_sessions per id' => ['SELECT * FROM app.activity_sessions WHERE org_id = ? AND id = ?', [$a->id, $nil]],
@@ -265,4 +267,20 @@ it('le query tipiche su movimenti e date degli eventi leggono da un indice, non 
     });
 
     expect($problems)->toBe([], implode('; ', $problems));
+});
+
+it('gli indici del rendiconto esistono, sono validi e contengono tipo e importo', function (): void {
+    $owner = DB::connection(app(DatabaseNames::class)->ownerConnection(null));
+    $rows = $owner->select(<<<'SQL'
+        SELECT c.relname AS name, i.indisvalid AS valid, pg_get_indexdef(i.indexrelid) AS def
+        FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'app' AND c.relname IN ('transactions_statement_year', 'transactions_statement_account')
+        ORDER BY c.relname
+    SQL);
+
+    expect(array_column($rows, 'name'))->toBe(['transactions_statement_account', 'transactions_statement_year'])
+        ->and(array_column($rows, 'valid'))->toBe([true, true]);
+    foreach ($rows as $r) {
+        expect($r->def)->toContain('INCLUDE (type, amount_cents)')->toContain('WHERE (voided_at IS NULL)');
+    }
 });

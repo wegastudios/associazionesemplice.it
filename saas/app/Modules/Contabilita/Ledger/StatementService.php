@@ -64,17 +64,20 @@ final readonly class StatementService
         $totalIncome = array_sum(array_column($income, 'cents'));
         $totalExpense = array_sum(array_column($expense, 'cents'));
 
+        // Saldi a ritroso dal saldo di oggi (app.account_balances: saldo iniziale più tutti i movimenti non stornati,
+        // tenuto dai trigger): si tolgono i movimenti da inizio anno in poi, senza rileggere quelli degli anni prima.
+        // Stesso risultato della somma di tutti i movimenti precedenti; i movimenti degli anni chiusi non cambiano più.
         $accounts = $c->select(<<<'SQL'
             SELECT a.name,
-                   a.opening_cents + coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END)
-                       FILTER (WHERE t.tx_date < ?), 0) AS opening,
-                   a.opening_cents + coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END)
-                       FILTER (WHERE t.tx_date <= ?), 0) AS closing
+                   b.balance_cents - coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END), 0) AS opening,
+                   b.balance_cents - coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END)
+                       FILTER (WHERE t.tx_date > ?), 0) AS closing
             FROM app.accounts a
-            LEFT JOIN app.transactions t ON t.org_id = a.org_id AND t.account_id = a.id AND t.voided_at IS NULL
-            GROUP BY a.id, a.name, a.opening_cents, a.sort_order
+            JOIN app.account_balances b ON b.org_id = a.org_id AND b.account_id = a.id
+            LEFT JOIN app.transactions t ON t.org_id = a.org_id AND t.account_id = a.id AND t.voided_at IS NULL AND t.tx_date >= ?
+            GROUP BY a.id, a.name, a.sort_order, b.balance_cents
             ORDER BY a.sort_order, a.name
-        SQL, [$fy->starts_on, $fy->ends_on]);
+        SQL, [$fy->ends_on, $fy->starts_on]);
 
         return [
             'year' => $year,
