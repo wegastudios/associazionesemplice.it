@@ -425,6 +425,7 @@ final class Backup {
 			'phase'       => 'tables',
 			'tables'      => $tables,
 			't'           => 0,      // tabella in corso
+			'keys'        => self::keyset_columns(), // tabella => colonna per andare avanti per chiave (null = si guarda tabella per tabella)
 			'col'         => null,   // colonna per andare avanti per chiave ('' = con OFFSET, se la tabella non ha una chiave primaria di una colonna sola)
 			'last'        => null,   // ultimo valore della chiave scritto
 			'off'         => 0,      // righe già lette (solo con OFFSET)
@@ -488,6 +489,36 @@ final class Backup {
 		return $fields;
 	}
 
+	/**
+	 * Le colonne per leggere le tabelle per chiave, tutte con una query sola: tabella => prima colonna, se è da sola la chiave primaria.
+	 * Se il server non risponde (permessi), null: allora si guarda tabella per tabella.
+	 *
+	 * @return array<string,string>|null
+	 */
+	private static function keyset_columns(): ?array {
+		$db   = Db::db();
+		$rows = $db->get_results(
+			$db->prepare(
+				'SELECT k.TABLE_NAME AS t, MIN(k.COLUMN_NAME) AS c, COUNT(*) AS n, MIN(f.COLUMN_NAME) AS f FROM information_schema.KEY_COLUMN_USAGE k'
+				. ' JOIN information_schema.COLUMNS f ON f.TABLE_SCHEMA = k.TABLE_SCHEMA AND f.TABLE_NAME = k.TABLE_NAME AND f.ORDINAL_POSITION = 1'
+				. " WHERE k.TABLE_SCHEMA = DATABASE() AND k.CONSTRAINT_NAME = 'PRIMARY' AND k.TABLE_NAME LIKE %s GROUP BY k.TABLE_NAME",
+				$db->esc_like( $db->prefix . 'asem_' ) . '%'
+			),
+			ARRAY_A
+		);
+		if ( ! $rows ) {
+			return null;
+		}
+		$out = array();
+		foreach ( $rows as $r ) {
+			$c = (string) $r['c'];
+			if ( 1 === (int) $r['n'] && $c === (string) $r['f'] && 1 === preg_match( '/^[A-Za-z0-9_]+$/', $c ) ) {
+				$out[ substr( (string) $r['t'], strlen( $db->prefix ) ) ] = $c;
+			}
+		}
+		return $out;
+	}
+
 	/** La colonna per leggere la tabella per chiave: la prima, se è da sola la chiave primaria (lo stesso ordine di «ORDER BY 1»); '' altrimenti. */
 	private static function keyset_column( string $tbl ): string {
 		$db   = Db::db();
@@ -522,7 +553,7 @@ final class Backup {
 			$name = (string) $s['tables'][ (int) $s['t'] ];
 			$tbl  = $db->prefix . $name;
 			if ( null === $s['col'] ) {
-				$s['col'] = self::keyset_column( $tbl );
+				$s['col'] = is_array( $s['keys'] ?? null ) ? (string) ( $s['keys'][ $name ] ?? '' ) : self::keyset_column( $tbl );
 			}
 			$f = $s['work'] . '/t-' . (int) $s['t'] . '.jsonl';
 			$h = fopen( $f, 'c+b' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- lettura/scrittura in streaming di file grandi
