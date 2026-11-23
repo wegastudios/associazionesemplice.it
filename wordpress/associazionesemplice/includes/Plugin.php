@@ -32,6 +32,9 @@ final class Plugin {
 	private static $services = array();
 
 	public static function init(): void {
+		if ( wp_using_ext_object_cache() ) {
+			SharedMemo::boot(); // con Redis, Memcached o simili alcune letture si ricordano tra le richieste; senza, la classe nemmeno si carica
+		}
 		if ( self::DB_VERSION !== (string) get_option( self::DB_VERSION_OPTION, '' ) ) {
 			Install::maybe_upgrade();
 		}

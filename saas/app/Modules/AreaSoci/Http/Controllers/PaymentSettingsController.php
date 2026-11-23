@@ -234,7 +234,7 @@ final readonly class PaymentSettingsController
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
-        $notice = $mailed ? 'Il socio è stato avvisato per email.' : 'Il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu.';
+        $notice = $mailed ? 'Il socio riceverà l\'avviso per email.' : 'Il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu.';
 
         // Dopo lo storno, prenotazioni e iscrizioni restano e tornano da pagare: lo si dice chiaro, senza lasciarlo indovinare.
         $stays = $before === null ? '' : OnlinePayments::staysNote($before['items']);

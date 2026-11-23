@@ -12,6 +12,10 @@ return [
         // Elenco dei database dedicati (pacchetto Database dedicato), fuori dal repository e dalla cartella
         // pubblica. Formato in App\Modules\Core\Database\DatabaseRegistry.
         'dedicated_file' => env('SAAS_DEDICATED_DB_FILE'),
+
+        // Attesa massima di un blocco forte (migrazioni, partizioni, potatura), poi si riprova: tre tentativi in tutto
+        // (App\Modules\Core\Contracts\ShortLocks). Dietro un'istruzione in fila si fermano tutte le query sulla tabella.
+        'lock_timeout' => env('SAAS_DB_LOCK_TIMEOUT', '3s'),
     ],
 
     'auth' => [
@@ -65,6 +69,10 @@ return [
     // Indirizzi da cui fidarsi degli X-Forwarded-* (il proxy del portale), separati da virgole; vuoto = nessuno.
     'trusted_proxies' => env('SAAS_TRUSTED_PROXIES', ''),
 
+    // Impostazioni della piattaforma lette all'avvio (PlatformConfig): si tengono, ancora cifrate, in questa cache per
+    // 5 minuti e si dimenticano a ogni salvataggio. «file» perché la cache generale dipende proprio da queste impostazioni.
+    'platform_settings_cache' => env('SAAS_PLATFORM_SETTINGS_CACHE', 'file'),
+
     // Registro delle query lente (millisecondi; 0 = spento). Scrive solo il testo della query con i segnaposto, mai i valori.
     'slow_query_ms' => (int) env('SAAS_SLOW_QUERY_MS', 200),
 
@@ -77,6 +85,13 @@ return [
         'long' => ['lock' => '30s', 'statement' => '900s', 'idle_in_transaction' => '300s'],
     ],
 
+    // Import di soci e prima nota in coda (H10, H11): righe per blocco (una transazione ciascuno) e secondi di lavoro per
+    // giro di coda; finiti i secondi, il lavoro si rimette in coda e riparte dal blocco successivo.
+    'imports' => [
+        'block' => (int) env('SAAS_IMPORT_BLOCK', 100),
+        'seconds_per_run' => (int) env('SAAS_IMPORT_SECONDS', 40),
+    ],
+
     // Indirizzo pubblico di /saas/admin e /saas/staff dietro il proxy del portale (https://associazionesemplice.it): gli
     // indirizzi scritti dal SaaS in quelle pagine partono da qui, mai dalle intestazioni della richiesta. Vuoto = nessuno.
     'public_url' => env('SAAS_PUBLIC_URL', ''),
@@ -85,6 +100,12 @@ return [
     // persona. L'anticipo massimo è solo quello indicato dalla risorsa (a zero: nessun limite).
     'resources' => [
         'member_max_active' => (int) env('SAAS_MEMBER_MAX_ACTIVE_BOOKINGS', 10),
+    ],
+
+    // Code: quanti lavoratori il cron tiene accesi insieme oltre a quello della posta urgente, che c'è sempre (1-2; il server
+    // ha 25 processi PHP in tutto, condivisi con il web). 2 = lavori brevi e lavori lunghi; 1 = uno per entrambi.
+    'queue' => [
+        'max_workers' => (int) env('SAAS_QUEUE_MAX_WORKERS', 2),
     ],
 
     // Promemoria delle scadenze: vanno in coda come posta massiva, un'email per lavoro (tetti in mail_queue). In più, un
@@ -107,6 +128,13 @@ return [
                 'bulk_per_minute' => (int) env('SAAS_MAIL_SMTP_BULK_PER_MINUTE', 3),
             ],
         ],
+    ],
+
+    // Copia di sicurezza completa (Core\Export\FullExports): si prepara in coda, a riposo è cifrata con la chiave
+    // dell'associazione e resta scaricabile per keep_hours ore (PHP la decifra mentre la manda); poi il file si cancella
+    // (saas:tmp:purge).
+    'export' => [
+        'keep_hours' => (int) env('SAAS_EXPORT_KEEP_HOURS', 6),
     ],
 
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.

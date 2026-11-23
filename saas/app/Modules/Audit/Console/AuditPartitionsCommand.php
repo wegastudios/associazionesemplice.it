@@ -9,8 +9,12 @@ use App\Modules\Core\Contracts\DatabaseNames;
 use Illuminate\Console\Command;
 use Illuminate\Database\DatabaseManager;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Throwable;
 
-/** Crea in anticipo le partizioni mensili del registro su tutti i database (ogni mese, da cron). */
+/**
+ * Crea in anticipo le partizioni mensili del registro su tutti i database (ogni mese, da cron, e a ogni rilascio).
+ * Un database che non riesce (per esempio con il backup in corso) non ferma gli altri: alla fine il comando fallisce.
+ */
 #[AsCommand(name: 'saas:audit:partitions')]
 final class AuditPartitionsCommand extends Command
 {
@@ -22,11 +26,18 @@ final class AuditPartitionsCommand extends Command
     {
         $months = max(1, (int) $this->option('months'));
 
+        $failed = false;
         foreach ($databases->names() as $name) {
-            Partitions::ensure($db->connection($databases->ownerConnection($name)), now(), $months);
-            $this->line("ok {$name}");
+            try {
+                Partitions::ensure($db->connection($databases->ownerConnection($name)), now(), $months);
+                $this->line("ok {$name}");
+            } catch (Throwable $e) {
+                report($e);
+                $failed = true;
+                $this->error("ERRORE {$name}: partizioni non preparate (".class_basename($e).' '.$e->getCode().'), si riprova al prossimo giro');
+            }
         }
 
-        return self::SUCCESS;
+        return $failed ? self::FAILURE : self::SUCCESS;
     }
 }

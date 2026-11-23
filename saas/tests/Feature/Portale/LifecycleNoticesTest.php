@@ -2,14 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Portale\Console\SendLifecycleNoticesCommand;
+use App\Modules\Portale\Jobs\SendLifecycleNotice;
 use App\Modules\Portale\Notifications\OrgLifecycleNotification;
 use App\Modules\Portale\PortalConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Config\Repository;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
+use Symfony\Component\Mailer\Exception\TransportException;
 
 require_once __DIR__.'/PortalHelpers.php';
 
@@ -48,6 +54,31 @@ it('manda l\'avviso al titolare una sola volta per scadenza', function (): void 
 
     $this->artisan('saas:portal:lifecycle-notices')->assertSuccessful();
     Notification::assertSentTimes(OrgLifecycleNotification::class, 1);
+});
+
+it('l\'avviso va in coda e un errore all\'invio non consuma la prenotazione', function (): void {
+    $portal = fakePortal();
+    $orgId = (string) $this->postJson('/api/portale/v1/orgs', ['token' => portalToken($portal, 'provision', [
+        'ref' => 'sub_q', 'org' => ['name' => 'Alfa', 'slug' => 'alfa-q'], 'owner' => ['email' => 'titolare@example.com', 'name' => 'Anna'],
+    ])])->json('org_id');
+    applySubscription($portal, subscriptionClaims($orgId, 1, ['ref' => 'sub_q', 'status' => 'suspended', 'until' => now()->subDays(31)->toDateString()]), $orgId);
+    Queue::fake();
+
+    $this->artisan('saas:portal:lifecycle-notices')->expectsOutput('Avvisi in coda: 1')->assertSuccessful();
+    Queue::assertPushedOn(MailQueue::BULK, SendLifecycleNotice::class);
+    $job = Queue::pushed(SendLifecycleNotice::class)->first();
+    expect(DB::table('core.org_notices')->where('org_id', $orgId)->count())->toBe(0);
+
+    // Il server di posta non risponde: l'errore torna al lavoro (che riprova) e la prenotazione resta libera.
+    config(['mail.mailers.rotto' => ['transport' => 'smtp', 'host' => '127.0.0.1', 'port' => 9, 'timeout' => 1], 'mail.default' => 'rotto']);
+    expect(fn () => $job->handle(app(DatabaseManager::class)))->toThrow(TransportException::class);
+    expect(DB::table('core.org_notices')->where('org_id', $orgId)->count())->toBe(0);
+
+    Notification::fake();
+    $job->handle(app(DatabaseManager::class));
+    $job->handle(app(DatabaseManager::class));
+    Notification::assertSentOnDemandTimes(OrgLifecycleNotification::class, 1);
+    expect(DB::table('core.org_notices')->where('org_id', $orgId)->count())->toBe(1);
 });
 
 it('ogni avviso del gestionale è nell\'elenco dei suoi e nessuno riguarda i soldi', function (): void {

@@ -26,13 +26,14 @@ final readonly class GuardianService
         private AuditLog $audit,
     ) {}
 
-    public function link(string $personId, string $guardianId): void
+    /** @return bool true se il collegamento è nuovo, false se c'era già */
+    public function link(string $personId, string $guardianId): bool
     {
         $minor = $this->person($personId);
         $guardian = $this->person($guardianId);
         $linked = $this->table()->where('person_id', $minor->id)->get(['guardian_person_id', 'is_operative']);
         if ($linked->contains('guardian_person_id', $guardian->id)) {
-            return;
+            return false;
         }
         $first = ! $linked->contains('is_operative', true);
 
@@ -54,6 +55,8 @@ final readonly class GuardianService
             'is_operative' => $first,
         ]);
         $this->audit->record('guardian.linked', 'app.people', $minor->id, ['operative' => $first]);
+
+        return true;
     }
 
     public function setOperative(string $personId, string $guardianId): void

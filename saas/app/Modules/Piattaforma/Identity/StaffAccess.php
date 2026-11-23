@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Identity;
 
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\QueuedMail;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Mail\Message;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\Fortify;
@@ -88,13 +88,11 @@ final readonly class StaffAccess
         $this->directory->audit('staff.password.reset_requested', is_string($row->id) ? $row->id : null, null, [], $ip);
 
         $link = $linkPrefix.$code;
+        // Subito se c'è quota, altrimenti in coda (cifrato) finché il link vale: oltre il limite orario non si perde più.
         try {
-            Mail::raw(
+            MailQueue::sendNowOrQueue(QueuedMail::raw($email, 'Nuova password per Associazione Semplice',
                 "Ciao,\n\nhai chiesto di scegliere una nuova password per l'accesso ad Associazione Semplice. Usa questo link (vale ".self::RESET_MINUTES." minuti e si usa una volta sola):\n\n{$link}\n\nSe non l'hai chiesto tu, ignora questa email: la tua password resta quella di prima.\n",
-                static function (Message $message) use ($email): void {
-                    $message->to($email)->subject('Nuova password per Associazione Semplice');
-                },
-            );
+                MailQueue::URGENT, now()->addMinutes(self::RESET_MINUTES)));
         } catch (Throwable) {
             // Nessun errore a chi chiede: dire che la posta non parte rivelerebbe che l'email esiste.
         }

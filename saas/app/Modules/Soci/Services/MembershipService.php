@@ -215,6 +215,49 @@ final readonly class MembershipService implements Members
         return $id;
     }
 
+    /**
+     * Tessere senza incasso di un import, in blocco (H10): come grantManually, ma per molte schede con poche query. Chi
+     * chiama ha già controllato che siano soci (ordinari o volontari) ancora in associazione; le tessere che ci sono già
+     * si saltano. Nel registro va la sola riga riassuntiva dell'import, che scrive chi importa.
+     *
+     * @param  list<array{0: string, 1: string}>  $pairs  persona e anno fiscale («2026» o «2026/2027»)
+     * @return int tessere registrate
+     */
+    public function grantImported(array $pairs): int
+    {
+        $startMonth = $this->startMonth();
+        $wanted = [];
+        foreach ($pairs as [$personId, $label]) {
+            $year = SocialYear::fromLabel($label, $startMonth);
+            $wanted[$personId.'|'.$year->label()] = [$personId, $year];
+        }
+        if ($wanted === []) {
+            return 0;
+        }
+        $c = $this->connection();
+        $people = array_values(array_unique(array_map(static fn (array $w): string => $w[0], $wanted)));
+        foreach ($c->table('app.valid_memberships')->whereIn('person_id', $people)->get(['person_id', 'social_year']) as $valid) {
+            unset($wanted[(is_string($valid->person_id ?? null) ? $valid->person_id : '').'|'.(is_string($valid->social_year ?? null) ? $valid->social_year : '')]);
+        }
+        if ($wanted === []) {
+            return 0;
+        }
+
+        // Una tessera rimasta senza quota (incasso stornato) non vale più: si chiude, come in assertNoMembership.
+        $c->table('app.memberships as m')->whereNull('m.voided_at')
+            ->whereNotIn('m.id', fn (Builder $q) => $q->select('id')->from('app.valid_memberships'))
+            ->where(static function (Builder $q) use ($wanted): void {
+                foreach ($wanted as [$personId, $year]) {
+                    $q->orWhere(static fn (Builder $w) => $w->where('m.person_id', $personId)->where('m.social_year', $year->label()));
+                }
+            })
+            ->update(['voided_at' => now()]);
+
+        $c->table('app.memberships')->insert(array_values(array_map(fn (array $w): array => $this->row($w[0], $w[1], 'manual', null), $wanted)));
+
+        return count($wanted);
+    }
+
     /** Toglie una tessera data a mano. Quelle pagate si tolgono stornando la quota in prima nota. */
     public function revoke(string $membershipId): void
     {
@@ -346,11 +389,20 @@ final readonly class MembershipService implements Members
 
     private function insert(string $personId, SocialYear $year, string $source, ?string $transactionId): string
     {
-        $id = Str::uuid7()->toString();
+        $row = $this->row($personId, $year, $source, $transactionId);
+        $this->connection()->table('app.memberships')->insert($row);
+
+        return $row['id'];
+    }
+
+    /** @return array{org_id: string, id: string, person_id: string, social_year: string, valid_from: string, valid_to: string, source: string, transaction_id: string|null, created_by: string|null} */
+    private function row(string $personId, SocialYear $year, string $source, ?string $transactionId): array
+    {
         $userId = $this->auth->guard()->id();
-        $this->connection()->table('app.memberships')->insert([
+
+        return [
             'org_id' => $this->context->require()->id,
-            'id' => $id,
+            'id' => Str::uuid7()->toString(),
             'person_id' => $personId,
             'social_year' => $year->label(),
             'valid_from' => $year->start()->format('Y-m-d'),
@@ -358,9 +410,7 @@ final readonly class MembershipService implements Members
             'source' => $source,
             'transaction_id' => $transactionId,
             'created_by' => is_string($userId) ? $userId : null,
-        ]);
-
-        return $id;
+        ];
     }
 
     private function connection(): ConnectionInterface

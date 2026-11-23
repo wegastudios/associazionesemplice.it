@@ -51,7 +51,7 @@ final class DemoRestrictions
             abort(404);
         }
         // Lo scarico della copia di sicurezza pesa sul server condiviso: chiuso, in lettura e in scrittura.
-        if ($request->is('gestionale/esportazione.zip')) {
+        if ($request->is('gestionale/esportazione.zip', 'gestionale/esportazione/*')) {
             throw ValidationException::withMessages(['ledger' => DemoScale::BACKUP_OFF]);
         }
         if (! $request->isMethodSafe() && ! $request->is(self::ALLOWED)) {

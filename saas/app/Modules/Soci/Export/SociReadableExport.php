@@ -62,8 +62,11 @@ final readonly class SociReadableExport implements ReadableExport
         }
         if ($withCertificates && $operator->can(Ability::ViewHealth)) {
             $names = [];
-            foreach (MedicalCertificate::query()->whereNotNull('file_path')->whereNotNull('file_sha256')->orderBy('expires_on')->get() as $c) {
-                $person = Person::query()->find($c->person_id);
+            $certificates = MedicalCertificate::query()->whereNotNull('file_path')->whereNotNull('file_sha256')->orderBy('expires_on')->get();
+            // Nomi delle persone in una sola query, non una per certificato.
+            $people = Person::query()->whereIn('id', $certificates->pluck('person_id')->unique()->values()->all())->get(['id', 'first_name', 'last_name'])->keyBy('id');
+            foreach ($certificates as $c) {
+                $person = $people->get($c->person_id);
                 $who = $person === null ? 'Persona' : trim($person->last_name.' '.$person->first_name);
                 $ext = strtolower(pathinfo((string) $c->file_name, PATHINFO_EXTENSION));
                 $ext = in_array($ext, ['pdf', 'jpg', 'jpeg', 'png'], true) ? $ext : match ($c->file_mime) {

@@ -44,6 +44,8 @@
         <!-- Nessuna pausa tra le associazioni nei comandi: i test che la provano la impostano da soli. -->
         <env name="SAAS_KEY_BATCH_PAUSE_MS" value="0"/>
         <env name="SAAS_MEMBERS_DOMAIN" value="associazionesemplice.it"/>
+        <!-- Cache delle impostazioni della piattaforma in memoria: ogni test parte vuoto (i dati si annullano alla fine). -->
+        <env name="SAAS_PLATFORM_SETTINGS_CACHE" value="array"/>
         <env name="APP_URL" value="http://localhost"/>
         <env name="SAAS_MASTER_KEY" value="dGVzdC1zb2xvLXBlci1pLXRlc3QtMzItYnl0ZXMtISE="/>
         <env name="SAAS_FILES_ROOT" value="storage/framework/testing/org-files"/>

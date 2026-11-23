@@ -6674,6 +6674,20 @@ asem_ok( false !== wp_next_scheduled( 'asem_send_reminders' ) && wp_next_schedul
 \AssociazioneSemplice\MailBudget::$clock = time() + 3600; // l'ora dopo
 $mb_run2 = \AssociazioneSemplice\Reminders::run( $today );
 asem_ok( 2 === $mb_run2['membership'] && 1 === $mails_to( $mb_mails[0] ) && 1 === $mails_to( $mb_mails[1] ) && 0 === \AssociazioneSemplice\Reminders::run( $today )['membership'], 'tetto email: all\'ora dopo i promemoria arrivano, una volta sola ciascuno' );
+// il server rifiuta una email: il promemoria non risulta partito e viene ritentato al giro dopo (una volta sola)
+$pr_fail = true;
+$pr_hook = static function ( $pre ) use ( &$pr_fail ) {
+	return $pr_fail ? false : $pre;
+};
+add_filter( 'pre_wp_mail', $pr_hook, 20 );
+$pr_p = $people->get( $mb_p );
+$pr_n = $mails_to( $mb_mails[1] );
+$pr_a = \AssociazioneSemplice\Reminders::notify( $pr_p, 'prova_rifiuto', 'r1', 'Prova', 'Testo di prova.' );
+asem_ok( false === $pr_a && ! \AssociazioneSemplice\Reminders::sent( (int) $pr_p['id'], 'prova_rifiuto', 'r1' ) && \AssociazioneSemplice\Reminders::pending( $pr_p, 'prova_rifiuto', 'r1' ), 'promemoria: se il server rifiuta l\'email, il promemoria non risulta partito e resta da mandare' );
+$pr_fail = false;
+$pr_b = \AssociazioneSemplice\Reminders::notify( $pr_p, 'prova_rifiuto', 'r1', 'Prova', 'Testo di prova.' );
+asem_ok( true === $pr_b && \AssociazioneSemplice\Reminders::sent( (int) $pr_p['id'], 'prova_rifiuto', 'r1' ) && $mails_to( $mb_mails[1] ) === $pr_n + 2 && false === \AssociazioneSemplice\Reminders::notify( $pr_p, 'prova_rifiuto', 'r1', 'Prova', 'Testo di prova.' ), 'promemoria: al giro dopo l\'email parte e non si ripete' );
+remove_filter( 'pre_wp_mail', $pr_hook, 20 );
 \AssociazioneSemplice\MailBudget::reset();
 Settings::update( array( 'limits' => is_array( $mb_lim ) ? $mb_lim : array() ) );
 add_filter( 'asem_mail_per_hour', 'asem_test_mail_cap' );
@@ -7323,13 +7337,36 @@ for ( $i = 0; $i < 40 && 'sending' === \AssociazioneSemplice\Broadcasts::get( $b
 }
 $b2b = \AssociazioneSemplice\Broadcasts::get( $b2 );
 asem_ok( 'done' === $b2b['status'] && (int) $b2b['sent'] === (int) $b2b['total'] && 0 === (int) $b2b['failed'] && count( $bc_mail ) === (int) $b2b['total'], 'comunicazioni: il resto parte in background fino al completamento (una email a persona)' );
-// email non partite e nuovo tentativo
+// email non partite: il server rifiuta, la email resta in coda e si riprova nel giro dopo (all'ora dopo); solo dopo tre tentativi risulta non partita
+$bc_cutoff = static function ( int $id ) use ( $wpdb ) { // fa «passare un'ora»: le email in attesa del nuovo tentativo tornano pronte
+	$wpdb->query( $wpdb->prepare( 'UPDATE ' . Db::t( 'broadcast_rcpt' ) . ' SET sent_at = %s WHERE broadcast_id = %d AND status = %s', gmdate( 'Y-m-d H:i:s', time() - 7200 ), $id, 'queued' ) );
+};
 $GLOBALS['bc_fail'] = 'dario.corsista@example.com';
 $b3  = \AssociazioneSemplice\Broadcasts::create( 'Avviso con errore', 'Prova.', 'activity', $acq );
 $b3a = \AssociazioneSemplice\Broadcasts::get( $b3 );
-asem_ok( 1 === (int) $b3a['failed'] && (int) $b3a['sent'] === (int) $b3a['total'] - 1, 'comunicazioni: le email non partite sono contate' );
+$b3_left = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE broadcast_id = %d AND status = %s', $b3, 'queued' ) );
+asem_ok( 1 === $b3_left && 0 === (int) $b3a['failed'] && 'sending' === $b3a['status'] && (int) $b3a['sent'] === (int) $b3a['total'] - 1, 'comunicazioni: se il server rifiuta una email, resta da mandare e la comunicazione non risulta finita' );
+$bc_mail = array();
+\AssociazioneSemplice\Broadcasts::process( $b3 );
+asem_ok( 0 === count( $bc_mail ) && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE broadcast_id = %d AND status = %s', $b3, 'queued' ) ), 'comunicazioni: il nuovo tentativo non parte subito ma nel giro dell\'ora dopo' );
+asem_ok( false !== wp_next_scheduled( \AssociazioneSemplice\Broadcasts::HOOK ), 'comunicazioni: il nuovo tentativo è programmato' );
+$bc_cutoff( $b3 );
 $GLOBALS['bc_fail'] = '';
-asem_ok( 1 === \AssociazioneSemplice\Broadcasts::retry_failed( $b3 ) && 0 === (int) \AssociazioneSemplice\Broadcasts::get( $b3 )['failed'] && 'done' === \AssociazioneSemplice\Broadcasts::get( $b3 )['status'], 'comunicazioni: si possono riprovare' );
+$bc_mail = array();
+\AssociazioneSemplice\Broadcasts::process( $b3 );
+$b3b = \AssociazioneSemplice\Broadcasts::get( $b3 );
+asem_ok( 1 === count( $bc_mail ) && 'done' === $b3b['status'] && 0 === (int) $b3b['failed'] && (int) $b3b['sent'] === (int) $b3b['total'], 'comunicazioni: all\'ora dopo l\'email rifiutata parte, una sola volta, e la comunicazione finisce senza errori' );
+// rifiuto che continua: dopo tre tentativi la email risulta non partita, e «riprova» la rimette in coda
+$GLOBALS['bc_fail'] = 'dario.corsista@example.com';
+$b3c = \AssociazioneSemplice\Broadcasts::create( 'Avviso con errore fisso', 'Prova.', 'activity', $acq );
+$bc_cutoff( $b3c );
+\AssociazioneSemplice\Broadcasts::process( $b3c );
+$bc_cutoff( $b3c );
+\AssociazioneSemplice\Broadcasts::process( $b3c );
+$b3d = \AssociazioneSemplice\Broadcasts::get( $b3c );
+asem_ok( 1 === (int) $b3d['failed'] && 'done' === $b3d['status'] && (int) $b3d['sent'] === (int) $b3d['total'] - 1, 'comunicazioni: dopo tre tentativi andati male la email è contata come non partita' );
+$GLOBALS['bc_fail'] = '';
+asem_ok( 1 === \AssociazioneSemplice\Broadcasts::retry_failed( $b3c ) && 0 === (int) \AssociazioneSemplice\Broadcasts::get( $b3c )['failed'] && 'done' === \AssociazioneSemplice\Broadcasts::get( $b3c )['status'], 'comunicazioni: si possono riprovare' );
 // email rimaste «in invio» per un giro interrotto: dopo qualche minuto tornano in coda e partono, una volta sola ciascuna
 $bc_mail = array();
 $b4  = \AssociazioneSemplice\Broadcasts::create( 'Avviso interrotto', 'Prova.', 'activity', $acq );
@@ -14579,6 +14616,7 @@ require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_schema_e_export.php'; // esportazioni a blocchi, saldi una volta per richiesta, schema a tappe
 require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore
 require __DIR__ . '/smoke_backup_job.php'; // copia di sicurezza a tappe: uguale a quella di prima, ripresa, ripristino, annullamento
+require __DIR__ . '/smoke_cache_condivisa.php'; // letture ricordate tra le richieste con una cache degli oggetti persistente (simulata): stessi risultati, svuotate a ogni scrittura
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );

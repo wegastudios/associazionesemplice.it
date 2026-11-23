@@ -101,8 +101,21 @@ it('mette la conferma della domanda tra gli urgenti e il resto tra i massivi', f
 it('il lavoratore prende prima gli urgenti, poi il resto, per ultimi i massivi', function (): void {
     $workers = collect(app(Schedule::class)->events())->filter(static fn ($e): bool => str_contains((string) $e->command, 'queue:work'));
 
-    expect($workers)->toHaveCount(1)
-        ->and((string) $workers->first()->command)->toContain('--queue=mail-urgent,default,mail-bulk');
+    $main = $workers->first(static fn ($e): bool => str_contains((string) $e->command, '--queue=mail-urgent,default,mail-bulk'));
+    expect($workers)->toHaveCount(3)->and($main)->not->toBeNull();
+});
+
+it('gli urgenti hanno un lavoratore loro ogni minuto: una copia di sicurezza lunga non li fa aspettare', function (): void {
+    $workers = collect(app(Schedule::class)->events())->filter(static fn ($e): bool => str_contains((string) $e->command, 'queue:work'));
+    $urgent = $workers->first(static fn ($e): bool => str_contains((string) $e->command, '--queue=mail-urgent ') || str_ends_with((string) $e->command, '--queue=mail-urgent'));
+    $main = $workers->first(static fn ($e): bool => str_contains((string) $e->command, '--queue=mail-urgent,default,mail-bulk'));
+
+    // Parte ogni minuto anche mentre il lavoratore principale è occupato (la sua esclusione è un'altra), prende solo gli
+    // urgenti e si ferma prima del giro successivo.
+    expect($urgent)->not->toBeNull()
+        ->and($urgent->expression)->toBe('* * * * *')
+        ->and((string) $urgent->command)->toContain('--stop-when-empty')->toContain('--max-time=55')->not->toContain('default')
+        ->and($urgent->mutexName())->not->toBe($main->mutexName());
 });
 
 it('i massivi si fermano a 3 al minuto mentre gli urgenti continuano', function (): void {

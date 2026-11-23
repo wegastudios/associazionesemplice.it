@@ -77,7 +77,7 @@ final class PersonSearch {
 			if ( 1 !== count( $found ) ) {
 				$msg = $found
 					? \AssociazioneSemplice\Texts::t( 'Più persone corrispondono a quel nome: scrivilo per intero o con il numero di tessera.' )
-					: \AssociazioneSemplice\Texts::t( 'Non ho trovato nessuna persona con quel nome: scrivine almeno tre lettere, o il numero di tessera.' );
+					: \AssociazioneSemplice\Texts::t( 'Nessuna persona trovata con quel nome: scrivi almeno tre lettere o il numero di tessera.' );
 				throw new \InvalidArgumentException( $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$post[ $key ] = (string) $found[0]['id'];

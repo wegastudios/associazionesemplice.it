@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Audit\Log\TruncateGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\DB;
  * TRUNCATE non fa scattare i trigger di riga: un trigger di istruzione lo rifiuta a chiunque non sia la connessione del
  * proprietario, con o senza `app.purging` (la cancellazione definitiva non lo usa). Va sulla tabella e su ogni
  * partizione, perché una partizione si può svuotare anche da sola; le partizioni nuove lo ricevono da Partitions.
+ * La funzione è in Audit\Log\TruncateGuard (Partitions la crea se un database ne fosse senza); saas:health controlla
+ * che tutti i trigger ci siano.
  */
 return new class extends Migration
 {
@@ -34,18 +37,12 @@ return new class extends Migration
                 RAISE EXCEPTION 'Il registro delle azioni è solo in aggiunta';
             END
             $$;
+        SQL);
 
-            CREATE OR REPLACE FUNCTION audit.reject_truncate() RETURNS trigger
-            LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
-            BEGIN
-                -- Solo la connessione del proprietario (stesso controllo su session_user di audit.reject_change).
-                IF session_user = current_user THEN
-                    RETURN NULL;
-                END IF;
-                RAISE EXCEPTION 'Il registro delle azioni è solo in aggiunta';
-            END
-            $$;
+        // La funzione del rifiuto del TRUNCATE ha una sola definizione, condivisa con Partitions.
+        DB::unprepared(TruncateGuard::FUNCTION_SQL);
 
+        DB::unprepared(<<<'SQL'
             CREATE OR REPLACE TRIGGER log_no_truncate BEFORE TRUNCATE ON audit.log
                 FOR EACH STATEMENT EXECUTE FUNCTION audit.reject_truncate();
 
