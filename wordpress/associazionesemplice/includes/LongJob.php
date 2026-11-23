@@ -324,10 +324,10 @@ final class LongJob {
 			case 'cancelled':
 				return Texts::t( 'Operazione annullata.' );
 			case 'failed':
-				return Texts::t( 'L'operazione si è fermata per un errore: {error}', array( 'error' => $v['error'] ) );
+				return Texts::t( 'L\'operazione si è fermata per un errore: {error}', array( 'error' => $v['error'] ) );
 		}
 		if ( $v['cancelling'] ) {
-			return Texts::t( 'Annullamento richiesto: l'operazione si ferma appena finisce il passaggio in corso.' );
+			return Texts::t( 'Annullamento richiesto: l\'operazione si ferma appena finisce il passaggio in corso.' );
 		}
 		if ( $v['total'] > 0 ) {
 			return Texts::t( 'In corso: {done} di {total} ({percent}%).', array( 'done' => $v['done'], 'total' => $v['total'], 'percent' => $v['percent'] ) );
@@ -361,7 +361,7 @@ final class LongJob {
 		$h .= '<progress class="asem-longjob-bar" max="100" value="' . (int) $st['percent'] . '">' . (int) $st['percent'] . '%</progress>';
 		$h .= '<p class="asem-longjob-msg" role="status" aria-live="polite">' . esc_html( $st['message'] ) . '</p>';
 		if ( $run ) {
-			$h .= '<p class="description">' . esc_html( Texts::t( 'Con questa pagina aperta l'operazione va più veloce; se la chiudi continua da sola, più lentamente.' ) ) . '</p>';
+			$h .= '<p class="description">' . esc_html( Texts::t( 'Con questa pagina aperta l\'operazione va più veloce; se la chiudi continua da sola, più lentamente.' ) ) . '</p>';
 			$h .= '<p><button type="button" class="button asem-longjob-cancel">' . esc_html( Texts::t( 'Annulla' ) ) . '</button></p>';
 		}
 		return $h . '</div>';
