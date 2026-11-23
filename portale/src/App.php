@@ -13,6 +13,7 @@ final class App {
 
 	public function __construct( Db $db, Billing $billing, Auth $auth ) {
 		$this->db      = $db;
+		Mailer::$db   = $db; // tetto orario e coda di uscita delle email
 		$this->billing = $billing;
 		$this->auth    = $auth;
 	}

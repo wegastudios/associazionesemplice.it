@@ -2085,6 +2085,65 @@ Config::set( 'saas_sign_key', '' );
 Config::set( 'saas_sign_key_file', '/nonesiste/saas.key' );
 Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 3 ), 3000 );
 check( 'coda: senza chiave di firma il messaggio resta in coda (nessun errore)', array( 0, 1 ) === Outbox::run( $odb, 3000 ) );
+// --- Email: tetto orario, coda di uscita, urgenti prima dei massivi, ritentativi -----------------------------------------------
+$prevSender = Mailer::$sender;
+$mdb = testDb();
+$mdb->migrate();
+Mailer::$sender = null;
+Mailer::$db     = $mdb;
+Mailer::$bulk   = false;
+Config::set( 'mail_cap_per_hour', 5 );
+Config::set( 'mail_urgent_reserve', 2 ); // urgenti fino a 5 all'ora, massivi fino a 3
+Config::set( 'mail.transports', array() );
+$mOut  = array();
+$mFail = false;
+Mailer::$transport = function ( $t, $to, $s, $b ) use ( &$mOut, &$mFail ) {
+	if ( $mFail ) {
+		return false;
+	}
+	$mOut[] = $to;
+	return true;
+};
+$mT0     = strtotime( '2031-03-01 10:00:00 UTC' );
+$mQueued = function () use ( $mdb ) { return (int) $mdb->one( 'SELECT COUNT(*) AS n FROM mail_outbox WHERE done_at IS NULL' )['n']; };
+check( 'posta: massivi fino a (tetto - riserva) partono subito', true === Mailer::send( 'b1@e.it', 'S', 'C', Mailer::BULK, $mT0 ) && true === Mailer::send( 'b2@e.it', 'S', 'C', Mailer::BULK, $mT0 ) && true === Mailer::send( 'b3@e.it', 'S', 'C', Mailer::BULK, $mT0 ) && array( 'b1@e.it', 'b2@e.it', 'b3@e.it' ) === $mOut && 0 === $mQueued() );
+check( 'posta: il quarto massivo oltre la riserva va in coda, senza errore e senza perdersi', true === Mailer::send( 'b4@e.it', 'S', 'C', Mailer::BULK, $mT0 ) && 3 === count( $mOut ) && 1 === $mQueued() );
+check( 'posta: un urgente passa davanti a una coda di soli massivi (usa la riserva)', true === Mailer::send( 'u1@e.it', 'S', 'C', Mailer::URGENT, $mT0 ) && true === Mailer::send( 'u2@e.it', 'S', 'C', Mailer::URGENT, $mT0 ) && 'u2@e.it' === end( $mOut ) && 5 === count( $mOut ) );
+check( 'posta: oltre il tetto orario anche gli urgenti vanno in coda (mai rifiutati dal server)', true === Mailer::send( 'u3@e.it', 'S', 'C', Mailer::URGENT, $mT0 ) && 5 === count( $mOut ) && 2 === $mQueued() );
+check( 'posta: nella stessa ora la coda non si smaltisce (niente posto)', array( 0, 2, 0 ) === Mailer::drain( $mdb, $mT0 + 600 ) );
+$mOut = array();
+check( 'posta: all\'ora dopo la coda parte, gli urgenti prima dei massivi', array( 2, 0, 0 ) === Mailer::drain( $mdb, $mT0 + 3600 ) && array( 'u3@e.it', 'b4@e.it' ) === $mOut );
+$mOut  = array();
+$mFail = true;
+check( 'posta: un invio rifiutato non si perde (resta in coda) e non consuma la quota', true === Mailer::send( 'f1@e.it', 'S', 'C', Mailer::URGENT, $mT0 + 7200 ) && 1 === $mQueued() && 0 === (int) $mdb->one( 'SELECT COALESCE(SUM(n),0) AS n FROM rate_limits WHERE hour = ?', array( gmdate( 'YmdH', $mT0 + 7200 ) ) )['n'] );
+check( 'posta: ritentativo dopo 5 minuti, non prima', array( 0, 1, 0 ) === Mailer::drain( $mdb, $mT0 + 7200 + 60 ) && array( 0, 1, 0 ) === Mailer::drain( $mdb, $mT0 + 7200 + 120 ) && 1 === (int) $mdb->one( 'SELECT attempts AS n FROM mail_outbox WHERE done_at IS NULL' )['n'] );
+$mFail = false;
+check( 'posta: quando il server torna a rispondere il messaggio parte', array( 1, 0, 0 ) === Mailer::drain( $mdb, $mT0 + 7200 + 3600 * 2 ) && array( 'f1@e.it' ) === $mOut );
+$mFail = true;
+Mailer::send( 'f2@e.it', 'S', 'C', Mailer::URGENT, $mT0 + 20000 );
+check( 'posta: dopo 72 ore di rifiuti il messaggio si abbandona, scritto nel log (non cancellato di nascosto)', array( 0, 0, 1 ) === Mailer::drain( $mdb, $mT0 + 20000 + 72 * 3600 + 1000 ) && false !== strpos( (string) $mdb->one( 'SELECT last_error FROM mail_outbox WHERE to_addr = ?', array( 'f2@e.it' ) )['last_error'], 'abbandonato' ) );
+$mFail = false;
+Mailer::$bulk = true;
+$mOut = array();
+for ( $mI = 1; $mI <= 4; $mI++ ) {
+	Mailer::send( 'c' . $mI . '@e.it', 'S', 'C', null, $mT0 + 400000 );
+}
+Mailer::$bulk = false;
+check( 'posta: i lavori del cron (Mailer::$bulk) sono massivi: 3 partono, il quarto resta in coda', 3 === count( $mOut ) && 1 === $mQueued() );
+Config::set( 'mail.transports', array( array( 'name' => 'emailit', 'host' => 'smtp.esempio.it', 'enabled' => false ), array( 'host' => 'mail.esempio.it', 'user' => 'u', 'pass' => 'p', 'cap' => 60 ) ) );
+$mTr = Mailer::transports();
+check( 'posta: i mezzi preparati ma non attivi (enabled=false) si saltano; gli altri hanno tetto, porta e TLS di partenza', 1 === count( $mTr ) && 'smtp1' === $mTr[0]['name'] && 465 === $mTr[0]['port'] && 'ssl' === $mTr[0]['secure'] && 60 === $mTr[0]['cap'] );
+Config::set( 'mail.transports', array( array( 'name' => 'primo', 'host' => 'a.esempio.it', 'cap' => 1 ), array( 'name' => 'ripiego', 'host' => 'b.esempio.it', 'cap' => 10 ) ) );
+$mOut = array();
+Mailer::$transport = function ( $t, $to, $s, $b ) use ( &$mOut ) { $mOut[] = $t['name'] . ':' . $to; return true; };
+Mailer::send( 'g1@e.it', 'S', 'C', Mailer::URGENT, $mT0 + 900000 );
+Mailer::send( 'g2@e.it', 'S', 'C', Mailer::URGENT, $mT0 + 900000 );
+check( 'posta: finito il tetto del primo mezzo si passa al successivo (ripiego)', array( 'primo:g1@e.it', 'ripiego:g2@e.it' ) === $mOut );
+Mailer::$db        = null;
+Mailer::$transport = null;
+Mailer::$sender    = $prevSender;
+Config::set( 'mail.transports', array() );
+
 // --- Acquisto SaaS: pagina, promo, pagamento, creazione associazione, subscription ----------
 use Portale\SaasCheckout;
 Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
