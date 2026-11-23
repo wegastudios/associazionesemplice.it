@@ -6674,7 +6674,7 @@ asem_ok( false !== wp_next_scheduled( 'asem_send_reminders' ) && wp_next_schedul
 \AssociazioneSemplice\MailBudget::$clock = time() + 3600; // l'ora dopo
 $mb_run2 = \AssociazioneSemplice\Reminders::run( $today );
 asem_ok( 2 === $mb_run2['membership'] && 1 === $mails_to( $mb_mails[0] ) && 1 === $mails_to( $mb_mails[1] ) && 0 === \AssociazioneSemplice\Reminders::run( $today )['membership'], 'tetto email: all\'ora dopo i promemoria arrivano, una volta sola ciascuno' );
-// il server rifiuta una email: il promemoria non risulta partito e viene ritentato al giro dopo (una volta sola)
+// il server rifiuta una email: il promemoria non risulta partito e viene ritentato al giro dopo (una volta sola) (il filtro che registra le email vede anche il tentativo rifiutato)
 $pr_fail = true;
 $pr_hook = static function ( $pre ) use ( &$pr_fail ) {
 	return $pr_fail ? false : $pre;
@@ -6686,7 +6686,7 @@ $pr_a = \AssociazioneSemplice\Reminders::notify( $pr_p, 'prova_rifiuto', 'r1', '
 asem_ok( false === $pr_a && ! \AssociazioneSemplice\Reminders::sent( (int) $pr_p['id'], 'prova_rifiuto', 'r1' ) && \AssociazioneSemplice\Reminders::pending( $pr_p, 'prova_rifiuto', 'r1' ), 'promemoria: se il server rifiuta l\'email, il promemoria non risulta partito e resta da mandare' );
 $pr_fail = false;
 $pr_b = \AssociazioneSemplice\Reminders::notify( $pr_p, 'prova_rifiuto', 'r1', 'Prova', 'Testo di prova.' );
-asem_ok( true === $pr_b && \AssociazioneSemplice\Reminders::sent( (int) $pr_p['id'], 'prova_rifiuto', 'r1' ) && $mails_to( $mb_mails[1] ) === $pr_n + 1 && false === \AssociazioneSemplice\Reminders::notify( $pr_p, 'prova_rifiuto', 'r1', 'Prova', 'Testo di prova.' ), 'promemoria: al giro dopo l\'email parte e non si ripete' );
+asem_ok( true === $pr_b && \AssociazioneSemplice\Reminders::sent( (int) $pr_p['id'], 'prova_rifiuto', 'r1' ) && $mails_to( $mb_mails[1] ) === $pr_n + 2 && false === \AssociazioneSemplice\Reminders::notify( $pr_p, 'prova_rifiuto', 'r1', 'Prova', 'Testo di prova.' ), 'promemoria: al giro dopo l\'email parte e non si ripete' );
 remove_filter( 'pre_wp_mail', $pr_hook, 20 );
 \AssociazioneSemplice\MailBudget::reset();
 Settings::update( array( 'limits' => is_array( $mb_lim ) ? $mb_lim : array() ) );
