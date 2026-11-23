@@ -9,6 +9,7 @@ use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\DemoSeeder;
 use App\Modules\Core\Contracts\HomeWidget;
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Core\Contracts\ReadableExport;
 use App\Modules\Core\Contracts\SetupStep;
@@ -79,12 +80,12 @@ final class SociServiceProvider extends ServiceProvider
         // Conferma della domanda dal link ricevuto per email: 10 al minuto dallo stesso indirizzo.
         RateLimiter::for('applications-confirm', static fn (Request $request): Limit => Limit::perMinute(10)->by('application-confirm-ip|'.$request->ip()));
 
-        // Promemoria in coda: frequenza massima per associazione e in totale (regolabile da configurazione).
+        // Promemoria in coda: il tetto della posta massiva (MailQueue) più un limite per associazione (da configurazione).
         RateLimiter::for('reminder-mail', static function (object $job): array {
             $org = $job instanceof SendReminderEmail ? $job->orgId : '';
 
             return [
-                Limit::perMinute(self::limit('saas.reminders.per_minute', 20))->by('reminder-mail'),
+                ...MailQueue::limits(MailQueue::BULK),
                 Limit::perMinute(self::limit('saas.reminders.per_org_per_minute', 5))->by('reminder-mail|'.$org),
             ];
         });
@@ -93,7 +94,8 @@ final class SociServiceProvider extends ServiceProvider
             $this->commands([SendRemindersCommand::class, PruneApplicationsCommand::class]);
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 // Il comando si limita ad accodare: se si inchioda, il blocco di sovrapposizione si libera dopo 30 minuti.
-                $schedule->command('saas:reminders:send')->dailyAt('08:23')->withoutOverlapping(30);
+                // Alle 10, fuori dalle ore in cui portale e gestionale mandano gli altri avvisi del mattino.
+                $schedule->command('saas:reminders:send')->dailyAt('10:23')->withoutOverlapping(30);
                 // Domande mai confermate (30 giorni) o respinte (90 giorni): si cancellano ogni notte.
                 $schedule->command('saas:applications:prune')->dailyAt('03:41')->withoutOverlapping(30);
             });

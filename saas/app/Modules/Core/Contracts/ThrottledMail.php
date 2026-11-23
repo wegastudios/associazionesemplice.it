@@ -1,0 +1,137 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Core\Contracts;
+
+use Closure;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Queue\Job;
+use Illuminate\Queue\Jobs\SyncJob;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use LogicException;
+use RuntimeException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+
+/**
+ * Middleware dei lavori di posta (MailQueue). Il lavoro deve usare InteractsWithQueue.
+ *
+ *   public function middleware(): array { return [new ThrottledMail(MailQueue::LIMIT_BULK)]; }
+ *
+ * - Posta ferma dopo un rifiuto del server: il lavoro riparte quando l'interruttore si spegne, senza provare.
+ * - Tetti del limitatore indicato (MailQueue::limits, più eventuali limiti del modulo): oltre, il lavoro riparte più
+ *   tardi. Le chiavi sono quelle dei tetti, senza il nome del limitatore, così tutti i lavori contano sugli stessi.
+ * - Rifiuto o errore del server di posta: il lavoro riparte tra un'ora e la posta del mailer si ferma per tutti (oltre il
+ *   limite orario il server rifiuta e il messaggio si perderebbe). Le attese non contano come errori (maxExceptions).
+ *   Se il server rifiuta solo il destinatario (indirizzo o casella), si arrende solo quel messaggio; lo stesso messaggio
+ *   rifiutato MAX_REJECTIONS volte si arrende, così non ferma la posta di tutti ogni ora. Nei lavori falliti resta solo il
+ *   codice del server, mai la sua risposta (può contenere l'indirizzo).
+ */
+final class ThrottledMail
+{
+    public const MAX_REJECTIONS = 3;
+
+    public function __construct(private readonly string $limiter) {}
+
+    /** @param  Closure(object): mixed  $next */
+    public function handle(object $job, Closure $next): mixed
+    {
+        // Coda «sync» (sviluppo e test): il lavoro gira dentro la richiesta, non c'è una coda dove aspettare.
+        if (property_exists($job, 'job') && $job->job instanceof SyncJob) {
+            return $next($job);
+        }
+
+        $mailer = MailQueue::mailer();
+        $blocked = MailQueue::blockedUntil($mailer);
+        if ($blocked !== null) {
+            return $this->release($job, $blocked - now()->getTimestamp());
+        }
+
+        $limits = $this->limits($job);
+        $wait = null;
+        foreach ($limits as $limit) {
+            if (RateLimiter::tooManyAttempts($limit->key, $limit->maxAttempts)) {
+                $wait = max($wait ?? 0, RateLimiter::availableIn($limit->key));
+            }
+        }
+        if ($wait !== null) {
+            // I massivi ripartono sparsi su un minuto, così non si ripresentano tutti nello stesso istante.
+            $bulk = property_exists($job, 'queue') && $job->queue === MailQueue::BULK;
+
+            return $this->release($job, $wait + ($bulk ? random_int(0, 60) : 0));
+        }
+        foreach ($limits as $limit) {
+            RateLimiter::hit($limit->key, $limit->decaySeconds);
+        }
+
+        try {
+            return $next($job);
+        } catch (TransportExceptionInterface $e) {
+            return $this->rejected($job, $mailer, $e);
+        }
+    }
+
+    private function rejected(object $job, string $mailer, TransportExceptionInterface $e): null
+    {
+        $code = $e->getCode();
+        // Codici estesi x.1.x (indirizzo) e x.2.1/x.2.2 (casella disattivata o piena): riguardano il solo destinatario.
+        $recipient = preg_match('/\b([45])\.(?:1\.\d{1,3}|2\.[12])\b/', $e->getMessage(), $match) === 1;
+
+        if (($recipient && $match[1] === '5') || $this->rejections($job) >= self::MAX_REJECTIONS) {
+            if (! method_exists($job, 'fail')) {
+                throw new LogicException('Il lavoro di posta deve usare InteractsWithQueue.');
+            }
+            $job->fail(new RuntimeException("Messaggio rifiutato dal server di posta (codice {$code})."));
+
+            return null;
+        }
+
+        if (! $recipient) {
+            $until = MailQueue::block($mailer);
+            Log::warning('Server di posta: invio rifiutato, posta in coda ferma', ['mailer' => $mailer, 'code' => $code, 'until' => date(DATE_ATOM, $until)]);
+        }
+
+        return $this->release($job, MailQueue::blockedMinutes() * 60);
+    }
+
+    /** Quante volte il server ha rifiutato questo stesso lavoro (contato per identificativo, per tre giorni). */
+    private function rejections(object $job): int
+    {
+        $queued = property_exists($job, 'job') ? $job->job : null;
+        $uuid = $queued instanceof Job ? $queued->uuid() : null;
+        if (! is_string($uuid) || $uuid === '') {
+            return 1;
+        }
+        $key = 'mail-rejections:'.$uuid;
+        Cache::add($key, 0, now()->addDays(3));
+
+        return (int) Cache::increment($key);
+    }
+
+    /** @return list<Limit> */
+    private function limits(object $job): array
+    {
+        $callback = RateLimiter::limiter($this->limiter);
+        $result = $callback === null ? [] : $callback($job);
+        $limits = [];
+        foreach (is_array($result) ? $result : [$result] as $limit) {
+            if ($limit instanceof Limit) {
+                $limits[] = $limit;
+            }
+        }
+
+        return $limits;
+    }
+
+    private function release(object $job, int $seconds): null
+    {
+        if (! method_exists($job, 'release')) {
+            throw new LogicException('Il lavoro di posta deve usare InteractsWithQueue.');
+        }
+        $job->release(max(1, $seconds));
+
+        return null;
+    }
+}

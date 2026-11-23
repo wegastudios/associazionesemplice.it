@@ -98,7 +98,8 @@ final class PortaleServiceProvider extends ServiceProvider
                 $schedule->command('saas:portal:suspend-expired')->dailyAt('00:41')->withoutOverlapping();
                 // La cancellazione dei dati scaduti parte solo con l'interruttore acceso (saas.portal.purge_enabled).
                 $schedule->command('saas:portal:purge-expired')->dailyAt('01:17')->withoutOverlapping()->when(static fn (): bool => config('saas.portal.purge_enabled') === true);
-                $schedule->command('saas:portal:lifecycle-notices')->dailyAt('08:10')->withoutOverlapping()->when(static fn (): bool => config('saas.portal.notices_enabled') === true);
+                // Alle 9: alle 8 manda la sua posta il portale, che conta sullo stesso tetto orario dell'account di posta.
+                $schedule->command('saas:portal:lifecycle-notices')->dailyAt('09:10')->withoutOverlapping()->when(static fn (): bool => config('saas.portal.notices_enabled') === true);
                 $schedule->command('saas:portal:verify-domains')->hourly()->withoutOverlapping();
             });
         }

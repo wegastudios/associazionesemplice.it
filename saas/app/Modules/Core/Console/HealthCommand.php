@@ -6,6 +6,7 @@ namespace App\Modules\Core\Console;
 
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Core\Contracts\DatabaseNames;
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Portale\Contracts\WebRuntimeProbe;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
@@ -23,7 +24,15 @@ use Throwable;
 #[AsCommand(name: 'saas:health')]
 final class HealthCommand extends Command
 {
-    protected $signature = 'saas:health {--skip-migrations : Non controllare le migrazioni (prima di eseguirle)}';
+    /** Posta in coda: soglie di attesa del messaggio più vecchio (secondi) e quota dell'ora oltre la quale si avvisa. */
+    private const URGENT_MAX_WAIT = 5 * 60;
+
+    private const BULK_MAX_WAIT = 6 * 3600;
+
+    private const HOUR_WARNING_SHARE = 0.9;
+
+    protected $signature = 'saas:health {--skip-migrations : Non controllare le migrazioni (prima di eseguirle)}
+        {--mail-warnings-only : Problemi della posta in coda come avvisi (rilascio: non dipendono dalla versione)}';
 
     protected $description = 'Controlla database, migrazioni, servizio chiavi e spazi dei file';
 
@@ -47,6 +56,11 @@ final class HealthCommand extends Command
             'permessi dell\'applicazione' => fn () => $this->appPrivileges($db->connection('pgsql')),
             'connessione senza pooler' => fn () => $this->sessionSettings($db->connection('pgsql')),
             'memoria di Redis' => $this->redisMemory(...),
+            'coda della posta urgente' => fn () => $this->mailWait($db, MailQueue::URGENT, self::URGENT_MAX_WAIT),
+            'coda della posta massiva' => fn () => $this->mailWait($db, MailQueue::BULK, self::BULK_MAX_WAIT),
+            'invio della posta' => $this->mailBlocked(...),
+            'posta non partita' => fn () => $this->mailFailed($db),
+            'invii della posta nell\'ora' => $this->mailHourUsage(...),
         ];
 
         if (! $this->option('skip-migrations')) {
@@ -73,6 +87,12 @@ final class HealthCommand extends Command
 
         // Controlli «morbidi»: finché SAAS_HEALTH_STRICT è spento (sviluppo, dati inventati) un problema è un avviso e non ferma il rilascio.
         $soft = ['chiave principale in produzione', 'permessi dell\'applicazione', 'memoria di Redis'];
+        // Sempre avvisi: gli invii vicini al tetto orario; al rilascio anche i problemi della posta in coda, che non
+        // dipendono dalla versione e non devono riportare indietro il rilascio.
+        $warnOnly = ['invii della posta nell\'ora'];
+        if ($this->option('mail-warnings-only') === true) {
+            array_push($warnOnly, 'coda della posta urgente', 'coda della posta massiva', 'invio della posta', 'posta non partita');
+        }
         $strict = config('saas.health_strict') === true;
         $failed = 0;
         foreach ($checks as $name => $check) {
@@ -80,7 +100,7 @@ final class HealthCommand extends Command
                 $check();
                 $this->line("ok    {$name}");
             } catch (Throwable $e) {
-                if (! $strict && in_array($name, $soft, true)) {
+                if ((! $strict && in_array($name, $soft, true)) || in_array($name, $warnOnly, true)) {
                     $this->warn("AVVISO {$name}: ".mb_substr($e->getMessage(), 0, 300));
 
                     continue;
@@ -147,6 +167,67 @@ final class HealthCommand extends Command
         $max = is_numeric($maxRaw) ? (int) $maxRaw : 0;
         if ($max > 0 && $used / $max > 0.7) {
             throw new RuntimeException(sprintf('Redis usa il %d%% della memoria (%d di %d byte): le chiavi meno usate vengono tolte', (int) round($used / $max * 100), $used, $max));
+        }
+    }
+
+    /**
+     * Il messaggio più vecchio di una coda di posta aspetta da più della soglia. Conta la nascita scritta nel lavoro
+     * (createdAt): un rilascio lo riscrive in coda con una data nuova. Solo con la coda sul database.
+     */
+    private function mailWait(DatabaseManager $db, string $queue, int $maxSeconds): void
+    {
+        if (config('queue.default') !== 'database') {
+            return;
+        }
+        $connection = config('queue.connections.database.connection');
+        $table = config('queue.connections.database.table');
+        $oldest = $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
+            ->table(is_string($table) && $table !== '' ? $table : 'core.jobs')
+            ->where('queue', $queue)
+            ->selectRaw("min(coalesce((payload::jsonb->>'createdAt')::bigint, created_at)) AS created")
+            ->value('created');
+        if (! is_numeric($oldest)) {
+            return;
+        }
+        $waited = now()->getTimestamp() - (int) $oldest;
+        if ($waited > $maxSeconds) {
+            throw new RuntimeException($waited < 7200
+                ? sprintf('il messaggio più vecchio aspetta da %d minuti (soglia %d)', intdiv($waited, 60), intdiv($maxSeconds, 60))
+                : sprintf('il messaggio più vecchio aspetta da %d ore (soglia %d)', intdiv($waited, 3600), intdiv($maxSeconds, 3600)));
+        }
+    }
+
+    /** La posta in coda è ferma dopo un rifiuto del server di posta. */
+    private function mailBlocked(): void
+    {
+        $mailer = MailQueue::mailer();
+        $until = MailQueue::blockedUntil($mailer);
+        if ($until !== null) {
+            throw new RuntimeException(sprintf('il server di posta ha rifiutato un invio: posta in coda ferma fino alle %s (%s)', now()->setTimestamp($until)->format('H:i'), $mailer));
+        }
+    }
+
+    /** Messaggi delle code di posta finiti tra i lavori falliti nelle ultime 24 ore. */
+    private function mailFailed(DatabaseManager $db): void
+    {
+        $connection = config('queue.failed.database');
+        $table = config('queue.failed.table');
+        $count = $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
+            ->table(is_string($table) && $table !== '' ? $table : 'core.failed_jobs')
+            ->whereIn('queue', [MailQueue::URGENT, MailQueue::BULK])
+            ->where('failed_at', '>=', now()->subDay())
+            ->count();
+        if ($count > 0) {
+            throw new RuntimeException("{$count} messaggi non partiti nelle ultime 24 ore (lavori falliti delle code ".MailQueue::URGENT.' e '.MailQueue::BULK.')');
+        }
+    }
+
+    /** Invii dell'ora in corso oltre il 90% del tetto totale del mailer. */
+    private function mailHourUsage(): void
+    {
+        $usage = MailQueue::hourUsage();
+        if ($usage !== null && $usage[0] > $usage[1] * self::HOUR_WARNING_SHARE) {
+            throw new RuntimeException(sprintf('%d su %d nell\'ora in corso (%s)', $usage[0], $usage[1], MailQueue::mailer()));
         }
     }
 

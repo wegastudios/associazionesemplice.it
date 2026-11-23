@@ -15,6 +15,7 @@ use App\Modules\Core\Console\ResetUserTwoFactorCommand;
 use App\Modules\Core\Console\SelfTestPurgeCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgPurger;
@@ -40,6 +41,7 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 final class CoreServiceProvider extends ServiceProvider
@@ -102,13 +104,17 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobProcessed::class, $reset);
         Event::listen(JobFailed::class, $reset);
 
+        // Tetti della posta in coda, per mailer (MailQueue): gli urgenti contano sul totale, i massivi anche sul loro.
+        RateLimiter::for(MailQueue::LIMIT_ALL, static fn (): array => MailQueue::limits(MailQueue::URGENT));
+        RateLimiter::for(MailQueue::LIMIT_BULK, static fn (): array => MailQueue::limits(MailQueue::BULK));
+
         if ($this->app->runningInConsole()) {
             $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class]);
 
             // Code su Postgres: un lavoratore a giro di cron, che si ferma quando la coda è vuota o dopo 50 secondi
-            // (sul server non ci sono processi sempre attivi).
+            // (sul server non ci sono processi sempre attivi). Prima la posta urgente, per ultima la massiva.
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
-                $schedule->command('queue:work --stop-when-empty --max-time=50 --tries=3')
+                $schedule->command('queue:work --queue='.MailQueue::WORKER_QUEUES.' --stop-when-empty --max-time=50 --tries=3')
                     ->everyMinute()->withoutOverlapping(5)->runInBackground();
                 $schedule->command('queue:prune-failed --hours=168')->dailyAt('05:47');
                 // File di lavoro rimasti da richieste interrotte (copie, archivi, ricevute): via quelli di più di un'ora.
