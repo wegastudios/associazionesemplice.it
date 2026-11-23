@@ -31,4 +31,24 @@ ob_start();
 \AssociazioneSemplice\Admin\PeoplePage::render_list();
 $html = (string) ob_get_clean();
 dati_ok( false !== strpos( $html, 'Rossi' ) && false !== strpos( $html, 'Bianchi' ) && false !== strpos( $html, 'Verdi' ), 'la Rubrica mostra i soci creati prima' );
+// Lavori periodici: i vecchi eventi, uno per lavoro, sono passati nel giro dei due eventi (orario e giornaliero) con la loro prossima scadenza.
+$lav_vecchi = array();
+$lav_stato  = (array) get_option( \AssociazioneSemplice\Jobs::STATE, array() );
+$lav_senza  = array();
+foreach ( \AssociazioneSemplice\Plugin::jobs() as $lav_h => $lav_j ) {
+	if ( '' === $lav_j[0] ) {
+		continue;
+	}
+	$lav_ev = wp_get_scheduled_event( $lav_h );
+	if ( $lav_ev && ! empty( $lav_ev->schedule ) ) {
+		$lav_vecchi[] = $lav_h;
+	}
+}
+foreach ( (array) get_option( 'asem_prova_lavori', array() ) as $lav_h => $lav_ts ) { // quelli che la versione di prima aveva programmato
+	if ( isset( \AssociazioneSemplice\Plugin::jobs()[ $lav_h ] ) && (int) ( $lav_stato['done'][ $lav_h ] ?? 0 ) <= 0 ) {
+		$lav_senza[] = $lav_h;
+	}
+}
+dati_ok( ! $lav_vecchi && false !== wp_next_scheduled( \AssociazioneSemplice\Plugin::JOBS_HOURLY ) && false !== wp_next_scheduled( \AssociazioneSemplice\Plugin::JOBS_DAILY ), 'lavori periodici: dopo l\'aggiornamento restano solo i due eventi del giro' . ( $lav_vecchi ? ' (vecchi ancora presenti: ' . implode( ', ', $lav_vecchi ) . ')' : '' ) );
+dati_ok( ! $lav_senza, 'lavori periodici: ogni vecchio evento ha passato la sua prossima scadenza al giro' . ( $lav_senza ? ' (senza: ' . implode( ', ', $lav_senza ) . ')' : '' ) );
 WP_CLI::success( 'Aggiornamento da ' . $prima['versione'] . ' alla build corrente (' . ASEM_VERSION . '): dati conservati.' );

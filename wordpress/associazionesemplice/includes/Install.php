@@ -13,6 +13,8 @@ final class Install {
 	 * Alla disattivazione e alla disinstallazione si tolgono tutti, qualunque siano gli argomenti con cui erano stati programmati.
 	 */
 	const JOB_HOOKS = array(
+		'asem_cron_hourly', // i due eventi del giro dei lavori periodici (Plugin::JOBS_HOURLY e Plugin::JOBS_DAILY)
+		'asem_cron_daily',
 		'asem_send_reminders',
 		'asem_release_holds',
 		'asem_event_requests',
@@ -46,6 +48,7 @@ final class Install {
 		foreach ( self::JOB_HOOKS as $hook ) {
 			wp_unschedule_hook( $hook );
 		}
+		BootState::forget( 'jobs_checked' ); // = Plugin::JOBS_CHECKED (scritto qui: alla disattivazione durante un aggiornamento Plugin può essere ancora quella vecchia); alla riattivazione i due eventi del giro si riprogrammano subito
 	}
 
 	/** Attivazione del plugin: tutti i passaggi di base di seguito (qui c'è chi aspetta), poi la versione dello schema. */
