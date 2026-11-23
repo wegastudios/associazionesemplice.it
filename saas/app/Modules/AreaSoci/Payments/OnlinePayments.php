@@ -157,7 +157,7 @@ final readonly class OnlinePayments
             if ($provider === 'stripe') {
                 $res = $this->stripe->createSession((string) $settings->stripe_secret, StripeGateway::checkoutParams($lines, $id, $email, $success.'?session_id={CHECKOUT_SESSION_ID}', $cancel), $id);
             } else {
-                $res = $this->paypal->createOrder($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret,PayPalGateway::orderPayload($lines, $id, $success, $cancel, $brand), $id);
+                $res = $this->paypal->createOrder($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret, PayPalGateway::orderPayload($lines, $id, $success, $cancel, $brand), $id);
             }
         } catch (RuntimeException $e) {
             $this->table()->where('id', $id)->update(['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 1000), 'updated_at' => now()]);
@@ -200,7 +200,7 @@ final readonly class OnlinePayments
                     $this->settle($p['id'], StripeGateway::paidCents($session));
                 }
             } else {
-                $order = $this->paypal->capture($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret,$p['provider_ref']);
+                $order = $this->paypal->capture($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret, $p['provider_ref']);
                 if (PayPalGateway::isCompleted($order)) {
                     $this->settle($p['id'], PayPalGateway::capturedCents($order));
                 }
