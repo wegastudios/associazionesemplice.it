@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 use App\Modules\Cifratura\Monitor\KeyServiceAlertNotification;
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\QueuedMail;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\Fixtures\FakeKeyService;
 
 /*
@@ -67,6 +71,19 @@ it('un solo avviso per guasto e uno al ritorno, senza segreti', function (): voi
     $text = implode("\n", $this->logged);
     expect($text)->not->toContain(base64_encode($service->masterKey))
         ->and($text)->not->toContain(base64_encode($service->signingKey));
+});
+
+it('l\'allarme è posta urgente: con la quota dell\'ora finita aspetta in coda tra gli urgenti', function (): void {
+    $service = (new FakeKeyService)->install();
+    config(['saas.crypto.vault' => 'remote']);
+    $service->down = true;
+    Queue::fake();
+    RateLimiter::increment('mail-all|'.MailQueue::mailer().'|3600', 3600, 10_000);
+
+    $this->artisan('saas:keys:monitor')->expectsOutputToContain('Avviso in coda per 1 indirizzi.')->assertFailed();
+
+    Notification::assertNothingSent();
+    Queue::assertPushedOn(MailQueue::URGENT, QueuedMail::class);
 });
 
 it('si accorge di una firma rifiutata', function (): void {

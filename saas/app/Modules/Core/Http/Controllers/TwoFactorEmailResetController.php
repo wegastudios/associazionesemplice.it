@@ -7,6 +7,8 @@ namespace App\Modules\Core\Http\Controllers;
 use App\Modules\Audit\Contracts\SecurityLog;
 use App\Modules\Core\Auth\TwoFactorEmailResetNotification;
 use App\Modules\Core\Auth\TwoFactorResetNoticeNotification;
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\QueuedMail;
 use App\Modules\Core\Demo\DemoEnvironment;
 use App\Modules\Core\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -57,7 +59,8 @@ final readonly class TwoFactorEmailResetController
         $nonce = Str::random(40);
         Cache::put('2fa-reset:'.hash('sha256', $nonce), (string) $user->id, now()->addMinutes(self::LINK_MINUTES));
         $url = URL::temporarySignedRoute('two-factor.email-reset.confirm', now()->addMinutes(self::LINK_MINUTES), ['uid' => $user->id, 'n' => $nonce]);
-        $user->notify(new TwoFactorEmailResetNotification($user->name, $url));
+        // Subito se c'è quota, altrimenti in coda (cifrato) finché il link vale.
+        MailQueue::sendNowOrQueue(QueuedMail::notification($user, new TwoFactorEmailResetNotification($user->name, $url), MailQueue::URGENT, now()->addMinutes(self::LINK_MINUTES)));
         $this->log->record('two_factor.reset_requested', (string) $user->id);
 
         return $reply;
@@ -92,7 +95,7 @@ final readonly class TwoFactorEmailResetController
 
         $user->forceFill(['two_factor_secret' => null, 'two_factor_recovery_codes' => null, 'two_factor_confirmed_at' => null])->save();
         $this->log->record('two_factor.reset_by_email', (string) $user->id);
-        $user->notify(new TwoFactorResetNoticeNotification($user->name));
+        MailQueue::sendNowOrQueue(QueuedMail::notification($user, new TwoFactorResetNoticeNotification($user->name), MailQueue::URGENT, now()->addDay()));
 
         return redirect()->route('login')->with('status', 'La verifica in due passaggi è stata tolta. Accedi con la password e riattivala subito con il telefono nuovo.');
     }
