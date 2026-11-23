@@ -61,6 +61,11 @@ jobs:
 
       - run: composer install --no-interaction --no-progress --prefer-dist
 
+      # Come il pacchetto del server (deploy/build.sh, H21): autoloader «solo mappa». Una classe fuori dalla mappa
+      # (cartella non dichiarata in composer.json, file generati) fa fallire i test qui e non in produzione.
+      - name: Autoloader solo mappa
+        run: composer dump-autoload --classmap-authoritative --no-interaction
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -87,6 +92,17 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate --no-interaction
+
+      # La configurazione si mette in cache come al rilascio, con l'ambiente di produzione d'esempio: un errore nei file di
+      # config (per esempio una classe usata in config/queue.php) si vede qui e non sul server.
+      - name: Configurazione in cache (ambiente di produzione d'esempio)
+        run: |
+          mv .env .env.ci
+          cp deploy/env.server.example .env
+          php artisan config:cache --no-interaction
+          php -r '$c = require "bootstrap/cache/config.php"; exit(($c["queue"]["connections"]["database-long"]["retry_after"] ?? 0) >= 2100 && ($c["queue"]["connections"]["database"]["retry_after"] ?? 999) <= 120 ? 0 : 1);'
+          php artisan config:clear --no-interaction
+          mv .env.ci .env
 
       - name: Pint
         run: vendor/bin/pint --test
