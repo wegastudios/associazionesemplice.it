@@ -5,13 +5,19 @@ declare(strict_types=1);
 namespace App\Modules\Backup;
 
 use App\Modules\Backup\Crypto\BackupCipher;
+use App\Modules\Backup\Crypto\BackupEncryptor;
+use App\Modules\Backup\Crypto\EncryptedPipe;
+use App\Modules\Backup\Crypto\EncryptedPipeStream;
 use App\Modules\Core\Contracts\DatabaseNames;
 use Carbon\CarbonImmutable;
+use Generator;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use RuntimeException;
+use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
+use Throwable;
 
 /**
  * Dump orari cifrati di ogni database (condiviso e dedicati), su uno spazio esterno in UE, e prova di ripristino.
@@ -27,57 +33,69 @@ final readonly class Backups
         private DatabaseManager $db,
         private BackupConfig $config,
         private Filesystem $disk,
+        private PgDumpCompression $compression,
     ) {}
 
-    /** @return array{path: string, size: int, sha256: string, tables: array<string, int>} */
+    /**
+     * Un solo flusso: pg_dump → cifratura → spazio dei backup, senza file in chiaro né cifrati sul disco del server.
+     * Le righe per tabella sono stimate dalle statistiche (quelle sotto la soglia si contano davvero); «estimated»
+     * elenca le tabelle stimate. L'impronta è calcolata mentre il file parte. Se pg_dump fallisce il file parziale si cancella.
+     *
+     * @return array{path: string, size: int, sha256: string, tables: array<string, int>, estimated: list<string>}
+     */
     public function dump(string $name, CarbonImmutable $at): array
     {
         $connection = $this->databases->backupConnection($name);
         $settings = $this->settings($connection);
-        $tables = $this->rowCounts($this->db->connection($connection), false);
-        $plain = $this->temp();
-        $encrypted = $this->temp();
+        ['tables' => $tables, 'estimated' => $estimated] = $this->statCounts($this->db->connection($connection));
 
+        $process = new Process([
+            ...$this->lowPriority(),
+            $this->config->binary('pg_dump'), '--format=custom', '--compress='.$this->compression->effective(), '--no-password', '--enable-row-security',
+            '--host='.$settings['host'], '--port='.$settings['port'], '--username='.$settings['username'],
+            '--dbname='.$settings['database'],
+        ], null, ['PGPASSWORD' => $settings['password'], 'PGCONNECT_TIMEOUT' => '10'], null, 3600);
+
+        // Database, ora e ambiente entrano nel dato autenticato: un dump non si può spacciare per un altro.
+        $pipe = new EncryptedPipe($this->dumpOutput($process), new BackupEncryptor($this->config->publicKey(), [
+            'created_at' => $at->utc()->format('Y-m-d\TH:i:s\Z'),
+            'database' => $name,
+            'env' => $this->config->prefix(),
+        ]));
+        $path = sprintf('%s/%s/%s/%s-%s.dump.enc', $this->config->prefix(), $name, $at->utc()->format('Y/m'), $name, $at->utc()->format('Ymd\THis\Z'));
+
+        $process->start();
+        $stream = EncryptedPipeStream::open($pipe);
         try {
-            $this->run([
-                $this->config->binary('pg_dump'), '--format=custom', '--compress=6', '--no-password', '--enable-row-security',
-                '--host='.$settings['host'], '--port='.$settings['port'], '--username='.$settings['username'],
-                '--dbname='.$settings['database'], '--file='.$plain,
-            ], $settings['password']);
-
-            $in = fopen($plain, 'rb') ?: throw new RuntimeException('Dump non leggibile.');
-            $out = fopen($encrypted, 'wb') ?: throw new RuntimeException('File cifrato non scrivibile.');
-            // Database, ora e ambiente entrano nel dato autenticato: un dump non si può spacciare per un altro.
-            BackupCipher::encrypt($in, $out, $this->config->publicKey(), [
-                'created_at' => $at->utc()->format('Y-m-d\TH:i:s\Z'),
-                'database' => $name,
-                'env' => $this->config->prefix(),
-            ]);
-            fclose($in);
-            fclose($out);
-
-            $path = sprintf('%s/%s/%s/%s-%s.dump.enc', $this->config->prefix(), $name, $at->utc()->format('Y/m'), $name, $at->utc()->format('Ymd\THis\Z'));
-            $sha256 = (string) hash_file('sha256', $encrypted);
-            $size = (int) filesize($encrypted);
-
-            $stream = fopen($encrypted, 'rb') ?: throw new RuntimeException('File cifrato non leggibile.');
             $this->disk->writeStream($path, $stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-            $this->disk->put($path.'.json', (string) json_encode([
-                'database' => $name,
-                'created_at' => $at->utc()->toIso8601String(),
-                'size' => $size,
-                'sha256' => $sha256,
-                'tables' => $tables,
-            ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        } catch (Throwable $e) {
+            $process->stop(5);
+            $this->discard($path);
 
-            return ['path' => $path, 'size' => $size, 'sha256' => $sha256, 'tables' => $tables];
+            throw $e;
         } finally {
-            @unlink($plain);
-            @unlink($encrypted);
+            fclose($stream);
         }
+
+        if ($pipe->error() instanceof Throwable || ! $pipe->completed() || ! $process->isSuccessful()) {
+            $process->stop(5);
+            $this->discard($path);
+            // Solo l'inizio dell'errore e mai la riga di comando: niente credenziali nei log.
+            throw new RuntimeException('pg_dump non riuscito: '.mb_substr(trim($process->getErrorOutput() ?: ($pipe->error()?->getMessage() ?? '')), 0, 300));
+        }
+
+        $sha256 = $pipe->sha256();
+        $size = $pipe->size();
+        $this->disk->put($path.'.json', (string) json_encode([
+            'database' => $name,
+            'created_at' => $at->utc()->toIso8601String(),
+            'size' => $size,
+            'sha256' => $sha256,
+            'tables' => $tables,
+            'estimated' => $estimated,
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        return ['path' => $path, 'size' => $size, 'sha256' => $sha256, 'tables' => $tables, 'estimated' => $estimated];
     }
 
     public function latest(string $name): ?string
@@ -142,10 +160,16 @@ final readonly class Backups
             $restored = $this->rowCounts($target, true);
             /** @var array<string, int> $expected */
             $expected = $manifest['tables'];
+            $estimated = is_array($manifest['estimated'] ?? null) ? array_flip(array_filter($manifest['estimated'], is_string(...))) : [];
             ksort($expected);
             ksort($restored);
-            if ($restored !== $expected) {
-                $diff = array_keys(array_diff_assoc($expected, $restored) + array_diff_assoc($restored, $expected));
+            $diff = array_keys(array_diff_key($expected, $restored) + array_diff_key($restored, $expected));
+            foreach ($restored as $table => $count) {
+                if (isset($expected[$table]) && ! $this->rowsMatch($count, (int) $expected[$table], isset($estimated[$table]))) {
+                    $diff[] = $table;
+                }
+            }
+            if ($diff !== []) {
                 throw new RuntimeException('Righe ripristinate diverse dal dump: '.implode(', ', array_slice($diff, 0, 10)));
             }
 
@@ -287,6 +311,101 @@ final readonly class Backups
         }
 
         return $counts;
+    }
+
+    /**
+     * Righe per tabella senza scorrerle (H35): sotto la soglia (o senza statistiche) si conta davvero, perché costa
+     * poco; sopra si usa la stima di PostgreSQL. La prova di ripristino conta sempre davvero.
+     *
+     * @return array{tables: array<string, int>, estimated: list<string>}
+     */
+    private function statCounts(ConnectionInterface $connection): array
+    {
+        $rows = $connection->select(<<<'SQL'
+            SELECT n.nspname || '.' || c.relname AS t, c.reltuples::bigint AS e
+            FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE c.relkind = 'r' AND (n.nspname IN ('core', 'app', 'audit', 'sites', 'portal') OR (n.nspname = 'public' AND c.relname = 'migrations'))
+            ORDER BY 1
+        SQL);
+
+        $below = $this->config->exactRowsBelow();
+        $counts = [];
+        $estimated = [];
+        foreach ($rows as $row) {
+            $table = is_object($row) && isset($row->t) && is_string($row->t) ? $row->t : null;
+            if ($table === null || preg_match('/^[a-z_]+\.[a-z0-9_]+$/', $table) !== 1) {
+                continue;
+            }
+            $stat = is_object($row) && isset($row->e) && is_numeric($row->e) ? (int) $row->e : -1;
+            if ($stat >= $below) {
+                $counts[$table] = $stat;
+                $estimated[] = $table;
+
+                continue;
+            }
+            $count = $connection->scalar("SELECT count(*) FROM {$table}");
+            $counts[$table] = is_numeric($count) ? (int) $count : 0;
+        }
+
+        return ['tables' => $counts, 'estimated' => $estimated];
+    }
+
+    /**
+     * Una tabella stimata torna se il numero vero è dello stesso ordine (da metà al doppio, o entro 5000 righe): le
+     * statistiche non sono esatte e il dump è un po' più tardi. Le tabelle contate davvero devono tornare uguali.
+     */
+    private function rowsMatch(int $restored, int $expected, bool $estimated): bool
+    {
+        if (! $estimated) {
+            return $restored === $expected;
+        }
+
+        return abs($restored - $expected) <= 5000 || ($restored * 2 >= $expected && $restored <= $expected * 2);
+    }
+
+    /** @return Generator<int, string> uscita di pg_dump, a pezzi; l'errore resta nel processo */
+    private function dumpOutput(Process $process): Generator
+    {
+        foreach ($process->getIterator(Process::ITER_SKIP_ERR) as $chunk) {
+            yield (string) $chunk;
+        }
+    }
+
+    /**
+     * Priorità bassa (H35): `nice` e `ionice` solo se esistono e funzionano su questo server, così il dump non
+     * toglie risorse alle richieste degli utenti e un server che non li ammette non blocca il backup.
+     *
+     * @return list<string>
+     */
+    private function lowPriority(): array
+    {
+        if (! $this->config->lowPriority()) {
+            return [];
+        }
+        $finder = new ExecutableFinder;
+        $prefix = [];
+        foreach ([['nice', '-n', '19'], ['ionice', '-c', '3']] as $tool) {
+            $path = $finder->find($tool[0]);
+            if ($path === null) {
+                continue;
+            }
+            $probe = new Process([...$prefix, $path, ...array_slice($tool, 1), 'true'], null, null, null, 10);
+            $probe->run();
+            if ($probe->isSuccessful()) {
+                $prefix = [...$prefix, $path, ...array_slice($tool, 1)];
+            }
+        }
+
+        return $prefix;
+    }
+
+    private function discard(string $path): void
+    {
+        try {
+            $this->disk->delete($path);
+        } catch (Throwable) {
+            // Il file parziale non si apre comunque (manca il blocco finale); si toglie con la pulizia dei vecchi.
+        }
     }
 
     /** @return array{host: string, port: string, database: string, username: string, password: string} */

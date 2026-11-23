@@ -259,6 +259,13 @@ return [
         'secret_key' => env('SAAS_BACKUP_SECRET_KEY'),
         'pg_dump' => env('SAAS_PG_DUMP', 'pg_dump'),
         'pg_restore' => env('SAAS_PG_RESTORE', 'pg_restore'),
+        // Compressione del dump (H35): zstd è molto più leggero di gzip per il processore. Con «gzip:6» si torna al
+        // vecchio comportamento se il pg_dump del server non è compilato con zstd.
+        'compression' => env('SAAS_BACKUP_COMPRESSION', 'zstd:3'),
+        // Dump a priorità bassa (nice e ionice, se il server li ammette).
+        'low_priority' => (bool) env('SAAS_BACKUP_LOW_PRIORITY', true),
+        // Sotto questo numero di righe stimato dalle statistiche la tabella si conta davvero; sopra si usa la stima.
+        'exact_rows_below' => (int) env('SAAS_BACKUP_EXACT_ROWS_BELOW', 50000),
     ],
 
 ];

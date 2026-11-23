@@ -90,12 +90,12 @@ final class MemberLogin {
 		}
 		$p = self::person_by_email( $email );
 		if ( ! $p ) {
-			get_transient( 'asem_ml_m_' . md5( strtolower( trim( $email ) ) ) );
+			Counters::get( 'asem_ml_m_' . md5( strtolower( trim( $email ) ) ) );
 			self::decoy_request(); // stesso lavoro di una richiesta vera: il tempo di risposta non dice se l'indirizzo è di un socio
 			return false;
 		}
 		$mail_key = 'asem_ml_m_' . md5( strtolower( (string) $p['email'] ) ); // come per il primo accesso: nessuno può inondare la casella di un socio
-		$sent     = (int) get_transient( $mail_key );
+		$sent     = (int) Counters::get( $mail_key );
 		if ( $sent >= Limits::get( 'first_access_per_email' ) ) {
 			self::decoy_request();
 			return false;
@@ -138,12 +138,12 @@ final class MemberLogin {
 		$to      = (string) $p['email'];
 		$subject = \AssociazioneSemplice\Texts::subject( $subject );
 		if ( ResponseMail::deferring() ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
-			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
+			Counters::set( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 			return ResponseMail::send( $to, $subject, $text );
 		}
 		$ok = (bool) Texts::mail( $to, $subject, $text );
 		if ( $ok ) {
-			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
+			Counters::set( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 		}
 		return $ok;
 	}
@@ -194,7 +194,7 @@ final class MemberLogin {
 			return null;
 		}
 		$fails_key = 'asem_ml_cf_' . (int) $p['id'];
-		if ( (int) get_transient( $fails_key ) >= self::MAX_CODE_FAILS_PER_HOUR ) {
+		if ( (int) Counters::get( $fails_key ) >= self::MAX_CODE_FAILS_PER_HOUR ) {
 			return null; // troppi codici sbagliati per questa persona: anche chiedendone di nuovi non si ricomincia
 		}
 		$db  = Db::db();
@@ -209,10 +209,10 @@ final class MemberLogin {
 			return null;
 		}
 		if ( ! hash_equals( (string) $row['code_hash'], SessionToken::hash_code( $code, (int) $p['id'], MemberSession::secret() ) ) ) {
-			set_transient( $fails_key, (int) get_transient( $fails_key ) + 1, HOUR_IN_SECONDS );
+			Counters::set( $fails_key, (int) Counters::get( $fails_key ) + 1, HOUR_IN_SECONDS );
 			return null;
 		}
-		delete_transient( $fails_key ); // codice giusto: il conto dei errori riparte
+		Counters::delete( $fails_key ); // codice giusto: il conto dei errori riparte
 		return self::finish( $row );
 	}
 

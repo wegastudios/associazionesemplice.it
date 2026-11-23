@@ -36,6 +36,26 @@ final readonly class BackupConfig
         return is_string($value) && $value !== '' ? $value : $tool;
     }
 
+    /** Algoritmo e livello per `pg_dump --compress` (solo caratteri sicuri). */
+    public function compression(): string
+    {
+        $value = $this->config->get('saas.backup.compression');
+
+        return is_string($value) && preg_match('/^(zstd|gzip|lz4)(:\d{1,2})?$/', $value) === 1 ? $value : 'zstd:3';
+    }
+
+    public function lowPriority(): bool
+    {
+        return $this->config->get('saas.backup.low_priority', true) !== false;
+    }
+
+    public function exactRowsBelow(): int
+    {
+        $value = $this->config->get('saas.backup.exact_rows_below');
+
+        return is_numeric($value) ? max(0, (int) $value) : 50000;
+    }
+
     /** Prefisso nello spazio dei backup: un ambiente non tocca quelli di un altro. */
     public function prefix(): string
     {

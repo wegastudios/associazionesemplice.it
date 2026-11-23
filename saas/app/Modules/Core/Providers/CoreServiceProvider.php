@@ -10,6 +10,7 @@ use App\Modules\Core\Console\DemoResetCommand;
 use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
+use App\Modules\Core\Console\NightCommand;
 use App\Modules\Core\Console\PurgeTmpCommand;
 use App\Modules\Core\Console\ResetUserTwoFactorCommand;
 use App\Modules\Core\Console\SelfTestPurgeCommand;
@@ -126,7 +127,7 @@ final class CoreServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class, WebRefreshCommand::class]);
+            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class, NightCommand::class, WebRefreshCommand::class]);
 
             // Code su Postgres: lavoratori a giro di cron, che si fermano quando la coda è vuota o dopo 50 secondi (sul
             // server non ci sono processi sempre attivi). Code per tipo di lavoro e quanti lavoratori: JobQueues.
@@ -145,6 +146,9 @@ final class CoreServiceProvider extends ServiceProvider
                         });
                     }
                 }
+                // Controlli notturni in sequenza (H36): ricevute, registro, saldi e, la domenica, archivi. Prima ognuno aveva
+                // il suo orario e la domenica si accavallavano. Il mutex dura quanto la notte, mai oltre le 05:11 dei backup.
+                $schedule->command('saas:night')->dailyAt('02:23')->withoutOverlapping(180);
                 $schedule->command('queue:prune-failed --hours=168')->dailyAt('05:47');
                 // File di lavoro rimasti da richieste interrotte (copie, archivi, ricevute): via quelli di più di un'ora.
                 $schedule->command('saas:tmp:purge --minutes=60')->everyFifteenMinutes()->withoutOverlapping(10);

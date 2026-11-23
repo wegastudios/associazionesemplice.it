@@ -105,6 +105,16 @@ final class ProBoot {
 		return is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI );
 	}
 
+	/** Lo schema del Pro è pronto? (versione salvata = versione del codice; senza caricare ProSchema). */
+	public static function schema_ready(): bool {
+		return self::SCHEMA_VERSION === (string) get_option( self::SCHEMA_OPTION, '' );
+	}
+
+	/** Filtro `asem_extension_schema_ready`: il gratuito rifiuta le scritture finché lo schema del Pro è a metà. @param mixed $ready */
+	public static function filter_schema_ready( $ready ): bool {
+		return $ready && self::schema_ready();
+	}
+
 	/** Se lo schema del Pro è cambiato (o è la prima volta) ricrea le tabelle mancanti; altrimenti ProSchema nemmeno si carica. */
 	public static function maybe_upgrade_schema(): void {
 		if ( self::SCHEMA_VERSION !== (string) get_option( self::SCHEMA_OPTION, '' ) ) {
@@ -152,6 +162,7 @@ final class ProBoot {
 
 		// Come la licenza limita le funzioni.
 		add_filter( 'asem_schema_tables', array( ProSchema::class, 'tables' ), 10, 3 ); // tabelle delle funzioni aggiuntive
+		add_filter( 'asem_extension_schema_ready', array( __CLASS__, 'filter_schema_ready' ) ); // con lo schema del Pro a metà le scritture aspettano, come per quello del gratuito
 		add_action( 'plugins_loaded', array( __CLASS__, 'maybe_upgrade_schema' ), 12 ); // dopo l'aggiornamento dello schema del gratuito (priorità 10)
 		ProData::register(); // esportazione, anonimizzazione ed eliminazioni
 		ProSettings::register();

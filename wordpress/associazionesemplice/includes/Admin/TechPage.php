@@ -14,6 +14,14 @@ final class TechPage {
 	private static function mail_section(): void {
 		echo '<h2>Posta in uscita</h2><p class="description">Le email del plugin (primo accesso, ricevute, promemoria, avvisi) partono dalla posta del sito. Qui vedi l\'esito degli ultimi invii e l\'errore segnalato dal server. '
 			. 'Se risultano partite ma non arrivano, il problema è la consegna: chiedi a chi gestisce il sito di collegarlo a un servizio di posta (plugin SMTP) con un indirizzo del tuo dominio e di controllare i record SPF e DKIM.</p>';
+		$wait = \AssociazioneSemplice\MailRetry::pending();
+		$lost = \AssociazioneSemplice\MailRetry::lost();
+		if ( $wait > 0 ) {
+			echo '<p class="notice notice-warning inline" style="padding:8px 12px"><strong>' . (int) $wait . ' email in attesa di un nuovo tentativo:</strong> ' . ( 1 === $wait ? 'il server di posta non l\'ha accettata' : 'il server di posta non le ha accettate' ) . ' e il plugin riprova da solo.</p>';
+		}
+		if ( $lost > 0 ) {
+			echo '<p class="notice notice-error inline" style="padding:8px 12px"><strong>' . (int) $lost . ( 1 === $lost ? ' email non è partita' : ' email non sono partite' ) . '</strong> negli ultimi 7 giorni, nemmeno dopo i nuovi tentativi: controlla la posta del sito (di solito un plugin SMTP risolve) e avvisa chi aspettava il messaggio.</p>';
+		}
 		$rows = \AssociazioneSemplice\MailLog::recent( 10 );
 		if ( $rows ) {
 			echo '<table class="widefat striped" style="max-width:900px"><thead><tr><th>Quando</th><th>A</th><th>Messaggio</th><th>Esito</th></tr></thead><tbody>';

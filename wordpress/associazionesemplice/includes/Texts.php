@@ -78,7 +78,7 @@ final class Texts {
 	}
 
 	/** wp_mail con i testi personalizzati (oggetto e messaggio); l'esito resta nel registro della posta in uscita. */
-	public static function mail( $to, string $subject, string $message, $headers = '', $attachments = array() ): bool {
+	public static function mail( $to, string $subject, string $message, $headers = '', $attachments = array(), bool $retry = true ): bool {
 		MailLog::begin();
 		$subject = self::plain( $subject );
 		$message = self::plain( $message );
@@ -103,6 +103,9 @@ final class Texts {
 		$ok      = (bool) wp_mail( $to, $subject, $message, $headers, $attachments );
 		MailLog::record( $to, $subject, $ok );
 		MailBudget::count( MailBudgetRules::recipients( $to ) ); // tetto orario delle email del plugin: ogni destinatario conta, qualunque sia l'esito
+		if ( ! $ok && $retry ) {
+			MailRetry::add( $to, $subject, $message, $headers, $attachments ); // email singola rifiutata dal server: non si perde, si riprova tra pochi minuti (le comunicazioni a gruppi e i promemoria hanno la loro coda e passano $retry = false)
+		}
 		return $ok;
 	}
 }

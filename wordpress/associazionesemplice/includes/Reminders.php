@@ -176,7 +176,7 @@ final class Reminders {
 			$body .= "\n\n" . Bank::text_block(); // le coordinate per il bonifico, se l'associazione le ha attivate
 		}
 		$text  = 'Ciao ' . $to['name'] . ",\n\n" . $body . "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area soci: ' . Gatekeeper::area_url();
-		$ok = (bool) \AssociazioneSemplice\Texts::mail( $to['email'], \AssociazioneSemplice\Texts::subject( $subject ), $text );
+		$ok = (bool) \AssociazioneSemplice\Texts::mail( $to['email'], \AssociazioneSemplice\Texts::subject( $subject ), $text, '', array(), false ); // i promemoria hanno già la loro coda
 		do_action( 'asem_notify_email', (string) $to['email'], $subject, $body ); // notifica sul telefono, se un'estensione la gestisce
 		return $ok;
 	}
