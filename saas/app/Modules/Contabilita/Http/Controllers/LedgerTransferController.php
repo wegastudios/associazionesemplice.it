@@ -7,7 +7,10 @@ namespace App\Modules\Contabilita\Http\Controllers;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Import\LedgerExport;
 use App\Modules\Contabilita\Import\LedgerImportService;
+use App\Modules\Contabilita\Jobs\RunLedgerImport;
 use App\Modules\Core\Contracts\DemoScale;
+use App\Modules\Core\Contracts\OrgContext;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Http\UploadedFile;
@@ -22,14 +25,16 @@ final readonly class LedgerTransferController
         private LedgerImportService $import,
         private LedgerExport $export,
         private AuditLog $audit,
+        private OrgContext $context,
     ) {}
 
     public function form(): Response
     {
-        return $this->page(null, null);
+        return $this->page(null);
     }
 
-    public function import(Request $request): Response
+    /** Anteprima (apply = false), oppure import dello stesso file in coda (H11): la pagina ne mostra l'avanzamento. */
+    public function import(Request $request): Response|RedirectResponse
     {
         if (DemoScale::uploadsOff()) {
             throw ValidationException::withMessages(['file' => DemoScale::UPLOADS_OFF]);
@@ -49,7 +54,15 @@ final readonly class LedgerTransferController
             throw ValidationException::withMessages(['file' => $preview['error']]);
         }
         if ($request->boolean('apply')) {
-            return $this->page(null, $this->import->apply($preview['plan'], $request->user()?->can('accounting.income') ?? false, $request->user()?->can('accounting.expense') ?? false));
+            $user = $request->user();
+            $userId = $user?->getAuthIdentifier();
+            $id = $this->import->queue($preview['plan'], $user?->can('accounting.income') ?? false, $user?->can('accounting.expense') ?? false, is_string($userId) ? $userId : null);
+            if ($id === null) {
+                throw ValidationException::withMessages(['file' => 'C\'è già un\'importazione della prima nota in corso: aspetta che finisca.']);
+            }
+            RunLedgerImport::dispatch($this->context->require()->id, $id);
+
+            return redirect()->route('ledger.import');
         }
 
         $labels = ['create' => 'Nuovo', 'transfer' => 'Giroconto', 'paired' => 'Giroconto', 'duplicate' => 'Già presente', 'skip' => 'Saltato', 'error' => 'Errore'];
@@ -65,7 +78,30 @@ final readonly class LedgerTransferController
                 'label' => $labels[$p['action']] ?? $p['action'],
                 'message' => trim($p['message'].($p['warnings'] !== [] ? ' '.implode('; ', $p['warnings']) : '')),
             ], $preview['plan']),
-        ], null);
+        ]);
+    }
+
+    /** Annulla un import ancora in coda: nessun movimento registrato. Quando è partito si porta a termine. */
+    public function cancel(string $import): RedirectResponse
+    {
+        if (! $this->import->cancel($import)) {
+            throw ValidationException::withMessages(['file' => 'L\'importazione è già partita: non si può più annullare, si porta a termine.']);
+        }
+
+        return redirect()->route('ledger.import');
+    }
+
+    /**
+     * Riprende un import fermo dal punto in cui si era fermato: i movimenti già registrati non si ripetono. Entrate e
+     * spese restano quelle permesse a chi l'ha avviato.
+     */
+    public function resume(string $import): RedirectResponse
+    {
+        if ($this->import->resume($import)) {
+            RunLedgerImport::dispatch($this->context->require()->id, $import);
+        }
+
+        return redirect()->route('ledger.import');
     }
 
     public function export(Request $request): HttpResponse
@@ -81,16 +117,13 @@ final readonly class LedgerTransferController
         ]);
     }
 
-    /**
-     * @param  array<string, mixed>|null  $preview
-     * @param  array<string, mixed>|null  $result
-     */
-    private function page(?array $preview, ?array $result): Response
+    /** @param  array<string, mixed>|null  $preview */
+    private function page(?array $preview): Response
     {
         return Inertia::render('Contabilita/Importa', [
-            'accounts' => $this->import->accountsList(),
+            'accounts' => fn (): array => $this->import->accountsList(),
             'preview' => $preview,
-            'result' => $result,
+            'job' => $this->import->current(),
         ]);
     }
 }

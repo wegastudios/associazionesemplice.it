@@ -24,6 +24,16 @@ interface Ledger
     /** @return string id del movimento */
     public function recordExpense(Expense $expense): string;
 
+    /**
+     * Incassi e spese di un import (H11), in blocco: stessi controlli di recordIncome e recordExpense, senza ricevuta né
+     * commissione, un solo inserimento per tutte. Una voce rifiutata non ferma le altre. Nel registro non va una riga per
+     * movimento: la riga riassuntiva la scrive chi importa. Va chiamato dentro la transazione di chi importa.
+     *
+     * @param  list<Income|Expense>  $entries
+     * @return list<list<string>|LedgerError> per ogni voce, nello stesso ordine: gli id dei movimenti o l'errore
+     */
+    public function recordImported(array $entries): array;
+
     /** @return string identificativo del giroconto */
     public function recordTransfer(string $date, string $fromAccountId, string $toAccountId, int $cents, string $description = ''): string;
 

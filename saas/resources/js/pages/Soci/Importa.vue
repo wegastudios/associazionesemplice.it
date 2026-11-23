@@ -1,8 +1,10 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import ImportProgress from '../../components/ImportProgress.vue';
 
-const props = defineProps({ types: Array, columns: Array, preview: Object, result: Object });
+const props = defineProps({ types: Array, columns: Array, preview: Object, job: Object });
+const busy = () => props.job && ['queued', 'running'].includes(props.job.status) && !props.job.stalled;
 
 const form = useForm({ file: null, default_type: props.types[0].value, mark_current: false, confirm_years: false, apply: false });
 const send = (apply) => {
@@ -20,15 +22,10 @@ const field = 'field';
         <p class="mb-2 text-sm"><Link href="/gestionale/soci" class="text-accent hover:underline">← Soci</Link></p>
         <h1 class="mb-4 text-2xl font-bold">Importa soci da Excel o CSV</h1>
 
-        <section v-if="result" class="mb-6 card p-4 sm:p-5" role="status">
-            <h2 class="mb-2 text-lg font-bold">Importazione completata</h2>
+        <ImportProgress :job="job" url="/gestionale/soci/importa" unit="righe" v-slot="{ result }">
             <p>{{ result.created }} {{ result.created === 1 ? 'scheda nuova' : 'schede nuove' }}, {{ result.updated }} {{ result.updated === 1 ? 'aggiornata' : 'aggiornate' }}, {{ result.memberships }} {{ result.memberships === 1 ? 'tessera registrata' : 'tessere registrate' }}, {{ result.guardians }} {{ result.guardians === 1 ? 'tutore collegato' : 'tutori collegati' }}.</p>
-            <template v-if="result.failed.length">
-                <p class="mt-3 font-semibold text-danger">Righe non importate:</p>
-                <ul class="list-disc pl-5 text-sm"><li v-for="f in result.failed" :key="f">{{ f }}</li></ul>
-            </template>
             <p class="mt-3"><Link href="/gestionale/soci" class="font-semibold text-accent hover:underline">Vai all'elenco</Link></p>
-        </section>
+        </ImportProgress>
 
         <section class="card p-4 sm:p-5">
             <p class="mb-3 text-sm text-muted">Servono almeno le colonne <strong>Nome</strong> e <strong>Cognome</strong>, e per ogni persona l'email, il cellulare o il numero di tessera. Si riconoscono anche:</p>
@@ -69,9 +66,10 @@ const field = 'field';
                 <ul class="mt-1 list-disc pl-5"><li v-for="e in preview.years.examples" :key="e">{{ e }}</li></ul>
                 <label class="mt-2 flex items-start gap-2"><input v-model="form.confirm_years" type="checkbox" class="mt-1" /><span>Ho letto cosa succede alle tessere e voglio importarle così.</span></label>
             </div>
-            <button type="button" class="mt-4 btn btn-primary" :disabled="form.processing || !(preview.create + preview.update) || (preview.years && !form.confirm_years)" @click="send(true)">
+            <button type="button" class="mt-4 btn btn-primary" :disabled="form.processing || busy() || !(preview.create + preview.update) || (preview.years && !form.confirm_years)" @click="send(true)">
                 {{ preview.create + preview.update === 1 ? 'Importa 1 riga' : `Importa ${preview.create + preview.update} righe` }}
             </button>
+            <p v-if="busy()" class="mt-2 text-sm text-muted">Aspetta che finisca l'importazione in corso.</p>
             <p v-if="preview.error" class="mt-2 text-sm text-muted">Le righe con errori si saltano: correggile nel file e ricaricalo quando vuoi.</p>
         </section>
     </AppLayout>

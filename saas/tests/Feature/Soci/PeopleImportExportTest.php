@@ -143,8 +143,8 @@ it('fa anteprima e import dalla pagina, solo a chi modifica i soci', function ()
         ->assertInertia(fn (Assert $page) => $page->where('preview.create', 1)->where('preview.error', 1)->where('preview.rows.1.message', 'Servono almeno l\'email, il cellulare o il numero di tessera'));
     $this->orgContext()->run($this->org->id, fn () => expect(Person::query()->count())->toBe(0));
 
-    $this->post('/gestionale/soci/importa', ['file' => $upload(), 'default_type' => 'ordinary', 'apply' => true])
-        ->assertInertia(fn (Assert $page) => $page->where('result.created', 1));
+    $this->followingRedirects()->post('/gestionale/soci/importa', ['file' => $upload(), 'default_type' => 'ordinary', 'apply' => true])
+        ->assertInertia(fn (Assert $page) => $page->where('job.status', 'done')->where('job.result.created', 1));
     $this->orgContext()->run($this->org->id, fn () => expect(Person::query()->sole()->email)->toBe('eva@example.com'));
 
     $this->post('/gestionale/soci/importa', ['file' => UploadedFile::fake()->createWithContent('x.csv', "Tessera;Email\n1;a@b.it"), 'default_type' => 'ordinary'])

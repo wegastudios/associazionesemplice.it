@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Modules\Soci\Services;
 
 use App\Modules\Audit\Contracts\AuditLog;
+use App\Modules\Core\Contracts\ImportJobs;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Documenti\Contracts\SheetReader;
-use App\Modules\Documenti\Contracts\Text;
 use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Contracts\PeopleError;
+use App\Modules\Soci\Import\PeopleFinder;
 use App\Modules\Soci\Import\PeopleSheet;
 use App\Modules\Soci\Models\Person;
-use App\Modules\Soci\Rules\SocialYear;
 use Illuminate\Database\DatabaseManager;
 use InvalidArgumentException;
 
@@ -20,8 +20,16 @@ use InvalidArgumentException;
  * Import di soci, ospiti e genitori da Excel o CSV (dall'ImportService del plugin). Prima l'anteprima (cosa nasce,
  * cosa si aggiorna, cosa non va), poi l'applicazione dello stesso file. Una riga che non va non ferma le altre.
  *
+ * L'applicazione è un lavoro in coda (H10): a blocchi, una transazione per blocco, senza query ripetute per riga (limite
+ * soci contato in memoria, ospitanti e tutori cercati in memoria, tessere scritte insieme) e con una sola riga di registro
+ * per tutto l'import. apply() fa lo stesso subito, nella richiesta: stesso esito.
+ *
  * @phpstan-import-type Plan from PeopleSheet
  * @phpstan-import-type Existing from PeopleSheet
+ *
+ * @phpstan-type Result array{created: int, updated: int, memberships: int, guardians: int, failed: list<string>}
+ * @phpstan-type Link array{0: string, 1: string, 2: string}
+ * @phpstan-type Item array{pass: int, plan: Plan}
  */
 final readonly class PeopleImportService
 {
@@ -29,13 +37,17 @@ final readonly class PeopleImportService
 
     public const REASON = 'Importata da file';
 
+    public const KIND = 'people';
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
         private PeopleService $people,
         private MembershipService $memberships,
         private GuardianService $guardians,
+        private MemberLimit $limit,
         private AuditLog $audit,
+        private ImportJobs $jobs,
     ) {}
 
     /**
@@ -100,94 +112,237 @@ final readonly class PeopleImportService
     }
 
     /**
+     * Mette in coda l'import dello stesso piano dell'anteprima. null se ce n'è già uno di soci in corso.
+     *
      * @param  list<Plan>  $plan
-     * @return array{created: int, updated: int, memberships: int, guardians: int, failed: list<string>}
      */
-    public function apply(array $plan, bool $markCurrentYear): array
+    public function queue(array $plan, bool $markCurrentYear, ?string $userId): ?string
     {
-        $res = ['created' => 0, 'updated' => 0, 'memberships' => 0, 'guardians' => 0, 'failed' => []];
+        return $this->jobs->create(self::KIND, self::items($plan), ['mark_current' => $markCurrentYear], self::emptyState(), $userId);
+    }
+
+    /**
+     * L'import di soci da mostrare a schermo (in coda, in corso, fermo, o finito da poco), o null.
+     *
+     * @return array{id: string, status: string, total: int, done: int, stalled: bool, result: Result}|null
+     */
+    public function current(): ?array
+    {
+        $job = $this->jobs->current(self::KIND);
+
+        return $job === null ? null : ['id' => $job['id'], 'status' => $job['status'], 'total' => $job['total'], 'done' => $job['done'],
+            'stalled' => $job['stalled'], 'result' => self::result($job['state'])];
+    }
+
+    public function cancel(string $id): bool
+    {
+        return $this->jobs->cancel($id, self::KIND);
+    }
+
+    public function resume(string $id): bool
+    {
+        return $this->jobs->resume($id, self::KIND);
+    }
+
+    /** Un giro del lavoro in coda: false se resta da fare (chi chiama lo rimette in coda). */
+    public function runQueued(string $id, int $blockSize, int $seconds): bool
+    {
+        $finder = null;
+
+        return $this->jobs->run(
+            $id,
+            $blockSize,
+            $seconds,
+            function (array $items, array $state, array $options) use (&$finder): array {
+                return $this->block($items, $state, ($options['mark_current'] ?? false) === true, $finder);
+            },
+            fn (array $state): array => $this->finish($state),
+        );
+    }
+
+    /**
+     * Applica subito il piano, a blocchi, come il lavoro in coda.
+     *
+     * @param  list<Plan>  $plan
+     * @return Result
+     */
+    public function apply(array $plan, bool $markCurrentYear, int $blockSize = 100): array
+    {
+        $connection = $this->db->connection($this->context->require()->connection);
+        $state = self::emptyState();
+        $finder = null;
+        foreach (array_chunk(self::items($plan), max(1, $blockSize)) as $chunk) {
+            $state = $connection->transaction(function () use ($chunk, $state, $markCurrentYear, &$finder): array {
+                return $this->block($chunk, $state, $markCurrentYear, $finder);
+            });
+        }
+
+        return self::result($connection->transaction(fn (): array => $this->finish($state)));
+    }
+
+    /**
+     * Le righe da applicare, in ordine: prima i soci (l'ospitante può essere nuovo), poi gli ospiti.
+     *
+     * @param  list<Plan>  $plan
+     * @return list<Item>
+     */
+    private static function items(array $plan): array
+    {
+        $byPass = [0 => [], 1 => []];
+        foreach ($plan as $p) {
+            if ($p['action'] !== 'error') {
+                $pass = $p['type'] === MemberType::Guest->value ? 1 : 0;
+                $byPass[$pass][] = ['pass' => $pass, 'plan' => $p];
+            }
+        }
+
+        return [...$byPass[0], ...$byPass[1]];
+    }
+
+    /** @return array{result: Result, links: list<Link>} */
+    private static function emptyState(): array
+    {
+        return ['result' => ['created' => 0, 'updated' => 0, 'memberships' => 0, 'guardians' => 0, 'failed' => []], 'links' => []];
+    }
+
+    /**
+     * Un blocco, dentro la sua transazione. Le schede si salvano senza la riga di registro di ognuna: alla fine ne va una
+     * sola per tutto l'import.
+     *
+     * @param  list<mixed>  $items
+     * @param  array<string, mixed>  $state
+     * @return array{result: Result, links: list<Link>}
+     */
+    private function block(array $items, array $state, bool $markCurrentYear, ?PeopleFinder &$finder): array
+    {
+        /** @var list<Item> $items */
+        $res = self::result($state);
+        /** @var list<Link> $links */
+        $links = is_array($state['links'] ?? null) ? array_values($state['links']) : [];
         $current = $this->memberships->membershipYear();
         $startMonth = $this->memberships->startMonth();
+        $allowance = $this->limit->allowance();
+        $left = $allowance['left'];
+        $ids = array_values(array_filter(array_map(static fn (array $i): ?string => $i['plan']['action'] === 'update' ? $i['plan']['matched_id'] : null, $items)));
+        $matched = $ids === [] ? [] : Person::query()->whereIn('id', $ids)->get()->keyBy('id')->all();
+        $grants = [];
 
-        $this->db->connection($this->context->require()->connection)->transaction(function () use ($plan, $markCurrentYear, $current, $startMonth, &$res): void {
-            $byPass = [0 => [], 1 => []];
-            foreach ($plan as $p) {
-                if ($p['action'] !== 'error') {
-                    $byPass[$p['type'] === MemberType::Guest->value ? 1 : 0][] = $p; // prima i soci: l'ospitante può essere nuovo
-                }
-            }
-            $links = [];
-            $known = [];
-            foreach ($byPass as $pass => $items) {
-                if ($pass === 1 && $items !== []) {
-                    $known = $this->existing(); // con le schede appena nate: ospitanti e tutori possono essere nel file
-                }
-                foreach ($items as $p) {
-                    $r = $p['row'];
-                    $where = ($r['sheet'] !== '' ? $r['sheet'].' ' : '').'riga '.$r['line'];
-                    try {
-                        $data = $this->data($r, $pass === 0);
-                        if ($pass === 1) {
-                            $host = $p['host_id'] ?? $this->findPerson($known, (string) $p['host_text']);
-                            if ($host === null) {
-                                throw new PeopleError(['socio ospitante «'.$p['host_text'].'» non trovato']);
-                            }
-                            $data['host_person_id'] = $host;
-                        }
-                        if ($p['action'] === 'create') {
-                            $person = $this->people->create($data + ['type' => $p['type']]);
-                            $res['created']++;
-                        } else {
-                            if ($p['type_given'] && $pass === 0) {
-                                $data['type'] = $p['type'];
-                            }
-                            $person = $this->people->update((string) $p['matched_id'], $data);
-                            $res['updated']++;
-                        }
-                        if ($r['guardian'] !== null) {
-                            $links[] = [$person->id, $r['guardian'], $where];
-                        }
-                        if (in_array($person->type, [MemberType::Ordinary, MemberType::Volunteer], true)) {
-                            $years = array_map(static fn (string $y): string => match ($y) {
-                                '@current' => $current->label(),
-                                '@previous' => $current->previous()->label(),
-                                default => $startMonth === 1 ? $y : $y.'/'.((int) $y + 1),
-                            }, $r['years']);
-                            if ($markCurrentYear) {
-                                $years[] = $current->label();
-                            }
-                            foreach (array_unique($years) as $label) {
-                                $res['memberships'] += $this->grant($person->id, $label, $startMonth);
-                            }
-                        }
-                    } catch (PeopleError $e) {
-                        $res['failed'][] = $where.': '.implode(' ', $e->messages);
-                    }
-                }
-            }
-            $known = $this->existing();
-            foreach ($links as [$personId, $ref, $where]) { // i tutori alla fine: possono essere nello stesso file
-                $guardian = $this->findPerson($known, $ref);
-                if ($guardian === null) {
-                    $res['failed'][] = $where.': tutore «'.$ref.'» non trovato o ambiguo (indica la tessera o l\'email)';
-
-                    continue;
-                }
+        Person::withoutAudit(function () use ($items, $markCurrentYear, $current, $startMonth, $allowance, $matched, &$left, &$res, &$links, &$grants, &$finder): void {
+            foreach ($items as ['pass' => $pass, 'plan' => $p]) {
+                $r = $p['row'];
+                $where = ($r['sheet'] !== '' ? $r['sheet'].' ' : '').'riga '.$r['line'];
                 try {
-                    $before = count($this->guardians->of($personId));
-                    $this->guardians->link($personId, $guardian);
-                    $res['guardians'] += count($this->guardians->of($personId)) - $before;
+                    $data = $this->data($r, $pass === 0);
+                    if ($pass === 1) {
+                        $finder ??= new PeopleFinder($this->existing()); // con le schede appena nate: ospitanti e tutori possono essere nel file
+                        $host = $p['host_id'] ?? $finder->find((string) $p['host_text']);
+                        if ($host === null) {
+                            throw new PeopleError(['socio ospitante «'.$p['host_text'].'» non trovato']);
+                        }
+                        $data['host_person_id'] = $host;
+                    }
+                    if ($p['action'] === 'create') {
+                        $counts = MemberType::tryFrom((string) $p['type'])?->isMember() === true;
+                        if ($counts && $left !== null && $left <= 0) {
+                            throw new PeopleError([$allowance['message']]);
+                        }
+                        $person = $this->people->create($data + ['type' => $p['type']], limitChecked: true);
+                        $res['created']++;
+                    } else {
+                        $existing = $matched[(string) $p['matched_id']] ?? throw new PeopleError(['La scheda da aggiornare non c\'è più.']);
+                        if ($p['type_given'] && $pass === 0) {
+                            $data['type'] = $p['type'];
+                        }
+                        // Passare da non socio a socio conta nel limite come un socio nuovo.
+                        $counts = MemberType::tryFrom(is_string($data['type'] ?? null) ? $data['type'] : '')?->isMember() === true && ! $existing->type->isMember();
+                        if ($counts && $left !== null && $left <= 0) {
+                            throw new PeopleError([$allowance['message']]);
+                        }
+                        $person = $this->people->update($existing, $data, limitChecked: true);
+                        $res['updated']++;
+                    }
+                    if ($counts && $left !== null) {
+                        $left--;
+                    }
+                    if ($r['guardian'] !== null) {
+                        $links[] = [$person->id, $r['guardian'], $where];
+                    }
+                    if (in_array($person->type, [MemberType::Ordinary, MemberType::Volunteer], true)) {
+                        $years = array_map(static fn (string $y): string => match ($y) {
+                            '@current' => $current->label(),
+                            '@previous' => $current->previous()->label(),
+                            default => $startMonth === 1 ? $y : $y.'/'.((int) $y + 1),
+                        }, $r['years']);
+                        if ($markCurrentYear) {
+                            $years[] = $current->label();
+                        }
+                        if ($years !== [] && $person->left_on !== null) {
+                            throw new PeopleError(['Questa persona è uscita dall\'associazione: non può avere la tessera.']);
+                        }
+                        foreach (array_unique($years) as $label) {
+                            $grants[] = [$person->id, $label];
+                        }
+                    }
                 } catch (PeopleError $e) {
                     $res['failed'][] = $where.': '.implode(' ', $e->messages);
                 }
             }
-            $this->audit->record('people.imported', 'app.people', null, [
-                'created' => $res['created'], 'updated' => $res['updated'], 'memberships' => $res['memberships'],
-                'guardians' => $res['guardians'], 'failed' => count($res['failed']),
-            ]);
         });
+        $res['memberships'] += $this->memberships->grantImported($grants);
 
-        return $res;
+        return ['result' => $res, 'links' => $links];
+    }
+
+    /**
+     * Alla fine, nella transazione dell'ultimo blocco: i tutori (possono essere nello stesso file) e la riga di registro.
+     *
+     * @param  array<string, mixed>  $state
+     * @return array{result: Result, links: list<Link>}
+     */
+    private function finish(array $state): array
+    {
+        $res = self::result($state);
+        /** @var list<Link> $links */
+        $links = is_array($state['links'] ?? null) ? array_values($state['links']) : [];
+        $finder = $links === [] ? null : new PeopleFinder($this->existing());
+        foreach ($links as [$personId, $ref, $where]) {
+            $guardian = $finder?->find($ref);
+            if ($guardian === null) {
+                $res['failed'][] = $where.': tutore «'.$ref.'» non trovato o ambiguo (indica la tessera o l\'email)';
+
+                continue;
+            }
+            try {
+                $res['guardians'] += $this->guardians->link($personId, $guardian) ? 1 : 0;
+            } catch (PeopleError $e) {
+                $res['failed'][] = $where.': '.implode(' ', $e->messages);
+            }
+        }
+        // Il giorno in cui si arriva al limite del piano resta ricordato, come quando si ricontava a ogni scheda.
+        $this->limit->status();
+        $this->audit->record('people.imported', 'app.people', null, [
+            'created' => $res['created'], 'updated' => $res['updated'], 'memberships' => $res['memberships'],
+            'guardians' => $res['guardians'], 'failed' => count($res['failed']),
+        ]);
+
+        return ['result' => $res, 'links' => []];
+    }
+
+    /**
+     * L'esito salvato nello stato del lavoro.
+     *
+     * @param  array<string, mixed>  $state
+     * @return Result
+     */
+    public static function result(array $state): array
+    {
+        $r = is_array($state['result'] ?? null) ? $state['result'] : [];
+        $int = static fn (string $k): int => is_int($r[$k] ?? null) ? $r[$k] : 0;
+
+        return [
+            'created' => $int('created'), 'updated' => $int('updated'), 'memberships' => $int('memberships'), 'guardians' => $int('guardians'),
+            'failed' => is_array($r['failed'] ?? null) ? array_values(array_filter($r['failed'], 'is_string')) : [],
+        ];
     }
 
     /**
@@ -224,50 +379,6 @@ final readonly class PeopleImportService
         }
 
         return $data;
-    }
-
-    /** Tessera dell'anno senza incasso; 0 se c'è già. */
-    private function grant(string $personId, string $label, int $startMonth): int
-    {
-        $year = SocialYear::fromLabel($label, $startMonth);
-        try {
-            $this->memberships->grantManually($personId, $year->label(), self::REASON);
-        } catch (PeopleError $e) {
-            if (str_contains(implode(' ', $e->messages), 'già')) {
-                return 0;
-            }
-            throw $e;
-        }
-
-        return 1;
-    }
-
-    /**
-     * Un socio (non ospite) per tessera, email o nome e cognome, se ce n'è uno solo.
-     *
-     * @param  list<Existing>  $known
-     */
-    private function findPerson(array $known, string $text): ?string
-    {
-        $text = trim($text);
-        if ($text === '') {
-            return null;
-        }
-        $card = Text::lower(PeopleSheet::cleanCard($text));
-        $name = Text::normalize($text);
-        $found = [];
-        foreach ($known as $p) {
-            if (($p['type'] ?? '') === MemberType::Guest->value) {
-                continue;
-            }
-            if (($p['card'] !== null && Text::lower($p['card']) === $card)
-                || ($p['email'] !== null && Text::lower($p['email']) === Text::lower($text))
-                || Text::normalize($p['first'].$p['last']) === $name || Text::normalize($p['last'].$p['first']) === $name) {
-                $found[$p['id']] = true;
-            }
-        }
-
-        return count($found) === 1 ? (string) array_key_first($found) : null;
     }
 
     /** @return list<Existing> */

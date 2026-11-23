@@ -32,6 +32,8 @@ use Illuminate\Support\Str;
 /**
  * Prima nota in partita singola (dal LedgerService del plugin). Qui si controllano i dati dell'operatore; le regole che
  * non devono mai saltare (esercizio aperto, conto aperto, immutabilità, saldi) le fa rispettare il database.
+ *
+ * @phpstan-type Known array{accounts: array<string, array{type: string, closed: bool}>, categories: array<string, string>, people: array<string, true>, activities: array<string, true>}
  */
 final readonly class LedgerService implements Ledger
 {
@@ -57,32 +59,7 @@ final readonly class LedgerService implements Ledger
 
     public function recordIncome(Income $income): array
     {
-        if ($income->lines === []) {
-            throw new LedgerError('Aggiungi almeno una riga all\'incasso.');
-        }
-        $method = $this->method($income->accountId, $income->method);
-        $this->assertPerson($income->personId);
-        $this->assertActivity($income->activityId);
-
-        $lines = [];
-        foreach ($income->lines as $i => $line) {
-            $n = $i + 1;
-            $kind = $this->categoryKind($line->categoryId);
-            if ($kind === null || ! $kind->isIncome() || $kind === CategoryKind::Adjustment) {
-                throw new LedgerError("Riga {$n}: voce non valida per un incasso.");
-            }
-            if ($line->amountCents <= 0) {
-                throw new LedgerError("Riga {$n}:importo non valido.");
-            }
-            if ($line->competenceMonth !== null && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $line->competenceMonth) !== 1) {
-                throw new LedgerError("Riga {$n}:mese di competenza non valido.");
-            }
-            if ($line->vatRate !== null && ! Vat::isRate($line->vatRate)) {
-                throw new LedgerError("Riga {$n}:aliquota IVA non valida.");
-            }
-            $this->assertVat($line->vatRate, "Riga {$n}:");
-            $lines[] = $line;
-        }
+        [$method, $lines] = $this->checkIncome($income, null);
 
         $result = $this->transaction(function () use ($income, $method, $lines): array {
             $year = $this->years->yearFor($income->date);
@@ -109,23 +86,7 @@ final readonly class LedgerService implements Ledger
 
             $ids = [];
             foreach ($lines as $line) {
-                $ids[] = $this->insert([
-                    'tx_date' => $income->date,
-                    'fiscal_year' => $year,
-                    'type' => TxType::Income->value,
-                    'amount_cents' => $line->amountCents,
-                    'account_id' => $income->accountId,
-                    'method' => $method->value,
-                    'category_id' => $line->categoryId,
-                    'person_id' => $income->personId,
-                    'activity_id' => $income->activityId,
-                    'receipt_id' => $receiptId,
-                    'competence_month' => $line->competenceMonth,
-                    'description' => self::text($line->description, 255),
-                    'document_ref' => $income->documentRef === null ? null : self::text($income->documentRef, 80),
-                    'vat_rate' => $line->vatRate,
-                    'vat_cents' => $line->vatRate === null ? 0 : Vat::split($line->amountCents, $line->vatRate, true)['vat'],
-                ]);
+                $ids[] = $this->insert($this->incomeRow($income, $line, $method, $year, $receiptId));
             }
 
             if ($held) {
@@ -232,8 +193,112 @@ final readonly class LedgerService implements Ledger
 
     public function recordExpense(Expense $expense): string
     {
-        $method = $this->method($expense->accountId, $expense->method);
-        $kind = $this->categoryKind($expense->categoryId);
+        $method = $this->checkExpense($expense, null);
+
+        return $this->transaction(function () use ($expense, $method): string {
+            $id = $this->insert($this->expenseRow($expense, $method, $this->years->yearFor($expense->date)));
+            $this->audit->record('ledger.expense', 'app.transactions', $id, ['cents' => $expense->amountCents]);
+
+            return $id;
+        });
+    }
+
+    public function recordImported(array $entries): array
+    {
+        $known = $this->known($entries);
+        $years = [];
+        $out = [];
+        $rows = [];
+        foreach ($entries as $i => $entry) {
+            try {
+                // Un anno per data, una volta sola: lo stesso controllo dell'anno chiuso di recordIncome e recordExpense.
+                if ($entry instanceof Income) {
+                    [$method, $lines] = $this->checkIncome($entry, $known);
+                    $year = self::year($years[$entry->date] ??= $this->yearOrError($entry->date));
+                    $rows[$i] = array_map(fn (IncomeLine $line): array => $this->incomeRow($entry, $line, $method, $year, null) + ['vat_reverse_charge' => false], $lines);
+                } else {
+                    $method = $this->checkExpense($entry, $known);
+                    $year = self::year($years[$entry->date] ??= $this->yearOrError($entry->date));
+                    $rows[$i] = [$this->expenseRow($entry, $method, $year) + ['receipt_id' => null, 'competence_month' => null]];
+                }
+            } catch (LedgerError $e) {
+                $out[$i] = $e;
+            }
+        }
+        if ($rows !== []) {
+            $ids = [];
+            $all = [];
+            foreach ($rows as $i => $list) {
+                foreach ($list as $row) {
+                    $id = Str::uuid7()->toString();
+                    $ids[$i][] = $id;
+                    $all[] = ['org_id' => $this->orgId(), 'id' => $id, 'created_by' => $this->userId()] + $row;
+                }
+            }
+            try {
+                // Un solo inserimento per il blocco. Se il database ne rifiuta una (anno chiuso, conto chiuso…), il blocco
+                // torna indietro e le righe si inseriscono una per una: la rifiutata dà il suo errore, le altre passano.
+                $this->transaction(fn () => $this->connection()->table('app.transactions')->insert($all));
+                $out += $ids;
+            } catch (LedgerError) {
+                foreach ($rows as $i => $list) {
+                    try {
+                        $out[$i] = $this->transaction(fn (): array => array_map(fn (array $row): string => $this->insert($row), $list));
+                    } catch (LedgerError $e) {
+                        $out[$i] = $e;
+                    }
+                }
+            }
+        }
+        ksort($out);
+
+        return array_values($out);
+    }
+
+    /**
+     * Controlli di un incasso. Con $known (gli import) conti, voci, persone e attività si leggono dagli elenchi caricati una
+     * volta per blocco; senza, dal database.
+     *
+     * @param  Known|null  $known
+     * @return array{0: PaymentMethod, 1: list<IncomeLine>}
+     */
+    private function checkIncome(Income $income, ?array $known): array
+    {
+        if ($income->lines === []) {
+            throw new LedgerError('Aggiungi almeno una riga all\'incasso.');
+        }
+        $method = $this->method($income->accountId, $income->method, $known);
+        $this->assertPerson($income->personId, $known);
+        $this->assertActivity($income->activityId, $known);
+
+        $lines = [];
+        foreach ($income->lines as $i => $line) {
+            $n = $i + 1;
+            $kind = $this->categoryKind($line->categoryId, $known);
+            if ($kind === null || ! $kind->isIncome() || $kind === CategoryKind::Adjustment) {
+                throw new LedgerError("Riga {$n}: voce non valida per un incasso.");
+            }
+            if ($line->amountCents <= 0) {
+                throw new LedgerError("Riga {$n}:importo non valido.");
+            }
+            if ($line->competenceMonth !== null && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $line->competenceMonth) !== 1) {
+                throw new LedgerError("Riga {$n}:mese di competenza non valido.");
+            }
+            if ($line->vatRate !== null && ! Vat::isRate($line->vatRate)) {
+                throw new LedgerError("Riga {$n}:aliquota IVA non valida.");
+            }
+            $this->assertVat($line->vatRate, "Riga {$n}:");
+            $lines[] = $line;
+        }
+
+        return [$method, $lines];
+    }
+
+    /** @param  Known|null  $known  come in checkIncome() */
+    private function checkExpense(Expense $expense, ?array $known): PaymentMethod
+    {
+        $method = $this->method($expense->accountId, $expense->method, $known);
+        $kind = $this->categoryKind($expense->categoryId, $known);
         if ($kind === null || ! $kind->isExpense() || $kind === CategoryKind::Adjustment) {
             throw new LedgerError('Voce non valida per una spesa.');
         }
@@ -247,30 +312,111 @@ final readonly class LedgerService implements Ledger
         if ($expense->reverseCharge && ($expense->vatRate !== null || ! $this->fiscal->hasVat())) {
             throw new LedgerError($this->fiscal->hasVat() ? 'Il reverse charge non ha un\'aliquota: scegli o l\'aliquota o il reverse charge.' : 'Senza partita IVA non si può applicare l\'IVA.');
         }
-        $this->assertPerson($expense->personId);
-        $this->assertActivity($expense->activityId);
+        $this->assertPerson($expense->personId, $known);
+        $this->assertActivity($expense->activityId, $known);
 
-        return $this->transaction(function () use ($expense, $method): string {
-            $id = $this->insert([
-                'tx_date' => $expense->date,
-                'fiscal_year' => $this->years->yearFor($expense->date),
-                'type' => TxType::Expense->value,
-                'amount_cents' => $expense->amountCents,
-                'account_id' => $expense->accountId,
-                'method' => $method->value,
-                'category_id' => $expense->categoryId,
-                'person_id' => $expense->personId,
-                'activity_id' => $expense->activityId,
-                'description' => self::text($expense->description, 255),
-                'document_ref' => $expense->documentRef === null ? null : self::text($expense->documentRef, 80),
-                'vat_rate' => $expense->vatRate,
-                'vat_cents' => $expense->vatRate === null ? 0 : Vat::split($expense->amountCents, $expense->vatRate, true)['vat'],
-                'vat_reverse_charge' => $expense->reverseCharge,
-            ]);
-            $this->audit->record('ledger.expense', 'app.transactions', $id, ['cents' => $expense->amountCents]);
+        return $method;
+    }
 
-            return $id;
-        });
+    /** @return array<string, mixed> */
+    private function incomeRow(Income $income, IncomeLine $line, PaymentMethod $method, int $year, ?string $receiptId): array
+    {
+        return [
+            'tx_date' => $income->date,
+            'fiscal_year' => $year,
+            'type' => TxType::Income->value,
+            'amount_cents' => $line->amountCents,
+            'account_id' => $income->accountId,
+            'method' => $method->value,
+            'category_id' => $line->categoryId,
+            'person_id' => $income->personId,
+            'activity_id' => $income->activityId,
+            'receipt_id' => $receiptId,
+            'competence_month' => $line->competenceMonth,
+            'description' => self::text($line->description, 255),
+            'document_ref' => $income->documentRef === null ? null : self::text($income->documentRef, 80),
+            'vat_rate' => $line->vatRate,
+            'vat_cents' => $line->vatRate === null ? 0 : Vat::split($line->amountCents, $line->vatRate, true)['vat'],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function expenseRow(Expense $expense, PaymentMethod $method, int $year): array
+    {
+        return [
+            'tx_date' => $expense->date,
+            'fiscal_year' => $year,
+            'type' => TxType::Expense->value,
+            'amount_cents' => $expense->amountCents,
+            'account_id' => $expense->accountId,
+            'method' => $method->value,
+            'category_id' => $expense->categoryId,
+            'person_id' => $expense->personId,
+            'activity_id' => $expense->activityId,
+            'description' => self::text($expense->description, 255),
+            'document_ref' => $expense->documentRef === null ? null : self::text($expense->documentRef, 80),
+            'vat_rate' => $expense->vatRate,
+            'vat_cents' => $expense->vatRate === null ? 0 : Vat::split($expense->amountCents, $expense->vatRate, true)['vat'],
+            'vat_reverse_charge' => $expense->reverseCharge,
+        ];
+    }
+
+    private function yearOrError(string $date): int|LedgerError
+    {
+        try {
+            return $this->transaction(fn (): int => $this->years->yearFor($date));
+        } catch (LedgerError $e) {
+            return $e;
+        }
+    }
+
+    private static function year(int|LedgerError $year): int
+    {
+        return $year instanceof LedgerError ? throw $year : $year;
+    }
+
+    /**
+     * Conti, voci, persone e attività citati dalle voci, in una query per tipo.
+     *
+     * @param  list<Income|Expense>  $entries
+     * @return Known
+     */
+    private function known(array $entries): array
+    {
+        $ids = ['accounts' => [], 'categories' => [], 'people' => [], 'activities' => []];
+        foreach ($entries as $e) {
+            $ids['accounts'][] = $e->accountId;
+            $ids['people'][] = $e->personId;
+            $ids['activities'][] = $e->activityId;
+            foreach ($e instanceof Income ? array_map(static fn (IncomeLine $l): string => $l->categoryId, $e->lines) : [$e->categoryId] as $c) {
+                $ids['categories'][] = $c;
+            }
+        }
+        $ids = array_map(static fn (array $list): array => array_values(array_unique(array_filter($list, static fn (?string $id): bool => $id !== null && Str::isUuid($id)))), $ids);
+        $c = $this->connection();
+        $known = ['accounts' => [], 'categories' => [], 'people' => [], 'activities' => []];
+        foreach ($ids['accounts'] === [] ? [] : $c->table('app.accounts')->whereIn('id', $ids['accounts'])->get(['id', 'type', 'closed_at']) as $a) {
+            if (is_string($a->id ?? null)) {
+                $known['accounts'][$a->id] = ['type' => is_string($a->type ?? null) ? $a->type : 'other', 'closed' => ($a->closed_at ?? null) !== null];
+            }
+        }
+        foreach ($ids['categories'] === [] ? [] : $c->table('app.categories')->whereIn('id', $ids['categories'])->whereNull('deleted_at')->get(['id', 'kind']) as $r) {
+            if (is_string($r->id ?? null) && is_string($r->kind ?? null)) {
+                $known['categories'][$r->id] = $r->kind;
+            }
+        }
+        foreach ($ids['people'] === [] ? [] : $c->table('app.people')->whereIn('id', $ids['people'])->whereNull('deleted_at')->pluck('id') as $id) {
+            if (is_string($id)) {
+                $known['people'][$id] = true;
+            }
+        }
+        foreach ($ids['activities'] === [] ? [] : $c->table('app.activities')->whereIn('id', $ids['activities'])->pluck('id') as $id) {
+            if (is_string($id)) {
+                $known['activities'][$id] = true;
+            }
+        }
+
+        return $known;
     }
 
     public function recordTransfer(string $date, string $fromAccountId, string $toAccountId, int $cents, string $description = ''): string
@@ -535,43 +681,51 @@ final readonly class LedgerService implements Ledger
         return $id;
     }
 
-    private function method(string $accountId, ?PaymentMethod $method): PaymentMethod
+    /** @param  Known|null  $known  conti già caricati (gli import), o null per leggerli dal database */
+    private function method(string $accountId, ?PaymentMethod $method, ?array $known = null): PaymentMethod
     {
-        $account = Str::isUuid($accountId)
-            ? $this->connection()->table('app.accounts')->where('id', $accountId)->first(['type', 'closed_at'])
-            : null;
+        if ($known !== null) {
+            $account = Str::isUuid($accountId) ? ($known['accounts'][$accountId] ?? null) : null;
+        } else {
+            $row = Str::isUuid($accountId) ? $this->connection()->table('app.accounts')->where('id', $accountId)->first(['type', 'closed_at']) : null;
+            $account = $row === null ? null : ['type' => is_string($row->type ?? null) ? $row->type : 'other', 'closed' => ($row->closed_at ?? null) !== null];
+        }
         if ($account === null) {
             throw new LedgerError('Conto non valido.');
         }
-        if (($account->closed_at ?? null) !== null) {
+        if ($account['closed']) {
             throw new LedgerError('Il conto è chiuso: riattivalo per registrare movimenti.');
         }
 
-        return $method ?? AccountType::from(is_string($account->type ?? null) ? $account->type : 'other')->defaultMethod();
+        return $method ?? AccountType::from($account['type'])->defaultMethod();
     }
 
-    private function categoryKind(string $categoryId): ?CategoryKind
+    /** @param  Known|null  $known */
+    private function categoryKind(string $categoryId, ?array $known = null): ?CategoryKind
     {
         if (! Str::isUuid($categoryId)) {
             return null;
         }
-        $kind = $this->connection()->table('app.categories')->where('id', $categoryId)->whereNull('deleted_at')->value('kind');
+        $kind = $known !== null ? ($known['categories'][$categoryId] ?? null)
+            : $this->connection()->table('app.categories')->where('id', $categoryId)->whereNull('deleted_at')->value('kind');
 
         return is_string($kind) ? CategoryKind::tryFrom($kind) : null;
     }
 
-    private function assertPerson(?string $personId): void
+    /** @param  Known|null  $known */
+    private function assertPerson(?string $personId, ?array $known = null): void
     {
-        if ($personId !== null && (! Str::isUuid($personId)
-            || ! $this->connection()->table('app.people')->where('id', $personId)->whereNull('deleted_at')->exists())) {
+        if ($personId !== null && (! Str::isUuid($personId) || ! ($known !== null ? isset($known['people'][$personId])
+            : $this->connection()->table('app.people')->where('id', $personId)->whereNull('deleted_at')->exists()))) {
             throw new LedgerError('Persona non trovata.');
         }
     }
 
-    private function assertActivity(?string $activityId): void
+    /** @param  Known|null  $known */
+    private function assertActivity(?string $activityId, ?array $known = null): void
     {
-        if ($activityId !== null && (! Str::isUuid($activityId)
-            || ! $this->connection()->table('app.activities')->where('id', $activityId)->exists())) {
+        if ($activityId !== null && (! Str::isUuid($activityId) || ! ($known !== null ? isset($known['activities'][$activityId])
+            : $this->connection()->table('app.activities')->where('id', $activityId)->exists()))) {
             throw new LedgerError('Attività non trovata.');
         }
     }

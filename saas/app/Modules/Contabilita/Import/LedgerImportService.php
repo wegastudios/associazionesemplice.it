@@ -13,6 +13,7 @@ use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Contabilita\Ledger\AccountService;
+use App\Modules\Core\Contracts\ImportJobs;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Documenti\Contracts\SheetReader;
 use Illuminate\Database\ConnectionInterface;
@@ -24,11 +25,19 @@ use InvalidArgumentException;
  * registrano come quelli fatti a mano (senza ricevuta: sono storici), i conti nuovi si creano, i doppioni si saltano e
  * una riga rifiutata non ferma le altre.
  *
+ * L'applicazione è un lavoro in coda (H11): a blocchi, una transazione per blocco, conti, voci, persone e attività letti
+ * una volta per blocco, un solo inserimento per blocco e una sola riga di registro per tutto l'import. apply() fa lo
+ * stesso subito, nella richiesta: stesso esito.
+ *
  * @phpstan-import-type Plan from LedgerSheet
+ *
+ * @phpstan-type Result array{income: int, expense: int, transfer: int, accounts: int, failed: list<string>}
  */
 final readonly class LedgerImportService
 {
     public const MAX_ROWS = 10000;
+
+    public const KIND = 'ledger';
 
     public function __construct(
         private DatabaseManager $db,
@@ -36,6 +45,7 @@ final readonly class LedgerImportService
         private Ledger $ledger,
         private AccountService $accounts,
         private AuditLog $audit,
+        private ImportJobs $jobs,
     ) {}
 
     /** @return array{error: string}|array{plan: list<Plan>, summary: array<string, mixed>} */
@@ -83,74 +93,197 @@ final readonly class LedgerImportService
     }
 
     /**
+     * Mette in coda l'import dello stesso piano dell'anteprima (H11). null se ce n'è già uno della prima nota in corso.
+     *
      * @param  list<Plan>  $plan
      * @param  bool  $canIncome  chi importa può registrare entrate
      * @param  bool  $canExpense  chi importa può registrare spese
-     * @return array{income: int, expense: int, transfer: int, accounts: int, failed: list<string>}
      */
-    public function apply(array $plan, bool $canIncome = true, bool $canExpense = true): array
+    public function queue(array $plan, bool $canIncome, bool $canExpense, ?string $userId): ?string
     {
-        $res = ['income' => 0, 'expense' => 0, 'transfer' => 0, 'accounts' => 0, 'failed' => []];
+        return $this->jobs->create(self::KIND, self::items($plan), ['can_income' => $canIncome, 'can_expense' => $canExpense], self::emptyState(), $userId);
+    }
 
-        $this->connection()->transaction(function () use ($plan, $canIncome, $canExpense, &$res): void {
-            $created = [];
-            $account = function (mixed $id, mixed $new, mixed $type) use (&$created, &$res): string {
-                if (is_string($id)) {
-                    return $id;
-                }
-                $name = is_string($new) ? $new : 'Conto importato';
-                if (! isset($created[$name])) {
-                    $created[$name] = $this->accounts->create($name, AccountType::tryFrom(is_string($type) ? $type : '') ?? AccountType::Bank, 0)->id;
-                    $res['accounts']++;
-                }
+    /**
+     * L'import della prima nota da mostrare a schermo (in coda, in corso, fermo, o finito da poco), o null.
+     *
+     * @return array{id: string, status: string, total: int, done: int, stalled: bool, result: Result}|null
+     */
+    public function current(): ?array
+    {
+        $job = $this->jobs->current(self::KIND);
 
-                return $created[$name];
-            };
-            $str = static fn (mixed $v): ?string => is_string($v) && $v !== '' ? $v : null;
+        return $job === null ? null : ['id' => $job['id'], 'status' => $job['status'], 'total' => $job['total'], 'done' => $job['done'],
+            'stalled' => $job['stalled'], 'result' => self::result($job['state'])];
+    }
 
-            foreach ($plan as $p) {
-                $d = $p['data'];
-                if ($d === null || ! in_array($p['action'], ['create', 'transfer'], true)) {
-                    continue;
-                }
-                $where = ($p['row']['sheet'] !== '' ? $p['row']['sheet'].' ' : '').'riga '.$p['row']['line'];
-                // Le righe di un tipo per cui chi importa non ha il permesso non si registrano (e non creano nemmeno conti).
-                if ($p['action'] === 'create' && ! ($d['type'] === 'income' ? $canIncome : $canExpense)) {
-                    $res['failed'][] = $where.': non hai il permesso di registrare '.($d['type'] === 'income' ? 'entrate' : 'spese').'.';
+    public function cancel(string $id): bool
+    {
+        return $this->jobs->cancel($id, self::KIND);
+    }
 
-                    continue;
-                }
-                try {
-                    $date = (string) $str($d['date']);
-                    $cents = is_int($d['cents']) ? $d['cents'] : 0;
-                    $method = PaymentMethod::tryFrom((string) $str($d['method'])) ?? PaymentMethod::Other;
-                    if ($p['action'] === 'transfer' && is_array($d['from']) && is_array($d['to'])) {
-                        $this->ledger->recordTransfer($date, $account($d['from']['id'] ?? null, $d['from']['new'] ?? null, $d['from']['type'] ?? null),
-                            $account($d['to']['id'] ?? null, $d['to']['new'] ?? null, $d['to']['type'] ?? null), $cents, (string) $str($d['description']));
-                        $res['transfer']++;
+    public function resume(string $id): bool
+    {
+        return $this->jobs->resume($id, self::KIND);
+    }
 
-                        continue;
-                    }
-                    $acc = $account($d['account_id'], $d['new_account'], $d['new_account_type']);
-                    if ($d['type'] === 'income') {
-                        $this->ledger->recordIncome(new Income($date, $acc, [new IncomeLine((string) $str($d['category_id']), $cents, (string) $str($d['description']), $str($d['month']))],
-                            $method, $str($d['person_id']), false, $str($d['ref']), $str($d['activity_id']), accountFee: false));
-                        $res['income']++;
-                    } else {
-                        $this->ledger->recordExpense(new Expense($date, $acc, (string) $str($d['category_id']), $cents, $method, (string) $str($d['description']),
-                            $str($d['person_id']), $str($d['ref']), null, $str($d['activity_id'])));
-                        $res['expense']++;
-                    }
-                } catch (LedgerError $e) {
-                    $res['failed'][] = $where.': '.$e->getMessage();
-                }
+    /** Un giro del lavoro in coda: false se resta da fare (chi chiama lo rimette in coda). */
+    public function runQueued(string $id, int $blockSize, int $seconds): bool
+    {
+        return $this->jobs->run(
+            $id,
+            $blockSize,
+            $seconds,
+            fn (array $items, array $state, array $options): array => $this->block($items, $state, ($options['can_income'] ?? false) === true, ($options['can_expense'] ?? false) === true),
+            fn (array $state): array => $this->finish($state),
+        );
+    }
+
+    /**
+     * Applica subito il piano, a blocchi, come il lavoro in coda.
+     *
+     * @param  list<Plan>  $plan
+     * @param  bool  $canIncome  chi importa può registrare entrate
+     * @param  bool  $canExpense  chi importa può registrare spese
+     * @return Result
+     */
+    public function apply(array $plan, bool $canIncome = true, bool $canExpense = true, int $blockSize = 100): array
+    {
+        $state = self::emptyState();
+        foreach (array_chunk(self::items($plan), max(1, $blockSize)) as $chunk) {
+            $state = $this->connection()->transaction(fn (): array => $this->block($chunk, $state, $canIncome, $canExpense));
+        }
+
+        return self::result($this->connection()->transaction(fn (): array => $this->finish($state)));
+    }
+
+    /**
+     * L'esito salvato nello stato del lavoro.
+     *
+     * @param  array<string, mixed>  $state
+     * @return Result
+     */
+    public static function result(array $state): array
+    {
+        $r = is_array($state['result'] ?? null) ? $state['result'] : [];
+        $int = static fn (string $k): int => is_int($r[$k] ?? null) ? $r[$k] : 0;
+
+        return [
+            'income' => $int('income'), 'expense' => $int('expense'), 'transfer' => $int('transfer'), 'accounts' => $int('accounts'),
+            'failed' => is_array($r['failed'] ?? null) ? array_values(array_filter($r['failed'], 'is_string')) : [],
+        ];
+    }
+
+    /**
+     * Le righe da registrare, nell'ordine del file.
+     *
+     * @param  list<Plan>  $plan
+     * @return list<Plan>
+     */
+    private static function items(array $plan): array
+    {
+        return array_values(array_filter($plan, static fn (array $p): bool => $p['data'] !== null && in_array($p['action'], ['create', 'transfer'], true)));
+    }
+
+    /** @return array{result: Result, accounts: array<string, string>} */
+    private static function emptyState(): array
+    {
+        return ['result' => ['income' => 0, 'expense' => 0, 'transfer' => 0, 'accounts' => 0, 'failed' => []], 'accounts' => []];
+    }
+
+    /**
+     * Un blocco, dentro la sua transazione: incassi e spese con un solo inserimento (Ledger::recordImported), i giroconti
+     * uno per uno. I conti nuovi creati nei blocchi precedenti si ritrovano nello stato.
+     *
+     * @param  list<mixed>  $items
+     * @param  array<string, mixed>  $state
+     * @return array{result: Result, accounts: array<string, string>}
+     */
+    private function block(array $items, array $state, bool $canIncome, bool $canExpense): array
+    {
+        /** @var list<Plan> $items */
+        $res = self::result($state);
+        /** @var array<string, string> $created */
+        $created = is_array($state['accounts'] ?? null) ? $state['accounts'] : [];
+        $account = function (mixed $id, mixed $new, mixed $type) use (&$created, &$res): string {
+            if (is_string($id)) {
+                return $id;
             }
-            $this->audit->record('ledger.imported', 'app.transactions', null, [
-                'income' => $res['income'], 'expense' => $res['expense'], 'transfer' => $res['transfer'], 'accounts' => $res['accounts'], 'failed' => count($res['failed']),
-            ]);
-        });
+            $name = is_string($new) ? $new : 'Conto importato';
+            if (! isset($created[$name])) {
+                $created[$name] = $this->accounts->create($name, AccountType::tryFrom(is_string($type) ? $type : '') ?? AccountType::Bank, 0)->id;
+                $res['accounts']++;
+            }
 
-        return $res;
+            return $created[$name];
+        };
+        $str = static fn (mixed $v): ?string => is_string($v) && $v !== '' ? $v : null;
+
+        $failed = [];
+        $entries = [];
+        foreach ($items as $i => $p) {
+            $d = (array) $p['data'];
+            $where = ($p['row']['sheet'] !== '' ? $p['row']['sheet'].' ' : '').'riga '.$p['row']['line'];
+            // Le righe di un tipo per cui chi importa non ha il permesso non si registrano (e non creano nemmeno conti).
+            if ($p['action'] === 'create' && ! ($d['type'] === 'income' ? $canIncome : $canExpense)) {
+                $failed[$i] = $where.': non hai il permesso di registrare '.($d['type'] === 'income' ? 'entrate' : 'spese').'.';
+
+                continue;
+            }
+            try {
+                $date = (string) $str($d['date'] ?? null);
+                $cents = is_int($d['cents'] ?? null) ? $d['cents'] : 0;
+                $method = PaymentMethod::tryFrom((string) $str($d['method'] ?? null)) ?? PaymentMethod::Other;
+                $from = $d['from'] ?? null;
+                $to = $d['to'] ?? null;
+                if ($p['action'] === 'transfer' && is_array($from) && is_array($to)) {
+                    $this->ledger->recordTransfer($date, $account($from['id'] ?? null, $from['new'] ?? null, $from['type'] ?? null),
+                        $account($to['id'] ?? null, $to['new'] ?? null, $to['type'] ?? null), $cents, (string) $str($d['description'] ?? null));
+                    $res['transfer']++;
+
+                    continue;
+                }
+                $acc = $account($d['account_id'] ?? null, $d['new_account'] ?? null, $d['new_account_type'] ?? null);
+                $entries[$i] = [$where, ($d['type'] ?? null) === 'income'
+                    ? new Income($date, $acc, [new IncomeLine((string) $str($d['category_id'] ?? null), $cents, (string) $str($d['description'] ?? null), $str($d['month'] ?? null))],
+                        $method, $str($d['person_id'] ?? null), false, $str($d['ref'] ?? null), $str($d['activity_id'] ?? null), accountFee: false)
+                    : new Expense($date, $acc, (string) $str($d['category_id'] ?? null), $cents, $method, (string) $str($d['description'] ?? null),
+                        $str($d['person_id'] ?? null), $str($d['ref'] ?? null), null, $str($d['activity_id'] ?? null))];
+            } catch (LedgerError $e) {
+                $failed[$i] = $where.': '.$e->getMessage();
+            }
+        }
+
+        $outcomes = $this->ledger->recordImported(array_values(array_map(static fn (array $e): Income|Expense => $e[1], $entries)));
+        foreach (array_keys($entries) as $n => $i) {
+            $outcome = $outcomes[$n] ?? null;
+            if ($outcome instanceof LedgerError) {
+                $failed[$i] = $entries[$i][0].': '.$outcome->getMessage();
+            } else {
+                $res[$entries[$i][1] instanceof Income ? 'income' : 'expense']++;
+            }
+        }
+        // Gli errori nell'ordine delle righe del file, come quando si registrava una riga alla volta.
+        ksort($failed);
+        array_push($res['failed'], ...array_values($failed));
+
+        return ['result' => $res, 'accounts' => $created];
+    }
+
+    /**
+     * Alla fine, nella transazione dell'ultimo blocco: la sola riga di registro dell'import.
+     *
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function finish(array $state): array
+    {
+        $res = self::result($state);
+        $this->audit->record('ledger.imported', 'app.transactions', null, [
+            'income' => $res['income'], 'expense' => $res['expense'], 'transfer' => $res['transfer'], 'accounts' => $res['accounts'], 'failed' => count($res['failed']),
+        ]);
+
+        return $state;
     }
 
     /** @return list<array{id: string, name: string, type: string}> */

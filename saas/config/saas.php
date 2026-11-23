@@ -77,6 +77,13 @@ return [
         'long' => ['lock' => '30s', 'statement' => '900s', 'idle_in_transaction' => '300s'],
     ],
 
+    // Import di soci e prima nota in coda (H10, H11): righe per blocco (una transazione ciascuno) e secondi di lavoro per
+    // giro di coda; finiti i secondi, il lavoro si rimette in coda e riparte dal blocco successivo.
+    'imports' => [
+        'block' => (int) env('SAAS_IMPORT_BLOCK', 100),
+        'seconds_per_run' => (int) env('SAAS_IMPORT_SECONDS', 40),
+    ],
+
     // Indirizzo pubblico di /saas/admin e /saas/staff dietro il proxy del portale (https://associazionesemplice.it): gli
     // indirizzi scritti dal SaaS in quelle pagine partono da qui, mai dalle intestazioni della richiesta. Vuoto = nessuno.
     'public_url' => env('SAAS_PUBLIC_URL', ''),
