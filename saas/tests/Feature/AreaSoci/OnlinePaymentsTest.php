@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\AreaSoci\Http\Controllers\StaffLinkController;
+use App\Modules\AreaSoci\Jobs\SettleOnlinePayment;
 use App\Modules\AreaSoci\Mail\DonationReceiptMail;
 use App\Modules\AreaSoci\Mail\PaymentRefunded;
 use App\Modules\AreaSoci\Payments\OnlinePayments;
@@ -33,6 +34,8 @@ use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // Dati di prova inventati; le chiavi sono finte e Stripe e PayPal sono simulati.
@@ -894,4 +897,127 @@ it('l\'esito di un pagamento ancora in attesa non chiama il gestore a ogni apert
         $member()->get($this->host.'/area/pagamenti/'.$id.'/esito')->assertInertia(fn (Assert $page) => $page->where('payment.status', 'pending'));
     }
     expect(Http::recorded(static fn (HttpRequest $r): bool => $r->method() === 'GET' && str_contains($r->url(), 'cs_test_7'))->count())->toBe(1);
+});
+
+/** @param  array<string, mixed>  $event */
+function stripeEvent(object $test, array $event): TestResponse
+{
+    $payload = (string) json_encode($event);
+
+    return $test->call('POST', $test->host.'/area/webhook/stripe', [], [], [], ['HTTP_STRIPE_SIGNATURE' => StripeWebhook::header($payload, 'whsec_finto456', time()), 'CONTENT_TYPE' => 'application/json'], $payload);
+}
+
+/** Esegue il lavoro in coda come il lavoratore: dentro la sua associazione. */
+function runSettlement(object $test, SettleOnlinePayment $job): void
+{
+    $test->orgContext()->run($test->org->id, fn () => $job->handle(app(OnlinePayments::class)));
+}
+
+/** Il socio avvia il pagamento con Stripe delle voci indicate (null = tutte quelle dovute). */
+function memberStripeCheckout(object $test, string $session, ?int $only = null): void
+{
+    saveStripe($test);
+    $cookie = memberCookie($test, $test->anna->id);
+    $keys = $test->orgContext()->run($test->org->id, fn () => array_column(app(OnlinePayments::class)->dues([$test->anna->id]), 'key'));
+    Http::fake(['api.stripe.com/v1/checkout/sessions' => Http::response(['id' => $session, 'url' => 'https://checkout.stripe.com/c/pay/'.$session])]);
+    $test->withUnencryptedCookie('as_socio', $cookie)->post($test->host.'/area/paga', ['keys' => $only === null ? $keys : array_slice($keys, 0, $only), 'provider' => 'stripe'])
+        ->assertRedirect('https://checkout.stripe.com/c/pay/'.$session);
+}
+
+it('il webhook di Stripe registra l\'evento e risponde subito: l\'incasso si registra in coda, una volta sola (H14)', function (): void {
+    publicDonationOn($this);
+    Mail::fake();
+    Http::fake(['api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_pub_q', 'url' => 'https://checkout.stripe.com/c/pay/cs_pub_q'])]);
+    publicDonate($this)->assertRedirect('https://checkout.stripe.com/c/pay/cs_pub_q');
+    Queue::fake([SettleOnlinePayment::class]);
+    $event = ['id' => 'evt_q1', 'type' => 'checkout.session.completed', 'data' => ['object' => ['id' => 'cs_pub_q', 'payment_status' => 'paid', 'amount_total' => 1250, 'currency' => 'eur']]];
+
+    // Firma sbagliata: rifiuto, nessun lavoro in coda.
+    $payload = (string) json_encode($event);
+    $this->call('POST', $this->host.'/area/webhook/stripe', [], [], [], ['HTTP_STRIPE_SIGNATURE' => 't='.time().',v1=sbagliata', 'CONTENT_TYPE' => 'application/json'], $payload)->assertStatus(400);
+    Queue::assertNothingPushed();
+
+    $queries = 0;
+    DB::listen(static function () use (&$queries): void {
+        $queries++;
+    });
+    $start = hrtime(true);
+    stripeEvent($this, $event)->assertOk();
+    $ms = (int) round((hrtime(true) - $start) / 1e6);
+    fwrite(STDERR, "\n[H14 misure] webhook di Stripe, donazione pubblica (prima nota, ricevuta PDF, email): {$ms} ms, {$queries} query\n");
+
+    // Stripe rimanda lo stesso evento: già ricevuto, nessun lavoro in più.
+    stripeEvent($this, $event)->assertOk();
+    Queue::assertPushed(SettleOnlinePayment::class, 1);
+    Mail::assertNothingSent();
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(app(OnlinePayments::class)->list(null)[0]['status'])->toBe('pending')
+            ->and(Transaction::query()->where('method', 'stripe')->count())->toBe(0)
+            ->and(DB::table('app.payment_webhook_events')->count())->toBe(1);
+    });
+
+    $job = Queue::pushed(SettleOnlinePayment::class)->first();
+    expect($job)->toBeInstanceOf(SettleOnlinePayment::class)->and($job->tries)->toBeGreaterThan(1)->and($job->backoff())->not->toBeEmpty();
+    runSettlement($this, $job);
+    runSettlement($this, $job);
+    // Lavoro interrotto dopo la registrazione e prima di segnare l'evento come fatto: ripartendo non registra due volte.
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.payment_webhook_events')->update(['status' => 'queued', 'processed_at' => null]));
+    runSettlement($this, $job);
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        $p = app(OnlinePayments::class)->list(null)[0];
+        expect($p['status'])->toBe('settled')->and($p['receipts'])->toHaveCount(1)
+            ->and(Transaction::query()->where('method', 'stripe')->count())->toBe(1)
+            ->and(DB::table('audit.log')->where('action', 'payment.settled')->count())->toBe(1)
+            ->and(DB::table('app.payment_webhook_events')->value('status'))->toBe('done');
+    });
+    Mail::assertSent(DonationReceiptMail::class, 1);
+});
+
+it('eventi di Stripe fuori ordine, ripetuti con id diversi o di sessioni non nostre: un solo incasso (H14)', function (): void {
+    memberStripeCheckout($this, 'cs_ord');
+    Queue::fake([SettleOnlinePayment::class]);
+    $session = static fn (string $id, string $status): array => ['id' => $id, 'payment_status' => $status, 'amount_total' => 5500, 'currency' => 'eur'];
+
+    stripeEvent($this, ['id' => 'evt_o2', 'type' => 'checkout.session.async_payment_succeeded', 'data' => ['object' => $session('cs_ord', 'paid')]])->assertOk();
+    stripeEvent($this, ['id' => 'evt_o1', 'type' => 'checkout.session.completed', 'data' => ['object' => $session('cs_ord', 'unpaid')]])->assertOk(); // arrivato dopo, già superato
+    stripeEvent($this, ['id' => 'evt_o3', 'type' => 'checkout.session.completed', 'data' => ['object' => $session('cs_ord', 'paid')]])->assertOk();
+    stripeEvent($this, ['id' => 'evt_x', 'type' => 'checkout.session.completed', 'data' => ['object' => $session('cs_di_altri', 'paid')]])->assertOk(); // non è un nostro pagamento
+    Queue::assertPushed(SettleOnlinePayment::class, 2);
+
+    foreach (Queue::pushed(SettleOnlinePayment::class) as $job) {
+        runSettlement($this, $job);
+    }
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(app(OnlinePayments::class)->list(null)[0]['status'])->toBe('settled')
+            ->and(Transaction::query()->where('method', 'stripe')->count())->toBe(2)
+            ->and(DB::table('audit.log')->where('action', 'payment.settled')->count())->toBe(1)
+            ->and(DB::table('app.payment_webhook_events')->where('status', 'done')->count())->toBe(2)
+            ->and(DB::table('app.payment_webhook_events')->count())->toBe(2);
+    });
+});
+
+it('un incasso in coda che non riesce resta segnato: l\'evento rimandato da Stripe lo rimette in coda una volta (H14)', function (): void {
+    memberStripeCheckout($this, 'cs_fail', 1);
+    Queue::fake([SettleOnlinePayment::class]);
+    $event = ['id' => 'evt_f1', 'type' => 'checkout.session.completed', 'data' => ['object' => ['id' => 'cs_fail', 'payment_status' => 'paid', 'amount_total' => 2500, 'currency' => 'eur']]];
+
+    stripeEvent($this, $event)->assertOk();
+    Queue::pushed(SettleOnlinePayment::class)->first()->failed(new RuntimeException('database non raggiungibile'));
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(DB::table('app.payment_webhook_events')->value('status'))->toBe('failed')
+            ->and(DB::table('audit.log')->where('action', 'payment.webhook_failed')->count())->toBe(1)
+            ->and(app(OnlinePayments::class)->list(null)[0]['status'])->toBe('pending');
+    });
+
+    stripeEvent($this, $event)->assertOk();
+    stripeEvent($this, $event)->assertOk(); // di nuovo in coda: non si accoda una terza volta
+    Queue::assertPushed(SettleOnlinePayment::class, 2);
+    runSettlement($this, Queue::pushed(SettleOnlinePayment::class)->last());
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(app(OnlinePayments::class)->list(null)[0]['status'])->toBe('settled')
+            ->and(Transaction::query()->where('method', 'stripe')->count())->toBe(1)
+            ->and(DB::table('app.payment_webhook_events')->value('status'))->toBe('done');
+    });
 });
