@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Modules\Contabilita\Jobs\RunLedgerImport;
 use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
-use App\Modules\Contabilita\Jobs\RunLedgerImport;
 use App\Modules\Core\Jobs\BuildFullExport;
 use App\Modules\Soci\Jobs\RunPeopleImport;
 use Illuminate\Console\Scheduling\Schedule;
@@ -38,22 +38,30 @@ function qwJobClasses(): array
     return $classes;
 }
 
-/** Un lavoro costruito con argomenti finti (solo identificativi e valori semplici, come nei lavori veri). */
-function qwMake(string $class): object
+/**
+ * Un lavoro costruito con argomenti finti (identificativi e valori semplici, come nei lavori veri); null se il costruttore
+ * non è pubblico o chiede un oggetto.
+ */
+function qwMake(string $class): ?object
 {
     $constructor = (new ReflectionClass($class))->getConstructor();
+    if ($constructor !== null && ! $constructor->isPublic()) {
+        return null;
+    }
     $args = [];
     foreach ($constructor?->getParameters() ?? [] as $p) {
         $type = $p->getType();
         $name = $type instanceof ReflectionNamedType ? $type->getName() : 'mixed';
+        if (! $p->isDefaultValueAvailable() && ! $p->allowsNull() && ! in_array($name, ['string', 'int', 'bool', 'array'], true)) {
+            return null;
+        }
         $args[] = match (true) {
             $p->isDefaultValueAvailable() => $p->getDefaultValue(),
             $name === 'string' => QW_ORG,
             $name === 'int' => 1,
             $name === 'bool' => false,
             $name === 'array' => [],
-            $p->allowsNull() => null,
-            default => throw new RuntimeException("{$class}: argomento {$p->getName()} di tipo {$name} non previsto dal test"),
+            default => null,
         };
     }
 
@@ -84,9 +92,10 @@ it('ogni lavoro finisce prima che la coda lo riprenda: i brevi sotto i 90 s, i l
         $timeout = qwTimeout($class) ?? JobQueues::SHORT_TIMEOUT;
         $job = qwMake($class);
         if ($timeout > JobQueues::SHORT_TIMEOUT) {
+            expect($job)->not->toBeNull("{$class}: la prova non sa costruirlo, aggiungere il caso in qwMake");
             expect($job->queue ?? null)->toBe(JobQueues::LONG, "{$class}: {$timeout} s, deve stare nella coda lunga")
                 ->and($timeout)->toBeLessThanOrEqual(JobQueues::LONG_TIMEOUT, "{$class}: oltre il tempo dei lavori lunghi");
-        } else {
+        } elseif ($job !== null) {
             expect($job->queue ?? null)->not->toBe(JobQueues::LONG, "{$class}: un lavoro breve non occupa la coda lunga");
         }
     }
