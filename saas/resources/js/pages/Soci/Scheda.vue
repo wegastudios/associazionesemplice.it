@@ -19,6 +19,15 @@ const form = useForm({
     level_id: p.level_id ?? '', host_person_id: '', joined_on: p.joined_on ?? '',
 });
 const isGuest = computed(() => form.type === 'guest');
+// Primo numero di tessera libero: arriva con la scheda nuova; per una scheda esistente si chiede quando serve.
+const firstFree = ref(props.firstFreeCard ?? '');
+const useFirstFree = async () => {
+    if (!firstFree.value) {
+        const res = await fetch('/gestionale/soci/primo-numero-libero', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        firstFree.value = res.ok ? ((await res.json().catch(() => ({}))).card ?? '') : '';
+    }
+    if (firstFree.value) form.card_number = firstFree.value;
+};
 const tab = ref('dati');
 const tabs = computed(() => {
     const p = props.person;
@@ -127,7 +136,7 @@ const label = 'space-y-1 text-sm';
                 <label v-if="!isGuest" :class="label">
                     <span class="font-semibold">Numero di tessera</span>
                     <span class="flex gap-2"><input v-model="form.card_number" :class="field" />
-                        <button type="button" class="whitespace-nowrap text-sm font-semibold text-accent" @click="form.card_number = firstFreeCard">Primo libero ({{ firstFreeCard }})</button></span>
+                        <button type="button" class="whitespace-nowrap text-sm font-semibold text-accent" @click="useFirstFree">Primo libero<template v-if="firstFree"> ({{ firstFree }})</template></button></span>
                 </label>
                 <div v-if="isGuest" class="space-y-1 text-sm sm:col-span-2">
                     <label for="host" class="font-semibold">Socio che lo ospita</label>
