@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Demo\DemoEnvironment;
@@ -16,7 +17,13 @@ use Illuminate\Support\Facades\DB;
 
 it('le pagine lunghe del browser hanno i tempi delle operazioni lunghe: durata e query con i dati della demo', function (): void {
     config(['saas.demo.enabled' => true, 'saas.demo.people' => 400]);
+    // Le altre connessioni (proprietario) non aspettano per sempre la transazione del test: se succede, l'errore si vede.
+    $owner = DB::connection(app(DatabaseNames::class)->ownerConnection(null));
+    $owner->statement("SET lock_timeout = '20s'");
+    $this->beforeApplicationDestroyed(static fn () => $owner->statement('RESET lock_timeout'));
+    $seedStart = hrtime(true);
     $org = app(DemoEnvironment::class)->seed();
+    fwrite(STDERR, "\n[H2 misure] dati della demo: ".(int) round((hrtime(true) - $seedStart) / 1e6)." ms\n");
     config(['saas.demo.enabled' => false]);
     $user = $this->createUser('titolare-misure@example.com', twoFactor: true);
     $this->addOperator($org, $user, OrgRole::Owner);
@@ -59,6 +66,7 @@ it('le pagine lunghe del browser hanno i tempi delle operazioni lunghe: durata e
     foreach ($operations as $name => $request) {
         $long = false;
         $queries = 0;
+        fwrite(STDERR, "[H2 misure] inizio: {$name}\n");
         $start = hrtime(true);
         $response = $request();
         $ms = (int) round((hrtime(true) - $start) / 1e6);
@@ -66,6 +74,7 @@ it('le pagine lunghe del browser hanno i tempi delle operazioni lunghe: durata e
         expect($response->getStatusCode())->toBeLessThan(500, "{$name}: risposta {$response->getStatusCode()}")
             ->and($long)->toBeTrue("{$name}: senza i tempi delle operazioni lunghe");
         $report[] = "{$name}: {$ms} ms, {$queries} query";
+        fwrite(STDERR, "[H2 misure] {$name}: {$ms} ms, {$queries} query\n");
     }
 
     fwrite(STDERR, "\n[H2 misure, demo 400 soci] ".implode(' · ', $report)."\n");
