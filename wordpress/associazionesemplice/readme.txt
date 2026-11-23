@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.35
+Stable tag: 1.3.36
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -63,6 +63,16 @@ The front-end style sheet and script (`assets/frontend.css` and `assets/frontend
 
 == Changelog ==
 
+= 1.3.36 =
+* Nuovo: scheda «Stato del server» negli Strumenti, con i consigli per l'hosting, e cinque controlli in Salute del sito.
+* Nuovo: in Bacheca «Ospiti appena entrati», con l'avviso «da invitare ad associarsi» da togliere con «Fatto».
+* Nuovo: tetto orario delle email in Limiti e soglie; le email singole rifiutate dal server di posta si riprovano da sole.
+* Ottimizzazione: molto più veloce con tanti dati: pagine degli eventi in cache, ricerca delle persone al posto delle tendine, copia di sicurezza ed esportazioni a tappe, libro soci e tessere a pagine, meno richieste al database.
+* Altro: conversione delle tabelle a InnoDB dal pannello della copia di sicurezza; aggiornamenti del database a tappe.
+Da fare dopo l'aggiornamento:
+* Apri «Stato del server» e guarda le righe «Da sistemare».
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 = 1.3.35 =
 * Nuovo: «Rigenera il codice» della tessera QR, per il socio nell'area soci e per la segreteria dalla scheda. Il codice vecchio, anche stampato o nel Wallet, smette subito di valere.
 * Sicurezza: limiti di frequenza per socio su richieste, annullamenti, profilo, ricevute e rigenerazione del codice. I valori si cambiano in Limiti e soglie.
@@ -92,20 +102,6 @@ Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/change
 * Ottimizzazione: rivisti tutti i testi del plugin, più chiari e coerenti: «area soci», messaggi di errore che dicono cosa fare, singolare e plurale giusti, un solo formato per l'oggetto delle email, «rendiconto» al posto di «bilancio».
 * Altro: corretto un errore che bloccava il salvataggio dei dati dell'ente quando si conferma il cambio del mese dell'anno fiscale.
 * Altro: «Controlla di nuovo» in Bacheca → Aggiornamenti ricontrolla subito anche il portale.
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.30 =
-* Nuovo: la tessera dei soci, le quote e gli incassi seguono l'anno fiscale; l'«anno delle attività» vale solo per corsi ed eventi. Le tessere già emesse con un pagamento si riallineano da sole (mai accorciate, anni chiusi intatti); se cambi il mese dell'anno fiscale vedi prima cosa succede alle tessere.
-* Nuovo: le pagine in bozza di eventi e corsi, anche quelle importate, si pubblicano tutte insieme.
-* Ottimizzazione: il report delle attività divide entrate e uscite generali per anno fiscale.
-* Altro: nella finestra «Visualizza i dettagli» di WordPress il changelog compare sempre, anche dopo l'aggiornamento.
-Da fare dopo l'aggiornamento:
-* In Bacheca controlla l'esito del riallineamento delle tessere
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.29 =
-* Nuovo: gli eventi su più giorni compaiono in ognuno dei loro giorni nei calendari, nella Bacheca e nel calendario dei soci, e l'importazione da The Events Calendar porta anche la data di fine.
-* Altro: passando l'anno sociale a gennaio, i corsi e gli eventi creati con l'anno a cavallo (per esempio 2025/2026) restano nell'elenco.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 

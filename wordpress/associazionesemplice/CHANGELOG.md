@@ -2,6 +2,16 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.36 – 2026-11-23
+- Nuovo: scheda «Stato del server» negli Strumenti, con i consigli per l'hosting, e cinque controlli in Salute del sito.
+- Nuovo: in Bacheca «Ospiti appena entrati», con l'avviso «da invitare ad associarsi» da togliere con «Fatto».
+- Nuovo: tetto orario delle email in Limiti e soglie; le email singole rifiutate dal server di posta si riprovano da sole.
+- Ottimizzazione: molto più veloce con tanti dati: pagine degli eventi in cache, ricerca delle persone al posto delle tendine, copia di sicurezza ed esportazioni a tappe, libro soci e tessere a pagine, meno richieste al database.
+- Altro: conversione delle tabelle a InnoDB dal pannello della copia di sicurezza; aggiornamenti del database a tappe.
+Da fare dopo l'aggiornamento:
+- Apri «Stato del server» e guarda le righe «Da sistemare».
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.35 – 2026-11-21
 - Nuovo: «Rigenera il codice» della tessera QR, per il socio nell'area soci e per la segreteria dalla scheda. Il codice vecchio, anche stampato o nel Wallet, smette subito di valere.
 - Sicurezza: limiti di frequenza per socio su richieste, annullamenti, profilo, ricevute e rigenerazione del codice. I valori si cambiano in Limiti e soglie.
