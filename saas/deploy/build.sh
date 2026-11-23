@@ -6,7 +6,8 @@ cd "$(dirname "$0")/.."
 OUT="${1:?cartella di uscita}"
 mkdir -p "$OUT"
 
-composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+# Autoloader «solo mappa» (H21): ogni classe si trova nella mappa generata qui, senza cercare file su disco a ogni richiesta.
+composer install --no-dev --prefer-dist --no-interaction --no-progress --classmap-authoritative
 npm ci --no-audit --no-fund
 npm run build
 
