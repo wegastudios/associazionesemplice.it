@@ -42,9 +42,10 @@ final readonly class PayPalGateway
         return $this->issue($live, $clientId, $secret)[0];
     }
 
-    public static function tokenKey(bool $live, string $clientId, string $secret): string
+    /** Nome della voce in cache: HMAC con la chiave dell'applicazione, così l'impronta del segreto non è ricavabile dal nome. */
+    public function tokenKey(bool $live, string $clientId, string $secret): string
     {
-        return 'paypal-token|'.hash('sha256', ($live ? 'live' : 'sandbox')."\0".$clientId."\0".$secret);
+        return 'paypal-token|'.hash_hmac('sha256', ($live ? 'live' : 'sandbox')."\0".$clientId."\0".$secret, $this->crypt->getKey());
     }
 
     /** @return array{0: string, 1: int} gettone e secondi di validità (0 = non detti) */
@@ -63,7 +64,7 @@ final readonly class PayPalGateway
 
     private function cachedToken(bool $live, string $clientId, string $secret): string
     {
-        $key = self::tokenKey($live, $clientId, $secret);
+        $key = $this->tokenKey($live, $clientId, $secret);
         $stored = $this->cache->get($key);
         if (is_string($stored)) {
             try {
@@ -92,7 +93,7 @@ final readonly class PayPalGateway
     {
         $res = $request($this->client()->withToken($this->cachedToken($live, $clientId, $secret)));
         if ($res->status() === 401) {
-            $this->cache->forget(self::tokenKey($live, $clientId, $secret));
+            $this->cache->forget($this->tokenKey($live, $clientId, $secret));
             $res = $request($this->client()->withToken($this->cachedToken($live, $clientId, $secret)));
         }
 
@@ -157,10 +158,14 @@ final readonly class PayPalGateway
         throw new RuntimeException('PayPal: risposta senza indirizzo di approvazione.');
     }
 
-    /** @return array<string, mixed> l'ordine catturato (o già catturato, riletto) */
-    public function capture(bool $live, string $clientId, string $secret, string $orderId): array
+    /**
+     * Cattura con un PayPal-Request-Id stabile (dal pagamento): un nuovo tentativo dopo un tempo scaduto non cattura due volte.
+     *
+     * @return array<string, mixed> l'ordine catturato (o già catturato, riletto)
+     */
+    public function capture(bool $live, string $clientId, string $secret, string $orderId, string $requestId): array
     {
-        $res = $this->call($live, $clientId, $secret, static fn (PendingRequest $http): Response => $http->withHeaders(['PayPal-Request-Id' => 'capture-'.$orderId])
+        $res = $this->call($live, $clientId, $secret, static fn (PendingRequest $http): Response => $http->withHeaders(['PayPal-Request-Id' => $requestId])
             ->withBody('{}', 'application/json')->post(self::base($live).'/v2/checkout/orders/'.rawurlencode($orderId).'/capture'));
         $data = $res->json();
         if (in_array($res->status(), [200, 201], true) && is_array($data)) {

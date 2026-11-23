@@ -27,7 +27,9 @@ it('tiene il gettone di PayPal in cache, cifrato, e ne chiede uno nuovo solo se 
     expect($paypal->createOrder(false, 'client-finto', 'segreto-finto', [], 'p1')['id'])->toBe('ORD1')
         ->and($paypal->createOrder(false, 'client-finto', 'segreto-finto', [], 'p2')['id'])->toBe('ORD2')
         ->and($tokens())->toBe(1);
-    expect(Cache::get(PayPalGateway::tokenKey(false, 'client-finto', 'segreto-finto')))->toBeString()->not->toContain('gettone-uno');
+    $key = $paypal->tokenKey(false, 'client-finto', 'segreto-finto');
+    expect(Cache::get($key))->toBeString()->not->toContain('gettone-uno')
+        ->and($key)->not->toContain(hash('sha256', "sandbox\0client-finto\0segreto-finto"));
 
     // Gettone rifiutato: si butta, se ne chiede uno nuovo e la chiamata si ripete una volta.
     expect($paypal->createOrder(false, 'client-finto', 'segreto-finto', [], 'p3')['id'])->toBe('ORD3')
@@ -38,4 +40,25 @@ it('tiene il gettone di PayPal in cache, cifrato, e ne chiede uno nuovo solo se 
 
     // La prova delle credenziali nelle impostazioni chiede sempre un gettone nuovo.
     expect($paypal->token(false, 'client-finto', 'segreto-finto'))->toBe('gettone-tre')->and($tokens())->toBe(3);
+});
+
+it('cattura e rimborso mandano a PayPal lo stesso PayPal-Request-Id anche quando la chiamata si ripete', function (): void {
+    Http::fake([
+        'api-m.sandbox.paypal.com/v1/oauth2/token' => Http::response(['access_token' => 'gettone', 'expires_in' => 32400]),
+        'api-m.sandbox.paypal.com/v2/checkout/orders/ORD9/capture' => Http::sequence()
+            ->push(['name' => 'AUTHENTICATION_FAILURE'], 401)
+            ->push(['id' => 'ORD9', 'status' => 'COMPLETED'], 201),
+        'api-m.sandbox.paypal.com/v2/checkout/orders/ORD9' => Http::response(['purchase_units' => [['payments' => ['captures' => [['id' => 'CAP9', 'status' => 'COMPLETED']]]]]]),
+        'api-m.sandbox.paypal.com/v2/payments/captures/CAP9/refund' => Http::sequence()
+            ->push(['name' => 'AUTHENTICATION_FAILURE'], 401)
+            ->push(['id' => 'RF9'], 201),
+    ]);
+    $paypal = app(PayPalGateway::class);
+    $ids = static fn (string $path): array => Http::recorded(static fn (HttpRequest $r): bool => str_ends_with($r->url(), $path))
+        ->map(static fn (array $pair): string => $pair[0]->header('PayPal-Request-Id')[0] ?? '')->values()->all();
+
+    expect($paypal->capture(false, 'client-finto', 'segreto-finto', 'ORD9', 'capture-pagamento-1')['status'])->toBe('COMPLETED')
+        ->and($paypal->refund(false, 'client-finto', 'segreto-finto', 'ORD9', 1250, 'refund-pagamento-1-0-1250'))->toBe('RF9')
+        ->and($ids('/capture'))->toBe(['capture-pagamento-1', 'capture-pagamento-1'])
+        ->and($ids('/refund'))->toBe(['refund-pagamento-1-0-1250', 'refund-pagamento-1-0-1250']);
 });

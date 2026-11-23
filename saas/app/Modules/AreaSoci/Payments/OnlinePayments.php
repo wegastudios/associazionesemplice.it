@@ -200,7 +200,7 @@ final readonly class OnlinePayments
                     $this->settle($p['id'], StripeGateway::paidCents($session));
                 }
             } else {
-                $order = $this->paypal->capture($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret, $p['provider_ref']);
+                $order = $this->paypal->capture($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret, $p['provider_ref'], 'capture-'.$p['id']);
                 if (PayPalGateway::isCompleted($order)) {
                     $this->settle($p['id'], PayPalGateway::capturedCents($order));
                 }
