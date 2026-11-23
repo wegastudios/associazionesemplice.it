@@ -68,13 +68,16 @@ it('conta i tetti per mailer: gli urgenti solo sul totale, i massivi anche sul l
         ]);
 });
 
-it('legge i tetti di ogni mailer dalla configurazione, anche al secondo, al giorno e al mese', function (): void {
+it('legge i tetti di ogni mailer dalla configurazione, anche al secondo, al giorno (fino alla mezzanotte UTC) e al mese', function (): void {
+    $this->freezeTime();
     config(['mail.default' => 'emailit', 'saas.mail_queue.mailers.emailit' => ['per_second' => 2, 'per_hour' => 900, 'per_day' => 4500, 'per_month' => 50000]]);
+    $day = now('UTC')->toDateString();
+    $toMidnight = now('UTC')->startOfDay()->addDay()->getTimestamp() - now()->getTimestamp();
 
     expect(mqLimits(MailQueue::URGENT))->toBe([
         ['mail-all|emailit|1', 2, 1],
         ['mail-all|emailit|3600', 900, 3600],
-        ['mail-all|emailit|86400', 4500, 86400],
+        ["mail-all|emailit|86400|{$day}", 4500, $toMidnight],
         ['mail-all|emailit|2592000', 50000, 2592000],
     ]);
 });
