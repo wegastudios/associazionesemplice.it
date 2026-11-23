@@ -71,11 +71,6 @@ final class Plugin {
 		return is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI );
 	}
 
-	/** C'è l'aggiornatore dal portale (in questo pacchetto o nella copia del plugin aggiuntivo)? Lo dice senza caricarne la classe. */
-	public static function has_updater(): bool {
-		return class_exists( __NAMESPACE__ . '\Updater', false ) || is_readable( ASEM_DIR . 'includes/Updater.php' ) || ( defined( 'ASEM_PRO_DIR' ) && is_readable( ASEM_PRO_DIR . 'updater/Updater.php' ) );
-	}
-
 	/** Aggiornatore dal portale (UpdaterBoot e Updater ci sono solo nel pacchetto del portale): in bacheca, cron e WP-CLI subito, sul sito pubblico solo se serve. */
 	private static function updater(): void {
 		if ( is_readable( ASEM_DIR . 'includes/UpdaterBoot.php' ) ) {

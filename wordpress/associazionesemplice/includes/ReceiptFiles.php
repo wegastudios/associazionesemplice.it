@@ -26,7 +26,7 @@ final class ReceiptFiles {
 	const SUBDIR   = 'receipts';
 	const BATCH    = 100;
 	const CRON     = 'asem_receipt_pdfs_batch';
-	const FLAG     = ProBoot::RECEIPT_BACKFILL_OPTION; // assente = da fare, started = in corso, done = finito
+	const FLAG     = 'asem_receipt_pdfs_backfill'; // uguale a ProBoot::RECEIPT_BACKFILL_OPTION // assente = da fare, started = in corso, done = finito
 	const MAX_SIZE = 10485760; // 10 MB: una ricevuta pesa pochi KB, oltre non è un nostro PDF
 	const ENC_OVERHEAD = 1048576; // il file cifrato pesa poco più dell'originale (29 byte di intestazione e 17 per ogni blocco da 64 KiB)
 
