@@ -66,16 +66,20 @@ final readonly class StatementService
 
         // Saldi a ritroso dal saldo di oggi (app.account_balances: saldo iniziale più tutti i movimenti non stornati,
         // tenuto dai trigger): si tolgono i movimenti da inizio anno in poi, senza rileggere quelli degli anni prima.
-        // Stesso risultato della somma di tutti i movimenti precedenti; i movimenti degli anni chiusi non cambiano più.
+        // Stesso risultato della somma di tutti i movimenti precedenti. I movimenti si sommano per conto prima di unire i
+        // saldi: la riga del saldo cambia a ogni movimento e non va riletta per ogni movimento.
         $accounts = $c->select(<<<'SQL'
-            SELECT a.name,
-                   b.balance_cents - coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END), 0) AS opening,
-                   b.balance_cents - coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END)
-                       FILTER (WHERE t.tx_date > ?), 0) AS closing
+            SELECT a.name, b.balance_cents - coalesce(m.since_start, 0) AS opening, b.balance_cents - coalesce(m.after_end, 0) AS closing
             FROM app.accounts a
             JOIN app.account_balances b ON b.org_id = a.org_id AND b.account_id = a.id
-            LEFT JOIN app.transactions t ON t.org_id = a.org_id AND t.account_id = a.id AND t.voided_at IS NULL AND t.tx_date >= ?
-            GROUP BY a.id, a.name, a.sort_order, b.balance_cents
+            LEFT JOIN (
+                SELECT account_id,
+                       sum(CASE WHEN type IN ('income', 'transfer_in') THEN amount_cents ELSE -amount_cents END) AS since_start,
+                       sum(CASE WHEN type IN ('income', 'transfer_in') THEN amount_cents ELSE -amount_cents END) FILTER (WHERE tx_date > ?) AS after_end
+                FROM app.transactions
+                WHERE voided_at IS NULL AND tx_date >= ?
+                GROUP BY account_id
+            ) m ON m.account_id = a.id
             ORDER BY a.sort_order, a.name
         SQL, [$fy->ends_on, $fy->starts_on]);
 

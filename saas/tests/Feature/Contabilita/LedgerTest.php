@@ -236,13 +236,15 @@ it('dà gli stessi saldi di inizio e fine anno della somma di tutti i movimenti,
     expect($statements->forYear($prev)['accounts'])->toBe($legacy($prev))
         ->and($statements->forYear($year)['accounts'])->toBe($legacy($year));
 
-    // Chiuso l'anno prima, i saldi di inizio dell'anno aperto sono quelli di fine anno della fotografia; un conto nuovo parte dal suo saldo iniziale.
+    // Chiuso l'anno prima, i saldi di inizio dell'anno aperto sono quelli di fine anno della fotografia; un conto nuovo
+    // (dopo una chiusura nasce a zero) parte da zero.
     app(FiscalYearService::class)->close($prev);
-    app(AccountService::class)->create('Conto nuovo', AccountType::Bank, 500);
+    $new = app(AccountService::class)->create('Conto nuovo', AccountType::Bank, 0);
+    $this->ledger->recordIncome(income($new->id, [new IncomeLine(($this->cat)(CategoryKind::Donation), 500)], null, false));
     $closing = array_column(app(StatementSnapshots::class)->forYear($prev)['statement']['accounts'], 'closing', 'name');
     $open = $statements->forYear($year)['accounts'];
     expect($open)->toBe($legacy($year))
-        ->and(array_column($open, 'opening', 'name'))->toEqual([...$closing, 'Conto nuovo' => 500])
+        ->and(array_column($open, 'opening', 'name'))->toEqual([...$closing, 'Conto nuovo' => 0])
         ->and(array_column($open, 'closing', 'name'))->toEqual(['Cassa contanti' => 9000, 'Conto corrente' => 95600, 'Conto nuovo' => 500]);
 });
 
