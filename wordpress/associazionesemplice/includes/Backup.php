@@ -1142,6 +1142,7 @@ final class Backup {
 				wp_delete_file( $safety ); // nulla è cambiato: la copia con le tabelle in chiaro non serve a nessuno
 			throw new \RuntimeException( $e->getMessage() . ' Non è stato cambiato nulla.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		LedgerService::forget_closing_sums(); // le somme salvate alla chiusura degli anni fiscali si rifanno sui movimenti ripristinati, alla prima lettura dei saldi
 		// Chiavi dei documenti e identificativo del sito: solo ora che i dati sono al loro posto (una riga nel registro azioni dice che cosa si è adottato).
 		$keys = array( 'open' => 0, 'closed' => 0, 'site_changed' => false, 'failed' => false );
 		if ( $plan ) {

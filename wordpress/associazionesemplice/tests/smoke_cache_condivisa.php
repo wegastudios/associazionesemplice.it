@@ -107,7 +107,7 @@ try {
 	asem_ok( $sc_eq, 'cache condivisa: stesso risultato con e senza cache, alla prima e alla seconda richiesta' );
 	WP_CLI::log( 'Cache condivisa, query alla seconda richiesta (senza → con cache persistente): ' . implode( '; ', $sc_lines ) );
 	asem_ok( 0 === $sc_second['calendario'][1] && 0 === $sc_second['persone'][1] && 0 === $sc_second['persone attive'][1] && 0 === $sc_second['anno fiscale'][1], 'cache condivisa: alla richiesta dopo calendario, elenco delle persone e anno fiscale non fanno query' );
-	asem_ok( $sc_second['saldi'][1] === $sc_base['saldi'][1] - 1 && $sc_second['saldi a una data'][1] === $sc_base['saldi a una data'][1] - 1, 'cache condivisa: alla richiesta dopo i saldi non rifanno la somma dei movimenti (restano solo i conti)' );
+	asem_ok( 1 === $sc_second['saldi'][1] && 1 === $sc_second['saldi a una data'][1] && $sc_base['saldi'][1] > 1 && $sc_base['saldi a una data'][1] > 1, 'cache condivisa: alla richiesta dopo i saldi non rifanno la somma dei movimenti né leggono i saldi salvati alla chiusura (resta solo la lettura dei conti)' );
 
 	// Prova che il valore viene davvero dalla cache: una modifica fatta fuori da WordPress (senza passare da $wpdb) non si vede finché nessuno scrive.
 	$sc_fy_t   = Db::t( 'fiscal_years' );
