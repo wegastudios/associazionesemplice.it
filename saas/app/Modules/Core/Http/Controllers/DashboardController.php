@@ -49,7 +49,7 @@ final readonly class DashboardController
         // apre senza aspettarli, e i numeri si calcolano a ogni apertura come prima, mai da una copia.
         /** @var list<HomeItem>|null $items */
         $items = null;
-        $in =function (string $section) use (&$items, $operator): array {
+        $in = function (string $section) use (&$items, $operator): array {
             if ($items === null) {
                 $items = [];
                 foreach ($this->app->tagged(HomeWidget::TAG) as $widget) {
