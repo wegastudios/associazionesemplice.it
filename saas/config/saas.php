@@ -66,6 +66,9 @@ return [
     // spento (sviluppo, dati inventati) restano avvisi. Va acceso insieme alla 2FA e al repository privato, prima dei dati veri.
     'health_strict' => filter_var(env('SAAS_HEALTH_STRICT', false), FILTER_VALIDATE_BOOLEAN),
 
+    // Cartella dei file di manutenzione con permessi 600 (~/saas/shared sul server): vuoto = quella che contiene storage.
+    'ops_dir' => env('SAAS_OPS_DIR', ''),
+
     // Indirizzi da cui fidarsi degli X-Forwarded-* (il proxy del portale), separati da virgole; vuoto = nessuno.
     'trusted_proxies' => env('SAAS_TRUSTED_PROXIES', ''),
 

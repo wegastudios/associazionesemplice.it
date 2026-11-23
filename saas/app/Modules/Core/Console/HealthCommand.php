@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Console;
 
 use App\Modules\Cifratura\Contracts\KeyVault;
+use App\Modules\Contabilita\Contracts\BalanceCheck;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
@@ -44,7 +45,7 @@ final class HealthCommand extends Command
 
     protected $description = 'Controlla database, migrazioni, servizio chiavi e spazi dei file';
 
-    public function handle(DatabaseManager $db, DatabaseNames $databases, KeyVault $vault, WebRuntimeProbe $probe): int
+    public function handle(DatabaseManager $db, DatabaseNames $databases, KeyVault $vault, WebRuntimeProbe $probe, BalanceCheck $balances): int
     {
         $checks = [
             'database' => fn () => $db->connection('pgsql')->select('SELECT 1'),
@@ -66,6 +67,7 @@ final class HealthCommand extends Command
             'memoria di Redis' => $this->redisMemory(...),
             'partizioni del registro' => fn () => $this->auditPartitions($db, $databases),
             'rifiuto del TRUNCATE' => fn () => $this->truncateGuards($db, $databases),
+            'saldi dei conti' => fn () => $this->balances($balances),
         ];
         // Posta e altri lavori in coda: problemi di esercizio, non della versione. Al rilascio (--mail-warnings-only) sono
         // avvisi, così non riportano indietro il rilascio.
@@ -85,6 +87,7 @@ final class HealthCommand extends Command
             'invii del giorno' => $this->mailDayUsage(...),
             'ripiego della posta' => $this->mailFallback(...),
             'lavori non riusciti' => fn () => $this->jobsFailed($db),
+            'controllo notturno dei saldi' => fn () => $this->balancesRun($balances),
         ];
         $warnOnly = array_keys($alwaysWarn);
         if ($this->option('mail-warnings-only') === true) {
@@ -327,6 +330,33 @@ final class HealthCommand extends Command
 
         return $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
             ->table(is_string($table) && $table !== '' ? $table : $default);
+    }
+
+    /**
+     * Ultimo controllo notturno dei saldi (saas:balances:verify): un conto il cui saldo non è il saldo di partenza più i
+     * movimenti è un errore. Qui solo il numero: associazione e conto sono nel file 600 della cartella condivisa.
+     */
+    private function balances(BalanceCheck $check): void
+    {
+        $r = $check->lastResult();
+        if ($r !== null && $r['mismatches'] > 0) {
+            throw new RuntimeException("{$r['mismatches']} conti con il saldo diverso dai movimenti (dettaglio nel file saldi-*.txt della cartella condivisa)");
+        }
+    }
+
+    /** Il controllo dei saldi non è girato da più di due giorni, o non è riuscito per qualche associazione: avviso. */
+    private function balancesRun(BalanceCheck $check): void
+    {
+        $r = $check->lastResult();
+        if ($r === null) {
+            throw new RuntimeException('mai eseguito');
+        }
+        if (now()->getTimestamp() - $r['at'] > 2 * 86400) {
+            throw new RuntimeException('ultimo giro più vecchio di due giorni');
+        }
+        if ($r['failed'] > 0) {
+            throw new RuntimeException("non riuscito per {$r['failed']} associazioni");
+        }
     }
 
     /** La posta in coda è ferma dopo un rifiuto del server di posta. */
