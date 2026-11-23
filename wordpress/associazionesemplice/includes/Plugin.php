@@ -20,15 +20,26 @@ final class Plugin {
 	/** Ruolo WordPress dato ai nuovi utenti creati per i soci: nessun accesso all'area di amministrazione. */
 	const ROLE_MEMBER = 'asem_member';
 
+	/**
+	 * Versione dello schema del database (la storia dei cambi è accanto a {@see Install::DB_VERSION}, che vale questa).
+	 * Sta qui perché il confronto con quella salvata si fa a ogni richiesta: così la classe Install, grande, si carica solo quando c'è da aggiornare.
+	 */
+	const DB_VERSION = '74';
+
+	/** Opzione con la versione dello schema salvata (la stessa di {@see Install::DB_VERSION_OPTION}). */
+	const DB_VERSION_OPTION = 'asem_db_version';
+
 	private static $services = array();
 
 	public static function init(): void {
-		Install::maybe_upgrade();
+		if ( self::DB_VERSION !== (string) get_option( self::DB_VERSION_OPTION, '' ) ) {
+			Install::maybe_upgrade();
+		}
 		FiscalYears::maybe_open_current(); // il primo giorno dell'anno si apre il nuovo anno fiscale
 		Access::register();      // capability meta: asem_notify_activity, asem_view_person...
 		Employees::register();   // utenti «Dipendente»: permessi che si possono togliere, conteggio per il RUNTS
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
-		Rest\Api::register();    // associazionesemplice/v1
+		add_action( 'rest_api_init', array( Rest\Api::class, 'routes' ) ); // associazionesemplice/v1: la classe si carica solo per le richieste REST
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
 		if ( '' !== Edition::mismatch() ) { // Associazione Semplice Pro troppo diverso da questo Associazione Semplice: non si carica, e si dice cosa fare
 			add_action(
@@ -43,9 +54,7 @@ final class Plugin {
 		MailLog::register();     // registro dell'esito delle email spedite
 		PublicEvents::register(); // pagina pubblica di eventi e corsi (un contenuto collegato a ogni attività)
 		Frontend\WhatsappFloat::register(); // pulsante WhatsApp fisso (se c'è il numero della segreteria)
-		if ( class_exists( __NAMESPACE__ . '\Updater' ) ) { // aggiornamenti dal portale: nel pacchetto per WordPress.org non c'è (lì aggiorna WordPress.org)
-			Updater::register();
-		}
+		self::updater(); // aggiornamenti dal portale: nel pacchetto per WordPress.org non c'è (lì aggiorna WordPress.org)
 		self::schedule_jobs();   // lavori periodici: la classe si carica solo quando il lavoro parte
 		self::lazy_admin_post(); // download e azioni di admin-post: la classe si carica solo per quell'azione
 		// Parti che servono solo se la funzione è presente e in uso: altrimenti nemmeno si caricano.
@@ -54,6 +63,18 @@ final class Plugin {
 		}
 		if ( is_admin() ) {
 			Admin\Admin::init();
+		}
+	}
+
+	/** Richiesta della parte di gestione: bacheca (comprese admin-post.php e admin-ajax.php), WP-Cron o WP-CLI. Sul sito pubblico è falso. */
+	public static function backend(): bool {
+		return is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI );
+	}
+
+	/** Aggiornatore dal portale (UpdaterBoot e Updater ci sono solo nel pacchetto del portale): in bacheca, cron e WP-CLI subito, sul sito pubblico solo se serve. */
+	private static function updater(): void {
+		if ( is_readable( ASEM_DIR . 'includes/UpdaterBoot.php' ) ) {
+			UpdaterBoot::register( self::backend() );
 		}
 	}
 
@@ -68,6 +89,7 @@ final class Plugin {
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
 			'asem_private_folder_check'   => array( 'daily', 3000, 'PrivateFolder', 'cron', '' ),
+			'asem_db_engine_check'        => array( 'daily', 3600, 'DbEngine', 'cron', '' ),
 			'asem_file_crypt_migrate'     => array( '', 0, 'FileMigration', 'cron', '' ), // lotti programmati per cifrare i file già caricati (si programmano da soli, uno alla volta)
 			'asem_file_crypt_migrate_certs' => array( '', 0, 'FileMigration', 'certs_cron', '' ), // lotti dei soli certificati medici già caricati (partono da soli dopo l'aggiornamento)
 			'asem_file_crypt_certs_check' => array( 'hourly', 1000, 'FileMigration', 'auto_certs', '' ), // se la cifratura dei certificati si è fermata o è andata persa, riparte

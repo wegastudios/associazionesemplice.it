@@ -17,10 +17,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CardVerify {
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
-	}
-
 	/** Intestazioni comuni delle pagine di verifica (tessera e biglietti). */
 	public static function send_headers(): void {
 		nocache_headers();

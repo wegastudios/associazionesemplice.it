@@ -15,11 +15,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ReceiptCheckPage {
 
-	public static function register(): void {
-		add_action( 'asem_backup_page_after', array( __CLASS__, 'backup_card' ), 20 );
-		add_action( 'asem_years_page_after', array( __CLASS__, 'years_card' ), 25 );
-	}
-
 	/** Frase di uno stato, per chi legge. */
 	public static function state_text( string $st ): string {
 		switch ( $st ) {

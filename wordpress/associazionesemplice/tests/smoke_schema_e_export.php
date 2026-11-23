@@ -112,6 +112,6 @@ $sx_guard = 0;
 while ( ! Install::schema_ready() && $sx_guard++ < 40 ) {
 	Install::run_upgrade( '70', 0.0 ); // chiamato con un\'altra versione: conta quella salvata col punto raggiunto
 }
-asem_ok( Install::schema_ready() && Install::DB_VERSION === (string) get_option( Install::DB_VERSION_OPTION ) && 9 === $sx_guard, 'schema a tappe: un passaggio per volta (il primo è già fatto sopra), poi la versione del codice [' . $sx_guard . ']' );
+asem_ok( Install::schema_ready() && Install::DB_VERSION === (string) get_option( Install::DB_VERSION_OPTION ) && 10 === $sx_guard, 'schema a tappe: un passaggio per volta (il primo è già fatto sopra), poi la versione del codice [' . $sx_guard . ']' );
 asem_ok( '' === (string) get_option( Install::PROGRESS_OPTION, '' ), 'schema a tappe: finito, il punto raggiunto non resta' );
 wp_clear_scheduled_hook( Install::CRON_HOOK );

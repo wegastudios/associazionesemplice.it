@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use App\Models\Ticket;
-use App\Mail\Concerns\SupportQueuedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -14,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 /** Avviso per i ticket di priorita alta (3) o massima (4). */
 class HighPriorityTicket extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels, SupportQueuedMail;
+    use Queueable, SerializesModels;
 
     public function __construct(public Ticket $ticket, public int $level, public string $levelLabel) {}
 

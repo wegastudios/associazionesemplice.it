@@ -11,10 +11,6 @@ defined( 'ABSPATH' ) || exit;
 /** Viste per i soci: votazioni e documenti (nell'area soci); elenco pubblico dei documenti. */
 final class BlockBViews {
 
-	public static function register(): void {
-		add_filter( 'asem_area_section', array( __CLASS__, 'area_section' ), 10, 3 );
-	}
-
 	/** Sezioni dell'area soci aggiunte da questo blocco. */
 	public static function area_section( $html, $section, $person ) {
 		if ( 'votazioni' === $section ) {

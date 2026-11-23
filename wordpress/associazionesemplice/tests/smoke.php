@@ -14189,12 +14189,25 @@ asem_ok( 'ok' === \AssociazioneSemplice\FileKey::state() && 0 === $bf_RF::pendin
 // verifica e archivio ZIP dell'anno
 $pf_v   = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 $pf_num = (int) \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['number'];
+$pf_s0  = \AssociazioneSemplice\FileCrypt::$streams;
 $pf_zip = \AssociazioneSemplice\ReceiptFiles::zip_year( $pf_fy );
+$pf_sn  = \AssociazioneSemplice\FileCrypt::$streams - $pf_s0;
+asem_ok( $pf_zip['count'] >= 5 && $pf_sn >= 1 && $pf_sn <= $pf_zip['count'], 'ricevute PDF: lo ZIP decifra ogni PDF una volta sola (' . $pf_sn . ' decifrature per ' . $pf_zip['count'] . ' PDF nell\'archivio)' );
 $pf_zz  = new ZipArchive();
 $pf_zz->open( $pf_zip['path'] );
 $pf_zv  = false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf', $pf_fy, $pf_num, $pf_fy ) ) && false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d-annullata.pdf', $pf_fy, (int) \AssociazioneSemplice\Receipts::record( $pf_key[5300] )['number'], $pf_fy ) );
 $pf_zc  = (string) $pf_zz->getFromName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf', $pf_fy, $pf_num, $pf_fy ) );
 $pf_zl  = (string) $pf_zz->getFromName( 'LEGGIMI.txt' );
+$pf_shas = array_merge( $wpdb->get_col( $wpdb->prepare( 'SELECT pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND pdf_sha256 IS NOT NULL', $pf_fy ) ), $wpdb->get_col( $wpdb->prepare( 'SELECT void_pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND void_pdf_sha256 IS NOT NULL', $pf_fy ) ) );
+$pf_zn   = 0;
+$pf_zok  = true;
+for ( $pf_zi = 0; $pf_zi < $pf_zz->numFiles; $pf_zi++ ) {
+	if ( 0 === strpos( (string) $pf_zz->getNameIndex( $pf_zi ), 'ricevute-' ) ) {
+		$pf_zn++;
+		$pf_zok = $pf_zok && in_array( hash( 'sha256', (string) $pf_zz->getFromIndex( $pf_zi ) ), $pf_shas, true );
+	}
+}
+asem_ok( $pf_zok && $pf_zn === $pf_zip['count'], 'ricevute PDF: ogni PDF nello ZIP ha l\'impronta registrata nel database (' . $pf_zn . ' file)' );
 $pf_zz->close();
 wp_delete_file( $pf_zip['path'] );
 $pf_tmpd = \AssociazioneSemplice\PrivateFolder::dir() . '/' . \AssociazioneSemplice\PrivateFolder::TEMP_DIR;
@@ -14558,6 +14571,7 @@ require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme de
 require __DIR__ . '/smoke_letture_a_blocchi.php'; // Bacheca, elenco e scheda di corsi ed eventi: letture a blocchi uguali a quelle una per una
 require __DIR__ . '/smoke_tessere_in_blocco.php'; // tessere in PDF per molti soci: query in blocco, QR a un bit, parti da 500
 require __DIR__ . '/smoke_scheda_evento.php'; // scheda di un evento con anagrafica grande: ricerca al posto delle tendine, date a blocchi
+require __DIR__ . '/smoke_db_engine.php'; // motore delle tabelle: controllo, avviso e conversione a tappe in InnoDB
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_schema_e_export.php'; // esportazioni a blocchi, saldi una volta per richiesta, schema a tappe
 require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore

@@ -26,7 +26,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
     Route::middleware('can:people.edit')->group(function (): void {
         Route::get('/soci/nuovo', [PeopleController::class, 'create'])->name('people.create');
         Route::get('/soci/importa', [PeopleTransferController::class, 'form'])->name('people.import');
-        Route::post('/soci/importa', [PeopleTransferController::class, 'import'])->name('people.import.run');
+        Route::post('/soci/importa', [PeopleTransferController::class, 'import'])->middleware('db.long')->name('people.import.run');
         Route::get('/soci/modello-import.csv', [PeopleTransferController::class, 'template'])->name('people.import.template');
         Route::post('/soci', [PeopleController::class, 'store'])->name('people.store');
         Route::put('/soci/{person}', [PeopleController::class, 'update'])->whereUuid('person')->name('people.update');
@@ -43,9 +43,9 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
 
     // Export con i dati sensibili: non per il commercialista; ogni export finisce nel registro.
     Route::middleware(['can:people.export', 'exports.allowed', 'throttle:10,1'])->group(function (): void {
-        Route::get('/soci/esporta', [PeopleTransferController::class, 'export'])->name('people.export');
-        Route::get('/soci/libro.pdf', [MemberBookController::class, 'pdf'])->name('member-book.pdf');
-        Route::get('/soci/libro.csv', [MemberBookController::class, 'csv'])->name('member-book.csv');
+        Route::get('/soci/esporta', [PeopleTransferController::class, 'export'])->middleware('db.long')->name('people.export');
+        Route::get('/soci/libro.pdf', [MemberBookController::class, 'pdf'])->middleware('db.long')->name('member-book.pdf');
+        Route::get('/soci/libro.csv', [MemberBookController::class, 'csv'])->middleware('db.long')->name('member-book.csv');
     });
 
     // Dati sanitari: non per il commercialista.

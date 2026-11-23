@@ -39,7 +39,7 @@ final class GuardianConsentWiringTest extends TestCase {
 	}
 
 	public function test_page_and_resend_are_wired(): void {
-		$this->assertStringContainsString( 'GuardianConsent::class', $this->src( 'Frontend/Application.php' ) );
+		$this->assertStringContainsString( "'asem_guardian_cf'   => array( \\AssociazioneSemplice\\GuardianConsent::class, 'handle' )", $this->src( 'Frontend/Front.php' ) ); // la pagina del link si smista da Front::links()
 		$this->assertStringContainsString( "'asem_guardian_consent_resend' => 'guardian_consent_resend'", $this->src( 'Admin/Actions.php' ) );
 		$this->assertStringContainsString( 'GuardianConsent::pending(', $this->src( 'Admin/PeoplePage.php' ) );
 	}

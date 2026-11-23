@@ -14,7 +14,7 @@ final class SchemaUpgradeStepsTest extends TestCase {
 
 	public function test_steps_are_the_same_work_as_before_in_the_same_order(): void {
 		$names = Install::step_names( '' );
-		$this->assertSame( array( 'tables', 'indexes', 'roles', 'seed', 'year_closures', 'minute_numbers', 'member_book', 'wizard' ), $names, 'nuova installazione: solo i passaggi di base' );
+		$this->assertSame( array( 'tables', 'indexes', 'db_engine', 'roles', 'seed', 'year_closures', 'minute_numbers', 'member_book', 'wizard' ), $names, 'nuova installazione: solo i passaggi di base' );
 		$from67 = Install::step_names( '67' );
 		$this->assertSame( $names, array_slice( $from67, 0, count( $names ) ), 'prima i passaggi di base, poi le migrazioni' );
 		$this->assertSame( array( 'realign_memberships', 'activity_fee_name' ), array_slice( $from67, count( $names ) ), 'dalla 67 restano le migrazioni 71 e 72' );

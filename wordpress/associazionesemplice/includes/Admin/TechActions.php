@@ -24,6 +24,7 @@ final class TechActions {
 		'asem_wizard_skip' => 'wizard_skip',
 		'asem_private_check' => 'private_check',
 		'asem_private_move'  => 'private_move',
+		'asem_db_convert'    => 'db_convert',
 		'asem_enc_start'     => 'enc_start',
 		'asem_enc_step'      => 'enc_step',
 		'asem_enc_recover'   => 'enc_recover',
@@ -102,6 +103,28 @@ final class TechActions {
 		}
 		if ( $r['left'] > $r['conflict'] + $r['failed'] + $r['same'] ) {
 			$msg .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['left'], 'Ne resta ancora uno: premi di nuovo.', 'Ne restano ancora {n}: premi di nuovo.' );
+		}
+		return array( $back, $msg );
+	}
+
+	/** «Converti in InnoDB»: una tappa (poche tabelle, dalla più piccola). Solo amministratori. */
+	public static function db_convert( array $p ): array {
+		$back = Ui::url( 'asem-backup' ) . '#asem-db-engine';
+		$r    = \AssociazioneSemplice\DbEngine::convert_batch();
+		if ( $r['unavailable'] ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Il server non offre InnoDB: non si può convertire da qui.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( $r['busy'] ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Un\'altra conversione è già in corso: attendi qualche secondo e riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$msg = $r['done'] ? \AssociazioneSemplice\Texts::n( count( $r['done'] ), 'Convertita una tabella.', 'Convertite {n} tabelle.' ) : \AssociazioneSemplice\Texts::t( 'Nessuna tabella convertita.' );
+		if ( $r['failed'] ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::n( count( $r['failed'] ), 'Una tabella non si è potuta convertire ed è rimasta com\'era: {tabelle}.', '{n} tabelle non si sono potute convertire e sono rimaste come erano: {tabelle}.', array( 'tabelle' => implode( ', ', $r['failed'] ) ) );
+		}
+		if ( $r['left'] > count( $r['failed'] ) ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Ne restano altre: premi di nuovo.' );
+		} elseif ( ! $r['failed'] ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Ora tutte le tabelle usano InnoDB.' );
 		}
 		return array( $back, $msg );
 	}

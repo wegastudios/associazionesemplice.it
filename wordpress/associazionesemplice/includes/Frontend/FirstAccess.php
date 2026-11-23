@@ -22,11 +22,6 @@ final class FirstAccess {
 	const MESSAGE_OWN  = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il link per entrare (controlla anche la posta indesiderata). Altrimenti la segreteria riceve la tua richiesta e ti risponde appena può.';
 	const MESSAGE      = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il messaggio e scegli la tua password (controlla anche la posta indesiderata). Altrimenti la segreteria riceve la tua richiesta e ti risponde appena può.';
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
-		add_filter( 'login_message', array( __CLASS__, 'login_message' ) );
-	}
-
 	public static function url(): string {
 		return add_query_arg( 'asem_first_access', '1', home_url( '/' ) );
 	}
