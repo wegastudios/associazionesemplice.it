@@ -302,6 +302,41 @@ final readonly class OnlinePayments
         $this->events()->where('id', $eventId)->update(['status' => 'done', 'processed_at' => now()]);
     }
 
+    /**
+     * Passata pianificata: gli eventi ancora «queued» da più di $afterMinutes senza un lavoro in coda (perso tra il
+     * salvataggio e la coda) tornano in coda; settle è una volta sola, quindi un doppione non registra due volte.
+     *
+     * @return array{requeued: int, stale: int} stale = eventi in coda da più di $alertMinutes
+     */
+    public function requeueStaleEvents(int $afterMinutes, int $alertMinutes): array
+    {
+        $orgId = $this->context->require()->id;
+        $queued = fn (): \Illuminate\Database\Query\Builder => $this->events()->where('status', 'queued');
+        $requeued = 0;
+        foreach ($queued()->where('received_at', '<', now()->subMinutes($afterMinutes))->orderBy('received_at')->limit(100)->pluck('id') as $id) {
+            if (is_string($id) && ! $this->jobWaiting($id)) {
+                Bus::dispatch(new SettleOnlinePayment($orgId, $id));
+                $requeued++;
+            }
+        }
+
+        return ['requeued' => $requeued, 'stale' => $queued()->where('received_at', '<', now()->subMinutes($alertMinutes))->count()];
+    }
+
+    /** C'è già un lavoro in coda (anche in attesa di un nuovo tentativo) per l'evento? Solo con la coda sul database. */
+    private function jobWaiting(string $eventId): bool
+    {
+        if (config('queue.default') !== 'database') {
+            return false;
+        }
+        $connection = config('queue.connections.database.connection');
+        $table = config('queue.connections.database.table');
+
+        return $this->db->connection(is_string($connection) && $connection !== '' ? $connection : null)
+            ->table(is_string($table) && $table !== '' ? $table : 'core.jobs')
+            ->where('payload', 'like', '%'.$eventId.'%')->exists();
+    }
+
     /** Il lavoro si è arreso: l'evento resta «failed» e il registro azioni lo dice. */
     public function eventFailed(string $eventId): void
     {

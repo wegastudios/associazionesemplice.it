@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Console;
 
+use App\Modules\AreaSoci\Contracts\PaymentWebhookHealth;
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\MailQueue;
@@ -65,12 +66,12 @@ final class HealthCommand extends Command
             'invio della posta' => $this->mailBlocked(...),
             'posta non partita' => fn () => $this->mailFailed($db),
         ];
-        // Sempre un avviso: gli invii vicini al tetto orario.
-        $warnOnly = ['invii della posta nell\'ora'];
+        // Sempre un avviso: gli invii vicini al tetto orario e gli incassi online fermi in coda (H14: li rimette in coda la passata ogni 5 minuti).
+        $warnOnly = ['invii della posta nell\'ora', 'incassi online in coda'];
         if ($this->option('mail-warnings-only') === true) {
             $warnOnly = [...$warnOnly, ...array_keys($mailChecks)];
         }
-        $checks += $mailChecks + ['invii della posta nell\'ora' => $this->mailHourUsage(...)];
+        $checks += $mailChecks + ['invii della posta nell\'ora' => $this->mailHourUsage(...), 'incassi online in coda' => PaymentWebhookHealth::check(...)];
 
         if (! $this->option('skip-migrations')) {
             foreach ($databases->names() as $name) {

@@ -30,6 +30,7 @@ use App\Modules\Risorse\Services\ReservationService;
 use App\Modules\Risorse\Services\ResourceService;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -1019,4 +1020,38 @@ it('un incasso in coda che non riesce resta segnato: l\'evento rimandato da Stri
             ->and(Transaction::query()->where('method', 'stripe')->count())->toBe(1)
             ->and(DB::table('app.payment_webhook_events')->value('status'))->toBe('done');
     });
+});
+
+it('gli eventi rimasti in coda senza lavoro tornano in coda ogni 5 minuti e saas:health avvisa dopo mezz\'ora (H14)', function (): void {
+    memberStripeCheckout($this, 'cs_sweep', 1);
+    Queue::fake([SettleOnlinePayment::class]);
+    stripeEvent($this, ['id' => 'evt_s1', 'type' => 'checkout.session.completed', 'data' => ['object' => ['id' => 'cs_sweep', 'payment_status' => 'paid', 'amount_total' => 2500, 'currency' => 'eur']]])->assertOk();
+    Queue::assertPushed(SettleOnlinePayment::class, 1);
+    $age = fn (int $minutes) => $this->orgContext()->run($this->org->id, fn () => DB::table('app.payment_webhook_events')->update(['status' => 'queued', 'processed_at' => null, 'received_at' => now()->subMinutes($minutes)]));
+
+    // Appena arrivato: la passata non lo tocca.
+    $this->artisan('saas:payments:requeue-webhooks')->assertSuccessful();
+    Queue::assertPushed(SettleOnlinePayment::class, 1);
+
+    // Il lavoro si è perso: dopo 5 minuti l'evento torna in coda e l'incasso si registra, una volta sola.
+    $age(6);
+    $this->artisan('saas:payments:requeue-webhooks')->assertSuccessful();
+    Queue::assertPushed(SettleOnlinePayment::class, 2);
+    runSettlement($this, Queue::pushed(SettleOnlinePayment::class)->last());
+    runSettlement($this, Queue::pushed(SettleOnlinePayment::class)->first());
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(app(OnlinePayments::class)->list(null)[0]['status'])->toBe('settled')
+            ->and(Transaction::query()->where('method', 'stripe')->count())->toBe(1)
+            ->and(DB::table('app.payment_webhook_events')->value('status'))->toBe('done');
+    });
+    $this->artisan('saas:payments:requeue-webhooks')->assertSuccessful();
+    Queue::assertPushed(SettleOnlinePayment::class, 2);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->doesntExpectOutputToContain('eventi dei pagamenti online');
+
+    // Fermo da più di mezz'ora: torna in coda e saas:health avvisa.
+    $age(40);
+    $this->artisan('saas:payments:requeue-webhooks')->assertSuccessful();
+    Queue::assertPushed(SettleOnlinePayment::class, 3);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('eventi dei pagamenti online in coda da più di 30 minuti: 1');
+    expect(collect(app(Schedule::class)->events())->filter(static fn ($e): bool => str_contains((string) $e->command, 'saas:payments:requeue-webhooks'))->sole()->expression)->toBe('*/5 * * * *');
 });

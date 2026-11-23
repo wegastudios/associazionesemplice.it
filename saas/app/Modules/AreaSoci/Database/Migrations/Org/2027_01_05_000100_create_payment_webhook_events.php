@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
  * Eventi dei webhook dei pagamenti (H14): il webhook verifica la firma, salva qui l'evento una volta sola (chiave: il suo
  * id presso il gestore) e risponde; la registrazione dell'incasso la fa un lavoro in coda (SettleOnlinePayment), che
  * segna l'evento «done» o, dopo l'ultimo tentativo, «failed» (un nuovo invio dello stesso evento lo rimette in coda).
+ * Un evento rimasto «queued» senza lavoro lo rimette in coda la passata ogni 5 minuti.
  */
 return new class extends Migration
 {
@@ -33,6 +34,8 @@ return new class extends Migration
             )
         SQL);
         DB::statement('CREATE INDEX payment_webhook_events_payment ON app.payment_webhook_events (org_id, payment_id)');
+        // La passata ogni 5 minuti (saas:payments:requeue-webhooks) legge solo gli eventi ancora in coda.
+        DB::statement("CREATE INDEX payment_webhook_events_queued ON app.payment_webhook_events (org_id, received_at) WHERE status = 'queued'");
         OrgSchema::isolate('app.payment_webhook_events');
         OrgSchema::grant('app.payment_webhook_events', ['SELECT', 'INSERT', 'UPDATE']);
     }

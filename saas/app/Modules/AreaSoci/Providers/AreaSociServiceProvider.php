@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Providers;
 
+use App\Modules\AreaSoci\Console\RequeueWebhookEventsCommand;
 use App\Modules\AreaSoci\Home\PaymentsHome;
 use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
 use App\Modules\AreaSoci\Http\Middleware\IdentifyMemberOrg;
@@ -14,6 +15,7 @@ use App\Modules\Core\Contracts\DonationInvites;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\SetupStep;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\RateLimiter;
@@ -34,6 +36,13 @@ final class AreaSociServiceProvider extends ServiceProvider
         $router->aliasMiddleware('member-org', IdentifyMemberOrg::class);
         $router->aliasMiddleware('member', AuthenticateMember::class);
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');
+        if ($this->app->runningInConsole()) {
+            $this->commands([RequeueWebhookEventsCommand::class]);
+            // Incassi online (H14): gli eventi del webhook rimasti in coda senza lavoro tornano in coda.
+            $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+                $schedule->command('saas:payments:requeue-webhooks')->everyFiveMinutes()->withoutOverlapping(10);
+            });
+        }
 
         // Azioni dei soci collegati, ogni 10 minuti: per socio (dal cookie di sessione, in impronta) e per indirizzo IP.
         //   member-book: prenota (eventi, risorse) e lista d'attesa; member-cancel: annulla; member-profile: recapiti;
