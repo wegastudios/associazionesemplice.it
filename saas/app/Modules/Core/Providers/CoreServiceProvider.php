@@ -26,6 +26,7 @@ use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Http\Middleware\ResolveProxyClient;
+use App\Modules\Core\Mail\PrimaryMailer;
 use App\Modules\Core\Org\DatabaseOrgContext;
 use App\Modules\Core\Org\DatabaseOrgDirectory;
 use App\Modules\Core\Org\DatabaseOrgPurger;
@@ -38,6 +39,7 @@ use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Mail\MailManager;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -115,6 +117,11 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(static function (MessageSent $event): void {
             $mailer = $event->data['mailer'] ?? null;
             MailQueue::sent(count($event->sent->getSymfonySentMessage()->getEnvelope()->getRecipients()), is_string($mailer) && $mailer !== '' ? $mailer : null);
+        });
+
+        // Trasporto del servizio di invio principale: sempre cifrato (TLS implicito o STARTTLS obbligatorio).
+        $this->callAfterResolving('mail.manager', static function (MailManager $mail): void {
+            $mail->extend(PrimaryMailer::NAME, PrimaryMailer::transport(...));
         });
 
         if ($this->app->runningInConsole()) {

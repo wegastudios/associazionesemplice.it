@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Providers;
 
+use App\Modules\AreaSoci\Console\PruneMemberAccessCommand;
 use App\Modules\AreaSoci\Console\RequeueWebhookEventsCommand;
 use App\Modules\AreaSoci\Home\PaymentsHome;
 use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
@@ -36,13 +37,6 @@ final class AreaSociServiceProvider extends ServiceProvider
         $router->aliasMiddleware('member-org', IdentifyMemberOrg::class);
         $router->aliasMiddleware('member', AuthenticateMember::class);
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');
-        if ($this->app->runningInConsole()) {
-            $this->commands([RequeueWebhookEventsCommand::class]);
-            // Incassi online (H14): gli eventi del webhook rimasti in coda senza lavoro tornano in coda.
-            $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
-                $schedule->command('saas:payments:requeue-webhooks')->everyFiveMinutes()->withoutOverlapping(10);
-            });
-        }
 
         // Azioni dei soci collegati, ogni 10 minuti: per socio (dal cookie di sessione, in impronta) e per indirizzo IP.
         //   member-book: prenota (eventi, risorse) e lista d'attesa; member-cancel: annulla; member-profile: recapiti;
@@ -67,5 +61,16 @@ final class AreaSociServiceProvider extends ServiceProvider
                 Limit::perHour(100)->by('donation-org|'.(is_string($slug) ? $slug : '')),
             ];
         });
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([PruneMemberAccessCommand::class, RequeueWebhookEventsCommand::class]);
+            $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+                // Incassi online (H14): gli eventi del webhook rimasti in coda senza lavoro tornano in coda.
+                $schedule->command('saas:payments:requeue-webhooks')->everyFiveMinutes()->withoutOverlapping(10);
+                // Link, codici e sessioni scaduti da 30 giorni: la mattina presto, dopo i lavori della notte e prima
+                // che i soci entrino.
+                $schedule->command('saas:member-access:prune')->dailyAt('06:13')->withoutOverlapping(30);
+            });
+        }
     }
 }

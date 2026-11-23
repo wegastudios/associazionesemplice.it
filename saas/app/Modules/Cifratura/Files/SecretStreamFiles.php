@@ -8,6 +8,7 @@ use App\Modules\Cifratura\Contracts\DecryptionFailed;
 use App\Modules\Cifratura\Contracts\EncryptedFiles;
 use App\Modules\Cifratura\Contracts\StoredFile;
 use App\Modules\Cifratura\Keys\KeyRing;
+use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -28,9 +29,19 @@ final readonly class SecretStreamFiles implements EncryptedFiles
 
     private const CHUNK = 65536;
 
+    /**
+     * Spazio occupato per associazione (H33): contatore in cache, aggiornato a ogni salvataggio e cancellazione, così il
+     * controllo della quota non scorre tutti i file. Ogni notte saas:files:usage lo riallinea al disco; se scade o la
+     * cache lo toglie, si riconta.
+     */
+    private const USAGE_KEY = 'org-files-bytes:';
+
+    private const USAGE_HOURS = 36;
+
     public function __construct(
         private Filesystem $disk,
         private KeyRing $keys,
+        private Cache $cache,
     ) {}
 
     public function store(string $orgId, string $sourcePath, string $originalName, string $mime): StoredFile
@@ -67,11 +78,13 @@ final readonly class SecretStreamFiles implements EncryptedFiles
         }
         fclose($in);
 
+        $written = (int) ftell($tmp);
         rewind($tmp);
         if (! $this->disk->writeStream($path, $tmp)) {
             throw new RuntimeException('File non salvato.');
         }
         fclose($tmp);
+        $this->addUsage($orgId, $written);
 
         return new StoredFile($path, self::safeName($originalName), $mime, $size, hash_final($hash));
     }
@@ -98,6 +111,19 @@ final readonly class SecretStreamFiles implements EncryptedFiles
         }
     }
 
+    public function quickCheck(string $orgId, StoredFile $file): string
+    {
+        $this->assertOwned($orgId, $file);
+        if (! $this->disk->exists($file->path)) {
+            return 'missing';
+        }
+        // Formato · versione · intestazione, poi un blocco ogni 64 KiB (almeno uno), ognuno con il suo controllo.
+        $blocks = max(1, intdiv($file->size + self::CHUNK - 1, self::CHUNK));
+        $expected = 5 + SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_HEADERBYTES + $file->size + $blocks * SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_ABYTES;
+
+        return $this->disk->size($file->path) === $expected ? 'ok' : 'altered';
+    }
+
     public function download(string $orgId, StoredFile $file): StreamedResponse
     {
         $this->assertOwned($orgId, $file);
@@ -120,17 +146,37 @@ final readonly class SecretStreamFiles implements EncryptedFiles
     public function delete(string $orgId, StoredFile $file): void
     {
         $this->assertOwned($orgId, $file);
-        $this->disk->delete($file->path);
+        $bytes = $this->disk->exists($file->path) ? $this->disk->size($file->path) : 0;
+        if ($this->disk->delete($file->path)) {
+            $this->addUsage($orgId, -$bytes);
+        }
     }
 
     public function usedBytes(string $orgId): int
+    {
+        // Redis restituisce i numeri come testo.
+        $bytes = $this->cache->get(self::USAGE_KEY.$orgId);
+
+        return is_numeric($bytes) ? (int) $bytes : $this->recountUsedBytes($orgId);
+    }
+
+    public function recountUsedBytes(string $orgId): int
     {
         $total = 0;
         foreach ($this->disk->allFiles($orgId) as $path) {
             $total += $this->disk->size($path);
         }
+        $this->cache->put(self::USAGE_KEY.$orgId, $total, now()->addHours(self::USAGE_HOURS));
 
         return $total;
+    }
+
+    /** Aggiorna il contatore, se c'è: se manca, la prossima lettura riconta dal disco. */
+    private function addUsage(string $orgId, int $bytes): void
+    {
+        if ($bytes !== 0 && $this->cache->has(self::USAGE_KEY.$orgId)) {
+            $this->cache->increment(self::USAGE_KEY.$orgId, $bytes);
+        }
     }
 
     /** @param  callable(string): void  $emit */

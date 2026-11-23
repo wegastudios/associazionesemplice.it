@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\OrgEntitlements;
@@ -9,6 +10,8 @@ use App\Modules\Risorse\Services\ReservationService;
 use App\Modules\Risorse\Services\ResourceService;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\CertificateService;
+use App\Modules\Soci\Services\MembershipService;
+use App\Modules\Soci\Services\PeopleService;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // Dati di prova inventati.
@@ -38,15 +41,53 @@ it('mostra nella Home cosa c\'è da fare, cosa succede oggi e i saldi', function
     $op = $this->createUser('seg@example.com', twoFactor: true);
     $this->addOperator($this->org, $op, OrgRole::Operator);
 
+    // Riquadri e contatori arrivano con la seconda richiesta (gruppo «cruscotto»), la pagina subito.
     $this->actingAs($op)->get('/gestionale')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Dashboard')
-        ->where('todo.0.title', '1 socio senza tessera valida')
-        ->where('todo.0.href', '/gestionale/soci')
         ->has('greeting')
-        ->has('today', 1)
-        ->where('today.0.title', 'Campo 1')
-        ->where('today.0.time', '08:00')
-        ->where('today.0.detail', 'Torneo Beta')
-        ->where('stats.0.title', 'Cassa contanti'));
+        ->missing('todo')->missing('today')->missing('stats')->missing('peopleCount')
+        ->loadDeferredProps('cruscotto', fn (Assert $reload) => $reload
+            ->where('todo.0.title', '1 socio senza tessera valida')
+            ->where('todo.0.href', '/gestionale/soci')
+            ->has('today', 1)
+            ->where('today.0.title', 'Campo 1')
+            ->where('today.0.time', '08:00')
+            ->where('today.0.detail', 'Torneo Beta')
+            ->where('stats.0.title', 'Cassa contanti')
+            ->where('peopleCount', 1)));
+});
+
+it('ricalcola i contatori della Home a ogni apertura', function (): void {
+    $op = $this->createUser('seg@example.com', twoFactor: true);
+    $this->addOperator($this->org, $op, OrgRole::Operator);
+    $this->actingAs($op)->get('/gestionale')->assertInertia(fn (Assert $page) => $page
+        ->loadDeferredProps('cruscotto', fn (Assert $reload) => $reload->where('peopleCount', 0)));
+
+    $this->orgContext()->run($this->org->id, fn () => Person::create(['first_name' => 'Anna', 'last_name' => 'Rossi']));
+
+    $this->actingAs($op)->get('/gestionale')->assertInertia(fn (Assert $page) => $page
+        ->loadDeferredProps('cruscotto', fn (Assert $reload) => $reload->where('peopleCount', 1)
+            ->where('todo', fn ($todo) => collect($todo)->pluck('title')->contains('1 socio senza tessera valida'))));
+});
+
+it('conta i soci senza tessera valida: sospesi sì, usciti, ospiti e fondatori no', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $cash = Account::query()->sole()->id;
+        $anna = Person::create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
+        $bruno = Person::create(['first_name' => 'Bruno', 'last_name' => 'Verdi']);
+        $carla = Person::create(['type' => 'volunteer', 'first_name' => 'Carla', 'last_name' => 'Neri']);
+        Person::create(['type' => 'founder', 'first_name' => 'Franco', 'last_name' => 'Fondatore']);
+        Person::create(['type' => 'guest', 'first_name' => 'Ospite', 'last_name' => 'Esterno', 'host_person_id' => $anna->id]);
+        $dario = Person::create(['first_name' => 'Dario', 'last_name' => 'Bianchi', 'joined_on' => now()->subYears(2)->toDateString()]);
+        app(MembershipService::class)->renewWithPayment($bruno->id, $cash, 3000);
+        app(MembershipService::class)->renewWithPayment($carla->id, $cash, 3000);
+        $carla->forceFill(['suspended_at' => now()])->save();
+        app(PeopleService::class)->leave($dario->id, now()->subDay()->toDateString(), 'Recesso');
+    });
+    $op = $this->createUser('seg@example.com', twoFactor: true);
+    $this->addOperator($this->org, $op, OrgRole::Operator);
+
+    $this->actingAs($op)->get('/gestionale')->assertInertia(fn (Assert $page) => $page->loadDeferredProps('cruscotto', fn (Assert $reload) => $reload
+        ->where('todo', fn ($todo) => collect($todo)->pluck('title')->contains('2 soci senza tessera valida'))));
 });
 
 it('mostra a ciascuno solo quello che può vedere', function (): void {
@@ -60,8 +101,10 @@ it('mostra a ciascuno solo quello che può vedere', function (): void {
     $this->addOperator($this->org, $accountant, OrgRole::Accountant);
 
     // I certificati sono dati sanitari: li vede la segreteria, non il commercialista, che vede però i saldi.
-    $this->actingAs($op)->get('/gestionale')->assertInertia(fn (Assert $page) => $page->where('todo', fn ($todo) => collect($todo)->pluck('title')->contains('1 certificato medico scaduto')));
+    $this->actingAs($op)->get('/gestionale')->assertInertia(fn (Assert $page) => $page->loadDeferredProps('cruscotto', fn (Assert $reload) => $reload
+        ->where('todo', fn ($todo) => collect($todo)->pluck('title')->contains('1 certificato medico scaduto'))));
     $this->actingAs($accountant)->get('/gestionale')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Dashboard')
-        ->where('todo', fn ($todo) => ! collect($todo)->pluck('title')->contains('1 certificato medico scaduto'))
-        ->where('today', [])->where('stats.0.title', 'Cassa contanti'));
+        ->loadDeferredProps('cruscotto', fn (Assert $reload) => $reload
+            ->where('todo', fn ($todo) => ! collect($todo)->pluck('title')->contains('1 certificato medico scaduto'))
+            ->where('today', [])->where('stats.0.title', 'Cassa contanti')));
 });

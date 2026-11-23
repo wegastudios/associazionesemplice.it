@@ -127,6 +127,14 @@ permessi del ruolo (sul database condiviso: i database dedicati si controllano d
 - **Stati e tipi**: `text` con `CHECK` sui valori ammessi (più semplice da far evolvere degli enum nativi).
 - **`jsonb`** solo per dati davvero variabili (righe di un pagamento, impostazioni).
 - **Ogni chiave esterna ha un indice**, che inizia con `org_id`.
+- **Chiavi esterne verso `app.orgs` (H31, misurate, non tolte)**: ogni tabella ha la sua. A ogni inserimento il
+  controllo blocca la riga dell'associazione (FOR KEY SHARE) fino alla fine della transazione. In CI, 5000 righe a
+  gruppi di 100 hanno impiegato 24,6 ms con la chiave e 7,9 ms senza (`tests/Feature/Performance/SchemaMeasuresTest.php`).
+  In 20 tabelle la stessa garanzia c'è già: un'altra chiave esterna con `org_id` in testa, tutte le colonne
+  obbligatorie, verso una tabella che punta ad `app.orgs`. Per esempio `app.transactions`, tramite conto, categoria e
+  anno fiscale. Nelle altre 22, tra cui `audit.log` e `audit.heads`, è l'unica garanzia. Toglierne una richiede una
+  migrazione in due tempi e la prova che la cancellazione di un'associazione (`DatabaseOrgPurger`) resta nello stesso
+  ordine. Il guadagno è piccolo: per ora restano tutte.
 - **Indici parziali** `WHERE deleted_at IS NULL` per le tabelle con cancellazione logica.
 - **Ricerca per nome**: indice trigram (`pg_trgm`) su nome e cognome.
 - **Paginazione per cursore**, mai `OFFSET`.
@@ -223,6 +231,11 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   bloccata, quindi nella catena l'ordine dei numeri resta quello delle ore; l'ora vera dell'azione resta nei dettagli
   (`action_at`, coperta dal sigillo) e l'esportazione la mostra come «Quando». Fuori da una transazione la riga si
   scrive subito e `occurred_at` è l'ora dell'azione.
+- **Indici del registro**: l'indice per scheda (`log_org_subject`) non lo usa nessuna lettura del codice (prova in
+  `tests/Feature/Performance/SchemaMeasuresTest.php`) e si toglie in due tempi (H28). Primo tempo: la conferma in
+  produzione con l'azione «indici-registro» della manutenzione del server (`saas:audit:index-usage`, con il ruolo dei
+  backup: letture di ogni indice sommate sulle partizioni, per database, dall'ultimo azzeramento delle statistiche).
+  Secondo tempo, solo con 0 letture su tutti i database e su un periodo sufficiente: la migrazione che lo toglie.
 - **Verifica**: `saas:audit:verify` (ogni notte da cron) ricalcola la catena e indica il primo punto rotto: riga
   modificata, tolta, aggiunta o testa non corrispondente.
 - **Copia della testa fuori dal database**: ogni giorno `saas:audit:heads:copy` salva nello spazio dei backup numero e

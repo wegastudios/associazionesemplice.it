@@ -12,6 +12,7 @@ use App\Modules\Soci\Models\MemberLevel;
 use App\Modules\Soci\Models\Person;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -25,6 +26,9 @@ final readonly class MemberBookService
     public const IN_FORCE = 'in_force';
 
     public const LEFT = 'left';
+
+    /** Ordine di ingresso del libro (poi per id). */
+    private const ORDER = 'coalesce(joined_on, created_at::date)';
 
     public function __construct(
         private DatabaseManager $db,
@@ -43,15 +47,10 @@ final readonly class MemberBookService
     public function rows(string $filter = '', ?array $period = null): array
     {
         $this->matricole->assignMissing();
-        $people = Person::query()->whereIn('type', ['founder', 'ordinary', 'volunteer'])
-            ->orderByRaw('coalesce(joined_on, created_at::date)')->orderBy('id')->get();
-        $applications = $this->applications();
-        $fees = $this->lastFees();
-        $guardians = $this->guardians();
-        $levels = MemberLevel::query()->get(['id', 'name'])->mapWithKeys(static fn (MemberLevel $l): array => [$l->id => $l->name])->all();
+        $people = $this->members()->orderByRaw(self::ORDER)->orderBy('id')->get();
         $cards = $period === null ? [] : $this->cardPeriods();
 
-        $out = [];
+        $numbered = [];
         $n = 0;
         foreach ($people as $p) {
             if ($period !== null && ! self::entersPeriod($p->type->value, $cards[$p->id] ?? [], $period, $p->joined_on?->format('Y-m-d') ?? $p->created_at?->format('Y-m-d'), $p->left_on?->format('Y-m-d'))) {
@@ -62,6 +61,61 @@ final readonly class MemberBookService
             if (($filter === self::IN_FORCE && $gone) || ($filter === self::LEFT && ! $gone)) {
                 continue;
             }
+            $numbered[] = [$n, $p];
+        }
+
+        return $this->build($numbered, null);
+    }
+
+    /**
+     * Una pagina del libro di sempre (senza periodo), letta dal database: stessi numeri di {@see self::rows()}, ma si
+     * caricano e decifrano solo le righe della pagina. Una pagina oltre l'ultima diventa l'ultima.
+     *
+     * @return array{rows: list<Row>, total: int, page: int, pages: int}
+     */
+    public function page(string $filter, int $page, int $size): array
+    {
+        $this->matricole->assignMissing();
+        $book = Person::query()->withoutGlobalScopes()
+            ->fromSub($this->members()->select('app.people.*')->selectRaw('row_number() OVER (ORDER BY '.self::ORDER.', id) AS book_n'), 'book')
+            ->when($filter === self::IN_FORCE, static fn ($q) => $q->whereNull('left_on'))
+            ->when($filter === self::LEFT, static fn ($q) => $q->whereNotNull('left_on'));
+        $total = (clone $book)->count();
+        $pages = max(1, (int) ceil($total / $size));
+        $page = min($pages, max(1, $page));
+        $numbered = [];
+        foreach ($book->orderBy('book_n')->forPage($page, $size)->get() as $p) {
+            $n = $p->getAttribute('book_n');
+            $numbered[] = [is_numeric($n) ? (int) $n : 0, $p];
+        }
+
+        return ['rows' => $this->build($numbered, array_map(static fn (array $r): string => $r[1]->id, $numbered)), 'total' => $total, 'page' => $page, 'pages' => $pages];
+    }
+
+    /** @return Builder<Person> */
+    private function members(): Builder
+    {
+        return Person::query()->whereIn('type', ['founder', 'ordinary', 'volunteer']);
+    }
+
+    /**
+     * @param  list<array{0: int, 1: Person}>  $numbered  numero di riga e scheda
+     * @param  list<string>|null  $ids  le sole persone di cui leggere domande, quote e tutori (null: tutte)
+     * @return list<Row>
+     */
+    private function build(array $numbered, ?array $ids): array
+    {
+        if ($numbered === []) {
+            return [];
+        }
+        $applications = $this->applications($ids);
+        $fees = $this->lastFees($ids);
+        $guardians = $this->guardians($ids);
+        $levels = MemberLevel::query()->get(['id', 'name'])->mapWithKeys(static fn (MemberLevel $l): array => [$l->id => $l->name])->all();
+
+        $out = [];
+        foreach ($numbered as [$n, $p]) {
+            $gone = $p->left_on !== null;
             $anon = $p->anonymized_at !== null;
             $joined = $p->joined_on?->format('Y-m-d') ?? $p->created_at?->format('Y-m-d') ?? '';
             $app = $applications[$p->id] ?? null;
@@ -282,11 +336,16 @@ final readonly class MemberBookService
         $this->audit->record('member_book.viewed', 'app.people', null, ['rows' => $rows, 'page' => $page]);
     }
 
-    /** @return array<string, array{submitted: string, decided: string}> domande accolte, per persona */
-    private function applications(): array
+    /**
+     * @param  list<string>|null  $ids
+     * @return array<string, array{submitted: string, decided: string}> domande accolte, per persona
+     */
+    private function applications(?array $ids): array
     {
         $out = [];
-        foreach ($this->connection()->table('app.applications')->where('status', 'approved')->whereNotNull('person_id')->get(['person_id', 'submitted_at', 'decided_at']) as $a) {
+        $query = $this->connection()->table('app.applications')->where('status', 'approved')->whereNotNull('person_id')
+            ->when($ids !== null, static fn ($q) => $q->whereIn('person_id', $ids));
+        foreach ($query->get(['person_id', 'submitted_at', 'decided_at']) as $a) {
             if (is_string($a->person_id ?? null) && is_string($a->submitted_at ?? null) && is_string($a->decided_at ?? null)) {
                 $out[$a->person_id] = ['submitted' => substr($a->submitted_at, 0, 10), 'decided' => substr($a->decided_at, 0, 10)];
             }
@@ -295,12 +354,16 @@ final readonly class MemberBookService
         return $out;
     }
 
-    /** @return array<string, array{year: string, cents: int}> l'ultima quota incassata (non stornata), per persona */
-    private function lastFees(): array
+    /**
+     * @param  list<string>|null  $ids
+     * @return array<string, array{year: string, cents: int}> l'ultima quota incassata (non stornata), per persona
+     */
+    private function lastFees(?array $ids): array
     {
         $out = [];
         $rows = $this->connection()->table('app.valid_memberships as m')->join('app.transactions as t', 't.id', '=', 'm.transaction_id')
-            ->where('m.source', 'payment')->orderBy('m.valid_from')->get(['m.person_id', 'm.social_year', 't.amount_cents']);
+            ->where('m.source', 'payment')->when($ids !== null, static fn ($q) => $q->whereIn('m.person_id', $ids))
+            ->orderBy('m.valid_from')->get(['m.person_id', 'm.social_year', 't.amount_cents']);
         foreach ($rows as $r) {
             if (is_string($r->person_id ?? null) && is_string($r->social_year ?? null) && is_numeric($r->amount_cents ?? null)) {
                 $out[$r->person_id] = ['year' => $r->social_year, 'cents' => (int) $r->amount_cents];
@@ -310,12 +373,16 @@ final readonly class MemberBookService
         return $out;
     }
 
-    /** @return array<string, string> minore => nome del tutore operativo */
-    private function guardians(): array
+    /**
+     * @param  list<string>|null  $ids
+     * @return array<string, string> minore => nome del tutore operativo
+     */
+    private function guardians(?array $ids): array
     {
         $out = [];
         $rows = $this->connection()->table('app.guardians as g')->join('app.people as p', 'p.id', '=', 'g.guardian_person_id')
-            ->where('g.is_operative', true)->get(['g.person_id', 'p.first_name', 'p.last_name']);
+            ->where('g.is_operative', true)->when($ids !== null, static fn ($q) => $q->whereIn('g.person_id', $ids))
+            ->get(['g.person_id', 'p.first_name', 'p.last_name']);
         foreach ($rows as $r) {
             if (is_string($r->person_id ?? null)) {
                 $out[$r->person_id] = trim((is_string($r->last_name ?? null) ? $r->last_name : '').' '.(is_string($r->first_name ?? null) ? $r->first_name : ''));

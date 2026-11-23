@@ -26,9 +26,9 @@ jobs:
   check:
     uses: ./.github/workflows/saas.yml
 
+  # Il pacchetto si prepara in parallelo ai controlli; il rilascio parte solo se entrambi sono riusciti (needs di deploy).
   build:
     name: Pacchetto
-    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -42,6 +42,12 @@ jobs:
           extensions: pdo_pgsql, pgsql, sodium, intl, mbstring, redis
           coverage: none
           tools: composer:v2
+      # Solo lettura della cache scritta dai controlli (saas.yml, stessa chiave): i due job non la salvano in concorrenza.
+      - name: Cache Composer
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ hashFiles('saas/composer.lock') }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -56,7 +62,7 @@ jobs:
 
   deploy:
     name: Rilascio su ${{ inputs.environment }}
-    needs: build
+    needs: [check, build]
     # In produzione e nella demo solo da main.
     if: (inputs.environment != 'production' && inputs.environment != 'demo') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest

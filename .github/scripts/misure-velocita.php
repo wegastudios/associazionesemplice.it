@@ -562,6 +562,37 @@ m_run( 'Esportazione CSV della prima nota (anno scorso)', function () use ( $pfy
 	return $r[1];
 }, 2, false );
 
+// ---------- Copia di sicurezza (L10) ----------
+m_run( 'Copia di sicurezza: lettura delle tabelle con OFFSET (com\'era)', function () {
+	global $wpdb;
+	$n = 0;
+	foreach ( \AssociazioneSemplice\Backup::tables() as $t ) {
+		for ( $off = 0; ; $off += \AssociazioneSemplice\Backup::CHUNK ) {
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM `{$wpdb->prefix}$t` ORDER BY 1 LIMIT %d OFFSET %d", \AssociazioneSemplice\Backup::CHUNK, $off ), ARRAY_A );
+			if ( ! $rows ) {
+				break;
+			}
+			$n += count( $rows );
+		}
+	}
+	return str_repeat( 'x', 200 ) . $n;
+}, 1, false );
+m_run( 'Copia di sicurezza dei dati, intera in una richiesta (ora)', function () {
+	$p = \AssociazioneSemplice\Backup::export( false );
+	$s = (int) filesize( $p );
+	wp_delete_file( $p );
+	return str_repeat( 'x', 200 ) . $s;
+}, 1, false );
+m_run( 'Copia di sicurezza a tappe: avvio e prima tappa', function () {
+	\AssociazioneSemplice\LongJob::forget( \AssociazioneSemplice\Backup::JOB );
+	\AssociazioneSemplice\Backup::start_job( false );
+	$st = \AssociazioneSemplice\LongJob::run( \AssociazioneSemplice\Backup::JOB );
+	\AssociazioneSemplice\LongJob::cancel( \AssociazioneSemplice\Backup::JOB );
+	\AssociazioneSemplice\Backup::job_cancel( (array) \AssociazioneSemplice\LongJob::state( \AssociazioneSemplice\Backup::JOB ) );
+	\AssociazioneSemplice\LongJob::forget( \AssociazioneSemplice\Backup::JOB );
+	return str_repeat( 'x', 200 ) . wp_json_encode( $st );
+}, 1, false );
+
 // ---------- Attività, calendario, eventi ----------
 m_page( 'Corsi ed eventi: elenco', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_list' ), array( 'page' => 'asem-activities' ) );
 if ( $course_id ) {

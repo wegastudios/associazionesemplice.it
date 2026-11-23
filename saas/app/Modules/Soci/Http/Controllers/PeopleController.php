@@ -77,15 +77,16 @@ final readonly class PeopleController
             $query->whereNotNull('left_on');
         }
         $page = $query->cursorPaginate(50, ['id', 'first_name', 'last_name', 'email', 'card_number', 'type', 'left_on'])->withQueryString();
-        $year = $this->memberships->membershipYear();
         $active = $this->memberships->activeAmong(array_values(array_map(static fn (Person $p): string => $p->id, $page->items())));
 
+        // Ricerca e filtri ricaricano solo q, type, status, rows, next e prev (Elenco.vue): quello che non dipende dal
+        // filtro è una funzione, calcolata solo al caricamento intero della pagina.
         return Inertia::render('Soci/Elenco', [
             'q' => $q,
             'type' => $type,
             'status' => $status,
-            'types' => self::types(),
-            'year' => $year->label(),
+            'types' => self::types(...),
+            'year' => fn (): string => $this->memberships->membershipYear()->label(),
             'rows' => collect($page->items())->map(fn (Person $p): array => [
                 'id' => $p->id,
                 'name' => $p->last_name.' '.$p->first_name,
@@ -97,8 +98,8 @@ final readonly class PeopleController
             ])->values(),
             'next' => $page->nextPageUrl(),
             'prev' => $page->previousPageUrl(),
-            'activeCount' => $this->memberships->activeCount(),
-            'limit' => $this->limitNotice(),
+            'activeCount' => fn (): int => $this->memberships->activeCount(),
+            'limit' => $this->limitNotice(...),
             'canEdit' => $request->user()?->can('people.edit') ?? false,
             'canExport' => $request->user()?->can('people.export') ?? false,
         ]);
@@ -232,6 +233,12 @@ final readonly class PeopleController
             ])->values());
     }
 
+    /** Il primo numero di tessera libero, chiesto dalla scheda di una persona già registrata. */
+    public function firstFreeCard(): JsonResponse
+    {
+        return new JsonResponse(['card' => $this->people->firstFreeCard()]);
+    }
+
     public function settings(Request $request): RedirectResponse
     {
         $data = Input::of($request->validate([
@@ -292,7 +299,8 @@ final readonly class PeopleController
                 // I dati sanitari si aprono (e si annotano nel registro) solo per chi li può vedere.
                 'certificates' => $request->user()?->can('health.view') === true ? $this->certificates->forPerson($person->id) : null,
             ],
-            'firstFreeCard' => $this->people->firstFreeCard(),
+            // Per una scheda nuova subito; per una esistente solo quando si preme «Primo libero» ({@see self::firstFreeCard()}).
+            'firstFreeCard' => $person === null ? $this->people->firstFreeCard() : null,
             'types' => self::types(),
             // Solo livelli attivi, più quello già assegnato a questo socio se nel frattempo è stato disattivato.
             'levels' => MemberLevel::query()->where(static fn (Builder $q) => $q->where('active', true)->orWhere('id', $person?->level_id))->orderBy('sort_order')->get(['id', 'name', 'active'])
