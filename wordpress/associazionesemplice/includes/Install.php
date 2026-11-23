@@ -22,6 +22,7 @@ final class Install {
 		'asem_check_pending_payments',
 		'asem_purge_backups',
 		'asem_private_folder_check',
+		'asem_db_engine_check',
 		'asem_file_crypt_migrate',
 		'asem_file_crypt_migrate_certs',
 		'asem_file_crypt_certs_check',
@@ -52,6 +53,7 @@ final class Install {
 	public static function activate(): void {
 		self::create_tables();
 		self::ensure_indexes(); // indici delle ricerche frequenti: si creano solo se mancano (idempotente)
+		DbEngine::check(); // motore delle tabelle (InnoDB o no): se ne ricorda l'esito, la Bacheca avvisa
 		self::add_roles_and_caps();
 		self::seed();
 		self::migrate_year_closures(); // gli anni fiscali già chiusi entrano nella traccia permanente (idempotente)

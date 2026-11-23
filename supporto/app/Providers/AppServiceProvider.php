@@ -29,9 +29,6 @@ class AppServiceProvider extends ServiceProvider
         // Form pubblico dei ticket: limite per indirizzo per fermare lo spam senza CAPTCHA di terzi
         RateLimiter::for('public-ticket', fn (Request $request) => Limit::perHour(10)->by('ticket:'.$request->ip()));
 
-
-        RateLimiter::for('support-mail', fn () => Limit::perHour((int) config('support.mail_per_hour', 20))->by('support-mail'));
-
         // I lavori in coda usano la posta configurata dal pannello (se salvata)
         Queue::before(function () {
             try {

@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use App\Models\SupportTicket;
-use App\Mail\Concerns\SupportQueuedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -14,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 /** Avviso allo staff del portale di un nuovo ticket, con il livello di urgenza nell'oggetto. */
 class NewTicketForStaff extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels, SupportQueuedMail;
+    use Queueable, SerializesModels;
 
     public function __construct(public SupportTicket $ticket) {}
 

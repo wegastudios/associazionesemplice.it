@@ -640,13 +640,19 @@ case "$ACTION" in
         }
         foreach ($byRole as $k => $v) { echo "picco per ruolo ", $k, ": ", $v, PHP_EOL; }
         echo "picco misurato: ", $peak, " (20 campioni in 19 secondi), margine: ", $margin, PHP_EOL;
-        if ($peak + $margin > $limit) { echo "RIFIUTATO: picco + margine supera ", $limit, PHP_EOL; exit(3); }
+        if ($peak + $margin > $limit) { echo "RIFIUTATO: picco + margine supera ", $limit, PHP_EOL; echo "esito: rifiutato", PHP_EOL; exit(3); }
       }
       $db->statement("ALTER DATABASE {$q} CONNECTION LIMIT {$limit}");
       $after = (int) $db->selectOne("select datconnlimit as l from pg_database where datname = current_database()")->l;
       echo "limite dopo: ", $after, PHP_EOL;
+      echo $after === $limit ? "esito: ok" : "esito: errore", PHP_EOL;
       exit($after === $limit ? 0 : 1);
-    ' > "$F" 2>&1 || rc=$?
+    ' > "$F" 2>&1 || true
+    # Il codice d uscita di tinker non e affidabile (psysh esce con 1 anche dopo exit(0)): l esito si legge dalla riga
+    # marcatore finale scritta dal PHP. Senza marcatore (eccezione, connessione rifiutata) e ERRORE.
+    if grep -qx 'esito: ok' "$F"; then rc=0
+    elif grep -qx 'esito: rifiutato' "$F"; then rc=3
+    else rc=1; fi
     prune_files limite-connessioni
     grep -E '^(picco misurato|limite prima|limite dopo|RIFIUTATO)' "$F" | sed -E 's/ \(20 campioni.*//' || true
     if [ "$rc" -eq 0 ]; then
