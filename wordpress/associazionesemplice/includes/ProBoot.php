@@ -134,6 +134,14 @@ final class ProBoot {
 		add_action( 'asem_reset_private_files', array( ReceiptFiles::class, 'delete_all' ) );
 	}
 
+	/**
+	 * Vanno aggiunti i gestori delle azioni (bacheca e moduli del sito)? Lo decide il gratuito (solo admin-post.php e admin-ajax.php con un'azione
+	 * asem_…, sempre in WP-CLI); con un gratuito di una versione precedente, che non lo sa dire, sempre come prima.
+	 */
+	public static function handlers_needed( string $prefix = 'asem_' ): bool {
+		return ! method_exists( Plugin::class, 'action_handlers_needed' ) || Plugin::action_handlers_needed( $prefix );
+	}
+
 	/** Si chiama una volta, dopo `Edition::add_dir()`, prima che Associazione Semplice si avvii. */
 	public static function init(): void {
 		if ( self::$done ) {
@@ -181,7 +189,9 @@ final class ProBoot {
 			Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione: sul sito pubblico non servono e non si caricano
 		}
 		Frontend\ProViews::register(); // sezioni e viste del sito
-		Frontend\ProActions::register(); // azioni dei moduli del sito
+		if ( self::handlers_needed( 'asem_front_' ) ) {
+			Frontend\ProActions::register(); // azioni dei moduli del sito: si aggiungono solo quando admin-post.php ne chiede una
+		}
 		Frontend\DonationPage::register(); // donazioni dal pagamento del sito, aperte anche a chi non è socio
 		add_filter( 'asem_features_suspended', array( __CLASS__, 'suspended' ) );
 		add_filter( 'asem_feature_available', array( __CLASS__, 'available' ), 10, 2 );
@@ -200,12 +210,15 @@ final class ProBoot {
 		add_action( 'asem_settings_page_end', array( Admin\LicensePanel::class, 'render' ) );
 
 		// Azioni di amministrazione della licenza.
-		if ( is_admin() ) { // le azioni passano da admin-post.php e admin-ajax.php (anche quelle dell'area soci): sulle pagine pubbliche non servono e le loro classi non si caricano
+		if ( is_admin() && self::handlers_needed() ) { // le azioni passano da admin-post.php e admin-ajax.php (anche quelle dell'area soci): sulle pagine pubbliche, sulle pagine della bacheca e per il battito non servono e le loro classi non si caricano
 			add_action( 'plugins_loaded', array( __CLASS__, 'handlers' ), 6 );
 		}
 
 		// Avvisi, aggiornamenti diretti e lavori periodici.
 		add_action( 'plugins_loaded', array( __CLASS__, 'late' ), 11 );
+		if ( self::free_runs_jobs() ) {
+			add_filter( 'asem_scheduled_jobs', array( __CLASS__, 'jobs' ) ); // i lavori periodici del Pro girano con quelli del gratuito
+		}
 		add_action( 'asem_license_check', array( License::class, 'cron' ) );
 		add_action( 'asem_update_check', array( UpdateCheck::class, 'cron' ) );
 		add_action( 'asem_license_resync', array( License::class, 'resync' ) );
@@ -231,14 +244,34 @@ final class ProBoot {
 		if ( Edition::installed( 'payments' ) && class_exists( 'WooCommerce', false ) ) {
 			add_action( 'plugins_loaded', array( WooBridge::class, 'register' ), 20 ); // compatibilità con WooCommerce
 		}
-		ProBlockE::schedule();
 		License::maybe_resync();
-		if ( ! wp_next_scheduled( 'asem_license_check' ) ) {
-			wp_schedule_event( time() + 1800, 'daily', 'asem_license_check' );
+		if ( ! self::free_runs_jobs() ) { // gratuito di una versione precedente: ogni lavoro ha il suo evento, come prima
+			ProBlockE::schedule();
+			if ( ! wp_next_scheduled( 'asem_license_check' ) ) {
+				wp_schedule_event( time() + 1800, 'daily', 'asem_license_check' );
+			}
+			if ( ! wp_next_scheduled( 'asem_update_check' ) ) {
+				wp_schedule_event( time() + 2400, 'hourly', 'asem_update_check' );
+			}
 		}
-		if ( ! wp_next_scheduled( 'asem_update_check' ) ) {
-			wp_schedule_event( time() + 2400, 'hourly', 'asem_update_check' );
-		}
+	}
+
+	/** Il gratuito esegue i lavori periodici in fila dentro due soli eventi (Jobs)? Allora i lavori del Pro entrano nel suo elenco. */
+	public static function free_runs_jobs(): bool {
+		return defined( Plugin::class . '::JOBS_HOURLY' );
+	}
+
+	/**
+	 * Lavori periodici del Pro nel giro dei lavori del gratuito (filtro `asem_scheduled_jobs`): licenza, versioni, SMS e newsletter.
+	 * I gestori restano quelli registrati qui e in ProBlockE (stessi nomi delle azioni).
+	 */
+	public static function jobs( array $jobs ): array {
+		return $jobs + array(
+			'asem_license_check'   => array( 'daily', 1800, 'License', 'cron', '' ),
+			'asem_update_check'    => array( 'hourly', 2400, 'UpdateCheck', 'cron', '' ),
+			ProBlockE::SMS_JOB     => array( 'hourly', 900, 'Sms', 'job', 'sms' ),
+			'asem_newsletter_sync' => array( 'daily', 3000, 'Newsletter', 'job', 'newsletter' ),
+		);
 	}
 
 	/** Alla disattivazione si tolgono i lavori periodici. */

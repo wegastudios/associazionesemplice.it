@@ -83,12 +83,42 @@ final class Plugin {
 	 * Si registra il nome dell'hook e il richiamo con il nome della classe: la classe viene caricata solo quando WP-Cron esegue il lavoro.
 	 */
 	private static function schedule_jobs(): void {
+		if ( is_admin() ) {
+			add_action( 'admin_init', array( __NAMESPACE__ . '\\FileMigration', 'auto_certs' ) ); // dopo l'aggiornamento i certificati medici già caricati partono da soli
+			add_action( 'admin_init', array( __NAMESPACE__ . '\\Install', 'maybe_realign_memberships' ) ); // la tessera segue l'anno fiscale: se la copia di sicurezza non era riuscita si riprova
+		}
+		foreach ( self::jobs() as $hook => $j ) {
+			add_action( $hook, array( __NAMESPACE__ . '\\' . $j[2], $j[3] ) ); // il lavoro resta un'azione con il suo nome: la esegue il giro dei lavori (o un evento singolo)
+		}
+		// I lavori periodici non hanno un evento ciascuno: girano in fila dentro due soli eventi, ogni ora e ogni giorno (Jobs).
+		add_action( self::JOBS_HOURLY, array( __NAMESPACE__ . '\\Jobs', 'hourly' ) );
+		add_action( self::JOBS_DAILY, array( __NAMESPACE__ . '\\Jobs', 'daily' ) );
+		if ( gmdate( 'Y-m-d' ) !== (string) BootState::get( self::JOBS_CHECKED ) ) { // la programmazione si controlla una volta al giorno (segnale già in memoria: nessuna domanda in più)
+			Jobs::ensure_scheduled();
+		}
+	}
+
+	/** Eventi di WP-Cron dei lavori periodici: uno ogni ora e uno ogni giorno. */
+	const JOBS_HOURLY = 'asem_cron_hourly';
+	const JOBS_DAILY  = 'asem_cron_daily';
+
+	/** Segnale (BootState) con il giorno dell'ultimo controllo della programmazione dei due eventi. */
+	const JOBS_CHECKED = 'jobs_checked';
+
+	/**
+	 * Lavori del plugin e delle estensioni presenti (filtro `asem_scheduled_jobs`): hook => [frequenza ('hourly', 'daily' o '' per i lotti
+	 * che si programmano da soli), secondi al primo giro, classe, metodo, funzione che li richiede].
+	 *
+	 * @return array<string,array{0:string,1:int,2:string,3:string,4:string}>
+	 */
+	public static function jobs(): array {
 		$jobs = array(
 			'asem_release_holds'          => array( 'hourly', 900, 'Holds', 'release_expired', '' ),
 			'asem_event_requests'         => array( 'hourly', 1500, 'EventRequests', 'run', '' ),
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
 			'asem_private_folder_check'   => array( 'daily', 3000, 'PrivateFolder', 'cron', '' ),
+			'asem_db_engine_check'        => array( 'daily', 3600, 'DbEngine', 'cron', '' ),
 			'asem_file_crypt_migrate'     => array( '', 0, 'FileMigration', 'cron', '' ), // lotti programmati per cifrare i file già caricati (si programmano da soli, uno alla volta)
 			'asem_file_crypt_migrate_certs' => array( '', 0, 'FileMigration', 'certs_cron', '' ), // lotti dei soli certificati medici già caricati (partono da soli dopo l'aggiornamento)
 			'asem_file_crypt_certs_check' => array( 'hourly', 1000, 'FileMigration', 'auto_certs', '' ), // se la cifratura dei certificati si è fermata o è andata persa, riparte
@@ -96,21 +126,15 @@ final class Plugin {
 			'asem_purge_member_sessions'  => array( 'daily', 2400, 'MemberSession', 'purge_expired', '' ),
 			'asem_purge_applications'     => array( 'daily', 3300, 'Applications', 'purge', '' ), // domande mai confermate (30 giorni) e respinte con quota pagata (90 giorni dalla risposta)
 			'asem_long_job_tick'          => array( '', 0, 'LongJob', 'tick', '' ), // rete di sicurezza dei lavori lunghi: una tappa quando la pagina è chiusa (si programma da sola, un evento per volta)
+			'asem_schema_upgrade'         => array( '', 0, 'Install', 'maybe_upgrade', '' ), // aggiornamento dello schema rimasto a metà o rimandato perché la richiesta era di un visitatore (si programma da solo)
 		);
-		$jobs = (array) apply_filters( 'asem_scheduled_jobs', $jobs ); // un'estensione aggiunge i suoi lavori periodici
-		if ( is_admin() ) {
-			add_action( 'admin_init', array( __NAMESPACE__ . '\\FileMigration', 'auto_certs' ) ); // dopo l'aggiornamento i certificati medici già caricati partono da soli
-			add_action( 'admin_init', array( __NAMESPACE__ . '\\Install', 'maybe_realign_memberships' ) ); // la tessera segue l'anno fiscale: se la copia di sicurezza non era riuscita si riprova
-		}
-		foreach ( $jobs as $hook => $j ) {
-			if ( '' !== $j[4] && ! Edition::installed( $j[4] ) ) {
-				continue;
-			}
-			add_action( $hook, array( __NAMESPACE__ . '\\' . $j[2], $j[3] ) );
-			if ( '' !== $j[0] && ! wp_next_scheduled( $hook ) ) {
-				wp_schedule_event( time() + $j[1], $j[0], $hook );
+		$out = array();
+		foreach ( (array) apply_filters( 'asem_scheduled_jobs', $jobs ) as $hook => $j ) { // un'estensione aggiunge i suoi lavori periodici
+			if ( is_array( $j ) && isset( $j[0], $j[1], $j[2], $j[3], $j[4] ) && ( '' === $j[4] || Edition::installed( $j[4] ) ) ) {
+				$out[ (string) $hook ] = $j;
 			}
 		}
+		return $out;
 	}
 
 	/** Azione di admin-post => classe che la gestisce. */
@@ -153,6 +177,40 @@ final class Plugin {
 		}
 		$class::register();
 		return true;
+	}
+
+	/**
+	 * Azione chiesta a admin-post.php o admin-ajax.php (ripulita), oppure '' per ogni altra richiesta (pagine della bacheca, sito, cron).
+	 * Si legge solo il nome: nonce e permessi li controlla il gestore dell'azione.
+	 */
+	public static function requested_action(): string {
+		$script = isset( $GLOBALS['pagenow'] ) ? (string) $GLOBALS['pagenow'] : '';
+		if ( 'admin-post.php' !== $script && 'admin-ajax.php' !== $script && ! wp_doing_ajax() ) {
+			return '';
+		}
+		return isset( $_REQUEST['action'] ) && is_scalar( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification -- solo il nome dell'azione, per sapere quale gestore registrare
+	}
+
+	/**
+	 * Vanno registrati i gestori delle azioni? Solo se la richiesta (admin-post.php o admin-ajax.php) chiede un'azione del plugin (asem_…;
+	 * per i moduli del sito asem_front_…). Le pagine della bacheca e del sito, il battito di WordPress e le azioni degli altri plugin non li caricano.
+	 * In WP-CLI (prove, strumenti) sempre.
+	 */
+	public static function action_handlers_needed( string $prefix = 'asem_', ?string $action = null, ?bool $cli = null ): bool {
+		if ( $cli ?? ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+			return true;
+		}
+		$action = $action ?? self::requested_action();
+		return '' !== $prefix && 0 === strpos( $action, $prefix );
+	}
+
+	/**
+	 * Per i gestori che registrano le azioni da un elenco: va registrata questa? Con un'azione chiesta si registra solo quella;
+	 * senza (WP-CLI, prove) tutte.
+	 */
+	public static function wants_action( string $action ): bool {
+		$asked = self::requested_action();
+		return '' === $asked || $asked === $action;
 	}
 
 	/** Campi delle password: non si ripuliscono (come fa WordPress), si usano solo per wp_set_password() o per cifrarli. */

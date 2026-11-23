@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Cifratura\Keys\LocalKeyVault;
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Platform\PlatformConfig;
 use App\Modules\Core\Platform\PlatformSettings;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 
 it('controlla ruolo, tabelle, permessi e connessione dell\'applicazione sul database', function (): void {
     $this->artisan('saas:health', ['--skip-migrations' => true])
@@ -147,5 +151,78 @@ it('sotto il 70% della memoria Redis il controllo è verde', function (): void {
 
     $this->artisan('saas:health', ['--skip-migrations' => true])
         ->expectsOutputToContain('ok    memoria di Redis')
+        ->assertSuccessful();
+});
+
+/** Un lavoro di posta in coda da $seconds secondi (rilasciato di recente: created_at è nuovo, conta quello del payload). */
+function healthQueuedMail(string $queue, int $seconds): void
+{
+    DB::table('core.jobs')->insert([
+        'queue' => $queue,
+        'payload' => (string) json_encode(['uuid' => (string) Str::uuid(), 'createdAt' => now()->getTimestamp() - $seconds]),
+        'attempts' => 1,
+        'available_at' => now()->getTimestamp(),
+        'created_at' => now()->getTimestamp(),
+    ]);
+}
+
+it('con le code della posta in ordine i controlli della posta sono verdi', function (): void {
+    config(['queue.default' => 'database']);
+
+    $this->artisan('saas:health', ['--skip-migrations' => true])
+        ->expectsOutputToContain('ok    coda della posta urgente')
+        ->expectsOutputToContain('ok    coda della posta massiva')
+        ->expectsOutputToContain('ok    invio della posta')
+        ->expectsOutputToContain('ok    posta non partita')
+        ->assertSuccessful();
+});
+
+it('segnala un messaggio urgente in coda da più di 5 minuti', function (): void {
+    config(['queue.default' => 'database']);
+    healthQueuedMail(MailQueue::URGENT, 4 * 60);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ok    coda della posta urgente')->assertSuccessful();
+
+    healthQueuedMail(MailQueue::URGENT, 6 * 60);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ERRORE coda della posta urgente')->assertFailed();
+});
+
+it('segnala un messaggio massivo in coda da più di 6 ore', function (): void {
+    config(['queue.default' => 'database']);
+    healthQueuedMail(MailQueue::BULK, 5 * 3600);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ok    coda della posta massiva')->assertSuccessful();
+
+    healthQueuedMail(MailQueue::BULK, 7 * 3600);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ERRORE coda della posta massiva')->assertFailed();
+});
+
+it('segnala la posta ferma dopo un rifiuto del server; al rilascio è solo un avviso', function (): void {
+    MailQueue::block(MailQueue::mailer());
+
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ERRORE invio della posta')->assertFailed();
+    $this->artisan('saas:health', ['--skip-migrations' => true, '--mail-warnings-only' => true])
+        ->expectsOutputToContain('AVVISO invio della posta')
+        ->assertSuccessful();
+});
+
+it('segnala i messaggi non partiti nelle ultime 24 ore, non quelli più vecchi né gli altri lavori', function (): void {
+    $failed = static fn (string $queue, int $hours) => DB::table('core.failed_jobs')->insert([
+        'uuid' => (string) Str::uuid(), 'connection' => 'database', 'queue' => $queue, 'payload' => '{}', 'exception' => 'x', 'failed_at' => now()->subHours($hours),
+    ]);
+    $failed(MailQueue::BULK, 30);
+    $failed('default', 1);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ok    posta non partita')->assertSuccessful();
+
+    $failed(MailQueue::URGENT, 2);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ERRORE posta non partita: 1 ')->assertFailed();
+});
+
+it('avvisa quando gli invii dell\'ora superano il 90% del tetto totale', function (): void {
+    $key = MailQueue::limits(MailQueue::URGENT)[0]->key;
+    RateLimiter::increment($key, 3600, 126);
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ok    invii della posta nell\'ora')->assertSuccessful();
+
+    RateLimiter::increment($key, 3600, 1);
+    $this->artisan('saas:health', ['--skip-migrations' => true])
+        ->expectsOutputToContain('AVVISO invii della posta nell\'ora: 127 su 140')
         ->assertSuccessful();
 });

@@ -20,6 +20,9 @@ final class BlockFActions {
 
 	public static function register(): void {
 		foreach ( self::ACTIONS as $action => $method ) {
+			if ( ! Plugin::wants_action( $action ) ) {
+				continue; // con un'azione chiesta si registra solo quella
+			}
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {

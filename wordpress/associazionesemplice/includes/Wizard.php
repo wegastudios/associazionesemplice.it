@@ -43,10 +43,6 @@ final class Wizard {
 		}
 	}
 
-	public static function register(): void {
-		add_action( 'admin_init', array( __CLASS__, 'maybe_redirect' ) );
-	}
-
 	public static function maybe_redirect(): void {
 		if ( (int) BootState::get( self::REDIRECT_KEY, '', 0 ) < time() || wp_doing_ajax() || ( defined( 'DOING_CRON' ) && DOING_CRON ) || isset( $_GET['activate-multi'] ) || is_network_admin() ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return;

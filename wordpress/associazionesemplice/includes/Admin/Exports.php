@@ -112,29 +112,29 @@ final class Exports {
 	private static function ledger_chunks( string $from, string $to ): \Generator {
 		$vat = \AssociazioneSemplice\Fiscal::vat_applies();
 		yield self::line( array_merge( array( 'Data', 'Tipo', 'Conto', 'Modalità', 'Voce', 'Attività', 'N. tessera', 'Persona', 'Descrizione', 'Competenza', 'Riferimento', 'Entrata', 'Uscita' ), $vat ? array( 'Aliquota IVA', 'Imponibile', 'IVA' ) : array() ) );
-		$csv = '';
-		$n   = 0;
-		foreach ( Plugin::ledger()->rows( $from, $to, null, true ) as $r ) {
-			$plus = Labels::sign( $r['type'] ) > 0 ? Money::plain( (int) $r['amount_cents'] ) : '';
-			$minus = Labels::sign( $r['type'] ) < 0 ? Money::plain( (int) $r['amount_cents'] ) : '';
-			$cells = array(
-				self::d( $r['tx_date'] ), Labels::tx_types()[ $r['type'] ], $r['account_name'], Labels::methods()[ $r['method'] ] ?? $r['method'],
-				Labels::is_transfer( $r['type'] ) ? 'Giroconto' : $r['category_name'], $r['activity_name'], $r['person_card'], $r['person_name'],
-				$r['description'], $r['competence_month'], $r['document_ref'], $plus, $minus,
-			);
-			if ( $vat ) { // aliquota, imponibile e IVA contenuta (l'importo della riga è sempre quello lordo)
-				$has_rate = null !== $r['vat_rate'] && '' !== $r['vat_rate'];
-				$cells    = array_merge( $cells, Labels::is_transfer( $r['type'] ) ? array( '', '', '' ) : array( $has_rate ? (string) (int) $r['vat_rate'] . '%' : 'fuori campo', $has_rate ? Money::plain( (int) $r['amount_cents'] - (int) $r['vat_cents'] ) : '', $has_rate ? Money::plain( (int) $r['vat_cents'] ) : '' ) );
+		$after = null; // i movimenti si leggono mille alla volta, ognuno riparte dopo l'ultimo letto: in memoria non c'è mai più di un blocco
+		do {
+			$page  = Plugin::ledger()->rows( $from, $to, null, true, self::CHUNK_ROWS, 0, $after );
+			$csv   = '';
+			foreach ( $page as $r ) {
+				$plus = Labels::sign( $r['type'] ) > 0 ? Money::plain( (int) $r['amount_cents'] ) : '';
+				$minus = Labels::sign( $r['type'] ) < 0 ? Money::plain( (int) $r['amount_cents'] ) : '';
+				$cells = array(
+					self::d( $r['tx_date'] ), Labels::tx_types()[ $r['type'] ], $r['account_name'], Labels::methods()[ $r['method'] ] ?? $r['method'],
+					Labels::is_transfer( $r['type'] ) ? 'Giroconto' : $r['category_name'], $r['activity_name'], $r['person_card'], $r['person_name'],
+					$r['description'], $r['competence_month'], $r['document_ref'], $plus, $minus,
+				);
+				if ( $vat ) { // aliquota, imponibile e IVA contenuta (l'importo della riga è sempre quello lordo)
+					$has_rate = null !== $r['vat_rate'] && '' !== $r['vat_rate'];
+					$cells    = array_merge( $cells, Labels::is_transfer( $r['type'] ) ? array( '', '', '' ) : array( $has_rate ? (string) (int) $r['vat_rate'] . '%' : 'fuori campo', $has_rate ? Money::plain( (int) $r['amount_cents'] - (int) $r['vat_cents'] ) : '', $has_rate ? Money::plain( (int) $r['vat_cents'] ) : '' ) );
+				}
+				$csv .= self::line( $cells );
+				$after = array( (string) $r['tx_date'], (int) $r['id'] );
 			}
-			$csv .= self::line( $cells );
-			if ( 0 === ++$n % self::CHUNK_ROWS ) {
+			if ( '' !== $csv ) {
 				yield $csv;
-				$csv = '';
 			}
-		}
-		if ( '' !== $csv ) {
-			yield $csv;
-		}
+		} while ( count( $page ) === self::CHUNK_ROWS );
 	}
 
 	public static function period( string $from, string $to ): array {
@@ -197,20 +197,20 @@ final class Exports {
 	/** I soci a blocchi di 1.000 righe. @return \Generator<string> */
 	private static function people_chunks(): \Generator {
 		yield self::line( array( 'Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Telefono', 'Codice fiscale', 'Data di nascita', 'Tutore', 'Indirizzo', 'CAP', 'Comune', 'Provincia', 'Ospite di', 'Tessera valida fino al', 'Tipo di tesseramento', 'Foto e video' ) );
-		$csv    = '';
-		$n      = 0;
 		$tutori = \AssociazioneSemplice\Guardians::names_by_person();
-		foreach ( Plugin::people()->search() as $p ) {
-			$csv .= self::line(
-				array( $p['card_number'], \AssociazioneSemplice\Levels::label( $p ), $p['first_name'], $p['last_name'], $p['email'], $p['phone'], $p['tax_code'], self::d( $p['birth_date'] ?? null ), $tutori[ (int) $p['id'] ] ?? '', $p['address'], $p['zip'], $p['city'], $p['province'], $p['host_name'], self::d( MemberType::GUEST === $p['type'] ? null : $p['active_until'] ), \AssociazioneSemplice\MembershipRoles::label( $p['affiliation_role'] ?? null ), null === ( $p['image_consent'] ?? null ) ? '' : ( (int) $p['image_consent'] ? 'Sì' : 'No' ) )
-			);
-			if ( 0 === ++$n % self::CHUNK_ROWS ) {
-				yield $csv;
-				$csv = '';
+		$offset = 0; // le persone si leggono mille alla volta (stesso ordine di sempre): in memoria non c'è mai più di un blocco
+		do {
+			$page = Plugin::people()->search( array( 'limit' => self::CHUNK_ROWS, 'offset' => $offset ) );
+			$csv  = '';
+			foreach ( $page as $p ) {
+				$csv .= self::line(
+					array( $p['card_number'], \AssociazioneSemplice\Levels::label( $p ), $p['first_name'], $p['last_name'], $p['email'], $p['phone'], $p['tax_code'], self::d( $p['birth_date'] ?? null ), $tutori[ (int) $p['id'] ] ?? '', $p['address'], $p['zip'], $p['city'], $p['province'], $p['host_name'], self::d( MemberType::GUEST === $p['type'] ? null : $p['active_until'] ), \AssociazioneSemplice\MembershipRoles::label( $p['affiliation_role'] ?? null ), null === ( $p['image_consent'] ?? null ) ? '' : ( (int) $p['image_consent'] ? 'Sì' : 'No' ) )
+				);
 			}
-		}
-		if ( '' !== $csv ) {
-			yield $csv;
-		}
+			$offset += self::CHUNK_ROWS;
+			if ( '' !== $csv ) {
+				yield $csv;
+			}
+		} while ( count( $page ) === self::CHUNK_ROWS );
 	}
 }
