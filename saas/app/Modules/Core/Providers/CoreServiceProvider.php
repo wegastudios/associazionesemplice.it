@@ -41,7 +41,6 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 final class CoreServiceProvider extends ServiceProvider
@@ -103,10 +102,6 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobProcessing::class, $reset);
         Event::listen(JobProcessed::class, $reset);
         Event::listen(JobFailed::class, $reset);
-
-        // Tetti della posta in coda, per mailer (MailQueue): gli urgenti contano sul totale, i massivi anche sul loro.
-        RateLimiter::for(MailQueue::LIMIT_ALL, static fn (): array => MailQueue::limits(MailQueue::URGENT));
-        RateLimiter::for(MailQueue::LIMIT_BULK, static fn (): array => MailQueue::limits(MailQueue::BULK));
 
         if ($this->app->runningInConsole()) {
             $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class]);

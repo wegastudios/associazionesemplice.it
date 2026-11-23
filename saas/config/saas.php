@@ -78,9 +78,8 @@ return [
         'member_max_active' => (int) env('SAAS_MEMBER_MAX_ACTIVE_BOOKINGS', 10),
     ],
 
-    // Promemoria delle scadenze: vanno in coda, un'email per lavoro. Massimo di email al minuto per ogni associazione e in
-    // totale (oltre, il lavoro riparte più tardi): si regola dal .env senza toccare il codice. Valori prudenti (20 al minuto =
-    // 1.200 all'ora) per i limiti orari dell'hosting condiviso: con un SMTP dedicato si possono alzare.
+    // Promemoria delle scadenze: vanno in coda come posta massiva, un'email per lavoro (tetti in mail_queue). In più, un
+    // massimo di email al minuto per ogni associazione (oltre, il lavoro riparte più tardi).
     'reminders' => [
         'per_org_per_minute' => (int) env('SAAS_REMINDERS_PER_ORG_PER_MINUTE', 5),
     ],

@@ -9,7 +9,6 @@ use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\DemoSeeder;
 use App\Modules\Core\Contracts\HomeWidget;
-use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Core\Contracts\ReadableExport;
 use App\Modules\Core\Contracts\SetupStep;
@@ -80,14 +79,11 @@ final class SociServiceProvider extends ServiceProvider
         // Conferma della domanda dal link ricevuto per email: 10 al minuto dallo stesso indirizzo.
         RateLimiter::for('applications-confirm', static fn (Request $request): Limit => Limit::perMinute(10)->by('application-confirm-ip|'.$request->ip()));
 
-        // Promemoria in coda: il tetto della posta massiva (MailQueue) più un limite per associazione (da configurazione).
-        RateLimiter::for('reminder-mail', static function (object $job): array {
+        // Promemoria in coda: oltre al tetto della posta massiva (ThrottledMail), un limite per associazione da configurazione.
+        RateLimiter::for('reminder-mail', static function (object $job): Limit {
             $org = $job instanceof SendReminderEmail ? $job->orgId : '';
 
-            return [
-                ...MailQueue::limits(MailQueue::BULK),
-                Limit::perMinute(self::limit('saas.reminders.per_org_per_minute', 5))->by('reminder-mail|'.$org),
-            ];
+            return Limit::perMinute(self::limit('saas.reminders.per_org_per_minute', 5))->by('reminder-mail|'.$org);
         });
 
         if ($this->app->runningInConsole()) {

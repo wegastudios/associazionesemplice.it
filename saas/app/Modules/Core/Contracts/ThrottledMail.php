@@ -18,11 +18,11 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 /**
  * Middleware dei lavori di posta (MailQueue). Il lavoro deve usare InteractsWithQueue.
  *
- *   public function middleware(): array { return [new ThrottledMail(MailQueue::LIMIT_BULK)]; }
+ *   public function middleware(): array { return [new ThrottledMail]; }
  *
  * - Posta ferma dopo un rifiuto del server: il lavoro riparte quando l'interruttore si spegne, senza provare.
- * - Tetti del limitatore indicato (MailQueue::limits, più eventuali limiti del modulo): oltre, il lavoro riparte più
- *   tardi. Le chiavi sono quelle dei tetti, senza il nome del limitatore, così tutti i lavori contano sugli stessi.
+ * - Tetti della coda del lavoro (MailQueue::limits), più quelli di un limitatore del modulo se indicato (RateLimiter::for):
+ *   oltre, il lavoro riparte più tardi. Le chiavi sono quelle dei tetti, così tutti i lavori contano sugli stessi.
  * - Rifiuto o errore del server di posta: il lavoro riparte tra un'ora e la posta del mailer si ferma per tutti (oltre il
  *   limite orario il server rifiuta e il messaggio si perderebbe). Le attese non contano come errori (maxExceptions).
  *   Se il server rifiuta solo il destinatario (indirizzo o casella), si arrende solo quel messaggio; lo stesso messaggio
@@ -33,7 +33,10 @@ final class ThrottledMail
 {
     public const MAX_REJECTIONS = 3;
 
-    public function __construct(private readonly string $limiter) {}
+    /** Ritardo massimo aggiunto ai massivi rilasciati: ripartono sparsi invece di ripresentarsi tutti al minuto dopo. */
+    private const BULK_SPREAD_SECONDS = 300;
+
+    public function __construct(private readonly ?string $moduleLimiter = null) {}
 
     /** @param  Closure(object): mixed  $next */
     public function handle(object $job, Closure $next): mixed
@@ -49,7 +52,8 @@ final class ThrottledMail
             return $this->release($job, $blocked - now()->getTimestamp());
         }
 
-        $limits = $this->limits($job);
+        $queue = property_exists($job, 'queue') && is_string($job->queue) ? $job->queue : MailQueue::URGENT;
+        $limits = $this->limits($job, $queue, $mailer);
         $wait = null;
         foreach ($limits as $limit) {
             if (RateLimiter::tooManyAttempts($limit->key, $limit->maxAttempts)) {
@@ -57,10 +61,7 @@ final class ThrottledMail
             }
         }
         if ($wait !== null) {
-            // I massivi ripartono sparsi su un minuto, così non si ripresentano tutti nello stesso istante.
-            $bulk = property_exists($job, 'queue') && $job->queue === MailQueue::BULK;
-
-            return $this->release($job, $wait + ($bulk ? random_int(0, 60) : 0));
+            return $this->release($job, $wait + ($queue === MailQueue::BULK ? random_int(0, self::BULK_SPREAD_SECONDS) : 0));
         }
         foreach ($limits as $limit) {
             RateLimiter::hit($limit->key, $limit->decaySeconds);
@@ -111,11 +112,11 @@ final class ThrottledMail
     }
 
     /** @return list<Limit> */
-    private function limits(object $job): array
+    private function limits(object $job, string $queue, string $mailer): array
     {
-        $callback = RateLimiter::limiter($this->limiter);
+        $limits = MailQueue::limits($queue, $mailer);
+        $callback = $this->moduleLimiter === null ? null : RateLimiter::limiter($this->moduleLimiter);
         $result = $callback === null ? [] : $callback($job);
-        $limits = [];
         foreach (is_array($result) ? $result : [$result] as $limit) {
             if ($limit instanceof Limit) {
                 $limits[] = $limit;

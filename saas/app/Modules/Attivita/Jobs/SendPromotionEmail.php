@@ -40,7 +40,7 @@ final class SendPromotionEmail implements ShouldQueue
     /** @return list<object> */
     public function middleware(): array
     {
-        return [new ThrottledMail(MailQueue::LIMIT_BULK)];
+        return [new ThrottledMail];
     }
 
     /** @return list<int> */

@@ -10,6 +10,7 @@ use App\Modules\Soci\Jobs\SendReminderEmail;
 use App\Modules\Soci\Services\ApplicationService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Queue\Jobs\FakeJob;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\Mailer\Exception\TransportException;
@@ -113,6 +114,24 @@ it('i massivi si fermano a 3 al minuto mentre gli urgenti continuano', function 
     $held->assertReleased();
 
     expect(mqThrough(mqUrgent()))->toBeTrue();
+});
+
+it('i promemoria contano anche sul limite della loro associazione', function (): void {
+    config(['saas.reminders.per_org_per_minute' => 1]);
+    $reminder = static fn (string $org): SendReminderEmail => (new SendReminderEmail($org, MQ_ID, 'cert_soon', '2026-12-01', '2026-11-23'))->withFakeQueueInteractions();
+
+    expect(mqThrough($reminder(MQ_ORG)))->toBeTrue();
+    $held = $reminder(MQ_ORG);
+    expect(mqThrough($held))->toBeFalse();
+    $held->assertReleased();
+    expect(mqThrough($reminder(MQ_ID)))->toBeTrue();
+});
+
+it('legge l\'interruttore anche quando la cache restituisce il numero come testo (Redis)', function (): void {
+    $until = now()->addMinutes(30)->getTimestamp();
+    Cache::put('smtp-blocked-until:smtp', (string) $until, 1800);
+
+    expect(MailQueue::blockedUntil('smtp'))->toBe($until);
 });
 
 it('al tetto totale dell\'ora si fermano anche gli urgenti, e solo per quel mailer', function (): void {

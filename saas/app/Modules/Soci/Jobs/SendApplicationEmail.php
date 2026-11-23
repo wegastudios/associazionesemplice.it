@@ -40,7 +40,7 @@ final class SendApplicationEmail implements ShouldQueue
     /** @return list<object> */
     public function middleware(): array
     {
-        return [new ThrottledMail($this->urgent() ? MailQueue::LIMIT_ALL : MailQueue::LIMIT_BULK)];
+        return [new ThrottledMail];
     }
 
     /** @return list<int> */

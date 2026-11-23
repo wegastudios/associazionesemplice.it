@@ -56,12 +56,21 @@ final class HealthCommand extends Command
             'permessi dell\'applicazione' => fn () => $this->appPrivileges($db->connection('pgsql')),
             'connessione senza pooler' => fn () => $this->sessionSettings($db->connection('pgsql')),
             'memoria di Redis' => $this->redisMemory(...),
+        ];
+        // Posta in coda: problemi di esercizio, non della versione. Al rilascio (--mail-warnings-only) sono avvisi, così
+        // non riportano indietro il rilascio.
+        $mailChecks = [
             'coda della posta urgente' => fn () => $this->mailWait($db, MailQueue::URGENT, self::URGENT_MAX_WAIT),
             'coda della posta massiva' => fn () => $this->mailWait($db, MailQueue::BULK, self::BULK_MAX_WAIT),
             'invio della posta' => $this->mailBlocked(...),
             'posta non partita' => fn () => $this->mailFailed($db),
-            'invii della posta nell\'ora' => $this->mailHourUsage(...),
         ];
+        // Sempre un avviso: gli invii vicini al tetto orario.
+        $warnOnly = ['invii della posta nell\'ora'];
+        if ($this->option('mail-warnings-only') === true) {
+            $warnOnly = [...$warnOnly, ...array_keys($mailChecks)];
+        }
+        $checks += $mailChecks + ['invii della posta nell\'ora' => $this->mailHourUsage(...)];
 
         if (! $this->option('skip-migrations')) {
             foreach ($databases->names() as $name) {
@@ -87,12 +96,6 @@ final class HealthCommand extends Command
 
         // Controlli «morbidi»: finché SAAS_HEALTH_STRICT è spento (sviluppo, dati inventati) un problema è un avviso e non ferma il rilascio.
         $soft = ['chiave principale in produzione', 'permessi dell\'applicazione', 'memoria di Redis'];
-        // Sempre avvisi: gli invii vicini al tetto orario; al rilascio anche i problemi della posta in coda, che non
-        // dipendono dalla versione e non devono riportare indietro il rilascio.
-        $warnOnly = ['invii della posta nell\'ora'];
-        if ($this->option('mail-warnings-only') === true) {
-            array_push($warnOnly, 'coda della posta urgente', 'coda della posta massiva', 'invio della posta', 'posta non partita');
-        }
         $strict = config('saas.health_strict') === true;
         $failed = 0;
         foreach ($checks as $name => $check) {
@@ -184,7 +187,7 @@ final class HealthCommand extends Command
         $oldest = $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
             ->table(is_string($table) && $table !== '' ? $table : 'core.jobs')
             ->where('queue', $queue)
-            ->selectRaw("min(coalesce((payload::jsonb->>'createdAt')::bigint, created_at)) AS created")
+            ->selectRaw("min(coalesce((payload::json->>'createdAt')::bigint, created_at)) AS created")
             ->value('created');
         if (! is_numeric($oldest)) {
             return;

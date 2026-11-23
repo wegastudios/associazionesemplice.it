@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\RateLimiter;
  *
  * Tetti in config saas.mail_queue.mailers.<mailer>: per_second, per_minute, per_hour, per_day, per_month (30 giorni) per
  * il totale, gli stessi con «bulk_» davanti per i massivi. Un mailer senza voce propria usa i numeri di «smtp», contati a
- * parte. Lavori in coda: ThrottledMail come middleware e onQueue(URGENT o BULK).
+ * parte. Lavori in coda: onQueue(URGENT o BULK) e ThrottledMail come middleware (i tetti seguono la coda del lavoro).
  */
 final class MailQueue
 {
@@ -28,11 +28,6 @@ final class MailQueue
 
     /** Ordine di lavorazione: prima gli urgenti, poi gli altri lavori, per ultimi i massivi. */
     public const WORKER_QUEUES = self::URGENT.',default,'.self::BULK;
-
-    /** Nomi dei limitatori (RateLimiter::for) dei due tipi di posta. */
-    public const LIMIT_ALL = 'mail-all';
-
-    public const LIMIT_BULK = 'mail-bulk';
 
     /** Fino a quando si riprovano i massivi (gli urgenti: fino alla scadenza del loro link o codice). */
     public const BULK_RETRY_HOURS = 48;
@@ -62,7 +57,7 @@ final class MailQueue
         $values = is_array($values) ? $values : [];
 
         $limits = [];
-        foreach ($queue === self::BULK ? ['bulk_' => self::LIMIT_BULK, '' => self::LIMIT_ALL] : ['' => self::LIMIT_ALL] as $prefix => $name) {
+        foreach ($queue === self::BULK ? ['bulk_' => 'mail-bulk', '' => 'mail-all'] : ['' => 'mail-all'] as $prefix => $name) {
             foreach (self::PERIODS as $period => $seconds) {
                 $max = $values[$prefix.'per_'.$period] ?? null;
                 if (is_numeric($max) && (int) $max > 0) {
@@ -95,9 +90,10 @@ final class MailQueue
     /** Fino a quando (timestamp) la posta del mailer è ferma dopo un rifiuto del server; null se non è ferma. */
     public static function blockedUntil(?string $mailer = null): ?int
     {
+        // Redis restituisce i numeri come stringhe.
         $until = Cache::get(self::blockKey($mailer ?? self::mailer()));
 
-        return is_int($until) && $until > now()->getTimestamp() ? $until : null;
+        return is_numeric($until) && (int) $until > now()->getTimestamp() ? (int) $until : null;
     }
 
     /** Ferma la posta del mailer (saas.mail_queue.blocked_minutes, di base un'ora) e dice fino a quando. */

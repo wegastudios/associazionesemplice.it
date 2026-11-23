@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgRole;
@@ -323,17 +324,13 @@ it('se il promemoria in coda non parte più, la prenotazione si toglie e il giro
     });
 });
 
-it('i promemoria seguono il tetto della posta massiva più un limite per associazione da configurazione', function (): void {
-    config(['mail.default' => 'smtp', 'saas.reminders.per_org_per_minute' => 2]);
+it('i promemoria sono posta massiva con in più un limite per associazione da configurazione', function (): void {
+    config(['saas.reminders.per_org_per_minute' => 2]);
     $job = new SendReminderEmail($this->org->id, '00000000-0000-7000-8000-000000000001', 'cert_soon', now()->toDateString(), now()->toDateString());
-    $limits = RateLimiter::limiter('reminder-mail')($job);
+    $limit = RateLimiter::limiter('reminder-mail')($job);
 
-    expect(array_map(static fn ($l) => [$l->key, $l->maxAttempts], $limits))->toBe([
-        ['mail-bulk|smtp|60', 3],
-        ['mail-bulk|smtp|3600', 100],
-        ['mail-all|smtp|3600', 140],
-        ['reminder-mail|'.$this->org->id, 2],
-    ]);
+    expect($job->queue)->toBe(MailQueue::BULK)
+        ->and([$limit->key, $limit->maxAttempts])->toBe(['reminder-mail|'.$this->org->id, 2]);
 });
 
 it('i promemoria partono alle 10:23', function (): void {
