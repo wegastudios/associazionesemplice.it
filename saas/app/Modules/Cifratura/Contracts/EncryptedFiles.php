@@ -20,6 +20,14 @@ interface EncryptedFiles
     /** Decifra il file in $targetPath, a blocchi (senza caricarlo in memoria), controllando l'impronta. */
     public function readToFile(string $orgId, StoredFile $file, string $targetPath): void;
 
+    /**
+     * Controllo leggero, senza leggere né decifrare il file: c'è, e ha la dimensione che deve avere un file cifrato di
+     * $file->size byte? Un file della dimensione giusta ma alterato lo scopre solo la lettura (read, readToFile).
+     *
+     * @return 'ok'|'missing'|'altered'
+     */
+    public function quickCheck(string $orgId, StoredFile $file): string;
+
     public function download(string $orgId, StoredFile $file): StreamedResponse;
 
     public function delete(string $orgId, StoredFile $file): void;
