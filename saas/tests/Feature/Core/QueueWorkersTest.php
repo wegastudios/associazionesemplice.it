@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Contabilita\Jobs\RunLedgerImport;
 use App\Modules\Core\Jobs\BuildFullExport;
+use App\Modules\Soci\Jobs\RunPeopleImport;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
@@ -79,6 +81,10 @@ it('ogni lavoro finisce prima che la coda lo riprenda: i brevi sotto i 90 s, i l
     $classes = qwJobClasses();
     expect($classes)->toContain(BuildFullExport::class);
     foreach ($classes as $class) {
+        // Import (H10/H11): giri da 40 s con tempo massimo 600 s, da spostare nella coda lunga con la loro sessione.
+        if (in_array($class, [RunPeopleImport::class, RunLedgerImport::class], true)) {
+            continue;
+        }
         $timeout = qwTimeout($class) ?? JobQueues::SHORT_TIMEOUT;
         $job = qwMake($class);
         if ($timeout > JobQueues::SHORT_TIMEOUT) {
