@@ -24,7 +24,7 @@ final class Plugin {
 	 * Versione dello schema del database (la storia dei cambi è accanto a {@see Install::DB_VERSION}, che vale questa).
 	 * Sta qui perché il confronto con quella salvata si fa a ogni richiesta: così la classe Install, grande, si carica solo quando c'è da aggiornare.
 	 */
-	const DB_VERSION = '74';
+	const DB_VERSION = '76';
 
 	/** Opzione con la versione dello schema salvata (la stessa di {@see Install::DB_VERSION_OPTION}). */
 	const DB_VERSION_OPTION = 'asem_db_version';
@@ -73,9 +73,12 @@ final class Plugin {
 		}
 	}
 
-	/** Lo schema del database è pronto? (versione salvata = versione del codice; uguale a {@see Install::schema_ready()}, ma senza caricare quella classe) */
+	/**
+	 * Lo schema del database è pronto? (versione salvata = versione del codice; come {@see Install::schema_ready()}, ma senza caricare quella classe.)
+	 * Con un'estensione vale anche il suo schema: lo dice il filtro `asem_extension_schema_ready` (senza estensioni nessuno risponde e resta vero).
+	 */
 	public static function schema_ready(): bool {
-		return self::DB_VERSION === (string) get_option( self::DB_VERSION_OPTION, '' );
+		return self::DB_VERSION === (string) get_option( self::DB_VERSION_OPTION, '' ) && (bool) apply_filters( 'asem_extension_schema_ready', true );
 	}
 
 	/** Con lo schema a metà le scritture non partono: i moduli (admin-post, admin-ajax) e le chiamate REST del plugin rispondono «riprova tra un minuto». Le regole sono in {@see SchemaGuard}. */
@@ -168,6 +171,7 @@ final class Plugin {
 			'asem_event_requests'         => array( 'hourly', 1500, 'EventRequests', 'run', '' ),
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
+			'asem_purge_counters'         => array( 'hourly', 1100, 'Counters', 'purge', '' ), // contatori dei tentativi scaduti
 			'asem_private_folder_check'   => array( 'daily', 3000, 'PrivateFolder', 'cron', '' ),
 			'asem_db_engine_check'        => array( 'daily', 3600, 'DbEngine', 'cron', '' ),
 			'asem_file_crypt_migrate'     => array( '', 0, 'FileMigration', 'cron', '' ), // lotti programmati per cifrare i file già caricati (si programmano da soli, uno alla volta)
@@ -177,6 +181,7 @@ final class Plugin {
 			'asem_purge_member_sessions'  => array( 'daily', 2400, 'MemberSession', 'purge_expired', '' ),
 			'asem_purge_applications'     => array( 'daily', 3300, 'Applications', 'purge', '' ), // domande mai confermate (30 giorni) e respinte con quota pagata (90 giorni dalla risposta)
 			'asem_long_job_tick'          => array( '', 0, 'LongJob', 'tick', '' ), // rete di sicurezza dei lavori lunghi: una tappa quando la pagina è chiusa (si programma da sola, un evento per volta)
+			'asem_mail_retry'             => array( '', 0, 'MailRetry', 'run', '' ), // nuovo tentativo delle email singole rifiutate dal server di posta (si programma da solo, pochi minuti dopo)
 			'asem_schema_upgrade'         => array( '', 0, 'Install', 'maybe_upgrade', '' ), // aggiornamento dello schema rimasto a metà o rimandato perché la richiesta era di un visitatore (si programma da solo)
 		);
 		$out = array();

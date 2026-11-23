@@ -42,7 +42,7 @@ final class GuestInvite {
 		}
 		$session_id = (int) ( $session['id'] ?? 0 );
 		$all        = self::all();
-		$all[ GuestInviteRules::notice_id( $person_id, $session_id ) ] = array(
+		$all[ GuestInviteRules::notice_id( $person_id ) ] = array(
 			'person_id' => $person_id, 'session_id' => $session_id, 'reasons' => $reasons, 'date' => current_time( 'Y-m-d' ), 'at' => time(),
 		);
 		update_option( self::OPTION, GuestInviteRules::trim( $all, GuestInviteRules::MAX ), false );

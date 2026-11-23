@@ -133,3 +133,17 @@ asem_ok( Install::schema_ready() && Install::DB_VERSION === (string) get_option(
 asem_ok( '' === (string) get_option( Install::PROGRESS_OPTION, '' ), 'schema a tappe: finito, il punto raggiunto non resta' );
 asem_ok( Plugin::schema_ready() && '' === Plugin::write_refusal( 'asem_save_person' ) && null === Plugin::rest_guard( null, null, new WP_REST_Request( 'POST', '/associazionesemplice/v1/webhooks/stripe' ) ), 'schema pronto: le scritture tornano a passare' );
 wp_clear_scheduled_hook( Install::CRON_HOOK );
+
+// ---------- Schema del Pro a metà: stesse risposte di quello del gratuito ----------
+if ( class_exists( '\AssociazioneSemplice\ProBoot' ) ) {
+	$sx_pro_ver = get_option( \AssociazioneSemplice\ProBoot::SCHEMA_OPTION, '' );
+	asem_ok( Plugin::schema_ready() && \AssociazioneSemplice\ProBoot::schema_ready(), 'schema del Pro: a posto, le scritture passano' );
+	update_option( \AssociazioneSemplice\ProBoot::SCHEMA_OPTION, '19' );
+	asem_ok( Install::schema_ready() && ! Plugin::schema_ready(), 'schema del Pro a metà: il gratuito è pronto, ma lo schema nel suo insieme no' );
+	asem_ok( $sx_msg === Plugin::write_refusal( 'asem_save_person' ) && $sx_msg === Plugin::write_refusal( 'asem_front_book' ) && '' === Plugin::write_refusal( 'asem_export' ) && '' === Plugin::write_refusal( 'asem_cert_csv' ), 'schema del Pro a metà: i moduli che scrivono aspettano, scaricare no' );
+	$sx_rest = Plugin::rest_guard( null, null, new WP_REST_Request( 'POST', '/associazionesemplice/v1/webhooks/stripe' ) );
+	asem_ok( is_wp_error( $sx_rest ) && 503 === (int) ( $sx_rest->get_error_data()['status'] ?? 0 ) && null === Plugin::rest_guard( null, null, new WP_REST_Request( 'GET', '/associazionesemplice/v1/me' ) ), 'schema del Pro a metà: le scritture REST ricevono 503, le letture passano' );
+	asem_ok( \AssociazioneSemplice\SchemaGuard::job_allowed( 'asem_schema_upgrade', Plugin::schema_ready() ) && ! \AssociazioneSemplice\SchemaGuard::job_allowed( 'asem_send_reminders', Plugin::schema_ready() ), 'schema del Pro a metà: dei lavori periodici gira solo quello che porta avanti l\'aggiornamento' );
+	update_option( \AssociazioneSemplice\ProBoot::SCHEMA_OPTION, $sx_pro_ver );
+	asem_ok( Plugin::schema_ready() && '' === Plugin::write_refusal( 'asem_save_person' ) && null === Plugin::rest_guard( null, null, new WP_REST_Request( 'POST', '/associazionesemplice/v1/webhooks/stripe' ) ), 'schema del Pro pronto: le scritture tornano a passare' );
+}

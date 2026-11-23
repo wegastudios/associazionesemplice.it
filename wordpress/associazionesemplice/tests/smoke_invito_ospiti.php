@@ -39,6 +39,9 @@ $gi_acts->book( $gi_s1, $gi_member );
 $gi_r = $gi_acts->check_in( $gi_s1, $gi_member );
 asem_ok( 'recorded' === $gi_r['status'] && '' === $gi_r['invite'] && array() === GuestInvite::all(), 'invito ospiti: l\'ingresso di un socio non genera nessun avviso' );
 
+// Il solo «su invito di» non basta: senza soglia raggiunta e senza evento non c'è né avviso né voce.
+asem_ok( array() === GuestInviteRules::reasons( true, 1, 2, 'Marco Ospitante', '' ) && '' === GuestInvite::text( 'Dora Soloinvito', GuestInviteRules::reasons( true, 1, 2, 'Marco Ospitante', '' ) ), 'invito ospiti: il solo invito di un socio non dà né avviso né voce in Bacheca' );
+
 // Un ospite invitato da un socio, alla prima volta: due motivi (invito e evento), nell'ordine, in un solo avviso.
 $gi_g = $gi_peo->create( array( 'type' => 'guest', 'first_name' => 'Olga', 'last_name' => 'Invitata', 'phone' => '333 7770001', 'host_person_id' => $gi_host ) );
 $gi_acts->book( $gi_s1, $gi_g );
@@ -61,7 +64,7 @@ asem_ok( 1 === count( GuestInvite::all() ), 'invito ospiti: annullare e rifare l
 $gi_acts->book( $gi_s2, $gi_g );
 $gi_t2 = (string) $gi_acts->check_in( $gi_s2, $gi_g )['invite'];
 asem_ok( false !== strpos( $gi_t2, 'Olga Invitata è da invitare ad associarsi: ha già 2 ingressi.' ) && 0 === strpos( $gi_t2, 'Olga Invitata è da invitare' ) && false !== strpos( $gi_t2, 'Serata invito due' ), 'invito ospiti: raggiunta la soglia, il motivo compare per primo, con il numero degli ingressi' );
-asem_ok( 2 === count( GuestInvite::pending() ), 'invito ospiti: una voce per ogni ingresso' );
+asem_ok( 1 === count( GuestInvite::pending() ), 'invito ospiti: una sola voce per ospite, anche con più ingressi' );
 
 // Ogni ospite ha chi lo ospita (è obbligatorio), ma il testo regge anche il solo motivo dell'evento.
 asem_ok( 'Pino Solo è qui per «Serata invito uno»: puoi proporre l\'adesione.' === GuestInvite::text( 'Pino Solo', GuestInviteRules::reasons( true, 1, 2, '', 'Serata invito uno' ) ), 'invito ospiti: il solo motivo dell\'evento, anche gratuito' );

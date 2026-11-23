@@ -8,7 +8,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * Regole:
  *  - importi in centesimi, sempre positivi; il segno viene dal tipo di movimento;
- *  - il saldo di un conto è calcolato (saldo iniziale + movimenti), mai memorizzato;
+ *  - il saldo di un conto è calcolato (saldo iniziale + movimenti), mai memorizzato: alla chiusura di un anno fiscale si salva solo la somma dei
+ *    movimenti fino al suo ultimo giorno, e i saldi sommano da lì in poi;
  *  - i movimenti non si modificano: si annullano (voided_at + motivo) e si reinseriscono;
  *  - un giroconto sono due righe con lo stesso transfer_id: non è né entrata né uscita;
  *  - un incasso con più voci sono più righe con lo stesso receipt_id.
@@ -234,24 +235,161 @@ class LedgerService {
 		if ( RequestMemo::has( 'ledger_deltas', $key ) ) { // la somma su tutta la storia dei movimenti si fa una volta per richiesta e data (si svuota da sola a ogni scrittura sui movimenti)
 			return (array) RequestMemo::get( 'ledger_deltas', $key );
 		}
-		$db  = $this->db();
 		$out = SharedMemo::remember( // con una cache degli oggetti persistente la somma vale anche per le richieste dopo, finché nessuno scrive un movimento
 			'ledger_deltas',
 			$key,
-			static function () use ( $db, $up_to ): array {
-				$sql = "SELECT account_id, SUM(CASE WHEN type IN ('income','transfer_in') THEN amount_cents ELSE -amount_cents END) AS delta "
-					. 'FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL';
-				if ( null !== $up_to ) {
-					$sql = $db->prepare( $sql . ' AND tx_date <= %s', $up_to );
-				}
-				$out = array();
-				foreach ( $db->get_results( $sql . ' GROUP BY account_id', ARRAY_A ) ?: array() as $r ) {
-					$out[ (int) $r['account_id'] ] = (int) $r['delta'];
-				}
-				return $out;
+			function () use ( $up_to ): array {
+				return $this->sum_deltas( $up_to );
 			}
 		);
 		return (array) RequestMemo::put( 'ledger_deltas', $key, $out, array( Db::t( 'transactions' ) ) );
+	}
+
+	/** Movimento con il segno del saldo (SQL): entrate e giroconti in entrata in più, il resto in meno. */
+	const SIGNED_SQL = "CASE WHEN type IN ('income','transfer_in') THEN amount_cents ELSE -amount_cents END";
+
+	/**
+	 * Somma dei movimenti di ogni conto fino a una data (null = tutti). Gli anni fiscali chiusi non cambiano più («il chiuso è chiuso»): alla chiusura
+	 * si salva la somma fino al loro ultimo giorno e qui si sommano solo i movimenti dopo. Il risultato è identico alla somma su tutta la storia.
+	 *
+	 * @return array<int,int> conto => somma
+	 */
+	private function sum_deltas( ?string $up_to ): array {
+		$db       = $this->db();
+		$closings = $this->closings();
+		$latest   = $closings ? (int) array_key_first( $closings ) : 0;
+		if ( $latest && null === $closings[ $latest ]['d'] && ( null === $up_to || $up_to >= $closings[ $latest ]['to'] ) ) {
+			return $this->fill_closing( $latest, $closings[ $latest ]['to'], $up_to ); // ultimo anno chiuso senza somma salvata (chiuso prima della 75, o somma cancellata): si calcola una volta e si salva
+		}
+		$snap = self::closing_pick( $closings, $up_to );
+		$sql  = 'SELECT account_id, SUM(' . self::SIGNED_SQL . ') AS delta FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL';
+		if ( null !== $snap ) {
+			$sql .= $db->prepare( ' AND tx_date > %s', $snap['to'] );
+		}
+		if ( null !== $up_to ) {
+			$sql .= $db->prepare( ' AND tx_date <= %s', $up_to );
+		}
+		$out = null !== $snap ? $snap['d'] : array();
+		foreach ( $db->get_results( $sql . ' GROUP BY account_id', ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna, le date sono già passate da prepare()
+			$out[ (int) $r['account_id'] ] = (int) ( $out[ (int) $r['account_id'] ] ?? 0 ) + (int) $r['delta'];
+		}
+		return $out;
+	}
+
+	/** Una sola lettura di tutta la storia che dà insieme la somma fino a $up_to e quella fino alla fine dell'anno $year, che si salva. */
+	private function fill_closing( int $year, string $to, ?string $up_to ): array {
+		$db   = $this->db();
+		$sql  = $db->prepare( 'SELECT account_id, SUM(CASE WHEN tx_date <= %s THEN ' . self::SIGNED_SQL . ' ELSE 0 END) AS head, SUM(' . self::SIGNED_SQL . ') AS delta FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL', $to ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella e espressione interne
+		if ( null !== $up_to ) {
+			$sql .= $db->prepare( ' AND tx_date <= %s', $up_to );
+		}
+		$head = array();
+		$out  = array();
+		foreach ( $db->get_results( $sql . ' GROUP BY account_id', ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- già preparata sopra
+			$head[ (int) $r['account_id'] ] = (int) $r['head'];
+			$out[ (int) $r['account_id'] ]  = (int) $r['delta'];
+		}
+		$db->update( Db::t( 'fiscal_years' ), array( 'closing_sums' => self::closing_encode( $to, $head ) ), array( 'year' => $year, 'status' => 'closed' ) );
+		return $out;
+	}
+
+	/**
+	 * Gli anni fiscali chiusi, dal più recente, con la somma salvata alla chiusura: anno => ['to' => ultimo giorno, 'd' => conto => somma, o null se manca].
+	 * Vuoto finché lo schema non è pronto (la colonna potrebbe non esserci ancora): allora si somma tutta la storia, come prima.
+	 *
+	 * @return array<int,array{to:string,d:?array}>
+	 */
+	private function closings(): array {
+		if ( ! Plugin::schema_ready() ) {
+			return array();
+		}
+		if ( RequestMemo::has( 'ledger_closings', '' ) ) {
+			return (array) RequestMemo::get( 'ledger_closings', '' );
+		}
+		$out = array();
+		foreach ( $this->db()->get_results( 'SELECT year, closing_sums FROM ' . Db::t( 'fiscal_years' ) . " WHERE status = 'closed' ORDER BY year DESC", ARRAY_A ) ?: array() as $r ) {
+			$c                     = self::closing_decode( $r['closing_sums'] );
+			$out[ (int) $r['year'] ] = $c ?? array( 'to' => FiscalYears::range( (int) $r['year'] )[1], 'd' => null );
+		}
+		return (array) RequestMemo::put( 'ledger_closings', '', $out, array( Db::t( 'fiscal_years' ) ) );
+	}
+
+	/** Alla chiusura dell'anno fiscale: salva la somma dei movimenti di ogni conto fino al suo ultimo giorno (dentro la transazione della chiusura). */
+	public function save_closing_sums( int $year ): void {
+		if ( ! Plugin::schema_ready() ) {
+			return; // a schema pronto la si calcola alla prima lettura
+		}
+		$db  = $this->db();
+		$to  = FiscalYears::range( $year )[1];
+		$sum = array();
+		foreach ( $db->get_results( $db->prepare( 'SELECT account_id, SUM(' . self::SIGNED_SQL . ') AS delta FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL AND tx_date <= %s GROUP BY account_id', $to ), ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella e espressione interne
+			$sum[ (int) $r['account_id'] ] = (int) $r['delta'];
+		}
+		$db->update( Db::t( 'fiscal_years' ), array( 'closing_sums' => self::closing_encode( $to, $sum ) ), array( 'year' => $year ) );
+	}
+
+	/**
+	 * Un movimento scritto o annullato con data $date: le somme salvate degli anni chiusi che finiscono in quel giorno o dopo non valgono più e si
+	 * cancellano (si rifanno alla prima lettura). Di norma non succede mai: negli anni chiusi non si scrive; serve per un anno aperto più vecchio di uno chiuso.
+	 */
+	private function forget_closings_from( string $date ): void {
+		$date  = substr( $date, 0, 10 );
+		$years = array();
+		foreach ( $this->closings() as $year => $c ) {
+			if ( null !== $c['d'] && $c['to'] >= $date ) {
+				$years[] = (int) $year;
+			}
+		}
+		if ( $years ) {
+			$this->db()->query( 'UPDATE ' . Db::t( 'fiscal_years' ) . ' SET closing_sums = NULL WHERE year IN (' . implode( ',', $years ) . ')' ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- anni interi
+		}
+	}
+
+	/** Cancella tutte le somme salvate alla chiusura (per esempio dopo il ripristino di una copia): si rifanno alla prima lettura. */
+	public static function forget_closing_sums(): void {
+		if ( Plugin::schema_ready() ) {
+			Db::db()->query( 'UPDATE ' . Db::t( 'fiscal_years' ) . ' SET closing_sums = NULL WHERE closing_sums IS NOT NULL' );
+		}
+	}
+
+	/** Testo salvato con l'anno chiuso: ultimo giorno, poi «conto:somma» separati da virgole (regola pura). */
+	public static function closing_encode( string $to, array $sums ): string {
+		$parts = array();
+		foreach ( $sums as $acc => $cents ) {
+			$parts[] = (int) $acc . ':' . (int) $cents;
+		}
+		return $to . '|' . implode( ',', $parts );
+	}
+
+	/** Legge il testo di {@see LedgerService::closing_encode()}; null se manca o non è nel formato atteso (allora si ricalcola). @return array{to:string,d:array<int,int>}|null */
+	public static function closing_decode( $raw ): ?array {
+		if ( ! is_string( $raw ) || ! preg_match( '/^(\d{4}-\d{2}-\d{2})\|((?:\d+:-?\d+(?:,\d+:-?\d+)*)?)$/', $raw, $m ) ) {
+			return null;
+		}
+		$d = array();
+		foreach ( '' === $m[2] ? array() : explode( ',', $m[2] ) as $pair ) {
+			list( $acc, $cents ) = explode( ':', $pair );
+			if ( isset( $d[ (int) $acc ] ) ) {
+				return null;
+			}
+			$d[ (int) $acc ] = (int) $cents;
+		}
+		return array( 'to' => $m[1], 'd' => $d );
+	}
+
+	/**
+	 * Fra le chiusure con la somma salvata, quella più recente che finisce entro $up_to (null = la più recente); null = nessuna, si somma tutta la storia.
+	 *
+	 * @param array<int,array{to:string,d:?array}> $closings
+	 */
+	public static function closing_pick( array $closings, ?string $up_to ): ?array {
+		$best = null;
+		foreach ( $closings as $c ) {
+			if ( null !== $c['d'] && ( null === $up_to || $c['to'] <= $up_to ) && ( null === $best || $c['to'] > $best['to'] ) ) {
+				$best = $c;
+			}
+		}
+		return $best;
 	}
 
 	/** Conti con il saldo calcolato (a oggi, oppure fino a una data inclusa). */
@@ -327,6 +465,7 @@ class LedgerService {
 			throw new \RuntimeException( 'Movimento non salvato: riprova.' );
 		}
 		$id = (int) $this->db()->insert_id;
+		$this->forget_closings_from( (string) $row['tx_date'] );
 		Audit::log( 'tx.created', 'transaction', $id, array( 'type' => $row['type'], 'cents' => (int) $row['amount_cents'], 'account' => (int) $row['account_id'] ) );
 		return $id;
 	}
@@ -706,7 +845,8 @@ class LedgerService {
 		}
 		$reason = '' === trim( $reason ) ? 'Annullato' : mb_substr( trim( $reason ), 0, 255 );
 		$this->in_transaction(
-			function () use ( $ids, $reason, $tbl ) {
+			function () use ( $ids, $reason, $tbl, $tx ) {
+				$this->forget_closings_from( (string) $tx['tx_date'] ); // le righe di un giroconto hanno la stessa data
 				foreach ( $ids as $id ) {
 					$this->db()->update( $tbl, array( 'voided_at' => Db::now(), 'void_reason' => $reason ), array( 'id' => $id ) );
 					Plugin::people()->remove_membership_of_transaction( $id );

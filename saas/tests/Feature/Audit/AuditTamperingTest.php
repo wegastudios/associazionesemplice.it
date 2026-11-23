@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Modules\Audit\Console\VerifyAuditCommand;
 use App\Modules\Audit\Log\ChainVerifier;
 use App\Modules\Soci\Models\Person;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -97,6 +99,22 @@ it('la verifica intera trova una modifica prima del punto di controllo, quella d
     // Quella di ogni notte riparte dal punto di controllo e non guarda indietro: non vede la modifica.
     expect($verifier->verify($this->org->id, true)['ok'])->toBeTrue();
     expect($verifier->verify($this->org->id))->toMatchArray(['ok' => false, 'broken_at' => 2]);
+});
+
+it('a rotazione ogni associazione ripercorre la catena intera un giorno su sette', function (): void {
+    $this->artisan('saas:audit:verify', ['org' => $this->org->id])->assertSuccessful();
+    tamper("UPDATE audit.log SET details = '{\"fields\": [\"first_name\"]}' WHERE seq = 2");
+
+    $day = Carbon::parse('2026-11-23');
+    while ($day->dayOfWeek !== VerifyAuditCommand::dayOf($this->org->id)) {
+        $day = $day->addDay();
+    }
+
+    // Il giorno degli altri sei la modifica vecchia non si vede; il suo giorno sì.
+    $this->travelTo($day->copy()->addDay());
+    $this->artisan('saas:audit:verify', ['org' => $this->org->id, '--rotate' => true])->assertSuccessful();
+    $this->travelTo($day);
+    $this->artisan('saas:audit:verify', ['org' => $this->org->id, '--rotate' => true])->assertFailed();
 });
 
 it('se la riga del punto di controllo è cambiata si ripercorre tutta la catena', function (): void {

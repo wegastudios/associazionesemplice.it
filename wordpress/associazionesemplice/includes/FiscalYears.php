@@ -353,6 +353,7 @@ final class FiscalYears {
 			function () use ( $year, $now, $gaps ) {
 				self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => $now ), array( 'year' => $year ) );
 				self::forget_memo();
+				Plugin::ledger()->save_closing_sums( $year ); // l'anno chiuso non cambia più: i saldi dei conti sommeranno solo i movimenti dopo il suo ultimo giorno
 				$id   = self::record_closure( $year, $now, (int) get_current_user_id() );
 				$span = self::range( $year );
 				MemberBook::write_snapshot( $id, $span[0], $span[1] );
@@ -387,7 +388,7 @@ final class FiscalYears {
 			self::record_closure( $year, $row['closed_at'] ? (string) $row['closed_at'] : Db::now(), 0 ); // anno chiuso senza traccia (dati di prima della v58)
 		}
 		$c = self::current_closure( $year );
-		self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'open', 'closed_at' => null ), array( 'year' => $year ) );
+		self::db()->update( Db::t( 'fiscal_years' ), Plugin::schema_ready() ? array( 'status' => 'open', 'closed_at' => null, 'closing_sums' => null ) : array( 'status' => 'open', 'closed_at' => null ), array( 'year' => $year ) ); // riaperto, l'anno può cambiare: la somma salvata alla chiusura non vale più
 		self::forget_memo();
 		self::db()->update(
 			Db::t( 'fiscal_year_closures' ),

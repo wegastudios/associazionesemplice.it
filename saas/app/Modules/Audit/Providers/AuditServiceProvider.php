@@ -75,13 +75,10 @@ final class AuditServiceProvider extends ServiceProvider
                 $schedule->command('saas:audit:partitions')->monthlyOn(1, '02:13')->withoutOverlapping();
                 // Tiene l'anno corrente e il precedente: parte solo con l'interruttore acceso (saas.audit_prune_enabled).
                 $schedule->command('saas:audit:prune')->monthlyOn(1, '02:43')->withoutOverlapping()->when(static fn (): bool => config('saas.audit_prune_enabled') === true);
-                // Ogni giorno, prima della verifica: numero e sigillo di testa fuori dal database, per vedere la coda tagliata.
-                $schedule->command('saas:audit:heads:copy')->dailyAt('03:17')->withoutOverlapping();
+                // Copia delle teste e verifica del registro girano ogni notte dentro `saas:night` (Core), in sequenza con
+                // gli altri controlli: dal punto di controllo, e un settimo delle associazioni per intero (--rotate).
                 // Registri di sicurezza (accessi operatori e staff): 18 mesi.
                 $schedule->command('saas:audit:prune-security')->weeklyOn(1, '03:27')->withoutOverlapping();
-                $schedule->command('saas:audit:verify')->dailyAt('03:37')->withoutOverlapping();
-                // La domenica la verifica ripercorre l'intera catena, senza ripartire dal punto di controllo.
-                $schedule->command('saas:audit:verify --full')->weeklyOn(0, '03:57')->withoutOverlapping();
             });
         }
     }
