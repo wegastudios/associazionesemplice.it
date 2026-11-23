@@ -9,11 +9,13 @@ use App\Modules\Portale\Contracts\OrgEntitlements;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\GuardianService;
 use App\Modules\Soci\Services\MembershipService;
+use Illuminate\Cookie\CookieValuePrefix;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
+use Symfony\Component\HttpFoundation\Cookie;
 
 /*
  * H19: l'area soci e i moduli pubblici tengono la sessione nel cookie (nessuna riga in core.sessions); il gestionale
@@ -172,7 +174,7 @@ it('l\'indice su last_activity non c\'è più e la tabella delle sessioni ha spa
         ->and(is_object($options) ? $options->o : '')->toContain('fillfactor=60');
 });
 
-/** @return array<string, Symfony\Component\HttpFoundation\Cookie> i cookie di sessione pubblica di una risposta: quello dell'id e quello dei dati */
+/** @return array<string, Cookie> i cookie di sessione pubblica di una risposta: quello dell'id e quello dei dati */
 function publicSessionCookies(TestResponse $response): array
 {
     $out = [];
@@ -225,6 +227,6 @@ it('i dati della sessione pubblica sono cifrati e dentro c\'è solo la scheda sc
     expect($raw)->not->toContain($this->luca->id)->and($raw)->not->toContain('member_active_profile')->and($raw)->not->toContain('mario@example.com');
 
     // Decifrato (solo qui, con la chiave dell'applicazione): la scheda scelta c'è, nessun'altra persona.
-    $plain = Illuminate\Cookie\CookieValuePrefix::remove(app('encrypter')->decrypt($raw, false));
+    $plain = CookieValuePrefix::remove(app('encrypter')->decrypt($raw, false));
     expect($plain)->toContain($this->luca->id)->and($plain)->not->toContain($this->mario->id)->and($plain)->not->toContain('mario@example.com');
 });
