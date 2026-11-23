@@ -63,6 +63,8 @@ final class HealthCommand extends Command
             'permessi dell\'applicazione' => fn () => $this->appPrivileges($db->connection('pgsql')),
             'connessione senza pooler' => fn () => $this->sessionSettings($db->connection('pgsql')),
             'memoria di Redis' => $this->redisMemory(...),
+            'partizioni del registro' => fn () => $this->auditPartitions($db, $databases),
+            'rifiuto del TRUNCATE' => fn () => $this->truncateGuards($db, $databases),
         ];
         // Posta e altri lavori in coda: problemi di esercizio, non della versione. Al rilascio (--mail-warnings-only) sono
         // avvisi, così non riportano indietro il rilascio.
@@ -108,7 +110,7 @@ final class HealthCommand extends Command
         }
 
         // Controlli «morbidi»: finché SAAS_HEALTH_STRICT è spento (sviluppo, dati inventati) un problema è un avviso e non ferma il rilascio.
-        $soft = ['chiave principale in produzione', 'permessi dell\'applicazione', 'memoria di Redis'];
+        $soft = ['chiave principale in produzione', 'permessi dell\'applicazione', 'memoria di Redis', 'partizioni del registro'];
         $strict = config('saas.health_strict') === true;
         $failed = 0;
         foreach ($checks as $name => $check) {
@@ -183,6 +185,72 @@ final class HealthCommand extends Command
         $max = is_numeric($maxRaw) ? (int) $maxRaw : 0;
         if ($max > 0 && $used / $max > 0.7) {
             throw new RuntimeException(sprintf('Redis usa il %d%% della memoria (%d di %d byte): le chiavi meno usate vengono tolte', (int) round($used / $max * 100), $used, $max));
+        }
+    }
+
+    /**
+     * Su ogni database il mese corrente e il prossimo hanno la loro partizione del registro, e quella predefinita è vuota:
+     * agganciare un mese nuovo la rilegge tutta tenendo il blocco forte. Letto con il ruolo dei backup, l'unico che vede
+     * tutte le righe (la RLS vale anche per il proprietario).
+     */
+    private function auditPartitions(DatabaseManager $db, DatabaseNames $databases): void
+    {
+        $month = now()->utc()->startOfMonth();
+        $expected = ['audit.log_'.$month->format('Y_m'), 'audit.log_'.$month->copy()->addMonth()->format('Y_m')];
+        $problems = [];
+        foreach ($databases->names() as $name) {
+            $row = $db->connection($databases->backupConnection($name))->selectOne(
+                'SELECT to_regclass(?) IS NULL AS this_missing, to_regclass(?) IS NULL AS next_missing, EXISTS (SELECT 1 FROM audit.log_default) AS default_used',
+                $expected,
+            );
+            $row = is_object($row) ? $row : (object) [];
+            foreach ([$expected[0] => $row->this_missing ?? true, $expected[1] => $row->next_missing ?? true] as $table => $missing) {
+                if ($missing === true) {
+                    $problems[] = "{$name}: manca {$table} (saas:audit:partitions)";
+                }
+            }
+            if (($row->default_used ?? false) === true) {
+                $problems[] = "{$name}: righe nella partizione predefinita";
+            }
+        }
+        if ($problems !== []) {
+            throw new RuntimeException(implode('; ', $problems));
+        }
+    }
+
+    /**
+     * Su ogni database audit.log, tutte le sue partizioni e app.transactions hanno il trigger attivo che rifiuta il
+     * TRUNCATE (log_no_truncate, transactions_no_truncate). Sempre un errore, mai un avviso: senza, il registro e la prima
+     * nota si svuotano con un'istruzione sola. Legge solo il catalogo (pg_class, pg_inherits, pg_trigger, leggibili da
+     * ogni ruolo) con il ruolo dei backup; se il catalogo non fosse leggibile, l'errore della query è comunque un errore.
+     */
+    private function truncateGuards(DatabaseManager $db, DatabaseNames $databases): void
+    {
+        $problems = [];
+        foreach ($databases->names() as $name) {
+            $rows = $db->connection($databases->backupConnection($name))->select(<<<'SQL'
+                WITH expected AS (
+                    SELECT to_regclass('audit.log') AS rel, 'log_no_truncate'::text AS trg, 'audit.log'::text AS label
+                    UNION ALL
+                    SELECT i.inhrelid::regclass, 'log_no_truncate', i.inhrelid::regclass::text
+                    FROM pg_inherits i WHERE i.inhparent = to_regclass('audit.log')
+                    UNION ALL
+                    SELECT to_regclass('app.transactions'), 'transactions_no_truncate', 'app.transactions'
+                )
+                SELECT e.label FROM expected e
+                WHERE e.rel IS NULL OR NOT EXISTS (
+                    SELECT 1 FROM pg_trigger t
+                    WHERE t.tgrelid = e.rel AND t.tgname = e.trg AND t.tgenabled <> 'D' AND (t.tgtype & 32) <> 0
+                )
+                ORDER BY 1
+                SQL);
+            $missing = array_map(static fn (mixed $row): string => is_object($row) && is_string($row->label ?? null) ? $row->label : '?', $rows);
+            if ($missing !== []) {
+                $problems[] = "{$name}: senza rifiuto del TRUNCATE ".implode(', ', $missing);
+            }
+        }
+        if ($problems !== []) {
+            throw new RuntimeException(implode('; ', $problems));
         }
     }
 

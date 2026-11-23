@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Audit\Console;
 
 use App\Modules\Core\Contracts\DatabaseNames;
+use App\Modules\Core\Contracts\ShortLocks;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\QueryException;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
@@ -81,8 +83,19 @@ final class AuditPruneCommand extends Command
                 );
             });
         }
+        // Cancellare una partizione blocca tutto il registro: si aspetta poco e si riprova (ShortLocks), mai in fila
+        // dietro il backup orario. Se non si riesce si lascia la partizione: la potatura del mese dopo la riprende.
         foreach ($old as $partition) {
-            $owner->statement("DROP TABLE audit.{$partition}");
+            try {
+                ShortLocks::run($owner, static fn (): bool => $owner->statement("DROP TABLE audit.{$partition}"));
+            } catch (QueryException $e) {
+                if (! ShortLocks::isLockTimeout($e)) {
+                    throw $e;
+                }
+                $this->error("Registro in uso (forse dal backup): {$partition} non cancellata, riprova più tardi.");
+
+                return self::FAILURE;
+            }
             $this->line("cancellata {$partition}");
         }
 

@@ -12,6 +12,10 @@ return [
         // Elenco dei database dedicati (pacchetto Database dedicato), fuori dal repository e dalla cartella
         // pubblica. Formato in App\Modules\Core\Database\DatabaseRegistry.
         'dedicated_file' => env('SAAS_DEDICATED_DB_FILE'),
+
+        // Attesa massima di un blocco forte (migrazioni, partizioni, potatura), poi si riprova: tre tentativi in tutto
+        // (App\Modules\Core\Contracts\ShortLocks). Dietro un'istruzione in fila si fermano tutte le query sulla tabella.
+        'lock_timeout' => env('SAAS_DB_LOCK_TIMEOUT', '3s'),
     ],
 
     'auth' => [
