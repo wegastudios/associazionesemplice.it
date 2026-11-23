@@ -17,7 +17,7 @@ final class SchemaGuard {
 	const READ_ONLY = array(
 		'asem_export', 'asem_doc', 'asem_document', 'asem_backup', 'asem_backup_saved', 'asem_privacy_export', 'asem_attachment', 'asem_cert_file', 'asem_item_file',
 		'asem_refund_file', 'asem_card_pdf', 'asem_receipt', 'asem_statement', 'asem_wallet_apple', 'asem_ics', 'asem_qr', 'asem_ticket',
-		'asem_person_search', 'asem_person_context', 'asem_event_slot', 'asem_credit_status', 'asem_dismiss_notice', 'asem_check_updates',
+		'asem_person_search', 'asem_person_context', 'asem_event_slot', 'asem_credit_status', 'asem_dismiss_notice',
 	);
 
 	/** Il lavoro che porta avanti l'aggiornamento: l'unico che gira mentre lo schema non è pronto. */
