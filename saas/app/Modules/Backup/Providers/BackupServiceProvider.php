@@ -9,6 +9,8 @@ use App\Modules\Backup\Backups;
 use App\Modules\Backup\Console\BackupDumpCommand;
 use App\Modules\Backup\Console\BackupPruneCommand;
 use App\Modules\Backup\Console\BackupRestoreTestCommand;
+use App\Modules\Backup\Contracts\BackupCompression;
+use App\Modules\Backup\PgDumpCompression;
 use App\Modules\Core\Contracts\DatabaseNames;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Foundation\Application;
@@ -25,7 +27,9 @@ final class BackupServiceProvider extends ServiceProvider
             $app->make(DatabaseManager::class),
             $app->make(BackupConfig::class),
             Storage::disk('backups'),
+            $app->make(PgDumpCompression::class),
         ));
+        $this->app->bind(BackupCompression::class, PgDumpCompression::class);
     }
 
     public function boot(): void
