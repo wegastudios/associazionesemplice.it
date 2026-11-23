@@ -35,7 +35,7 @@ final class RequeueWebhookEventsCommand extends Command
             }
             try {
                 /** @var array{requeued: int, stale: int} $r */
-                $r =$context->run($id, static fn (): array => app(OnlinePayments::class)->requeueStaleEvents(PaymentWebhookHealth::REQUEUE_MINUTES, PaymentWebhookHealth::STALE_MINUTES));
+                $r = $context->run($id, static fn (): array => app(OnlinePayments::class)->requeueStaleEvents(PaymentWebhookHealth::REQUEUE_MINUTES, PaymentWebhookHealth::STALE_MINUTES));
                 $stale += $r['stale'];
                 if ($r['requeued'] > 0) {
                     $this->line("{$id}: {$r['requeued']} eventi rimessi in coda");
