@@ -189,7 +189,7 @@ LongJob::run( Backup::JOB, 0.0 );
 $bj_st = LongJob::cancel( Backup::JOB );
 asem_ok( 'cancelled' === $bj_st['status'] && ! $bj_work() && '' === Backup::ready_file(), 'copia a tappe: «Annulla» ferma la copia e cancella i file già scritti' );
 $bj_html = asem_render( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ), 'name="files" value="1"' );
-asem_ok( false !== strpos( $bj_html, 'Lavoro annullato.' ), 'copia a tappe: dopo l\'annullamento la pagina lo dice e si può fare una copia nuova' );
+asem_ok( false !== strpos( $bj_html, 'Operazione annullata.' ), 'copia a tappe: dopo l\'annullamento la pagina lo dice e si può fare una copia nuova' );
 
 // ---------- Pulizia delle cartelle di lavoro abbandonate ----------
 $bj_stale = Backup::dir() . '/' . Backup::WORK_PREFIX . str_repeat( 'c', 32 );

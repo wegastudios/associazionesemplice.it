@@ -13,7 +13,10 @@ const props = defineProps({ q: String, type: String, status: String, types: Arra
 const search = ref(props.q ?? '');
 const tools = ref(false);
 let timer = null;
-const filter = (changes) => router.get('/gestionale/soci', { q: search.value, tipo: props.type, stato: props.status, ...changes }, { preserveState: true, replace: true });
+// Ricerca e filtri chiedono al server solo l'elenco: contatori, anno e avvisi restano quelli della pagina.
+const filter = (changes) => router.get('/gestionale/soci', { q: search.value, tipo: props.type, stato: props.status, ...changes }, {
+    preserveState: true, replace: true, only: ['q', 'type', 'status', 'rows', 'next', 'prev'],
+});
 const onSearch = () => {
     clearTimeout(timer);
     timer = setTimeout(() => filter({ q: search.value }), 300);

@@ -15,7 +15,7 @@ const badge = { valid: 'bg-salvia/15', expiring: 'bg-giallo/25', expired: 'bg-da
         <p class="mb-6 text-sm text-muted">Scadenze dei soci; «in scadenza» vuol dire entro {{ warnDays }} giorni. Qui non si aprono i dati sanitari.</p>
         <div class="mb-4 flex flex-wrap gap-2 text-sm font-semibold">
             <button v-for="f in filters" :key="f[0]" type="button" class="rounded-lg border border-line px-3 py-1.5"
-                :class="filter === f[0] ? 'bg-accent text-accent-ink' : 'bg-card'" @click="router.get('/gestionale/certificati', { stato: f[0] })">{{ f[1] }}</button>
+                :class="filter === f[0] ? 'bg-accent text-accent-ink' : 'bg-card'" @click="router.get('/gestionale/certificati', { stato: f[0] }, { only: ['filter', 'rows'] })">{{ f[1] }}</button>
         </div>
         <div class="card overflow-x-auto">
             <table class="w-full text-sm">
