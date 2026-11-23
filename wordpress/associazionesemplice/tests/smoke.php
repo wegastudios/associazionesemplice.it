@@ -14572,6 +14572,7 @@ require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme de
 require __DIR__ . '/smoke_letture_a_blocchi.php'; // Bacheca, elenco e scheda di corsi ed eventi: letture a blocchi uguali a quelle una per una
 require __DIR__ . '/smoke_tessere_in_blocco.php'; // tessere in PDF per molti soci: query in blocco, QR a un bit, parti da 500
 require __DIR__ . '/smoke_scheda_evento.php'; // scheda di un evento con anagrafica grande: ricerca al posto delle tendine, date a blocchi
+require __DIR__ . '/smoke_azioni.php'; // azioni di admin-post e admin-ajax: con un'azione chiesta si registra solo la sua, e ognuna resta raggiungibile
 require __DIR__ . '/smoke_db_engine.php'; // motore delle tabelle: controllo, avviso e conversione a tappe in InnoDB
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_schema_e_export.php'; // esportazioni a blocchi, saldi una volta per richiesta, schema a tappe

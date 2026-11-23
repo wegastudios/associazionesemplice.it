@@ -13,10 +13,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class WpDashboard {
 
-	public static function register(): void {
-		add_action( 'wp_dashboard_setup', array( __CLASS__, 'setup' ) );
-	}
-
 	public static function setup(): void {
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			return;
