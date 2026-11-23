@@ -52,6 +52,20 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        // Servizio di invio principale (Emailit), acceso solo con SAAS_MAIL_PRIMARY=emailit e la chiave (docs/POSTA_EMAILIT.md).
+        // Solo dal file d'ambiente, mai da /admin/piattaforma: la chiave non sta nel database. Mittente: quello di sempre.
+        // Porta 587 con STARTTLS; porta 465 con TLS (EMAILIT_SCHEME=smtps). Le voci lasciate vuote prendono i valori di base.
+        'emailit' => [
+            'transport' => 'smtp',
+            'scheme' => env('EMAILIT_SCHEME') ?: null,
+            'host' => env('EMAILIT_HOST') ?: 'smtp.emailit.com',
+            'port' => (int) (env('EMAILIT_PORT') ?: 587),
+            'username' => env('EMAILIT_USERNAME') ?: 'emailit',
+            'password' => env('EMAILIT_PASSWORD'),
+            'timeout' => (int) env('MAIL_TIMEOUT', 10),
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

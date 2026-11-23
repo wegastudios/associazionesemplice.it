@@ -7,6 +7,7 @@ namespace App\Modules\Core\Console;
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Mail\PrimaryMailer;
 use App\Modules\Portale\Contracts\WebRuntimeProbe;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
@@ -24,12 +25,12 @@ use Throwable;
 #[AsCommand(name: 'saas:health')]
 final class HealthCommand extends Command
 {
-    /** Posta in coda: soglie di attesa del messaggio più vecchio (secondi) e quota dell'ora oltre la quale si avvisa. */
+    /** Posta in coda: soglie di attesa del messaggio più vecchio (secondi) e quota dell'ora o del giorno oltre la quale si avvisa. */
     private const URGENT_MAX_WAIT = 5 * 60;
 
     private const BULK_MAX_WAIT = 6 * 3600;
 
-    private const HOUR_WARNING_SHARE = 0.9;
+    private const USAGE_WARNING_SHARE = 0.9;
 
     protected $signature = 'saas:health {--skip-migrations : Non controllare le migrazioni (prima di eseguirle)}
         {--mail-warnings-only : Problemi della posta in coda come avvisi (rilascio: non dipendono dalla versione)}';
@@ -63,14 +64,20 @@ final class HealthCommand extends Command
             'coda della posta urgente' => fn () => $this->mailWait($db, MailQueue::URGENT, self::URGENT_MAX_WAIT),
             'coda della posta massiva' => fn () => $this->mailWait($db, MailQueue::BULK, self::BULK_MAX_WAIT),
             'invio della posta' => $this->mailBlocked(...),
+            'servizio di invio' => $this->mailPrimaryOff(...),
             'posta non partita' => fn () => $this->mailFailed($db),
         ];
-        // Sempre un avviso: gli invii vicini al tetto orario.
-        $warnOnly = ['invii della posta nell\'ora'];
+        // Sempre avvisi: gli invii vicini ai tetti, il ripiego che dura.
+        $usage = [
+            'invii della posta nell\'ora' => $this->mailHourUsage(...),
+            'invii del giorno' => $this->mailDayUsage(...),
+            'ripiego della posta' => $this->mailFallback(...),
+        ];
+        $warnOnly = array_keys($usage);
         if ($this->option('mail-warnings-only') === true) {
             $warnOnly = [...$warnOnly, ...array_keys($mailChecks)];
         }
-        $checks += $mailChecks + ['invii della posta nell\'ora' => $this->mailHourUsage(...)];
+        $checks += $mailChecks + $usage;
 
         if (! $this->option('skip-migrations')) {
             foreach ($databases->names() as $name) {
@@ -229,15 +236,55 @@ final class HealthCommand extends Command
     private function mailHourUsage(): void
     {
         $usage = MailQueue::hourUsage();
-        if ($usage !== null && $usage[0] > $usage[1] * self::HOUR_WARNING_SHARE) {
+        if ($usage !== null && $usage[0] > $usage[1] * self::USAGE_WARNING_SHARE) {
             throw new RuntimeException(sprintf('%d su %d nell\'ora in corso (%s)', $usage[0], $usage[1], MailQueue::mailer()));
         }
     }
 
-    /** In produzione niente chiave locale, niente posta nel log; con SFTP l'impronta dell'host è obbligatoria. */
+    /** Il servizio di invio principale è spento per errori di fila: la posta parte dal ripiego. */
+    private function mailPrimaryOff(): void
+    {
+        $until = PrimaryMailer::enabled() ? MailQueue::blockedUntil(PrimaryMailer::NAME) : null;
+        if ($until !== null) {
+            throw new RuntimeException(sprintf('spento per errori fino alle %s, posta sul ripiego (%s)', now()->setTimestamp($until)->format('H:i'), PrimaryMailer::NAME));
+        }
+    }
+
+    /** Invii del giorno UTC oltre il 90% del tetto del servizio di invio principale. */
+    private function mailDayUsage(): void
+    {
+        $usage = PrimaryMailer::enabled() ? MailQueue::usage(86400, PrimaryMailer::NAME) : null;
+        if ($usage !== null && $usage[0] > $usage[1] * self::USAGE_WARNING_SHARE) {
+            throw new RuntimeException(sprintf('%d su %d nel giorno UTC (%s)', $usage[0], $usage[1], PrimaryMailer::NAME));
+        }
+    }
+
+    /** La posta parte dal ripiego da più di un'ora e il servizio principale non è ancora disponibile. */
+    private function mailFallback(): void
+    {
+        if (! PrimaryMailer::enabled()) {
+            return;
+        }
+        $since = PrimaryMailer::fallbackSince();
+        $unavailable = PrimaryMailer::dayFullUntil() !== null || MailQueue::blockedUntil(PrimaryMailer::NAME) !== null || PrimaryMailer::errors() >= PrimaryMailer::MAX_ERRORS;
+        if ($since !== null && $unavailable && now()->getTimestamp() - $since > 3600) {
+            throw new RuntimeException(sprintf('posta sul ripiego (%s) da %d minuti', MailQueue::mailer(), intdiv(now()->getTimestamp() - $since, 60)));
+        }
+    }
+
+    /**
+     * In produzione niente chiave locale, niente posta nel log; con SFTP l'impronta dell'host è obbligatoria. Ovunque:
+     * il servizio di invio principale scelto deve avere la sua chiave.
+     */
     private function productionConfig(): void
     {
         $problems = [];
+        $primary = config('saas.mail_queue.primary');
+        if (! in_array($primary, ['cpanel', PrimaryMailer::NAME], true)) {
+            $problems[] = 'SAAS_MAIL_PRIMARY sconosciuto: vale cpanel o '.PrimaryMailer::NAME;
+        } elseif ($primary === PrimaryMailer::NAME && ! PrimaryMailer::enabled()) {
+            $problems[] = 'SAAS_MAIL_PRIMARY='.PrimaryMailer::NAME.' senza chiave (EMAILIT_PASSWORD): la posta resta sul mailer di sempre';
+        }
         $disk = config('filesystems.disks.backups');
         if (is_array($disk) && ($disk['driver'] ?? null) === 'sftp' && (! is_string($disk['hostFingerprint'] ?? null) || trim($disk['hostFingerprint']) === '')) {
             $problems[] = 'impronta dell\'host SFTP dei backup mancante (SAAS_BACKUP_SFTP_FINGERPRINT)';
