@@ -179,7 +179,8 @@ function publicSessionCookies(TestResponse $response): array
 {
     $out = [];
     foreach ($response->headers->getCookies() as $cookie) {
-        if ($cookie->getName() !== 'as_socio') {
+        // L'accesso del socio e il cookie del token CSRF per JavaScript (leggibile per scelta) non sono la sessione.
+        if (! in_array($cookie->getName(), ['as_socio', 'XSRF-TOKEN'], true)) {
             $out[$cookie->getName()] = $cookie;
         }
     }
