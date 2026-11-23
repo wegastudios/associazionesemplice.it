@@ -64,6 +64,19 @@ it('fa cambiare le impostazioni del tesseramento solo a titolare e amministrator
     $this->get('/gestionale/soci/nuovo')->assertInertia(fn (Assert $page) => $page->where('settings.start_month', 9)->where('settings.fee', '25,00'));
 });
 
+it('calcola il primo numero libero con la scheda nuova; per una scheda esistente solo su richiesta', function (): void {
+    [$org, $user] = sociOperator(OrgRole::Operator);
+    $id = $this->orgContext()->run($org->id, fn () => Person::create(['first_name' => 'Anna', 'last_name' => 'Rossi', 'card_number' => '1'])->id);
+
+    $this->actingAs($user)->get('/gestionale/soci/nuovo')->assertInertia(fn (Assert $page) => $page->where('firstFreeCard', '2'));
+    $this->get("/gestionale/soci/{$id}")->assertInertia(fn (Assert $page) => $page->where('firstFreeCard', null));
+    $this->getJson('/gestionale/soci/primo-numero-libero')->assertOk()->assertExactJson(['card' => '2']);
+
+    $acc = $this->createUser('contabile@example.com', twoFactor: true);
+    $this->addOperator($org, $acc, OrgRole::Accountant);
+    $this->actingAs($acc)->getJson('/gestionale/soci/primo-numero-libero')->assertForbidden();
+});
+
 it('non apre la scheda di un\'altra associazione', function (): void {
     [, $user] = sociOperator(OrgRole::Owner);
     $other = $this->createOrg('Circolo Beta');
