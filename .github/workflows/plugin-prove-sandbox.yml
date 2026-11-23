@@ -1,8 +1,7 @@
 name: Plugin sandbox tests
 
-# Due prove che non stanno in plugin.yml perché hanno bisogno di un Stripe vero (in prova) o di un browser:
-#  - «Rimborso Stripe in sandbox»: solo su push a main o avvio manuale, mai su pull request, e solo se esiste il segreto STRIPE_TEST_SECRET.
-#  - «Schermate dei pannelli»: anche sulle pull request, senza segreti; le immagini si scaricano dall'artefatto del job.
+# «Schermate dei pannelli»: serve un browser; gira anche sulle pull request, senza segreti; le immagini si scaricano dall'artefatto del job.
+# La prova del rimborso Stripe in sandbox (segreto STRIPE_TEST_SECRET) sta in plugin-prove-stripe.yml: gira solo quando cambiano i file dei pagamenti Stripe, o a mano.
 
 on:
   push:
@@ -16,105 +15,6 @@ permissions:
   contents: read
 
 jobs:
-  stripe-refund:
-    name: Rimborso Stripe in sandbox
-    # Mai su pull request (quindi mai da fork): il segreto esiste solo per i push a main e gli avvii manuali di questo repository.
-    if: github.event_name != 'pull_request' && github.repository == 'wegastudios/associazionesemplice.it'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    concurrency:
-      group: stripe-sandbox
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Check the Stripe test key (skip when the secret is missing)
-        id: gate
-        shell: bash
-        env:
-          STRIPE_TEST_SECRET: ${{ secrets.STRIPE_TEST_SECRET }}
-        run: |
-          if [ -z "$STRIPE_TEST_SECRET" ]; then
-            echo "Il segreto STRIPE_TEST_SECRET non esiste: la prova del rimborso Stripe viene saltata."
-            echo "have=false" >> "$GITHUB_OUTPUT"
-            {
-              echo "### Rimborso Stripe in sandbox"
-              echo "Saltato: il segreto GitHub STRIPE_TEST_SECRET non esiste, quindi il rimborso non è stato provato."
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          key="$(printf '%s' "$STRIPE_TEST_SECRET" | tr -d '[:space:]')"
-          echo "::add-mask::$key"
-          if ! [[ "$key" =~ ^sk_test_[A-Za-z0-9]+$ ]]; then
-            echo "::error::STRIPE_TEST_SECRET non è una chiave segreta di prova (deve iniziare per sk_test_): mi fermo senza chiamare Stripe."
-            echo "have=false" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-          # La chiave arriva allo script PHP da un file (non dalla riga di comando né dall'ambiente del contenitore); lo script lo cancella, e lo cancella anche l'ultimo passo.
-          umask 022
-          printf '%s' "$key" > .github/scripts/.stripe-key
-          echo "have=true" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-node@v4
-        if: steps.gate.outputs.have == 'true'
-        with:
-          node-version: 20
-
-      - name: Build the packages and start WordPress (free + Pro)
-        if: steps.gate.outputs.have == 'true'
-        shell: bash
-        run: |
-          bash wordpress/build.sh wordpress/dist
-          cd wordpress/dist
-          cat > .wp-env.json <<'JSON'
-          {
-            "phpVersion": "8.1",
-            "plugins": [
-              "./free/associazionesemplice",
-              "./pro/associazionesemplice-pro"
-            ],
-            "mappings": {
-              "wp-content/sandbox-scripts": "../../.github/scripts"
-            },
-            "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
-          }
-          JSON
-          npx --yes @wordpress/env start
-
-      - name: Refund a Stripe test payment from the plugin
-        if: steps.gate.outputs.have == 'true'
-        shell: bash
-        working-directory: wordpress/dist
-        run: |
-          npx --yes @wordpress/env run cli wp eval-file wp-content/sandbox-scripts/stripe-sandbox.php 2>&1 | tee "$RUNNER_TEMP/stripe-sandbox.log"
-
-      - name: The key appears nowhere in the output
-        if: steps.gate.outputs.have == 'true' && always()
-        shell: bash
-        env:
-          STRIPE_TEST_SECRET: ${{ secrets.STRIPE_TEST_SECRET }}
-        run: |
-          key="$(printf '%s' "$STRIPE_TEST_SECRET" | tr -d '[:space:]')"
-          echo "::add-mask::$key"
-          if [ -f "$RUNNER_TEMP/stripe-sandbox.log" ] && grep -qF -- "$key" "$RUNNER_TEMP/stripe-sandbox.log"; then
-            echo "::error::La chiave compare nell'output della prova."
-            exit 1
-          fi
-          echo "La chiave non compare nell'output della prova."
-
-      - name: Debug log
-        if: failure() && steps.gate.outputs.have == 'true'
-        shell: bash
-        working-directory: wordpress/dist
-        run: npx --yes @wordpress/env run cli sh -c 'tail -50 wp-content/debug.log 2>/dev/null || true'
-
-      - name: Remove the key file
-        if: always()
-        shell: bash
-        run: rm -f .github/scripts/.stripe-key
-
   screenshots:
     name: Schermate dei pannelli
     runs-on: ubuntu-latest
