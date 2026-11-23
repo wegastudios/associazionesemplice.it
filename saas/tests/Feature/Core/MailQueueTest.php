@@ -172,6 +172,32 @@ it('il rifiuto per limite orario dell\'account è sempre l\'interruttore, anche 
     expect(MailQueue::blockedUntil('smtp'))->toBe(now()->addHour()->getTimestamp());
 });
 
+it('riconosce il limite orario anche con «exceeded» accanto a «emails per»', function (): void {
+    $job = mqBulk();
+    mqThrough($job, static fn () => throw new TransportException('Expected response code "250" but got code "550", with message "550 Sender has exceeded the allowed number of emails per hour".', 550));
+
+    $job->assertReleased(3600)->assertNotFailed();
+    expect(MailQueue::blockedUntil('smtp'))->not->toBeNull();
+});
+
+it('«quota exceeded» con 5.2.2 fa fallire solo quel messaggio, senza interruttore', function (): void {
+    $job = mqBulk();
+    mqThrough($job, static fn () => throw new TransportException('Expected response code "250/251/252" but got code "552", with message "552 5.2.2 <mario@example.com>: mailbox quota exceeded".', 552));
+
+    $job->assertFailed()->assertNotReleased();
+    expect(MailQueue::blockedUntil('smtp'))->toBeNull()
+        ->and($job->job->failedWith->getMessage())->not->toContain('mario@example.com');
+});
+
+it('«mailbox full» con 4.2.2 rilascia solo quel messaggio, senza interruttore', function (): void {
+    $job = mqBulk();
+    mqThrough($job, static fn () => throw new TransportException('Expected response code "250/251/252" but got code "452", with message "452 4.2.2 mailbox full".', 452));
+
+    $job->assertReleased()->assertNotFailed();
+    expect(MailQueue::blockedUntil('smtp'))->toBeNull()
+        ->and(mqThrough(mqBulk()))->toBeTrue();
+});
+
 it('con la posta ferma passa un solo urgente ogni 10 minuti come prova; i massivi mai', function (): void {
     MailQueue::block('smtp');
 
