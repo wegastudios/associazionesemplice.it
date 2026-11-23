@@ -15,7 +15,7 @@ use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
-use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\Exception\TransportException;
 
 require_once __DIR__.'/PortalHelpers.php';
 
@@ -71,7 +71,7 @@ it('l\'avviso va in coda e un errore all\'invio non consuma la prenotazione', fu
 
     // Il server di posta non risponde: l'errore torna al lavoro (che riprova) e la prenotazione resta libera.
     config(['mail.mailers.rotto' => ['transport' => 'smtp', 'host' => '127.0.0.1', 'port' => 9, 'timeout' => 1], 'mail.default' => 'rotto']);
-    expect(fn () => $job->handle(app(DatabaseManager::class)))->toThrow(TransportExceptionInterface::class);
+    expect(fn () => $job->handle(app(DatabaseManager::class)))->toThrow(TransportException::class);
     expect(DB::table('core.org_notices')->where('org_id', $orgId)->count())->toBe(0);
 
     Notification::fake();
