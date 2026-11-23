@@ -11,12 +11,12 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 /*
- * Pagine lunghe ma legittime con i dati della demo (400 soci, quattro anni fiscali): ognuna ha i tempi massimi delle
+ * Pagine lunghe ma legittime con i dati della demo ridotti per stare nei tempi della CI (40 soci, quattro anni fiscali; con 400 soci la sola preparazione supera i 13 minuti): ognuna ha i tempi massimi delle
  * operazioni lunghe (middleware «db.long») e non si ferma a 30 secondi. Durata e query di ognuna finiscono nel log di CI.
  */
 
 it('le pagine lunghe del browser hanno i tempi delle operazioni lunghe: durata e query con i dati della demo', function (): void {
-    config(['saas.demo.enabled' => true, 'saas.demo.people' => 400]);
+    config(['saas.demo.enabled' => true, 'saas.demo.people' => 40]);
     // Le altre connessioni (proprietario) non aspettano per sempre la transazione del test: se succede, l'errore si vede.
     $owner = DB::connection(app(DatabaseNames::class)->ownerConnection(null));
     $owner->statement("SET lock_timeout = '20s'");
@@ -33,7 +33,7 @@ it('le pagine lunghe del browser hanno i tempi delle operazioni lunghe: durata e
     $date = date('d/m/Y', (int) strtotime(DemoScale::day($year, 10)));
     $people = "Nome;Cognome;Email\n";
     $ledger = "Data;Importo;Conto\n";
-    for ($i = 0; $i < 1000; $i++) {
+    for ($i = 0; $i < 100; $i++) {
         $people .= "Nome{$i};Importato{$i};imp{$i}@example.com\n";
         $ledger .= "{$date};1".($i % 90).",00;Cassa importata\n";
     }
@@ -56,8 +56,8 @@ it('le pagine lunghe del browser hanno i tempi delle operazioni lunghe: durata e
         'rendiconto anno aperto' => fn () => $this->get('/gestionale/rendiconto/'.($year - 1)),
         'verifica ricevute' => fn () => $this->get('/gestionale/verifica-ricevute?anno='.($year - 2)),
         'verifica ricevute, fissa i PDF' => fn () => $this->post('/gestionale/verifica-ricevute/fissa'),
-        'importazione soci (1000 righe)' => fn () => $this->post('/gestionale/soci/importa', ['file' => UploadedFile::fake()->createWithContent('soci.csv', $people), 'default_type' => 'ordinary', 'apply' => true]),
-        'importazione prima nota (1000 righe)' => fn () => $this->post('/gestionale/prima-nota/importa', ['file' => UploadedFile::fake()->createWithContent('pn.csv', $ledger), 'apply' => true]),
+        'importazione soci (100 righe)' => fn () => $this->post('/gestionale/soci/importa', ['file' => UploadedFile::fake()->createWithContent('soci.csv', $people), 'default_type' => 'ordinary', 'apply' => true]),
+        'importazione prima nota (100 righe)' => fn () => $this->post('/gestionale/prima-nota/importa', ['file' => UploadedFile::fake()->createWithContent('pn.csv', $ledger), 'apply' => true]),
         'chiusura anno fiscale' => fn () => $this->post('/gestionale/esercizi/'.($year - 1).'/chiudi'),
         'archivio ricevute dell\'anno' => fn () => $this->post('/gestionale/archivio/'.($year - 2)),
     ];
@@ -77,5 +77,5 @@ it('le pagine lunghe del browser hanno i tempi delle operazioni lunghe: durata e
         fwrite(STDERR, "[H2 misure] {$name}: {$ms} ms, {$queries} query\n");
     }
 
-    fwrite(STDERR, "\n[H2 misure, demo 400 soci] ".implode(' · ', $report)."\n");
+    fwrite(STDERR, "\n[H2 misure, demo 40 soci] ".implode(' · ', $report)."\n");
 });
