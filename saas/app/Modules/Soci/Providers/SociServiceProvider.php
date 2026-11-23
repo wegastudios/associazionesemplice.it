@@ -79,21 +79,19 @@ final class SociServiceProvider extends ServiceProvider
         // Conferma della domanda dal link ricevuto per email: 10 al minuto dallo stesso indirizzo.
         RateLimiter::for('applications-confirm', static fn (Request $request): Limit => Limit::perMinute(10)->by('application-confirm-ip|'.$request->ip()));
 
-        // Promemoria in coda: frequenza massima per associazione e in totale (regolabile da configurazione).
-        RateLimiter::for('reminder-mail', static function (object $job): array {
+        // Promemoria in coda: oltre al tetto della posta massiva (ThrottledMail), un limite per associazione da configurazione.
+        RateLimiter::for('reminder-mail', static function (object $job): Limit {
             $org = $job instanceof SendReminderEmail ? $job->orgId : '';
 
-            return [
-                Limit::perMinute(self::limit('saas.reminders.per_minute', 20))->by('reminder-mail'),
-                Limit::perMinute(self::limit('saas.reminders.per_org_per_minute', 5))->by('reminder-mail|'.$org),
-            ];
+            return Limit::perMinute(self::limit('saas.reminders.per_org_per_minute', 5))->by('reminder-mail|'.$org);
         });
 
         if ($this->app->runningInConsole()) {
             $this->commands([SendRemindersCommand::class, PruneApplicationsCommand::class]);
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 // Il comando si limita ad accodare: se si inchioda, il blocco di sovrapposizione si libera dopo 30 minuti.
-                $schedule->command('saas:reminders:send')->dailyAt('08:23')->withoutOverlapping(30);
+                // Alle 10, fuori dalle ore in cui portale e gestionale mandano gli altri avvisi del mattino.
+                $schedule->command('saas:reminders:send')->dailyAt('10:23')->withoutOverlapping(30);
                 // Domande mai confermate (30 giorni) o respinte (90 giorni): si cancellano ogni notte.
                 $schedule->command('saas:applications:prune')->dailyAt('03:41')->withoutOverlapping(30);
             });
