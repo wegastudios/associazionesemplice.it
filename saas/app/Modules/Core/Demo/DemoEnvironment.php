@@ -6,6 +6,7 @@ namespace App\Modules\Core\Demo;
 
 use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\DemoSeeder;
+use App\Modules\Core\Contracts\OrgAccessChanged;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
@@ -152,5 +153,6 @@ final readonly class DemoEnvironment
             'org_id' => $orgId, 'rev' => 1, 'status' => 'active', 'until' => '2099-12-31',
             'claims' => json_encode($claims, JSON_THROW_ON_ERROR), 'token' => 'demo', 'received_at' => now(),
         ]], ['org_id'], ['rev', 'status', 'until', 'claims', 'token', 'received_at']);
+        event(new OrgAccessChanged($orgId));
     }
 }

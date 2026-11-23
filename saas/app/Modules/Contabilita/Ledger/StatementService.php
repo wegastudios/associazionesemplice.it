@@ -64,17 +64,24 @@ final readonly class StatementService
         $totalIncome = array_sum(array_column($income, 'cents'));
         $totalExpense = array_sum(array_column($expense, 'cents'));
 
+        // Saldi a ritroso dal saldo di oggi (app.account_balances: saldo iniziale più tutti i movimenti non stornati,
+        // tenuto dai trigger): si tolgono i movimenti da inizio anno in poi, senza rileggere quelli degli anni prima.
+        // Stesso risultato della somma di tutti i movimenti precedenti. I movimenti si sommano per conto prima di unire i
+        // saldi: la riga del saldo cambia a ogni movimento e non va riletta per ogni movimento.
         $accounts = $c->select(<<<'SQL'
-            SELECT a.name,
-                   a.opening_cents + coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END)
-                       FILTER (WHERE t.tx_date < ?), 0) AS opening,
-                   a.opening_cents + coalesce(sum(CASE WHEN t.type IN ('income', 'transfer_in') THEN t.amount_cents ELSE -t.amount_cents END)
-                       FILTER (WHERE t.tx_date <= ?), 0) AS closing
+            SELECT a.name, b.balance_cents - coalesce(m.since_start, 0) AS opening, b.balance_cents - coalesce(m.after_end, 0) AS closing
             FROM app.accounts a
-            LEFT JOIN app.transactions t ON t.org_id = a.org_id AND t.account_id = a.id AND t.voided_at IS NULL
-            GROUP BY a.id, a.name, a.opening_cents, a.sort_order
+            JOIN app.account_balances b ON b.org_id = a.org_id AND b.account_id = a.id
+            LEFT JOIN (
+                SELECT account_id,
+                       sum(CASE WHEN type IN ('income', 'transfer_in') THEN amount_cents ELSE -amount_cents END) AS since_start,
+                       sum(CASE WHEN type IN ('income', 'transfer_in') THEN amount_cents ELSE -amount_cents END) FILTER (WHERE tx_date > ?) AS after_end
+                FROM app.transactions
+                WHERE voided_at IS NULL AND tx_date >= ?
+                GROUP BY account_id
+            ) m ON m.account_id = a.id
             ORDER BY a.sort_order, a.name
-        SQL, [$fy->starts_on, $fy->ends_on]);
+        SQL, [$fy->ends_on, $fy->starts_on]);
 
         return [
             'year' => $year,
