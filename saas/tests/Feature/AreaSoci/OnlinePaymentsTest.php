@@ -911,7 +911,7 @@ function stripeEvent(object $test, array $event, ?string $signature = null): Tes
 /** Esegue il lavoro in coda come il lavoratore: dentro la sua associazione. */
 function runSettlement(object $test, SettleOnlinePayment $job): void
 {
-    $test->orgContext()->run($test->org->id, fn () => $job->handle(app(OnlinePayments::class)));
+    app(OrgContext::class)->run($test->org->id, fn () => $job->handle(app(OnlinePayments::class)));
 }
 
 /** Il socio avvia il pagamento con Stripe delle voci indicate (null = tutte quelle dovute). */
@@ -919,7 +919,7 @@ function memberStripeCheckout(object $test, string $session, ?int $only = null):
 {
     saveStripe($test);
     $cookie = memberCookie($test, $test->anna->id);
-    $keys = $test->orgContext()->run($test->org->id, fn () => array_column(app(OnlinePayments::class)->dues([$test->anna->id]), 'key'));
+    $keys = app(OrgContext::class)->run($test->org->id, fn () => array_column(app(OnlinePayments::class)->dues([$test->anna->id]), 'key'));
     Http::fake(['api.stripe.com/v1/checkout/sessions' => Http::response(['id' => $session, 'url' => 'https://checkout.stripe.com/c/pay/'.$session])]);
     $test->withUnencryptedCookie('as_socio', $cookie)->post($test->host.'/area/paga', ['keys' => $only === null ? $keys : array_slice($keys, 0, $only), 'provider' => 'stripe'])
         ->assertRedirect('https://checkout.stripe.com/c/pay/'.$session);
