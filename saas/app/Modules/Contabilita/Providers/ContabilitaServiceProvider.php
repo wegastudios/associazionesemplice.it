@@ -71,10 +71,8 @@ final class ContabilitaServiceProvider extends ServiceProvider
             // Le ricevute emesse prima delle ricevute definitive si fissano a lotti, un lotto per associazione a ogni giro.
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('saas:receipts:fix')->hourlyAt(23)->withoutOverlapping(50);
-                $schedule->command('saas:archive:verify')->weeklyOn(0, '04:07')->withoutOverlapping();
-                // Verifica completa dei PDF, un blocco per associazione: alle 02:23, lontano dagli altri lavori della notte.
-                $schedule->command('saas:receipts:verify')->dailyAt('02:23')->withoutOverlapping(60);
-                $schedule->command('saas:balances:verify')->dailyAt('03:47')->withoutOverlapping(60);
+                // Verifica dei PDF (un blocco per associazione), dei saldi e, la domenica, degli archivi: dentro
+                // `saas:night` (Core), uno dopo l'altro.
             });
         }
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');

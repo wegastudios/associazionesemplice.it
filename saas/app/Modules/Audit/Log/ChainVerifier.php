@@ -92,8 +92,10 @@ final readonly class ChainVerifier
                 return self::result(false, $expected - 1, $expected, 'righe mancanti in fondo alla catena');
             }
 
-            // Una riga con un numero già usato verrebbe saltata dalla lettura per numero: si contano tutte.
-            if ($connection->table('audit.log')->where('org_id', $orgId)->count() !== $headSeq - $anchorSeq) {
+            // Una riga con un numero già usato verrebbe saltata dalla lettura per numero: si contano quelle del tratto
+            // appena percorso (dal punto di controllo, non tutto il registro ogni notte). Un numero ripetuto più
+            // indietro lo trova la verifica dell'intera catena, a rotazione.
+            if ($connection->table('audit.log')->where('org_id', $orgId)->where('seq', '>', $startSeq)->count() !== $headSeq - $startSeq) {
                 return self::result(false, $expected - 1, null, 'righe in più nella catena');
             }
 
