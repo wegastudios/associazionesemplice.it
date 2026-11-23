@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Org;
 
 use App\Modules\Core\Access\OrgMembers;
+use App\Modules\Core\Contracts\OrgAccessChanged;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Models\Org;
@@ -90,5 +91,7 @@ final readonly class DatabaseOrgDirectory implements OrgDirectory
         } else {
             $orgs->whereNull('suspended_at')->update(['suspended_at' => now()]);
         }
+        // Chi tiene i diritti in cache (sola lettura, pacchetti) li dimentica: la sospensione vale dalla richiesta dopo.
+        event(new OrgAccessChanged($orgId));
     }
 }

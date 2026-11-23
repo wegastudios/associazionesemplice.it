@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Providers;
 
+use App\Modules\Core\Contracts\OrgAccessChanged;
 use App\Modules\Portale\Console\ImportPortalDbCommand;
 use App\Modules\Portale\Console\PurgeExpiredCommand;
 use App\Modules\Portale\Console\SendLifecycleNoticesCommand;
@@ -27,6 +28,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -45,6 +47,11 @@ final class PortaleServiceProvider extends ServiceProvider
 
     public function boot(Router $router): void
     {
+        // Stato o diritti cambiati fuori dal portale (sospensione, chiusura, demo): via la copia dei diritti (H20).
+        Event::listen(OrgAccessChanged::class, static function (OrgAccessChanged $e): void {
+            resolve(EntitlementReader::class)->forget($e->orgId);
+        });
+
         $router->aliasMiddleware('package', RequirePackage::class);
         $router->aliasMiddleware('exports.allowed', RequireFullAccount::class);
 

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Catalogo;
 
+use App\Modules\Core\Contracts\SharedCache;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PublishedCatalog;
 use App\Modules\Portale\Contracts\PortalNotifier;
 use Illuminate\Database\DatabaseManager;
 use stdClass;
+use Throwable;
 
 /**
  * Catalogo in vigore: l'ultima revisione pubblicata dall'amministrazione (core.catalog_revisions). Finché nessuno ha
@@ -17,6 +19,8 @@ use stdClass;
  */
 final class DbCatalog implements Catalog
 {
+    private const SHARED = 'saas:catalog:published';
+
     private ?PublishedCatalog $cache = null;
 
     public function __construct(private readonly DatabaseManager $db, private readonly ConfigCatalog $initial, private readonly PortalNotifier $notifier) {}
@@ -24,12 +28,46 @@ final class DbCatalog implements Catalog
     /** Solo lettura: non scrive e non chiama il portale. Le revisioni nuove nascono in `align()` e alla pubblicazione. */
     public function published(): PublishedCatalog
     {
-        if ($this->cache === null) {
-            $row = $this->db->connection('pgsql')->table('core.catalog_revisions')->orderByDesc('rev')->first(['rev', 'document']);
-            $this->cache = $row === null ? $this->initial->published() : self::fromRow($row->rev, $row->document);
+        return $this->cache ??= $this->shared() ?? $this->readAndShare();
+    }
+
+    /** La copia tra le richieste (H20), se c'è: il catalogo cambia solo con una pubblicazione, che la dimentica. */
+    private function shared(): ?PublishedCatalog
+    {
+        try {
+            $hit = SharedCache::store('catalog')?->get(self::SHARED);
+        } catch (Throwable) {
+            return null;
+        }
+        if (! is_array($hit) || ! is_int($hit['rev'] ?? null) || ! is_array($hit['document'] ?? null)) {
+            return null;
+        }
+        /** @var array<string, mixed> $document */
+        $document = $hit['document'];
+
+        return new PublishedCatalog($hit['rev'], $document);
+    }
+
+    private function readAndShare(): PublishedCatalog
+    {
+        $row = $this->db->connection('pgsql')->table('core.catalog_revisions')->orderByDesc('rev')->first(['rev', 'document']);
+        $catalog = $row === null ? $this->initial->published() : self::fromRow($row->rev, $row->document);
+        try {
+            SharedCache::store('catalog')?->put(self::SHARED, ['rev' => $catalog->rev, 'document' => $catalog->document], SharedCache::seconds('catalog'));
+        } catch (Throwable) {
+            // Cache ferma o piena: la prossima richiesta rilegge la tabella.
         }
 
-        return $this->cache;
+        return $catalog;
+    }
+
+    private static function forgetShared(): void
+    {
+        try {
+            SharedCache::store('catalog')?->forget(self::SHARED);
+        } catch (Throwable) {
+            // La copia scade da sola (saas.shared_cache.catalog).
+        }
     }
 
     /**
@@ -122,6 +160,7 @@ final class DbCatalog implements Catalog
         });
 
         if ($created) {
+            self::forgetShared();
             // Se il portale non risponde ricarica comunque da sé quando si apre il listino o si compra.
             $this->notifier->catalogChanged($published->rev);
         }
@@ -156,10 +195,11 @@ final class DbCatalog implements Catalog
         return is_array($decoded) ? $decoded : null;
     }
 
-    /** Dimentica la copia in memoria (dopo una pubblicazione). */
+    /** Dimentica la copia in memoria e quella tra le richieste (dopo una pubblicazione). */
     public function refresh(): void
     {
         $this->cache = null;
+        self::forgetShared();
     }
 
     private static function fromRow(mixed $rev, mixed $document): PublishedCatalog
