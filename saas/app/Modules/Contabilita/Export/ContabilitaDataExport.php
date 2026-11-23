@@ -33,7 +33,8 @@ final readonly class ContabilitaDataExport implements DataExport
         }
         $s = static fn (mixed $v): string => is_scalar($v) ? (string) $v : '';
         $money = static fn (mixed $v): string => is_numeric($v) ? Money::plain((int) $v) : '';
-        $files = ['contabilita/prima-nota.csv' => $this->ledger->csv(null, true)['csv']];
+        // La prima nota completa è il file più grosso: si produce solo quando va nell'archivio.
+        $files = ['contabilita/prima-nota.csv' => fn (): string => $this->ledger->csv(null, true)['csv']];
 
         $rows = [];
         foreach ($this->db()->table('app.accounts as a')->leftJoin('app.account_balances as b', 'b.account_id', '=', 'a.id')->orderBy('a.sort_order')->get(['a.name', 'a.type', 'a.opening_cents', 'b.balance_cents', 'a.closed_at']) as $a) {

@@ -116,6 +116,10 @@ final class CoreServiceProvider extends ServiceProvider
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('queue:work --queue='.MailQueue::WORKER_QUEUES.' --stop-when-empty --max-time=50 --tries=3')
                     ->everyMinute()->withoutOverlapping(5)->runInBackground();
+                // Codici di accesso e link di conferma: un lavoratore a parte, ogni minuto, così non aspettano un lavoro
+                // lungo (la copia di sicurezza completa) che tiene occupato quello principale.
+                $schedule->command('queue:work --queue='.MailQueue::URGENT.' --stop-when-empty --max-time=55 --tries=3')
+                    ->everyMinute()->withoutOverlapping(5)->runInBackground();
                 $schedule->command('queue:prune-failed --hours=168')->dailyAt('05:47');
                 // File di lavoro rimasti da richieste interrotte (copie, archivi, ricevute): via quelli di più di un'ora.
                 $schedule->command('saas:tmp:purge --minutes=60')->everyFifteenMinutes()->withoutOverlapping(10);

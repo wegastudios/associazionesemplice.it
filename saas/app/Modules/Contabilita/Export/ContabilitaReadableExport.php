@@ -61,16 +61,14 @@ final readonly class ContabilitaReadableExport implements ReadableExport
 
             /** @var ArrayObject<int, string> $problems */
             $problems = new ArrayObject;
-            $rows = $this->db->connection($this->context->require()->connection)->table('app.receipts as r')->leftJoin('app.people as p', 'p.id', '=', 'r.payer_person_id')
-                ->where('r.year', $year)->whereNull('r.voided_at')->orderBy('r.number')->get(['r.id', 'r.number', 'p.last_name', 'p.first_name']);
-            foreach ($rows as $r) {
-                $id = is_string($r->id ?? null) ? $r->id : '';
+            // Ricevute dell'anno e i loro file in una sola query: nessuna query per ricevuta.
+            foreach ($this->receipts->exportRows($year) as $r) {
                 $number = (is_scalar($r->number ?? null) ? (string) $r->number : '').'-'.$year;
                 $who = trim((is_string($r->last_name ?? null) ? $r->last_name : '').' '.(is_string($r->first_name ?? null) ? $r->first_name : ''));
                 $name = ZipName::clean('Ricevuta '.$number.($who !== '' ? ' - '.$who : '')).'.pdf';
-                $files[$dir.'Ricevute/'.$name] = function () use ($id, $number, $problems): ?string {
+                $files[$dir.'Ricevute/'.$name] = function () use ($r, $number, $problems): ?string {
                     try {
-                        return $this->receipts->document($id)['pdf'];
+                        return $this->receipts->exportPdf($r);
                     } catch (ReceiptFileProblem|LedgerError $e) {
                         $problems->append('Ricevuta n. '.$number.': '.$e->getMessage());
 

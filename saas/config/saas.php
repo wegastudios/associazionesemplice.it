@@ -109,6 +109,13 @@ return [
         ],
     ],
 
+    // Copia di sicurezza completa (Core\Export\FullExports): si prepara in coda, a riposo è cifrata con la chiave
+    // dell'associazione e resta scaricabile per keep_hours ore (PHP la decifra mentre la manda); poi il file si cancella
+    // (saas:tmp:purge).
+    'export' => [
+        'keep_hours' => (int) env('SAAS_EXPORT_KEEP_HOURS', 6),
+    ],
+
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
     // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.
     'demo' => [

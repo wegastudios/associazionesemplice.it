@@ -30,13 +30,13 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
 
 | Quando | Cosa |
 |---|---|
-| ogni minuto | `queue:work --stop-when-empty --max-time=50` (code su Postgres) |
+| ogni minuto | `queue:work --stop-when-empty --max-time=50` (code su Postgres) · `queue:work --queue=mail-urgent --stop-when-empty --max-time=55` (solo codici e link di conferma: non aspettano un lavoro lungo come la copia di sicurezza) |
 | ogni 5 minuti | `saas:keys:monitor` (solo con `SAAS_KEY_VAULT=remote`; email all'amministrazione, una per guasto) |
 | ogni ora, :07 | `saas:backup:dump` (produzione e staging) |
 | ogni giorno | `saas:crypt:upgrade-format:prune` 04:07 (copie d'appoggio del passaggio di formato oltre 30 giorni) · `saas:audit:heads:copy` 03:17 (testa del registro nello spazio dei backup) · `saas:audit:verify` 03:37 · `saas:portal:usage` 04:23 · `saas:backup:prune` 05:11 · `saas:portal:suspend-expired` 00:41 · `queue:prune-failed` 05:47 (falliti oltre 7 giorni) |
 | ogni mese, il 1° | `saas:audit:partitions` 02:13 |
 | ogni settimana, lunedì | `saas:backup:restore-test` 06:17 (solo staging, con la chiave privata dei backup) · `saas:audit:prune-security` 03:27 (accessi di operatori e staff oltre 18 mesi) |
-| ogni 15 minuti | `saas:tmp:purge --minutes=60` (dump in chiaro e archivi dell'esportazione rimasti in `storage/app/tmp`) |
+| ogni 15 minuti | `saas:tmp:purge --minutes=60` (dump in chiaro e archivi dell'esportazione rimasti in `storage/app/tmp`; copie di sicurezza complete, cifrate, oltre `SAAS_EXPORT_KEEP_HOURS`, 6 ore, e archivi in chiaro di lavori interrotti in `storage/app/exports` oltre 35 minuti) |
 
 ### Impostazioni tecniche
 
