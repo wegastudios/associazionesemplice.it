@@ -113,6 +113,9 @@ final class TechActions {
 	/** «Converti in InnoDB»: una tappa (poche tabelle, dalla più piccola). Solo amministratori. */
 	public static function db_convert( array $p ): array {
 		$back = Ui::url( 'asem-backup' ) . '#asem-db-engine';
+		if ( empty( $p['have_backup'] ) ) { // la spunta non è solo del modulo: anche una richiesta scritta a mano deve dichiarare di avere una copia recente
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Prima di convertire scarica una copia di sicurezza e spunta «Ho una copia recente».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		$r    = \AssociazioneSemplice\DbEngine::convert_batch();
 		if ( $r['unavailable'] ) {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Il server non offre InnoDB: non si può convertire da qui.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
