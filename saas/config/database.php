@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 use Illuminate\Support\Str;
 
+// Fuso e schema arrivano con la richiesta di connessione (opzione «options» di PostgreSQL): nessuna istruzione SET dopo
+// l'apertura, quindi due giri di rete in meno a ogni richiesta (H16).
+// Stesso fuso dell'applicazione (config/app.php, Europe/Rome come il server): se i due fusi differiscono, Laravel scrive
+// gli orari senza indicare il fuso e PostgreSQL li legge in un altro: gli orari slittano e i link di reimpostazione scadono subito.
+$startup = ['TimeZone' => env('APP_TIMEZONE', 'Europe/Rome'), 'search_path' => 'public'];
+
 return [
 
     /*
@@ -35,6 +41,8 @@ return [
 
         // Ruolo dell'applicazione: richieste web e code. Non è proprietario delle tabelle, non ha
         // BYPASSRLS ed è soggetto alla Row-Level Security.
+        // Database sulla stessa macchina: DB_HOST=/var/run/postgresql (socket, niente TCP né TLS) o almeno
+        // DB_SSLMODE=disable; con «prefer» ogni apertura tenta prima la cifratura (deploy/env.server.example).
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
@@ -46,11 +54,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => 'public',
+            'server_options' => $startup,
             'sslmode' => env('DB_SSLMODE', 'prefer'),
-            // Stesso fuso dell'applicazione (config/app.php, Europe/Rome come il server): se i due fusi differiscono, Laravel scrive
-            // gli orari senza indicare il fuso e PostgreSQL li legge in un altro: gli orari slittano e i link di reimpostazione scadono subito.
-            'timezone' => env('APP_TIMEZONE', 'Europe/Rome'),
             'application_name' => 'associazionesemplice',
         ],
 
@@ -67,9 +72,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => 'public',
+            'server_options' => $startup,
             'sslmode' => env('DB_SSLMODE', 'prefer'),
-            'timezone' => env('APP_TIMEZONE', 'Europe/Rome'),
             'application_name' => 'associazionesemplice-migrazioni',
             // Ruolo a cui le migrazioni concedono i permessi (OrgSchema::grant).
             'app_role' => env('DB_USERNAME', 'as_app'),
@@ -87,9 +91,8 @@ return [
             'password' => env('DB_BACKUP_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
-            'search_path' => 'public',
+            'server_options' => $startup,
             'sslmode' => env('DB_SSLMODE', 'prefer'),
-            'timezone' => env('APP_TIMEZONE', 'Europe/Rome'),
         ],
 
         // Database di prova per il ripristino (saas:backup:restore-test): si svuota a ogni prova.
@@ -102,9 +105,8 @@ return [
             'password' => env('DB_RESTORE_PASSWORD', env('DB_OWNER_PASSWORD', '')),
             'charset' => 'utf8',
             'prefix' => '',
-            'search_path' => 'public',
+            'server_options' => $startup,
             'sslmode' => env('DB_SSLMODE', 'prefer'),
-            'timezone' => env('APP_TIMEZONE', 'Europe/Rome'),
         ],
 
     ],
