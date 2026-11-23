@@ -25,8 +25,9 @@ final class PeoplePage {
 		$gov      = null; // il quadro degli ospiti si calcola solo se serve (filtro «ospiti da invitare» o ospiti nella pagina)
 		if ( $at_limit ) {
 			$gov  = Plugin::people()->guest_overview();
-			$rows = array_values( array_filter( $rows, function ( $x ) use ( $gov ) {
-				return MemberType::GUEST === $x['type'] && ! empty( $gov[ (int) $x['id'] ]['flag'] );
+			$inv  = array_flip( Plugin::people()->invitable_ids( $gov ) ); // soglia raggiunta e una prenotazione in arrivo
+			$rows = array_values( array_filter( $rows, function ( $x ) use ( $inv ) {
+				return MemberType::GUEST === $x['type'] && isset( $inv[ (int) $x['id'] ] );
 			} ) );
 		}
 		$rows   = self::sort_rows( $rows, $by, $dir );

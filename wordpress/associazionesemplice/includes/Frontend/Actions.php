@@ -459,7 +459,7 @@ final class Actions {
 		}
 		switch ( $r['status'] ) {
 			case 'recorded':
-				return 'Ingresso registrato: ' . $name . $due . '.';
+				return \AssociazioneSemplice\GuestInviteRules::join( 'Ingresso registrato: ' . $name . $due . '.', (string) ( $r['invite'] ?? '' ) ); // per un ospite non socio, l'avviso «da invitare ad associarsi» in coda
 			case 'already':
 				return 'Ingresso già registrato alle ' . mysql2date( 'H:i', $r['at'] ) . ': ' . $name . '.';
 			case 'undone':

@@ -100,7 +100,11 @@ final class Ui {
 		$ok  = $msg['ok'];
 		$err = $msg['err'];
 		if ( '' !== $ok ) {
+			list( $ok, $invite ) = \AssociazioneSemplice\GuestInviteRules::split( $ok ); // ingresso di un ospite non socio: l'avviso «da invitare ad associarsi» sta in evidenza, a parte
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $ok ) . '</p></div>';
+			if ( '' !== $invite ) {
+				echo '<div class="notice notice-warning asem-invite"><p><strong>' . esc_html( $invite ) . '</strong></p></div>';
+			}
 		}
 		if ( '' !== $err ) {
 			echo '<div class="notice notice-error"><p>' . esc_html( $err ) . '</p></div>';

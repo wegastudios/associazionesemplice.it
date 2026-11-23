@@ -99,6 +99,7 @@
 .asemf-notice { padding: .75rem 1rem; border-radius: 8px; border: 1px solid var(--asemf-line); margin-bottom: 1rem; }
 .asemf-notice.asemf-ok { border-color: var(--asemf-ok); color: var(--asemf-ok); }
 .asemf-notice.asemf-err { border-color: var(--asemf-bad); color: var(--asemf-bad); }
+.asemf-notice.asemf-invite { border-color: var(--asemf-warn); color: var(--asemf-warn); background: #fff4d6; }
 .asemf-gate { border: 1px dashed var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; background: var(--asemf-soft); text-align: center; }
 .asemf-gate-text { font-weight: 600; margin-top: 0; }
 .asemf #loginform p { margin: .6em 0; }
@@ -265,6 +266,7 @@
 :where(body) .asemf .asemf-notice { border-radius: 12px; border-color: var(--asemf-line); }
 :where(body) .asemf .asemf-notice.asemf-ok { background: #E6EFEB; color: #3D6256; border-color: transparent; }
 :where(body) .asemf .asemf-notice.asemf-err { background: #FDECEA; color: #B42318; border-color: transparent; }
+:where(body) .asemf .asemf-notice.asemf-invite { background: #FFF4D6; color: #6B4F00; border-color: transparent; }
 
 /* Tessera: carta nel colore del sito (indaco se il sito non ne ha uno), testo a contrasto, QR su pannello bianco */
 :where(body) .asemf .asemf-memcard:not(.asemf-memcard-img) {

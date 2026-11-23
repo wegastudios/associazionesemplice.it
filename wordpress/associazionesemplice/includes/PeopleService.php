@@ -797,6 +797,7 @@ class PeopleService {
 			$this->set_membership( $id, Settings::membership_year()->label(), true, 'manual' );
 		}
 		Audit::log( 'person.promoted', 'person', $id, array( 'from' => 'guest', 'to' => $type ) );
+		GuestInvite::forget_person( $id ); // è diventato socio: l'avviso «da invitare ad associarsi» non serve più
 	}
 
 	/** Chiavi con cui si riconosce la stessa persona registrata più volte: nome e cognome, email, telefono. @return array<string,string> chiave => motivo */
@@ -876,17 +877,11 @@ class PeopleService {
 		return $out;
 	}
 
-	/** Ospiti da invitare a iscriversi: hanno raggiunto la soglia di partecipazioni (anche sommando le registrazioni gemelle). @return array[] persone con 'overview' */
+	/** Ospiti da invitare a iscriversi: hanno raggiunto la soglia di partecipazioni (anche sommando le registrazioni gemelle) e hanno una prenotazione in arrivo. @return array[] persone con 'overview' */
 	public function guests_to_invite(): array {
 		$ov  = $this->guest_overview();
 		$out = array();
-		$ids = array();
-		foreach ( $ov as $id => $o ) {
-			if ( ! empty( $o['flag'] ) ) {
-				$ids[] = (int) $id;
-			}
-		}
-		foreach ( $this->search_ids( $ids ) as $g ) { // le schede intere solo di chi ha raggiunto la soglia (stesso ordine di search())
+		foreach ( $this->search_ids( $this->invitable_ids( $ov ) ) as $g ) { // le schede intere solo di chi va invitato (stesso ordine di search())
 			$g['overview'] = $ov[ (int) $g['id'] ];
 			$out[]         = $g;
 		}
@@ -895,13 +890,29 @@ class PeopleService {
 
 	/** Gli id degli ospiti di {@see PeopleService::guests_to_invite()}, senza leggere le loro schede (basta per contarli). @return int[] */
 	public function guest_ids_to_invite(): array {
-		$ids = array();
-		foreach ( $this->guest_overview() as $id => $o ) {
+		return $this->invitable_ids( $this->guest_overview() );
+	}
+
+	/**
+	 * Dal quadro degli ospiti, gli id di chi ha raggiunto la soglia e ha una prenotazione in arrivo (nell'ordine del quadro).
+	 *
+	 * @param array<int,array> $overview risultato di {@see PeopleService::guest_overview()}
+	 * @return int[]
+	 */
+	public function invitable_ids( array $overview ): array {
+		$flagged = array();
+		foreach ( $overview as $id => $o ) {
 			if ( ! empty( $o['flag'] ) ) {
-				$ids[] = (int) $id;
+				$flagged[] = (int) $id;
 			}
 		}
-		return $ids;
+		if ( ! $flagged ) {
+			return array();
+		}
+		$future = array_flip( Plugin::activities()->with_future_booking( $flagged ) );
+		return array_values( array_filter( $flagged, function ( $id ) use ( $future ) {
+			return isset( $future[ $id ] );
+		} ) );
 	}
 
 	/** Gli ospiti con le sole colonne che servono al quadro delle partecipazioni, nello stesso ordine e con gli stessi filtri di {@see PeopleService::search()}. */

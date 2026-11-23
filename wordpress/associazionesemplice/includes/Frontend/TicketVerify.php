@@ -117,7 +117,11 @@ final class TicketVerify {
 		}
 		$body = '';
 		if ( ! empty( $flash['ok'] ) ) {
-			$body .= '<div class="w" style="color:#1a7f37">' . esc_html( $flash['ok'] ) . '</div>';
+			list( $done, $invite ) = \AssociazioneSemplice\GuestInviteRules::split( (string) $flash['ok'] ); // per un ospite non socio c'è in coda l'avviso «da invitare ad associarsi»: in evidenza
+			$body .= '<div class="w" style="color:#1a7f37">' . esc_html( $done ) . '</div>';
+			if ( '' !== $invite ) {
+				$body .= '<div class="w asem-invite" role="alert" style="color:#8a5a00;background:#fff4d6;border:1px solid #e0b64a;padding:8px 10px;border-radius:8px;font-weight:600">' . esc_html( $invite ) . '</div>';
+			}
 		}
 		if ( ! empty( $flash['err'] ) ) {
 			$body .= '<div class="w" style="color:#b32d2e">' . esc_html( $flash['err'] ) . '</div>';
