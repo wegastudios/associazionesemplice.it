@@ -207,7 +207,11 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   `HMAC(chiave del registro, sigillo precedente · forma canonica della riga)`. La chiave del registro è derivata da quella
   dell'associazione, quindi sta dietro il servizio chiavi: chi altera il database senza la chiave non riesce a
   ricostruire una catena valida. `audit.heads` tiene la testa e, bloccata con `FOR UPDATE`, serializza le scritture
-  della stessa associazione.
+  della stessa associazione. Dentro una transazione le righe si raccolgono e si legano alla catena tutte insieme come
+  ultima cosa prima della conferma (un blocco sulla testa, sempre dopo gli altri, e un inserimento multiplo); seguono
+  la transazione: un punto di salvataggio annullato toglie le sue righe. Numero e ora si assegnano con la testa
+  bloccata, quindi nella catena l'ordine dei numeri resta quello delle ore. Fuori da una transazione la riga si scrive
+  subito.
 - **Verifica**: `saas:audit:verify` (ogni notte da cron) ricalcola la catena e indica il primo punto rotto: riga
   modificata, tolta, aggiunta o testa non corrispondente.
 - **Copia della testa fuori dal database**: ogni giorno `saas:audit:heads:copy` salva nello spazio dei backup numero e
