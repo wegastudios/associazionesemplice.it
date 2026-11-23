@@ -243,20 +243,31 @@ final class Ui {
 	}
 
 	/** Campo di scelta con filtro di testo, per elenchi lunghi di persone. */
-	public static function person_select( string $name, array $people, $selected = null, ?string $empty = null, string $id = '' ): string {
-		return implode( '', self::person_select_parts( $name, $people, $selected, $empty, $id ) );
+	public static function person_select( string $name, array $people, $selected = null, ?string $empty = null, string $id = '', bool $search = false, bool $members_only = false ): string {
+		return implode( '', self::person_select_parts( $name, $people, $selected, $empty, $id, $search, $members_only ) );
 	}
 
-	/** Il campo di {@see person_select()} in tre pezzi: l'apertura (campo di filtro e select), le voci e la chiusura. */
-	private static function person_select_parts( string $name, array $people, $selected, ?string $empty, string $id ): array {
-		if ( ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::PEOPLE ) ) { // senza «Anagrafica soci» non si porta in pagina l'elenco: ricerca minima (3 lettere, 10 risultati)
+	/** Oltre questo numero di persone in anagrafica, dove l'elenco servirebbe più volte nella stessa pagina si passa alla ricerca (le tendine con tutti i nomi pesano e non si scorrono più). */
+	const PERSON_LIST_MAX = 150;
+
+	/** In una pagina con più campi di scelta della persona: con questa anagrafica si usa la ricerca al posto dell'elenco intero? */
+	public static function person_search_preferred( int $people_count ): bool {
+		return $people_count > self::PERSON_LIST_MAX || ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::PEOPLE );
+	}
+
+	/**
+	 * Il campo di {@see person_select()} in tre pezzi: l'apertura (campo di filtro e select), le voci e la chiusura.
+	 * Con $search (o senza «Anagrafica soci») non c'è l'elenco ma la ricerca: la select contiene solo la persona già scelta.
+	 */
+	private static function person_select_parts( string $name, array $people, $selected, ?string $empty, string $id, bool $search = false, bool $members_only = false ): array {
+		if ( $search || ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::PEOPLE ) ) { // senza «Anagrafica soci» non si porta in pagina l'elenco: ricerca minima (3 lettere, 10 risultati)
 			$id    = $id ?: 'asem-sel-' . sanitize_key( $name );
 			$cur   = $selected ? \AssociazioneSemplice\Plugin::people()->get( (int) $selected ) : null;
 			$opts  = array( '' => (string) $empty );
 			if ( $cur ) {
 				$opts[ (int) $cur['id'] ] = self::person_label( $cur );
 			}
-			return array( '<span class="asem-filter-select">' . PersonSearch::input( $id ) . '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '">', self::options( $opts, $cur ? (int) $cur['id'] : null, null ), '</select></span>' );
+			return array( '<span class="asem-filter-select">' . PersonSearch::input( $id, $members_only, $name ) . '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '">', self::options( $opts, $cur ? (int) $cur['id'] : null, null ), '</select></span>' );
 		}
 		$map = array();
 		foreach ( $people as $p ) {
@@ -276,8 +287,8 @@ final class Ui {
 	 * le parti scritte a mano: le voci sono già protette da esc_attr ed esc_html (Ui::options), e in un elenco di migliaia di persone il filtro ripetuto per ogni riga
 	 * è ciò che costa di più. Il risultato è lo stesso carattere per carattere (lo verifica la prova di fumo).
 	 */
-	public static function echo_person_select( string $before, string $name, array $people, $selected, ?string $empty, string $id, string $after = '' ): void {
-		$parts = self::person_select_parts( $name, $people, $selected, $empty, $id );
+	public static function echo_person_select( string $before, string $name, array $people, $selected, ?string $empty, string $id, string $after = '', bool $search = false, bool $members_only = false ): void {
+		$parts = self::person_select_parts( $name, $people, $selected, $empty, $id, $search, $members_only );
 		if ( false !== strpos( $parts[1], ' selected=' ) ) { // con una voce scelta il filtro riscrive l'attributo «selected» (virgolette): resta il percorso intero, identico a prima
 			echo wp_kses( $before . implode( '', $parts ) . $after, \AssociazioneSemplice\Html::allowed() );
 			return;

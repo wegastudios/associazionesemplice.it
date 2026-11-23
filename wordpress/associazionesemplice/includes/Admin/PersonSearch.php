@@ -45,9 +45,43 @@ final class PersonSearch {
 		wp_send_json_success( array( 'results' => self::find( $q ) ) );
 	}
 
-	/** Il campo di ricerca da mettere accanto a un elenco a discesa (il suo id è $select_id). */
-	public static function input( string $select_id ): string {
-		return '<input type="search" class="asem-minsearch" data-target="#' . esc_attr( $select_id ) . '" data-nonce="' . esc_attr( wp_create_nonce( self::NONCE ) ) . '" placeholder="'
+	/**
+	 * Il campo di ricerca da mettere accanto a un elenco a discesa (il suo id è $select_id). Con $members_only i risultati senza tessera (gli ospiti) non si propongono;
+	 * con $name il campo porta il nome «$name_q»: senza JavaScript chi scrive il nome per intero e invia il modulo viene riconosciuto dal server ({@see resolve_typed()}).
+	 */
+	public static function input( string $select_id, bool $members_only = false, string $name = '' ): string {
+		static $nonce = null; // lo stesso gettone per tutti i campi della pagina
+		if ( null === $nonce ) {
+			$nonce = wp_create_nonce( self::NONCE );
+		}
+		return '<input type="search" class="asem-minsearch" data-target="#' . esc_attr( $select_id ) . '" data-nonce="' . esc_attr( $nonce ) . '"' . ( $members_only ? ' data-members-only="1"' : '' )
+			. ( '' !== $name ? ' name="' . esc_attr( $name ) . '_q"' : '' ) . ' placeholder="'
 			. esc_attr( \AssociazioneSemplice\Texts::t( 'Cerca per nome o tessera (almeno 3 lettere)' ) ) . '" autocomplete="off"> ';
+	}
+
+	/**
+	 * Senza JavaScript la scelta non arriva dall'elenco ma dal testo scritto nel campo «{chiave}_q»: se la persona non è stata scelta e il testo
+	 * corrisponde a una sola persona, è lei. Altrimenti si chiede di essere più precisi. Chi non ha scritto nulla lascia il modulo com'è (l'azione dirà «scegli una persona»).
+	 *
+	 * @param array<string,mixed> $post
+	 * @param string[]            $keys
+	 * @return array<string,mixed>
+	 */
+	public static function resolve_typed( array $post, array $keys ): array {
+		foreach ( $keys as $key ) {
+			$text = isset( $post[ $key . '_q' ] ) ? PersonSearchRules::clean( $post[ $key . '_q' ] ) : '';
+			if ( ! empty( $post[ $key ] ) || '' === $text ) {
+				continue;
+			}
+			$found = self::find( $text );
+			if ( 1 !== count( $found ) ) {
+				$msg = $found
+					? \AssociazioneSemplice\Texts::t( 'Più persone corrispondono a quel nome: scrivilo per intero o con il numero di tessera.' )
+					: \AssociazioneSemplice\Texts::t( 'Non ho trovato nessuna persona con quel nome: scrivine almeno tre lettere, o il numero di tessera.' );
+				throw new \InvalidArgumentException( $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+			$post[ $key ] = (string) $found[0]['id'];
+		}
+		return $post;
 	}
 }
