@@ -15,7 +15,7 @@ final class ProMenu {
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
 		'asem-resources'  => array( 'Risorse', array( 'asem-resources' => 'Risorse', 'asem-res-report' => 'Occupazione' ) ),
 		'asem-credits'    => array( 'Crediti', array( 'asem-credits' => 'Crediti' ) ),
-		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
+		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-server' => 'Stato del server', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-refunds' => 'Rimborsi', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
 		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Riepilogo', 'asem-years' => 'Anni fiscali', 'asem-budget' => 'Preventivo', 'asem-watch' => 'Rendiconto provvisorio', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto',  'asem-fivepm' => 'Adempimenti (5 per mille)' ) ),
 		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-runts' => 'Dati per il RUNTS', 'asem-minutes' => 'Verbali', 'asem-polls' => 'Votazioni', 'asem-assemblies' => 'Assemblee', 'asem-inventory' => 'Inventario', 'asem-documents' => 'Documenti', 'asem-conventions' => 'Convenzioni', 'asem-volunteers' => 'Assicurazioni', 'asem-attendance' => 'Presenze', 'asem-medical' => 'Certificati medici', 'asem-affiliations' => 'Affiliazioni' ) ),
@@ -33,7 +33,7 @@ final class ProMenu {
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-texts', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-years', 'asem-tech', 'asem-acct', 'asem-app', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset', 'asem-receipt-check' );
+	const ADMIN_ONLY = array( 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-texts', 'asem-backup', 'asem-server', 'asem-audit', 'asem-wpai', 'asem-years', 'asem-tech', 'asem-acct', 'asem-app', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset', 'asem-receipt-check' );
 
 
 	/** Pagine delle funzioni aggiuntive raggiungibili solo dai link: [slug, titolo, [classe, metodo]]. */

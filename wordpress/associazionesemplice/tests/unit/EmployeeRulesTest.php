@@ -212,7 +212,7 @@ final class EmployeeRulesTest extends TestCase {
 
 	public function test_pages_of_fixed_permissions_are_never_blocked(): void {
 		$all = EmployeeRules::keys();
-		foreach ( array( 'asem', 'asem-entity', 'asem-backup' ) as $page ) {
+		foreach ( array( 'asem', 'asem-entity', 'asem-backup', 'asem-server' ) as $page ) {
 			$this->assertNull( EmployeeRules::page_need( $page ), $page );
 			$this->assertNull( EmployeeRules::blocked_by( $all, EmployeeRules::page_need( $page ) ), $page );
 		}
