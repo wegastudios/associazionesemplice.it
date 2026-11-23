@@ -19,6 +19,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Più livelli di socio :: Ognuno con la sua quota | — | ✓ | ✓ |
 | Nucleo familiare :: Con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
+| Avviso al check-in per gli ospiti da invitare ad associarsi :: Quando si segna l'ingresso di un ospite non socio a un evento, dalla pagina dell'evento o dalla verifica del biglietto sul telefono, compare l'avviso con il motivo (evento, soglia degli ingressi raggiunta, invito di terzi come informazione) | ✓ | ✓ | ✓ |
 | Ospiti con quote ripartite e rimborso al volontario :: Quote ripartite tra gli ospiti dell'associazione e del volontario, con rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
 | Domanda di adesione online con modulo sul sito (shortcode) | ✓ | ✓ | ✓ |
 | Minori con genitori o tutori (non soci), con tessera valida dal pagamento | ✓ | ✓ | ✓ |
@@ -172,6 +173,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Avvisi agli iscritti di un'attività | ✓ | ✓ | ✓ |
 | Promemoria automatici per email (tessera, corsi, eventi) | ✓ | ✓ | ✓ |
 | Registro della posta in uscita e invio di una email di prova | ✓ | ✓ | ✓ |
+| Tetto orario delle email di comunicazioni e promemoria; nuovi tentativi automatici per le email singole rifiutate dal server di posta (dopo 5, 20 e 60 minuti) | ✓ | ✓ | ✓ |
 | Comunicazioni a gruppi di soci :: Con lo storico degli invii | — | ✓ | ✓ |
 
 ## Personalizzazione e sicurezza dei dati
@@ -184,6 +186,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Testi personalizzabili :: Con tipo di ente e termini | — | ✓ | ✓ |
 | Lingue aggiuntive :: Inglese incluso | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
+| Stato del server :: Consigli per l'hosting nella scheda degli Strumenti e controlli in Salute del sito | ✓ | ✓ | ✓ |
 | Copie di sicurezza firmate :: Una copia modificata viene rifiutata; una copia di un altro sito si ripristina con conferma scritta e password | ✓ | ✓ | ✓ |
 | Cifratura dei file riservati :: Documenti e scansioni, allegati dei movimenti e foto dell'inventario si cifrano, con la frase per riaprirli | ✓ | ✓ | ✓ |
 | Cifratura di certificati, giustificativi e ricevute :: Anche per certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
