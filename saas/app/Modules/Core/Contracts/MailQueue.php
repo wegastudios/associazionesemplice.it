@@ -112,7 +112,7 @@ final class MailQueue
      *
      * @return list<string>
      */
-    private static function routes(string $queue): array
+    public static function routes(string $queue): array
     {
         $base = self::mailer();
         if (! PrimaryMailer::enabled()) {
@@ -205,7 +205,7 @@ final class MailQueue
     {
         $mailer ??= self::mailer();
         if (PrimaryMailer::enabled()) {
-            MailCounters::add($mailer, sent: $recipients, fallbacks: $mailer === PrimaryMailer::NAME ? 0 : $recipients);
+            MailCounters::add($mailer, sent: $recipients, bulk: self::$current === self::BULK ? $recipients : 0, fallbacks: $mailer === PrimaryMailer::NAME ? 0 : $recipients);
         }
         $prepaid = min(self::$reserved, $recipients);
         self::$reserved -= $prepaid;

@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
+use Symfony\Component\Mailer\Transport\Smtp\Stream\SocketStream;
 
 /**
  * Servizio di invio principale (Emailit, docs/POSTA_EMAILIT.md): acceso solo con SAAS_MAIL_PRIMARY=emailit e la chiave nel
@@ -60,6 +62,36 @@ final class PrimaryMailer
     private const DAY_FULL_KEY = 'mail-primary-day-full:'.self::NAME;
 
     private const FALLBACK_KEY = 'mail-primary-fallback-since:'.self::NAME;
+
+    /**
+     * Trasporto SMTP del servizio (mailer «emailit», transport «emailit»), sempre cifrato: porta 465 con TLS implicito,
+     * ogni altra porta con STARTTLS obbligatorio. Se il server non offre STARTTLS l'invio fallisce: la chiave non passa
+     * mai in chiaro. Il certificato del server si verifica (predefinito di Symfony Mailer).
+     *
+     * @param  array<array-key, mixed>  $config
+     */
+    public static function transport(array $config): EsmtpTransport
+    {
+        $host = is_string($config['host'] ?? null) && $config['host'] !== '' ? $config['host'] : 'smtp.emailit.com';
+        $port = is_numeric($config['port'] ?? null) && (int) $config['port'] > 0 ? (int) $config['port'] : 465;
+        $transport = new EsmtpTransport($host, $port, $port === 465);
+        $transport->setRequireTls(true);
+        if (is_string($config['username'] ?? null)) {
+            $transport->setUsername($config['username']);
+        }
+        if (is_string($config['password'] ?? null)) {
+            $transport->setPassword($config['password']);
+        }
+        if (is_string($config['local_domain'] ?? null) && $config['local_domain'] !== '') {
+            $transport->setLocalDomain($config['local_domain']);
+        }
+        $stream = $transport->getStream();
+        if ($stream instanceof SocketStream && is_numeric($config['timeout'] ?? null)) {
+            $stream->setTimeout((float) $config['timeout']);
+        }
+
+        return $transport;
+    }
 
     public static function enabled(): bool
     {
@@ -166,24 +198,27 @@ final class PrimaryMailer
     }
 
     /**
-     * Se Redis si è svuotato, il conteggio del giorno riparte dalla tabella core.mail_counters (una volta al giorno per
-     * cache: la chiave di controllo sparisce con Redis).
+     * Se Redis si è svuotato, i conteggi del giorno (totale e massivi) ripartono dalla tabella core.mail_counters (una
+     * volta al giorno per cache: la chiave di controllo sparisce con Redis).
      */
     public static function seedDay(): void
     {
-        $limit = MailQueue::totalLimit(86400, self::NAME);
-        if ($limit === null) {
+        $total = MailQueue::totalLimit(86400, self::NAME);
+        if ($total === null || ! Cache::add('mail-day-seeded:'.MailQueue::key($total), 1, $total->decaySeconds)) {
             return;
         }
-        $key = MailQueue::key($limit);
-        if (! Cache::add('mail-day-seeded:'.$key, 1, $limit->decaySeconds)) {
-            return;
-        }
-        $stored = MailCounters::sentToday(self::NAME);
-        $counted = RateLimiter::attempts($key);
-        $counted = is_numeric($counted) ? (int) $counted : 0;
-        if ($stored > $counted) {
-            RateLimiter::increment($key, $limit->decaySeconds, $stored - $counted);
+        [$sent, $bulk] = MailCounters::sentToday(self::NAME);
+        foreach (MailQueue::limits(MailQueue::BULK, self::NAME) as $limit) {
+            $key = MailQueue::key($limit);
+            if (! str_contains($key, '|86400|')) {
+                continue;
+            }
+            $stored = str_starts_with($key, 'mail-bulk|') ? $bulk : $sent;
+            $counted = RateLimiter::attempts($key);
+            $counted = is_numeric($counted) ? (int) $counted : 0;
+            if ($stored > $counted) {
+                RateLimiter::increment($key, $limit->decaySeconds, $stored - $counted);
+            }
         }
     }
 }

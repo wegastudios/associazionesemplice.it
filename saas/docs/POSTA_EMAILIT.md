@@ -12,7 +12,7 @@ Nessun valore segreto in questo documento né nel repository: la chiave si scriv
   milione di crediti del piano). Il giorno è quello UTC: il conteggio si azzera a mezzanotte UTC.
 - Il workspace Emailit è condiviso: al giorno gestionale 4.000, portale 500, supporto 200, margine 300.
 - I conteggi stanno in Redis e, per ripartire se Redis si svuota, anche nella tabella `core.mail_counters` (giorno, ora,
-  mailer, inviati, errori, ripieghi).
+  mailer, inviati, di cui massivi, errori, ripieghi): dopo uno svuotamento ripartono da lì sia il totale sia i massivi.
 - Troppi al secondo (`452 4.4.5`): il messaggio riprova dopo 2 secondi.
 - Quota del giorno finita (`452 4.5.3`, o il conteggio del gestionale): fino alla mezzanotte UTC i messaggi urgenti
   (link e codici) passano a cPanel entro i suoi 140 all'ora; gli avvisi e i promemoria aspettano la mezzanotte.
@@ -42,8 +42,9 @@ non deve stare nel database.
    EMAILIT_PASSWORD=<la chiave>
    ```
 
-   Gli altri valori hanno già quelli giusti: server `smtp.emailit.com`, porta 587 con STARTTLS, utente `emailit`. Per la
-   porta 465 con TLS: `EMAILIT_PORT=465` e `EMAILIT_SCHEME=smtps`. Il mittente resta `MAIL_FROM_ADDRESS`/`MAIL_FROM_NAME`.
+   Gli altri valori hanno già quelli giusti: server `smtp.emailit.com`, porta 465 con TLS implicito, utente `emailit`.
+   La connessione è sempre cifrata: con `EMAILIT_PORT=587` lo STARTTLS è obbligatorio e, se il server non lo offre,
+   l'invio fallisce invece di mandare la chiave in chiaro. Il mittente resta `MAIL_FROM_ADDRESS`/`MAIL_FROM_NAME`.
    `SAAS_MAIL_PRIMARY` resta `cpanel` per ora.
 6. **Rileggere la configurazione:** `php artisan optimize` nella cartella della versione in uso.
 7. **Prova d'invio** con Emailit, ancora spento per tutti gli altri messaggi:

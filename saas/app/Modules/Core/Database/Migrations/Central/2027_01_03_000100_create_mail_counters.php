@@ -20,6 +20,7 @@ return new class extends Migration
                 hour      smallint NOT NULL CHECK (hour BETWEEN 0 AND 23),
                 provider  text     NOT NULL CHECK (provider ~ '^[a-z0-9_-]{1,40}$'),
                 sent      integer  NOT NULL DEFAULT 0,
+                bulk_sent integer  NOT NULL DEFAULT 0,
                 errors    integer  NOT NULL DEFAULT 0,
                 fallbacks integer  NOT NULL DEFAULT 0,
                 PRIMARY KEY (day, hour, provider)

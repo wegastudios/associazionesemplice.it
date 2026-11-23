@@ -6,6 +6,7 @@ use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\QueuedMail;
 use App\Modules\Core\Contracts\ThrottledMail;
+use App\Modules\Core\Mail\PrimaryMailer;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 
 /*
  * Servizio di invio principale (Emailit), preparato ma spento: SAAS_MAIL_PRIMARY=emailit e la chiave nel file d'ambiente
@@ -68,9 +70,9 @@ beforeEach(function (): void {
 it('prepara il mailer emailit dal solo file d\'ambiente, con il mittente di sempre', function (): void {
     $mailer = config('mail.mailers.emailit');
 
-    expect($mailer['transport'])->toBe('smtp')
+    expect($mailer['transport'])->toBe('emailit')
         ->and($mailer['host'])->toBe('smtp.emailit.com')
-        ->and((int) $mailer['port'])->toBe(587)
+        ->and((int) $mailer['port'])->toBe(465)
         ->and($mailer['username'])->toBe('emailit')
         ->and($mailer)->toHaveKey('password')
         ->and($mailer)->not->toHaveKey('from')
@@ -173,6 +175,8 @@ it('al terzo errore di fila emailit si spegne per 15 minuti: tutto su cPanel ent
         mpThrough($job, static fn () => throw mpError('535 5.7.8 Authentication failed'));
         $job->assertReleased()->assertNotFailed();
         expect(MailQueue::blockedUntil('emailit'))->toBeNull();
+        // Un secondo dopo l'altro: il tetto di 2 al secondo non c'entra.
+        $this->travel(1)->seconds();
     }
     $third = mpJob(MailQueue::URGENT);
     mpThrough($third, static fn () => throw new TransportException('Connection could not be established with host "smtp.emailit.com:587".'));
@@ -201,7 +205,9 @@ it('la prova fallita rispegne emailit per altri 15 minuti', function (): void {
     $this->freezeTime();
     foreach (range(1, 3) as $i) {
         mpThrough(mpJob(MailQueue::BULK), static fn () => throw mpError('530 5.7.0 Authentication required'));
+        $this->travel(1)->seconds();
     }
+    expect(MailQueue::blockedUntil('emailit'))->not->toBeNull();
     $this->travel(16)->minutes();
 
     mpThrough(mpJob(MailQueue::URGENT), static fn () => throw mpError('554 5.0.0 Service unavailable'));
@@ -247,11 +253,13 @@ it('un urgente da mandare subito prova cPanel se emailit lo rifiuta, senza perde
 
 it('salva i contatori per giorno, ora e fornitore: inviati, errori e ripieghi', function (): void {
     mpOn();
+    $this->travelTo(now()->startOfHour()->addMinutes(10));
     $this->freezeTime();
     config(['mail.default' => 'array', 'mail.mailers.emailit.transport' => 'array']);
     $send = static fn () => Mail::raw('Ciao', static fn (Message $m) => $m->to(['a@example.com', 'b@example.com'])->subject('Due'));
 
     mpThrough(mpJob(MailQueue::BULK), $send);
+    $this->travel(1)->seconds();
     mpThrough(mpJob(MailQueue::BULK), static fn () => throw mpError('421 4.3.0 Temporary server error'));
     MailQueue::block('emailit', 15);
     mpThrough(mpJob(MailQueue::URGENT), $send);
@@ -324,4 +332,59 @@ it('saas:health: emailit principale senza chiave è un problema di configurazion
     $this->artisan('saas:health', ['--skip-migrations' => true])
         ->expectsOutputToContain('EMAILIT_PASSWORD')
         ->assertFailed();
+});
+
+it('emailit cifra sempre: 465 (predefinita) con TLS implicito, 587 con STARTTLS obbligatorio', function (): void {
+    $requireTls = static fn (EsmtpTransport $t): bool => (fn (): bool => $this->requireTls)->call($t);
+
+    $default = Mail::mailer('emailit')->getSymfonyTransport();
+    expect($default)->toBeInstanceOf(EsmtpTransport::class)
+        ->and($default->getStream()->isTLS())->toBeTrue()
+        ->and($requireTls($default))->toBeTrue();
+
+    // Se il server non offre STARTTLS l'invio fallisce invece di proseguire in chiaro.
+    $starttls = PrimaryMailer::transport(['host' => 'smtp.emailit.com', 'port' => 587, 'username' => 'emailit', 'password' => MP_KEY]);
+    expect($starttls->getStream()->isTLS())->toBeFalse()
+        ->and($requireTls($starttls))->toBeTrue();
+});
+
+it('ThrottledMail e MailQueue::routes scelgono lo stesso mailer per ogni coda e ogni stato', function (string $queue, string $state): void {
+    mpOn();
+    $this->freezeTime();
+    match ($state) {
+        PrimaryMailer::READY => null,
+        PrimaryMailer::PROBE => Cache::put('mail-primary-errors:emailit', PrimaryMailer::MAX_ERRORS, 3600),
+        PrimaryMailer::DOWN => MailQueue::block('emailit', 15),
+        PrimaryMailer::DAY_FULL => Cache::put('mail-primary-day-full:emailit', MailQueue::nextUtcMidnight(), 86400),
+    };
+
+    $route = MailQueue::routes($queue)[0] ?? null;
+    // routes() ha preso la prova (PROBE): la si libera, così la middleware parte dallo stesso stato.
+    MailQueue::endProbe('emailit');
+
+    expect(PrimaryMailer::peek())->toBe($state)
+        ->and(mpThrough(mpJob($queue)))->toBe($route);
+})->with([MailQueue::URGENT, MailQueue::BULK])->with([PrimaryMailer::READY, PrimaryMailer::PROBE, PrimaryMailer::DOWN, PrimaryMailer::DAY_FULL]);
+
+it('se Redis si svuota riparte dalla tabella anche il conteggio dei massivi', function (): void {
+    mpOn();
+    $this->freezeTime();
+    DB::table('core.mail_counters')->insert(['day' => now('UTC')->toDateString(), 'hour' => 0, 'provider' => 'emailit', 'sent' => 3600, 'bulk_sent' => 3499, 'errors' => 0, 'fallbacks' => 0]);
+
+    expect(mpThrough(mpJob(MailQueue::BULK)))->toBe('emailit');
+    $held = mpJob(MailQueue::BULK);
+    expect(mpThrough($held))->toBeNull();
+    $held->assertReleased();
+    expect(mpThrough(mpJob(MailQueue::URGENT)))->toBe('emailit');
+});
+
+it('conta i massivi a parte nella tabella', function (): void {
+    mpOn();
+    config(['mail.default' => 'array', 'mail.mailers.emailit.transport' => 'array']);
+    $send = static fn () => Mail::raw('Ciao', static fn (Message $m) => $m->to('a@example.com')->subject('Uno'));
+
+    mpThrough(mpJob(MailQueue::BULK), $send);
+    mpThrough(mpJob(MailQueue::URGENT), $send);
+
+    expect([(int) DB::table('core.mail_counters')->sum('sent'), (int) DB::table('core.mail_counters')->sum('bulk_sent')])->toBe([2, 1]);
 });
