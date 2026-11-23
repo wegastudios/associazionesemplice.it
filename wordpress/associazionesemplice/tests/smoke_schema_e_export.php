@@ -20,13 +20,15 @@ foreach ( $ledger->categories() as $sx_c ) {
 		$sx_exp = (int) $sx_c['id'];
 	}
 }
-$sx_from = '2031-03-01';
-$sx_to   = '2031-03-31';
+$sx_ym   = substr( $today, 0, 7 );
+$sx_from = $sx_ym . '-01';
+$sx_to   = $sx_ym . '-28';
+$sx_base = count( $ledger->rows( $sx_from, $sx_to ) ); // movimenti già presenti nel mese
 for ( $sx_i = 0; $sx_i < 1005; $sx_i++ ) { // più di un blocco da 1.000, con molte righe nello stesso giorno (conta anche l'identificativo)
-	$ledger->record_expense( array( 'date' => '2031-03-0' . ( 1 + $sx_i % 3 ), 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $sx_exp, 'amount_cents' => 100 + $sx_i, 'description' => 'Blocco ' . $sx_i ) );
+	$ledger->record_expense( array( 'date' => $sx_ym . '-0' . ( 1 + $sx_i % 3 ), 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $sx_exp, 'amount_cents' => 100 + $sx_i, 'description' => 'Blocco ' . $sx_i ) );
 }
 $sx_all = $ledger->rows( $sx_from, $sx_to, null, true );
-asem_ok( 1005 === count( $sx_all ), 'esportazioni: la prova ha 1005 movimenti nello stesso mese' );
+asem_ok( 1005 + $sx_base === count( $sx_all ), 'esportazioni: la prova ha 1005 movimenti nello stesso mese' );
 $sx_ids = array();
 $sx_after = null;
 $sx_pages = 0;
@@ -38,10 +40,10 @@ do {
 	}
 	++$sx_pages;
 } while ( 400 === count( $sx_page ) );
-asem_ok( $sx_ids === array_map( 'intval', array_column( $sx_all, 'id' ) ) && 3 === $sx_pages, 'esportazioni: la prima nota letta a pagine «dopo l\'ultimo letto» è la stessa lista, nello stesso ordine' );
+asem_ok( $sx_ids === array_map( 'intval', array_column( $sx_all, 'id' ) ) && (int) ceil( ( 1005 + $sx_base ) / 400 ) === $sx_pages, 'esportazioni: la prima nota letta a pagine «dopo l\'ultimo letto» è la stessa lista, nello stesso ordine' );
 list( $sx_name, $sx_csv ) = Exports::ledger( $sx_from, $sx_to );
 $sx_lines = explode( "\r\n", rtrim( $sx_csv, "\r\n" ) );
-asem_ok( 1006 === count( $sx_lines ) && 0 === strpos( $sx_lines[0], 'Data;Tipo;Conto' ) && false !== strpos( $sx_lines[1], 'Blocco 0' ) && false !== strpos( $sx_lines[1005], 'Blocco 1004' ), 'esportazioni: il file della prima nota ha intestazione e tutte le righe, anche oltre il primo blocco' );
+asem_ok( 1006 + $sx_base === count( $sx_lines ) && 0 === strpos( $sx_lines[0], 'Data;Tipo;Conto' ) && false !== strpos( $sx_csv, 'Blocco 0' ) && false !== strpos( $sx_csv, 'Blocco 1004' ), 'esportazioni: il file della prima nota ha intestazione e tutte le righe, anche oltre il primo blocco' );
 $sx_dates = array();
 foreach ( array_slice( $sx_lines, 1 ) as $sx_l ) {
 	$sx_f = explode( ';', $sx_l );
@@ -80,7 +82,7 @@ $sx_b1 = $ledger->balances();
 $sx_b2 = $ledger->balances( null, true );
 $sx_b3 = $ledger->balances();
 asem_ok( 1 === $GLOBALS['sx_scans'] && $sx_b1 === $sx_b3, 'saldi: la somma dei movimenti si legge una volta sola per richiesta, qualunque conto si chieda' );
-$ledger->balances( '2031-03-02' );
+$ledger->balances( $sx_ym . '-02' );
 asem_ok( 2 === $GLOBALS['sx_scans'], 'saldi: una data diversa è un\'altra lettura' );
 $sx_cash_before = 0;
 foreach ( $sx_b1 as $sx_a ) {
@@ -88,7 +90,7 @@ foreach ( $sx_b1 as $sx_a ) {
 		$sx_cash_before = (int) $sx_a['balance'];
 	}
 }
-$ledger->record_expense( array( 'date' => '2031-03-05', 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $sx_exp, 'amount_cents' => 777, 'description' => 'Saldo dopo scrittura' ) );
+$ledger->record_expense( array( 'date' => $sx_ym . '-05', 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $sx_exp, 'amount_cents' => 777, 'description' => 'Saldo dopo scrittura' ) );
 $sx_cash_after = 0;
 foreach ( $ledger->balances() as $sx_a ) {
 	if ( (int) $sx_a['id'] === (int) $cash['id'] ) {
