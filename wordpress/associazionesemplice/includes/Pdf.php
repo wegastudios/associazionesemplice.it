@@ -300,33 +300,30 @@ final class Pdf {
 	}
 
 	/**
-	 * Un codice QR come piccola immagine a un bit (un pixel per modulo, zona bianca di $quiet moduli intorno) nel quadrato indicato:
-	 * al posto di centinaia di rettangoli. $m = matrice dei moduli ({@see QrCode::matrix()}), vero = nero.
+	 * Un codice QR in vettoriale (nitido a qualunque risoluzione di stampa o di lettura): zona bianca di $quiet moduli intorno e, per ogni riga, un solo
+	 * rettangolo nero per ogni serie di moduli neri adiacenti. $m = matrice dei moduli ({@see QrCode::matrix()}), vero = nero.
 	 */
 	public function qr( array $m, float $x, float $y, float $size, int $quiet = 4 ): void {
-		$n   = count( $m );
-		$dim = $n + 2 * $quiet;
-		$rb  = intdiv( $dim + 7, 8 );
-		$raw = str_repeat( "\xFF", $rb * $quiet );
-		for ( $r = 0; $r < $n; $r++ ) {
-			$bits = str_repeat( '1', $quiet );
-			for ( $c = 0; $c < $n; $c++ ) {
-				$bits .= empty( $m[ $r ][ $c ] ) ? '1' : '0';
-			}
-			$bits .= str_repeat( '1', $rb * 8 - $quiet - $n );
-			for ( $i = 0; $i < $rb; $i++ ) {
-				$raw .= chr( bindec( substr( $bits, $i * 8, 8 ) ) );
+		$n = count( $m );
+		if ( 0 === $n ) {
+			return;
+		}
+		$mod = $size / ( $n + 2 * $quiet );
+		$this->rect( $x, $y, $size, $size, 1.0 );
+		foreach ( $m as $r => $row ) {
+			$col = 0;
+			while ( $col < $n ) {
+				if ( empty( $row[ $col ] ) ) {
+					$col++;
+					continue;
+				}
+				$start = $col;
+				while ( $col < $n && ! empty( $row[ $col ] ) ) {
+					$col++;
+				}
+				$this->cur .= sprintf( "%.3F %.3F %.3F %.3F re f\n", $x + ( $quiet + $start ) * $mod, self::H - $y - ( $quiet + $r + 1 ) * $mod, ( $col - $start ) * $mod, $mod );
 			}
 		}
-		$raw .= str_repeat( "\xFF", $rb * $quiet );
-		$z    = function_exists( 'gzcompress' ) ? gzcompress( $raw, 9 ) : false;
-		$this->image(
-			array( 'w' => $dim, 'h' => $dim, 'cs' => '/DeviceGray', 'bpc' => 1, 'filter' => false !== $z ? '/FlateDecode' : '', 'parms' => '/Interpolate false', 'data' => false !== $z ? $z : $raw ),
-			$x,
-			$y,
-			$size,
-			$size
-		);
 	}
 
 	/** Rettangolo pieno in un tono di grigio (0 nero … 1 bianco). */

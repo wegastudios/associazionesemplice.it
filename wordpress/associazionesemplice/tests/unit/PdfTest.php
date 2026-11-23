@@ -72,27 +72,38 @@ final class PdfTest extends TestCase {
 		$this->assertSame( "\x80\xFF", gzuncompress( $img['smask']['data'] ) );
 	}
 
-	public function test_qr_is_a_one_bit_image_with_the_same_modules_as_the_matrix(): void {
+	public function test_qr_is_vector_with_one_rectangle_per_run_of_dark_modules(): void {
 		$m   = \AssociazioneSemplice\QrCode::matrix( 'https://example.org/?asem_card=0123456789abcdef.ABCDEFGHIJKLMNOPQRSTUVWXYZ' );
 		$n   = count( $m );
 		$pdf = new Pdf();
-		$pdf->qr( $m, 50, 50, 80 );
+		$pdf->qr( $m, 50, 50, 8.0 * ( $n + 8 ) );
 		$out = $pdf->output();
-		$dim = $n + 8;
-		$this->assertStringContainsString( '/Width ' . $dim . ' /Height ' . $dim . ' /ColorSpace /DeviceGray /BitsPerComponent 1', $out );
-		$this->assertStringNotContainsString( ' re f', $out, 'nessun rettangolo per modulo' );
-		$this->assertMatchesRegularExpression( '/\/Filter \/FlateDecode \/Interpolate false \/Length (\d+) >>\nstream\n/', $out );
-		preg_match( '/\/Interpolate false \/Length (\d+) >>\nstream\n/', $out, $mm, PREG_OFFSET_CAPTURE );
-		$len  = (int) $mm[1][0];
-		$from = $mm[0][1] + strlen( $mm[0][0] );
-		$raw  = gzuncompress( substr( $out, $from, $len ) );
-		$rb   = intdiv( $dim + 7, 8 );
-		$this->assertSame( $rb * $dim, strlen( $raw ) );
-		for ( $r = 0; $r < $dim; $r++ ) {
-			for ( $c = 0; $c < $dim; $c++ ) {
-				$bit  = ( ord( $raw[ $r * $rb + intdiv( $c, 8 ) ] ) >> ( 7 - $c % 8 ) ) & 1; // 1 = bianco
-				$dark = $r >= 4 && $c >= 4 && $r < 4 + $n && $c < 4 + $n && ! empty( $m[ $r - 4 ][ $c - 4 ] );
-				$this->assertSame( $dark ? 0 : 1, $bit, "modulo $r,$c" );
+		$mod = 8.0;
+		$this->assertStringNotContainsString( '/Subtype /Image', $out, 'nessuna immagine: il QR resta vettoriale' );
+		$runs = 0;
+		foreach ( $m as $row ) {
+			$prev = false;
+			foreach ( $row as $v ) {
+				$runs += ( ! empty( $v ) && ! $prev ) ? 1 : 0;
+				$prev  = ! empty( $v );
+			}
+		}
+		// un rettangolo bianco di sfondo + uno nero per ogni serie di moduli neri adiacenti
+		$this->assertSame( $runs + 1, substr_count( $out, ' re f' ) );
+		preg_match_all( '/^([0-9.]+) ([0-9.]+) ([0-9.]+) ([0-9.]+) re f$/m', $out, $mm, PREG_SET_ORDER );
+		$this->assertCount( $runs, $mm );
+		$grid = array();
+		foreach ( $mm as $r ) {
+			$row = (int) round( ( Pdf::H - (float) $r[2] - (float) $r[4] - 50 ) / $mod ) - 4;
+			$c0  = (int) round( ( (float) $r[1] - 50 ) / $mod ) - 4;
+			$len = (int) round( (float) $r[3] / $mod );
+			for ( $c = $c0; $c < $c0 + $len; $c++ ) {
+				$grid[ $row ][ $c ] = true;
+			}
+		}
+		for ( $r = 0; $r < $n; $r++ ) {
+			for ( $c = 0; $c < $n; $c++ ) {
+				$this->assertSame( ! empty( $m[ $r ][ $c ] ), ! empty( $grid[ $r ][ $c ] ), "modulo $r,$c" );
 			}
 		}
 	}

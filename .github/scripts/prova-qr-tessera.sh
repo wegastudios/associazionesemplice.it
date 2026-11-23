@@ -29,6 +29,13 @@ for dpi in 150 300; do
   zbarimg --raw -q "$out"/f$dpi*.png > "$out/f$dpi.txt" 2>/dev/null
   check "PDF foglio di tessere, $dpi dpi" "$out/f$dpi.txt" "$out/exps.txt"
 done
+# solo informazione (non fa fallire): a 100 dpi un QR di 1,7 cm è ai limiti anche per un telefono
+pdftoppm -r 100 -png "$out/foglio.pdf" "$out/f100"
+zbarimg --raw -q "$out"/f100*.png > "$out/f100.txt" 2>/dev/null
+echo "| (solo info) PDF foglio di tessere, 100 dpi | | $(sort "$out/f100.txt" | wc -l) QR letti su $(wc -l < "$out/exps.txt") | - |" >> "$report"
+echo "[info] 100 dpi: $(sort "$out/f100.txt" | wc -l) QR letti su $(wc -l < "$out/exps.txt")"
+echo "| (solo info) byte: tessera singola $(wc -c < "$out/tessera.pdf"), foglio di tessere $(wc -c < "$out/foglio.pdf") | | | - |" >> "$report"
+echo "[info] byte: tessera $(wc -c < "$out/tessera.pdf"), foglio $(wc -c < "$out/foglio.pdf")"
 for w in 300 600; do
   rsvg-convert -b white -w $w "$out/qr.svg" -o "$out/s$w.png"
   zbarimg --raw -q "$out/s$w.png" > "$out/s$w.txt" 2>/dev/null

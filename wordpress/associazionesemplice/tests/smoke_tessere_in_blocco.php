@@ -1,6 +1,6 @@
 <?php
 /**
- * Tessere in PDF per molti soci: i dati si leggono in blocco (le query non crescono con il numero dei soci), il QR è un'immagine a un bit, le
+ * Tessere in PDF per molti soci: i dati si leggono in blocco (le query non crescono con il numero dei soci), il QR è vettoriale (un rettangolo per serie di moduli), le
  * pagine sono compresse, al più 500 tessere per file. Sta in un file a parte, caricato alla fine di smoke.php, perché crea 50 persone e non deve
  * spostare gli identificativi su cui contano le prove più indietro.
  */
@@ -24,7 +24,7 @@ $cd_q     = $wpdb->num_queries;
 $cd_pdf50 = \AssociazioneSemplice\CardLayout::pdf_sheets( $cd_50 );
 $cd_n50   = $wpdb->num_queries - $cd_q;
 asem_ok( $cd_n50 <= 20 && $cd_n50 <= $cd_n10 + 2, 'tessere PDF: 50 tessere fanno ' . $cd_n50 . ' query (10 ne fanno ' . $cd_n10 . '): non una serie per ogni socio' );
-asem_ok( false !== strpos( $cd_pdf50, '/Filter /FlateDecode' ) && false !== strpos( $cd_pdf50, '/BitsPerComponent 1' ) && 0 === substr_count( $cd_pdf50, ' re f' ), 'tessere PDF: pagine compresse e QR come immagine a un bit, non come rettangoli' );
+asem_ok( false !== strpos( $cd_pdf50, '/Filter /FlateDecode' ) && false === strpos( $cd_pdf50, '/BitsPerComponent 1' ), 'tessere PDF: pagine compresse e QR vettoriale (nessuna immagine a un bit, leggibile a ogni risoluzione)' );
 $cd_data = \AssociazioneSemplice\CardLayout::card_data( array( $cd_50[0] ) );
 $cd_u    = Plugin::people()->active_until( (int) $cd_50[0]['id'] );
 $cd_old  = array(
