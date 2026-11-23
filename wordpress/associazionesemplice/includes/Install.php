@@ -46,7 +46,7 @@ final class Install {
 		foreach ( self::JOB_HOOKS as $hook ) {
 			wp_unschedule_hook( $hook );
 		}
-		BootState::forget( Plugin::JOBS_CHECKED ); // alla riattivazione i due eventi del giro si riprogrammano subito
+		BootState::forget( 'jobs_checked' ); // = Plugin::JOBS_CHECKED (scritto qui: alla disattivazione durante un aggiornamento Plugin può essere ancora quella vecchia); alla riattivazione i due eventi del giro si riprogrammano subito
 	}
 
 	public static function activate(): void {

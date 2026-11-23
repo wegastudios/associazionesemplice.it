@@ -51,7 +51,7 @@ final class JobsTest extends TestCase {
 	public function test_the_two_events_are_cleared_on_deactivation_and_rescheduled_after(): void {
 		$this->assertContains( Plugin::JOBS_HOURLY, Install::JOB_HOOKS );
 		$this->assertContains( Plugin::JOBS_DAILY, Install::JOB_HOOKS );
-		$this->assertStringContainsString( 'BootState::forget( Plugin::JOBS_CHECKED )', self::src( 'Install.php' ) );
+		$this->assertStringContainsString( "BootState::forget( '" . Plugin::JOBS_CHECKED . "' )", self::src( 'Install.php' ) );
 	}
 
 	/** Il Pro: i nomi scritti per non caricare Sms e Newsletter a ogni richiesta sono quelli veri; i suoi lavori entrano nel giro. */
