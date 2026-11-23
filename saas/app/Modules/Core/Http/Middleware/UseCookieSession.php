@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Http\Middleware;
 
 use Closure;
+use Illuminate\Cookie\CookieJar;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Redirector;
 use Illuminate\Routing\Route;
@@ -63,6 +64,14 @@ final class UseCookieSession
     private static function rebind(): void
     {
         $app = app();
+        // Il cookie dei dati della sessione (quello che il driver «cookie» mette da sé) prende percorso, dominio e Secure
+        // da qui: devono essere quelli di adesso, cioè mai un Domain.
+        $jar = $app->make('cookie');
+        if ($jar instanceof CookieJar) {
+            $path = config('session.path');
+            $sameSite = config('session.same_site');
+            $jar->setDefaultPathAndDomain(is_string($path) ? $path : '/', is_string(config('session.domain')) ? config('session.domain') : null, config('session.secure') === true, is_string($sameSite) ? $sameSite : null);
+        }
         $app->forgetInstance('session.store');
         $redirector = $app->make('redirect');
         if ($redirector instanceof Redirector) {

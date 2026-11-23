@@ -171,3 +171,60 @@ it('l\'indice su last_activity non c\'è più e la tabella delle sessioni ha spa
     expect((int) (is_object($index) ? $index->n : -1))->toBe(0)
         ->and(is_object($options) ? $options->o : '')->toContain('fillfactor=60');
 });
+
+/** @return array<string, Symfony\Component\HttpFoundation\Cookie> i cookie di sessione pubblica di una risposta: quello dell'id e quello dei dati */
+function publicSessionCookies(TestResponse $response): array
+{
+    $out = [];
+    foreach ($response->headers->getCookies() as $cookie) {
+        if ($cookie->getName() !== 'as_socio') {
+            $out[$cookie->getName()] = $cookie;
+        }
+    }
+
+    return $out;
+}
+
+it('i cookie della sessione pubblica sono Secure, HttpOnly, Lax, con percorso / e senza Domain', function (): void {
+    config(['session.secure' => true, 'session.domain' => 'esempio.test', 'session.expire_on_close' => true]);
+
+    $cookies = publicSessionCookies($this->post($this->base.'/accesso', ['email' => 'nessuno@example.com']));
+
+    expect($cookies)->toHaveCount(2)->and($cookies)->toHaveKey('as_pubblico');
+    foreach ($cookies as $name => $cookie) {
+        expect($cookie->isSecure())->toBeTrue($name)
+            ->and($cookie->isHttpOnly())->toBeTrue($name)
+            ->and(strtolower((string) $cookie->getSameSite()))->toBe('lax', $name)
+            ->and($cookie->getPath())->toBe('/', $name)
+            ->and($cookie->getDomain())->toBeNull($name)
+            // Chiusa con il browser: nessuna scadenza fissa.
+            ->and($cookie->getExpiresTime())->toBe(0, $name);
+    }
+});
+
+it('con la sessione che non finisce alla chiusura del browser la scadenza è quella della sessione', function (): void {
+    config(['session.secure' => true, 'session.expire_on_close' => false, 'session.lifetime' => 120]);
+
+    foreach (publicSessionCookies($this->post($this->base.'/accesso', ['email' => 'nessuno@example.com'])) as $name => $cookie) {
+        expect($cookie->getExpiresTime())->toBeGreaterThan(time() + 119 * 60, $name)->and($cookie->getExpiresTime())->toBeLessThanOrEqual(time() + 121 * 60, $name);
+    }
+});
+
+it('i dati della sessione pubblica sono cifrati e dentro c\'è solo la scheda scelta', function (): void {
+    Mail::fake();
+    $jar = jarAfter($this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso'));
+    $code = (string) Mail::sent(LoginLink::class)->last()?->code;
+    $jar = jarAfter($this->withUnencryptedCookies($jar)->post($this->base.'/accesso/codice', ['email' => 'mario@example.com', 'code' => $code])->assertRedirect('/area'), $jar);
+    $chosen = $this->withUnencryptedCookies($jar)->post($this->base.'/scheda/'.$this->luca->id)->assertRedirect('/area');
+
+    $data = array_filter(publicSessionCookies($chosen), fn ($c, $n) => $n !== 'as_pubblico', ARRAY_FILTER_USE_BOTH);
+    expect($data)->toHaveCount(1);
+    $raw = (string) array_values($data)[0]->getValue();
+
+    // Non leggibile: né l'id della scheda né la parola della sessione compaiono in chiaro.
+    expect($raw)->not->toContain($this->luca->id)->and($raw)->not->toContain('member_active_profile')->and($raw)->not->toContain('mario@example.com');
+
+    // Decifrato (solo qui, con la chiave dell'applicazione): la scheda scelta c'è, nessun'altra persona.
+    $plain = Illuminate\Cookie\CookieValuePrefix::remove(app('encrypter')->decrypt($raw, false));
+    expect($plain)->toContain($this->luca->id)->and($plain)->not->toContain($this->mario->id)->and($plain)->not->toContain('mario@example.com');
+});
