@@ -17,10 +17,10 @@ final class TechPage {
 		$wait = \AssociazioneSemplice\MailRetry::pending();
 		$lost = \AssociazioneSemplice\MailRetry::lost();
 		if ( $wait > 0 ) {
-			echo '<p class="notice notice-warning inline" style="padding:8px 12px"><strong>' . (int) $wait . ' in attesa di un nuovo tentativo:</strong> il server di posta non le ha accettate e il plugin riprova da solo nei prossimi minuti.</p>';
+			echo '<p class="notice notice-warning inline" style="padding:8px 12px"><strong>' . (int) $wait . ' email in attesa di un nuovo tentativo:</strong> ' . ( 1 === $wait ? 'il server di posta non l\'ha accettata' : 'il server di posta non le ha accettate' ) . ' e il plugin riprova da solo.</p>';
 		}
 		if ( $lost > 0 ) {
-			echo '<p class="notice notice-error inline" style="padding:8px 12px"><strong>' . (int) $lost . ( 1 === $lost ? ' email non è partita' : ' email non sono partite' ) . '</strong> negli ultimi 7 giorni anche dopo i nuovi tentativi: controlla la posta del sito (un plugin SMTP di solito risolve) e avvisa chi aspettava il messaggio.</p>';
+			echo '<p class="notice notice-error inline" style="padding:8px 12px"><strong>' . (int) $lost . ( 1 === $lost ? ' email non è partita' : ' email non sono partite' ) . '</strong> negli ultimi 7 giorni, nemmeno dopo i nuovi tentativi: controlla la posta del sito (di solito un plugin SMTP risolve) e avvisa chi aspettava il messaggio.</p>';
 		}
 		$rows = \AssociazioneSemplice\MailLog::recent( 10 );
 		if ( $rows ) {

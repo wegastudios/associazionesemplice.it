@@ -10178,14 +10178,14 @@ asem_ok( 1 === \AssociazioneSemplice\MailRetry::pending() && false !== wp_next_s
 asem_ok( 1 === \AssociazioneSemplice\MailRetry::pending(), 'coda email: comunicazioni e promemoria (senza ripetizione) e indirizzi non validi non entrano in coda' );
 \AssociazioneSemplice\MailRetry::$clock = $mr_t + 60;
 asem_ok( 0 === \AssociazioneSemplice\MailRetry::run() && 1 === \AssociazioneSemplice\MailRetry::pending(), 'coda email: prima del tempo non si riprova' );
-\AssociazioneSemplice\MailRetry::$clock = $mr_t + 200;
+\AssociazioneSemplice\MailRetry::$clock = $mr_t + 400;
 $mr_fail = false;
 asem_ok( 1 === \AssociazioneSemplice\MailRetry::run() && 0 === \AssociazioneSemplice\MailRetry::pending() && 1 === count( $mr_sent ) && 0 === strpos( (string) $mr_sent[0]['message'], 'Corpo della ricevuta' ), 'coda email: al nuovo tentativo la email parte e la coda si svuota' );
 $mr_fail = true;
 \AssociazioneSemplice\MailRetry::$clock = null;
 \AssociazioneSemplice\Texts::mail( 'codice@example.com', 'Codice di accesso', 'Il tuo codice' );
 $mr_t = time();
-foreach ( array( 200, 700, 1700 ) as $mr_step ) {
+foreach ( array( 400, 1700, 5400 ) as $mr_step ) {
 	\AssociazioneSemplice\MailRetry::$clock = $mr_t + $mr_step;
 	\AssociazioneSemplice\MailRetry::run();
 }

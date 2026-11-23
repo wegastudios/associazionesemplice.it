@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * Le email singole non sono mai fermate dal tetto orario ({@see MailBudget}); ma se il provider le rifiuta o le limita (tetto superato dalla sua parte),
  * non si perdono: restano qui e si riprovano dopo pochi minuti dal giro dei lavori (WP-Cron). Tentativi: il primo (subito) più tre di riprova,
- * dopo 3, 8 e 15 minuti; se anche l'ultimo fallisce l'email si dà per non inviata e resta traccia nel registro della posta e nell'avviso
+ * dopo 5, 20 e 60 minuti; se anche l'ultimo fallisce l'email si dà per non inviata e resta traccia nel registro della posta e nell'avviso
  * del pannello. Le comunicazioni a gruppi e i promemoria hanno già la loro coda e non passano da qui.
  * Nessuno schema: la coda è un'opzione non caricata a ogni richiesta, con al massimo {@see MAX} messaggi.
  */
@@ -18,7 +18,7 @@ final class MailRetry {
 	const OPTION   = 'asem_mail_retry_queue';
 	const LOST     = 'asem_mail_retry_lost';
 	const MAX      = 50;
-	const DELAYS   = array( 180, 480, 900 ); // attesa prima di ogni riprova
+	const DELAYS   = array( 300, 1200, 3600 ); // attesa prima di ogni riprova
 	const MAX_BODY = 40000;
 	const BUDGET   = 15; // secondi di un giro
 
