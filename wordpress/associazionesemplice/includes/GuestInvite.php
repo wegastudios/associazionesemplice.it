@@ -36,13 +36,13 @@ final class GuestInvite {
 			$h    = Plugin::people()->get( (int) $person['host_person_id'] );
 			$host = $h ? trim( $h['first_name'] . ' ' . $h['last_name'] ) : '';
 		}
-		$reasons = GuestInviteRules::reasons( true, (int) ( $overview['total'] ?? 0 ), Plugin::activities()->guest_limit(), $host, (string) ( $activity['name'] ?? '' ) );
+		$reasons = GuestInviteRules::reasons( true, (int) ( $overview['total'] ?? 0 ), Plugin::activities()->guest_limit(), $host, ( 'event' === ( $activity['kind'] ?? '' ) ? (string) ( $activity['name'] ?? '' ) : '' ) );
 		if ( ! $reasons ) {
 			return '';
 		}
 		$session_id = (int) ( $session['id'] ?? 0 );
 		$all        = self::all();
-		$all[ GuestInviteRules::notice_id( $person_id, $session_id ) ] = array(
+		$all[ GuestInviteRules::notice_id( $person_id ) ] = array(
 			'person_id' => $person_id, 'session_id' => $session_id, 'reasons' => $reasons, 'date' => current_time( 'Y-m-d' ), 'at' => time(),
 		);
 		update_option( self::OPTION, GuestInviteRules::trim( $all, GuestInviteRules::MAX ), false );

@@ -32,6 +32,16 @@ final class GuestInviteRulesTest extends TestCase {
 		$this->assertSame( array(), GuestInviteRules::reasons( true, 1, 3, '  ', ' ' ) );
 	}
 
+	public function test_the_host_alone_is_never_a_reason(): void {
+		$this->assertSame( array(), GuestInviteRules::reasons( true, 1, 3, 'Bruno Verdi', '' ), 'ogni ospite ha chi lo ospita: da solo non basta' );
+		$this->assertSame( array(), GuestInviteRules::reasons( true, 2, 0, 'Bruno Verdi', '' ), 'soglia spenta: nessun avviso' );
+	}
+
+	public function test_the_host_stays_as_information_next_to_a_real_reason(): void {
+		$this->assertSame( array( 'host', 'event' ), array_column( GuestInviteRules::reasons( true, 1, 3, 'Bruno Verdi', 'Cena' ), 'code' ) );
+		$this->assertSame( array( 'threshold', 'host' ), array_column( GuestInviteRules::reasons( true, 3, 3, 'Bruno Verdi', '' ), 'code' ) );
+	}
+
 	public function test_message_is_joined_and_split_again(): void {
 		$msg = GuestInviteRules::join( 'Ingresso registrato: Olga.', 'Olga è qui su invito di Bruno.' );
 		$this->assertSame( array( 'Ingresso registrato: Olga.', 'Olga è qui su invito di Bruno.' ), GuestInviteRules::split( $msg ) );
@@ -39,10 +49,10 @@ final class GuestInviteRulesTest extends TestCase {
 		$this->assertSame( array( 'Solo questo.', '' ), GuestInviteRules::split( 'Solo questo.' ) );
 	}
 
-	public function test_notice_id_is_the_same_for_the_same_person_and_date(): void {
-		$this->assertSame( GuestInviteRules::notice_id( 7, 12 ), GuestInviteRules::notice_id( 7, 12 ) );
-		$this->assertNotSame( GuestInviteRules::notice_id( 7, 12 ), GuestInviteRules::notice_id( 7, 13 ) );
-		$this->assertMatchesRegularExpression( '/^[a-f0-9]{12}$/', GuestInviteRules::notice_id( 7, 12 ) );
+	public function test_notice_id_is_the_same_for_the_same_person(): void {
+		$this->assertSame( GuestInviteRules::notice_id( 7 ), GuestInviteRules::notice_id( 7 ) );
+		$this->assertNotSame( GuestInviteRules::notice_id( 7 ), GuestInviteRules::notice_id( 8 ) );
+		$this->assertMatchesRegularExpression( '/^[a-f0-9]{12}$/', GuestInviteRules::notice_id( 7 ) );
 	}
 
 	public function test_queue_keeps_the_newest_up_to_the_maximum(): void {
