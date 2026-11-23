@@ -17,6 +17,7 @@ Il riquadro elenca le cose che aspettano te:
 - **richieste di accesso** da controllare (i soci che hanno chiesto di entrare);
 - **soci da rinnovare**, con tessera scaduta o in scadenza;
 - **ospiti da invitare** a iscriversi;
+- **ospiti appena entrati** a un evento (una voce per ospite, con il motivo; sparisce quando la segni **«Fatto»**);
 - **schede da completare**: soci in carica a cui mancano dei dati (l'avviso compare anche nella Bacheca di Associazione Semplice, con l'elenco e il contatore). Il plugin controlla codice fiscale, data e luogo di nascita, residenza (indirizzo **e** comune) e un contatto: per un maggiorenne **email o telefono**, per un **minorenne** un genitore o tutore con la sua email e il codice fiscale di ciascun genitore. L'elenco dice cosa manca, scheda per scheda. Non sono controllati ospiti, genitori non soci, soci receduti o anonimizzati e domande in attesa;
 - **email non partite** (solo per l'amministratore).
 

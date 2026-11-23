@@ -95,6 +95,20 @@ Probabilmente mancano l'**email** o il **telefono della segreteria**. Il program
 MD,
     ],
     [
+        'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'quante-email-all-ora-puo-mandare-il-plugin',
+        'title' => 'Quante email all'ora può mandare il plugin?',
+        'body' => <<<'MD'
+Molti hosting hanno un tetto di email all'ora. Nelle impostazioni dei limiti c'è **«email all'ora»**: di partenza **200**, da **20** a **5000**. Le comunicazioni e i promemoria usano l'**80%** del tetto. Le email singole (conferme, codici) **non vengono mai bloccate**: oltre il tetto vengono rimandate entro pochi minuti, **mai scartate**.
+MD,
+    ],
+    [
+        'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'aggiornamento-in-corso-riprova-tra-un-minuto',
+        'title' => 'Perché compare «Aggiornamento in corso, riprova tra un minuto.»?',
+        'body' => <<<'MD'
+Dopo l'aggiornamento del plugin, i dati vengono aggiornati a passi. Finché non finisce, ogni operazione che scrive dati risponde **«Aggiornamento in corso, riprova tra un minuto.»**. Aspetta un minuto e ripeti l'operazione.
+MD,
+    ],
+    [
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'forma-dell-ente-e-sezione-del-runts',
         'title' => 'Forma dell\'ente e sezione del RUNTS sono la stessa cosa?',
         'body' => <<<'MD'

@@ -121,6 +121,10 @@ Un ospite può partecipare solo poche volte: poi, anche per ragioni assicurative
 
 Se l'ente non li accetta (**Impostazioni → Soci e quote**), non se ne registrano di nuovi e la sezione «I miei ospiti» sparisce dall'area soci. Gli ospiti già registrati restano.
 
+## Ospiti appena entrati
+
+Quando un ospite viene segnato come **entrato** a un evento (anche gratuito), in **Bacheca** compare la voce **«Ospiti appena entrati»**, con il motivo della segnalazione: soglia degli ingressi raggiunta, invito di terzi (come informazione) o l'evento stesso. C'è **una sola voce per ospite**: si aggiorna a ogni nuovo ingresso finché non la segni **«Fatto»**.
+
 > I soci vedono solo il conto dei propri ospiti, senza segnalazioni.
 
 ## Ospiti dell'associazione e ospiti del volontario

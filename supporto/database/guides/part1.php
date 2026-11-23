@@ -154,6 +154,8 @@ Dopo 5 password sbagliate in 15 minuti compare «Troppi tentativi: riprova tra q
 
 Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 
+La copia procede **a tappe**, a blocchi: se si interrompe puoi **riprenderla** senza ricominciare. La password richiesta vale **2 ore**: poi viene chiesta di nuovo.
+
 ## Ripristinare
 
 > Il ripristino sostituisce i dati del plugin con quelli della copia, **tutto o niente**. Le copie sono **firmate**: una copia **modificata dopo essere stata fatta** viene **rifiutata**.
@@ -162,6 +164,12 @@ Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 2. Prima di sostituire i dati, il plugin salva sul sito una copia dello stato attuale (ne tiene alcune, scaricabili).
 3. Per confermare scrivi **RIPRISTINA** e la **tua password di amministratore**. Se la copia è stata fatta **su un altro sito**, scrivi invece **RIPRISTINA DA ALTRO SITO** (e la password): il programma ti dice prima cosa verrà sostituito, e l'operazione resta scritta nel registro delle azioni.
 4. A operazione finita controlla soci e prima nota.
+
+Al ripristino il plugin controlla anche i **riferimenti orfani**, cioè i collegamenti a dati che nella copia non ci sono.
+
+## Conversione del database a InnoDB
+
+Nel pannello dedicato della stessa pagina puoi convertire le tabelle del plugin al formato **InnoDB**, che è più sicuro. Per procedere devi spuntare **«Ho una copia recente»** e confermare. Fai prima la copia di sicurezza.
 
 **La frase della copia.** Serve solo se la copia viene da un altro sito: è il codice di licenza o, nel gratuito, la data e l'ora in cui era stata creata la chiave dei file (in UTC, non la data di installazione del plugin). Se la lasci vuota, **soci e prima nota si ripristinano lo stesso**, ma i documenti cifrati restano chiusi finché non riapri la chiave con la frase.
 
@@ -172,6 +180,20 @@ Se sono cambiati i codici di sicurezza di WordPress, le copie fatte prima si rip
 - **Non si ripristinano**: le **sessioni aperte** dei soci, le **notifiche push**, il **registro delle azioni** e gli **utenti WordPress**. I soci dovranno **entrare di nuovo** (e riattivare le notifiche).
 - **Le password dei soci tornano.** La copia non contiene le password in chiaro, ma il ripristino le rimette: chi aveva una password entra con quella di prima e deve sceglierne subito una nuova, anche se entra con il link ricevuto per email.
 - La copia contiene dati personali: tienila protetta e non condividerla.
+MD,
+    ],
+    [
+        'topic' => 'installazione', 'section' => 'Manutenzione', 'slug' => 'stato-del-server',
+        'title' => 'Controllare lo stato del server',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+La pagina **Stato del server**, in **Strumenti**, dà consigli sul server che ospita il sito, in righe di due tipi:
+
+- **«Da sistemare»**: qualcosa che conviene correggere. Solo queste righe possono impedire alcune funzioni.
+- **«Migliorabile»**: un consiglio che non blocca niente.
+
+Lo stato si trova anche in **Salute del sito** di WordPress, con 5 test. Se una riga è «Da sistemare», mostrala a chi gestisce il sito o l'hosting.
 MD,
     ],
     [

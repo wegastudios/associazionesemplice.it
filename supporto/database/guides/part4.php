@@ -13,7 +13,7 @@ Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra ne
 ## Cosa fare
 
 1. Vai in **Cassa → Nuovo incasso**.
-2. Scegli la persona. Se ha la tessera non valida, la quota associativa si inserisce da sola.
+2. Scegli la persona. Se ha la tessera non valida, la quota associativa si inserisce da sola. Dove ci sono molte persone, al posto della tendina lunga c'è un campo di **ricerca**: scrivi nome o cognome.
 3. Controlla le voci proposte: mensilità e contributi già dovuti compaiono precaricati. Puoi aggiungere o togliere righe.
 4. Scegli il conto e la modalità di pagamento.
 5. Se incassi in **contanti**, scrivi quanto hai ricevuto: la calcolatrice dice il **resto**, con i tagli.
