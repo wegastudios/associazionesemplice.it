@@ -24,7 +24,7 @@ health() {
     local rc=0 stamp file warns
     stamp="$(date -u +%Y%m%dT%H%M%S)"
     file="$BASE/shared/health-$stamp.txt"
-    ( umask 077; "$PHP" artisan saas:health --mail-warnings-only "$@" > "$file" 2>&1 ) || rc=$?
+    ( umask 077; "$PHP" artisan saas:health --mail-warnings-only ${IGNORE_BALANCES_OPT[@]+"${IGNORE_BALANCES_OPT[@]}"} "$@" > "$file" 2>&1 ) || rc=$?
     chmod 600 "$file" 2>/dev/null || true
     warns="$(grep -c '^AVVISO' "$file" 2>/dev/null || true)"
     if [ "$rc" -eq 0 ]; then
@@ -54,6 +54,17 @@ rm -rf "$RELEASE/storage" && ln -sfn "$BASE/shared/storage" "$RELEASE/storage"
 mkdir -p "$RELEASE/bootstrap/cache"
 
 cd "$RELEASE"
+# «ignora-saldi» (input del workflow, RILASCIO.md): solo per il rilascio che corregge un difetto dei saldi dei conti. Il
+# controllo di salute tratta come avviso SOLO la voce «saldi dei conti»; si scrive nel log del rilascio e nel registro
+# dell'amministrazione, e se l'annotazione non riesce il rilascio si ferma.
+IGNORE_BALANCES_OPT=()
+if [ "${SAAS_IGNORE_BALANCES:-false}" = "true" ]; then
+    ACTOR="${SAAS_DEPLOY_ACTOR:-}"
+    [[ "$ACTOR" =~ ^[A-Za-z0-9][A-Za-z0-9-]{0,38}$ ]] || { echo "ignora-saldi senza un utente valido: rilascio annullato." >&2; exit 1; }
+    echo "ATTENZIONE: controllo dei saldi dei conti IGNORATO per questo rilascio, lanciato da $ACTOR (gli altri controlli restano bloccanti)."
+    "$PHP" artisan saas:deploy:ignore-balances "$ACTOR" "$REV"
+    IGNORE_BALANCES_OPT=(--ignore-balances)
+fi
 health --skip-migrations
 # saas:migrate aspetta la fine del backup orario, se è in corso, e riprova le istruzioni che non ottengono un blocco.
 "$PHP" artisan saas:migrate --force

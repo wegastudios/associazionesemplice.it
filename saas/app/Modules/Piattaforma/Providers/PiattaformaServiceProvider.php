@@ -8,6 +8,7 @@ use App\Modules\Piattaforma\Catalogo\CatalogPlanLimits;
 use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use App\Modules\Piattaforma\Console\AlignCatalogCommand;
 use App\Modules\Piattaforma\Console\CreateStaffCommand;
+use App\Modules\Piattaforma\Console\DeployBalancesOverrideCommand;
 use App\Modules\Piattaforma\Console\ImportPortalCustomersCommand;
 use App\Modules\Piattaforma\Console\InviteStaffCommand;
 use App\Modules\Piattaforma\Console\NotifyPortalCatalogCommand;
@@ -73,7 +74,7 @@ final class PiattaformaServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class, StaffSuperAdminCommand::class, PrepareTiersDraftCommand::class, NotifyPortalCatalogCommand::class, AlignCatalogCommand::class]);
+            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class, StaffSuperAdminCommand::class, PrepareTiersDraftCommand::class, NotifyPortalCatalogCommand::class, AlignCatalogCommand::class, DeployBalancesOverrideCommand::class]);
         }
     }
 }

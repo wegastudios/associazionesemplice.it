@@ -41,8 +41,12 @@ final class HealthCommand extends Command
 
     private const LONG_MAX_WAIT = 60 * 60;
 
+    /** Voce dei saldi dei conti: l'unica che --ignore-balances rende un avviso. */
+    private const BALANCES = 'saldi dei conti';
+
     protected $signature = 'saas:health {--skip-migrations : Non controllare le migrazioni (prima di eseguirle)}
-        {--mail-warnings-only : Problemi della posta in coda come avvisi (rilascio: non dipendono dalla versione)}';
+        {--mail-warnings-only : Problemi della posta in coda come avvisi (rilascio: non dipendono dalla versione)}
+        {--ignore-balances : Saldi dei conti diversi dai movimenti come avviso: solo per il rilascio che corregge il difetto (RILASCIO.md)}';
 
     protected $description = 'Controlla database, migrazioni, servizio chiavi e spazi dei file';
 
@@ -68,7 +72,7 @@ final class HealthCommand extends Command
             'memoria di Redis' => $this->redisMemory(...),
             'partizioni del registro' => fn () => $this->auditPartitions($db, $databases),
             'rifiuto del TRUNCATE' => fn () => $this->truncateGuards($db, $databases),
-            'saldi dei conti' => fn () => $this->balances($balances),
+            self::BALANCES => fn () => $this->balances($balances),
         ];
         // Posta e altri lavori in coda: problemi di esercizio, non della versione. Al rilascio (--mail-warnings-only) sono
         // avvisi, così non riportano indietro il rilascio.
@@ -94,6 +98,10 @@ final class HealthCommand extends Command
         $warnOnly = array_keys($alwaysWarn);
         if ($this->option('mail-warnings-only') === true) {
             $warnOnly = [...$warnOnly, ...array_keys($queueChecks)];
+        }
+        // Solo questa voce: gli altri errori fermano il rilascio anche con l'opzione.
+        if ($this->option('ignore-balances') === true) {
+            $warnOnly[] = self::BALANCES;
         }
         $checks += $queueChecks + $alwaysWarn;
 
