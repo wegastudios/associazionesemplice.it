@@ -120,3 +120,43 @@ it('il controllo di salute avvisa se la partizione predefinita ha righe', functi
         $owner->statement('TRUNCATE audit.log_default');
     }
 });
+
+it('il comando delle partizioni crea la funzione del rifiuto del TRUNCATE se manca, e la partizione nuova la usa', function (): void {
+    $this->travelTo(CarbonImmutable::parse('2041-03-15 02:13', 'UTC'));
+    $owner = proprietarioCondiviso();
+    $owner->beginTransaction();
+
+    try {
+        // Database rimasto indietro: niente funzione (e quindi niente trigger, che dipendono da lei).
+        $owner->statement('DROP FUNCTION audit.reject_truncate() CASCADE');
+        expect($owner->scalar("SELECT to_regprocedure('audit.reject_truncate()') IS NULL"))->toBeTrue();
+
+        $this->artisan('saas:audit:partitions', ['--months' => 1])->expectsOutputToContain('ok shared')->assertSuccessful();
+
+        expect($owner->scalar("SELECT to_regprocedure('audit.reject_truncate()') IS NOT NULL"))->toBeTrue()
+            ->and($owner->scalar("SELECT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'audit.log_2041_03'::regclass AND tgname = 'log_no_truncate')"))->toBeTrue();
+    } finally {
+        $owner->rollBack();
+    }
+    expect($owner->scalar("SELECT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'audit.log'::regclass AND tgname = 'log_no_truncate')"))->toBeTrue();
+});
+
+it('il controllo di salute dà errore se una tabella protetta non ha il rifiuto del TRUNCATE', function (string $table, string $trigger, string $function): void {
+    $owner = proprietarioCondiviso();
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ok    rifiuto del TRUNCATE')->assertSuccessful();
+
+    $owner->statement("DROP TRIGGER {$trigger} ON {$table}");
+    try {
+        $this->artisan('saas:health', ['--skip-migrations' => true])
+            ->expectsOutputToContain("ERRORE rifiuto del TRUNCATE: shared: senza rifiuto del TRUNCATE {$table}")
+            ->assertFailed();
+    } finally {
+        $owner->statement("CREATE OR REPLACE TRIGGER {$trigger} BEFORE TRUNCATE ON {$table} FOR EACH STATEMENT EXECUTE FUNCTION {$function}()");
+    }
+
+    $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ok    rifiuto del TRUNCATE')->assertSuccessful();
+})->with([
+    'una partizione' => ['audit.log_default', 'log_no_truncate', 'audit.reject_truncate'],
+    'la tabella del registro' => ['audit.log', 'log_no_truncate', 'audit.reject_truncate'],
+    'i movimenti della prima nota' => ['app.transactions', 'transactions_no_truncate', 'app.reject_transactions_truncate'],
+]);

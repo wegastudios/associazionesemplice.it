@@ -57,6 +57,7 @@ final class HealthCommand extends Command
             'connessione senza pooler' => fn () => $this->sessionSettings($db->connection('pgsql')),
             'memoria di Redis' => $this->redisMemory(...),
             'partizioni del registro' => fn () => $this->auditPartitions($db, $databases),
+            'rifiuto del TRUNCATE' => fn () => $this->truncateGuards($db, $databases),
         ];
         // Posta in coda: problemi di esercizio, non della versione. Al rilascio (--mail-warnings-only) sono avvisi, così
         // non riportano indietro il rilascio.
@@ -197,6 +198,42 @@ final class HealthCommand extends Command
             }
             if (($row->default_used ?? false) === true) {
                 $problems[] = "{$name}: righe nella partizione predefinita";
+            }
+        }
+        if ($problems !== []) {
+            throw new RuntimeException(implode('; ', $problems));
+        }
+    }
+
+    /**
+     * Su ogni database audit.log, tutte le sue partizioni e app.transactions hanno il trigger attivo che rifiuta il
+     * TRUNCATE (log_no_truncate, transactions_no_truncate). Sempre un errore, mai un avviso: senza, il registro e la prima
+     * nota si svuotano con un'istruzione sola. Legge solo il catalogo (pg_class, pg_inherits, pg_trigger, leggibili da
+     * ogni ruolo) con il ruolo dei backup; se il catalogo non fosse leggibile, l'errore della query è comunque un errore.
+     */
+    private function truncateGuards(DatabaseManager $db, DatabaseNames $databases): void
+    {
+        $problems = [];
+        foreach ($databases->names() as $name) {
+            $rows = $db->connection($databases->backupConnection($name))->select(<<<'SQL'
+                WITH expected AS (
+                    SELECT to_regclass('audit.log') AS rel, 'log_no_truncate'::text AS trg, 'audit.log'::text AS label
+                    UNION ALL
+                    SELECT i.inhrelid::regclass, 'log_no_truncate', i.inhrelid::regclass::text
+                    FROM pg_inherits i WHERE i.inhparent = to_regclass('audit.log')
+                    UNION ALL
+                    SELECT to_regclass('app.transactions'), 'transactions_no_truncate', 'app.transactions'
+                )
+                SELECT e.label FROM expected e
+                WHERE e.rel IS NULL OR NOT EXISTS (
+                    SELECT 1 FROM pg_trigger t
+                    WHERE t.tgrelid = e.rel AND t.tgname = e.trg AND t.tgenabled <> 'D' AND (t.tgtype & 32) <> 0
+                )
+                ORDER BY 1
+                SQL);
+            $missing = array_map(static fn (mixed $row): string => is_object($row) && is_string($row->label ?? null) ? $row->label : '?', $rows);
+            if ($missing !== []) {
+                $problems[] = "{$name}: senza rifiuto del TRUNCATE ".implode(', ', $missing);
             }
         }
         if ($problems !== []) {
