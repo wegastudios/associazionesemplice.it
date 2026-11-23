@@ -115,7 +115,18 @@ final class CoreServiceProvider extends ServiceProvider
             // server non ci sono processi sempre attivi). Code per tipo di lavoro e quanti lavoratori: JobQueues.
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 foreach (JobQueues::workers() as $worker) {
-                    $schedule->command($worker['command'])->everyMinute()->withoutOverlapping($worker['mutex_minutes'])->runInBackground();
+                    $event = $schedule->command($worker['command'])->everyMinute()->withoutOverlapping($worker['mutex_minutes'])->runInBackground();
+                    // Il lavoratore dei lunghi quasi sempre non avrebbe nulla da fare: un processo PHP in meno al minuto.
+                    $queue = $worker['only_if_queued'];
+                    if ($queue !== null) {
+                        $event->when(static function () use ($queue): bool {
+                            $connection = config('queue.connections.database.connection');
+                            $table = config('queue.connections.database.table');
+
+                            return config('queue.default') !== 'database' || DB::connection(is_string($connection) && $connection !== '' ? $connection : null)
+                                ->table(is_string($table) && $table !== '' ? $table : 'core.jobs')->where('queue', $queue)->exists();
+                        });
+                    }
                 }
                 $schedule->command('queue:prune-failed --hours=168')->dailyAt('05:47');
                 // File di lavoro rimasti da richieste interrotte (copie, archivi, ricevute): via quelli di più di un'ora.

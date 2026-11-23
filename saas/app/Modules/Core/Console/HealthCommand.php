@@ -36,7 +36,7 @@ final class HealthCommand extends Command
     /** Altri lavori: da quanto (secondi) un lavoro pronto aspetta un lavoratore. I lunghi aspettano anche un altro lungo. */
     private const DEFAULT_MAX_WAIT = 15 * 60;
 
-    private const LONG_MAX_WAIT = 3600;
+    private const LONG_MAX_WAIT = 60 * 60;
 
     protected $signature = 'saas:health {--skip-migrations : Non controllare le migrazioni (prima di eseguirle)}
         {--mail-warnings-only : Problemi della posta in coda come avvisi (rilascio: non dipendono dalla versione)}';
@@ -75,11 +75,15 @@ final class HealthCommand extends Command
             'coda dei lavori lunghi' => fn () => $this->jobWait($db, JobQueues::LONG, self::LONG_MAX_WAIT),
         ];
         // Sempre un avviso: gli invii vicini al tetto orario, i lavori non riusciti (li vede chi li ha chiesti).
-        $warnOnly = ['invii della posta nell\'ora', 'lavori non riusciti'];
+        $alwaysWarn = [
+            'invii della posta nell\'ora' => $this->mailHourUsage(...),
+            'lavori non riusciti' => fn () => $this->jobsFailed($db),
+        ];
+        $warnOnly = array_keys($alwaysWarn);
         if ($this->option('mail-warnings-only') === true) {
             $warnOnly = [...$warnOnly, ...array_keys($queueChecks)];
         }
-        $checks += $queueChecks + ['invii della posta nell\'ora' => $this->mailHourUsage(...), 'lavori non riusciti' => fn () => $this->jobsFailed($db)];
+        $checks += $queueChecks + $alwaysWarn;
 
         if (! $this->option('skip-migrations')) {
             foreach ($databases->names() as $name) {
@@ -225,10 +229,7 @@ final class HealthCommand extends Command
     /** Lavori fuori dalla posta (copie, import) finiti tra i falliti nelle ultime 24 ore. */
     private function jobsFailed(DatabaseManager $db): void
     {
-        $count = $this->failedJobs($db)
-            ->whereNotIn('queue', [MailQueue::URGENT, MailQueue::BULK])
-            ->where('failed_at', '>=', now()->subDay())
-            ->count();
+        $count = $this->failedLastDay($db)->whereNotIn('queue', [MailQueue::URGENT, MailQueue::BULK])->count();
         if ($count > 0) {
             throw new RuntimeException("{$count} nelle ultime 24 ore (php artisan queue:failed)");
         }
@@ -236,20 +237,23 @@ final class HealthCommand extends Command
 
     private function jobs(DatabaseManager $db): Builder
     {
-        $connection = config('queue.connections.database.connection');
-        $table = config('queue.connections.database.table');
-
-        return $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
-            ->table(is_string($table) && $table !== '' ? $table : 'core.jobs');
+        return $this->table($db, 'queue.connections.database.connection', 'queue.connections.database.table', 'core.jobs');
     }
 
-    private function failedJobs(DatabaseManager $db): Builder
+    /** Lavori falliti nelle ultime 24 ore. */
+    private function failedLastDay(DatabaseManager $db): Builder
     {
-        $connection = config('queue.failed.database');
-        $table = config('queue.failed.table');
+        return $this->table($db, 'queue.failed.database', 'queue.failed.table', 'core.failed_jobs')->where('failed_at', '>=', now()->subDay());
+    }
+
+    /** Una tabella delle code dalla configurazione (connessione e nome), con i ripieghi. */
+    private function table(DatabaseManager $db, string $connectionKey, string $tableKey, string $default): Builder
+    {
+        $connection = config($connectionKey);
+        $table = config($tableKey);
 
         return $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
-            ->table(is_string($table) && $table !== '' ? $table : 'core.failed_jobs');
+            ->table(is_string($table) && $table !== '' ? $table : $default);
     }
 
     /** La posta in coda è ferma dopo un rifiuto del server di posta. */
@@ -265,9 +269,8 @@ final class HealthCommand extends Command
     /** Messaggi delle code di posta finiti tra i lavori falliti nelle ultime 24 ore. */
     private function mailFailed(DatabaseManager $db): void
     {
-        $count = $this->failedJobs($db)
+        $count = $this->failedLastDay($db)
             ->whereIn('queue', [MailQueue::URGENT, MailQueue::BULK])
-            ->where('failed_at', '>=', now()->subDay())
             ->count();
         if ($count > 0) {
             throw new RuntimeException("{$count} messaggi non partiti nelle ultime 24 ore (lavori falliti delle code ".MailQueue::URGENT.' e '.MailQueue::BULK.')');

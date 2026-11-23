@@ -31,7 +31,7 @@ final class BuildFullExport implements OrgScopedJob, ShouldQueue
 
     public function __construct(public readonly string $org, public readonly string $exportId)
     {
-        $this->onConnection(JobQueues::longConnection())->onQueue(JobQueues::LONG);
+        $this->onQueue(JobQueues::LONG);
     }
 
     public function orgId(): string

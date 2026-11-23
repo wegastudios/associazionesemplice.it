@@ -230,11 +230,11 @@ function healthWaitingJob(string $queue, int $seconds, bool $reserved = false): 
 
 it('segnala un lavoro pronto da più di 15 minuti che nessun lavoratore prende; al rilascio è solo un avviso', function (): void {
     config(['queue.default' => 'database']);
-    healthWaitingJob('default', 14 * 60);
-    healthWaitingJob('default', 60 * 60, reserved: true);
+    healthWaitingJob(JobQueues::DEFAULT, 14 * 60);
+    healthWaitingJob(JobQueues::DEFAULT, 60 * 60, reserved: true);
     $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ok    coda dei lavori')->assertSuccessful();
 
-    healthWaitingJob('default', 16 * 60);
+    healthWaitingJob(JobQueues::DEFAULT, 16 * 60);
     $this->artisan('saas:health', ['--skip-migrations' => true])->expectsOutputToContain('ERRORE coda dei lavori: ')->assertFailed();
     $this->artisan('saas:health', ['--skip-migrations' => true, '--mail-warnings-only' => true])
         ->expectsOutputToContain('AVVISO coda dei lavori: ')

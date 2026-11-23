@@ -65,23 +65,11 @@ function qwTimeout(string $class): ?int
     return is_int($default) ? $default : null;
 }
 
-it('la copia completa va nella coda dei lavori lunghi, sulla connessione con il tempo di ripresa lungo', function (): void {
-    config(['queue.default' => 'database']);
-    $job = new BuildFullExport(QW_ORG, QW_ORG);
-
-    expect($job->queue)->toBe(JobQueues::LONG)
-        ->and($job->connection)->toBe(JobQueues::LONG_CONNECTION)
-        ->and(config('queue.connections.'.JobQueues::LONG_CONNECTION.'.table'))->toBe(config('queue.connections.database.table'));
-});
-
-it('senza code sul database (sync nei test) il lavoro lungo resta sulla connessione predefinita', function (): void {
-    config(['queue.default' => 'sync']);
-
-    expect((new BuildFullExport(QW_ORG, QW_ORG))->connection)->toBeNull();
+it('la copia completa va nella coda dei lavori lunghi', function (): void {
+    expect((new BuildFullExport(QW_ORG, QW_ORG))->queue)->toBe(JobQueues::LONG);
 });
 
 it('ogni lavoro finisce prima che la coda lo riprenda: i brevi sotto i 90 s, i lunghi nella coda lunga', function (): void {
-    config(['queue.default' => 'database']);
     $shortRetry = config('queue.connections.database.retry_after');
     $longRetry = config('queue.connections.'.JobQueues::LONG_CONNECTION.'.retry_after');
 
@@ -95,7 +83,6 @@ it('ogni lavoro finisce prima che la coda lo riprenda: i brevi sotto i 90 s, i l
         $job = qwMake($class);
         if ($timeout > JobQueues::SHORT_TIMEOUT) {
             expect($job->queue ?? null)->toBe(JobQueues::LONG, "{$class}: {$timeout} s, deve stare nella coda lunga")
-                ->and($job->connection ?? null)->toBe(JobQueues::LONG_CONNECTION, "{$class}: connessione dei lavori lunghi")
                 ->and($timeout)->toBeLessThanOrEqual(JobQueues::LONG_TIMEOUT, "{$class}: oltre il tempo dei lavori lunghi");
         } else {
             expect($job->queue ?? null)->not->toBe(JobQueues::LONG, "{$class}: un lavoro breve non occupa la coda lunga");
@@ -148,9 +135,19 @@ it('il massimo dei lavoratori si regola: con 2 niente lavoratore a parte per gli
     expect(JobQueues::maxWorkers())->toBe(3);
 });
 
-it('la coda ha un indice per i lavori in attesa', function (): void {
-    $index = DB::selectOne("SELECT indexdef FROM pg_indexes WHERE schemaname = 'core' AND tablename = 'jobs' AND indexname = 'jobs_waiting_idx'");
+it('il lavoratore dei lunghi parte solo se nella sua coda c\'è un lavoro', function (): void {
+    config(['queue.default' => 'database']);
+    $long = collect(app(Schedule::class)->events())->first(static fn ($e): bool => str_contains((string) $e->command, '--queue='.JobQueues::LONG.' '));
+    $short = collect(app(Schedule::class)->events())->first(static fn ($e): bool => str_contains((string) $e->command, '--queue='.MailQueue::WORKER_QUEUES.' '));
 
-    expect($index)->not->toBeNull()
-        ->and((string) $index->indexdef)->toContain('(queue, available_at)')->toContain('WHERE (reserved_at IS NULL)');
+    expect($long->filtersPass(app()))->toBeFalse()
+        ->and($short->filtersPass(app()))->toBeTrue();
+
+    DB::table('core.jobs')->insert(['queue' => JobQueues::LONG, 'payload' => '{}', 'attempts' => 0, 'available_at' => time(), 'created_at' => time()]);
+    expect($long->filtersPass(app()))->toBeTrue();
+});
+
+it('i lunghi si riprendono dopo il lavoro più lungo più 5 minuti, dalla stessa tabella', function (): void {
+    expect(config('queue.connections.'.JobQueues::LONG_CONNECTION.'.retry_after'))->toBe(JobQueues::LONG_TIMEOUT + 300)
+        ->and(config('queue.connections.'.JobQueues::LONG_CONNECTION.'.table'))->toBe(config('queue.connections.database.table'));
 });
