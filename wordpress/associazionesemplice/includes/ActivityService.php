@@ -896,6 +896,25 @@ class ActivityService {
 		return $out;
 	}
 
+	/**
+	 * Tra le persone indicate, quelle con almeno una prenotazione attiva a una data non ancora finita (oggi compreso; date annullate e attività cancellate non contano).
+	 * Serve a limitare «ospiti da invitare» a chi sta per tornare: gli altri non servono a nessuno nell'elenco.
+	 *
+	 * @param int[] $person_ids
+	 * @return int[]
+	 */
+	public function with_future_booking( array $person_ids ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $person_ids ) ) ) );
+		if ( ! $ids ) {
+			return array();
+		}
+		$db = $this->db();
+		$in = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		$sql = 'SELECT DISTINCT b.person_id FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . ' s ON s.id = b.session_id AND s.cancelled_at IS NULL '
+			. 'JOIN ' . Db::t( 'activities' ) . " a ON a.id = s.activity_id AND a.deleted_at IS NULL WHERE b.status = 'booked' AND b.person_id IN ($in) AND COALESCE(s.end_date, s.session_date) >= %s";
+		return array_map( 'intval', $db->get_col( $db->prepare( $sql, array_merge( $ids, array( current_time( 'Y-m-d' ) ) ) ) ) ?: array() ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- tabelle interne, segnaposto generati
+	}
+
 	/** Partecipazioni di una persona e soglia di segnalazione (nessun blocco). @return array count, max (soglia, 0 = nessuna segnalazione), flagged (ha raggiunto la soglia), items */
 	public function guest_status( int $person_id ): array {
 		$items = $this->participations( $person_id );
@@ -989,7 +1008,7 @@ class ActivityService {
 	 * Registra (o annulla) l'ingresso di una persona prenotata a una data.
 	 *
 	 * @param bool $force consente di registrare anche in un giorno diverso da quello dell'evento (solo amministratori)
-	 * @return array status (recorded|already|undone|none), at (ora, o null)
+	 * @return array status (recorded|already|undone|none), at (ora, o null), invite (solo con recorded: l'avviso per chi registra, vuoto se non c'è)
 	 * @throws \InvalidArgumentException
 	 */
 	public function check_in( int $session_id, int $person_id, bool $undo = false, bool $force = false ): array {
@@ -1024,7 +1043,7 @@ class ActivityService {
 		$now = Db::now();
 		$this->db()->update( $tbl, array( 'checked_in_at' => $now, 'checked_in_by' => get_current_user_id() ?: null ), array( 'id' => (int) $b['id'] ) );
 		Audit::log( 'checkin.recorded', 'activity', (int) $s['activity_id'], array( 'session' => $session_id, 'person' => $person_id ) );
-		return array( 'status' => 'recorded', 'at' => $now );
+		return array( 'status' => 'recorded', 'at' => $now, 'invite' => GuestInvite::on_check_in( $s, $person_id ) ); // l'avviso «da invitare ad associarsi» per un ospite non socio (vuoto per gli altri)
 	}
 
 	/** Persone distinte con una prenotazione attiva a una data non annullata di questa attività. */

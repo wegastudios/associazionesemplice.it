@@ -106,6 +106,7 @@ final class DashboardPage {
 		self::expected_guests();
 
 		self::applications();
+		self::invite_notices();
 		self::adults_to_invite();
 		self::incomplete_cards();
 		if ( Employees::can( EmployeeRules::INVENTORY ) ) { // i prestiti scaduti e le convenzioni in scadenza li vede solo chi ha quelle aree
@@ -148,7 +149,7 @@ final class DashboardPage {
 
 		$at_limit = \AssociazioneSemplice\Plugin::people()->guests_to_invite();
 		if ( $at_limit ) {
-			echo '<div class="asem-card"><h2>Ospiti da invitare a diventare soci (' . count( $at_limit ) . ')</h2><p class="description">Hanno raggiunto il numero massimo di partecipazioni come ospiti (contando insieme le schede con lo stesso cellulare, email o nome). Non vengono bloccati: decidi tu.</p><ul>';
+			echo '<div class="asem-card"><h2>Ospiti da invitare a diventare soci (' . count( $at_limit ) . ')</h2><p class="description">Hanno raggiunto il numero massimo di partecipazioni come ospiti e hanno una prenotazione in arrivo (contando insieme le schede con lo stesso cellulare, email o nome). Non vengono bloccati: decidi tu.</p><ul>';
 			foreach ( array_slice( $at_limit, 0, 10 ) as $g ) {
 				$ov = $g['overview'];
 				echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $g['id'] ) ) ) . '">' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</a> <span class="description">ospite di ' . esc_html( (string) $g['host_name'] ) . ' · ' . (int) $ov['total'] . ' partecipazioni'
@@ -225,6 +226,37 @@ final class DashboardPage {
 			echo wp_kses( Ui::hidden( 'id', $a['id'] ) . '<button class="button button-small" data-confirm="Rifiutare la domanda?">Rifiuta</button>', Html::allowed() );
 			Ui::form_close();
 			echo '</li>';
+		}
+		echo '</ul></div>';
+	}
+
+	/** Ospiti non soci appena entrati da invitare ad associarsi (avvisi del check-in): link alla scheda e «Fatto». Li vede chi ha l'area persone. */
+	private static function invite_notices(): void {
+		if ( ! Employees::can( EmployeeRules::PEOPLE ) ) {
+			return;
+		}
+		$list = \AssociazioneSemplice\GuestInvite::pending();
+		if ( ! $list ) {
+			return;
+		}
+		echo '<div class="asem-card" id="asem-invite-notices"><h2>' . esc_html( \AssociazioneSemplice\Texts::t( 'Ospiti appena entrati' ) ) . ' (' . count( $list ) . ')</h2><ul>';
+		foreach ( array_slice( $list, 0, 20 ) as $it ) {
+			$p    = $it['person'];
+			$link = '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</a>';
+			echo '<li>' . wp_kses(
+				\AssociazioneSemplice\Texts::t(
+					'Da invitare ad associarsi: {nome} ({motivo}, {data})',
+					array( 'nome' => $link, 'motivo' => esc_html( \AssociazioneSemplice\GuestInvite::short( (array) $it['reasons'] ) ), 'data' => Ui::date( (string) $it['date'] ) )
+				),
+				Html::allowed()
+			) . ' ';
+			Ui::form_open( 'asem_invite_done', Ui::url( 'asem' ), false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'id', $it['id'] ) . '<button class="button button-small">' . esc_html( \AssociazioneSemplice\Texts::t( 'Fatto' ) ) . '</button>', Html::allowed() );
+			Ui::form_close();
+			echo '</li>';
+		}
+		if ( count( $list ) > 20 ) {
+			echo '<li class="description">' . esc_html( \AssociazioneSemplice\Texts::t( '…e altri {n}.', array( 'n' => count( $list ) - 20 ) ) ) . '</li>';
 		}
 		echo '</ul></div>';
 	}

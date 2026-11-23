@@ -2896,6 +2896,19 @@
   "Una tabella non si è potuta convertire ed è rimasta com'era: {tabelle}." : "One table could not be converted and was left as it was: {tabelle}.",
   "{n} tabelle non si sono potute convertire e sono rimaste come erano: {tabelle}." : "{n} tables could not be converted and were left as they were: {tabelle}.",
   "Ne restano altre: premi di nuovo." : "More are left: press again.",
-  "Ora tutte le tabelle usano InnoDB." : "All tables now use InnoDB."
+  "Ora tutte le tabelle usano InnoDB." : "All tables now use InnoDB.",
+  "Segnato come fatto." : "Marked as done.",
+  "Ospiti appena entrati" : "Guests who just came in",
+  "Da invitare ad associarsi: {nome} ({motivo}, {data})" : "To invite to join: {nome} ({motivo}, {data})",
+  "Fatto" : "Done",
+  "…e altri {n}." : "…and {n} more.",
+  "{nome} è da invitare ad associarsi: ha già {n} ingresso." : "{nome} is to be invited to join: already has {n} entry.",
+  "{nome} è da invitare ad associarsi: ha già {n} ingressi." : "{nome} is to be invited to join: already has {n} entries.",
+  "{nome} è qui su invito di {chi}: puoi proporre l'adesione." : "{nome} is here at the invitation of {chi}: you can suggest joining.",
+  "{nome} è qui per «{evento}»: puoi proporre l'adesione." : "{nome} is here for «{evento}»: you can suggest joining.",
+  "soglia raggiunta: {n} ingresso" : "limit reached: {n} entry",
+  "soglia raggiunta: {n} ingressi" : "limit reached: {n} entries",
+  "su invito di {chi}" : "invited by {chi}",
+  "evento «{evento}»" : "event «{evento}»"
  }
 }

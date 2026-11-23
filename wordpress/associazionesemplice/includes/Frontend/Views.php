@@ -79,8 +79,10 @@ final class Views {
 			}
 			return '<div class="asemf-notice asemf-err" role="alert">' . $safe . '</div>';
 		}
+		list( $ok, $guest_invite ) = \AssociazioneSemplice\GuestInviteRules::split( $ok ); // ingresso di un ospite non socio: in coda l'avviso «da invitare ad associarsi», da mostrare in evidenza
 		$invite = \AssociazioneSemplice\DonationInvite::is_confirmation( $ok ) ? \AssociazioneSemplice\DonationInvite::html( 'confirm' ) : ''; // «Non puoi partecipare? Sostienici…» (spento di default)
-		return '' !== $err ? '<div class="asemf-notice asemf-err" role="alert">' . esc_html( $err ) . '</div>' : '<div class="asemf-notice asemf-ok" role="status">' . esc_html( $ok ) . $invite . '</div>';
+		return '<div class="asemf-notice asemf-ok" role="status">' . esc_html( $ok ) . $invite . '</div>'
+			. ( '' !== $guest_invite ? '<div class="asemf-notice asemf-invite" role="alert"><strong>' . esc_html( $guest_invite ) . '</strong></div>' : '' );
 	}
 
 	private static function notice( string $text, string $kind = '' ): string {

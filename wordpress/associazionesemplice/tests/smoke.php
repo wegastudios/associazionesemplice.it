@@ -4038,7 +4038,7 @@ $adm = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Staf
 asem_ok( false !== strpos( $adm, 'Tina' ) && false !== strpos( $adm, '<th>Ingresso</th>' ) && false !== strpos( $adm, 'asem_checkin' ), 'amministrazione: gestori dell\'evento e colonna degli ingressi' );
 $adm_checkin = new ReflectionMethod( Admin\Actions::class, 'checkin' );
 $r1          = $adm_checkin->invoke( null, array( 'activity_id' => $tev, 'session_id' => $tev_s, 'person_id' => $g_id ) );
-asem_ok( 'Ingresso registrato.' === $r1[1] && ! empty( $wpdb->get_var( $wpdb->prepare( 'SELECT checked_in_at FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $tev_s, $g_id ) ) ), 'amministrazione: registra l\'ingresso' );
+asem_ok( 0 === strpos( $r1[1], 'Ingresso registrato.' ) && ! empty( $wpdb->get_var( $wpdb->prepare( 'SELECT checked_in_at FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = %d AND person_id = %d', $tev_s, $g_id ) ) ), 'amministrazione: registra l\'ingresso' );
 $adm_checkin->invoke( null, array( 'activity_id' => $tev, 'session_id' => $tev_s, 'person_id' => $g_id, 'undo' => 1 ) );
 $staff_rm = new ReflectionMethod( Admin\Actions::class, 'event_staff_remove' );
 $staff_rm->invoke( null, array( 'activity_id' => $tev, 'person_id' => $tre_p ) );
@@ -4225,14 +4225,14 @@ asem_ok( false !== strpos( (string) ( $why[ $twin_phone ] ?? '' ), 'stesso cellu
 asem_ok( 2 === count( $people->find_by_phone( '333-5555552' ) ) && 1 === count( $people->find_by_phone( '+39 3335555551' ) ) && array() === $people->find_by_phone( 'boh' ), 'ricerca per cellulare: scritto in qualunque modo' );
 asem_ok( array_key_exists( 'email', $people->find_by_phone( '+39 3335555551' )[0] ) && array_key_exists( 'host_person_id', $people->find_by_phone( '+39 3335555551' )[0] ), 'ricerca per cellulare: chi corrisponde ha la scheda completa' );
 $ids_to_invite = array_map( function ( $g ) { return (int) $g['id']; }, $people->guests_to_invite() );
-asem_ok( in_array( $gx, $ids_to_invite, true ) && in_array( $gy, $ids_to_invite, true ) && in_array( $twin_phone, $ids_to_invite, true ), 'ospiti da invitare: elenco per chi gestisce' );
+asem_ok( in_array( $gx, $ids_to_invite, true ) && in_array( $twin_phone, $ids_to_invite, true ) && ! in_array( $gy, $ids_to_invite, true ), 'ospiti da invitare: elenco per chi gestisce, solo chi ha una prenotazione in arrivo (chi è solo iscritto a un corso no)' );
 
 // visibilità
 $html = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Partecipazioni come ospite', array( 'id' => $gy ) );
 asem_ok( false !== strpos( $html, 'Potrebbe essere la stessa persona' ) && false !== strpos( $html, 'Pinuccio' ) && false !== strpos( $html, 'stesso cellulare' ) && false !== strpos( $html, 'Corso di prova ospiti' ) && false !== strpos( $html, 'wa.me/393335555552' ) && false !== strpos( $html, 'Iscrivi come socio' ), 'scheda ospite: a cosa è venuto, le registrazioni gemelle, WhatsApp e iscrizione come socio' );
 $gz   = $people->create( array( 'type' => 'guest', 'first_name' => 'Zeno', 'last_name' => 'Zerovolte', 'phone' => '333 5555553', 'host_person_id' => $founder ) );
 $list = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Occasionale', array( 'type' => 'guest', 'at_limit' => '1' ) );
-asem_ok( false !== strpos( $list, 'da invitare a diventare soci' ) && false !== strpos( $list, 'Provino' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a diventare soci"' );
+asem_ok( false !== strpos( $list, 'da invitare a diventare soci' ) && false !== strpos( $list, 'Provini' ) && false !== strpos( $list, 'Occasionale' ) && false === strpos( $list, 'Zerovolte' ), 'elenco persone: filtro "ospiti da invitare a diventare soci"' );
 $ev = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Open day yoga', array( 'id' => $e1 ) );
 asem_ok( false !== strpos( $ev, 'registrato anche come' ) && false !== strpos( $ev, 'da invitare a diventare socio' ), 'pagina evento: accanto a ogni ospite le partecipazioni e se risulta registrato più volte' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Ospiti da invitare a diventare soci' );
@@ -4284,8 +4284,9 @@ foreach ( array( array( $gianni_id ), array_slice( $l7_ids, 0, 2 ), $l7_ids, arr
 asem_ok( $l7_same && array() === $people->guest_overview( array() ), 'ospiti L7: il quadro per un gruppo di ospiti è uguale alla parte corrispondente del quadro completo, gemelli compresi' );
 $l7_inv = $people->guests_to_invite();
 $l7_old = array();
-foreach ( $people->search( array( 'type' => 'guest' ) ) as $l7_g ) { // il vecchio calcolo: tutte le schede, poi il filtro sulla soglia
-	if ( ! empty( $twins_now[ (int) $l7_g['id'] ]['flag'] ) ) {
+$l7_future = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT b.person_id FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . " s ON s.id = b.session_id WHERE b.status = 'booked' AND s.cancelled_at IS NULL AND COALESCE(s.end_date, s.session_date) >= %s", current_time( 'Y-m-d' ) ) ) );
+foreach ( $people->search( array( 'type' => 'guest' ) ) as $l7_g ) { // il vecchio calcolo: tutte le schede, poi il filtro sulla soglia e sulle prenotazioni in arrivo
+	if ( ! empty( $twins_now[ (int) $l7_g['id'] ]['flag'] ) && in_array( (int) $l7_g['id'], $l7_future, true ) ) {
 		$l7_g['overview'] = $twins_now[ (int) $l7_g['id'] ];
 		$l7_old[]         = $l7_g;
 	}
@@ -14577,6 +14578,7 @@ require __DIR__ . '/smoke_azioni.php'; // azioni di admin-post e admin-ajax: con
 require __DIR__ . '/smoke_db_engine.php'; // motore delle tabelle: controllo, avviso e conversione a tappe in InnoDB
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_schema_e_export.php'; // esportazioni a blocchi, saldi una volta per richiesta, schema a tappe
+require __DIR__ . '/smoke_invito_ospiti.php'; // avviso «da invitare ad associarsi» al check-in di un ospite; «ospiti da invitare» solo con prenotazioni in arrivo
 require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 

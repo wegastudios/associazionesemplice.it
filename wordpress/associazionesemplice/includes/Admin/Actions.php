@@ -101,6 +101,7 @@ final class Actions {
 			'asem_checkin'            => 'checkin',
 			'asem_promote_guest'      => 'promote_guest',
 			'asem_access_done'        => 'access_done',
+			'asem_invite_done'        => 'invite_done',
 			'asem_access_approve'     => 'access_approve',
 			'asem_application_approve' => 'application_approve',
 			'asem_application_reject' => 'application_reject',
@@ -1050,7 +1051,13 @@ final class Actions {
 	/** Ingresso registrato o annullato da amministrazione (anche in un giorno diverso da quello dell'evento). */
 	private static function checkin( array $p ): array {
 		$r = Plugin::activities()->check_in( (int) $p['session_id'], (int) $p['person_id'], ! empty( $p['undo'] ), true );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'recorded' === $r['status'] ? 'Ingresso registrato.' : ( 'undone' === $r['status'] ? 'Registrazione annullata.' : 'Ingresso già registrato.' ) );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), \AssociazioneSemplice\GuestInviteRules::join( 'recorded' === $r['status'] ? 'Ingresso registrato.' : ( 'undone' === $r['status'] ? 'Registrazione annullata.' : 'Ingresso già registrato.' ), (string) ( $r['invite'] ?? '' ) ) );
+	}
+
+	/** «Fatto» sull'avviso «da invitare ad associarsi» della Bacheca: lo toglie e lo segna nel registro azioni. */
+	private static function invite_done( array $p ): array {
+		\AssociazioneSemplice\GuestInvite::done( preg_replace( '/[^a-f0-9]/', '', (string) ( $p['id'] ?? '' ) ) );
+		return array( Ui::url( 'asem' ), \AssociazioneSemplice\Texts::t( 'Segnato come fatto.' ) );
 	}
 
 	private static function backup_restore( array $p ): array {
