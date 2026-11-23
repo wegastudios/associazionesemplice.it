@@ -4,34 +4,104 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Payments;
 
+use Closure;
+use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Http\Client\Factory as Http;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use RuntimeException;
 
 /**
  * PayPal Orders v2 (dal PayPalApi del plugin): il socio approva su PayPal, poi l'ordine si «cattura» dal server.
  *
+ * Il gettone d'accesso si tiene in cache, cifrato, fino a poco prima della scadenza (una chiave per ambiente e
+ * credenziali, quindi per associazione): un 401 lo butta e la chiamata si ripete una volta con uno nuovo (H14).
+ * Connessione al massimo CONNECT_SECONDS, risposta al massimo 15 secondi.
+ *
  * @phpstan-import-type Line from StripeGateway
  */
 final readonly class PayPalGateway
 {
-    public function __construct(private Http $http) {}
+    public const CONNECT_SECONDS = 3;
+
+    /** Secondi prima della scadenza in cui il gettone in cache non si usa più. */
+    private const TOKEN_MARGIN = 300;
+
+    public function __construct(private Http $http, private Cache $cache, private Encrypter $crypt) {}
 
     public static function base(bool $live): string
     {
         return $live ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
     }
 
+    /** Un gettone nuovo, senza cache: per provare le credenziali appena inserite. */
     public function token(bool $live, string $clientId, string $secret): string
     {
-        $res = $this->http->withBasicAuth($clientId, $secret)->asForm()->acceptJson()->timeout(15)
+        return $this->issue($live, $clientId, $secret)[0];
+    }
+
+    public static function tokenKey(bool $live, string $clientId, string $secret): string
+    {
+        return 'paypal-token|'.hash('sha256', ($live ? 'live' : 'sandbox')."\0".$clientId."\0".$secret);
+    }
+
+    /** @return array{0: string, 1: int} gettone e secondi di validità (0 = non detti) */
+    private function issue(bool $live, string $clientId, string $secret): array
+    {
+        $res = $this->http->withBasicAuth($clientId, $secret)->asForm()->acceptJson()->connectTimeout(self::CONNECT_SECONDS)->timeout(15)
             ->post(self::base($live).'/v1/oauth2/token', ['grant_type' => 'client_credentials']);
         $token = $res->json('access_token');
         if (! $res->successful() || ! is_string($token) || $token === '') {
             throw self::fail($res, 'accesso');
         }
+        $seconds = $res->json('expires_in');
+
+        return [$token, is_int($seconds) ? $seconds : 0];
+    }
+
+    private function cachedToken(bool $live, string $clientId, string $secret): string
+    {
+        $key = self::tokenKey($live, $clientId, $secret);
+        $stored = $this->cache->get($key);
+        if (is_string($stored)) {
+            try {
+                $token = $this->crypt->decryptString($stored);
+                if ($token !== '') {
+                    return $token;
+                }
+            } catch (DecryptException) {
+                // chiave dell'applicazione cambiata: se ne chiede uno nuovo
+            }
+        }
+        [$token, $seconds] = $this->issue($live, $clientId, $secret);
+        if ($seconds > self::TOKEN_MARGIN + 60) {
+            $this->cache->put($key, $this->crypt->encryptString($token), $seconds - self::TOKEN_MARGIN);
+        }
 
         return $token;
+    }
+
+    /**
+     * Una chiamata con il gettone in cache; se PayPal lo rifiuta (401) si butta e si ripete una volta con uno nuovo.
+     *
+     * @param  Closure(PendingRequest): Response  $request
+     */
+    private function call(bool $live, string $clientId, string $secret, Closure $request): Response
+    {
+        $res = $request($this->client()->withToken($this->cachedToken($live, $clientId, $secret)));
+        if ($res->status() === 401) {
+            $this->cache->forget(self::tokenKey($live, $clientId, $secret));
+            $res = $request($this->client()->withToken($this->cachedToken($live, $clientId, $secret)));
+        }
+
+        return $res;
+    }
+
+    private function client(): PendingRequest
+    {
+        return $this->http->acceptJson()->connectTimeout(self::CONNECT_SECONDS)->timeout(15);
     }
 
     /**
@@ -70,10 +140,10 @@ final readonly class PayPalGateway
      * @param  array<string, mixed>  $payload
      * @return array{id: string, url: string}
      */
-    public function createOrder(bool $live, string $token, array $payload, string $requestId): array
+    public function createOrder(bool $live, string $clientId, string $secret, array $payload, string $requestId): array
     {
-        $res = $this->http->withToken($token)->withHeaders(['PayPal-Request-Id' => $requestId, 'Prefer' => 'return=representation'])->acceptJson()->timeout(15)
-            ->post(self::base($live).'/v2/checkout/orders', $payload);
+        $res = $this->call($live, $clientId, $secret, static fn (PendingRequest $http): Response => $http->withHeaders(['PayPal-Request-Id' => $requestId, 'Prefer' => 'return=representation'])
+            ->post(self::base($live).'/v2/checkout/orders', $payload));
         $id = $res->json('id');
         if (! in_array($res->status(), [200, 201], true) || ! is_string($id)) {
             throw self::fail($res, 'ordine');
@@ -88,17 +158,17 @@ final readonly class PayPalGateway
     }
 
     /** @return array<string, mixed> l'ordine catturato (o già catturato, riletto) */
-    public function capture(bool $live, string $token, string $orderId): array
+    public function capture(bool $live, string $clientId, string $secret, string $orderId): array
     {
-        $res = $this->http->withToken($token)->withHeaders(['PayPal-Request-Id' => 'capture-'.$orderId])->acceptJson()->timeout(15)
-            ->withBody('{}', 'application/json')->post(self::base($live).'/v2/checkout/orders/'.rawurlencode($orderId).'/capture');
+        $res = $this->call($live, $clientId, $secret, static fn (PendingRequest $http): Response => $http->withHeaders(['PayPal-Request-Id' => 'capture-'.$orderId])
+            ->withBody('{}', 'application/json')->post(self::base($live).'/v2/checkout/orders/'.rawurlencode($orderId).'/capture'));
         $data = $res->json();
         if (in_array($res->status(), [200, 201], true) && is_array($data)) {
             /** @var array<string, mixed> $data */
             return $data;
         }
         if ($res->status() === 422 && str_contains($res->body(), 'ORDER_ALREADY_CAPTURED')) {
-            $get = $this->http->withToken($token)->acceptJson()->timeout(15)->get(self::base($live).'/v2/checkout/orders/'.rawurlencode($orderId));
+            $get = $this->call($live, $clientId, $secret, static fn (PendingRequest $http): Response => $http->get(self::base($live).'/v2/checkout/orders/'.rawurlencode($orderId)));
             $order = $get->json();
             if ($get->successful() && is_array($order)) {
                 /** @var array<string, mixed> $order */
@@ -109,17 +179,17 @@ final readonly class PayPalGateway
     }
 
     /** Restituisce al socio parte (o tutto) dell'incasso dell'ordine: l'identificativo del rimborso. */
-    public function refund(bool $live, string $token, string $orderId, int $cents, string $requestId): string
+    public function refund(bool $live, string $clientId, string $secret, string $orderId, int $cents, string $requestId): string
     {
-        $get = $this->http->withToken($token)->acceptJson()->timeout(15)->get(self::base($live).'/v2/checkout/orders/'.rawurlencode($orderId));
+        $get = $this->call($live, $clientId, $secret, static fn (PendingRequest $http): Response => $http->get(self::base($live).'/v2/checkout/orders/'.rawurlencode($orderId)));
         $order = $get->json();
         /** @var array<string, mixed>|null $order */
         $capture = $get->successful() && is_array($order) ? self::captureId($order) : null;
         if ($capture === null) {
             throw new RuntimeException('PayPal: incasso non trovato, niente da rimborsare.');
         }
-        $res = $this->http->withToken($token)->withHeaders(['PayPal-Request-Id' => $requestId])->acceptJson()->timeout(15)
-            ->post(self::base($live).'/v2/payments/captures/'.rawurlencode($capture).'/refund', ['amount' => ['value' => self::decimal($cents), 'currency_code' => 'EUR']]);
+        $res = $this->call($live, $clientId, $secret, static fn (PendingRequest $http): Response => $http->withHeaders(['PayPal-Request-Id' => $requestId])
+            ->post(self::base($live).'/v2/payments/captures/'.rawurlencode($capture).'/refund', ['amount' => ['value' => self::decimal($cents), 'currency_code' => 'EUR']]));
         if (in_array($res->json('status'), ['FAILED', 'CANCELLED'], true)) {
             throw new RuntimeException('PayPal: il rimborso non è andato a buon fine.');
         }

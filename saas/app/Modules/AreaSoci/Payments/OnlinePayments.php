@@ -157,8 +157,7 @@ final readonly class OnlinePayments
             if ($provider === 'stripe') {
                 $res = $this->stripe->createSession((string) $settings->stripe_secret, StripeGateway::checkoutParams($lines, $id, $email, $success.'?session_id={CHECKOUT_SESSION_ID}', $cancel), $id);
             } else {
-                $token = $this->paypal->token($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret);
-                $res = $this->paypal->createOrder($settings->paypal_live, $token, PayPalGateway::orderPayload($lines, $id, $success, $cancel, $brand), $id);
+                $res = $this->paypal->createOrder($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret,PayPalGateway::orderPayload($lines, $id, $success, $cancel, $brand), $id);
             }
         } catch (RuntimeException $e) {
             $this->table()->where('id', $id)->update(['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 1000), 'updated_at' => now()]);
@@ -201,8 +200,7 @@ final readonly class OnlinePayments
                     $this->settle($p['id'], StripeGateway::paidCents($session));
                 }
             } else {
-                $token = $this->paypal->token($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret);
-                $order = $this->paypal->capture($settings->paypal_live, $token, $p['provider_ref']);
+                $order = $this->paypal->capture($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret,$p['provider_ref']);
                 if (PayPalGateway::isCompleted($order)) {
                     $this->settle($p['id'], PayPalGateway::capturedCents($order));
                 }
@@ -560,7 +558,7 @@ final readonly class OnlinePayments
         try {
             $refundId = $p['provider'] === 'stripe'
                 ? $this->stripe->refund((string) $settings->stripe_secret, $providerRef, $amount, $plan['key'])
-                : $this->paypal->refund($settings->paypal_live, $this->paypal->token($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret), $providerRef, $amount, $plan['key']);
+                : $this->paypal->refund($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret, $providerRef, $amount, $plan['key']);
         } catch (ConnectionException|GatewayUnknown) {
             // Il gestore non ha risposto: il rimborso può essere partito. Non si annulla in silenzio: resta il promemoria, e
             // ripetendo lo stesso importo la chiave identica evita un secondo rimborso.
