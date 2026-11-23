@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Audit\Providers;
 
 use App\Modules\Audit\Console\AuditHeadsCopyCommand;
+use App\Modules\Audit\Console\AuditIndexUsageCommand;
 use App\Modules\Audit\Console\AuditPartitionsCommand;
 use App\Modules\Audit\Console\AuditPruneCommand;
 use App\Modules\Audit\Console\SecurityLogPruneCommand;
