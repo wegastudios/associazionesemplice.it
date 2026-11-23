@@ -68,13 +68,16 @@ it('conta i tetti per mailer: gli urgenti solo sul totale, i massivi anche sul l
         ]);
 });
 
-it('legge i tetti di ogni mailer dalla configurazione, anche al secondo, al giorno e al mese', function (): void {
+it('legge i tetti di ogni mailer dalla configurazione, anche al secondo, al giorno (fino alla mezzanotte UTC) e al mese', function (): void {
+    $this->freezeTime();
     config(['mail.default' => 'emailit', 'saas.mail_queue.mailers.emailit' => ['per_second' => 2, 'per_hour' => 900, 'per_day' => 4500, 'per_month' => 50000]]);
+    $day = now('UTC')->toDateString();
+    $toMidnight = now('UTC')->startOfDay()->addDay()->getTimestamp() - now()->getTimestamp();
 
     expect(mqLimits(MailQueue::URGENT))->toBe([
         ['mail-all|emailit|1', 2, 1],
         ['mail-all|emailit|3600', 900, 3600],
-        ['mail-all|emailit|86400', 4500, 86400],
+        ["mail-all|emailit|86400|{$day}", 4500, $toMidnight],
         ['mail-all|emailit|2592000', 50000, 2592000],
     ]);
 });
@@ -101,8 +104,21 @@ it('mette la conferma della domanda tra gli urgenti e il resto tra i massivi', f
 it('il lavoratore prende prima gli urgenti, poi il resto, per ultimi i massivi', function (): void {
     $workers = collect(app(Schedule::class)->events())->filter(static fn ($e): bool => str_contains((string) $e->command, 'queue:work'));
 
-    expect($workers)->toHaveCount(1)
-        ->and((string) $workers->first()->command)->toContain('--queue=mail-urgent,default,mail-bulk');
+    $main = $workers->first(static fn ($e): bool => str_contains((string) $e->command, '--queue=mail-urgent,default,mail-bulk'));
+    expect($workers)->toHaveCount(3)->and($main)->not->toBeNull();
+});
+
+it('gli urgenti hanno un lavoratore loro ogni minuto: una copia di sicurezza lunga non li fa aspettare', function (): void {
+    $workers = collect(app(Schedule::class)->events())->filter(static fn ($e): bool => str_contains((string) $e->command, 'queue:work'));
+    $urgent = $workers->first(static fn ($e): bool => str_contains((string) $e->command, '--queue=mail-urgent ') || str_ends_with((string) $e->command, '--queue=mail-urgent'));
+    $main = $workers->first(static fn ($e): bool => str_contains((string) $e->command, '--queue=mail-urgent,default,mail-bulk'));
+
+    // Parte ogni minuto anche mentre il lavoratore principale è occupato (la sua esclusione è un'altra), prende solo gli
+    // urgenti e si ferma prima del giro successivo.
+    expect($urgent)->not->toBeNull()
+        ->and($urgent->expression)->toBe('* * * * *')
+        ->and((string) $urgent->command)->toContain('--stop-when-empty')->toContain('--max-time=55')->not->toContain('default')
+        ->and($urgent->mutexName())->not->toBe($main->mutexName());
 });
 
 it('i massivi si fermano a 3 al minuto mentre gli urgenti continuano', function (): void {
@@ -170,6 +186,32 @@ it('il rifiuto per limite orario dell\'account è sempre l\'interruttore, anche 
 
     $job->assertReleased(3600)->assertNotFailed();
     expect(MailQueue::blockedUntil('smtp'))->toBe(now()->addHour()->getTimestamp());
+});
+
+it('riconosce il limite orario anche con «exceeded» accanto a «emails per»', function (): void {
+    $job = mqBulk();
+    mqThrough($job, static fn () => throw new TransportException('Expected response code "250" but got code "550", with message "550 Sender has exceeded the allowed number of emails per hour".', 550));
+
+    $job->assertReleased(3600)->assertNotFailed();
+    expect(MailQueue::blockedUntil('smtp'))->not->toBeNull();
+});
+
+it('«quota exceeded» con 5.2.2 fa fallire solo quel messaggio, senza interruttore', function (): void {
+    $job = mqBulk();
+    mqThrough($job, static fn () => throw new TransportException('Expected response code "250/251/252" but got code "552", with message "552 5.2.2 <mario@example.com>: mailbox quota exceeded".', 552));
+
+    $job->assertFailed()->assertNotReleased();
+    expect(MailQueue::blockedUntil('smtp'))->toBeNull()
+        ->and($job->job->failedWith->getMessage())->not->toContain('mario@example.com');
+});
+
+it('«mailbox full» con 4.2.2 rilascia solo quel messaggio, senza interruttore', function (): void {
+    $job = mqBulk();
+    mqThrough($job, static fn () => throw new TransportException('Expected response code "250/251/252" but got code "452", with message "452 4.2.2 mailbox full".', 452));
+
+    $job->assertReleased()->assertNotFailed();
+    expect(MailQueue::blockedUntil('smtp'))->toBeNull()
+        ->and(mqThrough(mqBulk()))->toBeTrue();
 });
 
 it('con la posta ferma passa un solo urgente ogni 10 minuti come prova; i massivi mai', function (): void {

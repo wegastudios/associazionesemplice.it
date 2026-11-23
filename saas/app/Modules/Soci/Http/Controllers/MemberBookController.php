@@ -38,12 +38,20 @@ final readonly class MemberBookController
     {
         $filter = $this->filter($request);
         $year = $this->year($request);
-        $result = $this->load($filter, $year);
-        // A video il libro va a pagine da 100 righe (stampa e CSV restano interi); il totale è quello vero.
-        $total = count($result['rows']);
-        $pages = max(1, (int) ceil($total / self::PAGE_SIZE));
-        $page = min($pages, max(1, (int) $request->integer('pagina', 1)));
-        $slice = array_slice($result['rows'], ($page - 1) * self::PAGE_SIZE, self::PAGE_SIZE);
+        $wanted = (int) $request->integer('pagina', 1);
+        // A video il libro va a pagine da 100 righe (stampa e CSV restano interi); il totale è quello vero. Il libro di
+        // sempre si legge a pagine dal database; quello di un esercizio passa dal criterio in PHP o dalla fotografia.
+        if ($year === null) {
+            ['rows' => $slice, 'total' => $total, 'page' => $page, 'pages' => $pages] = $this->book->page($filter, $wanted, self::PAGE_SIZE);
+            $source = 'live';
+        } else {
+            $result = $this->load($filter, $year);
+            $total = count($result['rows']);
+            $pages = max(1, (int) ceil($total / self::PAGE_SIZE));
+            $page = min($pages, max(1, $wanted));
+            $slice = array_slice($result['rows'], ($page - 1) * self::PAGE_SIZE, self::PAGE_SIZE);
+            $source = $result['source'];
+        }
         // Le colonne complete (codice fiscale, nascita, residenza, quote) valgono come l'esportazione: permesso, piano, limite di frequenza e registro.
         $full = $this->mayReadFull($request);
         if ($full) {
@@ -58,7 +66,7 @@ final readonly class MemberBookController
             'pages' => $pages,
             'total' => $total,
             'year' => $year,
-            'source' => $result['source'],
+            'source' => $source,
             'years' => $this->years(),
             'versions' => $year === null ? [] : array_map(static fn (array $v): array => [
                 'version' => $v['version'], 'date' => date('d/m/Y H:i', (int) strtotime($v['created_at'])), 'superseded' => $v['superseded'],

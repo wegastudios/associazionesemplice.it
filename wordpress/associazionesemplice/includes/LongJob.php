@@ -47,7 +47,8 @@ defined( 'ABSPATH' ) || exit;
  *                                         error, result, started, updated, cancelling (annullamento chiesto, la tappa in corso finisce il passo);
  *        LongJob::run( $key, $budget )    una tappa (la usano la pagina e il cron; nelle prove: 0 = un passo solo, INF = fino alla fine);
  *        LongJob::cancel( $key )          annulla (subito, o alla fine del passo se una tappa è in corso);
- *        LongJob::forget( $key )          toglie un lavoro concluso, quando il risultato è stato consegnato.
+ *        LongJob::forget( $key )          toglie un lavoro concluso, quando il risultato è stato consegnato;
+ *        LongJob::state( $key )           l'ultimo stato salvato dal passo (per il lavoro stesso, mai per la pagina).
  *    Un lavoro concluso resta leggibile finché non lo si toglie o non lo si riavvia.
  *
  * Le tappe della pagina arrivano all'azione ajax `asem_long_job` (campi what = chiave, op = run | cancel | status, nonce): permesso del lavoro
@@ -101,7 +102,7 @@ final class LongJob {
 	private static function require_definition( string $key ): array {
 		$d = self::definition( $key );
 		if ( null === $d ) {
-			throw new \InvalidArgumentException( Texts::t( 'Questo lavoro non esiste più: ricarica la pagina.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Questa operazione non esiste più: ricarica la pagina.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return $d;
 	}
@@ -125,7 +126,7 @@ final class LongJob {
 		try {
 			$old = self::read( self::OPT_PREFIX . $key );
 			if ( is_array( $old ) && 'running' === ( $old['status'] ?? '' ) ) {
-				throw new \InvalidArgumentException( Texts::t( 'Questo lavoro è già in corso: aspetta che finisca o annullalo.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( Texts::t( 'Questa operazione è già in corso: aspetta che finisca o annullala.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			self::delete( self::STOP_PREFIX . $key );
 			$state = $state + array( 'done' => 0, 'total' => 0 );
@@ -277,6 +278,18 @@ final class LongJob {
 		return self::view( $rec, 'running' === ( $rec['status'] ?? '' ) && self::stop_requested( $key ) );
 	}
 
+	/**
+	 * L'ultimo stato salvato dal passo (cursore, nomi di file): serve al lavoro stesso, per esempio a consegnare il file finito. Non va mai alla pagina:
+	 * la pagina legge solo status().
+	 *
+	 * @return array|null null se il lavoro non c'è
+	 */
+	public static function state( string $key ): ?array {
+		$key = self::clean_key( $key );
+		$rec = '' === $key ? null : self::read( self::OPT_PREFIX . $key );
+		return null === $rec ? null : (array) ( $rec['state'] ?? array() );
+	}
+
 	/** Percentuale intera da 0 a 100 (100 solo a lavoro finito, o se i pezzi fatti sono già tutti). */
 	public static function percent( int $done, int $total, bool $finished ): int {
 		if ( $finished ) {
@@ -320,14 +333,14 @@ final class LongJob {
 	private static function message( array $v ): string {
 		switch ( $v['status'] ) {
 			case 'finished':
-				return Texts::t( 'Lavoro finito.' );
+				return Texts::t( 'Operazione completata.' );
 			case 'cancelled':
-				return Texts::t( 'Lavoro annullato.' );
+				return Texts::t( 'Operazione annullata.' );
 			case 'failed':
-				return Texts::t( 'Il lavoro si è fermato per un errore: {error}', array( 'error' => $v['error'] ) );
+				return Texts::t( 'L\'operazione si è fermata per un errore: {error}', array( 'error' => $v['error'] ) );
 		}
 		if ( $v['cancelling'] ) {
-			return Texts::t( 'Annullamento richiesto: il lavoro si ferma appena finisce il pezzo in corso.' );
+			return Texts::t( 'Annullamento richiesto: l\'operazione si ferma appena finisce il passaggio in corso.' );
 		}
 		if ( $v['total'] > 0 ) {
 			return Texts::t( 'In corso: {done} di {total} ({percent}%).', array( 'done' => $v['done'], 'total' => $v['total'], 'percent' => $v['percent'] ) );
@@ -353,15 +366,15 @@ final class LongJob {
 		$run = 'running' === $st['status'];
 		$h   = '<div class="asem-longjob" data-asem-job="' . esc_attr( $key ) . '" data-asem-nonce="' . esc_attr( wp_create_nonce( self::NONCE ) ) . '"'
 			. ' data-asem-running="' . ( $run ? '1' : '0' ) . '" data-asem-done-url="' . esc_url( (string) ( $opts['done_url'] ?? '' ) ) . '"'
-			. ' data-asem-retry="' . esc_attr( Texts::t( 'Connessione interrotta: riprovo tra qualche secondo.' ) ) . '"'
-			. ' data-asem-confirm="' . esc_attr( Texts::t( 'Vuoi annullare questo lavoro? Quello che non è ancora stato fatto non si farà.' ) ) . '">';
+			. ' data-asem-retry="' . esc_attr( Texts::t( 'Connessione interrotta: nuovo tentativo tra qualche secondo.' ) ) . '"'
+			. ' data-asem-confirm="' . esc_attr( Texts::t( 'Vuoi annullare questa operazione? Quello che non è ancora stato fatto non si farà.' ) ) . '">';
 		if ( '' !== (string) ( $opts['title'] ?? '' ) ) {
 			$h .= '<p><strong>' . esc_html( (string) $opts['title'] ) . '</strong></p>';
 		}
 		$h .= '<progress class="asem-longjob-bar" max="100" value="' . (int) $st['percent'] . '">' . (int) $st['percent'] . '%</progress>';
 		$h .= '<p class="asem-longjob-msg" role="status" aria-live="polite">' . esc_html( $st['message'] ) . '</p>';
 		if ( $run ) {
-			$h .= '<p class="description">' . esc_html( Texts::t( 'Con questa pagina aperta il lavoro va più veloce; se la chiudi continua da solo, più lentamente.' ) ) . '</p>';
+			$h .= '<p class="description">' . esc_html( Texts::t( 'Con questa pagina aperta l\'operazione va più veloce; se la chiudi continua da sola, più lentamente.' ) ) . '</p>';
 			$h .= '<p><button type="button" class="button asem-longjob-cancel">' . esc_html( Texts::t( 'Annulla' ) ) . '</button></p>';
 		}
 		return $h . '</div>';
@@ -387,7 +400,7 @@ final class LongJob {
 			$st = self::run( $key );
 		}
 		if ( null === $st ) {
-			throw new \InvalidArgumentException( Texts::t( 'Nessun lavoro in corso.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Nessuna operazione in corso.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return $st;
 	}

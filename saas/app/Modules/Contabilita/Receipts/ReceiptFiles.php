@@ -115,6 +115,37 @@ final readonly class ReceiptFiles
         return ['pdf' => $this->read($row, $meta['number']), 'filename' => $name, 'number' => $meta['number'], 'email' => $meta['email'], 'holder' => $meta['holder']];
     }
 
+    /**
+     * Le ricevute non annullate di un anno, con intestatario e file, in una sola query (per la copia di sicurezza): ogni
+     * riga va poi a exportPdf(), senza altre query.
+     *
+     * @return list<object>
+     */
+    public function exportRows(int $year): array
+    {
+        return array_values($this->connection()->table('app.receipts as r')->leftJoin('app.people as p', 'p.id', '=', 'r.payer_person_id')
+            ->leftJoin('app.receipt_files as f', 'f.receipt_id', '=', 'r.id')
+            ->where('r.year', $year)->whereNull('r.voided_at')->orderBy('r.number')
+            ->select(['r.id', 'r.number', 'r.year', 'p.last_name', 'p.first_name', 'f.receipt_id', 'f.path', 'f.original_name', 'f.size_bytes', 'f.sha256', 'f.archived_year'])
+            ->selectRaw('f.snapshot IS NOT NULL AS has_snapshot')->get()->all());
+    }
+
+    /**
+     * Il PDF di una riga di exportRows(): stessi byte di document()['pdf']. Le ricevute mai fissate o fissate prima della
+     * fotografia dei dati passano da document().
+     *
+     * @throws LedgerError
+     * @throws ReceiptFileProblem
+     */
+    public function exportPdf(object $row): string
+    {
+        if (($row->receipt_id ?? null) === null || ($row->has_snapshot ?? false) !== true) {
+            return $this->document(is_string($row->id ?? null) ? $row->id : '')['pdf'];
+        }
+
+        return $this->read($row, (is_scalar($row->number ?? null) ? (string) $row->number : '').'/'.(is_scalar($row->year ?? null) ? (string) $row->year : ''));
+    }
+
     /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED */
     public function status(string $receiptId): string
     {

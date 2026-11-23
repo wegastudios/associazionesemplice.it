@@ -15,6 +15,7 @@ use App\Modules\Core\Console\ResetUserTwoFactorCommand;
 use App\Modules\Core\Console\SelfTestPurgeCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
+use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
@@ -25,6 +26,7 @@ use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Http\Middleware\ResolveProxyClient;
+use App\Modules\Core\Mail\PrimaryMailer;
 use App\Modules\Core\Org\DatabaseOrgContext;
 use App\Modules\Core\Org\DatabaseOrgDirectory;
 use App\Modules\Core\Org\DatabaseOrgPurger;
@@ -36,6 +38,8 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Mail\MailManager;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -108,14 +112,38 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobProcessed::class, $reset);
         Event::listen(JobFailed::class, $reset);
 
+        // Ogni messaggio partito consuma la quota del suo mailer, un invio per destinatario: anche gli invii diretti (fuori
+        // dalla coda) e i messaggi a più destinatari, così il limite orario dell'account non si supera senza saperlo.
+        Event::listen(static function (MessageSent $event): void {
+            $mailer = $event->data['mailer'] ?? null;
+            MailQueue::sent(count($event->sent->getSymfonySentMessage()->getEnvelope()->getRecipients()), is_string($mailer) && $mailer !== '' ? $mailer : null);
+        });
+
+        // Trasporto del servizio di invio principale: sempre cifrato (TLS implicito o STARTTLS obbligatorio).
+        $this->callAfterResolving('mail.manager', static function (MailManager $mail): void {
+            $mail->extend(PrimaryMailer::NAME, PrimaryMailer::transport(...));
+        });
+
         if ($this->app->runningInConsole()) {
             $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class]);
 
-            // Code su Postgres: un lavoratore a giro di cron, che si ferma quando la coda è vuota o dopo 50 secondi
-            // (sul server non ci sono processi sempre attivi). Prima la posta urgente, per ultima la massiva.
+            // Code su Postgres: lavoratori a giro di cron, che si fermano quando la coda è vuota o dopo 50 secondi (sul
+            // server non ci sono processi sempre attivi). Code per tipo di lavoro e quanti lavoratori: JobQueues.
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
-                $schedule->command('queue:work --queue='.MailQueue::WORKER_QUEUES.' --stop-when-empty --max-time=50 --tries=3')
-                    ->everyMinute()->withoutOverlapping(5)->runInBackground();
+                foreach (JobQueues::workers() as $worker) {
+                    $event = $schedule->command($worker['command'])->everyMinute()->withoutOverlapping($worker['mutex_minutes'])->runInBackground();
+                    // Il lavoratore dei lunghi quasi sempre non avrebbe nulla da fare: un processo PHP in meno al minuto.
+                    $queue = $worker['only_if_queued'];
+                    if ($queue !== null) {
+                        $event->when(static function () use ($queue): bool {
+                            $connection = config('queue.connections.database.connection');
+                            $table = config('queue.connections.database.table');
+
+                            return config('queue.default') !== 'database' || DB::connection(is_string($connection) && $connection !== '' ? $connection : null)
+                                ->table(is_string($table) && $table !== '' ? $table : 'core.jobs')->where('queue', $queue)->exists();
+                        });
+                    }
+                }
                 $schedule->command('queue:prune-failed --hours=168')->dailyAt('05:47');
                 // File di lavoro rimasti da richieste interrotte (copie, archivi, ricevute): via quelli di più di un'ora.
                 $schedule->command('saas:tmp:purge --minutes=60')->everyFifteenMinutes()->withoutOverlapping(10);

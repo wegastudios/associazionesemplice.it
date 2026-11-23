@@ -61,7 +61,7 @@ final readonly class MemberLimit
 
         if ($full && ($count >= $tolerated || ($blockOn !== null && $today->toDateString() > $blockOn))) {
             return ['limit' => $limit, 'count' => $count, 'state' => 'blocked', 'tolerated' => $tolerated, 'block_on' => $blockOn,
-                'message' => "Hai raggiunto i {$limit} soci del piano {$name}. Per aggiungerne altri passa a {$nextText}: i soci e i dati che hai già restano come sono."] + $plan;
+                'message' => self::blocked($limit, $name, $nextText)] + $plan;
         }
         if ($full) {
             $until = $blockOn !== null ? CarbonImmutable::parse($blockOn)->format('d/m/Y') : '';
@@ -85,6 +85,36 @@ final readonly class MemberLimit
         $status = $this->status();
 
         return $status['state'] === 'blocked' ? $status['message'] : null;
+    }
+
+    /**
+     * Quanti nuovi soci si possono ancora aggiungere adesso (null: nessun limite) e il messaggio di blocco per quando sono
+     * finiti: gli import contano in memoria, una volta per blocco, invece di ricontare a ogni riga. Stesse regole di
+     * status(): il blocco scatta alla tolleranza, o al pieno se i giorni di tolleranza sono già passati.
+     *
+     * @return array{left: int|null, message: string}
+     */
+    public function allowance(?CarbonImmutable $today = null): array
+    {
+        $today ??= CarbonImmutable::today();
+        $status = $this->status($today);
+        if ($status['limit'] === null) {
+            return ['left' => null, 'message' => ''];
+        }
+        $limit = $status['limit'];
+        $message = self::blocked($limit, $status['plan'] ?? 'attuale', $status['next_plan'] !== null ? "il piano {$status['next_plan']}" : 'un pacchetto di soci in più');
+        if ($status['state'] === 'blocked') {
+            return ['left' => 0, 'message' => $message];
+        }
+        $fullAt = (int) ceil($limit * $this->rules()['full_percent'] / 100);
+        $late = $status['block_on'] !== null && $today->toDateString() > $status['block_on'];
+
+        return ['left' => max(0, ($late ? $fullAt : max($fullAt, (int) $status['tolerated'])) - $status['count']), 'message' => $message];
+    }
+
+    private static function blocked(int $limit, string $plan, string $next): string
+    {
+        return "Hai raggiunto i {$limit} soci del piano {$plan}. Per aggiungerne altri passa a {$next}: i soci e i dati che hai già restano come sono.";
     }
 
     /** Soci ed ex soci (non cancellati) più gli ospiti dell'anno corrente oltre la quota libera. */

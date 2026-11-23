@@ -6,11 +6,12 @@ namespace App\Modules\AreaSoci\Services;
 
 use App\Modules\AreaSoci\Mail\LoginLink;
 use App\Modules\Audit\Contracts\AuditLog;
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\QueuedMail;
 use App\Modules\Soci\Contracts\MemberProfiles;
 use Illuminate\Cache\RateLimiter;
-use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
@@ -37,11 +38,15 @@ final readonly class MemberAccess
 
     public const MAX_DAYS = 90;
 
+    /** Link, codici e sessioni restano nel database 30 giorni dopo che hanno smesso di valere, poi si cancellano. */
+    public const PRUNE_AFTER_DAYS = 30;
+
+    public const PRUNE_BATCH = 1000;
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
         private MemberProfiles $profiles,
-        private Mailer $mailer,
         private AuditLog $audit,
         private OrgContacts $contacts,
         private RateLimiter $limiter,
@@ -65,12 +70,14 @@ final readonly class MemberAccess
         ]);
         $this->audit->record('member.login_requested', null, null, ['kind' => 'email']);
         // L'invio parte dopo la risposta: i tempi sono gli stessi per chi è socio e per chi non lo è. Una volta sola, anche se la chiusura viene richiamata.
-        $mail = new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES, $contacts['email'] ?? null, $contacts['phone'] ?? null);
+        // Con la quota dell'ora finita o la posta ferma va in coda (cifrato) e si riprova finché il codice vale.
+        $mail = QueuedMail::mailable($email, new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES, $contacts['email'] ?? null, $contacts['phone'] ?? null),
+            MailQueue::URGENT, now()->addMinutes(self::CODE_MINUTES));
         $sent = false;
-        app()->terminating(function () use ($email, $mail, &$sent): void {
+        app()->terminating(static function () use ($mail, &$sent): void {
             if (! $sent) {
                 $sent = true;
-                $this->mailer->to($email)->send($mail);
+                MailQueue::sendNowOrQueue($mail);
             }
         });
     }
@@ -186,6 +193,34 @@ final readonly class MemberAccess
         $this->audit->record('member.logout_all', 'app.people', $personId, ['sessions' => $n]);
 
         return $n;
+    }
+
+    /**
+     * Cancella link e codici scaduti da più di 30 giorni e le sessioni chiuse da più di 30 giorni (scadute, chiuse a mano
+     * o ferme oltre i 30 giorni senza uso), a blocchi di PRUNE_BATCH righe, ognuno nella sua transazione breve.
+     *
+     * @return array{tokens: int, sessions: int}
+     */
+    public function prune(): array
+    {
+        $cutoff = now()->subDays(self::PRUNE_AFTER_DAYS);
+
+        return [
+            'tokens' => $this->deleteInBatches('app.member_login_tokens', 'expires_at < ?', [$cutoff]),
+            'sessions' => $this->deleteInBatches('app.member_sessions', 'expires_at < ? OR revoked_at < ? OR last_used_at < ?', [$cutoff, $cutoff, now()->subDays(self::IDLE_DAYS + self::PRUNE_AFTER_DAYS)]),
+        ];
+    }
+
+    /** @param  list<mixed>  $bindings */
+    private function deleteInBatches(string $table, string $where, array $bindings): int
+    {
+        $total = 0;
+        do {
+            $n = $this->connection()->delete("DELETE FROM {$table} WHERE (org_id, id) IN (SELECT org_id, id FROM {$table} WHERE {$where} LIMIT ".self::PRUNE_BATCH.')', $bindings);
+            $total += $n;
+        } while ($n === self::PRUNE_BATCH);
+
+        return $total;
     }
 
     private static function random(): string

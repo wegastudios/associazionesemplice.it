@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Export;
 
-use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\ReadableExport;
+use Closure;
 use Illuminate\Contracts\Container\Container;
 use RuntimeException;
 use Throwable;
@@ -17,7 +17,8 @@ use ZipArchive;
  * Copia di sicurezza: un archivio ZIP con due parti. «Dati per il programma» (un file CSV per tabella, per riportare i
  * dati nel plugin o nel gestionale) e «Documenti leggibili» (PDF e tabelle per anno fiscale, da consegnare). Contiene
  * quello che l'operatore può vedere. I certificati medici in chiaro solo se chi scarica lo chiede e può vedere i dati
- * sanitari. Si costruisce su disco, un file alla volta, in una cartella privata; l'archivio si cancella dopo lo scarico.
+ * sanitari. Si costruisce su disco un file alla volta (in una cartella di lavoro accanto all'archivio, letta da ZipArchive
+ * alla chiusura): in memoria resta un file alla volta. La prepara il lavoro in coda (FullExports).
  */
 final readonly class FullExport
 {
@@ -27,30 +28,32 @@ final readonly class FullExport
 
     public const CERTIFICATES = 'Certificati medici';
 
-    public function __construct(
-        private Container $container,
-        private AuditLog $audit,
-    ) {}
+    public function __construct(private Container $container) {}
 
     /**
-     * Con $year la copia ha i documenti leggibili di quell'anno fiscale soltanto (i dati per il programma ci sono sempre).
-     *
-     * @return array{path: string, files: int, certificates: int}
+     * La copia di tutti gli anni insieme ha un limite di file «pesanti»; oltre si sceglie un anno fiscale.
      *
      * @throws ExportTooLarge
      */
-    public function build(Operator $operator, string $orgName, bool $withCertificates = false, ?int $year = null): array
+    public function assertFits(Operator $operator, bool $withCertificates): void
     {
         $heavy = 0;
         foreach ($this->container->tagged(ReadableExport::TAG) as $part) {
-            $heavy += $part instanceof ReadableExport ? $part->weight($operator, $withCertificates, $year) : 0;
+            $heavy += $part instanceof ReadableExport ? $part->weight($operator, $withCertificates, null) : 0;
         }
-        if ($year === null && $heavy > ReadableExport::MAX_HEAVY_FILES) {
+        if ($heavy > ReadableExport::MAX_HEAVY_FILES) {
             throw new ExportTooLarge('Questa associazione ha molti documenti: una copia unica rischia di non finire. Scegli un anno fiscale e scarica una copia per anno.');
         }
-        @set_time_limit(900);
-        ignore_user_abort(false);
+    }
 
+    /**
+     * Scrive la copia in $path (che non deve esistere). $progress riceve i passi fatti e il totale.
+     *
+     * @param  (Closure(int, int): void)|null  $progress
+     * @return array{files: int, certificates: int}
+     */
+    public function build(Operator $operator, string $orgName, string $path, bool $withCertificates = false, ?int $year = null, ?Closure $progress = null): array
+    {
         $data = [];
         foreach ($this->container->tagged(DataExport::TAG) as $part) {
             if ($part instanceof DataExport) {
@@ -64,6 +67,7 @@ final readonly class FullExport
         foreach ($data as $name => $content) {
             $entries[self::DATA.'/'.$name] = $content;
         }
+        unset($data);
         foreach ($this->container->tagged(ReadableExport::TAG) as $part) {
             if ($part instanceof ReadableExport) {
                 foreach ($part->files($operator, $withCertificates, $year) as $name => $producer) {
@@ -72,50 +76,51 @@ final readonly class FullExport
             }
         }
 
-        $dir = storage_path('app/tmp');
-        if (! is_dir($dir) && ! mkdir($dir, 0700, true) && ! is_dir($dir)) {
-            throw new RuntimeException('Cartella temporanea non disponibile.');
+        $work = $path.'.parti';
+        if (! mkdir($work, 0700, true)) {
+            throw new RuntimeException('Cartella di lavoro non disponibile.');
         }
-        $work = $dir.'/export-'.bin2hex(random_bytes(16));
-        if (! mkdir($work, 0700)) {
-            throw new RuntimeException('Cartella temporanea non disponibile.');
-        }
-        $path = $work.'.zip';
         $zip = new ZipArchive;
+        $open = false;
+        $total = count($entries) + 1;
+        $done = 0;
         $count = 0;
         $certificates = 0;
         try {
             if ($zip->open($path, ZipArchive::CREATE | ZipArchive::EXCL) !== true) {
                 throw new RuntimeException('Archivio non disponibile.');
             }
-            // Ogni file passa dal disco: l'archivio li legge alla chiusura, in memoria non resta niente.
-            $tmp = [];
-            $n = 0;
+            $open = true;
             foreach ($entries as $name => $content) {
                 $body = is_string($content) ? $content : $content();
-                if ($body === null) {
-                    continue;
+                $done++;
+                if ($body !== null) {
+                    $file = $work.'/'.$done;
+                    if (file_put_contents($file, $body) === false) {
+                        throw new RuntimeException('File di lavoro non scritto.');
+                    }
+                    unset($body);
+                    $zip->addFile($file, $name);
+                    // Foto, scansioni e archivi sono già compressi: ricomprimerli costa tempo e non fa guadagnare spazio.
+                    if (preg_match('/\.(jpe?g|png|webp|gif|heic|zip)$/i', $name) === 1) {
+                        $zip->setCompressionName($name, ZipArchive::CM_STORE);
+                    }
+                    $count++;
+                    $certificates += str_starts_with($name, self::READABLE.'/'.self::CERTIFICATES.'/') ? 1 : 0;
                 }
-                $file = $work.'/'.(++$n);
-                file_put_contents($file, $body);
-                unset($body);
-                $zip->addFile($file, $name);
-                // Foto, scansioni e archivi sono già compressi: ricomprimerli costa tempo e non fa guadagnare spazio.
-                if (preg_match('/\.(jpe?g|png|webp|gif|heic|zip)$/i', $name) === 1) {
-                    $zip->setCompressionName($name, ZipArchive::CM_STORE);
+                if ($progress !== null) {
+                    $progress($done, $total);
                 }
-                $tmp[] = $file;
-                $count++;
-                $certificates += str_starts_with($name, self::READABLE.'/'.self::CERTIFICATES.'/') ? 1 : 0;
             }
-            $readme = self::readme($orgName, $withCertificates);
-            $zip->addFromString('LEGGIMI.txt', $readme);
-            $zip->close();
-            foreach ($tmp as $file) {
-                @unlink($file);
+            $zip->addFromString('LEGGIMI.txt', self::readme($orgName, $withCertificates));
+            $open = false;
+            if (! $zip->close()) {
+                throw new RuntimeException('Archivio non scritto.');
             }
         } catch (Throwable $e) {
-            @$zip->close();
+            if ($open) {
+                @$zip->close();
+            }
             @unlink($path);
             throw $e;
         } finally {
@@ -125,9 +130,11 @@ final readonly class FullExport
             @rmdir($work);
         }
         chmod($path, 0600);
-        $this->audit->record('backup.downloaded', null, null, ['files' => $count + 1, 'certificates' => $certificates]);
+        if ($progress !== null) {
+            $progress($total, $total);
+        }
 
-        return ['path' => $path, 'files' => $count + 1, 'certificates' => $certificates];
+        return ['files' => $count + 1, 'certificates' => $certificates];
     }
 
     private static function readme(string $orgName, bool $withCertificates): string

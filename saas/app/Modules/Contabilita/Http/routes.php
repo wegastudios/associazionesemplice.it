@@ -23,6 +23,8 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
     Route::middleware('can:accounting.edit')->group(function (): void {
         Route::get('/prima-nota/importa', [LedgerTransferController::class, 'form'])->name('ledger.import');
         Route::post('/prima-nota/importa', [LedgerTransferController::class, 'import'])->middleware('db.long')->name('ledger.import.run');
+        Route::post('/prima-nota/importa/{import}/annulla', [LedgerTransferController::class, 'cancel'])->whereUuid('import')->name('ledger.import.cancel');
+        Route::post('/prima-nota/importa/{import}/riprendi', [LedgerTransferController::class, 'resume'])->whereUuid('import')->name('ledger.import.resume');
         Route::post('/prima-nota/incassi', [LedgerController::class, 'income'])->middleware('can:accounting.income')->name('ledger.income');
         Route::post('/prima-nota/spese', [LedgerController::class, 'expense'])->middleware('can:accounting.expense')->name('ledger.expense');
         Route::post('/prima-nota/giroconti', [LedgerController::class, 'transfer'])->name('ledger.transfer');

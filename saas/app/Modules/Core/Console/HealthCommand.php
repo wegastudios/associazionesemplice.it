@@ -6,11 +6,14 @@ namespace App\Modules\Core\Console;
 
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Core\Contracts\DatabaseNames;
+use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Mail\PrimaryMailer;
 use App\Modules\Portale\Contracts\WebRuntimeProbe;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -24,12 +27,17 @@ use Throwable;
 #[AsCommand(name: 'saas:health')]
 final class HealthCommand extends Command
 {
-    /** Posta in coda: soglie di attesa del messaggio più vecchio (secondi) e quota dell'ora oltre la quale si avvisa. */
+    /** Posta in coda: soglie di attesa del messaggio più vecchio (secondi) e quota dell'ora o del giorno oltre la quale si avvisa. */
     private const URGENT_MAX_WAIT = 5 * 60;
 
     private const BULK_MAX_WAIT = 6 * 3600;
 
-    private const HOUR_WARNING_SHARE = 0.9;
+    private const USAGE_WARNING_SHARE = 0.9;
+
+    /** Altri lavori: da quanto (secondi) un lavoro pronto aspetta un lavoratore. I lunghi aspettano anche un altro lungo. */
+    private const DEFAULT_MAX_WAIT = 15 * 60;
+
+    private const LONG_MAX_WAIT = 60 * 60;
 
     protected $signature = 'saas:health {--skip-migrations : Non controllare le migrazioni (prima di eseguirle)}
         {--mail-warnings-only : Problemi della posta in coda come avvisi (rilascio: non dipendono dalla versione)}';
@@ -56,21 +64,33 @@ final class HealthCommand extends Command
             'permessi dell\'applicazione' => fn () => $this->appPrivileges($db->connection('pgsql')),
             'connessione senza pooler' => fn () => $this->sessionSettings($db->connection('pgsql')),
             'memoria di Redis' => $this->redisMemory(...),
+            'partizioni del registro' => fn () => $this->auditPartitions($db, $databases),
+            'rifiuto del TRUNCATE' => fn () => $this->truncateGuards($db, $databases),
         ];
-        // Posta in coda: problemi di esercizio, non della versione. Al rilascio (--mail-warnings-only) sono avvisi, così
-        // non riportano indietro il rilascio.
-        $mailChecks = [
+        // Posta e altri lavori in coda: problemi di esercizio, non della versione. Al rilascio (--mail-warnings-only) sono
+        // avvisi, così non riportano indietro il rilascio.
+        $queueChecks = [
             'coda della posta urgente' => fn () => $this->mailWait($db, MailQueue::URGENT, self::URGENT_MAX_WAIT),
             'coda della posta massiva' => fn () => $this->mailWait($db, MailQueue::BULK, self::BULK_MAX_WAIT),
             'invio della posta' => $this->mailBlocked(...),
+            'servizio di invio' => $this->mailPrimaryOff(...),
             'posta non partita' => fn () => $this->mailFailed($db),
+            'coda dei lavori' => fn () => $this->jobWait($db, JobQueues::DEFAULT, self::DEFAULT_MAX_WAIT),
+            'coda dei lavori lunghi' => fn () => $this->jobWait($db, JobQueues::LONG, self::LONG_MAX_WAIT),
         ];
-        // Sempre un avviso: gli invii vicini al tetto orario.
-        $warnOnly = ['invii della posta nell\'ora'];
+        // Sempre avvisi: gli invii vicini ai tetti, il ripiego della posta che dura, i lavori non riusciti (li vede chi li
+        // ha chiesti).
+        $alwaysWarn = [
+            'invii della posta nell\'ora' => $this->mailHourUsage(...),
+            'invii del giorno' => $this->mailDayUsage(...),
+            'ripiego della posta' => $this->mailFallback(...),
+            'lavori non riusciti' => fn () => $this->jobsFailed($db),
+        ];
+        $warnOnly = array_keys($alwaysWarn);
         if ($this->option('mail-warnings-only') === true) {
-            $warnOnly = [...$warnOnly, ...array_keys($mailChecks)];
+            $warnOnly = [...$warnOnly, ...array_keys($queueChecks)];
         }
-        $checks += $mailChecks + ['invii della posta nell\'ora' => $this->mailHourUsage(...)];
+        $checks += $queueChecks + $alwaysWarn;
 
         if (! $this->option('skip-migrations')) {
             foreach ($databases->names() as $name) {
@@ -95,7 +115,7 @@ final class HealthCommand extends Command
         }
 
         // Controlli «morbidi»: finché SAAS_HEALTH_STRICT è spento (sviluppo, dati inventati) un problema è un avviso e non ferma il rilascio.
-        $soft = ['chiave principale in produzione', 'permessi dell\'applicazione', 'memoria di Redis'];
+        $soft = ['chiave principale in produzione', 'permessi dell\'applicazione', 'memoria di Redis', 'partizioni del registro'];
         $strict = config('saas.health_strict') === true;
         $failed = 0;
         foreach ($checks as $name => $check) {
@@ -174,6 +194,72 @@ final class HealthCommand extends Command
     }
 
     /**
+     * Su ogni database il mese corrente e il prossimo hanno la loro partizione del registro, e quella predefinita è vuota:
+     * agganciare un mese nuovo la rilegge tutta tenendo il blocco forte. Letto con il ruolo dei backup, l'unico che vede
+     * tutte le righe (la RLS vale anche per il proprietario).
+     */
+    private function auditPartitions(DatabaseManager $db, DatabaseNames $databases): void
+    {
+        $month = now()->utc()->startOfMonth();
+        $expected = ['audit.log_'.$month->format('Y_m'), 'audit.log_'.$month->copy()->addMonth()->format('Y_m')];
+        $problems = [];
+        foreach ($databases->names() as $name) {
+            $row = $db->connection($databases->backupConnection($name))->selectOne(
+                'SELECT to_regclass(?) IS NULL AS this_missing, to_regclass(?) IS NULL AS next_missing, EXISTS (SELECT 1 FROM audit.log_default) AS default_used',
+                $expected,
+            );
+            $row = is_object($row) ? $row : (object) [];
+            foreach ([$expected[0] => $row->this_missing ?? true, $expected[1] => $row->next_missing ?? true] as $table => $missing) {
+                if ($missing === true) {
+                    $problems[] = "{$name}: manca {$table} (saas:audit:partitions)";
+                }
+            }
+            if (($row->default_used ?? false) === true) {
+                $problems[] = "{$name}: righe nella partizione predefinita";
+            }
+        }
+        if ($problems !== []) {
+            throw new RuntimeException(implode('; ', $problems));
+        }
+    }
+
+    /**
+     * Su ogni database audit.log, tutte le sue partizioni e app.transactions hanno il trigger attivo che rifiuta il
+     * TRUNCATE (log_no_truncate, transactions_no_truncate). Sempre un errore, mai un avviso: senza, il registro e la prima
+     * nota si svuotano con un'istruzione sola. Legge solo il catalogo (pg_class, pg_inherits, pg_trigger, leggibili da
+     * ogni ruolo) con il ruolo dei backup; se il catalogo non fosse leggibile, l'errore della query è comunque un errore.
+     */
+    private function truncateGuards(DatabaseManager $db, DatabaseNames $databases): void
+    {
+        $problems = [];
+        foreach ($databases->names() as $name) {
+            $rows = $db->connection($databases->backupConnection($name))->select(<<<'SQL'
+                WITH expected AS (
+                    SELECT to_regclass('audit.log') AS rel, 'log_no_truncate'::text AS trg, 'audit.log'::text AS label
+                    UNION ALL
+                    SELECT i.inhrelid::regclass, 'log_no_truncate', i.inhrelid::regclass::text
+                    FROM pg_inherits i WHERE i.inhparent = to_regclass('audit.log')
+                    UNION ALL
+                    SELECT to_regclass('app.transactions'), 'transactions_no_truncate', 'app.transactions'
+                )
+                SELECT e.label FROM expected e
+                WHERE e.rel IS NULL OR NOT EXISTS (
+                    SELECT 1 FROM pg_trigger t
+                    WHERE t.tgrelid = e.rel AND t.tgname = e.trg AND t.tgenabled <> 'D' AND (t.tgtype & 32) <> 0
+                )
+                ORDER BY 1
+                SQL);
+            $missing = array_map(static fn (mixed $row): string => is_object($row) && is_string($row->label ?? null) ? $row->label : '?', $rows);
+            if ($missing !== []) {
+                $problems[] = "{$name}: senza rifiuto del TRUNCATE ".implode(', ', $missing);
+            }
+        }
+        if ($problems !== []) {
+            throw new RuntimeException(implode('; ', $problems));
+        }
+    }
+
+    /**
      * Il messaggio più vecchio di una coda di posta aspetta da più della soglia. Conta la nascita scritta nel lavoro
      * (createdAt): un rilascio lo riscrive in coda con una data nuova. Solo con la coda sul database.
      */
@@ -182,10 +268,7 @@ final class HealthCommand extends Command
         if (config('queue.default') !== 'database') {
             return;
         }
-        $connection = config('queue.connections.database.connection');
-        $table = config('queue.connections.database.table');
-        $oldest = $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
-            ->table(is_string($table) && $table !== '' ? $table : 'core.jobs')
+        $oldest = $this->jobs($db)
             ->where('queue', $queue)
             ->selectRaw("min(coalesce((payload::json->>'createdAt')::bigint, created_at)) AS created")
             ->value('created');
@@ -198,6 +281,52 @@ final class HealthCommand extends Command
                 ? sprintf('il messaggio più vecchio aspetta da %d minuti (soglia %d)', intdiv($waited, 60), intdiv($maxSeconds, 60))
                 : sprintf('il messaggio più vecchio aspetta da %d ore (soglia %d)', intdiv($waited, 3600), intdiv($maxSeconds, 3600)));
         }
+    }
+
+    /**
+     * Il lavoro pronto più vecchio di una coda, non preso da nessun lavoratore, aspetta da più della soglia: il cron non
+     * gira o i lavoratori sono sempre occupati. Conta da quando è pronto (available_at), non i lavori rimandati.
+     */
+    private function jobWait(DatabaseManager $db, string $queue, int $maxSeconds): void
+    {
+        if (config('queue.default') !== 'database') {
+            return;
+        }
+        $oldest = $this->jobs($db)->where('queue', $queue)->whereNull('reserved_at')->min('available_at');
+        $waited = is_numeric($oldest) ? now()->getTimestamp() - (int) $oldest : 0;
+        if ($waited > $maxSeconds) {
+            throw new RuntimeException(sprintf('il lavoro più vecchio aspetta un lavoratore da %d minuti (soglia %d)', intdiv($waited, 60), intdiv($maxSeconds, 60)));
+        }
+    }
+
+    /** Lavori fuori dalla posta (copie, import) finiti tra i falliti nelle ultime 24 ore. */
+    private function jobsFailed(DatabaseManager $db): void
+    {
+        $count = $this->failedLastDay($db)->whereNotIn('queue', [MailQueue::URGENT, MailQueue::BULK])->count();
+        if ($count > 0) {
+            throw new RuntimeException("{$count} nelle ultime 24 ore (php artisan queue:failed)");
+        }
+    }
+
+    private function jobs(DatabaseManager $db): Builder
+    {
+        return $this->queueTable($db, 'queue.connections.database.connection', 'queue.connections.database.table', 'core.jobs');
+    }
+
+    /** Lavori falliti nelle ultime 24 ore. */
+    private function failedLastDay(DatabaseManager $db): Builder
+    {
+        return $this->queueTable($db, 'queue.failed.database', 'queue.failed.table', 'core.failed_jobs')->where('failed_at', '>=', now()->subDay());
+    }
+
+    /** Una tabella delle code dalla configurazione (connessione e nome), con i ripieghi. */
+    private function queueTable(DatabaseManager $db, string $connectionKey, string $tableKey, string $default): Builder
+    {
+        $connection = config($connectionKey);
+        $table = config($tableKey);
+
+        return $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
+            ->table(is_string($table) && $table !== '' ? $table : $default);
     }
 
     /** La posta in coda è ferma dopo un rifiuto del server di posta. */
@@ -213,12 +342,8 @@ final class HealthCommand extends Command
     /** Messaggi delle code di posta finiti tra i lavori falliti nelle ultime 24 ore. */
     private function mailFailed(DatabaseManager $db): void
     {
-        $connection = config('queue.failed.database');
-        $table = config('queue.failed.table');
-        $count = $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
-            ->table(is_string($table) && $table !== '' ? $table : 'core.failed_jobs')
+        $count = $this->failedLastDay($db)
             ->whereIn('queue', [MailQueue::URGENT, MailQueue::BULK])
-            ->where('failed_at', '>=', now()->subDay())
             ->count();
         if ($count > 0) {
             throw new RuntimeException("{$count} messaggi non partiti nelle ultime 24 ore (lavori falliti delle code ".MailQueue::URGENT.' e '.MailQueue::BULK.')');
@@ -229,15 +354,54 @@ final class HealthCommand extends Command
     private function mailHourUsage(): void
     {
         $usage = MailQueue::hourUsage();
-        if ($usage !== null && $usage[0] > $usage[1] * self::HOUR_WARNING_SHARE) {
+        if ($usage !== null && $usage[0] > $usage[1] * self::USAGE_WARNING_SHARE) {
             throw new RuntimeException(sprintf('%d su %d nell\'ora in corso (%s)', $usage[0], $usage[1], MailQueue::mailer()));
         }
     }
 
-    /** In produzione niente chiave locale, niente posta nel log; con SFTP l'impronta dell'host è obbligatoria. */
+    /** Il servizio di invio principale è spento per errori di fila: la posta parte dal ripiego. */
+    private function mailPrimaryOff(): void
+    {
+        $until = PrimaryMailer::enabled() ? MailQueue::blockedUntil(PrimaryMailer::NAME) : null;
+        if ($until !== null) {
+            throw new RuntimeException(sprintf('spento per errori fino alle %s, posta sul ripiego (%s)', now()->setTimestamp($until)->format('H:i'), PrimaryMailer::NAME));
+        }
+    }
+
+    /** Invii del giorno UTC oltre il 90% del tetto del servizio di invio principale. */
+    private function mailDayUsage(): void
+    {
+        $usage = PrimaryMailer::enabled() ? MailQueue::usage(86400, PrimaryMailer::NAME) : null;
+        if ($usage !== null && $usage[0] > $usage[1] * self::USAGE_WARNING_SHARE) {
+            throw new RuntimeException(sprintf('%d su %d nel giorno UTC (%s)', $usage[0], $usage[1], PrimaryMailer::NAME));
+        }
+    }
+
+    /** La posta parte dal ripiego da più di un'ora e il servizio principale non è ancora disponibile. */
+    private function mailFallback(): void
+    {
+        if (! PrimaryMailer::enabled()) {
+            return;
+        }
+        $since = PrimaryMailer::fallbackSince();
+        if ($since !== null && PrimaryMailer::peek() !== PrimaryMailer::READY && now()->getTimestamp() - $since > 3600) {
+            throw new RuntimeException(sprintf('posta sul ripiego (%s) da %d minuti', MailQueue::mailer(), intdiv(now()->getTimestamp() - $since, 60)));
+        }
+    }
+
+    /**
+     * In produzione niente chiave locale, niente posta nel log; con SFTP l'impronta dell'host è obbligatoria. Ovunque:
+     * il servizio di invio principale scelto deve avere la sua chiave.
+     */
     private function productionConfig(): void
     {
         $problems = [];
+        $primary = config('saas.mail_queue.primary');
+        if (! in_array($primary, ['cpanel', PrimaryMailer::NAME], true)) {
+            $problems[] = 'SAAS_MAIL_PRIMARY sconosciuto: vale cpanel o '.PrimaryMailer::NAME;
+        } elseif ($primary === PrimaryMailer::NAME && ! PrimaryMailer::enabled()) {
+            $problems[] = 'SAAS_MAIL_PRIMARY='.PrimaryMailer::NAME.' senza chiave (EMAILIT_PASSWORD): la posta resta sul mailer di sempre';
+        }
         $disk = config('filesystems.disks.backups');
         if (is_array($disk) && ($disk['driver'] ?? null) === 'sftp' && (! is_string($disk['hostFingerprint'] ?? null) || trim($disk['hostFingerprint']) === '')) {
             $problems[] = 'impronta dell\'host SFTP dei backup mancante (SAAS_BACKUP_SFTP_FINGERPRINT)';

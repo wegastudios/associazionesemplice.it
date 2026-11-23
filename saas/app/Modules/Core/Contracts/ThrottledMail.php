@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Contracts;
 
+use App\Modules\Core\Mail\PrimaryMailer;
 use Closure;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use LogicException;
 use RuntimeException;
@@ -22,7 +22,8 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
  *
  * - Posta ferma dopo un rifiuto del server: i massivi ripartono quando l'interruttore si spegne, senza provare; degli
  *   urgenti ne passa uno ogni 10 minuti come prova (MailQueue::startProbe): se parte, l'interruttore si chiude.
- *   Il rifiuto per limite orario dell'account (testo «max emails per hour» o «exceeded») è sempre l'interruttore.
+ *   Il rifiuto per limite orario dell'account (testo «max emails per hour», o «exceeded» accanto a «per hour» o «emails per») è sempre
+ *   l'interruttore.
  * - Tetti della coda del lavoro (MailQueue::limits), più quelli di un limitatore del modulo se indicato (RateLimiter::for):
  *   oltre, il lavoro riparte più tardi. Le chiavi sono quelle dei tetti, così tutti i lavori contano sugli stessi.
  * - Rifiuto o errore del server di posta: il lavoro riparte tra un'ora e la posta del mailer si ferma per tutti (oltre il
@@ -30,10 +31,15 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
  *   Se il server rifiuta solo il destinatario (indirizzo o casella), si arrende solo quel messaggio; lo stesso messaggio
  *   rifiutato MAX_REJECTIONS volte si arrende, così non ferma la posta di tutti ogni ora. Nei lavori falliti resta solo il
  *   codice del server, mai la sua risposta (può contenere l'indirizzo).
+ * - Servizio di invio principale acceso (Core\Mail\PrimaryMailer): il messaggio parte da lì entro i suoi tetti; le regole
+ *   qui sopra valgono per il mailer di sempre, che fa da ripiego.
  */
 final class ThrottledMail
 {
     public const MAX_REJECTIONS = 3;
+
+    /** Dopo un errore del servizio principale, quando il messaggio riprova (secondi). */
+    private const RETRY_SECONDS = 60;
 
     /** Ritardo massimo aggiunto ai massivi rilasciati: ripartono sparsi invece di ripresentarsi tutti al minuto dopo. */
     private const BULK_SPREAD_SECONDS = 300;
@@ -48,9 +54,105 @@ final class ThrottledMail
             return $next($job);
         }
 
-        $mailer = MailQueue::mailer();
         $queue = property_exists($job, 'queue') && is_string($job->queue) ? $job->queue : MailQueue::URGENT;
         $urgent = $queue !== MailQueue::BULK;
+
+        if (PrimaryMailer::enabled()) {
+            $state = PrimaryMailer::state();
+            if ($state === PrimaryMailer::DAY_FULL && ! $urgent) {
+                return $this->release($job, $this->untilUtcMidnight());
+            }
+            if ($state === PrimaryMailer::READY || $state === PrimaryMailer::PROBE) {
+                PrimaryMailer::seedDay();
+                $limits = $this->limits($job, $queue, PrimaryMailer::NAME);
+                [$wait, $short] = self::exceeded($limits);
+                if ($wait === null) {
+                    self::hit($limits);
+
+                    return $this->sendPrimary($job, $next, $queue, $urgent);
+                }
+                if ($state === PrimaryMailer::PROBE) {
+                    MailQueue::endProbe(PrimaryMailer::NAME);
+                }
+                // Oltre il tetto al secondo si aspetta un attimo; senza quota i massivi aspettano, gli urgenti vanno sul ripiego.
+                if ($short || ! $urgent) {
+                    return $this->release($job, $short ? $wait : $wait + random_int(0, self::BULK_SPREAD_SECONDS));
+                }
+            }
+        }
+
+        return $this->sendBase($job, $next, $queue, $urgent);
+    }
+
+    /** @param  Closure(object): mixed  $next */
+    private function sendPrimary(object $job, Closure $next, string $queue, bool $urgent): mixed
+    {
+        try {
+            $result = MailQueue::reserved($queue, static fn (): mixed => MailQueue::using(PrimaryMailer::NAME, static fn (): mixed => $next($job)));
+        } catch (TransportExceptionInterface $e) {
+            $recipient = self::recipientOnly($e);
+            if ($recipient === '5') {
+                return $this->giveUp($job, $e);
+            }
+            if ($recipient === '4') {
+                return $this->release($job, $urgent ? MailQueue::PROBE_SECONDS : MailQueue::blockedMinutes() * 60);
+            }
+
+            return match (PrimaryMailer::rejected($e)) {
+                PrimaryMailer::SECOND => $this->release($job, PrimaryMailer::SECOND_WAIT),
+                PrimaryMailer::DAY_FULL => $this->release($job, $urgent ? 1 : $this->untilUtcMidnight()),
+                // Il servizio si è appena spento: al prossimo giro il messaggio parte dal ripiego.
+                PrimaryMailer::OFF => $this->release($job, 1),
+                default => $this->rejections($job, PrimaryMailer::NAME) >= self::MAX_REJECTIONS ? $this->giveUp($job, $e) : $this->release($job, self::RETRY_SECONDS),
+            };
+        }
+        PrimaryMailer::delivered(PrimaryMailer::NAME);
+
+        return $result;
+    }
+
+    /** I massivi a quota del giorno finita aspettano la mezzanotte UTC, sparsi. */
+    private function untilUtcMidnight(): int
+    {
+        return MailQueue::nextUtcMidnight() - now()->getTimestamp() + random_int(0, self::BULK_SPREAD_SECONDS);
+    }
+
+    /**
+     * Il primo tetto pieno: attesa in secondi (null se c'è posto) e se si tratta solo del tetto al secondo.
+     *
+     * @param  list<Limit>  $limits
+     * @return array{int|null, bool}
+     */
+    private static function exceeded(array $limits): array
+    {
+        $wait = null;
+        $short = true;
+        foreach ($limits as $limit) {
+            if (RateLimiter::tooManyAttempts(MailQueue::key($limit), $limit->maxAttempts)) {
+                $wait = max($wait ?? 0, RateLimiter::availableIn(MailQueue::key($limit)));
+                $short = $short && $limit->decaySeconds <= 1;
+            }
+        }
+
+        return [$wait, $wait !== null && $short];
+    }
+
+    /** @param  list<Limit>  $limits */
+    private static function hit(array $limits): void
+    {
+        foreach ($limits as $limit) {
+            RateLimiter::hit(MailQueue::key($limit), $limit->decaySeconds);
+        }
+    }
+
+    /**
+     * Invio dal mailer di sempre: senza servizio principale, o come suo ripiego.
+     *
+     * @param  Closure(object): mixed  $next
+     */
+    private function sendBase(object $job, Closure $next, string $queue, bool $urgent): mixed
+    {
+        $mailer = MailQueue::mailer();
         $blocked = MailQueue::blockedUntil($mailer);
         $probe = false;
         if ($blocked !== null) {
@@ -63,21 +165,15 @@ final class ThrottledMail
         }
 
         $limits = $this->limits($job, $queue, $mailer);
-        $wait = null;
-        foreach ($limits as $limit) {
-            if (RateLimiter::tooManyAttempts(MailQueue::key($limit), $limit->maxAttempts)) {
-                $wait = max($wait ?? 0, RateLimiter::availableIn(MailQueue::key($limit)));
-            }
-        }
+        [$wait] = self::exceeded($limits);
         if ($wait !== null) {
             return $this->release($job, $wait + ($queue === MailQueue::BULK ? random_int(0, self::BULK_SPREAD_SECONDS) : 0));
         }
-        foreach ($limits as $limit) {
-            RateLimiter::hit(MailQueue::key($limit), $limit->decaySeconds);
-        }
+        self::hit($limits);
 
         try {
-            $result = $next($job);
+            // Il destinatario è già contato dai tetti qui sopra; gli altri, se il messaggio ne ha più d'uno, quando parte.
+            $result = MailQueue::reserved($queue, static fn (): mixed => MailQueue::using($mailer, static fn (): mixed => $next($job)));
         } catch (TransportExceptionInterface $e) {
             return $this->rejected($job, $mailer, $urgent, $e);
         }
@@ -85,46 +181,72 @@ final class ThrottledMail
         if ($probe) {
             MailQueue::unblock($mailer);
         }
+        PrimaryMailer::delivered($mailer);
 
         return $result;
     }
 
     private function rejected(object $job, string $mailer, bool $urgent, TransportExceptionInterface $e): null
     {
-        $code = $e->getCode();
-        // Limite orario dell'account (exim: «has exceeded the max emails per hour»): sempre l'interruttore, qualunque sia il
-        // codice esteso, e non conta come rifiuto del messaggio.
-        $hourLimit = preg_match('/max emails per hour|exceeded/i', $e->getMessage()) === 1;
-        // Codici estesi x.1.x (indirizzo) e x.2.1/x.2.2 (casella disattivata o piena): riguardano il solo destinatario.
-        $recipient = ! $hourLimit && preg_match('/\b([45])\.(?:1\.\d{1,3}|2\.[12])\b/', $e->getMessage(), $match) === 1;
+        // Il limite orario dell'account non conta come rifiuto del messaggio.
+        $hourLimit = self::hourLimit($e);
+        $recipient = self::recipientOnly($e);
 
-        if (($recipient && $match[1] === '5') || (! $hourLimit && $this->rejections($job) >= self::MAX_REJECTIONS)) {
-            if (! method_exists($job, 'fail')) {
-                throw new LogicException('Il lavoro di posta deve usare InteractsWithQueue.');
-            }
-            $job->fail(new RuntimeException("Messaggio rifiutato dal server di posta (codice {$code})."));
-
-            return null;
+        if ($recipient === '5' || (! $hourLimit && $this->rejections($job, $mailer) >= self::MAX_REJECTIONS)) {
+            return $this->giveUp($job, $e);
         }
 
-        if (! $recipient) {
-            $until = MailQueue::block($mailer);
-            Log::warning('Server di posta: invio rifiutato, posta in coda ferma', ['mailer' => $mailer, 'code' => $code, 'until' => date(DATE_ATOM, $until)]);
+        if ($recipient === null) {
+            MailQueue::blockAfterRejection($mailer, $e);
         }
 
         // Un urgente può fare da prova al prossimo turno; un massivo aspetta tutta la pausa.
         return $this->release($job, $urgent ? MailQueue::PROBE_SECONDS : MailQueue::blockedMinutes() * 60);
     }
 
-    /** Quante volte il server ha rifiutato questo stesso lavoro (contato per identificativo, per tre giorni). */
-    private function rejections(object $job): int
+    /**
+     * Il rifiuto riguarda il solo destinatario? '5' definitivo, '4' temporaneo, null no (server o account). Codici estesi
+     * x.1.x (indirizzo) e x.2.1/x.2.2 (casella disattivata o piena); mai il limite orario dell'account, anche se il server
+     * lo manda con un codice da destinatario.
+     */
+    public static function recipientOnly(TransportExceptionInterface $e): ?string
+    {
+        if (self::hourLimit($e) || preg_match('/\b([45])\.(?:1\.\d{1,3}|2\.[12])\b/', $e->getMessage(), $match) !== 1) {
+            return null;
+        }
+
+        return $match[1];
+    }
+
+    /**
+     * Limite orario dell'account (exim: «has exceeded the max emails per hour»): sempre l'interruttore. «exceeded» da solo
+     * no («quota exceeded» è la casella piena del destinatario): serve accanto a «per hour» o «emails per».
+     */
+    private static function hourLimit(TransportExceptionInterface $e): bool
+    {
+        return preg_match('/max emails per hour|exceeded.{0,80}?(?:per hour|emails per)|(?:per hour|emails per).{0,80}?exceeded/i', $e->getMessage()) === 1;
+    }
+
+    /** Il messaggio si arrende: tra i lavori falliti resta solo il codice del server, mai la sua risposta. */
+    private function giveUp(object $job, TransportExceptionInterface $e): null
+    {
+        if (! method_exists($job, 'fail')) {
+            throw new LogicException('Il lavoro di posta deve usare InteractsWithQueue.');
+        }
+        $job->fail(new RuntimeException("Messaggio rifiutato dal server di posta (codice {$e->getCode()})."));
+
+        return null;
+    }
+
+    /** Quante volte il mailer ha rifiutato questo stesso lavoro (contato per identificativo, per tre giorni). */
+    private function rejections(object $job, string $mailer): int
     {
         $queued = property_exists($job, 'job') ? $job->job : null;
         $uuid = $queued instanceof Job ? $queued->uuid() : null;
         if (! is_string($uuid) || $uuid === '') {
             return 1;
         }
-        $key = 'mail-rejections:'.$uuid;
+        $key = 'mail-rejections:'.$mailer.':'.$uuid;
         Cache::add($key, 0, now()->addDays(3));
 
         return (int) Cache::increment($key);

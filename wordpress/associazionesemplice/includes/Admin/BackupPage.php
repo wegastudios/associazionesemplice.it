@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Backup;
 use AssociazioneSemplice\FileKey;
+use AssociazioneSemplice\LongJob;
 use AssociazioneSemplice\Texts;
 
 defined( 'ABSPATH' ) || exit;
@@ -18,11 +19,29 @@ final class BackupPage {
 		echo '<p>Scarica un file con <strong>tutti i dati</strong> del plugin (soci, attività, prima nota, fondi, ricevute, comunicazioni…) e le impostazioni. Conservalo in un posto sicuro, fuori dal sito. '
 			. 'Le chiavi segrete dei pagamenti online non sono incluse.</p>';
 		echo '<p>' . ( $last ? 'Ultima copia scaricata: <strong>' . esc_html( wp_date( 'd/m/Y H:i', $last ) ) . '</strong>' . ( time() - $last > 30 * DAY_IN_SECONDS ? ' <span class="asem-warn">(più di 30 giorni fa)</span>' : '' ) : '<span class="asem-warn">Nessuna copia scaricata finora.</span>' ) . '</p>';
-		Ui::form_open( 'asem_backup', Ui::url( 'asem-backup' ) );
-		echo '<p><label>' . esc_html( Texts::t( 'La tua password di amministratore' ) ) . '<br><input type="password" name="password" class="regular-text" autocomplete="current-password" required></label><br><span class="description">' . esc_html( Texts::t( 'Per scaricare la copia scrivi la tua password.' ) ) . '</span></p>'
-			. '<p><button type="submit" name="files" value="0" class="button button-primary">Scarica la copia dei dati</button> '
-			. '<button type="submit" name="files" value="1" class="button">Scarica la copia con gli allegati (scontrini, fatture e altri documenti)</button></p>';
-		Ui::form_close();
+		$job = LongJob::status( Backup::JOB ); // la copia a tappe: in preparazione, pronta da scaricare, annullata o guasta
+		if ( $job && 'running' === $job['status'] ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html( Texts::t( 'Mentre la copia si prepara, evita di registrare movimenti o incassi: quello che registri adesso potrebbe non entrare nella copia.' ) ) . '</p></div>';
+			echo LongJob::panel( Backup::JOB, array( 'title' => Texts::t( 'Copia di sicurezza in preparazione' ), 'done_url' => Ui::url( 'asem-backup' ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già protetto da LongJob::panel()
+		} else {
+			if ( $job && 'finished' === $job['status'] && '' !== Backup::ready_file() ) {
+				echo '<div class="notice notice-success inline"><p>' . esc_html( Texts::t( 'La copia di sicurezza è pronta ({size}). Dopo lo scarico non resta sul sito; se non la scarichi, si cancella da sola dopo {ore} ore.', array( 'size' => size_format( (int) ( $job['result']['size'] ?? 0 ) ), 'ore' => (int) \AssociazioneSemplice\Limits::get( 'backup_hours' ) ) ) ) . '</p>';
+				Ui::form_open( 'asem_backup_get', Ui::url( 'asem-backup' ) );
+				if ( Backup::ready_needs_password() ) { // avviata più di due ore fa: si chiede di nuovo la password
+					echo '<p><label>' . esc_html( Texts::t( 'La tua password di amministratore' ) ) . '<br><input type="password" name="password" class="regular-text" autocomplete="current-password" required></label><br><span class="description">' . esc_html( Texts::t( 'La copia è stata avviata più di due ore fa: per scaricarla scrivi di nuovo la tua password.' ) ) . '</span></p>';
+				}
+				echo '<p><button type="submit" class="button button-primary">' . esc_html( Texts::t( 'Scarica la copia pronta' ) ) . '</button></p>';
+				Ui::form_close();
+				echo '</div>';
+			} elseif ( $job && in_array( $job['status'], array( 'failed', 'cancelled' ), true ) ) {
+				echo LongJob::panel( Backup::JOB ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML già protetto da LongJob::panel()
+			}
+			Ui::form_open( 'asem_backup', Ui::url( 'asem-backup' ) );
+			echo '<p><label>' . esc_html( Texts::t( 'La tua password di amministratore' ) ) . '<br><input type="password" name="password" class="regular-text" autocomplete="current-password" required></label><br><span class="description">' . esc_html( Texts::t( 'Per scaricare la copia scrivi la tua password.' ) ) . ' ' . esc_html( Texts::t( 'Se i dati sono tanti la copia si prepara a pezzi: vedrai l\'avanzamento in questa pagina e la scaricherai quando è pronta.' ) ) . '</span></p>'
+				. '<p><button type="submit" name="files" value="0" class="button button-primary">Scarica la copia dei dati</button> '
+				. '<button type="submit" name="files" value="1" class="button">Scarica la copia con gli allegati (scontrini, fatture e altri documenti)</button></p>';
+			Ui::form_close();
+		}
 		if ( FileKey::has_keys() ) {
 			echo '<p class="description">' . esc_html( FileCryptPanel::copy_note() ) . '</p>';
 		}

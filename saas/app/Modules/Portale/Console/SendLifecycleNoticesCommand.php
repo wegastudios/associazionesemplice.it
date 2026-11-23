@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Console;
 
+use App\Modules\Portale\Jobs\SendLifecycleNotice;
 use App\Modules\Portale\Notifications\OrgLifecycleNotification;
 use App\Modules\Portale\PortalConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\Notification;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
@@ -51,22 +51,16 @@ final class SendLifecycleNoticesCommand extends Command
                 continue;
             }
             [$kind, $days] = $notice;
-            $claimed = $db->connection('pgsql')->table('core.org_notices')->insertOrIgnore(['org_id' => $row->org_id, 'kind' => $kind, 'until' => $until->toDateString()]);
-            if ($claimed === 0) {
+            // La prenotazione la prende il lavoro all'invio (SendLifecycleNotice): qui si salta solo l'avviso già mandato.
+            if ($db->connection('pgsql')->table('core.org_notices')->where(['org_id' => $row->org_id, 'kind' => $kind, 'until' => $until->toDateString()])->exists()) {
                 continue;
             }
-            $emails = $db->connection('pgsql')->table('core.users')->whereIn('id', $db->connection('pgsql')->table('core.org_users')
-                ->where('org_id', $row->org_id)->whereIn('role', ['owner', 'admin'])->select('user_id'))->pluck('email')->all();
             $keepDays = str_starts_with($kind, 'trial') ? $config->trialPurgeDays() : $config->retentionDays();
-            $notification = new OrgLifecycleNotification($kind, $row->name, $days, rtrim($config->portalUrl(), '/').'/account', $keepDays, $until->addDays($keepDays));
-            foreach ($emails as $email) {
-                if (is_string($email)) {
-                    Notification::route('mail', $email)->notify($notification);
-                }
-            }
+            SendLifecycleNotice::dispatch($row->org_id, $until->toDateString(),
+                new OrgLifecycleNotification($kind, $row->name, $days, rtrim($config->portalUrl(), '/').'/account', $keepDays, $until->addDays($keepDays)));
             $sent++;
         }
-        $this->info("Avvisi inviati: {$sent}");
+        $this->info("Avvisi in coda: {$sent}");
 
         return self::SUCCESS;
     }

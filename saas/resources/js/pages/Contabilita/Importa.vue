@@ -1,8 +1,10 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import ImportProgress from '../../components/ImportProgress.vue';
 
-defineProps({ accounts: Array, preview: Object, result: Object });
+const props = defineProps({ accounts: Array, preview: Object, job: Object });
+const busy = () => props.job?.active === true;
 
 const form = useForm({ file: null, default_account_id: '', apply: false });
 const send = (apply) => {
@@ -21,15 +23,10 @@ const field = 'field';
         <p class="mb-2 text-sm"><Link href="/gestionale/prima-nota" class="text-accent hover:underline">← Prima nota</Link></p>
         <h1 class="mb-4 text-2xl font-bold">Importa la prima nota da Excel o CSV</h1>
 
-        <section v-if="result" class="mb-6 card p-4 sm:p-5" role="status">
-            <h2 class="mb-2 text-lg font-bold">Importazione completata</h2>
+        <ImportProgress :job="job" url="/gestionale/prima-nota/importa" unit="movimenti" v-slot="{ result }">
             <p>{{ result.income }} {{ result.income === 1 ? 'entrata' : 'entrate' }}, {{ result.expense }} {{ result.expense === 1 ? 'uscita' : 'uscite' }}, {{ result.transfer }} {{ result.transfer === 1 ? 'giroconto registrato' : 'giroconti registrati' }}<template v-if="result.accounts">, {{ result.accounts }} {{ result.accounts === 1 ? 'conto creato' : 'conti creati' }}</template>.</p>
-            <template v-if="result.failed.length">
-                <p class="mt-3 font-semibold text-danger">Righe non importate:</p>
-                <ul class="list-disc pl-5 text-sm"><li v-for="f in result.failed" :key="f">{{ f }}</li></ul>
-            </template>
             <p class="mt-3"><Link href="/gestionale/prima-nota" class="font-semibold text-accent hover:underline">Vai alla prima nota</Link></p>
-        </section>
+        </ImportProgress>
 
         <section class="card p-4 sm:p-5">
             <p class="mb-2 text-sm text-muted">Servono le colonne <strong>Data</strong> e <strong>Importo</strong> (oppure <strong>Entrata</strong> e <strong>Uscita</strong>). Si riconoscono anche Tipo, Conto, Modalità, Voce, Attività, N. tessera, Persona, Descrizione, Competenza e Riferimento: il file che esporta la prima nota si ricarica così com'è.</p>
@@ -66,9 +63,10 @@ const field = 'field';
                     </tbody>
                 </table>
             </div>
-            <button type="button" class="mt-4 btn btn-primary" :disabled="form.processing || !(preview.summary.counts.create + preview.summary.counts.transfer)" @click="send(true)">
+            <button type="button" class="mt-4 btn btn-primary" :disabled="form.processing || busy() || !(preview.summary.counts.create + preview.summary.counts.transfer)" @click="send(true)">
                 {{ preview.summary.counts.create + preview.summary.counts.transfer === 1 ? 'Importa 1 movimento' : `Importa ${preview.summary.counts.create + preview.summary.counts.transfer} movimenti` }}
             </button>
+            <p v-if="busy()" class="mt-2 text-sm text-muted">Aspetta che finisca l'importazione in corso.</p>
         </section>
     </AppLayout>
 </template>

@@ -44,13 +44,14 @@ final class LimitsPage {
 		Ui::footer();
 	}
 
-	/** Sotto il tetto orario delle email: se la posta del sito passa da un servizio esterno, si propone di alzarlo. */
+	/** Sotto il tetto orario delle email: il limite degli hosting condivisi e, se la posta del sito passa da un servizio esterno, si propone di alzarlo. */
 	private static function mail_hint(): void {
+		echo '<p class="description">' . esc_html( Texts::t( 'Molti hosting condivisi hanno un limite orario per tutto l\'account (per esempio 250 email all\'ora, sommando tutti i siti): tieni il tetto più basso di quel limite.' ) ) . '</p>';
 		if ( ! \AssociazioneSemplice\MailBudget::external_service() ) {
 			return;
 		}
 		echo '<div class="notice notice-info inline"><p><strong>' . esc_html( Texts::t( 'La posta del sito passa da un servizio di invio esterno.' ) ) . '</strong> '
-			. esc_html( Texts::t( 'Di solito questi servizi permettono molte più di 200 email all\'ora: controlla il limite orario del tuo piano e, se è più alto, alza qui il tetto (ad esempio a metà del limite del servizio, così resta posto per le conferme). Con 200 una comunicazione a 1.000 soci impiega circa 6 ore.' ) )
+			. esc_html( Texts::t( 'Di solito questi servizi permettono molte più di 200 email all\'ora: controlla il limite orario del tuo piano e, se è più alto, alza qui il tetto (ad esempio a metà del limite del servizio, così resta posto per le conferme). Con 200 una comunicazione a 1.000 soci impiega circa 5 ore.' ) )
 			. '</p></div>';
 	}
 

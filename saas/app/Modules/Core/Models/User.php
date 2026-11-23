@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Core\Models;
 
 use App\Modules\Core\Auth\ResetPasswordNotification;
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\QueuedMail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -59,9 +61,21 @@ final class User extends Authenticatable
         return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
 
-    /** @param  string  $token */
+    /**
+     * Subito se c'è quota, altrimenti in coda (cifrato) finché il link vale. La risposta a chi chiede non cambia.
+     *
+     * @param  string  $token
+     */
     public function sendPasswordResetNotification(#[SensitiveParameter] $token): void
     {
-        $this->notify(new ResetPasswordNotification($token));
+        MailQueue::sendNowOrQueue(QueuedMail::notification($this, new ResetPasswordNotification($token), MailQueue::URGENT, now()->addMinutes(self::resetLinkMinutes())));
+    }
+
+    /** Quanto vale un link per scegliere la password (anche quello dell'invito): config auth.passwords.users.expire. */
+    public static function resetLinkMinutes(): int
+    {
+        $minutes = config('auth.passwords.users.expire');
+
+        return is_numeric($minutes) && (int) $minutes > 0 ? (int) $minutes : 60;
     }
 }

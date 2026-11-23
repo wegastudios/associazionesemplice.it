@@ -37,15 +37,15 @@ it('importa solo le righe del tipo per cui chi importa ha il permesso e dice qua
     $upload = fn (string $text = '') => UploadedFile::fake()->createWithContent('pn.csv', str_replace('30,00;Quota', '30,00;Quota'.$text, $csv));
 
     $this->actingAs(($this->employee)(['accounting.expense']));
-    $this->post('/gestionale/prima-nota/importa', ['file' => $upload(), 'apply' => true])
-        ->assertInertia(fn (Assert $page) => $page->where('result.income', 1)->where('result.expense', 0)
-            ->where('result.failed.0', fn (string $m): bool => str_contains($m, 'non hai il permesso di registrare spese')));
+    $this->followingRedirects()->post('/gestionale/prima-nota/importa', ['file' => $upload(), 'apply' => true])
+        ->assertInertia(fn (Assert $page) => $page->where('job.status', 'done')->where('job.result.income', 1)->where('job.result.expense', 0)
+            ->where('job.result.failed.0', fn (string $m): bool => str_contains($m, 'non hai il permesso di registrare spese')));
 
     $this->actingAs(($this->employee)(['accounting.income']));
     // Descrizione diversa: la riga d'entrata non è un doppione della prima importazione.
-    $this->post('/gestionale/prima-nota/importa', ['file' => $upload(' bis'), 'apply' => true])
-        ->assertInertia(fn (Assert $page) => $page->where('result.expense', 1)->where('result.income', 0)
-            ->where('result.failed.0', fn (string $m): bool => str_contains($m, 'non hai il permesso di registrare entrate')));
+    $this->followingRedirects()->post('/gestionale/prima-nota/importa', ['file' => $upload(' bis'), 'apply' => true])
+        ->assertInertia(fn (Assert $page) => $page->where('job.result.expense', 1)->where('job.result.income', 0)
+            ->where('job.result.failed.0', fn (string $m): bool => str_contains($m, 'non hai il permesso di registrare entrate')));
 });
 
 it('manda i saldi dei conti solo a chi può vedere fondi e conti', function (): void {

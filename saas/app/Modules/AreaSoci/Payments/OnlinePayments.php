@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Payments;
 
+use App\Modules\AreaSoci\Jobs\SendPaymentMail;
 use App\Modules\AreaSoci\Mail\DonationReceiptMail;
 use App\Modules\AreaSoci\Mail\PaymentRefunded;
 use App\Modules\AreaSoci\Models\PaymentSettings;
@@ -25,6 +26,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
@@ -363,41 +365,75 @@ final readonly class OnlinePayments
     }
 
     /**
-     * La ricevuta della donazione pubblica in PDF, a chi ha donato. Se l'email non c'è o non parte resta nel registro azioni:
-     * la segreteria la manda a mano dalla ricevuta.
+     * La ricevuta della donazione pubblica in PDF, a chi ha donato: in coda come posta massiva (SendPaymentMail), così oltre
+     * il limite orario aspetta invece di perdersi. Se l'email non c'è o alla fine non parte resta nel registro azioni: la
+     * segreteria la manda a mano dalla ricevuta.
      *
      * @param  list<string>  $numbers  «numero/anno»
      */
     private function mailDonationReceipts(string $paymentId, string $personId, array $numbers, int $cents): void
     {
-        $email = $this->profiles->details($personId)['email'] ?? null;
-        if (! is_string($email) || $email === '') {
+        $this->queueMail(SendPaymentMail::receipts($this->context->require()->id, $paymentId, $personId, $cents, $numbers), 'receipt');
+    }
+
+    /**
+     * Manda la ricevuta della donazione (dal lavoro in coda). Senza email lo scrive nel registro; un errore torna al lavoro,
+     * che riprova.
+     *
+     * @param  list<string>  $numbers  «numero/anno»
+     */
+    public function deliverDonationReceipts(string $paymentId, string $personId, array $numbers, int $cents): void
+    {
+        $email = $this->emailOf($personId);
+        if ($email === null) {
             $this->audit->record('payment.receipt_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'no_email']);
 
             return;
         }
-        try {
-            $files = [];
-            foreach ($numbers as $label) {
-                if (preg_match('#^(\d+)/(\d{4})$#', $label, $m) !== 1) {
-                    continue;
-                }
-                $id = $this->connection()->table('app.receipts')->where('number', (int) $m[1])->where('year', (int) $m[2])->value('id');
-                $pdf = is_string($id) ? $this->app->make(MemberReceipts::class)->pdf($id, [$personId]) : null;
-                if ($pdf !== null) {
-                    $files[] = $pdf;
-                }
+        $files = [];
+        foreach ($numbers as $label) {
+            if (preg_match('#^(\d+)/(\d{4})$#', $label, $m) !== 1) {
+                continue;
             }
-            if ($files === []) {
-                throw new RuntimeException('Ricevuta non trovata.');
+            $id = $this->connection()->table('app.receipts')->where('number', (int) $m[1])->where('year', (int) $m[2])->value('id');
+            $pdf = is_string($id) ? $this->app->make(MemberReceipts::class)->pdf($id, [$personId]) : null;
+            if ($pdf !== null) {
+                $files[] = $pdf;
             }
-            $contacts = $this->app->make(OrgContacts::class)->all();
-            $org = $this->connection()->table('app.orgs')->value('name');
-            $this->app->make(Mailer::class)->to($email)->send(new DonationReceiptMail(is_string($org) ? $org : '', $this->profiles->card($personId)['first_name'] ?? '', self::euro($cents), implode(', ', $numbers), $files, $contacts['email'] ?? null, $contacts['phone'] ?? null));
-            $this->audit->record('payment.receipt_mail_sent', 'app.online_payments', $paymentId, []);
-        } catch (Throwable $e) {
-            $this->audit->record('payment.receipt_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'send_failed', 'error' => mb_substr($e->getMessage(), 0, 200)]);
         }
+        if ($files === []) {
+            throw new RuntimeException('Ricevuta non trovata.');
+        }
+        $contacts = $this->app->make(OrgContacts::class)->all();
+        $org = $this->connection()->table('app.orgs')->value('name');
+        $this->app->make(Mailer::class)->to($email)->send(new DonationReceiptMail(is_string($org) ? $org : '', $this->profiles->card($personId)['first_name'] ?? '', self::euro($cents), implode(', ', $numbers), $files, $contacts['email'] ?? null, $contacts['phone'] ?? null));
+        $this->audit->record('payment.receipt_mail_sent', 'app.online_payments', $paymentId, []);
+    }
+
+    /** Mette in coda un'email del pagamento; se nemmeno la coda risponde resta nel registro azioni. true = in coda. */
+    private function queueMail(SendPaymentMail $job, string $kind): bool
+    {
+        if ($this->emailOf($job->personId) === null) {
+            $this->audit->record('payment.'.$kind.'_mail_skipped', 'app.online_payments', $job->paymentId, ['why' => 'no_email']);
+
+            return false;
+        }
+        try {
+            Bus::dispatch($job);
+        } catch (Throwable) {
+            $this->audit->record('payment.'.$kind.'_mail_skipped', 'app.online_payments', $job->paymentId, ['why' => 'queue_failed']);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function emailOf(string $personId): ?string
+    {
+        $email = $this->profiles->details($personId)['email'] ?? null;
+
+        return is_string($email) && $email !== '' ? $email : null;
     }
 
     /**
@@ -571,7 +607,7 @@ final readonly class OnlinePayments
         }
         $mailed = $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName, $sent['stays']);
         if ($voidError !== null) {
-            throw new MemberAccessError('Il rimborso di '.self::euro($amount).' è stato fatto'.($mailed ? ' e il socio è stato avvisato' : '').', ma l\'annullamento in prima nota no: '.$voidError.' Annullalo a mano dalla prima nota.'
+            throw new MemberAccessError('Il rimborso di '.self::euro($amount).' è stato fatto'.($mailed ? ' e il socio riceverà l\'avviso per email' : '').', ma l\'annullamento in prima nota no: '.$voidError.' Annullalo a mano dalla prima nota.'
                 .($mailed ? '' : ' Il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu.'));
         }
 
@@ -650,30 +686,36 @@ final readonly class OnlinePayments
         }
     }
 
-    /** Email al socio: importo, motivo e tempi di accredito. Se non parte, il rimborso resta valido e si scrive nel registro. */
-    /** @param  array{reservation: bool, enrollment: bool}  $stays */
+    /**
+     * Email al socio: importo, motivo e tempi di accredito, in coda come posta massiva (SendPaymentMail). Se non c'è
+     * l'email o alla fine non parte, il rimborso resta valido e si scrive nel registro. true = avviso in partenza.
+     *
+     * @param  array{reservation: bool, enrollment: bool}  $stays
+     */
     private function tellMember(string $paymentId, string $personId, int $cents, string $createdAt, string $reason, string $orgName, array $stays): bool
     {
-        $details = $this->profiles->details($personId);
-        $email = $details['email'] ?? null;
-        if (! is_string($email) || $email === '') {
+        $notes = array_values(array_filter([$stays['reservation'] ? self::MAIL_RESERVATION : null, $stays['enrollment'] ? self::MAIL_ENROLLMENT : null]));
+
+        return $this->queueMail(SendPaymentMail::refund($this->context->require()->id, $paymentId, $personId, $cents, date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200), $orgName, $notes), 'refund');
+    }
+
+    /**
+     * Manda l'avviso di rimborso (dal lavoro in coda). Senza email lo scrive nel registro; un errore torna al lavoro, che riprova.
+     *
+     * @param  list<string>  $notes
+     */
+    public function deliverRefundNotice(string $paymentId, string $personId, int $cents, string $paidOn, string $reason, string $orgName, array $notes): void
+    {
+        $email = $this->emailOf($personId);
+        if ($email === null) {
             $this->audit->record('payment.refund_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'no_email']);
 
-            return false;
+            return;
         }
         // L'avviso è una conseguenza automatica del rimborso: parte sempre; senza i contatti della segreteria esce senza indirizzo di risposta né riga contatti.
         $contacts = $this->app->make(OrgContacts::class)->all();
-        try {
-            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200), $contacts['email'] ?? null, $contacts['phone'] ?? null,
-                array_values(array_filter([$stays['reservation'] ? self::MAIL_RESERVATION : null, $stays['enrollment'] ? self::MAIL_ENROLLMENT : null]))));
-            $this->audit->record('payment.refund_mail_sent', 'app.online_payments', $paymentId, []);
-
-            return true;
-        } catch (Throwable $e) {
-            $this->audit->record('payment.refund_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'send_failed', 'error' => mb_substr($e->getMessage(), 0, 200)]);
-
-            return false;
-        }
+        $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), $paidOn, $reason, $contacts['email'] ?? null, $contacts['phone'] ?? null, $notes));
+        $this->audit->record('payment.refund_mail_sent', 'app.online_payments', $paymentId, []);
     }
 
     /**
