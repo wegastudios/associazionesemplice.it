@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Console;
 
+use App\Modules\AreaSoci\Contracts\PaymentWebhookHealth;
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Contabilita\Contracts\BalanceCheck;
 use App\Modules\Core\Contracts\DatabaseNames;
@@ -81,12 +82,13 @@ final class HealthCommand extends Command
             'coda dei lavori lunghi' => fn () => $this->jobWait($db, JobQueues::LONG, self::LONG_MAX_WAIT),
         ];
         // Sempre avvisi: gli invii vicini ai tetti, il ripiego della posta che dura, i lavori non riusciti (li vede chi li
-        // ha chiesti).
+        // ha chiesti), gli incassi online fermi in coda (H14: li rimette in coda la passata ogni 5 minuti).
         $alwaysWarn = [
             'invii della posta nell\'ora' => $this->mailHourUsage(...),
             'invii del giorno' => $this->mailDayUsage(...),
             'ripiego della posta' => $this->mailFallback(...),
             'lavori non riusciti' => fn () => $this->jobsFailed($db),
+            'incassi online in coda' => PaymentWebhookHealth::check(...),
             'controllo notturno dei saldi' => fn () => $this->balancesRun($balances),
         ];
         $warnOnly = array_keys($alwaysWarn);

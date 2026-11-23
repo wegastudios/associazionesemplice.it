@@ -456,6 +456,7 @@ $wpdb->delete( \AssociazioneSemplice\Db::t( 'fiscal_years' ), array( 'year' => $
 free_ok( 'Voce 2: il socio ha già la tessera 2026/2027.' === \AssociazioneSemplice\Texts::t( 'Voce {n}: il socio ha già la tessera {anno}.', array( 'n' => 2, 'anno' => '2026/2027' ) ) && 'Nessun segnaposto qui.' === \AssociazioneSemplice\Texts::t( 'Nessun segnaposto qui.' ), 'messaggi con variabili: senza il Pro escono in italiano con i valori inseriti' );
 require __DIR__ . '/smoke_lavori.php'; // lavori periodici: due soli eventi, giro in fila con tempo massimo, passaggio dai vecchi eventi
 require __DIR__ . '/smoke_azioni.php'; // azioni di admin-post e admin-ajax: con un'azione chiesta si registra solo la sua, e ognuna resta raggiungibile
+require __DIR__ . '/smoke_server.php'; // stato del server: la scheda legge il server vero, le prove della Salute del sito
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 

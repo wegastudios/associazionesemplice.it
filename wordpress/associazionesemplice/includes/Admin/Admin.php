@@ -24,6 +24,7 @@ final class Admin {
 		add_action( 'asem_dashboard_alerts', array( YearsPage::class, 'alert' ) ); // avvisi della Bacheca: le classi si leggono solo lì
 		add_action( 'asem_dashboard_alerts', array( RuntsPage::class, 'alerts' ) );
 		add_action( 'wp_dashboard_setup', array( WpDashboard::class, 'setup' ) );
+		add_filter( 'site_status_tests', array( \AssociazioneSemplice\ServerStatus::class, 'health_tests' ) ); // prove nella «Salute del sito» di WordPress (la classe si carica solo lì)
 		if ( Plugin::action_handlers_needed() ) { // solo admin-post.php e admin-ajax.php con un'azione del plugin: niente per le pagine e per il battito
 			self::handlers();
 		}
@@ -52,7 +53,7 @@ final class Admin {
 	const BASE_GROUPS = array(
 		'asem-people'     => array( 'Rubrica soci', array( 'asem-people' => 'Soci e ospiti' ) ),
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
-		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
+		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-server' => 'Stato del server', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-expense' => 'Nuova spesa', 'asem-years' => 'Anni fiscali' ) ),
 		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-runts' => 'Dati per il RUNTS', 'asem-minutes' => 'Verbali', 'asem-polls' => 'Votazioni', 'asem-inventory' => 'Inventario', 'asem-documents' => 'Documenti', 'asem-conventions' => 'Convenzioni' ) ),
 		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati dell\'ente', 'asem-comms' => 'Privacy e regolamento', 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni', 'asem-card' => 'Tessera e QR', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
@@ -67,7 +68,7 @@ final class Admin {
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const BASE_ADMIN_ONLY = array( 'asem-years', 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-tech', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset' );
+	const BASE_ADMIN_ONLY = array( 'asem-years', 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-backup', 'asem-server', 'asem-audit', 'asem-wpai', 'asem-tech', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const BASE_PARENTS = array( 'asem-person' => 'asem-people', 'asem-activity' => 'asem-activities', 'asem-activity-delete' => 'asem-activities', 'asem-booking-delete' => 'asem-activities' );
@@ -140,6 +141,7 @@ final class Admin {
 			array( 'asem-bank', 'Bonifico bancario', array( BankPage::class, 'render' ) ),
 			array( 'asem-donate', 'Donazioni', array( DonatePage::class, 'render' ) ),
 			array( 'asem-backup', 'Copia di sicurezza', array( BackupPage::class, 'render' ) ),
+			array( 'asem-server', 'Stato del server', array( ServerPage::class, 'render' ) ),
 			array( 'asem-comms', 'Privacy e regolamento', array( CommsPage::class, 'render' ) ),
 			array( 'asem-audit', 'Registro azioni', array( AuditPage::class, 'render' ) ),
 			array( 'asem-person', 'Scheda persona', array( PeoplePage::class, 'render_edit' ) ),

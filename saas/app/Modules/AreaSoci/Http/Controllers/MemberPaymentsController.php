@@ -89,11 +89,15 @@ final readonly class MemberPaymentsController
         return redirect('/area/paga')->with('status', 'Pagamento annullato: non ti è stato addebitato nulla.');
     }
 
-    /** Stripe avvisa che un pagamento è andato a buon fine. Senza firma valida: 400. */
+    /** Stripe avvisa che un pagamento è andato a buon fine: si risponde subito, l'incasso si registra in coda. Senza firma valida: 400. */
     public function stripeWebhook(Request $request): HttpResponse
     {
-        $ok = $this->payments->stripeWebhook($request->getContent(), (string) $request->header('Stripe-Signature', ''));
+        $status = $this->payments->stripeWebhook($request->getContent(), (string) $request->header('Stripe-Signature', ''));
 
-        return response($ok ? 'ok' : 'firma non valida', $ok ? 200 : 400);
+        return response(match ($status) {
+            200 => 'ok',
+            400 => 'firma non valida',
+            default => 'riprova più tardi',
+        }, $status);
     }
 }

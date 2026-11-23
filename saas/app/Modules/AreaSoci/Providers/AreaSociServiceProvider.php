@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\AreaSoci\Providers;
 
 use App\Modules\AreaSoci\Console\PruneMemberAccessCommand;
+use App\Modules\AreaSoci\Console\RequeueWebhookEventsCommand;
 use App\Modules\AreaSoci\Home\PaymentsHome;
 use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
 use App\Modules\AreaSoci\Http\Middleware\IdentifyMemberOrg;
@@ -62,8 +63,10 @@ final class AreaSociServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([PruneMemberAccessCommand::class]);
+            $this->commands([PruneMemberAccessCommand::class, RequeueWebhookEventsCommand::class]);
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+                // Incassi online (H14): gli eventi del webhook rimasti in coda senza lavoro tornano in coda.
+                $schedule->command('saas:payments:requeue-webhooks')->everyFiveMinutes()->withoutOverlapping(10);
                 // Link, codici e sessioni scaduti da 30 giorni: la mattina presto, dopo i lavori della notte e prima
                 // che i soci entrino.
                 $schedule->command('saas:member-access:prune')->dailyAt('06:13')->withoutOverlapping(30);
