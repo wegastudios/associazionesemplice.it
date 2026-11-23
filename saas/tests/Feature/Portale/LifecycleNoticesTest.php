@@ -7,6 +7,7 @@ use App\Modules\Portale\Notifications\OrgLifecycleNotification;
 use App\Modules\Portale\PortalConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Config\Repository;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
 
@@ -97,4 +98,10 @@ it('i testi dicono la data vera e il giusto singolare o plurale', function (): v
         ->and($text('trial_3', -3))->not->toContain('sconto')
         ->and($text('trial_3', -3))->not->toMatch('/(^|\s)0 giorni/')
         ->and($text('trial_3', -3))->not->toMatch('/(^|\s)1 giorni/');
+});
+
+it('gli avvisi del ciclo di vita partono alle 9:10, fuori dall\'ora della posta del portale', function (): void {
+    $events = collect(app(Schedule::class)->events())->filter(static fn ($e): bool => str_contains((string) $e->command, 'saas:portal:lifecycle-notices'));
+
+    expect($events)->toHaveCount(1)->and($events->first()->expression)->toBe('10 9 * * *');
 });

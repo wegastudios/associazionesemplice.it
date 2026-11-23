@@ -126,6 +126,7 @@ final class Plugin {
 			'asem_purge_member_sessions'  => array( 'daily', 2400, 'MemberSession', 'purge_expired', '' ),
 			'asem_purge_applications'     => array( 'daily', 3300, 'Applications', 'purge', '' ), // domande mai confermate (30 giorni) e respinte con quota pagata (90 giorni dalla risposta)
 			'asem_long_job_tick'          => array( '', 0, 'LongJob', 'tick', '' ), // rete di sicurezza dei lavori lunghi: una tappa quando la pagina è chiusa (si programma da sola, un evento per volta)
+			'asem_schema_upgrade'         => array( '', 0, 'Install', 'maybe_upgrade', '' ), // aggiornamento dello schema rimasto a metà o rimandato perché la richiesta era di un visitatore (si programma da solo)
 		);
 		$out = array();
 		foreach ( (array) apply_filters( 'asem_scheduled_jobs', $jobs ) as $hook => $j ) { // un'estensione aggiunge i suoi lavori periodici
@@ -176,6 +177,40 @@ final class Plugin {
 		}
 		$class::register();
 		return true;
+	}
+
+	/**
+	 * Azione chiesta a admin-post.php o admin-ajax.php (ripulita), oppure '' per ogni altra richiesta (pagine della bacheca, sito, cron).
+	 * Si legge solo il nome: nonce e permessi li controlla il gestore dell'azione.
+	 */
+	public static function requested_action(): string {
+		$script = isset( $GLOBALS['pagenow'] ) ? (string) $GLOBALS['pagenow'] : '';
+		if ( 'admin-post.php' !== $script && 'admin-ajax.php' !== $script && ! wp_doing_ajax() ) {
+			return '';
+		}
+		return isset( $_REQUEST['action'] ) && is_scalar( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification -- solo il nome dell'azione, per sapere quale gestore registrare
+	}
+
+	/**
+	 * Vanno registrati i gestori delle azioni? Solo se la richiesta (admin-post.php o admin-ajax.php) chiede un'azione del plugin (asem_…;
+	 * per i moduli del sito asem_front_…). Le pagine della bacheca e del sito, il battito di WordPress e le azioni degli altri plugin non li caricano.
+	 * In WP-CLI (prove, strumenti) sempre.
+	 */
+	public static function action_handlers_needed( string $prefix = 'asem_', ?string $action = null, ?bool $cli = null ): bool {
+		if ( $cli ?? ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+			return true;
+		}
+		$action = $action ?? self::requested_action();
+		return '' !== $prefix && 0 === strpos( $action, $prefix );
+	}
+
+	/**
+	 * Per i gestori che registrano le azioni da un elenco: va registrata questa? Con un'azione chiesta si registra solo quella;
+	 * senza (WP-CLI, prove) tutte.
+	 */
+	public static function wants_action( string $action ): bool {
+		$asked = self::requested_action();
+		return '' === $asked || $asked === $action;
 	}
 
 	/** Campi delle password: non si ripuliscono (come fa WordPress), si usano solo per wp_set_password() o per cifrarli. */

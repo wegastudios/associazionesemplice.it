@@ -124,7 +124,8 @@ function fmtUpAuditRows(string $orgId, string $action): array
     /** @var list<object> $rows */
     $rows = fmtUpIn($orgId, static fn (): array => fmtUpDb()->table('audit.log')->where('action', $action)->get(['details'])->all());
 
-    return array_map(static fn (object $r): array => json_decode((string) $r->details, true), $rows);
+    // action_at: ora dell'azione per le righe legate alla conferma di una transazione, non serve a queste prove.
+    return array_map(static fn (object $r): array => array_diff_key(json_decode((string) $r->details, true), ['action_at' => 0]), $rows);
 }
 
 function fmtUpBackupCount(string $orgId): int
