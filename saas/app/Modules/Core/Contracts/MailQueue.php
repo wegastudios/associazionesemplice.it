@@ -78,7 +78,7 @@ final class MailQueue
     {
         foreach (self::limits(self::URGENT, $mailer) as $limit) {
             if ($limit->decaySeconds === 3600) {
-                $sent = RateLimiter::attempts($limit->key);
+                $sent = RateLimiter::attempts(self::key($limit));
 
                 return [is_numeric($sent) ? (int) $sent : 0, $limit->maxAttempts];
             }
@@ -110,6 +110,12 @@ final class MailQueue
         $minutes = config('saas.mail_queue.blocked_minutes');
 
         return is_numeric($minutes) && (int) $minutes > 0 ? (int) $minutes : 60;
+    }
+
+    /** La chiave di un tetto come testo (Limit::$key non ha tipo). */
+    public static function key(Limit $limit): string
+    {
+        return is_scalar($limit->key) ? (string) $limit->key : '';
     }
 
     private static function blockKey(string $mailer): string

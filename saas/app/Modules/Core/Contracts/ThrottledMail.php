@@ -56,15 +56,15 @@ final class ThrottledMail
         $limits = $this->limits($job, $queue, $mailer);
         $wait = null;
         foreach ($limits as $limit) {
-            if (RateLimiter::tooManyAttempts($limit->key, $limit->maxAttempts)) {
-                $wait = max($wait ?? 0, RateLimiter::availableIn($limit->key));
+            if (RateLimiter::tooManyAttempts(MailQueue::key($limit), $limit->maxAttempts)) {
+                $wait = max($wait ?? 0, RateLimiter::availableIn(MailQueue::key($limit)));
             }
         }
         if ($wait !== null) {
             return $this->release($job, $wait + ($queue === MailQueue::BULK ? random_int(0, self::BULK_SPREAD_SECONDS) : 0));
         }
         foreach ($limits as $limit) {
-            RateLimiter::hit($limit->key, $limit->decaySeconds);
+            RateLimiter::hit(MailQueue::key($limit), $limit->decaySeconds);
         }
 
         try {
