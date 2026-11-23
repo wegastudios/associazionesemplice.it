@@ -205,7 +205,7 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   le partizioni si preparano in anticipo con `saas:audit:partitions`, ogni mese da cron. Ogni partizione ha la sua RLS.
   Il mese nuovo nasce come tabella a sé e poi si aggancia (`ATTACH PARTITION`: il registro resta scrivibile); la
   partizione predefinita deve restare vuota, perché l'aggancio la rilegge con il blocco forte (`saas:health` lo controlla).
-  Ogni partizione nuova ha il rifiuto del `TRUNCATE` prima dell'aggancio (`AuditLogTruncateGuard`, che crea anche la
+  Ogni partizione nuova ha il rifiuto del `TRUNCATE` prima dell'aggancio (`Audit\Log\TruncateGuard`, che crea anche la
   funzione se un database ne fosse senza); `saas:health` dà errore se `audit.log`, una sua partizione o `app.transactions`
   non hanno il loro trigger attivo.
 - **Blocchi forti brevi**: migrazioni, partizioni e potatura del registro aspettano un blocco al massimo
