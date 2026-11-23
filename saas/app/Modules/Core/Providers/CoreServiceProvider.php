@@ -16,6 +16,7 @@ use App\Modules\Core\Console\SelfTestPurgeCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\JobQueues;
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgPurger;
