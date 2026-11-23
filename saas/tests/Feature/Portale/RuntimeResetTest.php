@@ -90,7 +90,6 @@ it('il comando chiede l\'azzeramento con un token firmato e fa le richieste di r
     $this->artisan('saas:web:refresh')
         ->expectsOutputToContain('OPcache azzerato')
         ->expectsOutputToContain('riscaldamento /up: 200')
-        ->expectsOutputToContain('riscaldamento /accesso: 200')
         ->assertSuccessful();
 
     Http::assertSent(fn (HttpRequest $r): bool => $r->method() === 'POST' && str_ends_with($r->url(), '/api/portale/v2/runtime/reset') && is_string($r['token'] ?? null));
@@ -103,6 +102,28 @@ it('il comando non fallisce se il PHP web non risponde: avvisa e va avanti', fun
     $this->artisan('saas:web:refresh')
         ->expectsOutputToContain('OPcache non azzerato')
         ->assertSuccessful();
+});
+
+it('un token vale una volta sola: il secondo uso dello stesso token è rifiutato', function (): void {
+    $token = resetToken();
+
+    $this->postJson('/api/portale/v2/runtime/reset', ['token' => $token])->assertOk();
+    $this->postJson('/api/portale/v2/runtime/reset', ['token' => $token])->assertStatus(401);
+    // Un token nuovo, con un altro identificativo, passa.
+    $this->postJson('/api/portale/v2/runtime/reset', ['token' => resetToken()])->assertOk();
+});
+
+it('un token senza identificativo non vale', function (): void {
+    $now = time();
+    $token = EdDsaJwt::sign([
+        'iss' => (string) config('app.url'),
+        'aud' => WebRuntimeReset::AUDIENCE,
+        'typ' => WebRuntimeReset::TYPE,
+        'iat' => $now,
+        'exp' => $now + 60,
+    ], (string) base64_decode((string) config('saas.portal.signing_key'), true), 'saas-');
+
+    $this->postJson('/api/portale/v2/runtime/reset', ['token' => $token])->assertStatus(401);
 });
 
 it('con --no-warm si azzera soltanto', function (): void {

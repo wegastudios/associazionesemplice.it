@@ -22,8 +22,8 @@ final readonly class WebRuntimeReset
 
     public const TYPE = 'runtime_reset';
 
-    /** Pagine che compilano le parti più usate: stato, catalogo pubblico, pagina d'accesso. Nessuna con dati dei clienti. */
-    public const WARM_PATHS = ['/up', '/api/catalogo/v1', '/accesso'];
+    /** Pagine che compilano le parti più usate: stato e catalogo pubblico. Nessuna con dati dei clienti e nessuna che apra una sessione. */
+    public const WARM_PATHS = ['/up', '/api/catalogo/v1'];
 
     public function __construct(private PortalConfig $config) {}
 

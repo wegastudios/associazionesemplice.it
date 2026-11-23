@@ -10,6 +10,7 @@ use App\Modules\Portale\Jwt\InvalidToken;
 use App\Modules\Portale\PortalConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * POST /api/portale/v2/runtime/reset: dopo un rilascio azzera OPcache e la cache dei percorsi del PHP web. Nessun
@@ -28,8 +29,15 @@ final readonly class RuntimeResetController
         }
 
         try {
-            EdDsaJwt::verify($token, $this->config->runtimeKeys(), $this->config->saasUrl(), WebRuntimeReset::AUDIENCE, WebRuntimeReset::TYPE, time());
+            $claims = EdDsaJwt::verify($token, $this->config->runtimeKeys(), $this->config->saasUrl(), WebRuntimeReset::AUDIENCE, WebRuntimeReset::TYPE, time());
         } catch (InvalidToken) {
+            return new JsonResponse(['error' => 'invalid_token'], 401);
+        }
+
+        // Un token vale una volta sola: l'identificativo resta in cache fino alla scadenza (più il margine di tolleranza).
+        // `add` è atomico: di due richieste con lo stesso token passa solo la prima.
+        $jti = $claims['jti'] ?? null;
+        if (! is_string($jti) || $jti === '' || strlen($jti) > 128 || ! Cache::add('runtime-reset-jti:'.hash('sha256', $jti), 1, 180)) {
             return new JsonResponse(['error' => 'invalid_token'], 401);
         }
 
