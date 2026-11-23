@@ -12,11 +12,11 @@ final class ServerStatus {
 
 	/** Le prove aggiunte alla «Salute del sito»: nome => righe della scheda che la compongono. */
 	const HEALTH = array(
-		'asem_cron'       => array( 'cron' ),
-		'asem_opcache'    => array( 'opcache' ),
-		'asem_memory'     => array( 'memory', 'time' ),
-		'asem_db_engine'  => array( 'db_engine' ),
-		'asem_extensions' => array( 'sodium', 'zip', 'mbstring', 'other_ext' ),
+		'cron'       => array( 'cron' ),
+		'opcache'    => array( 'opcache' ),
+		'memory'     => array( 'memory', 'time' ),
+		'db_engine'  => array( 'db_engine' ),
+		'extensions' => array( 'sodium', 'zip', 'mbstring', 'other_ext' ),
 	);
 
 	/** @var array<string,array> righe già calcolate in questa richiesta ('full' o 'light') */
@@ -131,39 +131,39 @@ final class ServerStatus {
 	public static function health_tests( $tests ) {
 		$tests = is_array( $tests ) ? $tests : array();
 		$names = array(
-			'asem_cron'       => Texts::t( 'Operazioni programmate di Associazione Semplice' ),
-			'asem_opcache'    => Texts::t( 'OPcache per Associazione Semplice' ),
-			'asem_memory'     => Texts::t( 'Memoria e tempo di PHP per Associazione Semplice' ),
-			'asem_db_engine'  => Texts::t( 'Tabelle di Associazione Semplice' ),
-			'asem_extensions' => Texts::t( 'Estensioni di PHP usate da Associazione Semplice' ),
+			'cron'       => Texts::t( 'Operazioni programmate di Associazione Semplice' ),
+			'opcache'    => Texts::t( 'OPcache per Associazione Semplice' ),
+			'memory'     => Texts::t( 'Memoria e tempo di PHP per Associazione Semplice' ),
+			'db_engine'  => Texts::t( 'Tabelle di Associazione Semplice' ),
+			'extensions' => Texts::t( 'Estensioni di PHP usate da Associazione Semplice' ),
 		);
 		foreach ( $names as $id => $label ) {
-			$tests['direct'][ $id ] = array(
+			$tests['direct']['asem_' . $id] = array(
 				'label' => $label,
-				'test'  => array( __CLASS__, 'health_' . substr( $id, 5 ) ),
+				'test'  => array( __CLASS__, 'health_' . $id ),
 			);
 		}
 		return $tests;
 	}
 
 	public static function health_cron(): array {
-		return self::health_result( 'asem_cron', Texts::t( 'Le operazioni programmate girano' ), Texts::t( 'Le operazioni programmate non girano' ) );
+		return self::health_result( 'cron', Texts::t( 'Le operazioni programmate girano' ), Texts::t( 'Le operazioni programmate non girano' ) );
 	}
 
 	public static function health_opcache(): array {
-		return self::health_result( 'asem_opcache', Texts::t( 'OPcache è attivo' ), Texts::t( 'OPcache non è attivo' ) );
+		return self::health_result( 'opcache', Texts::t( 'OPcache è attivo' ), Texts::t( 'OPcache non è attivo' ) );
 	}
 
 	public static function health_memory(): array {
-		return self::health_result( 'asem_memory', Texts::t( 'Memoria e tempo di PHP sono adeguati' ), Texts::t( 'Memoria o tempo di PHP sono al minimo' ) );
+		return self::health_result( 'memory', Texts::t( 'Memoria e tempo di PHP sono adeguati' ), Texts::t( 'Memoria o tempo di PHP sono al minimo' ) );
 	}
 
 	public static function health_db_engine(): array {
-		return self::health_result( 'asem_db_engine', Texts::t( 'Le tabelle usano InnoDB' ), Texts::t( 'Alcune tabelle non usano InnoDB' ) );
+		return self::health_result( 'db_engine', Texts::t( 'Le tabelle usano InnoDB' ), Texts::t( 'Alcune tabelle non usano InnoDB' ) );
 	}
 
 	public static function health_extensions(): array {
-		return self::health_result( 'asem_extensions', Texts::t( 'Le estensioni di PHP usate dal plugin ci sono' ), Texts::t( 'Mancano estensioni di PHP usate dal plugin' ) );
+		return self::health_result( 'extensions', Texts::t( 'Le estensioni di PHP usate dal plugin ci sono' ), Texts::t( 'Mancano estensioni di PHP usate dal plugin' ) );
 	}
 
 	/** Il risultato di una prova: stato peggiore tra le righe che la compongono, con i loro valori e consigli. */
@@ -184,7 +184,7 @@ final class ServerStatus {
 				'badge'       => array( 'label' => 'Associazione Semplice', 'color' => 'blue' ),
 				'description' => '<p>' . esc_html( Texts::t( 'Il controllo parte da solo una volta alla settimana. Per vederlo subito apri lo stato del server.' ) ) . '</p>',
 				'actions'     => current_user_can( Plugin::CAP ) ? '<p><a href="' . esc_url( Admin\Ui::url( 'asem-server' ) ) . '">' . esc_html( Texts::t( 'Apri lo stato del server' ) ) . '</a></p>' : '',
-				'test'        => $id,
+				'test'        => 'asem_' . $id,
 			);
 		}
 		$worst = ServerStatusRules::worst( $statuses );
@@ -205,7 +205,7 @@ final class ServerStatus {
 			'badge'       => array( 'label' => 'Associazione Semplice', 'color' => 'blue' ),
 			'description' => $html,
 			'actions'     => current_user_can( Plugin::CAP ) ? $link : '',
-			'test'        => $id,
+			'test'        => 'asem_' . $id,
 		);
 	}
 }

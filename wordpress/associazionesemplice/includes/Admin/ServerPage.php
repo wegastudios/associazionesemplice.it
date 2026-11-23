@@ -26,7 +26,7 @@ final class ServerPage {
 
 		echo '<table class="widefat striped"><thead><tr><th>' . esc_html( Texts::t( 'Controllo' ) ) . '</th><th>' . esc_html( Texts::t( 'Stato' ) ) . '</th><th>' . esc_html( Texts::t( 'Valore' ) ) . '</th><th>' . esc_html( Texts::t( 'Cosa fare' ) ) . '</th></tr></thead><tbody>';
 		foreach ( $rows as $r ) {
-			echo '<tr><td><strong>' . esc_html( $r['label'] ) . '</strong></td><td>' . self::badge( $r['status'] ) . '</td><td>' . esc_html( $r['value'] ) . '</td><td>';
+			echo '<tr><td><strong>' . esc_html( $r['label'] ) . '</strong></td><td>' . wp_kses( self::badge( $r['status'] ), array( 'span' => array( 'class' => array() ) ) ) . '</td><td>' . esc_html( $r['value'] ) . '</td><td>';
 			if ( '' !== $r['advice'] ) {
 				echo esc_html( $r['advice'] );
 			} else {
