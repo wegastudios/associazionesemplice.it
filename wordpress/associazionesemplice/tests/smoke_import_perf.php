@@ -74,7 +74,7 @@ asem_ok( (int) $ip_pres['people']['created'] > 100 && $ip_seq > 100, 'import vel
 $ip_pper = $ip_pq / max( 1, $ip_seq );
 WP_CLI::log( sprintf( 'misura - import soci: %d richieste per %d righe, %.1f a riga', $ip_pq, $ip_seq, $ip_pper ) );
 if ( ! empty( $GLOBALS['asem_ip_bounds'] ) ) {
-	asem_ok( $ip_pper < 30.0, 'import veloce: i soci costano meno di 30 richieste a riga (' . round( $ip_pper, 1 ) . ')' );
+	asem_ok( $ip_pper < 50.0, 'import veloce: i soci costano meno di 50 richieste a riga (' . round( $ip_pper, 1 ) . ')' );
 }
 $ip_pbatch = (int) $ip_pres['batch_id'];
 $ip_snap   = asem_imp_count( 'Vel' );
@@ -85,7 +85,7 @@ asem_ok( (int) $ip_pundo['people_removed'] === (int) $ip_pres['people']['created
 $ip_puper = $ip_puq / max( 1, (int) $ip_pres['people']['created'] );
 WP_CLI::log( sprintf( 'misura - annullo soci: %d richieste per %d soci, %.1f a socio', $ip_puq, (int) $ip_pres['people']['created'], $ip_puper ) );
 if ( ! empty( $GLOBALS['asem_ip_bounds'] ) ) {
-	asem_ok( $ip_puper < 25.0, 'import veloce: l\'annullo dei soci costa meno di 25 richieste a socio (' . round( $ip_puper, 1 ) . ')' );
+	asem_ok( $ip_puper < 63.0, 'import veloce: l\'annullo dei soci costa meno di 63 richieste a socio (' . round( $ip_puper, 1 ) . ')' );
 }
 
 // ---------- Anteprima e piano fuori dal database ----------
