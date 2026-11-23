@@ -66,7 +66,6 @@ it('la ricerca dei soci ricarica solo l\'elenco, con gli stessi risultati e meno
     $n = partialReload('/gestionale/soci?q=ross&tipo=&stato=', 'Soci/Elenco',
         ['q', 'type', 'status', 'rows', 'next', 'prev'], ['types', 'year', 'activeCount', 'limit']);
 
-    fwrite(STDERR, "\n[H39] soci, ricerca: {$n['full']} query la pagina intera, {$n['partial']} il filtro\n");
     expect($n['partial'])->toBeLessThan($n['full']);
 });
 
@@ -90,7 +89,6 @@ it('i filtri della prima nota ricaricano solo i movimenti, con gli stessi risult
     $n = partialReload("/gestionale/prima-nota?anno={$year}&conto={$cash}&attivita=", 'Contabilita/PrimaNota',
         ['year', 'account', 'activity', 'rows', 'next', 'prev'], ['years', 'activities', 'accounts', 'categories', 'methods', 'balances', 'fiscal']);
 
-    fwrite(STDERR, "\n[H39] prima nota, filtro: {$n['full']} query la pagina intera, {$n['partial']} il filtro\n");
     expect($n['partial'])->toBeLessThan($n['full']);
 });
 
@@ -116,6 +114,5 @@ it('il filtro dei certificati ricarica solo l\'elenco, con gli stessi risultati 
 
     $n = partialReload('/gestionale/certificati?stato=expired', 'Soci/Certificati', ['filter', 'rows'], ['warnDays']);
 
-    fwrite(STDERR, "\n[H39] certificati, filtro: {$n['full']} query la pagina intera, {$n['partial']} il filtro\n");
     expect($n['partial'])->toBeLessThan($n['full']);
 });
