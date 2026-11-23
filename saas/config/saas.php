@@ -69,6 +69,10 @@ return [
     // Indirizzi da cui fidarsi degli X-Forwarded-* (il proxy del portale), separati da virgole; vuoto = nessuno.
     'trusted_proxies' => env('SAAS_TRUSTED_PROXIES', ''),
 
+    // Impostazioni della piattaforma lette all'avvio (PlatformConfig): si tengono, ancora cifrate, in questa cache per
+    // 5 minuti e si dimenticano a ogni salvataggio. «file» perché la cache generale dipende proprio da queste impostazioni.
+    'platform_settings_cache' => env('SAAS_PLATFORM_SETTINGS_CACHE', 'file'),
+
     // Registro delle query lente (millisecondi; 0 = spento). Scrive solo il testo della query con i segnaposto, mai i valori.
     'slow_query_ms' => (int) env('SAAS_SLOW_QUERY_MS', 200),
 
