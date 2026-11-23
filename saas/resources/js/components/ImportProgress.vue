@@ -12,7 +12,7 @@ const props = defineProps({
 
 const f = computed(() => props.unit === 'righe');
 const stopped = computed(() => props.job && (props.job.status === 'failed' || props.job.stalled));
-const working = computed(() => props.job && ['queued', 'running'].includes(props.job.status) && !props.job.stalled);
+const working = computed(() => props.job?.active === true);
 const percent = computed(() => (props.job && props.job.total ? Math.floor((props.job.done * 100) / props.job.total) : 0));
 
 let timer = null;

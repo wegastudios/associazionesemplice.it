@@ -4,7 +4,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 import ImportProgress from '../../components/ImportProgress.vue';
 
 const props = defineProps({ accounts: Array, preview: Object, job: Object });
-const busy = () => props.job && ['queued', 'running'].includes(props.job.status) && !props.job.stalled;
+const busy = () => props.job?.active === true;
 
 const form = useForm({ file: null, default_account_id: '', apply: false });
 const send = (apply) => {

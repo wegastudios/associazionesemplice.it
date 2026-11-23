@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
  * Stati: queued (in coda), running (in corso), done (finito), failed (fermo per un errore: si riprende), cancelled
  * (annullato prima di cominciare: nessuna riga importata). Il lavoro gira a nome di chi l'ha avviato (registro, created_by).
  *
- * @phpstan-type Job array{id: string, status: string, total: int, done: int, state: array<string, mixed>, stalled: bool}
+ * @phpstan-type Job array{id: string, status: string, total: int, done: int, state: array<string, mixed>, stalled: bool, active: bool}
  */
 final readonly class ImportJobs
 {
@@ -54,8 +54,7 @@ final readonly class ImportJobs
         $c = $this->connection();
         $this->prune($kind);
         // Fermi quelli abbandonati da un lavoratore caduto: si possono riprendere, e non bloccano il nuovo.
-        $c->table('app.import_jobs')->where('kind', $kind)->whereIn('status', ['queued', 'running'])
-            ->where('updated_at', '<', now()->subMinutes(self::STALLED_MINUTES))->update(['status' => 'failed', 'updated_at' => now()]);
+        self::stalled($c->table('app.import_jobs')->where('kind', $kind))->update(['status' => 'failed', 'updated_at' => now()]);
 
         $id = Str::uuid7()->toString();
         try {
@@ -94,19 +93,27 @@ final readonly class ImportJobs
         $items = array_values($this->open($id, 'plan', $head->plan_enc));
         $deadline = hrtime(true) + max(0, $seconds) * 1_000_000_000;
 
-        return $this->actingAs(is_string($head->user_id) ? $head->user_id : null, function () use ($c, $id, $items, $blockSize, $block, $finish, $deadline): bool {
+        // Stato e opzioni restano in memoria tra un blocco e l'altro del giro: si rileggono solo se un altro lavoratore
+        // ha portato avanti l'import nel frattempo.
+        $cached = ['done' => -1, 'state' => [], 'options' => []];
+
+        return $this->actingAs(is_string($head->user_id) ? $head->user_id : null, function () use ($c, $id, $items, $blockSize, $block, $finish, $deadline, &$cached): bool {
             do {
-                $more = $c->transaction(function () use ($c, $id, $items, $blockSize, $block, $finish): ?bool {
+                $more = $c->transaction(function () use ($c, $id, $items, $blockSize, $block, $finish, &$cached): ?bool {
                     // La riga bloccata ferma un secondo lavoratore sullo stesso import: ripartirà dal punto salvato da questo.
-                    $row = $c->table('app.import_jobs')->where('id', $id)->lockForUpdate()->first(['status', 'done', 'options', 'state_enc']);
+                    $row = $c->table('app.import_jobs')->where('id', $id)->lockForUpdate()->first(['status', 'done']);
                     if ($row === null || ! in_array($row->status, ['queued', 'running'], true)) {
                         return null;
                     }
                     $done = is_numeric($row->done) ? (int) $row->done : 0;
-                    $state = $this->open($id, 'state', $row->state_enc);
-                    /** @var array<string, mixed>|null $options */
-                    $options = json_decode(is_string($row->options) ? $row->options : '{}', true);
-                    $options ??= [];
+                    if ($done !== $cached['done']) {
+                        $saved = $c->table('app.import_jobs')->where('id', $id)->first(['options', 'state_enc']);
+                        /** @var array<string, mixed>|null $options */
+                        $options = json_decode(is_string($saved?->options) ? $saved->options : '{}', true);
+                        $cached = ['done' => $done, 'state' => $this->open($id, 'state', $saved?->state_enc), 'options' => $options ?? []];
+                    }
+                    $state = $cached['state'];
+                    $options = $cached['options'];
                     $slice = array_slice($items, $done, max(1, $blockSize));
                     if ($slice !== []) {
                         $state = $block($slice, $state, $options);
@@ -121,9 +128,9 @@ final readonly class ImportJobs
                         'done' => $done,
                         'state_enc' => $this->seal($id, 'state', $state),
                         'updated_at' => now(),
-                        'started_at' => $c->raw('coalesce(started_at, now())'),
                         'finished_at' => $finished ? now() : null,
                     ] + ($finished ? ['plan_enc' => null] : []));
+                    $cached = ['done' => $done, 'state' => $state, 'options' => $options];
 
                     return ! $finished;
                 });
@@ -147,8 +154,7 @@ final readonly class ImportJobs
     public function resume(string $id, string $kind): bool
     {
         return $this->connection()->table('app.import_jobs')->where('id', $id)->where('kind', $kind)->whereNotNull('plan_enc')
-            ->where(fn (Builder $q) => $q->where('status', 'failed')->orWhere(fn (Builder $w) => $w->whereIn('status', ['queued', 'running'])
-                ->where('updated_at', '<', now()->subMinutes(self::STALLED_MINUTES))))
+            ->where(fn (Builder $q) => $q->where('status', 'failed')->orWhere(fn (Builder $w) => self::stalled($w)))
             ->update(['status' => 'queued', 'updated_at' => now()]) === 1;
     }
 
@@ -181,7 +187,8 @@ final readonly class ImportJobs
             'total' => is_numeric($row->total ?? null) ? (int) $row->total : 0,
             'done' => is_numeric($row->done ?? null) ? (int) $row->done : 0,
             'state' => $this->open($row->id, 'state', $row->state_enc ?? null),
-            'stalled' => ($row->stalled ?? false) === true,
+            'stalled' => $stalled = ($row->stalled ?? false) === true,
+            'active' => in_array($row->status, ['queued', 'running'], true) && ! $stalled,
         ];
     }
 
@@ -211,6 +218,12 @@ final readonly class ImportJobs
                 $guard->forgetUser();
             }
         }
+    }
+
+    /** In coda o in corso, ma senza avanzamento da STALLED_MINUTES: il lavoratore è caduto. */
+    private static function stalled(Builder $q): Builder
+    {
+        return $q->whereIn('status', ['queued', 'running'])->where('updated_at', '<', now()->subMinutes(self::STALLED_MINUTES));
     }
 
     /**

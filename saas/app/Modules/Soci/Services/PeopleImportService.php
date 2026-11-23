@@ -124,14 +124,14 @@ final readonly class PeopleImportService
     /**
      * L'import di soci da mostrare a schermo (in coda, in corso, fermo, o finito da poco), o null.
      *
-     * @return array{id: string, status: string, total: int, done: int, stalled: bool, result: Result}|null
+     * @return array{id: string, status: string, total: int, done: int, stalled: bool, active: bool, result: Result}|null
      */
     public function current(): ?array
     {
         $job = $this->jobs->current(self::KIND);
 
         return $job === null ? null : ['id' => $job['id'], 'status' => $job['status'], 'total' => $job['total'], 'done' => $job['done'],
-            'stalled' => $job['stalled'], 'result' => self::result($job['state'])];
+            'stalled' => $job['stalled'], 'active' => $job['active'], 'result' => self::result($job['state'])];
     }
 
     public function cancel(string $id): bool

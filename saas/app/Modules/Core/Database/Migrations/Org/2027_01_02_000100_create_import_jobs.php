@@ -29,7 +29,6 @@ return new class extends Migration
                 user_id     uuid,
                 created_at  timestamptz NOT NULL DEFAULT now(),
                 updated_at  timestamptz NOT NULL DEFAULT now(),
-                started_at  timestamptz,
                 finished_at timestamptz,
                 PRIMARY KEY (org_id, id),
                 CHECK ((status IN ('done', 'cancelled')) = (finished_at IS NOT NULL))

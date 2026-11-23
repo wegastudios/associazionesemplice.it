@@ -147,21 +147,23 @@ function importOwner(object $test, string $name): string
 it('l\'import soci va in coda e avanza a blocchi fino al riepilogo, con lo stesso esito dell\'import diretto (H10)', function (): void {
     Queue::fake();
     config(['saas.imports.block' => 2, 'saas.imports.seconds_per_run' => 0]);
-    $year = now()->format('Y');
-    $csv = "Tessera;Tipo;Nome;Cognome;Email;Data di nascita;Ospite di;Tutore;{$year}\n"
-        ."1;ordinario;Mario;Rossi;mario@example.com;01/01/1980;;;x\n"
-        .";genitore;Anna;Verdi;anna@example.com;06/05/1985;;;\n"
-        ."2;ordinario;Luigi;Verdi;luigi@example.com;01/01/2014;;anna@example.com;x\n"
-        .";ospite;Gino;Bianchi;gino@example.com;;1;;\n"
-        .";ordinario;Eva;Blu;eva@example.com;;;;x\n"
-        .";ordinario;Senza;Contatti;;;;;\n";
+    // Le righe dell'import di PeopleImportExportTest, più una socia: soci, genitore, minore con tutore, ospite, un errore.
+    $year = (int) now()->format('Y');
+    $prev = $year - 1;
+    $csv = "Tessera;Tipo;Nome;Cognome;Email;Cellulare;Codice fiscale;Data di nascita;Indirizzo;CAP;Comune;Provincia;Ospite di;Tutore;{$prev};{$year}\n"
+        ."1;ordinario;Mario;Rossi;mario@example.com;333 1234567;RSSMRA80A01H501U;01/01/1980;Via Roma 1;00100;Roma;rm;;;x;x\n"
+        .";genitore;Anna;Verdi;anna@example.com;339 7654321;;1985-05-06;;;;;;;;\n"
+        ."2;ordinario;Luigi;Verdi;;;VRDLGU10A01H501X;01/01/2014;;;;;;anna@example.com;;x\n"
+        .";ospite;Gino;Bianchi;;347 1112223;;;;;;;1;;;\n"
+        .";ordinario;Eva;Blu;eva@example.com;;;;;;;;;;;x\n"
+        .";ordinario;Senza;Contatti;;;;;;;;;;;;\n";
 
     $direct = $this->orgContext()->run($this->createOrg('Circolo Diretto')->id, function () use ($csv): array {
         $s = app(PeopleImportService::class);
 
         return $s->apply($s->preview(importTempFile($csv), 'soci.csv', MemberType::Ordinary)['plan'] ?? [], false, 1000);
     });
-    expect($direct)->toMatchArray(['created' => 5, 'memberships' => 3, 'guardians' => 1, 'failed' => []]);
+    expect($direct)->toMatchArray(['created' => 5, 'memberships' => 4, 'guardians' => 1, 'failed' => []]);
 
     $orgId = importOwner($this, 'Polisportiva Alfa');
     $this->post('/gestionale/soci/importa', ['file' => UploadedFile::fake()->createWithContent('soci.csv', $csv), 'default_type' => 'ordinary', 'apply' => true])

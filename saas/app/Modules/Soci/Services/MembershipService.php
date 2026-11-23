@@ -253,19 +253,7 @@ final readonly class MembershipService implements Members
             })
             ->update(['voided_at' => now()]);
 
-        $userId = $this->auth->guard()->id();
-        $orgId = $this->context->require()->id;
-        $c->table('app.memberships')->insert(array_values(array_map(static fn (array $w): array => [
-            'org_id' => $orgId,
-            'id' => Str::uuid7()->toString(),
-            'person_id' => $w[0],
-            'social_year' => $w[1]->label(),
-            'valid_from' => $w[1]->start()->format('Y-m-d'),
-            'valid_to' => $w[1]->end()->format('Y-m-d'),
-            'source' => 'manual',
-            'transaction_id' => null,
-            'created_by' => is_string($userId) ? $userId : null,
-        ], $wanted)));
+        $c->table('app.memberships')->insert(array_values(array_map(fn (array $w): array => $this->row($w[0], $w[1], 'manual', null), $wanted)));
 
         return count($wanted);
     }
@@ -401,11 +389,20 @@ final readonly class MembershipService implements Members
 
     private function insert(string $personId, SocialYear $year, string $source, ?string $transactionId): string
     {
-        $id = Str::uuid7()->toString();
+        $row = $this->row($personId, $year, $source, $transactionId);
+        $this->connection()->table('app.memberships')->insert($row);
+
+        return $row['id'];
+    }
+
+    /** @return array{org_id: string, id: string, person_id: string, social_year: string, valid_from: string, valid_to: string, source: string, transaction_id: string|null, created_by: string|null} */
+    private function row(string $personId, SocialYear $year, string $source, ?string $transactionId): array
+    {
         $userId = $this->auth->guard()->id();
-        $this->connection()->table('app.memberships')->insert([
+
+        return [
             'org_id' => $this->context->require()->id,
-            'id' => $id,
+            'id' => Str::uuid7()->toString(),
             'person_id' => $personId,
             'social_year' => $year->label(),
             'valid_from' => $year->start()->format('Y-m-d'),
@@ -413,9 +410,7 @@ final readonly class MembershipService implements Members
             'source' => $source,
             'transaction_id' => $transactionId,
             'created_by' => is_string($userId) ? $userId : null,
-        ]);
-
-        return $id;
+        ];
     }
 
     private function connection(): ConnectionInterface
