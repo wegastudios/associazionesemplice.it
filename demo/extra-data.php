@@ -827,3 +827,15 @@ extra_step( 'pagina delle donazioni', function () {
 	}
 	\AssociazioneSemplice\Settings::update( array( 'donate_enabled' => 1, 'donate_paypal' => 'donazioni@example.org', 'donate_amounts' => '5;10;20;50', 'donate_purpose' => 'Sostegno all\'attività dell\'associazione' ) );
 } );
+
+// Tetto orario delle email del plugin a 20: la demo sta sullo stesso account di posta del portale e del gestionale, e l'hosting accetta 250 email all'ora
+// in tutto (somma di tutti i siti); oltre il limite i messaggi vengono rifiutati. 20 è il minimo che la pagina Limiti consente.
+extra_step( 'tetto orario delle email', function () {
+	$limits                  = \AssociazioneSemplice\Settings::get( 'limits' );
+	$limits                  = is_array( $limits ) ? $limits : array();
+	$limits['mail_per_hour'] = 20;
+	\AssociazioneSemplice\Settings::update( array( 'limits' => $limits ) );
+	if ( 20 !== \AssociazioneSemplice\MailBudget::cap() ) {
+		throw new \RuntimeException( 'il tetto orario delle email non è 20' );
+	}
+} );

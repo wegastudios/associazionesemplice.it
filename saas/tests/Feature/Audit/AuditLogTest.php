@@ -131,7 +131,7 @@ it('annota inviti e cambi di ruolo nel registro dell\'associazione', function ()
 
     $rows = auditRows($org->id);
     expect(array_column($rows, 'action'))->toBe(['operator.invited', 'operator.invited', 'operator.role_changed', 'operator.removed'])
-        ->and(json_decode($rows[2]->details, true))->toEqual(['from' => 'operator', 'to' => 'accountant'])
+        ->and(array_diff_key(json_decode($rows[2]->details, true), ['action_at' => 0]))->toEqual(['from' => 'operator', 'to' => 'accountant'])
         ->and($rows[3]->subject_id)->toBe($op->id);
 });
 

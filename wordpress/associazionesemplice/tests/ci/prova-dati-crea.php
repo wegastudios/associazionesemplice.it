@@ -36,4 +36,17 @@ foreach ( array( 1500, 2500 ) as $i => $cents ) {
 $imp = dati_impronta();
 dati_ok( $imp['soci'] >= 3 && $imp['movimenti'] >= 2 && $imp['importi'] >= 4000 && $imp['prenotaz'] >= 1, 'impronta prima dell\'aggiornamento: ' . wp_json_encode( $imp ) );
 update_option( 'asem_prova_impronta', array( 'impronta' => $imp, 'db_version' => (string) get_option( 'asem_db_version', '' ), 'versione' => ASEM_VERSION ), false );
+// Lavori periodici programmati dalla versione di prima, un evento ciascuno: dopo l'aggiornamento devono passare tutti nel giro dei lavori.
+$lav = array();
+foreach ( (array) _get_cron_array() as $lav_ts => $lav_ev ) {
+	foreach ( (array) $lav_ev as $lav_h => $lav_list ) {
+		foreach ( (array) $lav_list as $lav_e ) {
+			if ( 0 === strpos( (string) $lav_h, 'asem_' ) && ! empty( $lav_e['schedule'] ) && empty( $lav_e['args'] ) ) {
+				$lav[ (string) $lav_h ] = (int) $lav_ts;
+			}
+		}
+	}
+}
+update_option( 'asem_prova_lavori', $lav, false );
+dati_ok( count( $lav ) >= 5, 'lavori periodici della versione di prima: ' . implode( ', ', array_keys( $lav ) ) );
 WP_CLI::success( 'Dati creati con la versione ' . ASEM_VERSION . ' (DB ' . get_option( 'asem_db_version' ) . ').' );
