@@ -188,27 +188,25 @@ final readonly class CertificateService
 
     /**
      * Quanti soci hanno il certificato in scadenza o scaduto (per il cruscotto): stessi criteri di {@see overview()},
-     * ma senza nomi né ordinamento, con due query.
+     * ma senza nomi né ordinamento, contati dal database con una query ({@see ExpiryRules::status()}: scaduto prima di
+     * oggi, in scadenza da oggi a oggi più il preavviso).
      *
      * @return array{expiring: int, expired: int}
      */
     public function counts(): array
     {
         $today = now()->toDateString();
-        $warn = $this->warnDays();
-        $latest = MedicalCertificate::query()->where('issued_on', '<=', $today)
-            ->selectRaw('person_id, max(expires_on) AS expires_on')->groupBy('person_id')
-            ->toBase()->pluck('expires_on', 'person_id');
+        $limit = now()->addDays($this->warnDays())->toDateString();
+        $people = Person::query()->whereNull('left_on')->whereNull('anonymized_at')->whereIn('type', ['founder', 'ordinary', 'volunteer'])
+            ->selectSub(MedicalCertificate::query()->where('issued_on', '<=', $today)->whereColumn('person_id', 'app.people.id')->selectRaw('max(expires_on)'), 'expires_on')
+            ->toBase();
+        $row = (array) $people->newQuery()->fromSub($people, 'x')
+            ->selectRaw('count(*) FILTER (WHERE expires_on < ?) AS expired, count(*) FILTER (WHERE expires_on >= ? AND expires_on <= ?) AS expiring', [$today, $today, $limit])
+            ->first();
 
-        $expiring = 0;
-        $expired = 0;
-        foreach (Person::query()->whereNull('left_on')->whereNull('anonymized_at')->whereIn('type', ['founder', 'ordinary', 'volunteer'])->pluck('id') as $id) {
-            $expires = is_string($id) ? $latest->get($id) : null;
-            $status = ExpiryRules::status(is_string($expires) ? substr($expires, 0, 10) : null, $today, $warn);
-            $expiring += $status === ExpiryRules::EXPIRING ? 1 : 0;
-            $expired += $status === ExpiryRules::EXPIRED ? 1 : 0;
-        }
-
-        return ['expiring' => $expiring, 'expired' => $expired];
+        return [
+            'expiring' => is_numeric($row['expiring'] ?? null) ? (int) $row['expiring'] : 0,
+            'expired' => is_numeric($row['expired'] ?? null) ? (int) $row['expired'] : 0,
+        ];
     }
 }

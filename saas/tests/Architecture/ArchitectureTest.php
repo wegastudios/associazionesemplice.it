@@ -85,3 +85,15 @@ it('non mette chiavi o password nel codice', function (): void {
 
     expect($found)->toBe([]);
 });
+
+it('carica le rotte dei moduli solo con loadRoutesFrom: con la cache delle rotte i file non si eseguono (H18)', function (): void {
+    $found = [];
+    foreach (glob(dirname(__DIR__, 2).'/app/Modules/*/Providers/*.php') ?: [] as $file) {
+        // Route::group([], file) o rotte scritte nel provider girano a ogni richiesta anche con `artisan route:cache`.
+        if (preg_match('/\bRoute::/', (string) file_get_contents($file)) === 1) {
+            $found[] = basename($file);
+        }
+    }
+
+    expect($found)->toBe([]);
+});

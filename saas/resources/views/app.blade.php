@@ -10,7 +10,9 @@
     <link rel="icon" href="/assets/brand/favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
     <title>Associazione Semplice</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Il font del testo e il componente della pagina partono subito, in parallelo a app.js, invece che dopo. --}}
+    <link rel="preload" href="{{ Vite::asset('resources/fonts/montserrat-500-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+    @vite(['resources/css/app.css', 'resources/js/app.js', "resources/js/pages/{$page['component']}.vue"])
     @inertiaHead
 </head>
 <body class="min-h-full bg-surface text-ink antialiased">

@@ -140,6 +140,31 @@ it('mostra le scadenze senza aprire i dati sanitari', function (): void {
         ->and(DB::table('audit.log')->where('action', 'health.read')->count())->toBe($before);
 });
 
+it('conta scaduti e in scadenza per il cruscotto come l\'elenco delle scadenze, anche ai margini', function (): void {
+    $s = app(CertificateService::class);
+    $warn = $s->warnDays();
+    $add = function (string $name, int $days) use ($s): void {
+        $p = Person::create(['first_name' => $name, 'last_name' => 'Prova']);
+        $s->add($p->id, ['kind' => 'non_agonistic', 'issued_on' => now()->subYears(2)->toDateString(), 'expires_on' => now()->addDays($days)->toDateString()]);
+    };
+    $add('Oggi', 0);
+    $add('Margine', $warn);
+    $add('Oltre', $warn + 1);
+    $add('Ieri', -1);
+    $add('Vecchio', -400);
+    // Un certificato tolto non conta; per chi è uscito non si conta nulla.
+    $p = Person::create(['first_name' => 'Tolto', 'last_name' => 'Prova']);
+    $s->delete($s->add($p->id, ['kind' => 'non_agonistic', 'issued_on' => now()->subYears(2)->toDateString(), 'expires_on' => now()->subDay()->toDateString()])->id);
+    $gone = Person::create(['first_name' => 'Uscito', 'last_name' => 'Prova', 'joined_on' => now()->subYears(3)->toDateString()]);
+    $s->add($gone->id, ['kind' => 'non_agonistic', 'issued_on' => now()->subYears(2)->toDateString(), 'expires_on' => now()->subDay()->toDateString()]);
+    $gone->forceFill(['left_on' => now()->subDays(2)->toDateString()])->save();
+
+    $statuses = array_count_values(array_column($s->overview(), 'status'));
+
+    expect($s->counts())->toBe(['expiring' => $statuses['expiring'] ?? 0, 'expired' => $statuses['expired'] ?? 0])
+        ->and($s->counts())->toBe(['expiring' => 2, 'expired' => 2]);
+});
+
 it('rifiuta file che non sono PDF o foto', function (): void {
     $exe = UploadedFile::fake()->createWithContent('virus.exe', "MZ\x90\x00");
 

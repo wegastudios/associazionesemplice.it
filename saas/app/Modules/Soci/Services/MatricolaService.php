@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Soci\Services;
 
 use App\Modules\Core\Contracts\OrgContext;
-use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Database\Query\Builder;
 
 /**
  * Matricola dei soci: un numero fisso per persona, dato una volta sola a chi entra nel libro soci, in ordine di
@@ -16,6 +14,31 @@ use Illuminate\Database\Query\Builder;
  */
 final readonly class MatricolaService
 {
+    /**
+     * Un'unica istruzione: blocca le schede senza matricola (chi arriva insieme aspetta e poi non le trova più, quindi
+     * niente buchi né doppioni), sposta il contatore di quante sono e le numera in ordine di ingresso. Se non ne manca
+     * nessuna non scrive nulla.
+     */
+    private const ASSIGN = <<<'SQL'
+        WITH locked AS (
+            SELECT id, joined_on, created_at FROM app.people
+            WHERE org_id = ? AND type IN ('founder', 'ordinary', 'volunteer') AND matricola IS NULL
+            FOR UPDATE
+        ), missing AS (
+            SELECT id, row_number() OVER (ORDER BY coalesce(joined_on, created_at::date), id) AS rn FROM locked
+        ), n AS (
+            SELECT count(*) AS k FROM missing
+        ), counter AS (
+            INSERT INTO app.matricola_counters AS c (org_id, last_value)
+            SELECT ?, coalesce((SELECT max(matricola) FROM app.people WHERE org_id = ?), 0) + n.k FROM n WHERE n.k > 0
+            ON CONFLICT (org_id) DO UPDATE SET last_value = c.last_value + (SELECT k FROM n)
+            RETURNING last_value
+        )
+        UPDATE app.people p SET matricola = counter.last_value - n.k + m.rn
+        FROM missing m, counter, n
+        WHERE p.org_id = ? AND p.id = m.id
+        SQL;
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
@@ -24,33 +47,7 @@ final readonly class MatricolaService
     /** Dà la matricola ai soci che non ce l'hanno ancora. Può essere chiamato quante volte si vuole. */
     public function assignMissing(): void
     {
-        $c = $this->connection();
-        if (! $this->missing($c)->exists()) {
-            return;
-        }
-        $c->transaction(function () use ($c): void {
-            $org = $this->context->require()->id;
-            $c->statement(
-                'INSERT INTO app.matricola_counters (org_id, last_value) VALUES (?, coalesce((SELECT max(matricola) FROM app.people WHERE org_id = ?), 0)) ON CONFLICT (org_id) DO NOTHING',
-                [$org, $org],
-            );
-            $value = $c->table('app.matricola_counters')->where('org_id', $org)->lockForUpdate()->value('last_value');
-            $last = is_numeric($value) ? (int) $value : 0;
-            $ids = $this->missing($c)->orderByRaw('coalesce(joined_on, created_at::date)')->orderBy('id')->pluck('id');
-            foreach ($ids as $id) {
-                $c->table('app.people')->where('id', $id)->whereNull('matricola')->update(['matricola' => ++$last]);
-            }
-            $c->table('app.matricola_counters')->where('org_id', $org)->update(['last_value' => $last]);
-        });
-    }
-
-    private function missing(ConnectionInterface $c): Builder
-    {
-        return $c->table('app.people')->whereIn('type', ['founder', 'ordinary', 'volunteer'])->whereNull('matricola');
-    }
-
-    private function connection(): ConnectionInterface
-    {
-        return $this->db->connection($this->context->require()->connection);
+        $org = $this->context->require();
+        $this->db->connection($org->connection)->update(self::ASSIGN, [$org->id, $org->id, $org->id, $org->id]);
     }
 }

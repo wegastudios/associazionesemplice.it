@@ -102,7 +102,7 @@ it('il lavoratore prende prima gli urgenti, poi il resto, per ultimi i massivi',
     $workers = collect(app(Schedule::class)->events())->filter(static fn ($e): bool => str_contains((string) $e->command, 'queue:work'));
 
     $main = $workers->first(static fn ($e): bool => str_contains((string) $e->command, '--queue=mail-urgent,default,mail-bulk'));
-    expect($workers)->toHaveCount(2)->and($main)->not->toBeNull();
+    expect($workers)->toHaveCount(3)->and($main)->not->toBeNull();
 });
 
 it('gli urgenti hanno un lavoratore loro ogni minuto: una copia di sicurezza lunga non li fa aspettare', function (): void {

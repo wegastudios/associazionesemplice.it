@@ -25,6 +25,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
 
     Route::middleware('can:people.edit')->group(function (): void {
         Route::get('/soci/nuovo', [PeopleController::class, 'create'])->name('people.create');
+        Route::get('/soci/primo-numero-libero', [PeopleController::class, 'firstFreeCard'])->name('people.first-free-card');
         Route::get('/soci/importa', [PeopleTransferController::class, 'form'])->name('people.import');
         Route::post('/soci/importa', [PeopleTransferController::class, 'import'])->middleware('db.long')->name('people.import.run');
         Route::post('/soci/importa/{import}/annulla', [PeopleTransferController::class, 'cancel'])->whereUuid('import')->name('people.import.cancel');
