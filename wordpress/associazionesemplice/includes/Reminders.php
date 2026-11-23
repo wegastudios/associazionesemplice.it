@@ -26,6 +26,15 @@ final class Reminders {
 	private static $more = false;
 	/** @var bool l'ultimo giro non è partito perché un altro era in corso */
 	private static $busy = false;
+	/** @var bool un giro dei promemoria automatici è in corso (solo allora vale il tetto orario delle email: i promemoria mandati a mano non si fermano) */
+	private static $running = false;
+	/** @var bool il giro si è fermato perché il tetto orario delle email è raggiunto: il resto riprende all'ora piena dopo */
+	private static $out_of_budget = false;
+
+	/** Il giro in corso si è fermato per il tetto orario delle email: chi manda avvisi in blocco deve fermarsi. */
+	public static function budget_out(): bool {
+		return self::$running && self::$out_of_budget;
+	}
 
 	/** L'ultimo giro si è fermato per il tempo: un altro parte da solo tra poco. */
 	public static function more_pending(): bool {
@@ -39,7 +48,7 @@ final class Reminders {
 
 	/** Il tempo del giro è finito? Si controlla dopo ogni invio, così ogni giro ne fa almeno uno e il lavoro avanza sempre. */
 	private static function time_up(): bool {
-		if ( microtime( true ) < self::$deadline ) {
+		if ( microtime( true ) < self::$deadline && ! self::$out_of_budget ) {
 			return false;
 		}
 		self::$more = true;
@@ -89,6 +98,11 @@ final class Reminders {
 
 	/** Invia il promemoria prenotandolo prima. @return bool true se è partito ora */
 	private static function deliver( array $to, int $person_id, string $kind, string $ref, string $subject, string $body ): bool {
+		if ( self::$running && ( self::$out_of_budget || MailBudget::room_bulk() <= 0 ) ) { // tetto orario delle email raggiunto: non si prenota nulla, il promemoria resta da mandare
+			self::$out_of_budget = true;
+			self::$more          = true;
+			return false;
+		}
 		if ( ! self::claim( $person_id, $kind, $ref ) ) {
 			return false;
 		}
@@ -119,6 +133,9 @@ final class Reminders {
 				continue;
 			}
 			$body = 'la restituzione di «' . $l['item_name'] . '» era prevista per il ' . ( new \DateTimeImmutable( $l['due_on'] ) )->format( 'd/m/Y' ) . '. Quando puoi, riportalo in segreteria, oppure scrivici se ti serve più tempo. Se l\'hai già riportato, ignora questo messaggio.';
+			if ( $send && self::$out_of_budget ) {
+				break; // tetto orario delle email raggiunto: il resto all'ora piena dopo
+			}
 			if ( $send ? self::notify( $p, 'loan_late', (string) $l['id'], 'Da restituire: ' . $l['item_name'], $body ) : self::pending( $p, 'loan_late', (string) $l['id'] ) ) {
 				$n++;
 				if ( $send && self::time_up() ) {
@@ -188,17 +205,21 @@ final class Reminders {
 			return $out; // un altro giro è già in corso: i promemoria si prenotano uno per uno, niente va perso né si manda due volte
 		}
 		self::$busy     = false;
+		self::$out_of_budget = false;
+		self::$running  = true;
 		self::$deadline = microtime( true ) + (float) apply_filters( 'asem_reminders_budget_seconds', self::BUDGET_SECONDS );
 		try {
 			$out = self::collect( $today, true, $out );
 		} finally {
+			self::$running = false;
+			MailBudget::flush(); // il conteggio dell'ora si scrive subito
 			delete_option( self::OPT_LOCK );
 		}
 		update_option( self::OPT_LAST, array( 'at' => Db::now(), 'counts' => $out ), false );
 		Audit::log( 'reminders.sent', 'settings', 0, $out );
 		$next = wp_next_scheduled( self::HOOK ); // il giro quotidiano c'è sempre: conta solo se è vicino
 		if ( self::$more && ( false === $next || $next - time() > self::RETRY_SECONDS ) ) {
-			wp_schedule_single_event( time() + self::RETRY_SECONDS, self::HOOK ); // il resto parte da solo tra poco; quelli già mandati sono registrati e non si ripetono
+			wp_schedule_single_event( self::$out_of_budget ? MailBudget::resume_at() : time() + self::RETRY_SECONDS, self::HOOK ); // il resto parte da solo tra poco (a tetto orario raggiunto, all'ora piena dopo); quelli già mandati sono registrati e non si ripetono
 		}
 		return $out;
 	}
@@ -254,6 +275,9 @@ final class Reminders {
 				continue;
 			}
 			if ( $send && ! self::deliver( $to, (int) $p['id'], $kind, $until, $subj, $body ) ) {
+				if ( self::$out_of_budget ) {
+					break; // tetto orario delle email raggiunto: il resto all'ora piena dopo
+				}
 				continue;
 			}
 			$n++;
@@ -327,6 +351,9 @@ final class Reminders {
 				$body = 'il corso «' . $a['name'] . '» si rinnova all\'inizio di ' . self::month_name( $target ) . ': ' . $who . ( $paid > 0 ? 'restano da pagare ' . Money::format( $fee - $paid ) . ' della mensilità' : 'la mensilità è di ' . Money::format( $fee - $paid ) )
 					. ". Puoi pagare in segreteria o, dove previsto, online dall'area soci.\nSe non vuoi più frequentare, avvisa la segreteria prima dell'inizio del mese. Se hai già pagato, ignora questo messaggio.";
 				if ( $send && ! self::deliver( $to, (int) $p['id'], 'dues', $ref, 'Rinnovo del corso ' . $a['name'], $body ) ) {
+					if ( self::$out_of_budget ) {
+						break; // tetto orario delle email raggiunto: il resto all'ora piena dopo
+					}
 					continue;
 				}
 				$n++;
@@ -367,6 +394,9 @@ final class Reminders {
 			$body = 'ti ricordiamo la prenotazione ' . $who . 'per «' . $r['activity_name'] . '» di domani, ' . ( new \DateTimeImmutable( $r['session_date'] ) )->format( 'd/m/Y' )
 				. ( $r['start_time'] ? ' alle ' . $r['start_time'] : '' ) . ( $r['location'] ? ', ' . $r['location'] : '' ) . '. Se non puoi venire, annulla dall\'area soci, se l\'evento lo permette.';
 			if ( $send && ! self::deliver( $to, (int) $p['id'], 'event', (string) $r['session_id'], 'Domani: ' . $r['activity_name'], $body ) ) {
+				if ( self::$out_of_budget ) {
+					break; // tetto orario delle email raggiunto: il resto all'ora piena dopo
+				}
 				continue;
 			}
 			$n++;
