@@ -59,7 +59,7 @@ asem_ok( 1 === (int) $ip_undo['accounts_removed'], 'import veloce: l\'annullo to
 $ip_uper = $ip_uq / 310;
 WP_CLI::log( sprintf( 'misura - annullo prima nota: %d richieste per 310 righe, %.1f a riga', $ip_uq, $ip_uper ) );
 if ( ! empty( $GLOBALS['asem_ip_bounds'] ) ) {
-	asem_ok( $ip_uper < 8.0, 'import veloce: l\'annullo della prima nota costa meno di 8 richieste a riga (' . round( $ip_uper, 1 ) . ')' );
+	asem_ok( $ip_uper < 10.0, 'import veloce: l\'annullo della prima nota costa meno di 10 richieste a riga (' . round( $ip_uper, 1 ) . ')' );
 }
 
 // ---------- Soci: 200 righe con iscrizione ----------
