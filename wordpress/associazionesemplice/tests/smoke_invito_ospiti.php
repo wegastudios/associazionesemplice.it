@@ -63,11 +63,8 @@ $gi_t2 = (string) $gi_acts->check_in( $gi_s2, $gi_g )['invite'];
 asem_ok( false !== strpos( $gi_t2, 'Olga Invitata è da invitare ad associarsi: ha già 2 ingressi.' ) && 0 === strpos( $gi_t2, 'Olga Invitata è da invitare' ) && false !== strpos( $gi_t2, 'Serata invito due' ), 'invito ospiti: raggiunta la soglia, il motivo compare per primo, con il numero degli ingressi' );
 asem_ok( 2 === count( GuestInvite::pending() ), 'invito ospiti: una voce per ogni ingresso' );
 
-// Un ospite senza chi lo ha invitato: resta il solo motivo dell'evento.
-$gi_g2 = $gi_peo->create( array( 'type' => 'guest', 'first_name' => 'Pino', 'last_name' => 'Solo', 'phone' => '333 7770002' ) );
-$gi_acts->book( $gi_s1, $gi_g2 );
-$gi_t3 = (string) $gi_acts->check_in( $gi_s1, $gi_g2 )['invite'];
-asem_ok( 'Pino Solo è qui per «Serata invito uno»: puoi proporre l\'adesione.' === $gi_t3, 'invito ospiti: senza invito e sotto la soglia resta il motivo dell\'evento, anche gratuito' );
+// Ogni ospite ha chi lo ospita (è obbligatorio), ma il testo regge anche il solo motivo dell'evento.
+asem_ok( 'Pino Solo è qui per «Serata invito uno»: puoi proporre l\'adesione.' === GuestInvite::text( 'Pino Solo', GuestInviteRules::reasons( true, 1, 2, '', 'Serata invito uno' ) ), 'invito ospiti: il solo motivo dell\'evento, anche gratuito' );
 
 // Nessuna email: l'avviso è solo per chi gestisce.
 $gi_mails = 0;
