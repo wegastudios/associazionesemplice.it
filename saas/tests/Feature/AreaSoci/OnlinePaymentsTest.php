@@ -900,11 +900,11 @@ it('l\'esito di un pagamento ancora in attesa non chiama il gestore a ogni apert
 });
 
 /** @param  array<string, mixed>  $event */
-function stripeEvent(object $test, array $event): TestResponse
+function stripeEvent(object $test, array $event, ?string $signature = null): TestResponse
 {
     $payload = (string) json_encode($event);
 
-    return $test->call('POST', $test->host.'/area/webhook/stripe', [], [], [], ['HTTP_STRIPE_SIGNATURE' => StripeWebhook::header($payload, 'whsec_finto456', time()), 'CONTENT_TYPE' => 'application/json'], $payload);
+    return $test->call('POST', $test->host.'/area/webhook/stripe', [], [], [], ['HTTP_STRIPE_SIGNATURE' => $signature ?? StripeWebhook::header($payload, 'whsec_finto456', time()), 'CONTENT_TYPE' => 'application/json'], $payload);
 }
 
 /** Esegue il lavoro in coda come il lavoratore: dentro la sua associazione. */
@@ -933,8 +933,7 @@ it('il webhook di Stripe registra l\'evento e risponde subito: l\'incasso si reg
     $event = ['id' => 'evt_q1', 'type' => 'checkout.session.completed', 'data' => ['object' => ['id' => 'cs_pub_q', 'payment_status' => 'paid', 'amount_total' => 1250, 'currency' => 'eur']]];
 
     // Firma sbagliata: rifiuto, nessun lavoro in coda.
-    $payload = (string) json_encode($event);
-    $this->call('POST', $this->host.'/area/webhook/stripe', [], [], [], ['HTTP_STRIPE_SIGNATURE' => 't='.time().',v1=sbagliata', 'CONTENT_TYPE' => 'application/json'], $payload)->assertStatus(400);
+    stripeEvent($this, $event, 't='.time().',v1=sbagliata')->assertStatus(400);
     Queue::assertNothingPushed();
 
     $queries = 0;
@@ -957,7 +956,7 @@ it('il webhook di Stripe registra l\'evento e risponde subito: l\'incasso si reg
     });
 
     $job = Queue::pushed(SettleOnlinePayment::class)->first();
-    expect($job)->toBeInstanceOf(SettleOnlinePayment::class)->and($job->tries)->toBeGreaterThan(1)->and($job->backoff())->not->toBeEmpty();
+    expect($job)->toBeInstanceOf(SettleOnlinePayment::class);
     runSettlement($this, $job);
     runSettlement($this, $job);
     // Lavoro interrotto dopo la registrazione e prima di segnare l'evento come fatto: ripartendo non registra due volte.

@@ -62,6 +62,9 @@ final readonly class OnlinePayments
     /** Secondi tra due richieste al servizio di pagamento per lo stesso pagamento ancora in attesa. */
     public const CHECK_SECONDS = 15;
 
+    /** Stati da cui un pagamento si può ancora registrare (incasso confermato dal ritorno o dal webhook). */
+    private const SETTLEABLE = ['created', 'pending', 'cancelled', 'failed'];
+
     public function __construct(
         private Cache $cache,
         private DatabaseManager $db,
@@ -242,7 +245,8 @@ final readonly class OnlinePayments
             return 200;
         }
         $ref = is_string($session['id'] ?? null) ? $session['id'] : '';
-        $id = $this->table()->where('provider', 'stripe')->where('provider_ref', $ref)->value('id');
+        // Solo i nostri pagamenti ancora da registrare: per uno già registrato o da controllare non serve un lavoro.
+        $id = $this->table()->where('provider', 'stripe')->where('provider_ref', $ref)->whereIn('status', self::SETTLEABLE)->value('id');
         if (! is_string($id)) {
             return 200;
         }
@@ -259,18 +263,20 @@ final readonly class OnlinePayments
      */
     private function queueSettlement(string $provider, string $eventId, string $paymentId, int $cents): bool
     {
+        $orgId = $this->context->require()->id;
         $rowId = Str::uuid7()->toString();
-        $new = $this->events()->insertOrIgnore(['org_id' => $this->context->require()->id, 'id' => $rowId, 'provider' => $provider, 'event_id' => $eventId,
+        $new = $this->events()->insertOrIgnore(['org_id' => $orgId, 'id' => $rowId, 'provider' => $provider, 'event_id' => $eventId,
             'payment_id' => $paymentId, 'paid_cents' => $cents]);
         if ($new === 0) {
-            $failed = $this->events()->where('provider', $provider)->where('event_id', $eventId)->where('status', 'failed')->value('id');
-            if (! is_string($failed) || $this->events()->where('id', $failed)->where('status', 'failed')->update(['status' => 'queued']) === 0) {
+            $revived = $this->connection()->selectOne("UPDATE app.payment_webhook_events SET status = 'queued' WHERE provider = ? AND event_id = ? AND status = 'failed' RETURNING id", [$provider, $eventId]);
+            $failed = is_object($revived) ? ($revived->id ?? null) : null;
+            if (! is_string($failed)) {
                 return true;
             }
             $rowId = $failed;
         }
         try {
-            Bus::dispatch(new SettleOnlinePayment($this->context->require()->id, $rowId));
+            Bus::dispatch(new SettleOnlinePayment($orgId, $rowId));
         } catch (Throwable) {
             $this->events()->where('id', $rowId)->update(['status' => 'failed']);
 
@@ -299,8 +305,9 @@ final readonly class OnlinePayments
     /** Il lavoro si è arreso: l'evento resta «failed» e il registro azioni lo dice. */
     public function eventFailed(string $eventId): void
     {
-        $paymentId = $this->events()->where('id', $eventId)->where('status', 'queued')->value('payment_id');
-        if (is_string($paymentId) && $this->events()->where('id', $eventId)->where('status', 'queued')->update(['status' => 'failed']) > 0) {
+        $row = $this->connection()->selectOne("UPDATE app.payment_webhook_events SET status = 'failed' WHERE id = ? AND status = 'queued' RETURNING payment_id", [$eventId]);
+        $paymentId = is_object($row) ? ($row->payment_id ?? null) : null;
+        if (is_string($paymentId)) {
             $this->audit->record('payment.webhook_failed', 'app.online_payments', $paymentId, []);
         }
     }
@@ -314,7 +321,7 @@ final readonly class OnlinePayments
         $this->connection()->transaction(function () use ($paymentId, $paidCents, &$mailTo): void {
             $this->table()->where('id', $paymentId)->lockForUpdate()->first(['id']);
             $p = $this->find($paymentId);
-            if ($p === null || ! in_array($p['status'], ['created', 'pending', 'cancelled', 'failed'], true)) {
+            if ($p === null || ! in_array($p['status'], self::SETTLEABLE, true)) {
                 return;
             }
             $settings = $this->settings();
