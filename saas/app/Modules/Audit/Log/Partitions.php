@@ -41,5 +41,12 @@ final class Partitions
 
         $owner->statement("CREATE TABLE {$table} PARTITION OF audit.log {$bounds}");
         OrgSchema::secure($owner, $table);
+
+        // TRUNCATE di una partizione da sola: lo stesso rifiuto della tabella (la funzione arriva con una migrazione
+        // successiva alla creazione del registro; le partizioni già esistenti le aggancia quella migrazione).
+        $guard = $owner->selectOne("SELECT to_regprocedure('audit.reject_truncate()') IS NOT NULL AS ok");
+        if (is_object($guard) && ($guard->ok ?? false) === true) {
+            $owner->statement("CREATE OR REPLACE TRIGGER log_no_truncate BEFORE TRUNCATE ON {$table} FOR EACH STATEMENT EXECUTE FUNCTION audit.reject_truncate()");
+        }
     }
 }
