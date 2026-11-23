@@ -6674,7 +6674,7 @@ asem_ok( false !== wp_next_scheduled( 'asem_send_reminders' ) && wp_next_schedul
 \AssociazioneSemplice\MailBudget::$clock = time() + 3600; // l'ora dopo
 $mb_run2 = \AssociazioneSemplice\Reminders::run( $today );
 asem_ok( 2 === $mb_run2['membership'] && 1 === $mails_to( $mb_mails[0] ) && 1 === $mails_to( $mb_mails[1] ) && 0 === \AssociazioneSemplice\Reminders::run( $today )['membership'], 'tetto email: all\'ora dopo i promemoria arrivano, una volta sola ciascuno' );
-// il server rifiuta una email: il promemoria non risulta partito e viene ritentato al giro dopo (una volta sola) (il filtro che registra le email vede anche il tentativo rifiutato)
+// il server rifiuta una email: il promemoria non risulta partito e viene ritentato al giro dopo (una volta sola)
 $pr_fail = true;
 $pr_hook = static function ( $pre ) use ( &$pr_fail ) {
 	return $pr_fail ? false : $pre;
