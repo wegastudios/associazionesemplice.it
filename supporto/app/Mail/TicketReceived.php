@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\SupportTicket;
 use App\Services\Site\CustomerLink;
+use App\Mail\Concerns\SupportQueuedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -14,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 /** Conferma al cliente con il numero del ticket e il link per seguirlo. */
 class TicketReceived extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels;
+    use Queueable, SerializesModels, SupportQueuedMail;
 
     public function __construct(public SupportTicket $ticket) {}
 
