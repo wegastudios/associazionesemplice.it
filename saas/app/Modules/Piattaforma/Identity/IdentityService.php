@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Identity;
 
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\QueuedMail;
 use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\Fill;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
-use App\Modules\Core\Contracts\MailQueue;
-use App\Modules\Core\Contracts\QueuedMail;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\Cache;
