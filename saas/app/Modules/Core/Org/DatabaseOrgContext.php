@@ -11,7 +11,9 @@ use App\Modules\Core\Database\DatabaseRegistry;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use PDO;
 use Throwable;
+use WeakMap;
 
 final class DatabaseOrgContext implements OrgContext
 {
@@ -20,12 +22,23 @@ final class DatabaseOrgContext implements OrgContext
 
     private ?CurrentOrg $current = null;
 
+    /**
+     * Le sessioni del database (una per PDO) su cui questa classe ha impostato un'associazione e che non ha ancora
+     * azzerato fuori da una transazione. Una connessione appena aperta non ha nessuna associazione: azzerarla è un giro
+     * di rete inutile (H17). Una sessione riaperta (PDO nuovo) non è nell'elenco ed è pulita per costruzione.
+     *
+     * @var WeakMap<PDO, true>
+     */
+    private WeakMap $entered;
+
     /** @param  bool  $long  comandi e code: i tempi delle operazioni lunghe valgono per tutto il processo */
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly DatabaseRegistry $registry,
         private bool $long = false,
-    ) {}
+    ) {
+        $this->entered = new WeakMap;
+    }
 
     public function enter(string $orgId): CurrentOrg
     {
@@ -69,11 +82,16 @@ final class DatabaseOrgContext implements OrgContext
 
         foreach (array_keys($this->db->getConnections()) as $name) {
             $connection = $this->db->connection($name);
-            if ($connection->getDriverName() !== 'pgsql') {
+            $pdo = $connection->getRawPdo();
+            if (! $pdo instanceof PDO || ! isset($this->entered[$pdo]) || $connection->getDriverName() !== 'pgsql') {
                 continue;
             }
             try {
                 $connection->select("SELECT set_config('app.org_id', '', false)");
+                // Dentro una transazione l'azzeramento si annulla con un rollback: la sessione resta da azzerare.
+                if ($connection->transactionLevel() === 0) {
+                    unset($this->entered[$pdo]);
+                }
             } catch (Throwable) {
                 // Se non si riesce ad azzerare, la connessione si chiude: la prossima sarà pulita.
                 $this->db->purge($name);
@@ -136,7 +154,12 @@ final class DatabaseOrgContext implements OrgContext
     private function applyTimeouts(?CurrentOrg $org): void
     {
         if ($org !== null) {
-            $this->db->connection($org->connection)->select(self::SET, [$org->id, ...$this->timeouts()]);
+            $connection = $this->db->connection($org->connection);
+            $connection->select(self::SET, [$org->id, ...$this->timeouts()]);
+            $pdo = $connection->getRawPdo();
+            if ($pdo instanceof PDO) {
+                $this->entered[$pdo] = true;
+            }
         }
     }
 
