@@ -8,6 +8,7 @@ use App\Modules\Cifratura\Console\DestroyOrgKeysCommand;
 use App\Modules\Cifratura\Console\GenerateKeysCommand;
 use App\Modules\Cifratura\Console\MonitorKeyServiceCommand;
 use App\Modules\Cifratura\Console\PruneFormatBackupsCommand;
+use App\Modules\Cifratura\Console\RecountFileUsageCommand;
 use App\Modules\Cifratura\Console\RecoveryCheckCommand;
 use App\Modules\Cifratura\Console\RecoveryCreateCommand;
 use App\Modules\Cifratura\Console\RetireLocalKeyCommand;
@@ -30,6 +31,7 @@ use App\Modules\Cifratura\Keys\KeyRing;
 use App\Modules\Cifratura\Keys\KeyServiceBreaker;
 use App\Modules\Cifratura\Keys\VaultFactory;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
@@ -54,6 +56,7 @@ final class CifraturaServiceProvider extends ServiceProvider
         $this->app->singleton(EncryptedFiles::class, static fn (Application $app): EncryptedFiles => new SecretStreamFiles(
             Storage::disk('org_files'),
             $app->make(KeyRing::class),
+            $app->make(CacheFactory::class)->store(),
         ));
         // Tiene i diritti letti: una copia per richiesta o per lavoro in coda.
         $this->app->scoped(StorageQuota::class, StorageQuotaService::class);
@@ -73,6 +76,7 @@ final class CifraturaServiceProvider extends ServiceProvider
                 UpgradeFormatCommand::class,
                 UndoUpgradeFormatCommand::class,
                 PruneFormatBackupsCommand::class,
+                RecountFileUsageCommand::class,
             ]);
 
             // Il servizio chiavi si controlla ogni 5 minuti; con la chiave principale locale non c'è nulla da controllare.
@@ -81,6 +85,8 @@ final class CifraturaServiceProvider extends ServiceProvider
                     ->when(static fn (): bool => config('saas.crypto.vault') === 'remote');
                 // Copie d'appoggio del passaggio di formato dei campi cifrati: 30 giorni, poi si tolgono.
                 $schedule->command('saas:crypt:upgrade-format:prune')->dailyAt('04:07')->withoutOverlapping();
+                // Contatore dello spazio dei file riallineato al disco: dopo l'azzeramento della demo (03:30).
+                $schedule->command('saas:files:usage')->dailyAt('04:51')->withoutOverlapping(30);
             });
         }
     }
