@@ -34,6 +34,8 @@ final class Pdf {
 	private $images = array();
 	/** @var array<string,int> immagini già incorporate, per nome */
 	private $image_keys = array();
+	/** @var bool comprimere le pagine (solo se il server ha zlib) */
+	private $zip = false;
 
 	public function __construct() {
 		$this->add_page();
@@ -41,9 +43,28 @@ final class Pdf {
 
 	public function add_page(): void {
 		if ( '' !== $this->cur || $this->pages ) {
-			$this->pages[] = $this->cur;
+			$this->pages[] = $this->seal( $this->cur );
 		}
 		$this->cur = '';
+	}
+
+	/**
+	 * Comprime le pagine (FlateDecode) quando il server ha zlib: per i documenti lunghi, come un foglio di tessere per ogni socio.
+	 * Da chiamare prima di disegnare; senza zlib non fa nulla.
+	 */
+	public function compress( bool $on = true ): void {
+		$this->zip = $on && function_exists( 'gzcompress' );
+	}
+
+	/** @return array{0:string,1:bool} il contenuto di una pagina pronto per il file (compresso o no) e se è compresso */
+	private function seal( string $content ): array {
+		if ( $this->zip && '' !== $content ) {
+			$z = gzcompress( $content, 6 );
+			if ( false !== $z ) {
+				return array( $z, true );
+			}
+		}
+		return array( $content, false );
 	}
 
 	/** Testo in UTF-8 => byte Windows-1252 (accenti ed €), con le parentesi e la barra protette. */
@@ -278,6 +299,36 @@ final class Pdf {
 		$this->cur .= sprintf( "%.2F w %.2F %.2F m %.2F %.2F l S\n", $width, $x1, self::H - $y1, $x2, self::H - $y2 );
 	}
 
+	/**
+	 * Un codice QR come piccola immagine a un bit (un pixel per modulo, zona bianca di $quiet moduli intorno) nel quadrato indicato:
+	 * al posto di centinaia di rettangoli. $m = matrice dei moduli ({@see QrCode::matrix()}), vero = nero.
+	 */
+	public function qr( array $m, float $x, float $y, float $size, int $quiet = 4 ): void {
+		$n   = count( $m );
+		$dim = $n + 2 * $quiet;
+		$rb  = intdiv( $dim + 7, 8 );
+		$raw = str_repeat( "\xFF", $rb * $quiet );
+		for ( $r = 0; $r < $n; $r++ ) {
+			$bits = str_repeat( '1', $quiet );
+			for ( $c = 0; $c < $n; $c++ ) {
+				$bits .= empty( $m[ $r ][ $c ] ) ? '1' : '0';
+			}
+			$bits .= str_repeat( '1', $rb * 8 - $quiet - $n );
+			for ( $i = 0; $i < $rb; $i++ ) {
+				$raw .= chr( bindec( substr( $bits, $i * 8, 8 ) ) );
+			}
+		}
+		$raw .= str_repeat( "\xFF", $rb * $quiet );
+		$z    = function_exists( 'gzcompress' ) ? gzcompress( $raw, 9 ) : false;
+		$this->image(
+			array( 'w' => $dim, 'h' => $dim, 'cs' => '/DeviceGray', 'bpc' => 1, 'filter' => false !== $z ? '/FlateDecode' : '', 'parms' => '/Interpolate false', 'data' => false !== $z ? $z : $raw ),
+			$x,
+			$y,
+			$size,
+			$size
+		);
+	}
+
 	/** Rettangolo pieno in un tono di grigio (0 nero … 1 bianco). */
 	public function rect( float $x, float $y, float $w, float $h, float $gray = 0.93 ): void {
 		$this->cur .= sprintf( "%.2F g %.2F %.2F %.2F %.2F re f 0 g\n", $gray, $x, self::H - $y - $h, $w, $h );
@@ -285,8 +336,8 @@ final class Pdf {
 
 	/** Il documento completo (byte del file PDF). */
 	public function output(): string {
-		$pages = $this->pages;
-		$pages[] = $this->cur;
+		$pages   = $this->pages;
+		$pages[] = $this->seal( $this->cur );
 		$n     = count( $pages );
 		$objs  = array();
 		// 1 catalogo, 2 elenco pagine, 3 e 4 font, poi per ogni pagina: oggetto pagina e contenuto
@@ -302,7 +353,7 @@ final class Pdf {
 		$xobj = '';
 		$stream = function ( array $im, string $extra = '' ): string {
 			return '<< /Type /XObject /Subtype /Image /Width ' . (int) $im['w'] . ' /Height ' . (int) $im['h'] . ' /ColorSpace ' . $im['cs'] . ' /BitsPerComponent ' . (int) $im['bpc']
-				. ' /Filter ' . $im['filter'] . ( '' !== $im['parms'] ? ' ' . $im['parms'] : '' ) . $extra . ' /Length ' . strlen( $im['data'] ) . " >>\nstream\n" . $im['data'] . "\nendstream";
+				. ( '' !== $im['filter'] ? ' /Filter ' . $im['filter'] : '' ) . ( '' !== $im['parms'] ? ' ' . $im['parms'] : '' ) . $extra . ' /Length ' . strlen( $im['data'] ) . " >>\nstream\n" . $im['data'] . "\nendstream";
 		};
 		foreach ( $this->images as $k => $im ) {
 			$id = $next++;
@@ -316,23 +367,32 @@ final class Pdf {
 			$xobj .= ' /Im' . ( $k + 1 ) . ' ' . $id . ' 0 R';
 		}
 		$res = '<< /Font << /F1 3 0 R /F2 4 0 R >>' . ( '' !== $xobj ? ' /XObject <<' . $xobj . ' >>' : '' ) . ' >>';
-		foreach ( $pages as $i => $content ) {
+		foreach ( $pages as $i => $page ) {
 			$pg          = 5 + $i * 2;
 			$objs[ $pg ] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources ' . $res . ' /Contents ' . ( $pg + 1 ) . ' 0 R >>';
-			$objs[ $pg + 1 ] = '<< /Length ' . strlen( $content ) . " >>\nstream\n" . $content . 'endstream';
+			$objs[ $pg + 1 ] = '<< /Length ' . strlen( $page[0] ) . ( $page[1] ? ' /Filter /FlateDecode' : '' ) . " >>\nstream\n" . $page[0] . 'endstream';
+			$pages[ $i ]     = null; // la pagina sta ormai nell'oggetto: non se ne tiene un'altra copia
 		}
 		ksort( $objs );
-		$out     = "%PDF-1.4\n";
+		// il file si compone a pezzi e si unisce una volta sola: niente copie intermedie del documento intero
+		$parts   = array( "%PDF-1.4\n" );
+		$size    = 9;
 		$offsets = array();
+		$total   = count( $objs );
 		foreach ( $objs as $id => $body ) {
-			$offsets[ $id ] = strlen( $out );
-			$out           .= $id . " 0 obj\n" . $body . "\nendobj\n";
+			$offsets[ $id ] = $size;
+			$head           = $id . " 0 obj\n";
+			$parts[]        = $head;
+			$parts[]        = $body;
+			$parts[]        = "\nendobj\n";
+			$size          += strlen( $head ) + strlen( $body ) + 8;
+			unset( $objs[ $id ] );
 		}
-		$xref = strlen( $out );
-		$out .= "xref\n0 " . ( count( $objs ) + 1 ) . "\n0000000000 65535 f \n";
+		$parts[] = "xref\n0 " . ( $total + 1 ) . "\n0000000000 65535 f \n";
 		foreach ( $offsets as $off ) {
-			$out .= sprintf( "%010d 00000 n \n", $off );
+			$parts[] = sprintf( "%010d 00000 n \n", $off );
 		}
-		return $out . 'trailer << /Size ' . ( count( $objs ) + 1 ) . ' /Root 1 0 R >>' . "\nstartxref\n" . $xref . "\n%%EOF\n";
+		$parts[] = 'trailer << /Size ' . ( $total + 1 ) . ' /Root 1 0 R >>' . "\nstartxref\n" . $size . "\n%%EOF\n";
+		return implode( '', $parts );
 	}
 }

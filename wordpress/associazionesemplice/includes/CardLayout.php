@@ -223,7 +223,7 @@ final class CardLayout {
 	 * Disegna una tessera nel punto indicato. Con $p = null è il modello vuoto (sfondo, bordo e logo, senza dati): le posizioni che restano
 	 * libere in un foglio di tessere.
 	 */
-	private static function pdf_card( Pdf $pdf, array $c, ?array $p, float $x0, float $y0 ): void {
+	private static function pdf_card( Pdf $pdf, array $c, ?array $p, ?array $d, float $x0, float $y0 ): void {
 		$w = $c['w'];
 		$h = $c['h'];
 		$l = $c['l'];
@@ -238,19 +238,16 @@ final class CardLayout {
 			$lw = $l['logo']['size'] / 100 * $w;
 			$pdf->image( $c['logo'], $x0 + $l['logo']['x'] / 100 * $w, $y0 + $l['logo']['y'] / 100 * $h, $lw, $lw * $c['logo']['h'] / $c['logo']['w'], 'logo' );
 		}
-		if ( null === $p ) {
+		if ( null === $p || null === $d ) {
 			return;
 		}
-		$until = ! MemberType::is_member( $p['type'] ) ? null : Plugin::people()->active_until( (int) $p['id'] );
-		$when  = MemberType::is_auto_renewed( $p['type'] ) ? 'Non va rinnovata' : ( $until ? 'Valida fino al ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '' );
-		$ex    = self::extras( $p );
 		$texts = array(
 			'name'   => trim( $p['first_name'] . ' ' . $p['last_name'] ),
 			'number' => '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '',
-			'valid'  => $when,
-			'type'   => $ex['type'],
-			'roles'  => $ex['roles'],
-			'text'   => $ex['text'],
+			'valid'  => $d['valid'],
+			'type'   => $d['type'],
+			'roles'  => $d['roles'],
+			'text'   => $d['text'],
 		);
 		foreach ( $texts as $k => $s ) {
 			if ( empty( $l[ $k ]['show'] ) || '' === $s ) {
@@ -267,29 +264,56 @@ final class CardLayout {
 			} catch ( \InvalidArgumentException $e ) {
 				$m = array();
 			}
-			$n = count( $m );
-			if ( $n ) {
+			if ( $m ) {
 				$box = $l['qr']['size'] / 100 * $w;
-				$mod = $box / ( $n + 8 ); // zona bianca di 4 moduli intorno, come sullo schermo
-				$qx  = $x0 + $l['qr']['x'] / 100 * $w;
-				$qy  = $y0 + $l['qr']['y'] / 100 * $h;
-				$pdf->rect( $qx, $qy, $box, $box, 1.0 );
-				foreach ( $m as $r => $row ) {
-					$col = 0;
-					while ( $col < $n ) {
-						if ( empty( $row[ $col ] ) ) {
-							$col++;
-							continue;
-						}
-						$start = $col;
-						while ( $col < $n && ! empty( $row[ $col ] ) ) {
-							$col++;
-						}
-						$pdf->rect( $qx + ( 4 + $start ) * $mod, $qy + ( 4 + $r ) * $mod, ( $col - $start ) * $mod, $mod, 0.0 );
-					}
-				}
+				// una piccola immagine a un bit, con la zona bianca di 4 moduli intorno come sullo schermo
+				$pdf->qr( $m, $x0 + $l['qr']['x'] / 100 * $w, $y0 + $l['qr']['y'] / 100 * $h, $box, 4 );
 			}
 		}
+	}
+
+	/**
+	 * I dati variabili delle tessere di molte persone, letti in blocco (poche query in tutto, non tre a tessera): scadenza, tipo, incarichi,
+	 * testo libero. Vale per qualsiasi numero di persone.
+	 *
+	 * @param array[] $people righe di `people`
+	 * @return array<int,array{valid:string,type:string,roles:string,text:string}> per id
+	 */
+	public static function card_data( array $people ): array {
+		$members = array();
+		$levels  = false;
+		foreach ( $people as $p ) {
+			if ( MemberType::is_member( $p['type'] ) ) {
+				$members[ (int) $p['id'] ] = (int) $p['id'];
+			}
+			$levels = $levels || ! empty( $p['level_id'] );
+		}
+		$members = array_values( $members );
+		$is_mem  = array_flip( $members );
+		$until = $members ? Plugin::people()->active_until_many( $members ) : array();
+		$roles = self::roles_many( $people );
+		$text  = trim( (string) Settings::get( 'card_text' ) );
+		if ( $levels ) {
+			Levels::all(); // i livelli sono al più una quarantina: una lettura sola, poi stanno in memoria
+		}
+		QrVersion::preload( $members ); // la versione del codice di ciascuno, per il QR
+		$label = array();
+		$out   = array();
+		foreach ( $people as $p ) {
+			$id = (int) $p['id'];
+			$u  = isset( $is_mem[ $id ] ) ? ( $until[ $id ] ?? null ) : null;
+			$k  = (string) ( $p['level_id'] ?? '' ) . '|' . $p['type'];
+			if ( ! isset( $label[ $k ] ) ) {
+				$label[ $k ] = Levels::label( $p );
+			}
+			$out[ $id ] = array(
+				'valid' => MemberType::is_auto_renewed( $p['type'] ) ? 'Non va rinnovata' : ( $u ? 'Valida fino al ' . ( new \DateTimeImmutable( $u ) )->format( 'd/m/Y' ) : '' ),
+				'type'  => $label[ $k ],
+				'roles' => $roles[ $id ] ?? '',
+				'text'  => $text,
+			);
+		}
+		return $out;
 	}
 
 	/**
@@ -299,7 +323,9 @@ final class CardLayout {
 	public static function pdf( array $p ): string {
 		$c   = self::pdf_context();
 		$pdf = new Pdf();
-		self::pdf_card( $pdf, $c, $p, max( 20.0, ( Pdf::W - $c['w'] ) / 2 ), 50.0 );
+		$pdf->compress();
+		$d = self::card_data( array( $p ) );
+		self::pdf_card( $pdf, $c, $p, $d[ (int) $p['id'] ] ?? null, max( 20.0, ( Pdf::W - $c['w'] ) / 2 ), 50.0 );
 		return $pdf->output();
 	}
 
@@ -330,36 +356,65 @@ final class CardLayout {
 		$x0    = ( Pdf::W - $cols * $c['w'] ) / 2;
 		$y0    = ( Pdf::H - $rows * $c['h'] ) / 2;
 		$pdf   = new Pdf();
+		$pdf->compress();
+		$data  = self::card_data( $people );
 		$total = max( 1, (int) ceil( count( $people ) / $slots ) ) * $slots;
 		for ( $i = 0; $i < $total; $i++ ) {
 			if ( $i > 0 && 0 === $i % $slots ) {
 				$pdf->add_page();
 			}
 			$pos = $i % $slots;
-			self::pdf_card( $pdf, $c, $people[ $i ] ?? null, $x0 + ( $pos % $cols ) * $c['w'], $y0 + (int) floor( $pos / $cols ) * $c['h'] );
+			$who = $people[ $i ] ?? null;
+			self::pdf_card( $pdf, $c, $who, $who ? ( $data[ (int) $who['id'] ] ?? null ) : null, $x0 + ( $pos % $cols ) * $c['w'], $y0 + (int) floor( $pos / $cols ) * $c['h'] );
 		}
 		return $pdf->output();
 	}
 
 	/** Incarichi di una persona: carica nel consiglio e attività di cui è nello staff nell'anno sociale in corso. */
 	public static function roles_text( array $p ): string {
-		$out = array();
-		$br  = BoardRole::label( $p['board_role'] ?? null );
-		if ( '' !== (string) $br ) {
-			$out[] = $br;
+		return self::roles_many( array( $p ) )[ (int) $p['id'] ] ?? '';
+	}
+
+	/**
+	 * Gli incarichi di molte persone con una sola lettura dello staff.
+	 *
+	 * @param array[] $people righe di `people`
+	 * @return array<int,string> id => testo
+	 */
+	public static function roles_many( array $people ): array {
+		$staff = array();
+		$ids   = array();
+		foreach ( $people as $p ) {
+			$ids[] = (int) $p['id'];
 		}
-		$db   = Db::db();
-		$rows = $db->get_col(
-			$db->prepare(
-				'SELECT a.name FROM ' . Db::t( 'activity_staff' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id WHERE s.person_id = %d AND a.deleted_at IS NULL AND a.social_year = %s ORDER BY a.name',
-				(int) $p['id'],
-				Settings::social_year()->label()
-			)
-		);
-		if ( $rows ) {
-			$out[] = 'Staff: ' . implode( ', ', array_map( 'strval', $rows ) );
+		if ( $ids ) {
+			$db    = Db::db();
+			$label = Settings::social_year()->label();
+			foreach ( array_chunk( array_values( array_unique( $ids ) ), 1000 ) as $chunk ) {
+				foreach ( $db->get_results(
+					$db->prepare(
+						'SELECT s.person_id, a.name FROM ' . Db::t( 'activity_staff' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id WHERE s.person_id IN (' . implode( ',', $chunk ) . ') AND a.deleted_at IS NULL AND a.social_year = %s ORDER BY a.name', // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- id interi
+						$label
+					),
+					ARRAY_A
+				) ?: array() as $r ) {
+					$staff[ (int) $r['person_id'] ][] = (string) $r['name'];
+				}
+			}
 		}
-		return implode( ' · ', $out );
+		$res = array();
+		foreach ( $people as $p ) {
+			$out = array();
+			$br  = BoardRole::label( $p['board_role'] ?? null );
+			if ( '' !== (string) $br ) {
+				$out[] = $br;
+			}
+			if ( ! empty( $staff[ (int) $p['id'] ] ) ) {
+				$out[] = 'Staff: ' . implode( ', ', $staff[ (int) $p['id'] ] );
+			}
+			$res[ (int) $p['id'] ] = implode( ' · ', $out );
+		}
+		return $res;
 	}
 
 	/** Tipo di socio, incarichi e testo libero di una persona, pronti per la tessera. */
