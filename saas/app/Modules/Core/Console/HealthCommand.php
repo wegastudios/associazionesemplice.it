@@ -6,11 +6,13 @@ namespace App\Modules\Core\Console;
 
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Core\Contracts\DatabaseNames;
+use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Portale\Contracts\WebRuntimeProbe;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -30,6 +32,11 @@ final class HealthCommand extends Command
     private const BULK_MAX_WAIT = 6 * 3600;
 
     private const HOUR_WARNING_SHARE = 0.9;
+
+    /** Altri lavori: da quanto (secondi) un lavoro pronto aspetta un lavoratore. I lunghi aspettano anche un altro lungo. */
+    private const DEFAULT_MAX_WAIT = 15 * 60;
+
+    private const LONG_MAX_WAIT = 3600;
 
     protected $signature = 'saas:health {--skip-migrations : Non controllare le migrazioni (prima di eseguirle)}
         {--mail-warnings-only : Problemi della posta in coda come avvisi (rilascio: non dipendono dalla versione)}';
@@ -57,20 +64,22 @@ final class HealthCommand extends Command
             'connessione senza pooler' => fn () => $this->sessionSettings($db->connection('pgsql')),
             'memoria di Redis' => $this->redisMemory(...),
         ];
-        // Posta in coda: problemi di esercizio, non della versione. Al rilascio (--mail-warnings-only) sono avvisi, così
-        // non riportano indietro il rilascio.
-        $mailChecks = [
+        // Posta e altri lavori in coda: problemi di esercizio, non della versione. Al rilascio (--mail-warnings-only) sono
+        // avvisi, così non riportano indietro il rilascio.
+        $queueChecks = [
             'coda della posta urgente' => fn () => $this->mailWait($db, MailQueue::URGENT, self::URGENT_MAX_WAIT),
             'coda della posta massiva' => fn () => $this->mailWait($db, MailQueue::BULK, self::BULK_MAX_WAIT),
             'invio della posta' => $this->mailBlocked(...),
             'posta non partita' => fn () => $this->mailFailed($db),
+            'coda dei lavori' => fn () => $this->jobWait($db, JobQueues::DEFAULT, self::DEFAULT_MAX_WAIT),
+            'coda dei lavori lunghi' => fn () => $this->jobWait($db, JobQueues::LONG, self::LONG_MAX_WAIT),
         ];
-        // Sempre un avviso: gli invii vicini al tetto orario.
-        $warnOnly = ['invii della posta nell\'ora'];
+        // Sempre un avviso: gli invii vicini al tetto orario, i lavori non riusciti (li vede chi li ha chiesti).
+        $warnOnly = ['invii della posta nell\'ora', 'lavori non riusciti'];
         if ($this->option('mail-warnings-only') === true) {
-            $warnOnly = [...$warnOnly, ...array_keys($mailChecks)];
+            $warnOnly = [...$warnOnly, ...array_keys($queueChecks)];
         }
-        $checks += $mailChecks + ['invii della posta nell\'ora' => $this->mailHourUsage(...)];
+        $checks += $queueChecks + ['invii della posta nell\'ora' => $this->mailHourUsage(...), 'lavori non riusciti' => fn () => $this->jobsFailed($db)];
 
         if (! $this->option('skip-migrations')) {
             foreach ($databases->names() as $name) {
@@ -182,10 +191,7 @@ final class HealthCommand extends Command
         if (config('queue.default') !== 'database') {
             return;
         }
-        $connection = config('queue.connections.database.connection');
-        $table = config('queue.connections.database.table');
-        $oldest = $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
-            ->table(is_string($table) && $table !== '' ? $table : 'core.jobs')
+        $oldest = $this->jobs($db)
             ->where('queue', $queue)
             ->selectRaw("min(coalesce((payload::json->>'createdAt')::bigint, created_at)) AS created")
             ->value('created');
@@ -198,6 +204,52 @@ final class HealthCommand extends Command
                 ? sprintf('il messaggio più vecchio aspetta da %d minuti (soglia %d)', intdiv($waited, 60), intdiv($maxSeconds, 60))
                 : sprintf('il messaggio più vecchio aspetta da %d ore (soglia %d)', intdiv($waited, 3600), intdiv($maxSeconds, 3600)));
         }
+    }
+
+    /**
+     * Il lavoro pronto più vecchio di una coda, non preso da nessun lavoratore, aspetta da più della soglia: il cron non
+     * gira o i lavoratori sono sempre occupati. Conta da quando è pronto (available_at), non i lavori rimandati.
+     */
+    private function jobWait(DatabaseManager $db, string $queue, int $maxSeconds): void
+    {
+        if (config('queue.default') !== 'database') {
+            return;
+        }
+        $oldest = $this->jobs($db)->where('queue', $queue)->whereNull('reserved_at')->min('available_at');
+        $waited = is_numeric($oldest) ? now()->getTimestamp() - (int) $oldest : 0;
+        if ($waited > $maxSeconds) {
+            throw new RuntimeException(sprintf('il lavoro più vecchio aspetta un lavoratore da %d minuti (soglia %d)', intdiv($waited, 60), intdiv($maxSeconds, 60)));
+        }
+    }
+
+    /** Lavori fuori dalla posta (copie, import) finiti tra i falliti nelle ultime 24 ore. */
+    private function jobsFailed(DatabaseManager $db): void
+    {
+        $count = $this->failedJobs($db)
+            ->whereNotIn('queue', [MailQueue::URGENT, MailQueue::BULK])
+            ->where('failed_at', '>=', now()->subDay())
+            ->count();
+        if ($count > 0) {
+            throw new RuntimeException("{$count} nelle ultime 24 ore (php artisan queue:failed)");
+        }
+    }
+
+    private function jobs(DatabaseManager $db): Builder
+    {
+        $connection = config('queue.connections.database.connection');
+        $table = config('queue.connections.database.table');
+
+        return $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
+            ->table(is_string($table) && $table !== '' ? $table : 'core.jobs');
+    }
+
+    private function failedJobs(DatabaseManager $db): Builder
+    {
+        $connection = config('queue.failed.database');
+        $table = config('queue.failed.table');
+
+        return $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
+            ->table(is_string($table) && $table !== '' ? $table : 'core.failed_jobs');
     }
 
     /** La posta in coda è ferma dopo un rifiuto del server di posta. */
@@ -213,10 +265,7 @@ final class HealthCommand extends Command
     /** Messaggi delle code di posta finiti tra i lavori falliti nelle ultime 24 ore. */
     private function mailFailed(DatabaseManager $db): void
     {
-        $connection = config('queue.failed.database');
-        $table = config('queue.failed.table');
-        $count = $db->connection(is_string($connection) && $connection !== '' ? $connection : null)
-            ->table(is_string($table) && $table !== '' ? $table : 'core.failed_jobs')
+        $count = $this->failedJobs($db)
             ->whereIn('queue', [MailQueue::URGENT, MailQueue::BULK])
             ->where('failed_at', '>=', now()->subDay())
             ->count();

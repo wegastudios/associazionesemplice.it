@@ -46,6 +46,17 @@ return [
             'after_commit' => false,
         ],
 
+        // Lavori lunghi (copia completa, import: App\Modules\Core\Contracts\JobQueues): stessa tabella, ripresi solo dopo
+        // un tempo più lungo del lavoro più lungo (1800 s), cioè quando il lavoratore è morto, mai mentre lavora.
+        'database-long' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'core.jobs'),
+            'queue' => 'long',
+            'retry_after' => (int) env('DB_QUEUE_LONG_RETRY_AFTER', 2100),
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

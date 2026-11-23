@@ -111,21 +111,27 @@ it('con 3 lavoratori: principale, lavori lunghi e posta urgente, ognuno con la s
 
     expect($workers)->toHaveCount(3)
         ->and($long)->not->toBeNull()
-        ->and((string) $long->command)->toContain(' '.JobQueues::LONG_CONNECTION.' ')->toContain('--stop-when-empty')->toContain('--timeout='.JobQueues::LONG_TIMEOUT)
+        ->and((string) $long->command)->toContain('--stop-when-empty')->toContain('--timeout='.JobQueues::LONG_TIMEOUT)
         ->and($long->expression)->toBe('* * * * *')
         // L'esclusione dura più del lavoro più lungo: nessun secondo lavoratore lungo mentre il primo lavora.
         ->and($long->expiresAt * 60)->toBeGreaterThan(JobQueues::LONG_TIMEOUT)
         ->and($workers->map(static fn ($e): string => $e->mutexName())->unique())->toHaveCount(3);
 
-    // I lavoratori brevi fermano un lavoro bloccato prima che la coda lo riprenda.
-    foreach ($workers as $e) {
-        if ($e !== $long) {
-            expect((string) $e->command)->toContain('--timeout='.JobQueues::SHORT_TIMEOUT)->not->toContain(JobQueues::LONG_CONNECTION);
+    // Con le code sul database (il server): il lungo sulla sua connessione, i brevi fermano un lavoro bloccato prima che
+    // la coda lo riprenda.
+    config(['queue.default' => 'database']);
+    foreach (JobQueues::workers(3) as $w) {
+        if (str_contains($w['command'], '--queue='.JobQueues::LONG.' ')) {
+            expect($w['command'])->toStartWith('queue:work '.JobQueues::LONG_CONNECTION.' ')
+                ->and($w['mutex_minutes'] * 60)->toBeGreaterThanOrEqual(config('queue.connections.'.JobQueues::LONG_CONNECTION.'.retry_after'));
+        } else {
+            expect($w['command'])->toContain('--timeout='.JobQueues::SHORT_TIMEOUT)->not->toContain(JobQueues::LONG_CONNECTION);
         }
     }
 });
 
 it('il massimo dei lavoratori si regola: con 2 niente lavoratore a parte per gli urgenti, con 1 uno solo per tutto', function (): void {
+    config(['queue.default' => 'database']);
     expect(JobQueues::workers(2))->toHaveCount(2)
         ->and(array_column(JobQueues::workers(2), 'command'))->each->not->toContain('--queue='.MailQueue::URGENT.' ');
 
