@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Org;
 
 use App\Modules\Core\Contracts\DatabaseNames;
+use App\Modules\Core\Contracts\OrgAccessChanged;
 use App\Modules\Core\Contracts\OrgPurger;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -76,6 +77,7 @@ final readonly class DatabaseOrgPurger implements OrgPurger
             $owner->table('core.orgs')->where('id', $orgId)->update(['status' => 'closed', 'deleted_at' => now()]);
             $owner->table('core.org_keys')->where('org_id', $orgId)->delete();
         });
+        event(new OrgAccessChanged($orgId));
 
         // Per ultimi i file: se il database non si è svuotato, sono ancora tutti lì.
         Storage::disk('org_files')->deleteDirectory($orgId);

@@ -73,6 +73,15 @@ return [
     // 5 minuti e si dimenticano a ogni salvataggio. «file» perché la cache generale dipende proprio da queste impostazioni.
     'platform_settings_cache' => env('SAAS_PLATFORM_SETTINGS_CACHE', 'file'),
 
+    // Cache tra le richieste (H20, Core\Contracts\SharedCache): secondi di validità, 0 = spenta. Il catalogo si dimentica a
+    // ogni pubblicazione; i diritti di un'associazione a ogni scrittura dal portale e a ogni cambio di stato (sospensione).
+    'shared_cache' => [
+        'catalog' => (int) env('SAAS_CACHE_CATALOG_SECONDS', 300),
+        'entitlements' => (int) env('SAAS_CACHE_ENTITLEMENTS_SECONDS', 300),
+        // Stato dell'associazione e sola lettura: al massimo 60 secondi (SharedCache::MAX_SECONDS).
+        'status' => (int) env('SAAS_CACHE_STATUS_SECONDS', 60),
+    ],
+
     // Registro delle query lente (millisecondi; 0 = spento). Scrive solo il testo della query con i segnaposto, mai i valori.
     'slow_query_ms' => (int) env('SAAS_SLOW_QUERY_MS', 200),
 
