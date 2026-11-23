@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Backup\Backups;
 use App\Modules\Backup\Crypto\BackupCipher;
+use App\Modules\Backup\Crypto\BackupEncryptor;
 use App\Modules\Soci\Models\Person;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
@@ -199,4 +200,98 @@ it('tiene 48 ore di dump orari e poi uno al giorno per 30 giorni', function (): 
     // 48 ore: 9 dump (ogni 6 ore, compreso adesso). Prima: il primo dump di ogni giorno, dal 4 ottobre (30 giorni fa,
     // dalle 12) al 2 novembre: 29 giorni.
     expect($left)->toBe(9 + 29)->and($deleted)->toBe(160 - $left);
+});
+
+it('cifra a flusso nello stesso formato: il vecchio lettore apre il file a qualsiasi dimensione e pezzatura', function (int $size, int $feed): void {
+    $pair = sodium_crypto_box_keypair();
+    $plain = random_bytes($size);
+    $meta = ['created_at' => '2026-11-20T10:00:00Z', 'database' => 'shared', 'env' => 'testing'];
+
+    $encryptor = new BackupEncryptor(sodium_crypto_box_publickey($pair), $meta);
+    $bytes = '';
+    foreach ($plain === '' ? [''] : str_split($plain, $feed) as $piece) {
+        $bytes .= $encryptor->write($piece);
+    }
+    $bytes .= $encryptor->finish();
+
+    $in = fopen('php://memory', 'w+b');
+    fwrite($in, $bytes);
+    rewind($in);
+    $out = fopen('php://memory', 'w+b');
+    $opened = BackupCipher::decrypt($in, $out, $pair);
+    rewind($out);
+
+    expect($bytes)->toStartWith("ASBK\x02")
+        ->and($opened['meta'])->toBe($meta)
+        ->and(stream_get_contents($out))->toBe($plain);
+})->with([
+    'vuoto' => [0, 10],
+    'un byte' => [1, 10],
+    'un blocco esatto' => [BackupEncryptor::CHUNK, 4096],
+    'due blocchi esatti' => [BackupEncryptor::CHUNK * 2, 100000],
+    'blocchi e resto' => [BackupEncryptor::CHUNK * 2 + 5, 7777],
+    'pezzi molto piccoli' => [BackupEncryptor::CHUNK + 1000, 13],
+]);
+
+it('un flusso cifrato troncato non si apre', function (): void {
+    $pair = sodium_crypto_box_keypair();
+    $encryptor = new BackupEncryptor(sodium_crypto_box_publickey($pair), []);
+    $bytes = $encryptor->write(random_bytes(BackupEncryptor::CHUNK * 3 + 10));
+
+    $in = fopen('php://memory', 'w+b');
+    fwrite($in, $bytes);
+    rewind($in);
+
+    expect(fn () => BackupCipher::decrypt($in, fopen('php://memory', 'w+b'), $pair))->toThrow(RuntimeException::class);
+});
+
+it('il dump non lascia file in chiaro né cifrati sul disco del server', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    $dir = storage_path('app/tmp');
+    $before = is_dir($dir) ? count(scandir($dir) ?: []) : 0;
+
+    app(Backups::class)->dump('shared', CarbonImmutable::now());
+
+    expect(is_dir($dir) ? count(scandir($dir) ?: []) : 0)->toBe($before);
+});
+
+it('se pg_dump fallisce non resta nessun file nello spazio dei backup', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    config(['saas.backup.pg_dump' => 'false']);
+    $this->app->forgetInstance(Backups::class);
+
+    expect(fn () => app(Backups::class)->dump('shared', CarbonImmutable::now()))->toThrow(RuntimeException::class, 'pg_dump non riuscito')
+        ->and(Storage::disk('backups')->allFiles('testing'))->toBe([]);
+});
+
+it('con le tabelle stimate dalle statistiche la prova di ripristino conta davvero e torna', function (): void {
+    $alfa = $this->createOrg('Polisportiva Alfa');
+    $this->orgContext()->run($alfa->id, function (): void {
+        Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi']);
+        Person::create(['first_name' => 'Maria', 'last_name' => 'Rossi']);
+    });
+    DB::connection('pgsql_owner')->statement('ANALYZE');
+    // Soglia a zero: ogni tabella con statistiche si stima, nessuna si conta (il caso di tabelle molto grandi).
+    config(['saas.backup.exact_rows_below' => 0]);
+    $this->app->forgetInstance(Backups::class);
+
+    $dump = app(Backups::class)->dump('shared', CarbonImmutable::now());
+
+    expect($dump['estimated'])->toContain('app.people')
+        ->and($dump['tables']['app.people'])->toBe(2)
+        ->and(Artisan::call('saas:backup:restore-test'))->toBe(0, Artisan::output());
+});
+
+it('una tabella contata davvero che non torna fa fallire la prova di ripristino', function (): void {
+    $alfa = $this->createOrg('Polisportiva Alfa');
+    $this->orgContext()->run($alfa->id, fn () => Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi']));
+    $backups = app(Backups::class);
+    $path = $backups->dump('shared', CarbonImmutable::now())['path'];
+
+    $disk = Storage::disk('backups');
+    $manifest = json_decode((string) $disk->get($path.'.json'), true);
+    $manifest['tables']['app.people'] = 5;
+    $disk->put($path.'.json', (string) json_encode($manifest));
+
+    expect(fn () => $backups->restoreTest('shared'))->toThrow(RuntimeException::class, 'app.people');
 });
