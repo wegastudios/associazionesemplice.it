@@ -30,6 +30,9 @@ final readonly class ImportJobs
     /** Un lavoro in coda o in corso senza avanzamento da tanto si considera fermo (lavoratore caduto): si può riprendere. */
     public const STALLED_MINUTES = 15;
 
+    /** Oltre questo numero di schede o movimenti, nella riga di registro vanno solo il primo e l'ultimo id. */
+    public const LOG_IDS = 200;
+
     /** Gli import finiti restano a schermo per questo tempo, poi la pagina torna vuota; dopo sette giorni si cancellano. */
     private const SHOWN_MINUTES = 60;
 
@@ -224,6 +227,31 @@ final readonly class ImportJobs
     private static function stalled(Builder $q): Builder
     {
         return $q->whereIn('status', ['queued', 'running'])->where('updated_at', '<', now()->subMinutes(self::STALLED_MINUTES));
+    }
+
+    /**
+     * Gli id da scrivere nella riga di registro dell'import, sotto «{nome}_ids»: tutti fino a LOG_IDS, oltre solo il primo e
+     * l'ultimo (con «{nome}_ids_partial» vero). Il registro non porta mai valori personali: solo identificativi.
+     *
+     * @param  list<string>  $ids
+     * @return array<string, list<string>|bool>
+     */
+    public static function logIds(string $name, array $ids): array
+    {
+        $partial = count($ids) > self::LOG_IDS;
+
+        return [$name.'_ids' => $partial ? [$ids[0], $ids[count($ids) - 1]] : $ids, $name.'_ids_partial' => $partial];
+    }
+
+    /**
+     * L'elenco di stringhe salvato nello stato del lavoro (id creati, id aggiornati).
+     *
+     * @param  array<string, mixed>  $state
+     * @return list<string>
+     */
+    public static function strings(array $state, string $key): array
+    {
+        return is_array($state[$key] ?? null) ? array_values(array_filter($state[$key], 'is_string')) : [];
     }
 
     /**

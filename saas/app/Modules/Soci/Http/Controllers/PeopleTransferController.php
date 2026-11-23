@@ -81,7 +81,7 @@ final readonly class PeopleTransferController
         if ($years['count'] > 0 && ! $request->boolean('confirm_years')) {
             throw ValidationException::withMessages(['file' => "Conferma cosa succede alle tessere con un anno diverso dall'anno fiscale, oppure togli quelle righe."]);
         }
-        $id = $this->import->queue($preview['plan'], $request->boolean('mark_current'), self::userId($request));
+        $id = $this->import->queue($preview['plan'], $request->boolean('mark_current'), self::userId($request), $file->getClientOriginalName());
         if ($id === null) {
             throw ValidationException::withMessages(['file' => 'C\'è già un\'importazione di soci in corso: aspetta che finisca.']);
         }

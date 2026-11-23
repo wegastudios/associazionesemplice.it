@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Contabilita\Import\LedgerImportService;
 use App\Modules\Contabilita\Jobs\RunLedgerImport;
+use App\Modules\Core\Contracts\ImportJobs;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Soci\Contracts\MemberType;
@@ -181,11 +182,22 @@ it('l\'import soci va in coda e avanza a blocchi fino al riepilogo, con lo stess
     $page()->assertInertia(fn (Assert $p) => $p->where('job.status', 'done')->where('job.done', 5)->where('job.result', $direct));
     Queue::assertPushed(RunPeopleImport::class, 3);
 
-    $this->orgContext()->run($orgId, function (): void {
+    $importId = Queue::pushed(RunPeopleImport::class)->last()->importId;
+    $this->orgContext()->run($orgId, function () use ($importId): void {
         expect(Person::query()->count())->toBe(5)
             ->and(DB::table('audit.log')->where('action', 'people.imported')->count())->toBe(1)
             ->and(DB::table('audit.log')->where('action', 'person.created')->count())->toBe(0)
             ->and(Person::query()->where('first_name', 'Gino')->sole()->host_person_id)->toBe(Person::query()->where('card_number', '1')->sole()->id);
+
+        // Da una scheda nata dall'import si risale all'importazione e alla sua riga di registro.
+        $mario = Person::query()->where('card_number', '1')->sole();
+        expect($mario->getAttribute('import_id'))->toBe($importId)->and($mario->toArray())->not->toHaveKey('import_id');
+        $log = DB::table('audit.log')->where('action', 'people.imported')->where('subject_id', $mario->getAttribute('import_id'))->sole();
+        $details = json_decode((string) $log->details, true);
+        expect($log->subject_type)->toBe('app.import_jobs')
+            ->and($details)->toMatchArray(['import_id' => $importId, 'file' => 'soci.csv', 'created' => 5, 'updated' => 0, 'created_ids_partial' => false, 'updated_ids' => []])
+            ->and($details['started_by'])->toBeString()
+            ->and($details['created_ids'])->toHaveCount(5)->toContain($mario->id);
     });
 });
 
@@ -221,10 +233,20 @@ it('l\'import della prima nota va in coda a blocchi, non crea due volte lo stess
     importRunLast(RunLedgerImport::class, $orgId);
     $page()->assertInertia(fn (Assert $p) => $p->where('job.status', 'done')->where('job.done', 5)->where('job.result', $direct));
 
-    $this->orgContext()->run($orgId, function (): void {
+    $importId = Queue::pushed(RunLedgerImport::class)->last()->importId;
+    $this->orgContext()->run($orgId, function () use ($importId): void {
         expect(DB::table('app.accounts')->where('name', 'Banca Prova')->count())->toBe(1)
             ->and(DB::table('app.transactions')->count())->toBe(6)
             ->and(DB::table('audit.log')->where('action', 'ledger.imported')->count())->toBe(1);
+
+        // Da un movimento nato dall'import (anche i due del giroconto) si risale all'importazione e alla riga di registro.
+        expect(DB::table('app.transactions')->where('import_id', $importId)->count())->toBe(6);
+        $movement = DB::table('app.transactions')->where('description', 'Tre')->sole();
+        $log = DB::table('audit.log')->where('action', 'ledger.imported')->where('subject_id', $movement->import_id)->sole();
+        $details = json_decode((string) $log->details, true);
+        expect($details)->toMatchArray(['import_id' => $importId, 'file' => 'pn.csv', 'income' => 2, 'expense' => 2, 'transfer' => 1, 'created_ids_partial' => false])
+            ->and($details['started_by'])->toBeString()
+            ->and($details['created_ids'])->toHaveCount(6)->toContain($movement->id);
     });
 });
 
@@ -260,6 +282,30 @@ it('un import in coda si annulla senza importare niente; partito si porta a term
     importRunLast(RunPeopleImport::class, $orgId);
     $page()->assertInertia(fn (Assert $p) => $p->where('job.status', 'done')->where('job.done', 5)->where('job.result.created', 5)->where('job.result.memberships', 5));
     $this->orgContext()->run($orgId, fn () => expect(Person::query()->count())->toBe(5)->and(DB::table('app.memberships')->count())->toBe(5));
+});
+
+it('la riga di registro dell\'import riassume i campi cambiati per campo, mai i valori (H10)', function (): void {
+    $this->orgContext()->run($this->createOrg('Polisportiva Alfa')->id, function (): void {
+        $mario = Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'email' => 'mario@example.com', 'phone' => '333 1234567']);
+        $s = app(PeopleImportService::class);
+        $csv = "Nome;Cognome;Email;Cellulare;Tessera\nMario;Rossi;mario@example.com;333 9876543;15\nAnna;Verdi;anna@example.com;;\n";
+        $r = $s->apply($s->preview(importTempFile($csv), 'soci.csv', MemberType::Ordinary)['plan'] ?? [], false, 100, 'soci.csv');
+        expect($r)->toMatchArray(['created' => 1, 'updated' => 1, 'failed' => []]);
+
+        $raw = (string) DB::table('audit.log')->where('action', 'people.imported')->value('details');
+        $details = json_decode($raw, true);
+        expect($details['fields'])->toBe(['card_number: 1', 'phone: 1'])
+            ->and($details['updated_ids'])->toBe([$mario->id])
+            ->and($details['created_ids'])->toBe([Person::query()->where('first_name', 'Anna')->sole()->id])
+            ->and($raw)->not->toContain('9876543')->not->toContain('mario@example.com')->not->toContain('Rossi');
+        // Le schede aggiornate non cambiano importazione: solo quelle nate dall'import la portano.
+        expect($mario->refresh()->getAttribute('import_id'))->toBeNull();
+    });
+
+    // Oltre 200 schede o movimenti, nel registro vanno il primo e l'ultimo id.
+    $ids = array_map(static fn (int $i): string => sprintf('00000000-0000-7000-8000-%012d', $i), range(1, ImportJobs::LOG_IDS + 1));
+    expect(ImportJobs::logIds('created', $ids))->toBe(['created_ids' => [$ids[0], $ids[ImportJobs::LOG_IDS]], 'created_ids_partial' => true])
+        ->and(ImportJobs::logIds('created', array_slice($ids, 0, 3)))->toBe(['created_ids' => array_slice($ids, 0, 3), 'created_ids_partial' => false]);
 });
 
 it('un file di 5.000 righe non si importa dentro la richiesta: la richiesta resta breve e il lavoro va a giri brevi (H10, H11)', function (): void {

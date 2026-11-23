@@ -33,8 +33,9 @@ final readonly class PeopleService
     /**
      * @param  array<string, mixed>  $data
      * @param  bool  $limitChecked  il limite del piano l'ha già controllato chi chiama (gli import, con MemberLimit::allowance)
+     * @param  string|null  $importId  l'importazione che crea la scheda (people.import_id): da lì si risale al registro
      */
-    public function create(array $data, bool $limitChecked = false): Person
+    public function create(array $data, bool $limitChecked = false, ?string $importId = null): Person
     {
         $clean = $this->clean($data, null);
         // Oltre il limite del piano (e la tolleranza) non si aggiungono nuovi soci; chi c'è già resta com'è.
@@ -43,6 +44,9 @@ final readonly class PeopleService
             throw new PeopleError([$blocked]);
         }
         $person = new Person($clean);
+        if ($importId !== null) {
+            $person->setAttribute('import_id', $importId);
+        }
 
         return $this->save($person);
     }

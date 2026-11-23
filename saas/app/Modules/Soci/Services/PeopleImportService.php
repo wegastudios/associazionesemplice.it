@@ -13,7 +13,11 @@ use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Import\PeopleFinder;
 use App\Modules\Soci\Import\PeopleSheet;
 use App\Modules\Soci\Models\Person;
+use BackedEnum;
+use DateTimeInterface;
+use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
@@ -30,6 +34,7 @@ use InvalidArgumentException;
  * @phpstan-type Result array{created: int, updated: int, memberships: int, guardians: int, failed: list<string>}
  * @phpstan-type Link array{0: string, 1: string, 2: string}
  * @phpstan-type Item array{pass: int, plan: Plan}
+ * @phpstan-type State array{result: Result, links: list<Link>, file: string, by: string|null, created_ids: list<string>, updated_ids: list<string>, fields: array<string, int>}
  */
 final readonly class PeopleImportService
 {
@@ -48,6 +53,7 @@ final readonly class PeopleImportService
         private MemberLimit $limit,
         private AuditLog $audit,
         private ImportJobs $jobs,
+        private Auth $auth,
     ) {}
 
     /**
@@ -116,9 +122,9 @@ final readonly class PeopleImportService
      *
      * @param  list<Plan>  $plan
      */
-    public function queue(array $plan, bool $markCurrentYear, ?string $userId): ?string
+    public function queue(array $plan, bool $markCurrentYear, ?string $userId, string $fileName): ?string
     {
-        return $this->jobs->create(self::KIND, self::items($plan), ['mark_current' => $markCurrentYear], self::emptyState(), $userId);
+        return $this->jobs->create(self::KIND, self::items($plan), ['mark_current' => $markCurrentYear], self::emptyState($fileName, $userId), $userId);
     }
 
     /**
@@ -153,31 +159,33 @@ final readonly class PeopleImportService
             $id,
             $blockSize,
             $seconds,
-            function (array $items, array $state, array $options) use (&$finder): array {
-                return $this->block($items, $state, ($options['mark_current'] ?? false) === true, $finder);
+            function (array $items, array $state, array $options) use ($id, &$finder): array {
+                return $this->block($items, $state, ($options['mark_current'] ?? false) === true, $finder, $id);
             },
-            fn (array $state): array => $this->finish($state),
+            fn (array $state): array => $this->finish($state, $id),
         );
     }
 
     /**
-     * Applica subito il piano, a blocchi, come il lavoro in coda.
+     * Applica subito il piano, a blocchi, come il lavoro in coda (con un id d'importazione suo, senza lavoro in coda).
      *
      * @param  list<Plan>  $plan
      * @return Result
      */
-    public function apply(array $plan, bool $markCurrentYear, int $blockSize = 100): array
+    public function apply(array $plan, bool $markCurrentYear, int $blockSize = 100, string $fileName = ''): array
     {
         $connection = $this->db->connection($this->context->require()->connection);
-        $state = self::emptyState();
+        $importId = Str::uuid7()->toString();
+        $userId = $this->auth->guard()->id();
+        $state = self::emptyState($fileName, is_string($userId) ? $userId : null);
         $finder = null;
         foreach (array_chunk(self::items($plan), max(1, $blockSize)) as $chunk) {
-            $state = $connection->transaction(function () use ($chunk, $state, $markCurrentYear, &$finder): array {
-                return $this->block($chunk, $state, $markCurrentYear, $finder);
+            $state = $connection->transaction(function () use ($chunk, $state, $markCurrentYear, &$finder, $importId): array {
+                return $this->block($chunk, $state, $markCurrentYear, $finder, $importId);
             });
         }
 
-        return self::result($connection->transaction(fn (): array => $this->finish($state)));
+        return self::result($connection->transaction(fn (): array => $this->finish($state, $importId)));
     }
 
     /**
@@ -199,10 +207,38 @@ final readonly class PeopleImportService
         return [...$byPass[0], ...$byPass[1]];
     }
 
-    /** @return array{result: Result, links: list<Link>} */
-    private static function emptyState(): array
+    /**
+     * Stato del lavoro: l'esito per la pagina, i tutori da collegare alla fine e quello che va nella riga di registro
+     * (nome del file, chi l'ha avviato, id creati e aggiornati, per campo quante schede sono cambiate).
+     *
+     * @return State
+     */
+    private static function emptyState(string $fileName, ?string $userId): array
     {
-        return ['result' => ['created' => 0, 'updated' => 0, 'memberships' => 0, 'guardians' => 0, 'failed' => []], 'links' => []];
+        return ['result' => ['created' => 0, 'updated' => 0, 'memberships' => 0, 'guardians' => 0, 'failed' => []], 'links' => [],
+            'file' => mb_substr($fileName, 0, 200), 'by' => $userId, 'created_ids' => [], 'updated_ids' => [], 'fields' => []];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return State
+     */
+    private static function state(array $state): array
+    {
+        /** @var list<Link> $links */
+        $links = is_array($state['links'] ?? null) ? array_values($state['links']) : [];
+        $fields = [];
+        foreach (is_array($state['fields'] ?? null) ? $state['fields'] : [] as $field => $n) {
+            if (is_string($field) && is_int($n)) {
+                $fields[$field] = $n;
+            }
+        }
+
+        return [
+            'result' => self::result($state), 'links' => $links,
+            'file' => is_string($state['file'] ?? null) ? $state['file'] : '', 'by' => is_string($state['by'] ?? null) ? $state['by'] : null,
+            'created_ids' => ImportJobs::strings($state, 'created_ids'), 'updated_ids' => ImportJobs::strings($state, 'updated_ids'), 'fields' => $fields,
+        ];
     }
 
     /**
@@ -211,14 +247,14 @@ final readonly class PeopleImportService
      *
      * @param  list<mixed>  $items
      * @param  array<string, mixed>  $state
-     * @return array{result: Result, links: list<Link>}
+     * @return State
      */
-    private function block(array $items, array $state, bool $markCurrentYear, ?PeopleFinder &$finder): array
+    private function block(array $items, array $state, bool $markCurrentYear, ?PeopleFinder &$finder, string $importId): array
     {
         /** @var list<Item> $items */
-        $res = self::result($state);
-        /** @var list<Link> $links */
-        $links = is_array($state['links'] ?? null) ? array_values($state['links']) : [];
+        $state = self::state($state);
+        $res = $state['result'];
+        $links = $state['links'];
         $current = $this->memberships->membershipYear();
         $startMonth = $this->memberships->startMonth();
         $allowance = $this->limit->allowance();
@@ -227,7 +263,7 @@ final readonly class PeopleImportService
         $matched = $ids === [] ? [] : Person::query()->whereIn('id', $ids)->get()->keyBy('id')->all();
         $grants = [];
 
-        Person::withoutAudit(function () use ($items, $markCurrentYear, $current, $startMonth, $allowance, $matched, &$left, &$res, &$links, &$grants, &$finder): void {
+        Person::withoutAudit(function () use ($items, $markCurrentYear, $current, $startMonth, $allowance, $matched, $importId, &$left, &$res, &$links, &$grants, &$finder, &$state): void {
             foreach ($items as ['pass' => $pass, 'plan' => $p]) {
                 $r = $p['row'];
                 $where = ($r['sheet'] !== '' ? $r['sheet'].' ' : '').'riga '.$r['line'];
@@ -246,8 +282,9 @@ final readonly class PeopleImportService
                         if ($counts && $left !== null && $left <= 0) {
                             throw new PeopleError([$allowance['message']]);
                         }
-                        $person = $this->people->create($data + ['type' => $p['type']], limitChecked: true);
+                        $person = $this->people->create($data + ['type' => $p['type']], limitChecked: true, importId: $importId);
                         $res['created']++;
+                        $state['created_ids'][] = $person->id;
                     } else {
                         $existing = $matched[(string) $p['matched_id']] ?? throw new PeopleError(['La scheda da aggiornare non c\'è più.']);
                         if ($p['type_given'] && $pass === 0) {
@@ -258,8 +295,16 @@ final readonly class PeopleImportService
                         if ($counts && $left !== null && $left <= 0) {
                             throw new PeopleError([$allowance['message']]);
                         }
+                        // Per il registro: quali campi cambiano davvero (i nomi, mai i valori).
+                        $before = self::values($existing, array_keys($data));
                         $person = $this->people->update($existing, $data, limitChecked: true);
                         $res['updated']++;
+                        $state['updated_ids'][] = $person->id;
+                        foreach (self::values($person, array_keys($data)) as $field => $value) {
+                            if ($value !== $before[$field]) {
+                                $state['fields'][$field] = ($state['fields'][$field] ?? 0) + 1;
+                            }
+                        }
                     }
                     if ($counts && $left !== null) {
                         $left--;
@@ -290,20 +335,41 @@ final readonly class PeopleImportService
         });
         $res['memberships'] += $this->memberships->grantImported($grants);
 
-        return ['result' => $res, 'links' => $links];
+        return ['result' => $res, 'links' => $links] + $state;
+    }
+
+    /**
+     * I valori dei campi indicati, confrontabili con ===: date come testo, tipi enumerati come il loro valore.
+     *
+     * @param  list<string>  $fields
+     * @return array<string, mixed>
+     */
+    private static function values(Person $person, array $fields): array
+    {
+        $out = [];
+        foreach ($fields as $field) {
+            $value = $person->getAttribute($field);
+            $out[$field] = match (true) {
+                $value instanceof DateTimeInterface => $value->format('Y-m-d'),
+                $value instanceof BackedEnum => $value->value,
+                default => $value,
+            };
+        }
+
+        return $out;
     }
 
     /**
      * Alla fine, nella transazione dell'ultimo blocco: i tutori (possono essere nello stesso file) e la riga di registro.
      *
      * @param  array<string, mixed>  $state
-     * @return array{result: Result, links: list<Link>}
+     * @return State
      */
-    private function finish(array $state): array
+    private function finish(array $state, string $importId): array
     {
-        $res = self::result($state);
-        /** @var list<Link> $links */
-        $links = is_array($state['links'] ?? null) ? array_values($state['links']) : [];
+        $state = self::state($state);
+        $res = $state['result'];
+        $links = $state['links'];
         $finder = $links === [] ? null : new PeopleFinder($this->existing());
         foreach ($links as [$personId, $ref, $where]) {
             $guardian = $finder?->find($ref);
@@ -320,12 +386,16 @@ final readonly class PeopleImportService
         }
         // Il giorno in cui si arriva al limite del piano resta ricordato, come quando si ricontava a ogni scheda.
         $this->limit->status();
-        $this->audit->record('people.imported', 'app.people', null, [
+        // Una sola riga per l'import: da una scheda nata dall'import (people.import_id) si arriva qui con l'id dell'importazione.
+        ksort($state['fields']);
+        $this->audit->record('people.imported', 'app.import_jobs', $importId, [
+            'import_id' => $importId, 'file' => $state['file'], 'started_by' => $state['by'],
             'created' => $res['created'], 'updated' => $res['updated'], 'memberships' => $res['memberships'],
             'guardians' => $res['guardians'], 'failed' => count($res['failed']),
-        ]);
+            'fields' => array_map(static fn (string $f, int $n): string => "{$f}: {$n}", array_keys($state['fields']), array_values($state['fields'])),
+        ] + ImportJobs::logIds('created', $state['created_ids']) + ImportJobs::logIds('updated', $state['updated_ids']));
 
-        return ['result' => $res, 'links' => []];
+        return ['result' => $res, 'links' => []] + $state;
     }
 
     /**

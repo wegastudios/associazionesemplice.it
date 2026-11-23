@@ -30,12 +30,16 @@ interface Ledger
      * movimento: la riga riassuntiva la scrive chi importa. Va chiamato dentro la transazione di chi importa.
      *
      * @param  list<Income|Expense>  $entries
+     * @param  string|null  $importId  l'importazione, salvata su ogni movimento (transactions.import_id)
      * @return list<list<string>|LedgerError> per ogni voce, nello stesso ordine: gli id dei movimenti o l'errore
      */
-    public function recordImported(array $entries): array;
+    public function recordImported(array $entries, ?string $importId = null): array;
 
-    /** @return string identificativo del giroconto */
-    public function recordTransfer(string $date, string $fromAccountId, string $toAccountId, int $cents, string $description = ''): string;
+    /**
+     * @param  string|null  $importId  l'importazione che registra il giroconto (transactions.import_id), o null
+     * @return string identificativo del giroconto
+     */
+    public function recordTransfer(string $date, string $fromAccountId, string $toAccountId, int $cents, string $description = '', ?string $importId = null): string;
 
     /** Storna il movimento e il suo gruppo (giroconto, ricevuta). @return int righe stornate */
     public function void(string $transactionId, string $reason): int;

@@ -16,8 +16,10 @@ use App\Modules\Contabilita\Ledger\AccountService;
 use App\Modules\Core\Contracts\ImportJobs;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Documenti\Contracts\SheetReader;
+use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
@@ -32,6 +34,7 @@ use InvalidArgumentException;
  * @phpstan-import-type Plan from LedgerSheet
  *
  * @phpstan-type Result array{income: int, expense: int, transfer: int, accounts: int, failed: list<string>}
+ * @phpstan-type State array{result: Result, accounts: array<string, string>, file: string, by: string|null, created_ids: list<string>}
  */
 final readonly class LedgerImportService
 {
@@ -46,6 +49,7 @@ final readonly class LedgerImportService
         private AccountService $accounts,
         private AuditLog $audit,
         private ImportJobs $jobs,
+        private Auth $auth,
     ) {}
 
     /** @return array{error: string}|array{plan: list<Plan>, summary: array<string, mixed>} */
@@ -99,9 +103,9 @@ final readonly class LedgerImportService
      * @param  bool  $canIncome  chi importa può registrare entrate
      * @param  bool  $canExpense  chi importa può registrare spese
      */
-    public function queue(array $plan, bool $canIncome, bool $canExpense, ?string $userId): ?string
+    public function queue(array $plan, bool $canIncome, bool $canExpense, ?string $userId, string $fileName): ?string
     {
-        return $this->jobs->create(self::KIND, self::items($plan), ['can_income' => $canIncome, 'can_expense' => $canExpense], self::emptyState(), $userId);
+        return $this->jobs->create(self::KIND, self::items($plan), ['can_income' => $canIncome, 'can_expense' => $canExpense], self::emptyState($fileName, $userId), $userId);
     }
 
     /**
@@ -134,8 +138,8 @@ final readonly class LedgerImportService
             $id,
             $blockSize,
             $seconds,
-            fn (array $items, array $state, array $options): array => $this->block($items, $state, ($options['can_income'] ?? false) === true, ($options['can_expense'] ?? false) === true),
-            fn (array $state): array => $this->finish($state),
+            fn (array $items, array $state, array $options): array => $this->block($items, $state, ($options['can_income'] ?? false) === true, ($options['can_expense'] ?? false) === true, $id),
+            fn (array $state): array => $this->finish($state, $id),
         );
     }
 
@@ -147,14 +151,16 @@ final readonly class LedgerImportService
      * @param  bool  $canExpense  chi importa può registrare spese
      * @return Result
      */
-    public function apply(array $plan, bool $canIncome = true, bool $canExpense = true, int $blockSize = 100): array
+    public function apply(array $plan, bool $canIncome = true, bool $canExpense = true, int $blockSize = 100, string $fileName = ''): array
     {
-        $state = self::emptyState();
+        $importId = Str::uuid7()->toString();
+        $userId = $this->auth->guard()->id();
+        $state = self::emptyState($fileName, is_string($userId) ? $userId : null);
         foreach (array_chunk(self::items($plan), max(1, $blockSize)) as $chunk) {
-            $state = $this->connection()->transaction(fn (): array => $this->block($chunk, $state, $canIncome, $canExpense));
+            $state = $this->connection()->transaction(fn (): array => $this->block($chunk, $state, $canIncome, $canExpense, $importId));
         }
 
-        return self::result($this->connection()->transaction(fn (): array => $this->finish($state)));
+        return self::result($this->connection()->transaction(fn (): array => $this->finish($state, $importId)));
     }
 
     /**
@@ -185,26 +191,54 @@ final readonly class LedgerImportService
         return array_values(array_filter($plan, static fn (array $p): bool => $p['data'] !== null && in_array($p['action'], ['create', 'transfer'], true)));
     }
 
-    /** @return array{result: Result, accounts: array<string, string>} */
-    private static function emptyState(): array
+    /**
+     * Stato del lavoro: l'esito per la pagina, i conti nuovi già creati e quello che va nella riga di registro (nome del
+     * file, chi l'ha avviato, id dei movimenti creati).
+     *
+     * @return State
+     */
+    private static function emptyState(string $fileName, ?string $userId): array
     {
-        return ['result' => ['income' => 0, 'expense' => 0, 'transfer' => 0, 'accounts' => 0, 'failed' => []], 'accounts' => []];
+        return ['result' => ['income' => 0, 'expense' => 0, 'transfer' => 0, 'accounts' => 0, 'failed' => []], 'accounts' => [],
+            'file' => mb_substr($fileName, 0, 200), 'by' => $userId, 'created_ids' => []];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return State
+     */
+    private static function state(array $state): array
+    {
+        $accounts = [];
+        foreach (is_array($state['accounts'] ?? null) ? $state['accounts'] : [] as $name => $id) {
+            if (is_string($name) && is_string($id)) {
+                $accounts[$name] = $id;
+            }
+        }
+
+        return [
+            'result' => self::result($state), 'accounts' => $accounts,
+            'file' => is_string($state['file'] ?? null) ? $state['file'] : '', 'by' => is_string($state['by'] ?? null) ? $state['by'] : null,
+            'created_ids' => ImportJobs::strings($state, 'created_ids'),
+        ];
     }
 
     /**
      * Un blocco, dentro la sua transazione: incassi e spese con un solo inserimento (Ledger::recordImported), i giroconti
-     * uno per uno. I conti nuovi creati nei blocchi precedenti si ritrovano nello stato.
+     * uno per uno. I conti nuovi creati nei blocchi precedenti si ritrovano nello stato. Ogni movimento porta l'id
+     * dell'importazione (transactions.import_id).
      *
      * @param  list<mixed>  $items
      * @param  array<string, mixed>  $state
-     * @return array{result: Result, accounts: array<string, string>}
+     * @return State
      */
-    private function block(array $items, array $state, bool $canIncome, bool $canExpense): array
+    private function block(array $items, array $state, bool $canIncome, bool $canExpense, string $importId): array
     {
         /** @var list<Plan> $items */
-        $res = self::result($state);
-        /** @var array<string, string> $created */
-        $created = is_array($state['accounts'] ?? null) ? $state['accounts'] : [];
+        $state = self::state($state);
+        $res = $state['result'];
+        $created = $state['accounts'];
+        $ids = [];
         $account = function (mixed $id, mixed $new, mixed $type) use (&$created, &$res): string {
             if (is_string($id)) {
                 return $id;
@@ -237,9 +271,10 @@ final readonly class LedgerImportService
                 $from = $d['from'] ?? null;
                 $to = $d['to'] ?? null;
                 if ($p['action'] === 'transfer' && is_array($from) && is_array($to)) {
-                    $this->ledger->recordTransfer($date, $account($from['id'] ?? null, $from['new'] ?? null, $from['type'] ?? null),
-                        $account($to['id'] ?? null, $to['new'] ?? null, $to['type'] ?? null), $cents, (string) $str($d['description'] ?? null));
+                    $transfer = $this->ledger->recordTransfer($date, $account($from['id'] ?? null, $from['new'] ?? null, $from['type'] ?? null),
+                        $account($to['id'] ?? null, $to['new'] ?? null, $to['type'] ?? null), $cents, (string) $str($d['description'] ?? null), $importId);
                     $res['transfer']++;
+                    $ids[$i] = array_values(array_filter($this->connection()->table('app.transactions')->where('transfer_id', $transfer)->orderBy('type')->pluck('id')->all(), 'is_string'));
 
                     continue;
                 }
@@ -254,34 +289,40 @@ final readonly class LedgerImportService
             }
         }
 
-        $outcomes = $this->ledger->recordImported(array_values(array_map(static fn (array $e): Income|Expense => $e[1], $entries)));
+        $outcomes = $this->ledger->recordImported(array_values(array_map(static fn (array $e): Income|Expense => $e[1], $entries)), $importId);
         foreach (array_keys($entries) as $n => $i) {
             $outcome = $outcomes[$n] ?? null;
             if ($outcome instanceof LedgerError) {
                 $failed[$i] = $entries[$i][0].': '.$outcome->getMessage();
-            } else {
+            } elseif ($outcome !== null) {
                 $res[$entries[$i][1] instanceof Income ? 'income' : 'expense']++;
+                $ids[$i] = $outcome;
             }
         }
-        // Gli errori nell'ordine delle righe del file, come quando si registrava una riga alla volta.
+        // Errori e id nell'ordine delle righe del file, come quando si registrava una riga alla volta.
         ksort($failed);
         array_push($res['failed'], ...array_values($failed));
+        ksort($ids);
+        array_push($state['created_ids'], ...array_merge(...array_values($ids)));
 
-        return ['result' => $res, 'accounts' => $created];
+        return ['result' => $res, 'accounts' => $created] + $state;
     }
 
     /**
      * Alla fine, nella transazione dell'ultimo blocco: la sola riga di registro dell'import.
      *
      * @param  array<string, mixed>  $state
-     * @return array<string, mixed>
+     * @return State
      */
-    private function finish(array $state): array
+    private function finish(array $state, string $importId): array
     {
-        $res = self::result($state);
-        $this->audit->record('ledger.imported', 'app.transactions', null, [
+        $state = self::state($state);
+        $res = $state['result'];
+        // Una sola riga per l'import: da un movimento nato dall'import (transactions.import_id) si arriva qui con l'id.
+        $this->audit->record('ledger.imported', 'app.import_jobs', $importId, [
+            'import_id' => $importId, 'file' => $state['file'], 'started_by' => $state['by'],
             'income' => $res['income'], 'expense' => $res['expense'], 'transfer' => $res['transfer'], 'accounts' => $res['accounts'], 'failed' => count($res['failed']),
-        ]);
+        ] + ImportJobs::logIds('created', $state['created_ids']));
 
         return $state;
     }

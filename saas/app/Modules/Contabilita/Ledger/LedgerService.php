@@ -204,7 +204,7 @@ final readonly class LedgerService implements Ledger
         });
     }
 
-    public function recordImported(array $entries): array
+    public function recordImported(array $entries, ?string $importId = null): array
     {
         $known = $this->known($entries);
         $years = [];
@@ -216,11 +216,11 @@ final readonly class LedgerService implements Ledger
                 if ($entry instanceof Income) {
                     [$method, $lines] = $this->checkIncome($entry, $known);
                     $year = self::year($years[$entry->date] ??= $this->yearOrError($entry->date));
-                    $rows[$i] = array_map(fn (IncomeLine $line): array => $this->incomeRow($entry, $line, $method, $year, null) + ['vat_reverse_charge' => false], $lines);
+                    $rows[$i] = array_map(fn (IncomeLine $line): array => $this->incomeRow($entry, $line, $method, $year, null) + ['vat_reverse_charge' => false, 'import_id' => $importId], $lines);
                 } else {
                     $method = $this->checkExpense($entry, $known);
                     $year = self::year($years[$entry->date] ??= $this->yearOrError($entry->date));
-                    $rows[$i] = [$this->expenseRow($entry, $method, $year) + ['receipt_id' => null, 'competence_month' => null]];
+                    $rows[$i] = [$this->expenseRow($entry, $method, $year) + ['receipt_id' => null, 'competence_month' => null, 'import_id' => $importId]];
                 }
             } catch (LedgerError $e) {
                 $out[$i] = $e;
@@ -421,7 +421,7 @@ final readonly class LedgerService implements Ledger
         return $known;
     }
 
-    public function recordTransfer(string $date, string $fromAccountId, string $toAccountId, int $cents, string $description = ''): string
+    public function recordTransfer(string $date, string $fromAccountId, string $toAccountId, int $cents, string $description = '', ?string $importId = null): string
     {
         if ($fromAccountId === $toAccountId) {
             throw new LedgerError('Scegli due conti diversi.');
@@ -436,7 +436,7 @@ final readonly class LedgerService implements Ledger
             throw new LedgerError('Manca la voce «Rettifica di cassa», usata per i giroconti.');
         }
 
-        return $this->transaction(function () use ($date, $fromAccountId, $toAccountId, $cents, $description, $out, $in, $category): string {
+        return $this->transaction(function () use ($date, $fromAccountId, $toAccountId, $cents, $description, $out, $in, $category, $importId): string {
             $year = $this->years->yearFor($date);
             $transfer = Str::uuid7()->toString();
             foreach ([[TxType::TransferOut, $fromAccountId, $out], [TxType::TransferIn, $toAccountId, $in]] as [$type, $account, $method]) {
@@ -450,7 +450,7 @@ final readonly class LedgerService implements Ledger
                     'category_id' => $category,
                     'transfer_id' => $transfer,
                     'description' => self::text($description, 255),
-                ]);
+                ] + ($importId !== null ? ['import_id' => $importId] : []));
             }
             $this->audit->record('ledger.transfer', 'app.transactions', null, ['cents' => $cents]);
 

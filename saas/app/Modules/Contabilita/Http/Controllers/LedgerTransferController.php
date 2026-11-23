@@ -56,7 +56,7 @@ final readonly class LedgerTransferController
         if ($request->boolean('apply')) {
             $user = $request->user();
             $userId = $user?->getAuthIdentifier();
-            $id = $this->import->queue($preview['plan'], $user?->can('accounting.income') ?? false, $user?->can('accounting.expense') ?? false, is_string($userId) ? $userId : null);
+            $id = $this->import->queue($preview['plan'], $user?->can('accounting.income') ?? false, $user?->can('accounting.expense') ?? false, is_string($userId) ? $userId : null, $file->getClientOriginalName());
             if ($id === null) {
                 throw ValidationException::withMessages(['file' => 'C\'è già un\'importazione della prima nota in corso: aspetta che finisca.']);
             }
