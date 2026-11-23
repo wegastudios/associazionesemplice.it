@@ -25,7 +25,10 @@ function sqlOf(Closure $request): array
     return $sql;
 }
 
-it('misura le istruzioni di una pagina del gestionale', function (string $url): void {
+// Misurato in CI prima di H17: 17 istruzioni sul cruscotto, 11 sull'elenco soci (di cui 3 azzeramenti di app.org_id e
+// 3 letture dei diritti). Nei test la connessione resta dentro una transazione, quindi gli azzeramenti restano: il
+// risparmio sulle connessioni pulite si vede solo sul server. Qui i numeri fanno da tetto.
+it('misura le istruzioni di una pagina del gestionale', function (string $url, int $limit): void {
     $org = $this->createOrg('Polisportiva Alfa');
     $user = $this->createUser('own@example.com', twoFactor: true);
     $this->addOperator($org, $user, OrgRole::Owner);
@@ -34,8 +37,8 @@ it('misura le istruzioni di una pagina del gestionale', function (string $url): 
     $this->get($url)->assertOk(); // la prima richiesta riempie le cache di processo
     $sql = sqlOf(fn () => $this->get($url)->assertOk());
 
-    expect(count($sql))->toBeLessThanOrEqual(0, count($sql)." istruzioni:\n".implode("\n", $sql));
-})->with(['/gestionale', '/gestionale/soci']);
+    expect(count($sql))->toBeLessThanOrEqual($limit, count($sql)." istruzioni:\n".implode("\n", $sql));
+})->with([['/gestionale', 17], ['/gestionale/soci', 11]]);
 
 it('legge le impostazioni della piattaforma dal database una volta sola e le rilegge dopo un salvataggio', function (): void {
     $reads = static fn (array $sql): int => count(array_filter($sql, static fn (string $s): bool => str_contains($s, 'platform_settings') && str_starts_with(ltrim($s), 'select')));

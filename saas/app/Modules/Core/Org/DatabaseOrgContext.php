@@ -83,7 +83,7 @@ final class DatabaseOrgContext implements OrgContext
         foreach (array_keys($this->db->getConnections()) as $name) {
             $connection = $this->db->connection($name);
             $pdo = $connection->getRawPdo();
-            if (! $pdo instanceof PDO || ! isset($this->entered[$pdo]) || $connection->getDriverName() !== 'pgsql') {
+            if (! $pdo instanceof PDO || ! isset($this->entered[$pdo])) {
                 continue;
             }
             try {
