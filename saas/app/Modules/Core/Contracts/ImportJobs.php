@@ -52,9 +52,8 @@ final readonly class ImportJobs
     public function create(string $kind, array $items, array $options, array $state, ?string $userId): ?string
     {
         $c = $this->connection();
-        // Pulizia senza cron: via quelli finiti da più di sette giorni e fermi quelli abbandonati da un lavoratore caduto.
-        $c->table('app.import_jobs')->where('kind', $kind)->whereIn('status', ['done', 'cancelled', 'failed'])
-            ->where('updated_at', '<', now()->subDays(self::KEEP_DAYS))->delete();
+        $this->prune($kind);
+        // Fermi quelli abbandonati da un lavoratore caduto: si possono riprendere, e non bloccano il nuovo.
         $c->table('app.import_jobs')->where('kind', $kind)->whereIn('status', ['queued', 'running'])
             ->where('updated_at', '<', now()->subMinutes(self::STALLED_MINUTES))->update(['status' => 'failed', 'updated_at' => now()]);
 
@@ -167,6 +166,7 @@ final readonly class ImportJobs
      */
     public function current(string $kind): ?array
     {
+        $this->prune($kind);
         $row = $this->connection()->table('app.import_jobs')->where('kind', $kind)->orderByDesc('created_at')
             ->selectRaw("id, status, total, done, state_enc, coalesce(finished_at < now() - make_interval(mins => ?), false) AS old,
                 status IN ('queued', 'running') AND updated_at < now() - make_interval(mins => ?) AS stalled", [self::SHOWN_MINUTES, self::STALLED_MINUTES])
@@ -211,6 +211,16 @@ final readonly class ImportJobs
                 $guard->forgetUser();
             }
         }
+    }
+
+    /**
+     * Pulizia senza cron, a ogni import nuovo e a ogni apertura della pagina: via gli import fermi o finiti da più di sette
+     * giorni, con l'elenco cifrato che contengono.
+     */
+    private function prune(string $kind): void
+    {
+        $this->connection()->table('app.import_jobs')->where('kind', $kind)->whereIn('status', ['done', 'cancelled', 'failed'])
+            ->where('updated_at', '<', now()->subDays(self::KEEP_DAYS))->delete();
     }
 
     private function seal(string $id, string $field, mixed $value): string

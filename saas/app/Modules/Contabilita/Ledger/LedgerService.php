@@ -9,6 +9,7 @@ use App\Modules\Contabilita\Contracts\AccountType;
 use App\Modules\Contabilita\Contracts\CategoryKind;
 use App\Modules\Contabilita\Contracts\Expense;
 use App\Modules\Contabilita\Contracts\Income;
+use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
@@ -228,11 +229,12 @@ final readonly class LedgerService implements Ledger
         if ($rows !== []) {
             $ids = [];
             $all = [];
+            $who = ['org_id' => $this->orgId(), 'created_by' => $this->userId()];
             foreach ($rows as $i => $list) {
                 foreach ($list as $row) {
                     $id = Str::uuid7()->toString();
                     $ids[$i][] = $id;
-                    $all[] = ['org_id' => $this->orgId(), 'id' => $id, 'created_by' => $this->userId()] + $row;
+                    $all[] = $who + ['id' => $id] + $row;
                 }
             }
             try {
