@@ -23,7 +23,7 @@ tracked associazionesemplice "$out/free"
 tracked associazionesemplice-pro "$out/pro"
 mkdir -p "$out/pro/associazionesemplice-pro/includes"
 # ASEM_WPORG=1: pacchetto per WordPress.org, senza l'aggiornatore dal portale (lì aggiorna WordPress.org)
-[ "${ASEM_WPORG:-}" = "1" ] && rm -f "$out/free/associazionesemplice/includes/Updater.php"
+[ "${ASEM_WPORG:-}" = "1" ] && rm -f "$out/free/associazionesemplice/includes/Updater.php" "$out/free/associazionesemplice/includes/UpdaterBoot.php"
 # Pacchetto del portale (senza ASEM_WPORG): è l'unico che contatta il portale, quindi solo il suo readme.txt lo dichiara in «External services»
 # (testo in readme-portale.txt, fuori dal plugin). Il readme di WordPress.org resta quello del plugin: dice che non si contatta niente per impostazione predefinita.
 if [ "${ASEM_WPORG:-}" != "1" ]; then

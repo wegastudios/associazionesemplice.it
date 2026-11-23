@@ -9,13 +9,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ProSchema {
 
-	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '20'; // dalla 20 il pagamento online tiene il rimborso in corso o non confermato (refund_pending_cents, refund_pending_at); dalla 19 i PDF delle ricevute portano la versione della cifratura (pdf_enc_ver, void_pdf_enc_ver); dalla 18 certificati medici e rimborsi hanno l'impronta del file e la versione della cifratura (file_sha256, enc_ver) e medico e nome del file stanno cifrati (colonne di testo lungo); dalla 17 il PDF della ricevuta si fissa in un file della cartella privata, con la sua impronta (pdf_*, void_pdf_*); dalla 16 il pagamento online conserva il rimborso fatto dal gateway (refunded_cents, refund_id, refunded_at); dalla 15 la ricevuta sostitutiva (replaces_id); dalla 14 il rendiconto chiuso è fotografato (statement_snapshot); dalla 13 la ricevuta emessa conserva i suoi dati (data, content_hash) e l'eventuale annullo (voided_*)
-
-	public static function register(): void {
-		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
-		add_action( 'plugins_loaded', array( __CLASS__, 'maybe_upgrade' ), 12 ); // dopo Install::maybe_upgrade() del gratuito (priorità 10)
-	}
+	const VERSION_OPTION = 'asem_pro_db_version'; // uguale a ProBoot::SCHEMA_OPTION
+	const VERSION        = '20'; // si cambia insieme a ProBoot::SCHEMA_VERSION (che si confronta a ogni richiesta senza caricare questa classe; una prova controlla che siano uguali); dalla 20 il pagamento online tiene il rimborso in corso o non confermato (refund_pending_cents, refund_pending_at); dalla 19 i PDF delle ricevute portano la versione della cifratura (pdf_enc_ver, void_pdf_enc_ver); dalla 18 certificati medici e rimborsi hanno l'impronta del file e la versione della cifratura (file_sha256, enc_ver) e medico e nome del file stanno cifrati (colonne di testo lungo); dalla 17 il PDF della ricevuta si fissa in un file della cartella privata, con la sua impronta (pdf_*, void_pdf_*); dalla 16 il pagamento online conserva il rimborso fatto dal gateway (refunded_cents, refund_id, refunded_at); dalla 15 la ricevuta sostitutiva (replaces_id); dalla 14 il rendiconto chiuso è fotografato (statement_snapshot); dalla 13 la ricevuta emessa conserva i suoi dati (data, content_hash) e l'eventuale annullo (voided_*)
 
 	/** Se lo schema del Pro è cambiato (o è la prima volta) ricrea le tabelle mancanti. */
 	public static function maybe_upgrade(): void {

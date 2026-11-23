@@ -26,7 +26,7 @@ final class ReceiptFiles {
 	const SUBDIR   = 'receipts';
 	const BATCH    = 100;
 	const CRON     = 'asem_receipt_pdfs_batch';
-	const FLAG     = 'asem_receipt_pdfs_backfill'; // assente = da fare, started = in corso, done = finito
+	const FLAG     = 'asem_receipt_pdfs_backfill'; // uguale a ProBoot::RECEIPT_BACKFILL_OPTION // assente = da fare, started = in corso, done = finito
 	const MAX_SIZE = 10485760; // 10 MB: una ricevuta pesa pochi KB, oltre non è un nostro PDF
 	const ENC_OVERHEAD = 1048576; // il file cifrato pesa poco più dell'originale (29 byte di intestazione e 17 per ogni blocco da 64 KiB)
 
@@ -39,15 +39,7 @@ final class ReceiptFiles {
 	/** Condizione SQL: ricevute emesse prima che si salvassero i dati (senza fotografia e senza PDF), non annullate. */
 	const NODATA_SQL = "( data IS NULL OR data = '' ) AND pdf_path IS NULL AND voided_at IS NULL";
 
-	public static function register(): void {
-		add_action( 'asem_year_closed', array( __CLASS__, 'on_year_closed' ) );
-		add_action( 'plugins_loaded', array( __CLASS__, 'maybe_backfill' ), 20 ); // dopo l'aggiornamento dello schema (priorità 12)
-		add_action( self::CRON, array( __CLASS__, 'cron_batch' ), 10, 2 );
-		add_filter( 'asem_file_sources', array( __CLASS__, 'file_sources' ) ); // i PDF si cifrano come gli altri file riservati
-		add_filter( 'asem_backup_documents', array( __CLASS__, 'backup_documents' ) );
-		add_filter( 'asem_backup_restore_documents', array( __CLASS__, 'restore_documents' ), 10, 4 );
-		add_action( 'asem_reset_private_files', array( __CLASS__, 'delete_all' ) );
-	}
+	// Gli hook di questa classe li registra ProBoot::receipt_files() con il nome della classe: il file si legge solo quando servono.
 
 	private static function db(): \wpdb {
 		return Db::db();

@@ -13,10 +13,6 @@ final class PayReturn {
 
 	const PARAMS = array( 'asem_pay', 'asem_ret', 'token', 'PayerID', 'paymentId', 'asemf_ok', 'asemf_err', 'asemf_sig' );
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
-	}
-
 	public static function handle(): void {
 		if ( ! isset( $_GET['asem_pay'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return;

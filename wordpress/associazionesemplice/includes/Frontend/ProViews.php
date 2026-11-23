@@ -85,6 +85,7 @@ final class ProViews {
 
 	/** Avvio delle parti del sito delle funzioni aggiuntive. */
 	public static function front_init(): void {
+		$links = method_exists( Front::class, 'link_handlers' ); // il gratuito smista lui i link con un parametro (filtro asem_front_links): le classi si caricano solo con il loro parametro
 		if ( Edition::has( 'resources' ) ) {
 			ResourcesFront::register();
 			ResourcesGate::register();
@@ -93,8 +94,19 @@ final class ProViews {
 			CreditsFront::register();
 		}
 		if ( Edition::installed( 'payments' ) ) {
-			PayReturn::register();
+			if ( $links ) {
+				add_filter( 'asem_front_links', array( __CLASS__, 'links' ) );
+			} else {
+				add_action( 'template_redirect', array( PayReturn::class, 'handle' ), 1 ); // gratuito di una versione precedente
+			}
 		}
+	}
+
+	/** Pagine delle funzioni aggiuntive che rispondono a un parametro dell'indirizzo (vedi Front::LINKS): il ritorno dal pagamento online. */
+	public static function links( $links ): array {
+		$links             = (array) $links;
+		$links['asem_pay'] = array( PayReturn::class, 'handle' );
+		return $links;
 	}
 
 	/** Viste (shortcode, blocchi, widget) disponibili con le funzioni presenti. */

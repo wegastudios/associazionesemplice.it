@@ -28,10 +28,6 @@ final class MemberLoginPage {
 	const BLOCKED = 'Troppi tentativi da questa connessione. Aspetta un\'ora e riprova, oppure chiedi aiuto alla segreteria.';
 	const NOT_FROM_PAGE = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
-	}
-
 	public static function url(): string {
 		return add_query_arg( 'asem_member_login', '1', home_url( '/' ) );
 	}
