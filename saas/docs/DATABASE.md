@@ -252,6 +252,13 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   (solo `core`) e `Database/Migrations/Org` (tutti i database); dettagli in [SVILUPPO.md](SVILUPPO.md).
 - Modifiche in due tempi: prima si **aggiunge** il nuovo, poi si **toglie** il vecchio. Nessun fermo durante gli
   aggiornamenti.
+- **Autovacuum per tabella** (`Core/Database/Migrations/*/2027_01_10_*_autovacuum_per_table.php`): le tabelle piccole
+  aggiornate di continuo (testa del registro, saldi, contatori, sessioni dei soci; nel condiviso sessioni, coda e cache)
+  si puliscono dopo 100 righe morte più l'1%, senza pause; quelle solo in aggiunta (prima nota, ricevute, consensi,
+  registri di sicurezza) dopo 1000 righe nuove più il 5%, congelando subito le righe. Una tabella nuova di uno dei due
+  tipi si aggiunge a quelle liste in una migrazione nuova. `ALTER TABLE ... SET (autovacuum_...)` prende solo un blocco
+  SHARE UPDATE EXCLUSIVE: letture, scritture e dump passano. La tabella partizionata del registro non accetta questi
+  parametri: restano quelli di fabbrica sulle partizioni.
 - **Dump orario** per database, cifrato prima di uscire dal server con la chiave pubblica dei backup, su uno spazio
   esterno in UE. Prova di ripristino ogni settimana sullo staging ([RILASCIO.md](RILASCIO.md) §3).
 
