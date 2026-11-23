@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.23 – 2026-11-23
+- Ottimizzazione: le stesse migliorie di velocità anche per risorse e prenotazioni; aggiornamento del database a tappe.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.22 – 2026-11-21
 - Sicurezza: ogni socio può avere al massimo 10 prenotazioni di risorse ancora da usare (il numero si cambia in Limiti e soglie), con limiti di frequenza su prenotazioni, lista d'attesa, annullamenti, ricevute e rendiconti.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
