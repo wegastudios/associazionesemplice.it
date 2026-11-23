@@ -12,6 +12,10 @@ return [
         // Elenco dei database dedicati (pacchetto Database dedicato), fuori dal repository e dalla cartella
         // pubblica. Formato in App\Modules\Core\Database\DatabaseRegistry.
         'dedicated_file' => env('SAAS_DEDICATED_DB_FILE'),
+
+        // Attesa massima di un blocco forte (migrazioni, partizioni, potatura), poi si riprova: tre tentativi in tutto
+        // (App\Modules\Core\Contracts\ShortLocks). Dietro un'istruzione in fila si fermano tutte le query sulla tabella.
+        'lock_timeout' => env('SAAS_DB_LOCK_TIMEOUT', '3s'),
     ],
 
     'auth' => [
@@ -65,6 +69,10 @@ return [
     // Indirizzi da cui fidarsi degli X-Forwarded-* (il proxy del portale), separati da virgole; vuoto = nessuno.
     'trusted_proxies' => env('SAAS_TRUSTED_PROXIES', ''),
 
+    // Impostazioni della piattaforma lette all'avvio (PlatformConfig): si tengono, ancora cifrate, in questa cache per
+    // 5 minuti e si dimenticano a ogni salvataggio. «file» perché la cache generale dipende proprio da queste impostazioni.
+    'platform_settings_cache' => env('SAAS_PLATFORM_SETTINGS_CACHE', 'file'),
+
     // Registro delle query lente (millisecondi; 0 = spento). Scrive solo il testo della query con i segnaposto, mai i valori.
     'slow_query_ms' => (int) env('SAAS_SLOW_QUERY_MS', 200),
 
@@ -92,6 +100,12 @@ return [
     // persona. L'anticipo massimo è solo quello indicato dalla risorsa (a zero: nessun limite).
     'resources' => [
         'member_max_active' => (int) env('SAAS_MEMBER_MAX_ACTIVE_BOOKINGS', 10),
+    ],
+
+    // Code: quanti lavoratori il cron tiene accesi insieme oltre a quello della posta urgente, che c'è sempre (1-2; il server
+    // ha 25 processi PHP in tutto, condivisi con il web). 2 = lavori brevi e lavori lunghi; 1 = uno per entrambi.
+    'queue' => [
+        'max_workers' => (int) env('SAAS_QUEUE_MAX_WORKERS', 2),
     ],
 
     // Promemoria delle scadenze: vanno in coda come posta massiva, un'email per lavoro (tetti in mail_queue). In più, un

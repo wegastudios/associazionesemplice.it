@@ -234,15 +234,23 @@ class LedgerService {
 		if ( RequestMemo::has( 'ledger_deltas', $key ) ) { // la somma su tutta la storia dei movimenti si fa una volta per richiesta e data (si svuota da sola a ogni scrittura sui movimenti)
 			return (array) RequestMemo::get( 'ledger_deltas', $key );
 		}
-		$sql = "SELECT account_id, SUM(CASE WHEN type IN ('income','transfer_in') THEN amount_cents ELSE -amount_cents END) AS delta "
-			. 'FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL';
-		if ( null !== $up_to ) {
-			$sql = $this->db()->prepare( $sql . ' AND tx_date <= %s', $up_to );
-		}
-		$out = array();
-		foreach ( $this->db()->get_results( $sql . ' GROUP BY account_id', ARRAY_A ) ?: array() as $r ) {
-			$out[ (int) $r['account_id'] ] = (int) $r['delta'];
-		}
+		$db  = $this->db();
+		$out = SharedMemo::remember( // con una cache degli oggetti persistente la somma vale anche per le richieste dopo, finché nessuno scrive un movimento
+			'ledger_deltas',
+			$key,
+			static function () use ( $db, $up_to ): array {
+				$sql = "SELECT account_id, SUM(CASE WHEN type IN ('income','transfer_in') THEN amount_cents ELSE -amount_cents END) AS delta "
+					. 'FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL';
+				if ( null !== $up_to ) {
+					$sql = $db->prepare( $sql . ' AND tx_date <= %s', $up_to );
+				}
+				$out = array();
+				foreach ( $db->get_results( $sql . ' GROUP BY account_id', ARRAY_A ) ?: array() as $r ) {
+					$out[ (int) $r['account_id'] ] = (int) $r['delta'];
+				}
+				return $out;
+			}
+		);
 		return (array) RequestMemo::put( 'ledger_deltas', $key, $out, array( Db::t( 'transactions' ) ) );
 	}
 

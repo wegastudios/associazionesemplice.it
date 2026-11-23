@@ -83,7 +83,7 @@ asem_ok( ! $lj_cron() && ! $lj_lockrow() && 0 === $GLOBALS['asem_lj_cleaned'], '
 $lj_st = LongJob::run( $lj_key, INF );
 asem_ok( 'finished' === $lj_st['status'] && 25 === $GLOBALS['asem_lj_calls'], 'lavori lunghi: un lavoro finito non rifà nulla' );
 $lj_panel = LongJob::panel( $lj_key );
-asem_ok( false !== strpos( $lj_panel, 'data-asem-running="0"' ) && false === strpos( $lj_panel, 'asem-longjob-cancel' ) && false !== strpos( $lj_panel, 'Lavoro finito.' ), 'lavori lunghi: a lavoro finito il pannello non ha più «Annulla»' );
+asem_ok( false !== strpos( $lj_panel, 'data-asem-running="0"' ) && false === strpos( $lj_panel, 'asem-longjob-cancel' ) && false !== strpos( $lj_panel, 'Operazione completata.' ), 'lavori lunghi: a lavoro finito il pannello non ha più «Annulla»' );
 
 // ---------- Annullamento ----------
 LongJob::start( $lj_key, array() ); // un lavoro concluso si può riavviare

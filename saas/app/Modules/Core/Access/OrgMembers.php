@@ -7,10 +7,12 @@ namespace App\Modules\Core\Access;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Auth\InvitationNotification;
 use App\Modules\Core\Contracts\Ability;
+use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OperatorLimitReached;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Core\Contracts\QueuedMail;
 use App\Modules\Core\Models\Org;
 use App\Modules\Core\Models\User;
 use App\Modules\Portale\Contracts\Entitlements;
@@ -85,7 +87,10 @@ final readonly class OrgMembers
             );
 
             $this->audit($org, 'operator.invited', $user->id, ['role' => $role->value, 'new_user' => $isNew] + ($customRoleId === null ? [] : ['custom_role_id' => $customRoleId]));
-            $user->notify(new InvitationNotification($org->name, $isNew ? $this->passwords->createToken($user) : null));
+            // Subito se c'è quota, altrimenti in coda (cifrato) finché il link per la password vale.
+            $token = $isNew ? $this->passwords->createToken($user) : null;
+            MailQueue::sendNowOrQueue(QueuedMail::notification($user, new InvitationNotification($org->name, $token), MailQueue::URGENT,
+                $token === null ? now()->addHours(MailQueue::BULK_RETRY_HOURS) : now()->addMinutes(User::resetLinkMinutes())));
 
             return $user;
         });

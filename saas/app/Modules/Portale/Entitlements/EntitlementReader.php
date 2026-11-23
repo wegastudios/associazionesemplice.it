@@ -35,26 +35,40 @@ final class EntitlementReader implements Entitlements
      */
     public function readOnly(string $orgId): bool
     {
-        return $this->readOnly[$orgId] ??= $this->db->connection('pgsql')->table('core.orgs as o')
-            ->join('core.org_entitlements as e', 'e.org_id', '=', 'o.id')
-            ->where('o.id', $orgId)->where('o.status', 'suspended')->where('e.status', 'trial')
-            ->exists();
+        if (! isset($this->readOnly[$orgId])) {
+            $this->load($orgId);
+        }
+
+        return $this->readOnly[$orgId] ?? false;
     }
 
     public function for(string $orgId): OrgEntitlements
     {
-        if (isset($this->loaded[$orgId])) {
-            return $this->loaded[$orgId];
-        }
+        return $this->loaded[$orgId] ?? $this->load($orgId);
+    }
 
-        $row = $this->db->connection('pgsql')->table('core.org_entitlements')->where('org_id', $orgId)->first(['claims']);
-        if ($row === null || ! is_string($row->claims)) {
-            return OrgEntitlements::none();
-        }
+    /**
+     * Diritti e sola lettura con una sola istruzione (H17): ogni pagina del gestionale chiede entrambi. Senza diritti
+     * salvati la risposta vuota non si ricorda, come prima: chi li scrive subito dopo li ritrova.
+     */
+    private function load(string $orgId): OrgEntitlements
+    {
+        $row = $this->db->connection('pgsql')->table('core.org_entitlements as e')
+            ->leftJoin('core.orgs as o', 'o.id', '=', 'e.org_id')
+            ->where('e.org_id', $orgId)
+            ->first(['e.claims', 'e.status', 'o.status as org_status']);
 
-        $decoded = json_decode($row->claims, true, 16, JSON_THROW_ON_ERROR);
+        $this->readOnly[$orgId] = $row !== null && $row->org_status === 'suspended' && $row->status === 'trial';
+        $parsed = $row !== null && is_string($row->claims) ? self::parse($row->claims) : null;
+
+        return $parsed === null ? OrgEntitlements::none() : $this->loaded[$orgId] = $parsed;
+    }
+
+    private static function parse(string $claims): ?OrgEntitlements
+    {
+        $decoded = json_decode($claims, true, 16, JSON_THROW_ON_ERROR);
         if (! is_array($decoded)) {
-            return OrgEntitlements::none();
+            return null;
         }
         /** @var array<string, mixed> $decoded */
         $c = ClaimsValidator::entitlements($decoded);
@@ -62,7 +76,7 @@ final class EntitlementReader implements Entitlements
         $plan = is_string($subscription['plan'] ?? null) ? $subscription['plan'] : null;
         $planVersion = is_int($subscription['plan_version'] ?? null) ? $subscription['plan_version'] : null;
 
-        return $this->loaded[$orgId] = new OrgEntitlements(
+        return new OrgEntitlements(
             $c['rev'],
             $c['status'],
             CarbonImmutable::parse($c['until']),

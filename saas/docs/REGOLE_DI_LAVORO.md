@@ -42,6 +42,20 @@ indicare chi vende (per esempio sulle fatture). Colori, logo e carattere sono in
 - Importi in centesimi interi. Istanti in `timestamptz`, date contabili in `date`.
 - Ogni modifica dello schema passa da una migrazione, in due tempi: prima si aggiunge il nuovo, poi si toglie il vecchio.
 - Migrazioni su tabelle grandi (registro delle azioni, movimenti, soci): gli indici si creano con `CREATE INDEX CONCURRENTLY` in una migrazione senza transazione (`$withinTransaction = false`), mai durante il dump orario né negli orari dei backup; prima si prova il tempo su una copia con dati veri.
+- Migrazioni che riscrivono dati esistenti (cifrare una colonna, ricalcolare un valore, spostare dati da una colonna a
+  un'altra): mai riga per riga dentro la migrazione. La migrazione tiene il blocco della tabella per tutta la sua
+  transazione, e mentre PHP lavora riga per riga si fermano tutte le richieste che la toccano. Si fa in tre tempi:
+  1. la migrazione **aggiunge** la colonna nuova, che può essere vuota (`ADD COLUMN` senza valore predefinito calcolato:
+     un istante);
+  2. un **comando a blocchi** la riempie: poche centinaia di righe per transazione, una associazione alla volta, con
+     `app.org_id` impostato e senza togliere la RLS; si può interrompere e riprendere, salta le righe già fatte; il
+     codice nuovo scrive già la colonna nuova, così il comando ha un lavoro che finisce;
+  3. in una migrazione di un **rilascio successivo**, dopo aver controllato che non restano righe vuote, si aggiunge il
+     vincolo (`NOT NULL` passando da un `CHECK ... NOT VALID` e `VALIDATE CONSTRAINT`, che non ferma le scritture) e si
+     toglie la colonna vecchia.
+
+  Esempio di cosa non rifare: `Soci/Database/Migrations/Org/2026_12_22_000100_encrypt_member_book_snapshots.php`, che
+  cifra le fotografie una per una dentro la migrazione, con la tabella bloccata.
 - I moduli comunicano solo dalle interfacce pubbliche (namespace `Contracts` di ogni modulo; c'è il test).
 - Ogni richiesta e ogni lavoro in coda impostano `app.org_id`.
 

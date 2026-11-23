@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi|misure|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi|misure|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
 #
 # Il log del workflow è pubblico: dettagli di configurazione su file in shared/ (600), nel log solo esiti, conteggi e percorso.
 # Azioni fisse e limitate (non è una shell remota):
@@ -281,6 +281,18 @@ case "$ACTION" in
     # Sola lettura: verifica la catena del registro delle azioni di tutte le associazioni e stampa l'esito (nessun dato personale).
     cd "$BASE/current"
     "$PHP" artisan saas:audit:verify --full || true
+    ;;
+  indici-registro)
+    # Sola lettura, con il ruolo dei backup: letture di ogni indice del registro delle azioni, sommate sulle partizioni,
+    # per ogni database, con la data dell'ultimo azzeramento delle statistiche (H28: conferma che log_org_subject non
+    # lo legge nessuno prima di toglierlo). I nomi dei database vanno su file; nel log solo l'esito.
+    cd "$BASE/current"
+    F="$(newfile indici-registro)"; rc=0
+    "$PHP" artisan saas:audit:index-usage > "$F" 2>&1 || rc=$?
+    prune_files indici-registro
+    [ "$rc" -eq 0 ] && echo "Indici del registro: letti su tutti i database." || echo "Indici del registro: ERRORE su qualche database."
+    echo "Letture per indice: uscita salvata in $F"
+    exit "$rc"
     ;;
   formato-dry-run)
     # Sola lettura: prova del passaggio dei campi cifrati al formato legato alla riga (0x02). Non scrive nulla e stampa
