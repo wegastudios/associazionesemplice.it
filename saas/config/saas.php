@@ -98,6 +98,12 @@ return [
         'member_max_active' => (int) env('SAAS_MEMBER_MAX_ACTIVE_BOOKINGS', 10),
     ],
 
+    // Code: quanti lavoratori il cron tiene accesi insieme oltre a quello della posta urgente, che c'è sempre (1-2; il server
+    // ha 25 processi PHP in tutto, condivisi con il web). 2 = lavori brevi e lavori lunghi; 1 = uno per entrambi.
+    'queue' => [
+        'max_workers' => (int) env('SAAS_QUEUE_MAX_WORKERS', 2),
+    ],
+
     // Promemoria delle scadenze: vanno in coda come posta massiva, un'email per lavoro (tetti in mail_queue). In più, un
     // massimo di email al minuto per ogni associazione (oltre, il lavoro riparte più tardi).
     'reminders' => [
