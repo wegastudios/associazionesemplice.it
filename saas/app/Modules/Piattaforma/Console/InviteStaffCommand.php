@@ -58,7 +58,7 @@ final class InviteStaffCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info($now ? "Invito mandato a {$to}." : "Invito in coda per {$to}: la posta in uscita è in pausa o al limite dell'ora, parte da solo appena possibile.");
+        $this->info($now ? "Invito mandato a {$to}." : "L'invito per {$to} partirà appena possibile: la posta in uscita è in pausa o ha raggiunto il limite dell'ora.");
 
         return self::SUCCESS;
     }

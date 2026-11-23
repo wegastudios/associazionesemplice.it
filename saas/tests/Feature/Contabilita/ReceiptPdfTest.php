@@ -82,7 +82,7 @@ it('intesta la ricevuta del minore al genitore, con la nota sulla detrazione', f
     Queue::fake();
     RateLimiter::increment('mail-all|'.MailQueue::mailer().'|3600', 3600, 10_000);
     $this->post("/gestionale/ricevute/{$receiptId}/invia")->assertSessionHas('status',
-        'Ricevuta n. 1/'.now()->format('Y').' in coda: la posta in uscita è in pausa o ha raggiunto il limite dell\'ora, parte da sola appena possibile a anna@example.com.');
+        'La ricevuta n. 1/'.now()->format('Y').' partirà per anna@example.com appena possibile: la posta in uscita è in pausa o ha raggiunto il limite dell\'ora.');
     Mail::assertSentCount(1);
     Queue::assertPushedOn(MailQueue::URGENT, SendReceiptMail::class, fn (SendReceiptMail $job): bool => $job->receiptId === $receiptId && $job->orgId === $this->org->id);
     Queue::pushed(SendReceiptMail::class)->first()->handle(app(OrgContext::class));

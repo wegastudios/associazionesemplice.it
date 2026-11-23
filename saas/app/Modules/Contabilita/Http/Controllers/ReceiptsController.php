@@ -65,6 +65,6 @@ final readonly class ReceiptsController
             return back()->with('status', 'Ricevuta n. '.$r['number'].' mandata a '.$to.'.');
         }
 
-        return back()->with('status', 'Ricevuta n. '.$r['number'].' in coda: la posta in uscita è in pausa o ha raggiunto il limite dell\'ora, parte da sola appena possibile a '.$to.'.');
+        return back()->with('status', 'La ricevuta n. '.$r['number'].' partirà per '.$to.' appena possibile: la posta in uscita è in pausa o ha raggiunto il limite dell\'ora.');
     }
 }
