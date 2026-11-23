@@ -97,13 +97,14 @@ const showAccount = ref(false);
                 <button type="button" class="btn btn-primary btn-block" @click="showNew = true"><Plus class="size-5" aria-hidden="true" />Nuovo</button>
             </div>
             <nav class="flex-1 overflow-y-auto px-3 pb-4" aria-label="Sezioni">
-                <Link href="/gestionale" class="mb-1 flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold hover:bg-surface"
+                <!-- prefetch: la pagina si chiede al server quando il mouse si ferma sulla voce (app.js svuota la copia a ogni cambio di pagina). -->
+                <Link href="/gestionale" prefetch class="mb-1 flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold hover:bg-surface"
                     :class="current('/gestionale') ? 'bg-info-soft text-info-ink' : 'text-ink'" :aria-current="current('/gestionale') ? 'page' : undefined">
                     <House class="size-5" aria-hidden="true" />Home
                 </Link>
                 <div v-for="g in visibleGroups" :key="g.label" class="mt-3">
                     <p class="px-3 pb-1 text-[13px] font-semibold text-muted">{{ g.label }}</p>
-                    <component :is="i.external ? 'a' : Link" v-for="i in g.items" :key="i.href" :href="i.href" class="flex min-h-10 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold hover:bg-surface"
+                    <component :is="i.external ? 'a' : Link" v-for="i in g.items" :key="i.href" :href="i.href" v-bind="i.external ? {} : { prefetch: true }" class="flex min-h-10 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold hover:bg-surface"
                         :class="current(i.href) ? 'bg-info-soft text-info-ink' : 'text-ink'" :aria-current="current(i.href) ? 'page' : undefined">
                         <component :is="i.icon" class="size-5" aria-hidden="true" />{{ i.label }}
                     </component>

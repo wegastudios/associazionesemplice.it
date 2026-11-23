@@ -42,8 +42,14 @@ final readonly class LedgerController
 
     public function index(Request $request): Response
     {
-        $years = $this->years->all();
-        $year = $request->integer('anno', $years[0]['year'] ?? (int) now()->format('Y'));
+        // I filtri (PrimaNota.vue) ricaricano solo year, account, activity, rows, next e prev, e mandano sempre l'anno:
+        // quello che non dipende dal filtro è una funzione, calcolata solo al caricamento intero della pagina.
+        $yearList = null;
+        /** @return list<array{year: int, starts_on: string, ends_on: string, status: string}> */
+        $years = function () use (&$yearList): array {
+            return $yearList ??= $this->years->all();
+        };
+        $year = $request->has('anno') ? $request->integer('anno') : ($years()[0]['year'] ?? (int) now()->format('Y'));
         $account = $request->string('conto')->toString();
 
         $query = Transaction::query()->where('fiscal_year', $year)
@@ -69,12 +75,12 @@ final readonly class LedgerController
             'years' => $years,
             'account' => $account,
             'activity' => $activity,
-            'activities' => $this->activities->options(),
-            'accounts' => $accounts->map(fn (Account $a): array => ['id' => $a->id, 'name' => $a->name, 'open' => $a->closed_at === null])->values(),
-            'categories' => $categories->map(fn (Category $c): array => [
+            'activities' => fn (): array => $this->activities->options(),
+            'accounts' => fn (): array => $accounts->map(fn (Account $a): array => ['id' => $a->id, 'name' => $a->name, 'open' => $a->closed_at === null])->values()->all(),
+            'categories' => fn (): array => $categories->map(fn (Category $c): array => [
                 'id' => $c->id, 'name' => $c->name, 'income' => $c->kind->isIncome(), 'expense' => $c->kind->isExpense(), 'adjustment' => $c->kind->value === 'adjustment',
-            ])->values(),
-            'methods' => array_map(static fn (PaymentMethod $m): array => ['value' => $m->value, 'label' => $m->label()], PaymentMethod::cases()),
+            ])->values()->all(),
+            'methods' => fn (): array => array_map(static fn (PaymentMethod $m): array => ['value' => $m->value, 'label' => $m->label()], PaymentMethod::cases()),
             'rows' => collect($page->items())->map(fn (Transaction $t): array => [
                 'id' => $t->id,
                 'date' => $t->tx_date->format('d/m/Y'),
@@ -97,10 +103,10 @@ final readonly class LedgerController
             'next' => $page->nextPageUrl(),
             'prev' => $page->previousPageUrl(),
             // Saldi solo a chi può vedere fondi e conti.
-            'balances' => ($request->user()?->can('accounting.funds') ?? false) ? collect($this->ledger->balances())->map(fn (int $c): string => Money::format($c)) : null,
+            'balances' => fn (): ?array => ($request->user()?->can('accounting.funds') ?? false) ? collect($this->ledger->balances())->map(fn (int $c): string => Money::format($c))->all() : null,
             'canEdit' => $request->user()?->can('accounting.edit') ?? false,
             // Aliquote scelte in Aspetto fiscale: senza partita IVA non c'è nessuna scelta.
-            'fiscal' => ['hasVat' => $this->fiscal->hasVat(), 'includesVat' => $this->fiscal->includesVat(), 'rates' => $this->fiscal->rates()],
+            'fiscal' => fn (): array => ['hasVat' => $this->fiscal->hasVat(), 'includesVat' => $this->fiscal->includesVat(), 'rates' => $this->fiscal->rates()],
         ]);
     }
 

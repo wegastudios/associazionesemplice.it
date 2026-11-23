@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Deferred, Head, Link } from '@inertiajs/vue3';
 import AppLayout from '../layouts/AppLayout.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
 import { CalendarDays, Check, ChevronRight, CircleAlert, Info, Landmark, TriangleAlert } from '../components/ui/icons.js';
@@ -9,7 +9,7 @@ defineProps({
     todo: { type: Array, default: () => [] },
     today: { type: Array, default: () => [] },
     stats: { type: Array, default: () => [] },
-    peopleCount: { type: Number, required: true },
+    peopleCount: { type: Number, default: 0 },
     setupPending: { type: Boolean, default: false },
     canSetup: { type: Boolean, default: false },
 });
@@ -35,6 +35,20 @@ const dateLabel = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'nume
             <Link href="/gestionale/configurazione" class="btn btn-primary w-full sm:w-auto">Apri la configurazione</Link>
         </section>
 
+        <!-- Riquadri e contatori arrivano subito dopo la pagina (DashboardController, gruppo «cruscotto»). -->
+        <Deferred :data="['todo', 'today', 'stats', 'peopleCount']">
+        <template #fallback>
+            <div class="grid gap-6 lg:grid-cols-5" aria-busy="true">
+                <div class="space-y-6 lg:col-span-3">
+                    <div class="card h-40 animate-pulse bg-surface" />
+                    <div class="card h-28 animate-pulse bg-surface" />
+                </div>
+                <div class="space-y-6 lg:col-span-2">
+                    <div class="card h-28 animate-pulse bg-surface" />
+                    <div class="card h-16 animate-pulse bg-surface" />
+                </div>
+            </div>
+        </template>
         <div class="grid gap-6 lg:grid-cols-5">
             <div class="space-y-6 lg:col-span-3">
                 <section aria-labelledby="todo-title">
@@ -103,5 +117,6 @@ const dateLabel = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'nume
                 </p>
             </div>
         </div>
+        </Deferred>
     </AppLayout>
 </template>
