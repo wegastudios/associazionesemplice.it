@@ -312,9 +312,56 @@ it('con le tabelle stimate dalle statistiche la prova di ripristino conta davver
 
     $dump = app(Backups::class)->dump('shared', CarbonImmutable::now());
 
-    expect($dump['estimated'])->toContain('app.people')
+    $manifest = json_decode((string) Storage::disk('backups')->get($dump['path'].'.json'), true);
+
+    expect($manifest['estimated'])->toContain('app.people')
+        ->and($manifest['estimated'])->toBe($dump['estimated'])
+        ->and($dump['estimated'])->toContain('app.people')
         ->and($dump['tables']['app.people'])->toBe(2)
         ->and(Artisan::call('saas:backup:restore-test'))->toBe(0, Artisan::output());
+});
+
+it('la descrizione accanto al dump dice la compressione usata e ha sempre «estimated», vuoto se tutto è contato', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+
+    $path = app(Backups::class)->dump('shared', CarbonImmutable::now())['path'];
+    $manifest = json_decode((string) Storage::disk('backups')->get($path.'.json'), true);
+
+    expect($manifest)->toHaveKeys(['compression', 'compression_fallback', 'estimated'])
+        ->and($manifest['compression'])->toBe('zstd:3')
+        ->and($manifest['compression_fallback'])->toBeFalse()
+        ->and($manifest['estimated'])->toBe([]);
+});
+
+it('con pg_dump senza zstd la descrizione segna gzip:6 e il ripiego, e il ripristino torna', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    $fake = (string) tempnam(sys_get_temp_dir(), 'pgdump');
+    // La prova a vuoto (porta 1) risponde «senza zstd»; il dump vero passa al pg_dump vero.
+    file_put_contents($fake, "#!/bin/sh\ncase \"\$*\" in *--port=1*) echo 'pg_dump: error: this build does not support compression with ZSTD' >&2; exit 1;; esac\nexec pg_dump \"\$@\"\n");
+    chmod($fake, 0755);
+    config(['saas.backup.pg_dump' => $fake]);
+    $this->app->forgetInstance(Backups::class);
+
+    $path = app(Backups::class)->dump('shared', CarbonImmutable::now())['path'];
+    $manifest = json_decode((string) Storage::disk('backups')->get($path.'.json'), true);
+
+    expect($manifest['compression'])->toBe('gzip:6')
+        ->and($manifest['compression_fallback'])->toBeTrue()
+        ->and(Artisan::call('saas:backup:restore-test'))->toBe(0, Artisan::output());
+    unlink($fake);
+});
+
+it('la prova di ripristino legge ancora le descrizioni vecchie, senza compressione né «estimated»', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    $backups = app(Backups::class);
+    $path = $backups->dump('shared', CarbonImmutable::now())['path'];
+
+    $disk = Storage::disk('backups');
+    $manifest = json_decode((string) $disk->get($path.'.json'), true);
+    unset($manifest['compression'], $manifest['compression_fallback'], $manifest['estimated']);
+    $disk->put($path.'.json', (string) json_encode($manifest));
+
+    expect(Artisan::call('saas:backup:restore-test'))->toBe(0, Artisan::output());
 });
 
 it('una tabella contata davvero che non torna fa fallire la prova di ripristino', function (): void {
