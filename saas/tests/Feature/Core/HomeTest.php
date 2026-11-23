@@ -86,8 +86,8 @@ it('conta i soci senza tessera valida: sospesi sì, usciti, ospiti e fondatori n
     $op = $this->createUser('seg@example.com', twoFactor: true);
     $this->addOperator($this->org, $op, OrgRole::Operator);
 
-    $this->actingAs($op)->get('/gestionale')->assertInertia(fn (Assert $page) => $page
-        ->where('todo', fn ($todo) => collect($todo)->pluck('title')->contains('2 soci senza tessera valida')));
+    $this->actingAs($op)->get('/gestionale')->assertInertia(fn (Assert $page) => $page->loadDeferredProps('cruscotto', fn (Assert $reload) => $reload
+        ->where('todo', fn ($todo) => collect($todo)->pluck('title')->contains('2 soci senza tessera valida'))));
 });
 
 it('mostra a ciascuno solo quello che può vedere', function (): void {
