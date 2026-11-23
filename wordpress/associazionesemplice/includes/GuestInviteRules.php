@@ -29,15 +29,21 @@ final class GuestInviteRules {
 		if ( ! $is_guest ) {
 			return array();
 		}
+		$at_limit = $limit > 0 && $total >= $limit;
+		$event    = trim( $event );
+		// Chi lo ospita ce l'hanno tutti gli ospiti: da solo non è un motivo, resta come informazione accanto a un motivo vero.
+		if ( ! $at_limit && '' === $event ) {
+			return array();
+		}
 		$out = array();
-		if ( $limit > 0 && $total >= $limit ) {
+		if ( $at_limit ) {
 			$out[] = array( 'code' => 'threshold', 'n' => $total );
 		}
 		if ( '' !== trim( $host ) ) {
 			$out[] = array( 'code' => 'host', 'who' => trim( $host ) );
 		}
-		if ( '' !== trim( $event ) ) {
-			$out[] = array( 'code' => 'event', 'name' => trim( $event ) );
+		if ( '' !== $event ) {
+			$out[] = array( 'code' => 'event', 'name' => $event );
 		}
 		return $out;
 	}
@@ -53,9 +59,9 @@ final class GuestInviteRules {
 		return false === $pos ? array( $message, '' ) : array( substr( $message, 0, $pos ), substr( $message, $pos + strlen( self::SEP ) ) );
 	}
 
-	/** Codice stabile dell'avviso per una persona a una data: lo stesso ingresso non crea due voci. */
-	public static function notice_id( int $person_id, int $session_id ): string {
-		return substr( md5( 'invite|' . $person_id . '|' . $session_id ), 0, 12 );
+	/** Codice stabile dell'avviso di una persona: una sola voce per ospite finché non è «Fatto». */
+	public static function notice_id( int $person_id ): string {
+		return substr( md5( 'invite|' . $person_id ), 0, 12 );
 	}
 
 	/**
