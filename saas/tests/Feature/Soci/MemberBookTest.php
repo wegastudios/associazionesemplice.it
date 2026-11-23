@@ -136,6 +136,25 @@ it('fotografa il libro alla chiusura dell\'esercizio e non lo cambia più, nemme
     });
 });
 
+it('le pagine lette dal database danno le stesse righe del libro intero, con ogni filtro', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        for ($i = 0; $i < 7; $i++) {
+            Person::create(['first_name' => 'Nome'.$i, 'last_name' => 'Cognome'.$i, 'joined_on' => '2019-0'.($i % 3 + 1).'-01']);
+        }
+        $book = app(MemberBookService::class);
+        foreach (['', MemberBookService::IN_FORCE, MemberBookService::LEFT] as $filter) {
+            $all = $book->rows($filter);
+            $first = $book->page($filter, 1, 3);
+            $paged = $first['rows'];
+            for ($p = 2; $p <= $first['pages']; $p++) {
+                $paged = [...$paged, ...$book->page($filter, $p, 3)['rows']];
+            }
+            expect($paged)->toBe($all)->and($first['total'])->toBe(count($all))
+                ->and($book->page($filter, 99, 3)['page'])->toBe($first['pages']);
+        }
+    });
+});
+
 it('a video il libro va a pagine da 100 righe con il totale vero; stampa e CSV restano interi', function (): void {
     $op = $this->createUser('seg@example.com', twoFactor: true);
     $this->addOperator($this->org, $op, OrgRole::Operator);

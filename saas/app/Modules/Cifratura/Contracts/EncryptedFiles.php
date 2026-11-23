@@ -32,6 +32,12 @@ interface EncryptedFiles
 
     public function delete(string $orgId, StoredFile $file): void;
 
-    /** Spazio occupato sul disco dai file cifrati dell'associazione, in byte. */
+    /**
+     * Spazio occupato sul disco dai file cifrati dell'associazione, in byte, compresa la copia di sicurezza completa
+     * finché resta scaricabile. Viene da un contatore: senza contatore si riconta dal disco.
+     */
     public function usedBytes(string $orgId): int;
+
+    /** Riconta lo spazio dal disco e riallinea il contatore (ogni notte, saas:files:usage). */
+    public function recountUsedBytes(string $orgId): int;
 }

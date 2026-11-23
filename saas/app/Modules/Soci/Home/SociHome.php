@@ -42,8 +42,9 @@ final readonly class SociHome implements HomeWidget
             $out[] = HomeItem::todo($expiring === 1 ? '1 certificato medico in scadenza' : $expiring.' certificati medici in scadenza', '/gestionale/certificati?stato=expiring', 'warn', null, 30);
         }
 
-        $ids = Person::query()->whereIn('type', ['ordinary', 'volunteer'])->whereNull('left_on')->whereNull('anonymized_at')->pluck('id')->all();
-        $withoutCard = count($ids) - count($this->memberships->activeAmong(array_values(array_filter($ids, is_string(...)))));
+        // Un conteggio solo, con le tessere valide in sottoquery: gli id non passano da PHP.
+        $withoutCard = Person::query()->whereIn('type', ['ordinary', 'volunteer'])->whereNull('left_on')->whereNull('anonymized_at')
+            ->whereNotIn('id', $this->memberships->activeSubquery())->count();
         if ($withoutCard > 0) {
             $out[] = HomeItem::todo($withoutCard === 1 ? '1 socio senza tessera valida' : $withoutCard.' soci senza tessera valida', '/gestionale/soci', 'info', 'Anno fiscale '.$this->memberships->membershipYearLabel(), 40);
         }

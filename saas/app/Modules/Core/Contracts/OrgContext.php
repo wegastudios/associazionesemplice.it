@@ -13,7 +13,7 @@ interface OrgContext
     /** Imposta l'associazione sulla sua connessione. Va chiamato all'inizio di ogni richiesta e lavoro in coda. */
     public function enter(string $orgId): CurrentOrg;
 
-    /** Azzera `app.org_id` su ogni connessione usata, anche se non era impostato. */
+    /** Azzera `app.org_id` su ogni connessione su cui è stato impostato; quelle appena aperte sono già vuote. */
     public function leave(): void;
 
     public function current(): ?CurrentOrg;
