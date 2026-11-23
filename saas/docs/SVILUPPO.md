@@ -207,7 +207,16 @@ operatori e nessun pacchetto finché non ne ricevono.
   (`;`, `,` o tabulazione, UTF-8 o Windows-1252), al massimo 5 MB e 5000 righe. Prima l'anteprima, poi lo stesso file
   si applica: chi c'è già si riconosce per tessera, email, cellulare, codice fiscale o nome e si aggiorna con i soli
   dati presenti; le colonne con un anno diventano tessere senza incasso («Importata da file»); tutori e ospitanti
-  si cercano anche nel file. Una riga rifiutata non ferma le altre. Nel registro `people.imported`.
+  si cercano anche nel file. Una riga rifiutata non ferma le altre. Nel registro una sola riga `people.imported`.
+- Import in coda (H10, H11; `Core\Contracts\ImportJobs`, tabella `app.import_jobs`): la conferma salva il piano
+  dell'anteprima cifrato e mette in coda `RunPeopleImport` o `RunLedgerImport`. Il lavoro applica blocchi di
+  `saas.imports.block` righe (una transazione ciascuno, con il punto raggiunto salvato nella stessa transazione) per
+  `saas.imports.seconds_per_run` secondi, poi si rimette in coda. La pagina mostra in coda / in corso (righe su totale) /
+  completata / interrotta; si annulla solo prima che parta, si riprende dal punto salvato. Un solo import attivo per tipo.
+  Registro (condizioni di Audit, 23/11): una riga `people.imported` / `ledger.imported` con soggetto l'importazione
+  (`app.import_jobs`, id), nome del file, chi l'ha avviata, conteggi, id creati e aggiornati (oltre 200: primo e ultimo)
+  e, per le schede aggiornate, quante per campo cambiato (mai i valori). Schede e movimenti creati portano `import_id`
+  (nullo per il resto; nascosto nei modelli, fuori da esportazioni e PDF, che elencano le colonne).
 - Export (`PeopleExportService`, permesso `people.export`, non per il commercialista): CSV per Excel con le colonne
   che l'import riconosce, celle che sembrano formule precedute da un apostrofo; nel registro `export.done`.
 - Libro soci (`MemberBookService`, `/gestionale/soci/libro`): soci (non ospiti né genitori) in ordine di ingresso, con

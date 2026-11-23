@@ -30,28 +30,38 @@ final readonly class PeopleService
 
     public function __construct(private MemberLimit $limit) {}
 
-    /** @param  array<string, mixed>  $data */
-    public function create(array $data): Person
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  bool  $limitChecked  il limite del piano l'ha già controllato chi chiama (gli import, con MemberLimit::allowance)
+     * @param  string|null  $importId  l'importazione che crea la scheda (people.import_id): da lì si risale al registro
+     */
+    public function create(array $data, bool $limitChecked = false, ?string $importId = null): Person
     {
         $clean = $this->clean($data, null);
         // Oltre il limite del piano (e la tolleranza) non si aggiungono nuovi soci; chi c'è già resta com'è.
         $type = MemberType::tryFrom(is_string($clean['type'] ?? null) ? $clean['type'] : '');
-        if ($type?->isMember() === true && ($blocked = $this->limit->blockMessage()) !== null) {
+        if (! $limitChecked && $type?->isMember() === true && ($blocked = $this->limit->blockMessage()) !== null) {
             throw new PeopleError([$blocked]);
         }
         $person = new Person($clean);
+        if ($importId !== null) {
+            $person->setAttribute('import_id', $importId);
+        }
 
         return $this->save($person);
     }
 
-    /** @param  array<string, mixed>  $data */
-    public function update(string $id, array $data): Person
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  bool  $limitChecked  come in create()
+     */
+    public function update(string|Person $person, array $data, bool $limitChecked = false): Person
     {
-        $person = Person::query()->findOrFail($id);
+        $person = $person instanceof Person ? $person : Person::query()->findOrFail($person);
         $clean = $this->clean($data, $person);
         // Passare da non socio a socio conta nel limite del piano come un nuovo socio: stesso blocco di create().
         $type = MemberType::tryFrom(is_string($clean['type'] ?? null) ? $clean['type'] : '');
-        if ($type?->isMember() === true && ! $person->type->isMember() && ($blocked = $this->limit->blockMessage()) !== null) {
+        if (! $limitChecked && $type?->isMember() === true && ! $person->type->isMember() && ($blocked = $this->limit->blockMessage()) !== null) {
             throw new PeopleError([$blocked]);
         }
         $person->fill($clean);

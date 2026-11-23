@@ -89,3 +89,78 @@ it('blocca anche il passaggio da non socio a socio oltre il limite, ma non le al
     ($this->limit)(100);
     expect(app(PeopleService::class)->update($guardian->id, ['type' => 'ordinary'])->type->value)->toBe('ordinary');
 });
+
+/*
+ * allowance() (gli import contano in memoria) e status() (le schede a mano) applicano le stesse regole: sugli stessi casi,
+ * allowance() dice quanti nuovi soci si possono aggiungere, e aggiungendone esattamente tanti status() passa a «bloccato»
+ * con lo stesso messaggio, non prima.
+ */
+function memberLimitSameAnswer(object $test): void
+{
+    (function (): void {
+        $limit = app(MemberLimit::class);
+        $a = $limit->allowance();
+        $s = $limit->status();
+        if ($s['limit'] === null) {
+            expect($a['left'])->toBeNull()->and($s['state'])->toBe('none');
+
+            return;
+        }
+        expect($a['left'] === 0)->toBe($s['state'] === 'blocked', 'allowance e status non concordano sul blocco');
+        for ($i = 0; $i < (int) $a['left']; $i++) {
+            expect($limit->status()['state'])->not->toBe('blocked', "bloccato dopo {$i} soci, allowance ne ammetteva {$a['left']}");
+            ($this->add)(1);
+        }
+        expect($limit->status()['state'])->toBe('blocked', "dopo {$a['left']} soci status non blocca")
+            ->and($limit->status()['message'])->toBe($a['message']);
+    })->call($test);
+}
+
+it('allowance e status concordano: piano senza limite', function (): void {
+    ($this->limit)(null);
+    ($this->add)(3);
+    memberLimitSameAnswer($this);
+});
+
+it('allowance e status concordano: sotto il limite, con genitori e tutori che non contano', function (): void {
+    ($this->limit)(10);
+    ($this->add)(5);
+    ($this->add)(4, 'guardian');
+    expect(app(MemberLimit::class)->allowance()['left'])->toBe(6);
+    memberLimitSameAnswer($this);
+});
+
+it('allowance e status concordano: al limite, nella tolleranza', function (): void {
+    ($this->limit)(10);
+    ($this->add)(10);
+    expect(app(MemberLimit::class)->allowance()['left'])->toBe(1);
+    memberLimitSameAnswer($this);
+});
+
+it('allowance e status concordano: oltre la tolleranza', function (): void {
+    ($this->limit)(10);
+    ($this->add)(11);
+    expect(app(MemberLimit::class)->allowance()['left'])->toBe(0);
+    memberLimitSameAnswer($this);
+});
+
+it('allowance e status concordano: al limite con i giorni di tolleranza passati', function (): void {
+    ($this->limit)(10);
+    ($this->add)(10);
+    app(MemberLimit::class)->status(); // ricorda il giorno in cui si è arrivati al limite
+    $this->travelTo(CarbonImmutable::today()->addDays(16));
+    expect(app(MemberLimit::class)->allowance()['left'])->toBe(0);
+    memberLimitSameAnswer($this);
+});
+
+it('allowance e status concordano: gli ospiti dell\'anno oltre la quota libera contano come soci', function (): void {
+    ($this->limit)(10);
+    ($this->add)(8);
+    $host = (string) Person::query()->value('id');
+    for ($i = 0; $i < 3; $i++) {
+        app(PeopleService::class)->create(['first_name' => 'Ospite'.$i, 'last_name' => 'Prova', 'type' => 'guest', 'host_person_id' => $host, 'phone' => '333 123456'.$i]);
+    }
+    // 8 soci e 3 ospiti, uno libero (10%): ne contano 10; con un socio in più si arriva alla tolleranza.
+    expect(app(MemberLimit::class)->status()['count'])->toBe(10)->and(app(MemberLimit::class)->allowance()['left'])->toBe(1);
+    memberLimitSameAnswer($this);
+});
