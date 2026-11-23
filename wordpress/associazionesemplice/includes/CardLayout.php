@@ -266,7 +266,7 @@ final class CardLayout {
 			}
 			if ( $m ) {
 				$box = $l['qr']['size'] / 100 * $w;
-				// una piccola immagine a un bit, con la zona bianca di 4 moduli intorno come sullo schermo
+				// vettoriale, con la zona bianca di 4 moduli intorno come sullo schermo
 				$pdf->qr( $m, $x0 + $l['qr']['x'] / 100 * $w, $y0 + $l['qr']['y'] / 100 * $h, $box, 4 );
 			}
 		}

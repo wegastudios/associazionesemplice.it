@@ -89,3 +89,22 @@ jobs:
           path: schermate/
           retention-days: 14
           if-no-files-found: warn
+
+      # Il QR della tessera (immagine a 1 bit nel PDF, SVG nell'area soci) deve restare leggibile da un telefono: lo rileggiamo con zbarimg a due
+      # risoluzioni e confrontiamo il contenuto con l'indirizzo atteso. Gira dopo le schermate, così un QR illeggibile non le ferma.
+      - name: QR della tessera leggibile (PDF a 150 e 300 dpi, SVG)
+        if: always()
+        shell: bash
+        working-directory: wordpress/dist
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils zbar-tools librsvg2-bin
+          npx --yes @wordpress/env run cli wp eval-file wp-content/sandbox-scripts/prova-qr-tessera.php > "$RUNNER_TEMP/qr-raw.txt"
+          bash "$GITHUB_WORKSPACE/.github/scripts/prova-qr-tessera.sh" "$RUNNER_TEMP/qr-raw.txt" "$GITHUB_WORKSPACE/qr-prova"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qr-tessera
+          path: qr-prova/
+          retention-days: 14
+          if-no-files-found: ignore
