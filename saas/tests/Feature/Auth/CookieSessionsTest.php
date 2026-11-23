@@ -220,7 +220,7 @@ it('i dati della sessione pubblica sono cifrati e dentro c\'è solo la scheda sc
     $jar = jarAfter($this->withUnencryptedCookies($jar)->post($this->base.'/accesso/codice', ['email' => 'mario@example.com', 'code' => $code])->assertRedirect('/area'), $jar);
     $chosen = $this->withUnencryptedCookies($jar)->post($this->base.'/scheda/'.$this->luca->id)->assertRedirect('/area');
 
-    $data = array_filter(publicSessionCookies($chosen), fn ($c, $n) => $n !== 'as_pubblico', ARRAY_FILTER_USE_BOTH);
+    $data = array_filter(publicSessionCookies($chosen), fn ($c, $n) => $n !== 'as_pubblico' && (string) $c->getValue() !== '' && ($c->getExpiresTime() === 0 || $c->getExpiresTime() > time()), ARRAY_FILTER_USE_BOTH);
     expect($data)->toHaveCount(1);
     $raw = (string) array_values($data)[0]->getValue();
 
