@@ -17,15 +17,25 @@ use Throwable;
  */
 final class SharedCache
 {
-    /** @param  string  $setting  chiave di config/saas.php con i secondi di validità (0 = spenta) */
+    /**
+     * Durate massime decise con Audit: stato e sola lettura 60 secondi, catalogo e diritti 5 minuti. La configurazione
+     * può accorciarle o spegnerle, mai allungarle.
+     */
+    public const MAX_SECONDS = ['status' => 60, 'entitlements' => 300, 'catalog' => 300];
+
+    /** @param  key-of<self::MAX_SECONDS>  $setting  chiave di saas.shared_cache con i secondi di validità (0 = spenta) */
     public static function seconds(string $setting): int
     {
         $seconds = config('saas.shared_cache.'.$setting);
 
-        return is_int($seconds) && $seconds > 0 ? $seconds : 0;
+        return is_int($seconds) && $seconds > 0 ? min($seconds, self::MAX_SECONDS[$setting]) : 0;
     }
 
-    /** La cache da usare, o null se è spenta, è il database o non si riesce ad aprirla. */
+    /**
+     * La cache da usare, o null se è spenta, è il database o non si riesce ad aprirla.
+     *
+     * @param  key-of<self::MAX_SECONDS>  $setting
+     */
     public static function store(string $setting): ?Repository
     {
         if (self::seconds($setting) === 0) {

@@ -16,13 +16,16 @@ use Illuminate\Database\DatabaseManager;
  *
  * Tra una richiesta e l'altra (H20) i diritti stanno nella cache generale con un «giro» per associazione: ogni scrittura
  * dei diritti o dello stato (sospensione) cambia il giro a transazione chiusa, e la copia con il giro
- * vecchio non vale più. Giro e copia si leggono insieme, con un solo accesso alla cache.
+ * vecchio non vale più. Giro, diritti (fino a 5 minuti) e stato con sola lettura (fino a 60 secondi) si leggono insieme,
+ * con un solo accesso alla cache.
  */
 final class EntitlementReader implements Entitlements
 {
     private const ROUND = 'saas:entitlements:round:';
 
     private const COPY = 'saas:entitlements:copy:';
+
+    private const STATE = 'saas:entitlements:state:';
 
     /** Un giro scaduto ne fa nascere uno nuovo: la copia si rilegge una volta, niente di più. */
     private const ROUND_SECONDS = 30 * 86400;
@@ -91,12 +94,13 @@ final class EntitlementReader implements Entitlements
     private function stored(string $orgId): array
     {
         $cache = SharedCache::store('entitlements');
-        $found = SharedCache::many($cache, [self::ROUND.$orgId, self::COPY.$orgId]);
+        $found = SharedCache::many($cache, [self::ROUND.$orgId, self::COPY.$orgId, self::STATE.$orgId]);
         $round = $found[self::ROUND.$orgId] ?? null;
         $copy = $found[self::COPY.$orgId] ?? null;
-        if (is_string($round) && is_array($copy) && ($copy['round'] ?? null) === $round) {
+        $state = $found[self::STATE.$orgId] ?? null;
+        if (is_string($round) && is_array($copy) && ($copy['round'] ?? null) === $round && is_array($state) && ($state['round'] ?? null) === $round) {
             /** @var array{claims: array<string, mixed>|null, read_only: bool} */
-            return ['claims' => $copy['claims'] ?? null, 'read_only' => ($copy['read_only'] ?? false) === true];
+            return ['claims' => $copy['claims'] ?? null, 'read_only' => ($state['read_only'] ?? false) === true];
         }
 
         $row = $this->db->connection('pgsql')->table('core.org_entitlements as e')
@@ -118,7 +122,9 @@ final class EntitlementReader implements Entitlements
             $round = SharedCache::add($cache, self::ROUND.$orgId, $mine, self::ROUND_SECONDS) ? $mine : null;
         }
         if (is_string($round)) {
-            SharedCache::put($cache, self::COPY.$orgId, $value + ['round' => $round], SharedCache::seconds('entitlements'));
+            // Due copie con durate diverse (Audit): i diritti fino a 5 minuti, stato e sola lettura fino a 60 secondi.
+            SharedCache::put($cache, self::COPY.$orgId, ['claims' => $value['claims'], 'round' => $round], SharedCache::seconds('entitlements'));
+            SharedCache::put($cache, self::STATE.$orgId, ['read_only' => $value['read_only'], 'round' => $round], SharedCache::seconds('status'));
         }
 
         return $value;

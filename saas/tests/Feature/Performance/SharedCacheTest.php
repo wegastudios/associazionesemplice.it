@@ -15,7 +15,32 @@ use Illuminate\Support\Facades\DB;
 // Cache tra le richieste (H20): catalogo e diritti per associazione. Dati di prova inventati.
 
 beforeEach(function (): void {
-    config(['saas.shared_cache.catalog' => 300, 'saas.shared_cache.entitlements' => 300]);
+    config(['saas.shared_cache.catalog' => 300, 'saas.shared_cache.entitlements' => 300, 'saas.shared_cache.status' => 60]);
+});
+
+it('non supera le durate massime: 60 secondi per stato e sola lettura, 5 minuti per catalogo e diritti', function (): void {
+    config(['saas.shared_cache.catalog' => 3600, 'saas.shared_cache.entitlements' => 3600, 'saas.shared_cache.status' => 3600]);
+    expect(SharedCache::seconds('status'))->toBe(60)
+        ->and(SharedCache::seconds('entitlements'))->toBe(300)
+        ->and(SharedCache::seconds('catalog'))->toBe(300);
+
+    config(['saas.shared_cache.status' => 30]);
+    expect(SharedCache::seconds('status'))->toBe(30);
+});
+
+it('uno stato cambiato senza avviso vale al più dopo 60 secondi', function (): void {
+    $alfa = $this->createOrg('Polisportiva Alfa');
+    storeEntitlements($alfa->id, 'trial', 1);
+    expect(app(LifecyclePolicy::class)->readOnly($alfa->id))->toBeFalse();
+
+    // Scrittura diretta, senza setStatus (vietata nel codice: la prova di architettura la blocca): resta il limite di tempo.
+    DB::table('core.orgs')->where('id', $alfa->id)->update(['status' => 'suspended']);
+    nextRequest();
+    expect(app(LifecyclePolicy::class)->readOnly($alfa->id))->toBeFalse();
+
+    $this->travel(61)->seconds();
+    nextRequest();
+    expect(app(LifecyclePolicy::class)->readOnly($alfa->id))->toBeTrue();
 });
 
 /** Una richiesta nuova: i servizi «scoped» ripartono da zero, resta solo la cache generale. */

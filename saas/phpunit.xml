@@ -50,6 +50,7 @@
              della cache la accendono da sé. -->
         <env name="SAAS_CACHE_CATALOG_SECONDS" value="0"/>
         <env name="SAAS_CACHE_ENTITLEMENTS_SECONDS" value="0"/>
+        <env name="SAAS_CACHE_STATUS_SECONDS" value="0"/>
         <env name="APP_URL" value="http://localhost"/>
         <env name="SAAS_MASTER_KEY" value="dGVzdC1zb2xvLXBlci1pLXRlc3QtMzItYnl0ZXMtISE="/>
         <env name="SAAS_FILES_ROOT" value="storage/framework/testing/org-files"/>

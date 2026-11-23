@@ -78,6 +78,8 @@ return [
     'shared_cache' => [
         'catalog' => (int) env('SAAS_CACHE_CATALOG_SECONDS', 300),
         'entitlements' => (int) env('SAAS_CACHE_ENTITLEMENTS_SECONDS', 300),
+        // Stato dell'associazione e sola lettura: al massimo 60 secondi (SharedCache::MAX_SECONDS).
+        'status' => (int) env('SAAS_CACHE_STATUS_SECONDS', 60),
     ],
 
     // Registro delle query lente (millisecondi; 0 = spento). Scrive solo il testo della query con i segnaposto, mai i valori.
