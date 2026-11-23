@@ -200,13 +200,13 @@ final readonly class CertificateService
         $people = Person::query()->whereNull('left_on')->whereNull('anonymized_at')->whereIn('type', ['founder', 'ordinary', 'volunteer'])
             ->selectSub(MedicalCertificate::query()->where('issued_on', '<=', $today)->whereColumn('person_id', 'app.people.id')->selectRaw('max(expires_on)'), 'expires_on')
             ->toBase();
-        $row = $people->newQuery()->fromSub($people, 'x')
+        $row = (array) $people->newQuery()->fromSub($people, 'x')
             ->selectRaw('count(*) FILTER (WHERE expires_on < ?) AS expired, count(*) FILTER (WHERE expires_on >= ? AND expires_on <= ?) AS expiring', [$today, $today, $limit])
             ->first();
 
         return [
-            'expiring' => is_numeric($row->expiring ?? null) ? (int) $row->expiring : 0,
-            'expired' => is_numeric($row->expired ?? null) ? (int) $row->expired : 0,
+            'expiring' => is_numeric($row['expiring'] ?? null) ? (int) $row['expiring'] : 0,
+            'expired' => is_numeric($row['expired'] ?? null) ? (int) $row['expired'] : 0,
         ];
     }
 }
