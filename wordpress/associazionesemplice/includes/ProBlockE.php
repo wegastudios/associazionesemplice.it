@@ -32,7 +32,7 @@ final class ProBlockE {
 		add_filter( 'asem_payment_validate', array( __CLASS__, 'validate_gateway' ), 10, 3 );
 		add_filter( 'asem_payment_note', array( __CLASS__, 'payment_note' ), 10, 2 );
 		add_filter( 'asem_fee_gateways', array( __CLASS__, 'fee_gateways' ) );
-		if ( ProBoot::handlers_needed() ) { // azione del modulo del sito: solo quando admin-post.php la chiede
+		if ( ProBoot::handlers_needed( 'asem_front_' ) ) { // azione del modulo del sito: solo quando admin-post.php la chiede
 			Frontend\Actions::add_handler( 'asem_front_consent', array( Frontend\ConsentFront::class, 'do_save' ) );
 		}
 		Admin\BlockEPanels::register();

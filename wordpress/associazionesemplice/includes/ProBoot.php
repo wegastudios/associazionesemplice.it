@@ -138,8 +138,8 @@ final class ProBoot {
 	 * Vanno aggiunti i gestori delle azioni (bacheca e moduli del sito)? Lo decide il gratuito (solo admin-post.php e admin-ajax.php con un'azione
 	 * asem_…, sempre in WP-CLI); con un gratuito di una versione precedente, che non lo sa dire, sempre come prima.
 	 */
-	public static function handlers_needed(): bool {
-		return ! method_exists( Plugin::class, 'action_handlers_needed' ) || Plugin::action_handlers_needed();
+	public static function handlers_needed( string $prefix = 'asem_' ): bool {
+		return ! method_exists( Plugin::class, 'action_handlers_needed' ) || Plugin::action_handlers_needed( $prefix );
 	}
 
 	/** Si chiama una volta, dopo `Edition::add_dir()`, prima che Associazione Semplice si avvii. */
@@ -189,7 +189,7 @@ final class ProBoot {
 			Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione: sul sito pubblico non servono e non si caricano
 		}
 		Frontend\ProViews::register(); // sezioni e viste del sito
-		if ( self::handlers_needed() ) {
+		if ( self::handlers_needed( 'asem_front_' ) ) {
 			Frontend\ProActions::register(); // azioni dei moduli del sito: si aggiungono solo quando admin-post.php ne chiede una
 		}
 		Frontend\DonationPage::register(); // donazioni dal pagamento del sito, aperte anche a chi non è socio

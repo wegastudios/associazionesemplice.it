@@ -34,7 +34,7 @@ final class ProBlockD {
 		add_filter( 'asem_render_view', array( __CLASS__, 'render_view' ), 20, 3 );
 		add_filter( 'asem_view_available', array( __CLASS__, 'view_available' ), 20, 2 );
 		add_filter( 'asem_areas', array( __CLASS__, 'areas' ), 20 );
-		if ( ProBoot::handlers_needed() ) { // azioni dei moduli del sito: solo quando admin-post.php ne chiede una
+		if ( ProBoot::handlers_needed( 'asem_front_' ) ) { // azioni dei moduli del sito: solo quando admin-post.php ne chiede una
 			Frontend\Actions::add_handler( 'asem_front_refund', array( Frontend\RefundsFront::class, 'do_request' ) );
 			Frontend\Actions::add_handler( 'asem_front_refund_cancel', array( Frontend\RefundsFront::class, 'do_cancel' ) );
 			Frontend\Actions::add_handler( 'asem_front_proxy', array( Frontend\AssembliesFront::class, 'do_proxy' ) );

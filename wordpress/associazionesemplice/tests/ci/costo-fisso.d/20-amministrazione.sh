@@ -3,9 +3,12 @@
 HANDLERS='Admin\Actions Admin\RegistersActions Admin\TechActions Admin\BlockBActions Admin\BlockFActions Admin\EmployeesPage Admin\Exports Admin\PersonSearch Admin\IncomePage Frontend\Actions'
 # ... e con il Pro
 HANDLERS+=' Admin\ProActions Admin\BlockCActions Admin\BlockDProActions Admin\BlockEActions Admin\WatchActions Admin\ResourcesActions Admin\CreditsActions Admin\BlockDActions Frontend\ProActions'
+# Sulle pagine della bacheca si caricano le classi delle pagine (anche quelle che ospitano i gestori, come la scheda dei dipendenti), ma non i gestori delle azioni
+PAGE_FORBIDDEN='Admin\Actions Admin\RegistersActions Admin\TechActions Admin\BlockBActions Admin\BlockFActions Admin\PersonSearch Frontend\Actions Admin\ProActions Admin\BlockCActions Admin\BlockDProActions Admin\BlockEActions Admin\WatchActions Admin\ResourcesActions Admin\CreditsActions Admin\BlockDActions Frontend\ProActions'
 misura 'Battito della bacheca (amministratore)' POST '/wp-admin/admin-ajax.php' 'action=heartbeat&interval=60&screen_id=dashboard' 1 '200' "$HANDLERS Admin\Dismiss Admin\YearsPage Admin\RuntsPage Admin\WpDashboard Wizard"
 misura 'Battito (visitatore)' POST '/wp-admin/admin-ajax.php' 'action=heartbeat&interval=60' 0 '200 400' "$HANDLERS Admin\Dismiss Wizard"
-misura 'Pagina della bacheca: Rubrica soci (amministratore)' GET '/wp-admin/admin.php?page=asem-people' '' 1 '200 302' "$HANDLERS Admin\YearsPage Admin\RuntsPage Admin\WpDashboard" 'Admin\Admin'
+misura 'Pagina della bacheca: Rubrica soci (amministratore)' GET '/wp-admin/admin.php?page=asem-people' '' 1 '200 302' "$PAGE_FORBIDDEN" 'Admin\Admin'
 # Le azioni arrivano ancora al loro gestore: senza il nonce la risposta è il rifiuto del gestore stesso (403), non una pagina vuota
-misura 'Azione della bacheca senza nonce (amministratore)' GET '/wp-admin/admin-post.php?action=asem_save_person' '' 1 '403' 'Frontend\Actions' 'Admin\Actions'
+misura 'Azione della bacheca senza nonce (amministratore)' GET '/wp-admin/admin-post.php?action=asem_save_person' '' 1 '302 403' 'Frontend\Actions' 'Admin\Actions' # 302 se il sito manda prima alla configurazione guidata
 misura 'Modulo dell’area soci (visitatore)' GET '/wp-admin/admin-post.php?action=asem_front_profile' '' 0 '302 405' '' 'Frontend\Actions'
+misura 'Ricerca di una persona via ajax, senza nonce (amministratore)' POST '/wp-admin/admin-ajax.php' 'action=asem_person_search&q=ro' 1 '200 400 403' 'Frontend\Actions' 'Admin\PersonSearch'
