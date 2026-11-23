@@ -10,7 +10,6 @@ use App\Modules\Piattaforma\Contracts\PublishedCatalog;
 use App\Modules\Portale\Contracts\PortalNotifier;
 use Illuminate\Database\DatabaseManager;
 use stdClass;
-use Throwable;
 
 /**
  * Catalogo in vigore: l'ultima revisione pubblicata dall'amministrazione (core.catalog_revisions). Finché nessuno ha
@@ -34,11 +33,7 @@ final class DbCatalog implements Catalog
     /** La copia tra le richieste (H20), se c'è: il catalogo cambia solo con una pubblicazione, che la dimentica. */
     private function shared(): ?PublishedCatalog
     {
-        try {
-            $hit = SharedCache::store('catalog')?->get(self::SHARED);
-        } catch (Throwable) {
-            return null;
-        }
+        $hit = SharedCache::get(SharedCache::store('catalog'), self::SHARED);
         if (! is_array($hit) || ! is_int($hit['rev'] ?? null) || ! is_array($hit['document'] ?? null)) {
             return null;
         }
@@ -52,22 +47,14 @@ final class DbCatalog implements Catalog
     {
         $row = $this->db->connection('pgsql')->table('core.catalog_revisions')->orderByDesc('rev')->first(['rev', 'document']);
         $catalog = $row === null ? $this->initial->published() : self::fromRow($row->rev, $row->document);
-        try {
-            SharedCache::store('catalog')?->put(self::SHARED, ['rev' => $catalog->rev, 'document' => $catalog->document], SharedCache::seconds('catalog'));
-        } catch (Throwable) {
-            // Cache ferma o piena: la prossima richiesta rilegge la tabella.
-        }
+        SharedCache::put(SharedCache::store('catalog'), self::SHARED, ['rev' => $catalog->rev, 'document' => $catalog->document], SharedCache::seconds('catalog'));
 
         return $catalog;
     }
 
     private static function forgetShared(): void
     {
-        try {
-            SharedCache::store('catalog')?->forget(self::SHARED);
-        } catch (Throwable) {
-            // La copia scade da sola (saas.shared_cache.catalog).
-        }
+        SharedCache::forget(SharedCache::store('catalog'), self::SHARED);
     }
 
     /**

@@ -8,16 +8,14 @@ use App\Modules\Core\Contracts\SharedCache;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\OrgEntitlements;
 use Carbon\CarbonImmutable;
-use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\DatabaseManager;
-use Throwable;
 
 /**
  * Legge i diritti già verificati e salvati (core.org_entitlements). Dentro la stessa richiesta (o lo stesso lavoro in
  * coda) la lettura di un'associazione si fa una volta sola; ogni scrittura dei diritti la dimentica subito.
  *
  * Tra una richiesta e l'altra (H20) i diritti stanno nella cache generale con un «giro» per associazione: ogni scrittura
- * dei diritti o dello stato (sospensione) cambia il giro, subito e di nuovo a transazione chiusa, e la copia con il giro
+ * dei diritti o dello stato (sospensione) cambia il giro a transazione chiusa, e la copia con il giro
  * vecchio non vale più. Giro e copia si leggono insieme, con un solo accesso alla cache.
  */
 final class EntitlementReader implements Entitlements
@@ -45,16 +43,14 @@ final class EntitlementReader implements Entitlements
     {
         unset($this->loaded[$orgId], $this->readOnly[$orgId]);
 
-        $newRound = static function () use ($orgId): void {
-            try {
-                SharedCache::store('entitlements')?->put(self::ROUND.$orgId, bin2hex(random_bytes(8)), self::ROUND_SECONDS);
-            } catch (Throwable) {
-                // Cache che non risponde: la copia scade da sola (saas.shared_cache.entitlements).
-            }
-        };
-        $newRound();
-        // Una richiesta che ha letto la tabella prima del commit può aver salvato la copia vecchia con il giro nuovo.
-        $this->db->connection('pgsql')->afterCommit($newRound);
+        $cache = SharedCache::store('entitlements');
+        if ($cache === null) {
+            return;
+        }
+        // A transazione chiusa (subito, se non ce n'è una): prima, chi rilegge la tabella vedrebbe ancora i diritti vecchi.
+        $this->db->connection('pgsql')->afterCommit(static function () use ($cache, $orgId): void {
+            SharedCache::put($cache, self::ROUND.$orgId, bin2hex(random_bytes(8)), self::ROUND_SECONDS);
+        });
     }
 
     /**
@@ -82,77 +78,50 @@ final class EntitlementReader implements Entitlements
     private function load(string $orgId): OrgEntitlements
     {
         $row = $this->stored($orgId);
-        $this->readOnly[$orgId] = $row !== null && $row['read_only'];
-        $parsed = $row === null || $row['claims'] === null ? null : self::parse($row['claims']);
+        $this->readOnly[$orgId] = $row['read_only'];
 
-        return $parsed === null ? OrgEntitlements::none() : $this->loaded[$orgId] = $parsed;
+        return $row['claims'] === null ? OrgEntitlements::none() : $this->loaded[$orgId] = self::parse($row['claims']);
     }
 
-    /** @return array{claims: array<string, mixed>|null, read_only: bool}|null */
-    private function stored(string $orgId): ?array
+    /**
+     * Dalla copia tra le richieste, se il suo giro è quello attuale, altrimenti dalla tabella.
+     *
+     * @return array{claims: array<string, mixed>|null, read_only: bool}
+     */
+    private function stored(string $orgId): array
     {
         $cache = SharedCache::store('entitlements');
-        $round = null;
-        if ($cache !== null) {
-            try {
-                [$round, $copy] = self::cached($cache, $orgId);
-                if ($copy !== null) {
-                    return $copy;
-                }
-            } catch (Throwable) {
-                $cache = null;
-            }
+        $found = SharedCache::many($cache, [self::ROUND.$orgId, self::COPY.$orgId]);
+        $round = $found[self::ROUND.$orgId] ?? null;
+        $copy = $found[self::COPY.$orgId] ?? null;
+        if (is_string($round) && is_array($copy) && ($copy['round'] ?? null) === $round) {
+            /** @var array{claims: array<string, mixed>|null, read_only: bool} */
+            return ['claims' => $copy['claims'] ?? null, 'read_only' => ($copy['read_only'] ?? false) === true];
         }
 
         $row = $this->db->connection('pgsql')->table('core.org_entitlements as e')
             ->leftJoin('core.orgs as o', 'o.id', '=', 'e.org_id')
             ->where('e.org_id', $orgId)
             ->first(['e.claims', 'e.status', 'o.status as org_status']);
-        if ($row === null) {
-            return null;
-        }
-
-        $decoded = is_string($row->claims) ? json_decode($row->claims, true, 16, JSON_THROW_ON_ERROR) : null;
+        $claims = $row?->claims;
+        $decoded = is_string($claims) ? json_decode($claims, true, 16, JSON_THROW_ON_ERROR) : null;
+        // Anche «nessun diritto salvato» si ricorda: la scrittura dei diritti cambia il giro.
         $value = [
             'claims' => is_array($decoded) ? self::onlyNeeded($decoded) : null,
-            'read_only' => $row->org_status === 'suspended' && $row->status === 'trial',
+            'read_only' => $row !== null && $row->org_status === 'suspended' && $row->status === 'trial',
         ];
-        if ($cache !== null && $round !== null) {
-            try {
-                $cache->put(self::COPY.$orgId, $value + ['round' => $round], SharedCache::seconds('entitlements'));
-            } catch (Throwable) {
-                // Cache piena o ferma: si rilegge la tabella la volta dopo.
-            }
+
+        if ($cache !== null && ! is_string($round)) {
+            // Primo uso o giro scaduto: se ne crea uno. Se nel frattempo ne ha scritto uno qualcun altro (anche una
+            // scrittura dei diritti), la copia appena letta potrebbe essere vecchia: non si salva.
+            $mine = bin2hex(random_bytes(8));
+            $round = SharedCache::add($cache, self::ROUND.$orgId, $mine, self::ROUND_SECONDS) ? $mine : null;
+        }
+        if (is_string($round)) {
+            SharedCache::put($cache, self::COPY.$orgId, $value + ['round' => $round], SharedCache::seconds('entitlements'));
         }
 
         return $value;
-    }
-
-    /**
-     * Giro attuale e copia valida, se c'è. Senza giro (primo uso, cache svuotata) se ne crea uno.
-     *
-     * @return array{0: string|null, 1: array{claims: array<string, mixed>|null, read_only: bool}|null}
-     */
-    private static function cached(Repository $cache, string $orgId): array
-    {
-        $found = $cache->many([self::ROUND.$orgId, self::COPY.$orgId]);
-        $round = $found[self::ROUND.$orgId] ?? null;
-        if (! is_string($round)) {
-            $cache->add(self::ROUND.$orgId, bin2hex(random_bytes(8)), self::ROUND_SECONDS);
-            $round = $cache->get(self::ROUND.$orgId);
-
-            return [is_string($round) ? $round : null, null];
-        }
-
-        $copy = $found[self::COPY.$orgId] ?? null;
-        if (! is_array($copy) || ($copy['round'] ?? null) !== $round || ! is_bool($copy['read_only'] ?? null)) {
-            return [$round, null];
-        }
-        $claims = $copy['claims'] ?? null;
-        /** @var array<string, mixed>|null $claims */
-        $claims = is_array($claims) ? $claims : null;
-
-        return [$round, ['claims' => $claims, 'read_only' => $copy['read_only']]];
     }
 
     /**

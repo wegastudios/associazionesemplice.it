@@ -43,4 +43,53 @@ final class SharedCache
             return null;
         }
     }
+
+    /**
+     * Le operazioni sulla cache non fermano mai la richiesta: una cache ferma o piena vale come vuota.
+     *
+     * @param  list<string>  $keys
+     * @return array<string, mixed>
+     */
+    public static function many(?Repository $cache, array $keys): array
+    {
+        try {
+            /** @var array<string, mixed> */
+            return $cache?->many($keys) ?? [];
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    public static function get(?Repository $cache, string $key): mixed
+    {
+        return self::many($cache, [$key])[$key] ?? null;
+    }
+
+    /** Scrive se la chiave non c'è; true se il valore scritto è il nostro. */
+    public static function add(?Repository $cache, string $key, mixed $value, int $seconds): bool
+    {
+        try {
+            return $cache?->add($key, $value, $seconds) ?? false;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    public static function put(?Repository $cache, string $key, mixed $value, int $seconds): void
+    {
+        try {
+            $cache?->put($key, $value, $seconds);
+        } catch (Throwable) {
+            // Cache ferma o piena: la volta dopo si rilegge la tabella.
+        }
+    }
+
+    public static function forget(?Repository $cache, string $key): void
+    {
+        try {
+            $cache?->forget($key);
+        } catch (Throwable) {
+            // La copia scade da sola (saas.shared_cache.*).
+        }
+    }
 }
