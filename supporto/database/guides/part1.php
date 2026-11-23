@@ -188,12 +188,15 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-La pagina **Stato del server**, in **Strumenti**, dà consigli sul server che ospita il sito, in righe di due tipi:
+La voce di menu **Stato del server** del plugin dà consigli sul server che ospita il sito, in una tabella con le colonne **Controllo**, **Stato**, **Valore** e **Cosa fare**. Lo stato può essere:
 
+- **«In regola»**: niente da fare;
+- **«Migliorabile»**: un consiglio che non blocca niente;
 - **«Da sistemare»**: qualcosa che conviene correggere. Solo queste righe possono impedire alcune funzioni.
-- **«Migliorabile»**: un consiglio che non blocca niente.
 
-Lo stato si trova anche in **Salute del sito** di WordPress, con 5 test. Se una riga è «Da sistemare», mostrala a chi gestisce il sito o l'hosting.
+Il link nella tabella, **«Vai alla copia di sicurezza e alla conversione del database»**, porta alla pagina della copia di sicurezza.
+
+Gli stessi controlli compaiono in **Salute del sito** di WordPress, con 5 test marcati «Associazione Semplice»: operazioni programmate, OPcache, memoria e tempo di PHP, tabelle ed estensioni di PHP. Se una riga è «Da sistemare», mostrala a chi gestisce il sito o l'hosting.
 MD,
     ],
     [

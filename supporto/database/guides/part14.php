@@ -98,7 +98,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'quante-email-all-ora-puo-mandare-il-plugin',
         'title' => 'Quante email all'ora può mandare il plugin?',
         'body' => <<<'MD'
-Molti hosting hanno un tetto di email all'ora. Nelle impostazioni dei limiti c'è **«email all'ora»**: di partenza **200**, da **20** a **5000**. Le comunicazioni e i promemoria usano l'**80%** del tetto. Le email singole (conferme, codici) **non vengono mai bloccate**: oltre il tetto vengono rimandate entro pochi minuti, **mai scartate**.
+Molti hosting hanno un tetto di email all'ora. Nella pagina dei **Limiti**, gruppo delle comunicazioni, c'è **«Email del gestionale in un'ora»**: di partenza **200**, da **20** a **5000**. Le comunicazioni e i promemoria usano l'**80%** del limite. Le email singole (conferme, codici) **non vengono mai bloccate**.
 MD,
     ],
     [
