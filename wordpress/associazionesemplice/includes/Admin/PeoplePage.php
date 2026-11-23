@@ -514,7 +514,7 @@ final class PeoplePage {
 			$txt .= ' · registrato anche come ' . count( $ov['twins'] ) . ( 1 === count( $ov['twins'] ) ? ' altro ospite' : ' altri ospiti' ) . ': in tutto ' . $ov['total'];
 		}
 		if ( $ov['flag'] ) {
-			return '<strong class="asem-neg">' . esc_html( $txt . ': da invitare a diventare socio' ) . '</strong>';
+			return '<strong class="asem-neg">' . esc_html( $txt . ': da invitare ad associarsi' ) . '</strong>';
 		}
 		return $ov['twins'] ? '<strong class="asem-warn">' . esc_html( $txt ) . '</strong>' : '<span class="description">' . esc_html( $txt ) . '</span>';
 	}
