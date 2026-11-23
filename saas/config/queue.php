@@ -2,6 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\JobQueues;
+
+$database = [
+    'driver' => 'database',
+    'connection' => env('DB_QUEUE_CONNECTION'),
+    'table' => env('DB_QUEUE_TABLE', 'core.jobs'),
+    'queue' => env('DB_QUEUE', 'default'),
+    'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+    'after_commit' => false,
+];
+
 return [
 
     /*
@@ -37,13 +48,14 @@ return [
             'driver' => 'sync',
         ],
 
-        'database' => [
-            'driver' => 'database',
-            'connection' => env('DB_QUEUE_CONNECTION'),
-            'table' => env('DB_QUEUE_TABLE', 'core.jobs'),
-            'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
-            'after_commit' => false,
+        'database' => $database,
+
+        // Lavori lunghi (copia completa, import: JobQueues): stessa tabella, ripresi solo dopo un tempo più lungo del lavoro
+        // più lungo, cioè quando il lavoratore è morto, mai mentre lavora. Mai meno di LONG_TIMEOUT + 5 minuti.
+        JobQueues::LONG_CONNECTION => [
+            ...$database,
+            'queue' => JobQueues::LONG,
+            'retry_after' => max(JobQueues::LONG_TIMEOUT + 300, (int) env('DB_QUEUE_LONG_RETRY_AFTER', 0)),
         ],
 
         'beanstalkd' => [

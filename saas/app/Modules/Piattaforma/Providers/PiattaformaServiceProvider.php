@@ -27,7 +27,6 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
@@ -60,10 +59,10 @@ final class PiattaformaServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by('platform-code|'.(is_string($id) ? $id : (string) $request->ip()));
         });
 
-        Route::group([], __DIR__.'/../Http/routes.php');
-        Route::group([], __DIR__.'/../Http/staff_api_routes.php');
-        Route::group([], __DIR__.'/../Http/staff_invite_routes.php');
-        Route::group([], __DIR__.'/../Http/operator_sso_routes.php');
+        // Con la cache delle rotte i file non si eseguono (H18).
+        foreach (['routes', 'staff_api_routes', 'staff_invite_routes', 'operator_sso_routes'] as $file) {
+            $this->loadRoutesFrom(dirname(__DIR__)."/Http/{$file}.php");
+        }
 
         // Il legame utente-persona nasce solo quando l'accesso al gestionale è completo (password e secondo livello).
         Event::listen(Login::class, static function (Login $event): void {
