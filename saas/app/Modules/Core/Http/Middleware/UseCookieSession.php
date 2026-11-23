@@ -6,6 +6,7 @@ namespace App\Modules\Core\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Redirector;
 use Illuminate\Routing\Route;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -44,10 +45,28 @@ final class UseCookieSession
             'session.cookie' => app()->isProduction() ? '__Host-as_pubblico' : 'as_pubblico',
         ]);
 
+        self::rebind();
+
         try {
             return $next($request);
         } finally {
             config(['session' => $before]);
+            self::rebind();
+        }
+    }
+
+    /**
+     * `session.store` e il reindirizzatore (che ci scrive i messaggi dei `->with()`) ricordano il driver scelto alla
+     * prima volta che qualcuno li usa: se è successo prima di questo middleware, i messaggi andrebbero in un'altra
+     * sessione e si perderebbero. Si rifanno con il driver di adesso.
+     */
+    private static function rebind(): void
+    {
+        $app = app();
+        $app->forgetInstance('session.store');
+        $redirector = $app->make('redirect');
+        if ($redirector instanceof Redirector) {
+            $redirector->setSession($app->make('session.store'));
         }
     }
 }
