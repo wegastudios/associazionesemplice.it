@@ -68,7 +68,7 @@ final class AuditServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([VerifyAuditCommand::class, AuditPartitionsCommand::class, AuditPruneCommand::class, AuditHeadsCopyCommand::class, SecurityLogPruneCommand::class]);
+            $this->commands([VerifyAuditCommand::class, AuditPartitionsCommand::class, AuditPruneCommand::class, AuditHeadsCopyCommand::class, SecurityLogPruneCommand::class, AuditIndexUsageCommand::class]);
 
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('saas:audit:partitions')->monthlyOn(1, '02:13')->withoutOverlapping();
