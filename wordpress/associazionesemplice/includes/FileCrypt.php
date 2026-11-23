@@ -24,6 +24,9 @@ final class FileCrypt {
 	const HEADER_LEN   = 29; // 1 + 4 + 24
 	const FIELD_PREFIX = 'asemf1:';
 	const ABYTES       = 17; // SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_ABYTES
+
+	/** @var int quanti file cifrati sono stati aperti in questa richiesta (lo leggono le prove di velocità: un file si decifra una volta sola) */
+	public static $streams = 0;
 	const HEADER_BYTES = 24; // SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_HEADERBYTES
 
 	/** La libreria sodium (con secretstream e XChaCha20-Poly1305) è presente? Il surrogato di WordPress non conta: troppo lento per file grandi. */
@@ -318,6 +321,7 @@ final class FileCrypt {
 	 */
 	public static function decrypt_stream( $in, ?callable $sink, callable $key_for, string $ad ): array {
 		self::need();
+		++self::$streams;
 		$head = self::read_full( $in, self::HEADER_LEN );
 		if ( self::HEADER_LEN !== strlen( $head ) || chr( self::FORMAT ) !== $head[0] ) {
 			throw new FileCryptError( FileCryptError::FORMAT );
