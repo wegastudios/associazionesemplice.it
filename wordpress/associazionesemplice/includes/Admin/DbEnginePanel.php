@@ -42,9 +42,12 @@ final class DbEnginePanel {
 			return;
 		}
 		echo '<p>' . esc_html( Texts::t( 'La conversione è facoltativa e non cambia i dati. Lavora a tappe: ogni volta si convertono poche tabelle, dalla più piccola; se restano tabelle, premi di nuovo. Durante la conversione di una tabella il sito può rallentare per qualche secondo.' ) ) . '</p>';
-		echo '<p><strong>' . esc_html( Texts::t( 'Prima di convertire fai una copia di sicurezza.' ) ) . '</strong></p>';
-		Ui::form_open( 'asem_db_convert', $back, false, 'asem-inline' );
-		echo '<button class="button button-primary" data-confirm="' . esc_attr( Texts::t( 'Convertire le tabelle in InnoDB?' ) ) . '">' . esc_html( Texts::t( 'Converti in InnoDB' ) ) . '</button>';
+		echo '<div class="notice notice-warning inline" id="asem-db-engine-backup"><p><strong>' . esc_html( Texts::t( 'Prima di convertire scarica una copia di sicurezza: la conversione cambia le tabelle del database.' ) ) . '</strong> '
+			. '<a href="' . esc_url( Ui::url( 'asem-backup' ) ) . '">' . esc_html( Texts::t( 'Vai alla copia di sicurezza' ) ) . '</a></p>';
+		Ui::form_open( 'asem_db_convert', $back );
+		echo '<p><label><input type="checkbox" name="have_backup" value="1" required> ' . esc_html( Texts::t( 'Ho una copia recente' ) ) . '</label></p>';
+		echo '<p><button class="button button-primary" data-confirm="' . esc_attr( Texts::t( 'Convertire le tabelle in InnoDB?' ) ) . '">' . esc_html( Texts::t( 'Converti in InnoDB' ) ) . '</button></p>';
 		Ui::form_close();
+		echo '</div>';
 	}
 }

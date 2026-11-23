@@ -61,8 +61,12 @@ final class Jobs {
 		$now   = time();
 		$state['last'] = $now;
 		self::save( $state );
-		$ran = array();
+		$ran   = array();
+		$ready = Plugin::schema_ready(); // con lo schema a metà gira solo il lavoro che lo porta avanti: gli altri scriverebbero colonne non ancora create e restano per il giro dopo
 		foreach ( Plugin::jobs() as $hook => $j ) {
+			if ( ! SchemaGuard::job_allowed( (string) $hook, $ready ) ) {
+				continue;
+			}
 			if ( ! self::due( (string) $j[0], (int) ( $state['done'][ $hook ] ?? 0 ), $now, $round ) ) {
 				continue;
 			}

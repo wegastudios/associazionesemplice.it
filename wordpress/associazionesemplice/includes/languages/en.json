@@ -2896,6 +2896,11 @@
   "Una tabella non si è potuta convertire ed è rimasta com'era: {tabelle}." : "One table could not be converted and was left as it was: {tabelle}.",
   "{n} tabelle non si sono potute convertire e sono rimaste come erano: {tabelle}." : "{n} tables could not be converted and were left as they were: {tabelle}.",
   "Ne restano altre: premi di nuovo." : "More are left: press again.",
-  "Ora tutte le tabelle usano InnoDB." : "All tables now use InnoDB."
+  "Ora tutte le tabelle usano InnoDB." : "All tables now use InnoDB.",
+  "Aggiornamento in corso, riprova tra un minuto." : "Update in progress, try again in a minute.",
+  "Prima di convertire scarica una copia di sicurezza: la conversione cambia le tabelle del database." : "Download a backup before converting: the conversion changes the database tables.",
+  "Vai alla copia di sicurezza" : "Go to the backup",
+  "Ho una copia recente" : "I have a recent backup",
+  "Prima di convertire scarica una copia di sicurezza e spunta «Ho una copia recente»." : "Download a backup before converting and tick «I have a recent backup»."
  }
 }

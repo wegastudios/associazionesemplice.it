@@ -56,8 +56,22 @@ $de_busy = DbEngine::convert_batch();
 Db::$lock_fake = 'x';
 asem_ok( $de_busy['busy'] && array() === $de_busy['done'] && 'MyISAM' === (string) $wpdb->get_var( $wpdb->prepare( 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $de_t2 ) ), 'motore: con un\'altra conversione in corso non si tocca nulla' );
 
+// Il riquadro chiede prima la copia di sicurezza: avviso con il link e la spunta «Ho una copia recente».
+$de_panel = asem_render( array( \AssociazioneSemplice\Admin\DbEnginePanel::class, 'render' ), 'Converti in InnoDB' );
+asem_ok( false !== strpos( $de_panel, 'Prima di convertire scarica una copia di sicurezza: la conversione cambia le tabelle del database.' ) && false !== strpos( $de_panel, 'asem-backup' ) && false !== strpos( $de_panel, 'name="have_backup"' ) && false !== strpos( $de_panel, 'Ho una copia recente' ), 'motore: prima di convertire il riquadro chiede la copia di sicurezza, con il link e la spunta' );
+
+// Senza la spunta la conversione non parte (controllo anche lato server, per una richiesta scritta a mano).
+$de_no = (string) asem_throws( function () {
+	\AssociazioneSemplice\Admin\TechActions::db_convert( array() );
+} );
+asem_ok( false !== strpos( $de_no, 'Ho una copia recente' ) && 'MyISAM' === (string) $wpdb->get_var( $wpdb->prepare( 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $de_t2 ) ), 'motore: senza la spunta «Ho una copia recente» non si converte nulla' );
+$de_no2 = (string) asem_throws( function () {
+	\AssociazioneSemplice\Admin\TechActions::db_convert( array( 'have_backup' => '' ) );
+} );
+asem_ok( '' !== $de_no2 && 'MyISAM' === (string) $wpdb->get_var( $wpdb->prepare( 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $de_t2 ) ), 'motore: anche con la spunta vuota non si converte nulla' );
+
 // L'azione dell'amministratore dà un messaggio chiaro e finisce il lavoro.
-$de_act = \AssociazioneSemplice\Admin\TechActions::db_convert( array() );
+$de_act = \AssociazioneSemplice\Admin\TechActions::db_convert( array( 'have_backup' => '1' ) );
 asem_ok( false !== strpos( $de_act[0], 'asem-db-engine' ) && false !== strpos( $de_act[1], 'InnoDB' ), 'motore: l\'azione del pulsante riferisce l\'esito e torna al riquadro' );
 
 $wpdb->query( "DROP TABLE IF EXISTS $de_t" );
