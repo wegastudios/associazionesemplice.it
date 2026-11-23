@@ -79,9 +79,9 @@ const showAccount = ref(false);
                 <a href="https://associazionesemplice.it/" class="flex shrink-0 items-center" aria-label="Associazione Semplice, vai alla home">
                     <picture>
                         <source srcset="/assets/brand/logo-orizzontale-negativo.svg" media="(prefers-color-scheme: dark)" />
-                        <img src="/assets/brand/logo-orizzontale-colore.svg" alt="" class="hidden h-8 w-auto sm:block" />
+                        <img src="/assets/brand/logo-orizzontale-colore.svg" alt="" width="87" height="32" class="hidden h-8 w-auto sm:block" />
                     </picture>
-                    <img src="/assets/brand/simbolo-colore.svg" alt="" class="size-8 sm:hidden" />
+                    <img src="/assets/brand/simbolo-colore.svg" alt="" width="32" height="32" class="size-8 sm:hidden" />
                 </a>
                 <span class="min-w-0 flex-1 truncate border-l border-line pl-3 text-[15px] font-bold">Gestionale</span>
                 <a href="https://associazionesemplice.it/account" class="inline-flex min-h-11 shrink-0 items-center rounded-xl px-2 text-[15px] font-semibold text-accent hover:bg-surface">Il tuo account</a>
