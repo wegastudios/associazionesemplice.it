@@ -11,12 +11,6 @@ defined( 'ABSPATH' ) || exit;
 /** Viste delle convenzioni: per i soci in regola (area soci, `[associazionesemplice_convenzioni_soci]`) e l'elenco pubblico (`[associazionesemplice_convenzioni]`). */
 final class BlockFViews {
 
-	public static function register(): void {
-		add_filter( 'asem_area_section', array( __CLASS__, 'area_section' ), 10, 3 );
-		// Gli shortcode sono solo quelli con il prefisso: [associazionesemplice_convenzioni_soci] e [associazionesemplice_convenzioni]
-		// (registrati da Shortcodes).
-	}
-
 	/** Sezione dell'area soci aggiunta da questo blocco. */
 	public static function area_section( $html, $section, $person ) {
 		if ( 'convenzioni' === $section ) {

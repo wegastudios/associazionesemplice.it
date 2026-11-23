@@ -2517,7 +2517,7 @@ $ps = Plugin::payments();
 Settings::update( array( 'payment_provider' => 'none', 'membership_fee_cents' => 1000 ) );
 asem_ok( '' === $ps->provider() && ! $ps->enabled(), 'pagamenti online: spenti finché non si sceglie un gateway' );
 asem_ok( isset( Labels::methods()['stripe'] ) && isset( Labels::methods()['paypal'] ), 'metodi di pagamento Stripe e PayPal disponibili' );
-asem_ok( false !== wp_next_scheduled( 'asem_check_pending_payments' ), 'controllo periodico dei pagamenti in sospeso pianificato' );
+asem_ok( \AssociazioneSemplice\Jobs::scheduled( 'asem_check_pending_payments' ), 'controllo periodico dei pagamenti in sospeso pianificato' );
 
 $mails = array();
 add_filter(
@@ -8333,13 +8333,66 @@ asem_ok( 200 === \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest
 asem_ok( 'asem-sw.js' === \AssociazioneSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/asem-sw.js' ), PHP_URL_PATH ) ) && 'asem-manifest.webmanifest' === \AssociazioneSemplice\Pwa::route_of( (string) wp_parse_url( home_url( '/asem-manifest.webmanifest?x=1' ), PHP_URL_PATH ) ) && null === \AssociazioneSemplice\Pwa::route_of( '/qualcosa-altro' ) && null === \AssociazioneSemplice\Pwa::route_of( '/asem-sw.js.php' ), 'app: gli indirizzi dell\'app si riconoscono (e solo quelli)' );
 $pw_sw = \AssociazioneSemplice\Pwa::response( 'asem-sw.js' );
 asem_ok( false !== strpos( $pw_sw['body'], "addEventListener('push'" ) && false !== strpos( $pw_sw['body'], "addEventListener('notificationclick'" ) && false !== strpos( $pw_sw['body'], 'asem-offline.html' ) && false !== strpos( $pw_sw['body'], 'const NAME = "Assoc App"' ) && false === strpos( $pw_sw['body'], '%VER%' ) && false === strpos( $pw_sw['body'], '%AREA%' ) && 0 === strpos( $pw_sw['type'], 'application/javascript' ), 'app: il service worker gestisce offline e notifiche' );
-asem_ok( false !== strpos( $pw_sw['body'], "indexOf('/wp-admin')" ), 'app: il service worker non tocca le pagine di wp-admin né il login di WordPress' );
+asem_ok( false !== strpos( $pw_sw['body'], 'url.pathname !== AREA_PATH' ) && false !== strpos( $pw_sw['body'], 'const AREA_PATH = ' . wp_json_encode( \AssociazioneSemplice\Pwa::area_path(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';' ) && false === strpos( $pw_sw['body'], '%AREA_PATH%' ), 'app: il service worker intercetta solo la pagina dell\'area soci (non wp-admin, non il login, non il resto del sito)' );
+$pw_e1 = \AssociazioneSemplice\Pwa::etag( $pw_sw );
+asem_ok( 1 === preg_match( '/^"[0-9a-f]{32}"$/', $pw_e1 ) && $pw_e1 === \AssociazioneSemplice\Pwa::etag( \AssociazioneSemplice\Pwa::response( 'asem-sw.js' ) ) && $pw_e1 !== \AssociazioneSemplice\Pwa::etag( \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest' ) ) && \AssociazioneSemplice\Calendar::not_modified( $pw_e1, 0, $pw_e1, '' ) && ! \AssociazioneSemplice\Calendar::not_modified( $pw_e1, 0, '"altro"', '' ), 'app: worker e manifest hanno un ETag stabile, e chi ha già la versione riceve 304' );
+asem_ok( '' === \AssociazioneSemplice\Pwa::etag( array( 'status' => 404, 'body' => 'Non disponibile.' ) ), 'app: una risposta d\'errore non ha ETag' );
 asem_ok( 0 === strpos( \AssociazioneSemplice\Pwa::response( 'asem-icon-192.png' )['body'], "\x89PNG" ) && false !== strpos( \AssociazioneSemplice\Pwa::response( 'asem-offline.html' )['body'], 'Sei offline' ), 'app: icona generata e pagina offline' );
 ob_start();
 \AssociazioneSemplice\Pwa::print_head();
 $pw_head = ob_get_clean();
 \AssociazioneSemplice\Pwa::enqueue();
 asem_ok( false !== strpos( $pw_head, 'rel="manifest"' ) && false !== strpos( $pw_head, 'theme-color' ) && false !== strpos( $pw_head, 'apple-touch-icon' ) && wp_script_is( 'asem-pwa', 'enqueued' ), 'app: le pagine del sito collegano manifest, colore e script' );
+// l'app si carica e si registra solo nell'area soci o con una sessione
+$pw_area  = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Area prova app', 'post_content' => 'area' ) );
+$pw_other = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Altra pagina prova app', 'post_content' => 'altro' ) );
+$pw_area_before = (int) Settings::get( 'member_area_page_id' );
+Settings::update( array( 'member_area_page_id' => $pw_area ) );
+$pw_ms = new ReflectionProperty( \AssociazioneSemplice\MemberSession::class, 'current' );
+$pw_ms->setAccessible( true );
+$pw_query = function ( int $id ) {
+	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'page_id' => $id, 'post_type' => 'page', 'post_status' => 'publish' ) );
+};
+$pw_page = function ( int $id ) use ( $pw_query ) {
+	$pw_query( $id );
+	wp_dequeue_script( 'asem-pwa' );
+	ob_start();
+	\AssociazioneSemplice\Pwa::print_head();
+	$head = ob_get_clean();
+	\AssociazioneSemplice\Pwa::enqueue();
+	return array( 'head' => $head, 'script' => wp_script_is( 'asem-pwa', 'enqueued' ), 'on' => \AssociazioneSemplice\Pwa::should_register() );
+};
+wp_set_current_user( 0 );
+unset( $_COOKIE[ \AssociazioneSemplice\MemberSession::COOKIE ] );
+$pw_ms->setValue( null, null );
+$pw_v1 = $pw_page( $pw_other );
+asem_ok( ! $pw_v1['on'] && '' === $pw_v1['head'] && ! $pw_v1['script'], 'app: un visitatore su una pagina qualsiasi non carica né manifest né script (il service worker non si registra)' );
+$pw_v2 = $pw_page( $pw_area );
+asem_ok( $pw_v2['on'] && false !== strpos( $pw_v2['head'], 'rel="manifest"' ) && $pw_v2['script'], 'app: nella pagina dell\'area soci manifest e script ci sono anche prima di entrare' );
+wp_set_current_user( 1 );
+$pw_v3 = $pw_page( $pw_other );
+asem_ok( $pw_v3['on'] && false !== strpos( $pw_v3['head'], 'rel="manifest"' ) && $pw_v3['script'], 'app: chi è entrato ha l\'app su qualsiasi pagina del sito' );
+Settings::update( array( 'pwa_enabled' => 0 ) );
+asem_ok( ! $pw_page( $pw_area )['on'], 'app: spenta, non si carica da nessuna parte' );
+Settings::update( array( 'pwa_enabled' => 1, 'member_area_page_id' => $pw_area_before ) );
+wp_delete_post( $pw_area, true );
+wp_delete_post( $pw_other, true );
+$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query();
+// l'icona generata è un file e non si ridisegna a ogni richiesta
+if ( '' === (string) get_site_icon_url( 192 ) && 0 === (int) Settings::get( 'pwa_icon_id' ) ) {
+	$pw_up   = wp_upload_dir( null, false );
+	$pw_ic1  = \AssociazioneSemplice\Pwa::icon_url( 192 );
+	$pw_path = $pw_up['basedir'] . '/asem-pwa/' . basename( $pw_ic1 );
+	asem_ok( 0 === strpos( $pw_ic1, $pw_up['baseurl'] . '/asem-pwa/icon-192-' ) && is_file( $pw_path ) && 0 === strpos( (string) file_get_contents( $pw_path ), "\x89PNG" ), 'app: l\'icona generata è un file nei caricamenti' );
+	touch( $pw_path, time() - 5000 );
+	clearstatcache();
+	$pw_mt = filemtime( $pw_path );
+	asem_ok( $pw_ic1 === \AssociazioneSemplice\Pwa::icon_url( 192 ) && $pw_mt === filemtime( $pw_path ) && file_get_contents( $pw_path ) === \AssociazioneSemplice\Pwa::response( 'asem-icon-192.png' )['body'], 'app: l\'icona non si riscrive a ogni richiesta e l\'indirizzo diretto serve lo stesso file' );
+	Settings::update( array( 'accent_color' => '#aa3300' ) );
+	$pw_ic2 = \AssociazioneSemplice\Pwa::icon_url( 192 );
+	asem_ok( $pw_ic2 !== $pw_ic1 && is_file( $pw_up['basedir'] . '/asem-pwa/' . basename( $pw_ic2 ) ) && ! is_file( $pw_path ), 'app: cambiando colore l\'icona si rifà e quella vecchia si toglie' );
+	Settings::update( array( 'accent_color' => '#336699' ) );
+}
 $pw_card = \AssociazioneSemplice\Frontend\ProViews::section_app( $people->get( $rg_p ) );
 asem_ok( false !== strpos( $pw_card, 'data-asem-install' ) && false !== strpos( $pw_card, 'data-asem-push-on' ), 'app: nell\'area soci compaiono installazione e notifiche' );
 Settings::update( array( 'push_enabled' => 0 ) );
@@ -12079,8 +12132,8 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::page(
 MemberSession::start( $ms_p );
 MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
-asem_ok( wp_next_scheduled( 'asem_purge_member_sessions' ) > 0, 'accesso proprio: pulizia giornaliera programmata' );
-asem_ok( wp_next_scheduled( 'asem_purge_applications' ) > 0, 'domande di adesione: pulizia giornaliera programmata' );
+asem_ok( \AssociazioneSemplice\Jobs::scheduled( 'asem_purge_member_sessions' ), 'accesso proprio: pulizia giornaliera programmata' );
+asem_ok( \AssociazioneSemplice\Jobs::scheduled( 'asem_purge_applications' ), 'domande di adesione: pulizia giornaliera programmata' );
 
 // ---------- Cache di pagina: pagine con sessione socio valida e contenuti riservati ----------
 $nc_hits  = 0;
@@ -14136,12 +14189,25 @@ asem_ok( 'ok' === \AssociazioneSemplice\FileKey::state() && 0 === $bf_RF::pendin
 // verifica e archivio ZIP dell'anno
 $pf_v   = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
 $pf_num = (int) \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['number'];
+$pf_s0  = \AssociazioneSemplice\FileCrypt::$streams;
 $pf_zip = \AssociazioneSemplice\ReceiptFiles::zip_year( $pf_fy );
+$pf_sn  = \AssociazioneSemplice\FileCrypt::$streams - $pf_s0;
+asem_ok( $pf_zip['count'] >= 5 && $pf_sn >= 1 && $pf_sn <= $pf_zip['count'], 'ricevute PDF: lo ZIP decifra ogni PDF una volta sola (' . $pf_sn . ' decifrature per ' . $pf_zip['count'] . ' PDF nell\'archivio)' );
 $pf_zz  = new ZipArchive();
 $pf_zz->open( $pf_zip['path'] );
 $pf_zv  = false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf', $pf_fy, $pf_num, $pf_fy ) ) && false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d-annullata.pdf', $pf_fy, (int) \AssociazioneSemplice\Receipts::record( $pf_key[5300] )['number'], $pf_fy ) );
 $pf_zc  = (string) $pf_zz->getFromName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf', $pf_fy, $pf_num, $pf_fy ) );
 $pf_zl  = (string) $pf_zz->getFromName( 'LEGGIMI.txt' );
+$pf_shas = array_merge( $wpdb->get_col( $wpdb->prepare( 'SELECT pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND pdf_sha256 IS NOT NULL', $pf_fy ) ), $wpdb->get_col( $wpdb->prepare( 'SELECT void_pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d AND void_pdf_sha256 IS NOT NULL', $pf_fy ) ) );
+$pf_zn   = 0;
+$pf_zok  = true;
+for ( $pf_zi = 0; $pf_zi < $pf_zz->numFiles; $pf_zi++ ) {
+	if ( 0 === strpos( (string) $pf_zz->getNameIndex( $pf_zi ), 'ricevute-' ) ) {
+		$pf_zn++;
+		$pf_zok = $pf_zok && in_array( hash( 'sha256', (string) $pf_zz->getFromIndex( $pf_zi ) ), $pf_shas, true );
+	}
+}
+asem_ok( $pf_zok && $pf_zn === $pf_zip['count'], 'ricevute PDF: ogni PDF nello ZIP ha l\'impronta registrata nel database (' . $pf_zn . ' file)' );
 $pf_zz->close();
 wp_delete_file( $pf_zip['path'] );
 $pf_tmpd = \AssociazioneSemplice\PrivateFolder::dir() . '/' . \AssociazioneSemplice\PrivateFolder::TEMP_DIR;
@@ -14501,10 +14567,16 @@ asem_ok( in_array( 'account_date', $ix_cols, true ) && in_array( 'document_ref',
 asem_ok( false !== strpos( $ix_plan( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE document_ref = 'xyz-nessuno' AND method = 'cash' AND type = 'income'" ), 'document_ref' ), 'indici: la ricerca per riferimento del documento usa l\'indice' );
 
 require __DIR__ . '/smoke_import_blocks.php'; // importazione di soci a giri, con ripresa: stesso risultato della vecchia versione
+require __DIR__ . '/smoke_import_perf.php'; // importazione e annullo: richieste al database per riga, anteprima e piano su file
 require __DIR__ . '/smoke_report_totals.php'; // totali del rendiconto: somme del database identiche al calcolo di prima
 require __DIR__ . '/smoke_letture_a_blocchi.php'; // Bacheca, elenco e scheda di corsi ed eventi: letture a blocchi uguali a quelle una per una
 require __DIR__ . '/smoke_tessere_in_blocco.php'; // tessere in PDF per molti soci: query in blocco, QR a un bit, parti da 500
+require __DIR__ . '/smoke_scheda_evento.php'; // scheda di un evento con anagrafica grande: ricerca al posto delle tendine, date a blocchi
+require __DIR__ . '/smoke_lavori.php'; // lavori periodici: due soli eventi, giro in fila con tempo massimo, passaggio dai vecchi eventi
+require __DIR__ . '/smoke_azioni.php'; // azioni di admin-post e admin-ajax: con un'azione chiesta si registra solo la sua, e ognuna resta raggiungibile
+require __DIR__ . '/smoke_db_engine.php'; // motore delle tabelle: controllo, avviso e conversione a tappe in InnoDB
 require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
+require __DIR__ . '/smoke_schema_e_export.php'; // esportazioni a blocchi, saldi una volta per richiesta, schema a tappe
 require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore
 require __DIR__ . '/smoke_backup_job.php'; // copia di sicurezza a tappe: uguale a quella di prima, ripresa, ripristino, annullamento
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR

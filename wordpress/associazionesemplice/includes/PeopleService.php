@@ -183,6 +183,11 @@ class PeopleService {
 			. ( $light ? '' : ', CONCAT(h.first_name, " ", h.last_name) AS host_name' )
 			. ' FROM ' . Db::t( 'people' ) . ' p' . ( $light ? '' : ' LEFT JOIN ' . Db::t( 'people' ) . ' h ON h.id = p.host_person_id' )
 			. ' WHERE ' . implode( ' AND ', $flt[0] ) . ' ORDER BY p.last_name, p.first_name, p.id';
+		if ( ! empty( $f['limit'] ) ) { // una pagina dell'elenco, nello stesso ordine di sempre (le esportazioni lo leggono a blocchi)
+			$sql   .= ' LIMIT %d OFFSET %d';
+			$args[] = (int) $f['limit'];
+			$args[] = max( 0, (int) ( $f['offset'] ?? 0 ) );
+		}
 		return $db->get_results( $args ? $db->prepare( $sql, $args ) : $sql, ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- senza segnaposto non c'è nulla da preparare
 	}
 

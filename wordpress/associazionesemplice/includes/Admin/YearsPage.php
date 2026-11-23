@@ -10,10 +10,6 @@ defined( 'ABSPATH' ) || exit;
 /** Anni solari: si creano, si chiudono e si riaprono. Si incassa e si spende solo negli anni aperti. */
 final class YearsPage {
 
-	public static function register(): void {
-		add_action( 'asem_dashboard_alerts', array( __CLASS__, 'alert' ) );
-	}
-
 	/** Dal nono mese dell'anno fiscale ricorda di aprire il nuovo anno: chiudibile (ricompare a inizio mese), all'ultimo mese resta sempre visibile. */
 	public static function alert(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {

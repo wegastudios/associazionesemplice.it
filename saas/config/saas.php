@@ -68,6 +68,15 @@ return [
     // Registro delle query lente (millisecondi; 0 = spento). Scrive solo il testo della query con i segnaposto, mai i valori.
     'slow_query_ms' => (int) env('SAAS_SLOW_QUERY_MS', 200),
 
+    // Tempi massimi sulla connessione dell'associazione (OrgContext::enter, nella stessa istruzione di app.org_id): attesa
+    // di un blocco, durata di un'istruzione, transazione aperta e ferma. Scaduti, la richiesta risponde «riprova tra poco».
+    // «long»: comandi, code e le rotte lunghe del gestionale con il middleware «db.long». Vedi docs/TEMPI_MASSIMI_DATABASE.md.
+    // Le migrazioni e i backup usano le loro connessioni (proprietario, sola lettura) e non passano da qui.
+    'database_timeouts' => [
+        'web' => ['lock' => '5s', 'statement' => '30s', 'idle_in_transaction' => '60s'],
+        'long' => ['lock' => '30s', 'statement' => '900s', 'idle_in_transaction' => '300s'],
+    ],
+
     // Indirizzo pubblico di /saas/admin e /saas/staff dietro il proxy del portale (https://associazionesemplice.it): gli
     // indirizzi scritti dal SaaS in quelle pagine partono da qui, mai dalle intestazioni della richiesta. Vuoto = nessuno.
     'public_url' => env('SAAS_PUBLIC_URL', ''),
@@ -78,12 +87,26 @@ return [
         'member_max_active' => (int) env('SAAS_MEMBER_MAX_ACTIVE_BOOKINGS', 10),
     ],
 
-    // Promemoria delle scadenze: vanno in coda, un'email per lavoro. Massimo di email al minuto per ogni associazione e in
-    // totale (oltre, il lavoro riparte più tardi): si regola dal .env senza toccare il codice. Valori prudenti (20 al minuto =
-    // 1.200 all'ora) per i limiti orari dell'hosting condiviso: con un SMTP dedicato si possono alzare.
+    // Promemoria delle scadenze: vanno in coda come posta massiva, un'email per lavoro (tetti in mail_queue). In più, un
+    // massimo di email al minuto per ogni associazione (oltre, il lavoro riparte più tardi).
     'reminders' => [
         'per_org_per_minute' => (int) env('SAAS_REMINDERS_PER_ORG_PER_MINUTE', 5),
-        'per_minute' => (int) env('SAAS_REMINDERS_PER_MINUTE', 20),
+    ],
+
+    // Posta in coda (App\Modules\Core\Contracts\MailQueue): tetti di invio per mailer, contati a parte per ciascuno.
+    // Chiavi: per_second, per_minute, per_hour, per_day, per_month (30 giorni) sul totale; le stesse con «bulk_» davanti
+    // sui massivi, che contano anche sul totale. Un mailer non elencato usa i numeri di «smtp».
+    // smtp: quota del gestionale sul limite orario condiviso dell'account di posta (140, di cui 40 lasciati agli urgenti).
+    'mail_queue' => [
+        // Dopo un rifiuto del server di posta, per quanti minuti la posta in coda resta ferma.
+        'blocked_minutes' => (int) env('SAAS_MAIL_BLOCKED_MINUTES', 60),
+        'mailers' => [
+            'smtp' => [
+                'per_hour' => (int) env('SAAS_MAIL_SMTP_PER_HOUR', 140),
+                'bulk_per_hour' => (int) env('SAAS_MAIL_SMTP_BULK_PER_HOUR', 100),
+                'bulk_per_minute' => (int) env('SAAS_MAIL_SMTP_BULK_PER_MINUTE', 3),
+            ],
+        ],
     ],
 
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.

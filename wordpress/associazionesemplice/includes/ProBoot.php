@@ -85,8 +85,62 @@ final class ProBoot {
 	/** Funzioni di contabilità: conti e fondi, report, ricevute. Mancano nel piano senza contabilità; ci sono nel piano completo e nel livello intermedio. */
 	const ACCOUNTING = array( 'funds', 'reports', 'receipts', 'budget' );
 
+	/**
+	 * Versione dello schema delle tabelle del Pro (la storia dei cambi è accanto a {@see ProSchema::VERSION}, che vale questa).
+	 * Sta qui perché si confronta a ogni richiesta: ProSchema, grande, si carica solo quando c'è da aggiornare.
+	 */
+	const SCHEMA_VERSION = '20';
+
+	/** Opzione con la versione salvata dello schema del Pro (la stessa di {@see ProSchema::VERSION_OPTION}). */
+	const SCHEMA_OPTION = 'asem_pro_db_version';
+
+	/** Opzione dello stato del recupero dei PDF delle ricevute (la stessa di {@see ReceiptFiles::FLAG}): «done» = finito. */
+	const RECEIPT_BACKFILL_OPTION = 'asem_receipt_pdfs_backfill';
+
 	/** @var bool */
 	private static $done = false;
+
+	/** Richiesta della parte di gestione (bacheca, admin-post, admin-ajax), di WP-Cron o di WP-CLI: sul sito pubblico è falso. */
+	public static function backend(): bool {
+		return is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI );
+	}
+
+	/** Se lo schema del Pro è cambiato (o è la prima volta) ricrea le tabelle mancanti; altrimenti ProSchema nemmeno si carica. */
+	public static function maybe_upgrade_schema(): void {
+		if ( self::SCHEMA_VERSION !== (string) get_option( self::SCHEMA_OPTION, '' ) ) {
+			ProSchema::maybe_upgrade();
+		}
+	}
+
+	/**
+	 * PDF definitivi delle ricevute: gli hook si registrano con il nome della classe, che si carica solo quando servono.
+	 * Il recupero dei PDF delle ricevute già emesse parte solo finché non è finito (opzione caricata con le altre: nessuna domanda in più).
+	 */
+	private static function receipt_files(): void {
+		add_action( 'asem_year_closed', array( ReceiptFiles::class, 'on_year_closed' ) );
+		add_action(
+			'plugins_loaded',
+			function () {
+				if ( 'done' !== get_option( self::RECEIPT_BACKFILL_OPTION ) && Edition::has( 'receipts' ) ) {
+					ReceiptFiles::maybe_backfill();
+				}
+			},
+			20 // dopo l'aggiornamento dello schema (priorità 12)
+		);
+		add_action( 'asem_receipt_pdfs_batch', array( ReceiptFiles::class, 'cron_batch' ), 10, 2 );
+		add_filter( 'asem_file_sources', array( ReceiptFiles::class, 'file_sources' ) ); // i PDF si cifrano come gli altri file riservati
+		add_filter( 'asem_backup_documents', array( ReceiptFiles::class, 'backup_documents' ) );
+		add_filter( 'asem_backup_restore_documents', array( ReceiptFiles::class, 'restore_documents' ), 10, 4 );
+		add_action( 'asem_reset_private_files', array( ReceiptFiles::class, 'delete_all' ) );
+	}
+
+	/**
+	 * Vanno aggiunti i gestori delle azioni (bacheca e moduli del sito)? Lo decide il gratuito (solo admin-post.php e admin-ajax.php con un'azione
+	 * asem_…, sempre in WP-CLI); con un gratuito di una versione precedente, che non lo sa dire, sempre come prima.
+	 */
+	public static function handlers_needed( string $prefix = 'asem_' ): bool {
+		return ! method_exists( Plugin::class, 'action_handlers_needed' ) || Plugin::action_handlers_needed( $prefix );
+	}
 
 	/** Si chiama una volta, dopo `Edition::add_dir()`, prima che Associazione Semplice si avvii. */
 	public static function init(): void {
@@ -97,7 +151,8 @@ final class ProBoot {
 		Edition::register( self::FEATURES, self::PAGES, self::ACTIONS );
 
 		// Come la licenza limita le funzioni.
-		ProSchema::register(); // tabelle delle funzioni aggiuntive
+		add_filter( 'asem_schema_tables', array( ProSchema::class, 'tables' ), 10, 3 ); // tabelle delle funzioni aggiuntive
+		add_action( 'plugins_loaded', array( __CLASS__, 'maybe_upgrade_schema' ), 12 ); // dopo l'aggiornamento dello schema del gratuito (priorità 10)
 		ProData::register(); // esportazione, anonimizzazione ed eliminazioni
 		ProSettings::register();
 		LevelVoting::register(); // diritto di voto per livello di socio
@@ -116,8 +171,9 @@ final class ProBoot {
 		ProBlockE::register(); // SMS, newsletter, Satispay e Klarna
 		DocsPro::register();
 		StatementSnapshot::register(); // rendiconto fotografato alla chiusura di un anno fiscale e PDF emesso
-		ReceiptFiles::register(); // PDF definitivi delle ricevute: file nella cartella privata, copia di sicurezza, lotti alla chiusura dell'anno
-		Admin\ReceiptCheckPage::register(); // verifica delle impronte, nelle pagine Copia di sicurezza e Anni fiscali
+		self::receipt_files(); // PDF definitivi delle ricevute: file nella cartella privata, copia di sicurezza, lotti alla chiusura dell'anno
+		add_action( 'asem_backup_page_after', array( Admin\ReceiptCheckPage::class, 'backup_card' ), 20 ); // verifica delle impronte, nelle pagine Copia di sicurezza…
+		add_action( 'asem_years_page_after', array( Admin\ReceiptCheckPage::class, 'years_card' ), 25 ); // … e Anni fiscali
 		add_action( // l'annullo di un incasso annulla subito la ricevuta emessa (Receipts::register() parte solo sulle richieste di scarico, non su quelle di annullo)
 			'asem_tx_voided',
 			function ( $tx_id, $reason = '' ) {
@@ -129,9 +185,13 @@ final class ProBoot {
 		add_action( 'asem_tx_voided', array( PaymentService::class, 'on_tx_voided' ), 20, 2 ); // incasso online annullato: il pagamento si segna «da controllare» (da rimborsare?), senza rimborsare nulla
 		add_filter( 'asem_settings_defaults', array( ProSettings::class, 'defaults' ) );
 		add_filter( 'asem_settings_clean', array( ProSettings::class, 'clean' ), 10, 2 );
-		Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione
+		if ( self::backend() ) {
+			Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione: sul sito pubblico non servono e non si caricano
+		}
 		Frontend\ProViews::register(); // sezioni e viste del sito
-		Frontend\ProActions::register(); // azioni dei moduli del sito
+		if ( self::handlers_needed( 'asem_front_' ) ) {
+			Frontend\ProActions::register(); // azioni dei moduli del sito: si aggiungono solo quando admin-post.php ne chiede una
+		}
 		Frontend\DonationPage::register(); // donazioni dal pagamento del sito, aperte anche a chi non è socio
 		add_filter( 'asem_features_suspended', array( __CLASS__, 'suspended' ) );
 		add_filter( 'asem_feature_available', array( __CLASS__, 'available' ), 10, 2 );
@@ -150,12 +210,15 @@ final class ProBoot {
 		add_action( 'asem_settings_page_end', array( Admin\LicensePanel::class, 'render' ) );
 
 		// Azioni di amministrazione della licenza.
-		if ( is_admin() ) { // le azioni passano da admin-post.php e admin-ajax.php (anche quelle dell'area soci): sulle pagine pubbliche non servono e le loro classi non si caricano
+		if ( is_admin() && self::handlers_needed() ) { // le azioni passano da admin-post.php e admin-ajax.php (anche quelle dell'area soci): sulle pagine pubbliche, sulle pagine della bacheca e per il battito non servono e le loro classi non si caricano
 			add_action( 'plugins_loaded', array( __CLASS__, 'handlers' ), 6 );
 		}
 
 		// Avvisi, aggiornamenti diretti e lavori periodici.
 		add_action( 'plugins_loaded', array( __CLASS__, 'late' ), 11 );
+		if ( self::free_runs_jobs() ) {
+			add_filter( 'asem_scheduled_jobs', array( __CLASS__, 'jobs' ) ); // i lavori periodici del Pro girano con quelli del gratuito
+		}
 		add_action( 'asem_license_check', array( License::class, 'cron' ) );
 		add_action( 'asem_update_check', array( UpdateCheck::class, 'cron' ) );
 		add_action( 'asem_license_resync', array( License::class, 'resync' ) );
@@ -173,22 +236,42 @@ final class ProBoot {
 
 	/** Dopo l'avvio di Associazione Semplice: avvisi, aggiornatore, lavori periodici. */
 	public static function late(): void {
-		Admin\LicenseNotice::register();
-		Admin\UpdateNotice::register();
+		add_action( 'admin_notices', array( Admin\LicenseNotice::class, 'print_notice' ) ); // avvisi in bacheca: le classi si caricano solo lì
+		add_action( 'admin_notices', array( Admin\UpdateNotice::class, 'print_notice' ) );
 		if ( Edition::has( 'pwa' ) && Settings::get( 'pwa_enabled' ) ) {
 			Pwa::register(); // app installabile e notifiche
 		}
 		if ( Edition::installed( 'payments' ) && class_exists( 'WooCommerce', false ) ) {
 			add_action( 'plugins_loaded', array( WooBridge::class, 'register' ), 20 ); // compatibilità con WooCommerce
 		}
-		ProBlockE::schedule();
 		License::maybe_resync();
-		if ( ! wp_next_scheduled( 'asem_license_check' ) ) {
-			wp_schedule_event( time() + 1800, 'daily', 'asem_license_check' );
+		if ( ! self::free_runs_jobs() ) { // gratuito di una versione precedente: ogni lavoro ha il suo evento, come prima
+			ProBlockE::schedule();
+			if ( ! wp_next_scheduled( 'asem_license_check' ) ) {
+				wp_schedule_event( time() + 1800, 'daily', 'asem_license_check' );
+			}
+			if ( ! wp_next_scheduled( 'asem_update_check' ) ) {
+				wp_schedule_event( time() + 2400, 'hourly', 'asem_update_check' );
+			}
 		}
-		if ( ! wp_next_scheduled( 'asem_update_check' ) ) {
-			wp_schedule_event( time() + 2400, 'hourly', 'asem_update_check' );
-		}
+	}
+
+	/** Il gratuito esegue i lavori periodici in fila dentro due soli eventi (Jobs)? Allora i lavori del Pro entrano nel suo elenco. */
+	public static function free_runs_jobs(): bool {
+		return defined( Plugin::class . '::JOBS_HOURLY' );
+	}
+
+	/**
+	 * Lavori periodici del Pro nel giro dei lavori del gratuito (filtro `asem_scheduled_jobs`): licenza, versioni, SMS e newsletter.
+	 * I gestori restano quelli registrati qui e in ProBlockE (stessi nomi delle azioni).
+	 */
+	public static function jobs( array $jobs ): array {
+		return $jobs + array(
+			'asem_license_check'   => array( 'daily', 1800, 'License', 'cron', '' ),
+			'asem_update_check'    => array( 'hourly', 2400, 'UpdateCheck', 'cron', '' ),
+			ProBlockE::SMS_JOB     => array( 'hourly', 900, 'Sms', 'job', 'sms' ),
+			'asem_newsletter_sync' => array( 'daily', 3000, 'Newsletter', 'job', 'newsletter' ),
+		);
 	}
 
 	/** Alla disattivazione si tolgono i lavori periodici. */

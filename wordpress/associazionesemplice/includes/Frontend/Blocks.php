@@ -13,11 +13,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Blocks {
 
-	public static function register(): void {
-		add_action( 'init', array( __CLASS__, 'register_blocks' ) );
-		add_action( 'enqueue_block_editor_assets', array( __CLASS__, 'editor_data' ), 5 );
-	}
-
 	public static function register_blocks(): void {
 		if ( ! function_exists( 'register_block_type' ) ) {
 			return;

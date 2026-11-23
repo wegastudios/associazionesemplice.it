@@ -94,7 +94,7 @@ final class PublicEvents {
 		add_action( 'wp_ajax_nopriv_asem_event_slot', array( __CLASS__, 'ajax_slot' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'maybe_hide_cancelled' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ) );
-		EventRequests::register(); // prenotazione dei non soci dalla pagina dell'evento
+		// la conferma della prenotazione dei non soci (link dell'email) la smista Frontend\Front::links(): la classe si carica solo con quel link
 		PageCache::register(); // copie delle parti pubbliche, svuotate a ogni cambio dei dati
 		add_action( 'save_post_' . self::POST_TYPE, array( __CLASS__, 'save_options' ) );
 		if ( is_admin() ) {

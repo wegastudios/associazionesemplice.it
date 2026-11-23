@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ProBlockE {
 
-	const SMS_JOB = Sms::HOURLY; // lavoro orario; i gruppi successivi usano un evento singolo, Sms::HOOK
+	const SMS_JOB = 'asem_sms_hourly'; // = Sms::HOURLY, lavoro orario; i gruppi successivi usano un evento singolo, Sms::HOOK (nomi scritti qui: a ogni richiesta Sms e Newsletter non si caricano)
 
 	public static function register(): void {
 		add_filter( 'asem_settings_defaults', array( __CLASS__, 'defaults' ) );
@@ -19,9 +19,9 @@ final class ProBlockE {
 		add_action( 'asem_person_anonymized', array( __CLASS__, 'anonymize' ), 40, 1 );
 		add_action( 'asem_consent_changed', array( Newsletter::class, 'on_consent_changed' ), 10, 3 );
 		add_action( 'asem_notify_email', array( Sms::class, 'on_reminder' ), 20, 3 );
-		add_action( Sms::HOOK, array( Sms::class, 'job' ) );
+		add_action( 'asem_sms_queue', array( Sms::class, 'job' ) ); // = Sms::HOOK
 		add_action( self::SMS_JOB, array( Sms::class, 'job' ) );
-		add_action( Newsletter::HOOK, array( Newsletter::class, 'job' ) );
+		add_action( 'asem_newsletter_sync', array( Newsletter::class, 'job' ) ); // = Newsletter::HOOK
 		add_filter( 'asem_my_sections', array( __CLASS__, 'my_sections' ), 40 );
 		add_filter( 'asem_area_section', array( __CLASS__, 'area_section' ), 40, 3 );
 		add_filter( 'asem_payment_methods', array( __CLASS__, 'payment_methods' ) );
@@ -32,7 +32,9 @@ final class ProBlockE {
 		add_filter( 'asem_payment_validate', array( __CLASS__, 'validate_gateway' ), 10, 3 );
 		add_filter( 'asem_payment_note', array( __CLASS__, 'payment_note' ), 10, 2 );
 		add_filter( 'asem_fee_gateways', array( __CLASS__, 'fee_gateways' ) );
-		Frontend\Actions::add_handler( 'asem_front_consent', array( Frontend\ConsentFront::class, 'do_save' ) );
+		if ( ProBoot::handlers_needed( 'asem_front_' ) ) { // azione del modulo del sito: solo quando admin-post.php la chiede
+			Frontend\Actions::add_handler( 'asem_front_consent', array( Frontend\ConsentFront::class, 'do_save' ) );
+		}
 		Admin\BlockEPanels::register();
 	}
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi|misure> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi|misure|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
 #
 # Il log del workflow è pubblico: dettagli di configurazione su file in shared/ (600), nel log solo esiti, conteggi e percorso.
 # Azioni fisse e limitate (non è una shell remota):
@@ -603,6 +603,64 @@ case "$ACTION" in
     ' > "$F" 2>&1 || true
     prune_files misure
     echo "misure salvate in $F"
+    ;;
+  db-connection-limit-60|db-connection-limit-off)
+    # Limite di connessioni del database del gestionale (ALTER DATABASE ... CONNECTION LIMIT), col ruolo proprietario
+    # (pgsql_owner, quello delle migrazioni). Il limite vale per ogni ruolo non superutente di QUESTO database; gli altri
+    # database (per associazione, supporto) non cambiano. random_page_cost e work_mem non si toccano.
+    #   db-connection-limit-60   prima misura il picco (20 campioni, uno al secondo, tutti i ruoli, comprese queste
+    #                            connessioni) e rifiuta se picco + margine di 10 (backup, ripristino, migrazioni al rilascio) supera 60
+    #   db-connection-limit-off  comando inverso: CONNECTION LIMIT -1 (nessun limite)
+    # Nel log solo esito e numeri; la ripartizione per ruolo va su file in shared/ (600).
+    cd "$BASE/current"
+    F="$(newfile limite-connessioni)"
+    if [ "$ACTION" = "db-connection-limit-60" ]; then LIMIT=60; else LIMIT=-1; fi
+    rc=0
+    LIMIT="$LIMIT" MARGIN=10 "$PHP" artisan tinker --execute='
+      $limit = (int) getenv("LIMIT"); $margin = (int) getenv("MARGIN");
+      $db = DB::connection("pgsql_owner");
+      $name = $db->selectOne("select current_database() as d")->d;
+      $q = "\"".str_replace("\"", "\"\"", $name)."\"";
+      $label = function (?string $u): string {
+        foreach (["pgsql" => "app", "pgsql_owner" => "owner"] as $n => $l) { if ($u !== null && $u === config("database.connections." . $n . ".username")) { return $l; } }
+        return "altro";
+      };
+      $before = (int) $db->selectOne("select datconnlimit as l from pg_database where datname = current_database()")->l;
+      echo "limite prima: ", $before, PHP_EOL;
+      echo "max_connections del server: ", $db->selectOne("select setting from pg_settings where name = ?", ["max_connections"])->setting, PHP_EOL;
+      if ($limit > 0) {
+        $peak = 0; $byRole = [];
+        for ($i = 0; $i < 20; $i++) {
+          $n = 0;
+          foreach ($db->select("select usename, count(*) as n from pg_stat_activity where datname = current_database() group by 1") as $r) {
+            $n += (int) $r->n; $k = $label($r->usename); $byRole[$k] = max($byRole[$k] ?? 0, (int) $r->n);
+          }
+          $peak = max($peak, $n);
+          if ($i < 19) { sleep(1); }
+        }
+        foreach ($byRole as $k => $v) { echo "picco per ruolo ", $k, ": ", $v, PHP_EOL; }
+        echo "picco misurato: ", $peak, " (20 campioni in 19 secondi), margine: ", $margin, PHP_EOL;
+        if ($peak + $margin > $limit) { echo "RIFIUTATO: picco + margine supera ", $limit, PHP_EOL; echo "esito: rifiutato", PHP_EOL; exit(3); }
+      }
+      $db->statement("ALTER DATABASE {$q} CONNECTION LIMIT {$limit}");
+      $after = (int) $db->selectOne("select datconnlimit as l from pg_database where datname = current_database()")->l;
+      echo "limite dopo: ", $after, PHP_EOL;
+      echo $after === $limit ? "esito: ok" : "esito: errore", PHP_EOL;
+      exit($after === $limit ? 0 : 1);
+    ' > "$F" 2>&1 || true
+    # Il codice d uscita di tinker non e affidabile (psysh esce con 1 anche dopo exit(0)): l esito si legge dalla riga
+    # marcatore finale scritta dal PHP. Senza marcatore (eccezione, connessione rifiutata) e ERRORE.
+    if grep -qx 'esito: ok' "$F"; then rc=0
+    elif grep -qx 'esito: rifiutato' "$F"; then rc=3
+    else rc=1; fi
+    prune_files limite-connessioni
+    grep -E '^(picco misurato|limite prima|limite dopo|RIFIUTATO)' "$F" | sed -E 's/ \(20 campioni.*//' || true
+    if [ "$rc" -eq 0 ]; then
+      if [ "$LIMIT" -eq -1 ]; then echo "limite connessioni: nessuno"; else echo "limite connessioni: $LIMIT"; fi
+    elif [ "$rc" -eq 3 ]; then echo "limite connessioni: NON applicato (picco troppo alto)"
+    else echo "limite connessioni: ERRORE"; fi
+    echo "Dettaglio (per ruolo, eventuali errori): uscita salvata in $F"
+    exit "$rc"
     ;;
   *) echo "Azione sconosciuta: $ACTION" >&2; exit 1 ;;
 esac

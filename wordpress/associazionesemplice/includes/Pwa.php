@@ -59,19 +59,57 @@ final class Pwa {
 		if ( null === $route ) {
 			return;
 		}
-		$r = self::response( $route );
-		status_header( $r['status'] );
+		$r    = self::response( $route );
+		$etag = self::etag( $r );
 		while ( ob_get_level() ) {
 			ob_end_clean();
 		}
-		nocache_headers();
+		if ( '' === $etag ) {
+			nocache_headers();
+		} else {
+			header( 'ETag: ' . $etag );
+			header( 'Cache-Control: no-cache' ); // si ricontrolla ogni volta, ma se non è cambiato niente basta una risposta vuota (304)
+		}
 		foreach ( $r['headers'] as $k => $v ) {
 			header( $k . ': ' . $v );
 		}
 		header( 'Content-Type: ' . $r['type'] );
 		header( 'X-Content-Type-Options: nosniff' );
+		$inm = isset( $_SERVER['HTTP_IF_NONE_MATCH'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_IF_NONE_MATCH'] ) ) : '';
+		if ( '' !== $etag && Calendar::not_modified( $etag, 0, $inm, '' ) ) {
+			status_header( 304 );
+			exit;
+		}
+		status_header( $r['status'] );
 		echo $r['body']; // phpcs:ignore WordPress.Security.EscapeOutput -- manifest, script e immagini del plugin
 		exit;
+	}
+
+	/** ETag di una risposta riuscita (impronta del contenuto), vuoto per gli errori. */
+	public static function etag( array $response ): string {
+		return 200 === (int) $response['status'] ? '"' . md5( (string) $response['body'] ) . '"' : '';
+	}
+
+	/** L'app serve in questa richiesta? Solo nell'area soci o per chi è entrato: il resto del sito non carica né registra niente. */
+	public static function should_register(): bool {
+		if ( ! self::enabled() || is_admin() ) {
+			return false;
+		}
+		return MemberSession::logged_in() || self::is_area_page();
+	}
+
+	/** Il percorso della pagina dell'area soci, l'unico che l'app tiene sotto controllo (per l'offline). */
+	public static function area_path(): string {
+		return (string) wp_parse_url( Gatekeeper::area_url(), PHP_URL_PATH );
+	}
+
+	/** La pagina richiesta è l'area soci (o la home, se l'area non ha una pagina scelta)? */
+	private static function is_area_page(): bool {
+		$id = (int) Settings::get( 'member_area_page_id' );
+		if ( $id > 0 && 'publish' === get_post_status( $id ) ) {
+			return is_page( $id );
+		}
+		return is_front_page();
 	}
 
 	/** @return array{status:int,type:string,body:string,headers:array} */
@@ -88,9 +126,47 @@ final class Pwa {
 				return array( 'status' => 200, 'type' => 'text/html; charset=utf-8', 'body' => self::offline_page(), 'headers' => array() );
 			default:
 				$size = 'asem-icon-512.png' === $route ? 512 : 192;
-				$rgb  = Png::rgb( self::theme_color() );
-				return array( 'status' => 200, 'type' => 'image/png', 'body' => Png::initial( $size, $rgb, self::app_name() ), 'headers' => array( 'Cache-Control' => 'public, max-age=86400' ) );
+				$file = self::icon_on_disk( $size );
+				$body = null !== $file ? (string) file_get_contents( $file['path'] ) : ''; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file scritto dal plugin, non un indirizzo remoto
+				return array( 'status' => 200, 'type' => 'image/png', 'body' => '' !== $body ? $body : self::icon_png( $size ), 'headers' => array() );
 		}
+	}
+
+	/** L'icona generata, disegnata ora (senza disco). */
+	private static function icon_png( int $size ): string {
+		return Png::initial( $size, Png::rgb( self::theme_color() ), self::app_name() );
+	}
+
+	/**
+	 * L'icona generata come file nella cartella dei caricamenti (asem-pwa/): si scrive la prima volta e quando cambiano colore o nome, poi la serve il
+	 * server web senza passare da PHP. Null se non si può scrivere (allora si disegna a ogni richiesta, come prima).
+	 *
+	 * @return array{path:string,url:string}|null
+	 */
+	private static function icon_on_disk( int $size ): ?array {
+		$up = wp_upload_dir( null, false );
+		if ( ! empty( $up['error'] ) || empty( $up['basedir'] ) || empty( $up['baseurl'] ) ) {
+			return null;
+		}
+		$dir  = $up['basedir'] . '/asem-pwa';
+		$name = 'icon-' . $size . '-' . substr( md5( self::theme_color() . '|' . self::app_name() . '|' . $size . '|1' ), 0, 10 ) . '.png';
+		$path = $dir . '/' . $name;
+		if ( ! is_file( $path ) ) {
+			if ( ! wp_mkdir_p( $dir ) ) {
+				return null;
+			}
+			$tmp = $path . '.tmp';
+			if ( false === @file_put_contents( $tmp, self::icon_png( $size ) ) || ! @rename( $tmp, $path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents, WordPress.WP.AlternativeFunctions.rename_rename -- icona piccola, scritta una volta
+				wp_delete_file( $tmp );
+				return null;
+			}
+			foreach ( glob( $dir . '/icon-' . $size . '-*.png' ) ?: array() as $old ) { // le icone di prima (altro colore o altro nome)
+				if ( $old !== $path ) {
+					wp_delete_file( $old );
+				}
+			}
+		}
+		return array( 'path' => $path, 'url' => $up['baseurl'] . '/asem-pwa/' . $name );
 	}
 
 	// ---------- Contenuti ----------
@@ -122,7 +198,12 @@ final class Pwa {
 			}
 		}
 		$site = function_exists( 'get_site_icon_url' ) ? get_site_icon_url( $size ) : '';
-		return '' !== $site ? $site : self::url( 512 === $size ? 'asem-icon-512.png' : 'asem-icon-192.png' );
+		if ( '' !== $site ) {
+			return $site;
+		}
+		$size = 512 === $size ? 512 : 192;
+		$file = self::icon_on_disk( $size ); // il file vero, servito dal server web
+		return null !== $file ? $file['url'] : self::url( 512 === $size ? 'asem-icon-512.png' : 'asem-icon-192.png' );
 	}
 
 	public static function manifest(): array {
@@ -166,6 +247,7 @@ const CACHE = 'asem-pwa-%VER%';
 const OFFLINE = '%OFFLINE%';
 const ASSETS = '%ASSETS%';
 const AREA = '%AREA%';
+const AREA_PATH = %AREA_PATH%;
 const NAME = %NAME%;
 const ICON = '%ICON%';
 self.addEventListener('install', function (e) {
@@ -181,7 +263,7 @@ self.addEventListener('fetch', function (e) {
 	if (req.method !== 'GET') { return; }
 	var url = new URL(req.url);
 	if (req.mode === 'navigate') {
-		if (url.pathname.indexOf('/wp-admin') !== -1 || url.pathname.indexOf('wp-login.php') !== -1) { return; } // il gestionale e l'accesso a WordPress non sono l'app dei soci: errori e attese restano quelli del browser
+		if (url.origin !== self.location.origin || AREA_PATH === '' || url.pathname !== AREA_PATH) { return; } // solo la pagina dell'area soci: il resto del sito (pagine pubbliche, gestionale, accesso a WordPress) non passa di qui, né attese né pagina offline
 		e.respondWith(fetch(req).catch(function () { return caches.match(OFFLINE); }));
 		return;
 	}
@@ -219,6 +301,7 @@ JS;
 				'%OFFLINE%' => self::url( 'asem-offline.html' ),
 				'%ASSETS%'  => (string) wp_parse_url( ASEM_URL . 'assets/', PHP_URL_PATH ),
 				'%AREA%'    => esc_url_raw( Gatekeeper::area_url() ),
+				'%AREA_PATH%' => (string) wp_json_encode( self::area_path(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ),
 				'%NAME%'    => (string) wp_json_encode( self::app_name(), JSON_UNESCAPED_UNICODE ),
 				'%ICON%'    => esc_url_raw( self::icon_url( 192 ) ),
 			)
@@ -237,7 +320,7 @@ JS;
 	// ---------- Pagine del sito ----------
 
 	public static function print_head(): void {
-		if ( ! self::enabled() || is_admin() ) {
+		if ( ! self::should_register() ) {
 			return;
 		}
 		echo '<link rel="manifest" href="' . esc_url( self::url( 'asem-manifest.webmanifest' ) ) . '">' . "\n"
@@ -249,7 +332,7 @@ JS;
 	}
 
 	public static function enqueue(): void {
-		if ( ! self::enabled() || is_admin() ) {
+		if ( ! self::should_register() ) {
 			return;
 		}
 		wp_enqueue_script( 'asem-pwa', ASEM_URL . 'assets/pwa.js', array(), Plugin::asset_version( 'pwa.js' ), true );

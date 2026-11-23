@@ -15,11 +15,16 @@ use Throwable;
 
 final class DatabaseOrgContext implements OrgContext
 {
+    private const SET = "SELECT set_config('app.org_id', ?, false), set_config('lock_timeout', ?, false), "
+        ."set_config('statement_timeout', ?, false), set_config('idle_in_transaction_session_timeout', ?, false)";
+
     private ?CurrentOrg $current = null;
 
+    /** @param  bool  $long  comandi e code: i tempi delle operazioni lunghe valgono per tutto il processo */
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly DatabaseRegistry $registry,
+        private bool $long = false,
     ) {}
 
     public function enter(string $orgId): CurrentOrg
@@ -52,9 +57,10 @@ final class DatabaseOrgContext implements OrgContext
             }
         }
 
-        $this->db->connection($connection)->select("SELECT set_config('app.org_id', ?, false)", [$orgId]);
+        $current = new CurrentOrg($orgId, $connection);
+        $this->applyTimeouts($current);
 
-        return $this->current = new CurrentOrg($orgId, $connection);
+        return $this->current = $current;
     }
 
     public function leave(): void
@@ -98,5 +104,47 @@ final class DatabaseOrgContext implements OrgContext
                 $this->leave();
             }
         }
+    }
+
+    public function withLongTimeouts(callable $callback): mixed
+    {
+        if ($this->long) {
+            return $callback();
+        }
+
+        $this->long = true;
+        try {
+            $this->applyTimeouts($this->current);
+
+            return $callback();
+        } finally {
+            $this->long = false;
+            try {
+                $this->applyTimeouts($this->current);
+            } catch (Throwable) {
+                // Connessione caduta (per esempio chiusa da idle_in_transaction_session_timeout): si chiude e l'associazione
+                // si lascia, così nessuna query riparte su una connessione nuova senza associazione né tempi.
+                if ($this->current !== null) {
+                    $this->db->purge($this->current->connection);
+                }
+                $this->current = null;
+            }
+        }
+    }
+
+    /** Associazione e tempi massimi in un'unica istruzione: nessun giro di rete in più. Senza associazione non c'è niente da fare. */
+    private function applyTimeouts(?CurrentOrg $org): void
+    {
+        if ($org !== null) {
+            $this->db->connection($org->connection)->select(self::SET, [$org->id, ...$this->timeouts()]);
+        }
+    }
+
+    /** @return array{string, string, string} */
+    private function timeouts(): array
+    {
+        $profile = 'saas.database_timeouts.'.($this->long ? 'long' : 'web');
+
+        return [config()->string($profile.'.lock'), config()->string($profile.'.statement'), config()->string($profile.'.idle_in_transaction')];
     }
 }

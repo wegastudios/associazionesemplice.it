@@ -4,6 +4,14 @@ return array(
 	'base_url' => 'https://portale.associazionesemplice.it',
 	'app_key'  => '',   // 32 byte in base64: php -r "echo base64_encode(random_bytes(32));"  (cifra le chiavi di licenza)
 	'mail_from' => 'info@associazionesemplice.it',
+	// Posta: la quota del portale sul server di posta (account cPanel, tetto di 250 messaggi/ora per tutti i siti) e i posti riservati agli urgenti.
+	// Oltre il tetto i messaggi restano in coda (tabella mail_outbox, smaltita da bin/mail-outbox.php ogni 5 minuti): non si perdono.
+	'mail_cap_per_hour' => 60, 'mail_urgent_reserve' => 20,
+	// Mezzi di invio in ordine (il primo con posto e che risponde); senza elenco si usa mail() di PHP. Credenziali solo qui, mai nel repository:
+	// 'mail' => array( 'transports' => array(
+	//     array( 'name' => 'emailit', 'enabled' => false, 'host' => '', 'port' => 465, 'secure' => 'ssl', 'user' => '', 'pass' => '', 'from' => '', 'cap' => 900 ),
+	//     array( 'name' => 'cpanel', 'host' => 'mail.associazionesemplice.it', 'port' => 465, 'secure' => 'ssl', 'user' => '', 'pass' => '', 'from' => 'info@associazionesemplice.it', 'cap' => 60 ),
+	// ) ),
 	'indexable' => false, // finché è false: robots.txt, X-Robots-Tag e meta robots vietano l'indicizzazione (cambiare anche public/robots.txt prima del lancio)
 	'trust_forwarded_for' => false, // true solo dietro un proxy fidato: i limiti del rimbalzo licenze usano X-Forwarded-For invece dell'IP della connessione
 	'forwarded_hops' => 1, // con trust_forwarded_for: quanti proxy fidati stanno davanti al portale (si legge X-Forwarded-For da destra, mai da sinistra)

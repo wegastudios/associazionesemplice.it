@@ -1,6 +1,6 @@
 <?php
 // Lavori giornalieri: avvisi di scadenza per le licenze che non si rinnovano da sole.
-// Da lanciare una volta al giorno, per esempio: 0 8 * * * /usr/local/bin/php ~/portale/bin/cron.php (con il php «cli»: da cron un semplice «php» è la versione CGI e lo script esce subito)
+// Da lanciare una volta al giorno, fuori da 08:00-08:30 (ore di punta della posta), per esempio: 47 10 * * */usr/local/bin/php ~/portale/bin/cron.php (con il php «cli»: da cron un semplice «php» è la versione CGI e lo script esce subito)
 if ( 'cli' !== PHP_SAPI ) {
 	exit( 1 );
 }
@@ -9,6 +9,8 @@ Portale\Config::load( require __DIR__ . '/../config.php' );
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
 $db->migrateOnStart();
 Portale\Settings::load( $db );
+Portale\Mailer::$db   = $db;
+Portale\Mailer::$bulk = true; // i messaggi dei lavori giornalieri sono massivi: lasciano sempre posto agli urgenti
 $billing = new Portale\Billing( $db, new Portale\WegaClient( (string) Portale\Config::get( 'wega.base_url' ), (string) Portale\Config::get( 'wega.token' ) ) );
 // Ogni lavoro è a sé: se uno fallisce l'errore finisce nel registro e gli altri partono lo stesso (prima un errore fermava tutto lo script).
 // Un fallimento si vede: codice d'uscita 1 e una email all'indirizzo di contatto del portale (Pagine legali) con i lavori falliti.
@@ -40,7 +42,7 @@ echo $step( 'licenze gratuite rinnovate / lasciate scadere per inattività', fun
 } );
 if ( $failed ) {
 	try {
-		Portale\Mailer::send( Portale\Legal::vars()['email'], 'Portale: lavori giornalieri non riusciti', "Il lavoro giornaliero del portale (bin/cron.php) ha avuto errori. Gli altri lavori sono partiti.\n\n" . implode( '', $failed ) . "\nIl registro completo è ~/logs/portale-cron.log sul server.\n" );
+		Portale\Mailer::send( Portale\Legal::vars()['email'], 'Portale: lavori giornalieri non riusciti', "Il lavoro giornaliero del portale (bin/cron.php) ha avuto errori. Gli altri lavori sono partiti.\n\n" . implode( '', $failed ) . "\nIl registro completo è ~/logs/portale-cron.log sul server.\n", Portale\Mailer::URGENT );
 	} catch ( \Throwable $e ) {
 		echo date( 'c' ), ' avviso non inviato: ', $e->getMessage(), "\n";
 	}

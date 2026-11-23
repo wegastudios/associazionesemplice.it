@@ -44,10 +44,6 @@ final class EventRequests {
 		return Db::db();
 	}
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'handle_confirm' ), 1 );
-	}
-
 	// ---------- Regole ----------
 
 	/** Dalla pagina di questo evento i non soci possono chiedere un posto? */

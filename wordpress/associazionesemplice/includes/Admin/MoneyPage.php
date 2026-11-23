@@ -48,7 +48,7 @@ final class MoneyPage {
 		// Ultimi movimenti
 		$to   = current_time( 'Y-m-d' );
 		$from = gmdate( 'Y-m-d', strtotime( $to . ' -60 days' ) );
-		$rows = array_slice( Plugin::ledger()->rows( $from, $to ), 0, 10 );
+		$rows = Plugin::ledger()->rows( $from, $to, null, false, 10 ); // solo le dieci righe che si mostrano
 		echo '<h2>Ultimi movimenti</h2>';
 		if ( ! $rows ) {
 			echo '<p class="description">Nessun movimento negli ultimi 60 giorni.</p>';

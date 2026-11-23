@@ -142,6 +142,8 @@ final class Db {
 			'CREATE TABLE IF NOT EXISTS staff (email VARCHAR(190) PRIMARY KEY, role VARCHAR(10) NOT NULL, created_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS catalog (product VARCHAR(12) PRIMARY KEY, rev INTEGER NOT NULL, etag VARCHAR(80) NULL, body TEXT NOT NULL, fetched_at VARCHAR(19) NOT NULL, checked_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS orders (id VARCHAR(32) PRIMARY KEY, customer_id VARCHAR(32) NOT NULL, product VARCHAR(12) NOT NULL, plan VARCHAR(40) NOT NULL, plan_version INTEGER NOT NULL, period VARCHAR(8) NOT NULL, members INTEGER NOT NULL, catalog_rev INTEGER NOT NULL, quote TEXT NOT NULL, status VARCHAR(12) NOT NULL, created_at VARCHAR(19) NOT NULL, updated_at VARCHAR(19) NOT NULL)',
+			// Coda di uscita delle email (Mailer): tetto orario del server di posta, ritentativi, urgenti prima dei massivi.
+			'CREATE TABLE IF NOT EXISTS mail_outbox (id VARCHAR(32) PRIMARY KEY, prio VARCHAR(6) NOT NULL, to_addr VARCHAR(190) NOT NULL, subject VARCHAR(255) NOT NULL, body TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_at VARCHAR(19) NOT NULL, done_at VARCHAR(19) NULL, last_error VARCHAR(120) NULL, created_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS saas_outbox (id VARCHAR(32) PRIMARY KEY, org_id VARCHAR(64) NOT NULL, rev INTEGER NOT NULL, body TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_at VARCHAR(19) NOT NULL, done_at VARCHAR(19) NULL, last_error VARCHAR(120) NULL, created_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS seen_jti (jti VARCHAR(64) PRIMARY KEY, exp INTEGER NOT NULL)',
 			// Associazioni del SaaS create dal portale: `ref` è l'identificativo stabile mandato al SaaS, `rev` cresce a ogni messaggio `subscription`.

@@ -81,6 +81,7 @@ final class BackupPage {
 		}
 		FileCryptPanel::render();
 		PrivateFolderPanel::render();
+		DbEnginePanel::render();
 		do_action( 'asem_backup_page_after' ); // un'estensione aggiunge i suoi riquadri (ad esempio la verifica dei PDF definitivi)
 		Ui::footer();
 	}

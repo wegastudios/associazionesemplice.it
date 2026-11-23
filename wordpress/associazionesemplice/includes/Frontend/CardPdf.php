@@ -13,10 +13,6 @@ defined( 'ABSPATH' ) || exit;
 /** Scarico della tessera in PDF: per il socio collegato all'utente e per la segreteria, con un codice di sicurezza nel link. */
 final class CardPdf {
 
-	public static function register(): void {
-		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
-	}
-
 	public static function handle(): void {
 		if ( ! isset( $_GET['asem_card_pdf'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return;

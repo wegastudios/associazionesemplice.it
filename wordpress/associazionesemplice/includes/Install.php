@@ -5,14 +5,16 @@ defined( 'ABSPATH' ) || exit;
 
 final class Install {
 
-	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '74'; // dalla 74 hanno un indice anche i pagamenti online per riferimento del fornitore, i movimenti per chi li ha registrati, le richieste di prenotazione per persona e i destinatari delle comunicazioni per persona (si creano una volta, senza toccare i dati); dalla 73 ogni socio ha la versione del suo codice QR (qr_version: 0 = come prima, i QR già stampati valgono finché il socio non rigenera il codice); dalla 72 la voce «Quota attività / corso» si chiama «Contributo attività / corso» (si rinomina una volta, solo dove ha ancora il nome originale); dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION_OPTION = 'asem_db_version'; // uguale a Plugin::DB_VERSION_OPTION (scritto qui: durante un aggiornamento questa classe nuova può caricarsi accanto a una Plugin vecchia)
+	const DB_VERSION        = '74'; // si cambia insieme a Plugin::DB_VERSION (che si confronta a ogni richiesta senza caricare questa classe; una prova controlla che siano uguali); dalla 74 hanno un indice anche i pagamenti online per riferimento del fornitore, i movimenti per chi li ha registrati, le richieste di prenotazione per persona e i destinatari delle comunicazioni per persona (si creano una volta, senza toccare i dati); dalla 73 ogni socio ha la versione del suo codice QR (qr_version: 0 = come prima, i QR già stampati valgono finché il socio non rigenera il codice); dalla 72 la voce «Quota attività / corso» si chiama «Contributo attività / corso» (si rinomina una volta, solo dove ha ancora il nome originale); dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	/**
 	 * Tutti i lavori periodici e programmati del plugin e delle sue estensioni (nomi dei punti di aggancio di WP-Cron).
 	 * Alla disattivazione e alla disinstallazione si tolgono tutti, qualunque siano gli argomenti con cui erano stati programmati.
 	 */
 	const JOB_HOOKS = array(
+		'asem_cron_hourly', // i due eventi del giro dei lavori periodici (Plugin::JOBS_HOURLY e Plugin::JOBS_DAILY)
+		'asem_cron_daily',
 		'asem_send_reminders',
 		'asem_release_holds',
 		'asem_event_requests',
@@ -20,6 +22,7 @@ final class Install {
 		'asem_check_pending_payments',
 		'asem_purge_backups',
 		'asem_private_folder_check',
+		'asem_db_engine_check',
 		'asem_file_crypt_migrate',
 		'asem_file_crypt_migrate_certs',
 		'asem_file_crypt_certs_check',
@@ -29,6 +32,7 @@ final class Install {
 		'asem_purge_applications',
 		'asem_purge_broadcast_rcpt',
 		'asem_long_job_tick',
+		'asem_schema_upgrade',
 		'asem_sms_hourly',
 		'asem_sms_queue',
 		'asem_newsletter_sync',
@@ -44,22 +48,137 @@ final class Install {
 		foreach ( self::JOB_HOOKS as $hook ) {
 			wp_unschedule_hook( $hook );
 		}
+		BootState::forget( 'jobs_checked' ); // = Plugin::JOBS_CHECKED (scritto qui: alla disattivazione durante un aggiornamento Plugin può essere ancora quella vecchia); alla riattivazione i due eventi del giro si riprogrammano subito
 	}
 
+	/** Attivazione del plugin: tutti i passaggi di base di seguito (qui c'è chi aspetta), poi la versione dello schema. */
 	public static function activate(): void {
-		self::create_tables();
-		self::ensure_indexes(); // indici delle ricerche frequenti: si creano solo se mancano (idempotente)
-		self::add_roles_and_caps();
-		self::seed();
-		self::migrate_year_closures(); // gli anni fiscali già chiusi entrano nella traccia permanente (idempotente)
-		self::migrate_minute_numbers(); // ogni verbale ha il suo numero salvato, con lo stesso ordine di prima (idempotente)
-		MemberBook::assign_missing(); // ogni socio ha la sua matricola, assegnata una volta sola (idempotente)
-		if ( '' === (string) get_option( self::DB_VERSION_OPTION, '' ) ) { // prima installazione: si propone la configurazione guidata
-			Wizard::schedule_first_run();
-		} elseif ( Wizard::pending() ) { // sito già in uso prima di questa funzione: nessun invito, la pagina resta in Impostazioni
-			Wizard::mark( Wizard::SKIPPED );
+		foreach ( self::steps( '' ) as $step ) {
+			$step();
 		}
 		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
+		delete_option( self::PROGRESS_OPTION );
+	}
+
+	/**
+	 * I passaggi dell'aggiornamento dello schema, nell'ordine di sempre: nome => funzione. Prima quelli di base (tabelle, indici, ruoli, dati iniziali:
+	 * tutti si possono ripetere senza danno), poi le migrazioni che mancano a chi parte dalla versione $old ('' = nessuna migrazione).
+	 *
+	 * @return array<string,callable>
+	 */
+	private static function steps( string $old ): array {
+		$steps = array(
+			'tables'         => function () {
+				self::create_tables();
+			},
+			'indexes'        => function () {
+				self::ensure_indexes(); // indici delle ricerche frequenti: si creano solo se mancano
+			},
+			'db_engine'      => function () {
+				DbEngine::check(); // motore delle tabelle (InnoDB o no): se ne ricorda l'esito, la Bacheca avvisa
+			},
+			'roles'          => function () {
+				self::add_roles_and_caps();
+			},
+			'seed'           => function () {
+				self::seed();
+			},
+			'year_closures'  => function () {
+				self::migrate_year_closures(); // gli anni fiscali già chiusi entrano nella traccia permanente
+			},
+			'minute_numbers' => function () {
+				self::migrate_minute_numbers(); // ogni verbale ha il suo numero salvato, con lo stesso ordine di prima
+			},
+			'member_book'    => function () {
+				MemberBook::assign_missing(); // ogni socio ha la sua matricola, assegnata una volta sola
+			},
+			'wizard'         => function () {
+				if ( '' === (string) get_option( self::DB_VERSION_OPTION, '' ) ) { // prima installazione: si propone la configurazione guidata
+					Wizard::schedule_first_run();
+				} elseif ( Wizard::pending() ) { // sito già in uso prima di questa funzione: nessun invito, la pagina resta in Impostazioni
+					Wizard::mark( Wizard::SKIPPED );
+				}
+			},
+		);
+		if ( '' === $old ) {
+			return $steps;
+		}
+		$later = array( // versione prima della quale serve la migrazione => nome => funzione (la 3 per ultima, com'è sempre stato)
+			21 => array( 'reimbursements', array( __CLASS__, 'migrate_reimbursements' ) ),
+			17 => array( 'membership_years', array( __CLASS__, 'migrate_membership_years' ) ),
+			45 => array( 'operative_guardians', array( __CLASS__, 'migrate_operative_guardians' ) ),
+			61 => array( 'voting_types', array( __CLASS__, 'migrate_voting_types' ) ),
+			63 => array( 'social_year_month', array( __CLASS__, 'migrate_social_year_month' ) ),
+			64 => array( 'whatsapp_button', array( __CLASS__, 'migrate_whatsapp_button' ) ),
+			67 => array( 'wp_role_access', array( __CLASS__, 'migrate_wp_role_access' ) ),
+		);
+		foreach ( $later as $below => $m ) {
+			if ( version_compare( $old, (string) $below, '<' ) ) {
+				$steps[ $m[0] ] = function () use ( $m ) {
+					call_user_func( $m[1] );
+				};
+			}
+		}
+		if ( version_compare( $old, '71', '<' ) ) {
+			$steps['realign_memberships'] = function () {
+				BootState::set( self::REALIGN_KEY, '0' ); // la tessera segue l'anno fiscale: riallineamento delle tessere esistenti, dopo una copia di sicurezza; lo fa la prima pagina di amministrazione aperta da un amministratore, mai la richiesta di un visitatore
+			};
+		}
+		if ( version_compare( $old, '72', '<' ) ) {
+			$steps['activity_fee_name'] = function () {
+				self::migrate_activity_fee_name();
+			};
+		}
+		if ( version_compare( $old, '3', '<' ) ) {
+			$steps['legacy_fee'] = function () {
+				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
+				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
+			};
+		}
+		return $steps;
+	}
+
+	/** I nomi dei passaggi per chi parte dalla versione $old, nell'ordine in cui girano. @return string[] */
+	public static function step_names( string $old ): array {
+		return array_keys( self::steps( $old ) );
+	}
+
+	/** Opzione (non caricata a ogni richiesta) con il punto raggiunto da un aggiornamento non finito: versione di partenza, di arrivo, passaggi fatti. */
+	const PROGRESS_OPTION = 'asem_schema_progress';
+
+	/** Evento singolo di WP-Cron che porta avanti l'aggiornamento quando nessun amministratore è in giro. */
+	const CRON_HOOK = 'asem_schema_upgrade';
+
+	/** Passaggi fatti e passaggi in tutto dell'aggiornamento rimasto a metà in questa richiesta; null se non c'è. @var array{done:int,total:int}|null */
+	private static $pending = null;
+
+	/**
+	 * Chi può far girare l'aggiornamento dello schema: l'amministratore che è in una pagina di amministrazione, il cron e la riga di comando.
+	 * Un visitatore no: per lui si programma l'aggiornamento e si prosegue, così nessuna visita resta ad aspettare tabelle e indici.
+	 */
+	public static function may_upgrade_now( bool $admin_user, bool $cli, bool $cron ): bool {
+		return $admin_user || $cli || $cron;
+	}
+
+	/** La richiesta in corso può eseguire l'aggiornamento? (vedi {@see may_upgrade_now()}) */
+	public static function can_upgrade_here(): bool {
+		return self::may_upgrade_now(
+			is_admin() && current_user_can( 'activate_plugins' ),
+			defined( 'WP_CLI' ) && WP_CLI,
+			wp_doing_cron()
+		);
+	}
+
+	/** Programma un evento singolo che porta avanti l'aggiornamento (uno solo alla volta). */
+	public static function schedule_upgrade(): void {
+		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
+			wp_schedule_single_event( time() + 30, self::CRON_HOOK );
+		}
+	}
+
+	/** Lo schema è pronto? (versione salvata = versione del codice): finché non lo è, il codice nuovo non deve contare su colonne e indici nuovi. */
+	public static function schema_ready(): bool {
+		return (string) get_option( self::DB_VERSION_OPTION, '' ) === self::DB_VERSION;
 	}
 
 	/** Nome (logico) del blocco che tiene un solo aggiornamento dello schema alla volta; {@see Db::lock_name()} lo rende unico per sito. */
@@ -75,16 +194,21 @@ final class Install {
 		if ( (string) get_option( self::DB_VERSION_OPTION, '' ) === self::DB_VERSION ) {
 			return;
 		}
+		if ( ! self::can_upgrade_here() ) { // una visita al sito: non aspetta tabelle e indici, l'aggiornamento lo fa il cron o il primo amministratore
+			self::schedule_upgrade();
+			return;
+		}
+		$budget  = defined( 'WP_CLI' ) && WP_CLI ? INF : LongJob::server_budget(); // dalla riga di comando si fa tutto; altrove a tappe, dentro il tempo del server
 		$started = false;
 		try {
 			Db::with_lock(
 				self::UPGRADE_LOCK,
-				function () use ( &$started ) {
+				function () use ( &$started, $budget ) {
 					$db    = Db::db();
 					$fresh = (string) $db->get_var( $db->prepare( "SELECT option_value FROM {$db->options} WHERE option_name = %s", self::DB_VERSION_OPTION ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- serve il valore appena scritto da un'altra richiesta, non quello in cache
 					if ( self::upgrade_needed( $fresh ) ) {
 						$started = true;
-						self::run_upgrade( $fresh );
+						self::run_upgrade( $fresh, $budget );
 					}
 				},
 				10
@@ -102,41 +226,49 @@ final class Install {
 		return $stored !== self::DB_VERSION;
 	}
 
-	private static function run_upgrade( string $old ): void {
-		if ( self::upgrade_needed( $old ) ) {
-			self::activate();
-			if ( '' !== $old && version_compare( $old, '21', '<' ) ) {
-				self::migrate_reimbursements();
-			}
-			if ( '' !== $old && version_compare( $old, '17', '<' ) ) {
-				self::migrate_membership_years();
-			}
-			if ( '' !== $old && version_compare( $old, '45', '<' ) ) {
-				self::migrate_operative_guardians();
-			}
-			if ( '' !== $old && version_compare( $old, '61', '<' ) ) {
-				self::migrate_voting_types();
-			}
-			if ( '' !== $old && version_compare( $old, '63', '<' ) ) {
-				self::migrate_social_year_month();
-			}
-			if ( '' !== $old && version_compare( $old, '64', '<' ) ) {
-				self::migrate_whatsapp_button();
-			}
-			if ( '' !== $old && version_compare( $old, '67', '<' ) ) {
-				self::migrate_wp_role_access();
-			}
-			if ( '' !== $old && version_compare( $old, '71', '<' ) ) {
-				BootState::set( self::REALIGN_KEY, '0' ); // la tessera segue l'anno fiscale: riallineamento delle tessere esistenti, dopo una copia di sicurezza; lo fa la prima pagina di amministrazione aperta da un amministratore, mai la richiesta di un visitatore
-			}
-			if ( '' !== $old && version_compare( $old, '72', '<' ) ) {
-				self::migrate_activity_fee_name();
-			}
-			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
-				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
-				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
+	/**
+	 * Porta avanti l'aggiornamento dello schema per al più $budget secondi, un passaggio alla volta. Dopo ogni passaggio il punto raggiunto si salva
+	 * (versione di partenza compresa: la versione dello schema cambia solo alla fine), così chi arriva dopo riparte da lì. Se il tempo finisce prima
+	 * dell'ultimo passaggio si programma un evento di WP-Cron e un avviso in amministrazione dice a che punto si è. $budget 0 = un passaggio solo.
+	 */
+	public static function run_upgrade( string $old, float $budget = INF ): void {
+		if ( ! self::upgrade_needed( $old ) ) {
+			return;
+		}
+		$next = 0;
+		$raw  = get_option( self::PROGRESS_OPTION, '' );
+		$prog = is_string( $raw ) && '' !== $raw ? json_decode( $raw, true ) : null;
+		if ( is_array( $prog ) && isset( $prog['from'], $prog['to'], $prog['next'] ) ) { // un aggiornamento lasciato a metà: si riparte da lì, con la versione di allora
+			$old  = (string) $prog['from'];
+			$next = (string) $prog['to'] === self::DB_VERSION ? max( 0, (int) $prog['next'] ) : 0; // il plugin è cambiato di nuovo: i passaggi si ripetono, si possono ripetere
+		}
+		$steps    = array_values( self::steps( $old ) );
+		$total    = count( $steps );
+		$deadline = INF === $budget ? INF : microtime( true ) + $budget;
+		for ( $i = $next; $i < $total; $i++ ) {
+			$steps[ $i ]();
+			update_option( self::PROGRESS_OPTION, (string) wp_json_encode( array( 'from' => $old, 'to' => self::DB_VERSION, 'next' => $i + 1 ) ), false );
+			if ( $i + 1 < $total && microtime( true ) >= $deadline ) {
+				self::$pending = array( 'done' => $i + 1, 'total' => $total );
+				self::schedule_upgrade();
+				if ( is_admin() ) {
+					add_action( 'admin_notices', array( __CLASS__, 'pending_notice' ) );
+				}
+				return;
 			}
 		}
+		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
+		delete_option( self::PROGRESS_OPTION );
+	}
+
+	/** Avviso in amministrazione: l'aggiornamento del database è a metà e prosegue da solo. */
+	public static function pending_notice(): void {
+		if ( ! self::$pending || ! current_user_can( 'activate_plugins' ) ) {
+			return;
+		}
+		echo '<div class="notice notice-info"><p>' . esc_html(
+			Texts::t( 'Associazione Semplice sta aggiornando il database: fatti {done} passaggi su {total}. Continua da solo; se una pagina del plugin sembra incompleta, riaprila tra un minuto.', array( 'done' => self::$pending['done'], 'total' => self::$pending['total'] ) )
+		) . '</p></div>';
 	}
 
 	/**

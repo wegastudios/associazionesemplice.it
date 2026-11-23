@@ -601,6 +601,18 @@ if ( $course_id ) {
 if ( $ev_id ) {
 	m_page( 'Scheda di un evento con ' . $q( 20 ) . ' prenotazioni', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_detail' ), array( 'page' => 'asem-activity', 'id' => (string) $ev_id ) );
 }
+if ( $ev_id && count( $ids ) >= 150 ) { // un evento grande: 150 prenotati su tutta l'anagrafica (la scheda non deve crescere con una tendina per prenotato)
+	try {
+		$big_a = (int) $act->create( array( 'name' => 'Evento grande misurato', 'social_year' => $year, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $last_d, 'start_time' => '21:00', 'location' => 'Sede', 'capacity' => 200 ) ) );
+		$big_s = (int) $act->sessions( $big_a )[0]['id'];
+		for ( $k = 0; $k < 150; $k++ ) {
+			$act->book( $big_s, $ids[ ( $k * 7 ) % count( $ids ) ] );
+		}
+		m_page( 'Scheda di un evento con 150 prenotazioni', array( 'AssociazioneSemplice\\Admin\\ActivitiesPage', 'render_detail' ), array( 'page' => 'asem-activity', 'id' => (string) $big_a ) );
+	} catch ( \Throwable $e ) {
+		$GLOBALS['m_err'][] = 'evento grande: ' . $e->getMessage();
+	}
+}
 m_page( 'Calendario di corsi ed eventi (mese)', array( 'AssociazioneSemplice\\Admin\\CalendarPage', 'render' ), array( 'page' => 'asem-calendar' ) );
 m_run( 'Calendario: occorrenze dei prossimi 120 giorni', function () use ( $today ) {
 	\AssociazioneSemplice\Calendar::occurrences( $today, gmdate( 'Y-m-d', strtotime( $today . ' +120 days' ) ) );
