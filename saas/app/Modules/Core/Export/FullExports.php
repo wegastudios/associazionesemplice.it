@@ -91,7 +91,7 @@ final readonly class FullExports
      */
     public function latest(string $userId): ?array
     {
-        $row = $this->table()->where('user_id', $userId)->orderByDesc('created_at')->first();
+        $row = $this->table()->where('user_id', $userId)->orderByDesc('created_at')->orderByDesc('id')->first();
         if ($row === null) {
             return null;
         }
