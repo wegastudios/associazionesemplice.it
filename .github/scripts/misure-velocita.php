@@ -796,6 +796,35 @@ if ( $course_id ) {
 if ( $ev_id ) {
 	m_parts( 'evento', (int) $ev_id, array( 'sessions_summary', 'sessions_calendar', 'sessions_list', 'sessions_left', 'edit_card', 'calendar_card', 'notices_card', 'participants_card', 'copy_card', 'delete_card' ) );
 }
+// ---------- Saldi dei conti con l'anno scorso chiuso: si sommano solo i movimenti dopo la chiusura ----------
+$m_reads = function ( callable $fn ) use ( $wpdb ): int { // righe lette dal database (contatori Handler_read della sessione)
+	$count = function () use ( $wpdb ): int {
+		$n = 0;
+		foreach ( $wpdb->get_results( "SHOW SESSION STATUS LIKE 'Handler_read%'", ARRAY_A ) ?: array() as $r ) {
+			$n += (int) $r['Value'];
+		}
+		return $n;
+	};
+	$a = $count();
+	$fn();
+	return $count() - $a;
+};
+$m_bal = function () use ( $ledger ) {
+	\AssociazioneSemplice\RequestMemo::forget(); // come una richiesta nuova
+	$ledger->balances();
+};
+$m_open_reads = $m_reads( $m_bal );
+m_run( 'Saldi dei conti, nessun anno chiuso (richiesta nuova)', $m_bal, 5, false );
+try {
+	FiscalYears::close( $fy - 1, true );
+	$m_closed_reads = $m_reads( $m_bal );
+	m_run( 'Saldi dei conti, anno scorso chiuso (richiesta nuova)', $m_bal, 5, false );
+	m_log( sprintf( 'PARTE saldi::righe lette dal database: %d con nessun anno chiuso, %d con l\'anno scorso chiuso', $m_open_reads, $m_closed_reads ) );
+	FiscalYears::reopen( $fy - 1, 'Fine della misura' );
+} catch ( \Throwable $e ) {
+	m_log( 'Saldi con l\'anno scorso chiuso: misura saltata (' . $e->getMessage() . ')' );
+}
+
 m_table();
 m_log( sprintf( 'Misure finite in %.1f s (generatore compreso).', microtime( true ) - $T0 ) );
 
