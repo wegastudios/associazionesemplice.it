@@ -39,13 +39,8 @@ $gi_acts->book( $gi_s1, $gi_member );
 $gi_r = $gi_acts->check_in( $gi_s1, $gi_member );
 asem_ok( 'recorded' === $gi_r['status'] && '' === $gi_r['invite'] && array() === GuestInvite::all(), 'invito ospiti: l\'ingresso di un socio non genera nessun avviso' );
 
-// Il solo «su invito di» non basta: un ospite a un incontro che non è un evento, sotto soglia, non dà né avviso né voce.
-$gi_rec = (int) $gi_acts->create( array( 'name' => 'Incontro settimanale', 'social_year' => $gi_sy, 'kind' => 'recurring', 'fee_cents' => 0, 'session' => array( 'session_date' => $gi_today, 'capacity' => 20 ) ) );
-$gi_sr  = (int) $gi_acts->sessions( $gi_rec )[0]['id'];
-$gi_gh  = $gi_peo->create( array( 'type' => 'guest', 'first_name' => 'Dora', 'last_name' => 'Soloinvito', 'phone' => '333 7770009', 'host_person_id' => $gi_host ) );
-$gi_acts->book( $gi_sr, $gi_gh );
-$gi_rh = $gi_acts->check_in( $gi_sr, $gi_gh );
-asem_ok( 'recorded' === $gi_rh['status'] && '' === $gi_rh['invite'] && array() === GuestInvite::all() && array() === GuestInvite::pending(), 'invito ospiti: il solo invito di un socio non dà né avviso né voce in Bacheca' );
+// Il solo «su invito di» non basta: senza soglia raggiunta e senza evento non c'è né avviso né voce.
+asem_ok( array() === GuestInviteRules::reasons( true, 1, 2, 'Marco Ospitante', '' ) && '' === GuestInvite::text( 'Dora Soloinvito', GuestInviteRules::reasons( true, 1, 2, 'Marco Ospitante', '' ) ), 'invito ospiti: il solo invito di un socio non dà né avviso né voce in Bacheca' );
 
 // Un ospite invitato da un socio, alla prima volta: due motivi (invito e evento), nell'ordine, in un solo avviso.
 $gi_g = $gi_peo->create( array( 'type' => 'guest', 'first_name' => 'Olga', 'last_name' => 'Invitata', 'phone' => '333 7770001', 'host_person_id' => $gi_host ) );

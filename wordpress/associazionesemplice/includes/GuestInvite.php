@@ -36,7 +36,7 @@ final class GuestInvite {
 			$h    = Plugin::people()->get( (int) $person['host_person_id'] );
 			$host = $h ? trim( $h['first_name'] . ' ' . $h['last_name'] ) : '';
 		}
-		$reasons = GuestInviteRules::reasons( true, (int) ( $overview['total'] ?? 0 ), Plugin::activities()->guest_limit(), $host, ( 'event' === ( $activity['kind'] ?? '' ) ? (string) ( $activity['name'] ?? '' ) : '' ) );
+		$reasons = GuestInviteRules::reasons( true, (int) ( $overview['total'] ?? 0 ), Plugin::activities()->guest_limit(), $host, (string) ( $activity['name'] ?? '' ) );
 		if ( ! $reasons ) {
 			return '';
 		}
