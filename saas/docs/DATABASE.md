@@ -272,6 +272,11 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   tipi si aggiunge a quelle liste in una migrazione nuova. `ALTER TABLE ... SET (autovacuum_...)` prende solo un blocco
   SHARE UPDATE EXCLUSIVE: letture, scritture e dump passano. La tabella partizionata del registro non accetta questi
   parametri: restano quelli di fabbrica sulle partizioni.
+- **Sessioni** (`core.sessions`): solo quelle degli operatori e dell'amministrazione (servono a «Dispositivi collegati»,
+  alla revoca e ai limiti di durata), senza indice su `last_activity` e con `fillfactor` 60 (aggiornamenti sul posto).
+  Area soci e moduli pubblici (rotte con il marchio `cookie-session`, middleware `UseCookieSession`) tengono la
+  sessione in un cookie cifrato: messaggi, scheda scelta e token CSRF, mai un accesso (quello del socio sta in
+  `app.member_sessions`).
 - **Dump orario** per database, cifrato prima di uscire dal server con la chiave pubblica dei backup, su uno spazio
   esterno in UE. Prova di ripristino ogni settimana sullo staging ([RILASCIO.md](RILASCIO.md) §3).
 

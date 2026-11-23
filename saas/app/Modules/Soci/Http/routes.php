@@ -73,8 +73,8 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
     });
 });
 
-// Domanda di adesione pubblica, senza accesso: pochi invii per indirizzo e per associazione.
-Route::middleware('web')->group(function (): void {
+// Domanda di adesione pubblica, senza accesso: pochi invii per indirizzo e per associazione. Sessione nel cookie (H19).
+Route::middleware(['web', 'cookie-session'])->group(function (): void {
     Route::get('/adesione/{slug}', [PublicApplicationController::class, 'show'])->name('application.form');
     Route::post('/adesione/{slug}', [PublicApplicationController::class, 'store'])->middleware('throttle:applications')->name('application.submit');
     Route::get('/adesione/{slug}/conferma/{token}', [PublicApplicationController::class, 'confirmPage'])->where('token', '[A-Za-z0-9_-]{43}')->name('application.confirm');
