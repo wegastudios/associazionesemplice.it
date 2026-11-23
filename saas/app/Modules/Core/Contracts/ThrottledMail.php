@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Contracts;
 
-use App\Modules\Core\Mail\MailCounters;
 use App\Modules\Core\Mail\PrimaryMailer;
 use Closure;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use LogicException;
 use RuntimeException;
@@ -190,7 +188,6 @@ final class ThrottledMail
 
     private function rejected(object $job, string $mailer, bool $urgent, TransportExceptionInterface $e): null
     {
-        $code = $e->getCode();
         // Il limite orario dell'account non conta come rifiuto del messaggio.
         $hourLimit = self::hourLimit($e);
         $recipient = self::recipientOnly($e);
@@ -200,11 +197,7 @@ final class ThrottledMail
         }
 
         if ($recipient === null) {
-            $until = MailQueue::block($mailer);
-            if (PrimaryMailer::enabled()) {
-                MailCounters::add($mailer, errors: 1);
-            }
-            Log::warning('Server di posta: invio rifiutato, posta in coda ferma', ['mailer' => $mailer, 'code' => $code, 'until' => date(DATE_ATOM, $until)]);
+            MailQueue::blockAfterRejection($mailer, $e);
         }
 
         // Un urgente può fare da prova al prossimo turno; un massivo aspetta tutta la pausa.

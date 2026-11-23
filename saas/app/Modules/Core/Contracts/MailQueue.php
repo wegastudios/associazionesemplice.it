@@ -97,8 +97,7 @@ final class MailQueue
 
                     continue;
                 }
-                $until = self::block($mailer);
-                Log::warning('Server di posta: invio rifiutato, posta in coda ferma', ['mailer' => $mailer, 'code' => $e->getCode(), 'until' => date(DATE_ATOM, $until)]);
+                self::blockAfterRejection($mailer, $e);
                 break;
             }
         }
@@ -319,6 +318,16 @@ final class MailQueue
         Cache::put(self::blockKey($mailer), $until->getTimestamp(), $until);
 
         return $until->getTimestamp();
+    }
+
+    /** Rifiuto del mailer di sempre (non del solo destinatario): posta ferma, errore contato, nel log solo mailer e codice. */
+    public static function blockAfterRejection(string $mailer, TransportExceptionInterface $e): void
+    {
+        $until = self::block($mailer);
+        if (PrimaryMailer::enabled()) {
+            MailCounters::add($mailer, errors: 1);
+        }
+        Log::warning('Server di posta: invio rifiutato, posta in coda ferma', ['mailer' => $mailer, 'code' => $e->getCode(), 'until' => date(DATE_ATOM, $until)]);
     }
 
     /**

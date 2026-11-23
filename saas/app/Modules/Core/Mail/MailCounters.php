@@ -18,14 +18,19 @@ final class MailCounters
     {
         $now = now('UTC');
         try {
-            // Dentro una transazione (punto di salvataggio se ce n'è già una): un errore qui non rovina quella di chi chiama.
-            DB::transaction(static fn (): bool => DB::statement(<<<'SQL'
+            $write = static fn (): bool => DB::statement(<<<'SQL'
                 INSERT INTO core.mail_counters (day, hour, provider, sent, errors, fallbacks) VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT (day, hour, provider) DO UPDATE SET
                     sent = core.mail_counters.sent + EXCLUDED.sent,
                     errors = core.mail_counters.errors + EXCLUDED.errors,
                     fallbacks = core.mail_counters.fallbacks + EXCLUDED.fallbacks
-            SQL, [$now->toDateString(), $now->hour, $provider, $sent, $errors, $fallbacks]));
+            SQL, [$now->toDateString(), $now->hour, $provider, $sent, $errors, $fallbacks]);
+            // Dentro la transazione di chi chiama, un punto di salvataggio: un errore qui non la rovina.
+            if (DB::transactionLevel() > 0) {
+                DB::transaction($write);
+            } else {
+                $write();
+            }
         } catch (Throwable $e) {
             Log::warning('Contatori della posta non salvati', ['mailer' => $provider, 'error' => $e::class]);
         }
@@ -35,7 +40,8 @@ final class MailCounters
     public static function sentToday(string $provider): int
     {
         try {
-            $sent = DB::transaction(static fn (): mixed => DB::table('core.mail_counters')->where('day', now('UTC')->toDateString())->where('provider', $provider)->sum('sent'));
+            $sum = static fn (): mixed => DB::table('core.mail_counters')->where('day', now('UTC')->toDateString())->where('provider', $provider)->sum('sent');
+            $sent = DB::transactionLevel() > 0 ? DB::transaction($sum) : $sum();
         } catch (Throwable) {
             return 0;
         }

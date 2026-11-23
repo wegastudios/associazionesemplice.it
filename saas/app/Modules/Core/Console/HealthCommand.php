@@ -266,8 +266,7 @@ final class HealthCommand extends Command
             return;
         }
         $since = PrimaryMailer::fallbackSince();
-        $unavailable = PrimaryMailer::dayFullUntil() !== null || MailQueue::blockedUntil(PrimaryMailer::NAME) !== null || PrimaryMailer::errors() >= PrimaryMailer::MAX_ERRORS;
-        if ($since !== null && $unavailable && now()->getTimestamp() - $since > 3600) {
+        if ($since !== null && PrimaryMailer::peek() !== PrimaryMailer::READY && now()->getTimestamp() - $since > 3600) {
             throw new RuntimeException(sprintf('posta sul ripiego (%s) da %d minuti', MailQueue::mailer(), intdiv(now()->getTimestamp() - $since, 60)));
         }
     }

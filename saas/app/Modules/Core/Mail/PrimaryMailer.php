@@ -30,7 +30,7 @@ final class PrimaryMailer
     /** Errori di fila che spengono il servizio, e per quanti minuti. */
     public const MAX_ERRORS = 3;
 
-    public const OFF_MINUTES = 15;
+    private const OFF_MINUTES = 15;
 
     /** Attesa dopo «troppi al secondo» (secondi). */
     public const SECOND_WAIT = 2;
@@ -68,20 +68,23 @@ final class PrimaryMailer
         return config('saas.mail_queue.primary') === self::NAME && is_string($key) && $key !== '';
     }
 
+    /** Stato senza effetti (controllo di salute): READY, DAY_FULL, DOWN, o PROBE se tocca a una prova non ancora presa. */
+    public static function peek(): string
+    {
+        return match (true) {
+            self::dayFullUntil() !== null => self::DAY_FULL,
+            MailQueue::blockedUntil(self::NAME) !== null => self::DOWN,
+            self::errors() >= self::MAX_ERRORS => self::PROBE,
+            default => self::READY,
+        };
+    }
+
     /** Stato per il prossimo invio. Con PROBE l'invio tiene la prova: se non parte, va liberata (MailQueue::endProbe). */
     public static function state(): string
     {
-        if (self::dayFullUntil() !== null) {
-            return self::DAY_FULL;
-        }
-        if (MailQueue::blockedUntil(self::NAME) !== null) {
-            return self::DOWN;
-        }
-        if (self::errors() >= self::MAX_ERRORS) {
-            return MailQueue::startProbe(self::NAME) ? self::PROBE : self::DOWN;
-        }
+        $state = self::peek();
 
-        return self::READY;
+        return $state === self::PROBE && ! MailQueue::startProbe(self::NAME) ? self::DOWN : $state;
     }
 
     /** Fino a quando (timestamp) la quota del giorno è finita; null se non lo è. */
@@ -122,7 +125,7 @@ final class PrimaryMailer
 
             return;
         }
-        if (Cache::pull(self::ERRORS_KEY) !== null) {
+        if (Cache::forget(self::ERRORS_KEY)) {
             MailQueue::unblock(self::NAME);
             MailQueue::endProbe(self::NAME);
         }
