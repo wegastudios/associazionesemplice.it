@@ -5,8 +5,11 @@ declare(strict_types=1);
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
+use App\Modules\Contabilita\Jobs\SendReceiptMail;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Receipts\ReceiptMail;
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Models\Person;
@@ -14,6 +17,8 @@ use App\Modules\Soci\Services\GuardianService;
 use App\Modules\Soci\Services\MembershipService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 
 // Dati di prova inventati.
 beforeEach(function (): void {
@@ -72,6 +77,16 @@ it('intesta la ricevuta del minore al genitore, con la nota sulla detrazione', f
     $this->post("/gestionale/ricevute/{$receiptId}/invia")->assertSessionHas('status', 'Ricevuta n. 1/'.now()->format('Y').' mandata a anna@example.com.');
     Mail::assertSent(ReceiptMail::class, fn (ReceiptMail $m): bool => $m->hasTo('anna@example.com') && count($m->attachments()) === 1
         && $m->hasReplyTo('segreteria@alfa.example') && $m->contactPhone === '06 1234567');
+
+    // Con la quota dell'ora finita la ricevuta va in coda (solo identificativi) e l'operatore lo sa; il lavoro poi la manda.
+    Queue::fake();
+    RateLimiter::increment('mail-all|'.MailQueue::mailer().'|3600', 3600, 10_000);
+    $this->post("/gestionale/ricevute/{$receiptId}/invia")->assertSessionHas('status',
+        'Ricevuta n. 1/'.now()->format('Y').' in coda: la posta in uscita è in pausa o ha raggiunto il limite dell\'ora, parte da sola appena possibile a anna@example.com.');
+    Mail::assertSentCount(1);
+    Queue::assertPushedOn(MailQueue::URGENT, SendReceiptMail::class, fn (SendReceiptMail $job): bool => $job->receiptId === $receiptId && $job->orgId === $this->org->id);
+    Queue::pushed(SendReceiptMail::class)->first()->handle(app(OrgContext::class));
+    Mail::assertSentCount(2);
 });
 
 it('non dà le ricevute stornate né le manda senza email', function (): void {
