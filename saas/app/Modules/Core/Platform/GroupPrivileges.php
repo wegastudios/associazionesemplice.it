@@ -55,7 +55,7 @@ final class GroupPrivileges
     /**
      * Controlli prima di scrivere. Vuoto = si può procedere. Altrimenti i motivi, in parole generiche (mai nomi).
      * 1) nessun altro ruolo con accesso (es. il portale) raggiunge le tabelle solo tramite il gruppo;
-     * 2) applicazione e backup esistono e hanno un permesso diretto sulle tabelle (l'applicazione fuori da public,
+     * 2) applicazione e backup esistono e hanno un permesso diretto sulle tabelle (l'applicazione fuori da public e portal,
      *    dove la tabella delle migrazioni è volutamente chiusa).
      *
      * @return list<string>
@@ -89,7 +89,7 @@ final class GroupPrivileges
         }
 
         // Ogni tabella deve avere una voce diretta per il ruolo (l'applicazione scrive anche senza leggere: basta una qualsiasi).
-        foreach ([['applicazione', $app, "AND n.nspname <> 'public' AND NOT o.relispartition", "'SELECT', 'INSERT', 'UPDATE', 'DELETE'"], ['backup', $backup, '', "'SELECT'"]] as [$label, $role, $filter, $privileges]) {
+        foreach ([['applicazione', $app, "AND n.nspname NOT IN ('public', 'portal') AND NOT o.relispartition", "'SELECT', 'INSERT', 'UPDATE', 'DELETE'"], ['backup', $backup, '', "'SELECT'"]] as [$label, $role, $filter, $privileges]) {
             $missing = self::one($db, <<<SQL
                 SELECT count(*) AS c
                 FROM pg_class o JOIN pg_namespace n ON n.oid = o.relnamespace, (SELECT oid FROM pg_roles WHERE rolname = {$role}) r
