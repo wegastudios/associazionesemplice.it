@@ -190,3 +190,16 @@ it('nella demo le richieste di sola lettura non sono contate né fermate dal con
 
     $this->get('/accesso?da=https://esempio.it')->assertOk();
 });
+
+it('lo stile che sposta gli elementi fissi sotto l\'avviso compare solo con la demo attiva', function (): void {
+    demoOn();
+    $this->get('/accesso')->assertSee('--demo-banner-h', false)->assertSee('class="demo-banner"', false)->assertSee('.fixed.top-0 { top: var(--demo-banner-h); }', false);
+
+    config(['saas.demo.enabled' => false]);
+    $this->get('/accesso')->assertDontSee('--demo-banner-h', false)->assertDontSee('demo-banner', false);
+
+    // SAAS_DEMO acceso ma ambiente diverso da «demo»: nessuno stile, nessun avviso.
+    config(['saas.demo.enabled' => true]);
+    app()->detectEnvironment(fn (): string => 'staging');
+    $this->get('/accesso')->assertDontSee('--demo-banner-h', false)->assertDontSee('demo-banner', false);
+});
