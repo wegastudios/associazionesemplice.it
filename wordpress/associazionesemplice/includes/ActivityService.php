@@ -622,6 +622,107 @@ class ActivityService {
 		return $id;
 	}
 
+	/**
+	 * Prenota più persone insieme a una data, a nome di chi prenota ($booker_id): tutte o nessuna, in una sola transazione sotto lo stesso blocco
+	 * dei posti. Il COMMIT avviene PRIMA che il blocco si rilasci (lo rilascia with_lock all'uscita), così chi aspetta vede i posti già occupati.
+	 * Il contributo di ciascuno è fissato adesso e resta di chi prenota. Email e altre azioni esterne partono solo dopo, dal chiamante.
+	 * I controlli sulle persone (regolamento, tessera, consenso dell'altro socio) sono del chiamante: qui solo posti, doppioni, evento su richiesta,
+	 * estensioni e prezzo.
+	 *
+	 * @param int[] $person_ids persone da prenotare (senza ripetizioni)
+	 * @param int   $booker_id  chi prenota; per la propria prenotazione il campo booked_by resta vuoto
+	 * @param array $opt        price_list (come in book())
+	 * @return array<int,int> person_id => id della prenotazione
+	 */
+	public function book_many( int $session_id, array $person_ids, int $booker_id, array $opt = array() ): array {
+		$person_ids = array_values( array_unique( array_map( 'intval', $person_ids ) ) );
+		if ( ! $person_ids ) {
+			throw new \InvalidArgumentException( 'Nessuna persona da prenotare.' );
+		}
+		$s = $this->session( $session_id );
+		if ( ! $s || $s['cancelled_at'] ) {
+			throw new \InvalidArgumentException( 'Questa data non è più disponibile.' );
+		}
+		$a = $this->get( (int) $s['activity_id'] );
+		if ( ! $a ) {
+			throw new \InvalidArgumentException( 'Attività non trovata.' );
+		}
+		$people = array();
+		foreach ( $person_ids as $pid ) {
+			$people[ $pid ] = Plugin::people()->get( $pid );
+			if ( ! $people[ $pid ] ) {
+				throw new \InvalidArgumentException( 'Persona non trovata.' );
+			}
+		}
+		$max = (int) PublicEvents::options( (int) $a['id'] )['max_seats'];
+		if ( $max > 0 && count( $person_ids ) > $max ) {
+			throw new \InvalidArgumentException( 'Per questo evento si possono prenotare al massimo ' . $max . ' posti per volta.' );
+		}
+		if ( empty( $opt['approved'] ) && ! current_user_can( Plugin::CAP ) && ! current_user_can( Plugin::CAP_OPS ) && PublicEvents::options( (int) $a['id'] )['approval'] ) {
+			throw new \InvalidArgumentException( 'Questo evento è su richiesta: chiedi di partecipare dalla pagina dell\'evento e la segreteria ti risponde.' );
+		}
+		foreach ( $person_ids as $pid ) {
+			$conflict = (string) apply_filters( 'asem_booking_errors', '', $session_id, $pid );
+			if ( '' !== $conflict ) {
+				throw new \InvalidArgumentException( $conflict ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+		}
+		if ( null !== $s['capacity'] && (int) ( $a['hold_hours'] ?? 0 ) > 0 ) {
+			Holds::release_expired( $session_id );
+		}
+		$tbl = Db::t( 'bookings' );
+		$db  = $this->db();
+		$out = Db::with_lock(
+			'asem_book_' . $session_id,
+			function () use ( $tbl, $db, $s, $a, $people, $session_id, $booker_id, $opt ) {
+				$new = array();
+				foreach ( $people as $pid => $person ) {
+					$existing = $db->get_row( $db->prepare( "SELECT * FROM $tbl WHERE session_id = %d AND person_id = %d", $session_id, $pid ), ARRAY_A );
+					if ( $existing && 'booked' === $existing['status'] ) {
+						throw new \InvalidArgumentException( 'Questa persona è già prenotata a questa data.' );
+					}
+					$new[ $pid ] = $existing;
+				}
+				if ( null !== $s['capacity'] ) {
+					$taken = (int) $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $tbl WHERE session_id = %d AND status = 'booked'", $session_id ) );
+					if ( $taken + count( $new ) > (int) $s['capacity'] ) {
+						throw new \InvalidArgumentException( 'Posti esauriti per questa data (' . (int) $s['capacity'] . ').' );
+					}
+				}
+				$rows = array();
+				foreach ( $people as $pid => $person ) {
+					$rows[ $pid ] = $this->price_data( $a, $person, $opt );
+				}
+				$ids = array();
+				$db->query( 'START TRANSACTION' );
+				try {
+					foreach ( $people as $pid => $person ) {
+						$by = $pid === $booker_id ? null : $booker_id;
+						if ( $new[ $pid ] ) {
+							$ok = false !== $db->update( $tbl, array_merge( $rows[ $pid ], array( 'status' => 'booked', 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null, 'booked_by' => $by ) ), array( 'id' => (int) $new[ $pid ]['id'] ) );
+							$ids[ $pid ] = (int) $new[ $pid ]['id'];
+						} else {
+							$ok = (bool) $db->insert( $tbl, array_merge( $rows[ $pid ], array( 'session_id' => $session_id, 'person_id' => $pid, 'status' => 'booked', 'booked_by' => $by, 'created_at' => Db::now() ) ) );
+							$ids[ $pid ] = (int) $db->insert_id;
+						}
+						if ( ! $ok ) {
+							throw new \InvalidArgumentException( 'Prenotazione non riuscita: riprova.' );
+						}
+					}
+					$db->query( 'COMMIT' ); // prima che il blocco si rilasci
+				} catch ( \Throwable $e ) {
+					$db->query( 'ROLLBACK' );
+					throw $e;
+				}
+				return $ids;
+			}
+		);
+		foreach ( $out as $pid => $bid ) {
+			Audit::log( 'booking.created', 'activity', (int) $a['id'], array( 'session' => $session_id, 'person_id' => $pid, 'fee' => (int) $this->db()->get_var( $this->db()->prepare( "SELECT fee_due_cents FROM $tbl WHERE id = %d", $bid ) ), 'booked_by' => $booker_id ) );
+		}
+		return $out;
+	}
+
 	/** Ingressi già usati di un pacchetto (la prenotazione che l'ha pagato conta come uno). */
 	public function package_used( int $paying_booking_id ): int {
 		$tbl = Db::t( 'bookings' );
