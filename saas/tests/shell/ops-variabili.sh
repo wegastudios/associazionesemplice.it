@@ -78,6 +78,15 @@ grep -qx 'DB_SSLMODE = require' "$f" && echo "ok   variabili: sslmode con commen
 ok "DB_HOST localhost"  "$(db_host_class localhost)" "localhost"
 ok "DB_HOST socket"     "$(db_host_class /var/run/postgresql)" "socket"
 ok "DB_HOST vuoto"      "$(db_host_class "")" "vuoto"
+# db-proprieta: sola lettura anche per il database (transazione READ ONLY, timeout, ROLLBACK) e solo SELECT sul catalogo
+DBP="$(awk '/^  db-proprieta\)/{p=1; next} p&&/^  [a-z0-9-]+\)/{exit} p{print}' "$OPS")"
+for needle in 'beginTransaction' 'SET TRANSACTION READ ONLY' 'SET LOCAL statement_timeout' 'rollBack'; do
+  case "$DBP" in *"$needle"*) echo "ok   db-proprieta: $needle" ;; *) echo "FAIL db-proprieta: manca $needle"; fail=1 ;; esac
+done
+if printf '%s' "$DBP" | grep -v '^ *#' | grep -qE '(insert into|update [a-z_."]+ set|delete from|ALTER [A-Z]|GRANT [A-Z]+ ON|REVOKE |CREATE (TABLE|ROLE|INDEX|SCHEMA)|DROP |TRUNCATE |COMMIT)'; then echo "FAIL db-proprieta: istruzione di scrittura"; fail=1; else echo "ok   db-proprieta: nessuna istruzione di scrittura"; fi
+# prova-ip: l'indirizzo IP sarebbe visibile nel run pubblico, quindi non è nel workflow
+WF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/.github/workflows/saas-ops.yml"
+if grep -q 'prova-ip' "$WF"; then echo "FAIL prova-ip ancora nel workflow"; fail=1; else echo "ok   prova-ip non è nel workflow"; fi
 touch "$T/p"; chmod 600 "$T/p"
 if [ "$(stat -c %a "$T/p" 2>/dev/null || echo x)" = "600" ]; then ok "file 600" "$(stat -c %a "$f")" "600"; else echo "skip permessi 600 (file system senza permessi)"; fi
 # Potatura: al massimo 5 file per azione

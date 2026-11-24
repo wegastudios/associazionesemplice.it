@@ -633,7 +633,8 @@ case "$ACTION" in
     mkdir -p "$HOME/recupero" && chmod 700 "$HOME/recupero" && echo "Cartella recupero pronta nella home (permessi 700, fuori dalla cartella web)."
     ;;
   prova-ip)
-    # Sola lettura: quante richieste ha contato il limite dell'API dello staff per l'indirizzo dato (secondo argomento, pg_bin_dir).
+    # NON è nel workflow pubblico (l'indirizzo IP resterebbe visibile nel run): si lancia solo via SSH, `bash -s -- prova-ip <indirizzo> < ops.sh`.
+    # Sola lettura: quante richieste ha contato il limite dell'API dello staff per l'indirizzo dato (secondo argomento).
     # Serve a provare che dietro il proxy del portale il SaaS vede l'indirizzo vero del visitatore e non quello del server.
     [[ "$ARG" =~ ^[0-9a-fA-F:.]{3,45}$ ]] || { echo "Indirizzo IP non valido." >&2; exit 1; }
     cd "$BASE/current"
@@ -665,17 +666,21 @@ case "$ACTION" in
     # Proprietari del database e di schemi, tabelle, viste, sequenze, funzioni (conteggi e poi elenco); ruoli di gruppo dei
     # ruoli app/backup/owner (con admin/inherit/set se la versione lo permette); privilegi dei ruoli di gruppo e dei tre ruoli
     # su schemi e tabelle con chi li ha concessi; default privileges; CREATE sul database; RLS e FORCE RLS per tabella;
-    # se app è NOINHERIT. Tutto su file in shared/ (600): nel log solo «salvato in».
+    # se app è NOINHERIT. Gira in una transazione READ ONLY con statement_timeout di 20 s (sola lettura anche per il database), chiusa con ROLLBACK. Tutto su file in shared/ (600): nel log solo «salvato in».
     cd "$BASE/current"
     F="$(newfile db-proprieta)"
     "$PHP" artisan tinker --execute='
       $db = DB::connection("pgsql_owner");
       $roles = ["app" => (string) config("database.connections.pgsql.username"), "backup" => (string) config("database.connections.pgsql_owner.backup_role"), "owner" => (string) config("database.connections.pgsql_owner.username")];
-      $sec = function (string $title, Closure $f): void {
+      $db->beginTransaction();
+      $db->statement("SET TRANSACTION READ ONLY");
+      $db->statement("SET LOCAL statement_timeout = \u{0027}20s\u{0027}");
+      $sec = function (string $title, Closure $f) use ($db): void {
         echo PHP_EOL, "== ", $title, " ==", PHP_EOL;
-        try { $f(); } catch (Throwable $e) { echo "non disponibile (", get_class($e), ")", PHP_EOL; }
+        try { $db->statement("SAVEPOINT sezione"); $f(); $db->statement("RELEASE SAVEPOINT sezione"); }
+        catch (Throwable $e) { echo "non disponibile (", get_class($e), ")", PHP_EOL; try { $db->statement("ROLLBACK TO SAVEPOINT sezione"); } catch (Throwable $e2) {} }
       };
-      $user = "n.nspname !~ ? and n.nspname <> ?";
+      $user ="n.nspname !~ ? and n.nspname <> ?";
       $uargs = ["^pg_", "information_schema"];
 
       $sec("Proprietario del database", function () use ($db) {
@@ -763,6 +768,7 @@ case "$ACTION" in
         echo "tabelle: ", $tot, " con RLS: ", $rls, " con FORCE RLS: ", $force, " senza RLS: ", count($noRls), PHP_EOL;
         foreach ($rows as $r) { echo $r->t, " rls=", var_export($r->rls, true), " force=", var_export($r->forced, true), PHP_EOL; }
       });
+      $db->rollBack();
     ' > "$F" 2>&1 || true
     prune_files db-proprieta
     echo "db-proprieta: salvato in $F"
