@@ -82,6 +82,19 @@ Prove automatiche (CI): `tests/Feature/Core/DemoWebrootTest.php` prova il blocco
 
 Con `SAAS_DEMO=true` (ambiente non di produzione) l'app, all'avvio, rende **«log» ogni mailer** (`DemoMailGuard`): `MAIL_MAILER`, le impostazioni della piattaforma, `smtp`, `emailit`, `failover`, `ses`… tutti scrivono nel registro, e `SAAS_MAIL_PRIMARY` torna `cpanel`. Anche se per errore nel `.env` ci fossero `MAIL_MAILER=smtp` o Emailit, inviti, codici e link dell'area soci non escono. Il controllo del `.env` segnala comunque quelle variabili. Prove: `tests/Feature/Core/DemoMailTest.php`.
 
+## Il database della demo (procedura generica)
+
+Nessun nome, valore o password in questo documento: i nomi scelti stanno solo nel `.env` sul server.
+
+1. **Creare** database e tre utenti (applicazione, proprietario, sola lettura) con `uapi Postgresql` (`create_database`, `create_user`), nomi diversi tra loro. Le password si generano sul server, si scrivono **solo in un file con permessi 600 fuori dalla web root** (per esempio in `~/saas-demo/shared/`), mai in chat, nel repository o nei log.
+2. **Dare a tutti e tre** i permessi con `uapi Postgresql grant_all_privileges` sul database: serve perché cPanel scriva la riga di `pg_hba` per ciascun utente (senza, l'utente non si collega). Poi si restringe come sotto.
+3. **`DB_HOST=localhost`** (non `127.0.0.1`: `pg_hba` lo rifiuta su questo server) e **nessun `DB_SSLMODE=require`**: il server non offre SSL su `localhost`/socket.
+4. **Ruolo di gruppo**: cPanel fa risultare i tre utenti membri (con ereditarietà) del ruolo di gruppo che possiede il database, e non si può evitare. Rimedio per oggetto, come amministratore del database:
+   - dare al proprietario `CREATE` sul database; `ALTER SCHEMA public OWNER TO <proprietario>`; `REVOKE ALL ON SCHEMA public FROM PUBLIC`;
+   - poi, come gruppo (`SET ROLE <gruppo>`): `REVOKE CREATE, TEMPORARY ON DATABASE <db> FROM <gruppo>` e `REVOKE ALL ON DATABASE <db> FROM PUBLIC`; infine `GRANT CONNECT ON DATABASE <db>` ad applicazione e sola lettura (e al proprietario).
+5. **Migrazioni come proprietario** (`saas:migrate` usa `DB_OWNER_*`): così tabelle e schemi sono del proprietario, non del gruppo.
+6. **Limite noto, accettato per la demo** (dati finti): applicazione e sola lettura possono fare `SET ROLE` al gruppo e quindi `ALTER DATABASE` o `GRANT` sul database; non toccano le tabelle del proprietario. Non è accettabile in produzione.
+
 ## Ambiente GitHub `demo`
 
 - Ambiente **`demo`** nelle impostazioni del repository, con la regola «solo il ramo `main`».
