@@ -18,6 +18,17 @@ if ( '' !== $canonical && '' !== $reqHost && $reqHost !== $canonical && in_array
 	exit;
 }
 
+// Cookie di sessione: con https si chiama «__Host-asem_portale» (il browser lo accetta solo con Secure, Path=/ e senza Domain: legato a questo host
+// e non impostabile da altri sottodomini, per esempio la demo). Va deciso prima del proxy, che toglie dalle richieste quel cookie (session_name()).
+$https = ( ! empty( $_SERVER['HTTPS'] ) && 'off' !== $_SERVER['HTTPS'] ) || 'https' === ( $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '' );
+if ( $https ) {
+	session_name( '__Host-asem_portale' );
+	// Due cookie con lo stesso nome non dovrebbero esistere (il prefisso lo impedisce): se arrivano, nessuno dei due vale e la sessione riparte pulita.
+	if ( substr_count( ';' . str_replace( ' ', '', (string) ( $_SERVER['HTTP_COOKIE'] ?? '' ) ), ';__Host-asem_portale=' ) > 1 ) {
+		unset( $_COOKIE['__Host-asem_portale'] );
+	}
+}
+
 // Amministrazione e API del gestionale sotto il dominio principale: proxy verso il SaaS (spento finché `saas_proxy.enabled` non è true).
 // Va prima della sessione: queste richieste non devono creare né leggere la sessione del portale.
 if ( Portale\SaasProxy::enabled() && Portale\SaasProxy::handles( (string) parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH ) ) ) {
@@ -25,7 +36,6 @@ if ( Portale\SaasProxy::enabled() && Portale\SaasProxy::handles( (string) parse_
 	exit;
 }
 
-$https = ( ! empty( $_SERVER['HTTPS'] ) && 'off' !== $_SERVER['HTTPS'] ) || 'https' === ( $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '' );
 session_set_cookie_params( array( 'lifetime' => 0, 'path' => '/', 'secure' => $https, 'httponly' => true, 'samesite' => 'Lax' ) );
 // Le API per i plugin, i webhook e le chiavi pubbliche non usano la sessione: niente cookie né file di sessione per ogni chiamata (chiunque può farne molte).
 $apiPath = (string) parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH );

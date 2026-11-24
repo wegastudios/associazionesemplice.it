@@ -173,6 +173,14 @@ final class App {
 			// Stessa tabella di /confronto, senza pagina intorno: la legge la demo e la mostra nella sua home.
 			$fragment = true;
 			View::headers( 'text/html; charset=utf-8' );
+			// La demo può stare su un altro host (demo.associazionesemplice.it) e la legge con una richiesta tra siti: si consente solo quell'origine esatta,
+			// solo in lettura (GET) e senza credenziali (niente Allow-Credentials, niente caratteri jolly).
+			header( 'Vary: Origin' );
+			$cors = Demo::corsOrigin();
+			if ( '' !== $cors && $cors === (string) ( $_SERVER['HTTP_ORIGIN'] ?? '' ) ) {
+				header( 'Access-Control-Allow-Origin: ' . $cors );
+				header( 'Access-Control-Allow-Methods: GET' );
+			}
 			require __DIR__ . '/../views/confronto.php';
 		} elseif ( '/saas/acquista' === $path ) {
 			$this->saasBuy( $get );

@@ -1477,6 +1477,18 @@ foreach ( Portale\Demo::links() as $rows ) {
 }
 check( 'demo: i collegamenti sono percorsi della demo e non portano alle pagine di WordPress riservate agli amministratori del sito', $demoLinks && ! array_filter( $demoLinks, function ( $p ) { return 0 !== strpos( $p, '/' ) || preg_match( '#(users|plugins|plugin-install|themes|options-general|tools|update-core).php#', $p ); } ) );
 check( 'demo: l\'indirizzo non finisce con la barra', '/' !== substr( Portale\Demo::url(), -1 ) );
+$corsBefore = array( Config::get( 'demo_url', null ), Config::get( 'base_url', null ) );
+Config::set( 'base_url', 'https://associazionesemplice.it' );
+Config::set( 'demo_url', 'https://associazionesemplice.it/demo' );
+check( 'demo: sullo stesso host del portale nessuna origine CORS', '' === Portale\Demo::corsOrigin() );
+Config::set( 'demo_url', 'https://Demo.associazionesemplice.it/' );
+check( 'demo: su un altro host l\'origine CORS è quella esatta (https, senza barra, minuscola)', 'https://demo.associazionesemplice.it' === Portale\Demo::corsOrigin() );
+Config::set( 'demo_url', 'http://demo.associazionesemplice.it' );
+check( 'demo: indirizzo non https, nessuna origine CORS', '' === Portale\Demo::corsOrigin() );
+Config::set( 'demo_url', 'https://demo.associazionesemplice.it:8443' );
+check( 'demo: indirizzo con porta, nessuna origine CORS', '' === Portale\Demo::corsOrigin() );
+Config::set( 'demo_url', $corsBefore[0] );
+Config::set( 'base_url', $corsBefore[1] );
 
 // --- Livello firmato dal portale (portal_attestation) -------------------------------------------------------------------
 $pseed = random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES );
