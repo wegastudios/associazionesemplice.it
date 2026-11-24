@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Http\Middleware;
 
+use App\Modules\Core\Contracts\DemoScale;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Vite;
@@ -31,6 +32,11 @@ final class SecurityHeaders
         $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
         $headers->set('Cross-Origin-Opener-Policy', 'same-origin');
+
+        // La demo è pubblica ma non si indicizza: nessun motore di ricerca la mostra (vale anche per le pagine di errore).
+        if (DemoScale::restricted()) {
+            $headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+        }
 
         if (! Vite::isRunningHot()) {
             $headers->set('Content-Security-Policy', implode('; ', [

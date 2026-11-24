@@ -6,6 +6,7 @@ namespace App\Modules\Core\Providers;
 
 use App\Modules\Core\Access\EmployeeCounter;
 use App\Modules\Core\Console\CreateOrgCommand;
+use App\Modules\Core\Console\DemoCheckEnvCommand;
 use App\Modules\Core\Console\DemoResetCommand;
 use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
@@ -127,7 +128,7 @@ final class CoreServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class, NightCommand::class, WebRefreshCommand::class]);
+            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, DemoCheckEnvCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class, NightCommand::class, WebRefreshCommand::class]);
 
             // Code su Postgres: lavoratori a giro di cron, che si fermano quando la coda è vuota o dopo 50 secondi (sul
             // server non ci sono processi sempre attivi). Code per tipo di lavoro e quanti lavoratori: JobQueues.
