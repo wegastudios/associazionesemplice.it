@@ -37,9 +37,12 @@ function wrongMailSetup(): void
 /** Un file di log di prova al posto di quello dell'applicazione: dopo ogni prova si legge cosa c'è scritto. */
 function demoTestLog(): string
 {
-    $path = sys_get_temp_dir().'/demo-log-'.bin2hex(random_bytes(4)).'.log';
-    config(['logging.default' => 'demo_prova', 'logging.channels.demo_prova' => ['driver' => 'single', 'path' => $path, 'level' => 'debug']]);
-    Log::purge();
+    $id = bin2hex(random_bytes(4));
+    $path = sys_get_temp_dir().'/demo-log-'.$id.'.log';
+    // Canale con nome nuovo a ogni prova: non c'è un'istanza vecchia da dimenticare.
+    config(['logging.default' => 'demo_'.$id, 'logging.channels.demo_'.$id => ['driver' => 'single', 'path' => $path, 'level' => 'debug']]);
+    Log::channel('demo_'.$id)->debug('prova');
+    file_put_contents($path, '');
 
     return $path;
 }
