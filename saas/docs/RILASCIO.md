@@ -83,7 +83,21 @@ Con un solo ambiente, la **prova di ripristino** (che non gira dove sta la produ
 chiave privata dei backup) si fa a mano dal computer di chi gestisce, con la coppia di chiavi dei backup in un `.env`
 locale e il database di prova locale: `php artisan saas:backup:restore-test`.
 
-Segreti per ambiente (GitHub → Settings → Environments → `staging` e `production`): `SAAS_SSH_HOST`, `SAAS_SSH_PORT`,
+**Ogni ambiente si rilascia solo dal ramo `main`**: il workflow rifiuta ogni altro ramo (il passo «Rilascio» non parte).
+Il pacchetto e lo script `remote.sh` che girano sul server vengono dal ramo scelto, quindi un ramo qualunque non deve
+poter arrivare al server nemmeno per prova.
+
+**Stato su GitHub (verificato il 24/11/2026)**: esiste solo l'ambiente `production`, con `main` come unico ramo
+ammesso e **senza revisori obbligatori**: il rilascio non aspetta clic, coerente con «CI verde = si unisce e si mette
+online». Gli ambienti `demo` e `staging` non esistono (nessun segreto, nessun rilascio da lì). Al titolare non resta
+nessun passo su GitHub. Se un giorno si crea `demo` o `staging`: stessa regola, solo `main`
+(Settings → Environments → Deployment branches → Selected branches and tags → `main`).
+
+**Scelta da prendere al lancio** (non adesso): se attivare **Required reviewers** su `production`. Ogni rilascio
+resterebbe fermo finché il titolare non lo approva con un clic; «Prevent self-review» resterebbe spento finché è
+l'unico revisore. Oggi è spento di proposito.
+
+Segreti per ambiente (GitHub → Settings → Environments → `production`): `SAAS_SSH_HOST`, `SAAS_SSH_PORT`,
 `SAAS_SSH_USER`, `SAAS_SSH_PRIVATE_KEY` (chiave Ed25519 solo per il rilascio, autorizzata solo su quel sub-account),
 `SAAS_SSH_KNOWN_HOSTS` (riga di `ssh-keyscan -p PORTA HOST`, controllata a mano). Le chiavi dell'applicazione non
 passano da GitHub: stanno solo in `shared/.env`.
