@@ -297,28 +297,24 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
 - **Dump orario** per database, cifrato prima di uscire dal server con la chiave pubblica dei backup, su uno spazio
   esterno in UE. Prova di ripristino ogni settimana sullo staging ([RILASCIO.md](RILASCIO.md) §3).
 
-### Permessi del ruolo di gruppo (cPanel)
+### Permessi del ruolo di gruppo
 
-- **Perché**: su cPanel il database appartiene a un ruolo di gruppo (senza accesso) di cui applicazione, backup e
-  proprietario sono membri con ereditarietà. La funzione di cPanel `update_privileges ... ALL` (pannello «gestisci
-  privilegi utente → ALL») dà a quel gruppo tutti i privilegi su tutte le tabelle, e CREATE e TEMPORARY sul database:
-  applicazione e soprattutto backup (che deve restare in sola lettura) li ereditano. `saas:health` li segnala; il
-  comando sotto li toglie.
-- **Cosa fa** `php artisan saas:db:revoke-group`, con la connessione del proprietario, in una transazione e senza effetti
-  se non c'è nulla da togliere: `REVOKE ALL` su tabelle, sequenze e funzioni degli schemi dell'applicazione (e `org_*`),
-  sulle colonne con permessi propri, i permessi predefiniti (`ALTER DEFAULT PRIVILEGES`) per i ruoli di cui il
-  proprietario è membro, e CREATE/TEMPORARY sul database (con `SET LOCAL ROLE` verso il gruppo, se il proprietario può).
-  Non toglie mai CONNECT, non tocca i permessi diretti di applicazione, backup, proprietario e portale né la proprietà
-  degli oggetti. Senza ruolo di gruppo (database di prova, un solo ruolo) non fa nulla ed esce con 0. In uscita solo
-  conteggi, mai nomi: i log dei workflow sono pubblici. Esce con 1 se qualcosa non si può togliere.
-- **Interruttore**: agisce solo con `SAAS_DB_REVOKE_GROUP` acceso (spento di default). Spento rifiuta con «interruttore
-  spento». `--dry-run` funziona sempre e stampa solo quanti oggetti per tipo toccherebbe, senza scrivere.
-- **A ogni rilascio**: `deploy/remote.sh` lo lancia dopo le migrazioni e prima del cambio del link `current`, con
-  `--if-enabled` (interruttore spento: nessuna azione, nessun messaggio). Se fallisce il rilascio non si ferma: avviso nel
-  log, e il controllo di salute lo segnala. A mano: azioni `revoca-gruppo` (prova) e `revoca-gruppo-esegui` di
-  «SaaS · manutenzione server».
-- **Avvertenza**: non rilanciare `update_privileges` (né «ALL» nel pannello cPanel): rimette quei permessi. Se succede, il
-  rilascio successivo li toglie di nuovo (con l'interruttore acceso).
+- **Cosa fa** `php artisan saas:db:revoke-group`: con la connessione del proprietario, in una transazione, riporta ai
+  permessi previsti quelli del ruolo di gruppo che possiede il database. Agisce oggetto per oggetto, solo su ciò che il
+  proprietario può togliere (oggetti suoi, voci concesse da lui, CREATE sul database solo con una sua voce diretta,
+  permessi sugli schemi solo se applicazione e backup hanno il proprio accesso diretto); il resto si conta tra i
+  «rimasti». Non tocca CONNECT, i permessi diretti degli altri ruoli né la proprietà degli oggetti. Senza ruolo di
+  gruppo non fa nulla ed esce con 0.
+- **Controlli prima di scrivere**: se un altro ruolo con accesso raggiunge delle tabelle solo tramite il gruppo, o se
+  applicazione e backup non hanno un permesso diretto sulle tabelle, il comando rifiuta e non scrive nulla.
+- **Interruttore**: agisce solo con `SAAS_DB_REVOKE_GROUP` acceso (spento di default; spento, senza `--dry-run`,
+  rifiuta con «interruttore spento»). `--dry-run` funziona sempre, non scrive e stampa solo conteggi per tipo.
+- **Uscita**: solo conteggi, mai nomi di ruoli o di oggetti. Esce con 1 per errore, rifiuto o voci rimaste; con
+  `--dry-run` solo per un errore tecnico.
+- **A ogni rilascio**: `deploy/remote.sh` lo lancia dopo le migrazioni e prima del cambio del link `current`, solo con
+  l'interruttore acceso; il dettaglio va in un file riservato sul server e il rilascio non si ferma mai per questo. A
+  mano: azioni `revoca-gruppo` (prova) e `revoca-gruppo-esegui` di «SaaS · manutenzione server».
+- **Avvertenza**: non usare `update_privileges` di cPanel (né «ALL» nel pannello dei privilegi).
 
 ## 9. Moduli (dalle 64 tabelle del plugin)
 

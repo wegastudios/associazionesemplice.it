@@ -82,9 +82,22 @@ case "$EMPTY_RC" in
 esac
 # saas:migrate aspetta la fine del backup orario, se è in corso, e riprova le istruzioni che non ottengono un blocco.
 "$PHP" artisan saas:migrate --force
-# Permessi del ruolo di gruppo del database (cPanel li rimette): se l'interruttore SAAS_DB_REVOKE_GROUP è acceso si toglie
-# di nuovo quel che c'è (nel log solo conteggi). Non ferma il rilascio: il controllo di salute lo segnala comunque.
-"$PHP" artisan saas:db:revoke-group --if-enabled || echo "Permessi del gruppo non sistemati ora: lo segnala il controllo di salute." >&2
+# Permessi del ruolo di gruppo del database: con l'interruttore SAAS_DB_REVOKE_GROUP acceso si riportano a quelli previsti.
+# Il dettaglio (stdout e stderr) va solo in un file riservato (shared/revoca-gruppo-<data>.txt, 600, ultimi 5): il log del
+# workflow è pubblico e dice solo «fatto» o «da rivedere». Spento il comando non scrive nulla e il file si toglie.
+# Non ferma mai il rilascio: il controllo di salute segnala ciò che resta.
+GROUP_FILE="$BASE/shared/revoca-gruppo-$(date -u +%Y%m%dT%H%M%S).txt"
+GROUP_RC=0
+( umask 077; "$PHP" artisan saas:db:revoke-group --if-enabled > "$GROUP_FILE" 2>&1 ) || GROUP_RC=$?
+chmod 600 "$GROUP_FILE" 2>/dev/null || true
+if [ "$GROUP_RC" -eq 0 ] && [ ! -s "$GROUP_FILE" ]; then
+    rm -f "$GROUP_FILE"
+elif [ "$GROUP_RC" -eq 0 ]; then
+    echo "permessi del gruppo: fatto"
+else
+    echo "permessi del gruppo: da rivedere, vedi il controllo di salute" >&2
+fi
+ls -1t "$BASE"/shared/revoca-gruppo-*.txt 2>/dev/null | tail -n +6 | while read -r old; do rm -f "$old"; done
 # I mesi del registro sono pronti con tre mesi di anticipo: se ora non si riesce (backup in corso) il rilascio prosegue,
 # il controllo di salute lo segnala e ci riprova il lavoro mensile.
 "$PHP" artisan saas:audit:partitions || echo "Partizioni del registro non preparate ora: ci riprova il lavoro mensile." >&2

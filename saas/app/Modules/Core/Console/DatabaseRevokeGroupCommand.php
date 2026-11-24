@@ -12,11 +12,12 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Throwable;
 
 /**
- * Riapplica il REVOKE al ruolo di gruppo che possiede il database (cPanel, `update_privileges ... ALL`, glieli rimette tutti).
- * Con la connessione del proprietario. Agisce solo con SAAS_DB_REVOKE_GROUP acceso; `--dry-run` conta senza scrivere e
- * funziona sempre. Nessun nome di ruolo o di oggetto in uscita: solo conteggi (i log dei workflow sono pubblici).
+ * Riporta ai permessi previsti quelli del ruolo di gruppo che possiede il database. Con la connessione del proprietario.
+ * Agisce solo con SAAS_DB_REVOKE_GROUP acceso; `--dry-run` conta senza scrivere e funziona sempre. Nessun nome di ruolo
+ * o di oggetto in uscita: solo conteggi. Non rilanciare `update_privileges` di cPanel: rimette quei permessi.
  *
- * Uscita: 0 fatto o niente da fare (anche senza ruolo di gruppo); 1 interruttore spento, errore o permessi rimasti.
+ * Uscita: 0 fatto o niente da fare (anche senza ruolo di gruppo); 1 interruttore spento, errore, rifiuto dei controlli
+ * di sicurezza o permessi che il proprietario non può togliere. Con `--dry-run` 1 solo per un errore tecnico.
  */
 #[AsCommand(name: 'saas:db:revoke-group')]
 final class DatabaseRevokeGroupCommand extends Command
@@ -25,7 +26,7 @@ final class DatabaseRevokeGroupCommand extends Command
         {--dry-run : Solo conteggi per tipo, senza scrivere}
         {--if-enabled : Con l\'interruttore spento esce subito, in silenzio (per il rilascio)}';
 
-    protected $description = 'Toglie al ruolo di gruppo del database i permessi che cPanel rimette (interruttore SAAS_DB_REVOKE_GROUP)';
+    protected $description = 'Riporta ai permessi previsti quelli del ruolo di gruppo del database (interruttore SAAS_DB_REVOKE_GROUP)';
 
     public function handle(DatabaseNames $databases, DatabaseManager $db): int
     {
@@ -52,13 +53,27 @@ final class DatabaseRevokeGroupCommand extends Command
 
                     continue;
                 }
+                $app = $connection->getConfig('app_role');
+                $backup = $connection->getConfig('backup_role');
+                $app = is_string($app) ? $app : '';
+                $backup = is_string($backup) ? $backup : '';
+
                 if ($dry) {
-                    $counts = GroupPrivileges::counts(GroupPrivileges::inventory($connection, $group));
-                    $this->line("{$label}: toglierebbe ".implode(', ', array_map(static fn (string $k, int $v): string => "{$k} {$v}", array_keys($counts), $counts)));
+                    $counts = GroupPrivileges::counts(GroupPrivileges::inventory($connection, $group, $app, $backup));
+                    $refused = GroupPrivileges::guard($connection, $group, $app, $backup);
+                    $this->line("{$label}: ".implode(', ', array_map(static fn (string $k, int $v): string => "{$k} {$v}", array_keys($counts), $counts)));
+                    $this->line("{$label}: controlli di sicurezza ".($refused === [] ? 'superati' : 'NON superati ('.count($refused).'): non si scriverebbe nulla'));
 
                     continue;
                 }
-                $result = GroupPrivileges::revoke($connection, $group);
+
+                $result = GroupPrivileges::revoke($connection, $group, $app, $backup);
+                if ($result['refused'] !== []) {
+                    $failed = true;
+                    $this->components->warn("{$label}: controlli di sicurezza non superati (".count($result['refused'])."), nessun permesso toccato");
+
+                    continue;
+                }
                 $removed += $result['removed'];
                 if ($result['remaining'] > 0) {
                     $failed = true;
