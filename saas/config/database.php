@@ -79,6 +79,10 @@ return [
             'app_role' => env('DB_USERNAME', 'as_app'),
             // Ruolo dei backup: sola lettura, ammesso dalle policy (OrgSchema::secure).
             'backup_role' => env('DB_BACKUP_USERNAME', 'as_backup'),
+            // Ruolo con cui si collega il portale allo schema `portal` (portale/config.php): il nome è quello vero del
+            // server (su cPanel ha il prefisso dell'account), non un nome fisso. Se il ruolo non esiste, le migrazioni
+            // non gli danno nulla (OrgSchema::portalRole).
+            'portal_role' => env('DB_PORTAL_USERNAME', 'portal_app'),
         ],
 
         // Sola lettura per pg_dump (saas:backup:dump). Mai nelle richieste.
