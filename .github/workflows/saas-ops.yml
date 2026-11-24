@@ -10,14 +10,14 @@ on:
       action:
         description: Cosa fare
         type: choice
-        options: [diagnosi, chiave-catalogo, percorso-pgdump, ciclo-vita, prova-cancellazione, catalogo, bozza-listino, accendi-ciclo-vita, spegni-cancellazione, pubblica-catalogo, soci-in-vendita, spegni-avvisi, conta-fotografie, sblocca-utente, cancellazioni, permessi-backup, interruttori, variabili, verifica-registro, indici-registro, formato-dry-run, coda, avvisa-catalogo, imposta-segreto-proxy, copie-env, pulisci-copie-env, permessi-db, permessi-diagnosi, ripristina-permessi, prova-ip, svuota-proxy-fidati, prova-recupero, misure, db-connection-limit-60, db-connection-limit-off]
+        options: [diagnosi, chiave-catalogo, percorso-pgdump, ciclo-vita, prova-cancellazione, catalogo, bozza-listino, accendi-ciclo-vita, spegni-cancellazione, pubblica-catalogo, soci-in-vendita, spegni-avvisi, conta-fotografie, sblocca-utente, cancellazioni, permessi-backup, interruttori, variabili, verifica-registro, indici-registro, formato-dry-run, coda, avvisa-catalogo, imposta-segreto-proxy, copie-env, pulisci-copie-env, permessi-db, permessi-diagnosi, ripristina-permessi, svuota-proxy-fidati, prova-recupero, misure, db-proprieta, db-connection-limit-60, db-connection-limit-off]
         default: diagnosi
       email:
         description: Solo per sblocca-utente, email di chi ha perso telefono e codici di recupero
         type: string
         required: false
       pg_bin_dir:
-        description: Solo per percorso-pgdump (cartella dei programmi PostgreSQL 16, es. /usr/pgsql-16/bin) e prova-ip (indirizzo IP)
+        description: Solo per percorso-pgdump (cartella dei programmi PostgreSQL 16, es. /usr/pgsql-16/bin)
         type: string
         required: false
 
@@ -58,12 +58,10 @@ jobs:
         run: |
           # L'email finisce in un comando remoto: solo caratteri da indirizzo, altrimenti si ferma qui.
           if [ -n "$EMAIL" ] && ! printf '%s' "$EMAIL" | grep -Eq '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then echo "Email non valida." >&2; exit 1; fi
-          # Stesso per l'azione e per l'argomento (cartella di pg_dump, o indirizzo IP per prova-ip): stessa regola di deploy/ops.sh.
+          # Stesso per l'azione e per l'argomento (cartella di pg_dump): stessa regola di deploy/ops.sh.
           if ! printf '%s' "$ACTION" | grep -Eq '^[a-z]+(-[a-z0-9]+)*$'; then echo "Azione non valida." >&2; exit 1; fi
           if [ -n "$PG_BIN_DIR" ]; then
-            if [ "$ACTION" = "prova-ip" ]; then
-              if ! printf '%s' "$PG_BIN_DIR" | grep -Eq '^[0-9a-fA-F:.]{3,45}$'; then echo "Indirizzo IP non valido." >&2; exit 1; fi
-            elif ! printf '%s' "$PG_BIN_DIR" | grep -Eq '^/[A-Za-z0-9_./-]+$'; then echo "Cartella non valida." >&2; exit 1; fi
+            if ! printf '%s' "$PG_BIN_DIR" | grep -Eq '^/[A-Za-z0-9_./-]+$'; then echo "Cartella non valida." >&2; exit 1; fi
           fi
           ssh -i ~/.ssh/deploy -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$SSH_USER@$HOST" \
             "bash -s -- '$ACTION' '$PG_BIN_DIR' '$EMAIL'" < saas/deploy/ops.sh
