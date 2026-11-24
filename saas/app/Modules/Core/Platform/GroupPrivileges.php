@@ -88,13 +88,15 @@ final class GroupPrivileges
             $reasons[] = 'un altro ruolo con accesso raggiunge delle tabelle solo tramite il gruppo';
         }
 
-        foreach ([['applicazione', $app, "AND n.nspname <> 'public'"], ['backup', $backup, '']] as [$label, $role, $filter]) {
+        // Ogni tabella deve avere una voce diretta per il ruolo (l'applicazione scrive anche senza leggere: basta una qualsiasi).
+        foreach ([['applicazione', $app, "AND n.nspname <> 'public' AND NOT o.relispartition", "'SELECT', 'INSERT', 'UPDATE', 'DELETE'"], ['backup', $backup, '', "'SELECT'"]] as [$label, $role, $filter, $privileges]) {
             $missing = self::one($db, <<<SQL
                 SELECT count(*) AS c
                 FROM pg_class o JOIN pg_namespace n ON n.oid = o.relnamespace, (SELECT oid FROM pg_roles WHERE rolname = {$role}) r
                 WHERE n.nspname = ANY (CAST({$list} AS text[])) AND o.relkind IN ('r', 'p') {$filter}
                   AND o.relowner <> r.oid
-                  AND NOT EXISTS (SELECT 1 FROM aclexplode(o.relacl) a WHERE a.grantee = r.oid AND a.privilege_type = 'SELECT')
+                  AND NOT EXISTS (SELECT 1 FROM aclexplode(o.relacl) a WHERE a.grantee = r.oid AND a.privilege_type IN ({$privileges}))
+                  AND NOT EXISTS (SELECT 1 FROM pg_attribute att, aclexplode(att.attacl) a WHERE att.attrelid = o.oid AND a.grantee = r.oid)
                 SQL);
             if ((int) ($missing['c'] ?? 0) > 0) {
                 $reasons[] = "{$label}: tabelle senza permesso di lettura diretto";
