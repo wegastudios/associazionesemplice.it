@@ -5,6 +5,10 @@ sull'account separato (`SAAS_KEY_VAULT=remote`), come si torna indietro e cosa s
 sono in [DATABASE.md](DATABASE.md) §5 e [ARCHITETTURA.md](ARCHITETTURA.md) §7; il servizio in
 [../keyservice/README.md](../keyservice/README.md).
 
+**Stato in produzione (24/11/2026, letto dal .env di produzione):** `SAAS_KEY_VAULT=remote`, `SAAS_KEY_SERVICE_URL` impostata; è impostata anche
+`SAAS_MASTER_KEY`, quindi la chiave locale non risulta ancora tolta dal file d'ambiente (passo 7 sotto). Che `saas:keys:local-retire --distruggi` sia
+stato eseguito non è verificabile da questi documenti.
+
 Le **chiavi dati** delle associazioni non cambiano: cambia solo chi le avvolge (`core.org_keys.wrapped_key`). I dati
 cifrati, i file e le impronte di ricerca restano come sono.
 

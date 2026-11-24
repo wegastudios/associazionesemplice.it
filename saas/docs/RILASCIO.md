@@ -62,6 +62,15 @@ fallisce e il rilascio torna alla versione precedente. Con il driver `sftp` dei 
 (`SAAS_BACKUP_SFTP_FINGERPRINT`) è obbligatoria in ogni ambiente. La chiave principale di prova dei test non si accetta
 fuori da `local` e `testing`.
 
+**Stato della produzione (letto dal .env di produzione il 24/11/2026; la diagnosi in sola lettura è l'azione `variabili` di «SaaS · manutenzione server»):**
+`SAAS_KEY_VAULT=remote` con `SAAS_KEY_SERVICE_URL` e `SAAS_MASTER_KEY` impostate; `SAAS_PURGE_ENABLED=1` (cancellazione
+notturna accesa); `SAAS_AUDIT_PRUNE_ENABLED` acceso (letto il 20/11/2026); `SAAS_UNIFIED_LOGIN`, `SAAS_STAFF_SSO` e
+`SAAS_STAFF_ISSUER` = `true`; `SAAS_UNIFIED_OPERATORS` non impostato (vale il predefinito, spento); `SAAS_NOTICES_ENABLED=0`
+(avvisi email del gestionale spenti); `SAAS_REQUIRE_TWO_FACTOR=false` (**spenta sul server: da riaccendere prima dei dati
+veri**); `SAAS_BACKUP_PUBLIC_KEY`, `SAAS_PG_DUMP` e `SAAS_PG_RESTORE` impostate; PostgreSQL 16.15 e pg_dump 16.15; APCu attivo e
+condiviso; Redis in uso; posta SMTP già attiva. Non verificato in questa revisione: le variabili SFTP dei backup, `DB_RESTORE_DATABASE`,
+Emailit.
+
 ## 2. Rilascio
 
 `.github/workflows/saas-deploy.yml`:
@@ -198,9 +207,9 @@ Quando serve proprio un rilascio per correggere quel difetto:
 |---|---|
 | Sub-account cPanel di staging con PHP 8.3 (estensioni `pdo_pgsql`, `sodium`, `intl`, `mbstring`, `redis`) | Luca |
 | Database PostgreSQL e tre utenti (applicazione, proprietario, backup), più il database di prova per il ripristino | Luca, da cPanel |
-| **`pg_dump` e `pg_restore` della versione 16** sul server: c'è solo il client 13, che non sa fare il dump di un server 16 | da chiedere a SupportHost |
+| **`pg_dump` e `pg_restore` della versione 16** sul server (il client 13 non sa fare il dump di un server 16) | **fatto**: `SAAS_PG_DUMP` e `SAAS_PG_RESTORE` impostate, pg_dump 16.15 (letto dal .env di produzione il 24/11/2026) |
 | Sottodominio di staging con HTTPS, cartella pubblica `saas/current/public` | Luca |
-| Account cPanel separato per il servizio chiavi, con sottodominio HTTPS (`keyservice/README.md`) | Luca |
+| Account cPanel separato per il servizio chiavi, con sottodominio HTTPS (`keyservice/README.md`) | Luca (in uso in produzione, .env letto il 24/11/2026: `SAAS_KEY_VAULT=remote`) |
 | Spazio esterno in UE per i backup, con accesso SFTP a chiave | da scegliere |
 | Chiave SSH solo per il rilascio, autorizzata sul sub-account; segreti nell'ambiente `staging` di GitHub | Luca |
 | `shared/.env` compilato da `deploy/env.server.example`; chiavi da `php artisan saas:keys:generate` (una serie per ambiente) | Luca |
@@ -245,7 +254,7 @@ Le azioni del workflow «SaaS · manutenzione server» (`saas/deploy/ops.sh`, la
 
 - **File**: `<azione>-<data UTC>.txt` (per esempio `misure-20261121T103000.txt`), creato con permessi 600, leggibile solo dall'utente del sub-account. Per ogni azione se ne conservano al massimo 5: i più vecchi si cancellano da soli.
 - **Lettura**: con SSH, mai nel log del workflow: `ssh <utente>@<server> 'cat ~/saas/shared/misure-<data>.txt'` (il percorso esatto è quello scritto nel log; se il sub-account usa un'altra base, vale `$SAAS_BASE`). Per il più recente: `ls -t ~/saas/shared/misure-*.txt | head -1`.
-- **Cosa va su file**: `diagnosi` (client PostgreSQL e ultimi errori), `ciclo-vita` (elenchi di cancellazione e potatura), `prova-cancellazione`, `avvisa-catalogo`, `bozza-listino`, `conta-fotografie` (elenco per associazione), `cancellazioni` (registro, stato per associazione, righe del log), `permessi-backup`, `permessi-db` (controllo di salute ed eventuali errori), `permessi-diagnosi`, `formato-dry-run`, `sblocca-utente`, `prova-recupero` (memoria), `misure` e `db-connection-limit-60` / `db-connection-limit-off` (ripartizione per ruolo).
+- **Cosa va su file**: `diagnosi` (client PostgreSQL e ultimi errori), `variabili` (solo stato, mai il valore, delle variabili del .env: nel log solo «acceso/spento», «impostata/vuota», «non impostata: vale il predefinito», lo stato di APCu e il numero di versione di pg_dump), `ciclo-vita` (elenchi di cancellazione e potatura), `prova-cancellazione`, `avvisa-catalogo`, `bozza-listino`, `conta-fotografie` (elenco per associazione), `cancellazioni` (registro, stato per associazione, righe del log), `permessi-backup`, `permessi-db` (controllo di salute ed eventuali errori), `permessi-diagnosi`, `formato-dry-run`, `sblocca-utente`, `prova-recupero` (memoria), `misure` e `db-connection-limit-60` / `db-connection-limit-off` (ripartizione per ruolo).
 - **Limite di connessioni del database** (`db-connection-limit-60`, `db-connection-limit-off`): imposta o toglie il limite di connessioni del solo database del gestionale, col ruolo proprietario. Con `db-connection-limit-60` l'azione misura prima il picco di connessioni (20 campioni in circa 20 secondi) e non applica nulla se picco più un margine di 10 (backup, ripristino, migrazioni al rilascio) supera 60. Nel log compaiono solo esito e numeri («limite connessioni: 60», «picco misurato: N»); la ripartizione per ruolo è nel file `limite-connessioni-<data>.txt` in `shared/`. Il comando inverso è `db-connection-limit-off` (limite -1, nessun limite). Gli altri database e le impostazioni di memoria e di pianificazione non cambiano.
 - **Cosa resta nel log**: l'esito di ogni azione (ok o errore, con lo stesso codice di uscita di prima), i conteggi (per esempio quanti privilegi oltre SELECT, quante cancellazioni eseguite), lo stato delle variabili e degli interruttori, i numeri della coda e la verifica delle catene del registro.
 - **Copie del `.env`** (`shared/.env.bak-<AAAAMMGGHHMMSS>`): le azioni che cambiano una variabile (`chiave-catalogo`, `percorso-pgdump`, `imposta-segreto-proxy`, `svuota-proxy-fidati`) ne fanno una copia prima (permessi 600, come il `.env`). La rotazione ne conserva al massimo 2 (le più recenti) e cancella quelle di oltre 7 giorni; l'età si legge dal nome. Tocca solo file con quel nome esatto: mai il `.env` attivo, mai altri file (né in `shared/` né fuori, come `~/wega-support/.env.prima-portal-login`). **La rotazione parte da sola solo dopo l'azione `pulisci-copie-env`**, per non cancellare di sorpresa le copie già presenti: prima di questo passaggio le azioni non cancellano niente.

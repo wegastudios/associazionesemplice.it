@@ -40,8 +40,8 @@ Scritto il 10/11/2026 dalla sessione «Portale e pagamenti», che si ferma per d
 
 **portale-saas:** solo `saas/`: catalogo, `/saas/admin`, notifica di abbonamento v2, demoapp, contratto v2.
 - Il SaaS firma e verifica con chiavi Ed25519; il portale firma verso il SaaS con `data/saas-sign.key`. `SaasClient` usa `saas_api_url` (default `https://app.associazionesemplice.it`) e l'indirizzo pubblico registrato nel SaaS in `SAAS_PORTAL_PUBLIC_KEYS` (`kid=x`; `x` e `kid` si leggono con `php bin/saas-key.php --show`, non si stampa mai la privata).
-- Il SaaS spegne la 2FA in sviluppo (`SAAS_REQUIRE_TWO_FACTOR=false` sul server): da riaccendere prima dei dati veri. Nessun dato reale nel SaaS finché non è firmato il DPA.
-- Prima uscita del SaaS: mancano servizio chiavi (account separato), copie su SFTP, chiavi del portale per consumi e SSO, `DB_RESTORE_DATABASE`, il revisore obbligatorio sull'ambiente GitHub `production` (lo aggiunge la titolare).
+- Il SaaS spegne la 2FA in sviluppo (`SAAS_REQUIRE_TWO_FACTOR=false` sul server, riletto dal .env di produzione il 24/11/2026): da riaccendere prima dei dati veri. Nessun dato reale nel SaaS finché non c'è il DPA con SupportHost (un DPA firmato non risulta: la fonte è solo questo documento).
+- Prima uscita del SaaS: il servizio chiavi (account separato) risulta in uso (`SAAS_KEY_VAULT=remote`, letto dal .env di produzione il 24/11/2026); mancavano al momento della stesura, da riverificare: copie su SFTP, chiavi del portale per consumi e SSO, `DB_RESTORE_DATABASE`, il revisore obbligatorio sull'ambiente GitHub `production` (lo aggiunge la titolare).
 
 ## c) Accessi e parametri (dove stanno, come si usano; nessun valore)
 

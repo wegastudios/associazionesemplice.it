@@ -83,7 +83,9 @@ jobs:
           npm run build
 
       - name: Rotazione delle copie del .env (deploy/ops.sh)
-        run: bash tests/shell/ops-env-bak.sh
+        run: |
+          bash tests/shell/ops-env-bak.sh
+          bash tests/shell/ops-variabili.sh
 
       - name: Controllo delle dipendenze
         run: composer audit --no-interaction

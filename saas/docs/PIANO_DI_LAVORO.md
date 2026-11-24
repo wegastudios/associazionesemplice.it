@@ -12,13 +12,13 @@ Nessuno: la fase 0 si può iniziare in locale.
 
 | Cosa | Chi | Stato |
 |---|---|---|
-| DPA (art. 28) e sub-responsabili di SupportHost: il link ricevuto era un articolo di blog | Luca | **ultimo passo**, subito prima dei dati veri |
-| Conferma di PostgreSQL 16 sul server con `SELECT version();` | prima prova sul database | aggiornamento comunicato, non verificato |
+| DPA (art. 28) e sub-responsabili di SupportHost: il link ricevuto era un articolo di blog | Luca | **ultimo passo**, subito prima dei dati veri; un DPA firmato non risulta (24/11/2026, la fonte è solo questo documento) |
+| Conferma di PostgreSQL 16 sul server con `SELECT version();` | prima prova sul database | **fatto**: PostgreSQL 16.15 (24/11/2026, letto dal server) |
 | Spazio esterno in UE per i dump orari cifrati (SFTP) | da scegliere | da fare |
-| `pg_dump`/`pg_restore` 16 sul server (c'è solo il client 13) | SupportHost | da chiedere |
-| APCu disponibile sul piano (senza, una chiamata al servizio chiavi per richiesta, [ARCHITETTURA.md](ARCHITETTURA.md) §7) | sessione del portale, via SSH | da verificare |
-| Account cPanel separato per il servizio chiavi, con sottodominio HTTPS | Luca | da creare |
-| Estensione PHP `redis` da attivare in cPanel | Luca | da fare |
+| `pg_dump`/`pg_restore` 16 sul server (prima c'era solo il client 13) | SupportHost | **fatto**: `SAAS_PG_DUMP` e `SAAS_PG_RESTORE` impostate, pg_dump 16.15 (letto dal .env di produzione il 24/11/2026) |
+| APCu disponibile sul piano (senza, una chiamata al servizio chiavi per richiesta, [ARCHITETTURA.md](ARCHITETTURA.md) §7) | sessione del portale, via SSH | **fatto**: APCu attivo e condiviso (24/11/2026) |
+| Account cPanel separato per il servizio chiavi, con sottodominio HTTPS | Luca | **in uso**: `SAAS_KEY_VAULT=remote`, `SAAS_KEY_SERVICE_URL` e `SAAS_MASTER_KEY` impostate (letto dal .env di produzione il 24/11/2026) |
+| Estensione PHP `redis` da attivare in cPanel | Luca | **fatto**: Redis in uso (24/11/2026) |
 | Sub-account di staging, con database e tre utenti PostgreSQL | Luca | da creare |
 | DPA del SaaS verso i clienti, valutazione d'impatto (DPIA), informativa | consulente privacy | da fare |
 | Penetration test esterno | fornitore da scegliere | prima del lancio |
