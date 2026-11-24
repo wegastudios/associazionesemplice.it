@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Providers;
 
 use App\Modules\Core\Access\EmployeeCounter;
+use AppModulesCoreConsoleDatabaseEmptyCommand;
 use App\Modules\Core\Console\CreateOrgCommand;
 use App\Modules\Core\Console\DemoCheckEnvCommand;
 use App\Modules\Core\Console\DemoResetCommand;
