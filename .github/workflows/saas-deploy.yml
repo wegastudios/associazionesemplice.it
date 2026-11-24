@@ -1,10 +1,10 @@
 name: SaaS · rilascio
 
-# Rilascio del SaaS (saas/docs/RILASCIO.md). Per ora c'è un solo ambiente (produzione): il rilascio parte solo a mano,
-# solo da main, con l'approvazione dell'ambiente. Quando ci sarà uno staging separato si potrà rilasciarlo da solo a ogni push.
+# Rilascio del SaaS (saas/docs/RILASCIO.md). Il rilascio parte solo a mano,
+# solo da main, con le regole dell'ambiente.
 # Segreti per ambiente (Settings → Environments → production):
 #   SAAS_SSH_HOST, SAAS_SSH_PORT, SAAS_SSH_USER, SAAS_SSH_PRIVATE_KEY, SAAS_SSH_KNOWN_HOSTS
-# Oggi esiste solo l'ambiente production: ammette solo il ramo main e non ha revisori obbligatori (il rilascio non aspetta clic).
+# L'ambiente production ammette solo il ramo main; i revisori obbligatori sono una scelta del titolare (vedi RILASCIO.md).
 # Se si creeranno demo o staging, stessa regola. Il workflow rifiuta comunque ogni ramo diverso da main, per ogni ambiente.
 
 on:

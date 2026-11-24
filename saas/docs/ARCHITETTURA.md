@@ -106,7 +106,6 @@ saas/app/Modules/
 
 ## 6. Lavori in background
 
-- Redis è in uso in produzione (24/11/2026, letto dal .env di produzione); PostgreSQL 16.15.
 - Code su **Postgres** (driver `database`). Redis (64 MB, politica `allkeys-lru`: quando è pieno toglie le chiavi meno usate; cache `failover`, se non risponde passa al database) solo per cache e
   limiti di frequenza, sempre con scadenza.
 - Cron ogni minuto: `/usr/local/bin/php artisan schedule:run` (da cron `php` è la versione CGI) e
@@ -125,7 +124,6 @@ saas/app/Modules/
 - La chiave sbloccata resta **solo in memoria**: nel processo e, se c'è APCu, per 5 minuti. Mai su disco, mai in Redis.
   Senza APCu si fa una chiamata al servizio per richiesta che usa dati cifrati.
 - Se il servizio non risponde, i dati cifrati restano chiusi: l'errore non contiene dettagli.
-- In produzione `SAAS_KEY_VAULT=remote` e APCu è attivo e condiviso (letto dal .env di produzione il 24/11/2026).
 - Ripiego (`SAAS_KEY_VAULT=local`): chiave principale nel file d'ambiente fuori dalla cartella pubblica. Protegge i dump
   del database, non chi entra nell'account del SaaS. Si usa in sviluppo e nei test.
 - Le chiavi si generano con `php artisan saas:keys:generate`; della chiave principale va tenuta una copia offline

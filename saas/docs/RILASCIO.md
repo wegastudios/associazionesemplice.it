@@ -62,15 +62,6 @@ fallisce e il rilascio torna alla versione precedente. Con il driver `sftp` dei 
 (`SAAS_BACKUP_SFTP_FINGERPRINT`) è obbligatoria in ogni ambiente. La chiave principale di prova dei test non si accetta
 fuori da `local` e `testing`.
 
-**Stato della produzione (letto dal .env di produzione il 24/11/2026; la diagnosi in sola lettura è l'azione `variabili` di «SaaS · manutenzione server»):**
-`SAAS_KEY_VAULT=remote` con `SAAS_KEY_SERVICE_URL` e `SAAS_MASTER_KEY` impostate; `SAAS_PURGE_ENABLED=1` (cancellazione
-notturna accesa); `SAAS_AUDIT_PRUNE_ENABLED` acceso (letto il 20/11/2026); `SAAS_UNIFIED_LOGIN`, `SAAS_STAFF_SSO` e
-`SAAS_STAFF_ISSUER` = `true`; `SAAS_UNIFIED_OPERATORS` non impostato (vale il predefinito, spento); `SAAS_NOTICES_ENABLED=0`
-(avvisi email del gestionale spenti); `SAAS_REQUIRE_TWO_FACTOR=false` (**spenta sul server: da riaccendere prima dei dati
-veri**); `SAAS_BACKUP_PUBLIC_KEY`, `SAAS_PG_DUMP` e `SAAS_PG_RESTORE` impostate; PostgreSQL 16.15 e pg_dump 16.15; APCu attivo e
-condiviso; Redis in uso; posta SMTP già attiva. Non verificato in questa revisione: le variabili SFTP dei backup, `DB_RESTORE_DATABASE`,
-Emailit.
-
 ## 2. Rilascio
 
 `.github/workflows/saas-deploy.yml`:
@@ -96,15 +87,14 @@ locale e il database di prova locale: `php artisan saas:backup:restore-test`.
 Il pacchetto e lo script `remote.sh` che girano sul server vengono dal ramo scelto, quindi un ramo qualunque non deve
 poter arrivare al server nemmeno per prova.
 
-**Stato su GitHub (verificato il 24/11/2026)**: esiste solo l'ambiente `production`, con `main` come unico ramo
-ammesso e **senza revisori obbligatori**: il rilascio non aspetta clic, coerente con «CI verde = si unisce e si mette
-online». Gli ambienti `demo` e `staging` non esistono (nessun segreto, nessun rilascio da lì). Al titolare non resta
-nessun passo su GitHub. Se un giorno si crea `demo` o `staging`: stessa regola, solo `main`
+**Regola su GitHub**: l'ambiente `production` ammette solo `main` come ramo. I revisori obbligatori sono una scelta
+del titolare (vedi sotto); lo stato attuale delle impostazioni si verifica nella cartella riservata. Se si crea
+un ambiente `demo` o `staging`: stessa regola, solo `main`
 (Settings → Environments → Deployment branches → Selected branches and tags → `main`).
 
 **Scelta da prendere al lancio** (non adesso): se attivare **Required reviewers** su `production`. Ogni rilascio
 resterebbe fermo finché il titolare non lo approva con un clic; «Prevent self-review» resterebbe spento finché è
-l'unico revisore. Oggi è spento di proposito.
+l'unico revisore.
 
 Segreti per ambiente (GitHub → Settings → Environments → `production`): `SAAS_SSH_HOST`, `SAAS_SSH_PORT`,
 `SAAS_SSH_USER`, `SAAS_SSH_PRIVATE_KEY` (chiave Ed25519 solo per il rilascio, autorizzata solo su quel sub-account),
@@ -207,9 +197,9 @@ Quando serve proprio un rilascio per correggere quel difetto:
 |---|---|
 | Sub-account cPanel di staging con PHP 8.3 (estensioni `pdo_pgsql`, `sodium`, `intl`, `mbstring`, `redis`) | Luca |
 | Database PostgreSQL e tre utenti (applicazione, proprietario, backup), più il database di prova per il ripristino | Luca, da cPanel |
-| **`pg_dump` e `pg_restore` della versione 16** sul server (il client 13 non sa fare il dump di un server 16) | **fatto**: `SAAS_PG_DUMP` e `SAAS_PG_RESTORE` impostate, pg_dump 16.15 (letto dal .env di produzione il 24/11/2026) |
+| **`pg_dump` e `pg_restore` della versione 16** sul server (il client 13 non sa fare il dump di un server 16) | da chiedere a SupportHost se mancano |
 | Sottodominio di staging con HTTPS, cartella pubblica `saas/current/public` | Luca |
-| Account cPanel separato per il servizio chiavi, con sottodominio HTTPS (`keyservice/README.md`) | Luca (in uso in produzione, .env letto il 24/11/2026: `SAAS_KEY_VAULT=remote`) |
+| Account cPanel separato per il servizio chiavi, con sottodominio HTTPS (`keyservice/README.md`) | Luca |
 | Spazio esterno in UE per i backup, con accesso SFTP a chiave | da scegliere |
 | Chiave SSH solo per il rilascio, autorizzata sul sub-account; segreti nell'ambiente `staging` di GitHub | Luca |
 | `shared/.env` compilato da `deploy/env.server.example`; chiavi da `php artisan saas:keys:generate` (una serie per ambiente) | Luca |

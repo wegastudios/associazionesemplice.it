@@ -62,7 +62,7 @@ Oggi gli accessi sono quindi **quattro** (clienti sul portale, staff in vendita 
 
 - Gli **operatori delle associazioni** entrano anch'essi da `/accedi` (consigliato, coerente con «un solo accesso per tutti») o restano nel loro gestionale?
 - Chi è **sia cliente sia staff** con la stessa email: un'identità sola con più ruoli (consigliato).
-- Il secondo livello è **obbligatorio per lo staff** o scelto da ognuno? (Sul server oggi `SAAS_REQUIRE_TWO_FACTOR=false`, letto dal .env di produzione il 24/11/2026: prima dei dati veri va riacceso.)
+- Il secondo livello è **obbligatorio per lo staff** o scelto da ognuno? (In sviluppo può restare spento; prima dei dati veri va acceso.)
 - Il **motore del database di supporto**: lo decide la sessione supporto.
 
 ## 8. Cosa non cambia
@@ -71,8 +71,8 @@ I limiti di legge e le regole del plugin; il plugin gratuito; il formato dei tok
 
 ## 9. Avanzamento
 
-- **Passo 2 (dietro il flag `SAAS_UNIFIED_LOGIN`, spento di default nel codice; **acceso in produzione**: `true`, letto dal .env di produzione il 24/11/2026):** pagina unica `/saas/staff/accedi` (dietro il proxy: `associazionesemplice.it/saas/staff/accedi`), codice solo se attivo, scelta dell'area, uscita, recupero password unico (`/saas/staff/password-dimenticata`, link di un'ora, una volta sola, chiude gli accessi aperti). Con il flag acceso `/saas/admin/accesso` rinvia qui. Non c'è ancora la pagina per **attivare** il secondo livello (prossima PR): oggi lo possono avere solo le persone con il codice già impostato.
-- **Fuori da questo passo, e da concordare con portale-vendita:** `/wordpress/admin/accedi` e la pagina `/accedi` del portale devono rinviare a `/saas/staff/accedi`; l'ingresso delle aree con il token (`SAAS_STAFF_SSO`, passo 3) è **acceso in produzione** (`SAAS_STAFF_SSO=true` e `SAAS_STAFF_ISSUER=true`, letto dal .env di produzione il 24/11/2026); spento, il pulsante «Entra» di un'area porta a un 404.
+- **Passo 2 (in costruzione, nel repository, dietro il flag `SAAS_UNIFIED_LOGIN`, spento di default):** pagina unica `/saas/staff/accedi` (dietro il proxy: `associazionesemplice.it/saas/staff/accedi`), codice solo se attivo, scelta dell'area, uscita, recupero password unico (`/saas/staff/password-dimenticata`, link di un'ora, una volta sola, chiude gli accessi aperti). Con il flag acceso `/saas/admin/accesso` rinvia qui. Non c'è ancora la pagina per **attivare** il secondo livello (prossima PR): oggi lo possono avere solo le persone con il codice già impostato.
+- **Fuori da questo passo, e da concordare con portale-vendita:** `/wordpress/admin/accedi` e la pagina `/accedi` del portale devono rinviare a `/saas/staff/accedi`; l'ingresso delle aree con il token (`SAAS_STAFF_SSO`, passo 3) resta spento: finché non è acceso, il pulsante «Entra» di un'area porta a un 404.
 
 ## 10. Correzione del 11/11/2026 (indirizzi e chi serve le pagine)
 
@@ -91,13 +91,13 @@ Decisione della titolare, che prevale su quanto sopra dove diverge:
 
 ## 12. Passo 6 — operatori delle associazioni nel login unico (12/11/2026)
 
-- **Fatto nel codice, spento di default** (`SAAS_UNIFIED_OPERATORS=false`; in produzione non è impostato e vale il predefinito, quindi spento: letto dal .env di produzione il 24/11/2026): il portale chiede `identity_operator_entry` con la sessione centrale; il SaaS risponde con un indirizzo `<app>/accesso-unico#t=…` (biglietto `operator_sso`, 60 secondi, monouso, nel frammento dell'indirizzo). Una pagina intermedia lo legge e lo manda in POST a `/accesso-unico`: non compare nelle richieste né nei log. Nessuna password passa da lì.
+- **Fatto nel codice, spento di default** (`SAAS_UNIFIED_OPERATORS=false`): il portale chiede `identity_operator_entry` con la sessione centrale; il SaaS risponde con un indirizzo `<app>/accesso-unico#t=…` (biglietto `operator_sso`, 60 secondi, monouso, nel frammento dell'indirizzo). Una pagina intermedia lo legge e lo manda in POST a `/accesso-unico`: non compare nelle richieste né nei log. Nessuna password passa da lì.
 - **Secondo livello**: il biglietto dice solo chi è la persona. Chi ha il secondo livello nel gestionale passa sempre dalla sfida del gestionale; chi non l'ha segue la regola degli operatori (attivarlo prima di tutto).
 - **Legame esplicito** (tabella `core.operator_links`, utente e persona): nasce al primo ingresso, dopo password e secondo livello. L'email può solo proporre il legame; se l'utente non ha il secondo livello, non viene legato. I super amministratori si riconoscono dall'identificativo della persona (`core.staff_super_admins`, comando `saas:staff:super-admin`), non dall'email.
 - **Cambio utente**: se nel browser c'è già la sessione di un altro utente, una pagina di conferma chiede prima di sostituirla.
 - **Condizioni prima di accendere `SAAS_UNIFIED_OPERATORS`**:
   - il portale deve conservare il frammento `#t=` nel redirect verso l'indirizzo d'ingresso;
-  - va acceso `SAAS_REQUIRE_TWO_FACTOR` (al 24/11/2026 è `false` sul server), così il caso «utente non legato senza secondo livello» sparisce;
+  - va acceso `SAAS_REQUIRE_TWO_FACTOR`, così il caso «utente non legato senza secondo livello» sparisce;
   - per chi non ha il secondo livello basta il messaggio «Chiedi aiuto al supporto».
 - **Con il flag acceso** la pagina di accesso del gestionale rinvia a `/accedi` del portale.
 - **Resta da fare (portale-vendita)**: «Apri il gestionale» in `/account` deve chiamare `operator_entry` e seguire l'indirizzo ricevuto. **Da decidere con la titolare** prima di accendere il flag: inviti e cambio password/email degli operatori (oggi nel gestionale) devono passare da `/account`; persone che sono insieme staff e operatori; obbligo del secondo livello per gli operatori.

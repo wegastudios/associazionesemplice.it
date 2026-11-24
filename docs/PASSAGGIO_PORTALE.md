@@ -4,15 +4,11 @@ Scritto il 10/11/2026 dalla sessione «Portale e pagamenti», che si ferma per d
 
 ## a) Stato
 
-**Produzione.** Il portale in produzione è l'ultimo `main` con la PR 401 (riga di `/confronto` «Cambio di risorsa…»), pubblicato con `deploy.sh` da un export pulito di `origin/main`. Dopo non ci sono stati altri deploy: le PR 409 e 415 toccano solo `demo/` (file della demo, già installato a mano sul server, nessun deploy del portale). Pagine controllate dopo l'ultimo deploy: `/`, `/confronto`, `/saas` (303 verso l'accesso se non connessi).
+Lo stato della produzione (versioni pubblicate, deploy fatti, PR aperte, file locali di lavoro) non si scrive in questo repository pubblico: sta nella cartella riservata. Qui restano solo regole e procedure.
 
-**Plugin pubblicati sul portale (firmati):** gratuito 1.3.17 (impronta `9c00e568…`), Pro 1.3.7 (`497a4279…`), API 18. Il `main` ha già lavoro non pubblicato (PR 410–412, numero aperto 1.3.18): la titolare ha scelto di non pubblicare una versione per ora. La demo ha la build verde di `main` (`c46b9b2`) installata a mano.
-
-**PR aperte:** solo la 421 (docs, area clienti unica, della sessione SaaS). Nessun ramo mio a metà. Cartella principale su `main`, pulita (solo il file non tracciato `associazionesemplice-pro TEST.zip`, vedi sotto).
-
-**Nel portale, fatto e online:**
+**Nel portale, previsto dal codice:**
 - Gestione piattaforma SaaS **v1** in `/saas`: classe `src/Platform.php`, viste `views/saas/`. Elenco associazioni, scheda con operatori, attiva/disattiva utente. Permessi dello staff **separati per area**: colonna `staff.saas` (admin / support / vuoto) accanto a `staff.role`; `Staff::role()` = plugin, `Staff::saas()` = SaaS; gli indirizzi in `admins` di `config.php` sono amministratori di entrambi. Pagina «Staff» con i due livelli. `/admin/piattaforma` non esiste più (nessun rinvio).
-- `src/SaasClient.php`: chiamate firmate verso il SaaS (JWT EdDSA, contratto v1 §2.3: `admin_read` / `admin_write`, `jti` monouso). Verificato dal server con chiave vera: elenco, scheda, operatori e scrittura (disattiva e riattiva un utente di prova) funzionano.
+- `src/SaasClient.php`: chiamate firmate verso il SaaS (JWT EdDSA, contratto v1 §2.3: `admin_read` / `admin_write`, `jti` monouso).
 - Test del portale: `php tests/run.php` (tutti verdi; girano in CI su PHP 7.4, 8.1, 8.3). In locale non c'è PHP: i test e i controlli di sintassi li ho eseguiti sul server copiando `portale/` (senza `config.php` e `data/`) in `~/portale-test`.
 
 **Cadono (per decisione della titolare):** contratto v1 §2.2 (diritti calcolati) e §2.3 (amministrazione dal portale). Il codice v1 di `/saas` (`Platform.php`, `SaasClient.php`, `views/saas/`) resta in produzione finché non lo sostituisce il nuovo; non sviluppare altro lì.
@@ -22,7 +18,7 @@ Scritto il 10/11/2026 dalla sessione «Portale e pagamenti», che si ferma per d
 - Limiti, pacchetti e sospensione di un'associazione dal portale (invio dei diritti `PUT …/entitlements`) **non sono costruiti**: erano previsti per la v1 e ora cadono.
 - Non provati a mano: `/saas` da loggato con ruolo «solo supporto»; la schermata «Reimposta la password» del plugin; «Ricordami» sulla demo.
 - Mail e SSO verso il SaaS (`/saas/accedi`) e l'endpoint dei consumi `/api/saas/v1/usage`: non costruiti.
-- Il file `associazionesemplice-pro TEST.zip` è non tracciato e ha un link OneDrive: va ricostruito a ogni rilascio (vedi d).
+- Il file locale `associazionesemplice-pro TEST.zip` non è tracciato: va ricostruito a ogni rilascio (vedi d).
 
 ## b) Compiti che restano e a chi vanno
 
@@ -40,13 +36,13 @@ Scritto il 10/11/2026 dalla sessione «Portale e pagamenti», che si ferma per d
 
 **portale-saas:** solo `saas/`: catalogo, `/saas/admin`, notifica di abbonamento v2, demoapp, contratto v2.
 - Il SaaS firma e verifica con chiavi Ed25519; il portale firma verso il SaaS con `data/saas-sign.key`. `SaasClient` usa `saas_api_url` (default `https://app.associazionesemplice.it`) e l'indirizzo pubblico registrato nel SaaS in `SAAS_PORTAL_PUBLIC_KEYS` (`kid=x`; `x` e `kid` si leggono con `php bin/saas-key.php --show`, non si stampa mai la privata).
-- Il SaaS spegne la 2FA in sviluppo (`SAAS_REQUIRE_TWO_FACTOR=false` sul server, riletto dal .env di produzione il 24/11/2026): da riaccendere prima dei dati veri. Nessun dato reale nel SaaS finché non c'è il DPA con SupportHost (un DPA firmato non risulta: la fonte è solo questo documento).
-- Prima uscita del SaaS: il servizio chiavi (account separato) risulta in uso (`SAAS_KEY_VAULT=remote`, letto dal .env di produzione il 24/11/2026); mancavano al momento della stesura, da riverificare: copie su SFTP, chiavi del portale per consumi e SSO, `DB_RESTORE_DATABASE`, il revisore obbligatorio sull'ambiente GitHub `production` (lo aggiunge la titolare).
+- Prima dei dati veri la 2FA (`SAAS_REQUIRE_TWO_FACTOR`) deve essere accesa. Nessun dato reale nel SaaS finché non è firmato il DPA.
+- Prima uscita del SaaS, requisiti: servizio chiavi (account separato), copie su SFTP, chiavi del portale per consumi e SSO, `DB_RESTORE_DATABASE`, revisore obbligatorio sull'ambiente GitHub `production` (lo aggiunge la titolare). Lo stato di ciascuno si verifica nella cartella riservata.
 
 ## c) Accessi e parametri (dove stanno, come si usano; nessun valore)
 
 **Server** (hosting con cPanel, SSH **solo chiave**): indirizzo, porta e utente non stanno nel repository (pubblico) ma nel file non tracciato `deploy_key.env`, accanto alla chiave `deploy_key` nella radice della cartella principale; il modello è `portale/deploy-server.env.example`. Non c'è un alias in `~/.ssh/config`. Lo script `deploy.sh`/`release.sh` leggono `PORTALE_KEY` (default `../deploy_key`), poi `deploy_key.env` accanto alla chiave (o `PORTALE_ENV`) con `PORTALE_HOST`, `PORTALE_PORT`, `PORTALE_USER`; senza quei valori si fermano con un messaggio. Da Git Bash i percorsi che iniziano con `/` vanno protetti con `MSYS_NO_PATHCONV=1` nei `curl`.
-Sul server: PHP CLI 8.3 in `/usr/local/bin/php` (il semplice `php` da cron è la versione CGI e non funziona), `wp` in `/usr/local/bin/wp`, `composer` in `/usr/local/bin/composer`, PostgreSQL 16 (con `pg_dump`/`pg_restore`), Redis su socket `/tmp/redis.sock` (porta 0, senza password). Non c'è Node.
+Sul server servono: PHP CLI 8.3 in `/usr/local/bin/php` (il semplice `php` da cron è la versione CGI e non funziona), `wp` in `/usr/local/bin/wp`, `composer` in `/usr/local/bin/composer`, PostgreSQL 16 (con `pg_dump`/`pg_restore`), Redis su socket `/tmp/redis.sock` (porta 0, senza password).
 
 **Portale sul server:**
 - Codice: `~/portale` (fuori dal web); file pubblici: `~/public_html`. `deploy.sh` carica in `~/portale-next`, controlla la sintassi di tutti i PHP e poi copia: **mai** tocca `config.php` e `data/`.
@@ -66,7 +62,7 @@ Sul server: PHP CLI 8.3 in `/usr/local/bin/php` (il semplice `php` da cron è la
 
 **SaaS (app.associazionesemplice.it):** codice in `~/saas/` (`releases/`, `current` → versione attiva, `shared/` con `.env` e storage; i segreti stanno in `~/saas/shared/.env` con permessi 600; accesso al database in `~/saas/shared/db.env.parziale`, mai ripetere i valori). Rilascio: workflow GitHub «SaaS · rilascio» (`saas-deploy.yml`, ambiente `production`, solo da `main`, serve l'approvazione di un revisore). Chiave del portale nel SaaS: variabile `SAAS_PORTAL_PUBLIC_KEYS`. Posta del SaaS: dominio `mail.associazionesemplice.it`, credenziali SMTP nel `.env` del SaaS. cPanel/UAPI: l'accesso (account e password o token) vive nel pannello dell'hosting, lo possiede la titolare, non sta nei file; per creare database e domini ho usato le chiamate `uapi` dalla riga di comando del server come utente dell'account (non esiste `set_privileges_on_database`: si usa `grant_all_privileges` e il resto con SQL).
 
-**Segreti che esistono solo nella mia sessione:** nessuno. Tutto quello usato in questa sessione sta in file sulla macchina della titolare o sul server come sopra. Se un accesso risulta mancante, va chiesto alla titolare.
+**Segreti:** non devono esistere solo in una sessione: stanno in file sulla macchina della titolare o sul server come sopra. Se un accesso manca, va chiesto alla titolare.
 
 ## d) Regole imparate, non scritte altrove
 
