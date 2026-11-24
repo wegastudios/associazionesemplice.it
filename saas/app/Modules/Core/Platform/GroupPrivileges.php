@@ -40,6 +40,7 @@ final class GroupPrivileges
     public static function inventory(Connection $db, string $group): array
     {
         $list = self::pgArray(self::schemas($db));
+        /** @param  list<array<string, scalar|null>>  $rows */
         $bySchema = static function (array $rows): array {
             $out = [];
             foreach ($rows as $row) {
