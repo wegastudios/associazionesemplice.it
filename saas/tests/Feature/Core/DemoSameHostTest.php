@@ -116,10 +116,12 @@ it('i cookie dell\'operatore sull\'host unico sono __Host-: Secure, percorso /, 
 it('il cookie «ricordami» dell\'operatore non ha Domain ed è Secure e HttpOnly', function (): void {
     $this->createUser('anna@example.com');
 
-    $cookies = cookiesOf($this->post(DEMO_HOST.'/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD, 'remember' => true]));
+    $response = $this->post(DEMO_HOST.'/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD, 'remember' => true]);
+    $cookies = cookiesOf($response);
     $recaller = array_values(array_filter(array_keys($cookies), static fn (string $n): bool => str_starts_with($n, 'remember_')));
 
-    expect($recaller)->toHaveCount(1)->and($cookies)->toHaveKey('__Host-as_demo');
+    expect($recaller)->toHaveCount(1, 'stato '.$response->status().', destinazione '.(string) $response->headers->get('Location').', cookie '.implode(',', array_keys($cookies)).', errori '.json_encode(session('errors')?->getBag('default')->keys()))
+        ->and($cookies)->toHaveKey('__Host-as_demo');
     foreach ([$recaller[0], '__Host-as_demo'] as $name) {
         expect($cookies[$name]->isSecure())->toBeTrue($name)->and($cookies[$name]->isHttpOnly())->toBeTrue($name)
             ->and($cookies[$name]->getPath())->toBe('/', $name)->and($cookies[$name]->getDomain())->toBeNull($name);

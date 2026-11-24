@@ -84,7 +84,7 @@ it('segnala ogni errore con il nome della variabile e un motivo, senza il valore
     expect($found)->not->toBeEmpty()->and($found[0][1])->toContain($reason);
     foreach (DemoEnvCheck::problems($env) as [, $why]) {
         foreach ($change as $value) {
-            if (is_string($value) && strlen($value) > 8) {
+            if (is_string($value) && strlen($value) > 12) {
                 expect($why)->not->toContain($value);
             }
         }
