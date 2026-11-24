@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
 #
 # Il log del workflow è pubblico: dettagli di configurazione su file in shared/ (600), nel log solo esiti, conteggi e percorso.
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
 #   chiave-catalogo   se SAAS_PORTAL_SIGNING_KEY è vuota genera il seme in shared/.env (permessi 600, copia del file prima),
 #                     svuota la cache della configurazione e stampa SOLO kid e parte pubblica x. Il seme non si stampa mai.
+#   variabili         sola lettura: STATO (mai il valore) delle variabili del .env; solo interruttori e scelte non segrete mostrano true/false/0/1 o il nome della scelta
 #   copie-env         sola lettura: elenca cosa cancellerebbe la rotazione delle copie shared/.env.bak-<data> (massimo 2, nessuna oltre 7 giorni)
 #   pulisci-copie-env applica la rotazione una volta e accende quella automatica; cancella SOLO .env.bak-<14 cifre>, mai il .env
 #   percorso-pgdump   imposta SAAS_PG_DUMP e SAAS_PG_RESTORE nella cartella indicata, solo se è la versione 16
@@ -67,6 +68,26 @@ prune_files() { # prefisso: tiene i 5 file più recenti
   ls -1t "$BASE"/shared/"$1"-*.txt 2>/dev/null | tail -n +6 | while read -r old; do rm -f "$old"; done
 }
 onoff() { case "$1" in 1|true|on|yes) echo acceso ;; "") echo "non impostato" ;; *) echo spento ;; esac; }
+
+# --- stato delle variabili: inizio (testata in saas/tests/shell/ops-variabili.sh) ---
+# Mai il valore, salvo per i soli interruttori (true/false/0/1/on/off/yes/no) e per scelte note non segrete (local/remote, driver, ambiente).
+VAR_BOOL='^(0|1|true|false|on|off|yes|no)$'
+VAR_CHOICE='^(local|remote|production|staging|testing|smtp|emailit|log|array|redis|database|file|apc|apcu|sync|pgsql|sftp|lax|strict|none)$'
+var_state() { # tipo(bool|scelta|segreta) nome valore-già-letto
+  local kind="$1" name="$2" val="$3"
+  if [ -z "$val" ]; then
+    if grep -qE "^$name=" "$ENVFILE" 2>/dev/null; then echo "$name = vuota"; else echo "$name = non impostata: vale il predefinito"; fi
+    return 0
+  fi
+  case "$kind" in
+    bool) if [[ "$val" =~ $VAR_BOOL ]]; then
+            case "$val" in 1|true|on|yes) echo "$name = acceso/$val" ;; *) echo "$name = spento/$val" ;; esac
+          else echo "$name = impostata"; fi ;;
+    scelta) if [[ "$val" =~ $VAR_CHOICE ]]; then echo "$name = $val"; else echo "$name = impostata"; fi ;;
+    *) echo "$name = impostata" ;;
+  esac
+}
+# --- stato delle variabili: fine ---
 
 refresh() { (cd "$BASE/current" && "$PHP" artisan config:clear >/dev/null && "$PHP" artisan optimize >/dev/null && echo "Cache della configurazione ricreata."); }
 
@@ -349,6 +370,23 @@ case "$ACTION" in
       echo "Il più vecchio in attesa da (minuti): ", is_numeric($oldest) ? max(0, intdiv(time() - (int) $oldest, 60)) : "nessuno", PHP_EOL;
       echo "Falliti in tutto: ", $failed, PHP_EOL, "Falliti nelle ultime 24 ore: ", $failed24, PHP_EOL;
     ' || true
+    ;;
+  variabili)
+    # Sola lettura: per ogni variabile solo lo STATO. Host, utenti, chiavi, password, URL: mai il valore (il log del workflow è pubblico).
+    for v in APP_DEBUG SAAS_HEALTH_STRICT SAAS_REQUIRE_TWO_FACTOR SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED SAAS_UNIFIED_LOGIN SAAS_UNIFIED_OPERATORS SAAS_STAFF_SSO SAAS_STAFF_ISSUER SAAS_DEMO SESSION_SECURE_COOKIE; do
+      var_state bool "$v" "$(get "$v")"
+    done
+    for v in APP_ENV SAAS_KEY_VAULT MAIL_MAILER SAAS_MAIL_PRIMARY CACHE_STORE QUEUE_CONNECTION SESSION_DRIVER DB_CONNECTION SAAS_BACKUP_DRIVER REDIS_CLIENT; do
+      var_state scelta "$v" "$(get "$v")"
+    done
+    for v in MAIL_HOST MAIL_USERNAME MAIL_PASSWORD EMAILIT_HOST EMAILIT_USERNAME EMAILIT_PASSWORD EMAILIT_PORT SESSION_COOKIE DB_RESTORE_DATABASE SAAS_BACKUP_PUBLIC_KEY SAAS_BACKUP_SECRET_KEY SAAS_BACKUP_SFTP_HOST SAAS_BACKUP_SFTP_USERNAME SAAS_BACKUP_SFTP_FINGERPRINT SAAS_BACKUP_SFTP_PORT SAAS_BACKUP_SFTP_ROOT SAAS_BACKUP_SFTP_KEY_PATH REDIS_HOST REDIS_PORT REDIS_PASSWORD REDIS_URL REDIS_DB REDIS_CACHE_DB SAAS_KEY_SERVICE_URL SAAS_KEY_SERVICE_SIGNING_KEY SAAS_MASTER_KEY SAAS_PG_DUMP SAAS_PG_RESTORE; do
+      var_state segreta "$v" "$(get "$v")"
+    done
+    if "$PHP" -r 'exit(extension_loaded("apcu") ? 0 : 1);' 2>/dev/null; then echo "APCu (php da riga di comando) = estensione caricata"; else echo "APCu (php da riga di comando) = estensione NON caricata"; fi
+    pgd="$(get SAAS_PG_DUMP)"
+    if [[ "$pgd" =~ ^/[A-Za-z0-9_./-]+$ ]] && [ -x "$pgd" ]; then
+      echo "pg_dump configurato = versione $("$pgd" --version 2>/dev/null | head -1 | grep -oE '[0-9]+(\.[0-9]+)*' | head -1)"
+    else echo "pg_dump configurato = non eseguibile o non impostato"; fi
     ;;
   interruttori)
     # Sola lettura: valore degli interruttori NON segreti (acceso/spento, remoto/locale). Niente altro dal file d'ambiente.

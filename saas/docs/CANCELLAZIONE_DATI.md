@@ -69,6 +69,8 @@ cancellazione:
 
 ## 4. Come si cancella
 
+**Stato in produzione (letto dal .env di produzione il 24/11/2026):** `SAAS_PURGE_ENABLED=1`, la cancellazione notturna è accesa; `SAAS_AUDIT_PRUNE_ENABLED` acceso (letto il 20/11/2026); `SAAS_NOTICES_ENABLED=0`, gli avvisi email del gestionale sono spenti. Per §10 serve un avviso già inviato: con gli avvisi spenti la condizione non si verifica per chi non ne ha ricevuti prima (deduzione dal codice e dal documento, non verificata sul server).
+
 1. Ogni notte `saas:orgs:purge` prende le associazioni con `purge_after` raggiunto e non riattivate.
 2. Prima di cancellare **ricontrolla** che lo stato sia ancora sospeso o chiuso e che non sia arrivato un pagamento.
 3. Esegue i passi §3 in quest'ordine: blocco (nessun accesso), file, righe, database dedicato, registro, per ultima la

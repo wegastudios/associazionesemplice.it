@@ -2,6 +2,7 @@
 
 Il gestionale può mandare la posta con Emailit (SMTP) e tenere il server di posta di sempre (cPanel) come ripiego.
 Il codice è già pronto ma **spento**: finché non si fanno i passi qui sotto, la posta parte come oggi.
+La posta SMTP è già attiva in produzione (24/11/2026, letto dal .env di produzione); lo stato di Emailit in particolare non è verificato qui.
 
 Nessun valore segreto in questo documento né nel repository: la chiave si scrive solo sul server.
 
