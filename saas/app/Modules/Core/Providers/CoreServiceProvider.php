@@ -97,7 +97,11 @@ final class CoreServiceProvider extends ServiceProvider
             );
             $guard->setCookieJar($app->make(QueueingFactory::class));
             $guard->setDispatcher($app->make(Dispatcher::class));
-            $guard->setRequest($app->refresh('request', $guard, 'setRequest'));
+            // Come in Laravel: la richiesta di adesso, e ogni volta che l'applicazione ne imposta una nuova.
+            $request = $app->refresh('request', $guard, 'setRequest');
+            if ($request instanceof Request) {
+                $guard->setRequest($request);
+            }
             if (isset($config['remember']) && is_numeric($config['remember'])) {
                 $guard->setRememberDuration((int) $config['remember']);
             }
