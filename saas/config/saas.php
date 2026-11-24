@@ -168,7 +168,8 @@ return [
         'keep_hours' => (int) env('SAAS_EXPORT_KEEP_HOURS', 6),
     ],
 
-    // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
+    // Ambiente demo (docs/PIATTAFORMA.md §6): attiva solo con SAAS_DEMO acceso E APP_ENV=demo (DemoScale::active(), l'unico
+    // punto che lo decide); con qualunque altro ambiente nessun accesso pubblico e nessuna restrizione.
     // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.
     'demo' => [
         'enabled' => filter_var(env('SAAS_DEMO', false), FILTER_VALIDATE_BOOLEAN),
@@ -180,9 +181,25 @@ return [
         'org_slug' => env('SAAS_DEMO_SLUG', 'polisportiva-demo'),
         // Quante persone fisiche ha l'associazione dimostrativa: più sono, più il reset notturno dura (ricevute comprese).
         'people' => env('SAAS_DEMO_PEOPLE', 400),
-        // Password pubblica degli utenti di prova (titolare@, segreteria@, commercialista@ su mail_domain).
-        'password' => env('SAAS_DEMO_PASSWORD', 'demo-demo-demo-2026'),
+        // Password pubblica dei 5 utenti di prova (titolare@, amministratore@, segreteria@, dipendente@, commercialista@ su
+        // mail_domain). Con la variabile vuota vale la predefinita (mai una password vuota: `?:`, non il secondo argomento di env()).
+        'password' => env('SAAS_DEMO_PASSWORD') ?: 'demo-demo-demo-2026',
         'mail_domain' => env('SAAS_DEMO_MAIL_DOMAIN', 'demosaas.associazionesemplice.it'),
+        // Limiti della demo pubblica (DemoScale::LIMITS ha i valori di partenza; qui si cambiano). Frequenze per indirizzo IP
+        // in un'ora; «*_extra» = quanto i visitatori possono aggiungere a ciò che l'azzeramento notturno ha scritto;
+        // storage_mb = spazio totale dei file. Superato un limite: «Nella demo hai raggiunto il limite…».
+        'limits' => [
+            'creations_per_hour' => 40,
+            'writes_per_hour' => 200,
+            'people_extra' => 100,
+            'applications_extra' => 50,
+            'movements_extra' => 200,
+            'receipts_extra' => 200,
+            'bookings_extra' => 150,
+            'activities_extra' => 30,
+            'resources_extra' => 20,
+            'storage_mb' => 300,
+        ],
     ],
 
     // Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md): /saas/admin si apre con il token `staff_sso` del portale.

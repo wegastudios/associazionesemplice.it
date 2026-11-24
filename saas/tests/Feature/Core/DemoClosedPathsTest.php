@@ -25,7 +25,7 @@ function closedByDemo(string $method, string $path): bool
 }
 
 it('con la demo accesa i percorsi di piattaforma, staff, API, ingresso unico e Stripe sono chiusi', function (string $method, string $path): void {
-    config(['saas.demo.enabled' => true]);
+    demoOn();
 
     expect(closedByDemo($method, $path))->toBeTrue("$method $path");
 })->with([
@@ -37,7 +37,7 @@ it('con la demo accesa i percorsi di piattaforma, staff, API, ingresso unico e S
 ]);
 
 it('con la demo accesa restano aperti accesso, gestionale, area soci, moduli pubblici e l\'azzeramento locale della cache', function (string $method, string $path): void {
-    config(['saas.demo.enabled' => true]);
+    demoOn();
 
     expect(closedByDemo($method, $path))->toBeFalse("$method $path");
 })->with([
@@ -52,14 +52,14 @@ it('fuori dalla demo il guardiano non chiude niente', function (): void {
 });
 
 it('in produzione non chiude niente nemmeno con SAAS_DEMO acceso per errore', function (): void {
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     app()->detectEnvironment(fn (): string => 'production');
 
     expect(closedByDemo('GET', '/saas/admin'))->toBeFalse();
 });
 
 it('ogni rotta registrata che parla con il portale, lo staff o Stripe è chiusa nella demo, salvo l\'azzeramento locale', function (): void {
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     $open = [];
     foreach (Route::getRoutes()->getRoutes() as $route) {
         $uri = '/'.ltrim($route->uri(), '/');

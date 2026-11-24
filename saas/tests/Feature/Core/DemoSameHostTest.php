@@ -177,7 +177,7 @@ it('fuori dalla demo nessuna intestazione noindex e robots.txt è quello del fil
     expect($this->get(DEMO_HOST.'/accesso')->headers->get('X-Robots-Tag'))->toBeNull();
     expect($this->get(DEMO_HOST.'/robots.txt')->assertOk()->getContent())->toBe((string) file_get_contents(public_path('robots.txt')));
 
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     app()->detectEnvironment(fn (): string => 'production');
     expect($this->get(DEMO_HOST.'/accesso')->headers->get('X-Robots-Tag'))->toBeNull();
 });

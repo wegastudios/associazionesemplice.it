@@ -17,7 +17,7 @@ it('non parte se la demo è spenta', function (): void {
 });
 
 it('non parte mai in produzione, nemmeno con il comando acceso', function (): void {
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     app()->detectEnvironment(fn (): string => 'production');
 
     expect(app(DemoEnvironment::class)->enabled())->toBeFalse()
@@ -25,7 +25,7 @@ it('non parte mai in produzione, nemmeno con il comando acceso', function (): vo
 });
 
 it('crea l\'associazione di fantasia, gli utenti pubblici per ruolo e i soci finti', function (): void {
-    config(['saas.demo.enabled' => true, 'saas.demo.people' => DemoMembers::COUNT]);
+    demoOn(['saas.demo.people' => DemoMembers::COUNT]);
 
     $org = app(DemoEnvironment::class)->seed();
 
@@ -72,15 +72,77 @@ it('crea l\'associazione di fantasia, gli utenti pubblici per ruolo e i soci fin
 });
 
 it('mostra il banner della demo solo dove è accesa', function (): void {
-    config(['saas.demo.enabled' => true]);
-    $this->get('/accesso')->assertSee('demo con dati inventati', false);
+    demoOn();
+    $this->get('/accesso')->assertSee('Dati finti: la demo si azzera ogni notte alle 03:30.', false)->assertSee('role="status"', false);
 
     config(['saas.demo.enabled' => false]);
-    $this->get('/accesso')->assertDontSee('demo con dati inventati', false);
+    $this->get('/accesso')->assertDontSee('Dati finti', false);
+
+    // SAAS_DEMO acceso ma ambiente diverso da «demo»: nessun banner.
+    config(['saas.demo.enabled' => true]);
+    app()->detectEnvironment(fn (): string => 'staging');
+    $this->get('/accesso')->assertDontSee('Dati finti', false);
+});
+
+it('con SAAS_DEMO acceso ma ambiente non «demo» non nasce nessun account né password pubblica', function (string $env): void {
+    config(['saas.demo.enabled' => true, 'saas.demo.password' => 'password-di-prova-demo']);
+    app()->detectEnvironment(fn (): string => $env);
+
+    expect(DemoEnvironment::credentials())->toBe([])
+        ->and(App\Modules\Core\Contracts\DemoScale::active())->toBeFalse()
+        ->and(app(DemoEnvironment::class)->enabled())->toBeFalse()
+        ->and(Artisan::call('saas:demo:reset'))->toBe(1);
+    $users = DB::table('core.users')->count();
+    expect(fn () => app(DemoEnvironment::class)->seed())->toThrow(RuntimeException::class)
+        ->and(DB::table('core.users')->count())->toBe($users);
+    $this->get('/accesso')->assertInertia(fn (Assert $page) => $page->has('demoAccounts', 0));
+})->with(['staging', 'local', 'testing', 'production']);
+
+it('la password pubblica vuota vale quella predefinita, mai una password vuota', function (): void {
+    expect(config('saas.demo.password'))->toBeString()->not->toBe('')
+        ->and(strlen((string) config('saas.demo.password')))->toBeGreaterThanOrEqual(App\Modules\Core\Demo\DemoEnvCheck::MIN_PASSWORD);
+
+    // Configurazione sbagliata a mano: l'azzeramento non crea utenti con password vuota.
+    demoOn(['saas.demo.password' => '']);
+    $users = DB::table('core.users')->count();
+    expect(fn () => app(DemoEnvironment::class)->seed())->toThrow(RuntimeException::class)
+        ->and(DB::table('core.users')->count())->toBe($users);
+});
+
+it('il piano della demo ha i soci e lo spazio coerenti con i tetti, e i dati di partenza non li superano', function (): void {
+    demoOn(['saas.demo.people' => DemoMembers::COUNT]);
+    $org = app(DemoEnvironment::class)->seed();
+
+    $claims = json_decode((string) DB::table('core.org_entitlements')->where('org_id', $org->id)->value('claims'), true);
+    app(OrgContext::class)->run($org->id, function (App\Modules\Core\Contracts\CurrentOrg $current) use ($claims): void {
+        $counts = App\Modules\Core\Demo\DemoLimits::counts($current->connection);
+        $settings = app(App\Modules\Core\Contracts\OrgSettings::class);
+        foreach ($counts as $key => $n) {
+            // Il conteggio di partenza è scritto: il tetto (conteggio + margine) sta sopra ai dati di partenza.
+            expect($settings->int(App\Modules\Core\Demo\DemoLimits::BASELINE.$key, -1))->toBe($n)
+                ->and($settings->int(App\Modules\Core\Demo\DemoLimits::BASELINE.$key, -1) + App\Modules\Core\Contracts\DemoScale::limit($key.'_extra'))->toBeGreaterThan($n);
+        }
+        expect($claims['members'])->toBe($counts['people'] + App\Modules\Core\Contracts\DemoScale::limit('people_extra'))
+            ->and($claims['storage_gb'])->toBe(1);
+    });
+});
+
+it('lo spazio file della demo è il suo tetto, non quello del piano', function (): void {
+    demoOn();
+    $files = Mockery::mock(App\Modules\Cifratura\Contracts\EncryptedFiles::class);
+    $entitlements = Mockery::mock(App\Modules\Portale\Contracts\Entitlements::class);
+    $entitlements->shouldNotReceive('for');
+    $quota = new App\Modules\Cifratura\Files\StorageQuotaService($entitlements, $files);
+    $cap = App\Modules\Core\Contracts\DemoScale::storageBytes();
+
+    expect($cap)->toBe(300 * 1024 * 1024);
+    $files->shouldReceive('usedBytes')->andReturn($cap - 100);
+    $quota->assertRoom('org', 100);
+    expect(fn () => $quota->assertRoom('org', 101))->toThrow(App\Modules\Cifratura\Contracts\StorageFull::class);
 });
 
 it('mostra gli accessi di prova con la password solo sulla demo', function (): void {
-    config(['saas.demo.enabled' => true, 'saas.demo.password' => 'password-di-prova-demo']);
+    demoOn(['saas.demo.password' => 'password-di-prova-demo']);
     $this->get('/accesso')->assertInertia(fn (Assert $page) => $page->component('Auth/Login')
         ->has('demoAccounts', 5)
         ->where('demoAccounts.0.email', DemoEnvironment::email('titolare'))
@@ -89,7 +151,7 @@ it('mostra gli accessi di prova con la password solo sulla demo', function (): v
     config(['saas.demo.enabled' => false]);
     $this->get('/accesso')->assertInertia(fn (Assert $page) => $page->has('demoAccounts', 0));
 
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     app()->detectEnvironment(fn (): string => 'production');
     $this->get('/accesso')->assertInertia(fn (Assert $page) => $page->has('demoAccounts', 0));
 });
@@ -99,6 +161,6 @@ it('legge l\'interruttore della demo come un valore vero o falso, non come testo
         config(['saas.demo.enabled' => $off]);
         expect(app(DemoEnvironment::class)->enabled())->toBeFalse();
     }
-    config(['saas.demo.enabled' => 'true']);
+    demoOn(['saas.demo.enabled' => 'true']);
     expect(app(DemoEnvironment::class)->enabled())->toBeTrue();
 });

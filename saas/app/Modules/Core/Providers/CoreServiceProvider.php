@@ -165,7 +165,7 @@ final class CoreServiceProvider extends ServiceProvider
                 $schedule->command('queue:prune-failed --hours=168')->dailyAt('05:47');
                 // File di lavoro rimasti da richieste interrotte (copie, archivi, ricevute): via quelli di più di un'ora.
                 $schedule->command('saas:tmp:purge --minutes=60')->everyFifteenMinutes()->withoutOverlapping(10);
-                if (config('saas.demo.enabled') && ! app()->environment('production')) {
+                if (DemoScale::active()) {
                     $schedule->command('saas:demo:reset')->dailyAt('03:30')->withoutOverlapping(30);
                 }
             });
