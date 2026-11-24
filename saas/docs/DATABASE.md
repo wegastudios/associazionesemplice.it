@@ -120,6 +120,20 @@ pooler in modalità sessione. `saas:health` lo verifica a ogni rilascio (imposta
 consecutive) e controlla anche ruolo dell'applicazione, RLS attiva e forzata su `app.*`, `audit.*` e `sites.*`, e
 permessi del ruolo (sul database condiviso: i database dedicati si controllano dai test di schema).
 
+**Ruoli di gruppo e oggetti (`saas:health`, voce «oggetti e ruoli di gruppo»).** Su hosting cPanel i ruoli dell'applicazione,
+del proprietario e dei backup sono membri, con ereditarietà, del ruolo di gruppo che possiede il database: non si evita,
+quindi si controlla oggetto per oggetto, su ogni database (solo query di sola lettura sul catalogo, con il ruolo dei backup).
+Segnala, con le regole degli altri controlli sui permessi (errore con `SAAS_HEALTH_STRICT`, avviso senza):
+1. schemi inattesi: oltre a `public`, `app`, `audit`, `sites`, `core`, `portal`, a quelli che iniziano per `org_` e a quelli
+   elencati in `SAAS_HEALTH_EXTRA_SCHEMAS` (nomi separati da virgola);
+2. tabelle, viste, sequenze, funzioni e schemi di proprietà dell'applicazione, dei backup o di un ruolo di gruppo di cui
+   sono membri, cioè non del ruolo proprietario (rimedio: `ALTER ... OWNER TO` con il ruolo proprietario);
+3. permessi espliciti dei ruoli di gruppo su schemi e tabelle (rimedio: `REVOKE`), e appartenenza dell'applicazione o dei
+   backup al ruolo proprietario;
+4. `CREATE` sul database o su uno schema da parte dell'applicazione o dei backup, anche ereditato.
+Quando 1-4 sono in ordine e applicazione o backup possono assumere con `SET ROLE` il ruolo che possiede il database, la
+voce resta verde e `saas:health` stampa una nota «limite noto»: è un'informazione, non un errore.
+
 ## 4. Tipi di dato e indici
 
 - **Importi**: `bigint` in centesimi con `CHECK`. Mai `numeric` o `float` per il denaro.

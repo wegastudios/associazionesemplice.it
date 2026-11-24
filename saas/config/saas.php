@@ -68,6 +68,10 @@ return [
     // spento (sviluppo, dati inventati) restano avvisi. Va acceso insieme alla 2FA e al repository privato, prima dei dati veri.
     'health_strict' => filter_var(env('SAAS_HEALTH_STRICT', false), FILTER_VALIDATE_BOOLEAN),
 
+    // `saas:health`, controllo degli schemi: oltre a public, app, audit, sites, core, portal e a quelli che iniziano per «org_»,
+    // altri schemi attesi (nomi separati da virgola). Vuoto = nessuno.
+    'health_extra_schemas' => array_values(array_filter(array_map('trim', explode(',', (string) env('SAAS_HEALTH_EXTRA_SCHEMAS', ''))))),
+
     // Cartella dei file di manutenzione con permessi 600 (~/saas/shared sul server): vuoto = quella che contiene storage.
     'ops_dir' => env('SAAS_OPS_DIR', ''),
 
