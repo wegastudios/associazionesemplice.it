@@ -4,7 +4,8 @@ name: SaaS · rilascio
 # solo da main, con l'approvazione dell'ambiente. Quando ci sarà uno staging separato si potrà rilasciarlo da solo a ogni push.
 # Segreti per ambiente (Settings → Environments → staging / production):
 #   SAAS_SSH_HOST, SAAS_SSH_PORT, SAAS_SSH_USER, SAAS_SSH_PRIVATE_KEY, SAAS_SSH_KNOWN_HOSTS
-# L'ambiente production va protetto con l'approvazione obbligatoria.
+# Gli ambienti production e demo vanno protetti allo stesso modo: approvazione obbligatoria e rilascio solo dal ramo main
+# (Settings → Environments → Deployment branches). Il workflow rifiuta comunque ogni ramo diverso da main.
 
 on:
   workflow_dispatch:
@@ -67,8 +68,8 @@ jobs:
   deploy:
     name: Rilascio su ${{ inputs.environment }}
     needs: [check, build]
-    # In produzione e nella demo solo da main.
-    if: (inputs.environment != 'production' && inputs.environment != 'demo') || github.ref == 'refs/heads/main'
+    # In ogni ambiente (staging e demo comprese) solo da main: il pacchetto e lo script che girano sul server vengono dal ramo scelto.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: ${{ inputs.environment }}

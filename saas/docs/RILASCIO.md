@@ -83,6 +83,30 @@ Con un solo ambiente, la **prova di ripristino** (che non gira dove sta la produ
 chiave privata dei backup) si fa a mano dal computer di chi gestisce, con la coppia di chiavi dei backup in un `.env`
 locale e il database di prova locale: `php artisan saas:backup:restore-test`.
 
+**Ogni ambiente (produzione, staging, demo) si rilascia solo dal ramo `main`**: il workflow rifiuta ogni altro ramo
+(il passo «Rilascio» non parte). Il pacchetto e lo script `remote.sh` che girano sul server vengono dal ramo scelto,
+quindi un ramo qualunque non deve poter arrivare al server nemmeno per prova.
+
+**Impostazioni su GitHub che fa il titolare** (il workflow da solo non basta: sono la seconda chiave). Per `demo`, e
+uguali per `production`:
+
+1. Apri il repository su GitHub → **Settings** (scheda in alto a destra) → nel menu a sinistra **Environments**.
+2. Clicca **demo** (se non c'è, **New environment**, nome esatto `demo`, **Configure environment**).
+3. Spunta **Required reviewers**, scrivi il tuo nome utente GitHub, selezionalo e clicca **Save protection rules**.
+   Così ogni rilascio resta fermo finché non lo approvi tu.
+4. Con te unico revisore, **Prevent self-review** va **lasciato spento**: se lo accendi non potresti approvare i rilasci
+   che lanci tu e il rilascio resterebbe bloccato. Accendilo solo se in futuro ci sarà un secondo revisore.
+5. Sotto **Deployment branches and tags** apri il menu e scegli **Selected branches and tags**; clicca **Add deployment
+   branch or tag rule**, scrivi `main`, lascia il tipo **Branch**, clicca **Add rule**.
+6. Nessun segreto nuovo: restano i cinque già presenti nell'ambiente (`SAAS_SSH_*`). **Wait timer** e **Allow
+   administrators to bypass** (se compare) si lasciano come sono.
+7. Ripeti i punti 2-5 per **production**. Se `staging` esiste ancora come ambiente, anche lì **Selected branches and
+   tags** = `main`.
+
+Stato attuale dedotto dal workflow (non verificabile da qui, vanno controllati nelle impostazioni): `production` ha
+l'approvazione dichiarata come obbligatoria nei commenti del workflow; per `demo` mancava la dichiarazione (ora c'è).
+La regola dei rami è comunque già garantita dal workflow per `production` e `demo`, e dopo questa modifica per tutti.
+
 Segreti per ambiente (GitHub → Settings → Environments → `staging` e `production`): `SAAS_SSH_HOST`, `SAAS_SSH_PORT`,
 `SAAS_SSH_USER`, `SAAS_SSH_PRIVATE_KEY` (chiave Ed25519 solo per il rilascio, autorizzata solo su quel sub-account),
 `SAAS_SSH_KNOWN_HOSTS` (riga di `ssh-keyscan -p PORTA HOST`, controllata a mano). Le chiavi dell'applicazione non
