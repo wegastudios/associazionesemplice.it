@@ -40,7 +40,9 @@ opzioni per le chiavi, perché le righe di comando si vedono nell'elenco dei pro
 3. `php artisan saas:keys:generate`: la chiave nuova, da copiare nel file d'ambiente senza passare da chat o email.
    Nel file d'ambiente: `SAAS_MASTER_KEY_OLD` = il valore che oggi è in `SAAS_MASTER_KEY`, poi `SAAS_MASTER_KEY` =
    la chiave nuova. `php artisan config:cache`.
-4. `php artisan down`.
+4. `php artisan down` e, subito dopo, **fermare tutto ciò che gira in background** (vedi «Fermare lo sfondo» sotto).
+   `down` ferma solo le richieste web: i lavori pianificati e i lavoratori di coda già avviati possono ancora
+   leggere la configurazione vecchia o la cache delle chiavi.
 5. `php artisan saas:keys:rewrap local-nuova --dry-run`. Prova tutto senza scrivere: controlla che ogni chiave dati si
    apra con la vecchia o con la nuova e che, riavvolta, si riapra uguale. Deve dire 0 associazioni non riuscite. Se
    dice «chiavi che non si aprono né con SAAS_MASTER_KEY_OLD né con SAAS_MASTER_KEY» non ha scritto nulla: la chiave
@@ -49,20 +51,40 @@ opzioni per le chiavi, perché le righe di comando si vedono nell'elenco dei pro
    transazione: apre con la vecchia, riavvolge con la nuova, controlla, solo dopo scrive. Una riga `keys.rewrap` con
    `to = local-nuova` nel registro della piattaforma.
 7. Di nuovo `saas:keys:rewrap local-nuova`: deve dire 0 riavvolte (le righe già a posto non si toccano).
-8. `saas:health`, un accesso di prova a un'associazione che legga un campo cifrato, `php artisan up`.
+8. **Solo ora** si riaccende lo schedulatore (la riga di cron tolta al punto 4), poi `saas:health`, un accesso di prova a
+   un'associazione che legga un campo cifrato, `php artisan up`. Il riavvio dei lavoratori è automatico: ripartono dal
+   cron con la configurazione nuova (dopo `config:cache`).
 9. Nuova copia di recupero con la chiave nuova (`saas:keys:recovery`) e sua verifica (`saas:keys:recovery-check`).
 10. **La chiave vecchia resta offline per almeno 30 giorni, ma fuori dal file d'ambiente**: i backup fatti prima del
     passaggio hanno le chiavi avvolte con lei. Si toglie `SAAS_MASTER_KEY_OLD` dal file d'ambiente (`config:cache`)
     quando i controlli sono fatti, non si lascia lì «per sicurezza». Passati i 30 giorni si distrugge la copia di
     recupero vecchia.
 
+**Fermare lo sfondo** (punto 4, e di nuovo per il ritorno e per la ripresa). Prima di qualsiasi `rewrap`, con il
+gestionale già in `down`:
+
+1. Spegnere lo schedulatore per tutta la durata: togliere (o commentare) la riga di cron di `schedule:run`
+   (`RILASCIO.md`). Da qui non parte più nessun lavoro pianificato né nuovo lavoratore di coda.
+2. `php artisan queue:restart`: i lavoratori già avviati finiscono il lavoro in corso e poi si fermano. **Attendere** che
+   non ce ne siano più (nessun processo `queue:work` in esecuzione, righe in lavorazione di `jobs` assenti o ferme)
+   prima di proseguire.
+3. Svuotare la cache delle chiavi sbloccate: sta in APCu dei processi web (5 minuti al massimo, mai su disco) e dalla
+   riga di comando non si vede né si cancella. Riavviare PHP dal pannello dell'hosting (o attendere almeno 5 minuti
+   dopo `down`, quando nessuna richiesta la rinnova). Poi `config:cache`, se non già fatto dopo aver cambiato le chiavi.
+4. Solo dopo, il `rewrap` (prova, vero, ripetizione). Lo schedulatore si riaccende **dopo** la ripetizione a 0
+   riavvolte e prima di `up`, sempre, anche dopo il ritorno.
+
 **Ritorno** (la chiave nuova non va: errori nei controlli, chiave sbagliata copiata): stesso comando con le due chiavi
-scambiate nel file d'ambiente. `SAAS_MASTER_KEY` = la chiave vecchia, `SAAS_MASTER_KEY_OLD` = la nuova, `config:cache`,
-`saas:keys:rewrap local-nuova --dry-run`, poi senza `--dry-run`, poi di nuovo (0 riavvolte). Le chiavi dati delle associazioni
+scambiate nel file d'ambiente, con le stesse protezioni (`down`, «Fermare lo sfondo» con lo schedulatore spento).
+`SAAS_MASTER_KEY` = la chiave vecchia, `SAAS_MASTER_KEY_OLD` = la nuova, `config:cache`,
+`saas:keys:rewrap local-nuova --dry-run`, poi senza `--dry-run`, poi di nuovo (0 riavvolte), e solo allora lo
+schedulatore torna acceso e `up`. Le chiavi dati delle associazioni
 non si ricreano: cambia solo come sono avvolte. Finché la vecchia non è distrutta, il ritorno è sempre
 possibile; la copia di recupero del punto 1 lo copre anche se il file d'ambiente è perso.
 
-Se il comando si interrompe a metà (errore di rete al database, processo ucciso) non c'è nulla da disfare: ogni
+Se il comando si interrompe a metà (errore di rete al database, processo ucciso) lo schedulatore **resta spento** e il
+gestionale in `down`: si controlla che «Fermare lo sfondo» sia ancora vero (nessun lavoratore ripartito) e si
+ripete il comando. Non c'è nulla da disfare: ogni
 associazione è una transazione, e ripetendo il comando si riavvolgono solo quelle rimaste (le altre risultano «già a
 posto»). Se una chiave non si apre con nessuna delle due, il comando non scrive nulla finché non si è capito perché.
 
