@@ -40,16 +40,6 @@ final class GroupPrivileges
     public static function inventory(Connection $db, string $group): array
     {
         $list = self::pgArray(self::schemas($db));
-        /** @param  list<array<string, scalar|null>>  $rows */
-        $bySchema = static function (array $rows): array {
-            $out = [];
-            foreach ($rows as $row) {
-                $out[(string) $row['s']] = (int) $row['c'];
-            }
-
-            return $out;
-        };
-
         $tables = self::rows($db, <<<'SQL'
             SELECT n.nspname AS s, count(*) AS c FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname = ANY (CAST(? AS text[])) AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
@@ -104,9 +94,9 @@ final class GroupPrivileges
         }
 
         return [
-            'tables' => $bySchema($tables),
-            'sequences' => $bySchema($sequences),
-            'functions' => $bySchema($functions),
+            'tables' => self::bySchema($tables),
+            'sequences' => self::bySchema($sequences),
+            'functions' => self::bySchema($functions),
             'columns' => $columns,
             'defaults' => $defaults,
             'database' => $database,
@@ -183,6 +173,20 @@ final class GroupPrivileges
         $remaining = array_sum(self::counts(self::inventory($db, $group)));
 
         return ['removed' => max(0, $total - $remaining), 'remaining' => $remaining];
+    }
+
+    /**
+     * @param  list<array<string, scalar|null>>  $rows
+     * @return array<string, int>
+     */
+    private static function bySchema(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(string) $row['s']] = (int) $row['c'];
+        }
+
+        return $out;
     }
 
     /** @return list<string> */
