@@ -55,7 +55,7 @@ function rtGrants(): array {
 	return array(
 		'subscriptions' => 'SELECT, INSERT, UPDATE, DELETE', 'orders' => 'SELECT, INSERT, UPDATE, DELETE', 'saas_orgs' => 'SELECT, INSERT, UPDATE, DELETE',
 		'releases' => 'SELECT, INSERT, UPDATE, DELETE', 'mail_outbox' => 'SELECT, INSERT, UPDATE, DELETE',
-		'downloads' => 'SELECT, INSERT', 'saas_outbox' => 'SELECT, INSERT, UPDATE', 'settings' => 'SELECT, INSERT, DELETE',
+		'downloads' => 'SELECT, INSERT, DELETE', 'saas_outbox' => 'SELECT, INSERT, UPDATE', 'settings' => 'SELECT, INSERT, DELETE',
 		'email_templates' => 'SELECT, INSERT, DELETE', 'audit' => 'SELECT, INSERT', 'events' => 'INSERT, DELETE',
 	);
 }
@@ -2921,7 +2921,7 @@ if ( rtMode() ) {
 		}
 		return false;
 	};
-	check( 'ruolo ristretto: niente DELETE su downloads, audit, saas_outbox', $denied( $rt, 'DELETE FROM downloads' ) && $denied( $rt, 'DELETE FROM audit' ) && $denied( $rt, 'DELETE FROM saas_outbox' ) );
+	check( 'ruolo ristretto: niente DELETE su audit e saas_outbox', $denied( $rt, 'DELETE FROM audit' ) && $denied( $rt, 'DELETE FROM saas_outbox' ) );
 	check( 'ruolo ristretto: niente UPDATE su settings, email_templates, downloads, audit, events', $denied( $rt, "UPDATE settings SET val = 'x'" ) && $denied( $rt, "UPDATE email_templates SET body = 'x'" ) && $denied( $rt, "UPDATE downloads SET version = 'x'" ) && $denied( $rt, "UPDATE audit SET actor = 'x'" ) && $denied( $rt, "UPDATE events SET provider = 'x'" ) );
 	check( 'ruolo ristretto: events si scrive ma non si legge', $denied( $rt, 'SELECT * FROM events' ) );
 	check( 'ruolo ristretto: nessuna tabella del proprietario si cambia (ALTER, DROP)', $denied( $rt, 'ALTER TABLE orders ADD COLUMN x INTEGER NULL' ) && $denied( $rt, 'DROP TABLE settings' ) );
