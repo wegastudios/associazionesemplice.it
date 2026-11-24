@@ -32,6 +32,8 @@ return [
         // d'ambiente (sviluppo, test e ripiego).
         'vault' => env('SAAS_KEY_VAULT', 'local'),
         'master_key' => env('SAAS_MASTER_KEY'),
+        // Solo per saas:keys:rewrap local-nuova: la chiave locale da cui si parte. Mai da riga di comando; si toglie a lavoro finito.
+        'master_key_old' => env('SAAS_MASTER_KEY_OLD'),
         'service_url' => env('SAAS_KEY_SERVICE_URL'),
         'signing_key' => env('SAAS_KEY_SERVICE_SIGNING_KEY'),
         'timeout' => env('SAAS_KEY_SERVICE_TIMEOUT', '3'),
