@@ -9,12 +9,11 @@ La demo del gestionale vive su **un solo indirizzo**, `https://demosaas.associaz
 Il resto del contesto (cosa mostra la demo, dati finti, utenti pubblici) è in `PIATTAFORMA.md` §6. Questo documento dice come si mette in piedi.
 Il gestionale resta **nascosto**: nessun collegamento dal portale o dalla vendita, nessun interruttore di produzione cambia.
 
-## Due modi di installarla: stesso piano
+## Account: oggi separato, la regola resta generale
 
-1. **Account cPanel suo**, separato dalla demo WordPress (consigliato).
-2. **Stesso account della demo WordPress** (pubblica). Valgono le stesse istruzioni, più le regole della sezione «Se l'account è condiviso».
+Oggi la demo del gestionale ha un **account cPanel suo** (`demosaasassociaz`), diverso da quello della demo WordPress (`demoassociazione`). Le istruzioni valgono identiche se un giorno i due dividessero un account: in quel caso si aggiungono le regole della sezione «Se l'account è condiviso».
 
-In entrambi i casi la demo del gestionale sta in `~/saas-demo`; mai in `~/saas` (la produzione, anche se un giorno stesse sullo stesso account).
+In ogni caso la demo del gestionale sta in `~/saas-demo`; mai in `~/saas` (la produzione, anche se un giorno stesse sullo stesso account).
 
 ## Requisiti
 
@@ -49,7 +48,7 @@ In entrambi i casi la demo del gestionale sta in `~/saas-demo`; mai in `~/saas` 
 - **Collegamenti**: `assets`, `build`, `favicon.ico`, `favicon.svg` (solo quelli che la versione ha) puntano a `~/saas-demo/current/public/…`: il percorso del collegamento non cambia perché `current` è esso stesso un collegamento. `robots.txt` non è un file: lo risponde l'app (nella demo: `Disallow: /`).
 - **`.htaccess`**: gli si **aggiunge in fondo** il blocco di `deploy/demo-htaccess.conf` tra i marcatori `# BEGIN AssociazioneSemplice demo` / `# END AssociazioneSemplice demo`. Tutto il resto, compresi `# php -- BEGIN cPanel-generated handler … END` (`AddHandler ea-php83`) e `php_value error_log` / `log_errors`, resta com'è e dov'è. Ripetere l'installazione sostituisce solo il nostro blocco.
 - **Mai toccati**: `.user.ini`, `php.ini`, `.well-known`, `cgi-bin`. Un file o cartella vera con il nome di un collegamento non viene sovrascritto (avviso, lo sposti tu).
-- **Divieti**: il blocco nega `.user.ini`, `php.ini`, `.htaccess`, `.env*`, `composer.*`, `artisan` e file `.log/.sh/.md/.lock/.json/.yml/.sql/.bak`, ogni file o cartella nascosti (tranne `.well-known`), e disattiva elenco cartelle e MultiViews. Il resto che non è un file vero va all'app (404 dell'app).
+- **Divieti**: il blocco nega solo file di configurazione e di servizio con nome preciso: `.user.ini`, `php.ini`, `.htaccess`, `.env*`, `composer.json`/`composer.lock`, `package.json`/`package-lock.json`, `artisan`, `phpunit.xml` e ogni `*.log`, `*.sh`, `*.sql`, `*.bak`; poi ogni file o cartella nascosti (tranne `.well-known`), e disattiva elenco cartelle e MultiViews. **Non** nega gli altri `.json`, `.md`, `.yml`, `.lock`: in `public_html` possono servire a manifest e file statici (per esempio `manifest.webmanifest`, `manifest.json`, `site.webmanifest` dell'area soci o di `build/`). Il controllo (CI, `DemoWebrootTest`) verifica che un `manifest.json` non sia negato e che `composer.json` e `package.json` lo siano. Il resto che non è un file vero va all'app (404 dell'app).
 
 ### Comandi esatti (solo quando il titolare dà il via; niente si installa prima)
 
@@ -80,7 +79,41 @@ Prove automatiche (CI): `tests/Feature/Core/DemoWebrootTest.php` prova il blocco
 
 ## Posta: niente esce
 
-Con `SAAS_DEMO=true` (ambiente non di produzione) l'app, all'avvio, rende **«log» ogni mailer** (`DemoMailGuard`): `MAIL_MAILER`, le impostazioni della piattaforma, `smtp`, `emailit`, `failover`, `ses`… tutti scrivono nel registro, e `SAAS_MAIL_PRIMARY` torna `cpanel`. Anche se per errore nel `.env` ci fossero `MAIL_MAILER=smtp` o Emailit, inviti, codici e link dell'area soci non escono. Il controllo del `.env` segnala comunque quelle variabili. Prove: `tests/Feature/Core/DemoMailTest.php`.
+Con `SAAS_DEMO=true` (ambiente non di produzione) l'app, all'avvio, rende **«array» ogni mailer** (`DemoMailGuard`): `MAIL_MAILER`, le impostazioni della piattaforma, `smtp`, `emailit`, `failover`, `ses`, `log`… il messaggio resta in memoria per la durata della richiesta e poi sparisce; `SAAS_MAIL_PRIMARY` torna `cpanel`. Non «log»: il visitatore scrive indirizzi veri nei moduli e codici e link dell'area soci arriverebbero in `storage/logs/laravel.log`. Anche se per errore nel `.env` ci fossero `MAIL_MAILER=smtp` o Emailit, inviti, codici e link non escono e non restano scritti. Il controllo del `.env` pretende `MAIL_MAILER=array` e segnala il resto.
+
+Il registro non tiene niente dei visitatori: `LOG_LEVEL=warning`, `LOG_DAILY_DAYS=2` e l'**azzeramento notturno svuota anche `storage/logs`** (ogni `*.log`), i file temporanei (`storage/app/tmp`) e la cache su disco, oltre al database e ai file cifrati (solo se la cartella sta sotto `saas-demo`). Prove: `tests/Feature/Core/DemoMailTest.php` (nessun invio, nessun errore con smtp finto, nel log di prova non restano indirizzi, codici né link; l'azzeramento toglie i log solo nella cartella della demo).
+
+## Cosa gira nello scheduler della demo e cosa no
+
+Con `SAAS_DEMO=true` (ambiente non di produzione) i lavori pianificati sono un **elenco di permessi** (`DemoSchedule`): quello che non c'è è spento, anche un lavoro nuovo di domani, finché non lo si mette in elenco. `tests/Feature/Core/DemoScheduleTest.php` fallisce se un lavoro pianificato non è classificato né tra quelli che girano né tra quelli spenti.
+
+| Gira | Perché |
+|---|---|
+| lavoratori delle code (`queue:work`), `queue:prune-failed` | solo lavori interni; la posta è scartata |
+| `saas:tmp:purge`, `saas:files:usage`, `saas:crypt:upgrade-format:prune` | file di lavoro e contatori del suo disco |
+| `saas:demo:reset` (03:30) | azzeramento notturno |
+| `saas:audit:partitions`, `saas:audit:prune-security`, `saas:receipts:fix`, `saas:applications:prune`, `saas:member-access:prune` | lavorano solo sul suo database |
+
+| **Non** gira | Perché |
+|---|---|
+| `saas:backup:dump`, `saas:backup:prune`, `saas:backup:restore-test` | niente copie di sicurezza (comunque pianificate solo in produzione e staging) |
+| `saas:keys:monitor` | servizio chiavi: la demo usa la chiave locale |
+| `saas:reminders:send` | promemoria ai soci: nessuna posta |
+| `saas:payments:requeue-webhooks` | pagamenti online: nessun Stripe |
+| `saas:portal:usage`, `suspend-expired`, `purge-expired`, `lifecycle-notices`, `verify-domains` | portale, ciclo di vita, domini: nessun collegamento verso l'esterno |
+| `saas:night`, `saas:audit:prune` | controlli e potature inutili su dati che si azzerano ogni notte |
+
+Il catalogo verso il portale e gli aggiornamenti esterni non hanno lavori pianificati: partono solo da chiamate dello staff, chiuse (sezione seguente).
+
+## Percorsi chiusi nella demo
+
+`CloseDemoPaths` risponde **404** a: `/saas/admin` e `/saas/…` (amministrazione e staff), `/api/…` (API del portale, catalogo, esecuzione), `/accesso-unico/…`, `/area/webhook/…` (Stripe), `/gestionale/abbonamento`. Succede prima di qualunque controllo di firma o di sessione, quindi anche una chiamata con una firma valida non entra. Unica eccezione: `POST /api/portale/v2/runtime/reset`, l'azzeramento locale della cache usato da `saas:web:refresh`. Il guardiano `DemoRestrictions` toglie comunque `/saas/admin` e `/saas/staff` anche se un domani la prima barriera mancasse. `tests/Feature/Core/DemoClosedPathsTest.php` elenca le rotte registrate e fallisce se ne resta aperta una sensibile.
+
+## Moduli pubblici (adesione, donazione, area soci)
+
+- **Limiti di frequenza**: ogni invio (`POST/PUT/DELETE`) delle rotte pubbliche ha un limite (`throttle:applications`, `applications-confirm`, `donations`, `member-*`) o conta i tentativi da sé (accesso dell'area soci: codice e link, per indirizzo e per email). La prova elenca le rotte e fallisce se una non ne ha.
+- **Nessun file**: i controller pubblici non leggono file e, nella demo, una richiesta con un file in arrivo su una rotta pubblica è rifiutata («il caricamento dei file è spento»).
+- **Niente sopravvive all'azzeramento**: tutto ciò che i visitatori scrivono sta nel database (ricreato ogni notte), nei file dell'associazione (`SAAS_FILES_ROOT`, svuotato ogni notte), nei log e nella cache su disco (svuotati ogni notte). La donazione online e Stripe sono spenti. `tests/Feature/Core/DemoPublicModulesTest.php`.
 
 ## Il database della demo (procedura generica)
 
@@ -132,12 +165,12 @@ Il comando legge il file e dice **quali** variabili mancano, sono vuote, sono an
 - **indirizzo unico**: `APP_URL` = `SAAS_DEMO_SLUG` + `.` + `SAAS_MEMBERS_DOMAIN`, in HTTPS;
 - **cookie**: `SESSION_COOKIE` comincia con `__Host-`, `SESSION_DOMAIN` vuota/`null`, `SESSION_SECURE_COOKIE=true`;
 - **isolamento** (vedi sotto);
-- `APP_ENV=demo`, `SAAS_DEMO=true`, `SAAS_DEMO_DATABASE` uguale a `DB_DATABASE`, `MAIL_MAILER=log`, `SAAS_UNIFIED_OPERATORS=false`, `SAAS_REQUIRE_TWO_FACTOR=false`, `SAAS_KEY_VAULT=local`;
+- `APP_ENV=demo`, `SAAS_DEMO=true`, `SAAS_DEMO_DATABASE` uguale a `DB_DATABASE`, `MAIL_MAILER=array`, `SAAS_UNIFIED_OPERATORS=false`, `SAAS_REQUIRE_TWO_FACTOR=false`, `SAAS_KEY_VAULT=local`;
 - tre utenti PostgreSQL con nomi diversi, password diverse tra loro e diverse da `APP_KEY`, `SAAS_MASTER_KEY` e `SAAS_DEMO_PASSWORD`; chiavi non vuote.
 
 ### Regola di isolamento
 
-Nel `.env` della demo **nessun valore deve valere altrove**: niente chiavi o token verso GitHub, portale, Emailit/SMTP, Stripe, produzione, Redis, servizio chiavi. Il controllo accetta solo le variabili del modello (più poche opzioni): ogni altra variabile con un valore è un errore, e quelle che sembrano collegamenti esterni sono segnalate come tali. Motivo: la demo WordPress è pubblica e, se sta nello stesso account, un difetto lì potrebbe leggere questo file; il file non deve contenere nulla che si possa usare contro qualcosa di vero.
+Nel `.env` della demo **nessun valore deve valere altrove**: niente chiavi o token verso GitHub, portale, Emailit/SMTP, Stripe, produzione, Redis, servizio chiavi. Il controllo accetta solo le variabili del modello (più poche opzioni): ogni altra variabile con un valore è un errore, e quelle che sembrano collegamenti esterni sono segnalate come tali. Motivo: la demo è pubblica e vicina ad altri siti pubblici (la demo WordPress, oggi in un altro account); se un giorno stessero insieme, o se un difetto lasciasse leggere il file, questo non deve contenere nulla che si possa usare contro qualcosa di vero.
 
 ## Cookie
 
@@ -167,7 +200,7 @@ Con `SAAS_DEMO=true` (e ambiente non di produzione): ogni risposta ha `X-Robots-
 
 Regola: **nessuna sovrapposizione**. L'azzeramento del gestionale parte alle 03:30 e deve finire prima delle 04:00; quello di WordPress parte alle 04:00 e non prima. Non si spostano le due ore senza cambiare l'altra: tra l'una e l'altra restano almeno 30 minuti. Se l'azzeramento del gestionale dovesse superare i 25 minuti (con `SAAS_DEMO_PEOPLE` più alto o un server lento), si scende di numero di persone, non si sposta WordPress sopra. Altri lavori dello scheduler vicini: `saas:applications:prune` alle 03:41 e, il lunedì, `saas:audit:prune-security` alle 03:27; sono brevi e non toccano i dati dell'azzeramento.
 
-L'azzeramento cancella **tutto** il database della demo e i file cifrati, ed è protetto: si rifiuta se `SAAS_DEMO_DATABASE` non è il database collegato, se ci sono altre associazioni o se la cartella non si chiama `saas-demo`. Si lancia a mano solo sul server demo, e solo se il titolare lo chiede (il primo dopo la prima installazione).
+L'azzeramento cancella **tutto** il database della demo, i file cifrati, i log, i file temporanei e la cache su disco, ed è protetto: si rifiuta se `SAAS_DEMO_DATABASE` non è il database collegato, se ci sono altre associazioni o se la cartella non si chiama `saas-demo`. Si lancia a mano solo sul server demo, e solo se il titolare lo chiede (il primo dopo la prima installazione).
 
 ## Se l'account è condiviso con la demo WordPress
 
@@ -192,4 +225,4 @@ Sul server **niente si installa finché il titolare non lo chiede**. Quando sar�
 
 ## Cosa è provato dai test
 
-`tests/Feature/Core/DemoSameHostTest.php`: sullo stesso indirizzo ogni percorso va alla rotta giusta (`/area` all'area soci, `/accesso` e `/gestionale` all'operatore, `/dona` e `/adesione` ai moduli pubblici), i cookie sono senza `Domain` e con prefisso `__Host-`, noindex e robots. `tests/Feature/Core/DemoCheckEnvTest.php`: il controllo del `.env` e il modello.
+`tests/Feature/Core/DemoSameHostTest.php`: sullo stesso indirizzo ogni percorso va alla rotta giusta (`/area` all'area soci, `/accesso` e `/gestionale` all'operatore, `/dona` e `/adesione` ai moduli pubblici), i cookie sono senza `Domain` e con prefisso `__Host-`, noindex e robots. `tests/Feature/Core/DemoCheckEnvTest.php`: il controllo del `.env` e il modello. `DemoMailTest`, `DemoScheduleTest`, `DemoClosedPathsTest`, `DemoPublicModulesTest`, `DemoWebrootTest`: posta e log, scheduler, percorsi chiusi, moduli pubblici, cartella pubblica e `.htaccess`.

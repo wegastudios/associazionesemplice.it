@@ -18,6 +18,7 @@ use App\Modules\Core\Console\SelfTestPurgeCommand;
 use App\Modules\Core\Console\WebRefreshCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
+use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContext;
@@ -28,6 +29,7 @@ use App\Modules\Core\Contracts\PlatformSettingsStore;
 use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Demo\DemoMailGuard;
+use App\Modules\Core\Demo\DemoSchedule;
 use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Http\Middleware\ResolveProxyClient;
 use App\Modules\Core\Mail\PrimaryMailer;
@@ -37,6 +39,7 @@ use App\Modules\Core\Org\DatabaseOrgPurger;
 use App\Modules\Core\Platform\PlatformConfig;
 use App\Modules\Core\Platform\PlatformSettings;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
@@ -131,6 +134,12 @@ final class CoreServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
+            // Nella demo girano solo i lavori interni (DemoSchedule): a lavori tutti registrati, gli altri si spengono.
+            if (DemoScale::restricted()) {
+                $this->app->booted(static function (Application $app): void {
+                    DemoSchedule::restrict($app->make(Schedule::class));
+                });
+            }
             $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, DemoCheckEnvCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class, NightCommand::class, WebRefreshCommand::class]);
 
             // Code su Postgres: lavoratori a giro di cron, che si fermano quando la coda è vuota o dopo 50 secondi (sul

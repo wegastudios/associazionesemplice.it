@@ -8,8 +8,9 @@ namespace App\Modules\Core\Demo;
  * Controllo del file .env della demo (docs/DEMO.md): dice QUALI variabili mancano, sono vuote, sono rimaste sul valore
  * d'esempio o rompono la regola di isolamento. Restituisce solo nomi e motivi, mai valori: l'uscita può finire in un log.
  *
- * La demo del gestionale sta nello stesso account della demo del plugin (pubblica): un difetto lì potrebbe leggere
- * questo file. Per questo nel .env non deve esserci niente che valga altrove (GitHub, portale, posta, Stripe,
+ * Oggi la demo del gestionale ha un account suo (demosaasassociaz), separato da quello della demo del plugin; la regola
+ * però vale in ogni caso, anche se un giorno i due dividessero l'account: un difetto in un sito pubblico vicino potrebbe
+ * leggere questo file. Per questo nel .env non deve esserci niente che valga altrove (GitHub, portale, posta, Stripe,
  * produzione) e ogni variabile non prevista è un errore.
  */
 final class DemoEnvCheck
@@ -121,7 +122,7 @@ final class DemoEnvCheck
         if ($flag('SAAS_REQUIRE_TWO_FACTOR') !== false) {
             $add('SAAS_REQUIRE_TWO_FACTOR', 'deve essere false (gli accessi di prova sono pubblici)');
         }
-        $must('MAIL_MAILER', 'log', 'deve essere «log»: nella demo non parte nessuna email');
+        $must('MAIL_MAILER', 'array', 'deve essere «array»: nessuna email parte e nessun indirizzo, codice o link resta scritto nel log');
         $must('SAAS_KEY_VAULT', 'local', 'deve essere «local»: la demo non usa il servizio chiavi');
         $must('SESSION_DRIVER', 'database', 'deve essere «database»');
         $must('QUEUE_CONNECTION', 'database', 'deve essere «database»');

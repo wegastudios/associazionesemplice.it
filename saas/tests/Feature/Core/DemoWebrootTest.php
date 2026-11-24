@@ -60,6 +60,16 @@ it('il blocco .htaccess manda tutto all\'app, serve .well-known e i file veri, e
     // Il blocco non tocca il PHP (quello è di cPanel).
     expect($conf)->not->toContain('php_value')->not->toContain('AddHandler')->not->toContain('php_flag');
 
+    // Il divieto per nome non colpisce i file statici dell'area soci (manifest, mappe, testi, immagini, font), ma sì i file di servizio.
+    expect(preg_match('/<FilesMatch "([^"]+)">/', $conf, $found))->toBe(1);
+    $deny = '/'.str_replace('/', '\/', $found[1]).'/';
+    foreach (['manifest.json', 'manifest.webmanifest', 'site.webmanifest', 'icons.json', 'app.js.map', 'OFL.txt', 'logo.svg', 'Montserrat-Bold.ttf', 'index.php', 'robots.txt'] as $served) {
+        expect(preg_match($deny, $served))->toBe(0, $served);
+    }
+    foreach (['composer.json', 'composer.lock', 'package.json', 'package-lock.json', '.env', '.env.production', 'artisan', 'phpunit.xml', 'laravel.log', 'deploy.sh', 'dump.sql', 'copia.bak', '.user.ini', 'php.ini', '.htaccess'] as $refused) {
+        expect(preg_match($deny, $refused))->toBe(1, $refused);
+    }
+
     // Le direttive di rewrite sono le stesse del .htaccess dell'app.
     $app = (string) file_get_contents(dirname(__DIR__, 3).'/public/.htaccess');
     foreach (['RewriteCond %{REQUEST_FILENAME} !-d', 'RewriteCond %{REQUEST_FILENAME} !-f', 'RewriteRule ^ index.php [L]', 'RewriteRule ^robots\.txt$ index.php [L]'] as $line) {

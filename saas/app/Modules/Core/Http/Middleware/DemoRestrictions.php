@@ -7,6 +7,7 @@ namespace App\Modules\Core\Http\Middleware;
 use App\Modules\Core\Contracts\DemoScale;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -49,6 +50,11 @@ final class DemoRestrictions
         // L'amministrazione della piattaforma e lo staff non esistono nella demo pubblica.
         if ($request->is($this->platformPaths())) {
             abort(404);
+        }
+        // Moduli pubblici e area soci (aperti a chiunque): nessun file in arrivo, mai, qualunque campo lo porti.
+        $route = $request->route();
+        if ($route instanceof Route && $request->allFiles() !== [] && in_array(UseCookieSession::MARKER, $route->gatherMiddleware(), true)) {
+            throw ValidationException::withMessages(['ledger' => DemoScale::UPLOADS_OFF]);
         }
         // Lo scarico della copia di sicurezza pesa sul server condiviso: chiuso, in lettura e in scrittura.
         if ($request->is('gestionale/esportazione.zip', 'gestionale/esportazione/*')) {

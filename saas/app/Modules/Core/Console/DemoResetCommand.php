@@ -55,6 +55,12 @@ final class DemoResetCommand extends Command
             $this->line("File della demo precedente tolti: {$removed}.");
         }
 
+        // Niente di ciò che i visitatori hanno scritto resta oltre la notte: log, file temporanei e cache su disco.
+        $logs = DemoResetGuard::clearLogs(storage_path('logs'), is_string($marker) ? $marker : 'saas-demo');
+        $tmp = DemoResetGuard::clearFiles(storage_path('app/tmp'), is_string($marker) ? $marker : 'saas-demo');
+        $cache = DemoResetGuard::clearFiles(storage_path('framework/cache/data'), is_string($marker) ? $marker : 'saas-demo');
+        $this->line('Log, file temporanei e cache su disco tolti: '.(($logs ?? 0) + ($tmp ?? 0) + ($cache ?? 0)).'.');
+
         try {
             $org = $demo->seed();
         } catch (Throwable $e) {
