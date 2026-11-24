@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-proprieta|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-proprieta|revoca-gruppo|revoca-gruppo-esegui|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
 #
 # Il log del workflow è pubblico: ogni stato reale della produzione (variabili, interruttori, permessi, coda, cancellazioni, ciclo di vita, ...) va su file shared/<azione>-<AAAAMMGGTHHMMSS>.txt (600, ultimi 5 per azione); nel log solo esito e «salvato in <percorso>».
 # Azioni fisse e limitate (non è una shell remota):
@@ -9,6 +9,7 @@
 #                     svuota la cache della configurazione e stampa SOLO kid e parte pubblica x. Il seme non si stampa mai.
 #   variabili         sola lettura: STATO (mai il valore) delle variabili del .env e scelta EFFETTIVA dalla configurazione dell applicazione, su file shared/variabili-<data>.txt (600); nel log solo «salvato in»; commenti in riga del .env letti come vuoti
 #   db-proprieta      sola lettura (solo SELECT sul catalogo, ruolo owner): inventario di proprietari, ruoli di gruppo, privilegi, default privileges, RLS; su file, nel log solo «salvato in»
+#   revoca-gruppo     prova: conta (solo conteggi) i permessi che il ruolo di gruppo del database ha ancora (saas:db:revoke-group --dry-run); revoca-gruppo-esegui li toglie davvero, ma solo con SAAS_DB_REVOKE_GROUP acceso
 #   copie-env         sola lettura: elenca cosa cancellerebbe la rotazione delle copie shared/.env.bak-<data> (massimo 2, nessuna oltre 7 giorni)
 #   pulisci-copie-env applica la rotazione una volta e accende quella automatica; cancella SOLO .env.bak-<14 cifre>, mai il .env
 #   percorso-pgdump   imposta SAAS_PG_DUMP e SAAS_PG_RESTORE nella cartella indicata, solo se è la versione 16
@@ -772,6 +773,20 @@ case "$ACTION" in
     ' > "$F" 2>&1 || true
     prune_files db-proprieta
     echo "db-proprieta: salvato in $F"
+    ;;
+  revoca-gruppo|revoca-gruppo-esegui)
+    # Toglie al ruolo di gruppo del database i permessi che cPanel (update_privileges ... ALL) rimette: lancia saas:db:revoke-group.
+    # «revoca-gruppo» = prova (--dry-run, solo conteggi per tipo, nessuna scrittura); «revoca-gruppo-esegui» = reale, ma il comando
+    # agisce solo con SAAS_DB_REVOKE_GROUP acceso. L'uscita (solo conteggi, mai nomi) va su file 600; nel log le stesse righe.
+    cd "$BASE/current"
+    F="$(newfile revoca-gruppo)"
+    OPT="--dry-run"; [ "$ACTION" = "revoca-gruppo-esegui" ] && OPT=""
+    rc=0
+    "$PHP" artisan saas:db:revoke-group $OPT > "$F" 2>&1 || rc=$?
+    prune_files revoca-gruppo
+    cat "$F"
+    echo "$ACTION: salvato in $F"
+    exit "$rc"
     ;;
   ripristina-permessi)
     # Rimette i permessi dall'ultimo file grants-backup-*.sql (comando di ritorno per permessi-db).

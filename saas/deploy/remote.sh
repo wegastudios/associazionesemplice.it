@@ -82,6 +82,9 @@ case "$EMPTY_RC" in
 esac
 # saas:migrate aspetta la fine del backup orario, se è in corso, e riprova le istruzioni che non ottengono un blocco.
 "$PHP" artisan saas:migrate --force
+# Permessi del ruolo di gruppo del database (cPanel li rimette): se l'interruttore SAAS_DB_REVOKE_GROUP è acceso si toglie
+# di nuovo quel che c'è (nel log solo conteggi). Non ferma il rilascio: il controllo di salute lo segnala comunque.
+"$PHP" artisan saas:db:revoke-group --if-enabled || echo "Permessi del gruppo non sistemati ora: lo segnala il controllo di salute." >&2
 # I mesi del registro sono pronti con tre mesi di anticipo: se ora non si riesce (backup in corso) il rilascio prosegue,
 # il controllo di salute lo segnala e ci riprova il lavoro mensile.
 "$PHP" artisan saas:audit:partitions || echo "Partizioni del registro non preparate ora: ci riprova il lavoro mensile." >&2
