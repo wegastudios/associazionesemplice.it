@@ -352,3 +352,37 @@ it('Laravel non è cambiato sotto HostSessionGuard: se questa prova fallisce, ri
         expect(str_contains($source, $call))->toBeTrue($message.' (manca '.$call.')');
     }
 });
+
+it('«nessun Domain» è null o vuoto (SESSION_DOMAIN vuota nel .env): il prefisso __Host- vale; con un Domain no', function (): void {
+    $request = Request::create(HC_APP.'/accesso');
+    foreach ([null, ''] as $domain) {
+        config(['session.domain' => $domain]);
+        expect(HostCookies::eligible($request))->toBeTrue(var_export($domain, true))->and(HostCookies::name('as_socio', $request))->toBe('__Host-as_socio');
+    }
+    foreach (['app.esempio.it', '   '] as $domain) {
+        config(['session.domain' => $domain]);
+        expect(HostCookies::eligible($request))->toBeFalse(var_export($domain, true))->and(HostCookies::name('as_socio', $request))->toBe('as_socio');
+    }
+});
+
+it('con SESSION_DOMAIN vuota nessuna intestazione Set-Cookie (sessione, «ricordami», socio) contiene Domain', function (): void {
+    config(['session.domain' => '']);
+    $user = $this->createUser('anna@example.com');
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+
+    [$name, , , $login] = hcRememberLogin($this, HC_APP);
+    expect($name)->toBe('__Host-remember_web');
+    [$https] = hcMemberArea($this);
+    $member = hcMemberLogin($this, $https);
+
+    foreach ([$login, $member] as $response) {
+        $headers = $response->headers->all('set-cookie');
+        expect($headers)->not->toBeEmpty();
+        foreach ($headers as $header) {
+            expect(stripos((string) $header, 'domain'))->toBeFalse((string) preg_replace('/=[^;]*/', '=…', (string) $header));
+        }
+    }
+    // La sessione dell'operatore c'è tra i cookie dell'accesso, e il cookie del socio è quello con il prefisso.
+    expect(collect($login->headers->getCookies())->contains(static fn (Cookie $c): bool => $c->getName() === config('session.cookie')))->toBeTrue()
+        ->and(hcCookie($member, '__Host-as_socio'))->not->toBeNull();
+});
