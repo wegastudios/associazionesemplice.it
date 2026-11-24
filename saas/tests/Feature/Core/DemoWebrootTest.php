@@ -37,9 +37,9 @@ function fakeDemoHome(): string
     return $home;
 }
 
-function webroot(string $home, string $action): Illuminate\Contracts\Process\ProcessResult
+function webroot(string $home, string $action, string ...$args): Illuminate\Contracts\Process\ProcessResult
 {
-    return Process::env(['SAAS_BASE' => $home.'/saas-demo', 'DEMO_WEB' => $home.'/public_html', 'HOME' => $home])->run(['bash', deployFile('demo-webroot.sh'), $action]);
+    return Process::env(['SAAS_BASE' => $home.'/saas-demo', 'DEMO_WEB' => $home.'/public_html', 'HOME' => $home])->run(['bash', deployFile('demo-webroot.sh'), $action, ...$args]);
 }
 
 it('il blocco .htaccess manda tutto all\'app, serve .well-known e i file veri, e vieta il resto', function (): void {
@@ -174,5 +174,82 @@ it('lo script non scrive mai su .user.ini, php.ini, .well-known e non cancella a
     // la prova richiede dal dominio ciò che non deve rispondere
     foreach (['/.env', '/storage/logs/laravel.log', '/vendor/autoload.php', '/composer.json', '/releases', '/.user.ini', '/php.ini'] as $path) {
         expect($script)->toContain($path);
+    }
+});
+
+const CLOSE_MARK_BEGIN = '# BEGIN chiusura temporanea';
+const CLOSE_MARK_END = '# END chiusura temporanea';
+
+it('chiudi mette la regola in cima, due volte lascia un solo blocco, apri toglie solo quel blocco', function (): void {
+    $home = fakeDemoHome();
+    try {
+        expect(webroot($home, 'installa')->successful())->toBeTrue();
+        $installed = (string) file_get_contents($home.'/public_html/.htaccess');
+
+        $first = webroot($home, 'chiudi', '203.0.113.7');
+        expect($first->successful())->toBeTrue($first->errorOutput());
+        expect(webroot($home, 'chiudi', '203.0.113.7')->successful())->toBeTrue();
+
+        $closed = (string) file_get_contents($home.'/public_html/.htaccess');
+        expect(substr_count($closed, CLOSE_MARK_BEGIN))->toBe(1)->and(substr_count($closed, CLOSE_MARK_END))->toBe(1);
+        expect($closed)->toStartWith(CLOSE_MARK_BEGIN)
+            ->toContain('RewriteCond %{REMOTE_ADDR} !^203\.0\.113\.7$')->toContain('RewriteCond %{REQUEST_URI} !^/\.well-known/')
+            ->toContain('RewriteRule ^ - [F,L]')
+            // la direttiva Require ip non funziona su questo server: mai usata
+            ->not->toContain('Require ip')
+            // i blocchi di cPanel e quello della demo restano
+            ->toContain(CPANEL_HTACCESS)->toContain('# BEGIN AssociazioneSemplice demo');
+        expect(webroot($home, 'stato')->output())->toContain('SITO CHIUSO')->toContain('203.0.113.7');
+
+        $open = webroot($home, 'apri');
+        expect($open->successful())->toBeTrue()->and($open->output())->toContain('Sito aperto')
+            ->and((string) file_get_contents($home.'/public_html/.htaccess'))->toBe($installed);
+        expect(webroot($home, 'stato')->output())->toContain('Sito aperto');
+        expect(webroot($home, 'apri')->output())->toContain('già aperto');
+    } finally {
+        File::deleteDirectory($home);
+    }
+});
+
+it('chiudi rifiuta indirizzi non validi', function (): void {
+    $home = fakeDemoHome();
+    try {
+        foreach (['abc', '999.1.1.1', '1.2.3', '1.2.3.4; rm', ':::', 'g::1'] as $bad) {
+            $r = webroot($home, 'chiudi', $bad);
+            expect($r->failed())->toBeTrue($bad)->and($r->errorOutput())->toContain('non valido');
+        }
+        expect((string) file_get_contents($home.'/public_html/.htaccess'))->toBe(CPANEL_HTACCESS);
+        expect(webroot($home, 'chiudi', '2001:DB8::1')->successful())->toBeTrue();
+        expect((string) file_get_contents($home.'/public_html/.htaccess'))->toContain('!^2001:db8::1$');
+    } finally {
+        File::deleteDirectory($home);
+    }
+});
+
+it('installa e ripristina non aprono il sito se era chiuso, e prova non dichiara ok a sito chiuso', function (): void {
+    $home = fakeDemoHome();
+    try {
+        webroot($home, 'chiudi', '203.0.113.7');
+        webroot($home, 'installa');
+        expect((string) file_get_contents($home.'/public_html/.htaccess'))->toStartWith(CLOSE_MARK_BEGIN);
+
+        $back = webroot($home, 'ripristina');
+        expect($back->successful())->toBeTrue($back->errorOutput());
+        $after = (string) file_get_contents($home.'/public_html/.htaccess');
+        expect($after)->toStartWith(CLOSE_MARK_BEGIN)->and(substr_count($after, CLOSE_MARK_BEGIN))->toBe(1)
+            ->and($after)->toContain(CPANEL_HTACCESS)->not->toContain('# BEGIN AssociazioneSemplice demo');
+
+        $prova = webroot($home, 'prova', 'https://demo.invalid');
+        expect($prova->failed())->toBeTrue()->and($prova->errorOutput())->toContain('chiuso')->and($prova->output())->not->toContain('ok ');
+
+        // ripristina con una copia di installa fatta a sito aperto, poi chiuso: resta chiuso e la copia non porta il blocco vecchio
+        expect(webroot($home, 'apri')->successful())->toBeTrue();
+        webroot($home, 'installa');
+        webroot($home, 'chiudi', '198.51.100.9');
+        webroot($home, 'ripristina');
+        $final = (string) file_get_contents($home.'/public_html/.htaccess');
+        expect($final)->toStartWith(CLOSE_MARK_BEGIN)->toContain('198\.51\.100\.9')->and(substr_count($final, CLOSE_MARK_BEGIN))->toBe(1);
+    } finally {
+        File::deleteDirectory($home);
     }
 });
