@@ -372,7 +372,7 @@
 .asemf-grid .asemf-card { display: flex; flex-direction: column; box-sizing: border-box; min-width: 0; overflow: hidden; overflow-wrap: anywhere; padding: var(--asemf-pad-y) var(--asemf-pad-x); }
 .asemf-grid .asemf-card > :not(.asemf-card-poster) { max-width: 100%; }
 .asemf-grid .asemf-card-poster { display: block; flex: none; position: relative; aspect-ratio: 16 / 9; overflow: hidden; margin: calc(var(--asemf-pad-y) * -1) calc(var(--asemf-pad-x) * -1) .75rem; width: auto; max-width: none; }
-.asemf-grid .asemf-card-poster img { display: block; position: relative; z-index: 1; width: 100%; height: 100%; max-width: none; border-radius: 0; aspect-ratio: auto; object-fit: cover; object-position: var(--asemf-poster-pos, 50% 0); } /* punto di fuoco in alto: titolo e volti restano; si cambia con --asemf-poster-pos */
+.asemf-grid .asemf-card-poster img { display: block; position: relative; z-index: 1; width: 100%; height: 100%; max-width: none; border-radius: 0; object-fit: cover; object-position: var(--asemf-poster-pos, 50% 0); } /* punto di fuoco in alto: titolo e volti restano; si cambia con --asemf-poster-pos */
 .asemf-grid .asemf-card-poster { --asemf-kind: var(--asemf-accent); background: var(--asemf-kind); } /* il colore sta sotto l'immagine: se non si carica (o è ancora in attesa) resta la fascia colorata, mai il vuoto */
 .asemf-grid .asemf-card-poster::after { content: ""; position: absolute; inset: 0; background: #fff; -webkit-mask: var(--asemf-icon) center / auto 46% no-repeat; mask: var(--asemf-icon) center / auto 46% no-repeat; opacity: .92; }
 .asemf-grid .asemf-kind-event { --asemf-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 2v3M17 2v3M3 9h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
@@ -438,7 +438,7 @@
 .asemf-collapse > summary:focus-visible { outline: 2px solid var(--asemf-accent, #1F218C); outline-offset: 2px; }
 
 /* Locandine: sempre intere, mai ritagliate */
-.asemf-poster img, .asemf-card-poster img { width: 100%; height: auto; aspect-ratio: auto; object-fit: contain; }
+.asemf-poster img, .asemf-card-poster img { width: 100%; height: auto; object-fit: contain; } /* niente aspect-ratio: auto: il browser ricava la proporzione da width e height dell'immagine */
 .asemf-poster a { display: block; }
 
 /* Risorse: elenco degli orari con un solo pulsante «Prenota» */
