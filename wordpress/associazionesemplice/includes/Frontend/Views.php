@@ -1555,10 +1555,6 @@ final class Views {
 				. '<span class="asemf-badge">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</span>'
 				. '<h3>' . ( '' !== $page ? '<a href="' . esc_url( $page ) . '">' . esc_html( $a['name'] ) . '</a>' : esc_html( $a['name'] ) ) . '</h3><p class="asemf-small asemf-muted">' . esc_html( self::fee_text( $a ) )
 				. ( ! empty( $a['instructor_name'] ) ? '<br>Con ' . esc_html( $a['instructor_name'] ) : '' ) . '</p>';
-			if ( ! empty( $a['notes'] ) ) {
-				$html .= '<p>' . esc_html( $a['notes'] ) . '</p>';
-			}
-			$html .= '<div class="asemf-card-end">'; // data, posti e pulsante restano in fondo: le schede di una riga finiscono alla stessa altezza
 			if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
 				$sessions = array_values(
 					array_filter(
@@ -1586,6 +1582,10 @@ final class Views {
 				$when  = \AssociazioneSemplice\PublicEvents::NO_DATES === $when ? '' : $when;
 				$html .= '' !== $when ? '<p class="asemf-small asemf-card-when">' . esc_html( $when ) . '</p>' : '';
 			}
+			if ( ! empty( $a['notes'] ) ) { // la descrizione in due righe: la completa è nella pagina (il testo intero resta qui)
+				$html .= '<p class="asemf-card-notes">' . esc_html( $a['notes'] ) . '</p>';
+			}
+			$html .= '<div class="asemf-card-end">'; // in fondo resta solo il pulsante: le schede di una riga finiscono alla stessa altezza
 			if ( '' !== $page ) {
 				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">' . ( '' === $when && ! ActivityKind::uses_sessions( $a['kind'] ) ? 'Vedi il corso' : 'Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? ' e prenotazione' : '' ) ) . '</a></p>';
 			}
