@@ -2417,7 +2417,7 @@ Config::set( 'saas_trial_promo', '' );
 check( 'prova: dopo la fine non si manda «suspended» al SaaS (resta «trial»: la sospensione e la sola lettura le fa il SaaS)', '' === Portale\SaasAccount::stateOf( $cdb, 'orgT' ) && 0 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) )['n'] );
 check( 'prova: all\'eliminazione dei dati l\'ordine si chiude, una volta sola, senza email', 'trial' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-07' ), array() ) && 1 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-07' ), $lifeDoc ) && 'trial_purged' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-08' ), $lifeDoc ) && array() === $mails );
 $cdb->run( 'DELETE FROM orders WHERE id = ?', array( $tOrd['id'] ) );
-$cdb->run( 'DELETE FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) );
+ownerOf( $cdb )->run( 'DELETE FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) );
 $cdb->run( 'DELETE FROM saas_orgs WHERE ref = ?', array( 'otrial' ) );
 $mails = array();
 // Avvio della prova senza carta e passaggio a un piano.
@@ -2449,7 +2449,7 @@ check( 'scegli un piano: pagato → prova sostituita, gestionale attivo, nessuna
 check( 'scegli un piano: una prova già sostituita non si può più convertire', null !== throwsUser( function () use ( $cdb, $cbill, $tRow ) { SaasCheckout::start( $cdb, $cbill, array( 'convert' => $tRow['id'], 'plan' => 'gestionale', 'period' => 'month', 'members' => 80, 'provider' => 'stripe' ) ); } ) );
 foreach ( $cdb->all( 'SELECT id FROM saas_outbox' ) as $r ) {
 	if ( ! in_array( $r['id'], $obBefore, true ) ) {
-		$cdb->run( 'DELETE FROM saas_outbox WHERE id = ?', array( $r['id'] ) );
+		ownerOf( $cdb )->run( 'DELETE FROM saas_outbox WHERE id = ?', array( $r['id'] ) );
 	}
 }
 foreach ( $cdb->all( 'SELECT id FROM orders' ) as $r ) {
