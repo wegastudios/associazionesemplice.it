@@ -352,3 +352,13 @@ it('Laravel non è cambiato sotto HostSessionGuard: se questa prova fallisce, ri
         expect(str_contains($source, $call))->toBeTrue($message.' (manca '.$call.')');
     }
 });
+
+it('«nessun Domain» è null o vuoto (SESSION_DOMAIN vuota nel .env): il prefisso __Host- vale; con un Domain no', function (): void {
+    $request = Request::create(HC_APP.'/accesso');
+    foreach ([null, '', '   '] as $domain) {
+        config(['session.domain' => $domain]);
+        expect(HostCookies::eligible($request))->toBeTrue(var_export($domain, true))->and(HostCookies::name('as_socio', $request))->toBe('__Host-as_socio');
+    }
+    config(['session.domain' => 'app.esempio.it']);
+    expect(HostCookies::eligible($request))->toBeFalse()->and(HostCookies::name('as_socio', $request))->toBe('as_socio');
+});

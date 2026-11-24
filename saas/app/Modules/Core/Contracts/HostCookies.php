@@ -35,7 +35,15 @@ final class HostCookies
         return $request?->isSecure() === true
             && config('session.secure') === true
             && config('session.path') === '/'
-            && config('session.domain') === null;
+            && self::noDomain();
+    }
+
+    /** Nessun Domain nei cookie: `null`, oppure vuoto (SESSION_DOMAIN senza valore nel .env dà una stringa vuota). */
+    private static function noDomain(): bool
+    {
+        $domain = config('session.domain');
+
+        return $domain === null || (is_string($domain) && trim($domain) === '');
     }
 
     /** `__Host-<nome>` dove il prefisso è valido, altrimenti `<nome>`. */
