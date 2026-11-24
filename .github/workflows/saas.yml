@@ -104,6 +104,9 @@ jobs:
           php artisan config:clear --no-interaction
           mv .env.ci .env
 
+      - name: Rotazione delle copie del .env (deploy/ops.sh)
+        run: bash tests/shell/ops-env-bak.sh
+
       - name: Pint
         run: vendor/bin/pint --test
 

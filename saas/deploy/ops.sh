@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|permessi-db|ripristina-permessi|misure|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
 #
 # Il log del workflow è pubblico: dettagli di configurazione su file in shared/ (600), nel log solo esiti, conteggi e percorso.
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
 #   chiave-catalogo   se SAAS_PORTAL_SIGNING_KEY è vuota genera il seme in shared/.env (permessi 600, copia del file prima),
 #                     svuota la cache della configurazione e stampa SOLO kid e parte pubblica x. Il seme non si stampa mai.
+#   copie-env         sola lettura: elenca cosa cancellerebbe la rotazione delle copie shared/.env.bak-<data> (massimo 2, nessuna oltre 7 giorni)
+#   pulisci-copie-env applica la rotazione una volta e accende quella automatica; cancella SOLO .env.bak-<14 cifre>, mai il .env
 #   percorso-pgdump   imposta SAAS_PG_DUMP e SAAS_PG_RESTORE nella cartella indicata, solo se è la versione 16
 set -euo pipefail
 ACTION="${1:?azione}"; ARG="${2:-}"
@@ -17,9 +19,35 @@ ENVFILE="$BASE/shared/.env"
 
 get() { grep -E "^$1=" "$ENVFILE" | tail -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'\$//" || true; }
 
+# --- rotazione delle copie del .env: inizio (testata in saas/tests/shell/ops-env-bak.sh) ---
+# Copie fatte da set_var: <env>.bak-<AAAAMMGGHHMMSS> (UTC). Se ne tengono al massimo 2 (le più recenti) e nessuna oltre 7 giorni:
+# l'età si legge dal nome, non da mtime (cp -p conserva la data del .env). Tocca SOLO i file che combaciano con quel nome:
+# mai il .env attivo, mai altri file della cartella. Le copie restano 600 (non si ricreano, si cancellano soltanto).
+ENV_BAK_KEEP="${ENV_BAK_KEEP:-2}"; ENV_BAK_DAYS="${ENV_BAK_DAYS:-7}"
+ROTATION_FLAG="$BASE/shared/.env-rotazione-copie"
+env_bak_prune() { # list|delete: stampa i percorsi da cancellare e, con delete, li cancella
+  local mode="$1" cutoff i=0 n f ts files=()
+  cutoff="$(date -u -d "$ENV_BAK_DAYS days ago" +%Y%m%d%H%M%S)"
+  for f in "$ENVFILE".bak-*; do
+    ts="${f##*.bak-}"
+    [ -f "$f" ] && [ ! -L "$f" ] && [[ "$ts" =~ ^[0-9]{14}$ ]] && files+=("$f")
+  done
+  for ((n = ${#files[@]} - 1; n >= 0; n--)); do  # dalla più recente (il nome si ordina come la data)
+    f="${files[$n]}"; ts="${f##*.bak-}"; i=$((i + 1))
+    if [ "$i" -gt "$ENV_BAK_KEEP" ] || [ "$ts" -lt "$cutoff" ]; then
+      if [ "$mode" = delete ]; then rm -f -- "$f"; fi
+      echo "$f"
+    fi
+  done
+  return 0
+}
+# --- rotazione delle copie del .env: fine ---
+
 set_var() { # nome valore: sostituisce la riga o la aggiunge; il file resta 600
   local name="$1" value="$2" tmp
   cp -p "$ENVFILE" "$ENVFILE.bak-$(date -u +%Y%m%d%H%M%S)"
+  # Rotazione automatica solo dopo l'azione pulisci-copie-env (decisione del titolare): prima non cancella nulla.
+  if [ -f "$ROTATION_FLAG" ]; then env_bak_prune delete >/dev/null; fi
   tmp="$(mktemp "$BASE/shared/.env.XXXXXX")"
   if grep -qE "^$name=" "$ENVFILE"; then
     awk -v n="$name" -v v="$value" 'BEGIN{FS=OFS="="} $1==n {print n "=" v; next} {print}' "$ENVFILE" > "$tmp"
@@ -376,6 +404,18 @@ case "$ACTION" in
     refresh
     echo "SAAS_PROXY_SECRET impostata (${#value} caratteri). File temporaneo cancellato."
     echo "SAAS_TRUSTED_PROXIES: $([ -n "$(get SAAS_TRUSTED_PROXIES)" ] && echo impostata || echo vuota) (con il segreto non si usa più: si può svuotare dopo la prova)"
+    ;;
+  copie-env)
+    # Sola lettura: nessuna cancellazione. Mostra cosa farebbe la rotazione (solo nomi, niente contenuti).
+    echo "Rotazione automatica: $([ -f "$ROTATION_FLAG" ] && echo accesa || echo "spenta (non cancella nulla da sola)")"
+    echo "Cancellerebbe (massimo $ENV_BAK_KEEP copie, nessuna oltre $ENV_BAK_DAYS giorni):"
+    env_bak_prune list | sed -e 's#.*/#  #'
+    ;;
+  pulisci-copie-env)
+    # Applica la rotazione una volta e accende quella automatica. Da lanciare solo dopo il via del titolare.
+    n="$(env_bak_prune delete | wc -l)"
+    ( umask 077; : > "$ROTATION_FLAG" )
+    echo "Copie cancellate: $n. Rotazione automatica accesa (massimo $ENV_BAK_KEEP copie, nessuna oltre $ENV_BAK_DAYS giorni)."
     ;;
   permessi-db)
     # Riduce i permessi del ruolo applicativo. Prima salva i permessi attuali in shared/grants-backup-<data>.sql
