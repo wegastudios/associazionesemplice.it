@@ -45,9 +45,11 @@ final class DemoLimits
         'movements' => ['tables' => ['app.transactions'], 'paths' => [
             'gestionale/prima-nota/incassi', 'gestionale/prima-nota/spese', 'gestionale/prima-nota/giroconti',
             'gestionale/attivita/*/incassi', 'gestionale/attivita/prenotazioni/*/incassa', 'gestionale/attivita/*/iscrizioni',
+            'gestionale/attivita/*/spese', 'gestionale/prenotazioni/*/incassa', 'gestionale/soci/*/tessera',
         ]],
         'receipts' => ['tables' => ['app.receipts'], 'paths' => [
             'gestionale/prima-nota/incassi', 'gestionale/attivita/*/incassi', 'gestionale/attivita/prenotazioni/*/incassa', 'gestionale/attivita/*/iscrizioni',
+            'gestionale/attivita/*/spese', 'gestionale/prenotazioni/*/incassa', 'gestionale/soci/*/tessera',
         ]],
         'bookings' => ['tables' => ['app.reservations', 'app.session_bookings'], 'paths' => [
             'gestionale/risorse/*/prenotazioni', 'gestionale/risorse/*/blocchi', 'gestionale/attivita/date/*/prenota',
