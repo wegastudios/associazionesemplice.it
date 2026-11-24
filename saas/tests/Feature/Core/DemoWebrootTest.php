@@ -191,8 +191,8 @@ it('chiudi mette la regola in cima, due volte lascia un solo blocco, apri toglie
         expect(webroot($home, 'chiudi', '203.0.113.7')->successful())->toBeTrue();
 
         $closed = (string) file_get_contents($home.'/public_html/.htaccess');
+        expect(substr_count($closed, CLOSE_MARK_BEGIN))->toBe(1)->and(substr_count($closed, CLOSE_MARK_END))->toBe(1);
         expect($closed)->toStartWith(CLOSE_MARK_BEGIN)
-            ->and(substr_count($closed, CLOSE_MARK_BEGIN))->toBe(1)->and(substr_count($closed, CLOSE_MARK_END))->toBe(1)
             ->toContain('RewriteCond %{REMOTE_ADDR} !^203\.0\.113\.7$')->toContain('RewriteCond %{REQUEST_URI} !^/\.well-known/')
             ->toContain('RewriteRule ^ - [F,L]')
             // la direttiva Require ip non funziona su questo server: mai usata
