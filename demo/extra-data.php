@@ -361,7 +361,7 @@ extra_step( 'eventi sul sito', function () {
 	$texts['Concerto d\'autunno']       = array( 'Musica', 'Il coro e la banda dell\'associazione aprono la stagione con un concerto a ingresso libero. Prenota il posto per essere sicuro di trovarlo.', array( 150, 90, 60 ) );
 	$texts['Festa di Natale']           = array( 'Serate', 'Panettone, musica e la tombola dei soci: una serata per scambiarci gli auguri e conoscere i nuovi arrivati.', array( 170, 50, 60 ) );
 	$texts['Tombolata dell\'Epifania']  = array( 'Serate', 'Cartelle, premi e tanta allegria per grandi e piccoli: la tombola che chiude le feste.', array( 90, 110, 150 ) );
-	$texts['Carnevale dei bambini']     = array( 'Laboratori', 'Maschere, coriandoli e giochi per i più piccoli, con merenda offerta dall\'associazione.', array( 220, 100, 140 ) );
+	$texts['Carnevale dei bambini']     = array( 'Laboratori', 'Maschere, coriandoli e giochi per i più piccoli, con una merenda per tutti.', array( 220, 100, 140 ) );
 	$texts['Gita di primavera']         = array( 'Gite', 'Una giornata in campagna tra passeggiata, pranzo al sacco e giochi all\'aperto. Si parte in auto condivise.', array( 70, 160, 80 ) );
 	$texts['Torneo di burraco']         = array( 'Serate', 'Una serata di carte tra soci e amici: iscrizioni aperte, premi per i primi tre.', array( 130, 70, 110 ) );
 	$texts['Cena di fine anno sociale'] = array( 'Serate', 'Una cena per chiudere l\'anno insieme, con il bilancio di quanto fatto e le prime idee per il prossimo.', array( 190, 120, 70 ) );
