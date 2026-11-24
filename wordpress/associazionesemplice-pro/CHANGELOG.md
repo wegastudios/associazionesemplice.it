@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.24 – 2026-11-24
+- Altro: con una versione meno recente di Associazione Semplice il Pro si sospende e avvisa, invece di dare errore.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.23 – 2026-11-23
 - Ottimizzazione: le stesse migliorie di velocità anche per risorse e prenotazioni; aggiornamento del database a tappe.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog

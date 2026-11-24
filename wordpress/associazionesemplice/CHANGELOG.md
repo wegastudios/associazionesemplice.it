@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.37 – 2026-11-24
+- Altro: nelle pagine delle attività e degli eventi le locandine non diventano più enormi nei siti con WordPress 6.7 o successivo.
+- Ottimizzazione: le schede delle attività sono uniformi: immagine della stessa misura, fascia colorata con l'icona se manca la locandina, date e posti in evidenza, pulsante in fondo.
+- Ottimizzazione: in Corsi ed eventi gli importi e i pulsanti delle schede sono allineati.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.36 – 2026-11-23
 - Nuovo: scheda «Stato del server» negli Strumenti, con i consigli per l'hosting, e cinque controlli in Salute del sito.
 - Nuovo: in Bacheca «Ospiti appena entrati», con l'avviso «da invitare ad associarsi» da togliere con «Fatto».
