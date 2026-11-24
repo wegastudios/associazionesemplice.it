@@ -99,6 +99,18 @@ function asem_pro_updater_basics(): void {
 
 /** Pulsante dell'avviso di incompatibilità: «Aggiorna il Pro» se il portale ne ha uno nuovo, altrimenti «Controlla aggiornamenti». */
 function asem_pro_notice_button(): string {
+	if ( asem_pro_free_too_old() ) { // aggiornare il Pro non serve: va aggiornato il gratuito (se WordPress lo ha già trovato) oppure si controlla se c'è
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			return '';
+		}
+		$free_file = 'associazionesemplice/associazionesemplice.php';
+		$updates   = get_site_transient( 'update_plugins' );
+		if ( is_object( $updates ) && isset( $updates->response[ $free_file ] ) ) {
+			$url = wp_nonce_url( self_admin_url( 'update.php?action=upgrade-plugin&plugin=' . rawurlencode( $free_file ) ), 'upgrade-plugin_' . $free_file );
+			return ' <a class="button button-primary" href="' . esc_url( $url ) . '">' . esc_html( 'Aggiorna Associazione Semplice' ) . '</a>';
+		}
+		return ' <a class="button" href="' . esc_url( self_admin_url( 'update-core.php?force-check=1' ) ) . '">' . esc_html( 'Controlla aggiornamenti' ) . '</a>';
+	}
 	if ( ! current_user_can( 'update_plugins' ) || ! class_exists( 'AssociazioneSemplice\Updater' ) || ! method_exists( '\AssociazioneSemplice\Updater', 'pro_update_available' ) || ! method_exists( '\AssociazioneSemplice\Updater', 'check_url' ) || ! \AssociazioneSemplice\Updater::enabled() ) {
 		return '';
 	}
