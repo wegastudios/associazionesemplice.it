@@ -7,23 +7,34 @@ use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Crea un ruolo di gruppo di prova (senza accesso) col proprietario e lo toglie a fine prova. Se il ruolo di CI non può
- * creare ruoli la prova si salta: restano quelle sull'interruttore, sul dry-run e sul testo di remote.sh.
+ * Crea un ruolo di gruppo di prova (senza accesso) e lo toglie a fine prova. Il ruolo proprietario di CI non può creare
+ * ruoli: si usa l'utente amministratore del servizio PostgreSQL di CI (PGUSER/PGPASSWORD), solo per creare e cancellare
+ * il ruolo; le concessioni e le revoche le fa il proprietario. Senza quelle variabili la prova si salta: restano quelle
+ * sull'interruttore, sul dry-run e sul testo di remote.sh.
  */
 function withTestGroup(Closure $test): void
 {
+    $user = getenv('PGUSER');
+    $password = getenv('PGPASSWORD');
+    if (! is_string($user) || $user === '' || ! is_string($password)) {
+        test()->markTestSkipped('manca l\'utente amministratore del servizio PostgreSQL di prova');
+    }
+    $base = config('database.connections.pgsql_owner');
+    config(['database.connections.zz_admin' => array_merge(is_array($base) ? $base : [], ['username' => $user, 'password' => $password])]);
+    $admin = DB::connection('zz_admin');
     $owner = DB::connection('pgsql_owner');
     $group = 'zz_gruppo_prova';
     try {
-        $owner->statement("CREATE ROLE {$group} NOLOGIN");
+        $admin->statement("CREATE ROLE {$group} NOLOGIN");
     } catch (Throwable) {
-        test()->markTestSkipped('il ruolo proprietario di prova non può creare ruoli');
+        test()->markTestSkipped('l\'utente amministratore di prova non può creare ruoli');
     }
     try {
         $test($owner, $group);
     } finally {
-        $owner->statement("DROP OWNED BY {$group}");
-        $owner->statement("DROP ROLE {$group}");
+        $admin->statement("DROP OWNED BY {$group}");
+        $admin->statement("DROP ROLE {$group}");
+        DB::purge('zz_admin');
     }
 }
 
