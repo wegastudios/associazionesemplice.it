@@ -58,6 +58,16 @@ final class DemoLimits
     ];
 
     /**
+     * Tutti i percorsi POST che hanno un tetto (per la prova che elenca le rotte di creazione).
+     *
+     * @return list<string>
+     */
+    public static function capPaths(): array
+    {
+        return array_values(array_unique(array_merge(...array_column(self::CAPS, 'paths'))));
+    }
+
+    /**
      * Quante righe ha ora ogni voce con un tetto, nell'associazione collegata a $connection (con l'associazione già impostata).
      *
      * @return array<string, int>
