@@ -29,13 +29,15 @@ cat > .wp-env.json <<'JSON'
 JSON
 wp() { npx --yes @wordpress/env run cli wp "$@"; }
 code() { curl -s -o /dev/null -w '%{http_code}' "$1"; }
+# valore di un'espressione PHP, senza le righe di contorno di wp-env: sta tra due segnali
+val() { wp eval "echo '<<' . ( $1 ) . '>>';" 2>/dev/null | grep -a -o "<<.*>>" | head -1 | sed -e "s/^<<//" -e "s/>>$//"; }
 npx --yes @wordpress/env start >/dev/null 2>&1 || { ko "wp-env non parte"; exit 1; }
 
 echo "### Gratuito $ver + Pro costruito da questo ramo"
 wp plugin install wp-content/prove/vecchio-free.zip --activate >/dev/null 2>&1 || ko "gratuito $ver non installato"
 wp plugin install wp-content/prove/nuovo-pro.zip --activate 2>&1 | grep -i "fatal" && ko "il Pro nuovo dà un errore fatale sul gratuito $ver"
 wp plugin list --fields=name,status,version
-p="$(wp eval 'echo asem_pro_problem();' 2>&1)"
+p="$(val "asem_pro_problem()")"
 echo "Avviso del Pro: $p"
 case "$p" in *"ha bisogno di"*) echo "ok: il Pro si sospende con un avviso";; *) ko "nessun avviso con il gratuito $ver";; esac
 [ "$(code http://localhost:8888/)" = "200" ] || ko "il sito pubblico non risponde 200 con il gratuito $ver e il Pro nuovo"
@@ -43,10 +45,10 @@ case "$p" in *"ha bisogno di"*) echo "ok: il Pro si sospende con un avviso";; *)
 
 echo "### Il gratuito si aggiorna alla build corrente: il Pro riprende e gli indici ci sono"
 wp plugin install wp-content/prove/nuovo-free.zip --force >/dev/null 2>&1 || ko "aggiornamento del gratuito non riuscito"
-p="$(wp eval 'echo asem_pro_problem();' 2>&1)"
+p="$(val "asem_pro_problem()")"
 [ -z "$p" ] || ko "dopo l'aggiornamento del gratuito il Pro è ancora sospeso: $p"
 wp eval 'echo "ok";' >/dev/null 2>&1 # il primo avvio con il gratuito nuovo esegue l'aggiornamento dello schema (da riga di comando è permesso)
-idx="$(wp eval 'echo count( AssociazioneSemplice\Install::ensure_indexes() );' 2>&1 | tail -1)"
+idx="$(val 'count( AssociazioneSemplice\Install::ensure_indexes() )')"
 echo "Indici ancora da creare dopo l'aggiornamento: $idx"
 [ "$idx" = "0" ] || ko "indici mancanti dopo l'aggiornamento del gratuito ($idx)"
 [ "$(code http://localhost:8888/)" = "200" ] || ko "il sito pubblico non risponde 200 dopo l'aggiornamento"
@@ -54,6 +56,7 @@ echo "Indici ancora da creare dopo l'aggiornamento: $idx"
 echo "### Informativo: il Pro 1.3.23 (già pubblicato) sul gratuito $ver, già attivo"
 wp plugin install wp-content/prove/nuovo-free.zip --force >/dev/null 2>&1
 wp plugin install wp-content/prove/vecchio-free.zip --force >/dev/null 2>&1
+wp option delete asem_pro_db_version >/dev/null 2>&1 # come un sito aggiornato dal Pro nuovo ma senza il suo schema: riproduce il percorso che dava l'errore
 wp plugin install wp-content/prove/vecchio-pro.zip --force --activate 2>&1 | grep -i "fatal" | head -2
 echo "Sito pubblico: $(code http://localhost:8888/)  wp-login: $(code http://localhost:8888/wp-login.php)  wp-admin: $(code http://localhost:8888/wp-admin/)"
 wp plugin list --fields=name,status,version

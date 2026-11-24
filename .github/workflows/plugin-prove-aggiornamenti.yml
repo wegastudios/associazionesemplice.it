@@ -80,6 +80,7 @@ jobs:
           grep -qF "'$kid' => '$pub'" "$up"
           sed -i -E "s/^( \* Version: +)[0-9][0-9.]*/\11.3.0/; s/(define\( 'ASEM_VERSION', ')[0-9][0-9.]*/\11.3.0/" free/associazionesemplice/associazionesemplice.php
           sed -i -E "s/^( \* Version: +)[0-9][0-9.]*/\11.3.0/; s/(define\( 'ASEM_PRO_VERSION', ')[0-9][0-9.]*/\11.3.0/" pro/associazionesemplice-pro/associazionesemplice-pro.php
+          sed -i -E "s/(define\( 'ASEM_PRO_MIN_FREE', ')[0-9][0-9.]*/\11.3.0/" pro/associazionesemplice-pro/associazionesemplice-pro.php
           (cd free && zip -qr ../prove/free-1.3.0.zip associazionesemplice)
           (cd pro && zip -qr ../prove/pro-1.3.0.zip associazionesemplice-pro)
           echo "contenuto del pacchetto di prova" > pacchetto.txt
