@@ -31,7 +31,8 @@ function testDb(): Db {
 	}
 	// Come in produzione: il proprietario crea lo schema e le tabelle; il ruolo di tutti i giorni (portal_rt) possiede le sue 18 tabelle
 	// e sulle altre 11 ha solo i verbi che il codice usa davvero. Le prove girano con quel ruolo, che non può creare né cambiare tabelle altrui.
-	( $GLOBALS['rtOwnerDb'] = new Db( $pdo ) )->migrate();
+	$owner = new Db( $pdo );
+	$owner->migrate();
 	$rt = (string) getenv( 'PORTALE_TEST_PG_RT_USER' );
 	foreach ( rtGrants() as $table => $verbs ) {
 		$pdo->exec( 'GRANT ' . $verbs . ' ON ' . $schema . '.' . $table . ' TO ' . $rt );
@@ -44,7 +45,18 @@ function testDb(): Db {
 	}
 	$rtPdo = new PDO( $dsn, $rt, (string) getenv( 'PORTALE_TEST_PG_RT_PASS' ) ?: null );
 	$rtPdo->exec( 'SET search_path TO ' . $schema );
-	return new Db( $rtPdo );
+	$rtDb = new Db( $rtPdo );
+	ownerOf( $rtDb, $owner );
+	return $rtDb;
+}
+/** Il proprietario della stessa base di prova del ruolo ristretto (per la struttura e per i dati di partenza che il ruolo di tutti i giorni non può scrivere). Senza ruolo ristretto è lo stesso Db. */
+function ownerOf( Db $db, ?Db $owner = null ): Db {
+	static $map = null;
+	$map = $map ?: new SplObjectStorage();
+	if ( $owner ) {
+		$map[ $db ] = $owner;
+	}
+	return isset( $map[ $db ] ) ? $map[ $db ] : $db;
 }
 /** Prove con il ruolo ristretto di produzione (PORTALE_TEST_PG_RT_USER): vedi .github/workflows/portale.yml. */
 function rtMode(): bool {
@@ -59,11 +71,9 @@ function rtGrants(): array {
 		'email_templates' => 'SELECT, INSERT, DELETE', 'audit' => 'SELECT, INSERT', 'events' => 'INSERT, DELETE',
 	);
 }
-/** Crea la struttura: con il ruolo ristretto l'ha già creata testDb() col proprietario (il ruolo di tutti i giorni non può farlo). */
+/** Crea la struttura: con il ruolo ristretto la fa il proprietario (il ruolo di tutti i giorni non può). */
 function migrated( Db $db ): void {
-	if ( ! rtMode() ) {
-		$db->migrate();
-	}
+	ownerOf( $db )->migrate();
 }
 function throwsUser( callable $f ): ?string {
 	try {
@@ -2342,7 +2352,7 @@ SaasCheckout::paid( $cdb, $reNew['id'], 'sub_9', 'cus_1', 5000300 );
 check( 'riattiva (nuovo ordine): una sola email di conferma, nessun benvenuto; ordine vecchio sostituito; stessa associazione', 1 === count( $mails ) && false !== stripos( $mails[0][1], 'rinnovo' ) && 'replaced' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $reOrd['id'] ) )['status'] && 'active' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $reNew['id'] ) )['status'] && 'active' === Portale\SaasAccount::stateOf( $cdb, (string) $cdb->one( 'SELECT org_id FROM saas_orgs WHERE ref = ?', array( $reOrd['org_ref'] ) )['org_id'] ) );
 $cdb->run( "UPDATE orders SET status = 'active' WHERE id = ?", array( $reOrd['id'] ) );
 $reOrgId = (string) $cdb->one( 'SELECT org_id FROM saas_orgs WHERE ref = ?', array( $reOrd['org_ref'] ) )['org_id'];
-$cdb->run( 'DELETE FROM saas_outbox WHERE org_id = ? AND rev = 4', array( $reOrgId ) );
+ownerOf( $cdb )->run( 'DELETE FROM saas_outbox WHERE org_id = ? AND rev = 4', array( $reOrgId ) );
 $cdb->run( 'UPDATE saas_orgs SET rev = 3 WHERE ref = ?', array( $reOrd['org_ref'] ) );
 $cdb->run( 'DELETE FROM orders WHERE id = ?', array( $reNew['id'] ) );
 $mails = array();
@@ -2912,7 +2922,7 @@ Config::set( 'saas_public_keys', array() );
 // e la migrazione si comporta come in produzione (il proprietario crea, il ruolo di tutti i giorni cambia solo le sue 18 tabelle).
 if ( rtMode() ) {
 	$rt  = testDb();
-	$own = $GLOBALS['rtOwnerDb'];
+	$own = ownerOf( $rt );
 	$denied = static function ( Db $d, string $sql ): bool {
 		try {
 			$d->run( $sql );
