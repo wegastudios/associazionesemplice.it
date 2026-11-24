@@ -33,7 +33,7 @@
 .PARAMETER KeyPath
     File della chiave PRIVATA dedicata alla sola lettura. Deve stare fuori da OneDrive.
 .PARAMETER Destination
-    Cartella OneDrive dove tenere le copie.
+    Cartella dove tenere le copie (OBBLIGATORIO, nessun valore di partenza: la sceglie il titolare). Puo' stare in OneDrive oppure in una cartella locale o su un disco esterno, fuori dal cloud.
 .PARAMETER Days
     Giorni di conservazione, al massimo 30 (e' la scadenza promessa ai clienti).
 .PARAMETER MaxAgeHours
@@ -49,11 +49,12 @@ param(
     [int]$Port = 22,
     [string]$User = 'DA_COMPILARE',
     [string]$KeyPath = (Join-Path $env:USERPROFILE '.ssh\backup_readonly_ed25519'),
-    [string]$Destination = (Join-Path $env:USERPROFILE 'OneDrive\Backup Associazione Semplice'),
+    [Parameter(Mandatory = $true)][string]$Destination,
     [int]$Days = 30,
     [int]$MaxAgeHours = 26,
     [switch]$VerifyAll,
-    [switch]$NoNotify
+    [switch]$NoNotify,
+    [string]$SshExe = (Join-Path $env:SystemRoot 'System32\OpenSSH\ssh.exe')
 )
 
 Set-StrictMode -Version 2.0
@@ -65,8 +66,8 @@ $MaxDaysAllowed = 30                   # tetto assoluto, promesso ai clienti
 $MandatoryDb = 'shared'                # il database comune deve sempre avere un dump recente
 $NotifyEveryHours = 4                  # per non riempire lo schermo di avvisi uguali
 $TempDir = Join-Path $env:LOCALAPPDATA 'AssociazioneSemplice-Backup\incoming'
-$ssh = Join-Path $env:SystemRoot 'System32\OpenSSH\ssh.exe'
-$RelPattern = '^(?<db>[A-Za-z0-9_-]{1,64})/(?<y>\d{4})/(?<m>\d{2})/(?<db2>[A-Za-z0-9_-]{1,64})-(?<ts>\d{8}T\d{6}Z)\.dump\.enc(?<json>\.json)?$'
+$RelPattern = '^(?<db>[A-Za-z0-9_-]{1,64})/(?<y>[0-9]{4})/(?<m>[0-9]{2})/(?<db2>[A-Za-z0-9_-]{1,64})-(?<ts>[0-9]{8}T[0-9]{6}Z)\.dump\.enc(?<json>\.json)?$'
+$ReservedNames = '^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])$'   # nomi riservati di Windows (anche in minuscolo)
 $Culture = [Globalization.CultureInfo]::InvariantCulture
 
 $script:LogFile = $null
@@ -103,6 +104,24 @@ function Test-InsideFolder {
     return $p.StartsWith($f, [StringComparison]::OrdinalIgnoreCase)
 }
 
+# Un percorso ricevuto dal server e' un DATO, non un ordine: va bene solo se ha la forma rigida
+# <db>/<aaaa>/<mm>/<db>-<UTC>.dump.enc[.json], il nome del database non e' riservato a Windows (CON, NUL, COM1...)
+# e il percorso locale che ne risulta sta davvero dentro la cartella di destinazione.
+function Test-SafeRel {
+    param([string]$Rel)
+    if ([string]::IsNullOrEmpty($Rel)) { return $false }
+    $m = [regex]::Match($Rel, $RelPattern)
+    if (-not $m.Success) { return $false }
+    if ($m.Groups['db'].Value -ne $m.Groups['db2'].Value) { return $false }
+    if ($m.Groups['db'].Value -match $ReservedNames) { return $false }
+    try {
+        $at = ConvertFrom-DumpTime $m.Groups['ts'].Value
+        if ($m.Groups['y'].Value -ne $at.ToString('yyyy') -or $m.Groups['m'].Value -ne $at.ToString('MM')) { return $false }
+        return (Test-InsideFolder (Join-Path $Destination ($Rel -replace '/', '\')) $Destination)
+    }
+    catch { return $false }
+}
+
 # Esegue "ssh ... <comando remoto>" con l'uscita scritta byte per byte in un file (Start-Process non altera i dati binari).
 function Invoke-Remote {
     param([string]$RemoteCommand, [string]$OutFile)
@@ -120,7 +139,7 @@ function Invoke-Remote {
         ('"{0}"' -f $RemoteCommand)
     )
     try {
-        $p = Start-Process -FilePath $ssh -ArgumentList $sshArgs -NoNewWindow -Wait -PassThru `
+        $p = Start-Process -FilePath $SshExe -ArgumentList $sshArgs -NoNewWindow -Wait -PassThru `
             -RedirectStandardOutput $OutFile -RedirectStandardError $errFile
         $err = ''
         if (Test-Path -LiteralPath $errFile) {
@@ -222,6 +241,7 @@ function Receive-Dump {
         Move-Item -LiteralPath $tmpDump -Destination $final -Force
         Move-Item -LiteralPath $tmpJson -Destination ($final + '.json') -Force   # il .json per ultimo: segna la copia completa
         Write-Log 'INFO' ('scaricato e verificato: ' + $Item.Rel + ' (' + $len + ' byte)')
+        return $true
     }
     finally {
         Remove-Item -LiteralPath $tmpDump, $tmpJson -Force -ErrorAction SilentlyContinue
@@ -257,7 +277,7 @@ try {
     if ($Days -lt 1 -or $Days -gt $MaxDaysAllowed) { Stop-Config "Days deve essere tra 1 e $MaxDaysAllowed (scadenza promessa ai clienti)." }
     if ($MaxAgeHours -lt 2) { Stop-Config 'MaxAgeHours troppo basso.' }
     if ($Server -eq 'DA_COMPILARE' -or $User -eq 'DA_COMPILARE') { Stop-Config 'Compila Server e User in testa allo script (o passali come parametri).' }
-    if (-not (Test-Path -LiteralPath $ssh)) { Stop-Config 'ssh.exe non trovato: attiva "Client OpenSSH" in Windows (Impostazioni, App, Funzionalita'' facoltative).' }
+    if (-not (Test-Path -LiteralPath $SshExe)) { Stop-Config 'ssh.exe non trovato: attiva "Client OpenSSH" in Windows (Impostazioni, App, Funzionalita'' facoltative).' }
     if (-not (Test-Path -LiteralPath $KeyPath -PathType Leaf)) { Stop-Config 'File della chiave SSH non trovato (vedi KeyPath).' }
 
     # (e) la chiave non deve stare dove stanno i dump, ne' dentro OneDrive
@@ -299,6 +319,7 @@ try {
     $listFile = Join-Path $TempDir 'elenco.txt'
     $remote = New-Object System.Collections.Generic.List[object]
     $listed = $false
+    $freshVerified = $false
     $r = Invoke-Remote 'list' $listFile
     if ($r.Code -ne 0) {
         $script:Soft.Add('server non raggiungibile o elenco non ottenuto (codice ' + $r.Code + '): ' + $r.Error)
@@ -309,10 +330,13 @@ try {
         foreach ($line in [IO.File]::ReadAllLines($listFile)) {
             $parts = $line -split "`t"
             if ($parts.Count -ne 2) { continue }
+            if (-not (Test-SafeRel $parts[0])) {
+                Write-Log 'AVVISO' 'percorso ricevuto dal server scartato perche'' non valido (non viene usato)'
+                $script:Soft.Add('il server ha elencato un percorso non valido: ignorato')
+                continue
+            }
             $m = [regex]::Match($parts[0], $RelPattern)
-            if (-not $m.Success -or $m.Groups['db'].Value -ne $m.Groups['db2'].Value) { continue }   # percorsi strani dal server: ignorati
             $at = ConvertFrom-DumpTime $m.Groups['ts'].Value
-            if ($m.Groups['y'].Value -ne $at.ToString('yyyy') -or $m.Groups['m'].Value -ne $at.ToString('MM')) { continue }
             $dumpRel = $parts[0] -replace '\.json$', ''
             if (-not $byRel.ContainsKey($dumpRel)) {
                 $byRel[$dumpRel] = [pscustomobject]@{ Key = $dumpRel; Rel = $dumpRel; Db = $m.Groups['db'].Value; At = $at; HasDump = $false; HasJson = $false }
@@ -331,7 +355,8 @@ try {
             if (-not $wanted.ContainsKey($it.Key)) { continue }
             $final = Join-Path $Destination ($it.Rel -replace '/', '\')
             if ((Test-Path -LiteralPath $final) -and (Test-Path -LiteralPath ($final + '.json'))) { continue }
-            Receive-Dump $it
+            # Vale solo un dump NUOVO, verificato in questo giro e di meno di $MaxAgeHours ore: serve alla potatura (sotto).
+            if ((Receive-Dump $it) -eq $true -and $it.At -ge $now.AddHours(-$MaxAgeHours)) { $freshVerified = $true }
         }
     }
 
@@ -362,11 +387,17 @@ try {
     $local = Get-LocalDumps
     $keepLocal = Get-KeepSet $local $now
     $pruned = 0
-    foreach ($it in $local) {
-        if ($keepLocal.ContainsKey($it.Key)) { continue }
-        if (-not (Test-InsideFolder $it.Path $Destination)) { continue }
-        Remove-Pair $it.Path
-        $pruned++
+    $toPrune = @($local | Where-Object { -not $keepLocal.ContainsKey($_.Key) -and (Test-InsideFolder $_.Path $Destination) })
+    if ($toPrune.Count -gt 0 -and -not $freshVerified) {
+        # Se il server smette di fare dump, la copia vecchia puo' essere l'unica rimasta: non si cancella niente.
+        $script:Hard.Add('potatura SOSPESA: in questo giro nessun dump nuovo verificato di meno di ' + $MaxAgeHours + ' ore. ' +
+            $toPrune.Count + ' copie oltre la regola restano sul PC (anche oltre ' + $Days + ' giorni) finche'' non decide il titolare.')
+    }
+    else {
+        foreach ($it in $toPrune) {
+            Remove-Pair $it.Path
+            $pruned++
+        }
     }
     foreach ($j in (Get-ChildItem -LiteralPath $Destination -Recurse -File -Force -Filter '*.dump.enc.json' -ErrorAction SilentlyContinue)) {
         if (-not (Test-Path -LiteralPath ($j.FullName -replace '\.json$', ''))) { Remove-Item -LiteralPath $j.FullName -Force -ErrorAction SilentlyContinue }

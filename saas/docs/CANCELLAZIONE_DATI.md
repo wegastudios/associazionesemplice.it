@@ -67,40 +67,40 @@ cancellazione:
 - Non si promette quindi «illeggibili subito»: si promette che le chiavi sono distrutte subito e che le copie scadono da
   sole entro 30 giorni.
 
-## 3 ter. Seconda copia dei dump su OneDrive (decisione del titolare, 24/11/2026)
+## 3 ter. Seconda copia dei dump (decisione del titolare, 24/11/2026)
 
-Dal momento in cui si attiva la copia ([COPIA_ONEDRIVE.md](COPIA_ONEDRIVE.md)) i dump cifrati stanno anche su un secondo
-posto: il PC del titolare e il suo OneDrive. La catena di conservazione si allunga così:
+Dal momento in cui si attiva la seconda copia ([COPIA_ONEDRIVE.md](COPIA_ONEDRIVE.md)) i dump cifrati stanno anche sul PC
+del titolare, in una cartella di destinazione che sceglie lui: **A. una cartella in OneDrive**, oppure **B. una cartella
+locale o un disco esterno fuori dal cloud**. La catena di conservazione si allunga così:
 
 | Dove | Cifrato | Scadenza | Note |
 |---|---|---|---|
 | Server (`shared/storage/app/backups`) | sì, con la chiave pubblica dei backup | 30 giorni (48 ore orarie, poi uno al giorno) | `saas:backup:prune` |
 | JetBackup del fornitore | a cura del fornitore | 30 giorni | a parte |
-| PC del titolare, cartella OneDrive | sì, gli stessi file | 30 giorni, potati dallo script a ogni ora | `Scarica-Backup.ps1`, mai oltre 30 |
-| **Cestino online e cronologia versioni di OneDrive** | sì, gli stessi file | **fino a 30 giorni dopo la potatura** (account personale; fino a 93 per lavoro/scuola) | da svuotare a mano ogni settimana, oppure da dichiarare |
-| Server di Microsoft | sì | secondo i loro termini | l'account Microsoft del titolare, con verifica in due passaggi |
+| Seconda copia sul PC, variante A o B | sì, gli stessi file | 30 giorni, potati dallo script a ogni giro | `Scarica-Backup.ps1`; **la potatura è sospesa se in quel giro non c'è un dump nuovo verificato**: in quel caso la copia resta oltre i 30 giorni finché il titolare non decide |
+| Solo variante A: cestino online e cronologia versioni di OneDrive | sì, gli stessi file | fino a 30 giorni dopo la potatura (account personale; fino a 93 per lavoro o scuola) | da svuotare a mano ogni settimana, oppure da dichiarare |
+| Solo variante A: server di Microsoft | sì | secondo i loro termini | account Microsoft del titolare, con verifica in due passaggi |
 
 Cosa vale:
 
-- I dump su OneDrive sono **cifrati** con la chiave pubblica dei backup; la chiave **privata** (`SAAS_BACKUP_SECRET_KEY`)
-  non sta mai su quel PC né su OneDrive (lo script rifiuta di partire se trova file che sembrano chiavi). Chi ha solo
-  OneDrive vede file illeggibili. Valgono comunque le stesse avvertenze del §3 bis: nomi, email e contabilità non sono
-  cifrati per campo, quindi chi avesse dump e chiave privata li leggerebbe fino alla scadenza.
-- La copia sul PC è potata a 30 giorni al massimo, come sul server. **Il cestino e la cronologia versioni di OneDrive
-  possono tenere i file potati oltre i 30 giorni** (fino a 60 in tutto con il cestino personale). Per mantenere la promessa
-  di 30 giorni il titolare **svuota il cestino online della cartella ogni settimana**; se non lo fa, il testo ai clienti
-  deve dire «fino a 60 giorni».
+- I dump della seconda copia sono **cifrati** con la chiave pubblica dei backup; la chiave **privata**
+  (`SAAS_BACKUP_SECRET_KEY`) non sta mai nella cartella di destinazione né sul PC che scarica (lo script rifiuta di partire
+  se trova file che sembrano chiavi). Chi ha solo la copia vede file illeggibili. Valgono le stesse avvertenze del §3 bis:
+  nomi, email e contabilità non sono cifrati per campo, quindi chi avesse dump e chiave privata li leggerebbe fino alla
+  scadenza. Senza la chiave privata le copie non si aprono: la prova di apertura va fatta almeno una volta.
+- La copia sul PC è potata a 30 giorni al massimo, come sul server, salvo la sospensione sopra.
+- **Solo variante A:** il cestino e la cronologia versioni di OneDrive possono tenere i file potati oltre i 30 giorni (fino a
+  60 in tutto con il cestino personale). Per mantenere la promessa di 30 giorni il titolare svuota il cestino online
+  della cartella ogni settimana; se non lo fa, il testo ai clienti deve dire «fino a 60 giorni».
 - La cancellazione di un'associazione **non può** cancellare i dump già scaricati sul PC: scadono con la potatura, entro 30
   giorni, come quelli sul server. Non c'è, né si costruisce, una cancellazione sul PC.
-- I dump sono sul PC del titolare, non su un archivio del fornitore del servizio: nella risposta a una richiesta di
-  cancellazione o di accesso ai dati va detto che le copie di sicurezza cifrate sono tenute anche su un secondo archivio cloud
-  gestito dal titolare, con la stessa scadenza.
+- La scelta della destinazione e il testo ai clienti sono del titolare; l'informativa del portale non è toccata da questo
+  documento. Se la destinazione è un servizio di terzi (variante A), quel fornitore va nominato nell'informativa e
+  nell'elenco dei responsabili del trattamento, come gli altri.
 
-**Cosa dire ai clienti** (termini, informativa, risposte alle richieste di cancellazione; scrive l'audit, da questa regola):
-«Le chiavi si distruggono subito. Le copie di sicurezza, cifrate, sono conservate sul nostro server e su un secondo archivio
-cloud e scadono da sole entro 30 giorni» (con il cestino non svuotato: «entro 60 giorni»). Il secondo archivio va nominato
-tra i fornitori che trattano i dati nell'informativa e nell'elenco dei responsabili del trattamento (Microsoft, OneDrive),
-e il rapporto con il fornitore va regolato come gli altri.
+**Frase base per i clienti** (la scrive l'audit): «Le chiavi si distruggono subito. Le copie di sicurezza, cifrate, scadono
+da sole entro 30 giorni» (variante A con cestino non svuotato: «entro 60 giorni»; variante B: aggiungere che esiste anche
+una copia su un disco in nostro possesso con la stessa scadenza).
 
 ## 4. Come si cancella
 

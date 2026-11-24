@@ -1,0 +1,26 @@
+name: SaaS copia backup (PowerShell)
+
+on:
+  pull_request:
+    paths: ["saas/deploy/backup-onedrive/**", ".github/workflows/saas-copia-backup.yml"]
+  push:
+    branches: [main]
+    paths: ["saas/deploy/backup-onedrive/**", ".github/workflows/saas-copia-backup.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    name: Scarica-Backup.ps1 contro un server finto (Windows PowerShell 5.1)
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove
+        shell: powershell
+        run: |
+          $PSVersionTable.PSVersion
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File saas\deploy\backup-onedrive\test\Test-ScaricaBackup.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
