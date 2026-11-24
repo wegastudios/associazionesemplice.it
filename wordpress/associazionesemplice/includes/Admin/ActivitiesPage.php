@@ -239,7 +239,7 @@ final class ActivitiesPage {
 		self::prime_list( $report['activities'] );
 		foreach ( $report['activities'] as $s ) {
 			$a = $s['activity'];
-			echo '<div class="asem-card">' . ( $can_bulk ? '<label style="float:right"><input type="checkbox" class="asem-bulk-item" name="ids[]" value="' . (int) $a['id'] . '" aria-label="' . esc_attr( 'Seleziona ' . $a['name'] ) . '"></label>' : '' ) . '<p class="description" style="margin-bottom:0">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</p>';
+			echo '<div class="asem-card">' . ( $can_bulk ? '<label class="asem-bulk-pick"><input type="checkbox" class="asem-bulk-item" name="ids[]" value="' . (int) $a['id'] . '" aria-label="' . esc_attr( 'Seleziona ' . $a['name'] ) . '"></label>' : '' ) . '<p class="description" style="margin-bottom:0">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</p>';
 			echo '<h2 style="margin-top:2px"><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $a['id'] ) ) ) . '">' . esc_html( $a['name'] ) . '</a></h2>';
 			echo '<p class="description">' . esc_html( self::fee_text( $a ) ) . '<br>' . (int) $s['participants'] . ' partecipanti · '
 				. ( $a['instructor_name'] ? 'tenuta da ' . esc_html( $a['instructor_name'] ) : 'senza referente' ) . '</p>';
