@@ -109,6 +109,27 @@ Dopo l'aggiornamento del plugin, i dati vengono aggiornati a passi. Finché non 
 MD,
     ],
     [
+        'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'errore-critico-dopo-l-aggiornamento-del-pro',
+        'title' => 'Dopo l'aggiornamento del Pro il sito mostra un errore critico: cosa faccio?',
+        'body' => <<<'MD'
+Succede se hai il **Pro 1.3.23** con **Associazione Semplice più vecchia della 1.3.36**: il sito mostra un errore critico o una pagina 500, con un messaggio tecnico che nomina `Install::can_upgrade_here()`. **I tuoi dati non sono toccati.** Si risolve con l'accesso ai file del sito (FTP o il file manager dell'hosting), in uno di questi due modi.
+
+## Metti il Pro 1.3.24
+
+Sostituisci la cartella `wp-content/plugins/associazionesemplice-pro` con quella del **Pro 1.3.24**. Il sito torna su e il Pro funziona.
+
+## Oppure disattiva il Pro un momento
+
+1. Rinomina la cartella `associazionesemplice-pro` in `associazionesemplice-pro-OFF`: WordPress disattiva il Pro e il sito torna su.
+2. Aggiorna **Associazione Semplice** alla **1.3.37**, dalla Bacheca o caricando i file.
+3. Rimetti alla cartella il nome originale, `associazionesemplice-pro`.
+
+## Per evitarlo
+
+Con il **Pro 1.3.24** e un'Associazione Semplice vecchia l'errore non c'è più: il Pro si sospende, compare un avviso e il pulsante porta all'aggiornamento di Associazione Semplice. Se non riesci ad accedere ai file del sito, chiedi aiuto a chi gestisce l'hosting o scrivici dalla pagina di assistenza.
+MD,
+    ],
+    [
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'forma-dell-ente-e-sezione-del-runts',
         'title' => 'Forma dell\'ente e sezione del RUNTS sono la stessa cosa?',
         'body' => <<<'MD'
