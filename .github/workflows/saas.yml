@@ -82,6 +82,9 @@ jobs:
           npm audit --audit-level=high || echo "::warning::npm audit completo: avvisi su strumenti di sviluppo (non bloccante, temporaneo)"
           npm run build
 
+      - name: Rotazione delle copie del .env (deploy/ops.sh)
+        run: bash tests/shell/ops-env-bak.sh
+
       - name: Controllo delle dipendenze
         run: composer audit --no-interaction
 
@@ -103,9 +106,6 @@ jobs:
           php -r '$c = require "bootstrap/cache/config.php"; exit(($c["queue"]["connections"]["database-long"]["retry_after"] ?? 0) >= 2100 && ($c["queue"]["connections"]["database"]["retry_after"] ?? 999) <= 120 ? 0 : 1);'
           php artisan config:clear --no-interaction
           mv .env.ci .env
-
-      - name: Rotazione delle copie del .env (deploy/ops.sh)
-        run: bash tests/shell/ops-env-bak.sh
 
       - name: Pint
         run: vendor/bin/pint --test
