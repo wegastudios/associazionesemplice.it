@@ -161,6 +161,14 @@ return [
         ],
     ],
 
+    // Cookie col prefisso __Host- (docs/COOKIE_HOST.md): fino a queste date (ISO, per esempio 2026-12-15) i vecchi cookie
+    // «ricordami» (`remember_web_<hash>`) e `as_socio` (percorso /area) si leggono ancora e passano al nome nuovo alla prima
+    // visita; poi si ignorano e si cancellano. Vuote = nessuna lettura dei vecchi nomi (è anche il passo indietro del rollout).
+    'legacy_cookies' => [
+        'remember_until' => env('SAAS_LEGACY_REMEMBER_UNTIL'),
+        'member_until' => env('SAAS_LEGACY_MEMBER_UNTIL'),
+    ],
+
     // Copia di sicurezza completa (Core\Export\FullExports): si prepara in coda, a riposo è cifrata con la chiave
     // dell'associazione e resta scaricabile per keep_hours ore (PHP la decifra mentre la manda); poi il file si cancella
     // (saas:tmp:purge).

@@ -194,9 +194,10 @@ Tutti i cookie dell'app sono **solo dell'indirizzo** (nessun `Domain`) e non son
 |---|---|---|
 | sessione operatore | `SESSION_COOKIE` = `__Host-as_demo` (produzione: `__Host-as_gestionale`) | `Secure`, percorso `/`, senza `Domain`: il browser rifiuta un cookie omonimo scritto da un altro indirizzo |
 | pagine pubbliche (area soci, `/dona`, `/adesione`) | `__Host-as_pubblico` | vale ovunque ci sia HTTPS (produzione, staging, demo); `as_pubblico` solo in locale |
-| «ricordami» | `remember_web_<hash>` | senza `Domain`, `Secure`, `HttpOnly`; il nome lo decide Laravel e non ha il prefisso; il valore è cifrato con `APP_KEY`: non si può falsificare, al massimo un cookie omonimo ne sostituirebbe uno con quello di un altro account valido |
-| `XSRF-TOKEN` | fisso | senza `Domain`; il token si confronta con quello della sessione sul server: un cookie omonimo scritto altrove non può far passare una richiesta, al massimo la fa rifiutare (419) |
-| socio nell'area soci | `as_socio` | percorso `/area`, senza `Domain`, `HttpOnly`; il valore è un codice casuale riconosciuto dal database |
+| «ricordami» | `__Host-remember_web` (su http, in locale: quello di Laravel, `remember_web_<hash>`) | `Secure`, percorso `/`, senza `Domain`, `HttpOnly`; guardia `HostSessionGuard` (docs/COOKIE_HOST.md) |
+| socio nell'area soci | `__Host-as_socio` (su http: `as_socio`, percorso `/area`) | `Secure`, percorso `/`, senza `Domain`, `HttpOnly`; il valore è un codice casuale riconosciuto dal database |
+
+Piano di passaggio dai vecchi nomi (lettura doppia, finestre, rollback): `docs/COOKIE_HOST.md`.
 
 I cookie dell'amministrazione (`/saas/admin`) e dello staff non esistono nella demo (404).
 
