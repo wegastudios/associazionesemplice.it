@@ -11,6 +11,10 @@
 #   bash ~/saas-demo/current/deploy/demo-webroot.sh installa     copia di sicurezza di .htaccess e index.php, poi li scrive
 #   bash ~/saas-demo/current/deploy/demo-webroot.sh ripristina   rimette .htaccess e index.php come prima e toglie i collegamenti
 #   bash ~/saas-demo/current/deploy/demo-webroot.sh prova [URL]  richiede dal dominio gli indirizzi che NON devono rispondere (403/404)
+#   bash ~/saas-demo/current/deploy/demo-webroot.sh chiudi [IP]  chiusura temporanea: risponde solo l'indirizzo IP indicato (o quello della sessione SSH)
+#   bash ~/saas-demo/current/deploy/demo-webroot.sh apri         toglie la chiusura temporanea
+# La chiusura è una regola di riscrittura in cima a .htaccess, tra due marcatori. NON si usa «Require ip»: su questo server
+# la direttiva in .htaccess non è rispettata. installa e ripristina non aprono il sito se era chiuso.
 # Variabili: SAAS_BASE (~/saas-demo), DEMO_WEB (~/public_html).
 set -euo pipefail
 
@@ -30,8 +34,40 @@ die() { echo "$*" >&2; exit 1; }
 [ -d "$WEB" ] || die "Manca la cartella pubblica: $WEB."
 [ -f "$CONF" ] || die "Manca $CONF."
 
-strip_block() { # file: stampa il file senza il nostro blocco (i blocchi di cPanel restano com'è)
-  awk -v b="$BEGIN" -v e="$END" 'index($0, b) == 1 {skip=1} !skip {print} index($0, e) == 1 {skip=0}' "$1"
+CLOSE_BEGIN="# BEGIN chiusura temporanea"
+CLOSE_END="# END chiusura temporanea"
+
+strip_marked() { # file inizio fine: stampa il file senza il blocco tra i due marcatori (gli altri blocchi restano com'è)
+  awk -v b="$2" -v e="$3" 'index($0, b) == 1 {skip=1} !skip {print} index($0, e) == 1 {skip=0}' "$1"
+}
+strip_block() { strip_marked "$1" "$BEGIN" "$END"; } # file: senza il blocco della demo
+strip_close() { strip_marked "$1" "$CLOSE_BEGIN" "$CLOSE_END"; } # file: senza il blocco di chiusura
+
+close_block() { # file: stampa il blocco di chiusura che c'è (vuoto se non c'è)
+  [ -f "$1" ] || return 0
+  awk -v b="$CLOSE_BEGIN" -v e="$CLOSE_END" 'index($0, b) == 1 {on=1} on {print} index($0, e) == 1 {on=0}' "$1"
+}
+closed_ip() { # file: l'indirizzo autorizzato dal blocco di chiusura (vuoto se il sito non è chiuso)
+  close_block "$1" | sed -n 's/^RewriteCond %{REMOTE_ADDR} !^\(.*\)\$$/\1/p' | head -1 | sed 's/\\\././g'
+}
+
+valid_ip() { # IPv4 (4 numeri 0-255) o IPv6 (cifre esadecimali e due punti)
+  local ip="$1" o
+  if [[ "$ip" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
+    local IFS=.; for o in $ip; do [ "$((10#$o))" -le 255 ] || return 1; done; return 0
+  fi
+  [[ "$ip" =~ ^[0-9a-f:]{2,39}$ && "$ip" == *:*:* && "$ip" != *:::* ]]
+}
+
+write_htaccess() { # sostituisce .htaccess con lo standard input (scrittura atomica)
+  local tmp; tmp="$(mktemp "$WEB/.htaccess.XXXXXX")"; cat > "$tmp"; chmod 644 "$tmp"; mv -f "$tmp" "$WEB/.htaccess"
+}
+
+backup_htaccess() { # copia di sicurezza di .htaccess in $BACKUPS/chiusura/<data>/ (a parte: ripristina usa solo quelle di installa)
+  local d; d="$BACKUPS/chiusura/$(date -u +%Y%m%dT%H%M%S).$(date -u +%N)"
+  mkdir -p "$d"; chmod 700 "$BACKUPS" "$BACKUPS/chiusura" "$d"
+  if [ -f "$WEB/.htaccess" ]; then cp -p "$WEB/.htaccess" "$d/.htaccess"; fi
+  echo "$d"
 }
 
 boot_php() {
@@ -53,6 +89,10 @@ case "$ACTION" in
     ls -la "$WEB" | sed 's/^/  /'
     echo "== versione in uso: $(readlink "$BASE/current" 2>/dev/null || echo 'nessuna (rilascia prima)') =="
     grep -q "$BEGIN" "$WEB/.htaccess" 2>/dev/null && echo ".htaccess: blocco della demo presente" || echo ".htaccess: blocco della demo ASSENTE"
+    cip="$(closed_ip "$WEB/.htaccess")"
+    if [ -n "$cip" ]; then echo "SITO CHIUSO: risponde solo l'indirizzo $cip (si riapre con: demo-webroot.sh apri)"
+    elif [ -n "$(close_block "$WEB/.htaccess")" ]; then echo "SITO CHIUSO: blocco di chiusura presente ma illeggibile, controlla .htaccess"
+    else echo "Sito aperto (nessuna chiusura temporanea)"; fi
     grep -q "$BOOT_MARK" "$WEB/index.php" 2>/dev/null && echo "index.php: avvio della demo presente" || echo "index.php: avvio della demo ASSENTE"
     for n in "${LINKS[@]}"; do
       if [ -L "$WEB/$n" ]; then echo "$n: collegamento -> $(readlink "$WEB/$n")"
@@ -84,20 +124,56 @@ case "$ACTION" in
         else echo "ATTENZIONE: $WEB/$n esiste ed è vero: non lo tocco, spostalo tu." >&2; fi
       fi
     done
+    if [ -n "$(close_block "$WEB/.htaccess")" ]; then echo "Il sito è chiuso e resta chiuso (apri con: demo-webroot.sh apri)."; fi
     echo "Fatto. Copia di sicurezza in $dir. Ora lancia: bash $HERE/demo-webroot.sh prova"
     ;;
 
   ripristina)
-    last="$(ls -1d "$BACKUPS"/*/ 2>/dev/null | sort | head -1 || true)"
+    last="$(ls -1d "$BACKUPS"/[0-9]*/ 2>/dev/null | sort | head -1 || true)"
     [ -n "$last" ] || die "Nessuna copia di sicurezza in $BACKUPS."
+    # Se il sito era chiuso, resta chiuso: si tiene il blocco di chiusura di adesso e lo si rimette in cima.
+    was_closed="$(close_block "$WEB/.htaccess")"
     for f in .htaccess index.php; do
       if [ -f "${last}$f" ]; then cp -p "${last}$f" "$WEB/$f"; echo "$f: rimesso com'era"
       elif [ -f "${last}$f.assente" ]; then rm -f "$WEB/$f"; echo "$f: tolto (prima non c'era)"; fi
     done
+    if [ -n "$was_closed" ]; then
+      { printf '%s
+' "$was_closed"; if [ -f "$WEB/.htaccess" ]; then strip_close "$WEB/.htaccess"; fi; } | write_htaccess
+      echo ".htaccess: il sito era chiuso e resta chiuso (apri con: demo-webroot.sh apri)"
+    fi
     for n in "${LINKS[@]}"; do
       if [ -L "$WEB/$n" ] && [[ "$(readlink "$WEB/$n")" == "$BASE"/* ]]; then rm -f "$WEB/$n"; echo "collegamento tolto: $n"; fi
     done
     echo "Ripristinato da $last"
+    ;;
+
+  chiudi)
+    ip="${2:-${SSH_CLIENT%% *}}"
+    ip="$(printf '%s' "$ip" | tr 'A-F' 'a-f')"
+    [ -n "$ip" ] || die "Indica l'indirizzo: chiudi 203.0.113.7 (senza argomento serve una sessione SSH)."
+    valid_ip "$ip" || die "Indirizzo IP non valido: $ip"
+    escaped="$(printf '%s' "$ip" | sed 's/\./\\./g')"
+    dir="$(backup_htaccess)"
+    {
+      echo "$CLOSE_BEGIN (demo non ancora aperta: solo l indirizzo di chi la prepara)"
+      echo "<IfModule mod_rewrite.c>"
+      echo "RewriteEngine On"
+      echo "RewriteCond %{REMOTE_ADDR} !^${escaped}\$"
+      echo "RewriteCond %{REQUEST_URI} !^/\.well-known/"
+      echo "RewriteRule ^ - [F,L]"
+      echo "</IfModule>"
+      echo "$CLOSE_END"
+      if [ -f "$WEB/.htaccess" ]; then strip_close "$WEB/.htaccess"; fi
+    } | write_htaccess
+    echo "Sito chiuso: risponde solo l'indirizzo $ip (.well-known resta raggiungibile). Copia di sicurezza in $dir."
+    ;;
+
+  apri)
+    if [ -z "$(close_block "$WEB/.htaccess")" ]; then echo "Il sito era già aperto: nessuna chiusura temporanea."; exit 0; fi
+    dir="$(backup_htaccess)"
+    strip_close "$WEB/.htaccess" | write_htaccess
+    echo "Sito aperto: tolta la chiusura temporanea. Copia di sicurezza in $dir."
     ;;
 
   prova)
@@ -105,6 +181,12 @@ case "$ACTION" in
     if [ -z "$URL" ] && [ -f "$BASE/shared/.env" ]; then URL="$(grep -E '^APP_URL=' "$BASE/shared/.env" | tail -1 | cut -d= -f2- | sed -e 's/[[:space:]]*#.*$//' -e 's/^"//' -e 's/"$//')"; fi
     [ -n "$URL" ] || die "Indica l'indirizzo: prova https://demosaas.associazionesemplice.it"
     URL="${URL%/}"; bad=0
+    cip="$(closed_ip "$WEB/.htaccess")"
+    if [ -n "$cip" ] || [ -n "$(close_block "$WEB/.htaccess")" ]; then
+      echo "ATTENZIONE: il sito è chiuso (risponde solo l'indirizzo ${cip:-?}). I controlli partono da questo server: darebbero 403 su tutto." >&2
+      echo "La prova vera va lanciata da un computer con l'indirizzo autorizzato (o dopo: apri). Nessun «ok» dichiarato." >&2
+      exit 2
+    fi
     # Questi indirizzi NON devono dare né una pagina né un file: solo 400, 403 o 404.
     for p in /.env /.env.backup /.git/config /.user.ini /php.ini /.htaccess /composer.json /composer.lock /artisan /vendor/autoload.php \
              /storage/logs/laravel.log /storage /bootstrap/app.php /app /config/app.php /database /deploy/remote.sh /releases /saas-demo \
@@ -122,5 +204,5 @@ case "$ACTION" in
     exit "$bad"
     ;;
 
-  *) die "Azione sconosciuta: $ACTION (stato, installa, ripristina, prova)." ;;
+  *) die "Azione sconosciuta: $ACTION (stato, installa, ripristina, prova, chiudi, apri)." ;;
 esac

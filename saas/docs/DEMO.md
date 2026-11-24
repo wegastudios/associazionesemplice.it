@@ -71,11 +71,24 @@ cd ~/saas-demo/current && /usr/local/bin/php artisan saas:web:refresh --no-warm
 
 `.user.ini`, `php.ini` e `.well-known` non vengono mai toccati né in un senso né nell'altro. Dopo `installa` si fa `prova`; dopo `ripristina` si controlla che il dominio risponda come prima.
 
+### Chiusura temporanea (demo non ancora aperta)
+
+Finché la demo non è pronta, `public_html` si può chiudere a tutti tranne che a un indirizzo IP:
+
+```
+bash ~/saas-demo/current/deploy/demo-webroot.sh chiudi            # solo l'IP della sessione SSH in corso
+bash ~/saas-demo/current/deploy/demo-webroot.sh chiudi 203.0.113.7  # oppure un IP (IPv4 o IPv6) a scelta
+bash ~/saas-demo/current/deploy/demo-webroot.sh apri              # toglie la chiusura
+bash ~/saas-demo/current/deploy/demo-webroot.sh stato             # dice se è chiuso e a quale indirizzo
+```
+
+La chiusura è una regola di riscrittura messa **in cima** a `.htaccess`, tra i marcatori `# BEGIN chiusura temporanea` e `# END chiusura temporanea`; `.well-known` resta raggiungibile (AutoSSL). Chiamare `chiudi` due volte lascia un solo blocco; i blocchi di cPanel e quello della demo non si toccano. Ogni `chiudi` e `apri` fa una copia di `.htaccess` in `~/saas-demo/shared/webroot-backup/chiusura/`. **Non si usa `Require ip`**: su questo server la direttiva in `.htaccess` non viene rispettata (verificato), il sito resterebbe aperto. `installa` e `ripristina` non aprono il sito se era chiuso. Con il sito chiuso `prova` non dichiara «ok»: i controlli partono dal server e darebbero 403 su tutto, quindi la prova vera si fa da un computer con l'indirizzo autorizzato, oppure dopo `apri`.
+
 ### Cosa NON deve essere raggiungibile dal web
 
 `prova` richiede sul dominio, con `curl`, questi indirizzi e si aspetta **400, 403 o 404** (mai 200 né un reindirizzamento): `/.env`, `/.env.backup`, `/.git/config`, `/.user.ini`, `/php.ini`, `/.htaccess`, `/composer.json`, `/composer.lock`, `/artisan`, `/vendor/autoload.php`, `/storage/logs/laravel.log`, `/storage`, `/bootstrap/app.php`, `/app`, `/config/app.php`, `/database`, `/deploy/remote.sh`, `/releases`, `/saas-demo`, `/shared/.env`, `/current`, `/public/index.php`, `/../.env`, `/%2e%2e/.env`, `/index.php/.env`. E si aspetta **200** da `/up`, `/accesso`, `/area/accesso`, `/robots.txt` (con `Disallow: /`). Esce con errore se anche solo uno non torna. Va lanciata dopo ogni installazione e quando si cambia qualcosa in `public_html`.
 
-Prove automatiche (CI): `tests/Feature/Core/DemoWebrootTest.php` prova il blocco `.htaccess`, l'installazione su una finta `public_html` con i blocchi di cPanel, la ripetizione senza duplicati, il ritorno indietro identico e che `.user.ini`, `php.ini` e `.well-known` restano uguali. Il test sul dominio vero (`prova`) si fa a mano dopo l'installazione.
+Prove automatiche (CI): `tests/Feature/Core/DemoWebrootTest.php` prova il blocco `.htaccess`, l'installazione su una finta `public_html` con i blocchi di cPanel, la ripetizione senza duplicati, il ritorno indietro identico, che `.user.ini`, `php.ini` e `.well-known` restano uguali, e `chiudi`/`apri` (un solo blocco, apertura identica all'originale, installa e ripristina che non aprono). Il test sul dominio vero (`prova`) si fa a mano dopo l'installazione.
 
 ## Posta: niente esce
 
