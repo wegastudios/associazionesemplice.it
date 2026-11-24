@@ -70,7 +70,8 @@ final class DatabaseRevokeGroupCommand extends Command
                 $result = GroupPrivileges::revoke($connection, $group, $app, $backup);
                 if ($result['refused'] !== []) {
                     $failed = true;
-                    $this->components->warn("{$label}: controlli di sicurezza non superati (".count($result['refused'])."), nessun permesso toccato");
+                    $refusals = count($result['refused']);
+                    $this->components->warn("{$label}: controlli di sicurezza non superati ({$refusals}), nessun permesso toccato");
 
                     continue;
                 }
