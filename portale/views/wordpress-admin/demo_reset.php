@@ -17,7 +17,7 @@ $when = function ( int $t ): string { return $t > 0 ? gmdate( 'd/m/Y H:i', $t ) 
 		<p><span class="badge">Non collegata</span> Il reset della demo del plugin (demo.associazionesemplice.it) non è ancora collegato al portale: finché non lo è, non si azzera da qui. Si azzera da sola ogni notte.</p>
 	</div>
 	<?php endif; ?>
-$1
+	<?php foreach ( $rows as $k => $r ) : ?>
 	<div class="card" style="margin:16px 0;padding:18px">
 		<h2 style="margin-top:0"><?php echo e( $r['label'] ); ?></h2>
 		<?php if ( '' !== $r['note'] ) : ?><p class="muted small"><?php echo e( $r['note'] ); ?></p><?php endif; ?>
