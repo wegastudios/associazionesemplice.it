@@ -57,6 +57,9 @@ return Application::configure(basePath: dirname(__DIR__))
             replace: [PreventRequestForgery::class => HostPreventRequestForgery::class],
         );
         $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: UsePlatformSession::class);
+        // Il passaggio dei vecchi cookie va subito dopo la decifratura e prima di tutto ciò che legge l'utente (anche della
+        // rotta «auth», che Laravel porta prima di SubstituteBindings): senza questa riga starebbe in fondo al gruppo.
+        $middleware->appendToPriorityList(after: EncryptCookies::class, append: MigrateHostCookies::class);
         $middleware->encryptCookies();
         $middleware->redirectGuestsTo('/accesso');
         $middleware->redirectUsersTo('/gestionale');
