@@ -102,7 +102,7 @@ function cookiesOf(TestResponse $response): array
 it('i cookie dell\'operatore sull\'host unico sono __Host-: Secure, percorso /, nessun Domain', function (): void {
     $cookies = cookiesOf($this->get(DEMO_HOST.'/accesso')->assertOk());
 
-    expect($cookies)->toHaveKey('__Host-as_demo')->toHaveKey('__Host-XSRF-TOKEN')->not->toHaveKey('XSRF-TOKEN');
+    expect($cookies)->toHaveKey('__Host-as_demo')->toHaveKey('XSRF-TOKEN');
     foreach ($cookies as $name => $cookie) {
         expect($cookie->isSecure())->toBeTrue($name)->and($cookie->getPath())->toBe('/', $name)->and($cookie->getDomain())->toBeNull($name);
     }

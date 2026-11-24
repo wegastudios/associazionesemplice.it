@@ -24,8 +24,6 @@ final class HostCookies
 {
     public const PREFIX = '__Host-';
 
-    public const XSRF = 'XSRF-TOKEN';
-
     /** Cookie dell'accesso del socio: come nome senza prefisso (percorso `/area`) e come base del nome con prefisso (percorso `/`). */
     public const MEMBER = 'as_socio';
 

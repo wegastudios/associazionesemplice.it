@@ -182,7 +182,6 @@ Tutti i cookie dell'app sono **solo dell'indirizzo** (nessun `Domain`) e non son
 | sessione operatore | `SESSION_COOKIE` = `__Host-as_demo` (produzione: `__Host-as_gestionale`) | `Secure`, percorso `/`, senza `Domain`: il browser rifiuta un cookie omonimo scritto da un altro indirizzo |
 | pagine pubbliche (area soci, `/dona`, `/adesione`) | `__Host-as_pubblico` | vale ovunque ci sia HTTPS (produzione, staging, demo); `as_pubblico` solo in locale |
 | «ricordami» | `__Host-remember_web` (su http, in locale: quello di Laravel, `remember_web_<hash>`) | `Secure`, percorso `/`, senza `Domain`, `HttpOnly`; guardia `HostSessionGuard` (docs/COOKIE_HOST.md) |
-| token XSRF | `__Host-XSRF-TOKEN` (su http: `XSRF-TOKEN`) | `Secure`, percorso `/`, senza `Domain`; il token si confronta con quello della sessione sul server: un cookie omonimo scritto altrove non può far passare una richiesta, al massimo la fa rifiutare (419) |
 | socio nell'area soci | `__Host-as_socio` (su http: `as_socio`, percorso `/area`) | `Secure`, percorso `/`, senza `Domain`, `HttpOnly`; il valore è un codice casuale riconosciuto dal database |
 
 Piano di passaggio dai vecchi nomi (lettura doppia, finestre, rollback): `docs/COOKIE_HOST.md`.

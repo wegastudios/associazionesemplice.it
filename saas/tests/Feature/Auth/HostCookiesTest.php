@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 /*
  * Cookie con il prefisso __Host- (docs/COOKIE_HOST.md): in produzione i sottodomini delle associazioni sono fratelli del
  * dominio dell'app, e un cookie senza prefisso può essere sostituito da uno scritto da un sottodominio. Qui si prova su
- * HTTPS che il «ricordami», il token XSRF e l'accesso del socio hanno nome __Host-, Secure, percorso /, nessun Domain, e che
+ * HTTPS che il «ricordami» e l'accesso del socio hanno nome __Host-, Secure, percorso /, nessun Domain, e che
  * chi ha ancora i vecchi nomi passa ai nuovi senza rifare l'accesso (finché la finestra di passaggio è aperta).
  */
 
@@ -88,25 +88,6 @@ function hcNewBrowser(object $test): void
     })->call($test);
 }
 
-it('il token XSRF su HTTPS si chiama __Host-XSRF-TOKEN: Secure, percorso /, nessun Domain, leggibile da JavaScript', function (): void {
-    $response = $this->get(HC_APP.'/accesso')->assertOk();
-
-    $cookie = hcCookie($response, '__Host-XSRF-TOKEN');
-    hcAssertHostRules($cookie, '__Host-XSRF-TOKEN');
-    expect($cookie->isHttpOnly())->toBeFalse()
-        ->and(hcCookie($response, 'XSRF-TOKEN'))->toBeNull();
-    // Il nome arriva al JavaScript dalla pagina (meta), che non lo indovina.
-    $response->assertSee('<meta name="xsrf-cookie" content="__Host-XSRF-TOKEN">', false);
-});
-
-it('su http (sviluppo) il token XSRF resta XSRF-TOKEN, perché il prefisso lì sarebbe rifiutato', function (): void {
-    $response = $this->get('http://localhost/accesso')->assertOk();
-
-    expect(hcCookie($response, 'XSRF-TOKEN'))->not->toBeNull()
-        ->and(hcCookie($response, '__Host-XSRF-TOKEN'))->toBeNull();
-    $response->assertSee('<meta name="xsrf-cookie" content="XSRF-TOKEN">', false);
-});
-
 it('il «ricordami» su HTTPS si chiama __Host-remember_web, con le regole __Host- e HttpOnly, e riporta dentro senza rifare la password', function (): void {
     $user = $this->createUser('anna@example.com');
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
@@ -144,7 +125,7 @@ it('la guardia del gestionale è la nostra, quella dell\'amministrazione no, e l
     // Sotto /saas/admin il percorso della sessione non è «/»: il prefisso sarebbe rifiutato, il nome non cambia.
     config(['session.path' => '/saas/admin']);
     expect(HostCookies::eligible(Request::create(HC_APP.'/saas/admin')))->toBeFalse()
-        ->and(HostCookies::name('XSRF-TOKEN', Request::create(HC_APP.'/saas/admin')))->toBe('XSRF-TOKEN');
+        ->and(HostCookies::name('as_socio', Request::create(HC_APP.'/saas/admin')))->toBe('as_socio');
 });
 
 it('il prefisso c\'è solo dove il browser lo accetterebbe: HTTPS, Secure acceso, percorso /, nessun Domain', function (): void {
