@@ -839,3 +839,22 @@ extra_step( 'tetto orario delle email', function () {
 		throw new \RuntimeException( 'il tetto orario delle email non è 20' );
 	}
 } );
+
+// Prova fissa a ogni azzeramento: nessuna email deve uscire dalla demo, qualunque sia il destinatario (anche indirizzi veri). Il mu-plugin asem-demo.php
+// spegne la posta con pre_wp_mail: se manca o non funziona, PHPMailer verrebbe chiamato e l'azzeramento si ferma con un errore.
+extra_step( 'posta in uscita bloccata', function () {
+	$calls = 0;
+	$count = function () use ( &$calls ) {
+		++$calls;
+	};
+	add_action( 'phpmailer_init', $count );
+	try {
+		wp_mail( 'persona.vera@gmail.com', 'Prova demo', 'Questa email non deve uscire.' );
+		wp_mail( array( 'info@associazionesemplice.it', 'qualcuno@example.org' ), 'Prova demo', 'Questa email non deve uscire.' );
+	} finally {
+		remove_action( 'phpmailer_init', $count );
+	}
+	if ( 0 !== $calls ) {
+		throw new \RuntimeException( 'la posta della demo NON è bloccata: PHPMailer è stato chiamato ' . $calls . ' volte' );
+	}
+} );
