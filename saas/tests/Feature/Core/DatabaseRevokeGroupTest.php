@@ -192,7 +192,7 @@ it('gli oggetti che non sono del proprietario restano al gruppo e si contano tra
 
             expect($result['refused'])->toBe([])
                 ->and($result['remaining'])->toBe(1)
-                ->and(hasPrivilege($owner, $group, 'org_zzestraneo.t', 'SELECT'))->toBeTrue();
+                ->and(hasPrivilege($admin, $group, 'org_zzestraneo.t', 'SELECT'))->toBeTrue();
         } finally {
             $admin->statement('DROP SCHEMA IF EXISTS org_zzestraneo CASCADE');
         }
