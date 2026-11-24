@@ -1529,6 +1529,12 @@ foreach ( Portale\Demo::links() as $rows ) {
 check( 'demo: i collegamenti sono percorsi della demo e non portano alle pagine di WordPress riservate agli amministratori del sito', $demoLinks && ! array_filter( $demoLinks, function ( $p ) { return 0 !== strpos( $p, '/' ) || preg_match( '#(users|plugins|plugin-install|themes|options-general|tools|update-core).php#', $p ); } ) );
 check( 'demo: l\'indirizzo non finisce con la barra', '/' !== substr( Portale\Demo::url(), -1 ) );
 $corsBefore = array( Config::get( 'demo_url', null ), Config::get( 'base_url', null ) );
+Config::set( 'demo_url', '' );
+check( 'demo: l\'indirizzo predefinito è demo.associazionesemplice.it', 'https://demo.associazionesemplice.it' === Portale\Demo::url() );
+Config::set( 'base_url', 'https://associazionesemplice.it' );
+check( 'demo: dal portale la demo predefinita sta su un altro host, quindi serve l\'origine CORS esatta', 'https://demo.associazionesemplice.it' === Portale\Demo::corsOrigin() );
+Config::set( 'demo_url', $corsBefore[0] );
+Config::set( 'base_url', $corsBefore[1] );
 Config::set( 'base_url', 'https://associazionesemplice.it' );
 Config::set( 'demo_url', 'https://associazionesemplice.it/demo' );
 check( 'demo: sullo stesso host del portale nessuna origine CORS', '' === Portale\Demo::corsOrigin() );

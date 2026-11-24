@@ -2,14 +2,14 @@
 namespace Portale;
 
 /**
- * La demo pubblica del plugin (WordPress vero in `associazionesemplice.it/demo/`): indirizzi, accessi di prova e ruoli, per la pagina `/prova`.
+ * La demo pubblica del plugin (WordPress vero su `demo.associazionesemplice.it`): indirizzi, accessi di prova e ruoli, per la pagina `/prova`.
  * Le credenziali sono pubbliche di proposito; gli utenti (il socio no: ha solo email e password dell'accesso proprio) e i dati si ricreano ogni notte (vedi docs/PORTALE.md, «Demo pubblica»).
  * Qui non c'è e non ci sarà mai un utente amministratore.
  */
 final class Demo {
 
 	public static function url(): string {
-		return rtrim( (string) Config::get( 'demo_url', 'https://associazionesemplice.it/demo' ), '/' );
+		return rtrim( (string) ( Config::get( 'demo_url', '' ) ?: 'https://demo.associazionesemplice.it' ), '/' );
 	}
 
 	/**
