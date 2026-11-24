@@ -12,6 +12,22 @@ final class Demo {
 		return rtrim( (string) Config::get( 'demo_url', 'https://associazionesemplice.it/demo' ), '/' );
 	}
 
+	/**
+	 * Origine (https://host) da cui la demo legge `/confronto-demo` con una richiesta tra siti: solo quando la demo sta su un altro host del portale
+	 * (per esempio demo.associazionesemplice.it). Vuota se la demo è sullo stesso host del portale (nessun CORS necessario) o l'indirizzo non è https.
+	 */
+	public static function corsOrigin(): string {
+		$d = parse_url( self::url() );
+		$p = parse_url( (string) Config::get( 'base_url', '' ) );
+		if ( ! is_array( $d ) || 'https' !== ( $d['scheme'] ?? '' ) || empty( $d['host'] ) || ! empty( $d['port'] ) ) {
+			return '';
+		}
+		if ( is_array( $p ) && strtolower( (string) ( $p['host'] ?? '' ) ) === strtolower( $d['host'] ) ) {
+			return '';
+		}
+		return 'https://' . strtolower( $d['host'] );
+	}
+
 	/** Gli accessi di prova: utente, password, ruolo, cosa si può fare e da dove si parte. */
 	public static function accounts(): array {
 		return array(

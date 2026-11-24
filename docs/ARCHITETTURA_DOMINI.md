@@ -28,7 +28,7 @@ Cosa cambia rispetto a oggi: ora il listino e i diritti (pacchetti, limiti) sono
 | `associazionesemplice.it/wordpress` | approfondimenti sul plugin: guide di installazione, **changelog**, requisiti | Portale (contenuti) |
 | `associazionesemplice.it/wordpress/admin` | **controllo commerciale del plugin**: piani e licenze, prezzi, servizi, promo, versioni, clienti con licenza e le impostazioni del plugin (tutte nello stesso posto) | Plugin (il codice sta in `portale/`, in uno spazio separato: vedi §3.2) |
 | `supporto.associazionesemplice.it` | **un solo supporto** per SaaS e plugin | sessione supporto |
-| `associazionesemplice.it/demo` | demo del plugin (WordPress vero) — **resta dov è**; se le cartelle danno problemi si sposta su `wpdemo.associazionesemplice.it` | demo |
+| `associazionesemplice.it/demo` (oggi) → `demo.associazionesemplice.it` (dopo il passaggio) | demo del plugin (WordPress vero) su un account cPanel dedicato, WordPress nella radice del sottodominio; il vecchio `/demo` rimanda con 301 e resta 14 giorni come ripiego. Il portale la legge solo per `/confronto-demo` (CORS: GET, origine esatta, nessuna credenziale). Piano e passi: cartella riservata | demo |
 | `app-demo.associazionesemplice.it` (gestione) e `demosaas.associazionesemplice.it` (area soci) | **demo del SaaS** con dati finti, azzerata ogni notte | SaaS |
 
 Regole sugli indirizzi:
@@ -324,7 +324,7 @@ Un'istanza separata del SaaS (ambiente «demo», non lo staging, non la produzio
 | Aggiornamento | a ogni rilascio del SaaS, come per la demo del plugin: stesso ambiente, nuovi dati (regola «demo sempre aggiornata») |
 | Cosa non si fa | niente `reset` a metà giornata senza chiedere; niente dati importati da associazioni vere |
 
-La demo del plugin resta in `associazionesemplice.it/demo`.
+La demo del plugin sta oggi in `associazionesemplice.it/demo`; è in corso il passaggio a `demo.associazionesemplice.it` su un account dedicato (script già pronti con `demo.env` facoltativo, portale con CORS ristretto su `/confronto-demo` e cookie di sessione `__Host-`). Finché il titolare non dà il via resta dov'è.
 
 ## 10. Piano di lavoro
 
