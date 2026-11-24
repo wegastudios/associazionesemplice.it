@@ -127,7 +127,7 @@ final class RoleObjectAudit
             UNION ALL
             (SELECT 'sequenza ' || n.nspname || '.' || c.relname || ' (UPDATE)'
                FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-              WHERE {$user} AND c.relkind = 'S' AND has_sequence_privilege(CAST(? AS name), c.oid, 'UPDATE')
+              WHERE {$user} AND c.relkind = 'S' AND CASE WHEN c.relkind = 'S' THEN has_sequence_privilege(CAST(? AS name), c.oid, 'UPDATE') ELSE false END
               ORDER BY 1 LIMIT {$limit})
             SQL, [$backupRole, $backupRole, $backupRole]);
 
