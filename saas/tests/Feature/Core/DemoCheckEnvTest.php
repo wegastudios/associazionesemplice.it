@@ -75,6 +75,7 @@ dataset('errori del .env della demo', [
     'database della demo diverso' => [['SAAS_DEMO_DATABASE' => 'altro_db'], 'SAAS_DEMO_DATABASE', 'DB_DATABASE'],
     'cookie senza __Host-' => [['SESSION_COOKIE' => 'as_demo'], 'SESSION_COOKIE', '__Host-'],
     'cookie con dominio' => [['SESSION_DOMAIN' => '.associazionesemplice.it'], 'SESSION_DOMAIN', 'Domain'],
+    'cookie con dominio di soli spazi' => [['SESSION_DOMAIN' => '   '], 'SESSION_DOMAIN', 'Domain'],
     'cookie non Secure' => [['SESSION_SECURE_COOKIE' => 'false'], 'SESSION_SECURE_COOKIE', 'true'],
     'cache Redis' => [['CACHE_STORE' => 'redis'], 'CACHE_STORE', 'Redis'],
     'database su un\'altra macchina' => [['DB_HOST' => 'db.altrove.example'], 'DB_HOST', 'questa macchina'],

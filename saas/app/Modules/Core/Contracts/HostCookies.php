@@ -38,12 +38,12 @@ final class HostCookies
             && self::noDomain();
     }
 
-    /** Nessun Domain nei cookie: `null`, oppure vuoto (SESSION_DOMAIN senza valore nel .env dà una stringa vuota). */
+    /** Nessun Domain nei cookie: `null`, oppure stringa vuota (SESSION_DOMAIN senza valore nel .env). Nessun trim: «   » per Symfony non è vuoto e uscirebbe «Domain=   ». */
     private static function noDomain(): bool
     {
         $domain = config('session.domain');
 
-        return $domain === null || (is_string($domain) && trim($domain) === '');
+        return $domain === null || $domain === '';
     }
 
     /** `__Host-<nome>` dove il prefisso è valido, altrimenti `<nome>`. */

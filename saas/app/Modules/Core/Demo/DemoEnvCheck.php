@@ -135,7 +135,8 @@ final class DemoEnvCheck
         if (! str_starts_with($value('SESSION_COOKIE'), '__Host-')) {
             $add('SESSION_COOKIE', 'deve cominciare con «__Host-»: così nessun cookie del dominio padre lo sostituisce');
         }
-        if ($value('SESSION_DOMAIN') !== '') {
+        // Come lo legge Laravel (nessun trim): vuota o «null» valgono «nessun Domain»; anche solo uno spazio no.
+        if (! in_array(strtolower((string) ($env['SESSION_DOMAIN'] ?? '')), ['', 'null', '(null)'], true)) {
             $add('SESSION_DOMAIN', 'deve essere vuota o «null»: nessun Domain nei cookie');
         }
         if ($flag('SESSION_SECURE_COOKIE') !== true) {
