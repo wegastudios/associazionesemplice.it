@@ -114,7 +114,7 @@ it('il cookie «ricordami» dell\'operatore non ha Domain ed è Secure e HttpOnl
     // Nell'ambiente «demo» le prove non saltano più il controllo CSRF: per questo accesso si torna a «testing» (i nomi dei cookie non dipendono dall'ambiente).
     app()->detectEnvironment(fn (): string => 'testing');
 
-    $response =$this->post(DEMO_HOST.'/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD, 'remember' => true]);
+    $response = $this->post(DEMO_HOST.'/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD, 'remember' => true]);
     $cookies = cookiesOf($response);
     $recaller = array_values(array_filter(array_keys($cookies), static fn (string $n): bool => str_starts_with($n, 'remember_')));
 
