@@ -367,3 +367,6 @@
 
 /* Lavori lunghi: barra di avanzamento (LongJob::panel) */
 .asem-longjob-bar { width: 100%; max-width: 480px; height: 1.25em; }
+
+/* Vedi frontend.css: le immagini «lazy» con sizes="auto" non devono diventare alte 1500 px. */
+.asem.asem img { contain: none; contain-intrinsic-size: none; }

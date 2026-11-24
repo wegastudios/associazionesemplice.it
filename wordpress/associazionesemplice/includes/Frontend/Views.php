@@ -1550,7 +1550,7 @@ final class Views {
 		$html  = '<div class="asemf-grid">';
 		foreach ( $list as $a ) {
 			$page   = \AssociazioneSemplice\PublicEvents::page_url( (int) $a['id'] ); // la pagina pubblica dell'attività, se c'è: locandina, descrizione, altre date
-			$poster = '' !== $page ? \AssociazioneSemplice\PublicEvents::poster( (int) $a['id'] ) : '';
+			$poster = '' !== $page ? \AssociazioneSemplice\PublicEvents::poster( (int) $a['id'], 'medium_large' ) : '';
 			$html  .= '<article class="asemf-card">' . ( '' !== $poster ? '<a href="' . esc_url( $page ) . '" class="asemf-card-poster asemf-kind-' . esc_attr( $a['kind'] ) . '" tabindex="-1" aria-hidden="true">' . $poster . '</a>' : '<span class="asemf-card-poster asemf-card-noposter asemf-kind-' . esc_attr( $a['kind'] ) . '" aria-hidden="true"></span>' ) // senza locandina: una fascia con il colore del tipo, così le schede restano uguali
 				. '<span class="asemf-badge">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</span>'
 				. '<h3>' . ( '' !== $page ? '<a href="' . esc_url( $page ) . '">' . esc_html( $a['name'] ) . '</a>' : esc_html( $a['name'] ) ) . '</h3><p class="asemf-small asemf-muted">' . esc_html( self::fee_text( $a ) )

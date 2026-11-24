@@ -40,6 +40,10 @@ const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) +
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             titles: cards.map((c) => { const a = c.querySelector('h3 a') || c.querySelector('h3'); return a ? [getComputedStyle(a).color, getComputedStyle(c).backgroundColor] : null; }).filter(Boolean),
             empty: cards.filter((c) => { const p = c.querySelector('.asemf-card-poster'); if (!p) return true; const img = p.querySelector('img'); const ok = img && img.complete && img.naturalWidth > 0; return !ok && getComputedStyle(p).backgroundColor === 'rgba(0, 0, 0, 0)'; }).length,
+            count: cards.length,
+            maxCard: Math.max(0, ...cards.map((c) => c.getBoundingClientRect().height)),
+            maxImg: Math.max(0, ...[...document.querySelectorAll('.asemf img')].map((i) => i.getBoundingClientRect().height)),
+            lowRes: cards.filter((c) => { const i = c.querySelector('.asemf-card-poster img'); return i && i.currentSrc && i.naturalWidth > 0 && i.naturalWidth < i.getBoundingClientRect().width * 1.5; }).length,
             posters: cards.map((c) => { const p = c.querySelector('.asemf-card-poster'); return p ? Math.round(p.getBoundingClientRect().width / p.getBoundingClientRect().height * 100) / 100 : null; }),
           };
         });
@@ -47,6 +51,9 @@ const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) +
         if (!m.grid) { lines.push(`- MANCA: ${tag}: nessuna griglia di schede nella pagina`); bad++; }
         if (m.overflow > 1) { lines.push(`- ERRORE: ${tag}: scorrimento orizzontale di ${m.overflow}px`); bad++; }
         for (const [fg, bg] of m.titles) { const r = ratio(parse(fg), parse(bg)); if (r < 4.5) { lines.push(`- ERRORE: ${tag}: contrasto del titolo ${r.toFixed(2)}:1`); bad++; break; } }
+        if (m.count < 12) { lines.push(`- ERRORE: ${tag}: solo ${m.count} schede, ne servono almeno 12 con immagine`); bad++; }
+        if (w >= 1440 && m.maxCard > 600) { lines.push(`- ERRORE: ${tag}: una scheda è alta ${Math.round(m.maxCard)}px (massimo 600)`); bad++; }
+        if (m.maxImg > 700) { lines.push(`- ERRORE: ${tag}: un'immagine è alta ${Math.round(m.maxImg)}px`); bad++; }
         if (m.empty) { lines.push(`- ERRORE: ${tag}: ${m.empty} fasce immagine vuote (né immagine né colore)`); bad++; }
         const odd = m.posters.filter((x) => x !== null && Math.abs(x - 16 / 9) > 0.05);
         if (odd.length) { lines.push(`- ERRORE: ${tag}: immagine non 16/9 (${odd.join(', ')})`); bad++; }

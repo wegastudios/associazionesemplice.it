@@ -454,3 +454,7 @@
 @container (max-width: 15.5rem) {
 	.asemf-grid .asemf-more { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 }
+
+/* WordPress aggiunge alle immagini «lazy» con sizes="auto" un contain-intrinsic-size di 3000×1500 px e contain: size: con larghezza 100% e altezza auto
+   la locandina diventa alta 1500 px. Le immagini del plugin tornano alla loro proporzione vera (specificità doppia: vale qualunque sia l'ordine dei fogli). */
+.asemf.asemf img, .asem.asem img, .asemf-poster.asemf-poster img, .asemf-card-poster.asemf-card-poster img { contain: none; contain-intrinsic-size: none; }
