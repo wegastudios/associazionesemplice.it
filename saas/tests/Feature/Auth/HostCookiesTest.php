@@ -43,6 +43,16 @@ function hcCookie(TestResponse $response, string $name): ?Cookie
     return null;
 }
 
+/** Il cookie col nome dato è nella risposta ed è scaduto (cancellato); in caso contrario il messaggio elenca i cookie della risposta. */
+function hcExpired(TestResponse $response, string $name): void
+{
+    $list = implode('; ', array_map(static fn (Cookie $c): string => $c->getName().' path='.$c->getPath().' scade='.$c->getExpiresTime(), $response->headers->getCookies()));
+    $cookie = hcCookie($response, $name);
+
+    expect($cookie)->not->toBeNull('assente '.$name.' tra: '.$list);
+    expect($cookie->getExpiresTime() !== 0 && $cookie->getExpiresTime() < time())->toBeTrue('non scaduto '.$name.' tra: '.$list);
+}
+
 /** Regole del prefisso __Host-: Secure, percorso /, nessun Domain. */
 function hcAssertHostRules(?Cookie $cookie, string $name): void
 {
@@ -56,7 +66,9 @@ function hcAssertHostRules(?Cookie $cookie, string $name): void
 /** Accesso dell'operatore con «ricordami» sull'indirizzo dato: restituisce il cookie «ricordami» (nome, valore grezzo, valore in chiaro). */
 function hcRememberLogin(object $test, string $url): array
 {
-    $login = $test->post($url.'/accesso', ['email' => 'anna@example.com', 'password' => $test::PASSWORD, 'remember' => true]);
+    // Una guardia nuova a ogni accesso: nei test resta in memoria da una richiesta all'altra, con la richiesta di prima.
+    $test->app['auth']->forgetGuards();
+    $login = $test->post($url.'/accesso',['email' => 'anna@example.com', 'password' => $test::PASSWORD, 'remember' => true]);
     $names = array_values(array_filter(array_map(static fn (Cookie $c): string => $c->getName(), $login->headers->getCookies()), static fn (string $n): bool => str_contains($n, 'remember_')));
     expect($names)->toHaveCount(1);
 
@@ -69,6 +81,8 @@ function hcNewBrowser(object $test): void
     (function (): void {
         $this->flushSession();
         $this->app['auth']->forgetGuards();
+        // Nei test il vasetto dei cookie è lo stesso fra una richiesta e l'altra: i cookie messi in coda prima non devono finire nella risposta dopo.
+        $this->app['cookie']->flushQueuedCookies();
         $this->defaultCookies = [];
         $this->unencryptedCookies = [];
     })->call($test);
@@ -114,9 +128,13 @@ it('il «ricordami» su HTTPS si chiama __Host-remember_web, con le regole __Hos
 it('l\'uscita cancella il cookie «ricordami» con il nome nuovo', function (): void {
     $user = $this->createUser('anna@example.com');
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
-    [$name] = hcRememberLogin($this, HC_APP);
+    [$name, $raw] = hcRememberLogin($this, HC_APP);
 
-    $this->post(HC_APP.'/esci')->assertCookieExpired($name);
+    // Chi esce ha ancora il cookie «ricordami» nel browser: il server lo cancella con il nome nuovo.
+    hcNewBrowser($this);
+    $out = $this->actingAs($user)->withUnencryptedCookie($name, $raw)->post(HC_APP.'/esci');
+
+    hcExpired($out, $name);
 });
 
 it('la guardia del gestionale è la nostra, quella dell\'amministrazione no, e l\'amministrazione non cambia nome', function (): void {
@@ -163,7 +181,7 @@ it('il vecchio «ricordami» passa al nome nuovo alla prima visita, senza rifare
         // Stesso valore (cifrato col nome nuovo) e nessuna proroga: scade alla fine della finestra.
         ->and($response->getCookie('__Host-remember_web')?->getValue())->toBe($plain)
         ->and($new->getExpiresTime())->toBe($until->getTimestamp());
-    $response->assertCookieExpired($legacy);
+    hcExpired($response, $legacy);
 
     // La visita dopo, con il solo cookie nuovo, entra ancora.
     $newRaw = (string) $response->getCookie('__Host-remember_web', false)?->getValue();
@@ -184,7 +202,7 @@ it('chiusa la finestra il vecchio «ricordami» non vale più e si cancella: una
 
         $this->assertGuest();
         expect(hcCookie($response, '__Host-remember_web'))->toBeNull();
-        $response->assertCookieExpired($legacy);
+        hcExpired($response, $legacy);
     }
 });
 
@@ -200,7 +218,7 @@ it('con tutti e due i cookie vale quello nuovo e il vecchio si cancella', functi
 
     // Non riscrive il nuovo (già c'è), cancella solo il vecchio.
     expect(hcCookie($response, $new))->toBeNull();
-    $response->assertCookieExpired($legacy);
+    hcExpired($response, $legacy);
 });
 
 /** Associazione con area soci attiva e un socio. Restituisce l'indirizzo dell'area, su HTTPS e su http. */
@@ -299,7 +317,7 @@ it('il vecchio as_socio passa al nome nuovo alla prima visita, senza rifare l\'a
     expect($new->isHttpOnly())->toBeTrue()
         ->and($response->getCookie('__Host-as_socio')?->getValue())->toBe($token)
         ->and($new->getExpiresTime())->toBeGreaterThan(time() + 89 * 86400);
-    $response->assertCookieExpired('as_socio');
+    hcExpired($response, 'as_socio');
     expect(hcCookie($response, 'as_socio')?->getPath())->toBe('/area');
 
     // La visita dopo, con il solo cookie nuovo, entra ancora.
@@ -318,7 +336,7 @@ it('chiusa la finestra il vecchio as_socio non vale più: si riparte dall\'acces
         $response = $this->withUnencryptedCookie('as_socio', $raw)->get($https)->assertRedirectContains('/area/accesso');
 
         expect(hcCookie($response, '__Host-as_socio'))->toBeNull();
-        $response->assertCookieExpired('as_socio');
+        hcExpired($response, 'as_socio');
     }
 });
 
