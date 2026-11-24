@@ -27,6 +27,7 @@ use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Contracts\PlatformSettingsStore;
 use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Core\Database\DatabaseRegistry;
+use App\Modules\Core\Demo\DemoMailGuard;
 use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Http\Middleware\ResolveProxyClient;
 use App\Modules\Core\Mail\PrimaryMailer;
@@ -90,6 +91,8 @@ final class CoreServiceProvider extends ServiceProvider
         if (! $this->app->runningUnitTests()) {
             $this->app->make(PlatformConfig::class)->apply();
         }
+        // Nella demo nessuna posta esce: ogni mailer diventa «log», dopo le impostazioni della piattaforma.
+        DemoMailGuard::enforce();
 
         // Email e slug senza distinzione tra maiuscole e minuscole: $table->addColumn('citext', 'email').
         PostgresGrammar::macro('typeCitext', fn (): string => 'citext');

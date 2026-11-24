@@ -18,11 +18,69 @@ In entrambi i casi la demo del gestionale sta in `~/saas-demo`; mai in `~/saas` 
 
 ## Requisiti
 
-- Sottodominio `demosaas.associazionesemplice.it`, con cartella pubblica `~/saas-demo/current/public`, HTTPS attivo (i cookie `__Host-` lo richiedono).
-- PHP e PostgreSQL come in produzione (stessa versione di PHP, PostgreSQL 16). **Niente Redis**: `CACHE_STORE=database`.
+- Dominio principale `demosaas.associazionesemplice.it` dell'account, con HTTPS valido (i cookie `__Host-` lo richiedono). La cartella pubblica è `public_html` com'è, preparata come spiegato sotto («soluzione B»).
+- PHP 8.3 (CLI e web) e PostgreSQL 16, come in produzione. **Niente Redis**: `CACHE_STORE=database`.
 - Un database PostgreSQL e **tre utenti con nomi e password diversi**: applicazione (`DB_USERNAME`), proprietario (`DB_OWNER_USERNAME`, migrazioni e azzeramento), sola lettura (`DB_BACKUP_USERNAME`). Diversi da quelli di ogni altro posto.
 - Cron di cPanel, una riga sola, scritta dal rilascio: `* * * * * cd ~/saas-demo/current && php artisan schedule:run` (`remote.sh` la aggiunge se manca; se `crontab` non c'è, la metti tu).
 - La licenza della demo è dedicata: la demo non usa nessuna chiave o licenza di produzione (`SAAS_KEY_VAULT=local`, associazione con piano «demo» interno; nessun collegamento col portale).
+
+## L'account della demo e la cartella pubblica
+
+**Account**: `demosaasassociaz` (cPanel), separato da quello della demo WordPress. Stesso server e stessa porta SSH della produzione; la chiave per entrare a mano sta sul PC del titolare, fuori da OneDrive (`C:\Users\lucar\.ssh\demosaas_ed25519`). Il deploy usa `SAAS_SSH_HOST`, `SAAS_SSH_PORT`, `SAAS_SSH_USER` dell'ambiente GitHub `demo`; l'utente è `demosaasassociaz`. Codice, `.env`, storage e versioni stanno in `~/saas-demo`.
+
+**PHP**: CLI 8.3.36 con `pdo_pgsql`, `sodium`, `intl`, `gd`, `pcntl` (senza Redis né APCu: non servono, la cache è nel database); PHP del dominio 8.3.36 (`ea-php83`). `psql`/`pg_dump` 16. Il numero di versione di PHP non compare mai in `/up` né in altre pagine pubbliche.
+
+**Il problema**: il document root è `/home/demosaasassociaz/public_html`, dominio **principale** dell'account: non si cambia da cPanel. L'applicazione però vuole come cartella pubblica `~/saas-demo/current/public`, che cambia a ogni rilascio.
+
+| | A. `public_html` = collegamento a `current/public` | **B. `public_html` vera, con file stabili** (scelta) |
+|---|---|---|
+| Come | si toglie la cartella e si crea il collegamento | `public_html` resta com'è; dentro: `.htaccess` (blocchi di cPanel intatti + il nostro blocco), `index.php` di avvio, collegamenti a `assets`, `build`, `favicon.*`, `.well-known` vero |
+| AutoSSL / DCV | scrive in `public_html/.well-known` = dentro la versione: sparisce al rilascio successivo e il rinnovo del certificato può fallire | `.well-known` è una cartella vera, mai toccata |
+| `.htaccess`, `.user.ini`, `php.ini` di cPanel (log errori, `ea-php83`) | spariscono o finiscono nella versione | restano dove cPanel li ha messi |
+| Cosa si vede dal web | tutto `public/` della versione | solo ciò che c'è in `public_html`: niente `.env`, `storage`, `vendor`, `composer.*`, versioni (stanno fuori) |
+| Ritorno indietro | rimettere la cartella | `ripristina`: `.htaccess` e `index.php` come prima, via i collegamenti |
+
+**Perché B**: la A mette `.well-known` e i file di cPanel nella cartella che il rilascio sostituisce; la B tiene tutto ciò che cPanel gestisce dove sta e porta fuori dal web tutto il resto.
+
+### Come funziona la B
+
+- **`index.php` di avvio**: file vero di poche righe, uguale a ogni rilascio: `clearstatcache(true);` poi `require dirname(__DIR__).'/saas-demo/current/public/index.php';`. Il file incluso ha `__DIR__` = il percorso **reale** della versione (PHP risolve i collegamenti), quindi `index.php` dell'app (che usa `__DIR__.'/../vendor/autoload.php'`, `../bootstrap/app.php`, `../storage/framework/maintenance.php`) trova `vendor`, `bootstrap` e `storage` della versione in uso, senza nessuna modifica. Non si usa un collegamento a `index.php`: con un collegamento il percorso reale dipende dal server; con il `require` no.
+- **Cache dei percorsi**: PHP e OPcache ricordano il percorso risolto di `current`. `clearstatcache(true)` azzera la prima a ogni richiesta; per OPcache, **dopo ogni cambio di `current`** si lancia `php artisan saas:web:refresh` (la lancia già `deploy/remote.sh` subito dopo il cambio; a mano: `cd ~/saas-demo/current && /usr/local/bin/php artisan saas:web:refresh`; con `--no-warm` solo l'azzeramento). Il comando chiama una rotta firmata dell'app che azzera OPcache e la cache dei percorsi del PHP web, poi riscalda le pagine principali. Lo si lancia anche dopo `ripristina` o dopo un ritorno a una versione precedente (`rollback.sh`).
+- **Collegamenti**: `assets`, `build`, `favicon.ico`, `favicon.svg` (solo quelli che la versione ha) puntano a `~/saas-demo/current/public/…`: il percorso del collegamento non cambia perché `current` è esso stesso un collegamento. `robots.txt` non è un file: lo risponde l'app (nella demo: `Disallow: /`).
+- **`.htaccess`**: gli si **aggiunge in fondo** il blocco di `deploy/demo-htaccess.conf` tra i marcatori `# BEGIN AssociazioneSemplice demo` / `# END AssociazioneSemplice demo`. Tutto il resto, compresi `# php -- BEGIN cPanel-generated handler … END` (`AddHandler ea-php83`) e `php_value error_log` / `log_errors`, resta com'è e dov'è. Ripetere l'installazione sostituisce solo il nostro blocco.
+- **Mai toccati**: `.user.ini`, `php.ini`, `.well-known`, `cgi-bin`. Un file o cartella vera con il nome di un collegamento non viene sovrascritto (avviso, lo sposti tu).
+- **Divieti**: il blocco nega `.user.ini`, `php.ini`, `.htaccess`, `.env*`, `composer.*`, `artisan` e file `.log/.sh/.md/.lock/.json/.yml/.sql/.bak`, ogni file o cartella nascosti (tranne `.well-known`), e disattiva elenco cartelle e MultiViews. Il resto che non è un file vero va all'app (404 dell'app).
+
+### Comandi esatti (solo quando il titolare dà il via; niente si installa prima)
+
+Dopo il primo rilascio (serve `~/saas-demo/current`). Sul server, come `demosaasassociaz`:
+
+```
+bash ~/saas-demo/current/deploy/demo-webroot.sh stato        # sola lettura
+bash ~/saas-demo/current/deploy/demo-webroot.sh installa     # copia di sicurezza, poi scrive .htaccess, index.php, collegamenti
+bash ~/saas-demo/current/deploy/demo-webroot.sh prova        # richiede dal dominio ciò che non deve rispondere
+```
+
+La copia di sicurezza è in `~/saas-demo/shared/webroot-backup/<data>/` (solo `.htaccess` e `index.php`, com'erano **prima** della nostra installazione).
+
+**Ritorno indietro**:
+
+```
+bash ~/saas-demo/current/deploy/demo-webroot.sh ripristina   # .htaccess e index.php come prima, via i collegamenti
+cd ~/saas-demo/current && /usr/local/bin/php artisan saas:web:refresh --no-warm
+```
+
+`.user.ini`, `php.ini` e `.well-known` non vengono mai toccati né in un senso né nell'altro. Dopo `installa` si fa `prova`; dopo `ripristina` si controlla che il dominio risponda come prima.
+
+### Cosa NON deve essere raggiungibile dal web
+
+`prova` richiede sul dominio, con `curl`, questi indirizzi e si aspetta **400, 403 o 404** (mai 200 né un reindirizzamento): `/.env`, `/.env.backup`, `/.git/config`, `/.user.ini`, `/php.ini`, `/.htaccess`, `/composer.json`, `/composer.lock`, `/artisan`, `/vendor/autoload.php`, `/storage/logs/laravel.log`, `/storage`, `/bootstrap/app.php`, `/app`, `/config/app.php`, `/database`, `/deploy/remote.sh`, `/releases`, `/saas-demo`, `/shared/.env`, `/current`, `/public/index.php`, `/../.env`, `/%2e%2e/.env`, `/index.php/.env`. E si aspetta **200** da `/up`, `/accesso`, `/area/accesso`, `/robots.txt` (con `Disallow: /`). Esce con errore se anche solo uno non torna. Va lanciata dopo ogni installazione e quando si cambia qualcosa in `public_html`.
+
+Prove automatiche (CI): `tests/Feature/Core/DemoWebrootTest.php` prova il blocco `.htaccess`, l'installazione su una finta `public_html` con i blocchi di cPanel, la ripetizione senza duplicati, il ritorno indietro identico e che `.user.ini`, `php.ini` e `.well-known` restano uguali. Il test sul dominio vero (`prova`) si fa a mano dopo l'installazione.
+
+## Posta: niente esce
+
+Con `SAAS_DEMO=true` (ambiente non di produzione) l'app, all'avvio, rende **«log» ogni mailer** (`DemoMailGuard`): `MAIL_MAILER`, le impostazioni della piattaforma, `smtp`, `emailit`, `failover`, `ses`… tutti scrivono nel registro, e `SAAS_MAIL_PRIMARY` torna `cpanel`. Anche se per errore nel `.env` ci fossero `MAIL_MAILER=smtp` o Emailit, inviti, codici e link dell'area soci non escono. Il controllo del `.env` segnala comunque quelle variabili. Prove: `tests/Feature/Core/DemoMailTest.php`.
 
 ## Ambiente GitHub `demo`
 

@@ -96,7 +96,7 @@ it('regola di isolamento: nessun collegamento verso GitHub, portale, posta, Stri
         'GITHUB_TOKEN' => 'ghp_finto', 'SAAS_PORTAL_URL' => 'https://associazionesemplice.it', 'SAAS_PORTAL_SIGNING_KEY' => 'finta',
         'EMAILIT_PASSWORD' => 'finta', 'MAIL_HOST' => 'mail.example.test', 'MAIL_PASSWORD' => 'finta', 'STRIPE_SECRET' => 'sk_finta',
         'SAAS_KEY_SERVICE_URL' => 'https://chiavi.example.test', 'SAAS_PROXY_SECRET' => 'finto', 'REDIS_HOST' => '/tmp/redis.sock',
-        'DB_URL' => 'pgsql://u:p@host/db', 'SAAS_UNIFIED_LOGIN' => 'true',
+        'DB_URL' => 'pgsql://u:p@host/db', 'SAAS_UNIFIED_LOGIN' => 'true', 'SAAS_MAIL_PRIMARY' => 'emailit',
         'EMAILIT_HOST' => '', // vuota: non punta da nessuna parte
         'VARIABILE_STRANA' => 'x',
     ]);
@@ -105,7 +105,7 @@ it('regola di isolamento: nessun collegamento verso GitHub, portale, posta, Stri
         $problems[$name] = $why;
     }
 
-    foreach (['GITHUB_TOKEN', 'SAAS_PORTAL_URL', 'SAAS_PORTAL_SIGNING_KEY', 'EMAILIT_PASSWORD', 'MAIL_HOST', 'MAIL_PASSWORD', 'STRIPE_SECRET', 'SAAS_KEY_SERVICE_URL', 'SAAS_PROXY_SECRET', 'REDIS_HOST', 'DB_URL', 'SAAS_UNIFIED_LOGIN'] as $name) {
+    foreach (['GITHUB_TOKEN', 'SAAS_PORTAL_URL', 'SAAS_PORTAL_SIGNING_KEY', 'EMAILIT_PASSWORD', 'MAIL_HOST', 'MAIL_PASSWORD', 'STRIPE_SECRET', 'SAAS_KEY_SERVICE_URL', 'SAAS_PROXY_SECRET', 'REDIS_HOST', 'DB_URL', 'SAAS_UNIFIED_LOGIN', 'SAAS_MAIL_PRIMARY'] as $name) {
         expect($problems[$name] ?? null)->toBe(DemoEnvCheck::EXTERNAL, $name);
     }
     expect($problems['VARIABILE_STRANA'])->toBe(DemoEnvCheck::UNEXPECTED)->and($problems)->not->toHaveKey('EMAILIT_HOST');
