@@ -55,7 +55,7 @@ final class RoleObjectAudit
     private const USER_SCHEMA = "n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'";
 
     /**
-     * @return array{unexpectedSchemas: list<string>, owned: list<string>, groupGrants: list<string>, createDatabase: list<string>, createSchema: list<string>, ownerMembers: list<string>, setRole: list<string>}
+     * @return array{unexpectedSchemas: list<string>, owned: list<string>, groupGrants: list<string>, createDatabase: list<string>, createSchema: list<string>, ownerMembers: list<string>, setRole: list<string>, backupWrites?: list<string>}
      */
     public static function inspect(Connection $connection, string $appRole, string $backupRole, string $ownerRole): array
     {
@@ -98,7 +98,38 @@ final class RoleObjectAudit
                FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace, aclexplode(c.relacl) a
               WHERE {$user} AND c.relkind IN ('r', 'p', 'v', 'm', 'S', 'f') AND a.grantee IN (SELECT roleid FROM bad) AND a.grantee <> c.relowner
               GROUP BY n.nspname, c.relname ORDER BY 1 LIMIT {$limit})
+            UNION ALL
+            (SELECT 'colonna ' || n.nspname || '.' || c.relname || '.' || att.attname || ' (' || string_agg(DISTINCT a.privilege_type, ', ') || ')'
+               FROM pg_attribute att JOIN pg_class c ON c.oid = att.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace, aclexplode(att.attacl) a
+              WHERE {$user} AND att.attnum > 0 AND NOT att.attisdropped AND a.grantee IN (SELECT roleid FROM bad) AND a.grantee <> c.relowner
+              GROUP BY n.nspname, c.relname, att.attname ORDER BY 1 LIMIT {$limit})
+            UNION ALL
+            (SELECT 'funzione ' || n.nspname || '.' || p.proname || ' (' || string_agg(DISTINCT a.privilege_type, ', ') || ')'
+               FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace, aclexplode(p.proacl) a
+              WHERE {$user} AND a.grantee IN (SELECT roleid FROM bad) AND a.grantee <> p.proowner
+              GROUP BY n.nspname, p.proname ORDER BY 1 LIMIT {$limit})
+            UNION ALL
+            (SELECT 'privilegi predefiniti ' || coalesce('dello schema ' || n.nspname, 'di ogni schema') || ' (' || string_agg(DISTINCT a.privilege_type, ', ') || ')'
+               FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace, aclexplode(d.defaclacl) a
+              WHERE a.grantee IN (SELECT roleid FROM bad) AND a.grantee <> d.defaclrole
+              GROUP BY n.nspname ORDER BY 1 LIMIT {$limit})
             SQL, $roles);
+
+        // Il ruolo dei backup legge e basta: nessuna scrittura su nessuna tabella, né sua né ereditata da un gruppo o da PUBLIC.
+        $backupWrites = self::column($connection, <<<SQL
+            (SELECT n.nspname || '.' || c.relname || ' (' || string_agg(p.priv, ', ' ORDER BY p.priv) || ')' AS v
+               FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+               CROSS JOIN (VALUES ('DELETE'), ('INSERT'), ('TRIGGER'), ('TRUNCATE'), ('UPDATE')) p(priv)
+              WHERE {$user} AND c.relkind IN ('r', 'p')
+                AND (has_table_privilege(CAST(? AS name), c.oid, p.priv)
+                     OR (p.priv IN ('INSERT', 'UPDATE') AND has_any_column_privilege(CAST(? AS name), c.oid, p.priv)))
+              GROUP BY n.nspname, c.relname ORDER BY 1 LIMIT {$limit})
+            UNION ALL
+            (SELECT 'sequenza ' || n.nspname || '.' || c.relname || ' (UPDATE)'
+               FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+              WHERE {$user} AND c.relkind = 'S' AND has_sequence_privilege(CAST(? AS name), c.oid, 'UPDATE')
+              ORDER BY 1 LIMIT {$limit})
+            SQL, [$backupRole, $backupRole, $backupRole]);
 
         $createDatabase = self::column($connection, <<<'SQL'
             SELECT v.label AS v FROM (VALUES ('applicazione', CAST(? AS name)), ('backup', CAST(? AS name))) v(label, role)
@@ -129,6 +160,7 @@ final class RoleObjectAudit
             'unexpectedSchemas' => $unexpected,
             'owned' => $owned,
             'groupGrants' => $grants,
+            'backupWrites' => $backupWrites,
             'createDatabase' => $createDatabase,
             'createSchema' => $createSchema,
             'ownerMembers' => array_map($label, $ownerMembers),
@@ -141,7 +173,7 @@ final class RoleObjectAudit
      * segnala solo se i punti precedenti sono tutti in ordine: allora il controllo per oggetto regge e il limite resta
      * un'informazione.
      *
-     * @param  array{unexpectedSchemas: list<string>, owned: list<string>, groupGrants: list<string>, createDatabase: list<string>, createSchema: list<string>, ownerMembers: list<string>, setRole: list<string>}  $facts
+     * @param  array{unexpectedSchemas: list<string>, owned: list<string>, groupGrants: list<string>, createDatabase: list<string>, createSchema: list<string>, ownerMembers: list<string>, setRole: list<string>, backupWrites?: list<string>}  $facts
      * @return array{problems: list<string>, critical: list<string>, notes: list<string>}
      */
     public static function evaluate(array $facts): array
@@ -154,7 +186,10 @@ final class RoleObjectAudit
             $problems[] = 'oggetti di proprietà dell\'applicazione, dei backup o di un ruolo di gruppo, non del proprietario ('.implode(', ', $facts['owned']).'): passarli al ruolo proprietario (ALTER ... OWNER TO) e crearli solo con le migrazioni';
         }
         if ($facts['groupGrants'] !== []) {
-            $problems[] = 'un ruolo di gruppo ha permessi oltre quelli attesi ('.implode(', ', $facts['groupGrants']).'): revocarli (REVOKE ... FROM il ruolo di gruppo)';
+            $problems[] = 'un ruolo di gruppo ha permessi oltre quelli attesi ('.implode(', ', $facts['groupGrants']).'): revocarli (REVOKE ... FROM il ruolo di gruppo; per i privilegi predefiniti ALTER DEFAULT PRIVILEGES ... REVOKE): cPanel li può rimettere da solo, per questo si ricontrolla a ogni rilascio';
+        }
+        if (($facts['backupWrites'] ?? []) !== []) {
+            $problems[] = 'il ruolo dei backup può scrivere, direttamente o per eredità ('.implode(', ', $facts['backupWrites']).'): deve essere di sola lettura, revocare INSERT/UPDATE/DELETE/TRUNCATE/TRIGGER (REVOKE ... FROM il ruolo o dal ruolo di gruppo da cui li eredita)';
         }
         if ($facts['createDatabase'] !== []) {
             $problems[] = 'CREATE sul database ('.implode(', ', $facts['createDatabase']).'): revocarlo al ruolo, o al ruolo di gruppo da cui lo eredita (REVOKE CREATE ON DATABASE)';
