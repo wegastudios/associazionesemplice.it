@@ -23,13 +23,13 @@ final class GroupPrivileges
     /** Il ruolo di gruppo: proprietario del database, senza accesso, diverso dall'utente collegato. Null se non c'è. */
     public static function groupRole(Connection $db): ?string
     {
-        $row = $db->selectOne(<<<'SQL'
+        $row = self::one($db, <<<'SQL'
             SELECT r.rolname AS g FROM pg_database d JOIN pg_roles r ON r.oid = d.datdba
             WHERE d.datname = current_database() AND NOT r.rolcanlogin
               AND r.rolname <> 'pg_database_owner' AND r.rolname <> current_user
             SQL);
 
-        return is_object($row) && is_string($row->g ?? null) ? $row->g : null;
+        return is_string($row['g'] ?? null) ? $row['g'] : null;
     }
 
     /**
@@ -43,25 +43,25 @@ final class GroupPrivileges
         $bySchema = static function (array $rows): array {
             $out = [];
             foreach ($rows as $row) {
-                $out[(string) $row->s] = (int) $row->c;
+                $out[(string) $row['s']] = (int) $row['c'];
             }
 
             return $out;
         };
 
-        $tables = $db->select(<<<'SQL'
+        $tables = self::rows($db, <<<'SQL'
             SELECT n.nspname AS s, count(*) AS c FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname = ANY (CAST(? AS text[])) AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
               AND EXISTS (SELECT 1 FROM aclexplode(c.relacl) a WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) AND a.grantee <> c.relowner)
             GROUP BY n.nspname
             SQL, [$list, $group]);
-        $sequences = $db->select(<<<'SQL'
+        $sequences = self::rows($db, <<<'SQL'
             SELECT n.nspname AS s, count(*) AS c FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname = ANY (CAST(? AS text[])) AND c.relkind = 'S'
               AND EXISTS (SELECT 1 FROM aclexplode(c.relacl) a WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) AND a.grantee <> c.relowner)
             GROUP BY n.nspname
             SQL, [$list, $group]);
-        $functions = $db->select(<<<'SQL'
+        $functions = self::rows($db, <<<'SQL'
             SELECT n.nspname AS s, count(*) AS c FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
             WHERE n.nspname = ANY (CAST(? AS text[]))
               AND EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) AND a.grantee <> p.proowner)
@@ -69,35 +69,35 @@ final class GroupPrivileges
             SQL, [$list, $group]);
 
         $columns = [];
-        foreach ($db->select(<<<'SQL'
+        foreach (self::rows($db, <<<'SQL'
             SELECT n.nspname AS s, c.relname AS t, att.attname AS col
             FROM pg_attribute att JOIN pg_class c ON c.oid = att.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname = ANY (CAST(? AS text[])) AND att.attnum > 0 AND NOT att.attisdropped
               AND EXISTS (SELECT 1 FROM aclexplode(att.attacl) a WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) AND a.grantee <> c.relowner)
             SQL, [$list, $group]) as $row) {
-            $columns[] = [(string) $row->s, (string) $row->t, (string) $row->col];
+            $columns[] = [(string) $row['s'], (string) $row['t'], (string) $row['col']];
         }
 
         // Permessi predefiniti: [ruolo che crea gli oggetti, schema (null = di ogni schema), tipo, ci si può agire].
         $defaults = [];
-        foreach ($db->select(<<<'SQL'
+        foreach (self::rows($db, <<<'SQL'
             SELECT pg_get_userbyid(d.defaclrole) AS r, n.nspname AS s, d.defaclobjtype AS k, pg_has_role(current_user, d.defaclrole, 'MEMBER') AS m
             FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
             WHERE d.defaclobjtype IN ('r', 'S', 'f', 'T') AND (n.nspname IS NULL OR n.nspname = ANY (CAST(? AS text[])))
               AND EXISTS (SELECT 1 FROM aclexplode(d.defaclacl) a WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) AND a.grantee <> d.defaclrole)
             SQL, [$list, $group]) as $row) {
-            $defaults[] = [(string) $row->r, $row->s === null ? null : (string) $row->s, (string) $row->k, (bool) $row->m];
+            $defaults[] = [(string) $row['r'], $row['s'] === null ? null : (string) $row['s'], (string) $row['k'], (bool) $row['m']];
         }
 
         // CREATE e TEMPORARY sul database (CONNECT non si tocca mai). Senza ACL esplicita il proprietario li ha tutti.
         $database = [];
         foreach (['CREATE', 'TEMPORARY'] as $privilege) {
-            $has = $db->selectOne(<<<'SQL'
+            $has = self::one($db, <<<'SQL'
                 SELECT (d.datacl IS NULL OR EXISTS (SELECT 1 FROM aclexplode(d.datacl) a WHERE a.grantee = d.datdba AND a.privilege_type = ?)) AS h
                 FROM pg_database d JOIN pg_roles r ON r.oid = d.datdba
                 WHERE d.datname = current_database() AND r.rolname = ?
                 SQL, [$privilege, $group]);
-            if (is_object($has) && $has->h) {
+            if ($has !== null && (bool) ($has['h'] ?? false)) {
                 $database[] = $privilege;
             }
         }
@@ -188,8 +188,8 @@ final class GroupPrivileges
     private static function schemas(Connection $db): array
     {
         $names = [...RoleObjectAudit::EXPECTED_SCHEMAS];
-        foreach ($db->select("SELECT nspname FROM pg_namespace WHERE nspname ~ '^org_'") as $row) {
-            $names[] = (string) $row->nspname;
+        foreach (self::rows($db, "SELECT nspname FROM pg_namespace WHERE nspname ~ '^org_'") as $row) {
+            $names[] = (string) $row['nspname'];
         }
 
         return $names;
@@ -199,6 +199,27 @@ final class GroupPrivileges
     private static function pgArray(array $values): string
     {
         return '{'.implode(',', array_map(static fn (string $v): string => '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $v).'"', $values)).'}';
+    }
+
+    /**
+     * @param  list<string>  $bindings
+     * @return list<array<string, scalar|null>>
+     */
+    private static function rows(Connection $db, string $sql, array $bindings = []): array
+    {
+        /** @var list<array<string, scalar|null>> $rows */
+        $rows = array_map(static fn (mixed $row): array => (array) $row, $db->select($sql, $bindings));
+
+        return $rows;
+    }
+
+    /**
+     * @param  list<string>  $bindings
+     * @return array<string, scalar|null>|null
+     */
+    private static function one(Connection $db, string $sql, array $bindings = []): ?array
+    {
+        return self::rows($db, $sql, $bindings)[0] ?? null;
     }
 
     private static function quote(string $identifier): string
