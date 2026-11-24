@@ -16,6 +16,10 @@ return [
         // Attesa massima di un blocco forte (migrazioni, partizioni, potatura), poi si riprova: tre tentativi in tutto
         // (App\Modules\Core\Contracts\ShortLocks). Dietro un'istruzione in fila si fermano tutte le query sulla tabella.
         'lock_timeout' => env('SAAS_DB_LOCK_TIMEOUT', '3s'),
+
+        // Interruttore di `saas:db:revoke-group` (e del suo lancio a ogni rilascio): spento, il comando non tocca nessun
+        // permesso (il dry-run funziona comunque). Si accende solo dove il titolare ha detto sì. docs/DATABASE.md §8.
+        'revoke_group' => filter_var(env('SAAS_DB_REVOKE_GROUP', false), FILTER_VALIDATE_BOOLEAN),
     ],
 
     'auth' => [
