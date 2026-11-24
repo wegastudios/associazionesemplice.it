@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-proprieta|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
 #
 # Il log del workflow è pubblico: ogni stato reale della produzione (variabili, interruttori, permessi, coda, cancellazioni, ciclo di vita, ...) va su file shared/<azione>-<AAAAMMGGTHHMMSS>.txt (600, ultimi 5 per azione); nel log solo esito e «salvato in <percorso>».
 # Azioni fisse e limitate (non è una shell remota):
@@ -8,6 +8,7 @@
 #   chiave-catalogo   se SAAS_PORTAL_SIGNING_KEY è vuota genera il seme in shared/.env (permessi 600, copia del file prima),
 #                     svuota la cache della configurazione e stampa SOLO kid e parte pubblica x. Il seme non si stampa mai.
 #   variabili         sola lettura: STATO (mai il valore) delle variabili del .env e scelta EFFETTIVA dalla configurazione dell applicazione, su file shared/variabili-<data>.txt (600); nel log solo «salvato in»; commenti in riga del .env letti come vuoti
+#   db-proprieta      sola lettura (solo SELECT sul catalogo, ruolo owner): inventario di proprietari, ruoli di gruppo, privilegi, default privileges, RLS; su file, nel log solo «salvato in»
 #   copie-env         sola lettura: elenca cosa cancellerebbe la rotazione delle copie shared/.env.bak-<data> (massimo 2, nessuna oltre 7 giorni)
 #   pulisci-copie-env applica la rotazione una volta e accende quella automatica; cancella SOLO .env.bak-<14 cifre>, mai il .env
 #   percorso-pgdump   imposta SAAS_PG_DUMP e SAAS_PG_RESTORE nella cartella indicata, solo se è la versione 16
@@ -90,7 +91,7 @@ onoff() { case "$1" in 1|true|on|yes) echo acceso ;; "") echo "non impostato" ;;
 # --- stato delle variabili: inizio (testata in saas/tests/shell/ops-variabili.sh) ---
 # Mai il valore, salvo per i soli interruttori (true/false/0/1/on/off/yes/no) e per scelte note non segrete (local/remote, driver, ambiente).
 VAR_BOOL='^(0|1|true|false|on|off|yes|no)$'
-VAR_CHOICE='^(local|remote|production|staging|testing|smtp|emailit|log|array|redis|database|file|apc|apcu|sync|pgsql|sftp|lax|strict|none)$'
+VAR_CHOICE='^(disable|allow|prefer|require|verify-ca|verify-full|local|remote|production|staging|testing|smtp|emailit|log|array|redis|database|file|apc|apcu|sync|pgsql|sftp|lax|strict|none)$'
 var_state() { # tipo(bool|scelta|segreta) nome valore-già-letto
   local kind="$1" name="$2" val="$3"
   if [ -z "$val" ]; then
@@ -104,6 +105,9 @@ var_state() { # tipo(bool|scelta|segreta) nome valore-già-letto
     scelta) if [[ "$val" =~ $VAR_CHOICE ]]; then echo "$name = $val"; else echo "$name = impostata"; fi ;;
     *) echo "$name = impostata" ;;
   esac
+}
+db_host_class() { # solo il genere dell'host (mai il nome vero): vuoto, localhost, 127.0.0.1, ::1, socket, altro
+  case "$1" in "") echo vuoto ;; localhost|127.0.0.1|::1) echo "$1" ;; /*) echo socket ;; *) echo altro ;; esac
 }
 # --- stato delle variabili: fine ---
 
@@ -407,7 +411,7 @@ case "$ACTION" in
       for v in APP_DEBUG SAAS_HEALTH_STRICT SAAS_REQUIRE_TWO_FACTOR SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED SAAS_UNIFIED_LOGIN SAAS_UNIFIED_OPERATORS SAAS_STAFF_SSO SAAS_STAFF_ISSUER SAAS_DEMO SESSION_SECURE_COOKIE; do
         var_state bool "$v" "$(get "$v")"
       done
-      for v in APP_ENV SAAS_KEY_VAULT MAIL_MAILER SAAS_MAIL_PRIMARY CACHE_STORE QUEUE_CONNECTION SESSION_DRIVER DB_CONNECTION SAAS_BACKUP_DRIVER REDIS_CLIENT; do
+      for v in APP_ENV DB_SSLMODE SAAS_KEY_VAULT MAIL_MAILER SAAS_MAIL_PRIMARY CACHE_STORE QUEUE_CONNECTION SESSION_DRIVER DB_CONNECTION SAAS_BACKUP_DRIVER REDIS_CLIENT; do
         var_state scelta "$v" "$(get "$v")"
       done
       for v in MAIL_HOST MAIL_USERNAME MAIL_PASSWORD EMAILIT_HOST EMAILIT_USERNAME EMAILIT_PASSWORD EMAILIT_PORT SESSION_COOKIE DB_RESTORE_DATABASE SAAS_BACKUP_PUBLIC_KEY SAAS_BACKUP_SECRET_KEY SAAS_BACKUP_SFTP_HOST SAAS_BACKUP_SFTP_USERNAME SAAS_BACKUP_SFTP_FINGERPRINT SAAS_BACKUP_SFTP_PORT SAAS_BACKUP_SFTP_ROOT SAAS_BACKUP_SFTP_KEY_PATH REDIS_HOST REDIS_PORT REDIS_PASSWORD REDIS_URL REDIS_DB REDIS_CACHE_DB SAAS_KEY_SERVICE_URL SAAS_KEY_SERVICE_SIGNING_KEY SAAS_MASTER_KEY SAAS_PG_DUMP SAAS_PG_RESTORE; do
@@ -418,6 +422,7 @@ case "$ACTION" in
       if [[ "$pgd" =~ ^/[A-Za-z0-9_./-]+$ ]] && [ -x "$pgd" ]; then
         echo "pg_dump configurato = versione $("$pgd" --version 2>/dev/null | head -1 | grep -oE '[0-9]+(\.[0-9]+)*' | head -1)"
       else echo "pg_dump configurato = non eseguibile o non impostato"; fi
+      echo "DB_HOST = $(db_host_class "$(get DB_HOST)")"
       echo
       echo "== Scelta effettiva (configurazione caricata dall'applicazione) =="
       ( cd "$BASE/current" && "$PHP" artisan tinker --execute='
@@ -443,6 +448,9 @@ case "$ACTION" in
         $line("queue.default", $pick(config("queue.default"), ["database", "sync", "redis"]));
         $line("session.driver", $pick(config("session.driver"), ["database", "file", "array", "redis", "cookie"]));
         $line("database.default", $pick(config("database.default"), ["pgsql"]));
+        $h = (string) config("database.connections.pgsql.host");
+        $line("database.connections.pgsql.host", $h === "" ? "vuoto" : (in_array($h, ["localhost", "127.0.0.1", "::1"], true) ? $h : (str_starts_with($h, "/") ? "socket" : "altro")));
+        $line("database.connections.pgsql.sslmode", $pick(config("database.connections.pgsql.sslmode"), ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"]));
         $line("saas.backup.public_key", $set(config("saas.backup.public_key")));
         $line("saas.backup.secret_key", $set(config("saas.backup.secret_key")));
         $line("filesystems.disks.backups.driver", $pick(config("filesystems.disks.backups.driver"), ["local", "sftp"]));
@@ -651,6 +659,113 @@ case "$ACTION" in
     ' > "$F" 2>&1 || true
     prune_files permessi-diagnosi
     echo "permessi-diagnosi salvata in $F"
+    ;;
+  db-proprieta)
+    # Sola lettura (solo SELECT sul catalogo, col ruolo proprietario pgsql_owner): inventario del database di produzione.
+    # Proprietari del database e di schemi, tabelle, viste, sequenze, funzioni (conteggi e poi elenco); ruoli di gruppo dei
+    # ruoli app/backup/owner (con admin/inherit/set se la versione lo permette); privilegi dei ruoli di gruppo e dei tre ruoli
+    # su schemi e tabelle con chi li ha concessi; default privileges; CREATE sul database; RLS e FORCE RLS per tabella;
+    # se app è NOINHERIT. Tutto su file in shared/ (600): nel log solo «salvato in».
+    cd "$BASE/current"
+    F="$(newfile db-proprieta)"
+    "$PHP" artisan tinker --execute='
+      $db = DB::connection("pgsql_owner");
+      $roles = ["app" => (string) config("database.connections.pgsql.username"), "backup" => (string) config("database.connections.pgsql_owner.backup_role"), "owner" => (string) config("database.connections.pgsql_owner.username")];
+      $sec = function (string $title, Closure $f): void {
+        echo PHP_EOL, "== ", $title, " ==", PHP_EOL;
+        try { $f(); } catch (Throwable $e) { echo "non disponibile (", get_class($e), ")", PHP_EOL; }
+      };
+      $user = "n.nspname !~ ? and n.nspname <> ?";
+      $uargs = ["^pg_", "information_schema"];
+
+      $sec("Proprietario del database", function () use ($db) {
+        $r = $db->selectOne("select pg_get_userbyid(datdba) as o from pg_database where datname = current_database()");
+        echo "proprietario: ", $r->o, PHP_EOL;
+      });
+
+      $objects = [];
+      $sec("Proprietari degli oggetti (raggruppati)", function () use ($db, $user, $uargs, &$objects) {
+        foreach ($db->select("select ? as k, n.nspname as nome, pg_get_userbyid(n.nspowner) as o from pg_namespace n where {$user}", array_merge(["schema"], $uargs)) as $r) { $objects[] = [$r->k, $r->nome, $r->o]; }
+        $kinds = ["r" => "tabella", "p" => "tabella partizionata", "v" => "vista", "m" => "vista materializzata", "S" => "sequenza", "f" => "tabella esterna"];
+        foreach ($db->select("select c.relkind as k, n.nspname || ? || c.relname as nome, pg_get_userbyid(c.relowner) as o from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relkind in (?, ?, ?, ?, ?, ?) and {$user}", array_merge([".", "r", "p", "v", "m", "S", "f"], $uargs)) as $r) { $objects[] = [$kinds[$r->k] ?? $r->k, $r->nome, $r->o]; }
+        foreach ($db->select("select n.nspname || ? || p.proname as nome, pg_get_userbyid(p.proowner) as o from pg_proc p join pg_namespace n on n.oid = p.pronamespace where {$user}", array_merge(["."], $uargs)) as $r) { $objects[] = ["funzione", $r->nome, $r->o]; }
+        $count = [];
+        foreach ($objects as [$k, $n, $o]) { $count[$o][$k] = ($count[$o][$k] ?? 0) + 1; }
+        ksort($count);
+        foreach ($count as $o => $byKind) { ksort($byKind); echo $o, ": "; foreach ($byKind as $k => $c) { echo $k, "=", $c, " "; } echo PHP_EOL; }
+      });
+      $sec("Proprietari degli oggetti (elenco)", function () use (&$objects) {
+        usort($objects, fn ($a, $b) => [$a[2], $a[0], $a[1]] <=> [$b[2], $b[0], $b[1]]);
+        foreach ($objects as [$k, $n, $o]) { echo $o, " ", $k, " ", $n, PHP_EOL; }
+      });
+
+      $sec("Ruoli: attributi e ruoli di gruppo", function () use ($db, $roles) {
+        $v16 = (int) $db->selectOne("select count(*) as n from information_schema.columns where table_schema = ? and table_name = ? and column_name = ?", ["pg_catalog", "pg_auth_members", "inherit_option"])->n > 0;
+        echo "versione del server con inherit/set per appartenenza: ", $v16 ? "si" : "no", PHP_EOL;
+        foreach ($roles as $label => $name) {
+          $r = $db->selectOne("select rolinherit, rolsuper, rolcreaterole, rolcreatedb, rolbypassrls, rolcanlogin from pg_roles where rolname = ?", [$name]);
+          if ($r === null) { echo $label, ": ruolo non trovato", PHP_EOL; continue; }
+          echo $label, ": noinherit=", $r->rolinherit ? "NO (inherit)" : "SI", " superuser=", var_export($r->rolsuper, true), " createrole=", var_export($r->rolcreaterole, true), " createdb=", var_export($r->rolcreatedb, true), " bypassrls=", var_export($r->rolbypassrls, true), " login=", var_export($r->rolcanlogin, true), PHP_EOL;
+          $cols = $v16 ? "m.admin_option, m.inherit_option, m.set_option" : "m.admin_option";
+          foreach ($db->select("select p.rolname as grp, {$cols} from pg_auth_members m join pg_roles r on r.oid = m.member join pg_roles p on p.oid = m.roleid where r.rolname = ? order by 1", [$name]) as $g) {
+            echo "  membro di ", $g->grp, " admin=", var_export($g->admin_option, true), $v16 ? " inherit=".var_export($g->inherit_option, true)." set=".var_export($g->set_option, true) : "", PHP_EOL;
+          }
+        }
+      });
+
+      $names = array_values(array_filter($roles));
+      $groups = [];
+      $sec("Ruoli di gruppo (raccolti)", function () use ($db, $names, &$groups) {
+        foreach ($names as $n) {
+          foreach ($db->select("select p.rolname as grp from pg_auth_members m join pg_roles r on r.oid = m.member join pg_roles p on p.oid = m.roleid where r.rolname = ?", [$n]) as $g) { $groups[$g->grp] = true; }
+        }
+        echo count($groups), " ruoli di gruppo", PHP_EOL;
+      });
+      $who = function () use ($names, &$groups): array { return array_values(array_unique(array_merge($names, array_keys($groups)))); };
+
+      $sec("Privilegi su schemi (ruoli di gruppo e ruoli app/backup/owner; chi li ha concessi)", function () use ($db, $who) {
+        $w = $who(); if ($w === []) { echo "(nessun ruolo)", PHP_EOL; return; }
+        $in = implode(",", array_fill(0, count($w), "?"));
+        foreach ($db->select("select n.nspname as s, pg_get_userbyid(a.grantee) as chi, a.privilege_type as p, pg_get_userbyid(a.grantor) as grantor, a.is_grantable as g from pg_namespace n, aclexplode(n.nspacl) a where a.grantee <> 0 and pg_get_userbyid(a.grantee) in ({$in}) order by 1, 2, 3", $w) as $r) {
+          echo $r->s, " ", $r->chi, " ", $r->p, " concesso da ", $r->grantor, $r->g ? " (con grant option)" : "", PHP_EOL;
+        }
+      });
+      $sec("Privilegi su tabelle (raggruppati per ruolo, privilegio e chi li ha concessi)", function () use ($db, $who) {
+        $w = $who(); if ($w === []) { echo "(nessun ruolo)", PHP_EOL; return; }
+        $in = implode(",", array_fill(0, count($w), "?"));
+        foreach ($db->select("select pg_get_userbyid(a.grantee) as chi, a.privilege_type as p, pg_get_userbyid(a.grantor) as grantor, count(*) as n from pg_class c join pg_namespace n on n.oid = c.relnamespace, aclexplode(c.relacl) a where c.relkind in (?, ?, ?, ?) and a.grantee <> 0 and pg_get_userbyid(a.grantee) in ({$in}) group by 1, 2, 3 order by 1, 2, 3", array_merge(["r", "p", "v", "m"], $w)) as $r) {
+          echo $r->chi, " ", $r->p, " concesso da ", $r->grantor, ": ", $r->n, " tabelle", PHP_EOL;
+        }
+      });
+      $sec("Privilegi su tabelle (elenco)", function () use ($db, $who) {
+        $w = $who(); if ($w === []) { echo "(nessun ruolo)", PHP_EOL; return; }
+        $in = implode(",", array_fill(0, count($w), "?"));
+        foreach ($db->select("select n.nspname || ? || c.relname as t, pg_get_userbyid(a.grantee) as chi, a.privilege_type as p, pg_get_userbyid(a.grantor) as grantor from pg_class c join pg_namespace n on n.oid = c.relnamespace, aclexplode(c.relacl) a where c.relkind in (?, ?, ?, ?) and a.grantee <> 0 and pg_get_userbyid(a.grantee) in ({$in}) order by 1, 2, 3", array_merge([".", "r", "p", "v", "m"], $w)) as $r) {
+          echo $r->t, " ", $r->chi, " ", $r->p, " concesso da ", $r->grantor, PHP_EOL;
+        }
+      });
+
+      $sec("Privilegi predefiniti (pg_default_acl)", function () use ($db) {
+        foreach ($db->select("select pg_get_userbyid(defaclrole) as chi, defaclnamespace::regnamespace::text as schema, defaclobjtype as tipo, defaclacl::text as acl from pg_default_acl order by 1, 2, 3") as $x) { echo $x->chi, " ", $x->schema, " ", $x->tipo, " ", $x->acl, PHP_EOL; }
+      });
+
+      $sec("CREATE sul database", function () use ($db, $roles) {
+        foreach ($roles as $label => $name) {
+          $r = $db->selectOne("select has_database_privilege(?, current_database(), ?) as h", [$name, "CREATE"]);
+          echo $label, ": ", $r->h ? "SI" : "no", PHP_EOL;
+        }
+      });
+
+      $sec("RLS per tabella", function () use ($db, $user, $uargs) {
+        $rows = $db->select("select n.nspname || ? || c.relname as t, c.relrowsecurity as rls, c.relforcerowsecurity as forced from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relkind in (?, ?) and {$user} order by 1", array_merge([".", "r", "p"], $uargs));
+        $tot = count($rows); $rls = 0; $force = 0; $noRls = [];
+        foreach ($rows as $r) { if ($r->rls) { $rls++; } else { $noRls[] = $r->t; } if ($r->forced) { $force++; } }
+        echo "tabelle: ", $tot, " con RLS: ", $rls, " con FORCE RLS: ", $force, " senza RLS: ", count($noRls), PHP_EOL;
+        foreach ($rows as $r) { echo $r->t, " rls=", var_export($r->rls, true), " force=", var_export($r->forced, true), PHP_EOL; }
+      });
+    ' > "$F" 2>&1 || true
+    prune_files db-proprieta
+    echo "db-proprieta: salvato in $F"
     ;;
   ripristina-permessi)
     # Rimette i permessi dall'ultimo file grants-backup-*.sql (comando di ritorno per permessi-db).

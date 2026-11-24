@@ -21,6 +21,8 @@ MAIL_PASSWORD="pa ss#word"
 SAAS_BACKUP_SFTP_KEY_PATH=/home/x/chiave#1
 SAAS_DEMO='true' # commento
 APP_ENV=production # local o production
+DB_HOST=db.interno.example
+DB_SSLMODE=require # cifrata
 EOF
 # Carica solo le funzioni di lettura e di stato (dai marcatori), senza eseguire le azioni.
 eval "$(awk '/lettura del .env: inizio/{p=1} p{print} /lettura del .env: fine/{exit}' "$OPS")"
@@ -59,18 +61,23 @@ if [ "${1:-}" = "-r" ]; then exit 1; fi
 echo "saas.crypto.vault = remote"; echo "mail.default = smtp"; echo "filesystems.disks.backups.host = vuota"
 EOF
 chmod +x "$FAKE"
-for act in variabili interruttori; do
+for act in variabili interruttori diagnosi db-proprieta; do
   log="$(SAAS_BASE="$B" SAAS_PHP="$FAKE" bash "$OPS" "$act" 2>&1)"
   ok "$act: il log ha una sola riga" "$(printf '%s\n' "$log" | wc -l | tr -d ' ')" "1"
   case "$log" in "$act: salvato in $B/shared/$act-"*.txt) echo "ok   $act: il log dice solo «salvato in»" ;; *) echo "FAIL $act: log inatteso: $log"; fail=1 ;; esac
   case "$log" in *=*|*acceso*|*spento*|*impostat*|*vuota*|*SEGRET*|*segreto*) echo "FAIL $act: stato nel log"; fail=1 ;; *) echo "ok   $act: nessuno stato nel log" ;; esac
   f="$(ls -1 "$B"/shared/"$act"-*.txt | head -1)"
   [ -s "$f" ] && echo "ok   $act: file scritto" || { echo "FAIL $act: file vuoto o assente"; fail=1; }
-  if grep -q 'SEGRETISSIMO\|segreto.example\|utente.vero\|pa ss#word' "$f"; then echo "FAIL $act: segreto nel file"; fail=1; else echo "ok   $act: nessun segreto nel file"; fi
+  if grep -qE 'SEGRETISSIMO|segreto.example|utente.vero|pa ss#word|db.interno.example' "$f"; then echo "FAIL $act: segreto nel file"; fail=1; else echo "ok   $act: nessun segreto nel file"; fi
 done
 f="$(ls -1 "$B"/shared/variabili-*.txt | head -1)"
 grep -qx 'SAAS_BACKUP_SFTP_HOST = vuota' "$f" && echo "ok   variabili: commento -> vuota nel file" || { echo "FAIL variabili: SFTP host"; fail=1; }
 grep -qx 'saas.crypto.vault = remote' "$f" && echo "ok   variabili: scelta effettiva nel file" || { echo "FAIL variabili: scelta effettiva"; fail=1; }
+grep -qx 'DB_HOST = altro' "$f" && echo "ok   variabili: DB_HOST solo come genere" || { echo "FAIL variabili: DB_HOST"; fail=1; }
+grep -qx 'DB_SSLMODE = require' "$f" && echo "ok   variabili: sslmode con commento in riga" || { echo "FAIL variabili: sslmode"; fail=1; }
+ok "DB_HOST localhost"  "$(db_host_class localhost)" "localhost"
+ok "DB_HOST socket"     "$(db_host_class /var/run/postgresql)" "socket"
+ok "DB_HOST vuoto"      "$(db_host_class "")" "vuoto"
 touch "$T/p"; chmod 600 "$T/p"
 if [ "$(stat -c %a "$T/p" 2>/dev/null || echo x)" = "600" ]; then ok "file 600" "$(stat -c %a "$f")" "600"; else echo "skip permessi 600 (file system senza permessi)"; fi
 # Potatura: al massimo 5 file per azione
