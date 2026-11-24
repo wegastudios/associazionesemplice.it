@@ -66,9 +66,8 @@ function hcAssertHostRules(?Cookie $cookie, string $name): void
 /** Accesso dell'operatore con «ricordami» sull'indirizzo dato: restituisce il cookie «ricordami» (nome, valore grezzo, valore in chiaro). */
 function hcRememberLogin(object $test, string $url): array
 {
-    // Una guardia nuova a ogni accesso: nei test resta in memoria da una richiesta all'altra, con la richiesta di prima.
-    app('auth')->forgetGuards();
-    app('cookie')->flushQueuedCookies();
+    // Un browser nuovo a ogni accesso: nei test sessione, guardia e cookie in coda restano in memoria da una richiesta all'altra.
+    hcNewBrowser($test);
     $login = $test->post($url.'/accesso', ['email' => 'anna@example.com', 'password' => $test::PASSWORD, 'remember' => true]);
     $names = array_values(array_filter(array_map(static fn (Cookie $c): string => $c->getName(), $login->headers->getCookies()), static fn (string $n): bool => str_contains($n, 'remember_')));
     expect($names)->toHaveCount(1);
