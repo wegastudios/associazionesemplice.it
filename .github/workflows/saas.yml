@@ -82,6 +82,9 @@ jobs:
           npm audit --audit-level=high || echo "::warning::npm audit completo: avvisi su strumenti di sviluppo (non bloccante, temporaneo)"
           npm run build
 
+      - name: Rotazione delle copie del .env (deploy/ops.sh)
+        run: bash tests/shell/ops-env-bak.sh
+
       - name: Controllo delle dipendenze
         run: composer audit --no-interaction
 
