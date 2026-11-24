@@ -165,17 +165,21 @@ dataset('testi normali', [
 it('nella demo i testi con link o HTML sono rifiutati, anche dentro campi annidati', function (string $text): void {
     demoOn();
     fromIp('10.1.1.1');
+    $user = $this->createUser('titolare@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
-    $this->post('/gestionale/attivita', ['name' => $text])->assertSessionHasErrors(['ledger' => DemoScale::NO_LINKS]);
-    $this->post('/gestionale/domande/impostazioni', ['intro' => ['it' => $text]])->assertSessionHasErrors(['ledger' => DemoScale::NO_LINKS]);
+    $this->actingAs($user)->post('/gestionale/attivita', ['name' => $text])->assertSessionHasErrors(['ledger' => DemoScale::NO_LINKS]);
+    $this->actingAs($user)->post('/gestionale/domande/impostazioni', ['intro' => ['it' => $text]])->assertSessionHasErrors(['ledger' => DemoScale::NO_LINKS]);
     $this->post('/adesione/demo', ['note' => $text])->assertSessionHasErrors(['ledger' => DemoScale::NO_LINKS]);
 })->with('testi con link o HTML');
 
 it('nella demo i testi normali e le password non sono toccati dal controllo dei link', function (string $text): void {
     demoOn();
     fromIp('10.1.1.2');
+    $user = $this->createUser('titolare@example.com', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
-    $this->post('/gestionale/attivita', ['name' => $text])->assertSessionDoesntHaveErrors(['ledger']);
+    $this->actingAs($user)->post('/gestionale/attivita', ['name' => $text])->assertSessionDoesntHaveErrors(['ledger']);
     // Le password non sono testi pubblici: non si controllano.
     $this->post('/accesso', ['email' => 'x@example.com', 'password' => 'www.https://<b>'])->assertSessionDoesntHaveErrors(['ledger']);
 })->with('testi normali');
