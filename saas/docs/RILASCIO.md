@@ -101,6 +101,20 @@ Segreti per ambiente (GitHub → Settings → Environments → `production`): `S
 `SAAS_SSH_KNOWN_HOSTS` (riga di `ssh-keyscan -p PORTA HOST`, controllata a mano). Le chiavi dell'applicazione non
 passano da GitHub: stanno solo in `shared/.env`.
 
+**Primo rilascio su un database vuoto** (ambiente nuovo, es. la demo). `remote.sh` lancia `php artisan saas:db:empty`
+(sola lettura, connessione del proprietario sul database condiviso: «vuoto» = nessuna tabella `public.migrations` o
+tabella senza righe). Tre casi:
+
+- **vuoto in demo o staging** (`APP_ENV` diverso da `production`): il controllo di salute prima delle migrazioni, che
+  non può riuscire, viene saltato; si esegue `saas:migrate --force` e il controllo di salute gira dopo il cambio del link
+  come sempre. Se quel controllo fallisce non c'è una versione precedente: il link `current` (che prima non esisteva)
+  viene rimosso, i dati restano e il rilascio si ferma con errore; il dettaglio è in `shared/health-<data>.txt`.
+- **vuoto in produzione**: il rilascio si ferma subito, senza migrare. Un database vuoto in produzione è quasi sempre
+  quello sbagliato (`DB_*` in `shared/.env`); si controlla e, se è davvero il primo avvio, si migra a mano.
+- **già in uso**: nessun cambiamento, controllo di salute con `--skip-migrations`, poi le migrazioni.
+
+Se `saas:db:empty` non riesce a leggere il database, il rilascio si ferma.
+
 **Ritorno alla versione precedente**: `~/saas/current/deploy/rollback.sh` (immediato). Le migrazioni non si annullano:
 sono in due tempi, quindi la versione precedente funziona anche con lo schema nuovo.
 
