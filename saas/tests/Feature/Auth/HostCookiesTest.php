@@ -11,6 +11,8 @@ use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\OrgEntitlements;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
+use Illuminate\Auth\AuthManager;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -323,4 +325,30 @@ it('chiusa la finestra il vecchio as_socio non vale più: si riparte dall\'acces
 
 it('i giorni dell\'accesso del socio nel cookie sono quelli del database', function (): void {
     expect(HostCookies::MEMBER_DAYS)->toBe(MemberAccess::MAX_DAYS);
+});
+
+it('Laravel non è cambiato sotto HostSessionGuard: se questa prova fallisce, ricontrolla HostSessionGuard e il driver host-session', function (): void {
+    $message = 'Laravel è cambiato: ricontrolla HostSessionGuard e il driver host-session in CoreServiceProvider (ripetono AuthManager::createSessionDriver), poi aggiorna questa prova.';
+
+    // Il nome del cookie «ricordami»: metodo pubblico, senza parametri, dichiarato da SessionGuard.
+    expect(class_exists(SessionGuard::class))->toBeTrue($message)
+        ->and(method_exists(SessionGuard::class, 'getRecallerName'))->toBeTrue($message);
+    $name = new ReflectionMethod(SessionGuard::class, 'getRecallerName');
+    expect($name->isPublic() && ! $name->isStatic() && $name->getNumberOfParameters() === 0 && $name->getDeclaringClass()->getName() === SessionGuard::class)->toBeTrue($message);
+
+    // Il costruttore che HostSessionGuard eredita: stessi parametri con nome usati dal driver host-session.
+    $params = array_map(static fn (ReflectionParameter $p): string => $p->getName(), (new ReflectionMethod(SessionGuard::class, '__construct'))->getParameters());
+    expect(array_diff(['name', 'provider', 'session', 'rehashOnLogin', 'timeboxDuration', 'hashKey'], $params))->toBe([], $message);
+    foreach (['setCookieJar', 'setDispatcher', 'setRequest', 'setRememberDuration'] as $setter) {
+        expect(method_exists(SessionGuard::class, $setter))->toBeTrue($message.' ('.$setter.')');
+    }
+
+    // La costruzione del driver di Laravel: le stesse chiamate che il nostro driver ripete.
+    $driver = new ReflectionMethod(AuthManager::class, 'createSessionDriver');
+    expect($driver->isPublic() && $driver->getNumberOfParameters() === 2)->toBeTrue($message);
+    $lines = file((string) $driver->getFileName());
+    $source = implode('', array_slice(is_array($lines) ? $lines : [], $driver->getStartLine() - 1, $driver->getEndLine() - $driver->getStartLine() + 1));
+    foreach (['new SessionGuard(', 'rehashOnLogin:', 'timeboxDuration:', 'hashKey:', '->setCookieJar(', '->setDispatcher(', '->setRequest(', "refresh('request'", '->setRememberDuration('] as $call) {
+        expect(str_contains($source, $call))->toBeTrue($message.' (manca '.$call.')');
+    }
 });
