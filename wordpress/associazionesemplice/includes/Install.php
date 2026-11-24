@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version'; // uguale a Plugin::DB_VERSION_OPTION (scritto qui: durante un aggiornamento questa classe nuova può caricarsi accanto a una Plugin vecchia)
-	const DB_VERSION        = '76'; // si cambia insieme a Plugin::DB_VERSION (che si confronta a ogni richiesta senza caricare questa classe; una prova controlla che siano uguali); dalla 76 i contatori dei tentativi (accessi, richieste del socio) stanno in una tabellina propria invece che nei transient (counters; si crea una volta, i contatori in corso ripartono da zero); dalla 75 ogni anno fiscale chiuso ricorda la somma dei movimenti di ogni conto fino al suo ultimo giorno (closing_sums: i saldi si sommano da lì in poi; vuota = si calcola alla prima lettura); dalla 74 hanno un indice anche i pagamenti online per riferimento del fornitore, i movimenti per chi li ha registrati, le richieste di prenotazione per persona e i destinatari delle comunicazioni per persona (si creano una volta, senza toccare i dati); dalla 73 ogni socio ha la versione del suo codice QR (qr_version: 0 = come prima, i QR già stampati valgono finché il socio non rigenera il codice); dalla 72 la voce «Quota attività / corso» si chiama «Contributo attività / corso» (si rinomina una volta, solo dove ha ancora il nome originale); dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '77'; // si cambia insieme a Plugin::DB_VERSION (che si confronta a ogni richiesta senza caricare questa classe; una prova controlla che siano uguali); dalla 77 una prenotazione ricorda chi l'ha fatta (bookings.booked_by: vuoto = la persona stessa o la segreteria) e ogni socio può non farsi prenotare da altri (people.no_booking_by_others: 0 = si può, come prima); dalla 76 i contatori dei tentativi (accessi, richieste del socio) stanno in una tabellina propria invece che nei transient (counters; si crea una volta, i contatori in corso ripartono da zero); dalla 75 ogni anno fiscale chiuso ricorda la somma dei movimenti di ogni conto fino al suo ultimo giorno (closing_sums: i saldi si sommano da lì in poi; vuota = si calcola alla prima lettura); dalla 74 hanno un indice anche i pagamenti online per riferimento del fornitore, i movimenti per chi li ha registrati, le richieste di prenotazione per persona e i destinatari delle comunicazioni per persona (si creano una volta, senza toccare i dati); dalla 73 ogni socio ha la versione del suo codice QR (qr_version: 0 = come prima, i QR già stampati valgono finché il socio non rigenera il codice); dalla 72 la voce «Quota attività / corso» si chiama «Contributo attività / corso» (si rinomina una volta, solo dove ha ancora il nome originale); dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	/**
 	 * Tutti i lavori periodici e programmati del plugin e delle sue estensioni (nomi dei punti di aggancio di WP-Cron).
@@ -758,6 +758,7 @@ final class Install {
   runts_same_section tinyint(1) DEFAULT NULL,
   prior_visits int(10) unsigned NOT NULL DEFAULT 0,
   qr_version smallint(5) unsigned NOT NULL DEFAULT 0,
+  no_booking_by_others tinyint(1) NOT NULL DEFAULT 0,
   notes text,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
@@ -1078,13 +1079,15 @@ final class Install {
   package_of bigint(20) unsigned DEFAULT NULL,
   transferred_to bigint(20) unsigned DEFAULT NULL,
   transferred_from bigint(20) unsigned DEFAULT NULL,
+  booked_by bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   cancelled_at datetime DEFAULT NULL,
   checked_in_at datetime DEFAULT NULL,
   checked_in_by bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY session_person (session_id,person_id),
-  KEY person_id (person_id)
+  KEY person_id (person_id),
+  KEY booked_by (booked_by)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}event_requests (
