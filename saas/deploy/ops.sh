@@ -2,12 +2,12 @@
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
 # Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
 #
-# Il log del workflow è pubblico: dettagli di configurazione su file in shared/ (600), nel log solo esiti, conteggi e percorso.
+# Il log del workflow è pubblico: ogni stato reale della produzione (variabili, interruttori, permessi, coda, cancellazioni, ciclo di vita, ...) va su file shared/<azione>-<AAAAMMGGTHHMMSS>.txt (600, ultimi 5 per azione); nel log solo esito e «salvato in <percorso>».
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
 #   chiave-catalogo   se SAAS_PORTAL_SIGNING_KEY è vuota genera il seme in shared/.env (permessi 600, copia del file prima),
 #                     svuota la cache della configurazione e stampa SOLO kid e parte pubblica x. Il seme non si stampa mai.
-#   variabili         sola lettura: STATO (mai il valore) delle variabili del .env; solo interruttori e scelte non segrete mostrano true/false/0/1 o il nome della scelta
+#   variabili         sola lettura: STATO (mai il valore) delle variabili del .env e scelta EFFETTIVA dalla configurazione dell applicazione, su file shared/variabili-<data>.txt (600); nel log solo «salvato in»; commenti in riga del .env letti come vuoti
 #   copie-env         sola lettura: elenca cosa cancellerebbe la rotazione delle copie shared/.env.bak-<data> (massimo 2, nessuna oltre 7 giorni)
 #   pulisci-copie-env applica la rotazione una volta e accende quella automatica; cancella SOLO .env.bak-<14 cifre>, mai il .env
 #   percorso-pgdump   imposta SAAS_PG_DUMP e SAAS_PG_RESTORE nella cartella indicata, solo se è la versione 16
@@ -18,7 +18,25 @@ PHP="${SAAS_PHP:-/usr/local/bin/php}"
 ENVFILE="$BASE/shared/.env"
 [ -f "$ENVFILE" ] || { echo "Manca $ENVFILE." >&2; exit 1; }
 
-get() { grep -E "^$1=" "$ENVFILE" | tail -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'\$//" || true; }
+# --- lettura del .env: inizio (testata in saas/tests/shell/ops-variabili.sh) ---
+# Come il caricatore del .env: tra virgolette il valore arriva alla virgoletta di chiusura; senza virgolette finisce al
+# primo « #» (commento in riga) e, se comincia con #, la riga è solo un commento e il valore è vuoto.
+env_value() { # legge dall'ingresso il valore grezzo e stampa quello vero
+  local v=""
+  IFS= read -r v || true
+  v="${v#"${v%%[![:space:]]*}"}"
+  if [[ "$v" =~ ^\"([^\"]*)\" ]]; then v="${BASH_REMATCH[1]}"
+  elif [[ "$v" =~ ^\'([^\']*)\' ]]; then v="${BASH_REMATCH[1]}"
+  else
+    v="${v%%[[:space:]]#*}"
+    [[ "$v" == \#* ]] && v=""
+    v="${v%"${v##*[![:space:]]}"}"
+    v="${v#[\"\']}"; v="${v%[\"\']}"
+  fi
+  printf '%s\n' "$v"
+}
+get() { grep -E "^$1=" "$ENVFILE" | tail -1 | cut -d= -f2- | env_value || true; }
+# --- lettura del .env: fine ---
 
 # --- rotazione delle copie del .env: inizio (testata in saas/tests/shell/ops-env-bak.sh) ---
 # Copie fatte da set_var: <env>.bak-<AAAAMMGGHHMMSS> (UTC). Se ne tengono al massimo 2 (le più recenti) e nessuna oltre 7 giorni:
@@ -99,16 +117,13 @@ public_of_seed() { SEED="$1" "$PHP" -r '
 
 case "$ACTION" in
   diagnosi)
-    echo "== Variabili (solo stato) =="
-    for v in SAAS_PORTAL_SIGNING_KEY SAAS_PORTAL_URL SAAS_PORTAL_PUBLIC_KEYS SAAS_BACKUP_PUBLIC_KEY SAAS_MASTER_KEY SAAS_KEY_SERVICE_URL; do
-      [ -n "$(get "$v")" ] && echo "$v = impostata" || echo "$v = VUOTA"
-    done
-    for v in SAAS_PG_DUMP SAAS_PG_RESTORE; do
-      [ -n "$(get "$v")" ] && echo "$v = impostata" || echo "$v = VUOTA"
-    done
-    # Percorsi, versioni dei client e righe del log vanno su file (il log del workflow è pubblico).
+    # Stato delle variabili, percorsi, versioni dei client e righe del log vanno su file (il log del workflow è pubblico).
     F="$(newfile diagnosi)"
     {
+      echo "== Variabili (solo stato) =="
+      for v in SAAS_PORTAL_SIGNING_KEY SAAS_PORTAL_URL SAAS_PORTAL_PUBLIC_KEYS SAAS_BACKUP_PUBLIC_KEY SAAS_MASTER_KEY SAAS_KEY_SERVICE_URL SAAS_PG_DUMP SAAS_PG_RESTORE; do
+        [ -n "$(get "$v")" ] && echo "$v = impostata" || echo "$v = VUOTA"
+      done
       echo "SAAS_PG_DUMP = $(get SAAS_PG_DUMP)"; echo "SAAS_PG_RESTORE = $(get SAAS_PG_RESTORE)"
       echo "== Client PostgreSQL sul server =="
       for p in /usr/pgsql-*/bin/pg_dump /usr/lib/postgresql/*/bin/pg_dump /usr/local/pgsql*/bin/pg_dump "$HOME"/*/bin/pg_dump "$HOME"/bin/pg_dump "$(command -v pg_dump || true)"; do
@@ -118,7 +133,7 @@ case "$ACTION" in
       grep -hE "ERROR|CRITICAL" "$BASE/shared/storage/logs/"*.log 2>/dev/null | tail -8 | cut -c1-300 || true
     } > "$F" 2>&1 || true
     prune_files diagnosi
-    echo "Client PostgreSQL e ultimi errori: uscita salvata in $F"
+    echo "diagnosi: salvato in $F"
     ;;
   chiave-catalogo)
     current="$(get SAAS_PORTAL_SIGNING_KEY)"
@@ -141,14 +156,14 @@ case "$ACTION" in
     {
       echo "== Cancellazione dati (solo elenco) =="; "$PHP" artisan saas:portal:purge-expired --dry-run || true
       echo "== Registro: partizioni da cancellare (solo elenco) =="; "$PHP" artisan saas:audit:prune --dry-run || true
+      echo "== Registro: verifica delle catene =="; "$PHP" artisan saas:audit:verify 2>/dev/null | tail -5 || true
+      echo "== Tabelle nuove =="
+      "$PHP" artisan tinker --execute='$m = 0; foreach (["core.org_notices", "audit.anchors"] as $t) { if (! DB::connection("pgsql")->selectOne("select to_regclass(?) is not null as ok", [$t])->ok) { $m++; } } echo $m === 0 ? "tabelle nuove: ok" : "tabelle nuove: ne mancano ".$m, PHP_EOL;' 2>/dev/null || true
+      echo "== Interruttori =="
+      for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do echo "$v: $(onoff "$(get "$v")")"; done
     } > "$F" 2>&1 || true
     prune_files ciclo-vita
-    echo "Elenchi di cancellazione e potatura: uscita salvata in $F"
-    echo "== Registro: verifica delle catene =="; "$PHP" artisan saas:audit:verify 2>/dev/null | tail -5 || true
-    echo "== Tabelle nuove =="
-    "$PHP" artisan tinker --execute='$m = 0; foreach (["core.org_notices", "audit.anchors"] as $t) { if (! DB::connection("pgsql")->selectOne("select to_regclass(?) is not null as ok", [$t])->ok) { $m++; } } echo $m === 0 ? "tabelle nuove: ok" : "tabelle nuove: ne mancano ".$m, PHP_EOL;' 2>/dev/null || true
-    echo "== Interruttori (devono essere spenti) =="
-    for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do echo "$v: $(onoff "$(get "$v")")"; done
+    echo "ciclo-vita: salvato in $F"
     ;;
   prova-cancellazione)
     # Crea un'associazione di prova, la cancella con il servizio vero e controlla che le altre restino identiche; poi verifica le catene.
@@ -158,7 +173,7 @@ case "$ACTION" in
     prune_files prova-cancellazione
     [ "$rc" -eq 0 ] && echo "Prova di cancellazione: ok." || echo "Prova di cancellazione: FALLITA."
     echo "Uscita completa salvata in $F"
-    echo "== Registro: verifica delle catene =="; "$PHP" artisan saas:audit:verify 2>/dev/null | tail -5 || true
+    { echo "== Registro: verifica delle catene =="; "$PHP" artisan saas:audit:verify 2>/dev/null | tail -5 || true; } >> "$F" 2>&1
     exit "$rc"
     ;;
   avvisa-catalogo)
@@ -206,13 +221,21 @@ case "$ACTION" in
     # Accende cancellazione notturna, avvisi email e potatura del registro (decisione scritta della titolare, 13/11/2026).
     for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do set_var "$v" 1; done
     refresh
-    for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do echo "$v: $(onoff "$(get "$v")")"; done
+    F="$(newfile accendi-ciclo-vita)"
+    for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do echo "$v: $(onoff "$(get "$v")")"; done > "$F"
+    prune_files accendi-ciclo-vita
+    echo "accendi-ciclo-vita: eseguita."
+    echo "accendi-ciclo-vita: salvato in $F"
     ;;
   spegni-cancellazione)
     # Spegne solo la cancellazione notturna dei dati scaduti (avvisi e potatura del registro restano come sono).
     set_var SAAS_PURGE_ENABLED 0
     refresh
-    echo "SAAS_PURGE_ENABLED: $(onoff "$(get SAAS_PURGE_ENABLED)")"
+    F="$(newfile spegni-cancellazione)"
+    echo "SAAS_PURGE_ENABLED: $(onoff "$(get SAAS_PURGE_ENABLED)")" > "$F"
+    prune_files spegni-cancellazione
+    echo "spegni-cancellazione: eseguita."
+    echo "spegni-cancellazione: salvato in $F"
     ;;
   pubblica-catalogo)
     # Pubblica la bozza del catalogo come revisione successiva (decisione scritta della titolare, 13/11/2026). Autore: la
@@ -261,10 +284,7 @@ case "$ACTION" in
       echo "fine", PHP_EOL;
     ' > "$F" 2>&1 || true
     prune_files conta-fotografie
-    echo "Associazioni con fotografie: $(grep -c ' fotografie=' "$F" || true)"
-    echo "di cui senza chiave: $(grep -c 'chiave=NO' "$F" || true)"
-    echo "di cui già cancellate: $(grep -c 'cancellata=SI' "$F" || true)"
-    echo "Elenco per associazione: uscita salvata in $F"
+    echo "conta-fotografie: salvato in $F"
     ;;
   cancellazioni)
     # Sola lettura (decisione del titolare, 16/11/2026): com'è andata la cancellazione notturna e che cosa resta delle associazioni
@@ -306,10 +326,7 @@ case "$ACTION" in
     grep -hiE "purge|cancellat" "$BASE/shared/storage/logs/"*.log 2>/dev/null | grep -E "^\[2026-11-(1[4-9]|2[0-9])" | tail -40 | cut -c1-300 || true
     } > "$F" 2>&1 || true
     prune_files cancellazioni
-    echo "Cancellazioni eseguite: $(grep -c ' org.purged ' "$F" || true)"
-    echo "Cancellazioni fallite o fermate: $(grep -cE ' org.purge_(failed|stopped) ' "$F" || true)"
-    echo "Associazioni sospese, chiuse o cancellate: $(grep -c ' stato=' "$F" || true)"
-    echo "Dettaglio: uscita salvata in $F"
+    echo "cancellazioni: salvato in $F"
     ;;
   permessi-backup)
     # Sola lettura: privilegi del ruolo dei backup fuori da SELECT. Atteso: nessuna riga.
@@ -323,13 +340,17 @@ case "$ACTION" in
       foreach ($rows as $r) { echo $r->table_schema, ".", $r->table_name, " ", $r->privilege_type, PHP_EOL; }
     ' > "$F" 2>&1 || true
     prune_files permessi-backup
-    grep '^Privilegi oltre SELECT' "$F" || echo "Privilegi oltre SELECT: non disponibile"
-    echo "Dettaglio: uscita salvata in $F"
+    echo "permessi-backup: salvato in $F"
     ;;
   verifica-registro)
     # Sola lettura: verifica la catena del registro delle azioni di tutte le associazioni e stampa l'esito (nessun dato personale).
+    # L'uscita (che può nominare associazioni e partizioni) va su file; nel log solo l'esito.
     cd "$BASE/current"
-    "$PHP" artisan saas:audit:verify --full || true
+    F="$(newfile verifica-registro)"; rc=0
+    "$PHP" artisan saas:audit:verify --full > "$F" 2>&1 || rc=$?
+    prune_files verifica-registro
+    [ "$rc" -eq 0 ] && echo "Verifica del registro: conclusa senza errori." || echo "Verifica del registro: conclusa con errori."
+    echo "verifica-registro: salvato in $F"
     ;;
   indici-registro)
     # Sola lettura, con il ruolo dei backup: letture di ogni indice del registro delle azioni, sommate sulle partizioni,
@@ -358,7 +379,9 @@ case "$ACTION" in
   coda)
     # Sola lettura: stato della coda dei lavori, senza dati personali (solo numeri). Se il lavoratore (cron ogni minuto)
     # è fermo, i lavori restano in attesa e il più vecchio invecchia.
+    # Numeri su file in shared/ (600); nel log solo «salvato in».
     cd "$BASE/current"
+    F="$(newfile coda)"
     "$PHP" artisan tinker --execute='
       $db = DB::connection("pgsql");
       $pending = $db->table("core.jobs")->whereNull("reserved_at")->count();
@@ -369,33 +392,92 @@ case "$ACTION" in
       echo "In attesa: ", $pending, PHP_EOL, "In lavorazione: ", $reserved, PHP_EOL;
       echo "Il più vecchio in attesa da (minuti): ", is_numeric($oldest) ? max(0, intdiv(time() - (int) $oldest, 60)) : "nessuno", PHP_EOL;
       echo "Falliti in tutto: ", $failed, PHP_EOL, "Falliti nelle ultime 24 ore: ", $failed24, PHP_EOL;
-    ' || true
+    ' > "$F" 2>&1 || true
+    prune_files coda
+    echo "coda: salvato in $F"
     ;;
   variabili)
-    # Sola lettura: per ogni variabile solo lo STATO. Host, utenti, chiavi, password, URL: mai il valore (il log del workflow è pubblico).
-    for v in APP_DEBUG SAAS_HEALTH_STRICT SAAS_REQUIRE_TWO_FACTOR SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED SAAS_UNIFIED_LOGIN SAAS_UNIFIED_OPERATORS SAAS_STAFF_SSO SAAS_STAFF_ISSUER SAAS_DEMO SESSION_SECURE_COOKIE; do
-      var_state bool "$v" "$(get "$v")"
-    done
-    for v in APP_ENV SAAS_KEY_VAULT MAIL_MAILER SAAS_MAIL_PRIMARY CACHE_STORE QUEUE_CONNECTION SESSION_DRIVER DB_CONNECTION SAAS_BACKUP_DRIVER REDIS_CLIENT; do
-      var_state scelta "$v" "$(get "$v")"
-    done
-    for v in MAIL_HOST MAIL_USERNAME MAIL_PASSWORD EMAILIT_HOST EMAILIT_USERNAME EMAILIT_PASSWORD EMAILIT_PORT SESSION_COOKIE DB_RESTORE_DATABASE SAAS_BACKUP_PUBLIC_KEY SAAS_BACKUP_SECRET_KEY SAAS_BACKUP_SFTP_HOST SAAS_BACKUP_SFTP_USERNAME SAAS_BACKUP_SFTP_FINGERPRINT SAAS_BACKUP_SFTP_PORT SAAS_BACKUP_SFTP_ROOT SAAS_BACKUP_SFTP_KEY_PATH REDIS_HOST REDIS_PORT REDIS_PASSWORD REDIS_URL REDIS_DB REDIS_CACHE_DB SAAS_KEY_SERVICE_URL SAAS_KEY_SERVICE_SIGNING_KEY SAAS_MASTER_KEY SAAS_PG_DUMP SAAS_PG_RESTORE; do
-      var_state segreta "$v" "$(get "$v")"
-    done
-    if "$PHP" -r 'exit(extension_loaded("apcu") ? 0 : 1);' 2>/dev/null; then echo "APCu (php da riga di comando) = estensione caricata"; else echo "APCu (php da riga di comando) = estensione NON caricata"; fi
-    pgd="$(get SAAS_PG_DUMP)"
-    if [[ "$pgd" =~ ^/[A-Za-z0-9_./-]+$ ]] && [ -x "$pgd" ]; then
-      echo "pg_dump configurato = versione $("$pgd" --version 2>/dev/null | head -1 | grep -oE '[0-9]+(\.[0-9]+)*' | head -1)"
-    else echo "pg_dump configurato = non eseguibile o non impostato"; fi
+    # Sola lettura: lo STATO reale del server va su file in shared/ (600), nel log pubblico solo «salvato in». Dentro il file:
+    # 1) lo stato di ogni variabile del .env (mai il valore, salvo interruttori e scelte non segrete; i commenti in riga non contano);
+    # 2) la scelta EFFETTIVA letta dalla configurazione caricata dall'applicazione (nome della scelta; per host, utenti,
+    #    chiavi e impronte solo impostata/vuota).
+    F="$(newfile variabili)"
+    {
+      echo "== Variabili del .env (stato) =="
+      for v in APP_DEBUG SAAS_HEALTH_STRICT SAAS_REQUIRE_TWO_FACTOR SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED SAAS_UNIFIED_LOGIN SAAS_UNIFIED_OPERATORS SAAS_STAFF_SSO SAAS_STAFF_ISSUER SAAS_DEMO SESSION_SECURE_COOKIE; do
+        var_state bool "$v" "$(get "$v")"
+      done
+      for v in APP_ENV SAAS_KEY_VAULT MAIL_MAILER SAAS_MAIL_PRIMARY CACHE_STORE QUEUE_CONNECTION SESSION_DRIVER DB_CONNECTION SAAS_BACKUP_DRIVER REDIS_CLIENT; do
+        var_state scelta "$v" "$(get "$v")"
+      done
+      for v in MAIL_HOST MAIL_USERNAME MAIL_PASSWORD EMAILIT_HOST EMAILIT_USERNAME EMAILIT_PASSWORD EMAILIT_PORT SESSION_COOKIE DB_RESTORE_DATABASE SAAS_BACKUP_PUBLIC_KEY SAAS_BACKUP_SECRET_KEY SAAS_BACKUP_SFTP_HOST SAAS_BACKUP_SFTP_USERNAME SAAS_BACKUP_SFTP_FINGERPRINT SAAS_BACKUP_SFTP_PORT SAAS_BACKUP_SFTP_ROOT SAAS_BACKUP_SFTP_KEY_PATH REDIS_HOST REDIS_PORT REDIS_PASSWORD REDIS_URL REDIS_DB REDIS_CACHE_DB SAAS_KEY_SERVICE_URL SAAS_KEY_SERVICE_SIGNING_KEY SAAS_MASTER_KEY SAAS_PG_DUMP SAAS_PG_RESTORE; do
+        var_state segreta "$v" "$(get "$v")"
+      done
+      if "$PHP" -r 'exit(extension_loaded("apcu") ? 0 : 1);' 2>/dev/null; then echo "APCu (php da riga di comando) = estensione caricata"; else echo "APCu (php da riga di comando) = estensione NON caricata"; fi
+      pgd="$(get SAAS_PG_DUMP)"
+      if [[ "$pgd" =~ ^/[A-Za-z0-9_./-]+$ ]] && [ -x "$pgd" ]; then
+        echo "pg_dump configurato = versione $("$pgd" --version 2>/dev/null | head -1 | grep -oE '[0-9]+(\.[0-9]+)*' | head -1)"
+      else echo "pg_dump configurato = non eseguibile o non impostato"; fi
+      echo
+      echo "== Scelta effettiva (configurazione caricata dall'applicazione) =="
+      ( cd "$BASE/current" && "$PHP" artisan tinker --execute='
+        $pick = fn ($v, array $ok): string => is_string($v) && in_array($v, $ok, true) ? $v : (trim((string) $v) === "" ? "vuota" : "impostata (nome non in elenco)");
+        $set = fn ($v): string => trim((string) $v) !== "" ? "impostata" : "vuota";
+        $flag = fn ($v): string => $v ? "acceso" : "spento";
+        $line = function (string $label, string $value): void { echo $label, " = ", $value, PHP_EOL; };
+        $line("app.env", $pick(config("app.env"), ["local", "production", "staging", "testing"]));
+        $line("app.debug", $flag(config("app.debug")));
+        $line("saas.crypto.vault", $pick(config("saas.crypto.vault"), ["local", "remote"]));
+        $line("saas.crypto.master_key", $set(config("saas.crypto.master_key")));
+        $line("saas.crypto.master_key_old", $set(config("saas.crypto.master_key_old")));
+        $line("saas.crypto.service_url", $set(config("saas.crypto.service_url")));
+        $line("saas.crypto.signing_key", $set(config("saas.crypto.signing_key")));
+        $line("saas.auth.require_two_factor", $flag(config("saas.auth.require_two_factor")));
+        $line("mail.default", $pick(config("mail.default"), ["smtp", "log", "array", "emailit", "failover", "sendmail"]));
+        $line("saas.mail_queue.primary", $pick(config("saas.mail_queue.primary"), ["cpanel", "emailit"]));
+        $line("mail.mailers.smtp.host", $set(config("mail.mailers.smtp.host")));
+        $line("mail.mailers.smtp.username", $set(config("mail.mailers.smtp.username")));
+        $line("mail.mailers.smtp.password", $set(config("mail.mailers.smtp.password")));
+        $line("mail.mailers.emailit.password", $set(config("mail.mailers.emailit.password")));
+        $line("cache.default", $pick(config("cache.default"), ["database", "file", "array", "redis", "apc", "apcu"]));
+        $line("queue.default", $pick(config("queue.default"), ["database", "sync", "redis"]));
+        $line("session.driver", $pick(config("session.driver"), ["database", "file", "array", "redis", "cookie"]));
+        $line("database.default", $pick(config("database.default"), ["pgsql"]));
+        $line("saas.backup.public_key", $set(config("saas.backup.public_key")));
+        $line("saas.backup.secret_key", $set(config("saas.backup.secret_key")));
+        $line("filesystems.disks.backups.driver", $pick(config("filesystems.disks.backups.driver"), ["local", "sftp"]));
+        $line("filesystems.disks.backups.host", $set(config("filesystems.disks.backups.host")));
+        $line("filesystems.disks.backups.username", $set(config("filesystems.disks.backups.username")));
+        $line("filesystems.disks.backups.hostFingerprint", $set(config("filesystems.disks.backups.hostFingerprint")));
+        $line("filesystems.disks.backups.privateKey", $set(config("filesystems.disks.backups.privateKey")));
+        $line("saas.portal.purge_enabled", $flag(config("saas.portal.purge_enabled")));
+        $line("saas.portal.notices_enabled", $flag(config("saas.portal.notices_enabled")));
+        $line("saas.audit_prune_enabled", $flag(config("saas.audit_prune_enabled")));
+        $line("saas.unified_login.enabled", $flag(config("saas.unified_login.enabled")));
+        $line("saas.unified_login.operators", $flag(config("saas.unified_login.operators")));
+        $line("saas.staff_sso.enabled", $flag(config("saas.staff_sso.enabled")));
+        $line("saas.staff_issuer.enabled", $flag(config("saas.staff_issuer.enabled")));
+        $line("saas.demo.enabled", $flag(config("saas.demo.enabled")));
+        $line("saas.proxy_secret", $set(config("saas.proxy_secret")));
+        $line("saas.trusted_proxies", $set(config("saas.trusted_proxies")));
+      ' 2>&1 ) || echo "non disponibile: la configurazione dell'applicazione non si è letta"
+    } > "$F" 2>&1 || true
+    prune_files variabili
+    echo "variabili: salvato in $F"
     ;;
   interruttori)
-    # Sola lettura: valore degli interruttori NON segreti (acceso/spento, remoto/locale). Niente altro dal file d'ambiente.
-    for v in SAAS_UNIFIED_OPERATORS SAAS_UNIFIED_LOGIN SAAS_REQUIRE_TWO_FACTOR SAAS_STAFF_SSO SAAS_STAFF_ISSUER SAAS_NOTICES_ENABLED SAAS_PURGE_ENABLED SAAS_KEY_VAULT SAAS_DEMO; do
-      val="$(get "$v")"
-      if [ -z "$val" ]; then echo "$v = (non impostato: vale il predefinito)"
-      elif [[ "$val" =~ ^(0|1|true|false|on|off|yes|no|local|remote)$ ]]; then echo "$v = $val"
-      else echo "$v = impostato"; fi
-    done
+    # Sola lettura: interruttori e scelte non segrete del .env. Tutto su file in shared/ (600), nel log solo «salvato in».
+    F="$(newfile interruttori)"
+    {
+      for v in SAAS_UNIFIED_OPERATORS SAAS_UNIFIED_LOGIN SAAS_REQUIRE_TWO_FACTOR SAAS_STAFF_SSO SAAS_STAFF_ISSUER SAAS_NOTICES_ENABLED SAAS_PURGE_ENABLED SAAS_KEY_VAULT SAAS_DEMO; do
+        val="$(get "$v")"
+        if [ -z "$val" ]; then echo "$v = (non impostato: vale il predefinito)"
+        elif [[ "$val" =~ ^(0|1|true|false|on|off|yes|no|local|remote)$ ]]; then echo "$v = $val"
+        else echo "$v = impostato"; fi
+      done
+    } > "$F" 2>&1 || true
+    prune_files interruttori
+    echo "interruttori: salvato in $F"
     ;;
   sblocca-utente)
     # Sblocco dal supporto (decisione scritta del titolare, 16/11/2026): toglie la verifica in due passaggi a chi lavora
@@ -414,13 +496,19 @@ case "$ACTION" in
     # Spegne gli avvisi email del gestionale (restano solo le email del portale) e dice se ne sono già partiti.
     set_var SAAS_NOTICES_ENABLED 0
     refresh
-    echo "SAAS_NOTICES_ENABLED: $(onoff "$(get SAAS_NOTICES_ENABLED)")"
     cd "$BASE/current"
-    "$PHP" artisan tinker --execute='
-      $n = DB::connection("pgsql_owner")->table("core.org_notices")->get(["kind", "sent_at"]);
-      echo "Avvisi registrati: ", $n->count(), PHP_EOL;
-      foreach ($n->groupBy("kind") as $k => $rows) { echo $k, ": ", $rows->count(), PHP_EOL; }
-    ' || true
+    F="$(newfile spegni-avvisi)"
+    {
+      echo "SAAS_NOTICES_ENABLED: $(onoff "$(get SAAS_NOTICES_ENABLED)")"
+      "$PHP" artisan tinker --execute='
+        $n = DB::connection("pgsql_owner")->table("core.org_notices")->get(["kind", "sent_at"]);
+        echo "Avvisi registrati: ", $n->count(), PHP_EOL;
+        foreach ($n->groupBy("kind") as $k => $rows) { echo $k, ": ", $rows->count(), PHP_EOL; }
+      ' || true
+    } > "$F" 2>&1 || true
+    prune_files spegni-avvisi
+    echo "Avvisi email: spenti."
+    echo "spegni-avvisi: salvato in $F"
     ;;
   percorso-pgdump)
     [[ "$ARG" =~ ^/[A-Za-z0-9_./-]+$ ]] || { echo "Cartella non valida." >&2; exit 1; }
@@ -440,8 +528,14 @@ case "$ACTION" in
     set_var SAAS_PROXY_SECRET "$value"
     rm -f "$SECRET_FILE"
     refresh
-    echo "SAAS_PROXY_SECRET impostata (${#value} caratteri). File temporaneo cancellato."
-    echo "SAAS_TRUSTED_PROXIES: $([ -n "$(get SAAS_TRUSTED_PROXIES)" ] && echo impostata || echo vuota) (con il segreto non si usa più: si può svuotare dopo la prova)"
+    F="$(newfile segreto-proxy)"
+    {
+      echo "SAAS_PROXY_SECRET impostata (${#value} caratteri)."
+      echo "SAAS_TRUSTED_PROXIES: $([ -n "$(get SAAS_TRUSTED_PROXIES)" ] && echo impostata || echo vuota) (con il segreto non si usa più: si può svuotare dopo la prova)"
+    } > "$F"
+    prune_files segreto-proxy
+    echo "SAAS_PROXY_SECRET impostata. File temporaneo cancellato."
+    echo "imposta-segreto-proxy: salvato in $F"
     ;;
   copie-env)
     # Sola lettura: nessuna cancellazione. Mostra cosa farebbe la rotazione (solo nomi, niente contenuti).
@@ -494,20 +588,21 @@ case "$ACTION" in
         $db->statement("ALTER ROLE {$r} INHERIT");
         echo "NOINHERIT annullato: l applicazione non leggeva piu le sue tabelle", PHP_EOL;
       }
-    ' 2>>"$F"
-    echo "== Controllo =="
+    ' >> "$F" 2>&1
     "$PHP" artisan saas:health --skip-migrations 2>&1 | grep -E "permessi|ruolo|ERRORE|AVVISO" >> "$F" || true
     prune_files permessi-db
-    echo "Righe con ERRORE: $(grep -c 'ERRORE' "$F" || true)"
-    echo "Righe con AVVISO: $(grep -c 'AVVISO' "$F" || true)"
-    echo "Dettaglio del controllo (e di eventuali errori): uscita salvata in $F"
+    echo "permessi-db: salvato in $F"
     ;;
   svuota-proxy-fidati)
     # Solo con SAAS_PROXY_SECRET impostata: l'elenco dei proxy fidati non serve più (conta il segreto condiviso).
     [ -n "$(get SAAS_PROXY_SECRET)" ] || { echo "SAAS_PROXY_SECRET è vuota: non svuoto l'elenco." >&2; exit 1; }
     set_var SAAS_TRUSTED_PROXIES ""
     refresh
-    echo "SAAS_TRUSTED_PROXIES: $([ -n "$(get SAAS_TRUSTED_PROXIES)" ] && echo impostata || echo vuota)"
+    F="$(newfile svuota-proxy-fidati)"
+    echo "SAAS_TRUSTED_PROXIES: $([ -n "$(get SAAS_TRUSTED_PROXIES)" ] && echo impostata || echo vuota)" > "$F"
+    prune_files svuota-proxy-fidati
+    echo "svuota-proxy-fidati: eseguita."
+    echo "svuota-proxy-fidati: salvato in $F"
     ;;
   prova-recupero)
     # Prova che sull'hosting Argon2id con i parametri della copia di recupero funziona (memoria, tempo): cifra e riapre in memoria
@@ -701,7 +796,7 @@ case "$ACTION" in
     #   db-connection-limit-60   prima misura il picco (20 campioni, uno al secondo, tutti i ruoli, comprese queste
     #                            connessioni) e rifiuta se picco + margine di 10 (backup, ripristino, migrazioni al rilascio) supera 60
     #   db-connection-limit-off  comando inverso: CONNECTION LIMIT -1 (nessun limite)
-    # Nel log solo esito e numeri; la ripartizione per ruolo va su file in shared/ (600).
+    # Nel log solo l esito; numeri e ripartizione per ruolo vanno su file in shared/ (600).
     cd "$BASE/current"
     F="$(newfile limite-connessioni)"
     if [ "$ACTION" = "db-connection-limit-60" ]; then LIMIT=60; else LIMIT=-1; fi
@@ -744,12 +839,11 @@ case "$ACTION" in
     elif grep -qx 'esito: rifiutato' "$F"; then rc=3
     else rc=1; fi
     prune_files limite-connessioni
-    grep -E '^(picco misurato|limite prima|limite dopo|RIFIUTATO)' "$F" | sed -E 's/ \(20 campioni.*//' || true
-    if [ "$rc" -eq 0 ]; then
-      if [ "$LIMIT" -eq -1 ]; then echo "limite connessioni: nessuno"; else echo "limite connessioni: $LIMIT"; fi
+    # Numeri (picco, limite prima e dopo, ruoli) solo nel file.
+    if [ "$rc" -eq 0 ]; then echo "limite connessioni: applicato"
     elif [ "$rc" -eq 3 ]; then echo "limite connessioni: NON applicato (picco troppo alto)"
     else echo "limite connessioni: ERRORE"; fi
-    echo "Dettaglio (per ruolo, eventuali errori): uscita salvata in $F"
+    echo "$ACTION: salvato in $F"
     exit "$rc"
     ;;
   *) echo "Azione sconosciuta: $ACTION" >&2; exit 1 ;;
