@@ -485,7 +485,7 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 		array( 'Serata danzante', 'Serate', 'Una serata di ballo in sede con musica dal vivo e liscio per tutti: si balla, si chiacchiera e si porta qualcosa da bere. Ingresso per i soci, con un piccolo contributo per gli ospiti.', array( 170, 60, 110 ), '21:00', 'Sede dell\'associazione', 80, 500, 'terzo sabato' ),
 		array( 'Festa dell\'associazione', 'Serate', 'La festa di tutti i soci: giochi per i bambini, banchetti dei volontari, musica e una tavolata per stare insieme e raccontare cosa abbiamo fatto.', array( 200, 110, 60 ), '16:00', 'Giardino dell\'associazione', 120, 0, 'il 18' ),
 		array( 'Concerto di ukulele', 'Musica', 'Il gruppo ukulele dell\'associazione suona i suoi brani preferiti, dai classici alle canzoni da cantare insieme. Ingresso libero, porta un cuscino.', array( 60, 150, 140 ), '21:00', 'Sede dell\'associazione', 70, 0, 'venerdì a caso' ),
-		array( 'Concerto degli Who Cover Band', 'Musica', 'Una serata di rock con la tribute band degli Who: i grandi successi suonati dal vivo. Posti limitati, prenota per essere sicuro di entrare.', array( 190, 50, 50 ), '21:30', 'Teatro parrocchiale', 120, 800, 'venerdì a caso' ),
+		array( 'Concerto tributo rock anni Settanta', 'Musica', 'Una serata di rock con una tribute band: i grandi successi degli anni Settanta suonati dal vivo. Posti limitati, prenota per essere sicuro di entrare.', array( 190, 50, 50 ), '21:30', 'Teatro parrocchiale', 120, 800, 'venerdì a caso' ),
 	);
 	usort( $events, function ( $a, $b ) {
 		return strcmp( 'il 18' === $a[8] ? '0' : '1', 'il 18' === $b[8] ? '0' : '1' ); // prima la festa: la serata danzante evita i suoi giorni
