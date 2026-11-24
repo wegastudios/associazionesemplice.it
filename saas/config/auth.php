@@ -39,7 +39,8 @@ return [
 
     'guards' => [
         'web' => [
-            'driver' => 'session',
+            // Come «session», ma il cookie «ricordami» ha il prefisso __Host- (Core\Auth\HostSessionGuard, Core\Contracts\HostCookies).
+            'driver' => 'host-session',
             'provider' => 'users',
             // «Ricordami su questo dispositivo»: 14 giorni (in minuti). Senza la spunta l'accesso finisce con il browser.
             'remember' => 60 * 24 * 14,

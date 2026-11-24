@@ -1,5 +1,6 @@
 import { createApp, h } from 'vue';
 import { createInertiaApp, router } from '@inertiajs/vue3';
+import { xsrfCookieName } from './lib/xsrf.js';
 
 // I font passano da Vite e finiscono nel manifest: app.blade.php precarica quello del testo con Vite::asset().
 import.meta.glob('../fonts/*.woff2');
@@ -24,4 +25,6 @@ createInertiaApp({
         createApp({ render: () => h(App, props) }).use(plugin).mount(el);
     },
     progress: { color: '#EFCA5C' },
+    // Il token CSRF per le richieste di Inertia sta in `__Host-XSRF-TOKEN` in HTTPS (il server lo scrive nel meta «xsrf-cookie»).
+    http: { xsrfCookieName: xsrfCookieName() },
 });

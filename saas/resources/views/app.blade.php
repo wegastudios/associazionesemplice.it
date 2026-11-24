@@ -6,6 +6,8 @@
     <meta name="theme-color" content="#f5f6fa" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#11122a" media="(prefers-color-scheme: dark)">
     <meta name="robots" content="noindex, nofollow">
+    {{-- Nome del cookie col token XSRF (con prefisso __Host- in HTTPS): lo legge resources/js/lib/xsrf.js. --}}
+    <meta name="xsrf-cookie" content="{{ \App\Modules\Core\Contracts\HostCookies::name(\App\Modules\Core\Contracts\HostCookies::XSRF, request()) }}">
     <link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/assets/brand/favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">

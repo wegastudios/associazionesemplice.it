@@ -9,8 +9,10 @@ use App\Modules\Core\Http\Middleware\EnforceSessionLimits;
 use App\Modules\Core\Http\Middleware\EnsureTwoFactorConfirmed;
 use App\Modules\Core\Http\Middleware\EnsureUserActive;
 use App\Modules\Core\Http\Middleware\HandleInertiaRequests;
+use App\Modules\Core\Http\Middleware\HostPreventRequestForgery;
 use App\Modules\Core\Http\Middleware\IdentifyOperatorOrg;
 use App\Modules\Core\Http\Middleware\LongDatabaseTimeouts;
+use App\Modules\Core\Http\Middleware\MigrateHostCookies;
 use App\Modules\Core\Http\Middleware\ResetOrgContext;
 use App\Modules\Core\Http\Middleware\ResolveProxyClient;
 use App\Modules\Core\Http\Middleware\RestrictToAppHost;
@@ -24,6 +26,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -46,7 +49,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Sotto il percorso dell'amministrazione la sessione ha cookie, percorso e guardia propri: va prima di tutto.
         // Area soci e moduli pubblici (rotte con il marchio «cookie-session»): sessione nel cookie, non nel database (H19).
-        $middleware->web(prepend: [UsePlatformSession::class, UseCookieSession::class], append: [EnforceSessionLimits::class, ThrottleAccountSecurity::class, EnsureUserActive::class, DemoRestrictions::class, HandleInertiaRequests::class]);
+        // Cookie con prefisso __Host- (docs/COOKIE_HOST.md): il token XSRF cambia nome; MigrateHostCookies, dopo la cifratura dei
+        // cookie e prima di chi legge l'utente, porta i vecchi «ricordami» e as_socio ai nomi nuovi durante la finestra di passaggio.
+        $middleware->web(
+            prepend: [UsePlatformSession::class, UseCookieSession::class],
+            append: [MigrateHostCookies::class, EnforceSessionLimits::class, ThrottleAccountSecurity::class, EnsureUserActive::class, DemoRestrictions::class, HandleInertiaRequests::class],
+            replace: [PreventRequestForgery::class => HostPreventRequestForgery::class],
+        );
         $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: UsePlatformSession::class);
         $middleware->encryptCookies();
         $middleware->redirectGuestsTo('/accesso');

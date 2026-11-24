@@ -5,6 +5,7 @@ import Avatar from '../../components/ui/Avatar.vue';
 import { ChevronLeft } from '../../components/ui/icons.js';
 import AppLayout from '../../layouts/AppLayout.vue';
 import PersonPicker from '../../components/PersonPicker.vue';
+import { xsrfToken } from '../../lib/xsrf.js';
 
 const props = defineProps({
     person: Object, firstFreeCard: String, types: Array, levels: Array, accounts: Array,
@@ -47,7 +48,7 @@ const memberArea = computed(() => (page.props.org?.packages ?? []).includes('mem
 const accessLink = ref('');
 const accessError = ref('');
 const accessDone = ref('');
-const xsrf = () => decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
+const xsrf = xsrfToken;
 const memberPost = async (what) => {
     accessError.value = '';
     accessDone.value = '';

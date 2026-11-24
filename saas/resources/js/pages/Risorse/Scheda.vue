@@ -3,6 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 import PersonPicker from '../../components/PersonPicker.vue';
+import { xsrfToken } from '../../lib/xsrf.js';
 
 const props = defineProps({
     resource: Object, date: String, grid: Array, categories: Array, typologies: Array, incomeCategories: Array, accounts: Array, methods: Array,
@@ -42,7 +43,7 @@ watch(() => [book.person_id, book.holder_name, book.date, book.start, book.units
     quoteError.value = '';
     if (!props.resource || !book.date || (kindOf.value === 'hourly' && !book.start)) return;
     timer = setTimeout(async () => {
-        const token = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
+        const token = xsrfToken();
         const res = await fetch(`/gestionale/risorse/${props.resource.id}/preventivo`, {
             method: 'POST', credentials: 'same-origin',
             headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-XSRF-TOKEN': token },

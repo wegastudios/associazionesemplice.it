@@ -283,7 +283,7 @@ l'operatore può vedere.
   `phpunit.xml`.
 - Accesso senza password (dal `MemberSession` del plugin): l'email riceve link e codice a 6 cifre (15 minuti, una
   volta sola, 5 tentativi); per chi non ha email la segreteria prepara dalla scheda un link valido 7 giorni da
-  mandare su WhatsApp. Sessioni in `app.member_sessions`, cookie `as_socio` (path `/area`, HttpOnly, SameSite Lax),
+  mandare su WhatsApp. Sessioni in `app.member_sessions`, cookie `as_socio` (path `/area`; su HTTPS `__Host-as_socio` con path `/`, vedi COOKIE_HOST.md; HttpOnly, SameSite Lax),
   30 giorni senza uso o 90 dall'accesso; «esci da tutti i dispositivi» per il socio e per la segreteria. Nel database
   solo impronte sha256 di link, codici e token. Limiti di frequenza per indirizzo IP e per email.
 - Le schede visibili: la propria e quelle dei minori di cui si è tutori (si sceglie in alto). Pagine: tessera con QR
