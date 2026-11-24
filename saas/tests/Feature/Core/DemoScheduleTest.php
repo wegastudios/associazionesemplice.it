@@ -45,7 +45,7 @@ it('nessun lavoro permesso è anche nell\'elenco dei spenti', function (): void 
 
 it('con la demo accesa i lavori verso l\'esterno sono saltati e gli interni restano', function (): void {
     $schedule = fullSchedule();
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     DemoSchedule::restrict($schedule);
 
     $off = [];

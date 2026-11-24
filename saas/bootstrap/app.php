@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Core\Http\DatabaseBusy;
 use App\Modules\Core\Http\Middleware\CloseDemoPaths;
+use App\Modules\Core\Http\Middleware\DemoFileBarrier;
 use App\Modules\Core\Http\Middleware\DemoRestrictions;
 use App\Modules\Core\Http\Middleware\EnforceSessionLimits;
 use App\Modules\Core\Http\Middleware\EnsureTwoFactorConfirmed;
@@ -39,6 +40,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(RestrictToAppHost::class);
         // Demo: portale, staff, amministrazione, API e Stripe chiusi (404).
         $middleware->prepend(CloseDemoPaths::class);
+        // Demo: nessun file in arrivo da nessuna rotta (422), senza elenchi di percorsi.
+        $middleware->prepend(DemoFileBarrier::class);
         // Indirizzo del visitatore dietro il proxy del portale: solo con il segreto condiviso (va prima dei limiti di frequenza).
         $middleware->prepend(ResolveProxyClient::class);
         // Le pagine di /saas/admin e /saas/staff scrivono gli indirizzi del portale (SAAS_PUBLIC_URL), non quello dell'app.

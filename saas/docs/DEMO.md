@@ -122,10 +122,26 @@ Il catalogo verso il portale e gli aggiornamenti esterni non hanno lavori pianif
 
 `CloseDemoPaths` risponde **404** a: `/saas/admin` e `/saas/…` (amministrazione e staff), `/api/…` (API del portale, catalogo, esecuzione), `/accesso-unico/…`, `/area/webhook/…` (Stripe), `/gestionale/abbonamento`. Succede prima di qualunque controllo di firma o di sessione, quindi anche una chiamata con una firma valida non entra. Unica eccezione: `POST /api/portale/v2/runtime/reset`, l'azzeramento locale della cache usato da `saas:web:refresh`. Il guardiano `DemoRestrictions` toglie comunque `/saas/admin` e `/saas/staff` anche se un domani la prima barriera mancasse. `tests/Feature/Core/DemoClosedPathsTest.php` elenca le rotte registrate e fallisce se ne resta aperta una sensibile.
 
+## Quando la demo è attiva, e i limiti dei visitatori
+
+La demo è attiva **solo con `SAAS_DEMO` acceso E `APP_ENV=demo`** (`DemoScale::active()`, l'unico punto che lo decide). Con staging, locale o produzione nessun account pubblico, nessuna password, nessuna restrizione, nessun azzeramento. `saas:demo:check-env` pretende `APP_ENV=demo` e una `SAAS_DEMO_PASSWORD` di almeno 12 caratteri (vuota, per il codice, vale la predefinita: mai una password vuota). In ogni pagina c'è l'avviso fisso «Dati finti: la demo si azzera ogni notte alle 03:30.».
+
+Gli accessi sono di tutti, quindi i visitatori hanno questi limiti (`config/saas.php`, `demo.limits`; superati: «Nella demo hai raggiunto il limite: si azzera ogni notte alle 03:30.»):
+
+| Limite | Valore |
+| --- | --- |
+| Creazioni (ogni `POST` che aggiunge dati), per indirizzo IP | 40 all'ora |
+| Scritture di ogni tipo, per indirizzo IP | 200 all'ora |
+| Rotte con `throttle:N,M` (esportazioni comprese) | anche per indirizzo IP, oltre al limite per utente |
+| Soci, domande di adesione, movimenti, ricevute, prenotazioni, attività, risorse | quanto c'era a fine azzeramento + 100, 50, 200, 200, 150, 30, 20 |
+| Spazio dei file | 300 MB in tutto (il piano demo dà soci = conteggio di partenza + 100 e 1 GB, ma `StorageQuotaService` nella demo usa i 300 MB) |
+
+I tetti sono «conteggio di partenza + margine»: l'azzeramento scrive i conteggi in `demo.baseline.*`, così i dati di partenza non li superano mai. Restano spenti nella demo: chiusura, riapertura e commissione dei conti, cambio del nome degli utenti, ogni file in arrivo (`DemoFileBarrier`, nello stack globale: vale per qualunque rotta). I testi scritti dai visitatori non possono contenere link né HTML. Prove: `DemoLimitsTest`, `DemoRestrictionsTest`, `DemoEnvironmentTest`.
+
 ## Moduli pubblici (adesione, donazione, area soci)
 
 - **Limiti di frequenza**: ogni invio (`POST/PUT/DELETE`) delle rotte pubbliche ha un limite (`throttle:applications`, `applications-confirm`, `donations`, `member-*`) o conta i tentativi da sé (accesso dell'area soci: codice e link, per indirizzo e per email). La prova elenca le rotte e fallisce se una non ne ha.
-- **Nessun file**: i controller pubblici non leggono file e, nella demo, una richiesta con un file in arrivo su una rotta pubblica è rifiutata («il caricamento dei file è spento»).
+- **Nessun file**: i controller pubblici non leggono file e, nella demo, una richiesta con un file in arrivo, su qualunque rotta, è rifiutata da `DemoFileBarrier` («il caricamento dei file è spento»).
 - **Niente sopravvive all'azzeramento**: tutto ciò che i visitatori scrivono sta nel database (ricreato ogni notte), nei file dell'associazione (`SAAS_FILES_ROOT`, svuotato ogni notte), nei log e nella cache su disco (svuotati ogni notte). La donazione online e Stripe sono spenti. `tests/Feature/Core/DemoPublicModulesTest.php`.
 
 ## Il database della demo (procedura generica)

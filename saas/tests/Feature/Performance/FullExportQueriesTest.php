@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 
 function seedExportDemo(int $people): Org
 {
-    config(['saas.demo.enabled' => true, 'saas.demo.people' => $people]);
+    demoOn(['saas.demo.people' => $people]);
     $owner = DB::connection(app(DatabaseNames::class)->ownerConnection(null));
     $owner->statement("SET lock_timeout = '20s'");
     test()->beforeApplicationDestroyed(static fn () => $owner->statement('RESET lock_timeout'));

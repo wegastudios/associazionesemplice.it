@@ -44,7 +44,7 @@ it('il modello env.demo.example ha solo i punti da riempire, e riempiti non dà 
     expect(array_values(array_diff(array_keys($example), DemoEnvCheck::ALLOWED)))->toBe([]);
     $names = demoEnvProblemNames($example);
     sort($names);
-    expect($names)->toBe(['APP_KEY', 'DB_BACKUP_PASSWORD', 'DB_BACKUP_USERNAME', 'DB_DATABASE', 'DB_OWNER_PASSWORD', 'DB_OWNER_USERNAME', 'DB_PASSWORD', 'DB_USERNAME', 'SAAS_DEMO_DATABASE', 'SAAS_FILES_ROOT', 'SAAS_MASTER_KEY']);
+    expect($names)->toBe(['APP_KEY', 'DB_BACKUP_PASSWORD', 'DB_BACKUP_USERNAME', 'DB_DATABASE', 'DB_OWNER_PASSWORD', 'DB_OWNER_USERNAME', 'DB_PASSWORD', 'DB_USERNAME', 'SAAS_DEMO_DATABASE', 'SAAS_DEMO_PASSWORD', 'SAAS_FILES_ROOT', 'SAAS_MASTER_KEY']);
 
     $filled = array_merge($example, array_intersect_key(goodDemoEnv(), array_flip($names)));
     expect(DemoEnvCheck::problems($filled))->toBe([]);
@@ -60,6 +60,12 @@ dataset('errori del .env della demo', [
     'vecchio indirizzo' => [['APP_URL' => 'https://app-demo.associazionesemplice.it'], 'APP_URL', DemoEnvCheck::PLACEHOLDER],
     'indirizzo diverso da slug e dominio' => [['APP_URL' => 'https://altro.associazionesemplice.it'], 'APP_URL', 'SAAS_DEMO_SLUG'],
     'ambiente production' => [['APP_ENV' => 'production'], 'APP_ENV', 'demo'],
+    'ambiente staging' => [['APP_ENV' => 'staging'], 'APP_ENV', 'demo'],
+    'ambiente locale' => [['APP_ENV' => 'local'], 'APP_ENV', 'demo'],
+    'ambiente non scritto' => [['APP_ENV' => null], 'APP_ENV', 'demo'],
+    'password pubblica vuota' => [['SAAS_DEMO_PASSWORD' => ''], 'SAAS_DEMO_PASSWORD', DemoEnvCheck::EMPTY],
+    'password pubblica non scritta' => [['SAAS_DEMO_PASSWORD' => null], 'SAAS_DEMO_PASSWORD', DemoEnvCheck::EMPTY],
+    'password pubblica corta' => [['SAAS_DEMO_PASSWORD' => 'corta-corta'], 'SAAS_DEMO_PASSWORD', 'corta'],
     'demo spenta' => [['SAAS_DEMO' => 'false'], 'SAAS_DEMO', 'true'],
     'posta vera' => [['MAIL_MAILER' => 'smtp'], 'MAIL_MAILER', 'array'],
     'posta sul registro' => [['MAIL_MAILER' => 'log'], 'MAIL_MAILER', 'array'],

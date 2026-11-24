@@ -16,9 +16,10 @@
     @inertiaHead
 </head>
 <body class="min-h-full bg-surface text-ink antialiased">
-    @if (config('saas.demo.enabled') && ! app()->environment('production'))
-        <div role="status" style="background:#fff4c2;color:#4a3b00;padding:6px 12px;text-align:center;font:14px/1.4 system-ui,sans-serif">
-            Questa è una demo con dati inventati: puoi provare tutto. I dati si azzerano ogni notte, non parte nessuna email e nessun pagamento è vero.
+    {{-- Demo: avviso fisso in cima a ogni pagina (gestionale, accesso, moduli pubblici e area soci). --}}
+    @if (\App\Modules\Core\Contracts\DemoScale::restricted())
+        <div role="status" style="position:sticky;top:0;z-index:60;background:#fff4c2;color:#4a3b00;padding:6px 12px;text-align:center;font:600 14px/1.4 system-ui,sans-serif">
+            Dati finti: la demo si azzera ogni notte alle 03:30.
         </div>
     @endif
     @inertia
