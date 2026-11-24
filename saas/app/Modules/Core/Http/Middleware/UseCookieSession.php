@@ -43,7 +43,7 @@ final class UseCookieSession
             'session.driver' => 'cookie',
             'session.encrypt' => false,
             'session.domain' => null,
-            'session.cookie' => app()->isProduction() ? '__Host-as_pubblico' : 'as_pubblico',
+            'session.cookie' => self::cookieName(),
         ]);
 
         self::rebind();
@@ -54,6 +54,16 @@ final class UseCookieSession
             config(['session' => $before]);
             self::rebind();
         }
+    }
+
+    /**
+     * Con il prefisso __Host- il browser accetta il cookie solo Secure, con percorso «/» e senza Domain, e rifiuta quello
+     * con lo stesso nome scritto da un sottodominio fratello o dal dominio padre (.associazionesemplice.it). Vale
+     * ovunque ci sia HTTPS (produzione, staging, demo); in locale e nelle prove, che girano anche su http, no.
+     */
+    public static function cookieName(): string
+    {
+        return config('session.secure') === true && config('session.path') === '/' && ! app()->environment(['local', 'testing']) ? '__Host-as_pubblico' : 'as_pubblico';
     }
 
     /**
