@@ -15,6 +15,7 @@ use App\Modules\Cifratura\Keys\RecoveryFile;
 use App\Modules\Cifratura\Keys\VaultFactory;
 use App\Modules\Soci\Models\Person;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use KeyService\KeyWrap;
@@ -247,5 +248,155 @@ it('dopo il ritorno alla chiave locale non c\'è nulla da distruggere', function
 
     $this->artisan('saas:keys:local-retire', ['--distruggi' => true, '--force' => true])
         ->expectsOutputToContain('ritorno alla chiave locale')
+        ->assertFailed();
+});
+
+/*
+ * Cambio tra due chiavi locali (local-nuova): SAAS_MASTER_KEY_OLD → SAAS_MASTER_KEY, solo dal file d'ambiente.
+ */
+
+/** Porta tutte le chiavi dati dalla chiave di prova a una chiave locale «vecchia» e la configura. Restituisce la vecchia (base64). */
+function setUpOldLocalKey(): string
+{
+    $oldRaw = random_bytes(32);
+    $old = new LocalKeyVault($oldRaw);
+    $owner = DB::connection('pgsql_owner');
+    foreach (wrappedKeys() as $id => $wrapped) {
+        [$org, $version] = explode(':', $id);
+        $key = testLocalVault()->unwrap($org, (int) $version, $wrapped);
+        $owner->table('core.org_keys')->where('org_id', $org)->where('version', (int) $version)
+            ->update(['wrapped_key' => Bytea::encode($old->wrap($org, (int) $version, $key))]);
+    }
+    config(['saas.crypto.master_key_old' => base64_encode($oldRaw)]);
+
+    return base64_encode($oldRaw);
+}
+
+it('local-nuova: dalla chiave locale vecchia alla nuova, con prova, ripetibile e senza chiavi in output', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    $this->createOrg('Circolo Beta');
+    $original = dataKeys(testLocalVault());
+    $count = count($original);
+    $oldB64 = setUpOldLocalKey();
+    $oldVault = new LocalKeyVault(base64_decode($oldB64));
+    expect(array_filter(dataKeys(testLocalVault())))->toBe([]);
+
+    $before = wrappedKeys();
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--dry-run' => true])
+        ->expectsOutputToContain("chiavi da riavvolgere: {$count}")
+        ->doesntExpectOutputToContain($oldB64)
+        ->doesntExpectOutputToContain(LocalKeyVault::TEST_MASTER_KEY)
+        ->assertSuccessful();
+    expect(wrappedKeys())->toBe($before)
+        ->and(DB::table('core.platform_audit')->where('action', 'keys.rewrap')->count())->toBe(0);
+
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--force' => true])
+        ->expectsOutputToContain("chiavi riavvolte: {$count}")
+        ->doesntExpectOutputToContain($oldB64)
+        ->doesntExpectOutputToContain(LocalKeyVault::TEST_MASTER_KEY)
+        ->assertSuccessful();
+    expect(dataKeys(testLocalVault()))->toBe($original)
+        ->and(array_filter(dataKeys($oldVault)))->toBe([]);
+
+    $this->travel(1)->minutes();
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--force' => true])
+        ->expectsOutputToContain('chiavi riavvolte: 0')
+        ->expectsOutputToContain("già a posto: {$count}")
+        ->assertSuccessful();
+
+    $row = json_decode((string) DB::table('core.platform_audit')->where('action', 'keys.rewrap')->orderBy('created_at')->value('details'), true);
+    expect($row)->toMatchArray(['to' => 'local-nuova', 'rewrapped' => $count, 'failed' => 0])
+        ->and(implode("\n", $this->logged))->not->toContain($oldB64)->not->toContain(LocalKeyVault::TEST_MASTER_KEY);
+});
+
+it('local-nuova: il ritorno è lo stesso comando con le due chiavi scambiate', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    $original = dataKeys(testLocalVault());
+    $count = count($original);
+    $oldB64 = setUpOldLocalKey();
+
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--force' => true])->assertSuccessful();
+
+    config(['saas.crypto.master_key' => $oldB64, 'saas.crypto.master_key_old' => LocalKeyVault::TEST_MASTER_KEY]);
+    $this->travel(1)->minutes();
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--force' => true])
+        ->expectsOutputToContain("chiavi riavvolte: {$count}")
+        ->assertSuccessful();
+
+    expect(dataKeys(new LocalKeyVault(base64_decode($oldB64))))->toBe($original)
+        ->and(array_filter(dataKeys(testLocalVault())))->toBe([]);
+});
+
+it('local-nuova: senza la chiave vecchia, uguale alla nuova o malformata non tocca nulla', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    $before = wrappedKeys();
+
+    config(['saas.crypto.master_key_old' => null]);
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--force' => true])
+        ->expectsOutputToContain('SAAS_MASTER_KEY_OLD non configurata')
+        ->assertFailed();
+
+    config(['saas.crypto.master_key_old' => LocalKeyVault::TEST_MASTER_KEY]);
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--force' => true])
+        ->expectsOutputToContain('servono due chiavi diverse')
+        ->assertFailed();
+
+    config(['saas.crypto.master_key_old' => 'non-e-una-chiave']);
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--force' => true])
+        ->expectsOutputToContain('SAAS_MASTER_KEY_OLD non valida')
+        ->assertFailed();
+
+    expect(wrappedKeys())->toBe($before);
+});
+
+it('local-nuova: con la chiave vecchia sbagliata si ferma prima di scrivere, anche in prova', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    $this->createOrg('Circolo Beta');
+    setUpOldLocalKey();
+    $wrong = base64_encode(random_bytes(32));
+    config(['saas.crypto.master_key_old' => $wrong]);
+    $before = wrappedKeys();
+
+    foreach ([['--dry-run' => true], ['--force' => true]] as $options) {
+        $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova'] + $options)
+            ->expectsOutputToContain('Chiavi che non si aprono né con SAAS_MASTER_KEY_OLD né con SAAS_MASTER_KEY')
+            ->doesntExpectOutputToContain($wrong)
+            ->assertFailed();
+    }
+
+    expect(wrappedKeys())->toBe($before)
+        ->and(DB::table('core.platform_audit')->where('action', 'keys.rewrap')->count())->toBe(0);
+});
+
+it('local-nuova: una chiave che non si apre con nessuna delle due blocca tutto, anche le associazioni buone', function (): void {
+    $bad = $this->createOrg('Polisportiva Alfa');
+    $this->createOrg('Circolo Beta');
+    setUpOldLocalKey();
+    $broken = Bytea::encode((new KeyWrap(random_bytes(32)))->wrap($bad->id, 1, random_bytes(32)));
+    DB::connection('pgsql_owner')->table('core.org_keys')->where('org_id', $bad->id)->where('version', 1)->update(['wrapped_key' => $broken]);
+    $before = wrappedKeys();
+
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--force' => true])
+        ->expectsOutputToContain("associazione: {$bad->id}")
+        ->assertFailed();
+
+    expect(wrappedKeys())->toBe($before);
+});
+
+it('la chiave vecchia non si passa dalla riga di comando: il comando non ha opzioni per le chiavi', function (): void {
+    $definition = Artisan::all()['saas:keys:rewrap']->getDefinition();
+    $options = array_diff(array_keys($definition->getOptions()), ['dry-run', 'force', 'help', 'quiet', 'verbose', 'version', 'ansi', 'no-ansi', 'no-interaction', 'env']);
+
+    expect($options)->toBe([])
+        ->and(array_keys($definition->getArguments()))->toBe(['verso']);
+});
+
+it('dopo local-nuova il comando di ritiro non propone distruzioni', function (): void {
+    $this->createOrg('Polisportiva Alfa');
+    setUpOldLocalKey();
+    $this->artisan('saas:keys:rewrap', ['verso' => 'local-nuova', '--force' => true])->assertSuccessful();
+
+    $this->artisan('saas:keys:local-retire', ['--distruggi' => true, '--force' => true])
+        ->expectsOutputToContain('cambio tra due chiavi locali')
         ->assertFailed();
 });

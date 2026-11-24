@@ -41,6 +41,11 @@ final class RetireLocalKeyCommand extends Command
 
             return $this->option('distruggi') === true ? self::FAILURE : self::SUCCESS;
         }
+        if ($switch['to'] === 'local-nuova') {
+            $this->line('L\'ultimo passaggio registrato ('.$switch['at']->format('d/m/Y').') è il cambio tra due chiavi locali: la chiave vecchia si toglie da SAAS_MASTER_KEY_OLD e si distrugge secondo ROTAZIONE_CHIAVI.md; qui non c\'è nulla da registrare.');
+
+            return $this->option('distruggi') === true ? self::FAILURE : self::SUCCESS;
+        }
         if ($switch['to'] !== 'remote') {
             $this->line('L\'ultimo passaggio registrato ('.$switch['at']->format('d/m/Y').') è il ritorno alla chiave locale: non c\'è nulla da distruggere.');
 
