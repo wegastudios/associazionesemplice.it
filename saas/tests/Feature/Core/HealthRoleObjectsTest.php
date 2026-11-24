@@ -23,7 +23,7 @@ function healthRoleFacts(array $override = []): array
 }
 
 it('senza anomalie la valutazione dei ruoli è vuota', function (): void {
-    expect(RoleObjectAudit::evaluate(healthRoleFacts()))->toBe(['problems' => [], 'notes' => []]);
+    expect(RoleObjectAudit::evaluate(healthRoleFacts()))->toBe(['problems' => [], 'critical' => [], 'notes' => []]);
 });
 
 it('ogni anomalia dei ruoli è un problema con il rimedio', function (string $key, string $expected): void {
@@ -38,7 +38,6 @@ it('ogni anomalia dei ruoli è un problema con il rimedio', function (string $ke
     ['groupGrants', 'REVOKE'],
     ['createDatabase', 'REVOKE CREATE ON DATABASE'],
     ['createSchema', 'REVOKE CREATE ON SCHEMA'],
-    ['ownerMembers', 'membro del ruolo proprietario'],
 ]);
 
 it('il SET ROLE verso il ruolo di gruppo è un limite noto solo se il resto è in ordine', function (): void {
@@ -108,4 +107,60 @@ it('segnala il CREATE sul database dato all\'applicazione', function (): void {
     } finally {
         $owner->statement("REVOKE CREATE ON DATABASE {$database} FROM as_app");
     }
+});
+
+it('app o backup membri del ruolo proprietario sono sempre un errore, a parte dagli altri problemi, e senza note', function (): void {
+    $result = RoleObjectAudit::evaluate(healthRoleFacts(['ownerMembers' => ['applicazione'], 'setRole' => ['backup']]));
+
+    expect($result['problems'])->toBe([])
+        ->and($result['critical'])->toHaveCount(1)
+        ->and($result['critical'][0])->toContain('membro del ruolo proprietario')->toContain('(applicazione)')
+        ->and($result['notes'])->toBe([]);
+});
+
+it('la voce sulla separazione dal ruolo proprietario non è tra i controlli morbidi, quella sugli oggetti sì', function (): void {
+    $source = (string) file_get_contents(dirname(__DIR__, 3).'/app/Modules/Core/Console/HealthCommand.php');
+    $start = (int) strpos($source, '$soft = [');
+    $soft = substr($source, $start, (int) strpos($source, '];', $start) - $start);
+
+    expect($soft)->toContain("'oggetti e ruoli di gruppo'")
+        ->and($soft)->not->toContain('separazione dal ruolo proprietario')
+        ->and($source)->toContain("'separazione dal ruolo proprietario' => fn () => \$this->roleObjects(\$db, \$databases, true)");
+});
+
+it('sul database di prova la separazione dal ruolo proprietario è verde', function (): void {
+    $this->artisan('saas:health', ['--skip-migrations' => true])
+        ->expectsOutputToContain('ok    separazione dal ruolo proprietario')
+        ->assertSuccessful();
+});
+
+it('il dettaglio di saas:health non esce nel log del rilascio né da endpoint HTTP', function (): void {
+    $base = dirname(__DIR__, 3);
+
+    // Rilascio: l'uscita va su un file riservato, nel log solo l'esito e il conteggio.
+    $remote = (string) file_get_contents($base.'/deploy/remote.sh');
+    expect($remote)->toContain('> "$file" 2>&1')
+        ->and($remote)->toContain('echo "controllo di salute: ok (')
+        ->and($remote)->toContain('umask 077')
+        ->and(substr_count($remote, 'artisan saas:health'))->toBe(1);
+
+    // Manutenzione sul server: l'uscita filtrata va nel file, a schermo solo i conteggi.
+    $ops = (string) file_get_contents($base.'/deploy/ops.sh');
+    expect($ops)->toContain('artisan saas:health --skip-migrations 2>&1 | grep -E')
+        ->and($ops)->toContain('>> "$F" || true');
+
+    // Nessun codice dell'applicazione (rotte, controller, API verso il portale) lancia saas:health.
+    $hits = [];
+    foreach (['app', 'routes'] as $dir) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator("{$base}/{$dir}", FilesystemIterator::SKIP_DOTS)) as $file) {
+            if (! $file instanceof SplFileInfo || $file->getExtension() !== 'php') {
+                continue;
+            }
+            $text = (string) file_get_contents($file->getPathname());
+            if (str_contains($text, "'saas:health'") && ! str_ends_with($file->getPathname(), 'HealthCommand.php')) {
+                $hits[] = $file->getPathname();
+            }
+        }
+    }
+    expect($hits)->toBe([]);
 });

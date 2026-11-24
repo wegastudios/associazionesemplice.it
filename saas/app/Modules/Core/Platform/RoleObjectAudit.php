@@ -142,7 +142,7 @@ final class RoleObjectAudit
      * un'informazione.
      *
      * @param  array{unexpectedSchemas: list<string>, owned: list<string>, groupGrants: list<string>, createDatabase: list<string>, createSchema: list<string>, ownerMembers: list<string>, setRole: list<string>}  $facts
-     * @return array{problems: list<string>, notes: list<string>}
+     * @return array{problems: list<string>, critical: list<string>, notes: list<string>}
      */
     public static function evaluate(array $facts): array
     {
@@ -162,16 +162,19 @@ final class RoleObjectAudit
         if ($facts['createSchema'] !== []) {
             $problems[] = 'CREATE su schemi non previsto ('.implode(', ', $facts['createSchema']).'): revocarlo al ruolo, o al ruolo di gruppo da cui lo eredita (REVOKE CREATE ON SCHEMA)';
         }
+        // Sempre un errore, anche senza SAAS_HEALTH_STRICT: se l'applicazione o i backup sono membri del ruolo proprietario
+        // la separazione dei ruoli non esiste.
+        $critical = [];
         if ($facts['ownerMembers'] !== []) {
-            $problems[] = 'membro del ruolo proprietario ('.implode(', ', $facts['ownerMembers']).'): toglierlo (REVOKE del ruolo proprietario dal ruolo)';
+            $critical[] = 'membro del ruolo proprietario ('.implode(', ', $facts['ownerMembers']).'): la separazione dei ruoli non esiste, toglierlo (REVOKE del ruolo proprietario dal ruolo)';
         }
 
         $notes = [];
-        if ($problems === [] && $facts['setRole'] !== []) {
+        if ($problems === [] && $critical === [] && $facts['setRole'] !== []) {
             $notes[] = 'limite noto: '.implode(' e ', $facts['setRole']).' possono assumere con SET ROLE il ruolo di gruppo che possiede il database (su cPanel non si evita): per questo si controlla oggetto per oggetto, e qui è tutto in ordine';
         }
 
-        return ['problems' => $problems, 'notes' => $notes];
+        return ['problems' => $problems, 'critical' => $critical, 'notes' => $notes];
     }
 
     /** @return list<string> */

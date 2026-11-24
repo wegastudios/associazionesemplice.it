@@ -496,7 +496,7 @@ case "$ACTION" in
       }
     ' 2>>"$F"
     echo "== Controllo =="
-    "$PHP" artisan saas:health --skip-migrations 2>&1 | grep -E "permessi|ruolo|ERRORE|AVVISO" >> "$F" || true
+    "$PHP" artisan saas:health --skip-migrations 2>&1 | grep -E "permessi|ruolo|ruoli|ERRORE|AVVISO" >> "$F" || true
     prune_files permessi-db
     echo "Righe con ERRORE: $(grep -c 'ERRORE' "$F" || true)"
     echo "Righe con AVVISO: $(grep -c 'AVVISO' "$F" || true)"

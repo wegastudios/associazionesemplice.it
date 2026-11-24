@@ -128,9 +128,12 @@ Segnala, con le regole degli altri controlli sui permessi (errore con `SAAS_HEAL
    elencati in `SAAS_HEALTH_EXTRA_SCHEMAS` (nomi separati da virgola);
 2. tabelle, viste, sequenze, funzioni e schemi di proprietà dell'applicazione, dei backup o di un ruolo di gruppo di cui
    sono membri, cioè non del ruolo proprietario (rimedio: `ALTER ... OWNER TO` con il ruolo proprietario);
-3. permessi espliciti dei ruoli di gruppo su schemi e tabelle (rimedio: `REVOKE`), e appartenenza dell'applicazione o dei
-   backup al ruolo proprietario;
+3. permessi espliciti dei ruoli di gruppo su schemi e tabelle (rimedio: `REVOKE`);
 4. `CREATE` sul database o su uno schema da parte dell'applicazione o dei backup, anche ereditato.
+Un'altra voce, «separazione dal ruolo proprietario», è **sempre un ERRORE**, anche senza `SAAS_HEALTH_STRICT`: l'applicazione
+o i backup sono membri del ruolo proprietario (la separazione dei ruoli non esiste).
+Il dettaglio di questi messaggi resta nel file riservato `shared/health-<data>.txt` (rilascio) o nel file di `permessi-db`
+(manutenzione); nel log del rilascio escono solo l'esito e il conteggio, e nessuna risposta HTTP li riporta.
 Quando 1-4 sono in ordine e applicazione o backup possono assumere con `SET ROLE` il ruolo che possiede il database, la
 voce resta verde e `saas:health` stampa una nota «limite noto»: è un'informazione, non un errore.
 
