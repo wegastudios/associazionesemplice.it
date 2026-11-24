@@ -26,6 +26,11 @@ use Symfony\Component\HttpFoundation\Cookie;
 
 const HC_APP = 'https://localhost';
 
+beforeEach(function (): void {
+    // Come in produzione (il modello di sviluppo ha SESSION_SECURE_COOKIE=false): cookie Secure, percorso /, nessun Domain.
+    config(['session.secure' => true, 'session.path' => '/', 'session.domain' => null]);
+});
+
 /** Il cookie col nome dato di una risposta, o null. */
 function hcCookie(TestResponse $response, string $name): ?Cookie
 {

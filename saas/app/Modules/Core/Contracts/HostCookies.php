@@ -55,7 +55,7 @@ final class HostCookies
     /** Nome che Laravel dà da sé al cookie «ricordami» (impronta della classe, nessun prefisso): un sottodominio potrebbe sostituirlo. */
     public static function legacyRecaller(string $guard): string
     {
-        return 'remember_'.$guard.'_'.sha1(SessionGuard::class);
+        return 'remember_'.$guard.'_'.hash('sha1', SessionGuard::class);
     }
 
     /** Fine del periodo in cui si leggono ancora i vecchi nomi (`remember` o `member`); senza data (o non valida), non si leggono più. */
