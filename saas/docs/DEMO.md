@@ -126,6 +126,7 @@ Nessun nome, valore o password in questo documento: i nomi scelti stanno solo ne
    - dare al proprietario `CREATE` sul database; `ALTER SCHEMA public OWNER TO <proprietario>`; `REVOKE ALL ON SCHEMA public FROM PUBLIC`;
    - poi, come gruppo (`SET ROLE <gruppo>`): `REVOKE CREATE, TEMPORARY ON DATABASE <db> FROM <gruppo>` e `REVOKE ALL ON DATABASE <db> FROM PUBLIC`; infine `GRANT CONNECT ON DATABASE <db>` ad applicazione e sola lettura (e al proprietario).
 5. **Migrazioni come proprietario** (`saas:migrate` usa `DB_OWNER_*`): così tabelle e schemi sono del proprietario, non del gruppo.
+   - **Dopo le migrazioni**, come proprietario: `GRANT USAGE ON SCHEMA public TO <applicazione>, <sola lettura>` (solo `USAGE`, mai `CREATE`). Le estensioni (`citext`, `pg_trgm`) stanno in `public`: senza `USAGE`, dopo il `REVOKE ALL ... FROM PUBLIC` del punto 4, applicazione e sola lettura non le risolvono («permission denied for schema public»). Lo stesso `USAGE` serve al ruolo usato dalle copie di sicurezza (backup).
 6. **Limite noto, accettato per la demo** (dati finti): applicazione e sola lettura possono fare `SET ROLE` al gruppo e quindi `ALTER DATABASE` o `GRANT` sul database; non toccano le tabelle del proprietario. Non è accettabile in produzione.
 
 ## Ambiente GitHub `demo`
@@ -220,6 +221,7 @@ Sul server **niente si installa finché il titolare non lo chiede**. Quando sar�
 3. Due coppie di chiavi SSH; parte pubblica in `authorized_keys`; privata di Actions nell'ambiente GitHub `demo`.
 4. `.env` dal modello, compilato dal titolare; `php artisan saas:demo:check-env` senza problemi.
 5. Rilascio dal workflow «SaaS · rilascio» con ambiente `demo` (solo `main`).
+   - **Primo rilascio su database vuoto**: `remote.sh` lancia `saas:health --skip-migrations` *prima* delle migrazioni, quindi il primo rilascio si ferma con «relation ... does not exist». La release però è già estratta in `~/saas-demo/releases/<ultima>`. Procedura: (a) lasciar fallire il primo rilascio al controllo di salute; (b) dalla cartella di quella release, come proprietario, `php artisan saas:migrate --force`; (c) dare il `USAGE` su `public` (vedi «Il database della demo», punto 5); (d) rilanciare il rilascio: stavolta passa. Poi `saas:demo:check-env` e il primo `saas:demo:reset` (senza opzioni).
 6. Primo `php artisan saas:demo:reset`, a mano; poi lo fa lo scheduler alle 03:30. Cron: `schedule:run` ogni minuto.
 7. Prove: `/accesso` con gli accessi della pagina, `/area/accesso`, `/adesione/demosaas`, `https://demosaas.associazionesemplice.it/robots.txt` (deve dire `Disallow: /`).
 
