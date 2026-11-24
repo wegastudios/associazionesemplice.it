@@ -55,7 +55,7 @@ final class GroupPrivileges
     /**
      * Controlli prima di scrivere. Vuoto = si può procedere. Altrimenti i motivi, in parole generiche (mai nomi).
      * 1) nessun altro ruolo con accesso (es. il portale) raggiunge le tabelle solo tramite il gruppo;
-     * 2) applicazione e backup esistono e hanno un permesso diretto sulle tabelle (l'applicazione fuori da public e portal,
+     * 2) applicazione e backup esistono e hanno i permessi diretti su tabelle e sequenze (l'applicazione fuori da public e portal,
      *    dove la tabella delle migrazioni è volutamente chiusa).
      *
      * @return list<string>
@@ -88,19 +88,49 @@ final class GroupPrivileges
             $reasons[] = 'un altro ruolo con accesso raggiunge delle tabelle solo tramite il gruppo';
         }
 
-        // Ogni tabella deve avere una voce diretta per il ruolo (l'applicazione scrive anche senza leggere: basta una qualsiasi).
-        foreach ([['applicazione', $app, "AND n.nspname NOT IN ('public', 'portal') AND NOT o.relispartition", "'SELECT', 'INSERT', 'UPDATE', 'DELETE'"], ['backup', $backup, '', "'SELECT'"]] as [$label, $role, $filter, $privileges]) {
+        // Applicazione: nessuna tabella (fuori da public e portal, partizioni escluse) deve essere raggiungibile SOLO tramite il
+        // gruppo, cioè l'applicazione ha un accesso effettivo (S/I/U/D) ma nessuna voce diretta, né sulla tabella né su una colonna.
+        // Il confronto non va oltre la tabella: il gruppo ha tutto, quindi per un singolo privilegio l'accesso effettivo
+        // dell'applicazione non distingue ciò che le serve da ciò che prende dal gruppo; i permessi attesi sono nelle migrazioni.
+        $appOnly = self::one($db, <<<SQL
+            SELECT count(*) AS c
+            FROM pg_class o JOIN pg_namespace n ON n.oid = o.relnamespace, (SELECT oid FROM pg_roles WHERE rolname = {$app}) r
+            WHERE n.nspname = ANY (CAST({$list} AS text[])) AND o.relkind IN ('r', 'p')
+              AND n.nspname NOT IN ('public', 'portal') AND NOT o.relispartition AND o.relowner <> r.oid
+              AND (has_table_privilege(r.oid, o.oid, 'SELECT') OR has_table_privilege(r.oid, o.oid, 'INSERT')
+                   OR has_table_privilege(r.oid, o.oid, 'UPDATE') OR has_table_privilege(r.oid, o.oid, 'DELETE'))
+              AND NOT EXISTS (SELECT 1 FROM aclexplode(o.relacl) a WHERE a.grantee = r.oid)
+              AND NOT EXISTS (SELECT 1 FROM pg_attribute att, aclexplode(att.attacl) a WHERE att.attrelid = o.oid AND a.grantee = r.oid)
+            SQL);
+        if ((int) ($appOnly['c'] ?? 0) > 0) {
+            $reasons[] = 'applicazione: tabelle raggiunte solo tramite il gruppo';
+        }
+
+        // Backup: lettura DIRETTA di ogni tabella e di ogni sequenza (pg_dump legge anche le sequenze).
+        foreach ([['tabelle', "('r', 'p')"], ['sequenze', "('S')"]] as [$what, $kinds]) {
             $missing = self::one($db, <<<SQL
                 SELECT count(*) AS c
-                FROM pg_class o JOIN pg_namespace n ON n.oid = o.relnamespace, (SELECT oid FROM pg_roles WHERE rolname = {$role}) r
-                WHERE n.nspname = ANY (CAST({$list} AS text[])) AND o.relkind IN ('r', 'p') {$filter}
-                  AND o.relowner <> r.oid
-                  AND NOT EXISTS (SELECT 1 FROM aclexplode(o.relacl) a WHERE a.grantee = r.oid AND a.privilege_type IN ({$privileges}))
-                  AND NOT EXISTS (SELECT 1 FROM pg_attribute att, aclexplode(att.attacl) a WHERE att.attrelid = o.oid AND a.grantee = r.oid)
+                FROM pg_class o JOIN pg_namespace n ON n.oid = o.relnamespace, (SELECT oid FROM pg_roles WHERE rolname = {$backup}) r
+                WHERE n.nspname = ANY (CAST({$list} AS text[])) AND o.relkind IN {$kinds} AND o.relowner <> r.oid
+                  AND NOT EXISTS (SELECT 1 FROM aclexplode(o.relacl) a WHERE a.grantee = r.oid AND a.privilege_type = 'SELECT')
                 SQL);
             if ((int) ($missing['c'] ?? 0) > 0) {
-                $reasons[] = "{$label}: tabelle senza permesso di lettura diretto";
+                $reasons[] = "backup: {$what} senza permesso di lettura diretto";
             }
+        }
+
+        // Applicazione: USAGE o UPDATE DIRETTO sulle sequenze delle tabelle in cui scrive (default nextval di una colonna seriale).
+        $appSequences = self::one($db, <<<SQL
+            SELECT count(DISTINCT s.oid) AS c
+            FROM pg_class s JOIN pg_namespace n ON n.oid = s.relnamespace
+            JOIN pg_depend d ON d.classid = CAST('pg_class' AS regclass) AND d.objid = s.oid AND d.deptype = 'a' AND d.refclassid = CAST('pg_class' AS regclass)
+            JOIN pg_class t ON t.oid = d.refobjid, (SELECT oid FROM pg_roles WHERE rolname = {$app}) r
+            WHERE n.nspname = ANY (CAST({$list} AS text[])) AND n.nspname NOT IN ('public', 'portal') AND s.relkind = 'S' AND s.relowner <> r.oid
+              AND EXISTS (SELECT 1 FROM aclexplode(t.relacl) a WHERE a.grantee = r.oid AND a.privilege_type = 'INSERT')
+              AND NOT EXISTS (SELECT 1 FROM aclexplode(s.relacl) a WHERE a.grantee = r.oid AND a.privilege_type IN ('USAGE', 'UPDATE'))
+            SQL);
+        if ((int) ($appSequences['c'] ?? 0) > 0) {
+            $reasons[] = 'applicazione: sequenze senza permesso diretto';
         }
 
         return $reasons;

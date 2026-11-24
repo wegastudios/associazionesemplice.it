@@ -156,6 +156,47 @@ it('rifiuta senza scrivere se il backup non ha il permesso di lettura diretto su
     });
 });
 
+it('rifiuta senza scrivere se il backup non ha il permesso di lettura diretto su una sequenza', function (): void {
+    withTestGroup(function (Connection $owner, string $group): void {
+        [$app, $backup] = revokeRoles();
+        $owner->statement("GRANT ALL ON ALL TABLES IN SCHEMA audit TO {$group}");
+        $owner->statement("REVOKE SELECT ON SEQUENCE core.jobs_id_seq FROM {$backup}");
+        try {
+            $result = GroupPrivileges::revoke($owner, $group, $app, $backup);
+
+            expect($result['refused'])->toBe(['backup: sequenze senza permesso di lettura diretto'])
+                ->and(hasPrivilege($owner, $group, 'audit.log', 'TRUNCATE'))->toBeTrue();
+        } finally {
+            $owner->statement("GRANT SELECT ON SEQUENCE core.jobs_id_seq TO {$backup}");
+        }
+    });
+});
+
+it('rifiuta senza scrivere se l\'applicazione scrive su una tabella solo tramite il gruppo', function (): void {
+    withTestGroup(function (Connection $owner, string $group, Connection $admin): void {
+        [$app, $backup] = revokeRoles();
+        $owner->statement('CREATE SCHEMA org_zzsolo');
+        try {
+            $owner->statement('CREATE TABLE org_zzsolo.t (a int)');
+            $owner->statement("GRANT ALL ON org_zzsolo.t TO {$group}");
+            $owner->statement("GRANT SELECT ON org_zzsolo.t TO {$backup}");
+            $admin->statement("GRANT {$group} TO {$app}");
+
+            $result = GroupPrivileges::revoke($owner, $group, $app, $backup);
+
+            expect($result['refused'])->toBe(['applicazione: tabelle raggiunte solo tramite il gruppo'])
+                ->and($result['removed'])->toBe(0)
+                ->and(hasPrivilege($owner, $group, 'org_zzsolo.t', 'INSERT'))->toBeTrue();
+
+            // Con una voce diretta per l'applicazione il controllo passa.
+            $owner->statement("GRANT INSERT ON org_zzsolo.t TO {$app}");
+            expect(GroupPrivileges::guard($owner, $group, $app, $backup))->toBe([]);
+        } finally {
+            $owner->statement('DROP SCHEMA IF EXISTS org_zzsolo CASCADE');
+        }
+    });
+});
+
 it('sugli schemi toglie al gruppo solo se applicazione e backup hanno l\'USAGE diretto, altrimenti lo conta tra i rimasti', function (): void {
     withTestGroup(function (Connection $owner, string $group): void {
         [$app, $backup] = revokeRoles();
