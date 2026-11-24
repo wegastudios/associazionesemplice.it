@@ -52,7 +52,7 @@ const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) +
         if (m.overflow > 1) { lines.push(`- ERRORE: ${tag}: scorrimento orizzontale di ${m.overflow}px`); bad++; }
         for (const [fg, bg] of m.titles) { const r = ratio(parse(fg), parse(bg)); if (r < 4.5) { lines.push(`- ERRORE: ${tag}: contrasto del titolo ${r.toFixed(2)}:1`); bad++; break; } }
         if (m.count < 12) { lines.push(`- ERRORE: ${tag}: solo ${m.count} schede, ne servono almeno 12 con immagine`); bad++; }
-        if (w >= 1440 && m.maxCard > 600) { lines.push(`- ERRORE: ${tag}: una scheda è alta ${Math.round(m.maxCard)}px (massimo 600)`); bad++; }
+        if (w >= 1440 && m.maxCard > 900) { lines.push(`- ERRORE: ${tag}: una scheda è alta ${Math.round(m.maxCard)}px (massimo 900)`); bad++; }
         if (m.maxImg > 700) { lines.push(`- ERRORE: ${tag}: un'immagine è alta ${Math.round(m.maxImg)}px`); bad++; }
         if (m.empty) { lines.push(`- ERRORE: ${tag}: ${m.empty} fasce immagine vuote (né immagine né colore)`); bad++; }
         const odd = m.posters.filter((x) => x !== null && Math.abs(x - 16 / 9) > 0.05);

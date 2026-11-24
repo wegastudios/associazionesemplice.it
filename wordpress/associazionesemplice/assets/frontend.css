@@ -451,10 +451,13 @@
 /* Scheda stretta: «Dettagli e prenotazione» si accorcia in «Dettagli» (il nome accessibile resta intero) invece di andare a capo */
 .asemf-grid .asemf-card { container-type: inline-size; }
 .asemf-grid .asemf-card-morelink { margin: .35rem 0 0; }
-@container (max-width: 15.5rem) {
+@container (max-width: 19rem) {
 	.asemf-grid .asemf-more { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 }
 
 /* WordPress aggiunge alle immagini «lazy» con sizes="auto" un contain-intrinsic-size di 3000×1500 px e contain: size: con larghezza 100% e altezza auto
    la locandina diventa alta 1500 px. Le immagini del plugin tornano alla loro proporzione vera (specificità doppia: vale qualunque sia l'ordine dei fogli). */
 .asemf.asemf img, .asem.asem img, .asemf-poster.asemf-poster img, .asemf-card-poster.asemf-card-poster img { contain: none; contain-intrinsic-size: none; }
+.asemf .asemf-grid .asemf-btn { padding: .45em 1em; white-space: nowrap; max-width: 100%; box-sizing: border-box; text-align: center; } /* il pulsante del tema (wp-element-button) ha spesso un riempimento largo: nella scheda resta quello del plugin */
+.asemf .asemf-grid .asemf-list > li { min-height: 0; padding: .5rem 0; gap: .25rem; }
+.asemf .asemf-grid .asemf-sessions .asemf-small { line-height: 1.35; }
