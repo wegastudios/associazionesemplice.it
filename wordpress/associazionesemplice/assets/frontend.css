@@ -367,7 +367,34 @@
 /* Evento annullato */
 .asemf-notice-cancelled { margin: 1.25rem 0; padding: .9rem 1.1rem; border-radius: 12px; background: #fdecea; color: #b42318; }
 
-.asemf-grid .asemf-card-poster { display: block; margin-bottom: .6rem; }
+/* Schede dell'elenco attività: tutte uguali, qualunque sia la locandina (la locandina intera resta nella pagina dell'evento) */
+.asemf-grid { --asemf-pad-y: 1rem; --asemf-pad-x: 1.25rem; align-items: stretch; }
+.asemf-grid .asemf-card { display: flex; flex-direction: column; box-sizing: border-box; min-width: 0; overflow: hidden; overflow-wrap: anywhere; padding: var(--asemf-pad-y) var(--asemf-pad-x); }
+.asemf-grid .asemf-card > :not(.asemf-card-poster) { max-width: 100%; }
+.asemf-grid .asemf-card-poster { display: block; flex: none; position: relative; aspect-ratio: 16 / 9; overflow: hidden; margin: calc(var(--asemf-pad-y) * -1) calc(var(--asemf-pad-x) * -1) .75rem; width: auto; max-width: none; }
+.asemf-grid .asemf-card-poster img { display: block; position: relative; z-index: 1; width: 100%; height: 100%; max-width: none; border-radius: 0; object-fit: cover; object-position: var(--asemf-poster-pos, 50% 0); } /* punto di fuoco in alto: titolo e volti restano; si cambia con --asemf-poster-pos */
+.asemf-grid .asemf-card-poster { --asemf-kind: var(--asemf-accent); background: var(--asemf-kind); } /* il colore sta sotto l'immagine: se non si carica (o è ancora in attesa) resta la fascia colorata, mai il vuoto */
+.asemf-grid .asemf-card-poster::after { content: ""; position: absolute; inset: 0; background: #fff; -webkit-mask: var(--asemf-icon) center / auto 46% no-repeat; mask: var(--asemf-icon) center / auto 46% no-repeat; opacity: .92; }
+.asemf-grid .asemf-kind-event { --asemf-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 2v3M17 2v3M3 9h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.asemf-grid .asemf-kind-recurring { --asemf-kind: #7a3e9d; --asemf-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 2v3M17 2v3M3 9h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.asemf-grid .asemf-kind-course { --asemf-kind: #0b6e69; --asemf-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 5a2 2 0 0 1 2-2h13v14H6a2 2 0 0 0-2 2zM4 19a2 2 0 0 0 2 2h13v-4' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.asemf-grid .asemf-card > .asemf-badge { align-self: flex-start; }
+.asemf-grid .asemf-card-end { margin-top: auto; padding-top: 1rem; }
+.asemf-grid .asemf-card-end > :first-child { margin-top: 0; }
+.asemf-grid .asemf-card-end > :last-child { margin-bottom: 0; }
+.asemf-grid .asemf-list { margin: 0; }
+.asemf-grid .asemf-list > li { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; }
+.asemf-grid .asemf-list > li > * { max-width: 100%; }
+.asemf-grid .asemf-sep { display: none; }
+.asemf-grid .asemf-time { display: block; }
+.asemf-time { white-space: nowrap; }
+.asemf-card-when { margin: 0 0 .5rem; }
+.asemf-grid .asemf-card { color: var(--asemf-ink, #181A2E); }
+.asemf-grid .asemf-card > .asemf-badge { padding-left: 0; padding-right: 0; border: 0; border-radius: 0; background: none; }
+.asemf-grid .asemf-card h3 { margin: .4em 0 .3em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.asemf-grid .asemf-card h3 a, .asemf-grid .asemf-card h3 a:visited, .asemf-grid .asemf-card h3 a:hover { color: var(--asemf-ink, #181A2E); text-decoration: underline; } /* la scheda ha il suo sfondo: il titolo ha il suo colore, non quello dei link del tema */
+.asemf-grid .asemf-card a:focus-visible { outline: 2px solid var(--asemf-ink, #181A2E); outline-offset: 2px; }
+.asemf-grid .asemf-card-notes { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; margin: .5rem 0 0; }
 .asemf-back { margin: 0 0 .8rem; }
 .asemf-venue { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin: 1.2rem 0; padding: 1rem; border: 1px solid #dfe3ee; border-radius: 12px; }
 .asemf-prevnext { display: flex; justify-content: space-between; gap: 1rem; margin: 1.5rem 0 0; padding-top: 1rem; border-top: 1px solid #dfe3ee; }
@@ -411,7 +438,7 @@
 .asemf-collapse > summary:focus-visible { outline: 2px solid var(--asemf-accent, #1F218C); outline-offset: 2px; }
 
 /* Locandine: sempre intere, mai ritagliate */
-.asemf-poster img, .asemf-card-poster img { width: 100%; height: auto; aspect-ratio: auto; object-fit: contain; }
+.asemf-poster img, .asemf-card-poster img { width: 100%; height: auto; object-fit: contain; } /* niente aspect-ratio: auto: il browser ricava la proporzione da width e height dell'immagine */
 .asemf-poster a { display: block; }
 
 /* Risorse: elenco degli orari con un solo pulsante «Prenota» */
@@ -420,3 +447,17 @@
 .asemf-slot { display: flex; align-items: center; gap: .6rem; min-height: 44px; width: 100%; cursor: pointer; }
 .asemf-slot input[type="radio"] { width: 24px; height: 24px; margin: 0; flex: none; }
 .asemf-slotform .asemf-actions .asemf-btn { min-height: 44px; padding: .5em 1.25em; font-size: 1em; }
+
+/* Scheda stretta: «Dettagli e prenotazione» si accorcia in «Dettagli» (il nome accessibile resta intero) invece di andare a capo */
+.asemf-grid .asemf-card { container-type: inline-size; }
+.asemf-grid .asemf-card-morelink { margin: .35rem 0 0; }
+@container (max-width: 19rem) {
+	.asemf-grid .asemf-more { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+}
+
+/* WordPress aggiunge alle immagini «lazy» con sizes="auto" un contain-intrinsic-size di 3000×1500 px e contain: size: con larghezza 100% e altezza auto
+   la locandina diventa alta 1500 px. Le immagini del plugin tornano alla loro proporzione vera (specificità doppia: vale qualunque sia l'ordine dei fogli). */
+.asemf.asemf img, .asem.asem img, .asemf-poster.asemf-poster img, .asemf-card-poster.asemf-card-poster img { contain: none; contain-intrinsic-size: none; }
+.asemf .asemf-grid .asemf-btn { padding: .45em 1em; white-space: nowrap; max-width: 100%; box-sizing: border-box; text-align: center; } /* il pulsante del tema (wp-element-button) ha spesso un riempimento largo: nella scheda resta quello del plugin */
+.asemf .asemf-grid .asemf-list > li { min-height: 0; padding: .5rem 0; gap: .25rem; }
+.asemf .asemf-grid .asemf-sessions .asemf-small { line-height: 1.35; }

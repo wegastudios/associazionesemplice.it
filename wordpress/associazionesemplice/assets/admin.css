@@ -7,6 +7,12 @@
 .asem .asem-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 12px 0; }
 .asem .asem-card { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 4px 16px 14px; margin: 12px 0; }
 .asem .asem-grid .asem-card { margin: 0; }
+/* Schede delle attività: il piede (Incassi, Costi, Resta, Riproponi) resta in fondo, qualunque sia la lunghezza di partecipanti e date */
+.asem .asem-grid.asem-more { align-items: stretch; }
+.asem .asem-grid.asem-more > .asem-card { position: relative; display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.asem .asem-grid.asem-more > .asem-card > h2 { padding-right: 28px; }
+.asem .asem-bulk-pick { position: absolute; top: 10px; right: 12px; margin: 0; }
+.asem .asem-grid.asem-more > .asem-card > p:last-child { margin-top: auto; padding-top: 1em; margin-bottom: 0; } /* Incassi, Costi e Resta subito sotto i partecipanti; in fondo resta solo «Riproponi» */
 .asem .asem-card h2, .asem .asem-card h3 { margin-top: 12px; }
 .asem .asem-kv { width: 100%; border-collapse: collapse; }
 .asem .asem-kv td { padding: 3px 0; }
@@ -361,3 +367,6 @@
 
 /* Lavori lunghi: barra di avanzamento (LongJob::panel) */
 .asem-longjob-bar { width: 100%; max-width: 480px; height: 1.25em; }
+
+/* Vedi frontend.css: le immagini «lazy» con sizes="auto" non devono diventare alte 1500 px. */
+.asem.asem img { contain: none; contain-intrinsic-size: none; }

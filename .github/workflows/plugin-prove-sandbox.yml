@@ -90,6 +90,35 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+      # Le schede dell'elenco attività su un tema a blocchi (twentytwentyfive) e su uno classico (twentyfifteen): schermate a cinque larghezze,
+      # senza scorrimento orizzontale, immagini tutte 16/9, titolo con contrasto sufficiente (anche con tema scuro del browser).
+      - name: Schede dell'elenco attività su temi veri
+        if: always()
+        shell: bash
+        working-directory: wordpress/dist
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+        run: |
+          wpc() { npx @wordpress/env run cli wp "$@"; }
+          PAGE=$(wpc post create --post_type=page --post_title="Attività ed eventi" --post_status=publish --post_content='[associazionesemplice_attivita]' --porcelain | tr -d '\r' | tail -1)
+          mkdir -p ../../schede
+          rc=0
+          for t in twentytwentyfive twentyfifteen; do
+            wpc theme install "$t" --activate || { echo "::warning::tema $t non installato"; continue; }
+            node ../../.github/scripts/prove-schede-eventi.cjs "http://localhost:8888/?page_id=$PAGE" "$t" ../../schede || rc=1
+          done
+          cat ../../schede/esito-schede.md >> "$GITHUB_STEP_SUMMARY" || true
+          exit $rc
+
+      - name: Schede attività (schermate)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schede-attivita
+          path: schede/
+          retention-days: 14
+          if-no-files-found: warn
+
       # Il QR della tessera (immagine a 1 bit nel PDF, SVG nell'area soci) deve restare leggibile da un telefono: lo rileggiamo con zbarimg a due
       # risoluzioni e confrontiamo il contenuto con l'indirizzo atteso. Gira dopo le schermate, così un QR illeggibile non le ferma.
       - name: QR della tessera leggibile (PDF a 150 e 300 dpi, SVG)

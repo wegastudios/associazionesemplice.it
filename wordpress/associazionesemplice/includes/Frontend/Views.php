@@ -1404,7 +1404,7 @@ final class Views {
 		$cap    = null === $s['capacity'] ? null : (int) $s['capacity'];
 		$booked = (int) ( $s['booked_count'] ?? 0 );
 		$full   = null !== $cap && $booked >= $cap;
-		$html   = '<li><div>' . $prefix . '<strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong>'
+		$html   = '<li><div>' . $prefix . '<strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? '<span class="asemf-sep"> · </span><span class="asemf-time">ore ' . esc_html( $s['start_time'] ) . '</span>' : '' ) . '</strong>'
 			. ( $s['location'] ? '<div class="asemf-small">' . esc_html( $s['location'] ) . '</div>' : '' )
 			. ( null !== $cap ? '<div class="asemf-small">' . ( $full ? 'Posti esauriti · lista d\'attesa' : ( $left = max( 0, $cap - $booked ) ) . ( 1 === $left ? ' posto libero' : ' posti liberi' ) ) . '</div>' : '' ) . '</div><div class="asemf-actions">';
 		if ( ! $ctx['logged'] ) {
@@ -1550,14 +1550,11 @@ final class Views {
 		$html  = '<div class="asemf-grid">';
 		foreach ( $list as $a ) {
 			$page   = \AssociazioneSemplice\PublicEvents::page_url( (int) $a['id'] ); // la pagina pubblica dell'attività, se c'è: locandina, descrizione, altre date
-			$poster = '' !== $page ? \AssociazioneSemplice\PublicEvents::poster( (int) $a['id'] ) : '';
-			$html  .= '<article class="asemf-card">' . ( '' !== $poster ? '<a href="' . esc_url( $page ) . '" class="asemf-card-poster" tabindex="-1" aria-hidden="true">' . $poster . '</a>' : '' )
+			$poster = '' !== $page ? \AssociazioneSemplice\PublicEvents::poster( (int) $a['id'], 'medium_large' ) : '';
+			$html  .= '<article class="asemf-card">' . ( '' !== $poster ? '<a href="' . esc_url( $page ) . '" class="asemf-card-poster asemf-kind-' . esc_attr( $a['kind'] ) . '" tabindex="-1" aria-hidden="true">' . $poster . '</a>' : '<span class="asemf-card-poster asemf-card-noposter asemf-kind-' . esc_attr( $a['kind'] ) . '" aria-hidden="true"></span>' ) // senza locandina: una fascia con il colore del tipo, così le schede restano uguali
 				. '<span class="asemf-badge">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</span>'
 				. '<h3>' . ( '' !== $page ? '<a href="' . esc_url( $page ) . '">' . esc_html( $a['name'] ) . '</a>' : esc_html( $a['name'] ) ) . '</h3><p class="asemf-small asemf-muted">' . esc_html( self::fee_text( $a ) )
 				. ( ! empty( $a['instructor_name'] ) ? '<br>Con ' . esc_html( $a['instructor_name'] ) : '' ) . '</p>';
-			if ( ! empty( $a['notes'] ) ) {
-				$html .= '<p>' . esc_html( $a['notes'] ) . '</p>';
-			}
 			if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
 				$sessions = array_values(
 					array_filter(
@@ -1571,18 +1568,34 @@ final class Views {
 					$html .= '<p class="asemf-muted">Nessuna data in programma.</p>';
 				} else {
 					$html .= '<ul class="asemf-list asemf-sessions">';
-					foreach ( array_slice( $sessions, 0, $max ) as $s ) {
+					$shown = min( $max, 2 ); // nella scheda le prime due date: le altre stanno nella pagina
+					foreach ( array_slice( $sessions, 0, $shown ) as $s ) {
 						$html .= self::session_row( $s, $a, $ctx );
 					}
 					$html .= '</ul>';
+					$rest = count( $sessions ) - $shown;
+					if ( $rest > 0 ) {
+						$more  = 1 === $rest ? 'Un\'altra data' : 'Altre ' . $rest . ' date';
+						$html .= '<p class="asemf-small asemf-card-morelink">' . ( '' !== $page ? '<a href="' . esc_url( $page ) . '">' . esc_html( $more ) . '</a>' : esc_html( $more ) ) . '</p>';
+					}
 				}
 			} elseif ( in_array( (int) $a['id'], $mine, true ) ) {
 				$html .= '<p><span class="asemf-badge asemf-badge-ok">✓ Sei iscritto</span></p>';
 			}
-			if ( '' !== $page ) {
-				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? ' e prenotazione' : '' ) . '</a></p>';
+			$when = '';
+			if ( ! ActivityKind::uses_sessions( $a['kind'] ) ) { // un corso non ha le date una a una: giorno e orario, se ci sono
+				$when  = \AssociazioneSemplice\PublicEvents::when_text( $a );
+				$when  = \AssociazioneSemplice\PublicEvents::NO_DATES === $when ? '' : $when;
+				$html .= '' !== $when ? '<p class="asemf-small asemf-card-when">' . esc_html( $when ) . '</p>' : '';
 			}
-			$html .= '</article>';
+			if ( ! empty( $a['notes'] ) ) { // la descrizione in due righe: la completa è nella pagina (il testo intero resta qui)
+				$html .= '<p class="asemf-card-notes">' . esc_html( $a['notes'] ) . '</p>';
+			}
+			$html .= '<div class="asemf-card-end">'; // in fondo resta solo il pulsante: le schede di una riga finiscono alla stessa altezza
+			if ( '' !== $page ) {
+				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">' . ( '' === $when && ! ActivityKind::uses_sessions( $a['kind'] ) ? 'Vedi il corso' : 'Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? '<span class="asemf-more"> e prenotazione</span>' : '' ) ) . '</a></p>'; // nelle schede strette «e prenotazione» si nasconde alla vista ma resta nel nome del pulsante
+			}
+			$html .= '</div></article>';
 		}
 		return self::wrap( $html . '</div>' );
 	}
