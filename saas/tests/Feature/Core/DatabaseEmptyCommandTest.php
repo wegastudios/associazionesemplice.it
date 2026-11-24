@@ -61,3 +61,45 @@ it('remote.sh usa il comando: salta il controllo solo se vuoto, ferma in produzi
         ->and(substr_count($remote, 'health --skip-migrations'))->toBe(1)
         ->and(strpos($remote, 'saas:db:empty'))->toBeLessThan(strpos($remote, 'artisan saas:migrate --force'));
 });
+
+/** Il blocco del ritorno automatico di remote.sh: [ramo «then» (c'è una versione precedente), ramo «else» (primo rilascio), blocco intero]. */
+function rollbackBlock(): array
+{
+    $remote = (string) file_get_contents(dirname(__DIR__, 3).'/deploy/remote.sh');
+    expect(preg_match('/^    if \[ -n "\$PREVIOUS" \]; then\n(.*?)\n    else\n(.*?)\n    fi\n/ms', $remote, $m))->toBe(1);
+
+    return [$m[1], $m[2], $m[0]];
+}
+
+it('rm -f current compare una sola volta in remote.sh, e solo nel ramo else di «c\'è una versione precedente»', function (): void {
+    $remote = (string) file_get_contents(dirname(__DIR__, 3).'/deploy/remote.sh');
+    [$then, $else] = rollbackBlock();
+
+    expect(substr_count($remote, 'rm -f "$BASE/current"'))->toBe(1)
+        ->and($then)->not->toContain('rm -f "$BASE/current"')
+        ->and($else)->toContain('rm -f "$BASE/current"')
+        ->and(strpos($remote, 'rm -f "$BASE/current"'))->toBeGreaterThan(strpos($remote, "    else\n"));
+});
+
+it('eseguendo il blocco: con una versione precedente current torna indietro e resta, senza è rimosso', function (): void {
+    [, , $block] = rollbackBlock();
+    $run = function (bool $withPrevious) use ($block): array {
+        $base = sys_get_temp_dir().'/remote-sh-'.bin2hex(random_bytes(4));
+        mkdir($base.'/releases/vecchia', 0777, true);
+        mkdir($base.'/releases/nuova', 0777, true);
+        symlink($base.'/releases/nuova', $base.'/current');
+        $previous = $withPrevious ? $base.'/releases/vecchia' : '';
+        $script = 'BASE='.escapeshellarg($base).'; PREVIOUS='.escapeshellarg($previous).'; PHP=true'."\n".$block;
+        shell_exec('bash -c '.escapeshellarg($script).' 2>/dev/null');
+        $result = [is_link($base.'/current'), is_link($base.'/current') ? readlink($base.'/current') : null, $base];
+
+        return $result;
+    };
+
+    [$exists, $target, $base] = $run(true);
+    expect($exists)->toBeTrue()->and($target)->toBe($base.'/releases/vecchia');
+
+    [$exists, , $base2] = $run(false);
+    expect($exists)->toBeFalse()
+        ->and(is_dir($base2.'/releases/nuova'))->toBeTrue(); // i dati (le release) restano
+});
