@@ -30,7 +30,8 @@ const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) +
       const page = await browser.newPage({ viewport: { width: w, height: 900 }, locale: 'it-IT', colorScheme: scheme });
       try {
         await page.goto(url, { waitUntil: 'load' });
-        await page.waitForTimeout(400);
+        await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 400) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 120)); } window.scrollTo(0, 0); }); // le immagini in attesa (lazy loading) si caricano prima di misurare e fotografare
+        await page.waitForTimeout(600);
         const m = await page.evaluate(() => {
           const grid = document.querySelector('.asemf-grid');
           const cards = [...document.querySelectorAll('.asemf-grid .asemf-card')];
@@ -38,6 +39,7 @@ const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) +
             grid: !!grid,
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             titles: cards.map((c) => { const a = c.querySelector('h3 a') || c.querySelector('h3'); return a ? [getComputedStyle(a).color, getComputedStyle(c).backgroundColor] : null; }).filter(Boolean),
+            empty: cards.filter((c) => { const p = c.querySelector('.asemf-card-poster'); if (!p) return true; const img = p.querySelector('img'); const ok = img && img.complete && img.naturalWidth > 0; return !ok && getComputedStyle(p).backgroundColor === 'rgba(0, 0, 0, 0)'; }).length,
             posters: cards.map((c) => { const p = c.querySelector('.asemf-card-poster'); return p ? Math.round(p.getBoundingClientRect().width / p.getBoundingClientRect().height * 100) / 100 : null; }),
           };
         });
@@ -45,6 +47,7 @@ const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) +
         if (!m.grid) { lines.push(`- MANCA: ${tag}: nessuna griglia di schede nella pagina`); bad++; }
         if (m.overflow > 1) { lines.push(`- ERRORE: ${tag}: scorrimento orizzontale di ${m.overflow}px`); bad++; }
         for (const [fg, bg] of m.titles) { const r = ratio(parse(fg), parse(bg)); if (r < 4.5) { lines.push(`- ERRORE: ${tag}: contrasto del titolo ${r.toFixed(2)}:1`); bad++; break; } }
+        if (m.empty) { lines.push(`- ERRORE: ${tag}: ${m.empty} fasce immagine vuote (né immagine né colore)`); bad++; }
         const odd = m.posters.filter((x) => x !== null && Math.abs(x - 16 / 9) > 0.05);
         if (odd.length) { lines.push(`- ERRORE: ${tag}: immagine non 16/9 (${odd.join(', ')})`); bad++; }
         await page.screenshot({ path: path.join(out, `${theme}-${scheme}-${w}.png`), fullPage: true });
