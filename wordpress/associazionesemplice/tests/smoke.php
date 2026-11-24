@@ -12215,7 +12215,9 @@ asem_ok( (int) ( $ms_me['person']['id'] ?? 0 ) === $ms_p && 'Sessione Prova' ===
 $ms_req = new WP_REST_Request( 'GET', '/associazionesemplice/v1/me/bookings' );
 $ms_res = rest_do_request( $ms_req );
 asem_ok( 200 === $ms_res->get_status(), 'accesso proprio: la REST dei soci riconosce la sessione (le mie prenotazioni)' );
-asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::form( 'asem_front_book', '', 'Prenota' ), $ms_csrf ), 'accesso proprio: il modulo porta il token della sessione' );
+$ms_form = \AssociazioneSemplice\Frontend\Views::form( 'asem_front_book', '', 'Prenota' );
+// Il token contiene la scadenza al secondo: due token creati in secondi diversi non sono uguali come testo, quindi si controlla che quello del modulo sia valido (non che coincida con $ms_csrf).
+asem_ok( 1 === preg_match( '/name="_wpnonce" value="([^"]+)"/', $ms_form, $ms_fm ) && \AssociazioneSemplice\Csrf::verify( html_entity_decode( $ms_fm[1] ), 'asem_front_book' ) && ! \AssociazioneSemplice\Csrf::verify( html_entity_decode( $ms_fm[1] ), 'altra_azione' ), 'accesso proprio: il modulo porta un token valido della sessione' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::with_person( function ( $p ) { return 'Ciao ' . $p['first_name']; } ), 'Ciao Sessione' ), 'accesso proprio: la pagina dei soci riconosce chi è entrato' );
 wp_set_current_user( 1 );
 asem_ok( 1 === MemberSession::actor_key(), 'accesso proprio: con WordPress chi agisce è l\'utente WordPress' );
