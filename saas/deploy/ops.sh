@@ -597,7 +597,7 @@ case "$ACTION" in
         echo "NOINHERIT annullato: l applicazione non leggeva piu le sue tabelle", PHP_EOL;
       }
     ' >> "$F" 2>&1
-    "$PHP" artisan saas:health --skip-migrations 2>&1 | grep -E "permessi|ruolo|ERRORE|AVVISO" >> "$F" || true
+    "$PHP" artisan saas:health --skip-migrations 2>&1 | grep -E "permessi|ruolo|ruoli|ERRORE|AVVISO" >> "$F" || true
     prune_files permessi-db
     echo "permessi-db: salvato in $F"
     ;;
