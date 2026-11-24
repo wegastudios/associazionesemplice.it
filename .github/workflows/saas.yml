@@ -93,6 +93,16 @@ jobs:
           cp .env.example .env
           php artisan key:generate --no-interaction
 
+      # laravel/passkeys (dipendenza di webauthn-lib) potrebbe registrare rotte dal proprio provider auto-scoperto:
+      # config/fortify.php ha 'passkeys' => null e qui ne abbiamo la certezza.
+      - name: Nessuna rotta passkey/WebAuthn
+        run: |
+          php artisan route:list --json --no-interaction > routes.json
+          trovate=$(jq -r '.[] | select([.uri, .name, .action] | map(. // "") | join(" ") | test("passkey|webauthn"; "i")) | "\(.method) \(.uri) [\(.name // "-")] \(.action)"' routes.json)
+          rm routes.json
+          if [ -n "$trovate" ]; then echo "::error::Rotte passkey/WebAuthn registrate:"; echo "$trovate"; exit 1; fi
+          echo "Nessuna rotta passkey/WebAuthn."
+
       # La configurazione si mette in cache come al rilascio, con l'ambiente di produzione d'esempio: un errore nei file di
       # config (per esempio una classe usata in config/queue.php) si vede qui e non sul server.
       - name: Configurazione in cache (ambiente di produzione d'esempio)
