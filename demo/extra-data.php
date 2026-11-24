@@ -234,8 +234,49 @@ extra_step( 'rimborsi', function () use ( $by_name ) {
 
 // Eventi sul sito: le pagine pubbliche degli eventi (descrizione, categoria, locandina) e qualche evento in più nei prossimi mesi.
 
-/** Locandina inventata (sfumatura con GD, se c'è); senza GD le pagine restano senza immagine. */
+/**
+ * Immagine vera per un titolo: <cartella degli script>/locandine/<slug del titolo>.webp (o assets/locandine/, come nel repository). Vuota se non c'è.
+ * Verticale 1000×1250, leggera (max ~150 KB), soggetto nella metà alta (nella scheda a 16/9 si taglia dall'alto); niente persone riconoscibili, marchi o testo.
+ */
+function extra_poster_file( string $title ): string {
+	foreach ( array( __DIR__ . '/locandine', __DIR__ . '/assets/locandine' ) as $dir ) {
+		$f = $dir . '/' . sanitize_title( $title ) . '.webp';
+		if ( is_readable( $f ) && filesize( $f ) > 0 ) {
+			return $f;
+		}
+	}
+	return '';
+}
+
+/** Carica nella libreria un file WebP di locandina (senza il controllo del tipo di WordPress, come per i PNG) con il testo alternativo. */
+function extra_poster_import( string $file, string $title ) {
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$bytes = (string) file_get_contents( $file );
+	$up    = wp_upload_bits( sanitize_title( $title ) . '.webp', null, $bytes );
+	if ( ! empty( $up['error'] ) ) {
+		return 0;
+	}
+	$id = wp_insert_attachment( array( 'post_mime_type' => 'image/webp', 'post_title' => $title, 'post_status' => 'inherit' ), $up['file'] );
+	if ( ! $id || is_wp_error( $id ) ) {
+		return 0;
+	}
+	wp_update_attachment_metadata( (int) $id, wp_generate_attachment_metadata( (int) $id, $up['file'] ) );
+	update_post_meta( (int) $id, '_wp_attachment_image_alt', 'Immagine illustrativa per «' . $title . '»' );
+	update_post_meta( (int) $id, '_asem_locandina_sha1', sha1_file( $file ) );
+	return (int) $id;
+}
+
+/** Locandina: l'immagine vera se c'è il file per il titolo, altrimenti una inventata (sfumatura con GD, se c'è); senza GD le pagine restano senza immagine. */
 function extra_poster( string $title, array $rgb ) {
+	$real = extra_poster_file( $title );
+	if ( '' !== $real ) {
+		$id = extra_poster_import( $real, $title );
+		if ( $id ) {
+			return $id;
+		}
+	}
 	if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagepng' ) ) {
 		return 0;
 	}
