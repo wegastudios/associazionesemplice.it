@@ -108,7 +108,7 @@ viste dell'amministrazione del supporto (`supporto/resources/views/admin`) non s
 - Dove: `saas/resources/js/pages/Account/TwoFactor.vue:35` (usa `GuestLayout`, senza menu) e `:86`
   (`<Link v-if="props.required" href="/gestionale">Vai al gestionale</Link>`).
 - Perché non va: il collegamento di ritorno c'è solo quando la verifica è obbligatoria. Con
-  `SAAS_REQUIRE_TWO_FACTOR=false` (oggi sul server) chi apre «Sicurezza» dal menu resta in una pagina senza uscita, sia
+  con `SAAS_REQUIRE_TWO_FACTOR=false` chi apre «Sicurezza» dal menu resta in una pagina senza uscita, sia
   prima di attivarla sia dopo.
 - Proposta: togliere `v-if="props.required"` dalla riga 86 e spostare il collegamento fuori dal blocco `v-else`, in fondo:
   ```vue

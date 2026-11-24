@@ -40,7 +40,7 @@ manca e le scelte prese**; si aggiorna a ogni PR del modulo.
   dell'applicazione e un test che verifica che una tabella senza `org_id` stia in `core`, non in `app`. Da scrivere in
   DATABASE.md insieme alla prima migrazione.
 - **Staff della piattaforma separato dagli operatori**: tabella propria, guard proprio, cookie `as_admin` con percorso
-  proprio (`/saas/admin`), secondo fattore a scelta (nessun obbligo, decisione D38): si accende per tutti con `SAAS_REQUIRE_TWO_FACTOR` prima dei dati veri (sul server è `false`, letto dal .env di produzione il 24/11/2026: da riaccendere); il segreto di prova si imposta con un comando.
+  proprio (`/saas/admin`), secondo fattore a scelta (nessun obbligo, decisione D38): si accende per tutti con `SAAS_REQUIRE_TWO_FACTOR` prima dei dati veri; il segreto di prova si imposta con un comando.
 
 ## 4. Prova di fattibilità: `associazionesemplice.it/saas/admin`
 
@@ -67,7 +67,7 @@ test l'amministrazione sta su `/saas/admin` e il prefisso è una sola costante (
   `UsePlatformSession` usa il cookie `as_admin` (in produzione `__Secure-as_admin`) con `Path` uguale al percorso,
   `SameSite=Strict`, scadenza alla chiusura del browser e dopo 60 minuti, e la guardia `platform`.
 - **Accesso**: email e password. Decisione D38: il secondo fattore per lo staff e per gli amministratori della piattaforma
-  è **a scelta**. Con l'accesso unico (`SAAS_UNIFIED_LOGIN=true`, valore in produzione al 24/11/2026, `/accedi` del portale, `StaffAccess`/`IdentityService`)
+  è **a scelta**. Con l'accesso unico (`SAAS_UNIFIED_LOGIN=true`, `/accedi` del portale, `StaffAccess`/`IdentityService`)
   il codice si chiede solo a chi l'ha attivato. Il vecchio modulo di `/saas/admin` (`core.platform_staff`), finché
   l'accesso unico è spento, **ancora lo impone** a ogni amministratore (alla prima volta si attiva con il QR): è un obbligo
   residuo da allineare a D38 (si supera accendendo l'accesso unico o cambiando il codice).
@@ -118,7 +118,7 @@ Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e so
 
 ## 7. Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md; formato in docs/STAFF_SSO.md)
 
-Dietro il flag `SAAS_STAFF_SSO` (spento di default nel codice; **acceso in produzione**, `SAAS_STAFF_SSO=true` e `SAAS_STAFF_ISSUER=true`, letto dal .env di produzione il 24/11/2026; spento resta l'accesso locale della PR 433).
+Dietro il flag `SAAS_STAFF_SSO` (spento di default; spento resta l'accesso locale della PR 433).
 
 - **Ingresso**: `POST /admin/sso` (`/saas/admin/sso` dietro il proxy), campo `token`, JWT `staff_sso` del portale: `aud`
   `associazionesemplice-saas`, vita ≤ 60 s, `jti` monouso (tabella `core.platform_sso_tokens`, ripulita a ogni ingresso), `area`
