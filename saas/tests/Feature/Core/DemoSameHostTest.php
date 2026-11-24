@@ -118,7 +118,7 @@ it('il cookie «ricordami» dell\'operatore non ha Domain ed è Secure e HttpOnl
     $cookies = cookiesOf($response);
     $recaller = array_values(array_filter(array_keys($cookies), static fn (string $n): bool => str_contains($n, 'remember_')));
 
-    expect($recaller)->toHaveCount(1,'stato '.$response->status().', destinazione '.(string) $response->headers->get('Location').', cookie '.implode(',', array_keys($cookies)).', errori '.json_encode(session('errors')?->getBag('default')->keys()))
+    expect($recaller)->toHaveCount(1, 'stato '.$response->status().', destinazione '.(string) $response->headers->get('Location').', cookie '.implode(',', array_keys($cookies)).', errori '.json_encode(session('errors')?->getBag('default')->keys()))
         ->and($cookies)->toHaveKey('__Host-as_demo');
     foreach ([$recaller[0], '__Host-as_demo'] as $name) {
         expect($cookies[$name]->isSecure())->toBeTrue($name)->and($cookies[$name]->isHttpOnly())->toBeTrue($name)
