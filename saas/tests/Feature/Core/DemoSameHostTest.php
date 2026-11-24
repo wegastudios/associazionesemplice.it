@@ -27,13 +27,9 @@ beforeEach(function (): void {
         'session.driver' => 'database', 'session.cookie' => '__Host-as_demo', 'session.secure' => true, 'session.domain' => null, 'session.path' => '/',
     ]);
     app()->detectEnvironment(fn (): string => 'demo');
-    app()->instance(Entitlements::class, new class implements Entitlements
-    {
-        public function for(string $orgId): OrgEntitlements
-        {
-            return new OrgEntitlements(1, 'active', null, null, 150, 3, 5, ['member_area' => []], null);
-        }
-    });
+    $entitlements = Mockery::mock(Entitlements::class);
+    $entitlements->shouldReceive('for')->andReturn(new OrgEntitlements(1, 'active', null, null, 150, 3, 5, ['member_area' => []], null));
+    app()->instance(Entitlements::class, $entitlements);
     $this->org = app(OrgProvisioner::class)->create('Associazione Demo', 'demosaas');
     $this->orgContext()->run($this->org->id, function (): void {
         app(OrgSettings::class)->set(SetupWizard::STATUS, SetupWizard::DONE);
