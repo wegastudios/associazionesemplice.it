@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * @param  array<string, list<string>>  $override
- * @return array{unexpectedSchemas: list<string>, owned: list<string>, groupGrants: list<string>, createDatabase: list<string>, createSchema: list<string>, ownerMembers: list<string>, setRole: list<string>}
+ * @return array{unexpectedSchemas: list<string>, owned: list<string>, groupGrants: list<string>, createDatabase: list<string>, createSchema: list<string>, ownerMembers: list<string>, setRole: list<string>, backupWrites?: list<string>}
  */
 function healthRoleFacts(array $override = []): array
 {
@@ -15,6 +15,7 @@ function healthRoleFacts(array $override = []): array
         'unexpectedSchemas' => $override['unexpectedSchemas'] ?? [],
         'owned' => $override['owned'] ?? [],
         'groupGrants' => $override['groupGrants'] ?? [],
+        'backupWrites' => $override['backupWrites'] ?? [],
         'createDatabase' => $override['createDatabase'] ?? [],
         'createSchema' => $override['createSchema'] ?? [],
         'ownerMembers' => $override['ownerMembers'] ?? [],
@@ -36,6 +37,7 @@ it('ogni anomalia dei ruoli è un problema con il rimedio', function (string $ke
     ['unexpectedSchemas', 'DROP SCHEMA'],
     ['owned', 'OWNER TO'],
     ['groupGrants', 'REVOKE'],
+    ['backupWrites', 'sola lettura'],
     ['createDatabase', 'REVOKE CREATE ON DATABASE'],
     ['createSchema', 'REVOKE CREATE ON SCHEMA'],
 ]);
@@ -163,4 +165,50 @@ it('il dettaglio di saas:health non esce nel log del rilascio né da endpoint HT
         }
     }
     expect($hits)->toBe([]);
+});
+
+it('il ruolo dei backup con un permesso di scrittura, anche su una sola colonna, è un problema', function (string $statement, string $revoke, string $expected): void {
+    $owner = DB::connection('pgsql_owner');
+    config(['saas.health_strict' => true]);
+    $owner->statement($statement);
+    try {
+        $this->artisan('saas:health', ['--skip-migrations' => true])
+            ->expectsOutputToContain($expected)
+            ->assertFailed();
+    } finally {
+        $owner->statement($revoke);
+    }
+
+    $this->artisan('saas:health', ['--skip-migrations' => true])
+        ->expectsOutputToContain('ok    oggetti e ruoli di gruppo')
+        ->assertSuccessful();
+})->with([
+    'tabella intera' => ['GRANT DELETE ON core.org_notices TO as_backup', 'REVOKE DELETE ON core.org_notices FROM as_backup', 'il ruolo dei backup può scrivere, direttamente o per eredità (core.org_notices (DELETE))'],
+    'una colonna' => ['GRANT UPDATE (kind) ON core.org_notices TO as_backup', 'REVOKE UPDATE (kind) ON core.org_notices FROM as_backup', 'core.org_notices (UPDATE)'],
+    'TRUNCATE' => ['GRANT TRUNCATE ON core.org_notices TO as_backup', 'REVOKE TRUNCATE ON core.org_notices FROM as_backup', 'core.org_notices (TRUNCATE)'],
+]);
+
+it('il ruolo dei backup con UPDATE su una sequenza è un problema', function (): void {
+    $owner = DB::connection('pgsql_owner');
+    config(['saas.health_strict' => true]);
+    $owner->statement('GRANT UPDATE ON SEQUENCE core.jobs_id_seq TO as_backup');
+    try {
+        $this->artisan('saas:health', ['--skip-migrations' => true])
+            ->expectsOutputToContain('sequenza core.jobs_id_seq (UPDATE)')
+            ->assertFailed();
+    } finally {
+        $owner->statement('REVOKE UPDATE ON SEQUENCE core.jobs_id_seq FROM as_backup');
+    }
+});
+
+it('i controlli sul catalogo vedono anche funzioni, colonne e privilegi predefiniti dei gruppi (la query gira)', function (): void {
+    $facts = RoleObjectAudit::inspect(DB::connection('pgsql_backup'), 'as_app', 'as_backup', 'as_owner');
+
+    expect($facts['groupGrants'])->toBe([])
+        ->and($facts['backupWrites'] ?? null)->toBe([]);
+
+    // Un gruppo con permessi su funzioni, colonne o privilegi predefiniti è un problema con il rimedio.
+    $result = RoleObjectAudit::evaluate(healthRoleFacts(['groupGrants' => ['funzione core.x (EXECUTE)', 'colonna app.y.z (UPDATE)', 'privilegi predefiniti di ogni schema (SELECT)']]));
+    expect($result['problems'])->toHaveCount(1)
+        ->and($result['problems'][0])->toContain('funzione core.x')->toContain('colonna app.y.z')->toContain('privilegi predefiniti')->toContain('ALTER DEFAULT PRIVILEGES');
 });
