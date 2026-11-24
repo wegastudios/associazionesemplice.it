@@ -7,7 +7,8 @@
 # Idempotente: si può rilanciare quando si vuole. Non tocca l'.htaccess del portale (il plugin scrive solo nella cartella della demo).
 set -uo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
-cd "${ASEM_DEMO_DIR:-$HOME/public_html/demo}"
+[ -f "$HOME/demo-provision/demo.env" ] && . "$HOME/demo-provision/demo.env" # facoltativo (vedi update.sh)
+cd "${ASEM_DEMO_DIR:-${DEMO_DIR:-$HOME/public_html/demo}}"
 SLUG=litespeed-cache
 wp plugin is-installed "$SLUG" 2>/dev/null || wp plugin install "$SLUG" >/dev/null || { echo "LiteSpeed Cache: installazione non riuscita." >&2; exit 1; }
 wp plugin is-active "$SLUG" 2>/dev/null || wp plugin activate "$SLUG" >/dev/null || { echo "LiteSpeed Cache: attivazione non riuscita." >&2; exit 1; }

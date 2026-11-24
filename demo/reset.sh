@@ -3,7 +3,9 @@
 # Da cron ogni notte alle 4. Nessun utente amministratore resta: quello d'installazione si toglie alla fine.
 set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:$PATH" # il cron ha un PATH ridotto: senza questo non trova wp (e php sarebbe quello CGI)
-DEMO="$HOME/public_html/demo"
+[ -f "$HOME/demo-provision/demo.env" ] && . "$HOME/demo-provision/demo.env" # facoltativo: DEMO_DIR, DEMO_URL (senza il file valgono i valori di oggi)
+DEMO="${DEMO_DIR:-$HOME/public_html/demo}"
+DEMO_URL="${DEMO_URL:-https://associazionesemplice.it/demo}"
 # File scritti durante l'uso della demo (allegati e copie di sicurezza del plugin in uploads/associazionesemplice-private, locandine e file caricati, aggiornamenti
 # lasciati a metà, cache, file temporanei del plugin). Percorsi sempre espliciti sotto $DEMO/wp-content: mai plugin, mu-plugin, temi, lingue né i file di provisioning.
 # Con «--elenco» si vede soltanto cosa verrebbe tolto, senza cancellare niente e senza toccare il database.
@@ -45,7 +47,7 @@ export ASEM_DEMO_LOCKED=1 # update.sh, lanciato da qui sotto, non deve aspettare
 cd "$DEMO"
 wp db reset --yes >/dev/null
 svuota_file # prima dei dati di prova: le locandine create da extra-data.php devono restare
-wp core install --url=https://associazionesemplice.it/demo --title="Demo di Associazione Semplice" --admin_user=setup_tmp --admin_password="$(openssl rand -hex 16)" --admin_email=info@associazionesemplice.it --skip-email >/dev/null
+wp core install --url="$DEMO_URL" --title="Demo di Associazione Semplice" --admin_user=setup_tmp --admin_password="$(openssl rand -hex 16)" --admin_email=info@associazionesemplice.it --skip-email >/dev/null
 wp option update blog_public 0 >/dev/null
 wp site switch-language it_IT >/dev/null 2>&1 || true
 wp option update timezone_string Europe/Rome >/dev/null
