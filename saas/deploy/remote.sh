@@ -8,6 +8,13 @@
 #
 # Ordine: controlli, migrazioni (in due tempi: la versione in uso continua a funzionare), cache, cambio del link,
 # controllo di salute, ritorno automatico alla versione precedente se il controllo fallisce.
+#
+# Primo rilascio su database VUOTO (nessuna migrazione registrata, es. la demo nuova): il controllo di salute prima delle
+# migrazioni fallirebbe («relation ... does not exist»). `saas:db:empty` lo riconosce: solo se è vuoto E l'ambiente non è
+# produzione si salta quel controllo, si migra e il controllo si fa dopo. In produzione un database vuoto ferma il
+# rilascio (potrebbe essere quello sbagliato): si migra a mano. Su un database già in uso nulla cambia.
+# Se è il primo rilascio e il controllo dopo il cambio fallisce non c'è una versione a cui tornare: il link `current`
+# viene tolto (non esisteva prima), i dati restano, il rilascio si ferma con errore.
 set -euo pipefail
 PACKAGE="${1:?pacchetto}"; EXPECTED="${2:?sha256}"
 BASE="${SAAS_BASE:?SAAS_BASE obbligatoria: indica la cartella da rilasciare (~/saas o ~/saas-demo)}"
@@ -65,7 +72,14 @@ if [ "${SAAS_IGNORE_BALANCES:-false}" = "true" ]; then
     "$PHP" artisan saas:deploy:ignore-balances "$ACTOR" "$REV"
     IGNORE_BALANCES_OPT=(--ignore-balances)
 fi
-health --skip-migrations
+EMPTY_RC=0
+"$PHP" artisan saas:db:empty || EMPTY_RC=$?
+case "$EMPTY_RC" in
+    0) echo "Primo rilascio su database vuoto: salto il controllo di salute prima delle migrazioni." ;;
+    1) health --skip-migrations ;;
+    3) echo "Database vuoto in produzione: rilascio fermato, nulla è stato migrato." >&2; exit 1 ;;
+    *) echo "Non riesco a leggere lo stato del database: rilascio fermato." >&2; exit 1 ;;
+esac
 # saas:migrate aspetta la fine del backup orario, se è in corso, e riprova le istruzioni che non ottengono un blocco.
 "$PHP" artisan saas:migrate --force
 # I mesi del registro sono pronti con tre mesi di anticipo: se ora non si riesce (backup in corso) il rilascio prosegue,
@@ -88,6 +102,10 @@ if ! health; then
     if [ -n "$PREVIOUS" ]; then
         ln -sfn "$PREVIOUS" "$BASE/current.new" && mv -Tf "$BASE/current.new" "$BASE/current"
         ( cd "$PREVIOUS" && "$PHP" artisan saas:web:refresh --no-warm ) || true
+    else
+        # Primo rilascio: non c'è nulla a cui tornare. Il link non esisteva prima, quindi si toglie; i dati non si toccano.
+        rm -f "$BASE/current"
+        echo "Primo rilascio: nessuna versione precedente, link current rimosso. Leggi shared/health-*.txt via ssh." >&2
     fi
     exit 1
 fi
