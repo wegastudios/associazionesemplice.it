@@ -296,8 +296,26 @@ final class Db {
 			$this->run( 'INSERT INTO events (provider, event_id, processed_at) VALUES (?,?,?)', array( $provider, $eventId, self::now() ) );
 			return true;
 		} catch ( \PDOException $e ) {
+			if ( self::isDuplicate( $e ) ) {
+				return false;
+			}
+			// Ogni altro errore (permessi, tabella, connessione) NON vuol dire «già elaborato»: si propaga e il chiamante risponde con un errore, così il provider riconsegna.
+			error_log( '[portale] eventi: scrittura non riuscita (SQLSTATE ' . $e->getCode() . ')' );
+			throw $e;
+		}
+	}
+
+	/** Vero se l'errore è una violazione di unicità (riga già presente): PostgreSQL 23505, MySQL 1062, SQLite «UNIQUE constraint failed». */
+	public static function isDuplicate( \PDOException $e ): bool {
+		$state = (string) $e->getCode();
+		if ( '23505' === $state ) {
+			return true;
+		}
+		if ( '23000' !== $state ) {
 			return false;
 		}
+		$drv = isset( $e->errorInfo[1] ) ? (int) $e->errorInfo[1] : 0;
+		return 1062 === $drv || false !== stripos( $e->getMessage(), 'UNIQUE constraint failed' );
 	}
 
 	/** Se l'elaborazione fallisce l'evento va rilasciato, così la riconsegna del provider lo riprova. */
