@@ -78,15 +78,33 @@ class OfflinePayments {
 				}
 			}
 			foreach ( $acts->unpaid_bookings_for_person( $pid ) as $b ) {
-				$i        = array(
-					'type' => PaymentItems::BOOKING, 'person_id' => $pid, 'person_name' => $name, 'session_id' => (int) $b['session_id'], 'activity_id' => (int) $b['activity_id'],
-					'amount_cents' => (int) $b['remaining'], 'label' => $b['activity_name'] . ' — ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ),
-				);
-				$i['key'] = PaymentItems::key( $i );
-				$items[ $i['key'] ] = $i;
+				$this->add_booking_due( $items, $b, $pid, $name );
+			}
+		}
+		if ( MemberSession::is_out( $actor ) ) { // l'ex socio tutore: solo i contributi che ha preso a carico per i figli
+			foreach ( $acts->unpaid_bookings_for_person( (int) $actor['id'] ) as $b ) {
+				if ( in_array( (int) $b['person_id'], $dependents, true ) ) {
+					$this->add_booking_due( $items, $b, (int) $actor['id'], '' );
+				}
 			}
 		}
 		return (array) apply_filters( 'asem_online_dues', $items, $actor ); // un'estensione aggiunge altre voci da pagare
+	}
+
+	/** La voce di una prenotazione di cui risponde $debtor: resta intestata a chi partecipa; se è un'altra persona, chi paga (payer_id) è chi ha prenotato. */
+	private function add_booking_due( array &$items, array $b, int $debtor, string $name ): void {
+		$pid   = (int) $b['person_id'];
+		$other = $pid !== $debtor;
+		if ( $other ) {
+			$p    = Plugin::people()->get( $pid );
+			$name = $p ? ActivityService::participant_name( $p, $debtor ) : '';
+		}
+		$i = array(
+			'type' => PaymentItems::BOOKING, 'person_id' => $pid, 'person_name' => $name, 'session_id' => (int) $b['session_id'], 'activity_id' => (int) $b['activity_id'],
+			'amount_cents' => (int) $b['remaining'], 'label' => $b['activity_name'] . ' — ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ),
+		) + ( $other ? array( 'payer_id' => $debtor ) : array() );
+		$i['key']           = PaymentItems::key( $i );
+		$items[ $i['key'] ] = $i;
 	}
 
 	// ---------- Quota della domanda di adesione ----------

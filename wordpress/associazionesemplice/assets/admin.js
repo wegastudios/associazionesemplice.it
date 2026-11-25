@@ -417,7 +417,7 @@
 					var m = n + '[lines][' + j + ']';
 					var row = el('div', { 'class': 'asem-line' });
 					row.appendChild(el('span', { 'class': 'asem-line-title', text: l.title }));
-					['kind', 'session_id', 'activity_id', 'month', 'title'].forEach(function (k) { row.appendChild(el('input', { type: 'hidden', name: m + '[' + k + ']', value: l[k] == null ? '' : String(l[k]) })); });
+					['kind', 'session_id', 'activity_id', 'month', 'title', 'for'].forEach(function (k) { row.appendChild(el('input', { type: 'hidden', name: m + '[' + k + ']', value: l[k] == null ? '' : String(l[k]) })); });
 					var amt = el('input', { type: 'text', name: m + '[amount]', inputmode: 'decimal', value: l.amount, size: '8' });
 					amt.addEventListener('input', function () { l.amount = amt.value; refreshTotal(); });
 					row.appendChild(amt); row.appendChild(document.createTextNode(' € '));
@@ -457,7 +457,7 @@
 
 		function loadDues(b) {
 			(b.ctx.dues || []).forEach(function (d) { b.lines.push({ kind: 'course', title: d.name + ' · ' + d.month, activity_id: d.activity_id, month: d.month, amount: plain(d.amount) }); });
-			(b.ctx.bookings || []).forEach(function (e) { b.lines.push({ kind: 'event', title: e.label, session_id: e.session_id, activity_id: e.activity_id, amount: plain(e.amount) }); });
+			(b.ctx.bookings || []).forEach(function (e) { b.lines.push({ kind: 'event', title: e.label, session_id: e.session_id, activity_id: e.activity_id, 'for': e.person_id || '', amount: plain(e.amount) }); });
 			b.ctx.dues = []; b.ctx.bookings = [];
 			render();
 		}
@@ -611,7 +611,7 @@
 				l.discount = plain(l.list); l.amount = plain(0); render();
 			});
 			row.appendChild(disc); row.appendChild(why); row.appendChild(free);
-			[['category_id', l.category], ['activity_id', l.activity || ''], ['session_id', l.session || ''], ['competence_month', l.month || ''], ['description', l.title]].forEach(function (p) {
+			[['category_id', l.category], ['activity_id', l.activity || ''], ['session_id', l.session || ''], ['for', l.person || ''], ['competence_month', l.month || ''], ['description', l.title]].forEach(function (p) {
 				row.appendChild(el('input', { type: 'hidden', name: n + '[' + p[0] + ']', value: p[1] }));
 			});
 			descIn = row.lastChild; setAcc();
@@ -700,7 +700,7 @@
 	bookSel.addEventListener('change', function () {
 		var i = parseInt(bookSel.value, 10); bookSel.value = ''; if (isNaN(i) || !ctx || !ctx.bookings[i]) { return; }
 		var b = ctx.bookings[i], c = catByKind('activity_fee'); if (!c) { return; }
-		addLine({ title: b.label, category: c.id, kind: 'activity_fee', activity: b.activity_id, session: b.session_id, amount: plain(b.amount) });
+		addLine({ title: b.label, category: c.id, kind: 'activity_fee', activity: b.activity_id, session: b.session_id, person: b.person_id || '', amount: plain(b.amount) });
 	});
 
 	var autofilled = false, autoPid = null;
@@ -721,7 +721,7 @@
 			addLine({ title: d.name, category: c.id, kind: 'activity_fee', activity: d.activity_id, month: d.month, amount: plain(d.amount) });
 		});
 		(ctx.bookings || []).forEach(function (b) {
-			addLine({ title: b.label, category: c.id, kind: 'activity_fee', activity: b.activity_id, session: b.session_id, amount: plain(b.amount) });
+			addLine({ title: b.label, category: c.id, kind: 'activity_fee', activity: b.activity_id, session: b.session_id, person: b.person_id || '', amount: plain(b.amount) });
 		});
 	}
 

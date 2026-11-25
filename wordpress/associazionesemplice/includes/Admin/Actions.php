@@ -1167,6 +1167,18 @@ final class Actions {
 
 	// ---------- Movimenti ----------
 
+	/** Per chi è una voce di «Nuovo incasso»: un'altra persona solo se chi paga ha prenotato per lei quella data (altrimenti 0 = chi paga). */
+	private static function income_for( int $payer, int $session_id, int $for ): int {
+		if ( $for <= 0 || $for === $payer || $session_id <= 0 ) {
+			return 0;
+		}
+		$b = Plugin::activities()->booking( $session_id, $for );
+		if ( ! $b || 'booked' !== $b['status'] || \AssociazioneSemplice\ActivityService::debtor_id( $b ) !== $payer ) {
+			throw new \InvalidArgumentException( 'Questa prenotazione non è più a carico di chi paga: ricarica la pagina.' );
+		}
+		return $for;
+	}
+
 	private static function save_income( array $p ): array {
 		$lines = array();
 		list( $vat_rate, $vat_mode ) = Ui::vat_input( $p );
@@ -1177,6 +1189,7 @@ final class Actions {
 				'amount_cents'     => Money::parse( $l['amount'] ?? '' ) ?? 0,
 				'activity_id'      => (int) ( $l['activity_id'] ?? 0 ),
 				'session_id'       => (int) ( $l['session_id'] ?? 0 ),
+				'person_id'        => self::income_for( (int) ( $p['person_id'] ?? 0 ), (int) ( $l['session_id'] ?? 0 ), (int) ( $l['for'] ?? 0 ) ),
 				'competence_month' => self::opt( $l, 'competence_month' ),
 				'social_year'      => self::opt( $l, 'social_year' ),
 				'description'      => (string) ( $l['description'] ?? '' ),

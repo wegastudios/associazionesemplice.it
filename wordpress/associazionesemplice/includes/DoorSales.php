@@ -73,8 +73,11 @@ final class DoorSales {
 				$person = $people->get( $pid );
 				$parts  = array( 'prenotato' );
 				if ( ! empty( $p['pay'] ) ) {
-					$due = $row ? (int) $row['remaining'] : 0;
-					if ( $due > 0 ) {
+					$due  = $row ? (int) $row['remaining'] : 0;
+					$skip = $row && $due > 0 && $person && MemberType::is_member( $person['type'] ) && ActivityService::owed_by_another( $row ) && ! Guardians::is_guardian_of( ActivityService::debtor_id( $row ), $pid );
+					if ( $skip ) { // prenotazione fatta da un altro socio: sul posto non si chiede nulla a chi partecipa
+						$parts[] = 'contributo a carico di chi ha prenotato';
+					} elseif ( $due > 0 ) {
 						$ledger->record_receipt(
 							array(
 								'date' => current_time( 'Y-m-d' ), 'account_id' => (int) ( $p['account_id'] ?? 0 ), 'method' => (string) ( $p['method'] ?? '' ), 'person_id' => $pid,

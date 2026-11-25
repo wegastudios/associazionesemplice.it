@@ -110,7 +110,7 @@ final class TicketVerify {
 		if ( $b && (int) $b['fee_due_cents'] > 0 ) {
 			$pay = 'paid' === $b['state']
 				? '<dd>Pagato</dd>'
-				: '<dd style="color:#b32d2e">Da pagare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</dd>';
+				: ( \AssociazioneSemplice\ActivityService::owed_by_another( $b ) ? '<dd>Non pagato, a carico di chi ha prenotato</dd>' : '<dd style="color:#b32d2e">Da pagare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</dd>' );
 			$pay = '<div><dt>Contributo</dt>' . $pay . '</div>';
 		} elseif ( $b ) {
 			$pay = '<div><dt>Contributo</dt><dd>Gratuito</dd></div>';

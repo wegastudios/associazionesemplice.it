@@ -291,6 +291,9 @@ final class Views {
 	}
 
 	private static function booking_pay( array $b ): string {
+		if ( \AssociazioneSemplice\ActivityService::owed_by_another( $b ) && (int) $b['fee_due_cents'] > 0 ) {
+			return '<span class="asemf-muted">a carico di chi ha prenotato</span>';
+		}
 		switch ( $b['state'] ) {
 			case Pricing::FREE:
 				return '<span class="asemf-good">gratuito</span>';
@@ -356,7 +359,7 @@ final class Views {
 			$html .= '<p class="asemf-muted">Non hai ancora corsi né prenotazioni.</p>';
 		}
 		$unpaid = array_filter( array_merge( $upcoming, $past ), function ( $b ) {
-			return $b['active'] && $b['remaining'] > 0;
+			return $b['active'] && $b['remaining'] > 0 && ! \AssociazioneSemplice\ActivityService::owed_by_another( $b );
 		} );
 		if ( $unpaid || array_filter( $stat, function ( $s ) {
 			return $s['summary']['balance'] < 0;
@@ -888,6 +891,9 @@ final class Views {
 			}
 			if ( (int) $b['fee_due_cents'] <= 0 ) {
 				$pay = '<span class="asemf-small asemf-muted">Gratuito</span>';
+			} elseif ( (int) $b['remaining'] > 0 && \AssociazioneSemplice\ActivityService::owed_by_another( $b ) ) {
+				$unpaid++;
+				$pay = '<span class="asemf-warn asemf-small">Contributo non pagato, a carico di chi ha prenotato</span>';
 			} elseif ( (int) $b['remaining'] > 0 ) {
 				$unpaid++;
 				$pay = '<span class="asemf-bad asemf-small">Da pagare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';

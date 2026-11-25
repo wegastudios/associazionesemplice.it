@@ -14715,6 +14715,7 @@ require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, rip
 require __DIR__ . '/smoke_backup_job.php'; // copia di sicurezza a tappe: uguale a quella di prima, ripresa, ripristino, annullamento
 require __DIR__ . '/smoke_cache_condivisa.php'; // letture ricordate tra le richieste con una cache degli oggetti persistente (simulata): stessi risultati, svuotate a ogni scrittura
 require __DIR__ . '/smoke_prenota_gruppo.php'; // prenotazione per più persone: tutte o nessuna, chi prenota risponde, nessun oracolo sugli altri soci
+require __DIR__ . '/smoke_prenota_debitore.php'; // il contributo è a carico di chi prenota: cassa e prima nota invariate
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );

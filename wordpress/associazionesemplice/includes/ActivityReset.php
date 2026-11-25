@@ -245,6 +245,19 @@ final class ActivityReset {
 		return 0 === strpos( (string) $m['description'], '[Iscrizione cancellata]' );
 	}
 
+	/** A chi si restituisce un incasso: a chi partecipava, oppure a chi ha prenotato per lui se è lui che ha pagato. */
+	private static function refund_person( array $m ): int {
+		$pid   = (int) ( $m['person_id'] ?? 0 );
+		$payer = (int) ( $m['payer_person_id'] ?? 0 );
+		if ( $pid && $payer && ! empty( $m['session_id'] ) ) {
+			$b = Plugin::activities()->booking( (int) $m['session_id'], $pid );
+			if ( $b && $payer === ActivityService::debtor_id( $b ) ) {
+				return $payer;
+			}
+		}
+		return $pid;
+	}
+
 	/** Uscita di restituzione registrata dalla cancellazione di una singola iscrizione. */
 	private static function is_refund_expense( array $m ): bool {
 		return 'expense' === $m['type'] && false !== strpos( (string) $m['description'], 'Restituzione di un incasso' );
@@ -355,7 +368,7 @@ final class ActivityReset {
 							if ( $part > 0 ) { // mese in parte svolto: si rende solo la quota delle lezioni non tenute
 								$d = array(
 									'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => $part,
-									'person_id' => $m['person_id'] ? (int) $m['person_id'] : 0, 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'] . ' (contributo non usato)', 0, 255 ),
+									'person_id' => self::refund_person( $m ), 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'] . ' (contributo non usato)', 0, 255 ),
 								);
 								if ( null !== $m['vat_rate'] && '' !== $m['vat_rate'] ) {
 									$d['vat_rate'] = (int) $m['vat_rate'];
@@ -371,7 +384,7 @@ final class ActivityReset {
 							}
 							$d = array(
 								'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => (int) $m['amount_cents'],
-								'person_id' => $m['person_id'] ? (int) $m['person_id'] : 0, 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'], 0, 255 ),
+								'person_id' => self::refund_person( $m ), 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'], 0, 255 ),
 							);
 							if ( null !== $m['vat_rate'] && '' !== $m['vat_rate'] ) {
 								$d['vat_rate'] = (int) $m['vat_rate']; // la restituzione storna anche l'IVA contenuta
@@ -710,7 +723,7 @@ final class ActivityReset {
 					if ( self::REFUND === $mode ) {
 						$d = array(
 							'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => (int) $m['amount_cents'],
-							'activity_id' => $activity_id, 'person_id' => $person_id,
+							'activity_id' => $activity_id, 'person_id' => self::refund_person( array( 'person_id' => $person_id, 'session_id' => $sid ) + $m ),
 							'description' => mb_substr( '[Iscrizione cancellata: ' . $who . '] Restituzione di un incasso del ' . $m['tx_date'], 0, 255 ),
 						);
 						if ( null !== $m['vat_rate'] && '' !== $m['vat_rate'] ) {

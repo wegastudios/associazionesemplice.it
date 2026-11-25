@@ -75,7 +75,8 @@ final class IncomePage {
 			$bookings[] = array(
 				'session_id'  => (int) $b['session_id'],
 				'activity_id' => (int) $b['activity_id'],
-				'label'       => $b['activity_name'] . ' · ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ),
+				'person_id'   => (int) $b['person_id'] !== (int) $person['id'] ? (int) $b['person_id'] : 0, // prenotata per un'altra persona: la voce è sua, paga questa
+				'label'       => $b['activity_name'] . ' · ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ) . ( (int) $b['person_id'] !== (int) $person['id'] && ( $for = Plugin::people()->get( (int) $b['person_id'] ) ) ? ' · per ' . trim( $for['first_name'] . ' ' . $for['last_name'] ) : '' ),
 				'amount'      => (int) $b['remaining'],
 			);
 		}
