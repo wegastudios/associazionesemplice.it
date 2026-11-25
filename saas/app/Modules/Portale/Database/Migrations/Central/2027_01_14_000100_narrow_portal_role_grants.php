@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Core\Contracts\OrgSchema;
-use App\Modules\Core\Platform\PortalGrants;
+use App\Modules\Core\Contracts\PortalGrants;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 

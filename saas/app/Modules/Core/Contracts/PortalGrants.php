@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Core\Platform;
+namespace App\Modules\Core\Contracts;
 
 use Illuminate\Database\Connection;
 

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\PortalGrants;
 use App\Modules\Core\Platform\GroupPrivileges;
-use App\Modules\Core\Platform\PortalGrants;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 
