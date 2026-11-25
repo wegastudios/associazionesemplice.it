@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: saas-${{ github.workflow }}-${{ github.ref }}
+  group: saas-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
   # Su main non si annulla: ogni testa di main deve avere la sua prova.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 

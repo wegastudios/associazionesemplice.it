@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: supporto-${{ github.ref }}
+  group: supporto-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
