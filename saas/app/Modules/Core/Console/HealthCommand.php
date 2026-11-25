@@ -165,7 +165,7 @@ final class HealthCommand extends Command
             }
         }
 
-        foreach ($this->roleNotes as $note) {
+        foreach ($this->collectedNotes() as $note) {
             $this->line("nota  {$note}");
         }
 
@@ -378,6 +378,16 @@ final class HealthCommand extends Command
     }
 
     /** Il controllo dei saldi non è girato da più di due giorni, o non è riuscito per qualche associazione: avviso. */
+    /**
+     * Le note dei ruoli raccolte durante i controlli (le scrivono le voci, chiamate come funzioni anonime).
+     *
+     * @return list<string>
+     */
+    private function collectedNotes(): array
+    {
+        return $this->roleNotes;
+    }
+
     /** L'invio notturno dei consumi al portale non riesce da più di due giorni. */
     private function usageSent(): void
     {
