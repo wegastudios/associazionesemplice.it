@@ -19,7 +19,7 @@ use App\Modules\Core\Http\Middleware\RestrictToAppHost;
 use App\Modules\Core\Http\Middleware\SecurityHeaders;
 use App\Modules\Core\Http\Middleware\ThrottleAccountSecurity;
 use App\Modules\Core\Http\Middleware\UseCookieSession;
-use AppModulesCoreHttpTooManyAttempts;
+use App\Modules\Core\Http\TooManyAttempts;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
 use App\Modules\Piattaforma\Http\Middleware\UsePublicStaffUrl;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -28,7 +28,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use SymfonyComponentHttpKernelxceptionTooManyRequestsHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
