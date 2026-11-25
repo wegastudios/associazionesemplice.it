@@ -223,8 +223,42 @@ $gb_d2['total'] = 1000; // il riepilogo visto prima del cambio di prezzo
 set_transient( 'asem_group_' . $gb_booker, $gb_d2, 600 );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $gb_d2 ) { Actions::do_book_group( array( 'group_token' => $gb_d2['token'] ) ); } ), 'cambiato' ) && 0 === $gb_count( $gb_s8 ), 'prenota gruppo: se il contributo cambia dopo il riepilogo non si prenota' );
 Actions::do_book_group( $gb_req );
-Actions::do_book_group( array( 'group_token' => Actions::group_draft(  )['token'] ) );
+Actions::do_book_group( array( 'group_token' => Actions::group_draft( $gb_booker )['token'] ) );
 asem_ok( 2 === $gb_count( $gb_s8 ) && null === Actions::group_draft( $gb_booker ), 'prenota gruppo: la conferma prenota e il riepilogo non resta' );
+
+// Due invii sull'ultimo posto: il secondo prende il posto tra il controllo indicativo e il blocco del primo; e il COMMIT viene prima del rilascio del blocco
+list( , $gb_s11 ) = $gb_event( 'Gruppo ultimo posto', 2 );
+$gb_rival = true;
+$gb_race  = function ( $err, $sid, $pid ) use ( &$gb_rival, $gb_acts, $gb_s11, $gb_rina, $gb_gino ) {
+	if ( $gb_rival && (int) $sid === $gb_s11 && (int) $pid === $gb_gino ) { // dopo il controllo indicativo, prima del blocco
+		$gb_rival = false;
+		$gb_acts->book( $gb_s11, $gb_rina );
+	}
+	return $err;
+};
+add_filter( 'asem_booking_errors', $gb_race, 10, 3 );
+$gb_e = null;
+try {
+	$gb_acts->book_many( $gb_s11, array( $gb_booker, $gb_gino ), $gb_booker, array() );
+} catch ( BookingFailure $e ) {
+	$gb_e = $e;
+}
+remove_filter( 'asem_booking_errors', $gb_race, 10 );
+asem_ok( false === $gb_rival && $gb_e && BookingFailure::FULL === $gb_e->kind && 1 === $gb_count( $gb_s11 ) && 'booked' === $gb_row( $gb_s11, $gb_rina )['status'], 'prenota gruppo: due invii sull\'ultimo posto, uno solo entra e l\'altro non prenota nessuno' );
+list( , $gb_s12 ) = $gb_event( 'Gruppo ordine', 5 );
+$gb_sql = array();
+$gb_spy = function ( $q ) use ( &$gb_sql ) {
+	foreach ( array( 'GET_LOCK', 'START TRANSACTION', 'COMMIT', 'RELEASE_LOCK' ) as $w ) {
+		if ( false !== strpos( (string) $q, $w ) ) {
+			$gb_sql[] = $w;
+		}
+	}
+	return $q;
+};
+add_filter( 'query', $gb_spy );
+$gb_acts->book_many( $gb_s12, array( $gb_booker, $gb_rina ), $gb_booker, array() );
+remove_filter( 'query', $gb_spy );
+asem_ok( array( 'GET_LOCK', 'START TRANSACTION', 'COMMIT', 'RELEASE_LOCK' ) === array_values( array_diff( $gb_sql, array( '' ) ) ), 'prenota gruppo: il COMMIT viene prima del rilascio del blocco: ' . implode( ' > ', $gb_sql ) );
 
 // Gino si toglie: il posto si libera, nessun altro lo può prenotare per quella data, anche se l'evento non è annullabile
 $wpdb->update( Db::t( 'activities' ), array( 'cancellable' => 0 ), array( 'id' => $gb_a8 ) );
