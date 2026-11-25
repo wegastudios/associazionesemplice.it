@@ -40,8 +40,13 @@ try {
 			if ( $cash && $fee ) {
 				$sess = Plugin::activities()->sessions( $aid );
 				$line = array( "category_id" => $fee, "amount_cents" => 4000 + ( $n % 7 ) * 1500, "description" => "Contributi", "activity_id" => $aid );
-				if ( $sess ) {
+				if ( $sess && $people ) {
 					$line["session_id"] = (int) $sess[0]["id"];
+					try {
+						Plugin::activities()->book( (int) $sess[0]["id"], $people[ $n % count( $people ) ] ); // il socio che paga deve essere prenotato a quella data
+					} catch ( \Throwable $e ) {
+						WP_CLI::log( 'prenotazione: ' . $e->getMessage() ); // già prenotato: va bene
+					}
 				}
 				$ledger->record_receipt( array(
 					'date' => gmdate( 'Y-m-d', time() - ( 3 + $n ) * 86400 ), 'account_id' => (int) $cash['id'], 'method' => 'cash',
