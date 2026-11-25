@@ -3,9 +3,9 @@ name: Portale
 on:
   push:
     branches: [main]
-    paths: ["portale/**", ".github/workflows/portale.yml"]
+    paths: ["portale/**", "saas/app/Modules/Core/Contracts/portal-grants.json", ".github/workflows/portale.yml"]
   pull_request:
-    paths: ["portale/**", ".github/workflows/portale.yml"]
+    paths: ["portale/**", "saas/app/Modules/Core/Contracts/portal-grants.json", ".github/workflows/portale.yml"]
   workflow_dispatch:
 
 concurrency:
@@ -63,7 +63,7 @@ jobs:
 
   postgres-ruolo-ristretto:
     # Come in produzione: il proprietario crea schema e tabelle; il ruolo di tutti i giorni (portal_rt) non è superutente, non ha CREATE,
-    # possiede le sue 18 tabelle e sulle 11 del proprietario ha solo i verbi che il codice usa (elenco in tests/run.php, rtGrants()).
+    # possiede le sue 18 tabelle e sulle 11 del proprietario ha solo i verbi che il codice usa (elenco in saas/app/Modules/Core/Contracts/portal-grants.json, lo stesso del gestionale, letto da rtGrants() in tests/run.php).
     # Se una prova fallisce per un verbo mancante, l'elenco dei GRANT va corretto (anche in produzione).
     name: Portale (PostgreSQL, ruolo ristretto)
     runs-on: ubuntu-latest

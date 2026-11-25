@@ -1,0 +1,17 @@
+{
+    "schema": "portal",
+    "tables": {
+        "subscriptions": ["SELECT", "INSERT", "UPDATE", "DELETE"],
+        "orders": ["SELECT", "INSERT", "UPDATE", "DELETE"],
+        "saas_orgs": ["SELECT", "INSERT", "UPDATE", "DELETE"],
+        "releases": ["SELECT", "INSERT", "UPDATE", "DELETE"],
+        "mail_outbox": ["SELECT", "INSERT", "UPDATE", "DELETE"],
+        "saas_usage": ["SELECT", "INSERT", "UPDATE"],
+        "downloads": ["SELECT", "INSERT", "DELETE"],
+        "saas_outbox": ["SELECT", "INSERT", "UPDATE"],
+        "settings": ["SELECT", "INSERT", "DELETE"],
+        "email_templates": ["SELECT", "INSERT", "DELETE"],
+        "audit": ["SELECT", "INSERT"],
+        "events": ["SELECT", "INSERT", "DELETE"]
+    }
+}

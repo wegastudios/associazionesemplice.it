@@ -64,12 +64,22 @@ function rtMode(): bool {
 }
 /** Le tabelle del proprietario e i soli verbi che il ruolo di tutti i giorni ha su ciascuna (le altre tabelle sono sue). */
 function rtGrants(): array {
-	return array(
-		'subscriptions' => 'SELECT, INSERT, UPDATE, DELETE', 'orders' => 'SELECT, INSERT, UPDATE, DELETE', 'saas_orgs' => 'SELECT, INSERT, UPDATE, DELETE',
-		'releases' => 'SELECT, INSERT, UPDATE, DELETE', 'mail_outbox' => 'SELECT, INSERT, UPDATE, DELETE',
-		'downloads' => 'SELECT, INSERT, DELETE', 'saas_outbox' => 'SELECT, INSERT, UPDATE', 'settings' => 'SELECT, INSERT, DELETE',
-		'email_templates' => 'SELECT, INSERT, DELETE', 'audit' => 'SELECT, INSERT', 'events' => 'SELECT, INSERT, DELETE', 'saas_usage' => 'SELECT, INSERT, UPDATE',
-	);
+	// Una sola fonte: lo stesso file che il gestionale (saas) usa per concedere e controllare i permessi del ruolo del portale.
+	// Se il portale usa una tabella o un verbo fuori da quell'elenco, le prove col ruolo ristretto falliscono.
+	static $grants = null;
+	if ( null === $grants ) {
+		$file = dirname( __DIR__, 2 ) . '/saas/app/Modules/Core/Contracts/portal-grants.json';
+		$data = json_decode( (string) file_get_contents( $file ), true );
+		if ( ! is_array( $data ) || empty( $data['tables'] ) || ! is_array( $data['tables'] ) ) {
+			fwrite( STDERR, "Elenco dei permessi del portale non leggibile: $file\n" );
+			exit( 1 );
+		}
+		$grants = array();
+		foreach ( $data['tables'] as $table => $verbs ) {
+			$grants[ (string) $table ] = implode( ', ', (array) $verbs );
+		}
+	}
+	return $grants;
 }
 /** Crea la struttura: con il ruolo ristretto la fa il proprietario (il ruolo di tutti i giorni non può). */
 function migrated( Db $db ): void {

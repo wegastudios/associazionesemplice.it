@@ -317,7 +317,7 @@ it('con tutti i permessi diretti del portale i controlli passano e la revoca tog
                 ->and(hasPrivilege($owner, $group, 'portal.downloads', 'TRUNCATE'))->toBeFalse()
                 ->and(hasPrivilege($owner, $group, 'portal.subscriptions', 'SELECT'))->toBeFalse()
                 ->and(hasPrivilege($owner, $group, 'audit.log', 'SELECT'))->toBeFalse();
-            foreach (PortalGrants::TABLES as $table => $verbs) {
+            foreach (PortalGrants::tables() as $table => $verbs) {
                 foreach ($verbs as $verb) {
                     expect(hasPrivilege($owner, $portal, "portal.{$table}", $verb))->toBeTrue("{$table} {$verb}");
                 }
@@ -431,7 +431,7 @@ it('permessi del portale: con l\'interruttore acceso concede l\'elenco, toglie i
 
         $this->artisan('saas:db:narrow-portal')->doesntExpectOutputToContain($portal)->assertSuccessful();
 
-        foreach (PortalGrants::TABLES as $table => $verbs) {
+        foreach (PortalGrants::tables() as $table => $verbs) {
             foreach (['SELECT', 'INSERT', 'UPDATE', 'DELETE'] as $verb) {
                 expect(hasPrivilege($owner, $portal, "portal.{$table}", $verb))->toBe(in_array($verb, $verbs, true), "{$table} {$verb}");
             }
