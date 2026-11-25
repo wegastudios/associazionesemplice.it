@@ -13,6 +13,7 @@ use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Mail\PrimaryMailer;
 use App\Modules\Core\Platform\RoleObjectAudit;
+use App\Modules\Portale\Contracts\UsageHealth;
 use App\Modules\Portale\Contracts\WebRuntimeProbe;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
@@ -105,6 +106,7 @@ final class HealthCommand extends Command
             'ripiego della posta' => $this->mailFallback(...),
             'lavori non riusciti' => fn () => $this->jobsFailed($db),
             'incassi online in coda' => PaymentWebhookHealth::check(...),
+            'invio dei consumi al portale' => UsageHealth::check(...),
             'controllo notturno dei saldi' => fn () => $this->balancesRun($balances),
             'copia dei dati' => function () use ($compression): void {
                 if ($compression->fellBackToGzip()) {
