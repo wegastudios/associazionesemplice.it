@@ -29,7 +29,10 @@ prova() { wp eval-file "wp-content/prove/$1" 2>&1 | grep -aE "^(ok|- |Success|Er
 npx --yes @wordpress/env start >/dev/null 2>&1 || { ko "wp-env non parte"; exit 1; }
 
 echo "### 1. Gratuito 1.3.38 con dati → build corrente"
-inst vf "1.3.38"; prova prova-dati-crea.php "dati creati con la 1.3.38"
+inst vf "1.3.38"
+wp eval-file wp-content/prove/prova-dati-crea.php > crea.txt 2>&1; grep -aE "^(ok|Error)" crea.txt # l'ultimo controllo (un evento per lavoro) vale solo per versioni più vecchie della 1.3.30
+grep -qa "^ok - impronta prima" crea.txt && si "dati creati con la 1.3.38" || ko "dati creati con la 1.3.38"
+if grep -a "^Error" crea.txt | grep -qv "lavori periodici della versione di prima"; then ko "errore creando i dati"; fi
 [ "$(val 'get_option("asem_db_version")')" = 76 ] && si "schema 76 con la 1.3.38" || ko "schema atteso 76"
 inst nf "aggiornamento"; [ "$(val 'get_option("asem_db_version")')" = 77 ] && si "schema 77 dopo l'aggiornamento" || ko "schema atteso 77"
 prova prova-dati-verifica.php "dati conservati dopo l'aggiornamento"; prova versioni-gruppo-nuovo.php "prenotazione di gruppo dopo l'aggiornamento"; sito "dopo l'aggiornamento"

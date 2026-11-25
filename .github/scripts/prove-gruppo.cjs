@@ -181,7 +181,8 @@ const GEN = 'Non è stato possibile prenotare una delle persone indicate';
       const send = (c, f) => c.request.post(f.url, { form: f.data, headers: { referer: ev.url } }).then(async (r) => { times.push(Date.now() - t0); return r.text(); });
       const [a, b] = await Promise.all([send(c1, f1), send(c2, f2)]);
       const win = [a, b].filter((x) => /Prenotazioni registrate per 2 persone/.test(x)).length;
-      const lose = [a, b].filter((x) => /Posti esauriti|Non ci sono posti|Un&#039;altra operazione|Un'altra operazione/.test(x)).length;
+      const alert = (x) => (x.match(/role="alert">([^<]*)/) || ['', ''])[1];
+      const lose = [a, b].filter((x) => /Posti esauriti|Non ci sono posti|altra operazione/.test(alert(x))).length; // solo il messaggio: la pagina di chi vince scrive anch'essa che i posti sono finiti
       ok(win === 1 && lose === 1, 'gara ' + i + ': uno entra e l\'altro legge che i posti sono finiti (vince ' + win + ', rifiuta ' + lose + ', risposte a ' + times.join(' e ') + ' ms)');
       n++;
     }
