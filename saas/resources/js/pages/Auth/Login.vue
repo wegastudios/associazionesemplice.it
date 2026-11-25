@@ -31,7 +31,7 @@ const submit = () => form.post('/accesso', { onFinish: () => form.reset('passwor
             <p class="caption mb-3">Dati inventati, azzerati ogni notte. Scegli un ruolo e i campi si compilano da soli.</p>
             <ul class="space-y-2">
                 <li v-for="account in demoAccounts" :key="account.email" class="flex flex-wrap items-center justify-between gap-2">
-                    <span><strong>{{ account.role }}</strong><br /><code>{{ account.email }}</code> · <code>{{ account.password }}</code></span>
+                    <dl class="min-w-0"><dt class="font-semibold">{{ account.role }}</dt><dd class="mt-1 break-all"><span class="caption">Email</span><br /><code class="select-all">{{ account.email }}</code></dd><dd class="mt-1 break-all"><span class="caption">Password</span><br /><code class="select-all">{{ account.password }}</code></dd></dl>
                     <button type="button" class="font-semibold text-accent hover:underline" @click="useAccount(account)">Usa</button>
                 </li>
             </ul>
