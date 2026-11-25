@@ -12,6 +12,7 @@ use AssociazioneSemplice\Settings;
 
 global $wpdb;
 wp_set_current_user( 1 );
+Settings::update( array( 'guests_enabled' => 1 ) );
 $page = function ( string $title, string $body ): string {
 	return (string) get_permalink( wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => $title, 'post_content' => $body ) ) );
 };
