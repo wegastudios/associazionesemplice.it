@@ -59,6 +59,8 @@ const HIDE = 'html{scrollbar-width:none!important}::-webkit-scrollbar{display:no
     await vis.evaluate(() => Promise.race([new Promise((r) => setTimeout(r, 8000)), Promise.all([...document.images].map((i) => { i.loading = "eager"; return i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; }); }))]));
     await vis.waitForTimeout(800);
     await vis.screenshot({ path: path.join(out, "screenshot-6.png") });
+    const bt = await vis.$eval(".asemf-btn", (e) => ({ html: e.outerHTML.slice(0, 200), codes: [...e.textContent].map((c) => c.charCodeAt(0)).join(","), ws: getComputedStyle(e).whiteSpace, ls: getComputedStyle(e).letterSpacing, ws2: getComputedStyle(e).wordSpacing }));
+    notes.push("Pulsante: " + JSON.stringify(bt));
     notes.push("- ok 6: Pagine pubbliche degli eventi (visitatore)");
   } catch (e) { notes.push("- MANCA 6: " + String(e.message).split('\n')[0]); }
 
