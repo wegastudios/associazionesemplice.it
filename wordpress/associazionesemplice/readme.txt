@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.37
+Stable tag: 1.3.38
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -63,6 +63,12 @@ The front-end style sheet and script (`assets/frontend.css` and `assets/frontend
 
 == Changelog ==
 
+= 1.3.38 =
+* Altro: nelle pagine di segreteria e tesoriere chi non ha fatto l'accesso trova l'accesso dello staff e poi torna alla pagina di partenza.
+* Altro: nel modulo di accesso dei soci c'è il collegamento «Segreteria e staff».
+* Altro: origine della tessera in italiano, «1 partecipante» al singolare, spazio nel pulsante «Dettagli e prenotazione».
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 = 1.3.37 =
 * Altro: nelle pagine delle attività e degli eventi le locandine non diventano più enormi nei siti con WordPress 6.7 o successivo.
 * Ottimizzazione: le schede delle attività sono uniformi: immagine della stessa misura, fascia colorata con l'icona se manca la locandina, date e posti in evidenza, pulsante in fondo.
@@ -102,12 +108,6 @@ Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/change
 = 1.3.32 =
 * Nuovo: invito a donare («Non puoi partecipare? Sostienici con una donazione»), da accendere dove serve: pagina dell'evento o del corso, conferma dell'iscrizione, area soci, email ai soci.
 * Altro: la pagina Donazioni spiega meglio come ricevere le donazioni con PayPal, mandare la ricevuta e registrarle in Prima nota.
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.31 =
-* Ottimizzazione: rivisti tutti i testi del plugin, più chiari e coerenti: «area soci», messaggi di errore che dicono cosa fare, singolare e plurale giusti, un solo formato per l'oggetto delle email, «rendiconto» al posto di «bilancio».
-* Altro: corretto un errore che bloccava il salvataggio dei dati dell'ente quando si conferma il cambio del mese dell'anno fiscale.
-* Altro: «Controlla di nuovo» in Bacheca → Aggiornamenti ricontrolla subito anche il portale.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 
