@@ -388,7 +388,7 @@ final class DashboardPage {
 		if ( ! Employees::can( EmployeeRules::PEOPLE ) || ! Employees::can( EmployeeRules::COURSES ) ) { // nomi di persone e di corsi
 			return;
 		}
-		$rows = \AssociazioneSemplice\Trials::not_enrolled( gmdate( 'Y-m-d', strtotime( AssociazioneSempliceDb::today() . ' -45 days' ) ) );
+		$rows = \AssociazioneSemplice\Trials::not_enrolled( gmdate( 'Y-m-d', strtotime( \AssociazioneSemplice\Db::today() . ' -45 days' ) ) );
 		if ( ! $rows ) {
 			return;
 		}

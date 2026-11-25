@@ -129,7 +129,7 @@ final class ProRegisters {
 		}
 		echo '</tr></thead><tbody>';
 		foreach ( $m['people'] as $pid => $name ) {
-			echo '<tr><td>' . esc_html( $name ) . '</td>';
+			echo '<tr><td>' . esc_html( $name ) . ( empty( $m['trial'][ $pid ] ) ? '' : ' <span class="description">(prova)</span>' ) . '</td>';
 			foreach ( $m['dates'] as $d ) {
 				if ( empty( $m['expected'][ $d ][ $pid ] ) ) {
 					echo '<td style="text-align:center">—</td>';
