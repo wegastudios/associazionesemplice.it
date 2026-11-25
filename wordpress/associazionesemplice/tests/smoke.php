@@ -1635,7 +1635,7 @@ $sg_adm  = $as( 1, '[associazionesemplice_segreteria]' );
 $sg_anon = $as( 0, '[associazionesemplice_segreteria]' );
 $sg_mem  = $as( $u_f, '[associazionesemplice_segreteria]' );
 $sp_anon = $as( 0, '[associazionesemplice_spese]' );
-asem_ok( false !== strpos( $sg_anon, 'Area segreteria' ) && false !== strpos( $sg_anon, 'wp-login.php' ) && false !== strpos( $sp_anon, 'Area tesoriere' ) && false !== strpos( $sp_anon, 'wp-login.php' ) && false !== strpos( $sg_anon, 'area soci' ), 'pagine di ruolo: chi non ha fatto l'accesso trova la porta dello staff (accesso WordPress) e il rimando all'area soci' );
+asem_ok( false !== strpos( $sg_anon, 'Area segreteria' ) && false !== strpos( $sg_anon, 'wp-login.php' ) && false !== strpos( $sp_anon, 'Area tesoriere' ) && false !== strpos( $sp_anon, 'wp-login.php' ) && false !== strpos( $sg_anon, 'area soci' ), 'pagine di ruolo: chi non ha fatto l\'accesso trova la porta dello staff (accesso WordPress) e il rimando all\'area soci' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::FAIL, 'Segreteria e staff' ), 'accesso soci: l\'errore indica la via dello staff' );
 asem_ok( false !== strpos( $sg_adm, 'Segreteria' ) && false !== strpos( $sg_adm, 'page=asem-people' ) && false === strpos( $sg_anon, 'page=asem-people' ) && false !== strpos( $sg_mem, 'riservata alla segreteria' ) && false === strpos( $sg_mem, 'page=asem-people' ), 'area segreteria: i collegamenti compaiono solo a chi ha i permessi della segreteria' );
 wp_set_current_user( 1 );
