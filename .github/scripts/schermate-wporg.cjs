@@ -22,7 +22,7 @@ const HIDE = 'html{scrollbar-width:none!important}::-webkit-scrollbar{display:no
   const settle = async () => {
     await page.addStyleTag({ content: HIDE });
     await page.evaluate(() => { document.querySelectorAll('img[loading=lazy]').forEach((i) => { i.loading = 'eager'; }); window.scrollTo(0, 0); });
-    await page.evaluate(() => Promise.all([...document.images].map((i) => (i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })))));
+    await page.evaluate(() => Promise.race([new Promise((r) => setTimeout(r, 8000)), Promise.all([...document.images].map((i) => { i.loading = "eager"; return i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; }); }))]));
     await page.waitForTimeout(800);
   };
   const shot = async (n, label, url) => {
@@ -56,7 +56,7 @@ const HIDE = 'html{scrollbar-width:none!important}::-webkit-scrollbar{display:no
     const vis = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: "it-IT" });
     await vis.goto(base + "/attivita-ed-eventi/", { waitUntil: "load" });
     await vis.addStyleTag({ content: HIDE + ":root{--wp--style--global--content-size:1160px!important}.wp-block-post-content>*,.entry-content>*{max-width:1160px!important}.wp-site-blocks{padding-top:0!important}#wpadminbar{display:none!important}html{margin-top:0!important}" });
-    await vis.evaluate(() => Promise.all([...document.images].map((i) => (i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })))));
+    await vis.evaluate(() => Promise.race([new Promise((r) => setTimeout(r, 8000)), Promise.all([...document.images].map((i) => { i.loading = "eager"; return i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; }); }))]));
     await vis.waitForTimeout(800);
     await vis.screenshot({ path: path.join(out, "screenshot-6.png") });
     notes.push("- ok 6: Pagine pubbliche degli eventi (visitatore)");
