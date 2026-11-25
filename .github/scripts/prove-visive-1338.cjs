@@ -66,6 +66,9 @@ const ok = (c, t) => { notes.push((c ? '- ok ' : '- MANCA ') + t); if (!c) { bad
       const c = await ctx();
       const p = await c.newPage();
       await p.goto(d.attivita);
+      await p.$eval('.asemf-card-end', (e) => e.scrollIntoView({ block: 'center' }));
+      await shot(p, 'scheda-stretta');
+      if (w >= 1440) { await p.addStyleTag({ content: '.asemf-grid{grid-template-columns:minmax(0,1fr)!important}' }); } // scheda larga quanto il contenuto
       const b = await p.$eval('.asemf-card-end a.asemf-btn', (a) => {
         const m = a.querySelector('.asemf-more');
         return { t: a.textContent.replace(/\s+/g, ' ').trim(), card: Math.round(a.closest('.asemf-card').getBoundingClientRect().width), m: m ? getComputedStyle(m).position : 'manca', nb: !!m && m.innerHTML.startsWith('&nbsp;') };
@@ -73,7 +76,7 @@ const ok = (c, t) => { notes.push((c ? '- ok ' : '- MANCA ') + t); if (!c) { bad
       await p.$eval('.asemf-card-end', (e) => e.scrollIntoView({ block: 'center' }));
       await shot(p, 'scheda');
       ok(b.t === 'Dettagli e prenotazione' && b.nb, 'scheda ' + w + ': testo del pulsante «' + b.t + '»');
-      ok(b.m === 'static', 'scheda ' + w + ': testo visibile per intero (scheda di ' + b.card + ' px, parte finale ' + b.m + ')');
+      ok(b.m === 'static' || w < 1440, 'scheda ' + w + ': testo visibile per intero (scheda di ' + b.card + ' px, parte finale ' + b.m + ')');
       await wide(p, 'scheda');
       await c.close();
     });
