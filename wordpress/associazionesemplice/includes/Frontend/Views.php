@@ -1819,7 +1819,7 @@ final class Views {
 				} else {
 					$rf .= self::hidden( 'person_id', $ask[0]['id'] );
 				}
-				$html .= '<p class="asemf-small asemf-muted">Dopo la conferma della segreteria sei iscritto da questo mese; il contributo è quello indicato per il corso.</p>'
+				$html .= '<p class="asemf-small asemf-muted">Dopo la conferma della segreteria sei iscritto da questo mese; il contributo è quello indicato per il corso.' . ( \AssociazioneSemplice\Trials::shares( $activity ) ? ' Il primo mese si paga in proporzione alle lezioni che restano dal giorno della conferma.' : '' ) . '</p>'
 					. self::form( 'asem_front_course_request', self::hidden( 'activity_id', $aid ) . $rf, 'Chiedi l\'iscrizione', false, 'asemf-inline' );
 			}
 		} else {

@@ -18,10 +18,10 @@ final class Db {
 
 	/** Data di oggi (Y-m-d) nel fuso orario del sito. */
 	public static function today(): string {
-		return '' !== self::$today_fake ? self::$today_fake : current_time( 'Y-m-d' );
+		return '' !== self::$today_fake && defined( 'ASEM_TESTS' ) && ASEM_TESTS ? self::$today_fake : current_time( 'Y-m-d' );
 	}
 
-	/** Solo per le prove: il giorno da considerare «oggi» («YYYY-MM-DD»; vuoto = quello vero). @var string */
+	/** Solo per le prove (senza ASEM_TESTS non ha effetto): il giorno da considerare «oggi» («YYYY-MM-DD»; vuoto = quello vero). @var string */
 	public static $today_fake = '';
 
 	public static function now(): string {

@@ -5,7 +5,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Giorni di prova gratuiti dei corsi. La prova si registra (persona, corso, giorno) ma non crea iscrizione né debito.
- * Se la persona si iscrive nello stesso mese, il primo mese si paga dal giorno della prova compreso, in proporzione alle lezioni (senza orari: ai giorni);
+ * Nei corsi mensili che lo prevedono chi si iscrive a mese iniziato paga in proporzione alle lezioni che restano (senza orari: ai giorni): dal giorno della
+ * prova se l'ha fatta nel mese, altrimenti dal giorno dell'iscrizione. I campi trial_from, trial_left e trial_total dell'iscrizione valgono per entrambi;
  * se si iscrive più tardi la prova resta gratuita e chi iscrive legge che l'ha già fatta. Per il trimestre e il pagamento unico l'importo resta intero.
  * La proporzione si fissa all'iscrizione (lezioni dal giorno di prova e lezioni del mese): cambiare dopo il calendario non cambia il dovuto.
  */
@@ -134,27 +135,46 @@ final class Trials {
 		return $done ? 'Ha già fatto ' . self::days_text( $done ) . '.' : '';
 	}
 
+	/** Solo per le prove (senza ASEM_TESTS non ha effetto): la scelta di partenza dei corsi creati senza indicarla. @var string */
+	public static $first_month_fake = '';
+
+	/** La scelta di partenza per chi si iscrive a mese iniziato: in proporzione. */
+	public static function first_month_default(): string {
+		return '' !== self::$first_month_fake && defined( 'ASEM_TESTS' ) && ASEM_TESTS ? self::$first_month_fake : 'share';
+	}
+
+	/** Chi si iscrive a mese iniziato paga in proporzione? Solo rinnovo mensile, e solo se il corso lo prevede. */
+	public static function shares( array $activity ): bool {
+		return 'monthly' === (string) ( $activity['billing'] ?? 'monthly' ) && 'full' !== (string) ( $activity['first_month'] ?? 'share' );
+	}
+
 	/**
-	 * Da quale giorno si paga chi si iscrive da questo mese: la prima prova fatta nel mese (non futura), con la proporzione fissata adesso.
-	 * Solo per il rinnovo mensile.
+	 * Da quale giorno si paga chi si iscrive da questo mese: la prima prova fatta nel mese, altrimenti il giorno indicato o quello dell'iscrizione se il
+	 * mese è quello in corso. La proporzione si fissa adesso. Vuoti = mese intero.
 	 *
+	 * @param string|null $from giorno di partenza scelto (conta solo se cade nel mese)
 	 * @return array{trial_from:?string,trial_left:?int,trial_total:?int} campi dell'iscrizione
 	 */
-	public static function enrollment_fields( array $activity, int $person_id, string $start_month ): array {
+	public static function enrollment_fields( array $activity, int $person_id, string $start_month, ?string $from = null ): array {
 		$none = array( 'trial_from' => null, 'trial_left' => null, 'trial_total' => null );
-		if ( 'monthly' !== (string) ( $activity['billing'] ?? 'monthly' ) ) {
+		if ( ! self::shares( $activity ) ) {
 			return $none;
 		}
 		foreach ( self::dates( (int) $activity['id'], $person_id ) as $d ) {
 			if ( substr( $d, 0, 7 ) === $start_month && $d <= Db::today() ) {
 				list( $left, $total ) = self::ratio( $activity, $d );
-				return array( 'trial_from' => $d, 'trial_left' => $left, 'trial_total' => $total );
+				return array( 'trial_from' => $d, 'trial_left' => max( 1, $left ), 'trial_total' => $total );
 			}
 		}
-		return $none;
+		$day = null !== $from && substr( $from, 0, 7 ) === $start_month ? $from : ( substr( Db::today(), 0, 7 ) === $start_month ? Db::today() : '' );
+		if ( '' === $day ) {
+			return $none;
+		}
+		list( $left, $total ) = self::ratio( $activity, $day );
+		return $left >= $total ? $none : array( 'trial_from' => $day, 'trial_left' => $left, 'trial_total' => $total );
 	}
 
-	/** Lezioni del mese dal giorno indicato compreso, e lezioni di tutto il mese (senza orari: giorni). @return int[] */
+	/** Lezioni del mese dal giorno indicato compreso (anche nessuna), e lezioni di tutto il mese (senza orari: giorni). @return int[] */
 	public static function ratio( array $activity, string $date ): array {
 		$first = substr( $date, 0, 7 ) . '-01';
 		$last  = ( new \DateTimeImmutable( $first ) )->format( 'Y-m-t' );
@@ -162,13 +182,16 @@ final class Trials {
 			return $d >= $first && $d <= $last;
 		} ) );
 		if ( ! $all ) {
+			if ( ActivityService::lessons( $activity ) ) {
+				return array( 0, 0 ); // il corso ha un calendario e in questo mese nessuna lezione: nessuna proporzione da fare
+			}
 			$total = (int) substr( $last, 8, 2 );
 			return array( $total - (int) substr( $date, 8, 2 ) + 1, $total );
 		}
 		$left = count( array_filter( $all, function ( $d ) use ( $date ) {
 			return $d >= $date;
 		} ) );
-		return array( max( 1, $left ), count( $all ) );
+		return array( $left, count( $all ) );
 	}
 
 	/** Il mese che si paga dal giorno della prova ('' se nessuno). */
@@ -189,7 +212,7 @@ final class Trials {
 		return PaymentCalc::share( $fee, (int) $enrollment['trial_left'], $total );
 	}
 
-	/** Quota prevista del mese per chi non è ancora iscritto: con una prova nel mese si paga da quel giorno, altrimenti per intero. */
+	/** Quota prevista del mese per chi non è ancora iscritto: in proporzione se il corso lo prevede. */
 	public static function expected_cents( array $activity, int $person_id, string $month, int $fee ): int {
 		$f = self::enrollment_fields( $activity, $person_id, $month );
 		return null === $f['trial_from'] ? $fee : PaymentCalc::share( $fee, (int) $f['trial_left'], (int) $f['trial_total'] );

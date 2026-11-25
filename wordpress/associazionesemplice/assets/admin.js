@@ -682,7 +682,8 @@
 		var c = catByKind('activity_fee'); if (!a || !c) { return; }
 		var mine = (ctx && ctx.activities || []).filter(function (x) { return x.id === id; })[0];
 		var month = mine ? mine.month : $('#asem-date').value.substr(0, 7);
-		addLine({ title: a.name, category: c.id, kind: 'activity_fee', activity: a.id, month: month, amount: plain(mine ? mine.fee : a.fee) });
+		var part = ctx && ctx.trial_fees ? ctx.trial_fees[id] : null; /* primo mese in proporzione */
+		addLine({ title: a.name, category: c.id, kind: 'activity_fee', activity: a.id, month: month, amount: plain(mine ? mine.fee : (part == null ? a.fee : part)) });
 	});
 	otherSel.addEventListener('change', function () {
 		var id = parseInt(otherSel.value, 10); otherSel.value = ''; if (!id) { return; }

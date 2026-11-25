@@ -81,12 +81,15 @@ final class IncomePage {
 				'amount'      => (int) $b['remaining'],
 			);
 		}
-		// Corsi di cui ha fatto la prova questo mese senza essere iscritta: si paga dal giorno della prova
+		// Corsi a cui non è iscritta, con il primo mese in proporzione: si propone quanto pagherebbe iscrivendosi
 		$trial_fees = array();
-		foreach ( \AssociazioneSemplice\Trials::of_person( (int) $person['id'] ) as $t ) {
-			$ta = Plugin::activities()->get( (int) $t['activity_id'] );
-			if ( $ta && substr( (string) $t['trial_date'], 0, 7 ) === substr( $date, 0, 7 ) ) {
-				$trial_fees[ (int) $ta['id'] ] = Plugin::activities()->course_month_fee( $ta, $person, substr( $date, 0, 7 ) );
+		$mine       = array_column( $acts, 'id' );
+		foreach ( Plugin::activities()->for_year( $sy ) as $ta ) {
+			if ( 'course' === $ta['kind'] && \AssociazioneSemplice\Trials::shares( $ta ) && ! in_array( (int) $ta['id'], $mine, true ) ) {
+				$part = Plugin::activities()->course_month_fee( $ta, $person, substr( $date, 0, 7 ) );
+				if ( $part !== Plugin::activities()->fee_for( $ta, (string) $person['type'] ) ) {
+					$trial_fees[ (int) $ta['id'] ] = $part;
+				}
 			}
 		}
 		// Contributi a carico di chi ha prenotato per questa persona: non sono dovuti da lei, si propongono a parte e solo con una conferma

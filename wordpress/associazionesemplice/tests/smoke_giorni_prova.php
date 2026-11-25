@@ -29,7 +29,7 @@ $pr_man   = function ( string $name ) use ( $pr_peo, $pr_sy, &$pr_n ): int {
 	return $id;
 };
 $pr_course = function ( string $name, array $extra = array() ) use ( $pr_acts, $pr_sy ): int {
-	return (int) $pr_acts->create( array_merge( array( 'name' => $name, 'social_year' => $pr_sy, 'kind' => 'course', 'billing' => 'monthly', 'fee_cents' => 4000, 'trial_days' => 1 ), $extra ) );
+	return (int) $pr_acts->create( array_merge( array( 'name' => $name, 'social_year' => $pr_sy, 'kind' => 'course', 'billing' => 'monthly', 'fee_cents' => 4000, 'trial_days' => 1, 'first_month' => 'share' ), $extra ) );
 };
 $pr_sum = function ( int $aid, int $pid ) use ( $pr_acts ): ?array {
 	foreach ( $pr_acts->status_for_activity( $aid ) as $s ) {
@@ -69,13 +69,15 @@ asem_ok( 0 === (int) $pr_acts->enrollment_left( $pr_c, $pr_a, $pr_month ), 'prov
 $pr_next = gmdate( 'Y-m', strtotime( $pr_month . '-01 +1 month' ) );
 asem_ok( 4000 === (int) $pr_acts->enrollment_left( $pr_c, $pr_a, $pr_next ), 'prova: dal mese dopo la quota è intera' );
 
-// Senza prova: mese intero, come sempre
+// Senza prova: in proporzione dal giorno dell'iscrizione
 $pr_b = $pr_man( 'Bea' );
 $pr_acts->enroll( $pr_c, $pr_b, $pr_month );
-asem_ok( 4000 === (int) $pr_acts->enrollment_left( $pr_c, $pr_b, $pr_month ), 'prova: chi non l\'ha fatta paga il mese intero' );
+$wpdb->update( Db::t( 'activities' ), array( 'lesson_weekday' => 0 ), array( 'id' => $pr_c ) );
+$pr_bd = (int) $pr_acts->enrollment_left( $pr_c, $pr_b, $pr_month );
+asem_ok( $pr_bd > 0 && $pr_bd <= 4000, 'prova: chi non l\'ha fatta paga dal giorno dell\'iscrizione' );
 
 // Iscritta in un mese dopo: prova gratuita e avviso
-$pr_c2 = $pr_course( 'Corso con prova, mese dopo' );
+$pr_c2 = $pr_course( 'Corso con prova, mese dopo', array( 'first_month' => 'full' ) );
 $pr_d  = $pr_man( 'Dora' );
 $wpdb->insert( Db::t( 'trials' ), array( 'activity_id' => $pr_c2, 'person_id' => $pr_d, 'trial_date' => gmdate( 'Y-m-d', strtotime( $pr_month . '-01 -3 days' ) ), 'created_at' => Db::now() ) );
 asem_ok( 0 === strpos( Trials::note( $pr_c2, $pr_d ), 'Ha già fatto la prova il ' ), 'prova: chi iscrive il mese dopo legge che l\'ha già fatta' );
@@ -100,7 +102,7 @@ foreach ( array( 'once', 'quarterly' ) as $pr_bill ) {
 // Proporzione a lezioni: quattro lezioni settimanali, prova alla terza = metà
 $pr_mon = $pr_month . '-01';
 $pr_wd  = (int) gmdate( 'N', strtotime( $pr_mon ) );
-$pr_c5  = $pr_course( 'Corso a lezioni', array( 'lesson_slots' => array( array( 'day' => $pr_wd, 'start' => '18:00', 'end' => '19:00' ) ) ) );
+$pr_c5  = $pr_course( 'Corso a lezioni', array( 'first_month' => 'full', 'lesson_slots' => array( array( 'day' => $pr_wd, 'start' => '18:00', 'end' => '19:00' ) ) ) );
 $pr_l   = ActivityReset::course_dates( $pr_acts->get( $pr_c5 ), $pr_mon, gmdate( 'Y-m-t', strtotime( $pr_mon ) ) );
 asem_ok( count( $pr_l ) >= 4 && array( count( $pr_l ) - 2, count( $pr_l ) ) === Trials::ratio( $pr_acts->get( $pr_c5 ), $pr_l[2] ), 'prova: alla terza lezione restano le lezioni da quella compresa' );
 $pr_nol = gmdate( 'Y-m-d', strtotime( $pr_l[0] . ' +1 day' ) );
@@ -205,7 +207,7 @@ $pr_sim = 0;
 foreach ( array( '2031-12-01', '2031-12-31', '2032-01-01', '2032-02-29', '2031-04-01', '2031-04-30', '2031-11-18' ) as $pr_day ) {
 	Db::$today_fake = $pr_day;
 	$pr_lab = Settings::social_year( $pr_day )->label();
-	$pr_sc  = (int) $pr_acts->create( array( 'name' => 'Simulato ' . $pr_day, 'social_year' => $pr_lab, 'kind' => 'course', 'billing' => 'monthly', 'fee_cents' => 4000, 'trial_days' => 1 ) );
+	$pr_sc  = (int) $pr_acts->create( array( 'name' => 'Simulato ' . $pr_day, 'social_year' => $pr_lab, 'kind' => 'course', 'billing' => 'monthly', 'fee_cents' => 4000, 'trial_days' => 1, 'first_month' => 'share' ) );
 	$pr_sp  = $pr_man( 'Simula' );
 	Trials::add( $pr_sc, $pr_sp, $pr_day );
 	$pr_sm = substr( $pr_day, 0, 7 );
@@ -232,6 +234,7 @@ asem_ok( ! in_array( $pr_k, $pr_ids(), true ), 'prova: dopo una prova recente no
 asem_ok( 1 === count( Trials::dates( $pr_c6, $pr_k ) ) && array() === array_filter( Trials::not_enrolled( $pr_today ), function ( $r ) use ( $pr_k ) { return (int) $r['person_id'] === $pr_k; } ), 'prova: resa anonima la persona, la prova resta senza nome e non compare in Bacheca' );
 asem_ok( in_array( 'asem_trials', \AssociazioneSemplice\Reset::tables( \AssociazioneSemplice\Reset::DATA ), true ) && in_array( 'asem_trials', \AssociazioneSemplice\Backup::tables(), true ), 'prova: la tabella è nella copia di sicurezza e nell\'azzeramento' );
 $pr_tn = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) );
+$wpdb->query( 'ALTER TABLE ' . Db::t( 'activities' ) . ' DROP COLUMN first_month, DROP COLUMN red_days' );
 $wpdb->query( 'ALTER TABLE ' . Db::t( 'enrollments' ) . ' DROP COLUMN trial_from, DROP COLUMN trial_left, DROP COLUMN trial_total' );
 $wpdb->query( 'ALTER TABLE ' . Db::t( 'activities' ) . ' DROP COLUMN trial_days' );
 $wpdb->query( 'DROP TABLE ' . Db::t( 'trials' ) );
@@ -242,7 +245,7 @@ update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '77' );
 $wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => $pr_fy['status'] ), array( 'year' => $pr_fyn ) );
 \AssociazioneSemplice\RequestMemo::forget();
 wp_cache_flush();
-asem_ok( '79' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::table_exists( Db::t( 'trials' ) ) && $pr_tn === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE trial_from IS NULL' ) && 0 === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(trial_days),0) FROM ' . Db::t( 'activities' ) ) && $pr_sumtx === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) ), 'prova: aggiornamento 77 → 78 con dati e un anno chiuso, iscrizioni e prima nota intatte, campi nuovi vuoti' );
+asem_ok( '80' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::table_exists( Db::t( 'trials' ) ) && $pr_tn === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE trial_from IS NULL' ) && 0 === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(trial_days),0) FROM ' . Db::t( 'activities' ) ) && $pr_sumtx === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) ), 'prova: aggiornamento 77 → 78 con dati e un anno chiuso, iscrizioni e prima nota intatte, campi nuovi vuoti' );
 
 // Una copia di prima delle prove (senza la tabella): dopo il ripristino non restano prove che rimandano a persone o corsi di prima
 $pr_acts->update( $pr_c6, array( 'trial_days' => 1 ) ); // l'aggiornamento simulato ha ricreato la colonna, a zero

@@ -731,6 +731,9 @@ final class Actions {
 		if ( isset( $p['red_days_present'] ) ) { // casella dei corsi: presente solo nei moduli che la chiedono
 			$data['red_days'] = empty( $p['red_days'] ) ? 0 : 1;
 		}
+		if ( isset( $p['first_month'] ) ) { // chi si iscrive a mese iniziato
+			$data['first_month'] = (string) $p['first_month'];
+		}
 		if ( isset( $p['trial_days'] ) ) { // giorni di prova dei corsi: presenti solo nei moduli che li chiedono
 			$data['trial_days'] = (int) $p['trial_days'];
 		}
@@ -1179,18 +1182,28 @@ final class Actions {
 	/** Frase per chi iscrive una persona che ha già fatto la prova ('' se non l'ha fatta). */
 	private static function trial_message( int $activity_id, int $person_id, string $start_month ): string {
 		$note = \AssociazioneSemplice\Trials::note( $activity_id, $person_id );
-		if ( '' === $note ) {
-			return '';
+		$a    = Plugin::activities()->get( $activity_id );
+		$pp   = Plugin::people()->get( $person_id );
+		$e    = null;
+		foreach ( $a ? Plugin::activities()->status_for_person( $person_id ) : array() as $s ) {
+			if ( (int) $s['enrollment']['activity_id'] === $activity_id ) {
+				$e = $s['enrollment'];
+			}
 		}
-		$a = Plugin::activities()->get( $activity_id );
-		$f = $a ? \AssociazioneSemplice\Trials::enrollment_fields( $a, $person_id, $start_month ) : array( 'trial_from' => null );
-		return ' ' . $note . ( $f['trial_from'] ? ' Il primo mese si paga dal ' . Ui::date( $f['trial_from'] ) . '.' : ' La prova resta gratuita.' );
+		if ( $a && $pp && $e && \AssociazioneSemplice\Trials::trial_month( $e ) === $start_month ) {
+			$fee = Plugin::activities()->course_month_fee( $a, $pp, $start_month );
+			return ( '' !== $note ? ' ' . $note : '' ) . ( (int) $e['trial_left'] > 0
+				? ' Il primo mese si paga dal ' . Ui::date( (string) $e['trial_from'] ) . ': ' . Money::format( $fee ) . '.'
+				: ' In questo mese non ci sono più lezioni: non si paga nulla, si parte dal mese dopo.' );
+		}
+		return '' === $note ? '' : ' ' . $note . ' La prova resta gratuita.';
 	}
 
 	private static function enroll( array $p ): array {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
-		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
+		$day = (string) ( $p['pay_from'] ?? '' );
+		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'], preg_match( '/^\d{4}-\d{2}-\d{2}$/', $day ) ? $day : null );
 		$trial = self::trial_message( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
 		if ( isset( $p['price_list'] ) ) { // variante del contributo scelta dalla segreteria
 			Plugin::activities()->set_enrollment_price( (int) $p['activity_id'], $pid, (string) $p['price_list'], (string) ( $p['fee_note'] ?? '' ) );
