@@ -337,6 +337,12 @@ final class Reminders {
 					$list = PriceLists::find( $a, (string) $e['price_list'] );
 					$fee  = $list ? (int) $list['cents'] : $fee;
 				}
+				if ( CourseMonths::applies( $a ) ) { // a lezioni: il mese dopo si fissa adesso e si chiede quell'importo
+					if ( $send ) {
+						CourseMonths::fix( $a, $target, 'reminder' );
+					}
+					$fee = $acts->course_month_fee( $a, $p, $target );
+				}
 				$paid = 0;
 				foreach ( $s['summary']['months'] as $m ) {
 					if ( $m['month'] === $target ) {

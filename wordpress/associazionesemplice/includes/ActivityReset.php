@@ -192,6 +192,9 @@ final class ActivityReset {
 		$total = count( array_filter( self::course_dates( $ctx['course'], $month . '-01', gmdate( 'Y-m-t', (int) strtotime( $month . '-01' ) ) ), function ( $d ) use ( $since ) {
 			return $since === substr( $since, 0, 7 ) . '-01' || (string) $d >= $since;
 		} ) );
+		if ( CourseMonths::applies( $ctx['course'] ) ) { // a lezioni: si è pagato per le lezioni fissate del mese
+			$total = CourseMonths::count_from( CourseMonths::fixed( (int) $ctx['course']['id'], $month ) ?? CourseMonths::live( $ctx['course'], $month ), $since );
+		}
 		$held  = 0;
 		foreach ( (array) $ctx['held'] as $d ) {
 			if ( 0 === strpos( (string) $d, $month ) && (string) $d >= $since && self::occurred( (string) $d, '', (string) $ctx['today'], (string) $ctx['now'] ) ) {
@@ -416,7 +419,7 @@ final class ActivityReset {
 					$db->query( 'DELETE FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in)" );
 					$db->query( 'DELETE FROM ' . Db::t( 'waitlist' ) . " WHERE session_id IN ($in)" );
 				}
-				foreach ( array( 'sessions', 'enrollments', 'trials', 'activity_staff', 'notices', 'event_requests' ) as $table ) {
+				foreach ( array( 'sessions', 'enrollments', 'trials', 'course_months', 'course_month_dues', 'activity_staff', 'notices', 'event_requests' ) as $table ) {
 					$db->delete( Db::t( $table ), array( 'activity_id' => $activity_id ) );
 				}
 				do_action( 'asem_activity_deleted', $activity_id ); // le estensioni tolgono i dati collegati

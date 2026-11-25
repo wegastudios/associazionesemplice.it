@@ -102,6 +102,7 @@ final class Privacy {
 			'libro_soci_fotografato' => MemberBook::snapshot_export( $person_id ), // le righe dei libri soci degli anni fiscali chiusi in cui compare (restano per dovere di conservazione)
 			'corsi'        => $courses,
 			'prenotazioni' => $bookings,
+			'contributi_a_lezione' => Db::db()->get_results( Db::db()->prepare( 'SELECT a.name AS corso, d.month AS mese, d.lessons AS lezioni, d.due_cents AS dovuto_centesimi FROM ' . Db::t( 'course_month_dues' ) . ' d JOIN ' . Db::t( 'activities' ) . ' a ON a.id = d.activity_id WHERE d.person_id = %d ORDER BY d.month', $person_id ), ARRAY_A ) ?: array(),
 			'prove_gratuite' => array_map( function ( $t ) { return array( 'corso' => $t['activity_name'], 'giorno' => $t['trial_date'] ); }, Trials::of_person( $person_id ) ),
 			'prenotazioni_fatte_per_altri' => $for_others,
 			'altri_soci_possono_prenotare_per_me' => empty( $p['no_booking_by_others'] ),

@@ -122,8 +122,8 @@ final class ActivitiesPage {
 			return $a && ! empty( $a[ $k ] ) ? esc_attr( (string) $a[ $k ] ) : '';
 		};
 		$tr = '<tr class="' . esc_attr( $row_class ) . '">';
-		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Pagamento unico (anche annuale)', 'monthly' => 'Rinnovo mensile', 'quarterly' => 'Rinnovo trimestrale' ), $billing ) . '</select>'
-			. '<p class="description"><strong>Pagamento unico:</strong> il contributo indicato è il totale (es. 10 incontri a 120 €), dovuto subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> il contributo indicato è quello di un trimestre, dovuto all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo disdice, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
+		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Pagamento unico (anche annuale)', 'monthly' => 'Rinnovo mensile', 'lessons' => 'A lezioni effettive', 'quarterly' => 'Rinnovo trimestrale' ), $billing ) . '</select>'
+			. '' . ( $a && Plugin::activities()->has_income( (int) $a['id'] ) ? '<p class="description">' . esc_html( ActivityService::billing_locked_message() ) . '</p>' : '' ) . '<p class="description"><strong>A lezioni effettive:</strong> il contributo indicato (anche per ospiti e varianti) è quello di <strong>una lezione</strong>; ogni mese si paga in anticipo per le lezioni previste, quindi i mesi con più lezioni costano di più. Le lezioni del mese si fissano al primo incasso, al promemoria o il giorno 1. <strong>Pagamento unico:</strong> il contributo indicato è il totale (es. 10 incontri a 120 €), dovuto subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> il contributo indicato è quello di un trimestre, dovuto all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo disdice, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
 			. $tr . '<th>Chi si iscrive a mese iniziato</th><td><select name="first_month">' . Ui::options( array( 'share' => 'Paga in proporzione alle lezioni che restano', 'full' => 'Paga il mese intero' ), (string) ( $a['first_month'] ?? 'share' ) ) . '</select><p class="description">Solo per il rinnovo mensile. Senza orari delle lezioni la proporzione è sui giorni. Vale per chi si iscrive da adesso: le iscrizioni già fatte non cambiano.</p></td></tr>'
 			. $tr . '<th>Giorni di prova gratuiti</th><td><input type="number" name="trial_days" min="0" max="' . (int) Trials::MAX_DAYS . '" step="1" value="' . (int) ( $a['trial_days'] ?? 0 ) . '" style="width:5em"><p class="description">0 = nessuna prova. La prova si registra ma è gratuita. Chi si iscrive <strong>nello stesso mese</strong> paga dal giorno della prova, in proporzione alle lezioni, se il corso lo prevede qui sopra (trimestre e pagamento unico restano interi); chi si iscrive più tardi non paga la prova.</p></td></tr>'
 			. $tr . '<th>Giorni festivi</th><td><input type="hidden" name="red_days_present" value="1"><label><input type="checkbox" name="red_days" value="1"' . checked( $a ? ! empty( $a['red_days'] ) : true, true, false ) . '> Nessuna lezione nei giorni festivi e di chiusura</label><p class="description">Festività nazionali, patrono e chiusure (Impostazioni, Soci e quote). Vale per le lezioni settimanali: le date uniche e le lezioni con le presenze già segnate restano. La scelta vale da oggi in poi: le lezioni già passate non cambiano.</p></td></tr>'
@@ -342,6 +342,7 @@ final class ActivitiesPage {
 		} else {
 			self::course_left( $activity, $year, $back );
 			self::trials_card( $activity, $back );
+			self::months_card( $activity );
 			self::course_enrolled( $activity, $year, $back ); // gli iscritti restano nella prima colonna, sotto il modulo di iscrizione
 		}
 		echo '</div><div class="asem-col">';
@@ -833,6 +834,24 @@ final class ActivitiesPage {
 		echo '</p><p class="description">«Vai alla cassa» apre l\'incasso già compilato se c\'è qualcosa da pagare; «prossimo inserimento» resta qui, pronto per iscrivere la persona dopo.</p>';
 		Ui::form_close();
 		echo '</div>';
+	}
+
+	/** Corso a lezioni: quante lezioni in questo mese e nel prossimo, e se il numero è già fissato. */
+	private static function months_card( array $activity ): void {
+		if ( ! \AssociazioneSemplice\CourseMonths::applies( $activity ) ) {
+			return;
+		}
+		$id = (int) $activity['id'];
+		$m  = substr( \AssociazioneSemplice\Db::today(), 0, 7 );
+		echo '<div class="asem-card"><h2>Lezioni del mese</h2><table class="asem-kv">';
+		foreach ( array( $m, gmdate( 'Y-m', strtotime( $m . '-01 +1 month' ) ) ) as $ym ) {
+			if ( ! in_array( $ym, \AssociazioneSemplice\SocialYear::from_label( (string) $activity['social_year'], \AssociazioneSemplice\Settings::start_month() )->months(), true ) ) {
+				continue;
+			}
+			$n = count( \AssociazioneSemplice\CourseMonths::dates( $activity, $ym ) );
+			echo '<tr><td>' . esc_html( Ui::month( $ym ) ) . '</td><td>' . (int) $n . ( 1 === $n ? ' lezione' : ' lezioni' ) . ' · ' . esc_html( \AssociazioneSemplice\Money::format( $n * (int) $activity['fee_cents'] ) ) . ' <span class="description">' . ( null !== \AssociazioneSemplice\CourseMonths::fixed( $id, $ym ) ? 'fissato' : 'previsto, può cambiare' ) . '</span></td></tr>';
+		}
+		echo '</table><p class="description">Importi per chi paga il contributo base per tutto il mese.</p></div>';
 	}
 
 	/** Giorni di prova gratuiti: si registrano qui; chi li ha fatti e chi si è poi iscritto. */

@@ -152,6 +152,9 @@ final class Trials {
 
 	/** Chi si iscrive a mese iniziato paga in proporzione? Solo rinnovo mensile, e solo se il corso lo prevede. */
 	public static function shares( array $activity ): bool {
+		if ( CourseMonths::applies( $activity ) ) { // a lezioni si pagano quelle che restano, per definizione
+			return true;
+		}
 		return 'monthly' === (string) ( $activity['billing'] ?? 'monthly' ) && 'full' !== (string) ( $activity['first_month'] ?? 'share' );
 	}
 
@@ -245,6 +248,9 @@ final class Trials {
 
 	/** Quota prevista del mese per chi non è ancora iscritto: in proporzione se il corso lo prevede. */
 	public static function expected_cents( array $activity, int $person_id, string $month, int $fee ): int {
+		if ( CourseMonths::applies( $activity ) ) {
+			return CourseMonths::expected( $activity, $person_id, $fee, $month );
+		}
 		$f = self::enrollment_fields( $activity, $person_id, $month );
 		return null === $f['trial_from'] ? $fee : PaymentCalc::share( $fee, (int) $f['trial_left'], (int) $f['trial_total'] );
 	}

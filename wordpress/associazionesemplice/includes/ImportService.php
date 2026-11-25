@@ -585,6 +585,7 @@ final class ImportService {
 			foreach ( array(
 				array( 'enrollments', 'person_id', '' ),
 				array( 'trials', 'person_id', '' ),
+				array( 'course_month_dues', 'person_id', '' ),
 				array( 'bookings', 'person_id', '' ),
 				array( 'bookings', 'booked_by', '' ),
 				array( 'memberships', 'person_id', ' AND deleted_at IS NULL' ),

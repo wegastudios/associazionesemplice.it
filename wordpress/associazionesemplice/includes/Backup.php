@@ -303,6 +303,9 @@ final class Backup {
 		array( 'enrollments', 'activity_id', 'activities' ),
 		array( 'trials', 'person_id', 'people' ),
 		array( 'trials', 'activity_id', 'activities' ),
+		array( 'course_months', 'activity_id', 'activities' ),
+		array( 'course_month_dues', 'activity_id', 'activities' ),
+		array( 'course_month_dues', 'person_id', 'people' ),
 		array( 'sessions', 'activity_id', 'activities' ),
 		array( 'bookings', 'person_id', 'people' ),
 		array( 'bookings', 'booked_by', 'people' ),
@@ -344,6 +347,9 @@ final class Backup {
 			'asem_enrollments.activity_id' => Texts::t( 'iscrizioni a corsi o eventi che non ci sono' ),
 			'asem_trials.person_id'        => Texts::t( 'prove gratuite di persone che non ci sono' ),
 			'asem_trials.activity_id'      => Texts::t( 'prove gratuite di corsi che non ci sono' ),
+			'asem_course_months.activity_id' => Texts::t( 'mesi di corsi che non ci sono' ),
+			'asem_course_month_dues.activity_id' => Texts::t( 'contributi mensili di corsi che non ci sono' ),
+			'asem_course_month_dues.person_id' => Texts::t( 'contributi mensili di persone che non ci sono' ),
 			'asem_sessions.activity_id'    => Texts::t( 'date di corsi o eventi che non ci sono' ),
 			'asem_bookings.person_id'      => Texts::t( 'prenotazioni di persone che non ci sono' ),
 			'asem_bookings.booked_by'      => Texts::t( 'prenotazioni fatte da persone che non ci sono' ),
@@ -1081,6 +1087,11 @@ final class Backup {
 		$tables_wipe = self::MEMBER_ACCESS;
 		if ( ! isset( $m['tables']['asem_member_auth'] ) ) {
 			$tables_wipe[] = 'asem_member_auth'; // una copia senza le password: quelle di adesso erano legate alle persone di prima, si svuotano
+		}
+		foreach ( array( 'asem_course_months', 'asem_course_month_dues' ) as $t ) {
+			if ( ! isset( $m['tables'][ $t ] ) ) {
+				$tables_wipe[] = $t; // copia di prima dei corsi a lezioni
+			}
 		}
 		if ( ! isset( $m['tables']['asem_trials'] ) ) {
 			$tables_wipe[] = 'asem_trials'; // copia di prima delle prove gratuite: quelle di adesso rimandano a persone e corsi di prima, si svuotano

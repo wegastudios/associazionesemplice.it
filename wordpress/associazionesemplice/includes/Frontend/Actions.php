@@ -1094,7 +1094,7 @@ final class Actions {
 			return Plugin::activities()->fee_for( $a, $type );
 		}
 		$a = Plugin::activities()->get( $ref );
-		if ( $a && $person && 'course' === $kind && 'monthly' === (string) ( $a['billing'] ?? 'monthly' ) ) { // chi ha fatto la prova nel mese paga da quel giorno
+		if ( $a && $person && 'course' === $kind && in_array( (string) ( $a['billing'] ?? 'monthly' ), array( 'monthly', 'lessons' ), true ) ) { // chi ha fatto la prova nel mese paga da quel giorno
 			return Plugin::activities()->course_month_fee( $a, $person, Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) ) );
 		}
 		return $a ? Plugin::activities()->fee_for( $a, $type ) : 0;
