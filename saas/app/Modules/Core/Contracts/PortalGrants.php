@@ -19,6 +19,9 @@ final class PortalGrants
     /** Tutti i permessi di una tabella: quelli fuori dall'elenco si tolgono al ruolo del portale. */
     private const ALL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
 
+    /** @var array<string, list<string>>|null */
+    private static ?array $cache = null;
+
     /**
      * Tabella => permessi diretti, dal file `portal-grants.json` accanto a questa classe: lo stesso file lo legge la prova
      * del portale con il ruolo ristretto (portale/tests), così l'elenco ha una sola fonte.
@@ -27,20 +30,21 @@ final class PortalGrants
      */
     public static function tables(): array
     {
-        static $tables = null;
-        if ($tables === null) {
-            $data = json_decode((string) file_get_contents(__DIR__.'/portal-grants.json'), true);
-            $list = is_array($data) && is_array($data['tables'] ?? null) ? $data['tables'] : [];
-            $tables = [];
-            foreach ($list as $table => $verbs) {
-                if (is_string($table) && is_array($verbs)) {
-                    $tables[$table] = array_values(array_filter($verbs, is_string(...)));
-                }
-            }
-            if ($tables === []) {
-                throw new RuntimeException('elenco dei permessi del portale non leggibile');
+        if (self::$cache !== null) {
+            return self::$cache;
+        }
+        $data = json_decode((string) file_get_contents(__DIR__.'/portal-grants.json'), true);
+        $list = is_array($data) && is_array($data['tables'] ?? null) ? $data['tables'] : [];
+        $tables = [];
+        foreach ($list as $table => $verbs) {
+            if (is_string($table) && is_array($verbs)) {
+                $tables[$table] = array_values(array_filter($verbs, is_string(...)));
             }
         }
+        if ($tables === []) {
+            throw new RuntimeException('elenco dei permessi del portale non leggibile');
+        }
+        self::$cache = $tables;
 
         return $tables;
     }
