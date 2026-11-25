@@ -38,9 +38,23 @@ try {
 	$people = array_map( 'intval', (array) $wpdb->get_col( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'people' ) . ' ORDER BY id LIMIT 40' ) );
 	$ids    = array_map( 'intval', (array) $wpdb->get_col( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'activities' ) . ' ORDER BY id LIMIT 80' ) );
 	$n      = 0;
+	$free   = 0;
 	foreach ( $ids as $aid ) {
 		$a = $act->get( $aid );
-		if ( ! $a || (int) $a['fee_cents'] <= 0 || $n >= 10 || count( $people ) < 14 ) {
+		if ( $a && 0 === (int) $a["fee_cents"] && "event" === $a["kind"] && $free < 8 && count( $people ) >= 14 ) { // eventi gratuiti: partecipanti senza incassi
+			++$free;
+			foreach ( $act->sessions( $aid ) as $s ) {
+				foreach ( array_slice( $people, $free + 2, 6 + ( $free % 5 ) ) as $pid ) {
+					try {
+						$act->book( (int) $s["id"], $pid );
+					} catch ( Throwable $e ) {
+						WP_CLI::log( "gratuito: " . $e->getMessage() );
+					}
+				}
+			}
+			continue;
+		}
+		if ( ! $a || (int) $a["fee_cents"] <= 0 || $n >= 10 || count( $people ) < 14 ) {
 			continue;
 		}
 		++$n;
