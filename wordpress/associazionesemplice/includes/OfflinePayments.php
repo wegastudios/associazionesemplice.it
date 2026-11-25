@@ -40,6 +40,14 @@ class OfflinePayments {
 	}
 
 	/**
+	 * Gli incassi registrano chi paga al posto di chi partecipa (voce «payer_id»)? Senza pagamenti online sì; un'estensione che li porta lo dichiara ridefinendo
+	 * questo metodo: una di prima non lo fa, e allora la prenotazione per altri soci non si offre.
+	 */
+	public function books_payer(): bool {
+		return self::class === get_class( $this );
+	}
+
+	/**
 	 * Voci dovute dal socio e dai suoi ospiti, indicizzate per chiave. Gli importi sono sempre quelli del server.
 	 *
 	 * @return array[] chiave => voce

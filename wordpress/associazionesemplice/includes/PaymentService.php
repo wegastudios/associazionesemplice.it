@@ -26,7 +26,6 @@ class PaymentService extends OfflinePayments {
 		return self::$engine ?? ( self::$engine = new PaymentService() );
 	}
 
-	const BOOKS_PAYER           = true; // i pagamenti registrano chi paga al posto di chi partecipa (voce «payer_id»): il gratuito lo guarda prima di offrire la prenotazione per altri soci
 	const PENDING_AFTER_MINUTES = 10;
 	const EXPIRE_AFTER_DAYS     = 3;
 	const STUCK_AFTER_MINUTES   = 15;
@@ -91,6 +90,11 @@ class PaymentService extends OfflinePayments {
 	private function update( int $id, array $data ): void {
 		$data['updated_at'] = Db::now();
 		$this->db()->update( Db::t( 'payments' ), $data, array( 'id' => $id ) );
+	}
+
+	/** Questi pagamenti registrano chi paga al posto di chi partecipa (voce «payer_id»). */
+	public function books_payer(): bool {
+		return true;
 	}
 
 	/** Pagamenti, dal più recente. @param array $f status, payer_person_id, review */
