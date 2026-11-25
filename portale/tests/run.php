@@ -26,7 +26,64 @@ function testDb(): Db {
 	$schema = 't' . getmypid() . '_' . ( ++$n );
 	$pdo->exec( 'CREATE SCHEMA ' . $schema );
 	$pdo->exec( 'SET search_path TO ' . $schema );
-	return new Db( $pdo );
+	if ( ! rtMode() ) {
+		return new Db( $pdo );
+	}
+	// Come in produzione: il proprietario crea lo schema e le tabelle; il ruolo di tutti i giorni (portal_rt) possiede le sue 18 tabelle
+	// e sulle altre 11 ha solo i verbi che il codice usa davvero. Le prove girano con quel ruolo, che non può creare né cambiare tabelle altrui.
+	$owner = new Db( $pdo );
+	$owner->migrate();
+	$rt = (string) getenv( 'PORTALE_TEST_PG_RT_USER' );
+	foreach ( rtGrants() as $table => $verbs ) {
+		$pdo->exec( 'GRANT ' . $verbs . ' ON ' . $schema . '.' . $table . ' TO ' . $rt );
+	}
+	$pdo->exec( 'GRANT USAGE ON SCHEMA ' . $schema . ' TO ' . $rt );
+	foreach ( $pdo->query( "SELECT tablename FROM pg_tables WHERE schemaname = '" . $schema . "'" )->fetchAll( PDO::FETCH_COLUMN ) as $table ) {
+		if ( ! isset( rtGrants()[ $table ] ) ) {
+			$pdo->exec( 'ALTER TABLE ' . $schema . '.' . $table . ' OWNER TO ' . $rt );
+		}
+	}
+	$rtPdo = new PDO( $dsn, $rt, (string) getenv( 'PORTALE_TEST_PG_RT_PASS' ) ?: null );
+	$rtPdo->exec( 'SET search_path TO ' . $schema );
+	$rtDb = new Db( $rtPdo );
+	ownerOf( $rtDb, $owner );
+	return $rtDb;
+}
+/** Il proprietario della stessa base di prova del ruolo ristretto (per la struttura e per i dati di partenza che il ruolo di tutti i giorni non può scrivere). Senza ruolo ristretto è lo stesso Db. */
+function ownerOf( Db $db, ?Db $owner = null ): Db {
+	static $map = null;
+	$map = $map ?: new SplObjectStorage();
+	if ( $owner ) {
+		$map[ $db ] = $owner;
+	}
+	return isset( $map[ $db ] ) ? $map[ $db ] : $db;
+}
+/** Prove con il ruolo ristretto di produzione (PORTALE_TEST_PG_RT_USER): vedi .github/workflows/portale.yml. */
+function rtMode(): bool {
+	return '' !== (string) getenv( 'PORTALE_TEST_PG_DSN' ) && '' !== (string) getenv( 'PORTALE_TEST_PG_RT_USER' );
+}
+/** Le tabelle del proprietario e i soli verbi che il ruolo di tutti i giorni ha su ciascuna (le altre tabelle sono sue). */
+function rtGrants(): array {
+	// Una sola fonte: lo stesso file che il gestionale (saas) usa per concedere e controllare i permessi del ruolo del portale.
+	// Se il portale usa una tabella o un verbo fuori da quell'elenco, le prove col ruolo ristretto falliscono.
+	static $grants = null;
+	if ( null === $grants ) {
+		$file = dirname( __DIR__, 2 ) . '/saas/app/Modules/Core/Contracts/portal-grants.json';
+		$data = json_decode( (string) file_get_contents( $file ), true );
+		if ( ! is_array( $data ) || empty( $data['tables'] ) || ! is_array( $data['tables'] ) ) {
+			fwrite( STDERR, "Elenco dei permessi del portale non leggibile: $file\n" );
+			exit( 1 );
+		}
+		$grants = array();
+		foreach ( $data['tables'] as $table => $verbs ) {
+			$grants[ (string) $table ] = implode( ', ', (array) $verbs );
+		}
+	}
+	return $grants;
+}
+/** Crea la struttura: con il ruolo ristretto la fa il proprietario (il ruolo di tutti i giorni non può). */
+function migrated( Db $db ): void {
+	ownerOf( $db )->migrate();
 }
 function throwsUser( callable $f ): ?string {
 	try {
@@ -109,10 +166,14 @@ Mailer::$sender = function ( $to, $subject, $body ) use ( &$mails ) {
 };
 
 $db = testDb();
-$db->migrate();
-check( 'migrazione: l\'utente che può creare tabelle migra all\'avvio, e rilanciarla non rompe nulla', true === $db->mayMigrate() && null === $db->migrateOnStart() && null === $db->migrateOnStart() );
+migrated( $db );
 $retryDb = testDb();
-check( 'migrazione: a struttura completa non segnala istruzioni fallite', array() === $retryDb->migrateReport() && array() === $retryDb->migrateReport() );
+if ( rtMode() ) {
+	check( 'ruolo ristretto: non può creare tabelle, e la migrazione all\'avvio lo salta senza errori', false === $db->mayMigrate() && null === $db->migrateOnStart() );
+} else {
+	check( 'migrazione: l\'utente che può creare tabelle migra all\'avvio, e rilanciarla non rompe nulla', true === $db->mayMigrate() && null === $db->migrateOnStart() && null === $db->migrateOnStart() );
+	check( 'migrazione: a struttura completa non segnala istruzioni fallite', array() === $retryDb->migrateReport() && array() === $retryDb->migrateReport() );
+}
 $still = $retryDb->retry( array(
 	array( 'sql' => 'ALTER TABLE customers ADD COLUMN prova_riprova INTEGER NULL', 'error' => '', 'owner' => true ),
 	array( 'sql' => 'ALTER TABLE customers ADD COLUMN prova_riprova INTEGER NULL', 'error' => '', 'owner' => true ),
@@ -576,7 +637,7 @@ try {
 
 // --- Rimbalzo delle verifiche del plugin ------------------------------------------------
 $pdb    = testDb();
-$pdb->migrate();
+migrated( $pdb );
 $pcalls = 0;
 Http::$transport = function ( $method, $url, $headers, $body ) use ( &$pcalls ) {
 	++$pcalls;
@@ -629,7 +690,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 	$rdir = sys_get_temp_dir() . '/asem-rel-' . bin2hex( random_bytes( 4 ) );
 	Config::set( 'releases_dir', $rdir );
 	$rdb = testDb();
-	$rdb->migrate();
+	migrated( $rdb );
 	$mkzip = function ( string $slug, string $ver, string $inner = '' ) {
 		$f = tempnam( sys_get_temp_dir(), 'z' );
 		$z = new ZipArchive();
@@ -681,7 +742,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 
 // --- Accesso con password -----------------------------------------------------------------
 $adb = testDb();
-$adb->migrate();
+migrated( $adb );
 $auth = new Portale\Auth( $adb );
 $adb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'c1', 'socio@esempio.it', Db::now() ) );
 check( 'password: senza password non si entra', 'Email o password non corrette.' === throwsUser( function () use ( $auth ) { $auth->loginWithPassword( 'socio@esempio.it', 'qualsiasi-cosa', '9.9.9.1' ); } ) );
@@ -707,7 +768,7 @@ $dm->setAccessible( true );
 check( 'password: l\'impronta finta ha lo stesso costo di quelle vere (i tempi non rivelano chi è cliente)', password_get_info( (string) $dm->invoke( null ) )['options']['cost'] === password_get_info( password_hash( 'x', PASSWORD_DEFAULT ) )['options']['cost'] && ! password_verify( 'qualunque', (string) $dm->invoke( null ) ) );
 check( 'password: una password enorme non viene nemmeno controllata', null !== throwsUser( function () use ( $auth ) { $auth->loginWithPassword( 'socio@esempio.it', str_repeat( 'a', 2000 ), '9.9.9.20' ); } ) );
 $rdb = testDb();
-$rdb->migrate();
+migrated( $rdb );
 $took = 0;
 for ( $i = 0; $i < 6; $i++ ) {
 	$took += Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) ? 1 : 0;
@@ -716,7 +777,7 @@ check( 'limite: al massimo tre posti in un\'ora, anche con tante richieste', 3 =
 Portale\RateLimit::give_back( $rdb, 'prova', '2026110100' );
 check( 'limite: un posto restituito si può riusare, un solo posto', Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) && ! Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) );
 $mdb = testDb();
-$mdb->migrate();
+migrated( $mdb );
 $mdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'c9', 'ok@esempio.it', Db::now() ) );
 $mauth = new Portale\Auth( $mdb );
 $mauth->setPassword( 'c9', 'una password lunga abbastanza', 'ok@esempio.it' );
@@ -727,7 +788,7 @@ check( 'password: gli accessi riusciti non consumano il limite dell\'indirizzo',
 
 // --- Eliminazione di clienti e licenze --------------------------------------------------------
 $ddb = testDb();
-$ddb->migrate();
+migrated( $ddb );
 $dbil = new Billing( $ddb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $ins = function ( string $cid, string $dom, string $status, string $prov = 'free', string $mode = 'once', int $cancel = 0 ) use ( $ddb ) {
 	$id = Db::id();
@@ -750,7 +811,7 @@ check( 'eliminazione cliente: email libera', null === $ddb->one( 'SELECT id FROM
 
 // --- Importazione dall'elenco Wega ------------------------------------------------------------
 $sdb = testDb();
-$sdb->migrate();
+migrated( $sdb );
 $sbil  = new Billing( $sdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $pages = array(
 	'' => array( 'data' => array(
@@ -779,7 +840,7 @@ check( 'wega orfane: licenza del portale che Wega non elenca', 1 === count( Port
 
 // --- Specchio su Wega -------------------------------------------------------------------------
 $mdb  = testDb();
-$mdb->migrate();
+migrated( $mdb );
 $mbil = new Billing( $mdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $mcalls = array();
 $mcode  = 200;
@@ -799,7 +860,7 @@ check( 'differenze: dominio, scadenza e stato diversi', 3 === count( Portale\Weg
 
 // --- Rinnovo automatico delle licenze gratuite ------------------------------------------------
 $fdb  = testDb();
-$fdb->migrate();
+migrated( $fdb );
 $fbil = new Billing( $fdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $fdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'f1', 'f@esempio.it', Db::now() ) );
 $fnow = 1800000000;
@@ -832,7 +893,7 @@ check( 'gratuite: un accesso riporta la licenza tra quelle da rinnovare', 'x' !=
 
 // --- Ultime versioni dei plugin (avviso aggiornamenti) ----------------------------------------
 $ldb = testDb();
-$ldb->migrate();
+migrated( $ldb );
 $lpx = new Portale\LicenseProxy( $ldb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $r   = $lpx->latest( '7.7.7.7', 1700000000 );
 check( 'aggiornamenti: senza versioni pubblicate l\'elenco è vuoto', 200 === $r[0] && '{}' === $r[1] );
@@ -850,7 +911,7 @@ check( 'aggiornamenti: limite per IP', 429 === $last );
 
 // --- Recupero della chiave da Wega ------------------------------------------------------------
 $kdb  = testDb();
-$kdb->migrate();
+migrated( $kdb );
 $kbil = new Billing( $kdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $kdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'k1', 'k@esempio.it', Db::now() ) );
 $kdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', array( 's1', 'k1', 'free', 'manual', 'manual', 'active', 'k.it', 'once', 'LK1', Db::now(), Db::now() ) );
@@ -869,7 +930,7 @@ Http::$fallback = array();
 // --- Modalità reale/prova: due gruppi di credenziali ---------------------------------------------------------
 $k = array( 'live' => 'sk_live_' . str_repeat( 'b', 24 ), 'test' => 'sk_test_' . str_repeat( 'a', 24 ) );
 $pdb2 = testDb();
-$pdb2->migrate();
+migrated( $pdb2 );
 Portale\Settings::load( $pdb2 );
 check( 'stripe: chiave di prova nel campo reale rifiutata', null !== throwsUser( function () use ( $pdb2, $k ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_secret' => $k['test'] ) ); } ) );
 check( 'stripe: chiave reale nel campo di prova rifiutata', null !== throwsUser( function () use ( $pdb2, $k ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_secret_test' => $k['live'] ) ); } ) );
@@ -884,7 +945,7 @@ Portale\Settings::load( $pdb2 );
 check( 'paypal: sandbox attivo usa le credenziali sandbox; Stripe resta reale', str_repeat( 'S', 24 ) === Config::get( 'paypal.client_id' ) && true === Portale\Settings::stripeLive() );
 // Vecchio salvataggio con un solo gruppo: si assegna alla modalità giusta.
 $mdb2 = testDb();
-$mdb2->migrate();
+migrated( $mdb2 );
 $mdb2->run( 'INSERT INTO settings (name, val) VALUES (?,?)', array( 'secrets', json_encode( array( 'stripe_secret' => Portale\Secrets::seal( $k['test'] ), 'stripe_webhook' => Portale\Secrets::seal( 'whsec_OLDOLDOLD12' ) ) ) ) );
 Portale\Settings::load( $mdb2 );
 $st2 = Portale\Settings::secretsStatus( $mdb2 );
@@ -895,7 +956,7 @@ check( 'migrazione: chiave Stripe di prova del vecchio salvataggio finisce nel g
 check( 'dominio: staging, test e clone ricadono nel dominio registrabile', array( 'esempio.it', 'esempio.it', 'esempio.it', 'esempio.it' ) === array_map( array( 'Portale\Domain', 'forLicense' ), array( 'staging.esempio.it', 'https://test.esempio.it/wp-admin', 'www.clone.esempio.it', 'esempio.it/staging' ) ) );
 check( 'dominio: suffissi a più etichette (co.uk)', 'esempio.co.uk' === Domain::forLicense( 'staging.esempio.co.uk' ) && '' === Domain::forLicense( 'localhost' ) );
 $rdb2 = testDb();
-$rdb2->migrate();
+migrated( $rdb2 );
 $seen = array();
 Http::$transport = function ( $m, $url, $h, $body ) use ( &$seen ) {
 	$in     = json_decode( (string) $body, true );
@@ -913,7 +974,7 @@ $r = json_decode( $px->validate( '{"license_key":"chiave-di-prova-2","domain":"l
 check( 'rimbalzo: licenza emessa per un sottodominio esatto: secondo tentativo sul sottodominio', true === $r['valid'] && array( 'esempio.it', 'legato.esempio.it' ) === $seen );
 // --- Staff e accesso unico al supporto --------------------------------------------------------
 $tdb  = testDb();
-$tdb->migrate();
+migrated( $tdb );
 $tbil = new Billing( $tdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 Config::set( 'admins', array( 'Capo@Esempio.it' ) );
 check( 'staff: admin di config.php', 'admin' === Portale\Staff::role( $tdb, 'capo@esempio.it' ) );
@@ -955,7 +1016,7 @@ check( 'sso: segreto corto → non attivo, si va alla home del supporto', ! Port
 
 // --- Accesso unico al supporto: piano nel token ---------------------------------------------
 $cdb = testDb();
-$cdb->migrate();
+migrated( $cdb );
 $cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p1', 'free@esempio.it', Db::now() ) );
 $cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p2', 'pro@esempio.it', Db::now() ) );
 $cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p3', 'scaduto@esempio.it', Db::now() ) );
@@ -992,7 +1053,7 @@ check( 'versioni: ammesse x.y.z e x.y, il resto no', Portale\Releases::validVers
 check( 'versioni: intestazione con due numeri', '1.2' === Portale\Releases::headerVersion( "<?php\n/**\n * Version:           1.2\n */" ) );
 if ( class_exists( 'ZipArchive' ) ) {
 	$vdb = testDb();
-	$vdb->migrate();
+	migrated( $vdb );
 	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-v-' . bin2hex( random_bytes( 4 ) ) );
 	foreach ( array( '1.1.20', '1.2', '1.1.9' ) as $vv ) {
 		$zf = tempnam( sys_get_temp_dir(), 'z' );
@@ -1011,7 +1072,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 // --- Aggiornamento diretto dei plugin da WordPress ------------------------------------------------
 if ( class_exists( 'ZipArchive' ) ) {
 	$udb = testDb();
-	$udb->migrate();
+	migrated( $udb );
 	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-u-' . bin2hex( random_bytes( 4 ) ) );
 	foreach ( array( array( 'free', 'associazionesemplice', '1.2' ), array( 'pro', 'associazionesemplice-pro', '1.1.5' ) ) as $rel ) {
 		$zf = tempnam( sys_get_temp_dir(), 'z' );
@@ -1066,7 +1127,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 
 // --- Revisione di sicurezza ---------------------------------------------------------------------
 $sdb2 = testDb();
-$sdb2->migrate();
+migrated( $sdb2 );
 $wh   = new Portale\Webhooks( $sdb2, new Billing( $sdb2, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
 Config::set( 'stripe', array( 'webhook_secret' => 'whsec_test' ) );
 $stripeEvent = function ( array $ev ) use ( $wh ) {
@@ -1101,7 +1162,7 @@ check( 'intestazioni: nosniff, permessi e CSP definiti', ( function () { ob_star
 
 // --- Nome del cliente ----------------------------------------------------------------------------
 $ndb = testDb();
-$ndb->migrate();
+migrated( $ndb );
 $nbil = new Billing( $ndb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 check( 'nome: spazi e caratteri di controllo ripuliti, al massimo 150 caratteri', 'Mario Rossi' === Portale\Billing::cleanName( "  Mario \t\n Rossi\x00 " ) && 150 === mb_strlen( Portale\Billing::cleanName( str_repeat( 'a', 400 ) ) ) );
 list( $nc ) = $nbil->startFree( 'nuovo@esempio.it', 'nome-prova.it', '  Anna   Verdi ' );
@@ -1121,7 +1182,7 @@ if ( class_exists( 'ZipArchive' ) && function_exists( 'sodium_crypto_sign_keypai
 	$b64u = function ( $r ) { return rtrim( strtr( base64_encode( $r ), '+/', '-_' ), '=' ); };
 	Config::set( 'package_keys', array( 'k-test' => $b64u( sodium_crypto_sign_publickey( $kp ) ) ) );
 	$gdb = testDb();
-	$gdb->migrate();
+	migrated( $gdb );
 	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-g-' . bin2hex( random_bytes( 4 ) ) );
 	$mkz = function ( $ver ) {
 		$zf = tempnam( sys_get_temp_dir(), 'z' );
@@ -1274,7 +1335,7 @@ Config::load( array(
 	),
 ) );
 $pdb = testDb();
-$pdb->migrate();
+migrated( $pdb );
 Portale\Settings::load( $pdb );
 $pcalls = array();
 Http::$transport = function ( $method, $url, $headers, $body ) use ( &$pcalls ) {
@@ -1465,7 +1526,7 @@ check( 'IP: più proxy dichiarati delle voci presenti, torna la connessione', '1
 
 // --- Demo pubblica: dati della pagina /prova ---------------------------------------------------------------------------
 $demoAcc = Portale\Demo::accounts();
-check( 'demo: segreteria, socio e amministratore del plugin, nessun «admin» di WordPress', array( 'segreteria@demo.invalid', 'socio@demo.invalid', 'amministratore@demo.invalid' ) === array_column( $demoAcc, 'user' ) && ! preg_match( '/admin/i', implode( ' ', array_column( $demoAcc, 'user' ) ) ) );
+check( 'demo: segreteria, socio, tesoriere e amministratore del plugin, nessun «admin» di WordPress', array( 'segreteria@demo.invalid', 'socio@demo.invalid', 'tesoriere@demo.invalid', 'amministratore@demo.invalid' ) === array_column( $demoAcc, 'user' ) && ! preg_match( '/admin/i', implode( ' ', array_column( $demoAcc, 'user' ) ) ) );
 check( 'demo: ogni accesso ha una password di almeno 12 caratteri e un punto di partenza nella demo', ! array_filter( $demoAcc, function ( $a ) { return strlen( $a['password'] ) < 12 || 0 !== strpos( $a['start'], '/' ); } ) );
 $demoRoles = Portale\Demo::roles();
 check( 'demo: la tabella dei ruoli ha tante celle quante colonne', ! array_filter( $demoRoles['rows'], function ( $cells ) use ( $demoRoles ) { return count( $cells ) !== count( $demoRoles['columns'] ); } ) );
@@ -1478,6 +1539,12 @@ foreach ( Portale\Demo::links() as $rows ) {
 check( 'demo: i collegamenti sono percorsi della demo e non portano alle pagine di WordPress riservate agli amministratori del sito', $demoLinks && ! array_filter( $demoLinks, function ( $p ) { return 0 !== strpos( $p, '/' ) || preg_match( '#(users|plugins|plugin-install|themes|options-general|tools|update-core).php#', $p ); } ) );
 check( 'demo: l\'indirizzo non finisce con la barra', '/' !== substr( Portale\Demo::url(), -1 ) );
 $corsBefore = array( Config::get( 'demo_url', null ), Config::get( 'base_url', null ) );
+Config::set( 'demo_url', '' );
+check( 'demo: l\'indirizzo predefinito è demo.associazionesemplice.it', 'https://demo.associazionesemplice.it' === Portale\Demo::url() );
+Config::set( 'base_url', 'https://associazionesemplice.it' );
+check( 'demo: dal portale la demo predefinita sta su un altro host, quindi serve l\'origine CORS esatta', 'https://demo.associazionesemplice.it' === Portale\Demo::corsOrigin() );
+Config::set( 'demo_url', $corsBefore[0] );
+Config::set( 'base_url', $corsBefore[1] );
 Config::set( 'base_url', 'https://associazionesemplice.it' );
 Config::set( 'demo_url', 'https://associazionesemplice.it/demo' );
 check( 'demo: sullo stesso host del portale nessuna origine CORS', '' === Portale\Demo::corsOrigin() );
@@ -1493,7 +1560,7 @@ Config::set( 'base_url', $corsBefore[1] );
 // --- Livello firmato dal portale (portal_attestation) -------------------------------------------------------------------
 $pseed = random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES );
 $adb   = testDb();
-$adb->migrate();
+migrated( $adb );
 $mkSub = function ( string $id, string $plan, string $status, string $license ) use ( $adb ) {
 	$adb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( $id, 'c1', $plan, 'year', 'stripe', $status, 'esempio.it', $license, Db::now(), Db::now() ) );
 };
@@ -1618,23 +1685,23 @@ foreach ( glob( __DIR__ . '/../views/wordpress-admin/*.php' ) as $f ) {
 check( 'plugin: le viste puntano tutte a /wordpress/admin', 0 === $badLinks );
 // Staff del plugin in tabella propria (plugin_staff) e migrazione in due tempi
 $sdb = testDb();
-$sdb->migrate();
+migrated( $sdb );
 $sdb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'vecchio@esempio.it', 'support', 'admin', Db::now() ) );
 $sdb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'solosaas@esempio.it', 'none', 'admin', Db::now() ) );
 check( 'plugin staff: prima della copia il ruolo si legge ancora dalla tabella vecchia', 'support' === Portale\Plugin\Staff::role( $sdb, 'vecchio@esempio.it' ) );
-$sdb->migrate(); // la migrazione si può ripetere
+migrated( $sdb ); // la migrazione si può ripetere
 check( 'plugin staff: la migrazione copia chi ha un ruolo nel plugin, non chi ha solo il SaaS', 'support' === (string) $sdb->one( 'SELECT role FROM plugin_staff WHERE email = ?', array( 'vecchio@esempio.it' ) )['role'] && null === $sdb->one( 'SELECT 1 AS x FROM plugin_staff WHERE email = ?', array( 'solosaas@esempio.it' ) ) );
 check( 'plugin staff: chi ha solo il SaaS non entra nel plugin', null === Portale\Plugin\Staff::role( $sdb, 'solosaas@esempio.it' ) );
 Portale\Plugin\Staff::put( $sdb, 'vecchio@esempio.it', 'admin' );
 check( 'plugin staff: il ruolo nuovo vince su quello della tabella vecchia', 'admin' === Portale\Staff::role( $sdb, 'vecchio@esempio.it' ) );
 $sbil = new Billing( $sdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 Portale\Staff::set( $sdb, $sbil, 'vecchio@esempio.it', 'none' ); // toglie il plugin, tiene il SaaS
-$sdb->migrate();
+migrated( $sdb );
 check( 'plugin staff: tolto il ruolo non rivive né dal ripiego né da una nuova migrazione', null === Portale\Staff::role( $sdb, 'vecchio@esempio.it' ) && 'admin' === Portale\Staff::saas( $sdb, 'vecchio@esempio.it' ) );
 
 // Codici promo del plugin (Plugin\Promos)
 $rdb2 = testDb();
-$rdb2->migrate();
+migrated( $rdb2 );
 $rcat  = new Portale\Plugin\ConfigCatalog();
 $rplan = Portale\Site::slug( 'full' );
 $rcodes = array_column( $rcat->document()['plans'], 'code' );
@@ -1662,7 +1729,7 @@ check( 'promo: la lista pubblica non espone dati interni', array() === array_fil
 
 // Operazioni dell'area clienti (CustomerApi, DownloadLink)
 $adb = testDb();
-$adb->migrate();
+migrated( $adb );
 $abil = new Billing( $adb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 foreach ( array( '1.0.0' => '2026-01-01 00:00:00', '1.1.0' => '2026-03-01 00:00:00', '1.2.0' => '2026-06-01 00:00:00' ) as $ver => $at ) {
 	foreach ( array( 'free', 'pro' ) as $prd ) {
@@ -1698,7 +1765,7 @@ check( 'totp: vettori RFC 6238 (SHA-1, 6 cifre)', '287082' === Portale\Plugin\To
 check( 'totp: base32 va e torna', '12345678901234567890' === Portale\Plugin\Totp::decode32( $rfc ) && $rfc === Portale\Plugin\Totp::base32( '12345678901234567890' ) );
 check( 'totp: tolleranza di 30 secondi, non di più; formato rigoroso', Portale\Plugin\Totp::verify( $rfc, '287082', 59 + 30 ) && ! Portale\Plugin\Totp::verify( $rfc, '287082', 59 + 90 ) && ! Portale\Plugin\Totp::verify( $rfc, '28708', 59 ) && ! Portale\Plugin\Totp::verify( $rfc, 'abcdef', 59 ) );
 $mdb = testDb();
-$mdb->migrate();
+migrated( $mdb );
 $mbil = new Billing( $mdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 Portale\Staff::set( $mdb, $mbil, 'persona@esempio.it', 'admin' );
 Portale\Staff::set( $mdb, $mbil, 'altra@esempio.it', 'support' );
@@ -1738,7 +1805,7 @@ if ( function_exists( 'sodium_crypto_sign_detached' ) ) {
 
 // Notifica di abbonamento (Plugin\SubscriptionNotice)
 $ndb   = testDb();
-$ndb->migrate();
+migrated( $ndb );
 $ncalls = array();
 $nprev  = Http::$transport;
 Http::$transport = function ( $method, $url, $headers, $body ) use ( &$ncalls ) {
@@ -1764,7 +1831,7 @@ Http::$transport = $nprev;
 
 // Downgrade bloccato dai limiti del piano di arrivo (Plugin\Downgrade)
 $wdb = testDb();
-$wdb->migrate();
+migrated( $wdb );
 $wbase  = ( new Portale\Plugin\ConfigCatalog() )->document();
 $wcodes = array_column( $wbase['plans'], 'code' );
 $wfull  = Portale\Site::slug( 'full' );
@@ -1795,7 +1862,7 @@ check( 'downgrade: piano di arrivo senza limite di siti = nessun blocco', array(
 
 // Editor del catalogo: bozza, validazione, pubblicazione, versioni dei piani
 $kdb = testDb();
-$kdb->migrate();
+migrated( $kdb );
 $kbase  = ( new Portale\Plugin\ConfigCatalog() )->document();
 $kcodes = array_column( $kbase['plans'], 'code' );
 $kfull  = Portale\Site::slug( 'full' );
@@ -1964,7 +2031,7 @@ $csign = function ( string $body, int $rev, array $over = array(), string $typ =
 	return PortalAttestation::sign( $over + array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => $typ, 'iat' => $now, 'exp' => $now + 600, 'jti' => bin2hex( random_bytes( 8 ) ), 'rev' => $rev, 'sha256' => hash( 'sha256', $body ) ), $cseed );
 };
 $cdb = testDb();
-$cdb->migrate();
+migrated( $cdb );
 $b1 = $cdoc( 5 );
 check( 'catalogo: firma e impronta valide → salvato', '' === Catalog::accept( $cdb, $b1, $csign( $b1, 5 ), '"e5"', 1000000 ) && 5 === Catalog::stored( $cdb, 1000000 )['rev'] );
 check( 'catalogo: corpo alterato rifiutato (impronta)', '' !== Catalog::accept( $cdb, $cdoc( 6 ) . ' ', $csign( $b1, 6 ), '', 1000000 ) );
@@ -1979,6 +2046,62 @@ check( 'catalogo: «da» il prezzo con i soci della base, mensile e annuale', ar
 
 $cn = PortalAttestation::sign( array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'catalog_changed', 'iat' => 1000000, 'exp' => 1000060, 'jti' => 'jti-1', 'rev' => 7 ), $cseed );
 check( 'catalogo: avviso firmato accettato una volta sola', Catalog::notify( $cdb, (string) json_encode( array( 'token' => $cn ) ), 1000000 ) && ! Catalog::notify( $cdb, (string) json_encode( array( 'token' => $cn ) ), 1000000 ) && ! Catalog::notify( $cdb, '{"token":"x.y.z"}', 1000000 ) );
+
+// --- Consumi dal gestionale (contratto §4.1) ---------------------------------------------------------------------------
+$uref = 'ref-uso-1';
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'cu1', 'uso@esempio.it', Db::now() ) );
+$cdb->run( 'INSERT INTO saas_orgs (ref, customer_id, org_id, name, slug, rev, created_at) VALUES (?,?,?,?,?,?,?)', array( $uref, 'cu1', 'org-1', 'Uso', 'uso', 1, Db::now() ) );
+$usign = function ( array $over = array(), string $jti = '' ) use ( $cseed, $uref ) {
+	return PortalAttestation::sign( $over + array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'usage', 'iat' => 1000000, 'exp' => 1000600,
+		'jti' => '' !== $jti ? $jti : bin2hex( random_bytes( 8 ) ), 'date' => '2026-11-24',
+		'orgs' => array( array( 'org_id' => 'org-1', 'ref' => $uref, 'members' => 42, 'operators' => 3, 'einvoices_year' => 0 ), array( 'org_id' => 'org-x', 'ref' => 'sconosciuto', 'members' => 5, 'operators' => 1, 'einvoices_year' => 0 ) ) ), $cseed );
+};
+$ubody = function ( string $t ) { return (string) json_encode( array( 'token' => $t ) ); };
+list( $uc, $uo ) = Portale\Usage::accept( $cdb, $ubody( $usign() ), 1000000 );
+$urow = $cdb->one( 'SELECT * FROM saas_usage WHERE ref = ?', array( $uref ) );
+check( 'consumi: token firmato accettato, salvati i numeri dell\'abbonamento noto e saltato lo sconosciuto', 200 === $uc && 1 === $uo['saved'] && 1 === $uo['unknown'] && 42 === (int) $urow['members'] && 3 === (int) $urow['operators'] && '2026-11-24' === $urow['day'] );
+$uj = $usign( array(), 'jti-uso' );
+Portale\Usage::accept( $cdb, $ubody( $uj ), 1000000 );
+list( $uc2, $uo2 ) = Portale\Usage::accept( $cdb, $ubody( $uj ), 1000000 );
+check( 'consumi: lo stesso token non vale due volte', 401 === $uc2 && 'token_used' === $uo2['error'] );
+list( $uc3 ) = Portale\Usage::accept( $cdb, $ubody( $usign( array( 'typ' => 'catalog' ) ) ), 1000000 );
+check( 'consumi: tipo sbagliato o corpo non valido → 401', 401 === $uc3 && 401 === Portale\Usage::accept( $cdb, 'non json', 1000000 )[0] );
+$ubadOrg = function ( array $o ) use ( $usign ) { return $usign( array( 'orgs' => array( $o ) ) ); };
+list( $uc4, $uo4 ) = Portale\Usage::accept( $cdb, $ubody( $ubadOrg( array( 'org_id' => 'org-1', 'ref' => 'r', 'members' => -1, 'operators' => 0, 'einvoices_year' => 0 ) ) ), 1000000 );
+check( 'consumi: numero negativo → 422 con il campo, senza il valore', 422 === $uc4 && 'orgs[0].members' === $uo4['field'] );
+list( $uc5, $uo5 ) = Portale\Usage::accept( $cdb, $ubody( $usign( array( 'date' => '24/11/2026' ) ) ), 1000000 );
+check( 'consumi: data non valida → 422 sul campo date', 422 === $uc5 && 'date' === $uo5['field'] );
+list( $uc6, $uo6 ) = Portale\Usage::accept( $cdb, $ubody( $ubadOrg( array( 'org_id' => 'o', 'ref' => 'r', 'members' => '5', 'operators' => 0, 'einvoices_year' => 0 ) ) ), 1000000 );
+check( 'consumi: numeri scritti come testo → 422', 422 === $uc6 && 'orgs[0].members' === $uo6['field'] );
+Portale\Usage::accept( $cdb, $ubody( $usign( array( 'date' => '2026-11-20', 'orgs' => array( array( 'org_id' => 'org-1', 'ref' => $uref, 'members' => 1, 'operators' => 1, 'einvoices_year' => 0 ) ) ) ) ), 1000000 );
+check( 'consumi: un invio più vecchio non sostituisce quello salvato', 42 === (int) $cdb->one( 'SELECT members FROM saas_usage WHERE ref = ?', array( $uref ) )['members'] );
+Portale\Usage::accept( $cdb, $ubody( $usign( array( 'date' => '2026-11-25', 'orgs' => array( array( 'org_id' => 'org-1', 'ref' => $uref, 'members' => 50, 'operators' => 4, 'einvoices_year' => 2 ) ) ) ) ), 1000000 );
+// Eventi: «già elaborato» solo per un duplicato vero; ogni altro errore si propaga (tutti i database, anche senza ruolo ristretto).
+$evDb = testDb();
+migrated( $evDb );
+check( 'eventi: primo ritiro vero, ripetuto falso, dopo il rilascio di nuovo vero', $evDb->claimEvent( 'stripe', 'evt_1' ) && ! $evDb->claimEvent( 'stripe', 'evt_1' ) && null === $evDb->releaseEvent( 'stripe', 'evt_1' ) && $evDb->claimEvent( 'stripe', 'evt_1' ) );
+$evBad = testDb();
+migrated( $evBad );
+ownerOf( $evBad )->run( 'DROP TABLE events' ); // la tabella events non c'è più
+$evThrown = false;
+try {
+	$evBad->claimEvent( 'stripe', 'evt_x' );
+} catch ( PDOException $e ) {
+	$evThrown = ! Db::isDuplicate( $e );
+}
+check( 'eventi: un errore che non è un duplicato (tabella mancante) non vale «già elaborato»: si propaga', $evThrown );
+$whEv = new Portale\Webhooks( $evBad, new Billing( $evBad, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
+$onceEv = new ReflectionMethod( Portale\Webhooks::class, 'once' );
+$onceEv->setAccessible( true );
+$evRan = false;
+check( 'webhook: se l\'evento non si può registrare risponde 500 e non fa il lavoro', 500 === $onceEv->invoke( $whEv, 'stripe', 'evt_y', function () use ( &$evRan ) { $evRan = true; } ) && ! $evRan );
+$whOk = new Portale\Webhooks( $evDb, new Billing( $evDb, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
+check( 'webhook: duplicato → 200 senza rifare il lavoro; lavoro fallito → 500 e l\'evento torna ritirabile', 200 === $onceEv->invoke( $whOk, 'stripe', 'evt_1', function () { throw new RuntimeException( 'non deve partire' ); } )
+	&& 500 === $onceEv->invoke( $whOk, 'stripe', 'evt_z', function () { throw new RuntimeException( 'x' ); } ) && $evDb->claimEvent( 'stripe', 'evt_z' ) );
+$ratePdo = testDb();
+migrated( $ratePdo );
+check( 'limiti: il primo posto si prende, oltre il massimo no', Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) && ! Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) );
+check( 'consumi: un invio più recente aggiorna', 50 === (int) $cdb->one( 'SELECT members FROM saas_usage WHERE ref = ?', array( $uref ) )['members'] );
 
 $cprev = Http::$transport;
 $cb7 = $cdoc( 7 );
@@ -2045,7 +2168,7 @@ check( 'preventivo: annuale = 10 mensilità, piano o addon sconosciuti rifiutati
 $oseed = str_repeat( 'o', 32 );
 Config::set( 'saas_public_keys', array( PortalAttestation::kid( $oseed ) => PortalAttestation::publicKey( $oseed ) ) );
 $odb = testDb();
-$odb->migrate();
+migrated( $odb );
 $mkcat = function ( int $rev, int $base ) use ( $qdoc ) {
 	$d        = $qdoc;
 	$d['rev'] = $rev;
@@ -2070,7 +2193,7 @@ $msg = throwsUser( function () use ( $odb, $ord ) { Orders::confirm( $odb, $ord[
 check( 'ordine: prezzi cambiati → avviso con il nuovo totale e nuova istantanea', null !== $msg && false !== strpos( $msg, 'I prezzi sono stati aggiornati' ) && 9 === (int) Orders::get( $odb, $ord['id'] )['catalog_rev'] && 3800 === Orders::get( $odb, $ord['id'] )['quote']['net'] );
 Http::$transport = function () { return array( 0, '' ); };
 $odb2 = testDb();
-$odb2->migrate();
+migrated( $odb2 );
 check( 'ordine: senza catalogo corrente non si vende', null !== throwsUser( function () use ( $odb2 ) { Orders::open( $odb2, 'cust1', 'gestionale', 'month', 50 ); } ) );
 
 Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
@@ -2100,7 +2223,7 @@ check( 'coda: senza chiave di firma il messaggio resta in coda (nessun errore)',
 // --- Email: tetto orario, coda di uscita, urgenti prima dei massivi, ritentativi -----------------------------------------------
 $prevSender = Mailer::$sender;
 $mdb = testDb();
-$mdb->migrate();
+migrated( $mdb );
 Mailer::$sender = null;
 Mailer::$db     = $mdb;
 Mailer::$bulk   = false;
@@ -2162,7 +2285,7 @@ Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
 Config::set( 'stripe.secret_key', 'sk_test_abc' );
 Config::set( 'base_url', 'https://portale.test' );
 $cdb = testDb();
-$cdb->migrate();
+migrated( $cdb );
 $cbill  = new Billing( $cdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $ccat   = $mkcat( 7, 1500 );
 $cseen  = array();
@@ -2301,7 +2424,7 @@ SaasCheckout::paid( $cdb, $reNew['id'], 'sub_9', 'cus_1', 5000300 );
 check( 'riattiva (nuovo ordine): una sola email di conferma, nessun benvenuto; ordine vecchio sostituito; stessa associazione', 1 === count( $mails ) && false !== stripos( $mails[0][1], 'rinnovo' ) && 'replaced' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $reOrd['id'] ) )['status'] && 'active' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $reNew['id'] ) )['status'] && 'active' === Portale\SaasAccount::stateOf( $cdb, (string) $cdb->one( 'SELECT org_id FROM saas_orgs WHERE ref = ?', array( $reOrd['org_ref'] ) )['org_id'] ) );
 $cdb->run( "UPDATE orders SET status = 'active' WHERE id = ?", array( $reOrd['id'] ) );
 $reOrgId = (string) $cdb->one( 'SELECT org_id FROM saas_orgs WHERE ref = ?', array( $reOrd['org_ref'] ) )['org_id'];
-$cdb->run( 'DELETE FROM saas_outbox WHERE org_id = ? AND rev = 4', array( $reOrgId ) );
+ownerOf( $cdb )->run( 'DELETE FROM saas_outbox WHERE org_id = ? AND rev = 4', array( $reOrgId ) );
 $cdb->run( 'UPDATE saas_orgs SET rev = 3 WHERE ref = ?', array( $reOrd['org_ref'] ) );
 $cdb->run( 'DELETE FROM orders WHERE id = ?', array( $reNew['id'] ) );
 $mails = array();
@@ -2366,7 +2489,7 @@ Config::set( 'saas_trial_promo', '' );
 check( 'prova: dopo la fine non si manda «suspended» al SaaS (resta «trial»: la sospensione e la sola lettura le fa il SaaS)', '' === Portale\SaasAccount::stateOf( $cdb, 'orgT' ) && 0 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) )['n'] );
 check( 'prova: all\'eliminazione dei dati l\'ordine si chiude, una volta sola, senza email', 'trial' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-07' ), array() ) && 1 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-07' ), $lifeDoc ) && 'trial_purged' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 0 === SaasCheckout::closeEndedTrials( $cdb, $tAt( '2030-02-08' ), $lifeDoc ) && array() === $mails );
 $cdb->run( 'DELETE FROM orders WHERE id = ?', array( $tOrd['id'] ) );
-$cdb->run( 'DELETE FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) );
+ownerOf( $cdb )->run( 'DELETE FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) );
 $cdb->run( 'DELETE FROM saas_orgs WHERE ref = ?', array( 'otrial' ) );
 $mails = array();
 // Avvio della prova senza carta e passaggio a un piano.
@@ -2398,7 +2521,7 @@ check( 'scegli un piano: pagato → prova sostituita, gestionale attivo, nessuna
 check( 'scegli un piano: una prova già sostituita non si può più convertire', null !== throwsUser( function () use ( $cdb, $cbill, $tRow ) { SaasCheckout::start( $cdb, $cbill, array( 'convert' => $tRow['id'], 'plan' => 'gestionale', 'period' => 'month', 'members' => 80, 'provider' => 'stripe' ) ); } ) );
 foreach ( $cdb->all( 'SELECT id FROM saas_outbox' ) as $r ) {
 	if ( ! in_array( $r['id'], $obBefore, true ) ) {
-		$cdb->run( 'DELETE FROM saas_outbox WHERE id = ?', array( $r['id'] ) );
+		ownerOf( $cdb )->run( 'DELETE FROM saas_outbox WHERE id = ?', array( $r['id'] ) );
 	}
 }
 foreach ( $cdb->all( 'SELECT id FROM orders' ) as $r ) {
@@ -2465,16 +2588,16 @@ Config::set( 'stripe.secret_key', '' );
 // Elenco centrale dello staff (docs/UTENTI_E_ACCESSI.md): copia, livelli, super amministratore, registro
 use Portale\Plugin\Directory;
 $ddb = testDb();
-$ddb->migrate();
+migrated( $ddb );
 $ddb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'vecchio@esempio.it', 'support', 'admin', Db::now() ) );
 $ddb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'solosaas@esempio.it', 'none', 'admin', Db::now() ) );
-$ddb->migrate();
+migrated( $ddb );
 check( 'elenco staff: la copia porta i ruoli di oggi (plugin e SaaS) con i livelli nuovi', Directory::SUPPORT === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS ) && Directory::ADMIN === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_SAAS ) && Directory::ADMIN === Directory::level( $ddb, 'solosaas@esempio.it', Directory::AREA_SAAS ) && null === Directory::level( $ddb, 'solosaas@esempio.it', Directory::AREA_WORDPRESS ) );
 check( 'elenco staff: nessun ruolo nell\'area di supporto finché non lo si dà', null === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_SUPPORT ) && array( 'wordpress' => 'supporto', 'saas' => 'admin' ) === Directory::levels( $ddb, 'vecchio@esempio.it' ) );
-$ddb->migrate();
+migrated( $ddb );
 check( 'elenco staff: la copia è ripetibile e non rimette un ruolo cambiato qui', 1 === (int) $ddb->one( 'SELECT COUNT(*) AS n FROM staff_people WHERE email = ?', array( 'vecchio@esempio.it' ) )['n'] );
 Directory::put( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS, Directory::SALES, 'test' );
-$ddb->migrate();
+migrated( $ddb );
 check( 'elenco staff: un livello cambiato nell\'elenco centrale resta dopo una nuova copia', Directory::SALES === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS ) );
 check( 'elenco staff: livello non ammesso nell\'area ignorato (agente non esiste in WordPress)', ( function () use ( $ddb ) { Directory::put( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS, Directory::AGENT, 'test' ); return Directory::SALES === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS ); } )() );
 $ddb->run( 'UPDATE staff_people SET active = 0 WHERE email = ?', array( 'vecchio@esempio.it' ) );
@@ -2490,7 +2613,7 @@ check( 'elenco staff: il registro annota chi, a chi, cosa e da dove', 'a@esempio
 $ddb->run( "DELETE FROM staff_people WHERE email = 'vecchio@esempio.it'" );
 $ddb->run( "DELETE FROM staff_roles WHERE area = 'wordpress'" );
 Directory::audit( $ddb, 'sistema', '', 'cutover' );
-$ddb->migrate();
+migrated( $ddb );
 check( 'elenco staff: dopo il passaggio all\'accesso unico la copia dalle tabelle vecchie non si ripete', null === $ddb->one( 'SELECT 1 AS x FROM staff_people WHERE email = ?', array( 'vecchio@esempio.it' ) ) );
 // Accesso staff unico, lato portale (docs/STAFF_SSO.md): token del SaaS, sessione dell'area, controllo ogni 5 minuti, richieste «Utenti»
 use Portale\Plugin\StaffSso;
@@ -2502,7 +2625,7 @@ $ssTok  = function ( array $over = array() ) use ( $ssSeed, $ssNow ) {
 	return Portale\PortalAttestation::sign( $c, $ssSeed );
 };
 $ssdb = testDb();
-$ssdb->migrate();
+migrated( $ssdb );
 $_SESSION = array();
 check( 'staff sso: spento di default, nessuna sessione', false === StaffSso::enabled() && false === StaffSso::receive( $ssdb, $ssTok(), $ssNow ) && ! isset( $_SESSION['staff_sso'] ) );
 Config::set( 'staff_sso', array( 'enabled' => true, 'issuer' => 'https://associazionesemplice.it/saas', 'api_url' => 'https://associazionesemplice.it/saas', 'keys' => array( $ssKid => Portale\PortalAttestation::publicKey( $ssSeed ) ) ) );
@@ -2786,7 +2909,7 @@ Config::set( 'saas_v2', array() );
 Config::set( 'saas_sign_key', '' );
 // Interruttori del portale (/account/impostazioni): salvati nel database, sostituiscono config.php, chiavi sconosciute ignorate
 $swdb = testDb();
-$swdb->migrate();
+migrated( $swdb );
 Config::set( 'saas_v2', array( 'enabled' => true, 'domain' => false ) );
 check( 'interruttori: lo stato parte da config.php (la vendita del gestionale è spenta se non c\'è scritto)', array( 'saas_sale' => false, 'indexable' => false, 'maintenance' => false, 'saas_v2' => true, 'saas_v2_domain' => false ) === Portale\Switches::current() && false === Portale\SaasSale::on() );
 Portale\Switches::save( $swdb, array( 'saas_v2_domain' => '1', 'sconosciuta' => '1' ) );
@@ -2817,7 +2940,7 @@ if ( Portale\DemoReset::canRun() && is_executable( '/bin/sh' ) ) {
 		'altra'  => array( 'cmd' => array( '/bin/sh', '-c', 'echo no' ) ),
 	) );
 	$drDb = testDb();
-	$drDb->migrate();
+	migrated( $drDb );
 	$wait = function ( string $key ) use ( $drDb ) {
 		for ( $i = 0; $i < 60; $i++ ) {
 			$s = Portale\DemoReset::status( $drDb, $key );
@@ -2866,5 +2989,61 @@ if ( Portale\DemoReset::canRun() && is_executable( '/bin/sh' ) ) {
 	Config::set( 'demo_reset_dir', null );
 }
 Config::set( 'saas_public_keys', array() );
+
+// --- Ruolo ristretto (solo PostgreSQL con PORTALE_TEST_PG_RT_USER): i verbi che il portale NON ha sulle 11 tabelle del proprietario restano negati,
+// e la migrazione si comporta come in produzione (il proprietario crea, il ruolo di tutti i giorni cambia solo le sue 18 tabelle).
+if ( rtMode() ) {
+	$rt  = testDb();
+	$own = ownerOf( $rt );
+	$denied = static function ( Db $d, string $sql ): bool {
+		try {
+			$d->run( $sql );
+		} catch ( PDOException $e ) {
+			return '42501' === (string) $e->getCode();
+		}
+		return false;
+	};
+	check( 'ruolo ristretto: niente DELETE su audit e saas_outbox', $denied( $rt, 'DELETE FROM audit' ) && $denied( $rt, 'DELETE FROM saas_outbox' ) );
+	check( 'ruolo ristretto: niente UPDATE su settings, email_templates, downloads, audit, events', $denied( $rt, "UPDATE settings SET val = 'x'" ) && $denied( $rt, "UPDATE email_templates SET body = 'x'" ) && $denied( $rt, "UPDATE downloads SET version = 'x'" ) && $denied( $rt, "UPDATE audit SET actor = 'x'" ) && $denied( $rt, "UPDATE events SET provider = 'x'" ) );
+	check( 'ruolo ristretto: nessuna tabella del proprietario si cambia (ALTER, DROP)', $denied( $rt, 'ALTER TABLE orders ADD COLUMN x INTEGER NULL' ) && $denied( $rt, 'DROP TABLE settings' ) );
+	check( 'ruolo ristretto: niente tabelle nuove nello schema', $denied( $rt, 'CREATE TABLE intrusa (id INTEGER)' ) );
+	// Eventi dei pagamenti senza i permessi giusti: l'errore non si scambia per «già elaborato» e il rilascio che fallisce non copre l'errore vero.
+	$rtEv  = testDb();
+	$ownEv = ownerOf( $rtEv );
+	$rtUser = (string) getenv( 'PORTALE_TEST_PG_RT_USER' );
+	$claimThrows = static function ( Db $d ): bool {
+		try {
+			$d->claimEvent( 'stripe', 'evt_rt' );
+		} catch ( PDOException $e ) {
+			return ! Db::isDuplicate( $e ) && '42501' === (string) $e->getCode();
+		}
+		return false;
+	};
+	$whRt = new Portale\Webhooks( $rtEv, new Billing( $rtEv, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
+	$onceRt = new ReflectionMethod( Portale\Webhooks::class, 'once' );
+	$onceRt->setAccessible( true );
+	$ownEv->run( 'REVOKE INSERT ON events FROM ' . $rtUser );
+	check( 'ruolo senza INSERT su events: claimEvent propaga l\'errore (non «già elaborato»)', $claimThrows( $rtEv ) );
+	$ranRt = false;
+	check( 'ruolo senza INSERT su events: il webhook risponde 500 e non fa il lavoro', 500 === $onceRt->invoke( $whRt, 'stripe', 'evt_rt', function () use ( &$ranRt ) { $ranRt = true; } ) && ! $ranRt );
+	$ownEv->run( 'GRANT INSERT ON events TO ' . $rtUser );
+	check( 'ruolo con i permessi giusti: primo ritiro vero, ripetuto falso, dopo il rilascio di nuovo vero', $rtEv->claimEvent( 'stripe', 'evt_rt2' ) && ! $rtEv->claimEvent( 'stripe', 'evt_rt2' ) && null === $rtEv->releaseEvent( 'stripe', 'evt_rt2' ) && $rtEv->claimEvent( 'stripe', 'evt_rt2' ) );
+	$ownEv->run( 'REVOKE SELECT ON events FROM ' . $rtUser );
+	$relFails = false;
+	try {
+		$rtEv->releaseEvent( 'stripe', 'evt_rt2' );
+	} catch ( PDOException $e ) {
+		$relFails = '42501' === (string) $e->getCode();
+	}
+	check( 'ruolo senza SELECT su events: releaseEvent fallisce (la DELETE con WHERE lo richiede)', $relFails );
+	check( 'ruolo senza SELECT su events: se il lavoro fallisce il webhook risponde 500 comunque (l\'errore del rilascio non lo maschera)', 500 === $onceRt->invoke( $whRt, 'stripe', 'evt_rt3', function () { throw new RuntimeException( 'lavoro fallito' ); } ) );
+	$ownEv->run( 'GRANT SELECT ON events TO ' . $rtUser );
+	check( 'migrazione: il proprietario a struttura completa non ha nulla da segnalare', array() === $own->migrateReport() );
+	$left = $rt->retry( array(
+		array( 'sql' => 'ALTER TABLE orders ADD COLUMN prova_rt INTEGER NULL', 'error' => '', 'owner' => true ),
+		array( 'sql' => 'ALTER TABLE customers ADD COLUMN prova_rt INTEGER NULL', 'error' => '', 'owner' => true ),
+	) );
+	check( 'migrazione: il ruolo di tutti i giorni cambia le sue tabelle e il rifiuto «must be owner» sulle altre è riconoscibile', 1 === count( $left ) && true === $left[0]['owner'] && false !== strpos( $left[0]['sql'], 'orders' ) );
+}
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

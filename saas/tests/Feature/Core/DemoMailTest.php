@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Mail;
 /*
  * Nella demo nessuna posta esce e nessuna resta scritta: i mailer sono tutti «array» (il messaggio vive in memoria per la
  * richiesta e sparisce), anche se per errore il .env o le impostazioni della piattaforma dicono smtp o Emailit, e nel file
- * di log non restano indirizzi, codici né link. Ambiente «testing» (non «demo») perché le prove devono saltare il CSRF.
+ * di log non restano indirizzi, codici né link. Ambiente «demo» come sul server (demoOn() toglie il CSRF dalle richieste di prova).
  */
 
 /** Come se per errore la posta vera fosse accesa: smtp irraggiungibile, Emailit con una chiave, posta principale emailit. */
@@ -32,6 +32,7 @@ function wrongMailSetup(): void
         'mail.mailers.emailit.password' => 'chiave-finta-di-prova',
         'saas.mail_queue.primary' => 'emailit',
     ]);
+    demoOn(); // ambiente «demo» (senza CSRF nelle prove): la posta è chiusa solo lì
 }
 
 /** Un file di log di prova al posto di quello dell'applicazione: dopo ogni prova si legge cosa c'è scritto. */
@@ -85,7 +86,7 @@ it('fuori dalla demo il guardiano non cambia nulla', function (): void {
     expect(config('mail.default'))->toBe('smtp')->and(config('mail.mailers.smtp.transport'))->toBe('smtp')->and(config('saas.mail_queue.primary'))->toBe('emailit');
 
     // In produzione non si attiva nemmeno con SAAS_DEMO acceso per errore.
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     app()->detectEnvironment(fn (): string => 'production');
     DemoMailGuard::enforce();
     expect(config('mail.default'))->toBe('smtp');

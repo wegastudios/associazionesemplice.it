@@ -148,14 +148,26 @@ final class Webhooks {
 	}
 
 	private function once( string $provider, string $eventId, callable $work ): int {
-		if ( ! $this->db->claimEvent( $provider, $eventId ) ) {
+		try {
+			$claimed = $this->db->claimEvent( $provider, $eventId );
+		} catch ( \Throwable $e ) {
+			// Non si sa se l'evento sia già stato elaborato: si risponde con un errore e il provider lo riconsegna.
+			error_log( '[portale] webhook ' . $provider . ' ' . $eventId . ': evento non registrato (' . get_class( $e ) . ')' );
+			return 500;
+		}
+		if ( ! $claimed ) {
 			return 200;
 		}
 		try {
 			$work();
 		} catch ( \Throwable $e ) {
-			$this->db->releaseEvent( $provider, $eventId );
 			error_log( '[portale] webhook ' . $provider . ' ' . $eventId . ': ' . $e->getMessage() );
+			try {
+				$this->db->releaseEvent( $provider, $eventId );
+			} catch ( \Throwable $r ) {
+				// L'errore originale resta quello sopra; qui si dice solo che l'evento è rimasto segnato: la riconsegna verrebbe scartata, serve sbloccarlo a mano.
+				error_log( '[portale] webhook ' . $provider . ' ' . $eventId . ': evento rimasto segnato come elaborato, rilascio non riuscito (' . get_class( $r ) . ')' );
+			}
 			return 500;
 		}
 		return 200;

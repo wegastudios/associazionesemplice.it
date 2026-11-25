@@ -432,7 +432,7 @@ final class PeoplePage {
 				} ) );
 				$note = '<br><span class="description">Sostituita dalla tessera ' . esc_html( $by ? (string) $by[0]['social_year'] : '' ) . ': resta registrata e i pagamenti non cambiano.</span>';
 			}
-			echo wp_kses( '<tr><td>' . esc_html( $m['social_year'] ) . $note . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( $m['source'] ) . '</td></tr>', Html::allowed() );
+			echo wp_kses( '<tr><td>' . esc_html( $m['social_year'] ) . $note . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( \AssociazioneSemplice\PeopleService::membership_source_label( (string) $m['source'] ) ) . '</td></tr>', Html::allowed() );
 			}
 			echo '</tbody></table>';
 		}

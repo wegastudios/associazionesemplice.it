@@ -27,8 +27,11 @@ final class DemoEnvCheck
     public const REQUIRED = [
         'APP_KEY', 'APP_URL', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD', 'DB_OWNER_USERNAME', 'DB_OWNER_PASSWORD',
         'DB_BACKUP_USERNAME', 'DB_BACKUP_PASSWORD', 'SAAS_MASTER_KEY', 'SAAS_FILES_ROOT', 'SAAS_DEMO_DATABASE', 'SAAS_DEMO_SLUG',
-        'SAAS_MEMBERS_DOMAIN', 'SAAS_DEMO_MAIL_DOMAIN', 'SESSION_COOKIE',
+        'SAAS_MEMBERS_DOMAIN', 'SAAS_DEMO_MAIL_DOMAIN', 'SESSION_COOKIE', 'SAAS_DEMO_PASSWORD',
     ];
+
+    /** Lunghezza minima della password pubblica degli utenti di prova. */
+    public const MIN_PASSWORD = 12;
 
     /** Le uniche variabili ammesse nel .env della demo (quelle di deploy/env.demo.example e poche opzioni). */
     public const ALLOWED = [
@@ -40,7 +43,7 @@ final class DemoEnvCheck
         'QUEUE_CONNECTION', 'CACHE_STORE', 'SAAS_QUEUE_MAX_WORKERS',
         'MAIL_MAILER', 'MAIL_FROM_ADDRESS', 'MAIL_FROM_NAME',
         'SAAS_KEY_VAULT', 'SAAS_MASTER_KEY', 'SAAS_FILES_ROOT',
-        'SAAS_UNIFIED_OPERATORS', 'SAAS_REQUIRE_TWO_FACTOR',
+        'SAAS_UNIFIED_OPERATORS', 'SAAS_REQUIRE_TWO_FACTOR', 'SAAS_DB_REVOKE_GROUP', 'SAAS_DB_NARROW_PORTAL',
         'SAAS_DEMO', 'SAAS_DEMO_DATABASE', 'SAAS_DEMO_SLUG', 'SAAS_DEMO_PEOPLE', 'SAAS_DEMO_PASSWORD', 'SAAS_DEMO_MAIL_DOMAIN', 'SAAS_DEMO_PATH_MARKER',
         'SAAS_MEMBERS_DOMAIN',
     ];
@@ -132,7 +135,8 @@ final class DemoEnvCheck
         if (! str_starts_with($value('SESSION_COOKIE'), '__Host-')) {
             $add('SESSION_COOKIE', 'deve cominciare con «__Host-»: così nessun cookie del dominio padre lo sostituisce');
         }
-        if ($value('SESSION_DOMAIN') !== '') {
+        // Come lo legge Laravel (nessun trim): vuota o «null» valgono «nessun Domain»; anche solo uno spazio no.
+        if (! in_array(strtolower((string) ($env['SESSION_DOMAIN'] ?? '')), ['', 'null', '(null)'], true)) {
             $add('SESSION_DOMAIN', 'deve essere vuota o «null»: nessun Domain nei cookie');
         }
         if ($flag('SESSION_SECURE_COOKIE') !== true) {
@@ -179,6 +183,11 @@ final class DemoEnvCheck
         $key = $value('APP_KEY');
         if ($key !== '' && (! str_starts_with($key, 'base64:') || strlen((string) base64_decode(substr($key, 7), true)) !== 32)) {
             $add('APP_KEY', 'non è una chiave valida (php artisan key:generate --show)');
+        }
+        // Password pubblica degli utenti di prova: scritta (non vuota, già controllato sopra) e di almeno 12 caratteri.
+        $demoPassword = $value('SAAS_DEMO_PASSWORD');
+        if ($demoPassword !== '' && mb_strlen($demoPassword) < self::MIN_PASSWORD) {
+            $add('SAAS_DEMO_PASSWORD', 'è troppo corta (almeno '.self::MIN_PASSWORD.' caratteri)');
         }
         $master = $value('SAAS_MASTER_KEY');
         if ($master !== '' && strlen($master) < 32) {

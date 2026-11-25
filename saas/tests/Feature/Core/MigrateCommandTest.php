@@ -56,3 +56,15 @@ it('senza backup in corso migra subito', function (): void {
         ->assertSuccessful();
     Sleep::assertNeverSlept();
 });
+
+it('--fresh cancella ogni schema che le migrazioni creano (altrimenti l\'azzeramento della demo fallisce alla seconda volta)', function (): void {
+    $creati = [];
+    foreach (glob(app_path('Modules/*/Database/Migrations/*/*.php')) ?: [] as $file) {
+        if (preg_match_all('/CREATE SCHEMA (?:IF NOT EXISTS )?([a-z_]+)/', (string) file_get_contents($file), $m) > 0) {
+            $creati = [...$creati, ...$m[1]];
+        }
+    }
+    $schemi = (new ReflectionClassConstant(MigrateAllCommand::class, 'SCHEMAS'))->getValue();
+
+    expect(array_values(array_diff(array_unique($creati), $schemi)))->toBe([]);
+});

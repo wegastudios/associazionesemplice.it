@@ -31,7 +31,7 @@ final class MigrateAllCommand extends Command
 
     protected $description = 'Esegue le migrazioni sul database condiviso e su tutti i database dedicati';
 
-    private const SCHEMAS = ['core', 'app', 'audit', 'sites'];
+    private const SCHEMAS = ['core', 'app', 'audit', 'sites', 'portal'];
 
     /** Attesa massima della fine del backup, per tutti i database insieme (il rilascio ha 15 minuti), e ogni quanto si ricontrolla. */
     public const DUMP_WAIT_SECONDS = 480;

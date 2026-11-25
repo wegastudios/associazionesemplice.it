@@ -12,7 +12,7 @@ use Throwable;
 
 /**
  * Azzera l'ambiente demo e lo ricrea con dati finti (docs/PIATTAFORMA.md §6). Cancella TUTTO il database
- * dell'ambiente: parte solo dove SAAS_DEMO è acceso e l'ambiente non è la produzione. Ogni notte alle 03:30.
+ * dell'ambiente: parte solo dove SAAS_DEMO è acceso E APP_ENV è «demo». Ogni notte alle 03:30.
  */
 #[AsCommand(name: 'saas:demo:reset')]
 final class DemoResetCommand extends Command
@@ -24,7 +24,7 @@ final class DemoResetCommand extends Command
     public function handle(DemoEnvironment $demo): int
     {
         if (! $demo->enabled()) {
-            $this->error('La demo non è attiva in questo ambiente (SAAS_DEMO=true, mai in produzione).');
+            $this->error('La demo non è attiva in questo ambiente (servono SAAS_DEMO=true e APP_ENV=demo).');
 
             return self::FAILURE;
         }

@@ -116,7 +116,7 @@ it('il cookie «ricordami» dell\'operatore non ha Domain ed è Secure e HttpOnl
 
     $response = $this->post(DEMO_HOST.'/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD, 'remember' => true]);
     $cookies = cookiesOf($response);
-    $recaller = array_values(array_filter(array_keys($cookies), static fn (string $n): bool => str_starts_with($n, 'remember_')));
+    $recaller = array_values(array_filter(array_keys($cookies), static fn (string $n): bool => str_contains($n, 'remember_')));
 
     expect($recaller)->toHaveCount(1, 'stato '.$response->status().', destinazione '.(string) $response->headers->get('Location').', cookie '.implode(',', array_keys($cookies)).', errori '.json_encode(session('errors')?->getBag('default')->keys()))
         ->and($cookies)->toHaveKey('__Host-as_demo');
@@ -177,7 +177,7 @@ it('fuori dalla demo nessuna intestazione noindex e robots.txt è quello del fil
     expect($this->get(DEMO_HOST.'/accesso')->headers->get('X-Robots-Tag'))->toBeNull();
     expect($this->get(DEMO_HOST.'/robots.txt')->assertOk()->getContent())->toBe((string) file_get_contents(public_path('robots.txt')));
 
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     app()->detectEnvironment(fn (): string => 'production');
     expect($this->get(DEMO_HOST.'/accesso')->headers->get('X-Robots-Tag'))->toBeNull();
 });

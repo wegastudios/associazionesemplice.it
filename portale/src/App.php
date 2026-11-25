@@ -42,6 +42,14 @@ final class App {
 				}
 				return;
 			}
+			if ( 'POST' === $method && '/api/saas/v1/usage' === $path ) {
+				// Consumi firmati del SaaS (contratto §4.1): senza sessione né CSRF, vale la firma.
+				list( $code, $out ) = Usage::accept( $this->db, (string) file_get_contents( 'php://input', false, null, 0, Usage::MAX_BODY ) );
+				http_response_code( $code );
+				header( 'Content-Type: application/json; charset=utf-8' );
+				echo json_encode( $out );
+				return;
+			}
 			if ( 0 === strpos( $path, '/api/license/' ) || 0 === strpos( $path, '/api/plugin/' ) || '/.well-known/jwks.json' === $path ) {
 				$this->licenseApi( $method, $path );
 				return;

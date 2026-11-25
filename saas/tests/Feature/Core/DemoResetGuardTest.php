@@ -25,7 +25,7 @@ it('rifiuta se l\'applicazione non sta in una cartella saas-demo', function (): 
 });
 
 it('il comando si ferma prima di cancellare quando il database non è quello atteso', function (): void {
-    config(['saas.demo.enabled' => true, 'saas.demo.database' => 'un_altro_database']);
+    demoOn(['saas.demo.database' => 'un_altro_database']);
     $orgs = DB::table('core.orgs')->count();
 
     expect(Artisan::call('saas:demo:reset'))->toBe(1)

@@ -43,7 +43,7 @@ final class AreaSociServiceProvider extends ServiceProvider
         //   member-receipt: PDF delle ricevute; member-pay-result: esito dei pagamenti.
         foreach (['member-book' => [20, 60], 'member-cancel' => [20, 60], 'member-profile' => [10, 30], 'member-receipt' => [30, 100], 'member-pay-result' => [60, 200]] as $name => [$perMember, $perIp]) {
             RateLimiter::for($name, static function (Request $request) use ($name, $perMember, $perIp): array {
-                $cookie = $request->cookie(AuthenticateMember::COOKIE);
+                $cookie = $request->cookie(AuthenticateMember::cookieName($request));
 
                 return [
                     Limit::perMinutes(10, $perMember)->by($name.'|'.(is_string($cookie) && $cookie !== '' ? hash('sha256', $cookie) : 'ip-'.$request->ip())),

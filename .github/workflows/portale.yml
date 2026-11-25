@@ -2,11 +2,15 @@ name: Portale
 
 on:
   push:
-    branches: [main, "feature/**"]
-    paths: ["portale/**", ".github/workflows/portale.yml"]
+    branches: [main]
+    paths: ["portale/**", "saas/app/Modules/Core/Contracts/portal-grants.json", ".github/workflows/portale.yml"]
   pull_request:
-    paths: ["portale/**", ".github/workflows/portale.yml"]
+    paths: ["portale/**", "saas/app/Modules/Core/Contracts/portal-grants.json", ".github/workflows/portale.yml"]
   workflow_dispatch:
+
+concurrency:
+  group: portale-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:
@@ -55,4 +59,40 @@ jobs:
         with:
           php-version: "8.3"
           extensions: pdo_sqlite, pdo_pgsql, sodium, curl, intl, mbstring
+      - run: php tests/run.php
+
+  postgres-ruolo-ristretto:
+    # Come in produzione: il proprietario crea schema e tabelle; il ruolo di tutti i giorni (portal_rt) non è superutente, non ha CREATE,
+    # possiede le sue 18 tabelle e sulle 11 del proprietario ha solo i verbi che il codice usa (elenco in saas/app/Modules/Core/Contracts/portal-grants.json, lo stesso del gestionale, letto da rtGrants() in tests/run.php).
+    # Se una prova fallisce per un verbo mancante, l'elenco dei GRANT va corretto (anche in produzione).
+    name: Portale (PostgreSQL, ruolo ristretto)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: portale
+          POSTGRES_PASSWORD: portale
+          POSTGRES_DB: portale_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U portale" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: portale
+    env:
+      PORTALE_TEST_PG_DSN: "pgsql:host=127.0.0.1;port=5432;dbname=portale_test"
+      PORTALE_TEST_PG_USER: portale
+      PORTALE_TEST_PG_PASS: portale
+      PORTALE_TEST_PG_RT_USER: portal_rt
+      PORTALE_TEST_PG_RT_PASS: portal_rt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_sqlite, pdo_pgsql, sodium, curl, intl, mbstring
+      - name: Ruolo di tutti i giorni senza privilegi di struttura
+        run: |
+          PGPASSWORD=portale psql -h 127.0.0.1 -U portale -d portale_test -v ON_ERROR_STOP=1 -c "CREATE ROLE portal_rt LOGIN PASSWORD 'portal_rt' NOSUPERUSER NOCREATEDB NOCREATEROLE" -c "REVOKE CREATE ON DATABASE portale_test FROM portal_rt" -c "REVOKE ALL ON SCHEMA public FROM portal_rt"
       - run: php tests/run.php

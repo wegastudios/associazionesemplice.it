@@ -138,6 +138,9 @@ final class Promos {
 		try {
 			$db->run( 'INSERT INTO plugin_promo_uses (code, order_ref, at) VALUES (?,?,?)', array( $code, $orderRef, gmdate( 'Y-m-d H:i:s', $now ?? time() ) ) );
 		} catch ( \PDOException $e ) {
+			if ( ! Db::isDuplicate( $e ) ) {
+				throw $e;
+			}
 			return false; // già confermato per questo ordine
 		}
 		$n = $db->run( 'UPDATE plugin_promos SET used = used + 1 WHERE code = ? AND (max_uses IS NULL OR used < max_uses)', array( $code ) )->rowCount();

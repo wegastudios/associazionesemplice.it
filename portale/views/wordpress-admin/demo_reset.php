@@ -11,6 +11,12 @@ $when = function ( int $t ): string { return $t > 0 ? gmdate( 'd/m/Y H:i', $t ) 
 	<p class="muted">Riporta una demo pubblica allo stato iniziale. <strong>Cancella tutti i dati inseriti nella demo (anche file e caricamenti) e non si può annullare.</strong> Succede già ogni notte alle 4: usa questi tasti solo se serve subito. Il reset gira in background e dura qualche minuto; si può farne uno alla volta per demo. Chi lo avvia e l'esito restano nel registro.</p>
 	<?php if ( ! $can_run ) : ?><p class="notice err" role="alert">Il server non permette al portale di lanciare comandi: i tasti sono spenti.</p><?php endif; ?>
 	<?php if ( ! $rows ) : ?><p class="muted">Nessuna demo è ancora collegata al portale (manca <code>demo_reset</code> in config.php).</p><?php endif; ?>
+	<?php if ( ! isset( $rows['plugin'] ) ) : ?>
+	<div class="card" style="margin:16px 0;padding:18px">
+		<h2 style="margin-top:0">Demo del plugin</h2>
+		<p><span class="badge">Non collegata</span> Il reset della demo del plugin (demo.associazionesemplice.it) non è ancora collegato al portale: finché non lo è, non si azzera da qui. Si azzera da sola ogni notte.</p>
+	</div>
+	<?php endif; ?>
 	<?php foreach ( $rows as $k => $r ) : ?>
 	<div class="card" style="margin:16px 0;padding:18px">
 		<h2 style="margin-top:0"><?php echo e( $r['label'] ); ?></h2>

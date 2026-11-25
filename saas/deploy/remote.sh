@@ -8,6 +8,13 @@
 #
 # Ordine: controlli, migrazioni (in due tempi: la versione in uso continua a funzionare), cache, cambio del link,
 # controllo di salute, ritorno automatico alla versione precedente se il controllo fallisce.
+#
+# Primo rilascio su database VUOTO (nessuna migrazione registrata, es. la demo nuova): il controllo di salute prima delle
+# migrazioni fallirebbe («relation ... does not exist»). `saas:db:empty` lo riconosce: solo se è vuoto E l'ambiente non è
+# produzione si salta quel controllo, si migra e il controllo si fa dopo. In produzione un database vuoto ferma il
+# rilascio (potrebbe essere quello sbagliato): si migra a mano. Su un database già in uso nulla cambia.
+# Se è il primo rilascio e il controllo dopo il cambio fallisce non c'è una versione a cui tornare: il link `current`
+# viene tolto (non esisteva prima), i dati restano, il rilascio si ferma con errore.
 set -euo pipefail
 PACKAGE="${1:?pacchetto}"; EXPECTED="${2:?sha256}"
 BASE="${SAAS_BASE:?SAAS_BASE obbligatoria: indica la cartella da rilasciare (~/saas o ~/saas-demo)}"
@@ -65,9 +72,32 @@ if [ "${SAAS_IGNORE_BALANCES:-false}" = "true" ]; then
     "$PHP" artisan saas:deploy:ignore-balances "$ACTOR" "$REV"
     IGNORE_BALANCES_OPT=(--ignore-balances)
 fi
-health --skip-migrations
+EMPTY_RC=0
+"$PHP" artisan saas:db:empty || EMPTY_RC=$?
+case "$EMPTY_RC" in
+    0) echo "Primo rilascio su database vuoto: salto il controllo di salute prima delle migrazioni." ;;
+    1) health --skip-migrations ;;
+    3) echo "Database vuoto in produzione: rilascio fermato, nulla è stato migrato." >&2; exit 1 ;;
+    *) echo "Non riesco a leggere lo stato del database: rilascio fermato." >&2; exit 1 ;;
+esac
 # saas:migrate aspetta la fine del backup orario, se è in corso, e riprova le istruzioni che non ottengono un blocco.
 "$PHP" artisan saas:migrate --force
+# Permessi del ruolo di gruppo del database: con l'interruttore SAAS_DB_REVOKE_GROUP acceso si riportano a quelli previsti.
+# Il dettaglio (stdout e stderr) va solo in un file riservato (shared/revoca-gruppo-<data>.txt, 600, ultimi 5): il log del
+# workflow è pubblico e dice solo «fatto» o «da rivedere». Spento il comando non scrive nulla e il file si toglie.
+# Non ferma mai il rilascio: il controllo di salute segnala ciò che resta.
+GROUP_FILE="$BASE/shared/revoca-gruppo-$(date -u +%Y%m%dT%H%M%S).txt"
+GROUP_RC=0
+( umask 077; "$PHP" artisan saas:db:revoke-group --if-enabled > "$GROUP_FILE" 2>&1 ) || GROUP_RC=$?
+chmod 600 "$GROUP_FILE" 2>/dev/null || true
+if [ "$GROUP_RC" -eq 0 ] && [ ! -s "$GROUP_FILE" ]; then
+    rm -f "$GROUP_FILE"
+elif [ "$GROUP_RC" -eq 0 ]; then
+    echo "permessi del gruppo: fatto"
+else
+    echo "permessi del gruppo: da rivedere, vedi il controllo di salute" >&2
+fi
+{ ls -1t "$BASE"/shared/revoca-gruppo-*.txt 2>/dev/null || true; } | tail -n +6 | while read -r old; do rm -f "$old"; done
 # I mesi del registro sono pronti con tre mesi di anticipo: se ora non si riesce (backup in corso) il rilascio prosegue,
 # il controllo di salute lo segnala e ci riprova il lavoro mensile.
 "$PHP" artisan saas:audit:partitions || echo "Partizioni del registro non preparate ora: ci riprova il lavoro mensile." >&2
@@ -88,6 +118,10 @@ if ! health; then
     if [ -n "$PREVIOUS" ]; then
         ln -sfn "$PREVIOUS" "$BASE/current.new" && mv -Tf "$BASE/current.new" "$BASE/current"
         ( cd "$PREVIOUS" && "$PHP" artisan saas:web:refresh --no-warm ) || true
+    else
+        # Primo rilascio: non c'è nulla a cui tornare. Il link non esisteva prima, quindi si toglie; i dati non si toccano.
+        rm -f "$BASE/current"
+        echo "Primo rilascio: nessuna versione precedente, link current rimosso. Leggi shared/health-*.txt via ssh." >&2
     fi
     exit 1
 fi

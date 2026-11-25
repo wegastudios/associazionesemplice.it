@@ -4,7 +4,7 @@ Tags: association, members, nonprofit, events, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.36
+Stable tag: 1.3.37
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -129,6 +129,12 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 The front-end style sheet and script (`assets/frontend.css` and `assets/frontend.js`) are shipped minified to load faster. The readable sources are in the public repository: https://github.com/wegastudios/associazionesemplice.it (folder `wordpress/associazionesemplice/assets`); the minification step is `wordpress/build.sh` with `wordpress/minify-assets.pl`.
 
 == Changelog ==
+
+= 1.3.37 =
+* Altro: nelle pagine delle attività e degli eventi le locandine non diventano più enormi nei siti con WordPress 6.7 o successivo.
+* Ottimizzazione: le schede delle attività sono uniformi: immagine della stessa misura, fascia colorata con l'icona se manca la locandina, date e posti in evidenza, pulsante in fondo.
+* Ottimizzazione: in Corsi ed eventi gli importi e i pulsanti delle schede sono allineati.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.36 =
 * Nuovo: scheda «Stato del server» negli Strumenti, con i consigli per l'hosting, e cinque controlli in Salute del sito.

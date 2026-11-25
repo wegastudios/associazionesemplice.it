@@ -136,6 +136,26 @@ final class Views {
 		return wp_login_url( $back );
 	}
 
+	/**
+	 * Invito ad accedere per le pagine di chi lavora con l'amministrazione (segreteria, tesoriere): la segreteria è un utente WordPress, quindi la porta giusta è
+	 * l'accesso di WordPress (anche quello personalizzato, wp_login_url passa dal Gatekeeper), non il modulo dei soci. Chi è anche socio può entrare dall'area soci
+	 * con il rimando secondario; chi ha già fatto l'accesso come socio e arriva qui legge come rientrare dalla porta giusta.
+	 */
+	public static function staff_login_prompt( string $title ): string {
+		self::no_cache();
+		Assets::enqueue();
+		$back      = Restrict::current_url();
+		$as_member = \AssociazioneSemplice\MemberSession::logged_in();
+		$text      = ( $as_member ? 'Hai fatto l\'accesso come socio, ma questa pagina si apre con l\'accesso al sito. ' : 'Questa pagina è per chi lavora con l\'associazione. ' )
+			. 'Premi «Entra» e usa l\'email (o il nome utente) e la password del tuo accesso al sito.';
+		return self::wrap(
+			'<div class="asemf-card"><h3>' . esc_html( $title ) . '</h3><p>' . esc_html( $text ) . '</p>'
+			. '<p><a class="asemf-btn wp-element-button" href="' . esc_url( wp_login_url( $back ) ) . '">Entra</a></p>'
+			. ( $as_member ? '' : '<p class="asemf-small">Per la tessera e le prenotazioni: <a href="' . esc_url( self::member_login_url() ) . '">entra dall\'area soci</a>.</p>' )
+			. '</div>'
+		);
+	}
+
 	public static function login_prompt(): string {
 		self::no_cache(); // l'invito ad accedere non deve restare in cache: chi ha già la sessione vedrebbe quello invece della sua pagina
 		Assets::enqueue();
@@ -461,7 +481,7 @@ final class Views {
 	/** Area segreteria: il punto d'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente). Il lavoro vero resta nell'amministrazione. */
 	public static function secretary(): string {
 		if ( ! is_user_logged_in() ) {
-			return self::login_prompt();
+			return self::staff_login_prompt( 'Area segreteria' );
 		}
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			return self::notice( 'Questa pagina è riservata alla segreteria.' );
@@ -615,6 +635,9 @@ final class Views {
 	}
 
 	public static function expenses(): string {
+		if ( ! is_user_logged_in() ) { // il tesoriere è un utente WordPress: la porta è l'accesso dello staff, non il modulo dei soci
+			return self::staff_login_prompt( 'Area tesoriere' );
+		}
 		return self::with_person(
 			function ( $p ) {
 				return current_user_can( 'asem_add_expense', 0 ) ? self::section_expenses( $p ) : self::notice( 'Questa pagina è riservata al tesoriere.' );
@@ -1404,7 +1427,7 @@ final class Views {
 		$cap    = null === $s['capacity'] ? null : (int) $s['capacity'];
 		$booked = (int) ( $s['booked_count'] ?? 0 );
 		$full   = null !== $cap && $booked >= $cap;
-		$html   = '<li><div>' . $prefix . '<strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong>'
+		$html   = '<li><div>' . $prefix . '<strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? '<span class="asemf-sep"> · </span><span class="asemf-time">ore ' . esc_html( $s['start_time'] ) . '</span>' : '' ) . '</strong>'
 			. ( $s['location'] ? '<div class="asemf-small">' . esc_html( $s['location'] ) . '</div>' : '' )
 			. ( null !== $cap ? '<div class="asemf-small">' . ( $full ? 'Posti esauriti · lista d\'attesa' : ( $left = max( 0, $cap - $booked ) ) . ( 1 === $left ? ' posto libero' : ' posti liberi' ) ) . '</div>' : '' ) . '</div><div class="asemf-actions">';
 		if ( ! $ctx['logged'] ) {
@@ -1550,14 +1573,11 @@ final class Views {
 		$html  = '<div class="asemf-grid">';
 		foreach ( $list as $a ) {
 			$page   = \AssociazioneSemplice\PublicEvents::page_url( (int) $a['id'] ); // la pagina pubblica dell'attività, se c'è: locandina, descrizione, altre date
-			$poster = '' !== $page ? \AssociazioneSemplice\PublicEvents::poster( (int) $a['id'] ) : '';
-			$html  .= '<article class="asemf-card">' . ( '' !== $poster ? '<a href="' . esc_url( $page ) . '" class="asemf-card-poster" tabindex="-1" aria-hidden="true">' . $poster . '</a>' : '' )
+			$poster = '' !== $page ? \AssociazioneSemplice\PublicEvents::poster( (int) $a['id'], 'medium_large' ) : '';
+			$html  .= '<article class="asemf-card">' . ( '' !== $poster ? '<a href="' . esc_url( $page ) . '" class="asemf-card-poster asemf-kind-' . esc_attr( $a['kind'] ) . '" tabindex="-1" aria-hidden="true">' . $poster . '</a>' : '<span class="asemf-card-poster asemf-card-noposter asemf-kind-' . esc_attr( $a['kind'] ) . '" aria-hidden="true"></span>' ) // senza locandina: una fascia con il colore del tipo, così le schede restano uguali
 				. '<span class="asemf-badge">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</span>'
 				. '<h3>' . ( '' !== $page ? '<a href="' . esc_url( $page ) . '">' . esc_html( $a['name'] ) . '</a>' : esc_html( $a['name'] ) ) . '</h3><p class="asemf-small asemf-muted">' . esc_html( self::fee_text( $a ) )
 				. ( ! empty( $a['instructor_name'] ) ? '<br>Con ' . esc_html( $a['instructor_name'] ) : '' ) . '</p>';
-			if ( ! empty( $a['notes'] ) ) {
-				$html .= '<p>' . esc_html( $a['notes'] ) . '</p>';
-			}
 			if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
 				$sessions = array_values(
 					array_filter(
@@ -1571,18 +1591,34 @@ final class Views {
 					$html .= '<p class="asemf-muted">Nessuna data in programma.</p>';
 				} else {
 					$html .= '<ul class="asemf-list asemf-sessions">';
-					foreach ( array_slice( $sessions, 0, $max ) as $s ) {
+					$shown = min( $max, 2 ); // nella scheda le prime due date: le altre stanno nella pagina
+					foreach ( array_slice( $sessions, 0, $shown ) as $s ) {
 						$html .= self::session_row( $s, $a, $ctx );
 					}
 					$html .= '</ul>';
+					$rest = count( $sessions ) - $shown;
+					if ( $rest > 0 ) {
+						$more  = 1 === $rest ? 'Un\'altra data' : 'Altre ' . $rest . ' date';
+						$html .= '<p class="asemf-small asemf-card-morelink">' . ( '' !== $page ? '<a href="' . esc_url( $page ) . '">' . esc_html( $more ) . '</a>' : esc_html( $more ) ) . '</p>';
+					}
 				}
 			} elseif ( in_array( (int) $a['id'], $mine, true ) ) {
 				$html .= '<p><span class="asemf-badge asemf-badge-ok">✓ Sei iscritto</span></p>';
 			}
-			if ( '' !== $page ) {
-				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? ' e prenotazione' : '' ) . '</a></p>';
+			$when = '';
+			if ( ! ActivityKind::uses_sessions( $a['kind'] ) ) { // un corso non ha le date una a una: giorno e orario, se ci sono
+				$when  = \AssociazioneSemplice\PublicEvents::when_text( $a );
+				$when  = \AssociazioneSemplice\PublicEvents::NO_DATES === $when ? '' : $when;
+				$html .= '' !== $when ? '<p class="asemf-small asemf-card-when">' . esc_html( $when ) . '</p>' : '';
 			}
-			$html .= '</article>';
+			if ( ! empty( $a['notes'] ) ) { // la descrizione in due righe: la completa è nella pagina (il testo intero resta qui)
+				$html .= '<p class="asemf-card-notes">' . esc_html( $a['notes'] ) . '</p>';
+			}
+			$html .= '<div class="asemf-card-end">'; // in fondo resta solo il pulsante: le schede di una riga finiscono alla stessa altezza
+			if ( '' !== $page ) {
+				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">' . ( '' === $when && ! ActivityKind::uses_sessions( $a['kind'] ) ? 'Vedi il corso' : 'Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? '<span class="asemf-more">&nbsp;e prenotazione</span>' : '' ) ) . '</a></p>'; // nelle schede strette «e prenotazione» si nasconde alla vista ma resta nel nome del pulsante
+			}
+			$html .= '</div></article>';
 		}
 		return self::wrap( $html . '</div>' );
 	}

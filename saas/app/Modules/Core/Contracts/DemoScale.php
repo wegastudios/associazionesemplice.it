@@ -49,15 +49,92 @@ final class DemoScale
     /** La frase a schermo quando nella demo si prova a scaricare la copia di sicurezza. */
     public const BACKUP_OFF = 'Nella demo la copia di sicurezza non si scarica: nell\'associazione vera funziona.';
 
-    /** Nella demo (mai in produzione) gli accessi sono pubblici: le modifiche che restano per tutti sono spente. */
-    public static function restricted(): bool
+    /** La frase a schermo e nell'errore quando nella demo si supera un limite di frequenza o di quantità. */
+    public const LIMIT_OFF = 'Nella demo hai raggiunto il limite: si azzera ogni notte alle 03:30.';
+
+    /** La frase a schermo quando nella demo un testo contiene un link o dell'HTML. */
+    public const NO_LINKS = 'Nella demo i testi non possono contenere link né HTML.';
+
+    /** Ambiente in cui la demo può esistere. */
+    public const ENVIRONMENT = 'demo';
+
+    /**
+     * Valori di partenza dei limiti (`saas.demo.limits.*` li sostituisce). «*_extra» è quanto i visitatori possono aggiungere
+     * a ciò che l'azzeramento notturno ha scritto: i dati di partenza non superano mai un tetto.
+     */
+    public const LIMITS = [
+        'creations_per_hour' => 40,   // creazioni (ogni POST che aggiunge dati) per indirizzo IP, in un'ora
+        'writes_per_hour' => 200,     // tutte le scritture per indirizzo IP, in un'ora
+        'people_extra' => 100,        // soci e altre persone
+        'applications_extra' => 50,   // domande di adesione
+        'movements_extra' => 200,     // movimenti di prima nota (incassi, spese, giroconti)
+        'receipts_extra' => 200,      // ricevute (ognuna è un PDF cifrato)
+        'bookings_extra' => 150,      // prenotazioni e iscrizioni a date
+        'activities_extra' => 30,     // attività
+        'resources_extra' => 20,      // risorse prenotabili
+        'storage_mb' => 300,          // spazio totale dei file dell'associazione
+    ];
+
+    /** Un limite della demo: da `saas.demo.limits.<chiave>`, altrimenti il valore di partenza. */
+    public static function limit(string $key): int
     {
-        return self::uploadsOff();
+        $value = config('saas.demo.limits.'.$key);
+
+        return is_numeric($value) ? max(0, (int) $value) : (self::LIMITS[$key] ?? 0);
     }
 
-    /** Nella demo (mai in produzione) i visitatori non caricano file: è pubblica e i file finirebbero sul disco del server. */
+    /** Spazio massimo dei file nella demo, in byte. */
+    public static function storageBytes(): int
+    {
+        return self::limit('storage_mb') * 1024 ** 2;
+    }
+
+    /**
+     * La demo è attiva: SAAS_DEMO acceso E ambiente «demo». È l'unico punto che lo decide: con un altro ambiente (staging,
+     * locale, produzione) nessun accesso pubblico, nessuna password di prova, nessuna restrizione, nessun azzeramento.
+     */
+    public static function active(): bool
+    {
+        return filter_var(config('saas.demo.enabled'), FILTER_VALIDATE_BOOLEAN) && app()->environment(self::ENVIRONMENT);
+    }
+
+    /** Quanto dura la sessione del socio d'esempio nella demo (mai «ricordami»). */
+    public const MEMBER_SESSION_MINUTES = 60;
+
+    /**
+     * Email del socio d'esempio che la demo apre con «Entra come socio»: il primo socio inventato (DemoMembers: socio001,
+     * un fondatore con la tessera sempre valida). La sceglie solo il server, mai la richiesta.
+     */
+    public static function memberEmail(): string
+    {
+        $domain = config('saas.demo.mail_domain');
+
+        return 'socio001@'.(is_string($domain) ? $domain : 'demo.example.test');
+    }
+
+    /**
+     * «Entra come socio» esiste solo con SAAS_DEMO acceso E APP_ENV=demo (active()), e solo sull'associazione della demo:
+     * altrove (staging, locale, produzione, altre associazioni) non c'è. Senza slug vale solo il controllo dell'ambiente.
+     */
+    public static function memberEntryOpen(?string $orgSlug = null): bool
+    {
+        if (! self::active()) {
+            return false;
+        }
+        $slug = config('saas.demo.org_slug');
+
+        return $orgSlug === null || $orgSlug === (is_string($slug) ? $slug : 'polisportiva-demo');
+    }
+
+    /** Nella demo gli accessi sono pubblici: le modifiche che restano per tutti sono spente. */
+    public static function restricted(): bool
+    {
+        return self::active();
+    }
+
+    /** Nella demo i visitatori non caricano file: è pubblica e i file finirebbero sul disco del server. */
     public static function uploadsOff(): bool
     {
-        return filter_var(config('saas.demo.enabled'), FILTER_VALIDATE_BOOLEAN) && ! app()->environment('production');
+        return self::active();
     }
 }

@@ -16,6 +16,7 @@ final class PublicEvents {
 
 	const POST_TYPE = 'asem_evento';
 	const TAXONOMY  = 'asem_evento_cat';
+	const NO_DATES  = 'Date da definire'; // cosa dice {@see PublicEvents::when_text()} di un corso senza giorni né orari
 	const META      = '_asem_activity_id';
 	const OPT_DONE  = 'asem_public_events_backfill';
 	const OPT_FLUSH = 'asem_public_events_rewrite';
@@ -598,7 +599,7 @@ final class PublicEvents {
 				$parts[] = Frontend\Views::date_long( (string) $s['date'] ) . ( ! empty( $s['start'] ) ? ' ' . $s['start'] : '' );
 			}
 		}
-		return $parts ? implode( ', ', $parts ) : 'Date da definire';
+		return $parts ? implode( ', ', $parts ) : self::NO_DATES;
 	}
 
 	/** @param array $a attività */

@@ -71,11 +71,24 @@ cd ~/saas-demo/current && /usr/local/bin/php artisan saas:web:refresh --no-warm
 
 `.user.ini`, `php.ini` e `.well-known` non vengono mai toccati né in un senso né nell'altro. Dopo `installa` si fa `prova`; dopo `ripristina` si controlla che il dominio risponda come prima.
 
+### Chiusura temporanea (demo non ancora aperta)
+
+Finché la demo non è pronta, `public_html` si può chiudere a tutti tranne che a un indirizzo IP:
+
+```
+bash ~/saas-demo/current/deploy/demo-webroot.sh chiudi            # solo l'IP della sessione SSH in corso
+bash ~/saas-demo/current/deploy/demo-webroot.sh chiudi 203.0.113.7  # oppure un IP (IPv4 o IPv6) a scelta
+bash ~/saas-demo/current/deploy/demo-webroot.sh apri              # toglie la chiusura
+bash ~/saas-demo/current/deploy/demo-webroot.sh stato             # dice se è chiuso e a quale indirizzo
+```
+
+La chiusura è una regola di riscrittura messa **in cima** a `.htaccess`, tra i marcatori `# BEGIN chiusura temporanea` e `# END chiusura temporanea`; `.well-known` resta raggiungibile (AutoSSL). Chiamare `chiudi` due volte lascia un solo blocco; i blocchi di cPanel e quello della demo non si toccano. Ogni `chiudi` e `apri` fa una copia di `.htaccess` in `~/saas-demo/shared/webroot-backup/chiusura/`. **Non si usa `Require ip`**: su questo server la direttiva in `.htaccess` non viene rispettata (verificato), il sito resterebbe aperto. `installa` e `ripristina` non aprono il sito se era chiuso. Con il sito chiuso `prova` non dichiara «ok»: i controlli partono dal server e darebbero 403 su tutto, quindi la prova vera si fa da un computer con l'indirizzo autorizzato, oppure dopo `apri`.
+
 ### Cosa NON deve essere raggiungibile dal web
 
 `prova` richiede sul dominio, con `curl`, questi indirizzi e si aspetta **400, 403 o 404** (mai 200 né un reindirizzamento): `/.env`, `/.env.backup`, `/.git/config`, `/.user.ini`, `/php.ini`, `/.htaccess`, `/composer.json`, `/composer.lock`, `/artisan`, `/vendor/autoload.php`, `/storage/logs/laravel.log`, `/storage`, `/bootstrap/app.php`, `/app`, `/config/app.php`, `/database`, `/deploy/remote.sh`, `/releases`, `/saas-demo`, `/shared/.env`, `/current`, `/public/index.php`, `/../.env`, `/%2e%2e/.env`, `/index.php/.env`. E si aspetta **200** da `/up`, `/accesso`, `/area/accesso`, `/robots.txt` (con `Disallow: /`). Esce con errore se anche solo uno non torna. Va lanciata dopo ogni installazione e quando si cambia qualcosa in `public_html`.
 
-Prove automatiche (CI): `tests/Feature/Core/DemoWebrootTest.php` prova il blocco `.htaccess`, l'installazione su una finta `public_html` con i blocchi di cPanel, la ripetizione senza duplicati, il ritorno indietro identico e che `.user.ini`, `php.ini` e `.well-known` restano uguali. Il test sul dominio vero (`prova`) si fa a mano dopo l'installazione.
+Prove automatiche (CI): `tests/Feature/Core/DemoWebrootTest.php` prova il blocco `.htaccess`, l'installazione su una finta `public_html` con i blocchi di cPanel, la ripetizione senza duplicati, il ritorno indietro identico, che `.user.ini`, `php.ini` e `.well-known` restano uguali, e `chiudi`/`apri` (un solo blocco, apertura identica all'originale, installa e ripristina che non aprono). Il test sul dominio vero (`prova`) si fa a mano dopo l'installazione.
 
 ## Posta: niente esce
 
@@ -109,10 +122,37 @@ Il catalogo verso il portale e gli aggiornamenti esterni non hanno lavori pianif
 
 `CloseDemoPaths` risponde **404** a: `/saas/admin` e `/saas/…` (amministrazione e staff), `/api/…` (API del portale, catalogo, esecuzione), `/accesso-unico/…`, `/area/webhook/…` (Stripe), `/gestionale/abbonamento`. Succede prima di qualunque controllo di firma o di sessione, quindi anche una chiamata con una firma valida non entra. Unica eccezione: `POST /api/portale/v2/runtime/reset`, l'azzeramento locale della cache usato da `saas:web:refresh`. Il guardiano `DemoRestrictions` toglie comunque `/saas/admin` e `/saas/staff` anche se un domani la prima barriera mancasse. `tests/Feature/Core/DemoClosedPathsTest.php` elenca le rotte registrate e fallisce se ne resta aperta una sensibile.
 
+## Quando la demo è attiva, e i limiti dei visitatori
+
+La demo è attiva **solo con `SAAS_DEMO` acceso E `APP_ENV=demo`** (`DemoScale::active()`, l'unico punto che lo decide). Con staging, locale o produzione nessun account pubblico, nessuna password, nessuna restrizione, nessun azzeramento. `saas:demo:check-env` pretende `APP_ENV=demo` e una `SAAS_DEMO_PASSWORD` di almeno 12 caratteri (vuota, per il codice, vale la predefinita: mai una password vuota). In ogni pagina c'è l'avviso fisso «Dati finti: la demo si azzera ogni notte alle 03:30.».
+
+Gli accessi sono di tutti, quindi i visitatori hanno questi limiti (`config/saas.php`, `demo.limits`; superati: «Nella demo hai raggiunto il limite: si azzera ogni notte alle 03:30.»):
+
+| Limite | Valore |
+| --- | --- |
+| Creazioni (ogni `POST` che aggiunge dati), per indirizzo IP | 40 all'ora |
+| Scritture di ogni tipo, per indirizzo IP | 200 all'ora |
+| Rotte con `throttle:N,M` (esportazioni comprese) | anche per indirizzo IP, oltre al limite per utente |
+| Soci, domande di adesione, movimenti, ricevute, prenotazioni, attività, risorse | quanto c'era a fine azzeramento + 100, 50, 200, 200, 150, 30, 20 |
+| Spazio dei file | 300 MB in tutto (il piano demo dà soci = conteggio di partenza + 100 e 1 GB, ma `StorageQuotaService` nella demo usa i 300 MB) |
+
+I tetti sono «conteggio di partenza + margine»: l'azzeramento scrive i conteggi in `demo.baseline.*`, così i dati di partenza non li superano mai. Restano spenti nella demo: chiusura, riapertura e commissione dei conti, cambio del nome degli utenti, ogni file in arrivo (`DemoFileBarrier`, nello stack globale: vale per qualunque rotta). I testi scritti dai visitatori non possono contenere link né HTML. Prove: `DemoLimitsTest`, `DemoRestrictionsTest`, `DemoEnvironmentTest`.
+
+## «Entra come socio» (solo demo)
+
+La posta della demo è spenta, quindi i soci non possono entrare con email e codice. Nella pagina di accesso dell'area soci (`/area/accesso`) c'è il pulsante «Entra come socio» (`POST /area/accesso/demo`, `DemoMemberEntryController`); nella pagina `/accesso` del gestionale un link porta lì. Regole:
+
+- Esiste solo con `SAAS_DEMO` acceso E `APP_ENV=demo` (`DemoScale::memberEntryOpen()`, che usa `DemoScale::active()`) e solo sull'associazione della demo (`SAAS_DEMO_SLUG`): altrove la rotta risponde 404 e i pulsanti non compaiono.
+- Il socio lo sceglie il server (`DemoScale::memberEmail()`: `socio001@` + `SAAS_DEMO_MAIL_DOMAIN`, il primo socio di `DemoMembers`); dalla richiesta non arriva nulla. Nessun codice, nessuna email.
+- CSRF come ogni POST; al massimo 20 ingressi all'ora per indirizzo IP. Sessione di 60 minuti (`DemoScale::MEMBER_SESSION_MINUTES`), con il cookie `__Host-as_socio` di sempre; «Esci» è quello dell'area soci.
+- Il socio è di tutti: recapiti, rigenerazione del codice tessera e «esci da tutti i dispositivi» sono spenti (`DemoRestrictions::CLOSED`). Le prenotazioni restano, con i tetti di `DemoLimits`; l'azzeramento delle 03:30 cancella anche le sessioni.
+
+Prova: `tests/Feature/AreaSoci/DemoMemberEntryTest.php`.
+
 ## Moduli pubblici (adesione, donazione, area soci)
 
 - **Limiti di frequenza**: ogni invio (`POST/PUT/DELETE`) delle rotte pubbliche ha un limite (`throttle:applications`, `applications-confirm`, `donations`, `member-*`) o conta i tentativi da sé (accesso dell'area soci: codice e link, per indirizzo e per email). La prova elenca le rotte e fallisce se una non ne ha.
-- **Nessun file**: i controller pubblici non leggono file e, nella demo, una richiesta con un file in arrivo su una rotta pubblica è rifiutata («il caricamento dei file è spento»).
+- **Nessun file**: i controller pubblici non leggono file e, nella demo, una richiesta con un file in arrivo, su qualunque rotta, è rifiutata da `DemoFileBarrier` («il caricamento dei file è spento»).
 - **Niente sopravvive all'azzeramento**: tutto ciò che i visitatori scrivono sta nel database (ricreato ogni notte), nei file dell'associazione (`SAAS_FILES_ROOT`, svuotato ogni notte), nei log e nella cache su disco (svuotati ogni notte). La donazione online e Stripe sono spenti. `tests/Feature/Core/DemoPublicModulesTest.php`.
 
 ## Il database della demo (procedura generica)
@@ -126,6 +166,7 @@ Nessun nome, valore o password in questo documento: i nomi scelti stanno solo ne
    - dare al proprietario `CREATE` sul database; `ALTER SCHEMA public OWNER TO <proprietario>`; `REVOKE ALL ON SCHEMA public FROM PUBLIC`;
    - poi, come gruppo (`SET ROLE <gruppo>`): `REVOKE CREATE, TEMPORARY ON DATABASE <db> FROM <gruppo>` e `REVOKE ALL ON DATABASE <db> FROM PUBLIC`; infine `GRANT CONNECT ON DATABASE <db>` ad applicazione e sola lettura (e al proprietario).
 5. **Migrazioni come proprietario** (`saas:migrate` usa `DB_OWNER_*`): così tabelle e schemi sono del proprietario, non del gruppo.
+   - **Dopo le migrazioni**, come proprietario: `GRANT USAGE ON SCHEMA public TO <applicazione>, <sola lettura>` (solo `USAGE`, mai `CREATE`). Le estensioni (`citext`, `pg_trgm`) stanno in `public`: senza `USAGE`, dopo il `REVOKE ALL ... FROM PUBLIC` del punto 4, applicazione e sola lettura non le risolvono («permission denied for schema public»). Lo stesso `USAGE` serve al ruolo usato dalle copie di sicurezza (backup).
 6. **Limite noto, accettato per la demo** (dati finti): applicazione e sola lettura possono fare `SET ROLE` al gruppo e quindi `ALTER DATABASE` o `GRANT` sul database; non toccano le tabelle del proprietario. Non è accettabile in produzione.
 
 ## Ambiente GitHub `demo`
@@ -180,9 +221,10 @@ Tutti i cookie dell'app sono **solo dell'indirizzo** (nessun `Domain`) e non son
 |---|---|---|
 | sessione operatore | `SESSION_COOKIE` = `__Host-as_demo` (produzione: `__Host-as_gestionale`) | `Secure`, percorso `/`, senza `Domain`: il browser rifiuta un cookie omonimo scritto da un altro indirizzo |
 | pagine pubbliche (area soci, `/dona`, `/adesione`) | `__Host-as_pubblico` | vale ovunque ci sia HTTPS (produzione, staging, demo); `as_pubblico` solo in locale |
-| «ricordami» | `remember_web_<hash>` | senza `Domain`, `Secure`, `HttpOnly`; il nome lo decide Laravel e non ha il prefisso; il valore è cifrato con `APP_KEY`: non si può falsificare, al massimo un cookie omonimo ne sostituirebbe uno con quello di un altro account valido |
-| `XSRF-TOKEN` | fisso | senza `Domain`; il token si confronta con quello della sessione sul server: un cookie omonimo scritto altrove non può far passare una richiesta, al massimo la fa rifiutare (419) |
-| socio nell'area soci | `as_socio` | percorso `/area`, senza `Domain`, `HttpOnly`; il valore è un codice casuale riconosciuto dal database |
+| «ricordami» | `__Host-remember_web` (su http, in locale: quello di Laravel, `remember_web_<hash>`) | `Secure`, percorso `/`, senza `Domain`, `HttpOnly`; guardia `HostSessionGuard` (docs/COOKIE_HOST.md) |
+| socio nell'area soci | `__Host-as_socio` (su http: `as_socio`, percorso `/area`) | `Secure`, percorso `/`, senza `Domain`, `HttpOnly`; il valore è un codice casuale riconosciuto dal database |
+
+Piano di passaggio dai vecchi nomi (lettura doppia, finestre, rollback): `docs/COOKIE_HOST.md`.
 
 I cookie dell'amministrazione (`/saas/admin`) e dello staff non esistono nella demo (404).
 
@@ -220,6 +262,7 @@ Sul server **niente si installa finché il titolare non lo chiede**. Quando sar�
 3. Due coppie di chiavi SSH; parte pubblica in `authorized_keys`; privata di Actions nell'ambiente GitHub `demo`.
 4. `.env` dal modello, compilato dal titolare; `php artisan saas:demo:check-env` senza problemi.
 5. Rilascio dal workflow «SaaS · rilascio» con ambiente `demo` (solo `main`).
+   - **Primo rilascio su database vuoto**: `remote.sh` lancia `saas:health --skip-migrations` *prima* delle migrazioni, quindi il primo rilascio si ferma con «relation ... does not exist». La release però è già estratta in `~/saas-demo/releases/<ultima>`. Procedura: (a) lasciar fallire il primo rilascio al controllo di salute; (b) dalla cartella di quella release, come proprietario, `php artisan saas:migrate --force`; (c) dare il `USAGE` su `public` (vedi «Il database della demo», punto 5); (d) rilanciare il rilascio: stavolta passa. Poi `saas:demo:check-env` e il primo `saas:demo:reset` (senza opzioni).
 6. Primo `php artisan saas:demo:reset`, a mano; poi lo fa lo scheduler alle 03:30. Cron: `schedule:run` ogni minuto.
 7. Prove: `/accesso` con gli accessi della pagina, `/area/accesso`, `/adesione/demosaas`, `https://demosaas.associazionesemplice.it/robots.txt` (deve dire `Disallow: /`).
 

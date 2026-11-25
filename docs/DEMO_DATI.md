@@ -1,6 +1,6 @@
 # Dati della demo del plugin
 
-Tutti i dati della demo (associazionesemplice.it/demo) sono **inventati**: nomi da elenchi comuni combinati a caso, email `@demo.invalid`, telefoni `06 556xxxx` di fantasia, nessun codice fiscale nei dati abbondanti. Nessuno di questi dati è di una persona reale.
+Tutti i dati della demo (demo.associazionesemplice.it) sono **inventati**: nomi da elenchi comuni combinati a caso, email `@demo.invalid`, telefoni `06 556xxxx` di fantasia, nessun codice fiscale nei dati abbondanti. Nessuno di questi dati è di una persona reale.
 
 ## Come si costruisce (reset notturno alle 4)
 

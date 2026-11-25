@@ -318,6 +318,9 @@ Solo numeri e stato; nessun nome di operatore o socio. Sostituisce le letture `a
 `POST https://associazionesemplice.it/api/saas/v1/usage` con `{"token": …}`, `typ: "usage"`, una volta al giorno (04:23)
 e a richiesta (`php artisan saas:portal:usage`). Corpo: `date` e `orgs[]` con `org_id`, `ref`, `members`, `operators`,
 `einvoices_year`. Solo numeri. Il portale risponde `200` se ha salvato; altrimenti il SaaS riprova al giro successivo.
+`saas:health` ha la voce «invio dei consumi al portale» (sempre un avviso, mai un errore): segnala se l'ultimo invio
+riuscito è più vecchio di due giorni, cioè dopo due notti di fila senza esito; tace se il collegamento al portale non è
+configurato o nella demo.
 
 ### 4.2 Avviso di catalogo cambiato
 

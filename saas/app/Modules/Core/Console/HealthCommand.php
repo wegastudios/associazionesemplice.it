@@ -12,6 +12,8 @@ use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Mail\PrimaryMailer;
+use App\Modules\Core\Platform\RoleObjectAudit;
+use App\Modules\Portale\Contracts\UsageHealth;
 use App\Modules\Portale\Contracts\WebRuntimeProbe;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
@@ -45,6 +47,12 @@ final class HealthCommand extends Command
     /** Voce dei saldi dei conti: l'unica che --ignore-balances rende un avviso. */
     private const BALANCES = 'saldi dei conti';
 
+    /** @var list<string> «Limiti noti» dei ruoli (informazione, non errore): si stampano come note dopo i controlli. */
+    private array $roleNotes = [];
+
+    /** @var array{problems: list<string>, critical: list<string>}|null */
+    private ?array $roleAudit = null;
+
     protected $signature = 'saas:health {--skip-migrations : Non controllare le migrazioni (prima di eseguirle)}
         {--mail-warnings-only : Problemi della posta in coda come avvisi (rilascio: non dipendono dalla versione)}
         {--ignore-balances : Saldi dei conti diversi dai movimenti come avviso: solo per il rilascio che corregge il difetto (RILASCIO.md)}';
@@ -53,6 +61,8 @@ final class HealthCommand extends Command
 
     public function handle(DatabaseManager $db, DatabaseNames $databases, KeyVault $vault, WebRuntimeProbe $probe, BalanceCheck $balances, BackupCompression $compression): int
     {
+        $this->roleAudit = null;
+        $this->roleNotes = [];
         $checks = [
             'database' => fn () => $db->connection('pgsql')->select('SELECT 1'),
             'servizio chiavi' => function () use ($vault): void {
@@ -69,6 +79,8 @@ final class HealthCommand extends Command
             'ruolo dell\'applicazione' => fn () => $this->appRole($db->connection('pgsql')),
             'tabelle delle associazioni' => fn () => $this->orgTables($db->connection('pgsql')),
             'permessi dell\'applicazione' => fn () => $this->appPrivileges($db->connection('pgsql')),
+            'oggetti e ruoli di gruppo' => fn () => $this->roleObjects($db, $databases, false),
+            'separazione dal ruolo proprietario' => fn () => $this->roleObjects($db, $databases, true),
             'connessione senza pooler' => fn () => $this->sessionSettings($db->connection('pgsql')),
             'memoria di Redis' => $this->redisMemory(...),
             'partizioni del registro' => fn () => $this->auditPartitions($db, $databases),
@@ -94,6 +106,7 @@ final class HealthCommand extends Command
             'ripiego della posta' => $this->mailFallback(...),
             'lavori non riusciti' => fn () => $this->jobsFailed($db),
             'incassi online in coda' => PaymentWebhookHealth::check(...),
+            'invio dei consumi al portale' => $this->usageSent(...),
             'controllo notturno dei saldi' => fn () => $this->balancesRun($balances),
             'copia dei dati' => function () use ($compression): void {
                 if ($compression->fellBackToGzip()) {
@@ -134,7 +147,7 @@ final class HealthCommand extends Command
         }
 
         // Controlli «morbidi»: finché SAAS_HEALTH_STRICT è spento (sviluppo, dati inventati) un problema è un avviso e non ferma il rilascio.
-        $soft = ['chiave principale in produzione', 'permessi dell\'applicazione', 'memoria di Redis', 'partizioni del registro'];
+        $soft = ['chiave principale in produzione', 'permessi dell\'applicazione', 'oggetti e ruoli di gruppo', 'memoria di Redis', 'partizioni del registro'];
         $strict = config('saas.health_strict') === true;
         $failed = 0;
         foreach ($checks as $name => $check) {
@@ -143,13 +156,17 @@ final class HealthCommand extends Command
                 $this->line("ok    {$name}");
             } catch (Throwable $e) {
                 if ((! $strict && in_array($name, $soft, true)) || in_array($name, $warnOnly, true)) {
-                    $this->warn("AVVISO {$name}: ".mb_substr($e->getMessage(), 0, 300));
+                    $this->warn("AVVISO {$name}: ".mb_substr($e->getMessage(), 0, 900));
 
                     continue;
                 }
                 $failed++;
-                $this->error("ERRORE {$name}: ".mb_substr($e->getMessage(), 0, 300));
+                $this->error("ERRORE {$name}: ".mb_substr($e->getMessage(), 0, 900));
             }
+        }
+
+        foreach ($this->collectedNotes() as $note) {
+            $this->line("nota  {$note}");
         }
 
         // File di lavoro rimasti in storage/app/tmp (non è un errore: li toglie il lavoro pianificato).
@@ -361,6 +378,22 @@ final class HealthCommand extends Command
     }
 
     /** Il controllo dei saldi non è girato da più di due giorni, o non è riuscito per qualche associazione: avviso. */
+    /**
+     * Le note dei ruoli raccolte durante i controlli (le scrivono le voci, chiamate come funzioni anonime).
+     *
+     * @return list<string>
+     */
+    private function collectedNotes(): array
+    {
+        return $this->roleNotes;
+    }
+
+    /** L'invio notturno dei consumi al portale non riesce da più di due giorni. */
+    private function usageSent(): void
+    {
+        UsageHealth::check();
+    }
+
     private function balancesRun(BalanceCheck $check): void
     {
         $r = $check->lastResult();
@@ -502,6 +535,67 @@ final class HealthCommand extends Command
             $names = array_map(static fn (mixed $row): string => is_object($row) && is_string($row->name ?? null) ? $row->name : '?', $bad);
             throw new RuntimeException('RLS non attiva o non forzata, senza policy o proprietario sbagliato: '.implode(', ', $names));
         }
+    }
+
+    /**
+     * Su ogni database: schemi attesi, oggetti di proprietà del solo ruolo proprietario (non dei ruoli di gruppo di cui
+     * applicazione e backup sono membri, come su cPanel), nessun permesso dei ruoli di gruppo oltre l'atteso, nessun CREATE
+     * sul database né sugli schemi per applicazione e backup. Il resto (SET ROLE verso il ruolo che possiede il database) è
+     * un limite noto: una nota, non un errore. Solo catalogo, letto con il ruolo dei backup.
+     */
+    private function roleObjects(DatabaseManager $db, DatabaseNames $databases, bool $critical): void
+    {
+        $audit = $this->roleAudit($db, $databases);
+        $found = $critical ? $audit['critical'] : $audit['problems'];
+        if ($found !== []) {
+            throw new RuntimeException(implode('; ', $found));
+        }
+    }
+
+    /**
+     * Interroga una volta sola il catalogo di ogni database. Le note («limite noto») restano solo se non c'è alcun problema.
+     *
+     * @return array{problems: list<string>, critical: list<string>}
+     */
+    private function roleAudit(DatabaseManager $db, DatabaseNames $databases): array
+    {
+        if ($this->roleAudit !== null) {
+            return $this->roleAudit;
+        }
+        $this->roleNotes = [];
+        $problems = [];
+        $critical = [];
+        foreach ($databases->names() as $name) {
+            $owner = $db->connection($databases->ownerConnection($name));
+            $role = static function (string $key) use ($owner): string {
+                $value = $owner->getConfig($key);
+                if (! is_string($value) || $value === '') {
+                    throw new RuntimeException("ruolo {$key} non configurato");
+                }
+
+                return $value;
+            };
+            $result = RoleObjectAudit::evaluate(RoleObjectAudit::inspect(
+                $db->connection($databases->backupConnection($name)),
+                $role('app_role'),
+                $role('backup_role'),
+                $role('username'),
+            ));
+            foreach ($result['problems'] as $problem) {
+                $problems[] = "{$name}: {$problem}";
+            }
+            foreach ($result['critical'] as $problem) {
+                $critical[] = "{$name}: {$problem}";
+            }
+            foreach ($result['notes'] as $note) {
+                $this->roleNotes[] = "{$name}: {$note}";
+            }
+        }
+        if ($problems !== [] || $critical !== []) {
+            $this->roleNotes = [];
+        }
+
+        return $this->roleAudit = ['problems' => $problems, 'critical' => $critical];
     }
 
     /** Nessuna creazione di oggetti negli schemi, nessun TRUNCATE/REFERENCES/TRIGGER, nessuna lettura delle migrazioni. */

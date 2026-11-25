@@ -2,14 +2,14 @@
 namespace Portale;
 
 /**
- * La demo pubblica del plugin (WordPress vero in `associazionesemplice.it/demo/`): indirizzi, accessi di prova e ruoli, per la pagina `/prova`.
+ * La demo pubblica del plugin (WordPress vero su `demo.associazionesemplice.it`): indirizzi, accessi di prova e ruoli, per la pagina `/prova`.
  * Le credenziali sono pubbliche di proposito; gli utenti (il socio no: ha solo email e password dell'accesso proprio) e i dati si ricreano ogni notte (vedi docs/PORTALE.md, «Demo pubblica»).
  * Qui non c'è e non ci sarà mai un utente amministratore.
  */
 final class Demo {
 
 	public static function url(): string {
-		return rtrim( (string) Config::get( 'demo_url', 'https://associazionesemplice.it/demo' ), '/' );
+		return rtrim( (string) ( Config::get( 'demo_url', '' ) ?: 'https://demo.associazionesemplice.it' ), '/' );
 	}
 
 	/**
@@ -42,6 +42,11 @@ final class Demo {
 				'note' => 'Non è un utente WordPress: entra dalla pagina «Accesso soci» con email e password e usa l\'area soci del sito, come farebbe un socio vero.',
 			),
 			array(
+				'user' => 'tesoriere@demo.invalid', 'label' => 'Email', 'password' => 'Tesoriere-Demo-2026', 'role' => 'Tesoriere', 'start' => '/area-tesoriere/',
+				'what' => array( 'Incassi e spese dall\'area soci', 'Nuovi soci e quote', 'Spese con la foto dello scontrino' ),
+				'note' => 'È un socio con la carica di tesoriere: entra dal login di WordPress, lavora dal sito e non dal pannello, e non vede le impostazioni.',
+			),
+			array(
 				'user' => 'amministratore@demo.invalid', 'label' => 'Email', 'password' => 'Amministratore-Demo-2026', 'role' => 'Amministratore del plugin', 'start' => '/wp-admin/admin.php?page=asem-backup',
 				'what' => array( 'Tutte le impostazioni di Associazione Semplice', 'Copia di sicurezza: scarichi i tuoi dati e li ricarichi il giorno dopo', 'Ruoli, limiti, tessera e registro delle azioni', 'Tutto quello che fa la segreteria' ),
 				'note' => 'Ha tutti i permessi del plugin ma non è un amministratore di WordPress: non installa plugin, non cambia utenti né impostazioni del sito. La chiave di licenza non si vede né si cambia.',
@@ -65,6 +70,9 @@ final class Demo {
 				array( 'Copia di sicurezza', '/wp-admin/admin.php?page=asem-backup', 'Scarichi una copia dei tuoi dati e la ricarichi quando vuoi (la demo si azzera ogni notte alle 4).' ),
 				array( 'Impostazioni', '/wp-admin/admin.php?page=asem-settings', 'Funzioni accese, pagine del sito, privacy.' ),
 				array( 'Registro delle azioni', '/wp-admin/admin.php?page=asem-audit', 'Chi ha fatto cosa, con spazio occupato e pulizia.' ),
+			),
+			'Come tesoriere' => array(
+				array( 'Area tesoriere', '/area-tesoriere/', 'Incassi, spese e nuovi soci dal sito.' ),
 			),
 			'Come segreteria' => array(
 				array( 'Bacheca', '/wp-admin/admin.php?page=asem', 'Il riepilogo con gli avvisi e le cose da fare.' ),
@@ -108,7 +116,7 @@ final class Demo {
 			array( 'Amministratore del plugin', 'Ha tutti i permessi di Associazione Semplice ma non gestisce il sito WordPress (plugin, temi, utenti). Nella demo è l\'unico che scarica e ricarica la copia dei dati.', true ),
 			array( 'Segreteria', 'Chi ha il ruolo «Segreteria»: lavora su soci, incassi, attività e registri, senza toccare le impostazioni.', true ),
 			array( 'Presidente e vicepresidente', 'Cariche del consiglio: se la tessera è in regola agiscono come la segreteria su tutto.', false ),
-			array( 'Tesoriere', 'Lavora dall\'area soci: incassa, registra spese con la foto dello scontrino, iscrive i soci e incassa i contributi degli eventi.', false ),
+			array( 'Tesoriere', 'Lavora dall\'area soci: incassa, registra spese con la foto dello scontrino, iscrive i soci e incassa i contributi degli eventi.', true ),
 			array( 'Consigliere', 'Carica del consiglio direttivo, registrata nel libro soci; i permessi restano quelli di socio.', false ),
 			array( 'Volontario (referente)', 'Socio e volontario che tiene corsi ed eventi: gestisce iscritti, avvisi e ingressi solo delle sue attività.', false ),
 			array( 'Staff dell\'ente e dell\'evento', 'Chi controlla gli ingressi: di tutti gli eventi (staff dell\'ente) o di uno solo (staff dell\'evento, con l\'incasso se abilitato).', false ),

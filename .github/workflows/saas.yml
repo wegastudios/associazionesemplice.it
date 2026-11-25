@@ -2,7 +2,7 @@ name: SaaS
 
 on:
   push:
-    branches: [main, "feature/**", "claude/**"]
+    branches: [main]
     paths: ["saas/**", ".github/workflows/saas.yml"]
   pull_request:
     paths: ["saas/**", ".github/workflows/saas.yml"]
@@ -13,8 +13,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: saas-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: saas-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  # Su main non si annulla: ogni testa di main deve avere la sua prova.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check:
@@ -61,6 +62,10 @@ jobs:
 
       - run: composer install --no-interaction --no-progress --prefer-dist
 
+      # Controllo di stile: non dipende da altro e fallisce subito.
+      - name: Pint
+        run: vendor/bin/pint --test
+
       # Come il pacchetto del server (deploy/build.sh, H21): autoloader «solo mappa». Una classe fuori dalla mappa
       # (cartella non dichiarata in composer.json, file generati) fa fallire i test qui e non in produzione.
       - name: Autoloader solo mappa
@@ -82,10 +87,11 @@ jobs:
           npm audit --audit-level=high || echo "::warning::npm audit completo: avvisi su strumenti di sviluppo (non bloccante, temporaneo)"
           npm run build
 
-      - name: Rotazione delle copie del .env (deploy/ops.sh)
+      - name: Prove degli script di rilascio (deploy/ops.sh, deploy/remote.sh)
         run: |
           bash tests/shell/ops-env-bak.sh
           bash tests/shell/ops-variabili.sh
+          bash tests/shell/remote-revoca.sh
 
       - name: Controllo delle dipendenze
         run: composer audit --no-interaction
@@ -124,9 +130,6 @@ jobs:
           php -r '$c = require "bootstrap/cache/config.php"; exit(($c["queue"]["connections"]["database-long"]["retry_after"] ?? 0) >= 2100 && ($c["queue"]["connections"]["database"]["retry_after"] ?? 999) <= 120 ? 0 : 1);'
           php artisan config:clear --no-interaction
           mv .env.ci .env
-
-      - name: Pint
-        run: vendor/bin/pint --test
 
       - name: PHPStan
         run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
