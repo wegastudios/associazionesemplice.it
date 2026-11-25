@@ -68,7 +68,7 @@ function rtGrants(): array {
 		'subscriptions' => 'SELECT, INSERT, UPDATE, DELETE', 'orders' => 'SELECT, INSERT, UPDATE, DELETE', 'saas_orgs' => 'SELECT, INSERT, UPDATE, DELETE',
 		'releases' => 'SELECT, INSERT, UPDATE, DELETE', 'mail_outbox' => 'SELECT, INSERT, UPDATE, DELETE',
 		'downloads' => 'SELECT, INSERT, DELETE', 'saas_outbox' => 'SELECT, INSERT, UPDATE', 'settings' => 'SELECT, INSERT, DELETE',
-		'email_templates' => 'SELECT, INSERT, DELETE', 'audit' => 'SELECT, INSERT', 'events' => 'INSERT, DELETE', 'saas_usage' => 'SELECT, INSERT, UPDATE, DELETE',
+		'email_templates' => 'SELECT, INSERT, DELETE', 'audit' => 'SELECT, INSERT', 'events' => 'SELECT, INSERT, DELETE', 'saas_usage' => 'SELECT, INSERT, UPDATE',
 	);
 }
 /** Crea la struttura: con il ruolo ristretto la fa il proprietario (il ruolo di tutti i giorni non può). */
@@ -2066,6 +2066,31 @@ check( 'consumi: numeri scritti come testo → 422', 422 === $uc6 && 'orgs[0].me
 Portale\Usage::accept( $cdb, $ubody( $usign( array( 'date' => '2026-11-20', 'orgs' => array( array( 'org_id' => 'org-1', 'ref' => $uref, 'members' => 1, 'operators' => 1, 'einvoices_year' => 0 ) ) ) ) ), 1000000 );
 check( 'consumi: un invio più vecchio non sostituisce quello salvato', 42 === (int) $cdb->one( 'SELECT members FROM saas_usage WHERE ref = ?', array( $uref ) )['members'] );
 Portale\Usage::accept( $cdb, $ubody( $usign( array( 'date' => '2026-11-25', 'orgs' => array( array( 'org_id' => 'org-1', 'ref' => $uref, 'members' => 50, 'operators' => 4, 'einvoices_year' => 2 ) ) ) ) ), 1000000 );
+// Eventi: «già elaborato» solo per un duplicato vero; ogni altro errore si propaga (tutti i database, anche senza ruolo ristretto).
+$evDb = testDb();
+migrated( $evDb );
+check( 'eventi: primo ritiro vero, ripetuto falso, dopo il rilascio di nuovo vero', $evDb->claimEvent( 'stripe', 'evt_1' ) && ! $evDb->claimEvent( 'stripe', 'evt_1' ) && null === $evDb->releaseEvent( 'stripe', 'evt_1' ) && $evDb->claimEvent( 'stripe', 'evt_1' ) );
+$evBad = testDb();
+migrated( $evBad );
+ownerOf( $evBad )->run( 'DROP TABLE events' ); // la tabella events non c'è più
+$evThrown = false;
+try {
+	$evBad->claimEvent( 'stripe', 'evt_x' );
+} catch ( PDOException $e ) {
+	$evThrown = ! Db::isDuplicate( $e );
+}
+check( 'eventi: un errore che non è un duplicato (tabella mancante) non vale «già elaborato»: si propaga', $evThrown );
+$whEv = new Portale\Webhooks( $evBad, new Billing( $evBad, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
+$onceEv = new ReflectionMethod( Portale\Webhooks::class, 'once' );
+$onceEv->setAccessible( true );
+$evRan = false;
+check( 'webhook: se l\'evento non si può registrare risponde 500 e non fa il lavoro', 500 === $onceEv->invoke( $whEv, 'stripe', 'evt_y', function () use ( &$evRan ) { $evRan = true; } ) && ! $evRan );
+$whOk = new Portale\Webhooks( $evDb, new Billing( $evDb, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
+check( 'webhook: duplicato → 200 senza rifare il lavoro; lavoro fallito → 500 e l\'evento torna ritirabile', 200 === $onceEv->invoke( $whOk, 'stripe', 'evt_1', function () { throw new RuntimeException( 'non deve partire' ); } )
+	&& 500 === $onceEv->invoke( $whOk, 'stripe', 'evt_z', function () { throw new RuntimeException( 'x' ); } ) && $evDb->claimEvent( 'stripe', 'evt_z' ) );
+$ratePdo = testDb();
+migrated( $ratePdo );
+check( 'limiti: il primo posto si prende, oltre il massimo no', Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) && ! Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) );
 check( 'consumi: un invio più recente aggiorna', 50 === (int) $cdb->one( 'SELECT members FROM saas_usage WHERE ref = ?', array( $uref ) )['members'] );
 
 $cprev = Http::$transport;
@@ -2970,9 +2995,39 @@ if ( rtMode() ) {
 	};
 	check( 'ruolo ristretto: niente DELETE su audit e saas_outbox', $denied( $rt, 'DELETE FROM audit' ) && $denied( $rt, 'DELETE FROM saas_outbox' ) );
 	check( 'ruolo ristretto: niente UPDATE su settings, email_templates, downloads, audit, events', $denied( $rt, "UPDATE settings SET val = 'x'" ) && $denied( $rt, "UPDATE email_templates SET body = 'x'" ) && $denied( $rt, "UPDATE downloads SET version = 'x'" ) && $denied( $rt, "UPDATE audit SET actor = 'x'" ) && $denied( $rt, "UPDATE events SET provider = 'x'" ) );
-	check( 'ruolo ristretto: events si scrive ma non si legge', $denied( $rt, 'SELECT * FROM events' ) );
 	check( 'ruolo ristretto: nessuna tabella del proprietario si cambia (ALTER, DROP)', $denied( $rt, 'ALTER TABLE orders ADD COLUMN x INTEGER NULL' ) && $denied( $rt, 'DROP TABLE settings' ) );
 	check( 'ruolo ristretto: niente tabelle nuove nello schema', $denied( $rt, 'CREATE TABLE intrusa (id INTEGER)' ) );
+	// Eventi dei pagamenti senza i permessi giusti: l'errore non si scambia per «già elaborato» e il rilascio che fallisce non copre l'errore vero.
+	$rtEv  = testDb();
+	$ownEv = ownerOf( $rtEv );
+	$rtUser = (string) getenv( 'PORTALE_TEST_PG_RT_USER' );
+	$claimThrows = static function ( Db $d ): bool {
+		try {
+			$d->claimEvent( 'stripe', 'evt_rt' );
+		} catch ( PDOException $e ) {
+			return ! Db::isDuplicate( $e ) && '42501' === (string) $e->getCode();
+		}
+		return false;
+	};
+	$whRt = new Portale\Webhooks( $rtEv, new Billing( $rtEv, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
+	$onceRt = new ReflectionMethod( Portale\Webhooks::class, 'once' );
+	$onceRt->setAccessible( true );
+	$ownEv->run( 'REVOKE INSERT ON events FROM ' . $rtUser );
+	check( 'ruolo senza INSERT su events: claimEvent propaga l\'errore (non «già elaborato»)', $claimThrows( $rtEv ) );
+	$ranRt = false;
+	check( 'ruolo senza INSERT su events: il webhook risponde 500 e non fa il lavoro', 500 === $onceRt->invoke( $whRt, 'stripe', 'evt_rt', function () use ( &$ranRt ) { $ranRt = true; } ) && ! $ranRt );
+	$ownEv->run( 'GRANT INSERT ON events TO ' . $rtUser );
+	check( 'ruolo con i permessi giusti: primo ritiro vero, ripetuto falso, dopo il rilascio di nuovo vero', $rtEv->claimEvent( 'stripe', 'evt_rt2' ) && ! $rtEv->claimEvent( 'stripe', 'evt_rt2' ) && null === $rtEv->releaseEvent( 'stripe', 'evt_rt2' ) && $rtEv->claimEvent( 'stripe', 'evt_rt2' ) );
+	$ownEv->run( 'REVOKE SELECT ON events FROM ' . $rtUser );
+	$relFails = false;
+	try {
+		$rtEv->releaseEvent( 'stripe', 'evt_rt2' );
+	} catch ( PDOException $e ) {
+		$relFails = '42501' === (string) $e->getCode();
+	}
+	check( 'ruolo senza SELECT su events: releaseEvent fallisce (la DELETE con WHERE lo richiede)', $relFails );
+	check( 'ruolo senza SELECT su events: se il lavoro fallisce il webhook risponde 500 comunque (l\'errore del rilascio non lo maschera)', 500 === $onceRt->invoke( $whRt, 'stripe', 'evt_rt3', function () { throw new RuntimeException( 'lavoro fallito' ); } ) );
+	$ownEv->run( 'GRANT SELECT ON events TO ' . $rtUser );
 	check( 'migrazione: il proprietario a struttura completa non ha nulla da segnalare', array() === $own->migrateReport() );
 	$left = $rt->retry( array(
 		array( 'sql' => 'ALTER TABLE orders ADD COLUMN prova_rt INTEGER NULL', 'error' => '', 'owner' => true ),

@@ -162,6 +162,9 @@ final class SaasAccount {
 		try {
 			$db->run( 'INSERT INTO seen_jti (jti, exp) VALUES (?,?)', array( 'sso:' . substr( $c['jti'], 0, 58 ), (int) $c['exp'] ) );
 		} catch ( \PDOException $e ) {
+			if ( ! Db::isDuplicate( $e ) ) {
+				throw $e;
+			}
 			return null;
 		}
 		$row = $db->one( 'SELECT c.* FROM saas_orgs g JOIN customers c ON c.id = g.customer_id WHERE g.ref = ? AND c.email = ?', array( $c['ref'], strtolower( trim( $c['sub'] ) ) ) );

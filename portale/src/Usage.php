@@ -31,6 +31,9 @@ final class Usage {
 		try {
 			$db->run( 'INSERT INTO seen_jti (jti, exp) VALUES (?,?)', array( substr( $c['jti'], 0, 64 ), (int) $c['exp'] ) );
 		} catch ( \PDOException $e ) {
+			if ( ! Db::isDuplicate( $e ) ) {
+				throw $e;
+			}
 			return array( 401, array( 'error' => 'token_used' ) );
 		}
 		$saved   = 0;

@@ -181,6 +181,9 @@ final class Catalog {
 		try {
 			$db->run( 'INSERT INTO seen_jti (jti, exp) VALUES (?,?)', array( substr( $c['jti'], 0, 64 ), (int) $c['exp'] ) );
 		} catch ( \PDOException $e ) {
+			if ( ! Db::isDuplicate( $e ) ) {
+				throw $e;
+			}
 			return false; // già usato
 		}
 		return true;
