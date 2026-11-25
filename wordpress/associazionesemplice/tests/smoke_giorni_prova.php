@@ -245,6 +245,7 @@ wp_cache_flush();
 asem_ok( '78' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::table_exists( Db::t( 'trials' ) ) && $pr_tn === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE trial_from IS NULL' ) && 0 === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(trial_days),0) FROM ' . Db::t( 'activities' ) ) && $pr_sumtx === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) ), 'prova: aggiornamento 77 → 78 con dati e un anno chiuso, iscrizioni e prima nota intatte, campi nuovi vuoti' );
 
 // Una copia di prima delle prove (senza la tabella): dopo il ripristino non restano prove che rimandano a persone o corsi di prima
+$pr_acts->update( $pr_c6, array( 'trial_days' => 1 ) ); // l'aggiornamento simulato ha ricreato la colonna, a zero
 Trials::add( $pr_c6, $pr_a, $pr_today );
 $pr_zip = \AssociazioneSemplice\Backup::export( true );
 $pr_z   = new ZipArchive();
