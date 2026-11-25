@@ -42,7 +42,7 @@ wp_cache_flush();
 $gb_gino  = $gb_member( 'Gino', 'Socio', '7002' );
 $gb_rina  = $gb_member( 'Rina', 'Socia', '7003' );
 $gb_book  = function ( array $post ): string {
-	return Actions::do_book_group( $post );
+	return Actions::book_group( $post );
 };
 $gb_fail  = function ( array $post ) use ( $gb_book ): string {
 	return (string) asem_throws( function () use ( $gb_book, $post ) { $gb_book( $post ); } );
@@ -202,6 +202,72 @@ asem_ok( false !== strpos( $gb_exp_g, 'tessera non è valida' ) && 0 === $gb_cou
 asem_ok( false !== strpos( $gb_fail( array( 'session_id' => $gb_s7, 'new_guest_first' => array( 'Senza' ), 'new_guest_last' => array( 'Numero' ) ) ), 'cellulare' ), 'prenota gruppo: ospite nuovo senza cellulare rifiutato' );
 asem_ok( false !== strpos( $gb_fail( array( 'session_id' => $gb_s7, 'new_guest_first' => array( 'Uno', 'Due' ), 'new_guest_last' => array( 'Alfa', 'Beta' ), 'new_guest_phone' => array( '333 7770002', '3337770002' ) ) ), 'due volte' ), 'prenota gruppo: lo stesso numero due volte nello stesso invio rifiutato' );
 Counters::set( 'asem_mt_ofm_' . $gb_booker, array( 0, time() ), 1 );
+// ---------- Riepilogo prima della conferma, opzione del profilo, rimozione e conferma dell'interessato ----------
+Settings::update( array( 'limits' => array( 'member_book_per_10min' => 500, 'member_cancel_per_10min' => 100 ) ) );
+list( $gb_a8, $gb_s8 ) = $gb_event( 'Gruppo riepilogo', 10 );
+$gb_req = array( 'session_id' => $gb_s8, 'me' => 1, 'other_last' => array( 'Socio' ), 'other_card' => array( '7002' ) );
+$gb_fake = array( 'session_id' => $gb_s8, 'me' => 1, 'other_last' => array( 'Nessuno' ), 'other_card' => array( '9999' ) );
+$gb_p1 = Actions::do_book_group( $gb_req );
+$gb_d1 = Actions::group_draft( $gb_booker );
+asem_ok( false !== strpos( $gb_p1, 'riepilogo' ) && 0 === $gb_count( $gb_s8 ) && 1000 === $gb_d1['total'], 'prenota gruppo: il primo invio mostra il totale e non prenota' );
+asem_ok( $gb_p1 === Actions::do_book_group( $gb_fake ) && 1000 === Actions::group_draft( $gb_booker )['total'], 'prenota gruppo: il riepilogo è identico con una tessera inesistente (nessuno viene cercato)' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $gb_s8 ) { Actions::do_book_group( array( 'session_id' => $gb_s8, 'group_token' => 'sbagliato' ) ); } ), 'scaduto' ), 'prenota gruppo: senza il riepilogo giusto non si conferma' );
+Actions::do_book_group( $gb_req );
+$gb_view = \AssociazioneSemplice\Frontend\Views::event_booking( Plugin::activities()->get( $gb_a8 ) );
+asem_ok( false !== strpos( $gb_view, 'Conferma e prenota' ) && false !== strpos( $gb_view, 'Totale a tuo carico' ) && false === strpos( $gb_view, 'Gino' ), 'prenota gruppo: nella pagina c\'è il riepilogo col totale e mai il nome dell\'altro socio' );
+$wpdb->update( Db::t( 'activities' ), array( 'fee_cents' => 700 ), array( 'id' => $gb_a8 ) );
+wp_cache_flush();
+Actions::do_book_group( $gb_req );
+$gb_d2 = Actions::group_draft( $gb_booker );
+$gb_d2['total'] = 1000; // il riepilogo visto prima del cambio di prezzo
+set_transient( 'asem_group_' . $gb_booker, $gb_d2, 600 );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $gb_d2 ) { Actions::do_book_group( array( 'group_token' => $gb_d2['token'] ) ); } ), 'cambiato' ) && 0 === $gb_count( $gb_s8 ), 'prenota gruppo: se il contributo cambia dopo il riepilogo non si prenota' );
+Actions::do_book_group( $gb_req );
+Actions::do_book_group( array( 'group_token' => Actions::group_draft(  )['token'] ) );
+asem_ok( 2 === $gb_count( $gb_s8 ) && null === Actions::group_draft( $gb_booker ), 'prenota gruppo: la conferma prenota e il riepilogo non resta' );
+
+// Gino si toglie: il posto si libera, nessun altro lo può prenotare per quella data, anche se l'evento non è annullabile
+$wpdb->update( Db::t( 'activities' ), array( 'cancellable' => 0 ), array( 'id' => $gb_a8 ) );
+wp_cache_flush();
+$gb_b8 = $gb_row( $gb_s8, $gb_gino );
+asem_ok( \AssociazioneSemplice\ActivityService::booked_by_other_member( $gb_b8 ) && 1 === count( $gb_acts->booked_for_others( $gb_booker ) === array() ? array() : array_filter( $gb_acts->booked_for_others( $gb_booker ), function ( $r ) use ( $gb_s8 ) { return (int) $r['session_id'] === $gb_s8; } ) ), 'prenota gruppo: chi ha prenotato vede la prenotazione fatta per l\'altro socio' );
+asem_ok( false === $gb_acts->cancellation_for( $gb_s8, $gb_gino )['can_transfer'], 'prenota gruppo: il posto prenotato da altri non si cede prima della conferma' );
+$gb_acts->decline_booking( $gb_s8, $gb_gino );
+$gb_b8 = $gb_row( $gb_s8, $gb_gino );
+asem_ok( 'cancelled' === $gb_b8['status'] && ! empty( $gb_b8['declined_at'] ) && 1 === $gb_count( $gb_s8 ), 'prenota gruppo: l\'interessato si toglie anche da un evento non annullabile' );
+asem_ok( $gen === $gb_fail( array( 'session_id' => $gb_s8, 'other_last' => array( 'Socio' ), 'other_card' => array( '7002' ) ) ), 'prenota gruppo: chi si è tolto non si prenota di nuovo per quella data (stessa frase)' );
+Counters::set( 'asem_mt_ofm_' . $gb_booker, array( 0, time() ), 1 );
+$gb_acts->book( $gb_s8, $gb_gino );
+$gb_b8 = $gb_row( $gb_s8, $gb_gino );
+asem_ok( null === $gb_b8['declined_at'] && null === $gb_b8['booked_by'], 'prenota gruppo: chi si era tolto può prenotarsi da sé' );
+
+// Gino conferma: la prenotazione è sua, chi l'ha fatta non la annulla più e resta debitore
+list( , $gb_s9 ) = $gb_event( 'Gruppo conferma', 10 );
+$gb_book( array( 'session_id' => $gb_s9, 'other_last' => array( 'Socio' ), 'other_card' => array( '7002' ) ) );
+$gb_acts->confirm_booking( $gb_s9, $gb_gino );
+$gb_b9 = $gb_row( $gb_s9, $gb_gino );
+asem_ok( ! empty( $gb_b9['confirmed_at'] ) && (int) $gb_b9['booked_by'] === $gb_booker, 'prenota gruppo: dopo la conferma il contributo resta di chi ha prenotato' );
+asem_ok( '' !== (string) asem_throws( function () use ( $gb_s9, $gb_gino ) { Actions::do_cancel_booking( array( 'session_id' => $gb_s9, 'person_id' => $gb_gino ) ); } ) && 1 === $gb_count( $gb_s9 ), 'prenota gruppo: dopo la conferma chi ha prenotato non annulla più' );
+asem_ok( '' !== (string) asem_throws( function () use ( $gb_acts, $gb_s9, $gb_gino ) { $gb_acts->decline_booking( $gb_s9, $gb_gino ); } ), 'prenota gruppo: dopo la conferma valgono le regole normali di annullamento' );
+list( , $gb_s10 ) = $gb_event( 'Gruppo annulla', 10, 0 );
+$gb_book( array( 'session_id' => $gb_s10, 'other_last' => array( 'Socio' ), 'other_card' => array( '7002' ) ) );
+Actions::do_cancel_booking( array( 'session_id' => $gb_s10, 'person_id' => $gb_gino ) );
+asem_ok( 0 === $gb_count( $gb_s10 ) && null === $gb_row( $gb_s10, $gb_gino )['declined_at'], 'prenota gruppo: prima della conferma chi ha prenotato può annullare' );
+asem_ok( '' !== (string) asem_throws( function () use ( $gb_s4, $gb_rina ) { Actions::do_cancel_booking( array( 'session_id' => $gb_s4, 'person_id' => $gb_rina ) ); } ) && 1 === $gb_count( $gb_s4 ), 'prenota gruppo: la prenotazione di un altro socio non fatta da me non si annulla' );
+
+// Opzione del profilo e flussi: cancellazione, anonimizzazione, esportazione
+Actions::do_profile( array( 'phone' => '333 1110000', 'tax_code' => '', 'address' => 'Via Prova 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'RM', 'booking_by_others_shown' => 1 ) );
+asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT no_booking_by_others FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $gb_booker ) ), 'prenota gruppo: il socio spegne le prenotazioni degli altri dal profilo' );
+Actions::do_profile( array( 'phone' => '333 1110000', 'tax_code' => '', 'address' => 'Via Prova 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'RM' ) );
+asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT no_booking_by_others FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $gb_booker ) ), 'prenota gruppo: un modulo senza la spunta non cambia la scelta' );
+Actions::do_profile( array( 'phone' => '333 1110000', 'tax_code' => '', 'address' => 'Via Prova 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'RM', 'booking_by_others_shown' => 1, 'booking_by_others' => 1 ) );
+asem_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT no_booking_by_others FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $gb_booker ) ), 'prenota gruppo: il socio riaccende le prenotazioni degli altri' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $gb_peo, $gb_booker ) { $gb_peo->delete( $gb_booker ); } ), 'date future' ), 'prenota gruppo: chi ha prenotato per altri a date future non si cancella' );
+$gb_exp = \AssociazioneSemplice\Privacy::export( $gb_gino );
+asem_ok( true === $gb_exp['altri_soci_possono_prenotare_per_me'] && false !== strpos( (string) wp_json_encode( $gb_exp['prenotazioni'] ), 'prenotata_da_un_altro_socio' ), 'prenota gruppo: i dati scaricati dicono quali prenotazioni le ha fatte un altro socio' );
+$gb_exp2 = (string) wp_json_encode( \AssociazioneSemplice\Privacy::export( $gb_booker )['prenotazioni_fatte_per_altri'] );
+asem_ok( false !== strpos( $gb_exp2, 'Gruppo conferma' ) && false === strpos( $gb_exp2, 'Gino' ), 'prenota gruppo: i dati scaricati da chi prenota non portano i nomi degli altri' );
+
 asem_ok( false === strpos( implode( ' ', array_map( 'wp_json_encode', array_column( \AssociazioneSemplice\Audit::recent( 50 ), 'details' ) ) ), '"Nessuno"' ), 'prenota gruppo: il registro dei tentativi non porta cognomi né tessere' );
 
 wp_set_current_user( 1 );

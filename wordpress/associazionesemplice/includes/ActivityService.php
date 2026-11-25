@@ -609,7 +609,7 @@ class ActivityService {
 				$price = $this->price_data( $a, $person, $opt );
 				$fee   = $price['fee_due_cents'];
 				if ( $existing ) {
-					$this->db()->update( $tbl, array_merge( $price, array( 'status' => 'booked', 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null, 'booked_by' => null, 'declined_at' => null ) ), array( 'id' => (int) $existing['id'] ) );
+					$this->db()->update( $tbl, array_merge( $price, array( 'status' => 'booked', 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null, 'booked_by' => null, 'declined_at' => null, 'confirmed_at' => null ) ), array( 'id' => (int) $existing['id'] ) );
 					return array( (int) $existing['id'], $fee );
 				}
 				if ( ! $this->db()->insert( $tbl, array_merge( $price, array( 'session_id' => $session_id, 'person_id' => $person_id, 'status' => 'booked', 'created_at' => Db::now() ) ) ) ) {
@@ -703,9 +703,7 @@ class ActivityService {
 		if ( ( $host > 0 || Guardians::has_guardian( $person_id ) ) && $same( $old ) && $same( $new_debtor ) ) {
 			return false;
 		}
-		return (int) $this->db()->get_var(
-			$this->db()->prepare( 'SELECT COALESCE(SUM(amount_cents), 0) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id = %d AND person_id = %d", $session_id, $person_id )
-		) > 0;
+		return $this->paid_cents( $session_id, $person_id ) > 0;
 	}
 
 	/**
@@ -782,7 +780,7 @@ class ActivityService {
 								if ( ! $person ) {
 									throw new BookingFailure( 'Persona non trovata.', BookingFailure::GONE, (int) $pid );
 								}
-								$row = array_merge( $this->price_data( $a, $person, array( 'price_list' => (string) ( $lists[ $pid ] ?? '' ) ) ), array( 'booked_by' => (int) $pid === $booker_id ? null : $booker_id, 'declined_at' => null ) );
+								$row = array_merge( $this->price_data( $a, $person, array( 'price_list' => (string) ( $lists[ $pid ] ?? '' ) ) ), array( 'booked_by' => (int) $pid === $booker_id ? null : $booker_id, 'declined_at' => null, 'confirmed_at' => null ) );
 								if ( ! empty( $old[ $pid ] ) ) {
 									$ok          = false !== $db->update( $tbl, array_merge( $row, array( 'status' => 'booked', 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ) ), array( 'id' => (int) $old[ $pid ]['id'] ) );
 									$ids[ $pid ] = (int) $old[ $pid ]['id'];
@@ -792,6 +790,12 @@ class ActivityService {
 								}
 								if ( ! $ok ) {
 									throw new BookingFailure( 'Prenotazione non riuscita: riprova.', BookingFailure::SYSTEM, (int) $pid );
+								}
+							}
+							if ( isset( $opt['expected'] ) ) { // il totale che chi prenota ha visto: se non torna non si prenota nessuno
+								$sum = (int) $db->get_var( "SELECT COALESCE(SUM(fee_due_cents), 0) FROM $tbl WHERE id IN (" . implode( ',', array_map( 'intval', $ids ) ) . ')' ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- id interi
+								if ( $sum !== (int) $opt['expected'] ) {
+									throw new BookingFailure( 'Il contributo è cambiato nel frattempo: controlla di nuovo il riepilogo.', BookingFailure::SYSTEM );
 								}
 							}
 							return $ids;
@@ -815,25 +819,9 @@ class ActivityService {
 	}
 
 	// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
-	/**
-	 * Contributo totale (in centesimi) che chi prenota si assume prenotando queste persone: lo stesso calcolo della prenotazione, da mostrare PRIMA di confermare.
-	 *
-	 * @param array<int,string> $lists person_id => chiave del listino (vuota se l'attività non ne ha)
-	 */
-	public function preview_total( int $session_id, array $lists ): int {
-		$s = $this->session( $session_id );
-		$a = $s ? $this->get( (int) $s['activity_id'] ) : null;
-		if ( ! $a ) {
-			throw new \InvalidArgumentException( 'Questa data non è più disponibile.' );
-		}
-		$total = 0;
-		foreach ( $lists as $pid => $key ) {
-			$p = Plugin::people()->get( (int) $pid );
-			if ( $p ) {
-				$total += (int) $this->price_data( $a, $p, array( 'price_list' => (string) $key ) )['fee_due_cents'];
-			}
-		}
-		return $total;
+	/** Contributo (in centesimi) di una persona di questo tipo con questo listino: lo stesso calcolo della prenotazione, da mostrare PRIMA di confermare. */
+	public function preview_cents( array $activity, string $type, string $list_key = '' ): int {
+		return (int) $this->price_data( $activity, array( 'id' => 0, 'type' => $type ), array( 'price_list' => $list_key ) )['fee_due_cents'];
 	}
 
 	/** Ingressi già usati di un pacchetto (la prenotazione che l'ha pagato conta come uno). */
@@ -1029,6 +1017,101 @@ class ActivityService {
 				}
 			)
 		);
+	}
+
+	/**
+	 * Prenotazione che un altro socio ha fatto per questo socio e che lui non ha ancora confermato: può togliersi sempre fino all'inizio, oppure confermarla.
+	 * Gli ospiti e i minori di chi prenota non contano (li gestisce chi ne risponde).
+	 */
+	public static function booked_by_other_member( array $b ): bool {
+		if ( empty( $b['booked_by'] ) || (int) $b['booked_by'] === (int) $b['person_id'] || ! empty( $b['confirmed_at'] ) ) {
+			return false;
+		}
+		$p = Plugin::people()->get( (int) $b['person_id'] );
+		return $p && MemberType::is_member( (string) $p['type'] ) && ! Guardians::is_guardian_of( (int) $b['booked_by'], (int) $b['person_id'] );
+	}
+
+	/** Prima dell'inizio e senza ingresso registrato? */
+	private function before_start( array $s ): bool {
+		return empty( $s['cancelled_at'] ) && CancelPolicy::can_transfer( $s['session_date'], $s['start_time'] ?: null, current_datetime() );
+	}
+
+	/**
+	 * Il socio prenotato da un altro si toglie: sempre possibile fino all'inizio, anche se la regola di annullamento lo negherebbe. Il posto si libera e per questa data
+	 * nessun altro lo può prenotare; il versamento, se c'è, resta da restituire a chi ha prenotato (lo fa la segreteria).
+	 *
+	 * @return array la prenotazione com'era, con 'paid' (centesimi già versati)
+	 * @throws \InvalidArgumentException
+	 */
+	public function decline_booking( int $session_id, int $person_id ): array {
+		$s = $this->session( $session_id );
+		$b = $this->booking( $session_id, $person_id );
+		if ( ! $s || ! $b || 'booked' !== $b['status'] || ! self::booked_by_other_member( $b ) ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		if ( ! $this->before_start( $s ) || ! empty( $b['checked_in_at'] ) ) {
+			throw new \InvalidArgumentException( 'L\'evento è già iniziato.' );
+		}
+		$b['paid'] = $this->paid_cents( $session_id, $person_id );
+		$n         = $this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'bookings' ) . " SET declined_at = %s WHERE id = %d AND status = 'booked' AND confirmed_at IS NULL", Db::now(), (int) $b['id'] ) ); // solo se nel frattempo non è stata confermata o annullata
+		if ( 1 !== (int) $n ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		$this->cancel_booking( $session_id, $person_id );
+		Audit::log( 'booking.declined', 'activity', (int) $s['activity_id'], array( 'session' => $session_id, 'person_id' => $person_id ) );
+		return $b;
+	}
+
+	/** Il socio prenotato da un altro conferma: da qui la prenotazione è sua, con le regole normali, e chi l'ha fatta non la annulla più. Il contributo resta di chi ha prenotato. */
+	public function confirm_booking( int $session_id, int $person_id ): void {
+		$s = $this->session( $session_id );
+		$b = $this->booking( $session_id, $person_id );
+		if ( ! $s || ! $b || 'booked' !== $b['status'] || ! self::booked_by_other_member( $b ) ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		if ( ! $this->before_start( $s ) ) {
+			throw new \InvalidArgumentException( 'L\'evento è già iniziato.' );
+		}
+		$n = $this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'bookings' ) . " SET confirmed_at = %s WHERE id = %d AND status = 'booked' AND confirmed_at IS NULL", Db::now(), (int) $b['id'] ) );
+		if ( 1 !== (int) $n ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		Audit::log( 'booking.confirmed', 'activity', (int) $s['activity_id'], array( 'session' => $session_id, 'person_id' => $person_id ) );
+	}
+
+	/** Ha fatto prenotazioni ancora attive per altre persone a date future? (finché ci sono non si cancella né si rende anonima: il contributo è suo) */
+	public function has_future_for_others( int $person_id ): bool {
+		return (bool) $this->db()->get_var(
+			$this->db()->prepare(
+				'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . " s ON s.id = b.session_id WHERE b.booked_by = %d AND b.person_id <> %d AND b.status = 'booked' AND s.session_date >= %s AND s.cancelled_at IS NULL",
+				$person_id,
+				$person_id,
+				Db::today()
+			)
+		);
+	}
+
+	/** Versato (senza sconti) per la prenotazione di una persona a una data. */
+	public function paid_cents( int $session_id, int $person_id ): int {
+		return (int) $this->db()->get_var(
+			$this->db()->prepare( 'SELECT COALESCE(SUM(amount_cents), 0) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id = %d AND person_id = %d", $session_id, $person_id )
+		);
+	}
+
+	/** Prenotazioni attive e future che questa persona ha fatto per altri soci e che loro non hanno ancora confermato. @return array[] con activity_name, session_date, start_time, card_number */
+	public function booked_for_others( int $person_id ): array {
+		$rows = $this->db()->get_results(
+			$this->db()->prepare(
+				'SELECT b.*, s.session_date, s.end_date, s.start_time, s.activity_id, a.name AS activity_name, p.card_number FROM ' . Db::t( 'bookings' ) . ' b '
+				. 'JOIN ' . Db::t( 'sessions' ) . ' s ON s.id = b.session_id AND s.cancelled_at IS NULL JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL '
+				. 'JOIN ' . Db::t( 'people' ) . " p ON p.id = b.person_id WHERE b.booked_by = %d AND b.person_id <> %d AND b.status = 'booked' AND b.confirmed_at IS NULL AND COALESCE(s.end_date, s.session_date) >= %s ORDER BY s.session_date, s.id, b.id",
+				$person_id,
+				$person_id,
+				Db::today()
+			),
+			ARRAY_A
+		) ?: array();
+		return array_values( array_filter( $rows, array( __CLASS__, 'booked_by_other_member' ) ) );
 	}
 
 	/** La persona si è tolta da una prenotazione fatta da altri per questa data? Da allora nessun altro la può più prenotare per quella data. */
@@ -1367,7 +1450,7 @@ class ActivityService {
 			$now
 		);
 		$eval['message']      = CancelPolicy::message( $eval );
-		$eval['can_transfer'] = CancelPolicy::can_transfer( $s['session_date'], $s['start_time'] ?: null, $now );
+		$eval['can_transfer'] = CancelPolicy::can_transfer( $s['session_date'], $s['start_time'] ?: null, $now ) && ! self::booked_by_other_member( $b ); // un posto prenotato da altri si conferma prima di cederlo
 		return $eval;
 	}
 
@@ -1411,7 +1494,7 @@ class ActivityService {
 			function () use ( $tbl, $session_id, $from, $from_id, $to_id, $fee, $note ) {
 				$this->db()->update( $tbl, array( 'status' => 'transferred', 'transferred_to' => $to_id, 'cancelled_at' => Db::now() ), array( 'id' => (int) $from['id'] ) );
 				$existing = $this->booking( $session_id, $to_id );
-				$data     = array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => $from_id, 'booked_by' => null, 'declined_at' => null ); // chi riceve il posto ne risponde lui: il debito non resta a chi aveva prenotato per altri
+				$data     = array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => $from_id, 'booked_by' => null, 'declined_at' => null, 'confirmed_at' => null ); // chi riceve il posto ne risponde lui: il debito non resta a chi aveva prenotato per altri
 				if ( $existing ) {
 					$this->db()->update( $tbl, $data, array( 'id' => (int) $existing['id'] ) );
 				} else {

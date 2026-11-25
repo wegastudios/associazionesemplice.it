@@ -341,7 +341,18 @@ final class Views {
 			}
 			$html .= '</ul>';
 		}
-		if ( ! $stat && ! $upcoming && ! $past ) {
+		$mine = Plugin::activities()->booked_for_others( (int) $p['id'] );
+		if ( $mine ) { // prenotazioni fatte per altri soci: solo il numero di tessera, mai il nome
+			$html .= '<h4>Prenotazioni fatte per altri soci</h4><ul class="asemf-list">';
+			foreach ( $mine as $b ) {
+				$ev    = Plugin::activities()->cancellation_for( (int) $b['session_id'], (int) $b['person_id'] );
+				$html .= '<li><div><strong>' . esc_html( $b['activity_name'] ) . '</strong><div class="asemf-small">' . esc_html( self::date_long( $b['session_date'] ) . ( $b['start_time'] ? ' · ore ' . $b['start_time'] : '' ) . ' · socio con tessera n. ' . $b['card_number'] ) . '</div>'
+					. '<div class="asemf-small">Contributo a tuo carico: ' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</div></div><div class="asemf-manage">'
+					. ( $ev['allowed'] ? self::form( 'asem_front_cancel_booking', self::hidden( 'session_id', $b['session_id'] ) . self::hidden( 'person_id', $b['person_id'] ), 'Annulla prenotazione', 'Annullare la prenotazione?', 'asemf-inline' ) : '<div class="asemf-small asemf-muted">' . esc_html( $ev['message'] ) . '</div>' ) . '</div></li>';
+			}
+			$html .= '</ul>';
+		}
+		if ( ! $stat && ! $upcoming && ! $past && ! $mine ) {
 			$html .= '<p class="asemf-muted">Non hai ancora corsi né prenotazioni.</p>';
 		}
 		$unpaid = array_filter( array_merge( $upcoming, $past ), function ( $b ) {
@@ -384,6 +395,11 @@ final class Views {
 		$svc  = Plugin::activities();
 		$sid  = (int) $b['session_id'];
 		$pid  = (int) $b['person_id'];
+		if ( $pid === (int) $actor['id'] && \AssociazioneSemplice\ActivityService::booked_by_other_member( $b ) ) { // prenotazione fatta da un altro socio: si conferma o ci si toglie
+			return '<div class="asemf-manage"><div class="asemf-small asemf-muted">Un altro socio ha prenotato per te: il contributo è a suo carico. Se confermi, la prenotazione diventa tua e chi l\'ha fatta non può più annullarla.</div>'
+				. self::form( 'asem_front_confirm_booking', self::hidden( 'session_id', $sid ), 'Conferma', false, 'asemf-inline' ) . ' '
+				. self::form( 'asem_front_decline_booking', self::hidden( 'session_id', $sid ), 'Non partecipo', 'Togliersi da questa prenotazione? Per questa data nessun altro socio potrà prenotare per te.', 'asemf-inline' ) . '</div>';
+		}
 		$ev   = $svc->cancellation_for( $sid, $pid );
 		$html = '<div class="asemf-manage">';
 		if ( $ev['allowed'] ) {
@@ -741,6 +757,10 @@ final class Views {
 			. '<label>CAP <input type="text" name="zip" maxlength="12" autocomplete="postal-code" value="' . esc_attr( (string) $p['zip'] ) . '"></label>'
 			. '<label>Comune <input type="text" name="city" maxlength="100" autocomplete="address-level2" value="' . esc_attr( (string) $p['city'] ) . '"></label>'
 			. '<label>Provincia <input type="text" name="province" maxlength="5" autocomplete="address-level1" value="' . esc_attr( (string) $p['province'] ) . '"></label></div>';
+		if ( MemberType::is_member( (string) $p['type'] ) ) {
+			$fields .= self::hidden( 'booking_by_others_shown', 1 ) . '<p><label><input type="checkbox" name="booking_by_others" value="1"' . ( empty( $p['no_booking_by_others'] ) ? ' checked' : '' ) . '> Altri soci possono prenotare per me</label>'
+				. '<span class="asemf-small asemf-muted"> Serve il tuo cognome e il numero di tessera. Ricevi un\'email e puoi toglierti fino all\'inizio dell\'evento; il contributo è a carico di chi prenota.</span></p>';
+		}
 		return self::section_complete( $p ) . '<section class="asemf-section"><h3>Il mio profilo</h3><dl class="asemf-dl"><div><dt>Nome</dt><dd>' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</dd></div>'
 			. '<div><dt>Email</dt><dd>' . esc_html( (string) $p['email'] ) . '</dd></div></dl>'
 			. '<p class="asemf-small asemf-muted">Per cambiare nome o email scrivi all\'associazione.</p>'
@@ -1422,6 +1442,102 @@ final class Views {
 		return $ctx;
 	}
 
+	/** La scelta del contributo di una riga del modulo di gruppo (solo se l'attività ha più contributi). */
+	private static function group_list( array $lists, string $key, string $who, string $chosen ): string {
+		if ( ! $lists ) {
+			return '';
+		}
+		$html = ' <select name="price_list[' . esc_attr( $key ) . ']" aria-label="' . esc_attr( 'Contributo: ' . $who ) . '">';
+		foreach ( $lists as $l ) {
+			$html .= '<option value="' . esc_attr( $l['key'] ) . '"' . selected( $chosen, $l['key'], false ) . '>' . esc_html( $l['label'] . ' · ' . Money::format( $l['cents'] ) ) . '</option>';
+		}
+		return $html . '</select>';
+	}
+
+	/**
+	 * Prenota per più persone: sé stessi, i propri ospiti e minori, ospiti nuovi e altri soci (cognome e tessera). Due passi, anche senza JavaScript:
+	 * prima il riepilogo con il contributo di ognuno e il totale, poi la conferma.
+	 *
+	 * @param array[] $free le persone gestite non ancora prenotate
+	 */
+	private static function group_form( array $s, array $activity, array $ctx, array $free ): string {
+		$actor  = $ctx['actor'];
+		$aid    = (int) $actor['id'];
+		$sid    = (int) $s['id'];
+		$svc    = Plugin::activities();
+		$active = Plugin::people()->is_active_member( $aid );
+		$seats  = (int) \AssociazioneSemplice\PublicEvents::options( (int) $activity['id'] )['max_seats'];
+		$max    = $seats > 0 ? min( $seats, Actions::GROUP_MAX ) : Actions::GROUP_MAX;
+		if ( null !== $s['capacity'] ) {
+			$max = min( $max, (int) $s['capacity'] - (int) ( $s['booked_count'] ?? 0 ) );
+		}
+		if ( $max < 2 || ( ! $active && count( $free ) < 2 ) ) {
+			return '';
+		}
+		$draft = Actions::group_draft( $aid );
+		$draft = $draft && (int) ( $draft['post']['session_id'] ?? 0 ) === $sid ? $draft : null;
+		$old   = $draft ? $draft['post'] : array();
+		$was   = static function ( string $field, int $i ) use ( $old ): string {
+			$v = isset( $old[ $field ] ) && is_array( $old[ $field ] ) ? array_values( $old[ $field ] ) : array();
+			return isset( $v[ $i ] ) && is_scalar( $v[ $i ] ) ? (string) $v[ $i ] : '';
+		};
+		$list_was = static function ( string $key ) use ( $old ): string {
+			return isset( $old['price_list'][ $key ] ) && is_scalar( $old['price_list'][ $key ] ) ? (string) $old['price_list'][ $key ] : '';
+		};
+		$html = '';
+		if ( $draft ) {
+			$html .= '<div class="asemf-section"><h4>Riepilogo della prenotazione</h4><ul class="asemf-list">';
+			foreach ( $draft['lines'] as $l ) {
+				$html .= '<li><div>' . esc_html( (string) $l[0] ) . '</div><strong>' . esc_html( (int) $l[1] > 0 ? Money::format( (int) $l[1] ) : 'gratuito' ) . '</strong></li>';
+			}
+			$html .= '</ul><p>Totale a tuo carico: <strong>' . esc_html( Money::format( (int) $draft['total'] ) ) . '</strong></p>'
+				. '<p class="asemf-small asemf-muted">Si prenotano tutti o nessuno. Il riepilogo vale 10 minuti.</p>'
+				. self::form( 'asem_front_book_group', self::hidden( 'session_id', $sid ) . self::hidden( 'group_token', $draft['token'] ), 'Conferma e prenota', false, 'asemf-inline' ) . '</div>';
+		}
+		$lists = \AssociazioneSemplice\PriceLists::for_activity( $activity );
+		$price = static function ( string $type ) use ( $lists, $svc, $activity ): string {
+			if ( $lists ) {
+				return '';
+			}
+			$c = $svc->fee_for( $activity, $type );
+			return ' · ' . ( 0 === $c ? 'gratuito' : Money::format( $c ) );
+		};
+		$f = self::hidden( 'session_id', $sid );
+		if ( $free ) {
+			$f .= '<fieldset><legend>Chi prenoti</legend>';
+			foreach ( $free as $p ) {
+				$pid  = (int) $p['id'];
+				$me   = $pid === $aid;
+				$name = $me ? 'me' : ( MemberType::GUEST === $p['type'] ? 'guest_ids' : 'ward_ids' );
+				$on   = $me ? ! empty( $old['me'] ) : ( isset( $old[ $name ] ) && is_array( $old[ $name ] ) && in_array( $pid, array_map( 'intval', $old[ $name ] ), true ) );
+				$who  = $me ? 'Io' : trim( $p['first_name'] . ' ' . $p['last_name'] );
+				$f   .= '<p><label><input type="checkbox" name="' . esc_attr( $me ? 'me' : $name . '[]' ) . '" value="' . ( $me ? 1 : $pid ) . '"' . checked( $on, true, false ) . '> ' . esc_html( $who . $price( (string) $p['type'] ) ) . '</label>' . self::group_list( $lists, $me ? 'me' : 'p' . $pid, $who, $list_was( $me ? 'me' : 'p' . $pid ) ) . '</p>';
+			}
+			$f .= '</fieldset>';
+		}
+		$rows = min( 4, $max );
+		if ( $active && Settings::guests_enabled() ) {
+			$f .= '<fieldset><legend>' . esc_html( 'Ospiti nuovi' . $price( MemberType::GUEST ) ) . '</legend>';
+			for ( $i = 0; $i < $rows; $i++ ) {
+				$n  = 'ospite ' . ( $i + 1 );
+				$f .= '<div class="asemf-fields"><label>' . esc_html( 'Nome (' . $n . ')' ) . ' <input type="text" name="new_guest_first[]" maxlength="120" value="' . esc_attr( $was( 'new_guest_first', $i ) ) . '"></label><label>Cognome <input type="text" name="new_guest_last[]" maxlength="120" value="' . esc_attr( $was( 'new_guest_last', $i ) ) . '"></label>'
+					. '<label>Cellulare <input type="tel" name="new_guest_phone[]" maxlength="60" value="' . esc_attr( $was( 'new_guest_phone', $i ) ) . '"></label><label>Email (facoltativa) <input type="email" name="new_guest_email[]" maxlength="190" value="' . esc_attr( $was( 'new_guest_email', $i ) ) . '"></label>' . self::group_list( $lists, 'n' . $i, $n, $list_was( 'n' . $i ) ) . '</div>';
+			}
+			$f .= '</fieldset>';
+		}
+		if ( $active ) {
+			$f .= '<fieldset><legend>' . esc_html( 'Altri soci' . $price( MemberType::ORDINARY ) ) . '</legend><p class="asemf-small asemf-muted">Servono cognome e numero di tessera. La persona riceve un\'email e può togliersi.</p>';
+			for ( $i = 0; $i < $rows; $i++ ) {
+				$n  = 'socio ' . ( $i + 1 );
+				$f .= '<div class="asemf-fields"><label>' . esc_html( 'Cognome (' . $n . ')' ) . ' <input type="text" name="other_last[]" maxlength="120" autocomplete="off" value="' . esc_attr( $was( 'other_last', $i ) ) . '"></label><label>Numero di tessera <input type="text" name="other_card[]" maxlength="40" autocomplete="off" value="' . esc_attr( $was( 'other_card', $i ) ) . '"></label>' . self::group_list( $lists, 'o' . $i, $n, $list_was( 'o' . $i ) ) . '</div>';
+			}
+			$f .= '</fieldset>';
+		}
+		return $html . '<details class="asemf-details asemf-group"' . '><summary>' . ( $draft ? 'Cambia le persone' : 'Prenota per più persone' ) . '</summary>'
+			. '<p class="asemf-small asemf-muted">Al massimo ' . (int) $max . ' persone. Il contributo di tutte è a tuo carico: prima di confermare vedi il totale.</p>'
+			. self::form( 'asem_front_book_group', $f, 'Vedi il totale' ) . '</details>';
+	}
+
 	private static function session_row( array $s, array $activity, array $ctx, string $prefix = '' ): string {
 		$svc    = Plugin::activities();
 		$cap    = null === $s['capacity'] ? null : (int) $s['capacity'];
@@ -1440,8 +1556,13 @@ final class Views {
 			$free = array();
 			foreach ( $ctx['people'] as $person ) {
 				if ( $svc->has_active_booking( (int) $s['id'], (int) $person['id'] ) ) {
-					$html .= '<span class="asemf-badge asemf-badge-ok">✓ ' . esc_html( $person['first_name'] ) . '</span> '
-						. ( $svc->cancellation_for( (int) $s['id'], (int) $person['id'] )['allowed']
+					$own_b = $svc->booking( (int) $s['id'], (int) $person['id'] );
+					$html .= '<span class="asemf-badge asemf-badge-ok">✓ ' . esc_html( $person['first_name'] ) . '</span> ';
+					if ( $own_b && \AssociazioneSemplice\ActivityService::booked_by_other_member( $own_b ) ) {
+						$html .= '<span class="asemf-small asemf-muted">prenotazione fatta da un altro socio: la gestisci dalla tua area soci</span>';
+						continue;
+					}
+					$html .= ( $svc->cancellation_for( (int) $s['id'], (int) $person['id'] )['allowed']
 							? self::form( 'asem_front_cancel_booking', self::hidden( 'session_id', $s['id'] ) . self::hidden( 'person_id', $person['id'] ), 'Annulla', 'Annullare la prenotazione?', 'asemf-inline' )
 							: '<span class="asemf-small asemf-muted">non si può più annullare: vedi la tua area soci</span>' );
 				} else {
@@ -1526,6 +1647,9 @@ final class Views {
 					$fields .= '</select>';
 				}
 				$html .= self::form( 'asem_front_book', self::hidden( 'session_id', $s['id'] ) . $fields, 'Prenota', false, 'asemf-inline' );
+			}
+			if ( ! $full && empty( $ctx['hide_login'] ) && ! \AssociazioneSemplice\PublicEvents::options( (int) $activity['id'] )['approval'] ) { // nella pagina dell'evento
+				$html .= self::group_form( $s, $activity, $ctx, $free );
 			}
 		} elseif ( ! empty( $ctx['actor'] ) ) {
 			$html .= '<span class="asemf-small asemf-muted">La tessera non è valida: per prenotarti rinnova la quota associativa ' . ( Plugin::payments()->enabled() ? 'dalla tua area soci (sezione «Pagamenti») o ' : '' ) . 'in segreteria.</span>';

@@ -1081,6 +1081,7 @@ final class Install {
   transferred_from bigint(20) unsigned DEFAULT NULL,
   booked_by bigint(20) unsigned DEFAULT NULL,
   declined_at datetime DEFAULT NULL,
+  confirmed_at datetime DEFAULT NULL,
   created_at datetime NOT NULL,
   cancelled_at datetime DEFAULT NULL,
   checked_in_at datetime DEFAULT NULL,

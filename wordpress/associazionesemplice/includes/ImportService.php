@@ -585,6 +585,7 @@ final class ImportService {
 			foreach ( array(
 				array( 'enrollments', 'person_id', '' ),
 				array( 'bookings', 'person_id', '' ),
+				array( 'bookings', 'booked_by', '' ),
 				array( 'memberships', 'person_id', ' AND deleted_at IS NULL' ),
 				array( 'payments', 'payer_person_id', '' ),
 				array( 'transactions', 'person_id', ' AND voided_at IS NULL' ),
