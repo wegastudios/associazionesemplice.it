@@ -302,7 +302,7 @@ Tabelle nuove `staff_people`, `staff_roles`, `staff_invites`, `staff_sessions`, 
 ### Amministrazione del SaaS sotto il dominio principale e demo del gestionale
 
 - `/saas/admin` e `/wordpress/admin` sono le due amministrazioni delle vendite, su `associazionesemplice.it`. Il rimando 302 di `/saas/admin` verso `saas_admin_url` è provvisorio: con `saas_admin_url` **vuoto** in `config.php` il portale non rimanda più (`Sections::legacy` restituisce `null`) e `/saas/admin` lo serve il SaaS. Il passaggio lo fa portale-saas sul server; al portale basta svuotare la voce al momento giusto.
-- Demo del gestionale: `saas_demo_url` (default `https://demo.associazionesemplice.it`) alimenta il pulsante «Prova la demo del gestionale» in `/saas`. La demo del plugin sta su `demo.associazionesemplice.it` (`demo_url`). La riga della demo del gestionale in `/confronto` (`confronto.md`) è della sessione «Sviluppo plugin WordPress».
+- Demo del gestionale: `saas_demo_url` (default VUOTO = nessun collegamento; la demo del gestionale è `demosaas.associazionesemplice.it` e va scritta in config solo quando è aperta) alimenta il pulsante «Prova la demo del gestionale» in `/saas`. La demo del plugin sta su `demo.associazionesemplice.it` (`demo_url`). La riga della demo del gestionale in `/confronto` (`confronto.md`) è della sessione «Sviluppo plugin WordPress».
 
 ## Accesso staff unico: lato portale (`Plugin\StaffSso`, spento)
 
