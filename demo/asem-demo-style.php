@@ -51,6 +51,10 @@ body.home .wp-site-blocks>main>.wp-block-group{padding-top:12px!important}
 .asem-use:hover{background:#15176b}
 .asem-use:focus-visible{outline:3px solid #efca5c;outline-offset:2px}
 .asem-use[hidden]{display:none}
+body .asem-acc{padding:14px 16px;margin:0 0 12px}
+body .asem-acc code{padding:2px 8px}
+body .asem-use{padding:0 18px}
+body .asem-acc:last-of-type{margin-bottom:16px}
 .asem-demo-login{margin:0 0 18px}
 .asem-demo-login form{display:grid;gap:10px}
 .asem-demo-login label{display:block;font-weight:600}
