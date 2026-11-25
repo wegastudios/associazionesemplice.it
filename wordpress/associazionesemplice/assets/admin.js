@@ -436,7 +436,8 @@
 				G.courses.forEach(function (c, k) { coSel.appendChild(el('option', { value: String(k), text: c.name + ' — ' + eur(fee(c, b.type)) })); });
 				coSel.addEventListener('change', function () {
 					var c = G.courses[parseInt(coSel.value, 10)]; if (!c) { return; }
-					addLine(b, { kind: 'course', title: c.name + ' · ' + G.month, activity_id: c.id, month: G.month, amount: plain(fee(c, b.type)) });
+					var tf = b.ctx && b.ctx.trial_fees ? b.ctx.trial_fees[c.id] : null; /* prova fatta questo mese: si paga da quel giorno */
+					addLine(b, { kind: 'course', title: c.name + ' · ' + G.month, activity_id: c.id, month: G.month, amount: plain(tf != null ? tf : fee(c, b.type)) });
 				});
 				bar.appendChild(evSel); bar.appendChild(document.createTextNode(' ')); bar.appendChild(coSel);
 				if (!b.isNew && b.ctx && b.ctx.is_member && !b.ctx.is_founder && G.cats.membership) {

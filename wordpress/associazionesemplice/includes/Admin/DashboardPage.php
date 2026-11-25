@@ -102,6 +102,7 @@ final class DashboardPage {
 		$alerts = trim( (string) ob_get_clean() );
 		ob_start();
 		self::payments_due();
+		self::trials_pending();
 		self::renewals();
 		self::expected_guests();
 
@@ -380,6 +381,22 @@ final class DashboardPage {
 			. '<p><button class="button button-primary">Iscrivi</button> <a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Poi incassa il contributo →</a></p>', Html::allowed() );
 		Ui::form_close();
 		echo '</div>';
+	}
+
+	/** Chi ha fatto una prova gratuita da poco e non si è iscritto. */
+	private static function trials_pending(): void {
+		if ( ! Employees::can( EmployeeRules::PEOPLE ) ) {
+			return;
+		}
+		$rows = \AssociazioneSemplice\Trials::not_enrolled( gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' -45 days' ) ) );
+		if ( ! $rows ) {
+			return;
+		}
+		echo '<div class="asem-card"><h2>Prove fatte, non ancora iscritti (' . count( $rows ) . ')</h2><p class="description">Prove gratuite degli ultimi 45 giorni. Chi si iscrive nello stesso mese paga dal giorno della prova.</p><ul>';
+		foreach ( $rows as $r ) {
+			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $r['person_id'] ) ) ) . '">' . esc_html( trim( $r['first_name'] . ' ' . $r['last_name'] ) ) . '</a> · <a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => (int) $r['activity_id'] ) ) . '#asem-trials' ) . '">' . esc_html( $r['activity_name'] ) . '</a> <span class="description">il ' . esc_html( Ui::date( (string) $r['last_date'] ) ) . ( (int) $r['n'] > 1 ? ' · ' . (int) $r['n'] . ' prove' : '' ) . '</span> ' . Ui::contact_links( $r ) . '</li>', Html::allowed() );
+		}
+		echo '</ul></div>';
 	}
 
 	/** Pagamenti da incassare: per ogni persona, la quota associativa (se la tessera non è valida), le mensilità dei corsi già dovute e i contributi non versati. */

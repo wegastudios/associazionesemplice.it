@@ -164,7 +164,7 @@ final class ActivityReset {
 	}
 
 	/** Date delle lezioni di un corso tra due giorni, dal calendario settimanale meno quelle annullate e con quelle spostate. @return string[] */
-	private static function course_dates( array $a, string $from, string $to ): array {
+	public static function course_dates( array $a, string $from, string $to ): array {
 		$dates = array();
 		foreach ( ActivityService::lessons( $a ) as $s ) {
 			if ( 'single' === $s['type'] ) {
@@ -199,10 +199,17 @@ final class ActivityReset {
 		if ( (int) ( $m['session_id'] ?? 0 ) || empty( $ctx['course'] ) || ! preg_match( '/^\d{4}-\d{2}$/', $month ) ) {
 			return 0;
 		}
-		$total = count( self::course_dates( $ctx['course'], $month . '-01', gmdate( 'Y-m-t', (int) strtotime( $month . '-01' ) ) ) );
+		$since = $month . '-01';
+		if ( (int) ( $m['person_id'] ?? 0 ) ) { // chi ha fatto la prova ha pagato solo le lezioni da quel giorno: la parte non fruita si conta su quelle
+			$from  = (string) self::db()->get_var( self::db()->prepare( 'SELECT trial_from FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d AND start_month = %s', (int) $ctx['course']['id'], (int) $m['person_id'], $month ) );
+			$since = '' !== $from && 0 === strpos( $from, $month ) ? $from : $since;
+		}
+		$total = count( array_filter( self::course_dates( $ctx['course'], $month . '-01', gmdate( 'Y-m-t', (int) strtotime( $month . '-01' ) ) ), function ( $d ) use ( $since ) {
+			return $since === substr( $since, 0, 7 ) . '-01' || (string) $d >= $since;
+		} ) );
 		$held  = 0;
 		foreach ( (array) $ctx['held'] as $d ) {
-			if ( 0 === strpos( (string) $d, $month ) && self::occurred( (string) $d, '', (string) $ctx['today'], (string) $ctx['now'] ) ) {
+			if ( 0 === strpos( (string) $d, $month ) && (string) $d >= $since && self::occurred( (string) $d, '', (string) $ctx['today'], (string) $ctx['now'] ) ) {
 				$held++;
 			}
 		}
@@ -424,7 +431,7 @@ final class ActivityReset {
 					$db->query( 'DELETE FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in)" );
 					$db->query( 'DELETE FROM ' . Db::t( 'waitlist' ) . " WHERE session_id IN ($in)" );
 				}
-				foreach ( array( 'sessions', 'enrollments', 'activity_staff', 'notices', 'event_requests' ) as $table ) {
+				foreach ( array( 'sessions', 'enrollments', 'trials', 'activity_staff', 'notices', 'event_requests' ) as $table ) {
 					$db->delete( Db::t( $table ), array( 'activity_id' => $activity_id ) );
 				}
 				do_action( 'asem_activity_deleted', $activity_id ); // le estensioni tolgono i dati collegati

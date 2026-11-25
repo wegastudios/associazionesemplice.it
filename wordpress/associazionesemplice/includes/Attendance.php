@@ -50,8 +50,19 @@ final class Attendance {
 			return $db->get_results( $db->prepare( $sql, (int) $a['id'], $date ), ARRAY_A ) ?: array();
 		}
 		$ym  = substr( $date, 0, 7 );
+		// anche chi è in prova quel giorno, riconoscibile nell'elenco
+		$in  = $db->get_results( $db->prepare( "SELECT p.id, CONCAT(p.first_name, ' (prova)') AS first_name, p.last_name, p.type, p.card_number FROM $p p JOIN " . Db::t( 'trials' ) . ' t ON t.person_id = p.id WHERE p.deleted_at IS NULL AND t.activity_id = %d AND t.trial_date = %s', (int) $a['id'], $date ), ARRAY_A ) ?: array();
 		$sql = "SELECT p.id, p.first_name, p.last_name, p.type, p.card_number FROM $p p JOIN " . Db::t( 'enrollments' ) . ' e ON e.person_id = p.id WHERE p.deleted_at IS NULL AND e.activity_id = %d AND e.start_month <= %s AND (e.end_month IS NULL OR e.end_month >= %s) ORDER BY p.last_name, p.first_name';
-		return $db->get_results( $db->prepare( $sql, (int) $a['id'], $ym, $ym ), ARRAY_A ) ?: array();
+		$out = array();
+		foreach ( array_merge( $in, $db->get_results( $db->prepare( $sql, (int) $a['id'], $ym, $ym ), ARRAY_A ) ?: array() ) as $r ) {
+			$out[ (int) $r['id'] ] = $r; // chi si è poi iscritto nel mese compare da iscritto
+		}
+		if ( $in ) {
+			uasort( $out, function ( $x, $y ) {
+				return strcasecmp( $x['last_name'] . ' ' . $x['first_name'], $y['last_name'] . ' ' . $y['first_name'] );
+			} );
+		}
+		return array_values( $out );
 	}
 
 	/**

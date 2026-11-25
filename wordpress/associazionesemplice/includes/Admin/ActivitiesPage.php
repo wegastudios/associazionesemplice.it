@@ -12,6 +12,7 @@ use AssociazioneSemplice\PublicEvents;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\SocialYear;
 use AssociazioneSemplice\Texts;
+use AssociazioneSemplice\Trials;
 use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
@@ -123,6 +124,7 @@ final class ActivitiesPage {
 		$tr = '<tr class="' . esc_attr( $row_class ) . '">';
 		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Pagamento unico (anche annuale)', 'monthly' => 'Rinnovo mensile', 'quarterly' => 'Rinnovo trimestrale' ), $billing ) . '</select>'
 			. '<p class="description"><strong>Pagamento unico:</strong> il contributo indicato è il totale (es. 10 incontri a 120 €), dovuto subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> il contributo indicato è quello di un trimestre, dovuto all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo disdice, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
+			. $tr . '<th>Giorni di prova gratuiti</th><td><input type="number" name="trial_days" min="0" max="' . (int) Trials::MAX_DAYS . '" step="1" value="' . (int) ( $a['trial_days'] ?? 0 ) . '" style="width:5em"><p class="description">0 = nessuna prova. La prova si registra ma è gratuita. Chi si iscrive <strong>nello stesso mese</strong> paga dal giorno della prova, in proporzione alle lezioni (rinnovo mensile; trimestre e pagamento unico restano interi); chi si iscrive più tardi non paga la prova.</p></td></tr>'
 			. ( $with_when ? $tr . '<th>Quando</th><td>' . self::when_builder( $rows ) . '</td></tr>' : '' )
 			. $tr . '<th>Luogo</th><td><input type="text" name="location" class="regular-text" value="' . $val( 'location' ) . '"></td></tr>'
 			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data le mensilità non sono più dovute</span></td></tr>';
@@ -337,6 +339,7 @@ final class ActivitiesPage {
 			self::sessions_left( $activity, $back ); // staff e aggiunta di date
 		} else {
 			self::course_left( $activity, $year, $back );
+			self::trials_card( $activity, $back );
 			self::course_enrolled( $activity, $year, $back ); // gli iscritti restano nella prima colonna, sotto il modulo di iscrizione
 		}
 		echo '</div><div class="asem-col">';
@@ -816,6 +819,43 @@ final class ActivitiesPage {
 		echo '</div>';
 	}
 
+	/** Giorni di prova gratuiti: si registrano qui; chi li ha fatti e chi si è poi iscritto. */
+	private static function trials_card( array $activity, string $back ): void {
+		$id   = (int) $activity['id'];
+		$days = (int) ( $activity['trial_days'] ?? 0 );
+		$rows = Trials::of_activity( $id );
+		if ( $days < 1 && ! $rows ) {
+			return;
+		}
+		echo '<div class="asem-card" id="asem-trials"><h2>Prove gratuite</h2>';
+		if ( $days > 0 ) {
+			echo '<p class="description">' . ( 1 === $days ? 'Un giorno di prova gratuito.' : (int) $days . ' giorni di prova gratuiti.' ) . ' Chi si iscrive nello stesso mese paga dal giorno della prova; altrimenti la prova resta gratuita.</p>';
+			Ui::form_open( 'asem_trial_add', $back . '#asem-trials' );
+			echo wp_kses( Ui::hidden( 'activity_id', $id ) . '<p>' . Ui::person_select( 'person_id', Plugin::people()->search_light(), null, '— scegli la persona —', 'asem-trial-person' ) . '</p>', Html::allowed() );
+			if ( Settings::guests_enabled() ) {
+				echo wp_kses( '<details><summary>oppure nuovo ospite</summary><p><input type="text" name="new_first_name" placeholder="Nome" aria-label="Nome"> <input type="text" name="new_last_name" placeholder="Cognome" aria-label="Cognome"> <input type="tel" name="new_phone" placeholder="Cellulare" aria-label="Cellulare"></p>'
+					. '<p>Ospite di ' . Ui::person_select( 'new_host_id', Plugin::people()->search_light(), null, '— nessuno —', 'asem-trial-host', false, true ) . '</p></details>', Html::allowed() );
+			}
+			echo wp_kses( '<p><label>Giorno della prova <input type="date" name="trial_date" value="' . esc_attr( current_time( 'Y-m-d' ) ) . '" required></label> <button class="button">Registra la prova</button></p>', Html::allowed() );
+			Ui::form_close();
+		}
+		if ( $rows ) {
+			echo '<table class="widefat striped"><thead><tr><th>Giorno</th><th>Persona</th><th>Iscrizione</th><th></th></tr></thead><tbody>';
+			foreach ( $rows as $r ) {
+				$state = empty( $r['enrollment_id'] ) ? 'non iscritto' : ( $r['trial_from'] === $r['trial_date'] ? 'iscritto, paga da questo giorno' : 'iscritto da ' . Ui::month( (string) $r['start_month'] ) );
+				echo '<tr><td>' . esc_html( Ui::date( (string) $r['trial_date'] ) ) . '</td><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $r['person_id'] ) ) ) . '">' . esc_html( trim( $r['first_name'] . ' ' . $r['last_name'] ) ) . '</a></td><td>' . esc_html( $state ) . '</td><td>';
+				if ( $r['trial_from'] !== $r['trial_date'] ) {
+					Ui::form_open( 'asem_trial_remove', $back . '#asem-trials', false, 'asem-inline' );
+					echo wp_kses( Ui::hidden( 'id', (int) $r['id'] ) . Ui::hidden( 'activity_id', $id ) . '<button class="button button-small" data-confirm="Togliere questa prova?">Togli</button>', Html::allowed() );
+					Ui::form_close();
+				}
+				echo '</td></tr>';
+			}
+			echo '</tbody></table>';
+		}
+		echo '</div>';
+	}
+
 	private static function course_enrolled( array $activity, SocialYear $year, string $back ): void {
 		$id            = (int) $activity['id'];
 		$statuses      = Plugin::activities()->status_for_activity( $id );
@@ -833,6 +873,10 @@ final class ActivitiesPage {
 				. '<p class="description">Si tolgono soltanto gli iscritti senza incassi: la prima nota non cambia. Chi ha incassi resta e si cancella uno per uno con «Cancella», scegliendo cosa fare delle somme.</p></div>', Html::allowed() );
 			Ui::form_close();
 		}
+		$trials = array();
+		foreach ( array_reverse( Trials::of_activity( $id ) ) as $t ) {
+			$trials[ (int) $t['person_id'] ][] = (string) $t['trial_date'];
+		}
 		self::$free = array();
 		self::prime_free( $id, 0, array_column( array_column( $statuses, 'enrollment' ), 'person_id' ) ); // il comando «Cancella» di ogni iscritto sa già se tocca la prima nota
 		foreach ( $statuses as $s ) {
@@ -846,6 +890,12 @@ final class ActivitiesPage {
 				. ( (int) $s['summary']['balance'] < 0 ? ' <a class="button button-small button-primary" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => (int) $e['person_id'], 'due' => 1 ) ) ) . '">Paga</a>' : '' )
 				. ( current_user_can( Plugin::CAP ) ? ' ' . self::cancel_control( $id, array( 'id' => (int) $e['person_id'], 'first_name' => (string) $e['first_name'], 'last_name' => (string) $e['last_name'] ), 0, 'Elimina' ) : '' )
 				. '</summary>', Html::allowed() );
+			if ( ! empty( $e['trial_from'] ) ) {
+				echo '<p class="description">' . esc_html( 'Ha fatto la prova: il primo mese si paga dal ' . Ui::date( (string) $e['trial_from'] ) . ' (' . (int) $e['trial_left'] . ' su ' . (int) $e['trial_total'] . ').' ) . '</p>';
+			} else {
+				$done = $trials[ (int) $e['person_id'] ] ?? array();
+				echo $done ? '<p class="description">' . esc_html( 'Ha già fatto ' . Trials::days_text( $done ) . '.' ) . '</p>' : '';
+			}
 			echo wp_kses( Ui::months_table( $s['summary'] ), Html::allowed() );
 			if ( PriceLists::for_activity( $activity ) ) { // varianti del contributo: le assegna la segreteria
 				Ui::form_open( 'asem_enroll_variant', $back, false, 'asem-inline' );

@@ -86,6 +86,7 @@ class ActivityService {
 				'booking_qr'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['booking_qr'] : 0,
 				'lesson_weekday'       => ActivityKind::COURSE === $d['kind'] ? $d['lesson_weekday'] : 0,
 				'billing'              => ActivityKind::COURSE === $d['kind'] ? $d['billing'] : 'monthly',
+				'trial_days'           => ActivityKind::COURSE === $d['kind'] ? $d['trial_days'] : 0,
 				'lesson_start'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_start'] : null,
 				'lesson_slots'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_slots'] : null,
 				'lesson_end'          => ActivityKind::COURSE === $d['kind'] ? $d['lesson_end'] : null,
@@ -131,6 +132,7 @@ class ActivityService {
 				'discipline'           => $d['discipline'],
 				'vat_rate'             => $d['vat_rate'],
 				'hold_hours'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['hold_hours'] : 0,
+				'trial_days'           => ActivityKind::COURSE === $d['kind'] ? $d['trial_days'] : 0,
 				'cancellable'          => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancellable'] : 0,
 				'cancel_policy'        => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancel_policy'] : null,
 				'booking_qr'           => ActivityKind::uses_sessions( $current['kind'] ) ? $d['booking_qr'] : 0,
@@ -281,6 +283,7 @@ class ActivityService {
 			'slots'                => $slots,
 			'lesson_slots'         => $slots ? wp_json_encode( $slots ) : null,
 			'billing'              => isset( $in['billing'] ) && in_array( $in['billing'], array( 'once', 'quarterly' ), true ) ? (string) $in['billing'] : 'monthly',
+			'trial_days'           => max( 0, min( Trials::MAX_DAYS, (int) ( $in['trial_days'] ?? 0 ) ) ),
 			'lesson_start'        => $weekly ? $weekly[0]['start'] : null,
 			'lesson_end'          => $weekly ? $weekly[0]['end'] : null,
 			'location'            => isset( $in['location'] ) && '' !== Text::plain( (string) $in['location'] ) ? mb_substr( Text::plain( (string) $in['location'] ), 0, 190 ) : null,
@@ -1450,7 +1453,31 @@ class ActivityService {
 			$keys  = array_keys( PaymentCalc::group_by_period( array( $month => 1 ), (string) $enr['start_month'], $step ) );
 			$month = (string) reset( $keys );
 		}
+		if ( 1 === $step && (string) $enr['start_month'] === $month ) { // primo mese di chi ha fatto la prova: si paga dal giorno della prova
+			$first = Trials::first_month_cents( $activity, $enr, $fee );
+			$fee   = null === $first ? $fee : $first;
+		}
 		return max( 0, $fee - (int) ( $paid[ $month ] ?? 0 ) );
+	}
+
+	/**
+	 * La quota prevista di un mese di corso per una persona, prima di incassarla: per il primo mese di chi ha fatto la prova si paga da quel giorno
+	 * (iscritta o da iscrivere), altrimenti la quota intera.
+	 */
+	public function course_month_fee( array $activity, array $person, string $month ): int {
+		$fee = $this->fee_for( $activity, (string) $person['type'] );
+		$enr = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d', (int) $activity['id'], (int) $person['id'] ), ARRAY_A );
+		if ( $enr && ( null === $enr['end_month'] || $enr['end_month'] >= $month ) ) {
+			if ( (string) $enr['start_month'] !== $month ) {
+				return $fee;
+			}
+			if ( ! empty( $enr['price_list'] ) ) {
+				$list = PriceLists::find( $activity, (string) $enr['price_list'] );
+				$fee  = $list && ! empty( $enr['trial_from'] ) ? (int) $list['cents'] : $fee;
+			}
+			return Trials::first_month_cents( $activity, $enr, $fee ) ?? $fee;
+		}
+		return Trials::expected_cents( $activity, (int) $person['id'], $month, $fee );
 	}
 
 	/** Quanto manca da incassare per la prenotazione a una data di un evento (contributo dovuto meno il versato, sconti compresi). Null se non c'è una prenotazione con un contributo. */
@@ -1590,12 +1617,16 @@ class ActivityService {
 		if ( ! $enrollee ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
-		$tbl = Db::t( 'enrollments' );
-		$row = $this->db()->get_row( $this->db()->prepare( "SELECT id FROM $tbl WHERE activity_id = %d AND person_id = %d", $activity_id, $person_id ), ARRAY_A );
+		$tbl   = Db::t( 'enrollments' );
+		$row   = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE activity_id = %d AND person_id = %d", $activity_id, $person_id ), ARRAY_A );
+		$trial = Trials::enrollment_fields( $a, $person_id, $start_month ); // prova fatta nel mese: il primo mese si paga da quel giorno
+		if ( $row && (string) $row['start_month'] === $start_month && ! empty( $row['trial_from'] ) ) {
+			$trial = array(); // stessa partenza: la proporzione già fissata non cambia
+		}
 		if ( $row ) {
-			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ), array( 'id' => (int) $row['id'] ) );
+			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ) + $trial, array( 'id' => (int) $row['id'] ) );
 		} else {
-			$this->db()->insert( $tbl, array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'start_month' => $start_month, 'created_at' => Db::now() ) );
+			$this->db()->insert( $tbl, array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'start_month' => $start_month, 'created_at' => Db::now() ) + $trial );
 		}
 		Audit::log( 'activity.enrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'from' => $start_month ) );
 	}
@@ -1835,7 +1866,8 @@ class ActivityService {
 			$paid_by_month,
 			self::slot_days( $activity ),
 			Db::today(),
-			'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1
+			'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1,
+			Trials::first_month_cents( $activity, $enrollment, $fee )
 		);
 	}
 

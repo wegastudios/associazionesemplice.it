@@ -56,6 +56,11 @@ final class PaymentCalc {
 		);
 	}
 
+	/** Parte di una quota in proporzione (2 lezioni su 4 di 40,00 = 20,00), arrotondata al centesimo e mai oltre la quota. */
+	public static function share( int $fee, int $left, int $total ): int {
+		return $total < 1 ? $fee : min( $fee, max( 0, (int) round( $fee * $left / $total ) ) );
+	}
+
 	/** Mesi interi da $a a $b ("YYYY-MM"), negativi se $b viene prima. */
 	public static function months_between( string $a, string $b ): int {
 		return ( (int) substr( $b, 0, 4 ) - (int) substr( $a, 0, 4 ) ) * 12 + ( (int) substr( $b, 5, 2 ) - (int) substr( $a, 5, 2 ) );
@@ -86,9 +91,10 @@ final class PaymentCalc {
 	 * @param array      $paid_by_month ['YYYY-MM' => centesimi]
 	 * @param int        $weekday       giorno della lezione (1 = lunedì … 7 = domenica, 0 = non indicato): ogni mese è dovuto dalla prima lezione del mese (altrimenti dal 1°)
 	 * @param string|null $today_date  data di oggi "YYYY-MM-DD" (serve solo con il giorno della lezione)
+	 * @param int|null   $first_due    quota del primo mese se è diversa (chi ha fatto la prova paga dal giorno della prova); null = intera
 	 * @return array ['months'=>[...], 'total_due', 'total_paid', 'balance', 'regular', 'unpaid_months'=>[...]]
 	 */
-	public static function compute( int $fee, string $start, ?string $end, string $today, SocialYear $year, array $paid_by_month, $weekday = 0, ?string $today_date = null, int $step = 1 ): array {
+	public static function compute( int $fee, string $start, ?string $end, string $today, SocialYear $year, array $paid_by_month, $weekday = 0, ?string $today_date = null, int $step = 1, ?int $first_due = null ): array {
 		$last_due = ( null === $end ) ? $today : min( $end, $today );
 		$months   = array();
 		$upcoming = null;
@@ -101,9 +107,9 @@ final class PaymentCalc {
 			$has_days = array_filter( array_map( 'intval', (array) $weekday ) );
 			$reached  = null === $today_date || ! $has_days || $m < $today || $from <= $today_date;
 			if ( $in_range && ! $reached && null === $upcoming ) {
-				$upcoming = array( 'month' => $m, 'date' => $from, 'fee' => $fee );
+				$upcoming = array( 'month' => $m, 'date' => $from, 'fee' => null !== $first_due && $m === $start ? $first_due : $fee );
 			}
-			$due  = ( $in_range && $reached ) ? $fee : 0;
+			$due  = ( $in_range && $reached ) ? ( null !== $first_due && $m === $start ? $first_due : $fee ) : 0;
 			$paid = (int) ( $paid_by_month[ $m ] ?? 0 );
 			if ( 0 === $due && 0 === $paid ) {
 				continue;

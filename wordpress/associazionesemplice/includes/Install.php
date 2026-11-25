@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version'; // uguale a Plugin::DB_VERSION_OPTION (scritto qui: durante un aggiornamento questa classe nuova può caricarsi accanto a una Plugin vecchia)
-	const DB_VERSION        = '77'; // si cambia insieme a Plugin::DB_VERSION (che si confronta a ogni richiesta senza caricare questa classe; una prova controlla che siano uguali); dalla 77 una prenotazione ricorda chi l'ha fatta (bookings.booked_by: vuoto = la persona stessa o la segreteria) e ogni socio può non farsi prenotare da altri (people.no_booking_by_others: 0 = si può, come prima); dalla 76 i contatori dei tentativi (accessi, richieste del socio) stanno in una tabellina propria invece che nei transient (counters; si crea una volta, i contatori in corso ripartono da zero); dalla 75 ogni anno fiscale chiuso ricorda la somma dei movimenti di ogni conto fino al suo ultimo giorno (closing_sums: i saldi si sommano da lì in poi; vuota = si calcola alla prima lettura); dalla 74 hanno un indice anche i pagamenti online per riferimento del fornitore, i movimenti per chi li ha registrati, le richieste di prenotazione per persona e i destinatari delle comunicazioni per persona (si creano una volta, senza toccare i dati); dalla 73 ogni socio ha la versione del suo codice QR (qr_version: 0 = come prima, i QR già stampati valgono finché il socio non rigenera il codice); dalla 72 la voce «Quota attività / corso» si chiama «Contributo attività / corso» (si rinomina una volta, solo dove ha ancora il nome originale); dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '78'; // si cambia insieme a Plugin::DB_VERSION (che si confronta a ogni richiesta senza caricare questa classe; una prova controlla che siano uguali); dalla 78 un corso può avere giorni di prova gratuiti (activities.trial_days: 0 = nessuna prova, come prima), le prove fatte stanno in trials e l'iscrizione ricorda da quale giorno si paga il primo mese (trial_from, trial_left, trial_total: vuoti = mese intero); dalla 77 una prenotazione ricorda chi l'ha fatta (bookings.booked_by: vuoto = la persona stessa o la segreteria) e ogni socio può non farsi prenotare da altri (people.no_booking_by_others: 0 = si può, come prima); dalla 76 i contatori dei tentativi (accessi, richieste del socio) stanno in una tabellina propria invece che nei transient (counters; si crea una volta, i contatori in corso ripartono da zero); dalla 75 ogni anno fiscale chiuso ricorda la somma dei movimenti di ogni conto fino al suo ultimo giorno (closing_sums: i saldi si sommano da lì in poi; vuota = si calcola alla prima lettura); dalla 74 hanno un indice anche i pagamenti online per riferimento del fornitore, i movimenti per chi li ha registrati, le richieste di prenotazione per persona e i destinatari delle comunicazioni per persona (si creano una volta, senza toccare i dati); dalla 73 ogni socio ha la versione del suo codice QR (qr_version: 0 = come prima, i QR già stampati valgono finché il socio non rigenera il codice); dalla 72 la voce «Quota attività / corso» si chiama «Contributo attività / corso» (si rinomina una volta, solo dove ha ancora il nome originale); dalla 71 la tessera segue l'anno fiscale (memberships.replaced_by: la tessera sostituita da una più recente, senza cancellarla); dalla 70 un evento può tenere occupata la risorsa dal primo all'ultimo giorno (resource_block, identificativo del blocco condiviso, e resource_block_label, il suo nome: vuoti = come prima); dalla 69 ogni data di un evento può avere una data di fine (end_date, vuota = finisce lo stesso giorno: nessun dato cambia); dalla 68 le ricerche più frequenti hanno gli indici per cognome e nome, codice fiscale, conto e data, pagante e riferimento del documento, richiesta per turno e persona (si creano una volta, senza toccare i dati); dalla 67 i ruoli di WordPress diversi da amministratore non hanno più il permesso di lavorare nel plugin (si ripuliscono una volta); dalla 66 la lista d'attesa ricorda il listino scelto (price_list); dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	/**
 	 * Tutti i lavori periodici e programmati del plugin e delle sue estensioni (nomi dei punti di aggancio di WP-Cron).
@@ -944,6 +944,7 @@ final class Install {
   lesson_weekday tinyint(1) NOT NULL DEFAULT 0,
   lesson_slots text,
   billing varchar(12) NOT NULL DEFAULT 'monthly',
+  trial_days smallint(5) unsigned NOT NULL DEFAULT 0,
   sport varchar(60) DEFAULT NULL,
   discipline varchar(120) DEFAULT NULL,
   lesson_start char(5) DEFAULT NULL,
@@ -975,10 +976,26 @@ final class Install {
   end_month char(7) DEFAULT NULL,
   price_list varchar(30) DEFAULT NULL,
   fee_note varchar(190) DEFAULT NULL,
+  trial_from date DEFAULT NULL,
+  trial_left smallint(5) unsigned DEFAULT NULL,
+  trial_total smallint(5) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY activity_person (activity_id,person_id),
   KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}trials (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  activity_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  trial_date date NOT NULL,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY activity_person_date (activity_id,person_id,trial_date),
+  KEY person_id (person_id),
+  KEY trial_date (trial_date)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}transactions (

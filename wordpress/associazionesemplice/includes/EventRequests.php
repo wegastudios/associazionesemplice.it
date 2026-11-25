@@ -1060,7 +1060,7 @@ final class EventRequests {
 		} catch ( \InvalidArgumentException $e ) {
 			return self::fail( $row, 'expired', 'Ci dispiace, non è stato possibile completare l\'iscrizione (' . $e->getMessage() . '). Scrivi alla segreteria.' );
 		}
-		$fee      = $svc->fee_for( $a, MemberType::GUEST );
+		$fee      = $svc->course_month_fee( $a, array( 'id' => $pid, 'type' => MemberType::GUEST ), $month ); // chi ha fatto la prova nel mese paga da quel giorno
 		$deadline = $fee > 0 ? wp_date( 'Y-m-d H:i:s', time() + self::pay_hours() * HOUR_IN_SECONDS ) : null;
 		self::set( (int) $row['id'], array( 'status' => 'booked', 'deadline' => $deadline, 'data' => wp_json_encode( array( 'enrollments' => array( array( 'person_id' => $pid, 'activity_id' => (int) $a['id'], 'month' => $month ) ) ) ) ) );
 		Audit::log( 'event_request.enrolled', 'activity', (int) $a['id'], array( 'person_id' => $pid ) );

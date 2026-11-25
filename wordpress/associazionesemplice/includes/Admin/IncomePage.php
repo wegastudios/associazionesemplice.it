@@ -66,7 +66,8 @@ final class IncomePage {
 			$a = Plugin::activities()->get( $aid );
 			if ( $a && $a['social_year'] === $sy ) {
 				$next   = Plugin::activities()->first_unpaid_month( $aid, (int) $person['id'] );
-				$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => Plugin::activities()->fee_for( $a, $person['type'] ), 'month' => $next ?: substr( $date, 0, 7 ) );
+				$month  = $next ?: substr( $date, 0, 7 );
+				$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => Plugin::activities()->course_month_fee( $a, $person, $month ), 'month' => $month );
 			}
 		}
 		// Eventi a cui è prenotata e il cui contributo non è ancora stato pagato
@@ -79,6 +80,14 @@ final class IncomePage {
 				'label'       => $b['activity_name'] . ' · ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ) . ( (int) $b['person_id'] !== (int) $person['id'] && ( $for = Plugin::people()->get( (int) $b['person_id'] ) ) ? ' · per ' . trim( $for['first_name'] . ' ' . $for['last_name'] ) : '' ),
 				'amount'      => (int) $b['remaining'],
 			);
+		}
+		// Corsi di cui ha fatto la prova questo mese senza essere iscritta: si paga dal giorno della prova
+		$trial_fees = array();
+		foreach ( \AssociazioneSemplice\Trials::of_person( (int) $person['id'] ) as $t ) {
+			$ta = Plugin::activities()->get( (int) $t['activity_id'] );
+			if ( $ta && substr( (string) $t['trial_date'], 0, 7 ) === substr( $date, 0, 7 ) ) {
+				$trial_fees[ (int) $ta['id'] ] = Plugin::activities()->course_month_fee( $ta, $person, substr( $date, 0, 7 ) );
+			}
 		}
 		// Contributi a carico di chi ha prenotato per questa persona: non sono dovuti da lei, si propongono a parte e solo con una conferma
 		$covered = array();
@@ -120,6 +129,7 @@ final class IncomePage {
 				'activities'       => $acts,
 				'bookings'         => $bookings,
 				'covered'          => $covered,
+				'trial_fees'       => (object) $trial_fees,
 				'dues'             => $dues,
 				'membership'       => $m_plan,
 				'membership_has'   => Plugin::people()->has_membership( (int) $person['id'], $m_plan['year'] ),

@@ -744,6 +744,9 @@ final class PeoplePage {
 	private static function panel_activities( array $p ): void {
 		$statuses = Plugin::activities()->status_for_person( (int) $p['id'] );
 		echo '<div class="asem-card"><h2>Attività e pagamenti</h2>';
+		foreach ( \AssociazioneSemplice\Trials::of_person( (int) $p['id'] ) as $t ) {
+			echo '<p class="description">' . esc_html( 'Prova gratuita: ' . $t['activity_name'] . ', il ' . Ui::date( (string) $t['trial_date'] ) . '.' ) . '</p>';
+		}
 		if ( ! $statuses ) {
 			echo '<p class="description">Non è iscritto a nessuna attività. Si iscrive dalla scheda dell\'attività.</p></div>';
 			return;

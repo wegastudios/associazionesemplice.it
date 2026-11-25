@@ -82,6 +82,8 @@ final class Actions {
 			'asem_lesson_restore'     => 'lesson_restore',
 			'asem_tec_import'         => 'tec_import',
 			'asem_enroll'             => 'enroll',
+			'asem_trial_add'          => 'trial_add',
+			'asem_trial_remove'       => 'trial_remove',
 			'asem_enroll_variant'     => 'enroll_variant',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
 			'asem_stop_renewal'       => 'stop_renewal',
@@ -726,6 +728,9 @@ final class Actions {
 			'fund_value'           => self::fund_value( $p ),
 			'notes'                => $p['notes'] ?? '',
 		);
+		if ( isset( $p['trial_days'] ) ) { // giorni di prova dei corsi: presenti solo nei moduli che li chiedono
+			$data['trial_days'] = (int) $p['trial_days'];
+		}
 		if ( array_key_exists( 'sport', $p ) ) { // classificazione sportiva (CONI e disciplina dell'ente), presente solo nei moduli che la chiedono
 			$data['sport']      = $p['sport'];
 			$data['discipline'] = $p['discipline'] ?? '';
@@ -1137,17 +1142,56 @@ final class Actions {
 		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione annullata. Se aveva già pagato, rimborsalo a mano.' );
 	}
 
+	/** Registra un giorno di prova (persona dell'anagrafica o nuovo ospite). */
+	private static function trial_add( array $p ): array {
+		$aid  = (int) ( $p['activity_id'] ?? 0 );
+		$pid  = (int) ( $p['person_id'] ?? 0 );
+		$back = Ui::url( 'asem-activity', array( 'id' => $aid ) ) . '#asem-trials';
+		$note = '';
+		Plugin::ledger()->in_batch( // ospite nuovo e prova insieme: se la prova non si può registrare non resta l'ospite
+			function () use ( $p, $aid, &$pid, &$note ) {
+				$first = trim( (string) ( $p['new_first_name'] ?? '' ) );
+				$last  = trim( (string) ( $p['new_last_name'] ?? '' ) );
+				if ( ! $pid && ( '' !== $first || '' !== $last ) ) {
+					$pid = Plugin::people()->create( array( 'type' => MemberType::GUEST, 'host_person_id' => (int) ( $p['new_host_id'] ?? 0 ) ?: null, 'first_name' => $first, 'last_name' => $last, 'phone' => (string) ( $p['new_phone'] ?? '' ) ) );
+				}
+				if ( ! $pid ) {
+					throw new \InvalidArgumentException( 'Scegli una persona oppure scrivi nome e cognome del nuovo ospite.' );
+				}
+				$note = \AssociazioneSemplice\Trials::add( $aid, $pid, (string) ( $p['trial_date'] ?? '' ) );
+			}
+		);
+		return array( $back, trim( 'Prova registrata: è gratuita. ' . $note ) );
+	}
+
+	private static function trial_remove( array $p ): array {
+		\AssociazioneSemplice\Trials::remove( (int) ( $p['id'] ?? 0 ) );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) ( $p['activity_id'] ?? 0 ) ) ) . '#asem-trials', 'Prova tolta.' );
+	}
+
+	/** Frase per chi iscrive una persona che ha già fatto la prova ('' se non l'ha fatta). */
+	private static function trial_message( int $activity_id, int $person_id, string $start_month ): string {
+		$note = \AssociazioneSemplice\Trials::note( $activity_id, $person_id );
+		if ( '' === $note ) {
+			return '';
+		}
+		$a = Plugin::activities()->get( $activity_id );
+		$f = $a ? \AssociazioneSemplice\Trials::enrollment_fields( $a, $person_id, $start_month ) : array( 'trial_from' => null );
+		return ' ' . $note . ( $f['trial_from'] ? ' Il primo mese si paga dal ' . Ui::date( $f['trial_from'] ) . '.' : ' La prova resta gratuita.' );
+	}
+
 	private static function enroll( array $p ): array {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
 		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
+		$trial = self::trial_message( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
 		if ( isset( $p['price_list'] ) ) { // variante del contributo scelta dalla segreteria
 			Plugin::activities()->set_enrollment_price( (int) $p['activity_id'], $pid, (string) $p['price_list'], (string) ( $p['fee_note'] ?? '' ) );
 		}
 		if ( ! empty( $p['next'] ) ) { // «Salva e prossimo inserimento»: si resta sulla pagina per iscrivere la persona dopo
-			return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ) . '#asem-enroll-person', 'Iscrizione registrata: puoi inserire la prossima.' . self::membership_warning( $pid ) );
+			return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ) . '#asem-enroll-person', 'Iscrizione registrata: puoi inserire la prossima.' . $trial . self::membership_warning( $pid ) );
 		}
-		return self::after_signup( $pid, Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.', (int) $p['activity_id'] );
+		return self::after_signup( $pid, Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.' . $trial, (int) $p['activity_id'] );
 	}
 
 	private static function enroll_variant( array $p ): array {
@@ -1366,7 +1410,7 @@ final class Actions {
 				throw new \InvalidArgumentException( 'Corso non trovato.' );
 			}
 			Plugin::activities()->enroll( (int) $a['id'], $pid, Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) ) );
-			return self::after_signup( $pid, Ui::url( 'asem' ), $name . ' è iscritto/a a ' . $a['name'] . '.', (int) $a['id'] );
+			return self::after_signup( $pid, Ui::url( 'asem' ), $name . ' è iscritto/a a ' . $a['name'] . '.' . self::trial_message( (int) $a['id'], $pid, Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) ) ), (int) $a['id'] );
 		}
 		if ( 0 === strpos( $target, 's:' ) ) {
 			Plugin::activities()->book( (int) substr( $target, 2 ), $pid );

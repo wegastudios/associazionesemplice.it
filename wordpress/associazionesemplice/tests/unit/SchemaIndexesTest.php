@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 final class SchemaIndexesTest extends TestCase {
 
 	public function test_schema_version_is_68(): void {
-		$this->assertSame( '77', Install::DB_VERSION );
+		$this->assertSame( '78', Install::DB_VERSION );
 	}
 
 	public function test_index_list_is_well_formed(): void {
