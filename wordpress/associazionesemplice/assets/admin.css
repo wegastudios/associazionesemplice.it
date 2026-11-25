@@ -158,6 +158,7 @@
 	.asem .asem-card{max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
 	.asem .asem-card .form-table,.asem .asem-card .form-table tbody,.asem .asem-card .form-table tr,.asem .asem-card .form-table th,.asem .asem-card .form-table td{display:block;width:100%;box-sizing:border-box;padding-left:0;padding-right:0}
 	.asem .asem-card .form-table th{padding-bottom:2px}
+	.asem .asem-card select{max-width:100%;box-sizing:border-box} /* una tendina con nomi lunghi non allarga la pagina */
 	.asem .asem-card .form-table input[type=text],.asem .asem-card .form-table select{max-width:100%;box-sizing:border-box}
 	.asem .asem-card .form-table input[type=text][size]{width:auto;max-width:45%}
 	.asem .asem-card .form-table .description{margin-top:6px}

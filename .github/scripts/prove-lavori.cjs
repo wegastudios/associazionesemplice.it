@@ -1,6 +1,6 @@
 /**
  * Lavori lunghi in un browser vero (workflow «Prove in sandbox»): con la pagina aperta il lavoro avanza tappa per tappa e finisce, e «Annulla» lo ferma.
- * Il cron del sito è spento, quindi ad andare avanti è solo la pagina. Misura anche lo scorrimento orizzontale della Bacheca a 375 px (senza fallire).
+ * Il cron del sito è spento, quindi ad andare avanti è solo la pagina. Controlla anche che la Bacheca a 375 px non scorra in orizzontale.
  * Uso: NODE_PATH=<playwright> node prove-lavori.cjs <sito> avanza|annulla <cartella>. Esce con 1 se qualcosa non va.
  */
 const { chromium } = require('playwright');
@@ -60,6 +60,7 @@ fs.mkdirSync(out, { recursive: true });
         return { over: document.documentElement.scrollWidth - w, wide };
       });
       console.log(`- misura: Bacheca a 375 px, scorrimento orizzontale ${m.over} px; elementi oltre il bordo: ${m.wide.map((x) => x.join(' ')).join(' | ')}`);
+      say(m.over <= 1, 'la Bacheca a 375 px non scorre in orizzontale');
     }
     say(errors.length === 0, 'nessun errore negli script delle pagine' + (errors.length ? ': ' + errors[0] : ''));
   } catch (e) {
