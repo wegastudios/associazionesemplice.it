@@ -408,17 +408,19 @@ Ricevi un'email. Nell'area soci, in **«Prossime prenotazioni»**, puoi sceglier
 
 Se non vuoi che altri soci prenotino per te, togli la spunta **«Altri soci possono prenotare per me»** in **«Il mio profilo»**.
 
+Chi ha prenotato vede in **«Prenotazioni fatte per altri soci»** i prenotati con il numero di tessera e può usare **«Annulla prenotazione»** finché l'altro socio non conferma.
+
 ## Per la segreteria
 
 - Nell'elenco dei prenotati, sotto il contributo, compare **«a carico di …»**.
-- Il contributo si incassa da chi ha prenotato: in **«Nuovo incasso»** scegli quella persona e trovi anche le voci prenotate per altri.
+- Il contributo si incassa da chi ha prenotato: in **«Nuovo incasso»** scegli quella persona e trovi tra i suoi contributi anche le voci prenotate per altri, segnate **«· per Nome Cognome»**, senza altra conferma.
 - Se un socio si toglie e il contributo era già versato, la segreteria riceve un'email: la restituzione è a chi ha pagato.
-- Se chi partecipa vuole pagare il suo contributo, in **«Nuovo incasso»** scegli quella persona: la voce è segnata **«a carico di …»** e si aggiunge solo dopo una conferma.
+- Se chi partecipa vuole pagare il suo contributo, in **«Nuovo incasso»** scegli quella persona: il contributo compare in **«+ Contributo evento…»** con **«(a carico di Nome Cognome)»**, non si compila da solo e si aggiunge solo dopo una conferma. In quel caso paga chi partecipa e la parte incassata non è più dovuta da chi ha prenotato.
 - Nella ricevuta di chi paga, un altro socio compare con il numero di tessera.
 
 ## Se qualcosa non va
 
-- Se leggi **«Non è stato possibile prenotare una delle persone indicate»**, controlla cognome e numero di tessera. Il motivo non viene detto, per riservatezza, e non viene prenotata nessuna persona.
+- Se leggi **«Non è stato possibile prenotare una delle persone indicate»**: controlla cognome e numero di tessera. Non è stata prenotata nessuna persona. Il motivo preciso non viene detto, per riservatezza.
 - Dopo alcuni tentativi sbagliati devi aspettare qualche minuto.
 
 Per la prenotazione di una sola persona leggi [Prenotarsi a un evento o a un corso dal sito](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito).
