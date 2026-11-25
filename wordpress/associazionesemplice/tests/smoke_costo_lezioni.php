@@ -116,13 +116,24 @@ $wpdb->query( 'SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ' );
 $wpdb->query( 'START TRANSACTION' );
 $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'course_months' ) ); // da qui l'istantanea di questa transazione è ferma
 $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'course_month_dues' ) );
-$cl_db2->query( $cl_db2->prepare( 'INSERT INTO ' . Db::t( 'course_months' ) . ' (activity_id, month, dates, source, fixed_at) VALUES (%d, %s, %s, %s, %s)', $cl_g, '2031-06', '2031-06-03,2031-06-10,2031-06-17', 'payment', Db::now() ) );
-$cl_db2->query( $cl_db2->prepare( 'INSERT INTO ' . Db::t( 'course_month_dues' ) . ' (activity_id, person_id, month, price_cents, lessons, due_cents, created_at) VALUES (%d, %d, %s, 1000, 3, 3000, %s)', $cl_g, $cl_g2, '2031-06', Db::now() ) );
+$cl_b1 = $cl_db2->query( $cl_db2->prepare( 'INSERT INTO ' . Db::t( 'course_months' ) . ' (activity_id, month, dates, source, fixed_at) VALUES (%d, %s, %s, %s, %s)', $cl_g, '2031-06', '2031-06-03,2031-06-10,2031-06-17', 'payment', Db::now() ) );
+$cl_e1 = $cl_db2->last_error;
+$cl_b2 = $cl_db2->query( $cl_db2->prepare( 'INSERT INTO ' . Db::t( 'course_month_dues' ) . ' (activity_id, person_id, month, price_cents, lessons, due_cents, created_at) VALUES (%d, %d, %s, 1000, 3, 3000, %s)', $cl_g, $cl_g2, '2031-06', Db::now() ) );
+$cl_iso = (string) $wpdb->get_var( 'SELECT @@transaction_isolation' ) . ' ' . (string) $wpdb->get_var( 'SELECT VERSION()' );
 $cl_old   = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_months' ) . ' WHERE activity_id = %d', $cl_g ) );
-$cl_dates = CourseMonths::fix( $cl_acts->get( $cl_g ), '2031-06', 'payment' );
-$cl_here  = $cl_left( $cl_g, $cl_g2, '2031-06' );
-$wpdb->query( 'COMMIT' );
-asem_ok( 0 === $cl_old && 3 === count( $cl_dates ) && 3000 === $cl_here && 1 === $cl_fixed( $cl_g, '2031-06' ), 'a lezioni: due connessioni, l\'istantanea non vede la riga dell\'altra ma lezioni e dovuto sono i suoi (' . $cl_old . ', ' . count( $cl_dates ) . ', ' . $cl_here . ')' );
+$cl_busy  = '';
+$cl_dates = array();
+$cl_here  = 0;
+try {
+	$cl_dates = CourseMonths::fix( $cl_acts->get( $cl_g ), '2031-06', 'payment' );
+	$cl_here  = $cl_left( $cl_g, $cl_g2, '2031-06' );
+} catch ( \InvalidArgumentException $e ) {
+	$cl_busy = $e->getMessage(); // il database non lascia leggere la riga dell'altra connessione in questa transazione: ci si ferma e si riprova
+}
+$wpdb->query( 'ROLLBACK' );
+\AssociazioneSemplice\RequestMemo::forget();
+$cl_retry = count( CourseMonths::fix( $cl_acts->get( $cl_g ), '2031-06', 'payment' ) );
+asem_ok( 0 === $cl_old && ( ( 3 === count( $cl_dates ) && 3000 === $cl_here ) || CourseMonths::busy_message() === $cl_busy ) && 3 === $cl_retry && 3000 === $cl_left( $cl_g, $cl_g2, '2031-06' ) && 1 === $cl_fixed( $cl_g, '2031-06' ), 'a lezioni: due connessioni, mai un numero diverso da quello dell\'altra: o lo legge o si ferma e al nuovo tentativo lo legge (' . $cl_old . ', ' . count( $cl_dates ) . ', ' . $cl_here . ', ' . ( '' === $cl_busy ? 'letto' : 'fermato' ) . '; B: ' . var_export( $cl_b1, true ) . ' ' . $cl_e1 . ' ' . var_export( $cl_b2, true ) . '; ' . $cl_iso . ')' );
 
 // ---------- Ricalcola il mese: calendario sistemato dopo la prima apertura ----------
 Db::$today_fake = '2031-05-28';

@@ -82,11 +82,14 @@ final class CourseMonths {
 		if ( $id < 1 || ! self::writable( $month ) || ! in_array( $month, SocialYear::from_label( (string) $activity['social_year'], Settings::start_month() )->months(), true ) ) { // fuori dall'anno del corso non c'è nulla da fissare
 			return $live;
 		}
-		self::db()->query( self::db()->prepare( 'INSERT IGNORE INTO ' . Db::t( 'course_months' ) . ' (activity_id, month, dates, source, fixed_at) VALUES (%d, %s, %s, %s, %s)', $id, $month, implode( ',', $live ), $source, Db::now() ) );
+		$mine = (int) self::db()->query( self::db()->prepare( 'INSERT IGNORE INTO ' . Db::t( 'course_months' ) . ' (activity_id, month, dates, source, fixed_at) VALUES (%d, %s, %s, %s, %s)', $id, $month, implode( ',', $live ), $source, Db::now() ) );
 		RequestMemo::forget( 'course_months' );
 		// Lettura che blocca: dentro una transazione quella normale può vedere un'istantanea vecchia, senza la riga appena scritta da un'altra richiesta.
 		$row = self::db()->get_var( self::db()->prepare( 'SELECT dates FROM ' . Db::t( 'course_months' ) . ' WHERE activity_id = %d AND month = %s FOR UPDATE', $id, $month ) );
 		if ( null === $row ) {
+			if ( 1 !== $mine ) { // la riga c'è (scritta da un'altra richiesta) ma qui non si può leggere: meglio fermarsi che usare un numero diverso
+				throw new \InvalidArgumentException( self::busy_message() );
+			}
 			return $live;
 		}
 		$dates = array_values( array_filter( explode( ',', (string) $row ) ) );
@@ -130,6 +133,10 @@ final class CourseMonths {
 		return $n;
 	}
 
+	public static function busy_message(): string {
+		return 'In questo momento un\'altra operazione sta fissando le lezioni dello stesso mese: riprova tra qualche secondo.';
+	}
+
 	/** Qualcuno ha versato per questo mese del corso? */
 	public static function paid( int $activity_id, string $month ): bool {
 		return (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE activity_id = %d AND type = 'income' AND voided_at IS NULL AND session_id IS NULL AND COALESCE(competence_month, DATE_FORMAT(tx_date, '%%Y-%%m')) = %s", $activity_id, $month ) ) > 0;
@@ -167,9 +174,12 @@ final class CourseMonths {
 		}
 		$n = self::count_from( $dates, Trials::trial_month( $enrollment ) === $month ? (string) $enrollment['trial_from'] : '' );
 		if ( null !== self::fixed( $aid, $month ) && self::writable( $month ) ) {
-			self::db()->query( self::db()->prepare( 'INSERT IGNORE INTO ' . Db::t( 'course_month_dues' ) . ' (activity_id, person_id, month, price_cents, lessons, due_cents, created_at) VALUES (%d, %d, %s, %d, %d, %d, %s)', $aid, $pid, $month, $price, $n, $price * $n, Db::now() ) );
+			$mine = (int) self::db()->query( self::db()->prepare( 'INSERT IGNORE INTO ' . Db::t( 'course_month_dues' ) . ' (activity_id, person_id, month, price_cents, lessons, due_cents, created_at) VALUES (%d, %d, %s, %d, %d, %d, %s)', $aid, $pid, $month, $price, $n, $price * $n, Db::now() ) );
 			RequestMemo::forget( 'course_dues' );
 			$row = self::db()->get_var( self::db()->prepare( 'SELECT due_cents FROM ' . Db::t( 'course_month_dues' ) . ' WHERE activity_id = %d AND person_id = %d AND month = %s FOR UPDATE', $aid, $pid, $month ) ); // come in fix(): vale ciò che è scritto, non l'istantanea
+			if ( null === $row && 1 !== $mine ) {
+				throw new \InvalidArgumentException( self::busy_message() );
+			}
 			return null === $row ? $price * $n : (int) $row;
 		}
 		return $price * $n;
