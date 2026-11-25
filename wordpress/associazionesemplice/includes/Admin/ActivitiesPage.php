@@ -125,6 +125,7 @@ final class ActivitiesPage {
 		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Pagamento unico (anche annuale)', 'monthly' => 'Rinnovo mensile', 'quarterly' => 'Rinnovo trimestrale' ), $billing ) . '</select>'
 			. '<p class="description"><strong>Pagamento unico:</strong> il contributo indicato è il totale (es. 10 incontri a 120 €), dovuto subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> il contributo indicato è quello di un trimestre, dovuto all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo disdice, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
 			. $tr . '<th>Giorni di prova gratuiti</th><td><input type="number" name="trial_days" min="0" max="' . (int) Trials::MAX_DAYS . '" step="1" value="' . (int) ( $a['trial_days'] ?? 0 ) . '" style="width:5em"><p class="description">0 = nessuna prova. La prova si registra ma è gratuita. Chi si iscrive <strong>nello stesso mese</strong> paga dal giorno della prova, in proporzione alle lezioni (rinnovo mensile; trimestre e pagamento unico restano interi); chi si iscrive più tardi non paga la prova.</p></td></tr>'
+			. $tr . '<th>Giorni festivi</th><td><input type="hidden" name="red_days_present" value="1"><label><input type="checkbox" name="red_days" value="1"' . checked( $a ? ! empty( $a['red_days'] ) : true, true, false ) . '> Nessuna lezione nei giorni festivi e di chiusura</label><p class="description">Festività nazionali, patrono e chiusure (Impostazioni, Soci e quote). Vale per le lezioni settimanali: le date uniche e le lezioni con le presenze già segnate restano.</p></td></tr>'
 			. ( $with_when ? $tr . '<th>Quando</th><td>' . self::when_builder( $rows ) . '</td></tr>' : '' )
 			. $tr . '<th>Luogo</th><td><input type="text" name="location" class="regular-text" value="' . $val( 'location' ) . '"></td></tr>'
 			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data le mensilità non sono più dovute</span></td></tr>';
@@ -469,12 +470,23 @@ final class ActivitiesPage {
 				. '<button class="button" name="mode" value="cancel">Annulla solo questa lezione</button> <button class="button" name="mode" value="cancel_from">Annulla questa lezione e le successive</button><br>Sposta a <input type="date" name="new_date"> dalle <input type="time" name="new_start"> alle <input type="time" name="new_end"> <button class="button" name="mode" value="move">Sposta</button></p>';
 			Ui::form_close();
 		}
+		$red = \AssociazioneSemplice\CourseCalendar::red_lessons( $activity, \AssociazioneSemplice\Db::today(), gmdate( 'Y-m-d', strtotime( \AssociazioneSemplice\Db::today() . ' +60 days' ) ) );
+		if ( $red ) {
+			echo '<h3>Giorni festivi e di chiusura, senza lezione</h3><ul>';
+			foreach ( $red as $d => $why ) {
+				Ui::form_open( 'asem_lesson_exception', $back, false, 'asem-inline' );
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'date', $d ), Html::allowed() );
+				echo '<li>' . esc_html( Ui::date( $d ) ) . ' — ' . esc_html( $why ) . ' <button class="button button-small" name="mode" value="keep">Tieni la lezione</button></li>';
+				Ui::form_close();
+			}
+			echo '</ul>';
+		}
 		if ( $ex ) {
 			echo '<h3>Lezioni cambiate</h3><ul>';
 			foreach ( $ex as $e ) {
 				Ui::form_open( 'asem_lesson_restore', $back, false, 'asem-inline' );
 				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'date', $e['lesson_date'] ), Html::allowed() );
-				echo '<li>' . esc_html( Ui::date( $e['lesson_date'] ) ) . ( \AssociazioneSemplice\LessonExceptions::MOVE === $e['action'] ? ' → spostata al ' . esc_html( Ui::date( $e['new_date'] ) ) : ' — annullata' ) . ( $e['note'] ? ' <span class="description">(' . esc_html( $e['note'] ) . ')</span>' : '' ) . ' <button class="button button-small">Ripristina</button></li>';
+				echo '<li>' . esc_html( Ui::date( $e['lesson_date'] ) ) . ( \AssociazioneSemplice\LessonExceptions::MOVE === $e['action'] ? ' → spostata al ' . esc_html( Ui::date( $e['new_date'] ) ) : ( \AssociazioneSemplice\LessonExceptions::KEEP === $e['action'] ? ' — si tiene anche se è un giorno festivo o di chiusura' : ' — annullata' ) ) . ( $e['note'] ? ' <span class="description">(' . esc_html( $e['note'] ) . ')</span>' : '' ) . ' <button class="button button-small">Ripristina</button></li>';
 				Ui::form_close();
 			}
 			echo '</ul>';

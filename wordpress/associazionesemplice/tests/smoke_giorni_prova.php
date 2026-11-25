@@ -242,7 +242,7 @@ update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '77' );
 $wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => $pr_fy['status'] ), array( 'year' => $pr_fyn ) );
 \AssociazioneSemplice\RequestMemo::forget();
 wp_cache_flush();
-asem_ok( '78' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::table_exists( Db::t( 'trials' ) ) && $pr_tn === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE trial_from IS NULL' ) && 0 === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(trial_days),0) FROM ' . Db::t( 'activities' ) ) && $pr_sumtx === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) ), 'prova: aggiornamento 77 → 78 con dati e un anno chiuso, iscrizioni e prima nota intatte, campi nuovi vuoti' );
+asem_ok( '79' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::table_exists( Db::t( 'trials' ) ) && $pr_tn === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE trial_from IS NULL' ) && 0 === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(trial_days),0) FROM ' . Db::t( 'activities' ) ) && $pr_sumtx === (int) $wpdb->get_var( 'SELECT COALESCE(SUM(amount_cents),0) FROM ' . Db::t( 'transactions' ) ), 'prova: aggiornamento 77 → 78 con dati e un anno chiuso, iscrizioni e prima nota intatte, campi nuovi vuoti' );
 
 // Una copia di prima delle prove (senza la tabella): dopo il ripristino non restano prove che rimandano a persone o corsi di prima
 Trials::add( $pr_c6, $pr_a, $pr_today );

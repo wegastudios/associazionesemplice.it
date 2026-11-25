@@ -11,6 +11,7 @@ final class LessonExceptions {
 
 	const CANCEL = 'cancel';
 	const MOVE   = 'move';
+	const KEEP   = 'keep'; // la lezione si tiene anche se il giorno è festivo o di chiusura
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -19,6 +20,9 @@ final class LessonExceptions {
 	/** Regole pure: sistema le date di un corso con le eccezioni (le annullate e le spostate spariscono, le nuove date di spostamento si aggiungono). @param string[] $dates @param array[] $exceptions */
 	public static function adjust_dates( array $dates, array $exceptions, string $from, string $to ): array {
 		foreach ( $exceptions as $e ) {
+			if ( self::KEEP === $e['action'] ) {
+				continue;
+			}
 			$dates = array_values( array_diff( $dates, array( (string) $e['lesson_date'] ) ) );
 			if ( self::MOVE === $e['action'] && ! empty( $e['new_date'] ) && $e['new_date'] >= $from && $e['new_date'] <= $to ) {
 				$dates[] = (string) $e['new_date'];
@@ -96,6 +100,11 @@ final class LessonExceptions {
 		self::save( $activity_id, $date, self::MOVE, $new_date, $start, $end, $note );
 	}
 
+	/** La lezione si tiene anche se il giorno è festivo o di chiusura. @throws \InvalidArgumentException */
+	public static function keep( int $activity_id, string $date, string $note = '' ): void {
+		self::save( $activity_id, $date, self::KEEP, '', '', '', $note );
+	}
+
 	/** Rimette la lezione com'era. */
 	public static function restore( int $activity_id, string $date ): void {
 		$n = self::db()->delete( Db::t( 'lesson_exceptions' ), array( 'activity_id' => $activity_id, 'lesson_date' => $date ) );
@@ -141,6 +150,6 @@ final class LessonExceptions {
 		} else {
 			$db->insert( Db::t( 'lesson_exceptions' ), $row );
 		}
-		Audit::log( self::CANCEL === $action ? 'lesson.cancelled' : 'lesson.moved', 'activity', $activity_id, array( 'date' => $date, 'to' => $new_date ) );
+		Audit::log( self::CANCEL === $action ? 'lesson.cancelled' : ( self::KEEP === $action ? 'lesson.kept' : 'lesson.moved' ), 'activity', $activity_id, array( 'date' => $date, 'to' => $new_date ) );
 	}
 }

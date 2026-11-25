@@ -728,6 +728,9 @@ final class Actions {
 			'fund_value'           => self::fund_value( $p ),
 			'notes'                => $p['notes'] ?? '',
 		);
+		if ( isset( $p['red_days_present'] ) ) { // casella dei corsi: presente solo nei moduli che la chiedono
+			$data['red_days'] = empty( $p['red_days'] ) ? 0 : 1;
+		}
 		if ( isset( $p['trial_days'] ) ) { // giorni di prova dei corsi: presenti solo nei moduli che li chiedono
 			$data['trial_days'] = (int) $p['trial_days'];
 		}
@@ -816,6 +819,9 @@ final class Actions {
 			\AssociazioneSemplice\LessonExceptions::move( $id, $date, (string) ( $p['new_date'] ?? '' ), (string) ( $p['new_start'] ?? '' ), (string) ( $p['new_end'] ?? '' ), $note );
 			$msg  = 'Lezione spostata al ' . Ui::date( (string) $p['new_date'] ) . '.';
 			$text = 'La lezione di ' . ( $a ? $a['name'] : 'corso' ) . ' del ' . Ui::date( $date ) . ' è spostata al ' . Ui::date( (string) $p['new_date'] ) . ( '' !== trim( (string) ( $p['new_start'] ?? '' ) ) ? ' alle ' . trim( (string) $p['new_start'] ) : '' ) . ( '' !== trim( $note ) ? ' (' . trim( $note ) . ')' : '' ) . '.';
+		} elseif ( 'keep' === ( $p['mode'] ?? '' ) ) { // giorno festivo o di chiusura: la lezione si tiene lo stesso
+			\AssociazioneSemplice\LessonExceptions::keep( $id, $date, $note );
+			return array( $back, 'Lezione del ' . Ui::date( $date ) . ' confermata: è di nuovo in calendario.' );
 		} elseif ( 'cancel_from' === ( $p['mode'] ?? '' ) ) {
 			$n    = \AssociazioneSemplice\LessonExceptions::cancel_from( $id, $date, $note );
 			$msg  = $n . ( 1 === $n ? ' lezione annullata' : ' lezioni annullate' ) . ' (questa e le successive; le passate restano).';
@@ -1482,6 +1488,8 @@ final class Actions {
 			$ente + array(
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
 				'family_discount_pct'     => (int) ( $p['family_discount_pct'] ?? 0 ),
+				'patron_day'              => $txt( 'patron_day' ),
+				'closures'                => sanitize_textarea_field( $p['closures'] ?? '' ),
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),
 				'guest_max_events'        => (int) ( $p['guest_max_events'] ?? 2 ),
 				'board_councillors'       => (int) ( $p['board_councillors'] ?? 7 ),
