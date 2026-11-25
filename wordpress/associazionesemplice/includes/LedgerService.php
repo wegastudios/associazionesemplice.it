@@ -545,10 +545,15 @@ class LedgerService {
 			return $fn();
 		}
 		$this->tx_depth++;
-		$this->db()->query( 'START TRANSACTION' );
+		if ( false === $this->db()->query( 'START TRANSACTION' ) ) {
+			$this->tx_depth--;
+			throw new \RuntimeException( 'Non riesco ad avviare l\'operazione: riprova.' );
+		}
 		try {
 			$res = $fn();
-			$this->db()->query( 'COMMIT' );
+			if ( false === $this->db()->query( 'COMMIT' ) ) { // un commit non riuscito non deve sembrare riuscito
+				throw new \RuntimeException( 'L\'operazione non è stata confermata dal database: riprova.' );
+			}
 			return $res;
 		} catch ( \Throwable $e ) {
 			$this->db()->query( 'ROLLBACK' );

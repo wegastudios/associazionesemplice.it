@@ -258,85 +258,181 @@ final class Actions {
 	/** Frase unica per ogni motivo per cui un altro socio non si può prenotare: non si dice quale, così nessuno scopre chi è socio, chi ha la tessera valida o chi è già prenotato. */
 	const OTHER_MEMBER_FAIL = 'Non è stato possibile prenotare una delle persone indicate: controlla cognome e numero di tessera. Non è stata prenotata nessuna persona.';
 
+	/** Contatori dei tentativi falliti su un altro socio: per socio (ogni 10 minuti) e per indirizzo di rete (ogni ora). */
+	private static function other_fail_keys( int $actor_id ): array {
+		$ip = hash( 'sha256', \AssociazioneSemplice\ClientIp::get() . wp_salt( 'auth' ) );
+		return array(
+			array( 'asem_mt_ofm_' . $actor_id, \AssociazioneSemplice\Limits::get( 'member_other_fail_per_10min' ), 600 ),
+			array( 'asem_mt_ofip_' . substr( $ip, 0, 24 ), \AssociazioneSemplice\Limits::get( 'ip_other_fail_per_hour' ), 3600 ),
+		);
+	}
+
+	/** Conta tentativi falliti su altri soci (peso $n) e ne lascia traccia SENZA dati in chiaro (niente cognomi né tessere). Non lancia: si sta già rifiutando. */
+	private static function other_fail_count( int $actor_id, int $n ): void {
+		foreach ( self::other_fail_keys( $actor_id ) as $k ) {
+			try {
+				\AssociazioneSemplice\MemberThrottle::strike( $k[0], $k[1], $k[2], $n );
+			} catch ( \InvalidArgumentException $e ) {
+				unset( $e ); // già oltre il limite: il contatore resta com'è
+			}
+		}
+		\AssociazioneSemplice\Audit::log( 'booking.other_member_failed', 'person', $actor_id, array( 'attempts' => $n ) );
+	}
+
+	/** Un altro socio per cognome e tessera, o null per QUALUNQUE motivo per cui non si può prenotare (la ragione non si distingue mai). */
+	private static function other_member( string $last, string $card, int $actor_id, int $session_id ): ?array {
+		$people = Plugin::people();
+		$h      = '' !== $card ? $people->find_by_card( $card ) : null;
+		if ( ! $h || '' === $last || \AssociazioneSemplice\Text::normalize( (string) $h['last_name'] ) !== \AssociazioneSemplice\Text::normalize( $last ) ) {
+			return null;
+		}
+		$email = trim( (string) $h['email'] );
+		if ( (int) $h['id'] === $actor_id || ! \AssociazioneSemplice\MemberType::is_member( (string) $h['type'] ) || ! empty( $h['no_booking_by_others'] )
+			|| \AssociazioneSemplice\Age::is_minor( $h['birth_date'] ?? null, \AssociazioneSemplice\Db::today() ) // i minori si prenotano solo dal tutore
+			|| '' === $email || ! is_email( $email ) // senza email non si può avvisare chi viene prenotato
+			|| ! $people->is_active_member( (int) $h['id'] ) || '' !== \AssociazioneSemplice\Regulation::booking_block( $h )
+			|| Plugin::activities()->has_active_booking( $session_id, (int) $h['id'] ) || Plugin::activities()->declined_by_member( $session_id, (int) $h['id'] ) ) {
+			return null;
+		}
+		return $h;
+	}
+
 	/**
-	 * Prenota insieme più persone: sé stessi, i propri ospiti e minori (creati o scelti), e altri soci indicati con cognome e numero di tessera.
-	 * Tutte o nessuna. Il contributo di tutti è di chi prenota. Per sé, ospiti e minori si dice il motivo di ogni rifiuto; per gli altri soci solo la frase generica.
-	 * Campi: session_id, price_list, me (1), guest_ids[], ward_ids[], new_guest_first[]/new_guest_last[], other_last[]/other_card[].
+	 * Controlli e creazione di un ospite dell'area soci: le stesse regole di «Aggiungi ospite» e dell'invio in gruppo (numero di un socio → risposta generica, doppioni,
+	 * cellulare se richiesto dall'associazione). Con $dry_run controlla soltanto.
+	 *
+	 * @return int id dell'ospite creato (0 con $dry_run)
+	 */
+	private static function add_guest_checked( array $actor, string $first, string $last, string $phone, string $email, bool $dry_run = false ): int {
+		if ( ! \AssociazioneSemplice\Settings::guests_enabled() ) {
+			throw new \InvalidArgumentException( 'L\'associazione non prevede ospiti.' );
+		}
+		// Nessun limite automatico: si evita solo il doppione evidente tra i propri ospiti e chi è già socio (il resto lo segnalano gli elenchi a chi gestisce).
+		foreach ( Plugin::people()->find_by_phone( $phone ) as $h ) {
+			if ( \AssociazioneSemplice\MemberType::is_member( $h['type'] ) ) {
+				throw new \InvalidArgumentException( 'Non puoi aggiungere questo numero come ospite: scrivi alla segreteria.' ); // non si dice perché: nessuno può scoprire chi è socio provando dei numeri
+			}
+			if ( (int) $h['host_person_id'] === (int) $actor['id'] ) {
+				throw new \InvalidArgumentException( 'Hai già questo ospite tra i tuoi.' );
+			}
+		}
+		foreach ( Plugin::people()->guests_of( (int) $actor['id'] ) as $g ) {
+			if ( \AssociazioneSemplice\Text::normalize( $g['first_name'] . $g['last_name'] ) === \AssociazioneSemplice\Text::normalize( $first . $last ) ) {
+				throw new \InvalidArgumentException( 'Hai già questo ospite tra i tuoi.' );
+			}
+		}
+		if ( $dry_run ) {
+			return 0;
+		}
+		return (int) Plugin::people()->create(
+			array(
+				'type'           => \AssociazioneSemplice\MemberType::GUEST,
+				'host_person_id' => (int) $actor['id'],
+				'first_name'     => $first,
+				'last_name'      => $last,
+				'email'          => $email,
+				'phone'          => $phone,
+			)
+		);
+	}
+
+	/**
+	 * Prenota insieme più persone: sé stessi, i propri ospiti e minori (esistenti o nuovi) e altri soci indicati con cognome e numero di tessera.
+	 * Tutte o nessuna. Il contributo di tutti è di chi prenota. Per sé, ospiti e minori si dice il motivo di ogni rifiuto; per gli altri soci MAI: una sola frase.
+	 * Ordine dei controlli: prima tutto ciò che non dipende dall'altro socio (data, posti, evento su richiesta, listini, sé stessi, ospiti), poi l'altro socio.
+	 * Campi: session_id, me (1), guest_ids[], ward_ids[], new_guest_first[]/new_guest_last[]/new_guest_phone[]/new_guest_email[], other_last[]/other_card[],
+	 * price_list[me|p<ID>|n<i>|o<i>] (un listino per persona, se l'attività ne ha).
 	 *
 	 * @return string messaggio
 	 */
 	public static function do_book_group( array $post ): string {
-		$actor = self::actor();
-		$aid   = (int) $actor['id'];
-		\AssociazioneSemplice\MemberThrottle::hit( 'book', $aid, 'member_book_per_10min' );
+		$actor  = self::actor();
+		$aid    = (int) $actor['id'];
+		$people = Plugin::people();
+		$acts   = Plugin::activities();
+		$arr    = static function ( string $k ) use ( $post ): array {
+			return isset( $post[ $k ] ) && is_array( $post[ $k ] ) ? array_values( $post[ $k ] ) : array();
+		};
+		$clean  = static function ( $v ): string {
+			return trim( sanitize_text_field( (string) $v ) );
+		};
+
+		// 1. Che cosa è stato chiesto
+		$want = array();
+		if ( ! empty( $post['me'] ) ) {
+			$want['me'] = $aid;
+		}
+		foreach ( array_merge( $arr( 'guest_ids' ), $arr( 'ward_ids' ) ) as $pid ) {
+			$want[ 'p' . (int) $pid ] = (int) $pid;
+		}
+		$new_guests = array();
+		foreach ( $arr( 'new_guest_first' ) as $i => $f ) {
+			$l  = $arr( 'new_guest_last' )[ $i ] ?? '';
+			$ph = $arr( 'new_guest_phone' )[ $i ] ?? '';
+			$em = $arr( 'new_guest_email' )[ $i ] ?? '';
+			if ( '' === $clean( $f ) && '' === $clean( $l ) && '' === $clean( $ph ) ) {
+				continue;
+			}
+			if ( '' === $clean( $f ) || '' === $clean( $l ) ) {
+				throw new \InvalidArgumentException( 'Per ogni ospite nuovo servono nome e cognome.' );
+			}
+			$new_guests[ 'n' . $i ] = array( $clean( $f ), $clean( $l ), $clean( $ph ), $clean( $em ) );
+		}
+		$others = array();
+		foreach ( $arr( 'other_last' ) as $i => $last ) {
+			$card = $clean( $arr( 'other_card' )[ $i ] ?? '' );
+			if ( '' === $clean( $last ) && '' === $card ) {
+				continue;
+			}
+			$others[ 'o' . $i ] = array( $clean( $last ), $card );
+		}
+		$n = count( $want ) + count( $new_guests ) + count( $others );
+		if ( $n < 1 ) {
+			throw new \InvalidArgumentException( 'Scegli almeno una persona da prenotare.' );
+		}
+		if ( $n > self::GROUP_MAX ) {
+			throw new \InvalidArgumentException( 'Puoi prenotare al massimo ' . (int) self::GROUP_MAX . ' persone per volta.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+
+		// 2. Limiti: un invio pesa quanto le persone; i tentativi falliti sugli altri soci hanno limiti a parte (si controllano prima di verificare chiunque)
+		\AssociazioneSemplice\MemberThrottle::hit( 'book', $aid, 'member_book_per_10min', $n );
+		if ( $new_guests ) {
+			\AssociazioneSemplice\MemberThrottle::hit( 'guest', $aid, 'member_book_per_10min', count( $new_guests ) );
+		}
+		if ( $others ) {
+			foreach ( self::other_fail_keys( $aid ) as $k ) {
+				\AssociazioneSemplice\MemberThrottle::strike( $k[0], $k[1], $k[2], 0 );
+			}
+		}
 		self::assert_profile( $actor );
-		$session = Plugin::activities()->session( (int) ( $post['session_id'] ?? 0 ) );
+
+		// 3. Tutto ciò che non dipende dall'altro socio
+		$session = $acts->session( (int) ( $post['session_id'] ?? 0 ) );
 		if ( ! $session ) {
 			throw new \InvalidArgumentException( 'Questo evento non c\'è più: ricarica la pagina.' );
 		}
 		if ( ! \AssociazioneSemplice\ActivityService::online_bookable( $session ) ) {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\ActivityService::last_day( $session ) >= current_time( 'Y-m-d' ) ? 'Le prenotazioni online si chiudono il giorno prima: per questa data rivolgiti alla segreteria.' : 'Questo evento è già passato.' );
 		}
-		$act_row  = Plugin::activities()->get( (int) $session['activity_id'] );
-		$list_key = sanitize_key( (string) ( $post['price_list'] ?? '' ) );
-		if ( '' === $list_key && $act_row && \AssociazioneSemplice\PriceLists::for_activity( $act_row ) ) {
-			throw new \InvalidArgumentException( 'Scegli uno dei contributi proposti per questa attività.' );
+		$sid = (int) $session['id'];
+		try {
+			list( , $act_row ) = $acts->group_precheck( $sid, $n );
+		} catch ( \AssociazioneSemplice\BookingFailure $e ) {
+			throw new \InvalidArgumentException( $e->getMessage() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$people = Plugin::people();
-		$acts   = Plugin::activities();
-		$sid    = (int) $session['id'];
-
-		// Gli altri soci: ogni tentativo conta nel limite, anche quello che poi fallisce per altro. Le righe vuote si ignorano.
-		$others = array();
-		$lasts  = isset( $post['other_last'] ) && is_array( $post['other_last'] ) ? array_values( $post['other_last'] ) : array();
-		$cards  = isset( $post['other_card'] ) && is_array( $post['other_card'] ) ? array_values( $post['other_card'] ) : array();
-		foreach ( $lasts as $i => $last ) {
-			$last = trim( sanitize_text_field( (string) $last ) );
-			$card = trim( sanitize_text_field( (string) ( $cards[ $i ] ?? '' ) ) );
-			if ( '' === $last && '' === $card ) {
-				continue;
+		$chosen = isset( $post['price_list'] ) && is_array( $post['price_list'] ) ? $post['price_list'] : array();
+		$lists  = array(); // chiave della richiesta => listino
+		$has_pl = (bool) \AssociazioneSemplice\PriceLists::for_activity( $act_row );
+		foreach ( array_merge( array_keys( $want ), array_keys( $new_guests ), array_keys( $others ) ) as $k ) {
+			$key = sanitize_key( (string) ( $chosen[ $k ] ?? '' ) );
+			if ( $has_pl && ( '' === $key || ! \AssociazioneSemplice\PriceLists::find( $act_row, $key ) ) ) {
+				throw new \InvalidArgumentException( 'Scegli il contributo per ogni persona.' );
 			}
-			\AssociazioneSemplice\MemberThrottle::hit( 'book_other', $aid, 'member_book_per_10min' );
-			$others[] = array( $last, $card );
+			$lists[ $k ] = $has_pl ? $key : '';
 		}
-
-		// Sé stessi, ospiti e minori: motivi per persona.
-		$mine   = array(); // person_id => nome
 		$errors = array();
-		$want   = array();
-		if ( ! empty( $post['me'] ) ) {
-			$want[] = $aid;
-		}
-		foreach ( array( 'guest_ids', 'ward_ids' ) as $k ) {
-			foreach ( isset( $post[ $k ] ) && is_array( $post[ $k ] ) ? $post[ $k ] : array() as $pid ) {
-				$want[] = (int) $pid;
-			}
-		}
-		$guest_first = isset( $post['new_guest_first'] ) && is_array( $post['new_guest_first'] ) ? array_values( $post['new_guest_first'] ) : array();
-		$guest_last  = isset( $post['new_guest_last'] ) && is_array( $post['new_guest_last'] ) ? array_values( $post['new_guest_last'] ) : array();
-		$new_guests  = array();
-		foreach ( $guest_first as $i => $f ) {
-			$f = trim( sanitize_text_field( (string) $f ) );
-			$l = trim( sanitize_text_field( (string) ( $guest_last[ $i ] ?? '' ) ) );
-			if ( '' !== $f || '' !== $l ) {
-				if ( '' === $f || '' === $l ) {
-					$errors[] = 'Per ogni ospite nuovo servono nome e cognome.';
-					continue;
-				}
-				$new_guests[] = array( $f, $l );
-			}
-		}
-		$want = array_values( array_unique( $want ) );
-		if ( count( $want ) + count( $new_guests ) + count( $others ) < 1 ) {
-			throw new \InvalidArgumentException( 'Scegli almeno una persona da prenotare.' );
-		}
-		if ( count( $want ) + count( $new_guests ) + count( $others ) > self::GROUP_MAX ) {
-			throw new \InvalidArgumentException( 'Puoi prenotare al massimo ' . (int) self::GROUP_MAX . ' persone per volta.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-		}
-		if ( $new_guests && ! \AssociazioneSemplice\Settings::guests_enabled() ) {
-			throw new \InvalidArgumentException( 'L\'associazione non prevede ospiti.' );
-		}
-		foreach ( $want as $pid ) {
+		$mine   = array(); // person_id => chiave della richiesta
+		foreach ( $want as $k => $pid ) {
 			$p = $people->get( $pid );
 			if ( ! $p ) {
 				$errors[] = 'Persona non trovata.';
@@ -360,70 +456,98 @@ final class Actions {
 				continue;
 			}
 			if ( $acts->has_active_booking( $sid, $pid ) ) {
-				$errors[] = $name . ': è già prenotato a questa data.';
+				$errors[] = $name . ': ha già una prenotazione per questa data.';
 				continue;
 			}
-			$mine[ $pid ] = $name;
+			$conflict = (string) apply_filters( 'asem_booking_errors', '', $sid, $pid );
+			if ( '' !== $conflict ) {
+				$errors[] = $name . ': ' . $conflict;
+				continue;
+			}
+			$mine[ $pid ] = $k;
+		}
+		foreach ( $new_guests as $k => $g ) {
+			try {
+				self::add_guest_checked( $actor, $g[0], $g[1], $g[2], $g[3], true );
+			} catch ( \InvalidArgumentException $e ) {
+				$errors[] = $g[0] . ': ' . $e->getMessage();
+			}
 		}
 		if ( $errors ) {
 			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 
-		// Altri soci: una sola frase per ogni motivo, e niente messaggi diversi tra più soci.
-		$other_ids = array();
-		$fail      = false;
-		foreach ( $others as $o ) {
-			$h = '' !== $o[1] ? $people->find_by_card( $o[1] ) : null;
-			if ( ! $h || '' === $o[0] || \AssociazioneSemplice\Text::normalize( (string) $h['last_name'] ) !== \AssociazioneSemplice\Text::normalize( $o[0] )
-				|| (int) $h['id'] === $aid || ! \AssociazioneSemplice\MemberType::is_member( (string) $h['type'] ) || ! empty( $h['no_booking_by_others'] )
-				|| ! $people->is_active_member( (int) $h['id'] ) || '' !== \AssociazioneSemplice\Regulation::booking_block( $h )
-				|| $acts->has_active_booking( $sid, (int) $h['id'] ) || isset( $mine[ (int) $h['id'] ] ) || in_array( (int) $h['id'], $other_ids, true ) ) {
-				$fail = true;
+		// 4. Gli altri soci: da qui in poi qualunque motivo, per ognuno, è la stessa frase
+		$other_ids   = array(); // person_id => chiave della richiesta
+		$other_cards = array();
+		$bad         = 0;
+		foreach ( $others as $k => $o ) {
+			$h = self::other_member( $o[0], $o[1], $aid, $sid );
+			if ( ! $h || isset( $mine[ (int) $h['id'] ] ) || isset( $other_ids[ (int) $h['id'] ] ) ) {
+				$bad++;
 				continue;
 			}
-			$other_ids[] = (int) $h['id'];
+			$other_ids[ (int) $h['id'] ]   = $k;
+			$other_cards[ (int) $h['id'] ] = (string) $h['card_number'];
 		}
-		if ( $fail ) {
+		if ( $bad ) {
+			self::other_fail_count( $aid, $bad );
 			throw new \InvalidArgumentException( self::OTHER_MEMBER_FAIL ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 
-		// Ospiti nuovi: si creano solo ora che tutto il resto è a posto (il tutto o niente non lascia ospiti orfani se la prenotazione fallisce: se fallisce si tolgono).
-		$created = array();
-		foreach ( $new_guests as $g ) {
-			$gid = $people->create( array( 'type' => \AssociazioneSemplice\MemberType::GUEST, 'host_person_id' => $aid, 'first_name' => $g[0], 'last_name' => $g[1] ) );
-			$created[]       = (int) $gid;
-			$mine[ (int) $gid ] = $g[0];
+		// 5. La prenotazione: tutti insieme, gli ospiti nuovi nascono dentro la stessa transazione
+		$price_lists = array();
+		foreach ( $mine as $pid => $k ) {
+			$price_lists[ $pid ] = $lists[ $k ];
 		}
-		$all = array_merge( array_keys( $mine ), $other_ids );
-		try {
-			$ids = $acts->book_many( $sid, $all, $aid, array( 'price_list' => $list_key ) );
-		} catch ( \InvalidArgumentException $e ) {
-			foreach ( $created as $gid ) {
-				$people->delete( $gid );
+		foreach ( $other_ids as $pid => $k ) {
+			$price_lists[ $pid ] = $lists[ $k ];
+		}
+		$create = function () use ( $actor, $new_guests, $lists ): array {
+			$out = array();
+			foreach ( $new_guests as $k => $g ) {
+				$out[ self::add_guest_checked( $actor, $g[0], $g[1], $g[2], $g[3] ) ] = $lists[ $k ];
 			}
-			throw new \InvalidArgumentException( $other_ids && false !== strpos( $e->getMessage(), 'già prenotata' ) ? self::OTHER_MEMBER_FAIL : $e->getMessage() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			return $out;
+		};
+		try {
+			$ids = $acts->book_many( $sid, array_keys( $price_lists ), $aid, array( 'price_lists' => $price_lists, 'new_people' => $new_guests ? $create : null, 'extra' => count( $new_guests ) ) );
+		} catch ( \AssociazioneSemplice\BookingFailure $e ) {
+			if ( $other_ids ) { // l'altro socio è stato verificato e il tentativo è fallito: conta nel limite; e se riguarda lui non si dice altro
+				self::other_fail_count( $aid, count( $other_ids ) );
+				if ( isset( $other_ids[ $e->person_id ] ) || \AssociazioneSemplice\BookingFailure::ALREADY === $e->kind || \AssociazioneSemplice\BookingFailure::CONFLICT === $e->kind ) {
+					throw new \InvalidArgumentException( self::OTHER_MEMBER_FAIL ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+			}
+			throw new \InvalidArgumentException( $e->getMessage() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		// Email solo dopo il commit: riepilogo a chi prenota e avviso agli altri soci (con come spegnere le prenotazioni da parte di altri).
-		self::book_group_mails( $actor, $session, $act_row, array_keys( $ids ), $other_ids );
+		// 6. Solo dopo il commit: email di riepilogo a chi prenota e avviso agli altri soci
+		self::book_group_mails( $actor, $session, $act_row, array_keys( array_diff_key( $ids, $other_ids ) ), array_keys( $other_ids ), $other_cards );
 		return count( $ids ) > 1 ? 'Prenotazioni registrate per ' . count( $ids ) . ' persone.' : 'Prenotazione registrata.';
 	}
 
-	/** Email dopo una prenotazione di gruppo: riepilogo a chi prenota, avviso a ogni altro socio prenotato. */
-	private static function book_group_mails( array $actor, array $session, ?array $activity, array $person_ids, array $other_ids ): void {
+	/** Email dopo una prenotazione di gruppo: riepilogo a chi prenota (gli altri soci solo con il numero di tessera) e avviso a ogni altro socio prenotato. */
+	private static function book_group_mails( array $actor, array $session, ?array $activity, array $own_ids, array $other_ids, array $other_cards ): void {
 		$assoc = (string) \AssociazioneSemplice\Settings::get( 'association_name' );
 		$title = $activity ? (string) $activity['name'] : 'evento';
 		$when  = ( new \DateTimeImmutable( (string) $session['session_date'] ) )->format( 'd/m/Y' ) . ( ! empty( $session['start_time'] ) ? ' alle ' . $session['start_time'] : '' );
 		$names = array();
-		foreach ( $person_ids as $pid ) {
-			$p       = Plugin::people()->get( (int) $pid );
-			$names[] = $p ? trim( $p['first_name'] . ' ' . $p['last_name'] ) : '';
+		foreach ( $own_ids as $pid ) {
+			$p = Plugin::people()->get( (int) $pid );
+			if ( $p ) {
+				$names[] = trim( $p['first_name'] . ' ' . $p['last_name'] );
+			}
 		}
-		$to = \AssociazioneSemplice\Reminders::recipient( $actor );
+		foreach ( $other_ids as $oid ) {
+			$names[] = 'socio con tessera n. ' . ( $other_cards[ (int) $oid ] ?? '' ); // mai nome e cognome dal database
+		}
+		$sign = '' !== $assoc ? "\n\n—\n" . $assoc : '';
+		$to   = \AssociazioneSemplice\Reminders::recipient( $actor );
 		if ( $to ) {
 			\AssociazioneSemplice\Texts::mail(
 				$to['email'],
 				\AssociazioneSemplice\Texts::subject( 'Prenotazione: ' . $title ),
-				'Ciao ' . $to['name'] . ",\n\nhai prenotato «" . $title . '» del ' . $when . ' per: ' . implode( ', ', array_filter( $names ) ) . ".\nIl contributo di tutte le persone prenotate è a tuo carico.\n\nPuoi annullare dall'area soci: " . \AssociazioneSemplice\Gatekeeper::area_url() . ( '' !== $assoc ? "\n\n—\n" . $assoc : '' )
+				'Ciao ' . $to['name'] . ",\n\nhai prenotato «" . $title . '» del ' . $when . ' per: ' . implode( ', ', $names ) . ".\nIl contributo di tutte le persone prenotate è a tuo carico.\n\nPuoi annullare dall'area soci: " . \AssociazioneSemplice\Gatekeeper::area_url() . $sign
 			);
 		}
 		foreach ( $other_ids as $oid ) {
@@ -434,8 +558,8 @@ final class Actions {
 			}
 			\AssociazioneSemplice\Texts::mail(
 				$ot['email'],
-				\AssociazioneSemplice\Texts::subject( 'Sei stato prenotato: ' . $title ),
-				'Ciao ' . $ot['name'] . ",\n\n" . trim( $actor['first_name'] . ' ' . $actor['last_name'] ) . ' ti ha prenotato a «' . $title . '» del ' . $when . ".\nIl contributo, se previsto, è a suo carico.\n\nSe non vuoi partecipare puoi toglierti dall'area soci: " . \AssociazioneSemplice\Gatekeeper::area_url() . "\nSe non vuoi essere prenotato da altri, spegni l'opzione nel tuo profilo («Altri soci possono prenotarmi»)." . ( '' !== $assoc ? "\n\n—\n" . $assoc : '' )
+				\AssociazioneSemplice\Texts::subject( 'Prenotazione per te: ' . $title ),
+				'Ciao ' . $ot['name'] . ",\n\n" . trim( $actor['first_name'] . ' ' . $actor['last_name'] ) . ' ha prenotato per te «' . $title . '» del ' . $when . ".\nIl contributo, se previsto, è a suo carico.\n\nSe non vuoi partecipare puoi toglierti dall'area soci: " . \AssociazioneSemplice\Gatekeeper::area_url() . "\nSe non vuoi che altri soci prenotino per te, spegni l'opzione nel tuo profilo." . $sign
 			);
 		}
 	}
@@ -841,36 +965,9 @@ final class Actions {
 	}
 
 	public static function do_add_guest( array $post ): string {
-		if ( ! Settings::guests_enabled() ) {
-			throw new \InvalidArgumentException( 'L\'associazione non prevede ospiti.' );
-		}
 		$actor = self::actor();
 		self::require_cap( 'asem_add_guest', (int) $actor['id'] );
-		$phone = (string) ( $post['phone'] ?? '' );
-		// Nessun limite automatico: si evita solo il doppione evidente tra i propri ospiti e chi è già socio (il resto lo segnalano gli elenchi a chi gestisce).
-		foreach ( Plugin::people()->find_by_phone( $phone ) as $h ) {
-			if ( MemberType::is_member( $h['type'] ) ) {
-				throw new \InvalidArgumentException( 'Non puoi aggiungere questo numero come ospite: scrivi alla segreteria.' ); // non si dice perché: nessuno può scoprire chi è socio provando dei numeri
-			}
-			if ( (int) $h['host_person_id'] === (int) $actor['id'] ) {
-				throw new \InvalidArgumentException( 'Hai già questo ospite tra i tuoi.' );
-			}
-		}
-		foreach ( Plugin::people()->guests_of( (int) $actor['id'] ) as $g ) {
-			if ( \AssociazioneSemplice\Text::normalize( $g['first_name'] . $g['last_name'] ) === \AssociazioneSemplice\Text::normalize( ( $post['first_name'] ?? '' ) . ( $post['last_name'] ?? '' ) ) ) {
-				throw new \InvalidArgumentException( 'Hai già questo ospite tra i tuoi.' );
-			}
-		}
-		Plugin::people()->create(
-			array(
-				'type'           => MemberType::GUEST,
-				'host_person_id' => (int) $actor['id'],
-				'first_name'     => $post['first_name'] ?? '',
-				'last_name'      => $post['last_name'] ?? '',
-				'email'          => $post['email'] ?? '',
-				'phone'          => $post['phone'] ?? '',
-			)
-		);
+		self::add_guest_checked( $actor, (string) ( $post['first_name'] ?? '' ), (string) ( $post['last_name'] ?? '' ), (string) ( $post['phone'] ?? '' ), (string) ( $post['email'] ?? '' ) ); // le stesse regole dell'invio in gruppo		return 'Ospite aggiunto.';
 		return 'Ospite aggiunto.';
 	}
 
