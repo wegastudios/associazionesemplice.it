@@ -384,7 +384,7 @@ final class Actions {
 			$other_ids[] = (int) $h['id'];
 		}
 		if ( $fail ) {
-			throw new \InvalidArgumentException( self::OTHER_MEMBER_FAIL );
+			throw new \InvalidArgumentException( self::OTHER_MEMBER_FAIL ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 
 		// Ospiti nuovi: si creano solo ora che tutto il resto è a posto (il tutto o niente non lascia ospiti orfani se la prenotazione fallisce: se fallisce si tolgono).
