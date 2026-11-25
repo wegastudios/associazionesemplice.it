@@ -36,9 +36,9 @@ $tes = wp_insert_user( array( 'user_login' => 'prova_tesoriere', 'user_pass' => 
 $wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => $tes ), array( 'id' => $due ) );
 Access::set_treasurer( (int) $tes, true );
 wp_cache_flush();
-$pid = AssociazioneSemplicePublicEvents::ensure( $aid );
+$pid = \AssociazioneSemplice\PublicEvents::ensure( $aid );
 wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish' ) );
-$err = AssociazioneSempliceMemberLogin::set_password( $uno, wp_generate_password( 24, true ) ); // senza password scelta il socio non vede l'area soci
+$err = \AssociazioneSemplice\MemberLogin::set_password( $uno, wp_generate_password( 24, true ) ); // senza password scelta il socio non vede l'area soci
 if ( '' !== $err ) {
 	WP_CLI::error( $err );
 }
