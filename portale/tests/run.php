@@ -2070,7 +2070,9 @@ Portale\Usage::accept( $cdb, $ubody( $usign( array( 'date' => '2026-11-25', 'org
 $evDb = testDb();
 migrated( $evDb );
 check( 'eventi: primo ritiro vero, ripetuto falso, dopo il rilascio di nuovo vero', $evDb->claimEvent( 'stripe', 'evt_1' ) && ! $evDb->claimEvent( 'stripe', 'evt_1' ) && null === $evDb->releaseEvent( 'stripe', 'evt_1' ) && $evDb->claimEvent( 'stripe', 'evt_1' ) );
-$evBad = testDb(); // senza migrazione: la tabella events non c'è
+$evBad = testDb();
+migrated( $evBad );
+ownerOf( $evBad )->run( 'DROP TABLE events' ); // la tabella events non c'è più
 $evThrown = false;
 try {
 	$evBad->claimEvent( 'stripe', 'evt_x' );
@@ -2088,7 +2090,7 @@ check( 'webhook: duplicato → 200 senza rifare il lavoro; lavoro fallito → 50
 	&& 500 === $onceEv->invoke( $whOk, 'stripe', 'evt_z', function () { throw new RuntimeException( 'x' ); } ) && $evDb->claimEvent( 'stripe', 'evt_z' ) );
 $ratePdo = testDb();
 migrated( $ratePdo );
-check( 'limiti: il primo posto si prende, oltre il massimo no', Portale\RateLimit::take( $ratePdo, 'prova-dup', 1 ) && ! Portale\RateLimit::take( $ratePdo, 'prova-dup', 1 ) );
+check( 'limiti: il primo posto si prende, oltre il massimo no', Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) && ! Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) );
 check( 'consumi: un invio più recente aggiorna', 50 === (int) $cdb->one( 'SELECT members FROM saas_usage WHERE ref = ?', array( $uref ) )['members'] );
 
 $cprev = Http::$transport;
