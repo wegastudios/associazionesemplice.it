@@ -146,13 +146,13 @@ final class Views {
 		Assets::enqueue();
 		$back      = Restrict::current_url();
 		$as_member = \AssociazioneSemplice\MemberSession::logged_in();
-		$text      = $as_member
-			? 'Hai fatto l\'accesso come socio, ma questa pagina si apre con l\'accesso dello staff: premi «Entra» e usa lo stesso nome utente e la stessa password con cui lavori nell\'amministrazione del sito.'
-			: 'Questa pagina è per chi lavora con l\'associazione. Premi «Entra» e usa il nome utente e la password che usi per l\'amministrazione del sito.';
+		$text      = ( $as_member ? 'Hai fatto l\'accesso come socio, ma questa pagina si apre con l\'accesso al sito. ' : 'Questa pagina è per chi lavora con l\'associazione. ' )
+			. 'Premi «Entra» e usa l\'email (o il nome utente) e la password del tuo accesso al sito.';
 		return self::wrap(
 			'<div class="asemf-card"><h3>' . esc_html( $title ) . '</h3><p>' . esc_html( $text ) . '</p>'
 			. '<p><a class="asemf-btn wp-element-button" href="' . esc_url( wp_login_url( $back ) ) . '">Entra</a></p>'
-			. '<p class="asemf-small">Sei un socio? <a href="' . esc_url( self::member_login_url() ) . '">Entra dall\'area soci</a>.</p></div>'
+			. ( $as_member ? '' : '<p class="asemf-small">Per la tessera e le prenotazioni: <a href="' . esc_url( self::member_login_url() ) . '">entra dall\'area soci</a>.</p>' )
+			. '</div>'
 		);
 	}
 
@@ -1616,7 +1616,7 @@ final class Views {
 			}
 			$html .= '<div class="asemf-card-end">'; // in fondo resta solo il pulsante: le schede di una riga finiscono alla stessa altezza
 			if ( '' !== $page ) {
-				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">' . ( '' === $when && ! ActivityKind::uses_sessions( $a['kind'] ) ? 'Vedi il corso' : 'Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? '<span class="asemf-more"> e prenotazione</span>' : '' ) ) . '</a></p>'; // nelle schede strette «e prenotazione» si nasconde alla vista ma resta nel nome del pulsante
+				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">' . ( '' === $when && ! ActivityKind::uses_sessions( $a['kind'] ) ? 'Vedi il corso' : 'Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? '<span class="asemf-more">&nbsp;e prenotazione</span>' : '' ) ) . '</a></p>'; // nelle schede strette «e prenotazione» si nasconde alla vista ma resta nel nome del pulsante
 			}
 			$html .= '</div></article>';
 		}

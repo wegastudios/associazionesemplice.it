@@ -332,6 +332,7 @@ final class MemberLoginPage {
 		}
 		$body .= '<div class="n">Accesso soci</div>' . self::login_form( $mail, $back )
 			. '<p style="margin:14px 0 0"><a href="' . esc_url( $reset_url ) . '">Password dimenticata?</a></p>'
+			. '<p style="margin:10px 0 0">Segreteria e staff: <a href="' . esc_url( wp_login_url( '' !== $back ? $back : home_url( '/' ) ) ) . '">entra da qui</a>.</p>'
 			. $code_box;
 		return CardVerify::layout( 'Accesso soci', Assets::accent( '#2271b1' ), $body );
 	}
