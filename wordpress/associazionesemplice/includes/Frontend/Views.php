@@ -1533,7 +1533,7 @@ final class Views {
 			$f .= $rows > 1 ? '</details>' : '';
 			$f .= '</fieldset>';
 		}
-		if ( $active ) {
+		if ( $active && \AssociazioneSemplice\ActivityService::others_allowed() ) {
 			$f .= '<fieldset><legend>' . esc_html( 'Altri soci' . $price( MemberType::ORDINARY ) ) . '</legend><p class="asemf-small asemf-muted">Servono cognome e numero di tessera. La persona riceve un\'email e può togliersi.</p>';
 			for ( $i = 0; $i < $rows; $i++ ) {
 				$n  = 'socio ' . ( $i + 1 );

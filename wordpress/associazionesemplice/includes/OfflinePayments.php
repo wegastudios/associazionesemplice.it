@@ -96,7 +96,10 @@ class OfflinePayments {
 		$pid   = (int) $b['person_id'];
 		$other = $pid !== $debtor;
 		if ( $other ) {
-			$p    = Plugin::people()->get( $pid );
+			$p = Plugin::people()->get( $pid );
+			if ( $p && ! ActivityService::others_allowed() && MemberType::is_member( (string) $p['type'] ) && ! Guardians::is_guardian_of( $debtor, $pid ) ) {
+				return; // con un Pro che non conosce il pagante questa voce non si paga online: la incassa la segreteria
+			}
 			$name = $p ? ActivityService::participant_name( $p, $debtor ) : '';
 		}
 		$i = array(

@@ -443,6 +443,9 @@ final class Actions {
 			}
 			$others[ 'o' . $i ] = array( $clean( $last ), $card );
 		}
+		if ( $others && ! \AssociazioneSemplice\ActivityService::others_allowed() ) { // prima di cercare chiunque
+			throw new \InvalidArgumentException( 'Per ora non si possono prenotare altri soci da qui: scrivi alla segreteria.' );
+		}
 		$n = count( $want ) + count( $new_guests ) + count( $others );
 		if ( $n < 1 ) {
 			throw new \InvalidArgumentException( 'Scegli almeno una persona da prenotare.' );
