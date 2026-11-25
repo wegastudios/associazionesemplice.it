@@ -1142,6 +1142,20 @@ class PeopleService {
 		}
 	}
 
+	/** Etichetta italiana dell'origine di una tessera (il valore salvato è un codice interno). Un valore sconosciuto si mostra com'è. */
+	public static function membership_source_label( string $source ): string {
+		$labels = array(
+			'manual'      => 'Inserita a mano',
+			'application' => 'Domanda di adesione',
+			'import'      => 'Importata',
+			'import-undo' => 'Importazione annullata',
+			'payment'     => 'Quota incassata',
+			'promo'       => 'Anno in omaggio',
+			'founder'     => 'Socio fondatore',
+		);
+		return $labels[ $source ] ?? $source;
+	}
+
 	/** Il fondatore ha una sola iscrizione che dura N anni (default 99): sempre rinnovata. */
 	private function set_founder_membership( int $person_id, string $joined_on ): void {
 		$from = new \DateTimeImmutable( $joined_on ?: Db::today() );

@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
 final class MemberLoginPage {
 
 	const SENT    = 'Se l\'email è di un socio ti abbiamo scritto: apri il link che trovi nell\'email (controlla anche la posta indesiderata).';
-	const FAIL    = 'Email, codice o password non corretti. Controlla e riprova, oppure premi «Mandami un link» per entrare senza password.';
+	const FAIL    = 'Email, codice o password non corretti. Controlla e riprova, oppure premi «Mandami un link» per entrare senza password. Se lavori in segreteria o nello staff, usa il link «Segreteria e staff».';
 	const BLOCKED = 'Troppi tentativi da questa connessione. Aspetta un\'ora e riprova, oppure chiedi aiuto alla segreteria.';
 	const NOT_FROM_PAGE = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 
@@ -332,6 +332,7 @@ final class MemberLoginPage {
 		}
 		$body .= '<div class="n">Accesso soci</div>' . self::login_form( $mail, $back )
 			. '<p style="margin:14px 0 0"><a href="' . esc_url( $reset_url ) . '">Password dimenticata?</a></p>'
+			. '<p style="margin:10px 0 0">Segreteria e staff: <a href="' . esc_url( wp_login_url( '' !== $back ? $back : home_url( '/' ) ) ) . '">entra da qui</a>.</p>'
 			. $code_box;
 		return CardVerify::layout( 'Accesso soci', Assets::accent( '#2271b1' ), $body );
 	}

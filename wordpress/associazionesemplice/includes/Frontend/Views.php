@@ -136,6 +136,26 @@ final class Views {
 		return wp_login_url( $back );
 	}
 
+	/**
+	 * Invito ad accedere per le pagine di chi lavora con l'amministrazione (segreteria, tesoriere): la segreteria è un utente WordPress, quindi la porta giusta è
+	 * l'accesso di WordPress (anche quello personalizzato, wp_login_url passa dal Gatekeeper), non il modulo dei soci. Chi è anche socio può entrare dall'area soci
+	 * con il rimando secondario; chi ha già fatto l'accesso come socio e arriva qui legge come rientrare dalla porta giusta.
+	 */
+	public static function staff_login_prompt( string $title ): string {
+		self::no_cache();
+		Assets::enqueue();
+		$back      = Restrict::current_url();
+		$as_member = \AssociazioneSemplice\MemberSession::logged_in();
+		$text      = ( $as_member ? 'Hai fatto l\'accesso come socio, ma questa pagina si apre con l\'accesso al sito. ' : 'Questa pagina è per chi lavora con l\'associazione. ' )
+			. 'Premi «Entra» e usa l\'email (o il nome utente) e la password del tuo accesso al sito.';
+		return self::wrap(
+			'<div class="asemf-card"><h3>' . esc_html( $title ) . '</h3><p>' . esc_html( $text ) . '</p>'
+			. '<p><a class="asemf-btn wp-element-button" href="' . esc_url( wp_login_url( $back ) ) . '">Entra</a></p>'
+			. ( $as_member ? '' : '<p class="asemf-small">Per la tessera e le prenotazioni: <a href="' . esc_url( self::member_login_url() ) . '">entra dall\'area soci</a>.</p>' )
+			. '</div>'
+		);
+	}
+
 	public static function login_prompt(): string {
 		self::no_cache(); // l'invito ad accedere non deve restare in cache: chi ha già la sessione vedrebbe quello invece della sua pagina
 		Assets::enqueue();
@@ -461,7 +481,7 @@ final class Views {
 	/** Area segreteria: il punto d'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente). Il lavoro vero resta nell'amministrazione. */
 	public static function secretary(): string {
 		if ( ! is_user_logged_in() ) {
-			return self::login_prompt();
+			return self::staff_login_prompt( 'Area segreteria' );
 		}
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			return self::notice( 'Questa pagina è riservata alla segreteria.' );
@@ -615,6 +635,9 @@ final class Views {
 	}
 
 	public static function expenses(): string {
+		if ( ! is_user_logged_in() ) { // il tesoriere è un utente WordPress: la porta è l'accesso dello staff, non il modulo dei soci
+			return self::staff_login_prompt( 'Area tesoriere' );
+		}
 		return self::with_person(
 			function ( $p ) {
 				return current_user_can( 'asem_add_expense', 0 ) ? self::section_expenses( $p ) : self::notice( 'Questa pagina è riservata al tesoriere.' );
@@ -1593,7 +1616,7 @@ final class Views {
 			}
 			$html .= '<div class="asemf-card-end">'; // in fondo resta solo il pulsante: le schede di una riga finiscono alla stessa altezza
 			if ( '' !== $page ) {
-				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">' . ( '' === $when && ! ActivityKind::uses_sessions( $a['kind'] ) ? 'Vedi il corso' : 'Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? '<span class="asemf-more"> e prenotazione</span>' : '' ) ) . '</a></p>'; // nelle schede strette «e prenotazione» si nasconde alla vista ma resta nel nome del pulsante
+				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">' . ( '' === $when && ! ActivityKind::uses_sessions( $a['kind'] ) ? 'Vedi il corso' : 'Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? '<span class="asemf-more">&nbsp;e prenotazione</span>' : '' ) ) . '</a></p>'; // nelle schede strette «e prenotazione» si nasconde alla vista ma resta nel nome del pulsante
 			}
 			$html .= '</div></article>';
 		}
