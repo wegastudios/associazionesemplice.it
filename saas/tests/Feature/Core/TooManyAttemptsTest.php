@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Http\Middleware\HandleInertiaRequests;
 use App\Modules\Core\Http\TooManyAttempts;
 use Illuminate\Support\Facades\Route;
 
@@ -27,8 +28,10 @@ it('da una pagina torna indietro con l\'avviso e i minuti da aspettare', functio
 })->with(['/gestionale/_test/limite', '/area/_test/limite'])->with(['post', 'put', 'delete']);
 
 it('aprendo una pagina mostra la pagina in italiano, senza tornare indietro', function (): void {
-    $this->get('/gestionale/_test/limite', $this->inertia)->assertOk();
-    $this->get('/gestionale/_test/limite', $this->inertia)->assertTooManyRequests()
+    // Come il browser: un GET di Inertia porta la versione dei pacchetti (senza, la risposta è 409 e la pagina si ricarica).
+    $headers = [...$this->inertia, 'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request())];
+    $this->get('/gestionale/_test/limite', $headers)->assertOk();
+    $this->get('/gestionale/_test/limite', $headers)->assertTooManyRequests()
         ->assertSee('Troppi tentativi')->assertSee('Riprova tra 10 minuti.');
 });
 
