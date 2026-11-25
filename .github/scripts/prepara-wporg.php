@@ -38,10 +38,15 @@ try {
 		++$n;
 		try {
 			if ( $cash && $fee ) {
+				$sess = Plugin::activities()->sessions( $aid );
+				$line = array( "category_id" => $fee, "amount_cents" => 4000 + ( $n % 7 ) * 1500, "description" => "Contributi", "activity_id" => $aid );
+				if ( $sess ) {
+					$line["session_id"] = (int) $sess[0]["id"];
+				}
 				$ledger->record_receipt( array(
 					'date' => gmdate( 'Y-m-d', time() - ( 3 + $n ) * 86400 ), 'account_id' => (int) $cash['id'], 'method' => 'cash',
 					'person_id' => $people ? $people[ $n % count( $people ) ] : null,
-					'lines' => array( array( 'category_id' => $fee, 'amount_cents' => 4000 + ( $n % 7 ) * 1500, 'description' => 'Contributi', 'activity_id' => $aid ) ),
+					'lines' => array( $line ),
 				) );
 			}
 			if ( $bank && $cost ) {
