@@ -131,9 +131,17 @@ final class ProData {
 		if ( ! $dates ) {
 			return $out;
 		}
-		$db    = Db::db();
-		$marks = implode( ',', array_fill( 0, count( $dates ), '%s' ) );
-		return array_merge( $out, array_map( 'strval', $db->get_col( $db->prepare( 'SELECT DISTINCT lesson_date FROM ' . Db::t( 'attendance' ) . " WHERE activity_id = %d AND lesson_date IN ($marks)", array_merge( array( (int) $activity_id ), $dates ) ) ) ?: array() ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- tabella interna, segnaposto generati
+		$key = implode( ',', $dates );
+		if ( ! RequestMemo::has( 'lesson_records', $key ) ) {
+			$db    = Db::db();
+			$map   = array();
+			$marks = implode( ',', array_fill( 0, count( $dates ), '%s' ) );
+			foreach ( $db->get_results( $db->prepare( 'SELECT DISTINCT activity_id, lesson_date FROM ' . Db::t( 'attendance' ) . " WHERE lesson_date IN ($marks)", $dates ), ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- tabella interna, segnaposto generati
+				$map[ (int) $r['activity_id'] ][] = (string) $r['lesson_date'];
+			}
+			RequestMemo::put( 'lesson_records', $key, $map, array( Db::t( 'attendance' ) ) );
+		}
+		return array_merge( $out, RequestMemo::get( 'lesson_records', $key )[ (int) $activity_id ] ?? array() );
 	}
 
 	/** Salvata un'attività: crediti previsti e risorsa collegata (se ci sono prenotazioni già presenti sulla risorsa, un avviso). */

@@ -45,6 +45,7 @@ final class Settings {
 			'language'                => 'it',  // lingua dei testi (pacchetti di traduzione)
 			'patron_day'              => '',   // festa del patrono, «MM-GG» (vuoto = nessuna): giorno senza lezioni per i corsi che saltano i festivi
 			'closures'                => '',   // chiusure dell'associazione, una per riga: giorni senza lezioni per i corsi che saltano i festivi
+			'red_history'             => '',   // patrono e chiusure in vigore da quale giorno (si scrive da solo: cambiarli non tocca le date passate)
 			'family_discount_pct'     => 0,    // sconto sulla quota dei familiari del capofamiglia (%)
 			'entity_type'             => 'associazione', // tipo di ente: i testi si adattano (articoli compresi)
 			'entity_types_custom'     => '',    // tipi aggiunti a mano, uno per riga: nome;m|f
@@ -217,6 +218,8 @@ final class Settings {
 		$clean['language']                = preg_match( '/^[a-z]{2,3}(_[A-Z]{2})?$/', (string) $clean['language'] ) ? (string) $clean['language'] : 'it';
 		$clean['patron_day']              = RedDays::clean_patron( (string) $clean['patron_day'] );
 		$clean['closures']                = RedDays::closures_text( RedDays::parse_closures( (string) $clean['closures'] ) );
+		$red_hist                         = RedDays::history_after( RedDays::decode_history( (string) $before['red_history'] ), $clean['patron_day'], $clean['closures'], Db::today() );
+		$clean['red_history']             = $red_hist ? (string) wp_json_encode( $red_hist ) : '';
 		$clean['family_discount_pct']      = max( 0, min( 100, (int) $clean['family_discount_pct'] ) );
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
 		$clean['entity_type']         = mb_substr( trim( (string) $clean['entity_type'] ), 0, 60 );

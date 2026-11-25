@@ -50,6 +50,30 @@ final class RedDaysTest extends TestCase {
 		RedDays::clean_patron( '31/02' );
 	}
 
+	public function test_changes_do_not_touch_the_past(): void {
+		$h = RedDays::history_after( array(), '06-29', '24/12/2026 - 31/12/2026 Natale', '2026-12-28' );
+		$this->assertSame( array( '2026-12-25', '2026-12-26', '2026-12-28', '2026-12-29', '2026-12-30', '2026-12-31' ), array_keys( RedDays::between_history( '2026-12-20', '2026-12-31', $h ) ) ); // il 24 e il 27 erano già passati
+		$h2 = RedDays::history_after( $h, '06-29', '', '2026-12-30' );
+		$this->assertSame( array( '2026-12-25', '2026-12-26', '2026-12-28', '2026-12-29' ), array_keys( RedDays::between_history( '2026-12-20', '2026-12-31', $h2 ) ) ); // tolta: i giorni già passati restano senza lezione
+		$this->assertSame( $h, RedDays::history_after( $h2, '06-29', '24/12/2026 - 31/12/2026 Natale', '2026-12-30' ) ); // rimessa lo stesso giorno: come prima
+		$this->assertSame( $h, RedDays::history_after( $h, '06-29', '24/12/2026 - 31/12/2026 Natale', '2027-01-05' ) ); // niente di nuovo: nessuna riga
+		$this->assertSame( array(), RedDays::history_after( RedDays::history_after( array(), '', '01/01/2027', '2026-12-28' ), '', '', '2026-12-28' ) );
+	}
+
+	public function test_the_choice_of_a_course_starts_when_it_is_made(): void {
+		$p = RedDays::periods_after( '', true, '2026-11-25' );
+		$this->assertSame( '2026-11-25:', $p );
+		$this->assertSame( $p, RedDays::periods_after( $p, true, '2026-12-01' ) );
+		$off = RedDays::periods_after( $p, false, '2026-12-10' );
+		$this->assertSame( '2026-11-25:2026-12-10', $off );
+		$this->assertSame( $p, RedDays::periods_after( $off, true, '2026-12-10' ) );
+		$this->assertSame( '2026-11-25:2026-12-10,2027-01-01:', RedDays::periods_after( $off, true, '2027-01-01' ) );
+		$this->assertSame( '', RedDays::periods_after( $p, false, '2026-11-25' ) );
+		$this->assertFalse( RedDays::in_periods( $off, '2026-11-24' ) );
+		$this->assertTrue( RedDays::in_periods( $off, '2026-12-09' ) );
+		$this->assertFalse( RedDays::in_periods( $off, '2026-12-10' ) );
+	}
+
 	public function test_weekly_lessons_skip_red_days_and_single_dates_do_not(): void {
 		$lessons = array( array( 'type' => 'weekly', 'day' => 5, 'from' => null, 'until' => null ), array( 'type' => 'single', 'date' => '2026-12-26' ) );
 		$skip    = RedDays::between( '2026-12-01', '2026-12-31', '', array() );

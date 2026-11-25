@@ -65,6 +65,14 @@ final class Plugin {
 				}
 			}
 		);
+		add_action(
+			'admin_notices',
+			function () {
+				if ( current_user_can( 'activate_plugins' ) && defined( 'ASEM_PRO_MIN_FREE' ) && ! has_filter( 'asem_lessons_with_records' ) && (int) Db::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL AND red_days = 1' ) ) { // Pro di prima: non dice quali lezioni hanno le presenze
+					echo '<div class="notice notice-warning"><p>Aggiorna <strong>Associazione Semplice Pro</strong>: con la versione installata una lezione con le presenze già segnate può sparire dal calendario se cade in un giorno festivo o di chiusura, nei corsi che li saltano. Le presenze segnate non si perdono.</p></div>';
+				}
+			}
+		);
 		MailLog::register();     // registro dell'esito delle email spedite
 		PublicEvents::register(); // pagina pubblica di eventi e corsi (un contenuto collegato a ogni attività)
 		Frontend\WhatsappFloat::register(); // pulsante WhatsApp fisso (se c'è il numero della segreteria)

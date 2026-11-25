@@ -55,7 +55,8 @@ final class CourseCalendar {
 
 	/** Le lezioni settimanali saltate per festivi e chiusure tra due giorni. @return array<string,string> data => motivo */
 	public static function red_lessons( array $a, string $from, string $to ): array {
-		$skip  = self::skip( $a, $from, $to, LessonExceptions::between( $from, $to, (int) $a['id'] ) );
+		$ex    = LessonExceptions::between( $from, $to, (int) $a['id'] );
+		$skip  = array_diff_key( self::skip( $a, $from, $to, $ex ), array_flip( array_column( $ex, 'lesson_date' ) ) ); // già annullate o spostate a mano: non sono «saltate»
 		$weeks = array_filter( ActivityService::lessons( $a ), function ( $s ) {
 			return 'weekly' === $s['type'];
 		} );
@@ -70,17 +71,21 @@ final class CourseCalendar {
 	 * @return array<string,string> data => motivo
 	 */
 	public static function skip( array $a, string $from, string $to, array $ex ): array {
-		if ( empty( $a['red_days'] ) ) {
+		$periods = (string) ( $a['red_periods'] ?? '' );
+		if ( '' === $periods ) {
 			return array();
 		}
-		$red = RedDays::in_range( $from, $to );
+		$all = RedDays::in_range( $from, $to );
+		$red = array_filter( $all, function ( $d ) use ( $periods ) {
+			return RedDays::in_periods( $periods, (string) $d );
+		}, ARRAY_FILTER_USE_KEY );
 		foreach ( $ex as $e ) {
 			if ( LessonExceptions::KEEP === $e['action'] ) {
 				unset( $red[ (string) $e['lesson_date'] ] );
 			}
 		}
-		if ( $red ) { // una lezione con le presenze già segnate resta (il registro presenze è un'estensione)
-			foreach ( (array) apply_filters( 'asem_lessons_with_records', array(), (int) $a['id'], array_keys( $red ) ) as $d ) {
+		if ( $red ) { // una lezione con le presenze già segnate resta (il registro presenze è un'estensione); le date chieste sono le stesse per ogni corso: una lettura sola
+			foreach ( (array) apply_filters( 'asem_lessons_with_records', array(), (int) $a['id'], array_keys( $all ) ) as $d ) {
 				unset( $red[ (string) $d ] );
 			}
 		}

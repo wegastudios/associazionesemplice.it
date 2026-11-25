@@ -946,6 +946,7 @@ final class Install {
   billing varchar(12) NOT NULL DEFAULT 'monthly',
   trial_days smallint(5) unsigned NOT NULL DEFAULT 0,
   red_days tinyint(1) NOT NULL DEFAULT 0,
+  red_periods varchar(1000) NOT NULL DEFAULT '',
   sport varchar(60) DEFAULT NULL,
   discipline varchar(120) DEFAULT NULL,
   lesson_start char(5) DEFAULT NULL,
