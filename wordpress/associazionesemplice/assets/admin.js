@@ -1176,6 +1176,8 @@ window.asemPlacesInit = function () {
 
 /* Fogli (<dialog class="asem-sheet">): si aprono dal pulsante con data-asem-sheet, si chiudono con «Chiudi», Esc o un clic fuori */
 (function () {
+	var $ = function (s, r) { return (r || document).querySelector(s); };
+	var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 	document.addEventListener('click', function (e) {
 		var open = e.target.closest ? e.target.closest('[data-asem-sheet]') : null;
 		if (open) {
