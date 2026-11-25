@@ -143,7 +143,7 @@ it('gli ingressi sono limitati per indirizzo IP', function (): void {
     for ($i = 0; $i < 20; $i++) {
         $this->post(DEMO_MEMBER_HOST.'/area/accesso/demo')->assertRedirect('/area');
     }
-    $this->post(DEMO_MEMBER_HOST.'/area/accesso/demo')->assertSessionHasErrors(['demo' => DemoScale::LIMIT_OFF]);
+    $this->postJson(DEMO_MEMBER_HOST.'/area/accesso/demo')->assertUnprocessable()->assertJsonValidationErrors(['demo' => DemoScale::LIMIT_OFF]);
     expect(memberSessions()->count())->toBe(20);
     // Un altro indirizzo non è toccato.
     $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.9'])->post(DEMO_MEMBER_HOST.'/area/accesso/demo')->assertRedirect('/area');
@@ -154,9 +154,9 @@ it('i dati personali del socio non si cambiano e non si chiudono le sessioni alt
     $cookie = (string) $this->post(DEMO_MEMBER_HOST.'/area/accesso/demo')->getCookie(DEMO_MEMBER_COOKIE, false)?->getValue();
     $me = $this->withUnencryptedCookie(DEMO_MEMBER_COOKIE, $cookie);
 
-    $me->put(DEMO_MEMBER_HOST.'/area/profilo', ['phone' => '333 1234567', 'address' => 'Via Falsa 1'])->assertSessionHasErrors(['ledger' => DemoScale::CHANGE_OFF]);
-    $me->post(DEMO_MEMBER_HOST.'/area/tessera/rigenera')->assertSessionHasErrors(['ledger' => DemoScale::CHANGE_OFF]);
-    $me->post(DEMO_MEMBER_HOST.'/area/esci-ovunque')->assertSessionHasErrors(['ledger' => DemoScale::CHANGE_OFF]);
+    $me->putJson(DEMO_MEMBER_HOST.'/area/profilo', ['phone' => '333 1234567', 'address' => 'Via Falsa 1'])->assertUnprocessable()->assertJsonValidationErrors(['ledger' => DemoScale::CHANGE_OFF]);
+    $me->postJson(DEMO_MEMBER_HOST.'/area/tessera/rigenera')->assertUnprocessable()->assertJsonValidationErrors(['ledger' => DemoScale::CHANGE_OFF]);
+    $me->postJson(DEMO_MEMBER_HOST.'/area/esci-ovunque')->assertUnprocessable()->assertJsonValidationErrors(['ledger' => DemoScale::CHANGE_OFF]);
 
     $this->orgContext()->run($this->org->id, function (): void {
         $person = Person::query()->findOrFail($this->fixed->id);
