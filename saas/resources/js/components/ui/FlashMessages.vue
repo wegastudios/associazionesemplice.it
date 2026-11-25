@@ -1,5 +1,5 @@
 <script setup>
-import { usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { CircleAlert, CircleCheck, X } from './icons.js';
 
@@ -16,14 +16,15 @@ watch(() => page.props.flash, (f) => {
     toast.value = f?.status ? { text: f.status, id: Date.now() } : null;
     if (toast.value) timer = setTimeout(() => { toast.value = null; }, Math.min(9000, 3500 + toast.value.text.length * 45));
 }, { immediate: true });
-// Si guarda la risposta e non il testo: lo stesso errore, chiuso e poi ripetuto, deve ricomparire, e in vista.
-watch(() => page.props.errors, async () => {
+// Inertia conserva le proprietà uguali: lo stesso errore ripetuto non fa scattare un watch. L'evento «error» arriva invece a
+// ogni risposta con errori: l'avviso chiuso ricompare, e in vista.
+const stopErrors = router.on('error', async () => {
     dismissed.value = false;
     if (!error.value) return;
     await nextTick();
     box.value?.scrollIntoView({ block: 'nearest' });
 });
-onBeforeUnmount(() => clearTimeout(timer));
+onBeforeUnmount(() => { clearTimeout(timer); stopErrors(); });
 </script>
 
 <template>
