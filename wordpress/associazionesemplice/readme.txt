@@ -27,7 +27,7 @@ Optional features are off at first. A **guided setup** asks a few questions and 
 * **Courses and events**: registrations, limited seats with a waiting list, single or recurring events, tickets with QR code, participant lists, an internal calendar and publishing to Google Calendar, Apple and Outlook.
 * **Public event pages**: a page for every event or course, a card list, a monthly calendar, structured data for Google. People can book from your site even **without being members**, with email confirmation.
 * **Cash book**: income and expenses in a single cash account, expenses with receipts and invoices attached, advances and discounts, export. **Fiscal years** with tracked closing and reopening.
-* **Members' area** on your site: card, notices, rules to accept, events and courses, profile. Added with blocks, shortcodes and Elementor widgets. Members do not need a WordPress user.
+* **Members' area** on your site: card, notices, rules to accept, events and courses, profile. Members can book for several people in one form: themselves, guests, minors and other members. Added with blocks, shortcodes and Elementor widgets. Members do not need a WordPress user.
 * **Roles and permissions**: president, vice president, treasurer, councillors, secretariat and employees, each with the permissions of only the areas they need.
 * **Registers and privacy**: minutes book, privacy notice, consents, anonymisation and download of a member's personal data.
 * **Donations with PayPal**: a form that takes the donor to PayPal's own donation page, and a donation invitation to show where it is needed.
@@ -38,11 +38,11 @@ Optional features are off at first. A **guided setup** asks a few questions and 
 
 Members' data is personal data: the plugin is written with this in mind.
 
-* **No data leaves your site.** The free plugin contacts no external service and sends no member or association data.
+* **Your data stays on your site.** By default the free plugin contacts no external service and sends no member or association data. Emails are sent by your own site's mail setup; the only optional features that involve third parties are listed under "External services".
 * **Permissions by area.** Only the administrator sees everything; the others see only the areas they are given. A separate permission ("View confidential data and export") protects tax codes, notes and exports.
 * **Protected member sign-in.** Link or password, with per-member rate limits on requests, cancellations, profile changes and receipts. Suspended members and former members cannot sign in.
 * **Verified membership applications.** An application sent from the site reaches the secretariat only after the applicant confirms by email; applications never confirmed are deleted after 30 days.
-* **Checked input.** Every form is validated and sanitised, every text shown is escaped, and every action needs the right permission and a security token (nonce).
+* **Checked input.** Submitted data is validated and sanitised, text shown is escaped, and actions are protected by permission checks and security tokens (nonces).
 * **Closed fiscal years cannot be changed.** Closings and reopenings leave a permanent trace.
 * **Safer cards.** The QR code can be regenerated in one click; the old one stops working at once.
 * **Privacy by design.** Privacy notice, recorded consents, anonymisation and download of personal data.

@@ -25,7 +25,7 @@ Le funzioni facoltative restano spente all'inizio: una **procedura guidata** fa 
 * **Corsi ed eventi**: iscrizioni, posti limitati con lista d'attesa, eventi singoli o ricorrenti, biglietti con QR, elenchi dei partecipanti, calendario interno e pubblicazione su Google Calendar, Apple e Outlook.
 * **Pagine pubbliche degli eventi**: una pagina per ogni evento o corso, elenco a schede, calendario mensile, dati strutturati per Google. Si prenota dal sito anche **senza essere soci**, con conferma via email.
 * **Prima nota**: entrate e uscite in una cassa unica, spese con scontrini e fatture allegati, acconti e sconti, esportazione. **Anni fiscali** con chiusura e riapertura tracciata.
-* **Area soci** sul tuo sito: tessera, avvisi, regolamento da accettare, eventi e corsi, profilo. Si inserisce con blocchi, shortcode e widget Elementor. Ai soci non serve un utente WordPress.
+* **Area soci** sul tuo sito: tessera, avvisi, regolamento da accettare, eventi e corsi, profilo; si prenota per più persone in un solo modulo: sé, ospiti, minori e altri soci. Si inserisce con blocchi, shortcode e widget Elementor. Ai soci non serve un utente WordPress.
 * **Ruoli e permessi**: presidente, vicepresidente, tesoriere, consiglieri, segreteria e dipendenti, ciascuno con i permessi delle sole aree che gli servono.
 * **Registri e privacy**: libro dei verbali, informativa, consensi, anonimizzazione e download dei dati personali di un socio.
 * **Donazioni con PayPal**: un modulo che porta il donatore alla pagina di donazione di PayPal, e un invito a donare da mostrare dove serve.
@@ -36,11 +36,11 @@ Le funzioni facoltative restano spente all'inizio: una **procedura guidata** fa 
 
 I dati dei soci sono dati personali: il plugin è scritto con questo in mente.
 
-* **Nessun dato esce dal tuo sito.** Il plugin gratuito non contatta servizi esterni e non invia dati dei soci né dell'associazione.
+* **I dati restano sul tuo sito.** Di base il plugin gratuito non contatta servizi esterni e non invia dati dei soci né dell'associazione. Le email partono dalla posta del tuo sito; le sole funzioni facoltative che coinvolgono terzi sono elencate in «External services».
 * **Permessi per area.** Solo l'amministratore vede tutto; gli altri vedono solo le aree assegnate. Un permesso a parte («Vedere dati riservati ed esportare») protegge codici fiscali, note ed esportazioni.
 * **Accesso dei soci protetto.** Link o password, con limiti di frequenza per socio su richieste, annullamenti, profilo e ricevute. I soci sospesi o usciti non entrano.
 * **Domande di adesione verificate.** Una domanda dal sito arriva alla segreteria solo dopo la conferma via email; quelle mai confermate si cancellano dopo 30 giorni.
-* **Controlli sui dati inseriti.** Ogni modulo è controllato e ripulito, ogni testo mostrato è protetto, ogni azione richiede il permesso giusto e un codice di sicurezza (nonce).
+* **Controlli sui dati inseriti.** I dati inviati sono controllati e ripuliti, i testi mostrati sono protetti, le azioni richiedono il permesso giusto e un codice di sicurezza (nonce).
 * **Anni fiscali chiusi, immodificabili.** Chiusure e riaperture lasciano una traccia permanente.
 * **Tessere sicure.** Il codice QR si rigenera in un clic; quello vecchio smette subito di valere.
 * **Privacy per legge.** Informativa, consensi registrati, anonimizzazione e download dei dati personali.
