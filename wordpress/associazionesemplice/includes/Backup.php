@@ -306,6 +306,9 @@ final class Backup {
 		array( 'course_months', 'activity_id', 'activities' ),
 		array( 'course_month_dues', 'activity_id', 'activities' ),
 		array( 'course_month_dues', 'person_id', 'people' ),
+		array( 'course_credits', 'activity_id', 'activities' ),
+		array( 'course_credits', 'person_id', 'people' ),
+		array( 'course_credit_uses', 'credit_id', 'course_credits' ),
 		array( 'sessions', 'activity_id', 'activities' ),
 		array( 'bookings', 'person_id', 'people' ),
 		array( 'bookings', 'booked_by', 'people' ),
@@ -350,6 +353,9 @@ final class Backup {
 			'asem_course_months.activity_id' => Texts::t( 'mesi di corsi che non ci sono' ),
 			'asem_course_month_dues.activity_id' => Texts::t( 'contributi mensili di corsi che non ci sono' ),
 			'asem_course_month_dues.person_id' => Texts::t( 'contributi mensili di persone che non ci sono' ),
+			'asem_course_credits.activity_id' => Texts::t( 'lezioni annullate di corsi che non ci sono' ),
+			'asem_course_credits.person_id' => Texts::t( 'lezioni annullate di persone che non ci sono' ),
+			'asem_course_credit_uses.credit_id' => Texts::t( 'importi a favore scalati di lezioni che non ci sono' ),
 			'asem_sessions.activity_id'    => Texts::t( 'date di corsi o eventi che non ci sono' ),
 			'asem_bookings.person_id'      => Texts::t( 'prenotazioni di persone che non ci sono' ),
 			'asem_bookings.booked_by'      => Texts::t( 'prenotazioni fatte da persone che non ci sono' ),
@@ -1088,7 +1094,7 @@ final class Backup {
 		if ( ! isset( $m['tables']['asem_member_auth'] ) ) {
 			$tables_wipe[] = 'asem_member_auth'; // una copia senza le password: quelle di adesso erano legate alle persone di prima, si svuotano
 		}
-		foreach ( array( 'asem_course_months', 'asem_course_month_dues' ) as $t ) {
+		foreach ( array( 'asem_course_months', 'asem_course_month_dues', 'asem_course_credits', 'asem_course_credit_uses' ) as $t ) {
 			if ( ! isset( $m['tables'][ $t ] ) ) {
 				$tables_wipe[] = $t; // copia di prima dei corsi a lezioni
 			}

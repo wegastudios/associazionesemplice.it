@@ -1472,7 +1472,8 @@ class ActivityService {
 			return max( 0, $fee - (int) array_sum( $paid ) );
 		}
 		if ( CourseMonths::applies( $activity ) ) {
-			return max( 0, CourseMonths::due( $activity, $enr, $fee, $month ) - (int) ( $paid[ $month ] ?? 0 ) );
+			list( $due_map, $paid_map ) = $this->lesson_ledger( $activity, $enr, $fee, $paid, $month );
+			return max( 0, (int) ( $due_map[ $month ] ?? 0 ) - (int) ( $paid_map[ $month ] ?? 0 ) );
 		}
 		$step = 'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1;
 		if ( $step > 1 ) {
@@ -1508,6 +1509,75 @@ class ActivityService {
 			return Trials::first_month_cents( $activity, $enr, $fee ) ?? $fee;
 		}
 		return Trials::expected_cents( $activity, (int) $person['id'], $month, $fee );
+	}
+
+	/**
+	 * Corso a lezioni: dovuto e versato per mese di un iscritto, con le lezioni annullate e gli importi a favore già messi al loro posto.
+	 *
+	 * @return array{0:array,1:array,2:array} dovuto, versato, righe delle lezioni annullate
+	 */
+	public function lesson_ledger( array $activity, array $enrollment, int $price, array $paid, string $until, ?string $end = null ): array {
+		$end  = $end ?? ( null === $enrollment['end_month'] ? null : (string) $enrollment['end_month'] );
+		$year = SocialYear::from_label( (string) $activity['social_year'], Settings::start_month() );
+		$due  = array();
+		foreach ( $year->months() as $m ) {
+			if ( $price > 0 && $m >= $enrollment['start_month'] && $m <= max( $until, substr( Db::today(), 0, 7 ) ) && ( null === $end || $m <= $end ) ) {
+				$due[ $m ] = CourseMonths::due( $activity, $enrollment, $price, $m );
+			}
+		}
+		$due = array_filter( $due, function ( $m ) use ( $until ) {
+			return $m <= $until || $m <= substr( Db::today(), 0, 7 );
+		}, ARRAY_FILTER_USE_KEY );
+		return CourseCredits::adjust( (int) $activity['id'], (int) $enrollment['person_id'], $due, $paid );
+	}
+
+	/** Scrive lo scalo degli importi a favore sul mese che si sta incassando. */
+	public function apply_credits( array $activity, int $person_id, string $month ): void {
+		$enr = $this->enrollments_of( $person_id )[ (int) $activity['id'] ] ?? null;
+		$p   = Plugin::people()->get( $person_id );
+		if ( ! $enr || ! $p ) {
+			return;
+		}
+		$paid  = $this->paid_map( array( (int) $activity['id'] ) )[ (int) $activity['id'] ][ $person_id ] ?? array();
+		$price = $this->enrollment_price( $activity, $enr, (string) $p['type'] );
+		$year  = SocialYear::from_label( (string) $activity['social_year'], Settings::start_month() );
+		$due   = array();
+		foreach ( $year->months() as $m ) {
+			if ( $price > 0 && $m >= $enr['start_month'] && $m <= max( $month, substr( Db::today(), 0, 7 ) ) && ( null === $enr['end_month'] || $m <= $enr['end_month'] ) ) {
+				$due[ $m ] = CourseMonths::due( $activity, $enr, $price, $m );
+			}
+		}
+		CourseCredits::persist( $activity, $person_id, $month, $due, $paid );
+	}
+
+	/** Le righe delle lezioni annullate di un iscritto, con quanto è ancora a favore. @return array[] */
+	public function credit_rows( int $activity_id, int $person_id ): array {
+		$a   = $this->get( $activity_id );
+		$enr = $this->enrollments_of( $person_id )[ $activity_id ] ?? null;
+		$p   = Plugin::people()->get( $person_id );
+		if ( ! $a || ! $enr || ! $p ) {
+			return CourseCredits::rows( $activity_id, $person_id );
+		}
+		$paid = $this->paid_map( array( $activity_id ) )[ $activity_id ][ $person_id ] ?? array();
+		return $this->lesson_ledger( $a, $enr, $this->enrollment_price( $a, $enr, (string) $p['type'] ), $paid, substr( Db::today(), 0, 7 ) )[2];
+	}
+
+	/** Corso a lezioni: per ogni iscritto del mese il dovuto fissato (scritto adesso se manca), da quale giorno conta e quanto ha versato. @return array[] */
+	public function month_dues( array $activity, string $month ): array {
+		$aid  = (int) $activity['id'];
+		$paid = $this->paid_map( array( $aid ) )[ $aid ] ?? array();
+		$out  = array();
+		foreach ( $this->db()->get_results( $this->db()->prepare( 'SELECT e.*, p.type FROM ' . Db::t( 'enrollments' ) . ' e JOIN ' . Db::t( 'people' ) . ' p ON p.id = e.person_id AND p.deleted_at IS NULL WHERE e.activity_id = %d AND e.start_month <= %s AND (e.end_month IS NULL OR e.end_month >= %s)', $aid, $month, $month ), ARRAY_A ) ?: array() as $e ) {
+			$price = $this->enrollment_price( $activity, $e, (string) $e['type'] );
+			$out[] = array(
+				'person_id'   => (int) $e['person_id'],
+				'price_cents' => $price,
+				'due_cents'   => CourseMonths::due( $activity, $e, $price, $month ),
+				'from'        => Trials::trial_month( $e ) === $month ? (string) $e['trial_from'] : '',
+				'paid'        => (int) ( $paid[ (int) $e['person_id'] ][ $month ] ?? 0 ),
+			);
+		}
+		return $out;
 	}
 
 	/** Le iscrizioni di una persona, per corso: una lettura sola per richiesta (si svuota a ogni scrittura). @return array<int,array> */
@@ -1937,13 +2007,8 @@ class ActivityService {
 		$year  = SocialYear::from_label( $activity['social_year'], Settings::start_month() );
 		$map   = null;
 		$first = array();
-		if ( CourseMonths::applies( $activity ) ) {
-			$map = array();
-			foreach ( $year->months() as $m ) {
-				if ( $fee > 0 && $m >= $enrollment['start_month'] && $m <= $now && ( null === $end || $m <= $end ) ) {
-					$map[ $m ] = CourseMonths::due( $activity, $enrollment, $fee, $m );
-				}
-			}
+		if ( CourseMonths::applies( $activity ) ) { // lezioni annullate e importi a favore entrano qui
+			list( $map, $paid_by_month ) = $this->lesson_ledger( $activity, $enrollment, $fee, $paid_by_month, $now, $end );
 		}
 		if ( ( null === $end || $now <= $end ) && ( self::slot_days( $activity ) || null !== $map ) ) { // il mese in corso è dovuto dalla prima lezione vera (festivi, chiusure e lezioni annullate compresi)
 			$f = CourseMonths::first_lesson( $activity, $now );

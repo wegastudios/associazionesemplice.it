@@ -64,6 +64,25 @@ class FundService {
 		return array( 'accounts' => $accounts, 'funds' => $funds, 'available' => $accounts - $funds );
 	}
 
+	/** Il fondo aperto del volontario di un corso, senza crearlo (0 se non c'è). */
+	public function instructor_fund_id( int $activity_id ): int {
+		return (int) $this->db()->get_var( $this->db()->prepare( 'SELECT id FROM ' . Db::t( 'funds' ) . ' WHERE activity_id = %d AND closed_at IS NULL ORDER BY id LIMIT 1', $activity_id ) );
+	}
+
+	/** Le quote accantonate sugli incassi di una persona per un mese di un corso. @return array{fund_id:int,cents:int} */
+	public function share_for_course_month( int $activity_id, int $person_id, string $month ): array {
+		$r = $this->db()->get_row(
+			$this->db()->prepare(
+				'SELECT e.fund_id, SUM(e.cents) AS cents FROM ' . Db::t( 'fund_entries' ) . ' e JOIN ' . Db::t( 'transactions' ) . " t ON t.id = e.tx_id AND t.voided_at IS NULL WHERE e.kind = 'share' AND t.activity_id = %d AND t.person_id = %d AND COALESCE(t.competence_month, DATE_FORMAT(t.tx_date, '%%Y-%%m')) = %s GROUP BY e.fund_id ORDER BY cents DESC LIMIT 1",
+				$activity_id,
+				$person_id,
+				$month
+			),
+			ARRAY_A
+		);
+		return array( 'fund_id' => $r ? (int) $r['fund_id'] : 0, 'cents' => $r ? (int) $r['cents'] : 0 );
+	}
+
 	private function open_fund_for( int $activity_id, array $activity ): int {
 		$id = (int) $this->db()->get_var( $this->db()->prepare( 'SELECT id FROM ' . Db::t( 'funds' ) . ' WHERE activity_id = %d AND closed_at IS NULL ORDER BY id LIMIT 1', $activity_id ) );
 		if ( $id ) {

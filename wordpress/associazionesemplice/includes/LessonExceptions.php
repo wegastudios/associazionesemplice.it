@@ -129,8 +129,10 @@ final class LessonExceptions {
 	public static function restore( int $activity_id, string $date ): void {
 		$moved = (string) self::db()->get_var( self::db()->prepare( 'SELECT new_date FROM ' . Db::t( 'lesson_exceptions' ) . ' WHERE activity_id = %d AND lesson_date = %s', $activity_id, $date ) );
 		self::assert_open( $date, $moved );
+		CourseCredits::assert_changeable( $activity_id, $date );
 		$n = self::db()->delete( Db::t( 'lesson_exceptions' ), array( 'activity_id' => $activity_id, 'lesson_date' => $date ) );
 		if ( $n ) {
+			CourseCredits::sync( $activity_id, $date );
 			Audit::log( 'lesson.restored', 'activity', $activity_id, array( 'date' => $date ) );
 		}
 	}
@@ -156,6 +158,9 @@ final class LessonExceptions {
 			throw new \InvalidArgumentException( 'Orario non valido (scrivi ore e minuti, ad esempio 18:30).' );
 		}
 		self::assert_open( $date, $new_date );
+		if ( self::CANCEL !== $action ) {
+			CourseCredits::assert_changeable( $activity_id, $date );
+		}
 		$row = array(
 			'activity_id' => $activity_id,
 			'lesson_date' => $date,
@@ -173,6 +178,7 @@ final class LessonExceptions {
 		} else {
 			$db->insert( Db::t( 'lesson_exceptions' ), $row );
 		}
+		CourseCredits::sync( $activity_id, $date ); // corso a lezioni: lezione annullata in un mese già fissato
 		Audit::log( self::CANCEL === $action ? 'lesson.cancelled' : ( self::KEEP === $action ? 'lesson.kept' : 'lesson.moved' ), 'activity', $activity_id, array( 'date' => $date, 'to' => $new_date ) );
 	}
 }

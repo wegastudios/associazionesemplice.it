@@ -343,6 +343,7 @@ final class ActivitiesPage {
 			self::course_left( $activity, $year, $back );
 			self::trials_card( $activity, $back );
 			self::months_card( $activity, $back );
+			self::credits_card( $activity, $back );
 			self::course_enrolled( $activity, $year, $back ); // gli iscritti restano nella prima colonna, sotto il modulo di iscrizione
 		}
 		echo '</div><div class="asem-col">';
@@ -834,6 +835,34 @@ final class ActivitiesPage {
 		echo '</p><p class="description">«Vai alla cassa» apre l\'incasso già compilato se c\'è qualcosa da pagare; «prossimo inserimento» resta qui, pronto per iscrivere la persona dopo.</p>';
 		Ui::form_close();
 		echo '</div>';
+	}
+
+	/** Corso a lezioni: lezioni annullate in mesi già fissati, con l'importo a favore, il recupero e la restituzione. */
+	private static function credits_card( array $activity, string $back ): void {
+		$id   = (int) $activity['id'];
+		$rows = \AssociazioneSemplice\CourseMonths::applies( $activity ) ? \AssociazioneSemplice\CourseCredits::of_activity( $id ) : array();
+		if ( ! $rows ) {
+			return;
+		}
+		echo '<div class="asem-card" id="asem-credits"><h2>Lezioni annullate</h2><p class="description">La lezione esce dal dovuto del mese. Chi aveva già pagato ha l\'importo a favore: si scala dal rinnovo, oppure si restituisce o si concorda un recupero (allora la lezione resta dovuta). Vale fino alla fine del primo mese dell\'anno fiscale dopo.</p><ul>';
+		foreach ( array_slice( $rows, 0, 60 ) as $r ) {
+			$avail = \AssociazioneSemplice\CourseCredits::available( $r );
+			$state = 'makeup' === $r['status'] ? 'recupero il ' . Ui::date( (string) $r['makeup_date'] ) : ( $avail > 0 ? Money::format( $avail ) . ' a favore fino al ' . Ui::date( \AssociazioneSemplice\CourseCredits::expires_on( (string) $r['lesson_date'] ) ) : ( (int) $r['refunded_cents'] ? 'restituito' : ( (int) $r['expired_cents'] ? 'chiuso: contributo per le attività' : 'tolta dal dovuto' ) ) );
+			echo '<li>' . esc_html( Ui::date( (string) $r['lesson_date'] ) . ' · ' . trim( $r['first_name'] . ' ' . $r['last_name'] ) . ' · ' . Money::format( (int) $r['cents'] ) . ' · ' . $state ) . ( (int) $r['fund_short'] > 0 ? ' <span class="asem-warn">' . esc_html( 'quota istruttore già liquidata: ' . Money::format( (int) $r['fund_short'] ) . ' non ripresi' ) . '</span>' : '' ) . ' ';
+			Ui::form_open( 'asem_course_credit', $back . '#asem-credits', false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'credit_id', (int) $r['id'] ), Html::allowed() );
+			if ( 'makeup' === $r['status'] ) {
+				echo '<button class="button button-small" name="mode" value="nomakeup">Togli il recupero</button>';
+			} else {
+				echo '<input type="date" name="makeup_date" aria-label="Data del recupero"> <button class="button button-small" name="mode" value="makeup">Segna il recupero</button>';
+				if ( $avail > 0 ) {
+					echo ' <button class="button button-small" name="mode" value="refunded" data-confirm="Segnare come restituito? Registra a parte l\'uscita di denaro.">Restituito</button>';
+				}
+			}
+			Ui::form_close();
+			echo '</li>';
+		}
+		echo '</ul></div>';
 	}
 
 	/** Corso a lezioni: quante lezioni in questo mese e nel prossimo, e se il numero è già fissato. */

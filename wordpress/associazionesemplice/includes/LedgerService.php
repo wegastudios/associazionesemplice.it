@@ -716,6 +716,9 @@ class LedgerService {
 					$course = $p['activity_id'] && ! $p['session_id'] && ! empty( $p['line']['competence_month'] ) ? Plugin::activities()->get( (int) $p['activity_id'] ) : null;
 					if ( $course && CourseMonths::applies( $course ) ) {
 						CourseMonths::fix( $course, (string) $p['line']['competence_month'], 'payment' );
+						if ( $p['person'] ) { // importo a favore di una lezione annullata: si scala da questo mese
+							Plugin::activities()->apply_credits( $course, (int) $p['person']['id'], (string) $p['line']['competence_month'] );
+						}
 					}
 				}
 					if ( ! empty( $d['check_due'] ) ) {

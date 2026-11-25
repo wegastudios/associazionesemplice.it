@@ -238,6 +238,9 @@ final class Reminders {
 		if ( ! empty( Settings::get( 'reminders_polls' ) ) && ! ( $send && self::$more ) ) {
 			$out['polls'] = Polls::remind( $send );
 		}
+		if ( ! empty( Settings::get( 'reminders_dues' ) ) && ! ( $send && self::$more ) ) {
+			$out['dues'] += CourseCredits::expiry_notices( $today, $send ); // importi a favore in scadenza
+		}
 		if ( ! empty( Settings::get( 'reminders_loans' ) ) && ! ( $send && self::$more ) ) {
 			$out['loans'] = self::loans( $send );
 		}

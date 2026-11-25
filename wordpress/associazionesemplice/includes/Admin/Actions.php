@@ -85,6 +85,8 @@ final class Actions {
 			'asem_trial_add'          => 'trial_add',
 			'asem_trial_remove'       => 'trial_remove',
 			'asem_course_month_recalc' => 'course_month_recalc',
+			'asem_course_credit'      => 'course_credit',
+			'asem_course_credits_expire' => 'course_credits_expire',
 			'asem_enroll_variant'     => 'enroll_variant',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
 			'asem_stop_renewal'       => 'stop_renewal',
@@ -1178,6 +1180,32 @@ final class Actions {
 	private static function trial_remove( array $p ): array {
 		\AssociazioneSemplice\Trials::remove( (int) ( $p['trial_id'] ?? 0 ), (int) ( $p['activity_id'] ?? 0 ) );
 		return array( Ui::url( 'asem-activity', array( 'id' => (int) ( $p['activity_id'] ?? 0 ) ) ) . '#asem-trials', 'Prova tolta.' );
+	}
+
+	private static function course_credit( array $p ): array {
+		$aid  = (int) ( $p['activity_id'] ?? 0 );
+		$id   = (int) ( $p['credit_id'] ?? 0 );
+		$mode = (string) ( $p['mode'] ?? '' );
+		$back = Ui::url( 'asem-activity', array( 'id' => $aid ) ) . '#asem-credits';
+		if ( 'makeup' === $mode || 'nomakeup' === $mode ) {
+			\AssociazioneSemplice\CourseCredits::set_makeup( $id, $aid, 'makeup' === $mode ? (string) ( $p['makeup_date'] ?? '' ) : '' );
+			return array( $back, 'makeup' === $mode ? 'Recupero segnato: la lezione resta dovuta.' : 'Recupero tolto: torna l\'importo a favore.' );
+		}
+		$x = \AssociazioneSemplice\CourseCredits::close( $id, $aid, 'refunded' );
+		return array( $back, 'Segnati come restituiti ' . Money::format( $x ) . '. Registra a parte l\'uscita di denaro.' );
+	}
+
+	private static function course_credits_expire( array $p ): array {
+		if ( empty( $p['confirm'] ) ) {
+			throw new \InvalidArgumentException( 'Spunta la conferma per chiudere gli importi scaduti.' );
+		}
+		$n = 0;
+		$x = 0;
+		foreach ( \AssociazioneSemplice\CourseCredits::expired_open() as $r ) {
+			$x += \AssociazioneSemplice\CourseCredits::close( (int) $r['id'], (int) $r['activity_id'], 'expired', 'scaduto: contributo per le attività' );
+			$n++;
+		}
+		return array( Ui::url( 'asem' ), $n . ( 1 === $n ? ' importo scaduto chiuso' : ' importi scaduti chiusi' ) . ' (' . Money::format( $x ) . '): restano all\'associazione come contributo per le attività. La prima nota non cambia.' );
 	}
 
 	private static function course_month_recalc( array $p ): array {
