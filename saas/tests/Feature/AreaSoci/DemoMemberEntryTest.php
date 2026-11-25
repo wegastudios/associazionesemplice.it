@@ -58,7 +58,7 @@ function demoMemberOn(bool $csrf = false, string $env = 'demo'): void
 /** Le sessioni dei soci dell'associazione di prova, lette con il suo contesto (come fa l'app). */
 function memberSessions(): Collection
 {
-    return test()->orgContext()->run(test()->org->id, static fn (CurrentOrg $org): Collection =>DB::connection($org->connection)->table('app.member_sessions')->get());
+    return test()->orgContext()->run(test()->org->id, static fn (CurrentOrg $org): Collection => DB::connection($org->connection)->table('app.member_sessions')->get());
 }
 
 it('nella demo il pulsante c\'è nell\'accesso dei soci e nella pagina di accesso del gestionale', function (): void {
