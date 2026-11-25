@@ -881,6 +881,19 @@ extra_step( 'tetto orario delle email', function () {
 	}
 } );
 
+// Limiti per socio nell'area soci: nella demo tutti i visitatori entrano con lo stesso socio, quindi il limite di «prenotazioni ogni 10 minuti» (20; una prenotazione di gruppo pesa quanto le persone)
+// e quello degli annullamenti si consumerebbero in fretta e un visitatore vedrebbe un rifiuto causato dagli altri. Si alzano a 100; i tentativi falliti sugli altri soci restano ai valori di serie.
+extra_step( 'limiti di prenotazione per socio', function () {
+	$limits                          = \AssociazioneSemplice\Settings::get( 'limits' );
+	$limits                          = is_array( $limits ) ? $limits : array();
+	$limits['member_book_per_10min']   = 100;
+	$limits['member_cancel_per_10min'] = 100;
+	\AssociazioneSemplice\Settings::update( array( 'limits' => $limits ) );
+	if ( 100 !== \AssociazioneSemplice\Limits::get( 'member_book_per_10min' ) ) {
+		throw new \RuntimeException( 'il limite di prenotazioni per socio non è 100' );
+	}
+} );
+
 // Prova fissa a ogni azzeramento: nessuna email deve uscire dalla demo, qualunque sia il destinatario (anche indirizzi veri). Il mu-plugin asem-demo.php
 // spegne la posta con pre_wp_mail: se manca o non funziona, PHPMailer verrebbe chiamato e l'azzeramento si ferma con un errore.
 extra_step( 'posta in uscita bloccata', function () {
