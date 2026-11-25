@@ -74,7 +74,10 @@ final class PortalGrants
             WHERE n.nspname = ? AND c.relkind IN ('r', 'p') AND c.relowner <> (SELECT oid FROM pg_roles WHERE rolname = ?)
             SQL, [$schema, $role]);
         foreach ($tables as $row) {
-            $name = (string) $row->t;
+            $name = ((array) $row)['t'] ?? '';
+            if (! is_string($name) || $name === '') {
+                continue;
+            }
             $table = '"'.str_replace('"', '""', $name).'"';
             $wanted = self::TABLES[$name] ?? [];
             $extra = array_diff(self::ALL, $wanted);
