@@ -151,6 +151,7 @@ const GEN = 'Non è stato possibile prenotare una delle persone indicate';
       await p.selectOption('#asem-add-booking-select', v);
       ok(/a carico di Paola Prenota/.test(asked), 'paga chi partecipa ' + w + ': chiede conferma («' + asked + '»)');
       await shot(p, 'paga-chi-partecipa');
+      await flat(p, 'paga chi partecipa');
       await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), p.click('form.asem-income button[type=submit], form.asem-income input[type=submit]')]);
       ok(/Incasso registrato/.test(await p.textContent('body')), 'paga chi partecipa ' + w + ': incasso registrato');
       await c.close();
