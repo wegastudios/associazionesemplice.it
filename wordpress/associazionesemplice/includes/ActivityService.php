@@ -622,6 +622,7 @@ class ActivityService {
 		return $id;
 	}
 
+	// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- i messaggi sono interni e si mostrano solo dopo esc_html; il motivo è un codice fisso
 	/**
 	 * Controlli di una prenotazione di gruppo che NON dipendono da chi sono le persone: data e attività, evento su richiesta, massimo di posti per volta e
 	 * posti liberi per tutte (indicativi: il controllo che vale si rifà sotto blocco). Vanno fatti PRIMA di cercare un altro socio, così nessun
@@ -770,6 +771,7 @@ class ActivityService {
 		return $out;
 	}
 
+	// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	/**
 	 * Contributo totale (in centesimi) che chi prenota si assume prenotando queste persone: lo stesso calcolo della prenotazione, da mostrare PRIMA di confermare.
 	 *
