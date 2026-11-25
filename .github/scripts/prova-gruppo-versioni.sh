@@ -25,7 +25,7 @@ val() { wp eval "echo '<<' . ( $1 ) . '>>';" 2>/dev/null | grep -a -o "<<.*>>" |
 code() { curl -s -o /dev/null -w '%{http_code}' "$1"; }
 sito() { for u in / /wp-login.php; do [ "$(code "http://localhost:8888$u")" = "200" ] || ko "$1: $u non risponde 200"; done; }
 inst() { wp plugin install "wp-content/prove/$1.zip" --force --activate 2>&1 | grep -iE "fatal|parse error" && ko "$2: errore fatale"; wp eval 'echo "ok";' >/dev/null 2>&1; }
-prova() { wp eval-file "wp-content/prove/$1" 2>&1 | grep -aE "^(ok|- |Success|Error|FAIL|Fatal|PHP)" ; [ "${PIPESTATUS[0]}" = 0 ] || ko "$2"; }
+prova() { wp eval-file wp-content/prove/$1 2>&1 | grep -aE "^(ok|- |Success|Error|FAIL|Fatal|PHP)" ; [ "${PIPESTATUS[0]}" = 0 ] || ko "$2"; }
 npx --yes @wordpress/env start >/dev/null 2>&1 || { ko "wp-env non parte"; exit 1; }
 
 echo "### 1. Gratuito 1.3.38 con dati → build corrente"
@@ -47,10 +47,10 @@ prova versioni-gruppo-dopo.php "i dati della prenotazione di gruppo ci sono anco
 
 echo "### 4. Pro 1.3.24 + gratuito nuovo"
 inst vp "Pro 1.3.24 sul gratuito nuovo"; p="$(val 'asem_pro_problem()')"; [ -z "$p" ] && si "il Pro 1.3.24 lavora col gratuito nuovo" || ko "Pro 1.3.24 sospeso: $p"
-prova versioni-gruppo-dopo.php "gruppo con il Pro 1.3.24"; sito "Pro 1.3.24 + nuovo"; echo "Pro 1.3.24 non conosce il pagante delle prenotazioni fatte per altri: serve il Pro nuovo per i pagamenti online"
+prova versioni-gruppo-dopo.php "gruppo con il Pro 1.3.24"; sito "Pro 1.3.24 + nuovo"; prova "versioni-gruppo-pagamento.php vecchio" "pagamento simulato con il Pro 1.3.24"
 
 echo "### 5. Pro nuovo + gratuito 1.3.38 (minimo alzato): sospeso con avviso, poi riprende"
-inst np "Pro nuovo"; p="$(val 'asem_pro_problem()')"; [ -z "$p" ] && si "coppia nuova: il Pro lavora" || ko "coppia nuova sospesa: $p"; sito "coppia nuova"
+inst np "Pro nuovo"; p="$(val 'asem_pro_problem()')"; [ -z "$p" ] && si "coppia nuova: il Pro lavora" || ko "coppia nuova sospesa: $p"; sito "coppia nuova"; prova "versioni-gruppo-pagamento.php nuovo" "pagamento simulato con il Pro nuovo"
 inst vf "gratuito 1.3.38 sotto il Pro nuovo"; p="$(val 'asem_pro_problem()')"; case "$p" in *"ha bisogno di"*) si "Pro nuovo sospeso con avviso sulla 1.3.38";; *) ko "nessun avviso con la 1.3.38: $p";; esac; sito "Pro nuovo + 1.3.38"
 inst nf "gratuito nuovo"; p="$(val 'asem_pro_problem()')"; [ -z "$p" ] && si "il Pro riprende da solo" || ko "Pro ancora sospeso: $p"; sito "ripresa"
 wp eval 'echo "ok";' >/dev/null; npx --yes @wordpress/env run cli sh -c 'grep -aE "PHP (Fatal|Parse)" wp-content/debug.log 2>/dev/null | tail -5' | grep -a "PHP" && ko "errori fatali nel registro"
