@@ -286,7 +286,9 @@ it('il rilascio lancia il comando dopo le migrazioni e prima del cambio del link
         ->and($remote)->toContain('saas:db:revoke-group --if-enabled > "$GROUP_FILE" 2>&1 ) || GROUP_RC=$?')
         ->and($remote)->toContain('umask 077; "$PHP" artisan saas:db:revoke-group')
         ->and($remote)->toContain('echo "permessi del gruppo: fatto"')
-        ->and($remote)->toContain('echo "permessi del gruppo: da rivedere, vedi il controllo di salute" >&2');
+        ->and($remote)->toContain('echo "permessi del gruppo: da rivedere, vedi il controllo di salute" >&2')
+        // Senza file di uscita (interruttore spento) `ls` esce con 2: con pipefail e set -e il rilascio si fermerebbe.
+        ->and($remote)->toContain('{ ls -1t "$BASE"/shared/revoca-gruppo-*.txt 2>/dev/null || true; } | tail -n +6');
 });
 
 it('l\'azione di manutenzione revoca-gruppo è nel workflow, in prova di default, e non stampa mai l\'uscita nel log', function (): void {

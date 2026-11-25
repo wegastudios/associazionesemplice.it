@@ -97,7 +97,7 @@ elif [ "$GROUP_RC" -eq 0 ]; then
 else
     echo "permessi del gruppo: da rivedere, vedi il controllo di salute" >&2
 fi
-ls -1t "$BASE"/shared/revoca-gruppo-*.txt 2>/dev/null | tail -n +6 | while read -r old; do rm -f "$old"; done
+{ ls -1t "$BASE"/shared/revoca-gruppo-*.txt 2>/dev/null || true; } | tail -n +6 | while read -r old; do rm -f "$old"; done
 # I mesi del registro sono pronti con tre mesi di anticipo: se ora non si riesce (backup in corso) il rilascio prosegue,
 # il controllo di salute lo segnala e ci riprova il lavoro mensile.
 "$PHP" artisan saas:audit:partitions || echo "Partizioni del registro non preparate ora: ci riprova il lavoro mensile." >&2
