@@ -2,7 +2,7 @@ name: SaaS
 
 on:
   push:
-    branches: [main, "feature/**", "claude/**"]
+    branches: [main]
     paths: ["saas/**", ".github/workflows/saas.yml"]
   pull_request:
     paths: ["saas/**", ".github/workflows/saas.yml"]
@@ -14,7 +14,8 @@ permissions:
 
 concurrency:
   group: saas-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Su main non si annulla: ogni testa di main deve avere la sua prova.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check:
@@ -60,6 +61,10 @@ jobs:
           key: composer-${{ hashFiles('saas/composer.lock') }}
 
       - run: composer install --no-interaction --no-progress --prefer-dist
+
+      # Controllo di stile: non dipende da altro e fallisce subito.
+      - name: Pint
+        run: vendor/bin/pint --test
 
       # Come il pacchetto del server (deploy/build.sh, H21): autoloader «solo mappa». Una classe fuori dalla mappa
       # (cartella non dichiarata in composer.json, file generati) fa fallire i test qui e non in produzione.
@@ -124,9 +129,6 @@ jobs:
           php -r '$c = require "bootstrap/cache/config.php"; exit(($c["queue"]["connections"]["database-long"]["retry_after"] ?? 0) >= 2100 && ($c["queue"]["connections"]["database"]["retry_after"] ?? 999) <= 120 ? 0 : 1);'
           php artisan config:clear --no-interaction
           mv .env.ci .env
-
-      - name: Pint
-        run: vendor/bin/pint --test
 
       - name: PHPStan
         run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress

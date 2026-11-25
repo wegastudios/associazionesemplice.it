@@ -2,11 +2,15 @@ name: Portale
 
 on:
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths: ["portale/**", ".github/workflows/portale.yml"]
   pull_request:
     paths: ["portale/**", ".github/workflows/portale.yml"]
   workflow_dispatch:
+
+concurrency:
+  group: portale-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:
