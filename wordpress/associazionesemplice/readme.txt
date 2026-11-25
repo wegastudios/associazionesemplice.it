@@ -38,7 +38,7 @@ Optional features are off at first. A **guided setup** asks a few questions and 
 
 Members' data is personal data: the plugin is written with this in mind.
 
-* **Your data stays on your site.** By default the free plugin contacts no external service and sends no member or association data. Emails are sent by your own site's mail setup; the only optional features that involve third parties are listed under "External services".
+* **Your data stays on your site.** By default the copy of the plugin on WordPress.org contacts no external service and sends no member or association data. Emails are sent by your own site's mail setup; the only optional features that involve third parties are listed under "External services".
 * **Permissions by area.** Only the administrator sees everything; the others see only the areas they are given. A separate permission ("View confidential data and export") protects tax codes, notes and exports.
 * **Protected member sign-in.** Link or password, with per-member rate limits on requests, cancellations, profile changes and receipts. Suspended members and former members cannot sign in.
 * **Verified membership applications.** An application sent from the site reaches the secretariat only after the applicant confirms by email; applications never confirmed are deleted after 30 days.
@@ -105,7 +105,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 No. Members sign in to the members' area with email and password, or with a link sent by email.
 
 = What data does the plugin send to external services? =
-None by default. The only optional features that involve third parties (PayPal, Google place search) are off at first and described in the "External services" section.
+None by default in the copy on WordPress.org. The only optional features that involve third parties (PayPal, Google place search) are off at first and described in the "External services" section.
 
 = What is the difference with the Pro version? =
 The free plugin is complete for members, activities and the cash book. Pro adds online payments, several accounts and funds, receipts, messages to members, app and wallet cards, bookable resources and, with Pro Fiscale, VAT and the "5 per mille". The [full comparison](https://associazionesemplice.it/confronto) is on our website.

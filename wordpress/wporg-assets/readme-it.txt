@@ -36,7 +36,7 @@ Le funzioni facoltative restano spente all'inizio: una **procedura guidata** fa 
 
 I dati dei soci sono dati personali: il plugin è scritto con questo in mente.
 
-* **I dati restano sul tuo sito.** Di base il plugin gratuito non contatta servizi esterni e non invia dati dei soci né dell'associazione. Le email partono dalla posta del tuo sito; le sole funzioni facoltative che coinvolgono terzi sono elencate in «External services».
+* **I dati restano sul tuo sito.** Di base la copia del plugin su WordPress.org non contatta servizi esterni e non invia dati dei soci né dell'associazione. Le email partono dalla posta del tuo sito; le sole funzioni facoltative che coinvolgono terzi sono elencate in «External services».
 * **Permessi per area.** Solo l'amministratore vede tutto; gli altri vedono solo le aree assegnate. Un permesso a parte («Vedere dati riservati ed esportare») protegge codici fiscali, note ed esportazioni.
 * **Accesso dei soci protetto.** Link o password, con limiti di frequenza per socio su richieste, annullamenti, profilo e ricevute. I soci sospesi o usciti non entrano.
 * **Domande di adesione verificate.** Una domanda dal sito arriva alla segreteria solo dopo la conferma via email; quelle mai confermate si cancellano dopo 30 giorni.
@@ -107,7 +107,7 @@ Direttamente sul conto PayPal che inserisci nelle impostazioni. Si registrano a 
 No. I soci entrano nell'area soci con email e password, oppure con un link ricevuto via email.
 
 = Quali dati invia il plugin a servizi esterni? =
-Nessuno, di base. Le uniche funzioni facoltative che coinvolgono terzi (PayPal, ricerca dei luoghi con Google) sono spente di partenza e descritte nella sezione «External services».
+Nessuno, di base, nella copia su WordPress.org. Le uniche funzioni facoltative che coinvolgono terzi (PayPal, ricerca dei luoghi con Google) sono spente di partenza e descritte nella sezione «External services».
 
 = Qual è la differenza con la versione Pro? =
 Il plugin gratuito è completo per soci, attività e prima nota. Il Pro aggiunge pagamenti online, più conti e fondi, ricevute, comunicazioni, app e Wallet, risorse prenotabili e, con Pro Fiscale, IVA e 5 per mille. Il [confronto completo](https://associazionesemplice.it/confronto) è sul sito.
