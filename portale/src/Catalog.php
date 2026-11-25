@@ -46,10 +46,10 @@ final class Catalog {
 	 * Verifica un JWT del SaaS: firma, kid, emittente, destinatario (il portale), tipo e date (vita massima 600 s, tolleranza 60 s).
 	 * @return array|null i claim, o null se qualcosa non torna
 	 */
-	public static function verifyToken( string $jwt, string $typ, ?int $now = null ): ?array {
+	public static function verifyToken( string $jwt, string $typ, ?int $now = null, int $maxLen = 4096 ): ?array {
 		$now = $now ?? time();
 		$p   = explode( '.', $jwt );
-		if ( 3 !== count( $p ) || strlen( $jwt ) > 4096 || ! function_exists( 'sodium_crypto_sign_verify_detached' ) ) {
+		if ( 3 !== count( $p ) || strlen( $jwt ) > $maxLen || ! function_exists( 'sodium_crypto_sign_verify_detached' ) ) {
 			return null;
 		}
 		$h = json_decode( self::unb64( $p[0] ), true );
