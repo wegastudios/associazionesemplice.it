@@ -821,7 +821,7 @@ final class ActivitiesPage {
 		echo wp_kses( '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'asem-enroll-person' ) . '</p>', Html::allowed() );
 		echo wp_kses( '<p>Primo mese dovuto: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select></p>', Html::allowed() );
 		if ( Trials::shares( $activity ) ) {
-			echo '<p>Paga dal giorno: <input type="date" name="pay_from" value="' . esc_attr( \AssociazioneSemplice\Db::today() ) . '"> <span class="description">nel primo mese si paga in proporzione alle lezioni da questo giorno; con un giorno di un altro mese il primo mese è intero</span></p>';
+			echo '<p>Paga dal giorno: <input type="date" name="pay_from" value="' . esc_attr( \AssociazioneSemplice\Db::today() >= $year->start()->format( 'Y-m-d' ) && \AssociazioneSemplice\Db::today() <= $year->end()->format( 'Y-m-d' ) ? \AssociazioneSemplice\Db::today() : '' ) . '"> <span class="description">nel primo mese si paga in proporzione alle lezioni da questo giorno; con un giorno di un altro mese il primo mese è intero</span></p>';
 		}
 		if ( PriceLists::for_activity( $activity ) ) {
 			echo wp_kses( '<p>Contributo: ' . self::variant_select( $activity, '' ) . ' <input type="text" name="fee_note" placeholder="Nota (facoltativa)" size="28" maxlength="190"></p>', Html::allowed() );

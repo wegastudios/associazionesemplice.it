@@ -1475,7 +1475,7 @@ class ActivityService {
 	 */
 	public function course_month_fee( array $activity, array $person, string $month ): int {
 		$fee = $this->fee_for( $activity, (string) $person['type'] );
-		$enr = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d', (int) $activity['id'], (int) $person['id'] ), ARRAY_A );
+		$enr = $this->enrollments_of( (int) $person['id'] )[ (int) $activity['id'] ] ?? null;
 		if ( $enr && ( null === $enr['end_month'] || $enr['end_month'] >= $month ) ) {
 			if ( Trials::trial_month( $enr ) !== $month ) {
 				return $fee;
@@ -1487,6 +1487,18 @@ class ActivityService {
 			return Trials::first_month_cents( $activity, $enr, $fee ) ?? $fee;
 		}
 		return Trials::expected_cents( $activity, (int) $person['id'], $month, $fee );
+	}
+
+	/** Le iscrizioni di una persona, per corso: una lettura sola per richiesta (si svuota a ogni scrittura). @return array<int,array> */
+	private function enrollments_of( int $person_id ): array {
+		if ( ! RequestMemo::has( 'person_enrollments', $person_id ) ) {
+			$map = array();
+			foreach ( $this->db()->get_results( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'enrollments' ) . ' WHERE person_id = %d', $person_id ), ARRAY_A ) ?: array() as $r ) {
+				$map[ (int) $r['activity_id'] ] = $r;
+			}
+			RequestMemo::put( 'person_enrollments', $person_id, $map, array( Db::t( 'enrollments' ) ) );
+		}
+		return RequestMemo::get( 'person_enrollments', $person_id );
 	}
 
 	/** Quanto manca da incassare per la prenotazione a una data di un evento (contributo dovuto meno il versato, sconti compresi). Null se non c'è una prenotazione con un contributo. */
@@ -1626,19 +1638,43 @@ class ActivityService {
 		if ( ! $enrollee ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
+		$pay_from = self::clean_pay_from( $a, $pay_from );
 		$tbl   = Db::t( 'enrollments' );
 		$row   = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE activity_id = %d AND person_id = %d", $activity_id, $person_id ), ARRAY_A );
 		$trial = Trials::enrollment_fields( $a, $person_id, $start_month, $pay_from ); // a mese iniziato si paga in proporzione, se il corso lo prevede
 		$covered = $row && $row['start_month'] <= $start_month && ( null === $row['end_month'] || $row['end_month'] >= $start_month );
 		if ( $covered || ( $row && ! empty( $row['trial_from'] ) && Trials::trial_month( $row ) >= $start_month ) ) {
 			$trial = array(); // il mese era già di questa iscrizione: ciò che è dovuto non cambia
+		} elseif ( ! empty( $trial['trial_from'] ) ) { // incassi già registrati in quel mese (iscrizione tolta e rifatta): il dovuto non scende sotto il versato
+			$paid = (int) ( $this->paid_map( array( $activity_id ) )[ $activity_id ][ $person_id ][ $start_month ] ?? 0 );
+			if ( $paid > 0 ) {
+				$trial = Trials::at_least_paid( $a, $trial, $this->fee_for( $a, (string) $enrollee['type'] ), $paid );
+			}
 		}
 		if ( $row ) {
 			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ) + $trial, array( 'id' => (int) $row['id'] ) );
 		} else {
 			$this->db()->insert( $tbl, array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'start_month' => $start_month, 'created_at' => Db::now() ) + $trial );
 		}
-		Audit::log( 'activity.enrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'from' => $start_month ) );
+		$log = array( 'person_id' => $person_id, 'from' => $start_month );
+		if ( null !== $pay_from && Db::today() !== $pay_from && substr( $pay_from, 0, 7 ) === $start_month && Trials::shares( $a ) ) {
+			$log['pay_from'] = $pay_from; // giorno di partenza scelto a mano, diverso da oggi
+		}
+		Audit::log( 'activity.enrolled', 'activity', $activity_id, $log );
+	}
+
+	/** Il giorno di partenza scelto: una data vera, dentro l'anno delle attività del corso e non in un anno fiscale chiuso. Vuoto = nessuno. @throws \InvalidArgumentException */
+	private static function clean_pay_from( array $a, ?string $date ): ?string {
+		$date = trim( (string) $date );
+		if ( '' === $date ) {
+			return null;
+		}
+		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m ) || ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
+			throw new \InvalidArgumentException( 'Il giorno da cui si paga non è una data valida.' );
+		}
+		self::assert_in_social_year( (string) $a['social_year'], $date, 'Il giorno da cui si paga' );
+		YearLock::assert_date_open( $date );
+		return $date;
 	}
 
 	/**

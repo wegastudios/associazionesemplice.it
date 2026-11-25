@@ -21,7 +21,14 @@ final class Trials {
 
 	/** Le prove di una persona a un corso, dalla prima. @return string[] date */
 	public static function dates( int $activity_id, int $person_id ): array {
-		return array_map( 'strval', self::db()->get_col( self::db()->prepare( 'SELECT trial_date FROM ' . Db::t( 'trials' ) . ' WHERE activity_id = %d AND person_id = %d ORDER BY trial_date', $activity_id, $person_id ) ) ?: array() );
+		if ( ! RequestMemo::has( 'person_trials', $person_id ) ) { // tutte quelle della persona in una lettura, ricordata per la richiesta
+			$map = array();
+			foreach ( self::db()->get_results( self::db()->prepare( 'SELECT activity_id, trial_date FROM ' . Db::t( 'trials' ) . ' WHERE person_id = %d ORDER BY trial_date', $person_id ), ARRAY_A ) ?: array() as $r ) {
+				$map[ (int) $r['activity_id'] ][] = (string) $r['trial_date'];
+			}
+			RequestMemo::put( 'person_trials', $person_id, $map, array( Db::t( 'trials' ) ) );
+		}
+		return RequestMemo::get( 'person_trials', $person_id )[ $activity_id ] ?? array();
 	}
 
 	/** Le prove di un corso, dalla più recente, con la persona. @return array[] */
@@ -172,6 +179,30 @@ final class Trials {
 		}
 		list( $left, $total ) = self::ratio( $activity, $day );
 		return $left >= $total ? $none : array( 'trial_from' => $day, 'trial_left' => $left, 'trial_total' => $total );
+	}
+
+	/**
+	 * La proporzione di chi ha già versato qualcosa per quel mese: se il dovuto scendesse sotto il versato si torna indietro fino al giorno che lo copre
+	 * (o al mese intero), così non si paga due volte e non restano soldi in più non segnati.
+	 *
+	 * @param array $fields campi dell'iscrizione con trial_from
+	 * @return array{trial_from:?string,trial_left:?int,trial_total:?int}
+	 */
+	public static function at_least_paid( array $activity, array $fields, int $fee, int $paid ): array {
+		if ( PaymentCalc::share( $fee, (int) $fields['trial_left'], (int) $fields['trial_total'] ) >= $paid ) {
+			return $fields;
+		}
+		$first = substr( (string) $fields['trial_from'], 0, 7 ) . '-01';
+		for ( $d = (string) $fields['trial_from']; $d >= $first; $d = ( new \DateTimeImmutable( $d ) )->modify( '-1 day' )->format( 'Y-m-d' ) ) {
+			list( $left, $total ) = self::ratio( $activity, $d );
+			if ( $left >= $total ) {
+				break;
+			}
+			if ( PaymentCalc::share( $fee, $left, $total ) >= $paid ) {
+				return array( 'trial_from' => $d, 'trial_left' => $left, 'trial_total' => $total );
+			}
+		}
+		return array( 'trial_from' => null, 'trial_left' => null, 'trial_total' => null );
 	}
 
 	/** Lezioni del mese dal giorno indicato compreso (anche nessuna), e lezioni di tutto il mese (senza orari: giorni). @return int[] */

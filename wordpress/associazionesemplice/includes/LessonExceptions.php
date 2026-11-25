@@ -35,13 +35,20 @@ final class LessonExceptions {
 
 	/** Le eccezioni che toccano il periodo (la data originale o quella nuova cade tra $from e $to). @return array[] */
 	public static function between( string $from, string $to, ?int $activity_id = null ): array {
+		if ( $activity_id ) { // le eccezioni del periodo si leggono una volta per tutti i corsi (ricordate per la richiesta, svuotate a ogni scrittura)
+			$key = $from . '|' . $to;
+			if ( ! RequestMemo::has( 'lesson_exceptions', $key ) ) {
+				$map = array();
+				foreach ( self::between( $from, $to ) as $e ) {
+					$map[ (int) $e['activity_id'] ][] = $e;
+				}
+				RequestMemo::put( 'lesson_exceptions', $key, $map, array( Db::t( 'lesson_exceptions' ) ) );
+			}
+			return RequestMemo::get( 'lesson_exceptions', $key )[ $activity_id ] ?? array();
+		}
 		$db  = self::db();
 		$sql = 'SELECT * FROM ' . Db::t( 'lesson_exceptions' ) . ' WHERE ((lesson_date BETWEEN %s AND %s) OR (new_date IS NOT NULL AND new_date BETWEEN %s AND %s))';
 		$arg = array( $from, $to, $from, $to );
-		if ( $activity_id ) {
-			$sql  .= ' AND activity_id = %d';
-			$arg[] = $activity_id;
-		}
 		return $db->get_results( $db->prepare( $sql . ' ORDER BY lesson_date', $arg ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna, valori preparati
 	}
 

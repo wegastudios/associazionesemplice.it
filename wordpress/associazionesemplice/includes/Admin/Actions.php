@@ -1203,7 +1203,7 @@ final class Actions {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
 		$day = (string) ( $p['pay_from'] ?? '' );
-		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'], preg_match( '/^\d{4}-\d{2}-\d{2}$/', $day ) ? $day : null );
+		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'], '' === $day ? null : $day );
 		$trial = self::trial_message( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
 		if ( isset( $p['price_list'] ) ) { // variante del contributo scelta dalla segreteria
 			Plugin::activities()->set_enrollment_price( (int) $p['activity_id'], $pid, (string) $p['price_list'], (string) ( $p['fee_note'] ?? '' ) );

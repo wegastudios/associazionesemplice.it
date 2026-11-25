@@ -70,6 +70,62 @@ $fm_acts->enroll( $fm_a, $fm_s, '2031-05', '2031-05-20' );
 $fm_t = $fm_man();
 $fm_acts->enroll( $fm_a, $fm_t, '2031-05', '2031-05-01' );
 asem_ok( 2000 === (int) $fm_acts->enrollment_left( $fm_a, $fm_s, '2031-05' ) && 4000 === (int) $fm_acts->enrollment_left( $fm_a, $fm_t, '2031-05' ), 'primo mese: la segreteria può indicare il giorno di partenza' );
+// giorno di partenza: una data vera, dell'anno del corso, in un anno aperto; chi sceglie un giorno diverso da oggi resta nel registro
+$fm_bad = 0;
+$fm_bp  = $fm_man();
+foreach ( array( '2031-05-99', '2031-02-30', '20310520', '2028-05-20', '2034-05-20', 'ieri' ) as $fm_bd ) {
+	$fm_bad += '' !== (string) asem_throws( function () use ( $fm_acts, $fm_a, $fm_bp, $fm_bd ) { $fm_acts->enroll( $fm_a, $fm_bp, '2031-05', $fm_bd ); } ) ? 1 : 0;
+}
+$fm_by = \AssociazioneSemplice\FiscalYears::year_of( '2031-05-20' );
+\AssociazioneSemplice\FiscalYears::ensure( $fm_by );
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'year' => $fm_by ) );
+\AssociazioneSemplice\RequestMemo::forget();
+wp_cache_flush();
+$fm_bad += '' !== (string) asem_throws( function () use ( $fm_acts, $fm_a, $fm_bp ) { $fm_acts->enroll( $fm_a, $fm_bp, '2031-05', '2031-05-20' ); } ) ? 1 : 0;
+$wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $fm_by ) );
+\AssociazioneSemplice\RequestMemo::forget();
+wp_cache_flush();
+asem_ok( 7 === $fm_bad && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE person_id = %d', $fm_bp ) ), 'primo mese: date non valide, di un altro anno o di un anno chiuso si rifiutano (' . $fm_bad . ' su 7)' );
+$fm_log = function ( int $pid ) use ( $wpdb ): array {
+	foreach ( $wpdb->get_col( 'SELECT details FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'activity.enrolled' ORDER BY id DESC LIMIT 60" ) as $j ) {
+		$x = (array) json_decode( (string) $j, true );
+		if ( $pid === (int) ( $x['person_id'] ?? 0 ) ) {
+			return $x;
+		}
+	}
+	return array();
+};
+asem_ok( '2031-05-20' === ( $fm_log( $fm_s )['pay_from'] ?? '' ) && ! isset( $fm_log( $fm_q )['pay_from'] ), 'primo mese: un giorno scelto diverso da oggi resta nel registro azioni' );
+// iscrizione tolta (gli incassi restano) e rifatta a fine mese: mai meno del versato, mai soldi in più
+$fm_cash = Plugin::ledger()->default_account_for( 'cash' );
+foreach ( array( 4000 => 4000, 2000 => 2000, 1500 => 2000 ) as $fm_pay => $fm_due ) {
+	$fm_rp = $fm_man();
+	$wpdb->insert( Db::t( 'transactions' ), array( 'tx_date' => '2031-05-06', 'type' => 'income', 'amount_cents' => $fm_pay, 'account_id' => (int) $fm_cash['id'], 'method' => 'cash', 'category_id' => Plugin::ledger()->category_id_of_kind( 'activity_fee' ), 'activity_id' => $fm_a, 'person_id' => $fm_rp, 'competence_month' => '2031-05', 'created_at' => Db::now() ) );
+	$fm_tid = (int) $wpdb->insert_id;
+	$fm_acts->enroll( $fm_a, $fm_rp, '2031-05' );
+	$fm_left = (int) $fm_acts->enrollment_left( $fm_a, $fm_rp, '2031-05' );
+	$fm_sum  = null;
+	foreach ( $fm_acts->status_for_activity( $fm_a ) as $fm_st2 ) {
+		if ( (int) $fm_st2['enrollment']['person_id'] === $fm_rp ) {
+			$fm_sum = $fm_st2['summary'];
+		}
+	}
+	$wpdb->delete( Db::t( 'transactions' ), array( 'id' => $fm_tid ) );
+	asem_ok( $fm_tid > 0 && $fm_due - $fm_pay === $fm_left && $fm_sum && (int) $fm_sum['balance'] <= 0, 'primo mese: con ' . $fm_pay . ' già versati e rifatta a fine mese, resta da pagare ' . ( $fm_due - $fm_pay ) );
+}
+// letture della cassa con trenta corsi
+for ( $fm_i = 0; $fm_i < 30; $fm_i++ ) {
+	$fm_mk( 'Letture cassa ' . $fm_i, array( 'first_month' => 'share' ) );
+}
+$fm_many = array_filter( $fm_acts->for_year( $fm_lab ), function ( $x ) { return 'course' === $x['kind']; } );
+$fm_pers = Plugin::people()->get( $fm_man() );
+\AssociazioneSemplice\RequestMemo::forget();
+$fm_q0 = $wpdb->num_queries;
+foreach ( $fm_many as $fm_row ) {
+	$fm_acts->course_month_fee( $fm_row, $fm_pers, '2031-05' );
+}
+$fm_q0 = $wpdb->num_queries - $fm_q0;
+asem_ok( count( $fm_many ) >= 30 && $fm_q0 <= 6, 'primo mese: la cassa con ' . count( $fm_many ) . ' corsi legge poche volte (' . $fm_q0 . ')' );
 foreach ( array( 'quarterly', 'once' ) as $fm_bill ) {
 	$fm_c = $fm_mk( 'Martedì ' . $fm_bill, array( 'billing' => $fm_bill, 'first_month' => 'share' ) );
 	$fm_u = $fm_man();
