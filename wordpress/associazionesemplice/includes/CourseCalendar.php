@@ -79,11 +79,8 @@ final class CourseCalendar {
 				unset( $red[ (string) $e['lesson_date'] ] );
 			}
 		}
-		if ( $red && Install::table_exists( Db::t( 'attendance' ) ) ) { // il registro presenze c'è solo con le funzioni che lo prevedono
-			$dates = array_keys( $red );
-			$marks = implode( ',', array_fill( 0, count( $dates ), '%s' ) );
-			$seen  = Db::db()->get_col( Db::db()->prepare( 'SELECT DISTINCT lesson_date FROM ' . Db::t( 'attendance' ) . " WHERE activity_id = %d AND lesson_date IN ($marks)", array_merge( array( (int) $a['id'] ), $dates ) ) ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- tabella interna, segnaposto generati
-			foreach ( $seen as $d ) {
+		if ( $red ) { // una lezione con le presenze già segnate resta (il registro presenze è un'estensione)
+			foreach ( (array) apply_filters( 'asem_lessons_with_records', array(), (int) $a['id'], array_keys( $red ) ) as $d ) {
 				unset( $red[ (string) $d ] );
 			}
 		}

@@ -20,6 +20,7 @@ final class ProData {
 		add_filter( 'asem_activity_errors', array( __CLASS__, 'activity_errors' ), 10, 3 );
 		add_filter( 'asem_session_errors', array( __CLASS__, 'session_errors' ), 10, 3 );
 		add_filter( 'asem_booking_errors', array( __CLASS__, 'booking_errors' ), 10, 3 );
+		add_filter( 'asem_lessons_with_records', array( __CLASS__, 'lessons_with_records' ), 10, 3 );
 		add_filter( 'asem_wizard_next', array( __CLASS__, 'wizard_next' ), 10, 2 );
 		add_filter( 'asem_activity_form_rows', array( __CLASS__, 'activity_form_rows' ), 10, 2 );
 		add_filter( 'asem_entity_values', array( __CLASS__, 'entity_values' ), 10, 3 );
@@ -121,6 +122,18 @@ final class ProData {
 		$db = Db::db();
 		$db->delete( Db::t( 'attendance' ), array( 'activity_id' => $activity_id ) );
 		$db->delete( Db::t( 'woo_links' ), array( 'kind' => 'activity', 'ref_id' => $activity_id ) );
+	}
+
+	/** Le date, tra quelle indicate, in cui il corso ha già le presenze segnate. @param string[] $out @param string[] $dates @return string[] */
+	public static function lessons_with_records( $out, $activity_id, $dates ): array {
+		$out   = (array) $out;
+		$dates = array_values( array_map( 'strval', (array) $dates ) );
+		if ( ! $dates ) {
+			return $out;
+		}
+		$db    = Db::db();
+		$marks = implode( ',', array_fill( 0, count( $dates ), '%s' ) );
+		return array_merge( $out, array_map( 'strval', $db->get_col( $db->prepare( 'SELECT DISTINCT lesson_date FROM ' . Db::t( 'attendance' ) . " WHERE activity_id = %d AND lesson_date IN ($marks)", array_merge( array( (int) $activity_id ), $dates ) ) ) ?: array() ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- tabella interna, segnaposto generati
 	}
 
 	/** Salvata un'attività: crediti previsti e risorsa collegata (se ci sono prenotazioni già presenti sulla risorsa, un avviso). */
