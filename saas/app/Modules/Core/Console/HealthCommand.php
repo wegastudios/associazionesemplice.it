@@ -106,7 +106,7 @@ final class HealthCommand extends Command
             'ripiego della posta' => $this->mailFallback(...),
             'lavori non riusciti' => fn () => $this->jobsFailed($db),
             'incassi online in coda' => PaymentWebhookHealth::check(...),
-            'invio dei consumi al portale' => UsageHealth::check(...),
+            'invio dei consumi al portale' => fn () => UsageHealth::check(),
             'controllo notturno dei saldi' => fn () => $this->balancesRun($balances),
             'copia dei dati' => function () use ($compression): void {
                 if ($compression->fellBackToGzip()) {

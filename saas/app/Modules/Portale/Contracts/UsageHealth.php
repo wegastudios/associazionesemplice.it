@@ -54,10 +54,11 @@ final class UsageHealth
     private static function read(): ?array
     {
         $r = Cache::get(self::CACHE_KEY);
-        if (! is_array($r) || ! is_int($r['since'] ?? null) || ! (is_int($r['ok'] ?? null) || ($r['ok'] ?? null) === null)) {
+        if (! is_array($r) || ! is_int($r['since'] ?? null)) {
             return null;
         }
+        $ok = $r['ok'] ?? null;
 
-        return ['ok' => $r['ok'], 'since' => $r['since']];
+        return ['ok' => is_int($ok) ? $ok : null, 'since' => $r['since']];
     }
 }
