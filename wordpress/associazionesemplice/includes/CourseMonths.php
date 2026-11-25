@@ -88,7 +88,7 @@ final class CourseMonths {
 		$row = self::db()->get_var( self::db()->prepare( 'SELECT dates FROM ' . Db::t( 'course_months' ) . ' WHERE activity_id = %d AND month = %s FOR UPDATE', $id, $month ) );
 		if ( null === $row ) {
 			if ( 1 !== $mine ) { // la riga c'è (scritta da un'altra richiesta) ma qui non si può leggere: meglio fermarsi che usare un numero diverso
-				throw new \InvalidArgumentException( self::busy_message() );
+				throw new \InvalidArgumentException( self::busy_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso, mostrato solo dopo esc_html
 			}
 			return $live;
 		}
@@ -178,7 +178,7 @@ final class CourseMonths {
 			RequestMemo::forget( 'course_dues' );
 			$row = self::db()->get_var( self::db()->prepare( 'SELECT due_cents FROM ' . Db::t( 'course_month_dues' ) . ' WHERE activity_id = %d AND person_id = %d AND month = %s FOR UPDATE', $aid, $pid, $month ) ); // come in fix(): vale ciò che è scritto, non l'istantanea
 			if ( null === $row && 1 !== $mine ) {
-				throw new \InvalidArgumentException( self::busy_message() );
+				throw new \InvalidArgumentException( self::busy_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso, mostrato solo dopo esc_html
 			}
 			return null === $row ? $price * $n : (int) $row;
 		}
