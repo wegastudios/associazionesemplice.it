@@ -326,6 +326,9 @@ wp_set_current_user( 1 );
 asem_ok( true === apply_filters( 'show_admin_bar', true ), 'barra di amministrazione visibile agli amministratori' );
 asem_ok( Gatekeeper::area_url() === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( $u_ord ) ), 'dopo il login il socio va all\'area soci' );
 asem_ok( '/wp-admin/' === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( 1 ) ), 'l\'amministratore non viene dirottato' );
+asem_ok( home_url( '/area-tesoriere/' ) === apply_filters( 'login_redirect', home_url( '/area-tesoriere/' ), home_url( '/area-tesoriere/' ), get_userdata( $u_ord ) ), 'dopo il login chi arriva da una pagina del sito (area tesoriere) torna lì' );
+asem_ok( Gatekeeper::area_url() === apply_filters( 'login_redirect', 'https://altro.example/', 'https://altro.example/', get_userdata( $u_ord ) ) && Gatekeeper::area_url() === apply_filters( 'login_redirect', '/wp-admin/', admin_url(), get_userdata( $u_ord ) ), 'dopo il login: un indirizzo di un altro sito o dell\'amministrazione non viene rispettato' );
+asem_ok( 'Quota incassata' === \AssociazioneSemplice\PeopleService::membership_source_label( 'payment' ) && 'Inserita a mano' === \AssociazioneSemplice\PeopleService::membership_source_label( 'manual' ) && 'qualcosa' === \AssociazioneSemplice\PeopleService::membership_source_label( 'qualcosa' ), 'tessera: l\'origine si legge in italiano (sconosciuta: com\'è)' );
 asem_ok( '/wp-admin/' === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( $existing_user ) ), 'chi ha altri ruoli non viene dirottato' );
 
 // ---------- Registro azioni e licenza ----------
@@ -1634,6 +1637,14 @@ asem_ok( array( 'soci', 'segreteria', 'tesoriere', 'eventi', 'pubblico' ) === ar
 $sg_adm  = $as( 1, '[associazionesemplice_segreteria]' );
 $sg_anon = $as( 0, '[associazionesemplice_segreteria]' );
 $sg_mem  = $as( $u_f, '[associazionesemplice_segreteria]' );
+asem_ok( false !== strpos( $sg_anon, 'email (o il nome utente) e la password' ) && false !== strpos( $sg_anon, 'Per la tessera e le prenotazioni' ) && false === strpos( $sg_anon, 'Sei un socio?' ), 'pagine di ruolo: testo unico per lo staff e rimando ai soci' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::page( '', '', '', '', '', '' ), 'Segreteria e staff' ), 'accesso soci: la pagina ha il collegamento «Segreteria e staff» di cui parla l\'errore' );
+$bt_src = file_get_contents( ASEM_DIR . 'includes/Frontend/Views.php' ) . file_get_contents( ASEM_DIR . 'includes/PublicEvents.php' );
+$bt_txt = html_entity_decode( wp_strip_all_tags( 'Dettagli<span class="asemf-more">&nbsp;e prenotazione</span>' ), ENT_QUOTES, 'UTF-8' );
+asem_ok( false !== strpos( $bt_src, '<span class="asemf-more">&nbsp;e prenotazione</span>' ) && false === strpos( $bt_src, '<span class="asemf-more"> e' ) && 'Dettagli e prenotazione' === str_replace( "\xC2\xA0", ' ', $bt_txt ) && 1 === preg_match_all( '/<a class="asemf-btn[^>]*>[^<]*(?:\x27 \. [^<]*)?<span/', $bt_src ), 'pulsante «Dettagli e prenotazione»: lo spazio resiste anche con «e prenotazione» nascosto, si legge intero e nessun altro pulsante divide il testo in span' );
+$sp_anon = $as( 0, '[associazionesemplice_spese]' );
+asem_ok( false !== strpos( $sg_anon, 'Area segreteria' ) && false !== strpos( $sg_anon, 'wp-login.php' ) && false !== strpos( $sp_anon, 'Area tesoriere' ) && false !== strpos( $sp_anon, 'wp-login.php' ) && false !== strpos( $sg_anon, 'area soci' ), 'pagine di ruolo: chi non ha fatto l\'accesso trova la porta dello staff (accesso WordPress) e il rimando all\'area soci' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::FAIL, 'Segreteria e staff' ), 'accesso soci: l\'errore indica la via dello staff' );
 asem_ok( false !== strpos( $sg_adm, 'Segreteria' ) && false !== strpos( $sg_adm, 'page=asem-people' ) && false === strpos( $sg_anon, 'page=asem-people' ) && false !== strpos( $sg_mem, 'riservata alla segreteria' ) && false === strpos( $sg_mem, 'page=asem-people' ), 'area segreteria: i collegamenti compaiono solo a chi ha i permessi della segreteria' );
 wp_set_current_user( 1 );
 asem_ok( \AssociazioneSemplice\Wizard::DONE === \AssociazioneSemplice\Wizard::status() && ! \AssociazioneSemplice\Wizard::pending(), 'configurazione guidata: risulta completata' );
@@ -6404,6 +6415,7 @@ $bp0_u = (int) $people->get( $bp[0] )['wp_user_id'];
 $bp1_u = (int) $people->get( $bp[1] )['wp_user_id'];
 $bp5_u = (int) $people->get( $bp[5] )['wp_user_id'];
 asem_ok( user_can( $bp0_u, Plugin::CAP_OPS ) && user_can( $bp1_u, Plugin::CAP_OPS ) && ! user_can( $bp5_u, Plugin::CAP_OPS ) && ! user_can( $bp0_u, Plugin::CAP ), 'ruoli: presidente e vicepresidente agiscono come la segreteria, un consigliere no, nessuno diventa amministratore del sito' );
+asem_ok( false !== strpos( $as( $bp0_u, '[associazionesemplice_segreteria]' ), 'page=asem-people' ), 'ruoli: il presidente (con i poteri della segreteria) vede la pagina segreteria come prima' );
 asem_ok( Access::user_can( $bp0_u, 'asem_manage_event', $yoga ) && Access::user_can( $bp1_u, 'asem_collect', 0 ) && ! Access::user_can( $bp5_u, 'asem_collect', 0 ), 'ruoli: il presidente ha i permessi della segreteria, il consigliere nessuno' );
 asem_ok( 'https://x.example/' === Gatekeeper::filter_login_redirect( 'https://x.example/', '', get_userdata( $bp0_u ) ) && Gatekeeper::filter_login_redirect( 'https://x.example/', '', get_userdata( $bp5_u ) ) !== 'https://x.example/', 'ruoli: il presidente entra nell\'amministrazione, il consigliere resta nell\'area soci' );
 $people->set_board_role( $bp[0], null );

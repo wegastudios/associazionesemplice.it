@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Console;
 
+use App\Modules\Portale\Contracts\UsageHealth;
 use App\Modules\Portale\Usage\UsageReport;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Throwable;
 
 #[AsCommand(name: 'saas:portal:usage')]
 final class SendUsageCommand extends Command
@@ -23,7 +25,15 @@ final class SendUsageCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->info('Associazioni comunicate: '.$report->send());
+        try {
+            $sent = $report->send();
+        } catch (Throwable $e) {
+            UsageHealth::record(false);
+
+            throw $e;
+        }
+        UsageHealth::record(true);
+        $this->info('Associazioni comunicate: '.$sent);
 
         return self::SUCCESS;
     }

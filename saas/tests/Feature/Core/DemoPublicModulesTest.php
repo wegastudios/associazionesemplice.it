@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 it('ogni invio dei moduli pubblici ha un limite di frequenza o uno proprio nel codice dell\'accesso', function (): void {
     // L'accesso dell'area soci (codice, link) conta i tentativi nel controller e nel servizio (RateLimiter).
-    $ownLimiter = ['member.login.request', 'member.login.code', 'member.login.link.enter', 'member.switch', 'member.logout', 'member.logout.all'];
+    $ownLimiter = ['member.login.request', 'member.login.code', 'member.login.link.enter', 'member.switch', 'member.logout', 'member.logout.all', 'member.login.demo'];
     $unlimited = [];
     $seen = 0;
     foreach (Route::getRoutes()->getRoutes() as $route) {

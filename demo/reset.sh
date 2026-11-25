@@ -56,6 +56,7 @@ wp plugin delete akismet hello >/dev/null 2>&1 || true
 bash "$HOME/demo-provision/update.sh"
 wp plugin activate associazionesemplice associazionesemplice-pro
 wp eval-file "$HOME/demo-provision/provision.php" --user=setup_tmp # come amministratore d'installazione: il plugin lascia collegare a un socio un utente con ruolo solo a un amministratore
+wp eval-file "$HOME/demo-provision/tesoriere.php" --user=setup_tmp # accesso di prova da tesoriere (socio inventato con la carica), prima di extra-data
 wp eval-file "$HOME/demo-provision/extra-data.php" --user=setup_tmp # dati di prova in più (soci in vari stati, certificati, prestiti, domande, assemblea): servono a valutare l'aspetto su ogni area
 wp eval-file "$HOME/demo-provision/molti-dati.php" --user=setup_tmp # molti dati inventati (soci, prima nota su due anni fiscali, corsi, eventi, risorse): esempio per chi valuta e prova di carico
 wp eval-file "$HOME/demo-provision/pagine-attivita.php" --user=setup_tmp # pagine pubbliche (testo breve, categoria) di corsi e attività creati da molti-dati.php

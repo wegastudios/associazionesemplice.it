@@ -13,6 +13,7 @@ use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Mail\PrimaryMailer;
 use App\Modules\Core\Platform\RoleObjectAudit;
+use App\Modules\Portale\Contracts\UsageHealth;
 use App\Modules\Portale\Contracts\WebRuntimeProbe;
 use Illuminate\Console\Command;
 use Illuminate\Database\Connection;
@@ -105,6 +106,7 @@ final class HealthCommand extends Command
             'ripiego della posta' => $this->mailFallback(...),
             'lavori non riusciti' => fn () => $this->jobsFailed($db),
             'incassi online in coda' => PaymentWebhookHealth::check(...),
+            'invio dei consumi al portale' => $this->usageSent(...),
             'controllo notturno dei saldi' => fn () => $this->balancesRun($balances),
             'copia dei dati' => function () use ($compression): void {
                 if ($compression->fellBackToGzip()) {
@@ -163,7 +165,7 @@ final class HealthCommand extends Command
             }
         }
 
-        foreach ($this->roleNotes as $note) {
+        foreach ($this->collectedNotes() as $note) {
             $this->line("nota  {$note}");
         }
 
@@ -376,6 +378,22 @@ final class HealthCommand extends Command
     }
 
     /** Il controllo dei saldi non è girato da più di due giorni, o non è riuscito per qualche associazione: avviso. */
+    /**
+     * Le note dei ruoli raccolte durante i controlli (le scrivono le voci, chiamate come funzioni anonime).
+     *
+     * @return list<string>
+     */
+    private function collectedNotes(): array
+    {
+        return $this->roleNotes;
+    }
+
+    /** L'invio notturno dei consumi al portale non riesce da più di due giorni. */
+    private function usageSent(): void
+    {
+        UsageHealth::check();
+    }
+
     private function balancesRun(BalanceCheck $check): void
     {
         $r = $check->lastResult();

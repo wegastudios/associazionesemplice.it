@@ -1,8 +1,10 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ orgName: String, step: String, email: String, message: String });
+const props = defineProps({ orgName: String, step: String, email: String, message: String, demoMember: { type: Boolean, default: false } });
 const ask = useForm({ email: props.email ?? '' });
+// Solo sulla demo: entra come un socio inventato, senza email né codice.
+const demo = useForm({});
 const code = useForm({ email: props.email ?? '', code: '' });
 const field = 'field';
 </script>
@@ -33,6 +35,11 @@ const field = 'field';
                         <button type="submit" class="text-accent hover:underline">Mandami un altro codice</button>
                     </form>
                 </template>
+                <form v-if="demoMember" class="mt-6 space-y-2 border-t border-line pt-4" aria-label="Accesso di prova" @submit.prevent="demo.post('/area/accesso/demo')">
+                    <p class="text-sm text-muted">Solo nella demo: entra come un socio inventato, senza email né codice. L'accesso dura un'ora.</p>
+                    <p v-if="demo.errors.demo" class="text-sm text-danger" role="alert">{{ demo.errors.demo }}</p>
+                    <button type="submit" class="btn-block btn btn-secondary" :disabled="demo.processing">Entra come socio</button>
+                </form>
                 <p class="mt-6 text-xs text-muted">Non hai un'email registrata? Chiedi alla segreteria un link d'accesso.</p>
             </section>
         </div>

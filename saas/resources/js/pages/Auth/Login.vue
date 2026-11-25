@@ -10,6 +10,8 @@ defineProps({
     status: { type: String, default: null },
     // Solo sulla demo: gli accessi pubblici per ruolo, con la password in chiaro (dati inventati).
     demoAccounts: { type: Array, default: () => [] },
+    // Solo sulla demo: l'accesso di prova dei soci sta nella pagina d'accesso dell'area soci.
+    demoMember: { type: Boolean, default: false },
 });
 
 const form = useForm({ email: '', password: '', remember: false });
@@ -31,10 +33,14 @@ const submit = () => form.post('/accesso', { onFinish: () => form.reset('passwor
             <p class="caption mb-3">Dati inventati, azzerati ogni notte. Scegli un ruolo e i campi si compilano da soli.</p>
             <ul class="space-y-2">
                 <li v-for="account in demoAccounts" :key="account.email" class="flex flex-wrap items-center justify-between gap-2">
-                    <span><strong>{{ account.role }}</strong><br /><code>{{ account.email }}</code> · <code>{{ account.password }}</code></span>
+                    <dl class="min-w-0"><dt class="font-semibold">{{ account.role }}</dt><dd class="mt-1 break-all"><span class="caption">Email</span><br /><code class="select-all">{{ account.email }}</code></dd><dd class="mt-1 break-all"><span class="caption">Password</span><br /><code class="select-all">{{ account.password }}</code></dd></dl>
                     <button type="button" class="font-semibold text-accent hover:underline" @click="useAccount(account)">Usa</button>
                 </li>
             </ul>
+            <p v-if="demoMember" class="mt-3 border-t border-line pt-3">
+                <a href="/area/accesso" class="btn btn-secondary btn-sm">Entra come socio</a>
+                <span class="caption mt-1 block">Apre l'area soci con un socio inventato, senza email né codice.</span>
+            </p>
         </section>
         <form class="space-y-5" novalidate @submit.prevent="submit">
             <FormField id="email" label="Email" :error="form.errors.email">

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-proprieta|revoca-gruppo|revoca-gruppo-esegui|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-proprieta|revoca-gruppo|revoca-gruppo-esegui|permessi-portale|permessi-portale-esegui|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
 #
 # Il log del workflow è pubblico: ogni stato reale della produzione (variabili, interruttori, permessi, coda, cancellazioni, ciclo di vita, ...) va su file shared/<azione>-<AAAAMMGGTHHMMSS>.txt (600, ultimi 5 per azione); nel log solo esito e «salvato in <percorso>».
 # Azioni fisse e limitate (non è una shell remota):
@@ -9,6 +9,7 @@
 #                     svuota la cache della configurazione e stampa SOLO kid e parte pubblica x. Il seme non si stampa mai.
 #   variabili         sola lettura: STATO (mai il valore) delle variabili del .env e scelta EFFETTIVA dalla configurazione dell applicazione, su file shared/variabili-<data>.txt (600); nel log solo «salvato in»; commenti in riga del .env letti come vuoti
 #   db-proprieta      sola lettura (solo SELECT sul catalogo, ruolo owner): inventario di proprietari, ruoli di gruppo, privilegi, default privileges, RLS; su file, nel log solo «salvato in»
+#   permessi-portale  prova (saas:db:narrow-portal --dry-run, nessuna scrittura); permessi-portale-esegui porta i permessi diretti del portale all elenco, solo con SAAS_DB_NARROW_PORTAL acceso, in una transazione; uscita solo su file, nel log «salvato in», «fatto» o «da rivedere»
 #   revoca-gruppo     prova (saas:db:revoke-group --dry-run, nessuna scrittura); revoca-gruppo-esegui la esegue davvero, ma solo con SAAS_DB_REVOKE_GROUP acceso; uscita solo su file, nel log «salvato in»
 #   copie-env         sola lettura: elenca cosa cancellerebbe la rotazione delle copie shared/.env.bak-<data> (massimo 2, nessuna oltre 7 giorni)
 #   pulisci-copie-env applica la rotazione una volta e accende quella automatica; cancella SOLO .env.bak-<14 cifre>, mai il .env
@@ -784,6 +785,22 @@ case "$ACTION" in
     "$PHP" artisan saas:db:revoke-group $OPT > "$F" 2>&1 || rc=$?
     prune_files revoca-gruppo
     echo "$ACTION: salvato in $F"
+    exit "$rc"
+    ;;
+  permessi-portale|permessi-portale-esegui)
+    # Lancia saas:db:narrow-portal: «permessi-portale» = prova (--dry-run, nessuna scrittura), «permessi-portale-esegui» = reale, ma solo con
+    # SAAS_DB_NARROW_PORTAL acceso. Non parte mai da un rilascio. L'uscita va SOLO nel file 600 (ultimi 5): nel log pubblico solo «salvato in»,
+    # «fatto» o «da rivedere». Uscita 1 = interruttore spento, errore o verifica fallita (nessuna modifica).
+    cd "$BASE/current"
+    F="$(newfile permessi-portale)"
+    OPT="--dry-run"; [ "$ACTION" = "permessi-portale-esegui" ] && OPT=""
+    rc=0
+    "$PHP" artisan saas:db:narrow-portal $OPT > "$F" 2>&1 || rc=$?
+    prune_files permessi-portale
+    echo "$ACTION: salvato in $F"
+    if [ "$ACTION" = "permessi-portale-esegui" ]; then
+      if [ "$rc" -eq 0 ]; then echo "permessi del portale: fatto"; else echo "permessi del portale: da rivedere, vedi il file" >&2; fi
+    fi
     exit "$rc"
     ;;
   ripristina-permessi)
