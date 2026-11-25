@@ -305,8 +305,12 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   permessi sugli schemi solo se applicazione e backup hanno il proprio accesso diretto); il resto si conta tra i
   «rimasti». Non tocca CONNECT, i permessi diretti degli altri ruoli né la proprietà degli oggetti. Senza ruolo di
   gruppo non fa nulla ed esce con 0.
-- **Controlli prima di scrivere**: se un altro ruolo con accesso raggiunge delle tabelle solo tramite il gruppo, o se
+- **Controlli prima di scrivere**: se un altro ruolo con accesso raggiunge degli oggetti solo tramite il gruppo, o se
   applicazione e backup non hanno un permesso diretto sulle tabelle, il comando rifiuta e non scrive nulla.
+- **Ruolo del portale**: i suoi permessi diretti sullo schema `portal` sono un elenco esplicito (tabella e verbi, classe
+  `PortalGrants`), lo stesso che usa la migrazione che li concede. Prima di revocare si controlla che ci siano tutti, come
+  voci dirette e non per ereditarietà; ciò che il ruolo raggiunge oltre l'elenco non blocca e viene tolto con il resto.
+  Se il ruolo non esiste il controllo non c'è.
 - **Interruttore**: agisce solo con `SAAS_DB_REVOKE_GROUP` acceso (spento di default; spento, senza `--dry-run`,
   rifiuta con «interruttore spento»). `--dry-run` funziona sempre, non scrive e stampa solo conteggi per tipo.
 - **Uscita**: solo conteggi, mai nomi di ruoli o di oggetti. Esce con 1 per errore, rifiuto o voci rimaste; con

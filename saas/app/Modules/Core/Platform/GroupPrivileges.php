@@ -54,13 +54,15 @@ final class GroupPrivileges
 
     /**
      * Controlli prima di scrivere. Vuoto = si può procedere. Altrimenti i motivi, in parole generiche (mai nomi).
-     * 1) nessun altro ruolo con accesso (es. il portale) raggiunge le tabelle solo tramite il gruppo;
+     * 1) il ruolo del portale (se esiste) ha tutti i permessi DIRETTI dell'elenco `PortalGrants`: ciò che raggiunge oltre
+     *    l'elenco non blocca, lo toglie la revoca. Nessun altro ruolo (oltre ad applicazione, backup, proprietario e portale)
+     *    raggiunge oggetti solo tramite il gruppo;
      * 2) applicazione e backup esistono e hanno i permessi diretti su tabelle e sequenze (l'applicazione fuori da public e portal,
      *    dove la tabella delle migrazioni è volutamente chiusa).
      *
      * @return list<string>
      */
-    public static function guard(Connection $db, string $group, string $appRole, string $backupRole): array
+    public static function guard(Connection $db, string $group, string $appRole, string $backupRole, ?string $portalRole = null): array
     {
         $reasons = [];
         $list = self::lit(self::pgArray(self::schemas($db)));
@@ -73,19 +75,60 @@ final class GroupPrivileges
             return ['ruolo dell\'applicazione o dei backup non trovato'];
         }
 
-        $others = self::one($db, <<<SQL
-            SELECT count(DISTINCT o.oid) AS c
-            FROM pg_class o JOIN pg_namespace n ON n.oid = o.relnamespace
-            CROSS JOIN pg_roles r
-            WHERE n.nspname = ANY (CAST({$list} AS text[])) AND o.relkind IN ('r', 'p')
-              AND r.rolcanlogin AND NOT r.rolsuper AND r.rolname NOT IN ({$app}, {$backup}, current_user)
-              AND o.relowner <> r.oid
-              AND pg_has_role(r.oid, (SELECT oid FROM pg_roles WHERE rolname = {$g}), 'USAGE')
-              AND has_table_privilege(r.oid, o.oid, 'SELECT')
-              AND NOT EXISTS (SELECT 1 FROM aclexplode(o.relacl) a WHERE a.grantee IN (r.oid, 0) AND a.privilege_type = 'SELECT')
-            SQL);
-        if ((int) ($others['c'] ?? 0) > 0) {
-            $reasons[] = 'un altro ruolo con accesso raggiunge delle tabelle solo tramite il gruppo';
+        // Ruolo del portale: se non esiste (demo, ambienti senza portale) nessun controllo dedicato.
+        $portalName = PortalGrants::validRole($portalRole ?? $db->getConfig('portal_role'));
+        $portal = self::lit($portalName);
+        $portalExists = $portalName !== '' && $portalName !== $appRole && $portalName !== $backupRole
+            && self::one($db, "SELECT 1 AS x FROM pg_roles WHERE rolname = {$portal} AND rolname <> current_user") !== null;
+
+        // Gli altri ruoli (non applicazione, backup, proprietario, portale) membri del gruppo che raggiungono oggetti solo
+        // tramite il gruppo: tabelle (SELECT, INSERT, UPDATE, DELETE), sequenze (USAGE, SELECT, UPDATE), schemi (USAGE).
+        $roleFilter = "r.rolcanlogin AND NOT r.rolsuper AND r.rolname NOT IN ({$app}, {$backup}, {$portal}, current_user)"
+            ." AND pg_has_role(r.oid, (SELECT oid FROM pg_roles WHERE rolname = {$g}), 'USAGE')";
+        $inSchemas = "n.nspname = ANY (CAST({$list} AS text[]))";
+        $others = 0;
+        foreach ([
+            ['pg_class o JOIN pg_namespace n ON n.oid = o.relnamespace', 'o.relacl', 'o.relowner', "{$inSchemas} AND o.relkind IN ('r', 'p')",
+                "(VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')) p(v)", 'has_table_privilege'],
+            ['pg_class o JOIN pg_namespace n ON n.oid = o.relnamespace', 'o.relacl', 'o.relowner', "{$inSchemas} AND o.relkind = 'S'",
+                "(VALUES ('USAGE'), ('SELECT'), ('UPDATE')) p(v)", 'has_sequence_privilege'],
+            ['pg_namespace o JOIN pg_namespace n ON n.oid = o.oid', 'o.nspacl', 'o.nspowner', $inSchemas,
+                "(VALUES ('USAGE')) p(v)", 'has_schema_privilege'],
+        ] as [$from, $acl, $owner, $where, $verbs, $has]) {
+            $count = self::one($db, <<<SQL
+                SELECT count(DISTINCT o.oid) AS c
+                FROM {$from} CROSS JOIN pg_roles r CROSS JOIN {$verbs}
+                WHERE {$where} AND {$roleFilter} AND {$owner} <> r.oid
+                  AND {$has}(r.oid, o.oid, p.v)
+                  AND NOT EXISTS (SELECT 1 FROM aclexplode({$acl}) a WHERE a.grantee IN (r.oid, 0) AND a.privilege_type = p.v)
+                SQL);
+            $others += (int) ($count['c'] ?? 0);
+        }
+        if ($others > 0) {
+            $reasons[] = 'un altro ruolo con accesso raggiunge degli oggetti solo tramite il gruppo';
+        }
+
+        // Portale: ogni permesso diretto dell'elenco (PortalGrants) deve esserci, letto dalle voci dirette (non
+        // dall'ereditarietà). Ciò che il portale raggiunge oltre l'elenco non blocca: lo toglie la revoca.
+        if ($portalExists) {
+            $values = PortalGrants::valuesSql();
+            $schema = self::lit(PortalGrants::SCHEMA);
+            $missing = self::one($db, <<<SQL
+                SELECT (
+                    SELECT count(*) FROM (VALUES {$values}) v(t, p)
+                    JOIN pg_class c ON c.oid = to_regclass({$schema} || '.' || quote_ident(v.t)),
+                         (SELECT oid FROM pg_roles WHERE rolname = {$portal}) r
+                    WHERE c.relowner <> r.oid
+                      AND NOT EXISTS (SELECT 1 FROM aclexplode(c.relacl) a WHERE a.grantee = r.oid AND a.privilege_type = v.p)
+                ) + (
+                    SELECT count(*) FROM pg_namespace s, (SELECT oid FROM pg_roles WHERE rolname = {$portal}) r
+                    WHERE s.nspname = {$schema} AND s.nspowner <> r.oid
+                      AND NOT EXISTS (SELECT 1 FROM aclexplode(s.nspacl) a WHERE a.grantee = r.oid AND a.privilege_type = 'USAGE')
+                ) AS c
+                SQL);
+            if ((int) ($missing['c'] ?? 0) > 0) {
+                $reasons[] = 'portale: permessi diretti mancanti';
+            }
         }
 
         // Applicazione: nessuna tabella (fuori da public e portal, partizioni escluse) deve essere raggiungibile SOLO tramite il
@@ -256,10 +299,10 @@ final class GroupPrivileges
      *
      * @return array{removed: int, remaining: int, refused: list<string>}
      */
-    public static function revoke(Connection $db, string $group, string $appRole, string $backupRole): array
+    public static function revoke(Connection $db, string $group, string $appRole, string $backupRole, ?string $portalRole = null): array
     {
         $before = self::inventory($db, $group, $appRole, $backupRole);
-        $refused = self::guard($db, $group, $appRole, $backupRole);
+        $refused = self::guard($db, $group, $appRole, $backupRole, $portalRole);
         if ($refused !== []) {
             return ['removed' => 0, 'remaining' => array_sum(self::counts($before)), 'refused' => $refused];
         }

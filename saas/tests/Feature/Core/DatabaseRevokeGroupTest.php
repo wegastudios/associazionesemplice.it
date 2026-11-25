@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Core\Platform\GroupPrivileges;
+use App\Modules\Core\Platform\PortalGrants;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 
@@ -271,6 +272,111 @@ it('CREATE sul database si toglie solo con una voce diretta del proprietario, al
             DB::purge('zz_scratch');
             $admin->statement("DROP DATABASE IF EXISTS {$name}");
         }
+    });
+});
+
+/**
+ * Ruolo del portale di prova: LOGIN, membro del gruppo, con i permessi diretti dell'elenco `PortalGrants`; il gruppo ha
+ * tutto sulle tabelle dello schema portal e di audit. La tabella mail_outbox, se manca (la crea il portale), si crea per la prova.
+ */
+function withTestPortalRole(Connection $owner, Connection $admin, string $group, Closure $test): void
+{
+    $portal = 'zz_portale_prova';
+    $createdTable = $owner->selectOne("SELECT to_regclass('portal.mail_outbox') AS t")->t === null;
+    $admin->statement("CREATE ROLE {$portal} LOGIN");
+    try {
+        if ($createdTable) {
+            $owner->statement('CREATE TABLE portal.mail_outbox (id text PRIMARY KEY)');
+        }
+        $admin->statement("GRANT {$group} TO {$portal}");
+        $owner->statement("GRANT ALL ON ALL TABLES IN SCHEMA portal TO {$group}");
+        $owner->statement("GRANT ALL ON ALL TABLES IN SCHEMA audit TO {$group}");
+        PortalGrants::apply($owner, $portal);
+
+        $test($portal);
+    } finally {
+        if ($createdTable) {
+            $owner->statement('DROP TABLE IF EXISTS portal.mail_outbox');
+        }
+        $admin->statement("DROP OWNED BY {$portal}");
+        $admin->statement("DROP ROLE {$portal}");
+    }
+}
+
+it('con tutti i permessi diretti del portale i controlli passano e la revoca toglie al gruppo tutto, lasciando i diretti', function (): void {
+    withTestGroup(function (Connection $owner, string $group, Connection $admin): void {
+        [$app, $backup] = revokeRoles();
+        withTestPortalRole($owner, $admin, $group, function (string $portal) use ($owner, $group, $app, $backup): void {
+            expect(GroupPrivileges::guard($owner, $group, $app, $backup, $portal))->toBe([])
+                ->and(hasPrivilege($owner, $group, 'portal.downloads', 'TRUNCATE'))->toBeTrue();
+
+            $result = GroupPrivileges::revoke($owner, $group, $app, $backup, $portal);
+
+            expect($result['refused'])->toBe([])
+                ->and($result['removed'])->toBeGreaterThan(0)
+                ->and(hasPrivilege($owner, $group, 'portal.downloads', 'TRUNCATE'))->toBeFalse()
+                ->and(hasPrivilege($owner, $group, 'portal.subscriptions', 'SELECT'))->toBeFalse()
+                ->and(hasPrivilege($owner, $group, 'audit.log', 'SELECT'))->toBeFalse();
+            foreach (PortalGrants::TABLES as $table => $verbs) {
+                foreach ($verbs as $verb) {
+                    expect(hasPrivilege($owner, $portal, "portal.{$table}", $verb))->toBeTrue("{$table} {$verb}");
+                }
+            }
+            expect(hasPrivilege($owner, $portal, 'portal.downloads', 'UPDATE'))->toBeFalse()
+                ->and(hasPrivilege($owner, $portal, 'portal.audit', 'DELETE'))->toBeFalse();
+        });
+    });
+});
+
+it('rifiuta senza scrivere se al portale manca anche un solo permesso diretto, senza nominare ruoli o tabelle', function (): void {
+    withTestGroup(function (Connection $owner, string $group, Connection $admin): void {
+        [$app, $backup] = revokeRoles();
+        withTestPortalRole($owner, $admin, $group, function (string $portal) use ($owner, $group, $app, $backup): void {
+            $owner->statement("REVOKE DELETE ON portal.downloads FROM {$portal}");
+
+            $result = GroupPrivileges::revoke($owner, $group, $app, $backup, $portal);
+
+            expect($result['refused'])->toBe(['portale: permessi diretti mancanti'])
+                ->and($result['removed'])->toBe(0)
+                ->and(hasPrivilege($owner, $group, 'portal.downloads', 'TRUNCATE'))->toBeTrue()
+                ->and(hasPrivilege($owner, $group, 'audit.log', 'TRUNCATE'))->toBeTrue()
+                ->and(implode(' ', $result['refused']))->not->toContain($portal)->not->toContain('downloads');
+        });
+    });
+});
+
+it('rifiuta se un altro ruolo di accesso, membro del gruppo e non in elenco, raggiunge oggetti solo tramite il gruppo', function (): void {
+    withTestGroup(function (Connection $owner, string $group, Connection $admin): void {
+        [$app, $backup] = revokeRoles();
+        $other = 'zz_altro_login_prova';
+        $admin->statement("CREATE ROLE {$other} LOGIN");
+        try {
+            withTestPortalRole($owner, $admin, $group, function (string $portal) use ($owner, $admin, $group, $other, $app, $backup): void {
+                $admin->statement("GRANT {$group} TO {$other}");
+
+                $result = GroupPrivileges::revoke($owner, $group, $app, $backup, $portal);
+
+                expect($result['refused'])->toBe(['un altro ruolo con accesso raggiunge degli oggetti solo tramite il gruppo'])
+                    ->and($result['removed'])->toBe(0)
+                    ->and(hasPrivilege($owner, $group, 'audit.log', 'TRUNCATE'))->toBeTrue();
+            });
+        } finally {
+            $admin->statement("DROP OWNED BY {$other}");
+            $admin->statement("DROP ROLE {$other}");
+        }
+    });
+});
+
+it('senza il ruolo del portale non c\'è nessun controllo dedicato', function (): void {
+    withTestGroup(function (Connection $owner, string $group): void {
+        [$app, $backup] = revokeRoles();
+        $owner->statement("GRANT ALL ON ALL TABLES IN SCHEMA audit TO {$group}");
+
+        expect(GroupPrivileges::guard($owner, $group, $app, $backup, 'zz_portale_assente'))->toBe([]);
+
+        $result = GroupPrivileges::revoke($owner, $group, $app, $backup, 'zz_portale_assente');
+        expect($result['refused'])->toBe([])
+            ->and(hasPrivilege($owner, $group, 'audit.log', 'TRUNCATE'))->toBeFalse();
     });
 });
 
