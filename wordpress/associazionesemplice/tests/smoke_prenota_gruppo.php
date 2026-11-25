@@ -123,6 +123,8 @@ asem_ok( $gb_e && 0 === $gb_count( $gb_s2 ) && $gb_before === (int) $wpdb->get_v
 // ---------- Area soci: un solo messaggio per ogni motivo che riguarda l'altro socio ----------
 list( $gb_a3, $gb_s3 ) = $gb_event( 'Gruppo tre', 6 );
 $gen = Actions::OTHER_MEMBER_FAIL;
+$gb_probe = $gb_fail( array( 'session_id' => $gb_s3, 'me' => 1, 'other_last' => array( 'Socio' ), 'other_card' => array( '9999' ) ) );
+asem_ok( $gen === $gb_probe, 'prenota gruppo: tessera inesistente = frase generica (risposta: ' . $gb_probe . ')' );
 asem_ok( $gen === $gb_fail( array( 'session_id' => $gb_s3, 'me' => 1, 'other_last' => array( 'Socio' ), 'other_card' => array( '9999' ) ) ), 'prenota gruppo: tessera inesistente = frase generica' );
 asem_ok( $gen === $gb_fail( array( 'session_id' => $gb_s3, 'me' => 1, 'other_last' => array( 'Sbagliato' ), 'other_card' => array( '7002' ) ) ), 'prenota gruppo: cognome sbagliato = la stessa frase' );
 asem_ok( 0 === $gb_count( $gb_s3 ), 'prenota gruppo: con un altro socio non valido non si prenota nessuno, nemmeno chi prenota' );
