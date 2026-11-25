@@ -165,7 +165,7 @@ final class ActivityReset {
 
 	/** Date delle lezioni di un corso tra due giorni, dal calendario settimanale meno quelle annullate e con quelle spostate. @return string[] */
 	public static function course_dates( array $a, string $from, string $to ): array {
-		return CourseCalendar::dates( $a, $from, $to, true ); // qui le date uniche si leggono tutte, anche fuori dal periodo
+		return CourseCalendar::dates( $a, $from, $to );
 	}
 
 	/**

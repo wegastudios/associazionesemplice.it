@@ -20,14 +20,13 @@ final class CourseCalendar {
 	 * Le date in calendario, prima delle eccezioni.
 	 *
 	 * @param array[] $lessons   righe di ActivityService::lessons()
-	 * @param bool    $all_single date uniche anche fuori dal periodo (solo i rimborsi, che le leggono così)
 	 * @return string[]
 	 */
-	public static function expand( array $lessons, string $from, string $to, ?string $base_from = null, ?string $base_to = null, bool $all_single = false ): array {
+	public static function expand( array $lessons, string $from, string $to, ?string $base_from = null, ?string $base_to = null ): array {
 		$dates = array();
 		foreach ( $lessons as $s ) {
 			if ( 'single' === $s['type'] ) {
-				if ( $all_single || ( $s['date'] >= $from && $s['date'] <= $to ) ) {
+				if ( $s['date'] >= $from && $s['date'] <= $to ) {
 					$dates[] = (string) $s['date'];
 				}
 				continue;
@@ -40,9 +39,9 @@ final class CourseCalendar {
 	}
 
 	/** Le date in cui si tiene il corso tra due giorni (inclusi), con le lezioni annullate e spostate. @return string[] */
-	public static function dates( array $a, string $from, string $to, bool $all_single = false ): array {
+	public static function dates( array $a, string $from, string $to ): array {
 		return LessonExceptions::adjust_dates(
-			self::expand( ActivityService::lessons( $a ), $from, $to, (string) ( $a['starts_on'] ?? '' ), (string) ( $a['ends_on'] ?? '' ), $all_single ),
+			self::expand( ActivityService::lessons( $a ), $from, $to, (string) ( $a['starts_on'] ?? '' ), (string) ( $a['ends_on'] ?? '' ) ),
 			LessonExceptions::between( $from, $to, (int) $a['id'] ),
 			$from,
 			$to
