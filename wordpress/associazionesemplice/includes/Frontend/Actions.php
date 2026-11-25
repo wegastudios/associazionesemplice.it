@@ -379,9 +379,9 @@ final class Actions {
 		if ( wp_using_ext_object_cache() ) {
 			return 0;
 		}
-		global $wpdb;
+		$db     = \AssociazioneSemplice\Db::db();
 		$prefix = '_transient_timeout_asem_group_';
-		$names  = $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s AND option_value < %d LIMIT 500", $wpdb->esc_like( $prefix ) . '%', time() ) ) ?: array();
+		$names  = $db->get_col( $db->prepare( "SELECT option_name FROM {$db->options} WHERE option_name LIKE %s AND option_value < %d LIMIT 500", $db->esc_like( $prefix ) . '%', time() ) ) ?: array();
 		foreach ( $names as $name ) {
 			$key = substr( (string) $name, strlen( '_transient_timeout_' ) );
 			delete_option( '_transient_' . $key );

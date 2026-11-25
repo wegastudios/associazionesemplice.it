@@ -678,15 +678,11 @@ class ActivityService {
 	const PAID_BY_ANOTHER = 'Per questa data c\'è una prenotazione precedente da sistemare: scrivi alla segreteria.';
 
 	/**
-	 * Un socio può prenotare per altri soci? No se è attivo un Pro che nei pagamenti online non conosce chi paga al posto di chi partecipa (PaymentService::BOOKS_PAYER):
-	 * il gratuito si può aggiornare da solo, e con il Pro di prima il pagamento finirebbe «da controllare». Senza Pro, o con il Pro aggiornato, sì.
+	 * Un socio può prenotare per altri soci? No se i pagamenti online sono di un'estensione che non conosce chi paga al posto di chi partecipa
+	 * ({@see OfflinePayments::books_payer()}): il gratuito si può aggiornare da solo, e con l'estensione di prima il pagamento finirebbe «da controllare».
 	 */
 	public static function others_allowed(): bool {
-		$allowed = true;
-		if ( defined( 'ASEM_PRO_VERSION' ) && class_exists( __NAMESPACE__ . '\\PaymentService' ) ) {
-			$allowed = defined( __NAMESPACE__ . '\\PaymentService::BOOKS_PAYER' );
-		}
-		return (bool) apply_filters( 'asem_book_others_allowed', $allowed );
+		return (bool) apply_filters( 'asem_book_others_allowed', Plugin::payments()->books_payer() );
 	}
 
 	/** Chi risponde del contributo di una prenotazione: chi l'ha fatta per altri, altrimenti la persona prenotata. */
