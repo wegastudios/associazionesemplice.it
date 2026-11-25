@@ -75,7 +75,7 @@ final class ToolsPage {
 			array( 'Soci e ospiti', 'Rubrica completa, con i dati anagrafici.', Exports::link( 'people', array(), 'Scarica CSV' ), true ),
 			array( 'Prima nota (' . 'anno fiscale ' . FiscalYears::label( $year ) . ')', 'Tutti i movimenti con conto, voce, attività e competenza.', Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Scarica CSV' ), Modules::on( 'ledger' ) ),
 			array( 'Rendiconto per cassa (' . 'anno fiscale ' . FiscalYears::label( $year ) . ')', 'Entrate e uscite per voce, per il commercialista.', Exports::link( 'period', array( 'from' => $from, 'to' => $to ), 'Scarica CSV' ), Modules::on( 'reports' ) && \AssociazioneSemplice\Edition::has( 'fiscal' ) ),
-			array( 'Report delle attività (anno sociale ' . $year . ')', 'Partecipazioni e incassi per attività.', Exports::link( 'social', array( 'year' => $year ), 'Scarica CSV' ), Modules::on( 'activities' ) && Modules::on( 'reports' ) && \AssociazioneSemplice\Edition::has( 'reports' ) ),
+			array( 'Report delle attività (anno delle attività ' . $year . ')', 'Partecipazioni e incassi per attività.', Exports::link( 'social', array( 'year' => $year ), 'Scarica CSV' ), Modules::on( 'activities' ) && Modules::on( 'reports' ) && \AssociazioneSemplice\Edition::has( 'reports' ) ),
 		);
 		foreach ( $rows as $r ) {
 			if ( $r[3] ) {

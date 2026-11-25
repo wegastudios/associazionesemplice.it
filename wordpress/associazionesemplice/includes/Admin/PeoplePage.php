@@ -407,7 +407,14 @@ final class PeoplePage {
 		if ( $rows ) {
 			echo '<table class="widefat striped"><thead><tr><th>Anno della tessera</th><th>Dal</th><th>Al</th><th>Origine</th></tr></thead><tbody>';
 			foreach ( $rows as $m ) {
-				echo wp_kses( '<tr><td>' . esc_html( $m['social_year'] ) . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( $m['source'] ) . '</td></tr>', Html::allowed() );
+				$note = '';
+			if ( ! empty( $m['replaced_by'] ) ) { // sostituita da una tessera più recente dello stesso anno fiscale: si vede solo qui, mai nel libro soci
+				$by   = array_values( array_filter( $rows, function ( $x ) use ( $m ) {
+					return (int) $x['id'] === (int) $m['replaced_by'];
+				} ) );
+				$note = '<br><span class="description">Sostituita dalla tessera ' . esc_html( $by ? (string) $by[0]['social_year'] : '' ) . ': resta registrata e i pagamenti non cambiano.</span>';
+			}
+			echo wp_kses( '<tr><td>' . esc_html( $m['social_year'] ) . $note . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( $m['source'] ) . '</td></tr>', Html::allowed() );
 			}
 			echo '</tbody></table>';
 		}

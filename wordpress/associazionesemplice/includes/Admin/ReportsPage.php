@@ -20,7 +20,7 @@ final class ReportsPage {
 		$mode   = in_array( $mode, array( 'social', 'solar' ), true ) && ( $fiscal || 'solar' !== $mode ) ? $mode : 'liquidity';
 		Ui::header( 'Report' );
 		WatchPage::box_html(); // bilancio provvisorio e avvisi (Pro Fiscale)
-		$tabs = array( 'liquidity' => 'Conti e liquidità', 'social' => 'Anno sociale (attività)' ) + ( $fiscal ? array( 'solar' => 'Anno fiscale (commercialista)' ) : array() );
+		$tabs = array( 'liquidity' => 'Conti e liquidità', 'social' => 'Anno delle attività' ) + ( $fiscal ? array( 'solar' => 'Anno fiscale (commercialista)' ) : array() );
 		echo '<h2 class="nav-tab-wrapper">';
 		foreach ( $tabs as $key => $label ) {
 			echo '<a class="nav-tab ' . ( $key === $mode ? 'nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( 'asem-reports', array( 'mode' => $key ) ) ) . '">' . esc_html( $label ) . '</a>';
@@ -117,7 +117,7 @@ final class ReportsPage {
 		$start = Ui::get_int( 'year', (int) Settings::social_year()->start_year );
 		$year  = new SocialYear( $start, Settings::start_month() );
 		$r     = Plugin::reports()->social_year( $year );
-		self::nav( 'social', $start, 'Anno sociale ' . $year->label() );
+		self::nav( 'social', $start, 'Anno delle attività ' . $year->label() );
 		echo '<p>' . Exports::link( 'social', array( 'year' => $start ), 'Esporta report attività (CSV)' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
 		echo '<h3>Soci iscritti nell\'anno</h3><table class="widefat striped"><tbody>';
@@ -132,12 +132,21 @@ final class ReportsPage {
 		}
 		echo '</tbody></table>';
 
-		foreach ( array( 'Entrate generali (non di attività)' => $r['general_income'], 'Uscite generali (non di attività)' => $r['general_expenses'] ) as $title => $list ) {
-			echo '<h3>' . esc_html( $title ) . '</h3><table class="widefat striped"><tbody>';
-			foreach ( $list as $x ) {
-				echo '<tr><td>' . esc_html( $x['name'] ) . '</td><td>' . Ui::money( $x['cents'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		$parts = count( $r['fiscal_slices'] ) > 1 ? $r['fiscal_slices'] : array( array( 'label' => '', 'general_income' => $r['general_income'], 'general_expenses' => $r['general_expenses'], 'income' => array_sum( array_column( $r['general_income'], 'cents' ) ), 'expense' => array_sum( array_column( $r['general_expenses'], 'cents' ) ) ) );
+		foreach ( $parts as $part ) { // l'anno delle attività attraversa più anni fiscali: entrate e uscite generali divise per anno fiscale, come i conti
+			if ( '' !== $part['label'] ) {
+				echo '<h3>' . esc_html( $part['label'] ) . '</h3>';
 			}
-			echo '</tbody></table>';
+			foreach ( array( 'Entrate generali (non di attività)' => $part['general_income'], 'Uscite generali (non di attività)' => $part['general_expenses'] ) as $title => $list ) {
+				echo '<h4>' . esc_html( $title ) . '</h4><table class="widefat striped"><tbody>';
+				foreach ( $list as $x ) {
+					echo '<tr><td>' . esc_html( $x['name'] ) . '</td><td>' . Ui::money( $x['cents'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				}
+				echo '</tbody></table>';
+			}
+			if ( '' !== $part['label'] ) {
+				echo '<p>Totale generali ' . esc_html( $part['label'] ) . ': entrate ' . Ui::money( $part['income'] ) . ' · uscite ' . Ui::money( $part['expense'] ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
 		}
 		echo '<p>Totale entrate ' . Ui::money( $r['total_income'] ) . ' · uscite ' . Ui::money( $r['total_expense'] ) . ' · <strong>risultato ' . Ui::money( $r['result'] ) . '</strong></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}

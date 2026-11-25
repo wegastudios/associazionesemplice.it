@@ -562,6 +562,84 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 	}
 } );
 
+
+// Un evento su più giorni (una regata di tre giorni): per vedere come si comportano elenco, calendario, pagina e prenotazioni.
+extra_step( 'evento su più giorni', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$act   = Plugin::activities();
+	$sy    = Settings::social_year();
+	$start = gmdate( 'Y-m-d', time() + 10 * 86400 );
+	$end   = gmdate( 'Y-m-d', time() + 12 * 86400 );
+	if ( $end > $sy->end()->format( 'Y-m-d' ) ) {
+		return; // fuori dall'anno sociale non si può creare una data
+	}
+	foreach ( $act->all_for_select() as $ex ) {
+		if ( 'Regata di tre giorni' === $ex['name'] ) {
+			return;
+		}
+	}
+	$aid = $act->create( array( 'name' => 'Regata di tre giorni', 'social_year' => $sy->label(), 'kind' => 'event', 'fee_cents' => 1500, 'session' => array( 'session_date' => $start, 'end_date' => $end, 'start_time' => '09:00', 'end_time' => '18:00', 'location' => 'Porto turistico', 'capacity' => 40 ) ) );
+	$pid = \AssociazioneSemplice\PublicEvents::ensure( (int) $aid );
+	if ( ! $pid ) {
+		return;
+	}
+	$intro = 'Tre giorni di gara in mare con le barche dei soci: partenza al mattino, rientro nel pomeriggio, premiazione l\'ultimo giorno. Le iscrizioni online si chiudono alla vigilia della partenza: dopo ci si rivolge alla segreteria.';
+	$t     = term_exists( 'Sport', \AssociazioneSemplice\PublicEvents::TAXONOMY );
+	$t     = $t ? $t : wp_insert_term( 'Sport', \AssociazioneSemplice\PublicEvents::TAXONOMY );
+	wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => extra_event_html( $intro, 'Sport', 'Porto turistico' ), 'post_excerpt' => wp_trim_words( $intro, 18 ) ) );
+	if ( ! is_wp_error( $t ) ) {
+		wp_set_object_terms( $pid, array( (int) $t['term_id'] ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
+	}
+	$thumb = extra_poster( 'Regata di tre giorni', array( 30, 110, 170 ) );
+	if ( $thumb ) {
+		set_post_thumbnail( $pid, $thumb );
+	}
+} );
+
+// Un evento oltre mezzanotte (21:30 → 01:00 del giorno dopo) e la regata con la risorsa tenuta occupata senza interruzioni: per vedere «fino al» e il blocco di risorse.
+extra_step( 'evento oltre mezzanotte e blocco risorse', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$act = Plugin::activities();
+	$sy  = Settings::social_year();
+	$last = $sy->end()->format( 'Y-m-d' );
+	$day  = gmdate( 'Y-m-d', time() + 16 * 86400 );
+	$next = gmdate( 'Y-m-d', time() + 17 * 86400 );
+	$by_name = function ( string $name ) use ( $act ) {
+		foreach ( $act->all_for_select() as $ex ) {
+			if ( $ex['name'] === $name ) {
+				return (int) $ex['id'];
+			}
+		}
+		return 0;
+	};
+	if ( $next <= $last && ! $by_name( 'Serata di liscio fino a tardi' ) ) {
+		$aid = $act->create( array( 'name' => 'Serata di liscio fino a tardi', 'social_year' => $sy->label(), 'kind' => 'event', 'fee_cents' => 500, 'session' => array( 'session_date' => $day, 'end_date' => $next, 'start_time' => '21:30', 'end_time' => '01:00', 'location' => 'Sede dell\'associazione', 'capacity' => 60 ) ) );
+		$pid = \AssociazioneSemplice\PublicEvents::ensure( (int) $aid );
+		if ( $pid ) {
+			$intro = 'Si balla fino a notte fonda: la serata comincia alle 21:30 e finisce all\'una del giorno dopo. Ingresso con un piccolo contributo.';
+			wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => extra_event_html( $intro, 'Serate', 'Sede dell\'associazione' ), 'post_excerpt' => wp_trim_words( $intro, 18 ) ) );
+			$t = term_exists( 'Serate', \AssociazioneSemplice\PublicEvents::TAXONOMY );
+			if ( $t ) {
+				wp_set_object_terms( $pid, array( (int) ( is_array( $t ) ? $t['term_id'] : $t ) ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
+			}
+			$thumb = extra_poster( 'Serata di liscio fino a tardi', array( 160, 70, 120 ) );
+			if ( $thumb ) {
+				set_post_thumbnail( $pid, $thumb );
+			}
+		}
+	}
+	$regata = $by_name( 'Regata di tre giorni' );
+	if ( $regata && class_exists( '\AssociazioneSemplice\Resources' ) && ! \AssociazioneSemplice\Resources::activity_block( $regata ) ) { // la banchina resta occupata dal primo all'ultimo giorno della regata
+		$rid = (int) \AssociazioneSemplice\Resources::save( 0, array( 'name' => 'Banchina del porto', 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 ) );
+		\AssociazioneSemplice\Resources::link_activity( $regata, $rid );
+		\AssociazioneSemplice\Resources::set_activity_block( $regata, \AssociazioneSemplice\Resources::new_block_key(), 'Regata di tre giorni' );
+	}
+} );
+
 update_option( 'asem_demo_extra_done', gmdate( 'c' ), false );
 WP_CLI::success( 'Dati in più della demo inseriti.' );
 

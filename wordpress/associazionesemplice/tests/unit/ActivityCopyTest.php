@@ -51,7 +51,7 @@ final class ActivityCopyTest extends TestCase {
 	public function test_a_timed_event_keeps_its_hours(): void {
 		$m = T::map_event( array( '_EventStartDate' => '2026-10-20 18:30:00', '_EventEndDate' => '2026-10-20 20:00:00', '_EventAllDay' => '' ), 'Serata giochi', '', '' );
 		$this->assertSame( 'Serata giochi', $m['name'] );
-		$this->assertSame( array( 'session_date' => '2026-10-20', 'start_time' => '18:30', 'end_time' => '20:00', 'location' => null ), $m['session'] );
+		$this->assertSame( array( 'session_date' => '2026-10-20', 'start_time' => '18:30', 'end_date' => null, 'end_time' => '20:00', 'location' => null ), $m['session'] );
 		$this->assertNull( $m['notes'] );
 	}
 
@@ -61,10 +61,25 @@ final class ActivityCopyTest extends TestCase {
 		$this->assertNull( $m['session']['end_time'] );
 	}
 
-	public function test_a_multi_day_event_says_so_in_the_notes(): void {
+	public function test_a_multi_day_event_keeps_its_last_day(): void {
 		$m = T::map_event( array( '_EventStartDate' => '2026-10-20 09:00:00', '_EventEndDate' => '2026-10-22 18:00:00' ), 'Gita', '', '' );
-		$this->assertStringContainsString( 'Dal 20/10/2026 al 22/10/2026.', $m['notes'] );
-		$this->assertNull( $m['session']['end_time'] );
+		$this->assertSame( '2026-10-22', $m['session']['end_date'] );
+		$this->assertSame( '18:00', $m['session']['end_time'] );
+		$this->assertNull( $m['notes'], 'le date stanno nella data, non più nelle note' );
+		$all = T::map_event( array( '_EventStartDate' => '2026-10-20 00:00:00', '_EventEndDate' => '2026-10-22 23:59:59', '_EventAllDay' => 'yes' ), 'Sagra', '', '' );
+		$this->assertSame( '2026-10-22', $all['session']['end_date'] );
+		$this->assertNull( $all['session']['end_time'] );
+	}
+
+	public function test_an_event_over_midnight_ends_the_next_day(): void {
+		$m = T::map_event( array( '_EventStartDate' => '2026-10-20 21:30:00', '_EventEndDate' => '2026-10-21 01:00:00' ), 'Veglione', '', '' );
+		$this->assertSame( array( '2026-10-21', '01:00' ), array( $m['session']['end_date'], $m['session']['end_time'] ) );
+	}
+
+	public function test_an_event_longer_than_a_month_keeps_the_dates_in_the_notes(): void {
+		$m = T::map_event( array( '_EventStartDate' => '2026-10-01 09:00:00', '_EventEndDate' => '2026-12-31 18:00:00' ), 'Mostra', '', '' );
+		$this->assertNull( $m['session']['end_date'] );
+		$this->assertStringContainsString( 'Dal 01/10/2026 al 31/12/2026.', $m['notes'] );
 	}
 
 	public function test_description_becomes_plain_text_and_the_site_is_kept(): void {

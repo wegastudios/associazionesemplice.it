@@ -1134,7 +1134,7 @@ class PeopleService {
 		if ( $row ) {
 			return array( (string) $row['social_year'], (string) $row['valid_from'], (string) $row['valid_to'] );
 		}
-		$year = MembershipRules::from_label( $label, Settings::start_month() );
+		$year = MembershipRules::from_label( $label, Settings::membership_start_month() );
 		return array( $year->label(), $year->start()->format( 'Y-m-d' ), $year->end()->format( 'Y-m-d' ) );
 	}
 

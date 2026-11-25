@@ -32,7 +32,8 @@ final class Settings {
 		return array(
 			'association_name'        => '',
 			'tax_code'                => '',
-			'social_year_start_month' => 1,     // l'anno sociale (tessere e attività) inizia a gennaio; si sceglie in modo indipendente dall'anno fiscale
+			'social_year_legacy_month' => 9,    // il mese da cui partivano gli anni con la barra («2025/2026») prima del passaggio a gennaio (si ricorda da solo)
+			'social_year_start_month' => 1,    // l'anno sociale (tessere e attività) inizia a gennaio; si sceglie in modo indipendente dall'anno fiscale
 			'fiscal_start_month'      => 1,     // l'anno fiscale (bilancio e rendiconto) inizia a gennaio, cioè come l'anno fiscale; vale per tutte le edizioni; si sceglie in modo indipendente dall'anno sociale
 			'membership_fee_cents'    => 1000,  // quota associativa proposta negli incassi
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
@@ -186,13 +187,11 @@ final class Settings {
 			$clean[ $k ] = $values[ $k ];
 		}
 		$clean['social_year_start_month'] = max( 1, min( 12, (int) $clean['social_year_start_month'] ) );
-		if ( $clean['social_year_start_month'] !== max( 1, min( 12, (int) ( $before['social_year_start_month'] ?? 1 ) ) ) ) { // la tessera segue l'anno sociale: le tessere già emesse non si toccano, ma due non devono avere la stessa etichetta
-				$cards = Db::db()->get_results( 'SELECT valid_from, valid_to FROM ' . Db::t( 'memberships' ) . " WHERE deleted_at IS NULL AND social_year LIKE '%/%'", ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery -- nomi tabella interni, nessun valore dall'esterno
-				if ( MembershipRules::month_change_conflicts( $cards, (int) $clean['social_year_start_month'], Db::today() ) ) {
-					throw new \InvalidArgumentException( 'Per ora puoi passare solo a gennaio. Con gennaio la tessera prende il nome dell\'anno (per esempio «2026») e non si confonde con quelle già emesse. Per un altro mese aspetta che le tessere ancora valide siano scadute.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-				}
-			}
-			$old_fiscal                       = max( 1, min( 12, (int) ( $before['fiscal_start_month'] ?? 1 ) ) );
+		$prev_month                       = max( 1, min( 12, (int) ( $before['social_year_start_month'] ?? 1 ) ) );
+		if ( 1 === $clean['social_year_start_month'] && $prev_month > 1 ) { // passando a gennaio si ricorda il mese di prima: le attività già create restano nel loro anno («2025/2026»)
+			$clean['social_year_legacy_month'] = $prev_month;
+		}
+		$old_fiscal                       = max( 1, min( 12, (int) ( $before['fiscal_start_month'] ?? 1 ) ) );
 		$clean['fiscal_start_month']      = max( 1, min( 12, (int) $clean['fiscal_start_month'] ) );
 		if ( $clean['fiscal_start_month'] !== $old_fiscal && FiscalYears::start_month_locked() ) { // dalla prima chiusura (anche se poi riaperta) il mese non si cambia più
 			throw new \InvalidArgumentException( FiscalYears::start_month_locked_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -366,6 +365,7 @@ final class Settings {
 	}
 
 	public static function start_month(): int {
+		SocialYear::$legacy_month = max( 2, min( 12, (int) self::get( 'social_year_legacy_month' ) ) );
 		return (int) self::get( 'social_year_start_month' );
 	}
 
@@ -381,9 +381,15 @@ final class Settings {
 		return max( 0, (int) self::get( 'board_councillors' ) );
 	}
 
-	/** Anno della tessera associativa: segue l'anno sociale (stesso mese di inizio; con gennaio è l'anno solare). Non dipende dall'esercizio contabile. I soci fondatori sono a parte. */
+	/** Il mese da cui parte la tessera: quello dell'anno fiscale (quote, iscrizioni e incassi seguono i conti, non il calendario delle attività). */
+	public static function membership_start_month(): int {
+		return max( 1, min( 12, FiscalYears::start_month() ) );
+	}
+
+	/** Anno della tessera associativa: segue l'anno fiscale (con gennaio è l'anno solare); non dipende dall'anno delle attività (corsi ed eventi). I soci fondatori sono a parte. */
 	public static function membership_year( ?string $date = null ): SocialYear {
-		return SocialYear::for_date( $date ?? Db::today(), self::start_month() );
+		self::start_month(); // allinea anche il mese delle vecchie etichette con la barra
+		return SocialYear::for_date( $date ?? Db::today(), self::membership_start_month() );
 	}
 
 	/** Giorni prima della fine della tessera in cui si apre il rinnovo per l'anno dopo (gli stessi dell'avviso di scadenza). */

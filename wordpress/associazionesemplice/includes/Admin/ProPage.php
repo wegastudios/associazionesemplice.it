@@ -26,7 +26,7 @@ final class ProPage {
 			),
 			'Contabilità e fiscale (si aggiunge a tutto il resto)' => array(
 				array( 'funds', 'Conti, fondi e cassa per più persone', 'Più conti (cassa, banca, POS), giroconti, fondi per i rimborsi ai volontari e un\'unica cassa per chi paga per più soci.' ),
-				array( 'reports', 'Report di gestione', 'Saldi e liquidità reale, risultato per attività e anno sociale.' ),
+				array( 'reports', 'Report di gestione', 'Saldi e liquidità reale, risultato per attività e anno delle attività.' ),
 				array( 'receipts', 'Ricevute e attestazioni', 'Ricevute in PDF numerate (per gli eventi valgono anche da biglietto) e attestazione annuale dei versamenti per soci e donatori.' ),
 				array( 'vat', 'IVA', 'Aliquote su quote, attività e incassi, importi con IVA compresa o esclusa e IVA contenuta in ogni movimento.' ),
 				array( 'fivepm', '5 per mille', 'Messaggio con il codice fiscale, contributi ricevuti e scadenze del rendiconto sull\'utilizzo.' ),

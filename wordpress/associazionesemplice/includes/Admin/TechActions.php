@@ -297,13 +297,39 @@ final class TechActions {
 		return array( \AssociazioneSemplice\Reset::FACTORY === $mode ? Ui::url( 'asem-wizard' ) : Ui::url( 'asem' ), $msg );
 	}
 
-	/** Dati dell'ente e fiscali. Con la partita IVA attiva il numero deve essere valido. */
+	/** Dati dell'ente e fiscali. Con la partita IVA attiva il numero deve essere valido. Il cambio del mese dell'anno fiscale passa da un'anteprima delle tessere da confermare. */
 	public static function save_entity( array $p ): array {
-		$vals = \AssociazioneSemplice\EntityData::values( $p, true );
+		$vals     = \AssociazioneSemplice\EntityData::values( $p, true );
+		$cur_m    = Settings::membership_start_month();
+		$new_m    = isset( $vals['fiscal_start_month'] ) ? (int) $vals['fiscal_start_month'] : $cur_m;
+		$changing = $new_m !== $cur_m && ! \AssociazioneSemplice\FiscalYears::start_month_locked();
+		$pending  = false;
+		if ( $changing ) {
+			$pv = \AssociazioneSemplice\Install::realign_preview( $new_m );
+			if ( ( $pv['changed'] + $pv['replaced'] ) > 0 && empty( $p['confirm_card_realign'] ) ) { // prima si vede cosa succede alle tessere: il resto si salva, il mese aspetta la conferma
+				unset( $vals['fiscal_start_month'] );
+				set_transient( 'asem_fiscal_pending_' . get_current_user_id(), array( 'month' => $new_m ), 15 * MINUTE_IN_SECONDS );
+				$pending  = true;
+				$changing = false;
+			}
+		}
 		Settings::update( $vals );
+		$note = '';
+		if ( $changing ) {
+			delete_transient( 'asem_fiscal_pending_' . get_current_user_id() );
+			$n = \AssociazioneSemplice\Install::realign_memberships_to_fiscal();
+			if ( $n < 0 ) {
+				$note = ' ' . AssociazioneSempliceTexts::t( 'Le tessere non sono state riallineate perché la copia di sicurezza non è riuscita: riprova più tardi dalla stessa pagina.' );
+			} else {
+				$nt   = (array) get_option( \AssociazioneSemplice\Install::NOTICE_OPTION, array() );
+				$note = ' ' . sprintf( AssociazioneSempliceTexts::t( 'Tessere riallineate: %1$d. Tessere sostituite: %2$d.' ), (int) ( $nt['changed'] ?? 0 ), (int) ( $nt['replaced'] ?? 0 ) );
+			}
+		} elseif ( ! $pending ) {
+			delete_transient( 'asem_fiscal_pending_' . get_current_user_id() );
+		}
 		Audit::log( 'entity.saved', 'settings', 0, array( 'has_vat' => $vals['has_vat'] ?? 0 ) );
 		$warn = \AssociazioneSemplice\EntityRules::mismatch_warning( (string) Settings::get( 'entity_form' ), (string) Settings::get( 'runts_section' ) );
-		return array( Ui::url( 'asem-entity' ), 'Dati dell\'ente salvati.' . ( '' !== $warn ? ' ' . $warn : '' ) );
+		return array( Ui::url( 'asem-entity' ), 'Dati dell\'ente salvati.' . ( $pending ? ' ' . AssociazioneSempliceTexts::t( 'Il mese dell\'anno fiscale non è cambiato: leggi «Cosa succede alle tessere» qui sotto, spunta la conferma e salva di nuovo.' ) : '' ) . $note . ( '' !== $warn ? ' ' . $warn : '' ) );
 	}
 
 	/** Configurazione guidata: applica le scelte e porta dove serve ancora qualcosa (chiavi dei pagamenti, IBAN). */

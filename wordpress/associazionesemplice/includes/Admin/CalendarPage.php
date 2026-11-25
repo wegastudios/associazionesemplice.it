@@ -20,7 +20,9 @@ final class CalendarPage {
 		$last  = $first->modify( 'last day of this month' );
 		$grid0 = $first->modify( '-' . ( (int) $first->format( 'N' ) - 1 ) . ' days' );
 		$items = array();
-		foreach ( Calendar::occurrences( $grid0->format( 'Y-m-d' ), $grid0->modify( '+41 days' )->format( 'Y-m-d' ) ) as $o ) {
+		$g_from = $grid0->format( 'Y-m-d' );
+		$g_to   = $grid0->modify( '+41 days' )->format( 'Y-m-d' );
+		foreach ( Calendar::spread( Calendar::occurrences( $g_from, $g_to ), $g_from, $g_to ) as $o ) { // un evento su più giorni compare in ogni suo giorno
 			$items[ $o['date'] ][] = $o;
 		}
 		$today = current_time( 'Y-m-d' );
@@ -47,7 +49,7 @@ final class CalendarPage {
 				echo '<td style="vertical-align:top;height:90px;' . ( $other ? 'opacity:.45;' : '' ) . ( $ymd === $today ? 'background:#f0f6fc;' : '' ) . '"><strong>' . (int) $day->format( 'j' ) . '</strong>';
 				foreach ( $items[ $ymd ] ?? array() as $o ) {
 					$url = Ui::url( 'asem-activity', array( 'id' => $o['activity_id'] ) );
-					echo '<div style="font-size:12px;margin-top:3px"><a href="' . esc_url( $url ) . '">' . ( $o['start'] ? esc_html( $o['start'] ) . ' ' : '' ) . esc_html( $o['title'] ) . '</a>'
+					echo '<div style="font-size:12px;margin-top:3px"><a href="' . esc_url( $url ) . '">' . ( $o['start'] ? esc_html( $o['start'] ) . ' ' : '' ) . esc_html( $o['title'] . Calendar::day_label( $o ) ) . '</a>'
 						. ( $o['location'] ? '<br><span class="description">' . esc_html( $o['location'] ) . '</span>' : '' ) . '</div>';
 				}
 				echo '</td>';

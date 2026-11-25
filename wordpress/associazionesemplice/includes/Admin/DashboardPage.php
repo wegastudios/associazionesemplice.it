@@ -19,6 +19,8 @@ final class DashboardPage {
 		$avail    = Plugin::funds()->available();
 		$year     = Settings::social_year();
 		$r        = Plugin::reports()->social_year( $year );
+		$fiscal   = Plugin::reports()->fiscal_totals(); // le entrate e le uscite seguono l'anno fiscale
+		$members  = Plugin::people()->count_by_type_for_year( Settings::membership_year() ); // la tessera segue l'anno fiscale
 		$name     = (string) Settings::get( 'association_name' );
 
 		Ui::header( 'Associazione Semplice' . ( $name ? ' — ' . $name : '' ) );
@@ -45,15 +47,19 @@ final class DashboardPage {
 			echo wp_kses( '</table>' . ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p>' : '' ) . '</div>', Html::allowed() );
 		}
 
-		echo '<div class="asem-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="asem-kv">';
+		echo '<div class="asem-card"><h2>Anno fiscale ' . esc_html( $fiscal['label'] ) . '</h2><table class="asem-kv">';
 		foreach ( MemberType::member_types() as $t ) {
-			echo '<tr><td>' . esc_html( MemberType::label( $t ) ) . '</td><td>' . (int) ( $r['members_by_type'][ $t ] ?? 0 ) . '</td></tr>';
+			echo '<tr><td>' . esc_html( MemberType::label( $t ) ) . '</td><td>' . (int) ( $members[ $t ] ?? 0 ) . '</td></tr>';
 		}
-		echo wp_kses( '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>'
-			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>', Html::allowed() );
+		echo wp_kses( '<tr><td>Entrate</td><td>' . Ui::money( $fiscal['income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $fiscal['expense'] ) . '</td></tr>'
+			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $fiscal['result'] ) . '</strong></td></tr></table></div></div>', Html::allowed() );
 
 		$figures = (string) ob_get_clean();
 		ob_start(); // gli avvisi si raccolgono: in Bacheca vengono dopo «Da fare», raggruppati
+		$ra_notice = (array) get_option( \AssociazioneSemplice\Install::NOTICE_OPTION, array() ); // dopo un riallineamento delle tessere all'anno fiscale
+		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) && ! empty( $ra_notice['at'] ) && time() - (int) $ra_notice['at'] < 30 * DAY_IN_SECONDS && ( (int) ( $ra_notice['changed'] ?? 0 ) + (int) ( $ra_notice['replaced'] ?? 0 ) ) > 0 ) {
+			echo wp_kses( '<div class="notice notice-info inline"><p><strong>' . esc_html( \AssociazioneSemplice\Texts::t( 'Le tessere seguono l\'anno fiscale' ) ) . '</strong> ' . esc_html( sprintf( \AssociazioneSemplice\Texts::t( 'Tessere riallineate: %1$d. Tessere sostituite: %2$d (restano registrate, i pagamenti non cambiano).' ), (int) $ra_notice['changed'], (int) $ra_notice['replaced'] ) ) . ' <a href="' . esc_url( Ui::url( 'asem-audit' ) ) . '">' . esc_html( \AssociazioneSemplice\Texts::t( 'Vedi il registro azioni' ) ) . '</a></p></div>', Html::allowed() );
+		}
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) { // promemoria della copia di sicurezza (solo amministratori)
 			$bk = \AssociazioneSemplice\Backup::last();
 			if ( ! $bk || time() - $bk > 30 * DAY_IN_SECONDS ) {

@@ -299,7 +299,7 @@ final class ProRegisters {
 		Ui::header( 'Opzioni contabili' );
 		Ui::form_open( 'asem_save_acct', Ui::url( 'asem-acct' ) );
 		echo '<p><label><input type="checkbox" name="reports_enabled" value="1"' . checked( ! empty( Settings::get( 'reports_enabled' ) ), true, false ) . '> <strong>Report e rendiconto</strong></label><br>'
-			. '<span class="description">Mostra le schede «Report» e «Rendiconto» in Contabilità (valutazione dell\'anno sociale, rendiconto per cassa in PDF). Spegnile se la contabilità la tiene qualcun altro: la prima nota resta.</span></p>';
+			. '<span class="description">Mostra le schede «Report» e «Rendiconto» in Contabilità (valutazione dell\'anno delle attività, rendiconto per cassa in PDF). Spegnile se la contabilità la tiene qualcun altro: la prima nota resta.</span></p>';
 		echo '<p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
 		echo '<h2>Dove sono le altre impostazioni contabili</h2><ul>'

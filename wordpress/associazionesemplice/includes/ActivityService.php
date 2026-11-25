@@ -25,12 +25,18 @@ class ActivityService {
 
 	/** Attività di un anno sociale (etichetta "2025/2026"), con nome del referente. */
 	public function for_year( string $label ): array {
+		// Con l'anno sociale a gennaio («2026») le attività create prima, con l'etichetta «2025/2026», non spariscono: compaiono negli anni solari che toccano.
+		$old = preg_match( '/^\d{4}$/', $label ) ? $label . '/%' : '';
+		$old_end = '' !== $old ? '%/' . $label : '';
 		return Employees::only_allowed_kinds( $this->db()->get_results(
 			$this->db()->prepare(
 				'SELECT a.*, CONCAT(i.first_name, " ", i.last_name) AS instructor_name FROM ' . Db::t( 'activities' ) . ' a '
 				. 'LEFT JOIN ' . Db::t( 'people' ) . ' i ON i.id = a.instructor_person_id '
-				. 'WHERE a.social_year = %s AND a.deleted_at IS NULL ORDER BY a.name',
-				$label
+				. 'WHERE (a.social_year = %s OR (%s <> \'\' AND (a.social_year LIKE %s OR a.social_year LIKE %s))) AND a.deleted_at IS NULL ORDER BY a.name',
+				$label,
+				$old,
+				'' === $old ? '-' : $old,
+				'' === $old_end ? '-' : $old_end
 			),
 			ARRAY_A
 		) ?: array() ); // un dipendente a cui sono stati tolti i corsi (o gli eventi) non li vede nemmeno negli elenchi

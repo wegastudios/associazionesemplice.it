@@ -36,7 +36,7 @@ final class TribeImport {
 	 * @param string $title   titolo
 	 * @param string $content descrizione (HTML)
 	 * @param string $venue   luogo già composto (nome, indirizzo)
-	 * @return array|null name, notes, session[session_date, start_time, end_time, location]; null se manca una data valida
+	 * @return array|null name, notes, session[session_date, start_time, end_date, end_time, location]; null se manca una data valida
 	 */
 	public static function map_event( array $meta, string $title, string $content, string $venue ): ?array {
 		$start = (string) ( $meta['_EventStartDate'] ?? '' );
@@ -51,14 +51,20 @@ final class TribeImport {
 		$time   = $allday || empty( $m[2] ) ? null : $m[2];
 		$end    = (string) ( $meta['_EventEndDate'] ?? '' );
 		$until  = null;
+		$last_day = null;
 		$notes  = array();
 		if ( preg_match( '/^(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))?/', $end, $e ) ) {
 			if ( $e[1] === $date ) {
 				if ( ! $allday && isset( $e[2] ) && null !== $time && $e[2] > $time ) {
 					$until = $e[2];
 				}
-			} elseif ( $e[1] > $date ) {
-				$notes[] = 'Dal ' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . ' al ' . ( new \DateTimeImmutable( $e[1] ) )->format( 'd/m/Y' ) . '.';
+			} elseif ( $e[1] > $date && (int) ( new \DateTimeImmutable( $date ) )->diff( new \DateTimeImmutable( $e[1] ) )->days < Rules::MAX_SESSION_DAYS ) {
+				$last_day = $e[1]; // evento su più giorni: la data di fine si porta con sé (con l'ora di fine, se c'è)
+				if ( ! $allday && isset( $e[2] ) ) {
+					$until = $e[2];
+				}
+			} elseif ( $e[1] > $date ) { // oltre i 31 giorni la data non si accetta: resta scritta nelle note
+				$notes[] ='Dal ' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . ' al ' . ( new \DateTimeImmutable( $e[1] ) )->format( 'd/m/Y' ) . '.';
 			}
 		}
 		$body = self::plain( $content );
@@ -73,7 +79,7 @@ final class TribeImport {
 		return array(
 			'name'    => mb_substr( '' !== $name ? $name : 'Evento senza titolo', 0, 160 ),
 			'notes'   => $notes ? mb_substr( implode( "\n\n", $notes ), 0, 8000 ) : null,
-			'session' => array( 'session_date' => $date, 'start_time' => $time, 'end_time' => $until, 'location' => '' !== trim( $venue ) ? mb_substr( trim( $venue ), 0, 190 ) : null ),
+			'session' => array( 'session_date' => $date, 'start_time' => $time, 'end_date' => $last_day, 'end_time' => $until, 'location' => '' !== trim( $venue ) ? mb_substr( trim( $venue ), 0, 190 ) : null ),
 		);
 	}
 

@@ -942,7 +942,9 @@ final class Views {
 		$first = new \DateTimeImmutable( $month . '-01' );
 		$mine  = array_map( 'intval', Plugin::activities()->person_activity_ids( (int) $p['id'] ) );
 		$by    = array();
-		foreach ( \AssociazioneSemplice\Calendar::occurrences( $first->format( 'Y-m-d' ), $first->modify( 'last day of this month' )->format( 'Y-m-d' ) ) as $o ) {
+		$m_from = $first->format( 'Y-m-d' );
+		$m_to   = $first->modify( 'last day of this month' )->format( 'Y-m-d' );
+		foreach ( \AssociazioneSemplice\Calendar::spread( \AssociazioneSemplice\Calendar::occurrences( $m_from, $m_to ), $m_from, $m_to ) as $o ) { // un evento su più giorni compare in ogni suo giorno
 			$by[ $o['date'] ][] = $o;
 		}
 		$prev = $first->modify( '-1 month' )->format( 'Y-m' );
@@ -958,7 +960,7 @@ final class Views {
 			foreach ( $by as $date => $items ) {
 				$html .= '<li><div><strong>' . esc_html( self::date_long( $date ) ) . '</strong>';
 				foreach ( $items as $o ) {
-					$html .= '<div class="asemf-small">' . ( $o['start'] ? esc_html( $o['start'] . ( $o['end'] ? '-' . $o['end'] : '' ) ) . ' &middot; ' : '' ) . esc_html( $o['title'] )
+					$html .= '<div class="asemf-small">' . ( $o['start'] ? esc_html( $o['start'] . ( $o['end'] ? '-' . $o['end'] : '' ) ) . ' &middot; ' : '' ) . esc_html( $o['title'] . \AssociazioneSemplice\Calendar::day_label( $o ) )
 						. ( $o['location'] ? ' <span class="asemf-muted">&middot; ' . esc_html( $o['location'] ) . '</span>' : '' )
 						. ( in_array( (int) $o['activity_id'], $mine, true ) ? ' <strong>&middot; sei iscritto</strong>' : '' ) . '</div>';
 				}
@@ -1047,7 +1049,7 @@ final class Views {
 			return ''; // chi gestisce eventi senza esserne referente (staff, gestori) trova qui sotto solo gli ingressi
 		}
 		if ( ! $found ) {
-			$html .= '<p class="asemf-muted">Non sei referente di nessuna attività dell\'anno sociale in corso.</p>';
+			$html .= '<p class="asemf-muted">Non sei referente di nessuna attività dell\'anno delle attività in corso.</p>';
 		}
 		return $html . '</section>';
 	}

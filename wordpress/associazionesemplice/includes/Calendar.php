@@ -108,7 +108,7 @@ final class Calendar {
 		) ?: array();
 		foreach ( $rows as $s ) {
 			$out[] = array(
-				'date' => $s['session_date'], 'start' => $s['start_time'], 'end' => $s['end_time'], 'title' => $s['name'], 'location' => (string) $s['location'],
+				'date' => $s['session_date'], 'end_date' => ! empty( $s['end_date'] ) ? (string) $s['end_date'] : null, 'start' => $s['start_time'], 'end' => $s['end_time'], 'title' => $s['name'], 'location' => (string) $s['location'],
 				'kind' => $s['kind'], 'activity_id' => (int) $s['activity_id'], 'session_id' => (int) $s['id'],
 			);
 		}
@@ -119,6 +119,44 @@ final class Calendar {
 			}
 		);
 		return Employees::only_allowed_kinds( $out ); // un dipendente a cui sono stati tolti i corsi (o gli eventi) non li vede nel calendario
+	}
+
+	/**
+	 * Un evento su più giorni compare in ognuno dei suoi giorni (dentro $from..$to): ogni voce ha 'date' = quel giorno,
+	 * 'day_n' e 'days' (giorno 2 di 3) e 'first' (il giorno di inizio, quello con l'orario di inizio). Le altre voci restano com'erano.
+	 *
+	 * @param array[] $occurrences vedi {@see Calendar::occurrences()}
+	 * @return array[] in ordine di giorno e orario
+	 */
+	public static function spread( array $occurrences, string $from, string $to ): array {
+		$out = array();
+		foreach ( $occurrences as $o ) {
+			$last = ! empty( $o['end_date'] ) && $o['end_date'] > $o['date'] ? (string) $o['end_date'] : (string) $o['date'];
+			if ( $last === $o['date'] ) {
+				$out[] = $o;
+				continue;
+			}
+			$days = (int) ( new \DateTimeImmutable( (string) $o['date'] ) )->diff( new \DateTimeImmutable( $last ) )->days + 1;
+			for ( $n = 1; $n <= $days; $n++ ) {
+				$day = gmdate( 'Y-m-d', strtotime( $o['date'] . ' +' . ( $n - 1 ) . ' days 12:00:00 UTC' ) );
+				if ( $day < $from || $day > $to ) {
+					continue;
+				}
+				$out[] = array_merge( $o, array( 'date' => $day, 'day_n' => $n, 'days' => $days, 'first' => 1 === $n, 'start' => 1 === $n ? $o['start'] : null, 'end' => $n === $days ? $o['end'] : null ) );
+			}
+		}
+		usort(
+			$out,
+			function ( $x, $y ) {
+				return strcmp( $x['date'] . ( $x['start'] ?: '00:00' ) . $x['title'], $y['date'] . ( $y['start'] ?: '00:00' ) . $y['title'] );
+			}
+		);
+		return $out;
+	}
+
+	/** Etichetta «giorno 2 di 3» per le voci spalmate da {@see Calendar::spread()}; vuota per le altre. */
+	public static function day_label( array $o ): string {
+		return ! empty( $o['days'] ) ? ' (giorno ' . (int) $o['day_n'] . ' di ' . (int) $o['days'] . ')' : '';
 	}
 
 	/** Date comprese tra $from e $to che cadono nel giorno della settimana indicato (1 = lunedì … 7 = domenica). @return string[] */

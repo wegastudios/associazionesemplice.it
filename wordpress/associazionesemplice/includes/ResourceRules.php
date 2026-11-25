@@ -349,20 +349,50 @@ final class ResourceRules {
 	 *
 	 * @return array{starts:string,ends:string,core_starts:string,core_ends:string} Y-m-d H:i:s; core_* = l'attività senza gli allestimenti
 	 */
-	public static function busy_window( string $date, ?string $start, ?string $end, int $before_min, int $after_min ): array {
+	public static function busy_window( string $date, ?string $start, ?string $end, int $before_min, int $after_min, ?string $end_date = null ): array {
 		$s = $start ?: '00:00';
 		$e = $end ?: '23:59';
-		if ( $e <= $s ) {
+		$day_e = $date;
+		if ( $end_date && $end_date > $date ) { // evento su più giorni: la fine è nell'ultimo giorno, a qualunque ora (anche «prima» dell'inizio)
+			$day_e = $end_date;
+		} elseif ( $e <= $s ) {
 			$e = '23:59';
 		}
 		$core_s = new \DateTimeImmutable( $date . ' ' . $s . ':00' );
-		$core_e = new \DateTimeImmutable( $date . ' ' . $e . ':00' );
+		$core_e = new \DateTimeImmutable( $day_e . ' ' . $e . ':00' );
 		return array(
 			'starts'      => $core_s->modify( '-' . max( 0, $before_min ) . ' minutes' )->format( 'Y-m-d H:i:s' ),
 			'ends'        => $core_e->modify( '+' . max( 0, $after_min ) . ' minutes' )->format( 'Y-m-d H:i:s' ),
 			'core_starts' => $core_s->format( 'Y-m-d H:i:s' ),
 			'core_ends'   => $core_e->format( 'Y-m-d H:i:s' ),
 		);
+	}
+
+	/** Durata massima di un blocco di eventi, in giorni (dal primo all'ultimo giorno). */
+	const MAX_BLOCK_DAYS = 31;
+
+	/**
+	 * Il periodo unico che copre tutte le finestre: dal primo inizio all'ultima fine, senza interruzioni (anche tra un evento e l'altro).
+	 *
+	 * @param array[] $windows starts, ends, core_starts, core_ends (Y-m-d H:i:s) come da {@see busy_window()}
+	 * @return array{starts:string,ends:string,core_starts:string,core_ends:string}|null null se non ci sono finestre
+	 */
+	public static function span( array $windows ): ?array {
+		if ( ! $windows ) {
+			return null;
+		}
+		$out = null;
+		foreach ( $windows as $w ) {
+			if ( null === $out ) {
+				$out = array( 'starts' => $w['starts'], 'ends' => $w['ends'], 'core_starts' => $w['core_starts'], 'core_ends' => $w['core_ends'] );
+				continue;
+			}
+			$out['starts']      = min( $out['starts'], $w['starts'] );
+			$out['core_starts'] = min( $out['core_starts'], $w['core_starts'] );
+			$out['ends']        = max( $out['ends'], $w['ends'] );
+			$out['core_ends']   = max( $out['core_ends'], $w['core_ends'] );
+		}
+		return $out;
 	}
 
 	/**

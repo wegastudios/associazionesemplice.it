@@ -222,12 +222,12 @@ final class ActivitiesPage {
 		$back     = Ui::url( 'asem-activities', array( 'year' => $sy_start ) );
 		$today    = current_time( 'Y-m-d' );
 
-		Ui::header( 'Attività — anno sociale ' . $year->label() );
+		Ui::header( 'Attività — anno ' . $year->label() );
 		echo '<p><a class="button" href="' . esc_url( Ui::url( 'asem-activities', array( 'year' => $sy_start - 1 ) ) ) . '">‹ ' . esc_html( $year->previous()->label() ) . '</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-activities', array( 'year' => $sy_start + 1 ) ) ) . '">' . esc_html( $year->next()->label() ) . ' ›</a></p>';
 
 		if ( ! $report['activities'] ) {
-			echo '<div class="asem-empty"><p><strong>Ancora nessuna attività in questo anno sociale</strong></p><p class="description">Crea la prima con il modulo «Nuova attività» qui sotto: un corso, un evento o un evento ricorrente.</p><a class="button button-primary" href="#asem-new-activity">Crea un\'attività</a></div>';
+			echo '<div class="asem-empty"><p><strong>Ancora nessuna attività in questo anno</strong></p><p class="description">Crea la prima con il modulo «Nuova attività» qui sotto: un corso, un evento o un evento ricorrente.</p><a class="button button-primary" href="#asem-new-activity">Crea un\'attività</a></div>';
 		}
 		$can_bulk = $report['activities'] && current_user_can( Plugin::CAP );
 		if ( $can_bulk ) { // scelta multipla: un modulo GET porta alla pagina di conferma (le eliminazioni sono riservate agli amministratori)
@@ -263,6 +263,27 @@ final class ActivitiesPage {
 		self::$pre = null; // le letture comuni servono solo alle righe qui sopra
 		if ( $can_bulk ) {
 			echo '</form>';
+		}
+
+		$dn_denied = \AssociazioneSemplice\Employees::denied_for( get_current_user_id() ); // chi ha una sola area (corsi o eventi) vede solo le pagine della sua
+		$drafts    = current_user_can( Plugin::CAP_OPS ) ? \AssociazioneSemplice\PublicEvents::draft_pages( array_map( function ( $r ) { return (int) $r['activity']['id']; }, array_filter( $report['activities'], function ( $r ) use ( $dn_denied ) { return \AssociazioneSemplice\EmployeeRules::has( $dn_denied, \AssociazioneSemplice\EmployeeRules::activity_key( (string) $r['activity']['kind'] ) ); } ) ) ) : array();
+		if ( $drafts ) { // le pagine importate (per esempio da The Events Calendar) restano in bozza: si pubblicano insieme, senza aprirle una a una
+			Ui::form_open( 'asem_publish_pages', $back );
+			echo '<div class="asem-card"><h2>' . esc_html( \AssociazioneSemplice\Texts::t( 'Pagine in bozza: non si vedono ancora sul sito' ) ) . '</h2>'
+				. '<p class="description">' . esc_html( \AssociazioneSemplice\Texts::t( 'Spunta le pagine da pubblicare: dopo il clic compaiono subito sul sito.' ) ) . '</p>'
+				. '<p><label><input type="checkbox" data-asem-check-all="asem-draft-item"> <strong>' . esc_html( \AssociazioneSemplice\Texts::t( 'Seleziona tutte' ) ) . '</strong></label></p><ul>';
+			foreach ( $report['activities'] as $r ) {
+				$aid = (int) $r['activity']['id'];
+				if ( isset( $drafts[ $aid ] ) ) {
+					$ds     = self::sessions_of( $aid ); // data accanto al nome; «(annullato)» se tutte le date sono annullate
+					$live   = array_values( array_filter( $ds, function ( $x ) { return empty( $x['cancelled_at'] ); } ) );
+					$shown  = $live ? $live[0] : ( $ds ? $ds[0] : null );
+					$when   = $shown ? ' — ' . Ui::date( (string) $shown['session_date'] ) : '';
+					$cancel = $ds && ! $live ? ' ' . \AssociazioneSemplice\Texts::t( '(annullato)' ) : '';
+					echo '<li><label><input type="checkbox" class="asem-draft-item" name="ids[]" value="' . (int) $aid . '"> ' . esc_html( (string) $r['activity']['name'] . $when . $cancel ) . '</label></li>';
+				}
+			}
+			echo '</ul><p><button class="button button-primary" onclick="return confirm(\'' . esc_js( \AssociazioneSemplice\Texts::t( 'Pubblicare le pagine selezionate? Compariranno subito sul sito.' ) ) . '\')">' . esc_html( \AssociazioneSemplice\Texts::t( 'Pubblica le pagine selezionate' ) ) . '</button></p></div></form>';
 		}
 
 		self::sports_card();
@@ -581,7 +602,7 @@ final class ActivitiesPage {
 				$opts[ $y->label() ] = $y->label() . ( 0 === $i ? ' (stesso anno)' : '' );
 				$y                   = $y->next();
 			}
-			echo wp_kses( '<tr><th>Anno sociale</th><td><select name="social_year">' . Ui::options( $opts, $year->next()->label() ) . '</select></td></tr>'
+			echo wp_kses( '<tr><th>Anno delle attività</th><td><select name="social_year">' . Ui::options( $opts, $year->next()->label() ) . '</select></td></tr>'
 				. '<tr><th>Dal / al</th><td><input type="date" name="starts_on"> <input type="date" name="ends_on"> <span class="description">vuoti = le date di prima, spostate di settimane intere (stessi giorni della settimana)</span></td></tr>', Html::allowed() );
 		} else {
 			$last = null;
@@ -761,7 +782,7 @@ final class ActivitiesPage {
 		}, $statuses ) );
 		$default_month = $year->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) );
 
-		echo wp_kses( '<div class="asem-card"><h2>Riepilogo · anno sociale ' . esc_html( $activity['social_year'] ) . '</h2><table class="asem-kv">'
+		echo wp_kses( '<div class="asem-card"><h2>Riepilogo · anno ' . esc_html( $activity['social_year'] ) . '</h2><table class="asem-kv">'
 			. '<tr><td>Dovuto finora</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassato</td><td>' . Ui::money( $paid ) . '</td></tr>'
 			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $to_collect ) . '</strong></td></tr></table></div>', Html::allowed() );
 

@@ -77,6 +77,7 @@ final class Plugin {
 		$jobs = (array) apply_filters( 'asem_scheduled_jobs', $jobs ); // un'estensione aggiunge i suoi lavori periodici
 		if ( is_admin() ) {
 			add_action( 'admin_init', array( __NAMESPACE__ . '\\FileMigration', 'auto_certs' ) ); // dopo l'aggiornamento i certificati medici già caricati partono da soli
+			add_action( 'admin_init', array( __NAMESPACE__ . '\\Install', 'maybe_realign_memberships' ) ); // la tessera segue l'anno fiscale: se la copia di sicurezza non era riuscita si riprova
 		}
 		foreach ( $jobs as $hook => $j ) {
 			if ( '' !== $j[4] && ! Edition::installed( $j[4] ) ) {

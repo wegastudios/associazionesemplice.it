@@ -18,8 +18,7 @@ final class MoneyPage {
 
 	public static function render(): void {
 		Ui::header( 'Cassa' );
-		$year = Settings::social_year();
-		$r    = Plugin::reports()->social_year( $year );
+		$r    = Plugin::reports()->fiscal_totals(); // i conti seguono l'anno fiscale
 		echo '<p class="asem-quick"><a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> <a class="button" href="' . esc_url( Ui::url( 'asem-bookdesk' ) ) . '">Prenota</a> '
 			. ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Nuova spesa</a>'
@@ -39,10 +38,10 @@ final class MoneyPage {
 		}
 		echo '</table>' . ( Modules::on( 'accounts' ) ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p>' : '' ) . '</div>';
 
-		echo wp_kses( '<div class="asem-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="asem-kv">'
-			. '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>'
+		echo wp_kses( '<div class="asem-card"><h2>Anno fiscale ' . esc_html( $r['label'] ) . '</h2><table class="asem-kv">'
+			. '<tr><td>Entrate</td><td>' . Ui::money( $r['income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['expense'] ) . '</td></tr>'
 			. '<tr><td><strong>Resta all\'ente</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table>', Html::allowed() );
-		echo '<p class="description">Calcolato per cassa: contano i soldi quando entrano ed escono davvero, nell\'anno sociale in corso. '
+		echo '<p class="description">Calcolato per cassa: contano i soldi quando entrano ed escono davvero, nell\'anno fiscale in corso. '
 			. ( \AssociazioneSemplice\Edition::has( 'fiscal' ) ? 'Il rendiconto dell\'anno fiscale è in Contabilità.' : 'Per vedere i movimenti di un anno fiscale apri la Prima nota.' ) . '</p></div></div>';
 		do_action( 'asem_yearend_alert' ); // un'estensione mostra qui le verifiche di fine anno fiscale: dopo le cifre, che sono ciò che si cerca per primo
 

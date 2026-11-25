@@ -12,13 +12,35 @@ defined( 'ABSPATH' ) || exit;
 /** Dati dell'ente: denominazione, sede, codice fiscale e contatti. */
 final class EntityPage {
 
-	/** Il campo «L'anno fiscale inizia a»: con esercizi chiusi è bloccato e dice perché. */
+	/** Il campo «L'anno fiscale inizia a»: con esercizi chiusi è bloccato e dice perché; se c'è un cambio in attesa di conferma, ne mostra l'anteprima. */
 	public static function fiscal_month_field( array $s ): string {
 		$month = (int) ( $s['fiscal_start_month'] ?? 1 );
 		if ( FiscalYears::start_month_locked() ) {
 			return '<select name="fiscal_start_month" disabled>' . Ui::options( Ui::MONTHS, $month ) . '</select> <span class="description">' . esc_html( FiscalYears::start_month_locked_message() ) . '</span>';
 		}
-		return '<select name="fiscal_start_month">' . Ui::options( Ui::MONTHS, $month ) . '</select>';
+		$pending = self::pending_month();
+		$select  = '<select name="fiscal_start_month">' . Ui::options( Ui::MONTHS, $pending ?: $month ) . '</select>';
+		return $select . ( $pending ? self::realign_box( $pending ) : '' );
+	}
+
+	/** Mese scelto e non ancora confermato (salvato dalla persona che sta guardando la pagina), o 0. */
+	public static function pending_month(): int {
+		$t = get_transient( 'asem_fiscal_pending_' . get_current_user_id() );
+		$m = is_array( $t ) ? (int) ( $t['month'] ?? 0 ) : 0;
+		return ( $m >= 1 && $m <= 12 && $m !== \AssociazioneSemplice\Settings::membership_start_month() ) ? $m : 0;
+	}
+
+	/** «Cosa succede alle tessere»: anteprima del riallineamento con la spunta da confermare. */
+	public static function realign_box( int $month ): string {
+		$pv = \AssociazioneSemplice\Install::realign_preview( $month );
+		if ( 0 === $pv['changed'] + $pv['replaced'] ) {
+			return '<p class="description">' . esc_html( Texts::t( 'Nessuna tessera da riallineare.' ) ) . '</p>'; // niente da confermare: nessuna spunta
+		}
+		$txt =Texts::t( 'Le tessere dei soci seguono l\'anno fiscale. Cambiando il mese, le tessere degli anni fiscali ancora aperti che hanno un pagamento registrato si riallineano al nuovo anno fiscale: non si accorciano mai e quelle degli anni chiusi non si toccano.' )
+			. ' ' . sprintf( Texts::t( 'Con questa scelta: %1$d tessere cambiano%2$s; %3$d risultano «sostituite» (restano registrate, i pagamenti non cambiano).' ), $pv['changed'], $pv['examples'] ? ' (' . implode( ', ', $pv['examples'] ) . ')' : '', $pv['replaced'] )
+			. ' ' . Texts::t( 'Prima del cambio viene salvata una copia di sicurezza dei dati, che resta sul sito per 7 giorni.' );
+		return '<div class="notice notice-warning inline"><p><strong>' . esc_html( Texts::t( 'Cosa succede alle tessere' ) ) . '</strong></p><p>' . esc_html( $txt ) . '</p>'
+			. '<p><label><input type="checkbox" name="confirm_card_realign" value="1"> ' . esc_html( Texts::t( 'Ho letto cosa succede alle tessere e voglio cambiare il mese dell\'anno fiscale.' ) ) . '</label></p></div>';
 	}
 
 	/** Le due righe obbligatorie dei contatti della segreteria (email e telefono): le stesse nella procedura guidata e nei dati dell'ente. */
@@ -96,8 +118,8 @@ final class EntityPage {
 		echo wp_kses( self::name_row( $s ) . self::form_row( $s ), Html::allowed() );
 		do_action( 'asem_entity_rows', $s ); // le estensioni aggiungono qui i loro campi
 		echo wp_kses( self::tax_row( $s ) . self::vat_row( $s ) . self::runts_row( $s ), Html::allowed() );
-		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno sociale (tessere e attività)?</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select><p class="description">È l\'anno delle attività (corsi ed eventi, per esempio una stagione da settembre ad agosto) e anche della tessera: la tessera inizia lo stesso mese e dura un anno. Con gennaio la tessera vale da gennaio a dicembre. Le tessere già emesse non cambiano: il nuovo mese vale per le tessere nuove. Non dipende dall\'anno fiscale: possono iniziare in mesi diversi.</p></td></tr>', Html::allowed() );
-		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?</th><td>' . self::fiscal_month_field( $s ) . '<p class="description">È l\'anno dei conti: prima nota, rendiconto e preventivo. Di solito inizia a gennaio, ma puoi scegliere un altro mese, anche diverso dall\'anno sociale. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare. I Dati per il RUNTS restano al 31 dicembre in ogni caso.</p></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Da che mese iniziano corsi ed eventi (anno delle attività)?</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select><p class="description">È l\'anno di corsi ed eventi (per esempio una stagione da settembre ad agosto): ogni attività sta in un anno e le sue date devono cadere dentro. La tessera dei soci, le quote e gli incassi seguono invece l\'anno fiscale (qui sotto).</p></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?</th><td>' . self::fiscal_month_field( $s ) . '<p class="description">È l\'anno dei conti, della tessera dei soci e delle quote: prima nota, rendiconto, preventivo e rinnovi. Di solito inizia a gennaio, ma puoi scegliere un altro mese, anche diverso dall\'anno delle attività. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare. I Dati per il RUNTS restano al 31 dicembre in ogni caso.</p></td></tr>', Html::allowed() );
 		echo '</tbody></table>';
 
 		echo '<h2>Registro unico del Terzo settore (RUNTS)</h2><table class="form-table"><tbody>';
