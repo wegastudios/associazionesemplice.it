@@ -247,3 +247,12 @@ foreach ( array( 'asem_course_months', 'asem_course_month_dues' ) as $cl_tb ) {
 asem_ok( false !== strpos( (string) wp_json_encode( \AssociazioneSemplice\Privacy::export( $cl_p ) ), 'Martedì a lezione' ) || false !== strpos( (string) wp_json_encode( \AssociazioneSemplice\Privacy::export( $cl_p ), JSON_UNESCAPED_UNICODE ), 'Martedì a lezione' ), 'a lezioni: nei dati scaricati' );
 asem_render( array( \AssociazioneSemplice\Admin\ActivitiesPage::class, 'render_detail' ), 'Lezioni del mese', array( 'id' => $cl_a ) );
 asem_ok( 'a lezione' === \AssociazioneSemplice\ActivityKind::fee_unit( 'course', 'lessons' ), 'a lezioni: la dicitura è «a lezione»' );
+
+// ---------- «Riprova» nell'area soci: una frase chiara, non un errore tecnico ----------
+$cl_fu = \AssociazioneSemplice\Flash::url( home_url( '/area/' ), 'asemf', '', CourseMonths::busy_message() );
+parse_str( (string) wp_parse_url( $cl_fu, PHP_URL_QUERY ), $cl_fq );
+$cl_og = $_GET;
+$_GET  = $cl_fq;
+$cl_fl = \AssociazioneSemplice\Frontend\Views::flash();
+$_GET  = $cl_og;
+asem_ok( false !== strpos( $cl_fl, 'riprova tra qualche secondo' ) && false === strpos( $cl_fl, 'Qualcosa non ha funzionato' ) && false === stripos( $cl_fl, 'database' ), 'a lezioni: nell\'area soci il socio legge «riprova tra qualche secondo»' );
