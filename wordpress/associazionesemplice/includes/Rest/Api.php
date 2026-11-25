@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Rest;
 
 use AssociazioneSemplice\Access;
 use AssociazioneSemplice\ActivityKind;
+use AssociazioneSemplice\ActivityService;
 use AssociazioneSemplice\Edition;
 use AssociazioneSemplice\MemberSession;
 use AssociazioneSemplice\MemberType;
@@ -122,6 +123,7 @@ final class Api {
 				'session_id' => (int) $b['session_id'], 'activity_id' => (int) $b['activity_id'], 'activity' => $b['activity_name'],
 				'date' => $b['session_date'], 'time' => $b['start_time'], 'location' => $b['location'],
 				'active' => $b['active'], 'fee_due' => (int) $b['fee_due_cents'], 'paid' => $b['paid'], 'state' => $b['state'],
+			) + ( ActivityService::owed_by_another( $b ) ? array( 'owed_by_another' => true ) : array()
 			);
 		}
 		return rest_ensure_response( array( 'bookings' => $rows ) );

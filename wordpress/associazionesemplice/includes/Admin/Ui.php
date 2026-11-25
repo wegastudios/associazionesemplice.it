@@ -304,6 +304,15 @@ final class Ui {
 
 	/** Stato del contributo di una prenotazione. */
 	public static function booking_state( array $b ): string {
+		$html = self::booking_state_only( $b );
+		if ( ! empty( $b['booked_by'] ) && \AssociazioneSemplice\ActivityService::owed_by_another( $b ) && (int) $b['fee_due_cents'] > 0 ) { // prenotata da un'altra persona: il contributo è a suo carico
+			$who   = \AssociazioneSemplice\Plugin::people()->get( (int) $b['booked_by'] );
+			$html .= '<br><span class="description">a carico di ' . esc_html( $who ? trim( $who['first_name'] . ' ' . $who['last_name'] ) : 'chi ha prenotato' ) . '</span>';
+		}
+		return $html;
+	}
+
+	private static function booking_state_only( array $b ): string {
 		switch ( $b['state'] ) {
 			case 'free':
 				return '<span class="asem-ok">gratuito</span>';

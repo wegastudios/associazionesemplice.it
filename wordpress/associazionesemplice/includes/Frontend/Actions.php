@@ -929,7 +929,7 @@ final class Actions {
 			if ( (int) $b['person_id'] === $person_id ) {
 				$name = trim( $b['first_name'] . ' ' . $b['last_name'] );
 				if ( $b['active'] && (int) $b['remaining'] > 0 ) {
-					$due = ' (contributo da pagare ' . Money::format( (int) $b['remaining'] ) . ')';
+					$due = \AssociazioneSemplice\ActivityService::owed_by_another( $b ) ? ' (contributo non pagato, a carico di chi ha prenotato)' : ' (contributo da pagare ' . Money::format( (int) $b['remaining'] ) . ')';
 				}
 			}
 		}

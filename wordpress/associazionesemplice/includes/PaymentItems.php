@@ -105,6 +105,15 @@ final class PaymentItems {
 		return $out;
 	}
 
+	/** Le voci di una persona divise per chi le paga (payer_id; di norma la persona stessa): una ricevuta ha un solo pagante. @return array[] */
+	private static function by_payer( array $group ): array {
+		$out = array();
+		foreach ( $group as $i ) {
+			$out[ (int) ( $i['payer_id'] ?? 0 ) ][] = $i;
+		}
+		return array_values( $out );
+	}
+
 	/** Voci da registrare insieme, una ricevuta per gruppo: per ogni persona le sue voci e, a parte, l'eventuale donazione. @return array<int,array{0:int,1:array}> */
 	public static function receipt_batches( array $items ): array {
 		$out = array();
@@ -115,8 +124,8 @@ final class PaymentItems {
 			$rest = array_values( array_filter( $group, function ( $i ) {
 				return self::DONATION !== $i['type'];
 			} ) );
-			if ( $rest ) {
-				$out[] = array( (int) $person_id, $rest );
+			foreach ( self::by_payer( $rest ) as $part ) {
+				$out[] = array( (int) $person_id, $part );
 			}
 			if ( $gift ) {
 				$out[] = array( (int) $person_id, $gift );

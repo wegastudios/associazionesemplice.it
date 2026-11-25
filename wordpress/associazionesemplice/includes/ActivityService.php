@@ -691,19 +691,23 @@ class ActivityService {
 		if ( ! $b || 'booked' === $b['status'] ) {
 			return false;
 		}
-		$old = self::debtor_id( $b );
-		if ( $old === $new_debtor ) {
-			return false;
+		if ( empty( $b['booked_by'] ) && $new_debtor === $person_id ) {
+			return false; // prenotazione normale che si rifà da sé: come sempre
 		}
 		$p    = Plugin::people()->get( $person_id );
 		$host = $p ? (int) $p['host_person_id'] : 0;
 		$same = function ( int $id ) use ( $person_id, $host ): bool {
 			return $id === $person_id || ( $host > 0 && $id === $host ) || Guardians::is_guardian_of( $id, $person_id );
 		};
-		if ( ( $host > 0 || Guardians::has_guardian( $person_id ) ) && $same( $old ) && $same( $new_debtor ) ) {
-			return false;
+		$managed = $host > 0 || Guardians::has_guardian( $person_id );
+		// Conta chi ha versato davvero (il pagante della voce), non solo di chi era il debito: la segreteria può aver incassato da chi partecipa
+		$payers = array_map( 'intval', $this->db()->get_col( $this->db()->prepare( 'SELECT DISTINCT COALESCE(payer_person_id, person_id) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND amount_cents > 0 AND session_id = %d AND person_id = %d", $session_id, $person_id ) ) );
+		foreach ( $payers as $payer ) {
+			if ( $payer !== $new_debtor && ! ( $managed && $same( $payer ) && $same( $new_debtor ) ) ) {
+				return true;
+			}
 		}
-		return $this->paid_cents( $session_id, $person_id ) > 0;
+		return false;
 	}
 
 	/**
@@ -782,7 +786,7 @@ class ActivityService {
 								}
 								$row = array_merge( $this->price_data( $a, $person, array( 'price_list' => (string) ( $lists[ $pid ] ?? '' ) ) ), array( 'booked_by' => (int) $pid === $booker_id ? null : $booker_id, 'declined_at' => null, 'confirmed_at' => null ) );
 								if ( ! empty( $old[ $pid ] ) ) {
-									$ok          = false !== $db->update( $tbl, array_merge( $row, array( 'status' => 'booked', 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ) ), array( 'id' => (int) $old[ $pid ]['id'] ) );
+									$ok          = false !== $db->update( $tbl, array_merge( $row, array( 'status' => 'booked', 'created_at' => Db::now(), 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ) ), array( 'id' => (int) $old[ $pid ]['id'] ) ); // il tempo per pagare parte da adesso
 									$ids[ $pid ] = (int) $old[ $pid ]['id'];
 								} else {
 									$ok          = (bool) $db->insert( $tbl, array_merge( $row, array( 'session_id' => $session_id, 'person_id' => (int) $pid, 'status' => 'booked', 'created_at' => Db::now() ) ) );
@@ -1007,16 +1011,53 @@ class ActivityService {
 		);
 	}
 
-	/** Prenotazioni attive con contributo ancora da pagare (per proporle in fase di incasso). */
+	/**
+	 * Prenotazioni attive con un contributo ancora da pagare di cui risponde questa persona: le sue e quelle che ha fatto per altri (person_id = chi partecipa).
+	 * Le prenotazioni che altri hanno fatto per lei non ci sono: il debito è di chi ha prenotato.
+	 */
 	public function unpaid_bookings_for_person( int $person_id ): array {
 		return array_values(
 			array_filter(
-				$this->bookings_for_person( $person_id ),
-				function ( $b ) {
-					return $b['active'] && $b['remaining'] > 0;
+				array_merge( $this->bookings_for_person( $person_id ), $this->bookings_made_for_others( $person_id ) ),
+				function ( $b ) use ( $person_id ) {
+					return $b['active'] && $b['remaining'] > 0 && self::debtor_id( $b ) === $person_id;
 				}
 			)
 		);
+	}
+
+	/** Le prenotazioni che questa persona ha fatto per altri, con gli stessi campi di {@see bookings_for_person()}. */
+	private function bookings_made_for_others( int $person_id ): array {
+		$rows = $this->db()->get_results(
+			$this->db()->prepare(
+				'SELECT b.*, s.session_date, s.end_date, s.start_time, s.location, s.cancelled_at AS session_cancelled_at, s.activity_id, a.name AS activity_name, a.kind, a.booking_qr, '
+				. '(SELECT COALESCE(SUM(t.amount_cents + t.discount_cents), 0) FROM ' . Db::t( 'transactions' ) . " t WHERE t.type = 'income' AND t.voided_at IS NULL AND t.session_id = b.session_id AND t.person_id = b.person_id) AS paid_sum "
+				. 'FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . ' s ON s.id = b.session_id '
+				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL WHERE b.booked_by = %d AND b.person_id <> %d ORDER BY s.session_date DESC, s.id DESC',
+				$person_id,
+				$person_id
+			),
+			ARRAY_A
+		) ?: array();
+		return array_map(
+			function ( $b ) {
+				$row           = $this->booking_row( $b, (int) $b['paid_sum'] );
+				$row['active'] = $row['active'] && empty( $b['session_cancelled_at'] );
+				return $row;
+			},
+			$rows
+		);
+	}
+
+	/** Il contributo di questa prenotazione è a carico di un'altra persona (chi l'ha fatta)? */
+	public static function owed_by_another( array $b ): bool {
+		return self::debtor_id( $b ) !== (int) $b['person_id'];
+	}
+
+	/** Come si nomina chi partecipa a chi ne paga il contributo: le persone che gestisce col nome, un altro socio solo con la tessera. */
+	public static function participant_name( array $participant, int $payer_id ): string {
+		$managed = ! MemberType::is_member( (string) $participant['type'] ) || Guardians::is_guardian_of( $payer_id, (int) $participant['id'] ) || (int) $participant['id'] === $payer_id;
+		return $managed ? trim( $participant['first_name'] . ' ' . $participant['last_name'] ) : 'socio con tessera n. ' . $participant['card_number'];
 	}
 
 	/**

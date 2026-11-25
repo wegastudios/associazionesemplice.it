@@ -1847,6 +1847,7 @@
   "Voce {n}: hai scelto una data ma non l'evento. Indica l'evento." : "Item {n}: you chose a date but not the event. Choose the event.",
   "Voce {n}: indica a quale data dell'evento si riferisce il contributo." : "Item {n}: say which event date the contribution refers to.",
   "Voce {n}: la persona non è prenotata a questa data." : "Item {n}: the person is not booked for this date.",
+  "Voce {n}: il contributo è a carico di chi ha prenotato: incassalo da quella persona." : "Item {n}: the fee is owed by the person who made the booking: collect it from them.",
   "Voce {n}: un corso non ha date, indica il mese di competenza." : "Item {n}: a course has no dates, enter the accrual month.",
   "Voce {n}: indica di quale socio è la quota associativa." : "Item {n}: enter which member the membership fee is for.",
   "Voce {n}: un ospite o un genitore/tutore non è socio e non paga la quota associativa." : "Item {n}: a guest or a parent/guardian is not a member and does not pay the membership fee.",

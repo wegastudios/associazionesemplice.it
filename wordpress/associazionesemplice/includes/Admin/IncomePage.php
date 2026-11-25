@@ -75,8 +75,25 @@ final class IncomePage {
 			$bookings[] = array(
 				'session_id'  => (int) $b['session_id'],
 				'activity_id' => (int) $b['activity_id'],
-				'label'       => $b['activity_name'] . ' · ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ),
+				'person_id'   => (int) $b['person_id'] !== (int) $person['id'] ? (int) $b['person_id'] : 0, // prenotata per un'altra persona: la voce è sua, paga questa
+				'label'       => $b['activity_name'] . ' · ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ) . ( (int) $b['person_id'] !== (int) $person['id'] && ( $for = Plugin::people()->get( (int) $b['person_id'] ) ) ? ' · per ' . trim( $for['first_name'] . ' ' . $for['last_name'] ) : '' ),
 				'amount'      => (int) $b['remaining'],
+			);
+		}
+		// Contributi a carico di chi ha prenotato per questa persona: non sono dovuti da lei, si propongono a parte e solo con una conferma
+		$covered = array();
+		foreach ( Plugin::activities()->bookings_for_person( (int) $person['id'] ) as $b ) {
+			if ( ! $b['active'] || (int) $b['remaining'] <= 0 || ! \AssociazioneSemplice\ActivityService::owed_by_another( $b ) ) {
+				continue;
+			}
+			$who       = Plugin::people()->get( \AssociazioneSemplice\ActivityService::debtor_id( $b ) );
+			$who_name  = $who ? trim( $who['first_name'] . ' ' . $who['last_name'] ) : 'chi ha prenotato';
+			$covered[] = array(
+				'session_id'  => (int) $b['session_id'],
+				'activity_id' => (int) $b['activity_id'],
+				'label'       => $b['activity_name'] . ' · ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ) . ' (a carico di ' . $who_name . ')',
+				'amount'      => (int) $b['remaining'],
+				'confirm'     => 'Il contributo è a carico di ' . $who_name . '. Incassarlo invece da chi partecipa? ' . $who_name . ' non dovrà più pagare la parte incassata.',
 			);
 		}
 		// Tutto ciò che la persona deve ancora versare: mensilità dei corsi (con l'importo mancante) e contributi degli eventi
@@ -102,6 +119,7 @@ final class IncomePage {
 				'social_year'      => $sy,
 				'activities'       => $acts,
 				'bookings'         => $bookings,
+				'covered'          => $covered,
 				'dues'             => $dues,
 				'membership'       => $m_plan,
 				'membership_has'   => Plugin::people()->has_membership( (int) $person['id'], $m_plan['year'] ),
