@@ -656,7 +656,7 @@ class ActivityService {
 		}
 		$max = (int) PublicEvents::options( (int) $a['id'] )['max_seats'];
 		if ( $max > 0 && count( $person_ids ) > $max ) {
-			throw new \InvalidArgumentException( 'Per questo evento si possono prenotare al massimo ' . $max . ' posti per volta.' );
+			throw new \InvalidArgumentException( 'Per questo evento si possono prenotare al massimo ' . (int) $max . ' posti per volta.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( empty( $opt['approved'] ) && ! current_user_can( Plugin::CAP ) && ! current_user_can( Plugin::CAP_OPS ) && PublicEvents::options( (int) $a['id'] )['approval'] ) {
 			throw new \InvalidArgumentException( 'Questo evento è su richiesta: chiedi di partecipare dalla pagina dell\'evento e la segreteria ti risponde.' );

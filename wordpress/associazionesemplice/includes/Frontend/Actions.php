@@ -331,7 +331,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Scegli almeno una persona da prenotare.' );
 		}
 		if ( count( $want ) + count( $new_guests ) + count( $others ) > self::GROUP_MAX ) {
-			throw new \InvalidArgumentException( 'Puoi prenotare al massimo ' . self::GROUP_MAX . ' persone per volta.' );
+			throw new \InvalidArgumentException( 'Puoi prenotare al massimo ' . (int) self::GROUP_MAX . ' persone per volta.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( $new_guests && ! \AssociazioneSemplice\Settings::guests_enabled() ) {
 			throw new \InvalidArgumentException( 'L\'associazione non prevede ospiti.' );
