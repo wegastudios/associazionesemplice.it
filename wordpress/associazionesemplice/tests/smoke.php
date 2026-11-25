@@ -326,6 +326,9 @@ wp_set_current_user( 1 );
 asem_ok( true === apply_filters( 'show_admin_bar', true ), 'barra di amministrazione visibile agli amministratori' );
 asem_ok( Gatekeeper::area_url() === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( $u_ord ) ), 'dopo il login il socio va all\'area soci' );
 asem_ok( '/wp-admin/' === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( 1 ) ), 'l\'amministratore non viene dirottato' );
+asem_ok( home_url( '/area-tesoriere/' ) === apply_filters( 'login_redirect', home_url( '/area-tesoriere/' ), home_url( '/area-tesoriere/' ), get_userdata( $u_ord ) ), 'dopo il login chi arriva da una pagina del sito (area tesoriere) torna lì' );
+asem_ok( Gatekeeper::area_url() === apply_filters( 'login_redirect', 'https://altro.example/', 'https://altro.example/', get_userdata( $u_ord ) ) && Gatekeeper::area_url() === apply_filters( 'login_redirect', '/wp-admin/', admin_url(), get_userdata( $u_ord ) ), 'dopo il login: un indirizzo di un altro sito o dell\'amministrazione non viene rispettato' );
+asem_ok( 'Quota incassata' === \AssociazioneSemplice\PeopleService::membership_source_label( 'payment' ) && 'Inserita a mano' === \AssociazioneSemplice\PeopleService::membership_source_label( 'manual' ) && 'qualcosa' === \AssociazioneSemplice\PeopleService::membership_source_label( 'qualcosa' ), 'tessera: l\'origine si legge in italiano (sconosciuta: com\'è)' );
 asem_ok( '/wp-admin/' === apply_filters( 'login_redirect', '/wp-admin/', '', get_userdata( $existing_user ) ), 'chi ha altri ruoli non viene dirottato' );
 
 // ---------- Registro azioni e licenza ----------

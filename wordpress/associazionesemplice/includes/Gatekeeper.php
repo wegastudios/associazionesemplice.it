@@ -44,6 +44,10 @@ final class Gatekeeper {
 
 	public static function filter_login_redirect( $redirect_to, $requested, $user ) {
 		if ( $user instanceof \WP_User && self::is_member_only( (array) $user->roles ) && ! user_can( $user, Plugin::CAP_OPS ) ) {
+			$back = is_string( $requested ) && '' !== $requested ? wp_validate_redirect( $requested, '' ) : ''; // chi arriva da una pagina del sito (area tesoriere, segreteria…) torna lì
+			if ( '' !== $back && false === strpos( $back, '/wp-admin' ) && false === strpos( $back, 'wp-login.php' ) ) {
+				return $back;
+			}
 			return self::area_url();
 		}
 		return $redirect_to;
