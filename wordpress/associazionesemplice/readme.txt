@@ -1,6 +1,6 @@
 === Associazione Semplice ===
 Contributors: wegastudios
-Tags: nonprofit, members, membership, association, accounting
+Tags: association, members, nonprofit, events, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
@@ -8,25 +8,68 @@ Stable tag: 1.3.39
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Members, events and courses, and a cash book for small Italian non-profit associations (APS and other third-sector entities).
+Member register, membership cards, events, courses and a cash book for small Italian non-profit associations (APS, ETS and the third sector).
 
 == Description ==
 
-Associazione Semplice helps a small association keep members, activities and accounts in order directly from its own WordPress site. Optional features are off at first: a guided setup asks a few questions and turns on only what is needed.
+**Associazione Semplice** keeps members, activities and accounts in order, right from your association's WordPress site: no external software and no subscription. It is built for **small Italian associations** (APS, ETS, ASD and other third-sector entities) and follows Italian rules: member register, fiscal years, privacy.
 
-The plugin is built around Italian third-sector rules (APS, ETS, registers, tax rules), so its interface and texts are in Italian. An English text pack is included and can be selected in the settings, and further language packs can be uploaded as CSV, Excel or JSON files; the plugin does not use the WordPress translation files.
+Optional features are off at first. A **guided setup** asks a few questions and turns on only what is needed: nothing complicated to configure and nothing to learn before you start.
 
-* **Member register**: member records, one membership fee (with an option for founding members), QR membership cards, guests, import from CSV or Excel files, export of the register.
-* **Courses and events**: registrations, limited seats with a waiting list, a payment grace period for bank transfer and cash, participant lists, a calendar.
-* **Cash book**: income and expenses in a single cash account, bank transfer details for members, export of the cash book.
-* **Registers and privacy**: minutes book, privacy notice, consents, anonymisation, personal data download.
-* **Members' area** on the site: notices, rules to accept, membership card, events and courses. Available as shortcodes, blocks and Elementor widgets.
-* **Roles**: president, vice president, treasurer, councillors and secretary, with separate permissions.
-* **Donations with PayPal**: a form that takes the donor to PayPal's own donation page.
-* **Backup and reset**: download a full copy of the data; reset the data to start over.
-* Works with WP All Import and Elementor if you use them.
+👉 **[Try the live demo](https://associazionesemplice.it/prova)**: a real WordPress site with made-up data, where you can click and type without breaking anything.
 
-Advanced features (online payments, several accounts and funds, accounting and reports, mass emails, app and wallet cards, receipts, VAT) are in the separate Associazione Semplice Pro add-on.
+**Please note:** the plugin is made for Italian associations and Italian third-sector rules, so its interface and texts are in Italian. An English text pack is included in the Pro add-on and can be chosen in the settings. The plugin does not use the WordPress translation files.
+
+= What you can do, for free =
+
+* **A member register in order**: records of members and guests, progressive numbering, terminations, a member register per fiscal year with PDF and CSV, members that are organisations, minors with parents or guardians, import from CSV or Excel files, export.
+* **Membership cards with QR code**: digital and printable cards with your colours and logo. The code is checked live and can be regenerated if a phone is lost.
+* **Courses and events**: registrations, limited seats with a waiting list, single or recurring events, tickets with QR code, participant lists, an internal calendar and publishing to Google Calendar, Apple and Outlook.
+* **Public event pages**: a page for every event or course, a card list, a monthly calendar, structured data for Google. People can book from your site even **without being members**, with email confirmation.
+* **Cash book**: income and expenses in a single cash account, expenses with receipts and invoices attached, advances and discounts, export. **Fiscal years** with tracked closing and reopening.
+* **Members' area** on your site: card, notices, rules to accept, events and courses, profile. Members can book for several people in one form: themselves, guests, minors and other members. Added with blocks, shortcodes and Elementor widgets. Members do not need a WordPress user.
+* **Roles and permissions**: president, vice president, treasurer, councillors, secretariat and employees, each with the permissions of only the areas they need.
+* **Registers and privacy**: minutes book, privacy notice, consents, anonymisation and download of a member's personal data.
+* **Donations with PayPal**: a form that takes the donor to PayPal's own donation page, and a donation invitation to show where it is needed.
+* **Backup**: download all your data whenever you like, or reset them to start over.
+* Works with **WP All Import** and **Elementor** if you use them.
+
+= Built to be safe =
+
+Members' data is personal data: the plugin is written with this in mind.
+
+* **Your data stays on your site.** By default the copy of the plugin on WordPress.org contacts no external service and sends no member or association data. Emails are sent by your own site's mail setup; the only optional features that involve third parties are listed under "External services".
+* **Permissions by area.** Only the administrator sees everything; the others see only the areas they are given. A separate permission ("View confidential data and export") protects tax codes, notes and exports.
+* **Protected member sign-in.** Link or password, with per-member rate limits on requests, cancellations, profile changes and receipts. Suspended members and former members cannot sign in.
+* **Verified membership applications.** An application sent from the site reaches the secretariat only after the applicant confirms by email; applications never confirmed are deleted after 30 days.
+* **Checked input.** Submitted data is validated and sanitised, text shown is escaped, and actions are protected by permission checks and security tokens (nonces).
+* **Closed fiscal years cannot be changed.** Closings and reopenings leave a permanent trace.
+* **Safer cards.** The QR code can be regenerated in one click; the old one stops working at once.
+* **Privacy by design.** Privacy notice, recorded consents, anonymisation and download of personal data.
+
+= Want more? Associazione Semplice Pro =
+
+The free plugin is complete for managing members, activities and the cash book, and stays free for ever. When you need online payments or accounting, add **Associazione Semplice Pro**, a separate plugin with a licence per domain (**Pro Contabile** and **Pro Fiscale** plans):
+
+* **Online payments**: Stripe, PayPal, SumUp, Satispay and WooCommerce, with refunds and a guided setup.
+* **Several member levels**, family units, membership fee by instalments.
+* **Several accounts, set-aside funds and management reports.**
+* **PDF receipts** numbered per fiscal year, and an annual statement.
+* **Messages to members**: email, text messages, newsletters (Brevo, Mailchimp, MailPoet).
+* **Installable app** for the phone, with notifications, and cards in Apple Wallet and Google Wallet.
+* **Bookable resources**: courts, rooms, parking spaces, lockers and boat berths.
+* **Insurance and attendance registers**, customisable texts and more languages.
+* With **Pro Fiscale** also **VAT, the "5 per mille" tax allocation and a cash-basis statement**.
+
+[Compare the plans, feature by feature](https://associazionesemplice.it/confronto) · [Prices](https://associazionesemplice.it/prezzi) · [Free licence](https://associazionesemplice.it/free)
+
+= Help and resources =
+
+* [Features of the plugin](https://associazionesemplice.it/funzioni)
+* [Try the demo](https://associazionesemplice.it/prova)
+* [Frequently asked questions](https://associazionesemplice.it/domande)
+* [Support and guides](https://supporto.associazionesemplice.it)
+* [All versions](https://associazionesemplice.it/wordpress/changelog)
 
 == External services ==
 
@@ -46,6 +89,9 @@ If you turn on place search and enter your own Google Maps API key, the "Locatio
 
 == Frequently Asked Questions ==
 
+= Is the plugin only in Italian? =
+Yes: it is made for Italian associations and Italian third-sector rules, so its interface and texts are in Italian. An English text pack can be chosen in the settings (included in the Pro add-on). The plugin does not use the WordPress translation files.
+
 = What happens to the data if I delete the plugin? =
 By default it stays. In the settings you can choose to delete it permanently when the plugin is deleted.
 
@@ -54,6 +100,27 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 
 = Where do the donations go? =
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
+
+= Do members need a WordPress user? =
+No. Members sign in to the members' area with email and password, or with a link sent by email.
+
+= What data does the plugin send to external services? =
+None by default in the copy on WordPress.org. The only optional features that involve third parties (PayPal, Google place search) are off at first and described in the "External services" section.
+
+= What is the difference with the Pro version? =
+The free plugin is complete for members, activities and the cash book. Pro adds online payments, several accounts and funds, receipts, messages to members, app and wallet cards, bookable resources and, with Pro Fiscale, VAT and the "5 per mille". The [full comparison](https://associazionesemplice.it/confronto) is on our website.
+
+= Where can I get help? =
+On the [support site](https://supporto.associazionesemplice.it) you find guides and can open a request.
+
+== Screenshots ==
+
+1. The plugin's dashboard: payments to collect and things to do.
+2. Members and guests, with search, member type and card status.
+3. A member's record: members' area access, card and enrolment, member register.
+4. Courses and events: registrations, seats and the accounts of each activity.
+5. The cash book, with income and expenses in a single cash account.
+6. The public event and course pages on your site.
 
 == Credits ==
 
