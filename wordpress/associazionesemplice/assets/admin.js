@@ -437,7 +437,7 @@
 				coSel.addEventListener('change', function () {
 					var c = G.courses[parseInt(coSel.value, 10)]; if (!c) { return; }
 					var tf = b.ctx && b.ctx.trial_fees ? b.ctx.trial_fees[c.id] : null; /* prova fatta questo mese: si paga da quel giorno */
-					addLine(b, { kind: 'course', title: c.name + ' · ' + G.month, activity_id: c.id, month: G.month, amount: plain(tf != null ? tf : fee(c, b.type)) });
+					addLine(b, { kind: 'course', title: c.name + ' · ' + G.month, activity_id: c.id, month: G.month, amount: plain(tf != null ? tf : (b.isNew ? (b.type === 'guest' ? c.part_guest : c.part) : fee(c, b.type))) }); /* persona nuova: primo mese in proporzione, se il corso lo prevede */
 				});
 				bar.appendChild(evSel); bar.appendChild(document.createTextNode(' ')); bar.appendChild(coSel);
 				if (!b.isNew && b.ctx && b.ctx.is_member && !b.ctx.is_founder && G.cats.membership) {
@@ -564,6 +564,13 @@
 		return t.dup || '⚠ il socio ha già la tessera: togli questa voce per salvare l\'incasso';
 	}
 	function catByKind(kind) { return D.categories.filter(function (c) { return c.kind === kind; })[0]; }
+	/* cambio di mese: l'importo in proporzione vale solo per il primo mese; un importo corretto a mano non si tocca */
+	function moveMonth(l, d) {
+		var of = function (m) { return m === l.partMonth ? l.part : l.full; };
+		var old = l.part == null ? null : of(l.month);
+		l.month = shiftMonth(l.month, d);
+		if (old != null && parseMoney(l.amount) === old) { l.amount = plain(of(l.month)); l.due = of(l.month); }
+	}
 	function addLine(l) { l.key = ++seq; if (l.kind === 'activity_fee' && l.due == null) { l.due = parseMoney(l.amount) || 0; } lines.push(l); render(); }
 
 	function render() {
@@ -575,8 +582,8 @@
 			if (l.month) {
 				var prev = el('button', { type: 'button', 'class': 'button button-small', text: '‹' });
 				var next = el('button', { type: 'button', 'class': 'button button-small', text: '›' });
-				prev.addEventListener('click', function () { l.month = shiftMonth(l.month, -1); render(); });
-				next.addEventListener('click', function () { l.month = shiftMonth(l.month, 1); render(); });
+				prev.addEventListener('click', function () { moveMonth(l, -1); render(); });
+				next.addEventListener('click', function () { moveMonth(l, 1); render(); });
 				row.appendChild(prev); row.appendChild(el('span', { text: monthLabel(l.month) })); row.appendChild(next);
 			}
 			if (l.kind === 'membership') {
@@ -683,7 +690,7 @@
 		var mine = (ctx && ctx.activities || []).filter(function (x) { return x.id === id; })[0];
 		var month = mine ? mine.month : $('#asem-date').value.substr(0, 7);
 		var part = ctx && ctx.trial_fees ? ctx.trial_fees[id] : null; /* primo mese in proporzione */
-		addLine({ title: a.name, category: c.id, kind: 'activity_fee', activity: a.id, month: month, amount: plain(mine ? mine.fee : (part == null ? a.fee : part)) });
+		addLine({ title: a.name, category: c.id, kind: 'activity_fee', activity: a.id, month: month, part: mine ? null : part, partMonth: month, full: ctx && ctx.is_guest ? (a.guest_fee == null ? a.fee : a.guest_fee) : a.fee, amount: plain(mine ? mine.fee : (part == null ? a.fee : part)) });
 	});
 	otherSel.addEventListener('change', function () {
 		var id = parseInt(otherSel.value, 10); otherSel.value = ''; if (!id) { return; }

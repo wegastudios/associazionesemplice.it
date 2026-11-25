@@ -90,6 +90,26 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+      # La cassa di un corso in un browser vero: l'importo proposto è quello calcolato dal server. Più le schermate dei corsi a 1440 e 375 px.
+      - name: Cassa dei corsi (primo mese in proporzione)
+        if: always()
+        shell: bash
+        working-directory: wordpress/dist
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+        run: |
+          mkdir -p ../../corsi
+          npx --yes @wordpress/env run cli wp eval-file wp-content/sandbox-scripts/prepara-corsi.php | tr -d '\r' | grep '^{' | tail -1 > ../../corsi/attesi.json
+          node ../../.github/scripts/prove-corsi.cjs http://localhost:8888 ../../corsi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schermate-corsi
+          path: corsi/
+          retention-days: 14
+          if-no-files-found: warn
+
       # Le schede dell'elenco attività su un tema a blocchi (twentytwentyfive) e su uno classico (twentyfifteen): schermate a cinque larghezze,
       # senza scorrimento orizzontale, immagini tutte 16/9, titolo con contrasto sufficiente (anche con tema scuro del browser).
       - name: Schede dell'elenco attività su temi veri

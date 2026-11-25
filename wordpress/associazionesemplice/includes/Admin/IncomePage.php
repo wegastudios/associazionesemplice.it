@@ -160,7 +160,7 @@ final class IncomePage {
 		foreach ( array_filter( Plugin::activities()->for_year( $sy->label() ), function ( $x ) {
 			return 'course' === $x['kind'];
 		} ) as $a ) {
-			$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['fee_cents'] );
+			$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['fee_cents'], 'guest_fee' => null === $a['guest_fee_cents'] || '' === $a['guest_fee_cents'] ? null : (int) $a['guest_fee_cents'] );
 		}
 		$default_account = $ledger->default_account_for( 'cash' );
 		$account_types = array();
