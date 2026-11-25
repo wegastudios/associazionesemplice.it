@@ -87,7 +87,16 @@ final class GroupCash {
 						throw new \InvalidArgumentException( 'Sul posto lo staff incassa solo i contributi dell\'evento.' );
 					}
 					if ( 'event' === $kind ) {
-						$sid = (int) ( $l['session_id'] ?? 0 );
+						$sid  = (int) ( $l['session_id'] ?? 0 );
+						$self = $pid;
+						$for  = (int) ( $l['for'] ?? 0 );
+						if ( ! $staff && $for > 0 && $for !== $pid ) { // contributo di una prenotazione che questa persona ha fatto per un'altra: la voce è dell'altra
+							$fb = $acts->booking( $sid, $for );
+							if ( ! $fb || 'booked' !== $fb['status'] || ActivityService::debtor_id( $fb ) !== $pid ) {
+								throw new \InvalidArgumentException( 'Questa prenotazione non è più a carico di chi paga: ricarica la pagina.' );
+							}
+							$self = $for;
+						}
 						if ( $staff ) {
 							$s = $acts->session( $sid );
 							if ( ! $s || ! in_array( (int) $s['activity_id'], $allowed, true ) ) {
@@ -97,8 +106,8 @@ final class GroupCash {
 								throw new \InvalidArgumentException( 'L\'incasso sul posto si registra nel giorno dell\'evento.' );
 							}
 						}
-						if ( ! $acts->has_active_booking( $sid, $pid ) ) {
-							$acts->book( $sid, $pid, array( 'approved' => true ) ); // incasso dello staff: eccezione: vale anche per un socio sospeso o con la tessera non in regola (non per lo staff, controllato sopra)
+						if ( ! $acts->has_active_booking( $sid, $self ) ) {
+							$acts->book( $sid, $self, array( 'approved' => true ) ); // incasso dello staff: eccezione: vale anche per un socio sospeso o con la tessera non in regola (non per lo staff, controllato sopra)
 						}
 						if ( $staff ) { // importo calcolato dal sito: quanto resta da versare
 							$cents = 0;
@@ -112,7 +121,7 @@ final class GroupCash {
 							}
 						}
 						$sess    = $acts->session( $sid );
-						$lines[] = array( 'category_id' => $cat_fee, 'amount_cents' => $cents, 'activity_id' => (int) ( $sess ? $sess['activity_id'] : ( $l['activity_id'] ?? 0 ) ), 'session_id' => $sid, 'person_id' => $pid, 'description' => $title );
+						$lines[] = array( 'category_id' => $cat_fee, 'amount_cents' => $cents, 'activity_id' => (int) ( $sess ? $sess['activity_id'] : ( $l['activity_id'] ?? 0 ) ), 'session_id' => $sid, 'person_id' => $self, 'description' => $title );
 					} elseif ( 'course' === $kind ) {
 						$aid = (int) ( $l['activity_id'] ?? 0 );
 						if ( MemberType::is_member( $person['type'] ) && ! MemberType::is_auto_renewed( $person['type'] ) && ! $has_membership_line && ! $people->is_active_member( $pid ) ) {

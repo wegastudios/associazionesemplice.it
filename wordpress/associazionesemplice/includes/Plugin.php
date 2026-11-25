@@ -24,7 +24,7 @@ final class Plugin {
 	 * Versione dello schema del database (la storia dei cambi è accanto a {@see Install::DB_VERSION}, che vale questa).
 	 * Sta qui perché il confronto con quella salvata si fa a ogni richiesta: così la classe Install, grande, si carica solo quando c'è da aggiornare.
 	 */
-	const DB_VERSION = '76';
+	const DB_VERSION = '77';
 
 	/** Opzione con la versione dello schema salvata (la stessa di {@see Install::DB_VERSION_OPTION}). */
 	const DB_VERSION_OPTION = 'asem_db_version';
@@ -57,6 +57,14 @@ final class Plugin {
 				}
 			);
 		}
+		add_action(
+			'admin_notices',
+			function () {
+				if ( current_user_can( 'activate_plugins' ) && ! ActivityService::others_allowed() ) { // gratuito aggiornato da solo: serve anche il Pro
+					echo '<div class="notice notice-warning"><p>Aggiorna <strong>Associazione Semplice Pro</strong> per far prenotare ai soci anche altri soci. Fino ad allora la prenotazione per altri soci non si offre e i contributi già prenotati per altri si incassano in segreteria; il resto funziona.</p></div>';
+				}
+			}
+		);
 		MailLog::register();     // registro dell'esito delle email spedite
 		PublicEvents::register(); // pagina pubblica di eventi e corsi (un contenuto collegato a ogni attività)
 		Frontend\WhatsappFloat::register(); // pulsante WhatsApp fisso (se c'è il numero della segreteria)

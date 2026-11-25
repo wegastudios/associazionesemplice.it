@@ -244,6 +244,18 @@ final class Limits {
 			'Un socio che usa molto le risorse dovrà aspettare che le prenotazioni passino o annullarne una.'
 		);
 		$add(
+			'member_other_fail_per_10min', 'accesso', 'Tentativi falliti di prenotare un altro socio (cognome e tessera), per socio, ogni 10 minuti', 'azioni', 5, 1, 100,
+			'Impedisce di scoprire provando a caso chi è socio e quale tessera ha: oltre il limite il socio deve aspettare.',
+			'Un valore alto permette più tentativi di indovinare cognome e numero di tessera di un altro socio.',
+			'Chi sbaglia più volte a scrivere cognome e tessera dovrà aspettare qualche minuto.'
+		);
+		$add(
+			'ip_other_fail_per_hour', 'accesso', 'Tentativi falliti di prenotare un altro socio, per indirizzo di rete, in un\'ora', 'azioni', 20, 1, 500,
+			'Impedisce di provare cognomi e tessere da più account dallo stesso indirizzo.',
+			'Un valore alto facilita il tentativo di scoprire chi è socio da più account.',
+			'Più soci dietro lo stesso indirizzo (per esempio una sede) potrebbero doversi aspettare a vicenda.'
+		);
+		$add(
 			'member_book_per_10min', 'accesso', 'Prenotazioni e iscrizioni alla lista d\'attesa per socio, ogni 10 minuti', 'azioni', 20, 1, 500,
 			'Impedisce a un programma automatico di prenotare in massa dall\'area soci con un solo account.',
 			'Un valore alto permette di occupare molti posti in pochi minuti.',

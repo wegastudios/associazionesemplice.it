@@ -545,10 +545,15 @@ class LedgerService {
 			return $fn();
 		}
 		$this->tx_depth++;
-		$this->db()->query( 'START TRANSACTION' );
+		if ( false === $this->db()->query( 'START TRANSACTION' ) ) {
+			$this->tx_depth--;
+			throw new \RuntimeException( 'Non riesco ad avviare l\'operazione: riprova.' );
+		}
 		try {
 			$res = $fn();
-			$this->db()->query( 'COMMIT' );
+			if ( false === $this->db()->query( 'COMMIT' ) ) { // un commit non riuscito non deve sembrare riuscito
+				throw new \RuntimeException( 'L\'operazione non è stata confermata dal database: riprova.' );
+			}
 			return $res;
 		} catch ( \Throwable $e ) {
 			$this->db()->query( 'ROLLBACK' );
@@ -631,6 +636,10 @@ class LedgerService {
 				}
 				if ( ! Plugin::activities()->has_active_booking( $session_id, (int) $person['id'] ) ) {
 					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: la persona non è prenotata a questa data.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				$bk = Plugin::activities()->booking( $session_id, (int) $person['id'] );
+				if ( $bk && empty( $l['participant_pays'] ) && $payer && (int) $payer['id'] === (int) $person['id'] && MemberType::is_member( (string) $person['type'] ) && ActivityService::owed_by_another( $bk ) && ! Guardians::is_guardian_of( ActivityService::debtor_id( $bk ), (int) $person['id'] ) ) {
+					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: il contributo è a carico di chi ha prenotato: incassalo da quella persona.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 			} elseif ( $session_id ) {
 				throw new \InvalidArgumentException( Texts::t( 'Voce {n}: un corso non ha date, indica il mese di competenza.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html

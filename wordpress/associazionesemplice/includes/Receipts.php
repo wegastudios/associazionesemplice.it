@@ -544,8 +544,25 @@ final class Receipts {
 		return ( self::MONTHS[ (int) substr( $ym, 5, 2 ) ] ?? '' ) . ' ' . substr( $ym, 0, 4 );
 	}
 
-	/** Descrizione di una riga di incasso, per chi legge la ricevuta. */
-	public static function describe( array $r, ?array $payer ): string {
+	/**
+	 * Come compare chi partecipa nel documento di chi paga: se un socio ha prenotato per un altro socio adulto solo il numero di tessera; gli ospiti, i minori
+	 * di chi paga e ogni altro incasso pagato per qualcuno (Cassa per più persone) col nome, come sempre. Senza più la prenotazione si resta prudenti.
+	 */
+	private static function beneficiary( array $r, array $payer ): string {
+		$name = trim( $r['b_first'] . ' ' . $r['b_last'] );
+		if ( empty( $r['session_id'] ) ) {
+			return $name;
+		}
+		$b = Plugin::activities()->booking( (int) $r['session_id'], (int) $r['person_id'] );
+		if ( $b && (int) ( $b['booked_by'] ?? 0 ) !== (int) $payer['id'] ) {
+			return $name;
+		}
+		$p = Plugin::people()->get( (int) $r['person_id'] );
+		return $p ? ActivityService::participant_name( $p, (int) $payer['id'] ) : 'altro partecipante';
+	}
+
+	/** Descrizione di una riga di incasso, per chi legge la ricevuta ($for_payer falso: per la segreteria, sempre col nome). */
+	public static function describe( array $r, ?array $payer, bool $for_payer = true ): string {
 		switch ( $r['category_kind'] ) {
 			case 'membership':
 				$what = 'Quota associativa' . ( $r['social_year'] ? ' ' . $r['social_year'] : '' );
@@ -571,7 +588,7 @@ final class Receipts {
 		}
 		$ben = (int) $r['person_id'];
 		if ( $ben && $payer && $ben !== (int) $payer['id'] && ! empty( $r['b_first'] ) ) {
-			$what .= ' — per ' . trim( $r['b_first'] . ' ' . $r['b_last'] );
+			$what .= ' — per ' . ( $for_payer ? self::beneficiary( $r, $payer ) : trim( $r['b_first'] . ' ' . $r['b_last'] ) );
 		}
 		return $what;
 	}
