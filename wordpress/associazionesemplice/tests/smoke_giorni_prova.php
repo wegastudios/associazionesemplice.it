@@ -193,7 +193,7 @@ $pr_rl  = ActivityReset::course_dates( $pr_acts->get( $pr_c5 ), $pr_rd, gmdate( 
 $pr_rk  = count( $pr_rl );
 $pr_j   = $pr_man( 'Nora' );
 $pr_acts->enroll( $pr_c5, $pr_j, $pr_month );
-$pr_ctx = array( 'today' => $pr_rl[2], 'now' => '23:59', 'held' => array_slice( $pr_rl, 0, 3 ), 'sessions' => array(), 'course' => $pr_acts->get( $pr_c5 ) );
+$pr_ctx = array( 'today' => gmdate( 'Y-m-d', strtotime( $pr_rl[2] . ' +1 day' ) ), 'now' => '23:59', 'held' => array_slice( $pr_rl, 0, 3 ), 'sessions' => array(), 'course' => $pr_acts->get( $pr_c5 ) );
 $pr_mv  = array( 'amount_cents' => 4000, 'session_id' => 0, 'competence_month' => $pr_month, 'person_id' => $pr_j );
 asem_ok( (int) round( 4000 * ( $pr_rk - 3 ) / $pr_rk ) === ActivityReset::refund_cents( $pr_mv, $pr_ctx ), 'prova: rimborso senza prova come prima (lezioni non tenute su tutte)' );
 $wpdb->update( Db::t( 'enrollments' ), array( 'trial_from' => $pr_rl[1], 'trial_left' => $pr_rk - 1, 'trial_total' => $pr_rk ), array( 'activity_id' => $pr_c5, 'person_id' => $pr_j ) );
