@@ -33,16 +33,18 @@ try {
 	$cost   = $ledger->category_id_of_kind( 'activity_cost' );
 	$ids    = array_map( 'intval', (array) $wpdb->get_col( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'activities' ) . ' ORDER BY id LIMIT 24' ) );
 	$n      = 0;
+	$people = array_map( 'intval', (array) $wpdb->get_col( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'people' ) . ' ORDER BY id LIMIT 40' ) );
 	foreach ( $ids as $aid ) {
 		++$n;
 		try {
 			if ( $cash && $fee ) {
 				$ledger->record_receipt( array(
 					'date' => gmdate( 'Y-m-d', time() - ( 3 + $n ) * 86400 ), 'account_id' => (int) $cash['id'], 'method' => 'cash',
+					'person_id' => $people ? $people[ $n % count( $people ) ] : null,
 					'lines' => array( array( 'category_id' => $fee, 'amount_cents' => 4000 + ( $n % 7 ) * 1500, 'description' => 'Contributi', 'activity_id' => $aid ) ),
 				) );
 			}
-			if ( $bank && $cost && 0 === $n % 2 ) {
+			if ( $bank && $cost ) {
 				$ledger->record_expense( array(
 					'date' => gmdate( 'Y-m-d', time() - ( 2 + $n ) * 86400 ), 'account_id' => (int) $bank['id'], 'method' => 'bank_transfer',
 					'category_id' => $cost, 'amount_cents' => 1500 + ( $n % 5 ) * 900, 'description' => 'Materiale e spese', 'activity_id' => $aid,
