@@ -399,7 +399,7 @@ final class Views {
 		$sid  = (int) $b['session_id'];
 		$pid  = (int) $b['person_id'];
 		if ( $pid === (int) $actor['id'] && \AssociazioneSemplice\ActivityService::booked_by_other_member( $b ) ) { // prenotazione fatta da un altro socio: si conferma o ci si toglie
-			return '<div class="asemf-manage"><div class="asemf-small asemf-muted">Un altro socio ha prenotato per te: il contributo è a suo carico. Se confermi, la prenotazione diventa tua e chi l\'ha fatta non può più annullarla.</div>'
+			return '<div class="asemf-manage asemf-for-me"><div class="asemf-small asemf-muted">Un altro socio ha prenotato per te: il contributo è a suo carico. Se confermi, la prenotazione diventa tua e chi l\'ha fatta non può più annullarla.</div>'
 				. self::form( 'asem_front_confirm_booking', self::hidden( 'session_id', $sid ), 'Conferma', false, 'asemf-inline' ) . ' '
 				. self::form( 'asem_front_decline_booking', self::hidden( 'session_id', $sid ), 'Non partecipo', 'Togliersi da questa prenotazione? Per questa data nessun altro socio potrà prenotare per te.', 'asemf-inline' ) . '</div>';
 		}
@@ -1492,7 +1492,7 @@ final class Views {
 		};
 		$html = '';
 		if ( $draft ) {
-			$html .= '<div class="asemf-section"><h4>Riepilogo della prenotazione</h4><ul class="asemf-list">';
+			$html .= '<div class="asemf-section asemf-group-recap"><h4>Riepilogo della prenotazione</h4><ul class="asemf-list">';
 			foreach ( $draft['lines'] as $l ) {
 				$html .= '<li><div>' . esc_html( (string) $l[0] ) . '</div><strong>' . esc_html( (int) $l[1] > 0 ? Money::format( (int) $l[1] ) : 'gratuito' ) . '</strong></li>';
 			}
@@ -1526,17 +1526,21 @@ final class Views {
 			$f .= '<fieldset><legend>' . esc_html( 'Ospiti nuovi' . $price( MemberType::GUEST ) ) . '</legend>';
 			for ( $i = 0; $i < $rows; $i++ ) {
 				$n  = 'ospite ' . ( $i + 1 );
+				$f .= 1 === $i ? '<details class="asemf-details"' . ( '' !== $was( 'new_guest_first', 1 ) ? ' open' : '' ) . '><summary>Altri ospiti nuovi</summary>' : ''; // oltre il primo stanno in un «apri e chiudi», anche senza JavaScript
 				$f .= '<div class="asemf-fields"><label>' . esc_html( 'Nome (' . $n . ')' ) . ' <input type="text" name="new_guest_first[]" maxlength="120" value="' . esc_attr( $was( 'new_guest_first', $i ) ) . '"></label><label>Cognome <input type="text" name="new_guest_last[]" maxlength="120" value="' . esc_attr( $was( 'new_guest_last', $i ) ) . '"></label>'
 					. '<label>Cellulare <input type="tel" name="new_guest_phone[]" maxlength="60" value="' . esc_attr( $was( 'new_guest_phone', $i ) ) . '"></label><label>Email (facoltativa) <input type="email" name="new_guest_email[]" maxlength="190" value="' . esc_attr( $was( 'new_guest_email', $i ) ) . '"></label>' . self::group_list( $lists, 'n' . $i, $n, $list_was( 'n' . $i ) ) . '</div>';
 			}
+			$f .= $rows > 1 ? '</details>' : '';
 			$f .= '</fieldset>';
 		}
 		if ( $active ) {
 			$f .= '<fieldset><legend>' . esc_html( 'Altri soci' . $price( MemberType::ORDINARY ) ) . '</legend><p class="asemf-small asemf-muted">Servono cognome e numero di tessera. La persona riceve un\'email e può togliersi.</p>';
 			for ( $i = 0; $i < $rows; $i++ ) {
 				$n  = 'socio ' . ( $i + 1 );
+				$f .= 1 === $i ? '<details class="asemf-details"' . ( '' !== $was( 'other_card', 1 ) ? ' open' : '' ) . '><summary>Ancora altri soci</summary>' : '';
 				$f .= '<div class="asemf-fields"><label>' . esc_html( 'Cognome (' . $n . ')' ) . ' <input type="text" name="other_last[]" maxlength="120" autocomplete="off" value="' . esc_attr( $was( 'other_last', $i ) ) . '"></label><label>Numero di tessera <input type="text" name="other_card[]" maxlength="40" autocomplete="off" value="' . esc_attr( $was( 'other_card', $i ) ) . '"></label>' . self::group_list( $lists, 'o' . $i, $n, $list_was( 'o' . $i ) ) . '</div>';
 			}
+			$f .= $rows > 1 ? '</details>' : '';
 			$f .= '</fieldset>';
 		}
 		return $html . '<details class="asemf-details asemf-group"' . '><summary>' . ( $draft ? 'Cambia le persone' : 'Prenota per più persone' ) . '</summary>'
