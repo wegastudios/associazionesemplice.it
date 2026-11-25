@@ -422,6 +422,7 @@ Chi ha prenotato vede in **«Prenotazioni fatte per altri soci»** i prenotati c
 
 - Se leggi **«Non è stato possibile prenotare una delle persone indicate»**: controlla cognome e numero di tessera. Non è stata prenotata nessuna persona. Il motivo preciso non viene detto, per riservatezza.
 - Dopo alcuni tentativi sbagliati devi aspettare qualche minuto.
+- Se usi il Pro e non l'hai aggiornato, la sezione **«Altri soci»** non compare e in amministrazione vedi l'avviso **«Aggiorna Associazione Semplice Pro…»**: aggiorna il Pro.
 
 Per la prenotazione di una sola persona leggi [Prenotarsi a un evento o a un corso dal sito](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito).
 MD,
