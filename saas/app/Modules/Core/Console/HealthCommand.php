@@ -106,7 +106,7 @@ final class HealthCommand extends Command
             'ripiego della posta' => $this->mailFallback(...),
             'lavori non riusciti' => fn () => $this->jobsFailed($db),
             'incassi online in coda' => PaymentWebhookHealth::check(...),
-            'invio dei consumi al portale' => fn () => UsageHealth::check(),
+            'invio dei consumi al portale' => $this->usageSent(...),
             'controllo notturno dei saldi' => fn () => $this->balancesRun($balances),
             'copia dei dati' => function () use ($compression): void {
                 if ($compression->fellBackToGzip()) {
@@ -378,6 +378,12 @@ final class HealthCommand extends Command
     }
 
     /** Il controllo dei saldi non è girato da più di due giorni, o non è riuscito per qualche associazione: avviso. */
+    /** L'invio notturno dei consumi al portale non riesce da più di due giorni. */
+    private function usageSent(): void
+    {
+        UsageHealth::check();
+    }
+
     private function balancesRun(BalanceCheck $check): void
     {
         $r = $check->lastResult();
