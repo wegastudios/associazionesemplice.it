@@ -16,24 +16,38 @@ final class PortalGrants
 {
     public const SCHEMA = 'portal';
 
-    /** Tabella => permessi diretti. */
-    public const TABLES = [
-        'subscriptions' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-        'orders' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-        'saas_orgs' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-        'releases' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-        'mail_outbox' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-        'saas_usage' => ['SELECT', 'INSERT', 'UPDATE'],
-        'downloads' => ['SELECT', 'INSERT', 'DELETE'],
-        'saas_outbox' => ['SELECT', 'INSERT', 'UPDATE'],
-        'settings' => ['SELECT', 'INSERT', 'DELETE'],
-        'email_templates' => ['SELECT', 'INSERT', 'DELETE'],
-        'audit' => ['SELECT', 'INSERT'],
-        'events' => ['SELECT', 'INSERT', 'DELETE'],
-    ];
-
     /** Tutti i permessi di una tabella: quelli fuori dall'elenco si tolgono al ruolo del portale. */
     private const ALL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
+
+    /** @var array<string, list<string>>|null */
+    private static ?array $cache = null;
+
+    /**
+     * Tabella => permessi diretti, dal file `portal-grants.json` accanto a questa classe: lo stesso file lo legge la prova
+     * del portale con il ruolo ristretto (portale/tests), così l'elenco ha una sola fonte.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function tables(): array
+    {
+        if (self::$cache !== null) {
+            return self::$cache;
+        }
+        $data = json_decode((string) file_get_contents(__DIR__.'/portal-grants.json'), true);
+        $list = is_array($data) && is_array($data['tables'] ?? null) ? $data['tables'] : [];
+        $tables = [];
+        foreach ($list as $table => $verbs) {
+            if (is_string($table) && is_array($verbs)) {
+                $tables[$table] = array_values(array_filter($verbs, is_string(...)));
+            }
+        }
+        if ($tables === []) {
+            throw new RuntimeException('elenco dei permessi del portale non leggibile');
+        }
+        self::$cache = $tables;
+
+        return $tables;
+    }
 
     /** Nome del ruolo valido per l'SQL, altrimenti stringa vuota. */
     public static function validRole(mixed $role): string
@@ -45,7 +59,7 @@ final class PortalGrants
     public static function valuesSql(): string
     {
         $rows = [];
-        foreach (self::TABLES as $table => $verbs) {
+        foreach (self::tables() as $table => $verbs) {
             foreach ($verbs as $verb) {
                 $rows[] = "('{$table}', '{$verb}')";
             }
@@ -102,7 +116,7 @@ final class PortalGrants
             if (! is_string($name) || $name === '') {
                 continue;
             }
-            $wanted = self::TABLES[$name] ?? [];
+            $wanted = self::tables()[$name] ?? [];
             $have = $direct[$name] ?? [];
             $add = array_values(array_diff($wanted, $have));
             $drop = array_values(array_diff($have, $wanted));
@@ -150,7 +164,7 @@ final class PortalGrants
                     $existing[$name] = '"'.str_replace('"', '""', $name).'"';
                 }
             }
-            foreach (self::TABLES as $name => $verbs) {
+            foreach (self::tables() as $name => $verbs) {
                 if (isset($existing[$name])) {
                     $db->statement('GRANT '.implode(', ', $verbs)." ON TABLE {$schema}.{$existing[$name]} TO {$q}");
                 }
@@ -175,7 +189,7 @@ final class PortalGrants
             }
 
             foreach ($existing as $name => $table) {
-                $extra = array_diff(self::ALL, self::TABLES[$name] ?? []);
+                $extra = array_diff(self::ALL, self::tables()[$name] ?? []);
                 if ($extra !== []) {
                     $db->statement('REVOKE '.implode(', ', $extra)." ON TABLE {$schema}.{$table} FROM {$q}");
                 }
