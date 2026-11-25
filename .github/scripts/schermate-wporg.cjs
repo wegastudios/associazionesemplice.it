@@ -13,10 +13,10 @@ fs.mkdirSync(out, { recursive: true });
 const notes = [];
 
 const HIDE = 'html{scrollbar-width:none!important}::-webkit-scrollbar{display:none!important}'
-  + '#asem-demo-note,.asem-missing-band,.notice,.updated,#wpfooter,#screen-meta-links{display:none!important}';
+  + '#asem-demo-note,.asem-missing-band,.notice,.updated,#wpfooter,#screen-meta-links,#wp-admin-bar-updates,.update-plugins,.update-count{display:none!important}';
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ args: ["--lang=it-IT"] });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: 'it-IT' });
   page.setDefaultTimeout(30000);
   const settle = async () => {
@@ -46,12 +46,22 @@ const HIDE = 'html{scrollbar-width:none!important}::-webkit-scrollbar{display:no
   await shot(2, 'Rubrica soci', admin('asem-people'));
   try {
     await page.goto(base + admin('asem-people'), { waitUntil: 'load' });
-    const href = await page.locator('a[href*="page=asem-person&id="]').first().getAttribute('href');
+    const href = await page.locator('a[href*="page=asem-person&id="]', { hasText: "Mario Demo" }).first().getAttribute("href");
     await shot(3, 'Scheda socio', href);
   } catch (e) { notes.push('- MANCA 3: scheda socio — ' + String(e.message).split('\n')[0]); }
   await shot(4, 'Corsi ed eventi', admin('asem-activities'));
   await shot(5, 'Prima nota', admin('asem-ledger'));
-  await shot(6, 'Pagine pubbliche degli eventi', '/attivita-ed-eventi/');
+  // 6: visitatore (senza barra di WordPress), contenuto largo come nella demo
+  try {
+    const vis = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: "it-IT" });
+    await vis.goto(base + "/attivita-ed-eventi/", { waitUntil: "load" });
+    await vis.addStyleTag({ content: HIDE + ":root{--wp--style--global--content-size:1160px!important}.wp-block-post-content>*,.entry-content>*{max-width:1160px!important}.wp-site-blocks{padding-top:0!important}#wpadminbar{display:none!important}html{margin-top:0!important}" });
+    await vis.evaluate(() => Promise.all([...document.images].map((i) => (i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })))));
+    await vis.waitForTimeout(800);
+    await vis.screenshot({ path: path.join(out, "screenshot-6.png") });
+    notes.push("- ok 6: Pagine pubbliche degli eventi (visitatore)");
+  } catch (e) { notes.push("- MANCA 6: " + String(e.message).split("
+")[0]); }
 
   // Controllo «solo gratuito»: voci del menu del plugin e schede di ogni schermata admin.
   try {

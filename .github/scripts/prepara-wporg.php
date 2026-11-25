@@ -23,50 +23,83 @@ foreach ( array( 'provision.php', 'extra-data.php' ) as $file ) {
 	}
 }
 
-// Importi veri su ogni attività: contributi incassati e qualche costo.
+// Nome dell'utente che appare nella barra di WordPress.
+wp_update_user( array( 'ID' => 1, 'display_name' => 'Segreteria', 'nickname' => 'Segreteria' ) );
+
+// Attività a pagamento con più partecipanti e importi che tornano: ogni partecipante ha pagato il contributo, i costi sono una parte degli incassi.
 try {
 	global $wpdb;
 	$ledger = Plugin::ledger();
+	$act    = Plugin::activities();
 	$cash   = $ledger->default_account_for( 'cash' );
 	$bank   = $ledger->default_account_for( 'bank' );
 	$fee    = $ledger->category_id_of_kind( 'activity_fee' );
 	$cost   = $ledger->category_id_of_kind( 'activity_cost' );
-	$ids    = array_map( 'intval', (array) $wpdb->get_col( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'activities' ) . ' ORDER BY id LIMIT 24' ) );
-	$n      = 0;
 	$people = array_map( 'intval', (array) $wpdb->get_col( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'people' ) . ' ORDER BY id LIMIT 40' ) );
+	$ids    = array_map( 'intval', (array) $wpdb->get_col( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'activities' ) . ' ORDER BY id LIMIT 80' ) );
+	$n      = 0;
 	foreach ( $ids as $aid ) {
+		$a = $act->get( $aid );
+		if ( ! $a || (int) $a['fee_cents'] <= 0 || $n >= 10 || count( $people ) < 14 ) {
+			continue;
+		}
 		++$n;
-		try {
-			if ( $cash && $fee ) {
-				$sess = Plugin::activities()->sessions( $aid );
-				$line = array( "category_id" => $fee, "amount_cents" => 4000 + ( $n % 7 ) * 1500, "description" => "Contributi", "activity_id" => $aid );
-				if ( $sess && $people ) {
-					$line["session_id"] = (int) $sess[0]["id"];
-					try {
-						Plugin::activities()->book( (int) $sess[0]["id"], $people[ $n % count( $people ) ] ); // il socio che paga deve essere prenotato a quella data
-					} catch ( \Throwable $e ) {
-						WP_CLI::log( 'prenotazione: ' . $e->getMessage() ); // già prenotato: va bene
-					}
+		$k      = 7 + ( $n % 6 );
+		$who    = array_slice( $people, $n, $k );
+		$income = 0;
+		$sess   = 'event' === $a['kind'] ? $act->sessions( $aid ) : array();
+		foreach ( $who as $i => $pid ) {
+			try {
+				$line = array( 'category_id' => $fee, 'amount_cents' => (int) $a['fee_cents'], 'description' => 'Contributo', 'activity_id' => $aid );
+				if ( $sess ) {
+					$act->book( (int) $sess[0]['id'], $pid );
+					$line['session_id'] = (int) $sess[0]['id'];
+				} else {
+					$act->enroll( $aid, $pid, gmdate( 'Y-m' ) );
 				}
 				$ledger->record_receipt( array(
-					'date' => gmdate( 'Y-m-d', time() - ( 3 + $n ) * 86400 ), 'account_id' => (int) $cash['id'], 'method' => 'cash',
-					'person_id' => $people ? $people[ $n % count( $people ) ] : null,
-					'lines' => array( $line ),
+					'date' => gmdate( 'Y-m-d', time() - ( 2 + $i ) * 86400 ), 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $pid, 'lines' => array( $line ),
 				) );
+				$income += (int) $a['fee_cents'];
+			} catch ( \Throwable $e ) {
+				WP_CLI::log( 'attività ' . $aid . ' socio ' . $pid . ': ' . $e->getMessage() );
 			}
-			if ( $bank && $cost ) {
+		}
+		if ( $income > 0 && $bank && $cost ) {
+			try {
 				$ledger->record_expense( array(
-					'date' => gmdate( 'Y-m-d', time() - ( 2 + $n ) * 86400 ), 'account_id' => (int) $bank['id'], 'method' => 'bank_transfer',
-					'category_id' => $cost, 'amount_cents' => 1500 + ( $n % 5 ) * 900, 'description' => 'Materiale e spese', 'activity_id' => $aid,
+					'date' => gmdate( 'Y-m-d', time() - ( 1 + $n ) * 86400 ), 'account_id' => (int) $bank['id'], 'method' => 'bank_transfer',
+					'category_id' => $cost, 'amount_cents' => (int) round( $income * ( 0.25 + ( $n % 4 ) * 0.08 ) / 100 ) * 100, 'description' => 'Materiale e spese', 'activity_id' => $aid,
 				) );
+			} catch ( \Throwable $e ) {
+				WP_CLI::log( 'costo ' . $aid . ': ' . $e->getMessage() );
 			}
-		} catch ( \Throwable $e ) {
-			WP_CLI::warning( 'attività ' . $aid . ': ' . $e->getMessage() );
 		}
 	}
-	WP_CLI::log( 'Importi sulle attività: ' . count( $ids ) );
+	WP_CLI::log( 'Attività a pagamento con partecipanti e importi: ' . $n );
 } catch ( \Throwable $e ) {
 	WP_CLI::warning( 'importi: ' . $e->getMessage() );
+}
+
+// Locandine: sulle pagine pubbliche restano gli eventi che ne hanno una (foto rimpicciolite in locandine-wporg), gli altri si mettono in bozza.
+try {
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	foreach ( get_posts( array( 'post_type' => \AssociazioneSemplice\PublicEvents::POST_TYPE, 'post_status' => 'publish', 'numberposts' => 200 ) ) as $p ) {
+		$file = WP_CONTENT_DIR . '/sandbox-scripts/locandine-wporg/' . sanitize_title( $p->post_title ) . '.webp';
+		if ( ! is_readable( $file ) ) {
+			wp_update_post( array( 'ID' => $p->ID, 'post_status' => 'draft' ) );
+			continue;
+		}
+		$up = wp_upload_bits( basename( $file ), null, (string) file_get_contents( $file ) );
+		if ( ! empty( $up['error'] ) ) {
+			continue;
+		}
+		$att = wp_insert_attachment( array( 'post_mime_type' => 'image/webp', 'post_title' => $p->post_title, 'post_status' => 'inherit' ), $up['file'], $p->ID );
+		wp_update_attachment_metadata( $att, wp_generate_attachment_metadata( $att, $up['file'] ) );
+		set_post_thumbnail( $p->ID, $att );
+	}
+} catch ( \Throwable $e ) {
+	WP_CLI::warning( 'locandine: ' . $e->getMessage() );
 }
 
 // La pagina pubblica degli eventi, se i dati della demo non l'hanno creata.
