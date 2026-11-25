@@ -86,6 +86,8 @@ La configurazione guidata propone e crea le pagine per area, solo quelle che ser
 - **Ingressi**: elenco dei prenotati e registrazione degli ingressi per chi gestisce un evento.
 - **Pubblico**: elenco attività, prossimi eventi, coordinate per il bonifico, 5 per mille, accesso.
 
+Chi apre la pagina **Segreteria** o **Tesoriere** senza avere fatto l'accesso trova il pulsante **Entra**: usa l'email (o il nome utente) e la password del suo accesso al sito, e dopo torna alla stessa pagina. I soci entrano invece dall'**area soci**; nel modulo dei soci c'è il collegamento **Segreteria e staff: entra da qui**.
+
 ## Se usi un plugin di cache
 
 Elenchi di attività, eventi e posti liberi restano aggiornati anche con un plugin di cache (per esempio LiteSpeed). Dopo aver aggiornato Associazione Semplice **svuota la cache una volta**.
