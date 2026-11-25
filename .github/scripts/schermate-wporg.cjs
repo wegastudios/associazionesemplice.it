@@ -60,8 +60,7 @@ const HIDE = 'html{scrollbar-width:none!important}::-webkit-scrollbar{display:no
     await vis.waitForTimeout(800);
     await vis.screenshot({ path: path.join(out, "screenshot-6.png") });
     notes.push("- ok 6: Pagine pubbliche degli eventi (visitatore)");
-  } catch (e) { notes.push("- MANCA 6: " + String(e.message).split("
-")[0]); }
+  } catch (e) { notes.push("- MANCA 6: " + String(e.message).split('\n')[0]); }
 
   // Controllo «solo gratuito»: voci del menu del plugin e schede di ogni schermata admin.
   try {
