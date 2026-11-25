@@ -95,13 +95,12 @@ try {
 	WP_CLI::warning( 'importi: ' . $e->getMessage() );
 }
 
-// Locandine: sulle pagine pubbliche restano gli eventi che ne hanno una (foto rimpicciolite in locandine-wporg), gli altri si mettono in bozza.
+// Locandine: sulle pagine pubbliche le foto rimpicciolite in locandine-wporg vanno agli eventi che le hanno nel nome; gli altri restano col segnaposto.
 try {
 	require_once ABSPATH . 'wp-admin/includes/image.php';
 	foreach ( get_posts( array( 'post_type' => \AssociazioneSemplice\PublicEvents::POST_TYPE, 'post_status' => 'publish', 'numberposts' => 200 ) ) as $p ) {
 		$file = WP_CONTENT_DIR . '/sandbox-scripts/locandine-wporg/' . sanitize_title( $p->post_title ) . '.webp';
 		if ( ! is_readable( $file ) ) {
-			wp_update_post( array( 'ID' => $p->ID, 'post_status' => 'draft' ) );
 			continue;
 		}
 		$up = wp_upload_bits( basename( $file ), null, (string) file_get_contents( $file ) );
