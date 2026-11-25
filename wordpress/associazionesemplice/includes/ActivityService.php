@@ -691,19 +691,23 @@ class ActivityService {
 		if ( ! $b || 'booked' === $b['status'] ) {
 			return false;
 		}
-		$old = self::debtor_id( $b );
-		if ( $old === $new_debtor ) {
-			return false;
+		if ( empty( $b['booked_by'] ) && $new_debtor === $person_id ) {
+			return false; // prenotazione normale che si rifà da sé: come sempre
 		}
 		$p    = Plugin::people()->get( $person_id );
 		$host = $p ? (int) $p['host_person_id'] : 0;
 		$same = function ( int $id ) use ( $person_id, $host ): bool {
 			return $id === $person_id || ( $host > 0 && $id === $host ) || Guardians::is_guardian_of( $id, $person_id );
 		};
-		if ( ( $host > 0 || Guardians::has_guardian( $person_id ) ) && $same( $old ) && $same( $new_debtor ) ) {
-			return false;
+		$managed = $host > 0 || Guardians::has_guardian( $person_id );
+		// Conta chi ha versato davvero (il pagante della voce), non solo di chi era il debito: la segreteria può aver incassato da chi partecipa
+		$payers = array_map( 'intval', $this->db()->get_col( $this->db()->prepare( 'SELECT DISTINCT COALESCE(payer_person_id, person_id) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND amount_cents > 0 AND session_id = %d AND person_id = %d", $session_id, $person_id ) ) );
+		foreach ( $payers as $payer ) {
+			if ( $payer !== $new_debtor && ! ( $managed && $same( $payer ) && $same( $new_debtor ) ) ) {
+				return true;
+			}
 		}
-		return $this->paid_cents( $session_id, $person_id ) > 0;
+		return false;
 	}
 
 	/**

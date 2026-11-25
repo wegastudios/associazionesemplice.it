@@ -83,6 +83,78 @@ $gd_receipt( $gb_booker, $gb_gino, $gd_a3, $gd_s3, 800 );
 $gb_acts->decline_booking( $gd_s3, $gb_gino );
 asem_ok( $gb_acts->paid_by_another( $gd_s3, $gb_gino, $gb_gino ) && ! $gb_acts->paid_by_another( $gd_s3, $gb_gino, $gb_booker ), 'debitore: il versamento di chi aveva prenotato non copre una nuova prenotazione dell\'interessato' );
 
+// ---------- Paga chi partecipa, con la conferma della segreteria ----------
+list( $gd_a5, $gd_s5 ) = $gb_event( 'Debitore paga chi partecipa', 10, 800 );
+$gb_acts->book_many( $gd_s5, array( $gb_gino ), $gb_booker, array() );
+$gd_before = $gd_sum();
+$gd_ledger->record_receipt(
+	array(
+		'date' => current_time( 'Y-m-d' ), 'account_id' => (int) $gd_cash['id'], 'method' => 'cash', 'person_id' => $gb_gino, 'check_due' => true,
+		'lines' => array( array( 'category_id' => $gd_cat, 'amount_cents' => 800, 'activity_id' => $gd_a5, 'session_id' => $gd_s5, 'participant_pays' => true ) ),
+	)
+);
+$gd_t5 = $gd_tx( $gd_s5, $gb_gino );
+asem_ok( $gd_before + 800 === $gd_sum() && 1 === count( $gd_t5 ) && null === $gd_t5[0]['payer_person_id'], 'debitore: con la conferma della segreteria paga chi partecipa, con il suo nome' );
+asem_ok( array() === $gd_dues( $gb_booker, $gd_s5 ) && array() === $gd_dues( $gb_gino, $gd_s5 ), 'debitore: se paga chi partecipa il debito di chi ha prenotato sparisce' );
+$gb_acts->cancel_booking( $gd_s5, $gb_gino );
+asem_ok( $gb_acts->paid_by_another( $gd_s5, $gb_gino, $gb_booker ) && ! $gb_acts->paid_by_another( $gd_s5, $gb_gino, $gb_gino ), 'debitore: il versamento di chi partecipa copre solo una sua prenotazione, non una nuova di chi aveva prenotato' );
+
+// ---------- Cambio di nominativo dopo la conferma e lista d'attesa: chi riceve il posto ne risponde ----------
+list( $gd_a6, $gd_s6 ) = $gb_event( 'Debitore nominativo', 10, 800 );
+$gb_acts->book_many( $gd_s6, array( $gb_gino ), $gb_booker, array() );
+$gb_acts->confirm_booking( $gd_s6, $gb_gino );
+$gb_acts->transfer_booking( $gd_s6, $gb_gino, $gb_rina, false );
+asem_ok( array() === $gd_dues( $gb_booker, $gd_s6 ) && array() === $gd_dues( $gb_gino, $gd_s6 ) && 1 === count( $gd_dues( $gb_rina, $gd_s6 ) ), 'debitore: ceduto il posto, il contributo è di chi lo riceve' );
+list( $gd_a7, $gd_s7 ) = $gb_event( 'Debitore attesa', 1, 800 );
+$gb_acts->book_many( $gd_s7, array( $gb_gino ), $gb_booker, array() );
+\AssociazioneSemplice\Waitlist::join( $gd_s7, $gb_rina, $gb_rina, '' );
+$gb_acts->decline_booking( $gd_s7, $gb_gino );
+asem_ok( 'booked' === ( $gb_row( $gd_s7, $gb_rina )['status'] ?? '' ) && null === $gb_row( $gd_s7, $gb_rina )['booked_by'] && 1 === count( $gd_dues( $gb_rina, $gd_s7 ) ) && array() === $gd_dues( $gb_booker, $gd_s7 ), 'debitore: chi entra dalla lista d\'attesa risponde del proprio contributo' );
+
+// ---------- Solleciti: all'altro socio non arriva nessuna richiesta di denaro ----------
+list( $gd_a8, $gd_s8 ) = $gb_event( 'Debitore solleciti', 10, 800 );
+$gb_acts->book_many( $gd_s8, array( $gb_gino ), $gb_booker, array() );
+$wpdb->update( Db::t( 'sessions' ), array( 'session_date' => gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' +1 day' ) ) ), array( 'id' => $gd_s8 ) );
+wp_cache_flush();
+$gd_to   = array();
+$gd_mail = function ( $null, $atts ) use ( &$gd_to ) {
+	$gd_to[] = implode( ',', (array) $atts['to'] ) . '|' . (string) $atts['message'];
+	return true;
+};
+$gd_ev = new \ReflectionMethod( \AssociazioneSemplice\Reminders::class, 'events' );
+$gd_ev->setAccessible( true );
+add_filter( 'pre_wp_mail', $gd_mail, 10, 2 );
+$gd_ev->invoke( null, current_time( 'Y-m-d' ), true );
+remove_filter( 'pre_wp_mail', $gd_mail, 10 );
+$gd_gino = array_values( array_filter( $gd_to, function ( $m ) { return 0 === strpos( $m, 'gino.gruppo@example.com|' ); } ) );
+asem_ok( $gd_gino && ! preg_grep( '/contributo|pagare|versare|€/iu', $gd_gino ), 'debitore: il promemoria dell\'evento arriva all\'altro socio senza richieste di denaro' );
+ob_start();
+$gd_pd = new \ReflectionMethod( \AssociazioneSemplice\Admin\DashboardPage::class, 'payments_due' );
+$gd_pd->setAccessible( true );
+wp_set_current_user( 1 );
+$gd_pd->invoke( null );
+$gd_dash = (string) ob_get_clean();
+asem_ok( false === strpos( $gd_dash, 'Debitore solleciti' ), 'debitore: «Pagamenti da incassare» non chiede all\'altro socio il contributo dell\'evento' );
+$gd_sect = \AssociazioneSemplice\Frontend\Views::section_activities( $gb_peo->get( $gb_gino ) );
+asem_ok( false !== strpos( $gd_sect, 'a carico di chi ha prenotato' ), 'debitore: nell\'area soci dell\'altro socio si legge che il contributo è a carico di chi ha prenotato' );
+
+// ---------- Ospite prenotato in gruppo e incassato sul posto: il pagante è chi ha prenotato ----------
+if ( class_exists( '\AssociazioneSemplice\DoorSales' ) ) {
+	list( $gd_a9, $gd_s9 ) = $gb_event( 'Debitore ospite', 10, 800 );
+	$gd_guest = (int) $gb_peo->create( array( 'type' => 'guest', 'host_person_id' => $gb_booker, 'first_name' => 'Olga', 'last_name' => 'Ospite', 'phone' => '333 8880001' ) );
+	$gb_acts->book_many( $gd_s9, array( $gd_guest ), $gb_booker, array() );
+	asem_ok( 1 === count( $gd_dues( $gb_booker, $gd_s9 ) ), 'debitore: il contributo dell\'ospite è una sola voce di chi l\'ha prenotato' );
+	$gd_receipt( $gb_booker, $gd_guest, $gd_a9, $gd_s9, 800 );
+	$gd_g = $gd_tx( $gd_s9, $gd_guest )[0];
+	asem_ok( $gd_guest === (int) $gd_g['person_id'] && $gb_booker === (int) $gd_g['payer_person_id'] && array() === $gd_dues( $gb_booker, $gd_s9 ), 'debitore: ospite, intestatario chi partecipa e pagante chi ha prenotato' );
+}
+
+// ---------- Attestazione annuale: vale il pagante, come per ogni incasso pagato da un altro ----------
+if ( class_exists( '\AssociazioneSemplice\Receipts' ) ) {
+	$gd_keys = array_column( \AssociazioneSemplice\Receipts::list_for_payer( $gb_gino, 200 ), 'cents' );
+	asem_ok( $gb_booker === (int) \AssociazioneSemplice\Receipts::payer( array( $gd_rows[0] ) )['id'] && array( 800 ) === array_map( 'intval', $gd_keys ), 'debitore: le ricevute sono di chi ha pagato; all\'altro socio resta solo quella che ha pagato da sé' );
+}
+
 // ---------- Tolleranza del pagamento ----------
 list( $gd_a4, $gd_s4 ) = $gb_event( 'Debitore tolleranza', 10, 800 );
 $wpdb->update( Db::t( 'activities' ), array( 'hold_hours' => 1 ), array( 'id' => $gd_a4 ) );

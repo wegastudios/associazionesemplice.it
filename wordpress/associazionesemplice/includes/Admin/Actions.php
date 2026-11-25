@@ -1189,6 +1189,7 @@ final class Actions {
 				'amount_cents'     => Money::parse( $l['amount'] ?? '' ) ?? 0,
 				'activity_id'      => (int) ( $l['activity_id'] ?? 0 ),
 				'session_id'       => (int) ( $l['session_id'] ?? 0 ),
+				'participant_pays' => ! empty( $l['pays_self'] ), // la segreteria ha confermato: paga chi partecipa, anche se il contributo era a carico di chi ha prenotato
 				'person_id'        => self::income_for( (int) ( $p['person_id'] ?? 0 ), (int) ( $l['session_id'] ?? 0 ), (int) ( $l['for'] ?? 0 ) ),
 				'competence_month' => self::opt( $l, 'competence_month' ),
 				'social_year'      => self::opt( $l, 'social_year' ),

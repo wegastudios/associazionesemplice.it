@@ -309,6 +309,7 @@ final class ActivityReset {
 		$db   = self::db();
 		$in   = $session_ids ? implode( ',', array_map( 'intval', $session_ids ) ) : '0';
 		$ids  = array_map( 'intval', $db->get_col( 'SELECT DISTINCT person_id FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in) AND status = 'booked'" ) );
+		$ids  = array_merge( $ids, array_map( 'intval', $db->get_col( 'SELECT DISTINCT booked_by FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in) AND status = 'booked' AND booked_by IS NOT NULL" ) ) ); // anche chi ha prenotato per altri: il versamento è suo // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- id interi
 		$ids  = array_merge( $ids, array_map( 'intval', $db->get_col( $db->prepare( 'SELECT DISTINCT person_id FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND (end_month IS NULL OR end_month >= %s)', $activity_id, gmdate( 'Y-m' ) ) ) ) );
 		$out  = array();
 		foreach ( array_unique( $ids ) as $pid ) {
@@ -710,13 +711,15 @@ final class ActivityReset {
 		$db     = self::db();
 		$ledger = Plugin::ledger();
 		$sid    = (int) $p['session_id'];
+		$back   = array(); // a chi torna il versamento (chi partecipava o chi ha prenotato per lui)
 		$sum    = array( 'income_count' => $p['income']['count'], 'income_cents' => $p['income']['cents'], 'kept_count' => $p['fruited']['count'], 'kept_cents' => $p['fruited']['cents'], 'debt_cents' => $p['fruited']['debt_cents'], 'credit_cents' => $p['fruited']['credit_cents'], 'refunds' => 0, 'voided' => 0, 'notified' => 0, 'name' => $who );
 		$ledger->in_batch(
-			function () use ( $activity_id, $person_id, $sid, $mode, $a, $who, $ledger, $db, &$sum, $p ) {
+			function () use ( $activity_id, $person_id, $sid, $mode, $a, $who, $ledger, $db, &$sum, $p, &$back ) {
 				$today = current_time( 'Y-m-d' );
 				$cat   = self::REFUND === $mode ? self::refund_category() : 0;
 				$ctx   = self::fruit_context( $a );
 				foreach ( self::registration_incomes( $activity_id, $person_id, $sid ) as $m ) {
+					$back[ self::refund_person( array( 'person_id' => $person_id, 'session_id' => $sid ) + $m ) ] = true;
 					if ( self::is_fruited( $m, $ctx ) ) {
 						continue; // già fruito: resta in prima nota
 					}
@@ -754,7 +757,7 @@ final class ActivityReset {
 		);
 		if ( ! empty( $opts['notify'] ) && is_email( (string) $p['person']['email'] ) ) {
 			$text = 'Ciao ' . $p['person']['first_name'] . ",\n\n" . 'la tua ' . ( $p['session'] ? 'prenotazione' : 'iscrizione' ) . ' a «' . $a['name'] . '»' . ( $p['session'] ? ' del ' . ( new \DateTimeImmutable( (string) $p['session']['session_date'] ) )->format( 'd/m/Y' ) : '' ) . ' è stata annullata.'
-				. ( self::REFUND === $mode && $p['income']['count'] ? "\n\nIl contributo che avevi versato ti verrà restituito: la segreteria ti contatterà." : '' );
+				. ( self::REFUND === $mode && $p['income']['count'] && ( ! $back || isset( $back[ $person_id ] ) ) ? "\n\nIl contributo che avevi versato ti verrà restituito: la segreteria ti contatterà." : '' );
 			if ( Texts::mail( $p['person']['email'], Texts::subject( ( $p['session'] ? 'Prenotazione annullata: ' : 'Iscrizione annullata: ' ) . $a['name'] ), $text ) ) {
 				$sum['notified'] = 1;
 			}

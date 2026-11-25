@@ -611,7 +611,7 @@
 				l.discount = plain(l.list); l.amount = plain(0); render();
 			});
 			row.appendChild(disc); row.appendChild(why); row.appendChild(free);
-			[['category_id', l.category], ['activity_id', l.activity || ''], ['session_id', l.session || ''], ['for', l.person || ''], ['competence_month', l.month || ''], ['description', l.title]].forEach(function (p) {
+			[['category_id', l.category], ['activity_id', l.activity || ''], ['session_id', l.session || ''], ['for', l.person || ''], ['pays_self', l.paysSelf || ''], ['competence_month', l.month || ''], ['description', l.title]].forEach(function (p) {
 				row.appendChild(el('input', { type: 'hidden', name: n + '[' + p[0] + ']', value: p[1] }));
 			});
 			descIn = row.lastChild; setAcc();
@@ -695,9 +695,17 @@
 		bookSel.innerHTML = '';
 		bookSel.appendChild(el('option', { value: '', text: '+ Contributo evento…' }));
 		(ctx && ctx.bookings || []).forEach(function (b, i) { bookSel.appendChild(el('option', { value: String(i), text: b.label + ' — ' + eur(b.amount) })); });
-		bookSel.disabled = !(ctx && ctx.bookings && ctx.bookings.length);
+		(ctx && ctx.covered || []).forEach(function (b, i) { bookSel.appendChild(el('option', { value: 'c' + i, text: b.label + ' — ' + eur(b.amount) })); }); /* a carico di chi ha prenotato: solo se vuole pagare chi partecipa */
+		bookSel.disabled = !(ctx && ((ctx.bookings && ctx.bookings.length) || (ctx.covered && ctx.covered.length)));
 	}
 	bookSel.addEventListener('change', function () {
+		var pick = bookSel.value;
+		if (pick.charAt(0) === 'c' && ctx && ctx.covered && ctx.covered[parseInt(pick.slice(1), 10)]) {
+			bookSel.value = '';
+			var cv = ctx.covered[parseInt(pick.slice(1), 10)], cc = catByKind('activity_fee');
+			if (cc && window.confirm(cv.confirm)) { addLine({ title: cv.label, category: cc.id, kind: 'activity_fee', activity: cv.activity_id, session: cv.session_id, paysSelf: 1, amount: plain(cv.amount) }); }
+			return;
+		}
 		var i = parseInt(bookSel.value, 10); bookSel.value = ''; if (isNaN(i) || !ctx || !ctx.bookings[i]) { return; }
 		var b = ctx.bookings[i], c = catByKind('activity_fee'); if (!c) { return; }
 		addLine({ title: b.label, category: c.id, kind: 'activity_fee', activity: b.activity_id, session: b.session_id, person: b.person_id || '', amount: plain(b.amount) });

@@ -638,7 +638,7 @@ class LedgerService {
 					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: la persona non è prenotata a questa data.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$bk = Plugin::activities()->booking( $session_id, (int) $person['id'] );
-				if ( $bk && $payer && (int) $payer['id'] === (int) $person['id'] && MemberType::is_member( (string) $person['type'] ) && ActivityService::owed_by_another( $bk ) && ! Guardians::is_guardian_of( ActivityService::debtor_id( $bk ), (int) $person['id'] ) ) {
+				if ( $bk && empty( $l['participant_pays'] ) && $payer && (int) $payer['id'] === (int) $person['id'] && MemberType::is_member( (string) $person['type'] ) && ActivityService::owed_by_another( $bk ) && ! Guardians::is_guardian_of( ActivityService::debtor_id( $bk ), (int) $person['id'] ) ) {
 					throw new \InvalidArgumentException( Texts::t( 'Voce {n}: il contributo è a carico di chi ha prenotato: incassalo da quella persona.', array( 'n' => $n ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 			} elseif ( $session_id ) {
