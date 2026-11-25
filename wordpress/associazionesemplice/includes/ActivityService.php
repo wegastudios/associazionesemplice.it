@@ -723,6 +723,27 @@ class ActivityService {
 		return $out;
 	}
 
+	/**
+	 * Contributo totale (in centesimi) che chi prenota si assume prenotando queste persone: lo stesso calcolo della prenotazione, da mostrare PRIMA di confermare.
+	 *
+	 * @param int[] $person_ids
+	 */
+	public function preview_total( int $session_id, array $person_ids, array $opt = array() ): int {
+		$s = $this->session( $session_id );
+		$a = $s ? $this->get( (int) $s['activity_id'] ) : null;
+		if ( ! $a ) {
+			throw new \InvalidArgumentException( 'Questa data non è più disponibile.' );
+		}
+		$total = 0;
+		foreach ( array_unique( array_map( 'intval', $person_ids ) ) as $pid ) {
+			$p = Plugin::people()->get( $pid );
+			if ( $p ) {
+				$total += (int) $this->price_data( $a, $p, $opt )['fee_due_cents'];
+			}
+		}
+		return $total;
+	}
+
 	/** Ingressi già usati di un pacchetto (la prenotazione che l'ha pagato conta come uno). */
 	public function package_used( int $paying_booking_id ): int {
 		$tbl = Db::t( 'bookings' );

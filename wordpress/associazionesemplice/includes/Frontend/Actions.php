@@ -22,6 +22,7 @@ final class Actions {
 
 	const MAP = array(
 		'asem_front_book'           => 'do_book',
+		'asem_front_book_group'     => 'do_book_group',
 		'asem_front_request'        => 'do_request',
 		'asem_front_course_request' => 'do_course_request',
 		'asem_front_accept_rules'   => 'do_accept_rules',
@@ -249,6 +250,194 @@ final class Actions {
 		Plugin::activities()->book( (int) $session['id'], $person_id, array( 'price_list' => $list_key ) ); // ospiti e pacchetti già pagati: solo la segreteria
 		$person = Plugin::people()->get( $person_id );
 		return 'Prenotazione registrata' . ( $person ? ' per ' . $person['first_name'] : '' ) . '.';
+	}
+
+	/** Massimo di persone per ogni invio del modulo «prenota più persone». */
+	const GROUP_MAX = 10;
+
+	/** Frase unica per ogni motivo per cui un altro socio non si può prenotare: non si dice quale, così nessuno scopre chi è socio, chi ha la tessera valida o chi è già prenotato. */
+	const OTHER_MEMBER_FAIL = 'Non è stato possibile prenotare una delle persone indicate: controlla cognome e numero di tessera. Non è stata prenotata nessuna persona.';
+
+	/**
+	 * Prenota insieme più persone: sé stessi, i propri ospiti e minori (creati o scelti), e altri soci indicati con cognome e numero di tessera.
+	 * Tutte o nessuna. Il contributo di tutti è di chi prenota. Per sé, ospiti e minori si dice il motivo di ogni rifiuto; per gli altri soci solo la frase generica.
+	 * Campi: session_id, price_list, me (1), guest_ids[], ward_ids[], new_guest_first[]/new_guest_last[], other_last[]/other_card[].
+	 *
+	 * @return string messaggio
+	 */
+	public static function do_book_group( array $post ): string {
+		$actor = self::actor();
+		$aid   = (int) $actor['id'];
+		\AssociazioneSemplice\MemberThrottle::hit( 'book', $aid, 'member_book_per_10min' );
+		self::assert_profile( $actor );
+		$session = Plugin::activities()->session( (int) ( $post['session_id'] ?? 0 ) );
+		if ( ! $session ) {
+			throw new \InvalidArgumentException( 'Questo evento non c\'è più: ricarica la pagina.' );
+		}
+		if ( ! \AssociazioneSemplice\ActivityService::online_bookable( $session ) ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\ActivityService::last_day( $session ) >= current_time( 'Y-m-d' ) ? 'Le prenotazioni online si chiudono il giorno prima: per questa data rivolgiti alla segreteria.' : 'Questo evento è già passato.' );
+		}
+		$act_row  = Plugin::activities()->get( (int) $session['activity_id'] );
+		$list_key = sanitize_key( (string) ( $post['price_list'] ?? '' ) );
+		if ( '' === $list_key && $act_row && \AssociazioneSemplice\PriceLists::for_activity( $act_row ) ) {
+			throw new \InvalidArgumentException( 'Scegli uno dei contributi proposti per questa attività.' );
+		}
+		$people = Plugin::people();
+		$acts   = Plugin::activities();
+		$sid    = (int) $session['id'];
+
+		// Gli altri soci: ogni tentativo conta nel limite, anche quello che poi fallisce per altro. Le righe vuote si ignorano.
+		$others = array();
+		$lasts  = isset( $post['other_last'] ) && is_array( $post['other_last'] ) ? array_values( $post['other_last'] ) : array();
+		$cards  = isset( $post['other_card'] ) && is_array( $post['other_card'] ) ? array_values( $post['other_card'] ) : array();
+		foreach ( $lasts as $i => $last ) {
+			$last = trim( sanitize_text_field( (string) $last ) );
+			$card = trim( sanitize_text_field( (string) ( $cards[ $i ] ?? '' ) ) );
+			if ( '' === $last && '' === $card ) {
+				continue;
+			}
+			\AssociazioneSemplice\MemberThrottle::hit( 'book_other', $aid, 'member_book_per_10min' );
+			$others[] = array( $last, $card );
+		}
+
+		// Sé stessi, ospiti e minori: motivi per persona.
+		$mine   = array(); // person_id => nome
+		$errors = array();
+		$want   = array();
+		if ( ! empty( $post['me'] ) ) {
+			$want[] = $aid;
+		}
+		foreach ( array( 'guest_ids', 'ward_ids' ) as $k ) {
+			foreach ( isset( $post[ $k ] ) && is_array( $post[ $k ] ) ? $post[ $k ] : array() as $pid ) {
+				$want[] = (int) $pid;
+			}
+		}
+		$guest_first = isset( $post['new_guest_first'] ) && is_array( $post['new_guest_first'] ) ? array_values( $post['new_guest_first'] ) : array();
+		$guest_last  = isset( $post['new_guest_last'] ) && is_array( $post['new_guest_last'] ) ? array_values( $post['new_guest_last'] ) : array();
+		$new_guests  = array();
+		foreach ( $guest_first as $i => $f ) {
+			$f = trim( sanitize_text_field( (string) $f ) );
+			$l = trim( sanitize_text_field( (string) ( $guest_last[ $i ] ?? '' ) ) );
+			if ( '' !== $f || '' !== $l ) {
+				if ( '' === $f || '' === $l ) {
+					$errors[] = 'Per ogni ospite nuovo servono nome e cognome.';
+					continue;
+				}
+				$new_guests[] = array( $f, $l );
+			}
+		}
+		$want = array_values( array_unique( $want ) );
+		if ( count( $want ) + count( $new_guests ) + count( $others ) < 1 ) {
+			throw new \InvalidArgumentException( 'Scegli almeno una persona da prenotare.' );
+		}
+		if ( count( $want ) + count( $new_guests ) + count( $others ) > self::GROUP_MAX ) {
+			throw new \InvalidArgumentException( 'Puoi prenotare al massimo ' . self::GROUP_MAX . ' persone per volta.' );
+		}
+		if ( $new_guests && ! \AssociazioneSemplice\Settings::guests_enabled() ) {
+			throw new \InvalidArgumentException( 'L\'associazione non prevede ospiti.' );
+		}
+		foreach ( $want as $pid ) {
+			$p = $people->get( $pid );
+			if ( ! $p ) {
+				$errors[] = 'Persona non trovata.';
+				continue;
+			}
+			$name = (string) $p['first_name'];
+			try {
+				self::require_cap( 'asem_book_for', $pid );
+			} catch ( \InvalidArgumentException $e ) {
+				$errors[] = $name . ': non puoi prenotare questa persona.';
+				continue;
+			}
+			$subject = self::booking_subject( $actor, $pid );
+			$block   = \AssociazioneSemplice\Regulation::booking_block( $subject );
+			if ( '' !== $block ) {
+				$errors[] = $name . ': ' . $block;
+				continue;
+			}
+			if ( ! $people->is_active_member( (int) $subject['id'] ) ) {
+				$errors[] = $name . ': ' . self::card_invalid( $subject, $actor, 'prenotare' );
+				continue;
+			}
+			if ( $acts->has_active_booking( $sid, $pid ) ) {
+				$errors[] = $name . ': è già prenotato a questa data.';
+				continue;
+			}
+			$mine[ $pid ] = $name;
+		}
+		if ( $errors ) {
+			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+
+		// Altri soci: una sola frase per ogni motivo, e niente messaggi diversi tra più soci.
+		$other_ids = array();
+		$fail      = false;
+		foreach ( $others as $o ) {
+			$h = '' !== $o[1] ? $people->find_by_card( $o[1] ) : null;
+			if ( ! $h || '' === $o[0] || \AssociazioneSemplice\Text::normalize( (string) $h['last_name'] ) !== \AssociazioneSemplice\Text::normalize( $o[0] )
+				|| (int) $h['id'] === $aid || ! \AssociazioneSemplice\MemberType::is_member( (string) $h['type'] ) || ! empty( $h['no_booking_by_others'] )
+				|| ! $people->is_active_member( (int) $h['id'] ) || '' !== \AssociazioneSemplice\Regulation::booking_block( $h )
+				|| $acts->has_active_booking( $sid, (int) $h['id'] ) || isset( $mine[ (int) $h['id'] ] ) || in_array( (int) $h['id'], $other_ids, true ) ) {
+				$fail = true;
+				continue;
+			}
+			$other_ids[] = (int) $h['id'];
+		}
+		if ( $fail ) {
+			throw new \InvalidArgumentException( self::OTHER_MEMBER_FAIL );
+		}
+
+		// Ospiti nuovi: si creano solo ora che tutto il resto è a posto (il tutto o niente non lascia ospiti orfani se la prenotazione fallisce: se fallisce si tolgono).
+		$created = array();
+		foreach ( $new_guests as $g ) {
+			$gid = $people->create( array( 'type' => \AssociazioneSemplice\MemberType::GUEST, 'host_person_id' => $aid, 'first_name' => $g[0], 'last_name' => $g[1] ) );
+			$created[]       = (int) $gid;
+			$mine[ (int) $gid ] = $g[0];
+		}
+		$all = array_merge( array_keys( $mine ), $other_ids );
+		try {
+			$ids = $acts->book_many( $sid, $all, $aid, array( 'price_list' => $list_key ) );
+		} catch ( \InvalidArgumentException $e ) {
+			foreach ( $created as $gid ) {
+				$people->delete( $gid );
+			}
+			throw new \InvalidArgumentException( $other_ids && false !== strpos( $e->getMessage(), 'già prenotata' ) ? self::OTHER_MEMBER_FAIL : $e->getMessage() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		// Email solo dopo il commit: riepilogo a chi prenota e avviso agli altri soci (con come spegnere le prenotazioni da parte di altri).
+		self::book_group_mails( $actor, $session, $act_row, array_keys( $ids ), $other_ids );
+		return count( $ids ) > 1 ? 'Prenotazioni registrate per ' . count( $ids ) . ' persone.' : 'Prenotazione registrata.';
+	}
+
+	/** Email dopo una prenotazione di gruppo: riepilogo a chi prenota, avviso a ogni altro socio prenotato. */
+	private static function book_group_mails( array $actor, array $session, ?array $activity, array $person_ids, array $other_ids ): void {
+		$assoc = (string) \AssociazioneSemplice\Settings::get( 'association_name' );
+		$title = $activity ? (string) $activity['name'] : 'evento';
+		$when  = ( new \DateTimeImmutable( (string) $session['session_date'] ) )->format( 'd/m/Y' ) . ( ! empty( $session['start_time'] ) ? ' alle ' . $session['start_time'] : '' );
+		$names = array();
+		foreach ( $person_ids as $pid ) {
+			$p       = Plugin::people()->get( (int) $pid );
+			$names[] = $p ? trim( $p['first_name'] . ' ' . $p['last_name'] ) : '';
+		}
+		$to = \AssociazioneSemplice\Reminders::recipient( $actor );
+		if ( $to ) {
+			\AssociazioneSemplice\Texts::mail(
+				$to['email'],
+				\AssociazioneSemplice\Texts::subject( 'Prenotazione: ' . $title ),
+				'Ciao ' . $to['name'] . ",\n\nhai prenotato «" . $title . '» del ' . $when . ' per: ' . implode( ', ', array_filter( $names ) ) . ".\nIl contributo di tutte le persone prenotate è a tuo carico.\n\nPuoi annullare dall'area soci: " . \AssociazioneSemplice\Gatekeeper::area_url() . ( '' !== $assoc ? "\n\n—\n" . $assoc : '' )
+			);
+		}
+		foreach ( $other_ids as $oid ) {
+			$o  = Plugin::people()->get( (int) $oid );
+			$ot = $o ? \AssociazioneSemplice\Reminders::recipient( $o ) : null;
+			if ( ! $ot ) {
+				continue;
+			}
+			\AssociazioneSemplice\Texts::mail(
+				$ot['email'],
+				\AssociazioneSemplice\Texts::subject( 'Sei stato prenotato: ' . $title ),
+				'Ciao ' . $ot['name'] . ",\n\n" . trim( $actor['first_name'] . ' ' . $actor['last_name'] ) . ' ti ha prenotato a «' . $title . '» del ' . $when . ".\nIl contributo, se previsto, è a suo carico.\n\nSe non vuoi partecipare puoi toglierti dall'area soci: " . \AssociazioneSemplice\Gatekeeper::area_url() . "\nSe non vuoi essere prenotato da altri, spegni l'opzione nel tuo profilo («Altri soci possono prenotarmi»)." . ( '' !== $assoc ? "\n\n—\n" . $assoc : '' )
+			);
+		}
 	}
 
 	/** Mette in lista d'attesa sé stessi o un proprio ospite per una data senza più posti. */
