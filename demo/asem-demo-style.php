@@ -116,6 +116,10 @@ function asem_demo_cred_box( string $title, string $user_label, string $user, st
 	return '<div class="asem-cred" style="background:#e7e8f7;border-radius:14px;padding:14px 16px;margin:0 0 18px;font-size:.95rem;color:#14172e"><strong>' . esc_html( $title ) . '</strong><br>'
 		. esc_html( $user_label ) . ' <code style="font-weight:700;background:#fff;border-radius:8px;padding:2px 8px">' . esc_html( $user ) . '</code><br>Password <code style="font-weight:700;background:#fff;border-radius:8px;padding:2px 8px">' . esc_html( $pass ) . '</code></div>';
 }
+/** Pulsante ben visibile (colori del marchio), uguale su computer e telefono. */
+function asem_demo_button( string $label, string $url ): string {
+	return '<p style="margin:0 0 18px"><a class="wp-element-button" href="' . esc_url( $url ) . '" style="display:inline-block;background:#1f218c;color:#fff;border-radius:12px;font-weight:700;padding:.9em 1.6em;text-decoration:none;font-size:1.05rem">' . esc_html( $label ) . '</a></p>';
+}
 function asem_demo_member_box(): string {
 	return asem_demo_cred_box( 'Demo: accesso di prova come socio', 'Email', 'socio@demo.invalid', 'Socio-Demo-2026' );
 }
@@ -135,7 +139,14 @@ add_filter( 'the_content', function ( $content ) {
 	$have = \AssociazioneSemplice\Pages::existing();
 	$id   = get_queried_object_id();
 	if ( isset( $have['segreteria'] ) && (int) $have['segreteria'] === $id && ! is_user_logged_in() ) {
-		return asem_demo_cred_box( 'Demo: accesso di prova come segreteria', 'Email', 'segreteria@demo.invalid', 'Segreteria-Demo-2026' ) . $content;
+		return asem_demo_cred_box( 'Demo: accesso di prova come segreteria', 'Email', 'segreteria@demo.invalid', 'Segreteria-Demo-2026' )
+			. asem_demo_button( 'Entra come segreteria', wp_login_url( get_permalink( $id ) ) )
+			. '<p style="color:#566069;font-size:.9rem">Lavori dal sito invece che dal pannello: da qui apri soci, incassi, attività e registri. Per entrare come socio vai all\'<a href="' . esc_url( home_url( '/area-soci/' ) ) . '">area soci</a>.</p>';
+	}
+	// Tesoriere: nella demo non c'è un accesso da tesoriere e il modulo dei soci non lo farebbe entrare: si indica la strada utile.
+	if ( isset( $have['tesoriere'] ) && (int) $have['tesoriere'] === $id && ! is_user_logged_in() && class_exists( '\AssociazioneSemplice\MemberSession' ) && ! \AssociazioneSemplice\MemberSession::current() ) {
+		return '<div class="asem-cred" style="background:#e7e8f7;border-radius:14px;padding:14px 16px;margin:0 0 18px;font-size:.95rem;color:#14172e"><strong>Area tesoriere</strong><br>In questa demo non c\'è un accesso da tesoriere. Incassi, spese e prima nota li provi entrando come segreteria.</div>'
+			. asem_demo_button( 'Entra come segreteria', wp_login_url( home_url( '/area-segreteria/' ) ) );
 	}
 	if ( isset( $have['area'] ) && (int) $have['area'] === $id && class_exists( '\AssociazioneSemplice\MemberSession' ) && ! \AssociazioneSemplice\MemberSession::current() && ! is_user_logged_in() ) {
 		return asem_demo_member_box() . $content;
