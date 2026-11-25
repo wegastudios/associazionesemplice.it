@@ -62,13 +62,13 @@ function ownerOf( Db $db, ?Db $owner = null ): Db {
 function rtMode(): bool {
 	return '' !== (string) getenv( 'PORTALE_TEST_PG_DSN' ) && '' !== (string) getenv( 'PORTALE_TEST_PG_RT_USER' );
 }
-/** Le 11 tabelle del proprietario e i soli verbi che il ruolo di tutti i giorni ha su ciascuna (le altre tabelle sono sue). */
+/** Le tabelle del proprietario e i soli verbi che il ruolo di tutti i giorni ha su ciascuna (le altre tabelle sono sue). */
 function rtGrants(): array {
 	return array(
 		'subscriptions' => 'SELECT, INSERT, UPDATE, DELETE', 'orders' => 'SELECT, INSERT, UPDATE, DELETE', 'saas_orgs' => 'SELECT, INSERT, UPDATE, DELETE',
 		'releases' => 'SELECT, INSERT, UPDATE, DELETE', 'mail_outbox' => 'SELECT, INSERT, UPDATE, DELETE',
 		'downloads' => 'SELECT, INSERT, DELETE', 'saas_outbox' => 'SELECT, INSERT, UPDATE', 'settings' => 'SELECT, INSERT, DELETE',
-		'email_templates' => 'SELECT, INSERT, DELETE', 'audit' => 'SELECT, INSERT', 'events' => 'INSERT, DELETE',
+		'email_templates' => 'SELECT, INSERT, DELETE', 'audit' => 'SELECT, INSERT', 'events' => 'INSERT, DELETE', 'saas_usage' => 'SELECT, INSERT, UPDATE, DELETE',
 	);
 }
 /** Crea la struttura: con il ruolo ristretto la fa il proprietario (il ruolo di tutti i giorni non può). */
@@ -2036,6 +2036,37 @@ check( 'catalogo: «da» il prezzo con i soci della base, mensile e annuale', ar
 
 $cn = PortalAttestation::sign( array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'catalog_changed', 'iat' => 1000000, 'exp' => 1000060, 'jti' => 'jti-1', 'rev' => 7 ), $cseed );
 check( 'catalogo: avviso firmato accettato una volta sola', Catalog::notify( $cdb, (string) json_encode( array( 'token' => $cn ) ), 1000000 ) && ! Catalog::notify( $cdb, (string) json_encode( array( 'token' => $cn ) ), 1000000 ) && ! Catalog::notify( $cdb, '{"token":"x.y.z"}', 1000000 ) );
+
+// --- Consumi dal gestionale (contratto §4.1) ---------------------------------------------------------------------------
+$uref = 'ref-uso-1';
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'cu1', 'uso@esempio.it', Db::now() ) );
+$cdb->run( 'INSERT INTO saas_orgs (ref, customer_id, org_id, name, slug, rev, created_at) VALUES (?,?,?,?,?,?,?)', array( $uref, 'cu1', 'org-1', 'Uso', 'uso', 1, Db::now() ) );
+$usign = function ( array $over = array(), string $jti = '' ) use ( $cseed, $uref ) {
+	return PortalAttestation::sign( $over + array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'usage', 'iat' => 1000000, 'exp' => 1000600,
+		'jti' => '' !== $jti ? $jti : bin2hex( random_bytes( 8 ) ), 'date' => '2026-11-24',
+		'orgs' => array( array( 'org_id' => 'org-1', 'ref' => $uref, 'members' => 42, 'operators' => 3, 'einvoices_year' => 0 ), array( 'org_id' => 'org-x', 'ref' => 'sconosciuto', 'members' => 5, 'operators' => 1, 'einvoices_year' => 0 ) ) ), $cseed );
+};
+$ubody = function ( string $t ) { return (string) json_encode( array( 'token' => $t ) ); };
+list( $uc, $uo ) = Portale\Usage::accept( $cdb, $ubody( $usign() ), 1000000 );
+$urow = $cdb->one( 'SELECT * FROM saas_usage WHERE ref = ?', array( $uref ) );
+check( 'consumi: token firmato accettato, salvati i numeri dell\'abbonamento noto e saltato lo sconosciuto', 200 === $uc && 1 === $uo['saved'] && 1 === $uo['unknown'] && 42 === (int) $urow['members'] && 3 === (int) $urow['operators'] && '2026-11-24' === $urow['day'] );
+$uj = $usign( array(), 'jti-uso' );
+Portale\Usage::accept( $cdb, $ubody( $uj ), 1000000 );
+list( $uc2, $uo2 ) = Portale\Usage::accept( $cdb, $ubody( $uj ), 1000000 );
+check( 'consumi: lo stesso token non vale due volte', 401 === $uc2 && 'token_used' === $uo2['error'] );
+list( $uc3 ) = Portale\Usage::accept( $cdb, $ubody( $usign( array( 'typ' => 'catalog' ) ) ), 1000000 );
+check( 'consumi: tipo sbagliato o corpo non valido → 401', 401 === $uc3 && 401 === Portale\Usage::accept( $cdb, 'non json', 1000000 )[0] );
+$ubadOrg = function ( array $o ) use ( $usign ) { return $usign( array( 'orgs' => array( $o ) ) ); };
+list( $uc4, $uo4 ) = Portale\Usage::accept( $cdb, $ubody( $ubadOrg( array( 'org_id' => 'org-1', 'ref' => 'r', 'members' => -1, 'operators' => 0, 'einvoices_year' => 0 ) ) ), 1000000 );
+check( 'consumi: numero negativo → 422 con il campo, senza il valore', 422 === $uc4 && 'orgs[0].members' === $uo4['field'] );
+list( $uc5, $uo5 ) = Portale\Usage::accept( $cdb, $ubody( $usign( array( 'date' => '24/11/2026' ) ) ), 1000000 );
+check( 'consumi: data non valida → 422 sul campo date', 422 === $uc5 && 'date' === $uo5['field'] );
+list( $uc6, $uo6 ) = Portale\Usage::accept( $cdb, $ubody( $ubadOrg( array( 'org_id' => 'o', 'ref' => 'r', 'members' => '5', 'operators' => 0, 'einvoices_year' => 0 ) ) ), 1000000 );
+check( 'consumi: numeri scritti come testo → 422', 422 === $uc6 && 'orgs[0].members' === $uo6['field'] );
+Portale\Usage::accept( $cdb, $ubody( $usign( array( 'date' => '2026-11-20', 'orgs' => array( array( 'org_id' => 'org-1', 'ref' => $uref, 'members' => 1, 'operators' => 1, 'einvoices_year' => 0 ) ) ) ) ), 1000000 );
+check( 'consumi: un invio più vecchio non sostituisce quello salvato', 42 === (int) $cdb->one( 'SELECT members FROM saas_usage WHERE ref = ?', array( $uref ) )['members'] );
+Portale\Usage::accept( $cdb, $ubody( $usign( array( 'date' => '2026-11-25', 'orgs' => array( array( 'org_id' => 'org-1', 'ref' => $uref, 'members' => 50, 'operators' => 4, 'einvoices_year' => 2 ) ) ) ) ), 1000000 );
+check( 'consumi: un invio più recente aggiorna', 50 === (int) $cdb->one( 'SELECT members FROM saas_usage WHERE ref = ?', array( $uref ) )['members'] );
 
 $cprev = Http::$transport;
 $cb7 = $cdoc( 7 );
