@@ -173,6 +173,34 @@ for ( $gb_i = 0; $gb_i < 5; $gb_i++ ) {
 }
 $gb_blocked = $gb_fail( array( 'session_id' => $gb_s6, 'other_last' => array( 'Socio' ), 'other_card' => array( '7002' ) ) );
 asem_ok( false !== strpos( $gb_blocked, 'troppe richieste' ) && 0 === $gb_count( $gb_s6 ), 'prenota gruppo: dopo cinque tentativi falliti non si prova più, neanche con i dati giusti' );
+// Il tentativo conta sempre, anche quando da solo supera il limite (sei in un invio) o lo supera sommato ai precedenti (tre più tre)
+$gb_six = array( 'session_id' => $gb_s6, 'other_last' => array_fill( 0, 6, 'Nessuno' ), 'other_card' => array( '91', '92', '93', '94', '95', '96' ) );
+Counters::set( 'asem_mt_ofm_' . $gb_booker, array( 0, time() ), 600 );
+asem_ok( $gen === $gb_fail( $gb_six ) && 6 === (int) Counters::get( 'asem_mt_ofm_' . $gb_booker )[0], 'prenota gruppo: sei tentativi falliti in un solo invio si contano tutti' );
+asem_ok( false !== strpos( $gb_fail( $gb_six ), 'troppe richieste' ), 'prenota gruppo: dopo sei tentativi in un invio il secondo invio si ferma' );
+$gb_three = array( 'session_id' => $gb_s6, 'other_last' => array_fill( 0, 3, 'Nessuno' ), 'other_card' => array( '91', '92', '93' ) );
+Counters::set( 'asem_mt_ofm_' . $gb_booker, array( 0, time() ), 600 );
+asem_ok( $gen === $gb_fail( $gb_three ) && $gen === $gb_fail( $gb_three ) && 6 === (int) Counters::get( 'asem_mt_ofm_' . $gb_booker )[0], 'prenota gruppo: tre più tre tentativi falliti fanno sei' );
+asem_ok( false !== strpos( $gb_fail( $gb_three ), 'troppe richieste' ), 'prenota gruppo: il terzo invio da tre si ferma' );
+Counters::set( 'asem_mt_ofm_' . $gb_booker, array( 0, time() ), 1 );
+
+// Chi prenota è controllato anche quando non prenota sé stesso (soli altri soci, soli ospiti nuovi)
+list( , $gb_s7 ) = $gb_event( 'Gruppo chi prenota', 10 );
+$gb_card = $wpdb->get_results( $wpdb->prepare( 'SELECT id, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND deleted_at IS NULL', $gb_booker ), ARRAY_A );
+foreach ( $gb_card as $gb_c ) {
+	$wpdb->update( Db::t( 'memberships' ), array( 'valid_from' => '2001-01-01', 'valid_to' => '2001-12-31' ), array( 'id' => (int) $gb_c['id'] ) );
+}
+wp_cache_flush();
+$gb_exp_o = $gb_fail( array( 'session_id' => $gb_s7, 'other_last' => array( 'Socio' ), 'other_card' => array( '7002' ) ) );
+$gb_exp_g = $gb_fail( array( 'session_id' => $gb_s7, 'new_guest_first' => array( 'Nuova' ), 'new_guest_last' => array( 'Ospite' ), 'new_guest_phone' => array( '333 7770001' ) ) );
+foreach ( $gb_card as $gb_c ) {
+	$wpdb->update( Db::t( 'memberships' ), array( 'valid_from' => $gb_c['valid_from'], 'valid_to' => $gb_c['valid_to'] ), array( 'id' => (int) $gb_c['id'] ) );
+}
+wp_cache_flush();
+asem_ok( false !== strpos( $gb_exp_o, 'tessera non è valida' ) && 0 === $gb_count( $gb_s7 ), 'prenota gruppo: con la tessera scaduta non si prenota un altro socio: ' . $gb_exp_o );
+asem_ok( false !== strpos( $gb_exp_g, 'tessera non è valida' ) && 0 === $gb_count( $gb_s7 ), 'prenota gruppo: con la tessera scaduta non si prenota un ospite nuovo: ' . $gb_exp_g );
+asem_ok( false !== strpos( $gb_fail( array( 'session_id' => $gb_s7, 'new_guest_first' => array( 'Senza' ), 'new_guest_last' => array( 'Numero' ) ) ), 'cellulare' ), 'prenota gruppo: ospite nuovo senza cellulare rifiutato' );
+asem_ok( false !== strpos( $gb_fail( array( 'session_id' => $gb_s7, 'new_guest_first' => array( 'Uno', 'Due' ), 'new_guest_last' => array( 'Alfa', 'Beta' ), 'new_guest_phone' => array( '333 7770002', '3337770002' ) ) ), 'due volte' ), 'prenota gruppo: lo stesso numero due volte nello stesso invio rifiutato' );
 Counters::set( 'asem_mt_ofm_' . $gb_booker, array( 0, time() ), 1 );
 asem_ok( false === strpos( implode( ' ', array_map( 'wp_json_encode', array_column( \AssociazioneSemplice\Audit::recent( 50 ), 'details' ) ) ), '"Nessuno"' ), 'prenota gruppo: il registro dei tentativi non porta cognomi né tessere' );
 

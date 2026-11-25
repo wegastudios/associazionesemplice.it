@@ -45,4 +45,14 @@ final class MemberThrottle {
 			Counters::set( $key, array( (int) $v[0] + $weight, (int) $v[1] ), max( 1, (int) $v[1] + $window - $now ) );
 		}
 	}
+
+	/** Conta sempre, anche oltre il limite, e non rifiuta: per i tentativi già falliti, che devono pesare in ogni caso (a rifiutare è {@see strike()} con peso 0). */
+	public static function add( string $key, int $window, int $weight = 1 ): void {
+		$now = time();
+		$v   = Counters::get( $key );
+		if ( ! is_array( $v ) || ! isset( $v[0], $v[1] ) || (int) $v[1] + $window <= $now ) {
+			$v = array( 0, $now );
+		}
+		Counters::set( $key, array( (int) $v[0] + max( 1, $weight ), (int) $v[1] ), max( 1, (int) $v[1] + $window - $now ) );
+	}
 }

@@ -632,7 +632,7 @@ class ActivityService {
 	 * @return array{0:array,1:array} data e attività
 	 * @throws BookingFailure
 	 */
-	public function group_precheck( int $session_id, int $count ): array {
+	public function group_precheck( int $session_id, int $count, int $booker_id ): array {
 		$s = $this->session( $session_id );
 		if ( ! $s || $s['cancelled_at'] ) {
 			throw new BookingFailure( 'Questa data non è più disponibile.', BookingFailure::GONE );
@@ -648,6 +648,10 @@ class ActivityService {
 		if ( (int) $opt['max_seats'] > 0 && $count > (int) $opt['max_seats'] ) {
 			throw new BookingFailure( 'Per questo evento si possono prenotare al massimo ' . (int) $opt['max_seats'] . ' posti per volta.', BookingFailure::LIMIT );
 		}
+		$busy = (string) apply_filters( 'asem_booking_errors', '', $session_id, $booker_id ); // fascia occupata: dipende dalla data, si dice prima di cercare chiunque
+		if ( '' !== $busy ) {
+			throw new BookingFailure( $busy, BookingFailure::CONFLICT, $booker_id );
+		}
 		if ( null !== $s['capacity'] ) {
 			if ( (int) ( $a['hold_hours'] ?? 0 ) > 0 ) {
 				Holds::release_expired( $session_id );
@@ -660,14 +664,48 @@ class ActivityService {
 		return array( $s, $a );
 	}
 
-	/** Le tabelle di prenotazione permettono le transazioni (InnoDB)? Senza, un gruppo non si può prenotare «tutto o niente» in sicurezza. */
+	/** Le tabelle che un gruppo scrive (prenotazioni e persone) permettono le transazioni (InnoDB)? Senza, non si può prenotare «tutto o niente» in sicurezza. */
 	private function transactional(): bool {
 		static $ok = null;
 		if ( null === $ok ) {
-			$engine = (string) $this->db()->get_var( $this->db()->prepare( 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', Db::t( 'bookings' ) ) );
-			$ok     = 'innodb' === strtolower( $engine );
+			$n  = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (%s, %s) AND LOWER(ENGINE) = 'innodb'", Db::t( 'bookings' ), Db::t( 'people' ) ) );
+			$ok = 2 === $n;
 		}
 		return $ok;
+	}
+
+	/** Motivo mostrato quando una prenotazione annullata conserva un versamento di chi la pagava prima. */
+	const PAID_BY_ANOTHER = 'Per questa data c\'è una prenotazione precedente da sistemare: scrivi alla segreteria.';
+
+	/** Chi risponde del contributo di una prenotazione: chi l'ha fatta per altri, altrimenti la persona prenotata. */
+	public static function debtor_id( array $booking ): int {
+		return ! empty( $booking['booked_by'] ) ? (int) $booking['booked_by'] : (int) $booking['person_id'];
+	}
+
+	/**
+	 * C'è una prenotazione non attiva con un versamento (non annullato) e a risponderne era un'altra persona? Se si riattivasse, il denaro di uno pagherebbe il
+	 * debito dell'altro: prima la segreteria sistema. Per gli ospiti e i minori di chi prenotava non vale: pagava già chi ne risponde.
+	 */
+	public function paid_by_another( int $session_id, int $person_id, int $new_debtor ): bool {
+		$b = $this->booking( $session_id, $person_id );
+		if ( ! $b || 'booked' === $b['status'] ) {
+			return false;
+		}
+		$old = self::debtor_id( $b );
+		if ( $old === $new_debtor ) {
+			return false;
+		}
+		$p    = Plugin::people()->get( $person_id );
+		$host = $p ? (int) $p['host_person_id'] : 0;
+		$same = function ( int $id ) use ( $person_id, $host ): bool {
+			return $id === $person_id || ( $host > 0 && $id === $host ) || Guardians::is_guardian_of( $id, $person_id );
+		};
+		if ( ( $host > 0 || Guardians::has_guardian( $person_id ) ) && $same( $old ) && $same( $new_debtor ) ) {
+			return false;
+		}
+		return (int) $this->db()->get_var(
+			$this->db()->prepare( 'SELECT COALESCE(SUM(amount_cents), 0) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'income' AND voided_at IS NULL AND session_id = %d AND person_id = %d", $session_id, $person_id )
+		) > 0;
 	}
 
 	/**
@@ -690,7 +728,7 @@ class ActivityService {
 		if ( ! $person_ids && ! $extra ) {
 			throw new BookingFailure( 'Nessuna persona da prenotare.', BookingFailure::GONE );
 		}
-		list( $s, $a ) = $this->group_precheck( $session_id, count( $person_ids ) + $extra );
+		list( $s, $a ) = $this->group_precheck( $session_id, count( $person_ids ) + $extra, $booker_id );
 		$lists         = isset( $opt['price_lists'] ) && is_array( $opt['price_lists'] ) ? $opt['price_lists'] : array();
 		$people        = array();
 		foreach ( $person_ids as $pid ) {
@@ -717,6 +755,9 @@ class ActivityService {
 						$existing = $db->get_row( $db->prepare( "SELECT * FROM $tbl WHERE session_id = %d AND person_id = %d", $session_id, $pid ), ARRAY_A );
 						if ( $existing && 'booked' === $existing['status'] ) {
 							throw new BookingFailure( 'Questa persona ha già una prenotazione per questa data.', BookingFailure::ALREADY, $pid );
+						}
+						if ( $existing && ( ( ! empty( $existing['declined_at'] ) && (int) $pid !== $booker_id ) || $this->paid_by_another( $session_id, (int) $pid, $booker_id ) ) ) { // si è tolta, o c'è un versamento di chi pagava prima: si ricontrolla sotto blocco
+							throw new BookingFailure( self::PAID_BY_ANOTHER, BookingFailure::ALREADY, $pid );
 						}
 						$old[ $pid ] = $existing;
 					}
@@ -764,6 +805,8 @@ class ActivityService {
 			throw $e;
 		} catch ( \InvalidArgumentException $e ) { // «un'altra operazione è in corso», o un errore di prezzo/listino
 			throw new BookingFailure( $e->getMessage(), BookingFailure::SYSTEM );
+		} catch ( \RuntimeException $e ) { // transazione non avviata o non confermata
+			throw new BookingFailure( 'Prenotazione non riuscita: riprova.', BookingFailure::SYSTEM );
 		}
 		foreach ( $out as $pid => $bid ) {
 			Audit::log( 'booking.created', 'activity', (int) $a['id'], array( 'session' => $session_id, 'person_id' => $pid, 'fee' => (int) $db->get_var( $db->prepare( "SELECT fee_due_cents FROM $tbl WHERE id = %d", $bid ) ), 'booked_by' => $booker_id ) );
@@ -988,7 +1031,6 @@ class ActivityService {
 		);
 	}
 
-	/** True se la persona ha una prenotazione attiva per quella data. */
 	/** La persona si è tolta da una prenotazione fatta da altri per questa data? Da allora nessun altro la può più prenotare per quella data. */
 	public function declined_by_member( int $session_id, int $person_id ): bool {
 		return (bool) $this->db()->get_var(
@@ -996,6 +1038,7 @@ class ActivityService {
 		);
 	}
 
+	/** True se la persona ha una prenotazione attiva per quella data. */
 	public function has_active_booking( int $session_id, int $person_id ): bool {
 		return (bool) $this->db()->get_var(
 			$this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = %d AND person_id = %d AND status = 'booked'", $session_id, $person_id )
