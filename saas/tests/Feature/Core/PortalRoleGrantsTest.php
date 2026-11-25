@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Modules\Core\Contracts\OrgSchema;
-use App\Modules\Core\Contracts\PortalGrants;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -73,44 +72,6 @@ it('dà allo schema portal i diritti al ruolo scritto in configurazione, qualunq
     }
 
     expect(portalPrivilege($role, 'subscriptions', 'SELECT'))->toBeFalse();
-});
-
-it('la migrazione che restringe porta i permessi diretti del ruolo a quelli dell\'elenco, ed è idempotente', function (): void {
-    $role = (string) config('database.connections.pgsql.username');
-    $owner = DB::connection('pgsql_owner');
-    $narrow = function () use ($role): void {
-        config(['database.connections.pgsql_owner.portal_role' => $role]);
-        DB::purge('pgsql_owner');
-        $previous = DB::getDefaultConnection();
-        DB::setDefaultConnection('pgsql_owner');
-        try {
-            (require base_path('app/Modules/Portale/Database/Migrations/Central/2027_01_14_000100_narrow_portal_role_grants.php'))->up();
-        } finally {
-            DB::setDefaultConnection($previous);
-        }
-    };
-
-    try {
-        grantPortalRole($role);
-        expect(portalPrivilege($role, 'downloads', 'UPDATE'))->toBeTrue();
-
-        $narrow();
-        $narrow();
-
-        foreach (PortalGrants::TABLES as $table => $verbs) {
-            if ($owner->selectOne("SELECT to_regclass('portal.{$table}') AS t")->t === null) {
-                continue;
-            }
-            foreach (['SELECT', 'INSERT', 'UPDATE', 'DELETE'] as $privilege) {
-                expect(portalPrivilege($role, $table, $privilege))->toBe(in_array($privilege, $verbs, true), "{$table} {$privilege}");
-            }
-        }
-        expect((bool) $owner->selectOne('SELECT has_schema_privilege(?, ?, ?) AS ok', [$role, 'portal', 'USAGE'])->ok)->toBeTrue();
-    } finally {
-        $owner->statement("ALTER DEFAULT PRIVILEGES IN SCHEMA portal REVOKE ALL ON TABLES FROM \"{$role}\"");
-        $owner->statement("REVOKE ALL ON ALL TABLES IN SCHEMA portal FROM \"{$role}\"");
-        $owner->statement("REVOKE ALL ON SCHEMA portal FROM \"{$role}\"");
-    }
 });
 
 it('con un ruolo che non esiste la migrazione non fa nulla e non fallisce', function (): void {

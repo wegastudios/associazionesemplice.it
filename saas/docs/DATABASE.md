@@ -308,9 +308,14 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
 - **Controlli prima di scrivere**: se un altro ruolo con accesso raggiunge degli oggetti solo tramite il gruppo, o se
   applicazione e backup non hanno un permesso diretto sulle tabelle, il comando rifiuta e non scrive nulla.
 - **Ruolo del portale**: i suoi permessi diretti sullo schema `portal` sono un elenco esplicito (tabella e verbi, classe
-  `PortalGrants`), lo stesso che usa la migrazione che li concede. Prima di revocare si controlla che ci siano tutti, come
-  voci dirette e non per ereditarietà; ciò che il ruolo raggiunge oltre l'elenco non blocca e viene tolto con il resto.
-  Se il ruolo non esiste il controllo non c'è.
+  `PortalGrants`). Prima di revocare si controlla che ci siano tutti, come voci dirette e non per ereditarietà; ciò che il
+  ruolo raggiunge oltre l'elenco non blocca e viene tolto con il resto. Se il ruolo non esiste il controllo non c'è.
+- **Permessi diretti del portale**: nessuna migrazione e nessun rilascio li cambia. `php artisan saas:db:narrow-portal` li
+  porta all'elenco in una sola transazione: prima concede tutto l'elenco, poi verifica che ogni voce sia diretta e solo
+  dopo toglie ciò che l'elenco non prevede (tabelle fuori elenco e permessi predefiniti); se la verifica fallisce non
+  cambia nulla. `--dry-run` elenca cosa concederebbe e toglierebbe e funziona sempre; senza `--dry-run` agisce solo con
+  `SAAS_DB_NARROW_PORTAL` acceso (spento di default). A mano: azioni `permessi-portale` (prova) e `permessi-portale-esegui`
+  di «SaaS · manutenzione server»; l'uscita va in un file riservato e nel log restano «salvato in», «fatto» o «da rivedere».
 - **Interruttore**: agisce solo con `SAAS_DB_REVOKE_GROUP` acceso (spento di default; spento, senza `--dry-run`,
   rifiuta con «interruttore spento»). `--dry-run` funziona sempre, non scrive e stampa solo conteggi per tipo.
 - **Uscita**: solo conteggi, mai nomi di ruoli o di oggetti. Esce con 1 per errore, rifiuto o voci rimaste; con
