@@ -7,8 +7,10 @@ namespace App\Modules\AreaSoci\Http\Controllers;
 use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
 use App\Modules\AreaSoci\Services\CurrentMember;
 use App\Modules\AreaSoci\Services\MemberAccess;
+use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\HostCookies;
 use App\Modules\Core\Contracts\Input;
+use DateTimeInterface;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +37,7 @@ final readonly class AccessController
             'step' => $request->session()->get('member_login_step', 'email'),
             'email' => $request->session()->get('member_login_email', ''),
             'message' => $request->session()->get('member_login_message'),
+            'demoMember' => DemoScale::memberEntryOpen(self::org($request)['slug']),
         ]);
     }
 
@@ -117,10 +120,14 @@ final readonly class AccessController
         $token = $this->access->open($personId, $email, $request->userAgent());
         $request->session()->regenerate();
         $request->session()->forget(AuthenticateMember::ACTIVE);
-        // Con il prefisso __Host- il percorso deve essere «/» (Core\Contracts\HostCookies); altrimenti resta «/area» come prima.
-        $cookie = Cookie::create(AuthenticateMember::cookieName($request), $token, now()->addDays(MemberAccess::MAX_DAYS), HostCookies::eligible($request) ? '/' : '/area', null, $request->isSecure(), true, false, Cookie::SAMESITE_LAX);
 
-        return redirect('/area')->withCookie($cookie);
+        return redirect('/area')->withCookie(self::sessionCookie($request, $token, now()->addDays(MemberAccess::MAX_DAYS)));
+    }
+
+    /** Il cookie dell'accesso. Con il prefisso __Host- il percorso deve essere «/» (Core\Contracts\HostCookies); altrimenti resta «/area» come prima. */
+    public static function sessionCookie(Request $request, string $token, DateTimeInterface $expires): Cookie
+    {
+        return Cookie::create(AuthenticateMember::cookieName($request), $token, $expires, HostCookies::eligible($request) ? '/' : '/area', null, $request->isSecure(), true, false, Cookie::SAMESITE_LAX);
     }
 
     /** Cancella il cookie dell'accesso con entrambi i nomi (quello col prefisso e quello di prima, che ha un altro percorso). */

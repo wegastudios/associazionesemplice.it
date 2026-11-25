@@ -138,6 +138,17 @@ Gli accessi sono di tutti, quindi i visitatori hanno questi limiti (`config/saas
 
 I tetti sono «conteggio di partenza + margine»: l'azzeramento scrive i conteggi in `demo.baseline.*`, così i dati di partenza non li superano mai. Restano spenti nella demo: chiusura, riapertura e commissione dei conti, cambio del nome degli utenti, ogni file in arrivo (`DemoFileBarrier`, nello stack globale: vale per qualunque rotta). I testi scritti dai visitatori non possono contenere link né HTML. Prove: `DemoLimitsTest`, `DemoRestrictionsTest`, `DemoEnvironmentTest`.
 
+## «Entra come socio» (solo demo)
+
+La posta della demo è spenta, quindi i soci non possono entrare con email e codice. Nella pagina di accesso dell'area soci (`/area/accesso`) c'è il pulsante «Entra come socio» (`POST /area/accesso/demo`, `DemoMemberEntryController`); nella pagina `/accesso` del gestionale un link porta lì. Regole:
+
+- Esiste solo con `SAAS_DEMO` acceso E `APP_ENV=demo` (`DemoScale::memberEntryOpen()`, che usa `DemoScale::active()`) e solo sull'associazione della demo (`SAAS_DEMO_SLUG`): altrove la rotta risponde 404 e i pulsanti non compaiono.
+- Il socio lo sceglie il server (`DemoScale::memberEmail()`: `socio001@` + `SAAS_DEMO_MAIL_DOMAIN`, il primo socio di `DemoMembers`); dalla richiesta non arriva nulla. Nessun codice, nessuna email.
+- CSRF come ogni POST; al massimo 20 ingressi all'ora per indirizzo IP. Sessione di 60 minuti (`DemoScale::MEMBER_SESSION_MINUTES`), con il cookie `__Host-as_socio` di sempre; «Esci» è quello dell'area soci.
+- Il socio è di tutti: recapiti, rigenerazione del codice tessera e «esci da tutti i dispositivi» sono spenti (`DemoRestrictions::CLOSED`). Le prenotazioni restano, con i tetti di `DemoLimits`; l'azzeramento delle 03:30 cancella anche le sessioni.
+
+Prova: `tests/Feature/AreaSoci/DemoMemberEntryTest.php`.
+
 ## Moduli pubblici (adesione, donazione, area soci)
 
 - **Limiti di frequenza**: ogni invio (`POST/PUT/DELETE`) delle rotte pubbliche ha un limite (`throttle:applications`, `applications-confirm`, `donations`, `member-*`) o conta i tentativi da sé (accesso dell'area soci: codice e link, per indirizzo e per email). La prova elenca le rotte e fallisce se una non ne ha.

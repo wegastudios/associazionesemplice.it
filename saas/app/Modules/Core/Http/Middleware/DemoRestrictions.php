@@ -43,7 +43,9 @@ final class DemoRestrictions
     ];
 
     /** Scritture spente anche se sotto un percorso permesso: i conti si creano e si muovono, non si chiudono né si riaprono. */
-    public const CLOSED = ['gestionale/conti/*/chiudi', 'gestionale/conti/*/riapri', 'gestionale/conti/*/commissione'];
+    public const CLOSED = ['gestionale/conti/*/chiudi', 'gestionale/conti/*/riapri', 'gestionale/conti/*/commissione',
+        // Il socio d'esempio è uno solo e di tutti: niente cambio dei suoi recapiti o del codice della tessera, e niente «esci da tutti i dispositivi» (chiuderebbe le sessioni altrui).
+        'area/profilo', 'area/tessera/rigenera', 'area/esci-ovunque'];
 
     /** Nomi dei campi che non si controllano (password e codici: non sono testi pubblici). */
     private const SECRET_FIELDS = ['password', 'current_password', 'password_confirmation', '_token', 'code', 'codice', 'recovery_code'];
