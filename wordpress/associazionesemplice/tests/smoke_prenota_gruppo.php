@@ -34,7 +34,8 @@ $gb_member = function ( string $first, string $last, string $card, array $extra 
 
 // Chi prenota: socio con utente WordPress, profilo completo e tessera valida
 $gb_booker = $gb_member( 'Paola', 'Prenota', '7001' );
-$gb_uid    = wp_insert_user( array( 'user_login' => 'gruppo_prenota', 'user_pass' => wp_generate_password(), 'user_email' => 'paola.gruppo@example.com' ) );
+$gb_uid    = wp_insert_user( array( 'user_login' => 'gruppo_' . strtolower( wp_generate_password( 8, false ) ), 'user_pass' => wp_generate_password(), 'user_email' => 'gruppo.' . strtolower( wp_generate_password( 8, false ) ) . '@example.org', 'role' => 'subscriber' ) );
+asem_ok( ! is_wp_error( $gb_uid ), 'prenota gruppo: utente WordPress di prova creato' . ( is_wp_error( $gb_uid ) ? ': ' . $gb_uid->get_error_message() : '' ) );
 $wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => $gb_uid, 'address' => 'Via Prova 1', 'city' => 'Roma', 'zip' => '00100', 'province' => 'RM', 'tax_code' => 'RSSMRA80A01H501U', 'phone' => '333 1110000' ), array( 'id' => $gb_booker ) );
 wp_cache_flush();
 $gb_gino  = $gb_member( 'Gino', 'Socio', '7002' );
