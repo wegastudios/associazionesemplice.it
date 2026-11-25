@@ -116,5 +116,5 @@ for p in $LIST; do
 	"${S[@]}" "cd ~/portale && php bin/release.php $p ~/$tmp $(printf '%q' "$NOTE") $SIG $SIGN_KID $V2; rc=\$?; rm -f ~/$tmp; exit \$rc"
 	DEMO_SHIP+=("$p:$VER:$f")
 done
-# La demo pubblica (associazionesemplice.it/demo) segue sempre le ultime versioni: se non si aggiorna, la pubblicazione resta valida.
+# La demo pubblica (demo.associazionesemplice.it) segue sempre le ultime versioni: se non si aggiorna, la pubblicazione resta valida.
 demo_update ${DEMO_SHIP[@]+"${DEMO_SHIP[@]}"}
