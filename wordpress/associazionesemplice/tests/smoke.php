@@ -6724,12 +6724,23 @@ if ( in_array( $tgt_m, Settings::social_year()->months(), true ) ) {
 		$acts->enroll( $c_later, $pid, $cur_m );
 	}
 	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $dm2, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => 2000, 'activity_id' => $c_done, 'competence_month' => $tgt_m ) ) ) );
+	$c_var = $acts->create( array( 'name' => 'Corso con variante', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'lesson_slots' => array( array( 'type' => 'single', 'date' => $cur_m . '-10', 'start' => '18:00', 'end' => '19:00' ) ), 'price_lists' => array( array( 'label' => 'Ridotto', 'cents' => 1234 ) ) ) );
+	$k_var = \AssociazioneSemplice\PriceLists::for_activity( $acts->get( $c_var ) )[0]['key'];
+	$dm3   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dora', 'last_name' => 'Ridotta', 'email' => 'dora.ridotta@example.com' ) );
+	$dm4   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dario', 'last_name' => 'Ridotto', 'email' => 'dario.ridotto@example.com' ) );
+	foreach ( array( $dm3, $dm4 ) as $pid ) {
+		$acts->enroll( $c_var, $pid, $cur_m );
+		$acts->set_enrollment_price( $c_var, $pid, $k_var );
+	}
+	$ledger->record_receipt( array( 'date' => $cur_m . '-01', 'account_id' => (int) $cash['id'], 'person_id' => $dm4, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => 1234, 'activity_id' => $c_var, 'competence_month' => $tgt_m ) ) ) );
 	$d_before = $mails_to( 'dina.nonpagato@example.com' );
 	\AssociazioneSemplice\Reminders::run( $cur_m . '-09' );
 	asem_ok( $d_before === $mails_to( 'dina.nonpagato@example.com' ), 'promemoria corsi: prima dell\'ultima lezione del mese non parte nulla' );
 	\AssociazioneSemplice\Reminders::run( $cur_m . '-11' );
 	$t_dina = $mail_text( 'dina.nonpagato@example.com' );
 	asem_ok( false !== strpos( $t_dina, 'Corso già finito nel mese' ) && false === strpos( $t_dina, 'ancora da fare' ) && 0 === $mails_to( 'dino.pagato@example.com' ), 'promemoria corsi: dopo l\'ultima lezione, solo a chi non ha pagato il mese dopo, e solo per il corso con lezioni finite' );
+	$t_dora = $mail_text( 'dora.ridotta@example.com' );
+	asem_ok( false !== strpos( $t_dora, '12,34' ) && false === strpos( $t_dora, '20,00' ) && 0 === $mails_to( 'dario.ridotto@example.com' ), 'promemoria corsi: con la variante del contributo vale quell\'importo, e chi lo ha pagato non riceve nulla' );
 	$d_n = $mails_to( 'dina.nonpagato@example.com' );
 	\AssociazioneSemplice\Reminders::run( $cur_m . '-12' );
 	asem_ok( $d_n === $mails_to( 'dina.nonpagato@example.com' ), 'promemoria corsi: un solo promemoria per corso e mese' );

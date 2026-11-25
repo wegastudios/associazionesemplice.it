@@ -110,6 +110,34 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+      # I lavori lunghi avanzano dalla pagina e «Annulla» li ferma. Il cron del sito è spento e ogni richiesta fa una tappa sola: ad andare avanti è la pagina.
+      - name: Lavori lunghi dalla pagina
+        if: always()
+        shell: bash
+        working-directory: wordpress/dist
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+        run: |
+          wpc() { npx --yes @wordpress/env run cli wp "$@"; }
+          wpc config set DISABLE_WP_CRON true --raw
+          wpc eval 'wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . "/asem-tappe.php", "<?php add_filter( \"asem_long_job_budget_seconds\", \"__return_zero\" );" );'
+          rc=0
+          wpc eval 'wp_set_current_user( 1 ); \AssociazioneSemplice\Backup::start_job( false );'
+          node ../../.github/scripts/prove-lavori.cjs http://localhost:8888 avanza ../../lavori || rc=1
+          wpc eval 'wp_set_current_user( 1 ); \AssociazioneSemplice\Backup::start_job( false );'
+          node ../../.github/scripts/prove-lavori.cjs http://localhost:8888 annulla ../../lavori || rc=1
+          wpc eval 'unlink( WPMU_PLUGIN_DIR . "/asem-tappe.php" );'
+          wpc config delete DISABLE_WP_CRON
+          exit $rc
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lavori-lunghi
+          path: lavori/
+          retention-days: 14
+          if-no-files-found: ignore
+
       # Le schede dell'elenco attività su un tema a blocchi (twentytwentyfive) e su uno classico (twentyfifteen): schermate a cinque larghezze,
       # senza scorrimento orizzontale, immagini tutte 16/9, titolo con contrasto sufficiente (anche con tema scuro del browser).
       - name: Schede dell'elenco attività su temi veri

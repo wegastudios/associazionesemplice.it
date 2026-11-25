@@ -333,6 +333,10 @@ final class Reminders {
 					continue;
 				}
 				$fee  = $acts->fee_for( $a, $p['type'] );
+				if ( ! empty( $e['price_list'] ) ) { // variante del contributo scelta per questa persona
+					$list = PriceLists::find( $a, (string) $e['price_list'] );
+					$fee  = $list ? (int) $list['cents'] : $fee;
+				}
 				$paid = 0;
 				foreach ( $s['summary']['months'] as $m ) {
 					if ( $m['month'] === $target ) {
