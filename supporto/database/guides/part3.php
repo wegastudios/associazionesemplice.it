@@ -376,6 +376,58 @@ Il modulo si protegge da solo dalle richieste automatiche, senza CAPTCHA di terz
 MD,
     ],
     [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'prenotare-un-evento-per-piu-persone',
+        'title' => 'Prenotare un evento per più persone',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+Il socio può prenotare in un solo modulo per sé, per i suoi ospiti, per i minori di cui è tutore e per altri soci.
+
+## Come prenota il socio
+
+1. Entra nell'**area soci** e apri la pagina dell'evento.
+2. Sotto la data apri **«Prenota per più persone»**.
+3. Scegli chi prenoti: te, i tuoi ospiti, i minori di cui sei tutore. Puoi aggiungere ospiti nuovi (nome, cognome e cellulare) e altri soci (cognome e numero di tessera).
+4. Se l'evento ha più contributi, scegli un contributo per ogni persona.
+5. Premi **«Vedi il totale»**: vedi il contributo di ciascuno e il totale. Finché non confermi, nessuno è prenotato. Il riepilogo vale 10 minuti.
+6. Premi **«Conferma e prenota»**. Si prenotano tutti o nessuno.
+
+Le regole:
+
+- al massimo **10 persone** per volta, o meno se l'evento lo prevede;
+- il contributo di tutti è **a carico di chi prenota**;
+- per gli eventi su richiesta e per i corsi la prenotazione per più persone non c'è;
+- a posti esauriti la lista d'attesa resta per una persona alla volta.
+
+## Un altro socio ha prenotato per te
+
+Ricevi un'email. Nell'area soci, in **«Prossime prenotazioni»**, puoi scegliere:
+
+- **«Conferma»**: la prenotazione diventa tua, con le regole normali, e chi l'ha fatta non può più annullarla. Il contributo resta a suo carico.
+- **«Non partecipo»**: il posto si libera. Lo puoi fare fino all'inizio dell'evento. Per quella data nessun altro socio può prenotare per te.
+
+Se non vuoi che altri soci prenotino per te, togli la spunta **«Altri soci possono prenotare per me»** in **«Il mio profilo»**.
+
+Chi ha prenotato vede in **«Prenotazioni fatte per altri soci»** i prenotati con il numero di tessera e può usare **«Annulla prenotazione»** finché l'altro socio non conferma.
+
+## Per la segreteria
+
+- Nell'elenco dei prenotati, sotto il contributo, compare **«a carico di …»**.
+- Il contributo si incassa da chi ha prenotato: in **«Nuovo incasso»** scegli quella persona e trovi tra i suoi contributi anche le voci prenotate per altri, segnate **«· per Nome Cognome»**, senza altra conferma.
+- Se un socio si toglie e il contributo era già versato, la segreteria riceve un'email: la restituzione è a chi ha pagato.
+- Se chi partecipa vuole pagare il suo contributo, in **«Nuovo incasso»** scegli quella persona: il contributo compare in **«+ Contributo evento…»** con **«(a carico di Nome Cognome)»**, non si compila da solo e si aggiunge solo dopo una conferma. In quel caso paga chi partecipa e la parte incassata non è più dovuta da chi ha prenotato.
+- Nella ricevuta di chi paga, un altro socio compare con il numero di tessera.
+
+## Se qualcosa non va
+
+- Se leggi **«Non è stato possibile prenotare una delle persone indicate»**: controlla cognome e numero di tessera. Non è stata prenotata nessuna persona. Il motivo preciso non viene detto, per riservatezza.
+- Dopo alcuni tentativi sbagliati devi aspettare qualche minuto.
+- Se usi il Pro e non l'hai aggiornato, la sezione **«Altri soci»** non compare e in amministrazione vedi l'avviso **«Aggiorna Associazione Semplice Pro…»**: aggiorna il Pro.
+
+Per la prenotazione di una sola persona leggi [Prenotarsi a un evento o a un corso dal sito](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito).
+MD,
+    ],
+    [
         'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'listini-e-pacchetti-per-eventi-e-corsi',
         'title' => 'Listini e pacchetti di ingressi per eventi e corsi a date',
         'body' => <<<'MD'
