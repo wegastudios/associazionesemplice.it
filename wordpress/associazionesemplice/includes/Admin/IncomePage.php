@@ -81,6 +81,16 @@ final class IncomePage {
 				'amount'      => (int) $b['remaining'],
 			);
 		}
+		// Corsi a lezioni: quanto costa ogni mese, dal mese dell'incasso in poi (le lezioni cambiano da un mese all'altro)
+		$lesson_fees = array();
+		foreach ( Plugin::activities()->for_year( $sy ) as $ta ) {
+			if ( 'course' === $ta['kind'] && \AssociazioneSemplice\CourseMonths::applies( $ta ) ) {
+				for ( $k = -1; $k <= 3; $k++ ) {
+					$ym = gmdate( 'Y-m', strtotime( substr( $date, 0, 7 ) . '-01 ' . ( $k < 0 ? '' : '+' ) . $k . ' month' ) );
+					$lesson_fees[ (int) $ta['id'] ][ $ym ] = Plugin::activities()->course_month_fee( $ta, $person, $ym );
+				}
+			}
+		}
 		// Corsi a cui non è iscritta, con il primo mese in proporzione: si propone quanto pagherebbe iscrivendosi
 		$trial_fees = array();
 		$mine       = array_column( $acts, 'id' );
@@ -133,6 +143,7 @@ final class IncomePage {
 				'bookings'         => $bookings,
 				'covered'          => $covered,
 				'trial_fees'       => (object) $trial_fees,
+				'lesson_fees'      => (object) $lesson_fees,
 				'dues'             => $dues,
 				'membership'       => $m_plan,
 				'membership_has'   => Plugin::people()->has_membership( (int) $person['id'], $m_plan['year'] ),

@@ -50,8 +50,14 @@ const check = (name, got, exp) => { const ok = got === exp; if (!ok) bad++; line
     check('incasso, corso a mese intero', cents(await row.locator('input[aria-label="Importo"]').inputValue()), want.full.member);
     check('il corso a mese intero è intero', want.full.member, want.fee);
 
+    row = await amountOf(want.lessons.id);
+    check('incasso, corso a lezioni', cents(await row.locator('input[aria-label="Importo"]').inputValue()), want.lessons.now);
+    await row.locator('button', { hasText: '›' }).click();
+    row = page.locator('#asem-lines .asem-line').last();
+    check('incasso, corso a lezioni, mese dopo', cents(await row.locator('input[aria-label="Importo"]').inputValue()), want.lessons.next);
+
     // Schermate a due larghezze
-    const pages = { corso: 'asem-activity&id=' + want.share.id, impostazioni: 'asem-settings', incasso: 'asem-income&person_id=' + want.person, bacheca: 'asem' };
+    const pages = { 'corso-lezioni': 'asem-activity&id=' + want.lessons.id, corso: 'asem-activity&id=' + want.share.id, impostazioni: 'asem-settings', incasso: 'asem-income&person_id=' + want.person, bacheca: 'asem' };
     for (const w of [1440, 375]) {
       await page.setViewportSize({ width: w, height: 900 });
       for (const [name, slug] of Object.entries(pages)) {

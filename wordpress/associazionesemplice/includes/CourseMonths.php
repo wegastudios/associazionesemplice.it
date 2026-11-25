@@ -46,6 +46,11 @@ final class CourseMonths {
 
 	/** Le date fissate di un mese (null = non ancora fissato). @return string[]|null */
 	public static function fixed( int $activity_id, string $month ): ?array {
+		return self::months_of( $activity_id )[ $month ] ?? null;
+	}
+
+	/** @return array<string,string[]> */
+	private static function months_of( int $activity_id ): array {
 		if ( ! RequestMemo::has( 'course_months', $activity_id ) ) {
 			$map = array();
 			foreach ( self::db()->get_results( self::db()->prepare( 'SELECT month, dates FROM ' . Db::t( 'course_months' ) . ' WHERE activity_id = %d', $activity_id ), ARRAY_A ) ?: array() as $r ) {
@@ -53,7 +58,7 @@ final class CourseMonths {
 			}
 			RequestMemo::put( 'course_months', $activity_id, $map, array( Db::t( 'course_months' ) ) );
 		}
-		return RequestMemo::get( 'course_months', $activity_id )[ $month ] ?? null;
+		return RequestMemo::get( 'course_months', $activity_id );
 	}
 
 	/** Il mese si può scrivere? (mai in un anno fiscale chiuso) */
@@ -79,11 +84,64 @@ final class CourseMonths {
 		}
 		self::db()->query( self::db()->prepare( 'INSERT IGNORE INTO ' . Db::t( 'course_months' ) . ' (activity_id, month, dates, source, fixed_at) VALUES (%d, %s, %s, %s, %s)', $id, $month, implode( ',', $live ), $source, Db::now() ) );
 		RequestMemo::forget( 'course_months' );
-		return self::fixed( $id, $month ) ?? $live;
+		// Lettura che blocca: dentro una transazione quella normale può vedere un'istantanea vecchia, senza la riga appena scritta da un'altra richiesta.
+		$row = self::db()->get_var( self::db()->prepare( 'SELECT dates FROM ' . Db::t( 'course_months' ) . ' WHERE activity_id = %d AND month = %s FOR UPDATE', $id, $month ) );
+		if ( null === $row ) {
+			return $live;
+		}
+		$dates = array_values( array_filter( explode( ',', (string) $row ) ) );
+		$map   = self::months_of( $id );
+		RequestMemo::put( 'course_months', $id, array( $month => $dates ) + $map, array( Db::t( 'course_months' ) ) );
+		return $dates;
 	}
 
-	/** Le date di un mese: quelle fissate; dal giorno 1 in poi si fissa adesso, prima valgono quelle previste. @return string[] */
-	public static function dates( array $activity, string $month ): array {
+	/**
+	 * «Ricalcola il mese»: rifà le lezioni fissate con il calendario di adesso, solo se nessuno ha ancora versato per quel mese e l'anno fiscale è aperto.
+	 *
+	 * @return int quante lezioni adesso
+	 * @throws \InvalidArgumentException
+	 */
+	public static function recalc( int $activity_id, string $month ): int {
+		$a = Plugin::activities()->get( $activity_id );
+		if ( ! $a || ! self::applies( $a ) || ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $month ) ) {
+			throw new \InvalidArgumentException( 'Mese del corso non trovato.' );
+		}
+		YearLock::assert_date_open( $month . '-01' );
+		$n = 0;
+		Plugin::ledger()->in_batch( // la riga del corso si blocca come negli incassi: un incasso insieme non passa in mezzo
+			function () use ( $a, $activity_id, $month, &$n ) {
+				$db = self::db();
+				$db->get_var( $db->prepare( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE id = %d FOR UPDATE', $activity_id ) );
+				if ( self::paid( $activity_id, $month ) ) {
+					throw new \InvalidArgumentException( 'Qualcuno ha già versato per questo mese: le lezioni restano quelle fissate.' );
+				}
+				$old = self::fixed( $activity_id, $month );
+				if ( null === $old ) {
+					throw new \InvalidArgumentException( 'Le lezioni di questo mese non sono ancora fissate.' );
+				}
+				$db->delete( Db::t( 'course_month_dues' ), array( 'activity_id' => $activity_id, 'month' => $month ) );
+				$db->delete( Db::t( 'course_months' ), array( 'activity_id' => $activity_id, 'month' => $month ) );
+				RequestMemo::forget( 'course_months' );
+				RequestMemo::forget( 'course_dues' );
+				$n = count( self::fix( $a, $month, 'recalc' ) );
+				Audit::log( 'course.month_recalculated', 'activity', $activity_id, array( 'month' => $month, 'before' => count( $old ), 'after' => $n ) );
+			}
+		);
+		return $n;
+	}
+
+	/** Qualcuno ha versato per questo mese del corso? */
+	public static function paid( int $activity_id, string $month ): bool {
+		return (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE activity_id = %d AND type = 'income' AND voided_at IS NULL AND session_id IS NULL AND COALESCE(competence_month, DATE_FORMAT(tx_date, '%%Y-%%m')) = %s", $activity_id, $month ) ) > 0;
+	}
+
+	/** Le date di un mese senza scrivere nulla: quelle fissate o quelle previste. @return string[] */
+	public static function peek( array $activity, string $month ): array {
+		return self::fixed( (int) $activity['id'], $month ) ?? self::live( $activity, $month );
+	}
+
+	/** Le date di un mese per il dovuto di un iscritto: dal giorno 1 in poi si fissa adesso, prima valgono quelle previste. @return string[] */
+	private static function dates( array $activity, string $month ): array {
 		return $month . '-01' <= Db::today() ? self::fix( $activity, $month, 'read' ) : ( self::fixed( (int) $activity['id'], $month ) ?? self::live( $activity, $month ) );
 	}
 
@@ -111,7 +169,8 @@ final class CourseMonths {
 		if ( null !== self::fixed( $aid, $month ) && self::writable( $month ) ) {
 			self::db()->query( self::db()->prepare( 'INSERT IGNORE INTO ' . Db::t( 'course_month_dues' ) . ' (activity_id, person_id, month, price_cents, lessons, due_cents, created_at) VALUES (%d, %d, %s, %d, %d, %d, %s)', $aid, $pid, $month, $price, $n, $price * $n, Db::now() ) );
 			RequestMemo::forget( 'course_dues' );
-			return self::saved( $aid )[ $pid . '|' . $month ] ?? $price * $n;
+			$row = self::db()->get_var( self::db()->prepare( 'SELECT due_cents FROM ' . Db::t( 'course_month_dues' ) . ' WHERE activity_id = %d AND person_id = %d AND month = %s FOR UPDATE', $aid, $pid, $month ) ); // come in fix(): vale ciò che è scritto, non l'istantanea
+			return null === $row ? $price * $n : (int) $row;
 		}
 		return $price * $n;
 	}

@@ -107,6 +107,97 @@ asem_ok( 1 === $cl_fixed( $cl_d, '2031-06' ) && 0 === $cl_left( $cl_d, $cl_u, '2
 asem_ok( '' !== (string) asem_throws( function () use ( $cl_acts, $cl_d ) { $cl_acts->update( $cl_d, array( 'billing' => 'monthly' ) ); } ) && 'lessons' === $cl_acts->get( $cl_d )['billing'], 'a lezioni: con incassi il modo di pagamento non si cambia' );
 asem_ok( '' !== (string) asem_throws( function () use ( $cl_mk ) { $cl_mk( 'Senza orari', array( 'lesson_slots' => array() ) ); } ), 'a lezioni: servono i giorni delle lezioni' );
 
+// ---------- Due connessioni vere: la lettura dentro una transazione vede la riga dell'altra ----------
+$cl_g  = $cl_mk( 'Martedì, due connessioni' );
+$cl_g2 = $cl_man();
+$cl_acts->enroll( $cl_g, $cl_g2, '2031-06' );
+$cl_db2 = new wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST );
+$wpdb->query( 'SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ' );
+$wpdb->query( 'START TRANSACTION' );
+$wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'course_months' ) ); // da qui l'istantanea di questa transazione è ferma
+$wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'course_month_dues' ) );
+$cl_db2->query( $cl_db2->prepare( 'INSERT INTO ' . Db::t( 'course_months' ) . ' (activity_id, month, dates, source, fixed_at) VALUES (%d, %s, %s, %s, %s)', $cl_g, '2031-06', '2031-06-03,2031-06-10,2031-06-17', 'payment', Db::now() ) );
+$cl_db2->query( $cl_db2->prepare( 'INSERT INTO ' . Db::t( 'course_month_dues' ) . ' (activity_id, person_id, month, price_cents, lessons, due_cents, created_at) VALUES (%d, %d, %s, 1000, 3, 3000, %s)', $cl_g, $cl_g2, '2031-06', Db::now() ) );
+$cl_old   = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_months' ) . ' WHERE activity_id = %d', $cl_g ) );
+$cl_dates = CourseMonths::fix( $cl_acts->get( $cl_g ), '2031-06', 'payment' );
+$cl_here  = $cl_left( $cl_g, $cl_g2, '2031-06' );
+$wpdb->query( 'COMMIT' );
+asem_ok( 0 === $cl_old && 3 === count( $cl_dates ) && 3000 === $cl_here && 1 === $cl_fixed( $cl_g, '2031-06' ), 'a lezioni: due connessioni, l\'istantanea non vede la riga dell\'altra ma lezioni e dovuto sono i suoi (' . $cl_old . ', ' . count( $cl_dates ) . ', ' . $cl_here . ')' );
+
+// ---------- Ricalcola il mese: calendario sistemato dopo la prima apertura ----------
+Db::$today_fake = '2031-05-28';
+$cl_h  = $cl_mk( 'Martedì, calendario da sistemare' );
+$cl_h1 = $cl_man();
+$cl_acts->enroll( $cl_h, $cl_h1, '2031-05', '2031-05-01' );
+asem_ok( 4000 === $cl_due( $cl_h, $cl_h1, '2031-05' ) && 1 === $cl_fixed( $cl_h, '2031-05' ), 'a lezioni: la prima apertura fissa quattro lezioni' );
+$cl_acts->update( $cl_h, array( 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ), array( 'type' => 'weekly', 'day' => 5, 'start' => '18:00', 'end' => '19:00' ) ) ) );
+asem_ok( 4000 === $cl_due( $cl_h, $cl_h1, '2031-05' ) && 9 === CourseMonths::recalc( $cl_h, '2031-05' ) && 9000 === $cl_due( $cl_h, $cl_h1, '2031-05' ), 'a lezioni: «Ricalcola» rifà le lezioni con il calendario di adesso' );
+asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'course.month_recalculated' AND object_id = %d", $cl_h ) ), 'a lezioni: il ricalcolo resta nel registro azioni' );
+$cl_render = asem_render( array( \AssociazioneSemplice\Admin\ActivitiesPage::class, 'render_detail' ), 'Ricalcola', array( 'id' => $cl_h ) );
+$wpdb->insert( Db::t( 'transactions' ), array( 'tx_date' => '2031-05-28', 'type' => 'income', 'amount_cents' => 100, 'account_id' => (int) $cl_cash['id'], 'method' => 'cash', 'category_id' => Plugin::ledger()->category_id_of_kind( 'activity_fee' ), 'activity_id' => $cl_h, 'person_id' => $cl_h1, 'competence_month' => '2031-05', 'created_at' => Db::now() ) );
+$cl_tid = (int) $wpdb->insert_id;
+asem_ok( '' !== (string) asem_throws( function () use ( $cl_h ) { CourseMonths::recalc( $cl_h, '2031-05' ); } ), 'a lezioni: con un versamento non si ricalcola' );
+$wpdb->delete( Db::t( 'transactions' ), array( 'id' => $cl_tid ) );
+asem_ok( '' !== (string) asem_throws( function () use ( $cl_h ) { CourseMonths::recalc( $cl_h, '2031-06' ); } ) && '' !== (string) asem_throws( function () { CourseMonths::recalc( 0, '2031-05' ); } ), 'a lezioni: non si ricalcola un mese non fissato o un corso che non c\'è' );
+asem_ok( array( \AssociazioneSemplice\EmployeeRules::COURSES ) === \AssociazioneSemplice\Employees::activities_need( array( 'activity_id' => $cl_h ), 'asem_course_month_recalc' )['all'] && in_array( 'asem_course_month_recalc', \AssociazioneSemplice\EmployeeRules::activity_actions(), true ), 'a lezioni: «Ricalcola» chiede il permesso Corsi' );
+
+// ---------- Leggere senza un dovuto reale non scrive ----------
+$cl_i     = $cl_mk( 'Martedì, solo letture' );
+$cl_count = function () use ( $wpdb ): int {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'course_months' ) ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'course_month_dues' ) );
+};
+$cl_c0 = $cl_count();
+wp_set_current_user( 0 );
+foreach ( array( '2031-03', '2031-05', '2031-06' ) as $cl_mm ) {
+	$cl_acts->course_month_fee( $cl_acts->get( $cl_i ), array( 'id' => 0, 'type' => 'ordinary' ), $cl_mm );
+	CourseMonths::peek( $cl_acts->get( $cl_i ), $cl_mm );
+	CourseMonths::first_lesson( $cl_acts->get( $cl_i ), $cl_mm );
+}
+do_shortcode( '[associazionesemplice_attivita]' );
+wp_set_current_user( 1 );
+asem_render( array( \AssociazioneSemplice\Admin\ActivitiesPage::class, 'render_detail' ), 'Lezioni del mese', array( 'id' => $cl_i ) );
+asem_ok( $cl_c0 === $cl_count(), 'a lezioni: visite pubbliche, proposte e scheda senza iscritti non fissano nulla' );
+
+// ---------- Uscita a metà mese, passaggio da ospite a socio ----------
+$cl_j  = $cl_mk( 'Martedì, uscite', array( 'guest_fee_cents' => 1500 ) );
+$cl_j1 = $cl_man();
+$cl_acts->enroll( $cl_j, $cl_j1, '2031-05', '2031-05-01' );
+$cl_j2 = (int) Plugin::people()->create( array( 'type' => 'guest', 'host_person_id' => $cl_j1, 'first_name' => 'Ospite', 'last_name' => 'Lezione', 'phone' => '333 4440099' ) );
+$cl_acts->enroll( $cl_j, $cl_j2, '2031-05', '2031-05-01' );
+asem_ok( 4000 === $cl_due( $cl_j, $cl_j1, '2031-05' ) && 6000 === $cl_due( $cl_j, $cl_j2, '2031-05' ), 'a lezioni: socio e ospite, stesso numero di lezioni e prezzo diverso' );
+$wpdb->update( Db::t( 'enrollments' ), array( 'end_month' => '2031-05' ), array( 'activity_id' => $cl_j, 'person_id' => $cl_j1 ) );
+$wpdb->update( Db::t( 'people' ), array( 'type' => 'ordinary' ), array( 'id' => $cl_j2 ) );
+wp_cache_flush();
+Db::$today_fake = '2031-06-10';
+asem_ok( 4000 === $cl_due( $cl_j, $cl_j1, '2031-05' ) && 0 === $cl_due( $cl_j, $cl_j1, '2031-06' ), 'a lezioni: chi esce a fine maggio deve maggio e non giugno' );
+asem_ok( 6000 === $cl_due( $cl_j, $cl_j2, '2031-05' ) && 4000 === $cl_due( $cl_j, $cl_j2, '2031-06' ), 'a lezioni: da ospite a socio il mese fissato resta, il dopo cambia' );
+Db::$today_fake = '2031-05-28';
+
+// ---------- Rimborso e promemoria ----------
+$cl_rf = array( 'today' => '2031-05-14', 'now' => '10:00', 'held' => array( '2031-05-06', '2031-05-13' ), 'sessions' => array(), 'course' => $cl_acts->get( $cl_j ) );
+$cl_rm = array( 'amount_cents' => 4000, 'session_id' => 0, 'competence_month' => '2031-05', 'person_id' => $cl_j1 );
+asem_ok( 2000 === \AssociazioneSemplice\ActivityReset::refund_cents( $cl_rm, $cl_rf ), 'a lezioni: rimborso, due lezioni tenute su quattro' );
+LessonExceptions::cancel( $cl_j, '2031-05-20' );
+asem_ok( 2000 === \AssociazioneSemplice\ActivityReset::refund_cents( $cl_rm, $cl_rf ), 'a lezioni: rimborso sulle lezioni fissate, anche se il calendario cambia dopo' );
+$cl_k     = $cl_mk( 'Martedì, promemoria' );
+$cl_k1    = $cl_man();
+$wpdb->update( Db::t( 'people' ), array( 'email' => 'lezione.promemoria@example.com' ), array( 'id' => $cl_k1 ) );
+wp_cache_flush();
+$cl_acts->enroll( $cl_k, $cl_k1, '2031-05', '2031-05-01' );
+$cl_mails = array();
+$cl_hook  = function ( $r, $atts ) use ( &$cl_mails ) {
+	$cl_mails[] = wp_json_encode( $atts['to'], JSON_UNESCAPED_UNICODE ) . ' ' . $atts['message'];
+	return true;
+};
+add_filter( 'pre_wp_mail', $cl_hook, 1, 2 );
+$cl_set = array( 'reminders_enabled' => Settings::get( 'reminders_enabled' ), 'reminders_dues' => Settings::get( 'reminders_dues' ), 'reminders_membership' => Settings::get( 'reminders_membership' ), 'reminders_events' => Settings::get( 'reminders_events' ) );
+Settings::update( array( 'reminders_enabled' => 1, 'reminders_dues' => 1, 'reminders_membership' => 0, 'reminders_events' => 0 ) );
+\AssociazioneSemplice\Reminders::run( '2031-05-28' );
+Settings::update( $cl_set );
+remove_filter( 'pre_wp_mail', $cl_hook, 1 );
+$cl_got = implode( "\n", array_filter( $cl_mails, function ( $m ) { return false !== strpos( $m, 'lezione.promemoria' ); } ) );
+asem_ok( false !== strpos( $cl_got, '40,00' ) && 1 === $cl_fixed( $cl_k, '2031-06' ), 'a lezioni: il promemoria del mese dopo chiede le lezioni di quel mese e lo fissa' );
+
 // ---------- Anno fiscale chiuso: si legge, non si scrive ----------
 $cl_c  = $cl_mk( 'Martedì, anno chiuso' );
 $cl_v  = $cl_man();

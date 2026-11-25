@@ -342,7 +342,7 @@ final class ActivitiesPage {
 		} else {
 			self::course_left( $activity, $year, $back );
 			self::trials_card( $activity, $back );
-			self::months_card( $activity );
+			self::months_card( $activity, $back );
 			self::course_enrolled( $activity, $year, $back ); // gli iscritti restano nella prima colonna, sotto il modulo di iscrizione
 		}
 		echo '</div><div class="asem-col">';
@@ -837,21 +837,31 @@ final class ActivitiesPage {
 	}
 
 	/** Corso a lezioni: quante lezioni in questo mese e nel prossimo, e se il numero è già fissato. */
-	private static function months_card( array $activity ): void {
+	private static function months_card( array $activity, string $back ): void {
 		if ( ! \AssociazioneSemplice\CourseMonths::applies( $activity ) ) {
 			return;
 		}
 		$id = (int) $activity['id'];
 		$m  = substr( \AssociazioneSemplice\Db::today(), 0, 7 );
-		echo '<div class="asem-card"><h2>Lezioni del mese</h2><table class="asem-kv">';
+		echo '<div class="asem-card" id="asem-months"><h2>Lezioni del mese</h2><table class="asem-kv">';
+		$again = array();
 		foreach ( array( $m, gmdate( 'Y-m', strtotime( $m . '-01 +1 month' ) ) ) as $ym ) {
 			if ( ! in_array( $ym, \AssociazioneSemplice\SocialYear::from_label( (string) $activity['social_year'], \AssociazioneSemplice\Settings::start_month() )->months(), true ) ) {
 				continue;
 			}
-			$n = count( \AssociazioneSemplice\CourseMonths::dates( $activity, $ym ) );
+			$n = count( \AssociazioneSemplice\CourseMonths::peek( $activity, $ym ) );
+			if ( null !== \AssociazioneSemplice\CourseMonths::fixed( $id, $ym ) && ! \AssociazioneSemplice\CourseMonths::paid( $id, $ym ) && null === \AssociazioneSemplice\YearLock::closed_year_of( $ym . '-01' ) ) {
+				$again[] = $ym;
+			}
 			echo '<tr><td>' . esc_html( Ui::month( $ym ) ) . '</td><td>' . (int) $n . ( 1 === $n ? ' lezione' : ' lezioni' ) . ' · ' . esc_html( \AssociazioneSemplice\Money::format( $n * (int) $activity['fee_cents'] ) ) . ' <span class="description">' . ( null !== \AssociazioneSemplice\CourseMonths::fixed( $id, $ym ) ? 'fissato' : 'previsto, può cambiare' ) . '</span></td></tr>';
 		}
-		echo '</table><p class="description">Importi per chi paga il contributo base per tutto il mese.</p></div>';
+		echo '</table><p class="description">Importi per chi paga il contributo base per tutto il mese.</p>';
+		foreach ( $again as $ym ) {
+			Ui::form_open( 'asem_course_month_recalc', $back . '#asem-months', false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'month', $ym ) . '<button class="button" data-confirm="Rifare le lezioni di questo mese con il calendario di adesso? Cambia il dovuto degli iscritti.">Ricalcola ' . esc_html( Ui::month( $ym ) ) . '</button>', Html::allowed() );
+			Ui::form_close();
+		}
+		echo ( $again ? '<p class="description">Si può ricalcolare finché nessuno ha versato per quel mese.</p>' : '' ) . '</div>';
 	}
 
 	/** Giorni di prova gratuiti: si registrano qui; chi li ha fatti e chi si è poi iscritto. */

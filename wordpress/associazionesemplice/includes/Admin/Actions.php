@@ -84,6 +84,7 @@ final class Actions {
 			'asem_enroll'             => 'enroll',
 			'asem_trial_add'          => 'trial_add',
 			'asem_trial_remove'       => 'trial_remove',
+			'asem_course_month_recalc' => 'course_month_recalc',
 			'asem_enroll_variant'     => 'enroll_variant',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
 			'asem_stop_renewal'       => 'stop_renewal',
@@ -1177,6 +1178,13 @@ final class Actions {
 	private static function trial_remove( array $p ): array {
 		\AssociazioneSemplice\Trials::remove( (int) ( $p['trial_id'] ?? 0 ), (int) ( $p['activity_id'] ?? 0 ) );
 		return array( Ui::url( 'asem-activity', array( 'id' => (int) ( $p['activity_id'] ?? 0 ) ) ) . '#asem-trials', 'Prova tolta.' );
+	}
+
+	private static function course_month_recalc( array $p ): array {
+		$id = (int) ( $p['activity_id'] ?? 0 );
+		$m  = (string) ( $p['month'] ?? '' );
+		$n  = \AssociazioneSemplice\CourseMonths::recalc( $id, $m );
+		return array( Ui::url( 'asem-activity', array( 'id' => $id ) ) . '#asem-months', Ui::month( $m ) . ': ' . $n . ( 1 === $n ? ' lezione.' : ' lezioni.' ) );
 	}
 
 	/** Frase per chi iscrive una persona che ha già fatto la prova ('' se non l'ha fatta). */
