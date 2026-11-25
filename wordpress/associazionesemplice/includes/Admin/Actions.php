@@ -1497,12 +1497,21 @@ final class Actions {
 		if ( ! empty( $p['uninstall_present'] ) ) {
 			$ente['delete_on_uninstall'] = ! empty( $p['delete_on_uninstall'] ) ? 1 : 0;
 		}
+		$red  = array( 'patron_day' => $txt( 'patron_day' ), 'closures' => sanitize_textarea_field( $p['closures'] ?? '' ) );
+		$warn = '';
+		try { // una riga sbagliata non fa perdere gli altri campi: si salvano, e il testo scritto resta nel modulo da correggere
+			\AssociazioneSemplice\RedDays::clean_patron( $red['patron_day'] );
+			\AssociazioneSemplice\RedDays::parse_closures( $red['closures'] );
+			delete_transient( 'asem_red_draft_' . get_current_user_id() );
+		} catch ( \InvalidArgumentException $e ) {
+			$warn = ' Non salvati i giorni senza lezioni. ' . $e->getMessage();
+			set_transient( 'asem_red_draft_' . get_current_user_id(), $red, 10 * MINUTE_IN_SECONDS );
+			$red = array();
+		}
 		Settings::update(
-			$ente + array(
+			$ente + $red + array(
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
 				'family_discount_pct'     => (int) ( $p['family_discount_pct'] ?? 0 ),
-				'patron_day'              => $txt( 'patron_day' ),
-				'closures'                => sanitize_textarea_field( $p['closures'] ?? '' ),
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),
 				'guest_max_events'        => (int) ( $p['guest_max_events'] ?? 2 ),
 				'board_councillors'       => (int) ( $p['board_councillors'] ?? 7 ),
@@ -1519,12 +1528,8 @@ final class Actions {
 			}
 			Settings::update( $feat );
 		}
-		return array( Ui::url( 'asem-settings' ), 'Impostazioni salvate.' );
+		return array( Ui::url( 'asem-settings' ), 'Impostazioni salvate.' . $warn );
 	}
-
-
-
-
 
 	private static function transfer_booking( array $p ): array {
 		Plugin::activities()->transfer_booking( (int) $p['session_id'], (int) $p['person_id'], (int) ( $p['to_person_id'] ?? 0 ), false );

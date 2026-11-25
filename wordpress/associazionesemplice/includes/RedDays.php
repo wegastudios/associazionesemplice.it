@@ -5,7 +5,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Giorni senza lezione: festività nazionali (calcolate, nessun servizio esterno), patrono e chiusure dell'associazione.
- * Valgono solo per i corsi che lo scelgono (activities.red_days) e solo per le lezioni settimanali; una data unica l'ha scritta la segreteria apposta.
+ * Valgono solo per i corsi che lo scelgono (activities.red_days), dal giorno in cui lo scelgono (red_periods), e solo per le lezioni settimanali; una data
+ * unica l'ha scritta la segreteria apposta. Anche patrono e chiusure valgono da quando si salvano: le date passate non cambiano.
  */
 final class RedDays {
 
@@ -160,22 +161,109 @@ final class RedDays {
 		return $out;
 	}
 
-	/** I giorni senza lezione tra due date, con le impostazioni dell'associazione. @return array<string,string> data => motivo */
-	public static function in_range( string $from, string $to ): array {
-		return self::between( $from, $to, (string) Settings::get( 'patron_day' ), self::closures() );
+	/**
+	 * Regola pura: come {@see RedDays::between()}, ma ogni giorno segue patrono e chiusure in vigore quel giorno. Cambiarli oggi non tocca le date passate.
+	 *
+	 * @param array[] $history righe since, patron, closures (testo), dalla più vecchia; prima della prima: nessun patrono e nessuna chiusura
+	 * @return array<string,string> data => motivo
+	 */
+	public static function between_history( string $from, string $to, array $history ): array {
+		$out  = array();
+		$rows = array_merge( array( array( 'since' => '0000-01-01', 'patron' => '', 'closures' => '' ) ), array_values( $history ) );
+		foreach ( $rows as $i => $r ) {
+			$end = isset( $rows[ $i + 1 ] ) ? ( new \DateTimeImmutable( (string) $rows[ $i + 1 ]['since'] ) )->modify( '-1 day' )->format( 'Y-m-d' ) : $to;
+			$lo  = max( $from, (string) $r['since'] );
+			$hi  = min( $to, $end );
+			if ( $lo > $hi ) {
+				continue;
+			}
+			try {
+				$c = self::parse_closures( (string) $r['closures'] );
+			} catch ( \InvalidArgumentException $e ) {
+				$c = array();
+			}
+			$out += self::between( $lo, $hi, (string) $r['patron'], $c );
+		}
+		ksort( $out );
+		return $out;
 	}
 
-	/** Le chiusure salvate (testo rovinato = nessuna). @return array[] */
-	public static function closures(): array {
-		try {
-			return self::parse_closures( (string) Settings::get( 'closures' ) );
-		} catch ( \InvalidArgumentException $e ) {
-			return array();
+	/** Regola pura: la storia dopo aver salvato patrono e chiusure oggi. @return array[] */
+	public static function history_after( array $history, string $patron, string $closures, string $today ): array {
+		$history = array_values( array_filter( $history, function ( $r ) use ( $today ) {
+			return (string) ( $r['since'] ?? '' ) < $today;
+		} ) );
+		$last = $history ? end( $history ) : array( 'patron' => '', 'closures' => '' );
+		if ( (string) $last['patron'] !== $patron || (string) $last['closures'] !== $closures ) {
+			$history[] = array( 'since' => $today, 'patron' => $patron, 'closures' => $closures );
 		}
+		return $history;
+	}
+
+	/** La storia salvata. @return array[] */
+	public static function history(): array {
+		return self::decode_history( (string) Settings::get( 'red_history' ) );
+	}
+
+	/** @return array[] */
+	public static function decode_history( string $json ): array {
+		$list = json_decode( $json, true );
+		$out  = array();
+		foreach ( is_array( $list ) ? $list : array() as $r ) {
+			if ( is_array( $r ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/', (string) ( $r['since'] ?? '' ) ) ) {
+				$out[] = array( 'since' => (string) $r['since'], 'patron' => (string) ( $r['patron'] ?? '' ), 'closures' => (string) ( $r['closures'] ?? '' ) );
+			}
+		}
+		return $out;
+	}
+
+	/** I giorni senza lezione tra due date, con le impostazioni dell'associazione. @return array<string,string> data => motivo */
+	public static function in_range( string $from, string $to ): array {
+		return self::between_history( $from, $to, self::history() );
+	}
+
+	/**
+	 * Regola pura: i periodi in cui un corso salta i giorni festivi («dal:al,dal:», al escluso) dopo aver acceso o spento la scelta oggi.
+	 * Le date prima di oggi non cambiano.
+	 */
+	public static function periods_after( string $periods, bool $on, string $today ): string {
+		$list = array();
+		$open = false;
+		foreach ( array_filter( explode( ',', $periods ) ) as $p ) {
+			list( $f, $t ) = array_pad( explode( ':', $p, 2 ), 2, '' );
+			if ( '' === $t ) {
+				if ( $on ) {
+					$open = true;
+				} elseif ( $f < $today ) {
+					$t = $today;
+				} else {
+					continue; // acceso oggi e spento oggi
+				}
+			} elseif ( $on && ! $open && $t === $today ) { // spento oggi e riacceso oggi
+				$t    = '';
+				$open = true;
+			}
+			$list[] = $f . ':' . $t;
+		}
+		if ( $on && ! $open ) {
+			$list[] = $today . ':';
+		}
+		return implode( ',', $list );
+	}
+
+	/** Regola pura: quel giorno il corso salta i festivi? */
+	public static function in_periods( string $periods, string $date ): bool {
+		foreach ( array_filter( explode( ',', $periods ) ) as $p ) {
+			list( $f, $t ) = array_pad( explode( ':', $p, 2 ), 2, '' );
+			if ( $date >= $f && ( '' === $t || $date < $t ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Cambia quando cambiano patrono e chiusure: entra nelle chiavi delle letture ricordate. */
 	public static function signature(): string {
-		return md5( (string) Settings::get( 'patron_day' ) . '|' . (string) Settings::get( 'closures' ) );
+		return md5( (string) Settings::get( 'red_history' ) );
 	}
 }

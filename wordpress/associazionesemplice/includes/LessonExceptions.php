@@ -102,11 +102,26 @@ final class LessonExceptions {
 
 	/** La lezione si tiene anche se il giorno è festivo o di chiusura. @throws \InvalidArgumentException */
 	public static function keep( int $activity_id, string $date, string $note = '' ): void {
+		$a = Plugin::activities()->get( $activity_id );
+		if ( ! $a || ! self::valid_date( $date ) || ! isset( CourseCalendar::red_lessons( $a, $date, $date )[ $date ] ) ) {
+			throw new \InvalidArgumentException( 'In quel giorno non c\'è una lezione saltata per festività o chiusura.' );
+		}
 		self::save( $activity_id, $date, self::KEEP, '', '', '', $note );
 	}
 
-	/** Rimette la lezione com'era. */
+	/** Le lezioni di un anno fiscale chiuso non si cambiano: rimborsi e quote di quei mesi dipendono dal calendario. @throws \InvalidArgumentException */
+	private static function assert_open( string ...$dates ): void {
+		foreach ( $dates as $d ) {
+			if ( '' !== $d ) {
+				YearLock::assert_date_open( $d );
+			}
+		}
+	}
+
+	/** Rimette la lezione com'era. @throws \InvalidArgumentException */
 	public static function restore( int $activity_id, string $date ): void {
+		$moved = (string) self::db()->get_var( self::db()->prepare( 'SELECT new_date FROM ' . Db::t( 'lesson_exceptions' ) . ' WHERE activity_id = %d AND lesson_date = %s', $activity_id, $date ) );
+		self::assert_open( $date, $moved );
 		$n = self::db()->delete( Db::t( 'lesson_exceptions' ), array( 'activity_id' => $activity_id, 'lesson_date' => $date ) );
 		if ( $n ) {
 			Audit::log( 'lesson.restored', 'activity', $activity_id, array( 'date' => $date ) );
@@ -133,6 +148,7 @@ final class LessonExceptions {
 		if ( ! self::valid_time( $start ) || ! self::valid_time( $end ) ) {
 			throw new \InvalidArgumentException( 'Orario non valido (scrivi ore e minuti, ad esempio 18:30).' );
 		}
+		self::assert_open( $date, $new_date );
 		$row = array(
 			'activity_id' => $activity_id,
 			'lesson_date' => $date,

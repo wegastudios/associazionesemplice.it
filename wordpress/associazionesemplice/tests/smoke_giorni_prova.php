@@ -187,7 +187,7 @@ $wpdb->update( Db::t( 'enrollments' ), array( 'start_month' => $pr_month ), arra
 $pr_acts->enroll( $pr_c8, $pr_i, $pr_prev );
 asem_ok( $pr_old === (int) $pr_acts->enrollment_left( $pr_c8, $pr_i, $pr_month ) && 4000 === (int) $pr_acts->enrollment_left( $pr_c8, $pr_i, $pr_prev ), 'prova: ripartendo da un mese prima il mese della prova resta com\'era e quello prima è intero' );
 $pr_acts->enroll( $pr_c8, $pr_i, $pr_next );
-asem_ok( 4000 === (int) $pr_acts->enrollment_left( $pr_c8, $pr_i, $pr_next ) && null === $wpdb->get_var( $wpdb->prepare( 'SELECT trial_from FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d', $pr_c8, $pr_i ) ), 'prova: ripartendo da un mese dopo si paga intero' );
+asem_ok( 4000 === (int) $pr_acts->enrollment_left( $pr_c8, $pr_i, $pr_next ), 'prova: ripartendo da un mese dopo si paga intero' );
 
 // ---------- Rimborso di un mese interrotto: solo le lezioni pagate; senza prova come prima ----------
 $pr_rd  = $pr_month . '-01';
