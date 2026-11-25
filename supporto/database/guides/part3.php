@@ -413,6 +413,8 @@ Se non vuoi che altri soci prenotino per te, togli la spunta **«Altri soci poss
 - Nell'elenco dei prenotati, sotto il contributo, compare **«a carico di …»**.
 - Il contributo si incassa da chi ha prenotato: in **«Nuovo incasso»** scegli quella persona e trovi anche le voci prenotate per altri.
 - Se un socio si toglie e il contributo era già versato, la segreteria riceve un'email: la restituzione è a chi ha pagato.
+- Se chi partecipa vuole pagare il suo contributo, in **«Nuovo incasso»** scegli quella persona: la voce è segnata **«a carico di …»** e si aggiunge solo dopo una conferma.
+- Nella ricevuta di chi paga, un altro socio compare con il numero di tessera.
 
 ## Se qualcosa non va
 
