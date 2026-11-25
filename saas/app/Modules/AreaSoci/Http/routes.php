@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\AreaSoci\Http\Controllers\AccessController;
+use App\Modules\AreaSoci\Http\Controllers\DemoMemberEntryController;
 use App\Modules\AreaSoci\Http\Controllers\MemberAreaController;
 use App\Modules\AreaSoci\Http\Controllers\MemberPaymentsController;
 use App\Modules\AreaSoci\Http\Controllers\MemberResourcesController;
@@ -20,6 +21,8 @@ $memberArea = function (): void {
     Route::get('/accesso', [AccessController::class, 'show'])->name('member.login');
     Route::post('/accesso', [AccessController::class, 'request'])->name('member.login.request');
     Route::post('/accesso/codice', [AccessController::class, 'code'])->name('member.login.code');
+    // Solo demo (DemoEnvironment::memberEntryOpen): altrove il controller risponde 404. Nessun dato arriva dalla richiesta.
+    Route::post('/accesso/demo', DemoMemberEntryController::class)->name('member.login.demo');
     Route::get('/entra/{token}', [AccessController::class, 'linkPage'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.login.link');
     Route::post('/entra/{token}', [AccessController::class, 'link'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.login.link.enter');
     Route::get('/verifica/{person}', [MemberAreaController::class, 'verify'])->whereUuid('person')->middleware('signed')->name('member.verify');

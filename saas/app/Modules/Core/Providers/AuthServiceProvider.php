@@ -13,6 +13,7 @@ use App\Modules\Core\Auth\PasswordRules;
 use App\Modules\Core\Auth\SamePasswordResetLinkResponse;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
+use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Demo\DemoEnvironment;
 use App\Modules\Core\Http\Middleware\EnforceSessionLimits;
 use App\Modules\Core\Models\User;
@@ -58,7 +59,7 @@ final class AuthServiceProvider extends ServiceProvider
                 return redirect()->away(rtrim(is_string($public) && $public !== '' ? $public : 'https://associazionesemplice.it', '/').'/accedi');
             }
 
-            return Inertia::render('Auth/Login', ['status' => session('status'), 'demoAccounts' => DemoEnvironment::credentials()]);
+            return Inertia::render('Auth/Login', ['status' => session('status'), 'demoAccounts' => DemoEnvironment::credentials(), 'demoMember' => DemoScale::memberEntryOpen()]);
         });
         Fortify::twoFactorChallengeView(static fn () => Inertia::render('Auth/TwoFactorChallenge', ['status' => session('status')]));
         Fortify::requestPasswordResetLinkView(static fn () => Inertia::render('Auth/ForgotPassword', [

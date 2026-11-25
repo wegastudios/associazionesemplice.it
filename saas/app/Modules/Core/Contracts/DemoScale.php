@@ -98,6 +98,34 @@ final class DemoScale
         return filter_var(config('saas.demo.enabled'), FILTER_VALIDATE_BOOLEAN) && app()->environment(self::ENVIRONMENT);
     }
 
+    /** Quanto dura la sessione del socio d'esempio nella demo (mai «ricordami»). */
+    public const MEMBER_SESSION_MINUTES = 60;
+
+    /**
+     * Email del socio d'esempio che la demo apre con «Entra come socio»: il primo socio inventato (DemoMembers: socio001,
+     * un fondatore con la tessera sempre valida). La sceglie solo il server, mai la richiesta.
+     */
+    public static function memberEmail(): string
+    {
+        $domain = config('saas.demo.mail_domain');
+
+        return 'socio001@'.(is_string($domain) ? $domain : 'demo.example.test');
+    }
+
+    /**
+     * «Entra come socio» esiste solo con SAAS_DEMO acceso E APP_ENV=demo (active()), e solo sull'associazione della demo:
+     * altrove (staging, locale, produzione, altre associazioni) non c'è. Senza slug vale solo il controllo dell'ambiente.
+     */
+    public static function memberEntryOpen(?string $orgSlug = null): bool
+    {
+        if (! self::active()) {
+            return false;
+        }
+        $slug = config('saas.demo.org_slug');
+
+        return $orgSlug === null || $orgSlug === (is_string($slug) ? $slug : 'polisportiva-demo');
+    }
+
     /** Nella demo gli accessi sono pubblici: le modifiche che restano per tutti sono spente. */
     public static function restricted(): bool
     {

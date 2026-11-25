@@ -10,6 +10,8 @@ defineProps({
     status: { type: String, default: null },
     // Solo sulla demo: gli accessi pubblici per ruolo, con la password in chiaro (dati inventati).
     demoAccounts: { type: Array, default: () => [] },
+    // Solo sulla demo: l'accesso di prova dei soci sta nella pagina d'accesso dell'area soci.
+    demoMember: { type: Boolean, default: false },
 });
 
 const form = useForm({ email: '', password: '', remember: false });
@@ -35,6 +37,10 @@ const submit = () => form.post('/accesso', { onFinish: () => form.reset('passwor
                     <button type="button" class="font-semibold text-accent hover:underline" @click="useAccount(account)">Usa</button>
                 </li>
             </ul>
+            <p v-if="demoMember" class="mt-3 border-t border-line pt-3">
+                <a href="/area/accesso" class="btn btn-secondary btn-sm">Entra come socio</a>
+                <span class="caption mt-1 block">Apre l'area soci con un socio inventato, senza email né codice.</span>
+            </p>
         </section>
         <form class="space-y-5" novalidate @submit.prevent="submit">
             <FormField id="email" label="Email" :error="form.errors.email">
