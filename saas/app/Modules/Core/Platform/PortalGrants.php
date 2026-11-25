@@ -22,6 +22,7 @@ final class PortalGrants
         'saas_orgs' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
         'releases' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
         'mail_outbox' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+        'saas_usage' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
         'downloads' => ['SELECT', 'INSERT', 'DELETE'],
         'saas_outbox' => ['SELECT', 'INSERT', 'UPDATE'],
         'settings' => ['SELECT', 'INSERT', 'DELETE'],

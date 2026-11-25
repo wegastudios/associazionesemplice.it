@@ -277,16 +277,16 @@ it('CREATE sul database si toglie solo con una voce diretta del proprietario, al
 
 /**
  * Ruolo del portale di prova: LOGIN, membro del gruppo, con i permessi diretti dell'elenco `PortalGrants`; il gruppo ha
- * tutto sulle tabelle dello schema portal e di audit. La tabella mail_outbox, se manca (la crea il portale), si crea per la prova.
+ * tutto sulle tabelle dello schema portal e di audit. Le tabelle mail_outbox e saas_usage, se mancano (le crea il portale), si creano per la prova.
  */
 function withTestPortalRole(Connection $owner, Connection $admin, string $group, Closure $test): void
 {
     $portal = 'zz_portale_prova';
-    $createdTable = $owner->selectOne("SELECT to_regclass('portal.mail_outbox') AS t")->t === null;
+    $created = array_values(array_filter(['mail_outbox', 'saas_usage'], static fn (string $t): bool => $owner->selectOne("SELECT to_regclass('portal.{$t}') AS t")->t === null));
     $admin->statement("CREATE ROLE {$portal} LOGIN");
     try {
-        if ($createdTable) {
-            $owner->statement('CREATE TABLE portal.mail_outbox (id text PRIMARY KEY)');
+        foreach ($created as $table) {
+            $owner->statement("CREATE TABLE portal.{$table} (id text PRIMARY KEY)");
         }
         $admin->statement("GRANT {$group} TO {$portal}");
         $owner->statement("GRANT ALL ON ALL TABLES IN SCHEMA portal TO {$group}");
@@ -295,8 +295,8 @@ function withTestPortalRole(Connection $owner, Connection $admin, string $group,
 
         $test($portal);
     } finally {
-        if ($createdTable) {
-            $owner->statement('DROP TABLE IF EXISTS portal.mail_outbox');
+        foreach ($created as $table) {
+            $owner->statement("DROP TABLE IF EXISTS portal.{$table}");
         }
         $admin->statement("DROP OWNED BY {$portal}");
         $admin->statement("DROP ROLE {$portal}");
