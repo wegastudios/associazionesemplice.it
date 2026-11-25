@@ -23,13 +23,13 @@ final class PortalGrants
         'saas_orgs' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
         'releases' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
         'mail_outbox' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-        'saas_usage' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+        'saas_usage' => ['SELECT', 'INSERT', 'UPDATE'],
         'downloads' => ['SELECT', 'INSERT', 'DELETE'],
         'saas_outbox' => ['SELECT', 'INSERT', 'UPDATE'],
         'settings' => ['SELECT', 'INSERT', 'DELETE'],
         'email_templates' => ['SELECT', 'INSERT', 'DELETE'],
         'audit' => ['SELECT', 'INSERT'],
-        'events' => ['INSERT', 'DELETE'],
+        'events' => ['SELECT', 'INSERT', 'DELETE'],
     ];
 
     /** Tutti i permessi di una tabella: quelli fuori dall'elenco si tolgono al ruolo del portale. */
@@ -92,7 +92,9 @@ final class PortalGrants
             WHERE n.nspname = {$schema} AND c.relkind IN ('r', 'p') AND r.rolname = {$r} AND c.relowner <> r.oid AND a.grantee = r.oid
             SQL) as $row) {
             $row = (array) $row;
-            $direct[(string) $row['t']][] = (string) $row['p'];
+            if (is_string($row['t'] ?? null) && is_string($row['p'] ?? null)) {
+                $direct[$row['t']][] = $row['p'];
+            }
         }
         $tables = $db->select("SELECT c.relname AS t FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = {$schema} AND c.relkind IN ('r', 'p') AND c.relowner <> (SELECT oid FROM pg_roles WHERE rolname = {$r}) ORDER BY 1");
         foreach ($tables as $row) {
@@ -167,7 +169,8 @@ final class PortalGrants
                     WHERE s.nspname = '{$schema}' AND NOT EXISTS (SELECT 1 FROM aclexplode(s.nspacl) a WHERE a.grantee = r.oid AND a.privilege_type = 'USAGE')
                 ) AS c
                 SQL);
-            if ((int) (((array) $missing)['c'] ?? 1) > 0) {
+            $count = ((array) $missing)['c'] ?? 1;
+            if (! is_numeric($count) || (int) $count > 0) {
                 throw new RuntimeException('permessi diretti del portale non concessi: nessuna modifica');
             }
 
