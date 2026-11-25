@@ -16,6 +16,9 @@ final class PortalGrants
 {
     public const SCHEMA = 'portal';
 
+    /** Tutti i permessi di una tabella: quelli fuori dall'elenco si tolgono al ruolo del portale. */
+    private const ALL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
+
     /**
      * Tabella => permessi diretti, dal file `portal-grants.json` accanto a questa classe: lo stesso file lo legge la prova
      * del portale con il ruolo ristretto (portale/tests), così l'elenco ha una sola fonte.
@@ -41,10 +44,6 @@ final class PortalGrants
 
         return $tables;
     }
-
-
-    /** Tutti i permessi di una tabella: quelli fuori dall'elenco si tolgono al ruolo del portale. */
-    private const ALL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
 
     /** Nome del ruolo valido per l'SQL, altrimenti stringa vuota. */
     public static function validRole(mixed $role): string
