@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
 final class MemberLoginPage {
 
 	const SENT    = 'Se l\'email è di un socio ti abbiamo scritto: apri il link che trovi nell\'email (controlla anche la posta indesiderata).';
-	const FAIL    = 'Email, codice o password non corretti. Controlla e riprova, oppure premi «Mandami un link» per entrare senza password.';
+	const FAIL    = 'Email, codice o password non corretti. Controlla e riprova, oppure premi «Mandami un link» per entrare senza password. Se lavori in segreteria o nello staff, usa il link «Segreteria e staff».';
 	const BLOCKED = 'Troppi tentativi da questa connessione. Aspetta un\'ora e riprova, oppure chiedi aiuto alla segreteria.';
 	const NOT_FROM_PAGE = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
 
