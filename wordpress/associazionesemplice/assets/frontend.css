@@ -461,3 +461,10 @@
 .asemf .asemf-grid .asemf-btn { padding: .45em 1em; white-space: nowrap; max-width: 100%; box-sizing: border-box; text-align: center; } /* il pulsante del tema (wp-element-button) ha spesso un riempimento largo: nella scheda resta quello del plugin */
 .asemf .asemf-grid .asemf-list > li { min-height: 0; padding: .5rem 0; gap: .25rem; }
 .asemf .asemf-grid .asemf-sessions .asemf-small { line-height: 1.35; }
+
+/* Prenotazione per più persone: riepilogo e modulo su una riga loro, sotto «Prenota» */
+.asemf-group, .asemf-group-recap { flex: 1 0 100%; width: 100%; max-width: 100%; box-sizing: border-box; }
+.asemf-group fieldset { border: 1px solid #d5d8e6; border-radius: 12px; padding: .75rem 1rem; margin: 0 0 1rem; min-width: 0; }
+.asemf-group legend { padding: 0 .4rem; font-weight: 600; }
+.asemf-for-me .asemf-inline { margin: .5rem .5rem 0 0; }
+.asemf-for-me .asemf-inline + .asemf-inline .asemf-btn { background: transparent; color: inherit; border: 1px solid currentColor; }
