@@ -165,22 +165,7 @@ final class ActivityReset {
 
 	/** Date delle lezioni di un corso tra due giorni, dal calendario settimanale meno quelle annullate e con quelle spostate. @return string[] */
 	public static function course_dates( array $a, string $from, string $to ): array {
-		$dates = array();
-		foreach ( ActivityService::lessons( $a ) as $s ) {
-			if ( 'single' === $s['type'] ) {
-				$dates[] = (string) $s['date'];
-				continue;
-			}
-			$lo = max( $from, (string) ( $s['from'] ?: ( $a['starts_on'] ?: $from ) ) );
-			$hi = min( $to, (string) ( $s['until'] ?: ( $a['ends_on'] ?: $to ) ) );
-			if ( $lo > $hi ) {
-				continue;
-			}
-			foreach ( Schedule::weekly_dates( $lo, $hi, (int) $s['day'] ) as $d ) {
-				$dates[] = $d;
-			}
-		}
-		return LessonExceptions::adjust_dates( array_values( array_unique( $dates ) ), LessonExceptions::between( $from, $to, (int) $a['id'] ), $from, $to );
+		return CourseCalendar::dates( $a, $from, $to, true ); // qui le date uniche si leggono tutte, anche fuori dal periodo
 	}
 
 	/**

@@ -71,9 +71,7 @@ final class Calendar {
 					}
 					continue;
 				}
-				$first = max( $from, $slot['from'] ?: $base0 );
-				$last  = min( $to, $slot['until'] ?: $base1 );
-				foreach ( self::weekly_dates( $first, $last, (int) $slot['day'] ) as $d ) {
+				foreach ( CourseCalendar::slot_dates( $slot, $from, $to, $base0, $base1 ) as $d ) {
 					if ( ! empty( $skip[ (int) $a['id'] ][ $d ] ) ) {
 						continue; // lezione annullata o spostata
 					}
@@ -170,19 +168,7 @@ final class Calendar {
 
 	/** Date comprese tra $from e $to che cadono nel giorno della settimana indicato (1 = lunedì … 7 = domenica). @return string[] */
 	public static function weekly_dates( string $from, string $to, int $weekday ): array {
-		$out = array();
-		if ( $from > $to || $weekday < 1 || $weekday > 7 ) {
-			return $out;
-		}
-		$d     = new \DateTimeImmutable( $from );
-		$delta = ( $weekday - (int) $d->format( 'N' ) + 7 ) % 7;
-		$d     = $d->modify( '+' . $delta . ' days' );
-		$end   = new \DateTimeImmutable( $to );
-		while ( $d <= $end ) {
-			$out[] = $d->format( 'Y-m-d' );
-			$d     = $d->modify( '+7 days' );
-		}
-		return $out;
+		return Schedule::weekly_dates( $from, $to, $weekday );
 	}
 
 	// ---------- Collegamento a Google Calendar ----------

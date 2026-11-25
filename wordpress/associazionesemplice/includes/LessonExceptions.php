@@ -74,9 +74,7 @@ final class LessonExceptions {
 			if ( (int) $s['day'] !== $day ) {
 				continue;
 			}
-			$lo = max( $date, (string) ( $s['from'] ?: $date ) );
-			$hi = min( $last, (string) ( $s['until'] ?: $last ) );
-			foreach ( Schedule::weekly_dates( $lo, $hi, $day ) as $d ) {
+			foreach ( CourseCalendar::slot_dates( $s, $date, $last ) as $d ) {
 				$all[] = $d;
 			}
 		}

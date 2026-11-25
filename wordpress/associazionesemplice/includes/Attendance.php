@@ -15,25 +15,11 @@ final class Attendance {
 
 	/** Date in cui si tiene l'attività tra $from e $to (incluse): lezioni dei corsi o date degli eventi (non annullate). @return string[] */
 	public static function lesson_dates( array $a, string $from, string $to ): array {
-		$dates = array();
 		if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
 			$rows = self::db()->get_col( self::db()->prepare( 'SELECT session_date FROM ' . Db::t( 'sessions' ) . ' WHERE activity_id = %d AND cancelled_at IS NULL AND session_date BETWEEN %s AND %s ORDER BY session_date', (int) $a['id'], $from, $to ) ) ?: array();
 			return array_values( array_unique( array_map( 'strval', $rows ) ) );
 		}
-		foreach ( ActivityService::lessons( $a ) as $s ) {
-			if ( 'single' === $s['type'] ) {
-				if ( $s['date'] >= $from && $s['date'] <= $to ) {
-					$dates[] = $s['date'];
-				}
-				continue;
-			}
-			$lo = max( $from, (string) ( $s['from'] ?: ( $a['starts_on'] ?: $from ) ) );
-			$hi = min( $to, (string) ( $s['until'] ?: ( $a['ends_on'] ?: $to ) ) );
-			foreach ( Schedule::weekly_dates( $lo, $hi, (int) $s['day'] ) as $d ) {
-				$dates[] = $d;
-			}
-		}
-		return LessonExceptions::adjust_dates( array_values( array_unique( $dates ) ), LessonExceptions::between( $from, $to, (int) $a['id'] ), $from, $to ); // lezioni annullate o spostate
+		return CourseCalendar::dates( $a, $from, $to );
 	}
 
 	public static function is_lesson_date( array $a, string $date ): bool {
