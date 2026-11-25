@@ -87,7 +87,7 @@ final readonly class MemberAreaController
         try {
             $this->profiles->regenerateCardCode($this->current->active());
         } catch (PeopleError $e) {
-            throw ValidationException::withMessages(['card' => $e->getMessage()]);
+            throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
         return back()->with('status', 'Codice rigenerato: quello vecchio non vale più.');
