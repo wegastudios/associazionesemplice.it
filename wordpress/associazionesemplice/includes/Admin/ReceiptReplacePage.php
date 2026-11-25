@@ -45,7 +45,7 @@ final class ReceiptReplacePage {
 		$total = 0;
 		foreach ( $rows as $r ) {
 			$total += (int) $r['amount_cents'];
-			echo '<tr><td>' . esc_html( Receipts::describe( $r, $payer ) ) . '</td><td style="text-align:right">' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td></tr>';
+			echo '<tr><td>' . esc_html( Receipts::describe( $r, $payer, false ) ) . '</td><td style="text-align:right">' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td></tr>';
 		}
 		echo '<tr><th>Totale</th><th style="text-align:right">' . esc_html( Money::format( $total ) ) . '</th></tr></tbody></table>';
 		echo '<p class="description">La nuova ricevuta ha un numero nuovo (nella serie dell\'anno di oggi), porta la data di oggi e i dati di oggi di chi ha pagato e dell\'associazione, e riporta la scritta «sostituisce la ricevuta n. ' . esc_html( $label ) . ' annullata il …».</p>';

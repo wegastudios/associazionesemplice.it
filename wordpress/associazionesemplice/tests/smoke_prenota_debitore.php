@@ -151,6 +151,30 @@ if ( class_exists( '\AssociazioneSemplice\DoorSales' ) ) {
 
 // ---------- Attestazione annuale: vale il pagante, come per ogni incasso pagato da un altro ----------
 if ( class_exists( '\AssociazioneSemplice\Receipts' ) ) {
+	// Nel documento di chi paga l'altro socio è il numero di tessera (fissato nell'istantanea); in segreteria e in prima nota resta il nome
+	list( $gd_a10, $gd_s10 ) = $gb_event( 'Debitore ricevuta', 10, 800 );
+	$gb_acts->book_many( $gd_s10, array( $gb_gino ), $gb_booker, array() );
+	$gd_receipt( $gb_booker, $gb_gino, $gd_a10, $gd_s10, 800 );
+	$gd_r10  = $gd_tx( $gd_s10, $gb_gino )[0];
+	$gd_line = \AssociazioneSemplice\Receipts::rows( \AssociazioneSemplice\Receipts::key_of( $gd_r10 ) );
+	$gd_pay  = $gb_peo->get( $gb_booker );
+	$gd_txt  = \AssociazioneSemplice\Receipts::describe( $gd_line[0], $gd_pay );
+	asem_ok( false !== strpos( $gd_txt, 'per socio con tessera n. 7002' ) && false === strpos( $gd_txt, 'Gino' ), 'debitore: nella ricevuta l\'altro socio è il numero di tessera: ' . $gd_txt );
+	asem_ok( false !== strpos( \AssociazioneSemplice\Receipts::describe( $gd_line[0], $gd_pay, false ), 'Gino Socio' ), 'debitore: per la segreteria resta il nome' );
+	$gd_cap = new \ReflectionMethod( \AssociazioneSemplice\Receipts::class, 'capture' );
+	$gd_cap->setAccessible( true );
+	$gd_snap = (string) wp_json_encode( $gd_cap->invoke( null, $gd_line, array( 'number' => 1, 'year' => (int) gmdate( 'Y' ) ) ) );
+	asem_ok( false !== strpos( $gd_snap, 'tessera n. 7002' ) && false === strpos( $gd_snap, 'Gino' ), 'debitore: l\'istantanea della ricevuta porta la tessera e non il nome' );
+	$wpdb->delete( Db::t( 'bookings' ), array( 'session_id' => $gd_s10, 'person_id' => $gb_gino ) );
+	asem_ok( false === strpos( \AssociazioneSemplice\Receipts::describe( $gd_line[0], $gd_pay ), 'Gino' ), 'debitore: anche senza più la prenotazione il nome non compare nell\'attestazione' );
+	// Ospite di chi paga, e incasso per un altro socio che si era prenotato da sé: col nome, come sempre
+	$gd_og = \AssociazioneSemplice\Receipts::rows( \AssociazioneSemplice\Receipts::key_of( $gd_g ) );
+	asem_ok( false !== strpos( \AssociazioneSemplice\Receipts::describe( $gd_og[0], $gd_pay ), 'per Olga Ospite' ), 'debitore: nella ricevuta l\'ospite di chi paga resta col nome' );
+	list( $gd_a11, $gd_s11 ) = $gb_event( 'Debitore cassa per altri', 10, 800 );
+	$gb_acts->book( $gd_s11, $gb_rina );
+	$gd_receipt( $gb_booker, $gb_rina, $gd_a11, $gd_s11, 800 );
+	$gd_l11 = \AssociazioneSemplice\Receipts::rows( \AssociazioneSemplice\Receipts::key_of( $gd_tx( $gd_s11, $gb_rina )[0] ) );
+	asem_ok( false !== strpos( \AssociazioneSemplice\Receipts::describe( $gd_l11[0], $gd_pay ), 'per Rina Socia' ), 'debitore: senza prenotazione di gruppo la ricevuta non cambia' );
 	$gd_keys = array_column( \AssociazioneSemplice\Receipts::list_for_payer( $gb_gino, 200 ), 'cents' );
 	asem_ok( $gb_booker === (int) \AssociazioneSemplice\Receipts::payer( array( $gd_rows[0] ) )['id'] && array( 800 ) === array_map( 'intval', $gd_keys ), 'debitore: le ricevute sono di chi ha pagato; all\'altro socio resta solo quella che ha pagato da sé' );
 }
