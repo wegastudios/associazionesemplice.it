@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.38
+Stable tag: 1.3.39
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -63,6 +63,15 @@ The front-end style sheet and script (`assets/frontend.css` and `assets/frontend
 
 == Changelog ==
 
+= 1.3.39 =
+* Nuovo: dall'area soci si prenota un evento per più persone in un solo modulo: per sé, ospiti (anche nuovi), minori e altri soci con cognome e numero di tessera. Prima di confermare si vede il totale; si prenotano tutti o nessuno.
+* Nuovo: se un altro socio prenota per te ricevi un'email e puoi confermare o toglierti fino all'inizio; dal profilo scegli se permetterlo. Il contributo è a carico di chi prenota.
+* Sicurezza: i tentativi di prenotare altri soci hanno un limite, modificabile in Limiti e soglie.
+* Altro: in «Nuovo incasso» e negli elenchi si vede a carico di chi è il contributo.
+Da fare dopo l'aggiornamento:
+* Se usi il Pro, aggiorna anche quello: fino ad allora la prenotazione per altri soci non si offre.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 = 1.3.38 =
 * Altro: nelle pagine di segreteria e tesoriere chi non ha fatto l'accesso trova l'accesso dello staff e poi torna alla pagina di partenza.
 * Altro: nel modulo di accesso dei soci c'è il collegamento «Segreteria e staff».
@@ -94,20 +103,6 @@ Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/change
 = 1.3.34 =
 * Sicurezza: la domanda di adesione fatta dal sito si conferma dall'email: arriva alla segreteria solo dopo il clic sul link (vale 48 ore; un invio all'ora per indirizzo).
 * Altro: le domande mai confermate si cancellano dopo 30 giorni; di una domanda respinta con quota pagata, dopo 90 giorni restano solo nome e cognome (i movimenti contabili restano).
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.33 =
-* Sicurezza: chi è sospeso o ha lasciato l'associazione non entra più nell'area soci. Un ex socio tutore di un minorenne ancora socio entra solo per il figlio: lo vede, prenota e paga per lui.
-* Sicurezza: nuovo permesso dei dipendenti «Vedere dati riservati ed esportare»: senza, non si vedono codice fiscale e note dei soci e non si esporta. I dipendenti già presenti restano come sono.
-* Sicurezza: un incasso registrato a mano non può superare quanto resta da pagare, e un doppio clic non lo registra due volte.
-* Altro: «Quota attività / corso» ora si chiama «Contributo attività / corso».
-Da fare dopo l'aggiornamento:
-* I dipendenti che aggiungi da ora partono senza il permesso «Vedere dati riservati ed esportare»: dallo a chi deve vedere i codici fiscali o esportare.
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.32 =
-* Nuovo: invito a donare («Non puoi partecipare? Sostienici con una donazione»), da accendere dove serve: pagina dell'evento o del corso, conferma dell'iscrizione, area soci, email ai soci.
-* Altro: la pagina Donazioni spiega meglio come ricevere le donazioni con PayPal, mandare la ricevuta e registrarle in Prima nota.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 

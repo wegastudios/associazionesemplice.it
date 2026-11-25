@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.24
+Stable tag: 1.3.25
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,11 @@ The Apple Wallet pass is built on your server and downloaded by the member: the 
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.3.25 =
+* Nuovo: pagamenti online, ricevute e cassa riconoscono chi paga le prenotazioni fatte per altri.
+* Altro: richiede Associazione Semplice 1.3.39 o successiva.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.24 =
 * Altro: con una versione meno recente di Associazione Semplice il Pro si sospende e avvisa, invece di dare errore.
