@@ -1082,6 +1082,9 @@ final class Backup {
 		if ( ! isset( $m['tables']['asem_member_auth'] ) ) {
 			$tables_wipe[] = 'asem_member_auth'; // una copia senza le password: quelle di adesso erano legate alle persone di prima, si svuotano
 		}
+		if ( ! isset( $m['tables']['asem_trials'] ) ) {
+			$tables_wipe[] = 'asem_trials'; // copia di prima delle prove gratuite: quelle di adesso rimandano a persone e corsi di prima, si svuotano
+		}
 		foreach ( $tables_wipe as $t ) {
 			if ( $db->get_var( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $db->prefix . $t ) ) ) ) {
 				$wipe[] = $t;

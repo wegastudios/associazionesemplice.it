@@ -298,6 +298,7 @@ final class Privacy {
 			. 'COALESCE((SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . " m WHERE m.person_id = p.id AND m.deleted_at IS NULL), '1970-01-01'), "
 			. 'COALESCE((SELECT MAX(s.session_date) FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . " s ON s.id = b.session_id WHERE b.person_id = p.id), '1970-01-01'), "
 			. 'COALESCE((SELECT MAX(t.tx_date) FROM ' . Db::t( 'transactions' ) . " t WHERE t.person_id = p.id OR t.payer_person_id = p.id), '1970-01-01'), "
+			. 'COALESCE((SELECT MAX(tr.trial_date) FROM ' . Db::t( 'trials' ) . " tr WHERE tr.person_id = p.id), '1970-01-01'), "
 			. 'COALESCE((SELECT MAX(CONCAT(e.start_month, \'-28\')) FROM ' . Db::t( 'enrollments' ) . " e WHERE e.person_id = p.id), '1970-01-01')) AS last_seen "
 			. "FROM $p p WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL "
 			. 'HAVING last_seen < %s ORDER BY last_seen LIMIT %d';

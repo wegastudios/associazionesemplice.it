@@ -385,18 +385,18 @@ final class DashboardPage {
 
 	/** Chi ha fatto una prova gratuita da poco e non si è iscritto. */
 	private static function trials_pending(): void {
-		if ( ! Employees::can( EmployeeRules::PEOPLE ) ) {
+		if ( ! Employees::can( EmployeeRules::PEOPLE ) || ! Employees::can( EmployeeRules::COURSES ) ) { // nomi di persone e di corsi
 			return;
 		}
-		$rows = \AssociazioneSemplice\Trials::not_enrolled( gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' -45 days' ) ) );
+		$rows = \AssociazioneSemplice\Trials::not_enrolled( gmdate( 'Y-m-d', strtotime( AssociazioneSempliceDb::today() . ' -45 days' ) ) );
 		if ( ! $rows ) {
 			return;
 		}
-		echo '<div class="asem-card"><h2>Prove fatte, non ancora iscritti (' . count( $rows ) . ')</h2><p class="description">Prove gratuite degli ultimi 45 giorni. Chi si iscrive nello stesso mese paga dal giorno della prova.</p><ul>';
-		foreach ( $rows as $r ) {
+		echo '<div class="asem-card"><h2>Prove fatte, non ancora iscritti (' . ( count( $rows ) > 200 ? 'più di 200' : count( $rows ) ) . ')</h2><p class="description">Prove gratuite degli ultimi 45 giorni. Chi si iscrive nello stesso mese paga dal giorno della prova.</p><ul>';
+		foreach ( array_slice( $rows, 0, 12 ) as $r ) {
 			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $r['person_id'] ) ) ) . '">' . esc_html( trim( $r['first_name'] . ' ' . $r['last_name'] ) ) . '</a> · <a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => (int) $r['activity_id'] ) ) . '#asem-trials' ) . '">' . esc_html( $r['activity_name'] ) . '</a> <span class="description">il ' . esc_html( Ui::date( (string) $r['last_date'] ) ) . ( (int) $r['n'] > 1 ? ' · ' . (int) $r['n'] . ' prove' : '' ) . '</span> ' . Ui::contact_links( $r ) . '</li>', Html::allowed() );
 		}
-		echo '</ul></div>';
+		echo '</ul>' . ( count( $rows ) > 12 ? '<p class="description">Qui le ultime 12; le altre sono nella scheda di ogni corso.</p>' : '' ) . '</div>';
 	}
 
 	/** Pagamenti da incassare: per ogni persona, la quota associativa (se la tessera non è valida), le mensilità dei corsi già dovute e i contributi non versati. */

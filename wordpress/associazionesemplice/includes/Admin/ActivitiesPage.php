@@ -846,7 +846,7 @@ final class ActivitiesPage {
 				echo '<tr><td>' . esc_html( Ui::date( (string) $r['trial_date'] ) ) . '</td><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $r['person_id'] ) ) ) . '">' . esc_html( trim( $r['first_name'] . ' ' . $r['last_name'] ) ) . '</a></td><td>' . esc_html( $state ) . '</td><td>';
 				if ( $r['trial_from'] !== $r['trial_date'] ) {
 					Ui::form_open( 'asem_trial_remove', $back . '#asem-trials', false, 'asem-inline' );
-					echo wp_kses( Ui::hidden( 'id', (int) $r['id'] ) . Ui::hidden( 'activity_id', $id ) . '<button class="button button-small" data-confirm="Togliere questa prova?">Togli</button>', Html::allowed() );
+					echo wp_kses( Ui::hidden( 'trial_id', (int) $r['id'] ) . Ui::hidden( 'activity_id', $id ) . '<button class="button button-small" data-confirm="Togliere questa prova?">Togli</button>', Html::allowed() );
 					Ui::form_close();
 				}
 				echo '</td></tr>';

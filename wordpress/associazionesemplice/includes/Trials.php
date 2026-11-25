@@ -50,7 +50,7 @@ final class Trials {
 				'SELECT t.activity_id, t.person_id, MAX(t.trial_date) AS last_date, COUNT(*) AS n, a.name AS activity_name, p.first_name, p.last_name, p.phone, p.email FROM ' . Db::t( 'trials' ) . ' t '
 				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = t.activity_id AND a.deleted_at IS NULL JOIN ' . Db::t( 'people' ) . ' p ON p.id = t.person_id AND p.deleted_at IS NULL AND p.anonymized_at IS NULL '
 				. 'LEFT JOIN ' . Db::t( 'enrollments' ) . ' e ON e.activity_id = t.activity_id AND e.person_id = t.person_id WHERE e.id IS NULL AND t.trial_date >= %s AND t.trial_date <= %s '
-				. 'GROUP BY t.activity_id, t.person_id, a.name, p.first_name, p.last_name, p.phone, p.email ORDER BY last_date DESC LIMIT 30',
+				. 'GROUP BY t.activity_id, t.person_id, a.name, p.first_name, p.last_name, p.phone, p.email ORDER BY last_date DESC LIMIT 201',
 				$since,
 				Db::today()
 			),
@@ -80,6 +80,10 @@ final class Trials {
 		if ( ! $dt || $dt->format( 'Y-m-d' ) !== $date ) {
 			throw new \InvalidArgumentException( 'Data non valida.' );
 		}
+		if ( $date > Db::today() ) { // si registra a prova fatta: una prova futura non darebbe il giorno da cui pagare a chi si iscrive prima
+			throw new \InvalidArgumentException( 'La prova si registra nel giorno stesso o dopo, non in anticipo.' );
+		}
+		YearLock::assert_date_open( $date );
 		ActivityService::assert_in_social_year( (string) $a['social_year'], $date, 'La data della prova' );
 		if ( ActivityService::lessons( $a ) && ! in_array( $date, ActivityReset::course_dates( $a, $date, $date ), true ) ) {
 			throw new \InvalidArgumentException( 'In quel giorno il corso non ha lezione.' );
@@ -102,11 +106,12 @@ final class Trials {
 	}
 
 	/** Toglie un giorno di prova registrato per errore; non se il primo mese dell'iscrizione si paga da quel giorno. @throws \InvalidArgumentException */
-	public static function remove( int $id ): void {
-		$t = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'trials' ) . ' WHERE id = %d', $id ), ARRAY_A );
+	public static function remove( int $id, int $activity_id ): void {
+		$t = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'trials' ) . ' WHERE id = %d AND activity_id = %d', $id, $activity_id ), ARRAY_A ); // il permesso è stato controllato su questo corso: la prova deve essere sua
 		if ( ! $t ) {
 			throw new \InvalidArgumentException( 'Prova non trovata.' );
 		}
+		YearLock::assert_date_open( (string) $t['trial_date'] );
 		$used = self::db()->get_var( self::db()->prepare( 'SELECT id FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d AND trial_from = %s', (int) $t['activity_id'], (int) $t['person_id'], $t['trial_date'] ) );
 		if ( $used ) {
 			throw new \InvalidArgumentException( 'La persona si è iscritta e paga da questo giorno: la prova non si può togliere.' );
@@ -166,11 +171,19 @@ final class Trials {
 		return array( max( 1, $left ), count( $all ) );
 	}
 
-	/** La quota del primo mese di un'iscrizione nata da una prova, oppure null se il mese si paga per intero. */
+	/** Il mese che si paga dal giorno della prova ('' se nessuno). */
+	public static function trial_month( array $enrollment ): string {
+		return substr( (string) ( $enrollment['trial_from'] ?? '' ), 0, 7 );
+	}
+
+	/**
+	 * La quota del mese di un'iscrizione nata da una prova, oppure null se il mese si paga per intero. Vale per il mese della prova anche se poi l'iscrizione
+	 * parte da un mese precedente: ciò che era dovuto non cambia.
+	 */
 	public static function first_month_cents( array $activity, array $enrollment, int $fee ): ?int {
 		$from  = (string) ( $enrollment['trial_from'] ?? '' );
 		$total = (int) ( $enrollment['trial_total'] ?? 0 );
-		if ( '' === $from || $total < 1 || 'monthly' !== (string) ( $activity['billing'] ?? 'monthly' ) || substr( $from, 0, 7 ) !== (string) $enrollment['start_month'] ) {
+		if ( '' === $from || $total < 1 || 'monthly' !== (string) ( $activity['billing'] ?? 'monthly' ) || substr( $from, 0, 7 ) < (string) $enrollment['start_month'] ) {
 			return null;
 		}
 		return PaymentCalc::share( $fee, (int) $enrollment['trial_left'], $total );

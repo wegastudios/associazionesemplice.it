@@ -51,7 +51,7 @@ final class Attendance {
 		}
 		$ym  = substr( $date, 0, 7 );
 		// anche chi è in prova quel giorno, riconoscibile nell'elenco
-		$in  = $db->get_results( $db->prepare( "SELECT p.id, CONCAT(p.first_name, ' (prova)') AS first_name, p.last_name, p.type, p.card_number FROM $p p JOIN " . Db::t( 'trials' ) . ' t ON t.person_id = p.id WHERE p.deleted_at IS NULL AND t.activity_id = %d AND t.trial_date = %s', (int) $a['id'], $date ), ARRAY_A ) ?: array();
+		$in  = $db->get_results( $db->prepare( "SELECT p.id, p.first_name, p.last_name, p.type, p.card_number, 1 AS trial FROM $p p JOIN " . Db::t( 'trials' ) . ' t ON t.person_id = p.id WHERE p.deleted_at IS NULL AND t.activity_id = %d AND t.trial_date = %s', (int) $a['id'], $date ), ARRAY_A ) ?: array();
 		$sql = "SELECT p.id, p.first_name, p.last_name, p.type, p.card_number FROM $p p JOIN " . Db::t( 'enrollments' ) . ' e ON e.person_id = p.id WHERE p.deleted_at IS NULL AND e.activity_id = %d AND e.start_month <= %s AND (e.end_month IS NULL OR e.end_month >= %s) ORDER BY p.last_name, p.first_name';
 		$out = array();
 		foreach ( array_merge( $in, $db->get_results( $db->prepare( $sql, (int) $a['id'], $ym, $ym ), ARRAY_A ) ?: array() ) as $r ) {
@@ -75,15 +75,19 @@ final class Attendance {
 		$people = array();
 		$marks  = array();
 		$exp    = array();
+		$trial  = array();
 		foreach ( $dates as $d ) {
 			foreach ( self::roster( $a, $d ) as $r ) {
 				$people[ (int) $r['id'] ] = trim( $r['last_name'] . ' ' . $r['first_name'] );
 				$exp[ $d ][ (int) $r['id'] ] = true;
+				if ( ! empty( $r['trial'] ) ) {
+					$trial[ (int) $r['id'] ] = true;
+				}
 			}
 			$marks[ $d ] = self::marks( (int) $a['id'], $d );
 		}
 		asort( $people );
-		return array( 'dates' => $dates, 'people' => $people, 'marks' => $marks, 'expected' => $exp );
+		return array( 'dates' => $dates, 'people' => $people, 'marks' => $marks, 'expected' => $exp, 'trial' => $trial );
 	}
 
 	/** Segni già registrati per quella data: person_id => presente? Vuoto se la lezione non è ancora stata registrata. @return array<int,bool> */

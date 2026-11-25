@@ -1158,6 +1158,7 @@ final class Actions {
 				if ( ! $pid ) {
 					throw new \InvalidArgumentException( 'Scegli una persona oppure scrivi nome e cognome del nuovo ospite.' );
 				}
+				self::assert_not_suspended( $pid );
 				$note = \AssociazioneSemplice\Trials::add( $aid, $pid, (string) ( $p['trial_date'] ?? '' ) );
 			}
 		);
@@ -1165,7 +1166,7 @@ final class Actions {
 	}
 
 	private static function trial_remove( array $p ): array {
-		\AssociazioneSemplice\Trials::remove( (int) ( $p['id'] ?? 0 ) );
+		\AssociazioneSemplice\Trials::remove( (int) ( $p['trial_id'] ?? 0 ), (int) ( $p['activity_id'] ?? 0 ) );
 		return array( Ui::url( 'asem-activity', array( 'id' => (int) ( $p['activity_id'] ?? 0 ) ) ) . '#asem-trials', 'Prova tolta.' );
 	}
 

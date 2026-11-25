@@ -14657,7 +14657,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '78' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 77' );
+asem_ok( '78' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 78' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
 	if ( ! \AssociazioneSemplice\Install::table_exists( Db::t( $ix_t ) ) ) {

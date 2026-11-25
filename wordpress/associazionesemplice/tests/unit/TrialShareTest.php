@@ -25,6 +25,12 @@ final class TrialShareTest extends TestCase {
 		$this->assertSame( 0, $paid['balance'] );
 	}
 
+	public function test_the_trial_month_keeps_its_fee_when_the_start_moves_back(): void {
+		$y = SocialYear::from_label( '2026', 1 );
+		$s = PaymentCalc::compute( 4000, '2026-02', null, '2026-04', $y, array(), 0, null, 1, 2000, '2026-03' );
+		$this->assertSame( array( 4000, 2000, 4000 ), array_column( $s['months'], 'due' ) );
+	}
+
 	public function test_without_a_trial_nothing_changes(): void {
 		$y = SocialYear::from_label( '2026', 1 );
 		$this->assertSame( PaymentCalc::compute( 4000, '2026-03', null, '2026-05', $y, array() ), PaymentCalc::compute( 4000, '2026-03', null, '2026-05', $y, array(), 0, null, 1, null ) );

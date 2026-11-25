@@ -201,7 +201,7 @@ final class ActivityReset {
 		}
 		$since = $month . '-01';
 		if ( (int) ( $m['person_id'] ?? 0 ) ) { // chi ha fatto la prova ha pagato solo le lezioni da quel giorno: la parte non fruita si conta su quelle
-			$from  = (string) self::db()->get_var( self::db()->prepare( 'SELECT trial_from FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d AND start_month = %s', (int) $ctx['course']['id'], (int) $m['person_id'], $month ) );
+			$from  = (string) self::db()->get_var( self::db()->prepare( 'SELECT trial_from FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d AND start_month <= %s', (int) $ctx['course']['id'], (int) $m['person_id'], $month ) );
 			$since = '' !== $from && 0 === strpos( $from, $month ) ? $from : $since;
 		}
 		$total = count( array_filter( self::course_dates( $ctx['course'], $month . '-01', gmdate( 'Y-m-t', (int) strtotime( $month . '-01' ) ) ), function ( $d ) use ( $since ) {

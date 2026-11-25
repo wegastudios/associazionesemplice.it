@@ -1453,7 +1453,7 @@ class ActivityService {
 			$keys  = array_keys( PaymentCalc::group_by_period( array( $month => 1 ), (string) $enr['start_month'], $step ) );
 			$month = (string) reset( $keys );
 		}
-		if ( 1 === $step && (string) $enr['start_month'] === $month ) { // primo mese di chi ha fatto la prova: si paga dal giorno della prova
+		if ( 1 === $step && Trials::trial_month( $enr ) === $month ) { // primo mese di chi ha fatto la prova: si paga dal giorno della prova
 			$first = Trials::first_month_cents( $activity, $enr, $fee );
 			$fee   = null === $first ? $fee : $first;
 		}
@@ -1468,7 +1468,7 @@ class ActivityService {
 		$fee = $this->fee_for( $activity, (string) $person['type'] );
 		$enr = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d', (int) $activity['id'], (int) $person['id'] ), ARRAY_A );
 		if ( $enr && ( null === $enr['end_month'] || $enr['end_month'] >= $month ) ) {
-			if ( (string) $enr['start_month'] !== $month ) {
+			if ( Trials::trial_month( $enr ) !== $month ) {
 				return $fee;
 			}
 			if ( ! empty( $enr['price_list'] ) ) {
@@ -1620,8 +1620,8 @@ class ActivityService {
 		$tbl   = Db::t( 'enrollments' );
 		$row   = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE activity_id = %d AND person_id = %d", $activity_id, $person_id ), ARRAY_A );
 		$trial = Trials::enrollment_fields( $a, $person_id, $start_month ); // prova fatta nel mese: il primo mese si paga da quel giorno
-		if ( $row && (string) $row['start_month'] === $start_month && ! empty( $row['trial_from'] ) ) {
-			$trial = array(); // stessa partenza: la proporzione già fissata non cambia
+		if ( $row && ! empty( $row['trial_from'] ) && Trials::trial_month( $row ) >= $start_month ) {
+			$trial = array(); // il mese della prova è ancora nell'iscrizione: la proporzione già fissata non cambia
 		}
 		if ( $row ) {
 			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ) + $trial, array( 'id' => (int) $row['id'] ) );
@@ -1867,7 +1867,8 @@ class ActivityService {
 			self::slot_days( $activity ),
 			Db::today(),
 			'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1,
-			Trials::first_month_cents( $activity, $enrollment, $fee )
+			Trials::first_month_cents( $activity, $enrollment, $fee ),
+			Trials::trial_month( $enrollment )
 		);
 	}
 
