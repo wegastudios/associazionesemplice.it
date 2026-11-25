@@ -167,6 +167,22 @@ if ( class_exists( '\AssociazioneSemplice\DoorSales' ) ) {
 	asem_ok( 1 === count( $gd_o ) && null === $gd_o[0]['payer_person_id'] && $gd_before + 1600 === $gd_sum(), 'debitore: sul posto una prenotazione normale si incassa come sempre' );
 }
 
+// ---------- Pro che non conosce il pagante: prenotazione per altri soci non offerta ----------
+asem_ok( ActivityService::others_allowed(), 'debitore: con il Pro di questa build si può prenotare per altri soci' );
+list( $gd_a13, $gd_s13 ) = $gb_event( 'Debitore Pro vecchio', 10, 800 );
+$gd_g3 = (int) $gb_peo->create( array( 'type' => 'guest', 'host_person_id' => $gb_booker, 'first_name' => 'Oreste', 'last_name' => 'Ospite', 'phone' => '333 8880003' ) );
+$gb_acts->book_many( $gd_s13, array( $gb_gino, $gd_g3 ), $gb_booker, array() );
+add_filter( 'asem_book_others_allowed', '__return_false' );
+$gd_d13 = $gd_dues( $gb_booker, $gd_s13 );
+asem_ok( 1 === count( $gd_d13 ) && $gd_g3 === (int) $gd_d13[0]['person_id'], 'debitore: con un Pro vecchio la voce dell\'altro socio non va nei pagamenti online, quella dell\'ospite sì' );
+wp_set_current_user( $gb_uid );
+$gd_no = (string) asem_throws( function () use ( $gb_book, $gd_s13 ) { $gb_book( array( 'session_id' => $gd_s13, 'me' => 1, 'other_last' => array( 'Socia' ), 'other_card' => array( '7003' ) ) ); } );
+$gd_page = \AssociazioneSemplice\Frontend\Views::event_booking( Plugin::activities()->get( $gd_a13 ) );
+wp_set_current_user( 1 );
+remove_filter( 'asem_book_others_allowed', '__return_false' );
+asem_ok( false !== strpos( $gd_no, 'non si possono prenotare altri soci' ) && 2 === $gb_count( $gd_s13 ), 'debitore: con un Pro vecchio l\'azione per altri soci è rifiutata e non prenota nessuno' );
+asem_ok( false === strpos( $gd_page, 'other_card' ) && false !== strpos( $gd_page, 'asem_front_book_group' ), 'debitore: con un Pro vecchio il modulo resta per sé e gli ospiti, senza gli altri soci' );
+
 // ---------- Riepilogo scaduto: i dati scritti nel modulo non restano ----------
 set_transient( 'asem_group_990001', array( 'token' => 'x', 'post' => array( 'new_guest_phone' => array( '333 0000000' ) ), 'total' => 0, 'lines' => array() ), 600 );
 set_transient( 'asem_group_990002', array( 'token' => 'y', 'post' => array(), 'total' => 0, 'lines' => array() ), 600 );

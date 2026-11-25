@@ -26,6 +26,7 @@ class PaymentService extends OfflinePayments {
 		return self::$engine ?? ( self::$engine = new PaymentService() );
 	}
 
+	const BOOKS_PAYER           = true; // i pagamenti registrano chi paga al posto di chi partecipa (voce «payer_id»): il gratuito lo guarda prima di offrire la prenotazione per altri soci
 	const PENDING_AFTER_MINUTES = 10;
 	const EXPIRE_AFTER_DAYS     = 3;
 	const STUCK_AFTER_MINUTES   = 15;
