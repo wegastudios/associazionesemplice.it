@@ -92,6 +92,11 @@ class PaymentService extends OfflinePayments {
 		$this->db()->update( Db::t( 'payments' ), $data, array( 'id' => $id ) );
 	}
 
+	/** Questi pagamenti registrano chi paga al posto di chi partecipa (voce «payer_id»). */
+	public function books_payer(): bool {
+		return true;
+	}
+
 	/** Pagamenti, dal più recente. @param array $f status, payer_person_id, review */
 	public function list( array $f = array(), int $limit = 100 ): array {
 		$where = array( '1=1' );
@@ -1130,10 +1135,11 @@ class PaymentService extends OfflinePayments {
 					}
 					$lines = array();
 					foreach ( $group as $i ) {
-						$lines[] = $this->line_for( $i, $note, $ledger );
+						$lines[] = $this->line_for( $i, $note, $ledger ) + ( ! empty( $i['payer_id'] ) ? array( 'person_id' => (int) $i['person_id'] ) : array() ); // la voce resta di chi partecipa
 					}
+					$payer_id = ! empty( $group[0]['payer_id'] ) ? (int) $group[0]['payer_id'] : (int) $person_id; // prenotazione fatta per un'altra persona: paga chi ha prenotato
 					try {
-						$ledger->record_receipt( array( 'date' => $today, 'account_id' => $account, 'method' => $method, 'person_id' => (int) $person_id, 'document_ref' => $ref, 'lines' => $lines ) );
+						$ledger->record_receipt( array( 'date' => $today, 'account_id' => $account, 'method' => $method, 'person_id' => $payer_id, 'document_ref' => $ref, 'lines' => $lines ) );
 					} catch ( \InvalidArgumentException $e ) {
 						$review       = true;
 						$error        = mb_substr( $e->getMessage(), 0, 250 );

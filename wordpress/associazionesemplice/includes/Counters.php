@@ -53,6 +53,7 @@ final class Counters {
 
 	/** Giro orario: toglie i contatori scaduti. @return int righe tolte */
 	public static function purge(): int {
+		Frontend\Actions::purge_group_drafts(); // riepiloghi di prenotazione scaduti: i nomi e i cellulari scritti nel modulo non aspettano la pulizia di WordPress
 		if ( ! Plugin::schema_ready() ) {
 			return 0;
 		}

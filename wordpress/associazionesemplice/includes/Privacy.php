@@ -58,8 +58,11 @@ final class Privacy {
 		};
 		$bookings = array();
 		foreach ( $acts->bookings_for_person( $person_id ) as $b ) {
-			$bookings[] = array( 'evento' => $b['activity_name'], 'data' => $b['session_date'], 'stato' => $b['status'], 'ingresso' => $b['checked_in_at'] ?? null, 'contributo_cents' => (int) $b['fee_due_cents'] );
+			$bookings[] = array( 'evento' => $b['activity_name'], 'data' => $b['session_date'], 'stato' => $b['status'], 'ingresso' => $b['checked_in_at'] ?? null, 'contributo_cents' => (int) $b['fee_due_cents'] )
+				+ ( ! empty( $b['booked_by'] ) && (int) $b['booked_by'] !== $person_id ? array( 'prenotata_da_un_altro_socio' => true, 'contributo_a_carico_di_chi_ha_prenotato' => true, 'confermata' => $b['confirmed_at'] ?? null, 'rifiutata' => $b['declined_at'] ?? null ) : array() );
 		}
+		// Le prenotazioni fatte per altri: evento, data e contributo (i dati delle altre persone non sono di chi chiede)
+		$for_others = $q( 'SELECT a.name AS evento, s.session_date AS data, b.status AS stato, b.fee_due_cents AS contributo_cents FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . ' s ON s.id = b.session_id JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id WHERE b.booked_by = %d AND b.person_id <> %d ORDER BY s.session_date', array( $person_id, $person_id ) );
 		$courses = $q( 'SELECT a.name AS corso, e.start_month AS dal_mese, e.end_month AS al_mese FROM ' . Db::t( 'enrollments' ) . ' e JOIN ' . Db::t( 'activities' ) . ' a ON a.id = e.activity_id WHERE e.person_id = %d', array( $person_id ) );
 		$memberships = $q( 'SELECT social_year AS anno, valid_from AS dal, valid_to AS al, source AS origine FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND deleted_at IS NULL ORDER BY valid_from', array( $person_id ) );
 		$payments = $q(
@@ -99,6 +102,8 @@ final class Privacy {
 			'libro_soci_fotografato' => MemberBook::snapshot_export( $person_id ), // le righe dei libri soci degli anni fiscali chiusi in cui compare (restano per dovere di conservazione)
 			'corsi'        => $courses,
 			'prenotazioni' => $bookings,
+			'prenotazioni_fatte_per_altri' => $for_others,
+			'altri_soci_possono_prenotare_per_me' => empty( $p['no_booking_by_others'] ),
 			'pagamenti'    => $payments,
 			'ospiti_inseriti' => $guests,
 			'tutori' => $tutori,
@@ -197,6 +202,9 @@ final class Privacy {
 		if ( $future > 0 ) {
 			return 'Ha prenotazioni future: annullale prima.';
 		}
+		if ( Plugin::activities()->has_future_for_others( $person_id ) ) {
+			return 'Ha prenotato per altre persone a date future: annulla prima quelle prenotazioni.';
+		}
 		return '';
 	}
 
@@ -219,13 +227,14 @@ final class Privacy {
 			Db::t( 'people' ),
 			array(
 				'first_name' => 'Persona', 'last_name' => 'anonimizzata #' . $person_id, 'email' => null, 'phone' => null, 'tax_code' => null, 'address' => null, 'zip' => null, 'city' => null, 'province' => null, 'profile_due' => 0, 'card_number' => null, 'notes' => null,
-				'wp_user_id' => null, 'left_reason' => null, 'family_head_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'birth_date' => null, 'rules_accepted_by' => null, 'privacy_consent_by' => null, 'application_data' => null, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
+				'wp_user_id' => null, 'left_reason' => null, 'family_head_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'birth_date' => null, 'rules_accepted_by' => null, 'privacy_consent_by' => null, 'no_booking_by_others' => 1, 'application_data' => null, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
 			),
 			array( 'id' => $person_id )
 		);
 		$db->update( Db::t( 'people' ), array( 'family_head_id' => null ), array( 'family_head_id' => $person_id ) ); // chi faceva parte del suo nucleo
 		Guardians::forget( $person_id );
 		MemberSession::forget_person( $person_id ); // sessioni, password e codici di accesso proprio
+		Frontend\Actions::forget_group_draft( $person_id );
 		// Votazioni e prestiti: restano i numeri e lo storico dei beni, ma la persona non è più riconoscibile (il nome è già tolto dalla scheda).
 		$db->update( Db::t( 'loans' ), array( 'notes_out' => '', 'notes_in' => '' ), array( 'person_id' => $person_id ) );
 		do_action( 'asem_person_anonymized', $person_id, $uid, $name ); // le estensioni cancellano i loro dati della persona

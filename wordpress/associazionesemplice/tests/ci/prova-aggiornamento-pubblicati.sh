@@ -50,7 +50,12 @@ wp eval 'echo "ok";' >/dev/null 2>&1
 site_ok "A prima"
 wp plugin install wp-content/prove/pro-pub.zip --force 2>&1 | grep -i "fatal" && ko "A: errore fatale aggiornando il Pro"
 echo "A dopo il Pro: $(wp plugin list --fields=name,version,status 2>/dev/null | tr '\n' ' ')"
-[ -z "$(val 'asem_pro_problem()')" ] || ko "A: dopo l'aggiornamento del Pro l'avviso non doveva esserci"
+min="$(unzip -p "$work/prove/pro-pub.zip" associazionesemplice-pro/associazionesemplice-pro.php | grep -oE "ASEM_PRO_MIN_FREE', '[0-9.]+" | grep -oE "[0-9.]+$")"
+if [ "$(printf '%s\n1.3.36\n' "$min" | sort -V | head -1)" = "$min" ]; then # il Pro pubblicato lavora ancora con la 1.3.36
+  [ -z "$(val 'asem_pro_problem()')" ] || ko "A: dopo l'aggiornamento del Pro l'avviso non doveva esserci"
+else # richiede un gratuito più nuovo: si sospende con un avviso finché il gratuito non si aggiorna
+  case "$(val 'asem_pro_problem()')" in *"ha bisogno di"*) echo "ok: il Pro pubblicato (minimo $min) si sospende con un avviso sulla 1.3.36";; *) ko "A: nessun avviso con il gratuito 1.3.36 e il Pro che richiede $min";; esac
+fi
 site_ok "A dopo il Pro"
 wp plugin install wp-content/prove/free-pub.zip --force 2>&1 | grep -i "fatal" && ko "A: errore fatale aggiornando il gratuito"
 wp eval 'echo "ok";' >/dev/null 2>&1

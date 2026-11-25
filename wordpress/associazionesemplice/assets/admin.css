@@ -370,3 +370,6 @@
 
 /* Vedi frontend.css: le immagini «lazy» con sizes="auto" non devono diventare alte 1500 px. */
 .asem.asem img { contain: none; contain-intrinsic-size: none; }
+
+/* Nuovo incasso: le voci lunghe («a carico di …») non allargano la pagina sul telefono */
+.asem-addbar select { max-width: 100%; }

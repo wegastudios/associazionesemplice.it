@@ -14657,7 +14657,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '76' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 76' );
+asem_ok( '77' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 77' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
 	if ( ! \AssociazioneSemplice\Install::table_exists( Db::t( $ix_t ) ) ) {
@@ -14677,7 +14677,7 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '76' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
+asem_ok( '77' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
 // Voce degli incassi di corsi ed eventi: «Contributo attività / corso»; dove si chiama ancora «Quota attività / corso» (installazioni vecchie) l'aggiornamento la rinomina una volta, altrimenti non tocca nulla.
 $af_t  = Db::t( 'categories' );
@@ -14714,6 +14714,8 @@ require __DIR__ . '/smoke_invito_ospiti.php'; // avviso «da invitare ad associa
 require __DIR__ . '/smoke_long_job.php'; // motore dei lavori lunghi: tappe, ripresa, rete di sicurezza di WP-Cron, annullamento, errore
 require __DIR__ . '/smoke_backup_job.php'; // copia di sicurezza a tappe: uguale a quella di prima, ripresa, ripristino, annullamento
 require __DIR__ . '/smoke_cache_condivisa.php'; // letture ricordate tra le richieste con una cache degli oggetti persistente (simulata): stessi risultati, svuotate a ogni scrittura
+require __DIR__ . '/smoke_prenota_gruppo.php'; // prenotazione per più persone: tutte o nessuna, chi prenota risponde, nessun oracolo sugli altri soci
+require __DIR__ . '/smoke_prenota_debitore.php'; // il contributo è a carico di chi prenota: cassa e prima nota invariate
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );

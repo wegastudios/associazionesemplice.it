@@ -2,6 +2,15 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.39 – 2026-11-25
+- Nuovo: dall'area soci si prenota un evento per più persone in un solo modulo: per sé, ospiti (anche nuovi), minori e altri soci con cognome e numero di tessera. Prima di confermare si vede il totale; si prenotano tutti o nessuno.
+- Nuovo: se un altro socio prenota per te ricevi un'email e puoi confermare o toglierti fino all'inizio; dal profilo scegli se permetterlo. Il contributo è a carico di chi prenota.
+- Sicurezza: i tentativi di prenotare altri soci hanno un limite, modificabile in Limiti e soglie.
+- Altro: in «Nuovo incasso» e negli elenchi si vede a carico di chi è il contributo.
+Da fare dopo l'aggiornamento:
+- Se usi il Pro, aggiorna anche quello: fino ad allora la prenotazione per altri soci non si offre.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.38 – 2026-11-25
 - Altro: nelle pagine di segreteria e tesoriere chi non ha fatto l'accesso trova l'accesso dello staff e poi torna alla pagina di partenza.
 - Altro: nel modulo di accesso dei soci c'è il collegamento «Segreteria e staff».
