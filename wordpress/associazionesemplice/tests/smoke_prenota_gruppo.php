@@ -20,6 +20,7 @@ $gb_sy    = Settings::social_year()->label();
 $gb_today = current_time( 'Y-m-d' );
 $gb_day   = gmdate( 'Y-m-d', strtotime( $gb_today . ' +10 days' ) );
 Settings::update( array( 'limits' => array( 'member_book_per_10min' => 500, 'member_other_fail_per_10min' => 5, 'ip_other_fail_per_hour' => 500 ) ) );
+Settings::update( array( 'rules_block_booking' => 0 ) ); // i test del regolamento, prima, lo lasciano acceso: qui non è in esame
 
 /** Un evento con una data e la capienza indicata. @return int[] attività, data */
 $gb_event = function ( string $name, ?int $cap, int $fee = 500 ) use ( $gb_acts, $gb_sy, $gb_day ): array {
