@@ -234,7 +234,7 @@ final class Privacy {
 		$db->update( Db::t( 'people' ), array( 'family_head_id' => null ), array( 'family_head_id' => $person_id ) ); // chi faceva parte del suo nucleo
 		Guardians::forget( $person_id );
 		MemberSession::forget_person( $person_id ); // sessioni, password e codici di accesso proprio
-		FrontendActions::forget_group_draft( $person_id );
+		Frontend\Actions::forget_group_draft( $person_id );
 		// Votazioni e prestiti: restano i numeri e lo storico dei beni, ma la persona non è più riconoscibile (il nome è già tolto dalla scheda).
 		$db->update( Db::t( 'loans' ), array( 'notes_out' => '', 'notes_in' => '' ), array( 'person_id' => $person_id ) );
 		do_action( 'asem_person_anonymized', $person_id, $uid, $name ); // le estensioni cancellano i loro dati della persona
