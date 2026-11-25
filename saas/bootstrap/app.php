@@ -19,6 +19,7 @@ use App\Modules\Core\Http\Middleware\RestrictToAppHost;
 use App\Modules\Core\Http\Middleware\SecurityHeaders;
 use App\Modules\Core\Http\Middleware\ThrottleAccountSecurity;
 use App\Modules\Core\Http\Middleware\UseCookieSession;
+use AppModulesCoreHttpTooManyAttempts;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
 use App\Modules\Piattaforma\Http\Middleware\UsePublicStaffUrl;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -27,6 +28,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use SymfonyComponentHttpKernelxceptionTooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -76,4 +78,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // Blocco o istruzione scaduti (saas.database_timeouts): «riprova tra poco», non l'errore generico.
         $exceptions->report(static fn (QueryException $e): bool => DatabaseBusy::report($e));
         $exceptions->render(static fn (QueryException $e, Request $request) => DatabaseBusy::render($e, $request));
+        // Limite di frequenza: avviso nella pagina al posto del riquadro d'errore.
+        $exceptions->render(static fn (TooManyRequestsHttpException $e, Request $request) => TooManyAttempts::render($e, $request));
     })->create();
