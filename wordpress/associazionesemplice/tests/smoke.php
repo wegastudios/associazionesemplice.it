@@ -6730,7 +6730,7 @@ if ( in_array( $tgt_m, Settings::social_year()->months(), true ) ) {
 		$acts->enroll( $c_var, $pid, $cur_m );
 		$acts->set_enrollment_price( $c_var, $pid, $k_var );
 	}
-	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $dm4, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => 1234, 'activity_id' => $c_var, 'competence_month' => $tgt_m ) ) ) );
+	$ledger->record_receipt( array( 'date' => $cur_m . '-01', 'account_id' => (int) $cash['id'], 'person_id' => $dm4, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => 1234, 'activity_id' => $c_var, 'competence_month' => $tgt_m ) ) ) );
 	$d_before = $mails_to( 'dina.nonpagato@example.com' );
 	\AssociazioneSemplice\Reminders::run( $cur_m . '-09' );
 	asem_ok( $d_before === $mails_to( 'dina.nonpagato@example.com' ), 'promemoria corsi: prima dell\'ultima lezione del mese non parte nulla' );
