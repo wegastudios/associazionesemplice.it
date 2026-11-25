@@ -369,6 +369,27 @@ final class Actions {
 		return 'asem_group_' . $person_id;
 	}
 
+	/** Toglie il riepilogo di una persona (cancellata o resa anonima). */
+	public static function forget_group_draft( int $person_id ): void {
+		delete_transient( self::group_key( $person_id ) );
+	}
+
+	/** Giro orario: toglie i riepiloghi scaduti. Con una cache degli oggetti scadono da soli; senza, WordPress li toglie solo una volta al giorno. @return int riepiloghi tolti */
+	public static function purge_group_drafts(): int {
+		if ( wp_using_ext_object_cache() ) {
+			return 0;
+		}
+		global $wpdb;
+		$prefix = '_transient_timeout_asem_group_';
+		$names  = $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s AND option_value < %d LIMIT 500", $wpdb->esc_like( $prefix ) . '%', time() ) ) ?: array();
+		foreach ( $names as $name ) {
+			$key = substr( (string) $name, strlen( '_transient_timeout_' ) );
+			delete_option( '_transient_' . $key );
+			delete_option( '_transient_timeout_' . $key );
+		}
+		return count( $names );
+	}
+
 	/** Il riepilogo in attesa di conferma di questo socio, o null. @return array{token:string,post:array,total:int,lines:array[]}|null */
 	public static function group_draft( int $person_id ): ?array {
 		$d = get_transient( self::group_key( $person_id ) );

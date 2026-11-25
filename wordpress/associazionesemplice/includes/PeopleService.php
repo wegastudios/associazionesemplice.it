@@ -1054,6 +1054,7 @@ class PeopleService {
 		);
 		Guardians::forget( $id );
 		MemberSession::forget_person( $id ); // sessioni, password e codici di accesso proprio
+		FrontendActions::forget_group_draft( $id );
 		Audit::log( 'person.deleted', 'person', $id, array( 'type' => $p['type'] ) );
 	}
 

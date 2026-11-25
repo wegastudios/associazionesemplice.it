@@ -149,6 +149,35 @@ if ( class_exists( '\AssociazioneSemplice\DoorSales' ) ) {
 	asem_ok( $gd_guest === (int) $gd_g['person_id'] && $gb_booker === (int) $gd_g['payer_person_id'] && array() === $gd_dues( $gb_booker, $gd_s9 ), 'debitore: ospite, intestatario chi partecipa e pagante chi ha prenotato' );
 }
 
+// ---------- Sul posto (DoorSales): ospite, altro socio ----------
+if ( class_exists( '\AssociazioneSemplice\DoorSales' ) ) {
+	list( $gd_a12, $gd_s12 ) = $gb_event( 'Debitore sul posto', 10, 800 );
+	$gd_g2 = (int) $gb_peo->create( array( 'type' => 'guest', 'host_person_id' => $gb_booker, 'first_name' => 'Orso', 'last_name' => 'Ospite', 'phone' => '333 8880002' ) );
+	$gb_acts->book_many( $gd_s12, array( $gd_g2, $gb_gino ), $gb_booker, array() );
+	$gd_before = $gd_sum();
+	$gd_door   = array( 'session_id' => $gd_s12, 'activity_id' => $gd_a12, 'pay' => 1, 'account_id' => (int) $gd_cash['id'], 'method' => 'cash' );
+	\AssociazioneSemplice\DoorSales::sell( $gd_door + array( 'person_id' => $gd_g2 ) );
+	$gd_o = $gd_tx( $gd_s12, $gd_g2 );
+	asem_ok( $gd_before + 800 === $gd_sum() && 1 === count( $gd_o ) && $gd_g2 === (int) $gd_o[0]['person_id'] && $gb_booker === (int) $gd_o[0]['payer_person_id'], 'debitore: sul posto l\'ospite è intestatario e il pagante è chi ha prenotato' );
+	$gd_msg = \AssociazioneSemplice\DoorSales::sell( $gd_door + array( 'person_id' => $gb_gino ) );
+	asem_ok( false !== strpos( $gd_msg, 'a carico di chi ha prenotato' ) && array() === $gd_tx( $gd_s12, $gb_gino ) && $gd_before + 800 === $gd_sum(), 'debitore: sul posto all\'altro socio non si incassa nulla' );
+	$gb_acts->book( $gd_s12, $gb_rina );
+	\AssociazioneSemplice\DoorSales::sell( $gd_door + array( 'person_id' => $gb_rina ) );
+	$gd_o = $gd_tx( $gd_s12, $gb_rina );
+	asem_ok( 1 === count( $gd_o ) && null === $gd_o[0]['payer_person_id'] && $gd_before + 1600 === $gd_sum(), 'debitore: sul posto una prenotazione normale si incassa come sempre' );
+}
+
+// ---------- Riepilogo scaduto: i dati scritti nel modulo non restano ----------
+set_transient( 'asem_group_990001', array( 'token' => 'x', 'post' => array( 'new_guest_phone' => array( '333 0000000' ) ), 'total' => 0, 'lines' => array() ), 600 );
+set_transient( 'asem_group_990002', array( 'token' => 'y', 'post' => array(), 'total' => 0, 'lines' => array() ), 600 );
+if ( ! wp_using_ext_object_cache() ) {
+	update_option( '_transient_timeout_asem_group_990001', time() - 5, false );
+	wp_cache_flush();
+	asem_ok( 1 <= \AssociazioneSemplice\Frontend\Actions::purge_group_drafts() && 0 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE '%asem\\_group\\_990001'" ) && 2 === (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE '%asem\\_group\\_990002'" ), 'prenota gruppo: il giro orario toglie i riepiloghi scaduti e lascia quelli validi' );
+}
+\AssociazioneSemplice\Frontend\Actions::forget_group_draft( 990002 );
+asem_ok( null === \AssociazioneSemplice\Frontend\Actions::group_draft( 990002 ), 'prenota gruppo: il riepilogo di chi viene cancellato si toglie subito' );
+
 // ---------- Attestazione annuale: vale il pagante, come per ogni incasso pagato da un altro ----------
 if ( class_exists( '\AssociazioneSemplice\Receipts' ) ) {
 	// Nel documento di chi paga l'altro socio è il numero di tessera (fissato nell'istantanea); in segreteria e in prima nota resta il nome
