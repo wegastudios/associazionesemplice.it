@@ -86,7 +86,7 @@ add_filter( 'login_headertext', function () {
 } );
 add_filter( 'login_message', function ( $m ) {
 	// Il rinvio all'accesso dei soci lo mostra già il plugin sotto questo avviso.
-	return $m . '<p class="message">Accessi di prova: <strong>segreteria@demo.invalid</strong> / Segreteria-Demo-2026 · <strong>amministratore@demo.invalid</strong> / Amministratore-Demo-2026</p>';
+	return $m . '<p class="message">Accessi di prova: <strong>segreteria@demo.invalid</strong> / Segreteria-Demo-2026 · <strong>tesoriere@demo.invalid</strong> / Tesoriere-Demo-2026 · <strong>amministratore@demo.invalid</strong> / Amministratore-Demo-2026</p>';
 } );
 
 // Pannello: barra e menu nei colori del marchio.
@@ -143,10 +143,11 @@ add_filter( 'the_content', function ( $content ) {
 			. asem_demo_button( 'Entra come segreteria', wp_login_url( get_permalink( $id ) ) )
 			. '<p style="color:#566069;font-size:.9rem">Lavori dal sito invece che dal pannello: da qui apri soci, incassi, attività e registri. Per entrare come socio vai all\'<a href="' . esc_url( home_url( '/area-soci/' ) ) . '">area soci</a>.</p>';
 	}
-	// Tesoriere: nella demo non c'è un accesso da tesoriere e il modulo dei soci non lo farebbe entrare: si indica la strada utile.
-	if ( isset( $have['tesoriere'] ) && (int) $have['tesoriere'] === $id && ! is_user_logged_in() && class_exists( '\AssociazioneSemplice\MemberSession' ) && ! \AssociazioneSemplice\MemberSession::current() ) {
-		return '<div class="asem-cred" style="background:#e7e8f7;border-radius:14px;padding:14px 16px;margin:0 0 18px;font-size:.95rem;color:#14172e"><strong>Area tesoriere</strong><br>In questa demo non c\'è un accesso da tesoriere. Incassi, spese e prima nota li provi entrando come segreteria.</div>'
-			. asem_demo_button( 'Entra come segreteria', wp_login_url( home_url( '/area-segreteria/' ) ) );
+	// Tesoriere: è un socio con un utente WordPress e la carica di tesoriere: entra da wp-login (come la segreteria), non dal modulo dei soci.
+	if ( isset( $have['tesoriere'] ) && (int) $have['tesoriere'] === $id && ! is_user_logged_in() ) {
+		return asem_demo_cred_box( 'Demo: accesso di prova come tesoriere', 'Email', 'tesoriere@demo.invalid', 'Tesoriere-Demo-2026' )
+			. asem_demo_button( 'Entra come tesoriere', wp_login_url( get_permalink( $id ) ) )
+			. '<p style="color:#566069;font-size:.9rem">Il tesoriere è un socio che registra incassi e spese (anche con la foto dello scontrino) e iscrive i soci, ma non vede le impostazioni. Per entrare come socio qualunque vai all\'<a href="' . esc_url( home_url( '/area-soci/' ) ) . '">area soci</a>.</p>';
 	}
 	if ( isset( $have['area'] ) && (int) $have['area'] === $id && class_exists( '\AssociazioneSemplice\MemberSession' ) && ! \AssociazioneSemplice\MemberSession::current() && ! is_user_logged_in() ) {
 		return asem_demo_member_box() . $content;
