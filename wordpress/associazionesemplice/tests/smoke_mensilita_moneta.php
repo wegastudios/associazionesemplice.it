@@ -118,8 +118,8 @@ asem_ok( in_array( 'asem_course_credit_payments', \AssociazioneSemplice\Backup::
 Db::$today_fake = '2031-05-13'; // dopo la prima lezione di maggio: il mese è da pagare
 $cm_keep  = array( 'coin_singular' => (string) Settings::get( 'coin_singular' ), 'coin_plural' => (string) Settings::get( 'coin_plural' ) );
 $cm_packs = get_option( Credits::PACKS_OPTION, '' );
-Settings::update( array( 'coin_singular' => "Gettone d'oro", 'coin_plural' => "Gettoni d'oro più" ) );
-asem_ok( "2 Gettoni d'oro più" === \AssociazioneSemplice\CoinName::n( 2 ), 'moneta: il nome con apostrofo e accento resta com\'è' );
+Settings::update( array( 'coin_singular' => "Credito d'oro \"Lucà\"", 'coin_plural' => "Crediti d'oro \"Lucà\"" ) );
+asem_ok( "2 Crediti d'oro \"Lucà\"" === \AssociazioneSemplice\CoinName::n( 2 ), 'moneta: il nome con apostrofo, accento e virgolette resta com\'è' );
 Credits::save_packs( '10 = 10,00' );
 Credits::sell_at_desk( $cm_q, 10, (int) $cm_cash['id'], 'cash' );
 $cm_rk = '';
@@ -129,10 +129,10 @@ foreach ( \AssociazioneSemplice\Receipts::list_for_payer( $cm_q ) as $cm_r ) {
 	}
 }
 $cm_pdf = '' !== $cm_rk ? (string) \AssociazioneSemplice\Receipts::build( $cm_rk )['pdf'] : '';
-asem_ok( 0 === strpos( $cm_pdf, '%PDF' ) && false !== strpos( $cm_pdf, (string) mb_convert_encoding( "Gettoni d'oro più", 'Windows-1252', 'UTF-8' ) ), 'moneta: la ricevuta PDF dell\'acquisto riporta il nome con apostrofo e accento' );
+asem_ok( 0 === strpos( $cm_pdf, '%PDF' ) && false !== strpos( $cm_pdf, (string) mb_convert_encoding( "Crediti d'oro \"Lucà\"", 'Windows-1252', 'UTF-8' ) ), 'moneta: la ricevuta PDF dell\'acquisto riporta il nome con apostrofo, accento e virgolette' );
 $cm_html = (string) apply_filters( 'asem_pay_section_extra', '', $cm_peo->get( $cm_o ) );
-$cm_at = strpos( $cm_html, 'Gettoni' );
-asem_ok( false !== strpos( $cm_html, 'Gettoni d&#039;oro più' ) && false === strpos( $cm_html, "d'oro" ), 'moneta: nell\'area soci il nome con apostrofo e accento è scritto ed escapato bene' . ( false === $cm_at ? ' [nessun «Gettoni» in ' . strlen( $cm_html ) . ' caratteri]' : ' [' . substr( $cm_html, $cm_at, 40 ) . ']' ) );
+$cm_at = strpos( $cm_html, 'Crediti d' );
+asem_ok( false !== strpos( $cm_html, 'Crediti d&#039;oro &quot;Lucà&quot;' ) && false === strpos( $cm_html, "d'oro" ) && false === strpos( $cm_html, '"Lucà' ), 'moneta: nell\'area soci il nome con apostrofo, accento e virgolette è scritto ed escapato bene' . ( false === $cm_at ? ' [nessun «Crediti d» in ' . strlen( $cm_html ) . ' caratteri]' : ' [' . substr( $cm_html, $cm_at, 40 ) . ']' ) );
 $cm_mails = array();
 $cm_trap  = function ( $r, $atts ) use ( &$cm_mails ) {
 	$cm_mails[] = array( 'to' => is_array( $atts['to'] ) ? implode( ',', $atts['to'] ) : (string) $atts['to'], 'subject' => (string) $atts['subject'], 'text' => html_entity_decode( wp_strip_all_tags( (string) $atts['message'] ), ENT_QUOTES, 'UTF-8' ), 'raw' => (string) $atts['subject'] . (string) $atts['message'] );
@@ -148,18 +148,18 @@ $cm_mail = function ( string $to, string $needle ) use ( &$cm_mails ): ?array {
 	return null;
 };
 $cm_ok_text = function ( ?array $m ): bool { // il nome scritto bene: niente entità rimaste nell'oggetto, niente doppio escape nel testo
-	return $m && false === strpos( $m['subject'], '&#' ) && false === strpos( $m['raw'], '&amp;#039;' ) && false === strpos( $m['raw'], '&amp;amp;' );
+	return $m && false === strpos( $m['subject'], '&#' ) && false === strpos( $m['subject'], '&quot;' ) && false === strpos( $m['raw'], '&amp;#039;' ) && false === strpos( $m['raw'], '&amp;amp;' ) && false === strpos( $m['raw'], '&amp;quot;' );
 };
 $cm_oe = (string) $cm_peo->get( $cm_o )['email'];
 CourseCoins::pay( $cm_c, $cm_o, '2031-05', $cm_o );
 $cm_m1 = $cm_mail( $cm_oe, 'Mese pagato' );
-asem_ok( $cm_ok_text( $cm_m1 ) && false !== strpos( $cm_m1['subject'], "Mese pagato in Gettoni d'oro più" ) && false !== strpos( $cm_m1['text'], "è pagato con 40 Gettoni d'oro più" ), 'moneta: email del mese pagato con il nome con apostrofo e accento' );
+asem_ok( $cm_ok_text( $cm_m1 ) && false !== strpos( $cm_m1['subject'], "Mese pagato in Crediti d'oro \"Lucà\"" ) && false !== strpos( $cm_m1['text'], "è pagato con 40 Crediti d'oro \"Lucà\"" ), 'moneta: email del mese pagato con il nome con apostrofo e accento' );
 CourseCoins::registration_deleted( $cm_c, $cm_o );
 $cm_m2 = $cm_mail( $cm_oe, 'Iscrizione cancellata' );
-asem_ok( $cm_ok_text( $cm_m2 ) && false !== strpos( $cm_m2['text'], "ti tornano 40 Gettoni d'oro più" ), 'moneta: email della moneta restituita per iscrizione cancellata' );
+asem_ok( $cm_ok_text( $cm_m2 ) && false !== strpos( $cm_m2['text'], "ti tornano 40 Crediti d'oro \"Lucà\"" ), 'moneta: email della moneta restituita per iscrizione cancellata' );
 \AssociazioneSemplice\LessonExceptions::cancel( $cm_l, '2031-05-27' );
 $cm_m3 = $cm_mail( (string) $cm_peo->get( $cm_q )['email'], 'Lezione annullata' );
-asem_ok( $cm_ok_text( $cm_m3 ) && false !== strpos( $cm_m3['text'], "27/05/2031" ) && false !== strpos( $cm_m3['text'], "ti tornano 10 Gettoni d'oro più" ) && false === strpos( $cm_m3['text'], 'a tuo favore' ), 'moneta: email della lezione annullata con la moneta che torna, senza importo in euro' );
+asem_ok( $cm_ok_text( $cm_m3 ) && false !== strpos( $cm_m3['text'], "27/05/2031" ) && false !== strpos( $cm_m3['text'], "ti tornano 10 Crediti d'oro \"Lucà\"" ) && false === strpos( $cm_m3['text'], 'a tuo favore' ), 'moneta: email della lezione annullata con la moneta che torna, senza importo in euro' );
 $cm_par_mail = (string) $cm_peo->get( $cm_par )['email'];
 Credits::adjust( $cm_par, 40, 'prova' );
 CourseCoins::pay( $cm_c, $cm_kid, '2031-05', $cm_par );
