@@ -481,6 +481,7 @@ final class Views {
 			$html .= Bank::html_accounts( $p, array_values( $dues ) )
 				. self::form( 'asem_front_bank_email', '', 'Mandami le coordinate per email', false, 'asemf-bank-form' );
 		}
+		$html  .= (string) apply_filters( 'asem_pay_section_extra', '', $p ); // la Pro aggiunge qui i mesi pagabili nella moneta interna
 		$recent = $pay->list( array( 'payer_person_id' => (int) $p['id'] ), 5 );
 		if ( $recent ) {
 			$html .= '<details class="asemf-details"><summary>Ultimi pagamenti online</summary><ul class="asemf-list">';

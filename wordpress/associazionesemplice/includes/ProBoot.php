@@ -165,6 +165,7 @@ final class ProBoot {
 		add_filter( 'asem_extension_schema_ready', array( __CLASS__, 'filter_schema_ready' ) ); // con lo schema del Pro a metà le scritture aspettano, come per quello del gratuito
 		add_action( 'plugins_loaded', array( __CLASS__, 'maybe_upgrade_schema' ), 12 ); // dopo l'aggiornamento dello schema del gratuito (priorità 10)
 		ProData::register(); // esportazione, anonimizzazione ed eliminazioni
+		CourseCoins::register(); // mensilità dei corsi pagate nella moneta interna
 		ProSettings::register();
 		LevelVoting::register(); // diritto di voto per livello di socio
 		ProBlockC::register(); // certificati medici e affiliazioni agli enti

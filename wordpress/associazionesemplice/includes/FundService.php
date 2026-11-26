@@ -111,14 +111,16 @@ class FundService {
 	 * Come {@see FundService::attribute()}, per un'attività pagata in crediti (nessun incasso in prima nota): la quota va al fondo del volontario
 	 * e resta accantonata finché non si libera o si rimborsa. @return int centesimi accantonati
 	 */
-	public function attribute_credits( array $activity, int $base_cents, string $date, string $note ): int {
-		$cents = FundShare::cents( (string) ( $activity['fund_mode'] ?? '' ), (int) ( $activity['fund_value'] ?? 0 ), $base_cents );
+	public function attribute_credits( array $activity, int $base_cents, string $date, string $note, ?int &$entry_id = null ): int {
+		$entry_id = 0;
+		$cents    = FundShare::cents( (string) ( $activity['fund_mode'] ?? '' ), (int) ( $activity['fund_value'] ?? 0 ), $base_cents );
 		if ( $cents <= 0 || empty( $activity['instructor_person_id'] ) ) {
 			return 0;
 		}
 		$fund = $this->open_fund_for( (int) $activity['id'], $activity );
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund, 'kind' => 'share', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 190 ), 'created_at' => Db::now() ) );
-		return $cents;
+		$ok       = $this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund, 'kind' => 'share', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 190 ), 'created_at' => Db::now() ) );
+		$entry_id = $ok ? (int) $this->db()->insert_id : 0;
+		return $ok ? $cents : 0;
 	}
 
 	/**

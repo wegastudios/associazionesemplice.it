@@ -587,6 +587,7 @@ final class ImportService {
 				array( 'trials', 'person_id', '' ),
 				array( 'course_month_dues', 'person_id', '' ),
 				array( 'course_credits', 'person_id', '' ),
+				array( 'course_credit_payments', 'person_id', '' ),
 				array( 'bookings', 'person_id', '' ),
 				array( 'bookings', 'booked_by', '' ),
 				array( 'memberships', 'person_id', ' AND deleted_at IS NULL' ),

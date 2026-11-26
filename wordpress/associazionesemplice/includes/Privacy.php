@@ -103,6 +103,7 @@ final class Privacy {
 			'corsi'        => $courses,
 			'prenotazioni' => $bookings,
 			'contributi_a_lezione' => Db::db()->get_results( Db::db()->prepare( 'SELECT a.name AS corso, d.month AS mese, d.lessons AS lezioni, d.due_cents AS dovuto_centesimi FROM ' . Db::t( 'course_month_dues' ) . ' d JOIN ' . Db::t( 'activities' ) . ' a ON a.id = d.activity_id WHERE d.person_id = %d ORDER BY d.month', $person_id ), ARRAY_A ) ?: array(),
+			'mensilita_moneta_interna' => Db::db()->get_results( Db::db()->prepare( 'SELECT a.name AS corso, c.month AS mese, c.credits AS quantita, c.cents AS valore_centesimi, c.status AS stato FROM ' . Db::t( 'course_credit_payments' ) . ' c JOIN ' . Db::t( 'activities' ) . ' a ON a.id = c.activity_id WHERE c.person_id = %d ORDER BY c.month', $person_id ), ARRAY_A ) ?: array(),
 			'lezioni_annullate' => Db::db()->get_results( Db::db()->prepare( 'SELECT a.name AS corso, c.lesson_date AS lezione, c.cents AS importo_centesimi, c.status AS stato, c.makeup_date AS recupero FROM ' . Db::t( 'course_credits' ) . ' c JOIN ' . Db::t( 'activities' ) . ' a ON a.id = c.activity_id WHERE c.person_id = %d ORDER BY c.lesson_date', $person_id ), ARRAY_A ) ?: array(),
 			'prove_gratuite' => array_map( function ( $t ) { return array( 'corso' => $t['activity_name'], 'giorno' => $t['trial_date'] ); }, Trials::of_person( $person_id ) ),
 			'prenotazioni_fatte_per_altri' => $for_others,

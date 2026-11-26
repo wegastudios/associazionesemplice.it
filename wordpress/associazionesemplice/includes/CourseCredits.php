@@ -203,6 +203,11 @@ final class CourseCredits {
 			}
 			$id   = (int) self::db()->insert_id;
 			$paid = (int) $d['paid'];
+			$coin = (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_credit_payments' ) . " WHERE activity_id = %d AND person_id = %d AND month = %s AND status = 'paid'", $activity_id, $pid, $month ) );
+			if ( $coin ) { // mese pagato nella moneta interna: torna la moneta di questa lezione, non nasce un importo a favore in euro
+				do_action( 'asem_course_coin_lesson', $activity_id, $pid, $month, $price );
+				continue;
+			}
 			$due  = max( 1, (int) $d['due_cents'] );
 			if ( $paid > 0 ) { // solo chi aveva pagato: la quota dell'istruttore accantonata su quel mese, per questa lezione, torna all'associazione
 				$share = Plugin::funds()->share_for_course_month( $activity_id, $pid, $month );

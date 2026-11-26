@@ -965,6 +965,7 @@ final class ActivitiesPage {
 				. '<em>(' . esc_html( MemberType::label( $e['type'] ) ) . ')</em> — ' . Ui::pay_status( $s['summary'] )
 				. ( $active ? '' : ' <span class="asem-warn">· cancellato dopo ' . esc_html( Ui::month( $e['end_month'] ) ) . '</span>' )
 				. ( self::variant_text( $activity, $e ) )
+				. (string) apply_filters( 'asem_course_enrolled_extra', '', $activity, $e, $s['summary'] ) // la Pro: pagare il mese nella moneta interna
 				. ( (int) $s['summary']['balance'] < 0 ? ' <a class="button button-small button-primary" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => (int) $e['person_id'], 'due' => 1 ) ) ) . '">Paga</a>' : '' )
 				. ( current_user_can( Plugin::CAP ) ? ' ' . self::cancel_control( $id, array( 'id' => (int) $e['person_id'], 'first_name' => (string) $e['first_name'], 'last_name' => (string) $e['last_name'] ), 0, 'Elimina' ) : '' )
 				. '</summary>', Html::allowed() );

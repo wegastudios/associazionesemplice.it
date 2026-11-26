@@ -193,7 +193,7 @@ final class EmployeeRules {
 				),
 				array( 'all' => array( self::PEOPLE ) )
 			);
-			$add( array( 'asem_course_credits_expire' ), array( 'all' => array( self::COURSES, self::COLLECT ) ) ); // importi a favore scaduti dei corsi a lezioni: come il riquadro in Bacheca
+			$add( array( 'asem_course_credits_expire', 'asem_course_coins' ), array( 'all' => array( self::COURSES, self::COLLECT ) ) ); // importi a favore scaduti dei corsi a lezioni: come il riquadro in Bacheca
 			$add( array( 'asem_cert_add', 'asem_cert_delete', 'asem_cert_csv' ), array( 'all' => array( self::HEALTH ) ) );
 			$add( array( 'asem_cert_file' ), array( 'any' => array( self::HEALTH, self::COURSES, self::EVENTS ) ) ); // senza «Certificati medici» solo il file di un iscritto alle proprie attività (lo decide il modulo dei certificati)
 			$add( array( 'asem_person_context', 'asem_quick_person' ), array( 'any' => array( self::COLLECT, self::COURSES, self::EVENTS ) ) );

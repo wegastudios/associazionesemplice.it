@@ -14,6 +14,7 @@ final class CreditsActions {
 		'asem_credit_sell'   => 'sell',
 		'asem_credit_adjust' => 'adjust',
 		'asem_credit_name'   => 'name',
+		'asem_course_coins'  => 'course_coins',
 	);
 
 	public static function register(): void {
@@ -37,6 +38,16 @@ final class CreditsActions {
 				}
 			);
 		}
+	}
+
+	/** Dalla scheda del corso: paga il mese nella moneta interna dal saldo del socio. Serve anche il permesso Incassi. */
+	public static function course_coins( array $p ): string {
+		if ( ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::COLLECT ) ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\EmployeeRules::denied_message( \AssociazioneSemplice\EmployeeRules::COLLECT ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$pid = (int) ( $p['person_id'] ?? 0 );
+		$n   = \AssociazioneSemplice\CourseCoins::pay( (int) ( $p['activity_id'] ?? 0 ), $pid, (string) ( $p['month'] ?? '' ), $pid );
+		return 'Mese pagato con ' . \AssociazioneSemplice\CoinName::n( $n ) . '.';
 	}
 
 	public static function name( array $p ): string {

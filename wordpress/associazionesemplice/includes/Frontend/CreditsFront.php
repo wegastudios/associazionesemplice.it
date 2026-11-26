@@ -208,7 +208,7 @@ final class CreditsFront {
 		$fields = '<p><label>' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . ' <input type="number" name="credits" min="1" max="' . (int) CreditRules::MAX_CREDITS . '" style="width:6em"></label> '
 			. '<label>Attività <select name="activity_id">' . $opts . '</select></label></p>'
 			. '<p><label>Per cosa <input type="text" name="label" maxlength="190" placeholder="Ad esempio: ingresso serata"></label></p>';
-		$html  .= '<p class="asemf-muted">' . esc_html( \AssociazioneSemplice\Texts::t( 'Indica la quantità in {moneta} (oppure scegli un\'attività: l\'importo si compila da solo) e mostra il QR al socio.', array( 'moneta' => \AssociazioneSemplice\CoinName::plural() ) ) ) . '</p>' . self::form( 'asem_front_credit_charge', $fields, 'Mostra il QR', 'asemf-stack' );
+		$html  .= '<p class="asemf-muted">' . esc_html( \AssociazioneSemplice\Texts::t( 'Indica la quantità in {moneta} (oppure scegli un\'attività: l\'importo si compila da solo) e mostra il QR al socio.', array( 'moneta' => \AssociazioneSemplice\CoinName::plural() ) ) ) . ' ' . esc_html( 'L\'addebito dal vivo non chiude le mensilità dei corsi: quelle si pagano dalla sezione Pagamenti.' ) . '</p>' . self::form( 'asem_front_credit_charge', $fields, 'Mostra il QR', 'asemf-stack' );
 		return $html . '</section>';
 	}
 

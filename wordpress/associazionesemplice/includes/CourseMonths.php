@@ -139,7 +139,8 @@ final class CourseMonths {
 
 	/** Qualcuno ha versato per questo mese del corso? */
 	public static function paid( int $activity_id, string $month ): bool {
-		return (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE activity_id = %d AND type = 'income' AND voided_at IS NULL AND session_id IS NULL AND COALESCE(competence_month, DATE_FORMAT(tx_date, '%%Y-%%m')) = %s", $activity_id, $month ) ) > 0;
+		return (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE activity_id = %d AND type = 'income' AND voided_at IS NULL AND session_id IS NULL AND COALESCE(competence_month, DATE_FORMAT(tx_date, '%%Y-%%m')) = %s", $activity_id, $month ) ) > 0
+			|| (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_credit_payments' ) . " WHERE activity_id = %d AND month = %s AND status = 'paid'", $activity_id, $month ) ) > 0; // anche in moneta interna
 	}
 
 	/** Le date di un mese senza scrivere nulla: quelle fissate o quelle previste. @return string[] */

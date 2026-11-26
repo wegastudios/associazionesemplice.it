@@ -1980,7 +1980,22 @@ class ActivityService {
 		foreach ( $rows as $r ) {
 			$out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['ym'] ] = (int) $r['s'];
 		}
+		if ( Plugin::schema_ready() ) { // mesi pagati nella moneta interna: risultano pagati per il loro valore in euro (nessun incasso in prima nota)
+			foreach ( $this->db()->get_results( 'SELECT activity_id, person_id, month, cents FROM ' . Db::t( 'course_credit_payments' ) . " WHERE status = 'paid' AND activity_id IN ($ids)", ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- id interi
+				$out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['month'] ] = (int) ( $out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['month'] ] ?? 0 ) + (int) $r['cents'];
+			}
+		}
 		return $out;
+	}
+
+	/** L'iscrizione di una persona a un corso (null se non c'è). */
+	public function enrollment_row( int $activity_id, int $person_id ): ?array {
+		return $this->enrollments_of( $person_id )[ $activity_id ] ?? null;
+	}
+
+	/** La quota di un'iscrizione (variante compresa); nei corsi a lezioni quella di una lezione. */
+	public function price_of( array $activity, array $enrollment, string $person_type ): int {
+		return $this->enrollment_price( $activity, $enrollment, $person_type );
 	}
 
 	/** La quota di un'iscrizione: la variante scelta dalla segreteria (2° corso, famiglia, attività parziale…) o quella della persona. Nei corsi a lezioni è il prezzo di una. */
