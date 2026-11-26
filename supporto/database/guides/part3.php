@@ -501,6 +501,10 @@ Nella scheda del corso il riquadro **«Lezioni del mese»** mostra, per il mese 
 
 Le lezioni del mese si **fissano** al primo incasso del mese, quando parte il promemoria o il giorno 1 del mese, a seconda di quale arriva prima. Da quel momento due iscritti non hanno mai un numero di lezioni diverso per lo stesso mese.
 
+## Cosa vede il socio
+
+Per i corsi a lezioni, nel riepilogo **«Le mie attività»** dell'area soci e prima di chiedere l'iscrizione compare **«Questo mese: N lezioni, importo · Il mese prossimo: …»**. Nei mesi da pagare l'etichetta riporta le lezioni, per esempio **«Maggio 2031 (4 lezioni)»**.
+
 ## Ricalcola il mese
 
 Se dopo la fissazione cambi il calendario, per esempio aggiungi una lezione, la nuova lezione **non entra** nel mese già fissato. Se nessuno ha ancora pagato, premi **«Ricalcola»** accanto al mese: il plugin rifà le lezioni con il calendario di adesso e il dovuto degli iscritti cambia. Ti chiede conferma prima. Il pulsante sparisce appena qualcuno ha versato per quel mese, in euro o in moneta: si può ricalcolare finché nessuno ha versato.
