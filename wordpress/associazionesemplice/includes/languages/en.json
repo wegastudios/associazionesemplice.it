@@ -2213,7 +2213,7 @@
   "Il socio non ha un'email o l'invio non è riuscito: avvisalo tu." : "The member has no email address or sending failed: let them know yourself.",
   "La chiave Stripe non ha il permesso di fare rimborsi: controlla le autorizzazioni della chiave su Stripe (serve poter scrivere i rimborsi)." : "The Stripe key is not allowed to make refunds: check the key's permissions on Stripe (it must be able to write refunds).",
   "L'app PayPal non ha il permesso di fare rimborsi: controlla le autorizzazioni dell'app su developer.paypal.com e che l'account PayPal possa rimborsare, poi riprova." : "The PayPal app is not allowed to make refunds: check the app's permissions on developer.paypal.com and that the PayPal account can issue refunds, then try again.",
-  "Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e {moneta} collegati a questo pagamento restano come sono. Se vanno tolti, sistemali a mano." : "The refund returns only the money: registrations, bookings and credits linked to this payment stay as they are. If they have to be removed, fix them by hand.",
+  "Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e {moneta} collegati a questo pagamento restano come sono. Se vanno tolti, sistemali a mano." : "The refund returns only the money: registrations, bookings and {moneta} linked to this payment stay as they are. If they have to be removed, fix them by hand.",
   "Pagamento ricevuto: la segreteria lo sta controllando." : "Payment received: the office is checking it.",
   "Rimborsato" : "Refunded",
   "Rimborsato in parte" : "Partly refunded",
