@@ -71,7 +71,7 @@ $acts->enroll( $tri, $pr2, '2031-05', '2031-05-13' );
 $coin = (int) $acts->create( array( 'name' => 'Nuoto in moneta (prova)', 'social_year' => $label, 'kind' => 'course', 'billing' => 'monthly', 'first_month' => 'full', 'fee_cents' => 4000, 'starts_on' => '2031-05-01', 'lesson_slots' => $tue ) );
 Credits::set_activity_price( $coin, 40 );
 $pass = wp_generate_password( 20, false );
-$uid  = (int) wp_insert_user( array( 'user_login' => 'socio.prova.corsi', 'user_email' => 'socio.prova.corsi@example.com', 'user_pass' => $pass, 'role' => 'subscriber' ) );
+$uid  = (int) wp_insert_user( array( 'user_login' => 'socio.prova.corsi', 'user_email' => 'socio.prova.corsi@example.com', 'user_pass' => $pass, 'role' => Plugin::ROLE_MEMBER ) ); // come i veri soci: niente barra di WordPress
 $mem  = $man( 'Socio', 'Moneta', array( 'email' => 'socio.prova.corsi@example.com' ) );
 $kid  = $man( 'Figlio', 'Moneta', array( 'email' => '', 'birth_date' => '2020-03-01' ) );
 Db::db()->update( Db::t( 'people' ), array( 'wp_user_id' => $uid, 'privacy_consent_at' => Db::now() ), array( 'id' => $mem ) );
