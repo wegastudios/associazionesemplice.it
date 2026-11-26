@@ -24,6 +24,7 @@ final class CreditsFront {
 		'asem_front_credit_charge' => 'do_charge',
 		'asem_front_credit_cancel' => 'do_cancel',
 		'asem_front_credit_pay'    => 'do_pay',
+		'asem_front_course_coins'  => 'do_course_coins', // mensilità di un corso pagata in moneta (per sé o per il figlio minore)
 	);
 
 	public static function register(): void {
@@ -62,6 +63,13 @@ final class CreditsFront {
 
 	private static function back( array $post ): string {
 		return wp_validate_redirect( ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' ), home_url( '/' ) );
+	}
+
+	/** Dall'area soci: paga il mese del corso nella moneta interna, dal saldo di chi è entrato. @throws \InvalidArgumentException */
+	private static function do_course_coins( array $post ): string {
+		$p = self::actor();
+		$n = \AssociazioneSemplice\CourseCoins::pay( (int) ( $post['activity_id'] ?? 0 ), (int) ( $post['person_id'] ?? 0 ), (string) ( $post['month'] ?? '' ), (int) $p['id'] );
+		return 'Pagato con ' . \AssociazioneSemplice\CoinName::n( $n ) . '.';
 	}
 
 	/** Il socio collegato all'utente. @throws \InvalidArgumentException */

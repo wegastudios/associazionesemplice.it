@@ -24,7 +24,6 @@ final class CourseCoins {
 		add_action( 'asem_activity_deleted', array( __CLASS__, 'activity_deleted' ), 4, 1 );
 		add_filter( 'asem_pay_section_extra', array( __CLASS__, 'pay_section' ), 10, 2 );
 		add_filter( 'asem_course_enrolled_extra', array( __CLASS__, 'enrolled_extra' ), 10, 4 );
-		Frontend\Actions::add_handler( 'asem_front_course_coins', array( __CLASS__, 'do_front_pay' ) );
 	}
 
 	/** La riga di un mese pagato (null se non c'è). */
@@ -244,11 +243,6 @@ final class CourseCoins {
 		return (string) $html . $out . '</ul></div>';
 	}
 
-	public static function do_front_pay( array $post ): string {
-		$actor = Frontend\Actions::actor();
-		$n     = self::pay( (int) ( $post['activity_id'] ?? 0 ), (int) ( $post['person_id'] ?? 0 ), (string) ( $post['month'] ?? '' ), (int) $actor['id'] );
-		return 'Pagato con ' . CoinName::n( $n ) . '.';
-	}
 
 	/** Nella scheda del corso, per chi ha il permesso Incassi: pagare il mese in moneta dal saldo del socio. */
 	public static function enrolled_extra( $html, $activity, $enrollment, $summary ): string {
