@@ -373,6 +373,8 @@ Le richieste compaiono nella scheda dell'attività, nel riquadro **«Richieste d
 
 Nella pagina del corso trovi **«Come iscriversi»**: il socio con la tessera valida chiede l'iscrizione **in un clic**, chi non è socio compila il modulo e paga in anticipo con bonifico. L'iscrizione **parte dal mese corrente**, quello dell'approvazione. Approva sempre la segreteria.
 
+Il socio può chiedere l'iscrizione anche per più persone insieme: vedi [Iscrivere più persone a un corso](guida:iscrivere-piu-persone-a-un-corso).
+
 ## Protezioni
 
 Il modulo si protegge da solo dalle richieste automatiche, senza CAPTCHA di terzi. Chi non è socio non ha un'area personale: per annullare la prenotazione scrive alla segreteria.
@@ -399,7 +401,7 @@ Le regole:
 
 - al massimo **10 persone** per volta, o meno se l'evento lo prevede;
 - il contributo di tutti è **a carico di chi prenota**;
-- per gli eventi su richiesta e per i corsi la prenotazione per più persone non c'è;
+- per gli eventi su richiesta la prenotazione per più persone non c'è; per i corsi vedi [Iscrivere più persone a un corso](guida:iscrivere-piu-persone-a-un-corso);
 - a posti esauriti la lista d'attesa resta per una persona alla volta.
 
 ## Un altro socio ha prenotato per te
@@ -409,7 +411,7 @@ Ricevi un'email. Nell'area soci, in **«Prossime prenotazioni»**, puoi sceglier
 - **«Conferma»**: la prenotazione diventa tua, con le regole normali, e chi l'ha fatta non può più annullarla. Il contributo resta a suo carico.
 - **«Non partecipo»**: il posto si libera. Lo puoi fare fino all'inizio dell'evento. Per quella data nessun altro socio può prenotare per te.
 
-Se non vuoi che altri soci prenotino per te, togli la spunta **«Altri soci possono prenotare per me»** in **«Il mio profilo»**.
+Se non vuoi che altri soci prenotino per te, togli la spunta **«Altri soci possono prenotare per me»** in **«Il mio profilo»**. La stessa impostazione vale per le iscrizioni ai corsi.
 
 Chi ha prenotato vede in **«Prenotazioni fatte per altri soci»** i prenotati con il numero di tessera e può usare **«Annulla prenotazione»** finché l'altro socio non conferma.
 
@@ -428,6 +430,56 @@ Chi ha prenotato vede in **«Prenotazioni fatte per altri soci»** i prenotati c
 - Se usi il Pro e non l'hai aggiornato, la sezione **«Altri soci»** non compare e in amministrazione vedi l'avviso **«Aggiorna Associazione Semplice Pro…»**: aggiorna il Pro.
 
 Per la prenotazione di una sola persona leggi [Prenotarsi a un evento o a un corso dal sito](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito).
+MD,
+    ],
+    [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'iscrivere-piu-persone-a-un-corso',
+        'title' => 'Iscrivere più persone a un corso',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+Il socio può chiedere l'iscrizione a un corso per sé, per i suoi ospiti, per i minori di cui è tutore e per altri soci, in un solo modulo. La segreteria approva sempre.
+
+## Come chiede il socio
+
+1. Entra nell'**area soci** e apri la pagina del corso, nel riquadro **«Come iscriverti»**.
+2. Sotto **«Chi iscrivi»** scegli le persone: te, i tuoi ospiti, i minori di cui sei tutore. Accanto a ognuno vedi il contributo del corso, al mese o a lezione.
+3. Per aggiungere un ospite nuovo apri **«Iscrivi ospiti nuovi»** e compila nome, cognome, cellulare e, se vuoi, email.
+4. Per aggiungere altri soci apri **«Iscrivi altri soci»** e scrivi cognome e numero di tessera di ognuno.
+5. Premi **«Chiedi l'iscrizione»**.
+
+Le regole:
+
+- al massimo **10 persone** per volta;
+- chi è già iscritto, o ha già una richiesta in attesa, non compare tra le persone da scegliere;
+- l'iscrizione parte dal mese corrente, dopo la conferma della segreteria. Se il corso ha il primo mese in proporzione, si paga in proporzione alle lezioni che restano dal giorno della conferma;
+- il contributo di ospiti e minori è sempre a carico di chi li gestisce, come negli altri corsi;
+- se il cognome e la tessera di un altro socio non corrispondono, non parte nessuna richiesta e il socio legge una frase unica, che non dice quale dato è sbagliato;
+- gli ospiti nuovi restano tra i tuoi ospiti anche se la segreteria non accoglie la richiesta.
+
+## Iscrivere un altro socio
+
+Chi iscrive un altro socio paga **solo il primo mese**. Dal mese dopo il contributo è della persona iscritta.
+
+Dopo l'approvazione:
+
+- l'altro socio riceve un'email e trova il corso nella sua area soci, in **«Le mie attività»**, con la scritta che lo ha iscritto un altro socio e fino a quale mese paga chi l'ha iscritto;
+- se non vuole partecipare preme **«Ritirati dal corso»**: dal mese prossimo non è più iscritto e non deve più nulla. Chi l'aveva iscritto riceve un'email con il suo numero di tessera;
+- chi l'ha iscritto trova il primo mese tra i suoi contributi da pagare, scritto con il numero di tessera dell'altro socio.
+
+Se non vuoi che altri soci ti iscrivano a un corso, togli la spunta **«Altri soci possono prenotare per me»** in **«Il mio profilo»**: è la stessa impostazione degli eventi.
+
+## Pagare in moneta interna
+
+Con le monete interne (piani Pro) chi paga può usare le proprie monete per le mensilità di cui è il pagante: per ospiti e minori sempre, per un altro socio solo per il primo mese. Vedi [Il nome della moneta e le mensilità pagate in moneta](guida:nome-della-moneta-e-mensilita-in-moneta).
+
+## Per la segreteria
+
+- Le richieste compaiono nella scheda del corso, nel riquadro **«Richieste di iscrizione»**, con **«chiesta da Nome Cognome»**.
+- Quando più persone sono state chieste insieme, sopra la prima compare **«Inviate insieme da Nome Cognome (N persone)»** con il pulsante **«Approva tutte»**. Puoi anche usare **«Approva»** e **«Rifiuta»** su ogni persona: una per una.
+- Chi chiede per un ospite o per un minore riceve l'email di approvazione; chi iscrive un altro socio riceve l'avviso del primo mese da pagare.
+- Il primo mese di un altro socio si incassa da chi l'ha iscritto: in **«Nuovo incasso»** scegli quella persona. La ricevuta riporta l'altro socio come «socio con tessera n. …».
+- Dal secondo mese i contributi sono della persona iscritta, come per ogni altro socio.
 MD,
     ],
     [
