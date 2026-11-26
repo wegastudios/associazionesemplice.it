@@ -14,7 +14,7 @@ final class ProMenu {
 		'asem-people'     => array( 'Rubrica soci', array( 'asem-people' => 'Soci e ospiti', 'asem-messages' => 'Comunicazioni' ) ),
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
 		'asem-resources'  => array( 'Risorse', array( 'asem-resources' => 'Risorse', 'asem-res-report' => 'Occupazione' ) ),
-		'asem-credits'    => array( 'Crediti', array( 'asem-credits' => 'Crediti' ) ),
+		'asem-credits'    => array( AssociazioneSempliceCoinName::PLURAL, array( 'asem-credits' => AssociazioneSempliceCoinName::PLURAL ) ), // a schermo sempre il nome scelto: lo mette groups()
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-server' => 'Stato del server', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-refunds' => 'Rimborsi', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
 		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Riepilogo', 'asem-years' => 'Anni fiscali', 'asem-budget' => 'Preventivo', 'asem-watch' => 'Rendiconto provvisorio', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto',  'asem-fivepm' => 'Adempimenti (5 per mille)' ) ),
