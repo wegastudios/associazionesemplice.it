@@ -1,9 +1,9 @@
 # Tutto ciò che non è un file reale passa dal router (robots.txt compreso: lo genera il portale).
 RewriteEngine On
-# Prova del rinvio della vecchia demo (poi diventa ^demo): /demo-prova e /demo-prova/qualcosa vanno a https://demo.associazionesemplice.it/ e /qualcosa, con una barra sola. Solo GET/HEAD.
+# La vecchia demo (associazionesemplice.it/demo) è rinviata alla nuova: /demo e /demo/qualcosa vanno a https://demo.associazionesemplice.it/ e /qualcosa con un 301 e una barra sola (solo GET/HEAD). Senza questa regola /demo senza barra finiva nel router del portale (404).
 RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
 RewriteCond %{REQUEST_URI} !/wp-cron\.php$
-RewriteRule ^demo-prova(?:/(.*))?$ https://demo.associazionesemplice.it/$1 [R=301,L]
+RewriteRule ^demo(?:/(.*))?$ https://demo.associazionesemplice.it/$1 [R=301,L]
 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.php [L]
