@@ -366,7 +366,7 @@ final class CourseCoins {
 		$out = '<div class="asemf-coins"><h4>' . esc_html( 'Oppure paga in ' . CoinName::plural() ) . '</h4><p class="asemf-small asemf-muted">' . esc_html( 'Saldo: ' . CoinName::n( $bal ) . '. Si paga il mese per intero, o in euro o in ' . CoinName::plural() . '.' ) . '</p><ul class="asemf-list">';
 		foreach ( $rows as $x ) {
 			$ok   = $bal >= $x['cost'];
-			$out .= '<li><div><strong>' . esc_html( $x['activity']['name'] . ' — ' . $x['month'] ) . '</strong><div class="asemf-small">' . esc_html( trim( $x['person']['first_name'] . ' ' . $x['person']['last_name'] ) . ' · ' . Money::format( (int) $x['due'] ) ) . '</div></div>'
+			$out .= '<li><div><strong>' . esc_html( $x['activity']['name'] . ' — ' . Admin\Ui::month( (string) $x['month'] ) ) . '</strong><div class="asemf-small">' . esc_html( trim( $x['person']['first_name'] . ' ' . $x['person']['last_name'] ) . ' · ' . Money::format( (int) $x['due'] ) ) . '</div></div>'
 				. ( $ok ? Frontend\Views::form( 'asem_front_course_coins', Frontend\Views::hidden( 'activity_id', (int) $x['activity']['id'] ) . Frontend\Views::hidden( 'person_id', (int) $x['person']['id'] ) . Frontend\Views::hidden( 'month', $x['month'] ), 'Paga ' . CoinName::n( (int) $x['cost'] ), false, 'asemf-inline' ) : '<span class="asemf-small asemf-muted">' . esc_html( 'Servono ' . CoinName::n( (int) $x['cost'] ) . ', saldo ' . $bal ) . '</span>' ) . '</li>';
 		}
 		return (string) $html . $out . '</ul></div>';
@@ -389,6 +389,6 @@ final class CourseCoins {
 		}
 		return (string) $html . ' <form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="asem-inline">' . wp_nonce_field( 'asem_course_coins', '_wpnonce', true, false )
 			. '<input type="hidden" name="action" value="asem_course_coins"><input type="hidden" name="activity_id" value="' . (int) $activity['id'] . '"><input type="hidden" name="person_id" value="' . (int) $p['id'] . '"><input type="hidden" name="month" value="' . esc_attr( $m ) . '">'
-			. '<button class="button button-small">' . esc_html( 'Paga ' . $m . ' con ' . CoinName::n( $cost ) . ' (saldo ' . Credits::balance( (int) $p['id'] ) . ')' ) . '</button></form>';
+			. '<button class="button button-small">' . esc_html( 'Paga ' . Admin\Ui::month( $m ) . ' con ' . CoinName::n( $cost ) . ' (saldo ' . CoinName::n( Credits::balance( (int) $p['id'] ) ) . ')' ) . '</button></form>';
 	}
 }
