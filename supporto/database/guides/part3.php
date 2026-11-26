@@ -573,6 +573,8 @@ Vale per i corsi **a lezioni effettive**. Se l'associazione annulla una lezione 
 
 L'importo a favore **non è un incasso**: non compare in prima nota e non ha ricevuta.
 
+Se tutto il gruppo recupera la lezione in un altro giorno, invece di annullarla spostala: nessuno ha importi a favore.
+
 ## Cosa può fare la segreteria
 
 Nella scheda del corso il riquadro **«Lezioni annullate»** elenca le lezioni annullate e, per ciascuna persona, cosa succede:
