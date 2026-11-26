@@ -98,7 +98,7 @@ final class DatabaseGrantsCopyCommand extends Command
     {
         $schemas = [...RoleObjectAudit::EXPECTED_SCHEMAS];
         foreach ($connection->select("SELECT nspname FROM pg_namespace WHERE nspname ~ '^org_'") as $row) {
-            $schemas[] = (string) ((array) $row)['nspname'];
+            $schemas[] = self::text($row, 'nspname');
         }
         $list = '{'.implode(',', array_map(static fn (string $v): string => '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $v).'"', $schemas)).'}';
 
@@ -107,12 +107,19 @@ final class DatabaseGrantsCopyCommand extends Command
             $connection->statement('SET TRANSACTION READ ONLY');
             foreach (self::QUERIES as $sql) {
                 foreach ($connection->select($sql.' ORDER BY 1', ['list' => $list]) as $row) {
-                    $lines[] = (string) ((array) $row)['s'];
+                    $lines[] = self::text($row, 's');
                 }
             }
         });
 
         return $lines;
+    }
+
+    private static function text(mixed $row, string $key): string
+    {
+        $value = ((array) $row)[$key] ?? '';
+
+        return is_string($value) ? $value : '';
     }
 
     private function restore(DatabaseNames $databases, DatabaseManager $db, string $file): int
