@@ -4,7 +4,7 @@ Tags: association, members, nonprofit, events, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.40
+Stable tag: 1.3.41
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -130,6 +130,15 @@ The front-end style sheet and script (`assets/frontend.css` and `assets/frontend
 
 == Changelog ==
 
+= 1.3.41 =
+* Nuovo: dall'area soci si chiede l'iscrizione a un corso per più persone in un solo modulo: per sé, ospiti (anche nuovi), figli minori e altri soci con cognome e numero di tessera. Accanto a ognuno si vede il contributo.
+* Nuovo: la segreteria vede le richieste arrivate insieme e chi le ha mandate, e le approva una per una o tutte con «Approva tutte». Gli ospiti nuovi restano anche se la richiesta non è accolta.
+* Nuovo: chi iscrive un altro socio paga il primo mese; dal mese dopo paga la persona iscritta, che riceve un'email e può ritirarsi dalla sua area soci. Ricevute a chi paga quel mese, con l'altro socio indicato solo col numero di tessera.
+* Altro: nel profilo la scelta «Altri soci possono prenotarmi agli eventi e iscrivermi ai corsi» vale anche per i corsi.
+Da fare dopo l'aggiornamento:
+* Se usi il Pro, aggiorna anche quello.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 = 1.3.40 =
 * Nuovo: giorni di prova gratuiti per i corsi. La prova si registra dalla scheda del corso; in Bacheca chi l'ha fatta e non si è ancora iscritto. Chi si iscrive nello stesso mese paga dal giorno della prova.
 * Nuovo: primo mese in proporzione, dalla prima lezione vera dell'iscritto. Vale per tutti i corsi mensili, anche quelli già creati, per chi si iscrive da ora; le iscrizioni già fatte non cambiano.
@@ -158,12 +167,6 @@ Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/change
 * Altro: nelle pagine di segreteria e tesoriere chi non ha fatto l'accesso trova l'accesso dello staff e poi torna alla pagina di partenza.
 * Altro: nel modulo di accesso dei soci c'è il collegamento «Segreteria e staff».
 * Altro: origine della tessera in italiano, «1 partecipante» al singolare, spazio nel pulsante «Dettagli e prenotazione».
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.37 =
-* Altro: nelle pagine delle attività e degli eventi le locandine non diventano più enormi nei siti con WordPress 6.7 o successivo.
-* Ottimizzazione: le schede delle attività sono uniformi: immagine della stessa misura, fascia colorata con l'icona se manca la locandina, date e posti in evidenza, pulsante in fondo.
-* Ottimizzazione: in Corsi ed eventi gli importi e i pulsanti delle schede sono allineati.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 
