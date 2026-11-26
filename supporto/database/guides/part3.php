@@ -503,7 +503,7 @@ Le lezioni del mese si **fissano** al primo incasso del mese, quando parte il pr
 
 ## Ricalcola il mese
 
-Se dopo la fissazione cambi il calendario, per esempio aggiungi una lezione, la nuova lezione **non entra** nel mese già fissato. Se nessuno ha ancora pagato, premi **«Ricalcola»** accanto al mese: il plugin rifà le lezioni con il calendario di adesso e il dovuto degli iscritti cambia. Ti chiede conferma prima.
+Se dopo la fissazione cambi il calendario, per esempio aggiungi una lezione, la nuova lezione **non entra** nel mese già fissato. Se nessuno ha ancora pagato, premi **«Ricalcola»** accanto al mese: il plugin rifà le lezioni con il calendario di adesso e il dovuto degli iscritti cambia. Ti chiede conferma prima. Il pulsante sparisce appena qualcuno ha versato per quel mese, in euro o in moneta: si può ricalcolare finché nessuno ha versato.
 
 ## Cose da sapere
 
@@ -578,14 +578,14 @@ L'importo a favore **non è un incasso**: non compare in prima nota e non ha ric
 Nella scheda del corso il riquadro **«Lezioni annullate»** elenca le lezioni annullate e, per ciascuna persona, cosa succede:
 
 - **Si scala dal rinnovo**: l'importo a favore si toglie dal rinnovo successivo **dello stesso corso**. Mai da un altro corso.
-- **«Segna il recupero»**: se concordi con l'iscritto di recuperare la lezione in un'altra data, indica la data del recupero. La lezione resta dovuta e l'importo a favore non spetta. La data deve essere un giorno in cui il corso ha lezione. **«Togli il recupero»** annulla la scelta.
-- **«Restituisci»**: restituisce l'importo in denaro; serve il permesso **Incassi**. Scegli il **conto** e la **data**, poi conferma: si scrive in prima nota.
+- **«Segna il recupero»**: se concordi con l'iscritto di recuperare la lezione in un'altra data, indica la data del recupero. La lezione resta dovuta e l'importo a favore non spetta. La data deve essere un giorno in cui il corso ha lezione. **«Togli il recupero»** annulla la scelta. Il recupero si segna una persona alla volta e non si segna più se l'importo è già stato scalato, restituito o chiuso.
+- **«Restituisci»**: restituisce l'importo in denaro; serve il permesso **Incassi**. Il pulsante c'è solo se resta un importo a favore. Scegli il **conto** e la **data**, poi conferma: si scrive in prima nota.
 
 Accanto a ogni riga leggi lo stato: l'importo a favore con la data di scadenza, «recupero il …», «restituito» oppure «chiuso: contributo per le attività».
 
 ## Fino a quando vale
 
-- **Per i soci**: l'importo a favore vale fino alla **fine del primo mese dell'anno fiscale successivo** a quello della lezione. Il socio riceve un avviso prima della scadenza.
+- **Per i soci**: l'importo a favore vale fino alla **fine del primo mese dell'anno fiscale successivo** a quello della lezione. Il socio riceve un avviso circa un mese prima, uno per ogni lezione.
 - **Per gli ospiti**: nessuna scadenza. L'importo si restituisce a mano.
 
 Quando il termine passa, in **Bacheca** compare il riquadro **«Importi a favore scaduti da chiudere»** con l'elenco, il numero di persone e il totale. Spunta la casella di conferma e premi **«Chiudi»**: gli importi restano all'associazione come **contributo per le attività**. Non si scrive niente in prima nota, perché i soldi sono già incassati.
@@ -605,7 +605,7 @@ La moneta interna, che i soci comprano a pacchetti, ha un nome che sceglie l'ass
 
 ## Scegliere il nome
 
-1. Dal menu di Associazione Semplice apri la voce **Crediti**.
+1. Dal menu di Associazione Semplice apri la voce con il nome della moneta (di partenza **AssoCrediti**).
 2. Nel riquadro **«Nome della moneta»** scrivi il **Singolare** e il **Plurale**, per esempio «Stella» e «Stelle».
 3. Premi **Salva**.
 
@@ -620,9 +620,9 @@ Il nome compare in area soci, email, ricevute ed esportazioni. I saldi non cambi
 
 Se un corso ha un **costo nella moneta**, la mensilità si può pagare **o in euro o in moneta**, sempre per intero. Non esiste il pagamento misto.
 
-- **Il socio** apre in area soci la sezione **Pagamenti**: sotto **«Oppure paga in AssoCrediti»** trova un pulsante **«Paga N AssoCrediti»** per ogni mese pagabile. Con il saldo insufficiente il pulsante non c'è e legge «Servono N AssoCrediti, saldo M».
+- **Il socio** apre in area soci la sezione **Pagamenti**: sotto **«Oppure paga in AssoCrediti»** legge il saldo e trova un pulsante **«Paga N AssoCrediti»** per ogni mese pagabile, anche per i figli minorenni. Se il saldo non basta, al posto del pulsante legge «Servono N AssoCrediti, saldo M».
 - **Il genitore** può pagare con la propria moneta la mensilità del figlio **minorenne** di cui risulta genitore o tutore in anagrafica.
-- **La segreteria**, con il permesso Incassi, dalla scheda del corso, con il pulsante «Paga [mese] con N AssoCrediti (saldo M)».
+- **La segreteria**, con il permesso Incassi, dalla scheda del corso, con il pulsante **«Paga [mese] con N AssoCrediti (saldo M)»**, per esempio «Paga Maggio 2031 con 40 AssoCrediti (saldo 100 AssoCrediti)». Nei testi al posto di «AssoCrediti» c'è il nome scelto dall'associazione.
 
 Cosa tenere presente:
 
