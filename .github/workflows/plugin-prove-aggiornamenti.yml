@@ -296,10 +296,16 @@ jobs:
           umask 077
           # la chiave va nel corpo della richiesta da un file (mai sulla riga di comando); lo zip scaricato resta fuori dall'area di lavoro, non è un artefatto e non entra nel repository
           jq -n --arg d "$DOMINIO" '{product: "pro", version: "0.0.1", domain: $d, license_key: env.KEY}' > "$RUNNER_TEMP/richiesta.json"
-          code="$(curl -sS -o "$RUNNER_TEMP/risposta.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' --data-binary @"$RUNNER_TEMP/richiesta.json" https://associazionesemplice.it/api/plugin/update || true)"
+          # Un solo nuovo tentativo dopo 20 secondi (il 403 del 26/11 era intermittente). Il motivo (codice e messaggio del portale, mai la chiave) va nel log.
+          for tentativo in 1 2; do
+            code="$(curl -sS -o "$RUNNER_TEMP/risposta.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' --data-binary @"$RUNNER_TEMP/richiesta.json" https://associazionesemplice.it/api/plugin/update || true)"
+            [ "$code" = "200" ] && break
+            echo "Tentativo $tentativo: il portale ha risposto $code (codice: $(jq -r '.error.code // .reason_code // "n/d"' "$RUNNER_TEMP/risposta.json" 2>/dev/null || echo n/d); messaggio: $(jq -r '.error.message // .message // "n/d"' "$RUNNER_TEMP/risposta.json" 2>/dev/null | cut -c1-200 || echo n/d))"
+            [ "$tentativo" = "1" ] && sleep 20
+          done
           rm -f "$RUNNER_TEMP/richiesta.json"
           if [ "$code" != "200" ]; then
-            echo "::error::Il portale ha risposto $code alla richiesta del Pro (403: licenza non in regola o legata a un altro dominio, imposta la variabile DEMO_LICENSE_DOMAIN; 429: troppe richieste)."
+            echo "::error::Il portale ha risposto $code alla richiesta del Pro anche al secondo tentativo (403: licenza non in regola o legata a un altro dominio, imposta la variabile DEMO_LICENSE_DOMAIN; 429: troppe richieste). Il motivo è nelle righe «Tentativo» qui sopra."
             rm -f "$RUNNER_TEMP/risposta.json"
             exit 1
           fi
