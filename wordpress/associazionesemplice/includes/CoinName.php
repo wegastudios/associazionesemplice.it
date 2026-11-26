@@ -37,7 +37,10 @@ final class CoinName {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function clean( string $name ): string {
-		$name = trim( preg_replace( '/\s+/u', ' ', wp_strip_all_tags( $name ) ) ?? '' );
+		if ( false !== strpos( $name, '€' ) || preg_match( '/[<>"{}]/', $name ) ) { // prima di togliere i tag: «Punti <b>» si rifiuta, non diventa «Punti»
+			throw new \InvalidArgumentException( 'Nel nome della moneta non si usano il simbolo dell\'euro né i caratteri < > " { }.' );
+		}
+		$name = trim( preg_replace( '/\s+/u', ' ', $name ) ?? '' );
 		if ( '' === $name ) {
 			return '';
 		}
@@ -46,9 +49,6 @@ final class CoinName {
 		}
 		if ( ! preg_match( '/\p{L}/u', $name ) ) {
 			throw new \InvalidArgumentException( 'Il nome della moneta deve contenere almeno una lettera.' );
-		}
-		if ( false !== strpos( $name, '€' ) || preg_match( '/[<>"{}]/', $name ) ) {
-			throw new \InvalidArgumentException( 'Nel nome della moneta non si usano il simbolo dell\'euro né i caratteri < > " { }.' );
 		}
 		return $name;
 	}
