@@ -43,7 +43,8 @@ const ok = (name, cond, extra = '') => { if (!cond) bad++; lines.push(`- ${cond 
       if (over > 0) { // chi sborda: gli elementi più interni che escono a destra
         const who = await page.evaluate(() => {
           const W = document.documentElement.clientWidth;
-          const all = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > W + 1 && e.getBoundingClientRect().width > 0);
+          const clipped = (e) => { for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (s.overflowX !== 'visible' && a.getBoundingClientRect().right <= W + 1) return true; } return false; };
+          const all = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > W + 1 && e.getBoundingClientRect().width > 0 && !clipped(e));
           const leaf = all.filter((e) => !all.some((o) => o !== e && e.contains(o)));
           return leaf.slice(0, 5).map((e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).slice(0, 3).join('.') : '') + ' → ' + Math.round(e.getBoundingClientRect().right) + 'px «' + (e.textContent || '').trim().slice(0, 40) + '»');
         });
