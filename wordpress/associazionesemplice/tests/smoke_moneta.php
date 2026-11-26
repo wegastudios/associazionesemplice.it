@@ -16,6 +16,9 @@ Settings::update( array( 'coin_singular' => '  Stella ', 'coin_plural' => 'Stell
 asem_ok( 'Stella' === CoinName::singular() && '3 Stelle' === CoinName::n( 3 ), 'moneta: il nome scelto, pulito' );
 Settings::update( array( 'coin_singular' => 'Gettone', 'coin_plural' => '' ) );
 asem_ok( 'Gettone' === CoinName::plural(), 'moneta: con un solo nome vale per entrambi' );
+Settings::update( array( 'coin_singular' => 'Credito "Lucà"', 'coin_plural' => 'Crediti "Lucà"' ) );
+asem_ok( '2 Crediti "Lucà"' === CoinName::n( 2 ) && false !== strpos( esc_attr( CoinName::plural() ), '&quot;' ), 'moneta: un nome commemorativo con virgolette e accento si accetta e si scrive bene negli attributi' );
+Settings::update( array( 'coin_singular' => 'Gettone', 'coin_plural' => '' ) );
 $mo_bad = 0;
 foreach ( array( str_repeat( 'a', 25 ), '123', '10 €', 'Punti <b>', '{moneta}' ) as $mo_n ) {
 	$mo_bad += '' !== (string) asem_throws( function () use ( $mo_n ) { Settings::update( array( 'coin_singular' => $mo_n ) ); } ) ? 1 : 0;

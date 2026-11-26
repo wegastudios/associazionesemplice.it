@@ -37,8 +37,8 @@ final class CoinName {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function clean( string $name ): string {
-		if ( false !== strpos( $name, '€' ) || preg_match( '/[<>"{}]/', $name ) ) { // prima di togliere i tag: «Punti <b>» si rifiuta, non diventa «Punti»
-			throw new \InvalidArgumentException( 'Nel nome della moneta non si usano il simbolo dell\'euro né i caratteri < > " { }.' );
+		if ( false !== strpos( $name, '€' ) || preg_match( '/[<>{}]/', $name ) ) { // «Punti <b>» si rifiuta; apostrofo, accenti e virgolette vanno bene (Crediti "Lucà")
+			throw new \InvalidArgumentException( 'Nel nome della moneta non si usano il simbolo dell\'euro né i caratteri < > { }.' );
 		}
 		$name = trim( preg_replace( '/\s+/u', ' ', $name ) ?? '' );
 		if ( '' === $name ) {
