@@ -2,7 +2,7 @@
 # Rilascio del sito di supporto (supporto.associazionesemplice.it) sul server di Associazione Semplice.
 #
 # Uso, dalla cartella supporto/ del repository, dopo che i test sono verdi e la PR è unita:
-#   SUPPORTO_DEPLOY_KEY=/percorso/della/chiave ./scripts/deploy.sh [--seed-guide]
+#   SUPPORTO_DEPLOY_KEY=/percorso/della/chiave ./scripts/deploy.sh   (utente, indirizzo e porta in deploy_key.env accanto alla chiave) [--seed-guide]
 #
 # Regole di sicurezza (storia: il 19/11/2026 copiare public/ ha sostituito il .htaccess del server,
 # che contiene il gestore PHP 8.4 di cPanel, e il sito è andato in errore 500):
@@ -13,9 +13,12 @@
 #      .htaccess salvato e si ricontrolla; lo script esce comunque con errore, così nessuno crede che sia andata bene.
 set -euo pipefail
 
-HOST="${SUPPORTO_HOST:-associazionesemp@65.108.75.89}"
-PORT="${SUPPORTO_PORT:-2299}"
 KEY="${SUPPORTO_DEPLOY_KEY:?Serve SUPPORTO_DEPLOY_KEY con il percorso della chiave SSH}"
+# Utente, indirizzo e porta del server stanno in un file non tracciato accanto alla chiave (deploy_key.env, vedi portale/deploy-server.env.example): il repository è pubblico.
+ENVF="${SUPPORTO_ENV:-$(dirname "$KEY")/deploy_key.env}"
+[ -f "$ENVF" ] && . "$ENVF"
+HOST="${SUPPORTO_HOST:?manca SUPPORTO_HOST (utente@indirizzo): copia deploy-server.env.example in deploy_key.env accanto alla chiave}"
+PORT="${SUPPORTO_PORT:?manca SUPPORTO_PORT}"
 REMOTE_DIR="${SUPPORTO_REMOTE_DIR:-wega-support}"
 PHP="${SUPPORTO_PHP:-/opt/alt/php84/usr/bin/php}"
 URL="${SUPPORTO_URL:-https://supporto.associazionesemplice.it}"
