@@ -347,7 +347,10 @@ final class MemberLoginPage {
 		$pend = TwoFactor::pending();
 		if ( $pend ) { // primo passaggio fatto: ora il codice dell'app o un codice di riserva
 			list( $input ) = self::style();
-			$body .= '<div class="n">Verifica in due passaggi</div><p>Apri l\'app di autenticazione sul telefono e scrivi il codice di 6 cifre che vedi adesso. Se non hai il telefono, scrivi uno dei tuoi codici di riserva.</p>'
+			$intro = TwoFactor::needs_reset( (int) $pend['p'] )
+				? '<p style="color:#b32d2e">' . esc_html( TwoFactor::RESET_MSG ) . '</p>' // segreto illeggibile: solo riserva o email, poi si riaccende
+				: '<p>Apri l\'app di autenticazione sul telefono e scrivi il codice di 6 cifre che vedi adesso. Se non hai il telefono, scrivi uno dei tuoi codici di riserva.</p>';
+			$body .= '<div class="n">Verifica in due passaggi</div>' . $intro
 				. self::form( 'tfa', '<label>Codice<input style="' . $input . '" type="text" name="tfa_code" required autocomplete="one-time-code" inputmode="numeric" maxlength="11" autofocus></label>', 'Entra', false, $back )
 				. $gap . '<div class="n">Hai perso il telefono e i codici di riserva?</div><p>Ti mandiamo un link all\'email della tua scheda: vale ' . (int) ( TwoFactor::RECOVERY_TTL / 60 ) . ' minuti e spegne la verifica in due passaggi.</p>'
 				. self::form( 'tfa_recover', '', 'Mandami il link', false, $back )

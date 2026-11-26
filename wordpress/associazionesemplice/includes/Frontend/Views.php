@@ -871,6 +871,11 @@ final class Views {
 			$html .= '<div class="asemf-notice asemf-ok"><p><strong>I tuoi codici di riserva.</strong> Scrivili o stampali e tienili in un posto sicuro: li vedi solo adesso. Se perdi il telefono, ognuno ti fa entrare una volta al posto del codice dell\'app.</p>'
 				. '<ul class="asemf-tfa-codes">' . $list . '</ul></div>';
 		}
+		if ( TwoFactor::is_on( $pid ) && TwoFactor::needs_reset( $pid ) ) { // segreto illeggibile: si spegne con un codice di riserva e si riaccende
+			$html .= '<p class="asemf-notice asemf-err">' . esc_html( TwoFactor::RESET_MSG ) . '</p>'
+				. self::form( 'asem_front_tfa_off', self::tfa_field( 'Codice di riserva' ), 'Spegni per riaccenderla' );
+			return $html . '</section>';
+		}
 		if ( TwoFactor::is_on( $pid ) ) {
 			$since = TwoFactor::on_since( $pid );
 			$left  = TwoFactor::backup_left( $pid );

@@ -164,26 +164,26 @@ final class TwoFactor {
 		return substr( $code, 0, 5 ) . '-' . substr( $code, 5 );
 	}
 
-	/** Impronta di un codice di riserva: «sale$hmac», con il segreto del sito (dall'impronta non si risale al codice). */
-	public static function backup_hash( string $code, string $secret, string $salt = '' ): string {
-		$salt = '' !== $salt ? $salt : bin2hex( random_bytes( 8 ) );
-		return $salt . '$' . hash_hmac( 'sha256', 'tfa-backup:' . $salt . ':' . self::normalize( $code ), $secret );
+	/**
+	 * Impronta di un codice di riserva: password_hash, con il suo sale. Non dipende dai «salt» del sito: se il segreto dell'app diventa illeggibile
+	 * (cambio dei salt, trasloco del sito) i codici di riserva valgono ancora e il socio può rientrare e riaccendere la verifica.
+	 */
+	public static function backup_hash( string $code ): string {
+		return (string) password_hash( 'tfa-backup:' . self::normalize( $code ), PASSWORD_DEFAULT );
 	}
 
 	/** @return int|null la posizione dell'impronta che corrisponde al codice; null se nessuna */
-	public static function backup_match( array $hashes, string $code, string $secret ): ?int {
-		$code  = self::normalize( $code );
-		$found = null;
+	public static function backup_match( array $hashes, string $code ): ?int {
+		$code = self::normalize( $code );
 		if ( self::BACKUP_LEN !== strlen( $code ) || ! ctype_digit( $code ) ) {
 			return null;
 		}
 		foreach ( array_values( $hashes ) as $i => $h ) {
-			$parts = explode( '$', (string) $h, 2 );
-			if ( 2 === count( $parts ) && hash_equals( (string) $h, self::backup_hash( $code, $secret, $parts[0] ) ) && null === $found ) {
-				$found = $i;
+			if ( password_verify( 'tfa-backup:' . $code, (string) $h ) ) {
+				return $i;
 			}
 		}
-		return $found;
+		return null;
 	}
 
 	// ---------- Dati della persona ----------
@@ -192,11 +192,13 @@ final class TwoFactor {
 		return wp_salt( 'auth' ); // come le chiavi dei pagamenti
 	}
 
-	private static function hmac_secret(): string {
-		return MemberSession::secret() . '|tfa';
-	}
-
-	/** @return array{secret:string,on:bool,backup:array,backup_raw:string,last_step:int,on_at:string} */
+	/**
+	 * «on» = accesa (tfa_on_at valorizzato), anche se il segreto non si legge più: in quel caso «unreadable» è vero, il codice dell'app non si può
+	 * controllare e il login si ferma comunque sulla pagina del codice (mai aperto con il solo primo passaggio): si entra con un codice di riserva
+	 * o con il link via email, e poi si riaccende.
+	 *
+	 * @return array{secret:string,on:bool,unreadable:bool,backup:array,backup_raw:string,last_step:int,on_at:string}
+	 */
 	private static function state( int $person_id ): array {
 		$db  = Db::db();
 		$r   = $person_id > 0 && Plugin::schema_ready() ? $db->get_row( $db->prepare( 'SELECT tfa_secret, tfa_backup, tfa_on_at, tfa_last_step FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $person_id ), ARRAY_A ) : null;
@@ -205,7 +207,8 @@ final class TwoFactor {
 		$bk  = $r && '' !== (string) $r['tfa_backup'] ? json_decode( (string) $r['tfa_backup'], true ) : array();
 		return array(
 			'secret'     => $sec,
-			'on'         => $r && ! empty( $r['tfa_on_at'] ) && '' !== $sec,
+			'on'         => $r && ! empty( $r['tfa_on_at'] ),
+			'unreadable' => $r && ! empty( $r['tfa_on_at'] ) && '' === $sec,
 			'backup'     => is_array( $bk ) ? array_values( array_map( 'strval', $bk ) ) : array(),
 			'backup_raw' => $r ? (string) $r['tfa_backup'] : '',
 			'last_step'  => $r ? (int) $r['tfa_last_step'] : 0,
@@ -216,6 +219,11 @@ final class TwoFactor {
 	/** La persona ha la verifica in due passaggi accesa? */
 	public static function is_on( int $person_id ): bool {
 		return $person_id > 0 && self::state( $person_id )['on'];
+	}
+
+	/** Accesa ma con il segreto illeggibile (salt cambiati, trasloco, dato rovinato): va riconfigurata, si entra con un codice di riserva o con l'email. */
+	public static function needs_reset( int $person_id ): bool {
+		return $person_id > 0 && self::state( $person_id )['unreadable'];
 	}
 
 	/** Da quando è accesa (UTC), vuoto se spenta. */
@@ -312,9 +320,8 @@ final class TwoFactor {
 	}
 
 	private static function hash_all( array $codes ): string {
-		$secret = self::hmac_secret();
-		return (string) wp_json_encode( array_map( function ( $c ) use ( $secret ) {
-			return self::backup_hash( (string) $c, $secret );
+		return (string) wp_json_encode( array_map( function ( $c ) {
+			return self::backup_hash( (string) $c );
 		}, $codes ) );
 	}
 
@@ -342,7 +349,7 @@ final class TwoFactor {
 				return 'ok';
 			}
 		} else {
-			$i = self::backup_match( $s['backup'], $norm, self::hmac_secret() );
+			$i = self::backup_match( $s['backup'], $norm );
 			if ( null !== $i ) {
 				$left = $s['backup'];
 				array_splice( $left, $i, 1 );
@@ -350,6 +357,10 @@ final class TwoFactor {
 				if ( 1 === (int) $won ) {
 					Counters::delete( self::fail_key( $person_id ) );
 					Audit::log( 'member.tfa_backup_used', 'person', $person_id, array( 'left' => count( $left ) ) );
+					if ( $s['unreadable'] ) { // segreto illeggibile: entrato con la riserva, la verifica si spegne e il socio la riaccende da «Il mio profilo»
+						self::forget( $person_id );
+						Audit::log( 'member.tfa_off', 'person', $person_id, array( 'how' => 'unreadable_backup' ) );
+					}
 					return 'ok';
 				}
 			}
@@ -357,6 +368,9 @@ final class TwoFactor {
 		self::count_fail( $person_id, $where );
 		return 'wrong';
 	}
+
+	/** Messaggio per il segreto illeggibile. */
+	const RESET_MSG = 'La verifica in due passaggi va riconfigurata: il codice dell\'app non si può più controllare. Usa un codice di riserva oppure il link via email, poi riaccendila da «Il mio profilo».';
 
 	/** Messaggio unico per un codice che non va. */
 	const WRONG_MSG = 'Il codice non è corretto o è già stato usato. Scrivi il codice che vedi adesso nell\'app, oppure un codice di riserva.';
@@ -386,6 +400,9 @@ final class TwoFactor {
 	public static function regenerate_backup( int $person_id, string $code ): array {
 		if ( ! self::is_on( $person_id ) ) {
 			throw new \InvalidArgumentException( 'La verifica in due passaggi è spenta.' );
+		}
+		if ( self::needs_reset( $person_id ) ) {
+			throw new \InvalidArgumentException( self::RESET_MSG ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		self::require_code( $person_id, $code, 'regen' );
 		$codes = self::new_backup_codes();
@@ -464,6 +481,9 @@ final class TwoFactor {
 		Counters::set( self::pending_key( $raw ), array( 'p' => $person_id, 'r' => $remember ? 1 : 0, 'h' => substr( sanitize_key( $how ), 0, 20 ) ), self::PENDING_TTL );
 		self::set_cookie( $raw, time() + self::PENDING_TTL );
 		Audit::log( 'member.tfa_asked', 'person', $person_id, array( 'how' => $how ) );
+		if ( self::needs_reset( $person_id ) ) { // segreto illeggibile: niente sessione con il solo primo passaggio, resta scritto
+			Audit::log( 'member.tfa_unreadable', 'person', $person_id, array( 'how' => $how ) );
+		}
 	}
 
 	/** Chi ha superato il primo passaggio e deve scrivere il codice (null se nessuno). @return array{p:int,r:int,h:string}|null */

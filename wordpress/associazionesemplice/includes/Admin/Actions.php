@@ -1132,6 +1132,9 @@ final class Actions {
 		if ( ! empty( $r['members_reset'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le sessioni aperte e le notifiche dei soci non fanno parte del ripristino: i soci dovranno entrare di nuovo.' );
 		}
+		if ( ! empty( $r['tfa_reset'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Backup::TFA_RESTORE_NOTE . ' ' . \AssociazioneSemplice\Texts::n( (int) $r['tfa_reset'], 'Era accesa per un socio.', 'Era accesa per {n} soci.' );
+		}
 		if ( ! empty( $r['bad'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::n( (int) $r['bad'], 'Attenzione: un file della copia risulta alterato (o non si apre con la chiave) e non è stato rimesso sul sito.', 'Attenzione: {n} file della copia risultano alterati (o non si aprono con la chiave) e non sono stati rimessi sul sito.' );
 		}

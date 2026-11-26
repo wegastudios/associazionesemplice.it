@@ -67,8 +67,8 @@ $dp_ok = 10 === count( $dp_bk ) && 10 === count( array_unique( $dp_bk ) );
 foreach ( $dp_bk as $dp_c ) {
 	$dp_ok = $dp_ok && 1 === preg_match( '/^\d{10}$/', $dp_c );
 }
-$dp_hs = array( TwoFactor::backup_hash( $dp_bk[0], 'segreto' ), TwoFactor::backup_hash( $dp_bk[1], 'segreto' ) );
-asem_ok( $dp_ok && 1 === TwoFactor::backup_match( $dp_hs, TwoFactor::show_backup( $dp_bk[1] ), 'segreto' ) && null === TwoFactor::backup_match( $dp_hs, $dp_bk[2], 'segreto' ) && false === strpos( implode( '', $dp_hs ), $dp_bk[0] ), 'due passaggi: 10 codici di riserva di 10 cifre, salvati solo come impronta con sale' );
+$dp_hs = array( TwoFactor::backup_hash( $dp_bk[0] ), TwoFactor::backup_hash( $dp_bk[1] ) );
+asem_ok( $dp_ok && 1 === TwoFactor::backup_match( $dp_hs, TwoFactor::show_backup( $dp_bk[1] ) ) && null === TwoFactor::backup_match( $dp_hs, $dp_bk[2] ) && false === strpos( implode( '', $dp_hs ), $dp_bk[0] ), 'due passaggi: 10 codici di riserva di 10 cifre, salvati solo come impronta con sale' );
 asem_ok( 5 === Limits::get( 'member_tfa_fail_per_10min' ), 'due passaggi: limite di 5 codici sbagliati ogni 10 minuti, nei Limiti' );
 
 // ---------- Un socio con l'accesso proprio: spenta di partenza ----------
@@ -234,6 +234,35 @@ TwoFactor::$clock = $dp_now + 430;
 Actions::do_tfa_off( array( 'tfa_code' => $dp_at( 430 ) ) );
 asem_ok( ! TwoFactor::is_on( $dp_p ) && false !== strpos( $dp_last( 'member.tfa_off', $dp_p ), 'code' ), 'due passaggi: dal profilo si spegne con un codice valido' );
 
+// ---------- Segreto illeggibile (salt cambiati, trasloco, dato rovinato): mai aperta con il solo primo passaggio ----------
+$dp_corrupt = function () use ( $wpdb, &$dp_p ): void {
+	$wpdb->update( Db::t( 'people' ), array( 'tfa_secret' => 'enc1:' . base64_encode( random_bytes( 60 ) ) ), array( 'id' => $dp_p ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- dato finto della prova
+};
+Counters::delete( $dp_failkey );
+TwoFactor::$clock = $dp_now + 440;
+$dp_sec = TwoFactor::start_setup( $dp_p );
+$dp_uc  = TwoFactor::confirm_setup( $dp_p, $dp_at( 440 ) );
+TwoFactor::take_new_codes( $dp_p );
+$dp_corrupt();
+$dp_out();
+$dp_u0 = count( $dp_audit( 'member.tfa_unreadable', $dp_p ) );
+asem_ok( TwoFactor::is_on( $dp_p ) && TwoFactor::needs_reset( $dp_p ) && $dp_p === MemberLogin::login_with_password( $dp_addr, $dp_pw ) && 0 === $dp_sess() && null !== TwoFactor::pending(), 'due passaggi: con il segreto illeggibile la sola password non apre la sessione' );
+asem_ok( 1 === count( $dp_audit( 'member.tfa_unreadable', $dp_p ) ) - $dp_u0 &&false !== strpos( MemberLoginPage::page( '', '', '', '', '' ), 'va riconfigurata' ), 'due passaggi: segreto illeggibile scritto nel registro, la pagina propone riserva o email' );
+TwoFactor::$clock = $dp_now + 470;
+asem_ok( 'wrong' === TwoFactor::finish_login( $dp_at( 470 ) ) && 0 === $dp_sess(), 'due passaggi: con il segreto illeggibile il codice dell\'app non fa entrare' );
+asem_ok( 'ok' === TwoFactor::finish_login( TwoFactor::show_backup( $dp_uc[0] ) ) && 1 === $dp_sess() && ! TwoFactor::is_on( $dp_p ) && false !== strpos( $dp_last( 'member.tfa_off', $dp_p ), 'unreadable_backup' ), 'due passaggi: con un codice di riserva si entra e la verifica si spegne, da riaccendere' );
+$dp_sec = TwoFactor::start_setup( $dp_p );
+TwoFactor::confirm_setup( $dp_p, $dp_at( 470 ) );
+TwoFactor::take_new_codes( $dp_p );
+asem_ok( TwoFactor::is_on( $dp_p ) && ! TwoFactor::needs_reset( $dp_p ), 'due passaggi: dopo il ripristino il socio la riaccende' );
+$dp_corrupt();
+$dp_out();
+Counters::delete( 'asem_tfa_rm_' . $dp_p );
+MemberLogin::login_with_password( $dp_addr, $dp_pw );
+TwoFactor::request_recovery();
+$dp_rt3 = 1 === preg_match( '/asem_tfa_off=([A-Za-z0-9_-]{43})/', (string) end( $dp_mail )['message'], $dp_mm ) ? $dp_mm[1] : '';
+asem_ok( 0 === $dp_sess() && '' !== $dp_rt3 && TwoFactor::use_recovery( $dp_rt3 ) && ! TwoFactor::is_on( $dp_p ), 'due passaggi: con il segreto illeggibile anche il link via email la spegne' );
+
 // ---------- Esportazione dei dati, copia di sicurezza, cancellazione e anonimizzazione ----------
 TwoFactor::$clock = $dp_now + 500;
 $dp_sec = TwoFactor::start_setup( $dp_p );
@@ -252,8 +281,19 @@ foreach ( explode( "\n", (string) $dp_za->getFromName( 'tabelle/asem_people.json
 	}
 }
 $dp_za->close();
-wp_delete_file( $dp_zip );
 asem_ok( '' !== $dp_line && false === strpos( $dp_line, 'tfa_' ) && false === strpos( $dp_line, (string) $dp_raw( $dp_p )['tfa_secret'] ), 'due passaggi: nella copia di sicurezza la scheda c\'è, ma senza segreto e codici' );
+// Ripristino della copia: la verifica è spenta per tutti e l'esito lo dice alla segreteria (anche la pagina del ripristino).
+wp_set_current_user( 1 );
+$dp_res = \AssociazioneSemplice\Backup::restore( $dp_zip );
+wp_set_current_user( 0 );
+wp_delete_file( $dp_zip );
+asem_ok( (int) ( $dp_res['tfa_reset'] ?? 0 ) >= 1 && ! TwoFactor::is_on( $dp_p ) && false !== strpos( \AssociazioneSemplice\Backup::TFA_RESTORE_NOTE, 'dovranno riaccenderla' ), 'due passaggi: dopo il ripristino di una copia la verifica è spenta e l\'esito avvisa che i soci dovranno riaccenderla (' . (int) ( $dp_res['tfa_reset'] ?? 0 ) . ')' );
+$dp_bp = (string) file_get_contents( dirname( __DIR__ ) . '/includes/Admin/BackupPage.php' ) . (string) file_get_contents( dirname( __DIR__ ) . '/includes/Admin/Actions.php' );
+asem_ok( 2 === substr_count( $dp_bp, 'Backup::TFA_RESTORE_NOTE' ), 'due passaggi: l\'avviso compare nella pagina del ripristino e nel suo esito' );
+TwoFactor::$clock = $dp_now + 530;
+$dp_sec = TwoFactor::start_setup( $dp_p );
+TwoFactor::confirm_setup( $dp_p, $dp_at( 530 ) );
+TwoFactor::take_new_codes( $dp_p );
 $dp_q = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Quinto', 'last_name' => 'Passaggi', 'email' => 'quinto.passaggi@example.org' ) );
 $dp_sec = TwoFactor::start_setup( $dp_q );
 TwoFactor::confirm_setup( $dp_q, $dp_at( 500 ) );

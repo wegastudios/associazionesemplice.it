@@ -574,6 +574,9 @@ final class Backup {
 		'people' => array( 'tfa_secret', 'tfa_backup', 'tfa_on_at', 'tfa_last_step' ), // nome della tabella senza il prefisso asem_
 	);
 
+	/** Avviso alla segreteria, nella pagina e nell'esito del ripristino (con il ripristino la verifica in due passaggi è spenta per tutti). */
+	const TFA_RESTORE_NOTE = 'I soci che avevano la verifica in due passaggi dovranno riaccenderla da «Il mio profilo»: il ripristino la spegne, perché il segreto dell\'app non fa parte della copia.';
+
 	/** Le tabelle, una riga JSON per record, ognuna nel suo file della cartella di lavoro. */
 	private static function step_tables( array $s, float $deadline ): array {
 		$db     = Db::db();
@@ -1125,6 +1128,7 @@ final class Backup {
 		$rows_total    = 0;
 		$members_reset = 0;
 		$passwords     = 0;
+		$tfa_reset     = Plugin::schema_ready() ? (int) $db->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE tfa_on_at IS NOT NULL' ) : 0; // la verifica in due passaggi non è nella copia: chi l'aveva accesa dovrà riaccenderla
 		$db->query( 'START TRANSACTION' );
 		try {
 			foreach ( $names as $name ) {
@@ -1263,6 +1267,7 @@ final class Backup {
 				'keys_closed'       => (int) $keys['closed'],
 				'members_reset'     => $members_reset,
 				'passwords'         => $passwords,
+				'tfa_reset'         => $tfa_reset,
 				'documents'         => $documents,
 				'orphans'           => $orphans,
 			)
@@ -1279,6 +1284,7 @@ final class Backup {
 			'keys_failed'   => (bool) $keys['failed'],
 			'members_reset' => $members_reset,
 			'passwords'     => $passwords,
+			'tfa_reset'     => $tfa_reset,
 			'origin'        => $origin,
 			'safety'        => basename( $safety ),
 			'documents'     => $documents,
