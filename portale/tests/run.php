@@ -3045,16 +3045,26 @@ if ( rtMode() ) {
 	) );
 	check( 'migrazione: il ruolo di tutti i giorni cambia le sue tabelle e il rifiuto «must be owner» sulle altre è riconoscibile', 1 === count( $left ) && true === $left[0]['owner'] && false !== strpos( $left[0]['sql'], 'orders' ) );
 }
-// HEAD si comporta come GET (prima ogni HEAD dava 404): stessa risposta, il server web toglie il corpo.
-$headDb = testDb();
+// HEAD: sulle pagine pubbliche segue il GET (prima ogni HEAD dava 404); scarichi, API, uscita e pagamenti non partono mai da una HEAD.
+$headDb  = testDb();
 $headApp = function ( string $m, string $p ) use ( $headDb ) {
 	ob_start();
 	( new Portale\App( $headDb, new Billing( $headDb, new WegaClient( 'https://license.test/api/v1', 't' ) ), new Portale\Auth( $headDb ) ) )->run( $m, $p );
 	return ob_get_clean();
 };
+$headLike = new ReflectionMethod( Portale\App::class, 'headLikeGet' );
+$headLike->setAccessible( true );
+foreach ( array( '/', '/prova', '/confronto', '/accedi', '/account', '/robots.txt', '/sitemap.xml', '/saas', '/wordpress', '/privacy' ) as $headPath ) {
+	check( 'HEAD ' . $headPath . ': segue il GET', $headLike->invoke( null, $headPath ) );
+}
+foreach ( array( '/scarica/abc', '/api/plugin/package', '/api/plugin/latest', '/api/license/validate', '/api/saas/v1/download', '/.well-known/jwks.json', '/paypal/ritorno', '/account/esci', '/entra/abc', '/nonesiste' ) as $headPath ) {
+	check( 'HEAD ' . $headPath . ': resta com\'era (mai trattata come GET)', ! $headLike->invoke( null, $headPath ) );
+}
 foreach ( array( '/robots.txt', '/', '/prova', '/confronto' ) as $headPath ) {
 	$headGet = $headApp( 'GET', $headPath );
-	check( 'HEAD ' . $headPath . ': stesso risultato del GET, non il 404', '' !== $headGet && $headGet === $headApp( 'HEAD', $headPath ) );
+	check( 'HEAD ' . $headPath . ': stessa risposta del GET', '' !== $headGet && $headGet === $headApp( 'HEAD', $headPath ) );
 }
+$headMissing = $headApp( 'GET', '/non-esiste-davvero' );
+check( 'rotta che non esiste: stessa pagina di errore con GET e con HEAD', $headMissing === $headApp( 'HEAD', '/non-esiste-davvero' ) );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
