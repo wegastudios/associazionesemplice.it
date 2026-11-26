@@ -339,7 +339,7 @@ final class ResourcesFront {
 			$html .= '<p><label class="asemf-sr" for="asemf-g-' . $rid . '-' . $g . '">Ospite ' . $g . '</label><input type="text" id="asemf-g-' . $rid . '-' . $g . '" name="guest[]" maxlength="120" placeholder="Ospite ' . $g . ' (nome e cognome)"></p>';
 		}
 		$only_desk = array( 'desk' ) === $options;
-		$labels    = array( 'free' => 'Prenota', 'desk' => $only_desk ? 'Prenota' : 'Prenota e paga in segreteria', 'online' => 'Prenota e paga ora', 'credits' => 'Prenota e paga con i crediti' );
+		$labels    = array( 'free' => 'Prenota', 'desk' => $only_desk ? 'Prenota' : 'Prenota e paga in segreteria', 'online' => 'Prenota e paga ora', 'credits' => \AssociazioneSemplice\Texts::t( 'Prenota e paga in {moneta}', array( 'moneta' => \AssociazioneSemplice\CoinName::plural() ) ) );
 		$html     .= '<p class="asemf-actions">';
 		foreach ( $options as $o ) {
 			$html .= '<button class="asemf-btn" name="pay" value="' . esc_attr( $o ) . '">' . esc_html( $labels[ $o ] ) . '</button> ';

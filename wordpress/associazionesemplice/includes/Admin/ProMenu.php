@@ -102,7 +102,9 @@ final class ProMenu {
 	}
 
 	public static function groups( array $groups ): array {
-		return self::GROUPS + $groups;
+		$own = self::GROUPS;
+		$own['asem-credits'] = array( \AssociazioneSemplice\CoinName::plural(), array( 'asem-credits' => \AssociazioneSemplice\CoinName::plural() ) ); // la voce porta il nome scelto
+		return $own + $groups;
 	}
 
 	public static function sections( array $sections ): array {
@@ -124,7 +126,7 @@ final class ProMenu {
 			$out[] = $p;
 			if ( 'asem-activities' === $p[0] ) {
 				$out[] = array( 'asem-resources', 'Risorse', array( ResourcesPage::class, 'render_list' ) );
-				$out[] = array( 'asem-credits', 'Crediti', array( CreditsPage::class, 'render' ) );
+				$out[] = array( 'asem-credits', \AssociazioneSemplice\CoinName::plural(), array( CreditsPage::class, 'render' ) );
 			} elseif ( 'asem-money' === $p[0] ) {
 				$out[] = array( 'asem-accounting', 'Contabilità', array( AccountingPage::class, 'render' ) );
 			}
