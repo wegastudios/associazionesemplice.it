@@ -55,7 +55,7 @@ final readonly class UsageReport
     }
 
     /**
-     * @return array{sent: int, saved: int|null, unknown: int|null} associazioni comunicate e, se il portale li dice, quante ha
+     * @return array{sent: int, saved: int|null, unknown: int|null, unknown_refs: list<string>} associazioni comunicate e, se il portale li dice, quante ha
      *                                                              salvato e quante non ha riconosciuto (mai i numeri dei soci)
      */
     public function send(): array
@@ -80,7 +80,12 @@ final readonly class UsageReport
 
         $saved = $response->json('saved');
         $unknown = $response->json('unknown');
+        // I ref che il portale non ha riconosciuto, se li manda: solo identificativi tecnici col formato dei nostri (al massimo 50).
+        $refs = $response->json('unknown_refs');
+        $unknownRefs = is_array($refs) ? array_values(array_slice(array_filter($refs,
+            static fn (mixed $r): bool => is_string($r) && preg_match('/^[A-Za-z0-9_-]{1,64}$/', $r) === 1), 0, 50)) : [];
 
-        return ['sent' => count($rows), 'saved' => is_int($saved) ? $saved : null, 'unknown' => is_int($unknown) ? $unknown : null];
+        return ['sent' => count($rows), 'saved' => is_int($saved) ? $saved : null, 'unknown' => is_int($unknown) ? $unknown : null,
+            'unknown_refs' => $unknownRefs];
     }
 }

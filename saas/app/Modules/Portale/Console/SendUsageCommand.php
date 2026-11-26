@@ -35,8 +35,8 @@ final class SendUsageCommand extends Command
         }
         UsageHealth::record(true);
         // Una riga per invio in storage/logs/portal-usage.log (lo scheduler ci aggiunge l'uscita): solo conteggi, mai i numeri dei soci.
-        $this->info(sprintf('%s inviate %d, salvate %s, non riconosciute %s', now()->toIso8601String(), $result['sent'],
-            $result['saved'] ?? '?', $result['unknown'] ?? '?'));
+        $this->info(sprintf('%s inviate %d, salvate %s, non riconosciute %s%s', now()->toIso8601String(), $result['sent'],
+            $result['saved'] ?? '?', $result['unknown'] ?? '?', $result['unknown_refs'] === [] ? '' : ' (ref: '.implode(', ', $result['unknown_refs']).')'));
         if (($result['unknown'] ?? 0) > 0) {
             Log::warning('Consumi: il portale non ha riconosciuto alcune associazioni', $result);
         }

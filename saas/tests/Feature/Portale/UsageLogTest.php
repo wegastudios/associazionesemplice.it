@@ -28,7 +28,16 @@ it('con associazioni non riconosciute dal portale avvisa nel log, senza numeri d
     Log::spy();
 
     $this->artisan('saas:portal:usage')->assertSuccessful()->expectsOutputToContain('non riconosciute 2');
-    Log::shouldHaveReceived('warning')->once()->with('Consumi: il portale non ha riconosciuto alcune associazioni', ['sent' => 0, 'saved' => 0, 'unknown' => 2]);
+    Log::shouldHaveReceived('warning')->once()->with('Consumi: il portale non ha riconosciuto alcune associazioni', ['sent' => 0, 'saved' => 0, 'unknown' => 2, 'unknown_refs' => []]);
+});
+
+it('scrive i ref non riconosciuti se il portale li manda, solo quelli con il formato dei ref', function (): void {
+    Http::fake(['https://portale.example.test/api/saas/v1/usage' => Http::response(['ok' => true, 'saved' => 0, 'unknown' => 3,
+        'unknown_refs' => ['sub_123', 'abc-9', '<script>', 42]])]);
+    Log::spy();
+
+    $this->artisan('saas:portal:usage')->assertSuccessful()->expectsOutputToContain('non riconosciute 3 (ref: sub_123, abc-9)');
+    Log::shouldHaveReceived('warning')->once()->with('Consumi: il portale non ha riconosciuto alcune associazioni', ['sent' => 0, 'saved' => 0, 'unknown' => 3, 'unknown_refs' => ['sub_123', 'abc-9']]);
 });
 
 it('se il portale non dice i conteggi scrive un punto di domanda', function (): void {
