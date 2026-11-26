@@ -114,7 +114,8 @@ $cm_cr = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'course_credi
 asem_ok( $cm_cr && 0 === \AssociazioneSemplice\CourseCredits::available( $cm_cr ), 'moneta: nessun importo a favore in euro per un mese pagato in moneta' );
 asem_ok( in_array( 'asem_course_credit_payments', \AssociazioneSemplice\Backup::tables(), true ) && isset( \AssociazioneSemplice\Privacy::export( $cm_q )['mensilita_moneta_interna'] ), 'moneta: nella copia e nei dati scaricati' );
 
-// ---------- Nome con apostrofo e accenti: ricevuta PDF e pagina del socio scritte bene ----------
+// ---------- Nome con apostrofo e accenti: ricevuta PDF, pagina del socio ed email scritte bene ----------
+Db::$today_fake = '2031-05-13'; // dopo la prima lezione di maggio: il mese è da pagare
 $cm_keep  = array( 'coin_singular' => (string) Settings::get( 'coin_singular' ), 'coin_plural' => (string) Settings::get( 'coin_plural' ) );
 $cm_packs = get_option( Credits::PACKS_OPTION, '' );
 Settings::update( array( 'coin_singular' => "Gettone d'oro", 'coin_plural' => "Gettoni d'oro più" ) );
@@ -128,9 +129,10 @@ foreach ( \AssociazioneSemplice\Receipts::list_for_payer( $cm_q ) as $cm_r ) {
 	}
 }
 $cm_pdf = '' !== $cm_rk ? (string) \AssociazioneSemplice\Receipts::build( $cm_rk )['pdf'] : '';
-asem_ok( 0 === strpos( $cm_pdf, '%PDF' ) && false !== strpos( $cm_pdf, "Gettoni d'oro" ), 'moneta: la ricevuta PDF dell\'acquisto riporta il nome con l\'apostrofo' );
+asem_ok( 0 === strpos( $cm_pdf, '%PDF' ) && false !== strpos( $cm_pdf, (string) mb_convert_encoding( "Gettoni d'oro più", 'Windows-1252', 'UTF-8' ) ), 'moneta: la ricevuta PDF dell\'acquisto riporta il nome con apostrofo e accento' );
 $cm_html = (string) apply_filters( 'asem_pay_section_extra', '', $cm_peo->get( $cm_o ) );
-asem_ok( false !== strpos( $cm_html, 'Gettoni d&#039;oro più' ) && false === strpos( $cm_html, "d'oro" ), 'moneta: nell\'area soci il nome con apostrofo è scritto ed escapato bene' );
+$cm_at = strpos( $cm_html, 'Gettoni' );
+asem_ok( false !== strpos( $cm_html, 'Gettoni d&#039;oro più' ) && false === strpos( $cm_html, "d'oro" ), 'moneta: nell\'area soci il nome con apostrofo e accento è scritto ed escapato bene' . ( false === $cm_at ? ' [nessun «Gettoni» in ' . strlen( $cm_html ) . ' caratteri]' : ' [' . substr( $cm_html, $cm_at, 40 ) . ']' ) );
 $cm_mails = array();
 $cm_trap  = function ( $r, $atts ) use ( &$cm_mails ) {
 	$cm_mails[] = array( 'to' => is_array( $atts['to'] ) ? implode( ',', $atts['to'] ) : (string) $atts['to'], 'subject' => (string) $atts['subject'], 'text' => html_entity_decode( wp_strip_all_tags( (string) $atts['message'] ), ENT_QUOTES, 'UTF-8' ), 'raw' => (string) $atts['subject'] . (string) $atts['message'] );
