@@ -348,7 +348,7 @@ Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soc
 
 ## Soci senza utente WordPress
 
-Crediti, risorse e notifiche push funzionano anche per i soci senza utente WordPress. Lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche senza utente WordPress.
+AssoCrediti (o il nome scelto dall'associazione), risorse e notifiche push funzionano anche per i soci senza utente WordPress. Lo staff di un evento con l'incasso abilitato può addebitare AssoCrediti (o il nome scelto dall'associazione) con il QR anche senza utente WordPress.
 MD,
     ],
 ];

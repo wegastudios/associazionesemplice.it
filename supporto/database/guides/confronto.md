@@ -11,7 +11,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Soci che sono enti: Scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
-| Addebito crediti con il QR dello staff: Lo staff di un evento con incasso abilitato addebita i crediti con il QR, anche senza utente WordPress | — | ✓ | ✓ |
+| Addebito di AssoCrediti con il QR dello staff: Lo staff di un evento con incasso abilitato addebita gli AssoCrediti (o il nome scelto dall'associazione) con il QR, anche senza utente WordPress | — | ✓ | ✓ |
 | Accesso dei soci semplificato: Una sola schermata: email e password oppure un link via email, con «Ricordami» per 30 giorni. Ai soci non serve un utente WordPress | ✓ | ✓ | ✓ |
 | Quota associativa unica e socio fondatore | ✓ | ✓ | ✓ |
 | Quota associativa a rate: residuo in scheda, saldo da incassare e tessera valida solo a quota saldata | ✓ | ✓ | ✓ |
@@ -73,7 +73,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Prenotazione per più persone dall'area soci: In un solo modulo il socio prenota per sé, per i suoi ospiti (anche nuovi), per i minori di cui è tutore e per altri soci (cognome e numero di tessera). Vede il totale prima di confermare; si prenotano tutti o nessuno, al massimo 10 persone. Il contributo è a carico di chi prenota | ✓ | ✓ | ✓ |
 | Giorni di prova gratuiti nei corsi: La prova si registra dalla scheda del corso e in Bacheca vedi chi l'ha fatta e non si è ancora iscritto. Chi si iscrive nello stesso mese paga dal giorno della prova | ✓ | ✓ | ✓ |
 | Primo mese in proporzione: Chi si iscrive a mese iniziato paga in proporzione alle lezioni che restano, oppure il mese intero, a scelta del corso | ✓ | ✓ | ✓ |
-| Corsi a lezioni effettive: Il contributo è per lezione e il mese costa le lezioni del calendario, fissate al primo pagamento, con «Ricalcola il mese» | ✓ | ✓ | ✓ |
+| Corsi a lezioni effettive: Il contributo è per lezione e il mese costa le lezioni del calendario, fissate a inizio mese, con «Ricalcola il mese» | ✓ | ✓ | ✓ |
 | Giorni rossi nei corsi: Festività nazionali, festa del patrono e chiusure dell'associazione: ogni corso sceglie se saltarli | ✓ | ✓ | ✓ |
 | Lezione annullata già pagata: Importo a favore da scalare dal rinnovo o restituire con conto e data, recupero della lezione, chiusura dalla Bacheca alla scadenza | ✓ | ✓ | ✓ |
 | Nome della moneta interna: Il nome lo sceglie l'associazione (di partenza AssoCredito) e compare in area soci, email e ricevute | — | ✓ | ✓ |
@@ -128,7 +128,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Conti multipli e cassa condivisa: Più conti con giroconti, e una cassa usata da più persone | — | ✓ | ✓ |
 | Commissione di incasso: Sul conto, fissa più percentuale, per esempio POS: a ogni incasso la spesa va in prima nota | — | ✓ | ✓ |
 | Fondi accantonati: Somme già destinate a qualcosa, per esempio i rimborsi ai volontari | — | ✓ | ✓ |
-| Quota di risorsa accantonata in un fondo: Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
+| Quota di risorsa accantonata in un fondo: Risorse con quota accantonata in un fondo a ogni pagamento (anche in AssoCrediti) | — | ✓ | ✓ |
 | Voce di prima nota per risorsa: Una voce per ogni risorsa, separata nei report | — | ✓ | ✓ |
 | Disponibilità reale dei fondi: Quanto resta davvero dei fondi, con liberazione e chiusura | — | ✓ | ✓ |
 | Fondi da rimborsare per anno: Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |

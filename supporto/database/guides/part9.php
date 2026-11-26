@@ -263,7 +263,7 @@ Il socio riceve un'email con data, ora, ospiti e quanto resta da pagare. L'email
 
 ## Voce di prima nota per risorsa
 
-Nella scheda della risorsa puoi scegliere la **voce di entrata** su cui registrare gli incassi, in segreteria e online. Tra le voci non c'è la quota associativa. Se non scegli nulla, gli incassi vanno su «Altra entrata». Nei report e nel rendiconto le risorse si vedono separate. Con i **crediti** l'entrata è la vendita dei crediti, non la singola prenotazione.
+Nella scheda della risorsa puoi scegliere la **voce di entrata** su cui registrare gli incassi, in segreteria e online. Tra le voci non c'è la quota associativa. Se non scegli nulla, gli incassi vanno su «Altra entrata». Nei report e nel rendiconto le risorse si vedono separate. Con gli **AssoCrediti** (o il nome scelto dall'associazione) l'entrata è la vendita degli AssoCrediti, non la singola prenotazione.
 
 ## Report di occupazione
 
@@ -274,7 +274,7 @@ Per ogni risorsa a fasce vedi:
 
 - le ore **disponibili** (tra apertura e chiusura), **prenotate dai soci**, **occupate da corsi ed eventi**, **in allestimento** e **bloccate**;
 - la **percentuale di occupazione** (allestimenti e blocchi si vedono a parte);
-- gli incassi del periodo e i crediti spesi.
+- gli incassi del periodo e gli AssoCrediti (o il nome scelto dall'associazione) spesi.
 
 Per le risorse assegnate a periodo vedi le assegnazioni in corso e gli incassi.
 

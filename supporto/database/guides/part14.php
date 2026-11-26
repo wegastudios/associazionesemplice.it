@@ -31,7 +31,7 @@ A operazione fatta compare «Rimborso di X,XX € inviato al socio.» e, se il s
 
 - I soldi tornano sul **metodo di pagamento del socio**: in genere entro **pochi giorni lavorativi, fino a 10**, a seconda della banca. L'email al socio (oggetto «nome dell'associazione · Rimborso del tuo pagamento») riporta importo, data del pagamento, motivo e questi tempi, e chiude con i contatti della segreteria.
 - **Non scrive nulla in prima nota.**
-- Restituisce **solo i soldi**: iscrizioni, prenotazioni e crediti collegati al pagamento **restano come sono**. Se vanno tolti, sistemali a mano.
+- Restituisce **solo i soldi**: iscrizioni, prenotazioni e AssoCrediti (o il nome scelto dall'associazione) collegati al pagamento **restano come sono**. Se vanno tolti, sistemali a mano.
 - Se hai già restituito i soldi dal pannello di Stripe o PayPal, **non rimborsare di nuovo da qui**: segna il pagamento con **«Rimborsato»**.
 - Con **SumUp**, **Satispay** e **WooCommerce** il rimborso si fa dal pannello del gestore (con WooCommerce, dall'ordine nel negozio).
 - Se il gestore rifiuta il rimborso, il programma ne spiega il motivo (per esempio la chiave non ha il permesso di fare rimborsi, o il saldo non basta): non cambia nulla.

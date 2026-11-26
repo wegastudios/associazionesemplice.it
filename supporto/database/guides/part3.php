@@ -459,7 +459,7 @@ In **Bacheca** il riquadro **«Prove fatte, non ancora iscritti»** elenca chi h
 
 Nei corsi con **rinnovo mensile** puoi scegliere cosa paga chi si iscrive a mese iniziato. Nei dati del corso, alla voce **«Chi si iscrive a mese iniziato»**:
 
-- **«Paga in proporzione alle lezioni che restano»**: è la scelta di partenza dei corsi nuovi. Il primo mese si paga dalla prima lezione vera dell'iscritto, in proporzione alle lezioni che restano. Un corso senza orari delle lezioni calcola la proporzione sui giorni.
+- **«Paga in proporzione alle lezioni che restano»**: è la scelta di partenza di tutti i corsi mensili, anche quelli che c'erano già. Il primo mese si paga dalla prima lezione vera dell'iscritto, in proporzione alle lezioni che restano. Un corso senza orari delle lezioni calcola la proporzione sui giorni.
 - **«Paga il mese intero»**: chi si iscrive a mese iniziato paga tutto il mese.
 
 Alcune regole:
@@ -513,9 +513,9 @@ Se dopo la fissazione cambi il calendario, per esempio aggiungi una lezione, la 
 - Se il corso salta i giorni rossi, quelle lezioni non si contano nel mese: vedi [Giorni rossi: festività, patrono e chiusure](guida:giorni-rossi-festivita-patrono-e-chiusure).
 - Se una lezione viene annullata dopo che il mese è stato pagato, leggi [Lezione annullata già pagata](guida:lezione-annullata-gia-pagata).
 
-## Cambiare il modo di pagamento
+## Passare a lezioni su un corso con incassi
 
-Un corso che ha già degli incassi non cambia modo di pagamento. Il plugin lo dice così: «Ci sono già incassi su questo corso: per cambiare modo di pagamento chiudi questo corso e creane uno nuovo (Duplica).».
+Se un corso ha già degli incassi, per passare a un costo a lezioni (o toglierlo) devi chiudere il corso e crearne uno nuovo con **«Riproponi»**. Il plugin lo dice così: «Ci sono già incassi su questo corso: per passare a un costo a lezioni (o toglierlo) chiudi questo corso e creane uno nuovo con «Riproponi».».
 MD,
     ],
     [
@@ -542,7 +542,9 @@ Un cambiamento vale da oggi: le lezioni già passate non cambiano.
 Nei dati del corso trovi la spunta **«Nessuna lezione nei giorni festivi e di chiusura»**.
 
 - **Spunta accesa**: il corso non fa lezione nei giorni rossi e quelle date spariscono dal calendario, dalle presenze, dalle quote e dalla cassa.
-- **Spunta spenta**: il corso fa lezione anche nei giorni rossi, come prima. Nei corsi che esistevano già la spunta è spenta.
+- **Spunta spenta**: il corso fa lezione anche nei giorni rossi, come prima.
+
+Nei corsi nuovi la spunta parte accesa; nei corsi che esistevano già è spenta.
 
 La scelta vale da quel giorno in poi.
 
@@ -577,7 +579,7 @@ Nella scheda del corso il riquadro **«Lezioni annullate»** elenca le lezioni a
 
 - **Si scala dal rinnovo**: l'importo a favore si toglie dal rinnovo successivo **dello stesso corso**. Mai da un altro corso.
 - **«Segna il recupero»**: se concordi con l'iscritto di recuperare la lezione in un'altra data, indica la data del recupero. La lezione resta dovuta e l'importo a favore non spetta. La data deve essere un giorno in cui il corso ha lezione. **«Togli il recupero»** annulla la scelta.
-- **«Restituisci»**: restituisce l'importo in denaro. Scegli il **conto** e la **data**, poi conferma: si scrive in prima nota.
+- **«Restituisci»**: restituisce l'importo in denaro; serve il permesso **Incassi**. Scegli il **conto** e la **data**, poi conferma: si scrive in prima nota.
 
 Accanto a ogni riga leggi lo stato: l'importo a favore con la data di scadenza, «recupero il …», «restituito» oppure «chiuso: contributo per le attività».
 
@@ -628,7 +630,7 @@ Cosa tenere presente:
 - se per quel mese c'è un **pagamento online appena aperto**, il pagamento in moneta aspetta: finisci il pagamento online oppure riprova dopo pochi minuti;
 - il mese pagato in moneta è chiuso e non compaiono promemoria;
 - la spesa **non è un incasso**: non scrive in prima nota e non ha ricevuta;
-- se il mese viene annullato, o una lezione viene annullata, la moneta **torna a chi l'ha spesa** (anche al genitore).
+- se una **lezione è annullata**, tornano gli AssoCrediti di quella lezione; se l'**iscrizione è cancellata**, tornano quelli dei mesi non ancora cominciati e i mesi con lezioni già tenute restano pagati; se il **corso è eliminato**, scegli come per gli euro. La moneta torna a chi l'ha spesa, anche al genitore.
 
 > Se un pagamento online arriva comunque per un mese già pagato in moneta, la segreteria lo trova da controllare e chi ha pagato riceve un'email.
 MD,
@@ -691,13 +693,13 @@ Chi gestisce un evento può registrare chi entra direttamente dal telefono, senz
 
 Un biglietto già usato risulta «Ingresso già registrato»: una copia del QR non entra due volte. Se il contributo non è versato, lo vedi subito.
 
-Con **Pro**, se per l'evento è **abilitato l'incasso**, lo **staff dell'evento** può anche **addebitare crediti** al socio con il QR, **senza che serva un utente WordPress**.
+Con **Pro**, se per l'evento è **abilitato l'incasso**, lo **staff dell'evento** può anche **addebitare AssoCrediti** (o il nome scelto dall'associazione) al socio con il QR, **senza che serva un utente WordPress**.
 
 ## Da sapere
 
 - L'ingresso si registra **nel giorno dell'evento**. Gli amministratori possono farlo anche in un altro giorno dalla scheda dell'evento.
 - Togliere una persona dai gestori la esclude subito.
-- Con **Pro**, se per l'evento è **abilitato l'incasso**, lo **staff dell'evento** può incassare il contributo sul posto e **addebitare crediti** al socio con il QR, anche se il socio non ha un utente WordPress.
+- Con **Pro**, se per l'evento è **abilitato l'incasso**, lo **staff dell'evento** può incassare il contributo sul posto e **addebitare AssoCrediti** (o il nome scelto dall'associazione) al socio con il QR, anche se il socio non ha un utente WordPress.
 MD,
     ],
     [
