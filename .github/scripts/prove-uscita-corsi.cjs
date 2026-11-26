@@ -40,6 +40,15 @@ const ok = (name, cond, extra = '') => { if (!cond) bad++; lines.push(`- ${cond 
       await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
       const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       lines.push(`- misura: ${name} a ${w}px, fase ${phase}, scorrimento orizzontale ${over}px`);
+      if (over > 0) { // chi sborda: gli elementi più interni che escono a destra
+        const who = await page.evaluate(() => {
+          const W = document.documentElement.clientWidth;
+          const all = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > W + 1 && e.getBoundingClientRect().width > 0);
+          const leaf = all.filter((e) => !all.some((o) => o !== e && e.contains(o)));
+          return leaf.slice(0, 5).map((e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).slice(0, 3).join('.') : '') + ' → ' + Math.round(e.getBoundingClientRect().right) + 'px «' + (e.textContent || '').trim().slice(0, 40) + '»');
+        });
+        lines.push(`  - sborda: ${who.join(' | ')}`);
+      }
       await page.screenshot({ path: path.join(out, `${phase}-${name}-${w}.png`), fullPage: true });
     }
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -60,11 +69,11 @@ const ok = (name, cond, extra = '') => { if (!cond) bad++; lines.push(`- ${cond 
       ok('corso a lezioni: «Lezioni del mese» e «Lezioni annullate»', t.includes('Lezioni del mese') && t.includes('Lezioni annullate'));
       // recupero per chi non aveva pagato
       const rowDue = page.locator('#asem-credits li', { hasText: data.due }).filter({ hasText: '13/05/2031' }).first();
-      await rowDue.locator('input[name="makeup_date"]').fill('2031-05-30');
+      await rowDue.locator('input[name="makeup_date"]').fill('2031-05-20');
       await Promise.all([page.waitForLoadState('load'), rowDue.locator('button[value="makeup"]').click()]);
       await page.waitForTimeout(300);
       t = await text();
-      ok('lezione annullata: recupero segnato dalla scheda', t.includes('recupero il 30/05/2031'));
+      ok('lezione annullata: recupero segnato dalla scheda', t.includes('recupero il 20/05/2031'));
       // restituzione per chi aveva pagato, con conto e data
       const rowPaid = page.locator('#asem-credits li', { hasText: data.uno }).filter({ hasText: '13/05/2031' }).first();
       await rowPaid.locator('input[name="refund_date"]').fill('2031-05-14');

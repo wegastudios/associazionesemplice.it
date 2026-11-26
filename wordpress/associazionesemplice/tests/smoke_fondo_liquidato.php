@@ -23,7 +23,7 @@ $fl_case = function () use ( &$fl_n, $fl_acts, $fl_lab, $fl_cash ): array {
 	$fl_n++;
 	$ins = (int) Plugin::people()->create( array( 'type' => 'volunteer', 'first_name' => 'Istruttore', 'last_name' => 'Liquidato ' . $fl_n, 'email' => 'istruttore.liquidato' . $fl_n . '@example.com' ) );
 	$aid = (int) $fl_acts->create( array( 'name' => 'Fondo liquidato ' . $fl_n, 'social_year' => $fl_lab, 'kind' => 'course', 'billing' => 'lessons', 'fee_cents' => 1000, 'instructor_person_id' => $ins, 'fund_mode' => 'percent', 'fund_value' => 5000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ) ) ) );
-	$pid = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'card_number' => '66' . $fl_n, 'first_name' => 'Allievo', 'last_name' => 'Liquidato ' . $fl_n, 'birth_date' => '1985-01-01' ) );
+	$pid = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'card_number' => '8931' . $fl_n, 'first_name' => 'Allievo', 'last_name' => 'Liquidato ' . $fl_n, 'birth_date' => '1985-01-01' ) );
 	$fl_acts->enroll( $aid, $pid, '2031-09', '2031-09-01' );
 	$due = (int) $fl_acts->enrollment_left( $aid, $pid, '2031-09' );
 	Plugin::ledger()->record_receipt( array( 'date' => current_time( 'Y-m-d' ), 'account_id' => (int) $fl_cash['id'], 'method' => 'cash', 'person_id' => $pid, 'check_due' => true, 'lines' => array( array( 'category_id' => Plugin::ledger()->category_id_of_kind( 'activity_fee' ), 'amount_cents' => $due, 'activity_id' => $aid, 'competence_month' => '2031-09' ) ) ) );
