@@ -38,9 +38,11 @@ final class CourseCalendarTest extends TestCase {
 				$ex[] = mt_rand( 0, 1 ) ? array( 'lesson_date' => $bd, 'action' => LessonExceptions::CANCEL, 'new_date' => null ) : array( 'lesson_date' => $bd, 'action' => LessonExceptions::MOVE, 'new_date' => $this->day() );
 			}
 			$new = LessonExceptions::adjust_dates( $base, $ex, $from, $to );
-			$all = LessonExceptions::adjust_dates( CourseCalendar::expand( $lessons, $from, $to, $a['starts_on'], $a['ends_on'], true ), $ex, $from, $to );
 			$this->assertSame( asem_legacy_public_dates( $lessons, $a, $ex, $from, $to ), $new, "giro $i" );
-			$this->assertSame( asem_legacy_reset_dates( $lessons, $a, $ex, $from, $to ), $all, "giro $i (rimborsi)" );
+			$legacy = array_values( array_filter( asem_legacy_reset_dates( $lessons, $a, $ex, $from, $to ), function ( $d ) use ( $from, $to ) {
+				return $d >= $from && $d <= $to;
+			} ) );
+			$this->assertSame( $legacy, $new, "giro $i (rimborsi: come prima, senza le date fuori dal periodo)" );
 			$filled += $new ? 1 : 0;
 			foreach ( $lessons as $s ) {
 				if ( 'weekly' === $s['type'] ) {

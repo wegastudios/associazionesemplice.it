@@ -47,7 +47,7 @@ foreach ( $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'activities' ) . " WHERE
 		$cc_t  = gmdate( 'Y-m-t', strtotime( $cc_f ) );
 		$cc_ex = LessonExceptions::between( $cc_f, $cc_t, (int) $cc_row['id'] );
 		$cc_n++;
-		if ( asem_legacy_public_dates( $cc_lessons, $cc_row, $cc_ex, $cc_f, $cc_t ) !== CourseCalendar::dates( $cc_row, $cc_f, $cc_t ) || asem_legacy_reset_dates( $cc_lessons, $cc_row, $cc_ex, $cc_f, $cc_t ) !== ActivityReset::course_dates( $cc_row, $cc_f, $cc_t ) ) {
+		if ( asem_legacy_public_dates( $cc_lessons, $cc_row, $cc_ex, $cc_f, $cc_t ) !== CourseCalendar::dates( $cc_row, $cc_f, $cc_t ) || CourseCalendar::dates( $cc_row, $cc_f, $cc_t ) !== ActivityReset::course_dates( $cc_row, $cc_f, $cc_t ) ) {
 			$cc_bad[] = $cc_row['id'] . ' ' . $cc_f;
 		}
 		if ( class_exists( \AssociazioneSemplice\Attendance::class ) && \AssociazioneSemplice\Attendance::lesson_dates( $cc_row, $cc_f, $cc_t ) !== CourseCalendar::dates( $cc_row, $cc_f, $cc_t ) ) {
@@ -77,3 +77,19 @@ foreach ( array( $cc_a, $cc_b, $cc_d ) as $cc_id ) {
 	}
 }
 asem_ok( ! $cc_diff, 'calendario corsi: il calendario generale e le quote leggono le stesse date' . ( $cc_diff ? ': ' . implode( ', ', array_slice( $cc_diff, 0, 5 ) ) : '' ) );
+
+// rimborso di un mese interrotto con date uniche in altri mesi: contano solo le lezioni di quel mese (prima contavano tutte le date uniche del corso)
+$cc_sg = function ( string $d ): array {
+	return array( 'type' => 'single', 'date' => $d, 'start' => '18:00', 'end' => '19:00' );
+};
+$cc_m1 = gmdate( 'Y-m', strtotime( $cc_s0 . ' +1 month' ) );
+$cc_m2 = gmdate( 'Y-m', strtotime( $cc_s0 . ' +2 months' ) );
+$cc_r  = $cc_mk( 'Rimborso, date uniche', array( $cc_sg( $cc_m1 . '-05' ), $cc_sg( $cc_m1 . '-12' ), $cc_sg( $cc_m1 . '-19' ), $cc_sg( $cc_m1 . '-26' ), $cc_sg( $cc_m2 . '-03' ), $cc_sg( $cc_m2 . '-10' ) ) );
+$cc_c  = array( 'today' => $cc_m1 . '-13', 'now' => '10:00', 'held' => array( $cc_m1 . '-05', $cc_m1 . '-12' ), 'sessions' => array(), 'course' => $cc_acts->get( $cc_r ) );
+$cc_v  = array( 'amount_cents' => 4000, 'session_id' => 0, 'competence_month' => $cc_m1, 'person_id' => 0 );
+asem_ok( 2000 === ActivityReset::refund_cents( $cc_v, $cc_c ), 'rimborso: due lezioni su quattro, anche se il corso ha date uniche in altri mesi (prima 26,67)' );
+$cc_one = $cc_mk( 'Rimborso, date uniche in un mese solo', array( $cc_sg( $cc_m1 . '-05' ), $cc_sg( $cc_m1 . '-12' ) ) );
+asem_ok( 2000 === ActivityReset::refund_cents( $cc_v, array( 'held' => array( $cc_m1 . '-05' ), 'today' => $cc_m1 . '-06', 'course' => $cc_acts->get( $cc_one ) ) + $cc_c ), 'rimborso: con le date uniche in un mese solo come prima' );
+$cc_w  = $cc_mk( 'Rimborso, settimanale', array( $cc_wk( 3 ) ) );
+$cc_wd = CourseCalendar::dates( $cc_acts->get( $cc_w ), $cc_m1 . '-01', gmdate( 'Y-m-t', strtotime( $cc_m1 . '-01' ) ) );
+asem_ok( (int) round( 4000 * ( count( $cc_wd ) - 1 ) / count( $cc_wd ) ) === ActivityReset::refund_cents( $cc_v, array( 'held' => array( $cc_wd[0] ), 'today' => gmdate( 'Y-m-d', strtotime( $cc_wd[0] . ' +1 day' ) ), 'course' => $cc_acts->get( $cc_w ) ) + $cc_c ), 'rimborso: settimanale come prima' );

@@ -77,7 +77,7 @@ final class RedDaysTest extends TestCase {
 	public function test_weekly_lessons_skip_red_days_and_single_dates_do_not(): void {
 		$lessons = array( array( 'type' => 'weekly', 'day' => 5, 'from' => null, 'until' => null ), array( 'type' => 'single', 'date' => '2026-12-26' ) );
 		$skip    = RedDays::between( '2026-12-01', '2026-12-31', '', array() );
-		$this->assertSame( array( '2026-12-04', '2026-12-11', '2026-12-18', '2026-12-26' ), CourseCalendar::expand( $lessons, '2026-12-01', '2026-12-31', null, null, false, $skip ) ); // il 25 è venerdì
+		$this->assertSame( array( '2026-12-04', '2026-12-11', '2026-12-18', '2026-12-26' ), CourseCalendar::expand( $lessons, '2026-12-01', '2026-12-31', null, null, $skip ) ); // il 25 è venerdì
 		$keep = array( array( 'lesson_date' => '2026-12-18', 'action' => LessonExceptions::KEEP, 'new_date' => null ) );
 		$this->assertSame( array( '2026-12-18' ), LessonExceptions::adjust_dates( array( '2026-12-18' ), $keep, '2026-12-01', '2026-12-31' ) );
 	}

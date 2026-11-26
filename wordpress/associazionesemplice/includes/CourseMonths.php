@@ -29,7 +29,7 @@ final class CourseMonths {
 		$from = $month . '-01';
 		$to   = ( new \DateTimeImmutable( $from ) )->format( 'Y-m-t' );
 		$ex   = LessonExceptions::between( $from, $to, (int) $activity['id'] );
-		$all  = CourseCalendar::expand( ActivityService::lessons( $activity ), $from, $to, (string) ( $activity['starts_on'] ?? '' ), (string) ( $activity['ends_on'] ?? '' ), false, CourseCalendar::skip( $activity, $from, $to, $ex ) );
+		$all  = CourseCalendar::expand( ActivityService::lessons( $activity ), $from, $to, (string) ( $activity['starts_on'] ?? '' ), (string) ( $activity['ends_on'] ?? '' ), CourseCalendar::skip( $activity, $from, $to, $ex ) );
 		$off  = array();
 		foreach ( $ex as $e ) {
 			if ( LessonExceptions::CANCEL === $e['action'] ) {
