@@ -114,8 +114,11 @@ asem_ok( array() === CourseCredits::expired_open() && 0 === $cf_left( $cf_s, '20
 
 // ---------- Mesi non fissati, chiusura dell'anno, dati scaricati, iscrizione cancellata ----------
 Db::$today_fake = '2031-05-02';
-LessonExceptions::cancel( $cf_c, '2031-07-08' );
-asem_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_credits' ) . ' WHERE activity_id = %d AND lesson_date = %s', $cf_c, '2031-07-08' ) ), 'importo a favore: in un mese non ancora fissato la lezione esce da sola dal conteggio, nessuna riga' );
+$cf_d = (int) $cf_acts->create( array( 'name' => 'Martedì, mese non fissato', 'social_year' => $cf_lab, 'kind' => 'course', 'billing' => 'lessons', 'fee_cents' => 1000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ) ) ) );
+$cf_dp = $cf_man();
+$cf_acts->enroll( $cf_d, $cf_dp, '2031-08' );
+LessonExceptions::cancel( $cf_d, '2031-08-05' ); // agosto non è ancora fissato: nessuno ha pagato e non è iniziato
+asem_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_credits' ) . ' WHERE activity_id = %d', $cf_d ) ) && 3000 === (int) $cf_acts->enrollment_left( $cf_d, $cf_dp, '2031-08' ), 'importo a favore: in un mese non ancora fissato la lezione esce da sola dal conteggio, nessuna riga' );
 ob_start();
 \AssociazioneSemplice\YearEndCheck::close_form( 2031 );
 ob_get_clean();
