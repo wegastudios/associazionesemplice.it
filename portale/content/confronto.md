@@ -92,7 +92,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Restituzioni :: Eliminando un corso, un evento o una singola iscrizione si restituisce solo ciò che non è ancora stato fatto; si può annullare una data o «questa data e le successive» (eventi ricorrenti e lezioni dei corsi) | ✓ | ✓ | ✓ |
 | Prova gratuita dei corsi :: Giorni di prova registrati dalla scheda del corso; chi si iscrive nello stesso mese paga dal giorno della prova | ✓ | ✓ | ✓ |
 | Primo mese in proporzione :: Chi si iscrive a mese iniziato paga dalla prima lezione vera; ogni corso può scegliere il mese intero | ✓ | ✓ | ✓ |
-| Corsi a lezioni effettive :: Contributo per lezione: il mese costa le lezioni del calendario, fissate al primo pagamento | ✓ | ✓ | ✓ |
+| Corsi a lezioni effettive :: Contributo per lezione: il mese costa le lezioni del calendario, fissate a inizio mese | ✓ | ✓ | ✓ |
 | Giorni rossi :: Festività nazionali, festa del patrono e chiusure dell'associazione; ogni corso sceglie se saltarli | ✓ | ✓ | ✓ |
 | Lezione annullata già pagata :: Importo a favore che si scala dal rinnovo (per i soci vale fino alla fine del primo mese dell'anno fiscale dopo), recupero della lezione o restituzione con conto e data | ✓ | ✓ | ✓ |
 | Nome della moneta interna :: L'associazione sceglie come chiamare i crediti dei soci (di partenza AssoCredito), in pagine, email e ricevute | — | ✓ | ✓ |
