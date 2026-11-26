@@ -360,12 +360,20 @@ final class Views {
 			foreach ( $stat as $s ) {
 				$e     = $s['enrollment'];
 				$act   = $s['activity'];
-				$unpd  = $s['summary']['unpaid_months'] ? '<div class="asemf-small">Mesi da pagare: ' . esc_html( implode( ', ', array_map( function ( $m ) use ( $act, $p ) {
+				$by    = \AssociazioneSemplice\ActivityService::others_allowed() && ! empty( $e['paid_by'] ) && (int) $e['paid_by'] !== (int) $p['id'] ? (string) $e['paid_by_until'] : ''; // iscritto da un altro socio, che paga fino a quel mese
+				$own   = array_values( array_filter( $s['summary']['unpaid_months'], function ( $m ) use ( $e ) {
+					return 0 === \AssociazioneSemplice\ActivityService::month_payer( $e, (string) $m['month'] ) || ! \AssociazioneSemplice\ActivityService::others_allowed();
+				} ) );
+				$unpd  = $own ? '<div class="asemf-small">Mesi da pagare: ' . esc_html( implode( ', ', array_map( function ( $m ) use ( $act, $p ) {
 					$n = self::lessons_in( $act, $p, (string) $m['month'] ); // corsi a lezioni: quante lezioni ha quel mese
 					return self::MONTHS[ (int) substr( $m['month'], 5, 2 ) ] . ' ' . substr( $m['month'], 0, 4 ) . ( $n ? ' (' . $n . ( 1 === $n ? ' lezione' : ' lezioni' ) . ')' : '' );
-				}, $s['summary']['unpaid_months'] ) ) ) . '</div>' : '';
+				}, $own ) ) ) . '</div>' : '';
 				$lm    = null === $e['end_month'] ? self::lesson_months_text( $act, $p ) : '';
 				$unpd .= '' !== $lm ? '<div class="asemf-small">' . esc_html( $lm ) . '</div>' : '';
+				if ( '' !== $by ) {
+					$unpd .= '<div class="asemf-small">' . esc_html( 'Ti ha iscritto un altro socio: ' . mb_strtolower( self::MONTHS[ (int) substr( $by, 5, 2 ) ] ) . ' ' . substr( $by, 0, 4 ) . ' lo paga lui, dal mese dopo il contributo è a tuo carico.' ) . '</div>'
+						. ( null === $e['end_month'] ? self::form( 'asem_front_course_leave', self::hidden( 'activity_id', (int) $e['activity_id'] ), 'Ritirati dal corso', 'Ritirarti dal corso? Dal mese prossimo non sei più iscritto e non devi più nulla.', 'asemf-inline' ) : '' );
+				}
 				$html .= '<tr><td class="asemf-cell-main">' . esc_html( $s['activity']['name'] ) . '</td><td data-label="Anno">' . esc_html( $s['activity']['social_year'] ) . '</td><td data-label="Iscrizione">'
 					. ( null === $e['end_month'] ? 'Attiva' : 'Conclusa' ) . '</td><td data-label="Pagamenti">' . self::pay_text( $s['summary'] ) . $unpd . '</td></tr>';
 			}
@@ -405,7 +413,20 @@ final class Views {
 			}
 			$html .= '</ul>';
 		}
-		if ( ! $stat && ! $upcoming && ! $past && ! $mine ) {
+		$courses_for = \AssociazioneSemplice\ActivityService::others_allowed() ? Plugin::activities()->enrollments_paid_by( (int) $p['id'] ) : array();
+		if ( $courses_for ) { // iscrizioni ai corsi fatte per altri soci: solo il numero di tessera, mai il nome
+			$html .= '<h4>Iscrizioni ai corsi fatte per altri soci</h4><ul class="asemf-list">';
+			foreach ( $courses_for as $e ) {
+				$a     = Plugin::activities()->get( (int) $e['activity_id'] );
+				$o     = Plugin::people()->get( (int) $e['person_id'] );
+				$until = (string) $e['paid_by_until'];
+				if ( $a && $o ) {
+					$html .= '<li><div><strong>' . esc_html( $a['name'] ) . '</strong><div class="asemf-small">' . esc_html( \AssociazioneSemplice\ActivityService::participant_name( $o, (int) $p['id'] ) . ' · a tuo carico ' . mb_strtolower( self::MONTHS[ (int) substr( $until, 5, 2 ) ] ) . ' ' . substr( $until, 0, 4 ) . ', poi paga la persona iscritta' ) . '</div></div></li>';
+				}
+			}
+			$html .= '</ul>';
+		}
+		if ( ! $stat && ! $upcoming && ! $past && ! $mine && ! $courses_for ) {
 			$html .= '<p class="asemf-muted">Non hai ancora corsi né prenotazioni.</p>';
 		}
 		$unpaid = array_filter( array_merge( $upcoming, $past ), function ( $b ) {
@@ -812,8 +833,8 @@ final class Views {
 			. '<label>Comune <input type="text" name="city" maxlength="100" autocomplete="address-level2" value="' . esc_attr( (string) $p['city'] ) . '"></label>'
 			. '<label>Provincia <input type="text" name="province" maxlength="5" autocomplete="address-level1" value="' . esc_attr( (string) $p['province'] ) . '"></label></div>';
 		if ( MemberType::is_member( (string) $p['type'] ) ) {
-			$fields .= self::hidden( 'booking_by_others_shown', 1 ) . '<p><label><input type="checkbox" name="booking_by_others" value="1"' . ( empty( $p['no_booking_by_others'] ) ? ' checked' : '' ) . '> Altri soci possono prenotare per me</label>'
-				. '<span class="asemf-small asemf-muted"> Serve il tuo cognome e il numero di tessera. Ricevi un\'email e puoi toglierti fino all\'inizio dell\'evento; il contributo è a carico di chi prenota.</span></p>';
+			$fields .= self::hidden( 'booking_by_others_shown', 1 ) . '<p><label><input type="checkbox" name="booking_by_others" value="1"' . ( empty( $p['no_booking_by_others'] ) ? ' checked' : '' ) . '> Altri soci possono prenotarmi agli eventi e iscrivermi ai corsi</label>'
+				. '<span class="asemf-small asemf-muted"> Serve il tuo cognome e il numero di tessera. Ricevi un\'email e puoi toglierti fino all\'inizio dell\'evento; il contributo è a carico di chi prenota. In un corso chi ti iscrive paga il primo mese, poi paghi tu; puoi ritirarti dalla tua area soci.</span></p>';
 		}
 		return self::section_complete( $p ) . '<section class="asemf-section"><h3>Il mio profilo</h3><dl class="asemf-dl"><div><dt>Nome</dt><dd>' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</dd></div>'
 			. '<div><dt>Email</dt><dd>' . esc_html( (string) $p['email'] ) . '</dd></div></dl>'
@@ -1859,26 +1880,7 @@ final class Views {
 					$ask[] = $person;
 				}
 			}
-			if ( $ask ) {
-				$rf = '';
-				if ( count( $ask ) > 1 ) {
-					$rf .= '<select name="person_id" aria-label="Per chi chiedi">';
-					foreach ( $ask as $person ) {
-						$rf .= '<option value="' . (int) $person['id'] . '">' . esc_html( $person['first_name'] ) . '</option>';
-					}
-					$rf .= '</select>';
-				} else {
-					$rf .= self::hidden( 'person_id', $ask[0]['id'] );
-				}
-				foreach ( $ask as $person ) { // corsi a lezioni: quanto costa questo mese e il prossimo, prima di chiedere
-					$lm = self::lesson_months_text( $activity, $person );
-					if ( '' !== $lm ) {
-						$html .= '<p class="asemf-small">' . esc_html( ( count( $ask ) > 1 ? $person['first_name'] . ': ' : '' ) . $lm ) . '</p>';
-					}
-				}
-				$html .= '<p class="asemf-small asemf-muted">Dopo la conferma della segreteria sei iscritto da questo mese; il contributo è quello indicato per il corso.' . ( \AssociazioneSemplice\Trials::shares( $activity ) ? ' Il primo mese si paga in proporzione alle lezioni che restano dal giorno della conferma.' : '' ) . '</p>'
-					. self::form( 'asem_front_course_request', self::hidden( 'activity_id', $aid ) . $rf, 'Chiedi l\'iscrizione', false, 'asemf-inline' );
-			}
+			$html .= self::course_group_form( $activity, $ctx, $ask );
 		} else {
 			$html .= '<p><a class="asemf-btn wp-element-button" href="' . esc_url( self::member_login_url() ) . '">Sei socio? Entra per chiedere l\'iscrizione</a></p>';
 			if ( \AssociazioneSemplice\EventRequests::course_guests_open( $activity ) ) {
@@ -1888,6 +1890,64 @@ final class Views {
 			}
 		}
 		return \AssociazioneSemplice\Texts::html( self::flash() . $html );
+	}
+
+	/**
+	 * Modulo «Chiedi l'iscrizione» di un corso: sé stessi, i propri ospiti e minori non ancora iscritti, ospiti nuovi e altri soci (cognome e tessera), fino a
+	 * Actions::GROUP_MAX persone. Accanto a ognuno quanto costa; la segreteria approva. Già escapato; vuoto se non c'è nessuno da iscrivere.
+	 *
+	 * @param array[] $ask le persone gestite non ancora iscritte né in attesa
+	 */
+	private static function course_group_form( array $activity, array $ctx, array $ask ): string {
+		$actor  = $ctx['actor'];
+		$aid    = (int) $actor['id'];
+		$svc    = Plugin::activities();
+		$active = Plugin::people()->is_active_member( $aid );
+		$guests = $active && Settings::guests_enabled();
+		$others = $active && \AssociazioneSemplice\ActivityService::others_allowed();
+		if ( ! $ask && ! $guests && ! $others ) {
+			return '';
+		}
+		$unit  = \AssociazioneSemplice\CourseMonths::applies( $activity ) ? ' a lezione' : ' al mese';
+		$price = static function ( string $type ) use ( $svc, $activity, $unit ): string {
+			$c = $svc->fee_for( $activity, $type );
+			return ' · ' . ( 0 === $c ? 'gratuito' : Money::format( $c ) . $unit );
+		};
+		$f = self::hidden( 'activity_id', (int) $activity['id'] ) . self::hidden( 'course_group', 1 );
+		if ( $ask ) {
+			$f .= '<fieldset><legend>Chi iscrivi</legend>';
+			foreach ( $ask as $p ) {
+				$pid  = (int) $p['id'];
+				$me   = $pid === $aid;
+				$name = $me ? 'me' : ( MemberType::GUEST === $p['type'] ? 'guest_ids[]' : 'ward_ids[]' );
+				$who  = $me ? 'Io' : trim( $p['first_name'] . ' ' . $p['last_name'] );
+				$lm   = self::lesson_months_text( $activity, $p ); // corsi a lezioni: questo mese e il prossimo
+				$f   .= '<p><label><input type="checkbox" name="' . esc_attr( $name ) . '" value="' . ( $me ? 1 : $pid ) . '"' . checked( $me || 1 === count( $ask ), true, false ) . '> ' . esc_html( $who . $price( (string) $p['type'] ) ) . '</label>'
+					. ( '' !== $lm ? '<br><span class="asemf-small">' . esc_html( $lm ) . '</span>' : '' ) . '</p>';
+			}
+			$f .= '</fieldset>';
+		}
+		$rows = 3;
+		if ( $guests ) {
+			$f .= '<details class="asemf-details"><summary>' . esc_html( 'Iscrivi ospiti nuovi' . $price( MemberType::GUEST ) ) . '</summary>';
+			for ( $i = 0; $i < $rows; $i++ ) {
+				$n  = 'ospite ' . ( $i + 1 );
+				$f .= '<div class="asemf-fields"><label>' . esc_html( 'Nome (' . $n . ')' ) . ' <input type="text" name="new_guest_first[]" maxlength="120"></label><label>Cognome <input type="text" name="new_guest_last[]" maxlength="120"></label>'
+					. '<label>Cellulare <input type="tel" name="new_guest_phone[]" maxlength="60"></label><label>Email (facoltativa) <input type="email" name="new_guest_email[]" maxlength="190"></label></div>';
+			}
+			$f .= '<p class="asemf-small asemf-muted">Gli ospiti nuovi restano tra i tuoi ospiti anche se la segreteria non accoglie la richiesta.</p></details>';
+		}
+		if ( $others ) {
+			$f .= '<details class="asemf-details"><summary>' . esc_html( 'Iscrivi altri soci' . $price( MemberType::ORDINARY ) ) . '</summary><p class="asemf-small asemf-muted">Servono cognome e numero di tessera. Paghi tu il primo mese, poi paga la persona iscritta: riceve un\'email e può ritirarsi.</p>';
+			for ( $i = 0; $i < $rows; $i++ ) {
+				$n  = 'socio ' . ( $i + 1 );
+				$f .= '<div class="asemf-fields"><label>' . esc_html( 'Cognome (' . $n . ')' ) . ' <input type="text" name="other_last[]" maxlength="120" autocomplete="off"></label><label>Numero di tessera <input type="text" name="other_card[]" maxlength="40" autocomplete="off"></label></div>';
+			}
+			$f .= '</details>';
+		}
+		return '<p class="asemf-small asemf-muted">Dopo la conferma della segreteria l\'iscrizione parte da questo mese; il contributo è quello indicato per il corso.' . ( \AssociazioneSemplice\Trials::shares( $activity ) ? ' Il primo mese si paga in proporzione alle lezioni che restano dal giorno della conferma.' : '' )
+			. ' Il contributo delle persone che iscrivi è a tuo carico (per un altro socio solo il primo mese). Al massimo ' . (int) Actions::GROUP_MAX . ' persone per volta.</p>'
+			. self::form( 'asem_front_course_request', $f, 'Chiedi l\'iscrizione' );
 	}
 
 	/** Le prossime date di tutti gli eventi, in ordine di data. */

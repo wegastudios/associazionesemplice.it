@@ -64,8 +64,8 @@ final class CourseCoins {
 		if ( ! $a || ! $p || ! $payer || ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $month ) ) {
 			throw new \InvalidArgumentException( 'Mese del corso non trovato.' );
 		}
-		if ( $payer_id !== $person_id && ! self::minor_child_of( $payer_id, $p ) ) {
-			throw new \InvalidArgumentException( 'Si paga in ' . CoinName::plural() . ' per sé o per un figlio minorenne (con la data di nascita in anagrafica) di cui si risulta genitore.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		if ( ! self::may_pay( $payer_id, $p, $activity_id, $month ) ) {
+			throw new \InvalidArgumentException( 'Si paga in ' . CoinName::plural() . ' per sé, per un figlio minorenne (con la data di nascita in anagrafica) di cui si risulta genitore, per un proprio ospite o per il mese di un altro socio che si è iscritto e che si paga.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! MemberType::is_member( (string) $payer['type'] ) || ! Plugin::people()->is_active_member( $payer_id ) ) {
 			throw new \InvalidArgumentException( CoinName::plural() . ': solo per i soci con la tessera valida.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -116,13 +116,38 @@ final class CourseCoins {
 			}
 		);
 		if ( $spent > 0 ) {
-			$who = $payer_id !== $person_id ? ' per ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) : '';
+			$who = $payer_id !== $person_id ? ' per ' . ActivityService::participant_name( $p, $payer_id ) : ''; // un altro socio adulto solo con la tessera
 			self::tell( $payer_id, 'p:' . $activity_id . ':' . $person_id . ':' . $month . ':' . time(), 'Mese pagato in ' . CoinName::plural() . ': ' . $a['name'], 'il mese ' . self::month_text( $month ) . ' di «' . $a['name'] . '»' . $who . ' è pagato con ' . CoinName::n( $spent ) . '. Ti restano ' . CoinName::n( Credits::balance( $payer_id ) ) . '.' );
 		}
 		return $spent;
 	}
 
 	/** Figlio minorenne oggi (data di nascita obbligatoria, qualunque sia l'impostazione del tutore) e collegato al genitore in anagrafica. */
+	/**
+	 * Chi può pagare in moneta quel mese per quella persona: sé stessi, il genitore di un figlio minorenne, chi ospita un proprio ospite e il socio che paga il mese
+	 * di un altro socio iscritto da lui (decisione del titolare 26/11/2026: solo i mesi di cui è il pagante, cioè il primo).
+	 */
+	private static function may_pay( int $payer_id, array $p, int $activity_id, string $month ): bool {
+		if ( $payer_id === (int) $p['id'] || self::minor_child_of( $payer_id, $p ) ) {
+			return true;
+		}
+		if ( MemberType::GUEST === (string) $p['type'] && (int) ( $p['host_person_id'] ?? 0 ) === $payer_id ) {
+			return true;
+		}
+		$e = Plugin::activities()->enrollment_row( $activity_id, (int) $p['id'] );
+		return $e && self::payer_of( $e, $month ) === $payer_id;
+	}
+
+	/** Il gratuito sa chi paga i mesi di un altro socio iscritto da un socio (schema 84) e le voci online portano il pagante? */
+	private static function knows_payers(): bool {
+		return method_exists( ActivityService::class, 'month_payer' ) && ActivityService::others_allowed();
+	}
+
+	/** Chi paga quel mese al posto della persona (0 = lei stessa, o un gratuito che non lo sa). */
+	private static function payer_of( array $enrollment, string $month ): int {
+		return self::knows_payers() ? ActivityService::month_payer( $enrollment, $month ) : 0;
+	}
+
 	private static function minor_child_of( int $payer_id, array $child ): bool {
 		return Age::is_minor( (string) ( $child['birth_date'] ?? '' ), Db::today() ) && Guardians::is_guardian_of( $payer_id, (int) $child['id'] );
 	}
@@ -327,10 +352,21 @@ final class CourseCoins {
 		if ( ! MemberType::is_member( (string) $actor['type'] ) ) {
 			return $out;
 		}
-		$people = array( $actor );
-		foreach ( Guardians::dependents_of( (int) $actor['id'] ) as $kid ) {
-			if ( self::minor_child_of( (int) $actor['id'], $kid ) ) {
-				$people[] = $kid; // solo i figli minorenni: da maggiorenni pagano da sé
+		$aid    = (int) $actor['id'];
+		$people = array( $aid => $actor );
+		foreach ( Guardians::dependents_of( $aid ) as $kid ) {
+			if ( self::minor_child_of( $aid, $kid ) ) {
+				$people[ (int) $kid['id'] ] = $kid; // solo i figli minorenni: da maggiorenni pagano da sé
+			}
+		}
+		foreach ( Plugin::people()->guests_of( $aid ) as $g ) { // i propri ospiti
+			$people[ (int) $g['id'] ] = $g;
+		}
+		$others = self::knows_payers() ? Plugin::activities()->enrollments_paid_by( $aid ) : array();
+		foreach ( $others as $e ) { // altri soci iscritti da lui: solo i mesi che paga lui
+			$o = Plugin::people()->get( (int) $e['person_id'] );
+			if ( $o ) {
+				$people[ (int) $o['id'] ] = $o;
 			}
 		}
 		foreach ( $people as $p ) {
@@ -340,6 +376,13 @@ final class CourseCoins {
 					continue;
 				}
 				foreach ( $s['summary']['unpaid_months'] as $m ) {
+					if ( ! self::may_pay( $aid, $p, (int) $a['id'], (string) $m['month'] ) ) {
+						continue; // mese di un altro socio che non paga lui, o suo mese pagato da chi l'ha iscritto
+					}
+					$by = self::payer_of( $s['enrollment'], (string) $m['month'] );
+					if ( $by && $by !== $aid ) {
+						continue;
+					}
 					$due = Plugin::activities()->course_month_fee( $a, $p, (string) $m['month'] );
 					if ( (int) $m['paid'] > 0 || (int) $m['missing'] < $due ) {
 						continue; // già pagato in parte: si completa in euro
@@ -366,7 +409,7 @@ final class CourseCoins {
 		$out = '<div class="asemf-coins"><h4>' . esc_html( 'Oppure paga in ' . CoinName::plural() ) . '</h4><p class="asemf-small asemf-muted">' . esc_html( 'Saldo: ' . CoinName::n( $bal ) . '. Si paga il mese per intero, o in euro o in ' . CoinName::plural() . '.' ) . '</p><ul class="asemf-list">';
 		foreach ( $rows as $x ) {
 			$ok   = $bal >= $x['cost'];
-			$out .= '<li><div><strong>' . esc_html( $x['activity']['name'] . ' — ' . Admin\Ui::month( (string) $x['month'] ) ) . '</strong><div class="asemf-small">' . esc_html( trim( $x['person']['first_name'] . ' ' . $x['person']['last_name'] ) . ' · ' . Money::format( (int) $x['due'] ) ) . '</div></div>'
+			$out .= '<li><div><strong>' . esc_html( $x['activity']['name'] . ' — ' . Admin\Ui::month( (string) $x['month'] ) ) . '</strong><div class="asemf-small">' . esc_html( ActivityService::participant_name( $x['person'], (int) $p['id'] ) . ' · ' . Money::format( (int) $x['due'] ) ) . '</div></div>'
 				. ( $ok ? Frontend\Views::form( 'asem_front_course_coins', Frontend\Views::hidden( 'activity_id', (int) $x['activity']['id'] ) . Frontend\Views::hidden( 'person_id', (int) $x['person']['id'] ) . Frontend\Views::hidden( 'month', $x['month'] ), 'Paga ' . CoinName::n( (int) $x['cost'] ), false, 'asemf-inline' ) : '<span class="asemf-small asemf-muted">' . esc_html( 'Servono ' . CoinName::n( (int) $x['cost'] ) . ', saldo ' . $bal ) . '</span>' ) . '</li>';
 		}
 		return (string) $html . $out . '</ul></div>';

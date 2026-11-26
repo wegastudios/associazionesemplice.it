@@ -593,12 +593,12 @@ final class EventRequests {
 		return array( 'ok' => false, 'message' => $mail_text );
 	}
 
-	/** A chi scrivere: l'email della richiesta (non soci) o quella del socio. */
+	/** A chi scrivere: l'email della richiesta (non soci), quella del socio che l'ha inviata per altri o quella del socio. */
 	private static function recipient( array $row ): string {
 		if ( is_email( (string) $row['email'] ) ) {
 			return (string) $row['email'];
 		}
-		$p = ! empty( $row['person_id'] ) ? Plugin::people()->get( (int) $row['person_id'] ) : null;
+		$p = ! empty( $row['booked_by'] ) ? Plugin::people()->get( (int) $row['booked_by'] ) : ( ! empty( $row['person_id'] ) ? Plugin::people()->get( (int) $row['person_id'] ) : null );
 		return $p && is_email( (string) $p['email'] ) ? (string) $p['email'] : '';
 	}
 
@@ -892,7 +892,7 @@ final class EventRequests {
 	}
 
 	/** Un socio (o un suo ospite o minore) chiede l'iscrizione al corso: la segreteria le esamina nell'ordine di arrivo. @throws \InvalidArgumentException */
-	public static function course_member_request( int $activity_id, int $person_id ): void {
+	public static function course_member_request( int $activity_id, int $person_id, int $booked_by = 0, string $group_key = '', bool $notify = true ): void {
 		$a = Plugin::activities()->get( $activity_id );
 		$p = Plugin::people()->get( $person_id );
 		if ( ! $a || ! $p || ! self::course_open( $a ) ) {
@@ -905,9 +905,68 @@ final class EventRequests {
 		self::db()->insert(
 			Db::t( 'event_requests' ),
 			array( 'activity_id' => $activity_id, 'session_id' => 0, 'person_id' => $person_id, 'seats' => 1, 'status' => 'approval', 'token_hash' => hash( 'sha256', wp_generate_password( 32, false, false ) ), 'created_at' => $now, 'updated_at' => $now )
+				+ ( $booked_by > 0 && $booked_by !== $person_id ? array( 'booked_by' => $booked_by ) : array() ) + ( '' !== $group_key ? array( 'group_key' => $group_key ) : array() )
 		);
-		Audit::log( 'event_request.course_member', 'activity', $activity_id, array( 'person_id' => $person_id ) );
-		Texts::mail( self::staff_recipients( $activity_id ), \AssociazioneSemplice\Texts::subject( 'Richiesta di iscrizione da approvare: ' . $a['name'] ), "È arrivata la richiesta di iscrizione di un socio al corso «" . $a['name'] . "».\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . $activity_id ) );
+		Audit::log( 'event_request.course_member', 'activity', $activity_id, array( 'person_id' => $person_id ) + ( $booked_by > 0 && $booked_by !== $person_id ? array( 'booked_by' => $booked_by ) : array() ) );
+		if ( $notify ) {
+			self::course_staff_mail( $a, 1 );
+		}
+	}
+
+	/** Avvisa la segreteria delle richieste di iscrizione arrivate insieme ($n persone). */
+	public static function course_staff_mail( array $a, int $n ): void {
+		$who = $n > 1 ? 'di ' . $n . ' persone, inviate insieme da un socio,' : 'di un socio';
+		Texts::mail( self::staff_recipients( (int) $a['id'] ), \AssociazioneSemplice\Texts::subject( 'Richiesta di iscrizione da approvare: ' . $a['name'] ), 'È arrivata la richiesta di iscrizione ' . $who . ' al corso «' . $a['name'] . "».\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] ) );
+	}
+
+	/** Chi ha chiesto l'iscrizione di un altro socio adulto (non un proprio ospite o minore): paga il primo mese. 0 = nessuno. */
+	private static function other_member_booker( array $row ): int {
+		$by = (int) ( $row['booked_by'] ?? 0 );
+		$p  = $by && ! empty( $row['person_id'] ) ? Plugin::people()->get( (int) $row['person_id'] ) : null;
+		if ( ! $p || (int) $p['id'] === $by || ! MemberType::is_member( (string) $p['type'] ) || Guardians::is_guardian_of( $by, (int) $p['id'] ) ) {
+			return 0;
+		}
+		return $by;
+	}
+
+	/** Iscrizione approvata di un altro socio: a lui chi paga e come ritirarsi, a chi l'ha iscritto il primo mese da pagare (l'altro socio solo con la tessera). */
+	private static function course_other_mails( array $a, int $person_id, int $payer_id, string $month ): void {
+		$p     = Plugin::people()->get( $person_id );
+		$payer = Plugin::people()->get( $payer_id );
+		if ( ! $p || ! $payer ) {
+			return;
+		}
+		$m     = mb_strtolower( Admin\Ui::month( $month ) );
+		$assoc = (string) Settings::get( 'association_name' );
+		$sign  = '' !== $assoc ? "\n\n—\n" . $assoc : '';
+		$to    = Reminders::recipient( $p );
+		if ( $to ) {
+			Texts::mail( $to['email'], Texts::subject( 'Sei iscritto al corso: ' . $a['name'] ), 'Ciao ' . $to['name'] . ",\n\n" . trim( $payer['first_name'] . ' ' . $payer['last_name'] ) . ' ti ha iscritto al corso «' . $a['name'] . '», dal mese di ' . $m . '. Il primo mese lo paga chi ti ha iscritto; dal mese dopo il contributo è a tuo carico e lo trovi nella tua area soci.' . "\n\nSe non vuoi partecipare, ritirati dalla tua area soci: dal mese dopo non devi più nulla." . $sign );
+		}
+		$tp = Reminders::recipient( $payer );
+		if ( $tp ) {
+			Texts::mail( $tp['email'], Texts::subject( 'Iscrizione approvata: ' . $a['name'] ), 'Ciao ' . $tp['name'] . ",\n\nl'iscrizione al corso «" . $a['name'] . '» per il ' . ActivityService::participant_name( $p, $payer_id ) . ' è stata approvata. Il mese di ' . $m . ' è a tuo carico e lo trovi da pagare nella tua area soci; dal mese dopo paga la persona iscritta.' . $sign );
+		}
+	}
+
+	/** Approva tutte le richieste di iscrizione ancora in attesa di un gruppo. @return string messaggio */
+	public static function approve_group( string $group_key, int $activity_id ): string {
+		$group_key = preg_replace( '/[^a-z0-9]/', '', strtolower( $group_key ) );
+		$ids       = '' === $group_key ? array() : array_map( 'intval', self::db()->get_col( self::db()->prepare( 'SELECT id FROM ' . Db::t( 'event_requests' ) . " WHERE group_key = %s AND activity_id = %d AND status = 'approval' ORDER BY id", $group_key, $activity_id ) ) ?: array() ); // solo di quel corso: il permesso si controlla su di esso
+		if ( ! $ids ) {
+			throw new \InvalidArgumentException( 'Nessuna richiesta del gruppo è ancora in attesa.' );
+		}
+		$ok  = 0;
+		$bad = array();
+		foreach ( $ids as $id ) {
+			$r = self::book_request( $id );
+			if ( $r['ok'] ) {
+				$ok++;
+			} else {
+				$bad[] = $r['message'];
+			}
+		}
+		return 'Approvate ' . $ok . ' richieste su ' . count( $ids ) . '.' . ( $bad ? ' ' . implode( ' ', array_unique( $bad ) ) : '' );
 	}
 
 	/** Modulo del non socio per chiedere l'iscrizione a un corso (o l'esito, dopo l'invio). */
@@ -1039,9 +1098,17 @@ final class EventRequests {
 				return array( 'ok' => false, 'message' => 'Non è stato possibile iscrivere: ' . $e->getMessage() );
 			}
 			self::set( (int) $row['id'], array( 'status' => 'booked', 'data' => null ) );
+			$payer = self::other_member_booker( $row );
+			if ( $payer ) { // un altro socio adulto iscritto da chi ha chiesto: il primo mese lo paga lui, poi la persona
+				$svc->set_month_payer( (int) $a['id'], (int) $row['person_id'], $payer, $month );
+				self::course_other_mails( $a, (int) $row['person_id'], $payer, $month );
+				return array( 'ok' => true, 'message' => 'Richiesta approvata: il socio è iscritto al corso; il primo mese lo paga chi l\'ha iscritto.' );
+			}
 			$to = self::recipient( $row );
 			if ( '' !== $to ) {
-				Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Iscrizione approvata: ' . $a['name'] ), 'La tua richiesta di iscrizione al corso «' . $a['name'] . '» è stata approvata: sei iscritto dal mese corrente. Trovi il corso nella tua area soci.' );
+				$p    = Plugin::people()->get( (int) $row['person_id'] );
+				$whom = ! empty( $row['booked_by'] ) && $p ? 'di ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) . ' ' : '';
+				Texts::mail( $to, \AssociazioneSemplice\Texts::subject( 'Iscrizione approvata: ' . $a['name'] ), 'La richiesta di iscrizione ' . $whom . 'al corso «' . $a['name'] . '» è stata approvata: ' . ( '' !== $whom ? 'è iscritto' : 'sei iscritto' ) . ' dal mese corrente. Trovi il corso nella tua area soci.' );
 			}
 			return array( 'ok' => true, 'message' => 'Richiesta approvata: il socio è iscritto al corso.' );
 		}
@@ -1084,7 +1151,7 @@ final class EventRequests {
 			$r['names'] = array();
 			if ( ! empty( $r['person_id'] ) ) {
 				$mp           = Plugin::people()->get( (int) $r['person_id'] );
-				$r['names'][] = $mp ? trim( $mp['first_name'] . ' ' . $mp['last_name'] ) . ' (socio)' : 'Socio';
+				$r['names'][] = $mp ? trim( $mp['first_name'] . ' ' . $mp['last_name'] ) . ( MemberType::GUEST === $mp['type'] ? ' (ospite)' : ' (socio)' ) : 'Socio';
 			}
 			$r['differs'] = array(); // schede esistenti con lo stesso codice fiscale ma altri dati: approvando si userebbe quella scheda
 			$r['members'] = array(); // soci con lo stesso codice fiscale: non si può prenotare come ospite
@@ -1116,7 +1183,9 @@ final class EventRequests {
 		if ( ! $row || 'approval' !== $row['status'] ) {
 			throw new \InvalidArgumentException( 'Richiesta non trovata o già gestita.' );
 		}
-		self::fail( $row, 'rejected', "Purtroppo la tua richiesta di partecipazione non è stata accolta. Per informazioni scrivi alla segreteria." );
+		$p   = ! empty( $row['booked_by'] ) && ! empty( $row['person_id'] ) ? Plugin::people()->get( (int) $row['person_id'] ) : null;
+		$for = $p ? ' per ' . \AssociazioneSemplice\ActivityService::participant_name( $p, (int) $row['booked_by'] ) : ''; // richiesta fatta per un'altra persona: si dice per chi
+		self::fail( $row, 'rejected', 'Purtroppo la tua richiesta di partecipazione' . $for . ' non è stata accolta. Per informazioni scrivi alla segreteria.' );
 		return 'Richiesta rifiutata: chi l\'ha fatta è stato avvisato.';
 	}
 
@@ -1211,8 +1280,24 @@ final class EventRequests {
 		$course = $act && ActivityKind::COURSE === $act['kind'];
 		$h      = '<div class="asem-card"><h2>' . ( $course ? 'Richieste di iscrizione' : 'Richieste di partecipazione' ) . '</h2><p class="description">'
 			. ( $course ? 'Persone che hanno chiesto l\'iscrizione al corso (i non soci dopo aver confermato l\'email). Approvando si iscrivono dal mese corrente; chi non è socio è registrato come ospite e deve pagare in anticipo con bonifico entro il termine.' : 'Persone che hanno chiesto un posto dalla pagina pubblica e confermato l\'email. Approvando si registrano come ospiti e si prenotano.' ) . '</p><ul>';
+		$groups = array(); // richieste inviate insieme ancora in attesa: «Approva tutte» prima della prima
 		foreach ( $rows as $r ) {
-			$h .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . ( $course ? '' : (int) $r['seats'] . ( 1 === (int) $r['seats'] ? ' posto, ' : ' posti, ' ) ) . esc_html( mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
+			if ( ! empty( $r['group_key'] ) ) {
+				$groups[ (string) $r['group_key'] ] = ( $groups[ (string) $r['group_key'] ] ?? 0 ) + 1;
+			}
+		}
+		$shown = array();
+		foreach ( $rows as $r ) {
+			$gk = (string) ( $r['group_key'] ?? '' );
+			if ( '' !== $gk && ( $groups[ $gk ] ?? 0 ) > 1 && ! isset( $shown[ $gk ] ) ) {
+				$shown[ $gk ] = true;
+				$by           = ! empty( $r['booked_by'] ) ? Plugin::people()->get( (int) $r['booked_by'] ) : null;
+				$h           .= '<li><strong>' . esc_html( 'Inviate insieme' . ( $by ? ' da ' . trim( $by['first_name'] . ' ' . $by['last_name'] ) : '' ) . ' (' . (int) $groups[ $gk ] . ' persone)' ) . '</strong> '
+					. '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline"><input type="hidden" name="action" value="asem_event_request_approve_group"><input type="hidden" name="_back" value="' . esc_url( $back ) . '">'
+					. wp_nonce_field( 'asem_event_request_approve_group', '_wpnonce', true, false ) . '<input type="hidden" name="group" value="' . esc_attr( $gk ) . '"><input type="hidden" name="activity_id" value="' . (int) $activity_id . '"><input type="hidden" name="activity_id" value="' . (int) $activity_id . '"><button class="button button-small button-primary">Approva tutte</button></form></li>';
+			}
+			$asker = ! empty( $r['booked_by'] ) ? Plugin::people()->get( (int) $r['booked_by'] ) : null;
+			$h    .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . ( $course ? '' : (int) $r['seats'] . ( 1 === (int) $r['seats'] ? ' posto, ' : ' posti, ' ) ) . esc_html( ( $asker ? 'chiesta da ' . trim( $asker['first_name'] . ' ' . $asker['last_name'] ) . ', ' : '' ) . mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
 				. ( $r['members'] ? '' : self::admin_form( 'asem_event_request_approve', (int) $r['id'], $back, 'Approva' ) . ' ' ) . self::admin_form( 'asem_event_request_reject', (int) $r['id'], $back, 'Rifiuta' )
 				. ( $r['members'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è quello del socio ' . implode( ', ', $r['members'] ) . ': non si può prenotare come ospite. Rifiuta la richiesta (chi l\'ha inviata riceve il normale messaggio di rifiuto) o contatta il socio.' ) . '</span>' : '' )
 				. ( $r['differs'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è già in anagrafica con altri dati (' . implode( ', ', $r['differs'] ) . '). Approvando si usa la scheda esistente.' ) . '</span>' : '' ) . '</li>';

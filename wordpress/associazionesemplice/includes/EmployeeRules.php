@@ -163,7 +163,7 @@ final class EmployeeRules {
 			'asem_stop_renewal', 'asem_add_session', 'asem_update_session', 'asem_generate_sessions', 'asem_add_dates', 'asem_cancel_session', 'asem_book',
 			'asem_event_staff_add', 'asem_event_staff_remove', 'asem_event_staff_cash', 'asem_checkin', 'asem_send_notice', 'asem_transfer_booking',
 			'asem_cancel_booking', 'asem_waitlist_remove', 'asem_quick_enroll', 'asem_delete_activity', 'asem_delete_activities', 'asem_delete_booking',
-			'asem_purge_enrollments', 'asem_event_request_approve', 'asem_event_request_reject', 'asem_attendance_save', 'asem_attendance_matrix_save',
+			'asem_purge_enrollments', 'asem_event_request_approve', 'asem_event_request_approve_group', 'asem_event_request_reject', 'asem_attendance_save', 'asem_attendance_matrix_save',
 		);
 	}
 
