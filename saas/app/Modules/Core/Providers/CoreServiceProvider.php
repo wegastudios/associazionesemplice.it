@@ -8,6 +8,7 @@ use App\Modules\Core\Access\EmployeeCounter;
 use App\Modules\Core\Auth\HostSessionGuard;
 use App\Modules\Core\Console\CreateOrgCommand;
 use App\Modules\Core\Console\DatabaseEmptyCommand;
+use App\Modules\Core\Console\DatabaseGrantsCopyCommand;
 use App\Modules\Core\Console\DatabaseNarrowPortalCommand;
 use App\Modules\Core\Console\DatabaseRevokeGroupCommand;
 use App\Modules\Core\Console\DemoCheckEnvCommand;
