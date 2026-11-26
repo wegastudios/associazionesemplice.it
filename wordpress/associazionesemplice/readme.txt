@@ -4,7 +4,7 @@ Tags: association, members, nonprofit, events, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.39
+Stable tag: 1.3.40
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -130,6 +130,21 @@ The front-end style sheet and script (`assets/frontend.css` and `assets/frontend
 
 == Changelog ==
 
+= 1.3.40 =
+* Nuovo: giorni di prova gratuiti per i corsi. La prova si registra dalla scheda del corso; in Bacheca chi l'ha fatta e non si è ancora iscritto. Chi si iscrive nello stesso mese paga dal giorno della prova.
+* Nuovo: primo mese in proporzione, dalla prima lezione vera dell'iscritto. Vale per tutti i corsi mensili, anche quelli già creati, per chi si iscrive da ora; le iscrizioni già fatte non cambiano.
+* Nuovo: corsi a lezioni. Il contributo è per lezione e il mese costa le lezioni effettive del calendario. Le lezioni del mese si fissano a inizio mese, o prima al primo incasso o al promemoria di quel mese, e si vedono nella scheda del corso; nell'area soci il socio vede lezioni e importo di questo mese e del prossimo.
+* Nuovo: giorni rossi. Festività nazionali (anche il 4 ottobre dal 2026), festa del patrono e chiusure dell'associazione. Il corso sceglie se saltarli; la scelta vale dal giorno in cui si fa, le lezioni passate non cambiano.
+* Nuovo: lezione annullata in un mese già pagato. Chi aveva pagato ha un importo a favore, che si scala dal rinnovo oppure si restituisce dalla scheda del corso, con conto e data. Si può segnare un recupero. Per i soci l'importo vale fino alla fine del primo mese dell'anno fiscale dopo, con un avviso prima; poi si chiude dalla Bacheca come contributo per le attività.
+* Ottimizzazione: un solo calendario per lezioni, presenze, quote e cassa; la quota del mese in corso si conta dalla prima lezione vera, anche nei corsi mensili (gli importi non cambiano).
+* Altro: la quota dell'istruttore su una lezione annullata torna all'associazione; se il fondo è già stato liquidato la differenza resta scritta sulla lezione.
+* Altro: i promemoria dei corsi tengono conto della variante del contributo; i lavori lunghi avanzano dalla pagina e si fermano con «Annulla»; la Bacheca e l'area soci sul telefono restano dentro lo schermo.
+Da fare dopo l'aggiornamento:
+* Se usi il Pro, aggiorna anche quello.
+* Se un corso deve far pagare il mese intero a chi si iscrive a mese iniziato, aprilo e scegli «Paga il mese intero».
+* In Impostazioni, «Giorni senza lezioni», scrivi la festa del patrono e le chiusure; nei corsi che devono saltarli spunta «Nessuna lezione nei giorni festivi e di chiusura».
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 = 1.3.39 =
 * Nuovo: dall'area soci si prenota un evento per più persone in un solo modulo: per sé, ospiti (anche nuovi), minori e altri soci con cognome e numero di tessera. Prima di confermare si vede il totale; si prenotano tutti o nessuno.
 * Nuovo: se un altro socio prenota per te ricevi un'email e puoi confermare o toglierti fino all'inizio; dal profilo scegli se permetterlo. Il contributo è a carico di chi prenota.
@@ -149,27 +164,6 @@ Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/change
 * Altro: nelle pagine delle attività e degli eventi le locandine non diventano più enormi nei siti con WordPress 6.7 o successivo.
 * Ottimizzazione: le schede delle attività sono uniformi: immagine della stessa misura, fascia colorata con l'icona se manca la locandina, date e posti in evidenza, pulsante in fondo.
 * Ottimizzazione: in Corsi ed eventi gli importi e i pulsanti delle schede sono allineati.
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.36 =
-* Nuovo: scheda «Stato del server» negli Strumenti, con i consigli per l'hosting, e cinque controlli in Salute del sito.
-* Nuovo: in Bacheca «Ospiti appena entrati», con l'avviso «da invitare ad associarsi» da togliere con «Fatto».
-* Nuovo: tetto orario delle email in Limiti e soglie; le email singole rifiutate dal server di posta si riprovano da sole.
-* Ottimizzazione: molto più veloce con tanti dati: pagine degli eventi in cache, ricerca delle persone al posto delle tendine, copia di sicurezza ed esportazioni a tappe, libro soci e tessere a pagine, meno richieste al database.
-* Altro: conversione delle tabelle a InnoDB dal pannello della copia di sicurezza; aggiornamenti del database a tappe.
-Da fare dopo l'aggiornamento:
-* Apri «Stato del server» e guarda le righe «Da sistemare».
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.35 =
-* Nuovo: «Rigenera il codice» della tessera QR, per il socio nell'area soci e per la segreteria dalla scheda. Il codice vecchio, anche stampato o nel Wallet, smette subito di valere.
-* Sicurezza: limiti di frequenza per socio su richieste, annullamenti, profilo, ricevute e rigenerazione del codice. I valori si cambiano in Limiti e soglie.
-* Altro: controlli contro gli errori di digitazione: note fino a 2.000 caratteri, date tra il 1900 e il 2100, al massimo 10.000.000 € e 200 voci per incasso.
-Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
-
-= 1.3.34 =
-* Sicurezza: la domanda di adesione fatta dal sito si conferma dall'email: arriva alla segreteria solo dopo il clic sul link (vale 48 ore; un invio all'ora per indirizzo).
-* Altro: le domande mai confermate si cancellano dopo 30 giorni; di una domanda respinta con quota pagata, dopo 90 giorni restano solo nome e cognome (i movimenti contabili restano).
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 

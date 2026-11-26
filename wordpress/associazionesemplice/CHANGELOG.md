@@ -2,6 +2,21 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.40 – 2026-11-26
+- Nuovo: giorni di prova gratuiti per i corsi. La prova si registra dalla scheda del corso; in Bacheca chi l'ha fatta e non si è ancora iscritto. Chi si iscrive nello stesso mese paga dal giorno della prova.
+- Nuovo: primo mese in proporzione, dalla prima lezione vera dell'iscritto. Vale per tutti i corsi mensili, anche quelli già creati, per chi si iscrive da ora; le iscrizioni già fatte non cambiano.
+- Nuovo: corsi a lezioni. Il contributo è per lezione e il mese costa le lezioni effettive del calendario. Le lezioni del mese si fissano a inizio mese, o prima al primo incasso o al promemoria di quel mese, e si vedono nella scheda del corso; nell'area soci il socio vede lezioni e importo di questo mese e del prossimo.
+- Nuovo: giorni rossi. Festività nazionali (anche il 4 ottobre dal 2026), festa del patrono e chiusure dell'associazione. Il corso sceglie se saltarli; la scelta vale dal giorno in cui si fa, le lezioni passate non cambiano.
+- Nuovo: lezione annullata in un mese già pagato. Chi aveva pagato ha un importo a favore, che si scala dal rinnovo oppure si restituisce dalla scheda del corso, con conto e data. Si può segnare un recupero. Per i soci l'importo vale fino alla fine del primo mese dell'anno fiscale dopo, con un avviso prima; poi si chiude dalla Bacheca come contributo per le attività.
+- Ottimizzazione: un solo calendario per lezioni, presenze, quote e cassa; la quota del mese in corso si conta dalla prima lezione vera, anche nei corsi mensili (gli importi non cambiano).
+- Altro: la quota dell'istruttore su una lezione annullata torna all'associazione; se il fondo è già stato liquidato la differenza resta scritta sulla lezione.
+- Altro: i promemoria dei corsi tengono conto della variante del contributo; i lavori lunghi avanzano dalla pagina e si fermano con «Annulla»; la Bacheca e l'area soci sul telefono restano dentro lo schermo.
+Da fare dopo l'aggiornamento:
+- Se usi il Pro, aggiorna anche quello.
+- Se un corso deve far pagare il mese intero a chi si iscrive a mese iniziato, aprilo e scegli «Paga il mese intero».
+- In Impostazioni, «Giorni senza lezioni», scrivi la festa del patrono e le chiusure; nei corsi che devono saltarli spunta «Nessuna lezione nei giorni festivi e di chiusura».
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.39 – 2026-11-25
 - Nuovo: dall'area soci si prenota un evento per più persone in un solo modulo: per sé, ospiti (anche nuovi), minori e altri soci con cognome e numero di tessera. Prima di confermare si vede il totale; si prenotano tutti o nessuno.
 - Nuovo: se un altro socio prenota per te ricevi un'email e puoi confermare o toglierti fino all'inizio; dal profilo scegli se permetterlo. Il contributo è a carico di chi prenota.
