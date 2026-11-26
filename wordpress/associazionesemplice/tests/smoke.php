@@ -128,6 +128,8 @@ function asem_render( callable $page, string $must_contain, array $get = array()
 	return $html;
 }
 
+defined( 'ASEM_TESTS' ) || define( 'ASEM_TESTS', true );
+\AssociazioneSemplice\Trials::$first_month_fake = 'full'; // le prove sulle quote valgono per il mese intero, in qualunque giorno girino; la proporzione ha le sue
 global $wpdb;
 require_once ABSPATH . 'wp-admin/includes/template.php';
 require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -4708,7 +4710,7 @@ asem_ok( false !== strpos( Admin\Admin::tabs( 'asem-card' ), 'Cassa' ) && false 
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['asem'] ?? array(), 0 );
-asem_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Risorse', 'Crediti', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo dieci voci (' . implode( ', ', $visible ) . ')' );
+asem_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Risorse', 'AssoCrediti', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo dieci voci (' . implode( ', ', $visible ) . ')' );
 
 // interruttori: tutto spento di default
 Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );
@@ -8747,7 +8749,7 @@ $people->set_membership( $cr_m, $sy_label, true );
 $people->set_membership( $cr_m2, $sy_label, true );
 asem_ok( 0 === $CR::balance( $cr_m ), 'crediti: si parte da zero' );
 $CR::sell_at_desk( $cr_m, 50, (int) $rs_cash['id'], 'cash' );
-asem_ok( 50 === $CR::balance( $cr_m ) && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE person_id = %d AND type = 'income' AND amount_cents = 4500 AND description LIKE %s", $cr_m, 'Acquisto crediti%' ) ), 'crediti: la vendita in segreteria dà i crediti e la vendita entra in prima nota' );
+asem_ok( 50 === $CR::balance( $cr_m ) && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE person_id = %d AND type = 'income' AND amount_cents = 4500 AND description LIKE %s", $cr_m, 'Acquisto AssoCrediti%' ) ), 'crediti: la vendita in segreteria dà i crediti e la vendita entra in prima nota' );
 asem_ok( null !== asem_throws( function () use ( $CR, $cr_m, $rs_cash ) { $CR::sell_at_desk( $cr_m, 7, (int) $rs_cash['id'], 'cash' ); } ) && 50 === $CR::balance( $cr_m ), 'crediti: si vendono solo i pacchetti previsti' );
 asem_ok( null !== asem_throws( function () use ( $CR, $cr_m ) { $CR::spend( $cr_m, 60, 'troppo' ); } ) && 50 === $CR::balance( $cr_m ), 'crediti: non si spende più del saldo' );
 asem_ok( null !== asem_throws( function () use ( $CR, $rs_gst ) { $CR::spend( $rs_gst, 1, 'ospite' ); } ), 'crediti: gli ospiti non hanno crediti' );
@@ -8849,7 +8851,7 @@ $_GET['asem_charge'] = $cr_act['id'];
 $cr_screen = \AssociazioneSemplice\Frontend\CreditsFront::staff_section( $people->get( $cr_m2 ) );
 unset( $_GET['asem_charge'] );
 asem_ok( false !== strpos( $cr_screen, 'data-asemf-credit-poll' ) && false !== strpos( $cr_screen, '<svg' ) && false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::staff_section( $people->get( $cr_m2 ) ), 'Mostra il QR' ), 'crediti: lo staff vede il QR e lo stato che si aggiorna da solo' );
-asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::section( $people->get( $cr_m ) ), 'I miei crediti' ), 'crediti: il socio vede il saldo nella sua area' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::section( $people->get( $cr_m ) ), 'Saldo: ' ), 'crediti: il socio vede il saldo nella sua area' );
 // la pagina del QR con saldo sufficiente disegna il modulo «Conferma e paga» (con il controllo di sicurezza), senza errori fatali
 $cr_front_ch = $CR::create_charge( $cr_m2, 1, 'Pagina QR', null );
 $cr_front_u  = wp_insert_user( array( 'user_login' => 'crediti_qr_prova', 'user_pass' => wp_generate_password(), 'user_email' => 'crediti-qr-prova@example.com' ) );
@@ -14668,7 +14670,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
 // Indici delle ricerche frequenti: dopo l'installazione ci sono tutti; mancandone uno l'aggiornamento dallo schema 67 lo ricrea senza toccare i dati; rilanciare non fa nulla.
-asem_ok( '77' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 77' );
+asem_ok( '83' === \AssociazioneSemplice\Install::DB_VERSION, 'indici: lo schema è alla versione 83' );
 $ix_all = true;
 foreach ( \AssociazioneSemplice\Install::INDEXES as $ix_t => $ix_list ) {
 	if ( ! \AssociazioneSemplice\Install::table_exists( Db::t( $ix_t ) ) ) {
@@ -14688,7 +14690,7 @@ $wpdb->query( 'ALTER TABLE ' . Db::t( 'transactions' ) . ' DROP INDEX account_da
 asem_ok( ! \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ), 'indici: prova pronta, l\'indice per cognome e nome manca' );
 update_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION, '67' );
 \AssociazioneSemplice\Install::maybe_upgrade();
-asem_ok( '77' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
+asem_ok( '83' === (string) get_option( \AssociazioneSemplice\Install::DB_VERSION_OPTION ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'people' ), 'last_first' ) && \AssociazioneSemplice\Install::index_exists( Db::t( 'transactions' ), 'account_date' ), 'indici: l\'aggiornamento dalla 67 ricrea quelli mancanti e porta lo schema alla 71' );
 asem_ok( $ix_people_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $ix_tx_before === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ), 'indici: nessun dato cambiato' );
 // Voce degli incassi di corsi ed eventi: «Contributo attività / corso»; dove si chiama ancora «Quota attività / corso» (installazioni vecchie) l'aggiornamento la rinomina una volta, altrimenti non tocca nulla.
 $af_t  = Db::t( 'categories' );
@@ -14727,6 +14729,16 @@ require __DIR__ . '/smoke_backup_job.php'; // copia di sicurezza a tappe: uguale
 require __DIR__ . '/smoke_cache_condivisa.php'; // letture ricordate tra le richieste con una cache degli oggetti persistente (simulata): stessi risultati, svuotate a ogni scrittura
 require __DIR__ . '/smoke_prenota_gruppo.php'; // prenotazione per più persone: tutte o nessuna, chi prenota risponde, nessun oracolo sugli altri soci
 require __DIR__ . '/smoke_prenota_debitore.php'; // il contributo è a carico di chi prenota: cassa e prima nota invariate
+require __DIR__ . '/smoke_giorni_prova.php'; // giorni di prova gratuiti dei corsi: nessun debito, primo mese dal giorno della prova
+require __DIR__ . '/smoke_calendario_corsi.php'; // date delle lezioni in un posto solo: identiche ai calcoli di prima
+require __DIR__ . '/smoke_giorni_rossi.php'; // giorni senza lezione: festività, patrono, chiusure; spenti per i corsi esistenti
+require __DIR__ . '/smoke_primo_mese.php'; // primo mese in proporzione per scelta del corso; le iscrizioni già fatte non cambiano
+require __DIR__ . '/smoke_costo_lezioni.php'; // corsi a lezioni effettive: lezioni e importi fissati per mese, prima lezione vera
+require __DIR__ . '/smoke_lezioni_area_soci.php'; // corsi a lezioni nell'area soci: lezioni e importo di questo mese e del prossimo
+require __DIR__ . '/smoke_importo_favore.php'; // corsi a lezioni: lezione annullata già pagata, importo a favore, recupero, quota dell'istruttore
+require __DIR__ . '/smoke_fondo_liquidato.php'; // lezione annullata con la quota dell'istruttore già liquidata o in parte liberata: mai sotto zero, differenza scritta
+require __DIR__ . '/smoke_moneta.php'; // moneta interna con il nome scelto (di partenza AssoCredito)
+require __DIR__ . '/smoke_mensilita_moneta.php'; // mensilità dei corsi pagate nella moneta interna: per intero, sotto blocco, rimborsi in moneta
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );

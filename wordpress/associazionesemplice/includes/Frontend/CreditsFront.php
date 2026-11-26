@@ -24,6 +24,7 @@ final class CreditsFront {
 		'asem_front_credit_charge' => 'do_charge',
 		'asem_front_credit_cancel' => 'do_cancel',
 		'asem_front_credit_pay'    => 'do_pay',
+		'asem_front_course_coins'  => 'do_course_coins', // mensilità di un corso pagata in moneta (per sé o per il figlio minore)
 	);
 
 	public static function register(): void {
@@ -64,6 +65,13 @@ final class CreditsFront {
 		return wp_validate_redirect( ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' ), home_url( '/' ) );
 	}
 
+	/** Dall'area soci: paga il mese del corso nella moneta interna, dal saldo di chi è entrato. @throws \InvalidArgumentException */
+	private static function do_course_coins( array $post ): string {
+		$p = self::actor();
+		$n = \AssociazioneSemplice\CourseCoins::pay( (int) ( $post['activity_id'] ?? 0 ), (int) ( $post['person_id'] ?? 0 ), (string) ( $post['month'] ?? '' ), (int) $p['id'] );
+		return 'Pagato con ' . \AssociazioneSemplice\CoinName::n( $n ) . '.';
+	}
+
 	/** Il socio collegato all'utente. @throws \InvalidArgumentException */
 	private static function actor(): array {
 		$p = Access::current_person();
@@ -79,7 +87,7 @@ final class CreditsFront {
 	public static function do_charge( array $post ): array {
 		$staff = self::actor();
 		if ( ! Credits::can_charge_person( $staff, get_current_user_id() ) ) {
-			throw new \InvalidArgumentException( 'Non hai il permesso di addebitare crediti.' );
+			throw new \InvalidArgumentException( 'Non hai il permesso di addebitare ' . \AssociazioneSemplice\CoinName::plural() . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$activity = ! empty( $post['activity_id'] ) ? (int) $post['activity_id'] : null;
 		$c        = Credits::create_charge( (int) $staff['id'], max( 0, (int) ( $post['credits'] ?? 0 ) ), (string) ( $post['label'] ?? '' ), $activity );
@@ -126,16 +134,16 @@ final class CreditsFront {
 		$msg = '' !== $flash['err'] ? '<div class="w" style="color:#b32d2e">' . esc_html( $flash['err'] ) . '</div>' : '';
 		$c   = Credits::charge_by_code( $code );
 		if ( ! $c ) {
-			return CardVerify::layout( 'QR non valido', '#b32d2e', '<div class="a">Questo QR non corrisponde a nessun pagamento in crediti.</div>' );
+			return CardVerify::layout( 'QR non valido', '#b32d2e', '<div class="a">' . esc_html( \AssociazioneSemplice\Texts::t( 'Questo QR non corrisponde a nessun pagamento in {moneta}.', array( 'moneta' => \AssociazioneSemplice\CoinName::plural() ) ) ) . '</div>' );
 		}
 		$actor = Access::current_person();
 		if ( ! $actor || ! MemberType::is_member( $actor['type'] ) ) {
-			return CardVerify::layout( 'Solo per i soci', '#b32d2e', '<div class="a">I crediti sono riservati ai soci: entra con il tuo accesso.</div>' );
+			return CardVerify::layout( 'Solo per i soci', '#b32d2e', '<div class="a">' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . ': solo per i soci. Entra con il tuo accesso.</div>' );
 		}
 		$what  = '<div class="n">' . self::crediti( (int) $c['credits'] ) . '</div><div class="t">' . esc_html( (string) $c['label'] ) . '</div>';
 		$state = CreditRules::charge_state( $c, current_time( 'mysql' ) );
 		if ( 'paid' === $state && (int) $c['payer_person_id'] === (int) $actor['id'] ) {
-			return CardVerify::layout( 'Pagato', '#1a7f37', $what . '<div class="a">Hai pagato con i crediti. Saldo: ' . self::crediti( (int) Credits::balance( (int) $actor['id'] ) ) . '.</div>' . $msg );
+			return CardVerify::layout( 'Pagato', '#1a7f37', $what . '<div class="a">Pagato in ' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . '. Saldo: ' . self::crediti( (int) Credits::balance( (int) $actor['id'] ) ) . '.</div>' . $msg );
 		}
 		if ( 'ok' !== $state ) {
 			return CardVerify::layout( 'Non disponibile', '#b32d2e', $what . '<div class="a">' . esc_html( CreditRules::charge_message( $state ) ) . '</div>' . $msg );
@@ -148,9 +156,9 @@ final class CreditsFront {
 				. '<input type="hidden" name="code" value="' . esc_attr( $code ) . '"><input type="hidden" name="_back" value="' . esc_url( Credits::url( $code ) ) . '">' . \AssociazioneSemplice\Csrf::field( 'asem_front_credit_pay' )
 				. '<button style="width:100%;font-size:20px;padding:14px;border:0;border-radius:10px;background:#1a7f37;color:#fff;font-weight:700">Conferma e paga</button></form>';
 		} else {
-			$form = '<div class="w" style="color:#b32d2e">Non hai abbastanza crediti. <a href="' . esc_url( home_url( '/' ) ) . '">Ricarica dalla tua area soci</a> e inquadra di nuovo il QR.</div>';
+			$form = '<div class="w" style="color:#b32d2e">' . esc_html( \AssociazioneSemplice\Texts::t( 'Saldo insufficiente in {moneta}.', array( 'moneta' => \AssociazioneSemplice\CoinName::plural() ) ) ) . ' <a href="' . esc_url( home_url( '/' ) ) . '">Ricarica dalla tua area soci</a> e inquadra di nuovo il QR.</div>';
 		}
-		return CardVerify::layout( 'Pagare con i crediti?', '#2271b1', $what . '<div class="a">Il tuo saldo: <strong>' . (int) $balance . '</strong> ' . ( 1 === (int) $balance ? 'credito' : 'crediti' ) . '.</div>' . $form . $msg );
+		return CardVerify::layout( 'Pagare in ' . \AssociazioneSemplice\CoinName::plural() . '?', '#2271b1', $what . '<div class="a">Saldo: <strong>' . esc_html( \AssociazioneSemplice\CoinName::n( (int) $balance ) ) . '</strong>.</div>' . $form . $msg );
 	}
 
 	// ---------- Sezioni dell'area soci ----------
@@ -158,7 +166,7 @@ final class CreditsFront {
 	/** La sezione del socio: saldo, acquisto dei pacchetti, ultimi movimenti. */
 	public static function section( array $p ): string {
 		$pid  = (int) $p['id'];
-		$html = '<section class="asemf-section"><h3>I miei crediti</h3><p><span style="font-size:2em;font-weight:700">' . (int) Credits::balance( $pid ) . '</span> ' . ( 1 === (int) Credits::balance( $pid ) ? 'credito' : 'crediti' ) . '</p>';
+		$html = '<section class="asemf-section"><h3>' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . '</h3><p>Saldo: <span style="font-size:2em;font-weight:700">' . (int) Credits::balance( $pid ) . '</span> ' . esc_html( 1 === (int) Credits::balance( $pid ) ? \AssociazioneSemplice\CoinName::singular() : \AssociazioneSemplice\CoinName::plural() ) . '</p>';
 		$packs = Credits::packs();
 		if ( $packs && Edition::has( 'payments' ) && Plugin::payments()->enabled() ) {
 			$html .= '<p><strong>Ricarica</strong></p><p>';
@@ -167,9 +175,9 @@ final class CreditsFront {
 			}
 			$html .= '</p>';
 		} elseif ( $packs ) {
-			$html .= '<p class="asemf-muted">Per ricaricare i crediti rivolgiti alla segreteria.</p>';
+			$html .= '<p class="asemf-muted">Per ricaricare rivolgiti alla segreteria.</p>';
 		}
-		$html .= '<p class="asemf-small asemf-muted">Spendi i crediti nelle attività e nelle risorse che li accettano. Dal vivo inquadra con il telefono il QR che ti mostra lo staff, poi conferma.</p>';
+		$html .= '<p class="asemf-small asemf-muted">' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . ': si spendono nelle attività e nelle risorse che li accettano. Dal vivo inquadra con il telefono il QR che ti mostra lo staff, poi conferma.</p>';
 		$rows  = Credits::history( $pid, 8 );
 		if ( $rows ) {
 			$html .= '<ul class="asemf-list">';
@@ -184,9 +192,9 @@ final class CreditsFront {
 	/** La schermata dello staff: modulo dell'addebito e, dopo averlo creato, il QR con lo stato che si aggiorna da solo. */
 	public static function staff_section( array $p ): string {
 		if ( ! Credits::can_charge_person( $p, get_current_user_id() ) ) {
-			return '<section class="asemf-section"><h3>Incasso crediti</h3><p class="asemf-muted">Non hai il permesso di incassare crediti.</p></section>';
+			return '<section class="asemf-section"><h3>Incasso in ' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . '</h3><p class="asemf-muted">Non hai il permesso di incassare.</p></section>';
 		}
-		$html = '<section class="asemf-section"><h3>Incasso crediti</h3>';
+		$html = '<section class="asemf-section"><h3>Incasso in ' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . '</h3>';
 		$cid  = isset( $_GET['asem_charge'] ) ? (int) $_GET['asem_charge'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		$c    = $cid ? Credits::charge( $cid ) : null;
 		if ( $c && Credits::owns_charge( $c, get_current_user_id(), $p ) ) {
@@ -205,10 +213,10 @@ final class CreditsFront {
 		foreach ( Credits::chargeable_activities() as $a ) {
 			$opts .= '<option value="' . (int) $a['id'] . '">' . esc_html( $a['name'] ) . ' (' . self::crediti( (int) $a['credit_price'] ) . ')</option>';
 		}
-		$fields = '<p><label>Crediti <input type="number" name="credits" min="1" max="' . (int) CreditRules::MAX_CREDITS . '" style="width:6em"></label> '
+		$fields = '<p><label>' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . ' <input type="number" name="credits" min="1" max="' . (int) CreditRules::MAX_CREDITS . '" style="width:6em"></label> '
 			. '<label>Attività <select name="activity_id">' . $opts . '</select></label></p>'
 			. '<p><label>Per cosa <input type="text" name="label" maxlength="190" placeholder="Ad esempio: ingresso serata"></label></p>';
-		$html  .= '<p class="asemf-muted">Indica i crediti (oppure scegli un\'attività: l\'importo si compila da solo) e mostra il QR al socio.</p>' . self::form( 'asem_front_credit_charge', $fields, 'Mostra il QR', 'asemf-stack' );
+		$html  .= '<p class="asemf-muted">' . esc_html( \AssociazioneSemplice\Texts::t( 'Indica la quantità in {moneta} (oppure scegli un\'attività: l\'importo si compila da solo) e mostra il QR al socio.', array( 'moneta' => \AssociazioneSemplice\CoinName::plural() ) ) ) . ' ' . esc_html( 'L\'addebito dal vivo non chiude le mensilità dei corsi: quelle si pagano dalla sezione Pagamenti.' ) . '</p>' . self::form( 'asem_front_credit_charge', $fields, 'Mostra il QR', 'asemf-stack' );
 		return $html . '</section>';
 	}
 
@@ -216,7 +224,7 @@ final class CreditsFront {
 
 	/** «1 credito» o «N crediti». */
 	public static function crediti( int $n ): string {
-		return $n . ( 1 === $n ? ' credito' : ' crediti' );
+		return \AssociazioneSemplice\CoinName::n( $n );
 	}
 
 	private static function hidden( string $name, $value ): string {

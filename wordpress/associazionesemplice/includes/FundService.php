@@ -64,6 +64,25 @@ class FundService {
 		return array( 'accounts' => $accounts, 'funds' => $funds, 'available' => $accounts - $funds );
 	}
 
+	/** Il fondo aperto del volontario di un corso, senza crearlo (0 se non c'è). */
+	public function instructor_fund_id( int $activity_id ): int {
+		return (int) $this->db()->get_var( $this->db()->prepare( 'SELECT id FROM ' . Db::t( 'funds' ) . ' WHERE activity_id = %d AND closed_at IS NULL ORDER BY id LIMIT 1', $activity_id ) );
+	}
+
+	/** Le quote accantonate sugli incassi di una persona per un mese di un corso. @return array{fund_id:int,cents:int} */
+	public function share_for_course_month( int $activity_id, int $person_id, string $month ): array {
+		$r = $this->db()->get_row(
+			$this->db()->prepare(
+				'SELECT e.fund_id, SUM(e.cents) AS cents FROM ' . Db::t( 'fund_entries' ) . ' e JOIN ' . Db::t( 'transactions' ) . " t ON t.id = e.tx_id AND t.voided_at IS NULL WHERE e.kind = 'share' AND t.activity_id = %d AND t.person_id = %d AND COALESCE(t.competence_month, DATE_FORMAT(t.tx_date, '%%Y-%%m')) = %s GROUP BY e.fund_id ORDER BY cents DESC LIMIT 1",
+				$activity_id,
+				$person_id,
+				$month
+			),
+			ARRAY_A
+		);
+		return array( 'fund_id' => $r ? (int) $r['fund_id'] : 0, 'cents' => $r ? (int) $r['cents'] : 0 );
+	}
+
 	private function open_fund_for( int $activity_id, array $activity ): int {
 		$id = (int) $this->db()->get_var( $this->db()->prepare( 'SELECT id FROM ' . Db::t( 'funds' ) . ' WHERE activity_id = %d AND closed_at IS NULL ORDER BY id LIMIT 1', $activity_id ) );
 		if ( $id ) {
@@ -92,14 +111,16 @@ class FundService {
 	 * Come {@see FundService::attribute()}, per un'attività pagata in crediti (nessun incasso in prima nota): la quota va al fondo del volontario
 	 * e resta accantonata finché non si libera o si rimborsa. @return int centesimi accantonati
 	 */
-	public function attribute_credits( array $activity, int $base_cents, string $date, string $note ): int {
-		$cents = FundShare::cents( (string) ( $activity['fund_mode'] ?? '' ), (int) ( $activity['fund_value'] ?? 0 ), $base_cents );
+	public function attribute_credits( array $activity, int $base_cents, string $date, string $note, ?int &$entry_id = null ): int {
+		$entry_id = 0;
+		$cents    = FundShare::cents( (string) ( $activity['fund_mode'] ?? '' ), (int) ( $activity['fund_value'] ?? 0 ), $base_cents );
 		if ( $cents <= 0 || empty( $activity['instructor_person_id'] ) ) {
 			return 0;
 		}
 		$fund = $this->open_fund_for( (int) $activity['id'], $activity );
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund, 'kind' => 'share', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 190 ), 'created_at' => Db::now() ) );
-		return $cents;
+		$ok       = $this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund, 'kind' => 'share', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 190 ), 'created_at' => Db::now() ) );
+		$entry_id = $ok ? (int) $this->db()->insert_id : 0;
+		return $ok ? $cents : 0;
 	}
 
 	/**
@@ -108,18 +129,21 @@ class FundService {
 	 *
 	 * @return int centesimi accantonati (0 se il fondo non c'è, è estinto o l'importo è zero)
 	 */
-	public function share_to_fund( int $fund_id, int $cents, string $date, ?int $tx_id, string $note ): int {
-		$f = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
+	public function share_to_fund( int $fund_id, int $cents, string $date, ?int $tx_id, string $note, ?int &$entry_id = null ): int {
+		$entry_id = 0;
+		$f        = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
 		if ( ! $f || null !== $f['closed_at'] ) {
 			return 0;
 		}
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'share', 'cents' => $cents, 'tx_id' => $tx_id, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
-		return $cents;
+		$ok       = $this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'share', 'cents' => $cents, 'tx_id' => $tx_id, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
+		$entry_id = $ok ? (int) $this->db()->insert_id : 0;
+		return $ok ? $cents : 0;
 	}
 
 	/** Restituisce alla disponibilità una quota accantonata senza incasso (ad esempio crediti riaccreditati); mai più del saldo del fondo. @return int centesimi liberati */
-	public function take_back( int $fund_id, int $cents, string $date, string $note ): int {
-		$f = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
+	public function take_back( int $fund_id, int $cents, string $date, string $note, ?int &$entry_id = null ): int {
+		$entry_id = 0;
+		$f        = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
 		if ( ! $f || null !== $f['closed_at'] ) {
 			return 0;
 		}
@@ -127,8 +151,9 @@ class FundService {
 		if ( $cents <= 0 ) {
 			return 0;
 		}
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
-		return $cents;
+		$ok       = $this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
+		$entry_id = $ok ? (int) $this->db()->insert_id : 0;
+		return $ok ? $cents : 0;
 	}
 
 	/** Crea un fondo a mano (ad esempio "Gita sociale"): facoltativamente con una somma già accantonata. */

@@ -227,7 +227,7 @@ final class Ui {
 			return '<strong class="asem-neg">Da versare ' . esc_html( Money::format( -$summary['balance'] ) ) . '</strong>' . $up;
 		}
 		if ( $summary['balance'] > 0 ) {
-			return '<strong class="asem-ok">In regola (credito ' . esc_html( Money::format( $summary['balance'] ) ) . ')</strong>' . $up;
+			return '<strong class="asem-ok">In regola (' . esc_html( Money::format( $summary['balance'] ) ) . ' a favore)</strong>' . $up;
 		}
 		return '<strong class="asem-ok">In regola</strong>' . $up;
 	}

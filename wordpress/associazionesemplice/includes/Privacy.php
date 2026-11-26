@@ -102,6 +102,10 @@ final class Privacy {
 			'libro_soci_fotografato' => MemberBook::snapshot_export( $person_id ), // le righe dei libri soci degli anni fiscali chiusi in cui compare (restano per dovere di conservazione)
 			'corsi'        => $courses,
 			'prenotazioni' => $bookings,
+			'contributi_a_lezione' => Db::db()->get_results( Db::db()->prepare( 'SELECT a.name AS corso, d.month AS mese, d.lessons AS lezioni, d.due_cents AS dovuto_centesimi FROM ' . Db::t( 'course_month_dues' ) . ' d JOIN ' . Db::t( 'activities' ) . ' a ON a.id = d.activity_id WHERE d.person_id = %d ORDER BY d.month', $person_id ), ARRAY_A ) ?: array(),
+			'mensilita_moneta_interna' => Db::db()->get_results( Db::db()->prepare( 'SELECT a.name AS corso, c.month AS mese, c.credits AS quantita, c.cents AS valore_centesimi, c.status AS stato FROM ' . Db::t( 'course_credit_payments' ) . ' c JOIN ' . Db::t( 'activities' ) . ' a ON a.id = c.activity_id WHERE c.person_id = %d ORDER BY c.month', $person_id ), ARRAY_A ) ?: array(),
+			'lezioni_annullate' => Db::db()->get_results( Db::db()->prepare( 'SELECT a.name AS corso, c.lesson_date AS lezione, c.cents AS importo_centesimi, c.status AS stato, c.makeup_date AS recupero FROM ' . Db::t( 'course_credits' ) . ' c JOIN ' . Db::t( 'activities' ) . ' a ON a.id = c.activity_id WHERE c.person_id = %d ORDER BY c.lesson_date', $person_id ), ARRAY_A ) ?: array(),
+			'prove_gratuite' => array_map( function ( $t ) { return array( 'corso' => $t['activity_name'], 'giorno' => $t['trial_date'] ); }, Trials::of_person( $person_id ) ),
 			'prenotazioni_fatte_per_altri' => $for_others,
 			'altri_soci_possono_prenotare_per_me' => empty( $p['no_booking_by_others'] ),
 			'pagamenti'    => $payments,
@@ -297,6 +301,7 @@ final class Privacy {
 			. 'COALESCE((SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . " m WHERE m.person_id = p.id AND m.deleted_at IS NULL), '1970-01-01'), "
 			. 'COALESCE((SELECT MAX(s.session_date) FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . " s ON s.id = b.session_id WHERE b.person_id = p.id), '1970-01-01'), "
 			. 'COALESCE((SELECT MAX(t.tx_date) FROM ' . Db::t( 'transactions' ) . " t WHERE t.person_id = p.id OR t.payer_person_id = p.id), '1970-01-01'), "
+			. 'COALESCE((SELECT MAX(tr.trial_date) FROM ' . Db::t( 'trials' ) . " tr WHERE tr.person_id = p.id), '1970-01-01'), "
 			. 'COALESCE((SELECT MAX(CONCAT(e.start_month, \'-28\')) FROM ' . Db::t( 'enrollments' ) . " e WHERE e.person_id = p.id), '1970-01-01')) AS last_seen "
 			. "FROM $p p WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL "
 			. 'HAVING last_seen < %s ORDER BY last_seen LIMIT %d';

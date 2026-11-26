@@ -67,7 +67,7 @@ final class Credits {
 	private static function assert_member( int $person_id ): array {
 		$person = Plugin::people()->get( $person_id );
 		if ( ! $person || ! MemberType::is_member( $person['type'] ) ) {
-			throw new \InvalidArgumentException( 'I crediti sono riservati ai soci.' );
+			throw new \InvalidArgumentException( CoinName::plural() . ': solo per i soci.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return $person;
 	}
@@ -87,7 +87,7 @@ final class Credits {
 			)
 		);
 		if ( ! $ok ) {
-			throw new \InvalidArgumentException( 'Operazione sui crediti non riuscita: riprova.' );
+			throw new \InvalidArgumentException( 'Operazione non riuscita: riprova.' );
 		}
 		return (int) self::db()->insert_id;
 	}
@@ -100,7 +100,7 @@ final class Credits {
 	 */
 	public static function spend( int $person_id, int $credits, string $label, ?string $ref_type = null, ?int $ref_id = null ): int {
 		if ( $credits < 1 || $credits > CreditRules::MAX_CREDITS ) {
-			throw new \InvalidArgumentException( 'Numero di crediti non valido.' );
+			throw new \InvalidArgumentException( 'Quantità non valida.' );
 		}
 		$person = self::assert_member( $person_id );
 		$id     = Db::with_lock(
@@ -108,7 +108,7 @@ final class Credits {
 			function () use ( $person_id, $credits, $label, $ref_type, $ref_id ) {
 				$have = self::balance( $person_id );
 				if ( $have < $credits ) {
-					throw new \InvalidArgumentException( 'Crediti insufficienti: ne hai ' . $have . ', ne servono ' . $credits . '.' );
+					throw new \InvalidArgumentException( 'Saldo insufficiente: ' . CoinName::n( $have ) . ', ne servono ' . $credits . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				return self::insert_entry( $person_id, -$credits, 'spend', $label, $ref_type, $ref_id, null );
 			}
@@ -120,7 +120,7 @@ final class Credits {
 	/** Riaccredita crediti già spesi (annullamento di una prenotazione pagata in crediti). */
 	public static function refund( int $person_id, int $credits, string $label, ?string $ref_type = null, ?int $ref_id = null ): int {
 		if ( $credits < 1 ) {
-			throw new \InvalidArgumentException( 'Numero di crediti non valido.' );
+			throw new \InvalidArgumentException( 'Quantità non valida.' );
 		}
 		$id = Db::with_lock(
 			'asem_credits_' . $person_id,
@@ -135,7 +135,7 @@ final class Credits {
 	/** Correzione a mano della segreteria (anche negativa, ma mai sotto zero). @throws \InvalidArgumentException */
 	public static function adjust( int $person_id, int $delta, string $note ): int {
 		if ( 0 === $delta || abs( $delta ) > CreditRules::MAX_CREDITS ) {
-			throw new \InvalidArgumentException( 'Indica quanti crediti aggiungere o togliere.' );
+			throw new \InvalidArgumentException( 'Indica la quantità da aggiungere o togliere.' );
 		}
 		if ( '' === trim( $note ) ) {
 			throw new \InvalidArgumentException( 'Scrivi il motivo della rettifica.' );
@@ -177,10 +177,10 @@ final class Credits {
 				'account_id' => $account_id,
 				'method'     => $method,
 				'person_id'  => $person_id,
-				'lines'      => array( array( 'category_id' => $cat, 'amount_cents' => (int) $pack['price_cents'], 'description' => 'Acquisto crediti: ' . $credits ) ),
+				'lines'      => array( array( 'category_id' => $cat, 'amount_cents' => (int) $pack['price_cents'], 'description' => 'Acquisto ' . CoinName::plural() . ': ' . $credits ) ),
 			)
 		);
-		self::insert_entry( $person_id, $credits, 'buy', 'Acquisto di ' . $credits . ' crediti in segreteria', 'desk', null, null );
+		self::insert_entry( $person_id, $credits, 'buy', 'Acquisto di ' . CoinName::n( $credits ) . ' in segreteria', 'desk', null, null );
 		Audit::log( 'credits.sold', 'person', $person_id, array( 'credits' => $credits, 'cents' => (int) $pack['price_cents'] ) );
 	}
 
@@ -193,7 +193,7 @@ final class Credits {
 		foreach ( self::packs() as $p ) {
 			$i                = array(
 				'type' => PaymentItems::CREDITS, 'person_id' => (int) $actor['id'], 'person_name' => trim( $actor['first_name'] . ' ' . $actor['last_name'] ),
-				'credits' => (int) $p['credits'], 'amount_cents' => (int) $p['price_cents'], 'label' => $p['credits'] . ( 1 === (int) $p['credits'] ? ' credito' : ' crediti' ),
+				'credits' => (int) $p['credits'], 'amount_cents' => (int) $p['price_cents'], 'label' => CoinName::n( (int) $p['credits'] ),
 			);
 			$i['key']         = PaymentItems::key( $i );
 			$out[ $i['key'] ] = $i;
@@ -203,7 +203,7 @@ final class Credits {
 
 	/** Pagamento online di un pacchetto riuscito: i crediti arrivano al socio. */
 	public static function granted_online( int $person_id, int $credits, int $payment_id ): void {
-		self::insert_entry( $person_id, $credits, 'buy', 'Acquisto online di ' . $credits . ' crediti', 'payment', $payment_id, null );
+		self::insert_entry( $person_id, $credits, 'buy', 'Acquisto online di ' . CoinName::n( $credits ), 'payment', $payment_id, null );
 		Audit::log( 'credits.bought', 'person', $person_id, array( 'credits' => $credits, 'payment' => $payment_id ) );
 	}
 
@@ -252,7 +252,7 @@ final class Credits {
 		if ( $activity_id ) {
 			$activity = Plugin::activities()->get( $activity_id );
 			if ( ! $activity || empty( $activity['credit_price'] ) ) {
-				throw new \InvalidArgumentException( 'Questa attività non prevede il pagamento in crediti.' );
+				throw new \InvalidArgumentException( 'Questa attività non prevede il pagamento in ' . CoinName::plural() . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			if ( $credits < 1 ) {
 				$credits = (int) $activity['credit_price'];
@@ -262,7 +262,7 @@ final class Credits {
 			}
 		}
 		if ( $credits < 1 || $credits > CreditRules::MAX_CREDITS ) {
-			throw new \InvalidArgumentException( 'Indica quanti crediti addebitare.' );
+			throw new \InvalidArgumentException( 'Indica la quantità da addebitare.' );
 		}
 		$label = trim( $label );
 		if ( '' === $label ) {
@@ -325,7 +325,7 @@ final class Credits {
 		if ( $base <= 0 ) {
 			$base = self::euro_value( (int) $charge['credits'] );
 		}
-		Plugin::funds()->attribute_credits( $a, $base, Db::today(), 'Contributo di «' . $a['name'] . '» pagato in crediti' );
+		Plugin::funds()->attribute_credits( $a, $base, Db::today(), 'Contributo di «' . $a['name'] . '» pagato in ' . CoinName::plural() );
 	}
 
 	/**
@@ -346,7 +346,7 @@ final class Credits {
 		}
 		$person = self::assert_member( $person_id );
 		if ( ! Plugin::people()->is_active_member( $person_id ) ) {
-			throw new \InvalidArgumentException( 'La tua tessera non è valida: per spendere i crediti rinnova la quota associativa. ' . \AssociazioneSemplice\Frontend\Actions::renew_where() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'La tua tessera non è valida: per spendere ' . CoinName::plural() . ' rinnova la quota associativa. ' . \AssociazioneSemplice\Frontend\Actions::renew_where() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$tbl = Db::t( 'credit_charges' );
 		Db::with_lock(
@@ -354,7 +354,7 @@ final class Credits {
 			function () use ( $c, $person_id, $tbl ) {
 				$have = self::balance( $person_id );
 				if ( $have < (int) $c['credits'] ) {
-					throw new \InvalidArgumentException( 'Crediti insufficienti: ne hai ' . $have . ', ne servono ' . (int) $c['credits'] . '.' );
+					throw new \InvalidArgumentException( 'Saldo insufficiente: ' . CoinName::n( $have ) . ', ne servono ' . (int) $c['credits'] . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$claimed = self::db()->query( self::db()->prepare( "UPDATE $tbl SET status = 'paid', payer_person_id = %d, paid_at = %s WHERE id = %d AND status = 'pending' AND expires_at >= %s", $person_id, Db::now(), (int) $c['id'], Db::now() ) );
 				if ( 1 !== (int) $claimed ) {

@@ -66,7 +66,8 @@ final class IncomePage {
 			$a = Plugin::activities()->get( $aid );
 			if ( $a && $a['social_year'] === $sy ) {
 				$next   = Plugin::activities()->first_unpaid_month( $aid, (int) $person['id'] );
-				$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => Plugin::activities()->fee_for( $a, $person['type'] ), 'month' => $next ?: substr( $date, 0, 7 ) );
+				$month  = $next ?: substr( $date, 0, 7 );
+				$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => Plugin::activities()->course_month_fee( $a, $person, $month ), 'month' => $month );
 			}
 		}
 		// Eventi a cui è prenotata e il cui contributo non è ancora stato pagato
@@ -79,6 +80,27 @@ final class IncomePage {
 				'label'       => $b['activity_name'] . ' · ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ) . ( (int) $b['person_id'] !== (int) $person['id'] && ( $for = Plugin::people()->get( (int) $b['person_id'] ) ) ? ' · per ' . trim( $for['first_name'] . ' ' . $for['last_name'] ) : '' ),
 				'amount'      => (int) $b['remaining'],
 			);
+		}
+		// Corsi a lezioni: quanto costa ogni mese, dal mese dell'incasso in poi (le lezioni cambiano da un mese all'altro)
+		$lesson_fees = array();
+		foreach ( Plugin::activities()->for_year( $sy ) as $ta ) {
+			if ( 'course' === $ta['kind'] && \AssociazioneSemplice\CourseMonths::applies( $ta ) ) {
+				for ( $k = -1; $k <= 3; $k++ ) {
+					$ym = gmdate( 'Y-m', strtotime( substr( $date, 0, 7 ) . '-01 ' . ( $k < 0 ? '' : '+' ) . $k . ' month' ) );
+					$lesson_fees[ (int) $ta['id'] ][ $ym ] = Plugin::activities()->course_month_fee( $ta, $person, $ym );
+				}
+			}
+		}
+		// Corsi a cui non è iscritta, con il primo mese in proporzione: si propone quanto pagherebbe iscrivendosi
+		$trial_fees = array();
+		$mine       = array_column( $acts, 'id' );
+		foreach ( Plugin::activities()->for_year( $sy ) as $ta ) {
+			if ( 'course' === $ta['kind'] && \AssociazioneSemplice\Trials::shares( $ta ) && ! in_array( (int) $ta['id'], $mine, true ) ) {
+				$part = Plugin::activities()->course_month_fee( $ta, $person, substr( $date, 0, 7 ) );
+				if ( $part !== Plugin::activities()->fee_for( $ta, (string) $person['type'] ) ) {
+					$trial_fees[ (int) $ta['id'] ] = $part;
+				}
+			}
 		}
 		// Contributi a carico di chi ha prenotato per questa persona: non sono dovuti da lei, si propongono a parte e solo con una conferma
 		$covered = array();
@@ -120,6 +142,8 @@ final class IncomePage {
 				'activities'       => $acts,
 				'bookings'         => $bookings,
 				'covered'          => $covered,
+				'trial_fees'       => (object) $trial_fees,
+				'lesson_fees'      => (object) $lesson_fees,
 				'dues'             => $dues,
 				'membership'       => $m_plan,
 				'membership_has'   => Plugin::people()->has_membership( (int) $person['id'], $m_plan['year'] ),
@@ -147,7 +171,7 @@ final class IncomePage {
 		foreach ( array_filter( Plugin::activities()->for_year( $sy->label() ), function ( $x ) {
 			return 'course' === $x['kind'];
 		} ) as $a ) {
-			$acts[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['fee_cents'] );
+			$acts[] = array( 'lessons' => \AssociazioneSemplice\CourseMonths::applies( $a ) ? 1 : 0, 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['fee_cents'], 'guest_fee' => null === $a['guest_fee_cents'] || '' === $a['guest_fee_cents'] ? null : (int) $a['guest_fee_cents'] );
 		}
 		$default_account = $ledger->default_account_for( 'cash' );
 		$account_types = array();

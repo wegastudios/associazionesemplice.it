@@ -238,6 +238,9 @@ final class Reminders {
 		if ( ! empty( Settings::get( 'reminders_polls' ) ) && ! ( $send && self::$more ) ) {
 			$out['polls'] = Polls::remind( $send );
 		}
+		if ( ! empty( Settings::get( 'reminders_dues' ) ) && ! ( $send && self::$more ) ) {
+			$out['dues'] += CourseCredits::expiry_notices( $today, $send ); // importi a favore in scadenza
+		}
 		if ( ! empty( Settings::get( 'reminders_loans' ) ) && ! ( $send && self::$more ) ) {
 			$out['loans'] = self::loans( $send );
 		}
@@ -336,6 +339,12 @@ final class Reminders {
 				if ( ! empty( $e['price_list'] ) ) { // variante del contributo scelta per questa persona
 					$list = PriceLists::find( $a, (string) $e['price_list'] );
 					$fee  = $list ? (int) $list['cents'] : $fee;
+				}
+				if ( CourseMonths::applies( $a ) ) { // a lezioni: il mese dopo si fissa adesso e si chiede quell'importo
+					if ( $send ) {
+						CourseMonths::fix( $a, $target, 'reminder' );
+					}
+					$fee = $acts->course_month_fee( $a, $p, $target );
 				}
 				$paid = 0;
 				foreach ( $s['summary']['months'] as $m ) {

@@ -86,6 +86,10 @@ class ActivityService {
 				'booking_qr'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['booking_qr'] : 0,
 				'lesson_weekday'       => ActivityKind::COURSE === $d['kind'] ? $d['lesson_weekday'] : 0,
 				'billing'              => ActivityKind::COURSE === $d['kind'] ? $d['billing'] : 'monthly',
+				'trial_days'           => ActivityKind::COURSE === $d['kind'] ? $d['trial_days'] : 0,
+				'red_days'             => ActivityKind::COURSE === $d['kind'] ? $d['red_days'] : 0,
+				'first_month'          => $d['first_month'],
+				'red_periods'          => ActivityKind::COURSE === $d['kind'] ? RedDays::periods_after( $d['red_periods'], 1 === $d['red_days'], Db::today() ) : '',
 				'lesson_start'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_start'] : null,
 				'lesson_slots'        => ActivityKind::COURSE === $d['kind'] ? $d['lesson_slots'] : null,
 				'lesson_end'          => ActivityKind::COURSE === $d['kind'] ? $d['lesson_end'] : null,
@@ -107,6 +111,15 @@ class ActivityService {
 		return $id;
 	}
 
+	/** Ci sono incassi registrati (non annullati) su questa attività? */
+	public function has_income( int $id ): bool {
+		return (int) $this->db()->get_var( $this->db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE activity_id = %d AND type = 'income' AND voided_at IS NULL", $id ) ) > 0;
+	}
+
+	public static function billing_locked_message(): string {
+		return 'Ci sono già incassi su questo corso: per passare a un costo a lezioni (o toglierlo) chiudi questo corso e creane uno nuovo con «Riproponi».';
+	}
+
 	public function update( int $id, array $in ): void {
 		$current = $this->get( $id );
 		if ( ! $current ) {
@@ -119,6 +132,9 @@ class ActivityService {
 		$d = $this->normalize( array_merge( $current, $this->with_fee_alias( $in ) ) );
 		$d['kind'] = $current['kind']; // il tipo non si cambia dopo la creazione
 		$this->validate( $d );
+		if ( $d['billing'] !== $current['billing'] && in_array( 'lessons', array( $d['billing'], $current['billing'] ), true ) && $this->has_income( $id ) ) {
+			throw new \InvalidArgumentException( self::billing_locked_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		$this->db()->update(
 			Db::t( 'activities' ),
 			array(
@@ -131,6 +147,10 @@ class ActivityService {
 				'discipline'           => $d['discipline'],
 				'vat_rate'             => $d['vat_rate'],
 				'hold_hours'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['hold_hours'] : 0,
+				'trial_days'           => ActivityKind::COURSE === $d['kind'] ? $d['trial_days'] : 0,
+				'red_days'             => ActivityKind::COURSE === $d['kind'] ? $d['red_days'] : 0,
+				'first_month'          => $d['first_month'],
+				'red_periods'          => ActivityKind::COURSE === $d['kind'] ? RedDays::periods_after( $d['red_periods'], 1 === $d['red_days'], Db::today() ) : '',
 				'cancellable'          => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancellable'] : 0,
 				'cancel_policy'        => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancel_policy'] : null,
 				'booking_qr'           => ActivityKind::uses_sessions( $current['kind'] ) ? $d['booking_qr'] : 0,
@@ -280,7 +300,11 @@ class ActivityService {
 			'lesson_weekday'       => $weekly ? $weekly[0]['day'] : 0,
 			'slots'                => $slots,
 			'lesson_slots'         => $slots ? wp_json_encode( $slots ) : null,
-			'billing'              => isset( $in['billing'] ) && in_array( $in['billing'], array( 'once', 'quarterly' ), true ) ? (string) $in['billing'] : 'monthly',
+			'billing'              => isset( $in['billing'] ) && in_array( $in['billing'], array( 'once', 'quarterly', 'lessons' ), true ) ? (string) $in['billing'] : 'monthly',
+			'red_days'             => empty( $in['red_days'] ) ? 0 : 1,
+			'first_month'          => in_array( (string) ( $in['first_month'] ?? '' ), array( 'full', 'share' ), true ) ? (string) $in['first_month'] : Trials::first_month_default(),
+			'red_periods'          => (string) ( $in['red_periods'] ?? '' ),
+			'trial_days'           => max( 0, min( Trials::MAX_DAYS, (int) ( $in['trial_days'] ?? 0 ) ) ),
 			'lesson_start'        => $weekly ? $weekly[0]['start'] : null,
 			'lesson_end'          => $weekly ? $weekly[0]['end'] : null,
 			'location'            => isset( $in['location'] ) && '' !== Text::plain( (string) $in['location'] ) ? mb_substr( Text::plain( (string) $in['location'] ), 0, 190 ) : null,
@@ -296,6 +320,9 @@ class ActivityService {
 		$instructor = $d['instructor_person_id'] ? Plugin::people()->get( $d['instructor_person_id'] ) : null;
 		$errors     = Rules::validate_activity( $d, $instructor );
 		$errors      = array_merge( $errors, FundShare::validate( $d['fund_mode'], $d['fund_value'], null !== $instructor ) );
+		if ( ActivityKind::COURSE === $d['kind'] && 'lessons' === $d['billing'] && ! $d['slots'] ) {
+			$errors[] = 'Per pagare a lezioni effettive servono i giorni delle lezioni: aggiungili in «Quando».';
+		}
 		foreach ( $d['slots'] as $slot ) {
 			if ( $slot['start'] && $slot['end'] && $slot['end'] <= $slot['start'] ) {
 				$errors[] = 'L\'orario di fine deve essere dopo quello di inizio.';
@@ -1444,13 +1471,125 @@ class ActivityService {
 		if ( 'once' === ( $activity['billing'] ?? 'monthly' ) ) {
 			return max( 0, $fee - (int) array_sum( $paid ) );
 		}
+		if ( CourseMonths::applies( $activity ) ) {
+			list( $due_map, $paid_map ) = $this->lesson_ledger( $activity, $enr, $fee, $paid, $month );
+			return max( 0, (int) ( $due_map[ $month ] ?? 0 ) - (int) ( $paid_map[ $month ] ?? 0 ) );
+		}
 		$step = 'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1;
 		if ( $step > 1 ) {
 			$paid  = PaymentCalc::group_by_period( $paid, (string) $enr['start_month'], $step );
 			$keys  = array_keys( PaymentCalc::group_by_period( array( $month => 1 ), (string) $enr['start_month'], $step ) );
 			$month = (string) reset( $keys );
 		}
+		if ( 1 === $step && Trials::trial_month( $enr ) === $month ) { // primo mese di chi ha fatto la prova: si paga dal giorno della prova
+			$first = Trials::first_month_cents( $activity, $enr, $fee );
+			$fee   = null === $first ? $fee : $first;
+		}
 		return max( 0, $fee - (int) ( $paid[ $month ] ?? 0 ) );
+	}
+
+	/**
+	 * La quota prevista di un mese di corso per una persona, prima di incassarla: per il primo mese di chi ha fatto la prova si paga da quel giorno
+	 * (iscritta o da iscrivere), altrimenti la quota intera.
+	 */
+	public function course_month_fee( array $activity, array $person, string $month ): int {
+		$fee = $this->fee_for( $activity, (string) $person['type'] );
+		$enr = $this->enrollments_of( (int) $person['id'] )[ (int) $activity['id'] ] ?? null;
+		if ( $enr && ( null === $enr['end_month'] || $enr['end_month'] >= $month ) ) {
+			if ( CourseMonths::applies( $activity ) ) {
+				return CourseMonths::due( $activity, $enr, $this->enrollment_price( $activity, $enr, (string) $person['type'] ), $month );
+			}
+			if ( Trials::trial_month( $enr ) !== $month ) {
+				return $fee;
+			}
+			if ( ! empty( $enr['price_list'] ) ) {
+				$list = PriceLists::find( $activity, (string) $enr['price_list'] );
+				$fee  = $list && ! empty( $enr['trial_from'] ) ? (int) $list['cents'] : $fee;
+			}
+			return Trials::first_month_cents( $activity, $enr, $fee ) ?? $fee;
+		}
+		return Trials::expected_cents( $activity, (int) $person['id'], $month, $fee );
+	}
+
+	/**
+	 * Corso a lezioni: dovuto e versato per mese di un iscritto, con le lezioni annullate e gli importi a favore già messi al loro posto.
+	 *
+	 * @return array{0:array,1:array,2:array} dovuto, versato, righe delle lezioni annullate
+	 */
+	public function lesson_ledger( array $activity, array $enrollment, int $price, array $paid, string $until, ?string $end = null ): array {
+		$end  = $end ?? ( null === $enrollment['end_month'] ? null : (string) $enrollment['end_month'] );
+		$year = SocialYear::from_label( (string) $activity['social_year'], Settings::start_month() );
+		$due  = array();
+		foreach ( $year->months() as $m ) {
+			if ( $price > 0 && $m >= $enrollment['start_month'] && $m <= max( $until, substr( Db::today(), 0, 7 ) ) && ( null === $end || $m <= $end ) ) {
+				$due[ $m ] = CourseMonths::due( $activity, $enrollment, $price, $m );
+			}
+		}
+		$due = array_filter( $due, function ( $m ) use ( $until ) {
+			return $m <= $until || $m <= substr( Db::today(), 0, 7 );
+		}, ARRAY_FILTER_USE_KEY );
+		return CourseCredits::adjust( (int) $activity['id'], (int) $enrollment['person_id'], $due, $paid );
+	}
+
+	/** Scrive lo scalo degli importi a favore sul mese che si sta incassando. */
+	public function apply_credits( array $activity, int $person_id, string $month ): void {
+		$enr = $this->enrollments_of( $person_id )[ (int) $activity['id'] ] ?? null;
+		$p   = Plugin::people()->get( $person_id );
+		if ( ! $enr || ! $p ) {
+			return;
+		}
+		$paid  = $this->paid_map( array( (int) $activity['id'] ) )[ (int) $activity['id'] ][ $person_id ] ?? array();
+		$price = $this->enrollment_price( $activity, $enr, (string) $p['type'] );
+		$year  = SocialYear::from_label( (string) $activity['social_year'], Settings::start_month() );
+		$due   = array();
+		foreach ( $year->months() as $m ) {
+			if ( $price > 0 && $m >= $enr['start_month'] && $m <= max( $month, substr( Db::today(), 0, 7 ) ) && ( null === $enr['end_month'] || $m <= $enr['end_month'] ) ) {
+				$due[ $m ] = CourseMonths::due( $activity, $enr, $price, $m );
+			}
+		}
+		CourseCredits::persist( $activity, $person_id, $month, $due, $paid );
+	}
+
+	/** Le righe delle lezioni annullate di un iscritto, con quanto è ancora a favore. @return array[] */
+	public function credit_rows( int $activity_id, int $person_id ): array {
+		$a   = $this->get( $activity_id );
+		$enr = $this->enrollments_of( $person_id )[ $activity_id ] ?? null;
+		$p   = Plugin::people()->get( $person_id );
+		if ( ! $a || ! $enr || ! $p ) {
+			return CourseCredits::rows( $activity_id, $person_id );
+		}
+		$paid = $this->paid_map( array( $activity_id ) )[ $activity_id ][ $person_id ] ?? array();
+		return $this->lesson_ledger( $a, $enr, $this->enrollment_price( $a, $enr, (string) $p['type'] ), $paid, substr( Db::today(), 0, 7 ) )[2];
+	}
+
+	/** Corso a lezioni: per ogni iscritto del mese il dovuto fissato (scritto adesso se manca), da quale giorno conta e quanto ha versato. @return array[] */
+	public function month_dues( array $activity, string $month ): array {
+		$aid  = (int) $activity['id'];
+		$paid = $this->paid_map( array( $aid ) )[ $aid ] ?? array();
+		$out  = array();
+		foreach ( $this->db()->get_results( $this->db()->prepare( 'SELECT e.*, p.type FROM ' . Db::t( 'enrollments' ) . ' e JOIN ' . Db::t( 'people' ) . ' p ON p.id = e.person_id AND p.deleted_at IS NULL WHERE e.activity_id = %d AND e.start_month <= %s AND (e.end_month IS NULL OR e.end_month >= %s)', $aid, $month, $month ), ARRAY_A ) ?: array() as $e ) {
+			$price = $this->enrollment_price( $activity, $e, (string) $e['type'] );
+			$out[] = array(
+				'person_id'   => (int) $e['person_id'],
+				'price_cents' => $price,
+				'due_cents'   => CourseMonths::due( $activity, $e, $price, $month ),
+				'from'        => Trials::trial_month( $e ) === $month ? (string) $e['trial_from'] : '',
+				'paid'        => (int) ( $paid[ (int) $e['person_id'] ][ $month ] ?? 0 ),
+			);
+		}
+		return $out;
+	}
+
+	/** Le iscrizioni di una persona, per corso: una lettura sola per richiesta (si svuota a ogni scrittura). @return array<int,array> */
+	private function enrollments_of( int $person_id ): array {
+		if ( ! RequestMemo::has( 'person_enrollments', $person_id ) ) {
+			$map = array();
+			foreach ( $this->db()->get_results( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'enrollments' ) . ' WHERE person_id = %d', $person_id ), ARRAY_A ) ?: array() as $r ) {
+				$map[ (int) $r['activity_id'] ] = $r;
+			}
+			RequestMemo::put( 'person_enrollments', $person_id, $map, array( Db::t( 'enrollments' ) ) );
+		}
+		return RequestMemo::get( 'person_enrollments', $person_id );
 	}
 
 	/** Quanto manca da incassare per la prenotazione a una data di un evento (contributo dovuto meno il versato, sconti compresi). Null se non c'è una prenotazione con un contributo. */
@@ -1577,7 +1716,7 @@ class ActivityService {
 	}
 
 	/** Iscrive (o riattiva) una persona a un CORSO: le mensilità sono dovute da $start_month. */
-	public function enroll( int $activity_id, int $person_id, string $start_month ): void {
+	public function enroll( int $activity_id, int $person_id, string $start_month, ?string $pay_from = null ): void {
 		$this->assert_month( $start_month );
 		$a = $this->get( $activity_id );
 		if ( ! $a ) {
@@ -1590,14 +1729,46 @@ class ActivityService {
 		if ( ! $enrollee ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
-		$tbl = Db::t( 'enrollments' );
-		$row = $this->db()->get_row( $this->db()->prepare( "SELECT id FROM $tbl WHERE activity_id = %d AND person_id = %d", $activity_id, $person_id ), ARRAY_A );
-		if ( $row ) {
-			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ), array( 'id' => (int) $row['id'] ) );
-		} else {
-			$this->db()->insert( $tbl, array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'start_month' => $start_month, 'created_at' => Db::now() ) );
+		$pay_from = self::clean_pay_from( $a, $pay_from );
+		$tbl   = Db::t( 'enrollments' );
+		$row   = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE activity_id = %d AND person_id = %d", $activity_id, $person_id ), ARRAY_A );
+		$trial = Trials::enrollment_fields( $a, $person_id, $start_month, $pay_from ); // a mese iniziato si paga in proporzione, se il corso lo prevede
+		$covered = $row && $row['start_month'] <= $start_month && ( null === $row['end_month'] || $row['end_month'] >= $start_month );
+		if ( $covered || ( $row && ! empty( $row['trial_from'] ) && Trials::trial_month( $row ) >= $start_month ) ) {
+			$trial = array(); // il mese era già di questa iscrizione: ciò che è dovuto non cambia
+		} elseif ( ! empty( $trial['trial_from'] ) ) { // incassi già registrati in quel mese (iscrizione tolta e rifatta): il dovuto non scende sotto il versato
+			$paid = (int) ( $this->paid_map( array( $activity_id ) )[ $activity_id ][ $person_id ][ $start_month ] ?? 0 );
+			if ( $paid > 0 ) {
+				$trial = Trials::at_least_paid( $a, $trial, $this->fee_for( $a, (string) $enrollee['type'] ) * ( CourseMonths::applies( $a ) ? (int) $trial['trial_total'] : 1 ), $paid );
+			}
 		}
-		Audit::log( 'activity.enrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'from' => $start_month ) );
+		if ( $row ) {
+			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ) + $trial, array( 'id' => (int) $row['id'] ) );
+		} else {
+			$this->db()->insert( $tbl, array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'start_month' => $start_month, 'created_at' => Db::now() ) + $trial );
+		}
+		if ( CourseMonths::applies( $a ) && ! $covered ) { // iscrizione nuova o ricominciata: i dovuti rimasti da prima, senza versamenti, si rifanno
+			CourseMonths::restart( $activity_id, $person_id, $start_month, array_keys( array_filter( $this->paid_map( array( $activity_id ) )[ $activity_id ][ $person_id ] ?? array() ) ) );
+		}
+		$log = array( 'person_id' => $person_id, 'from' => $start_month );
+		if ( null !== $pay_from && Db::today() !== $pay_from && substr( $pay_from, 0, 7 ) === $start_month && Trials::shares( $a ) ) {
+			$log['pay_from'] = $pay_from; // giorno di partenza scelto a mano, diverso da oggi
+		}
+		Audit::log( 'activity.enrolled', 'activity', $activity_id, $log );
+	}
+
+	/** Il giorno di partenza scelto: una data vera, dentro l'anno delle attività del corso e non in un anno fiscale chiuso. Vuoto = nessuno. @throws \InvalidArgumentException */
+	private static function clean_pay_from( array $a, ?string $date ): ?string {
+		$date = trim( (string) $date );
+		if ( '' === $date ) {
+			return null;
+		}
+		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m ) || ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
+			throw new \InvalidArgumentException( 'Il giorno da cui si paga non è una data valida.' );
+		}
+		self::assert_in_social_year( (string) $a['social_year'], $date, 'Il giorno da cui si paga' );
+		YearLock::assert_date_open( $date );
+		return $date;
 	}
 
 	/**
@@ -1809,15 +1980,36 @@ class ActivityService {
 		foreach ( $rows as $r ) {
 			$out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['ym'] ] = (int) $r['s'];
 		}
+		if ( Plugin::schema_ready() ) { // mesi pagati nella moneta interna: risultano pagati per il loro valore in euro (nessun incasso in prima nota; mai sommati a euro dello stesso mese)
+			foreach ( $this->db()->get_results( 'SELECT activity_id, person_id, month, cents FROM ' . Db::t( 'course_credit_payments' ) . " WHERE status = 'paid' AND activity_id IN ($ids)", ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- id interi
+				$out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['month'] ] = max( (int) ( $out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['month'] ] ?? 0 ), (int) $r['cents'] ); // il mese pagato in moneta e poi anche in euro (pagamento online arrivato dopo) risulta pagato una volta: gli euro in più sono nel pagamento «da controllare»
+			}
+		}
 		return $out;
 	}
 
-	private function summarize( array $activity, array $enrollment, array $paid_by_month, string $person_type ): array {
+	/** L'iscrizione di una persona a un corso (null se non c'è). */
+	public function enrollment_row( int $activity_id, int $person_id ): ?array {
+		return $this->enrollments_of( $person_id )[ $activity_id ] ?? null;
+	}
+
+	/** La quota di un'iscrizione (variante compresa); nei corsi a lezioni quella di una lezione. */
+	public function price_of( array $activity, array $enrollment, string $person_type ): int {
+		return $this->enrollment_price( $activity, $enrollment, $person_type );
+	}
+
+	/** La quota di un'iscrizione: la variante scelta dalla segreteria (2° corso, famiglia, attività parziale…) o quella della persona. Nei corsi a lezioni è il prezzo di una. */
+	private function enrollment_price( array $activity, array $enrollment, string $person_type ): int {
 		$fee = $this->fee_for( $activity, $person_type );
-		if ( ! empty( $enrollment['price_list'] ) ) { // variante scelta dalla segreteria per questa iscrizione (2° corso, famiglia, attività parziale…)
+		if ( ! empty( $enrollment['price_list'] ) ) {
 			$list = PriceLists::find( $activity, (string) $enrollment['price_list'] );
 			$fee  = $list ? (int) $list['cents'] : $fee;
 		}
+		return $fee;
+	}
+
+	private function summarize( array $activity, array $enrollment, array $paid_by_month, string $person_type ): array {
+		$fee = $this->enrollment_price( $activity, $enrollment, $person_type );
 		if ( 'once' === ( $activity['billing'] ?? 'monthly' ) ) {
 			return PaymentCalc::compute_once( $fee, $enrollment['start_month'], $enrollment['end_month'], $paid_by_month );
 		}
@@ -1826,16 +2018,33 @@ class ActivityService {
 			$last = substr( (string) $activity['ends_on'], 0, 7 );
 			$end  = null === $end ? $last : min( $end, $last );
 		}
+		$now   = substr( Db::today(), 0, 7 );
+		$year  = SocialYear::from_label( $activity['social_year'], Settings::start_month() );
+		$map   = null;
+		$first = array();
+		if ( CourseMonths::applies( $activity ) ) { // lezioni annullate e importi a favore entrano qui
+			list( $map, $paid_by_month ) = $this->lesson_ledger( $activity, $enrollment, $fee, $paid_by_month, $now, $end );
+		}
+		if ( ( null === $end || $now <= $end ) && ( self::slot_days( $activity ) || null !== $map ) ) { // il mese in corso è dovuto dalla prima lezione vera (festivi, chiusure e lezioni annullate compresi)
+			$f = CourseMonths::first_lesson( $activity, $now );
+			if ( null !== $f ) {
+				$first[ $now ] = $f;
+			}
+		}
 		return PaymentCalc::compute(
 			$fee,
 			$enrollment['start_month'],
 			$end,
-			substr( Db::today(), 0, 7 ),
-			SocialYear::from_label( $activity['social_year'], Settings::start_month() ),
+			$now,
+			$year,
 			$paid_by_month,
 			self::slot_days( $activity ),
 			Db::today(),
-			'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1
+			'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1,
+			Trials::first_month_cents( $activity, $enrollment, $fee ),
+			Trials::trial_month( $enrollment ),
+			$map,
+			$first
 		);
 	}
 
@@ -1916,7 +2125,7 @@ class ActivityService {
 		}
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.lesson_slots, a.billing, a.price_lists, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
+				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.lesson_slots, a.billing, a.price_lists, a.starts_on, a.ends_on, a.red_days, a.red_periods, a.lesson_start, a.lesson_end FROM ' . Db::t( 'enrollments' ) . ' e '
 				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = e.activity_id AND a.deleted_at IS NULL WHERE e.person_id = %d ORDER BY a.social_year DESC, a.name',
 				$person_id
 			),
@@ -1928,6 +2137,7 @@ class ActivityService {
 			$activity = array(
 				'id' => $e['activity_id'], 'name' => $e['activity_name'], 'social_year' => $e['social_year'], 'kind' => $e['kind'],
 				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'lesson_slots' => $e['lesson_slots'], 'billing' => $e['billing'], 'price_lists' => $e['price_lists'], 'ends_on' => $e['ends_on'],
+				'starts_on' => $e['starts_on'], 'red_days' => $e['red_days'], 'red_periods' => $e['red_periods'], 'lesson_start' => $e['lesson_start'], 'lesson_end' => $e['lesson_end'],
 			);
 			$out[]    = array(
 				'enrollment' => $e,

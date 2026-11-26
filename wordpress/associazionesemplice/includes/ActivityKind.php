@@ -41,7 +41,7 @@ final class ActivityKind {
 	/** Il contributo di un corso a rinnovo mensile si intende al mese (nessuna dicitura); se si paga una volta sola è "una tantum"; per gli altri è "a evento". */
 	public static function fee_unit( string $kind, string $billing = 'monthly' ): string {
 		if ( self::COURSE === $kind ) {
-			return 'once' === $billing ? 'una tantum' : ( 'quarterly' === $billing ? 'a trimestre' : '' );
+			return 'once' === $billing ? 'una tantum' : ( 'quarterly' === $billing ? 'a trimestre' : ( 'lessons' === $billing ? 'a lezione' : '' ) );
 		}
 		return 'a evento';
 	}

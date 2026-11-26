@@ -67,6 +67,27 @@ jobs:
           done
           exit $fail
 
+  mysql8:
+    name: Two real connections on MySQL 8 (lessons courses)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: prova
+          MYSQL_DATABASE: prova
+        ports: ["3306:3306"]
+        options: --health-cmd="mysqladmin ping -pprova" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: "8.3"
+          extensions: mysqli
+      - run: php .github/scripts/prova-mysql-concorrenza.php 127.0.0.1 root prova prova | tee -a "$GITHUB_STEP_SUMMARY"
+
   free:
     name: Free edition (without the advanced files)
     runs-on: ubuntu-latest

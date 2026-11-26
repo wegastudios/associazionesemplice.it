@@ -305,6 +305,52 @@ final class Views {
 		return '<span class="asemf-bad">da pagare ' . esc_html( Money::format( (int) $b['remaining'] ) ) . '</span>';
 	}
 
+	/**
+	 * Corsi a lezioni: quante lezioni e quanto costano questo mese e il prossimo per quella persona (iscritta o no), così si capisce perché un mese
+	 * costa più di un altro. '' per gli altri corsi.
+	 */
+	public static function lesson_months_text( array $activity, array $person ): string {
+		$now    = substr( \AssociazioneSemplice\Db::today(), 0, 7 );
+		$months = \AssociazioneSemplice\SocialYear::from_label( (string) $activity['social_year'], \AssociazioneSemplice\Settings::start_month() )->months();
+		$parts  = array();
+		foreach ( array( 'Questo mese' => $now, 'Il mese prossimo' => gmdate( 'Y-m', strtotime( $now . '-01 +1 month' ) ) ) as $label => $ym ) {
+			$x = in_array( $ym, $months, true ) ? self::month_lessons( $activity, $person, $ym ) : null;
+			if ( null !== $x ) {
+				$parts[] = $label . ': ' . $x[0] . ( 1 === $x[0] ? ' lezione' : ' lezioni' ) . ', ' . Money::format( $x[1] );
+			}
+		}
+		return implode( ' · ', $parts );
+	}
+
+	/**
+	 * Lezioni e importo di un mese di un corso a lezioni per quella persona: per chi è iscritto il dovuto del mese (lezioni annullate già tolte, come
+	 * nel riepilogo dei pagamenti); per chi non lo è ancora quanto pagherebbe iscrivendosi. null per gli altri corsi. @return array{0:int,1:int}|null
+	 */
+	private static function month_lessons( array $activity, array $person, string $ym ): ?array {
+		if ( ! \AssociazioneSemplice\CourseMonths::applies( $activity ) ) {
+			return null;
+		}
+		$svc  = Plugin::activities();
+		$enr  = $svc->enrollment_row( (int) $activity['id'], (int) $person['id'] );
+		$unit = $enr ? $svc->price_of( $activity, $enr, (string) $person['type'] ) : $svc->fee_for( $activity, (string) $person['type'] );
+		if ( $unit <= 0 ) {
+			return null;
+		}
+		if ( $enr ) {
+			$due   = $svc->lesson_ledger( $activity, $enr, $unit, array(), $ym )[0];
+			$cents = (int) ( $due[ $ym ] ?? 0 );
+		} else {
+			$cents = $svc->course_month_fee( $activity, $person, $ym );
+		}
+		return array( (int) round( $cents / $unit ), $cents );
+	}
+
+	/** Lezioni di un mese di un corso a lezioni per quella persona (0 per gli altri corsi). */
+	private static function lessons_in( array $activity, array $person, string $ym ): int {
+		$x = self::month_lessons( $activity, $person, $ym );
+		return null === $x ? 0 : $x[0];
+	}
+
 	public static function section_activities( array $p ): string {
 		$html  = '<section class="asemf-section"><h3>Le mie attività</h3>';
 		$today = current_time( 'Y-m-d' );
@@ -313,9 +359,13 @@ final class Views {
 			$html .= '<div class="asemf-table-wrap"><table class="asemf-table asemf-stack"><thead><tr><th>Corso</th><th>Anno</th><th>Iscrizione</th><th>Pagamenti</th></tr></thead><tbody>';
 			foreach ( $stat as $s ) {
 				$e     = $s['enrollment'];
-				$unpd  = $s['summary']['unpaid_months'] ? '<div class="asemf-small">Mesi da pagare: ' . esc_html( implode( ', ', array_map( function ( $m ) {
-					return self::MONTHS[ (int) substr( $m['month'], 5, 2 ) ] . ' ' . substr( $m['month'], 0, 4 );
+				$act   = $s['activity'];
+				$unpd  = $s['summary']['unpaid_months'] ? '<div class="asemf-small">Mesi da pagare: ' . esc_html( implode( ', ', array_map( function ( $m ) use ( $act, $p ) {
+					$n = self::lessons_in( $act, $p, (string) $m['month'] ); // corsi a lezioni: quante lezioni ha quel mese
+					return self::MONTHS[ (int) substr( $m['month'], 5, 2 ) ] . ' ' . substr( $m['month'], 0, 4 ) . ( $n ? ' (' . $n . ( 1 === $n ? ' lezione' : ' lezioni' ) . ')' : '' );
 				}, $s['summary']['unpaid_months'] ) ) ) . '</div>' : '';
+				$lm    = null === $e['end_month'] ? self::lesson_months_text( $act, $p ) : '';
+				$unpd .= '' !== $lm ? '<div class="asemf-small">' . esc_html( $lm ) . '</div>' : '';
 				$html .= '<tr><td class="asemf-cell-main">' . esc_html( $s['activity']['name'] ) . '</td><td data-label="Anno">' . esc_html( $s['activity']['social_year'] ) . '</td><td data-label="Iscrizione">'
 					. ( null === $e['end_month'] ? 'Attiva' : 'Conclusa' ) . '</td><td data-label="Pagamenti">' . self::pay_text( $s['summary'] ) . $unpd . '</td></tr>';
 			}
@@ -481,6 +531,7 @@ final class Views {
 			$html .= Bank::html_accounts( $p, array_values( $dues ) )
 				. self::form( 'asem_front_bank_email', '', 'Mandami le coordinate per email', false, 'asemf-bank-form' );
 		}
+		$html  .= (string) apply_filters( 'asem_pay_section_extra', '', $p ); // la Pro aggiunge qui i mesi pagabili nella moneta interna
 		$recent = $pay->list( array( 'payer_person_id' => (int) $p['id'] ), 5 );
 		if ( $recent ) {
 			$html .= '<details class="asemf-details"><summary>Ultimi pagamenti online</summary><ul class="asemf-list">';
@@ -1819,7 +1870,13 @@ final class Views {
 				} else {
 					$rf .= self::hidden( 'person_id', $ask[0]['id'] );
 				}
-				$html .= '<p class="asemf-small asemf-muted">Dopo la conferma della segreteria sei iscritto da questo mese; il contributo è quello indicato per il corso.</p>'
+				foreach ( $ask as $person ) { // corsi a lezioni: quanto costa questo mese e il prossimo, prima di chiedere
+					$lm = self::lesson_months_text( $activity, $person );
+					if ( '' !== $lm ) {
+						$html .= '<p class="asemf-small">' . esc_html( ( count( $ask ) > 1 ? $person['first_name'] . ': ' : '' ) . $lm ) . '</p>';
+					}
+				}
+				$html .= '<p class="asemf-small asemf-muted">Dopo la conferma della segreteria sei iscritto da questo mese; il contributo è quello indicato per il corso.' . ( \AssociazioneSemplice\Trials::shares( $activity ) ? ' Il primo mese si paga in proporzione alle lezioni che restano dal giorno della conferma.' : '' ) . '</p>'
 					. self::form( 'asem_front_course_request', self::hidden( 'activity_id', $aid ) . $rf, 'Chiedi l\'iscrizione', false, 'asemf-inline' );
 			}
 		} else {

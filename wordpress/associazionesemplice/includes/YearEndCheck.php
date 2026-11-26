@@ -97,6 +97,18 @@ final class YearEndCheck {
 
 	/** Casella di conferma nel modulo «Chiudi l'anno». */
 	public static function close_form( $year ): void {
+		$open = 0;
+		$tot  = 0;
+		foreach ( Db::db()->get_results( 'SELECT * FROM ' . Db::t( 'course_credits' ) . " WHERE status = 'open' AND refunded_cents = 0 AND expired_cents = 0 LIMIT 500", ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna
+			if ( FiscalYears::year_of( (string) $r['lesson_date'] ) <= (int) $year ) {
+				$a = CourseCredits::available( $r );
+				$open += $a > 0 ? 1 : 0;
+				$tot  += $a;
+			}
+		}
+		if ( $open > 0 ) { // solo un avviso: gli importi valgono fino alla fine del primo mese dell'anno dopo e si chiudono dalla Bacheca
+			echo '<p class="description">' . esc_html( $open . ' importi a favore dei corsi a lezioni (' . Money::format( $tot ) . ') valgono ancora fino alla fine del primo mese del nuovo anno fiscale; scaduti, si chiudono dalla Bacheca. La chiusura dell\'anno non li tocca.' ) . '</p>';
+		}
 		if ( ! Edition::has( 'watch' ) ) {
 			return;
 		}

@@ -39,7 +39,8 @@ final class GroupCashPage {
 		$courses = array();
 		foreach ( $acts->for_year( Settings::social_year()->label() ) as $a ) {
 			if ( 'course' === $a['kind'] ) {
-				$courses[] = array( 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['fee_cents'], 'guest_fee' => null === $a['guest_fee_cents'] || '' === $a['guest_fee_cents'] ? (int) $a['fee_cents'] : (int) $a['guest_fee_cents'] );
+				$ym        = substr( \AssociazioneSemplice\Db::today(), 0, 7 );
+				$courses[] = array( 'part' => $acts->course_month_fee( $a, array( 'id' => 0, 'type' => \AssociazioneSemplice\MemberType::ORDINARY ), $ym ), 'part_guest' => $acts->course_month_fee( $a, array( 'id' => 0, 'type' => \AssociazioneSemplice\MemberType::GUEST ), $ym ), 'id' => (int) $a['id'], 'name' => $a['name'], 'fee' => (int) $a['fee_cents'], 'guest_fee' => null === $a['guest_fee_cents'] || '' === $a['guest_fee_cents'] ? (int) $a['fee_cents'] : (int) $a['guest_fee_cents'] );
 			}
 		}
 		$people = array();

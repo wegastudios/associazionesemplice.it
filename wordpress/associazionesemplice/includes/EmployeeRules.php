@@ -159,7 +159,7 @@ final class EmployeeRules {
 	/** Azioni di admin-post o di admin-ajax che modificano o mostrano attività, tutte da controllare in base al tipo (corso o evento). @return string[] */
 	public static function activity_actions(): array {
 		return array(
-			'asem_save_activity', 'asem_duplicate_activity', 'asem_lesson_exception', 'asem_lesson_restore', 'asem_enroll', 'asem_enroll_variant', 'asem_cancel_enrollment',
+			'asem_save_activity', 'asem_duplicate_activity', 'asem_lesson_exception', 'asem_lesson_restore', 'asem_enroll', 'asem_trial_add', 'asem_trial_remove', 'asem_course_month_recalc', 'asem_course_credit', 'asem_enroll_variant', 'asem_cancel_enrollment',
 			'asem_stop_renewal', 'asem_add_session', 'asem_update_session', 'asem_generate_sessions', 'asem_add_dates', 'asem_cancel_session', 'asem_book',
 			'asem_event_staff_add', 'asem_event_staff_remove', 'asem_event_staff_cash', 'asem_checkin', 'asem_send_notice', 'asem_transfer_booking',
 			'asem_cancel_booking', 'asem_waitlist_remove', 'asem_quick_enroll', 'asem_delete_activity', 'asem_delete_activities', 'asem_delete_booking',
@@ -193,6 +193,7 @@ final class EmployeeRules {
 				),
 				array( 'all' => array( self::PEOPLE ) )
 			);
+			$add( array( 'asem_course_credits_expire', 'asem_course_coins' ), array( 'all' => array( self::COURSES, self::COLLECT ) ) ); // importi a favore scaduti dei corsi a lezioni: come il riquadro in Bacheca
 			$add( array( 'asem_cert_add', 'asem_cert_delete', 'asem_cert_csv' ), array( 'all' => array( self::HEALTH ) ) );
 			$add( array( 'asem_cert_file' ), array( 'any' => array( self::HEALTH, self::COURSES, self::EVENTS ) ) ); // senza «Certificati medici» solo il file di un iscritto alle proprie attività (lo decide il modulo dei certificati)
 			$add( array( 'asem_person_context', 'asem_quick_person' ), array( 'any' => array( self::COLLECT, self::COURSES, self::EVENTS ) ) );

@@ -102,6 +102,8 @@ final class DashboardPage {
 		$alerts = trim( (string) ob_get_clean() );
 		ob_start();
 		self::payments_due();
+		self::trials_pending();
+		self::credits_expired();
 		self::renewals();
 		self::expected_guests();
 
@@ -380,6 +382,44 @@ final class DashboardPage {
 			. '<p><button class="button button-primary">Iscrivi</button> <a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Poi incassa il contributo →</a></p>', Html::allowed() );
 		Ui::form_close();
 		echo '</div>';
+	}
+
+	/** Chi ha fatto una prova gratuita da poco e non si è iscritto. */
+	/** Importi a favore dei corsi a lezioni scaduti: si chiudono con una conferma e restano all'associazione come contributo per le attività. */
+	private static function credits_expired(): void {
+		if ( ! Employees::can( EmployeeRules::COURSES ) || ! Employees::can( EmployeeRules::COLLECT ) ) {
+			return;
+		}
+		$rows = \AssociazioneSemplice\CourseCredits::expired_open();
+		if ( ! $rows ) {
+			return;
+		}
+		$tot = (int) array_sum( array_column( $rows, 'left' ) );
+		$ppl = count( array_unique( array_column( $rows, 'person_id' ) ) );
+		echo '<div class="asem-card"><h2>Importi a favore scaduti da chiudere</h2><ul>';
+		foreach ( array_slice( $rows, 0, 12 ) as $r ) {
+			echo '<li>' . esc_html( trim( $r['first_name'] . ' ' . $r['last_name'] ) . ' · ' . $r['activity_name'] . ' · lezione del ' . Ui::date( (string) $r['lesson_date'] ) . ' · ' . Money::format( (int) $r['left'] ) ) . '</li>';
+		}
+		echo '</ul>';
+		Ui::form_open( 'asem_course_credits_expire', Ui::url( 'asem' ) );
+		echo wp_kses( '<p><label><input type="checkbox" name="confirm" value="1"> ' . esc_html( count( $rows ) . ' importi, ' . $ppl . ( 1 === $ppl ? ' persona' : ' persone' ) . ', totale ' . Money::format( $tot ) . ': restano all\'associazione come contributo per le attività' ) . '</label> <button class="button">Chiudi</button></p>', Html::allowed() );
+		Ui::form_close();
+		echo '</div>';
+	}
+
+	private static function trials_pending(): void {
+		if ( ! Employees::can( EmployeeRules::PEOPLE ) || ! Employees::can( EmployeeRules::COURSES ) ) { // nomi di persone e di corsi
+			return;
+		}
+		$rows = \AssociazioneSemplice\Trials::not_enrolled( gmdate( 'Y-m-d', strtotime( \AssociazioneSemplice\Db::today() . ' -45 days' ) ) );
+		if ( ! $rows ) {
+			return;
+		}
+		echo '<div class="asem-card"><h2>Prove fatte, non ancora iscritti (' . ( count( $rows ) > 200 ? 'più di 200' : count( $rows ) ) . ')</h2><p class="description">Prove gratuite degli ultimi 45 giorni. Chi si iscrive nello stesso mese paga dal giorno della prova.</p><ul>';
+		foreach ( array_slice( $rows, 0, 12 ) as $r ) {
+			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $r['person_id'] ) ) ) . '">' . esc_html( trim( $r['first_name'] . ' ' . $r['last_name'] ) ) . '</a> · <a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => (int) $r['activity_id'] ) ) . '#asem-trials' ) . '">' . esc_html( $r['activity_name'] ) . '</a> <span class="description">il ' . esc_html( Ui::date( (string) $r['last_date'] ) ) . ( (int) $r['n'] > 1 ? ' · ' . (int) $r['n'] . ' prove' : '' ) . '</span> ' . Ui::contact_links( $r ) . '</li>', Html::allowed() );
+		}
+		echo '</ul>' . ( count( $rows ) > 12 ? '<p class="description">Qui le ultime 12; le altre sono nella scheda di ogni corso.</p>' : '' ) . '</div>';
 	}
 
 	/** Pagamenti da incassare: per ogni persona, la quota associativa (se la tessera non è valida), le mensilità dei corsi già dovute e i contributi non versati. */

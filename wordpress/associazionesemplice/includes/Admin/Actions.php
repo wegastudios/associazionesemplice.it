@@ -82,6 +82,11 @@ final class Actions {
 			'asem_lesson_restore'     => 'lesson_restore',
 			'asem_tec_import'         => 'tec_import',
 			'asem_enroll'             => 'enroll',
+			'asem_trial_add'          => 'trial_add',
+			'asem_trial_remove'       => 'trial_remove',
+			'asem_course_month_recalc' => 'course_month_recalc',
+			'asem_course_credit'      => 'course_credit',
+			'asem_course_credits_expire' => 'course_credits_expire',
 			'asem_enroll_variant'     => 'enroll_variant',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
 			'asem_stop_renewal'       => 'stop_renewal',
@@ -726,6 +731,15 @@ final class Actions {
 			'fund_value'           => self::fund_value( $p ),
 			'notes'                => $p['notes'] ?? '',
 		);
+		if ( isset( $p['red_days_present'] ) ) { // casella dei corsi: presente solo nei moduli che la chiedono
+			$data['red_days'] = empty( $p['red_days'] ) ? 0 : 1;
+		}
+		if ( isset( $p['first_month'] ) ) { // chi si iscrive a mese iniziato
+			$data['first_month'] = (string) $p['first_month'];
+		}
+		if ( isset( $p['trial_days'] ) ) { // giorni di prova dei corsi: presenti solo nei moduli che li chiedono
+			$data['trial_days'] = (int) $p['trial_days'];
+		}
 		if ( array_key_exists( 'sport', $p ) ) { // classificazione sportiva (CONI e disciplina dell'ente), presente solo nei moduli che la chiedono
 			$data['sport']      = $p['sport'];
 			$data['discipline'] = $p['discipline'] ?? '';
@@ -811,6 +825,9 @@ final class Actions {
 			\AssociazioneSemplice\LessonExceptions::move( $id, $date, (string) ( $p['new_date'] ?? '' ), (string) ( $p['new_start'] ?? '' ), (string) ( $p['new_end'] ?? '' ), $note );
 			$msg  = 'Lezione spostata al ' . Ui::date( (string) $p['new_date'] ) . '.';
 			$text = 'La lezione di ' . ( $a ? $a['name'] : 'corso' ) . ' del ' . Ui::date( $date ) . ' è spostata al ' . Ui::date( (string) $p['new_date'] ) . ( '' !== trim( (string) ( $p['new_start'] ?? '' ) ) ? ' alle ' . trim( (string) $p['new_start'] ) : '' ) . ( '' !== trim( $note ) ? ' (' . trim( $note ) . ')' : '' ) . '.';
+		} elseif ( 'keep' === ( $p['mode'] ?? '' ) ) { // giorno festivo o di chiusura: la lezione si tiene lo stesso
+			\AssociazioneSemplice\LessonExceptions::keep( $id, $date, $note );
+			return array( $back, 'Lezione del ' . Ui::date( $date ) . ' confermata: è di nuovo in calendario.' );
 		} elseif ( 'cancel_from' === ( $p['mode'] ?? '' ) ) {
 			$n    = \AssociazioneSemplice\LessonExceptions::cancel_from( $id, $date, $note );
 			$msg  = $n . ( 1 === $n ? ' lezione annullata' : ' lezioni annullate' ) . ' (questa e le successive; le passate restano).';
@@ -1137,17 +1154,103 @@ final class Actions {
 		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione annullata. Se aveva già pagato, rimborsalo a mano.' );
 	}
 
+	/** Registra un giorno di prova (persona dell'anagrafica o nuovo ospite). */
+	private static function trial_add( array $p ): array {
+		$aid  = (int) ( $p['activity_id'] ?? 0 );
+		$pid  = (int) ( $p['person_id'] ?? 0 );
+		$back = Ui::url( 'asem-activity', array( 'id' => $aid ) ) . '#asem-trials';
+		$note = '';
+		Plugin::ledger()->in_batch( // ospite nuovo e prova insieme: se la prova non si può registrare non resta l'ospite
+			function () use ( $p, $aid, &$pid, &$note ) {
+				$first = trim( (string) ( $p['new_first_name'] ?? '' ) );
+				$last  = trim( (string) ( $p['new_last_name'] ?? '' ) );
+				if ( ! $pid && ( '' !== $first || '' !== $last ) ) {
+					$pid = Plugin::people()->create( array( 'type' => MemberType::GUEST, 'host_person_id' => (int) ( $p['new_host_id'] ?? 0 ) ?: null, 'first_name' => $first, 'last_name' => $last, 'phone' => (string) ( $p['new_phone'] ?? '' ) ) );
+				}
+				if ( ! $pid ) {
+					throw new \InvalidArgumentException( 'Scegli una persona oppure scrivi nome e cognome del nuovo ospite.' );
+				}
+				self::assert_not_suspended( $pid );
+				$note = \AssociazioneSemplice\Trials::add( $aid, $pid, (string) ( $p['trial_date'] ?? '' ) );
+			}
+		);
+		return array( $back, trim( 'Prova registrata: è gratuita. ' . $note ) );
+	}
+
+	private static function trial_remove( array $p ): array {
+		\AssociazioneSemplice\Trials::remove( (int) ( $p['trial_id'] ?? 0 ), (int) ( $p['activity_id'] ?? 0 ) );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) ( $p['activity_id'] ?? 0 ) ) ) . '#asem-trials', 'Prova tolta.' );
+	}
+
+	private static function course_credit( array $p ): array {
+		$aid  = (int) ( $p['activity_id'] ?? 0 );
+		$id   = (int) ( $p['credit_id'] ?? 0 );
+		$mode = (string) ( $p['mode'] ?? '' );
+		$back = Ui::url( 'asem-activity', array( 'id' => $aid ) ) . '#asem-credits';
+		if ( 'makeup' === $mode || 'nomakeup' === $mode ) {
+			\AssociazioneSemplice\CourseCredits::set_makeup( $id, $aid, 'makeup' === $mode ? (string) ( $p['makeup_date'] ?? '' ) : '' );
+			return array( $back, 'makeup' === $mode ? 'Recupero segnato: la lezione resta dovuta.' : 'Recupero tolto: torna l\'importo a favore.' );
+		}
+		if ( ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::COLLECT ) ) { // restituire soldi: serve anche il permesso Incassi
+			throw new \InvalidArgumentException( \AssociazioneSemplice\EmployeeRules::denied_message( \AssociazioneSemplice\EmployeeRules::COLLECT ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$x = \AssociazioneSemplice\CourseCredits::refund( $id, $aid, (int) ( $p['account_id'] ?? 0 ), '', (string) ( $p['refund_date'] ?? '' ) );
+		return array( $back, 'Restituzione di ' . Money::format( $x ) . ' registrata in prima nota.' );
+	}
+
+	private static function course_credits_expire( array $p ): array {
+		if ( empty( $p['confirm'] ) ) {
+			throw new \InvalidArgumentException( 'Spunta la conferma per chiudere gli importi scaduti.' );
+		}
+		$n = 0;
+		$x = 0;
+		foreach ( \AssociazioneSemplice\CourseCredits::expired_open() as $r ) {
+			$x += \AssociazioneSemplice\CourseCredits::close( (int) $r['id'], (int) $r['activity_id'], 'expired', 'scaduto: contributo per le attività' );
+			$n++;
+		}
+		return array( Ui::url( 'asem' ), $n . ( 1 === $n ? ' importo scaduto chiuso' : ' importi scaduti chiusi' ) . ' (' . Money::format( $x ) . '): restano all\'associazione come contributo per le attività. La prima nota non cambia.' );
+	}
+
+	private static function course_month_recalc( array $p ): array {
+		$id = (int) ( $p['activity_id'] ?? 0 );
+		$m  = (string) ( $p['month'] ?? '' );
+		$n  = \AssociazioneSemplice\CourseMonths::recalc( $id, $m );
+		return array( Ui::url( 'asem-activity', array( 'id' => $id ) ) . '#asem-months', Ui::month( $m ) . ': ' . $n . ( 1 === $n ? ' lezione.' : ' lezioni.' ) );
+	}
+
+	/** Frase per chi iscrive una persona che ha già fatto la prova ('' se non l'ha fatta). */
+	private static function trial_message( int $activity_id, int $person_id, string $start_month ): string {
+		$note = \AssociazioneSemplice\Trials::note( $activity_id, $person_id );
+		$a    = Plugin::activities()->get( $activity_id );
+		$pp   = Plugin::people()->get( $person_id );
+		$e    = null;
+		foreach ( $a ? Plugin::activities()->status_for_person( $person_id ) : array() as $s ) {
+			if ( (int) $s['enrollment']['activity_id'] === $activity_id ) {
+				$e = $s['enrollment'];
+			}
+		}
+		if ( $a && $pp && $e && \AssociazioneSemplice\Trials::trial_month( $e ) === $start_month ) {
+			$fee = Plugin::activities()->course_month_fee( $a, $pp, $start_month );
+			return ( '' !== $note ? ' ' . $note : '' ) . ( (int) $e['trial_left'] > 0
+				? ' Il primo mese si paga dal ' . Ui::date( (string) $e['trial_from'] ) . ': ' . Money::format( $fee ) . '.'
+				: ' In questo mese non ci sono più lezioni: non si paga nulla, si parte dal mese dopo.' );
+		}
+		return '' === $note ? '' : ' ' . $note . ' La prova resta gratuita.';
+	}
+
 	private static function enroll( array $p ): array {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
-		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
+		$day = (string) ( $p['pay_from'] ?? '' );
+		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'], '' === $day ? null : $day );
+		$trial = self::trial_message( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
 		if ( isset( $p['price_list'] ) ) { // variante del contributo scelta dalla segreteria
 			Plugin::activities()->set_enrollment_price( (int) $p['activity_id'], $pid, (string) $p['price_list'], (string) ( $p['fee_note'] ?? '' ) );
 		}
 		if ( ! empty( $p['next'] ) ) { // «Salva e prossimo inserimento»: si resta sulla pagina per iscrivere la persona dopo
-			return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ) . '#asem-enroll-person', 'Iscrizione registrata: puoi inserire la prossima.' . self::membership_warning( $pid ) );
+			return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ) . '#asem-enroll-person', 'Iscrizione registrata: puoi inserire la prossima.' . $trial . self::membership_warning( $pid ) );
 		}
-		return self::after_signup( $pid, Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.', (int) $p['activity_id'] );
+		return self::after_signup( $pid, Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.' . $trial, (int) $p['activity_id'] );
 	}
 
 	private static function enroll_variant( array $p ): array {
@@ -1366,7 +1469,7 @@ final class Actions {
 				throw new \InvalidArgumentException( 'Corso non trovato.' );
 			}
 			Plugin::activities()->enroll( (int) $a['id'], $pid, Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) ) );
-			return self::after_signup( $pid, Ui::url( 'asem' ), $name . ' è iscritto/a a ' . $a['name'] . '.', (int) $a['id'] );
+			return self::after_signup( $pid, Ui::url( 'asem' ), $name . ' è iscritto/a a ' . $a['name'] . '.' . self::trial_message( (int) $a['id'], $pid, Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) ) ), (int) $a['id'] );
 		}
 		if ( 0 === strpos( $target, 's:' ) ) {
 			Plugin::activities()->book( (int) substr( $target, 2 ), $pid );
@@ -1433,8 +1536,19 @@ final class Actions {
 		if ( ! empty( $p['uninstall_present'] ) ) {
 			$ente['delete_on_uninstall'] = ! empty( $p['delete_on_uninstall'] ) ? 1 : 0;
 		}
+		$red  = array( 'patron_day' => $txt( 'patron_day' ), 'closures' => sanitize_textarea_field( $p['closures'] ?? '' ) );
+		$warn = '';
+		try { // una riga sbagliata non fa perdere gli altri campi: si salvano, e il testo scritto resta nel modulo da correggere
+			\AssociazioneSemplice\RedDays::clean_patron( $red['patron_day'] );
+			\AssociazioneSemplice\RedDays::parse_closures( $red['closures'] );
+			delete_transient( 'asem_red_draft_' . get_current_user_id() );
+		} catch ( \InvalidArgumentException $e ) {
+			$warn = ' Non salvati i giorni senza lezioni. ' . $e->getMessage();
+			set_transient( 'asem_red_draft_' . get_current_user_id(), $red, 10 * MINUTE_IN_SECONDS );
+			$red = array();
+		}
 		Settings::update(
-			$ente + array(
+			$ente + $red + array(
 				'membership_fee_cents'    => Money::parse( $p['membership_fee'] ?? '' ) ?? 0,
 				'family_discount_pct'     => (int) ( $p['family_discount_pct'] ?? 0 ),
 				'founder_years'           => (int) ( $p['founder_years'] ?? 99 ),
@@ -1453,12 +1567,8 @@ final class Actions {
 			}
 			Settings::update( $feat );
 		}
-		return array( Ui::url( 'asem-settings' ), 'Impostazioni salvate.' );
+		return array( Ui::url( 'asem-settings' ), 'Impostazioni salvate.' . $warn );
 	}
-
-
-
-
 
 	private static function transfer_booking( array $p ): array {
 		Plugin::activities()->transfer_booking( (int) $p['session_id'], (int) $p['person_id'], (int) ( $p['to_person_id'] ?? 0 ), false );

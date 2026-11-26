@@ -950,7 +950,7 @@ final class EventRequests {
 		$form .= '<div class="asemf-rules-box">' . ( '' === $url ? '<div style="max-height:200px;overflow:auto;border:1px solid #c3c4c7;border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">' . PrivacyNotice::html() . '</div>' : '' )
 			. '<label class="asemf-check"><input type="checkbox" name="privacy_ok" value="1"' . checked( ! empty( $post['privacy_ok'] ), true, false ) . '> Ho letto ' . ( '' !== $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">l\'informativa sulla privacy</a>' : 'l\'informativa sulla privacy' ) . ' e acconsento al trattamento dei dati.</label></div>';
 		$form .= '<p class="asemf-small asemf-muted">' . ( $fee > 0 ? 'Contributo: ' . esc_html( Money::format( $fee ) ) . ' ' . ( '' === ActivityKind::fee_unit( ActivityKind::COURSE, (string) ( $activity['billing'] ?? 'monthly' ) ) ? 'al mese' : esc_html( ActivityKind::fee_unit( ActivityKind::COURSE, (string) ( $activity['billing'] ?? 'monthly' ) ) ) ) . '. Dopo l\'approvazione della segreteria ti scriviamo come pagare in anticipo con bonifico istantaneo; entro ' . self::pay_hours_text() . ' devi mandare alla segreteria la ricevuta del bonifico, altrimenti l\'iscrizione viene annullata. ' : 'Corso gratuito. ' )
-			. 'L\'iscrizione parte dal mese corrente e la conferma la segreteria dopo la tua richiesta.</p>'
+			. 'L\'iscrizione parte dal mese corrente e la conferma la segreteria dopo la tua richiesta.' . ( $fee > 0 && Trials::shares( $activity ) ? ' Il primo mese si paga in proporzione alle lezioni che restano dal giorno della conferma.' : '' ) . '</p>'
 			. '<button type="submit" class="asemf-btn wp-element-button">Invia la richiesta di iscrizione</button></form>';
 		return $html . '<section class="asemf-guest-request"><h3 class="asemf-event-h">Non sei socio?</h3><details class="asemf-guest-details"' . ( $errors || $post ? ' open' : '' ) . '><summary class="asemf-btn wp-element-button">Chiedi l\'iscrizione senza essere socio</summary><p class="asemf-small">Puoi chiedere di iscriverti al corso anche se non sei ancora socio: compila i dati qui sotto.</p>' . $form . '</details></section>';
 	}
@@ -1060,7 +1060,7 @@ final class EventRequests {
 		} catch ( \InvalidArgumentException $e ) {
 			return self::fail( $row, 'expired', 'Ci dispiace, non è stato possibile completare l\'iscrizione (' . $e->getMessage() . '). Scrivi alla segreteria.' );
 		}
-		$fee      = $svc->fee_for( $a, MemberType::GUEST );
+		$fee      = $svc->course_month_fee( $a, array( 'id' => $pid, 'type' => MemberType::GUEST ), $month ); // chi ha fatto la prova nel mese paga da quel giorno
 		$deadline = $fee > 0 ? wp_date( 'Y-m-d H:i:s', time() + self::pay_hours() * HOUR_IN_SECONDS ) : null;
 		self::set( (int) $row['id'], array( 'status' => 'booked', 'deadline' => $deadline, 'data' => wp_json_encode( array( 'enrollments' => array( array( 'person_id' => $pid, 'activity_id' => (int) $a['id'], 'month' => $month ) ) ) ) ) );
 		Audit::log( 'event_request.enrolled', 'activity', (int) $a['id'], array( 'person_id' => $pid ) );

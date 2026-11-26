@@ -56,6 +56,7 @@ CreditRules.php
 Admin/CreditsPage.php
 Admin/CreditsActions.php
 Frontend/CreditsFront.php
+CourseCoins.php
 License.php
 LicenseClient.php
 LicensePolicy.php

@@ -70,7 +70,7 @@ final class BookDeskPage {
 
 	/** Un corso: iscrizione da un mese. */
 	private static function course_row( array $a, ?array $person, string $month ): string {
-		$fee = Plugin::activities()->fee_for( $a, $person ? $person['type'] : MemberType::ORDINARY );
+		$fee = $person ? Plugin::activities()->course_month_fee( $a, $person, $month ) : Plugin::activities()->fee_for( $a, MemberType::ORDINARY );
 		$act = '';
 		if ( $person ) {
 			if ( in_array( (int) $a['id'], array_map( 'intval', Plugin::activities()->active_activity_ids( (int) $person['id'] ) ), true ) ) {

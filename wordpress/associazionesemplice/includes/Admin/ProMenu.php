@@ -14,7 +14,7 @@ final class ProMenu {
 		'asem-people'     => array( 'Rubrica soci', array( 'asem-people' => 'Soci e ospiti', 'asem-messages' => 'Comunicazioni' ) ),
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
 		'asem-resources'  => array( 'Risorse', array( 'asem-resources' => 'Risorse', 'asem-res-report' => 'Occupazione' ) ),
-		'asem-credits'    => array( 'Crediti', array( 'asem-credits' => 'Crediti' ) ),
+		'asem-credits'    => array( \AssociazioneSemplice\CoinName::PLURAL, array( 'asem-credits' => \AssociazioneSemplice\CoinName::PLURAL ) ), // a schermo sempre il nome scelto: lo mette groups()
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-server' => 'Stato del server', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-refunds' => 'Rimborsi', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
 		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Riepilogo', 'asem-years' => 'Anni fiscali', 'asem-budget' => 'Preventivo', 'asem-watch' => 'Rendiconto provvisorio', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto',  'asem-fivepm' => 'Adempimenti (5 per mille)' ) ),
@@ -102,7 +102,9 @@ final class ProMenu {
 	}
 
 	public static function groups( array $groups ): array {
-		return self::GROUPS + $groups;
+		$own = self::GROUPS;
+		$own['asem-credits'] = array( \AssociazioneSemplice\CoinName::plural(), array( 'asem-credits' => \AssociazioneSemplice\CoinName::plural() ) ); // la voce porta il nome scelto
+		return $own + $groups;
 	}
 
 	public static function sections( array $sections ): array {
@@ -124,7 +126,7 @@ final class ProMenu {
 			$out[] = $p;
 			if ( 'asem-activities' === $p[0] ) {
 				$out[] = array( 'asem-resources', 'Risorse', array( ResourcesPage::class, 'render_list' ) );
-				$out[] = array( 'asem-credits', 'Crediti', array( CreditsPage::class, 'render' ) );
+				$out[] = array( 'asem-credits', \AssociazioneSemplice\CoinName::plural(), array( CreditsPage::class, 'render' ) );
 			} elseif ( 'asem-money' === $p[0] ) {
 				$out[] = array( 'asem-accounting', 'Contabilità', array( AccountingPage::class, 'render' ) );
 			}
