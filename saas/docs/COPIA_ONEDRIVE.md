@@ -4,6 +4,16 @@ Decisione del titolare del 24/11/2026: una **seconda copia** dei dump dei backup
 tuo PC scarica i dump (già cifrati) e li mette in una cartella che scegli tu. Questa guida dice cosa prepara il codice e
 cosa fai tu, passo per passo. **Nulla è installato: ogni passo qui sotto lo fai tu, quando decidi.**
 
+> **Scelta del titolare del 26/11/2026:** per ora si usa questa copia, cioè lo scaricamento ogni ora sul PC e da lì in
+> OneDrive (variante A della sezione 2). Non costa nulla. Funziona solo quando il PC è acceso. Il servizio di
+> archiviazione esterno si sceglie più avanti, tra quelli che il titolare ha già.
+>
+> **Il cestino di OneDrive allunga di 30 giorni la conservazione.** Un dump cancellato a 30 giorni resta recuperabile
+> dal cestino online per altri 30 giorni: **fino a 60 giorni in tutto**. Gli account di lavoro o scuola arrivano fino
+> a 93 giorni di cestino. Finché il cestino non viene svuotato, ai clienti non si può dire «entro 30 giorni». Per
+> mantenere quella frase il cestino si svuota ogni settimana (sezione 7). Altrimenti la frase ai clienti diventa
+> «entro 60 giorni» ([CANCELLAZIONE_DATI.md](CANCELLAZIONE_DATI.md) §3 ter).
+
 File nel repository (cartella `saas/deploy/backup-onedrive/`):
 
 | File | A cosa serve |
