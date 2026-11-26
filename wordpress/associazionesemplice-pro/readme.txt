@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.26
+Stable tag: 1.3.27
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,10 @@ The Apple Wallet pass is built on your server and downloaded by the member: the 
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.3.27 =
+* Nuovo: con gli AssoCrediti (o il nome scelto per la moneta) si pagano anche i mesi dei propri ospiti e il primo mese di un altro socio che si è iscritto a un corso, quando lo paga chi iscrive.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.26 =
 * Nuovo: la moneta interna ha il nome che sceglie l'associazione (di partenza AssoCredito / AssoCrediti), in tutte le pagine, le email e le ricevute.

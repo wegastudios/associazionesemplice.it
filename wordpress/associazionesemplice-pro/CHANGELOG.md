@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.27 – 2026-11-26
+- Nuovo: con gli AssoCrediti (o il nome scelto per la moneta) si pagano anche i mesi dei propri ospiti e il primo mese di un altro socio che si è iscritto a un corso, quando lo paga chi iscrive.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.26 – 2026-11-26
 - Nuovo: la moneta interna ha il nome che sceglie l'associazione (di partenza AssoCredito / AssoCrediti), in tutte le pagine, le email e le ricevute.
 - Nuovo: la mensilità di un corso si può pagare per intero in moneta. La paga il socio dall'area soci, il genitore per il figlio minorenne oppure la segreteria dalla scheda del corso. Annullamenti e cancellazioni restituiscono la moneta con le regole degli euro.

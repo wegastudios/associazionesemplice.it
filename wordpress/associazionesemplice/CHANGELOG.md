@@ -2,6 +2,15 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.41 – 2026-11-26
+- Nuovo: dall'area soci si chiede l'iscrizione a un corso per più persone in un solo modulo: per sé, ospiti (anche nuovi), figli minori e altri soci con cognome e numero di tessera. Accanto a ognuno si vede il contributo.
+- Nuovo: la segreteria vede le richieste arrivate insieme e chi le ha mandate, e le approva una per una o tutte con «Approva tutte». Gli ospiti nuovi restano anche se la richiesta non è accolta.
+- Nuovo: chi iscrive un altro socio paga il primo mese; dal mese dopo paga la persona iscritta, che riceve un'email e può ritirarsi dalla sua area soci. Ricevute a chi paga quel mese, con l'altro socio indicato solo col numero di tessera.
+- Altro: nel profilo la scelta «Altri soci possono prenotarmi agli eventi e iscrivermi ai corsi» vale anche per i corsi.
+Da fare dopo l'aggiornamento:
+- Se usi il Pro, aggiorna anche quello.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.40 – 2026-11-26
 - Nuovo: giorni di prova gratuiti per i corsi. La prova si registra dalla scheda del corso; in Bacheca chi l'ha fatta e non si è ancora iscritto. Chi si iscrive nello stesso mese paga dal giorno della prova.
 - Nuovo: primo mese in proporzione, dalla prima lezione vera dell'iscritto. Vale per tutti i corsi mensili, anche quelli già creati, per chi si iscrive da ora; le iscrizioni già fatte non cambiano.
