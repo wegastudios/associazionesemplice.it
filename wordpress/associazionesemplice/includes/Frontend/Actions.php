@@ -25,6 +25,7 @@ final class Actions {
 		'asem_front_book_group'     => 'do_book_group',
 		'asem_front_request'        => 'do_request',
 		'asem_front_course_request' => 'do_course_request',
+		'asem_front_course_leave'   => 'do_course_leave',
 		'asem_front_accept_rules'   => 'do_accept_rules',
 		'asem_front_accept_for'     => 'do_accept_for',
 		'asem_front_waitlist_join'  => 'do_waitlist_join',
@@ -210,6 +211,9 @@ final class Actions {
 
 	/** Chiede l'iscrizione a un corso (per sé o per un proprio ospite o minore): la segreteria approva. @return string messaggio */
 	public static function do_course_request( array $post ): string {
+		if ( ! empty( $post['course_group'] ) ) {
+			return self::course_group( $post );
+		}
 		$actor     = self::actor();
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
 		self::assert_profile( $actor );
@@ -220,6 +224,161 @@ final class Actions {
 		}
 		\AssociazioneSemplice\EventRequests::course_member_request( (int) ( $post['activity_id'] ?? 0 ), $person_id );
 		return 'Richiesta inviata. La segreteria esamina le richieste in ordine di arrivo e ti scrive.';
+	}
+
+	/**
+	 * Il socio iscritto a un corso da un altro socio si ritira: resta fino alla fine del periodo già pagato (o del mese in corso) e dopo non deve più nulla.
+	 * Il mese che paga chi l'ha iscritto resta a suo carico. Solo per sé e solo per le iscrizioni fatte da un altro socio (le altre le chiude la segreteria).
+	 *
+	 * @return string messaggio
+	 */
+	public static function do_course_leave( array $post ): string {
+		$actor = self::actor();
+		$aid   = (int) $actor['id'];
+		\AssociazioneSemplice\MemberThrottle::hit( 'cancel', $aid, 'member_cancel_per_10min' );
+		$cid = (int) ( $post['activity_id'] ?? 0 );
+		$e   = Plugin::activities()->enrollment_row( $cid, $aid );
+		$a   = Plugin::activities()->get( $cid );
+		if ( ! $e || ! $a || null !== $e['end_month'] || empty( $e['paid_by'] ) || (int) $e['paid_by'] === $aid ) {
+			throw new \InvalidArgumentException( 'Per ritirarti da questo corso scrivi alla segreteria.' );
+		}
+		$last = Plugin::activities()->stop_renewal( $cid, $aid );
+		$who  = Plugin::people()->get( (int) $e['paid_by'] );
+		$to   = $who ? \AssociazioneSemplice\Reminders::recipient( $who ) : null;
+		if ( $to ) {
+			\AssociazioneSemplice\Texts::mail(
+				$to['email'],
+				\AssociazioneSemplice\Texts::subject( 'Ritiro dal corso: ' . $a['name'] ),
+				'Ciao ' . $to['name'] . ",\n\nil socio con tessera n. " . (string) $actor['card_number'] . ' si è ritirato dal corso «' . $a['name'] . '», che avevi chiesto per lui. Il mese a tuo carico resta dovuto come prima; per un contributo già versato scrivi alla segreteria.' . self::mail_sign()
+			);
+		}
+		$m = \AssociazioneSemplice\Admin\Ui::month( $last );
+		return 'Fatto: resti iscritto fino a ' . mb_strtolower( $m ) . ', poi non devi più nulla.';
+	}
+
+	/** Come OTHER_MEMBER_FAIL, per le richieste di iscrizione a un corso. */
+	const OTHER_MEMBER_COURSE_FAIL = 'Non è stato possibile iscrivere una delle persone indicate: controlla cognome e numero di tessera. Non è stata inviata nessuna richiesta.';
+
+	/**
+	 * Chiede l'iscrizione a un corso per più persone insieme (decisioni del titolare 26/11/2026): sé stessi, i propri ospiti e minori (esistenti o nuovi) e altri
+	 * soci adulti con cognome e numero di tessera. Tutte le richieste o nessuna; la segreteria poi le approva una per una o tutte insieme. Gli ospiti nuovi
+	 * restano anche se la richiesta è respinta. Per sé, ospiti e minori si dice il motivo di ogni rifiuto; per gli altri soci MAI: una sola frase.
+	 * Campi come la prenotazione di gruppo (me, guest_ids[], ward_ids[], new_guest_*[], other_last[]/other_card[]) più activity_id e course_group.
+	 *
+	 * @return string messaggio
+	 */
+	private static function course_group( array $post ): string {
+		$actor  = self::actor();
+		$aid    = (int) $actor['id'];
+		$people = Plugin::people();
+		$acts   = Plugin::activities();
+		list( $want, $new_guests, $others ) = self::group_people( $post, $aid );
+		if ( $others && ! \AssociazioneSemplice\ActivityService::others_allowed() ) {
+			throw new \InvalidArgumentException( 'Per ora non si possono iscrivere altri soci da qui: scrivi alla segreteria.' );
+		}
+		$n = count( $want ) + count( $new_guests ) + count( $others );
+		if ( $n < 1 ) {
+			throw new \InvalidArgumentException( 'Scegli almeno una persona da iscrivere.' );
+		}
+		if ( $n > self::GROUP_MAX ) {
+			throw new \InvalidArgumentException( 'Puoi iscrivere al massimo ' . (int) self::GROUP_MAX . ' persone per volta.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		\AssociazioneSemplice\MemberThrottle::hit( 'book', $aid, 'member_book_per_10min', $n );
+		if ( $new_guests ) {
+			\AssociazioneSemplice\MemberThrottle::hit( 'guest', $aid, 'member_book_per_10min', count( $new_guests ) );
+		}
+		if ( $others ) {
+			foreach ( self::other_fail_keys( $aid ) as $k ) {
+				\AssociazioneSemplice\MemberThrottle::strike( $k[0], $k[1], $k[2], 0 );
+			}
+		}
+		self::assert_profile( $actor );
+		$activity = $acts->get( (int) ( $post['activity_id'] ?? 0 ) );
+		if ( ! $activity || ! \AssociazioneSemplice\EventRequests::course_open( $activity ) ) {
+			throw new \InvalidArgumentException( 'Corso non disponibile.' );
+		}
+		$cid  = (int) $activity['id'];
+		$busy = static function ( int $pid ) use ( $acts, $cid ): bool {
+			return in_array( $cid, $acts->active_activity_ids( $pid ), true ) || \AssociazioneSemplice\EventRequests::course_pending_for( $cid, $pid );
+		};
+		if ( $new_guests || $others ) { // chi iscrive altri deve poterlo fare anche se non iscrive sé stesso
+			$block = \AssociazioneSemplice\Regulation::booking_block( $actor );
+			if ( '' !== $block ) {
+				throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+			if ( ! $people->is_active_member( $aid ) ) {
+				throw new \InvalidArgumentException( self::card_invalid( $actor, $actor, 'iscriverti' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+			if ( $new_guests ) {
+				self::require_cap( 'asem_add_guest', $aid );
+			}
+		}
+		$errors = array();
+		$mine   = array(); // person_id => true
+		foreach ( $want as $pid ) {
+			$p = $people->get( $pid );
+			if ( ! $p ) {
+				$errors[] = 'Persona non trovata.';
+				continue;
+			}
+			$name = (string) $p['first_name'];
+			try {
+				self::require_cap( 'asem_book_for', $pid );
+			} catch ( \InvalidArgumentException $e ) {
+				$errors[] = $name . ': non puoi iscrivere questa persona.';
+				continue;
+			}
+			$subject = self::booking_subject( $actor, $pid );
+			if ( ! $people->is_active_member( (int) $subject['id'] ) ) {
+				$errors[] = $name . ': ' . self::card_invalid( $subject, $actor, 'iscriverti' );
+				continue;
+			}
+			if ( $busy( $pid ) ) {
+				$errors[] = $name . ': è già iscritto o c\'è già una richiesta per questo corso.';
+				continue;
+			}
+			$mine[ $pid ] = true;
+		}
+		$seen = array();
+		foreach ( $new_guests as $g ) {
+			foreach ( array( 'n' . \AssociazioneSemplice\Text::normalize( $g[0] . $g[1] ), '' !== $g[2] ? 't' . preg_replace( '/\D+/', '', $g[2] ) : '' ) as $mark ) {
+				if ( '' !== $mark && isset( $seen[ $mark ] ) ) {
+					$errors[] = $g[0] . ': compare due volte tra gli ospiti nuovi.';
+				}
+				$seen[ $mark ] = true;
+			}
+			try {
+				self::add_guest_checked( $actor, $g[0], $g[1], $g[2], $g[3], true );
+			} catch ( \InvalidArgumentException $e ) {
+				$errors[] = $g[0] . ': ' . $e->getMessage();
+			}
+		}
+		if ( $errors ) {
+			throw new \InvalidArgumentException( implode( ' ', array_unique( $errors ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$other_ids = array();
+		$bad       = 0;
+		foreach ( $others as $o ) { // da qui in poi qualunque motivo, per ognuno, è la stessa frase
+			$h = self::other_member_base( $o[0], $o[1], $aid );
+			if ( ! $h || isset( $mine[ (int) $h['id'] ] ) || isset( $other_ids[ (int) $h['id'] ] ) || $busy( (int) $h['id'] ) ) {
+				$bad++;
+				continue;
+			}
+			$other_ids[ (int) $h['id'] ] = true;
+		}
+		if ( $bad ) {
+			self::other_fail_count( $aid, $bad );
+			throw new \InvalidArgumentException( self::OTHER_MEMBER_COURSE_FAIL ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$group = $n > 1 ? substr( md5( wp_generate_password( 32, true, true ) ), 0, 16 ) : '';
+		foreach ( $new_guests as $g ) { // restano tra gli ospiti anche se la segreteria respinge la richiesta
+			$mine[ self::add_guest_checked( $actor, $g[0], $g[1], $g[2], $g[3] ) ] = true;
+		}
+		foreach ( array_keys( $mine + $other_ids ) as $pid ) {
+			\AssociazioneSemplice\EventRequests::course_member_request( $cid, (int) $pid, $aid, $group, false );
+		}
+		\AssociazioneSemplice\EventRequests::course_staff_mail( $activity, $n );
+		return 1 === $n ? 'Richiesta inviata. La segreteria esamina le richieste in ordine di arrivo e ti scrive.' : 'Richieste inviate per ' . $n . ' persone. La segreteria le esamina in ordine di arrivo e ti scrive.';
 	}
 
 	/** Prenota sé stessi o un proprio ospite. @return string messaggio */
@@ -282,6 +441,16 @@ final class Actions {
 
 	/** Un altro socio per cognome e tessera, o null per QUALUNQUE motivo per cui non si può prenotare (la ragione non si distingue mai). */
 	private static function other_member( string $last, string $card, int $actor_id, int $session_id ): ?array {
+		$h = self::other_member_base( $last, $card, $actor_id );
+		if ( ! $h || Plugin::activities()->has_active_booking( $session_id, (int) $h['id'] ) || Plugin::activities()->declined_by_member( $session_id, (int) $h['id'] )
+			|| Plugin::activities()->paid_by_another( $session_id, (int) $h['id'], $actor_id ) ) {
+			return null;
+		}
+		return $h;
+	}
+
+	/** I controlli sull'altro socio che valgono per eventi e corsi: chi è, se si lascia prenotare o iscrivere da altri, tessera, email e regolamento. */
+	private static function other_member_base( string $last, string $card, int $actor_id ): ?array {
 		$people = Plugin::people();
 		$h      = '' !== $card ? $people->find_by_card( $card ) : null;
 		if ( ! $h || '' === $last || \AssociazioneSemplice\Text::normalize( (string) $h['last_name'] ) !== \AssociazioneSemplice\Text::normalize( $last ) ) {
@@ -291,9 +460,7 @@ final class Actions {
 		if ( (int) $h['id'] === $actor_id || ! \AssociazioneSemplice\MemberType::is_member( (string) $h['type'] ) || ! empty( $h['no_booking_by_others'] )
 			|| \AssociazioneSemplice\Age::is_minor( $h['birth_date'] ?? null, \AssociazioneSemplice\Db::today() ) // i minori si prenotano solo dal tutore
 			|| '' === $email || ! is_email( $email ) // senza email non si può avvisare chi viene prenotato
-			|| ! $people->is_active_member( (int) $h['id'] ) || '' !== \AssociazioneSemplice\Regulation::booking_block( $h )
-			|| Plugin::activities()->has_active_booking( $session_id, (int) $h['id'] ) || Plugin::activities()->declined_by_member( $session_id, (int) $h['id'] )
-			|| Plugin::activities()->paid_by_another( $session_id, (int) $h['id'], $actor_id ) ) {
+			|| ! $people->is_active_member( (int) $h['id'] ) || '' !== \AssociazioneSemplice\Regulation::booking_block( $h ) ) {
 			return null;
 		}
 		return $h;
@@ -401,18 +568,35 @@ final class Actions {
 	 * senza, prenota. $expected: il totale visto da chi conferma.
 	 */
 	public static function book_group( array $post, bool $preview = false, ?int $expected = null ): string {
-		$actor  = self::actor();
-		$aid    = (int) $actor['id'];
-		$people = Plugin::people();
-		$acts   = Plugin::activities();
-		$arr    = static function ( string $k ) use ( $post ): array {
-			return isset( $post[ $k ] ) && is_array( $post[ $k ] ) ? array_values( $post[ $k ] ) : array();
-		};
-		$clean  = static function ( $v ): string {
-			return trim( sanitize_text_field( (string) $v ) );
-		};
+		$actor = self::actor();
 
 		// 1. Che cosa è stato chiesto
+		list( $want, $new_guests, $others ) = self::group_people( $post, (int) $actor['id'] );
+		if ( $others && ! \AssociazioneSemplice\ActivityService::others_allowed() ) { // prima di cercare chiunque
+			throw new \InvalidArgumentException( 'Per ora non si possono prenotare altri soci da qui: scrivi alla segreteria.' );
+		}
+		$n = count( $want ) + count( $new_guests ) + count( $others );
+		if ( $n < 1 ) {
+			throw new \InvalidArgumentException( 'Scegli almeno una persona da prenotare.' );
+		}
+		if ( $n > self::GROUP_MAX ) {
+			throw new \InvalidArgumentException( 'Puoi prenotare al massimo ' . (int) self::GROUP_MAX . ' persone per volta.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		return self::book_group_checked( $post, $preview, $expected, $actor, $want, $new_guests, $others, $n );
+	}
+
+	/**
+	 * Le persone di un modulo di gruppo (prenotazione di un evento o iscrizione a un corso): sé stessi e le persone gestite, gli ospiti nuovi, gli altri soci.
+	 *
+	 * @return array{0:array<string,int>,1:array<string,string[]>,2:array<string,string[]>} [chiave => person_id], [chiave => nome, cognome, cellulare, email], [chiave => cognome, tessera]
+	 */
+	private static function group_people( array $post, int $aid ): array {
+		$arr   = static function ( string $k ) use ( $post ): array {
+			return isset( $post[ $k ] ) && is_array( $post[ $k ] ) ? array_values( $post[ $k ] ) : array();
+		};
+		$clean = static function ( $v ): string {
+			return trim( sanitize_text_field( (string) $v ) );
+		};
 		$want = array();
 		if ( ! empty( $post['me'] ) ) {
 			$want['me'] = $aid;
@@ -443,16 +627,14 @@ final class Actions {
 			}
 			$others[ 'o' . $i ] = array( $clean( $last ), $card );
 		}
-		if ( $others && ! \AssociazioneSemplice\ActivityService::others_allowed() ) { // prima di cercare chiunque
-			throw new \InvalidArgumentException( 'Per ora non si possono prenotare altri soci da qui: scrivi alla segreteria.' );
-		}
-		$n = count( $want ) + count( $new_guests ) + count( $others );
-		if ( $n < 1 ) {
-			throw new \InvalidArgumentException( 'Scegli almeno una persona da prenotare.' );
-		}
-		if ( $n > self::GROUP_MAX ) {
-			throw new \InvalidArgumentException( 'Puoi prenotare al massimo ' . (int) self::GROUP_MAX . ' persone per volta.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-		}
+		return array( $want, $new_guests, $others );
+	}
+
+	/** La prenotazione di gruppo dopo la lettura del modulo (vedi book_group). */
+	private static function book_group_checked( array $post, bool $preview, ?int $expected, array $actor, array $want, array $new_guests, array $others, int $n ): string {
+		$aid    = (int) $actor['id'];
+		$people = Plugin::people();
+		$acts   = Plugin::activities();
 
 		// 2. Limiti: un invio pesa quanto le persone; i tentativi falliti sugli altri soci hanno limiti a parte (si controllano prima di verificare chiunque)
 		if ( ! $preview ) {

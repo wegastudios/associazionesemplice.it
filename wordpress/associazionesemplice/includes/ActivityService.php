@@ -1743,7 +1743,7 @@ class ActivityService {
 			}
 		}
 		if ( $row ) {
-			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ) + $trial, array( 'id' => (int) $row['id'] ) );
+			$this->db()->update( $tbl, array( 'start_month' => $start_month, 'end_month' => null ) + ( $covered ? array() : array( 'paid_by' => null, 'paid_by_until' => null ) ) + $trial, array( 'id' => (int) $row['id'] ) ); // iscrizione ricominciata: i mesi sono di nuovo della persona
 		} else {
 			$this->db()->insert( $tbl, array( 'activity_id' => $activity_id, 'person_id' => $person_id, 'start_month' => $start_month, 'created_at' => Db::now() ) + $trial );
 		}
@@ -1823,6 +1823,31 @@ class ActivityService {
 		$this->assert_month( $last_month );
 		$this->db()->update( Db::t( 'enrollments' ), array( 'end_month' => $last_month ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
 		Audit::log( 'activity.unenrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'last_month' => $last_month ) );
+	}
+
+	/**
+	 * Chi paga questo mese di un'iscrizione al posto di chi partecipa: il socio che ha iscritto un altro socio adulto paga i mesi fino a paid_by_until
+	 * (il primo, decisione del titolare 26/11/2026); dopo paga la persona. 0 = la persona stessa, o chi ne risponde come sempre (ospiti e minori).
+	 */
+	public static function month_payer( array $enrollment, string $month ): int {
+		$by    = (int) ( $enrollment['paid_by'] ?? 0 );
+		$until = (string) ( $enrollment['paid_by_until'] ?? '' );
+		if ( $by <= 0 || (int) ( $enrollment['person_id'] ?? 0 ) === $by || '' === $until || $month > $until ) {
+			return 0;
+		}
+		return $by;
+	}
+
+	/** Le iscrizioni di altri soci di cui questo socio paga qualche mese (righe di enrollments). @return array[] */
+	public function enrollments_paid_by( int $payer_id ): array {
+		return $this->db()->get_results( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'enrollments' ) . ' WHERE paid_by = %d AND person_id <> %d AND paid_by_until IS NOT NULL', $payer_id, $payer_id ), ARRAY_A ) ?: array();
+	}
+
+	/** Chi paga i mesi di un altro socio fino a $until compreso (il primo mese dell'iscrizione fatta da lui). */
+	public function set_month_payer( int $activity_id, int $person_id, int $payer_id, string $until ): void {
+		$this->assert_month( $until );
+		$this->db()->update( Db::t( 'enrollments' ), array( 'paid_by' => $payer_id, 'paid_by_until' => $until ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
+		Audit::log( 'activity.enrollment_payer', 'activity', $activity_id, array( 'person_id' => $person_id, 'payer_id' => $payer_id, 'until' => $until ) );
 	}
 
 	/** Corsi a cui la persona è iscritta (iscrizione attiva). */

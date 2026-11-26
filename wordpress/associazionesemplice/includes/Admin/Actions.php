@@ -111,6 +111,7 @@ final class Actions {
 			'asem_application_approve' => 'application_approve',
 			'asem_application_reject' => 'application_reject',
 			'asem_event_request_approve' => 'event_request_approve',
+			'asem_event_request_approve_group' => 'event_request_approve_group',
 			'asem_event_request_reject' => 'event_request_reject',
 			'asem_adult_invite'       => 'adult_invite',
 			'asem_send_notice'        => 'send_notice',
@@ -983,6 +984,11 @@ final class Actions {
 
 	private static function event_request_approve( array $p ): array {
 		$msg = \AssociazioneSemplice\EventRequests::approve( (int) ( $p['id'] ?? 0 ) );
+		return array( (string) ( $p['_back'] ?? Ui::url( 'asem' ) ), $msg );
+	}
+
+	private static function event_request_approve_group( array $p ): array {
+		$msg = \AssociazioneSemplice\EventRequests::approve_group( (string) ( $p['group'] ?? '' ), (int) ( $p['activity_id'] ?? 0 ) );
 		return array( (string) ( $p['_back'] ?? Ui::url( 'asem' ) ), $msg );
 	}
 

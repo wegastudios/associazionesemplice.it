@@ -551,7 +551,12 @@ final class Receipts {
 	private static function beneficiary( array $r, array $payer ): string {
 		$name = trim( $r['b_first'] . ' ' . $r['b_last'] );
 		if ( empty( $r['session_id'] ) ) {
-			return $name;
+			$e = ! empty( $r['competence_month'] ) && ! empty( $r['activity_id'] ) ? Plugin::activities()->enrollment_row( (int) $r['activity_id'], (int) $r['person_id'] ) : null;
+			if ( ! $e || ActivityService::month_payer( $e, (string) $r['competence_month'] ) !== (int) $payer['id'] ) {
+				return $name; // non è il mese di un altro socio iscritto da chi paga
+			}
+			$p = Plugin::people()->get( (int) $r['person_id'] );
+			return $p ? ActivityService::participant_name( $p, (int) $payer['id'] ) : 'altro partecipante';
 		}
 		$b = Plugin::activities()->booking( (int) $r['session_id'], (int) $r['person_id'] );
 		if ( $b && (int) ( $b['booked_by'] ?? 0 ) !== (int) $payer['id'] ) {
