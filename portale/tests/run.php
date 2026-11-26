@@ -3045,5 +3045,16 @@ if ( rtMode() ) {
 	) );
 	check( 'migrazione: il ruolo di tutti i giorni cambia le sue tabelle e il rifiuto «must be owner» sulle altre è riconoscibile', 1 === count( $left ) && true === $left[0]['owner'] && false !== strpos( $left[0]['sql'], 'orders' ) );
 }
+// HEAD si comporta come GET (prima ogni HEAD dava 404): stessa risposta, il server web toglie il corpo.
+$headDb = testDb();
+$headApp = function ( string $m, string $p ) use ( $headDb ) {
+	ob_start();
+	( new Portale\App( $headDb, new Billing( $headDb, new WegaClient( 'https://license.test/api/v1', 't' ) ), new Portale\Auth( $headDb ) ) )->run( $m, $p );
+	return ob_get_clean();
+};
+foreach ( array( '/robots.txt', '/', '/prova', '/confronto' ) as $headPath ) {
+	$headGet = $headApp( 'GET', $headPath );
+	check( 'HEAD ' . $headPath . ': stesso risultato del GET, non il 404', '' !== $headGet && $headGet === $headApp( 'HEAD', $headPath ) );
+}
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

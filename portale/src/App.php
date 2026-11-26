@@ -19,6 +19,10 @@ final class App {
 	}
 
 	public function run( string $method, string $path ): void {
+		// HEAD è un GET senza corpo: stesso percorso, stesso codice, stesse intestazioni (il server web toglie il corpo). Senza questo ogni HEAD finiva nel 404 finale.
+		if ( 'HEAD' === $method ) {
+			$method = 'GET';
+		}
 		$path = '/' . trim( $path, '/' );
 		try {
 			if ( 'POST' === $method && 0 === strpos( $path, '/webhook/' ) ) {
