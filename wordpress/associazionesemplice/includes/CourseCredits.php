@@ -76,6 +76,7 @@ final class CourseCredits {
 		$months = array_keys( $due );
 		sort( $months );
 		$left = array(); // mese => quanto del versato in più è ancora disponibile
+		$rows = array_reverse( $rows ); // il versato in più nasce dalle lezioni annullate dopo il pagamento: si attribuisce dalle più recenti
 		foreach ( $rows as &$r ) {
 			$m          = (string) $r['month'];
 			$left[ $m ] = $left[ $m ] ?? max( 0, (int) ( $paid[ $m ] ?? 0 ) - (int) ( $due[ $m ] ?? 0 ) );
