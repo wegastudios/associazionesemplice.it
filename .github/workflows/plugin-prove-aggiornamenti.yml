@@ -302,7 +302,7 @@ jobs:
             [ "$code" = "200" ] && break
             echo "Tentativo $tentativo: il portale ha risposto $code (codice: $(jq -r '.error.code // .reason_code // "n/d"' "$RUNNER_TEMP/risposta.json" 2>/dev/null || echo n/d); messaggio: $(jq -r '.error.message // .message // "n/d"' "$RUNNER_TEMP/risposta.json" 2>/dev/null | cut -c1-200 || echo n/d))"
             # Intestazioni utili a capire chi ha risposto (il portale o un firewall davanti): solo server, tipo di contenuto, via, cf-ray e simili; mai cookie né altro. Per il 403 anche l'inizio della pagina se non è JSON.
-            grep -iE "^(HTTP/|server:|content-type:|via:|cf-ray:|x-cache:|x-sucuri|x-served-by:|retry-after:)" "$RUNNER_TEMP/intestazioni.txt" 2>/dev/null | tr -d "" | sed "s/^/    intestazione: /" || true
+            grep -iE "^(HTTP/|server:|content-type:|via:|cf-ray:|x-cache:|x-sucuri|x-served-by:|retry-after:)" "$RUNNER_TEMP/intestazioni.txt" 2>/dev/null | tr -d "\r" | sed "s/^/    intestazione: /" || true
             [ "$code" = "403" ] && ! jq -e . "$RUNNER_TEMP/risposta.json" >/dev/null 2>&1 && echo "    corpo non JSON, inizio: $(head -c 200 "$RUNNER_TEMP/risposta.json" | tr -s "[:space:]" " ")" || true
             [ "$tentativo" = "1" ] && sleep 20
           done
