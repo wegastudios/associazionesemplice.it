@@ -59,9 +59,10 @@ LessonExceptions::move( $cl_a, '2031-04-29', '2031-05-02' );
 asem_ok( 4000 === $cl_left( $cl_a, $cl_p, '2031-04' ) && 4000 === $cl_left( $cl_a, $cl_p, '2031-05' ), 'a lezioni: una lezione spostata al mese dopo si paga una volta sola, nel suo mese' );
 Db::$today_fake = '2031-04-01';
 asem_ok( 4000 === $cl_due( $cl_a, $cl_p, '2031-04' ) && 1 === $cl_fixed( $cl_a, '2031-04' ), 'a lezioni: il giorno 1 la prima lettura fissa il mese, senza cron' );
-LessonExceptions::cancel( $cl_a, '2031-04-15' );
-$cl_acts->update( $cl_a, array( 'fee_cents' => 2000 ) );
+$cl_slots = $cl_acts->get( $cl_a )['lesson_slots'];
+$cl_acts->update( $cl_a, array( 'fee_cents' => 2000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ), array( 'type' => 'weekly', 'day' => 5, 'start' => '18:00', 'end' => '19:00' ) ) ) ); // un giorno in più: il calendario cambia senza annullare lezioni (le annullate hanno la loro regola)
 asem_ok( 4000 === $cl_due( $cl_a, $cl_p, '2031-04' ) && 4000 === $cl_left( $cl_a, $cl_p, '2031-04' ), 'a lezioni: fissato il mese, calendario e prezzo nuovi non lo cambiano' );
+$cl_acts->update( $cl_a, array( 'lesson_slots' => json_decode( (string) $cl_slots, true ) ) );
 asem_ok( 8000 === $cl_left( $cl_a, $cl_p, '2031-05' ), 'a lezioni: il prezzo nuovo vale dai mesi non fissati' );
 $cl_acts->update( $cl_a, array( 'fee_cents' => 1000 ) );
 
