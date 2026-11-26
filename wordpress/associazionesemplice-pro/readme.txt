@@ -48,6 +48,8 @@ The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, 
 
 = 1.3.27 =
 * Nuovo: con gli AssoCrediti (o il nome scelto per la moneta) si pagano anche i mesi dei propri ospiti e il primo mese di un altro socio che si è iscritto a un corso, quando lo paga chi iscrive.
+Da fare dopo l'aggiornamento:
+* Aggiorna anche Associazione Semplice alla 1.3.41, così la moneta funziona anche per gli altri soci.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.26 =
