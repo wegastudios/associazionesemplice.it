@@ -102,6 +102,33 @@ const ok = (name, cond, extra = '') => { if (!cond) bad++; lines.push(`- ${cond 
       t = await text();
       ok('area soci: il genitore paga il mese del figlio, saldo scalato', t.includes('Pagato con 40 ' + data.coins) && t.includes('Saldo: 60 ' + data.coins), t.slice(0, 400));
       await shots('area-soci-moneta-dopo', data.area);
+
+      // corso per più persone: io, il figlio e un altro socio con cognome e tessera
+      const grp = data.group;
+      ok('corso per più persone: la pagina pubblica c\'è', !!grp.page, grp.page);
+      await shots('corso-piu-persone', grp.page, async () => { await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; })); });
+      await page.goto(grp.page, { waitUntil: 'load' });
+      await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+      const form = page.locator('form', { has: page.locator('input[name="course_group"]') }).first();
+      await form.locator('input[name="ward_ids[]"]').first().check();
+      await form.locator('input[name="other_last[]"]').first().fill(grp.last);
+      await form.locator('input[name="other_card[]"]').first().fill(grp.card);
+      await Promise.all([page.waitForLoadState('load'), form.locator('button[type="submit"]').first().click()]);
+      await page.waitForTimeout(300);
+      t = await text();
+      ok('corso per più persone: richieste inviate per 3 persone', t.includes('Richieste inviate per 3 persone'), t.slice(0, 300));
+      await shots('corso-piu-persone-inviato', grp.page);
+
+      await ctx.clearCookies();
+      await login('admin', 'password');
+      await page.goto(admin('asem-activity&id=' + grp.id));
+      t = await text();
+      ok('corso per più persone: la segreteria vede il gruppo e «Approva tutte»', t.includes('Inviate insieme') && t.includes('Approva tutte'));
+      await shots('corso-piu-persone-segreteria', admin('asem-activity&id=' + grp.id));
+      await Promise.all([page.waitForLoadState('load'), page.locator('button', { hasText: 'Approva tutte' }).first().click()]);
+      await page.waitForTimeout(300);
+      t = await text();
+      ok('corso per più persone: «Approva tutte» iscrive le tre persone', t.includes('Approvate 3 richieste su 3'), t.slice(0, 300));
     } else {
       await shots('bacheca-scaduti', admin('asem'));
       await page.goto(admin('asem'));

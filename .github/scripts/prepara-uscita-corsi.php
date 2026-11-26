@@ -82,6 +82,12 @@ $acts->enroll( $coin, $kid, '2031-05' );
 Credits::adjust( $mem, 100, 'Saldo di prova' );
 $acts->enroll( $les, $mem, '2031-05', '2031-05-01' ); // corso a lezioni: nell'area soci «Questo mese: N lezioni, importo»
 
+// Corso per più persone: il socio chiede l'iscrizione per sé, il figlio e un altro socio (cognome e tessera); la segreteria approva tutte.
+$grp   = (int) $acts->create( array( 'name' => 'Yoga per più persone (prova)', 'social_year' => $label, 'kind' => 'course', 'billing' => 'monthly', 'first_month' => 'full', 'fee_cents' => 3000, 'starts_on' => '2031-05-01', 'lesson_slots' => $tue ) );
+$other = $man( 'Altro', 'Iscrivibile' );
+\AssociazioneSemplice\PublicEvents::ensure( $grp );
+\AssociazioneSemplice\PublicEvents::publish_pages( array( $grp ) );
+
 $exp = \AssociazioneSemplice\CourseCredits::expires_on( '2031-05-27' );
 $day( '2031-05-14' ); // fase 1: le pagine si guardano a questa data
 echo wp_json_encode(
@@ -96,5 +102,6 @@ echo wp_json_encode(
 		'area'    => \AssociazioneSemplice\Gatekeeper::area_url(),
 		'member'  => array( 'login' => 'socio.prova.corsi', 'pass' => $pass ),
 		'coins'   => \AssociazioneSemplice\CoinName::plural(),
+		'group'   => array( 'id' => $grp, 'page' => \AssociazioneSemplice\PublicEvents::page_url( $grp ), 'last' => 'Iscrivibile', 'card' => (string) $peo->get( $other )['card_number'] ),
 	)
 ) . "\n";
