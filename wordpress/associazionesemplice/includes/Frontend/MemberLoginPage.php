@@ -12,6 +12,7 @@ use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\PreSession;
 use AssociazioneSemplice\SessionToken;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\TwoFactor;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,6 +29,9 @@ final class MemberLoginPage {
 	const FAIL    = 'Email, codice o password non corretti. Controlla e riprova, oppure premi «Mandami un link» per entrare senza password. Se lavori in segreteria o nello staff, usa il link «Segreteria e staff».';
 	const BLOCKED = 'Troppi tentativi da questa connessione. Aspetta un\'ora e riprova, oppure chiedi aiuto alla segreteria.';
 	const NOT_FROM_PAGE = 'La pagina è rimasta aperta troppo a lungo: ricaricala e riprova.';
+	const TFA_EXPIRED   = 'È passato troppo tempo: entra di nuovo con la password o con il link via email.';
+	const TFA_SENT      = 'Ti abbiamo scritto all\'indirizzo email della tua scheda: apri il link per spegnere la verifica in due passaggi (controlla anche la posta indesiderata).';
+	const TFA_LINK_BAD  = 'Il link non vale più: è scaduto o è già stato usato. Entra con la password o con il link via email e chiedine uno nuovo.';
 
 	public static function url(): string {
 		return add_query_arg( 'asem_member_login', '1', home_url( '/' ) );
@@ -121,6 +125,7 @@ final class MemberLoginPage {
 	public static function handle(): void {
 		$is_page = isset( $_GET['asem_member_login'] ); // phpcs:ignore WordPress.Security.NonceVerification
 		$token   = isset( $_GET['asem_ml'] ) ? sanitize_text_field( wp_unslash( $_GET['asem_ml'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		$tfa_off = isset( $_GET['asem_tfa_off'] ) ? sanitize_text_field( wp_unslash( $_GET['asem_tfa_off'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification -- il link dell'email apre solo la conferma
 		if ( ! $is_page && '' === $token ) {
 			return;
 		}
@@ -189,6 +194,10 @@ final class MemberLoginPage {
 			} elseif ( 'code' === $do || 'password_login' === $do || 'token' === $do ) {
 				$who = 'code' === $do ? MemberLogin::login_with_code( self::post( 'email' ), self::post( 'code' ) )
 					: ( 'token' === $do ? MemberLogin::login_with_token( $token ) : MemberLogin::login_with_password( self::post( 'email' ), self::post( 'password' ), '' !== self::post( 'remember' ) ) );
+				if ( $who && TwoFactor::pending() ) { // verifica in due passaggi accesa: prima del codice nessuna sessione, si passa dalla pagina che lo chiede
+					wp_safe_redirect( '' !== $back ? add_query_arg( '_back', rawurlencode( $back ), self::url() ) : self::url(), 303 );
+					exit;
+				}
 				if ( $who ) {
 					wp_safe_redirect( 'password_login' === $do ? self::after_url( $back ) : ( '' !== $back ? add_query_arg( '_back', rawurlencode( $back ), self::url() ) : self::url() ), 303 ); // dal link o dal codice si passa dalla pagina: se manca la password lì si sceglie, poi si torna da dove si veniva
 					exit;
@@ -196,6 +205,23 @@ final class MemberLoginPage {
 				$err  = self::FAIL;
 				$step = 'code' === $do ? 'code' : '';
 				$mail = self::post( 'email' );
+			} elseif ( 'tfa' === $do ) { // secondo passaggio: il codice dell'app o un codice di riserva
+				$res = TwoFactor::finish_login( self::post( 'tfa_code' ) );
+				if ( 'ok' === $res ) {
+					wp_safe_redirect( '' !== $back ? add_query_arg( '_back', rawurlencode( $back ), self::url() ) : self::url(), 303 ); // come dal link: se manca la password lì si sceglie, poi si torna da dove si veniva
+					exit;
+				}
+				$err = 'blocked' === $res ? TwoFactor::BLOCKED_MSG : ( 'expired' === $res ? self::TFA_EXPIRED : TwoFactor::WRONG_MSG );
+			} elseif ( 'tfa_cancel' === $do ) {
+				TwoFactor::drop_pending();
+			} elseif ( 'tfa_recover' === $do ) {
+				$sent = TwoFactor::request_recovery();
+				$msg  = $sent || TwoFactor::pending() ? self::TFA_SENT : '';
+				$err  = '' === $msg ? self::TFA_EXPIRED : '';
+			} elseif ( 'tfa_off' === $do ) {
+				$msg     = TwoFactor::use_recovery( $tfa_off ) ? 'Verifica in due passaggi spenta. Ora entra come sempre; potrai riaccenderla da «Il mio profilo».' : '';
+				$err     = '' === $msg ? self::TFA_LINK_BAD : '';
+				$tfa_off = '';
 			}
 		}
 
@@ -205,7 +231,7 @@ final class MemberLoginPage {
 		}
 		CardVerify::send_headers();
 		header( 'Cache-Control: no-store, max-age=0' );
-		CardVerify::output( self::page( $token, $msg, $err, $step, $mail, $back ) );
+		CardVerify::output( self::page( $token, $msg, $err, $step, $mail, $back, $tfa_off ) );
 		if ( function_exists( 'fastcgi_finish_request' ) ) {
 			fastcgi_finish_request(); // la risposta parte subito; l'email, se c'è, dopo
 		} else {
@@ -263,7 +289,7 @@ final class MemberLoginPage {
 			. '<button type="submit" class="asemf-btn wp-element-button">Entra</button></form>';
 	}
 
-	public static function page( string $token, string $msg, string $err, string $step, string $mail, string $back = '' ): string {
+	public static function page( string $token, string $msg, string $err, string $step, string $mail, string $back = '', string $tfa_off = '' ): string {
 		$body = ( '' !== $msg ? '<div class="w" style="color:#1a7f37">' . esc_html( $msg ) . '</div>' : '' ) . ( '' !== $err ? '<div class="w" style="color:#b32d2e">' . esc_html( $err ) . '</div>' : '' );
 		$gap  = '<hr style="border:0;border-top:1px solid #dcdcde;margin:18px 0">';
 
@@ -307,6 +333,26 @@ final class MemberLoginPage {
 		if ( '' !== $bye ) {
 			delete_transient( 'asem_ml_bye_' . md5( ClientIp::get() ) );
 			$body .= '<div class="w" style="color:#1a7f37">' . esc_html( $bye ) . '</div>';
+		}
+		if ( '' !== $tfa_off ) { // il link dell'email apre solo la conferma: i programmi che aprono i link delle email non lo consumano
+			if ( ! TwoFactor::recovery_valid( $tfa_off ) ) {
+				$body .= '<div class="w" style="color:#b32d2e">' . esc_html( self::TFA_LINK_BAD ) . '</div>';
+			} else {
+				$body .= '<div class="n">Spegni la verifica in due passaggi</div><p>Premi il pulsante per spegnerla. Dopo entrerai con la sola password o con il link via email, e potrai riaccenderla da «Il mio profilo».</p>'
+					. '<form method="post" action="' . esc_url( add_query_arg( 'asem_tfa_off', $tfa_off, self::url() ) ) . '"><input type="hidden" name="asem_ml_do" value="tfa_off">' . self::guard_field()
+					. '<button type="submit" style="' . self::style()[1] . '">Spegni la verifica</button></form>';
+				return CardVerify::layout( 'Verifica in due passaggi', Assets::accent( '#2271b1' ), $body );
+			}
+		}
+		$pend = TwoFactor::pending();
+		if ( $pend ) { // primo passaggio fatto: ora il codice dell'app o un codice di riserva
+			list( $input ) = self::style();
+			$body .= '<div class="n">Verifica in due passaggi</div><p>Apri l\'app di autenticazione sul telefono e scrivi il codice di 6 cifre che vedi adesso. Se non hai il telefono, scrivi uno dei tuoi codici di riserva.</p>'
+				. self::form( 'tfa', '<label>Codice<input style="' . $input . '" type="text" name="tfa_code" required autocomplete="one-time-code" inputmode="numeric" maxlength="11" autofocus></label>', 'Entra', false, $back )
+				. $gap . '<div class="n">Hai perso il telefono e i codici di riserva?</div><p>Ti mandiamo un link all\'email della tua scheda: vale ' . (int) ( TwoFactor::RECOVERY_TTL / 60 ) . ' minuti e spegne la verifica in due passaggi.</p>'
+				. self::form( 'tfa_recover', '', 'Mandami il link', false, $back )
+				. $gap . self::form( 'tfa_cancel', '', 'Annulla e torna all\'accesso', false, $back );
+			return CardVerify::layout( 'Verifica in due passaggi', Assets::accent( '#2271b1' ), $body );
 		}
 		if ( '' !== $token && SessionToken::is_well_formed( $token ) ) { // il link apre solo la conferma: i programmi che aprono i link delle email non lo consumano
 			$body .= '<div class="n">Entra</div><p>Premi il pulsante per entrare.</p>'

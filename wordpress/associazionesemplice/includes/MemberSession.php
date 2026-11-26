@@ -267,6 +267,7 @@ final class MemberSession {
 		foreach ( array( 'member_sessions', 'member_auth', 'member_challenges' ) as $t ) {
 			$db->delete( Db::t( $t ), array( 'person_id' => $person_id ) );
 		}
+		TwoFactor::forget( $person_id ); // segreto e codici di riserva della verifica in due passaggi
 		do_action( 'asem_member_access_forgotten', $person_id, self::ACTOR_BASE + $person_id ); // le funzioni avanzate tolgono qui ciò che hanno legato alla persona (ad esempio le notifiche del telefono)
 		self::$current = null;
 	}

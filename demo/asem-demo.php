@@ -96,6 +96,7 @@ $asem_demo_blocked = array(
 	'Nella demo il ripristino di una copia è bloccato.' => array( 'asem_backup_restore' ),
 	'Nella demo l\'importazione da file è bloccata: i dati che vedi sono di esempio.' => array( 'asem_import_preview', 'asem_import_apply', 'asem_import_person', 'asem_import_tx', 'asem_import_undo', 'asem_import_continue', 'asem_import_stop', 'asem_import_language', 'asem_import_texts', 'asem_tec_import' ),
 	'Nella demo i dati non si azzerano da qui: si azzerano da soli ogni notte.' => array( 'asem_reset_all' ),
+	'Nella demo la verifica in due passaggi resta spenta: gli accessi di prova sono condivisi.' => array( 'asem_front_tfa_start', 'asem_front_tfa_confirm' ),
 );
 // Elenco delle azioni PERMESSE (non solo di quelle vietate): ogni azione con prefisso asem_ che arriva da admin-post.php o admin-ajax.php e non è qui sotto si ferma, quindi un'azione
 // nuova di una versione futura del plugin resta chiusa finché non viene riesaminata e aggiunta. Le azioni vietate hanno ciascuna il proprio messaggio.
@@ -146,7 +147,7 @@ $asem_demo_allowed = array_flip( array(
 		'asem_front_credit_charge', 'asem_front_credit_pay', 'asem_front_door', 'asem_front_door_group', 'asem_front_expense', 'asem_front_expense_docs',
 		'asem_front_decline_booking', 'asem_front_expense_fields', 'asem_front_group', 'asem_front_init', 'asem_front_new_member', 'asem_front_notice', 'asem_front_pay',
 		'asem_front_profile', 'asem_front_proxy', 'asem_front_proxy_revoke', 'asem_front_refund', 'asem_front_refund_cancel', 'asem_front_regen_qr', 'asem_front_request',
-		'asem_front_res_book', 'asem_front_res_cancel', 'asem_front_res_gate', 'asem_front_res_unwait', 'asem_front_res_wait', 'asem_front_transfer_booking',
+		'asem_front_res_book', 'asem_front_res_cancel', 'asem_front_res_gate', 'asem_front_res_unwait', 'asem_front_res_wait', 'asem_front_tfa_cancel', 'asem_front_tfa_off', 'asem_front_tfa_regen', 'asem_front_transfer_booking',
 		'asem_front_vote', 'asem_front_waitlist_join', 'asem_front_waitlist_leave', 'asem_fund_create', 'asem_fund_deposit', 'asem_fund_release',
 		'asem_fund_settle', 'asem_fund_settle_', 'asem_fy_auto', 'asem_gate_html', 'asem_generate_sessions', 'asem_guide_dismiss', 'asem_guide_dismissed',
 		'asem_guide_options', 'asem_host', 'asem_ical', 'asem_ical_salt', 'asem_ics', 'asem_import_', 'asem_import_1_', 'asem_import_apply',

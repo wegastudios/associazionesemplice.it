@@ -108,6 +108,7 @@ final class Privacy {
 			'prove_gratuite' => array_map( function ( $t ) { return array( 'corso' => $t['activity_name'], 'giorno' => $t['trial_date'] ); }, Trials::of_person( $person_id ) ),
 			'prenotazioni_fatte_per_altri' => $for_others,
 			'altri_soci_possono_prenotare_per_me' => empty( $p['no_booking_by_others'] ),
+			'verifica_in_due_passaggi_accesa' => ! empty( $p['tfa_on_at'] ), // solo sì o no: segreto e codici di riserva non escono mai
 			'pagamenti'    => $payments,
 			'ospiti_inseriti' => $guests,
 			'tutori' => $tutori,
@@ -231,7 +232,7 @@ final class Privacy {
 			Db::t( 'people' ),
 			array(
 				'first_name' => 'Persona', 'last_name' => 'anonimizzata #' . $person_id, 'email' => null, 'phone' => null, 'tax_code' => null, 'address' => null, 'zip' => null, 'city' => null, 'province' => null, 'profile_due' => 0, 'card_number' => null, 'notes' => null,
-				'wp_user_id' => null, 'left_reason' => null, 'family_head_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'birth_date' => null, 'rules_accepted_by' => null, 'privacy_consent_by' => null, 'no_booking_by_others' => 1, 'application_data' => null, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
+				'wp_user_id' => null, 'left_reason' => null, 'family_head_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'birth_date' => null, 'rules_accepted_by' => null, 'privacy_consent_by' => null, 'no_booking_by_others' => 1, 'application_data' => null, 'tfa_secret' => null, 'tfa_backup' => null, 'tfa_on_at' => null, 'tfa_last_step' => 0, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
 			),
 			array( 'id' => $person_id )
 		);

@@ -14,6 +14,7 @@ use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Pricing;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\Text;
+use AssociazioneSemplice\TwoFactor;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -841,7 +842,62 @@ final class Views {
 			. '<p class="asemf-small asemf-muted">Per cambiare nome o email scrivi all\'associazione.</p>'
 			. self::form( 'asem_front_profile', $fields, 'Salva' )
 			. '<p class="asemf-small"><a href="' . esc_url( \AssociazioneSemplice\Privacy::export_url( (int) $p['id'] ) ) . '">Scarica i miei dati</a>'
-			. ( '' !== (string) Settings::get( 'privacy_url' ) ? ' · <a href="' . esc_url( (string) Settings::get( 'privacy_url' ) ) . '" target="_blank" rel="noopener">Informativa sulla privacy</a>' : '' ) . '</p></section>';
+			. ( '' !== (string) Settings::get( 'privacy_url' ) ? ' · <a href="' . esc_url( (string) Settings::get( 'privacy_url' ) ) . '" target="_blank" rel="noopener">Informativa sulla privacy</a>' : '' ) . '</p></section>'
+			. self::section_two_factor( $p );
+	}
+
+	/** Campo del codice dell'app (o di riserva): tastiera numerica sul telefono e completamento automatico dei codici. */
+	private static function tfa_field( string $label ): string {
+		return '<p><label>' . esc_html( $label ) . '<br><input type="text" name="tfa_code" required autocomplete="one-time-code" inputmode="numeric" maxlength="11" class="asemf-input"></label></p>';
+	}
+
+	/**
+	 * «Verifica in due passaggi» in «Il mio profilo»: spenta di partenza, il socio la accende (QR e conferma del primo codice), vede una volta sola i
+	 * codici di riserva, la spegne o rifà i codici con un codice valido. Solo per chi entra con l'accesso proprio.
+	 */
+	public static function section_two_factor( array $p ): string {
+		if ( ! \AssociazioneSemplice\MemberSession::is_own_session() || ! empty( $p['wp_user_id'] ) || ! \AssociazioneSemplice\Plugin::schema_ready() ) {
+			return '';
+		}
+		$pid   = (int) $p['id'];
+		$intro = '<p class="asemf-small asemf-muted">Oltre alla password o al link via email, per entrare ti chiediamo un codice che cambia ogni 30 secondi, da un\'app sul telefono (per esempio Google Authenticator, Microsoft Authenticator o Aegis). Così nessuno entra con la sola password.</p>';
+		$html  = '<section class="asemf-section asemf-tfa"><h3>Verifica in due passaggi</h3>';
+		$codes = TwoFactor::take_new_codes( $pid );
+		if ( $codes ) {
+			$list = '';
+			foreach ( $codes as $c ) {
+				$list .= '<li><code>' . esc_html( TwoFactor::show_backup( (string) $c ) ) . '</code></li>';
+			}
+			$html .= '<div class="asemf-notice asemf-ok"><p><strong>I tuoi codici di riserva.</strong> Scrivili o stampali e tienili in un posto sicuro: li vedi solo adesso. Se perdi il telefono, ognuno ti fa entrare una volta al posto del codice dell\'app.</p>'
+				. '<ul class="asemf-tfa-codes">' . $list . '</ul></div>';
+		}
+		if ( TwoFactor::is_on( $pid ) ) {
+			$since = TwoFactor::on_since( $pid );
+			$left  = TwoFactor::backup_left( $pid );
+			$html .= '<p>È <strong>accesa</strong>' . ( '' !== $since ? ' dal ' . esc_html( wp_date( 'j/n/Y', (int) strtotime( $since . ' UTC' ) ) ) : '' ) . '. Codici di riserva ancora da usare: <strong>' . (int) $left . '</strong>.</p>'
+				. '<details><summary>Nuovi codici di riserva</summary><p class="asemf-small">I codici di riserva che hai adesso smettono di valere.</p>'
+				. self::form( 'asem_front_tfa_regen', self::tfa_field( 'Codice dell\'app o di riserva' ), 'Crea nuovi codici' ) . '</details>'
+				. '<details><summary>Spegni la verifica in due passaggi</summary>'
+				. self::form( 'asem_front_tfa_off', self::tfa_field( 'Codice dell\'app o di riserva' ), 'Spegni', 'Spegnere la verifica in due passaggi? Per entrare basterà di nuovo la password o il link via email.' ) . '</details>';
+			return $html . '</section>';
+		}
+		$secret = TwoFactor::pending_secret( $pid );
+		if ( '' !== $secret ) {
+			$issuer = (string) Settings::get( 'association_name' );
+			$issuer = '' !== $issuer ? $issuer : (string) get_bloginfo( 'name' );
+			try {
+				$qr = \AssociazioneSemplice\QrCode::svg( TwoFactor::otpauth_uri( $secret, $issuer, (string) $p['email'] ), 4, 'Codice QR per l\'app di autenticazione', false );
+			} catch ( \InvalidArgumentException $e ) {
+				$qr = '';
+			}
+			$html .= $intro . '<ol><li>Apri l\'app sul telefono e aggiungi un account inquadrando questo codice QR.</li><li>Se non puoi inquadrarlo, scegli «inserisci una chiave» e copia la chiave qui sotto.</li><li>Scrivi il codice di 6 cifre che compare nell\'app.</li></ol>'
+				. ( '' !== $qr ? '<div class="asemf-tfa-qr" style="max-width:220px">' . $qr . '</div>' : '' )
+				. '<p>Chiave da copiare: <code class="asemf-tfa-secret">' . esc_html( TwoFactor::grouped( $secret ) ) . '</code></p>'
+				. self::form( 'asem_front_tfa_confirm', self::tfa_field( 'Codice di 6 cifre dell\'app' ), 'Conferma e accendi' )
+				. self::form( 'asem_front_tfa_cancel', '', 'Annulla', false, 'asemf-tfa-cancel' );
+			return $html . '</section>';
+		}
+		return $html . '<p>È <strong>spenta</strong>.</p>' . $intro . self::form( 'asem_front_tfa_start', '', 'Accendi la verifica in due passaggi' ) . '</section>';
 	}
 
 	// ---------- Gestione degli eventi: prenotati e ingressi ----------

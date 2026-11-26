@@ -24,7 +24,7 @@ final class Plugin {
 	 * Versione dello schema del database (la storia dei cambi è accanto a {@see Install::DB_VERSION}, che vale questa).
 	 * Sta qui perché il confronto con quella salvata si fa a ogni richiesta: così la classe Install, grande, si carica solo quando c'è da aggiornare.
 	 */
-	const DB_VERSION = '84';
+	const DB_VERSION = '85';
 
 	/** Opzione con la versione dello schema salvata (la stessa di {@see Install::DB_VERSION_OPTION}). */
 	const DB_VERSION_OPTION = 'asem_db_version';

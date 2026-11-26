@@ -46,6 +46,11 @@ final class Actions {
 		'asem_front_vote'           => 'do_vote',
 		'asem_front_bank_email'     => 'do_bank_email',
 		'asem_front_regen_qr'       => 'do_regen_qr',
+		'asem_front_tfa_start'      => 'do_tfa_start',
+		'asem_front_tfa_confirm'    => 'do_tfa_confirm',
+		'asem_front_tfa_cancel'     => 'do_tfa_cancel',
+		'asem_front_tfa_off'        => 'do_tfa_off',
+		'asem_front_tfa_regen'      => 'do_tfa_regen',
 	);
 
 	/** @var array<string,array{0:callable,1:bool}> azioni aggiunte da un'estensione: [gestore, restituisce un indirizzo] */
@@ -1073,6 +1078,51 @@ final class Actions {
 		$actor = self::actor();
 		\AssociazioneSemplice\QrVersion::regenerate( (int) $actor['id'], (int) $actor['id'] );
 		return \AssociazioneSemplice\Texts::t( 'Codice rigenerato: quello vecchio non vale più.' );
+	}
+
+	// ---------- Verifica in due passaggi (da «Il mio profilo») ----------
+
+	/** Chi può usarla: il socio entrato con l'accesso proprio (chi ha un utente WordPress entra da WordPress). */
+	private static function tfa_actor(): array {
+		$actor = self::actor();
+		if ( ! \AssociazioneSemplice\MemberSession::is_own_session() || ! empty( $actor['wp_user_id'] ) ) {
+			throw new \InvalidArgumentException( 'La verifica in due passaggi dell\'area soci vale per chi entra con email e password o con il link via email.' );
+		}
+		\AssociazioneSemplice\MemberThrottle::hit( 'profile', (int) $actor['id'], 'member_profile_per_10min' );
+		return $actor;
+	}
+
+	private static function tfa_code( array $post ): string {
+		return isset( $post['tfa_code'] ) && is_string( $post['tfa_code'] ) ? trim( $post['tfa_code'] ) : '';
+	}
+
+	/** Inizia l'accensione: compare il QR da inquadrare con l'app. */
+	public static function do_tfa_start( array $post ): string {
+		\AssociazioneSemplice\TwoFactor::start_setup( (int) self::tfa_actor()['id'] );
+		return 'Inquadra il codice QR con l\'app e scrivi il codice che compare per confermare.';
+	}
+
+	/** Conferma con il primo codice: la verifica si accende e compaiono, una volta sola, i codici di riserva. */
+	public static function do_tfa_confirm( array $post ): string {
+		\AssociazioneSemplice\TwoFactor::confirm_setup( (int) self::tfa_actor()['id'], self::tfa_code( $post ) );
+		return 'Verifica in due passaggi accesa. Salva ora i codici di riserva: non li vedrai più.';
+	}
+
+	public static function do_tfa_cancel( array $post ): string {
+		\AssociazioneSemplice\TwoFactor::cancel_setup( (int) self::tfa_actor()['id'] );
+		return 'Accensione annullata: la verifica in due passaggi resta spenta.';
+	}
+
+	/** Spegne: serve un codice valido dell'app o di riserva. */
+	public static function do_tfa_off( array $post ): string {
+		\AssociazioneSemplice\TwoFactor::turn_off( (int) self::tfa_actor()['id'], self::tfa_code( $post ) );
+		return 'Verifica in due passaggi spenta.';
+	}
+
+	/** Nuovi codici di riserva: i vecchi smettono di valere. */
+	public static function do_tfa_regen( array $post ): string {
+		\AssociazioneSemplice\TwoFactor::regenerate_backup( (int) self::tfa_actor()['id'], self::tfa_code( $post ) );
+		return 'Nuovi codici di riserva pronti: salvali ora, quelli vecchi non valgono più.';
 	}
 
 	public static function do_bank_email( array $post ): string {

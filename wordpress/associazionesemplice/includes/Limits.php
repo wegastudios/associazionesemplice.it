@@ -280,6 +280,12 @@ final class Limits {
 			'Chi scarica molte ricevute insieme potrebbe dover aspettare qualche minuto.'
 		);
 		$add(
+			'member_tfa_fail_per_10min', 'accesso', 'Codici sbagliati della verifica in due passaggi, per socio, ogni 10 minuti', 'tentativi', 5, 3, 30,
+			'Quante volte un socio può sbagliare il codice dell\'app o un codice di riserva prima di dover aspettare 10 minuti. Ferma chi conosce la password e prova a indovinare il codice.',
+			'Un valore alto dà più tentativi a chi prova a indovinare il codice.',
+			'Chi sbaglia più volte a scrivere il codice dovrà aspettare qualche minuto.'
+		);
+		$add(
 			'member_qr_per_10min', 'accesso', 'Rigenerazioni del codice della tessera per socio, ogni 10 minuti', 'azioni', 10, 1, 100,
 			'Limita le rigenerazioni ripetute del codice QR della tessera dall\'area soci o dalla scheda.',
 			'Un valore alto permette molte scritture ravvicinate.',

@@ -381,9 +381,13 @@ final class QrCode {
 	/**
 	 * QR come immagine SVG (nitida a qualunque dimensione). Le dimensioni si decidono con il CSS (width/height).
 	 *
-	 * @param int $quiet moduli bianchi intorno (almeno 4 per una lettura affidabile)
+	 * @param int  $quiet moduli bianchi intorno (almeno 4 per una lettura affidabile)
+	 * @param bool $keep  false per un contenuto segreto (il QR della verifica in due passaggi): non resta nella cache degli oggetti
 	 */
-	public static function svg( string $data, int $quiet = 4, string $label = 'Codice QR' ): string {
+	public static function svg( string $data, int $quiet = 4, string $label = 'Codice QR', bool $keep = true ): string {
+		if ( ! $keep ) {
+			return self::draw_svg( $data, $quiet, $label );
+		}
 		$memo = function_exists( 'wp_cache_get' ) ? md5( $data . "\0" . $quiet . "\0" . $label ) : '';
 		if ( '' !== $memo ) { // lo stesso indirizzo si disegna una volta sola: per la richiesta, e tra le richieste dove il server ha una cache degli oggetti
 			$found = wp_cache_get( $memo, 'asem_qr' );

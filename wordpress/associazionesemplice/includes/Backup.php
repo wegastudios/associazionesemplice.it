@@ -566,6 +566,14 @@ final class Backup {
 		return $db->get_results( $db->prepare( "SELECT * FROM `$tbl` WHERE `$col` > %s ORDER BY `$col` LIMIT %d", (string) $s['last'], $chunk ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- nome di una tabella e di una sua colonna
 	}
 
+	/**
+	 * Colonne che non entrano mai nella copia: segreto e codici di riserva della verifica in due passaggi (cifrati con i «salt» di questo sito, altrove
+	 * inutili). Ripristinata una copia la verifica è spenta e ogni socio la riaccende da «Il mio profilo».
+	 */
+	const OMIT_COLUMNS = array(
+		'people' => array( 'tfa_secret', 'tfa_backup', 'tfa_on_at', 'tfa_last_step' ), // nome della tabella senza il prefisso asem_
+	);
+
 	/** Le tabelle, una riga JSON per record, ognuna nel suo file della cartella di lavoro. */
 	private static function step_tables( array $s, float $deadline ): array {
 		$db     = Db::db();
@@ -589,6 +597,9 @@ final class Backup {
 				do {
 					$rows = self::read_rows( $tbl, $s, $chunk );
 					foreach ( $rows as $r ) {
+						foreach ( self::OMIT_COLUMNS[ substr( $name, 5 ) ] ?? array() as $col ) { // segreti legati a questo sito: nella copia non entrano
+							unset( $r[ $col ] );
+						}
 						foreach ( $fields[ $name ] ?? array() as $col ) { // un campo ancora in chiaro (non ancora cifrato sul sito) si cifra ora
 							$v = (string) ( $r[ $col ] ?? '' );
 							if ( '' !== $v && ! FileCrypt::is_field( $v ) ) {
