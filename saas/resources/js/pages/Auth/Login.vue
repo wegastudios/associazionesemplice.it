@@ -38,7 +38,7 @@ const submit = () => form.post('/accesso', { onFinish: () => form.reset('passwor
                 </li>
             </ul>
             <p v-if="demoMember" class="mt-3 border-t border-line pt-3">
-                <a href="/area/accesso" class="btn btn-secondary btn-sm">Entra come socio</a>
+                <a href="/area/accesso?demo=entra" class="btn btn-secondary btn-sm">Entra come socio</a>
                 <span class="caption mt-1 block">Apre l'area soci con un socio inventato, senza email né codice.</span>
             </p>
         </section>

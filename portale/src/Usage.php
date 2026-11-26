@@ -11,6 +11,8 @@ final class Usage {
 	/** Dimensione massima del corpo e delle associazioni in un invio. */
 	public const MAX_BODY = 262144;
 	public const MAX_ORGS = 2000;
+	/** Quanti riferimenti non riconosciuti si rimandano al gestionale nella risposta (solo i ref, mai numeri o nomi). */
+	public const MAX_UNKNOWN_REFS = 50;
 
 	/**
 	 * @return array{0:int,1:array} codice HTTP e corpo della risposta
@@ -38,9 +40,13 @@ final class Usage {
 		}
 		$saved   = 0;
 		$unknown = 0;
+		$refs    = array();
 		foreach ( $c['orgs'] as $o ) {
 			if ( ! $db->one( 'SELECT 1 AS x FROM saas_orgs WHERE ref = ?', array( $o['ref'] ) ) ) {
 				++$unknown;
+				if ( count( $refs ) < self::MAX_UNKNOWN_REFS ) {
+					$refs[] = substr( (string) $o['ref'], 0, 64 ); // solo il riferimento tecnico: nessun altro dato dell'associazione
+				}
 				continue;
 			}
 			$old = $db->one( 'SELECT day FROM saas_usage WHERE ref = ?', array( $o['ref'] ) );
@@ -55,7 +61,7 @@ final class Usage {
 			}
 			++$saved;
 		}
-		return array( 200, array( 'ok' => true, 'saved' => $saved, 'unknown' => $unknown ) );
+		return array( 200, array( 'ok' => true, 'saved' => $saved, 'unknown' => $unknown, 'unknown_refs' => $refs ) );
 	}
 
 	/** Il primo campo che non va (nome, senza valori), o null se i claim sono a posto. */
