@@ -81,6 +81,7 @@ add_filter( 'pre_wp_mail', $dp_hook, 10, 2 );
 $dp_addr = 'dora.passaggi@example.org';
 $dp_pw   = 'Password lunga 2fa';
 $dp_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Dora', 'last_name' => 'Passaggi', 'email' => $dp_addr ) );
+$wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => null ), array( 'id' => $dp_p ) ); // senza utente WordPress anche se una prova prima ha acceso «crea anche un utente»: entra con l'accesso proprio
 asem_ok( '' === MemberLogin::set_password( $dp_p, $dp_pw ), 'due passaggi: il socio sceglie la password' );
 $dp_sess = function () use ( $wpdb, &$dp_p ): int {
 	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d', $dp_p ) );
@@ -103,7 +104,8 @@ $dp_last = function ( string $action, int $pid ) use ( $dp_audit ): string {
 $dp_failkey = 'asem_mt_tfa_' . $dp_p;
 TwoFactor::$clock = $dp_now;
 $dp_out();
-asem_ok( ! TwoFactor::is_on( $dp_p ) && $dp_p === MemberLogin::login_with_password( $dp_addr, $dp_pw ) && 1 === $dp_sess() && null === TwoFactor::pending(), 'due passaggi: spenta di partenza, la password apre subito la sessione' );
+$dp_who = MemberLogin::login_with_password( $dp_addr, $dp_pw );
+asem_ok( ! TwoFactor::is_on( $dp_p ) && $dp_p === $dp_who && 1 === $dp_sess() && null === TwoFactor::pending(), 'due passaggi: spenta di partenza, la password apre subito la sessione (entrato: ' . var_export( $dp_who, true ) . ', sessioni: ' . $dp_sess() . ', persona: ' . wp_json_encode( array_intersect_key( (array) Plugin::people()->get( $dp_p ), array_flip( array( 'type', 'wp_user_id', 'application_status', 'left_on', 'suspended_at' ) ) ) ) . ', accesso proprio: ' . ( MemberSession::enabled() ? 'sì' : 'no' ) . ')' );
 $dp_v0 = Views::section_two_factor( Plugin::people()->get( $dp_p ) );
 asem_ok( false !== strpos( $dp_v0, 'Verifica in due passaggi' ) && false !== strpos( $dp_v0, 'spenta' ) && false !== strpos( $dp_v0, 'value="asem_front_tfa_start"' ), 'due passaggi: in «Il mio profilo» è spenta e c\'è il pulsante per accenderla' );
 
