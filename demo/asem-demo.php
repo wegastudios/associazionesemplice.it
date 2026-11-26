@@ -142,7 +142,7 @@ $asem_demo_allowed = array_flip( array(
 		'asem_file_migration_certs', 'asem_file_phrase_changed', 'asem_file_sources', 'asem_first_access', 'asem_first_go', 'asem_first_name',
 		'asem_fiscal_start_month', 'asem_fiscal_year_closures', 'asem_fivepm_add', 'asem_fivepm_delete', 'asem_fivepm_report', 'asem_fivepm_settings',
 		'asem_front_accept_for', 'asem_front_accept_rules', 'asem_front_add_guest', 'asem_front_bank_email', 'asem_front_book', 'asem_front_book_group', 'asem_front_cancel_booking',
-		'asem_front_checkin', 'asem_front_checkin_scan', 'asem_front_collect', 'asem_front_confirm_booking', 'asem_front_consent', 'asem_front_course_request', 'asem_front_credit_cancel',
+		'asem_front_checkin', 'asem_front_checkin_scan', 'asem_front_collect', 'asem_front_confirm_booking', 'asem_front_consent', 'asem_front_course_coins', 'asem_front_course_request', 'asem_front_credit_cancel',
 		'asem_front_credit_charge', 'asem_front_credit_pay', 'asem_front_door', 'asem_front_door_group', 'asem_front_expense', 'asem_front_expense_docs',
 		'asem_front_decline_booking', 'asem_front_expense_fields', 'asem_front_group', 'asem_front_init', 'asem_front_new_member', 'asem_front_notice', 'asem_front_pay',
 		'asem_front_profile', 'asem_front_proxy', 'asem_front_proxy_revoke', 'asem_front_refund', 'asem_front_refund_cancel', 'asem_front_regen_qr', 'asem_front_request',
