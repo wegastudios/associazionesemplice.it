@@ -18,8 +18,22 @@ final class App {
 		$this->auth    = $auth;
 	}
 
+	/** Pagine pubbliche di sola lettura: la HEAD segue il GET (stesso codice e stesse intestazioni, il server web toglie il corpo). */
+	private const HEAD_LIKE_GET = array( '/', '/plugin', '/piani', '/prezzi', '/funzioni', '/domande', '/prova', '/confronto', '/confronto-demo', '/free', '/acquista', '/accedi', '/account', '/robots.txt', '/sitemap.xml', '/api/piani', '/api/stato' );
+
+	/**
+	 * Solo per le pagine pubbliche qui sopra, le sezioni /saas e /wordpress e le pagine legali: ogni altra HEAD resta com'era. Scarichi,
+	 * API delle licenze, uscita e ritorno dai pagamenti non devono mai partire da una HEAD (leggerebbero il file, conterebbero uno scarico).
+	 */
+	private static function headLikeGet( string $path ): bool {
+		return in_array( $path, self::HEAD_LIKE_GET, true ) || null !== Sections::view( $path ) || isset( Legal::PAGES[ ltrim( $path, '/' ) ] );
+	}
+
 	public function run( string $method, string $path ): void {
 		$path = '/' . trim( $path, '/' );
+		if ( 'HEAD' === $method && self::headLikeGet( $path ) ) {
+			$method = 'GET';
+		}
 		try {
 			if ( 'POST' === $method && 0 === strpos( $path, '/webhook/' ) ) {
 				$this->webhook( $path );

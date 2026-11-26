@@ -2100,7 +2100,9 @@ check( 'webhook: duplicato → 200 senza rifare il lavoro; lavoro fallito → 50
 	&& 500 === $onceEv->invoke( $whOk, 'stripe', 'evt_z', function () { throw new RuntimeException( 'x' ); } ) && $evDb->claimEvent( 'stripe', 'evt_z' ) );
 $ratePdo = testDb();
 migrated( $ratePdo );
-check( 'limiti: il primo posto si prende, oltre il massimo no', Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) && ! Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) );
+// Ora e secondo fissi (il secondo non è multiplo di 16): la pulizia delle ore vecchie, che scatta ogni 16 secondi, non può cancellare il contenitore a metà prova.
+$rateNow = 1796000001;
+check( 'limiti: il primo posto si prende, oltre il massimo no', Portale\RateLimit::take( $ratePdo, 'prova-dup', gmdate( 'YmdH', $rateNow ), 1, $rateNow ) && ! Portale\RateLimit::take( $ratePdo, 'prova-dup', gmdate( 'YmdH', $rateNow ), 1, $rateNow ) );
 check( 'consumi: un invio più recente aggiorna', 50 === (int) $cdb->one( 'SELECT members FROM saas_usage WHERE ref = ?', array( $uref ) )['members'] );
 
 $cprev = Http::$transport;
@@ -3045,5 +3047,26 @@ if ( rtMode() ) {
 	) );
 	check( 'migrazione: il ruolo di tutti i giorni cambia le sue tabelle e il rifiuto «must be owner» sulle altre è riconoscibile', 1 === count( $left ) && true === $left[0]['owner'] && false !== strpos( $left[0]['sql'], 'orders' ) );
 }
+// HEAD: sulle pagine pubbliche segue il GET (prima ogni HEAD dava 404); scarichi, API, uscita e pagamenti non partono mai da una HEAD.
+$headDb  = testDb();
+$headApp = function ( string $m, string $p ) use ( $headDb ) {
+	ob_start();
+	( new Portale\App( $headDb, new Billing( $headDb, new WegaClient( 'https://license.test/api/v1', 't' ) ), new Portale\Auth( $headDb ) ) )->run( $m, $p );
+	return ob_get_clean();
+};
+$headLike = new ReflectionMethod( Portale\App::class, 'headLikeGet' );
+$headLike->setAccessible( true );
+foreach ( array( '/', '/prova', '/confronto', '/accedi', '/account', '/robots.txt', '/sitemap.xml', '/saas', '/wordpress', '/privacy' ) as $headPath ) {
+	check( 'HEAD ' . $headPath . ': segue il GET', $headLike->invoke( null, $headPath ) );
+}
+foreach ( array( '/scarica/abc', '/api/plugin/package', '/api/plugin/latest', '/api/license/validate', '/api/saas/v1/download', '/.well-known/jwks.json', '/paypal/ritorno', '/account/esci', '/entra/abc', '/nonesiste' ) as $headPath ) {
+	check( 'HEAD ' . $headPath . ': resta com\'era (mai trattata come GET)', ! $headLike->invoke( null, $headPath ) );
+}
+foreach ( array( '/robots.txt', '/', '/prova', '/confronto' ) as $headPath ) {
+	$headGet = $headApp( 'GET', $headPath );
+	check( 'HEAD ' . $headPath . ': stessa risposta del GET', '' !== $headGet && $headGet === $headApp( 'HEAD', $headPath ) );
+}
+$headMissing = $headApp( 'GET', '/non-esiste-davvero' );
+check( 'rotta che non esiste: stessa pagina di errore con GET e con HEAD', $headMissing === $headApp( 'HEAD', '/non-esiste-davvero' ) );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
