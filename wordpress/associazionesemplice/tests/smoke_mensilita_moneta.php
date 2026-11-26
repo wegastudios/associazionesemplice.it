@@ -118,4 +118,24 @@ foreach ( $cm_acts->status_for_activity( $cm_l ) as $cm_s ) {
 }
 asem_ok( $cm_sum && 0 === (int) $cm_sum['balance'], 'moneta: nessun importo a favore in euro per un mese pagato in moneta' );
 asem_ok( in_array( 'asem_course_credit_payments', \AssociazioneSemplice\Backup::tables(), true ) && isset( \AssociazioneSemplice\Privacy::export( $cm_q )['mensilita_moneta_interna'] ), 'moneta: nella copia e nei dati scaricati' );
+
+// ---------- Nome con apostrofo e accenti: ricevuta PDF e pagina del socio scritte bene ----------
+$cm_keep  = array( 'coin_singular' => (string) Settings::get( 'coin_singular' ), 'coin_plural' => (string) Settings::get( 'coin_plural' ) );
+$cm_packs = get_option( Credits::PACKS_OPTION, '' );
+Settings::update( array( 'coin_singular' => "Gettone d'oro", 'coin_plural' => "Gettoni d'oro più" ) );
+asem_ok( "2 Gettoni d'oro più" === \AssociazioneSemplice\CoinName::n( 2 ), 'moneta: il nome con apostrofo e accento resta com\'è' );
+Credits::save_packs( '10 = 10,00' );
+Credits::sell_at_desk( $cm_q, 10, (int) $cm_cash['id'], 'cash' );
+$cm_rk = '';
+foreach ( \AssociazioneSemplice\Receipts::list_for_payer( $cm_q ) as $cm_r ) {
+	if ( 1000 === (int) $cm_r['cents'] ) {
+		$cm_rk = (string) $cm_r['key'];
+	}
+}
+$cm_pdf = '' !== $cm_rk ? (string) \AssociazioneSemplice\Receipts::build( $cm_rk )['pdf'] : '';
+asem_ok( 0 === strpos( $cm_pdf, '%PDF' ) && false !== strpos( $cm_pdf, "Gettoni d'oro" ), 'moneta: la ricevuta PDF dell\'acquisto riporta il nome con l\'apostrofo' );
+$cm_html = (string) apply_filters( 'asem_pay_section_extra', '', $cm_peo->get( $cm_o ) );
+asem_ok( false !== strpos( $cm_html, 'Gettoni d&#039;oro più' ) && false === strpos( $cm_html, "d'oro" ), 'moneta: nell\'area soci il nome con apostrofo è scritto ed escapato bene' );
+update_option( Credits::PACKS_OPTION, $cm_packs, false );
+Settings::update( $cm_keep );
 Db::$today_fake = '';
