@@ -1124,10 +1124,12 @@ class PaymentService extends OfflinePayments {
 			} else {
 				foreach ( PaymentItems::receipt_batches( $items ) as list( $person_id, $group ) ) { // la donazione ha una ricevuta sua
 					$dups  = array(); // voci già pagate per intero prima di questo incasso: l'incasso si registra lo stesso, ma il pagamento va controllato
+					$dup_items = array();
 					$ended = array(); // mesi di corso a cui la persona non è più iscritta: stessa cosa
 					foreach ( $group as $i ) {
 						if ( $this->item_already_paid( $i ) ) {
-							$dups[] = (string) ( $i['label'] ?? $i['type'] );
+							$dups[]      = (string) ( $i['label'] ?? $i['type'] );
+							$dup_items[] = $i;
 						}
 						if ( PaymentItems::COURSE_MONTH === $i['type'] && Plugin::activities()->enrollment_ended( (int) $i['activity_id'], (int) $i['person_id'], (string) $i['month'] ) ) {
 							$ended[ (int) $i['activity_id'] ] = (string) ( Plugin::activities()->get( (int) $i['activity_id'] )['name'] ?? $i['label'] ?? '' );
@@ -1147,6 +1149,9 @@ class PaymentService extends OfflinePayments {
 						continue;
 					}
 					$allocated += PaymentItems::total( $group );
+					if ( $dups ) {
+						do_action( 'asem_payment_item_already_paid', $p, $dup_items ); // le estensioni avvisano chi ha pagato (per esempio: mese già pagato in un altro modo)
+					}
 					if ( $dups || $ended ) {
 						$notes = array();
 						if ( $dups ) {

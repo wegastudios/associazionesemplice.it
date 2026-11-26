@@ -7,7 +7,8 @@ defined( 'ABSPATH' ) || exit;
  * Mensilità di un corso pagata nella moneta interna (AssoCredito o il nome scelto): per un corso con un costo nella moneta il socio, o un genitore
  * per il figlio minore, sceglie euro oppure moneta, per intero; con la moneta il mese risulta pagato. Niente pagamento misto. In prima nota non si
  * scrive nulla (l'entrata è la vendita dei pacchetti); la quota dell'istruttore si accantona sul valore in euro del mese.
- * Una lezione annullata, un'iscrizione cancellata o un corso eliminato restituiscono moneta, mai euro.
+ * Una lezione annullata, un'iscrizione cancellata o un corso eliminato restituiscono moneta, mai euro, con la regola degli euro: i mesi con lezioni
+ * già tenute restano pagati; eliminando il corso con «Restituisci» torna anche la parte delle lezioni non tenute dei mesi in corso.
  */
 final class CourseCoins {
 
@@ -20,8 +21,10 @@ final class CourseCoins {
 
 	public static function register(): void {
 		add_action( 'asem_course_coin_lesson', array( __CLASS__, 'lesson_cancelled' ), 10, 5 );
-		add_action( 'asem_registration_deleted', array( __CLASS__, 'registration_deleted' ), 4, 2 );
-		add_action( 'asem_activity_deleted', array( __CLASS__, 'activity_deleted' ), 4, 1 );
+		add_action( 'asem_registration_deleted', array( __CLASS__, 'registration_deleted' ), 4, 3 );
+		add_action( 'asem_activity_deleted', array( __CLASS__, 'activity_deleted' ), 4, 2 );
+		add_filter( 'asem_reset_other_payments', array( __CLASS__, 'reset_lines' ), 10, 5 );
+		add_action( 'asem_payment_item_already_paid', array( __CLASS__, 'online_after_coins' ), 10, 2 );
 		add_filter( 'asem_pay_section_extra', array( __CLASS__, 'pay_section' ), 10, 2 );
 		add_filter( 'asem_course_enrolled_extra', array( __CLASS__, 'enrolled_extra' ), 10, 4 );
 	}
@@ -61,8 +64,8 @@ final class CourseCoins {
 		if ( ! $a || ! $p || ! $payer || ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $month ) ) {
 			throw new \InvalidArgumentException( 'Mese del corso non trovato.' );
 		}
-		if ( $payer_id !== $person_id && ! Guardians::is_guardian_of( $payer_id, $person_id ) ) {
-			throw new \InvalidArgumentException( 'Si paga in ' . CoinName::plural() . ' per sé o per un figlio minore di cui si risulta genitore.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		if ( $payer_id !== $person_id && ! self::minor_child_of( $payer_id, $p ) ) {
+			throw new \InvalidArgumentException( 'Si paga in ' . CoinName::plural() . ' per sé o per un figlio minorenne (con la data di nascita in anagrafica) di cui si risulta genitore.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! MemberType::is_member( (string) $payer['type'] ) || ! Plugin::people()->is_active_member( $payer_id ) ) {
 			throw new \InvalidArgumentException( CoinName::plural() . ': solo per i soci con la tessera valida.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -119,6 +122,11 @@ final class CourseCoins {
 		return $spent;
 	}
 
+	/** Figlio minorenne oggi (data di nascita obbligatoria, qualunque sia l'impostazione del tutore) e collegato al genitore in anagrafica. */
+	private static function minor_child_of( int $payer_id, array $child ): bool {
+		return Age::is_minor( (string) ( $child['birth_date'] ?? '' ), Db::today() ) && Guardians::is_guardian_of( $payer_id, (int) $child['id'] );
+	}
+
 	/** Avviso a chi ha speso la moneta (il genitore, se ha pagato per il figlio). */
 	private static function tell( int $payer_id, string $ref, string $subject, string $body ): void {
 		$who = Plugin::people()->get( $payer_id );
@@ -162,37 +170,153 @@ final class CourseCoins {
 		RequestMemo::forget();
 	}
 
-	/** Iscrizione cancellata: la moneta dei mesi pagati torna a chi l'ha spesa, la quota dell'istruttore esce dal fondo. */
-	public static function registration_deleted( $activity_id, $person_id ): void {
-		self::give_back( self::db()->get_results( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'course_credit_payments' ) . " WHERE activity_id = %d AND person_id = %d AND status = 'paid'", (int) $activity_id, (int) $person_id ), ARRAY_A ) ?: array(), 'Iscrizione cancellata' );
+	/**
+	 * Iscrizione cancellata: come per gli euro, i mesi con almeno una lezione già tenuta restano pagati; la moneta degli altri torna a chi l'ha spesa
+	 * e la quota dell'istruttore di quei mesi esce dal fondo. La scelta sulle somme (restituire o annullare) non cambia l'esito per la moneta.
+	 */
+	public static function registration_deleted( $activity_id, $person_id, $mode = ActivityReset::REFUND ): void {
+		self::settle( self::paid_rows( (int) $activity_id, (int) $person_id ), false, (string) $mode, 'Iscrizione cancellata' );
 	}
 
-	public static function activity_deleted( $activity_id ): void {
-		self::give_back( self::db()->get_results( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'course_credit_payments' ) . " WHERE activity_id = %d AND status = 'paid'", (int) $activity_id ), ARRAY_A ) ?: array(), 'Corso eliminato' );
+	/** Corso eliminato: mesi non cominciati, tutta la moneta; mesi in corso, con «Restituisci» la parte delle lezioni non tenute, con «Annulla» niente. */
+	public static function activity_deleted( $activity_id, $mode = ActivityReset::REFUND ): void {
+		self::settle( self::paid_rows( (int) $activity_id, 0 ), true, (string) $mode, 'Corso eliminato' );
+		self::db()->delete( Db::t( 'course_credit_payments' ), array( 'activity_id' => (int) $activity_id ) ); // il corso non c'è più: le righe non restano appese
 	}
 
-	/** @throws \InvalidArgumentException se una quota del fondo è in un anno fiscale chiuso */
-	private static function give_back( array $rows, string $why ): void {
+	/** Mesi pagati in moneta di un corso (di una persona, se $person_id). @return array[] */
+	private static function paid_rows( int $activity_id, int $person_id ): array {
+		$sql  = 'SELECT * FROM ' . Db::t( 'course_credit_payments' ) . " WHERE activity_id = %d AND status = 'paid'";
+		$args = array( $activity_id );
+		if ( $person_id ) {
+			$sql   .= ' AND person_id = %d';
+			$args[] = $person_id;
+		}
+		return self::db()->get_results( self::db()->prepare( $sql . ' ORDER BY month', $args ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- segnaposto generati qui
+	}
+
+	/**
+	 * Quanto torna di ogni mese, con la regola degli incassi in euro ({@see ActivityReset::is_fruited()} e {@see ActivityReset::refund_cents()}).
+	 *
+	 * @return array[] row, back_cents (valore in euro che torna), back (moneta che torna), fund (quota del fondo da togliere), full
+	 */
+	private static function plan( array $rows, bool $whole, string $mode ): array {
+		if ( ! $rows ) {
+			return array();
+		}
+		$a   = Plugin::activities()->get( (int) $rows[0]['activity_id'] );
+		$ctx = $a ? ActivityReset::fruit_context( $a ) : null;
+		$out = array();
 		foreach ( $rows as $r ) {
-			if ( (int) $r['fund_entry'] ) {
-				$d = (string) self::db()->get_var( self::db()->prepare( 'SELECT entry_date FROM ' . Db::t( 'fund_entries' ) . ' WHERE id = %d', (int) $r['fund_entry'] ) );
+			$cents = (int) $r['cents'];
+			$m     = array( 'amount_cents' => $cents, 'competence_month' => (string) $r['month'], 'session_id' => 0, 'person_id' => (int) $r['person_id'], 'description' => '' );
+			if ( null === $ctx || $cents <= 0 ) {
+				$bc = $cents;
+			} elseif ( ! ActivityReset::is_fruited( $m, $ctx ) ) {
+				$bc = $cents; // mese non ancora cominciato: torna tutto
+			} else {
+				$bc = $whole && ActivityReset::REFUND === $mode ? min( $cents, ActivityReset::refund_cents( $m, $ctx ) ) : 0;
+			}
+			$full  = $cents <= 0 || $bc >= $cents;
+			$out[] = array(
+				'row'        => $r,
+				'back_cents' => $bc,
+				'back'       => $full ? (int) $r['credits'] : (int) round( (int) $r['credits'] * $bc / $cents ),
+				'fund'       => $full ? (int) $r['fund_cents'] : (int) floor( (int) $r['fund_cents'] * $bc / max( 1, $cents ) ),
+				'full'       => $full,
+			);
+		}
+		return $out;
+	}
+
+	/** @throws \InvalidArgumentException se una quota del fondo da togliere è in un anno fiscale chiuso */
+	private static function settle( array $rows, bool $whole, string $mode, string $why ): void {
+		$plan = array_filter(
+			self::plan( $rows, $whole, $mode ),
+			function ( $x ) {
+				return $x['back_cents'] > 0 || $x['back'] > 0;
+			}
+		);
+		foreach ( $plan as $x ) {
+			if ( ! $whole && $x['fund'] > 0 && (int) $x['row']['fund_entry'] ) {
+				$d = (string) self::db()->get_var( self::db()->prepare( 'SELECT entry_date FROM ' . Db::t( 'fund_entries' ) . ' WHERE id = %d', (int) $x['row']['fund_entry'] ) );
 				if ( '' !== $d ) {
 					YearLock::assert_date_open( $d );
 				}
 			}
 		}
-		foreach ( $rows as $r ) {
-			if ( (int) $r['credits'] > 0 ) {
-				Credits::refund( (int) $r['payer_id'], (int) $r['credits'], $why . ' (' . $r['month'] . ')', 'course_month', (int) $r['activity_id'] );
+		foreach ( $plan as $x ) {
+			$r = $x['row'];
+			if ( $x['back'] > 0 ) {
+				Credits::refund( (int) $r['payer_id'], $x['back'], $why . ' (' . $r['month'] . ')', 'course_month', (int) $r['activity_id'] );
 				$a = Plugin::activities()->get( (int) $r['activity_id'] );
-				self::tell( (int) $r['payer_id'], 'r:' . (int) $r['id'], $why . ': ' . ( $a ? $a['name'] : CoinName::plural() ), ( $a ? 'per «' . $a['name'] . '», mese ' . self::month_text( (string) $r['month'] ) . ', ' : 'per il mese ' . self::month_text( (string) $r['month'] ) . ' ' ) . 'ti tornano ' . CoinName::n( (int) $r['credits'] ) . ' (' . mb_strtolower( $why ) . ').' );
+				self::tell( (int) $r['payer_id'], 'r:' . (int) $r['id'] . ':' . time(), $why . ': ' . ( $a ? $a['name'] : CoinName::plural() ), ( $a ? 'per «' . $a['name'] . '», mese ' . self::month_text( (string) $r['month'] ) . ', ' : 'per il mese ' . self::month_text( (string) $r['month'] ) . ' ' ) . 'ti tornano ' . CoinName::n( $x['back'] ) . ' (' . mb_strtolower( $why ) . ').' );
 			}
-			if ( (int) $r['fund_entry'] ) {
-				self::db()->delete( Db::t( 'fund_entries' ), array( 'id' => (int) $r['fund_entry'] ) );
+			if ( ! $whole && $x['fund'] > 0 && (int) $r['fund_entry'] ) { // corso eliminato: le quote del fondo del corso cadono tutte con l'eliminazione
+				if ( $x['full'] ) {
+					self::db()->delete( Db::t( 'fund_entries' ), array( 'id' => (int) $r['fund_entry'] ) );
+				} else {
+					$fid = (int) self::db()->get_var( self::db()->prepare( 'SELECT fund_id FROM ' . Db::t( 'fund_entries' ) . ' WHERE id = %d', (int) $r['fund_entry'] ) );
+					Plugin::funds()->take_back( $fid, $x['fund'], Db::today(), $why . ' (mese pagato in ' . CoinName::plural() . ')' );
+				}
 			}
-			self::db()->update( Db::t( 'course_credit_payments' ), array( 'status' => 'refunded', 'refunded_at' => Db::now() ), array( 'id' => (int) $r['id'] ) );
+			$upd = $x['full'] ? array( 'status' => 'refunded', 'refunded_at' => Db::now() ) : array( 'credits' => (int) $r['credits'] - $x['back'], 'cents' => (int) $r['cents'] - $x['back_cents'], 'fund_cents' => (int) $r['fund_cents'] - $x['fund'] );
+			self::db()->update( Db::t( 'course_credit_payments' ), $upd, array( 'id' => (int) $r['id'] ) );
 		}
 		RequestMemo::forget();
+	}
+
+	/** Le frasi per le pagine di eliminazione (iscrizione o corso): cosa succede ai mesi pagati in moneta. @return string[] */
+	public static function reset_lines( $lines, $activity_id, $person_id, $session_id, $mode ): array {
+		$lines = (array) $lines;
+		if ( (int) $session_id ) {
+			return $lines;
+		}
+		$rows = self::paid_rows( (int) $activity_id, (int) $person_id );
+		if ( ! $rows ) {
+			return $lines;
+		}
+		$n    = count( $rows );
+		$tot  = (int) array_sum( array_column( $rows, 'credits' ) );
+		$head = ( 1 === $n ? '1 mese pagato' : $n . ' mesi pagati' ) . ' in ' . CoinName::plural() . ' (' . CoinName::n( $tot ) . ').';
+		$back = function ( string $m, bool $whole ) use ( $rows ): int {
+			return (int) array_sum( array_column( self::plan( $rows, $whole, $m ), 'back' ) );
+		};
+		if ( (int) $person_id ) {
+			$b       = $back( ActivityReset::REFUND, false );
+			$lines[] = $head . ' I mesi con lezioni già tenute restano pagati; ' . ( $b > 0 ? 'per gli altri tornano ' . CoinName::n( $b ) . ' a chi li ha spesi, con qualunque scelta sulle somme.' : 'non torna niente.' );
+			return $lines;
+		}
+		$r = $back( ActivityReset::REFUND, true );
+		$v = $back( ActivityReset::VOID, true );
+		if ( ActivityReset::REFUND === $mode ) {
+			$lines[] = $head . ' Con «Restituisci» tornano ' . CoinName::n( $r ) . ' a chi li ha spesi: i mesi non cominciati e le lezioni non tenute dei mesi in corso.';
+		} elseif ( ActivityReset::VOID === $mode ) {
+			$lines[] = $head . ' Con «Annulla» tornano ' . CoinName::n( $v ) . ' a chi li ha spesi: solo i mesi non cominciati; i mesi in corso restano pagati.';
+		} else {
+			$lines[] = $head . ' Con «Restituisci» tornano ' . CoinName::n( $r ) . ' (mesi non cominciati e lezioni non tenute dei mesi in corso); con «Annulla» ' . CoinName::n( $v ) . ' (solo i mesi non cominciati).';
+		}
+		return $lines;
+	}
+
+	/** Pagamento online arrivato per un mese già pagato in moneta: la segreteria lo trova «da controllare»; qui si avvisa chi ha pagato online. */
+	public static function online_after_coins( $payment, $items ): void {
+		try {
+			foreach ( (array) $items as $i ) {
+				if ( PaymentItems::COURSE_MONTH !== (string) ( $i['type'] ?? '' ) ) {
+					continue;
+				}
+				$r = self::row( (int) $i['activity_id'], (int) $i['person_id'], (string) $i['month'] );
+				$a = $r ? Plugin::activities()->get( (int) $r['activity_id'] ) : null;
+				if ( ! $r || ! $a ) {
+					continue;
+				}
+				$to = (int) ( $payment['payer_person_id'] ?? 0 );
+				self::tell( $to ? $to : (int) $r['payer_id'], 'o:' . (int) ( $payment['id'] ?? 0 ) . ':' . (int) $r['id'], 'Mese già pagato: ' . $a['name'], 'il mese ' . self::month_text( (string) $r['month'] ) . ' di «' . $a['name'] . '» era già pagato in ' . CoinName::plural() . ', ma è arrivato anche il pagamento online di ' . Money::format( (int) ( $i['amount_cents'] ?? 0 ) ) . '. Il mese resta pagato una volta sola: la segreteria controlla il pagamento e ti contatta per restituire gli euro.' );
+			}
+		} catch ( \Throwable $e ) {
+			unset( $e ); // l'avviso non deve mai fermare la registrazione dell'incasso: il pagamento è già «da controllare»
+		}
 	}
 
 	// ---------- Area soci e pannello ----------
@@ -203,7 +327,12 @@ final class CourseCoins {
 		if ( ! MemberType::is_member( (string) $actor['type'] ) ) {
 			return $out;
 		}
-		$people = array_merge( array( $actor ), Guardians::dependents_of( (int) $actor['id'] ) );
+		$people = array( $actor );
+		foreach ( Guardians::dependents_of( (int) $actor['id'] ) as $kid ) {
+			if ( self::minor_child_of( (int) $actor['id'], $kid ) ) {
+				$people[] = $kid; // solo i figli minorenni: da maggiorenni pagano da sé
+			}
+		}
 		foreach ( $people as $p ) {
 			foreach ( Plugin::activities()->status_for_person( (int) $p['id'] ) as $s ) {
 				$a = Plugin::activities()->get( (int) $s['enrollment']['activity_id'] );

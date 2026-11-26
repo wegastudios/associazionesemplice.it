@@ -141,8 +141,8 @@ final class ActivityReset {
 	 *
 	 * @return array{today:string,now:string,sessions:array<int,array{date:string,start:string}>,held:string[]}
 	 */
-	private static function fruit_context( array $a ): array {
-		$today = current_time( 'Y-m-d' );
+	public static function fruit_context( array $a ): array {
+		$today = Db::today(); // come il resto dei corsi (nelle prove, la data finta)
 		$ctx   = array( 'today' => $today, 'now' => current_time( 'H:i' ), 'sessions' => array(), 'held' => array() );
 		$db    = self::db();
 		$rows  = $db->get_results( $db->prepare( 'SELECT id, session_date, start_time FROM ' . Db::t( 'sessions' ) . ' WHERE activity_id = %d AND cancelled_at IS NULL', (int) $a['id'] ), ARRAY_A ) ?: array();
@@ -427,7 +427,7 @@ final class ActivityReset {
 				foreach ( array( 'sessions', 'enrollments', 'trials', 'course_months', 'course_month_dues', 'course_credits', 'activity_staff', 'notices', 'event_requests' ) as $table ) {
 					$db->delete( Db::t( $table ), array( 'activity_id' => $activity_id ) );
 				}
-				do_action( 'asem_activity_deleted', $activity_id ); // le estensioni tolgono i dati collegati
+				do_action( 'asem_activity_deleted', $activity_id, $mode ); // le estensioni tolgono i dati collegati (con la scelta sulle somme)
 				$db->delete( Db::t( 'activities' ), array( 'id' => $activity_id ) );
 				self::forget_in_pages( $activity_id );
 				Audit::log( 'activity.deleted', 'activity', $activity_id, array( 'name' => $name, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'], 'kept_cents' => $sum['kept_cents'] ) );
@@ -591,7 +591,15 @@ final class ActivityReset {
 	/** L'eliminazione dell'evento non tocca la prima nota (nessun incasso, spesa o restituzione collegati): basta una sola conferma. */
 	public static function activity_is_free( int $activity_id ): bool {
 		$p = self::preview( $activity_id );
-		return $p && 0 === (int) $p['income']['count'] + (int) $p['expense']['count'] + (int) $p['refund_exp']['count'];
+		return $p && 0 === (int) $p['income']['count'] + (int) $p['expense']['count'] + (int) $p['refund_exp']['count'] && ! self::other_payments( $activity_id, 0, 0, '' );
+	}
+
+	/**
+	 * Pagamenti fuori dalla prima nota legati all'attività o all'iscrizione (le estensioni li descrivono): frasi da mostrare prima di eliminare.
+	 * Se ce ne sono, l'eliminazione chiede la scelta sulle somme anche senza incassi. @return string[]
+	 */
+	public static function other_payments( int $activity_id, int $person_id, int $session_id, string $mode ): array {
+		return array_values( array_filter( array_map( 'strval', (array) apply_filters( 'asem_reset_other_payments', array(), $activity_id, $person_id, $session_id, $mode ) ) ) );
 	}
 
 	/**
@@ -750,7 +758,7 @@ final class ActivityReset {
 					$db->delete( Db::t( 'waitlist' ), array( 'session_id' => $sid, 'person_id' => $person_id ) );
 				} else {
 					$db->delete( Db::t( 'enrollments' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
-					do_action( 'asem_registration_deleted', $activity_id, $person_id );
+					do_action( 'asem_registration_deleted', $activity_id, $person_id, $mode );
 				}
 				Audit::log( 'registration.deleted', 'activity', $activity_id, array( 'person' => $person_id, 'session' => $sid, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'kept_cents' => $sum['kept_cents'], 'debt_cents' => $sum['debt_cents'], 'credit_cents' => $sum['credit_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'] ) );
 			}

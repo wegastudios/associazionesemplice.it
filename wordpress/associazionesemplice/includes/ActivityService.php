@@ -1980,9 +1980,9 @@ class ActivityService {
 		foreach ( $rows as $r ) {
 			$out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['ym'] ] = (int) $r['s'];
 		}
-		if ( Plugin::schema_ready() ) { // mesi pagati nella moneta interna: risultano pagati per il loro valore in euro (nessun incasso in prima nota)
+		if ( Plugin::schema_ready() ) { // mesi pagati nella moneta interna: risultano pagati per il loro valore in euro (nessun incasso in prima nota; mai sommati a euro dello stesso mese)
 			foreach ( $this->db()->get_results( 'SELECT activity_id, person_id, month, cents FROM ' . Db::t( 'course_credit_payments' ) . " WHERE status = 'paid' AND activity_id IN ($ids)", ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- id interi
-				$out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['month'] ] = (int) ( $out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['month'] ] ?? 0 ) + (int) $r['cents'];
+				$out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['month'] ] = max( (int) ( $out[ (int) $r['activity_id'] ][ (int) $r['person_id'] ][ $r['month'] ] ?? 0 ), (int) $r['cents'] ); // il mese pagato in moneta e poi anche in euro (pagamento online arrivato dopo) risulta pagato una volta: gli euro in più sono nel pagamento «da controllare»
 			}
 		}
 		return $out;

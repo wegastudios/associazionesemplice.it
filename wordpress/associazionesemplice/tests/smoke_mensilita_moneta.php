@@ -30,7 +30,7 @@ $cm_man  = function ( array $extra = array() ) use ( &$cm_n, $cm_peo, $cm_lab ):
 	return $id;
 };
 $cm_ins = (int) $cm_peo->create( array( 'type' => 'volunteer', 'first_name' => 'Istruttore', 'last_name' => 'Moneta', 'email' => 'istruttore.moneta@example.com' ) );
-$cm_c   = (int) $cm_acts->create( array( 'name' => 'Corso in moneta', 'social_year' => $cm_lab, 'kind' => 'course', 'billing' => 'monthly', 'first_month' => 'full', 'fee_cents' => 4000, 'instructor_person_id' => $cm_ins, 'fund_mode' => 'percent', 'fund_value' => 5000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ) ) ) );
+$cm_c   = (int) $cm_acts->create( array( 'name' => 'Corso in moneta', 'social_year' => $cm_lab, 'kind' => 'course', 'billing' => 'monthly', 'first_month' => 'full', 'fee_cents' => 4000, 'starts_on' => '2031-05-01', 'instructor_person_id' => $cm_ins, 'fund_mode' => 'percent', 'fund_value' => 5000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ) ) ) );
 Credits::set_activity_price( $cm_c, 40 );
 $cm_left = function ( int $pid, string $m ) use ( $cm_acts, $cm_c ): int {
 	return (int) $cm_acts->enrollment_left( $cm_c, $pid, $m );
@@ -95,10 +95,47 @@ asem_ok( 40 === CourseCoins::pay( $cm_c, $cm_kid, '2031-05', $cm_par ) && 10 ===
 $cm_html = (string) apply_filters( 'asem_pay_section_extra', '', $cm_peo->get( $cm_o ) );
 asem_ok( false !== strpos( $cm_html, 'Paga 40 ' ) && false !== strpos( $cm_html, 'Corso in moneta' ), 'moneta: nell\'area soci il mese si paga con un pulsante' );
 
-// ---------- Iscrizione cancellata: torna la moneta, la quota esce dal fondo ----------
-$cm_fb = (int) Plugin::funds()->get( $cm_fid )['balance'];
-\AssociazioneSemplice\CourseCoins::registration_deleted( $cm_c, $cm_kid );
-asem_ok( 50 === Credits::balance( $cm_par ) && 2000 === $cm_fb - (int) Plugin::funds()->get( $cm_fid )['balance'] && 4000 === $cm_left( $cm_kid, '2031-05' ), 'moneta: iscrizione cancellata, i 40 tornano al genitore e la quota esce dal fondo' );
+// ---------- Iscrizione cancellata: come in euro, il mese già cominciato resta pagato, torna la moneta dei mesi non cominciati ----------
+Credits::adjust( $cm_par, 40, 'prova' );
+CourseCoins::pay( $cm_c, $cm_kid, '2031-06', $cm_par );
+$cm_fb   = (int) Plugin::funds()->get( $cm_fid )['balance'];
+$cm_line = implode( ' ', \AssociazioneSemplice\ActivityReset::other_payments( $cm_c, $cm_kid, 0, '' ) );
+asem_ok( false !== strpos( $cm_line, '2 mesi pagati' ) && false !== strpos( $cm_line, 'tornano ' . \AssociazioneSemplice\CoinName::n( 40 ) ), 'moneta: la pagina di cancellazione dell\'iscrizione dice cosa torna (' . $cm_line . ')' );
+\AssociazioneSemplice\CourseCoins::registration_deleted( $cm_c, $cm_kid, \AssociazioneSemplice\ActivityReset::REFUND );
+asem_ok( 50 === Credits::balance( $cm_par ) && 2000 === $cm_fb - (int) Plugin::funds()->get( $cm_fid )['balance'] && 0 === $cm_left( $cm_kid, '2031-05' ) && 4000 === $cm_left( $cm_kid, '2031-06' ), 'moneta: iscrizione cancellata a metà maggio: maggio resta pagato, tornano i 40 di giugno e la sua quota esce dal fondo' );
+
+// ---------- Figlio appena maggiorenne: il genitore non paga più per lui ----------
+$cm_big = $cm_man( array( 'birth_date' => '2015-01-01', 'email' => '' ) );
+\AssociazioneSemplice\Guardians::link( $cm_big, $cm_par );
+$cm_acts->enroll( $cm_c, $cm_big, '2031-05' );
+$wpdb->update( Db::t( 'people' ), array( 'birth_date' => '2013-05-13' ), array( 'id' => $cm_big ) ); // compie 18 anni oggi (data finta 13/05/2031)
+\AssociazioneSemplice\RequestMemo::forget();
+wp_cache_flush();
+$cm_b0 = Credits::balance( $cm_par );
+$cm_ad = (string) asem_throws( function () use ( $cm_c, $cm_big, $cm_par ) { CourseCoins::pay( $cm_c, $cm_big, '2031-06', $cm_par ); } );
+$cm_pl = array_filter( CourseCoins::payable( $cm_peo->get( $cm_par ) ), function ( $x ) use ( $cm_big ) { return (int) $x['person']['id'] === $cm_big; } );
+asem_ok( '' !== $cm_ad && $cm_b0 === Credits::balance( $cm_par ) && ! $cm_pl, 'moneta: il figlio che compie 18 anni oggi non si paga più dal saldo del genitore, né compare tra i suoi mesi da pagare' );
+
+// ---------- Corso eliminato: con «Restituisci» torna anche la parte non goduta del mese in corso, con «Annulla» solo i mesi non cominciati ----------
+$cm_del = function ( string $mode ) use ( $cm_acts, $cm_lab, $cm_man ): array {
+	$aid = (int) $cm_acts->create( array( 'name' => 'Corso da eliminare ' . $mode, 'social_year' => $cm_lab, 'kind' => 'course', 'billing' => 'monthly', 'first_month' => 'full', 'fee_cents' => 4000, 'starts_on' => '2031-05-01', 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ) ) ) );
+	Credits::set_activity_price( $aid, 40 );
+	$pid = $cm_man();
+	$cm_acts->enroll( $aid, $pid, '2031-05' );
+	Credits::adjust( $pid, 80, 'prova' );
+	CourseCoins::pay( $aid, $pid, '2031-05', $pid );
+	CourseCoins::pay( $aid, $pid, '2031-06', $pid );
+	$free  = \AssociazioneSemplice\ActivityReset::activity_is_free( $aid );
+	$line  = implode( ' ', \AssociazioneSemplice\ActivityReset::other_payments( $aid, 0, 0, $mode ) );
+	\AssociazioneSemplice\ActivityReset::delete( $aid, $mode );
+	return array( 'free' => $free, 'line' => $line, 'back' => Credits::balance( $pid ), 'rows' => (int) Db::db()->get_var( Db::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_credit_payments' ) . ' WHERE activity_id = %d', $aid ) ) );
+};
+$cm_rf = $cm_del( \AssociazioneSemplice\ActivityReset::REFUND );
+$cm_vd = $cm_del( \AssociazioneSemplice\ActivityReset::VOID );
+asem_ok( ! $cm_rf['free'] && 0 === $cm_rf['rows'] && 0 === $cm_vd['rows'], 'moneta: un corso con mesi pagati in moneta chiede la scelta sulle somme e, eliminato, non lascia righe appese' );
+asem_ok( 40 === $cm_vd['back'] && false !== strpos( $cm_vd['line'], '«Annulla» tornano ' . \AssociazioneSemplice\CoinName::n( 40 ) ), 'moneta: corso eliminato con «Annulla»: tornano solo i 40 di giugno, maggio resta pagato (' . $cm_vd['line'] . ')' );
+asem_ok( $cm_rf['back'] > 40 && $cm_rf['back'] < 80 && false !== strpos( $cm_rf['line'], '«Restituisci» tornano ' . \AssociazioneSemplice\CoinName::n( $cm_rf['back'] ) ), 'moneta: corso eliminato con «Restituisci»: giugno intero e le lezioni non tenute di maggio (' . $cm_rf['back'] . ', ' . $cm_rf['line'] . ')' );
+
 
 // ---------- Corso a lezioni: lezione annullata in un mese pagato in moneta, torna la moneta di quella lezione ----------
 $cm_l = (int) $cm_acts->create( array( 'name' => 'Lezioni in moneta', 'social_year' => $cm_lab, 'kind' => 'course', 'billing' => 'lessons', 'fee_cents' => 1000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ) ) ) );
@@ -151,7 +188,7 @@ $cm_ok_text = function ( ?array $m ): bool { // il nome scritto bene: niente ent
 	return $m && false === strpos( $m['subject'], '&#' ) && false === strpos( $m['subject'], '&quot;' ) && false === strpos( $m['raw'], '&amp;#039;' ) && false === strpos( $m['raw'], '&amp;amp;' ) && false === strpos( $m['raw'], '&amp;quot;' );
 };
 $cm_oe = (string) $cm_peo->get( $cm_o )['email'];
-CourseCoins::pay( $cm_c, $cm_o, '2031-05', $cm_o );
+CourseCoins::pay( $cm_c, $cm_o, '2031-06', $cm_o ); // giugno non è cominciato: cancellando l'iscrizione torna tutto
 $cm_m1 = $cm_mail( $cm_oe, 'Mese pagato' );
 asem_ok( $cm_ok_text( $cm_m1 ) && false !== strpos( $cm_m1['subject'], "Mese pagato in Crediti d'oro \"Lucà\"" ) && false !== strpos( $cm_m1['text'], "è pagato con 40 Crediti d'oro \"Lucà\"" ), 'moneta: email del mese pagato con il nome con apostrofo e accento' );
 CourseCoins::registration_deleted( $cm_c, $cm_o );
@@ -162,9 +199,32 @@ $cm_m3 = $cm_mail( (string) $cm_peo->get( $cm_q )['email'], 'Lezione annullata' 
 asem_ok( $cm_ok_text( $cm_m3 ) && false !== strpos( $cm_m3['text'], "27/05/2031" ) && false !== strpos( $cm_m3['text'], "ti tornano 10 Crediti d'oro \"Lucà\"" ) && false === strpos( $cm_m3['text'], 'a tuo favore' ), 'moneta: email della lezione annullata con la moneta che torna, senza importo in euro' );
 $cm_par_mail = (string) $cm_peo->get( $cm_par )['email'];
 Credits::adjust( $cm_par, 40, 'prova' );
-CourseCoins::pay( $cm_c, $cm_kid, '2031-05', $cm_par );
+CourseCoins::pay( $cm_c, $cm_kid, '2031-06', $cm_par );
 $cm_m4 = $cm_mail( $cm_par_mail, 'Mese pagato' );
 asem_ok( $cm_ok_text( $cm_m4 ) && false !== strpos( $cm_m4['text'], 'per Moneta Persona' ), 'moneta: il genitore riceve l\'email del mese pagato per il figlio' );
+$cm_ps = Plugin::payments();
+if ( $cm_ps instanceof \AssociazioneSemplice\PaymentService ) { // pagamento online in euro arrivato per un mese già pagato in moneta
+	$wpdb->insert(
+		Db::t( 'payments' ),
+		array(
+			'public_id' => 'prova-moneta-online', 'provider' => 'stripe', 'status' => 'pending', 'amount_cents' => 4000, 'payer_person_id' => $cm_m, 'payer_user_id' => 0, 'provider_ref' => 'cs_prova_moneta_online',
+			'items' => wp_json_encode( array( array( 'type' => \AssociazioneSemplice\PaymentItems::COURSE_MONTH, 'activity_id' => $cm_c, 'person_id' => $cm_m, 'month' => '2031-05', 'amount_cents' => 4000, 'label' => 'Corso in moneta — 2031-05', 'key' => 'm:' . $cm_c . ':' . $cm_m . ':2031-05' ) ) ),
+			'created_at' => Db::now(),
+		)
+	);
+	$cm_fin = new \ReflectionMethod( \AssociazioneSemplice\PaymentService::class, 'finalize' );
+	$cm_fin->setAccessible( true );
+	$cm_fin->invoke( $cm_ps, $cm_ps->get_by_public( 'prova-moneta-online' ), 4000, 'pi_prova_moneta' );
+	$cm_on  = $cm_ps->get_by_public( 'prova-moneta-online' );
+	$cm_pm  = new \ReflectionMethod( \AssociazioneSemplice\ActivityService::class, 'paid_map' );
+	$cm_pm->setAccessible( true );
+	\AssociazioneSemplice\RequestMemo::forget();
+	$cm_paid = (int) ( $cm_pm->invoke( $cm_acts, array( $cm_c ) )[ $cm_c ][ $cm_m ]['2031-05'] ?? 0 );
+	asem_ok( 'paid' === $cm_on['status'] && 1 === (int) $cm_on['review'] && false !== strpos( (string) $cm_on['error'], 'Già pagata' ), 'moneta: pagamento online arrivato dopo il mese pagato in moneta: finisce «da controllare» per la segreteria' );
+	asem_ok( 4000 === $cm_paid && 0 === $cm_left( $cm_m, '2031-05' ), 'moneta: il mese pagato in moneta e poi online risulta pagato una volta sola (' . $cm_paid . ')' );
+	$cm_m5 = $cm_mail( (string) $cm_peo->get( $cm_m )['email'], 'Mese già pagato' );
+	asem_ok( $cm_ok_text( $cm_m5 ) && false !== strpos( $cm_m5['text'], 'restituire gli euro' ), 'moneta: chi ha pagato online riceve l\'avviso che il mese era già pagato in moneta' );
+}
 remove_filter( 'pre_wp_mail', $cm_trap, 10 );
 update_option( Credits::PACKS_OPTION, $cm_packs, false );
 Settings::update( $cm_keep );
