@@ -126,7 +126,35 @@ final class CourseCredits {
 	 * Allinea le righe a una lezione dopo che il calendario è cambiato: annullata (e senza presenze) = riga per ogni iscritto; rimessa, spostata o tenuta =
 	 * nessuna riga. Solo per i mesi già fissati: prima di allora la lezione esce o entra da sola nel conteggio.
 	 */
+	/** Un dovuto è appena nato: le lezioni del mese annullate prima si applicano anche a lui (una volta sola, senza rientrare da sync()). */
+	public static function catch_up( array $activity, string $month ): void {
+		if ( self::$syncing ) {
+			return;
+		}
+		$fixed = CourseMonths::fixed( (int) $activity['id'], $month ) ?? array();
+		foreach ( self::db()->get_col( self::db()->prepare( 'SELECT lesson_date FROM ' . Db::t( 'lesson_exceptions' ) . ' WHERE activity_id = %d AND action = %s AND lesson_date BETWEEN %s AND %s', (int) $activity['id'], LessonExceptions::CANCEL, $month . '-01', $month . '-31' ) ) ?: array() as $d ) {
+			if ( in_array( (string) $d, $fixed, true ) ) {
+				self::sync( (int) $activity['id'], (string) $d );
+			}
+		}
+	}
+
+	/** @var bool sync() in corso: i dovuti che nascono dentro non la richiamano */
+	private static $syncing = false;
+
 	public static function sync( int $activity_id, string $date ): void {
+		if ( self::$syncing ) {
+			return;
+		}
+		self::$syncing = true;
+		try {
+			self::sync_now( $activity_id, $date );
+		} finally {
+			self::$syncing = false;
+		}
+	}
+
+	private static function sync_now( int $activity_id, string $date ): void {
 		$a     = Plugin::activities()->get( $activity_id );
 		$month = substr( $date, 0, 7 );
 		if ( ! $a || ! CourseMonths::applies( $a ) ) {

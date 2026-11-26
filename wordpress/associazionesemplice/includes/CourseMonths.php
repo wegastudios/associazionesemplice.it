@@ -180,6 +180,9 @@ final class CourseMonths {
 			if ( null === $row && 1 !== $mine ) {
 				throw new \InvalidArgumentException( self::busy_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso, mostrato solo dopo esc_html
 			}
+			if ( 1 === $mine ) { // dovuto nuovo in un mese con lezioni già annullate (iscritto dopo): anche per lui la lezione esce dal dovuto
+				CourseCredits::catch_up( $activity, $month );
+			}
 			return null === $row ? $price * $n : (int) $row;
 		}
 		return $price * $n;
