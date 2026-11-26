@@ -855,8 +855,12 @@ final class ActivitiesPage {
 				echo '<button class="button button-small" name="mode" value="nomakeup">Togli il recupero</button>';
 			} else {
 				echo '<input type="date" name="makeup_date" aria-label="Data del recupero"> <button class="button button-small" name="mode" value="makeup">Segna il recupero</button>';
-				if ( $avail > 0 ) {
-					echo ' <button class="button button-small" name="mode" value="refunded" data-confirm="Segnare come restituito? Registra a parte l\'uscita di denaro.">Restituito</button>';
+				if ( $avail > 0 && \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::COLLECT ) ) {
+					$accts = array();
+					foreach ( Plugin::ledger()->accounts() as $ac ) {
+						$accts[ (int) $ac['id'] ] = $ac['name'];
+					}
+					echo wp_kses( ' · Restituisci ' . esc_html( Money::format( $avail ) ) . ' da <select name="account_id">' . Ui::options( $accts ) . '</select> il <input type="date" name="refund_date" value="' . esc_attr( \AssociazioneSemplice\Db::today() ) . '"> <button class="button button-small" name="mode" value="refunded" data-confirm="Registrare la restituzione in prima nota?">Restituisci</button>', Html::allowed() );
 				}
 			}
 			Ui::form_close();

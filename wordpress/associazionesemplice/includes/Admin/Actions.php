@@ -1191,8 +1191,11 @@ final class Actions {
 			\AssociazioneSemplice\CourseCredits::set_makeup( $id, $aid, 'makeup' === $mode ? (string) ( $p['makeup_date'] ?? '' ) : '' );
 			return array( $back, 'makeup' === $mode ? 'Recupero segnato: la lezione resta dovuta.' : 'Recupero tolto: torna l\'importo a favore.' );
 		}
-		$x = \AssociazioneSemplice\CourseCredits::close( $id, $aid, 'refunded' );
-		return array( $back, 'Segnati come restituiti ' . Money::format( $x ) . '. Registra a parte l\'uscita di denaro.' );
+		if ( ! \AssociazioneSemplice\Employees::can( \AssociazioneSemplice\EmployeeRules::COLLECT ) ) { // restituire soldi: serve anche il permesso Incassi
+			throw new \InvalidArgumentException( \AssociazioneSemplice\EmployeeRules::denied_message( \AssociazioneSemplice\EmployeeRules::COLLECT ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$x = \AssociazioneSemplice\CourseCredits::refund( $id, $aid, (int) ( $p['account_id'] ?? 0 ), '', (string) ( $p['refund_date'] ?? '' ) );
+		return array( $back, 'Restituzione di ' . Money::format( $x ) . ' registrata in prima nota.' );
 	}
 
 	private static function course_credits_expire( array $p ): array {

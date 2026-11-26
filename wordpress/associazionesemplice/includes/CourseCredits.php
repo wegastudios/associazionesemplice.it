@@ -22,6 +22,15 @@ final class CourseCredits {
 		add_action( 'asem_person_anonymized', array( __CLASS__, 'anonymized' ), 5, 1 );
 	}
 
+	/** Per un ospite (non socio) l'importo a favore non scade, finché i consulenti non dicono altrimenti. */
+	const NEVER = '9999-12-31';
+
+	/** Fino a quando vale l'importo a favore di una riga (con persona): per i soci la fine del primo mese dell'anno fiscale successivo, per gli ospiti mai. */
+	public static function expires_for( array $row ): string {
+		$p = Plugin::people()->get( (int) $row['person_id'] );
+		return $p && ! MemberType::is_member( (string) $p['type'] ) ? self::NEVER : self::expires_on( (string) $row['lesson_date'] );
+	}
+
 	/** Fino a quando vale l'importo a favore di una lezione: fine del primo mese dell'anno fiscale successivo. */
 	public static function expires_on( string $lesson_date ): string {
 		$next = FiscalYears::range( FiscalYears::year_of( $lesson_date ) + 1 );
@@ -75,6 +84,8 @@ final class CourseCredits {
 		}
 		$months = array_keys( $due );
 		sort( $months );
+		$who  = Plugin::people()->get( $person_id );
+		$guest = $who && ! MemberType::is_member( (string) $who['type'] );
 		$left = array(); // mese => quanto del versato in più è ancora disponibile
 		$rows = array_reverse( $rows ); // il versato in più nasce dalle lezioni annullate dopo il pagamento: si attribuisce dalle più recenti
 		foreach ( $rows as &$r ) {
@@ -84,10 +95,11 @@ final class CourseCredits {
 			$r['avail'] = min( $own, $left[ $m ] );
 			$left[ $m ] -= $r['avail'];
 			$r['moved'] = array();
-			if ( $r['avail'] <= 0 || Db::today() > self::expires_on( (string) $r['lesson_date'] ) ) {
+			$exp = $guest ? self::NEVER : self::expires_on( (string) $r['lesson_date'] );
+			if ( $r['avail'] <= 0 || Db::today() > $exp ) {
 				continue;
 			}
-			$limit = substr( self::expires_on( (string) $r['lesson_date'] ), 0, 7 );
+			$limit = substr( $exp, 0, 7 );
 			foreach ( $months as $m2 ) {
 				$miss = (int) $due[ $m2 ] - (int) ( $paid[ $m2 ] ?? 0 );
 				if ( $m2 <= $m || $m2 > $limit || $miss <= 0 || $r['avail'] <= 0 ) {
@@ -201,7 +213,7 @@ final class CourseCredits {
 				}
 				$p = Plugin::people()->get( $pid );
 				if ( $p ) {
-					Reminders::notify( $p, 'course_credit', $activity_id . ':' . $date, 'Lezione annullata: ' . $a['name'], 'la lezione di «' . $a['name'] . '» del ' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . ' è annullata. ' . Money::format( $price ) . ' restano a tuo favore e si scalano dal prossimo rinnovo del corso, oppure puoi concordare con la segreteria il recupero della lezione o la restituzione. L\'importo vale fino al ' . ( new \DateTimeImmutable( self::expires_on( $date ) ) )->format( 'd/m/Y' ) . '.' );
+					Reminders::notify( $p, 'course_credit', $activity_id . ':' . $date, 'Lezione annullata: ' . $a['name'], 'la lezione di «' . $a['name'] . '» del ' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . ' è annullata. ' . Money::format( $price ) . ' restano a tuo favore e si scalano dal prossimo rinnovo del corso, oppure puoi concordare con la segreteria il recupero della lezione o la restituzione.' . ( MemberType::is_member( (string) $p['type'] ) ? ' L\'importo vale fino al ' . ( new \DateTimeImmutable( self::expires_on( $date ) ) )->format( 'd/m/Y' ) . '.' : '' ) );
 				}
 			}
 		}
@@ -251,14 +263,46 @@ final class CourseCredits {
 	 * @return int centesimi chiusi
 	 * @throws \InvalidArgumentException
 	 */
+	/**
+	 * Restituisce in denaro ciò che è a favore: l'uscita entra in prima nota («Restituzione quote») sul conto e alla data scelti, nella stessa operazione.
+	 *
+	 * @return int centesimi restituiti
+	 * @throws \InvalidArgumentException
+	 */
+	public static function refund( int $id, int $activity_id, int $account_id, string $method, string $date ): int {
+		$x = 0;
+		Plugin::ledger()->in_batch(
+			function () use ( $id, $activity_id, $account_id, $method, $date, &$x ) {
+				$r = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'course_credits' ) . ' WHERE id = %d AND activity_id = %d FOR UPDATE', $id, $activity_id ), ARRAY_A );
+				if ( ! $r ) {
+					throw new \InvalidArgumentException( 'Lezione annullata non trovata.' );
+				}
+				$a = Plugin::activities()->get( $activity_id );
+				$p = Plugin::people()->get( (int) $r['person_id'] );
+				$x = 'makeup' === $r['status'] ? 0 : self::available( $r );
+				if ( $x <= 0 ) {
+					throw new \InvalidArgumentException( 'Non resta niente a favore per questa lezione.' );
+				}
+				Plugin::ledger()->record_expense(
+					array(
+						'date' => $date, 'account_id' => $account_id, 'method' => $method, 'category_id' => ActivityReset::refund_category_id(), 'amount_cents' => $x, 'activity_id' => $activity_id, 'person_id' => (int) $r['person_id'],
+						'description' => mb_substr( 'Restituzione: lezione annullata del ' . ( new \DateTimeImmutable( (string) $r['lesson_date'] ) )->format( 'd/m/Y' ) . ' di ' . ( $a ? $a['name'] : 'corso' ) . ( $p ? ' (' . trim( $p['first_name'] . ' ' . $p['last_name'] ) . ')' : '' ), 0, 255 ),
+					)
+				);
+				self::close( $id, $activity_id, 'refunded', 'restituito in denaro' );
+			}
+		);
+		return $x;
+	}
+
 	public static function close( int $id, int $activity_id, string $how, string $note = '' ): int {
 		$r = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'course_credits' ) . ' WHERE id = %d AND activity_id = %d', $id, $activity_id ), ARRAY_A );
 		if ( ! $r || ! in_array( $how, array( 'refunded', 'expired' ), true ) ) {
 			throw new \InvalidArgumentException( 'Lezione annullata non trovata.' );
 		}
 		$x = 'makeup' === $r['status'] ? 0 : self::available( $r ); // solo ciò che è davvero a favore: lo sconto di chi non aveva pagato resta
-		if ( 'expired' === $how && Db::today() <= self::expires_on( (string) $r['lesson_date'] ) ) {
-			throw new \InvalidArgumentException( 'L\'importo vale ancora fino al ' . ( new \DateTimeImmutable( self::expires_on( (string) $r['lesson_date'] ) ) )->format( 'd/m/Y' ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		if ( 'expired' === $how && Db::today() <= self::expires_for( $r ) && 'dati della persona cancellati' !== $note ) {
+			throw new \InvalidArgumentException( self::NEVER === self::expires_for( $r ) ? 'Per un ospite l\'importo a favore non scade.' : 'L\'importo vale ancora fino al ' . ( new \DateTimeImmutable( self::expires_for( $r ) ) )->format( 'd/m/Y' ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( $x <= 0 ) {
 			throw new \InvalidArgumentException( 'Non resta niente a favore per questa lezione.' );
@@ -292,22 +336,59 @@ final class CourseCredits {
 	/** Importi a favore scaduti e non ancora chiusi, per la Bacheca. @return array[] riga + avail */
 	public static function expired_open(): array {
 		$out = array();
-		foreach ( self::db()->get_results( 'SELECT c.*, a.name AS activity_name, p.first_name, p.last_name FROM ' . Db::t( 'course_credits' ) . ' c JOIN ' . Db::t( 'activities' ) . ' a ON a.id = c.activity_id JOIN ' . Db::t( 'people' ) . " p ON p.id = c.person_id WHERE c.status = 'open' ORDER BY c.lesson_date LIMIT 500", ARRAY_A ) ?: array() as $r ) {
-			if ( Db::today() > self::expires_on( (string) $r['lesson_date'] ) ) {
-				$left = self::available( $r );
-				if ( $left > 0 ) {
-					$r['left'] = $left;
-					$out[]     = $r;
-				}
+		$y   = FiscalYears::year_of( Db::today() );
+		$cut = FiscalYears::range( Db::today() > self::expires_on( FiscalYears::range( $y - 1 )[0] ) ? $y - 1 : $y - 2 )[1]; // le lezioni fino a questa data hanno l'importo già scaduto
+		foreach ( self::page( 'c.lesson_date <= %s', array( $cut ) ) as $r ) {
+			$left = self::available( $r );
+			if ( $left > 0 ) {
+				$r['left'] = $left;
+				$out[]     = $r;
 			}
 		}
+		return $out;
+	}
+
+	/**
+	 * Righe aperte dei soci (gli ospiti non scadono) con una condizione sulle date, dalla più vecchia, a pagine: nessuna resta fuori.
+	 *
+	 * @param array $args valori per i segnaposto
+	 * @return array[]
+	 */
+	private static function page( string $where, array $args ): array {
+		$db    = self::db();
+		$out   = array();
+		$after = 0;
+		$types = MemberType::member_types();
+		$in    = implode( ',', array_fill( 0, count( $types ), '%s' ) );
+		do {
+			$rows = $db->get_results( $db->prepare( 'SELECT c.*, a.name AS activity_name, p.first_name, p.last_name FROM ' . Db::t( 'course_credits' ) . ' c JOIN ' . Db::t( 'activities' ) . ' a ON a.id = c.activity_id JOIN ' . Db::t( 'people' ) . " p ON p.id = c.person_id AND p.type IN ($in) WHERE c.status = 'open' AND c.refunded_cents = 0 AND c.expired_cents = 0 AND c.id > %d AND $where ORDER BY c.id LIMIT 500", array_merge( $types, array( $after ), $args ) ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- tabelle interne, segnaposto generati
+			foreach ( $rows as $r ) {
+				$out[] = $r;
+				$after = (int) $r['id'];
+			}
+		} while ( 500 === count( $rows ) );
+		usort( $out, function ( $x, $y ) {
+			return strcmp( (string) $x['lesson_date'], (string) $y['lesson_date'] );
+		} );
 		return $out;
 	}
 
 	/** Avviso al socio 30 giorni prima della scadenza (uno per lezione). @return int avvisi (o da mandare) */
 	public static function expiry_notices( string $today, bool $send ): int {
 		$n = 0;
-		foreach ( self::db()->get_results( "SELECT * FROM " . Db::t( 'course_credits' ) . " WHERE status = 'open' AND refunded_cents = 0 AND expired_cents = 0 LIMIT 500", ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna
+		$y    = FiscalYears::year_of( $today );
+		$soon = array();
+		foreach ( array( $y - 2, $y - 1, $y ) as $k ) { // gli anni le cui lezioni scadono nei prossimi 30 giorni
+			$e = self::expires_on( FiscalYears::range( $k )[0] );
+			if ( $e >= $today && $e <= gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) ) ) {
+				$soon[] = FiscalYears::range( $k );
+			}
+		}
+		$rows = array();
+		foreach ( $soon as $rg ) {
+			$rows = array_merge( $rows, self::page( 'c.lesson_date BETWEEN %s AND %s', array( (string) $rg[0], (string) $rg[1] ) ) );
+		}
+		foreach ( $rows as $r ) {
 			$exp = self::expires_on( (string) $r['lesson_date'] );
 			if ( $today > $exp || $today < gmdate( 'Y-m-d', strtotime( $exp . ' -30 days' ) ) || self::available( $r ) <= 0 ) {
 				continue;
@@ -336,9 +417,10 @@ final class CourseCredits {
 		if ( $cents <= 0 || empty( $r['fund_id'] ) ) {
 			return;
 		}
-		$got = Plugin::funds()->take_back( (int) $r['fund_id'], $cents, Db::today(), $note );
-		if ( $got > 0 ) {
-			self::db()->update( Db::t( 'course_credits' ), array( 'fund_released' => (int) $r['fund_released'] + $got, 'fund_short' => $cents - $got, 'fund_entries' => trim( (string) $r['fund_entries'] . ',' . (int) self::db()->insert_id, ',' ) ), array( 'id' => (int) $r['id'] ) );
+		$entry = 0;
+		$got   = Plugin::funds()->take_back( (int) $r['fund_id'], $cents, Db::today(), $note, $entry );
+		if ( $got > 0 && $entry > 0 ) {
+			self::db()->update( Db::t( 'course_credits' ), array( 'fund_released' => (int) $r['fund_released'] + $got, 'fund_short' => $cents - $got, 'fund_entries' => trim( (string) $r['fund_entries'] . ',' . $entry, ',' ) ), array( 'id' => (int) $r['id'] ) );
 		} else {
 			self::db()->update( Db::t( 'course_credits' ), array( 'fund_short' => $cents ), array( 'id' => (int) $r['id'] ) ); // quota già liquidata: la differenza resta scritta, la decide la segreteria
 		}
@@ -350,11 +432,12 @@ final class CourseCredits {
 			return;
 		}
 		$fund = Plugin::funds()->instructor_fund_id( (int) $r['activity_id'] ) ?: (int) $r['fund_id'];
-		$got  = Plugin::funds()->share_to_fund( $fund, $cents, Db::today(), null, $note );
-		if ( $got > 0 ) {
+		$entry = 0;
+		$got   = Plugin::funds()->share_to_fund( $fund, $cents, Db::today(), null, $note, $entry );
+		if ( $got > 0 && $entry > 0 ) {
 			$row = self::db()->get_row( self::db()->prepare( 'SELECT fund_released, fund_entries FROM ' . Db::t( 'course_credits' ) . ' WHERE id = %d', (int) $r['id'] ), ARRAY_A );
 			if ( $row ) {
-				self::db()->update( Db::t( 'course_credits' ), array( 'fund_released' => max( 0, (int) $row['fund_released'] - $got ), 'fund_entries' => trim( (string) $row['fund_entries'] . ',' . (int) self::db()->insert_id, ',' ) ), array( 'id' => (int) $r['id'] ) );
+				self::db()->update( Db::t( 'course_credits' ), array( 'fund_released' => max( 0, (int) $row['fund_released'] - $got ), 'fund_entries' => trim( (string) $row['fund_entries'] . ',' . $entry, ',' ) ), array( 'id' => (int) $r['id'] ) );
 			}
 		}
 	}
@@ -362,6 +445,15 @@ final class CourseCredits {
 	/** Iscrizione cancellata: via le righe e le loro scritture nel fondo (le quote degli incassi si tolgono già con gli incassi). */
 	public static function registration_deleted( $activity_id, $person_id ): void {
 		$rows = self::db()->get_results( self::db()->prepare( 'SELECT id, fund_entries FROM ' . Db::t( 'course_credits' ) . ' WHERE activity_id = %d AND person_id = %d', (int) $activity_id, (int) $person_id ), ARRAY_A ) ?: array();
+		$ids  = array();
+		foreach ( $rows as $r ) {
+			$ids = array_merge( $ids, array_filter( array_map( 'intval', explode( ',', (string) $r['fund_entries'] ) ) ) );
+		}
+		if ( $ids ) { // una scrittura nel fondo in un anno fiscale chiuso non si cancella: allora non si cancella nemmeno l'iscrizione
+			foreach ( self::db()->get_col( 'SELECT entry_date FROM ' . Db::t( 'fund_entries' ) . ' WHERE id IN (' . implode( ',', $ids ) . ')' ) ?: array() as $d ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id interi
+				YearLock::assert_date_open( (string) $d );
+			}
+		}
 		foreach ( $rows as $r ) {
 			foreach ( array_filter( array_map( 'intval', explode( ',', (string) $r['fund_entries'] ) ) ) as $e ) {
 				self::db()->delete( Db::t( 'fund_entries' ), array( 'id' => $e ) );

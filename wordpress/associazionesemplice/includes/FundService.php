@@ -127,18 +127,21 @@ class FundService {
 	 *
 	 * @return int centesimi accantonati (0 se il fondo non c'è, è estinto o l'importo è zero)
 	 */
-	public function share_to_fund( int $fund_id, int $cents, string $date, ?int $tx_id, string $note ): int {
-		$f = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
+	public function share_to_fund( int $fund_id, int $cents, string $date, ?int $tx_id, string $note, ?int &$entry_id = null ): int {
+		$entry_id = 0;
+		$f        = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
 		if ( ! $f || null !== $f['closed_at'] ) {
 			return 0;
 		}
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'share', 'cents' => $cents, 'tx_id' => $tx_id, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
-		return $cents;
+		$ok       = $this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'share', 'cents' => $cents, 'tx_id' => $tx_id, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
+		$entry_id = $ok ? (int) $this->db()->insert_id : 0;
+		return $ok ? $cents : 0;
 	}
 
 	/** Restituisce alla disponibilità una quota accantonata senza incasso (ad esempio crediti riaccreditati); mai più del saldo del fondo. @return int centesimi liberati */
-	public function take_back( int $fund_id, int $cents, string $date, string $note ): int {
-		$f = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
+	public function take_back( int $fund_id, int $cents, string $date, string $note, ?int &$entry_id = null ): int {
+		$entry_id = 0;
+		$f        = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
 		if ( ! $f || null !== $f['closed_at'] ) {
 			return 0;
 		}
@@ -146,8 +149,9 @@ class FundService {
 		if ( $cents <= 0 ) {
 			return 0;
 		}
-		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
-		return $cents;
+		$ok       = $this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
+		$entry_id = $ok ? (int) $this->db()->insert_id : 0;
+		return $ok ? $cents : 0;
 	}
 
 	/** Crea un fondo a mano (ad esempio "Gita sociale"): facoltativamente con una somma già accantonata. */

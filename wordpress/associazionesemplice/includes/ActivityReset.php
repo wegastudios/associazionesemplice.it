@@ -317,6 +317,11 @@ final class ActivityReset {
 	}
 
 	/** Categoria per le restituzioni: si crea la prima volta (è un costo dell'attività). */
+	/** La voce «Restituzione quote» (creata se manca). */
+	public static function refund_category_id(): int {
+		return self::refund_category();
+	}
+
 	private static function refund_category(): int {
 		$db  = self::db();
 		$tbl = Db::t( 'categories' );

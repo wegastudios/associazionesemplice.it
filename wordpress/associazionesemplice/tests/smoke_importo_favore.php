@@ -84,9 +84,42 @@ asem_ok( 0 === CourseCredits::available( $cf_r2 ) && $cf_fa + 500 === $cf_fund()
 asem_ok( '' !== (string) asem_throws( function () use ( $cf_r2, $cf_c ) { CourseCredits::set_makeup( (int) $cf_r2['id'], $cf_c, '2031-05-28' ); } ), 'importo a favore: il recupero va in un giorno con lezione' );
 CourseCredits::set_makeup( (int) $cf_r2['id'], $cf_c, '' );
 asem_ok( 1000 === CourseCredits::available( $cf_r2 ) && $cf_fa === $cf_fund(), 'importo a favore: recupero saltato, torna l\'importo a favore e la quota si riprende una volta sola' );
-asem_ok( 1000 === CourseCredits::close( (int) $cf_r2['id'], $cf_c, 'refunded' ) && 0 === CourseCredits::available( $cf_r2 ), 'importo a favore: restituito a mano' );
+$cf_bal = function () use ( $cf_cash ): int {
+	return (int) Plugin::ledger()->expected_balance( (int) $cf_cash['id'], '2099-12-31' );
+};
+$cf_b0 = $cf_bal();
+$cf_fy = \AssociazioneSemplice\FiscalYears::year_of( '2031-05-20' );
+\AssociazioneSemplice\FiscalYears::ensure( $cf_fy );
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'year' => $cf_fy ) );
+\AssociazioneSemplice\RequestMemo::forget();
+wp_cache_flush();
+$cf_lock = (string) asem_throws( function () use ( $cf_r2, $cf_c, $cf_cash ) { CourseCredits::refund( (int) $cf_r2['id'], $cf_c, (int) $cf_cash['id'], '', '2031-05-21' ); } );
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'open' ), array( 'year' => $cf_fy ) );
+\AssociazioneSemplice\RequestMemo::forget();
+wp_cache_flush();
+asem_ok( '' !== $cf_lock && 1000 === CourseCredits::available( $cf_r2 ) && $cf_b0 === $cf_bal(), 'importo a favore: in un anno fiscale chiuso non si restituisce e non cambia nulla' );
+asem_ok( 1000 === CourseCredits::refund( (int) $cf_r2['id'], $cf_c, (int) $cf_cash['id'], '', '2031-05-21' ) && 0 === CourseCredits::available( $cf_r2 ) && $cf_b0 - 1000 === $cf_bal(), 'importo a favore: restituito, l\'uscita entra in prima nota e il saldo del conto scende di 10,00' );
+asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE type = 'expense' AND activity_id = %d AND person_id = %d AND amount_cents = 1000 AND tx_date = '2031-05-21'", $cf_c, $cf_p ) ), 'importo a favore: una sola uscita, con il corso, la persona e la data' );
 $cf_q2 = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'course_credits' ) . ' WHERE activity_id = %d AND person_id = %d AND lesson_date = %s', $cf_c, $cf_q, '2031-05-20' ), ARRAY_A );
-asem_ok( '' !== (string) asem_throws( function () use ( $cf_q2, $cf_c ) { CourseCredits::close( (int) $cf_q2['id'], $cf_c, 'refunded' ); } ) && 2000 === $cf_left( $cf_q, '2031-05' ), 'importo a favore: chi non aveva pagato deve meno, ma non ha nulla da restituire' );
+asem_ok( '' !== (string) asem_throws( function () use ( $cf_q2, $cf_c, $cf_cash ) { CourseCredits::refund( (int) $cf_q2['id'], $cf_c, (int) $cf_cash['id'], '', '2031-05-21' ); } ) && 2000 === $cf_left( $cf_q, '2031-05' ) && $cf_b0 - 1000 === $cf_bal(), 'importo a favore: chi non aveva pagato deve meno, ma non ha nulla da restituire' );
+// permessi: un dipendente senza Incassi non restituisce
+$cf_emp = (int) wp_insert_user( array( 'user_login' => 'dipendente.favore', 'user_email' => 'dipendente.favore@example.com', 'user_pass' => wp_generate_password(), 'role' => Plugin::ROLE_EMPLOYEE ) );
+\AssociazioneSemplice\Employees::set_denied( $cf_emp, array( 'collect' ) );
+$cf_cr = new \ReflectionMethod( \AssociazioneSemplice\Admin\Actions::class, 'course_credit' );
+$cf_cr->setAccessible( true );
+wp_set_current_user( $cf_emp );
+$cf_den = (string) asem_throws( function () use ( $cf_cr, $cf_q2, $cf_c, $cf_cash ) { $cf_cr->invoke( null, array( 'activity_id' => $cf_c, 'credit_id' => (int) $cf_q2['id'], 'mode' => 'refunded', 'account_id' => (int) $cf_cash['id'], 'refund_date' => '2031-05-21' ) ); } );
+wp_set_current_user( 1 );
+require_once ABSPATH . 'wp-admin/includes/user.php';
+wp_delete_user( $cf_emp );
+asem_ok( '' !== $cf_den && false === strpos( $cf_den, 'niente a favore' ), 'importo a favore: senza il permesso Incassi la restituzione si rifiuta (' . $cf_den . ')' );
+// ospite: l'importo a favore non scade, non riceve l'avviso e non finisce nell'elenco degli scaduti
+$cf_g = (int) Plugin::people()->create( array( 'type' => 'guest', 'host_person_id' => $cf_p, 'first_name' => 'Ospite', 'last_name' => 'Favore', 'phone' => '333 4440077', 'email' => 'ospite.favore@example.com' ) );
+$cf_acts->enroll( $cf_c, $cf_g, '2031-06', '2031-06-01' );
+$cf_pay( $cf_g, '2031-06', 4000 );
+LessonExceptions::cancel( $cf_c, '2031-06-17' );
+$cf_gr = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'course_credits' ) . ' WHERE activity_id = %d AND person_id = %d', $cf_c, $cf_g ), ARRAY_A );
+asem_ok( $cf_gr && CourseCredits::NEVER === CourseCredits::expires_for( $cf_gr ) && 1000 === CourseCredits::available( $cf_gr ), 'importo a favore: per un ospite non scade' );
 
 // ---------- Scadenza: fine del primo mese dell'anno fiscale dopo; si chiude dalla Bacheca ----------
 $cf_s = $cf_man();
@@ -104,6 +137,7 @@ asem_ok( false !== strpos( implode( "\n", $cf_mails ), 'in scadenza' ) || '' ===
 Db::$today_fake = gmdate( 'Y-m-d', strtotime( $cf_exp . ' +1 day' ) );
 $cf_list = CourseCredits::expired_open();
 asem_ok( 1 === count( array_filter( $cf_list, function ( $r ) use ( $cf_s ) { return (int) $r['person_id'] === $cf_s; } ) ), 'importo a favore: scaduto, è nell\'elenco da chiudere' );
+asem_ok( array() === array_filter( $cf_list, function ( $r ) use ( $cf_g ) { return (int) $r['person_id'] === $cf_g; } ) && 1000 === CourseCredits::available( $cf_gr ) && false === strpos( implode( "\n", $cf_mails ), 'ospite.favore' ), 'importo a favore: l\'ospite non è tra gli scaduti, non ha avvisi di scadenza e il suo importo resta' );
 $cf_tx0 = (string) wp_json_encode( $wpdb->get_row( 'SELECT COUNT(*) n, SUM(amount_cents) s FROM ' . Db::t( 'transactions' ), ARRAY_A ) );
 asem_render( array( \AssociazioneSemplice\Admin\DashboardPage::class, 'render' ), 'Importi a favore scaduti da chiudere' );
 $cf_x = new \ReflectionMethod( \AssociazioneSemplice\Admin\Actions::class, 'course_credits_expire' );
@@ -124,6 +158,16 @@ ob_start();
 ob_get_clean();
 asem_ok( false !== strpos( (string) wp_json_encode( \AssociazioneSemplice\Privacy::export( $cf_p ), JSON_UNESCAPED_UNICODE ), 'lezioni annullate' ) || isset( \AssociazioneSemplice\Privacy::export( $cf_p )['lezioni_annullate'] ), 'importo a favore: nei dati scaricati' );
 asem_render( array( \AssociazioneSemplice\Admin\ActivitiesPage::class, 'render_detail' ), 'Lezioni annullate', array( 'id' => $cf_c ) );
+// iscrizione cancellata: rifiutata se una scrittura del fondo è in un anno fiscale chiuso
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'year' => $cf_fy ) );
+\AssociazioneSemplice\RequestMemo::forget();
+wp_cache_flush();
+$cf_pc = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_credits' ) . ' WHERE person_id = %d', $cf_p ) );
+$cf_dl = (string) asem_throws( function () use ( $cf_c, $cf_p ) { CourseCredits::registration_deleted( $cf_c, $cf_p ); } );
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'open' ), array( 'year' => $cf_fy ) );
+\AssociazioneSemplice\RequestMemo::forget();
+wp_cache_flush();
+asem_ok( '' !== $cf_dl && $cf_pc === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_credits' ) . ' WHERE person_id = %d', $cf_p ) ), 'importo a favore: con scritture del fondo in un anno chiuso le righe non si cancellano' );
 $cf_fb = $cf_fund();
 CourseCredits::registration_deleted( $cf_c, $cf_q );
 asem_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'course_credits' ) . ' WHERE person_id = %d', $cf_q ) ) && $cf_fb === $cf_fund(), 'importo a favore: con l\'iscrizione cancellata le righe vanno via; chi non aveva pagato non aveva toccato il fondo' );
