@@ -19,7 +19,7 @@ final class CourseCoins {
 	}
 
 	public static function register(): void {
-		add_action( 'asem_course_coin_lesson', array( __CLASS__, 'lesson_cancelled' ), 10, 4 );
+		add_action( 'asem_course_coin_lesson', array( __CLASS__, 'lesson_cancelled' ), 10, 5 );
 		add_action( 'asem_registration_deleted', array( __CLASS__, 'registration_deleted' ), 4, 2 );
 		add_action( 'asem_activity_deleted', array( __CLASS__, 'activity_deleted' ), 4, 1 );
 		add_filter( 'asem_pay_section_extra', array( __CLASS__, 'pay_section' ), 10, 2 );
@@ -113,7 +113,23 @@ final class CourseCoins {
 				Audit::log( 'course.paid_in_coins', 'activity', $aid, array( 'person_id' => $pid, 'payer_id' => $payer_id, 'month' => $month, 'coins' => $cost, 'cents' => $due ) );
 			}
 		);
+		if ( $spent > 0 ) {
+			$who = $payer_id !== $person_id ? ' per ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) : '';
+			self::tell( $payer_id, 'p:' . $activity_id . ':' . $person_id . ':' . $month . ':' . time(), 'Mese pagato in ' . CoinName::plural() . ': ' . $a['name'], 'il mese ' . self::month_text( $month ) . ' di «' . $a['name'] . '»' . $who . ' è pagato con ' . CoinName::n( $spent ) . '. Ti restano ' . CoinName::n( Credits::balance( $payer_id ) ) . '.' );
+		}
 		return $spent;
+	}
+
+	/** Avviso a chi ha speso la moneta (il genitore, se ha pagato per il figlio). */
+	private static function tell( int $payer_id, string $ref, string $subject, string $body ): void {
+		$who = Plugin::people()->get( $payer_id );
+		if ( $who ) {
+			Reminders::notify( $who, 'course_coin', substr( $ref, 0, 60 ), $subject, $body );
+		}
+	}
+
+	private static function month_text( string $month ): string {
+		return substr( $month, 5, 2 ) . '/' . substr( $month, 0, 4 );
 	}
 
 	/** C'è un pagamento online aperto da poco con questo mese? */
@@ -123,7 +139,7 @@ final class CourseCoins {
 	}
 
 	/** Lezione annullata in un mese pagato in moneta: torna la moneta di quella lezione, e la quota dell'istruttore in proporzione. */
-	public static function lesson_cancelled( $activity_id, $person_id, $month, $price ): void {
+	public static function lesson_cancelled( $activity_id, $person_id, $month, $price, $date = '' ): void {
 		$r = self::row( (int) $activity_id, (int) $person_id, (string) $month );
 		if ( ! $r || (int) $r['cents'] <= 0 ) {
 			return;
@@ -134,6 +150,11 @@ final class CourseCoins {
 		self::db()->update( Db::t( 'course_credit_payments' ), array( 'credits' => (int) $r['credits'] - $back, 'cents' => (int) $r['cents'] - $price, 'fund_cents' => (int) $r['fund_cents'] - $fund ), array( 'id' => (int) $r['id'] ) );
 		if ( $back > 0 ) {
 			Credits::refund( (int) $r['payer_id'], $back, 'Lezione annullata del corso (' . $r['month'] . ')', 'course_month', (int) $r['activity_id'] );
+			$a = Plugin::activities()->get( (int) $r['activity_id'] );
+			if ( $a ) {
+				$day = '' !== (string) $date ? ' del ' . ( new \DateTimeImmutable( (string) $date ) )->format( 'd/m/Y' ) : '';
+				self::tell( (int) $r['payer_id'], 'l:' . (int) $r['activity_id'] . ':' . (int) $r['person_id'] . ':' . ( '' !== (string) $date ? (string) $date : $r['month'] . ':' . time() ), 'Lezione annullata: ' . $a['name'], 'la lezione di «' . $a['name'] . '»' . $day . ' è annullata. Il mese era pagato in ' . CoinName::plural() . ': ti tornano ' . CoinName::n( $back ) . '.' );
+			}
 		}
 		if ( $fund > 0 && (int) $r['fund_entry'] ) {
 			$fid = (int) self::db()->get_var( self::db()->prepare( 'SELECT fund_id FROM ' . Db::t( 'fund_entries' ) . ' WHERE id = %d', (int) $r['fund_entry'] ) );
@@ -164,6 +185,8 @@ final class CourseCoins {
 		foreach ( $rows as $r ) {
 			if ( (int) $r['credits'] > 0 ) {
 				Credits::refund( (int) $r['payer_id'], (int) $r['credits'], $why . ' (' . $r['month'] . ')', 'course_month', (int) $r['activity_id'] );
+				$a = Plugin::activities()->get( (int) $r['activity_id'] );
+				self::tell( (int) $r['payer_id'], 'r:' . (int) $r['id'], $why . ': ' . ( $a ? $a['name'] : CoinName::plural() ), ( $a ? 'per «' . $a['name'] . '», mese ' . self::month_text( (string) $r['month'] ) . ', ' : 'per il mese ' . self::month_text( (string) $r['month'] ) . ' ' ) . 'ti tornano ' . CoinName::n( (int) $r['credits'] ) . ' (' . mb_strtolower( $why ) . ').' );
 			}
 			if ( (int) $r['fund_entry'] ) {
 				self::db()->delete( Db::t( 'fund_entries' ), array( 'id' => (int) $r['fund_entry'] ) );
