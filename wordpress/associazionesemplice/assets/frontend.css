@@ -77,9 +77,9 @@
 .asemf-table { width: 100%; border-collapse: collapse; }
 .asemf-table th, .asemf-table td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--asemf-line); vertical-align: top; }
 .asemf-dl { display: grid; gap: .25rem; margin: 0 0 .5rem; }
-.asemf-dl > div { display: flex; gap: .75rem; }
+.asemf-dl > div { display: flex; gap: .75rem; min-width: 0; }
 .asemf-dl dt { font-weight: 600; min-width: 5em; }
-.asemf-dl dd { margin: 0; }
+.asemf-dl dd { margin: 0; min-width: 0; overflow-wrap: anywhere; } /* un indirizzo email lungo va a capo invece di allargare la pagina sul telefono */
 
 /* Moduli e pulsanti (se il tema li stila già tramite .wp-element-button, resta quello) */
 .asemf-form { margin: .5rem 0; }
