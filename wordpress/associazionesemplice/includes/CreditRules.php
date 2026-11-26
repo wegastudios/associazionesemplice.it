@@ -44,7 +44,7 @@ final class CreditRules {
 				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': il prezzo deve essere maggiore di zero.' );
 			}
 			if ( isset( $seen[ $credits ] ) ) {
-				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': c\'è già un pacchetto da ' . CoinName::n( $credits ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': c\'è già un pacchetto con questa quantità (' . $credits . ').' ); // regole senza WordPress: qui il nome della moneta non si legge
 			}
 			$seen[ $credits ] = true;
 			$out[]            = array( 'credits' => $credits, 'price_cents' => $price );
