@@ -54,8 +54,11 @@ final readonly class UsageReport
         return $rows;
     }
 
-    /** @return int associazioni comunicate */
-    public function send(): int
+    /**
+     * @return array{sent: int, saved: int|null, unknown: int|null} associazioni comunicate e, se il portale li dice, quante ha
+     *                                                              salvato e quante non ha riconosciuto (mai i numeri dei soci)
+     */
+    public function send(): array
     {
         $rows = $this->collect();
         $now = time();
@@ -75,6 +78,9 @@ final readonly class UsageReport
             throw new RuntimeException("Il portale non ha accettato i consumi (HTTP {$response->status()}).");
         }
 
-        return count($rows);
+        $saved = $response->json('saved');
+        $unknown = $response->json('unknown');
+
+        return ['sent' => count($rows), 'saved' => is_int($saved) ? $saved : null, 'unknown' => is_int($unknown) ? $unknown : null];
     }
 }

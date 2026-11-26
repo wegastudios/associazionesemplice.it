@@ -65,7 +65,7 @@ final class PortaleServiceProvider extends ServiceProvider
             $this->commands([SendUsageCommand::class, SuspendExpiredCommand::class, PurgeExpiredCommand::class, SendLifecycleNoticesCommand::class, VerifyDomainsCommand::class, ImportPortalDbCommand::class]);
 
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
-                $schedule->command('saas:portal:usage')->dailyAt('04:23')->withoutOverlapping();
+                $schedule->command('saas:portal:usage')->dailyAt('04:23')->withoutOverlapping()->appendOutputTo(storage_path('logs/portal-usage.log'));
                 $schedule->command('saas:portal:suspend-expired')->dailyAt('00:41')->withoutOverlapping();
                 // La cancellazione dei dati scaduti parte solo con l'interruttore acceso (saas.portal.purge_enabled).
                 $schedule->command('saas:portal:purge-expired')->dailyAt('01:17')->withoutOverlapping()->when(static fn (): bool => config('saas.portal.purge_enabled') === true);
