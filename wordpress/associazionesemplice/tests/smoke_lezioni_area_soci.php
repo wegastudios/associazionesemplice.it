@@ -33,7 +33,11 @@ $la_n   = function ( int $cents ): string {
 $la_txt = Views::lesson_months_text( $la_acts->get( $la_c ), $la_p );
 asem_ok( false !== strpos( $la_txt, 'Questo mese: ' . $la_n( $la_may ) . ', ' . Money::format( $la_may ) ) && false !== strpos( $la_txt, 'Il mese prossimo: ' . $la_n( $la_jun ) . ', ' . Money::format( $la_jun ) ), 'lezioni nell\'area soci: questo mese e il prossimo, lezioni e importo (' . $la_txt . ')' );
 $la_sec = Views::section_activities( $la_p );
-asem_ok( false !== strpos( $la_sec, 'Maggio 2031 (' . $la_n( $la_may ) . ')' ) && false !== strpos( $la_sec, 'Questo mese: ' ), 'lezioni nell\'area soci: i mesi da pagare con il numero delle lezioni e il riepilogo del mese' );
+asem_ok( false !== stripos( $la_sec, 'maggio 2031 (' . $la_n( $la_may ) . ')' ) && false !== strpos( $la_sec, 'Questo mese: ' ), 'lezioni nell\'area soci: i mesi da pagare con il numero delle lezioni e il riepilogo del mese' );
+\AssociazioneSemplice\LessonExceptions::cancel( $la_c, '2031-05-20' ); // lezione annullata: esce dal dovuto, la riga e il riepilogo dicono lo stesso
+$la_t2 = Views::lesson_months_text( $la_acts->get( $la_c ), $la_p );
+$la_l2 = (int) $la_acts->enrollment_left( $la_c, (int) $la_p['id'], '2031-05' );
+asem_ok( 1000 === $la_may - $la_l2 && false !== strpos( $la_t2, 'Questo mese: ' . $la_n( $la_l2 ) . ', ' . Money::format( $la_l2 ) ), 'lezioni nell\'area soci: con una lezione annullata la riga toglie quella lezione, come il dovuto (' . $la_t2 . ')' );
 $la_q   = $la_mk( 'Interessata' );
 $la_tq  = Views::lesson_months_text( $la_acts->get( $la_c ), $la_q );
 asem_ok( false !== strpos( $la_tq, 'Questo mese: ' ) && false !== strpos( $la_tq, 'Il mese prossimo: ' ), 'lezioni nell\'area soci: anche chi non è ancora iscritto vede lezioni e importo prima di chiedere (' . $la_tq . ')' );
