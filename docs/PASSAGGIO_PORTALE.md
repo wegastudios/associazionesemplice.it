@@ -18,7 +18,6 @@ Lo stato della produzione (versioni pubblicate, deploy fatti, PR aperte, file lo
 - Limiti, pacchetti e sospensione di un'associazione dal portale (invio dei diritti `PUT …/entitlements`) **non sono costruiti**: erano previsti per la v1 e ora cadono.
 - Non provati a mano: `/saas` da loggato con ruolo «solo supporto»; la schermata «Reimposta la password» del plugin; «Ricordami» sulla demo.
 - Mail e SSO verso il SaaS (`/saas/accedi`) e l'endpoint dei consumi `/api/saas/v1/usage`: non costruiti.
-- Il file locale `associazionesemplice-pro TEST.zip` non è tracciato: va ricostruito a ogni rilascio (vedi d).
 
 ## b) Compiti che restano e a chi vanno
 
@@ -29,7 +28,7 @@ Lo stato della produzione (versioni pubblicate, deploy fatti, PR aperte, file lo
 - Sul sito non deve mai comparire «Wega» (solo `Contributors` su WordPress.org): vale anche per testi legali e email.
 
 **portale-plugin:** licenze, prezzi e versioni del plugin come spazio separato in `portale/src/Plugin` e `/wordpress/admin`, download, domini.
-- **Rilasci del plugin.** La sessione «wordpress plugin free» annuncia una versione (numero e impronta). Si verifica che gli zip nella radice di `origin/main` abbiano **impronta, `Version:` e API (`ASEM_API` = `ASEM_PRO_API`)** uguali all'annuncio, poi con l'ok **scritto della titolare in chat** si lancia `bash portale/release.sh free|pro|both` (mai ripubblicare un numero già presente: il portale rifiuta). `release.sh` firma sul computer, carica sul server e lancia `~/demo-provision/update.sh`. Poi: cartella principale su `main` (`git merge --ff-only origin/main`), zip in radice con l'impronta attesa, ricostruire `associazionesemplice-pro TEST.zip` (stesso percorso, contiene i due zip) e avvisare la sessione plugin.
+- **Rilasci del plugin.** La sessione «wordpress plugin free» annuncia una versione (numero e impronta). Si verifica che gli zip nella radice di `origin/main` abbiano **impronta, `Version:` e API (`ASEM_API` = `ASEM_PRO_API`)** uguali all'annuncio, poi con l'ok **scritto della titolare in chat** si lancia `bash portale/release.sh free|pro|both` (mai ripubblicare un numero già presente: il portale rifiuta). `release.sh` firma sul computer, carica sul server e lancia `~/demo-provision/update.sh`. Poi: cartella principale su `main` (`git merge --ff-only origin/main`), zip in radice con l'impronta attesa e avvisare la sessione plugin. Il file `associazionesemplice-pro TEST.zip` su OneDrive non esiste più (titolare, 26/11/2026): non si ricrea.
 - Sostituire una versione già pubblicata è un'eccezione fatta una sola volta (gratuito 1.3.16): si toglie la riga da `releases` e il file di `data/releases/free/`, copia in `data/backup-free-1.3.16`, e si ripubblica. Solo su richiesta esplicita della titolare, solo se nessun sito l'ha installata.
 - Il plugin dei siti chiede al portale `/api/plugin/latest`, `/api/plugin/update`, `/api/plugin/package` e `/api/license/validate`; il livello della licenza è firmato con `portal-sign.key`; il plugin verifica i pacchetti con la chiave pubblica Ed25519 dei pacchetti (`Releases::SIGNING_KEYS`).
 - **Demo:** vedi d).
