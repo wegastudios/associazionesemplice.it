@@ -56,7 +56,7 @@ final class BackupPage {
 
 		echo '<h2>Ripristino</h2><p class="description">Ripristina una copia scaricata da questo sito: <strong>i dati attuali del plugin vengono sostituiti</strong> da quelli della copia. '
 			. 'Prima del ripristino il sito salva da solo una copia dello stato attuale (qui sotto), e se qualcosa non va non viene cambiato nulla. '
-			. esc_html( Texts::t( 'Una copia fatta da questo sito e poi modificata viene rifiutata. Il registro delle azioni, gli utenti WordPress, le sessioni aperte dei soci e le notifiche non fanno parte del ripristino. Le password dei soci tornano, e ogni socio dovrà scegliere una nuova password al primo accesso.' ) ) . '</p>'
+			. esc_html( Texts::t( 'Una copia fatta da questo sito e poi modificata viene rifiutata. Il registro delle azioni, gli utenti WordPress, le sessioni aperte dei soci e le notifiche non fanno parte del ripristino. Le password dei soci tornano, e ogni socio dovrà scegliere una nuova password al primo accesso.' ) ) . ' ' . esc_html( \AssociazioneSemplice\Backup::TFA_RESTORE_NOTE ) . '</p>'
 			. '<p class="description">' . esc_html( Texts::t( 'Una copia fatta su un altro sito (o senza firma) si ripristina solo con una conferma in più, e il ripristino resta scritto nel registro delle azioni.' ) ) . '</p>';
 		Ui::form_open( 'asem_backup_restore', Ui::url( 'asem-backup' ), true );
 		echo '<p><input type="file" name="backup_file" accept=".zip" required></p>'

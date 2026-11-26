@@ -5,7 +5,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Entrare senza utente WordPress: link o codice a 6 cifre via email, oppure la password (facoltativa).
- * Ogni via d'ingresso finisce in MemberSession::start. Le risposte non dicono mai se un'email è di un socio.
+ * Ogni via d'ingresso finisce in MemberSession::start (con la verifica in due passaggi accesa, solo dopo il codice: {@see TwoFactor}).
+ * Le risposte non dicono mai se un'email è di un socio.
  * Funziona solo con l'interruttore «member_sessions» acceso (lo controlla la pagina che chiama).
  */
 final class MemberLogin {
@@ -165,8 +166,17 @@ final class MemberLogin {
 		return self::open( (int) $p['id'], 'reset' === (string) $row['kind'] ? 'reset' : 'link' );
 	}
 
-	/** Apre la sessione di una persona già riconosciuta (ad esempio dopo l'attivazione dal link della segreteria). */
-	public static function open( int $person_id, string $how, bool $remember = false ): int {
+	/**
+	 * Apre la sessione di una persona già riconosciuta (ad esempio dopo l'attivazione dal link della segreteria). Con la verifica in due passaggi
+	 * accesa la sessione non si apre ancora: resta il passaggio a metà e la pagina di accesso chiede il codice ({@see TwoFactor::pending()});
+	 * $second_done = true quando il codice è già stato controllato.
+	 */
+	public static function open( int $person_id, string $how, bool $remember = false, bool $second_done = false ): int {
+		if ( ! $second_done && TwoFactor::is_on( $person_id ) ) {
+			MemberSession::destroy();
+			TwoFactor::begin_login( $person_id, $how, $remember );
+			return $person_id;
+		}
 		MemberSession::destroy(); // il token cambia a ogni accesso
 		MemberSession::start( $person_id, $remember );
 		Db::db()->update( Db::t( 'member_auth' ), array( 'last_login_at' => self::now() ), array( 'person_id' => $person_id ) );

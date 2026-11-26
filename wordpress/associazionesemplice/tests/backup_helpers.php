@@ -104,6 +104,9 @@ if ( ! function_exists( 'asem_bk_reseal' ) ) {
 					break;
 				}
 				foreach ( $rows as $r ) {
+					foreach ( \AssociazioneSemplice\Backup::OMIT_COLUMNS[ substr( $name, 5 ) ] ?? array() as $col ) { // dalla 85: segreti della verifica in due passaggi mai nella copia
+						unset( $r[ $col ] );
+					}
 					foreach ( $fields[ $name ] ?? array() as $col ) {
 						$v = (string) ( $r[ $col ] ?? '' );
 						if ( '' !== $v && ! \AssociazioneSemplice\FileCrypt::is_field( $v ) ) {

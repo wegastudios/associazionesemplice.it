@@ -73,7 +73,7 @@ final class PageCache {
 	/** Chi ha un cookie di accesso dei soci (anche solo quello della pagina di accesso) non riceve né dà pagine conservate da WP Rocket. */
 	public static function reject_session_cookies( $cookies ): array {
 		$cookies = is_array( $cookies ) ? $cookies : array();
-		return array_values( array_unique( array_merge( $cookies, array( MemberSession::COOKIE, PreSession::COOKIE ) ) ) );
+		return array_values( array_unique( array_merge( $cookies, array( MemberSession::COOKIE, PreSession::COOKIE, TwoFactor::COOKIE ) ) ) );
 	}
 
 	// ---------- Chi può leggere e scrivere ----------
@@ -86,7 +86,7 @@ final class PageCache {
 		}
 		$other = is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST )
 			|| ( isset( $GLOBALS['wp_query'] ) && ( is_preview() || is_feed() ) ) || ! empty( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- si guarda solo se c'è un invio, non lo si legge
-		$cookie = isset( $_COOKIE[ MemberSession::COOKIE ] ) || isset( $_COOKIE[ PreSession::COOKIE ] );
+		$cookie = isset( $_COOKIE[ MemberSession::COOKIE ] ) || isset( $_COOKIE[ PreSession::COOKIE ] ) || isset( $_COOKIE[ TwoFactor::COOKIE ] );
 		foreach ( array_keys( $_COOKIE ) as $name ) { // anche i cookie di WordPress per chi è collegato o ha sbloccato un contenuto con password
 			if ( 0 === strpos( (string) $name, 'wordpress_logged_in_' ) || 0 === strpos( (string) $name, 'wp-postpass_' ) ) {
 				$cookie = true;
