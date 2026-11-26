@@ -110,13 +110,8 @@ $cm_acts->enroll( $cm_l, $cm_q, '2031-05', '2031-05-01' );
 asem_ok( 40 === CourseCoins::pay( $cm_l, $cm_q, '2031-05', $cm_q ) && 60 === Credits::balance( $cm_q ), 'moneta: a lezioni, quattro lezioni da 10' );
 \AssociazioneSemplice\LessonExceptions::cancel( $cm_l, '2031-05-20' );
 asem_ok( 70 === Credits::balance( $cm_q ) && 0 === (int) $cm_acts->enrollment_left( $cm_l, $cm_q, '2031-05' ), 'moneta: lezione annullata, tornano 10 e il mese resta pagato' );
-$cm_sum = null;
-foreach ( $cm_acts->status_for_activity( $cm_l ) as $cm_s ) {
-	if ( (int) $cm_s['enrollment']['person_id'] === $cm_q ) {
-		$cm_sum = $cm_s['summary'];
-	}
-}
-asem_ok( $cm_sum && 0 === (int) $cm_sum['balance'], 'moneta: nessun importo a favore in euro per un mese pagato in moneta' );
+$cm_cr = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'course_credits' ) . ' WHERE activity_id = %d AND person_id = %d AND lesson_date = %s', $cm_l, $cm_q, '2031-05-20' ), ARRAY_A );
+asem_ok( $cm_cr && 0 === \AssociazioneSemplice\CourseCredits::available( $cm_cr ), 'moneta: nessun importo a favore in euro per un mese pagato in moneta' );
 asem_ok( in_array( 'asem_course_credit_payments', \AssociazioneSemplice\Backup::tables(), true ) && isset( \AssociazioneSemplice\Privacy::export( $cm_q )['mensilita_moneta_interna'] ), 'moneta: nella copia e nei dati scaricati' );
 
 // ---------- Nome con apostrofo e accenti: ricevuta PDF e pagina del socio scritte bene ----------
