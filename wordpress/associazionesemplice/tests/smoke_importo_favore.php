@@ -21,7 +21,7 @@ $cf_man  = function ( string $email = '' ) use ( &$cf_n ): int {
 	return (int) Plugin::people()->create( array( 'type' => 'ordinary', 'card_number' => '55' . $cf_n, 'first_name' => 'Favore', 'last_name' => 'Persona ' . $cf_n, 'email' => $email, 'birth_date' => '1985-01-01' ) );
 };
 $cf_lab  = Settings::social_year( '2031-05-13' )->label();
-$cf_ins  = $cf_man();
+$cf_ins  = (int) Plugin::people()->create( array( 'type' => 'volunteer', 'first_name' => 'Istruttrice', 'last_name' => 'Favore', 'email' => 'istruttrice.favore@example.com' ) ); // referente: solo un volontario
 $cf_c    = (int) $cf_acts->create( array( 'name' => 'Martedì, lezioni annullate', 'social_year' => $cf_lab, 'kind' => 'course', 'billing' => 'lessons', 'fee_cents' => 1000, 'instructor_person_id' => $cf_ins, 'fund_mode' => 'percent', 'fund_value' => 5000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ) ) ) );
 $cf_cash = Plugin::ledger()->default_account_for( 'cash' );
 $cf_pay  = function ( int $pid, string $month, int $cents ) use ( $cf_cash, $cf_c ) {
