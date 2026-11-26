@@ -97,7 +97,7 @@ Sulla scheda della risorsa imposti anche:
 - la **tariffa per fascia**, anche diversa per giorni e orari (per esempio «feriali 18:00-22:00 15,00»);
 - se sono ammessi **ospiti** e l'eventuale **supplemento per ospite**;
 - le regole di **annullamento**;
-- il **pagamento**, anche in crediti.
+- il **pagamento**, anche in AssoCrediti (o il nome scelto dall'associazione).
 
 Se una risorsa è da **pagare online in anticipo** ma i pagamenti online non sono attivi, resta **prenotabile** e il contributo si salda in segreteria.
 

@@ -681,7 +681,7 @@ Una risorsa che non usi più si archivia; le archiviate si vedono con **«Vedi l
 - annullando una prenotazione pagata i soldi non tornano da soli al socio: il rimborso è un gesto a parte;
 - la prenotazione online dei non soci;
 - la prenotazione delle stagionali dal web;
-- pacchetti o crediti prepagati per le risorse;
+- pacchetti prepagati di AssoCrediti (o del nome scelto dall'associazione) per le risorse;
 - le ripetizioni settimanali dall'area soci (le fa solo la segreteria);
 MD,
     ],
