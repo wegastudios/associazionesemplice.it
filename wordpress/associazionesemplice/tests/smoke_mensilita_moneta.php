@@ -93,7 +93,7 @@ Credits::adjust( $cm_par, 50, 'prova' );
 asem_ok( '' !== (string) asem_throws( function () use ( $cm_c, $cm_kid, $cm_o ) { CourseCoins::pay( $cm_c, $cm_kid, '2031-05', $cm_o ); } ) && 100 === Credits::balance( $cm_o ), 'moneta: chi non è genitore non paga per il minore' );
 asem_ok( 40 === CourseCoins::pay( $cm_c, $cm_kid, '2031-05', $cm_par ) && 10 === Credits::balance( $cm_par ) && 0 === $cm_left( $cm_kid, '2031-05' ), 'moneta: il genitore paga il mese del figlio dal suo saldo' );
 $cm_html = (string) apply_filters( 'asem_pay_section_extra', '', $cm_peo->get( $cm_o ) );
-asem_ok( false !== strpos( $cm_html, 'Paga 40 ' ) && false !== strpos( $cm_html, 'Corso in moneta' ), 'moneta: nell\'area soci il mese si paga con un pulsante' );
+asem_ok( false !== strpos( $cm_html, 'Paga 40 ' ) && false !== strpos( $cm_html, 'Corso in moneta — Maggio 2031' ), 'moneta: nell\'area soci il mese, scritto per esteso, si paga con un pulsante' );
 
 // ---------- Iscrizione cancellata: come in euro, il mese già cominciato resta pagato, torna la moneta dei mesi non cominciati ----------
 Credits::adjust( $cm_par, 40, 'prova' );
