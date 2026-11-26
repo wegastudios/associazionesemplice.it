@@ -120,6 +120,27 @@ it('con la configurazione di produzione la rotta risponde 404 e nessun pulsante 
     'produzione e SAAS_DEMO spento' => ['production', false],
 ]);
 
+it('fuori dalla demo ?demo=entra non apre nessuna sessione: la pagina riceve demoMember falso e la rotta resta chiusa', function (string $env, bool $flag): void {
+    config(['saas.demo.enabled' => $flag]);
+    demoMemberOn(false, $env);
+
+    $this->get(DEMO_MEMBER_HOST.'/area/accesso?demo=entra')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Accesso')->where('demoMember', false));
+    $this->post(DEMO_MEMBER_HOST.'/area/accesso/demo?demo=entra')->assertNotFound();
+    expect(memberSessions()->count())->toBe(0);
+})->with([
+    'produzione' => ['production', false],
+    'produzione con SAAS_DEMO acceso per errore' => ['production', true],
+]);
+
+it('l\'invio automatico della pagina parte solo con demoMember vero', function (): void {
+    // Nessuna prova del browser in CI: si controlla che la sola chiamata automatica dipenda da demoMember, che arriva dal server.
+    $page = (string) file_get_contents(resource_path('js/pages/AreaSoci/Accesso.vue'));
+    preg_match_all('/demo\.post\(/', $page, $calls);
+    expect($calls[0])->toHaveCount(2)
+        ->and($page)->toContain("if (props.demoMember && new URLSearchParams(window.location.search).get('demo') === 'entra') demo.post('/area/accesso/demo');");
+});
+
 it('non esiste su un\'altra associazione, anche nell\'ambiente della demo', function (): void {
     demoMemberOn();
     config(['saas.demo.org_slug' => 'polisportiva-demo']);
