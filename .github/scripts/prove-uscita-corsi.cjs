@@ -94,6 +94,7 @@ const ok = (name, cond, extra = '') => { if (!cond) bad++; lines.push(`- ${cond 
       await page.goto(data.area, { waitUntil: 'load' });
       t = await text();
       ok('area soci: sezione «Oppure paga in ' + data.coins + '» con il socio e il figlio', t.includes('Oppure paga in ' + data.coins) && t.includes('Socio Moneta') && t.includes('Figlio Moneta'), t.includes('Oppure paga') ? '' : t.slice(0, 300));
+      ok('area soci: corso a lezioni con «Questo mese: N lezioni, importo» e i mesi da pagare con le lezioni', /Questo mese: \d+ lezion[ei], /.test(t) && /Maggio 2031 \(\d+ lezion[ei]\)/.test(t));
       const row = page.locator('.asemf-coins li', { hasText: 'Figlio Moneta' }).first();
       await Promise.all([page.waitForLoadState('load'), row.locator('button').first().click()]);
       await page.waitForTimeout(500);

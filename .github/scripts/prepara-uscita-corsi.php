@@ -80,6 +80,7 @@ Guardians::link( $kid, $mem );
 $acts->enroll( $coin, $mem, '2031-05' );
 $acts->enroll( $coin, $kid, '2031-05' );
 Credits::adjust( $mem, 100, 'Saldo di prova' );
+$acts->enroll( $les, $mem, '2031-05', '2031-05-01' ); // corso a lezioni: nell'area soci «Questo mese: N lezioni, importo»
 
 $exp = \AssociazioneSemplice\CourseCredits::expires_on( '2031-05-27' );
 $day( '2031-05-14' ); // fase 1: le pagine si guardano a questa data

@@ -14734,6 +14734,7 @@ require __DIR__ . '/smoke_calendario_corsi.php'; // date delle lezioni in un pos
 require __DIR__ . '/smoke_giorni_rossi.php'; // giorni senza lezione: festività, patrono, chiusure; spenti per i corsi esistenti
 require __DIR__ . '/smoke_primo_mese.php'; // primo mese in proporzione per scelta del corso; le iscrizioni già fatte non cambiano
 require __DIR__ . '/smoke_costo_lezioni.php'; // corsi a lezioni effettive: lezioni e importi fissati per mese, prima lezione vera
+require __DIR__ . '/smoke_lezioni_area_soci.php'; // corsi a lezioni nell'area soci: lezioni e importo di questo mese e del prossimo
 require __DIR__ . '/smoke_importo_favore.php'; // corsi a lezioni: lezione annullata già pagata, importo a favore, recupero, quota dell'istruttore
 require __DIR__ . '/smoke_fondo_liquidato.php'; // lezione annullata con la quota dell'istruttore già liquidata o in parte liberata: mai sotto zero, differenza scritta
 require __DIR__ . '/smoke_moneta.php'; // moneta interna con il nome scelto (di partenza AssoCredito)
