@@ -292,7 +292,7 @@ final class TwoFactor {
 	 */
 	public static function confirm_setup( int $person_id, string $code ): array {
 		if ( self::blocked( $person_id ) ) {
-			throw new \InvalidArgumentException( self::BLOCKED_MSG );
+			throw new \InvalidArgumentException( self::BLOCKED_MSG ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$s = self::state( $person_id );
 		if ( $s['on'] || '' === $s['secret'] ) {
@@ -365,10 +365,10 @@ final class TwoFactor {
 	private static function require_code( int $person_id, string $code, string $where ): void {
 		$r = self::check( $person_id, $code, $where );
 		if ( 'blocked' === $r ) {
-			throw new \InvalidArgumentException( self::BLOCKED_MSG );
+			throw new \InvalidArgumentException( self::BLOCKED_MSG ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( 'ok' !== $r ) {
-			throw new \InvalidArgumentException( self::WRONG_MSG );
+			throw new \InvalidArgumentException( self::WRONG_MSG ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -540,7 +540,7 @@ final class TwoFactor {
 		Counters::set( self::recovery_key( $raw ), array( 'p' => (int) $p['id'] ), self::RECOVERY_TTL );
 		Audit::log( 'member.tfa_recovery_sent', 'person', (int) $p['id'] );
 		$assoc = (string) Settings::get( 'association_name' );
-		$link  = add_query_arg( array( 'asem_member_login' => '1', 'asem_tfa_off' => $raw ), home_url( '/' ) );
+		$link  = add_query_arg( 'asem_tfa_off', $raw, Frontend\MemberLoginPage::url() ); // la pagina di accesso dei soci, con il link
 		$text  = 'Ciao ' . $p['first_name'] . ",\n\nhai chiesto di spegnere la verifica in due passaggi dell'area soci" . ( '' !== $assoc ? ' di ' . $assoc : '' ) . ". Apri questo link e conferma:\n\n" . $link
 			. "\n\nIl link vale " . (int) ( self::RECOVERY_TTL / 60 ) . " minuti e si usa una volta sola. Dopo potrai entrare come prima e riaccendere la verifica da «Il mio profilo».\n\nSe non l'hai chiesto tu, ignora questo messaggio e scrivi alla segreteria: qualcuno conosce la tua password o ha aperto la tua email.";
 		return ResponseMail::send( (string) $p['email'], Texts::subject( 'Spegni la verifica in due passaggi' ), $text );
