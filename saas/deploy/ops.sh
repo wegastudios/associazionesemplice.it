@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-proprieta|revoca-gruppo|revoca-gruppo-esegui|permessi-portale|permessi-portale-esegui|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|spegni-cancellazione|pubblica-catalogo|soci-in-vendita|spegni-avvisi|conta-fotografie|sblocca-utente|cancellazioni|permessi-backup|interruttori|variabili|verifica-registro|indici-registro|formato-dry-run|coda|avvisa-catalogo|imposta-segreto-proxy|copie-env|pulisci-copie-env|permessi-db|ripristina-permessi|misure|db-proprieta|revoca-gruppo|revoca-gruppo-esegui|copia-permessi|ripristina-copia-permessi|permessi-portale|permessi-portale-esegui|db-connection-limit-60|db-connection-limit-off> [cartella-bin-postgresql]
 #
 # Il log del workflow è pubblico: ogni stato reale della produzione (variabili, interruttori, permessi, coda, cancellazioni, ciclo di vita, ...) va su file shared/<azione>-<AAAAMMGGTHHMMSS>.txt (600, ultimi 5 per azione); nel log solo esito e «salvato in <percorso>».
 # Azioni fisse e limitate (non è una shell remota):
@@ -11,6 +11,8 @@
 #   db-proprieta      sola lettura (solo SELECT sul catalogo, ruolo owner): inventario di proprietari, ruoli di gruppo, privilegi, default privileges, RLS; su file, nel log solo «salvato in»
 #   permessi-portale  prova (saas:db:narrow-portal --dry-run, nessuna scrittura); permessi-portale-esegui porta i permessi diretti del portale all elenco, solo con SAAS_DB_NARROW_PORTAL acceso, in una transazione; uscita solo su file, nel log «salvato in», «fatto» o «da rivedere»
 #   revoca-gruppo     prova (saas:db:revoke-group --dry-run, nessuna scrittura); revoca-gruppo-esegui la esegue davvero, ma solo con SAAS_DB_REVOKE_GROUP acceso; uscita solo su file, nel log «salvato in»
+#   copia-permessi    sola lettura: copia di tutti i permessi (saas:db:grants-copy) in shared/copia-permessi-<data>.sql (600, ultimi 5), prima di una revoca;
+#                     ripristina-copia-permessi rimette i permessi dall ultima copia (con la connessione del proprietario). Nel log solo «salvato in» o i conteggi
 #   copie-env         sola lettura: elenca cosa cancellerebbe la rotazione delle copie shared/.env.bak-<data> (massimo 2, nessuna oltre 7 giorni)
 #   pulisci-copie-env applica la rotazione una volta e accende quella automatica; cancella SOLO .env.bak-<14 cifre>, mai il .env
 #   percorso-pgdump   imposta SAAS_PG_DUMP e SAAS_PG_RESTORE nella cartella indicata, solo se è la versione 16
@@ -802,6 +804,22 @@ case "$ACTION" in
       if [ "$rc" -eq 0 ]; then echo "permessi del portale: fatto"; else echo "permessi del portale: da rivedere, vedi il file" >&2; fi
     fi
     exit "$rc"
+    ;;
+  copia-permessi)
+    # Sola lettura: copia di tutti i permessi negli schemi del gestionale, come istruzioni GRANT, in un file 600 (nomi solo lì).
+    # Nel log solo «salvato in» e i conteggi. Al massimo 5 copie.
+    cd "$BASE/current"
+    C="$BASE/shared/copia-permessi-$(date -u +%Y%m%dT%H%M%S).sql"
+    "$PHP" artisan saas:db:grants-copy "$C"
+    { ls -1t "$BASE"/shared/copia-permessi-*.sql 2>/dev/null || true; } | tail -n +6 | while read -r old; do rm -f "$old"; done
+    echo "$ACTION: salvato in $C"
+    ;;
+  ripristina-copia-permessi)
+    # Ritorno di una revoca: rimette i permessi dall ultima copia (copia-permessi), in una transazione per database.
+    cd "$BASE/current"
+    latest="$( { ls -1t "$BASE"/shared/copia-permessi-*.sql 2>/dev/null || true; } | head -1)"
+    [ -n "$latest" ] || { echo "Nessuna copia dei permessi trovata." >&2; exit 1; }
+    "$PHP" artisan saas:db:grants-copy --ripristina "$latest"
     ;;
   ripristina-permessi)
     # Rimette i permessi dall'ultimo file grants-backup-*.sql (comando di ritorno per permessi-db).

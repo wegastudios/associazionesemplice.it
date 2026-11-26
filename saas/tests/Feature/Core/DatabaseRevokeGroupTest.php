@@ -525,3 +525,107 @@ it('l\'interruttore è documentato nei due esempi di ambiente: spento sul server
     expect((string) file_get_contents($deploy.'/env.server.example'))->toContain("\nSAAS_DB_REVOKE_GROUP=false\n")
         ->and((string) file_get_contents($deploy.'/env.demo.example'))->toContain("\nSAAS_DB_REVOKE_GROUP=true\n");
 });
+
+it('utente dell\'account acceso: il controllo non lo blocca e la revoca gli lascia la sola lettura diretta, anche per il futuro', function (): void {
+    withTestGroup(function (Connection $owner, string $group, Connection $admin): void {
+        [$app, $backup] = revokeRoles();
+        // cPanel chiama i ruoli «<account>_<nome>»: il gruppo di prova è «zz_gruppo_prova», quindi l'account è «zz».
+        $account = 'zz';
+        $admin->statement("CREATE ROLE {$account} LOGIN");
+        try {
+            $owner->statement("GRANT ALL ON ALL TABLES IN SCHEMA audit TO {$group}");
+            $admin->statement("GRANT {$group} TO {$account}");
+
+            config(['saas.db.account_reader' => false]);
+            expect(GroupPrivileges::guard($owner, $group, $app, $backup))->toBe(['un altro ruolo con accesso raggiunge degli oggetti solo tramite il gruppo']);
+
+            config(['saas.db.account_reader' => true]);
+            expect(GroupPrivileges::accountReader($owner, $group, [$app, $backup]))->toBe($account)
+                ->and(GroupPrivileges::guard($owner, $group, $app, $backup))->toBe([]);
+
+            $result = GroupPrivileges::revoke($owner, $group, $app, $backup);
+
+            expect($result['refused'])->toBe([])
+                ->and(hasPrivilege($owner, $group, 'audit.log', 'SELECT'))->toBeFalse()
+                ->and(hasPrivilege($owner, $account, 'audit.log', 'SELECT'))->toBeTrue()
+                ->and(hasPrivilege($owner, $account, 'audit.log', 'INSERT'))->toBeFalse()
+                ->and(hasPrivilege($owner, $account, 'audit.log', 'UPDATE'))->toBeFalse()
+                ->and(hasPrivilege($owner, $account, 'audit.log', 'DELETE'))->toBeFalse()
+                ->and(hasPrivilege($owner, $account, 'audit.log', 'TRUNCATE'))->toBeFalse()
+                ->and(hasPrivilege($owner, $account, 'core.orgs', 'SELECT'))->toBeTrue()
+                ->and(hasSchemaUsage($owner, $account, 'core'))->toBeTrue();
+
+            // Una tabella creata dopo dal proprietario (una migrazione) si legge subito, senza scrittura.
+            $owner->statement('CREATE TABLE core.zz_tabella_nuova (id int)');
+            try {
+                expect(hasPrivilege($owner, $account, 'core.zz_tabella_nuova', 'SELECT'))->toBeTrue()
+                    ->and(hasPrivilege($owner, $account, 'core.zz_tabella_nuova', 'INSERT'))->toBeFalse();
+            } finally {
+                $owner->statement('DROP TABLE core.zz_tabella_nuova');
+            }
+        } finally {
+            config(['saas.db.account_reader' => false]);
+            $owner->statement("ALTER DEFAULT PRIVILEGES REVOKE ALL ON TABLES FROM {$account}");
+            $owner->statement("ALTER DEFAULT PRIVILEGES REVOKE ALL ON SEQUENCES FROM {$account}");
+            $owner->statement("ALTER DEFAULT PRIVILEGES REVOKE ALL ON SCHEMAS FROM {$account}");
+            $admin->statement("DROP OWNED BY {$account}");
+            $admin->statement("DROP ROLE {$account}");
+        }
+    });
+});
+
+it('utente dell\'account: mai uno dei ruoli del gestionale, mai un ruolo che non esiste, mai a interruttore spento', function (): void {
+    withTestGroup(function (Connection $owner, string $group): void {
+        [$app, $backup] = revokeRoles();
+        config(['saas.db.account_reader' => true]);
+        try {
+            // «zz» non esiste in questa prova.
+            expect(GroupPrivileges::accountReader($owner, $group, [$app, $backup]))->toBeNull()
+                ->and(GroupPrivileges::accountReader($owner, 'senza-prefisso', [$app, $backup]))->toBeNull()
+                ->and(GroupPrivileges::accountReader($owner, 'as_app_gruppo', ['as_app', 'as_backup']))->toBeNull();
+            config(['saas.db.account_reader' => false]);
+            expect(GroupPrivileges::accountReader($owner, 'as_gruppo', [$backup]))->toBeNull();
+        } finally {
+            config(['saas.db.account_reader' => false]);
+        }
+    });
+});
+
+it('copia dei permessi: legge senza scrivere, salva in un file 600 nuovo e il ritorno rimette ciò che la revoca ha tolto', function (): void {
+    withTestGroup(function (Connection $owner, string $group): void {
+        [$app, $backup] = revokeRoles();
+        $owner->statement("GRANT SELECT, UPDATE ON audit.log TO {$group}");
+        $file = sys_get_temp_dir().'/copia-permessi-prova-'.bin2hex(random_bytes(4)).'.sql';
+        try {
+            $this->artisan('saas:db:grants-copy', ['file' => $file])->expectsOutputToContain('permessi copiati')->assertSuccessful();
+            expect(decoct(fileperms($file) & 0777))->toBe('600')
+                ->and((string) file_get_contents($file))->toContain("GRANT UPDATE ON TABLE audit.log TO {$group};");
+            // Un file che esiste già non si sovrascrive.
+            $this->artisan('saas:db:grants-copy', ['file' => $file])->assertFailed();
+
+            GroupPrivileges::revoke($owner, $group, $app, $backup);
+            expect(hasPrivilege($owner, $group, 'audit.log', 'UPDATE'))->toBeFalse();
+
+            $this->artisan('saas:db:grants-copy', ['file' => $file, '--ripristina' => true])->expectsOutputToContain('permessi rimessi')->assertSuccessful();
+            expect(hasPrivilege($owner, $group, 'audit.log', 'UPDATE'))->toBeTrue()
+                ->and(hasPrivilege($owner, $group, 'audit.log', 'SELECT'))->toBeTrue();
+        } finally {
+            @unlink($file);
+        }
+    });
+});
+
+it('le azioni copia-permessi e ripristina-copia-permessi sono nel workflow e nello script, l\'uscita va su file', function (): void {
+    $base = dirname(__DIR__, 3);
+    $ops = (string) file_get_contents($base.'/deploy/ops.sh');
+    $workflow = (string) file_get_contents(dirname($base).'/.github/workflows/saas-ops.yml');
+    $start = (int) strpos($ops, '  copia-permessi)');
+    $branch = substr($ops, $start, (int) strpos($ops, '    ;;', $start) - $start);
+
+    expect($branch)->toContain('artisan saas:db:grants-copy "$C"')
+        ->and($branch)->toContain('echo "$ACTION: salvato in $C"')
+        ->and($branch)->not->toContain('cat ')
+        ->and($ops)->toContain('artisan saas:db:grants-copy --ripristina "$latest"')
+        ->and($workflow)->toContain('copia-permessi, ripristina-copia-permessi')
+        ->and((string) file_get_contents($base.'/deploy/env.server.example'))->toContain("\nSAAS_DB_ACCOUNT_READER=false\n");
+});
