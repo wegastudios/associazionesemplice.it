@@ -8,6 +8,7 @@ use App\Modules\Core\Access\EmployeeCounter;
 use App\Modules\Core\Auth\HostSessionGuard;
 use App\Modules\Core\Console\CreateOrgCommand;
 use App\Modules\Core\Console\DatabaseEmptyCommand;
+use App\Modules\Core\Console\DatabaseGrantsCopyCommand;
 use App\Modules\Core\Console\DatabaseNarrowPortalCommand;
 use App\Modules\Core\Console\DatabaseRevokeGroupCommand;
 use App\Modules\Core\Console\DemoCheckEnvCommand;
@@ -176,7 +177,7 @@ final class CoreServiceProvider extends ServiceProvider
                     DemoSchedule::restrict($app->make(Schedule::class));
                 });
             }
-            $this->commands([MigrateAllCommand::class, DatabaseEmptyCommand::class, DatabaseRevokeGroupCommand::class, DatabaseNarrowPortalCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, DemoCheckEnvCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class, NightCommand::class, WebRefreshCommand::class]);
+            $this->commands([MigrateAllCommand::class, DatabaseEmptyCommand::class, DatabaseRevokeGroupCommand::class, DatabaseGrantsCopyCommand::class, DatabaseNarrowPortalCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, DemoCheckEnvCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class, NightCommand::class, WebRefreshCommand::class]);
 
             // Code su Postgres: lavoratori a giro di cron, che si fermano quando la coda è vuota o dopo 50 secondi (sul
             // server non ci sono processi sempre attivi). Code per tipo di lavoro e quanti lavoratori: JobQueues.

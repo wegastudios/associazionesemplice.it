@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Console;
 
 use App\Modules\Core\Contracts\DatabaseNames;
+use App\Modules\Core\Contracts\PortalGrants;
 use App\Modules\Core\Platform\GroupPrivileges;
 use Illuminate\Console\Command;
 use Illuminate\Database\DatabaseManager;
@@ -63,6 +64,12 @@ final class DatabaseRevokeGroupCommand extends Command
                     $refused = GroupPrivileges::guard($connection, $group, $app, $backup);
                     $this->line("{$label}: ".implode(', ', array_map(static fn (string $k, int $v): string => "{$k} {$v}", array_keys($counts), $counts)));
                     $this->line("{$label}: controlli di sicurezza ".($refused === [] ? 'superati' : 'NON superati ('.count($refused).'): non si scriverebbe nulla'));
+                    if (config('saas.db.account_reader') === true) {
+                        $portal = PortalGrants::validRole($connection->getConfig('portal_role'));
+                        $this->line("{$label}: utente dell'account ".(GroupPrivileges::accountReader($connection, $group, [$app, $backup, $portal]) === null
+                            ? 'non trovato: nessuna lettura diretta'
+                            : 'trovato: riceverebbe la sola lettura diretta'));
+                    }
 
                     continue;
                 }

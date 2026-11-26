@@ -82,9 +82,11 @@ final class GroupPrivileges
         $portalExists = $portalName !== '' && $portalName !== $appRole && $portalName !== $backupRole
             && self::one($db, "SELECT 1 AS x FROM pg_roles WHERE rolname = {$portal} AND rolname <> current_user") !== null;
 
-        // Gli altri ruoli (non applicazione, backup, proprietario, portale) membri del gruppo che raggiungono oggetti solo
-        // tramite il gruppo: tabelle (SELECT, INSERT, UPDATE, DELETE), sequenze (USAGE, SELECT, UPDATE), schemi (USAGE).
-        $roleFilter = "r.rolcanlogin AND NOT r.rolsuper AND r.rolname NOT IN ({$app}, {$backup}, {$portal}, current_user)"
+        // Gli altri ruoli (non applicazione, backup, proprietario, portale, utente dell'account se acceso) membri del gruppo
+        // che raggiungono oggetti solo tramite il gruppo: tabelle (SELECT, INSERT, UPDATE, DELETE), sequenze (USAGE, SELECT,
+        // UPDATE), schemi (USAGE). L'utente dell'account riceve la lettura diretta dalla revoca stessa.
+        $reader = self::lit(self::accountReader($db, $group, [$appRole, $backupRole, $portalName]) ?? '');
+        $roleFilter = "r.rolcanlogin AND NOT r.rolsuper AND r.rolname NOT IN ({$app}, {$backup}, {$portal}, {$reader}, current_user)"
             ." AND pg_has_role(r.oid, (SELECT oid FROM pg_roles WHERE rolname = {$g}), 'USAGE')";
         $inSchemas = "n.nspname = ANY (CAST({$list} AS text[]))";
         $others = 0;
@@ -308,8 +310,14 @@ final class GroupPrivileges
             return ['removed' => 0, 'remaining' => array_sum(self::counts($before)), 'refused' => $refused];
         }
         $g = self::quote($group);
+        $reader = self::accountReader($db, $group, [$appRole, $backupRole, PortalGrants::validRole($portalRole ?? $db->getConfig('portal_role'))]);
 
-        $db->transaction(function () use ($db, $group, $appRole, $backupRole, $g, $before): void {
+        $db->transaction(function () use ($db, $group, $appRole, $backupRole, $g, $before, $reader): void {
+            // Prima la lettura diretta dell'utente dell'account, poi le revoche: nella stessa transazione non resta mai senza.
+            if ($reader !== null) {
+                self::grantReader($db, $reader);
+            }
+
             foreach (['tables' => 'TABLE', 'sequences' => 'SEQUENCE', 'functions' => 'FUNCTION', 'procedures' => 'PROCEDURE'] as $key => $kind) {
                 foreach (array_chunk($before[$key], self::BATCH) as $chunk) {
                     $db->statement("REVOKE ALL ON {$kind} ".implode(', ', $chunk)." FROM {$g}");
@@ -351,6 +359,51 @@ final class GroupPrivileges
         $removed = array_sum(self::counts($before)) - $before['blocked'] - (array_sum(self::counts($after)) - $after['blocked']);
 
         return ['removed' => max(0, $removed), 'remaining' => array_sum(self::counts($after)), 'refused' => []];
+    }
+
+    /**
+     * Utente principale dell'account cPanel, se `saas.db.account_reader` è acceso: il prefisso del ruolo di gruppo prima del
+     * primo «_» (cPanel chiama i ruoli «<account>_<nome>»). Deve esistere, accedere, non essere superutente, non essere il
+     * proprietario né uno dei ruoli del gestionale. Altrimenti null: nessuna eccezione, si torna al controllo normale.
+     *
+     * @param  list<string>  $exclude
+     */
+    public static function accountReader(Connection $db, string $group, array $exclude): ?string
+    {
+        if (config('saas.db.account_reader') !== true) {
+            return null;
+        }
+        $cut = strpos($group, '_');
+        if ($cut === false || $cut === 0) {
+            return null;
+        }
+        $name = substr($group, 0, $cut);
+        if (in_array($name, $exclude, true)) {
+            return null;
+        }
+        $row = self::one($db, 'SELECT 1 AS x FROM pg_roles WHERE rolname = '.self::lit($name).' AND rolcanlogin AND NOT rolsuper AND rolname <> current_user');
+
+        return $row === null ? null : $name;
+    }
+
+    /**
+     * Sola lettura DIRETTA per l'utente dell'account: USAGE sugli schemi, SELECT su tabelle, viste e sequenze, e gli stessi
+     * predefiniti per ciò che il proprietario creerà. Niente scrittura né DDL. Sugli oggetti non del proprietario PostgreSQL
+     * non concede nulla (solo un avviso): quelli restano raggiungibili come prima.
+     */
+    private static function grantReader(Connection $db, string $reader): void
+    {
+        $r = self::quote($reader);
+        $list = self::lit(self::pgArray(self::schemas($db)));
+        foreach (self::rows($db, "SELECT format('%I', nspname) AS s FROM pg_namespace WHERE nspname = ANY (CAST({$list} AS text[])) AND nspowner = (SELECT oid FROM pg_roles WHERE rolname = current_user) ORDER BY 1") as $row) {
+            $s = (string) $row['s'];
+            $db->statement("GRANT USAGE ON SCHEMA {$s} TO {$r}");
+            $db->statement("GRANT SELECT ON ALL TABLES IN SCHEMA {$s} TO {$r}");
+            $db->statement("GRANT SELECT ON ALL SEQUENCES IN SCHEMA {$s} TO {$r}");
+        }
+        $db->statement("ALTER DEFAULT PRIVILEGES GRANT SELECT ON TABLES TO {$r}");
+        $db->statement("ALTER DEFAULT PRIVILEGES GRANT SELECT ON SEQUENCES TO {$r}");
+        $db->statement("ALTER DEFAULT PRIVILEGES GRANT USAGE ON SCHEMAS TO {$r}");
     }
 
     /** @return list<string> */

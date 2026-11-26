@@ -24,6 +24,11 @@ return [
         // Interruttore di `saas:db:narrow-portal` (azione di manutenzione a mano, mai a ogni rilascio): spento, il comando
         // non tocca nessun permesso (il dry-run funziona comunque). docs/DATABASE.md §8.
         'narrow_portal' => filter_var(env('SAAS_DB_NARROW_PORTAL', false), FILTER_VALIDATE_BOOLEAN),
+
+        // Utente principale dell'account cPanel (decisione del titolare del 26/11/2026): vede tutto, in sola lettura, con
+        // permessi DIRETTI dati da `saas:db:revoke-group`, così non dipende dal gruppo; il controllo non lo blocca. Il nome
+        // non sta in nessuna configurazione: è il prefisso del ruolo di gruppo («<account>_…»). Nessuna applicazione lo usa.
+        'account_reader' => filter_var(env('SAAS_DB_ACCOUNT_READER', false), FILTER_VALIDATE_BOOLEAN),
     ],
 
     'auth' => [

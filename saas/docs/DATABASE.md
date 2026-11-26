@@ -323,6 +323,20 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
 - **A ogni rilascio**: `deploy/remote.sh` lo lancia dopo le migrazioni e prima del cambio del link `current`, solo con
   l'interruttore acceso; il dettaglio va in un file riservato sul server e il rilascio non si ferma mai per questo. A
   mano: azioni `revoca-gruppo` (prova) e `revoca-gruppo-esegui` di «SaaS · manutenzione server».
+- **Utente principale dell'account cPanel** (decisione del titolare del 26/11/2026): continua a vedere tutto, ma non lo
+  usa nessuna applicazione, script o workflow. Con `SAAS_DB_ACCOUNT_READER` acceso (spento di default) la revoca, nella
+  stessa transazione e prima di togliere, gli dà permessi **diretti** di sola lettura: USAGE sugli schemi, SELECT su
+  tabelle, viste e sequenze del proprietario, e gli stessi predefiniti per ciò che il proprietario creerà. Niente
+  scrittura e niente DDL. Il controllo non lo conta tra gli «altri ruoli». Il nome non sta in nessuna configurazione: è
+  il prefisso del ruolo di gruppo prima del primo «_» (cPanel chiama i ruoli `<account>_<nome>`). Deve esistere,
+  accedere, non essere superutente né un ruolo del gestionale; altrimenti non c'è eccezione. La prova (`--dry-run`) dice
+  se l'ha trovato.
+- **Copia dei permessi** prima di una revoca: `php artisan saas:db:grants-copy FILE` legge in una transazione di sola
+  lettura e scrive le istruzioni GRANT che rimettono i permessi attuali di tutti i ruoli (schemi, tabelle, viste,
+  sequenze, colonne, funzioni, predefiniti), in un file nuovo con permessi 600; nell'uscita solo conteggi. Ritorno:
+  `saas:db:grants-copy --ripristina FILE`, una transazione per database: rimette ciò che una revoca ha tolto, non toglie
+  ciò che è stato aggiunto dopo. A mano: azioni `copia-permessi` e `ripristina-copia-permessi` di «SaaS · manutenzione
+  server».
 - **Avvertenza**: non usare `update_privileges` di cPanel (né «ALL» nel pannello dei privilegi).
 
 ## 9. Moduli (dalle 64 tabelle del plugin)
