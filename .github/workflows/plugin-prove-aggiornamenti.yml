@@ -152,6 +152,92 @@ jobs:
         working-directory: wordpress/dist-prove
         run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
 
+  uscita-corsi:
+    name: From 1.3.39 with the demo data; old Pro 1.3.25 with the new free
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # 1.3.39 e Pro 1.3.25 = i pacchetti costruiti dal commit della pubblicazione (cc7e542f, «Versioni: free 1.3.39 e Pro 1.3.25»); i dati sono quelli
+      # della demo di allora (demo/provision.php ed extra-data.php dello stesso commit), gli stessi con cui la demo si rifà ogni notte. Una copia: la demo non si tocca.
+      - name: Build the 1.3.39 packages (commit cc7e542f) and the current ones
+        shell: bash
+        run: |
+          set -euo pipefail
+          OLD="$RUNNER_TEMP/v1339"
+          git worktree add --detach "$OLD" cc7e542f
+          (cd "$OLD" && bash wordpress/build.sh "$OLD/dist")
+          unzip -p "$OLD/dist/associazionesemplice.zip" associazionesemplice/associazionesemplice.php | grep -E "^ \* Version: +1\.3\.39$"
+          unzip -p "$OLD/dist/associazionesemplice-pro.zip" associazionesemplice-pro/associazionesemplice-pro.php | grep -E "^ \* Version: +1\.3\.25$"
+          bash wordpress/build.sh wordpress/dist-uscita
+          cd wordpress/dist-uscita
+          mkdir -p prove
+          cp "$OLD/dist/associazionesemplice.zip" prove/free-1.3.39.zip
+          cp "$OLD/dist/associazionesemplice-pro.zip" prove/pro-1.3.25.zip
+          cp associazionesemplice.zip prove/free-nuovo.zip
+          cp associazionesemplice-pro.zip prove/pro-nuovo.zip
+          cp ../associazionesemplice/tests/ci/prova-uscita-*.php ../../.github/scripts/prepara-demo.php prove/
+          cp -r "$OLD/demo" prove/demo-seed
+          cat > .wp-env.json <<'JSON'
+          {
+            "phpVersion": "8.1",
+            "plugins": [],
+            "mappings": { "wp-content/prove": "./prove", "wp-content/demo-seed": "./prove/demo-seed" },
+            "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
+          }
+          JSON
+      - name: Install 1.3.39 + Pro 1.3.25, load the demo data, take the first snapshot
+        working-directory: wordpress/dist-uscita
+        shell: bash
+        run: |
+          wpc() { npx --yes @wordpress/env run cli wp "$@"; }
+          npx --yes @wordpress/env start
+          wpc plugin install wp-content/prove/free-1.3.39.zip --activate
+          wpc plugin install wp-content/prove/pro-1.3.25.zip --activate
+          wpc eval-file wp-content/prove/prepara-demo.php
+          wpc plugin list --fields=name,status,version
+          wpc eval-file wp-content/prove/prova-uscita-istantanea.php prima
+      - name: New free with the old Pro 1.3.25 (data unchanged, course pages and attendance register)
+        working-directory: wordpress/dist-uscita
+        shell: bash
+        run: |
+          wpc() { npx --yes @wordpress/env run cli wp "$@"; }
+          wpc plugin install wp-content/prove/free-nuovo.zip --force
+          wpc plugin list --fields=name,status,version
+          wpc plugin is-active associazionesemplice-pro
+          wpc eval-file wp-content/prove/prova-uscita-istantanea.php mezzo
+          wpc eval-file wp-content/prove/prova-uscita-confronta.php prima mezzo
+          wpc eval-file wp-content/prove/prova-uscita-pagine.php "gratuito nuovo + Pro 1.3.25" crea
+          wpc eval-file wp-content/prove/prova-uscita-istantanea.php mezzo2
+      - name: New Pro too (data unchanged, pages)
+        working-directory: wordpress/dist-uscita
+        shell: bash
+        run: |
+          wpc() { npx --yes @wordpress/env run cli wp "$@"; }
+          wpc plugin install wp-content/prove/pro-nuovo.zip --force
+          wpc plugin list --fields=name,status,version
+          wpc plugin is-active associazionesemplice-pro
+          wpc eval-file wp-content/prove/prova-uscita-istantanea.php dopo
+          wpc eval-file wp-content/prove/prova-uscita-confronta.php mezzo2 dopo
+          wpc eval-file wp-content/prove/prova-uscita-pagine.php "gratuito nuovo + Pro nuovo"
+      - name: No PHP errors from the plugins in the debug log
+        working-directory: wordpress/dist-uscita
+        shell: bash
+        run: |
+          npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null || true' > debug.txt
+          if grep -E "PHP (Fatal|Warning|Notice|Deprecated|Parse).*associazionesemplice" debug.txt; then echo "::error::Errori PHP dei plugin nel registro"; exit 1; fi
+          echo "Registro senza errori PHP dei plugin."
+      - name: Debug log
+        if: failure()
+        working-directory: wordpress/dist-uscita
+        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -80 || true'
+
   pro-copione:
     name: Pro data script (the current build stands in for the old one; no secrets)
     runs-on: ubuntu-latest

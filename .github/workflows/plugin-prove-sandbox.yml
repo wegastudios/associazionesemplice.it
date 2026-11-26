@@ -130,6 +130,36 @@ jobs:
           wpc config delete DISABLE_WP_CRON
           exit $rc
 
+      # Schermate nuove dei corsi con date finte (modulo mu tolto alla fine): prova gratuita, lezioni del mese, lezioni annullate con recupero e
+      # restituzione, Bacheca, pagamento in moneta nell'area soci; poi, dopo la scadenza, la chiusura degli importi a favore scaduti.
+      - name: Corsi nuovi nel browser (date finte)
+        if: always()
+        shell: bash
+        working-directory: wordpress/dist
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+        run: |
+          wpc() { npx --yes @wordpress/env run cli wp "$@"; }
+          mkdir -p ../../uscita
+          wpc eval 'wp_mkdir_p( WPMU_PLUGIN_DIR ); copy( WP_CONTENT_DIR . "/sandbox-scripts/asem-data-prova.php", WPMU_PLUGIN_DIR . "/asem-data-prova.php" );'
+          wpc eval-file wp-content/sandbox-scripts/prepara-uscita-corsi.php | tr -d '\r' | grep '^{' | tail -1 > ../../uscita/dati.json
+          rc=0
+          node ../../.github/scripts/prove-uscita-corsi.cjs http://localhost:8888 1 ../../uscita || rc=1
+          wpc option update asem_prova_oggi "$(node -e 'console.log(require(process.argv[1]).phase2)' "$PWD/../../uscita/dati.json")"
+          node ../../.github/scripts/prove-uscita-corsi.cjs http://localhost:8888 2 ../../uscita || rc=1
+          wpc eval 'unlink( WPMU_PLUGIN_DIR . "/asem-data-prova.php" ); delete_option( "asem_prova_oggi" );'
+          node -e 'const f=process.argv[1]; const d=require(f); delete d.member; require("fs").writeFileSync(f, JSON.stringify(d))' "$PWD/../../uscita/dati.json" # l'accesso del socio di prova non va nell'artefatto
+          cat ../../uscita/esito.md >> "$GITHUB_STEP_SUMMARY" || true
+          exit $rc
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corsi-nuovi
+          path: uscita/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

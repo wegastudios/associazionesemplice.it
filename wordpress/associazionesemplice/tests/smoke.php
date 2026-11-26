@@ -14735,6 +14735,7 @@ require __DIR__ . '/smoke_giorni_rossi.php'; // giorni senza lezione: festività
 require __DIR__ . '/smoke_primo_mese.php'; // primo mese in proporzione per scelta del corso; le iscrizioni già fatte non cambiano
 require __DIR__ . '/smoke_costo_lezioni.php'; // corsi a lezioni effettive: lezioni e importi fissati per mese, prima lezione vera
 require __DIR__ . '/smoke_importo_favore.php'; // corsi a lezioni: lezione annullata già pagata, importo a favore, recupero, quota dell'istruttore
+require __DIR__ . '/smoke_fondo_liquidato.php'; // lezione annullata con la quota dell'istruttore già liquidata o in parte liberata: mai sotto zero, differenza scritta
 require __DIR__ . '/smoke_moneta.php'; // moneta interna con il nome scelto (di partenza AssoCredito)
 require __DIR__ . '/smoke_mensilita_moneta.php'; // mensilità dei corsi pagate nella moneta interna: per intero, sotto blocco, rimborsi in moneta
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
