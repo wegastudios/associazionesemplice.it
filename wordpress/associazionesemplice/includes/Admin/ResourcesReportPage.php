@@ -30,7 +30,7 @@ final class ResourcesReportPage {
 			Ui::footer();
 			return;
 		}
-		echo '<table class="widefat striped"><thead><tr><th>Risorsa</th><th>Disponibile</th><th>Prenotata dai soci</th><th>Corsi ed eventi</th><th>Allestimenti</th><th>Bloccata</th><th>Occupazione</th><th>Incassi</th><th>Crediti spesi</th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>Risorsa</th><th>Disponibile</th><th>Prenotata dai soci</th><th>Corsi ed eventi</th><th>Allestimenti</th><th>Bloccata</th><th>Occupazione</th><th>Incassi</th><th>' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . ' spesi</th></tr></thead><tbody>';
 		$tot = array( 'available' => 0, 'booked' => 0, 'activities' => 0, 'setup' => 0, 'blocked' => 0, 'cents' => 0, 'credits' => 0, 'bookings' => 0 );
 		foreach ( $rows as $r ) {
 			foreach ( $tot as $k => $v ) {
@@ -48,7 +48,7 @@ final class ResourcesReportPage {
 		$occ = $tot['available'] > 0 ? (int) min( 100, round( 100 * ( $tot['booked'] + $tot['activities'] ) / $tot['available'] ) ) : 0;
 		echo '</tbody><tfoot><tr><th>Totale</th><th>' . self::hours( $tot['available'] ) . '</th><th>' . self::hours( $tot['booked'] ) . '</th><th>' . self::hours( $tot['activities'] ) . '</th><th>' . self::hours( $tot['setup'] ) . '</th><th>' . self::hours( $tot['blocked'] ) . '</th><th>' . $occ . '%</th><th>' . ( $tot['cents'] ? Ui::money( $tot['cents'] ) : '—' ) . '</th><th>' . ( $tot['credits'] ?: '—' ) . '</th></tr></tfoot></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description">L\'occupazione è la quota di ore disponibili (tra apertura e chiusura) prenotate dai soci o occupate da corsi ed eventi; gli allestimenti e i blocchi si vedono a parte e non la fanno salire. '
-			. 'Gli incassi sono quelli registrati nel periodo per le prenotazioni della risorsa; i crediti sono quelli spesi per le prenotazioni del periodo (l\'entrata è la vendita dei crediti).</p>';
+			. 'Gli incassi sono quelli registrati nel periodo per le prenotazioni della risorsa; ' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . ' spesi per le prenotazioni del periodo (l\'entrata è la vendita dei pacchetti).</p>';
 		Ui::footer();
 	}
 }

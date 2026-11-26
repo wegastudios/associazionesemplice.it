@@ -1260,7 +1260,7 @@ class PaymentService extends OfflinePayments {
 			case PaymentItems::COURSE_MONTH:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => (int) $i['amount_cents'], 'activity_id' => (int) $i['activity_id'], 'competence_month' => $i['month'], 'description' => $note );
 			case PaymentItems::CREDITS:
-				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Acquisto crediti: ' . (int) $i['credits'] . ' — ' . $note, 0, 255 ) );
+				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Acquisto ' . CoinName::plural() . ': ' . (int) $i['credits'] . ' — ' . $note, 0, 255 ) );
 			case PaymentItems::RESERVATION:
 				return array( 'category_id' => Resources::income_category_for( (int) $i['reservation_id'] ), 'amount_cents' => (int) $i['amount_cents'], 'reservation_id' => (int) $i['reservation_id'], 'description' => mb_substr( $note . ' — ' . ( $i['label'] ?? '' ), 0, 255 ) );
 			case PaymentItems::DONATION:

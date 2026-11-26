@@ -4708,7 +4708,7 @@ asem_ok( false !== strpos( Admin\Admin::tabs( 'asem-card' ), 'Cassa' ) && false 
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['asem'] ?? array(), 0 );
-asem_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Risorse', 'Crediti', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo dieci voci (' . implode( ', ', $visible ) . ')' );
+asem_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Risorse', 'AssoCrediti', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo dieci voci (' . implode( ', ', $visible ) . ')' );
 
 // interruttori: tutto spento di default
 Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );
@@ -8747,7 +8747,7 @@ $people->set_membership( $cr_m, $sy_label, true );
 $people->set_membership( $cr_m2, $sy_label, true );
 asem_ok( 0 === $CR::balance( $cr_m ), 'crediti: si parte da zero' );
 $CR::sell_at_desk( $cr_m, 50, (int) $rs_cash['id'], 'cash' );
-asem_ok( 50 === $CR::balance( $cr_m ) && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE person_id = %d AND type = 'income' AND amount_cents = 4500 AND description LIKE %s", $cr_m, 'Acquisto crediti%' ) ), 'crediti: la vendita in segreteria dà i crediti e la vendita entra in prima nota' );
+asem_ok( 50 === $CR::balance( $cr_m ) && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE person_id = %d AND type = 'income' AND amount_cents = 4500 AND description LIKE %s", $cr_m, 'Acquisto AssoCrediti%' ) ), 'crediti: la vendita in segreteria dà i crediti e la vendita entra in prima nota' );
 asem_ok( null !== asem_throws( function () use ( $CR, $cr_m, $rs_cash ) { $CR::sell_at_desk( $cr_m, 7, (int) $rs_cash['id'], 'cash' ); } ) && 50 === $CR::balance( $cr_m ), 'crediti: si vendono solo i pacchetti previsti' );
 asem_ok( null !== asem_throws( function () use ( $CR, $cr_m ) { $CR::spend( $cr_m, 60, 'troppo' ); } ) && 50 === $CR::balance( $cr_m ), 'crediti: non si spende più del saldo' );
 asem_ok( null !== asem_throws( function () use ( $CR, $rs_gst ) { $CR::spend( $rs_gst, 1, 'ospite' ); } ), 'crediti: gli ospiti non hanno crediti' );
@@ -8849,7 +8849,7 @@ $_GET['asem_charge'] = $cr_act['id'];
 $cr_screen = \AssociazioneSemplice\Frontend\CreditsFront::staff_section( $people->get( $cr_m2 ) );
 unset( $_GET['asem_charge'] );
 asem_ok( false !== strpos( $cr_screen, 'data-asemf-credit-poll' ) && false !== strpos( $cr_screen, '<svg' ) && false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::staff_section( $people->get( $cr_m2 ) ), 'Mostra il QR' ), 'crediti: lo staff vede il QR e lo stato che si aggiorna da solo' );
-asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::section( $people->get( $cr_m ) ), 'I miei crediti' ), 'crediti: il socio vede il saldo nella sua area' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::section( $people->get( $cr_m ) ), 'Saldo: ' ), 'crediti: il socio vede il saldo nella sua area' );
 // la pagina del QR con saldo sufficiente disegna il modulo «Conferma e paga» (con il controllo di sicurezza), senza errori fatali
 $cr_front_ch = $CR::create_charge( $cr_m2, 1, 'Pagina QR', null );
 $cr_front_u  = wp_insert_user( array( 'user_login' => 'crediti_qr_prova', 'user_pass' => wp_generate_password(), 'user_email' => 'crediti-qr-prova@example.com' ) );
@@ -14727,6 +14727,7 @@ require __DIR__ . '/smoke_backup_job.php'; // copia di sicurezza a tappe: uguale
 require __DIR__ . '/smoke_cache_condivisa.php'; // letture ricordate tra le richieste con una cache degli oggetti persistente (simulata): stessi risultati, svuotate a ogni scrittura
 require __DIR__ . '/smoke_prenota_gruppo.php'; // prenotazione per più persone: tutte o nessuna, chi prenota risponde, nessun oracolo sugli altri soci
 require __DIR__ . '/smoke_prenota_debitore.php'; // il contributo è a carico di chi prenota: cassa e prima nota invariate
+require __DIR__ . '/smoke_moneta.php'; // moneta interna con il nome scelto (di partenza AssoCredito)
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );

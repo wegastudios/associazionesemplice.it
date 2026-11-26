@@ -32,19 +32,19 @@ final class CreditRules {
 			if ( '' === $line ) {
 				continue;
 			}
-			if ( ! preg_match( '/^(\d{1,6})\s*(?:crediti|credito)?\s*[=:]\s*(\d+(?:[.,]\d{1,2})?)\s*€?$/iu', $line, $m ) ) {
-				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': scrivi ad esempio «10 = 10,00» (crediti = prezzo in euro).' );
+			if ( ! preg_match( '/^(\d{1,6})\s*(?:[^\d=:]{0,30})?\s*[=:]\s*(\d+(?:[.,]\d{1,2})?)\s*€?$/iu', $line, $m ) ) {
+				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': scrivi ad esempio «10 = 10,00» (quantità = prezzo in euro).' );
 			}
 			$credits = (int) $m[1];
 			$price   = (int) round( (float) str_replace( ',', '.', $m[2] ) * 100 );
 			if ( $credits < 1 || $credits > self::MAX_CREDITS ) {
-				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': i crediti vanno da 1 a ' . self::MAX_CREDITS . '.' );
+				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': la quantità va da 1 a ' . self::MAX_CREDITS . '.' );
 			}
 			if ( $price < 1 ) {
 				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': il prezzo deve essere maggiore di zero.' );
 			}
 			if ( isset( $seen[ $credits ] ) ) {
-				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': c\'è già un pacchetto da ' . $credits . ' crediti.' );
+				throw new \InvalidArgumentException( 'Pacchetti, riga ' . ( $n + 1 ) . ': c\'è già un pacchetto da ' . CoinName::n( $credits ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$seen[ $credits ] = true;
 			$out[]            = array( 'credits' => $credits, 'price_cents' => $price );
