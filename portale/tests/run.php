@@ -2060,6 +2060,15 @@ $ubody = function ( string $t ) { return (string) json_encode( array( 'token' =>
 list( $uc, $uo ) = Portale\Usage::accept( $cdb, $ubody( $usign() ), 1000000 );
 $urow = $cdb->one( 'SELECT * FROM saas_usage WHERE ref = ?', array( $uref ) );
 check( 'consumi: token firmato accettato, salvati i numeri dell\'abbonamento noto e saltato lo sconosciuto', 200 === $uc && 1 === $uo['saved'] && 1 === $uo['unknown'] && 42 === (int) $urow['members'] && 3 === (int) $urow['operators'] && '2026-11-24' === $urow['day'] );
+check( 'consumi: la risposta dice solo i ref non riconosciuti e tiene i campi di prima (compatibile con il gestionale)', array( 'ok', 'saved', 'unknown', 'unknown_refs' ) === array_keys( $uo ) && array( 'sconosciuto' ) === $uo['unknown_refs'] && true === $uo['ok'] );
+$uMany = array();
+for ( $i = 0; $i < 60; $i++ ) {
+	$uMany[] = array( 'org_id' => 'o' . $i, 'ref' => 'ignoto-' . $i, 'members' => 1, 'operators' => 1, 'einvoices_year' => 0 );
+}
+list( $ucm, $uom ) = Portale\Usage::accept( $cdb, $ubody( $usign( array( 'orgs' => $uMany ) ) ), 1000000 );
+check( 'consumi: 60 ref sconosciuti → contati tutti, ma ne tornano al massimo 50 (solo i ref)', 200 === $ucm && 60 === $uom['unknown'] && 50 === count( $uom['unknown_refs'] ) && 'ignoto-0' === $uom['unknown_refs'][0] && 0 === $uom['saved'] );
+list( $uce, $uoe ) = Portale\Usage::accept( $cdb, $ubody( $usign( array( 'orgs' => array() ) ) ), 1000000 );
+check( 'consumi: elenco vuoto (come stanotte) → 200, saved 0, unknown 0, nessun ref', 200 === $uce && 0 === $uoe['saved'] && 0 === $uoe['unknown'] && array() === $uoe['unknown_refs'] );
 $uj = $usign( array(), 'jti-uso' );
 Portale\Usage::accept( $cdb, $ubody( $uj ), 1000000 );
 list( $uc2, $uo2 ) = Portale\Usage::accept( $cdb, $ubody( $uj ), 1000000 );
